@@ -1,5 +1,5 @@
 // Runs the config menu and board gameplay for the TT Wars minigame.
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/frand.h"
@@ -63,10 +63,8 @@ typedef struct TTWarsObjectData_s {
 
 Point3d lbl_1_data_0 = {0.0f, 10000.0f, 10000.0f};
 Point3d lbl_1_data_C = {0.0f, 0.0f, 0.0f};
-s32 lbl_1_data_18 = -1;
+GXColor lbl_1_data_18 = {255, 255, 255, 255};
 OM_CAMERA_VIEW lbl_1_data_1C = {{0.0f, 150.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1950.0f};
-char lbl_1_data_38[] = "******* TTWARS ObjectSetup *********\n";
-char lbl_1_data_5E[] = "*** main mode error(%d)!!\n";
 
 HUPROCESS *lbl_1_bss_1870;
 
@@ -84,7 +82,7 @@ f32 lbl_1_bss_1450;
 
 HU3D_MODELID lbl_1_bss_144E;
 
-u16 lbl_1_bss_1446[4];
+HU3D_MODELID lbl_1_bss_1446[4];
 
 HU3D_MODELID lbl_1_bss_1444;
 
@@ -102,7 +100,7 @@ s32 lbl_1_bss_141C[4];
 
 TTWarsRecord lbl_1_bss_1C[16][16];
 
-u32 lbl_1_bss_18;
+s32 lbl_1_bss_18;
 
 s32 lbl_1_bss_14;
 
@@ -114,31 +112,29 @@ s32 lbl_1_bss_8;
 
 s32 lbl_1_bss_4;
 
-u32 lbl_1_bss_0;
+s32 lbl_1_bss_0;
 
 // Creates the TT Wars object manager, camera, lighting, and initial scene callbacks during overlay
 // entry.
 void fn_1_A0(void) {
-    OSReport(lbl_1_data_38);
+    OSReport("******* TTWARS ObjectSetup *********\n");
     lbl_1_bss_1870 = fn_8003A8BC(600, 8192);
     fn_80069F1C(lbl_1_bss_1870);
     Hu3DCameraCreate(1);
-    Hu3DCameraPerspectiveSet(1, (45.0f), (10.0f), (20000.0f), (1.2f));
+    Hu3DCameraPerspectiveSet(1, 45.0f, 10.0f, 20000.0f, 1.2f);
     fn_8003E5A4(&lbl_1_data_1C);
     lbl_1_bss_1868 = fn_8003AB38(lbl_1_bss_1870, 32730, 0U, 0U, -1, fn_8003D4FC);
     // omOutView ignores this work value; it does not affect the single-camera update.
     lbl_1_bss_1868->work[0] = 1;
     lbl_1_bss_186C =
-        (s32) Hu3DGLightCreate((0.0f), (0.0f), (0.0f), (0.0f), (0.0f), (0.0f), 0U, 0U, 0U);
+        (s32) Hu3DGLightCreate(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0U, 0U, 0U);
     Hu3DGLightPosAimSetV((s16) lbl_1_bss_186C, &lbl_1_data_0, &lbl_1_data_C);
     Hu3DGLightStaticSet((s16) lbl_1_bss_186C, 1);
     Hu3DGLightInfinitytSet((s16) lbl_1_bss_186C);
-    Hu3DGLightColorSet((s16) lbl_1_bss_186C, (*(u8 *) ((s8 *) (&lbl_1_data_18) + (0))),
-                       (*(u8 *) ((s8 *) (&lbl_1_data_18) + (1))),
-                       (*(u8 *) ((s8 *) (&lbl_1_data_18) + (2))),
-                       (*(u8 *) ((s8 *) (&lbl_1_data_18) + (3))));
+    Hu3DGLightColorSet((s16) lbl_1_bss_186C, lbl_1_data_18.r, lbl_1_data_18.g,
+                       lbl_1_data_18.b, lbl_1_data_18.a);
     Hu3DBGColorSet(0U, 0U, 100U);
-    lbl_1_bss_1450 = (0.0f);
+    lbl_1_bss_1450 = 0.0f;
     lbl_1_bss_1434 = 0;
     lbl_1_bss_1430 = 0;
     lbl_1_bss_142C = 0;
@@ -157,7 +153,7 @@ void fn_1_344(OMOBJ *obj) {
     lbl_1_bss_1454[0] = fn_80025A04(
         fn_80008DD0(DATANUM(0xd60000, 5), 0x10000000, 2));
     fn_800269E8(lbl_1_bss_1454[0], (1 << 0));
-    fn_80026808(lbl_1_bss_1454[0], (0.0f), (0.0f), (0.0f));
+    fn_80026808(lbl_1_bss_1454[0], 0.0f, 0.0f, 0.0f);
     lbl_1_bss_144E = fn_80025A04(
         fn_80008DD0(DATANUM(0xd60000, 4), 0x10000000, 2));
     fn_800269E8(lbl_1_bss_144E, (1 << 0));
@@ -165,23 +161,23 @@ void fn_1_344(OMOBJ *obj) {
         fn_80008DD0(DATANUM(0xd60000, 6), 0x10000000, 2));
     fn_800269E8(lbl_1_bss_1444, (1 << 0));
     for (i = 0; i < 256; i++) {
-        *(s32 *)(void *)((u8 *)(void *)lbl_1_bss_1464 + i * 4) = 0;
+        lbl_1_bss_1464[i] = NULL;
     }
-    omMakeGroupEx((OMOBJMAN *)lbl_1_bss_1870, 0, 256);
+    omMakeGroupEx(lbl_1_bss_1870, 0, 256);
     // The returned group member list is ignored; pieces use lbl_1_bss_1464 instead.
-    omGetGroupMemberListEx((OMOBJMAN *)lbl_1_bss_1870, 0);
-    ((HU3D_MODELID *) lbl_1_bss_1446)[0] =
+    omGetGroupMemberListEx(lbl_1_bss_1870, 0);
+    lbl_1_bss_1446[0] =
         fn_80025A04(fn_80008DD0(DATANUM(0xd60000, 0), 0x10000000, 2));
-    ((HU3D_MODELID *) lbl_1_bss_1446)[1] =
+    lbl_1_bss_1446[1] =
         fn_80025A04(fn_80008DD0(DATANUM(0xd60000, 1), 0x10000000, 2));
-    ((HU3D_MODELID *) lbl_1_bss_1446)[2] =
+    lbl_1_bss_1446[2] =
         fn_80025A04(fn_80008DD0(DATANUM(0xd60000, 2), 0x10000000, 2));
-    ((HU3D_MODELID *) lbl_1_bss_1446)[3] =
+    lbl_1_bss_1446[3] =
         fn_80025A04(fn_80008DD0(DATANUM(0xd60000, 3), 0x10000000, 2));
     for (i = 0; i < 4; i++) {
-        fn_800269E8(((HU3D_MODELID *)lbl_1_bss_1446)[i], (1 << 0));
+        fn_800269E8(lbl_1_bss_1446[i], (1 << 0));
         // Adding HU3D_ATTR_NONE changes no flags; the source model remains hidden.
-        fn_800269E8(((HU3D_MODELID *)lbl_1_bss_1446)[i], 0);
+        fn_800269E8(lbl_1_bss_1446[i], 0);
     }
     WipeCreate(1, 0, 20);
     obj->objFunc = fn_1_5BC;
@@ -205,12 +201,12 @@ void fn_1_5BC(OMOBJ *obj)
     // state.
     switch (obj->work[0]) {
         case 1000:
-            lbl_1_bss_1450 += (1.0f);
-            if ((15.0f) <= lbl_1_bss_1450) {
+            lbl_1_bss_1450 += 1.0f;
+            if (15.0f <= lbl_1_bss_1450) {
                 obj->work[0] = 1001;
                 lbl_1_bss_18 = 0;
                 lbl_1_bss_10 = 4;
-                lbl_1_bss_1450 = (0.0f);
+                lbl_1_bss_1450 = 0.0f;
             }
             break;
         case 1001:
@@ -220,7 +216,7 @@ void fn_1_5BC(OMOBJ *obj)
             fn_1_C38(obj);
             break;
         case 1003:
-            if ((s32)lbl_1_bss_10 != 0) {
+            if (lbl_1_bss_10 != 0) {
                 fn_1_3424(0);
                 fn_1_34A8(0);
                 obj->work[0] = 1002;
@@ -254,7 +250,7 @@ void fn_1_5BC(OMOBJ *obj)
         case 1007:
             break;
         default:
-            OSReport(lbl_1_data_5E, obj->work[0]);
+            OSReport("*** main mode error(%d)!!\n", obj->work[0]);
             break;
     }
 }
@@ -270,67 +266,67 @@ void fn_1_7E4(OMOBJ *obj) {
 void fn_1_81C(OMOBJ *obj) {
     if ((lbl_802BFFE0[0] & 8) != 0) {
         lbl_1_bss_18 -= 1;
-        if ((s32)lbl_1_bss_18 < 0) {
+        if (lbl_1_bss_18 < 0) {
             lbl_1_bss_18 = 0;
         }
     } else if ((lbl_802BFFE0[0] & 4) != 0) {
         lbl_1_bss_18 += 1;
-        if ((s32)lbl_1_bss_18 > 3) {
+        if (lbl_1_bss_18 > 3) {
             lbl_1_bss_18 = 3;
         }
     } else if ((lbl_802BFFE0[0] & 1) != 0) {
-        switch ((s32)lbl_1_bss_18) {
+        switch (lbl_1_bss_18) {
         case 0:
             lbl_1_bss_8 -= 1;
-            if ((s32)lbl_1_bss_8 < 4) {
+            if (lbl_1_bss_8 < 4) {
                 lbl_1_bss_8 = 4;
             }
-            if ((s32)lbl_1_bss_0 > (s32)(lbl_1_bss_8 - 1)) {
+            if (lbl_1_bss_0 > (s32)(lbl_1_bss_8 - 1)) {
                 lbl_1_bss_0 = lbl_1_bss_8 - 1;
             }
             break;
         case 1:
             lbl_1_bss_4 -= 1;
-            if ((s32)lbl_1_bss_4 < 4) {
+            if (lbl_1_bss_4 < 4) {
                 lbl_1_bss_4 = 4;
             }
             break;
         case 2:
             lbl_1_bss_0 -= 1;
-            if ((s32)lbl_1_bss_0 < 2) {
+            if (lbl_1_bss_0 < 2) {
                 lbl_1_bss_0 = 2;
             }
             break;
         case 3:
             lbl_1_bss_10 -= 1;
-            if ((s32)lbl_1_bss_10 < 1) {
+            if (lbl_1_bss_10 < 1) {
                 lbl_1_bss_10 = 1;
             }
             break;
         }
     } else if ((lbl_802BFFE0[0] & 2) != 0) {
-        switch ((s32)lbl_1_bss_18) {
+        switch (lbl_1_bss_18) {
         case 0:
             lbl_1_bss_8 += 1;
-            if ((s32)lbl_1_bss_8 > 16) {
+            if (lbl_1_bss_8 > 16) {
                 lbl_1_bss_8 = 16;
             }
             break;
         case 1:
             lbl_1_bss_4 += 1;
-            if ((s32)lbl_1_bss_4 > 16) {
+            if (lbl_1_bss_4 > 16) {
                 lbl_1_bss_4 = 16;
             }
             break;
         case 2:
             lbl_1_bss_0 += 1;
-            if ((s32)lbl_1_bss_0 > (s32)(lbl_1_bss_8 - 1)) {
+            if (lbl_1_bss_0 > (s32)(lbl_1_bss_8 - 1)) {
                 lbl_1_bss_0 = lbl_1_bss_8 - 1;
             }
             break;
         case 3:
             lbl_1_bss_10 += 1;
-            if ((s32)lbl_1_bss_10 > 4) {
+            if (lbl_1_bss_10 > 4) {
                 lbl_1_bss_10 = 4;
             }
             break;
@@ -346,18 +342,18 @@ void fn_1_81C(OMOBJ *obj) {
 void fn_1_C38(OMOBJ *obj) {
     if ((lbl_802BFFE0[0] & 8) != 0) {
         lbl_1_bss_1434 -= 1;
-        if ((s32) lbl_1_bss_1434 < 0) {
+        if (lbl_1_bss_1434 < 0) {
             lbl_1_bss_1434 = 0;
             return;
         }
     } else if ((lbl_802BFFE0[0] & 4) != 0) {
         lbl_1_bss_1434 += 1;
-        if ((s32) lbl_1_bss_1434 > (s32) lbl_1_bss_10) {
+        if (lbl_1_bss_1434 > lbl_1_bss_10) {
             lbl_1_bss_1434 = lbl_1_bss_10;
             return;
         }
     } else if ((lbl_802C0008[0] & PAD_BUTTON_A) != 0) {
-        if ((s32) lbl_1_bss_1434 == 0) {
+        if (lbl_1_bss_1434 == 0) {
             lbl_1_bss_14 = 1;
         } else {
             lbl_1_bss_14 = 0;
@@ -367,50 +363,34 @@ void fn_1_C38(OMOBJ *obj) {
     }
 }
 
-char lbl_1_data_9C[] = "CONFIG MENU";
-char lbl_1_data_A8[] = "X SIZE:%d (%d-%d)";
-char lbl_1_data_BA[] = "Y SIZE:%d (%d-%d)";
-char lbl_1_data_CC[] = "HOLE:%d (2-%d)";
-char lbl_1_data_DB[] = "PLAYER(S):%d (1-4)";
-char lbl_1_data_EE[] = "------------------------------------------------\n";
-char lbl_1_data_120[] = "#";
-char lbl_1_data_122[] = " ";
-char lbl_1_data_124[] = "\n";
-char lbl_1_data_126[] = "HOLE:%d\n";
-char lbl_1_data_12F[] = "RAMDOM";
-char lbl_1_data_136[] = "%d:%d";
-char lbl_1_data_13C[] = ">>";
-char lbl_1_data_13F[] = "GAME:%d";
-char lbl_1_data_147[] = "Y:SKIP";
-
 // Draws the current board dimensions, hole count, and player-count settings from the menu callback.
 void fn_1_D88(void)
 {
-    print8(216, 120, (1.5f), lbl_1_data_9C);
-    if ((s32)lbl_1_bss_18 == 0) {
+    print8(216, 120, 1.5f, "CONFIG MENU");
+    if (lbl_1_bss_18 == 0) {
         fontcolor = 14;
     } else {
         fontcolor = 15;
     }
-    print8(216, 144, (1.5f), lbl_1_data_A8, lbl_1_bss_8, 4, 16);
-    if ((s32)lbl_1_bss_18 == 1) {
+    print8(216, 144, 1.5f, "X SIZE:%d (%d-%d)", lbl_1_bss_8, 4, 16);
+    if (lbl_1_bss_18 == 1) {
         fontcolor = 14;
     } else {
         fontcolor = 15;
     }
-    print8(216, 168, (1.5f), lbl_1_data_BA, lbl_1_bss_4, 4, 16);
-    if ((s32)lbl_1_bss_18 == 2) {
+    print8(216, 168, 1.5f, "Y SIZE:%d (%d-%d)", lbl_1_bss_4, 4, 16);
+    if (lbl_1_bss_18 == 2) {
         fontcolor = 14;
     } else {
         fontcolor = 15;
     }
-    print8(216, 192, (1.5f), lbl_1_data_CC, lbl_1_bss_0, lbl_1_bss_8 - 1);
-    if ((s32)lbl_1_bss_18 == 3) {
+    print8(216, 192, 1.5f, "HOLE:%d (2-%d)", lbl_1_bss_0, lbl_1_bss_8 - 1);
+    if (lbl_1_bss_18 == 3) {
         fontcolor = 14;
     } else {
         fontcolor = 15;
     }
-    print8(216, 216, (1.5f), lbl_1_data_DB, lbl_1_bss_10);
+    print8(216, 216, 1.5f, "PLAYER(S):%d (1-4)", lbl_1_bss_10);
 }
 
 // Rotates the selected row's safe-tile/hole pattern and wraps registered pieces to their new
@@ -467,7 +447,7 @@ void fn_1_1198(s32 direction)
                         data->column = lbl_1_bss_8 - 1;
                     }
                 }
-                data->position.x = (50.0f) + ((100.0f) * data->column - (50.0f) * lbl_1_bss_8);
+                data->position.x = 50.0f + (100.0f * data->column - 50.0f * lbl_1_bss_8);
             }
         }
         index += 1;
@@ -506,26 +486,26 @@ void fn_1_1318(void)
 void fn_1_18A4(void)
 {
     Vec position;
-    position.x = (50.0f) * -lbl_1_bss_8 - (50.0f);
+    position.x = 50.0f * -lbl_1_bss_8 - 50.0f;
     position.y =
-        (100.0f) * lbl_1_bss_4 - ((50.0f) + ((100.0f) * lbl_1_bss_1430 + (50.0f) * lbl_1_bss_4));
-    position.z = (70.0f);
+        100.0f * lbl_1_bss_4 - (50.0f + (100.0f * lbl_1_bss_1430 + 50.0f * lbl_1_bss_4));
+    position.z = 70.0f;
     fn_80026760(lbl_1_bss_143C[0], position.x, position.y, position.z);
-    position.x = (50.0f) + (50.0f) * lbl_1_bss_8;
+    position.x = 50.0f + 50.0f * lbl_1_bss_8;
     position.y =
-        (100.0f) * lbl_1_bss_4 - ((50.0f) + ((100.0f) * lbl_1_bss_1430 + (50.0f) * lbl_1_bss_4));
-    position.z = (70.0f);
+        100.0f * lbl_1_bss_4 - (50.0f + (100.0f * lbl_1_bss_1430 + 50.0f * lbl_1_bss_4));
+    position.z = 70.0f;
     fn_80026760(lbl_1_bss_143C[1], position.x, position.y, position.z);
-    position.x = (0.0f);
-    position.y = (75.0f) + ((100.0f) * lbl_1_bss_4 -
-                            ((50.0f) + ((100.0f) * lbl_1_bss_1430 + (50.0f) * lbl_1_bss_4)));
-    position.z = (70.0f);
+    position.x = 0.0f;
+    position.y = 75.0f + (100.0f * lbl_1_bss_4 -
+                            (50.0f + (100.0f * lbl_1_bss_1430 + 50.0f * lbl_1_bss_4)));
+    position.z = 70.0f;
     fn_80026760(lbl_1_bss_143C[2], position.x, position.y, position.z);
-    position.x = (0.0f);
+    position.x = 0.0f;
     position.y =
-        ((100.0f) * lbl_1_bss_4 - ((50.0f) + ((100.0f) * lbl_1_bss_1430 + (50.0f) * lbl_1_bss_4))) -
-        (75.0f);
-    position.z = (70.0f);
+        (100.0f * lbl_1_bss_4 - (50.0f + (100.0f * lbl_1_bss_1430 + 50.0f * lbl_1_bss_4))) -
+        75.0f;
+    position.z = 70.0f;
     fn_80026760(lbl_1_bss_143C[3], position.x, position.y, position.z);
 }
 
@@ -533,13 +513,13 @@ void fn_1_18A4(void)
 void fn_1_1DCC(void)
 {
     Vec position;
-    position.x = ((50.0f) + ((100.0f) * lbl_1_bss_142C - (50.0f) * lbl_1_bss_8)) - (100.0f);
-    position.y = (100.0f) * lbl_1_bss_4 - ((50.0f) + ((-300.0f) + (50.0f) * lbl_1_bss_4));
-    position.z = (70.0f);
+    position.x = (50.0f + (100.0f * lbl_1_bss_142C - 50.0f * lbl_1_bss_8)) - 100.0f;
+    position.y = 100.0f * lbl_1_bss_4 - (50.0f + (-300.0f + 50.0f * lbl_1_bss_4));
+    position.z = 70.0f;
     fn_80026760(lbl_1_bss_1438[0], position.x, position.y, position.z);
-    position.x = (100.0f) + ((50.0f) + ((100.0f) * lbl_1_bss_142C - (50.0f) * lbl_1_bss_8));
-    position.y = (100.0f) * lbl_1_bss_4 - ((50.0f) + ((-300.0f) + (50.0f) * lbl_1_bss_4));
-    position.z = (70.0f);
+    position.x = 100.0f + (50.0f + (100.0f * lbl_1_bss_142C - 50.0f * lbl_1_bss_8));
+    position.y = 100.0f * lbl_1_bss_4 - (50.0f + (-300.0f + 50.0f * lbl_1_bss_4));
+    position.z = 70.0f;
     fn_80026760(lbl_1_bss_1438[1], position.x, position.y, position.z);
 }
 
@@ -548,24 +528,11 @@ void fn_1_20E0(void) {
     s32 column;
 
     column = 0;
-    while (column < (s32) lbl_1_bss_8) {
-        if ((s32) (*(s32 *) ((s8 *) ((void *) ((u8 *) (s32 *) ((u8 *) &lbl_1_bss_1C +
-                                                               (lbl_1_bss_1430 * 320)) +
-                                                               (column * 20))) +
-                             (12))) != 0) {
-            fn_80026A44(
-                (*(s16 *) ((s8 *) ((void *) ((u8 *) (s32 *) ((u8 *) &lbl_1_bss_1C +
-                                                             (lbl_1_bss_1430 * 320)) +
-                                             (column * 20))) +
-                           (16))),
-                1U);
+    while (column < lbl_1_bss_8) {
+        if (lbl_1_bss_1C[lbl_1_bss_1430][column].isSafeTile != 0) {
+            fn_80026A44(lbl_1_bss_1C[lbl_1_bss_1430][column].tileModel, (1 << 0));
         } else {
-            fn_800269E8(
-                (*(s16 *) ((s8 *) ((void *) ((u8 *) (s32 *) ((u8 *) &lbl_1_bss_1C +
-                                                             (lbl_1_bss_1430 * 320)) +
-                                             (column * 20))) +
-                           (16))),
-                1U);
+            fn_800269E8(lbl_1_bss_1C[lbl_1_bss_1430][column].tileModel, (1 << 0));
         }
         column += 1;
     }
@@ -584,10 +551,10 @@ void fn_1_21B8(void)
         obj->work[0] = lbl_1_bss_1434 - 1;
     }
     data = obj->data;
-    data->position.x = (50.0f) + ((100.0f) * lbl_1_bss_142C - (50.0f) * lbl_1_bss_8);
-    data->position.y = (100.0f) * lbl_1_bss_4 - ((50.0f) + ((-300.0f) + (50.0f) * lbl_1_bss_4));
-    data->position.z = (0.0f);
-    data->fallFrames = (0.0f);
+    data->position.x = 50.0f + (100.0f * lbl_1_bss_142C - 50.0f * lbl_1_bss_8);
+    data->position.y = 100.0f * lbl_1_bss_4 - (50.0f + (-300.0f + 50.0f * lbl_1_bss_4));
+    data->position.z = 0.0f;
+    data->fallFrames = 0.0f;
     data->state = 0;
     data->playerIndex = obj->work[0];
     lbl_1_bss_C += 1;
@@ -616,16 +583,16 @@ void fn_1_23F4(OMOBJ *obj)
 // Links the piece model and registers the piece during its first object-manager update.
 void fn_1_24A8(OMOBJ *obj)
 {
-    f32 *data = obj->data;
+    TTWarsObjectData *data = obj->data;
     s32 index;
-    obj->mdlId[0] = fn_80025D4C(((HU3D_MODELID *)lbl_1_bss_1446)[obj->work[0]]);
-    omSetTra(obj, data[3], data[4], data[5]);
-    omSetRot(obj, (0.0f), (0.0f), (0.0f));
-    omSetSca(obj, (1.0f), (1.0f), (1.0f));
+    obj->mdlId[0] = fn_80025D4C(lbl_1_bss_1446[obj->work[0]]);
+    omSetTra(obj, data->position.x, data->position.y, data->position.z);
+    omSetRot(obj, 0.0f, 0.0f, 0.0f);
+    omSetSca(obj, 1.0f, 1.0f, 1.0f);
     for (index = 0; index < 256; index += 1) {
         if (NULL == lbl_1_bss_1464[index]) {
             lbl_1_bss_1464[index] = obj;
-            ((s32 *)data)[1] = index;
+            data->registrySlot = index;
             break;
         }
     }
@@ -666,28 +633,28 @@ void fn_1_25E0(OMOBJ *obj)
                 // Clear this frame's button presses before returning to row selection.
                 lbl_802C0008[0] = 0;
             }
-            data->position.x = (50.0f) + ((100.0f) * lbl_1_bss_142C - (50.0f) * lbl_1_bss_8);
+            data->position.x = 50.0f + (100.0f * lbl_1_bss_142C - 50.0f * lbl_1_bss_8);
             fn_1_1DCC();
             break;
         case 1:
             if (fn_1_2E80(data->column, data->row) != 0) {
                 data->state = 2;
-                data->position.y = (100.0f) * lbl_1_bss_4 -
-                                   ((50.0f) + ((100.0f) * data->row + (50.0f) * lbl_1_bss_4));
-            } else if (data->fallFrames >= (20.0f)) {
-                data->fallFrames = (0.0f);
+                data->position.y = 100.0f * lbl_1_bss_4 -
+                                   (50.0f + (100.0f * data->row + 50.0f * lbl_1_bss_4));
+            } else if (data->fallFrames >= 20.0f) {
+                data->fallFrames = 0.0f;
                 data->row += 1;
                 if (data->row >= lbl_1_bss_4) {
                     lbl_1_bss_141C[data->playerIndex] += 1;
                     data->state = 3;
                 } else {
                     data->position.y =
-                        (100.0f) * lbl_1_bss_4 -
-                        ((50.0f) + ((100.0f) * data->row + (50.0f) * lbl_1_bss_4));
+                        100.0f * lbl_1_bss_4 -
+                        (50.0f + (100.0f * data->row + 50.0f * lbl_1_bss_4));
                 }
             } else {
-                data->fallFrames += (1.0f);
-                data->position.y -= (5.0f);
+                data->fallFrames += 1.0f;
+                data->position.y -= 5.0f;
             }
             break;
         case 2:
@@ -707,23 +674,20 @@ s32 fn_1_2E80(s32 column, s32 row)
     index = 0;
     while (index < 256) {
         if (lbl_1_bss_1464[index] != NULL) {
-            s32 *data = lbl_1_bss_1464[index]->data;
-            if (data[7] == column && data[8] == row + 1 && data[2] == 2) {
+            TTWarsObjectData *data = lbl_1_bss_1464[index]->data;
+            if (data->column == column && data->row == row + 1 && data->state == 2) {
                 return 1;
             }
         }
         index += 1;
     }
-    if (row + 1 > (s32)lbl_1_bss_4 - 1) {
+    if (row + 1 > lbl_1_bss_4 - 1) {
         return 0;
     }
     if (row + 1 < 0) {
         return 0;
     }
-    return (s32) (*(
-        s32 *) ((s8 *) ((void *) ((u8 *) (s32 *) ((u8 *) &lbl_1_bss_1C + ((row + 1) * 320)) +
-                                  (column * 20))) +
-                (12)));
+    return lbl_1_bss_1C[row + 1][column].isSafeTile;
 }
 
 // Returns whether a blocked piece occupies the cell below the supplied column and row.
@@ -733,8 +697,8 @@ s32 fn_1_2F70(s32 column, s32 row)
     index = 0;
     while (index < 256) {
         if (lbl_1_bss_1464[index] != NULL) {
-            s32 *data = lbl_1_bss_1464[index]->data;
-            if (data[7] == column && data[8] == row + 1 && data[2] == 2) {
+            TTWarsObjectData *data = lbl_1_bss_1464[index]->data;
+            if (data->column == column && data->row == row + 1 && data->state == 2) {
                 return 1;
             }
         }
@@ -750,8 +714,8 @@ s32 fn_1_300C(void)
     index = 0;
     while (index < 256) {
         if (lbl_1_bss_1464[index] != NULL) {
-            s32 *data = lbl_1_bss_1464[index]->data;
-            if (data[2] != 2) {
+            TTWarsObjectData *data = lbl_1_bss_1464[index]->data;
+            if (data->state != 2) {
                 return 0;
             }
         }
@@ -767,8 +731,8 @@ void fn_1_308C(void)
     index = 0;
     while (index < 256) {
         if (lbl_1_bss_1464[index] != NULL) {
-            s32 *data = lbl_1_bss_1464[index]->data;
-            data[2] = 1;
+            TTWarsObjectData *data = lbl_1_bss_1464[index]->data;
+            data->state = 1;
         }
         index += 1;
     }
@@ -779,22 +743,22 @@ void fn_1_30FC(void)
 {
     s32 row;
     s32 column;
-    OSReport(lbl_1_data_EE);
+    OSReport("------------------------------------------------\n");
     row = 0;
     while (row < lbl_1_bss_4) {
         column = 0;
         while (column < lbl_1_bss_8) {
-            if (*(s32 *)((u8 *)&lbl_1_bss_1C + row * 320 + column * 20 + 12) != 0) {
-                OSReport(lbl_1_data_120);
+            if (lbl_1_bss_1C[row][column].isSafeTile != 0) {
+                OSReport("#");
             } else {
-                OSReport(lbl_1_data_122);
+                OSReport(" ");
             }
             column += 1;
         }
-        OSReport(lbl_1_data_124);
+        OSReport("\n");
         row += 1;
     }
-    OSReport(lbl_1_data_126, fn_1_49C4());
+    OSReport("HOLE:%d\n", fn_1_49C4());
 }
 
 // Draws the score panel while play has advanced beyond the initial board setup state.
@@ -809,25 +773,25 @@ void fn_1_31E8(void)
     color.a = 192;
     printWin(492, 60, 108, 132, &color);
     fontcolor = 15;
-    print8(516, 72, (1.5f), lbl_1_data_12F);
+    print8(516, 72, 1.5f, "RAMDOM");
     index = 0;
-    while (index < (s32)lbl_1_bss_10) {
+    while (index < lbl_1_bss_10) {
         fontcolor = colors[index];
         // Every score row prints zero as its player label, while the score comes from that row's
         // player.
-        print8(516, 72 + (index + 1) * 24, (1.5f), lbl_1_data_136, 0, lbl_1_bss_141C[index]);
+        print8(516, 72 + (index + 1) * 24, 1.5f, "%d:%d", 0, lbl_1_bss_141C[index]);
         index += 1;
     }
     if (lbl_1_bss_1864->work[0] == 1002) {
         fontcolor = 15;
-        print8(492, 72 + lbl_1_bss_1434 * 24, (1.5f), lbl_1_data_13C);
+        print8(492, 72 + lbl_1_bss_1434 * 24, 1.5f, ">>");
     }
     printWin(492, 204, 108, 36, &color);
     fontcolor = 15;
-    print8(504, 216, (1.5f), lbl_1_data_13F, lbl_1_bss_C);
+    print8(504, 216, 1.5f, "GAME:%d", lbl_1_bss_C);
     printWin(492, 252, 96, 36, &color);
     fontcolor = 15;
-    print8(504, 264, (1.5f), lbl_1_data_147);
+    print8(504, 264, 1.5f, "Y:SKIP");
 }
 
 // The main callback shows or hides the four row-selection markers for its current state.
@@ -836,9 +800,9 @@ void fn_1_3424(BOOL showMarkers)
     s32 i = 0;
     while (i < 4) {
         if (showMarkers) {
-            fn_80026A44(((HU3D_MODELID *)lbl_1_bss_143C)[i], (1 << 0));
+            fn_80026A44(lbl_1_bss_143C[i], (1 << 0));
         } else {
-            fn_800269E8(((HU3D_MODELID *)lbl_1_bss_143C)[i], (1 << 0));
+            fn_800269E8(lbl_1_bss_143C[i], (1 << 0));
         }
         i++;
     }
@@ -850,9 +814,9 @@ void fn_1_34A8(BOOL showMarkers)
     s32 i = 0;
     while (i < 2) {
         if (showMarkers) {
-            fn_80026A44(((HU3D_MODELID *)lbl_1_bss_1438)[i], (1 << 0));
+            fn_80026A44(lbl_1_bss_1438[i], (1 << 0));
         } else {
-            fn_800269E8(((HU3D_MODELID *)lbl_1_bss_1438)[i], (1 << 0));
+            fn_800269E8(lbl_1_bss_1438[i], (1 << 0));
         }
         i++;
     }
@@ -872,7 +836,7 @@ void fn_1_352C(void)
     while (column < lbl_1_bss_8) {
         row = 0;
         while (row < lbl_1_bss_4) {
-            if (*(s32 *)((u8 *)&lbl_1_bss_1C + row * 320 + column * 20 + 12) != 0) {
+            if (lbl_1_bss_1C[row][column].isSafeTile != 0) {
                 break;
             }
             row += 1;
@@ -881,9 +845,8 @@ void fn_1_352C(void)
             complete = 1;
             row = 0;
             while (row < lbl_1_bss_4) {
-                *(s32 *)((u8 *)&lbl_1_bss_1C + row * 320 + column * 20 + 12) = 1;
-                fn_80026A44(
-                    *(s16 *) ((u8 *) &lbl_1_bss_1C + row * 320 + column * 20 + 16), 1);
+                lbl_1_bss_1C[row][column].isSafeTile = 1;
+                fn_80026A44(lbl_1_bss_1C[row][column].tileModel, (1 << 0));
                 row += 1;
             }
         } else {
@@ -901,10 +864,9 @@ void fn_1_352C(void)
             while (iteration < 1) {
                 do {
                     slot = frandmod(lbl_1_bss_8);
-                } while (*(s32 *)((u8 *)&lbl_1_bss_1C + row * 320 + slot * 20 + 12) == 0);
-                *(s32 *)((u8 *)&lbl_1_bss_1C + row * 320 + slot * 20 + 12) = 0;
-                fn_800269E8(*(s16 *) ((u8 *) &lbl_1_bss_1C + row * 320 + slot * 20 + 16),
-                                 1);
+                } while (lbl_1_bss_1C[row][slot].isSafeTile == 0);
+                lbl_1_bss_1C[row][slot].isSafeTile = 0;
+                fn_800269E8(lbl_1_bss_1C[row][slot].tileModel, (1 << 0));
                 iteration += 1;
             }
             row += 1;
@@ -924,10 +886,10 @@ void fn_1_3704(void)
     while (row < lbl_1_bss_4) {
         column = 0;
         while (column < lbl_1_bss_8) {
-            position.x = (50.0f) + ((100.0f) * column - (50.0f) * lbl_1_bss_8);
+            position.x = 50.0f + (100.0f * column - 50.0f * lbl_1_bss_8);
             position.y =
-                (100.0f) * lbl_1_bss_4 - ((50.0f) + ((100.0f) * row + (50.0f) * lbl_1_bss_4));
-            position.z = (0.0f);
+                100.0f * lbl_1_bss_4 - (50.0f + (100.0f * row + 50.0f * lbl_1_bss_4));
+            position.z = 0.0f;
             lbl_1_bss_1C[row][column].tileModel = fn_80025D4C(lbl_1_bss_144E);
             fn_800269E8(lbl_1_bss_1C[row][column].tileModel, (1 << 0));
             fn_80026760(lbl_1_bss_1C[row][column].tileModel, position.x, position.y,
@@ -957,30 +919,30 @@ void fn_1_3704(void)
         row += 1;
     }
     lbl_1_bss_143C[0] = fn_80025D4C(lbl_1_bss_1444);
-    fn_800268B0(lbl_1_bss_143C[0], (0.5f), (0.5f), (0.5f));
-    fn_80026808(lbl_1_bss_143C[0], (0.0f), (0.0f), (-90.0f));
+    fn_800268B0(lbl_1_bss_143C[0], 0.5f, 0.5f, 0.5f);
+    fn_80026808(lbl_1_bss_143C[0], 0.0f, 0.0f, -90.0f);
     lbl_1_bss_143C[1] = fn_80025D4C(lbl_1_bss_1444);
-    fn_800268B0(lbl_1_bss_143C[1], (0.5f), (0.5f), (0.5f));
-    fn_80026808(lbl_1_bss_143C[1], (0.0f), (0.0f), (90.0f));
+    fn_800268B0(lbl_1_bss_143C[1], 0.5f, 0.5f, 0.5f);
+    fn_80026808(lbl_1_bss_143C[1], 0.0f, 0.0f, 90.0f);
     lbl_1_bss_143C[2] = fn_80025D4C(lbl_1_bss_1444);
-    fn_800268B0(lbl_1_bss_143C[2], (0.5f), (0.5f), (0.5f));
-    fn_80026808(lbl_1_bss_143C[2], (0.0f), (0.0f), (180.0f));
+    fn_800268B0(lbl_1_bss_143C[2], 0.5f, 0.5f, 0.5f);
+    fn_80026808(lbl_1_bss_143C[2], 0.0f, 0.0f, 180.0f);
     lbl_1_bss_143C[3] = fn_80025D4C(lbl_1_bss_1444);
-    fn_800268B0(lbl_1_bss_143C[3], (0.5f), (0.5f), (0.5f));
-    fn_80026808(lbl_1_bss_143C[3], (0.0f), (0.0f), (0.0f));
+    fn_800268B0(lbl_1_bss_143C[3], 0.5f, 0.5f, 0.5f);
+    fn_80026808(lbl_1_bss_143C[3], 0.0f, 0.0f, 0.0f);
     fn_1_18A4();
     lbl_1_bss_1438[0] = fn_80025D4C(lbl_1_bss_1444);
-    fn_800268B0(lbl_1_bss_1438[0], (0.5f), (0.5f), (0.5f));
-    fn_80026808(lbl_1_bss_1438[0], (0.0f), (0.0f), (-90.0f));
+    fn_800268B0(lbl_1_bss_1438[0], 0.5f, 0.5f, 0.5f);
+    fn_80026808(lbl_1_bss_1438[0], 0.0f, 0.0f, -90.0f);
     lbl_1_bss_1438[1] = fn_80025D4C(lbl_1_bss_1444);
-    fn_800268B0(lbl_1_bss_1438[1], (0.5f), (0.5f), (0.5f));
-    fn_80026808(lbl_1_bss_1438[1], (0.0f), (0.0f), (90.0f));
+    fn_800268B0(lbl_1_bss_1438[1], 0.5f, 0.5f, 0.5f);
+    fn_80026808(lbl_1_bss_1438[1], 0.0f, 0.0f, 90.0f);
     fn_1_1DCC();
     fn_1_3424(0);
     fn_1_34A8(0);
     fn_80026A44(lbl_1_bss_1454[0], (1 << 0));
-    fn_800268B0(lbl_1_bss_1454[0], lbl_1_bss_8, lbl_1_bss_4, (1.0f));
-    fn_80026760(lbl_1_bss_1454[0], (0.0f), lbl_1_bss_4 / 2.0f, (0.0f));
+    fn_800268B0(lbl_1_bss_1454[0], lbl_1_bss_8, lbl_1_bss_4, 1.0f);
+    fn_80026760(lbl_1_bss_1454[0], 0.0f, lbl_1_bss_4 / 2.0f, 0.0f);
     if (lbl_1_bss_8 > lbl_1_bss_4) {
         iteration = lbl_1_bss_8;
     } else if (lbl_1_bss_8 < lbl_1_bss_4) {
@@ -988,7 +950,7 @@ void fn_1_3704(void)
     } else {
         iteration = lbl_1_bss_8;
     }
-    lbl_802C028C += (100.0f) * (iteration - 8);
+    lbl_802C028C += 100.0f * (iteration - 8);
 }
 
 // Applies the second controller's zoom and camera-center input on each main-state frame.
@@ -1003,8 +965,8 @@ void fn_1_47F8(void)
     unusedColor.a = 192;
     lbl_802C028C += lbl_802BFFEC[1] / 5;
     lbl_802C028C -= lbl_802BFFE8[1] / 5;
-    lbl_80266A4C.x -= (10.0f) * (lbl_802BFFFC[1] / (44.0f));
-    lbl_80266A4C.y -= (10.0f) * (lbl_802BFFF8[1] / (44.0f));
+    lbl_80266A4C.x -= 10.0f * (lbl_802BFFFC[1] / 44.0f);
+    lbl_80266A4C.y -= 10.0f * (lbl_802BFFF8[1] / 44.0f);
 }
 
 // Counts the board cells marked as holes for the debug display.
@@ -1018,7 +980,7 @@ s32 fn_1_49C4(void)
     while (column < lbl_1_bss_8) {
         row = 0;
         while (row < lbl_1_bss_4) {
-            if (*(s32 *)((u8 *)&lbl_1_bss_1C + row * 320 + column * 20 + 12) == 0) {
+            if (lbl_1_bss_1C[row][column].isSafeTile == 0) {
                 count += 1;
             }
             row += 1;

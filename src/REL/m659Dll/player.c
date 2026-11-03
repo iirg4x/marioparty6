@@ -24,8 +24,6 @@
 #include "game/audio.h"
 
 float lbl_1_data_70[8] = {1200, 800, 400, 0, -1200, -1200, 0, 0};
-#include "REL/m659/player.h"
-#include "game/charman.h"
 #include "game/gamework.h"
 #include "game/data.h"
 
@@ -45,15 +43,11 @@ s16 lbl_1_data_FC[14] = {0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 char *lbl_1_data_130[2] = {"ship-stbox", "ship-stbox1"};
 int fn_1_2578(M659Collision *collision, M659Collision *other);
 int fn_1_4CA4(M659Collision *collision);
-#include "game/audio.h"
 #include "game/pad.h"
 
 extern float lbl_1_data_70[];
 void fn_1_220C(OMOBJ *obj, s16 motion);
 int fn_1_2384(s16 side);
-#include "REL/m659/player.h"
-#include "game/data.h"
-#include "game/audio.h"
 #include "game/frand.h"
 #include "game/hsfex.h"
 

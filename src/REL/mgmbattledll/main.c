@@ -1,5 +1,5 @@
 /* Battle mode setup, round flow, and camera control. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/mgmbattledll/module_types.h"
 #include "game/mgdata.h"
 #include "game/flag.h"
@@ -35,7 +35,7 @@ extern s16 MgModeSubMode;
 extern s16 MgGameNo;
 extern u8 MgModePlayNum;
 
-void fn_1_1B0AC(f32 rotX, f32 rotY, f32 rotZ, const Point3d *position, Point3d *out);
+void fn_1_1B0AC(f32 rotX, f32 rotY, f32 rotZ, const Vec *position, Vec *out);
 void fn_1_1408(s16 windowCount);
 void fn_1_1528(s16 windowCount);
 s32 fn_1_1648(s16 messageId);
@@ -126,7 +126,7 @@ void fn_1_1A498(void) {
 
     history = omOvlHisGet(0);
     if (history->evtno == 0) {
-        *(s16 *)&MgModeSubMode = 0;
+        MgModeSubMode = 0;
         memset(MgModeScore, 0, 8);
         MgGameNo = 3;
         memset(MgModeWork, 0, 256);

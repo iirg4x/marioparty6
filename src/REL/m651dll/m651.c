@@ -5,9 +5,6 @@
 #include "game/flag.h"
 #include "math.h"
 
-#define M651_OPENING_START_EFFECT_ID 2052
-#define M651_OPENING_STREAM_ID 87
-
 /* Entry 0 counts cleared player selections; two cleared slots select the draw display. */
 s16 lbl_1_bss_4[6];
 /* Object manager for this module's player and scene callbacks. */
@@ -66,8 +63,8 @@ void fn_1_1B0(s16 sequenceMode, s16 sequenceFrame)
 void fn_1_1D0(s16 sequenceMode, s16 sequenceFrame)
 {
     if (fn_80071DE4() == 0) {
-        lbl_1_data_10 = HuAudFXPlay(M651_OPENING_START_EFFECT_ID);
-        lbl_1_data_C = HuAudSStreamPlay(M651_OPENING_STREAM_ID);
+        lbl_1_data_10 = HuAudFXPlay(2052);
+        lbl_1_data_C = HuAudSStreamPlay(MSM_STREAM_STORY_BOWSER);
     }
     if (fn_80071DE4() == 180) {
         HuAudFXFadeOut(lbl_1_data_10, 1000);

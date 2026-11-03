@@ -13,45 +13,12 @@
 #define MSM_SE_M613_PROGRESS 1711
 
 extern s32 lbl_1_bss_8;
-extern s32 fn_1_3A10(void);
-extern s32 fn_1_3A9C(void);
-extern s32 fn_1_3B28(s16);
-extern s32 fn_1_3BD4(s16);
-extern s32 fn_1_3578(s32, s16, s16, s16);
-extern void fn_1_D61C(void);
-extern void fn_1_DD54(void);
-extern void fn_1_DCF4(s16);
-extern void fn_1_5178(void);
-extern void fn_1_DE20(s16);
-extern s16 fn_1_1D7C(void);
-extern s16 fn_1_1D84(void);
-extern s16 fn_1_1EF4(s16, s16);
-extern void fn_1_1F54(s16, s16, Point3d *);
-extern s32 fn_1_10C5C(Point3d *, Point3d *);
-extern f64 fn_1_10E3C(f64, f64);
-
-extern s32 fn_1_0(Point3d, f32, Point3d, f32);
-
-extern void fn_1_9C7C(s16 playerIndex);
-extern void fn_1_3FFC(f32 angleX, f32 angleY, f32 angleZ,
-                     Vec source, Vec *destination);
-extern s32 fn_1_70C(Point3d firstPosition, f32 angle, f32 firstRadius,
-                    Point3d firstDirection, Point3d secondPosition,
-                    f32 secondRadius, Point3d *secondDirection);
-extern s32 fn_1_28C(Point3d firstPosition, Point3d *firstDirection,
-                    f32 firstRadius, Point3d secondPosition,
-                    Point3d *secondDirection, f32 secondRadius);
-extern void fn_1_DBDC(s16 playerIndex);
-extern f32 fn_1_99A4(Point3d movingPosition, Point3d displacement,
-                     f32 radius, u8 side);
-extern void fn_1_B4A8(void);
 extern s16 lbl_1_bss_0;
 
 extern s16 lbl_1_bss_125E;
 
 extern s32 fn_1_10C5C(Point3d *, Point3d *);
 extern s32 fn_1_10DB4(f32, f32, f32 *);
-extern s32 fn_1_0(Point3d, f32, Point3d, f32);
 
 void fn_1_F3C4(void);
 void fn_1_F568(void);
@@ -106,7 +73,6 @@ void fn_1_F3C4(void) {
 
 /* Copies the leading progress value to every player's bar and previous-progress baseline. */
 void fn_1_F568(void) {
-    s16 unusedPlayerIndex;
     s16 playerIndex;
     s32 greatestProgress;
     greatestProgress = - 1;
@@ -308,7 +274,7 @@ void fn_1_FE58(void) {
         fn_800324E0(lbl_1_bss_1210[particleIndex], 1.0f);
         fn_800326D0(lbl_1_bss_1210[particleIndex], fn_1_10104);
 
-        pool = (HU3D_PARTICLE *)lbl_802C01C8[lbl_1_bss_1210[particleIndex]].hookData;
+        pool = lbl_802C01C8[lbl_1_bss_1210[particleIndex]].hookData;
         record = pool->data;
         {
             s16 recordIndex = 0;
@@ -391,7 +357,7 @@ void fn_1_1054C(const Point3d *sourcePosition, const Point3d *targetPosition,
     HU3D_PARTICLE_DATA *record;
 
     recordIndex = (s16) frandmod(3);
-    hook = (HU3D_PARTICLE *) lbl_802C01C8[lbl_1_bss_1210[recordIndex]].hookData;
+    hook = lbl_802C01C8[lbl_1_bss_1210[recordIndex]].hookData;
     record = hook->data;
     recordIndex = 0;
 

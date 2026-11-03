@@ -443,10 +443,10 @@ void fn_1_10F0(void)
  * camera controls. */
 void fn_1_1918(s16 cameraIndex) {
     M662CameraPresetTable presets = { {
-        { 0.0f, 1573.0f, -446.0f, -15.199999809265137f, 0.0f, 0.0f, 3317.699951171875f, 1.3300000429153442f, 0.0f, 0.0f, 640.0f, 480.0f, 17.549999237060547f },
-        { 0.0f, 293.0f, -326.0f, -15.199999809265137f, 0.0f, 0.0f, 3409.699951171875f, 1.3300000429153442f, 0.0f, 0.0f, 640.0f, 480.0f, 17.5f },
-        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.3300000429153442f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
-        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.3300000429153442f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f }
+        { 0.0f, 1573.0f, -446.0f, -15.2f, 0.0f, 0.0f, 3317.7f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 17.55f },
+        { 0.0f, 293.0f, -326.0f, -15.2f, 0.0f, 0.0f, 3409.7f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 17.5f },
+        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
+        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f }
     } };
     M662CameraIds cameraIds = { { 1, 2, 4, 8 } };
     lbl_1_bss_B08.cameras[cameraIndex].cameraIndex = cameraIndex;
@@ -1099,8 +1099,8 @@ void fn_1_4470(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             entry->vel.x *= parameters[entryNo].velocityScale[0];
             entry->vel.y *= parameters[entryNo].velocityScale[1];
             entry->vel.z *= parameters[entryNo].velocityScale[2];
-            PSVECAdd((Point3d *)&entry->vel, (Point3d *)&entry->pos,
-                     (Point3d *)&entry->pos);
+            PSVECAdd(&entry->vel, &entry->pos,
+                     &entry->pos);
             entry->vel.y += parameters[entryNo].gravity;
             entry->zRot += parameters[entryNo].rotationStep;
 

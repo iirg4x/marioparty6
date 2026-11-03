@@ -11,17 +11,6 @@
 #include "datadir_enum.h"
 #include "math.h"
 
-#define M651_FINISH_CHARACTER_EFFECT_ID 581
-#define M651_RESULT_CHARACTER_EFFECT_ID 576
-
-#define M651_OPENING_FRAME_55_EFFECT_A_ID 2053
-#define M651_OPENING_FRAME_55_EFFECT_B_ID 2054
-#define M651_SUSTAINED_SCENE_EFFECT_ID 2055
-#define M651_SCENE_MOTION_CUE_EFFECT_ID 2056
-#define M651_RESULT_ARRIVAL_EFFECT_ID 2058
-#define M651_ENDING_FRAME_90_EFFECT_ID 2059
-#define M651_SOUND_CUE_MOTION_EFFECT_ID 2060
-
 M651Player lbl_1_bss_A8[2];
 M651Work64 lbl_1_bss_64;
 M651Work14 lbl_1_bss_14;
@@ -392,11 +381,12 @@ void fn_1_192C(OMOBJ *obj)
     }
     if (work->pos.z < 1700.0f) {
         if (work->effectHandle == -1) {
-            work->effectHandle = CharFXPlay(work->characterNo, M651_FINISH_CHARACTER_EFFECT_ID);
+            work->effectHandle = CharFXPlay(work->characterNo, 581);
         }
         if (work->motionIds[2] != fn_8002D3C4(work->modelId) &&
             fn_8002D3EC(work->modelId) == -1) {
-            fn_8002CCC0(work->modelId, work->motionIds[2], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(work->modelId, work->motionIds[2], 0.0f, 30.0f,
+                ((1 << 30) | (1 << 0)));
         }
         if (fn_8002D3EC(work->modelId) != -1) {
             work->pos.y -= 2.7f;
@@ -408,7 +398,8 @@ void fn_1_192C(OMOBJ *obj)
     if (work->pos.z > 1700.0f) {
         if (work->motionIds[1] != fn_8002D3C4(work->modelId) &&
             fn_8002D3EC(work->modelId) == -1) {
-            fn_8002CCC0(work->modelId, work->motionIds[1], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(work->modelId, work->motionIds[1], 0.0f, 30.0f,
+                ((1 << 30) | (1 << 0)));
         }
         if (fn_8002D3EC(work->modelId) != -1) {
             work->pos.y += 2.7f;
@@ -428,7 +419,7 @@ void fn_1_192C(OMOBJ *obj)
             fn_8002741C(work->resultHookModel, hooks[work->groupNo], work->modelId);
             fn_80026A44(work->resultHookModel, ((1 << 30) | (1 << 1)));
             fn_1_B0(work->playerNo);
-            CharFXPlay(work->characterNo, M651_RESULT_CHARACTER_EFFECT_ID);
+            CharFXPlay(work->characterNo, 576);
             fn_8006A030(work->playerNo, 20, 20, 0);
         } else {
             HuVecF target = lbl_1_data_9C;
@@ -438,7 +429,8 @@ void fn_1_192C(OMOBJ *obj)
             OSReport("winner speed %f\n", lbl_1_bss_10);
             PSVECNormalize(&work->crossingDirection, &work->crossingDirection);
             fn_8002D86C(work->modelId, 0.8f);
-            fn_8002CCC0(work->modelId, work->motionIds[1], 0.0f, 60.0f, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(work->modelId, work->motionIds[1], 0.0f, 60.0f,
+                ((1 << 30) | (1 << 0)));
         }
         obj->objFunc = fn_1_2034;
     }
@@ -500,7 +492,7 @@ void fn_1_2034(OMOBJ *obj)
         fn_80027508(work->resultHookModel);
         obj->objFunc = fn_1_242C;
         HuAudFXFadeOut(lbl_1_data_AC, 500);
-        HuAudFXPlay(M651_RESULT_ARRIVAL_EFFECT_ID);
+        HuAudFXPlay(2058);
         return;
     }
     target = lbl_1_data_9C;
@@ -630,9 +622,9 @@ void fn_1_29A4(OMOBJ *obj)
 {
     M651Work64 *work = obj->data;
     if (lbl_1_bss_64.sceneFrame == 55) {
-        HuAudFXPlay(M651_OPENING_FRAME_55_EFFECT_A_ID);
-        HuAudFXPlay(M651_OPENING_FRAME_55_EFFECT_B_ID);
-        lbl_1_data_AC = HuAudFXPlay(M651_SUSTAINED_SCENE_EFFECT_ID);
+        HuAudFXPlay(2053);
+        HuAudFXPlay(2054);
+        lbl_1_data_AC = HuAudFXPlay(2055);
         HuAudFXPitchSet(lbl_1_data_AC, lbl_1_data_B0);
     }
     lbl_1_bss_64.sceneFrame++;
@@ -680,7 +672,7 @@ void fn_1_2D8C(OMOBJ *obj)
         if (lbl_1_bss_64.secondBackgroundScale < 0.0f) lbl_1_bss_64.secondBackgroundScale = 0.0f;
         if (lbl_1_bss_64.firstBackgroundScale < 0.2f)
             fn_80026A44(lbl_1_bss_64.sceneModels[3], ((1 << 30) | (1 << 1)));
-        if ((float)lbl_1_bss_64.sceneFrame == 90.0f) HuAudFXPlay(M651_ENDING_FRAME_90_EFFECT_ID);
+        if ((float)lbl_1_bss_64.sceneFrame == 90.0f) HuAudFXPlay(2059);
         if ((float)lbl_1_bss_64.sceneFrame > 120.0f) {
             fn_1_190();
             obj->objFunc = NULL;
@@ -700,7 +692,7 @@ void fn_1_2D8C(OMOBJ *obj)
             float animatedSceneFrame = fn_8002D4E0(lbl_1_bss_64.animatedSceneModel);
             for (cueIndex = 0; cueIndex < 6; cueIndex++) {
                 if (animatedSceneFrame == soundCueFrames[cueIndex])
-                    HuAudFXPlayPan(M651_SOUND_CUE_MOTION_EFFECT_ID, soundCuePan[cueIndex]);
+                    HuAudFXPlayPan(2060, soundCuePan[cueIndex]);
             }
         }
         {
@@ -712,7 +704,7 @@ void fn_1_2D8C(OMOBJ *obj)
             float sceneMotionFrame = fn_8002D4E0(lbl_1_bss_64.sceneModels[1]);
             for (cueIndex = 0; cueIndex < 19; cueIndex++) {
                 if (sceneMotionFrame == sceneCueFrames[cueIndex])
-                    HuAudFXPlay(M651_SCENE_MOTION_CUE_EFFECT_ID);
+                    HuAudFXPlay(2056);
             }
         }
     }
@@ -803,7 +795,8 @@ void fn_1_36F8(void)
             HU3D_MODELID winnerModelId = lbl_1_bss_A8[winnerIndex].modelId;
             fn_800269E8(winnerModelId, ((1 << 30) | (1 << 1)));
             fn_8005C2C8(lbl_1_bss_A8[winnerIndex].characterNo,
-                               lbl_1_bss_A8[winnerIndex].motionIds[3], 0.0f, 15.0f, 0);
+                               lbl_1_bss_A8[winnerIndex].motionIds[3], 0.0f, 15.0f,
+                               0);
         }
         winnerPathOrder = rand8() % 2;
         winnerPathHeight = rand8() % 2;

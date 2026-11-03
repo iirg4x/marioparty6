@@ -10,28 +10,19 @@
 
 #include "dolphin/math.h"
 #include "game/hu3d.h"
+#include "game/memory.h"
+#include "string.h"
+#include "game/animdata.h"
+#include "dolphin/os/OSCache.h"
+#include "dolphin/os.h"
+#include "game/sprite.h"
+#include "game/gamework.h"
+
 typedef struct ResultDrawSortEntry {
     s32 key; /* Signed integer key preserving the numerical order of particle depth. */
     s32 index; /* Particle's position in the unsorted renderer array. */
 } ResultDrawSortEntry;
 extern ResultDrawSortEntry *lbl_1_bss_14A8;
-
-#include "game/memory.h"
-
-#include "game/memory.h"
-#include "string.h"
-#include "dolphin/math.h"
-#include "game/hu3d.h"
-#include "game/animdata.h"
-
-#include "game/memory.h"
-#include "dolphin/os/OSCache.h"
-
-/* Allocates the model's vertex and texture coordinate buffers. */
-static inline void *ResultBufferAlloc(s32 size, u32 allocationNo)
-{
-    return HuMemDirectMallocNum(2, size, allocationNo);
-}
 
 /* Makes a model-owned buffer visible to the graphics processor. */
 static inline void *ResultDisplayListAlloc(s32 size, u32 allocationNo)
@@ -98,31 +89,10 @@ typedef struct ResultParticleRenderer {
 
 extern void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix);
 
-/* Creates the result effect's particle pool and indexed quad display list. */
-
-#include "game/memory.h"
-#include "dolphin/os.h"
-
 extern u32 lbl_1_bss_14AC;
-
-#include "game/memory.h"
-#include "dolphin/os.h"
-
-#include "dolphin/math.h"
-#include "game/hu3d.h"
-#include "game/memory.h"
-#include "game/sprite.h"
 
 extern s32 lbl_1_bss_1530[32];
 extern s32 lbl_1_bss_14B0[32];
-
-/* Sorts result entries in ascending key order, then finishes short ranges by insertion. */
-
-/* Draws the animated, optionally depth-sorted particles used by result effects. */
-#include "dolphin/math.h"
-#include "game/hu3d.h"
-#include "game/sprite.h"
-#include "game/animdata.h"
 
 typedef struct ResultDrawParticle {
     s16 time;
@@ -320,12 +290,6 @@ static inline void ResultQuadTexCopy(register HuVec2f *textureCoords,
     }
 }
 
-/* Model hook updates sprite frames, builds visible quads, and submits their indexed draw list. */
-
-#include "dolphin/math.h"
-#include "game/hu3d.h"
-#include "game/gamework.h"
-
 extern u32 lbl_1_data_968[6];
 
 /* Allocates general-heap storage for result-screen work buffers. */
@@ -371,7 +335,7 @@ void fn_1_AC54(void)
 /* Frees result-effect sorting storage when the results overlay closes. */
 void fn_1_ACB8(void) {
     if (lbl_1_bss_14A8 != 0) {
-        void *data = (void *)lbl_1_bss_14A8;
+        void *data = lbl_1_bss_14A8;
         HuMemDirectFree(data);
         lbl_1_bss_14A8 = 0;
     }
@@ -429,11 +393,11 @@ s16 fn_1_AD24(ANIMDATA *anim, s16 particleCount)
         particle->color = -1;
         particle->visible = 1;
     }
-    renderer->vertices = vertices = ResultBufferAlloc(particleCount * sizeof(Vec) * 4,
+    renderer->vertices = vertices = ModelHeapMallocNum(particleCount * sizeof(Vec) * 4,
         model->mallocNo);
-    renderer->textureCoords = coords = ResultBufferAlloc(particleCount * 8 * 4,
+    renderer->textureCoords = coords = ModelHeapMallocNum(particleCount * 8 * 4,
         model->mallocNo);
-    renderer->patternCoords = ResultBufferAlloc(anim->patNum * 8 * 4, model->mallocNo);
+    renderer->patternCoords = ModelHeapMallocNum(anim->patNum * 8 * 4, model->mallocNo);
     for (particleIndex = 0; particleIndex < anim->patNum; particleIndex++) {
         layer = anim->pat[particleIndex].layer;
         bitmap = &anim->bmp[layer->bmpNo];
@@ -823,14 +787,14 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
 }
 
 /* Stores the callback used by a result model's hook data. */
-void fn_1_C420(s16 modelId, s32 callback)
+void fn_1_C420(s16 modelId, void *callback)
 {
     HU3D_MODEL *model;
     ResultParticleRenderer *hookData;
 
     model = &lbl_802C01C8[modelId];
     hookData = model->hookData;
-    hookData->callback = (void *)callback;
+    hookData->callback = callback;
 }
 
 /* Clamps the language index and looks up the result archive prefix. All six prefixes are

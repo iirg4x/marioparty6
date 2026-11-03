@@ -1,6 +1,7 @@
 /* Decathlon Park mode setup, menu sequence and exit handling. */
 #include "REL/mgmdecathlondll/module_types.h"
 #include "game/flag.h"
+#include "game/saveload.h"
 #include "game/wipe.h"
 #include "dolphin/mtx.h"
 #include "msm_stream.h"
@@ -9,15 +10,13 @@
 #define DECATHLON_INITIAL_TIME_RECORD 5940
 #define MINIGAME_PUBLIC_NUMBER_BASE 601
 
-extern void fn_1_0(void);
-extern void fn_1_C428(void);
 extern void fn_1_F184(void);
 
 /* Overlay startup creates the object manager and starts the Decathlon state process. */
 void fn_1_EC20(void) {
     lbl_1_bss_C0 = fn_8003A8BC(100, 8192);
-    *(s16 *)&MgModeSubMode = 0;
-    fn_1_0();
+    MgModeSubMode = 0;
+    decathlonCameraSetup();
     fn_8000DAC0(fn_1_F184, 100U, 12288U, 0, lbl_1_bss_C0);
 }
 
@@ -34,8 +33,8 @@ s32 _prolog(void) {
         constructor++;
     }
     lbl_1_bss_C0 = fn_8003A8BC(100, 8192);
-    *(s16 *)&MgModeSubMode = 0;
-    fn_1_0();
+    MgModeSubMode = 0;
+    decathlonCameraSetup();
     fn_8000DAC0(fn_1_F184, 100U, 12288U, 0, lbl_1_bss_C0);
     return 0;
 }
@@ -92,7 +91,7 @@ void fn_1_ED78(void) {
 
     overlayHistory = omOvlHisGet(0);
     if (overlayHistory->evtno == 0) {
-        *(s16 *)&MgModeSubMode = 1;
+        MgModeSubMode = 1;
         memset(MgModeScore, 0, 8);
         MgGameNo = DECATHLON_MODE_GAME_NUMBER;
         memset(MgModeWork, 0, 256);
@@ -108,7 +107,7 @@ void fn_1_ED78(void) {
         memset(lbl_802669DC, 0, 96);
     } else {
         /* The overlay history preserves the results state to resume after a minigame. */
-        *(s16 *)&MgModeSubMode = (s16)overlayHistory->evtno;
+        MgModeSubMode = (s16)overlayHistory->evtno;
     }
     fn_8006A1C4(196609);
     fn_8006A1C4(196610);
@@ -142,7 +141,7 @@ void fn_1_ED78(void) {
         MgModePlayNum++;
         fn_1_9688();
         fn_1_C2FC();
-        fn_1_C428();
+        decathlonScoreDigitsHideAll();
     }
     lbl_1_data_C70 = HuAudSStreamPlay(MSM_STREAM_MGMUS_4);
     WipeCreate(1, 0, 50);
@@ -151,7 +150,6 @@ void fn_1_ED78(void) {
     }
 }
 
-extern s32 SLSaveModeExec(s32 mode);
 extern s32 fn_1_184(void);
 extern void fn_1_21DC(void);
 
@@ -184,25 +182,16 @@ extern s32 fn_1_184(void);
 extern s16 fn_1_28E8(void);
 extern void fn_1_188(s16 playerNo);
 extern void fn_1_2704(void);
-extern void fn_1_6E50(void);
 extern void fn_1_78DC(void);
 extern void fn_1_5AFC(void);
 extern s16 fn_1_7A6C(void);
 extern void fn_1_8708(void);
 extern void fn_1_87EC(void);
-extern void fn_1_6E68(void);
 extern void fn_1_97F0(void);
 extern void fn_1_98F4(void);
-extern void fn_1_9DA0(void);
 extern void fn_1_337C(void);
-extern void fn_1_9DF8(void);
-extern void fn_1_C3DC(void);
 extern void fn_1_C344(s16 enabled);
-extern void fn_1_C46C(void);
 extern s16 fn_1_C51C(void);
-extern void fn_1_C428(void);
-extern void fn_1_C4C4(void);
-extern void fn_1_C540(void);
 extern s32 fn_1_4130(void);
 extern void fn_1_9CD0(void);
 extern void fn_1_5130(void);
@@ -258,7 +247,7 @@ void fn_1_F184(void) {
         }
         lbl_1_data_C90 = -1;
         fn_1_188(1);
-        fn_1_6E50();
+        decathlonActorEntranceStart();
         fn_1_78DC();
         fn_1_5AFC();
         while ((s16)fn_1_7A6C() == 0) {
@@ -284,7 +273,7 @@ void fn_1_F184(void) {
         fn_1_188(0);
         HuPrcVSleep();
         fn_1_87EC();
-        fn_1_6E68();
+        decathlonActorTurnAway();
         fn_1_97F0();
         MgModeSubMode = 8;
         return;
@@ -292,7 +281,7 @@ void fn_1_F184(void) {
         fn_1_188(0);
         HuPrcVSleep();
         fn_1_87EC();
-        fn_1_6E68();
+        decathlonActorTurnAway();
         fn_1_97F0();
         MgModeSubMode = 9;
         return;
@@ -343,12 +332,12 @@ void fn_1_F184(void) {
     case 10:
         /* Restore the player lineup after returning from the event overlay. */
         fn_1_98F4();
-        fn_1_9DA0();
+        decathlonPlayersReturnMotionStart();
         MgModeSubMode = 11;
         return;
     case 11:
         fn_1_337C();
-        fn_1_9DF8();
+        decathlonPlayersIdleStart();
         MgModeSubMode = 12;
         return;
     case 12:
@@ -358,11 +347,11 @@ void fn_1_F184(void) {
         }
         lbl_1_data_C90 = -1;
         fn_1_188(2);
-        fn_1_C3DC();
+        decathlonScoreDigitsRefresh();
         HuPrcSleep(120);
         fn_1_C344(1);
         HuPrcSleep(60);
-        fn_1_C46C();
+        decathlonScoreCountStart();
         selection = 1;
         while (selection != 0) {
             if (fn_1_C51C() != 0) {
@@ -372,9 +361,9 @@ void fn_1_F184(void) {
         }
         HuPrcSleep(30);
         fn_1_C344(0);
-        fn_1_C428();
+        decathlonScoreDigitsHideAll();
         HuPrcSleep(30);
-        fn_1_C4C4();
+        decathlonRankMoveStart();
         selection = 1;
         while (selection != 0) {
             if (fn_1_C51C() != 0) {
@@ -392,7 +381,7 @@ void fn_1_F184(void) {
         MgModeSubMode = 13;
         return;
     case 13:
-        fn_1_C540();
+        decathlonRankReactionsStart();
         fn_1_8778(1);
         HuPrcSleep(60);
         fn_1_4130();

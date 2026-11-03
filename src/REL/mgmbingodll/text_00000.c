@@ -52,9 +52,9 @@ HU3D_MODELID fn_1_0(s16 modeNo, s16 timeNo, Point3d *position) {
     fn_80026790(lbl_1_bss_A4, position);
     fn_800268B0(
         lbl_1_bss_A4,
-        (1.0f),
-        (1.0f),
-        (1.0f));
+        1.0f,
+        1.0f,
+        1.0f);
     lbl_1_bss_9C = HuSprAnimRead(
         fn_80008DD0(DATANUM(0x9d0000, 42), 0x10000000, 2));
     lbl_1_bss_A2 = HuSprGrpCreate(1);
@@ -65,10 +65,10 @@ HU3D_MODELID fn_1_0(s16 modeNo, s16 timeNo, Point3d *position) {
             lbl_1_bss_90->instPic[timeNo][0], 0x10000000, 2);
         lbl_1_bss_98 = HuSprAnimRead(spriteData);
         movieSprite = HuTHPSprCreateVol(
-            lbl_1_bss_90->movie[timeNo][0], 1, 100, (0.0f));
+            lbl_1_bss_90->movie[timeNo][0], 1, 100, 0.0f);
         HuSprGrpMemberSet(lbl_1_bss_A2, 0, movieSprite);
         HuSprGrpDrawNoSet(lbl_1_bss_A2, 127);
-        HuSprPosSet(lbl_1_bss_A2, 0, (128.0f), (128.0f));
+        HuSprPosSet(lbl_1_bss_A2, 0, 128.0f, 128.0f);
     } else {
         lbl_1_bss_90 = NULL;
         spriteData = fn_80009B04(
@@ -113,7 +113,7 @@ void fn_1_43C(void) {
 
     HuTHPClose();
     variant = (s16)frandmod(2);
-    lbl_1_bss_98 = ((ANIMDATA **)lbl_1_bss_8C)[variant + (lbl_1_bss_88 * 2)];
+    lbl_1_bss_98 = (lbl_1_bss_8C)[variant + (lbl_1_bss_88 * 2)];
     lbl_1_bss_88++;
     if (lbl_1_bss_0 <= lbl_1_bss_88) {
         lbl_1_bss_88 = 0;
@@ -172,10 +172,10 @@ void fn_1_6F4(void) {
     }
     if (lbl_1_bss_90) {
         movieSprite = HuTHPSprCreateVol(
-            lbl_1_bss_90->movie[lbl_1_bss_A0][0], 1, 100, (0.0f));
+            lbl_1_bss_90->movie[lbl_1_bss_A0][0], 1, 100, 0.0f);
         HuSprGrpMemberSet(lbl_1_bss_A2, 0, movieSprite);
         HuSprGrpDrawNoSet(lbl_1_bss_A2, 127);
-        HuSprPosSet(lbl_1_bss_A2, 0, (128.0f), (128.0f));
+        HuSprPosSet(lbl_1_bss_A2, 0, 128.0f, 128.0f);
     }
 }
 
@@ -229,14 +229,14 @@ void fn_1_898(HU3D_MODEL *model, Mtx *matrix)
     GXSetNumTexGens(1);
     GXSetNumTevStages(1);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-    GXPosition3f32((-185.0f), (140.0f), (0.0f));
-    GXTexCoord2f32((0.0f), (0.0f));
-    GXPosition3f32((185.0f), (140.0f), (0.0f));
-    GXTexCoord2f32((1.0f), (0.0f));
-    GXPosition3f32((185.0f), (-140.0f), (0.0f));
-    GXTexCoord2f32((1.0f), (1.0f));
-    GXPosition3f32((-185.0f), (-140.0f), (0.0f));
-    GXTexCoord2f32((0.0f), (1.0f));
+    GXPosition3f32(-185.0f, 140.0f, 0.0f);
+    GXTexCoord2f32(0.0f, 0.0f);
+    GXPosition3f32(185.0f, 140.0f, 0.0f);
+    GXTexCoord2f32(1.0f, 0.0f);
+    GXPosition3f32(185.0f, -140.0f, 0.0f);
+    GXTexCoord2f32(1.0f, 1.0f);
+    GXPosition3f32(-185.0f, -140.0f, 0.0f);
+    GXTexCoord2f32(0.0f, 1.0f);
 
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY,
                       GX_FALSE, GX_PTIDENTITY);
@@ -248,14 +248,14 @@ void fn_1_898(HU3D_MODEL *model, Mtx *matrix)
     GXSetNumTexGens(1);
     GXSetNumTevStages(1);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-    GXPosition3f32((-200.0f), (150.0f), (3.0f));
-    GXTexCoord2f32((0.0f), (0.0f));
-    GXPosition3f32((200.0f), (150.0f), (3.0f));
-    GXTexCoord2f32((1.0f), (0.0f));
-    GXPosition3f32((200.0f), (-150.0f), (3.0f));
-    GXTexCoord2f32((1.0f), (1.0f));
-    GXPosition3f32((-200.0f), (-150.0f), (3.0f));
-    GXTexCoord2f32((0.0f), (1.0f));
+    GXPosition3f32(-200.0f, 150.0f, 3.0f);
+    GXTexCoord2f32(0.0f, 0.0f);
+    GXPosition3f32(200.0f, 150.0f, 3.0f);
+    GXTexCoord2f32(1.0f, 0.0f);
+    GXPosition3f32(200.0f, -150.0f, 3.0f);
+    GXTexCoord2f32(1.0f, 1.0f);
+    GXPosition3f32(-200.0f, -150.0f, 3.0f);
+    GXTexCoord2f32(0.0f, 1.0f);
 }
 
 HU3D_MODELID lbl_1_bss_A4;

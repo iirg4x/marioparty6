@@ -184,7 +184,7 @@ void fn_1_B0AC(M680CharacterState *work) {
             delta = 12.0f;
         }
     } else if ((delta < 0.0f) && (delta < (-12.0f))) {
-        delta = (-12.0f);
+        delta = -12.0f;
     }
     work->rotation.y += delta;
 }
@@ -228,7 +228,7 @@ s32 fn_1_B26C(void *argument)
             if (targetDeltaX >= 0.0f) {
                 targetAngle = 1.5707964f;
             } else {
-                targetAngle = (-1.5707964f);
+                targetAngle = -1.5707964f;
             }
         } else {
             targetAngleResult = (f32)atan2((f64)targetDeltaX, (f64)targetDeltaZ);
@@ -245,7 +245,7 @@ s32 fn_1_B26C(void *argument)
             if (currentDeltaX >= 0.0f) {
                 currentAngle = 1.5707964f;
             } else {
-                currentAngle = (-1.5707964f);
+                currentAngle = -1.5707964f;
             }
         } else {
             currentAngleResult = (f32)atan2((f64)currentDeltaX, (f64)currentDeltaZ);
@@ -254,7 +254,8 @@ s32 fn_1_B26C(void *argument)
         work->targetAngle = (f32)((f64)(180.0f * currentAngle) / 3.141592653589793);
         if (work->motionIds[2] != fn_8002D3C4(work->modelId) &&
             work->motionIds[2] != fn_8002D3EC(work->modelId)) {
-            fn_8005C2C8(work->character, work->motionIds[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+            fn_8005C2C8(work->character, work->motionIds[2], 0.0f, 5.0f,
+                ((1 << 30) | (1 << 0)));
         }
         if (work->frame >= work->travelFrames) {
             work->state++;

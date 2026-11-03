@@ -1,6 +1,6 @@
 /* Initializes Snow Whirled's course, riders, camera, score panels, and sequence. */
 #define _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m608dll.h"
 
 const Point3d lbl_1_rodata_88 = { 100.0f, 800.0f, -100.0f };
@@ -187,8 +187,8 @@ void fn_1_43C8(void)
         lightPosition.y = 7825.0f;
         lightPosition.z = 9582.0f;
         Hu3DGLightPosAimSetV(dayLightId, &lightPosition, &lightTarget);
-        fn_80027080(lbl_1_bss_3E80.sceneModels[0], lbl_1_data_295);
-        fn_80027080(lbl_1_bss_3E80.sceneModels[0], lbl_1_data_2A0);
+        fn_80027080(lbl_1_bss_3E80.sceneModels[0], "kurukuru14");
+        fn_80027080(lbl_1_bss_3E80.sceneModels[0], "kurukuru14-hsha");
     } else {
         lbl_1_bss_3E80.sceneModels[0] =
             fn_80025A04(fn_80008DD0(DATANUM(0x430000, 3), 0x10000000, 2));
@@ -298,7 +298,7 @@ void fn_1_43C8(void)
     }
     }
     npcModelId = lbl_1_bss_3E80.courseModels[7];
-    fn_8002741C(lbl_1_bss_3E80.courseModels[5], lbl_1_data_2B0, npcModelId);
+    fn_8002741C(lbl_1_bss_3E80.courseModels[5], "npc1", npcModelId);
     fn_8002C95C(npcModelId, lbl_1_bss_3E80.courseMotions[6]);
     fn_800269E8(npcModelId, ((1 << 30) | (1 << 0)));
     lbl_1_bss_3E80.courseModels[11] =
@@ -315,10 +315,10 @@ void fn_1_43C8(void)
     lbl_1_bss_3E80.courseModels[15] =
         fn_80025A04(fn_80008DD0(DATANUM(0x430000, 89), 0x10000000, 2));
     courseNpcModelId = lbl_1_bss_3E80.courseModels[11];
-    fn_8002741C(lbl_1_bss_3E80.courseModels[6], lbl_1_data_2B5, courseNpcModelId);
-    fn_8002741C(courseNpcModelId, lbl_1_data_2BA, lbl_1_bss_3E80.courseModels[15]);
-    fn_8002741C(courseNpcModelId, lbl_1_data_2C5, lbl_1_bss_3E80.courseModels[15]);
-    fn_8002741C(courseNpcModelId, lbl_1_data_2D0, lbl_1_bss_3E80.courseModels[12]);
+    fn_8002741C(lbl_1_bss_3E80.courseModels[6], "npc2", courseNpcModelId);
+    fn_8002741C(courseNpcModelId, "itemhook_L", lbl_1_bss_3E80.courseModels[15]);
+    fn_8002741C(courseNpcModelId, "itemhook_R", lbl_1_bss_3E80.courseModels[15]);
+    fn_8002741C(courseNpcModelId, "itemhook_C", lbl_1_bss_3E80.courseModels[12]);
     fn_800269E8(lbl_1_bss_3E80.courseModels[11], ((1 << 30) | (1 << 0)));
     index = 0;
     while (index < 4) {
@@ -331,7 +331,9 @@ void fn_1_43C8(void)
         *(lbl_1_bss_3E80.playerObjects[index])->mdlId = lbl_1_bss_3E80.characterModels[index];
         fn_80026E44(lbl_1_bss_3E80.characterModels[index]);
         fn_8005B4BC((s16) characterNumber);
-        OSReport(lbl_1_data_2DB, index, characterNumber, lbl_1_bss_3E80.padNos[index]);
+        OSReport(
+            "*** %dP ... char %d  pad %d\012", index, characterNumber,
+            lbl_1_bss_3E80.padNos[index]);
         index += 1;
     }
     index = 0;
@@ -373,19 +375,3 @@ void fn_1_43C8(void)
     lbl_1_bss_3E80.courseMusicStreamHandle = -1;
     fn_80070788(&lbl_1_data_0);
 }
-
-char lbl_1_data_295[11] = "kurukuru14";
-
-char lbl_1_data_2A0[16] = "kurukuru14-hsha";
-
-char lbl_1_data_2B0[5] = "npc1";
-
-char lbl_1_data_2B5[5] = "npc2";
-
-char lbl_1_data_2BA[11] = "itemhook_L";
-
-char lbl_1_data_2C5[11] = "itemhook_R";
-
-char lbl_1_data_2D0[11] = "itemhook_C";
-
-char lbl_1_data_2DB[29] = "*** %dP ... char %d  pad %d\012";

@@ -21,7 +21,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #include <stddef.h>
 /* CPU players prepare their response and its countdown trigger for all ten rounds. */
 typedef struct {

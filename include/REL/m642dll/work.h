@@ -97,7 +97,7 @@ struct M642GridCell_s {
     u32 owner; /* Team or player ownership value associated with the cell. */
     float radius, height; /* World-space collision dimensions for the cell. */
     Vec position, rotation; /* Cell model's world position and rotation. */
-    void (*update)(u8 *); /* Per-frame callback for the cell's current state. */
+    void (*update)(M642GridCell *); /* Per-frame callback for the cell's current state. */
     void (*collect)(M642PlayerWork *, M642GridCell *); /* Callback when a player reaches the
                                                         * cell. */
 };

@@ -7,6 +7,19 @@
 #include "msm_stream.h"
 #include "game/charman.h"
 #include "game/flag.h"
+#include "game/audio.h"
+#include "game/gamework.h"
+#include "game/pad.h"
+#include "game/process.h"
+#include "game/sprite.h"
+#include "game/wipe.h"
+#include "game/saveload.h"
+#include "dolphin/os.h"
+#include "game/object.h"
+#include "game/data.h"
+#include "game/frand.h"
+#include "game/mgdata.h"
+#include "game/window.h"
 typedef struct ResultDisplay {
     s32 rankSprite[2]; /* Current and projected rank badges. */
     s32 placeSprite; /* The player's numeric place. */
@@ -20,14 +33,6 @@ typedef struct ResultDisplay {
 } ResultDisplay;
 extern ResultDisplay lbl_1_bss_488[4];
 
-/* Sets up the result overlay, its cameras, and the result process. */
-#include "math.h"
-#include "game/object.h"
-#include "game/data.h"
-#include "game/frand.h"
-#include "game/mgdata.h"
-#include "game/window.h"
-
 extern OM_CAMERA_VIEW lbl_1_data_0;
 extern OM_CAMERA_VIEW lbl_1_data_1C;
 extern s16 lbl_1_bss_61C;
@@ -38,11 +43,6 @@ extern OMOBJ *lbl_1_bss_630;
 extern void fn_1_560(void);
 extern void fn_1_49C4(void);
 extern void fn_1_7A18(void);
-
-/* Initializes the result overlay and starts the result process for its minigame type. */
-
-/* Shrinks changed result markers, switches their rank, then restores their scale and opacity. */
-#include "dolphin/types.h"
 
 #define RESULT_SPRITE_HIDDEN 4
 
@@ -59,25 +59,8 @@ extern f32 lbl_1_data_204[4];
 extern s32 lbl_1_bss_8;
 extern s32 lbl_1_bss_28;
 extern Vec lbl_1_data_1D4[4];
-extern void CharFXStop(s16 charNo, s16 seId);
 
 void fn_1_2EBC(void);
-
-/* Animates changed player ranks after the result coins have been awarded. */
-
-/* Advances the active rank transition for players whose displayed rank has changed. */
-
-/* Presents individual results and returns control to the board. */
-#include "math.h"
-#include "game/gamework.h"
-#include "game/audio.h"
-#include "game/data.h"
-#include "game/object.h"
-#include "game/pad.h"
-#include "game/process.h"
-#include "game/sprite.h"
-#include "game/window.h"
-#include "game/wipe.h"
 
 /* Sprite calls retain default argument promotions for the console build. */
 #ifdef __MWERKS__
@@ -116,25 +99,6 @@ void fn_1_3FB0(s16 *awards);
 void fn_1_3488(s32 player, s32 value);
 void fn_1_31F0(s32 player, s32 value);
 
-/* Presents individual results and waits for confirmation unless all players are
- * computer-controlled. */
-
-/* Animates the result models and background while checking whether A is held to speed up. */
-
-/* Animates coin awards being added to the displayed balances before the rank update. */
-
-#include "game/mgdata.h"
-
-/* Computes rank-based battle payouts, or copies ordinary minigame coin awards. */
-
-/* Builds the four-player result display and its animated background. */
-#include "math.h"
-#include "game/gamework.h"
-#include "game/hu3d.h"
-#include "game/charman.h"
-#include "game/data.h"
-#include "game/sprite.h"
-
 extern s32 lbl_1_bss_5E8;
 extern s32 lbl_1_bss_30[4];
 extern s32 lbl_1_bss_40[4];
@@ -165,49 +129,9 @@ static inline s16 ResultNightModeGet(void)
     return lbl_802C0278;
 }
 
-/* Creates the current and projected rank panels before the result sequence starts. */
-
-/* Releases the sprites and models used by the four-player result display. */
-#include "math.h"
-#include "game/hu3d.h"
-
-extern void fn_8005BB8C(s16 charNo);
-
-/* Runs when the result display closes and releases all of its per-player resources. */
-
-#include "dolphin/types.h"
-
-typedef struct ResultDisplayFields {
-    s32 handles[22]; /* Packed fields follow ResultDisplay order. */
-} ResultDisplayFields;
-
-#include "dolphin/types.h"
-
-#include "game/data.h"
-#include "game/flag.h"
-#include "game/gamework.h"
-#include "dolphin/os.h"
-
 extern u32 lbl_1_data_248[6][2];
-
-#include "game/process.h"
-
-#include "game/mgdata.h"
-
 extern void fn_1_3FB0(s16 *coinAwards);
-
-/* Commits coin awards after their animation; practice leaves balances and bonus counters
- * unchanged, while minigame coin counters are cleared. */
-
-#include "game/gamework.h"
-
-#include "game/saveload.h"
-
-#include "game/mgdata.h"
-
 void fn_1_3FB0(s16 *coinAwards);
-
-/* Print the coin awards and, for a battle minigame, each player's rank. */
 
 OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, 200.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1600.0f};
 OM_CAMERA_VIEW lbl_1_data_1C = {{0.0f, 200.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1600.0f};
@@ -237,8 +161,8 @@ Point3d lbl_1_data_1A4[4] = { { 179.0f, 221.0f, 9000.0f },
 Vec lbl_1_data_1D4[4] = { { 1.0f, 1.0f, 1.0f },
                           { 0.75f, 0.75f, 0.75f },
                           { 0.5f, 0.5f, 0.5f },
-                          { 0.300000012f, 0.300000012f, 0.300000012f } };
-f32 lbl_1_data_204[4] = {1.0f, 0.980000019f, 0.959999979f, 0.939999998f};
+                          { 0.3f, 0.3f, 0.3f } };
+f32 lbl_1_data_204[4] = {1.0f, 0.98f, 0.96f, 0.94f};
 
 /* Called by _prolog when this overlay opens; sets up result cameras and starts the corresponding
  * result
@@ -983,7 +907,7 @@ void fn_1_2EBC(void)
 /* Updates the three displayed coin digits when awards are counted into a balance. */
 void fn_1_31F0(s32 player, s32 coinCount)
 {
-    ResultDisplayFields displayFields = ((ResultDisplayFields *)lbl_1_bss_488)[player];
+    ResultDisplay displayFields = lbl_1_bss_488[player];
     s32 digit[3];
     s32 remainder;
 
@@ -993,27 +917,27 @@ void fn_1_31F0(s32 player, s32 coinCount)
     remainder = coinCount;
     digit[0] = coinCount / 100;
     if (digit[0] == 0) {
-        espAttrSet(displayFields.handles[12], 4);
+        espAttrSet(displayFields.coinDigits[1], 4);
     } else {
-        espAttrReset(displayFields.handles[12], 4);
-        espBankSet(displayFields.handles[12], digit[0]);
+        espAttrReset(displayFields.coinDigits[1], 4);
+        espBankSet(displayFields.coinDigits[1], digit[0]);
     }
     remainder = coinCount - (digit[0] * 100);
     digit[1] = remainder / 10;
     if ((digit[1] == 0) && (digit[0] == 0)) {
-        espAttrSet(displayFields.handles[13], 4);
+        espAttrSet(displayFields.coinDigits[2], 4);
     } else {
-        espAttrReset(displayFields.handles[13], 4);
-        espBankSet(displayFields.handles[13], digit[1]);
+        espAttrReset(displayFields.coinDigits[2], 4);
+        espBankSet(displayFields.coinDigits[2], digit[1]);
     }
     remainder -= digit[1] * 10;
-    espBankSet(displayFields.handles[14], remainder);
+    espBankSet(displayFields.coinDigits[3], remainder);
 }
 
 /* Updates the three displayed star digits when the player result panel is built. */
 void fn_1_333C(s32 player, s32 starCount)
 {
-    ResultDisplayFields displayFields = ((ResultDisplayFields *)lbl_1_bss_488)[player];
+    ResultDisplay displayFields = lbl_1_bss_488[player];
     s32 digit[3];
     s32 remainder;
 
@@ -1023,27 +947,27 @@ void fn_1_333C(s32 player, s32 starCount)
     remainder = starCount;
     digit[0] = starCount / 100;
     if (digit[0] == 0) {
-        espAttrSet(displayFields.handles[8], 4);
+        espAttrSet(displayFields.starDigits[1], 4);
     } else {
-        espAttrReset(displayFields.handles[8], 4);
-        espBankSet(displayFields.handles[8], digit[0]);
+        espAttrReset(displayFields.starDigits[1], 4);
+        espBankSet(displayFields.starDigits[1], digit[0]);
     }
     remainder = starCount - (digit[0] * 100);
     digit[1] = remainder / 10;
     if ((digit[1] == 0) && (digit[0] == 0)) {
-        espAttrSet(displayFields.handles[9], 4);
+        espAttrSet(displayFields.starDigits[2], 4);
     } else {
-        espAttrReset(displayFields.handles[9], 4);
-        espBankSet(displayFields.handles[9], digit[1]);
+        espAttrReset(displayFields.starDigits[2], 4);
+        espBankSet(displayFields.starDigits[2], digit[1]);
     }
     remainder -= digit[1] * 10;
-    espBankSet(displayFields.handles[10], remainder);
+    espBankSet(displayFields.starDigits[3], remainder);
 }
 
 /* Updates the displayed two-digit bonus-coin count. */
 void fn_1_3488(s32 player, s32 bonusCoins)
 {
-    ResultDisplayFields displayFields = ((ResultDisplayFields *)lbl_1_bss_488)[player];
+    ResultDisplay displayFields = lbl_1_bss_488[player];
     s32 digit[3];
     s32 remainder;
 
@@ -1053,13 +977,13 @@ void fn_1_3488(s32 player, s32 bonusCoins)
     remainder = bonusCoins;
     digit[0] = bonusCoins / 10;
     if (digit[0] == 0) {
-        espAttrSet(displayFields.handles[5], 4);
+        espAttrSet(displayFields.bonusDigits[1], 4);
     } else {
-        espAttrReset(displayFields.handles[5], 4);
-        espBankSet(displayFields.handles[5], digit[0]);
+        espAttrReset(displayFields.bonusDigits[1], 4);
+        espBankSet(displayFields.bonusDigits[1], digit[0]);
     }
     remainder -= digit[0] * 10;
-    espBankSet(displayFields.handles[6], remainder);
+    espBankSet(displayFields.bonusDigits[2], remainder);
 }
 
 /* Called by result processes after the awards and before confirmation; starts an asynchronous

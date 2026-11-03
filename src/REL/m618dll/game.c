@@ -25,9 +25,9 @@ unsigned int lbl_1_data_38[4] = { DATANUM(0x930000, 6), DATANUM(0x930000, 34),
                                   DATANUM(0x930000, 40), DATANUM(0x930000, 63) };
 HuVec2f lbl_1_data_48[4] = {
     { 0.0f, 0.0f },
-    { 3208.01099f, 0.0f },
-    { 4346.36816f, 1672.92297f },
-    { 996.393799f, 3609.70898f },
+    { 3208.011f, 0.0f },
+    { 4346.368f, 1672.923f },
+    { 996.3938f, 3609.709f },
 };
 
 int lbl_1_bss_558;
@@ -537,13 +537,13 @@ void fn_1_214C(void)
                 if (((s32) lbl_1_bss_548 == 0) && (lbl_1_bss_114[playerIndex].stageSection == 3) &&
                     ((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x407F) !=
                      0)) {
-                    if ((lbl_1_bss_114[playerIndex].player->actor->pos.x > 1400.90002f) &&
+                    if ((lbl_1_bss_114[playerIndex].player->actor->pos.x > 1400.9f) &&
                         (lbl_1_bss_114[playerIndex].player->actor->pos.x < 1401.0f)) {
                         /* Snap the narrow seam interval to the goal-side collision boundary before
                          * testing its mesh. */
                         lbl_1_bss_114[playerIndex].player->actor->pos.x = 1401.0f;
                     }
-                    if ((lbl_1_bss_114[playerIndex].player->actor->pos.x <= 1400.91199f) &&
+                    if ((lbl_1_bss_114[playerIndex].player->actor->pos.x <= 1400.912f) &&
                         (lbl_1_bss_114[playerIndex].player->actor->colMesh == 30)) {
                         goalPlayers[goalPlayerCount] = playerIndex;
                         goalPlayerCount += 1;
@@ -616,9 +616,9 @@ void fn_1_214C(void)
             sectionMinX += lbl_1_data_48[lbl_1_bss_114[playerIndex].stageSection].x;
             sectionMaxX += lbl_1_data_48[lbl_1_bss_114[playerIndex].stageSection].x;
             if (lbl_1_bss_114[playerIndex].player->actor->pos.x < sectionMinX) {
-                lbl_1_bss_114[playerIndex].player->actor->pos.x = 0.100000001f + sectionMinX;
+                lbl_1_bss_114[playerIndex].player->actor->pos.x = 0.1f + sectionMinX;
             } else if (lbl_1_bss_114[playerIndex].player->actor->pos.x > sectionMaxX) {
-                lbl_1_bss_114[playerIndex].player->actor->pos.x = sectionMaxX - 0.100000001f;
+                lbl_1_bss_114[playerIndex].player->actor->pos.x = sectionMaxX - 0.1f;
             }
             if (((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x1000) != 0) &&
                 (lbl_1_bss_114[playerIndex].fallState == 0)) {

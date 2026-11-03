@@ -1,5 +1,9 @@
 /* Wrasslin' Rapids sequence setup, play, camera work, and presentation. */
-#include "dolphin/math.h"
+#include <math.h>
+#include "dolphin/types.h"
+#include "dolphin/mtx.h"
+#include "dolphin/mtx/GeoTypes.h"
+#include "game/process.h"
 
 #include "REL/m664dll/m664dll.h"
 
@@ -19,13 +23,9 @@
 #define MSM_SE_M664_SCENE_SOUND 2134
 #define MSM_SE_M664_SCENE_EFFECT 2141
 #define MSM_SE_M664_PLAYER_STUN 2142
+
 #define M664_SOUND_PAN_MIN 32
 #define M664_SOUND_PAN_MAX 96
-/* Byte offsets of the saved stick and button slots in player input settings. */
-#define M664_INPUT_STICK_X_OFFSET 24
-#define M664_INPUT_STICK_Y_OFFSET 28
-#define M664_INPUT_BUTTONS_DOWN_OFFSET 32
-#define M664_INPUT_BUTTONS_HELD_OFFSET 36
 #define M664_SCENE_FRAME_250 250
 #define M664_SCENE_FRAME_1000 1000
 #define M664_SCENE_FRAME_1350 1350
@@ -65,8 +65,8 @@ u32 lbl_1_data_28[7] = {
 const u8 lbl_1_rodata_60[2][3] = { {5, 4, 5}, {5, 4, 5} };
 const u8 lbl_1_rodata_66[2][3] = { {255, 255, 255}, {255, 255, 255} };
 const Point3d lbl_1_rodata_6C[2] = {
-    { 0.8500000238418579f, 0.800000011920929f, 0.8999999761581421f },
-    { 0.8500000238418579f, 0.800000011920929f, 0.8999999761581421f }
+    { 0.85f, 0.8f, 0.9f },
+    { 0.85f, 0.8f, 0.9f }
 };
 
 #include "dolphin/gx.h"
@@ -273,7 +273,7 @@ void fn_1_2E08(void);
 
 void fn_1_4060(void);
 
-void fn_1_A428();
+void fn_1_A428(void);
 
 void fn_1_640C(void);
 
@@ -291,7 +291,7 @@ void fn_1_2E08(void);
 
 void fn_1_4060(void);
 
-void fn_1_A428();
+void fn_1_A428(void);
 
 extern const Point3d lbl_1_rodata_90;
 
@@ -322,8 +322,8 @@ static inline void fn_1_14C4_inlined(void) {
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
-                        (-300.0f) + (200.0f) * (f32)playerIndex,
-                        (232.0f) + lbl_1_bss_41C[0].position.y,
+                        -300.0f + 200.0f * (f32)playerIndex,
+                        232.0f + lbl_1_bss_41C[0].position.y,
                         0.0f);
     }
 }
@@ -336,13 +336,9 @@ extern const Point3d lbl_1_rodata_100;
 
 extern const Point3d lbl_1_rodata_10C;
 
-void Hu3DFogClear(void);
-
 extern const s32 lbl_1_rodata_128[3];
 
 extern const s32 lbl_1_rodata_134[3];
-
-#include "dolphin/types.h"
 
 extern const HuVecF lbl_1_rodata_144;
 
@@ -443,19 +439,11 @@ static inline void moveCameraRotation(const HuVecF *rotationSource, s32 duration
     fn_8003E7A0(&lbl_1_bss_8C8, duration, 3);
 }
 
-#include "dolphin/mtx.h"
-
 extern void fn_1_AC58(s32 playerIndex);
 
 extern void fn_1_3868(s32 playerIndex);
 
 extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
-
-void fn_80086E3C(MGPLAYER *player);
-
-extern s32 frandmod(s32 limit);
-
-extern u32 fn_80071A8C(void);
 
 s32 fn_1_420C(s16 *collisionMap);
 
@@ -491,8 +479,6 @@ void fn_1_9704(void);
 
 void fn_1_5D3C(void);
 
-extern s32 frandmod(s32 limit);
-
 extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
 void fn_1_1A70(void);
@@ -511,11 +497,8 @@ extern s16 fn_1_B910(s16, s16, s16);
 
 extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
-void fn_1_B8FC(void *inputSettings, s32 stickX, s32 stickY, s32 buttonsDown, s32 buttonsHeld);
-
-#include "dolphin/mtx/GeoTypes.h"
-
-#include "game/process.h"
+void fn_1_B8FC(M664InputSettings *inputSettings, s32 stickX, s32 stickY, s32 buttonsDown,
+               s32 buttonsHeld);
 
 /* Finish-message callback: switches players to scripted control, advances the course and fades
  * audio. */
@@ -599,7 +582,7 @@ s32 fn_1_4C0(void) {
     if (fn_8002D75C(lbl_1_bss_86E) == 0) {
         lbl_1_bss_8C0 += 1;
     }
-    if (((s32) lbl_1_bss_8BC < 2) || ((s32) lbl_1_bss_8C0 > 4888)) {
+    if ((lbl_1_bss_8BC < 2) || (lbl_1_bss_8C0 > 4888)) {
         sequenceFinished = 1;
     }
     return sequenceFinished;
@@ -625,7 +608,7 @@ void fn_1_560(void) {
             HuAudFXPlay(MSM_SE_M664_OPENING_TRANSITION);
         }
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            fn_8002D86C(lbl_1_bss_85C[playerIndex].modelId, (1.0f));
+            fn_8002D86C(lbl_1_bss_85C[playerIndex].modelId, 1.0f);
             Hu3DModelObjPosGet(lbl_1_bss_85C[playerIndex].modelId, "fook00",
                                &playerPosition);
             fn_80026790(lbl_1_bss_85C[playerIndex].objectModelId, &playerPosition);
@@ -658,9 +641,10 @@ void fn_1_560(void) {
                     if (lbl_1_bss_8AC[playerIndex] == 185) {
                         fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                            lbl_1_bss_C8[playerIndex].motionIds[4],
-                                           (0.0f),
-                                           (8.0f), 0);
-                        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, ((1 << 30) | (1 << 2)));
+                                           0.0f,
+                                           8.0f, 0);
+                        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId,
+                            ((1 << 30) | (1 << 2)));
                         if (playerIndex == 0) {
                             HuAudFXPlay(MSM_SE_M664_PLAYER_ACTION);
                         }
@@ -686,7 +670,7 @@ void fn_1_8DC(void) {
         if (lbl_1_bss_8A8 == 90) {
             fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                lbl_1_bss_C8[playerIndex].motionIds[0],
-                               (0.0f), (8.0f), 0);
+                               0.0f, 8.0f, 0);
         } else if (lbl_1_bss_8A8 == 0) {
             fn_80087168(lbl_1_bss_C8[playerIndex].player, 1);
         }
@@ -722,7 +706,7 @@ void fn_1_A08(void) {
         lbl_1_bss_8C0 += 1;
     }
     lbl_1_bss_8C4 = 0;
-    if ((s32) lbl_1_bss_C != -1) {
+    if (lbl_1_bss_C != -1) {
         HuAudSStreamFadeOut(lbl_1_bss_C, 100);
         lbl_1_bss_C = -1;
     }
@@ -776,35 +760,35 @@ s32 fn_1_B74(void) {
             fn_80026838(lbl_1_bss_41C[playerIndex].modelId[1],
                              &lbl_1_bss_41C[playerIndex].rotation);
             }
-            fn_80026760(lbl_1_bss_418, 0.0f, (5.0f), 0.0f);
+            fn_80026760(lbl_1_bss_418, 0.0f, 5.0f, 0.0f);
             fn_80026808(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
-            fn_80026A44(lbl_1_bss_858, 1);
+            fn_80026A44(lbl_1_bss_858, (1 << 0));
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 fn_80026E44(lbl_1_bss_C8[playerIndex].modelId);
                 fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
-                                (-300.0f) + (200.0f) * playerIndex,
-                                (232.0f) + lbl_1_bss_41C[0].position.y,
+                                -300.0f + 200.0f * playerIndex,
+                                232.0f + lbl_1_bss_41C[0].position.y,
                                 0.0f);
                 fn_80026808(lbl_1_bss_C8[playerIndex].modelId, 0.0f,
                                 0.0f, 0.0f);
                 fn_8005BE80(lbl_1_bss_C8[playerIndex].characterNo,
                               lbl_1_bss_C8[playerIndex].motionIds[0]);
-                fn_80026A44(lbl_1_bss_C8[playerIndex].modelId, 1);
-                fn_800268B0(lbl_1_bss_C8[playerIndex].modelId, (1.0f),
-                                  (1.0f), (1.0f));
+                fn_80026A44(lbl_1_bss_C8[playerIndex].modelId, (1 << 0));
+                fn_800268B0(lbl_1_bss_C8[playerIndex].modelId, 1.0f,
+                                  1.0f, 1.0f);
             }
             { Point3d cameraCenter = {0.0f, 100.0f, -100.0f}; cameraCenterPointer = &cameraCenter; lbl_1_bss_8C8.center = *cameraCenterPointer; }
             { Point3d cameraRotation = {-30.0f, 0.0f, 0.0f}; cameraRotationPointer = &cameraRotation; lbl_1_bss_8C8.rot = *cameraRotationPointer; }
-            lbl_1_bss_8C8.zoom = (2250.0f);
+            lbl_1_bss_8C8.zoom = 2250.0f;
             fn_8003E5A4(&lbl_1_bss_8C8);
             Hu3DGLightColorSet(lbl_1_bss_94C, 255, 255, 255, 255);
             if (lbl_1_bss_8E4 == 0) {
                 Hu3DGLightColorSet(lbl_1_bss_920, 0, 0, 0, 255);
             } else {
-                lbl_1_bss_914.y = (1000.0f);
+                lbl_1_bss_914.y = 1000.0f;
                 Hu3DGLightPosSetV(lbl_1_bss_920, &lbl_1_bss_914, &lbl_1_bss_908);
             }
-            Hu3DAmbColorSet((1.0f), (1.0f), (1.0f));
+            Hu3DAmbColorSet(1.0f, 1.0f, 1.0f);
             if (lbl_1_bss_8E4 == 0) {
                 Hu3DFogClear();
             }
@@ -813,12 +797,12 @@ s32 fn_1_B74(void) {
                 if (lbl_1_bss_C8[playerIndex].sequenceCount < 2) {
                     fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[5],
-                                       0.0f, (8.0f), 0);
+                                       0.0f, 8.0f, 0);
                     coinBonus = 0;
                 } else {
                     fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[6],
-                                       0.0f, (8.0f), 0);
+                                       0.0f, 8.0f, 0);
                     coinBonus = lbl_1_bss_C8[playerIndex].sequenceCount - 1;
                 }
                 if (fn_8006A124(65551) == 0) {
@@ -826,7 +810,7 @@ s32 fn_1_B74(void) {
                 }
             }
             result = 1;
-            lbl_1_bss_8C8.zoom = (1500.0f);
+            lbl_1_bss_8C8.zoom = 1500.0f;
             fn_8003E7A0(&lbl_1_bss_8C8, 100, 0);
         }
     } else if (lbl_1_bss_8C4 == 1) {
@@ -848,8 +832,8 @@ s32 fn_1_B74(void) {
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
-                        (-300.0f) + (200.0f) * (f32) playerIndex,
-                        (232.0f) + lbl_1_bss_41C[0].position.y,
+                        -300.0f + 200.0f * (f32) playerIndex,
+                        232.0f + lbl_1_bss_41C[0].position.y,
                         0.0f);
     }
     return result;
@@ -862,8 +846,8 @@ void fn_1_13DC(void) {
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
-                        (-300.0f) + (200.0f) * (f32) playerIndex,
-                        (232.0f) + lbl_1_bss_41C[0].position.y, (0.0f));
+                        -300.0f + 200.0f * (f32) playerIndex,
+                        232.0f + lbl_1_bss_41C[0].position.y, 0.0f);
     }
     if (lbl_1_bss_C == -1) {
         lbl_1_bss_C = HuAudJinglePlay(MSM_STREAM_MGMUS_17);
@@ -877,8 +861,8 @@ void fn_1_14C4(void) {
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
-                        (-300.0f) + (200.0f) * (f32) playerIndex,
-                        (232.0f) + lbl_1_bss_41C[0].position.y, (0.0f));
+                        -300.0f + 200.0f * (f32) playerIndex,
+                        232.0f + lbl_1_bss_41C[0].position.y, 0.0f);
     }
 }
 
@@ -896,7 +880,7 @@ void fn_1_1584(void) {
     Hu3DAmbColorSet(lbl_1_rodata_6C[lbl_1_bss_8E4].x,
                     lbl_1_rodata_6C[lbl_1_bss_8E4].y,
                     lbl_1_rodata_6C[lbl_1_bss_8E4].z);
-    Hu3DFogSet((500.0f), (30000.0f), 5, 0, 10);
+    Hu3DFogSet(500.0f, 30000.0f, 5, 0, 10);
 
     { Point3d firstPosition = {1000.0f, 1000.0f, 5000.0f}; firstPositionPointer = &firstPosition; lbl_1_bss_940 = *firstPositionPointer; }
     { Point3d firstDirection = {-1.0f, -1.0f, -1.0f}; firstDirectionPointer = &firstDirection; lbl_1_bss_934 = *firstDirectionPointer; }
@@ -924,7 +908,7 @@ void fn_1_1584(void) {
     lbl_1_bss_8F8[1] = lbl_1_bss_904.g;
     lbl_1_bss_8F8[2] = lbl_1_bss_904.b;
     Hu3DGLightStaticSet(lbl_1_bss_920, 1);
-    lbl_1_bss_8F4 = (120.0f);
+    lbl_1_bss_8F4 = 120.0f;
     Hu3DGLightSpotSet(lbl_1_bss_920, lbl_1_bss_8F4, GX_SP_COS);
 }
 
@@ -974,22 +958,22 @@ void fn_1_1A70(void) {
         Hu3DGLightColorSet(lbl_1_bss_920, lbl_1_bss_904.r, lbl_1_bss_904.g,
                             lbl_1_bss_904.b, lbl_1_bss_904.a);
     } else {
-        if (lbl_1_bss_914.y < (1000.0f)) {
-            lbl_1_bss_914.y += (2.5f);
+        if (lbl_1_bss_914.y < 1000.0f) {
+            lbl_1_bss_914.y += 2.5f;
             Hu3DGLightPosSetV(lbl_1_bss_920, &lbl_1_bss_914, &lbl_1_bss_908);
         }
     }
-    lbl_1_bss_8E8.x += ((1.0f) - (lbl_1_rodata_6C + lbl_1_bss_8E4)->x) / fadeDivisor;
-    if (lbl_1_bss_8E8.x > (1.0f)) {
-        lbl_1_bss_8E8.x = (1.0f);
+    lbl_1_bss_8E8.x += (1.0f - (lbl_1_rodata_6C + lbl_1_bss_8E4)->x) / fadeDivisor;
+    if (lbl_1_bss_8E8.x > 1.0f) {
+        lbl_1_bss_8E8.x = 1.0f;
     }
-    lbl_1_bss_8E8.y += ((1.0f) - (lbl_1_rodata_6C + lbl_1_bss_8E4)->y) / fadeDivisor;
-    if (lbl_1_bss_8E8.y > (1.0f)) {
-        lbl_1_bss_8E8.y = (1.0f);
+    lbl_1_bss_8E8.y += (1.0f - (lbl_1_rodata_6C + lbl_1_bss_8E4)->y) / fadeDivisor;
+    if (lbl_1_bss_8E8.y > 1.0f) {
+        lbl_1_bss_8E8.y = 1.0f;
     }
-    lbl_1_bss_8E8.z += ((1.0f) - (lbl_1_rodata_6C + lbl_1_bss_8E4)->z) / fadeDivisor;
-    if (lbl_1_bss_8E8.z > (1.0f)) {
-        lbl_1_bss_8E8.z = (1.0f);
+    lbl_1_bss_8E8.z += (1.0f - (lbl_1_rodata_6C + lbl_1_bss_8E4)->z) / fadeDivisor;
+    if (lbl_1_bss_8E8.z > 1.0f) {
+        lbl_1_bss_8E8.z = 1.0f;
     }
     Hu3DAmbColorSet(lbl_1_bss_8E8.x, lbl_1_bss_8E8.y, lbl_1_bss_8E8.z);
     if (lbl_1_bss_8E4 == 0) {
@@ -1006,7 +990,7 @@ void fn_1_20B0(void) {
     { HuVecF center = {0.0f, 100.0f, 0.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; }
 
     { HuVecF rotation = {-40.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; }
-    lbl_1_bss_8C8.zoom = (2155.0f);
+    lbl_1_bss_8C8.zoom = 2155.0f;
     fn_8003E5A4(&lbl_1_bss_8C8);
 }
 
@@ -1051,7 +1035,7 @@ void fn_1_2188(void)
     case 2638: {
         { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {-496.5f, 300.0f,
             112.5f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-45.5f, -2.700000047683716f,
+            *centerPointer; } { HuVecF rotation = {-45.5f, -2.7f,
             0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
             *rotationPointer; } lbl_1_bss_8C8.zoom = 2545.5f; fn_8003E7A0(&lbl_1_bss_8C8, 200, 3); }
         return;
@@ -1101,8 +1085,8 @@ void fn_1_2848(void) {
     s32 playerIndex;
     s32 motionIndex;
 
-    actorParam.height = (150.0f);
-    actorParam.radius = (40.0f);
+    actorParam.height = 150.0f;
+    actorParam.radius = 40.0f;
     actorParam.param = 0;
     actorParam.type = 0;
     actorParam.attr = 0;
@@ -1125,8 +1109,8 @@ void fn_1_2848(void) {
         Hu3DModelObjPosGet(lbl_1_bss_85C[playerIndex].modelId,
                            "fook00",
                            &lbl_1_bss_C8[playerIndex].player->actor->pos);
-        lbl_1_bss_C8[playerIndex].player->actor->pos.y += (100.0f);
-        lbl_1_bss_C8[playerIndex].player->actor->rotY = (0.0f);
+        lbl_1_bss_C8[playerIndex].player->actor->pos.y += 100.0f;
+        lbl_1_bss_C8[playerIndex].player->actor->rotY = 0.0f;
         lbl_1_bss_C8[playerIndex].modelId =
             lbl_1_bss_C8[playerIndex].player->actor->mdlId;
         fn_80026B64(lbl_1_bss_C8[playerIndex].modelId, 1);
@@ -1146,9 +1130,9 @@ void fn_1_2848(void) {
         lbl_1_bss_C8[playerIndex].fallEffectModelId = fn_80025A04(
             fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 3));
         fn_80026B64(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
-        fn_800269E8(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
+        fn_800269E8(lbl_1_bss_C8[playerIndex].fallEffectModelId, (1 << 0));
         fn_800268B0(lbl_1_bss_C8[playerIndex].fallEffectModelId,
-                          (1.5f), (1.5f), (1.5f));
+                          1.5f, 1.5f, 1.5f);
         fn_80026B8C(lbl_1_bss_C8[playerIndex].fallEffectModelId, 5);
         lbl_1_bss_C8[playerIndex].fallEffectMotionId = fn_80030458(
             lbl_1_bss_C8[playerIndex].fallEffectModelId,
@@ -1161,9 +1145,9 @@ void fn_1_2848(void) {
         opponentPosition = lbl_1_bss_C8[3 - playerIndex].player->actor->pos;
         PSVECSubtract(&opponentPosition, &playerPosition, &separation);
         lbl_1_bss_C8[playerIndex].player->actor->rotY =
-            (180.0) *
+            180.0 *
             (atan2((f64) separation.x, (f64) separation.z) /
-             (3.141592653589793));
+             3.141592653589793);
     }
     fn_800856A8();
 }
@@ -1190,13 +1174,13 @@ void fn_1_2E08(void) {
         }
 
         if (lbl_1_bss_C8[playerIndex].actionState >= 0 &&
-            lbl_1_bss_C8[playerIndex].player->actor->pos.y < (0.0f)) {
+            lbl_1_bss_C8[playerIndex].player->actor->pos.y < 0.0f) {
             actorPosition = lbl_1_bss_C8[playerIndex].player->actor->pos;
-            actorPosition.y = (0.0f);
+            actorPosition.y = 0.0f;
             fn_80026790(lbl_1_bss_C8[playerIndex].fallEffectModelId, &actorPosition);
-            fn_80026808(lbl_1_bss_C8[playerIndex].fallEffectModelId, (0.0f),
-                            lbl_1_bss_C8[playerIndex].player->actor->rotY, (0.0f));
-            fn_80026A44(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
+            fn_80026808(lbl_1_bss_C8[playerIndex].fallEffectModelId, 0.0f,
+                            lbl_1_bss_C8[playerIndex].player->actor->rotY, 0.0f);
+            fn_80026A44(lbl_1_bss_C8[playerIndex].fallEffectModelId, (1 << 0));
             fn_8002C95C(lbl_1_bss_C8[playerIndex].fallEffectModelId,
                           lbl_1_bss_C8[playerIndex].fallEffectMotionId);
             fn_80026EF0(lbl_1_bss_C8[playerIndex].modelId);
@@ -1217,7 +1201,7 @@ void fn_1_2E08(void) {
                 if (lbl_1_bss_C8[playerIndex].currentMotion == 0) {
                     fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[3],
-                                       (0.0f), (8.0f),
+                                       0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 3;
                     lbl_1_bss_C8[playerIndex].movementTimer = 0;
@@ -1233,7 +1217,7 @@ void fn_1_2E08(void) {
                                    &lbl_1_bss_C8[playerIndex].movementDirection);
                     PSVECScale(&lbl_1_bss_C8[playerIndex].movementDirection,
                                &lbl_1_bss_C8[playerIndex].movementDirection,
-                               movementLength / (120.0f));
+                               movementLength / 120.0f);
                 }
                 if (lbl_1_bss_C8[playerIndex].currentMotion == 3) {
                     if (++lbl_1_bss_C8[playerIndex].movementTimer < 120) {
@@ -1243,11 +1227,11 @@ void fn_1_2E08(void) {
                          * displacement; X/Z accumulate. */
                         lbl_1_bss_C8[playerIndex].movementOrigin.y =
                             lbl_1_bss_C8[playerIndex].launchHeight +
-                            (1200.0) *
-                                sin(((3.141592653589793) *
-                                     (f64) ((1.5f) *
+                            1200.0 *
+                                sin((3.141592653589793 *
+                                     (f64) (1.5f *
                                             (f32) lbl_1_bss_C8[playerIndex].movementTimer)) /
-                                    (180.0));
+                                    180.0);
                         PSVECAdd(&lbl_1_bss_C8[playerIndex].movementDirection,
                                  &lbl_1_bss_C8[playerIndex].movementOrigin,
                                  &lbl_1_bss_C8[playerIndex].movementOrigin);
@@ -1256,7 +1240,7 @@ void fn_1_2E08(void) {
                         fn_80026790(lbl_1_bss_C8[playerIndex].modelId,
                                          &lbl_1_bss_C8[playerIndex].movementOrigin);
                     } else {
-                        fn_800269E8(lbl_1_bss_C8[playerIndex].modelId, 1);
+                        fn_800269E8(lbl_1_bss_C8[playerIndex].modelId, (1 << 0));
                     }
                 }
                 break;
@@ -1264,14 +1248,14 @@ void fn_1_2E08(void) {
                 if (lbl_1_bss_C8[playerIndex].currentMotion == 0) {
                     fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[2],
-                                       (0.0f), (8.0f),
+                                       0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 2;
                 }
                 if (lbl_1_bss_C8[playerIndex].actionTimer >= 90) {
                     fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[0],
-                                       (0.0f), (8.0f),
+                                       0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 0;
                     lbl_1_bss_C8[playerIndex].actionState = 0;
@@ -1284,14 +1268,14 @@ void fn_1_2E08(void) {
                 if (lbl_1_bss_C8[playerIndex].currentMotion == 0) {
                     fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[1],
-                                       (0.0f), (8.0f),
+                                       0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 1;
                 }
                 if (lbl_1_bss_C8[playerIndex].actionTimer >= 90) {
                     fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[0],
-                                       (0.0f), (8.0f),
+                                       0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 0;
                     lbl_1_bss_C8[playerIndex].actionState = 0;
@@ -1317,7 +1301,7 @@ void fn_1_3868(s32 playerIndex) {
     f32 distance;
 
     playerPosition = lbl_1_bss_C8[playerIndex].player->actor->pos;
-    playerPosition.y += (75.0f);
+    playerPosition.y += 75.0f;
     if (lbl_1_bss_8C0 > 2500) {
         for (tableIndex = 0; tableIndex < 2; tableIndex++) {
             for (modelIndex = 0; modelIndex < 3; modelIndex++) {
@@ -1325,16 +1309,16 @@ void fn_1_3868(s32 playerIndex) {
                     effectPosition = lbl_1_bss_248[tableIndex][modelIndex].position;
                     PSVECSubtract(&effectPosition, &playerPosition, &difference);
                     distance = PSVECMag(&difference);
-                    if (distance < (88.0f) && lbl_1_bss_C8[playerIndex].actionState == 0) {
+                    if (distance < 88.0f && lbl_1_bss_C8[playerIndex].actionState == 0) {
                         lbl_1_bss_C8[playerIndex].actionState = -1;
                         lbl_1_bss_C8[playerIndex].actionTimer = 0;
                         lbl_1_bss_248[tableIndex][modelIndex].state40 = 2;
                         randomOffset[0] = (u32) (frandmod(150) + 3000);
                         randomOffset[1] = (u32) frandmod(600);
                         if ((u32) frandmod(2) != 0U) {
-                            randomOffset[1] *= (-1.0f);
+                            randomOffset[1] *= -1.0f;
                         }
-                        lbl_1_bss_C8[playerIndex].flightDestination.y = (0.0f);
+                        lbl_1_bss_C8[playerIndex].flightDestination.y = 0.0f;
                         if (lbl_1_bss_464 == 0) {
                             lbl_1_bss_C8[playerIndex].flightDestination.x =
                                 playerPosition.x + randomOffset[0];
@@ -1352,7 +1336,7 @@ void fn_1_3868(s32 playerIndex) {
                                 playerPosition.z + randomOffset[1];
                         }
                         fn_80086E3C(lbl_1_bss_C8[playerIndex].player);
-                        fn_80026A44(lbl_1_bss_C8[playerIndex].modelId, 1);
+                        fn_80026A44(lbl_1_bss_C8[playerIndex].modelId, (1 << 0));
                         fn_8006A030(playerIndex, 20, 20, 0);
                         if ((u32) fn_80071A8C() == 5U) {
                             lbl_1_bss_C8[playerIndex].sequenceCount = lbl_1_bss_8BC;
@@ -1376,7 +1360,7 @@ void fn_1_3868(s32 playerIndex) {
                     effectPosition.y -= lbl_1_bss_6A4[tableIndex][modelIndex];
                     PSVECSubtract(&effectPosition, &playerPosition, &difference);
                     distance = PSVECMag(&difference);
-                    if (distance < (84.0f)) {
+                    if (distance < 84.0f) {
                         if (lbl_1_bss_C8[playerIndex].actionState == 0) {
                             if (lbl_1_bss_C8[playerIndex].player->stunType == 0) {
                                 lbl_1_bss_C8[playerIndex].actionState = 2;
@@ -1411,13 +1395,13 @@ void fn_1_3E74(void) {
     lbl_1_bss_86E = fn_80025A04(
         fn_80008DD0(DATANUM(0x7b0000, 20), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_86E, 1);
-    fn_80026760(lbl_1_bss_86E, (0.0f),
-                    (0.0f), (0.0f));
-    lbl_1_bss_850[0] = lbl_1_bss_850[1] = (0.0f);
+    fn_80026760(lbl_1_bss_86E, 0.0f,
+                    0.0f, 0.0f);
+    lbl_1_bss_850[0] = lbl_1_bss_850[1] = 0.0f;
     fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[0]);
     fn_80030644(lbl_1_bss_86E);
-    fn_800268B0(lbl_1_bss_86E, (10.0f),
-                      (10.0f), (10.0f));
+    fn_800268B0(lbl_1_bss_86E, 10.0f,
+                      10.0f, 10.0f);
     Hu3DModelObjPosGet(lbl_1_bss_86E, "fk_ikada", &currentPosition);
     { Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f}; targetCopyPointer = &targetPositionCopy; targetPosition = *targetCopyPointer; }
     PSVECSubtract(&targetPosition, &currentPosition, &lbl_1_bss_40C);
@@ -1440,14 +1424,14 @@ void fn_1_4060(void) {
     Point3d *targetCopyPointer;
 
     if (lbl_1_bss_8C0 == 0) {
-        lbl_1_bss_850[0] = lbl_1_bss_850[1] = (0.02500000037252903f);
+        lbl_1_bss_850[0] = lbl_1_bss_850[1] = 0.025f;
         fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[0]);
     }
     Hu3DModelObjPosGet(lbl_1_bss_86E, "fk_ikada", &currentPosition);
     { Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f}; targetCopyPointer = &targetPositionCopy; targetPosition = *targetCopyPointer; }
     PSVECSubtract(&targetPosition, &currentPosition, &lbl_1_bss_40C);
     if ((lbl_1_bss_8C0 >= 2138) && (lbl_1_bss_8C0 <= 2438)) {
-        lbl_1_bss_850[1] = lbl_1_bss_850[1] - (0.0013333333190530539f) * lbl_1_bss_850[0];
+        lbl_1_bss_850[1] = lbl_1_bss_850[1] - 0.0013333333f * lbl_1_bss_850[0];
         fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[1]);
         if (lbl_1_bss_8C0 == 2438) {
             lbl_1_bss_850[0] = lbl_1_bss_850[1];
@@ -1489,23 +1473,23 @@ s32 fn_1_420C(s16 *createdModelIds) {
         }
         fn_80026B64(lbl_1_bss_8A0[modelIndex], 1);
         fn_80026790(lbl_1_bss_8A0[modelIndex], &lbl_1_bss_40C);
-        fn_800268B0(lbl_1_bss_8A0[modelIndex], (10.0f),
-                          (10.0f), (10.0f));
+        fn_800268B0(lbl_1_bss_8A0[modelIndex], 10.0f,
+                          10.0f, 10.0f);
         if (modelIndex == 0) {
             fn_80026B8C(lbl_1_bss_8A0[modelIndex], 4);
         }
         if (modelIndex > 0) {
-            fn_800269E8(lbl_1_bss_8A0[modelIndex], 1);
+            fn_800269E8(lbl_1_bss_8A0[modelIndex], (1 << 0));
         }
 
         lbl_1_bss_894[modelIndex] = fn_80025A04(
             fn_80008DD0(modelIndex + 0x7b0000 + 7, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_894[modelIndex], 1);
         fn_80026790(lbl_1_bss_894[modelIndex], &lbl_1_bss_40C);
-        fn_800268B0(lbl_1_bss_894[modelIndex], (10.0f),
-                          (10.0f), (10.0f));
+        fn_800268B0(lbl_1_bss_894[modelIndex], 10.0f,
+                          10.0f, 10.0f);
         if (modelIndex > 0) {
-            fn_800269E8(lbl_1_bss_894[modelIndex], 1);
+            fn_800269E8(lbl_1_bss_894[modelIndex], (1 << 0));
         }
         *createdModelIds = lbl_1_bss_894[modelIndex];
         createdModelIds++;
@@ -1521,9 +1505,9 @@ s32 fn_1_420C(s16 *createdModelIds) {
         fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
     fn_80026B64(lbl_1_bss_89E, 1);
     fn_80026790(lbl_1_bss_89E, &lbl_1_bss_40C);
-    fn_800268B0(lbl_1_bss_89E, (10.0f),
-                      (10.0f), (10.0f));
-    fn_800269E8(lbl_1_bss_89E, 1);
+    fn_800268B0(lbl_1_bss_89E, 10.0f,
+                      10.0f, 10.0f);
+    fn_800269E8(lbl_1_bss_89E, (1 << 0));
 
     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
         lbl_1_bss_870[modelIndex] = fn_80025A04(
@@ -1532,14 +1516,14 @@ s32 fn_1_420C(s16 *createdModelIds) {
         fn_80026790(lbl_1_bss_870[modelIndex], &lbl_1_bss_40C);
         fn_800269E8(lbl_1_bss_870[modelIndex], ((1 << 30) | (1 << 0)));
         if (modelIndex == 0) {
-            motionSpeed = (0.20000000298023224f);
+            motionSpeed = 0.2f;
         } else {
-            motionSpeed = (0.10000000149011612f);
+            motionSpeed = 0.1f;
         }
         fn_8002D86C(lbl_1_bss_870[modelIndex], motionSpeed);
         fn_80030644(lbl_1_bss_870[modelIndex]);
-        fn_800268B0(lbl_1_bss_870[modelIndex], (10.0f),
-                          (10.0f), (10.0f));
+        fn_800268B0(lbl_1_bss_870[modelIndex], 10.0f,
+                          10.0f, 10.0f);
         if (modelIndex == 0) {
             layer = 3;
         } else {
@@ -1552,10 +1536,10 @@ s32 fn_1_420C(s16 *createdModelIds) {
         fn_80008DD0(DATANUM(0x7b0000, 21), 0x10000000, 3));
     fn_80026B64(lbl_1_bss_86C, 1);
     fn_80026790(lbl_1_bss_86C, &lbl_1_bss_40C);
-    fn_800268B0(lbl_1_bss_86C, (10.0f),
-                      (10.0f), (10.0f));
+    fn_800268B0(lbl_1_bss_86C, 10.0f,
+                      10.0f, 10.0f);
     fn_800269E8(lbl_1_bss_86C, ((1 << 30) | (1 << 0)));
-    fn_8002D86C(lbl_1_bss_86C, (0.33000001311302185f));
+    fn_8002D86C(lbl_1_bss_86C, 0.33f);
     fn_80026B8C(lbl_1_bss_86C, 4);
     return modelCount;
 }
@@ -1564,25 +1548,24 @@ s32 fn_1_420C(s16 *createdModelIds) {
  * course motion model. */
 void fn_1_476C(void) {
     s32 modelIndex;
-    s32 unusedModelIndex;
     modelIndex = 0;
     while (modelIndex < 4)
     {
-        fn_80026790(* (s16 *)((u8 *) & lbl_1_bss_8A0 + (modelIndex * 2)), & lbl_1_bss_40C);
-        fn_80026790(* (s16 *)((u8 *) & lbl_1_bss_894 + (modelIndex * 2)), & lbl_1_bss_40C);
+        fn_80026790(lbl_1_bss_8A0[modelIndex], & lbl_1_bss_40C);
+        fn_80026790(lbl_1_bss_894[modelIndex], & lbl_1_bss_40C);
         modelIndex += 1;
     }
     fn_80026790(lbl_1_bss_89E, & lbl_1_bss_40C);
     modelIndex = 0;
     while (modelIndex < 2)
     {
-        fn_80026790(* (s16 *)((u8 *) & lbl_1_bss_870 + (modelIndex * 2)), & lbl_1_bss_40C);
+        fn_80026790(lbl_1_bss_870[modelIndex], & lbl_1_bss_40C);
         modelIndex += 1;
     }
     fn_80026790(lbl_1_bss_86C, & lbl_1_bss_40C);
 }
 
-Point3d lbl_1_data_80 = { -6000.0f, 0.0f, 22397.119140625f };
+Point3d lbl_1_data_80 = { -6000.0f, 0.0f, 22397.12f };
 
 /* Called by fn_1_3E74 to create the four player raft models and their hook objects. */
 s32 fn_1_4848(s16 *objectModelOutput) {
@@ -1605,17 +1588,17 @@ s32 fn_1_4848(s16 *objectModelOutput) {
         PSVECAdd(&position, &lbl_1_data_80, &position);
         fn_80026790(lbl_1_bss_85C[modelIndex].modelId, &position);
 
-        rotation.x = rotation.z = (0.0f);
+        rotation.x = rotation.z = 0.0f;
         if (modelIndex == 0) {
-            rotationY = (0.0f);
+            rotationY = 0.0f;
         } else {
             if (modelIndex == 1) {
-                selectedAngle = (-90.0f);
+                selectedAngle = -90.0f;
             } else {
                 if (modelIndex == 2) {
-                    baseAngle = (90.0f);
+                    baseAngle = 90.0f;
                 } else {
-                    baseAngle = (180.0f);
+                    baseAngle = 180.0f;
                 }
                 selectedAngle = baseAngle;
             }
@@ -1623,9 +1606,9 @@ s32 fn_1_4848(s16 *objectModelOutput) {
         }
         rotation.y = rotationY;
         fn_80026838(lbl_1_bss_85C[modelIndex].modelId, &rotation);
-        fn_800268B0(lbl_1_bss_85C[modelIndex].modelId, (10.0f),
-                          (10.0f), (10.0f));
-        fn_8002D86C(lbl_1_bss_85C[modelIndex].modelId, (0.0f));
+        fn_800268B0(lbl_1_bss_85C[modelIndex].modelId, 10.0f,
+                          10.0f, 10.0f);
+        fn_8002D86C(lbl_1_bss_85C[modelIndex].modelId, 0.0f);
         fn_80030644(lbl_1_bss_85C[modelIndex].modelId);
 
         lbl_1_bss_85C[modelIndex].objectModelId = fn_80025A04(
@@ -1643,8 +1626,8 @@ s32 fn_1_4848(s16 *objectModelOutput) {
     position = lbl_1_bss_40C;
     PSVECAdd(&position, &lbl_1_data_80, &position);
     fn_80026790(lbl_1_bss_85A, &position);
-    fn_800268B0(lbl_1_bss_85A, (10.0f),
-                      (10.0f), (10.0f));
+    fn_800268B0(lbl_1_bss_85A, 10.0f,
+                      10.0f, 10.0f);
 
     if (lbl_1_bss_8E4 == 0) {
         modelNumber = 25;
@@ -1654,14 +1637,14 @@ s32 fn_1_4848(s16 *objectModelOutput) {
     lbl_1_bss_858 = fn_80025A04(fn_80008DD0(modelNumber + 0x7b0000,
                                                          0x10000000, 2));
     fn_80026B64(lbl_1_bss_858, 1);
-    fn_80026760(lbl_1_bss_858, (0.0f), (0.0f),
-                    (0.0f));
-    fn_800268B0(lbl_1_bss_858, (10.0f),
-                      (10.0f), (10.0f));
-    fn_800269E8(lbl_1_bss_858, 1);
+    fn_80026760(lbl_1_bss_858, 0.0f, 0.0f,
+                    0.0f);
+    fn_800268B0(lbl_1_bss_858, 10.0f,
+                      10.0f, 10.0f);
+    fn_800269E8(lbl_1_bss_858, (1 << 0));
     fn_80026FFC(lbl_1_bss_858);
         fn_800269E8(lbl_1_bss_858, ((1 << 30) | (1 << 0)));
-    fn_8002D86C(lbl_1_bss_858, (0.20000000298023224f));
+    fn_8002D86C(lbl_1_bss_858, 0.2f);
     return modelCount;
 }
 
@@ -1782,15 +1765,15 @@ objectNameReady:
             fn_80023398(lbl_1_bss_874[1], objectName14, objectMatrix);
             Hu3DMtxTransGet(objectMatrix, &position);
             Hu3DMtxRotGet(objectMatrix, &rotation);
-            rotation.y += (180.0f);
+            rotation.y += 180.0f;
             fn_80026790(lbl_1_bss_874[modelIndex], &position);
             fn_80026838(lbl_1_bss_874[modelIndex], &rotation);
         }
         fn_80026B64(lbl_1_bss_874[modelIndex], 1);
-        fn_8002D86C(lbl_1_bss_874[modelIndex], (0.0f));
+        fn_8002D86C(lbl_1_bss_874[modelIndex], 0.0f);
         fn_80030644(lbl_1_bss_874[modelIndex]);
-        fn_800268B0(lbl_1_bss_874[modelIndex], (10.0f),
-                          (10.0f), (10.0f));
+        fn_800268B0(lbl_1_bss_874[modelIndex], 10.0f,
+                          10.0f, 10.0f);
         fn_80026B8C(lbl_1_bss_874[modelIndex], 4);
     }
 }
@@ -1827,47 +1810,47 @@ void fn_1_5108(void) {
 
     switch (lbl_1_bss_8C0) {
     case 288:
-        fn_8002D86C(lbl_1_bss_874[0], (0.03999999910593033f));
+        fn_8002D86C(lbl_1_bss_874[0], 0.04f);
         break;
     case 585:
         index = frandmod(2);
-        fn_8002D86C(index != 0 ? lbl_1_bss_874[2] : lbl_1_bss_874[9], (0.6000000238418579f));
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[2] : lbl_1_bss_874[9], 0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 2 : 9], 1);
         break;
     case 630:
         index = frandmod(2);
         fn_8002D86C(index != 0 ? lbl_1_bss_874[3] : lbl_1_bss_874[10],
-                           (0.6000000238418579f));
+                           0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 3 : 10], 1);
         break;
     case 670:
         index = frandmod(2);
         fn_8002D86C(index != 0 ? lbl_1_bss_874[4] : lbl_1_bss_874[11],
-                           (0.6000000238418579f));
+                           0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 4 : 11], 1);
         break;
     case 720:
         index = frandmod(2);
         fn_8002D86C(index != 0 ? lbl_1_bss_874[5] : lbl_1_bss_874[12],
-                           (0.6000000238418579f));
+                           0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 5 : 12], 1);
         break;
     case 765:
         index = frandmod(2);
         fn_8002D86C(index != 0 ? lbl_1_bss_874[6] : lbl_1_bss_874[13],
-                           (0.6000000238418579f));
+                           0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 6 : 13], 1);
         break;
     case 830:
         index = frandmod(2);
         fn_8002D86C(index != 0 ? lbl_1_bss_874[7] : lbl_1_bss_874[14],
-                           (0.6000000238418579f));
+                           0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 7 : 14], 1);
         break;
     case 890:
         index = frandmod(2);
         fn_8002D86C(index != 0 ? lbl_1_bss_874[8] : lbl_1_bss_874[15],
-                           (0.6000000238418579f));
+                           0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 8 : 15], 1);
         break;
     }
@@ -1881,7 +1864,7 @@ void fn_1_5108(void) {
 void fn_1_5770(void) {
     s32 modelAssetOffset;
 
-    if ((s32) lbl_1_bss_8E4 == 0) {
+    if (lbl_1_bss_8E4 == 0) {
         modelAssetOffset = 16;
     } else {
         modelAssetOffset = 17;
@@ -1890,8 +1873,8 @@ void fn_1_5770(void) {
         fn_80008DD0(modelAssetOffset + 0x7b0000, 0x10000000, 2));
     fn_80026B64(lbl_1_bss_89C, 1U);
     fn_80026790(lbl_1_bss_89C, &lbl_1_bss_40C);
-    fn_800268B0(lbl_1_bss_89C, (10.0f), (10.0f), (10.0f));
-    fn_8002D86C(lbl_1_bss_89C, (0.0f));
+    fn_800268B0(lbl_1_bss_89C, 10.0f, 10.0f, 10.0f);
+    fn_8002D86C(lbl_1_bss_89C, 0.0f);
     fn_80030644(lbl_1_bss_89C);
 }
 
@@ -1904,7 +1887,7 @@ void fn_1_5860(void) {
     fn_80026790(lbl_1_bss_89C, &lbl_1_bss_40C);
     switch (lbl_1_bss_8C0) {
     case 1368:
-        fn_8002D86C(lbl_1_bss_89C, (1.0f));
+        fn_8002D86C(lbl_1_bss_89C, 1.0f);
         HuAudFXPlay(MSM_SE_M664_COURSE_REVEAL);
         break;
     }
@@ -1938,24 +1921,24 @@ s32 fn_1_58E8(s16 *createdModelIds) {
                          &lbl_1_bss_41C[modelIndex].position);
         fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1],
                          &lbl_1_bss_41C[modelIndex].rotation);
-        fn_800269E8(lbl_1_bss_41C[modelIndex].modelId[1], 1);
+        fn_800269E8(lbl_1_bss_41C[modelIndex].modelId[1], (1 << 0));
         *createdModelIds = lbl_1_bss_41C[modelIndex].modelId[1];
         createdModelIds++;
         modelCount++;
         lbl_1_bss_41C[modelIndex].heightIncreasing = 0;
         lbl_1_bss_41C[modelIndex].heightPhase = 0.0f;
         lbl_1_bss_41C[modelIndex].yawIncreasing = 0;
-        lbl_1_bss_41C[modelIndex].yawPhase = (90.0f);
+        lbl_1_bss_41C[modelIndex].yawPhase = 90.0f;
     }
     lbl_1_bss_418 = fn_80025A04(
         fn_80008DD0(DATANUM(0x7b0000, 54), 0x10000000, 3));
     fn_80026B64(lbl_1_bss_418, 1);
-    fn_80026760(lbl_1_bss_418, 0.0f, (5.0f), 0.0f);
+    fn_80026760(lbl_1_bss_418, 0.0f, 5.0f, 0.0f);
     fn_80026808(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
     fn_800269E8(lbl_1_bss_418, ((1 << 30) | (1 << 0)));
-    fn_8002D86C(lbl_1_bss_418, (0.30000001192092896f));
+    fn_8002D86C(lbl_1_bss_418, 0.3f);
     fn_80026B8C(lbl_1_bss_418, 4);
-    lbl_1_bss_404[0] = lbl_1_bss_404[1] = (0.0f);
+    lbl_1_bss_404[0] = lbl_1_bss_404[1] = 0.0f;
     if (frandmod(2) != 0U) {
         horizontalDirection = 1;
     } else {
@@ -1974,7 +1957,7 @@ s32 fn_1_58E8(s16 *createdModelIds) {
 
 /* Advances the raft sway and vertical bob once per active gameplay frame. */
 void fn_1_5D3C(void) {
-    if ((s32) lbl_1_bss_3F8 > 0) {
+    if (lbl_1_bss_3F8 > 0) {
         lbl_1_bss_3F8 -= 1;
     }
     fn_1_5D90();
@@ -1993,17 +1976,17 @@ void fn_1_5D90(void)
 
     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
         randomStep = (u32) (frandmod(5) + 1);
-        randomStep /= (100.0f);
+        randomStep /= 100.0f;
         if (lbl_1_bss_3FC[modelIndex] == 1) {
             lbl_1_bss_404[modelIndex] += randomStep;
-            if (lbl_1_bss_404[modelIndex] > (1.0f)) {
-                lbl_1_bss_404[modelIndex] = (1.0f);
+            if (lbl_1_bss_404[modelIndex] > 1.0f) {
+                lbl_1_bss_404[modelIndex] = 1.0f;
                 lbl_1_bss_3FC[modelIndex] = -1;
             }
         } else {
             lbl_1_bss_404[modelIndex] -= randomStep;
-            if (lbl_1_bss_404[modelIndex] < (-1.0f)) {
-                lbl_1_bss_404[modelIndex] = (-1.0f);
+            if (lbl_1_bss_404[modelIndex] < -1.0f) {
+                lbl_1_bss_404[modelIndex] = -1.0f;
                 lbl_1_bss_3FC[modelIndex] = 1;
             }
         }
@@ -2016,50 +1999,50 @@ void fn_1_5D90(void)
 
     for (modelIndex = 0; modelIndex < 1; modelIndex++) {
         if (lbl_1_bss_3F8 > 0) {
-            lbl_1_bss_41C[modelIndex].targetRotation.x = (10.0f) * -rotationA;
-            lbl_1_bss_41C[modelIndex].targetRotation.z = (10.0f) * -rotationB;
+            lbl_1_bss_41C[modelIndex].targetRotation.x = 10.0f * -rotationA;
+            lbl_1_bss_41C[modelIndex].targetRotation.z = 10.0f * -rotationB;
             lbl_1_bss_41C[modelIndex].rotation.x += (lbl_1_bss_41C[modelIndex].targetRotation.x -
                                                      lbl_1_bss_41C[modelIndex].rotation.x) /
-                                                    (20.0f);
+                                                    20.0f;
             lbl_1_bss_41C[modelIndex].rotation.z += (lbl_1_bss_41C[modelIndex].targetRotation.z -
                                                      lbl_1_bss_41C[modelIndex].rotation.z) /
-                                                    (20.0f);
+                                                    20.0f;
         } else {
-            lbl_1_bss_41C[modelIndex].targetRotation.x = (5.0f) * -rotationA;
-            lbl_1_bss_41C[modelIndex].targetRotation.z = (5.0f) * -rotationB;
+            lbl_1_bss_41C[modelIndex].targetRotation.x = 5.0f * -rotationA;
+            lbl_1_bss_41C[modelIndex].targetRotation.z = 5.0f * -rotationB;
             lbl_1_bss_41C[modelIndex].rotation.x += (lbl_1_bss_41C[modelIndex].targetRotation.x -
                                                      lbl_1_bss_41C[modelIndex].rotation.x) /
-                                                    (40.0f);
+                                                    40.0f;
             lbl_1_bss_41C[modelIndex].rotation.z += (lbl_1_bss_41C[modelIndex].targetRotation.z -
                                                      lbl_1_bss_41C[modelIndex].rotation.z) /
-                                                    (40.0f);
+                                                    40.0f;
         }
 
-        motionRate = (120.0f);
+        motionRate = 120.0f;
         if (lbl_1_bss_41C[modelIndex].yawIncreasing != 0) {
-            lbl_1_bss_41C[modelIndex].yawPhase += (180.0f) / motionRate;
-            if (lbl_1_bss_41C[modelIndex].yawPhase >= (180.0f)) {
-                lbl_1_bss_41C[modelIndex].yawPhase = (180.0f);
+            lbl_1_bss_41C[modelIndex].yawPhase += 180.0f / motionRate;
+            if (lbl_1_bss_41C[modelIndex].yawPhase >= 180.0f) {
+                lbl_1_bss_41C[modelIndex].yawPhase = 180.0f;
                 lbl_1_bss_41C[modelIndex].yawIncreasing = 0;
             }
-            phaseRange = (15.0f);
+            phaseRange = 15.0f;
         } else {
-            lbl_1_bss_41C[modelIndex].yawPhase -= (180.0f) / motionRate;
-            if (lbl_1_bss_41C[modelIndex].yawPhase <= (-180.0f)) {
-                lbl_1_bss_41C[modelIndex].yawPhase = (-180.0f);
+            lbl_1_bss_41C[modelIndex].yawPhase -= 180.0f / motionRate;
+            if (lbl_1_bss_41C[modelIndex].yawPhase <= -180.0f) {
+                lbl_1_bss_41C[modelIndex].yawPhase = -180.0f;
                 lbl_1_bss_41C[modelIndex].yawIncreasing = 1;
             }
-            phaseRange = (-15.0f);
+            phaseRange = -15.0f;
         }
         lbl_1_bss_41C[modelIndex].rotation.y +=
             (phaseRange / motionRate) *
-            sin((lbl_1_bss_41C[modelIndex].yawPhase * (3.141592653589793)) / (180.0));
+            sin((lbl_1_bss_41C[modelIndex].yawPhase * 3.141592653589793) / 180.0);
         fn_80026838(lbl_1_bss_41C[modelIndex].modelId[0], &lbl_1_bss_41C[modelIndex].rotation);
         fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].rotation);
     }
 
-    fn_80026808(lbl_1_bss_418, (0.0f), lbl_1_bss_41C[0].rotation.y,
-                    (0.0f));
+    fn_80026808(lbl_1_bss_418, 0.0f, lbl_1_bss_41C[0].rotation.y,
+                    0.0f);
 }
 
 /* Moves the raft models through their repeating vertical bob during gameplay and the results
@@ -2070,33 +2053,33 @@ void fn_1_640C(void) {
 
     for (modelIndex = 0; modelIndex < 1; modelIndex++) {
         if (lbl_1_bss_3F8 > 0) {
-            frameScale = (20.0f);
+            frameScale = 20.0f;
         } else {
-            frameScale = (40.0f);
+            frameScale = 40.0f;
         }
         if (lbl_1_bss_41C[modelIndex].heightIncreasing != 0) {
-            lbl_1_bss_41C[modelIndex].heightPhase += (90.0f) / frameScale;
-            if (lbl_1_bss_41C[modelIndex].heightPhase >= (90.0f)) {
-                lbl_1_bss_41C[modelIndex].heightPhase = (90.0f);
+            lbl_1_bss_41C[modelIndex].heightPhase += 90.0f / frameScale;
+            if (lbl_1_bss_41C[modelIndex].heightPhase >= 90.0f) {
+                lbl_1_bss_41C[modelIndex].heightPhase = 90.0f;
                 lbl_1_bss_41C[modelIndex].heightIncreasing = 0;
             }
         } else {
-            lbl_1_bss_41C[modelIndex].heightPhase -= (90.0f) / frameScale;
-            if (lbl_1_bss_41C[modelIndex].heightPhase <= (-90.0f)) {
-                lbl_1_bss_41C[modelIndex].heightPhase = (-90.0f);
+            lbl_1_bss_41C[modelIndex].heightPhase -= 90.0f / frameScale;
+            if (lbl_1_bss_41C[modelIndex].heightPhase <= -90.0f) {
+                lbl_1_bss_41C[modelIndex].heightPhase = -90.0f;
                 lbl_1_bss_41C[modelIndex].heightIncreasing = 1;
             }
         }
         if (lbl_1_bss_3F8 > 0) {
             lbl_1_bss_41C[modelIndex].position.y +=
-                (0.800000011920929) *
-                sin(((3.141592653589793) * lbl_1_bss_41C[modelIndex].heightPhase) /
-                    (180.0));
+                0.8f *
+                sin((3.141592653589793 * lbl_1_bss_41C[modelIndex].heightPhase) /
+                    180.0);
         } else {
             lbl_1_bss_41C[modelIndex].position.y +=
-                (0.4000000059604645) *
-                sin(((3.141592653589793) * lbl_1_bss_41C[modelIndex].heightPhase) /
-                    (180.0));
+                0.4f *
+                sin((3.141592653589793 * lbl_1_bss_41C[modelIndex].heightPhase) /
+                    180.0);
         }
         fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0],
                          &lbl_1_bss_41C[modelIndex].position);
@@ -2130,11 +2113,11 @@ void fn_1_6704(void)
             fn_80008DD0(modelAssetNumber + 0x7b0000, 0x10000000, 3));
         fn_80026B64(lbl_1_bss_69E[modelIndex], 1);
         fn_80026790(lbl_1_bss_69E[modelIndex], &lbl_1_bss_40C);
-        fn_800268B0(lbl_1_bss_69E[modelIndex], (10.0f),
-                          (10.0f), (10.0f));
-        fn_800269E8(lbl_1_bss_69E[modelIndex], 1);
+        fn_800268B0(lbl_1_bss_69E[modelIndex], 10.0f,
+                          10.0f, 10.0f);
+        fn_800269E8(lbl_1_bss_69E[modelIndex], (1 << 0));
         if (modelIndex == 1) {
-            fn_8002D86C(lbl_1_bss_69E[1], (0.0f));
+            fn_8002D86C(lbl_1_bss_69E[1], 0.0f);
             fn_80030644(lbl_1_bss_69E[1]);
         }
 
@@ -2143,10 +2126,10 @@ void fn_1_6704(void)
                 fn_80008DD0(DATANUM(0x7b0000, 33) + modelIndex, 0x10000000, 3));
             fn_80026B64(lbl_1_bss_674[modelIndex][motionIndex], 1);
             fn_80026790(lbl_1_bss_674[modelIndex][motionIndex], &lbl_1_bss_40C);
-            fn_8002D86C(lbl_1_bss_674[modelIndex][motionIndex], (0.0f));
+            fn_8002D86C(lbl_1_bss_674[modelIndex][motionIndex], 0.0f);
             fn_80030644(lbl_1_bss_674[modelIndex][motionIndex]);
-            fn_800268B0(lbl_1_bss_674[modelIndex][motionIndex], (10.0f),
-                              (10.0f), (10.0f));
+            fn_800268B0(lbl_1_bss_674[modelIndex][motionIndex], 10.0f,
+                              10.0f, 10.0f);
         }
     }
 
@@ -2165,9 +2148,9 @@ void fn_1_6704(void)
         fn_80026790(lbl_1_bss_46C[modelIndex], &lbl_1_bss_578[0][modelIndex]);
         fn_80026838(lbl_1_bss_46C[modelIndex], &lbl_1_bss_47C[0][modelIndex]);
         fn_800269E8(lbl_1_bss_46C[modelIndex], ((1 << 30) | (1 << 0)));
-        fn_800268B0(lbl_1_bss_46C[modelIndex], (8.5f),
-                          (8.5f), (8.5f));
-        fn_800269E8(lbl_1_bss_46C[modelIndex], 1);
+        fn_800268B0(lbl_1_bss_46C[modelIndex], 8.5f,
+                          8.5f, 8.5f);
+        fn_800269E8(lbl_1_bss_46C[modelIndex], (1 << 0));
         fn_80026B8C(lbl_1_bss_46C[modelIndex], 5);
         if (modelIndex >= 5) {
             if (lbl_1_bss_8E4 == 0) {
@@ -2178,7 +2161,7 @@ void fn_1_6704(void)
             lbl_1_bss_468[modelIndex - 5] = fn_80030458(
                 lbl_1_bss_46C[modelIndex],
                 fn_80008DD0(motionAssetNumber + 0x7b0000, 0x10000000, 2));
-            fn_8002D86C(lbl_1_bss_46C[modelIndex], (0.0f));
+            fn_8002D86C(lbl_1_bss_46C[modelIndex], 0.0f);
         }
     }
 
@@ -2204,7 +2187,7 @@ void fn_1_6704(void)
         }
         Hu3DModelObjPosGet(lbl_1_bss_46C[objectIndex], objectName, &position);
         fn_80026790(lbl_1_bss_458[modelIndex], &position);
-        fn_800269E8(lbl_1_bss_458[modelIndex], 1);
+        fn_800269E8(lbl_1_bss_458[modelIndex], (1 << 0));
         /* Each model overwrites the shared pair; later changes for models 1 and 2 reuse the final
          * pair loaded for model 2. */
         lbl_1_bss_454[0] = fn_80030458(
@@ -2256,38 +2239,38 @@ void fn_1_6D7C(void)
             jointName = alternateJointName;
         }
         fn_80023398(lbl_1_bss_674[lbl_1_bss_464][index], jointName, matrix);
-        Hu3DMtxTransGet(matrix, &((Point3d (*)[7])lbl_1_bss_578)[lbl_1_bss_464][index]);
-        Hu3DMtxRotGet(matrix, &((Point3d (*)[7])lbl_1_bss_47C)[lbl_1_bss_464][index]);
+        Hu3DMtxTransGet(matrix, &lbl_1_bss_578[lbl_1_bss_464][index]);
+        Hu3DMtxRotGet(matrix, &lbl_1_bss_47C[lbl_1_bss_464][index]);
         fn_80026790(lbl_1_bss_46C[index],
-                         &((Point3d(*)[7]) lbl_1_bss_578)[lbl_1_bss_464][index]);
+                         &lbl_1_bss_578[lbl_1_bss_464][index]);
         fn_80026838(lbl_1_bss_46C[index],
-                         &((Point3d(*)[7]) lbl_1_bss_47C)[lbl_1_bss_464][index]);
+                         &lbl_1_bss_47C[lbl_1_bss_464][index]);
         /* During group 0's speed ramps, each of the seven parts changes the shared rate;
          * later parts can receive different speeds within the same update. */
         if (lbl_1_bss_464 == 0) {
             if (lbl_1_bss_8C0 >= 2958) {
-                lbl_1_bss_460 = (0.0010000000474974513f) + lbl_1_bss_460;
-                if (lbl_1_bss_460 > (0.20000000298023224f)) lbl_1_bss_460 = (0.20000000298023224f);
+                lbl_1_bss_460 = 0.001f + lbl_1_bss_460;
+                if (lbl_1_bss_460 > 0.2f) lbl_1_bss_460 = 0.2f;
                 fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][index], lbl_1_bss_460);
             } else if (lbl_1_bss_8C0 >= 2858) {
-                lbl_1_bss_460 -= (0.0010000000474974513f);
-                if (lbl_1_bss_460 < (0.11999999731779099f)) lbl_1_bss_460 = (0.11999999731779099f);
+                lbl_1_bss_460 -= 0.001f;
+                if (lbl_1_bss_460 < 0.12f) lbl_1_bss_460 = 0.12f;
                 fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][index], lbl_1_bss_460);
             } else {
-                lbl_1_bss_460 = (0.20000000298023224f);
+                lbl_1_bss_460 = 0.2f;
             }
         } else {
             if (lbl_1_bss_464 == 1) {
-                motionSpeed = (0.5f);
+                motionSpeed = 0.5f;
             } else {
-                motionSpeed = (0.11999999731779099f);
+                motionSpeed = 0.12f;
             }
             lbl_1_bss_460 = motionSpeed;
         }
     }
-    if (lbl_1_bss_8C0 == 3338) fn_8002D86C(lbl_1_bss_69E[1], (1.0f));
-    if (lbl_1_bss_8C0 == 3353) fn_8002D86C(lbl_1_bss_69E[1], (0.0f));
-    if (lbl_1_bss_8C0 == 3618) fn_8002D86C(lbl_1_bss_69E[1], (1.0f));
+    if (lbl_1_bss_8C0 == 3338) fn_8002D86C(lbl_1_bss_69E[1], 1.0f);
+    if (lbl_1_bss_8C0 == 3353) fn_8002D86C(lbl_1_bss_69E[1], 0.0f);
+    if (lbl_1_bss_8C0 == 3618) fn_8002D86C(lbl_1_bss_69E[1], 1.0f);
     if (lbl_1_bss_8C0 == 3618) HuAudFXPlay(MSM_SE_M664_LATE_SCENE_CUE);
     if (lbl_1_bss_8C0 == 3633) HuAudFXPlay(MSM_SE_M664_LATE_SCENE_TRANSITION);
     switch (lbl_1_bss_8C0) {
@@ -2330,62 +2313,62 @@ void fn_1_6D7C(void)
         { Point3d origin = {0.0f, 0.0f, 0.0f}; source = &origin; target = *source; }
         PSVECSubtract(&target, &position, &delta);
         /* the direction in degrees, wrapped into (-180, 180] */
-        angle = (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793)) > (180.0)
-                    ? (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793)) - (360.0)
-                    : (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793)) <= (-180.0)
-                          ? (360.0) + (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793))
-                          : (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793));
-        fn_80026808(lbl_1_bss_46C[index + 5], (0.0f), angle, (0.0f));
+        angle = 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793) > 180.0
+                    ? 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793) - 360.0
+                    : 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793) <= -180.0
+                          ? 360.0 + 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793)
+                          : 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793);
+        fn_80026808(lbl_1_bss_46C[index + 5], 0.0f, angle, 0.0f);
     }
     switch (lbl_1_bss_8C0) {
     case M664_SCENE_FRAME_2828:
-        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        fn_8002D86C(lbl_1_bss_458[1], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
+        fn_8002D86C(lbl_1_bss_458[1], 2.0f); break;
     case M664_SCENE_FRAME_2853:
-        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
     case M664_SCENE_FRAME_2978:
-        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        fn_8002D86C(lbl_1_bss_458[2], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
+        fn_8002D86C(lbl_1_bss_458[2], 2.0f); break;
     case M664_SCENE_FRAME_3003:
-        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[2], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[2], 1.0f); break;
     case M664_SCENE_FRAME_3648:
-        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        fn_8002D86C(lbl_1_bss_458[1], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
+        fn_8002D86C(lbl_1_bss_458[1], 2.0f); break;
     case M664_SCENE_FRAME_3673:
-        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
     case M664_SCENE_FRAME_3653:
-        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        fn_8002D86C(lbl_1_bss_458[2], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
+        fn_8002D86C(lbl_1_bss_458[2], 2.0f); break;
     case M664_SCENE_FRAME_3678:
-        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[2], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[2], 1.0f); break;
     case M664_SCENE_FRAME_4378:
-        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        fn_8002D86C(lbl_1_bss_458[1], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
+        fn_8002D86C(lbl_1_bss_458[1], 2.0f); break;
     case M664_SCENE_FRAME_4403:
-        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
     case M664_SCENE_FRAME_4508:
-        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        fn_8002D86C(lbl_1_bss_458[2], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
+        fn_8002D86C(lbl_1_bss_458[2], 2.0f); break;
     case M664_SCENE_FRAME_4533:
         /* This event changes model 2's motion but resets model 1's playback speed. */
-        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
     }
     /* Reuse the last side's heading, turned by 90 degrees, for both side companions. */
-    angle += (90.0f);
+    angle += 90.0f;
     for (index = 0; index < 3; index++) {
         Hu3DModelObjPosGet(lbl_1_bss_46C[index == 0 ? 0 : index == 1 ? 5 : 6],
                            index == 0 ? "he0" : "he1", &finalPosition);
         fn_80026790(lbl_1_bss_458[index], &finalPosition);
         if (index == 0)
-            fn_80026808(lbl_1_bss_458[index], (0.0f),
-                            (90.0f) + ((Point3d(*)[7]) lbl_1_bss_47C)[lbl_1_bss_464][0].y, (0.0f));
-        else fn_80026808(lbl_1_bss_458[index], (0.0f), angle, (0.0f));
+            fn_80026808(lbl_1_bss_458[index], 0.0f,
+                        90.0f + lbl_1_bss_47C[lbl_1_bss_464][0].y, 0.0f);
+        else fn_80026808(lbl_1_bss_458[index], 0.0f, angle, 0.0f);
     }
 }
 
@@ -2399,28 +2382,28 @@ void fn_1_7E24(void) {
                 fn_80008DD0(DATANUM(0x7b0000, 55), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_248[sideIndex][modelIndex].modelId, 1);
             fn_80026E44(lbl_1_bss_248[sideIndex][modelIndex].modelId);
-            fn_80026760(lbl_1_bss_248[sideIndex][modelIndex].modelId, (0.0f), (0.0f),
-                            (0.0f));
-            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].modelId, (8.0f), (8.0f),
-                              (8.0f));
-            fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].modelId, 1);
+            fn_80026760(lbl_1_bss_248[sideIndex][modelIndex].modelId, 0.0f, 0.0f,
+                            0.0f);
+            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].modelId, 8.0f, 8.0f,
+                              8.0f);
+            fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].modelId, (1 << 0));
             lbl_1_bss_248[sideIndex][modelIndex].state38 = 0;
             lbl_1_bss_248[sideIndex][modelIndex].state40 = 0;
             lbl_1_bss_248[sideIndex][modelIndex].destinationX = (u32) frandmod(400);
             if (frandmod(2) != 0U) {
-                lbl_1_bss_248[sideIndex][modelIndex].destinationX *= (-1.0f);
+                lbl_1_bss_248[sideIndex][modelIndex].destinationX *= -1.0f;
             }
-            lbl_1_bss_248[sideIndex][modelIndex].destinationY = (250.0f);
+            lbl_1_bss_248[sideIndex][modelIndex].destinationY = 250.0f;
             lbl_1_bss_248[sideIndex][modelIndex].destinationZ = (u32) frandmod(400);
             if (frandmod(2) != 0U) {
-                lbl_1_bss_248[sideIndex][modelIndex].destinationZ *= (-1.0f);
+                lbl_1_bss_248[sideIndex][modelIndex].destinationZ *= -1.0f;
             }
             lbl_1_bss_248[sideIndex][modelIndex].effectModelId = fn_80025A04(
                 fn_80008DD0(DATANUM(0x7b0000, 68), 0x10000000, 3));
             fn_80026B64(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 1);
-            fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 1);
-            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, (3.5f),
-                              (3.5f), (3.5f));
+            fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, (1 << 0));
+            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 3.5f,
+                              3.5f, 3.5f);
             fn_80026B8C(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 5);
             lbl_1_bss_248[sideIndex][modelIndex].effectMotionId = fn_80030458(
                 lbl_1_bss_248[sideIndex][modelIndex].effectModelId,
@@ -2466,7 +2449,7 @@ void fn_1_8244(void) {
         lbl_1_bss_248[side][effectSet].motionFrame = 0;
         motionIndex = side == 0 ? 5 : 6;
         fn_8002C95C(lbl_1_bss_46C[motionIndex], lbl_1_bss_468[side]);
-        fn_8002D86C(lbl_1_bss_46C[motionIndex], (1.0f));
+        fn_8002D86C(lbl_1_bss_46C[motionIndex], 1.0f);
     }
 
     for (side = 0; side < 2; side++) {
@@ -2484,25 +2467,25 @@ void fn_1_8244(void) {
                 fn_1_B910(MSM_SE_M664_PROP_RELEASE, lbl_1_bss_46C[motionIndex], 1);
             }
             lbl_1_bss_248[side][effectSet].motionFrame++;
-            blend = (f32) lbl_1_bss_248[side][effectSet].motionFrame / (120.0f);
+            blend = (f32) lbl_1_bss_248[side][effectSet].motionFrame / 120.0f;
             lbl_1_bss_248[side][effectSet].position.x =
                 blend * lbl_1_bss_248[side][effectSet].destinationX +
-                ((1.0f) - blend) * lbl_1_bss_248[side][effectSet].startPosition.x;
+                (1.0f - blend) * lbl_1_bss_248[side][effectSet].startPosition.x;
             lbl_1_bss_248[side][effectSet].position.y =
                 (f32) ((f64) (blend * lbl_1_bss_248[side][effectSet].destinationY +
-                              ((1.0f) - blend) * lbl_1_bss_248[side][effectSet].startPosition.y) +
-                       (1200.0) * sin((3.141592653589793) * (f64) blend));
+                              (1.0f - blend) * lbl_1_bss_248[side][effectSet].startPosition.y) +
+                       1200.0 * sin(3.141592653589793 * (f64) blend));
             lbl_1_bss_248[side][effectSet].position.z =
                 blend * lbl_1_bss_248[side][effectSet].destinationZ +
-                ((1.0f) - blend) * lbl_1_bss_248[side][effectSet].startPosition.z;
+                (1.0f - blend) * lbl_1_bss_248[side][effectSet].startPosition.z;
             fn_80026790(lbl_1_bss_248[side][effectSet].modelId,
                              &lbl_1_bss_248[side][effectSet].position);
-            fn_80026A44(lbl_1_bss_248[side][effectSet].modelId, 1);
+            fn_80026A44(lbl_1_bss_248[side][effectSet].modelId, (1 << 0));
             if (lbl_1_bss_248[side][effectSet].position.y <
-                    lbl_1_bss_248[side][effectSet].destinationY - (10.0f) &&
+                    lbl_1_bss_248[side][effectSet].destinationY - 10.0f &&
                 lbl_1_bss_248[side][effectSet].state40 == 0) {
                 lbl_1_bss_248[side][effectSet].state40 =
-                    lbl_1_bss_248[side][effectSet].destinationY > (0.0f) ? 1 : -1;
+                    lbl_1_bss_248[side][effectSet].destinationY > 0.0f ? 1 : -1;
                 if (lbl_1_bss_248[side][effectSet].state40 == 1) {
                     fn_1_B910(MSM_SE_M664_PROP_LANDING,
                               lbl_1_bss_248[side][effectSet].modelId, 1);
@@ -2514,9 +2497,9 @@ void fn_1_8244(void) {
             if (lbl_1_bss_248[side][effectSet].state40 != 0) {
                 effectPosition = lbl_1_bss_248[side][effectSet].position;
                 fn_80026790(lbl_1_bss_248[side][effectSet].effectModelId, &effectPosition);
-                fn_80026808(lbl_1_bss_248[side][effectSet].effectModelId, (0.0f),
-                                (f32) (u32) frandmod(360), (0.0f));
-                fn_80026A44(lbl_1_bss_248[side][effectSet].effectModelId, 1);
+                fn_80026808(lbl_1_bss_248[side][effectSet].effectModelId, 0.0f,
+                                (f32) (u32) frandmod(360), 0.0f);
+                fn_80026A44(lbl_1_bss_248[side][effectSet].effectModelId, (1 << 0));
                 fn_8002C95C(lbl_1_bss_248[side][effectSet].effectModelId,
                               lbl_1_bss_248[side][effectSet].effectMotionId);
                 if (lbl_1_bss_248[side][effectSet].state40 == 1) {
@@ -2539,7 +2522,7 @@ void fn_1_8244(void) {
                     }
                     lbl_1_bss_248[side][effectSet].state38 = 3;
                 } else if (lbl_1_bss_248[side][effectSet].state40 == -1) {
-                    fn_800269E8(lbl_1_bss_248[side][effectSet].modelId, 1);
+                    fn_800269E8(lbl_1_bss_248[side][effectSet].modelId, (1 << 0));
                     fn_80026EF0(lbl_1_bss_248[side][effectSet].modelId);
                     lbl_1_bss_248[side][effectSet].state38 = 4;
                 } else {
@@ -2549,19 +2532,19 @@ void fn_1_8244(void) {
             }
         } else if (lbl_1_bss_248[side][effectSet].state38 == 3) {
             if (lbl_1_bss_248[side][effectSet].state40 % 2 != 0) {
-                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, (10.0f), (10.0f),
-                                  (10.0f));
+                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, 10.0f, 10.0f,
+                                  10.0f);
             } else {
-                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, (8.0f), (8.0f), (8.0f));
+                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, 8.0f, 8.0f, 8.0f);
             }
             if (++lbl_1_bss_248[side][effectSet].state40 == 5) {
-                fn_800269E8(lbl_1_bss_248[side][effectSet].modelId, 1);
+                fn_800269E8(lbl_1_bss_248[side][effectSet].modelId, (1 << 0));
                 fn_80026EF0(lbl_1_bss_248[side][effectSet].modelId);
                 lbl_1_bss_248[side][effectSet].state38 = 4;
             }
         }
-        if ((79.0f) == fn_8002D4E0(lbl_1_bss_46C[motionIndex])) {
-            fn_8002D86C(lbl_1_bss_46C[motionIndex], (0.0f));
+        if (79.0f == fn_8002D4E0(lbl_1_bss_46C[motionIndex])) {
+            fn_8002D86C(lbl_1_bss_46C[motionIndex], 0.0f);
         }
     }
 }
@@ -2582,8 +2565,8 @@ void fn_1_8E44(void) {
         fn_80008DD0(DATANUM(0x7b0000, 62), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_84E, 1);
     fn_80026790(lbl_1_bss_84E, &lbl_1_bss_40C);
-    fn_800268B0(lbl_1_bss_84E, (10.0f),
-                      (10.0f), (10.0f));
+    fn_800268B0(lbl_1_bss_84E, 10.0f,
+                      10.0f, 10.0f);
 
     for (boardIndex = 0; boardIndex < 5; boardIndex++) {
         if (lbl_1_bss_8E4 == 0) {
@@ -2606,10 +2589,10 @@ void fn_1_8E44(void) {
         fn_80026838(lbl_1_bss_844[boardIndex], &objectRotation);
         fn_800269E8(lbl_1_bss_844[boardIndex], ((1 << 30) | (1 << 0)));
         fn_80030644(lbl_1_bss_844[boardIndex]);
-        fn_8002D86C(lbl_1_bss_844[boardIndex], (0.0f));
-        fn_800268B0(lbl_1_bss_844[boardIndex], (10.0f),
-                          (10.0f), (10.0f));
-        fn_800269E8(lbl_1_bss_844[boardIndex], 1);
+        fn_8002D86C(lbl_1_bss_844[boardIndex], 0.0f);
+        fn_800268B0(lbl_1_bss_844[boardIndex], 10.0f,
+                          10.0f, 10.0f);
+        fn_800269E8(lbl_1_bss_844[boardIndex], (1 << 0));
 
         for (objectIndex = 0; objectIndex < 4; objectIndex++) {
             lbl_1_bss_81C[boardIndex][objectIndex] = fn_80025A04(
@@ -2623,33 +2606,33 @@ void fn_1_8E44(void) {
             fn_80026790(lbl_1_bss_81C[boardIndex][objectIndex],
                              &objectPosition);
             fn_800268B0(lbl_1_bss_81C[boardIndex][objectIndex],
-                              (2.0f), (2.0f),
-                              (2.0f));
-            fn_800269E8(lbl_1_bss_81C[boardIndex][objectIndex], 1);
+                              2.0f, 2.0f,
+                              2.0f);
+            fn_800269E8(lbl_1_bss_81C[boardIndex][objectIndex], (1 << 0));
             fn_80026E44(lbl_1_bss_81C[boardIndex][objectIndex]);
             lbl_1_bss_744[boardIndex][objectIndex] = frandmod(2);
             lbl_1_bss_744[boardIndex][objectIndex] *= frandmod(50);
-            lbl_1_bss_6A4[boardIndex][objectIndex] = (0.0f);
+            lbl_1_bss_6A4[boardIndex][objectIndex] = 0.0f;
             lbl_1_bss_6F4[boardIndex][objectIndex] = 0;
             lbl_1_bss_7CC[boardIndex][objectIndex][0] = fn_80025A04(
                 fn_80008DD0(DATANUM(0x7b0000, 61), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_7CC[boardIndex][objectIndex][0], 1);
-            fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][0], 1);
+            fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][0], (1 << 0));
             fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][0],
-                               (0.0f));
+                               0.0f);
             fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][0],
-                              (2.0f), (2.0f),
-                              (2.0f));
+                              2.0f, 2.0f,
+                              2.0f);
             fn_80026B8C(lbl_1_bss_7CC[boardIndex][objectIndex][0], 5);
             lbl_1_bss_7CC[boardIndex][objectIndex][1] = fn_80025A04(
                 fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_7CC[boardIndex][objectIndex][1], 1);
-            fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][1], 1);
+            fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][1], (1 << 0));
             fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][1],
-                               (0.0f));
+                               0.0f);
             fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][1],
-                              (2.0f), (2.0f),
-                              (2.0f));
+                              2.0f, 2.0f,
+                              2.0f);
             fn_80026B8C(lbl_1_bss_7CC[boardIndex][objectIndex][1], 5);
         }
 
@@ -2667,15 +2650,15 @@ void fn_1_8E44(void) {
     Hu3DMtxRotGet(objectMatrix, &objectRotation);
     fn_80026790(lbl_1_bss_7CA, &objectPosition);
     fn_80026838(lbl_1_bss_7CA, &objectRotation);
-    fn_800268B0(lbl_1_bss_7CA, (1.5f),
-                      (1.5f), (1.5f));
-    fn_800269E8(lbl_1_bss_7CA, 1);
+    fn_800268B0(lbl_1_bss_7CA, 1.5f,
+                      1.5f, 1.5f);
+    fn_800269E8(lbl_1_bss_7CA, (1 << 0));
     jointMotionId = fn_80030458(
         lbl_1_bss_7CA,
         fn_80008DD0(DATANUM(0x7b0000, 64), 0x10000000, 2));
     fn_8002C95C(lbl_1_bss_7CA, jointMotionId);
     fn_800269E8(lbl_1_bss_7CA, ((1 << 30) | (1 << 0)));
-    fn_8002D86C(lbl_1_bss_7CA, (0.0f));
+    fn_8002D86C(lbl_1_bss_7CA, 0.0f);
 }
 
 /* Called by fn_1_4060 each active frame to update hook and nut motion, collisions, and effects. */
@@ -2690,10 +2673,10 @@ void fn_1_9704(void) {
 
     if (lbl_1_bss_8C0 == 0) {
         for (boardIndex = 0; boardIndex < 5; boardIndex++) {
-            fn_8002D86C(lbl_1_bss_844[boardIndex], (1.0f));
+            fn_8002D86C(lbl_1_bss_844[boardIndex], 1.0f);
         }
-        fn_8002D86C(lbl_1_bss_7CA, (1.0f));
-        lbl_1_bss_794 = (0.0f);
+        fn_8002D86C(lbl_1_bss_7CA, 1.0f);
+        lbl_1_bss_794 = 0.0f;
     }
 
     for (pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
@@ -2701,7 +2684,7 @@ void fn_1_9704(void) {
             eventFrame = lbl_1_bss_744[0][pieceIndex] + 1650;
             if (lbl_1_bss_8C0 >= eventFrame) {
                 lbl_1_bss_6A4[0][pieceIndex] +=
-                    (0.20000000298023224f) * (f32) (lbl_1_bss_8C0 - eventFrame);
+                    0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
                 fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[0][pieceIndex], 1);
@@ -2711,7 +2694,7 @@ void fn_1_9704(void) {
             eventFrame = lbl_1_bss_744[1][pieceIndex] + 1780;
             if (lbl_1_bss_8C0 >= eventFrame) {
                 lbl_1_bss_6A4[1][pieceIndex] +=
-                    (0.20000000298023224f) * (f32) (lbl_1_bss_8C0 - eventFrame);
+                    0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
                 fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[1][pieceIndex], 1);
@@ -2721,7 +2704,7 @@ void fn_1_9704(void) {
             eventFrame = lbl_1_bss_744[2][pieceIndex] + 1860;
             if (lbl_1_bss_8C0 >= eventFrame) {
                 lbl_1_bss_6A4[2][pieceIndex] +=
-                    (0.20000000298023224f) * (f32) (lbl_1_bss_8C0 - eventFrame);
+                    0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
                 fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[2][pieceIndex], 1);
@@ -2731,7 +2714,7 @@ void fn_1_9704(void) {
             eventFrame = lbl_1_bss_744[3][pieceIndex] + 2020;
             if (lbl_1_bss_8C0 >= eventFrame) {
                 lbl_1_bss_6A4[3][pieceIndex] +=
-                    (0.20000000298023224f) * (f32) (lbl_1_bss_8C0 - eventFrame);
+                    0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
                 fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[3][pieceIndex], 1);
@@ -2741,7 +2724,7 @@ void fn_1_9704(void) {
             eventFrame = lbl_1_bss_744[4][pieceIndex] + 2115;
             if (lbl_1_bss_8C0 >= eventFrame) {
                 lbl_1_bss_6A4[4][pieceIndex] +=
-                    (0.20000000298023224f) * (f32) (lbl_1_bss_8C0 - eventFrame);
+                    0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
                 fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[4][pieceIndex], 1);
@@ -2776,41 +2759,41 @@ void fn_1_9704(void) {
                 s32 hitPolygon;
                 collisionStart = objectPosition;
                 collisionEnd = objectPosition;
-                collisionEnd.y -= (44.0f);
-                if (collisionEnd.y > (50.0f) &&
+                collisionEnd.y -= 44.0f;
+                if (collisionEnd.y > 50.0f &&
                     fn_80086910(&collisionStart, &collisionEnd,
                                          -1U, (MGACTOR_COLMAP_POLY *)&hitPolygon) != 0) {
                     lbl_1_bss_6F4[boardIndex][pieceIndex] = 1;
                     fn_1_B910(MSM_SE_M664_NUT_IMPACT,
                               lbl_1_bss_81C[boardIndex][pieceIndex], 1);
                 }
-                if (objectPosition.y < (0.0f)) {
+                if (objectPosition.y < 0.0f) {
                     lbl_1_bss_6F4[boardIndex][pieceIndex] = -1;
                     fn_1_B910(MSM_SE_M664_PROP_MISS,
                               lbl_1_bss_81C[boardIndex][pieceIndex], 1);
                 }
             }
             if (lbl_1_bss_6F4[boardIndex][pieceIndex] == 1) {
-                fn_8002D86C(lbl_1_bss_7CC[boardIndex][pieceIndex][0], (1.0f));
-                fn_800269E8(lbl_1_bss_81C[boardIndex][pieceIndex], 1);
-                fn_80026A44(lbl_1_bss_7CC[boardIndex][pieceIndex][0], 1);
+                fn_8002D86C(lbl_1_bss_7CC[boardIndex][pieceIndex][0], 1.0f);
+                fn_800269E8(lbl_1_bss_81C[boardIndex][pieceIndex], (1 << 0));
+                fn_80026A44(lbl_1_bss_7CC[boardIndex][pieceIndex][0], (1 << 0));
                 fn_80026790(lbl_1_bss_7CC[boardIndex][pieceIndex][0], &objectPosition);
                 lbl_1_bss_6F4[boardIndex][pieceIndex] = 2;
                 fn_80026EF0(lbl_1_bss_81C[boardIndex][pieceIndex]);
             } else if (lbl_1_bss_6F4[boardIndex][pieceIndex] == 2 &&
                        fn_8002D75C(lbl_1_bss_7CC[boardIndex][pieceIndex][0]) != 0) {
-                fn_800269E8(lbl_1_bss_7CC[boardIndex][pieceIndex][0], 1);
+                fn_800269E8(lbl_1_bss_7CC[boardIndex][pieceIndex][0], (1 << 0));
             }
             if (lbl_1_bss_6F4[boardIndex][pieceIndex] == -1) {
-                fn_8002D86C(lbl_1_bss_7CC[boardIndex][pieceIndex][1], (1.0f));
-                fn_80026A44(lbl_1_bss_7CC[boardIndex][pieceIndex][1], 1);
+                fn_8002D86C(lbl_1_bss_7CC[boardIndex][pieceIndex][1], 1.0f);
+                fn_80026A44(lbl_1_bss_7CC[boardIndex][pieceIndex][1], (1 << 0));
                 fn_80026790(lbl_1_bss_7CC[boardIndex][pieceIndex][1], &objectPosition);
                 lbl_1_bss_6F4[boardIndex][pieceIndex] = -2;
                 fn_80026EF0(lbl_1_bss_81C[boardIndex][pieceIndex]);
             } else if (lbl_1_bss_6F4[boardIndex][pieceIndex] == -2 &&
                        fn_8002D75C(lbl_1_bss_7CC[boardIndex][pieceIndex][1]) != 0) {
-                fn_800269E8(lbl_1_bss_7CC[boardIndex][pieceIndex][1], 1);
-                fn_800269E8(lbl_1_bss_81C[boardIndex][pieceIndex], 1);
+                fn_800269E8(lbl_1_bss_7CC[boardIndex][pieceIndex][1], (1 << 0));
+                fn_800269E8(lbl_1_bss_81C[boardIndex][pieceIndex], (1 << 0));
             }
         }
     }
@@ -2823,11 +2806,11 @@ void fn_1_9704(void) {
     Hu3DMtxTransGet(objectMatrix, &objectPosition);
     eventFrame = (s32) fn_8002D4E0(lbl_1_bss_7CA);
     if (eventFrame >= 20 && eventFrame < 60) {
-        lbl_1_bss_794 += (4.5f);
+        lbl_1_bss_794 += 4.5f;
         objectPosition.y = (f32)((f64)objectPosition.y +
-            (150.0) * sin(((3.141592653589793) * (f64)lbl_1_bss_794) / (180.0)));
+            150.0 * sin((3.141592653589793 * (f64)lbl_1_bss_794) / 180.0));
     } else {
-        lbl_1_bss_794 = (0.0f);
+        lbl_1_bss_794 = 0.0f;
     }
     Hu3DMtxRotGet(objectMatrix, &objectRotation);
     fn_80026790(lbl_1_bss_7CA, &objectPosition);
@@ -2846,78 +2829,78 @@ void fn_1_A428(void) {
     switch (lbl_1_bss_8C0) {
     case M664_SCENE_FRAME_250:
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, 1);
-            fn_800269E8(lbl_1_bss_85C[playerIndex].objectModelId, 1);
+            fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, (1 << 0));
+            fn_800269E8(lbl_1_bss_85C[playerIndex].objectModelId, (1 << 0));
         }
-        fn_800269E8(lbl_1_bss_85A, 1);
+        fn_800269E8(lbl_1_bss_85A, (1 << 0));
         break;
     case M664_SCENE_FRAME_1000:
         for (playerIndex = 0; playerIndex < 16; playerIndex++) {
-            fn_800269E8(lbl_1_bss_874[playerIndex], 1);
+            fn_800269E8(lbl_1_bss_874[playerIndex], (1 << 0));
         }
-        fn_800269E8(lbl_1_bss_86C, 1);
+        fn_800269E8(lbl_1_bss_86C, (1 << 0));
         break;
     case M664_SCENE_FRAME_1350:
-        fn_80026A44(lbl_1_bss_8A0[1], 1);
-        fn_80026A44(lbl_1_bss_894[1], 1);
+        fn_80026A44(lbl_1_bss_8A0[1], (1 << 0));
+        fn_80026A44(lbl_1_bss_894[1], (1 << 0));
         break;
     case M664_SCENE_FRAME_1550:
-        fn_800269E8(lbl_1_bss_8A0[0], 1);
-        fn_800269E8(lbl_1_bss_894[0], 1);
-        fn_800269E8(lbl_1_bss_89C, 1);
-        fn_80026A44(lbl_1_bss_89E, 1);
+        fn_800269E8(lbl_1_bss_8A0[0], (1 << 0));
+        fn_800269E8(lbl_1_bss_894[0], (1 << 0));
+        fn_800269E8(lbl_1_bss_89C, (1 << 0));
+        fn_80026A44(lbl_1_bss_89E, (1 << 0));
         break;
     case M664_SCENE_FRAME_1700:
-        fn_80026A44(lbl_1_bss_7CA, 1);
+        fn_80026A44(lbl_1_bss_7CA, (1 << 0));
         for (playerIndex = 0; playerIndex < 5; playerIndex++) {
-            fn_80026A44(lbl_1_bss_844[playerIndex], 1);
+            fn_80026A44(lbl_1_bss_844[playerIndex], (1 << 0));
             for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-                fn_80026A44(lbl_1_bss_81C[playerIndex][modelIndex], 1);
+                fn_80026A44(lbl_1_bss_81C[playerIndex][modelIndex], (1 << 0));
             }
         }
         break;
     case M664_SCENE_FRAME_2000:
-        fn_80026A44(lbl_1_bss_8A0[2], 1);
-        fn_80026A44(lbl_1_bss_894[2], 1);
+        fn_80026A44(lbl_1_bss_8A0[2], (1 << 0));
+        fn_80026A44(lbl_1_bss_894[2], (1 << 0));
         break;
     case M664_SCENE_FRAME_2500:
-        fn_800269E8(lbl_1_bss_89E, 1);
+        fn_800269E8(lbl_1_bss_89E, (1 << 0));
         for (playerIndex = 0; playerIndex < 5; playerIndex++) {
-            fn_800269E8(lbl_1_bss_844[playerIndex], 1);
+            fn_800269E8(lbl_1_bss_844[playerIndex], (1 << 0));
             for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-                fn_800269E8(lbl_1_bss_81C[playerIndex][modelIndex], 1);
-                fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][0], 1);
-                fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][1], 1);
+                fn_800269E8(lbl_1_bss_81C[playerIndex][modelIndex], (1 << 0));
+                fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][0], (1 << 0));
+                fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][1], (1 << 0));
             }
         }
-        fn_800269E8(lbl_1_bss_7CA, 1);
-        fn_80026A44(lbl_1_bss_69E[0], 1);
+        fn_800269E8(lbl_1_bss_7CA, (1 << 0));
+        fn_80026A44(lbl_1_bss_69E[0], (1 << 0));
         for (playerIndex = 0; playerIndex < 7; playerIndex++) {
-            fn_80026A44(lbl_1_bss_46C[playerIndex], 1);
+            fn_80026A44(lbl_1_bss_46C[playerIndex], (1 << 0));
         }
         for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-            fn_80026A44(lbl_1_bss_458[playerIndex], 1);
+            fn_80026A44(lbl_1_bss_458[playerIndex], (1 << 0));
         }
         break;
     case M664_SCENE_FRAME_3200:
-        fn_80026A44(lbl_1_bss_69E[1], 1);
+        fn_80026A44(lbl_1_bss_69E[1], (1 << 0));
         break;
     case M664_SCENE_FRAME_3300:
-        fn_80026A44(lbl_1_bss_8A0[3], 1);
-        fn_80026A44(lbl_1_bss_894[3], 1);
+        fn_80026A44(lbl_1_bss_8A0[3], (1 << 0));
+        fn_80026A44(lbl_1_bss_894[3], (1 << 0));
         break;
     case M664_SCENE_FRAME_3730:
-        fn_800269E8(lbl_1_bss_8A0[1], 1);
-        fn_800269E8(lbl_1_bss_894[1], 1);
-        fn_80026A44(lbl_1_bss_69E[2], 1);
+        fn_800269E8(lbl_1_bss_8A0[1], (1 << 0));
+        fn_800269E8(lbl_1_bss_894[1], (1 << 0));
+        fn_80026A44(lbl_1_bss_69E[2], (1 << 0));
         break;
     case M664_SCENE_FRAME_4000:
-        fn_800269E8(lbl_1_bss_8A0[2], 1);
-        fn_800269E8(lbl_1_bss_894[2], 1);
-        fn_800269E8(lbl_1_bss_69E[0], 1);
+        fn_800269E8(lbl_1_bss_8A0[2], (1 << 0));
+        fn_800269E8(lbl_1_bss_894[2], (1 << 0));
+        fn_800269E8(lbl_1_bss_69E[0], (1 << 0));
         break;
     case M664_SCENE_FRAME_3950:
-        fn_800269E8(lbl_1_bss_69E[1], 1);
+        fn_800269E8(lbl_1_bss_69E[1], (1 << 0));
         break;
     }
 }
@@ -2929,50 +2912,51 @@ void fn_1_A8F0(void) {
     s32 modelIndex;
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        fn_800269E8(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
+        fn_800269E8(lbl_1_bss_C8[playerIndex].fallEffectModelId, (1 << 0));
     }
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        fn_800269E8(lbl_1_bss_8A0[playerIndex], 1);
-        fn_800269E8(lbl_1_bss_894[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_8A0[playerIndex], (1 << 0));
+        fn_800269E8(lbl_1_bss_894[playerIndex], (1 << 0));
     }
-    fn_800269E8(lbl_1_bss_89E, 1);
+    fn_800269E8(lbl_1_bss_89E, (1 << 0));
     for (playerIndex = 0; playerIndex < 16; playerIndex++) {
-        fn_800269E8(lbl_1_bss_874[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_874[playerIndex], (1 << 0));
     }
-    fn_800269E8(lbl_1_bss_89C, 1);
+    fn_800269E8(lbl_1_bss_89C, (1 << 0));
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
-        fn_800269E8(lbl_1_bss_870[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_870[playerIndex], (1 << 0));
     }
-    fn_800269E8(lbl_1_bss_86C, 1);
+    fn_800269E8(lbl_1_bss_86C, (1 << 0));
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, 1);
-        fn_800269E8(lbl_1_bss_85C[playerIndex].objectModelId, 1);
+        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, (1 << 0));
+        fn_800269E8(lbl_1_bss_85C[playerIndex].objectModelId, (1 << 0));
     }
-    fn_800269E8(lbl_1_bss_85A, 1);
+    fn_800269E8(lbl_1_bss_85A, (1 << 0));
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-        fn_800269E8(lbl_1_bss_69E[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_69E[playerIndex], (1 << 0));
     }
     for (playerIndex = 0; playerIndex < 7; playerIndex++) {
-        fn_800269E8(lbl_1_bss_46C[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_46C[playerIndex], (1 << 0));
     }
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-        fn_800269E8(lbl_1_bss_458[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_458[playerIndex], (1 << 0));
     }
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
         for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].modelId, 1);
-            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].effectModelId, 1);
+            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].modelId, (1 << 0));
+            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].effectModelId,
+                             (1 << 0));
         }
     }
     for (playerIndex = 0; playerIndex < 5; playerIndex++) {
-        fn_800269E8(lbl_1_bss_844[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_844[playerIndex], (1 << 0));
         for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-            fn_800269E8(lbl_1_bss_81C[playerIndex][modelIndex], 1);
-            fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][0], 1);
-            fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][1], 1);
+            fn_800269E8(lbl_1_bss_81C[playerIndex][modelIndex], (1 << 0));
+            fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][1], (1 << 0));
         }
     }
-    fn_800269E8(lbl_1_bss_7CA, 1);
+    fn_800269E8(lbl_1_bss_7CA, (1 << 0));
 }
 
 /* Called by fn_1_2E08 for an AI-controlled player; selects an opponent, steers toward them, and
@@ -2996,7 +2980,7 @@ void fn_1_AC58(s32 playerIndex) {
     }
     fn_1_B8FC(&lbl_1_bss_18[playerIndex], 0, 0, 0, 0);
     playerPosition = lbl_1_bss_C8[playerIndex].player->actor->pos;
-    playerPosition.y = (0.0f);
+    playerPosition.y = 0.0f;
     setActionDelay = skipPadUpdate = 0;
 
     if ((lbl_1_bss_C8[playerIndex].player->actor->colGroundAttr & 0x407F) != 0) {
@@ -3011,7 +2995,7 @@ void fn_1_AC58(s32 playerIndex) {
             return;
         }
 
-        opponentPosition.x = opponentPosition.y = opponentPosition.z = (0.0f);
+        opponentPosition.x = opponentPosition.y = opponentPosition.z = 0.0f;
         PSVECSubtract(&opponentPosition, &playerPosition, &direction);
         distance = PSVECMag(&direction);
         if (lbl_1_bss_18[playerIndex].sessionState[3] != 0) {
@@ -3050,15 +3034,15 @@ void fn_1_AC58(s32 playerIndex) {
         } else if (lbl_1_bss_18[playerIndex].sessionState[2] != -1) {
             opponentPosition =
                 lbl_1_bss_C8[lbl_1_bss_18[playerIndex].sessionState[2]].player->actor->pos;
-            opponentPosition.y = (0.0f);
+            opponentPosition.y = 0.0f;
             skipPadUpdate = 1;
             fn_8007E818(lbl_1_bss_C8[playerIndex].player);
 
-            chaseAmount = lbl_1_bss_18[playerIndex].difficulty == 3 ? (10.0f) :
-                          lbl_1_bss_18[playerIndex].difficulty == 2 ? (8.0f) :
-                          lbl_1_bss_18[playerIndex].difficulty == 1 ? (6.0f) : (5.0f);
+            chaseAmount = lbl_1_bss_18[playerIndex].difficulty == 3 ? 10.0f :
+                          lbl_1_bss_18[playerIndex].difficulty == 2 ? 8.0f :
+                          lbl_1_bss_18[playerIndex].difficulty == 1 ? 6.0f : 5.0f;
             if (fn_8007E8B4(lbl_1_bss_C8[playerIndex].player, &opponentPosition, chaseAmount,
-                                 (100.0f)) != 0) {
+                                 100.0f) != 0) {
                 fn_8007E888(lbl_1_bss_C8[playerIndex].player);
                 skipPadUpdate = 0;
                 if (lbl_1_bss_18[playerIndex].difficulty == 3) {
@@ -3074,7 +3058,7 @@ void fn_1_AC58(s32 playerIndex) {
                 }
                 opponentPosition =
                     lbl_1_bss_C8[lbl_1_bss_18[playerIndex].sessionState[2]].player->actor->pos;
-                opponentPosition.y = (0.0f);
+                opponentPosition.y = 0.0f;
                 PSVECSubtract(&opponentPosition, &playerPosition, &direction);
                 if (actionStyle == 1) {
                     fn_1_B8FC(&lbl_1_bss_18[playerIndex], (s32) direction.x, (s32) -direction.z,
@@ -3093,19 +3077,19 @@ void fn_1_AC58(s32 playerIndex) {
             lbl_1_bss_18[playerIndex].sessionState[0] = 0;
         }
     } else if (lbl_1_bss_18[playerIndex].sessionState[3] != 0) {
-        opponentPosition.x = opponentPosition.y = opponentPosition.z = (0.0f);
+        opponentPosition.x = opponentPosition.y = opponentPosition.z = 0.0f;
         PSVECSubtract(&opponentPosition, &playerPosition, &direction);
         PSVECNormalize(&direction, &direction);
-        PSVECScale(&direction, &direction, (50.0f));
+        PSVECScale(&direction, &direction, 50.0f);
         fn_1_B8FC(&lbl_1_bss_18[playerIndex], (s32) direction.x, (s32) -direction.z, 0,
                   PAD_BUTTON_A);
     } else if (lbl_1_bss_18[playerIndex].sessionState[2] != -1) {
         opponentPosition =
             lbl_1_bss_C8[lbl_1_bss_18[playerIndex].sessionState[2]].player->actor->pos;
-        opponentPosition.y = (0.0f);
+        opponentPosition.y = 0.0f;
         PSVECSubtract(&opponentPosition, &playerPosition, &direction);
         PSVECNormalize(&direction, &direction);
-        PSVECScale(&direction, &direction, (10.0f));
+        PSVECScale(&direction, &direction, 10.0f);
         if (++lbl_1_bss_18[playerIndex].sessionState[1] < 5) {
             fn_1_B8FC(&lbl_1_bss_18[playerIndex], (s32) direction.x, (s32) -direction.z, 0,
                       PAD_BUTTON_A);
@@ -3154,11 +3138,12 @@ void fn_1_AC58(s32 playerIndex) {
 }
 
 /* Called by fn_1_AC58 to store stick and button inputs for the next player pad update. */
-void fn_1_B8FC(void *inputSettings, s32 stickX, s32 stickY, s32 buttonsDown, s32 buttonsHeld) {
-    (*(s32 *)((s8 *)(inputSettings) + (M664_INPUT_STICK_X_OFFSET))) = stickX;
-    (*(s32 *)((s8 *)(inputSettings) + (M664_INPUT_STICK_Y_OFFSET))) = stickY;
-    (*(s32 *)((s8 *)(inputSettings) + (M664_INPUT_BUTTONS_DOWN_OFFSET))) = buttonsDown;
-    (*(s32 *)((s8 *)(inputSettings) + (M664_INPUT_BUTTONS_HELD_OFFSET))) = buttonsHeld;
+void fn_1_B8FC(M664InputSettings *inputSettings, s32 stickX, s32 stickY, s32 buttonsDown,
+               s32 buttonsHeld) {
+    inputSettings->sessionState[4] = stickX;
+    inputSettings->sessionState[5] = stickY;
+    inputSettings->sessionState[6] = buttonsDown;
+    inputSettings->sessionState[7] = buttonsHeld;
 }
 
 /* Plays or repans scene/player effects; offscreen exceptions clamp X and ignore Y.
@@ -3173,7 +3158,7 @@ s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask) {
     s32 panMinimum = M664_SOUND_PAN_MIN;
     s32 panMaximum = M664_SOUND_PAN_MAX;
 
-    panScale = (576.0f) / (f32)(panMaximum - panMinimum);
+    panScale = 576.0f / (f32)(panMaximum - panMinimum);
     modelPosition = lbl_802C01C8[modelId].pos;
     Hu3D3Dto2D(&modelPosition, cameraMask, &screenPosition);
 
@@ -3183,17 +3168,17 @@ s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask) {
         ((soundEffect & 0x7FFF) == MSM_SE_M664_SCENE_SOUND) ||
         ((soundEffect & 0x7FFF) == MSM_SE_M664_HOOK_IMPACT) ||
         ((soundEffect & 0x7FFF) == MSM_SE_M664_NUT_DROP)) {
-        if (screenPosition.x < (0.0f)) {
-            screenPosition.x = (0.0f);
+        if (screenPosition.x < 0.0f) {
+            screenPosition.x = 0.0f;
         }
-        if (screenPosition.x > (576.0)) {
-            screenPosition.x = (576.0f);
+        if (screenPosition.x > 576.0) {
+            screenPosition.x = 576.0f;
         }
     } else {
-        if ((screenPosition.x < (0.0f)) || (screenPosition.x > (576.0f))) {
+        if ((screenPosition.x < 0.0f) || (screenPosition.x > 576.0f)) {
             return -1;
         }
-        if ((screenPosition.y < (0.0f)) || (screenPosition.y > (480.0f))) {
+        if ((screenPosition.y < 0.0f) || (screenPosition.y > 480.0f)) {
             return -1;
         }
     }
@@ -3209,7 +3194,7 @@ s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask) {
         ((soundEffect & 0x7FFF) == MSM_SE_M664_NUT_IMPACT)) {
         panAmount = screenPosition.x;
     } else {
-        panAmount = (576.0f) - screenPosition.x;
+        panAmount = 576.0f - screenPosition.x;
     }
     pan = panMinimum + (s32)(panAmount / panScale);
 

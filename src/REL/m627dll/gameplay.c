@@ -33,7 +33,6 @@
 extern OMOBJMAN *lbl_1_bss_0;
 void *fn_1_A0(s32 priority, u32 bytes, OMOBJ_FUNC update);
 void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback);
-u32 __cvt_fp2unsigned(f64 value);
 
 s32 lbl_1_data_30[7] = { DATANUM(0x560000, 1), DATANUM(0x560000, 2),
     DATANUM(0x560000, 3), DATANUM(0x560000, 4), DATANUM(0x560000, 5),
@@ -735,7 +734,7 @@ void fn_1_DD8(OMOBJ *cameraObject)
                           640.0f, 480.0f,
                           0.0f, 1.0f);
     if (splitBoundaryX > 2.0f) {
-        Hu3DCameraScissorSet(1, 0, 0, __cvt_fp2unsigned(splitBoundaryX) - 2, 480);
+        Hu3DCameraScissorSet(1, 0, 0, (u32)splitBoundaryX - 2, 480);
     } else {
         Hu3DCameraScissorSet(1, 0, 0, 0, 480);
     }
@@ -746,8 +745,8 @@ void fn_1_DD8(OMOBJ *cameraObject)
                               0.0f, 1.0f);
         if (splitBoundaryX > 2.0f) {
             /* Inset each scissor edge by two pixels, leaving a four-pixel gap. */
-            cameraTwoScissorWidth = 638 - __cvt_fp2unsigned(splitBoundaryX);
-            Hu3DCameraScissorSet(2, __cvt_fp2unsigned(splitBoundaryX) + 2, 0,
+            cameraTwoScissorWidth = 638 - (u32)splitBoundaryX;
+            Hu3DCameraScissorSet(2, (u32)splitBoundaryX + 2, 0,
                                  cameraTwoScissorWidth, 480);
         } else {
             Hu3DCameraScissorSet(2, 0, 0, 0, 480);
@@ -867,7 +866,7 @@ void fn_1_1508(OMOBJ *cameraObject)
                 lbl_1_bss_18[playerIndex]->player->actor->pos.z - cameraState->rowValue[0];
             cameraState->rowValue[0] =
                 lbl_1_bss_18[playerIndex]->player->actor->pos.z;
-            if (fn_1_12CC((M627CameraState *)cameraState, 0, &cameraTrend)) {
+            if (fn_1_12CC(cameraState, 0, &cameraTrend)) {
                 if (cameraTrend > 2.0f) {
                     cameraState->cameraTarget[0].z +=
                         cameraTrend > 10.0f ? 10.0f : cameraTrend;
@@ -915,7 +914,7 @@ void fn_1_1508(OMOBJ *cameraObject)
     cameraState->values[1][cameraState->startingColumn] =
         playerGroupCenterZ - cameraState->rowValue[1];
     cameraState->rowValue[1] = playerGroupCenterZ;
-    if (fn_1_12CC((M627CameraState *)cameraState, 1, &cameraTrend)) {
+    if (fn_1_12CC(cameraState, 1, &cameraTrend)) {
         if (cameraTrend > 2.0f) {
             cameraState->cameraTarget[1].z +=
                 cameraTrend > 10.0f ? 10.0f : cameraTrend;
@@ -1002,7 +1001,7 @@ void fn_1_1C70(OMOBJ *cameraObject)
         Hu3DCameraViewportSet(1, cameraOneViewportX, 0.0f, cameraOneViewportWidth, 480.0f,
                               0.0f, 1.0f);
         if (cameraOneScissorWidth > 2.0f) {
-            Hu3DCameraScissorSet(1, 0, 0, __cvt_fp2unsigned(cameraOneScissorWidth) - 2, 480);
+            Hu3DCameraScissorSet(1, 0, 0, (u32)cameraOneScissorWidth - 2, 480);
         } else {
             Hu3DCameraScissorSet(1, 0, 0, 0, 0);
         }
@@ -1010,9 +1009,9 @@ void fn_1_1C70(OMOBJ *cameraObject)
                               0.0f, 1.0f);
         /* Keep the two-pixel split insets. At width 640, the unsigned subtraction wraps,
         * passing camera 2 a scissor X of 642 and width 0xFFFFFFFE. */
-        if (638 - __cvt_fp2unsigned(cameraOneScissorWidth) != 0) {
-            Hu3DCameraScissorSet(2, __cvt_fp2unsigned(cameraOneScissorWidth) + 2, 0,
-                                 638 - __cvt_fp2unsigned(cameraOneScissorWidth), 480);
+        if (638 - (u32)cameraOneScissorWidth != 0) {
+            Hu3DCameraScissorSet(2, (u32)cameraOneScissorWidth + 2, 0,
+                                 638 - (u32)cameraOneScissorWidth, 480);
         } else {
             Hu3DCameraScissorSet(2, 0, 0, 0, 0);
         }
@@ -1306,7 +1305,7 @@ void fn_1_2BF4(OMOBJ *object)
             &lbl_1_data_D44[lbl_1_data_DBC[boundaryIndex * 2 + 1]], 0);
     }
 
-    fn_1_2B58((M627MapWork *)setup);
+    fn_1_2B58(setup);
     fn_1_140(object, fn_1_30B0);
 }
 
@@ -1587,7 +1586,7 @@ void fn_1_3D6C(OMOBJ *obj)
  * surface. */
 void fn_1_3DC8(OMOBJ *obj)
 {
-    M627PlayerWork *work = (M627PlayerWork *)obj->data;
+    M627PlayerWork *work = obj->data;
     HuVecF position;
     HSF_OBJECT *modelObject;
 
@@ -1635,7 +1634,7 @@ void fn_1_3DC8(OMOBJ *obj)
 /* At active play, clears the scripted-stick flag and installs the normal player update. */
 void fn_1_4070(OMOBJ *obj)
 {
-    MGPLAYER **playerSlot = (MGPLAYER **)obj->data;
+    MGPLAYER **playerSlot = obj->data;
     if (fn_80071A8C() == 5) {
         fn_8007E888(*playerSlot);
         fn_1_140(obj, fn_1_42D4);
@@ -1946,14 +1945,14 @@ M627Entry *fn_1_5090(M627PlayerWork *state)
 
     nearestEntry = NULL;
     actorSlot = lbl_1_bss_8[0];
-    minimumDistanceSquared = 34028235000000000000000000000000000000.0f;
+    minimumDistanceSquared = 3.4028235e+37f;
     entryIndex = 0;
     for (; entryIndex < lbl_1_bss_2C->count; entryIndex++) {
         entry = &lbl_1_bss_2C->entries[entryIndex];
         if ((entry->flags & 1) != 0 && state->activeEntry != entry &&
             (state->selectionMode < 2 ||
             !(entry->position.z < lbl_1_bss_8[0]->actor->pos.z - 75.0f))) {
-            if ((s16)fn_1_4DB4((M627PlayerWork *)state, entry) == 0) {
+            if ((s16)fn_1_4DB4(state, entry) == 0) {
                 PSVECSubtract(&entry->position, &actorSlot->actor->pos, &displacement);
                 displacement.y = 0.0f;
                 if (state->selectionMode < 3) {
@@ -2005,7 +2004,7 @@ M627Entry *fn_1_5248(M627PlayerWork *state)
         }
     }
 
-    bestVisibleScore = bestFallbackScore = -34028235000000000000000000000000000000.0f;
+    bestVisibleScore = bestFallbackScore = -3.4028235e+37f;
     for (index = 0; index < lbl_1_bss_2C->count; index++) {
         entry = &lbl_1_bss_2C->entries[index];
         if ((entry->flags & 2) == 0) {
@@ -2160,12 +2159,12 @@ void fn_1_58A8(M627PlayerWork *state, s16 action)
     } else {
         if (state->cameraGroup == 0) {
             if (state->selectionMode == 0) {
-                state->activeEntry = fn_1_4DEC((M627PlayerWork *)state);
+                state->activeEntry = fn_1_4DEC(state);
             } else {
-                state->activeEntry = fn_1_5090((M627PlayerWork *)state);
+                state->activeEntry = fn_1_5090(state);
             }
         } else {
-            state->activeEntry = fn_1_5248((M627PlayerWork *)state);
+            state->activeEntry = fn_1_5248(state);
         }
         if (state->activeEntry != NULL) {
             PSVECSubtract(&state->activeEntry->position, &state->player->actor->pos,
@@ -2194,7 +2193,7 @@ void fn_1_5E9C(OMOBJ *object)
         return;
     }
     if (state->sequenceType != 0) {
-        actorPosition = *(Point3d *)&state->player->actor->pos;
+        actorPosition = state->player->actor->pos;
         actorPosition.y = 0.0f;
         PSVECSubtract(&actorPosition, &state->followPosition, &offset);
         if (PSVECSquareMag(&offset) < 1600.0f) {
@@ -2204,13 +2203,13 @@ void fn_1_5E9C(OMOBJ *object)
                 state->sequenceType = 0;
                 return;
             }
-            fn_1_58A8((M627PlayerWork *)state, state->sequenceType);
+            fn_1_58A8(state, state->sequenceType);
             return;
         }
         state->travelTicks--;
         if (state->travelTicks <= 0) {
-            state->waitFrames = fn_1_5718((M627PlayerWork *)state);
-            fn_1_58A8((M627PlayerWork *)state, 1);
+            state->waitFrames = fn_1_5718(state);
+            fn_1_58A8(state, 1);
             state->clearTargetHistoryOnArrival = 0;
             return;
         }
@@ -2234,8 +2233,8 @@ void fn_1_5E9C(OMOBJ *object)
         if (PSVECSquareMag(&movement) < 50.0f) {
             state->positionState++;
             if (state->positionState > 10) {
-                state->waitFrames = fn_1_5718((M627PlayerWork *)state);
-                fn_1_58A8((M627PlayerWork *)state, 1);
+                state->waitFrames = fn_1_5718(state);
+                fn_1_58A8(state, 1);
                 state->clearTargetHistoryOnArrival = 0;
                 return;
             }
@@ -2250,7 +2249,7 @@ void fn_1_5E9C(OMOBJ *object)
         return;
     }
     if (state->activeEntry == NULL) {
-        fn_1_58A8((M627PlayerWork *)state, 0);
+        fn_1_58A8(state, 0);
         state->clearTargetHistoryOnArrival = 1;
         return;
     }
@@ -2259,7 +2258,7 @@ void fn_1_5E9C(OMOBJ *object)
         return;
     }
     entryPosition = state->activeEntry->position;
-    actorPosition = *(Point3d *)&state->player->actor->pos;
+    actorPosition = state->player->actor->pos;
     entryPosition.y = actorPosition.y = 0.0f;
     PSVECSubtract(&actorPosition, &entryPosition, &offset);
     if (PSVECSquareMag(&offset) < 18225.0f) {
@@ -2267,18 +2266,18 @@ void fn_1_5E9C(OMOBJ *object)
         PSVECScale(&offset, &offset, 80.0f);
         fn_80080520(state->player, (s32)-offset.x, (s32)offset.z, 256, 256);
         state->activeEntry = NULL;
-        state->waitFrames = fn_1_5718((M627PlayerWork *)state);
+        state->waitFrames = fn_1_5718(state);
         if (state->clearTargetHistoryOnArrival != 0) {
             state->previousEntry = state->currentEntry = NULL;
         }
     } else {
         state->travelTicks--;
         if (state->travelTicks <= 0) {
-            state->waitFrames = fn_1_5718((M627PlayerWork *)state);
+            state->waitFrames = fn_1_5718(state);
             if (state->activeEntry != NULL) {
                 fn_1_4D54(state, state->activeEntry);
             }
-            fn_1_58A8((M627PlayerWork *)state, 1);
+            fn_1_58A8(state, 1);
             state->clearTargetHistoryOnArrival = 0;
             return;
         }
@@ -2302,11 +2301,11 @@ void fn_1_5E9C(OMOBJ *object)
         if (PSVECSquareMag(&movement) < 50.0f) {
             state->positionState++;
             if (state->positionState > 10) {
-                state->waitFrames = fn_1_5718((M627PlayerWork *)state);
+                state->waitFrames = fn_1_5718(state);
                 if (state->activeEntry != NULL) {
                     fn_1_4D54(state, state->activeEntry);
                 }
-                fn_1_58A8((M627PlayerWork *)state, 1);
+                fn_1_58A8(state, 1);
                 state->clearTargetHistoryOnArrival = 0;
                 return;
             }
@@ -2402,7 +2401,7 @@ void fn_1_6F60(OMOBJ *object)
 
         HuAudFXPlayVolPan(MSM_SE_M627_ACTOR_START, 127, soundPan);
         }
-        fn_1_140((OMOBJ *)object, fn_1_7020);
+        fn_1_140(object, fn_1_7020);
         return;
     }
 }
@@ -2893,7 +2892,7 @@ void fn_1_8B40(OMOBJ *object)
 
     probeDirection.x = probeDirection.y = 0.0f;
     probeDirection.z = 1.0f;
-    position = *(Point3d *)&state->actor->pos;
+    position = state->actor->pos;
     position.y = 0.0f;
     switch (fn_1_8098(state->cameraGroup, &position, &probeDirection, &hit)) {
     case 0:
@@ -3052,7 +3051,7 @@ void fn_1_9A2C(OMOBJ *object)
     }
     PSMTXRotRad(positiveRotation, 88, 0.5235988f);
     PSMTXRotRad(negativeRotation, 88, -0.5235988f);
-    position = *(Point3d *)&state->actor->pos;
+    position = state->actor->pos;
     position.y -= ballRadius;
     PSMTXMultVec(positiveRotation, &position, &position);
     /* Sound cues project this rotated-space accumulator as world space. It starts with Y zero;

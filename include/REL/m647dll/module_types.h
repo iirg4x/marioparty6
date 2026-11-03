@@ -3,7 +3,7 @@
 #define REL_M647DLL_MODULE_TYPES_H
 
 #ifndef _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #endif
 #include "dolphin/gx.h"
 #include "game/main.h"

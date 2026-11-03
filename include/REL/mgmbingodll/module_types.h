@@ -3,7 +3,7 @@
 
 /* Canonical module context; no generated M2C declarations are included. */
 #ifndef _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #endif
 #include "dolphin.h"
 #include "game/main.h"
@@ -161,6 +161,10 @@ extern s16 lbl_1_bss_AF8;
 void fn_1_3A60(HUWINID winId, u32 mess, s16 cueId);
 void fn_1_4F8(void);
 void fn_1_109E4(void);
+void BingoShowFollowupInstructions(void);
+void BingoShowLineCountHint(void);
+void BingoCloseLineCountHint(void);
+s16 BingoPromptTwoChoices(void);
 
 extern HU3D_MODELID lbl_1_bss_A4;
 extern s16 lbl_1_bss_88;

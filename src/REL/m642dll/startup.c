@@ -1,5 +1,5 @@
 /* Loader entry points and sequence setup for the Cashapult minigame. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m642dll/work.h"
 #include "game/memory.h"
 #include "msm_stream.h"

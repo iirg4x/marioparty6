@@ -16,7 +16,7 @@ typedef struct M670MicResponse_s {
     s16 status; /* Recognition status; nonzero responses are ignored. */
     u16 confidence; /* Recognition confidence compared with the game's 3000 threshold. */
     s16 count; /* Number of recognized values in this response. */
-    s16 reservedWord; /* Not read by this callback. */
+    s16 unk_06; /* Not read by this callback. */
     s16 *values; /* Recognized word indexes supplied by the microphone system. */
 } M670MICRESPONSE;
 /* The callback writes "a" to entry 1, but no code reads this string table. */

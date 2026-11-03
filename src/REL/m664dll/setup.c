@@ -71,15 +71,15 @@ void fn_1_D8(s16 mode, s16 frameNo)
     Point3d shadowCameraTarget = { 0.0f, 0.0f, 0.0f };
 
     Hu3DCameraCreate(1);
-    Hu3DCameraViewportSet(1, (0.0f), (0.0f), (640.0f),
-                          (480.0f), (0.0f), (1.0f));
-    Hu3DCameraPerspectiveSet(1, (50.0f), (20.0f),
-                             (30000.0f), (1.2000000476837158f));
+    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f,
+                          480.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(1, 50.0f, 20.0f,
+                             30000.0f, 1.2f);
     /* Apply the shared camera view during each object-manager update. */
     fn_8003AB38(lbl_1_bss_4, 32730, 0, 0, -1, fn_8003D4FC);
-    Hu3DShadowCreate((30.0f), (20.0f), (10000.0f));
+    Hu3DShadowCreate(30.0f, 20.0f, 10000.0f);
     fn_8002AAB4(0, 0, 0);
-    Hu3DShadowTPLvlSet((0.4000000059604645f));
+    Hu3DShadowTPLvlSet(0.4f);
     Hu3DShadowPosSet(&shadowCameraPosition, &shadowCameraUp, &shadowCameraTarget);
     fn_1_3C0();
     lbl_1_bss_0 = 0;

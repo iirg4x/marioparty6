@@ -290,12 +290,12 @@ void fn_1_73C(void) {
             break;
         case 3:
             if (WipeCheck() == 0) {
-                lbl_80266B18[1].x = (0.0f);
-                lbl_80266B18[1].y = (300.0f);
-                lbl_80266B18[1].z = (-750.0f);
-                lbl_80266A58[1].x = (-12.0f);
-                lbl_80266A58[1].y = lbl_80266A58[1].z = (0.0f);
-                lbl_80266BD8[1] = (3000.0f);
+                lbl_80266B18[1].x = 0.0f;
+                lbl_80266B18[1].y = 300.0f;
+                lbl_80266B18[1].z = -750.0f;
+                lbl_80266A58[1].x = -12.0f;
+                lbl_80266A58[1].y = lbl_80266A58[1].z = 0.0f;
+                lbl_80266BD8[1] = 3000.0f;
                 fn_800269E8(lbl_1_bss_174.openingModelId, (1 << 0));
                 fn_80026A44(lbl_1_bss_174.gameplayModelId, (1 << 0));
                 fn_1_381C();

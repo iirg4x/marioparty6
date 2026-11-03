@@ -5,7 +5,7 @@
 void fn_1_898(HU3D_MODEL *modelP, Mtx *mtx);
 void fn_1_854(s16 layerNo);
 
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -44,15 +44,15 @@ extern f32 InterpolateBMLine(f32 *samples, f32 *sampleTimes, f32 frame);
 void fn_1_E9C(void) {
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(
-        1, (20.0f), (10.0f), (5000.0f),
-        (1.2f));
+        1, 20.0f, 10.0f, 5000.0f,
+        1.2f);
     Hu3DCameraViewportSet(
-        1, (0.0f), (0.0f), (640.0f),
-        (480.0f), (0.0f), (1.0f));
+        1, 0.0f, 0.0f, 640.0f,
+        480.0f, 0.0f, 1.0f);
     Hu3DCameraPosSet(
-        1, (0.0f), (150.0f), (5000.0f),
-        (0.0f), (1.0f), (0.0f),
-        (0.0f), (0.0f), (0.0f));
+        1, 0.0f, 150.0f, 5000.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f);
     lbl_1_bss_A8 = fn_8003AB38(
         lbl_1_bss_B00, 3840, 0, 0, -1, fn_1_10CC);
     lbl_1_bss_A8->work[0] = 1;
@@ -107,15 +107,15 @@ void fn_1_1214(
     f32 sampleTimes[4];
     f32 samples[4];
 
-    sampleTimes[0] = (-1.0f) * duration;
-    sampleTimes[1] = (0.0f);
+    sampleTimes[0] = -1.0f * duration;
+    sampleTimes[1] = 0.0f;
     sampleTimes[2] = duration;
-    sampleTimes[3] = (2.0f) * duration;
+    sampleTimes[3] = 2.0f * duration;
     // A quarter sine wave slows the camera as it approaches the selected view.
     frame = (f32)((f64)duration *
-        sin(((3.141592653589793) *
-            (f64)((90.0f) * (frame / duration))) /
-            (180.0)));
+        sin((3.141592653589793 *
+            (f64)(90.0f * (frame / duration))) /
+            180.0));
 
     distance = pathPosition->x - cameraPosition->x;
     samples[0] = cameraPosition->x - distance;

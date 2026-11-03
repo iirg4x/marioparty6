@@ -1,9 +1,7 @@
 /* Sets computer-player timing and button choices for the four riders. */
 #define _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m608dll.h"
-
-char lbl_1_data_4C8[40] = "com(%d) ... level : %d, interval : %d\012\000";
 
 /* Called during setup to load difficulty and choose a button interval for each CPU rider. */
 void fn_1_69F4(void)
@@ -23,7 +21,9 @@ void fn_1_69F4(void)
             lbl_1_bss_3E80.interval[playerIndex] =
                 (s16) (300U / (lbl_1_bss_3E80.base[playerIndex] + randomOffset));
             lbl_1_bss_3E80.aiRollFrameCounter[playerIndex] = 0;
-            OSReport(lbl_1_data_4C8, playerIndex, lbl_1_bss_3E80.difficulty[playerIndex],
+            OSReport(
+                "com(%d) ... level : %d, interval : %d\012", playerIndex,
+                lbl_1_bss_3E80.difficulty[playerIndex],
                      lbl_1_bss_3E80.interval[playerIndex]);
         }
         playerIndex += 1;

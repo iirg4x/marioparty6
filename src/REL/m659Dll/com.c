@@ -16,14 +16,10 @@ int fn_1_5DB4(M659Com *com);
 void fn_1_5E08(M659Com *com);
 void fn_1_5E9C(M659Com *com);
 void fn_1_64B0(M659Com *com);
-#include "REL/m659/com.h"
-#include "game/memory.h"
 #include "REL/m659/objects.h"
 #include "REL/m659/player.h"
 
 extern OMOBJ *lbl_1_bss_60;
-#include "REL/m659/com.h"
-#include "REL/m659/objects.h"
 #include "game/main.h"
 
 extern int lbl_1_data_1D8[4];

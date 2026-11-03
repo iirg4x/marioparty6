@@ -1,5 +1,5 @@
 /* Player models, movement, minigame rules, computer input, and water particles. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m625Dll/players.h"
 #include "game/main.h"
 #include "game/pad.h"
@@ -29,8 +29,6 @@
 #define M625_SE_SWIM_START 1800
 #define M625_SE_TIMER_TICK 1801
 
-extern s32 frandmod(s32 modulus);
-extern u32 frand(void);
 extern s16 fn_1_12700(void);
 extern s16 fn_1_12760(void);
 extern s32 fn_1_12768(s16 obstacleIndex);
@@ -56,10 +54,10 @@ void fn_1_12560(void);
 void fn_1_296C(s16 index, s16 sequence);
 void fn_1_2C60(s16 index, Point3d *result);
 void fn_1_2D48(void);
-s32 fn_1_3E8C(s16 player);
+s32 fn_1_3E8C(s16 frameNo);
 void fn_1_3F6C(s16 index, s16 frame);
 void fn_1_4078(s16 index, s16 frame);
-void fn_1_4E60(s16 mode, s16 frameNo);
+void fn_1_4E60(void);
 void fn_1_4E80(void);
 void fn_1_5108(void);
 void fn_1_6CE0(s16 playerIndex);
@@ -69,11 +67,11 @@ void fn_1_B958(s16 playerIndex);
 void fn_1_BF54(void);
 s16 fn_1_C19C(void);
 void fn_1_C270(s16 mode);
-s32 fn_1_C438(void);
+u8 fn_1_C438(void);
 void fn_1_DE68(void);
 void fn_1_EB00(void);
 void fn_1_EE94(void);
-s16 fn_1_EF24(s16 playerIndex);
+s32 fn_1_EF24(s16 playerIndex);
 void fn_1_EF40(void);
 void fn_1_EF54(void);
 void fn_1_EFC4(void);
@@ -345,7 +343,7 @@ void fn_1_2D48(void)
 }
 
 /* Called by fn_1_13D30 to advance opening states; returns 1 when all players reach ready. */
-s32 fn_1_3E8C(s16 player)
+s32 fn_1_3E8C(s16 frameNo)
 {
     s16 index;
     s16 initialization[1];
@@ -354,9 +352,9 @@ s32 fn_1_3E8C(s16 player)
     initialization[0] = 0;
     while (index < 4) {
         if (lbl_1_bss_1D8[index].team == 0) {
-            fn_1_3F6C(index, player);
+            fn_1_3F6C(index, frameNo);
         } else {
-            fn_1_4078(index, player);
+            fn_1_4078(index, frameNo);
         }
         index++;
     }
@@ -532,7 +530,7 @@ void fn_1_4078(s16 index, s16 frame)
 
 s16 lbl_1_data_36C[4] = { 0, 0, 0, 0 };
 
-void fn_1_4E60(s16 mode, s16 frameNo)
+void fn_1_4E60(void)
 {
     fn_1_5108();
 }
@@ -1482,7 +1480,7 @@ void fn_1_C270(s16 mode)
 
 /* Called by fn_1_13EF8 to move players into result positions; returns when their pose transition is
  * complete. */
-s32 fn_1_C438(void) {
+u8 fn_1_C438(void) {
     Point3d motionDelta;
     s16 activePlayers[3];
     s16 sequenceZeroOverlay;
@@ -1517,7 +1515,7 @@ for (; playerIndex < 4; playerIndex += 1) {
                     lbl_1_bss_1D8[playerIndex].scaleModel, lbl_1_bss_1D8[playerIndex].modelScale,
                     lbl_1_bss_1D8[playerIndex].modelScale, lbl_1_bss_1D8[playerIndex].modelScale);
                 if (lbl_1_bss_1D8[playerIndex].modelScale <= 0.0f) {
-                    if ((s32) lbl_1_data_3E4 != 0) {
+                    if (lbl_1_data_3E4 != 0) {
                         lbl_1_bss_1D8[playerIndex].motionSet = -1;
                         lbl_1_data_3E4 = 0;
                     } else {
@@ -1861,7 +1859,7 @@ void fn_1_EE94(void) {
     }
 }
 
-s16 fn_1_EF24(s16 playerIndex) {
+s32 fn_1_EF24(s16 playerIndex) {
     return lbl_1_bss_1D8[playerIndex].timer;
 }
 
@@ -2349,7 +2347,7 @@ void fn_1_10BD4(void)
     fn_800325B0(lbl_1_bss_1C8, 255, 255, 255);
     fn_800324E0(lbl_1_bss_1C8, 1.0f);
     fn_800326D0(lbl_1_bss_1C8, fn_1_10D74);
-    particleSystem = (HU3D_PARTICLE *)lbl_802C01C8[lbl_1_bss_1C8].hookData;
+    particleSystem = lbl_802C01C8[lbl_1_bss_1C8].hookData;
     particle = particleSystem->data;
     for (particle = particleSystem->data, index = 0; index < particleSystem->maxCnt;
          index++, particle++) {
@@ -2388,7 +2386,7 @@ void fn_1_10E90(Point3d position, f32 scale, f32 randomVelocity, f32 verticalAcc
     HU3D_PARTICLE_DATA *particle;
     s16 index;
 
-    particleSystem = (HU3D_PARTICLE *)lbl_802C01C8[lbl_1_bss_1C8].hookData;
+    particleSystem = lbl_802C01C8[lbl_1_bss_1C8].hookData;
     particle = particleSystem->data;
     index = 0;
     while (index < particleSystem->maxCnt) {

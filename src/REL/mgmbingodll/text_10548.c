@@ -38,8 +38,8 @@ void fn_1_10548(void)
     fn_80026790(*lbl_1_bss_AE4->mdlId, &lbl_1_data_A60[lbl_1_bss_AE4->work[2]]);
     lbl_1_bss_AE8 = lbl_1_data_A60[lbl_1_bss_AE4->work[2]];
     fn_800269E8(*lbl_1_bss_AE4->mdlId, ((1 << 30) | (1 << 0)));
-    fn_800268B0(*lbl_1_bss_AE4->mdlId, (1.0f), (1.0f), (1.0f));
-    Hu3DLLightCreate(*lbl_1_bss_AE4->mdlId, (0.0f), (1500.0f), (1500.0f), (0.0f), (-0.1f), (-1.0f),
+    fn_800268B0(*lbl_1_bss_AE4->mdlId, 1.0f, 1.0f, 1.0f);
+    Hu3DLLightCreate(*lbl_1_bss_AE4->mdlId, 0.0f, 1500.0f, 1500.0f, 0.0f, -0.1f, -1.0f,
                      204, 204, 204);
     lbl_1_bss_AE4->mdlId[1] =
         fn_80025A04(fn_80008DD0(
@@ -115,7 +115,7 @@ void fn_1_10B04(OMOBJ *object)
                (f32)object->work[3], (f32)lbl_1_bss_AF4);
     fn_80026790(object->mdlId[0], &position);
     lbl_1_bss_AF4++;
-    if ((u32)lbl_1_bss_AF4 >= object->work[3]) {
+    if (lbl_1_bss_AF4 >= object->work[3]) {
         lbl_1_bss_AF4 = 1;
         object->work[3] = 1;
     }
@@ -124,26 +124,26 @@ void fn_1_10B04(OMOBJ *object)
             if (object->work[1] == 1) {
                 if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
                     (object->mtnId[2] != fn_8002D3C4(object->mdlId[0]))) {
-                    fn_8002CCC0(object->mdlId[0], object->mtnId[2], (0.0f),
-                                       (8.0f), ((1 << 30) | (1 << 0)));
-                    fn_8002D86C(object->mdlId[0], (1.0f));
+                    fn_8002CCC0(object->mdlId[0], object->mtnId[2], 0.0f,
+                                       8.0f, ((1 << 30) | (1 << 0)));
+                    fn_8002D86C(object->mdlId[0], 1.0f);
                     object->work[0] = 0;
                 }
                 if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
                     (object->mtnId[2] == fn_8002D3C4(object->mdlId[0])) &&
-                    ((fn_8002D4E0(object->mdlId[0]) == (6.0f)) ||
-                     (fn_8002D4E0(object->mdlId[0]) == (22.0f)) ||
-                     (fn_8002D4E0(object->mdlId[0]) == (38.0f)) ||
-                     (fn_8002D4E0(object->mdlId[0]) == (54.0f)) ||
-                     (fn_8002D4E0(object->mdlId[0]) == (70.0f)))) {
+                    ((fn_8002D4E0(object->mdlId[0]) == 6.0f) ||
+                     (fn_8002D4E0(object->mdlId[0]) == 22.0f) ||
+                     (fn_8002D4E0(object->mdlId[0]) == 38.0f) ||
+                     (fn_8002D4E0(object->mdlId[0]) == 54.0f) ||
+                     (fn_8002D4E0(object->mdlId[0]) == 70.0f))) {
                     HuAudFXPlay(940);
                     return;
                 }
             } else if (fn_8002D3EC(object->mdlId[0]) < 0) {
                 fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
-                fn_8002CCC0(object->mdlId[0], object->mtnId[0], (0.0f),
-                                   (8.0f), ((1 << 30) | (1 << 0)));
-                fn_8002D86C(object->mdlId[0], (1.0f));
+                fn_8002CCC0(object->mdlId[0], object->mtnId[0], 0.0f,
+                                   8.0f, ((1 << 30) | (1 << 0)));
+                fn_8002D86C(object->mdlId[0], 1.0f);
                 object->work[1] = 0;
                 object->work[0] = 0;
                 return;
@@ -151,9 +151,9 @@ void fn_1_10B04(OMOBJ *object)
         } else if (object->work[0] != 0) {
             if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
                 (object->mtnId[1] != fn_8002D3C4(object->mdlId[0]))) {
-                fn_8002CCC0(object->mdlId[0], object->mtnId[1], (0.0f),
-                                   (8.0f), ((1 << 30) | (1 << 0)));
-                fn_8002D86C(object->mdlId[0], (2.0f));
+                fn_8002CCC0(object->mdlId[0], object->mtnId[1], 0.0f,
+                                   8.0f, ((1 << 30) | (1 << 0)));
+                fn_8002D86C(object->mdlId[0], 2.0f);
                 return;
             }
             if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
@@ -161,24 +161,24 @@ void fn_1_10B04(OMOBJ *object)
                 motionMaxTime = fn_8002D530(object->mdlId[0]);
                 if ((lbl_802C01C8[object->mdlId[0]].motWork.speed +
                      fn_8002D4E0(object->mdlId[0])) >= motionMaxTime) {
-                    fn_8002CCC0(object->mdlId[0], object->mtnId[0], (0.0f),
-                                       (8.0f), ((1 << 30) | (1 << 0)));
-                    fn_8002D86C(object->mdlId[0], (1.0f));
+                    fn_8002CCC0(object->mdlId[0], object->mtnId[0], 0.0f,
+                                       8.0f, ((1 << 30) | (1 << 0)));
+                    fn_8002D86C(object->mdlId[0], 1.0f);
                     object->work[0] = 0;
                 }
             }
         }
     } else if (lbl_1_bss_AE0 == 1) {
-        fn_8002CCC0(object->mdlId[0], object->mtnId[3], (0.0f),
-                           (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(object->mdlId[0], (1.0f));
+        fn_8002CCC0(object->mdlId[0], object->mtnId[3], 0.0f,
+                           8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(object->mdlId[0], 1.0f);
         fn_8002DC74(object->mtnId[3], 1U);
         lbl_1_bss_AE0 = 2;
         return;
     } else if (lbl_1_bss_AE0 == 3) {
-        fn_8002CCC0(object->mdlId[0], object->mtnId[0], (0.0f),
-                           (8.0f), ((1 << 30) | (1 << 0)));
-        fn_8002D86C(object->mdlId[0], (1.0f));
+        fn_8002CCC0(object->mdlId[0], object->mtnId[0], 0.0f,
+                           8.0f, ((1 << 30) | (1 << 0)));
+        fn_8002D86C(object->mdlId[0], 1.0f);
         fn_8002DCA8(object->mtnId[3], 1U);
         lbl_1_bss_AE0 = 0;
         object->work[1] = 0;
@@ -199,15 +199,15 @@ void fn_1_11138(
     f32 sampleTimes[4];
     f32 samples[4];
 
-    sampleTimes[0] = (-1.0f) * duration;
-    sampleTimes[1] = (0.0f);
+    sampleTimes[0] = -1.0f * duration;
+    sampleTimes[1] = 0.0f;
     sampleTimes[2] = duration;
-    sampleTimes[3] = (2.0f) * duration;
+    sampleTimes[3] = 2.0f * duration;
     // Ease the interpolation time toward the destination with a quarter sine wave.
     frame = (f32)((f64)duration *
-        sin(((3.141592653589793) *
-            (f64)((90.0f) * (frame / duration))) /
-            (180.0)));
+        sin((3.141592653589793 *
+            (f64)(90.0f * (frame / duration))) /
+            180.0));
 
     samples[0] = sample0->x;
     samples[1] = sample1->x;

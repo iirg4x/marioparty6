@@ -19,7 +19,7 @@
 Point3d lbl_1_data_60 = { 500.0f, 2000.0f, 400.0f };
 Point3d lbl_1_data_6C = { -5.0f, -20.0f, -4.0f };
 GXColor lbl_1_data_78 = { 192, 192, 192, 192 };
-f32 lbl_1_data_7C[3] = { 900.0f, 240.0f, -200.0f };
+HuVecF lbl_1_data_7C = { 900.0f, 240.0f, -200.0f };
 s32 lbl_1_data_88[2] = { DATANUM(0x6a0000, 0), DATANUM(0x6a0000, 1) };
 s32 lbl_1_data_90[2] = { DATANUM(0x6a0000, 4), DATANUM(0x6a0000, 5) };
 s32 lbl_1_data_98[2] = { DATANUM(0x6a0000, 6), DATANUM(0x6a0000, 7) };
@@ -269,16 +269,16 @@ void fn_1_1018(HUPROCESS *process) {
     OMOBJ *viewportObject;
 
     Hu3DCameraCreate(1);
-    Hu3DCameraViewportSet(1, (0.0f), (0.0f), (640.0f),
-                          (480.0f), (0.0f), (1.0f));
-    Hu3DCameraPerspectiveSet(1, (20.0f), (60.0f), (25000.0f),
-                             (1.2f));
+    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f,
+                          480.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(1, 20.0f, 60.0f, 25000.0f,
+                             1.2f);
     Hu3DCameraScissorSet(1, 0, 0, 640, 480);
     Hu3DCameraCreate(2);
-    Hu3DCameraViewportSet(2, (0.0f), (0.0f), (640.0f),
-                          (480.0f), (0.0f), (1.0f));
-    Hu3DCameraPerspectiveSet(2, (20.0f), (60.0f), (25000.0f),
-                             (1.2f));
+    Hu3DCameraViewportSet(2, 0.0f, 0.0f, 640.0f,
+                          480.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(2, 20.0f, 60.0f, 25000.0f,
+                             1.2f);
     viewportObject = fn_8003AB38(process, 32730, 0, 0, -1, fn_8003DAA4);
     viewportObject->work[0] = 2;
     for (cameraIndex = 0; cameraIndex < 2; cameraIndex++) {
@@ -361,8 +361,8 @@ void fn_1_15F4(void) {
         HuMemDirectMallocNum(2, (s32) textureSize, M647_RESOURCE_GROUP);
     lbl_1_bss_174.animId = fn_80030B2C(lbl_1_bss_8, lbl_1_bss_174.modelId, "screen");
     fn_8002583C(1, 8, fn_1_17C4);
-    Hu3DCameraViewportSet(1, (0.0f), (0.0f), (144.0f), (96.0f), (0.0f), (1.0f));
-    Hu3DCameraPerspectiveSet(1, (20.0f), (60.0f), (25000.0f), (1.2f));
+    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 144.0f, 96.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(1, 20.0f, 60.0f, 25000.0f, 1.2f);
     Hu3DCameraScissorSet(1, 0, 0, 144, 96);
 }
 
@@ -385,8 +385,8 @@ void fn_1_185C(void) {
     s32 modelIndex;
 
     lbl_1_bss_10 = HuAudFXPlay(MSM_SE_M647_OBSTACLE_START);
-    fn_8002D414(lbl_1_bss_174.modelId, (41.0f));
-    fn_8002D730(lbl_1_bss_174.modelId, (41.0f), (47.0f));
+    fn_8002D414(lbl_1_bss_174.modelId, 41.0f);
+    fn_8002D730(lbl_1_bss_174.modelId, 41.0f, 47.0f);
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         fn_800269E8(lbl_1_bss_174.modelIds[modelIndex], 1U);
     }
@@ -395,8 +395,8 @@ void fn_1_185C(void) {
 /* Stops the obstacle sound and returns its model motion to the resting range. */
 void fn_1_1908(void) {
     HuAudFXStop(lbl_1_bss_10);
-    fn_8002D414(lbl_1_bss_174.modelId, (33.0f));
-    fn_8002D730(lbl_1_bss_174.modelId, (33.0f), (39.0f));
+    fn_8002D414(lbl_1_bss_174.modelId, 33.0f);
+    fn_8002D730(lbl_1_bss_174.modelId, 33.0f, 39.0f);
 }
 
 /* Updates shared activity model visibility by the player's X position and switches the obstacle
@@ -405,16 +405,16 @@ void fn_1_1978(f32 horizontalPosition) {
     s32 index;
 
     for (index = 0; index < 4; index++) {
-        if (horizontalPosition < (140.0f) + lbl_1_data_150[index] &&
-            horizontalPosition > lbl_1_data_150[index] - (140.0f)) {
+        if (horizontalPosition < 140.0f + lbl_1_data_150[index] &&
+            horizontalPosition > lbl_1_data_150[index] - 140.0f) {
             fn_80026A44(lbl_1_bss_174.modelIds[3 - index], 1);
         } else {
             fn_800269E8(lbl_1_bss_174.modelIds[3 - index], 1);
         }
     }
     for (index = 0; index < 4; index++) {
-        if (horizontalPosition < (100.0f) + lbl_1_data_150[index] &&
-            horizontalPosition > lbl_1_data_150[index] - (100.0f)) {
+        if (horizontalPosition < 100.0f + lbl_1_data_150[index] &&
+            horizontalPosition > lbl_1_data_150[index] - 100.0f) {
             break;
         }
     }
@@ -436,12 +436,12 @@ void fn_1_1C04(f32 activityX) {
     OM_CAMERA_VIEW view;
 
     view.center.x = activityX;
-    view.center.y = (300.0f);
-    view.center.z = (1000.0f);
-    view.rot.x = (-40.0f);
-    view.rot.y = (65.0f);
-    view.rot.z = (0.0f);
-    view.zoom = (3700.0f);
+    view.center.y = 300.0f;
+    view.center.z = 1000.0f;
+    view.rot.x = -40.0f;
+    view.rot.y = 65.0f;
+    view.rot.z = 0.0f;
+    view.zoom = 3700.0f;
     fn_8003E8E4(1, &view, 30);
 }
 
@@ -455,13 +455,13 @@ void fn_1_1C9C(void) {
         }
         break;
     case 1:
-        lbl_1_bss_34.view.center.x = (-975.0f);
-        lbl_1_bss_34.view.center.y = (300.0f);
-        lbl_1_bss_34.view.center.z = (1575.0f);
-        lbl_1_bss_34.view.rot.x = (-31.0f);
-        lbl_1_bss_34.view.rot.y = (53.0f);
-        lbl_1_bss_34.view.rot.z = (0.0f);
-        lbl_1_bss_34.view.zoom = (2500.0f);
+        lbl_1_bss_34.view.center.x = -975.0f;
+        lbl_1_bss_34.view.center.y = 300.0f;
+        lbl_1_bss_34.view.center.z = 1575.0f;
+        lbl_1_bss_34.view.rot.x = -31.0f;
+        lbl_1_bss_34.view.rot.y = 53.0f;
+        lbl_1_bss_34.view.rot.z = 0.0f;
+        lbl_1_bss_34.view.zoom = 2500.0f;
         fn_8003E8E4(1, &lbl_1_bss_34.view, 240);
         lbl_1_bss_34.phase++;
         break;
@@ -469,11 +469,11 @@ void fn_1_1C9C(void) {
         if (lbl_1_bss_174.sequencePhase < 2) {
             break;
         }
-        lbl_1_bss_34.view.center.y = (200.0f);
-        lbl_1_bss_34.view.center.z = (1000.0f);
-        lbl_1_bss_34.view.rot.x = (-45.0f);
-        lbl_1_bss_34.view.rot.y = (-45.0f);
-        lbl_1_bss_34.view.zoom = (3000.0f);
+        lbl_1_bss_34.view.center.y = 200.0f;
+        lbl_1_bss_34.view.center.z = 1000.0f;
+        lbl_1_bss_34.view.rot.x = -45.0f;
+        lbl_1_bss_34.view.rot.y = -45.0f;
+        lbl_1_bss_34.view.zoom = 3000.0f;
         fn_8003E8E4(1, &lbl_1_bss_34.view, 300);
         lbl_1_bss_34.phase++;
         break;
@@ -484,28 +484,28 @@ void fn_1_1C9C(void) {
  * 5. */
 void fn_1_1EB8(void) {
     if (lbl_1_bss_54[lbl_1_bss_1A[0]].inputPhase > 4) {
-        lbl_80266B18[0].x = (7000.0f);
-        lbl_80266B18[0].y = (80.0f);
-        lbl_80266B18[0].z = (0.0f);
-        lbl_80266A58[0].x = (-30.0f);
+        lbl_80266B18[0].x = 7000.0f;
+        lbl_80266B18[0].y = 80.0f;
+        lbl_80266B18[0].z = 0.0f;
+        lbl_80266A58[0].x = -30.0f;
         lbl_80266A58[0].y = lbl_1_bss_34.view.rot.y;
-        lbl_80266A58[0].z = (0.0f);
-        lbl_80266BD8[0] = (1300.0f);
-        lbl_1_bss_34.view.rot.y += (1.0f);
+        lbl_80266A58[0].z = 0.0f;
+        lbl_80266BD8[0] = 1300.0f;
+        lbl_1_bss_34.view.rot.y += 1.0f;
     }
 }
 
 /* Adjusts the results camera while at least one player has finished. */
 void fn_1_1FAC(void) {
     if (lbl_1_bss_18 != 0) {
-        lbl_80266B18->x = (1160.0f);
-        lbl_80266B18->y = (150.0f);
-        lbl_80266B18->z = (1000.0f);
-        lbl_80266A58->x = (-40.0f);
+        lbl_80266B18->x = 1160.0f;
+        lbl_80266B18->y = 150.0f;
+        lbl_80266B18->z = 1000.0f;
+        lbl_80266A58->x = -40.0f;
         lbl_80266A58->y = lbl_1_bss_C;
-        lbl_80266A58->z = (0.0f);
-        lbl_80266BD8[0] = (1500.0f);
-        lbl_1_bss_C += (0.5f);
+        lbl_80266A58->z = 0.0f;
+        lbl_80266BD8[0] = 1500.0f;
+        lbl_1_bss_C += 0.5f;
     }
 }
 
@@ -632,19 +632,19 @@ void fn_1_28C8(void) {
         characterId = lbl_80265728[playerIndex].charNo;
         padNo = lbl_80265728[playerIndex].padNo;
         modelId = fn_80057068(characterId, 8);
-        fn_80026790(modelId, (HuVecF *)(void *)lbl_1_data_7C);
-        fn_80026808(modelId, (0.0f), (270.0f), (0.0f));
+        fn_80026790(modelId, &lbl_1_data_7C);
+        fn_80026808(modelId, 0.0f, 270.0f, 0.0f);
         for (motionIndex = 0; motionIndex < 9; motionIndex++) {
             motionId = fn_8005B0B8(characterId, lbl_1_data_D0[motionIndex][0]);
             lbl_1_bss_54[playerIndex].motionIds[motionIndex] = motionId;
         }
         fn_8005C2C8(characterId, lbl_1_bss_54[playerIndex].motionIds[0],
-                           (1.0f), (0.0f), lbl_1_data_D0[0][1]);
+                           1.0f, 0.0f, lbl_1_data_D0[0][1]);
         lbl_1_bss_54[playerIndex].modelId = modelId;
         lbl_1_bss_54[playerIndex].characterId = characterId;
         lbl_1_bss_54[playerIndex].padIndex = padNo;
-        lbl_1_bss_54[playerIndex].positionX = lbl_1_data_7C[0];
-        lbl_1_bss_54[playerIndex].rotationY = (270.0f);
+        lbl_1_bss_54[playerIndex].positionX = lbl_1_data_7C.x;
+        lbl_1_bss_54[playerIndex].rotationY = 270.0f;
         if (lbl_80265728[playerIndex].type == 1) {
             lbl_1_bss_54[playerIndex].cpuDifficulty = lbl_80265728[playerIndex].comDif;
         }
@@ -675,7 +675,7 @@ void fn_1_2B84(s16 recordIndex, s16 motionIndex) {
     if (record->motionState != motionIndex) {
         fn_8005C2C8(record->characterId,
                            record->motionIds[motionIndex],
-                           (0.0f), (8.0f),
+                           0.0f, 8.0f,
                            lbl_1_data_D0[motionIndex][1]);
         record->motionState = motionIndex;
     }
@@ -781,7 +781,7 @@ void fn_1_353C(void) {
             winnerRecord = &lbl_1_bss_54[(s16)index];
             if (winnerRecord->motionState != 6) {
                 fn_8005C2C8(winnerRecord->characterId, winnerRecord->motionIds[6],
-                                   (0.0f), (8.0f),
+                                   0.0f, 8.0f,
                                    lbl_1_data_D0[6][1]);
                 winnerRecord->motionState = 6;
             }
@@ -790,7 +790,7 @@ void fn_1_353C(void) {
             nonPodiumRecord = &lbl_1_bss_54[(s16)index];
             if (nonPodiumRecord->motionState != 7) {
                 fn_8005C2C8(nonPodiumRecord->characterId, nonPodiumRecord->motionIds[7],
-                                   (0.0f), (8.0f),
+                                   0.0f, 8.0f,
                                    lbl_1_data_D0[7][1]);
                 nonPodiumRecord->motionState = 7;
             }
@@ -806,7 +806,7 @@ void fn_1_366C(s16 recordIndex) {
     fn_8002741C(hookModelId, "itemhook",
                      lbl_1_bss_54[recordIndex].modelId);
     fn_80026760(lbl_1_bss_54[recordIndex].modelId,
-                    (0.0f), (0.0f), (0.0f));
+                    0.0f, 0.0f, 0.0f);
 }
 
 /* Hooks a player's model beneath the model for their selected activity. */
@@ -817,7 +817,7 @@ void fn_1_370C(s16 recordIndex) {
     fn_8002741C(hookModelId, "itemhook",
                      lbl_1_bss_54[recordIndex].modelId);
     fn_80026760(lbl_1_bss_54[recordIndex].modelId,
-                    (0.0f), (0.0f), (0.0f));
+                    0.0f, 0.0f, 0.0f);
 }
 
 /* Removes a player's model from its activity model's item attachment point. */
@@ -848,7 +848,7 @@ void fn_1_381C(void) {
         hookModelId = fn_1_A518(lbl_1_bss_54[(s16)recordIndex].activityIndex);
         fn_800275B4(hookModelId, "itemhook");
         fn_80026808(record->modelId,
-                        (0.0f), (0.0f), (0.0f));
+                        0.0f, 0.0f, 0.0f);
         fn_80026E44(record->modelId);
 
         if (record->finishPlace < 3) {
@@ -883,7 +883,7 @@ void fn_1_381C(void) {
         if (motionRecord->motionState != 0) {
             fn_8005C2C8(motionRecord->characterId,
                                motionRecord->motionIds[0],
-                               (0.0f), (8.0f),
+                               0.0f, 8.0f,
                                lbl_1_data_D0[0][1]);
             motionRecord->motionState = 0;
         }
@@ -1065,12 +1065,12 @@ void fn_1_4204(void) {
             return;
         }
         {
-            view.center.x = (800.0f);
-            view.center.y = (150.0f);
-            view.center.z = (-1720.0f);
-            view.rot.x = (-16.0f);
-            view.rot.y = view.rot.z = (0.0f);
-            view.zoom = (5230.0f);
+            view.center.x = 800.0f;
+            view.center.y = 150.0f;
+            view.center.z = -1720.0f;
+            view.rot.x = -16.0f;
+            view.rot.y = view.rot.z = 0.0f;
+            view.zoom = 5230.0f;
             fn_8003E8E4(2, &view, 45);
             record->inputPhase = 1;
             return;
@@ -1099,15 +1099,15 @@ void fn_1_4204(void) {
         break;
 
     case 3:
-        position.x -= (10.0f);
-        if (position.x <= (100.0f) + lbl_1_data_150[3] &&
+        position.x -= 10.0f;
+        if (position.x <= 100.0f + lbl_1_data_150[3] &&
             record->cameraShifted == 0) {
-            view.center.x = (0.0f);
-            view.center.y = (150.0f);
-            view.center.z = (-1720.0f);
-            view.rot.x = (-16.0f);
-            view.rot.y = view.rot.z = (0.0f);
-            view.zoom = (5230.0f);
+            view.center.x = 0.0f;
+            view.center.y = 150.0f;
+            view.center.z = -1720.0f;
+            view.rot.x = -16.0f;
+            view.rot.y = view.rot.z = 0.0f;
+            view.zoom = 5230.0f;
             fn_8003E8E4(2, &view, 45);
             record->cameraShifted = 1;
         }
@@ -1232,7 +1232,7 @@ void fn_1_5430(void) {
             if (initialRecord->motionState != 3) {
                 fn_8005C2C8(initialRecord->characterId,
                                    initialRecord->motionIds[3],
-                                   (0.0f), (8.0f),
+                                   0.0f, 8.0f,
                                    lbl_1_data_D0[3][1]);
                 initialRecord->motionState = 3;
             }
@@ -1244,35 +1244,35 @@ void fn_1_5430(void) {
         for (index = 0; index < 4; index++) {
             fallingRecord = &lbl_1_bss_54[index];
             fn_800267CC(fallingRecord->modelId, &position);
-            travelStep = (6.6666665f);
+            travelStep = 6.6666665f;
             position.z -= travelStep;
-            landingHeight = (400.0f) -
-                (((f32)delay * travelStep - (100.0f)) *
-                 ((f32)delay * travelStep - (100.0f))) /
-                    (100.0f);
-            if (position.y > landingHeight && landingHeight < (300.0f)) {
+            landingHeight = 400.0f -
+                (((f32)delay * travelStep - 100.0f) *
+                 ((f32)delay * travelStep - 100.0f)) /
+                    100.0f;
+            if (position.y > landingHeight && landingHeight < 300.0f) {
                 fn_80026EF0(fallingRecord->modelId);
             }
             position.y = landingHeight;
             if (delay > 2 &&
-                fallingRecord->rotationY < (180.0f)) {
-                fallingRecord->rotationY += (10.0f);
+                fallingRecord->rotationY < 180.0f) {
+                fallingRecord->rotationY += 10.0f;
             }
             if (position.z < (-600.0f)) {
-                position.z = (-600.0f);
+                position.z = -600.0f;
             }
             fn_80026790(fallingRecord->modelId, &position);
-            fn_80026808(fallingRecord->modelId, (0.0f),
+            fn_80026808(fallingRecord->modelId, 0.0f,
                             fallingRecord->rotationY,
-                            (0.0f));
+                            0.0f);
         }
         if (delay > 42) {
             HuAudFXPlay(MSM_SE_M647_PLAYER_FALL);
             lbl_1_bss_174.phaseFrame = 0;
             lbl_1_bss_174.sequencePhase = 2;
             for (index = 0; index < 4; index++) {
-                position.x = position.z = (0.0f);
-                position.y = (-30.0f);
+                position.x = position.z = 0.0f;
+                position.y = -30.0f;
                 fn_800267CC(lbl_1_bss_54[(s16)index].modelId,
                                 &nextPosition);
                 nextPosition.x += position.x;
@@ -1295,13 +1295,13 @@ void fn_1_57C0(void) {
     M647PlayerRecord *record;
 
     if (lbl_1_bss_174.phaseFrame++ == 0) {
-        view.center.x = (-1360.0f);
-        view.center.y = (150.0f);
-        view.center.z = (535.0f);
-        view.rot.x = (-16.0f);
-        view.rot.y = (22.0f);
-        view.rot.z = (0.0f);
-        view.zoom = (5230.0f);
+        view.center.x = -1360.0f;
+        view.center.y = 150.0f;
+        view.center.z = 535.0f;
+        view.rot.x = -16.0f;
+        view.rot.y = 22.0f;
+        view.rot.z = 0.0f;
+        view.zoom = 5230.0f;
         fn_1_AF18(1);
         fn_8003E8E4(2, &view, 90);
         return;
@@ -1316,7 +1316,7 @@ void fn_1_57C0(void) {
             shiftRecord = &lbl_1_bss_54[(s16)recordIndex];
             if (shiftRecord->motionState != 0) {
                 fn_8005C2C8(shiftRecord->characterId, shiftRecord->motionIds[0],
-                                   (0.0f), (8.0f), lbl_1_data_D0[0][1]);
+                                   0.0f, 8.0f, lbl_1_data_D0[0][1]);
                 shiftRecord->motionState = 0;
             }
             if (record->activityIndex == 0) {
@@ -1437,7 +1437,7 @@ void fn_1_5F08(void) {
     if (fn_8003EB94(2) != 0) {
         if (lbl_1_bss_174.phaseFrame == 20) {
             for (index = 0; index < 4; index++) {
-                fn_1_6ED0((s16)index, (1.0f));
+                fn_1_6ED0((s16)index, 1.0f);
             }
             lbl_1_bss_174.soundEffectId = HuAudFXPlay(MSM_SE_M647_LAUNCH_SEQUENCE);
         }
@@ -1449,22 +1449,22 @@ void fn_1_5F08(void) {
         if (lbl_1_bss_174.phaseFrame == 80) {
             fn_8002D86C(
                 lbl_1_bss_174.motionModelId,
-                (1.0f));
-            view.center.x = lbl_1_bss_2C[0] = (-800.0f);
-            view.center.y = (150.0f);
-            view.center.z = (535.0f);
-            view.rot.x = (-28.0f);
-            view.rot.y = (0.0f);
-            view.rot.z = (0.0f);
-            view.zoom = lbl_1_bss_2C[1] = (5500.0f);
+                1.0f);
+            view.center.x = lbl_1_bss_2C[0] = -800.0f;
+            view.center.y = 150.0f;
+            view.center.z = 535.0f;
+            view.rot.x = -28.0f;
+            view.rot.y = 0.0f;
+            view.rot.z = 0.0f;
+            view.zoom = lbl_1_bss_2C[1] = 5500.0f;
             fn_8003E8E4(2, &view, 60);
-            lbl_80266B18->x = (-1120.0f);
-            lbl_80266B18->y = (300.0f);
-            lbl_80266B18->z = (-620.0f);
-            lbl_80266A58->x = (-5.0f);
-            lbl_80266A58->y = (14.0f);
-            lbl_80266A58->z = (0.0f);
-            lbl_80266BD8[0] = (2500.0f);
+            lbl_80266B18->x = -1120.0f;
+            lbl_80266B18->y = 300.0f;
+            lbl_80266B18->z = -620.0f;
+            lbl_80266A58->x = -5.0f;
+            lbl_80266A58->y = 14.0f;
+            lbl_80266A58->z = 0.0f;
+            lbl_80266BD8[0] = 2500.0f;
         }
         if (lbl_1_bss_174.phaseFrame == 81) {
             HuAudFXPlay(MSM_SE_M647_LAUNCH_CUE);
@@ -1475,13 +1475,13 @@ void fn_1_5F08(void) {
         }
         if (maxMotionTime == (motionTimeCopy = fn_8002D4E0(
                 lbl_1_bss_174.motionModelId))) {
-            view.center.x = (-960.0f);
-            view.center.y = (300.0f);
-            view.center.z = (1000.0f);
-            view.rot.x = (-40.0f);
-            view.rot.y = (65.0f);
-            view.rot.z = (0.0f);
-            view.zoom = (3700.0f);
+            view.center.x = -960.0f;
+            view.center.y = 300.0f;
+            view.center.z = 1000.0f;
+            view.rot.x = -40.0f;
+            view.rot.y = 65.0f;
+            view.rot.z = 0.0f;
+            view.zoom = 3700.0f;
             fn_8003E8E4(1, &view, 60);
             lbl_1_bss_174.phaseFrame = 0;
             lbl_1_bss_174.sequencePhase = 5;
@@ -1510,7 +1510,7 @@ void fn_1_62FC(s32 selection) {
         selection = (s16)(3 - selection);
         HuWinMesMaxSizeBetGet(&textSize, lbl_1_data_C0[(s16) selection],
                               lbl_1_data_C0[(s16) selection]);
-        lbl_1_bss_174.windowId = HuWinExCreateFrame((-10000.0f), (380.0f),
+        lbl_1_bss_174.windowId = HuWinExCreateFrame(-10000.0f, 380.0f,
                                                     (s16)textSize.x, (s16)textSize.y, -1, 1);
         HuWinExOpen(lbl_1_bss_174.windowId);
         HuWinMesSet(lbl_1_bss_174.windowId, lbl_1_data_C0[(s16)selection]);

@@ -3,7 +3,7 @@
 
 #include "dolphin/types.h"
 #include "REL/m613Dll/geometry.h"
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/hsfformat.h"
 
 /* Tracks the board models and the green bitmap's grid of remaining pixel references. */

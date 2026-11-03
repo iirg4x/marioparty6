@@ -1,5 +1,5 @@
 /* Day and night stage models, water deformation, and the water material. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m625Dll/wave.h"
 #include "datadir_enum.h"
 #include "game/memory.h"
@@ -251,9 +251,9 @@ void fn_1_20AC(void)
         HuPrcVSleep();
         for (index = 0; index < peakCount; index += 1) {
             vertices = peakVertices[index];
-            vertices->y = peakY + (5.0) *
-                sin((3.141592653589793) *
-                    (f64)(2.0f * vertices->x + phaseTime) / (180.0));
+            vertices->y = peakY + 5.0 *
+                sin(3.141592653589793 *
+                    (f64)(2.0f * vertices->x + phaseTime) / 180.0);
         }
         for (index = 0; index < 32; index += 1) {
             if (-100000.0f != lbl_1_bss_0.rippleX[index]) {
@@ -271,10 +271,10 @@ void fn_1_20AC(void)
                         distance -= lbl_1_bss_0.phase[index];
                         vertices->y = (f32)((f64)vertices->y +
                             ((f64)lbl_1_bss_0.amplitude[index] *
-                            cos(((3.141592653589793) *
-                            (f64)((90.0f) *
-                            (distance / (50.0f)))) /
-                            (180.0))));
+                            cos((3.141592653589793 *
+                            (f64)(90.0f *
+                            (distance / 50.0f))) /
+                            180.0)));
                     }
                 }
                 lbl_1_bss_0.phase[index] += 2.0f;

@@ -1,5 +1,5 @@
 /* Creates the game camera and switches it to the result view. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/hu3d.h"
 
 typedef struct {

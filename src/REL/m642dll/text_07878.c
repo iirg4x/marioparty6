@@ -395,11 +395,11 @@ void *fn_1_8618(void *buffer, s32 bytes, s32 itemBytes)
     s32 stride;
 
     memset(buffer, 0, bytes);
-    pool = (M642Pool *)buffer;
+    pool = buffer;
     buffer = (u8 *)buffer + sizeof(M642Pool);
     bytes -= sizeof(M642Pool);
     while (bytes > 0) {
-        node = (M642PoolNode *)buffer;
+        node = buffer;
         if (pool->free) {
             pool->free->prev = node;
         }
@@ -567,7 +567,7 @@ s32 fn_1_8A50(Point3d *source, Point3d *destination)
         if (frandmod(1) != 0U) {
             fallbackVertical = 0.01f;
         } else {
-            fallbackVertical = (-0.01f);
+            fallbackVertical = -0.01f;
         }
         destination->y = fallbackVertical;
         PSVECNormalize(destination, destination);
@@ -622,7 +622,7 @@ void fn_1_8BA8(Mtx output, s32 cameraId)
     if (PSVECSquareMag(&flat) < 0.001) {
         flat = direction;
         direction = up;
-        PSVECScale(&flat, &up, (-1.0f));
+        PSVECScale(&flat, &up, -1.0f);
     }
     direction.y = 0.0f;
     fn_1_8A50(&direction, &direction);

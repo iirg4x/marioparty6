@@ -35,18 +35,18 @@ typedef struct OpeningEventWork {
 } OpeningEventWork;
 
 typedef struct OpeningFocusObject {
-    u32 unusedObjectDataA; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataB; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataC; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataD; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataE; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataF; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataG; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_00; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_04; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_08; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_0C; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_10; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_14; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_18; /* Object word not accessed by this overlay; its meaning is unknown. */
     u32 positionXBits; /* Bit representation of the guide character's horizontal position. */
     u32 positionYBits; /* Bit representation of the guide character's vertical position. */
-    u32 unusedObjectDataJ; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataK; /* Object word not accessed by this overlay; its meaning is unknown. */
-    u32 unusedObjectDataL; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_24; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_28; /* Object word not accessed by this overlay; its meaning is unknown. */
+    u32 unk_2C; /* Object word not accessed by this overlay; its meaning is unknown. */
     u32 rotationZBits; /* Bit representation of the guide character's Z rotation in degrees. */
     float primaryFocusScale; /* Guide-character focus scale: 1.0 normal, 1.2 enlarged. */
     float secondaryFocusScale; /* Guide-character focus scale: 1.0 normal, 1.2 enlarged. */
@@ -96,45 +96,6 @@ int _prolog(void);
 void _epilog(void);
 
 void fn_1_A0(void);
-
-void fn_1_28C(void);
-void fn_1_320(void);
-void fn_1_A00(s32 enablePrompt);
-void fn_1_9A4(void);
-void fn_1_1128(void);
-void fn_1_1828(s16 layerNo);
-void fn_1_192C(s16 layerNo);
-void fn_1_1B7C(void);
-void fn_1_1BD8(void);
-void fn_1_2104(s32 characterIndex, s32 targetAngle);
-void fn_1_2238(u32 frameCount);
-void fn_1_2304(u32 guideChar, s32 frameCount);
-void fn_1_257C(u32 frameCount);
-void fn_1_2708(u32 frameCount);
-void fn_1_2B9C(u32 frameCount);
-void fn_1_2D74(u32 frameCount);
-void fn_1_34EC(u32 frameCount);
-void fn_1_37F0(void);
-void fn_1_392C(u32 frameCount);
-void fn_1_3C28(void);
-void fn_1_4068(u32 frameCount);
-void fn_1_41B4(void);
-void fn_1_420C(void);
-void fn_1_4264(u32 frameCount);
-void fn_1_4484(u32 frameCount);
-void fn_1_45D4(s16 characterIndex, float angleDegrees);
-void fn_1_46B4(s16 animIndex, s16 resourceIndex);
-void fn_1_470C(s16 animIndex, s16 resourceIndex);
-void fn_1_4744(s32 animIndex, s32 resourceIndex);
-void fn_1_47AC(s16 winIndex, u32 message, s16 frameCount);
-void fn_1_48AC(void);
-void fn_1_4BD8(void);
-void fn_1_4C30(void);
-void fn_1_4DB0(void);
-void fn_1_4E00(void);
-void fn_1_4E34(void (*callback)(void), s32 eventPrimaryParameter, s32 eventSecondaryParameter);
-void fn_1_4ECC(HuVecF *rotation, HuVecF *target, float distance);
-void fn_1_517C(float alpha);
 
 /* Runs static constructors, then initializes the opening overlay objects. */
 int _prolog(void)

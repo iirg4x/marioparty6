@@ -1,5 +1,5 @@
 /* Falling stage objects, their water and collision effects, and hit sounds. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/hu3d.h"
@@ -211,7 +211,8 @@ void fn_1_11700(void)
                 fn_800269E8(lbl_1_bss_4B8[effectIndex].primaryModel, (1 << 0));
                 fn_80026A44(lbl_1_bss_4B8[effectIndex].secondaryModel, (1 << 0));
                 fn_800269E8(lbl_1_bss_4B8[effectIndex].secondaryModel, ((1 << 30) | (1 << 0)));
-                fn_80026A44(lbl_1_bss_4B8[effectIndex].secondaryModel, ((1 << 30) | (1 << 1)));
+                fn_80026A44(lbl_1_bss_4B8[effectIndex].secondaryModel,
+                    ((1 << 30) | (1 << 1)));
                 fn_8002D414(lbl_1_bss_4B8[effectIndex].secondaryModel, 0.0f);
                 fn_80026790(lbl_1_bss_4B8[effectIndex].secondaryModel,
                                  &lbl_1_bss_4B8[effectIndex].position);
@@ -248,7 +249,8 @@ void fn_1_11700(void)
             maximumTime = fn_8002D530(lbl_1_bss_4B8[effectIndex].secondaryModel);
             if ((lbl_802C01C8[lbl_1_bss_4B8[effectIndex].secondaryModel].motWork.speed +
                  fn_8002D4E0(lbl_1_bss_4B8[effectIndex].secondaryModel)) >= maximumTime) {
-                fn_80026A44(lbl_1_bss_4B8[effectIndex].secondaryModel, ((1 << 30) | (1 << 0)));
+                fn_80026A44(lbl_1_bss_4B8[effectIndex].secondaryModel,
+                    ((1 << 30) | (1 << 0)));
                 fn_800269E8(lbl_1_bss_4B8[effectIndex].secondaryModel, ((1 << 30) | (1 << 1)));
                 lbl_1_bss_4B8[effectIndex].state = 6;
             }

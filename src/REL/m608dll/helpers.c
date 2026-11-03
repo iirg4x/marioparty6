@@ -1,9 +1,7 @@
 /* Camera, model and shadow helpers used during the rolling course sequence. */
 #define _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m608dll.h"
-
-char lbl_1_data_2F8[40] = "start camera motion ... idx:%d time:%f\012";
 
 /* Opaque camera preset words are kept as named constants; only the height is interpreted here. */
 #define M608_INITIAL_CAMERA_HEIGHT 1000.0f
@@ -21,6 +19,41 @@ char lbl_1_data_2F8[40] = "start camera motion ... idx:%d time:%f\012";
 #define M608_PRESET_UPPER_HALF_BITS 0xFFFF0000U
 #define M608_PRESET_LOWER_HALF_BITS 0x0000FFFF
 #define M608_PRESET_WORD_ZERO 0
+
+/* Called by the intro and run callbacks in sequence.c to follow the current course hook. */
+void fn_1_5DA4(Point3d position)
+{
+    lbl_1_bss_3E80.shadowCenter.x = position.x;
+    lbl_1_bss_3E80.shadowCenter.y = (f32) (3500.0f + position.y);
+    lbl_1_bss_3E80.shadowCenter.z = position.z;
+    lbl_1_bss_3E80.shadowTarget.x = position.x;
+    lbl_1_bss_3E80.shadowTarget.y = -100.0f;
+    lbl_1_bss_3E80.shadowTarget.z = position.z;
+    Hu3DShadowPosSet((Point3d *) &lbl_1_bss_3E80.shadowCenter.x,
+                     &lbl_1_bss_3E80.shadowUpDirection,
+                     (Point3d *) &lbl_1_bss_3E80.shadowTarget.x);
+}
+
+/* Called by the intro and rider-state callbacks in sequence.c to switch camera motions. */
+void fn_1_5E6C(s32 cameraIndex)
+{
+    s16 cameraMotionId;
+    s16 cameraModelId;
+
+    cameraMotionId = lbl_1_bss_3E80.cameraMotions[cameraIndex];
+    cameraModelId = lbl_1_bss_3E80.cameraModels[cameraIndex];
+    fn_800284C8(cameraModelId, 1U);
+    lbl_1_bss_3E80.cameraTime = 0.0f;
+    lbl_1_bss_3E80.cameraMaxTime = fn_8002D530(cameraModelId);
+    if (lbl_1_bss_3E80.activeCameraMotion != -1) {
+        fn_8002858C(lbl_1_bss_3E80.activeCameraMotion);
+    }
+    lbl_1_bss_3E80.activeCameraMotion = cameraModelId;
+    fn_80028478(lbl_1_bss_3E80.activeCameraMotion, 1U);
+    OSReport(
+        "start camera motion ... idx:%d time:%f\012", cameraIndex,
+        lbl_1_bss_3E80.cameraMaxTime);
+}
 
 /* These words are stored preset data; their meanings are not established by this module. */
 M608Unknown80 lbl_1_data_320 = { { M608_PRESET_HEADER_BITS, M608_PRESET_FLOAT_HALF_BITS },
@@ -58,39 +91,6 @@ M608Unknown80 lbl_1_data_3C0 = { { M608_PRESET_ALTERNATE_HEADER_BITS, M608_PRESE
                                    M608_PRESET_LOWER_HALF_BITS, M608_PRESET_WORD_ALL_BITS,
                                    M608_PRESET_UPPER_HALF_BITS, M608_PRESET_WORD_ZERO,
                                    M608_PRESET_WORD_ZERO } };
-
-/* Called by the intro and run callbacks in sequence.c to follow the current course hook. */
-void fn_1_5DA4(Point3d position)
-{
-    lbl_1_bss_3E80.shadowCenter.x = position.x;
-    lbl_1_bss_3E80.shadowCenter.y = (f32) (3500.0f + position.y);
-    lbl_1_bss_3E80.shadowCenter.z = position.z;
-    lbl_1_bss_3E80.shadowTarget.x = position.x;
-    lbl_1_bss_3E80.shadowTarget.y = -100.0f;
-    lbl_1_bss_3E80.shadowTarget.z = position.z;
-    Hu3DShadowPosSet((Point3d *) &lbl_1_bss_3E80.shadowCenter.x,
-                     (Point3d *) &lbl_1_bss_3E80.shadowUpDirection,
-                     (Point3d *) &lbl_1_bss_3E80.shadowTarget.x);
-}
-
-/* Called by the intro and rider-state callbacks in sequence.c to switch camera motions. */
-void fn_1_5E6C(s32 cameraIndex)
-{
-    s16 cameraMotionId;
-    s16 cameraModelId;
-
-    cameraMotionId = lbl_1_bss_3E80.cameraMotions[cameraIndex];
-    cameraModelId = lbl_1_bss_3E80.cameraModels[cameraIndex];
-    fn_800284C8(cameraModelId, 1U);
-    lbl_1_bss_3E80.cameraTime = 0.0f;
-    lbl_1_bss_3E80.cameraMaxTime = fn_8002D530(cameraModelId);
-    if (lbl_1_bss_3E80.activeCameraMotion != -1) {
-        fn_8002858C(lbl_1_bss_3E80.activeCameraMotion);
-    }
-    lbl_1_bss_3E80.activeCameraMotion = cameraModelId;
-    fn_80028478(lbl_1_bss_3E80.activeCameraMotion, 1U);
-    OSReport(lbl_1_data_2F8, cameraIndex, lbl_1_bss_3E80.cameraMaxTime);
-}
 
 /* Polled by the intro and rider-state callbacks in sequence.c to detect camera-motion end. */
 BOOL fn_1_5F64(void)

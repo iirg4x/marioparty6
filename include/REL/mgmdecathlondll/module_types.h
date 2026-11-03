@@ -128,4 +128,15 @@ extern s16 lbl_1_bss_BC;
 extern DecathlonRankPosition lbl_1_data_684[4];
 extern DecathlonModeData lbl_1_data_CD0[10];
 
+extern void decathlonCameraSetup(void);
+extern void decathlonScoreDigitsHideAll(void);
+extern void decathlonActorEntranceStart(void);
+extern void decathlonActorTurnAway(void);
+extern void decathlonPlayersReturnMotionStart(void);
+extern void decathlonPlayersIdleStart(void);
+extern void decathlonScoreDigitsRefresh(void);
+extern void decathlonScoreCountStart(void);
+extern void decathlonRankMoveStart(void);
+extern void decathlonRankReactionsStart(void);
+
 #endif /* REL_MGMDECATHLONDLL_MODULE_TYPES_H */

@@ -1,5 +1,6 @@
 /* Shows battle minigame standings and coin awards for all four players. */
 #include "dolphin/math.h"
+#include "humath.h"
 #include "datadir_enum.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
@@ -21,7 +22,6 @@ typedef struct ResultParticleGroup {
 } ResultParticleGroup;
 extern ResultSceneHandles lbl_1_bss_FAC[4];
 
-#include "dolphin/math.h"
 #include "game/gamework.h"
 #include "game/board/player.h"
 #include "game/audio.h"
@@ -82,31 +82,18 @@ extern f32 lbl_1_data_78C[4];
 extern f32 lbl_1_data_79C[4];
 extern void fn_1_9D18(void);
 
-/* Builds the battle-result rows and the models used when their coins are awarded. */
 
-#include "game/gamework.h"
-
-#include "game/process.h"
 
 typedef struct ResultCleanupRecord {
     s16 value[8];
 } ResultCleanupRecord;
 
 extern void fn_1_B39C(s16 modelId);
-extern void fn_8005BB8C(s16 charNo);
-
-/* Clears result-screen sprites, models, and active per-player effects when the scene ends. */
 
 extern HuVecF lbl_1_data_620[4];
 extern HuVecF lbl_1_data_6B0[4];
 
-/* Brings the character models into their result rows, then starts their arrival motions. */
 
-#include "dolphin/math.h"
-/* Animates the result models falling into the displayed player rows. */
-
-#include "game/audio.h"
-#include "game/process.h"
 
 extern s32 lbl_1_bss_BA8;
 
@@ -115,30 +102,16 @@ extern s16 lbl_1_bss_61C;
 extern f32 lbl_1_data_6F0[4];
 extern void fn_1_A238(HuVecF *position);
 extern void fn_1_3FB0(s16 *coinAwards);
-
-/* Drops each rank's battle coin award and waits until all of the coins have landed. */
-
-/* Drops each model after an eight-frame stagger and waits for the final impact. */
-
-extern void fn_1_3FB0(s16 awards[5]);
 extern void fn_1_9B90(s32 player, s32 value);
 
-/* Reveals coin awards, plays each player's reaction, then hides the score resultHandles. */
-
 #include "dolphin/types.h"
-#include "game/gamework.h"
 
 extern f32 lbl_1_data_7AC[8][4];
-
-/* Updates the three score digits shown for one player in the results display. */
 
 /* Sorts players by their coin bonuses and chooses row offsets for tied ranks. */
 
 /* Updates the particle effects drawn over the result presentation. */
-#include "dolphin/math.h"
-#include "dolphin/types.h"
 #include "dolphin/mtx.h"
-#include "game/hu3d.h"
 #include "game/frand.h"
 
 typedef struct ResultParticle {
@@ -182,16 +155,6 @@ extern u8 lbl_1_data_84C[32];
 extern s16 fn_1_AD24(ANIMDATA *anim, s16 count);
 extern void fn_1_C420(s16 modelId, void *callback);
 void fn_1_A928(void *model, ResultParticleSystem *system, Mtx matrix);
-
-/* Returns the distance magnitude used when grouping nearby coin landing effects. */
-static inline float fabsf2(register float x)
-{
-    asm {
-        fabs x, x
-    }
-    return x;
-}
-/* Adds a burst to a nearby result particle group, creating its model when needed. */
 
 /* Advances a result effect's particles during drawing and records how many remain alive. */
 
@@ -335,7 +298,7 @@ void fn_1_7D34(void) {
     unusedY = 0.0f;
     unusedZ = 0.0f;
     for (;;) {
-        if ((s32) lbl_1_bss_BA0 != 0) {
+        if (lbl_1_bss_BA0 != 0) {
             lbl_1_bss_624 = 1;
         } else {
             lbl_1_bss_624 = 0;
@@ -885,9 +848,9 @@ void fn_1_A238(Vec *position)
     group = lbl_1_bss_10A4;
     for (index = 0; index < 64; index++, group++) {
         if (group->modelId != 0) {
-            if (group->activeCount <= 40 && fabsf2(position->x - group->pos.x) < 300.0f &&
-                fabsf2(position->y - group->pos.y) < 300.0f &&
-                fabsf2(position->z - group->pos.z) < 300.0f) {
+            if (group->activeCount <= 40 && FloatAbs(position->x - group->pos.x) < 300.0f &&
+                FloatAbs(position->y - group->pos.y) < 300.0f &&
+                FloatAbs(position->z - group->pos.z) < 300.0f) {
                 groupIndex = index;
                 break;
             }
@@ -936,7 +899,7 @@ void fn_1_A238(Vec *position)
                 particle->pos.x = particle->pos.y = particle->pos.z = 0.0f;
                 angle = 360.0f * frandf();
                 elevation = 1.7f * frandf() - 0.7f;
-                elevation = 90.0f * (elevation * fabsf2(elevation));
+                elevation = 90.0f * (elevation * FloatAbs(elevation));
                 particle->velocity.x = sin((3.141592653589793 * angle) / 180.0) *
                     cos((3.141592653589793 * elevation) / 180.0);
                 particle->velocity.y = sin((3.141592653589793 * elevation) / 180.0);
@@ -1000,35 +963,35 @@ void fn_1_A928(void *model, ResultParticleSystem *system, Mtx matrix)
 }
 
 f32 lbl_1_data_590[8] = {
-    90.2000046f, 148.0f, 220.400009f, 148.0f, 355.600006f, 148.0f, 485.800018f, 148.0f
+    90.200005f, 148.0f, 220.40001f, 148.0f, 355.6f, 148.0f, 485.80002f, 148.0f
 };
 f32 lbl_1_data_5B0[8] = {
-    90.2000046f, 238.0f, 219.400009f, 238.0f, 354.600006f, 238.0f, 483.800018f, 238.0f
+    90.200005f, 238.0f, 219.40001f, 238.0f, 354.6f, 238.0f, 483.80002f, 238.0f
 };
 f32 lbl_1_data_5D0[8] = {
-    70.2000046f, 204.0f, 200.400009f, 204.0f, 335.600006f, 204.0f, 465.800018f, 204.0f
+    70.200005f, 204.0f, 200.40001f, 204.0f, 335.6f, 204.0f, 465.80002f, 204.0f
 };
-HuVecF lbl_1_data_5F0[4] = { { 90.2000046f, -12.0f, 9000.0f },
-                             { 220.400009f, -12.0f, 9000.0f },
-                             { 355.600006f, -12.0f, 9000.0f },
-                             { 485.800018f, -12.0f, 9000.0f } };
-HuVecF lbl_1_data_620[4] = { { 90.2000046f, 368.0f, 9000.0f },
-                             { 220.400009f, 368.0f, 9000.0f },
-                             { 355.600006f, 368.0f, 9000.0f },
-                             { 485.800018f, 368.0f, 9000.0f } };
-HuVecF lbl_1_data_650[4] = { { 90.2000046f, 388.0f, 4500.0f },
-                             { 220.400009f, 388.0f, 4500.0f },
-                             { 355.600006f, 388.0f, 4500.0f },
-                             { 485.800018f, 388.0f, 4500.0f } };
+HuVecF lbl_1_data_5F0[4] = { { 90.200005f, -12.0f, 9000.0f },
+                             { 220.40001f, -12.0f, 9000.0f },
+                             { 355.6f, -12.0f, 9000.0f },
+                             { 485.80002f, -12.0f, 9000.0f } };
+HuVecF lbl_1_data_620[4] = { { 90.200005f, 368.0f, 9000.0f },
+                             { 220.40001f, 368.0f, 9000.0f },
+                             { 355.6f, 368.0f, 9000.0f },
+                             { 485.80002f, 368.0f, 9000.0f } };
+HuVecF lbl_1_data_650[4] = { { 90.200005f, 388.0f, 4500.0f },
+                             { 220.40001f, 388.0f, 4500.0f },
+                             { 355.6f, 388.0f, 4500.0f },
+                             { 485.80002f, 388.0f, 4500.0f } };
 HuVecF lbl_1_data_680[4] = { { 1.0f, 1.0f, 1.0f },
                              { 0.75f, 0.75f, 0.75f },
                              { 0.5f, 0.5f, 0.5f },
-                             { 0.300000012f, 0.300000012f, 0.300000012f } };
-HuVecF lbl_1_data_6B0[4] = { { 1.0f, 1.10000002f, 1.0f },
-                             { 0.899999976f, 1.0f, 0.899999976f },
-                             { 0.800000012f, 0.899999976f, 0.800000012f },
-                             { 0.699999988f, 0.800000012f, 0.699999988f } };
-f32 lbl_1_data_6E0[4] = {1.0f, 0.899999976f, 0.800000012f, 0.699999988f};
+                             { 0.3f, 0.3f, 0.3f } };
+HuVecF lbl_1_data_6B0[4] = { { 1.0f, 1.1f, 1.0f },
+                             { 0.9f, 1.0f, 0.9f },
+                             { 0.8f, 0.9f, 0.8f },
+                             { 0.7f, 0.8f, 0.7f } };
+f32 lbl_1_data_6E0[4] = {1.0f, 0.9f, 0.8f, 0.7f};
 f32 lbl_1_data_6F0[4] = {288.0f, 298.0f, 308.0f, 318.0f};
 s32 lbl_1_data_700[8][4] = { { 0, 1, 2, 3 }, { 0, 0, 2, 3 }, { 0, 0, 2, 2 }, { 0, 0, 0, 3 },
                              { 0, 1, 1, 3 }, { 0, 1, 1, 1 }, { 0, 1, 2, 2 }, { 0, 0, 0, 0 } };

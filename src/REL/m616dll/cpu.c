@@ -12,6 +12,7 @@
 #include "game/pad.h"
 #include "game/frand.h"
 #include "datadir_enum.h"
+#include "datanum/mario.h"
 #include <string.h>
 
 /* When CPU choices are prepared for a round, choose 1 to 4 at random in round zero; later, repeat
@@ -78,10 +79,10 @@ s32 lbl_1_data_24C[13] = {
 
 /* Character motion data IDs passed to CharModelMotListCreate for each seat. */
 unsigned int lbl_1_data_280[12] = {
-    DATANUM(0x930000, 0), DATANUM(0x930000, 3), DATANUM(0x930000, 6),
-    DATANUM(0x930000, 40), DATANUM(0x930000, 111), DATANUM(0x930000, 112),
-    DATANUM(0x930000, 4), DATANUM(0x930000, 36), DATANUM(0x930000, 37),
-    DATANUM(0x8e0000, 154), DATANUM(0x8e0000, 155), 0
+    CHARMOT_HSF_c000m1_300, CHARMOT_HSF_c000m1_303, CHARMOT_HSF_c000m1_306,
+    CHARMOT_HSF_c000m1_351, CHARMOT_HSF_c000m1_458, CHARMOT_HSF_c000m1_459,
+    CHARMOT_HSF_c000m1_304, CHARMOT_HSF_c000m1_346, CHARMOT_HSF_c000m1_348,
+    MARIO_HSF_c000m1_618, MARIO_HSF_c000m1_619, 0
 };
 
 /* Rows are indexed by CPU difficulty; repeatPercent is the chance of reusing the previous round's

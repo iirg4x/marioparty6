@@ -1,5 +1,5 @@
 /* Motion-check strings, surface distortion matrix, and shared scene state. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/safdll/saf.h"
 
 #include "dolphin/types.h"
@@ -12,8 +12,6 @@ char lbl_1_data_30[12] = ">>>>>>%f\n";
 f32 lbl_1_data_3C[2][3] = {{0.05f, 0.0f, 0.0f}, {0.0f, 0.05f, 0.0f}};
 char lbl_1_data_54[] = "m625_field-grid7";
 
-#include "dolphin/math.h"
-#include "dolphin/types.h"
 #include "game/object.h"
 #include "game/process.h"
 #include "game/hsfex.h"

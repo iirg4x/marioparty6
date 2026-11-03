@@ -1,6 +1,6 @@
 /* Creates and updates player score displays and the course record display. */
 #define _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m608dll.h"
 
 /* Team-mode flag used to conditionally hide the shared record panel. */

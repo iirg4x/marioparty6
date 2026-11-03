@@ -1,5 +1,5 @@
 /* Score displays and countdown digits for the three opposing players. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/gamemes.h"
 #include "game/main.h"
 #include "game/gamework.h"

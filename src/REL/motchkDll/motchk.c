@@ -39,11 +39,6 @@ void _epilog(void) {
 
 #define MOTION_MAX 216
 
-enum {
-    /* Use the signed substick's high bits for coarser center movement. */
-    MOTCHK_SUBSTICK_AXIS_MASK = 0xF8,
-};
-
 /* Selection order in this table is the motion number shown by the preview. */
 static char *MotNameTbl[MOTION_MAX] = {
     "c000m1_300", "c000m1_301", "c000m1_302", "c000m1_303",
@@ -185,19 +180,19 @@ void MotChkMain(void)
     upButtonSeen = FALSE;
     CreateChar(CharNo, CharMotNo, CharMdlNo);
     while(1) {
-        if(lbl_802C0000[0] & PAD_BUTTON_A) {
+        if(lbl_802C0000[PAD_CHAN0] & PAD_BUTTON_A) {
             CharMotNo++;
             if(CharMotNo >= MOTION_MAX) {
                 CharMotNo = 0;
             }
             LoadCharMotion(CharNo, CharMotNo, CharMdlNo);
-        } else if(lbl_802C0000[0] & PAD_BUTTON_B) {
+        } else if(lbl_802C0000[PAD_CHAN0] & PAD_BUTTON_B) {
             CharMotNo--;
             if(CharMotNo < 0) {
                 CharMotNo = MOTION_MAX-1;
             }
             LoadCharMotion(CharNo, CharMotNo, CharMdlNo);
-        } else if(lbl_802C0008[0] & PAD_TRIGGER_Z) {
+        } else if(lbl_802C0008[PAD_CHAN0] & PAD_TRIGGER_Z) {
             CharMdlNo++;
             if(CharMdlNo >= 4) {
                 CharMdlNo = 0;
@@ -206,14 +201,14 @@ void MotChkMain(void)
                 fn_800269E8(CharMdlId[modelId], (1 << 0));
             }
             fn_80026A44(CharMdlId[CharMdlNo], (1 << 0));
-        } else if(lbl_802C0000[0] & PAD_BUTTON_X) {
+        } else if(lbl_802C0000[PAD_CHAN0] & PAD_BUTTON_X) {
             KillChar(CharNo);
             CharNo++;
             if(CharNo > 10) {
                 CharNo = 0;
             }
             CreateChar(CharNo, CharMotNo, CharMdlNo);
-        } else if(lbl_802C0000[0] & PAD_BUTTON_Y) {
+        } else if(lbl_802C0000[PAD_CHAN0] & PAD_BUTTON_Y) {
             KillChar(CharNo);
             CharNo--;
             if(CharNo < 0) {
@@ -223,7 +218,7 @@ void MotChkMain(void)
         }
         /* While LEFT is held, use full ambient and key light and disable shine; otherwise restore
          * the dimmer shiny lighting. */
-        if(lbl_802C0010[0] & PAD_BUTTON_LEFT) {
+        if(lbl_802C0010[PAD_CHAN0] & PAD_BUTTON_LEFT) {
             Hu3DAmbColorSet(1, 1, 1);
             fn_8002A390(FALSE);
             Hu3DGLightColorSet(MotChkLightId, 255, 255, 255, 255);
@@ -232,7 +227,7 @@ void MotChkMain(void)
             fn_8002A390(TRUE);
             Hu3DGLightColorSet(MotChkLightId, 128, 128, 128, 255);
         }
-        if(lbl_802C0008[0] == PAD_BUTTON_UP) {
+        if(lbl_802C0008[PAD_CHAN0] == PAD_BUTTON_UP) {
             /* Set this otherwise-unused local flag only when UP is the sole newly pressed
              * button. */
             upButtonSeen = TRUE;
@@ -380,7 +375,7 @@ void CameraMain(OMOBJ *cameraObj)
     float cameraRoll;
     s8 substickAxis;
 
-    if(lbl_802C0008[0] & PAD_BUTTON_START) {
+    if(lbl_802C0008[PAD_CHAN0] & PAD_BUTTON_START) {
         /* The array address is always non-null, so this always calls HuPrcKill with that address
          * before returning to the previous overlay. */
         if(lbl_1_bss_50) {
@@ -390,18 +385,18 @@ void CameraMain(OMOBJ *cameraObj)
         return;
     }
     /* Main-stick readings orbit the camera; the triggers adjust its distance. */
-    lbl_80266A40.x += lbl_802BFFF8[0]/20;
-    lbl_80266A40.y += lbl_802BFFFC[0]/20;
-    lbl_802C028C += lbl_802BFFEC[0]/2;
-    lbl_802C028C -= lbl_802BFFE8[0]/2;
+    lbl_80266A40.x += lbl_802BFFF8[PAD_CHAN0]/20;
+    lbl_80266A40.y += lbl_802BFFFC[PAD_CHAN0]/20;
+    lbl_802C028C += lbl_802BFFEC[PAD_CHAN0]/2;
+    lbl_802C028C -= lbl_802BFFE8[PAD_CHAN0]/2;
     cameraPosition.x = lbl_80266A4C.x
         + (lbl_802C028C * (sin(3.141592653589793*lbl_80266A40.y/180.0)
-        * cos(3.141592653589793*lbl_80266A40.x/180.0)));
+            * cos(3.141592653589793*lbl_80266A40.x/180.0)));
     cameraPosition.y = (lbl_80266A4C.y
         + (lbl_802C028C * -sin(3.141592653589793*lbl_80266A40.x/180.0)));
     cameraPosition.z = (lbl_80266A4C.z
         + (lbl_802C028C * (cos(3.141592653589793*lbl_80266A40.y/180.0)
-        * cos(3.141592653589793*lbl_80266A40.x/180.0))));
+            * cos(3.141592653589793*lbl_80266A40.x/180.0))));
     viewOffset.x = lbl_80266A4C.x - cameraPosition.x;
     viewOffset.y = lbl_80266A4C.y - cameraPosition.y;
     viewOffset.z = lbl_80266A4C.z - cameraPosition.z;
@@ -448,14 +443,15 @@ void CameraMain(OMOBJ *cameraObj)
     /* This perpendicular direction is the horizontal substick pan axis. */
     VECCrossProduct(&cameraUp, &viewOffset, &viewOffset);
     VECNormalize(&viewOffset, &viewOffset);
-    substickAxis = (lbl_802BFFF4[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    /* Use the signed substick's high bits for coarser center movement. */
+    substickAxis = (lbl_802BFFF4[PAD_CHAN0] & 0xF8);
     if (substickAxis != 0) {
         lbl_80266A4C.x += 0.05f * (viewOffset.x * substickAxis);
         lbl_80266A4C.y += 0.05f * (viewOffset.y * substickAxis);
         lbl_80266A4C.z += 0.05f * (viewOffset.z * substickAxis);
     }
     VECNormalize(&rolledUp, &viewOffset);
-    substickAxis = -(lbl_802BFFF0[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    substickAxis = -(lbl_802BFFF0[PAD_CHAN0] & 0xF8);
     if (substickAxis != 0) {
         lbl_80266A4C.x += 0.05f * (viewOffset.x * substickAxis);
         lbl_80266A4C.y += 0.05f * (viewOffset.y * substickAxis);

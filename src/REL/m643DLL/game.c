@@ -1,5 +1,5 @@
 /* Jump the Gun's scene, player, camera, and projectile callbacks. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "datadir_enum.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
@@ -9,16 +9,17 @@
 #include "game/wipe.h"
 #include "game/frand.h"
 #include "game/sprite.h"
+#include "game/gamework.h"
+#include "game/charman.h"
+#include "game/audio.h"
+#include "msm_stream.h"
+#include "game/hsfex.h"
+#include "game/data.h"
+#include "game/flag.h"
+#include "game/pad.h"
+#include "game/gamemes.h"
 
-static inline float atan2f(float y, float x)
-{
-    return (float)atan2((double)y, (double)x);
-}
 
-static inline float fabsf(float x)
-{
-    return fabs(x);
-}
 
 extern M643ViewControlWork *lbl_1_bss_154[2];
 extern M643PlayerPrefix *lbl_1_bss_174[2];
@@ -40,16 +41,12 @@ void fn_1_36DC(OMOBJ *object);
 void fn_1_3A98(OMOBJ *object);
 
 extern M643TeamScenePrefix *lbl_1_bss_16C[2];
-extern void *lbl_1_bss_14C[2];
+extern M643PlatformWork *lbl_1_bss_14C[2];
 
 void fn_1_40FC(OMOBJ *object);
 
 void fn_1_460(HuVecF *out, HuVecF *a, HuVecF *b);
 void fn_1_6B0(HuVecF *out, const HuVecF *vec, f32 scale);
-
-#include "game/mg/seqman.h"
-#include "game/gamework.h"
-#include "game/charman.h"
 
 extern const s16 lbl_1_rodata_178[4];
 extern const s32 lbl_1_rodata_60[2];
@@ -70,25 +67,8 @@ extern s32 lbl_1_bss_C[2][39];
 void fn_1_498(HuVecF *out, HuVecF *a, HuVecF *b);
 f32 fn_1_2A8(HuVecF *value);
 
-#include "game/audio.h"
-#include "msm_stream.h"
-#include "game/hsfex.h"
 f32 fn_1_3C8(const HuVecF *value);
 
-#include "game/data.h"
-#include "game/flag.h"
-#define MSM_SE_M643_1951 1951
-#define MSM_SE_M643_1952 1952
-#define MSM_SE_M643_1953 1953
-#define MSM_SE_M643_1954 1954
-#define MSM_SE_M643_1955 1955
-#define MSM_SE_M643_1956 1956
-#define MSM_SE_M643_1959 1959
-#define MSM_SE_M643_1959 1959
-#define MSM_SE_M643_1957 1957
-#define MSM_SE_M643_1958 1958
-#define MSM_SE_M643_1960 1960
-#define MSM_SE_M643_1961 1961
 #define M643_AIM_LINE_COLOR_BIT_PATTERN 0xDEFB
 #define M643_PLATFORM_LINE_COLOR_BIT_PATTERN 0xD800
 #define M643_SHOT_PATH_COLOR_BIT_PATTERN 0x07E0
@@ -101,8 +81,6 @@ void fn_1_B130(OMOBJ *object);
 
 BOOL fn_1_BCB0(M643PlayerPrefix *work);
 void fn_1_5D94(OMOBJ *object);
-
-#include "game/pad.h"
 
 typedef struct M643TeamTemplate_s {
     s32 group[4]; /* Player index assigned to each configured group; -1 means empty. */
@@ -154,18 +132,8 @@ s32 fn_1_E74(HuVecF *angles, Mtx matrix);
 
 extern const s32 lbl_1_rodata_138[4];
 
-#include "REL/m643DLL/m643.h"
-#include "game/mg/actman.h"
-#include "game/mg/seqman.h"
-#include "game/audio.h"
-#include "game/gamemes.h"
-
 void fn_1_20C(OMOBJ *object, OMOBJ_FUNC callback);
-void fn_1_1F98(OMOBJ *object);
 void fn_1_2058(OMOBJ *object);
-
-#include "game/frand.h"
-#include "game/gamework.h"
 
 extern M643PlayerPrefix *lbl_1_bss_174[2];
 extern M643PlayerIdentityPrefix *lbl_1_bss_15C[4];
@@ -175,12 +143,6 @@ void fn_1_2168(OMOBJ *object);
 void fn_1_21AC(OMOBJ *object);
 void fn_1_2300(OMOBJ *object);
 void fn_1_2354(OMOBJ *object);
-
-#include "REL/m643DLL/m643.h"
-#include "game/mg/actman.h"
-#include "game/mg/seqman.h"
-#include "game/data.h"
-#include "game/hsfex.h"
 
 extern const s32 lbl_1_rodata_60[2];
 void fn_1_20C(OMOBJ *object, OMOBJ_FUNC callback);
@@ -248,8 +210,8 @@ void fn_1_6674(OMOBJ *object);
 void fn_1_6750(OMOBJ *object);
 void fn_1_696C(OMOBJ *object);
 void fn_1_6B98(OMOBJ *object);
-void fn_1_6CA0(M643PlayerIdentityPrefix *work, s16 *minPlatform, s16 *maxPlatform);
-s32 fn_1_6DE0(M643PlayerIdentityPrefix *work, f32 radius);
+void fn_1_6CA0(M643TeamScenePrefix *work, s16 *minPlatform, s16 *maxPlatform);
+s32 fn_1_6DE0(M643TeamScenePrefix *work, f32 radius);
 void fn_1_6FA8(M643TeamScenePrefix *work, s16 motion, f32 blend, u32 flags);
 void fn_1_7028(M643TeamScenePrefix *work);
 void fn_1_72E0(M643TeamScenePrefix *work);
@@ -291,7 +253,7 @@ const f32 lbl_1_rodata_A8[2][2][4] = {
     0.0f, 482.0f, 640.0f, 238.0f, 0.0f, 242.0f, 640.0f, 238.0f
 };
 const f32 lbl_1_rodata_E8[2][2] = {
-    1.3333333730697632f, 2.6666667461395264f, 2.6666667461395264f, 2.6666667461395264f
+    1.3333334f, 2.6666667f, 2.6666667f, 2.6666667f
 };
 const f32 lbl_1_rodata_F8[2][2] = {900.0f, 530.0f, 530.0f, 570.0f};
 const u32 lbl_1_rodata_108[2] = {DATANUM(0x660000, 41), DATANUM(0x660000, 42)};
@@ -301,7 +263,7 @@ const f32 lbl_1_rodata_128[4] = {40.0f, 60.0f, 75.0f, 90.0f};
 const s32 lbl_1_rodata_138[4] = {60, 50, 40, 30};
 const f32 lbl_1_rodata_148[4] = {100.0f, 50.0f, 30.0f, 0.0f};
 const f32 lbl_1_rodata_158[4] = {0.0f, 10.0f, 20.0f, 40.0f};
-const f32 lbl_1_rodata_168[4] = {1.0f, 0.5f, 0.20000000298023224f, 0.0f};
+const f32 lbl_1_rodata_168[4] = {1.0f, 0.5f, 0.2f, 0.0f};
 const s16 lbl_1_rodata_178[4] = {60, 40, 2, 2};
 const M643TeamTemplate lbl_1_rodata_180 = {-1, -1, -1, -1};
 const HuVecF lbl_1_rodata_190 = {-2000.0f, -500.0f, -3000.0f};
@@ -513,7 +475,7 @@ M643PlayerPrefix *lbl_1_bss_174[2];
 M643TeamScenePrefix *lbl_1_bss_16C[2];
 M643PlayerIdentityPrefix *lbl_1_bss_15C[4];
 M643ViewControlWork *lbl_1_bss_154[2];
-void *lbl_1_bss_14C[2];
+M643PlatformWork *lbl_1_bss_14C[2];
 s16 lbl_1_bss_148; /* Winning team index; -1 means there is no winning team. */
 s32 lbl_1_bss_144; /* Set when the result-view timer elapses, without checking wipe completion. */
 s32 lbl_1_bss_C[2][39]; /* Nonzero for platforms revealed by each team. */
@@ -585,21 +547,21 @@ void fn_1_17A0(OMOBJ *object)
     if (isNight == 0) {
         HuVecF direction = lbl_1_rodata_190;
         fn_1_4D0(&direction, &direction);
-        light = Hu3DGLightCreate((2000.0f), (500.0f), (3000.0f),
+        light = Hu3DGLightCreate(2000.0f, 500.0f, 3000.0f,
             direction.x, direction.y, direction.z, 192, 192, 192);
         Hu3DGLightStaticSet(light, TRUE);
         Hu3DGLightInfinitytSet(light);
     } else {
         HuVecF direction;
-        fn_1_298(&direction, (0.0f), (-1000.0f), (-3000.0f));
+        fn_1_298(&direction, 0.0f, -1000.0f, -3000.0f);
         fn_1_4D0(&direction, &direction);
-        light = Hu3DGLightCreate((0.0f), (1000.0f), (3000.0f),
+        light = Hu3DGLightCreate(0.0f, 1000.0f, 3000.0f,
             direction.x, direction.y, direction.z, 64, 64, 255);
         Hu3DGLightStaticSet(light, TRUE);
         Hu3DGLightInfinitytSet(light);
-        fn_1_298(&direction, (0.0f), (-3000.0f), (2000.0f));
+        fn_1_298(&direction, 0.0f, -3000.0f, 2000.0f);
         fn_1_4D0(&direction, &direction);
-        light = Hu3DGLightCreate((0.0f), (3000.0f), (-2000.0f),
+        light = Hu3DGLightCreate(0.0f, 3000.0f, -2000.0f,
             direction.x, direction.y, direction.z, 255, 255, 255);
         Hu3DGLightStaticSet(light, TRUE);
         Hu3DGLightInfinitytSet(light);
@@ -609,19 +571,19 @@ void fn_1_17A0(OMOBJ *object)
         HuVecF up = lbl_1_rodata_1A8;
         HuVecF target = lbl_1_rodata_1B4;
         fn_1_4D0(&up, &up);
-        fn_8002A3B0((60.0f), (1.0f), (60000.0f), 3);
+        fn_8002A3B0(60.0f, 1.0f, 60000.0f, 3);
         fn_8002AA3C(0, 0, 0, 3);
         fn_8002A674(&position, &up, &target, 3);
-        fn_8002A7D8((0.44999998807907104f), 3);
+        fn_8002A7D8(0.45f, 3);
     } else {
         HuVecF position = lbl_1_rodata_1C0;
         HuVecF up = lbl_1_rodata_1CC;
         HuVecF target = lbl_1_rodata_1D8;
         fn_1_4D0(&up, &up);
-        fn_8002A3B0((60.0f), (1.0f), (60000.0f), 3);
+        fn_8002A3B0(60.0f, 1.0f, 60000.0f, 3);
         fn_8002AA3C(0, 0, 0, 3);
         fn_8002A674(&position, &up, &target, 3);
-        fn_8002A7D8((0.44999998807907104f), 3);
+        fn_8002A7D8(0.45f, 3);
         Hu3DShadowSizeSet(64);
     }
     fn_1_16C(10, 8, fn_1_2D90);
@@ -630,14 +592,14 @@ void fn_1_17A0(OMOBJ *object)
         team = playerGroups[index] < 2 ? 0 : 1;
         if (playerGroups[index] % 2 == 0) {
             lbl_1_bss_174[team] = fn_1_16C(30, 60, fn_1_4AEC);
-            lbl_1_bss_174[team]->playerIndex = index;
-            lbl_1_bss_174[team]->teamIndex = team;
-            lbl_1_bss_15C[index] = (M643PlayerIdentityPrefix *)lbl_1_bss_174[team];
+            lbl_1_bss_174[team]->identity.playerIndex = index;
+            lbl_1_bss_174[team]->identity.teamIndex = team;
+            lbl_1_bss_15C[index] = &lbl_1_bss_174[team]->identity;
         } else {
             lbl_1_bss_16C[team] = fn_1_16C(30, 172, fn_1_83C8);
-            lbl_1_bss_16C[team]->playerIndex = index;
-            lbl_1_bss_16C[team]->teamIndex = team;
-            lbl_1_bss_15C[index] = (M643PlayerIdentityPrefix *)lbl_1_bss_16C[team];
+            lbl_1_bss_16C[team]->identity.playerIndex = index;
+            lbl_1_bss_16C[team]->identity.teamIndex = team;
+            lbl_1_bss_15C[index] = &lbl_1_bss_16C[team]->identity;
         }
     }
     fn_8005DDEC(7);
@@ -813,7 +775,7 @@ void fn_1_23C4(OMOBJ *object)
     for (index = 1; index < 40; index++) fn_80080D7C(index, 0);
     for (index = 0; index < 2; index++) {
         lbl_1_bss_14C[index] = fn_1_16C(10, 158, fn_1_2838);
-        ((M643PlatformWork *)lbl_1_bss_14C[index])->teamIndex = index;
+        lbl_1_bss_14C[index]->teamIndex = index;
     }
     fn_1_20C(object, fn_1_26F4);
 }
@@ -837,7 +799,7 @@ s32 fn_1_2708(M643PlatformWork *work, s16 platform)
     fn_80080D7C(platform + 1, collisionMask);
     lbl_1_bss_C[work->teamIndex][platform] = 1;
     fn_1_1694(work->teamIndex)->shakeFrames = 5;
-    fn_8006A030(fn_1_1640(work->teamIndex)->playerIndex, 20, 7, 3);
+    fn_8006A030(fn_1_1640(work->teamIndex)->identity.playerIndex, 20, 7, 3);
     return previousTeamMask;
 }
 
@@ -857,7 +819,7 @@ void fn_1_2838(OMOBJ *object)
         fn_80026B64(work->raisedModels[platformIndex], lbl_1_rodata_60[work->teamIndex]);
         fn_80026B8C(work->raisedModels[platformIndex], 6);
         fn_800269E8(work->raisedModels[platformIndex], (1 << 0));
-        fn_80026808(work->raisedModels[platformIndex], (0.0f), (180.0f), (0.0f));
+        fn_80026808(work->raisedModels[platformIndex], 0.0f, 180.0f, 0.0f);
     }
     for (platformIndex = 0; platformIndex < 39; platformIndex++) {
         HuVecF position = lbl_1_data_C4[lbl_1_bss_8][platformIndex];
@@ -882,8 +844,8 @@ void fn_1_2A98(OMOBJ *object)
     s16 nightMode = lbl_802C0278;
     isNight = nightMode == 0 ? 0 : 1;
     fn_80027CD0(lbl_1_rodata_60[work->teamIndex], &cameraPosition, &cameraUp, &cameraTarget);
-    visibleLeft = cameraTarget.x - (1300.0f);
-    visibleRight = (1300.0f) + cameraTarget.x;
+    visibleLeft = cameraTarget.x - 1300.0f;
+    visibleRight = 1300.0f + cameraTarget.x;
     for (platformIndex = 0; platformIndex < 39; platformIndex++) {
         platformX = lbl_1_data_C4[lbl_1_bss_8][platformIndex].x;
         if (platformX > visibleLeft && platformX < visibleRight)
@@ -897,14 +859,14 @@ void fn_1_2A98(OMOBJ *object)
     }
     if (isNight == 0) {
         HuVecF position, up, target;
-        fn_1_298(&position, (200.0f) + cameraPosition.x, (1500.0f), (-200.0f));
-        fn_1_298(&up, (0.0f), (1.0f), (0.0f));
+        fn_1_298(&position, 200.0f + cameraPosition.x, 1500.0f, -200.0f);
+        fn_1_298(&up, 0.0f, 1.0f, 0.0f);
         fn_1_298(&target, cameraTarget.x, cameraTarget.y, cameraTarget.z);
         fn_8002A674(&position, &up, &target, lbl_1_rodata_60[work->teamIndex]);
     } else {
         HuVecF position, up, target;
-        fn_1_298(&position, cameraPosition.x, (1000.0f), (-500.0f));
-        fn_1_298(&up, (0.0f), (1.0f), (0.0f));
+        fn_1_298(&position, cameraPosition.x, 1000.0f, -500.0f);
+        fn_1_298(&up, 0.0f, 1.0f, 0.0f);
         fn_1_298(&target, cameraTarget.x, cameraTarget.y, cameraTarget.z);
         fn_8002A674(&position, &up, &target, lbl_1_rodata_60[work->teamIndex]);
     }
@@ -969,22 +931,22 @@ void fn_1_2FBC(OMOBJ *object)
 {
     M643ViewSequenceWork *work = object->data;
     f32 distance, angle, zoom, tangent;
-    Hu3DCameraPerspectiveSet(lbl_1_rodata_60[lbl_1_bss_148], (30.0f), (100.0f), (15000.0f),
-                             (1.2000000476837158f));
-    Hu3DCameraViewportSet(lbl_1_rodata_60[lbl_1_bss_148], (0.0f), (0.0f), (640.0f), (480.0f),
-                          (0.0f), (1.0f));
+    Hu3DCameraPerspectiveSet(lbl_1_rodata_60[lbl_1_bss_148], 30.0f, 100.0f, 15000.0f,
+                             1.2f);
+    Hu3DCameraViewportSet(lbl_1_rodata_60[lbl_1_bss_148], 0.0f, 0.0f, 640.0f, 480.0f,
+                          0.0f, 1.0f);
     Hu3DCameraScissorSet(lbl_1_rodata_60[lbl_1_bss_148], 0, 0, 640, 480);
-    Hu3DCameraViewportSet(lbl_1_rodata_60[(lbl_1_bss_148 + 1) % 2], (640.0f), (480.0f), (576.0f),
-                          (480.0f), (0.10000000149011612f), (1.0f));
+    Hu3DCameraViewportSet(lbl_1_rodata_60[(lbl_1_bss_148 + 1) % 2], 640.0f, 480.0f, 576.0f,
+                          480.0f, 0.1f, 1.0f);
     Hu3DCameraScissorSet(lbl_1_rodata_60[(lbl_1_bss_148+1)%2], 640, 480, 640, 480);
-    distance = (450.0f);
-    angle = (0.5235987901687622f);
+    distance = 450.0f;
+    angle = 0.5235988f;
     tangent = (f32)tan(angle / 2.0f);
     zoom = distance / tangent;
     Hu3DCameraPosSet(lbl_1_rodata_60[lbl_1_bss_148],
-        lbl_1_data_B8.x, (300.0f) + lbl_1_data_B8.y, lbl_1_data_B8.z + zoom,
-        (0.0f), (1.0f), (0.0f),
-        lbl_1_data_B8.x, (150.0f) + lbl_1_data_B8.y, lbl_1_data_B8.z);
+        lbl_1_data_B8.x, 300.0f + lbl_1_data_B8.y, lbl_1_data_B8.z + zoom,
+        0.0f, 1.0f, 0.0f,
+        lbl_1_data_B8.x, 150.0f + lbl_1_data_B8.y, lbl_1_data_B8.z);
     WipeCreate(1, 5, 60);
     work->phaseFrames = 0;
     fn_1_20C(object, fn_1_3300);
@@ -1009,24 +971,24 @@ void fn_1_3374(OMOBJ *object)
     M643ViewControlWork *work = object->data;
     f32 distance, angle, tangent;
     HuVecF pos, target, up;
-    Hu3DCameraPerspectiveSet(lbl_1_rodata_60[work->teamIndex], (30.0f), (100.0f), (20000.0f),
+    Hu3DCameraPerspectiveSet(lbl_1_rodata_60[work->teamIndex], 30.0f, 100.0f, 20000.0f,
                              lbl_1_rodata_E8[work->teamIndex][0]);
     Hu3DCameraViewportSet(lbl_1_rodata_60[work->teamIndex], lbl_1_rodata_68[work->teamIndex][0][0],
                           lbl_1_rodata_68[work->teamIndex][0][1],
                           lbl_1_rodata_68[work->teamIndex][0][2],
-                          lbl_1_rodata_68[work->teamIndex][0][3], (0.0f), (1.0f));
+                          lbl_1_rodata_68[work->teamIndex][0][3], 0.0f, 1.0f);
     Hu3DCameraScissorSet(lbl_1_rodata_60[work->teamIndex],
         lbl_1_rodata_A8[work->teamIndex][0][0], lbl_1_rodata_A8[work->teamIndex][0][1],
         lbl_1_rodata_A8[work->teamIndex][0][2], lbl_1_rodata_A8[work->teamIndex][0][3]);
     distance = lbl_1_rodata_F8[work->teamIndex][0];
-    angle = (0.5235987901687622f);
-    tangent = (f32)tan((0.5f) * angle);
+    angle = 0.5235988f;
+    tangent = (f32)tan(0.5f * angle);
     work->cameraDepth = distance / tangent;
-    fn_1_298(&target, lbl_1_data_AC.x, (550.0f), lbl_1_data_AC.z);
-    target.x += (500.0f);
+    fn_1_298(&target, lbl_1_data_AC.x, 550.0f, lbl_1_data_AC.z);
+    target.x += 500.0f;
     pos = target;
     pos.z = work->cameraDepth;
-    fn_1_298(&up, (0.0f), (1.0f), (0.0f));
+    fn_1_298(&up, 0.0f, 1.0f, 0.0f);
     Hu3DCameraPosSetV(lbl_1_rodata_60[work->teamIndex], &pos, &up, &target);
     work->shakeFrames = 0;
     fn_1_20C(object, fn_1_3680);
@@ -1050,35 +1012,35 @@ void fn_1_36DC(OMOBJ *object)
     f32 distance, angle, shakeX, shakeY, tangent;
     HuVecF pos, target, up, actorPos;
     distance = lbl_1_rodata_F8[work->teamIndex][0];
-    angle = (0.5235987901687622f);
-    tangent = (f32)tan((0.5f) * angle);
+    angle = 0.5235988f;
+    tangent = (f32)tan(0.5f * angle);
     work->cameraDepth = distance / tangent;
     fn_80086BC8(fn_1_1640(work->teamIndex)->player->actor, &actorPos);
-    fn_1_298(&target, actorPos.x, (550.0f), actorPos.z);
-    target.x += (500.0f);
+    fn_1_298(&target, actorPos.x, 550.0f, actorPos.z);
+    target.x += 500.0f;
     pos = target;
-    if (target.x > (2060.0f)) {
-        target.x = (2060.0f);
+    if (target.x > 2060.0f) {
+        target.x = 2060.0f;
     }
-    if (pos.x > (2060.0f)) {
-        pos.x = (2060.0f);
+    if (pos.x > 2060.0f) {
+        pos.x = 2060.0f;
     }
     pos.z = work->cameraDepth;
-    fn_1_298(&up, (0.0f), (1.0f), (0.0f));
+    fn_1_298(&up, 0.0f, 1.0f, 0.0f);
     Hu3DCameraPosSetV(lbl_1_rodata_60[work->teamIndex], &pos, &up, &target);
     if (work->shakeFrames > 0) {
-        shakeX = (4.0f) * frandf() - (2.0f);
-        shakeY = (4.0f) * frandf() - (2.0f);
+        shakeX = 4.0f * frandf() - 2.0f;
+        shakeY = 4.0f * frandf() - 2.0f;
         Hu3DCameraViewportSet(
             lbl_1_rodata_60[work->teamIndex], shakeX + lbl_1_rodata_68[work->teamIndex][0][0],
             shakeY + lbl_1_rodata_68[work->teamIndex][0][1], lbl_1_rodata_68[work->teamIndex][0][2],
-            lbl_1_rodata_68[work->teamIndex][0][3], (0.0f), (1.0f));
+            lbl_1_rodata_68[work->teamIndex][0][3], 0.0f, 1.0f);
         work->shakeFrames--;
         if (work->shakeFrames == 0) {
             Hu3DCameraViewportSet(
                 lbl_1_rodata_60[work->teamIndex], lbl_1_rodata_68[work->teamIndex][0][0],
                 lbl_1_rodata_68[work->teamIndex][0][1], lbl_1_rodata_68[work->teamIndex][0][2],
-                lbl_1_rodata_68[work->teamIndex][0][3], (0.0f), (1.0f));
+                lbl_1_rodata_68[work->teamIndex][0][3], 0.0f, 1.0f);
         }
     }
     if (work->phaseFrames++ >= 230) {
@@ -1096,7 +1058,7 @@ void fn_1_3A98(OMOBJ *object)
     f32 viewport[4], scissor[4];
     HuVecF pos, target, up, actorPos;
     work->phaseFrames++;
-    t = (f32)work->phaseFrames / (60.0f);
+    t = (f32)work->phaseFrames / 60.0f;
     viewport[0] = (1.0f - t) * lbl_1_rodata_68[work->teamIndex][0][0] +
                   t * lbl_1_rodata_68[work->teamIndex][1][0];
     viewport[1] = (1.0f - t) * lbl_1_rodata_68[work->teamIndex][0][1] +
@@ -1106,12 +1068,12 @@ void fn_1_3A98(OMOBJ *object)
     viewport[3] = (1.0f - t) * lbl_1_rodata_68[work->teamIndex][0][3] +
                   t * lbl_1_rodata_68[work->teamIndex][1][3];
     Hu3DCameraViewportSet(lbl_1_rodata_60[work->teamIndex], viewport[0], viewport[1], viewport[2],
-                          viewport[3], (0.0f), (1.0f));
+                          viewport[3], 0.0f, 1.0f);
     if (work->teamIndex == 0) {
-        Hu3DCameraPerspectiveSet(lbl_1_rodata_60[work->teamIndex], (30.0f), (100.0f), (20000.0f),
+        Hu3DCameraPerspectiveSet(lbl_1_rodata_60[work->teamIndex], 30.0f, 100.0f, 20000.0f,
                                  viewport[2] / viewport[3]);
     } else {
-        Hu3DCameraPerspectiveSet(lbl_1_rodata_60[work->teamIndex], (30.0f), (100.0f), (20000.0f),
+        Hu3DCameraPerspectiveSet(lbl_1_rodata_60[work->teamIndex], 30.0f, 100.0f, 20000.0f,
                                  lbl_1_rodata_68[work->teamIndex][1][2] /
                                      lbl_1_rodata_68[work->teamIndex][1][3]);
     }
@@ -1127,17 +1089,17 @@ void fn_1_3A98(OMOBJ *object)
                          scissor[3]);
     distance =
         (1.0f - t) * lbl_1_rodata_F8[work->teamIndex][0] + t * lbl_1_rodata_F8[work->teamIndex][1];
-    angle = (0.5235987901687622f);
-    tangent = (f32)tan((0.5f) * angle);
+    angle = 0.5235988f;
+    tangent = (f32)tan(0.5f * angle);
     work->cameraDepth = distance / tangent;
     fn_80086BC8(fn_1_1640(work->teamIndex)->player->actor, &actorPos);
-    fn_1_298(&target, actorPos.x, (550.0f), actorPos.z);
-    target.x += (500.0f);
+    fn_1_298(&target, actorPos.x, 550.0f, actorPos.z);
+    target.x += 500.0f;
     pos = target;
-    if (target.x > (2060.0f)) target.x = (2060.0f);
-    if (pos.x > (2060.0f)) pos.x = (2060.0f);
+    if (target.x > 2060.0f) target.x = 2060.0f;
+    if (pos.x > 2060.0f) pos.x = 2060.0f;
     pos.z = work->cameraDepth;
-    fn_1_298(&up, (0.0f), (1.0f), (0.0f));
+    fn_1_298(&up, 0.0f, 1.0f, 0.0f);
     Hu3DCameraPosSetV(lbl_1_rodata_60[work->teamIndex], &pos, &up, &target);
     if (work->phaseFrames >= 60) {
         fn_1_20C(object, fn_1_40FC);
@@ -1151,32 +1113,32 @@ void fn_1_40FC(OMOBJ *object)
     M643ViewControlWork *work = object->data;
     f32 shakeX, shakeY;
     HuVecF actorPos, scenePos, midpoint = {0.0f, 0.0f, 0.0f}, pos, target, up;
-    fn_1_298(&up, (0.0f), (1.0f), (0.0f));
+    fn_1_298(&up, 0.0f, 1.0f, 0.0f);
     fn_80086BC8(fn_1_1640(work->teamIndex)->player->actor, &actorPos);
     scenePos = fn_1_165C(work->teamIndex)->aimPosition;
     fn_1_460(&midpoint, &actorPos, &scenePos);
-    fn_1_6B0(&midpoint, &midpoint, (0.5f));
+    fn_1_6B0(&midpoint, &midpoint, 0.5f);
     /* The midpoint is calculated but the view continues to follow the runner. */
-    fn_1_298(&target, actorPos.x, (550.0f), actorPos.z);
-    target.x += (500.0f);
+    fn_1_298(&target, actorPos.x, 550.0f, actorPos.z);
+    target.x += 500.0f;
     pos = target;
-    if (target.x > (2060.0f)) target.x = (2060.0f);
-    if (pos.x > (2060.0f)) pos.x = (2060.0f);
+    if (target.x > 2060.0f) target.x = 2060.0f;
+    if (pos.x > 2060.0f) pos.x = 2060.0f;
     pos.z = work->cameraDepth;
     Hu3DCameraPosSetV(lbl_1_rodata_60[work->teamIndex], &pos, &up, &target);
     if (work->shakeFrames > 0) {
-        shakeX = (4.0f) * frandf() - (2.0f);
-        shakeY = (4.0f) * frandf() - (2.0f);
+        shakeX = 4.0f * frandf() - 2.0f;
+        shakeY = 4.0f * frandf() - 2.0f;
         Hu3DCameraViewportSet(
             lbl_1_rodata_60[work->teamIndex], shakeX + lbl_1_rodata_68[work->teamIndex][1][0],
             shakeY + lbl_1_rodata_68[work->teamIndex][1][1], lbl_1_rodata_68[work->teamIndex][1][2],
-            lbl_1_rodata_68[work->teamIndex][1][3], (0.0f), (1.0f));
+            lbl_1_rodata_68[work->teamIndex][1][3], 0.0f, 1.0f);
         work->shakeFrames--;
         if (work->shakeFrames == 0) {
             Hu3DCameraViewportSet(
                 lbl_1_rodata_60[work->teamIndex], lbl_1_rodata_68[work->teamIndex][1][0],
                 lbl_1_rodata_68[work->teamIndex][1][1], lbl_1_rodata_68[work->teamIndex][1][2],
-                lbl_1_rodata_68[work->teamIndex][1][3], (0.0f), (1.0f));
+                lbl_1_rodata_68[work->teamIndex][1][3], 0.0f, 1.0f);
         }
     }
     if (fn_80071A8C() == 7) {
@@ -1197,17 +1159,17 @@ s32 fn_1_44C4(M643PlayerPrefix *work, f32 radius)
     s32 platformIndex;
     HuVecF currentPosition, candidatePosition, jumpDelta;
     for (platformIndex = 38; platformIndex >= work->lastPlatform + 1; platformIndex--) {
-        if (lbl_1_bss_C[work->teamIndex][platformIndex] != 0) {
+        if (lbl_1_bss_C[work->identity.teamIndex][platformIndex] != 0) {
             currentPosition = lbl_1_data_C4[lbl_1_bss_8][work->lastPlatform];
             candidatePosition = lbl_1_data_C4[lbl_1_bss_8][platformIndex];
             fn_1_498(&jumpDelta, &candidatePosition, &currentPosition);
             /* Downhill jumps extend the search reach; uphill jumps reduce it. */
-            if (jumpDelta.y < (0.0f)) {
-                jumpDelta.x *= (0.800000011920929f);
-                jumpDelta.y *= (0.6000000238418579f);
+            if (jumpDelta.y < 0.0f) {
+                jumpDelta.x *= 0.8f;
+                jumpDelta.y *= 0.6f;
             }
-            if (jumpDelta.y > (0.0f)) {
-                jumpDelta.y *= (1.25f);
+            if (jumpDelta.y > 0.0f) {
+                jumpDelta.y *= 1.25f;
             }
             if (fn_1_2A8(&jumpDelta) <= radius) {
                 return platformIndex;
@@ -1224,21 +1186,22 @@ BOOL fn_1_4664(M643PlayerPrefix *work)
     f32 pan;
     HuVecF screen;
     if (work->position.y < (-100.0f) && work->fallSoundPlayed == 0 && work->respawnPending == 0) {
-        Hu3D3Dto2D(&work->position, lbl_1_rodata_60[work->teamIndex], &screen);
-        pan = screen.x / (576.0f);
-        pan *= (127.0f);
-        pan = pan < (0.0f) ? (0.0f) : (pan > (127.0f) ? (127.0f) : pan);
-        HuAudFXPlayPan(work->teamIndex == 0 ? 1957 : 1958, (s16)pan);
+        Hu3D3Dto2D(&work->position, lbl_1_rodata_60[work->identity.teamIndex], &screen);
+        pan = screen.x / 576.0f;
+        pan *= 127.0f;
+        pan = pan < 0.0f ? 0.0f : (pan > 127.0f ? 127.0f : pan);
+        HuAudFXPlayPan(work->identity.teamIndex == 0 ? 1957 : 1958,
+                       (s16)pan);
         work->fallSoundPlayed = 1;
     }
     if (work->position.y < (-1000.0f)) {
         work->respawnPending = 1;
         /* Despawn also pauses the player and disables its collision body while it falls away. */
         fn_80086E3C(work->player);
-        work->rescueSpinRadians = (0.0f);
+        work->rescueSpinRadians = 0.0f;
         fn_8002C95C(work->player->actor->mdlId, work->player->omObj->mtnId[7]);
-        fn_8005C2C8(work->characterId, work->player->omObj->mtnId[7],
-            (0.0f), (4.0f), ((1 << 30) | (1 << 0)));
+        fn_8005C2C8(work->identity.characterId, work->player->omObj->mtnId[7],
+            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
         work->previousJumpTarget = 0;
         work->jumpTarget = 0;
         work->fallSoundPlayed = 0;
@@ -1253,15 +1216,15 @@ void fn_1_4880(M643PlayerPrefix *work)
     f32 scale;
     HuVecF shadowPos;
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
-    scale = (1.0f) - (work->position.y - (200.0f)) / (800.0f);
+    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
     shadowPos = work->position;
-    shadowPos.y = (200.0f);
+    shadowPos.y = 200.0f;
     fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, (1.0f), scale);
+    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
     /* The separate shadow is visible only beyond the platform course's ends. */
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > (1900.0f)) {
+    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
         fn_80026A44(work->shadowModel, (1 << 0));
     } else {
         fn_800269E8(work->shadowModel, (1 << 0));
@@ -1276,14 +1239,14 @@ BOOL fn_1_49B8(M643PlayerPrefix *work)
     fn_80086BC8(work->player->actor, &position);
     if (fn_80086CE8(work->player->actor, &mesh)) {
         fn_1_498(&delta, &lbl_1_data_B8, &position);
-        if (mesh == 0 && fn_1_3C8(&delta) < (62500.0f)) {
+        if (mesh == 0 && fn_1_3C8(&delta) < 62500.0f) {
             work->finished = 1;
             return TRUE;
         }
         /* If the earlier tests pass, the height lookup reads mesh - 1 before checking mesh > 0,
          * so mesh zero accesses the preceding table entry. */
         if (fn_80087148(work->player, (1 << 4)) == 0 &&
-            work->player->actor->velY <= (0.0f) &&
+            work->player->actor->velY <= 0.0f &&
             position.y > lbl_1_data_C4[lbl_1_bss_8][mesh - 1].y && mesh > 0) {
             work->lastPlatform = mesh - 1;
         }
@@ -1295,7 +1258,7 @@ BOOL fn_1_49B8(M643PlayerPrefix *work)
 void fn_1_4AEC(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
-    work->characterId = lbl_80265728[work->playerIndex].charNo;
+    work->identity.characterId = lbl_80265728[work->identity.playerIndex].charNo;
     work->respawnPending = 0;
     work->lastPlatform = 0;
     work->jumpTarget = 0;
@@ -1305,31 +1268,31 @@ void fn_1_4AEC(OMOBJ *object)
     work->finished = 0;
     work->shadowModel =
         fn_80025A04(fn_80008DD0(DATANUM(0x660000, 15), 0x10000000, 2));
-    fn_80026B64(work->shadowModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->shadowModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->shadowModel, 4);
     fn_800269E8(work->shadowModel, (1 << 22));
     fn_80026A44(work->shadowModel, (1 << 0));
     {
     MGACTOR_PARAM params = {0};
-    params.height = (150.0f);
-    params.radius = (40.0f);
-    params.param = work->playerIndex;
+    params.height = 150.0f;
+    params.radius = 40.0f;
+    params.param = work->identity.playerIndex;
     params.type = 0;
     params.attr = 0;
     params.correctHookParam = 0;
     params.narrowHook = NULL;
     params.correctHook = NULL;
-    work->player = fn_80080728(work->playerIndex, &params, 4,
-        lbl_1_rodata_60[work->teamIndex], 3, lbl_1_data_60);
+    work->player = fn_80080728(work->identity.playerIndex, &params, 4,
+        lbl_1_rodata_60[work->identity.teamIndex], 3, lbl_1_data_60);
     }
     fn_8007E818(work->player);
-    fn_80026B64(work->player->actor->mdlId, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->player->actor->mdlId, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->player->actor->mdlId, 6);
-    fn_80080DD4(work->player->actor, lbl_1_rodata_110[work->teamIndex]);
+    fn_80080DD4(work->player->actor, lbl_1_rodata_110[work->identity.teamIndex]);
     work->position = lbl_1_data_AC;
     fn_80086AA8(work->player->actor, &work->position);
     work->rescue = fn_1_16C(40, 104, fn_1_B130);
-    work->rescue->teamIndex = work->teamIndex;
+    work->rescue->teamIndex = work->identity.teamIndex;
     work->rescue->runner = work;
     fn_1_20C(object, fn_1_4D8C);
 }
@@ -1341,14 +1304,14 @@ void fn_1_4D8C(OMOBJ *object)
     f32 scale;
     HuVecF shadowPos;
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
-    scale = (1.0f) - (work->position.y - (200.0f)) / (800.0f);
+    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
     shadowPos = work->position;
-    shadowPos.y = (200.0f);
+    shadowPos.y = 200.0f;
     fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, (1.0f), scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > (1900.0f)) {
+    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
+    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
         fn_80026A44(work->shadowModel, (1 << 0));
     } else {
         fn_800269E8(work->shadowModel, (1 << 0));
@@ -1368,14 +1331,14 @@ void fn_1_4EF8(OMOBJ *object)
     f32 scale, velocity;
     HuVecF destination, shadowPos;
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
-    scale = (1.0f) - (work->position.y - (200.0f)) / (800.0f);
+    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
     shadowPos = work->position;
-    shadowPos.y = (200.0f);
+    shadowPos.y = 200.0f;
     fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, (1.0f), scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > (1900.0f)) {
+    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
+    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
         fn_80026A44(work->shadowModel, (1 << 0));
     } else {
         fn_800269E8(work->shadowModel, (1 << 0));
@@ -1384,17 +1347,17 @@ void fn_1_4EF8(OMOBJ *object)
     if (work->phaseFrames == 180) {
         if (work->player->actor->gravity) {
             velocity = work->player->actor->gravity +
-                ((-1.0f + sqrtf((1.0f) + (8.0f) *
-                ((30000.0f) / work->player->actor->gravity))) /
+                ((-1.0f + sqrtf(1.0f + 8.0f *
+                (30000.0f / work->player->actor->gravity))) /
                 2.0f) * work->player->actor->gravity;
         } else {
-            velocity = (0.0f);
+            velocity = 0.0f;
         }
         fn_80086CC4(work->player->actor, velocity);
     } else if (work->phaseFrames >= 180) {
         destination = lbl_1_data_C4[lbl_1_bss_8][0];
-        destination.z = (100.0f);
-        if (fn_8007E8B4(work->player, &destination, (5.0f), (10.0f))) {
+        destination.z = 100.0f;
+        if (fn_8007E8B4(work->player, &destination, 5.0f, 10.0f)) {
             fn_1_20C(object, fn_1_5298);
             return;
         }
@@ -1408,20 +1371,20 @@ void fn_1_5298(OMOBJ *object)
     f32 scale;
     HuVecF shadowPos;
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
-    scale = (1.0f) - (work->position.y - (200.0f)) / (800.0f);
+    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
     shadowPos = work->position;
-    shadowPos.y = (200.0f);
+    shadowPos.y = 200.0f;
     fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, (1.0f), scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > (1900.0f)) {
+    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
+    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
         fn_80026A44(work->shadowModel, (1 << 0));
     } else {
         fn_800269E8(work->shadowModel, (1 << 0));
     }
     if (fn_80071A8C() == 5) {
-        if (lbl_80265728[work->playerIndex].type != 0) {
+        if (lbl_80265728[work->identity.playerIndex].type != 0) {
             fn_1_20C(object, fn_1_58DC);
             return;
         } else {
@@ -1490,14 +1453,14 @@ void fn_1_5D94(OMOBJ *object)
         return;
     }
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
-    scale = (1.0f) - (work->position.y - (200.0f)) / (800.0f);
+    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
     shadowPos = work->position;
-    shadowPos.y = (200.0f);
+    shadowPos.y = 200.0f;
     fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, (1.0f), scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > (1900.0f)) {
+    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
+    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
         fn_80026A44(work->shadowModel, (1 << 0));
     } else {
         fn_800269E8(work->shadowModel, (1 << 0));
@@ -1511,17 +1474,17 @@ void fn_1_5D94(OMOBJ *object)
         return;
     }
     if (!fn_8007E8B4(work->player, &lbl_1_data_B8,
-            (7.0f), (10.0f))) {
+            7.0f, 10.0f)) {
         if (fn_80086CE8(work->player->actor, &mesh)) {
             jumping = fn_80087148(work->player, (1 << 4)) ? TRUE : FALSE;
             if (!jumping) {
                 if (work->player->actor->gravity) {
                     velocity = work->player->actor->gravity +
-                        ((-1.0f + sqrtf((1.0f) + (8.0f) *
-                        ((30000.0f) / work->player->actor->gravity))) /
+                        ((-1.0f + sqrtf(1.0f + 8.0f *
+                        (30000.0f / work->player->actor->gravity))) /
                         2.0f) * work->player->actor->gravity;
                 } else {
-                    velocity = (0.0f);
+                    velocity = 0.0f;
                 }
                 fn_80086CC4(work->player->actor, velocity);
             }
@@ -1545,11 +1508,11 @@ void fn_1_6450(OMOBJ *object)
 void fn_1_64B4(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
-    work->rescueSpinRadians += (0.08726646259971647);
+    work->rescueSpinRadians += 0.08726646259971647;
     fn_80026790(work->player->actor->mdlId, &work->position);
     fn_80026808(work->player->actor->mdlId,
-        (0.0f), (180.0f) * work->rescueSpinRadians / (3.141592653589793),
-        (0.0f));
+        0.0f, 180.0f * work->rescueSpinRadians / 3.141592653589793,
+        0.0f);
     if (work->respawnPending == 0) {
         if (fn_80071A8C() == 6) {
             fn_8007E818(work->player);
@@ -1569,9 +1532,9 @@ void fn_1_64B4(OMOBJ *object)
         }
         fn_80086F00(work->player, &work->position);
         fn_8007E818(work->player);
-        work->player->actor->rotY = (90.0f);
+        work->player->actor->rotY = 90.0f;
         fn_80026808(work->player->actor->mdlId,
-            (0.0f), (90.0f), (0.0f));
+            0.0f, 90.0f, 0.0f);
         fn_1_20C(object, fn_1_6674);
         return;
     }
@@ -1584,8 +1547,8 @@ void fn_1_6674(OMOBJ *object)
     M643PlayerPrefix *work = object->data;
     int mesh;
     if (fn_80086CE8(work->player->actor, &mesh)) {
-        if (lbl_80265728[work->playerIndex].type != 0) {
-            s16 difficulty = lbl_80265728[work->playerIndex].comDif;
+        if (lbl_80265728[work->identity.playerIndex].type != 0) {
+            s16 difficulty = lbl_80265728[work->identity.playerIndex].comDif;
             work->jumpDelayFrames = lbl_1_rodata_178[difficulty];
             fn_1_20C(object, fn_1_58DC);
             return;
@@ -1605,26 +1568,26 @@ void fn_1_6750(OMOBJ *object)
     f32 scale;
     HuVecF destination = lbl_1_data_B8;
     HuVecF shadowPos;
-    destination.z = (100.0f);
-    if (lbl_1_bss_148 != -1 && lbl_1_bss_148 != work->teamIndex) {
+    destination.z = 100.0f;
+    if (lbl_1_bss_148 != -1 && lbl_1_bss_148 != work->identity.teamIndex) {
         fn_1_20C(object, NULL);
         return;
     }
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
-    scale = (1.0f) - (work->position.y - (200.0f)) / (800.0f);
+    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
     shadowPos = work->position;
-    shadowPos.y = (200.0f);
+    shadowPos.y = 200.0f;
     fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, (1.0f), scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > (1900.0f)) {
+    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
+    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
         fn_80026A44(work->shadowModel, (1 << 0));
     } else {
         fn_800269E8(work->shadowModel, (1 << 0));
     }
-    if (lbl_1_bss_148 == work->teamIndex) {
-        fn_8007E8B4(work->player, &destination, (7.0f), (10.0f));
+    if (lbl_1_bss_148 == work->identity.teamIndex) {
+        fn_8007E8B4(work->player, &destination, 7.0f, 10.0f);
     }
     if (fn_80071A8C() == 7) {
         work->phaseFrames = 0;
@@ -1641,25 +1604,25 @@ void fn_1_696C(OMOBJ *object)
     f32 scale;
     HuVecF shadowPos;
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
-    scale = (1.0f) - (work->position.y - (200.0f)) / (800.0f);
+    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
     shadowPos = work->position;
-    shadowPos.y = (200.0f);
+    shadowPos.y = 200.0f;
     fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, (1.0f), scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > (1900.0f)) {
+    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
+    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
         fn_80026A44(work->shadowModel, (1 << 0));
     } else {
         fn_800269E8(work->shadowModel, (1 << 0));
     }
     if (work->phaseFrames++ >= 60 || fn_80071A8C() == 8) {
-        if (lbl_1_bss_148 == work->teamIndex) {
+        if (lbl_1_bss_148 == work->identity.teamIndex) {
             work->position = lbl_1_data_B8;
-            work->position.x -= (100.0f);
+            work->position.x -= 100.0f;
             fn_80026790(work->player->actor->mdlId, &work->position);
             fn_80086B04(work->player->actor, &work->position);
-            fn_80086CA8(work->player->actor, (0.0f));
+            fn_80086CA8(work->player->actor, 0.0f);
             fn_80026E44(work->player->actor->mdlId);
             fn_800269E8(work->shadowModel, (1 << 0));
         }
@@ -1673,15 +1636,15 @@ void fn_1_6B98(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
     fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = (100.0f);
+    work->position.z = 100.0f;
     fn_80086B04(work->player->actor, &work->position);
     if (fn_80071A8C() == 8) {
-        if (lbl_1_bss_148 == work->teamIndex) {
-            fn_8005C2C8(work->characterId, work->player->omObj->mtnId[5],
-                (0.0f), (4.0f), 0);
+        if (lbl_1_bss_148 == work->identity.teamIndex) {
+            fn_8005C2C8(work->identity.characterId, work->player->omObj->mtnId[5],
+                0.0f, 4.0f, 0);
         } else {
-            fn_8005C2C8(work->characterId, work->player->omObj->mtnId[6],
-                (0.0f), (4.0f), 0);
+            fn_8005C2C8(work->identity.characterId, work->player->omObj->mtnId[6],
+                0.0f, 4.0f, 0);
         }
         fn_1_20C(object, NULL);
         return;
@@ -1689,17 +1652,18 @@ void fn_1_6B98(OMOBJ *object)
 }
 
 /* Shooter updates call this to find the minimum and maximum platform indices near their camera. */
-void fn_1_6CA0(M643PlayerIdentityPrefix *work, s16 *minPlatform, s16 *maxPlatform)
+void fn_1_6CA0(M643TeamScenePrefix *work, s16 *minPlatform, s16 *maxPlatform)
 {
     HuVecF cameraPosition, cameraTarget, cameraUp;
-    fn_80027CD0(lbl_1_rodata_60[work->teamIndex], &cameraPosition, &cameraUp, &cameraTarget);
+    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPosition, &cameraUp,
+                     &cameraTarget);
     for (*maxPlatform = 0; *maxPlatform < 38; (*maxPlatform)++) {
-        if (lbl_1_data_C4[lbl_1_bss_8][*maxPlatform].x > (300.0f) + cameraPosition.x) {
+        if (lbl_1_data_C4[lbl_1_bss_8][*maxPlatform].x > 300.0f + cameraPosition.x) {
             break;
         }
     }
     for (*minPlatform = 38; *minPlatform > 0; (*minPlatform)--) {
-        if (lbl_1_data_C4[lbl_1_bss_8][*minPlatform].x < cameraPosition.x - (1000.0f)) {
+        if (lbl_1_data_C4[lbl_1_bss_8][*minPlatform].x < cameraPosition.x - 1000.0f) {
             break;
         }
     }
@@ -1707,23 +1671,23 @@ void fn_1_6CA0(M643PlayerIdentityPrefix *work, s16 *minPlatform, s16 *maxPlatfor
 
 /* Computer aiming chooses the farthest unrevealed platform ahead of its runner within
  * the weighted jump distance; zero means no candidate was found. */
-s32 fn_1_6DE0(M643PlayerIdentityPrefix *work, f32 radius)
+s32 fn_1_6DE0(M643TeamScenePrefix *work, f32 radius)
 {
-    M643PlayerPrefix *runner = fn_1_1640(work->teamIndex);
+    M643PlayerPrefix *runner = fn_1_1640(work->identity.teamIndex);
     s16 currentPlatform = runner->lastPlatform;
     s32 platformIndex;
     HuVecF runnerPosition, platformPosition, jumpDelta;
     for (platformIndex = 38; platformIndex >= currentPlatform + 1; platformIndex--) {
-        if (lbl_1_bss_C[work->teamIndex][platformIndex] == 0) {
+        if (lbl_1_bss_C[work->identity.teamIndex][platformIndex] == 0) {
             runnerPosition = lbl_1_data_C4[lbl_1_bss_8][currentPlatform];
             platformPosition = lbl_1_data_C4[lbl_1_bss_8][platformIndex];
             fn_1_498(&jumpDelta, &platformPosition, &runnerPosition);
-            if (jumpDelta.y < (0.0f)) {
-                jumpDelta.x *= (0.800000011920929f);
-                jumpDelta.y *= (0.6000000238418579f);
+            if (jumpDelta.y < 0.0f) {
+                jumpDelta.x *= 0.8f;
+                jumpDelta.y *= 0.6f;
             }
-            if (jumpDelta.y > (0.0f)) {
-                jumpDelta.y *= (1.25f);
+            if (jumpDelta.y > 0.0f) {
+                jumpDelta.y *= 1.25f;
             }
             if (fn_1_2A8(&jumpDelta) <= radius) {
                 return platformIndex;
@@ -1738,8 +1702,9 @@ void fn_1_6FA8(M643TeamScenePrefix *work, s16 motion, f32 blend, u32 flags)
 {
     if (motion != work->operatorMotion) {
         work->operatorMotion = motion;
-        fn_8005C2C8(work->characterId, work->operatorObject->mtnId[work->operatorMotion],
-            (0.0f), blend, flags);
+        fn_8005C2C8(work->identity.characterId,
+            work->operatorObject->mtnId[work->operatorMotion],
+            0.0f, blend, flags);
     }
 }
 
@@ -1776,8 +1741,8 @@ void fn_1_7028(M643TeamScenePrefix *work)
         if (input->released) input->released = 0;
         input->pressed = 0;
     }
-    fn_1_298(&stick, lbl_802BFFFC[lbl_80265728[work->playerIndex].padNo] / (56.0f),
-        (0.0f), -lbl_802BFFF8[lbl_80265728[work->playerIndex].padNo] / (56.0f));
+    fn_1_298(&stick, lbl_802BFFFC[lbl_80265728[work->identity.playerIndex].padNo] / 56.0f,
+        0.0f, -lbl_802BFFF8[lbl_80265728[work->identity.playerIndex].padNo] / 56.0f);
     if (stick.x <= (-0.5f)) {
         if (!work->aimInput[0].pressed && !work->aimInput[0].held)
             work->aimInput[0].pressed = 1;
@@ -1786,7 +1751,7 @@ void fn_1_7028(M643TeamScenePrefix *work)
         work->aimInput[0].released = 1;
         work->aimInput[0].held = 0;
     }
-    if (stick.x >= (0.5f)) {
+    if (stick.x >= 0.5f) {
         if (!work->aimInput[1].pressed && !work->aimInput[1].held)
             work->aimInput[1].pressed = 1;
         work->aimInput[1].held = 1;
@@ -1813,20 +1778,20 @@ void fn_1_72E0(M643TeamScenePrefix *work)
             work->firingMotionFrames = fn_8002D530(work->barrelModel);
             /* A zero mask leaves the barrel's existing model attributes unchanged. */
             fn_800269E8(work->barrelModel, 0);
-            fn_8002D86C(work->barrelModel, (1.0f));
+            fn_8002D86C(work->barrelModel, 1.0f);
             fn_800269E8(work->loadedShotModel, (1 << 0));
-            fn_1_6FA8(work, 8, (4.0f), 0);
+            fn_1_6FA8(work, 8, 4.0f, 0);
             fn_8002C95C(work->muzzleEffectModel, work->muzzleEffectMotion);
             fn_80026A44(work->muzzleEffectModel, (1 << 0));
             Hu3DModelObjPosGet(work->barrelModel, "643houdaiEFFnull", &position);
             fn_80026790(work->muzzleEffectModel, &position);
-            fn_8006A030(work->playerIndex, 20, 7, 3);
-            Hu3D3Dto2D(&position, lbl_1_rodata_60[work->teamIndex], &screen);
-            pan = screen.x / (576.0f);
-            pan *= (127.0f);
-            pan = pan < (0.0f) ? (0.0f) :
-                (pan > (127.0f) ? (127.0f) : pan);
-            if (work->teamIndex == 0) soundId = 1951;
+            fn_8006A030(work->identity.playerIndex, 20, 7, 3);
+            Hu3D3Dto2D(&position, lbl_1_rodata_60[work->identity.teamIndex], &screen);
+            pan = screen.x / 576.0f;
+            pan *= 127.0f;
+            pan = pan < 0.0f ? 0.0f :
+                (pan > 127.0f ? 127.0f : pan);
+            if (work->identity.teamIndex == 0) soundId = 1951;
             else soundId = 1952;
             HuAudFXPlayPan(soundId, (s16)pan);
             break;
@@ -1842,13 +1807,14 @@ void fn_1_7554(M643TeamScenePrefix *work)
     HuVecF cameraPosition, cameraTarget, cameraUp;
     HuVecF position, delta, desiredDirection, currentDirection;
     HuVecF playerPosition, shadowPosition, hookPosition;
-    fn_80027CD0(lbl_1_rodata_60[work->teamIndex], &cameraPosition, &cameraUp, &cameraTarget);
-    work->cannonPosition.x = (600.0f) + cameraPosition.x;
-    work->cannonPosition.y = cameraPosition.y - (100.0f) +
-        (30.0) * sin((0.017453292519943295) * work->bobDegrees);
-    work->cannonPosition.z = (550.0f);
-    work->bobDegrees += (1.0f);
-    if (work->bobDegrees >= (360.0f)) work->bobDegrees = (0.0f);
+    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPosition, &cameraUp,
+                     &cameraTarget);
+    work->cannonPosition.x = 600.0f + cameraPosition.x;
+    work->cannonPosition.y = cameraPosition.y - 100.0f +
+        30.0 * sin(0.017453292519943295 * work->bobDegrees);
+    work->cannonPosition.z = 550.0f;
+    work->bobDegrees += 1.0f;
+    if (work->bobDegrees >= 360.0f) work->bobDegrees = 0.0f;
     /* Sample the muzzle from the barrel's previous transform before updating its position
      * and aim. */
     Hu3DModelObjPosGet(work->barrelModel, "643houdaiEFFnull", &work->muzzlePosition);
@@ -1857,48 +1823,48 @@ void fn_1_7554(M643TeamScenePrefix *work)
     fn_80026790(work->baseModel, &position);
     fn_1_498(&delta, &work->aimPosition, &work->muzzlePosition);
     desired = atan2f(delta.x, delta.z);
-    fn_1_298(&desiredDirection, (f32)sin(desired), (0.0f), (f32)cos(desired));
-    fn_1_298(&currentDirection, (f32)sin(work->yawRadians), (0.0f), (f32)cos(work->yawRadians));
+    fn_1_298(&desiredDirection, (f32)sin(desired), 0.0f, (f32)cos(desired));
+    fn_1_298(&currentDirection, (f32)sin(work->yawRadians), 0.0f, (f32)cos(work->yawRadians));
     difference = fn_1_214(fn_1_3F8(&desiredDirection, &currentDirection));
     cross = desiredDirection.x * currentDirection.z - desiredDirection.z * currentDirection.x;
     current = work->yawRadians;
-    if (cross >= (0.0f)) current += (0.10000000149011612f) * difference;
-    else if (cross < (0.0f)) current -= (0.10000000149011612f) * difference;
-    while (current > (6.283185307179586)) current -= (6.283185307179586);
-    while (current < (-6.283185307179586)) current += (6.283185307179586);
+    if (cross >= 0.0f) current += 0.1f * difference;
+    else if (cross < 0.0f) current -= 0.1f * difference;
+    while (current > 6.283185307179586) current -= 6.283185307179586;
+    while (current < (-6.283185307179586)) current += 6.283185307179586;
     work->yawRadians = current;
     desired = atan2f(delta.z, delta.y);
-    fn_1_298(&desiredDirection, (f32)sin(desired), (0.0f), (f32)cos(desired));
-    fn_1_298(&currentDirection, (f32)sin(work->pitchRadians), (0.0f), (f32)cos(work->pitchRadians));
+    fn_1_298(&desiredDirection, (f32)sin(desired), 0.0f, (f32)cos(desired));
+    fn_1_298(&currentDirection, (f32)sin(work->pitchRadians), 0.0f, (f32)cos(work->pitchRadians));
     difference = fn_1_3F8(&desiredDirection, &currentDirection);
     /* Pitch uses the dot product directly; zero Y components force the nonnegative branch. */
     cross = desiredDirection.y * currentDirection.z - desiredDirection.z * currentDirection.y;
     current = work->pitchRadians;
-    if (cross >= (0.0f)) current += (0.10000000149011612f) * difference;
-    else if (cross < (0.0f)) current -= (0.10000000149011612f) * difference;
-    while (current > (6.283185307179586)) current -= (6.283185307179586);
-    while (current < (-6.283185307179586)) current += (6.283185307179586);
+    if (cross >= 0.0f) current += 0.1f * difference;
+    else if (cross < 0.0f) current -= 0.1f * difference;
+    while (current > 6.283185307179586) current -= 6.283185307179586;
+    while (current < (-6.283185307179586)) current += 6.283185307179586;
     work->pitchRadians = current;
-    fn_80026808(work->barrelModel, (180.0f) * work->pitchRadians / (3.141592653589793),
-        (180.0) + (180.0f) * work->yawRadians / (3.141592653589793), (0.0f));
-    fn_80026808(work->baseModel, (0.0f),
-        (180.0) + (180.0f) * work->yawRadians / (3.141592653589793), (0.0f));
-    fn_1_298(&playerPosition, work->cannonPosition.x, work->cannonPosition.y - (100.0f),
+    fn_80026808(work->barrelModel, 180.0f * work->pitchRadians / 3.141592653589793,
+        180.0 + 180.0f * work->yawRadians / 3.141592653589793, 0.0f);
+    fn_80026808(work->baseModel, 0.0f,
+        180.0 + 180.0f * work->yawRadians / 3.141592653589793, 0.0f);
+    fn_1_298(&playerPosition, work->cannonPosition.x, work->cannonPosition.y - 100.0f,
              work->cannonPosition.z);
-    playerPosition.x += (200.0) * -cos((3.141592653589793) + work->yawRadians);
-    playerPosition.z += (200.0) * sin((3.141592653589793) + work->yawRadians);
+    playerPosition.x += 200.0 * -cos(3.141592653589793 + work->yawRadians);
+    playerPosition.z += 200.0 * sin(3.141592653589793 + work->yawRadians);
     fn_80026790(work->operatorObject->mdlId[0], &playerPosition);
     fn_80026790(work->operatorFollowModel, &playerPosition);
-    fn_1_298(&shadowPosition, work->cannonPosition.x, work->cannonPosition.y - (120.0f),
-        work->cannonPosition.z - (100.0f));
+    fn_1_298(&shadowPosition, work->cannonPosition.x, work->cannonPosition.y - 120.0f,
+        work->cannonPosition.z - 100.0f);
     fn_80026790(work->operatorObject->mdlId[1], &shadowPosition);
-    fn_80026808(work->operatorObject->mdlId[1], (0.0f),
-        (135.0) + (180.0f) * work->yawRadians / (3.141592653589793), (0.0f));
+    fn_80026808(work->operatorObject->mdlId[1], 0.0f,
+        135.0 + 180.0f * work->yawRadians / 3.141592653589793, 0.0f);
     Hu3DModelObjPosGet(work->baseModel, "643houdaibace-643EFF3Null", &hookPosition);
     fn_80026790(work->reloadEffectModel, &hookPosition);
     if (work->operatorMotion == 8 && fn_8002D4E0(work->operatorObject->mdlId[0]) ==
                                    fn_8002D530(work->operatorObject->mdlId[0])) {
-        fn_1_6FA8(work, 0, (4.0f), ((1 << 30) | (1 << 0)));
+        fn_1_6FA8(work, 0, 4.0f, ((1 << 30) | (1 << 0)));
     }
 }
 
@@ -1945,8 +1911,8 @@ void fn_1_7D1C(HU3D_MODEL *model, Mtx mtx)
         distance = fn_1_4D0(&tangent, &tangent);
         forwardDot = fn_1_3F8(&tangent, &up);
         fn_1_6B0(&tangent, &tangent, 3.0f * distance * forwardDot);
-        fn_1_298(&endTangent, (0.0f), (0.0f),
-            3.0f * -distance * ((1.0f) - forwardDot));
+        fn_1_298(&endTangent, 0.0f, 0.0f,
+            3.0f * -distance * (1.0f - forwardDot));
         GXBegin(GX_LINES, GX_VTXFMT0, 280);
         GXPosition3f32(start.x, start.y, start.z);
         GXWGFifo.u16 = M643_AIM_LINE_COLOR_BIT_PATTERN;
@@ -1955,7 +1921,7 @@ void fn_1_7D1C(HU3D_MODEL *model, Mtx mtx)
         for (sampleIndex = 0; sampleIndex < 39; sampleIndex++) {
             HuVecF platform = lbl_1_data_C4[lbl_1_bss_8][sampleIndex];
             HuVecF offset = platform;
-            offset.z += (300.0f);
+            offset.z += 300.0f;
             GXPosition3f32(platform.x, platform.y, platform.z);
             GXWGFifo.u16 = M643_PLATFORM_LINE_COLOR_BIT_PATTERN;
             GXPosition3f32(offset.x, offset.y, offset.z);
@@ -1964,12 +1930,12 @@ void fn_1_7D1C(HU3D_MODEL *model, Mtx mtx)
         position = curveStart;
         for (sampleIndex = 0; sampleIndex < 100; sampleIndex++) {
             HuVecF weightedVector;
-            progress = sampleIndex / (100.0f);
+            progress = sampleIndex / 100.0f;
             progressSquared = progress * progress;
             progressCubed = progress * progress * progress;
             previous = position;
             fn_1_6B0(&position, &curveStart,
-                     (1.0f) + (2.0f * progressCubed - 3.0f * progressSquared));
+                     1.0f + (2.0f * progressCubed - 3.0f * progressSquared));
             fn_1_6B0(&weightedVector, &curveEnd, -2.0f * progressCubed + 3.0f * progressSquared);
             fn_1_460(&position, &position, &weightedVector);
             fn_1_6B0(&weightedVector, &tangent,
@@ -1997,45 +1963,47 @@ void fn_1_83C8(OMOBJ *object)
     s16 night;
     s16 nightFlag = lbl_802C0278;
     night = nightFlag == 0 ? 0 : 1;
-    work->characterId = lbl_80265728[work->playerIndex].charNo;
+    work->identity.characterId = lbl_80265728[work->identity.playerIndex].charNo;
     work->aimPlatform = 0;
     work->previousAimPlatform = work->aimPlatform;
     work->shotCount = 2;
     work->phaseFrames = 0;
     work->operatorMotion = -1;
-    work->bobDegrees = (0.0f);
+    work->bobDegrees = 0.0f;
     work->computerTargetPlatform = 0;
     work->observedRunnerPlatform = 0;
     work->reactionFrames = 60;
     work->unusedSetupValue = 1;
-    fn_80027CD0(lbl_1_rodata_60[work->teamIndex], &cameraPos, &cameraUp, &cameraTarget);
-    work->cannonPosition.x = (500.0f) + cameraPos.x;
-    work->cannonPosition.y = cameraPos.y - (200.0f);
-    work->cannonPosition.z = (500.0f);
+    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPos, &cameraUp,
+                     &cameraTarget);
+    work->cannonPosition.x = 500.0f + cameraPos.x;
+    work->cannonPosition.y = cameraPos.y - 200.0f;
+    work->cannonPosition.z = 500.0f;
     work->aimMarkerModel = fn_80025A04(
-        fn_80008DD0(lbl_1_data_94[work->teamIndex], 0x10000000, 2));
+        fn_80008DD0(lbl_1_data_94[work->identity.teamIndex], 0x10000000, 2));
     work->aimMarkerMotion =
-        fn_80030458(work->aimMarkerModel, fn_80008DD0(lbl_1_data_9C[work->teamIndex],
+        fn_80030458(work->aimMarkerModel,
+            fn_80008DD0(lbl_1_data_9C[work->identity.teamIndex],
                                                              0x10000000, 2));
     fn_8002C95C(work->aimMarkerModel, work->aimMarkerMotion);
     fn_800269E8(work->aimMarkerModel, ((1 << 30) | (1 << 0)));
     /* The opening target uses course zero and a fixed Z of zero; gameplay later uses the selected
      * course. */
     work->aimPosition = lbl_1_data_C4[0][work->aimPlatform];
-    work->aimPosition.z = (0.0f);
+    work->aimPosition.z = 0.0f;
     fn_80026790(work->aimMarkerModel, &work->aimPosition);
-    fn_80026B64(work->aimMarkerModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->aimMarkerModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->aimMarkerModel, 5);
     fn_800269E8(work->aimMarkerModel, (1 << 22));
-    work->yawRadians = (3.1415927410125732f);
-    work->pitchRadians = (0.0f);
+    work->yawRadians = 3.1415927f;
+    work->pitchRadians = 0.0f;
     work->barrelModel =
         fn_80025A04(fn_80008DD0(DATANUM(0x660000, 30), 0x10000000, 2));
     {
         HuVecF position = work->cannonPosition;
         fn_80026790(work->barrelModel, &position);
     }
-    fn_80026B64(work->barrelModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->barrelModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->barrelModel, 7);
     for (i = 0; i < 3; i++)
         work->cannonMotions[i] = fn_80030458(
@@ -2046,11 +2014,11 @@ void fn_1_83C8(OMOBJ *object)
     work->baseModel =
         fn_80025A04(fn_80008DD0(DATANUM(0x660000, 31), 0x10000000, 2));
     fn_80026790(work->baseModel, &work->cannonPosition);
-    fn_80026B64(work->baseModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->baseModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->baseModel, 7);
     work->muzzleEffectModel =
         fn_80025A04(fn_80008DD0(DATANUM(0x660000, 37), 0x10000000, 2));
-    fn_80026B64(work->muzzleEffectModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->muzzleEffectModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->muzzleEffectModel, 7);
     fn_800269E8(work->muzzleEffectModel, (1 << 0));
     work->muzzleEffectMotion =
@@ -2059,29 +2027,31 @@ void fn_1_83C8(OMOBJ *object)
     fn_8002C95C(work->muzzleEffectModel, work->muzzleEffectMotion);
     work->loadedShotModel =
         fn_80025A04(fn_80008DD0(DATANUM(0x660000, 7), 0x10000000, 2));
-    fn_80026B64(work->loadedShotModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->loadedShotModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->loadedShotModel, 7);
     fn_800269E8(work->loadedShotModel, (1 << 0));
     fn_8002741C(work->barrelModel, "643houdaibace-643killerNull1", work->loadedShotModel);
     work->operatorObject = fn_8003AB38(lbl_1_bss_0, 101, 2, 10, 0, NULL);
     omSetStatBit(work->operatorObject, (1 << 8));
-    characterModel = work->operatorObject->mdlId[0] = fn_80057068(work->characterId, 4);
-    fn_80026B64(characterModel, lbl_1_rodata_60[work->teamIndex]);
+    characterModel = work->operatorObject->mdlId[0] =
+        fn_80057068(work->identity.characterId, 4);
+    fn_80026B64(characterModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(characterModel, 7);
     for (i = 0; i < 10; i++)
-        work->operatorObject->mtnId[i] = fn_8005B0B8(work->characterId, lbl_1_data_60[i]);
-    fn_8005B4BC(work->characterId);
-    fn_1_6FA8(work, 0, (0.0f), ((1 << 30) | (1 << 0)));
+        work->operatorObject->mtnId[i] =
+            fn_8005B0B8(work->identity.characterId, lbl_1_data_60[i]);
+    fn_8005B4BC(work->identity.characterId);
+    fn_1_6FA8(work, 0, 0.0f, ((1 << 30) | (1 << 0)));
     {
         HuVecF position;
-        fn_1_298(&position, work->cannonPosition.x, work->cannonPosition.y - (100.0f),
-                 (400.0f) + work->cannonPosition.z);
+        fn_1_298(&position, work->cannonPosition.x, work->cannonPosition.y - 100.0f,
+                 400.0f + work->cannonPosition.z);
         fn_80026790(characterModel, &position);
     }
-    fn_80026808(characterModel, (0.0f), (180.0f), (0.0f));
+    fn_80026808(characterModel, 0.0f, 180.0f, 0.0f);
     work->operatorObject->mdlId[1] =
         fn_80025A04(fn_80008DD0(lbl_1_data_A4[night], 0x10000000, 2));
-    fn_80026B64(work->operatorObject->mdlId[1], lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->operatorObject->mdlId[1], lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->operatorObject->mdlId[1], 6);
     work->operatorBaseMotion =
         fn_80030458(work->operatorObject->mdlId[1],
@@ -2090,32 +2060,32 @@ void fn_1_83C8(OMOBJ *object)
     fn_800269E8(work->operatorObject->mdlId[1], ((1 << 30) | (1 << 0)));
     {
         HuVecF position;
-        fn_1_298(&position, work->cannonPosition.x, work->cannonPosition.y - (120.0f),
+        fn_1_298(&position, work->cannonPosition.x, work->cannonPosition.y - 120.0f,
                  work->cannonPosition.z);
         fn_80026790(work->operatorObject->mdlId[1], &position);
     }
     work->reloadEffectModel =
         fn_80025A04(fn_80008DD0(lbl_1_rodata_108[night], 0x10000000, 2));
-    fn_80026B64(work->reloadEffectModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->reloadEffectModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->reloadEffectModel, 7);
     work->reloadEffectMotion =
         fn_80030458(work->reloadEffectModel,
                         fn_80008DD0(DATANUM(0x660000, 43), 0x10000000, 2));
     fn_8002C95C(work->reloadEffectModel, work->reloadEffectMotion);
     fn_800269E8(work->reloadEffectModel, (1 << 0));
-    fn_8002D86C(work->reloadEffectModel, (1.3333333730697632f));
+    fn_8002D86C(work->reloadEffectModel, 1.3333334f);
     work->operatorFollowModel =
         fn_80025A04(fn_80008DD0(DATANUM(0x660000, 16), 0x10000000, 2));
     fn_80026B8C(work->operatorFollowModel, 7);
     fn_800269E8(work->operatorFollowModel, (1 << 22));
-    fn_80026B64(work->operatorFollowModel, lbl_1_rodata_60[work->teamIndex]);
+    fn_80026B64(work->operatorFollowModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026A44(work->operatorFollowModel, (1 << 0));
     work->shots =
         HuMemDirectMallocNum(HEAP_HEAP, work->shotCount * sizeof(M643ShotPrefix *), 0x10000000);
     for (i = 0; i < work->shotCount; i++) {
         work->shots[i] = fn_1_16C(40, 148, fn_1_A138);
         work->shots[i]->slotIndex = i;
-        work->shots[i]->teamIndex = work->teamIndex;
+        work->shots[i]->teamIndex = work->identity.teamIndex;
         work->shots[i]->cannon = work;
     }
     fn_1_20C(object, fn_1_8C70);
@@ -2155,15 +2125,15 @@ void fn_1_8F94(OMOBJ *object)
     fn_1_7554(work);
     if (work->phaseFrames++ == (s32)work->firingMotionFrames) {
         fn_8002C95C(work->barrelModel, work->cannonMotions[1]);
-        fn_8002D86C(work->barrelModel, (1.8666666746139526f));
+        fn_8002D86C(work->barrelModel, 1.8666667f);
         fn_80026A44(work->loadedShotModel, (1 << 0));
         fn_8002C95C(work->reloadEffectModel, work->reloadEffectMotion);
-        fn_8002D86C(work->reloadEffectModel, (5.333333492279053f));
+        fn_8002D86C(work->reloadEffectModel, 5.3333335f);
         fn_80026A44(work->reloadEffectModel, (1 << 0));
     }
     if (fn_80071A8C() == 5) {
         work->phaseFrames = 0;
-        if (lbl_80265728[work->playerIndex].type != 0) {
+        if (lbl_80265728[work->identity.playerIndex].type != 0) {
             fn_1_20C(object, fn_1_96A4);
             return;
         } else {
@@ -2178,7 +2148,7 @@ void fn_1_8F94(OMOBJ *object)
 void fn_1_90A8(OMOBJ *object)
 {
     M643TeamScenePrefix *work = object->data;
-    s16 padIndex = lbl_80265728[work->playerIndex].padNo;
+    s16 padIndex = lbl_80265728[work->identity.playerIndex].padNo;
     s16 minPlatform, maxPlatform;
     int soundId;
     f32 pan;
@@ -2191,20 +2161,20 @@ void fn_1_90A8(OMOBJ *object)
     work->previousAimPlatform = work->aimPlatform;
     if (work->aimInput[0].step) work->aimPlatform--;
     else if (work->aimInput[1].step) work->aimPlatform++;
-    fn_1_6CA0((M643PlayerIdentityPrefix *)work, &minPlatform, &maxPlatform);
+    fn_1_6CA0(work, &minPlatform, &maxPlatform);
     if (work->aimPlatform < minPlatform) work->aimPlatform = minPlatform;
     if (work->aimPlatform > maxPlatform) work->aimPlatform = maxPlatform;
     work->aimPosition = lbl_1_data_C4[lbl_1_bss_8][work->aimPlatform];
     position = work->aimPosition;
-    position.z = (0.0f);
+    position.z = 0.0f;
     fn_80026790(work->aimMarkerModel, &position);
     if (work->previousAimPlatform != work->aimPlatform) {
-        Hu3D3Dto2D(&position, lbl_1_rodata_60[work->teamIndex], &screen);
-        pan = screen.x / (576.0f);
-        pan *= (127.0f);
-        pan = pan < (0.0f) ? (0.0f) :
-            (pan > (127.0f) ? (127.0f) : pan);
-        if (work->teamIndex == 0) soundId = 1955;
+        Hu3D3Dto2D(&position, lbl_1_rodata_60[work->identity.teamIndex], &screen);
+        pan = screen.x / 576.0f;
+        pan *= 127.0f;
+        pan = pan < 0.0f ? 0.0f :
+            (pan > 127.0f ? 127.0f : pan);
+        if (work->identity.teamIndex == 0) soundId = 1955;
         else soundId = 1956;
         HuAudFXPlayPan(soundId, (s16)pan);
     }
@@ -2236,15 +2206,15 @@ void fn_1_96A4(OMOBJ *object)
     fireRequested = fn_1_C5B0(work);
     work->aimPosition = lbl_1_data_C4[lbl_1_bss_8][work->aimPlatform];
     position = work->aimPosition;
-    position.z = (0.0f);
+    position.z = 0.0f;
     fn_80026790(work->aimMarkerModel, &position);
     if (work->previousAimPlatform != work->aimPlatform) {
-        Hu3D3Dto2D(&position, lbl_1_rodata_60[work->teamIndex], &screen);
-        pan = screen.x / (576.0f);
-        pan *= (127.0f);
-        pan = pan < (0.0f) ? (0.0f) :
-            (pan > (127.0f) ? (127.0f) : pan);
-        if (work->teamIndex == 0) soundId = 1955;
+        Hu3D3Dto2D(&position, lbl_1_rodata_60[work->identity.teamIndex], &screen);
+        pan = screen.x / 576.0f;
+        pan *= 127.0f;
+        pan = pan < 0.0f ? 0.0f :
+            (pan > 127.0f ? 127.0f : pan);
+        if (work->identity.teamIndex == 0) soundId = 1955;
         else soundId = 1956;
         HuAudFXPlayPan(soundId, (s16)pan);
     }
@@ -2272,12 +2242,12 @@ void fn_1_98E4(OMOBJ *object)
     if (work->phaseFrames++ >= work->firingMotionFrames) {
         work->phaseFrames = 0;
         fn_8002C95C(work->barrelModel, work->cannonMotions[1]);
-        fn_8002D86C(work->barrelModel, (1.8666666746139526f));
+        fn_8002D86C(work->barrelModel, 1.8666667f);
         fn_80026A44(work->loadedShotModel, (1 << 0));
         fn_8002C95C(work->reloadEffectModel, work->reloadEffectMotion);
-        fn_8002D86C(work->reloadEffectModel, (2.6666667461395264f));
+        fn_8002D86C(work->reloadEffectModel, 2.6666667f);
         fn_80026A44(work->reloadEffectModel, (1 << 0));
-        if (lbl_80265728[work->playerIndex].type != 0) {
+        if (lbl_80265728[work->identity.playerIndex].type != 0) {
             fn_1_20C(object, fn_1_96A4);
             return;
         } else {
@@ -2293,7 +2263,7 @@ void fn_1_9A48(OMOBJ *object)
     M643TeamScenePrefix *work = object->data;
     if (fn_80071A8C() == 7) {
         work->phaseFrames = 0;
-        fn_1_6FA8(work, 0, (4.0f), ((1 << 30) | (1 << 0)));
+        fn_1_6FA8(work, 0, 4.0f, ((1 << 30) | (1 << 0)));
         fn_1_20C(object, fn_1_9AF4);
         return;
     }
@@ -2306,12 +2276,12 @@ void fn_1_9AF4(OMOBJ *object)
 {
     M643TeamScenePrefix *work = object->data;
     if (work->phaseFrames++ >= 60 || fn_80071A8C() == 8) {
-        if (lbl_1_bss_148 == work->teamIndex) {
+        if (lbl_1_bss_148 == work->identity.teamIndex) {
             HuVecF position = lbl_1_data_B8;
-            position.x += (100.0f);
-            position.z = (0.0f);
+            position.x += 100.0f;
+            position.z = 0.0f;
             fn_80026790(work->operatorObject->mdlId[0], &position);
-            fn_80026808(work->operatorObject->mdlId[0], (0.0f), (0.0f), (0.0f));
+            fn_80026808(work->operatorObject->mdlId[0], 0.0f, 0.0f, 0.0f);
             fn_80026790(work->operatorFollowModel, &position);
             fn_800269E8(work->operatorFollowModel, (1 << 0));
             fn_800269E8(work->barrelModel, (1 << 0));
@@ -2331,8 +2301,8 @@ void fn_1_9C74(OMOBJ *object)
 {
     M643TeamScenePrefix *work = object->data;
     if (fn_80071A8C() == 8) {
-        if (lbl_1_bss_148 == work->teamIndex) fn_1_6FA8(work, 5, (0.0f), 0);
-        else fn_1_6FA8(work, 6, (0.0f), 0);
+        if (lbl_1_bss_148 == work->identity.teamIndex) fn_1_6FA8(work, 5, 0.0f, 0);
+        else fn_1_6FA8(work, 6, 0.0f, 0);
         fn_1_20C(object, NULL);
         return;
     }
@@ -2348,24 +2318,24 @@ void fn_1_9D7C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
     for (particleIndex = 0; particleIndex < particle->maxCnt; particleIndex++, data++) {
         if (data->time == 0) {
             data->time++;
-            data->vel.x = (10.0) * sin((0.7853981633974483) * particleIndex);
-            data->vel.y = (10.0) * -cos((0.7853981633974483) * particleIndex);
-            data->vel.z = (0.0f);
-            data->accel.y = (0.0f);
+            data->vel.x = 10.0 * sin(0.7853981633974483 * particleIndex);
+            data->vel.y = 10.0 * -cos(0.7853981633974483 * particleIndex);
+            data->vel.z = 0.0f;
+            data->accel.y = 0.0f;
             data->color.r = 255;
             data->color.g = 255;
             data->color.b = 0;
             data->color.a = 255;
-            data->scale = (16.0f);
+            data->scale = 16.0f;
         }
         if (data->time == 1) {
             data->vel.y += data->accel.y;
-            data->accel.y -= (0.05000000074505806f);
+            data->accel.y -= 0.05f;
             fn_1_460(&data->pos, &data->pos, &data->vel);
             fadeAlpha = data->color.a - 10;
             if (fadeAlpha < 0) {
                 fadeAlpha = 0;
-                data->scale = (0.0f);
+                data->scale = 0.0f;
                 data->time = -1;
             }
             data->color.a = fadeAlpha;
@@ -2383,14 +2353,14 @@ void fn_1_9F60(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
     for (particleIndex = 0; particleIndex < particle->maxCnt; particleIndex++, data++) {
         if (data->time == 0) {
             data->time++;
-            data->vel.x = (2.0f) * frandf() - (1.0f);
-            data->vel.y = (2.0f) * frandf();
-            data->vel.z = (2.0f) * frandf() - (1.0f);
+            data->vel.x = 2.0f * frandf() - 1.0f;
+            data->vel.y = 2.0f * frandf();
+            data->vel.z = 2.0f * frandf() - 1.0f;
             data->color.r = 192;
             data->color.g = 128;
             data->color.b = 128;
             data->color.a = 127;
-            data->scale = (128.0f);
+            data->scale = 128.0f;
         }
         if (data->time == 1) {
             data->color.r -= 15;
@@ -2400,11 +2370,11 @@ void fn_1_9F60(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
             data->color.b -= 10;
             if (data->color.b < 64) data->color.b = 64;
             fn_1_460(&data->pos, &data->pos, &data->vel);
-            data->scale *= (1.0099999904632568f);
+            data->scale *= 1.01f;
             fadeAlpha = data->color.a - 2;
             if (fadeAlpha < 0) {
                 fadeAlpha = 0;
-                data->scale = (0.0f);
+                data->scale = 0.0f;
                 data->time = -1;
             }
             data->color.a = fadeAlpha;
@@ -2432,11 +2402,11 @@ void fn_1_A138(OMOBJ *object)
         s32 i;
         fn_8003269C(work->trailParticles, 0);
         fn_800326D0(work->trailParticles, fn_1_9F60);
-        fn_80026760(work->trailParticles, (0.0f), (0.0f), (0.0f));
+        fn_80026760(work->trailParticles, 0.0f, 0.0f, 0.0f);
         data = particle->data;
         for (i = 0; i < particle->maxCnt; i++, data++) {
             data->time = -1;
-            data->scale = (0.0f);
+            data->scale = 0.0f;
         }
     }
     work->impactParticles = fn_8003216C(
@@ -2447,14 +2417,14 @@ void fn_1_A138(OMOBJ *object)
         s32 i;
         fn_8003269C(work->impactParticles, 1);
         fn_800326D0(work->impactParticles, fn_1_9D7C);
-        fn_80026760(work->impactParticles, (0.0f), (0.0f), (0.0f));
+        fn_80026760(work->impactParticles, 0.0f, 0.0f, 0.0f);
         fn_80026B64(work->impactParticles, lbl_1_rodata_60[work->teamIndex]);
         fn_80026B8C(work->impactParticles, 7);
         fn_800269E8(work->impactParticles, (1 << 22));
         data = particle->data;
         for (i = 0; i < particle->maxCnt; i++, data++) {
             data->time = -1;
-            data->scale = (0.0f);
+            data->scale = 0.0f;
         }
     }
     work->arrivalEffectModel = fn_80025A04(
@@ -2486,8 +2456,8 @@ void fn_1_A444(OMOBJ *object)
         HuVecF end = work->cannon->aimPosition;
         fn_1_498(&work->launchDirection, &end, &start);
         distance = fn_1_4D0(&work->launchDirection, &work->launchDirection);
-        work->speed = (25.0f);
-        work->elapsedSeconds = (0.0f);
+        work->speed = 25.0f;
+        work->elapsedSeconds = 0.0f;
         work->curveStart = start;
         work->position = start;
         work->curveEnd = end;
@@ -2495,15 +2465,15 @@ void fn_1_A444(OMOBJ *object)
         fn_1_4D0(&work->startTangent, &work->startTangent);
         dot = fn_1_3F8(&work->startTangent, &referenceDirection);
         fn_1_6B0(&work->startTangent, &work->startTangent, 3.0f * distance * dot);
-        fn_1_298(&work->endTangent, (0.0f), (0.0f),
-            3.0f * -distance * ((1.0f) - dot));
+        fn_1_298(&work->endTangent, 0.0f, 0.0f,
+            3.0f * -distance * (1.0f - dot));
         fn_80026790(work->projectileModel, &work->position);
         fn_80026A44(work->projectileModel, (1 << 0));
         fn_80026808(work->projectileModel,
-            (180.0f) * work->cannon->pitchRadians / (3.141592653589793),
-            (180.0f) * work->cannon->yawRadians / (3.141592653589793),
-            (0.0f));
-        work->durationSeconds = distance / work->speed / (60.0f);
+            180.0f * work->cannon->pitchRadians / 3.141592653589793,
+            180.0f * work->cannon->yawRadians / 3.141592653589793,
+            0.0f);
+        work->durationSeconds = distance / work->speed / 60.0f;
         work->launchDistance = distance;
         fn_1_20C(object, fn_1_A6F0);
         return;
@@ -2524,11 +2494,11 @@ void fn_1_A6F0(OMOBJ *object)
     HuVecF previousPosition = work->position;
     HuVecF position;
     f32 progress;
-    work->elapsedSeconds += (0.01666666753590107f);
+    work->elapsedSeconds += 0.016666668f;
     progress = work->elapsedSeconds / work->durationSeconds;
-    if (progress > (1.0f)) progress = (1.0f);
+    if (progress > 1.0f) progress = 1.0f;
     fn_1_6B0(&position, &work->curveStart,
-             (1.0f) + (2.0f * progress * progress * progress - 3.0f * progress * progress));
+             1.0f + (2.0f * progress * progress * progress - 3.0f * progress * progress));
     fn_1_6B0(&weightedVector, &work->curveEnd,
              -2.0f * progress * progress * progress + 3.0f * progress * progress);
     fn_1_460(&position, &position, &weightedVector);
@@ -2548,9 +2518,9 @@ void fn_1_A6F0(OMOBJ *object)
         fn_1_E74(&work->rotationRadians, matrix);
     }
     fn_80026808(work->projectileModel,
-        (180.0f) * work->rotationRadians.x / (3.141592653589793),
-        (180.0f) * work->rotationRadians.y / (3.141592653589793),
-        (180.0f) * work->rotationRadians.z / (3.141592653589793));
+        180.0f * work->rotationRadians.x / 3.141592653589793,
+        180.0f * work->rotationRadians.y / 3.141592653589793,
+        180.0f * work->rotationRadians.z / 3.141592653589793);
     {
         s32 emitted = 0;
         HU3D_PARTICLE *particle = lbl_802C01C8[work->trailParticles].hookData;
@@ -2560,7 +2530,7 @@ void fn_1_A6F0(OMOBJ *object)
         s32 i;
         fn_1_498(&direction, &previousPosition, &position);
         fn_1_4D0(&direction, &direction);
-        fn_1_6B0(&direction, &direction, (150.0f));
+        fn_1_6B0(&direction, &direction, 150.0f);
         fn_1_460(&origin, &origin, &direction);
         for (i = 0; i < particle->maxCnt; i++, data++) {
             if (data->time < 0) {
@@ -2570,14 +2540,14 @@ void fn_1_A6F0(OMOBJ *object)
             }
         }
     }
-    if (work->elapsedSeconds > work->durationSeconds - (0.06666667014360428f) &&
+    if (work->elapsedSeconds > work->durationSeconds - 0.06666667f &&
             (fn_80080DAC(work->targetPlatform + 1) & lbl_1_rodata_110[work->teamIndex])) {
-        work->fallVelocity.x = (10.0f) * frandf() - (5.0f);
-        work->fallVelocity.y = (10.0f) * frandf();
-        work->fallVelocity.z = (10.0f);
-        work->spinVelocity.x = (0.008726646259971648) * ((10.0f) * frandf() - (5.0f));
-        work->spinVelocity.y = (0.008726646259971648) * ((10.0f) * frandf() - (5.0f));
-        work->spinVelocity.z = (0.008726646259971648) * ((10.0f) * frandf() - (5.0f));
+        work->fallVelocity.x = 10.0f * frandf() - 5.0f;
+        work->fallVelocity.y = 10.0f * frandf();
+        work->fallVelocity.z = 10.0f;
+        work->spinVelocity.x = 0.008726646259971648 * (10.0f * frandf() - 5.0f);
+        work->spinVelocity.y = 0.008726646259971648 * (10.0f * frandf() - 5.0f);
+        work->spinVelocity.z = 0.008726646259971648 * (10.0f * frandf() - 5.0f);
         {
             s32 emitted = 0;
             HU3D_PARTICLE *particle = lbl_802C01C8[work->impactParticles].hookData;
@@ -2596,10 +2566,10 @@ void fn_1_A6F0(OMOBJ *object)
             HuVecF screen;
             f32 pan;
             Hu3D3Dto2D(&work->position, lbl_1_rodata_60[work->teamIndex], &screen);
-            pan = screen.x / (576.0f);
-            pan *= (127.0f);
-            pan = pan < (0.0f) ? (0.0f) :
-                (pan > (127.0f) ? (127.0f) : pan);
+            pan = screen.x / 576.0f;
+            pan *= 127.0f;
+            pan = pan < 0.0f ? 0.0f :
+                (pan > 127.0f ? 127.0f : pan);
             HuAudFXPlayPan(work->teamIndex == 0 ? 1960 : 1961, (s16)pan);
         }
         fn_1_20C(object, fn_1_AFF8);
@@ -2613,10 +2583,10 @@ void fn_1_A6F0(OMOBJ *object)
             fn_80026A44(work->arrivalEffectModel, (1 << 0));
             fn_80026790(work->arrivalEffectModel, &work->position);
             Hu3D3Dto2D(&work->position, lbl_1_rodata_60[work->teamIndex], &screen);
-            pan = screen.x / (576.0f);
-            pan *= (127.0f);
-            pan = pan < (0.0f) ? (0.0f) :
-                (pan > (127.0f) ? (127.0f) : pan);
+            pan = screen.x / 576.0f;
+            pan *= 127.0f;
+            pan = pan < 0.0f ? 0.0f :
+                (pan > 127.0f ? 127.0f : pan);
             HuAudFXPlayPan(work->teamIndex == 0 ? 1953 : 1954, (s16)pan);
         }
         fn_800269E8(work->projectileModel, (1 << 0));
@@ -2632,13 +2602,13 @@ void fn_1_AFF8(OMOBJ *object)
 {
     M643ShotPrefix *work = object->data;
     fn_1_460(&work->position, &work->position, &work->fallVelocity);
-    work->fallVelocity.y -= (0.5f);
+    work->fallVelocity.y -= 0.5f;
     fn_1_460(&work->rotationRadians, &work->rotationRadians, &work->spinVelocity);
     fn_80026790(work->projectileModel, &work->position);
     fn_80026808(work->projectileModel,
-        (180.0f) * work->rotationRadians.x / (3.141592653589793),
-        (180.0f) * work->rotationRadians.y / (3.141592653589793),
-        (180.0f) * work->rotationRadians.z / (3.141592653589793));
+        180.0f * work->rotationRadians.x / 3.141592653589793,
+        180.0f * work->rotationRadians.y / 3.141592653589793,
+        180.0f * work->rotationRadians.z / 3.141592653589793);
     if (work->position.y < (-1000.0f)) {
         fn_800269E8(work->projectileModel, (1 << 0));
         work->inUse = 0;
@@ -2682,19 +2652,19 @@ void fn_1_B21C(OMOBJ *object)
     }
     if (work->rescueRequested == 1) {
         fn_80086BC8(work->runner->player->actor, &actorPos);
-        work->curveStart.x = (300.0f) + cameraPos.x;
-        work->curveStart.y = (100.0f) + cameraPos.y;
+        work->curveStart.x = 300.0f + cameraPos.x;
+        work->curveStart.y = 100.0f + cameraPos.y;
         work->curveStart.z = cameraPos.z;
         work->position = work->curveStart;
         work->curveEnd.x = actorPos.x;
-        work->curveEnd.y = (-500.0f);
-        work->curveEnd.z = (100.0f);
+        work->curveEnd.y = -500.0f;
+        work->curveEnd.z = 100.0f;
         fn_1_498(&delta, &work->curveEnd, &work->curveStart);
-        work->elapsedSeconds = (0.0f);
+        work->elapsedSeconds = 0.0f;
         distance = fn_1_4D0(&delta, &delta);
-        work->durationSeconds = (distance / (20.0f)) / (60.0f);
-        fn_1_6B0(&work->startTangent, &delta, (3.5f) * distance);
-        fn_1_298(&work->endTangent, (0.0f), (3.5f) * -distance, (0.0f));
+        work->durationSeconds = (distance / 20.0f) / 60.0f;
+        fn_1_6B0(&work->startTangent, &delta, 3.5f * distance);
+        fn_1_298(&work->endTangent, 0.0f, 3.5f * -distance, 0.0f);
         fn_80026A44(work->model, (1 << 0));
         fn_1_20C(object, fn_1_B408);
         return;
@@ -2711,13 +2681,13 @@ void fn_1_B408(OMOBJ *object)
     f32 progress;
 
     work->carryingRunner = 0;
-    work->elapsedSeconds += (0.01666666753590107f);
+    work->elapsedSeconds += 0.016666668f;
     progress = work->elapsedSeconds / work->durationSeconds;
-    if (progress > (1.0f)) {
-        progress = (1.0f);
+    if (progress > 1.0f) {
+        progress = 1.0f;
     }
     fn_1_6B0(&position, &work->curveStart,
-        (1.0f) + (2.0f*progress*progress*progress - 3.0f*progress*progress));
+        1.0f + (2.0f*progress*progress*progress - 3.0f*progress*progress));
     fn_1_6B0(&weightedVector, &work->curveEnd,
         -2.0f*progress*progress*progress + 3.0f*progress*progress);
     fn_1_460(&position, &position, &weightedVector);
@@ -2728,24 +2698,24 @@ void fn_1_B408(OMOBJ *object)
     fn_1_460(&position, &position, &weightedVector);
     work->position = position;
     fn_80026790(work->model, &work->position);
-    if (work->elapsedSeconds < (0.5f) * work->durationSeconds) {
+    if (work->elapsedSeconds < 0.5f * work->durationSeconds) {
         HuVecF up = {0.0f, -1.0f, 0.0f};
         /* Both orientation-helper failure results are ignored, even for a degenerate travel
          * step. */
         fn_1_77C(matrix, &previousPosition, &position, &up);
         fn_1_E74(&work->rotationRadians, matrix);
         fn_80026808(work->model,
-            ((180.0f) * work->rotationRadians.x) / (3.141592653589793),
-            ((180.0f) * work->rotationRadians.y) / (3.141592653589793),
-            ((180.0f) * work->rotationRadians.z) / (3.141592653589793));
+            (180.0f * work->rotationRadians.x) / 3.141592653589793,
+            (180.0f * work->rotationRadians.y) / 3.141592653589793,
+            (180.0f * work->rotationRadians.z) / 3.141592653589793);
     } else {
-        work->rotationRadians.x += -work->rotationRadians.x / (10.0f);
-        work->rotationRadians.y += -work->rotationRadians.y / (10.0f);
-        work->rotationRadians.z += -work->rotationRadians.z / (10.0f);
+        work->rotationRadians.x += -work->rotationRadians.x / 10.0f;
+        work->rotationRadians.y += -work->rotationRadians.y / 10.0f;
+        work->rotationRadians.z += -work->rotationRadians.z / 10.0f;
         fn_80026808(work->model,
-            ((180.0f) * work->rotationRadians.x) / (3.141592653589793),
-            ((180.0f) * work->rotationRadians.y) / (3.141592653589793),
-            ((180.0f) * work->rotationRadians.z) / (3.141592653589793));
+            (180.0f * work->rotationRadians.x) / 3.141592653589793,
+            (180.0f * work->rotationRadians.y) / 3.141592653589793,
+            (180.0f * work->rotationRadians.z) / 3.141592653589793);
     }
     if (work->elapsedSeconds >= work->durationSeconds) {
         HuVecF unusedVector = {0.0f, 0.0f, 0.0f};
@@ -2767,14 +2737,14 @@ void fn_1_B7F0(OMOBJ *object)
         return;
     }
     Hu3DModelObjPosGet(work->model, "g008m5_000-itemhook_S", &hookPosition);
-    work->position.y += (20.0f);
+    work->position.y += 20.0f;
     fn_80026790(work->model, &work->position);
-    hookPosition.y += (20.0f);
-    hookPosition.y -= (300.0f);
+    hookPosition.y += 20.0f;
+    hookPosition.y -= 300.0f;
     work->runner->position = hookPosition;
     fn_80026790(work->runner->player->actor->mdlId, &hookPosition);
     fn_80086B04(work->runner->player->actor, &hookPosition);
-    if (work->position.y > (200.0f) + lbl_1_data_C4[lbl_1_bss_8][work->runner->lastPlatform].y) {
+    if (work->position.y > 200.0f + lbl_1_data_C4[lbl_1_bss_8][work->runner->lastPlatform].y) {
         fn_1_20C(object, fn_1_B95C);
         return;
     }
@@ -2787,27 +2757,27 @@ void fn_1_B95C(OMOBJ *object)
     M643CameraEffectWork *work = object->data;
     HuVecF platformPosition = lbl_1_data_C4[lbl_1_bss_8][work->runner->lastPlatform];
     HuVecF returnStep, hookPosition;
-    platformPosition.z = (-20.0f);
+    platformPosition.z = -20.0f;
     work->carryingRunner = 1;
     Hu3DModelObjPosGet(work->model, "g008m5_000-itemhook_S", &hookPosition);
     if (fn_80071A8C() == 6) {
         fn_1_20C(object, NULL);
         return;
     }
-    returnStep.x = (platformPosition.x - work->position.x) / (20.0f);
-    returnStep.y = (0.0f);
-    returnStep.z = (platformPosition.z - work->position.z) / (20.0f);
+    returnStep.x = (platformPosition.x - work->position.x) / 20.0f;
+    returnStep.y = 0.0f;
+    returnStep.z = (platformPosition.z - work->position.z) / 20.0f;
     fn_1_460(&work->position, &work->position, &returnStep);
     fn_1_460(&hookPosition, &hookPosition, &returnStep);
     fn_80026790(work->model, &work->position);
-    hookPosition.y -= (300.0f);
+    hookPosition.y -= 300.0f;
     work->runner->position = hookPosition;
     fn_80026790(work->runner->player->actor->mdlId, &hookPosition);
     fn_80086B04(work->runner->player->actor, &hookPosition);
-    if (fabsf(work->position.x-platformPosition.x) < (10.0f) &&
-        fabsf(work->position.z-platformPosition.z) < (10.0f)) {
+    if (fabsf(work->position.x-platformPosition.x) < 10.0f &&
+        fabsf(work->position.z-platformPosition.z) < 10.0f) {
         work->runner->respawnPending = 0;
-        work->runner->player->actor->velY = (0.0f);
+        work->runner->player->actor->velY = 0.0f;
         fn_1_20C(object, fn_1_BC10);
         return;
     }
@@ -2818,9 +2788,9 @@ void fn_1_B95C(OMOBJ *object)
 void fn_1_BC10(OMOBJ *object)
 {
     M643CameraEffectWork *work = object->data;
-    work->position.y += (20.0f);
+    work->position.y += 20.0f;
     fn_80026790(work->model, &work->position);
-    if (work->position.y > (1000.0f)) {
+    if (work->position.y > 1000.0f) {
         /* The display flag is cleared here, leaving the model visible above the playfield. */
         fn_80026A44(work->model, (1 << 0));
         work->rescueRequested = 0;
@@ -2834,7 +2804,7 @@ void fn_1_BC10(OMOBJ *object)
  * and steer in midair; reaching the final platforms starts the direct run to the goal. */
 BOOL fn_1_BCB0(M643PlayerPrefix *work)
 {
-    s16 difficulty = lbl_80265728[work->playerIndex].comDif;
+    s16 difficulty = lbl_80265728[work->identity.playerIndex].comDif;
     BOOL airborne = fn_80087148(work->player, (1 << 4)) ? TRUE : FALSE;
     int mesh;
     work->phaseFrames++;
@@ -2844,16 +2814,16 @@ BOOL fn_1_BCB0(M643PlayerPrefix *work)
         fn_8007E818(work->player);
         fn_80086CC4(work->player->actor, work->player->actor->gravity ?
             work->player->actor->gravity +
-                ((-1.0f + sqrtf((1.0f) + (8.0f) *
-                ((30000.0f) / work->player->actor->gravity))) /
-                2.0f) * work->player->actor->gravity : (0.0f));
+                ((-1.0f + sqrtf(1.0f + 8.0f *
+                (30000.0f / work->player->actor->gravity))) /
+                2.0f) * work->player->actor->gravity : 0.0f);
         return TRUE;
     }
     if (work->jumpDelayFrames != 0) work->jumpDelayFrames--;
     if (fn_80086CE8(work->player->actor, &mesh) && !airborne) {
         s32 target = 0;
         if (work->phaseFrames % 10 == 0) {
-            target = fn_1_44C4(work, (380.0f) + lbl_1_rodata_148[difficulty] * frandf());
+            target = fn_1_44C4(work, 380.0f + lbl_1_rodata_148[difficulty] * frandf());
         }
         if (target != 0) {
             work->jumpTarget = target;
@@ -2866,9 +2836,9 @@ BOOL fn_1_BCB0(M643PlayerPrefix *work)
                 fn_8007E818(work->player);
         fn_80086CC4(work->player->actor, work->player->actor->gravity ?
             work->player->actor->gravity +
-                        ((-1.0f + sqrtf((1.0f) + (8.0f) *
-                        ((30000.0f) / work->player->actor->gravity))) /
-                        2.0f) * work->player->actor->gravity : (0.0f));
+                        ((-1.0f + sqrtf(1.0f + 8.0f *
+                        (30000.0f / work->player->actor->gravity))) /
+                        2.0f) * work->player->actor->gravity : 0.0f);
             }
         } else {
             HuVecF destination = lbl_1_data_C4[lbl_1_bss_8][work->lastPlatform];
@@ -2879,9 +2849,9 @@ BOOL fn_1_BCB0(M643PlayerPrefix *work)
             if (destination.x > position.x) {
                 fn_1_498(&delta, &destination, &position);
                 length = fn_1_2A8(&delta);
-                speed = length < (3.0f) ? length : (3.0f);
-                fn_1_298(&push, (0.0f), (0.0f), speed);
-                fn_80086CA8(work->player->actor, (90.0f));
+                speed = length < 3.0f ? length : 3.0f;
+                fn_1_298(&push, 0.0f, 0.0f, speed);
+                fn_80086CA8(work->player->actor, 90.0f);
                 fn_80086C8C(work->player->actor, &push);
             }
         }
@@ -2889,9 +2859,9 @@ BOOL fn_1_BCB0(M643PlayerPrefix *work)
     if (airborne && work->jumpTarget != 0 && work->jumpTarget != work->lastPlatform) {
         HuVecF destination = lbl_1_data_C4[lbl_1_bss_8][work->jumpTarget];
         f32 speed;
-        destination.z = (100.0f);
-        speed = (7.5f) - lbl_1_rodata_168[difficulty] * ((1.5f) * frandf());
-        if (fn_8007E8B4(work->player, &destination, speed, (5.0f))) work->jumpTarget = 0;
+        destination.z = 100.0f;
+        speed = 7.5f - lbl_1_rodata_168[difficulty] * (1.5f * frandf());
+        if (fn_8007E8B4(work->player, &destination, speed, 5.0f)) work->jumpTarget = 0;
     }
     return FALSE;
 }
@@ -2900,22 +2870,23 @@ BOOL fn_1_BCB0(M643PlayerPrefix *work)
  * difficulty-dependent aim errors, and request a shot after the cooldown and reaction delay. */
 s32 fn_1_C5B0(M643TeamScenePrefix *work)
 {
-    M643PlayerPrefix *runner = fn_1_1640(work->teamIndex);
-    s16 difficulty = lbl_80265728[work->playerIndex].comDif;
+    M643PlayerPrefix *runner = fn_1_1640(work->identity.teamIndex);
+    s16 difficulty = lbl_80265728[work->identity.playerIndex].comDif;
     s32 fireRequested = 0;
     HuVecF cameraUp, cameraTarget, cameraPos;
     s16 minPlatform, maxPlatform;
-    fn_80027CD0(lbl_1_rodata_60[work->teamIndex], &cameraPos, &cameraUp, &cameraTarget);
+    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPos, &cameraUp,
+                     &cameraTarget);
     for (maxPlatform = 0; maxPlatform < 38; maxPlatform++) {
-        if (lbl_1_data_C4[lbl_1_bss_8][maxPlatform].x > (300.0f) + cameraPos.x) break;
+        if (lbl_1_data_C4[lbl_1_bss_8][maxPlatform].x > 300.0f + cameraPos.x) break;
     }
     for (minPlatform = 38; minPlatform > 0; minPlatform--) {
-        if (lbl_1_data_C4[lbl_1_bss_8][minPlatform].x < cameraPos.x - (1000.0f)) break;
+        if (lbl_1_data_C4[lbl_1_bss_8][minPlatform].x < cameraPos.x - 1000.0f) break;
     }
     if (work->computerTargetPlatform == 0 || work->observedRunnerPlatform != runner->lastPlatform) {
         work->observedRunnerPlatform = runner->lastPlatform;
-        work->computerTargetPlatform = fn_1_6DE0((M643PlayerIdentityPrefix *)work, (380.0f));
-        if ((100.0f) * frandf() > lbl_1_rodata_118[difficulty]) {
+        work->computerTargetPlatform = fn_1_6DE0(work, 380.0f);
+        if (100.0f * frandf() > lbl_1_rodata_118[difficulty]) {
             work->computerTargetPlatform += rand8() % 3 - 1;
         }
         if (work->computerTargetPlatform < 0) work->computerTargetPlatform = 0;
@@ -2923,7 +2894,7 @@ s32 fn_1_C5B0(M643TeamScenePrefix *work)
     }
     work->phaseFrames++;
     if (work->phaseFrames % 10 == 0) {
-        f32 aimChance = (100.0f) * frandf();
+        f32 aimChance = 100.0f * frandf();
         if (aimChance < lbl_1_rodata_128[difficulty]) {
             if (work->aimPlatform < work->computerTargetPlatform) work->aimPlatform++;
             if (work->aimPlatform > work->computerTargetPlatform) work->aimPlatform--;
@@ -2935,7 +2906,7 @@ s32 fn_1_C5B0(M643TeamScenePrefix *work)
     if (work->cooldownFrames == 0 && work->reactionFrames == 0 &&
         work->computerTargetPlatform != 0 &&
         (work->aimPlatform == work->computerTargetPlatform ||
-         (100.0f) * frandf() > lbl_1_rodata_128[difficulty])) {
+         100.0f * frandf() > lbl_1_rodata_128[difficulty])) {
         work->computerTargetPlatform = 0;
         /* This reports the request even if both projectile slots are occupied. */
         fn_1_72E0(work);

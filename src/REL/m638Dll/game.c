@@ -1050,10 +1050,10 @@ void fn_1_2288(M638TeamView *team)
                 Hu3DModelObjPosGet(team->course.events[team->count - 1], lbl_1_data_4DE,
                                    &eventPosition);
                 eventProp->pos.x =
-                    (f32) (152.22000122070312 *
+                    (f32) (152.22f *
                            sin((f64) ((lbl_1_data_380[team->count - 1] * acosf(-1.0f)) / 180.0f)));
                 eventProp->pos.y =
-                    (f32) (-152.22000122070312 *
+                    (f32) (-152.22f *
                            cos((f64) ((lbl_1_data_380[team->count - 1] * acosf(-1.0f)) / 180.0f)));
                 eventProp->pos.z = eventPosition.z;
                 fn_800269E8(team->course.overlays[team->count - 1], 1U);

@@ -12,14 +12,6 @@
 #include "game/mg/seqman.h"
 #include "humath.h"
 
-enum {
-    SEQUENCE_JINGLE_WIN = MSM_STREAM_MGMUS_17,
-    SEQUENCE_JINGLE_DRAW = MSM_STREAM_FILESEL,
-};
-
-#define SEQUENCE_OBJMAN_PRIORITY 8192
-#define SEQUENCE_JUMP_TARGET 10
-
 static void SeqModeInit(s16 mode, s16 frameNo);
 static void SeqModeFadeIn(s16 mode, s16 frameNo);
 static void SeqModeMain(s16 mode, s16 frameNo);
@@ -90,7 +82,7 @@ void ObjectSetup(void)
 {
     HU3D_LIGHTID lightId;
     OSReport("******* Sequence Manager Example ObjectSetup *********\n");
-    objman = fn_8003A8BC(50, SEQUENCE_OBJMAN_PRIORITY);
+    objman = fn_8003A8BC(50, 8192);
     fn_80069F1C(objman);
     lbl_80266A40.x = -20;
     lbl_80266A40.y = 0;
@@ -145,21 +137,22 @@ static void SeqModeFadeIn(s16 mode, s16 frameNo)
 /* Main-mode hook: after ten jump starts, reports Mario as winner and requests MAIN-to-FINISH. */
 static void SeqModeMain(s16 mode, s16 frameNo)
 {
-    if(jumpNum >= SEQUENCE_JUMP_TARGET) {
+    if(jumpNum >= 10) {
         /* The result is fixed to Mario even if player zero is configured with another character. */
         fn_80071C18(0, -1, -1, -1);
         /* The sequence manager suppresses this record request in practice mode. */
-        fn_80071BAC(SEQUENCE_JUMP_TARGET);
+        fn_80071BAC(10);
         fn_80071A9C();
     }
 }
 
-/* Pre-winner hook: animates the camera through frame 60; afterward it requests an early advance
- * only below ten jump starts, while the manager advances automatically at its 240-frame timeout. */
+/* Pre-winner hook: animates the camera through frame 60; afterward it requests advance if fewer
+ * than ten jumps were started. Otherwise the manager uses its phase duration, normally 240 frames
+ * but extended to 270 when a record is displayed. The frame count can carry over from FINISH. */
 static void SeqModePreWin(s16 mode, s16 frameNo)
 {
     if(frameNo > 60) {
-        if(jumpNum < SEQUENCE_JUMP_TARGET) {
+        if(jumpNum < 10) {
             fn_80071A9C();
         }
         return;
@@ -174,12 +167,12 @@ static void SeqModePreWin(s16 mode, s16 frameNo)
 static void SeqModeWin(s16 mode, s16 frameNo)
 {
     if(frameNo == 0) {
-        if(jumpNum >= SEQUENCE_JUMP_TARGET) {
+        if(jumpNum >= 10) {
             fn_8005C2C8(charNo, charMotId[3], 0, 8, 0);
-            HuAudJinglePlay(SEQUENCE_JINGLE_WIN);
+            HuAudJinglePlay(MSM_STREAM_MGMUS_17);
         } else {
             fn_8005C2C8(charNo, charMotId[4], 0, 8, 0);
-            HuAudJinglePlay(SEQUENCE_JINGLE_DRAW);
+            HuAudJinglePlay(MSM_STREAM_FILESEL);
         }
     }
 }

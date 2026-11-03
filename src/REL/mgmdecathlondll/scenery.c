@@ -105,12 +105,12 @@ void fn_1_6E38(void) {
 }
 
 /* The next-event introduction starts a 25-frame rising entrance for the foreground actor. */
-void fn_1_6E50(void) {
+void decathlonActorEntranceStart(void) {
     lbl_1_bss_A0->work[2] = 25;
 }
 
 /* Before launching an event, the sequence requests the actor's turn-away motion. */
-void fn_1_6E68(void) {
+void decathlonActorTurnAway(void) {
     lbl_1_bss_A0->work[3] = 1;
 }
 

@@ -13,7 +13,6 @@ int lbl_1_bss_50;
  * functions. The second set's element semantics are not yet reconstructed. */
 void fn_1_4280(OMOBJ *obj);
 void fn_1_4290(OMOBJ *obj);
-#include "REL/m659/collision.h"
 /* IEEE-754 binary32 fields used to restore ship positions after NaN coordinates. */
 #define M659_FLOAT_EXPONENT_MASK 0x7F800000 /* Binary32 exponent bits 23 through 30. */
 /* An all-ones exponent denotes infinity or NaN. */
@@ -26,9 +25,6 @@ enum {
 };
 
 /* The course ignores NaN coordinates and restores the last valid position. */
-#include "REL/m659/collision.h"
-#include "math.h"
-#include "game/object.h"
 #include "math.h"
 
 /* The distance helpers below use the course plane's X and Z coordinates only. */

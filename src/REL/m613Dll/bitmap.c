@@ -24,17 +24,9 @@ extern void HuAudFXPanning(s32, s16);
 extern s32 fn_1_10C5C(Point3d *, Point3d *);
 extern f64 fn_1_10E3C(f64, f64);
 
-extern s32 fn_1_0(Point3d, f32, Point3d, f32);
-
 extern void fn_1_9C7C(s16 playerIndex);
 extern void fn_1_3FFC(f32 angleX, f32 angleY, f32 angleZ,
                      Vec source, Vec *destination);
-extern s32 fn_1_70C(Point3d firstPosition, f32 angle, f32 firstRadius,
-                    Point3d firstDirection, Point3d secondPosition,
-                    f32 secondRadius, Point3d *secondDirection);
-extern s32 fn_1_28C(Point3d firstPosition, Point3d *firstDirection,
-                    f32 firstRadius, Point3d secondPosition,
-                    Point3d *secondDirection, f32 secondRadius);
 extern void fn_1_DBDC(s16 playerIndex);
 extern f32 fn_1_99A4(Point3d movingPosition, Point3d displacement,
                      f32 radius, u8 side);

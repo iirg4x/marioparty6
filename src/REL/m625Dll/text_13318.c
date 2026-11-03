@@ -1,5 +1,5 @@
 /* Collision tests and the minigame module entry and exit routines. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"

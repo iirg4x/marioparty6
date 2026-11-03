@@ -1,7 +1,6 @@
 /* Runs the player, camera, course animation and results sequences. */
 #include "REL/m608dll.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 
 /* Checked while the results sequence handles team mode. */
 #define M608_TEAM_MODE_FLAG 0x30002U
@@ -36,30 +35,6 @@ f32 lbl_1_data_98[14] = {
 };
 
 char lbl_1_data_D0[9] = "ske_head";
-
-char lbl_1_data_D9[16] = "1P neck ... %f\012";
-
-char lbl_1_data_E9[16] = "2P neck ... %f\012";
-
-char lbl_1_data_F9[16] = "3P neck ... %f\012";
-
-char lbl_1_data_109[16] = "4P neck ... %f\012";
-
-char lbl_1_data_119[14] = "snowboard_txt";
-
-char lbl_1_data_127[5] = "p2st";
-
-char lbl_1_data_12C[22] = "608kurukuru-pmov_null";
-
-char lbl_1_data_142[5] = "p1st";
-
-char lbl_1_data_147[26] = "*** wait vibration start\012";
-
-char lbl_1_data_161[24] = "*** wait vibration end\012";
-
-char lbl_1_data_179[16] = "*** jump start\012";
-
-char lbl_1_data_189[7] = "pmov\000\000";
 
 static M608PathSamples lbl_1_bss_10;
 
@@ -125,10 +100,10 @@ void fn_1_190(s16 sequenceMode, s16 frameNo)
         fn_800248C4(lbl_1_bss_3E80.characterModels[1], lbl_1_data_D0, fn_1_39B4);
         fn_800248C4(lbl_1_bss_3E80.characterModels[2], lbl_1_data_D0, fn_1_3A78);
         fn_800248C4(lbl_1_bss_3E80.characterModels[3], lbl_1_data_D0, fn_1_3B3C);
-        OSReport(lbl_1_data_D9, lbl_1_data_28[lbl_1_bss_3E80.characterNos[0]]);
-        OSReport(lbl_1_data_E9, lbl_1_data_28[lbl_1_bss_3E80.characterNos[1]]);
-        OSReport(lbl_1_data_F9, lbl_1_data_28[lbl_1_bss_3E80.characterNos[2]]);
-        OSReport(lbl_1_data_109, lbl_1_data_28[lbl_1_bss_3E80.characterNos[3]]);
+        OSReport("1P neck ... %f\012", lbl_1_data_28[lbl_1_bss_3E80.characterNos[0]]);
+        OSReport("2P neck ... %f\012", lbl_1_data_28[lbl_1_bss_3E80.characterNos[1]]);
+        OSReport("3P neck ... %f\012", lbl_1_data_28[lbl_1_bss_3E80.characterNos[2]]);
+        OSReport("4P neck ... %f\012", lbl_1_data_28[lbl_1_bss_3E80.characterNos[3]]);
         fn_800248C4(lbl_1_bss_3E80.secondaryModels[0], lbl_1_data_119, fn_1_3F18);
         fn_800248C4(lbl_1_bss_3E80.secondaryModels[1], lbl_1_data_119, fn_1_400C);
         fn_800248C4(lbl_1_bss_3E80.secondaryModels[2], lbl_1_data_119, fn_1_40F0);
@@ -152,6 +127,11 @@ void fn_1_190(s16 sequenceMode, s16 frameNo)
         fn_80071A9C();
     }
 }
+
+char lbl_1_data_119[14] = "snowboard_txt";
+char lbl_1_data_127[5] = "p2st";
+char lbl_1_data_12C[22] = "608kurukuru-pmov_null";
+char lbl_1_data_142[5] = "p1st";
 
 /* Empty callback-table entry; it performs no work when the sequence reaches this slot. */
 void fn_1_57C(s16 sequenceMode, s16 frameNo)
@@ -194,7 +174,8 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
     case 0:                                         /* switch 1 */
         fn_1_5E6C(1);
         fn_8005BE80((s16) characterNumber, lbl_1_bss_3E80.characterMotions[activeRiderIndex][1]);
-        fn_80026A44(lbl_1_bss_3E80.characterModels[activeRiderIndex], ((1 << 30) | (1 << 0)));
+        fn_80026A44(lbl_1_bss_3E80.characterModels[activeRiderIndex],
+            ((1 << 30) | (1 << 0)));
         fn_8002D86C(lbl_1_bss_3E80.characterModels[activeRiderIndex], 0.5f);
         Hu3DAnimSpeedSet(lbl_1_bss_3E80.characterModels[activeRiderIndex], 1.0f);
         fn_800248C4(lbl_1_bss_3E80.characterModels[activeRiderIndex], lbl_1_data_D0, fn_1_3C84);
@@ -289,7 +270,7 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
                                &courseStartPosition);
             fn_1_5DA4(courseStartPosition);
             fn_80025918(3, fn_1_437C);
-            OSReport(lbl_1_data_147);
+            OSReport("*** wait vibration start\012");
         } else if ((s32) lbl_1_bss_3E80.frame >= 60) {
             fn_80027508(lbl_1_bss_3E80.playerModelsA[0]);
             fn_8002741C(lbl_1_bss_3E80.mainModel, lbl_1_data_12C, (s16) characterModelId);
@@ -315,7 +296,7 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
             lbl_1_bss_3E80.frame = 0;
             Hu3DModelObjPosGet(lbl_1_bss_3E80.playerModelsA[0], lbl_1_data_142, &courseEndPosition);
             fn_1_5DA4(courseEndPosition);
-            OSReport(lbl_1_data_161);
+            OSReport("*** wait vibration end\012");
             break;
         } else {
             Hu3DModelObjPosGet(lbl_1_bss_3E80.playerModelsA[0], lbl_1_data_142,
@@ -339,7 +320,7 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
             omSetRot(lbl_1_bss_3E80.playerObjects[activeRiderIndex], 0.0f, 0.0f, 0.0f);
             fn_80026A44(lbl_1_bss_3E80.mainModel, ((1 << 30) | (1 << 1)));
             HuAudFXPlay(M608_JUMP_START_FX);
-            OSReport(lbl_1_data_179);
+            OSReport("*** jump start\012");
         }
         if ((s32) lbl_1_bss_3E80.frame == 19) {
             lbl_1_bss_3E80.jumpSoundHandle = HuAudFXPlay(M608_JUMP_PROGRESS_FX);
@@ -401,7 +382,7 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
                 lbl_1_bss_3E80.scores[activeRiderIndex]++;
                 if ((lbl_1_bss_3E80.scores[activeRiderIndex] % 4) == 0) {
                     Hu3DModelObjPosGet(
-                        lbl_1_bss_3E80.mainModel, lbl_1_data_189,
+                        lbl_1_bss_3E80.mainModel, "pmov",
                         &lbl_1_bss_3E80
                              .movingCoursePositions[lbl_1_bss_3E80.coursePathSampleCount]);
                     (lbl_1_bss_3E80.movingCourseObjects[lbl_1_bss_3E80.coursePathSampleCount])
@@ -562,7 +543,9 @@ void fn_1_1A2C(s16 sequenceMode, s16 frameNo)
             }
             if ((humanWinnerFound != 0) &&
                 (highestScore > (s32) (((s32) lbl_1_bss_3E80.record) / 90))) {
-                OSReport(lbl_1_data_1B4, (s16) highestScore, ((s32) lbl_1_bss_3E80.record));
+                OSReport(
+                    "*** new record ... %d -> %d\012", (s16) highestScore,
+                    ((s32) lbl_1_bss_3E80.record));
                 lbl_1_bss_3E80.recordBeaten = 1;
                 lbl_1_bss_3E80.record = (s32) highestScore;
                 fn_80071BAC(highestScore * 90);
@@ -581,6 +564,8 @@ void fn_1_1A2C(s16 sequenceMode, s16 frameNo)
     Hu3DModelObjPosGet(lbl_1_bss_3E80.mainModel, lbl_1_data_12C, &summaryCoursePosition);
     fn_1_5DA4(summaryCoursePosition);
 }
+
+char lbl_1_data_1D1[5] = "p2ls";
 
 /* In team mode, saves scores and returns immediately; otherwise runs results and winner bonuses. */
 void fn_1_1DD8(s16 sequenceMode, s16 frameNo)
@@ -693,9 +678,9 @@ void fn_1_2374(s16 sequenceMode, s16 frameNo)
     /* Assigned in the winner branch; consumed only when its count is one. */
     winnerCount = 0;
     if (frameNo == 0) {
-        OSReport(lbl_1_data_1D6);
-        OSReport(lbl_1_data_1D6);
-        OSReport(lbl_1_data_1D6);
+        OSReport("###############################################################\012");
+        OSReport("###############################################################\012");
+        OSReport("###############################################################\012");
         playerIndex = 0;
         while (playerIndex < 4) {
             charNo = lbl_1_bss_3E80.characterNos[playerIndex] = lbl_80265728[playerIndex].charNo;
@@ -852,7 +837,7 @@ void fn_1_2FD8(s16 timingModelId, s16 motionId, BOOL timingCallbackF)
                                ((1 << 30) | (1 << 0)));
             fn_80030644(lbl_1_bss_3E80.characterModels[timingPlayerIndex]);
             fn_1_605C(0);
-            OSReport(lbl_1_data_217, lbl_1_bss_3E80.frame);
+            OSReport("now timing(%d)\012", lbl_1_bss_3E80.frame);
             lbl_1_bss_3E80.state = 6;
             lbl_1_bss_3E80.frame = 0;
             HuAudFXPlay(M608_CONTROL_START_FX);
@@ -931,10 +916,12 @@ void fn_1_34D0(OMOBJ *playerObject)
         fn_8005C2C8((s16) charNo,
                            lbl_1_bss_3E80.characterMotions[lbl_1_bss_3E80.activePlayer][0], 0.0f,
                            5.0f, ((1 << 30) | (1 << 0)));
-        OSReport(lbl_1_data_227);
+        OSReport("*** loop ***\012");
         playerObject->objFunc = NULL;
     }
 }
+
+char lbl_1_data_235[13] = "pmov_ptEFatt";
 
 /* Places course props at recorded path points as the scene advances. */
 void fn_1_3718(OMOBJ *courseObject)
@@ -1188,8 +1175,10 @@ void fn_1_42B8(void)
         lbl_1_bss_C += 1;
         return;
     }
-    OSReport(lbl_1_data_242);
+    OSReport("*******max\012");
 }
+
+char lbl_1_data_24E[18] = "snowBDEFhook\000\000\000\000\000";
 
 /* Copies the main-model hook matrix to model 0; layerNo is ignored. */
 void fn_1_437C(s16 layerNo)
@@ -1199,19 +1188,3 @@ void fn_1_437C(s16 layerNo)
     fn_80023398(lbl_1_bss_3E80.mainModel, lbl_1_data_24E, hookMatrix);
     fn_80026958(lbl_1_bss_3E80.courseModels[0], &hookMatrix);
 }
-
-char lbl_1_data_1B4[29] = "*** new record ... %d -> %d\012";
-
-char lbl_1_data_1D1[5] = "p2ls";
-
-char lbl_1_data_1D6[65] = "###############################################################\012";
-
-char lbl_1_data_217[16] = "now timing(%d)\012";
-
-char lbl_1_data_227[14] = "*** loop ***\012";
-
-char lbl_1_data_235[13] = "pmov_ptEFatt";
-
-char lbl_1_data_242[12] = "*******max\012";
-
-char lbl_1_data_24E[18] = "snowBDEFhook\000\000\000\000\000";

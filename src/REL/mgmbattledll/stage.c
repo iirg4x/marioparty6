@@ -1,18 +1,13 @@
 /* Creates and resets the battle stage and its mode-dependent animations. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/mgmbattledll/module_types.h"
 #include "datadir_enum.h"
+#include <string.h>
 
 #define MGBATTLE_SE_STAGE_OPEN 1221
 #define MGBATTLE_SE_STAGE_CLOSE 1222
 #define MGBATTLE_SE_STAGE_FINISH 1223
 #define MGBATTLE_SE_STAGE_FINISH_CUE 1224
-#define MGBATTLE_SE_MARKER_MOTION_CUE 940
-#define MGBATTLE_SE_PLAYER_STAGE_EMITTER 963
-#define MGBATTLE_SE_RESULT_MODEL_MOVE 1007
-#define MGBATTLE_SE_PLAYER_MARKER_LOOP 1005
-#define MGBATTLE_SE_PLAYER_MARKER_ARRIVAL 1008
-#define MGBATTLE_SE_CENTER_EFFECT 1052
 #define MGBATTLE_STAGE_LIGHT_MAX_AGE 131071
 #define MGBATTLE_PARTICLE_MAX_AGE 2147483647
 
@@ -66,14 +61,6 @@ void fn_1_44E0(void);
 void fn_1_45BC(void);
 void fn_1_578C(void);
 void fn_1_8244(void);
-
-typedef struct {
-    u8 slots[3];
-} MGBATTLE_MODEL_SLOTS;
-
-typedef struct {
-    s16 values[3];
-} MGBATTLE_MOTION_MAP;
 
 /* Plays the sound assigned to a battle message and recenters its window. */
 void fn_1_3070(s16 winId, u32 messageId, s16 characterCode) {
@@ -144,7 +131,7 @@ void fn_1_317C(void) {
         if (modelIndex == 4 || modelIndex == 5) {
             fn_8002D414(lbl_1_bss_3DC->mdlId[modelIndex], 120.0f);
             fn_80026FFC(lbl_1_bss_3DC->mdlId[modelIndex]);
-            fn_800269E8(lbl_1_bss_3DC->mdlId[modelIndex], 1);
+            fn_800269E8(lbl_1_bss_3DC->mdlId[modelIndex], (1 << 0));
             fn_80026A44(lbl_1_bss_3DC->mdlId[modelIndex], ((1 << 30) | (1 << 0)));
             fn_800269E8(lbl_1_bss_3DC->mdlId[modelIndex], ((1 << 30) | (1 << 1)));
         }
@@ -176,26 +163,26 @@ void fn_1_35CC(s16 mode, s16 frameNo)
 void fn_1_35EC(void) {
     s16 slot;
     Point3d position;
-    MGBATTLE_MODEL_SLOTS modelSlots = {{ 3, 4, 5 }};
+    u8 modelSlots[3] = { 3, 4, 5 };
 
     for (slot = 0; slot < 3; slot++) {
         fn_80026A44(
-            lbl_1_bss_3DC->mdlId[modelSlots.slots[slot]], ((1 << 30) | (1 << 0)));
+            lbl_1_bss_3DC->mdlId[modelSlots[slot]], ((1 << 30) | (1 << 0)));
         fn_800269E8(
-            lbl_1_bss_3DC->mdlId[modelSlots.slots[slot]], ((1 << 30) | (1 << 1)));
-        fn_800269E8(lbl_1_bss_3DC->mdlId[modelSlots.slots[slot]], 1);
+            lbl_1_bss_3DC->mdlId[modelSlots[slot]], ((1 << 30) | (1 << 1)));
+        fn_800269E8(lbl_1_bss_3DC->mdlId[modelSlots[slot]], (1 << 0));
     }
 
     position.x = position.y = position.z = 0.0f;
     if (MgGameNo == 3) {
         position.x = 1950.0f;
-        fn_80026A44(lbl_1_bss_3DC->mdlId[3], 1);
+        fn_80026A44(lbl_1_bss_3DC->mdlId[3], (1 << 0));
     } else if (MgGameNo == 5) {
         position.x = 2450.0f;
-        fn_80026A44(lbl_1_bss_3DC->mdlId[4], 1);
+        fn_80026A44(lbl_1_bss_3DC->mdlId[4], (1 << 0));
     } else if (MgGameNo == 7) {
         position.x = 2950.0f;
-        fn_80026A44(lbl_1_bss_3DC->mdlId[5], 1);
+        fn_80026A44(lbl_1_bss_3DC->mdlId[5], (1 << 0));
     }
 
     fn_80026790(lbl_1_bss_3DC->mdlId[1], &position);
@@ -207,7 +194,7 @@ void fn_1_35EC(void) {
 
 /* Starts the selected stage model opening animation. */
 void fn_1_3840(void) {
-    MGBATTLE_MOTION_MAP motionMap = {{ 3, 4, 5 }};
+    s16 motionMap[3] = { 3, 4, 5 };
     s16 gameIndex;
 
     if (MgGameNo == 3) {
@@ -218,8 +205,8 @@ void fn_1_3840(void) {
         gameIndex = 2;
     }
 
-    fn_8002D414(lbl_1_bss_3DC->mdlId[motionMap.values[gameIndex]], 0.0f);
-    fn_8002CF98(lbl_1_bss_3DC->mdlId[motionMap.values[gameIndex]], 0.0f);
+    fn_8002D414(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 0.0f);
+    fn_8002CF98(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 0.0f);
     lbl_1_bss_3DC->work[0] = 1;
     HuAudFXPlay(MGBATTLE_SE_STAGE_OPEN);
 }
@@ -234,7 +221,7 @@ s32 fn_1_394C(void) {
 
 /* Starts the selected stage model closing animation. */
 void fn_1_3974(void) {
-    MGBATTLE_MOTION_MAP motionMap = {{ 3, 4, 5 }};
+    s16 motionMap[3] = { 3, 4, 5 };
     s16 gameIndex;
 
     if (MgGameNo == 3) {
@@ -245,15 +232,15 @@ void fn_1_3974(void) {
         gameIndex = 2;
     }
 
-    fn_8002D414(lbl_1_bss_3DC->mdlId[motionMap.values[gameIndex]], 120.0f);
-    fn_8002CF98(lbl_1_bss_3DC->mdlId[motionMap.values[gameIndex]], 120.0f);
+    fn_8002D414(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 120.0f);
+    fn_8002CF98(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 120.0f);
     lbl_1_bss_3DC->work[0] = 2;
     HuAudFXPlay(MGBATTLE_SE_STAGE_CLOSE);
 }
 
 /* Reports when the stage closing animation has reached its final frames. */
 s32 fn_1_3A80(void) {
-    MGBATTLE_MOTION_MAP motionMap = {{ 3, 4, 5 }};
+    s16 motionMap[3] = { 3, 4, 5 };
     s16 gameIndex;
 
     if (MgGameNo == 3) {
@@ -266,7 +253,7 @@ s32 fn_1_3A80(void) {
 
     if (lbl_1_bss_3DC->work[0] == 2 &&
         1.0f +
-            fn_8002D4E0(lbl_1_bss_3DC->mdlId[motionMap.values[gameIndex]]) >=
+            fn_8002D4E0(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]]) >=
             130.0f) {
         return 1;
     }
@@ -278,10 +265,6 @@ void fn_1_3B78(HuVecF *position)
 {
     fn_800267CC(lbl_1_bss_3DC->mdlId[1], position);
 }
-
-typedef struct {
-    s16 modelIndex[3];
-} MGBATTLE_MOTION_SELECTION;
 
 extern s16 MgGameNo;
 
@@ -295,7 +278,7 @@ void fn_1_3BB4(void) {
 
 /* Per-frame callback that advances the selected stage model and background motions. */
 void fn_1_3C34(OMOBJ *obj) {
-    MGBATTLE_MOTION_SELECTION motionSelection = {{3, 4, 5}};
+    s16 motionSelection[3] = {3, 4, 5};
     s16 gameIndex;
     f32 maxTime;
 
@@ -307,36 +290,36 @@ void fn_1_3C34(OMOBJ *obj) {
         gameIndex = 2;
     }
     if (obj->work[0] == 0) {
-        fn_80026A44(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+        fn_80026A44(obj->mdlId[motionSelection[gameIndex]],
             ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)));
-        fn_800269E8(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+        fn_800269E8(obj->mdlId[motionSelection[gameIndex]],
             ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
             ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
-        fn_8002D414(obj->mdlId[motionSelection.modelIndex[gameIndex]], 120.0f);
-        fn_8002CF98(obj->mdlId[motionSelection.modelIndex[gameIndex]], 120.0f);
+        fn_8002D414(obj->mdlId[motionSelection[gameIndex]], 120.0f);
+        fn_8002CF98(obj->mdlId[motionSelection[gameIndex]], 120.0f);
     } else if (obj->work[0] == 1) {
-        fn_80026A44(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+        fn_80026A44(obj->mdlId[motionSelection[gameIndex]],
             ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
             ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
-        fn_800269E8(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+        fn_800269E8(obj->mdlId[motionSelection[gameIndex]],
             ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)));
         if (1.0f +
-                fn_8002D4E0(obj->mdlId[motionSelection.modelIndex[gameIndex]]) >=
+                fn_8002D4E0(obj->mdlId[motionSelection[gameIndex]]) >=
             120.0f) {
             obj->work[0] = 0;
         }
     } else {
-        fn_80026A44(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+        fn_80026A44(obj->mdlId[motionSelection[gameIndex]],
             ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
             ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
-        fn_800269E8(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+        fn_800269E8(obj->mdlId[motionSelection[gameIndex]],
             ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)));
-        maxTime = fn_8002D530(obj->mdlId[motionSelection.modelIndex[gameIndex]]);
+        maxTime = fn_8002D530(obj->mdlId[motionSelection[gameIndex]]);
         if (1.0f +
-                fn_8002D4E0(obj->mdlId[motionSelection.modelIndex[gameIndex]]) >= maxTime) {
-            fn_80026A44(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+                fn_8002D4E0(obj->mdlId[motionSelection[gameIndex]]) >= maxTime) {
+            fn_80026A44(obj->mdlId[motionSelection[gameIndex]],
                 ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)));
-            fn_800269E8(obj->mdlId[motionSelection.modelIndex[gameIndex]],
+            fn_800269E8(obj->mdlId[motionSelection[gameIndex]],
                 ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
                 ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
         }
@@ -368,8 +351,6 @@ void fn_1_3C34(OMOBJ *obj) {
 void fn_1_409C(void)
 {
 }
-
-#include <string.h>
 
 extern HUPROCESS *lbl_1_bss_674;
 void fn_1_45E4(OMOBJ *obj);
@@ -421,7 +402,7 @@ void fn_1_40A0(void)
 void fn_1_44E0(void) {
     Point3d *ornamentPosition;
 
-    ornamentPosition = (Point3d *) lbl_1_bss_3D4->data;
+    ornamentPosition = ((Point3d *)(lbl_1_bss_3D4->data));
     PSVECAdd(&lbl_1_data_278, &lbl_80266A4C, ornamentPosition);
     fn_80026790(*lbl_1_bss_3D4->mdlId, ornamentPosition);
 }
@@ -447,9 +428,9 @@ s16 fn_1_45D4(void) {
 }
 
 extern s16 lbl_1_bss_672;
-extern s32 fn_1_1AF5C(Vec *, Vec *);
-extern void fn_1_1B0AC(f32, f32, f32, Vec *, Vec *);
-extern f64 fn_1_1B16C(Vec *, Vec *);
+extern s32 fn_1_1AF5C(Point3d *, Point3d *);
+extern void fn_1_1B0AC(f32, f32, f32, const Vec *, Vec *);
+extern f64 fn_1_1B16C(Point3d *, Point3d *);
 
 /* Updates the foreground ornament's orbit, position, and requested motion each frame. */
 void fn_1_45E4(OMOBJ *work) {
@@ -693,7 +674,7 @@ void fn_1_45E4(OMOBJ *work) {
                  fn_8002D4E0(*work->mdlId) == 38.0f ||
                  fn_8002D4E0(*work->mdlId) == 54.0f ||
                  fn_8002D4E0(*work->mdlId) == 70.0f)) {
-                HuAudFXPlay(MGBATTLE_SE_MARKER_MOTION_CUE);
+                HuAudFXPlay(940);
             }
         } else if (fn_8002D3EC(*work->mdlId) < 0) {
             fn_800269E8(*work->mdlId, ((1 << 30) | (1 << 1)));
@@ -758,7 +739,7 @@ void fn_1_5510(void) {
                       *lbl_1_bss_364[playerIndex]->mtnId);
         fn_800269E8(*lbl_1_bss_364[playerIndex]->mdlId, ((1 << 30) | (1 << 0)));
         lbl_1_bss_364[playerIndex]->stat |= (1 << 8);
-        fn_800269E8(*lbl_1_bss_364[playerIndex]->mdlId, 1);
+        fn_800269E8(*lbl_1_bss_364[playerIndex]->mdlId, (1 << 0));
     }
 }
 
@@ -796,7 +777,7 @@ void fn_1_5808(s16 player, s16 modelId) {
         index++;
     }
 
-    fn_80026A44(lbl_1_bss_364[player]->mdlId[0], 1);
+    fn_80026A44(lbl_1_bss_364[player]->mdlId[0], (1 << 0));
     lbl_1_bss_364[player]->work[2] = modelId;
     fn_8002741C(lbl_1_bss_364[player]->mdlId[0], "itemhook_C",
         modelId);
@@ -842,7 +823,7 @@ void fn_1_5808(s16 player, s16 modelId) {
 
     lbl_1_bss_364[player]->work[1] = 1;
     if (lbl_1_data_8FC[player] < 0) {
-        lbl_1_data_8FC[player] = HuAudFXEmiterPlay(MGBATTLE_SE_PLAYER_STAGE_EMITTER,
+        lbl_1_data_8FC[player] = HuAudFXEmiterPlay(963,
             &lbl_1_bss_3A4[player]);
     }
 }
@@ -946,7 +927,7 @@ void fn_1_5EAC(OMOBJ *obj) {
         direction.y += 7.0f;
         fn_80026790(obj->mdlId[0], &direction);
         if (direction.y >= 1000.0f) {
-            fn_800269E8(obj->mdlId[0], 1);
+            fn_800269E8(obj->mdlId[0], (1 << 0));
             obj->work[1] = 5;
         }
         break;
@@ -1068,7 +1049,7 @@ void fn_1_6718(OMOBJ *object) {
             modelData = model->hsf;
             modelObject = modelData->object;
 
-            fn_80026A44(object->mdlId[modelIndex], 1);
+            fn_80026A44(object->mdlId[modelIndex], (1 << 0));
             weight = fn_1_6380(0.0f, 1.0f, lbl_1_bss_2AC[modelIndex].elapsed,
                 lbl_1_bss_2AC[modelIndex].duration);
 
@@ -1180,7 +1161,7 @@ void fn_1_6C48(void) {
             fn_800269E8(
                 lbl_1_bss_354[playerIndex]->mdlId[modelIndex], ((1 << 30) | (1 << 0)));
             fn_800269E8(
-                lbl_1_bss_354[playerIndex]->mdlId[modelIndex], 1);
+                lbl_1_bss_354[playerIndex]->mdlId[modelIndex], (1 << 0));
         }
 
         lbl_1_bss_354[playerIndex]->mdlId[10] = fn_80025A04(
@@ -1188,7 +1169,7 @@ void fn_1_6C48(void) {
         fn_80026B64(lbl_1_bss_354[playerIndex]->mdlId[10], 1);
         fn_80026B8C(lbl_1_bss_354[playerIndex]->mdlId[10], 0);
         fn_800269E8(lbl_1_bss_354[playerIndex]->mdlId[10], ((1 << 30) | (1 << 0)));
-        fn_800269E8(lbl_1_bss_354[playerIndex]->mdlId[10], 1);
+        fn_800269E8(lbl_1_bss_354[playerIndex]->mdlId[10], (1 << 0));
         Hu3DLLightCreate(lbl_1_bss_354[playerIndex]->mdlId[10], 0.0f, 10.0f, 5000.0f,
             0.0f, 0.0f, -1.0f, 255, 255, 255);
     }
@@ -1229,7 +1210,7 @@ void fn_1_71AC(s16 playerIndex, Point3d *targetPosition) {
     normalizedDistance /= 1000.0f;
     lbl_1_bss_34C[playerIndex] =
         (s16)(32.0f + 64.0f * normalizedDistance);
-    HuAudFXPlayPan(MGBATTLE_SE_RESULT_MODEL_MOVE, lbl_1_bss_34C[playerIndex]);
+    HuAudFXPlayPan(1007, lbl_1_bss_34C[playerIndex]);
 }
 
 /* Returns the player's display-model position and the fixed offset used by its caller. */
@@ -1264,7 +1245,7 @@ void fn_1_73B8(OMOBJ *obj) {
 
     switch (obj->work[1]) {
     case 1:
-        fn_80026A44(obj->mdlId[10], 1);
+        fn_80026A44(obj->mdlId[10], (1 << 0));
         fn_800268B0(obj->mdlId[10], 1.0f,
                           1.0f, 1.0f);
         obj->work[1] = 2;
@@ -1273,7 +1254,7 @@ void fn_1_73B8(OMOBJ *obj) {
         obj->work[3] = 0;
         if (lbl_1_data_8EC[obj->work[0]] < 0) {
             lbl_1_data_8EC[obj->work[0]] = HuAudFXPlayPan(
-                MGBATTLE_SE_PLAYER_MARKER_LOOP, lbl_1_bss_34C[obj->work[0]]);
+                1005, lbl_1_bss_34C[obj->work[0]]);
         }
         break;
     case 3:
@@ -1281,7 +1262,7 @@ void fn_1_73B8(OMOBJ *obj) {
             HuAudFXStop(lbl_1_data_8EC[obj->work[0]]);
         }
         lbl_1_data_8EC[obj->work[0]] = -1;
-        HuAudFXPlayPan(MGBATTLE_SE_PLAYER_MARKER_ARRIVAL, lbl_1_bss_34C[obj->work[0]]);
+        HuAudFXPlayPan(1008, lbl_1_bss_34C[obj->work[0]]);
         obj->work[3]++;
         scaleX = 1.0f -
             0.12f * (f32)obj->work[3];
@@ -1294,7 +1275,7 @@ void fn_1_73B8(OMOBJ *obj) {
         }
         break;
     case 4:
-        fn_800269E8(obj->mdlId[10], 1);
+        fn_800269E8(obj->mdlId[10], (1 << 0));
         obj->work[3] = 0;
         obj->work[1] = 5;
         fn_800267CC(obj->mdlId[10], &position);
@@ -1302,7 +1283,7 @@ void fn_1_73B8(OMOBJ *obj) {
     case 5:
         obj->work[3]++;
         /* Fall through to the common scale update. */
-        fn_80026A44(obj->mdlId[obj->work[2]], 1);
+        fn_80026A44(obj->mdlId[obj->work[2]], (1 << 0));
         lbl_1_bss_2AC[obj->work[2]].active = 1;
         scaleX = 0.2f * (f32)obj->work[3];
         if (scaleX > 1.0f) {
@@ -1331,8 +1312,8 @@ void fn_1_73B8(OMOBJ *obj) {
         if (obj->work[3] > 10) {
             obj->work[3] = 0;
             obj->work[1] = 0;
-            fn_800269E8(obj->mdlId[10], 1);
-            fn_800269E8(obj->mdlId[obj->work[2]], 1);
+            fn_800269E8(obj->mdlId[10], (1 << 0));
+            fn_800269E8(obj->mdlId[obj->work[2]], (1 << 0));
         }
         break;
     }
@@ -1366,7 +1347,7 @@ void fn_1_7870(void) {
     fn_8002C95C(*lbl_1_bss_2A8->mdlId, *lbl_1_bss_2A8->mtnId);
     fn_800269E8(*lbl_1_bss_2A8->mdlId, ((1 << 30) | (1 << 0)));
     lbl_1_bss_2A8->stat |= (1 << 8);
-    fn_800269E8(*lbl_1_bss_2A8->mdlId, 1U);
+    fn_800269E8(*lbl_1_bss_2A8->mdlId, (1 << 0));
     lbl_1_bss_2A4 = fn_800334F4(
         HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 1), 0x10000000, 2)),
         100, &lbl_1_data_354);
@@ -1387,15 +1368,13 @@ void fn_1_7AF0(void) {
     fn_80026790(*lbl_1_bss_2A8->mdlId, &position);
     fn_80026838(*lbl_1_bss_2A8->mdlId, &rotation);
     Hu3DParManPosSet(lbl_1_bss_2A4, position.x, position.y, position.z);
-    fn_80026A44(*lbl_1_bss_2A8->mdlId, 1);
+    fn_80026A44(*lbl_1_bss_2A8->mdlId, (1 << 0));
     Hu3DParManAttrReset(lbl_1_bss_2A4, 1);
     lbl_1_bss_2A8->work[0] = 1;
     lbl_1_bss_2A8->work[1] = 0;
     lbl_1_bss_2A8->work[2] = 0;
-    lbl_1_data_8E0 = HuAudFXPlayVol(MGBATTLE_SE_CENTER_EFFECT, 72);
+    lbl_1_data_8E0 = HuAudFXPlayVol(1052, 72);
 }
-
-void fn_1_1B0AC(f32 rotX, f32 rotY, f32 rotZ, Point3d *position, Point3d *out);
 
 /* Per-frame callback that moves the center-stage effect and pans its looping sound. */
 void fn_1_7C38(OMOBJ *motion) {
@@ -1409,20 +1388,20 @@ void fn_1_7C38(OMOBJ *motion) {
     fn_800267CC(motion->mdlId[0], &position);
     switch ((s32)motion->work[0]) {
     case 0:
-        fn_800269E8(motion->mdlId[0], 1);
+        fn_800269E8(motion->mdlId[0], (1 << 0));
         break;
     case 1:
         motion->work[1]++;
         if (motion->work[1] >= MGBATTLE_STAGE_LIGHT_MAX_AGE) {
             motion->work[1] = MGBATTLE_STAGE_LIGHT_MAX_AGE;
         }
-        fn_80026A44(motion->mdlId[0], 1);
+        fn_80026A44(motion->mdlId[0], (1 << 0));
         fn_80026874(motion->mdlId[0], &rotation);
         motion->work[2] += 4;
         if (motion->work[2] >= 360) {
             motion->work[2] -= 360;
         }
-        position.y += 1.2000000476837158 *
+        position.y += 1.2f *
             sin((3.141592653589793 * (f64)motion->work[2]) / 180.0);
         if (motion->work[1] <= 80) {
             position.x -= 10.0f;
@@ -1484,8 +1463,8 @@ void fn_1_7F94(void) {
     lbl_1_bss_2A0->stat |= (1 << 8);
     fn_800269E8(*lbl_1_bss_2A0->mdlId, ((1 << 30) | (1 << 0)));
     fn_800269E8(lbl_1_bss_2A0->mdlId[1], ((1 << 30) | (1 << 0)));
-    fn_800269E8(*lbl_1_bss_2A0->mdlId, 1U);
-    fn_800269E8(lbl_1_bss_2A0->mdlId[1], 1U);
+    fn_800269E8(*lbl_1_bss_2A0->mdlId, (1 << 0));
+    fn_800269E8(lbl_1_bss_2A0->mdlId[1], (1 << 0));
 }
 
 void fn_1_8558(OMOBJ *obj);
@@ -1508,8 +1487,8 @@ void fn_1_8244(void) {
         fn_8002C95C(lbl_1_bss_2A0->mdlId[1], lbl_1_bss_2A0->mtnId[1]);
         fn_800269E8(lbl_1_bss_2A0->mdlId[0], ((1 << 30) | (1 << 0)));
         fn_800269E8(lbl_1_bss_2A0->mdlId[1], ((1 << 30) | (1 << 0)));
-        fn_800269E8(lbl_1_bss_2A0->mdlId[0], 1);
-        fn_800269E8(lbl_1_bss_2A0->mdlId[1], 1);
+        fn_800269E8(lbl_1_bss_2A0->mdlId[0], (1 << 0));
+        fn_800269E8(lbl_1_bss_2A0->mdlId[1], (1 << 0));
         fn_1_9808();
     }
 }
@@ -1525,8 +1504,8 @@ void fn_1_8428(void) {
     fn_800267CC(lbl_1_bss_3DC->mdlId[1], &stagePosition);
     PSVECAdd(&stagePosition, &lbl_1_data_3B0, &lbl_1_data_3B0);
     PSVECAdd(&stagePosition, &lbl_1_data_3BC, &lbl_1_data_3BC);
-    fn_80026A44(*lbl_1_bss_2A0->mdlId, 1U);
-    fn_80026A44(lbl_1_bss_2A0->mdlId[1], 1U);
+    fn_80026A44(*lbl_1_bss_2A0->mdlId, (1 << 0));
+    fn_80026A44(lbl_1_bss_2A0->mdlId[1], (1 << 0));
     fn_80026790(*lbl_1_bss_2A0->mdlId, &lbl_1_data_3BC);
     PSVECAdd(&lbl_1_data_3BC, &lbl_1_data_3A4, &stagePosition);
     fn_80026790(lbl_1_bss_2A0->mdlId[1], &stagePosition);
@@ -1535,7 +1514,6 @@ void fn_1_8428(void) {
     lbl_1_bss_2A0->work[2] = 0;
 }
 
-s32 fn_1_1AF5C(Point3d *vector, Point3d *out);
 void fn_1_9E10(Point3d position);
 void fn_1_A0C0(Point3d position);
 
@@ -1547,12 +1525,12 @@ void fn_1_8558(OMOBJ *motion) {
     fn_800267CC(motion->mdlId[0], &position);
     switch ((s32)motion->work[0]) {
     case 0:
-        fn_800269E8(motion->mdlId[0], 1);
-        fn_800269E8(motion->mdlId[1], 1);
+        fn_800269E8(motion->mdlId[0], (1 << 0));
+        fn_800269E8(motion->mdlId[1], (1 << 0));
         break;
     case 1:
-        fn_80026A44(motion->mdlId[0], 1);
-        fn_80026A44(motion->mdlId[1], 1);
+        fn_80026A44(motion->mdlId[0], (1 << 0));
+        fn_80026A44(motion->mdlId[1], (1 << 0));
         PSVECSubtract(&lbl_1_data_3B0, &position, &direction);
         if (fn_1_1AF5C(&direction, &direction) != 0) {
             PSVECScale(&direction, &direction, 5.0f);
@@ -1571,8 +1549,8 @@ void fn_1_8558(OMOBJ *motion) {
         }
         break;
     case 2:
-        fn_80026A44(motion->mdlId[0], 1);
-        fn_80026A44(motion->mdlId[1], 1);
+        fn_80026A44(motion->mdlId[0], (1 << 0));
+        fn_80026A44(motion->mdlId[1], (1 << 0));
         motion->work[1] += 3;
         if (motion->work[1] >= 360) {
             motion->work[1] -= 360;
@@ -1611,8 +1589,8 @@ void fn_1_88D8(OMOBJ *work) {
 
     switch ((s32)work->work[0]) {
     case 0:
-        fn_800269E8(work->mdlId[0], 1);
-        fn_800269E8(work->mdlId[1], 1);
+        fn_800269E8(work->mdlId[0], (1 << 0));
+        fn_800269E8(work->mdlId[1], (1 << 0));
         randomState = frandmod(8);
         randomState += 4;
         work->work[0] = randomState;
@@ -1620,8 +1598,8 @@ void fn_1_88D8(OMOBJ *work) {
         work->work[2] = 0;
         break;
     case 4:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         scale.x = scale.y = scale.z = 0.4f;
         if (work->work[2] == 0) {
             position.x = -1500.0f;
@@ -1644,8 +1622,8 @@ void fn_1_88D8(OMOBJ *work) {
         }
         break;
     case 5:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         if (work->work[2] == 0) {
             scale.x = scale.y = scale.z = 0.6f;
             position.x = -1500.0f;
@@ -1673,8 +1651,8 @@ void fn_1_88D8(OMOBJ *work) {
         }
         break;
     case 6:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         if (work->work[2] == 0) {
             scale.x = scale.y = scale.z = 0.1f;
             position.x = -1500.0f;
@@ -1702,8 +1680,8 @@ void fn_1_88D8(OMOBJ *work) {
         }
         break;
     case 7:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         if (work->work[2] == 0) {
             scale.x = scale.y = scale.z = 0.6f;
             position.x = -1500.0f;
@@ -1732,8 +1710,8 @@ void fn_1_88D8(OMOBJ *work) {
         }
         break;
     case 8:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         if (work->work[2] == 0) {
             scale.x = scale.y = scale.z = 0.2f;
             position.x = -1500.0f;
@@ -1762,8 +1740,8 @@ void fn_1_88D8(OMOBJ *work) {
         }
         break;
     case 9:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         scale.x = scale.y = scale.z = 0.4f;
         if (work->work[2] == 0) {
             position.x = 4500.0f;
@@ -1786,8 +1764,8 @@ void fn_1_88D8(OMOBJ *work) {
         }
         break;
     case 10:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         if (work->work[2] == 0) {
             scale.x = scale.y = scale.z = 0.6f;
             position.x = 4500.0f;
@@ -1815,8 +1793,8 @@ void fn_1_88D8(OMOBJ *work) {
         }
         break;
     case 11:
-        fn_80026A44(work->mdlId[0], 1);
-        fn_80026A44(work->mdlId[1], 1);
+        fn_80026A44(work->mdlId[0], (1 << 0));
+        fn_80026A44(work->mdlId[1], (1 << 0));
         work->work[0] = 0;
         if (work->work[2] == 0) {
             scale.x = scale.y = scale.z = 0.1f;

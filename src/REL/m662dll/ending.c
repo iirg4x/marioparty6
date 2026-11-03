@@ -1,5 +1,5 @@
 /* Ending camera sequence and computer-player decisions for Trick or Tree. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
