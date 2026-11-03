@@ -4,6 +4,7 @@
 #include "game/gamework.h"
 #include "game/memory.h"
 #include "datadir_enum.h"
+#include "datanum/mario.h"
 #include "game/sprite.h"
 #include "game/charman.h"
 #include "game/audio.h"
@@ -38,12 +39,12 @@ HuVecF lbl_1_data_128[4] = {
     { 70, 0, -450 }, { 210, 0, -450 }
 };
 M635Motion lbl_1_data_158[6] = {
-    { DATANUM(0x8e0000, 84), 0 },
+    { MARIO_HSF_c000m1_413, 0 },
     { CHARMOT_HSF_c000m1_300, 1 },
     { CHARMOT_HSF_c000m1_306, 0 },
     { CHARMOT_HSF_c000m1_307, 0 },
     { CHARMOT_HSF_c000m1_316, 0 },
-    { DATANUM(0x8e0000, 21), 0 }
+    { MARIO_HSF_c000m1_317, 0 }
 };
 M635SpritePos lbl_1_data_188[4] = { { 120, 160 }, { 220, 160 }, { 358, 160 }, { 458, 160 } };
 s16 lbl_1_data_1A8[20][8] = {
@@ -109,10 +110,10 @@ void fn_1_1774(OMOBJMAN *objman)
      * view. */
     OMOBJ *cameraViewObject;
 
-    Hu3DCameraCreate(1);
-    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
-    Hu3DCameraPerspectiveSet(1, 20.0f, 60.0f, 25000.0f, 1.2f);
-    Hu3DCameraPosSet(1, 0.0f, 800.0f, 2000.0f,
+    Hu3DCameraCreate((1 << 0));
+    Hu3DCameraViewportSet((1 << 0), 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet((1 << 0), 20.0f, 60.0f, 25000.0f, 1.2f);
+    Hu3DCameraPosSet((1 << 0), 0.0f, 800.0f, 2000.0f,
         0.0f, 1.0f, 0.0f, 0.0f, 100.0f, -500.0f);
     cameraViewObject = fn_8003AB38(objman, 32730, 0, 0, -1, fn_8003D4FC);
     lbl_80266A4C.x = lbl_80266A4C.y = 0.0f;
@@ -138,7 +139,7 @@ void fn_1_195C(void)
     nightMode = lbl_802C0278;
     lbl_1_bss_4.nightF = nightMode;
     lightId = fn_800286D0(&lbl_1_data_D8, &lbl_1_data_E4, &lbl_1_data_F0[lbl_1_bss_4.nightF]);
-    Hu3DGLightStaticSet(lightId, 1);
+    Hu3DGLightStaticSet(lightId, TRUE);
     Hu3DGLightInfinitytSet(lightId);
     lbl_1_bss_4.light = lightId;
     Hu3DShadowCreate(30.0f, 20.0f, 10000.0f);
@@ -468,7 +469,7 @@ void fn_1_2954(void)
         for (member = 0; member < 2; member++) {
             player = lbl_1_bss_B4[i][member];
             charNo = lbl_1_bss_BC[player].charNo;
-            model = fn_80057068(charNo, 2);
+            model = fn_80057068(charNo, (1 << 1));
             fn_80026790(model, &lbl_1_data_F8[member + i * 2]);
             lbl_1_bss_BC[player].z = lbl_1_data_F8[member + i * 2].z;
             lbl_1_bss_BC[player].model = model;
@@ -485,7 +486,7 @@ void fn_1_2954(void)
     }
 }
 
-/* Update character depth each frame along the scripted result-position steps. */
+/* Update character depth each frame along the scripted position steps. */
 void fn_1_2CE8(void)
 {
     /* Per-frame update that moves characters through the scripted result positions. */
