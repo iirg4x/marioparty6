@@ -22,6 +22,8 @@ Shared C++ framework (`framework:minigame_core.cpp`): **34 complete source files
 
 Every module's runtime (`runtime.c`) compiles from the original CodeWarrior `Runtime.PPCEABI.H` source; the 88 per-module copies are gone, and every linked REL still matches retail.
 
+105 source files of 34 modules now carry their cleaned versions, 2661 audit findings fewer; every linked REL still matches retail.
+
 Mole-it! (`m641Dll`) selects all **92 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Verbal Assault (`m665dll`) selects all **133 functions** from **5 complete translation units**; its linked REL matches retail.
