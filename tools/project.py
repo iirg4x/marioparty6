@@ -10,6 +10,7 @@
 # https://github.com/encounter/dtk-template
 ###
 
+import hashlib
 import io
 import json
 import math
@@ -28,6 +29,10 @@ if sys.platform == "cygwin":
         f"\nPlease use native Windows Python instead."
         f"\n(Current path: {sys.executable})"
     )
+
+# The vendor's runtime.c: the DOL and every REL compile it, and no assembly replaces it
+RUNTIME_PROVIDER = "Runtime.PPCEABI.H/runtime.c"
+RUNTIME_PROVIDER_SHA256 = "d0d46f2d133c41691586626ec9b51c347f94facff89ffe86c4508c77b89fadbd"
 
 
 class Object:
@@ -873,6 +878,11 @@ def generate_build_ninja(
 
             return asm_obj_path
 
+        def is_runtime_provider(obj: Object, src_path: Path) -> bool:
+            # A completed row whose source is the vendor's own runtime.c, unchanged
+            return (obj.completed and src_path.is_file() and not src_path.is_symlink() and
+                    hashlib.sha256(src_path.read_bytes()).hexdigest() == RUNTIME_PROVIDER_SHA256)
+
         def add_unit(build_obj, link_step: LinkStep):
             obj_path, obj_name = build_obj["object"], build_obj["name"]
             result = config.find_object(obj_name)
@@ -915,8 +925,22 @@ def generate_build_ninja(
                     print(f"Missing source file {unit_src_path}")
                 link_built_obj = False
 
+            # The selected original DOL runtime is one complete source provider.
+            runtime_source_selected = options.get("runtime_source_selected", False)
+            if runtime_source_selected:
+                if (obj.name != RUNTIME_PROVIDER or options["source"] != obj.name or
+                        not is_runtime_provider(obj, unit_src_path)):
+                    raise ValueError("selected DOL runtime provider is missing or changed")
+            # Each REL's runtime row, and the boot REL's, compiles that same provider.
+            boot_runtime_source_selected = options.get("boot_runtime_source_selected", False)
+            if boot_runtime_source_selected:
+                rel_runtime = "REL/runtime.c" if lib_name == "REL" else f"REL/{lib_name}/runtime.c"
+                if (obj.name != rel_runtime or options["source"] != RUNTIME_PROVIDER or
+                        not is_runtime_provider(obj, unit_src_path)):
+                    raise ValueError(f"selected runtime provider for {obj.name} is missing or changed")
             # Assembly overrides
-            if unit_asm_path is not None and unit_asm_path.exists():
+            if (not runtime_source_selected and not boot_runtime_source_selected and
+                    unit_asm_path is not None and unit_asm_path.exists()):
                 link_built_obj = True
                 built_obj_path = asm_build(obj, options, lib_name, unit_asm_path)
 

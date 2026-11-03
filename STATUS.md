@@ -20,6 +20,8 @@ Names with no original evidence behind them are now written as numbers and addre
 
 Shared C++ framework (`framework:minigame_core.cpp`): **34 complete source files** compile once against the original CodeWarrior MSL C++ library headers (`std::vector`, `std::map`, `std::multimap`, `std::set`, `std::priority_queue`); all **21 consumer RELs** match retail.
 
+Every module's runtime (`runtime.c`) compiles from the original CodeWarrior `Runtime.PPCEABI.H` source; the 88 per-module copies are gone, and every linked REL still matches retail.
+
 Mole-it! (`m641Dll`) selects all **92 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Verbal Assault (`m665dll`) selects all **133 functions** from **5 complete translation units**; its linked REL matches retail.
