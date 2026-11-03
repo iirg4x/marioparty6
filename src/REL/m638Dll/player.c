@@ -14,19 +14,10 @@ u32 lbl_1_data_548[5] = {
 /* Object initializer: create a player model, join its team, and install its update callback. */
 void fn_1_67EC(OMOBJ *obj)
 {
-    struct M638TeamSlotsView {
-        M638PlayerView *players[2];
-        u8 unknown008[776];
-        s16 active;
-        s16 button;
-        u8 unknown314[36];
-        s16 variant;
-        u8 unknown33A[10];
-    };
     s16 motion;
     s32 i;
     M638PlayerView *player;
-    struct M638TeamSlotsView *teams;
+    M638TeamView *teams;
 
     player = obj->data;
     player->object = obj;
@@ -53,7 +44,7 @@ void fn_1_67EC(OMOBJ *obj)
     teams = lbl_1_bss_4->data;
     player->member = (s16)(teams[player->group].players[0] != NULL);
     teams[player->group].players[player->member] = player;
-    player->team = (M638TeamInputView *)&teams[player->group];
+    player->team = &teams[player->group];
 
     player->state = 0;
     player->exitState = 0;
@@ -172,12 +163,12 @@ void fn_1_6E40(M638PlayerView *player)
     }
     {
         f32 pi = acos(-1.0);
-        scaleY = 1.0 + (0.01899999938905239 * sin((player->phase * pi) / 180.0f));
+        scaleY = 1.0 + (0.019f * sin((player->phase * pi) / 180.0f));
     }
     {
         f32 pi = acos(-1.0);
         scaleZ =
-            1.0089999437332153 + (0.008999999612569809 * sin((2.0f * player->phase * pi) / 180.0f));
+            1.009f + (0.009f * sin((2.0f * player->phase * pi) / 180.0f));
     }
     fn_800268B0(player->model, 1.0f, scaleY, scaleZ);
     omSetSca(player->object, 1.0f, scaleY, scaleZ);
@@ -209,7 +200,8 @@ s32 fn_1_6FE4(void *playerContext)
                           attachedModelScale);
         player->rot.y = -180.0f * exitProgress;
         if (player->elapsed >= 58) {
-            fn_8002CCC0(player->model, player->motions[0], 60.0f, 5.0f, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(player->model, player->motions[0], 60.0f, 5.0f,
+                ((1 << 30) | (1 << 0)));
             fn_800268B0(player->attachedModel, 0.5f, 0.5f, 0.5f);
             player->rot.y = -180.0f;
             player->exitState = 2;
@@ -222,41 +214,39 @@ s32 fn_1_6FE4(void *playerContext)
 
 /* Human input path used by the active player's object update. The team's selected button counts as
  * A; the other counts as B. */
-s32 fn_1_71DC(void *playerContext)
+s32 fn_1_71DC(M638PlayerView *player)
 {
     u16 padButtons[2] = { PAD_BUTTON_A, PAD_BUTTON_B };
     s32 inputAccepted;
 
     inputAccepted = 0;
-    if ((s32)(lbl_802C0008[((M638PlayerView *)playerContext)->padNo] &
-              padButtons[((M638PlayerView *)playerContext)->team->button ^ 1]) != 0) {
+    if ((s32)(lbl_802C0008[player->padNo] &
+              padButtons[player->team->button ^ 1]) != 0) {
         inputAccepted = 1;
-        ((M638PlayerView *)playerContext)->buttonB = 1;
+        player->buttonB = 1;
         /* Rumble is suppressed during wipe transitions, when vibration is off, or for a computer
          * player. */
-        fn_8006A030(((M638PlayerView *)playerContext)->playerNo, 20, 7, 3);
-    } else if ((s32)(lbl_802C0008[((M638PlayerView *)playerContext)->padNo] &
-                     padButtons[((M638PlayerView *)playerContext)->team->button]) != 0) {
+        fn_8006A030(player->playerNo, 20, 7, 3);
+    } else if ((s32)(lbl_802C0008[player->padNo] &
+                     padButtons[player->team->button]) != 0) {
         inputAccepted = 1;
-        ((M638PlayerView *)playerContext)->buttonA = 1;
+        player->buttonA = 1;
     }
     return inputAccepted;
 }
 
 /* Computer input path used by the active player's object update; generate an A press after the
  * selected delay. */
-s32 fn_1_72D0(void *playerContext)
+s32 fn_1_72D0(M638PlayerView *player)
 {
     s32 inputAccepted;
 
     inputAccepted = 0;
-    ((M638PlayerView *)playerContext)->count = (s32)(((M638PlayerView *)playerContext)->count + 1);
-    if ((s32) ((M638PlayerView *) playerContext)->count >=
-        (s32) ((M638PlayerView *) playerContext)->nextCount) {
-        ((M638PlayerView *)playerContext)->count = 0;
-        ((M638PlayerView *) playerContext)->nextCount =
-            fn_1_7344((s32) ((M638PlayerView *) playerContext)->difficulty);
-        ((M638PlayerView *)playerContext)->buttonA = 1;
+    player->count = (s32)(player->count + 1);
+    if ((s32) player->count >= (s32) player->nextCount) {
+        player->count = 0;
+        player->nextCount = fn_1_7344((s32) player->difficulty);
+        player->buttonA = 1;
         inputAccepted = 1;
     }
     return inputAccepted;
@@ -306,14 +296,10 @@ void fn_1_745C(M638PlayerView *player)
 }
 
 /* Copy a player's stored position and rotation to its model and object transforms. */
-void fn_1_7554(void *playerContext)
+void fn_1_7554(M638PlayerView *player)
 {
-    fn_80026790(((M638PlayerView *) playerContext)->model,
-                     &((M638PlayerView *) playerContext)->pos);
-    omSetTra(((M638PlayerView *)playerContext)->object, ((M638PlayerView *)playerContext)->pos.x,
-             ((M638PlayerView *)playerContext)->pos.y, ((M638PlayerView *)playerContext)->pos.z);
-    fn_80026838(((M638PlayerView *) playerContext)->model,
-                     &((M638PlayerView *) playerContext)->rot);
-    omSetRot(((M638PlayerView *)playerContext)->object, ((M638PlayerView *)playerContext)->rot.x,
-             ((M638PlayerView *)playerContext)->rot.y, ((M638PlayerView *)playerContext)->rot.z);
+    fn_80026790(player->model, &player->pos);
+    omSetTra(player->object, player->pos.x, player->pos.y, player->pos.z);
+    fn_80026838(player->model, &player->rot);
+    omSetRot(player->object, player->rot.x, player->rot.y, player->rot.z);
 }

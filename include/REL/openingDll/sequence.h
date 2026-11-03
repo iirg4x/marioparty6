@@ -3,6 +3,45 @@
 #ifndef REL_OPENINGDLL_SEQUENCE_H
 #define REL_OPENINGDLL_SEQUENCE_H
 
+void fn_1_28C(void);
+void fn_1_320(void);
+void fn_1_A00(s32 enablePrompt);
+void fn_1_9A4(void);
+void fn_1_1128(void);
+void fn_1_1828(s16 layerNo);
+void fn_1_192C(s16 layerNo);
+void fn_1_1B7C(void);
+void fn_1_1BD8(void);
+void fn_1_2104(s32 characterIndex, s32 targetAngle);
+void fn_1_2238(u32 frameCount);
+void fn_1_2304(u32 guideChar, s32 frameCount);
+void fn_1_257C(u32 frameCount);
+void fn_1_2708(u32 frameCount);
+void fn_1_2B9C(u32 frameCount);
+void fn_1_2D74(u32 frameCount);
+void fn_1_34EC(u32 frameCount);
+void fn_1_37F0(void);
+void fn_1_392C(u32 frameCount);
+void fn_1_3C28(void);
+void fn_1_4068(u32 frameCount);
+void fn_1_41B4(void);
+void fn_1_420C(void);
+void fn_1_4264(u32 frameCount);
+void fn_1_4484(u32 frameCount);
+void fn_1_45D4(s16 characterIndex, float angleDegrees);
+void fn_1_46B4(s16 animIndex, s16 resourceIndex);
+void fn_1_470C(s16 animIndex, s16 resourceIndex);
+void fn_1_4744(s32 animIndex, s32 resourceIndex);
+void fn_1_47AC(s16 winIndex, u32 message, s16 frameCount);
+void fn_1_48AC(void);
+void fn_1_4BD8(void);
+void fn_1_4C30(void);
+void fn_1_4DB0(void);
+void fn_1_4E00(void);
+void fn_1_4E34(void (*callback)(void), s32 eventPrimaryParameter, s32 eventSecondaryParameter);
+void fn_1_4ECC(HuVecF *rotation, HuVecF *target, float distance);
+void fn_1_517C(float alpha);
+
 /* Runs the opening scene with the previous viewOpening value for its prompt, then sets it to 1
  * before cleanup. */
 void fn_1_28C(void)
@@ -750,7 +789,7 @@ void fn_1_2708(u32 frameCount)
     for (i = 1; i <= frameCount; i++) {
         if (i <= 0.7 * frameCount) {
             endFrame = (s16)(0.7 * frameCount);
-            scaleY = (float)(0.8999999761581421 *
+            scaleY = (float)(0.9f *
                              (sin(3.141592653589793 *
                                   (130.f * ((float)i / endFrame)) /
                                   180.) *
@@ -759,7 +798,7 @@ void fn_1_2708(u32 frameCount)
         if (i > 0.3 * frameCount) {
             startFrame = (s16)((float)i - 0.3f * frameCount);
             endFrame = (s16)(0.7f * frameCount);
-            scaleX = (float)(0.8999999761581421 *
+            scaleX = (float)(0.9f *
                              (sin(3.141592653589793 *
                                   (130.f * ((float)startFrame / endFrame)) /
                                   180.) *
@@ -778,12 +817,12 @@ void fn_1_2B9C(u32 frameCount)
     float scaleY;
 
     for (frame = 1; frame <= frameCount; frame++) {
-        scale = (float)(0.8999999761581421 *
+        scale = (float)(0.9f *
                         (1.0 -
                          sin(3.141592653589793 *
                              (90.f * ((float)frame / frameCount)) /
                              180.)));
-        scaleY = (float)(0.8999999761581421 *
+        scaleY = (float)(0.9f *
                          (1.0 -
                           sin(3.141592653589793 *
                               (90.f * ((float)frame / frameCount)) /
@@ -828,7 +867,7 @@ void fn_1_2D74(u32 frameCount)
     for (i = 1; i <= halfFrames; i++) {
         if (i <= 0.7 * halfFrames) {
             endFrame = (s16)(0.7 * halfFrames);
-            scaleY = (float)(0.8999999761581421 *
+            scaleY = (float)(0.9f *
                              (sin(3.141592653589793 *
                                   (130.f * ((float)i / endFrame)) /
                                   180.) *
@@ -837,7 +876,7 @@ void fn_1_2D74(u32 frameCount)
         if (i > 0.3 * halfFrames) {
             startFrame = (s16)((float)i - 0.3f * halfFrames);
             endFrame = (s16)(0.7f * halfFrames);
-            scaleX = (float)(0.8999999761581421 *
+            scaleX = (float)(0.9f *
                              (sin(3.141592653589793 *
                                   (130.f * ((float)startFrame / endFrame)) /
                                   180.) *
@@ -885,12 +924,12 @@ void fn_1_34EC(u32 frameCount)
     }
 
     for (frame = 1; frame <= halfFrames; frame++) {
-        scale = (float)(0.8999999761581421 *
+        scale = (float)(0.9f *
                         (1.0 -
                          sin(3.141592653589793 *
                              (90.f * ((float)frame / halfFrames)) /
                              180.)));
-        scaleY = (float)(0.8999999761581421 *
+        scaleY = (float)(0.9f *
                          (1.0 -
                           sin(3.141592653589793 *
                               (90.f * ((float)frame / halfFrames)) /
@@ -1247,8 +1286,8 @@ void fn_1_48AC(void)
                    0.0f);
         fn_80026958(lbl_1_bss_1CE[1], &matrix);
 
-        lbl_1_bss_38 = (float)(0.05000000074505806 +
-                               0.949999988079071 *
+        lbl_1_bss_38 = (float)(0.05f +
+                               0.95f *
                                    (1.0 -
                                     sin(3.141592653589793 *
                                         (90.f * rate) /

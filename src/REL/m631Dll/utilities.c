@@ -1,5 +1,5 @@
 /* Maintains collision callbacks and the shared pool of scheduled jobs. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m631Dll/utilities.h"
 
 /* The scheduled entrance job returns the ground player to its looping idle motion when the entrance
@@ -34,7 +34,7 @@ void fn_1_AB60(void)
     f32 deltaX;
     f32 deltaZ;
 
-    first = (M631MotionPairNode *)lbl_1_bss_10;
+    first = lbl_1_bss_10;
     for (; first != 0; first = first->next) {
         first->previousPosition = *first->position;
         first->beforeUpdate(first->owner);
@@ -43,9 +43,9 @@ void fn_1_AB60(void)
     }
 
     /* Each ordered pair gets its own response, so the two owners may react differently. */
-    for (first = (M631MotionPairNode *)lbl_1_bss_10; first != 0;
+    for (first = lbl_1_bss_10; first != 0;
          first = first->next) {
-        for (second = (M631MotionPairNode *)lbl_1_bss_10; second != 0;
+        for (second = lbl_1_bss_10; second != 0;
              second = second->next) {
             if (first == second) {
                 continue;
@@ -63,7 +63,7 @@ void fn_1_AB60(void)
         }
     }
 
-    first = (M631MotionPairNode *)lbl_1_bss_10;
+    first = lbl_1_bss_10;
     while (first != 0) {
         /* Completion may unlink the current entry. */
         next = first->next;

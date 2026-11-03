@@ -6,7 +6,6 @@
 #include "game/charman.h"
 #include "game/frand.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #include "REL/m630/game.h"
 
 void fn_1_7C34(Mtx matrix, int cameraId);
@@ -49,12 +48,14 @@ void fn_1_78A4(M630Player *player)
     magnitude = move.x * move.x + move.z * move.z;
     if (magnitude > 25.0f) {
         if (player->currentMotion != 2) {
-            fn_8005C2C8(player->charNo, player->motionId[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+            fn_8005C2C8(player->charNo, player->motionId[2], 0.0f, 5.0f,
+                ((1 << 30) | (1 << 0)));
             player->currentMotion = 2;
         }
     } else if (magnitude > 0.001) {
         if (player->currentMotion != 1) {
-            fn_8005C2C8(player->charNo, player->motionId[1], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+            fn_8005C2C8(player->charNo, player->motionId[1], 0.0f, 5.0f,
+                ((1 << 30) | (1 << 0)));
             player->currentMotion = 1;
         }
     } else if (player->currentMotion != 0) {

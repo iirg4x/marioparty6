@@ -1,5 +1,5 @@
 /* Puzzle models, randomized layouts and round introduction. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -32,8 +32,7 @@ int fn_1_2DA0(f32 *, f32, f32, f32);
 f32 fn_1_3C74(f32);
 void fn_1_5008(s16, s16, void *);
 extern s16 lbl_1_bss_C60;
-/* Upper and lower X limits for each falling model spawn band. */
-typedef struct PositionPair_9910 { f32 xMaximum, xMinimum; } PositionPair_9910;
+
 /* Optional model-value debug hook; no output in the release game. */
 static inline void DebugValue(s16 modelId) { }
 
@@ -277,7 +276,8 @@ void fn_1_90AC(void)
  * delays. */
 void fn_1_9910(void)
 {
-    PositionPair_9910 spawnRanges[6] = {
+    /* Upper and lower X limits for each falling model spawn band. */
+    struct { f32 xMaximum, xMinimum; } spawnRanges[6] = {
         { 525.0f, 175.0f },
         { 175.0f, -175.0f },
         { -175.0f, -525.0f },

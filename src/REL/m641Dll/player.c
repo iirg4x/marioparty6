@@ -924,7 +924,8 @@ void fn_1_C368(s16 playerIndex) {
                         fn_8005C1B8(lbl_1_bss_590[playerIndex].characterNo) >=
                     motionMax) {
                     if (lbl_1_bss_590[playerIndex].jumpDescentDelayFrames <= 0) {
-                        fn_800269E8(lbl_1_bss_590[playerIndex].modelId, ((1 << 30) | (1 << 1)));
+                        fn_800269E8(lbl_1_bss_590[playerIndex].modelId,
+                            ((1 << 30) | (1 << 1)));
                         lbl_1_bss_590[playerIndex].jumpDescentDelayFrames = 6;
                         return;
                     }

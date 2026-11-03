@@ -15,13 +15,6 @@
 #include "datadir_enum.h"
 #include <string.h>
 
-/* Sounds for choice changes, results, and completed player display-model motions. */
-#define M616_SFX_CHOICE_CHANGED 1741
-#define M616_SFX_RESULT_FIRST 1742
-#define M616_SFX_RESULT_SECOND 1743
-#define M616_SFX_MOTION_COMPLETE_FIRST 1745
-#define M616_SFX_MOTION_COMPLETE_SECOND 1744
-
 /* Position sampled from the P1stmov object and used to place the lead character's landing dust. */
 HuVecF lbl_1_bss_0;
 /* Sequence manager configuration: callbacks for initialization, fade-in, start, main, finish,
@@ -233,7 +226,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                 fn_1_22BC(playerNo, 10, 0);
                 fn_8006A030(playerNo, 10, 7, 3);
                 fn_1_215C(playerNo, 12);
-                HuAudFXPlay(M616_SFX_CHOICE_CHANGED);
+                HuAudFXPlay(1741);
             }
             lbl_1_bss_10.choices[playerNo] = choiceId;
             playerMotion = lbl_1_bss_10.characterMotions[playerNo][10];
@@ -322,8 +315,8 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                     }
                 }
                 fn_1_2254(0);
-                HuAudFXPlay(M616_SFX_RESULT_FIRST);
-                HuAudFXPlay(M616_SFX_RESULT_SECOND);
+                HuAudFXPlay(1742);
+                HuAudFXPlay(1743);
                 lbl_1_bss_10.sequenceState = 5;
                 lbl_1_bss_10.sequenceFrame = 0;
             } else {
@@ -354,8 +347,8 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                 }
             }
             if (playerNo == 4) {
-                HuAudFXPlay(M616_SFX_MOTION_COMPLETE_FIRST);
-                HuAudFXPlay(M616_SFX_MOTION_COMPLETE_SECOND);
+                HuAudFXPlay(1745);
+                HuAudFXPlay(1744);
                 for (playerNo = 0; playerNo < 4; playerNo++) {
                     if (lbl_1_bss_10.scores[playerNo] == 3) {
                         break;
@@ -404,11 +397,9 @@ void fn_1_F78(s16 mode, s16 frameNo)
         for (playerNo = 0; playerNo < 4; playerNo++) {
             if (lbl_1_bss_10.scores[playerNo] == 3) {
                 winnerCharacterNos[winnerCount++] = lbl_1_bss_10.characterNos[playerNo];
-                if (!fn_8006A124(65551)) {
-                    /* Outside practice mode, reaching three points sets this player's minigame coin
-                     * bonus to 10. */
-                    lbl_80265750[playerNo].mgCoinBonus = 10;
-                }
+                /* Outside practice mode, reaching three points sets this player's minigame coin
+                 * bonus to 10. */
+                GWMgCoinBonusSet(playerNo, 10);
                 isDraw = FALSE;
             }
         }
@@ -433,8 +424,8 @@ void fn_1_F78(s16 mode, s16 frameNo)
             }
             if (resultMotion != -1) {
                 fn_1_2254(resultMotion);
-                HuAudFXPlay(M616_SFX_RESULT_FIRST);
-                HuAudFXPlay(M616_SFX_RESULT_SECOND);
+                HuAudFXPlay(1742);
+                HuAudFXPlay(1743);
             }
             winnerSeatMask = 0;
             {
@@ -459,8 +450,8 @@ void fn_1_F78(s16 mode, s16 frameNo)
             }
         }
         if (playerNo == 4) {
-            HuAudFXPlay(M616_SFX_MOTION_COMPLETE_FIRST);
-            HuAudFXPlay(M616_SFX_MOTION_COMPLETE_SECOND);
+            HuAudFXPlay(1745);
+            HuAudFXPlay(1744);
             fn_80071A9C();
         }
     }

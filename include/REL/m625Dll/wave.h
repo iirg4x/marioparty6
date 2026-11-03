@@ -1,7 +1,7 @@
 #ifndef REL_M625DLL_WAVE_H
 #define REL_M625DLL_WAVE_H
 
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "dolphin/gx/GXVert.h"
 #include "dolphin/mtx.h"

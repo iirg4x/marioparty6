@@ -19,7 +19,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #include "REL/m612dll.h"
 
 /* Memory Lane model and motion resources, named by their use in this scene. */
@@ -242,7 +241,7 @@ void fn_1_A0(void)
 /* Called during scene setup to load the day or night board models. */
 void fn_1_8F0(void)
 {
-    if ((s32) lbl_1_bss_10 == 0) {
+    if (lbl_1_bss_10 == 0) {
         lbl_1_bss_44 = (s32) fn_80025A04(
             fn_80008DD0(M612_DATA_DAY_BOARD_0, 0x10000000, 2));
         lbl_1_bss_40 = (s32) fn_80025A04(
@@ -322,7 +321,7 @@ void fn_1_F0C(void)
     s32 row;
     s32 column;
 
-    if ((s32) lbl_1_bss_10 == 0) {
+    if (lbl_1_bss_10 == 0) {
         lbl_1_bss_4AC.tiles[0][0] =
             fn_80025A04(fn_80008DD0(M612_DATA_DAY_TILE, 0x10000000, 2));
     } else {
@@ -336,7 +335,8 @@ void fn_1_F0C(void)
                     lbl_1_bss_4AC.tiles[player][column + row * 7] =
                         fn_80025D4C(lbl_1_bss_4AC.tiles[0][0]);
                 }
-                fn_800269E8(lbl_1_bss_4AC.tiles[player][column + row * 7], ((1 << 30) | (1 << 1)));
+                fn_800269E8(lbl_1_bss_4AC.tiles[player][column + row * 7],
+                    ((1 << 30) | (1 << 1)));
                 fn_80026760(lbl_1_bss_4AC.tiles[player][column + row * 7],
                                 (float) (column * 200 - 600), 0.0f, (float) (row * 200 - 1400));
                 fn_80026B64(lbl_1_bss_4AC.tiles[player][column + row * 7],
@@ -355,7 +355,7 @@ void fn_1_F0C(void)
     fn_80026760(lbl_1_bss_4AC.borders[1], 0.0f, 0.0f, -1600.0f);
     fn_80026B8C(lbl_1_bss_4AC.borders[1], 5);
     fn_80026A44(lbl_1_bss_4AC.borders[1], ((1 << 30) | (1 << 1)));
-    if ((s32) lbl_1_bss_10 == 0) {
+    if (lbl_1_bss_10 == 0) {
         *lbl_1_bss_2C0 = (s32) fn_80025A04(
             fn_80008DD0(M612_DATA_DAY_CURSOR, 0x10000000, 2));
     } else {
@@ -403,7 +403,7 @@ void fn_1_1430(void)
     lbl_1_bss_C = rand8() & 0x1;
     for (index = 0; lbl_1_data_198[lbl_1_bss_4][index] != 0; index++) {
         /* Mirroring the path swaps left and right while preserving vertical moves. */
-        if ((s32) lbl_1_bss_C != 0) {
+        if (lbl_1_bss_C != 0) {
             switch (lbl_1_data_198[lbl_1_bss_4][index]) {
             case 1:
                 lbl_1_bss_48[index] = 2;
@@ -456,7 +456,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             lbl_1_bss_2EC = 0.016666668f * (f32) lbl_1_bss_14;
             lbl_80266B18->z = (1000.0f * lbl_1_bss_2EC) - 600.0f;
             lbl_1_bss_14 += 1;
-            if ((s32) lbl_1_bss_14 == 60) {
+            if (lbl_1_bss_14 == 60) {
                 lbl_1_bss_14 = 0;
                 lbl_1_bss_4AC.state = 2;
                 return;
@@ -466,7 +466,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             lbl_1_bss_2E8 = 0.016666668f * (f32) lbl_1_bss_14;
             lbl_80266A58->x = -40.0f * lbl_1_bss_2E8;
             lbl_1_bss_14 += 1;
-            if ((s32) lbl_1_bss_14 == 60) {
+            if (lbl_1_bss_14 == 60) {
                 lbl_1_bss_14 = 0;
                 lbl_1_bss_308 = 2;
                 lbl_1_bss_4AC.state = 3;
@@ -478,7 +478,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
                 HuAudFXPlay(M612_SE_GUIDE_MOVE);
             }
             lbl_1_bss_14 += 1;
-            if ((s32) lbl_1_bss_308 == 6) {
+            if (lbl_1_bss_308 == 6) {
                 lbl_1_bss_4AC.state = 4;
                 lbl_1_bss_14 = 0;
                 return;
@@ -486,7 +486,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             break;
         case 4:
             lbl_1_bss_14 += 1;
-            if ((s32) lbl_1_bss_14 > 60) {
+            if (lbl_1_bss_14 > 60) {
                 lbl_1_bss_14 = 0;
                 lbl_1_bss_4AC.state = 5;
                 return;
@@ -510,7 +510,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             fn_800269E8((s16) lbl_1_bss_38, 1U);
             fn_80026A44((s16) lbl_1_bss_30, 1U);
             fn_80026A44((s16) lbl_1_bss_2C, 1U);
-            if ((s32) lbl_1_bss_10 == 1) {
+            if (lbl_1_bss_10 == 1) {
                 fn_800269E8((s16) lbl_1_bss_20, 1U);
                 fn_80026A44((s16) lbl_1_bss_28, 1U);
                 fn_80026A44((s16) lbl_1_bss_24, 1U);
@@ -548,7 +548,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
         case 7:
             lbl_1_bss_14 -= 1;
             fn_1_4B94(0);
-            if ((s32) lbl_1_bss_14 == 0) {
+            if (lbl_1_bss_14 == 0) {
                 lbl_1_bss_4AC.state = 8;
                 return;
             }
@@ -563,7 +563,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
 /* Sequence start hook: start the result music once the current message begins sound playback. */
 void fn_1_1DBC(s16 mode, s16 frameNo)
 {
-    if (((s32) lbl_1_data_8C == -1) && ((s32) (GameMesStatGet(fn_80071DF4()) & 0x10) != 0)) {
+    if ((lbl_1_data_8C == -1) && ((s32) (GameMesStatGet(fn_80071DF4()) & 0x10) != 0)) {
         lbl_1_data_8C = HuAudBGMPlay(M612_RESULT_BGM);
     }
 }
@@ -620,7 +620,7 @@ void fn_1_1FB4(s16 mode, s16 frameNo)
     s16 restoredPlayerCount;
     s32 winningPlayer;
 
-    if ((fn_80071DE4() == 0) && ((s32) lbl_1_data_8C != -1)) {
+    if ((fn_80071DE4() == 0) && (lbl_1_data_8C != -1)) {
         HuAudSStreamFadeOut(lbl_1_data_8C, 100);
         lbl_1_data_8C = -1;
     }
@@ -704,7 +704,7 @@ void fn_1_242C(s16 mode, s16 frameNo)
         lbl_1_bss_4AC.state = 14;
         /* Begin the timed transition on this same callback. */
     case 14:
-        if ((s32) lbl_1_bss_14 >= 60) {
+        if (lbl_1_bss_14 >= 60) {
             lbl_1_bss_4AC.state = 15;
         }
         lbl_1_bss_14 += 1;
@@ -712,7 +712,7 @@ void fn_1_242C(s16 mode, s16 frameNo)
     case 15:
         lbl_1_bss_14 = 0;
         fn_80026A44((s16) lbl_1_bss_40, 1U);
-        if ((s32) lbl_1_bss_10 == 1) {
+        if (lbl_1_bss_10 == 1) {
             fn_800269E8((s16) lbl_1_bss_28, 1U);
             fn_800269E8((s16) lbl_1_bss_24, 1U);
             fn_80026A44((s16) lbl_1_bss_20, 1U);
@@ -721,7 +721,7 @@ void fn_1_242C(s16 mode, s16 frameNo)
         transitionFrame = 0;
         while (transitionFrame < 60) {
             lbl_1_bss_14 += 1;
-            if ((s32) lbl_1_bss_14 <= 60) {
+            if (lbl_1_bss_14 <= 60) {
                 fn_1_4B94(lbl_1_bss_0);
             }
             HuPrcVSleep();
@@ -766,7 +766,7 @@ void fn_1_242C(s16 mode, s16 frameNo)
         Hu3DShadowCreate(30.0f, 20.0f, 5000.0f);
         Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
         }
-        if ((s32) lbl_1_bss_10 == 0) {
+        if (lbl_1_bss_10 == 0) {
             Hu3DShadowTPLvlSet(0.7f);
             fn_8002AAB4(128U, 128U, 128U);
         } else {
@@ -794,7 +794,7 @@ void fn_1_242C(s16 mode, s16 frameNo)
         fn_80071A9C();
         return;
     case 18:
-        if ((s32) lbl_1_bss_14 >= 60) {
+        if (lbl_1_bss_14 >= 60) {
             playerIndex = 0;
             while (playerIndex < 4) {
                 fn_8005BE80((s16) lbl_1_bss_49C[playerIndex], lbl_1_bss_44C[playerIndex][3]);
@@ -815,8 +815,8 @@ void fn_1_242C(s16 mode, s16 frameNo)
 /* Registered in the sequence callback table; play the selected winner's motion. */
 void fn_1_2BC8(s16 mode, s16 frameNo)
 {
-    if ((s32) lbl_1_bss_0 != -1) {
-        if ((s32) lbl_1_bss_14 == 0) {
+    if (lbl_1_bss_0 != -1) {
+        if (lbl_1_bss_14 == 0) {
             fn_8005C2C8((s16) lbl_1_bss_49C[lbl_1_bss_0], lbl_1_bss_44C[lbl_1_bss_0][2],
                                0.0f, 10.0f, 0U);
         }
@@ -1214,7 +1214,7 @@ s32 fn_1_4150(s32 player)
     }
     rowOccupancyMask = lbl_1_data_16B0[lbl_1_bss_8][row];
     /* Mirroring reverses the row's bit order, so the column maps differently. */
-    if ((s32) lbl_1_bss_C != 0) {
+    if (lbl_1_bss_C != 0) {
         bitIndex = column;
     } else {
         bitIndex = 6 - column;
@@ -1662,7 +1662,7 @@ void fn_1_5924(OMOBJ *obj)
             return;
         case 3:
             lbl_1_bss_304 -= 1;
-            if ((s32) lbl_1_bss_304 >= 0) {
+            if (lbl_1_bss_304 >= 0) {
                 fn_800267CC((s16) lbl_1_bss_300, &guidePosition);
                 switch (lbl_1_bss_48[lbl_1_bss_2F0]) {
                 case 1:
@@ -1678,7 +1678,7 @@ void fn_1_5924(OMOBJ *obj)
                     guidePosition.z += 20.0f;
                     break;
                 }
-                fn_80026790((s16) lbl_1_bss_300, (Point3d *) &guidePosition);
+                fn_80026790((s16) lbl_1_bss_300, &guidePosition);
                 return;
             }
             lbl_1_bss_308 = 2;
@@ -1699,7 +1699,8 @@ void fn_1_5924(OMOBJ *obj)
                 break;
             }
             if ((column >= 0) && (column < 7) && (row >= 0) && (row < 7)) {
-                fn_80026A44(lbl_1_bss_4AC.tiles[0][column + (row * 7)], ((1 << 30) | (1 << 1)));
+                fn_80026A44(lbl_1_bss_4AC.tiles[0][column + (row * 7)],
+                    ((1 << 30) | (1 << 1)));
                 *lbl_1_bss_3BC = (column << 4) | (row & 0xF);
             }
             lbl_1_bss_2F0 += 1;
@@ -1712,7 +1713,7 @@ void fn_1_5924(OMOBJ *obj)
             lbl_1_bss_308 = 6;
             return;
         case 5:
-            if ((s32) lbl_1_bss_14 > 300) {
+            if (lbl_1_bss_14 > 300) {
                 lbl_1_bss_308 = 6;
             }
             lbl_1_bss_14 += 1;
@@ -1813,7 +1814,8 @@ void fn_1_5F58(s32 player)
             break;
         }
         if ((column >= 0) && (column < 7) && (row >= 0) && (row < 7)) {
-            fn_80026A44(lbl_1_bss_4AC.tiles[player][column + row * 7], ((1 << 30) | (1 << 1)));
+            fn_80026A44(lbl_1_bss_4AC.tiles[player][column + row * 7],
+                ((1 << 30) | (1 << 1)));
         }
         routeIndex += 1;
     }

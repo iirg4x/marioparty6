@@ -1,19 +1,7 @@
 /* Loads and updates the models and sprites for Insectiride's four activities. */
 #include "REL/m647dll/module_types.h"
 #include <string.h>
-
-#define MSM_SE_M647_1999 1999
-#define MSM_SE_M647_2000 2000
-#define MSM_SE_M647_2001 2001
-#define MSM_SE_M647_2002 2002
-#define MSM_SE_M647_2003 2003
-#define MSM_SE_M647_2004 2004
-#define MSM_SE_M647_2005 2005
-#define MSM_SE_M647_2006 2006
-#define MSM_SE_M647_2007 2007
-#define MSM_SE_M647_2008 2008
-#define MSM_SE_M647_2009 2009
-#define MSM_SE_M647_2010 2010
+#include "msm_se.h"
 
 s16 fn_1_2B30(s16 index);
 s16 fn_1_2B4C(s16 index);
@@ -309,11 +297,11 @@ void fn_1_6A2C(void) {
                         lbl_1_data_348[modelIndex].x,
                         lbl_1_data_348[modelIndex].y,
                         lbl_1_data_348[modelIndex].z);
-        ((f32 *)(void *)&lbl_1_bss_224.entries[modelIndex].position.x)[0] =
+        lbl_1_bss_224.entries[modelIndex].position.x =
             lbl_1_data_348[modelIndex].x;
-        ((f32 *)(void *)&lbl_1_bss_224.entries[modelIndex].position.x)[1] =
+        lbl_1_bss_224.entries[modelIndex].position.y =
             lbl_1_data_348[modelIndex].y;
-        ((f32 *)(void *)&lbl_1_bss_224.entries[modelIndex].position.x)[2] =
+        lbl_1_bss_224.entries[modelIndex].position.z =
             lbl_1_data_348[modelIndex].z;
         lbl_1_bss_224.entries[modelIndex].modelId = modelId;
         fn_80026E44(modelId);
@@ -330,7 +318,7 @@ void fn_1_6A2C(void) {
             }
         }
         fn_1_6E20((s16)modelIndex, 0);
-        fn_1_6ED0((s16)modelIndex, (0.0f));
+        fn_1_6ED0((s16)modelIndex, 0.0f);
         fn_1_6E8C((s16)modelIndex, ((1 << 30) | (1 << 0)));
     }
     fn_1_86C4();
@@ -429,11 +417,11 @@ void fn_1_7230(s16 playerIndex) {
             inputResult = fn_1_76E0(playerIndex);
             if (inputResult > 0) {
                 fn_1_7660();
-                HuAudFXPlay(MSM_SE_M647_2006);
+                HuAudFXPlay(2006);
                 fn_8002C95C(lbl_1_bss_224.entries[2].modelId,
                               lbl_1_bss_224.entries[2].motionIds[1]);
                 fn_1_A6C8(entry, 2);
-                HuAudFXPlay(MSM_SE_M647_2007);
+                HuAudFXPlay(2007);
                 entry->activity.tap.frame = 0;
             } else if (inputResult < 0) {
                 fn_1_7618();
@@ -514,7 +502,7 @@ void fn_1_7618(void) {
     M647ActivityEntry *entry = &lbl_1_bss_224.entries[2];
 
     HuSprAttrReset(entry->groupId, 3, 4);
-    HuAudFXPlay(MSM_SE_M647_2010);
+    HuAudFXPlay(2010);
 }
 
 /* Hides the tap activity's two markers and six button prompts. */
@@ -598,7 +586,7 @@ s16 fn_1_7940(void) {
     if (lbl_1_bss_18 >= 3) {
         return 0;
     }
-    if (lbl_1_bss_224.entries[2].position.x >= (((2000.0f) + lbl_1_data_348[2].x) - (30.0f))) {
+    if (lbl_1_bss_224.entries[2].position.x >= ((2000.0f + lbl_1_data_348[2].x) - 30.0f)) {
         return 1;
     }
     return 0;
@@ -668,11 +656,11 @@ void fn_1_7D68(s16 playerIndex) {
                 if (entry->activity.row.successCount >= 10) {
                     fn_1_81BC();
                     fn_1_A6C8(entry, 2);
-                    HuAudFXPlay(MSM_SE_M647_2008);
+                    HuAudFXPlay(2008);
                     entry->activity.row.successCount = 0;
                     fn_8002C95C(lbl_1_bss_224.entries[3].modelId,
                                   lbl_1_bss_224.entries[3].motionIds[1]);
-                    HuAudFXPlay(MSM_SE_M647_2009);
+                    HuAudFXPlay(2009);
                 }
                 fn_1_83EC(playerIndex);
             } else if (inputResult < 0) {
@@ -717,13 +705,13 @@ void fn_1_7D68(s16 playerIndex) {
         case 5:
             entry->position.x += 6.0f;
             /* The row activity's final-travel threshold uses the tap activity's starting X. */
-            if (entry->position.x >= (470.0f) + ((2000.0f) + lbl_1_data_348[2].x)) {
+            if (entry->position.x >= 470.0f + (2000.0f + lbl_1_data_348[2].x)) {
                 fn_8002C95C(lbl_1_bss_224.entries[3].modelId,
                               lbl_1_bss_224.entries[3].motionIds[0]);
                 fn_1_A6C8(entry, 6);
             }
-            movement.x = (6.0f);
-            movement.y = movement.z = (0.0f);
+            movement.x = 6.0f;
+            movement.y = movement.z = 0.0f;
             fn_80026790(entry->modelId, &entry->position);
             break;
         case 6:
@@ -757,7 +745,7 @@ void fn_1_8174(void) {
     M647ActivityEntry *entry = &lbl_1_bss_224.entries[3];
 
     HuSprAttrReset(entry->groupId, 3, 4);
-    HuAudFXPlay(MSM_SE_M647_2010);
+    HuAudFXPlay(2010);
 }
 
 /* Hides the row activity's prompt sprites. */
@@ -877,7 +865,7 @@ s16 fn_1_85CC(void) {
     if (lbl_1_bss_18 >= 3) {
         return 0;
     }
-    if (lbl_1_bss_224.entries[3].position.x >= ((2000.0f) + lbl_1_data_348[3].x)) {
+    if (lbl_1_bss_224.entries[3].position.x >= (2000.0f + lbl_1_data_348[3].x)) {
         return 1;
     }
     return 0;
@@ -975,7 +963,7 @@ void fn_1_8A40(s16 playerIndex) {
                     fn_1_8F2C();
                     fn_8002C95C(lbl_1_bss_224.entries[0].modelId,
                               lbl_1_bss_224.entries[0].motionIds[1]);
-                    HuAudFXPlay(MSM_SE_M647_2000);
+                    HuAudFXPlay(2000);
                     state->activity.grid.row = 0;
                     fn_1_A6C8(state, 2);
                     state->activity.grid.row = 0;
@@ -988,13 +976,13 @@ void fn_1_8A40(s16 playerIndex) {
         case 2:
             if (state->activity.grid.frame >= 10 &&
                  state->activity.grid.frame < 45) {
-                movement.x = (11.428572f);
+                movement.x = 11.428572f;
                 state->position.x += movement.x;
-                movement.y = movement.z = (0.0f);
+                movement.y = movement.z = 0.0f;
                 fn_80026790(state->modelId, &state->position);
             }
             if ((f32)state->activity.grid.frame == 45.0f) {
-                HuAudFXPlay(MSM_SE_M647_2001);
+                HuAudFXPlay(2001);
             }
             if (++(state->activity.grid.frame) >= 60) {
                 fn_8002C95C(lbl_1_bss_224.entries[0].modelId,
@@ -1022,7 +1010,7 @@ void fn_1_8A40(s16 playerIndex) {
         case 5:
             if (state->activity.grid.frame >= 30 &&
                 state->activity.grid.frame < 60) {
-                state->position.x += (12.0f);
+                state->position.x += 12.0f;
             }
             fn_80026790(state->modelId, &state->position);
             if (++(state->activity.grid.frame) >= 60) {
@@ -1068,9 +1056,9 @@ void fn_1_8E0C(void) {
 
     entry = &lbl_1_bss_224.entries[0];
     HuSprPosSet(entry->groupId, 3,
-                 (f32)((entry->activity.grid.row << 5) + 56), (0.0f));
+                 (f32)((entry->activity.grid.row << 5) + 56), 0.0f);
     HuSprAttrReset(entry->groupId, 3, 4);
-    HuAudFXPlay(MSM_SE_M647_2010);
+    HuAudFXPlay(2010);
 }
 
 /* Updates visibility of the current grid prompt sprites. */
@@ -1131,7 +1119,7 @@ s32 fn_1_8FF0(s16 playerIndex) {
     buttons &= 0x6F00;
     if (buttons != 0) {
         if (buttons == lbl_1_data_456[table->entries[0].activity.grid.buttonOrder[promptIndex]]) {
-            HuAudFXPlay(MSM_SE_M647_1999);
+            HuAudFXPlay(1999);
             return 1;
         }
         return -1;
@@ -1193,7 +1181,7 @@ s32 fn_1_9300(void) {
     if (lbl_1_bss_18 >= 3) {
         return 0;
     }
-    if (lbl_1_bss_224.entries[0].position.x >= ((2000.0f) + lbl_1_data_348[0].x)) {
+    if (lbl_1_bss_224.entries[0].position.x >= (2000.0f + lbl_1_data_348[0].x)) {
         return 1;
     }
     return 0;
@@ -1334,7 +1322,7 @@ void fn_1_98CC(s16 playerIndex) {
                 (&lbl_1_bss_224.entries[1])->modelId,
                 lbl_1_bss_224.entries[1].motionIds[1]);
             fn_1_A6C8(leverEntry, 1);
-            HuAudFXPlay(MSM_SE_M647_2002);
+            HuAudFXPlay(2002);
             fn_8002D86C(leverEntry->activity.lever.frontModelId, 1.0f);
             leverEntry->activity.lever.speed = 1.0f;
             fn_1_975C();
@@ -1345,10 +1333,11 @@ void fn_1_98CC(s16 playerIndex) {
                 if ((f32)motionTime >= (118.0f - leverEntry->activity.lever.speed)) {
                     leverEntry->activity.lever.phase = 1;
                     fn_800269E8(leverEntry->modelId, ((1 << 30) | (1 << 2)));
-                    fn_800269E8(leverEntry->activity.lever.frontModelId, ((1 << 30) | (1 << 2)));
+                    fn_800269E8(leverEntry->activity.lever.frontModelId,
+                        ((1 << 30) | (1 << 2)));
                     fn_8002D414(leverEntry->activity.lever.frontModelId,
                                       leverEntry->activity.lever.savedMotionTime);
-                    HuAudFXPlay(MSM_SE_M647_2003);
+                    HuAudFXPlay(2003);
                 }
             } else if ((f32)motionTime <= leverEntry->activity.lever.speed) {
                 leverEntry->activity.lever.counter = 0;
@@ -1358,7 +1347,7 @@ void fn_1_98CC(s16 playerIndex) {
                 fn_8002D414(leverEntry->activity.lever.frontModelId,
                                   leverEntry->activity.lever.savedMotionTime);
                 fn_1_A6C8(leverEntry, 1);
-                HuAudFXPlay(MSM_SE_M647_2002);
+                HuAudFXPlay(2002);
             }
             result = fn_1_A200(playerIndex);
             if (result == 1) {
@@ -1366,10 +1355,10 @@ void fn_1_98CC(s16 playerIndex) {
                 fn_8002C95C(
                     (&lbl_1_bss_224.entries[1])->modelId,
                     lbl_1_bss_224.entries[1].motionIds[1]);
-                HuAudFXPlay(MSM_SE_M647_2004);
+                HuAudFXPlay(2004);
                 fn_1_A6C8(leverEntry, 2);
                 if (leverEntry->activity.lever.phase == 0) {
-                    HuAudFXPlay(MSM_SE_M647_2003);
+                    HuAudFXPlay(2003);
                 }
                 fn_1_A2D4(playerIndex);
                 fn_800269E8(leverEntry->modelId, ((1 << 30) | (1 << 2)));
@@ -1410,7 +1399,7 @@ void fn_1_98CC(s16 playerIndex) {
                 fn_8002D86C(leverEntry->modelId, 1.0f);
                 leverEntry->activity.lever.speed = 1.0f;
                 leverEntry->status = 1;
-                HuAudFXPlay(MSM_SE_M647_2002);
+                HuAudFXPlay(2002);
                 leverEntry->activity.lever.frame = 0;
             }
             break;
@@ -1422,17 +1411,16 @@ void fn_1_98CC(s16 playerIndex) {
                     leverEntry->position.x += positionDelta.x;
                     leverEntry->activity.lever.hookPosition.x += positionDelta.x;
                     leverEntry->activity.lever.previousHookPosition.x += positionDelta.x;
-                    fn_80026790(leverEntry->modelId,
-                                     (Point3d *) (void *) &leverEntry->position.x);
+                    fn_80026790(leverEntry->modelId, &leverEntry->position);
                 }
                 if (motionTime < 3) {
-                    HuAudFXPlay(MSM_SE_M647_2002);
+                    HuAudFXPlay(2002);
                     fn_80026A44(leverEntry->modelId, ((1 << 30) | (1 << 2)));
                     leverEntry->activity.lever.phase = 1;
                 }
             } else if (leverEntry->activity.lever.phase == 1) {
                 if (motionTime >= 114) {
-                    HuAudFXPlay(MSM_SE_M647_2003);
+                    HuAudFXPlay(2003);
                     fn_800269E8(leverEntry->modelId, ((1 << 30) | (1 << 2)));
                     fn_8002D414(leverEntry->modelId, (f32)motionTime);
                     leverEntry->activity.lever.phase = 2;
@@ -1444,8 +1432,7 @@ void fn_1_98CC(s16 playerIndex) {
                     leverEntry->position.x += positionDelta.x;
                     leverEntry->activity.lever.hookPosition.x += positionDelta.x;
                     leverEntry->activity.lever.previousHookPosition.x += positionDelta.x;
-                    fn_80026790(leverEntry->modelId,
-                                     (Point3d *) (void *) &leverEntry->position.x);
+                    fn_80026790(leverEntry->modelId, &leverEntry->position);
                 }
                 if (motionTime < 3) {
                     fn_80026A44(leverEntry->modelId, ((1 << 30) | (1 << 2)));
@@ -1503,7 +1490,7 @@ s16 fn_1_A200(s16 playerIndex) {
     buttons = (u16)(buttons & 0x6F00);
     if (buttons != 0) {
         if ((u16)buttons == (1 << 8)) {
-            HuAudFXPlay(MSM_SE_M647_2005);
+            HuAudFXPlay(2005);
             return 1;
         }
         return -1;
@@ -1567,7 +1554,7 @@ s16 fn_1_A478(void) {
         return 0;
     }
     if (entry->activity.lever.hookPosition.x >=
-        ((130.0f) + ((2000.0f) + lbl_1_data_348[0].x))) {
+        (130.0f + (2000.0f + lbl_1_data_348[0].x))) {
         return 1;
     }
     return 0;
@@ -1594,8 +1581,8 @@ void fn_1_A534(void) {
         } else if ((s16)fn_1_3468((s16)index) == 0) {
             fn_80026760(entry->modelId, lbl_1_data_378[0],
                             lbl_1_data_348[(s16)entryIndex].y, lbl_1_data_378[2]);
-            fn_80026808(entry->modelId, (0.0f),
-                            (-45.0f), (0.0f));
+            fn_80026808(entry->modelId, 0.0f,
+                            -45.0f, 0.0f);
             fn_8002C95C(lbl_1_bss_224.entries[(s16)entryIndex].modelId,
                           lbl_1_bss_224.entries[(s16)entryIndex].motionIds[0]);
         } else {
@@ -1645,7 +1632,7 @@ f32 fn_1_A790(void) {
     s32 index;
     M647ActivityEntry *entry;
 
-    maximumProgress = (-10000.0f);
+    maximumProgress = -10000.0f;
     index = 0;
     completedCount = 0;
     while (index < 4) {
@@ -1658,10 +1645,10 @@ f32 fn_1_A790(void) {
         index++;
     }
     if (completedCount >= 3) {
-        maximumProgress = (1100.0f);
+        maximumProgress = 1100.0f;
     }
-    if (maximumProgress > (1100.0f)) {
-        maximumProgress = (1100.0f);
+    if (maximumProgress > 1100.0f) {
+        maximumProgress = 1100.0f;
     }
     return maximumProgress;
 }
@@ -1673,7 +1660,7 @@ f32 fn_1_A854(void) {
     s32 entryIndex;
     M647ActivityEntry *entry;
 
-    minimumEntryX = (10000.0f);
+    minimumEntryX = 10000.0f;
     entryIndex = 0;
     while (entryIndex < 4) {
         entry = &lbl_1_bss_224.entries[entryIndex];
@@ -1693,7 +1680,7 @@ void fn_1_A8C4(void) {
     for (index = 0; index < 4; index++) {
         if (index == 1) {
             if (lbl_1_bss_224.entries[index].status < 5) {
-                fn_8002D86C(lbl_1_bss_224.entries[index].modelId, (0.0f));
+                fn_8002D86C(lbl_1_bss_224.entries[index].modelId, 0.0f);
                 lbl_1_bss_224.entries[index].status = 6;
             }
         } else if (index == 0) {

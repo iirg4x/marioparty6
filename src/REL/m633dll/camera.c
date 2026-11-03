@@ -35,12 +35,12 @@ void fn_1_73D8(void)
     cameraRoll = lbl_80266A40.z;
     computedCameraPosition.x = lbl_80266A4C.x
         + (lbl_802C028C * (sin(3.141592653589793*cameraYaw/180.0)
-        * cos(3.141592653589793*cameraPitch/180.0)));
+            * cos(3.141592653589793*cameraPitch/180.0)));
     computedCameraPosition.y = lbl_80266A4C.y
         + (lbl_802C028C * -sin(3.141592653589793*cameraPitch/180.0));
     computedCameraPosition.z = lbl_80266A4C.z
         + (lbl_802C028C * (cos(3.141592653589793*cameraYaw/180.0)
-        * cos(3.141592653589793*cameraPitch/180.0)));
+            * cos(3.141592653589793*cameraPitch/180.0)));
     computedCameraTarget.x = lbl_80266A4C.x;
     computedCameraTarget.y = lbl_80266A4C.y;
     computedCameraTarget.z = lbl_80266A4C.z;

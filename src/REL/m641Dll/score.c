@@ -47,7 +47,7 @@
 
 #include "REL/m641Dll/m641Dll.h"
 
-static const float lbl_1_rodata_1C0 = 0.800000011920929f;
+static const float lbl_1_rodata_1C0 = 0.8f;
 
 static const float lbl_1_rodata_1C4 = 10.0f;
 
@@ -63,7 +63,6 @@ M641ScorePositionTable lbl_1_data_488 = {
 /* fn_1_1433C calls this at sequence startup to create score displays and clear entry totals. */
 void fn_1_13D10(void) {
     s16 index;
-    s16 unusedLocal;
     index = 0;
     while (index < 2)
     {

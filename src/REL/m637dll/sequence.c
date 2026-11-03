@@ -50,10 +50,10 @@ void fn_1_334(s16 mode, s16 frameNo)
 {
     fn_1_A54();
     lbl_1_bss_0 += 1;
-    if ((s32) lbl_1_bss_0 == (s32) (240 - fn_1_1814())) {
+    if (lbl_1_bss_0 == (s32) (240 - fn_1_1814())) {
         fn_1_1110(1);
     }
-    if ((s32) lbl_1_bss_0 >= (s32) (240 - fn_1_1814())) {
+    if (lbl_1_bss_0 >= (s32) (240 - fn_1_1814())) {
         fn_1_1464(1);
     }
 }
@@ -77,7 +77,7 @@ void fn_1_418(s16 mode, s16 frameNo)
 {
     fn_1_B94();
     lbl_1_bss_0 += 1;
-    if ((s32) lbl_1_bss_0 <= fn_1_1814()) {
+    if (lbl_1_bss_0 <= fn_1_1814()) {
         fn_1_1464(-1);
         return;
     }
@@ -89,7 +89,7 @@ void fn_1_418(s16 mode, s16 frameNo)
  */
 void fn_1_488(s16 mode, s16 frameNo)
 {
-    if ((s32) lbl_1_bss_0 == fn_1_1814()) {
+    if (lbl_1_bss_0 == fn_1_1814()) {
         lbl_1_bss_0 = fn_1_1110(2);
     }
     if (--lbl_1_bss_0 <= 0) {

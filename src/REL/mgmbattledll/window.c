@@ -1,7 +1,7 @@
 /* Message windows, player labels, and battle mode dialogue choices. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin.h"
-#include "REL/mgmbattledll/module_types.h"
+#include "REL/mgmbattledll/gameplay_types.h"
 #include "game/window.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
@@ -12,10 +12,6 @@ typedef struct {
 typedef struct { s16 values[4]; } MessageIndices;
 
 void fn_1_3070(s16 winId, u32 messageId, s16 characterCode);
-s16 fn_1_BA94(s16 player);
-s16 fn_1_BAEC(s16 player);
-s16 fn_1_BB40(s16 player);
-s16 fn_1_BB60(s16 player);
 void fn_1_45BC(void);
 
 u32 lbl_1_data_0[14] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };

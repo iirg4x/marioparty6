@@ -223,7 +223,7 @@ void fn_1_C344(s16 enabled) {
 }
 
 /* The main result sequence refreshes score digits and plays their update cue. */
-void fn_1_C3DC(void) {
+void decathlonScoreDigitsRefresh(void) {
     s16 playerNo;
 
     playerNo = 0;
@@ -235,7 +235,7 @@ void fn_1_C3DC(void) {
 }
 
 /* The main sequence hides each player's four-by-ten score digit models. */
-void fn_1_C428(void) {
+void decathlonScoreDigitsHideAll(void) {
     s16 playerNo;
 
     playerNo = 0;
@@ -246,14 +246,14 @@ void fn_1_C428(void) {
 }
 
 /* The main results sequence starts transferring event awards into the total scores. */
-void fn_1_C46C(void) {
+void decathlonScoreCountStart(void) {
     lbl_1_bss_BC = 1;
     lbl_1_bss_B8->work[0] = lbl_1_bss_B8->work[1] = lbl_1_bss_B8->work[2] = lbl_1_bss_B8->work[3] =
         0;
 }
 
 /* After the score count, the main sequence starts rearranging players into their new ranks. */
-void fn_1_C4C4(void) {
+void decathlonRankMoveStart(void) {
     lbl_1_bss_BC = 4;
     lbl_1_bss_B8->work[0] = lbl_1_bss_B8->work[1] = lbl_1_bss_B8->work[2] = lbl_1_bss_B8->work[3] =
         0;
@@ -276,7 +276,7 @@ typedef struct DecathlonPlayerResult {
 
 /* After the ranking animation, the main sequence selects reactions to improved or worsened
  * ranks. */
-void fn_1_C540(void) {
+void decathlonRankReactionsStart(void) {
     DecathlonPlayerResult *results = (DecathlonPlayerResult *)lbl_1_bss_B8->data;
     s16 playerNo;
 

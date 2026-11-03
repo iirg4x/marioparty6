@@ -1,6 +1,6 @@
 /* Course model, motion and per-player animation resource names and IDs. */
 #define _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m608dll.h"
 
 /* Camera motion resources loaded in setup, in camera-index order. */

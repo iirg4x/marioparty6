@@ -144,10 +144,10 @@ u8 *fn_1_15A8(s16 value)
 // Creates the shared instruction frame and small text window before bingo play.
 void fn_1_1720(void) {
     HuWinInit(0);
-    lbl_1_bss_C8.frameWidth = (528.0f);
-    lbl_1_bss_C8.frameHeight = (80.0f);
-    lbl_1_bss_C8.frameX = (-10000.0f);
-    lbl_1_bss_C8.frameY = (14.0f) + ((440.0f) - lbl_1_bss_C8.frameHeight);
+    lbl_1_bss_C8.frameWidth = 528.0f;
+    lbl_1_bss_C8.frameHeight = 80.0f;
+    lbl_1_bss_C8.frameX = -10000.0f;
+    lbl_1_bss_C8.frameY = 14.0f + (440.0f - lbl_1_bss_C8.frameHeight);
     lbl_1_bss_C8.frameWindow = HuWinExCreateFrame(
         lbl_1_bss_C8.frameX,
         lbl_1_bss_C8.frameY,
@@ -157,10 +157,10 @@ void fn_1_1720(void) {
         3);
     HuWinCallbackSet(lbl_1_bss_C8.frameWindow, fn_1_3A60);
     HuWinAttrSet(lbl_1_bss_C8.frameWindow, HUWIN_ATTR_ALIGN_CENTER);
-    lbl_1_bss_C8.textWidth = (448.0f);
-    lbl_1_bss_C8.textHeight = (32.0f);
-    lbl_1_bss_C8.textX = (-10000.0f);
-    lbl_1_bss_C8.textY = ((440.0f) - lbl_1_bss_C8.textHeight) - (26.0f);
+    lbl_1_bss_C8.textWidth = 448.0f;
+    lbl_1_bss_C8.textHeight = 32.0f;
+    lbl_1_bss_C8.textX = -10000.0f;
+    lbl_1_bss_C8.textY = (440.0f - lbl_1_bss_C8.textHeight) - 26.0f;
     lbl_1_bss_C8.textWindow = HuWinExCreate(
         lbl_1_bss_C8.textX,
         lbl_1_bss_C8.textY,
@@ -168,7 +168,7 @@ void fn_1_1720(void) {
         (s16)lbl_1_bss_C8.textHeight,
         -1);
     HuWinMesSpeedSet(lbl_1_bss_C8.textWindow, 0);
-    HuWinBGTPLvlSet(lbl_1_bss_C8.textWindow, (0.0f));
+    HuWinBGTPLvlSet(lbl_1_bss_C8.textWindow, 0.0f);
     HuWinAttrSet(lbl_1_bss_C8.textWindow, HUWIN_ATTR_ALIGN_CENTER);
 }
 
@@ -224,7 +224,7 @@ void fn_1_1B08(void) {
 }
 
 // Shows the follow-up instruction message before returning to bingo play.
-void fn_1_1C14(void) {
+void BingoShowFollowupInstructions(void) {
     s16 padMask;
     s16 player;
 
@@ -239,20 +239,20 @@ void fn_1_1C14(void) {
 }
 
 // Shows the control hint while the required bingo-line count is selected.
-void fn_1_1D1C(void) {
+void BingoShowLineCountHint(void) {
     HuWinExOpen(lbl_1_bss_C8.textWindow);
     HuWinMesSet(lbl_1_bss_C8.textWindow, MESSNUM(MESS_SYS_GUIDE, 2));
     HuWinMesWait(lbl_1_bss_C8.textWindow);
 }
 
 // Closes the control hint when selection of the required bingo-line count ends.
-void fn_1_1D70(void) {
+void BingoCloseLineCountHint(void) {
     HuWinExClose(lbl_1_bss_C8.textWindow);
     HuPrcSleep(8);
 }
 
 // Shows the two-choice prompt and returns the choice made by the players.
-s16 fn_1_1DA4(void) {
+s16 BingoPromptTwoChoices(void) {
     s16 selection = 0;
     s16 padMask;
     s16 player;

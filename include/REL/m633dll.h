@@ -22,7 +22,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 
 #define M633_SEGMENT_SPAWN_SE_ID 1849 /* Effect played after the two moving segments launch from the
                                        * nozzles. */

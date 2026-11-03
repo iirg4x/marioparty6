@@ -1,5 +1,5 @@
 /* Player selection, puzzle motion and the main Trick or Tree round. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -33,13 +33,6 @@ void *fn_1_2EC0(s32, s32, s32, f32, f32);
 void fn_1_2F34(void *), fn_1_2F88(void *);
 s32 fn_1_2F60(MGTIMER *);
 void fn_1_5008(s16, s16, void *);
-
-/* World-space choice and approach points for the four tree slots. */
-typedef struct SlotPositions_5A5C { HuVecF position[4]; } SlotPositions_5A5C;
-/* The two players begin the choice approach on opposite sides of center. */
-typedef struct StartPositions_5A5C { HuVecF position[2]; } StartPositions_5A5C;
-/* Alternating horizontal offsets used while climbing a tree. */
-typedef struct JumpOffsets_5A5C { f32 offset[2]; } JumpOffsets_5A5C;
 
 /* When a positional effect is updated, changes its pan only while its sound slot and handle are
  * active. */
@@ -164,24 +157,27 @@ s32 fn_1_58B0(void)
 void fn_1_5A5C(void)
 {
     s16 unfinishedMoves = 0;
-    SlotPositions_5A5C slotPositions = { {
+    /* World-space choice and approach points for the four tree slots. */
+    HuVecF slotPositions[4] = {
         { -400.0f, 0.0f, -250.0f },
         { -135.0f, 0.0f, -250.0f },
         { 135.0f, 0.0f, -250.0f },
         { 400.0f, 0.0f, -250.0f }
-    } };
-    SlotPositions_5A5C frontPositions = { {
+    };
+    HuVecF frontPositions[4] = {
         { -400.0f, 0.0f, -450.0f },
         { -135.0f, 0.0f, -450.0f },
         { 135.0f, 0.0f, -450.0f },
         { 400.0f, 0.0f, -450.0f }
-    } };
-    StartPositions_5A5C startPositions = { {
+    };
+    /* The two players begin the choice approach on opposite sides of center. */
+    HuVecF startPositions[2] = {
         { -150.0f, 0.0f, 0.0f },
         { 150.0f, 0.0f, 0.0f }
-    } };
+    };
     HuVecF facingOffset;
-    JumpOffsets_5A5C jumpOffsets = { { -120.0f, 120.0f } };
+    /* Alternating horizontal offsets used while climbing a tree. */
+    f32 jumpOffsets[2] = { -120.0f, 120.0f };
     f32 climbStepHeight = 300.0f;
     s16 playerIndex;
     M662Player *player;
@@ -197,8 +193,8 @@ void fn_1_5A5C(void)
         switch (player->state) {
         case 1:
             player->slot = (lbl_1_bss_2F4[playerIndex ^ 1].slot == 3) ? 2 : 3;
-            facingOffset.x = player->position.x - slotPositions.position[player->slot].x;
-            facingOffset.z = player->position.z - slotPositions.position[player->slot].z;
+            facingOffset.x = player->position.x - slotPositions[player->slot].x;
+            facingOffset.z = player->position.z - slotPositions[player->slot].z;
             player->targetAngle =
                 180.0 + 180.0 * (atan2(facingOffset.x, facingOffset.z) / 3.141592653589793);
             lbl_1_bss_3F4[playerIndex].shiftState = 1;
@@ -214,11 +210,11 @@ void fn_1_5A5C(void)
             fn_1_2DA0(&player->rotation.y, durationFrames, 0.0f, player->targetAngle);
             durationFrames = 80.0f;
             unfinishedMoves = fn_1_2DA0(&player->position.x, durationFrames,
-                                        startPositions.position[playerIndex].x,
-                                        slotPositions.position[player->slot].x);
+                                        startPositions[playerIndex].x,
+                                        slotPositions[player->slot].x);
             unfinishedMoves += fn_1_2DA0(&player->position.z, durationFrames,
-                                         startPositions.position[playerIndex].z,
-                                         slotPositions.position[player->slot].z);
+                                         startPositions[playerIndex].z,
+                                         slotPositions[player->slot].z);
             if (unfinishedMoves == 0) {
                 player->state++;
             }
@@ -322,9 +318,9 @@ void fn_1_5A5C(void)
                 durationFrames = 59.0f;
             }
             unfinishedMoves = fn_1_2DA0(&player->position.x, durationFrames, player->startX,
-                                  slotPositions.position[player->slot].x);
+                                  slotPositions[player->slot].x);
             if (unfinishedMoves == 0) {
-                player->position.x = slotPositions.position[player->slot].x;
+                player->position.x = slotPositions[player->slot].x;
                 player->sideways = 1;
                 player->state = 4;
             }
@@ -346,8 +342,8 @@ void fn_1_5A5C(void)
             }
             break;
         case 7:
-            facingOffset.x = player->position.x - frontPositions.position[player->slot].x;
-            facingOffset.z = player->position.z - frontPositions.position[player->slot].z;
+            facingOffset.x = player->position.x - frontPositions[player->slot].x;
+            facingOffset.z = player->position.z - frontPositions[player->slot].z;
             approachDistance =
                 sqrt(facingOffset.x * facingOffset.x + facingOffset.z * facingOffset.z);
             if (approachDistance < 125.0f) {
@@ -356,8 +352,8 @@ void fn_1_5A5C(void)
             }
             durationFrames = 40.0f;
             unfinishedMoves = fn_1_2DA0(&player->position.z, durationFrames,
-                                        slotPositions.position[player->slot].z,
-                                        frontPositions.position[player->slot].z);
+                                        slotPositions[player->slot].z,
+                                        frontPositions[player->slot].z);
             if (unfinishedMoves == 0) {
                 player->targetAngle = player->rotation.y;
                 player->state++;
@@ -392,8 +388,8 @@ void fn_1_5A5C(void)
             }
             break;
         case 11:
-            facingOffset.x = player->position.x - frontPositions.position[player->slot].x;
-            facingOffset.z = player->position.z - frontPositions.position[player->slot].z;
+            facingOffset.x = player->position.x - frontPositions[player->slot].x;
+            facingOffset.z = player->position.z - frontPositions[player->slot].z;
             approachDistance =
                 sqrt(facingOffset.x * facingOffset.x + facingOffset.z * facingOffset.z);
             if (approachDistance > 125.0f) {
@@ -404,7 +400,7 @@ void fn_1_5A5C(void)
             durationFrames = 30.0f;
             unfinishedMoves = 0;
             unfinishedMoves += fn_1_2DA0(&player->position.z, durationFrames,
-                                   frontPositions.position[player->slot].z, -600.0f);
+                                   frontPositions[player->slot].z, -600.0f);
             if (unfinishedMoves == 0) {
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
                 lbl_1_bss_3F4[playerIndex].shiftMotion = 2;
@@ -424,8 +420,8 @@ void fn_1_5A5C(void)
             carrier = &lbl_1_bss_4B4[lbl_1_bss_210.ranks[player->slot] + 36];
             durationFrames = 25.0f;
             unfinishedMoves = fn_1_2DA0(&player->position.x, durationFrames,
-                                        frontPositions.position[player->slot].x,
-                                        carrier->position.x + jumpOffsets.offset[player->score]);
+                                        frontPositions[player->slot].x,
+                                        carrier->position.x + jumpOffsets[player->score]);
             unfinishedMoves +=
                 fn_1_2DA0(&player->position.z, durationFrames, player->startZ, -850.0f);
             player->position.y += player->velocityY;
@@ -504,7 +500,7 @@ void fn_1_5A5C(void)
             carrier = &lbl_1_bss_4B4[lbl_1_bss_210.ranks[player->slot] + 36];
             durationFrames = 25.0f;
             unfinishedMoves = fn_1_2DA0(&player->position.x, durationFrames, player->startX,
-                                  carrier->position.x + jumpOffsets.offset[player->score % 2]);
+                                  carrier->position.x + jumpOffsets[player->score % 2]);
             player->position.y += player->velocityY;
             player->velocityY += player->gravity;
             if (player->position.y >= player->startY + climbStepHeight) {
@@ -686,7 +682,8 @@ void fn_1_7DE8(void)
         if (sequenceFinished != 0) {
             for (index = 0; index < 4; index++) {
                 puzzle = &lbl_1_bss_D0[index];
-                fn_80026A44(lbl_1_bss_4B4[puzzle->secondModel].modelId, ((1 << 30) | (1 << 0)));
+                fn_80026A44(lbl_1_bss_4B4[puzzle->secondModel].modelId,
+                    ((1 << 30) | (1 << 0)));
             }
             for (index = 32; index <= 35; index++) {
                 fn_80026A44(lbl_1_bss_4B4[index].modelId, (1 << 0));

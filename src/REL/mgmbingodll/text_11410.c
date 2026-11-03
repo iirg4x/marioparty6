@@ -1,5 +1,5 @@
 /* Runs Treetop Bingo from its game selection through the rounds and results. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/hu3d.h"
 #include "game/gamemes.h"
 #include "game/mgdata.h"
@@ -7,6 +7,7 @@
 #include "game/charman.h"
 #include "game/gamework.h"
 #include "game/flag.h"
+#include "game/saveload.h"
 #include "game/object.h"
 #include "game/frand.h"
 #include "game/audio.h"
@@ -30,15 +31,7 @@ void fn_1_4300(s16 evtno);
 void fn_1_C578(void);
 void fn_1_11A60(void);
 void fn_1_90F4(void);
-void fn_1_799C(s32 enabled);
-void fn_8006A1C4(u32 flag);
-
-void fn_1_1720(void);
-void fn_1_10548(void);
-void fn_1_3B6C(void);
-void fn_1_C578(void);
-void fn_1_11A60(void);
-void fn_1_90F4(void);
+void fn_1_799C(s16 enabled);
 
 #include "REL/mgmbingodll/module_types.h"
 extern HU3D_MODELID fn_1_0(s32 modeNo, s32 timeNo, Point3d *position);
@@ -53,7 +46,6 @@ extern void fn_1_6F4(void);
 
 #include "dolphin/mtx.h"
 
-extern void SLSaveModeExec(s16 sdModeF);
 extern void fn_1_7F0(void);
 extern void fn_1_824(void);
 extern void fn_1_1970(void);
@@ -103,7 +95,7 @@ void fn_1_11410(void)
 
     history = omOvlHisGet(0);
     if (history->evtno == 0) {
-        *(s16 *)&MgModeSubMode = 1;
+        MgModeSubMode = 1;
         memset(MgModeScore, 0, 8);
         MgGameNo = 2;
         memset(MgModeWork, BINGO_UNUSED_MINIGAME, 256);
@@ -163,27 +155,27 @@ void fn_1_11410(void)
             remainingModeCount--;
         }
     } else {
-        *(s16 *)&MgModeSubMode = history->evtno;
+        MgModeSubMode = history->evtno;
     }
         fn_8006A1C4(196609);
     Hu3DBGColorSet(0, 0, 0);
     index = Hu3DGLightCreate(
-        (0.0f), (1000.0f), (1000.0f),
-        (0.0f), (-1.0f), (-0.5f),
+        0.0f, 1000.0f, 1000.0f,
+        0.0f, -1.0f, -0.5f,
         255, 255, 255);
     Hu3DGLightInfinitytSet(index);
-    Hu3DShadowCreate((35.0f), (1000.0f), (5000.0f));
-    shadowTop.x = (0.0f);
-    shadowTop.y = (3500.0f);
-    shadowTop.z = (-250.0f);
-    shadowBottom.x = (0.0f);
-    shadowBottom.y = (1.0f);
-    shadowBottom.z = (-0.25f);
-    shadowTarget.x = (0.0f);
-    shadowTarget.y = (2100.0f);
-    shadowTarget.z = (0.0f);
+    Hu3DShadowCreate(35.0f, 1000.0f, 5000.0f);
+    shadowTop.x = 0.0f;
+    shadowTop.y = 3500.0f;
+    shadowTop.z = -250.0f;
+    shadowBottom.x = 0.0f;
+    shadowBottom.y = 1.0f;
+    shadowBottom.z = -0.25f;
+    shadowTarget.x = 0.0f;
+    shadowTarget.y = 2100.0f;
+    shadowTarget.z = 0.0f;
     Hu3DShadowPosSet(&shadowTop, &shadowBottom, &shadowTarget);
-    Hu3DShadowTPLvlSet((0.6f));
+    Hu3DShadowTPLvlSet(0.6f);
     if (history->evtno != 0) {
         for (index = 0; index < 4; index++) {
             coinBonus = lbl_80265750[index].mgCoinBonus;
@@ -236,9 +228,9 @@ void fn_1_11A60(void) {
     Point3d initialPosition;
     u8 previousMinigame;
 
-    initialPosition.x = (0.0f);
-    initialPosition.y = (0.0f);
-    initialPosition.z = (0.0f);
+    initialPosition.x = 0.0f;
+    initialPosition.y = 0.0f;
+    initialPosition.z = 0.0f;
     previousMinigame = 0;
     if (MgModePlayNum == 0) {
         previousMinigame = MgModeWork[MgModePlayNum];
@@ -246,7 +238,7 @@ void fn_1_11A60(void) {
         previousMinigame = MgModeWork[MgModePlayNum - 1];
     }
     lbl_1_bss_AFA = fn_1_0(0, 0, &initialPosition);
-    fn_800268B0(lbl_1_bss_AFA, (0.0f), (0.0f), (0.0f));
+    fn_800268B0(lbl_1_bss_AFA, 0.0f, 0.0f, 0.0f);
     fn_1_11B5C();
 }
 
@@ -306,38 +298,38 @@ void fn_1_11D2C(void) {
     s16 frame;
 
     HuPrcVSleep();
-    position.x = (0.0f);
-    position.y = (18.0f);
-    position.z = (-250.0f);
+    position.x = 0.0f;
+    position.y = 18.0f;
+    position.z = -250.0f;
     PSVECAdd(&Hu3DCamera[0].pos, &position, &position);
     fn_80026790(lbl_1_bss_AFA, &position);
 
     PSVECSubtract(&Hu3DCamera[0].pos, &Hu3DCamera[0].target, &position);
     scale = (f32)(atan2(-position.y, position.z) /
-                  (3.141592653589793) * (180.0));
+                  3.141592653589793 * 180.0);
     position.y = (f32)(atan2(position.x, position.z) /
-                       (3.141592653589793) * (180.0));
+                       3.141592653589793 * 180.0);
     position.x = scale;
-    position.z = (0.0f);
+    position.z = 0.0f;
     fn_80026838(lbl_1_bss_AFA, &position);
 
-    scale = (0.0f);
+    scale = 0.0f;
     fn_800268B0(lbl_1_bss_AFA, scale, scale, scale);
     HuPrcVSleep();
     fn_1_43C();
     HuPrcVSleep();
     HuAudFXPlay(MGM_BINGO_SOUND_CARD_REVEAL);
 
-    while (scale < (0.12f)) {
+    while (scale < 0.12f) {
         fn_800268B0(lbl_1_bss_AFA, scale, scale, scale);
-        scale += (0.012f);
-        if (scale >= (0.12f)) {
-            scale = (0.12f);
+        scale += 0.012f;
+        if (scale >= 0.12f) {
+            scale = 0.12f;
         }
         HuPrcVSleep();
     }
-    fn_800268B0(lbl_1_bss_AFA, (0.12f),
-                      (0.12f), (0.12f));
+    fn_800268B0(lbl_1_bss_AFA, 0.12f,
+                      0.12f, 0.12f);
     HuPrcVSleep();
     lbl_1_data_AD0 = HuAudFXPlay(MGM_BINGO_SOUND_CARD_CYCLE);
 

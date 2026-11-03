@@ -235,13 +235,13 @@ s32 fn_1_70C(Point3d firstPosition, f32 angle, f32 firstRadius,
     fn_1_10C5C(&separation, &separation);
 
     rotatedFirstAxis = firstAxis;
-    rotatedFirstAxisPointer = (const Vec *)&rotatedFirstAxis;
+    rotatedFirstAxisPointer = &rotatedFirstAxis;
     fn_1_1138(0.0f, 45.0f + angle, 0.0f,
-              rotatedFirstAxisPointer, (Vec *)&firstAxis);
+              rotatedFirstAxisPointer, &firstAxis);
     rotatedSecondAxis = secondAxis;
-    rotatedSecondAxisPointer = (const Vec *)&rotatedSecondAxis;
+    rotatedSecondAxisPointer = &rotatedSecondAxis;
     fn_1_1138(0.0f, 45.0f + angle, 0.0f,
-              rotatedSecondAxisPointer, (Vec *)&secondAxis);
+              rotatedSecondAxisPointer, &secondAxis);
 
     separationSquaredOrProjection = PSVECDotProduct(&firstAxis, &separation);
     secondProjection = PSVECDotProduct(&secondAxis, &separation);
@@ -256,9 +256,9 @@ s32 fn_1_70C(Point3d firstPosition, f32 angle, f32 firstRadius,
         separation.z = -1.0f;
     }
     contactDirectionCopy = separation;
-    contactDirectionPointer = (const Vec *)&contactDirectionCopy;
+    contactDirectionPointer = &contactDirectionCopy;
     fn_1_1138(0.0f, angle, 0.0f,
-              contactDirectionPointer, (Vec *)&separation);
+              contactDirectionPointer, &separation);
     travel = PSVECDotProduct(&separation, &secondDirectionCopy);
     PSVECScale(&separation, &separation, travel);
     PSVECSubtract(&secondDirectionCopy, &separation, &separation);

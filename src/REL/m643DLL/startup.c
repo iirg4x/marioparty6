@@ -1,5 +1,5 @@
 /* Sets up Jump the Gun and advances its minigame sequence. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m643DLL/m643.h"
 #include "game/mg/seqman.h"
 #include "game/charman.h"

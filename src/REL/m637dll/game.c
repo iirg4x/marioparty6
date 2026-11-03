@@ -91,12 +91,12 @@ s32 fn_1_65C(void)
     s32 gameEnded;
 
     gameEnded = 0;
-    switch ((s32) lbl_1_bss_374) {
+    switch (lbl_1_bss_374) {
     case 0:
-        if ((s32) lbl_1_bss_36C == -1) {
+        if (lbl_1_bss_36C == -1) {
             lbl_1_bss_36C = 1;
         }
-        if ((s32) lbl_1_bss_36C != 0) {
+        if (lbl_1_bss_36C != 0) {
             fn_1_5914(1);
         }
         if (fn_1_4C24((lbl_1_bss_36C * 5) + 10) != 0) {
@@ -140,7 +140,7 @@ s32 fn_1_65C(void)
         }
         break;
     case 4:
-        if (((s32) lbl_1_bss_370 == 5) || (lbl_1_bss_2A0->teamScore == 3) ||
+        if ((lbl_1_bss_370 == 5) || (lbl_1_bss_2A0->teamScore == 3) ||
             (lbl_1_bss_2A0[2].teamScore == 3)) {
             MgTimerKill(lbl_1_bss_34C);
             gameEnded = 1;
@@ -164,7 +164,7 @@ s32 fn_1_65C(void)
  * the settling update for both teams. */
 void fn_1_A54(void)
 {
-    if ((s32) lbl_1_bss_364 == 0) {
+    if (lbl_1_bss_364 == 0) {
         lbl_1_bss_354 = 1;
         if (++lbl_1_bss_360 < 60) {
             lbl_1_bss_1D0->reelSpeed[0] = 4.0f;
@@ -362,7 +362,7 @@ void fn_1_1464(s32 animationMode)
                     lbl_1_bss_100 = 600.0f;
                 }
             }
-            if ((s32) lbl_1_bss_350 == -1) {
+            if (lbl_1_bss_350 == -1) {
             lbl_1_bss_350 = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
             }
         } else {
@@ -931,16 +931,16 @@ s32 fn_1_36E8(s32 acceptPlayerInput)
                 } else if ((totalReelAngle >= -450.0f) && (totalReelAngle < -390.0f)) {
                     lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex] = 7;
                 }
-                if ((s32) lbl_1_bss_358 != (s32) lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex]) {
+                if (lbl_1_bss_358 != (s32) lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex]) {
                     if (teamIndex == 0) {
-                        if ((s32) lbl_1_bss_354 == 1) {
+                        if (lbl_1_bss_354 == 1) {
                             leftTeamTickSound = M637_SFX_REEL_LEFT_SPEED_UP;
                         } else {
                             leftTeamTickSound = M637_SFX_REEL_LEFT_SPEED_DOWN;
                         }
                         HuAudFXPlay(leftTeamTickSound);
                     } else {
-                        if ((s32) lbl_1_bss_354 == 1) {
+                        if (lbl_1_bss_354 == 1) {
                             rightTeamTickSound = M637_SFX_REEL_RIGHT_SPEED_UP;
                         } else {
                             rightTeamTickSound = M637_SFX_REEL_RIGHT_SPEED_DOWN;
@@ -1066,13 +1066,13 @@ s32 fn_1_4C24(s32 selectionLimit)
     s32 useStopSelection;
 
     stopComplete = 0;
-    switch ((s32) lbl_1_bss_114) {
+    switch (lbl_1_bss_114) {
     case 0:
         lbl_1_bss_110 += 1;
         lbl_1_bss_104 = 0;
         reelIndex = 0;
         while (reelIndex < 2) {
-            if ((s32) lbl_1_bss_110 == selectionLimit) {
+            if (lbl_1_bss_110 == selectionLimit) {
                 useStopSelection = 1;
             } else {
                 useStopSelection = 0;
@@ -1083,8 +1083,8 @@ s32 fn_1_4C24(s32 selectionLimit)
             }
             reelIndex += 1;
         }
-        if (((s32) lbl_1_bss_104 == 2) && ((s32) lbl_1_bss_110 == selectionLimit) &&
-            ((s32) lbl_1_bss_374 == 0)) {
+        if ((lbl_1_bss_104 == 2) && (lbl_1_bss_110 == selectionLimit) &&
+            (lbl_1_bss_374 == 0)) {
             /* Before a round starts, replace both targets if both would return to their scene-setup
              * symbols. */
             fn_1_55A4(selectionLimit);
@@ -1092,7 +1092,7 @@ s32 fn_1_4C24(s32 selectionLimit)
             reelIndex = 0;
             while (reelIndex < 2) {
                 lbl_1_bss_118[reelIndex].lastChosenSymbol = lbl_1_bss_118[reelIndex].targetSymbol;
-                if (((s32) lbl_1_bss_110 == selectionLimit) && ((s32) lbl_1_bss_374 == 0)) {
+                if ((lbl_1_bss_110 == selectionLimit) && (lbl_1_bss_374 == 0)) {
                     lbl_1_bss_118[reelIndex].openingTargetSymbol =
                         lbl_1_bss_118[reelIndex].targetSymbol;
                 }
@@ -1146,7 +1146,7 @@ s32 fn_1_4C24(s32 selectionLimit)
                     lbl_1_bss_118[reelIndex].symbolModels[lbl_1_bss_118[reelIndex].targetSymbol][1],
                     -180.0f + lbl_1_bss_118[reelIndex].outgoingAngle, 0.0f, 0.0f);
             }
-            if ((s32) lbl_1_bss_114 == 1) {
+            if (lbl_1_bss_114 == 1) {
                 lbl_1_bss_118[reelIndex].incomingAngle += 20.0f;
                 fn_80026808(
                     lbl_1_bss_118[reelIndex].symbolModels[lbl_1_bss_118[reelIndex].targetSymbol][0],
@@ -1155,7 +1155,7 @@ s32 fn_1_4C24(s32 selectionLimit)
                     lbl_1_bss_118[reelIndex].symbolModels[lbl_1_bss_118[reelIndex].targetSymbol][0],
                     (1 << 0));
             }
-            if ((s32) lbl_1_bss_114 == 3) {
+            if (lbl_1_bss_114 == 3) {
                 fn_800269E8(lbl_1_bss_118[reelIndex]
                                      .symbolModels[lbl_1_bss_118[reelIndex].settledSymbol][1],
                                  (1 << 0));
@@ -1171,7 +1171,7 @@ s32 fn_1_4C24(s32 selectionLimit)
         lbl_1_bss_114 = 0;
         lbl_1_bss_118->settledSymbol = lbl_1_bss_118->targetSymbol;
         lbl_1_bss_118[1].settledSymbol = lbl_1_bss_118[1].targetSymbol;
-        if ((s32) lbl_1_bss_110 == selectionLimit) {
+        if (lbl_1_bss_110 == selectionLimit) {
             lbl_1_bss_110 = 0;
             stopComplete = 1;
         }
@@ -1371,7 +1371,7 @@ s32 fn_1_603C(void)
     s32 stopMotionIndex;
 
     animationFinished = 0;
-    if ((s32) lbl_1_bss_368 == 0) {
+    if (lbl_1_bss_368 == 0) {
         playerSlot = 0;
         while (playerSlot < 4) {
             if (lbl_1_bss_2A0[playerSlot].scoredRound != 0) {
@@ -1461,7 +1461,7 @@ s32 fn_1_65A0(void)
     s32 animationFinished;
 
     animationFinished = 0;
-    if ((s32) lbl_1_bss_368 == 0) {
+    if (lbl_1_bss_368 == 0) {
         playerSlot = 0;
         while (playerSlot < 4) {
             fn_8005C2C8(lbl_80265728[lbl_1_bss_290[playerSlot]].charNo,
@@ -1501,7 +1501,7 @@ void fn_1_67C4(void)
     s32 teamSlot;
 
     fn_1_1464(0);
-    if ((s32) lbl_1_bss_368 == 0) {
+    if (lbl_1_bss_368 == 0) {
         playerSlot = 0;
         while (playerSlot < 4) {
             motionChanged = 0;

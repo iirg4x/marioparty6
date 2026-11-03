@@ -1,5 +1,5 @@
 /* Interpolates a position between two endpoints with a cosine ease. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/main.h"
 
 /* Writes a cosine-eased position using elapsedFrames divided by durationFrames. */

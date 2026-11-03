@@ -132,15 +132,15 @@ typedef struct M641CameraConfiguration {
 
 M641CameraConfiguration lbl_1_data_0[2][2] = {
     {
-        {1, 15.0f, 10.0f, 15000.0f, 2.2857143878936768f, 0.0f, 0.0f, 640.0f, 280.0f, 0.0f, 1.0f,
+        {1, 15.0f, 10.0f, 15000.0f, 2.2857144f, 0.0f, 0.0f, 640.0f, 280.0f, 0.0f, 1.0f,
          0, 0, 640, 238, {0.0f, 210.0f, 2400.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 210.0f, 0.0f}},
-        {2, 15.0f, 10.0f, 15000.0f, 2.2857143878936768f, 0.0f, 200.0f, 640.0f, 280.0f, 0.0f, 1.0f,
+        {2, 15.0f, 10.0f, 15000.0f, 2.2857144f, 0.0f, 200.0f, 640.0f, 280.0f, 0.0f, 1.0f,
          0, 242, 640, 238, {0.0f, 220.0f, 2400.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 220.0f, 0.0f}}
     },
     {
-        {1, 15.0f, 10.0f, 15000.0f, 2.2857143878936768f, 0.0f, 0.0f, 640.0f, 280.0f, 0.0f, 1.0f,
+        {1, 15.0f, 10.0f, 15000.0f, 2.2857144f, 0.0f, 0.0f, 640.0f, 280.0f, 0.0f, 1.0f,
          0, 0, 640, 238, {0.0f, 207.0f, 2297.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 207.0f, 0.0f}},
-        {2, 15.0f, 10.0f, 15000.0f, 2.2857143878936768f, 0.0f, 200.0f, 640.0f, 280.0f, 0.0f, 1.0f,
+        {2, 15.0f, 10.0f, 15000.0f, 2.2857144f, 0.0f, 200.0f, 640.0f, 280.0f, 0.0f, 1.0f,
          0, 242, 640, 238, {0.0f, 207.0f, 2297.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 207.0f, 0.0f}}
     }
 };
@@ -247,7 +247,7 @@ extern s16 lbl_1_bss_1C;
 
 /* Ages active board sound handles and clears each one after six update frames. */
 void fn_1_15FC(void) {
-    if ((s32) lbl_1_data_240 >= 0) {
+    if (lbl_1_data_240 >= 0) {
         lbl_1_bss_18 += 1;
         if (lbl_1_bss_18 >= 6) {
             lbl_1_data_240 = -1;
@@ -257,7 +257,7 @@ void fn_1_15FC(void) {
         lbl_1_data_240 = -1;
         lbl_1_bss_18 = 0;
     }
-    if ((s32) lbl_1_data_244 >= 0) {
+    if (lbl_1_data_244 >= 0) {
         lbl_1_bss_1A += 1;
         if (lbl_1_bss_1A >= 6) {
             lbl_1_data_244 = -1;
@@ -267,7 +267,7 @@ void fn_1_15FC(void) {
         lbl_1_data_244 = -1;
         lbl_1_bss_1A = 0;
     }
-    if ((s32) lbl_1_data_248 >= 0) {
+    if (lbl_1_data_248 >= 0) {
         lbl_1_bss_1C += 1;
         if (lbl_1_bss_1C >= 6) {
             lbl_1_data_248 = -1;
@@ -1640,7 +1640,7 @@ void fn_1_682C(s16 frame) {
         }
         fn_1_4660(boardIndex, 0, 2);
     }
-    if ((s32) lbl_1_data_240 >= 0) {
+    if (lbl_1_data_240 >= 0) {
         lbl_1_bss_18 += 1;
         if (lbl_1_bss_18 >= 6) {
             lbl_1_data_240 = -1;
@@ -1650,7 +1650,7 @@ void fn_1_682C(s16 frame) {
         lbl_1_data_240 = -1;
         lbl_1_bss_18 = 0;
     }
-    if ((s32) lbl_1_data_244 >= 0) {
+    if (lbl_1_data_244 >= 0) {
         lbl_1_bss_1A += 1;
         if (lbl_1_bss_1A >= 6) {
             lbl_1_data_244 = -1;
@@ -1660,7 +1660,7 @@ void fn_1_682C(s16 frame) {
         lbl_1_data_244 = -1;
         lbl_1_bss_1A = 0;
     }
-    if ((s32) lbl_1_data_248 >= 0) {
+    if (lbl_1_data_248 >= 0) {
         lbl_1_bss_1C += 1;
         if (lbl_1_bss_1C >= 6) {
             lbl_1_data_248 = -1;
@@ -1951,7 +1951,7 @@ void fn_1_8D9C(s16 winningGroup) {
         fn_1_4660(boardIndex, 0, 2);
     }
     lbl_1_bss_1E++;
-    if ((s32) lbl_1_data_240 >= 0) {
+    if (lbl_1_data_240 >= 0) {
         lbl_1_bss_18 += 1;
         if (lbl_1_bss_18 >= 6) {
             lbl_1_data_240 = -1;
@@ -1961,7 +1961,7 @@ void fn_1_8D9C(s16 winningGroup) {
         lbl_1_data_240 = -1;
         lbl_1_bss_18 = 0;
     }
-    if ((s32) lbl_1_data_244 >= 0) {
+    if (lbl_1_data_244 >= 0) {
         lbl_1_bss_1A += 1;
         if (lbl_1_bss_1A >= 6) {
             lbl_1_data_244 = -1;
@@ -1971,7 +1971,7 @@ void fn_1_8D9C(s16 winningGroup) {
         lbl_1_data_244 = -1;
         lbl_1_bss_1A = 0;
     }
-    if ((s32) lbl_1_data_248 >= 0) {
+    if (lbl_1_data_248 >= 0) {
         lbl_1_bss_1C += 1;
         if (lbl_1_bss_1C >= 6) {
             lbl_1_data_248 = -1;

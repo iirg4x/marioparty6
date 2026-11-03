@@ -1,6 +1,6 @@
 /* Owns the on-screen direction prompts used while riders roll through the course. */
 #define _MATH_H
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m608dll.h"
 
 s32 lbl_1_data_4B0[6] = { DATANUM(0x430000, 101), DATANUM(0x430000, 97), DATANUM(0x430000, 98),

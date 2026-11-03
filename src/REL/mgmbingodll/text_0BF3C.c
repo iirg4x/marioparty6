@@ -31,11 +31,6 @@ void fn_1_D634(OMOBJ *object);
 #include "msm_se.h"
 #include "msm_stream.h"
 
-#define MSM_SE_BINGO_GAME_COUNT_CHANGE 1211
-#define MSM_SE_BINGO_GAME_COUNT_WINDOW 1212
-#define MSM_SE_BINGO_GAME_COUNT_CONFIRM 1216
-#define MSM_SE_BINGO_FINAL_RESULTS 1262
-#define MSM_SE_BINGO_RESULTS_CAMERA 1266
 #define BINGO_CHARACTER_RESULT_VOICE 579
 
 extern u8 MgModeWork[256];
@@ -47,7 +42,7 @@ s16 fn_1_901C(s16 *lineScores);
 
 void fn_1_AAC8(HuVecF *position);
 
-#include "dolphin/math.h"
+#include <math.h>
 
 extern s16 MgModeScore[4];
 extern int MgModeWorkInt[16];
@@ -68,18 +63,12 @@ void fn_1_2114(void);
 
 extern u16 lbl_802C0008[4];
 extern u8 lbl_802BFFE0[4];
-void fn_1_1C14(void);
-void fn_1_1D1C(void);
-void fn_1_1D70(void);
-s16 fn_1_1DA4(void);
 
 #include "game/process.h"
 
 extern s16 MgGameNo;
 
-void fn_1_108C(s16 pathIndex, s16 duration);
 void fn_1_10970(u16 enable);
-void fn_1_10A64(s16 positionIndex, s16 duration);
 void fn_1_34B0(void);
 void fn_1_50B4(void);
 void fn_1_B498(void);
@@ -88,7 +77,7 @@ void fn_1_BDB4(void);
 // The round controller calls this to check whether the player may advance.
 static inline s16 PlayerIsReady(s16 playerNo)
 {
-    MgmbingoPlayerData *playerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerNo]->data;
+    MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
 
     if ((playerData->state == -1) || (playerData->state == 0) ||
         (playerData->state == 9) || (playerData->state == 12) ||
@@ -285,7 +274,7 @@ u16 fn_1_C8B8(s16 playerIndex, s16 targetCell) {
     s16 eventFrame;
 
     buttons = 0;
-    input = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerIndex]->data;
+    input = lbl_1_bss_ACC[playerIndex]->data;
     if (input->inputMode == 0) {
         buttons = lbl_802C0008[input->padIndex] & 0x320;
         buttons |= lbl_802BFFE0[input->padIndex];
@@ -451,7 +440,7 @@ void fn_1_CFA8(void) {
 void fn_1_D000(void) {
     s16 playerNo;
     for (playerNo = 0; playerNo < 4; ++playerNo) {
-        MgmbingoPlayerData *playerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerNo]->data;
+        MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
         playerData->state = 4;
     }
 }
@@ -459,7 +448,7 @@ void fn_1_D000(void) {
 // Queues one of two character reactions; the final-results presentation enables it for qualifying
 // players.
 void fn_1_D058(s16 playerNo, s16 enabled) {
-    MgmbingoPlayerData *playerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerNo]->data;
+    MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
     if (enabled != 0) {
         playerData->state = 7;
         return;
@@ -470,7 +459,7 @@ void fn_1_D058(s16 playerNo, s16 enabled) {
 // Queues the selected scorer's result animation when enabled, or the non-scoring result animation
 // otherwise.
 void fn_1_D0A8(s16 playerNo, s16 enabled) {
-    MgmbingoPlayerData *playerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerNo]->data;
+    MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
     if (enabled != 0) {
         playerData->state = 13;
         return;
@@ -481,7 +470,7 @@ void fn_1_D0A8(s16 playerNo, s16 enabled) {
 // Sets the player's entrance and target positions for the selected result placement.
 void fn_1_D0F8(s16 playerNo, s16 placementType, s16 placementIndex) {
     MgmbingoPlayerData *playerData =
-        (MgmbingoPlayerData *)lbl_1_bss_ACC[playerNo]->data;
+        lbl_1_bss_ACC[playerNo]->data;
 
     playerData->state = 19;
     if (placementType <= 1) {
@@ -519,7 +508,7 @@ void fn_1_D0F8(s16 playerNo, s16 placementType, s16 placementIndex) {
 
 // Returns either result-reaction sequence to idle when the player returns to the board.
 void fn_1_D3D4(s16 playerNo) {
-    MgmbingoPlayerData *playerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerNo]->data;
+    MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
 
     if ((playerData->state == 7) || (playerData->state == 8) ||
         (playerData->state == 9) || (playerData->state == 13) ||
@@ -536,7 +525,7 @@ void fn_1_D3D4(s16 playerNo) {
 
 // Reports whether the player is in one of the states that may advance the round.
 s32 fn_1_D4A8(s16 playerNo) {
-    MgmbingoPlayerData *playerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerNo]->data;
+    MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
 
     if ((playerData->state == -1) || (playerData->state == 0) ||
         (playerData->state == 9) || (playerData->state == 12) ||
@@ -570,7 +559,7 @@ void fn_1_D538(void) {
 
 // Advances one player's movement, board animation, and result states each frame.
 void fn_1_D634(OMOBJ *object) {
-    MgmbingoPlayerData *work = (MgmbingoPlayerData *)object->data;
+    MgmbingoPlayerData *work = object->data;
     f32 motionEnd;
 
     switch (work->state) {
@@ -775,7 +764,6 @@ Point3d lbl_1_data_9FC[8] = { { -116.0f, 0.0f, 0.0f }, { 116.0f, 0.0f, 0.0f }, {
 // Loads the eight sprites used to select the required bingo-line count.
 void fn_1_EE74(void) {
     s16 spriteIndex;
-    s16 unused;
     spriteIndex = 0;
     while (spriteIndex < 8)
     {
@@ -815,15 +803,15 @@ s16 fn_1_F018(void) {
     selectedPlayer = 0;
     loopActive = 1;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        controllerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerIndex]->data;
+        controllerData = lbl_1_bss_ACC[playerIndex]->data;
         if (controllerData->inputMode == 0) {
             selectedPlayer = playerIndex;
             break;
         }
     }
-    controllerData = (MgmbingoPlayerData *)lbl_1_bss_ACC[selectedPlayer]->data;
+    controllerData = lbl_1_bss_ACC[selectedPlayer]->data;
     HuPrcVSleep();
-    fn_1_1C14();
+    BingoShowFollowupInstructions();
 
 restart_animation:
     HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
@@ -838,7 +826,7 @@ restart_animation:
     HuSprScaleSet(lbl_1_bss_A82, 2, 1.0f, 1.0f);
     HuSprScaleSet(lbl_1_bss_A82, 0, 1.0f, 1.0f);
     HuSprScaleSet(lbl_1_bss_A82, 1, 1.0f, 1.0f);
-    HuAudFXPlay(MSM_SE_BINGO_GAME_COUNT_WINDOW);
+    HuAudFXPlay(1212);
     scale = 0.0f;
     while (scale < 1.0f) {
         HuSprGrpScaleSet(lbl_1_bss_A82, scale, scale);
@@ -846,7 +834,7 @@ restart_animation:
         scale += 0.1f;
     }
     HuSprGrpScaleSet(lbl_1_bss_A82, 1.0f, 1.0f);
-    fn_1_1D1C();
+    BingoShowLineCountHint();
     loopActive = 1;
     previousGameNo = MgGameNo;
 
@@ -912,8 +900,8 @@ restart_animation:
         }
         HuPrcVSleep();
     }
-    fn_1_1D70();
-    HuAudFXPlay(MSM_SE_BINGO_GAME_COUNT_WINDOW);
+    BingoCloseLineCountHint();
+    HuAudFXPlay(1212);
     scale = 1.0f;
     while (scale > 0.0f) {
         scale -= 0.1f;
@@ -926,7 +914,7 @@ restart_animation:
     }
     HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
     HuPrcVSleep();
-    if ((result != 0) && (fn_1_1DA4() != 0)) {
+    if ((result != 0) && (BingoPromptTwoChoices() != 0)) {
         goto restart_animation;
     }
     HuPrcVSleep();

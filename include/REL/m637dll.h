@@ -22,7 +22,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 
 #include "game/esprite.h"
 

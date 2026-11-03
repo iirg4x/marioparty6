@@ -50,9 +50,14 @@ typedef struct M643PlatformWork_s {
     HU3D_MODELID loweredModels[39]; /* Day or night platform models visible before a hit. */
 } M643PlatformWork;
 
+/* Fields shared by the runner and shooter player state records. */
+typedef struct M643PlayerIdentityPrefix_s {
+    s16 playerIndex, characterId, teamIndex; /* Configured player, character, and team (0 or 1). */
+} M643PlayerIdentityPrefix;
+
 /* One team's cannon operator, models, aiming input, and reusable projectile slots. */
 typedef struct M643TeamScenePrefix_s {
-    s16 playerIndex, characterId, teamIndex; /* Configured player, character, and team (0 or 1). */
+    M643PlayerIdentityPrefix identity;
     HU3D_MODELID barrelModel, baseModel; /* Cannon barrel and base, rotated toward the aim point. */
     HU3D_MOTIONID cannonMotions[3]; /* Initial, reload, and firing motions. */
     HU3D_MODELID loadedShotModel; /* Projectile attached to the cannon, hidden during firing. */
@@ -90,16 +95,9 @@ typedef struct M643TeamScenePrefix_s {
                          * zero. */
 } M643TeamScenePrefix;
 
-/* Fields shared by the runner and shooter player state records. */
-typedef struct M643PlayerIdentityPrefix_s {
-    s16 playerIndex, characterId, teamIndex; /* Configured player, character, and team (0 or 1). */
-} M643PlayerIdentityPrefix;
-
 /* Runner control, last touched platform, fall recovery, and computer jumping state. */
 typedef struct M643PlayerPrefix_s {
-    s16 playerIndex; /* Configured player index, from 0 through 3. */
-    s16 characterId; /* Character used for the runner's model and motions. */
-    s16 teamIndex; /* Owning team, 0 or 1. */
+    M643PlayerIdentityPrefix identity;
     MGPLAYER *player; /* Runner's actor, input, and character animation state. */
     u16 respawnPending; /* One while despawned; cleared when the rescue releases the runner. */
     s16 lastPlatform; /* Last platform touched on the ground, from 0 through 38. */
@@ -154,7 +152,7 @@ extern M643PlayerIdentityPrefix *lbl_1_bss_15C[4];
 extern M643ViewControlWork *lbl_1_bss_154[2];
 
 extern M643TeamScenePrefix *lbl_1_bss_16C[2];
-extern void *lbl_1_bss_14C[2];
+extern M643PlatformWork *lbl_1_bss_14C[2];
 M643PlayerPrefix *fn_1_1640(s16 teamIndex);
 M643TeamScenePrefix *fn_1_165C(s16 teamIndex);
 void *fn_1_1678(s16 teamIndex);

@@ -58,7 +58,7 @@ void fn_1_2A4(s16 count, u8 *playerOrder) {
     lbl_1_bss_88 = 0;
     lbl_1_bss_0 = count;
     lbl_1_bss_8C = HuMemDirectMallocNum(
-        0, count * sizeof(ANIMDATA *) * 2, 0x10000000);
+        0, count * sizeof(*lbl_1_bss_8C) * 2, 0x10000000);
     for (player = 0; player < lbl_1_bss_0; player++) {
         lbl_1_bss_2[player] = playerOrder[player];
         lbl_1_bss_8C[player * 2] = HuSprAnimRead(

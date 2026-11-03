@@ -1743,7 +1743,8 @@ void fn_1_39D0(M680GridNode *work) {
                 }
             } else if ((work->motions[2] != fn_8002D3C4(work->model)) &&
                        (work->motions[2] != fn_8002D3EC(work->model))) {
-                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f,
+                    ((1 << 30) | (1 << 0)));
             }
             work->start = work->position;
             work->destination = board->cells[work->column][work->row].position;
@@ -1812,7 +1813,8 @@ void fn_1_39D0(M680GridNode *work) {
             work->state++;
             if ((work->motions[2] != fn_8002D3C4(work->model)) &&
                 (work->motions[2] != fn_8002D3EC(work->model))) {
-                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f,
+                    ((1 << 30) | (1 << 0)));
             }
         /* fallthrough */
     case M680_PIECE_STATE_PATH_MOVE:
@@ -1861,7 +1863,8 @@ void fn_1_39D0(M680GridNode *work) {
         if ((work->rotation.y > -1.0f) && (work->rotation.y < 1.0f)) {
             if ((work->motions[0] != fn_8002D3C4(work->model)) &&
                 (work->motions[0] != fn_8002D3EC(work->model))) {
-                fn_8002CCC0(work->model, work->motions[0], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(work->model, work->motions[0], 0.0f, 5.0f,
+                    ((1 << 30) | (1 << 0)));
             }
             work->state = 0;
         }
@@ -2024,7 +2027,8 @@ void fn_1_39D0(M680GridNode *work) {
         if ((work->column == M680_PIECE_GATE_COLUMN) && (work->row == 7)) {
             if ((work->motions[0] != fn_8002D3C4(work->model)) &&
                 (work->motions[0] != fn_8002D3EC(work->model))) {
-                fn_8002CCC0(work->model, work->motions[0], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(work->model, work->motions[0], 0.0f, 5.0f,
+                    ((1 << 30) | (1 << 0)));
             }
         } else if ((work->motions[2] != fn_8002D3C4(work->model)) &&
                    (work->motions[2] != fn_8002D3EC(work->model))) {
@@ -2151,7 +2155,8 @@ void fn_1_39D0(M680GridNode *work) {
             work->state++;
             if ((work->motions[2] != fn_8002D3C4(work->model)) &&
                 (work->motions[2] != fn_8002D3EC(work->model))) {
-                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f,
+                    ((1 << 30) | (1 << 0)));
             }
         } else if ((work->column < M680_BOARD_LAST_CELL) &&
                    (board->cells[work->column + 1][work->row].state == 0)) {
@@ -2165,7 +2170,8 @@ void fn_1_39D0(M680GridNode *work) {
             work->state++;
             if ((work->motions[2] != fn_8002D3C4(work->model)) &&
                 (work->motions[2] != fn_8002D3EC(work->model))) {
-                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f,
+                    ((1 << 30) | (1 << 0)));
             }
         } else {
             work->state = M680_PIECE_STATE_WINNER_END;
@@ -3039,8 +3045,8 @@ s32 fn_1_8288(void *argument)
         break;
     }
     m680UpdateAngle(work);
-    fn_80026790(work->model, (Vec *)work);
-    fn_80026838(work->model, (Vec *)&work->rotation.x);
+    fn_80026790(work->model, &work->position);
+    fn_80026838(work->model, &work->rotation);
     return done;
 }
 
@@ -3754,7 +3760,7 @@ void fn_1_A7E8(M680State *board)
     board->cursorPosition.x = board->selected->position.x + offsets[direction].x;
     board->cursorPosition.y = board->selected->position.y + offsets[direction].y;
     board->cursorPosition.z = board->selected->position.z + offsets[direction].z;
-    fn_80026790(board->cursorModel, (Point3d *)&board->cursorPosition);
+    fn_80026790(board->cursorModel, &board->cursorPosition);
 }
 
 /* Maps horizontal stage position to a sound pan value from 32 to 96. */

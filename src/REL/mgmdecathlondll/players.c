@@ -250,7 +250,7 @@ void fn_1_97F0(void) {
     DecathlonPlayerActorData *playerData;
 
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        playerData = (DecathlonPlayerActorData *)lbl_1_bss_A8[playerNo]->data;
+        playerData = lbl_1_bss_A8[playerNo]->data;
         playerData->destination = playerData->position;
         playerData->destination.x -= 1000.0f;
         playerData->state = 1;
@@ -260,7 +260,7 @@ void fn_1_97F0(void) {
     while (waiting != 0) {
         waiting = 0;
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            playerData = (DecathlonPlayerActorData *)lbl_1_bss_A8[playerNo]->data;
+            playerData = lbl_1_bss_A8[playerNo]->data;
             if (playerData->state != 0) {
                 waiting = 1;
             }
@@ -277,7 +277,7 @@ void fn_1_98F4(void) {
     DecathlonPlayerActorData *playerData;
 
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        playerData = (DecathlonPlayerActorData *)lbl_1_bss_A8[playerNo]->data;
+        playerData = lbl_1_bss_A8[playerNo]->data;
         playerData->destination = lbl_1_data_4C8[playerNo];
         playerData->state = 1;
     }
@@ -286,7 +286,7 @@ void fn_1_98F4(void) {
     while (waiting != 0) {
         waiting = 0;
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            playerData = (DecathlonPlayerActorData *)lbl_1_bss_A8[playerNo]->data;
+            playerData = lbl_1_bss_A8[playerNo]->data;
             if (playerData->state != 0) {
                 waiting = 1;
             }
@@ -294,7 +294,7 @@ void fn_1_98F4(void) {
         HuPrcVSleep();
     }
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        playerData = (DecathlonPlayerActorData *)lbl_1_bss_A8[playerNo]->data;
+        playerData = lbl_1_bss_A8[playerNo]->data;
         pan = (s16)(playerNo * 21 + 32);
         HuAudFXPlayPan(lbl_1_data_C98[playerData->characterNo], pan);
     }
@@ -378,7 +378,7 @@ void fn_1_9CD0(void) {
 }
 
 /* After a minigame returns, the main sequence requests motion setting eight for all players. */
-void fn_1_9DA0(void) {
+void decathlonPlayersReturnMotionStart(void) {
     s16 playerNo;
 
     for (playerNo = 0; playerNo < 4; ++playerNo) {
@@ -388,7 +388,7 @@ void fn_1_9DA0(void) {
 }
 
 /* After the score message, the main sequence returns all four players to idle. */
-void fn_1_9DF8(void) {
+void decathlonPlayersIdleStart(void) {
     s16 playerNo;
 
     for (playerNo = 0; playerNo < 4; ++playerNo) {

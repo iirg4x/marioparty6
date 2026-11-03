@@ -356,7 +356,8 @@ void fn_1_70A8(s32 phase)
         fn_80026A44(lbl_1_bss_0.nozzleModelIds[0], ((1 << 30) | (1 << 0)));
         fn_80026A44(lbl_1_bss_0.nozzleModelIds[1], ((1 << 30) | (1 << 0)));
         fn_80026A44(*lbl_1_bss_0.object->mdlId, ((1 << 30) | (1 << 0)));
-        fn_80026A44(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], ((1 << 30) | (1 << 0)));
+        fn_80026A44(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex],
+            ((1 << 30) | (1 << 0)));
     }
     lbl_1_bss_0.arenaPhase = phase;
 }

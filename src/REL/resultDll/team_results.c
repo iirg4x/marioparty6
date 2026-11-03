@@ -5,6 +5,8 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 #include "msm_stream.h"
+#include "dolphin/types.h"
+#include "dolphin/os.h"
 typedef struct ResultTeamDisplay {
     s32 sprites[3]; /* Team emblem, rank indicator and coin-award icon sprites. */
     s32 awardDigits[3]; /* Digit sprites for the team's coin award. */
@@ -17,8 +19,6 @@ typedef struct ResultTeamDisplay {
 } ResultTeamDisplay;
 extern ResultTeamDisplay lbl_1_bss_AB8[2];
 
-#include "dolphin/math.h"
-#include "game/hu3d.h"
 #include "game/window.h"
 #include "game/audio.h"
 #include "game/data.h"
@@ -70,13 +70,8 @@ extern void fn_1_766C(s32 team, s32 coinAward);
 extern void fn_1_73D4(s32 team, s32 coinTotal);
 extern int fn_1_7840(int team, int occurrence);
 
-#include "dolphin/math.h"
-#include "game/gamework.h"
-#include "game/hu3d.h"
 #include "game/charman.h"
-#include "game/data.h"
 #include "game/sprite.h"
-#include "game/window.h"
 
 extern s32 lbl_1_bss_678[2];
 extern s32 lbl_1_bss_670[2];
@@ -109,15 +104,12 @@ static inline s16 ResultNightModeGet(void)
     return lbl_802C0278;
 }
 
-#include "dolphin/types.h"
 
 typedef struct ResultTeamDisplayFields {
     s32 handles[26]; /* Packed fields follow ResultTeamDisplay order. */
 } ResultTeamDisplayFields;
 
-#include "dolphin/types.h"
 
-#include "dolphin/os.h"
 
 extern s8 lbl_1_data_514[110];
 

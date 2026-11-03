@@ -940,7 +940,7 @@ void fn_1_85F8(OMOBJ *obj)
     M656Work60 *work;
 
     work = obj->data;
-    if ((u32) lbl_1_bss_8 == 2U) {
+    if (lbl_1_bss_8 == 2U) {
         fn_1_20C(obj, fn_1_8680);
         return;
     }
@@ -1225,7 +1225,7 @@ void fn_1_94C8(OMOBJ *obj)
     M656Work18 *finish;
 
     finish = obj->data;
-    if ((u32) lbl_1_bss_8 == 2U) {
+    if (lbl_1_bss_8 == 2U) {
         fn_800269E8(finish->model, (1 << 0));
         fn_1_20C(obj, NULL);
         return;
@@ -1243,7 +1243,7 @@ void fn_1_9558(OMOBJ *obj)
     M656Work18 *finish;
 
     finish = obj->data;
-    if ((u32) lbl_1_bss_8 == 2U) {
+    if (lbl_1_bss_8 == 2U) {
         fn_800269E8(finish->model, (1 << 0));
         fn_1_20C(obj, NULL);
         return;

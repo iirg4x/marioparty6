@@ -860,7 +860,8 @@ s16 fn_1_6F14(void)
                     if (player == lbl_1_bss_30C) {
                         if ((1.0f + fn_8005C1B8(lbl_1_bss_318[player].character)) >=
                             fn_8005C1FC(lbl_1_bss_318[player].character)) {
-                            fn_8005C430(lbl_1_bss_318[player].character, ((1 << 30) | (1 << 1)));
+                            fn_8005C430(lbl_1_bss_318[player].character,
+                                ((1 << 30) | (1 << 1)));
                             lbl_1_bss_2FC = lbl_1_bss_318[player].pos;
                             lbl_1_bss_2FC.y += 1000.0f;
                             fn_80026790(lbl_1_bss_30A, &lbl_1_bss_2FC);

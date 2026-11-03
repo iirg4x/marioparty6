@@ -67,7 +67,7 @@ extern ANIMDATA * lbl_1_bss_494[16];
 extern MgBattleRecord lbl_1_bss_4D4[4];
 
 s32 fn_1_1AF5C(Point3d *vector, Point3d *out);
-void fn_1_1B0AC(f32 rotX, f32 rotY, f32 rotZ, Point3d *position, Point3d *out);
+void fn_1_1B0AC(f32 rotX, f32 rotY, f32 rotZ, const Vec *position, Vec *out);
 f64 fn_1_1B16C(Point3d *, Point3d *);
 void fn_1_3840(void);
 s32 fn_1_394C(void);
@@ -79,7 +79,7 @@ s16 fn_1_1648(s16 messageId);
 void fn_1_35CC(void);
 s16 fn_1_0(s16, s16, Vec *);
 s16 fn_1_1B324(void);
-s32 fn_1_1B358(void);
+void fn_1_1B358(void);
 void fn_1_3974(void);
 s32 fn_1_3A80(void);
 s16 fn_1_5DA8(s16 player);

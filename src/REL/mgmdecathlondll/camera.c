@@ -32,7 +32,7 @@ s32 lbl_1_data_0[4] = {
 };
 
 /* Overlay setup creates the shared camera and loads the four mode-view motions. */
-void fn_1_0(void) {
+void decathlonCameraSetup(void) {
     s16 motionIndex;
 
     Hu3DCameraCreate(1);

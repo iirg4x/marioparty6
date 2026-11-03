@@ -154,7 +154,7 @@ typedef struct M642ScoreConfig_s {
     Vec position; /* Screen-space origin for this team's score. */
     Vec digitOffset; /* Offset from the origin to the numeric score. */
     u8 red, green, blue; /* Score-box color channels. */
-    u8 reservedColorByte; /* Stored with the color but not read by setup. */
+    u8 unk_1B; /* Stored with the color but not read by setup. */
     s32 maxDigits; /* Maximum digits shown by the score display. */
     s32 spriteCount; /* Number of indicator sprites created for this team. */
     M642ScoreSpriteConfig sprites[3]; /* Indicator asset and position entries. */
@@ -230,7 +230,7 @@ typedef struct M642EffectRecord_s {
 } M642EffectRecord;
 
 M642TrackKeyView lbl_1_data_374[4] = {
-    {0, {0.30000001192092896f, 0.30000001192092896f, 0.30000001192092896f}},
+    {0, {0.3f, 0.3f, 0.3f}},
     {10, {1.0f, 1.0f, 1.0f}},
     {30, {0.0f, 0.0f, 0.0f}},
     {-1, {0.0f, 0.0f, 0.0f}}
@@ -262,24 +262,24 @@ void fn_1_6E4(M642ScoreConfig *config)
     MgScorePosSet(score, config->position.x + config->digitOffset.x,
                   config->position.y + config->digitOffset.y);
     MgScoreColorSet(score, 255, 216, 21);
-    scoreIndex = ((M642SceneWork *)lbl_1_bss_2C)->scoreCount;
-    ((M642SceneWork *)lbl_1_bss_2C)->players[scoreIndex].box = box;
-    ((M642SceneWork *)lbl_1_bss_2C)->players[scoreIndex].display = score;
-    ((M642SceneWork *)lbl_1_bss_2C)->players[scoreIndex].spriteCount = config->spriteCount;
+    scoreIndex = lbl_1_bss_2C->scoreCount;
+    lbl_1_bss_2C->players[scoreIndex].box = box;
+    lbl_1_bss_2C->players[scoreIndex].display = score;
+    lbl_1_bss_2C->players[scoreIndex].spriteCount = config->spriteCount;
     spriteGroup = HuSprGrpCreate(config->spriteCount);
     HuSprGrpPosSet(spriteGroup, config->position.x, config->position.y);
     for (spriteIndex = 0; spriteIndex < config->spriteCount; spriteIndex++) {
         assetIndex = config->sprites[spriteIndex].assetIndex;
-        sprite = HuSprCreate(((M642SceneWork *) lbl_1_bss_2C)->spriteAssets[assetIndex].animation,
+        sprite = HuSprCreate(lbl_1_bss_2C->spriteAssets[assetIndex].animation,
                              10, 0);
         HuSprGrpMemberSet(spriteGroup, spriteIndex, sprite);
         HuSprAttrSet(spriteGroup, spriteIndex, HUSPR_ATTR_DISPOFF);
         HuSprPosSet(spriteGroup, spriteIndex, config->sprites[spriteIndex].position.x,
                     config->sprites[spriteIndex].position.y);
     }
-    ((M642SceneWork *)lbl_1_bss_2C)->players[scoreIndex].spriteGroup = spriteGroup;
-    ((M642SceneWork *)lbl_1_bss_2C)->scoreCount++;
-    ((M642SceneWork *)lbl_1_bss_2C)->players[scoreIndex].value = 0;
+    lbl_1_bss_2C->players[scoreIndex].spriteGroup = spriteGroup;
+    lbl_1_bss_2C->scoreCount++;
+    lbl_1_bss_2C->players[scoreIndex].value = 0;
     MgScoreValueSet(score, 0);
     fn_1_914(scoreIndex, 0);
 }
@@ -289,7 +289,7 @@ void fn_1_914(s32 team, s32 visible)
 {
     M642ScoreRecord *score;
     s32 spriteIndex;
-    score = &((M642SceneWork *)lbl_1_bss_2C)->players[team];
+    score = &lbl_1_bss_2C->players[team];
     if (visible == 1) {
         MgScoreBoxDispSet(score->box, 1);
         MgScoreDispOn(score->display);
@@ -309,7 +309,7 @@ void fn_1_914(s32 team, s32 visible)
 void fn_1_9FC(s32 team, s32 coins)
 {
     M642ScoreRecord *score;
-    score = &((M642SceneWork *)lbl_1_bss_2C)->players[team];
+    score = &lbl_1_bss_2C->players[team];
     score->value += coins;
     MgScoreValueSet(score->display, score->value);
 }
@@ -317,7 +317,7 @@ void fn_1_9FC(s32 team, s32 coins)
 /* Returns the current score for a team when the results screen is prepared. */
 s32 fn_1_A60(s32 team)
 {
-    M642ScoreRecord *record = &((M642SceneWork *)lbl_1_bss_2C)->players[team];
+    M642ScoreRecord *record = &lbl_1_bss_2C->players[team];
     return record->value;
 }
 
@@ -431,7 +431,7 @@ void fn_1_E48(s32 team, void *playerData)
     cell = fn_1_8794(pool);
     while (cell) {
         if (!(cell->flags & 4) && cell->update) {
-            cell->update((u8 *)cell);
+            cell->update(cell);
         }
         if (!(cell->flags & 6)) {
             cellRadius = cell->radius;
@@ -467,11 +467,10 @@ void fn_1_108C(void)
 }
 
 /* Cell-model update callback: applies its yaw and advances that yaw by five degrees. */
-void fn_1_10BC(u8 *data)
+void fn_1_10BC(M642GridCell *cell)
 {
-    fn_80026838(((M642GridCell *)data)->model,
-        &((M642GridCell *)data)->rotation);
-    ((M642GridCell *)data)->rotation.y += 5.0f;
+    fn_80026838(cell->model, &cell->rotation);
+    cell->rotation.y += 5.0f;
 }
 
 extern s32 fn_1_8F9C(Vec *position, s32 camera, float pan, float volume, s32 sound);
@@ -495,11 +494,9 @@ void fn_1_1108(M642PlayerWork *player, M642GridCell *cell)
 }
 
 extern s32 lbl_1_data_1578[5][9][9];
-extern void fn_1_10BC(u8 *);
+extern void fn_1_10BC(M642GridCell *);
 extern void fn_1_1108(M642PlayerWork *, M642GridCell *);
 extern M642GridCell *fn_1_D6C(s32 player, M642GridCell *initial);
-
-extern int abs(int);
 
 extern s32 fn_1_1ABC(s32 player, s32 row, s32 column);
 
@@ -577,7 +574,7 @@ void fn_1_1564(M642EffectRecord *work)
         fn_80026A44(model, (1 << 0));
         position = work->position;
         position.z += 400.0f;
-        position.x *= 0.800000011920929f;
+        position.x *= 0.8f;
         fn_80026790(model, &position);
     }
     fn_1_8870(work->tracks, work->frame, 2, &scale.x);
@@ -759,7 +756,6 @@ BOOL fn_1_1BC8(s32 team, Vec *position, Vec *target)
     return TRUE;
 }
 
-s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
 extern void fn_1_29BC(M642PlayerWork *work, s32 motion, float duration, u32 attr);
 extern s32 fn_1_8F9C(Vec *position, s32 camera, float min, float max, s32 sound);
 extern s32 fn_1_9008(Vec *position, float min, float max, s32 sound);
@@ -994,10 +990,9 @@ void fn_1_2AEC(M642PlayerWork *work, s32 nextState)
 }
 
 /* Promotes a player queued action to the current action between round phases. */
-void fn_1_2AFC(u8 *state)
+void fn_1_2AFC(M642PlayerWork *state)
 {
-    ((M642PlayerWork *)state)->state =
-        ((M642PlayerWork *)state)->nextState;
+    state->state = state->nextState;
 }
 
 typedef struct M642FlagState_s {
@@ -1027,8 +1022,8 @@ M642ParticleConfigView lbl_1_data_450 = {
     {255, 255, 255, 255},
     {255, 255, 255, 255},
     {0.0f, 2.0f, 1.0f},
-    {0.800000011920929f, 0.800000011920929f, 0.800000011920929f},
-    0.20000000298023224f, 10.0f, 8.0f, -8.0f, 0.019999999552965164f
+    {0.8f, 0.8f, 0.8f},
+    0.2f, 10.0f, 8.0f, -8.0f, 0.02f
 };
 f32 lbl_1_data_488[2] = {2700.0f, 1500.0f};
 f32 lbl_1_data_490[2] = {2750.0f, 1450.0f};
@@ -1066,10 +1061,10 @@ void fn_1_2B28(s32 team, f32 size, Vec *origin, f32 heightScale)
     s16 index;
     spread = 70.0f;
     randomSpread = 70.0f;
-    drag = 0.800000011920929f;
+    drag = 0.8f;
     zero = 0.0f;
     velocityBias = 20.0f;
-    gravityScale = 0.009999999776482582f;
+    gravityScale = 0.01f;
     stepAngle = 360.0f / particleCount;
     speedRange = 10.0f;
     speedRandom = 10.0f;
@@ -1105,7 +1100,7 @@ void fn_1_2B28(s32 team, f32 size, Vec *origin, f32 heightScale)
         lbl_1_data_450.decay.z = drag;
         lbl_1_data_450.gravity = (zero + velocityBias) * gravityScale;
         particleScale = size * (particleRange + (f32)(u32) frandmod((u32) particleRandom));
-        fn_1_7D1C(team + ((M642SceneWork *) lbl_1_bss_2C)->owners, camera, position.x, position.y,
+        fn_1_7D1C(team + lbl_1_bss_2C->owners, camera, position.x, position.y,
                   position.z, particleScale, &lbl_1_data_450);
     }
 }
@@ -1160,7 +1155,6 @@ void fn_1_3190(M642EffectRecord *data)
     fn_800269E8(data->model, (1 << 0));
 }
 
-void fn_1_140(OMOBJ *, OMOBJ_FUNC);
 void fn_1_33D4(OMOBJ *);
 void fn_1_42D0(OMOBJ *);
 void fn_1_47C(void *);                           /* static */
@@ -1169,13 +1163,13 @@ void fn_1_4E5C(OMOBJ *);
 void fn_1_4EC4(OMOBJ *);
 void fn_1_51D4(OMOBJ *);
 void fn_1_7558(OMOBJ *);
-OMOBJ *fn_1_84D8();                                    /* static */
-void *fn_1_8568();                                    /* static */
-void *fn_1_859C();                                    /* static */
-s32 fn_1_91EC(s32);                         /* static */
-s32 fn_1_9250(s32);                         /* static */
-s32 fn_1_92B4();                                /* static */
-void *fn_1_A0(s32, u32, void (*)(OMOBJ *));
+struct M642ResourceTableView_s;
+OMOBJ *fn_1_84D8(struct M642ResourceTableView_s *capacity);
+void *fn_1_8568(void *work);
+void *fn_1_859C(void *work);
+void *fn_1_91EC(s32 index);
+void *fn_1_9250(s32 index);
+void *fn_1_92B4(void);
 
 /* Runs as the scene manager's first callback to set up shared state and create board, round, grid
  * and player objects. */
@@ -1185,26 +1179,16 @@ void fn_1_31CC(OMOBJ *object) {
 
     sceneWork = object->data;
     fn_1_47C(sceneWork);
-    fn_1_91EC(1);
-    sceneWork->scene_objects[0] = fn_1_84D8();
-    fn_1_91EC(2);
-    sceneWork->scene_objects[1] = fn_1_84D8();
-    fn_1_91EC(3);
-    sceneWork->scene_objects[2] = fn_1_84D8();
-    fn_1_91EC(4);
-    sceneWork->scene_objects[3] = fn_1_84D8();
-    fn_1_91EC(5);
-    sceneWork->scene_objects[4] = fn_1_84D8();
-    fn_1_91EC(6);
-    sceneWork->scene_objects[5] = fn_1_84D8();
-    fn_1_91EC(7);
-    sceneWork->scene_objects[6] = fn_1_84D8();
-    fn_1_91EC(8);
-    sceneWork->scene_objects[7] = fn_1_84D8();
-    fn_1_9250(0);
-    sceneWork->owners = fn_1_8568();
-    fn_1_92B4();
-    sceneWork->spriteAssets = fn_1_859C();
+    sceneWork->scene_objects[0] = fn_1_84D8(fn_1_91EC(1));
+    sceneWork->scene_objects[1] = fn_1_84D8(fn_1_91EC(2));
+    sceneWork->scene_objects[2] = fn_1_84D8(fn_1_91EC(3));
+    sceneWork->scene_objects[3] = fn_1_84D8(fn_1_91EC(4));
+    sceneWork->scene_objects[4] = fn_1_84D8(fn_1_91EC(5));
+    sceneWork->scene_objects[5] = fn_1_84D8(fn_1_91EC(6));
+    sceneWork->scene_objects[6] = fn_1_84D8(fn_1_91EC(7));
+    sceneWork->scene_objects[7] = fn_1_84D8(fn_1_91EC(8));
+    sceneWork->owners = fn_1_8568(fn_1_9250(0));
+    sceneWork->spriteAssets = fn_1_859C(fn_1_92B4());
     frandom(OSGetTick());
     lbl_1_bss_14 = fn_1_A0(10, 72, fn_1_42D0);
     lbl_1_bss_10 = fn_1_A0(10, 8, fn_1_4C60);
@@ -1224,7 +1208,6 @@ void fn_1_31CC(OMOBJ *object) {
 }
 
 extern s32 fn_1_9120(s32 sound);
-extern void fn_1_1F98(HU3D_MODELID model, s16 motion, BOOL enabled);
 extern void fn_1_2AEC(M642PlayerWork *work, s32 state);
 extern void fn_1_105C(void);
 extern void fn_1_37B4(OMOBJ *object);
@@ -1338,7 +1321,7 @@ void fn_1_37B4(OMOBJ *object)
     }
 }
 
-extern void fn_1_2AFC(u8 *state);
+extern void fn_1_2AFC(M642PlayerWork *state);
 extern void fn_1_3AC4(OMOBJ *object);
 
 /* Waits for all player callbacks to settle before selecting the next round phase. */
@@ -1352,7 +1335,7 @@ void fn_1_3A0C(OMOBJ *object)
         }
     }
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        fn_1_2AFC((u8 *)lbl_1_bss_1C[playerIndex]);
+        fn_1_2AFC(lbl_1_bss_1C[playerIndex]);
     }
     *timer = 0;
     fn_1_140(object, fn_1_3AC4);
@@ -1385,7 +1368,7 @@ void fn_1_3AC4(OMOBJ *object)
     fn_8002D86C(lbl_1_bss_2C->scene_objects[1]->mdlId[0], 0.0f);
     fn_8002D86C(lbl_1_bss_2C->scene_objects[2]->mdlId[0], 0.0f);
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        fn_1_2AFC((u8 *)lbl_1_bss_1C[playerIndex]);
+        fn_1_2AFC(lbl_1_bss_1C[playerIndex]);
     }
     work->timer = 0;
     fn_1_140(object, fn_1_3CF8);
@@ -1519,7 +1502,6 @@ void fn_1_4180(OMOBJ *object)
     fn_1_140(object, NULL);
 }
 
-void fn_1_140(OMOBJ *, OMOBJ_FUNC);            /* static */
 s32 fn_1_BE8();                                 /* static */
 
 void fn_1_4BBC(OMOBJ *);
@@ -1532,7 +1514,7 @@ void fn_1_42D0(OMOBJ *object) {
     camera = 3;
     Hu3DCameraCreate(camera);
     Hu3DCameraPerspectiveSet(camera, 45.0f, 20.0f,
-        30000.0f, 1.2000000476837158f);
+        30000.0f, 1.2f);
     Hu3DCameraViewportSet(camera, 0.0f, 0.0f,
         640.0f, 480.0f, 0.0f, 1.0f);
     cameraWork->teams[0].target.x = lbl_1_data_32C.x;
@@ -1753,7 +1735,7 @@ void fn_1_4C60(OMOBJ *object)
         10000.0f, 3);
     fn_8002AA3C(16, 16, 16, 3);
     fn_8002A674(&lightPosition, &shadowUp, &shadowTarget, 3);
-    fn_8002A7D8(0.30000001192092896f, 3);
+    fn_8002A7D8(0.3f, 3);
     }
     fn_1_140(object, fn_1_4E58);
 }
@@ -1792,8 +1774,8 @@ void fn_1_4EC4(OMOBJ *object)
     COL_ATTRPARAM collisionParameters;
     s32 pattern;
 
-    work->pools[0] = fn_1_8618((u8 *)&work->cellStorage[0], 3600, 48);
-    work->pools[1] = fn_1_8618((u8 *)&work->cellStorage[1], 3600, 48);
+    work->pools[0] = fn_1_8618(&work->cellStorage[0], 3600, 48);
+    work->pools[1] = fn_1_8618(&work->cellStorage[1], 3600, 48);
     work->motion = -1;
 
     fn_80026B8C(lbl_1_bss_2C->scene_objects[4]->mdlId[0], 1);
@@ -2023,7 +2005,7 @@ void fn_1_5A84(OMOBJ *object)
     angleMagnitude =
         sqrtf(work->direction.x * work->direction.x + work->direction.z * work->direction.z);
     if (angleMagnitude != 0.0f) {
-        work->rotation = fn_1_378(work->rotation, fn_1_320(&work->direction), 0.20000000298023224f);
+        work->rotation = fn_1_378(work->rotation, fn_1_320(&work->direction), 0.2f);
     }
     fn_80086CA8(work->player->actor, work->rotation);
     directionSign = 0.0f;
@@ -2032,7 +2014,7 @@ void fn_1_5A84(OMOBJ *object)
     } else if (work->direction.x < 0.0f) {
         directionSign = -1.0f;
     }
-    work->velocity.x += 0.30000001192092896f * directionSign;
+    work->velocity.x += 0.3f * directionSign;
     if (work->velocity.x * directionSign > 0.0f &&
         fabs(work->velocity.x) > 7.0) {
         work->velocity.x = 7.0f * directionSign;
@@ -2202,11 +2184,11 @@ void fn_1_65F0(OMOBJ *object)
     Vec delta = {0.0f, 0.0f, 0.0f};
     float distanceSquared;
 
-    work->rotation = fn_1_378(work->rotation, fn_1_320(&work->direction), 0.20000000298023224f);
+    work->rotation = fn_1_378(work->rotation, fn_1_320(&work->direction), 0.2f);
     fn_80086CA8(work->player->actor, work->rotation);
     fn_80086BC8(work->player->actor, &position);
-    position.x += 5.599999904632568f * work->direction.x;
-    position.z += 5.599999904632568f * work->direction.z;
+    position.x += 5.6f * work->direction.x;
+    position.z += 5.6f * work->direction.z;
     fn_80086AA8(work->player->actor, &position);
     PSVECSubtract(&work->targetPosition, &position, &delta);
     distanceSquared = delta.z * delta.z + (delta.x * delta.x + delta.y * delta.y);
@@ -2228,7 +2210,7 @@ void fn_1_6788(OMOBJ *object)
     if (work->timer > 0) {
         work->direction.x = 0.0f;
         work->direction.z = 1.0f;
-        work->rotation = fn_1_378(work->rotation, fn_1_320(&work->direction), 0.20000000298023224f);
+        work->rotation = fn_1_378(work->rotation, fn_1_320(&work->direction), 0.2f);
         fn_80086CA8(work->player->actor, work->rotation);
     }
     if (work->timer > 40) {
@@ -2294,7 +2276,6 @@ void fn_1_68F0(OMOBJ *object)
 }
 
 extern BOOL fn_1_1660(s32 team, Vec *position, Vec *target, u32 flags);
-int abs(int value);
 
 /* Plans a computer player's horizontal jump direction and steering time during its AI update. */
 void fn_1_6A74(OMOBJ *object)
@@ -2322,7 +2303,7 @@ void fn_1_6A74(OMOBJ *object)
     heightBand = (s32)((5400.0f - referencePosition.y) / 200.0f);
     heightBand = abs(heightBand);
     if (heightBand < 9) {
-        if (((M642SceneWork *)lbl_1_bss_2C)->active[work->team] == 0) {
+        if (lbl_1_bss_2C->active[work->team] == 0) {
             targetFlags = 1;
         if (work->computer != 0 && work->aiParams && *work->aiParams == -1) {
                 targetFlags |= 4;
@@ -2347,11 +2328,11 @@ void fn_1_6A74(OMOBJ *object)
         PSVECSubtract(&targetPosition, &actorPosition, &displacement);
         horizontalDistance = fabs(displacement.x);
         apexFrames = fabs(work->velocity.y / work->gravity);
-        if (apexFrames < 23.333332061767578f) {
+        if (apexFrames < 23.333332f) {
             accelerationFrames = apexFrames;
             cruiseFrames = 0.0f;
         } else {
-            accelerationFrames = 23.333332061767578f;
+            accelerationFrames = 23.333332f;
             accelerationDistance = 7.0f * accelerationFrames / 2;
             cruiseFrames = (horizontalDistance - accelerationDistance) / 7.0f;
         }
@@ -2409,7 +2390,7 @@ void fn_1_6F6C(OMOBJ *object)
     work = object->data;
     work->direction = work->nextStep;
     if (work->flags & 0x800) {
-        if (fabs(work->velocity.x) < 0.30000001192092896) {
+        if (fabs(work->velocity.x) < 0.3f) {
             work->nextStep.x = 0.0f;
             work->nextStep.z = 1.0f;
             work->aiState = 3;
@@ -2420,7 +2401,6 @@ void fn_1_6F6C(OMOBJ *object)
 }
 
 extern BOOL fn_1_1BC8(s32 team, Vec *position, Vec *target);
-int abs(int value);
 
 /* Chooses and times the next computer jump while its player is descending and ready to plan. */
 void fn_1_7018(OMOBJ *object)
@@ -2459,7 +2439,7 @@ void fn_1_7018(OMOBJ *object)
         return;
     }
 
-    if (((M642SceneWork *)lbl_1_bss_2C)->active[work->team] == 0) {
+    if (lbl_1_bss_2C->active[work->team] == 0) {
         targetFlags = 0;
         if (work->computer != 0 && work->aiParams && *work->aiParams == -1) {
             targetFlags = 4;
@@ -2490,11 +2470,11 @@ void fn_1_7018(OMOBJ *object)
     } else {
         flightFrames = secondFlightTime;
     }
-    if (flightFrames < 23.333332061767578f) {
+    if (flightFrames < 23.333332f) {
         accelerationFrames = flightFrames;
         cruiseFrames = 0.0f;
     } else {
-        accelerationFrames = 23.333332061767578f;
+        accelerationFrames = 23.333332f;
         accelerationDistance = 7.0f * accelerationFrames / 2;
         cruiseFrames = (horizontalDistance - accelerationDistance) / 7.0f;
     }

@@ -2,7 +2,7 @@
 #include "REL/m613Dll/types.h"
 #include "game/main.h"
 #include "game/pad.h"
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/object.h"
 #include "game/audio.h"
@@ -26,17 +26,6 @@
 #include "game/hu3d.h"
 #include "game/flag.h"
 #include "dolphin/types.h"
-
-#define MSM_SE_MOWTOWN_INTRO_PLAYER_0 1703
-#define MSM_SE_MOWTOWN_INTRO_PLAYER_1 1704
-#define MSM_SE_MOWTOWN_INTRO_PLAYER_2 1705
-#define MSM_SE_MOWTOWN_INTRO_PLAYER_3 1706
-#define MSM_SE_MOWTOWN_MOVE_PLAYER_0 1707
-#define MSM_SE_MOWTOWN_MOVE_PLAYER_1 1708
-#define MSM_SE_MOWTOWN_MOVE_PLAYER_2 1709
-#define MSM_SE_MOWTOWN_MOVE_PLAYER_3 1710
-#define MSM_SE_MOWTOWN_PLAYER_CONTACT 1712
-#define MSM_SE_MOWTOWN_ARENA_CONTACT 1713
 
 extern s32 lbl_1_bss_8;
 extern s16 lbl_1_bss_1210[4];
@@ -1653,7 +1642,8 @@ void fn_1_D0C8(void) {
                 if ((fn_8005C1B8(lbl_1_bss_11C[playerIndex].characterNo) +
                      lbl_802C01C8[lbl_1_bss_11C[playerIndex].model].motWork.speed)
                          >= motionEndTime) {
-                    fn_8005C430(lbl_1_bss_11C[playerIndex].characterNo, ((1 << 30) | (1 << 1)));
+                    fn_8005C430(lbl_1_bss_11C[playerIndex].characterNo,
+                        ((1 << 30) | (1 << 1)));
                 }
             }
         }
@@ -1850,7 +1840,7 @@ void fn_1_DE20(s16 playerIndex) {
         }
     }
     if (lbl_1_bss_11C[playerIndex].hasTarget != 0) {
-        distanceProjectionOrAngle = 2000000.0f;
+        distanceProjectionOrAngle = 2e+06f;
         for (cellReferencesOrPlayerIndex = 0; cellReferencesOrPlayerIndex < 4;
              cellReferencesOrPlayerIndex++) {
             if (playerIndex != cellReferencesOrPlayerIndex) {

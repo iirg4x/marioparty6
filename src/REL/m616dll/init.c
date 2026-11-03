@@ -136,8 +136,8 @@ void fn_1_1590(void)
             lbl_1_data_280, lbl_1_bss_10.characterMotions[assetIndex]);
         fn_80026E44(lbl_1_bss_10.characterModels[assetIndex]);
         /* Disable character voice playback for motions 36 and 37 in this minigame. */
-        fn_8005DEB0(characterNo, 36, FALSE);
-        fn_8005DEB0(characterNo, 37, FALSE);
+        fn_8005DEB0(characterNo, FILENUM(CHARMOT_HSF_c000m1_346), FALSE);
+        fn_8005DEB0(characterNo, FILENUM(CHARMOT_HSF_c000m1_348), FALSE);
     }
     lbl_1_bss_10.timer = MgTimerCreate(MGTIMER_TYPE_NORMAL);
     fn_8005DDEC(3);

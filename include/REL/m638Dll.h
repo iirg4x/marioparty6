@@ -22,7 +22,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 
 #include "game/esprite.h"
 
@@ -121,17 +120,10 @@ typedef struct M638ScenePropsView {
     s16 models[74]; /* Cached scene and course prop model handles. */
 } M638ScenePropsView;
 
-/* Input state used by a team and the player records assigned to it. */
-typedef struct M638TeamInputView {
-    u8 unknown000[784]; /* Team state preceding the current input values. */
-    s16 active; /* Nonzero while this team accepts player input. */
-    s16 button; /* Button selected for the current team action. */
-    u8 unknown314[36]; /* Team state preceding the team variant. */
-    s16 variant; /* Team index used by team-specific behavior. */
-} M638TeamInputView;
+typedef struct M638TeamView M638TeamView;
 typedef struct M638PlayerView {
     OMOBJ *object; /* Engine object that owns this player record. */
-    M638TeamInputView *team; /* Team input state used by this player. */
+    M638TeamView *team; /* Team input state used by this player. */
     f32 activity; /* Current player activity or animation progress. */
     f32 impulse; /* Horizontal movement impulse applied to the player. */
     f32 phase; /* Current phase of the player's movement animation. */
@@ -234,7 +226,7 @@ typedef struct M638SceneCourseView {
 } M638SceneCourseView;
 
 /* Team and scene state used by the minigame's update and presentation callbacks. */
-typedef struct M638TeamView {
+struct M638TeamView {
     M638PlayerView *players[2]; /* Two players assigned to this team. */
     M638TeamActorView actor; /* Team character pose and animation state. */
     M638CourseView course; /* Course segment and prop state for this team. */
@@ -262,7 +254,7 @@ typedef struct M638TeamView {
     u8 unknown33A[2]; /* Team state preceding its sound identifiers. */
     s32 sound0; /* First sound identifier used by this team. */
     s32 sound1; /* Second sound identifier used by this team. */
-} M638TeamView;
+};
 typedef struct M638SceneView {
     M638TeamView teams[2]; /* Team state for both sides of the course. */
     M638CameraWork camera; /* Shared split-screen transition state. */
@@ -340,10 +332,10 @@ void fn_1_6B00(OMOBJ *obj);
 void fn_1_6C98(M638PlayerView *player);
 void fn_1_6E40(M638PlayerView *player);
 s32 fn_1_6FE4(void *data);
-s32 fn_1_71DC(void *playerData);
-s32 fn_1_72D0(void *playerData);
+s32 fn_1_71DC(M638PlayerView *player);
+s32 fn_1_72D0(M638PlayerView *player);
 void fn_1_745C(M638PlayerView *player);
-void fn_1_7554(void *playerData);
+void fn_1_7554(M638PlayerView *player);
 void fn_1_75BC(void);
 void fn_1_7754(void);
 

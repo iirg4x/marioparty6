@@ -1,5 +1,5 @@
 /* Minigame sequence callbacks for setup, play, results, and exit. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"

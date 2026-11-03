@@ -25,10 +25,6 @@
 #define MSM_SE_M631_05 1843
 #define MSM_SE_M631_06 1844
 
-typedef struct M631LightColor {
-    u8 rgba[4]; /* Red, green, blue and alpha channels, 0 to 255. */
-} M631LightColor;
-
 typedef struct M631ActorDefaults {
     s32 lanePairs[6][2]; /* Allowed pairs of the five conveyor lanes. */
 } M631ActorDefaults;
@@ -51,16 +47,6 @@ HUPROCESS *lbl_1_bss_C; /* Object-manager process for this minigame. */
 OMOBJ *lbl_1_bss_8; /* Scene object; its data owns the shared minigame state. */
 s32 lbl_1_bss_4; /* Music channel handle used for the finish fade. */
 s32 lbl_1_bss_0; /* Frames elapsed while waiting to announce the winning team. */
-
-extern void fn_8005C2C8(s16, s16, f32, f32, u32);
-
-extern s16 fn_8002D3C4(s16);
-
-extern s16 fn_8002D3EC(s16);
-
-extern void fn_8002D414(s16, f32);
-
-extern s32 frandmod(s32 max);
 
 extern const VoidFunc _ctors[];
 
@@ -224,7 +210,7 @@ void fn_1_A0(void) {
 
 /* The sequence initialization phase assigns teams and prepares the reusable conveyor objects. */
 void fn_1_1F8(s16 mode, s16 time) {
-    M631SceneWork *scene = (M631SceneWork *) lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     fn_1_1F78(scene);
     fn_1_2588(&scene->actionQueue);
     fn_1_2EC4(&scene->animationQueue);
@@ -235,10 +221,10 @@ void fn_1_1F8(s16 mode, s16 time) {
  * entrance. */
 void fn_1_248(s16 mode, s16 time)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     Point3d lightDirection = {0.0f, 450.0f, 1000.0f};
     Point3d lightNormal;
-    M631LightColor lightColor = {{255, 255, 255, 255}};
+    GXColor lightColor = {255, 255, 255, 255};
     M631ActorWork *actor;
     s32 index;
     switch (scene->openingPhase) {
@@ -248,7 +234,7 @@ void fn_1_248(s16 mode, s16 time)
         lightNormal.y = -lightDirection.y;
         lightNormal.z = -lightDirection.z;
         PSVECNormalize(&lightNormal, &lightNormal);
-        fn_800614AC(&lightDirection, &lightNormal, (GXColor *)&lightColor);
+        fn_800614AC(&lightDirection, &lightNormal, &lightColor);
         fn_80061814();
         HuAudFXPlay(MSM_SE_M631_01);
         fn_800284C8(scene->sceneModels[13], lbl_1_rodata_10[0]);
@@ -309,7 +295,7 @@ void fn_1_248(s16 mode, s16 time)
 /* The start phase begins the game music once. */
 void fn_1_4FC(s16 mode, s16 time)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
 
     switch (scene->startPhase) {
     case 0:
@@ -325,7 +311,7 @@ void fn_1_4FC(s16 mode, s16 time)
  * player is counted out. */
 void fn_1_560(s16 mode, s16 time)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     s32 actorIndex;
 
     switch (scene->playPhase) {
@@ -355,7 +341,7 @@ void fn_1_560(s16 mode, s16 time)
  * delay. */
 void fn_1_644(s16 mode, s16 time)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     M631ActorWork *actor;
     s32 i;
 
@@ -433,7 +419,7 @@ void fn_1_644(s16 mode, s16 time)
  * results view. */
 void fn_1_990(s16 mode, s16 time)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     M631ActionNode *actorLink;
     M631ActorCallbackWork *callback;
     M631ActorCallbackWork *nextCallback;
@@ -499,14 +485,14 @@ void fn_1_990(s16 mode, s16 time)
                                     50.0f,
                                     actor->position.z - 200.0f);
                     fn_80026808(actor->setupWork.modelId, 0.0f,
-                                    (-30.0f), 0.0f);
+                                    -30.0f, 0.0f);
                     fn_80026E44(actor->characterModelId);
                     index++;
                 }
                 actor = scene->motionGroups[1].actorSlots[0];
-                actor->position.x = (-500.0f);
+                actor->position.x = -500.0f;
                 actor->position.y = 0.0f;
-                actor->position.z = (-250.0f);
+                actor->position.z = -250.0f;
             } else {
                 index = 0;
                 while (index < 3) {
@@ -514,7 +500,7 @@ void fn_1_990(s16 mode, s16 time)
                     actor->position.x = 300.0f * (f32)index -
                                         300.0f;
                     actor->position.y = 0.0f;
-                    actor->position.z = (-250.0f);
+                    actor->position.z = -250.0f;
                     fn_800269E8(actor->setupWork.modelId, (1 << 0));
                     fn_80026E44(actor->characterModelId);
                     index++;
@@ -532,7 +518,7 @@ void fn_1_990(s16 mode, s16 time)
                     (300.0f * (f32)index - 300.0f) -
                     150.0f;
                 actor->position.y = 0.0f;
-                actor->position.z = (-250.0f);
+                actor->position.z = -250.0f;
                 index++;
             }
             actor = scene->motionGroups[0].actorSlots[0];
@@ -557,9 +543,9 @@ void fn_1_990(s16 mode, s16 time)
                 index++;
             }
             actor = scene->motionGroups[0].actorSlots[0];
-            actor->position.x = (-150.0f);
+            actor->position.x = -150.0f;
             actor->position.y = 0.0f;
-            actor->position.z = (-250.0f);
+            actor->position.z = -250.0f;
             fn_800269E8(actor->setupWork.modelId, (1 << 0));
             fn_80026E44(actor->characterModelId);
         }
@@ -580,17 +566,17 @@ void fn_1_990(s16 mode, s16 time)
             index++;
         }
         scene->indexedWorks[0].position.x =
-            (-3000.0f);
+            -3000.0f;
         scene->indexedWorks[0].position.y =
-            (-1600.0f);
+            -1600.0f;
         scene->indexedWorks[0].position.z =
-            (-12000.0f);
+            -12000.0f;
         scene->indexedWorks[1].position.x =
             2200.0f;
         scene->indexedWorks[1].position.y =
             200.0f;
         scene->indexedWorks[1].position.z =
-            (-7000.0f);
+            -7000.0f;
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
         scene->resultsTransitionPhase++;
         return;
@@ -608,7 +594,7 @@ finished:
  * mode. */
 void fn_1_10A0(s16 mode, s16 time)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     M631ActorWork *actor;
     s32 actorIndex;
     s32 playerNo;
@@ -767,7 +753,7 @@ void fn_1_174C(OMOBJ *obj) {
 /* The scene's recurring update advances camera movement, conveyor spawning, scenery and active
  * effects. */
 void fn_1_17C8(void) {
-    M631SceneWork *scene = (M631SceneWork *) lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     fn_1_3E60(scene);
     if (scene->conveyorActive != 0) {
         fn_1_2B64(&scene->actionQueue);
@@ -969,7 +955,7 @@ void fn_1_1F78(M631SceneWork *scene)
         actor = scene->motionGroups[0].actorSlots[0];
         actor->position.x = 350.0f;
         actor->position.y = 400.0f;
-        actor->position.z = (-250.0f);
+        actor->position.z = -250.0f;
         actor = scene->motionGroups[0].actorSlots[1];
         actor->position.x = 350.0f;
         actor->position.y = 400.0f;
@@ -979,7 +965,7 @@ void fn_1_1F78(M631SceneWork *scene)
         actor->position.y = 400.0f;
         actor->position.z = 250.0f;
         actor = scene->motionGroups[1].actorSlots[0];
-        actor->position.x = (-350.0f);
+        actor->position.x = -350.0f;
         actor->position.y = 0.0f;
         actor->position.z = 0.0f;
     } else {
@@ -988,15 +974,15 @@ void fn_1_1F78(M631SceneWork *scene)
         actor->position.y = 400.0f;
         actor->position.z = 0.0f;
         actor = scene->motionGroups[1].actorSlots[0];
-        actor->position.x = (-350.0f);
+        actor->position.x = -350.0f;
         actor->position.y = 0.0f;
-        actor->position.z = (-250.0f);
+        actor->position.z = -250.0f;
         actor = scene->motionGroups[1].actorSlots[1];
-        actor->position.x = (-350.0f);
+        actor->position.x = -350.0f;
         actor->position.y = 0.0f;
         actor->position.z = 0.0f;
         actor = scene->motionGroups[1].actorSlots[2];
-        actor->position.x = (-350.0f);
+        actor->position.x = -350.0f;
         actor->position.y = 0.0f;
         actor->position.z = 250.0f;
     }
@@ -1005,7 +991,7 @@ void fn_1_1F78(M631SceneWork *scene)
 /* Creates a player's hooked model and hidden secondary animation model during actor setup. */
 void fn_1_228C(HU3D_MODELID *models)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     HU3D_MODELID model;
 
     if (scene->isNight != 0) {
@@ -1059,7 +1045,7 @@ void fn_1_228C(HU3D_MODELID *models)
 /* Returns the day or night collision radius used when actors register their movement callbacks. */
 f32 fn_1_2528(void)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     f32 collisionRadius;
 
     if (scene->isNight != 0) {
@@ -1098,7 +1084,7 @@ void fn_1_2588(M631ActionQueue *queue)
 /* Creates or links a hidden conveyor obstacle model while its pool is initialized. */
 void fn_1_264C(M631ActionNode *work)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     HU3D_MODELID model;
 
     if (scene->sceneModels[10] < 0) {
@@ -1162,7 +1148,7 @@ void fn_1_2868(void *callbackData)
     M631ActionNode *work;
     f32 progress;
 
-    work = (M631ActionNode *)callbackData;
+    work = callbackData;
     fn_1_3B7C(&work->position);
     switch (work->state) {
     case 0:
@@ -1328,7 +1314,7 @@ void fn_1_2B64(M631ActionQueue *work)
 /* Returns the scene's falling-object pool to actor setup. */
 M631AnimationQueue *fn_1_2E9C(void)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     return &scene->animationQueue;
 }
 
@@ -1360,7 +1346,7 @@ void fn_1_2EC4(M631AnimationQueue *queue)
  * setup. */
 void fn_1_2F5C(M631AnimationNode *object)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     HU3D_MODELID model;
 
     if (scene->isNight != 0) {
@@ -1495,7 +1481,7 @@ void fn_1_32C8(M631AnimationNode *inputWork)
         if (work->position.y <= (-100.0f)) {
             work->soundId = HuAudFXPlayPan(MSM_SE_M631_03,
                                            fn_1_51D0(work->position.x));
-            work->position.y = (-100.0f);
+            work->position.y = -100.0f;
             work->callbackWork.state = 5;
             work->timer = 0;
             if (scene->isNight != 0) {
@@ -1555,7 +1541,7 @@ void fn_1_32C8(M631AnimationNode *inputWork)
 /* The scheduled contact-effect job follows the conveyor only for ground-level effects, then
  * hides the effect and finishes when its animation ends. */
 s32 fn_1_3690(void *callbackData) {
-    M631AnimationNode *work = (M631AnimationNode *) callbackData;
+    M631AnimationNode *work = callbackData;
     if (work->effectHeightIndex == 0) {
         fn_1_3B7C(&work->targetPosition);
         fn_80026790(work->effectModelId, &work->targetPosition);
@@ -1588,7 +1574,7 @@ inline void fn_1_3704(M631AnimationNode *work, s32 positionIndex)
 /* The falling object's completion callback updates its model and recycles it after its lifetime or
  * left exit. */
 s32 fn_1_37FC(void *callbackData) {
-    M631AnimationNode *node = (M631AnimationNode *) callbackData;
+    M631AnimationNode *node = callbackData;
     M631AnimationQueue *queue;
     fn_80026790(node->modelId, &node->position);
     if ((node->position.x < (-800.0f)) || (node->animationState == 100)) {
@@ -1620,7 +1606,7 @@ void fn_1_38E8(M631MotionPairNode *callback,
                M631MotionPairNode *context)
 {
     M631AnimationNode *work =
-        (M631AnimationNode *)callback->owner;
+        callback->owner;
 
     switch (context->state) {
     case 3: {
@@ -1649,7 +1635,7 @@ void fn_1_38E8(M631MotionPairNode *callback,
 
 /* Actor initialization registers the player in the scene and copies its day or night setting. */
 void fn_1_3B44(M631ActorWork *actor) {
-    M631SceneWork *scene = (M631SceneWork *) lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     scene->actorSlots[actor->playerNo] = actor;
     actor->isNight = scene->isNight;
 }
@@ -1658,7 +1644,7 @@ void fn_1_3B44(M631ActorWork *actor) {
  * enabled. */
 void fn_1_3B7C(HuVecF *position)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
 
     if (scene->conveyorActive != 0) {
         position->x -= 3.34f;
@@ -1668,14 +1654,14 @@ void fn_1_3B7C(HuVecF *position)
 /* An actor's elimination path increments the group-one completion count checked by the play
  * phase. */
 void fn_1_3BC4(void) {
-    M631SceneWork *scene = (M631SceneWork *) lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     scene->eliminatedCount += 1;
 }
 
 /* Actor setup creates or links a hidden secondary model for its motion state. */
 void fn_1_3BF4(M631ActorMotionState *hitEffect)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     HU3D_MODELID model;
 
     if (scene->sceneModels[12] < 0) {
@@ -1753,7 +1739,7 @@ void fn_1_3E60(M631SceneWork *work)
  * offset. */
 void fn_1_40BC(M631SceneModelPosition *position, s32 index)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     HuVecF positions[5] = {
         {-3000.0f, -3700.0f, -12000.0f},
         {2500.0f, -2000.0f, -7000.0f},
@@ -1856,7 +1842,7 @@ void fn_1_449C(M631SceneWork *work)
  * plane. */
 M631ActorWork *fn_1_469C(const HuVecF *position)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     M631SearchIndexDefaults indexes = {{0, 1, 2}};
     f32 distances[3];
     s32 candidateCount;
@@ -2013,7 +1999,7 @@ void fn_1_4A34(const HuVecF *position, f32 radius, M631MotionPairNode *stop)
     if (position->z - radius < (-450.0f)) {
         midpoint.x = position->x;
         midpoint.y = 0.0f;
-        midpoint.z = (-500.0f);
+        midpoint.z = -500.0f;
         lowerBoundaryResponse = midpoint;
         lowerResponsePosition = &lowerBoundaryResponse;
         fn_1_4DD4(lowerResponsePosition,
@@ -2024,7 +2010,7 @@ void fn_1_4A34(const HuVecF *position, f32 radius, M631MotionPairNode *stop)
 /* Allocates a contact-response node and registers its movement and completion callbacks. */
 void fn_1_4DD4(const HuVecF *position, f32 radius)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     M631SceneListNode *node = scene->sceneListFreeHead;
 
     if (node) {
@@ -2044,7 +2030,7 @@ void fn_1_4DD4(const HuVecF *position, f32 radius)
 
 /* Returns a contact-response node to the scene's free list when it is explicitly removed. */
 void fn_1_4EA4(M631SceneListNode *node) {
-    M631SceneWork *scene = (M631SceneWork *) lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     if (node->previous) {
         node->previous->next = node->next;
     } else {
@@ -2063,7 +2049,7 @@ void fn_1_4EA4(M631SceneListNode *node) {
 void fn_1_4F18(M631SceneListNode *callbackNode)
 {
     M631SceneListNode *node = callbackNode;
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     if (scene->conveyorActive != 0) {
         node->position.x -= 3.34f;
     }
@@ -2076,7 +2062,7 @@ s32 fn_1_4F6C(M631SceneListNode *callbackNode) {
 
     node = callbackNode;
     if (node->position.x < (-700.0f)) {
-        scene = (M631SceneWork *) lbl_1_bss_8->data;
+        scene = lbl_1_bss_8->data;
         if (node->previous) {
             node->previous->next = node->next;
         } else {
@@ -2099,26 +2085,26 @@ void fn_1_5010(void) { }
 /* Actor behavior reads the first group-zero player's position for its movement decision. */
 void fn_1_5014(HuVecF *destination)
 {
-    M631SceneWork *sceneValues = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *sceneValues = lbl_1_bss_8->data;
     *destination = sceneValues->motionGroups[0].actorSlots[0]->position;
 }
 
 /* Actor behavior increments the shared pursuit count when it commits to chasing a target. */
 void fn_1_5054(void) {
-    M631SceneWork *scene = (M631SceneWork *) lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     scene->pursuitCount += 1;
 }
 
 /* Actor behavior decrements the shared pursuit count when a chase ends or is interrupted. */
 void fn_1_5084(void) {
-    M631SceneWork *scene = (M631SceneWork *) lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     scene->pursuitCount -= 1;
 }
 
 /* Returns the shared pursuit count to actor behavior when it chooses its next action. */
 s16 fn_1_50B4(void)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     return scene->pursuitCount;
 }
 
@@ -2126,7 +2112,7 @@ s16 fn_1_50B4(void)
  * player's heading. */
 void fn_1_50DC(HuVecF *direction, f32 magnitude)
 {
-    M631SceneWork *scene = (M631SceneWork *)lbl_1_bss_8->data;
+    M631SceneWork *scene = lbl_1_bss_8->data;
     HuVecF result;
     f32 angle = scene->motionGroups[1].actorSlots[0]->behaviorAngle;
 
