@@ -370,7 +370,7 @@ config.libs = [
                 extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"],
             ),
             Object(Matching, "Runtime.PPCEABI.H/ptmf.c"),
-            Object(Matching, "Runtime.PPCEABI.H/runtime.c"),
+            Object(Matching, "Runtime.PPCEABI.H/runtime.c", shift_jis=False, runtime_source_selected=True),
             Object(Matching, "Runtime.PPCEABI.H/__init_cpp_exceptions.cpp"),
             Object(
                 Matching,
@@ -1068,8 +1068,9 @@ config.libs = [
             Object(
                 Matching,
                 "REL/runtime.c",
-                source="REL/runtime.c",
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                source="Runtime.PPCEABI.H/runtime.c",
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         ],
     },
@@ -1145,9 +1146,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/selmenuDll/runtime.c",
-                source="REL/selmenuDll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1168,7 +1170,9 @@ config.libs = [
             Object(
                 Matching,
                 "REL/fileseldll/runtime.c",
-                source="REL/fileseldll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1179,9 +1183,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mdseldll/runtime.c",
-                source="REL/mdseldll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1197,9 +1202,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mdpartydll/runtime.c",
-                source="REL/mdpartydll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1214,7 +1220,9 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w01Dll/runtime.c",
-                source="REL/w01Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1259,8 +1267,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/meschkdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1280,8 +1290,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/endingdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1293,8 +1305,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mdpresultdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1304,7 +1318,15 @@ config.libs = [
             Object(Matching, "REL/m612dll/prolog.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m612dll/m612.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m612dll/tables.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m612dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m612dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1318,8 +1340,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m616dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"],
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1329,7 +1354,15 @@ config.libs = [
             Object(Matching, "REL/m618dll/prolog.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m618dll/sequence.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m618dll/game.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m618dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m618dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1353,8 +1386,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m621dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata", "off"],
+                extra_cflags=["-pooldata", "off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1368,8 +1404,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m635dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"],
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1382,8 +1421,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m651dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"],
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1395,7 +1437,15 @@ config.libs = [
             Object(Matching, "REL/m656DLL/matrix.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m656DLL/collision.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m656DLL/game.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m656DLL/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m656DLL/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1407,7 +1457,15 @@ config.libs = [
             Object(Matching, "REL/m657Dll/score.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m657Dll/com.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m657Dll/hud.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m657Dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m657Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1420,7 +1478,15 @@ config.libs = [
             Object(Matching, "REL/m659Dll/collision.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m659Dll/scene.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m659Dll/com.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m659Dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m659Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1430,7 +1496,15 @@ config.libs = [
             Object(Matching, "REL/m630dll/sequence.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m630dll/game.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m630dll/player.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m630dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m630dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1443,7 +1517,15 @@ config.libs = [
             Object(Matching, "REL/m602Dll/effect.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m602Dll/player.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m602Dll/ui.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m602Dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m602Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1457,7 +1539,15 @@ config.libs = [
             Object(Matching, "REL/m608dll/sprite.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m608dll/ai.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m608dll/data.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m608dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m608dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1468,7 +1558,15 @@ config.libs = [
             Object(Matching, "REL/m632dll/game.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m632dll/grid.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m632dll/qsort.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m632dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m632dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1483,7 +1581,15 @@ config.libs = [
             Object(Matching, "REL/m633dll/middle.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m633dll/angle.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m633dll/camera.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m633dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m633dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1493,7 +1599,15 @@ config.libs = [
             Object(Matching, "REL/m638Dll/game.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m638Dll/player.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m638Dll/scheduler.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m638Dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m638Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1502,7 +1616,15 @@ config.libs = [
             Object(Matching, "REL/m640dll/prolog.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m640dll/sequence.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m640dll/game.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m640dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m640dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1511,7 +1633,15 @@ config.libs = [
             Object(Matching, "REL/m637dll/prolog.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m637dll/sequence.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m637dll/game.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m637dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m637dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1521,7 +1651,15 @@ config.libs = [
             Object(Matching, "REL/m650dll/sequence.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m650dll/game.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m650dll/obstacle.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m650dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m650dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
         },
     ),
     Rel(
@@ -1550,8 +1688,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m668DLL/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata", "off"],
+                extra_cflags=["-pooldata", "off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1574,8 +1715,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m670dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"],
+                extra_cflags=["-pooldata off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1590,8 +1734,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mdsingdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1611,8 +1757,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/openingDll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1637,8 +1785,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/optionDll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1657,8 +1807,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/s01Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1674,8 +1826,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/s02Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1689,8 +1843,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/s03Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1701,8 +1857,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mdbankdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1717,8 +1875,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/miraclebookdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1733,8 +1893,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/staffdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1768,8 +1930,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mdminidll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata", "off"],
+                extra_cflags=["-pooldata", "off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1779,9 +1944,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mgmfreedll/runtime.c",
-                source="REL/mgmfreedll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
 
 
@@ -1853,8 +2019,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/instDll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1879,8 +2047,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m629Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1915,8 +2085,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m646Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1946,8 +2118,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/safdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -1977,8 +2151,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/ttwarsdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -1992,8 +2168,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w11Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2017,8 +2195,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w04Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2041,8 +2221,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m643DLL/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2081,8 +2263,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m636dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2107,8 +2291,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w06Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2138,8 +2324,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m667dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata", "off"],
+                extra_cflags=["-pooldata", "off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2184,8 +2373,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m649Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2220,8 +2411,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/resultDll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2246,8 +2439,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w03Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2265,8 +2460,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w10Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2281,8 +2478,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w05Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2302,8 +2501,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w02Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2323,8 +2524,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m664dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2369,8 +2572,11 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mgmtournamentdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata", "off"],
+                extra_cflags=["-pooldata", "off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2405,8 +2611,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m658dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2421,8 +2629,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m627dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2467,8 +2677,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mgmrenshodll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2513,8 +2725,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m675Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2554,8 +2768,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mgmdecathlondll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2580,8 +2796,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/micquizseldll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2606,8 +2824,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mgmbattledll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2627,8 +2847,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mgmbingodll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2683,8 +2905,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/mdmicdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2704,8 +2928,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m631Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2740,8 +2966,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m662dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2761,8 +2989,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/micquizdll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
@@ -2797,8 +3027,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m644dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2818,8 +3050,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m625Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2879,8 +3113,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m680Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2910,8 +3146,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m626Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -2966,8 +3204,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m674Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3022,8 +3262,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m613Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3058,8 +3300,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m676Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3104,8 +3348,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m609dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3140,8 +3386,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m619Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3156,8 +3404,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m660dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3192,8 +3442,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m647dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3228,8 +3480,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m617dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3269,8 +3523,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m620Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3320,8 +3576,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m642dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3341,8 +3599,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m666dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3372,8 +3632,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m665dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
             Object(
                 Matching,
@@ -3427,8 +3689,10 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m641Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
             ),
         },
     ),
