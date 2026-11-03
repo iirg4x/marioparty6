@@ -644,7 +644,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_315):
         case FILENUM(CHARMOT_HSF_c000m1_317):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+9), voiceFlag);
+                fn_800591C8(charNo, 582, voiceFlag);
             }
             break;
 
@@ -674,7 +674,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             for(i=0; i<4; i++) {
                 if(frameNo == walkVoiceTimeTbl[(charNo*4)+i]) {
-                    PlayStepVoice(charNo, (177+0), voiceFlag);
+                    PlayStepVoice(charNo, 177, voiceFlag);
                     break;
                 }
             }
@@ -709,7 +709,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             for(i=0; i<4; i++) {
                 if(frameNo == runVoiceTimeTbl[(charNo*4)+i]) {
-                    PlayStepVoice(charNo, (177+4), voiceFlag);
+                    PlayStepVoice(charNo, 181, voiceFlag);
                     break;
                 }
             }
@@ -721,7 +721,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             for(i=0; i<2; i++) {
                 if(frameNo == jumpVoiceTimeTbl[(charNo*2)+i]) {
-                    PlayStepVoice(charNo, (177+8), voiceFlag);
+                    PlayStepVoice(charNo, 185, voiceFlag);
                     break;
                 }
             }
@@ -730,14 +730,14 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_464):
             if(frameNo == 1 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 fn_8005F968(charNo, &modelP->pos);
-                PlayStepVoice(charNo, (177+8), voiceFlag);
+                PlayStepVoice(charNo, 185, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_305):
             fn_80023398(modelId, fn_8005C0F0(charNo, workP->model, 0), hitMtx);
             if(frameNo == 0) {
-                fn_800591C8(charNo, (177+22), voiceFlag);
+                fn_800591C8(charNo, 199, voiceFlag);
             }
             dotMax = 10;
             if(frameNo <= dotMax && !(workP->attr & CHAR_ATTR_FX_OFF)) {
@@ -774,7 +774,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case FILENUM(CHARMOT_HSF_c000m1_367):
             if(frameNo == 0) {
-                fn_800591C8(charNo, (177+23), voiceFlag);
+                fn_800591C8(charNo, 200, voiceFlag);
             }
             if(frameNo < 10) {
                 fn_80023398(modelId, fn_8005C0F0(charNo, workP->model, 2), hitMtx);
@@ -813,13 +813,13 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     CharEffectHipDropCreate(charNo, &modelP->pos);
                 }
-                fn_800591C8(charNo, (177+18), voiceFlag);
+                fn_800591C8(charNo, 195, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_324):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+8), voiceFlag);
+                fn_800591C8(charNo, 581, voiceFlag);
             }
             if(modelP->motIdShift == -1 || motShiftF) {
                 if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
@@ -836,7 +836,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                     }
                     if(frameNo == 30) {
                         fn_8005F968(charNo, &modelP->pos);
-                        PlayStepVoice(charNo, (177+8), voiceFlag);
+                        PlayStepVoice(charNo, 185, voiceFlag);
                     }
                 }
             }
@@ -857,7 +857,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                                          modelP->pos.z, 20, warnSize, &warnEffParam);
                     }
                     if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                        fn_800591C8(charNo, (573+9), voiceFlag);
+                        fn_800591C8(charNo, 582, voiceFlag);
                     }
                 }
             }
@@ -867,7 +867,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_322):
         case FILENUM(CHARMOT_HSF_c000m1_465):
             if(!(workP->attr & CHAR_ATTR_BIRD_ACTIVE) && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (177+19), voiceFlag);
+                fn_800591C8(charNo, 196, voiceFlag);
                 for(i=0; i<3; i++) {
                     EffectBirdCreate(modelId, modelP->pos.x,
                                      modelP->pos.y + (100.0f * modelP->scale.x), modelP->pos.z,
@@ -888,20 +888,20 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                     EffectSmokeCreate(modelId, pos.x, pos.y, pos.z, 20, &smokeEffParam);
                 }
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
-                    fn_800591C8(charNo, (573+3), voiceFlag);
+                    fn_800591C8(charNo, 576, voiceFlag);
                 }
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_303):
             if(frameNo == 0) {
-                fn_800591C8(charNo, (177+16), voiceFlag);
+                fn_800591C8(charNo, 193, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_308):
             if(frameNo == 0) {
-                fn_800591C8(charNo, (177+17), voiceFlag);
+                fn_800591C8(charNo, 194, voiceFlag);
             }
             break;
 
@@ -921,7 +921,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_346):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == handUpAnimLen[charNo]) {
-                    fn_800591C8(charNo, (573+6), voiceFlag);
+                    fn_800591C8(charNo, 579, voiceFlag);
                     workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
                     attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
@@ -961,7 +961,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_364):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == winJumpUpAnimLen[charNo]) {
-                    fn_800591C8(charNo, (573+2), voiceFlag);
+                    fn_800591C8(charNo, 575, voiceFlag);
                     workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
                     attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
@@ -1005,14 +1005,14 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                     fn_80060B10(charNo, 0, 0);
                 }
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
-                    fn_800591C8(charNo, (573+3), voiceFlag);
+                    fn_800591C8(charNo, 576, voiceFlag);
                 }
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_370):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+3), voiceFlag);
+                fn_800591C8(charNo, 576, voiceFlag);
             }
             if(workP->timingHookNo != 0) {
                 fn_80060B10(charNo, 30, 0.8f);
@@ -1021,7 +1021,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case FILENUM(CHARMOT_HSF_c000m1_333):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+11), voiceFlag);
+                fn_800591C8(charNo, 584, voiceFlag);
             }
             break;
 
@@ -1030,7 +1030,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 fn_8005F968(charNo, &modelP->pos);
                 for(i=0; i<2; i++) {
                     if(frameNo == jumpVoiceTimeTbl[(charNo*2)+i]) {
-                        PlayStepVoice(charNo, (177+8), voiceFlag);
+                        PlayStepVoice(charNo, 185, voiceFlag);
                         break;
                     }
                 }
@@ -1042,26 +1042,26 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_318):
         case FILENUM(CHARMOT_HSF_c000m1_382):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+9), voiceFlag);
+                fn_800591C8(charNo, 582, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_357):
         case FILENUM(CHARMOT_HSF_c000m1_381):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+15), voiceFlag);
+                fn_800591C8(charNo, 588, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_361):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+3), voiceFlag);
+                fn_800591C8(charNo, 576, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_377):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, (573+8), voiceFlag);
+                fn_800591C8(charNo, 581, voiceFlag);
             }
             break;
     }
@@ -1076,15 +1076,15 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 }
 
 static s16 winVoiceTbl[][2] = {
-    { 27, (573+6) },
-    { 28, (573+6) },
-    { 47, (573+6) },
-    { 76, (573+6) },
-    { 77, (573+6) },
-    { 78, (573+6) },
-    { 79, (573+6) },
-    { 80, (573+6) },
-    { 81, (573+6) },
+    { 27, 579 },
+    { 28, 579 },
+    { 47, 579 },
+    { 76, 579 },
+    { 77, 579 },
+    { 78, 579 },
+    { 79, 579 },
+    { 80, 579 },
+    { 81, 579 },
     { -1, 0 },
 };
 
@@ -1241,7 +1241,7 @@ static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag)
     if(winVoiceTbl[i][0] != -1) {
         seNo = winVoiceTbl[i][1];
     } else {
-        seNo = (573+4);
+        seNo = 577;
     }
     fn_800591C8(charNo, seNo, voiceFlag);
     return ret;
@@ -1733,7 +1733,7 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
             particleDataP->scale = 0.0f;
             workP->attr &= ~CHAR_ATTR_BIRD_ACTIVE;
             if(particleDataP->vel.y == 0.0) {
-                fn_800591C8(charNo, (177+24), workP->attr);
+                fn_800591C8(charNo, 201, workP->attr);
 
             }
         }
@@ -2927,7 +2927,7 @@ static void UpdateNpcDust(void)
                                          &dustEffParam);
                     }
                     if(npcNo != -1) {
-                        HuAudFXPlay((177+18));
+                        HuAudFXPlay(195);
                     }
                 }
                 break;
@@ -2956,7 +2956,7 @@ static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag)
     } else if(workP->stepFx == 5) {
         seId = (CHAR_STEP_GLOBAL_SE | CHAR_STEP_TYPE5_SE);
     } else if(workP->stepFx == 6) {
-        seId = (177+25);
+        seId = 202;
     } else {
         seId += workP->stepFx;
     }
@@ -3063,7 +3063,7 @@ void fn_8005FC84(s16 charNo, HuVecF *pos)
         EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
                      speed, &landEffParam);
     }
-    PlayStepVoice(charNo, (177+8), 0);
+    PlayStepVoice(charNo, 185, 0);
 }
 
 // Creates a dust ring and outward stars when UpdateCharAnim detects a hip-drop landing.
@@ -3278,16 +3278,16 @@ static void PlayWinLoseVoice(void)
 void fn_800611E4(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4)
 {
     if(charNo1 != -1) {
-        fn_800591C8(charNo1, (573+12), 0);
+        fn_800591C8(charNo1, 585, 0);
     }
     if(charNo2 != -1) {
-        fn_800591C8(charNo2, (573+12), 0);
+        fn_800591C8(charNo2, 585, 0);
     }
     if(charNo3 != -1) {
-        fn_800591C8(charNo3, (573+12), 0);
+        fn_800591C8(charNo3, 585, 0);
     }
     if(charNo4 != -1) {
-        fn_800591C8(charNo4, (573+12), 0);
+        fn_800591C8(charNo4, 585, 0);
     }
 }
 

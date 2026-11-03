@@ -597,7 +597,7 @@ void fn_1_B108(void) {
                 scalarValue = (lbl_1_bss_590[index].position.x - fn_1_1DB4()) / scalarValue;
                 scalarValue = 32.0f + 64.0f * scalarValue;
             M641DebugSound(
-                CharFXPlayPan(lbl_1_bss_590[index].characterNo, (573+9), (s16)scalarValue));
+                CharFXPlayPan(lbl_1_bss_590[index].characterNo, 582, (s16)scalarValue));
             } else if ((lbl_1_bss_590[index].movementState != 8) &&
                        (lbl_1_bss_590[index].movementState != 9) &&
                        (lbl_1_bss_590[index].movementState != M641_MOVEMENT_STATE_HIT_REACTION) &&
@@ -614,7 +614,7 @@ void fn_1_B108(void) {
                 scalarValue = fn_1_1DC4() - fn_1_1DB4();
                 scalarValue = (lbl_1_bss_590[index].position.x - fn_1_1DB4()) / scalarValue;
                 scalarValue = 32.0f + 64.0f * scalarValue;
-                M641DebugSound(CharFXPlayPan(lbl_1_bss_590[index].characterNo, (573+9),
+                M641DebugSound(CharFXPlayPan(lbl_1_bss_590[index].characterNo, 582,
                                              (s16) scalarValue));
             }
         } else if (playerIndexOrHitType == 2) {

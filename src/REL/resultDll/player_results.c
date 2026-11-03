@@ -869,8 +869,8 @@ void fn_1_2878(void)
             fn_8002CCC0((s16)lbl_1_bss_488[player].characterModel,
                 (s16)lbl_1_bss_488[player].characterMotions[1], 0.0f, 8.0f, 0);
             if (lbl_1_bss_5EC[player] != 0) {
-                CharFXStop(lbl_80265728[player].charNo, (573+2));
-                CharFXPlay(lbl_80265728[player].charNo, (573+6));
+                CharFXStop(lbl_80265728[player].charNo, 575);
+                CharFXPlay(lbl_80265728[player].charNo, 579);
             }
         } else if ((s16)lbl_1_bss_5F4[player] < lbl_1_bss_5EC[player]) {
             changed[player] = 1;

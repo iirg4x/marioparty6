@@ -1844,7 +1844,7 @@ void mbev_CapBomhei(void)
         mbObjPosSet(body, 0.0f, 0.0f, 0.0f);
         mbObjHookSet(mbPlayerObjIDGet(playerNo),
             fn_8005C0F0(lbl_80265750[playerNo].charNo, 4, 0), body);
-        CharFXPlay(lbl_80265750[playerNo].charNo, (573+8));
+        CharFXPlay(lbl_80265750[playerNo].charNo, 581);
         mbAudFXPlay(929);
         bomheiMode[playerNo] = 2;
         while (bomheiMode[playerNo] < 3) {

@@ -708,7 +708,7 @@ void mbev_CapKuribo(void)
         } while (coinAmounts[1] > 0 || mbev_CapCoinManNumGet(work->coinManObj) > 0);
         mbAudFXPlay(15);
         mbPlayerWinLoseVoicePlay(coinRecipientNo,
-            CAPTHROW_PLAYER_MOTION_WIN, (573+6));
+            CAPTHROW_PLAYER_MOTION_WIN, 579);
         mbPlayerMotionShiftSet(coinRecipientNo,
             CAPTHROW_PLAYER_MOTION_WIN, 0.0f, 8.0f, 0);
         mbPlayerPosGet(coinRecipientNo, &coinDisplayPos);
@@ -2031,7 +2031,7 @@ void mbev_CapKokamekku(void)
             mbCapCapsuleGet(targetPlayerNo, capsuleNo);
             mbPlayerCapsuleAdd(targetPlayerNo, capsuleNo);
             mbPlayerWinLoseVoicePlay(targetPlayerNo, 12,
-                (573+6));
+                579);
             mbPlayerMotionShiftSet(targetPlayerNo, 12, 0.0f, 8.0f,
                 0);
             mbWinCreate(2, MESSNUM(MESS_CAPSULE_EX02, 14), -1);

@@ -2241,7 +2241,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             /* miracle scene message resource */
         mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 5)), mbGuideSpeakerNoGet());
         mbWinTopWait();
-        mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12)); /* player loss voice resource */
+        mbPlayerWinLoseVoicePlay(playerNo, 13, 585); /* player loss voice resource */
         mbev_CapPlayerMotShiftWait(playerNo, 13, 0,
             TRUE);
         mbev_CapPlayerMotShiftWait(playerNo, 1, ((1 << 30) | (1 << 0)),
@@ -2496,25 +2496,25 @@ static void ev_CapMiracleRun(CAPWORK *work)
         for (i = 0; i < 2; i++) {
             if (oldStar[i] < mbPlayerStarGet(players[i])) {
                 /* player win voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 7, (573+0));
+                mbPlayerWinLoseVoicePlay(players[i], 7, 573);
                 mbPlayerMotionShiftSet(players[i], 7, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
             } else if (oldStar[i] > mbPlayerStarGet(players[i])) {
                 /* player loss voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 8, (573+12));
+                mbPlayerWinLoseVoicePlay(players[i], 8, 585);
                 mbPlayerMotionShiftSet(players[i], 8, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
             } else if (oldCoin[i] < mbPlayerCoinGet(players[i])) {
                 /* player win voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 12, (573+6));
+                mbPlayerWinLoseVoicePlay(players[i], 12, 579);
                 mbPlayerMotionShiftSet(players[i], 12, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
             } else if (oldCoin[i] > mbPlayerCoinGet(players[i])) {
                 /* player loss voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 13, (573+12));
+                mbPlayerWinLoseVoicePlay(players[i], 13, 585);
                 mbPlayerMotionShiftSet(players[i], 13, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
@@ -4017,7 +4017,7 @@ winner_done:
             state.coinDisp[0] = mbCoinDispCapsuleCreate(
                 &state.coinPos, mgResultData.coinNum);
             mbCoinAddExec(winner, mgResultData.coinNum);
-            mbPlayerWinLoseVoicePlay(winner, 12, (573+6));
+            mbPlayerWinLoseVoicePlay(winner, 12, 579);
             mbPlayerMotionShiftSet(winner, 12, 0.0f, 8.0f, 0);
             mbPlayerMotionShiftSet(otherPlayer, 13, 0.0f, 8.0f, 0);
             do {
@@ -4043,7 +4043,7 @@ winner_done:
             mbPlayerStarAdd(winner, mgResultData.starNum);
             state.starObj[0] = mbStarDispPlayerCreate(
                 winner, mgResultData.starNum);
-            mbPlayerWinLoseVoicePlay(winner, 7, (573+0));
+            mbPlayerWinLoseVoicePlay(winner, 7, 573);
             mbPlayerMotionShiftSet(winner, 7, 0.0f, 8.0f, 0);
             starMotion = mbev_CapPlayerMotionCreate(
                 &work->objWork, otherPlayer, DATANUM(0x930000, 40));
@@ -4116,7 +4116,7 @@ winner_done:
                 mgResultData.playerNo2,
                 mgResultData.coinNum / 2);
         }
-        mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
         mbev_CapPlayerMotShiftWait(playerNo, 13, 0, TRUE);
         mbev_CapPlayerMotShiftWait(playerNo, 1,
             ((1 << 30) | (1 << 0)), TRUE);
@@ -4674,10 +4674,10 @@ static void ev_CapDonkeyCoin(CAPWORK *work)
     {
         s16 ownBonus = lbl_80265750[playerNo].mgCoinBonus;
         if (ownBonus > 0) {
-            mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6)); /* win/lose voice resource */
+            mbPlayerWinLoseVoicePlay(playerNo, 12, 579); /* win/lose voice resource */
             mbev_CapPlayerMotShiftWait(playerNo, 12, 0, TRUE);
         } else {
-            mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12)); /* win/lose voice resource */
+            mbPlayerWinLoseVoicePlay(playerNo, 13, 585); /* win/lose voice resource */
             mbev_CapPlayerMotShiftWait(playerNo, 13, 0, TRUE);
         }
     }

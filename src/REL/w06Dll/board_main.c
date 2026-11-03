@@ -1111,7 +1111,7 @@ mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W06, 0), -1, 0);
         landingSpace = parentLinks[0];
         mbMasuPosGet(entranceSpace, &entrancePosition);
         mbPlayerEffectSet(playerNo, FALSE);
-        mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+        mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
         mbPlayerMotionShiftSet(playerNo, 4, (0.0f), (8.0f), 0);
         mbPlayerPosGet(playerNo, &playerPosition);
         entrancePosition.z -= (50.0f);

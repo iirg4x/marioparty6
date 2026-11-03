@@ -813,7 +813,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_1_29BC(firstPlayers[teamIndex], 3, 5.0f, 0);
                     if (teamIndex == 0) {
                         work = firstPlayers[teamIndex];
-                        sound = (177+16);
+                        sound = 193;
                         fn_800591C8(work->player->charNo, sound, 0);
                     }
                 }
@@ -884,7 +884,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                 for (teamIndex = 0; teamIndex < 2; teamIndex++) {
                     fn_1_29BC(secondPlayers[teamIndex], 3, 5.0f, 0);
                     work = secondPlayers[teamIndex];
-                    sound = (177+16);
+                    sound = 193;
                     fn_800591C8(work->player->charNo, sound, 0);
                 }
                 break;
@@ -924,7 +924,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_80086BC8(secondPlayers[teamIndex]->player->actor, &position);
                     fn_8005F968(secondPlayers[teamIndex]->charNo, &position);
                     work = secondPlayers[teamIndex];
-                    sound = (177+8);
+                    sound = 185;
                     fn_800591C8(work->player->charNo, sound, 0);
                 }
                 break;

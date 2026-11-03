@@ -15,7 +15,6 @@
 #define M637_SFX_REEL_RIGHT_SPEED_UP 1873
 #define M637_SFX_REEL_LEFT_SPEED_DOWN 1874
 #define M637_SFX_REEL_RIGHT_SPEED_DOWN 1875
-#define M637_CHAR_EFFECT_SCORE (573+6)
 #define M637_ESP_SCORE_FRONT DATANUM(0x9b0000, 30)
 #define M637_ESP_SCORE_BACK DATANUM(0x9b0000, 31)
 
@@ -1383,7 +1382,7 @@ s32 fn_1_603C(void)
             fn_8005C2C8(lbl_80265728[lbl_1_bss_290[playerSlot]].charNo,
                                lbl_1_bss_2A0[playerSlot].motion[stopMotionIndex], 0.0f, 4.0f, 0U);
             if (lbl_1_bss_2A0[playerSlot].scoredRound != 0) {
-                CharFXPlay(lbl_80265728[lbl_1_bss_290[playerSlot]].charNo, M637_CHAR_EFFECT_SCORE);
+                CharFXPlay(lbl_80265728[lbl_1_bss_290[playerSlot]].charNo, 579);
             }
             playerSlot += 1;
         }
