@@ -1139,8 +1139,8 @@ s16 lbl_1_bss_0;
  * callback. */
 static void SMSound3DInit(OMOBJ *obj)
 {
-    MSMSE *se = msmSeGetIndexPtr(smEmiCompDataNo);
-    smEmiCompVal = se->comp;
+    MSM_SE *se = msmSeGetIndexPtr(smEmiCompDataNo);
+    smEmiCompVal = se->emiComp;
     obj->objFunc = SMSound3DExec;
 }
 
@@ -1149,7 +1149,7 @@ static void SMSound3DInit(OMOBJ *obj)
 static void SMSound3DExec(OMOBJ *obj)
 {
     float speed;
-    MSMSE *se;
+    MSM_SE *se;
 
     SMBtnRead();
     if (smPadDStkDown & SM_KEY_UP) {
@@ -1201,7 +1201,7 @@ static void SMSound3DExec(OMOBJ *obj)
                     smEmiCompDataNo = 0;
                 }
                 se = msmSeGetIndexPtr(smEmiCompDataNo);
-                smEmiCompVal = se->comp;
+                smEmiCompVal = se->emiComp;
                 break;
 
             case 6:
@@ -1213,7 +1213,7 @@ static void SMSound3DExec(OMOBJ *obj)
                     smEmiCompVal = -127;
                 }
                 se = msmSeGetIndexPtr(smEmiCompDataNo);
-                se->comp = smEmiCompVal;
+                se->emiComp = smEmiCompVal;
                 break;
 
             case 7:

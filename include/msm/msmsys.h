@@ -1,9 +1,8 @@
 #ifndef MSMSYS_H
 #define MSMSYS_H
 
-#include "game/msm.h" // TODO remove, only for decomp
-
 #include "dolphin.h"
+#include "game/msm_data.h"
 
 #define MSM_AUX_REVERBHI 0
 #define MSM_AUX_REVERBSTD 1
@@ -12,11 +11,6 @@
 
 #define MSM_AUXNO_NULL -2
 #define MSM_AUXNO_UNSET -1
-
-#ifndef MSM_GROUP_LOAD_MANUAL
-#define MSM_GROUP_LOAD_MANUAL 0
-#define MSM_GROUP_LOAD_AUTO 1
-#endif
 
 typedef union {
     SND_AUX_REVERBHI revHi;
@@ -72,22 +66,15 @@ typedef struct MSMSys_s {
     s32 timer;
 } MSM_SYS;
 
-s32 msmSysSearchGroupStack(s32 arg0, s32 arg1);
-s32 msmSysGroupInit(DVDFileInfo *arg0);
+s32 msmSysSearchGroupStack(s32 groupIndex, s32 excludedSlot);
+s32 msmSysGroupInit(DVDFileInfo *file);
 void msmSysIrqDisable(void);
 void msmSysIrqEnable(void);
-BOOL msmSysCheckBaseGroup(s32 arg0);
-void *msmSysGetGroupDataPtr(s32 arg0);
-BOOL msmSysCheckLoadGroupID(s32 arg0);
-void msmSysRegularProc(void);
+BOOL msmSysCheckBaseGroup(s32 soundGroupId);
+void *msmSysGetGroupDataPtr(s32 requestedGroupIndex);
+BOOL msmSysCheckLoadGroupID(s32 soundGroupId);
 s32 msmSysGetOutputMode(void);
-BOOL msmSysSetOutputMode(SND_OUTPUTMODE mode);
-s32 msmSysGetSampSize(BOOL baseGrp);
-s32 msmSysDelGroupAll(void);
-s32 msmSysDelGroupBase(s32 grpNum);
-s32 msmSysLoadGroupBase(s32 arg0, void *arg1);
-void msmSysSetGroupLoadMode(s32 mode);
+s32 msmSysLoadGroupBase(s32 groupIndex, void *sampleBuffer);
 void msmSysCheckInit(void);
-s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram);
 
 #endif
