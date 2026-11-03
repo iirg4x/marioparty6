@@ -1,5 +1,5 @@
 /* Builds and animates the tournament bracket models and player sprites. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/main.h"
 #include "game/object.h"
 #include "game/hu3d.h"
@@ -11,6 +11,7 @@
 #include "game/gamework.h"
 #include "game/mgdata.h"
 #include "datadir_enum.h"
+#include "REL/mgmtournamentdll/module_types.h"
 
 #define MSM_SE_MGTOUR_CHAMPION_REVEAL 1251
 #define MSM_SE_MGTOUR_MARKER_HIGHLIGHT 1253
@@ -27,8 +28,6 @@ extern OMOBJMAN *lbl_1_bss_12C;
 void fn_1_31B8(void);
 void fn_1_4424(OMOBJ *object);
 void fn_1_4850(void);
-s16 fn_1_A42C(void);
-
 s32 lbl_1_data_278[8] = {
     DATANUM(0xa10000, 0), DATANUM(0xa10000, 1),
     DATANUM(0xa10000, 2), DATANUM(0xa10000, 3),
@@ -115,7 +114,8 @@ void fn_1_31B8(void) {
 /* Selection and result handlers restart a bracket marker and enable or pause its animation. */
 void fn_1_3394(s16 modelIndex, s16 enabled) {
     if (enabled != 0) {
-        fn_80026A44(lbl_1_bss_E0[modelIndex], ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+        fn_80026A44(lbl_1_bss_E0[modelIndex],
+            ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
                                                          ((1 << 30) | (1 << 7)) |
                                                          ((1 << 30) | (1 << 10)));
     } else {
@@ -146,7 +146,7 @@ void fn_1_34F0(void)
 {
     s16 mode;
 
-    mode = fn_1_A42C();
+    mode = tournamentLayoutGet();
     if (mode == 0) {
         fn_1_3394(0, 1);
         fn_1_3394(1, 1);

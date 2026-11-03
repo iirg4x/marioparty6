@@ -1,5 +1,5 @@
 /* Loads the instruction screen's stage preview models and motions. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin.h"
 #include "dolphin/gx.h"
 #include "game/audio.h"
@@ -30,6 +30,7 @@
 #include "game/board/tutorial.h"
 #include "dolphin/os.h"
 #include "humath.h"
+#include "REL/instDll.h"
 
 /* Stage preview records pair model resources with transforms and camera masks. */
 typedef struct StageModel_s {
@@ -107,50 +108,16 @@ extern OM_CAMERA_VIEW lbl_1_data_24;
 extern BOOL lbl_1_data_4;
 extern OM_CAMERA_VIEW lbl_1_data_40;
 extern u8 lbl_1_data_410[];
-extern char lbl_1_data_5C[];
 extern HuVecF lbl_1_data_700;
 extern HuVecF lbl_1_data_718;
 extern HuVecF lbl_1_data_724;
-extern char lbl_1_data_730[];
-extern char lbl_1_data_74A[];
-extern char lbl_1_data_764[];
-extern char lbl_1_data_77E[];
 extern Inst_data_798_view lbl_1_data_798[9];
 extern OM_CAMERA_VIEW lbl_1_data_8;
-extern char lbl_1_data_80[];
 extern char lbl_1_data_CE[];
 extern char lbl_1_data_DC[];
 extern char lbl_1_data_E7[];
 extern u32 lbl_1_data_F8[];
 extern GXRenderModeObj *RenderMode;
-
-/* Instruction-screen routines used across its setup and display files. */
-extern void fn_1_1024(void);
-extern void fn_1_35F8(OMOBJ *obj);
-extern void fn_1_4158(void);
-void fn_1_8FA0(s16 imageIndex);
-void fn_1_96F4(s16 selectedMode);
-void fn_1_4668(STAGE_MODEL *stageModels);
-void fn_1_539C(void);
-void fn_1_5DE0(void);
-void fn_1_47E4(s16 selectedMode);
-void fn_1_2A1C(void);
-int fn_1_A1E8(void (*childFunction)(void), s32 processState);
-void fn_1_15C8(void);
-void fn_1_4188(void);
-void fn_1_8DB0(void);
-void fn_1_15B4(void);
-HUSPR_GROUPID fn_1_4400(u32 messNum);
-void fn_1_4B48(void);
-extern void fn_1_62A8(void);
-extern void fn_1_8B44(void);
-extern void fn_1_750C(void);
-extern void fn_1_8504(s16 index, Vec *transformed, Vec *result);
-extern void fn_1_8680(void);
-void fn_1_902C(s16 layerNo);
-extern void fn_1_9CF4(HU3D_MODEL *modelP, Mtx *mtx);
-extern void fn_1_99CC(void);
-void fn_1_9CB0(s16 layerNo);
 
 /* Stage preview models and motions, in the order used by the instruction screen. */
 STAGE_MODEL lbl_1_data_520[] = {

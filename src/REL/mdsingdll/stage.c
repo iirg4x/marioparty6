@@ -179,14 +179,14 @@ void fn_1_2D1DC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     PSMTXConcat(textureProjection, lbl_802613F4, textureMatrix);
     PSMTXConcat(textureMatrix, transform, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, 33U, GX_MTX3x4);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, 33U, 0U, 125U);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1, 0U, GX_PTIDENTITY);
     PSMTXTrans(transform, 0.0f,
         (textureWork->textureScrollY += textureWork->textureScrollStep), 0.0f);
     PSMTXScale(textureScale, 0.8f, 0.8f, 1.0f);
     PSMTXConcat(textureScale, transform, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, 30U, GX_MTX2x4);
-    GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, 30U, 0U, 125U);
-    GXSetTexCoordGen2(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0, 60U, 0U, 125U);
+    GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0, 0U, GX_PTIDENTITY);
+    GXSetTexCoordGen2(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0U, GX_PTIDENTITY);
     GXSetTevColor(GX_TEVREG0, textureWork->color);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP1, GX_COLOR0);
     GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_C0);

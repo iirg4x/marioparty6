@@ -583,53 +583,7 @@ void GXResetWriteGatherPipe(void);
 /* GXPerf.c */
 void __GXSetBWDials(u16 cpDial, u16 tcDial, u16 peDial, u16 cpuRdDial, u16 cpuWrDial);
 
-static inline u32 __GXReadCPCounterU32(u32 regAddrL, u32 regAddrH) {
-    u32 ctrH0;
-    u32 ctrH1;
-    u32 ctrL;
-
-    ctrH0 = GX_GET_CP_REG(regAddrH);
-
-    do {
-        ctrH1 = ctrH0;
-        ctrL = GX_GET_CP_REG(regAddrL);
-        ctrH0 = GX_GET_CP_REG(regAddrH);
-    } while (ctrH0 != ctrH1);
-
-    return (ctrH0 << 0x10) | ctrL;
-}
-
-static inline u32 __GXReadMEMCounterU32(u32 regAddrL, u32 regAddrH) {
-    u32 ctrH0;
-    u32 ctrH1;
-    u32 ctrL;
-
-    ctrH0 = GX_GET_MEM_REG(regAddrH);
-
-    do {
-        ctrH1 = ctrH0;
-        ctrL = GX_GET_MEM_REG(regAddrL);
-        ctrH0 = GX_GET_MEM_REG(regAddrH);
-    } while (ctrH0 != ctrH1);
-
-    return (ctrH0 << 0x10) | ctrL;
-}
-
-static inline u32 __GXReadPECounterU32(u32 regAddrL, u32 regAddrH) {
-    u32 ctrH0;
-    u32 ctrH1;
-    u32 ctrL;
-
-    ctrH0 = GX_GET_PE_REG(regAddrH);
-
-    do {
-        ctrH1 = ctrH0;
-        ctrL = GX_GET_PE_REG(regAddrL);
-        ctrH0 = GX_GET_PE_REG(regAddrH);
-    } while (ctrH0 != ctrH1);
-
-    return (ctrH0 << 0x10) | ctrL;
-}
+#include <dolphin/gx/GXRegs.h>
 
 /* GXSave.c */
 

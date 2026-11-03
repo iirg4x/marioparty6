@@ -2,7 +2,7 @@
 #ifndef REL_MGMTOURNAMENTDLL_MGMRENSHODLL_MODULE_TYPES_H
 #define REL_MGMTOURNAMENTDLL_MGMRENSHODLL_MODULE_TYPES_H
 
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"

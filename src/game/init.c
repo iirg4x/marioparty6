@@ -1,13 +1,17 @@
 // Set up the console video, memory heaps, audio, and per-frame display flow.
 #include "game/init.h"
 #include "game/fault.h"
+#include "game/audio.h"
+#include "game/card.h"
+#include "game/armem.h"
+#include "game/frand.h"
 #include "dolphin/os.h"
 #include "dolphin/gx.h"
 #include "dolphin/dvd.h"
 #include "dolphin/vi.h"
 #include "dolphin/pad.h"
 
-#define FIFO_SIZE 524288
+#define FIFO_SIZE 0x80000
 #define FRAMEBUFFER_FILL_BIT_PATTERN 0x800080
 #define DEVHW1_PHYSICAL_MEM_SIZE_4MB 4194304
 #define DEVHW1_SIMULATED_MEM_SIZE_24MB 25165824
@@ -16,11 +20,6 @@ struct memory_info {
     void *rangeStart; // First address in a memory range reserved away from the heap.
     void *rangeEnd;   // Address just past the reserved range, as consumed by OSAllocFixed.
 };
-
-extern void HuAudInit();
-extern void HuCardInit();
-extern void HuARInit();
-extern u32 frand();
 
 static GXRenderModeObj rmodeobj;
 
@@ -137,8 +136,8 @@ static void InitMem()
     u32 *firstBufferWord;
     u32 *secondBufferWord;
     u32 wordIndex;
-    DemoFrameBuffer1 = (void *)OSRoundUp32B((u32)arenaStart);
-    DemoFrameBuffer2 = (void *)OSRoundUp32B((u32)DemoFrameBuffer1+frameBufferBytes);
+    DemoFrameBuffer1 = OSRoundUpPtr(arenaStart, 32);
+    DemoFrameBuffer2 = OSRoundUpPtr((u32)DemoFrameBuffer1+frameBufferBytes, 32);
     DemoCurrentBuffer = DemoFrameBuffer2;
     firstBufferWord = DemoFrameBuffer1;
     secondBufferWord = DemoFrameBuffer2;
@@ -148,7 +147,7 @@ static void InitMem()
     }
     DCStoreRangeNoSync(DemoFrameBuffer1, frameBufferBytes);
     DCStoreRangeNoSync(DemoFrameBuffer2, frameBufferBytes);
-    arenaStart = (void *)OSRoundUp32B((u32)DemoFrameBuffer2+frameBufferBytes);
+    arenaStart = OSRoundUpPtr((u32)DemoFrameBuffer2+frameBufferBytes, 32);
     OSSetArenaLo(arenaStart);
     if (OSGetConsoleType() == OS_CONSOLE_DEVHW1 &&
         OSGetPhysicalMemSize() != DEVHW1_PHYSICAL_MEM_SIZE_4MB &&
@@ -159,8 +158,8 @@ static void InitMem()
         arenaEnd = OSGetArenaHi();
         arenaStart = OSInitAlloc(arenaStart, arenaEnd, 1);
         OSSetArenaLo(arenaStart);
-        arenaStart = (void *)OSRoundUp32B((u32)arenaStart);
-        arenaEnd = (void *)OSRoundDown32B((u32)arenaEnd);
+        arenaStart = OSRoundUpPtr(arenaStart, 32);
+        arenaEnd = OSRoundDownPtr(arenaEnd, 32);
         OSSetCurrentHeap(currentHeapHandle = OSCreateHeap(arenaStart, arenaEnd));
         arenaStart = arenaEnd;
         OSSetArenaLo(arenaStart);
@@ -269,22 +268,22 @@ static void LoadMemInfo()
         arenaEnd = OSGetArenaHi();
         arenaStart = OSInitAlloc(arenaStart, arenaEnd, 1);
         OSSetArenaLo(arenaStart);
-        arenaStart = (void *)OSRoundUp32B((u32)arenaStart);
-        arenaEnd = (void *)OSRoundDown32B((u32)arenaEnd);
+        arenaStart = OSRoundUpPtr(arenaStart, 32);
+        arenaEnd = OSRoundDownPtr(arenaEnd, 32);
         OSSetCurrentHeap(OSCreateHeap(arenaStart, arenaEnd));
         arenaStart = arenaEnd;
         OSSetArenaLo(arenaStart);
     } else {
-        rangeEntries = (struct memory_info *)OSRoundUp32B((u32)chunkBuffer);
+        rangeEntries = OSRoundUpPtr(chunkBuffer, 32);
         fixedRangeStart = OSGetArenaHi();
-        fixedRangeEnd = (void *)(OSGetConsoleSimulatedMemSize()+OS_BASE_CACHED);
-        OSSetArenaHi((void *)(OSGetPhysicalMemSize()+OS_BASE_CACHED));
+        fixedRangeEnd = OSPhysicalToCached(OSGetConsoleSimulatedMemSize());
+        OSSetArenaHi(OSPhysicalToCached(OSGetPhysicalMemSize()));
         arenaStart = OSGetArenaLo();
         arenaEnd = OSGetArenaHi();
         arenaStart = OSInitAlloc(arenaStart, arenaEnd, 1);
         OSSetArenaLo(arenaStart);
-        arenaStart = (void *)OSRoundUp32B((u32)arenaStart);
-        arenaEnd = (void *)OSRoundDown32B((u32)arenaEnd);
+        arenaStart = OSRoundUpPtr(arenaStart, 32);
+        arenaEnd = OSRoundDownPtr(arenaEnd, 32);
         OSSetCurrentHeap(OSCreateHeap(arenaStart, arenaEnd));
         arenaStart = arenaEnd;
         OSSetArenaLo(arenaStart);

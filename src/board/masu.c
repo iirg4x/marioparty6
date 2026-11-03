@@ -5,6 +5,7 @@
 #include "game/board/audio.h"
 #include "game/board/branch.h"
 #include "game/board/camera.h"
+#include "game/board/capsule.h"
 #include "game/board/gate.h"
 #include "game/board/main.h"
 #include "game/board/object.h"
@@ -81,17 +82,11 @@ static s16 masuFindResultNum;
 extern void *fn_802137C0(s32 size);
 extern float mbCosDeg(float angle);
 extern float mbSinDeg(float angle);
-extern s16 mbCapMasuPlayerGet(s16 id);
-extern s16 mbCapMasuDispTypeGet(s16 id);
-extern void mbPlayerColSnapPlayerSet(int playerNo, BOOL snapF);
 extern int mbSingleCall(int mode, int arg);
 extern void mbev_StarMasu();
 extern int mbev_Shop(int playerNo, int shopNo);
 extern void mbCapMasuExec(int playerNo, int id);
 extern int mbev_CapCall(int playerNo, int capsuleNo, BOOL moveF, BOOL stopF);
-extern void mbPlayerCapCoinMasuExec(int playerNo);
-extern void mbPlayerPlusMasuExec(int playerNo);
-extern void mbPlayerMinusMasuExec(int playerNo);
 extern void mbev_CapCallDonkey(int playerNo);
 extern void mbev_CapCallKoopa(int playerNo);
 extern void mbev_CapCallKettou(int playerNo, s16 id, BOOL stopF);
@@ -287,7 +282,7 @@ static void MasuDispClose(void)
     }
 }
 
-#define MASU_DL_BUF_SIZE 4096
+#define MASU_DL_BUF_SIZE 0x1000
 
 /* Builds the flat textured quad used for each board-space marker. */
 static u32 MasuDisplayListMake(void **displayList)
@@ -577,7 +572,7 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
 /* Starts the marker update process and installs its HU3D drawing hook. */
 static void MasuNextCreate(void)
 {
-    masuNextProc = fn_8000DAC0(MasuNextMain, 8195, 8192, 0, mbMainProc);
+    masuNextProc = fn_8000DAC0(MasuNextMain, 8195, 0x2000, 0, mbMainProc);
     masuNextWork = fn_802137C0(sizeof(MASUNEXTWORK) * 4);
     masuNextMdlId = fn_800260F4(MasuNextDraw);
     fn_80026B64(masuNextMdlId, (1 << 0));

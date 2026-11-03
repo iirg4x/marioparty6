@@ -96,7 +96,6 @@ typedef BOOL (*MSM_OPEN)(s32 entrynum, DVDFileInfo *fileInfo);
 typedef s32 (*MSM_READ)(DVDFileInfo *fileInfo, void *addr, s32 length, s32 offset, s32 prio);
 typedef BOOL (*MSM_CLOSE)(DVDFileInfo *fileInfo);
 
-
 typedef struct msmAram_s {
 	BOOL skipARInit;
 	union {
@@ -131,7 +130,6 @@ typedef struct msmSeParam_s {
 	s32 pad;
 	Vec pos;
 } MSM_SEPARAM;
-
 
 typedef  struct msmSeListener_s {
 	s32 flag;
@@ -173,7 +171,8 @@ s32 msmSeStop(int seNo, s32 speed);
 void msmSePauseAll(BOOL pause, s32 speed);
 s32 msmSePause(int seNo, BOOL pause, s32 speed);
 void msmSeStopAll(BOOL checkGrp, s32 speed);
-s32 msmSeSetListener(Vec *pos, Vec *heading, float sndDist, float sndSpeed, MSM_SELISTENER *listener);
+s32 msmSeSetListener(Vec *pos, Vec *heading, float sndDist, float sndSpeed,
+    MSM_SELISTENER *listener);
 s32 msmSeUpdataListener(Vec *pos, Vec *heading);
 void msmSeDelListener(void);
 s32 msmSeGetStatus(int seNo);
@@ -202,7 +201,7 @@ s32 msmStreamPause(int streamNo, BOOL pause, s32 speed);
 
 void msmStreamStopAll(s32 speed);
 s32 msmStreamGetStatus(int streamNo);
-void msmStreamSetMasterVolume(s32 arg0);
+void msmStreamSetMasterVolume(s32 vol);
 void msmStreamSetOutputMode(s32 outputMode);
 
 #endif

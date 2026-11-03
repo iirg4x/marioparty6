@@ -4,6 +4,7 @@
 #include "game/esprite.h"
 #include "game/hu3d.h"
 #include "game/mgdata.h"
+#include "game/mic.h"
 #include "game/object.h"
 #include "game/pad.h"
 #include "game/process.h"
@@ -12,6 +13,7 @@
 #include "game/wipe.h"
 #include "game/window.h"
 #include <math.h>
+#include <stdio.h>
 #include "game/card.h"
 #include "game/gamework.h"
 #include "game/frand.h"
@@ -22,15 +24,15 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 #include "msm_stream.h"
+#include "REL/optionDll/main.h"
+#include "REL/optionDll/records.h"
+#include "REL/optionDll/sound_test.h"
 
 #define OPTION_MOTION_BLEND_START 0.0f
 #define OPTION_MOTION_RETURN_BLEND_FRAMES 8.0f
 #define OPTION_MOTION_TURN_BLEND_FRAMES 10.0f
 /* Heading and terminator rows have no prize description to display. */
 #define OPTION_PRIZE_MESSAGE_NONE 4294967295U
-
-void fn_1_C3FC(s16 selection);
-s16 fn_1_C324(s16 flag, s16 type);
 
 typedef void (*VoidFunc)(void);
 
@@ -182,8 +184,6 @@ u32 lbl_1_data_3F8[5] = {MESSNUM(MESS_OPTION_MESS, 46), MESSNUM(MESS_OPTION_MESS
     MESSNUM(MESS_OPTION_MESS, 49), MESSNUM(MESS_OPTION_MESS, 48),
     MESSNUM(MESS_OPTION_MESS, 62)};
 
-char lbl_1_data_40C[40] = "******* Option ObjectSetup *********\n";
-
 ANIMDATA *lbl_1_bss_BF8[60];
 
 s16 lbl_1_bss_BF0[4];
@@ -240,46 +240,14 @@ extern char lbl_1_data_462[];
 extern char lbl_1_data_46A[];
 
 #define OPTION_SUBSTICK_STEP_MASK 0xF8
-void fn_1_A0(void);
-void fn_1_804(void);
-void fn_1_FDC(void);
-void fn_1_1044(void);
 void fn_1_EA6C(void);
-void fn_1_1084(void);
-void fn_1_3AE0(s16 modelId, s16 firstAnimation, s16 firstBank, s16 secondAnimation, s16 secondBank);
-s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages);
-void fn_1_18B8(s16 layerNo);
-void fn_1_18D8(void);
-void fn_1_19B8(s32 value);
-void fn_1_19E0(void);
 void fn_1_E6F8(void);
 void fn_1_F1D8(void);
 void fn_1_F394(void);
 void fn_1_F0B0(void);
 void fn_1_F410(s16 modelId, s16 firstAnimation, s16 firstBank, s16 secondAnimation, s16 secondBank);
 BOOL fn_1_F544(s16 modelId, s16 firstAnimation, s16 firstBank, s16 secondAnimation, s16 secondBank);
-void fn_1_3BD8(OMOBJ *obj);
-s16 fn_1_1DF0(s16 currentOption);
-
-void fn_1_B1A0(s16 mode, s16 argument);
-void fn_1_4738(void);
-void fn_1_6898(void);
-void fn_1_5620(void);
-void fn_1_6504(s16 prizeNo);
-void fn_1_6590(s16 firstPrize);
-void fn_1_7728(s16 firstEntry);
-void fn_1_7A74(void);
-void fn_1_85E4(s16 item, float progress);
-void fn_1_879C(void);
-void fn_1_8CA4(s16 recordIndex);
-void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage);
 float fn_1_F684(s16 groupId, s16 memberNo);
-void fn_1_B02C(s16 first, s16 count);
-void fn_1_9F74(void);
-void fn_1_C484(void);
-void fn_1_E538(s16 page);
-extern int HuMCMicGet(void);
-int sprintf(char *buffer, const char *format, int value);
 
 /* Runs the overlay constructors, then enters the Option Mode setup routine. */
 int _prolog(void) {
@@ -311,7 +279,7 @@ void fn_1_A0(void)
     s32 recordIndex;
     s32 entryIndex;
 
-    OSReport(lbl_1_data_40C);
+    OSReport("******* Option ObjectSetup *********\n");
     lbl_1_bss_83C = fn_8003A8BC(50, 8192);
     omSysPauseEnable(FALSE);
     Hu3DCameraCreate(3);
@@ -818,10 +786,10 @@ void fn_1_19E0(void)
                     targetPos.z - startPos.z) / 3.141592653589793);
             for (frame = 1; frame <= 40; frame++) {
                 progress = (float)frame / 40.0f;
-                PSVECSubtract((Vec *)&targetPos, (Vec *)&startPos,
-                    (Vec *)&stepPos);
-                PSVECScale((Vec *)&stepPos, (Vec *)&stepPos, progress);
-                PSVECAdd((Vec *)&startPos, (Vec *)&stepPos, (Vec *)&stepPos);
+                PSVECSubtract(&targetPos, &startPos,
+                    &stepPos);
+                PSVECScale(&stepPos, &stepPos, progress);
+                PSVECAdd(&startPos, &stepPos, &stepPos);
                 fn_80026790(lbl_1_bss_66E[2], &stepPos);
                 if (frame <= 10) {
                     progress = (float)frame / 10.0f;
@@ -1185,7 +1153,7 @@ s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages)
                 }
                 scale = sin(3.141592653589793 *
                     (180.0f * progress) / 180.0) *
-                    0.30000001192092896 + 1.0;
+                    0.3f + 1.0;
                 if (direction < 0) {
                     HuSprScaleSet(lbl_1_bss_5D4, 0, scale, scale);
                 } else {

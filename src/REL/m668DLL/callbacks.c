@@ -1,5 +1,5 @@
 /* Burnstile stage callbacks, team results, camera wipes, and rotor hazards. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m668DLL/player.h"
 #include "humath.h"
 #include "game/frand.h"
@@ -13,11 +13,21 @@
 #include "game/charman.h"
 #include "game/audio.h"
 #include "REL/m668DLL/rotor.h"
+#include "game/object.h"
+#include "game/gamemes.h"
+#include "game/mg/seqman.h"
+#include "game/flag.h"
+#include "game/hu3d.h"
+#include "game/mg/actman.h"
+#include "game/pad.h"
+#include "game/wipe.h"
+#include "dolphin/gx.h"
+#include "dolphin/mtx.h"
+#include "string.h"
 
 #define M668_SE_ROTOR_LOOP 2190
 #define M668_SE_ROTOR_HIT 2188
 #define M668_SE_STAGE_START 2189
-#define M668_STREAM_STAGE_MUSIC 74
 
 typedef struct TeamTemplate {
     s32 group[4];
@@ -32,7 +42,7 @@ extern const HuVecF lbl_1_rodata_A0;
 extern s32 lbl_1_bss_18[2];
 
 extern s32 lbl_1_bss_24;
-extern s16 *lbl_1_bss_28[1];
+extern M668RotorWork *lbl_1_bss_28[1];
 extern void fn_1_54CC(OMOBJ *);
 extern void fn_1_4EE8(OMOBJ *);
 extern M668PlayerWork *lbl_1_bss_2C[4];
@@ -41,7 +51,6 @@ extern void *lbl_1_bss_640;
 extern void *lbl_1_bss_644;
 
 extern void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
-extern void fn_1_218(OMOBJ *obj, OMOBJ_FUNC callback);
 extern void fn_1_1FC4(OMOBJ *obj);
 extern void fn_1_6EC8(OMOBJ *obj);
 extern void fn_1_3858(OMOBJ *obj);
@@ -51,46 +60,25 @@ void fn_1_4508(OMOBJ *obj);
 extern void fn_1_494C(OMOBJ *obj);
 extern void fn_1_72CC(OMOBJ *obj);
 
-#include "game/main.h"
-#include "game/object.h"
-#include "game/audio.h"
-#include "game/gamemes.h"
-#include "game/mg/seqman.h"
-#include "game/gamework.h"
-#include "game/flag.h"
-#include "game/frand.h"
-
 typedef struct M668TeamTemplate_s {
     s32 group[4];
 } M668TeamTemplate;
 
 extern M668StageWork *lbl_1_bss_20;
-extern void fn_1_218(OMOBJ *obj, OMOBJ_FUNC callback);
 extern void fn_1_2064(OMOBJ *obj);
 extern void fn_1_216C(OMOBJ *obj);
 extern void fn_1_22D4(OMOBJ *obj);
 extern void fn_1_2340(OMOBJ *obj);
-extern u32 fn_80071A9C(void);
 extern s32 lbl_1_bss_18[2];
 extern s32 lbl_1_bss_24;
 extern M668PlayerWork *lbl_1_bss_2C[4];
 extern const M668TeamTemplate lbl_1_rodata_BC;
 extern s32 lbl_1_bss_8;
 
-#include "game/hu3d.h"
-#include "dolphin/gx.h"
-#include "dolphin/mtx.h"
-
 extern const GXColor lbl_1_rodata_CC;
 extern const GXColor lbl_1_rodata_E0;
 extern void *lbl_1_bss_640;
 extern void *lbl_1_bss_644;
-
-#include "game/mg/actman.h"
-#include "game/data.h"
-#include "game/memory.h"
-#include "game/hu3d.h"
-#include "humath.h"
 
 typedef struct M668EffectModel_s {
     HU3D_MODELID model;
@@ -112,7 +100,6 @@ typedef struct M668SceneWork_s {
 extern M668StageWork *lbl_1_bss_20;
 extern HuVecF lbl_1_bss_340[64];
 extern HuVecF lbl_1_bss_40[64];
-extern void fn_1_218(OMOBJ *, OMOBJ_FUNC);
 extern void fn_1_23B4(s16);
 extern void fn_1_27D0(s16);
 extern void fn_1_2FA0(s16);
@@ -121,49 +108,26 @@ extern void fn_1_3CE4(s16);
 extern f32 fn_1_16B4(f32, f32);
 extern void fn_1_2A4(HuVecF *, f32, f32, f32);
 extern f32 fn_1_4DC(HuVecF *, const HuVecF *);
-
-#include "REL/m668DLL/rotor.h"
-
-#include "game/mg/actman.h"
-#include "game/data.h"
-#include "game/memory.h"
-#include "game/hu3d.h"
-#include "humath.h"
+extern f32 fn_1_404(const HuVecF *, const HuVecF *);
+extern f32 fn_1_220(f32);
+extern void fn_1_434(HuVecF *, const HuVecF *, const HuVecF *);
+extern void fn_1_46C(HuVecF *, const HuVecF *, const HuVecF *);
+extern void fn_1_4A4(HuVecF *, const HuVecF *, const HuVecF *);
+extern void fn_1_6BC(HuVecF *, const HuVecF *, f32);
 
 extern M668StageWork *lbl_1_bss_20;
 extern HuVecF lbl_1_bss_340[64];
 extern HuVecF lbl_1_bss_40[64];
-extern void fn_1_218(OMOBJ *, OMOBJ_FUNC);
 extern void fn_1_23B4(s16);
 extern void fn_1_27D0(s16);
 extern void fn_1_2FA0(s16);
 extern void fn_1_3CB8(OMOBJ *);
 extern void fn_1_3CE4(s16);
-extern f32 fn_1_16B4(f32, f32);
-extern void fn_1_2A4(HuVecF *, f32, f32, f32);
-extern f32 fn_1_4DC(HuVecF *, const HuVecF *);
-
-#include "REL/m668DLL/player.h"
-
-extern double fmod(double, double);
-extern double cos(double);
-extern double sin(double);
-extern double atan2(double, double);
 
 static inline f32 M668Atan2f(f32 y, f32 x)
 {
     return (f32)atan2((f64)y, (f64)x);
 }
-
-extern void fn_1_2A4(HuVecF *, f32, f32, f32);
-extern f32 fn_1_404(const HuVecF *, const HuVecF *);
-extern f32 fn_1_220(f32);
-
-/* Angle helpers used by player movement and launch direction below. */
-
-#include "REL/m668DLL/player.h"
-#include "game/gamework.h"
-#include "game/main.h"
 
 extern const MGACTOR_PARAM lbl_1_rodata_198;
 extern HuVecF lbl_1_data_64[4];
@@ -171,43 +135,22 @@ extern unsigned int lbl_1_data_3C[10];
 extern M668PlayerWork *lbl_1_bss_2C[4];
 extern void fn_1_4BFC(OMOBJ *obj);
 
-#include "REL/m668DLL/rotor.h"
-#include "game/mg/seqman.h"
 extern void fn_1_4C64(OMOBJ *obj);
 
-#include "REL/m668DLL/player.h"
-#include "game/pad.h"
 extern s32 lbl_1_bss_C;
-extern void fn_1_46C(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-extern void fn_1_2A4(HuVecF *dst, f32 x, f32 y, f32 z);
-extern void fn_1_4A4(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-extern f32 fn_1_4DC(HuVecF *dst, const HuVecF *src);
 extern void fn_1_6C24(OMOBJ *obj);
 extern void fn_1_6778(OMOBJ *obj);
 extern void fn_1_6924(OMOBJ *obj);
 
-#include "REL/m668DLL/player.h"
-#include "game/pad.h"
-#include "humath.h"
-
 extern s32 lbl_1_bss_C;
 extern Point3d lbl_1_data_94[2];
-extern void fn_1_218(OMOBJ *, OMOBJ_FUNC);
 extern void fn_1_6C24(OMOBJ *);
-extern void fn_1_46C(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_4A4(HuVecF *, const HuVecF *, const HuVecF *);
-extern f32 fn_1_4DC(HuVecF *, const HuVecF *);
-extern f32 fn_1_404(const HuVecF *, const HuVecF *);
-extern void fn_1_6BC(HuVecF *, const HuVecF *, f32);
 
 /* Returns the magnitude used to keep the wave overlay vertical offset nonpositive. */
 static inline f32 M668Abs(f32 x)
 {
     return (f32)fabs((f64)x);
 }
-
-#include "REL/m668DLL/rotor.h"
-#include "game/mg/actman.h"
 
 /* Player state used while characters wait for the result sequence. */
 typedef struct M668PlayerFinishWork_s {
@@ -228,15 +171,6 @@ extern s32 lbl_1_bss_24;
 extern HuVecF lbl_1_data_64[4];
 void fn_1_6DF8(OMOBJ *obj);
 
-#include "REL/m668DLL/rotor.h"
-
-#include "game/mg/seqman.h"
-#include "game/object.h"
-#include "game/hu3d.h"
-#include "game/wipe.h"
-#include "game/data.h"
-#include "game/memory.h"
-
 typedef struct M668CameraWork {
     s16 model;
     s16 motion;
@@ -249,31 +183,12 @@ extern s32 lbl_1_bss_24;
 typedef struct M668CameraPair { HuVecF points[2]; } M668CameraPair;
 extern const M668CameraPair lbl_1_rodata_2A0, lbl_1_rodata_2B8;
 extern const HuVecF lbl_1_rodata_2D0;
-void fn_1_218(OMOBJ *, OMOBJ_FUNC);
 void fn_1_7014(OMOBJ *);
 void fn_1_70A0(OMOBJ *);
 void fn_1_7240(OMOBJ *);
-u32 fn_80071A8C(void);
-
-#include "REL/m668DLL/rotor.h"
-#include "game/audio.h"
-#include "game/mg/seqman.h"
 extern void fn_1_758C(OMOBJ *);
 
-#include "REL/m668DLL/rotor.h"
-#include "game/audio.h"
-#include "game/mg/seqman.h"
 extern void fn_1_7BE8(OMOBJ *);
-
-#include "humath.h"
-#include "game/sprite.h"
-#include "game/main.h"
-#include "game/object.h"
-#include "string.h"
-#include "dolphin/math.h"
-
-extern double sin(double);
-extern double cos(double);
 
 extern s32 lbl_1_data_AC;
 extern s32 lbl_1_bss_10;
@@ -289,28 +204,13 @@ extern void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
                          GXTexWrapMode wrapS, GXTexWrapMode wrapT,
                          GXTexFilter filter);
 
-#include "REL/m668DLL/player.h"
-#include "game/pad.h"
-#include "game/audio.h"
 extern s32 lbl_1_bss_C, lbl_1_bss_24, lbl_1_bss_18[2];
 extern M668PlayerWork *lbl_1_bss_2C[4];
-extern s16 *lbl_1_bss_28[];
+extern M668RotorWork *lbl_1_bss_28[];
 extern const HuVecF lbl_1_rodata_1E0, lbl_1_rodata_1EC;
-extern f64 atan2(f64, f64);
-extern void fn_1_2A4(HuVecF *, f32, f32, f32);
-extern void fn_1_4A4(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_434(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_46C(HuVecF *, const HuVecF *, const HuVecF *);
-extern f32 fn_1_4DC(HuVecF *, const HuVecF *);
-extern void fn_1_6BC(HuVecF *, const HuVecF *, f32);
 extern void fn_1_6C24(OMOBJ *);
 extern void fn_1_6778(OMOBJ *);
 extern void fn_1_664C(OMOBJ *);
-
-#include "REL/m668DLL/rotor.h"
-#include "game/data.h"
-#include "game/hu3d.h"
-#include "game/main.h"
 
 extern void fn_1_7508(OMOBJ *);
 
@@ -319,39 +219,15 @@ typedef struct { s32 value[4]; } M668IntTable4;
 extern const M668FloatTable4 lbl_1_rodata_208,lbl_1_rodata_234,lbl_1_rodata_244;
 extern const M668IntTable4 lbl_1_rodata_218;
 extern const HuVecF lbl_1_rodata_228,lbl_1_rodata_254,lbl_1_rodata_260;
-#include "REL/m668DLL/rotor.h"
-#include "REL/m668DLL/player.h"
-#include "game/audio.h"
-#include "game/hu3d.h"
-#include "humath.h"
-#include "dolphin/math.h"
-extern double sin(double);
-extern double cos(double);
-
 typedef struct M668VecBound_s {
     HuVecF xyz;
     f32 margin;
 } M668VecBound;
+extern s32 fn_1_1844(const M668VecBound *, const M668VecBound *);
 
 extern const HuVecF lbl_1_rodata_2E0, lbl_1_rodata_2EC, lbl_1_rodata_2F8;
 extern M668PlayerWork *lbl_1_bss_2C[4];
-extern void fn_1_2A4(HuVecF *, f32, f32, f32);
-extern void fn_1_434(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_46C(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_4A4(HuVecF *, const HuVecF *, const HuVecF *);
-extern f32 fn_1_4DC(HuVecF *, const HuVecF *);
-extern void fn_1_6BC(HuVecF *, const HuVecF *, f32);
-extern f32 fn_1_404(const HuVecF *, const HuVecF *);
-extern s32 fn_1_1844(const M668VecBound *, const M668VecBound *);
 extern void fn_1_7B30(OMOBJ *);
-
-#include "REL/m668DLL/player.h"
-#include "game/audio.h"
-#include "game/hu3d.h"
-#include "humath.h"
-
-extern double sin(double);
-extern double cos(double);
 
 extern s32 lbl_1_bss_C;
 extern s32 lbl_1_bss_24;
@@ -360,17 +236,8 @@ extern const HuVecF lbl_1_rodata_30C;
 extern const HuVecF lbl_1_rodata_318;
 extern const HuVecF lbl_1_rodata_324;
 
-extern void fn_1_2A4(HuVecF *, f32, f32, f32);
-extern void fn_1_434(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_46C(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_4A4(HuVecF *, const HuVecF *, const HuVecF *);
-extern f32 fn_1_4DC(HuVecF *, const HuVecF *);
-extern void fn_1_6BC(HuVecF *, const HuVecF *, f32);
-extern f32 fn_1_404(const HuVecF *, const HuVecF *);
-extern s32 fn_1_1844(const M668VecBound *, const M668VecBound *);
-
 static inline M668PlayerWork *fn_1_18B4(s32 index) { return lbl_1_bss_2C[index]; }
-static inline s16 *fn_1_18CC(s32 index) { return lbl_1_bss_28[index]; }
+static inline M668RotorWork *fn_1_18CC(s32 index) { return lbl_1_bss_28[index]; }
 
 const TeamTemplate lbl_1_rodata_68 = {{-1, -1, -1, -1}};
 const TeamTemplate lbl_1_rodata_78 = {{0, 0, 0, 0}};
@@ -439,10 +306,10 @@ void fn_1_1A48(OMOBJ *obj)
     shadowPosition = lbl_1_rodata_88;
     shadowDirection = lbl_1_rodata_94;
     shadowTarget = lbl_1_rodata_A0;
-    Hu3DShadowCreate((20.0f), (10.0f), (10000.0f));
+    Hu3DShadowCreate(20.0f, 10.0f, 10000.0f);
     fn_8002AAB4(64U, 0U, 0U);
     Hu3DShadowPosSet(&shadowPosition, &shadowDirection, &shadowTarget);
-    Hu3DShadowTPLvlSet((0.5f));
+    Hu3DShadowTPLvlSet(0.5f);
     fn_1_178(10, 8U, fn_1_6EC8);
     fn_1_178(5, 38U, fn_1_3858);
     fn_1_178(10, 2U, fn_1_4508);
@@ -462,7 +329,7 @@ void fn_1_1A48(OMOBJ *obj)
     objIndex = 0;
     while (objIndex < 1) {
         lbl_1_bss_28[objIndex] = fn_1_178(20, 88U, fn_1_72CC);
-        *lbl_1_bss_28[objIndex] = objIndex;
+        lbl_1_bss_28[objIndex]->index = objIndex;
         objIndex++;
     }
     fn_8005DDEC(7);
@@ -481,7 +348,7 @@ void fn_1_1FC4(OMOBJ *obj)
     if (lbl_1_bss_20->state == 0) {
         if ((work->streamHandle == -1) &&
             ((s32)(GameMesStatGet(fn_80071DF4()) & 0x10) != 0)) {
-            work->streamHandle = HuAudSStreamPlay(M668_STREAM_STAGE_MUSIC);
+            work->streamHandle = HuAudSStreamPlay(MSM_STREAM_SD_TOUR_WIN);
         }
         if (fn_80071A8C() == 5) {
             fn_1_218(obj, fn_1_2064);
@@ -593,9 +460,9 @@ void fn_1_23B4(s16 layerNo)
     Mtx44 projection;
     const GXColor color = lbl_1_rodata_CC;
 
-    GXSetViewport((0.0f), (0.0f), (640.0f), (480.0f), (0.0f), (1.0f));
+    GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     GXSetScissor(0U, 0U, 640U, 480U);
-    C_MTXOrtho(projection, (0.0f), (1.0f), (0.0f), (1.0f), (0.0f), (1.0f));
+    C_MTXOrtho(projection, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f);
     GXSetProjection(projection, GX_ORTHOGRAPHIC);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -622,13 +489,13 @@ void fn_1_23B4(s16 layerNo)
     GXSetNumTevStages(1U);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ZERO, GX_LO_NOOP);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4U);
-    GXPosition3f32((0.0f), (0.0f), (0.0f));
+    GXPosition3f32(0.0f, 0.0f, 0.0f);
     GXColor4u8(0U, 0U, 0U, 255U);
-    GXPosition3f32((1.0f), (0.0f), (0.0f));
+    GXPosition3f32(1.0f, 0.0f, 0.0f);
     GXColor4u8(0U, 0U, 0U, 255U);
-    GXPosition3f32((1.0f), (1.0f), (0.0f));
+    GXPosition3f32(1.0f, 1.0f, 0.0f);
     GXColor4u8(0U, 0U, 0U, 255U);
-    GXPosition3f32((0.0f), (1.0f), (0.0f));
+    GXPosition3f32(0.0f, 1.0f, 0.0f);
     GXColor4u8(0U, 0U, 0U, 255U);
 }
 
@@ -649,9 +516,9 @@ void fn_1_27D0(s16 layerNo)
     GXSetTexCopySrc(0U, 0U, 640U, 480U);
     GXSetTexCopyDst(640U, 480U, GX_TF_RGB565, 0U);
     GXCopyTex(lbl_1_bss_644, 1U);
-    GXSetViewport((0.0f), (0.0f), (640.0f), (480.0f), (0.0f), (1.0f));
+    GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     GXSetScissor(0U, 0U, 640U, 480U);
-    C_MTXOrtho(projection, (0.0f), (1.0f), (0.0f), (1.0f), (0.0f), (1.0f));
+    C_MTXOrtho(projection, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f);
     GXSetProjection(projection, GX_ORTHOGRAPHIC);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -672,9 +539,9 @@ void fn_1_27D0(s16 layerNo)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0U);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0U);
     GXSetNumTexGens(1U);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, 60U, 0U, 125U);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0U, GX_PTIDENTITY);
     GXInitTexObj(&texture, lbl_1_bss_644, 640U, 480U, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 0U);
-    GXInitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR, (0.0f), (0.0f), (0.0f), 0U, 0U, GX_ANISO_1);
+    GXInitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, 0U, 0U, GX_ANISO_1);
     GXLoadTexObj(&texture, GX_TEXMAP0);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0);
     GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
@@ -684,14 +551,14 @@ void fn_1_27D0(s16 layerNo)
     GXSetNumTevStages(1U);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4U);
-    GXPosition3f32((0.0f), (0.0f), (0.0f));
-    GXTexCoord2f32((0.0f), (0.0f));
-    GXPosition3f32((0.0625f), (0.0f), (0.0f));
-    GXTexCoord2f32((1.0f), (0.0f));
-    GXPosition3f32((0.0625f), (0.06666667014360428f), (0.0f));
-    GXTexCoord2f32((1.0f), (1.0f));
-    GXPosition3f32((0.0f), (0.06666667014360428f), (0.0f));
-    GXTexCoord2f32((0.0f), (1.0f));
+    GXPosition3f32(0.0f, 0.0f, 0.0f);
+    GXTexCoord2f32(0.0f, 0.0f);
+    GXPosition3f32(0.0625f, 0.0f, 0.0f);
+    GXTexCoord2f32(1.0f, 0.0f);
+    GXPosition3f32(0.0625f, 0.06666667f, 0.0f);
+    GXTexCoord2f32(1.0f, 1.0f);
+    GXPosition3f32(0.0f, 0.06666667f, 0.0f);
+    GXTexCoord2f32(0.0f, 1.0f);
     GXSetNumChans(1U);
     GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
     GXClearVtxDesc();
@@ -700,20 +567,20 @@ void fn_1_27D0(s16 layerNo)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0U);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0U);
     GXSetNumTexGens(0U);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, 60U, 0U, 125U);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0U, GX_PTIDENTITY);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0);
     GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
     GXSetNumTevStages(1U);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_ZERO, GX_BL_INVSRCALPHA, GX_LO_NOOP);
     white = 255U;
     GXBegin(GX_QUADS, GX_VTXFMT0, 4U);
-    GXPosition3f32((0.0f), (0.0f), (0.0f));
+    GXPosition3f32(0.0f, 0.0f, 0.0f);
     GXColor4u8(white, white, white, white);
-    GXPosition3f32((0.0625f), (0.0f), (0.0f));
+    GXPosition3f32(0.0625f, 0.0f, 0.0f);
     GXColor4u8(white, white, white, white);
-    GXPosition3f32((0.0625f), (0.06666667014360428f), (0.0f));
+    GXPosition3f32(0.0625f, 0.06666667f, 0.0f);
     GXColor4u8(white, white, white, white);
-    GXPosition3f32((0.0f), (0.06666667014360428f), (0.0f));
+    GXPosition3f32(0.0f, 0.06666667f, 0.0f);
     GXColor4u8(white, white, white, white);
     fn_8002BCDC(0, 0, 40, 32, GX_TF_RGB565, 0, lbl_1_bss_640);
 }
@@ -730,9 +597,9 @@ void fn_1_2FA0(s16 layerNo)
     s32 segmentIndex;
 
     if (lbl_1_data_AC != 0) {
-        GXSetViewport((0.0f), (0.0f), (640.0f), (480.0f), (0.0f), (1.0f));
+        GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
         GXSetScissor(0U, 0U, 640U, 480U);
-        C_MTXOrtho(projection, (0.0f), (1.0f), (0.0f), (1.0f), (0.0f), (1.0f));
+        C_MTXOrtho(projection, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f);
         GXSetProjection(projection, GX_ORTHOGRAPHIC);
         GXClearVtxDesc();
         GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -753,9 +620,9 @@ void fn_1_2FA0(s16 layerNo)
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0U);
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0U);
         GXSetNumTexGens(1U);
-        GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, 60U, 0U, 125U);
+        GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0U, GX_PTIDENTITY);
         GXInitTexObj(&texture, lbl_1_bss_640, 40U, 32U, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 0U);
-        GXInitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR, (0.0f), (0.0f), (0.0f), 0U, 0U, GX_ANISO_1);
+        GXInitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, 0U, 0U, GX_ANISO_1);
         GXLoadTexObj(&texture, GX_TEXMAP0);
         GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0);
         GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
@@ -771,36 +638,36 @@ void fn_1_2FA0(s16 layerNo)
         segmentIndex = 0;
         while (segmentIndex < 97) {
             waveOffsetX[segmentIndex] =
-                (f32) (((1.5) * sin((4.0) * ((0.02617993877991494) *
+                (f32) ((1.5 * sin(4.0 * (0.02617993877991494 *
                                              (f64) (f32) (lbl_1_bss_10 + segmentIndex)))) /
-                       (640.0));
+                       640.0);
             waveOffsetY[segmentIndex] =
-                -M668Abs((f32) (((4.0) * cos((0.039269908169872414) *
+                -M668Abs((f32) ((4.0 * cos(0.039269908169872414 *
                                                  (f64) (f32) (lbl_1_bss_10 + (segmentIndex * 4)))) /
-                                    (480.0)));
+                                    480.0));
             segmentIndex += 1;
         }
         GXBegin(GX_QUADS, GX_VTXFMT0, 384U);
         segmentIndex = 0;
         while (segmentIndex < 96) {
             GXPosition3f32(waveOffsetX[segmentIndex + 1],
-                           ((0.010416666977107525f) * (f32) (segmentIndex + 1)) +
+                           (0.010416667f * (f32) (segmentIndex + 1)) +
                                waveOffsetY[segmentIndex + 1],
-                           (0.0f));
-            GXTexCoord2f32((0.0f), (f32)(segmentIndex + 1) / (96.0f));
-            GXPosition3f32((1.0f) + waveOffsetX[segmentIndex + 1],
-                           ((0.010416666977107525f) * (f32) (segmentIndex + 1)) +
+                           0.0f);
+            GXTexCoord2f32(0.0f, (f32)(segmentIndex + 1) / 96.0f);
+            GXPosition3f32(1.0f + waveOffsetX[segmentIndex + 1],
+                           (0.010416667f * (f32) (segmentIndex + 1)) +
                                waveOffsetY[segmentIndex + 1],
-                           (0.0f));
-            GXTexCoord2f32((1.0f), (f32)(segmentIndex + 1) / (96.0f));
+                           0.0f);
+            GXTexCoord2f32(1.0f, (f32)(segmentIndex + 1) / 96.0f);
             GXPosition3f32(
-                (1.0f) + waveOffsetX[segmentIndex],
-                ((0.010416666977107525f) * (f32) segmentIndex) + waveOffsetY[segmentIndex], (0.0f));
-            GXTexCoord2f32((1.0f), (f32)segmentIndex / (96.0f));
+                1.0f + waveOffsetX[segmentIndex],
+                (0.010416667f * (f32) segmentIndex) + waveOffsetY[segmentIndex], 0.0f);
+            GXTexCoord2f32(1.0f, (f32)segmentIndex / 96.0f);
             GXPosition3f32(
                 waveOffsetX[segmentIndex],
-                ((0.010416666977107525f) * (f32) segmentIndex) + waveOffsetY[segmentIndex], (0.0f));
-            GXTexCoord2f32((0.0f), (f32)segmentIndex / (96.0f));
+                (0.010416667f * (f32) segmentIndex) + waveOffsetY[segmentIndex], 0.0f);
+            GXTexCoord2f32(0.0f, (f32)segmentIndex / 96.0f);
             segmentIndex += 1;
         }
     }
@@ -882,14 +749,14 @@ void fn_1_3858(OMOBJ *obj)
     fn_80025918(5, fn_1_2FA0);
     fn_80025918(6, fn_1_2FA0);
 
-    fn_1_2A4(&lightDirection, (0.0f), (-1000.0f), (-1000.0f));
+    fn_1_2A4(&lightDirection, 0.0f, -1000.0f, -1000.0f);
     fn_1_4DC(&lightDirection, &lightDirection);
-    light = Hu3DGLightCreate((0.0f), (1000.0f), (1000.0f),
+    light = Hu3DGLightCreate(0.0f, 1000.0f, 1000.0f,
                              lightDirection.x, lightDirection.y, lightDirection.z,
                              255U, 255U, 255U);
     Hu3DGLightStaticSet(light, 1);
     Hu3DGLightInfinitytSet(light);
-    Hu3DAmbColorSet((0.75f), (0.75f), (0.75f));
+    Hu3DAmbColorSet(0.75f, 0.75f, 0.75f);
     fn_80026FFC(work->sceneLink[1]);
     fn_80026FFC(work->actorLink[0]);
     fn_1_218(obj, fn_1_3CB8);
@@ -923,12 +790,12 @@ void fn_1_3CE4(s16 layerNo)
     GXSetTexCopySrc(0U, 0U, 640U, 480U);
     GXSetTexCopyDst(640U, 480U, GX_TF_RGB565, 0U);
     GXCopyTex(lbl_1_bss_644, 0U);
-    GXSetViewport((0.0f), (0.0f), (640.0f),
-                  (480.0f), (0.0f), (1.0f));
+    GXSetViewport(0.0f, 0.0f, 640.0f,
+                  480.0f, 0.0f, 1.0f);
     GXSetScissor(0U, 0U, 640U, 480U);
-    C_MTXOrtho(projectionMatrix, (0.0f), (1.0f),
-               (0.0f), (1.0f),
-               (0.0f), (1.0f));
+    C_MTXOrtho(projectionMatrix, 0.0f, 1.0f,
+               0.0f, 1.0f,
+               0.0f, 1.0f);
     GXSetProjection(projectionMatrix, GX_ORTHOGRAPHIC);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -951,13 +818,13 @@ void fn_1_3CE4(s16 layerNo)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0U);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX1, GX_TEX_ST, GX_F32, 0U);
     GXSetNumTexGens(2U);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, 60U, 0U, 125U);
-    GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX1, 60U, 0U, 125U);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0U, GX_PTIDENTITY);
+    GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX1, GX_IDENTITY, 0U, GX_PTIDENTITY);
     color = lbl_1_rodata_13C;
     HuSprTexLoad(lbl_1_bss_3C, 0, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
     GXInitTexObj(&textureObject, lbl_1_bss_644, 640U, 480U, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 0U);
     GXInitTexObjLOD(&textureObject, GX_LINEAR, GX_LINEAR,
-                    (0.0f), (0.0f), (0.0f),
+                    0.0f, 0.0f, 0.0f,
                     0U, 0U, GX_ANISO_1);
     GXLoadTexObj(&textureObject, GX_TEXMAP1);
     GXSetNumTevStages(2U);
@@ -978,33 +845,33 @@ void fn_1_3CE4(s16 layerNo)
     GXBegin(GX_QUADS, GX_VTXFMT0, 256U);
     i = 0;
     while (i < 64) {
-        particleSize = (0.125f);
+        particleSize = 0.125f;
         particleX = (f32)((f64)lbl_1_bss_340[i].x +
-                         ((0.10000000149011612) *
-                          sin((0.017453292519943295) * (f64)(lbl_1_bss_14 + (i * 5)))));
+                         (0.1f *
+                          sin(0.017453292519943295 * (f64)(lbl_1_bss_14 + (i * 5)))));
         particleY = lbl_1_bss_340[i].y; /* Draw this position before advancing it. */
 
         if (fn_8003B748() == 0) {
-            lbl_1_bss_340[i].y -= (0.004000000189989805f);
+            lbl_1_bss_340[i].y -= 0.004f;
         }
         if (lbl_1_bss_340[i].y < -particleSize) {
-            lbl_1_bss_340[i].y = (1.0f) + particleSize;
+            lbl_1_bss_340[i].y = 1.0f + particleSize;
         }
 
         texOffset.x = lbl_1_bss_40[i].x;
         texOffset.y = lbl_1_bss_40[i].y;
-        GXPosition3f32(particleX, particleY, (0.0f));
-        GXTexCoord2f32((0.0f), (0.0f));
+        GXPosition3f32(particleX, particleY, 0.0f);
+        GXTexCoord2f32(0.0f, 0.0f);
         GXTexCoord2f32(particleX + texOffset.x, particleY + texOffset.y);
-        GXPosition3f32(particleX + particleSize, particleY, (0.0f));
-        GXTexCoord2f32((1.0f), (0.0f));
+        GXPosition3f32(particleX + particleSize, particleY, 0.0f);
+        GXTexCoord2f32(1.0f, 0.0f);
         GXTexCoord2f32(texOffset.x + (particleX + particleSize), particleY + texOffset.y);
-        GXPosition3f32(particleX + particleSize, particleY + particleSize, (0.0f));
-        GXTexCoord2f32((1.0f), (1.0f));
+        GXPosition3f32(particleX + particleSize, particleY + particleSize, 0.0f);
+        GXTexCoord2f32(1.0f, 1.0f);
         GXTexCoord2f32(texOffset.x + (particleX + particleSize),
                        texOffset.y + (particleY + particleSize));
-        GXPosition3f32(particleX, particleY + particleSize, (0.0f));
-        GXTexCoord2f32((0.0f), (1.0f));
+        GXPosition3f32(particleX, particleY + particleSize, 0.0f);
+        GXTexCoord2f32(0.0f, 1.0f);
         GXTexCoord2f32(particleX + texOffset.x, texOffset.y + (particleY + particleSize));
         i += 1;
     }
@@ -1020,12 +887,12 @@ void fn_1_4508(OMOBJ *obj)
     objectData = obj->data;
     if (lbl_1_bss_20->state == 0) {
         for (index = 0; index < 64; index++) {
-            lbl_1_bss_340[index].x = fn_1_16B4((-0.125f), (1.125f));
-            lbl_1_bss_340[index].y = fn_1_16B4((-0.125f), (1.125f));
-            lbl_1_bss_340[index].z = (0.0f);
-            lbl_1_bss_40[index].x = fn_1_16B4((-0.004999999888241291f), (0.004999999888241291f));
-            lbl_1_bss_40[index].y = fn_1_16B4((-0.004999999888241291f), (0.004999999888241291f));
-            lbl_1_bss_40[index].z = (0.0f);
+            lbl_1_bss_340[index].x = fn_1_16B4(-0.125f, 1.125f);
+            lbl_1_bss_340[index].y = fn_1_16B4(-0.125f, 1.125f);
+            lbl_1_bss_340[index].z = 0.0f;
+            lbl_1_bss_40[index].x = fn_1_16B4(-0.005f, 0.005f);
+            lbl_1_bss_40[index].y = fn_1_16B4(-0.005f, 0.005f);
+            lbl_1_bss_40[index].z = 0.0f;
         }
         fn_8002583C(1, 15, fn_1_3CE4);
         fn_1_218(obj, NULL);
@@ -1034,7 +901,7 @@ void fn_1_4508(OMOBJ *obj)
 
 static inline f32 wrap_degrees(f32 angle)
 {
-    return (f32)fmod((f64)angle, (360.0));
+    return (f32)fmod((f64)angle, 360.0);
 }
 
 /* Turn a player toward a heading by a blend fraction and set its forward push speed. */
@@ -1048,25 +915,25 @@ void fn_1_468C(M668PlayerWork *work, f32 desired, f32 blend, f32 speed)
     f32 cross;
 
     work->player->actor->rotY = wrap_degrees(work->player->actor->rotY);
-    current = (f32)((3.141592653589793) * (f64)(work->player->actor->rotY / (180.0f)));
-    fn_1_2A4(&desiredDir, (f32)sin((f64)desired), (0.0f), (f32)cos((f64)desired));
-    fn_1_2A4(&currentDir, (f32)sin((f64)current), (0.0f), (f32)cos((f64)current));
+    current = (f32)(3.141592653589793 * (f64)(work->player->actor->rotY / 180.0f));
+    fn_1_2A4(&desiredDir, (f32)sin((f64)desired), 0.0f, (f32)cos((f64)desired));
+    fn_1_2A4(&currentDir, (f32)sin((f64)current), 0.0f, (f32)cos((f64)current));
     difference = fn_1_220(fn_1_404(&desiredDir, &currentDir));
     cross = desiredDir.x * currentDir.z - desiredDir.z * currentDir.x;
     angle = current;
-    if (cross >= (0.0f)) {
+    if (cross >= 0.0f) {
         angle += difference * blend;
-    } else if (cross < (0.0f)) {
+    } else if (cross < 0.0f) {
         angle -= difference * blend;
     }
-    while (angle > (6.283185307179586)) {
-        angle = (f32)((f64)angle - (6.283185307179586));
+    while (angle > 6.283185307179586) {
+        angle = (f32)((f64)angle - 6.283185307179586);
     }
-    while (angle < (-6.283185307179586)) {
-        angle += (6.283185307179586);
+    while (angle < -6.283185307179586) {
+        angle += 6.283185307179586;
     }
-    work->player->actor->rotY = (f32)((f64)((180.0f) * angle) / (3.141592653589793));
-    fn_1_2A4(&work->player->actor->push, (0.0f), (0.0f), speed);
+    work->player->actor->rotY = (f32)((f64)(180.0f * angle) / 3.141592653589793);
+    fn_1_2A4(&work->player->actor->push, 0.0f, 0.0f, speed);
 }
 
 const MGACTOR_PARAM lbl_1_rodata_198 = {0.0f,0.0f,0,0,NULL,0,0,NULL};
@@ -1093,8 +960,8 @@ void fn_1_494C(OMOBJ *obj)
     }
     work->origin = lbl_1_data_64[work->formationNo];
     param = lbl_1_rodata_198;
-    param.height = (150.0f);
-    param.radius = (40.0f);
+    param.height = 150.0f;
+    param.radius = 40.0f;
     param.param = work->playerNo;
     param.type = 0;
     param.attr = 0;
@@ -1113,9 +980,9 @@ void fn_1_494C(OMOBJ *obj)
     work->position[0] = work->position[1];
     fn_80086AA8(work->player->actor, &work->position[0]);
     if (rand8() % 2) {
-        sign = (-1.0f);
+        sign = -1.0f;
     } else {
-        sign = (1.0f);
+        sign = 1.0f;
     }
     work->sign = (s32)sign;
     fn_1_218(obj, fn_1_4BFC);
@@ -1145,12 +1012,12 @@ void fn_1_4C64(OMOBJ *obj)
                 velocity =
                     work->player->actor->gravity +
                     (work->player->actor->gravity *
-                     (((-1.0f) +
-                       sqrtf((1.0f) +
-                                      ((8.0f) * ((30000.0f) / work->player->actor->gravity)))) /
+                     ((-1.0f +
+                       sqrtf(1.0f +
+                                      (8.0f * (30000.0f / work->player->actor->gravity)))) /
                       2.0f));
             } else {
-                velocity = (0.0f);
+                velocity = 0.0f;
             }
             fn_80086CC4(work->player->actor, velocity);
         }
@@ -1188,10 +1055,10 @@ void fn_1_4EE8(OMOBJ *obj)
 
     playerWork = obj->data;
     if (lbl_1_bss_20->state == 0) {
-        if ((s32) lbl_1_bss_24 != -1) {
+        if (lbl_1_bss_24 != -1) {
             fn_8007E818(playerWork->player);
         }
-        if ((s32) lbl_1_bss_C != 0) {
+        if (lbl_1_bss_C != 0) {
             fn_1_218(obj, fn_1_6C24);
             return;
         }
@@ -1201,7 +1068,7 @@ void fn_1_4EE8(OMOBJ *obj)
             (collisionMesh == 1)) {
             playerWork->state = 3;
             fn_80086E3C(playerWork->player);
-            if ((fn_1_18B4(playerWork->partnerNo)->state != 1) && ((s32) lbl_1_bss_24 == -1)) {
+            if ((fn_1_18B4(playerWork->partnerNo)->state != 1) && (lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
             }
             fn_1_218(obj, fn_1_6778);
@@ -1210,7 +1077,7 @@ void fn_1_4EE8(OMOBJ *obj)
         if (playerWork->state == 2) {
             downwardAxis = lbl_1_rodata_1E0;
             upwardAxis = lbl_1_rodata_1EC;
-            fn_1_2A4(&originPosition, (0.0f), (0.0f), (0.0f));
+            fn_1_2A4(&originPosition, 0.0f, 0.0f, 0.0f);
             fn_80086BC8(playerWork->player->actor, &playerPosition);
             fn_1_4A4(&playerDirection, &playerPosition, &originPosition);
             fn_1_4DC(&playerDirection, &playerDirection);
@@ -1219,35 +1086,35 @@ void fn_1_4EE8(OMOBJ *obj)
             fn_1_4DC(&playerWork->position[2], &playerWork->position[2]);
             fn_1_46C(&playerWork->position[2], &playerWork->position[2], &upwardAxis);
             fn_1_4DC(&playerWork->position[2], &playerWork->position[2]);
-            rotorWork = (M668RotorWork *)fn_1_18CC(playerWork->hitRotorIndex);
-            if (rotorWork->speedScale < (1.0f)) {
-                rotorSpeedScale = (1.0f);
+            rotorWork = fn_1_18CC(playerWork->hitRotorIndex);
+            if (rotorWork->speedScale < 1.0f) {
+                rotorSpeedScale = 1.0f;
             } else {
                 rotorSpeedScale = rotorWork->speedScale;
             }
-            fn_1_6BC(&playerWork->position[2], &playerWork->position[2], (20.0f) * rotorSpeedScale);
-            playerWork->position[2].x *= (f32)(rotorWork->speed > (0.0f) ? 1 : -1);
-            playerWork->position[2].z *= (f32)(rotorWork->speed > (0.0f) ? 1 : -1);
+            fn_1_6BC(&playerWork->position[2], &playerWork->position[2], 20.0f * rotorSpeedScale);
+            playerWork->position[2].x *= (f32)(rotorWork->speed > 0.0f ? 1 : -1);
+            playerWork->position[2].z *= (f32)(rotorWork->speed > 0.0f ? 1 : -1);
             /* Rotor hits send players toward negative Z regardless of the rotor spin direction. */
-            if (playerWork->position[2].z > (0.0f)) {
+            if (playerWork->position[2].z > 0.0f) {
                 playerWork->position[2].z = -playerWork->position[2].z;
             }
             fn_80086E3C(playerWork->player);
-            fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], (0.0f),
-                               (4.0f), 0U);
-            fn_80026808((s16) playerWork->player->actor->mdlId, (0.0f),
-                            (f32) ((f64) ((180.0f) * M668Atan2f(playerWork->position[2].x,
+            fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], 0.0f,
+                               4.0f, 0U);
+            fn_80026808((s16) playerWork->player->actor->mdlId, 0.0f,
+                            (f32) ((f64) (180.0f * M668Atan2f(playerWork->position[2].x,
                                                                 playerWork->position[2].z)) /
-                                   (3.141592653589793)),
-                            (0.0f));
-            if ((fn_1_18B4(playerWork->partnerNo)->state != 1) && ((s32) lbl_1_bss_24 == -1)) {
+                                   3.141592653589793),
+                            0.0f);
+            if ((fn_1_18B4(playerWork->partnerNo)->state != 1) && (lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
             }
             fn_8006A030(playerWork->playerNo, 20, 30, 0);
             Hu3D3Dto2D(&playerPosition, 1, &screenPosition);
-            soundPan = (64.0f) * (screenPosition.x / (576.0f));
-            soundPan = soundPan < (0.0f) ? (0.0f) : (soundPan > (64.0f) ? (64.0f) : soundPan);
-            soundPan += (32.0f);
+            soundPan = 64.0f * (screenPosition.x / 576.0f);
+            soundPan = soundPan < 0.0f ? 0.0f : (soundPan > 64.0f ? 64.0f : soundPan);
+            soundPan += 32.0f;
             HuAudFXPlayPan(M668_SE_ROTOR_HIT, (s16) soundPan);
             CharFXPlayPan(playerWork->charNo, 576, (s16) soundPan);
             fn_1_218(obj, fn_1_664C);
@@ -1306,40 +1173,40 @@ void fn_1_54CC(OMOBJ *obj)
     /* This difficulty table is copied here, but its values are unused by this callback. */
     floatTableCopy = lbl_1_rodata_208;
     if (lbl_1_bss_20->state == 0) {
-        if ((s32) lbl_1_bss_C != 0) {
+        if (lbl_1_bss_C != 0) {
             fn_1_218(obj, fn_1_6C24);
             return;
         }
         playerWork->position[1] = playerWork->position[0];
         fn_80086BC8(playerWork->player->actor, playerWork->position);
-        if (((100.0f) * frandf()) < (1.0f)) {
+        if ((100.0f * frandf()) < 1.0f) {
             playerWork->sign = -playerWork->sign;
         }
-        if ((s32) lbl_1_bss_24 != -1) {
+        if (lbl_1_bss_24 != -1) {
             fn_8007E818(playerWork->player);
         } else if (fn_80087148(playerWork->player, 16U) == 0) {
             fn_1_4A4(&partnerDirection, playerWork->position,
                      fn_1_18B4(playerWork->partnerNo)->position);
             partnerDistance = fn_1_4DC(&partnerDirection, &partnerDirection);
-            if (partnerDistance <= (100.0f)) {
+            if (partnerDistance <= 100.0f) {
                 fn_1_4A4(&teamCenterDirection, &lbl_1_data_94[playerWork->teamNo],
                          playerWork->position);
                 fn_1_4DC(&teamCenterDirection, &teamCenterDirection);
                 fn_1_46C(&partnerDirection, &partnerDirection, &teamCenterDirection);
                 fn_1_468C(playerWork, M668Atan2f(partnerDirection.x, partnerDirection.z),
-                          (0.10000000149011612f), (7.0f));
+                          0.1f, 7.0f);
             } else {
-                fn_1_2A4(&teamSideAxis, (0.0f), (f32) playerWork->sign, (0.0f));
+                fn_1_2A4(&teamSideAxis, 0.0f, (f32) playerWork->sign, 0.0f);
                 fn_1_4A4(&teamCenterOffset, &lbl_1_data_94[playerWork->teamNo],
                          playerWork->position);
                 teamCenterDistance = fn_1_4DC(&teamCenterOffset, &teamCenterOffset);
                 fn_1_434(&avoidanceDirection, &teamSideAxis, &teamCenterOffset);
                 fn_1_6BC(&teamCenterOffset, &teamCenterOffset,
-                         -((200.0f) - teamCenterDistance) / (7.0f));
+                         -(200.0f - teamCenterDistance) / 7.0f);
                 fn_1_46C(&avoidanceDirection, &avoidanceDirection, &teamCenterOffset);
                 fn_1_4DC(&avoidanceDirection, &avoidanceDirection);
                 fn_1_468C(playerWork, M668Atan2f(avoidanceDirection.x, avoidanceDirection.z),
-                          (0.10000000149011612f), (7.0f));
+                          0.1f, 7.0f);
             }
         }
         if (fn_80087148(playerWork->player, 16U) == 0) {
@@ -1347,27 +1214,27 @@ void fn_1_54CC(OMOBJ *obj)
             rotorIndex = 0;
             while (rotorIndex < 1) {
                 lookaheadFramesByDifficulty = lbl_1_rodata_218;
-                rotorWork = (M668RotorWork *)fn_1_18CC(rotorIndex);
-                rotorAngleStep = (f32) ((0.017453292519943295) *
+                rotorWork = fn_1_18CC(rotorIndex);
+                rotorAngleStep = (f32) (0.017453292519943295 *
                                         (f64) (rotorWork->speed * rotorWork->speedScale));
                 angularStep = rotorAngleStep * (f32) lookaheadFramesByDifficulty.value[difficulty];
                 originPosition = lbl_1_rodata_228;
-                fn_1_2A4(&rotorDirection, (f32) sin(rotorWork->angle), (0.0f),
+                fn_1_2A4(&rotorDirection, (f32) sin(rotorWork->angle), 0.0f,
                          (f32) cos(rotorWork->angle));
-                fn_1_2A4(&nextRotorDirection, (f32) sin(rotorWork->angle + angularStep), (0.0f),
+                fn_1_2A4(&nextRotorDirection, (f32) sin(rotorWork->angle + angularStep), 0.0f,
                          (f32) cos(rotorWork->angle + angularStep));
                 fn_80086BC8(playerWork->player->actor, &actorPosition);
                 /* Compare the radial direction with this rotor now and after one difficulty-scaled
                  * step. */
-                if (!(actorPosition.y > (150.0f)) &&
-                    (actorPosition.y = (0.0f),
+                if (!(actorPosition.y > 150.0f) &&
+                    (actorPosition.y = 0.0f,
                      fn_1_4A4(&radialDirection, &actorPosition, &originPosition),
                      fn_1_4DC(&radialDirection, &radialDirection),
                      rotorApproachRate =
                          rotorWork->speed * ((rotorDirection.x * radialDirection.z) -
                                              (rotorDirection.z * radialDirection.x)),
-                     (rotorApproachRate < (0.0f))) &&
-                    (fn_1_404(&rotorDirection, &radialDirection) > (0.0f)) &&
+                     (rotorApproachRate < 0.0f)) &&
+                    (fn_1_404(&rotorDirection, &radialDirection) > 0.0f) &&
                     (fn_1_404(&rotorDirection, &radialDirection) >=
                      fn_1_404(&rotorDirection, &nextRotorDirection))) {
                     playerWork->transitionFlag = 1;
@@ -1382,20 +1249,20 @@ void fn_1_54CC(OMOBJ *obj)
                 jumpRollThresholdByDifficulty = lbl_1_rodata_244;
                 /* Difficulty sets the random threshold for jumping before predicted rotor
                  * contact. */
-                if (((100.0f) * frandf()) >= jumpRollThresholdByDifficulty.value[difficulty]) {
+                if ((100.0f * frandf()) >= jumpRollThresholdByDifficulty.value[difficulty]) {
                     fn_80086CC4(
                         playerWork->player->actor,
                         playerWork->player->actor->gravity
                             ? playerWork->player->actor->gravity +
                                   playerWork->player->actor->gravity *
-                                      (((-1.0f) +
+                                      ((-1.0f +
                                         sqrtf(
-                                            (1.0f) +
-                                            ((8.0f) * (((100.0f) *
+                                            1.0f +
+                                            (8.0f * ((100.0f *
                                                         jumpHeightByDifficulty.value[difficulty]) /
                                                        playerWork->player->actor->gravity)))) /
                                        2.0f)
-                            : (0.0f));
+                            : 0.0f);
                 }
             }
         }
@@ -1404,7 +1271,7 @@ void fn_1_54CC(OMOBJ *obj)
             playerWork->state = 3;
             fn_80086E3C(playerWork->player);
             if ((fn_1_18B4(playerWork->partnerNo)->state != 1) &&
-                ((s32) lbl_1_bss_24 == -1)) {
+                (lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
             }
             fn_1_218(obj, fn_1_6778);
@@ -1413,7 +1280,7 @@ void fn_1_54CC(OMOBJ *obj)
         if (playerWork->state == 2) {
             downwardAxis = lbl_1_rodata_254;
             upwardAxis = lbl_1_rodata_260;
-            fn_1_2A4(&originVector, (0.0f), (0.0f), (0.0f));
+            fn_1_2A4(&originVector, 0.0f, 0.0f, 0.0f);
             fn_80086BC8(playerWork->player->actor, &modelPosition);
             fn_1_4A4(&centerDirection, &modelPosition, &originVector);
             fn_1_4DC(&centerDirection, &centerDirection);
@@ -1422,34 +1289,34 @@ void fn_1_54CC(OMOBJ *obj)
             fn_1_4DC(&playerWork->position[2], &playerWork->position[2]);
             fn_1_46C(&playerWork->position[2], &playerWork->position[2], &upwardAxis);
             fn_1_4DC(&playerWork->position[2], &playerWork->position[2]);
-            hitRotor = (M668RotorWork *)fn_1_18CC(playerWork->hitRotorIndex);
+            hitRotor = fn_1_18CC(playerWork->hitRotorIndex);
             fn_1_6BC(&playerWork->position[2], &playerWork->position[2],
-                (20.0f) * (hitRotor->speedScale < (1.0f) ? (1.0f) : hitRotor->speedScale));
-            playerWork->position[2].x *= (f32)(hitRotor->speed > (0.0f) ? 1 : -1);
-            playerWork->position[2].z *= (f32)(hitRotor->speed > (0.0f) ? 1 : -1);
+                20.0f * (hitRotor->speedScale < 1.0f ? 1.0f : hitRotor->speedScale));
+            playerWork->position[2].x *= (f32)(hitRotor->speed > 0.0f ? 1 : -1);
+            playerWork->position[2].z *= (f32)(hitRotor->speed > 0.0f ? 1 : -1);
             /* Rotor hits send CPU players toward negative Z regardless of the rotor spin
              * direction. */
-            if (playerWork->position[2].z > (0.0f)) {
+            if (playerWork->position[2].z > 0.0f) {
                 playerWork->position[2].z = -playerWork->position[2].z;
             }
             fn_80086E3C(playerWork->player);
-            fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], (0.0f),
-                               (4.0f), 0U);
-            fn_80026808((s16) playerWork->player->actor->mdlId, (0.0f),
-                            (f32) ((f64) ((180.0f) * M668Atan2f(playerWork->position[2].x,
+            fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], 0.0f,
+                               4.0f, 0U);
+            fn_80026808((s16) playerWork->player->actor->mdlId, 0.0f,
+                            (f32) ((f64) (180.0f * M668Atan2f(playerWork->position[2].x,
                                                                 playerWork->position[2].z)) /
-                                   (3.141592653589793)),
-                            (0.0f));
+                                   3.141592653589793),
+                            0.0f);
             if ((fn_1_18B4(playerWork->partnerNo)->state != 1) &&
-                ((s32) lbl_1_bss_24 == -1)) {
+                (lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
             }
             Hu3D3Dto2D(&modelPosition, 1, &screenPosition);
-            soundPan = (64.0f) * (screenPosition.x / (576.0f));
-            soundPan = soundPan < (0.0f)
-                           ? (0.0f)
-                           : (soundPan > (64.0f) ? (64.0f) : soundPan);
-            soundPan += (32.0f);
+            soundPan = 64.0f * (screenPosition.x / 576.0f);
+            soundPan = soundPan < 0.0f
+                           ? 0.0f
+                           : (soundPan > 64.0f ? 64.0f : soundPan);
+            soundPan += 32.0f;
             HuAudFXPlayPan(M668_SE_ROTOR_HIT, (s16) soundPan);
             CharFXPlayPan(playerWork->charNo, 576, (s16) soundPan);
             fn_1_218(obj, fn_1_664C);
@@ -1471,8 +1338,8 @@ void fn_1_664C(OMOBJ *obj)
         }
         fn_80026A44(work->player->actor->mdlId, 1U);
         fn_800267CC(work->player->actor->mdlId, &position);
-        if (position.y <= (-200.0f)) {
-            position.y = (-200.0f);
+        if (position.y <= -200.0f) {
+            position.y = -200.0f;
             fn_80026790(work->player->actor->mdlId, &position);
             work->state = 3;
             fn_1_218(obj, fn_1_6778);
@@ -1498,17 +1365,17 @@ void fn_1_6778(OMOBJ *obj)
             fn_1_218(obj, fn_1_6C24);
             return;
         }
-        fn_1_2A4(&zeroVector, (0.0f), (0.0f), (0.0f));
+        fn_1_2A4(&zeroVector, 0.0f, 0.0f, 0.0f);
         fn_800267CC(work->player->actor->mdlId, &modelPosition);
         fn_1_4A4(&direction, &modelPosition, &zeroVector);
         fn_1_4DC(&direction, &direction);
-        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[8], (0.0f), (0.0f),
+        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[8], 0.0f, 0.0f,
                            ((1 << 30) | (1 << 0)));
-        work->position[2].x = (7.0f) * direction.x;
-        work->position[2].y = (30.0f);
-        work->position[2].z = (7.0f) * direction.z;
+        work->position[2].x = 7.0f * direction.x;
+        work->position[2].y = 30.0f;
+        work->position[2].z = 7.0f * direction.z;
         /* Fall setup constrains the Z displacement to zero or negative values. */
-        if (work->position[2].z > (0.0f)) {
+        if (work->position[2].z > 0.0f) {
             work->position[2].z = -work->position[2].z;
         }
         fn_8006A030(work->playerNo, 30, 30, 0);
@@ -1543,19 +1410,19 @@ void fn_1_6924(OMOBJ *obj)
         while (i < 2) {
             fn_1_4A4(&normal, &modelPosition, &lbl_1_data_94[i]);
             distance = fn_1_4DC(&normal, &normal);
-            if (distance <= (350.0f)) {
+            if (distance <= 350.0f) {
                 savedY = work->position[2].y;
-                work->position[2].y = (0.0f);
+                work->position[2].y = 0.0f;
                 magnitude = fn_1_4DC(&work->position[2], &work->position[2]);
                 reflectionCopy = work->position[2];
-                scale = M668Abs((2.0f) * fn_1_404(&work->position[2], &normal));
+                scale = M668Abs(2.0f * fn_1_404(&work->position[2], &normal));
                 work->position[2].x += work->position[2].x + normal.x * scale;
-                work->position[2].y = (0.0f);
+                work->position[2].y = 0.0f;
                 work->position[2].z += work->position[2].z + normal.z * scale;
                 fn_1_4DC(&work->position[2], &work->position[2]);
-                fn_1_6BC(&work->position[2], &work->position[2], (7.0f));
+                fn_1_6BC(&work->position[2], &work->position[2], 7.0f);
                 work->position[2].y += savedY;
-                fn_1_6BC(&normal, &normal, (351.0f));
+                fn_1_6BC(&normal, &normal, 351.0f);
                 fn_1_46C(&modelPosition, &lbl_1_data_94[i], &normal);
             } else {
                 i += 1;
@@ -1564,8 +1431,8 @@ void fn_1_6924(OMOBJ *obj)
             break;
         }
         fn_80026790(work->player->actor->mdlId, &modelPosition);
-        if ((modelPosition.y < (-180.0f)) && (work->position[2].y < (0.0f))) {
-            work->position[2].y = (0.800000011920929f) * -work->position[2].y;
+        if ((modelPosition.y < -180.0f) && (work->position[2].y < 0.0f)) {
+            work->position[2].y = 0.8f * -work->position[2].y;
         }
     }
 }
@@ -1580,12 +1447,12 @@ void fn_1_6C24(OMOBJ *obj)
         work->timer60 = 0;
         fn_80086E3C(work->player);
         fn_80026790(work->player->actor->mdlId, &lbl_1_data_64[work->formationNo]);
-        fn_80026808(work->player->actor->mdlId, (0.0f), (0.0f), (0.0f));
+        fn_80026808(work->player->actor->mdlId, 0.0f, 0.0f, 0.0f);
         fn_80026A44(work->player->actor->mdlId, 1U);
-        fn_800268B0(work->player->actor->mdlId, (1.0f), (1.0f), (1.0f));
-        fn_8005C2C8(work->charNo, *work->player->omObj->mtnId, (0.0f), (0.0f),
+        fn_800268B0(work->player->actor->mdlId, 1.0f, 1.0f, 1.0f);
+        fn_8005C2C8(work->charNo, *work->player->omObj->mtnId, 0.0f, 0.0f,
                            ((1 << 30) | (1 << 0)));
-        fn_800268B0(work->player->actor->mdlId, (1.0f), (1.0f), (1.0f));
+        fn_800268B0(work->player->actor->mdlId, 1.0f, 1.0f, 1.0f);
         work->timer60 = 0;
         if (lbl_1_bss_24 == work->teamNo) {
             fn_1_218(obj, fn_1_6DF8);
@@ -1602,7 +1469,7 @@ void fn_1_6DF8(OMOBJ *obj)
     M668PlayerFinishWork *work = obj->data;
 
     if (lbl_1_bss_20->state == 0 && work->timer60++ >= 60) {
-        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[6], (0.0f), (4.0f), 0);
+        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[6], 0.0f, 4.0f, 0);
         fn_1_218(obj, NULL);
         return;
     }
@@ -1626,8 +1493,8 @@ void fn_1_6EC8(OMOBJ *obj)
     HuVecF up;
     M668CameraWork *work = obj->data;
     Hu3DCameraCreate(1);
-    Hu3DCameraPerspectiveSet(1, (40.0f), (20.0f), (15000.0f), (1.2000000476837158f));
-    Hu3DCameraViewportSet(1, (0.0f), (0.0f), (640.0f), (480.0f), (0.0f), (1.0f));
+    Hu3DCameraPerspectiveSet(1, 40.0f, 20.0f, 15000.0f, 1.2f);
+    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     work->motion =
         fn_8002C4C0(fn_80008DD0(DATANUM(0x7f0000, 10), 0x10000000, 2));
     work->model = fn_800283F4(work->motion, 1);
@@ -1667,7 +1534,7 @@ void fn_1_70A0(OMOBJ *obj)
             M668CameraPair position = lbl_1_rodata_2A0;
             M668CameraPair target = lbl_1_rodata_2B8;
             HuVecF up = lbl_1_rodata_2D0;
-            Hu3DCameraPerspectiveSet(1, (40.0f), (20.0f), (15000.0f), (1.2000000476837158f));
+            Hu3DCameraPerspectiveSet(1, 40.0f, 20.0f, 15000.0f, 1.2f);
             Hu3DCameraPosSetV(1, &position.points[lbl_1_bss_24], &up, &target.points[lbl_1_bss_24]);
             WipeCreate(1, 5, 60);
             work->timer = 0;
@@ -1699,32 +1566,32 @@ void fn_1_72CC(OMOBJ *obj)
     s32 index;
 
     if (lbl_1_bss_20->state == 0) {
-        work->speedScale = (1.0f);
-        work->speed = (1.5f);
+        work->speedScale = 1.0f;
+        work->speed = 1.5f;
         if (rand8() % 2 == 1) {
-            work->speed *= (-1.0f);
+            work->speed *= -1.0f;
         }
 
         work->model =
             fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 9), 0x10000000, 2));
         fn_80026B8C(work->model, 0);
-        fn_80026760(work->model, (0.0f), (0.0f), (0.0f));
+        fn_80026760(work->model, 0.0f, 0.0f, 0.0f);
         work->shadowModel = fn_80025D4C(work->model);
         fn_80026B8C(work->shadowModel, 2);
         /* The shadow link ends up on layer 6, replacing the preceding layer 2 assignment. */
         fn_80026B8C(work->shadowModel, 6);
 
-        work->angle = (f32)((0.017453292519943295) * (f64)((10.0f) * (f32)work->index));
+        work->angle = (f32)(0.017453292519943295 * (f64)(10.0f * (f32)work->index));
         for (index = 0; index < 16; index++) {
             work->history[index] = work->angle;
         }
 
-        fn_80026808(work->model, (0.0f),
-                        (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                        (0.0f));
-        fn_80026808(work->shadowModel, (0.0f),
-                        (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                        (0.0f));
+        fn_80026808(work->model, 0.0f,
+                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        0.0f);
+        fn_80026808(work->shadowModel, 0.0f,
+                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        0.0f);
         fn_80026E44(work->shadowModel);
         fn_1_218(obj, fn_1_7508);
     }
@@ -1760,7 +1627,7 @@ void fn_1_758C(OMOBJ *obj)
     HuVecF center;
     HuVecF fromCenter;
     M668VecBound objectBound;
-    f32 delta = (f32)((0.017453292519943295) * (f64)(work->speed * work->speedScale));
+    f32 delta = (f32)(0.017453292519943295 * (f64)(work->speed * work->speedScale));
     f32 arcStep;
     f32 sweepAngle;
     M668PlayerWork *item;
@@ -1776,45 +1643,45 @@ void fn_1_758C(OMOBJ *obj)
     }
     work->history[0] = work->angle;
     work->angle += delta;
-    fn_80026808(work->model, (0.0f),
-                    (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                    (0.0f));
-    fn_80026808(work->shadowModel, (0.0f),
-                    (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                    (0.0f));
+    fn_80026808(work->model, 0.0f,
+                    (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                    0.0f);
+    fn_80026808(work->shadowModel, 0.0f,
+                    (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                    0.0f);
 
     up = lbl_1_rodata_2E0;
     down = lbl_1_rodata_2EC;
     center = lbl_1_rodata_2F8;
-    arcStep = (25.0f) * delta;
-    if (delta > (0.0f)) {
-        fn_1_2A4(&begin1, (f32)sin(work->angle), (0.0f), (f32)cos(work->angle));
-        fn_1_2A4(&begin2, (f32)sin(work->angle + arcStep), (0.0f), (f32)cos(work->angle + arcStep));
+    arcStep = 25.0f * delta;
+    if (delta > 0.0f) {
+        fn_1_2A4(&begin1, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
+        fn_1_2A4(&begin2, (f32)sin(work->angle + arcStep), 0.0f, (f32)cos(work->angle + arcStep));
     } else {
-        fn_1_2A4(&begin2, (f32)sin(work->angle), (0.0f), (f32)cos(work->angle));
-        fn_1_2A4(&begin1, (f32)sin(work->angle + arcStep), (0.0f), (f32)cos(work->angle + arcStep));
+        fn_1_2A4(&begin2, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
+        fn_1_2A4(&begin1, (f32)sin(work->angle + arcStep), 0.0f, (f32)cos(work->angle + arcStep));
     }
     fn_1_434(&edge1.xyz, &begin1, &up);
     fn_1_434(&edge2.xyz, &begin2, &down);
-    edge1.margin = (25.0f);
-    edge2.margin = (25.0f);
+    edge1.margin = 25.0f;
+    edge2.margin = 25.0f;
 
     sweepAngle = work->angle + (0.5f * arcStep);
-    fn_1_2A4(&radial, (f32)sin(sweepAngle), (0.0f), (f32)cos(sweepAngle));
-    fn_1_6BC(&radial, &radial, (-100.0f));
+    fn_1_2A4(&radial, (f32)sin(sweepAngle), 0.0f, (f32)cos(sweepAngle));
+    fn_1_6BC(&radial, &radial, -100.0f);
     fn_1_46C(&center, &center, &radial);
     fn_1_4DC(&radial, &radial);
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         item = fn_1_18B4(playerIndex);
         objectBound.xyz = item->position[0];
-        objectBound.margin = (40.0f);
+        objectBound.margin = 40.0f;
         fn_1_4A4(&fromCenter, &center, &item->position[0]);
         fn_1_4DC(&fromCenter, &fromCenter);
-        if (fn_1_404(&fromCenter, &radial) > (0.0f) &&
+        if (fn_1_404(&fromCenter, &radial) > 0.0f &&
             fn_1_1844(&edge1, &objectBound) != 0 &&
             fn_1_1844(&edge2, &objectBound) != 0 &&
-            item->position[0].y < (100.0f)) {
+            item->position[0].y < 100.0f) {
             item->transitionFlag = 1;
         } else {
             item->transitionFlag = 0;
@@ -1823,18 +1690,18 @@ void fn_1_758C(OMOBJ *obj)
 
     /* At a full turn, shift history a second time and reset the angle to zero, discarding
      * overshoot. */
-    if (work->angle >= (6.283185307179586) || work->angle <= (-6.283185307179586)) {
+    if (work->angle >= 6.283185307179586 || work->angle <= -6.283185307179586) {
         for (index = 15; index >= 1; index--) {
             work->history[index] = work->history[index - 1];
         }
         work->history[0] = work->angle;
-        work->angle = (0.0f);
-        fn_80026808(work->model, (0.0f),
-                        (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                        (0.0f));
-        fn_80026808(work->shadowModel, (0.0f),
-                        (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                        (0.0f));
+        work->angle = 0.0f;
+        fn_80026808(work->model, 0.0f,
+                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        0.0f);
+        fn_80026808(work->shadowModel, 0.0f,
+                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        0.0f);
         HuAudFXStop(work->sound);
         fn_1_218(obj, fn_1_7B30);
         return;
@@ -1888,17 +1755,17 @@ void fn_1_7BE8(OMOBJ *obj)
     if (lbl_1_bss_20->state == 0) {
         /* Compute this frame's angle step before changing speedScale; sound pitch uses the
          * updated scale. */
-        delta = (f32)((0.017453292519943295) * (f64)(work->speed * work->speedScale));
+        delta = (f32)(0.017453292519943295 * (f64)(work->speed * work->speedScale));
         if (lbl_1_bss_24 == -1) {
-            work->speedScale += (0.004000000189989805f);
+            work->speedScale += 0.004f;
         } else {
-            work->speedScale = (f32)(work->speedScale + (-work->speedScale / (10.0f)));
-            if (work->speedScale < (0.0f)) {
-                work->speedScale = (0.0f);
+            work->speedScale = (f32)(work->speedScale + (-work->speedScale / 10.0f));
+            if (work->speedScale < 0.0f) {
+                work->speedScale = 0.0f;
             }
         }
-        if (work->speedScale > (0.009999999776482582f)) {
-            pitch = (s16)((2000.0f) + ((1000.0f) * work->speedScale));
+        if (work->speedScale > 0.01f) {
+            pitch = (s16)(2000.0f + (1000.0f * work->speedScale));
             if (pitch > 8192) {
                 pitch = 8192;
             }
@@ -1915,36 +1782,36 @@ void fn_1_7BE8(OMOBJ *obj)
         }
         work->history[0] = work->angle;
         work->angle = (f32)(work->angle + delta);
-        fn_80026808(work->model, (0.0f),
-                        (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                        (0.0f));
-        fn_80026808(work->shadowModel, (0.0f),
-                        (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
-                        (0.0f));
+        fn_80026808(work->model, 0.0f,
+                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        0.0f);
+        fn_80026808(work->shadowModel, 0.0f,
+                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        0.0f);
 
         up = lbl_1_rodata_30C;
         down = lbl_1_rodata_318;
         center = lbl_1_rodata_324;
-        sweepAngle = (3.0f) * delta;
-        if (delta > (0.0f)) {
-            fn_1_2A4(&begin1, (f32)sin(work->angle), (0.0f),
+        sweepAngle = 3.0f * delta;
+        if (delta > 0.0f) {
+            fn_1_2A4(&begin1, (f32)sin(work->angle), 0.0f,
                      (f32)cos(work->angle));
-            fn_1_2A4(&begin2, (f32)sin(work->angle + sweepAngle), (0.0f),
+            fn_1_2A4(&begin2, (f32)sin(work->angle + sweepAngle), 0.0f,
                      (f32)cos(work->angle + sweepAngle));
         } else {
-            fn_1_2A4(&begin2, (f32)sin(work->angle), (0.0f),
+            fn_1_2A4(&begin2, (f32)sin(work->angle), 0.0f,
                      (f32)cos(work->angle));
-            fn_1_2A4(&begin1, (f32)sin(work->angle + sweepAngle), (0.0f),
+            fn_1_2A4(&begin1, (f32)sin(work->angle + sweepAngle), 0.0f,
                      (f32)cos(work->angle + sweepAngle));
         }
         fn_1_434(&edge1.xyz, &begin1, &up);
         fn_1_434(&edge2.xyz, &begin2, &down);
-        edge1.margin = (25.0f);
-        edge2.margin = (25.0f);
+        edge1.margin = 25.0f;
+        edge2.margin = 25.0f;
 
         theta = work->angle + (0.5f * sweepAngle);
-        fn_1_2A4(&radial, (f32)sin(theta), (0.0f), (f32)cos(theta));
-        fn_1_6BC(&radial, &radial, (-100.0f));
+        fn_1_2A4(&radial, (f32)sin(theta), 0.0f, (f32)cos(theta));
+        fn_1_6BC(&radial, &radial, -100.0f);
         fn_1_46C(&center, &center, &radial);
         fn_1_4DC(&radial, &radial);
 
@@ -1953,13 +1820,13 @@ void fn_1_7BE8(OMOBJ *obj)
             item = fn_1_18B4(playerIndex);
             if (item->state == 1) {
                 objectBound.xyz = item->position[0];
-                objectBound.margin = (40.0f);
+                objectBound.margin = 40.0f;
                 fn_1_4A4(&fromCenter, &center, &item->position[0]);
                 fn_1_4DC(&fromCenter, &fromCenter);
-                if ((fn_1_404(&fromCenter, &radial) > (0.0f)) &&
+                if ((fn_1_404(&fromCenter, &radial) > 0.0f) &&
                     (fn_1_1844(&edge1, &objectBound) != 0) &&
                     (fn_1_1844(&edge2, &objectBound) != 0) &&
-                    (item->position[0].y < (100.0f))) {
+                    (item->position[0].y < 100.0f)) {
                     item->state = 2;
             item->hitRotorIndex = work->index;
                 }

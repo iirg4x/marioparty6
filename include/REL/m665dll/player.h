@@ -3,6 +3,7 @@
 #define REL_M665DLL_PLAYER_H
 
 #include "dolphin/types.h"
+#include "dolphin/mtx.h"
 
 typedef void (*M665MovementCallback)(s16 playerNo, s16 *horizontal, s16 *vertical);
 
@@ -97,5 +98,26 @@ typedef struct M665PlayerWork {
 } M665PlayerWork;
 
 extern M665PlayerWork lbl_1_bss_10[4];
+
+void fn_1_1C60(void);
+void fn_1_1FFC(void);
+void fn_1_2058(s16 motion, f32 blendDuration);
+void fn_1_4768(void);
+s32 fn_1_4FA4(Vec *position);
+void fn_1_50DC(void);
+void fn_1_51F8(void);
+void fn_1_53C0(void);
+void fn_1_5470(void);
+void fn_1_6188(void);
+void fn_1_6E8C(void);
+void fn_1_8E90(void);
+void fn_1_98AC(void);
+void fn_1_AD40(void);
+void fn_1_B09C(void);
+s32 fn_1_B66C(Vec *position);
+void fn_1_BFD8(void);
+void fn_1_C004(void);
+void fn_1_C090(void);
+void fn_1_C0E0(void);
 
 #endif

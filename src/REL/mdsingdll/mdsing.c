@@ -58,20 +58,10 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
-typedef struct MdsingAudioTable {
-    /* Guide sound IDs in one-based speaker order; -1 marks an unused speaker. */
-    s32 effectId[16];
-} MDSING_AUDIO_TABLE;
-
 typedef struct MdsingDirectoryPair {
     /* Packed directory IDs copied into ARAM before a board starts. */
     u32 archiveId[2];
 } MdsingDirectoryPair;
-
-typedef struct MdsingMotionSoundFrameTable {
-    /* Four animation-frame entries per character; -1 disables a sound entry. */
-    s8 frames[56];
-} MDSING_MOTION_SOUND_FRAME_TABLE;
 
 typedef struct {
     /* Three direction priorities for each of the twelve navigation commands. */
@@ -712,9 +702,6 @@ char lbl_1_data_BBA[] = "\n-----===== retry setting ok!! =====-----\n\n";
 
 char lbl_1_data_BE6[] = "\n-----===== retry setting!! =====-----\n\n";
 
-char lbl_1_data_C0F[] = "\n-----===== MARIO PARTY 6 :: SINGLE MODE =====-----\n\n";
-
-char lbl_1_data_C45[] = "%d - stat %d\n";
 
 s32 lbl_1_bss_13A4[5];
 
@@ -847,10 +834,10 @@ HUPROCESS *lbl_1_bss_0;
 void fn_1_0(HUWINID winId, u32 messageNo, s16 speakerNo)
 {
     s32 sentinel[1] = { -1 };
-    MDSING_AUDIO_TABLE guideSounds = {
-        { 949, 950, 951, 952, 953,
-          954, 955, -1, 941, 942, 943,
-          944, 945, 946, 947, -1 }
+    s32 guideSounds[16] = {
+        949, 950, 951, 952, 953,
+        954, 955, -1, 941, 942, 943,
+        944, 945, 946, 947, -1
     };
     s16 messageIndex;
 
@@ -861,15 +848,15 @@ void fn_1_0(HUWINID winId, u32 messageNo, s16 speakerNo)
         messageIndex = 0;
 checkMessageSound:
         if (sentinel[messageIndex] == -1) {
-            HuAudFXPlay(guideSounds.effectId[speakerNo]);
+            HuAudFXPlay(guideSounds[speakerNo]);
             return;
         }
         if (messageNo == (u32) sentinel[messageIndex]) {
             if (speakerNo >= 8) {
-                HuAudFXPlayPan(guideSounds.effectId[speakerNo], 80);
+                HuAudFXPlayPan(guideSounds[speakerNo], 80);
                 return;
             }
-            HuAudFXPlayPan(guideSounds.effectId[speakerNo], 48);
+            HuAudFXPlayPan(guideSounds[speakerNo], 48);
             return;
         }
         messageIndex += 1;
@@ -928,14 +915,13 @@ void fn_1_250(void)
     }
 }
 
-const u32 lbl_1_rodata_54[2] = { 0x60000, 0xc0000 };
+const MdsingDirectoryPair lbl_1_rodata_54 = { { 0x60000, 0xc0000 } };
 
 /* Background loading process: prepares character motions, caches shared archives in ARAM, and loads
  * the chosen board. */
 void fn_1_3A0(void)
 {
-    MdsingDirectoryPair aramDirectory =
-        *(const MdsingDirectoryPair *)lbl_1_rodata_54;
+    MdsingDirectoryPair aramDirectory = lbl_1_rodata_54;
     s16 characterNo[5];
     s16 characterIndex;
     s16 archiveIndex;
@@ -996,10 +982,10 @@ void fn_1_5E8(void)
 {
     lbl_1_bss_34 = 0;
     OSReport(lbl_1_data_928);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
     fn_800097F4(DATANUM(0x9a0000, 0));
@@ -1105,10 +1091,10 @@ void fn_1_EA0(void)
     history = omOvlHisGet(0);
     omOvlHisChg(0, history->ovl, 1, lbl_1_bss_1308[1].characterNo);
     OSReport(lbl_1_data_9A3);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
     switch (lbl_1_bss_1340.boardNo) {
@@ -1136,10 +1122,10 @@ void fn_1_FEC(void)
     history = omOvlHisGet(0);
     omOvlHisChg(0, history->ovl, 2, 0);
     OSReport(lbl_1_data_9A3);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
     omOvlCallEx(130, 1, 0, 0);
@@ -1153,10 +1139,10 @@ void fn_1_10D0(void)
     HuARDirFree(DATANUM(0x60000, 0));
     HuARDirFree(DATANUM(0xc0000, 0));
     OSReport(lbl_1_data_9D3);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
 }
@@ -1169,10 +1155,10 @@ void fn_1_1180(void)
     HuARDirFree(DATANUM(0x60000, 0));
     HuARDirFree(DATANUM(0xc0000, 0));
     OSReport(lbl_1_data_A02);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
 }
@@ -2446,18 +2432,18 @@ void fn_1_6C48(void)
 /* Play character movement sounds at the listed motion frames during the lineup callback. */
 void fn_1_6E94(OMOBJ *obj)
 {
-    MDSING_MOTION_SOUND_FRAME_TABLE soundFrames = {
-        { 15, 29, -1, -1, 5, 19, -1, -1, 5, 22, -1, -1, 12, 28, -1, -1,
-          18, 35, -1, -1, 0, 16, -1, -1, 12, 28, -1, -1, 14, 30, -1, -1,
-          10, 32, -1, -1, 16, 32, -1, -1, 14, 30, -1, -1, 16, 32, -1, -1,
-          16, 32, -1, -1, 16, 32, -1, -1 },
+    s8 soundFrames[56] = {
+        15, 29, -1, -1, 5, 19, -1, -1, 5, 22, -1, -1, 12, 28, -1, -1,
+        18, 35, -1, -1, 0, 16, -1, -1, 12, 28, -1, -1, 14, 30, -1, -1,
+        10, 32, -1, -1, 16, 32, -1, -1, 14, 30, -1, -1, 16, 32, -1, -1,
+        16, 32, -1, -1, 16, 32, -1, -1,
     };
     s16 characterNo = lbl_1_bss_22;
     f32 motionTime = fn_8002D4E0(obj->mdlId[characterNo]);
     s16 frameNo;
 
     for (frameNo = 0; frameNo < 3; frameNo++) {
-        if (motionTime == soundFrames.frames[frameNo + (characterNo * 4)]) {
+        if (motionTime == soundFrames[frameNo + (characterNo * 4)]) {
             CharFXPlay((s32)characterNo, 181);
         }
     }
@@ -2538,7 +2524,7 @@ void fn_1_7668(void) {
     s16 boardMemberNo;
     s32 boardNo;
 
-    if ((s32) lbl_1_bss_28 != 0) {
+    if (lbl_1_bss_28 != 0) {
         HuSprGrpPosSet(lbl_1_bss_1292[7], 288.0f, 120.0f);
         boardNo = lbl_80265B70.boardNo;
         boardMemberNo = boardNo - 6;
@@ -2579,7 +2565,8 @@ void fn_1_77C0(OMOBJ *obj) {
             fn_80008DD0(modelNo + DATANUM(0x9a0000, 0), 0x10000000, 2));
         obj->mtnId[modelNo] = fn_8002D3C4(obj->mdlId[modelNo]);
         fn_80026B8C(obj->mdlId[modelNo], 1);
-        fn_8002CCC0(obj->mdlId[modelNo], obj->mtnId[modelNo], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
+        fn_8002CCC0(obj->mdlId[modelNo], obj->mtnId[modelNo], 0.0f, 0.0f,
+            ((1 << 30) | (1 << 0)));
         fn_80026FFC(obj->mdlId[modelNo]);
         modelNo += 1;
     }
@@ -4857,10 +4844,10 @@ void fn_1_179B0(void)
         readHistory = omOvlHisGet(0);
         omOvlHisChg(0, readHistory->ovl, 1, lbl_1_bss_1308[1].characterNo);
         OSReport(lbl_1_data_9A3);
-        OSReport(lbl_1_data_95A, 33);
-        OSReport(lbl_1_data_96B, 36);
-        OSReport(lbl_1_data_97D, 155);
-        OSReport(lbl_1_data_98F, 242);
+        OSReport(lbl_1_data_95A, _effect);
+        OSReport(lbl_1_data_96B, _gamemes);
+        OSReport(lbl_1_data_97D, _mgconst);
+        OSReport(lbl_1_data_98F, _win);
         HuAMemDump();
         OSReport(lbl_1_data_99D);
         switch (lbl_1_bss_1340.boardNo) {
@@ -4883,10 +4870,10 @@ void fn_1_179B0(void)
         returnHistory = omOvlHisGet(0);
         omOvlHisChg(0, returnHistory->ovl, 2, 0);
         OSReport(lbl_1_data_9A3);
-        OSReport(lbl_1_data_95A, 33);
-        OSReport(lbl_1_data_96B, 36);
-        OSReport(lbl_1_data_97D, 155);
-        OSReport(lbl_1_data_98F, 242);
+        OSReport(lbl_1_data_95A, _effect);
+        OSReport(lbl_1_data_96B, _gamemes);
+        OSReport(lbl_1_data_97D, _mgconst);
+        OSReport(lbl_1_data_98F, _win);
         HuAMemDump();
         OSReport(lbl_1_data_99D);
         omOvlCallEx(130, 1, 0, 0);
@@ -4896,10 +4883,10 @@ void fn_1_179B0(void)
         HuARDirFree(DATANUM(0x60000, 0));
         HuARDirFree(DATANUM(0xc0000, 0));
         OSReport(lbl_1_data_A02);
-        OSReport(lbl_1_data_95A, 33);
-        OSReport(lbl_1_data_96B, 36);
-        OSReport(lbl_1_data_97D, 155);
-        OSReport(lbl_1_data_98F, 242);
+        OSReport(lbl_1_data_95A, _effect);
+        OSReport(lbl_1_data_96B, _gamemes);
+        OSReport(lbl_1_data_97D, _mgconst);
+        OSReport(lbl_1_data_98F, _win);
         HuAMemDump();
         OSReport(lbl_1_data_99D);
         fn_8003A5E4(1, 1);
@@ -5016,7 +5003,7 @@ void fn_1_17D38(void) {
     cameraWork->rot.x = -7.25f;
     cameraWork->rot.y = 0.0f;
     cameraWork->rot.z = 0.0f;
-    if ((s32) lbl_1_bss_28 == 0) {
+    if (lbl_1_bss_28 == 0) {
         cameraWork->zoom = 2650.0f;
     } else {
         cameraWork->zoom = 2150.0f;
@@ -5043,7 +5030,7 @@ void fn_1_17D38(void) {
     lbl_1_bss_8 = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, fn_1_842C);
     lbl_1_bss_C = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, fn_1_5FA0);
     lbl_1_bss_10 = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 40U, -1, fn_1_7134);
-    if ((s32) lbl_1_bss_28 == 1) {
+    if (lbl_1_bss_28 == 1) {
         lbl_1_bss_20 = 1;
         lbl_1_bss_22 = lbl_80265750->charNo;
     } else {
@@ -5052,7 +5039,7 @@ void fn_1_17D38(void) {
     }
     lbl_1_bss_14 = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, fn_1_8A80);
     lbl_1_bss_18.object = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, fn_1_9718);
-    if ((s32) lbl_1_bss_28 == 1) {
+    if (lbl_1_bss_28 == 1) {
         fn_1_256C8();
     }
     fn_8000DAC0(fn_1_179B0, 12288U, 12288U, 0, lbl_1_bss_0);
@@ -5072,10 +5059,10 @@ void fn_1_188C0(void)
     history = omOvlHisGet(0);
     omOvlHisChg(0, history->ovl, 1, lbl_1_bss_1308[1].characterNo);
     OSReport(lbl_1_data_9A3);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
     switch (lbl_1_bss_1340.boardNo) {
@@ -5118,11 +5105,11 @@ void fn_1_18AB8(void)
     s16 coinBonus;
     s16 retryCoinBonus;
 
-    OSReport(lbl_1_data_C0F);
+    OSReport("\n-----===== MARIO PARTY 6 :: SINGLE MODE =====-----\n\n");
     lbl_1_bss_28 = lbl_802C0248;
     lbl_1_bss_2C = lbl_802C0240;
     coinBonus = lbl_80265750->mgCoinBonus;
-    OSReport(lbl_1_data_C45, lbl_1_bss_28, coinBonus);
+    OSReport("%d - stat %d\n", lbl_1_bss_28, coinBonus);
     if (lbl_1_bss_28 == 1 &&
         ((retryCoinBonus = lbl_80265750->mgCoinBonus), retryCoinBonus == 0)) {
         lbl_1_bss_0 = fn_8003A8BC(27, 8192);
@@ -5140,10 +5127,10 @@ void fn_1_18AB8(void)
     HuARDirFree(DATANUM(0x60000, 0));
     HuARDirFree(DATANUM(0xc0000, 0));
     OSReport(lbl_1_data_9D3);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
 
@@ -5406,7 +5393,8 @@ static inline s32 fn_1_5B48_inlined_inlined(void)
     }
     guideObject->work[0] = 0;
     guideObject->objFunc = fn_1_595C;
-    fn_8002CCC0(*guideObject->mdlId, guideObject->mtnId[1], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
+    fn_8002CCC0(*guideObject->mdlId, guideObject->mtnId[1], 0.0f, 0.0f,
+        ((1 << 30) | (1 << 0)));
     return 1;
 }
 
@@ -5752,10 +5740,10 @@ static inline void fn_1_64C_inlined_2(void)
 {
     lbl_1_bss_34 = FALSE;
     OSReport(lbl_1_data_928);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
     fn_800097F4(DATANUM(0x9a0000, 0));
@@ -5990,10 +5978,10 @@ static inline void fn_1_5E8_for_20624(void)
 {
     lbl_1_bss_34 = 0;
     OSReport(lbl_1_data_928);
-    OSReport(lbl_1_data_95A, 33);
-    OSReport(lbl_1_data_96B, 36);
-    OSReport(lbl_1_data_97D, 155);
-    OSReport(lbl_1_data_98F, 242);
+    OSReport(lbl_1_data_95A, _effect);
+    OSReport(lbl_1_data_96B, _gamemes);
+    OSReport(lbl_1_data_97D, _mgconst);
+    OSReport(lbl_1_data_98F, _win);
     HuAMemDump();
     OSReport(lbl_1_data_99D);
     fn_800097F4(DATANUM(0x9a0000, 0));
@@ -6396,8 +6384,6 @@ void fn_1_21940(void) {
 s16 lbl_1_data_CC8[2] = { -1, -1 };
 
 s16 lbl_1_data_CCC = -1;
-
-char lbl_1_data_CCE[] = "%d";
 
 /* Create the result-list windows and hidden background sprite before results are displayed. */
 void fn_1_229D8(void)
@@ -7594,7 +7580,7 @@ s32 fn_1_2987C(void)
         HuAudJinglePlay(MSM_STREAM_CARDOP);
         CharFXPlay(lbl_1_bss_22, 573);
         fn_1_251D8();
-        sprintf(scoreText, lbl_1_data_CCE, lbl_1_bss_40);
+        sprintf(scoreText, "%d", lbl_1_bss_40);
         fn_1_4144(3, (s32)scoreText, 0);
         fn_1_3F0C(3, MESSNUM(MESS_SINGLE_RESULT, 1), 1);
         HuPrcSleep(240);

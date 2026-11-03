@@ -1,5 +1,5 @@
 /* Mount Duel tournament characters, rounds, and result scenes. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "game/charman.h"
@@ -61,13 +61,6 @@
 #define TOURNAMENT_ALL_MOTION_PAUSE_FLAGS \
     (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) | \
      ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)))
-
-#define MSM_SE_MGTOUR_PROP_REVEAL 1212
-#define MSM_SE_MGTOUR_PROP_LAND 1213
-#define MSM_SE_MGTOUR_PROP_DECIDE 1214
-#define MSM_SE_MGTOUR_ROUND_WIN 1249
-#define MSM_SE_MGTOUR_ROUND_LOSE 1250
-#define MSM_SE_MGTOUR_CHAMPION 1252
 
 void fn_1_B628(void);
 OMOBJMAN *lbl_1_bss_12C;
@@ -131,14 +124,14 @@ void fn_1_6278(OMOBJ *object, s16 modeNo)
     if (work->motionMode != modeNo) {
         motionNo = lbl_1_data_578[modeNo].motionNo;
         if (motionNo != -1) {
-            if (lbl_1_data_578[modeNo].transitionTime <= (1.0f)) {
+            if (lbl_1_data_578[modeNo].transitionTime <= 1.0f) {
                 fn_8005BE80(work->characterNo, object->mtnId[motionNo]);
                 fn_80026A44(object->mdlId[0],
                                    fn_80026AB8(object->mdlId[0]) | (1 << 30));
                 fn_8005C430(work->characterNo, lbl_1_data_578[modeNo].modelAttributes);
             } else {
                 fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
-                fn_8005C2C8(work->characterNo, object->mtnId[motionNo], (0.0f),
+                fn_8005C2C8(work->characterNo, object->mtnId[motionNo], 0.0f,
                                    lbl_1_data_578[modeNo].transitionTime,
                                    lbl_1_data_578[modeNo].modelAttributes);
             }
@@ -156,15 +149,13 @@ void fn_1_6278(OMOBJ *object, s16 modeNo)
     }
 }
 
-s16 fn_1_A42C(void);
-
 /* Assigns the four players to the active tournament sides before a round. */
 void fn_1_64A8(void)
 {
     s16 mode;
     s16 player;
 
-    mode = fn_1_A42C();
+    mode = tournamentLayoutGet();
     player = 0;
     while (player < 4) {
         if (mode == 0) {
@@ -208,8 +199,6 @@ void fn_1_64A8(void)
     }
 }
 
-f32 InterpolateBMLine(f32 *values, f32 *times, f32 value);
-
 /* Eases a character position between two points during a timed scene movement. */
 void fn_1_68A4(Vec *result, const Vec *point0, const Vec *point1,
                f32 duration, f32 time)
@@ -217,14 +206,14 @@ void fn_1_68A4(Vec *result, const Vec *point0, const Vec *point1,
     f32 times[4];
     f32 values[4];
 
-    times[0] = (-1.0f) * duration;
-    times[1] = (0.0f);
+    times[0] = -1.0f * duration;
+    times[1] = 0.0f;
     times[2] = duration;
-    times[3] = (2.0f) * duration;
+    times[3] = 2.0f * duration;
     time = (f32)((f64)duration *
-        sin(((3.141592653589793) *
-            (f64)((90.0f) * (time / duration))) /
-            (180.0)));
+        sin((3.141592653589793 *
+            (f64)(90.0f * (time / duration))) /
+            180.0));
 
     values[0] = point0->x;
     values[1] = point0->x;
@@ -244,7 +233,6 @@ void fn_1_68A4(Vec *result, const Vec *point0, const Vec *point1,
 }
 
 extern int MgModeWorkInt[16];
-s16 fn_1_A42C(void);
 
 /* Reports whether the selected sides contain at least two players of nonzero configured type. */
 s32 fn_1_6A24(void)
@@ -254,7 +242,7 @@ s32 fn_1_6A24(void)
     s16 player;
     TournamentPlayerAnimationWork *playerState;
 
-    mode = fn_1_A42C();
+    mode = tournamentLayoutGet();
     typeCount = 0;
     player = 0;
     while (player < 4) {
@@ -304,8 +292,6 @@ s32 fn_1_6A24(void)
     return 0;
 }
 
- s16 fn_1_A42C(void);
-
 void fn_1_71E8(s16 *firstPlayer, s16 *secondPlayer);
 
 /* For a round skipped at the prompt, randomly chooses one player from the current matchup to
@@ -320,7 +306,7 @@ void fn_1_6D78(void)
     TournamentPlayerAnimationWork *firstPlayerData;
     TournamentPlayerAnimationWork *secondPlayerData;
 
-    chance = fn_1_A42C();
+    chance = tournamentLayoutGet();
     player = 0;
     while (player < 4) {
         if (chance == 0) {
@@ -407,15 +393,13 @@ void fn_1_6D78(void)
     }
 }
 
-s16 fn_1_A42C(void);
-
 /* Finds the players occupying the two sides selected for the current round. */
 void fn_1_71E8(s16 *firstPlayer, s16 *secondPlayer)
 {
     s16 playerMode;
     s16 playerIndex;
 
-    playerMode = fn_1_A42C();
+    playerMode = tournamentLayoutGet();
     playerIndex = 0;
     while (playerIndex < 4) {
         if (playerMode == 0) {
@@ -470,7 +454,7 @@ static inline void tournamentPlayerMotionSet(OMOBJ *object, s16 modeNo)
     if (work->motionMode != modeNo) {
         motionNo = lbl_1_data_578[modeNo].motionNo;
         if (motionNo != -1) {
-            if (lbl_1_data_578[modeNo].transitionTime <= (1.0f)) {
+            if (lbl_1_data_578[modeNo].transitionTime <= 1.0f) {
                 fn_8005BE80(work->characterNo, object->mtnId[motionNo]);
                 fn_80026A44(*object->mdlId,
                     fn_80026AB8(*object->mdlId) | (1 << 30));
@@ -479,7 +463,7 @@ static inline void tournamentPlayerMotionSet(OMOBJ *object, s16 modeNo)
             } else {
                 fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 1)));
                 fn_8005C2C8(work->characterNo, object->mtnId[motionNo],
-                    (0.0f), lbl_1_data_578[modeNo].transitionTime,
+                    0.0f, lbl_1_data_578[modeNo].transitionTime,
                     lbl_1_data_578[modeNo].modelAttributes);
             }
             if (lbl_1_data_578[modeNo].motionAttributeTableFlag != 0) {
@@ -540,10 +524,10 @@ void fn_1_74BC(void)
         playerData->position = lbl_1_data_548[player];
         fn_80026790(*playerObject->mdlId, &playerData->position);
         playerData->rotation.x = playerData->rotation.y =
-            playerData->rotation.z = (0.0f);
+            playerData->rotation.z = 0.0f;
         fn_80026838(*playerObject->mdlId, &playerData->rotation);
-        Hu3DLLightCreate(*playerObject->mdlId, (0.0f), (1500.0f), (1500.0f), (0.0f),
-                         (-0.699999988079071f), (-0.699999988079071f),
+        Hu3DLLightCreate(*playerObject->mdlId, 0.0f, 1500.0f, 1500.0f, 0.0f,
+                         -0.7f, -0.7f,
                          TOURNAMENT_CHARACTER_LIGHT_INTENSITY, TOURNAMENT_CHARACTER_LIGHT_INTENSITY,
                          TOURNAMENT_CHARACTER_LIGHT_INTENSITY);
         fn_8005DEB0(playerData->characterNo,
@@ -603,8 +587,8 @@ extern OMOBJ *lbl_1_bss_ACC[4];
 
 /* Returns the selected player's type for tournament player and side checks. */
 s16 fn_1_7C00(s16 playerNo) {
-    s32 *playerData = (s32 *) ((OMOBJ **) &lbl_1_bss_114)[playerNo]->data;
-    s16 playerType = (s16) playerData[2];
+    TournamentPlayerAnimationWork *playerData = lbl_1_bss_114[playerNo]->data;
+    s16 playerType = playerData->playerType;
 
     return playerType;
 }
@@ -623,16 +607,16 @@ void fn_1_7C78(Vec *center) {
     s16 playerNo;
     TournamentPlayerAnimationWork *playerData;
 
-    center->x = center->y = center->z = (0.0f);
+    center->x = center->y = center->z = 0.0f;
     for (playerNo = 0; playerNo < 4; ++playerNo) {
         playerData = lbl_1_bss_114[playerNo]->data;
         center->x += playerData->position.x;
         center->y += playerData->position.y;
         center->z += playerData->position.z;
     }
-    center->x *= (0.25f);
-    center->y *= (0.25f);
-    center->z *= (0.25f);
+    center->x *= 0.25f;
+    center->y *= 0.25f;
+    center->z *= 0.25f;
 }
 
 /* Selects the win or loss motion state for a player in the round result scene. */
@@ -789,7 +773,6 @@ void fn_1_6278(OMOBJ *, s16);
 s32 fn_1_E378(Point3d *, Point3d *);
 void fn_1_E4D0(f32 angleX, f32 angleY, f32 angleZ, Vec source, Vec *destination);
 void fn_1_A35C(s16, const Vec *);
-s16 fn_1_A42C(void);
 /* Updates a character's tournament animation and movement from its scene state. */
 void fn_1_8238(OMOBJ *object) {
     TournamentPlayerAnimationWork *playerWork;
@@ -1228,7 +1211,7 @@ void fn_1_8238(OMOBJ *object) {
             break;
         case 26:
             if (object->work[1] != 0) {
-                value = fn_1_A42C();
+                value = tournamentLayoutGet();
                 if (((value == 0) || (value == 1)) &&
                     ((MgModeWorkInt[playerWork->playerNo] == 0) ||
                      (MgModeWorkInt[playerWork->playerNo] == 2)) &&
@@ -1359,8 +1342,8 @@ void fn_1_A1F4(void) {
             Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 1U);
         fn_80026B8C(
             Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 4);
-        Hu3DParManRotSet(lbl_1_bss_10C[playerIndex], (90.0f), (0.0f),
-                         (0.0f));
+        Hu3DParManRotSet(lbl_1_bss_10C[playerIndex], 90.0f, 0.0f,
+                         0.0f);
         Hu3DParManAttrSet(lbl_1_bss_10C[playerIndex], 1);
         playerIndex += 1;
     }
@@ -1375,7 +1358,6 @@ void fn_1_A35C(s16 playerNo, const Vec *position) {
 /* Enables or stops new particles for one player during result scenes; already emitted
  * particles continue to animate. */
 void fn_1_A3B0(s16 playerNo, s32 showEffect) {
-    s32 unused;
     if (0 != showEffect)
     {
         Hu3DParManAttrReset(lbl_1_bss_10C[playerNo], 1);
@@ -1385,7 +1367,7 @@ void fn_1_A3B0(s16 playerNo, s32 showEffect) {
 }
 
 /* Classifies which tournament side split or crossover the current round has. */
-s16 fn_1_A42C(void)
+s16 tournamentLayoutGet(void)
 {
     s16 player;
     s16 firstPlayer;
@@ -1467,7 +1449,7 @@ void fn_1_A6B4(void)
     TournamentPlayerAnimationWork *modeMotion;
 
     previousMovementSpeed = lbl_1_data_544;
-    lbl_1_data_544 = (12.0f);
+    lbl_1_data_544 = 12.0f;
 
     playerOnePosition = lbl_1_data_760[1];
     firstPlayerMotion = lbl_1_bss_114[1]->data;
@@ -1556,8 +1538,6 @@ void fn_1_AA04(void)
         }
     }
 }
-
-void fn_8006A030(s16 player, s16 time, s16 on, s16 off);
 
 /* Brings each player forward in turn and waits for its scene animation. */
 void fn_1_AB48(void)
@@ -1708,9 +1688,6 @@ void fn_1_AD50(void)
     fn_1_3394(6, 0);
 }
 
-void fn_1_143C(s16, s16);
-s16 fn_1_A42C(void);
-
 /* Before the consolation matchup, moves any remaining player in an outer bracket slot inward.
  * This repositioning happens only once per tournament. */
 void fn_1_B014(void)
@@ -1724,7 +1701,7 @@ void fn_1_B014(void)
     Vec firstPlayerPosition;
     Vec secondPlayerPosition;
 
-    modeResult = fn_1_A42C();
+    modeResult = tournamentLayoutGet();
     if (modeResult == 2) {
         fn_1_3394(0, 0);
         fn_1_3394(1, 1);
@@ -1734,9 +1711,9 @@ void fn_1_B014(void)
         fn_1_3394(5, 0);
         fn_1_3394(6, 0);
     }
-    modeResult = fn_1_A42C();
+    modeResult = tournamentLayoutGet();
     if ((modeResult == 2) && (MgModeWorkInt[12] == 0)) {
-        fn_1_143C(2, 60);
+        tournamentCameraViewSet(2, 60);
         HuPrcSleep(60);
         modeResult = 0;
         while (modeResult < 4) {
@@ -1778,14 +1755,12 @@ void fn_1_B014(void)
     }
 }
 
-s16 fn_1_A42C(void);
-
 /* Marks players on the active tournament sides for the next scene callback. */
 void fn_1_B2E0(void)
 {
     s16 stageOrPlayer;
 
-    stageOrPlayer = fn_1_A42C();
+    stageOrPlayer = tournamentLayoutGet();
     if (stageOrPlayer == 0) {
         stageOrPlayer = 0;
         while (stageOrPlayer < 4) {
@@ -1845,12 +1820,12 @@ void fn_1_B57C(void) {
     HuVecF position;
     u8 gameNo;
 
-    position.x = (0.0f);
-    position.y = (10.0f);
-    position.z = (-2000.0f);
+    position.x = 0.0f;
+    position.y = 10.0f;
+    position.z = -2000.0f;
     gameNo = 0;
     lbl_1_bss_10A = fn_1_0(gameNo, 0, &position);
-    fn_800268B0(lbl_1_bss_10A, (0.0f), (0.0f), (0.0f));
+    fn_800268B0(lbl_1_bss_10A, 0.0f, 0.0f, 0.0f);
     fn_1_B628();
 }
 
@@ -1925,7 +1900,6 @@ void fn_1_B80C(void)
 }
 
 s32 fn_1_43C();                                 /* Cycles the preview still image. */
-void fn_1_4F8();                                 /* Releases the preview cycle images. */
 s32 fn_1_5E0(u8, s16);                          /* Replaces the selected preview still. */
 s32 fn_1_6F4();                                 /* Starts the selected preview movie. */
 extern u8 MgModePlayNum;
@@ -1939,29 +1913,29 @@ void fn_1_B850(void) {
     f32 scale;
     s16 appearanceWait;
 
-    cameraRelativePosition.x = (0.0f);
-    cameraRelativePosition.y = (10.0f);
-    cameraRelativePosition.z = (-2000.0f);
+    cameraRelativePosition.x = 0.0f;
+    cameraRelativePosition.y = 10.0f;
+    cameraRelativePosition.z = -2000.0f;
     /* Place the prop just above and in front of the active camera. */
     PSVECAdd(&Hu3DCamera->pos, &cameraRelativePosition, &cameraRelativePosition);
     fn_80026790(lbl_1_bss_10A, &cameraRelativePosition);
-    scale = (0.0f);
+    scale = 0.0f;
     fn_800268B0(lbl_1_bss_10A, scale, scale, scale);
     HuPrcVSleep();
     fn_1_43C();
     HuPrcVSleep();
-    HuAudFXPlay(MSM_SE_MGTOUR_PROP_REVEAL);
-    while (scale < (1.0f)) {
+    HuAudFXPlay(1212);
+    while (scale < 1.0f) {
         fn_800268B0(lbl_1_bss_10A, scale, scale, scale);
-        scale += (0.10000000149011612f);
-        if (scale >= (1.0f)) {
-            scale = (1.0f);
+        scale += 0.1f;
+        if (scale >= 1.0f) {
+            scale = 1.0f;
         }
         HuPrcVSleep();
     }
-    fn_800268B0(lbl_1_bss_10A, (1.0f), (1.0f), (1.0f));
+    fn_800268B0(lbl_1_bss_10A, 1.0f, 1.0f, 1.0f);
     HuPrcVSleep();
-    lbl_1_data_850 = HuAudFXPlay(MSM_SE_MGTOUR_PROP_LAND);
+    lbl_1_data_850 = HuAudFXPlay(1213);
     /* Keep updating the prop for 25 four-tick waits after its entrance sound. */
     appearanceWait = 1;
     while (appearanceWait != 0) {
@@ -1976,11 +1950,11 @@ void fn_1_B850(void) {
         fn_1_4F8();
     }
     lbl_1_bss_108 = 0;
-    if ((s32) lbl_1_data_850 >= 0) {
+    if (lbl_1_data_850 >= 0) {
         HuAudFXStop(lbl_1_data_850);
     }
     lbl_1_data_850 = -1;
-    HuAudFXPlay(MSM_SE_MGTOUR_PROP_DECIDE);
+    HuAudFXPlay(1214);
     if (frandmod(2) != 0) {
         lbl_1_bss_128 = 1;
     } else {
@@ -1991,14 +1965,11 @@ void fn_1_B850(void) {
     HuPrcVSleep();
 }
 
-s16 fn_1_A42C(void);
-void fn_1_143C(s16 cameraMode, s16 duration);
 void fn_1_2728(s16 player);
 void fn_1_3394(s16 model, s16 mode);
 void fn_1_34B0(s16 model);
 void fn_1_3F18(s16 mode);
 void fn_1_56B4(s16 mode);
-void fn_8006A030(s16 player, s16 time, s16 on, s16 off);
 
 void fn_1_7DA8(s16 player, s16 flag);
 
@@ -2123,7 +2094,7 @@ s16 fn_1_BAD4(void)
     s16 result;
 
     result = 0;
-    i = fn_1_A42C();
+    i = tournamentLayoutGet();
     if (i == 0) {
         for (i = 0, count = 0; i < 4; i++) {
             if ((MgModeWorkInt[i] == 0) || (MgModeWorkInt[i] == 1)) {
@@ -2157,7 +2128,7 @@ s16 fn_1_BAD4(void)
             fn_1_3394(5, 0);
             fn_1_3394(6, 0);
             fn_1_2728(winner);
-            fn_1_143C(4, 30);
+            tournamentCameraViewSet(4, 30);
             HuPrcSleep(30);
             HuAudFXPlay(1249);
             tournamentResultPositionSet(winner, lbl_1_data_820[0]);
@@ -2221,7 +2192,7 @@ s16 fn_1_BAD4(void)
             fn_1_3394(5, 1);
             fn_1_3394(6, 0);
             fn_1_2728(winner);
-            fn_1_143C(6, 30);
+            tournamentCameraViewSet(6, 30);
             HuPrcSleep(30);
             HuAudFXPlay(1249);
             tournamentResultPositionSet(winner, lbl_1_data_820[1]);
@@ -2311,7 +2282,7 @@ s16 fn_1_BAD4(void)
                 }
                 HuPrcVSleep();
             }
-            fn_1_143C(8, 30);
+            tournamentCameraViewSet(8, 30);
             HuPrcSleep(30);
             fn_1_56B4(1);
             tournamentResultStateSet(winner, 1);
@@ -2359,7 +2330,7 @@ s16 fn_1_BAD4(void)
             fn_1_3394(5, 0);
             fn_1_3394(6, 1);
             fn_1_2728(winner);
-            fn_1_143C(10, 30);
+            tournamentCameraViewSet(10, 30);
             HuPrcSleep(30);
             HuAudFXPlay(1249);
             tournamentResultPositionSet(winner, lbl_1_data_838);
@@ -2396,10 +2367,9 @@ extern s32 lbl_1_data_84C;
 extern s32 lbl_1_data_854;
 extern s32 lbl_1_data_858;
 
-void fn_1_43BC(void);
 void fn_1_56B4(s16 mode);
-void fn_1_143C(s16 mode, s16 duration);
 void fn_1_5740(s16 mode, s16 duration);
+void fn_1_43BC(void);
 void fn_1_4A94(s16 player, s16 characterNo, s16 group, Vec position);
 
 s16 fn_1_7BC0(s16 player);
@@ -2487,7 +2457,7 @@ void fn_1_CF6C(void)
         }
     }
     lbl_1_data_84C = HuAudSStreamPlay(MSM_STREAM_MGMUS_KOOPA);
-    fn_1_143C(12, 60);
+        tournamentCameraViewSet(12, 60);
     fn_1_5740(15, 60);
     HuPrcSleep(60);
     for (player = 0; player < 4; player++)
@@ -2496,41 +2466,41 @@ void fn_1_CF6C(void)
         position = scenePlayerData->position;
         if (MgModeWorkInt[player + 4] == 0)
         {
-            position.y -= (100.0f);
+            position.y -= 100.0f;
             if ((MgModeWorkInt[player] == 0) || (1 == MgModeWorkInt[player]))
             {
-                position.x -= (330.0f);
+                position.x -= 330.0f;
             }
             else
             {
-                position.x += (330.0f);
+                position.x += 330.0f;
             }
         }
         else
         {
             if (MgModeWorkInt[player + 4] == 1)
             {
-                position.y += (160.0f);
+                position.y += 160.0f;
                 if ((MgModeWorkInt[player] == 2) || (MgModeWorkInt[player] == 3))
                 {
-                    position.x += (320.0f);
+                    position.x += 320.0f;
                 }
                 else
                 {
-                    position.x -= (320.0f);
+                    position.x -= 320.0f;
                 }
             }
             else
             {
                 if (MgModeWorkInt[player + 4] == 2)
                 {
-                    position.y += (150.0f);
-                    position.x += (300.0f);
+                    position.y += 150.0f;
+                    position.x += 300.0f;
                 }
                 else
                 {
-                    position.y += (240.0f);
-                    position.x += (300.0f);
+                    position.y += 240.0f;
+                    position.x += 300.0f;
                 }
             }
         }
@@ -2567,7 +2537,7 @@ s32 _prolog(void)
         constructor++;
     }
     lbl_1_bss_12C = fn_8003A8BC(100, 8192);
-    *(s16 *)&MgModeSubMode = 0;
+    MgModeSubMode = 0;
     fn_1_E9C();
     fn_8000DAC0(fn_1_DC28, 100U, 12288U, 0, lbl_1_bss_12C);
     return 0;

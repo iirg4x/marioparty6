@@ -243,7 +243,7 @@ static inline void MakeScaleMtx(Mtx outputMatrix, Mtx inputMatrix)
 
 // Builds a body support offset from a triangle normal and body radius for _BodyMeshCol.
 // Y is zero when abs(normal.y) < 0.001, otherwise the signed half-radius.
-static inline void MakeMeshEject(COLBODY *body, COLTRI *triangle, HuVecF *eject,
+static void MakeMeshEject(COLBODY *body, COLTRI *triangle, HuVecF *eject,
                                  HuVecF *planeNormal)
 {
     float halfRadius;
@@ -270,7 +270,7 @@ static inline void MakeMeshEject(COLBODY *body, COLTRI *triangle, HuVecF *eject,
 
 // Returns -1, 0, or 1 according to the sign of a value.
 // Used by SameSign when classifying triangle-plane distances.
-static inline float GetSign(float value)
+static float GetSign(float value)
 {
     if(value < 0) {
         return -1;
@@ -279,16 +279,6 @@ static inline float GetSign(float value)
     } else {
         return 0;
     }
-}
-
-// Unused helper; its discarded constants have no runtime effect.
-static void UseFloat(void)
-{
-    (void)0.0f;
-    (void)0.001f;
-    (void)0.5f;
-    (void)-1.0f;
-    (void)1.0f;
 }
 
 // Finds the collision mesh record associated with an HSF object.
@@ -334,12 +324,63 @@ static void ColMtxRot(Mtx matrix, float rotateX, float rotateY, float rotateZ)
     }
 }
 
-// Unused helper; its discarded constants have no runtime effect.
-static void UseFloat2(void)
+// Finds closest points on the movement and edge lines for _EdgeCylCol's distance test.
+static BOOL _EdgeCylColInline(HuVecF *startPos, HuVecF *movement, HuVecF *edgeStart,
+                                     HuVecF *edgeEnd, HuVecF *edgeDelta,
+                                     float *movementClosestParam, float *edgeClosestParam)
 {
-    (void)0.0001f;
-    (void)2.0f;
-    (void)4.0f;
+    float determinant;
+    float movementMagSquared;
+    float movementEdgeDot;
+    float edgeMagSquared;
+    float startMovementDot;
+    float startEdgeDot;
+
+    HuVecF edgeFromStart;
+
+    // edgeEnd is unused; edgeDelta supplies the direction of the edge line.
+    VECSubtract(edgeStart, startPos, &edgeFromStart);
+
+    movementMagSquared = VECDotProduct(movement, movement);
+    movementEdgeDot = VECDotProduct(movement, edgeDelta);
+    edgeMagSquared = VECDotProduct(edgeDelta, edgeDelta);
+    startMovementDot = VECDotProduct(&edgeFromStart, movement);
+    startEdgeDot = VECDotProduct(&edgeFromStart, edgeDelta);
+    determinant = (movementMagSquared*edgeMagSquared)-(movementEdgeDot*movementEdgeDot);
+    if(fabsf(determinant) < 0.0001f) {
+        return FALSE;
+    }
+    *movementClosestParam =
+        ((edgeMagSquared * startMovementDot) - (movementEdgeDot * startEdgeDot)) / determinant;
+    *edgeClosestParam =
+        ((movementEdgeDot * startMovementDot) - (movementMagSquared * startEdgeDot)) / determinant;
+    return TRUE;
+}
+
+// Solves the smaller line/sphere root for mesh bounds rejection; the caller checks its range.
+// The quadratic subtracts radius directly, not radius squared. Zero-length movement still divides
+// by zero and returns TRUE.
+static BOOL ColSphereLineCheck(HuVecF *start, HuVecF *end, HuVecF *center, float radius,
+                                      float *t)
+{
+    HuVecF startDelta;
+    HuVecF lineDelta;
+    float lineMag;
+    float lineDot;
+    float startMag;
+    float det;
+
+    VECSubtract(start, center, &startDelta);
+    VECSubtract(end, start, &lineDelta);
+    lineMag = VECSquareMag(&lineDelta);
+    lineDot = 2.0f * VECDotProduct(&startDelta, &lineDelta);
+    startMag = VECSquareMag(&startDelta) - radius;
+    det = (lineDot * lineDot) - (4.0f * (lineMag * startMag));
+    if(det < 0.0f) {
+        return FALSE;
+    }
+    *t = (-lineDot - sqrtf(det)) / (2.0f * lineMag);
+    return TRUE;
 }
 
 // Computes a vertex AABB center and the radius enclosing all supplied vertices.
@@ -651,7 +692,6 @@ static inline BOOL ColPlaneEdgeCheck(HuVecF a, HuVecF b, HuVecF c, COLTRI *tri, 
            int a;
            (void)a;
            (void)a;
-           (void)0.0001f;
         }
         return FALSE;
     }
@@ -946,39 +986,6 @@ static inline float _GetColLineTime(COLLINE *a, COLLINE *b, float t, BOOL *resul
     }
 
     return ret;
-}
-
-// Finds closest points on the movement and edge lines for _EdgeCylCol's distance test.
-static inline BOOL _EdgeCylColInline(HuVecF *startPos, HuVecF *movement, HuVecF *edgeStart,
-                                     HuVecF *edgeEnd, HuVecF *edgeDelta,
-                                     float *movementClosestParam, float *edgeClosestParam)
-{
-    float determinant;
-    float movementMagSquared;
-    float movementEdgeDot;
-    float edgeMagSquared;
-    float startMovementDot;
-    float startEdgeDot;
-
-    HuVecF edgeFromStart;
-
-    // edgeEnd is unused; edgeDelta supplies the direction of the edge line.
-    VECSubtract(edgeStart, startPos, &edgeFromStart);
-
-    movementMagSquared = VECDotProduct(movement, movement);
-    movementEdgeDot = VECDotProduct(movement, edgeDelta);
-    edgeMagSquared = VECDotProduct(edgeDelta, edgeDelta);
-    startMovementDot = VECDotProduct(&edgeFromStart, movement);
-    startEdgeDot = VECDotProduct(&edgeFromStart, edgeDelta);
-    determinant = (movementMagSquared*edgeMagSquared)-(movementEdgeDot*movementEdgeDot);
-    if(fabsf(determinant) < 0.0001f) {
-        return FALSE;
-    }
-    *movementClosestParam =
-        ((edgeMagSquared * startMovementDot) - (movementEdgeDot * startEdgeDot)) / determinant;
-    *edgeClosestParam =
-        ((movementEdgeDot * startMovementDot) - (movementMagSquared * startEdgeDot)) / determinant;
-    return TRUE;
 }
 
 // Computes the dot product in double precision for cylinder collision math.
@@ -1983,32 +1990,6 @@ static inline BOOL CheckPoint(COLBODY *bodyP, COLMESH *meshP, float planeOffset,
     return TRUE;
 }
 
-// Solves the smaller line/sphere root for mesh bounds rejection; the caller checks its range.
-// The quadratic subtracts radius directly, not radius squared. Zero-length movement still divides
-// by zero and returns TRUE.
-static inline BOOL ColSphereLineCheck(HuVecF *start, HuVecF *end, HuVecF *center, float radius,
-                                      float *t)
-{
-    HuVecF startDelta;
-    HuVecF lineDelta;
-    float lineMag;
-    float lineDot;
-    float startMag;
-    float det;
-
-    VECSubtract(start, center, &startDelta);
-    VECSubtract(end, start, &lineDelta);
-    lineMag = VECSquareMag(&lineDelta);
-    lineDot = 2.0f * VECDotProduct(&startDelta, &lineDelta);
-    startMag = VECSquareMag(&startDelta) - radius;
-    det = (lineDot * lineDot) - (4.0f * (lineMag * startMag));
-    if(det < 0.0f) {
-        return FALSE;
-    }
-    *t = (-lineDot - sqrtf(det)) / (2.0f * lineMag);
-    return TRUE;
-}
-
 #define MESHCOL_ATTR (COLBODY_ATTR_NO_CONTACT_FLAG|(1 << 1)|(1 << 4))
 
 // Resolves active bodies against triangle meshes using their configured shapes.
@@ -2270,7 +2251,7 @@ static void _BodyMeshCol(void)
                                 }
                             }
                             skipTri:
-                            (void)bodyP;
+                            continue;
                         }
                     }
                 }
@@ -2520,7 +2501,7 @@ static void _BodyMeshCylCol(void)
                                 }
                             }
                             skipTri:
-                            (void)bodyP;
+                            continue;
                         }
                     }
                 }
@@ -3295,7 +3276,6 @@ static inline void _BodyMeshUpdate(int posNo)
 
         }
     }
-    (void)bodyP;
 }
 
 // Calculates the unit inward-facing edge normals used by triangle collision checks.
@@ -3319,7 +3299,7 @@ static inline void MakeNormal(HuVecF *a, HuVecF *b, HuVecF *c, COLTRI *out)
 
 // Builds plane, edge, center, and bound data for one mesh triangle.
 // Called by ColMapInit while expanding each face into collision triangles.
-static inline void ColMakeTri(COLTRI *tri, Vec *vtxBuf, int *idx)
+static void ColMakeTri(COLTRI *tri, Vec *vtxBuf, int *idx)
 {
     HuVecF ba;
     HuVecF cb;
@@ -3375,11 +3355,6 @@ void fn_8007BAD0(void)
     memset(colWork.attrParamHi, 0, sizeof(colWork.attrParamHi));
     colMesh = NULL;
     colMeshCount = 0;
-}
-
-static void UseFloat3(void)
-{
-    (void)3.0f;
 }
 
 // Registers collision models and builds triangle data before actors begin moving.
@@ -3516,7 +3491,7 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
                 }
                 // Warn at 256 meshes, but continue building this and subsequent mesh records.
                 if(meshNum == 256) {
-        OSReport("( colman.c : ColMapInit ) | テンポラリのバッファをオーバーライトしています\n\0\0\0\0");
+        OSReport("( colman.c : ColMapInit ) | テンポラリのバッファをオーバーライトしています\n");
                 }
                 memset(&colMesh[meshNum], 0, sizeof(COLMESH));
                 colMesh[meshNum].tri = triP;

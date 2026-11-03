@@ -1,5 +1,5 @@
 /* Animates the tournament menu character and moves it between bracket positions. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -11,6 +11,7 @@
 #include "game/memory.h"
 #include "datadir_enum.h"
 #include "msm_se.h"
+#include "REL/mgmtournamentdll/module_types.h"
 
 #define HOST_MOTION_BLEND_FRAMES 8.0f
 
@@ -19,7 +20,6 @@ u32 lbl_1_bss_FC;
 Vec lbl_1_bss_F0;
 extern OMOBJMAN *lbl_1_bss_12C;
 void fn_1_5B84(OMOBJ *object);
-s16 fn_1_A42C(void);
 void fn_1_60F8(Vec *interpolatedPosition, const Vec *beforeStart,
                const Vec *startPosition, const Vec *destination,
                const Vec *pastDestination, f32 durationFrames, f32 elapsedFrames);
@@ -63,16 +63,16 @@ void fn_1_5154(void) {
     fn_800269E8(*lbl_1_bss_100->mdlId, ((1 << 30) | (1 << 0)));
     fn_800268B0(
         *lbl_1_bss_100->mdlId,
-        1.2000000476837158f,
-        1.2000000476837158f,
-        1.2000000476837158f);
+        1.2f,
+        1.2f,
+        1.2f);
     Hu3DLLightCreate(
         *lbl_1_bss_100->mdlId,
         0.0f,
         1500.0f,
         1500.0f,
         0.0f,
-        -0.10000000149011612f,
+        -0.1f,
         -1.0f,
         204,
         204,
@@ -101,7 +101,7 @@ void fn_1_5590(void)
 {
     s16 mode;
 
-    mode = fn_1_A42C();
+    mode = tournamentLayoutGet();
     if (mode == 0) {
         lbl_1_bss_100->work[2] = 4;
     } else if (mode == 1) {
@@ -149,7 +149,7 @@ void fn_1_57E0(s16 duration)
 {
     s16 mode;
 
-    mode = fn_1_A42C();
+    mode = tournamentLayoutGet();
     if ((mode == 0) && (lbl_1_bss_100->work[2] != 4)) {
         if (lbl_1_bss_100->work[2] == 3) {
             return;
@@ -188,7 +188,7 @@ void fn_1_57E0(s16 duration)
 void fn_1_5A44(s16 duration) {
     s16 mode;
 
-    mode = fn_1_A42C();
+    mode = tournamentLayoutGet();
     if (mode == 0) {
         if ((u32) lbl_1_bss_100->work[2] != 4U) {
             lbl_1_bss_100->work[2] = 4U;
@@ -235,7 +235,7 @@ void fn_1_5B84(OMOBJ *object)
               (f32)object->work[3], (f32)lbl_1_bss_FC);
     fn_80026790(object->mdlId[0], &position);
     lbl_1_bss_FC++;
-    if ((u32)lbl_1_bss_FC >= object->work[3]) {
+    if (lbl_1_bss_FC >= object->work[3]) {
         lbl_1_bss_FC = 1;
         object->work[3] = 1;
     }

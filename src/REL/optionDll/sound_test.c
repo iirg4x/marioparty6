@@ -15,6 +15,7 @@
 #include "msm_se.h"
 #include "msm_stream.h"
 #include <math.h>
+#include "REL/optionDll/sound_test.h"
 
 /* The title-message list ends with an empty zero entry. */
 #define OPTION_AUDIO_EMPTY_BIT_PATTERN 0x00000000U
@@ -24,8 +25,6 @@
 #define OPTION_AUDIO_STREAM 0
 #define OPTION_AUDIO_EFFECT 1
 #define OPTION_AUDIO_END (-1)
-
-s16 fn_1_C324(s16 flag, s16 type);
 
 typedef void (*VoidFunc)(void);
 
@@ -504,14 +503,14 @@ OptionAudioEntry lbl_1_data_1900[5] = {
     {OPTION_AUDIO_END, 0, 0, 0},
 };
 
-u8 *lbl_1_data_1950[29] = {
-    (u8 *)lbl_1_data_510, (u8 *)lbl_1_data_590, (u8 *)lbl_1_data_670, (u8 *)lbl_1_data_740,
-    (u8 *)lbl_1_data_7B0, (u8 *)lbl_1_data_890, (u8 *)lbl_1_data_970, (u8 *)lbl_1_data_A20,
-    (u8 *)lbl_1_data_AA0, (u8 *)lbl_1_data_B60, (u8 *)lbl_1_data_BB0, (u8 *)lbl_1_data_C00,
-    (u8 *)lbl_1_data_CD0, (u8 *)lbl_1_data_DB0, (u8 *)lbl_1_data_E90, (u8 *)lbl_1_data_F70,
-    (u8 *)lbl_1_data_1050, (u8 *)lbl_1_data_1130, (u8 *)lbl_1_data_1210, (u8 *)lbl_1_data_12F0,
-    (u8 *)lbl_1_data_13D0, (u8 *)lbl_1_data_14B0, (u8 *)lbl_1_data_1590, (u8 *)lbl_1_data_1670,
-    (u8 *)lbl_1_data_1700, (u8 *)lbl_1_data_17C0, (u8 *)lbl_1_data_1890, (u8 *)lbl_1_data_1900,
+OptionAudioEntry *lbl_1_data_1950[29] = {
+    lbl_1_data_510, lbl_1_data_590, lbl_1_data_670, lbl_1_data_740,
+    lbl_1_data_7B0, lbl_1_data_890, lbl_1_data_970, lbl_1_data_A20,
+    lbl_1_data_AA0, lbl_1_data_B60, lbl_1_data_BB0, lbl_1_data_C00,
+    lbl_1_data_CD0, lbl_1_data_DB0, lbl_1_data_E90, lbl_1_data_F70,
+    lbl_1_data_1050, lbl_1_data_1130, lbl_1_data_1210, lbl_1_data_12F0,
+    lbl_1_data_13D0, lbl_1_data_14B0, lbl_1_data_1590, lbl_1_data_1670,
+    lbl_1_data_1700, lbl_1_data_17C0, lbl_1_data_1890, lbl_1_data_1900,
     NULL
 };
 
@@ -534,25 +533,23 @@ u32 lbl_1_data_19C4[29] = {
 };
 
 HuVec2f lbl_1_data_1A38[14] = {
-    {-120.599998f, -60.0000000f},
-    {120.599998f, -60.0000000f},
-    {-120.599998f, -33.0000000f},
-    {120.599998f, -33.0000000f},
-    {-120.599998f, -6.00000000f},
-    {120.599998f, -6.00000000f},
-    {-120.599998f, 21.0000000f},
-    {120.599998f, 21.0000000f},
-    {-120.599998f, 48.0000000f},
-    {120.599998f, 48.0000000f},
-    {-120.599998f, 75.0000000f},
-    {120.599998f, 75.0000000f},
-    {-120.599998f, 102.000000f},
-    {120.599998f, 102.000000f}
+    {-120.6f, -60.0f},
+    {120.6f, -60.0f},
+    {-120.6f, -33.0f},
+    {120.6f, -33.0f},
+    {-120.6f, -6.0f},
+    {120.6f, -6.0f},
+    {-120.6f, 21.0f},
+    {120.6f, 21.0f},
+    {-120.6f, 48.0f},
+    {120.6f, 48.0f},
+    {-120.6f, 75.0f},
+    {120.6f, 75.0f},
+    {-120.6f, 102.0f},
+    {120.6f, 102.0f}
 };
 
 char lbl_1_data_1AA8[1] = {0};
-
-char lbl_1_data_1AA9[7] = "%d\n";
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -685,49 +682,10 @@ extern float lbl_1_rodata_258[];
 extern float lbl_1_rodata_1C4;
 extern double lbl_1_rodata_168;
 
-void fn_1_A0(void);
-void fn_1_804(void);
-void fn_1_FDC(void);
-void fn_1_1044(void);
-void fn_1_EA6C(void);
-void fn_1_1084(void);
-void fn_1_3AE0(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages);
-void fn_1_18B8(s16 cameraNo);
-void fn_1_18D8(void);
-void fn_1_19B8(s32 value);
-void fn_1_19E0(void);
-void fn_1_E6F8(void);
-void fn_1_F1D8(void);
-void fn_1_F394(void);
-void fn_1_F0B0(void);
-void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-void fn_1_3BD8(OMOBJ *obj);
-s16 fn_1_1DF0(s16 currentOption);
-
-void fn_1_B1A0(s16 mode, s16 argument);
-void fn_1_4738(void);
-void fn_1_6898(void);
-void fn_1_5620(void);
-void fn_1_6504(s16 prizeNo);
-void fn_1_6590(s16 firstPrize);
-void fn_1_7728(s16 firstEntry);
-void fn_1_7A74(void);
-void fn_1_85E4(s16 item, float progress);
-void fn_1_879C(void);
-void fn_1_8CA4(s16 recordIndex);
-void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage);
 float fn_1_F684(s16 groupId, s16 memberNo);
-void fn_1_B02C(s16 first, s16 count);
-void fn_1_9F74(void);
-void fn_1_C484(void);
-void fn_1_E538(s16 page);
 void fn_1_E688(OptionAudioEntry *entry);
-extern int HuMCMicGet(void);
-int sprintf(char *buffer, const char *format, int value);
 
-extern u8 *lbl_1_bss_B78[30];
+extern OptionAudioEntry *lbl_1_bss_B78[30];
 extern u32 lbl_1_bss_B00[30];
 
 /* Walks the current group's entry list (lbl_1_bss_AFC) to its -1 terminator, counting the
@@ -879,7 +837,7 @@ void fn_1_C484(void)
     previousGroup = currentGroup = 0;
     lbl_1_bss_AFC = (OptionMessageEntry *)lbl_1_bss_B78[currentGroup];
     COUNT_GROUP_ENTRIES(entry, itemCount);
-    OSReport(lbl_1_data_1AA9, itemCount);
+    OSReport("%d\n", itemCount);
     HuSprAttrSet(lbl_1_bss_5D4, 2, 4);
     HuSprAttrSet(lbl_1_bss_5D4, 3, 4);
     HuSprScaleSet(lbl_1_bss_5D4, 2, 0.0f, 0.0f);

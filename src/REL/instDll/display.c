@@ -1,5 +1,5 @@
 /* Builds the minigame instructions screen, character previews, and movie backdrop. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin.h"
 #include "dolphin/gx.h"
 #include "game/audio.h"
@@ -29,6 +29,7 @@
 #include "game/board/tutorial.h"
 #include "dolphin/os.h"
 #include "humath.h"
+#include "REL/instDll.h"
 
 /* Layouts for instruction model placement and the minigame's camera preview. */
 enum {
@@ -103,82 +104,18 @@ extern BOOL lbl_1_data_4;
 extern OM_CAMERA_VIEW lbl_1_data_40;
 extern u8 lbl_1_data_410[];
 extern STAGE_MODEL lbl_1_data_520[];
-extern char lbl_1_data_5C[];
 extern OM_CAMERA_VIEW lbl_1_data_8;
-extern char lbl_1_data_80[];
 extern char lbl_1_data_CE[];
 extern char lbl_1_data_DC[];
 extern char lbl_1_data_E7[];
 extern u32 lbl_1_data_F8[];
 extern GXRenderModeObj *RenderMode;
 
-/* Functions shared with the other instruction-screen files. */
-extern void fn_1_1024(void);
-extern void fn_1_35F8(OMOBJ *obj);
-extern void fn_1_4158(void);
-void fn_1_8FA0(s16 imageIndex);
-void fn_1_96F4(s16 selectedMode);
-void fn_1_4668(STAGE_MODEL *desc);
-void fn_1_539C(void);
-void fn_1_5DE0(void);
-void fn_1_47E4(s16 selectedMode);
-void fn_1_2A1C(void);
-void fn_1_15C8(void);
-void fn_1_4188(void);
-void fn_1_8DB0(void);
-void fn_1_15B4(void);
-HUSPR_GROUPID fn_1_4400(u32 messNum);
-int fn_1_A1E8(void (*childFunction)(void), s32 processState);
-void fn_1_4B48(void);
-extern void fn_1_62A8(void);
-extern void fn_1_8B44(void);
-extern void fn_1_750C(void);
-extern void fn_1_8504(s16 index, Vec *transformed, Vec *result);
-extern void fn_1_8680(void);
-void fn_1_902C(s16 layerNo);
-extern void fn_1_9CF4(HU3D_MODEL *modelP, Mtx *mtx);
-extern void fn_1_99CC(void);
-void fn_1_9CB0(s16 layerNo);
-
-/* Preview positions, camera views, model settings, and group-error messages. */
+/* Preview positions, camera views, and model settings. */
 HuVecF lbl_1_data_700 = { -252.0f, 1.1e+02f, -1.4e+03f };
 HuVecF lbl_1_data_70C = { -206.0f, -2.1e+02f, 302.0f };
 HuVecF lbl_1_data_718 = { 1.7e+02f, 104.0f, -1.4e+03f };
 HuVecF lbl_1_data_724 = { 1.0f, 1.0f, 1.0f };
-char lbl_1_data_730[] = "Error: 2x2P Group Error!\n";
-char lbl_1_data_74A[] = "Error: 1x3P Group Error!\n";
-char lbl_1_data_764[] = "Error: DUEL Group Error!\n";
-char lbl_1_data_77E[] = "Error: RARE Group Error!\n";
-Inst_data_798_view lbl_1_data_798[] = {
-    { 4, { DATANUM(0x260000, 3), DATANUM(0x260000, 2), DATANUM(0x260000, 0), DATANUM(0x260000, 1) },
-        45.0f, 0.6f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 1, 2, 4, 8 }, { { 0.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 2, { DATANUM(0x260000, 6), DATANUM(0x260000, 7), 0, 0 }, 9e+01f, 0.6f, { 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f }, { 1, 14, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
-        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 2, { DATANUM(0x260000, 4), DATANUM(0x260000, 5), 0, 0 }, -9e+01f, 0.6f, { 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f }, { 3, 12, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
-        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 4, { DATANUM(0x260000, 3), DATANUM(0x260000, 2), DATANUM(0x260000, 0), DATANUM(0x260000, 1) },
-        45.0f, 0.6f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 1, 2, 4, 8 }, { { 0.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 2, { DATANUM(0x260000, 10), DATANUM(0x260000, 12), 0, 0 }, -9e+01f, 0.5f, { 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f }, { 15, 16, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
-        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 1, { DATANUM(0x260000, 13), 0, 0, 0 }, 0.0f, 0.8f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 3, 0,
-        0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
-        0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 2, { DATANUM(0x260000, 8), DATANUM(0x260000, 9), 0, 0 }, -9e+01f, 0.7f, { 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f }, { 1, 2, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
-        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 2, { DATANUM(0x260000, 10), DATANUM(0x260000, 11), 0, 0 }, -9e+01f, 0.5f, { 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f }, { 15, 16, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
-        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
-    { 4, { DATANUM(0x260000, 3), DATANUM(0x260000, 2), DATANUM(0x260000, 0), DATANUM(0x260000, 1) },
-        45.0f, 0.6f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 1, 2, 4, 8 }, { { 0.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } }
-};
-
 HU3D_MODELID lbl_1_bss_6AA[256];
 HU3D_MOTIONID lbl_1_bss_4AA[256];
 HU3D_MODELID lbl_1_bss_49E[6];
@@ -437,7 +374,7 @@ void fn_1_539C(void)
             }
         }
         if (i != 4) {
-            OSReport(lbl_1_data_730);
+            OSReport("Error: 2x2P Group Error!\n");
             for (i = 0; i < 4; i++) {
                 charList[i] = lbl_1_bss_28[i];
             }
@@ -455,7 +392,7 @@ void fn_1_539C(void)
             }
         }
         if (count != 3) {
-            OSReport(lbl_1_data_74A);
+            OSReport("Error: 1x3P Group Error!\n");
             for (i = 0; i < 4; i++) {
                 charList[i] = lbl_1_bss_28[i];
             }
@@ -471,7 +408,7 @@ void fn_1_539C(void)
             }
         }
         if (count != 2) {
-            OSReport(lbl_1_data_764);
+            OSReport("Error: DUEL Group Error!\n");
             charList[0] = lbl_1_bss_28[0];
             charList[1] = lbl_1_bss_28[1];
         }
@@ -488,7 +425,7 @@ void fn_1_539C(void)
                 }
             }
             if (count == 0) {
-                OSReport(lbl_1_data_77E);
+                OSReport("Error: RARE Group Error!\n");
                 charList[0] = lbl_1_bss_28[0];
                 charList[1] = lbl_1_bss_28[1];
             }
@@ -557,6 +494,36 @@ void fn_1_539C(void)
     }
 }
 
+Inst_data_798_view lbl_1_data_798[] = {
+    { 4, { DATANUM(0x260000, 3), DATANUM(0x260000, 2), DATANUM(0x260000, 0), DATANUM(0x260000, 1) },
+        45.0f, 0.6f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 1, 2, 4, 8 }, { { 0.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 2, { DATANUM(0x260000, 6), DATANUM(0x260000, 7), 0, 0 }, 9e+01f, 0.6f, { 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f }, { 1, 14, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
+        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 2, { DATANUM(0x260000, 4), DATANUM(0x260000, 5), 0, 0 }, -9e+01f, 0.6f, { 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f }, { 3, 12, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
+        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 4, { DATANUM(0x260000, 3), DATANUM(0x260000, 2), DATANUM(0x260000, 0), DATANUM(0x260000, 1) },
+        45.0f, 0.6f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 1, 2, 4, 8 }, { { 0.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 2, { DATANUM(0x260000, 10), DATANUM(0x260000, 12), 0, 0 }, -9e+01f, 0.5f, { 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f }, { 15, 16, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
+        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 1, { DATANUM(0x260000, 13), 0, 0, 0 }, 0.0f, 0.8f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 3, 0,
+        0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
+        0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 2, { DATANUM(0x260000, 8), DATANUM(0x260000, 9), 0, 0 }, -9e+01f, 0.7f, { 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f }, { 1, 2, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
+        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 2, { DATANUM(0x260000, 10), DATANUM(0x260000, 11), 0, 0 }, -9e+01f, 0.5f, { 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f }, { 15, 16, 0, 0 }, { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f,
+        0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
+    { 4, { DATANUM(0x260000, 3), DATANUM(0x260000, 2), DATANUM(0x260000, 0), DATANUM(0x260000, 1) },
+        45.0f, 0.6f, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 1, 2, 4, 8 }, { { 0.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } }
+};
+
 /* Called after model creation to place stage models and start their idle orbit. */
 void fn_1_5DE0(void)
 {
@@ -573,8 +540,8 @@ void fn_1_5DE0(void)
     fn_1_62A8();
 
     entry = lbl_1_bss_D8;
-    PSMTXRotRad(matrix, 'x', 0.7853981852531433f);
-    PSMTXRotRad(rotateMatrix, 'y', 0.7853981852531433f);
+    PSMTXRotRad(matrix, 'x', 0.7853982f);
+    PSMTXRotRad(rotateMatrix, 'y', 0.7853982f);
     PSMTXConcat(matrix, rotateMatrix, matrix);
 
     poseData = &lbl_1_data_798[lbl_1_bss_20->type];
@@ -619,9 +586,9 @@ void fn_1_5DE0(void)
                 entry->playerIndices[playerIndex] = (s8)j;
                 point = poseData->characterPositions[j];
                 PSMTXMultVec(matrix, &point, &point);
-                PSMTXRotRad(rotateMatrix, 'x', 0.7853981852531433f);
+                PSMTXRotRad(rotateMatrix, 'x', 0.7853982f);
                 PSMTXRotRad(playerMatrix, 'y',
-                0.01745329238474369f *
+                0.017453292f *
                                 (45.0f + poseData->characterFacingDegrees[j]));
                 PSMTXConcat(rotateMatrix, playerMatrix, rotateMatrix);
                 fn_80026958(lbl_1_bss_49E[j], &rotateMatrix);
@@ -844,8 +811,8 @@ void fn_1_750C(void)
             angle = (f32)(3.0 *
                           sin(3.141592653589793 * angleOffsets[i] /
                               180.0));
-            PSMTXRotRad(matrix, 'x', 0.7853981852531433f);
-            PSMTXRotRad(rotateMatrix, 'y', 0.01745329238474369f * phase);
+            PSMTXRotRad(matrix, 'x', 0.7853982f);
+            PSMTXRotRad(rotateMatrix, 'y', 0.017453292f * phase);
             PSMTXConcat(matrix, rotateMatrix, matrix);
             fn_80026958(entry->stageModel, &matrix);
 
@@ -873,9 +840,9 @@ void fn_1_750C(void)
                     fn_80026790(lbl_1_bss_49E[entry->playerIndices[j]],
                                      &position);
                     PSMTXRotRad(rotateMatrix, 'x',
-                                0.01745329238474369f * result.x);
+                                0.017453292f * result.x);
                     PSMTXRotRad(playerMatrix, 'y',
-                                0.01745329238474369f * (result.y + phase));
+                                0.017453292f * (result.y + phase));
                     PSMTXConcat(rotateMatrix, playerMatrix, rotateMatrix);
                     fn_80026958(lbl_1_bss_49E[entry->playerIndices[j]],
                                     &rotateMatrix);
@@ -912,7 +879,7 @@ void fn_1_750C(void)
             }
         }
 
-        phase += 0.20000000298023224f;
+        phase += 0.2f;
         if (phase > 360.0f) {
             phase -= 360.0f;
         }
@@ -932,13 +899,13 @@ void fn_1_750C(void)
         }
 
         PSMTXRotRad(matrix, 'x',
-                    (f32)(0.01745329238474369 *
+                    (f32)(0.017453292f *
                           (45.0 *
                            sin(3.141592653589793 *
                                (90.0f * blend) /
                                180.0))));
         PSMTXRotRad(rotateMatrix, 'y',
-                    (f32)(0.01745329238474369 *
+                    (f32)(0.017453292f *
                           (phase +
                            360.0 *
                                (1.0 -
@@ -948,8 +915,8 @@ void fn_1_750C(void)
         PSMTXConcat(matrix, rotateMatrix, matrix);
         PSVECSubtract(&lbl_1_data_718, &lbl_1_data_700, &path);
         path.z -= 100.0f;
-        scale = (f32)(0.20000000298023224f * poseData->previewModelScale +
-                      0.800000011920929 *
+        scale = (f32)(0.2f * poseData->previewModelScale +
+                      0.8f *
                           (poseData->previewModelScale *
                            cos(3.141592653589793 *
                                (90.0f * frameRatio) /
@@ -992,9 +959,9 @@ void fn_1_750C(void)
                     fn_800268B0(lbl_1_bss_49E[entry->playerIndices[j]],
                                       scale, scale, scale);
                     PSMTXRotRad(rotateMatrix, 'x',
-                                0.01745329238474369f * result.x);
+                                0.017453292f * result.x);
                     PSMTXRotRad(playerMatrix, 'y',
-                                (f32)(0.01745329238474369 *
+                                (f32)(0.017453292f *
                                       (phase + result.y +
                                        360.0 *
                                            (1.0 -
@@ -1285,8 +1252,8 @@ void fn_1_902C(s16 layerNo)
     GXPosition2f32(0.0f, 480.0f);
     GXTexCoord2f32(0.0f, 7.5f);
 
-    lbl_1_bss_48 += 0.004999999888241291f;
-    if (lbl_1_bss_48 >= 0.9990000128746033f) {
+    lbl_1_bss_48 += 0.005f;
+    if (lbl_1_bss_48 >= 0.999f) {
         lbl_1_bss_48 = 0.0f;
     }
 }

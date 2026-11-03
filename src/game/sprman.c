@@ -1,7 +1,5 @@
 /* Manages sprite animation, groups, ordering, and frame-by-frame drawing. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double x);
+#include "math.h"
 #include "game/sprite.h"
 #include "game/memory.h"
 #include "game/init.h"
@@ -238,7 +236,7 @@ ANIMDATA *HuSprAnimRead(void *data)
     ANIMBANK *bank;
     ANIMPAT *pat;
     
-    ANIMDATA *anim = (ANIMDATA *)data;
+    ANIMDATA *anim = data;
     if((u32)anim->bank & ANIM_POINTER_ABSOLUTE_MASK) {
         anim->useNum++;
         return anim;

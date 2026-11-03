@@ -1,5 +1,5 @@
 // Loads HSF model data, resolving file offsets into the model's section and object links.
-#define _MATH_H
+#include "dolphin/math.h"
 #include "game/hsfload.h"
 #include "string.h"
 #include "ctype.h"
@@ -94,6 +94,7 @@ HSF_DATA *LoadHSF(void *hsfFile)
 
 // Resolves a motion model's cluster target names against the displayed model.
 // HSF manager setup calls this after loading a model and its cluster motion.
+// The first cluster's adjusted flag prevents later adjustments, even to another target model.
 void ClusterAdjustObject(HSF_DATA *targetModel, HSF_DATA *sourceModel)
 {
     HSF_CLUSTER *cluster;
@@ -131,6 +132,7 @@ static void FileLoad(void *hsfFile)
 
 // Copies the resolved section pointers into the file-backed model descriptor.
 // LoadHSF calls this after every section loader has populated Model.
+// The descriptor's color-table pointer and count are left unchanged.
 static HSF_DATA *SetHsfModel(void)
 {
     HSF_DATA *model = fileptr;
@@ -328,7 +330,7 @@ static void VertexLoad(void)
 
     if(head.vertex.num) {
         vtxtop = fileVertices = (HSF_BUFFER *)((u32)fileptr+head.vertex.ofs);
-        vertexData = (void *)&fileVertices[head.vertex.num];
+        vertexData = &fileVertices[head.vertex.num];
         for(vertexIndex=0; vertexIndex<head.vertex.num; vertexIndex++, fileVertices++) {
             for(positionIndex=0; positionIndex<(u32)fileVertices->count; positionIndex++) {
                 // This unused pass computes packed-position addresses; the later pass
@@ -341,7 +343,7 @@ static void VertexLoad(void)
         Model.vertex = loadedVertex;
         Model.vertexNum = head.vertex.num;
         fileVertices = (HSF_BUFFER *)((u32)fileptr+head.vertex.ofs);
-        VertexDataTop = vertexData = (void *)&fileVertices[head.vertex.num];
+        VertexDataTop = vertexData = &fileVertices[head.vertex.num];
         for (vertexIndex = 0; vertexIndex < head.vertex.num;
              vertexIndex++, loadedVertex++, fileVertices++) {
             vertexDataOffset = (u32)fileVertices->data;
@@ -351,9 +353,9 @@ static void VertexLoad(void)
             for(positionIndex=0; positionIndex<loadedVertex->count; positionIndex++) {
                 vertexPosition = (HuVecF *) (((u32) vertexData) + vertexDataOffset +
                                              (positionIndex * sizeof(HuVecF)));
-                (&((HuVecF *)loadedVertex->data)[positionIndex])->x =
-                    vertexPosition->x;  (&((HuVecF *)loadedVertex->data)[positionIndex])->y =
-                    vertexPosition->y;  (&((HuVecF *)loadedVertex->data)[positionIndex])->z =
+                (&loadedVertex->positions[positionIndex])->x =
+                    vertexPosition->x;  (&loadedVertex->positions[positionIndex])->y =
+                    vertexPosition->y;  (&loadedVertex->positions[positionIndex])->z =
                     vertexPosition->z;
             }
         }
@@ -374,12 +376,12 @@ static void NormalLoad(void)
     if(head.normal.num) {
         s32 envelopeCount = head.cenv.num;
         normalTable = fileNormals = (HSF_BUFFER *)((u32)fileptr+head.normal.ofs);
-        normalData = (void *)&fileNormals[head.normal.num];
+        normalData = &fileNormals[head.normal.num];
         loadedNormal = normalTable;
         Model.normal = loadedNormal;
         Model.normalNum = head.normal.num;
         fileNormals = (HSF_BUFFER *)((u32)fileptr+head.normal.ofs);
-        NormalDataTop = normalData = (void *)&fileNormals[head.normal.num];
+        NormalDataTop = normalData = &fileNormals[head.normal.num];
         for (normalIndex = 0; normalIndex < head.normal.num;
              normalIndex++, loadedNormal++, fileNormals++) {
             normalDataOffset = (u32)fileNormals->data;
@@ -406,7 +408,7 @@ static void STLoad(void)
 
     if(head.st.num) {
         coordinateTable = fileCoordinates = (HSF_BUFFER *)((u32)fileptr+head.st.ofs);
-        coordinateData = (void *)&fileCoordinates[head.st.num];
+        coordinateData = &fileCoordinates[head.st.num];
         for(bufferIndex=0; bufferIndex<head.st.num; bufferIndex++, fileCoordinates++) {
             for(coordinateIndex=0; coordinateIndex<(u32)fileCoordinates->count; coordinateIndex++) {
                 // This unused pass computes packed-UV addresses; the later pass recomputes them
@@ -419,7 +421,7 @@ static void STLoad(void)
         Model.st = loadedCoordinate;
         Model.stNum = head.st.num;
         fileCoordinates = (HSF_BUFFER *)((u32)fileptr+head.st.ofs);
-        coordinateData = (void *)&fileCoordinates[head.st.num];
+        coordinateData = &fileCoordinates[head.st.num];
         for (bufferIndex = 0; bufferIndex < head.st.num;
              bufferIndex++, loadedCoordinate++, fileCoordinates++) {
             coordinateDataOffset = (u32)fileCoordinates->data;
@@ -429,8 +431,8 @@ static void STLoad(void)
             for(coordinateIndex=0; coordinateIndex<loadedCoordinate->count; coordinateIndex++) {
                 coordinate = (HuVec2f *) (((u32) coordinateData) + coordinateDataOffset +
                                           (coordinateIndex * sizeof(HuVec2f)));
-                (&((HuVec2f *)loadedCoordinate->data)[coordinateIndex])->x =
-                    coordinate->x;  (&((HuVec2f *)loadedCoordinate->data)[coordinateIndex])->y =
+                (&loadedCoordinate->coordinates[coordinateIndex])->x =
+                    coordinate->x;  (&loadedCoordinate->coordinates[coordinateIndex])->y =
                     coordinate->y;
             }
         }
@@ -446,27 +448,27 @@ static void FaceLoad(void)
     HSF_BUFFER *loadedFace;
     HSF_BUFFER *faceTable;
     u32 faceDataOffset;
-    HSF_FACE *faceData;
+    void *faceData;
     HSF_FACE *sourceFace;
     HSF_FACE *loadedFacePart;
-    u8 *stripIndexData;
+    HSF_FACE_INDEX *stripIndexData;
     s32 faceIndex;
     s32 partIndex;
 
     if(head.face.num) {
         faceTable = fileFaces = (HSF_BUFFER *)((u32)fileptr+head.face.ofs);
-        faceData = (HSF_FACE *)&fileFaces[head.face.num];
+        faceData = &fileFaces[head.face.num];
         loadedFace = faceTable;
         Model.face = loadedFace;
         Model.faceNum = head.face.num;
         fileFaces = (HSF_BUFFER *)((u32)fileptr+head.face.ofs);
-        faceData = (HSF_FACE *)&fileFaces[head.face.num];
+        faceData = &fileFaces[head.face.num];
         for(faceIndex=0; faceIndex<head.face.num; faceIndex++, loadedFace++, fileFaces++) {
             faceDataOffset = (u32)fileFaces->data;
             loadedFace->name = SetName((u32 *)&fileFaces->name);
             loadedFace->count = fileFaces->count;
             loadedFace->data = (void *)((u32)faceData+faceDataOffset);
-            stripIndexData = (u8 *)(&((HSF_FACE *)loadedFace->data)[loadedFace->count]);
+            stripIndexData = (void *)(&((HSF_FACE *)loadedFace->data)[loadedFace->count]);
         }
         loadedFace = faceTable;
         for(faceIndex=0; faceIndex<head.face.num; faceIndex++, loadedFace++) {
@@ -474,9 +476,7 @@ static void FaceLoad(void)
             for (partIndex = 0; partIndex < loadedFace->count;
                  partIndex++, loadedFacePart++, sourceFace++) {
                 if(sourceFace->typeSrc == 4) {
-                    loadedFacePart->strip.data =
-                        (HSF_FACE_INDEX *) (stripIndexData + (u32) sourceFace->strip.data *
-                                                                 (sizeof(HSF_FACE_INDEX)));
+                    loadedFacePart->strip.data = &stripIndexData[(u32) sourceFace->strip.data];
                 }
             }
         }
@@ -496,6 +496,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
     } resolvedReference;
 
     resolvedReference.parent = parent;
+    // Write the existing object type back unchanged before resolving its links.
     object->type = object->type;
     switch(object->type) {
         case 2:
@@ -699,7 +700,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
     }
 }
 
-// ObjectLoad calls this to set the type tags for light and camera objects.
+// ObjectLoad calls this to write light and camera type tags back unchanged.
 static inline void FixupObject(HSF_OBJECT *object)
 {
     HSF_LIGHT *light;
@@ -769,7 +770,7 @@ static void CenvLoad(void)
     HSF_CENV *cenvNew;
     HSF_CENV *cenvFile;
     void *envelopeDataBase;
-    void *envelopeWeightBase;
+    u8 *envelopeWeightBase;
 
     s32 j;
     s32 i;
@@ -793,12 +794,9 @@ static void CenvLoad(void)
             cenvNew[i].multiCount = cenvFile[i].multiCount;
             cenvNew[i].copyCount = cenvFile[i].copyCount;
             cenvNew[i].vtxCount = cenvFile[i].vtxCount;
-            envelopeWeightBase = (void *) ((u32) envelopeWeightBase +
-                                           (cenvNew[i].singleCount * sizeof(HSF_CENV_SINGLE)));
-            envelopeWeightBase = (void *) ((u32) envelopeWeightBase +
-                                           (cenvNew[i].dualCount * sizeof(HSF_CENV_DUAL)));
-            envelopeWeightBase = (void *) ((u32) envelopeWeightBase +
-                                           (cenvNew[i].multiCount * sizeof(HSF_CENV_MULTI)));
+            envelopeWeightBase += cenvNew[i].singleCount * sizeof(HSF_CENV_SINGLE);
+            envelopeWeightBase += cenvNew[i].dualCount * sizeof(HSF_CENV_DUAL);
+            envelopeWeightBase += cenvNew[i].multiCount * sizeof(HSF_CENV_MULTI);
         }
         for(i=0; i<head.cenv.num; i++) {
             singleNew = singleFile = cenvNew[i].singleData;
@@ -1029,7 +1027,7 @@ static void PaletteLoad(void)
 
     if(head.palette.num) {
         paletteTemp = paletteFile = (HSF_PALETTE *)((u32)fileptr+head.palette.ofs);
-        dataBase = (u16 *)&paletteFile[head.palette.num];
+        dataBase = &paletteFile[head.palette.num];
         // This pass computes packed-color pointers; the relocation pass below recomputes and stores
         // them.
         for(i=0; i<head.palette.num; i++, paletteFile++) {
@@ -1039,7 +1037,7 @@ static void PaletteLoad(void)
         Model.paletteNum = head.palette.num;
         paletteNew = paletteTemp;
         paletteFile = (HSF_PALETTE *)((u32)fileptr+head.palette.ofs);
-        dataBase = (u16 *)&paletteFile[head.palette.num];
+        dataBase = &paletteFile[head.palette.num];
         for(i=0; i<head.palette.num; i++, paletteFile++, paletteNew++) {
             dataTemp = (u16 *)((u32)dataBase+(u32)paletteFile->data);
             data = dataTemp;
@@ -1054,7 +1052,8 @@ static void PaletteLoad(void)
     }
 }
 
-// Motion name lookup calls this to strip the prefix and trailing object-name suffix.
+// Named-object APIs strip everything through the first '-' and stop at an underscore
+// followed by a non-letter. The normalized name is returned in a shared buffer.
 char *MakeObjectName(s8 *name)
 {
     static char buf[768];
@@ -1120,7 +1119,7 @@ static inline s32 FindObjectName(char *name)
     return -1;
 }
 
-// MotionLoadCluster calls this when motion targets clusters in the displayed model.
+// Cluster-track loading searches the current HSF file's cluster table by name.
 static inline s32 FindClusterName(char *name)
 {
     s32 i;
@@ -1135,7 +1134,8 @@ static inline s32 FindClusterName(char *name)
     return -1;
 }
 
-// MotionLoadCluster calls this when the loaded file is itself a motion-only model.
+// Searches MotionModel's clusters for the motion-only branch; MotionLoad leaves that branch
+// disabled.
 static inline s32 FindMotionClusterName(char *name)
 {
     s32 i;
@@ -1150,7 +1150,7 @@ static inline s32 FindMotionClusterName(char *name)
     return -1;
 }
 
-// MotionLoadAttribute calls this to map an attribute track name in the displayed model.
+// Attribute-track loading searches named attributes in the current HSF file.
 static inline s32 FindAttributeName(char *name)
 {
     s32 i;
@@ -1168,7 +1168,7 @@ static inline s32 FindAttributeName(char *name)
     return -1;
 }
 
-// MotionLoadAttribute calls this when attributes belong to the motion-only model.
+// Searches MotionModel's attributes for the motion-only branch; MotionLoad leaves it disabled.
 static inline s32 FindMotionAttributeName(char *name)
 {
     s32 i;
@@ -1246,7 +1246,6 @@ static inline void MotionLoadCluster(HSF_TRACK *track, void *data)
         outTrack->cluster = FindMotionClusterName(name);
     }
     dataNum = track->dataNum;
-    (void)outTrack;
     switch(track->curveType) {
         case 0:
         {
@@ -1292,7 +1291,6 @@ static inline void MotionLoadClusterWeight(HSF_TRACK *track, void *data)
         outTrack->cluster = FindMotionClusterName(name);
     }
     dataNum = track->dataNum;
-    (void)outTrack;
     switch(track->curveType) {
         case 0:
         {
@@ -1416,14 +1414,15 @@ static inline void MotionLoadAttribute(HSF_TRACK *track, void *data)
 }
 
 // LoadHSF calls this after model attributes and materials are available to prepare motion tracks.
+// Only the first motion record's tracks are processed; Model.motionNum stores its track count.
 static void MotionLoad(void)
 {
+    s32 i;
     HSF_MOTION *fileMotion;
     HSF_MOTION *tempMotion;
     HSF_MOTION *newMotion;
     HSF_TRACK *trackStart;
     void *trackData;
-    s32 i;
 
     MotionOnly = FALSE;
     MotionModel = NULL;
@@ -1439,23 +1438,28 @@ static void MotionLoad(void)
             switch(trackStart[i].type) {
                 case 2:
                 case 3:
-                    MotionLoadTransform(&trackStart[i], trackData);
+                    MotionLoadTransform((HSF_TRACK *) ((u32) trackStart + i * sizeof(HSF_TRACK)),
+                                        trackData);
                     break;
 
                 case 5:
-                    MotionLoadCluster(&trackStart[i], trackData);
+                    MotionLoadCluster((HSF_TRACK *) ((u32) trackStart + i * sizeof(HSF_TRACK)),
+                                      trackData);
                     break;
 
                 case 6:
-                    MotionLoadClusterWeight(&trackStart[i], trackData);
+                    MotionLoadClusterWeight(
+                        (HSF_TRACK *) ((u32) trackStart + i * sizeof(HSF_TRACK)), trackData);
                     break;
 
                 case 9:
-                    MotionLoadMaterial(&trackStart[i], trackData);
+                    MotionLoadMaterial((HSF_TRACK *) ((u32) trackStart + i * sizeof(HSF_TRACK)),
+                                       trackData);
                     break;
 
                 case 10:
-                    MotionLoadAttribute(&trackStart[i], trackData);
+                    MotionLoadAttribute((HSF_TRACK *) ((u32) trackStart + i * sizeof(HSF_TRACK)),
+                                        trackData);
                     break;
 
                 default:
@@ -1463,34 +1467,6 @@ static void MotionLoad(void)
             }
         }
     }
-    // These repeated reads do not alter the loaded motion data or the returned model.
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
-    (void)i;
 }
 
 // LoadHSF calls this to point the matrix table at the matrix records following its header.

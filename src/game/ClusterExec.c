@@ -38,7 +38,7 @@ float GetClusterWeightCurve(HSF_TRACK *clusterTrack, float motionTime) {
 }
 
 /* Applies a cluster's weighted or interpolated vertices during ClusterProc. */
-void SetClusterMain(HSF_CLUSTER *cluster) {
+static void SetClusterMain(HSF_CLUSTER *cluster) {
     float totalWeight;
     float blendAmount;
     s32 vertexFrameIndex;

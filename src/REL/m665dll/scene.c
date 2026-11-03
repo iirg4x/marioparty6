@@ -1,5 +1,8 @@
 /* Verbal Assault lighting, scene setup, player setup, and camera callbacks. */
 #include "REL/m665dll/player.h"
+#include "REL/m665dll/main.h"
+#include "REL/m665dll/opponent.h"
+#include "REL/m665dll/scene.h"
 #include "dolphin/types.h"
 
 #include "math.h"
@@ -8,6 +11,8 @@
 #include "dolphin/gx.h"
 
 #include "game/mg/seqman.h"
+
+#include "game/printfunc.h"
 
 #include "game/main.h"
 
@@ -48,7 +53,6 @@
 #include "datadir_enum.h"
 #include "game/hu3d.h"
 
-/* ---- from text_00C64.c ---- */
 
 typedef struct LightMapLevels {
     f32 level[2];
@@ -131,9 +135,6 @@ s16 fn_1_C64(void) {
     return result;
 }
 
-/* ---- from fn_1_E3C.c ---- */
-
-#include <types.h>
 
 extern s16 lbl_802C0278;
 
@@ -256,35 +257,9 @@ void fn_1_13B4(OMOBJ *obj) {
 
 extern OMOBJMAN *lbl_1_bss_8;
 
-s16 print8(s16 x, s16 y, f32 scale, char *format, ...);
-
-void fn_1_1C60(void);
-
-void fn_1_C40C(void);
-
 void fn_1_17E0(OMOBJ *object);
 
-void fn_1_4768(void);
-
-void fn_1_11C04(void);
-
-void fn_1_170C(s16 playerNo, s16 mode, f32 frame);
-
 extern s32 lbl_1_data_100[7];
-
-void fn_1_6E8C(void);
-
-void fn_1_5470(void);
-
-void fn_1_98AC(void);
-
-void fn_1_6188(void);
-
-void fn_1_AD40(void);
-
-void fn_1_8E90(void);
-
-void fn_1_B09C(void);
 
 /* Sequence initialization loads player configuration, character models, and seven motion slots. */
 void fn_1_1470(void) {
@@ -341,120 +316,6 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_A0(void);
-
-void fn_1_F0(s16 mode, s16 frame);
-
-void fn_1_168(s16 mode, s16 frame);
-
-void fn_1_188(s16 mode, s16 frame);
-
-void fn_1_1C8(s16 mode, s16 frame);
-
-void fn_1_200(s16 mode, s16 frame);
-
-void fn_1_304(s16 mode, s16 frame);
-
-void fn_1_3AC(s16 mode, s16 frame);
-
-void fn_1_3B0(s16 mode, s16 frame);
-
-void fn_1_3B4(s16 mode, s16 frame);
-
-void fn_1_3B8(void);
-
-void fn_1_484(void);
-
-void fn_1_550(void);
-
-void fn_1_8EC(void);
-
-void fn_1_F90(OMOBJ *obj);
-
-void fn_1_1228(void);
-
-void fn_1_14FC(void);
-
-void fn_1_1830(void);
-
-void fn_1_1AE4(void);
-
-void fn_1_2010(s16);
-
-void fn_1_21CC(OMOBJ *obj);
-
-void fn_1_22A8(s16 player, s16 motion);
-
-void fn_1_2320(s16, s16);
-
-void fn_1_23C4(s16 player, s16 motion, float blend);
-
-void fn_1_2464(s16 player);
-
-void fn_1_2558(void);
-
-void fn_1_25B0(void);
-
-void fn_1_26D0(void);
-
-void fn_1_273C(s16);
-
-void fn_1_289C(s16 player);
-
-s16 fn_1_2CAC(s16);
-
-void fn_1_2F1C(s16);
-
-void fn_1_33F8(s16 player);
-
-void fn_1_3F28(s16 player);
-
-void fn_1_4430(s16 player);
-
-void fn_1_473C(s16);
-
-void fn_1_48C0(s16);
-
-void fn_1_49C8(s16);
-
-void fn_1_4BD4(s16);
-
-s16 fn_1_4D58(s16);
-
-void fn_1_5258(void);
-
-void fn_1_5308(void);
-
-void fn_1_5354(void);
-
-void fn_1_5394(void);
-
-void fn_1_54D4(void);
-
-void fn_1_5544(s16);
-
-void fn_1_5600(s16 unusedPlayer, f32 value, f32 *out0, f32 *out1);
-
-s16 fn_1_5728(void);
-
-void fn_1_5A24(s16);
-
-void fn_1_5E40(void);
-
-void fn_1_62E0(void);
-
-void fn_1_6478(HU3D_MODEL *modelP, Mtx *mtx);
-
-s16 fn_1_69B0(s16 player);
-
-s16 fn_1_6D88(s16 player, HuVecF *pos);
-
-s16 fn_1_6EE4(HuVecF *a, HuVecF *b, float radius);
-
-void fn_1_6F54(void);
-
-s16 fn_1_7000(s16 unusedPlayer, HuVecF *pos, float angle, s16 candidate);
-
 extern GXColor lbl_1_data_40[2];
 
 extern Point3d lbl_1_data_28;
@@ -494,7 +355,6 @@ void fn_1_170C(s16 player, s16 motion, f32 blendDuration)
                        0.0f, blendDuration, lbl_1_data_68[motion][1]);
 }
 
-/* ---- from take_017E0_text_00001470.c ---- */
 
 /* Installed by player setup; runs each frame to update player and scene state. */
 void fn_1_17E0(OMOBJ *object) {
@@ -502,7 +362,6 @@ void fn_1_17E0(OMOBJ *object) {
     fn_1_11C04();
 }
 
-/* ---- from take_01804_text_00001470.c ---- */
 
 /* Debug camera controls adjust and print the view while the modifier is held. */
 void fn_1_1804(void) {

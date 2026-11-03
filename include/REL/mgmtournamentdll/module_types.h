@@ -2,7 +2,7 @@
 #ifndef MG_TOURNAMENT_DLL_MODULE_TYPES_H
 #define MG_TOURNAMENT_DLL_MODULE_TYPES_H
 
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/object.h"
 
 typedef struct TournamentMotionData {
@@ -33,5 +33,12 @@ typedef struct TournamentPlayerAnimationWork {
 } TournamentPlayerAnimationWork;
 
 extern s16 lbl_1_bss_10C[4];
+
+/* Current tournament layout shared by the scene translation units. */
+s16 tournamentLayoutGet(void);
+void tournamentCameraViewSet(s16 viewIndex, u32 durationFrames);
+void tournamentCameraRestore(void);
+void tournamentCameraOpeningPlay(void);
+void tournamentCameraRoundViewSet(u32 durationFrames);
 
 #endif

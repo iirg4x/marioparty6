@@ -18,47 +18,6 @@ void fn_1_550(void);
 void fn_1_8EC(void);
 void fn_1_F90(OMOBJ *callbackObject);
 void fn_1_1228(void);
-void fn_1_14FC(void);
-void fn_1_1830(void);
-void fn_1_1AE4(void);
-void fn_1_2010(s16 player);
-void fn_1_21CC(OMOBJ *obj);
-void fn_1_22A8(s16 player, s16 motion);
-void fn_1_2320(s16 player, s16 motion);
-void fn_1_23C4(s16 player, s16 motion, float blend);
-void fn_1_2464(s16 player);
-void fn_1_2558(void);
-void fn_1_25B0(void);
-void fn_1_26D0(void);
-void fn_1_273C(s16 player);
-void fn_1_289C(s16 player);
-s16 fn_1_2CAC(s16 player);
-void fn_1_2F1C(s16 player);
-void fn_1_33F8(s16 player);
-void fn_1_3F28(s16 player);
-void fn_1_4430(s16 player);
-void fn_1_473C(s16 player);
-void fn_1_48C0(s16 player);
-void fn_1_49C8(s16 player);
-void fn_1_4BD4(s16 player);
-s16 fn_1_4D58(s16 frame);
-void fn_1_5258(void);
-void fn_1_5308(void);
-void fn_1_5354(void);
-void fn_1_5394(void);
-void fn_1_54D4(void);
-void fn_1_5544(s16 player);
-void fn_1_5600(s16 player, f32 value, f32 *out0, f32 *out1);
-s16 fn_1_5728(void);
-void fn_1_5A24(s16 player);
-void fn_1_5E40(void);
-void fn_1_62E0(void);
-void fn_1_6478(HU3D_MODEL *model, Mtx *mtx);
-s16 fn_1_69B0(s16 player);
-s16 fn_1_6D88(s16 player, HuVecF *position);
-s16 fn_1_6EE4(HuVecF *firstPosition, HuVecF *secondPosition, float radius);
-void fn_1_6F54(void);
-s16 fn_1_7000(s16 player, HuVecF *position, float angle, s16 obstacleIndex);
 
 extern GXColor lbl_1_data_40[2];
 extern Point3d lbl_1_data_28;
@@ -419,16 +378,16 @@ void fn_1_F90(OMOBJ *object)
             }
         }
         winnerWork->boneVelocity.y -= 1.6333333f;
-        fn_80026790(winnerWork->model52, (Point3d *) &modelPosition);
+        fn_80026790(winnerWork->model52, &modelPosition);
         fn_80026760(winnerWork->model54, modelPosition.x, 0.2f, modelPosition.z);
         break;
     case 2:
-        fn_800267CC(winnerWork->model20, (Point3d *) &modelPosition);
+        fn_800267CC(winnerWork->model20, &modelPosition);
         if (winnerWork->movementSpeed < 10.0f) {
             winnerWork->movementSpeed += 0.2f;
         }
         modelPosition.x += winnerWork->movementSpeed * (f32) (1 - (lbl_1_bss_0.night * 2));
-        fn_80026790(winnerWork->model20, (Point3d *) &modelPosition);
+        fn_80026790(winnerWork->model20, &modelPosition);
         break;
     }
 }

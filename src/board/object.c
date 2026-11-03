@@ -719,7 +719,8 @@ void mbObjMotionSet(MBMODELID modelId, int motNo, u32 attr)
             fn_8005C16C(modelP->charNo, modelP->motEnd);
         }
     }
-    fn_80026A44(modelP->modelId, (1 << 30) | ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
+    fn_80026A44(modelP->modelId,
+        (1 << 30) | ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
     fn_800269E8(modelP->modelId, attr);
     modelP->motNo = motNo;
 }

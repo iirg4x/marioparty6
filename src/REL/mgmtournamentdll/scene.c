@@ -1,5 +1,5 @@
 /* Sets up the tournament menu and runs its selection and results sequence. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/hu3d.h"
 #include "game/gamemes.h"
 #include "game/mgdata.h"
@@ -12,8 +12,10 @@
 #include "game/wipe.h"
 #include "game/process.h"
 #include "game/flag.h"
+#include "game/saveload.h"
 #include "string.h"
 #include "msm_stream.h"
+#include "REL/mgmtournamentdll/module_types.h"
 
 #define TOURNAMENT_GAME_COUNT 101
 #define TOURNAMENT_GAME_NONE 255
@@ -31,20 +33,14 @@ void fn_1_5154(void);
 void fn_1_74BC(void);
 void fn_1_3E04(void);
 void fn_1_7924(void);
-void fn_1_FE8(void);
 void fn_1_3F8C(void);
 void fn_1_5590(void);
 void fn_1_B57C(void);
-void fn_8006A1C4(u32 flag);
 extern s16 MgModeSubMode;
 extern u8 MgModePlayNum;
 extern u8 MgModeWork[256];
 extern s16 lbl_1_bss_128;
-s32 SLSaveModeExec(s32 mode);
-void fn_1_1138(void);
 void fn_1_1134(void);
-void fn_1_13A4(s16 duration);
-void fn_1_143C(s16 mode, s16 duration);
 void fn_1_1BA0(void);
 void fn_1_1D74(void);
 void fn_1_1E80(void);
@@ -163,7 +159,7 @@ void fn_1_D69C(void)
     shadowTarget.y = -1550.0f;
     shadowTarget.z = 1600.0f;
     Hu3DShadowPosSet(&shadowPosition, &shadowUp, &shadowTarget);
-    Hu3DShadowTPLvlSet(0.6000000238418579f);
+    Hu3DShadowTPLvlSet(0.6f);
     fn_1_2E28();
     fn_1_1A8C();
     fn_1_5154();
@@ -180,7 +176,7 @@ void fn_1_D69C(void)
         }
         fn_1_3E04();
         fn_1_7924();
-        fn_1_FE8();
+        tournamentCameraRestore();
         fn_1_3F8C();
         fn_1_5590();
     }
@@ -227,13 +223,13 @@ void fn_1_DC28(void)
         fn_1_D69C();
         break;
     case 1:
-        fn_1_1138();
+        tournamentCameraOpeningPlay();
         fn_1_1D74();
         fn_1_A6B4();
         MgModeSubMode = 2;
         break;
     case 2:
-        fn_1_143C(1, 90);
+        tournamentCameraViewSet(1, 90);
         fn_1_5740(1, 90);
         HuPrcSleep(90);
         fn_1_5740(2, 90);
@@ -247,7 +243,7 @@ void fn_1_DC28(void)
         break;
     case 3:
         fn_1_B014();
-        fn_1_13A4(60);
+        tournamentCameraRoundViewSet(60);
         fn_1_57E0(90);
         HuPrcSleep(90);
         fn_1_5A44(60);
@@ -386,7 +382,7 @@ void fn_1_DC28(void)
         MgModeSubMode = 3;
         break;
     case 12:
-        fn_1_143C(11, 60);
+        tournamentCameraViewSet(11, 60);
         fn_1_5740(13, 90);
         HuPrcSleep(90);
         fn_1_5740(14, 50);

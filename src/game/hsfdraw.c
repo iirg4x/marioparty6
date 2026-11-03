@@ -2,8 +2,6 @@
 #define _MATH_H
 #include "dolphin/math.h"
 
-static inline float acosf(float x) { return (float)acos((double)x); }
-
 #include "game/hu3d.h"
 
 #include "game/hsfload.h"
@@ -13,6 +11,8 @@ static inline float acosf(float x) { return (float)acos((double)x); }
 
 #include "humath.h"
 #include "string.h"
+
+static inline float acosf(float x) { return (float)acos((double)x); }
 
 #define DRAW_OBJ_MAX 512
 
@@ -30,9 +30,6 @@ void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, 
 
 static void objCall(HU3D_MODEL *model, HSF_OBJECT *object);
 static void objMesh(HU3D_MODEL *model, HSF_OBJECT *object);
-static void PGObjCall(HU3D_MODEL *model, HSF_OBJECT *object);
-static void PGObjCalc(HU3D_MODEL *model, HSF_OBJECT *object);
-static void PGObjReplica(HU3D_MODEL *model, HSF_OBJECT *object);
 static void FaceDraw(HU3D_DRAW_OBJ *drawObject, HSF_FACE *face);
 
 static GXTevKColorSel SetKColor(GXTevStageID tevStage, u8 color);
@@ -51,6 +48,9 @@ static void objRoot(HU3D_MODEL *modelP, HSF_OBJECT *objPtr);
 static void objJoint(HU3D_MODEL *modelP, HSF_OBJECT *objPtr);
 static void objMap(HU3D_MODEL *modelP, HSF_OBJECT *objPtr);
 static void objReplica(HU3D_MODEL *modelP, HSF_OBJECT *objPtr);
+static void PGObjCall(HU3D_MODEL *model, HSF_OBJECT *object);
+static void PGObjCalc(HU3D_MODEL *model, HSF_OBJECT *object);
+static void PGObjReplica(HU3D_MODEL *model, HSF_OBJECT *object);
 static void ObjDraw(HU3D_DRAW_OBJ *drawObj);
 static void MDObjCall(HSF_DATA *hsf, HSF_OBJECT *objPtr);
 static void MDObjMesh(HSF_DATA *hsf, HSF_OBJECT *objPtr);
@@ -58,8 +58,6 @@ static void MDFaceDraw(HSF_OBJECT *objPtr, HSF_FACE *face);
 static s32 MakeCalcNBT(HSF_OBJECT *objPtr, HSF_FACE *face, s16 endVtx, s16 startVtx);
 static s32 MakeNBT(HSF_OBJECT *objPtr, HSF_FACE *face, s16 endVtx, s16 startVtx);
 static void MDFaceCnt(HSF_OBJECT *objPtr, HSF_FACE *face);
-
-void GXResetWriteGatherPipe(void);
 
 static HSF_ATTRIBUTE *BmpPtrBak[8];
 static Mtx MTXBuf[MTXBUF_MAX];
@@ -76,8 +74,8 @@ s16 MTXIdx;
 static HSF_MATERIAL *materialBak;
 static u8 polyTypeBak;
 static s32 shadingBak;
-static void *DLBufP;
-static void *DLBufStartP;
+static u8 *DLBufP;
+static u8 *DLBufStartP;
 static HSF_DRAWDATA *DrawData;
 static s32 drawCnt;
 static s16 lightBit;
@@ -380,7 +378,7 @@ static void objMesh(HU3D_MODEL *model, HSF_OBJECT *object)
                     if(constData->attr & (1 << 16)) {
                         drawObject->z = -(900000.0f - sortDistance);
                     } else {
-                        drawObject->z = -(1000000.0f - sortDistance);
+                        drawObject->z = -(1e+06f - sortDistance);
                     }
                     DrawObjIdx++;
                     if(DrawObjIdx > DRAW_OBJ_MAX) {
@@ -388,7 +386,7 @@ static void objMesh(HU3D_MODEL *model, HSF_OBJECT *object)
                         DrawObjIdx--;
                     }
                 } else if (model->attr & (1 << 22)) {
-                    drawObject->z = -1000000.0f;
+                    drawObject->z = -1e+06f;
                     DrawObjIdx++;
                     if(DrawObjIdx > DRAW_OBJ_MAX) {
                         OSReport("Error: DrawObjIdx Over\n");
@@ -860,11 +858,11 @@ static void FaceDraw(HU3D_DRAW_OBJ *drawObj, HSF_FACE *face)
                 fn_8001A7CC(drawObj, matP);
             }
         }
-        list = (u8 *) DLBufStartP + DrawData[drawCnt].dlOfs;
+        list = DLBufStartP + DrawData[drawCnt].dlOfs;
         GXCallDisplayList(list, DrawData[drawCnt].dlSize);
 
     } else {
-        list = (u8 *) DLBufStartP + DrawData[drawCnt].dlOfs;
+        list = DLBufStartP + DrawData[drawCnt].dlOfs;
         GXFastCallDisplayList(list, DrawData[drawCnt].dlSize);
     }
     drawCnt++;
@@ -1167,7 +1165,6 @@ void fn_8001A7CC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *matP)
                     GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
                 }
             }
-            /* unk8[2] holds the TEV color-combine mode. */
             if(attrP->colorCombineMode == 0) {
                 GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
                 GXSetTevOrder(tevStage, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
@@ -1463,7 +1460,6 @@ void fn_8001A7CC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *matP)
                     GXSetTevAlphaIn(tevStage, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_TEXA);
                     texBlendF = FALSE;
                 } else if(attrP->colorCombineMode == 0) {
-                    /* unk8[2] holds the TEV color-combine mode. */
                     if(attrP->kColor != 1.0f) {
                         /* Only alpha is assigned here. RGB keeps its earlier value, or remains
                          * uninitialized when preceding stages did not initialize color. */
@@ -2182,14 +2178,14 @@ static void FaceDrawShadow(HU3D_DRAW_OBJ *drawObj, HSF_FACE *face)
                       GX_AF_NONE);
         GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE,
                       GX_AF_NONE);
-        list = (u8 *) DLBufStartP + DrawData[drawCnt].dlOfs;
+        list = DLBufStartP + DrawData[drawCnt].dlOfs;
         GXCallDisplayList(list, DrawData[drawCnt].dlSize);
     } else {
         if(!(constDataP->attr & (1 << 10))) {
             drawCnt++;
             return;
         }
-        list = (u8 *) DLBufStartP + DrawData[drawCnt].dlOfs;
+        list = DLBufStartP + DrawData[drawCnt].dlOfs;
         GXFastCallDisplayList(list, DrawData[drawCnt].dlSize);
     }
     drawCnt++;
@@ -2209,7 +2205,7 @@ static void LoadTexture(HU3D_MODEL *modelP, HSF_BITMAP *bmpPtr, HSF_ATTRIBUTE *a
     s16 texColId;
 
     if(!bmpPtr) {
-        OSReport("Error: No Texture\n\0");
+        OSReport("Error: No Texture\n");
         return;
     }
     sizeX = bmpPtr->sizeX;
@@ -2787,7 +2783,7 @@ static void ObjDraw(HU3D_DRAW_OBJ *drawObj)
     shadingBak = -1;
     vtxModeBak = -1;
     matHookCallF = FALSE;
-    materialBak = (HSF_MATERIAL*) -1;
+    materialBak = PTR_INVALID;
     if(lbl_802C01B0 == FALSE) {
         for(i = 0; i < faceBuf->count;) {
             FaceDraw(drawObj, facePtr);
@@ -3240,7 +3236,7 @@ static void MDFaceDraw(HSF_OBJECT *objPtr, HSF_FACE *face)
         DrawData[drawCnt].polyCnt = faceCnt;
         totalSize += dlSize;
         drawCnt++;
-        DLBufP = (u8 *) DLBufP + dlSize;
+        DLBufP = DLBufP + dlSize;
     }
 }
 
@@ -3536,8 +3532,8 @@ void fn_80023398(HU3D_MODELID modelId, char *objName, Mtx mtx)
     mtxTransCat(MTXBuf[0], modelP->pos.x, modelP->pos.y, modelP->pos.z);
     MTXConcat(MTXBuf[0], modelP->mtx, MTXBuf[0]);
 
-    lbl_8025FDF8.x = lbl_8025FDF8.y = lbl_8025FDF8.z = -1000000.0f;
-    lbl_8025FE04.x = lbl_8025FE04.y = lbl_8025FE04.z = 1000000.0f;
+    lbl_8025FDF8.x = lbl_8025FDF8.y = lbl_8025FDF8.z = -1e+06f;
+    lbl_8025FE04.x = lbl_8025FE04.y = lbl_8025FE04.z = 1e+06f;
     MTXIdx = 1;
     cancelTRXF = FALSE;
     PGFinishF = FALSE;
@@ -3784,8 +3780,7 @@ HSF_ATTRIBUTE *Hu3DAttrDuplicate(HSF_DATA *hsf, u32 mallocNo)
     objPtr = hsf->object;
     for(i=0; i<hsf->objectNum; i++, objPtr++) {
         if(objPtr->type == 2) {
-            objPtr->mesh.attribute =
-                (HSF_ATTRIBUTE *) (attrBuf + (objPtr->mesh.attribute - hsf->attribute));
+            objPtr->mesh.attribute = attrBuf + (objPtr->mesh.attribute - hsf->attribute);
         }
     }
     hsf->attribute = attrBuf;
@@ -3808,8 +3803,7 @@ HSF_MATERIAL *Hu3DMatDuplicate(HSF_DATA *hsf, u32 mallocNo)
     objPtr = hsf->object;
     for(i=0; i<hsf->objectNum; i++, objPtr++) {
         if(objPtr->type == 2) {
-            objPtr->mesh.material =
-                (HSF_MATERIAL *) (matBuf + (objPtr->mesh.material - hsf->material));
+            objPtr->mesh.material = matBuf + (objPtr->mesh.material - hsf->material);
         }
     }
     hsf->material = matBuf;
@@ -3887,7 +3881,7 @@ void fn_800248C4(HU3D_MODELID modelId, char *objName, HU3D_OBJ_HOOK hook)
         }
     }
     if(i == hsf->objectNum) {
-        OSReport("Error: Not Found ObjectName(%s)\n\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", objName);
+        OSReport("Error: Not Found ObjectName(%s)\n", objName);
         (void)i;
     }
 }

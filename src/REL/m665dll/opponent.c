@@ -1,6 +1,8 @@
 /* Sets up Verbal Assault opponents, movement, and collision effects. */
 #include "REL/m665dll/effects.h"
+#include "REL/m665dll/opponent.h"
 #include "REL/m665dll/player.h"
+#include "REL/m665dll/scene.h"
 #include "REL/m665dll/stage.h"
 #include "dolphin/types.h"
 
@@ -8,6 +10,8 @@
 #include "REL/m665dll/sequence.h"
 
 #include "dolphin/mtx.h"
+
+#include "dolphin/os.h"
 
 #include "dolphin/gx.h"
 
@@ -78,13 +82,9 @@ char lbl_1_data_38B[] = "attacker's beam is not empty\n";
 
 char lbl_1_data_3A9[] = "itemhook_gun1";
 
-void fn_1_170C(s16 playerNo, s16 mode, f32 frame);
-
 void fn_1_12948(void);
 
 void fn_1_C838(void);
-
-extern s32 frandmod(s32 modulus);
 
 /* Creates opponent vehicles and hooks their models during the sequence init hook. */
 void fn_1_C40C(void) {
@@ -102,7 +102,7 @@ void fn_1_C40C(void) {
         modelID = fn_80025A04(
             fn_80008DD0(DATANUM(0x7c0000, 6), M665_MEMORY_TAG, 2));
         fn_80026760(modelID,
-                        (-600.0f) + 600.0f * (f32) playerIndex,
+                        -600.0f + 600.0f * (f32) playerIndex,
                         0.0f,
                         2500.0f + lbl_1_data_340[playerIndex]);
         for (motionIndex = 0; motionIndex < 2; motionIndex++) {
@@ -137,16 +137,6 @@ void fn_1_C40C(void) {
     fn_1_12948();
     fn_1_C838();
 }
-
-typedef s16 HUSPR_GROUPID;
-
-void MgScoreBoxDispSet(HUSPR_GROUPID groupID, BOOL display);
-
-void MgScoreBoxTPLvlSet(HUSPR_GROUPID groupID, float level);
-
-void HuSprAttrReset(HUSPR_GROUPID groupID, s16 memberNo, s32 attr);
-
-void HuSprAttrSet(HUSPR_GROUPID groupID, s16 memberNo, s32 attr);
 
 /* Restores opponent score boxes and sprite attributes during the main hook. */
 void fn_1_C6B8(void) {
@@ -350,7 +340,7 @@ void fn_1_D25C(void)
         if ((playerWork->difficulty != -1) &&
             (frandmod(100) < thresholds.chancePercentages[playerWork->difficulty])) {
             playerWork->movementOverride = 1;
-            playerWork->movementAngle = (-300.0f);
+            playerWork->movementAngle = -300.0f;
         }
     }
 }
@@ -373,10 +363,6 @@ void fn_1_D3B4(s16 playerNo, s16 *buttonX, s16 *stickY) {
     *buttonX = 0;
     *stickY = 0;
 }
-
-f32 PSVECSquareDistance(const HuVecF *a, const HuVecF *b);
-
-void PSVECNormalize(const HuVecF *source, HuVecF *destination);
 
 /* Adds random steering drift when fn_1_10F18 invokes this selected movement callback. */
 void fn_1_D3C8(s16 playerNo, s16 *buttonX, s16 *stickY) {
@@ -922,9 +908,9 @@ void fn_1_10394(s16 playerNo, s16 *buttonX, s16 *stickY) {
     fn_800267CC(playerWork->vehicleModel, &playerPosition);
     if (playerPosition.x < (-300.0f)) {
         if (playerPosition.z > (-600.0f)) {
-            velocityDirection.x = (-300.0f) - playerPosition.x;
+            velocityDirection.x = -300.0f - playerPosition.x;
             velocityDirection.y = 0.0f;
-            velocityDirection.z = (-600.0f) - playerPosition.z;
+            velocityDirection.z = -600.0f - playerPosition.z;
             PSVECNormalize(&velocityDirection, &velocityDirection);
             *buttonX = (s16) ((f64) velocityDirection.x *
                 ((f64) lbl_1_data_364[playerWork->difficulty] *
@@ -946,7 +932,7 @@ void fn_1_10394(s16 playerNo, s16 *buttonX, s16 *stickY) {
         if (playerPosition.z > (-600.0f)) {
             velocityDirection.x = 300.0f - playerPosition.x;
             velocityDirection.y = 0.0f;
-            velocityDirection.z = (-600.0f) - playerPosition.z;
+            velocityDirection.z = -600.0f - playerPosition.z;
             PSVECNormalize(&velocityDirection, &velocityDirection);
             *buttonX = (s16) ((f64) velocityDirection.x *
                 ((f64) lbl_1_data_364[playerWork->difficulty] *
@@ -1050,19 +1036,13 @@ void fn_1_10CE8(s16 playerNo) {
     }
 }
 
-u32 fn_80071A8C(void);
-
 void fn_1_F7BC(s16 playerNo, s16 *buttonX, s16 *stickY);
 
 f32 fn_1_CA20(Point3d *position, s16 playerNo, s16 buttonX, s16 stickY);
 
-extern s32 fn_1_4FA4(HuVecF *position);
-
 extern s32 fn_1_50D4();
 
 extern void fn_1_13A44(s16 playerNo);
-
-extern void fn_1_11FD0(M665PlayerWork *work);
 
 /* Updates one AI opponent's movement outputs from its object-manager callback. */
 void fn_1_10F18(s16 playerNo, s16 *buttonX, s16 *stickY) {
@@ -1297,7 +1277,7 @@ void fn_1_11920(s16 playerNo) {
                 fn_80026790(effect->model, &position);
                 fn_80026E44(effect->model);
                 effect->velocityX =
-                    (-2.0f) + 4.0f * (f32) hookIndex;
+                    -2.0f + 4.0f * (f32) hookIndex;
                 effect->velocityY = 10.0f;
                 effect->velocityZ = 25.0f;
                 effect->state = 2;
@@ -1403,8 +1383,6 @@ void fn_1_11DE4(void)
 
 void fn_1_11E4C(void) {
 }
-
-void fn_8006A030(s16 player, s16 duration, s16 intensity, s16 decay);
 
 /* Moves opponents to their fade-in positions and reports when all have arrived. */
 s32 fn_1_11E50(void) {
@@ -1520,7 +1498,7 @@ void fn_1_12228(void) {
             fn_80008DD0(DATANUM(0x7c0000, 10), M665_MEMORY_TAG, 2));
         fn_8002C95C(modelID, motionID);
         fn_80026760(modelID, 300.0f * (f32) playerIndex,
-                        0.0f, (-300.0f));
+                        0.0f, -300.0f);
         fn_80026808(modelID, 0.0f, 140.0f,
                         0.0f);
         fn_80026E44(modelID);
@@ -1550,7 +1528,7 @@ void fn_1_1247C(void) {
                         0.0f);
         fn_80026760(playerWork->characterModel,
                         240.0f * (f32) playerIndex,
-                        0.0f, (-300.0f));
+                        0.0f, -300.0f);
         fn_80026A44(playerWork->characterModel, (1 << 0));
         fn_80026E44(playerWork->characterModel);
         fn_1_170C(lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0,
@@ -1564,17 +1542,17 @@ void fn_1_1247C(void) {
     modelID = fn_80025A04(
         fn_80008DD0(DATANUM(0x7c0000, 9), M665_MEMORY_TAG, 2));
     fn_80026760(modelID, 300.0f, 0.0f,
-                    (-800.0f));
+                    -800.0f);
     fn_80026E44(modelID);
     modelID = fn_80025A04(
         fn_80008DD0(DATANUM(0x7c0000, 34), M665_MEMORY_TAG, 2));
     fn_80026760(modelID, 250.0f, 150.0f,
-                    (-800.0f));
+                    -800.0f);
     fn_800269E8(modelID, ((1 << 30) | (1 << 0)));
     modelID = fn_80025A04(
         fn_80008DD0(DATANUM(0x7c0000, 34), M665_MEMORY_TAG, 2));
     fn_80026760(modelID, 400.0f, 140.0f,
-                    (-750.0f));
+                    -750.0f);
     fn_800268B0(modelID, 0.5f, 0.5f,
                       0.5f);
     fn_800269E8(modelID, ((1 << 30) | (1 << 0)));
@@ -1603,13 +1581,13 @@ void fn_1_12720(void) {
         fn_80026808(modelID, 0.0f, 140.0f,
                         0.0f);
         fn_80026760(modelID, 300.0f * (f32) playerIndex,
-                        0.0f, (-600.0f));
+                        0.0f, -600.0f);
         /* The motion selected above is immediately replaced with motion ID 1. */
         fn_8002C95C(modelID, 1);
         fn_80026808(playerWork->characterModel, 0.0f, 0.0f,
                         0.0f);
         fn_80026760(playerWork->characterModel, 200.0f * (f32) playerIndex,
-                        0.0f, (-200.0f));
+                        0.0f, -200.0f);
         fn_80026E44(playerWork->characterModel);
         fn_1_170C(
             lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0,
@@ -1739,12 +1717,6 @@ void fn_1_12FA0(s16 hitIndex) {
     fn_800267CC(lbl_1_bss_CA8[hitIndex].model, &modelPosition);
     fn_800269E8(lbl_1_bss_CA8[hitIndex].model, (1 << 0));
 }
-
-void fn_1_C090(void);
-
-s32 fn_1_B66C(HuVecF *position);
-
-void OSReport(const char *format, ...);
 
 /* Checks main-vehicle hit offsets during fn_1_13024's effect scan. */
 static inline s32 fn_1_12BF8_for_13024(HuVecF *position) {

@@ -1,9 +1,13 @@
 /* Burnstile REL startup, sequence callbacks, and object work setup. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/mg/actman.h"
 #include "game/charman.h"
 #include "game/mg/seqman.h"
 #include "REL/m668DLL/data.h"
+#include "game/object.h"
+#include "dolphin/types.h"
+#include "game/memory.h"
+#include "string.h"
 
 enum { M668_ACTOR_STACK_SIZE = 36864 };
 
@@ -54,8 +58,6 @@ void fn_1_F4(void)
     }
 }
 
-#include "game/object.h"
-#include "game/mg/seqman.h"
 extern void *lbl_1_bss_0;
 void fn_1_1A48(OMOBJ *obj);
 void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
@@ -67,7 +69,6 @@ void fn_1_118(s16 mode, s16 frameNo)
     fn_80071A9C();
 }
 
-#include "dolphin/types.h"
 void fn_1_158(s16 mode, s16 frameNo) {}
 void fn_1_15C(s16 mode, s16 frameNo) {}
 void fn_1_160(s16 mode, s16 frameNo) {}
@@ -77,9 +78,6 @@ void fn_1_16C(s16 mode, s16 frameNo) {}
 void fn_1_170(s16 mode, s16 frameNo) {}
 void fn_1_174(s16 mode, s16 frameNo) {}
 
-#include "game/object.h"
-#include "game/memory.h"
-#include "string.h"
 
 /* Creates an object and zeroed callback work storage; null results are unchecked. */
 void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback)

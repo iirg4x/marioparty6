@@ -1,10 +1,15 @@
 /* Microphone setup and sequence callbacks for Verbal Assault. */
 #include "REL/m665dll/player.h"
+#include "REL/m665dll/main.h"
+#include "REL/m665dll/opponent.h"
+#include "REL/m665dll/scene.h"
 #include "dolphin/types.h"
 
 #include "math.h"
 
 #include "dolphin/gx.h"
+
+#include "dolphin/os.h"
 
 #include "game/mic.h"
 
@@ -30,6 +35,8 @@
 
 #include "game/mg/timer.h"
 
+#include "game/mg/seqman.h"
+
 #include "game/gamemes.h"
 
 #include "game/hsfex.h"
@@ -52,33 +59,14 @@
 
 #include "game/board/tutorial.h"
 
+#include "REL/m665dll/stage.h"
+
 #include "datadir_enum.h"
 #include "messdir_enum.h"
 #include "msm_stream.h"
 
 #include "REL/m665dll/sequence.h"
 
-typedef void (*MGSEQ_FUNC)(s16 mode, s16 frameNo);
-typedef struct MgSeqParam_s {
-    s16 maxTime;
-    u8 timerPos;
-    MGSEQ_FUNC initHook;
-    MGSEQ_FUNC fadeInHook;
-    MGSEQ_FUNC startHook;
-    MGSEQ_FUNC mainHook;
-    MGSEQ_FUNC finishHook;
-    MGSEQ_FUNC preWinnerHook;
-    MGSEQ_FUNC winnerHook;
-    MGSEQ_FUNC fadeOutHook;
-    MGSEQ_FUNC closeHook;
-} MGSEQ_PARAM;
-
-void fn_80070788(MGSEQ_PARAM *param);
-u32 fn_80071A9C(void);
-u16 fn_80071C70(void);
-void fn_80071B08(void);
-
-/* ---- from text_00000.c ---- */
 
 typedef void (*VoidFunc)(void);
 
@@ -114,113 +102,7 @@ void _epilog(void)
     }
 }
 
-void fn_1_F0(void);
-
-void fn_1_168(s16 mode, s16 frame);
-
-void fn_1_188(s16 mode, s16 frame);
-
-void fn_1_1C8(s16 mode, s16 frame);
-
-void fn_1_304(s16 mode, s16 frame);
-
-void fn_1_3AC(s16 mode, s16 frame);
-
-void fn_1_3B0(s16 mode, s16 frame);
-
-void fn_1_3B4(s16 mode, s16 frame);
-
-void fn_1_3B8(void);
-
 void fn_1_484(void);
-
-void fn_1_550(void);
-
-void fn_1_8EC(void);
-
-void fn_1_F90(OMOBJ *obj);
-
-void fn_1_1228(void);
-
-void fn_1_14FC(void);
-
-void fn_1_1830(void);
-
-void fn_1_1AE4(void);
-
-void fn_1_2010(s16);
-
-void fn_1_22A8(s16 player, s16 motion);
-
-void fn_1_2320(s16, s16);
-
-void fn_1_23C4(s16 player, s16 motion, float blend);
-
-void fn_1_2464(s16 player);
-
-void fn_1_2558(void);
-
-void fn_1_25B0(void);
-
-void fn_1_26D0(void);
-
-void fn_1_273C(s16);
-
-void fn_1_289C(s16 player);
-
-s16 fn_1_2CAC(s16);
-
-void fn_1_2F1C(s16);
-
-void fn_1_33F8(s16 player);
-
-void fn_1_3F28(s16 player);
-
-void fn_1_4430(s16 player);
-
-void fn_1_473C(s16);
-
-void fn_1_48C0(s16);
-
-void fn_1_49C8(s16);
-
-void fn_1_4BD4(s16);
-
-s16 fn_1_4D58(s16);
-
-void fn_1_5258(void);
-
-void fn_1_5308(void);
-
-void fn_1_5354(void);
-
-void fn_1_5394(void);
-
-void fn_1_54D4(void);
-
-void fn_1_5544(s16);
-
-void fn_1_5600(s16 unusedPlayer, f32 value, f32 *out0, f32 *out1);
-
-s16 fn_1_5728(void);
-
-void fn_1_5A24(s16);
-
-void fn_1_5E40(void);
-
-void fn_1_62E0(void);
-
-void fn_1_6478(HU3D_MODEL *modelP, Mtx *mtx);
-
-s16 fn_1_69B0(s16 player);
-
-s16 fn_1_6D88(s16 player, HuVecF *pos);
-
-s16 fn_1_6EE4(HuVecF *a, HuVecF *b, float radius);
-
-void fn_1_6F54(void);
-
-s16 fn_1_7000(s16 unusedPlayer, HuVecF *pos, float angle, s16 candidate);
 
 extern GXColor lbl_1_data_40[2];
 
@@ -264,13 +146,8 @@ void fn_1_A0(void)
     fn_80070788(&lbl_1_data_0);
 }
 
-void fn_1_170C(s16 player, s16 motion, f32 frame);
-
-/* ---- from text_000F0.c ---- */
 
 extern s16 lbl_802C0278;
-
-void fn_1_E3C(void);
 
 /* The init callback opens microphone recognition and starts the sequence. */
 void fn_1_F0(void) {
@@ -279,7 +156,7 @@ void fn_1_F0(void) {
     lbl_1_bss_2 = 0;
     HuMCInit(0);
     HuMCThresholdSet(100);
-    HuMCSelWinCreate((-10000.0f), (-10002.0f));
+    HuMCSelWinCreate(-10000.0f, -10002.0f);
     nightFlag = lbl_802C0278;
     /* Day and night use the same recognition context. */
     if (nightFlag == 0) {
@@ -291,7 +168,6 @@ void fn_1_F0(void) {
     fn_80071A9C();
 }
 
-/* ---- from fn_1_1A4.c ---- */
 
 void fn_1_4D4(void);
 
@@ -305,7 +181,6 @@ void fn_1_1A4(s16 unusedArgument, s16 frameNo)
     fn_1_4D4();
 }
 
-/* ---- from text_00000200.c ---- */
 
 typedef struct SequenceUpdate {
     s16 status; /* Zero for a successful microphone response. */
@@ -314,8 +189,6 @@ typedef struct SequenceUpdate {
     s16 *result; /* Word indices for the first candidate. */
     s32 word; /* First word index or one-based answer-choice value. */
 } SequenceUpdate;
-
-void OSReport(const char *format, ...);
 
 /* The microphone listener callback maps the first recognized word to the result flag. */
 void fn_1_200(response)
@@ -354,7 +227,6 @@ SequenceUpdate *response;
     OSReport(lbl_1_data_3C, response->word);
 }
 
-/* ---- from fn_1_33C.c ---- */
 
 /* The start callback starts the minigame's streamed music on its first frame. */
 void fn_1_33C(s16 mode, s16 frameNo) {
@@ -363,13 +235,6 @@ void fn_1_33C(s16 mode, s16 frameNo) {
     }
 }
 
-/* ---- from fn_1_37C.c ---- */
-
-void fn_1_11DE4(void);
-
-void fn_1_C6B8(void);
-
-s16 fn_1_C64(void);
 
 /* The main callback updates player effects and advances when a result is ready. */
 void fn_1_37C(s16 unusedArgument, s16 frameNo)
@@ -385,13 +250,6 @@ void fn_1_37C(s16 unusedArgument, s16 frameNo)
     }
 }
 
-/* ---- from fn_1_400.c ---- */
-
-void HuMCListenerKill(void);
-
-void fn_1_11E4C(void);
-
-void fn_1_BFD8(void);
 
 /* The finish callback stops microphone input, fades music, and handles a draw. */
 void fn_1_400(s16 unusedArgument, s16 frameNo)
@@ -407,25 +265,6 @@ void fn_1_400(s16 unusedArgument, s16 frameNo)
     }
 }
 
-/* ---- from text_00464.c ---- */
-
-void fn_1_19C(void);
-
-void fn_1_1C0(s16 mode, s16 frameNo);
-
-void fn_1_1F4(s16 mode, s16 frameNo);
-
-void fn_1_1F8(s16 mode, s16 frameNo);
-
-void fn_1_254(s16 mode, s16 frameNo);
-
-void fn_1_280(s16 mode, s16 frameNo);
-
-void fn_1_2F0(s16 mode, s16 frameNo);
-
-void fn_1_31C(s16 mode, s16 frameNo);
-
-void fn_1_320(s16 mode, s16 frameNo);
 
 /* The pre-winner callback begins the winner transition. */
 void fn_1_464(s16 mode, s16 frameNo)
@@ -443,8 +282,6 @@ extern s8 lbl_1_bss_219;
 
 extern s8 lbl_1_data_2758;
 
-s32 fn_1_367CC(s32 *player);
-
 void fn_1_484(void)
 {
 }
@@ -453,7 +290,6 @@ void fn_1_488(void)
 {
 }
 
-/* ---- from fn_1_48C.c ---- */
 
 /* The close callback consumes a pending microphone response and closes the context. */
 void fn_1_48C(void) {
@@ -463,12 +299,6 @@ void fn_1_48C(void) {
     }
     HuMCClose();
 }
-
-void fn_1_C004(void);
-
-void fn_1_1FFC(void);
-
-s32 fn_1_11E50(void);
 
 MGSEQ_PARAM lbl_1_data_0 = {
     300, 2, (MGSEQ_FUNC)fn_1_F0, (MGSEQ_FUNC)fn_1_1A4,
@@ -508,8 +338,8 @@ void fn_1_4D4(void) {
         OM_CAMERA_VIEW view;
         view.center.x = 0.0f;
         view.center.y = 250.0f;
-        view.center.z = (-1190.0f);
-        view.rot.x = (-30.0f);
+        view.center.z = -1190.0f;
+        view.rot.x = -30.0f;
         view.rot.y = 0.0f;
         view.rot.z = 0.0f;
         view.zoom = 6000.0f;
@@ -546,29 +376,6 @@ s16 lbl_1_bss_4;
 s16 lbl_1_bss_2;
 u16 lbl_1_bss_0;
 
-/* ---- from text_00000778.c ---- */
-
-#include "REL/m665dll/stage.h"
-
-void fn_1_C778(void);
-
-void fn_1_C0E0(void);
-
-void fn_1_50DC(void);
-
-void fn_1_1247C(void);
-
-void fn_1_51F8(void);
-
-void fn_1_12228(void);
-
-void fn_1_53C0(void);
-
-void fn_1_12720(void);
-
-void fn_1_2058(s16 mode, f32 frame);
-
-void fn_1_11D98(s16 playerIndex, s16 mode, f32 frame);
 
 /* The pre-winner callback waits for wipes, stops effects, and sets the winning scene. */
 void fn_1_778(void) {
@@ -602,7 +409,7 @@ void fn_1_778(void) {
         for (index = 0; index < 4; index++) {
             fn_80026760(lbl_1_bss_250.backgroundModels[index],
                             0.0f, 0.0f,
-                            (-3500.0f) -
+                            -3500.0f -
                                 (5000.0f * (f32) index));
         }
         fn_1_C0E0();
@@ -611,7 +418,7 @@ void fn_1_778(void) {
         lbl_80266A4C.x = 0.0f;
         lbl_80266A4C.y = 340.0f;
         lbl_80266A4C.z = 0.0f;
-        lbl_80266A40.x = (-4.0f);
+        lbl_80266A40.x = -4.0f;
         lbl_80266A40.y = 0.0f;
         lbl_80266A40.z = 0.0f;
         lbl_802C028C = 2900.0f;

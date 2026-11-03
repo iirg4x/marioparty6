@@ -27,22 +27,6 @@
 #define M650_DATA_PLAYER_JOINT_MOTION_3 9633792
 #define M650_DATA_PLAYER_JOINT_MOTION_4 9633798
 
-void fn_1_A0(void);
-void fn_1_F0(s16 mode, s16 frame);
-void fn_1_168(s16 mode, s16 frame);
-void fn_1_188(s16 mode, s16 frame);
-void fn_1_1C8(s16 mode, s16 frame);
-void fn_1_200(s16 mode, s16 frame);
-void fn_1_304(s16 mode, s16 frame);
-void fn_1_3AC(s16 mode, s16 frame);
-void fn_1_3B0(s16 mode, s16 frame);
-void fn_1_3B4(s16 mode, s16 frame);
-void fn_1_3B8(void);
-void fn_1_484(void);
-void fn_1_550(void);
-void fn_1_8EC(void);
-void fn_1_F90(OMOBJ *obj);
-void fn_1_1228(void);
 void fn_1_14FC(void);
 void fn_1_1830(void);
 void fn_1_1AE4(void);
@@ -86,13 +70,6 @@ s16 fn_1_5728(void);
 void fn_1_5A24(s16 player);
 /* While pad 0 camera adjustment is enabled, adjusts all camera poses and prints camera 0. */
 void fn_1_5E40(void);
-void fn_1_62E0(void);
-void fn_1_6478(HU3D_MODEL *modelP, Mtx *mtx);
-s16 fn_1_69B0(s16 player);
-s16 fn_1_6D88(s16 player, HuVecF *position);
-s16 fn_1_6EE4(HuVecF *firstPosition, HuVecF *secondPosition, float radius);
-void fn_1_6F54(void);
-s16 fn_1_7000(s16 unusedPlayer, HuVecF *position, float angle, s16 obstacleIndex);
 
 extern GXColor lbl_1_data_40[2];
 extern Point3d lbl_1_data_28;
@@ -427,7 +404,8 @@ void fn_1_22A8(s16 player, s16 motion)
     M650Player *work;
 
     work = &lbl_1_bss_28[player];
-    fn_8002CCC0(work->model20, work->jointMotionIDs[motion], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+    fn_8002CCC0(work->model20, work->jointMotionIDs[motion], 0.0f, 8.0f,
+        ((1 << 30) | (1 << 0)));
 }
 
 /* Starts a character animation using the standard eight-frame blend. */
@@ -1222,11 +1200,11 @@ void fn_1_5600(s16 playerIndex, f32 hookHeight, f32 *launchSpeed, f32 *throwElev
     f32 height;
 
     height = 5.444444768958626 - hookHeight / 100.0f;
-    *throwElevation = (f32) (180.0 * (atan2(height, 8.300000190734863) / 3.141592653589793));
+    *throwElevation = (f32) (180.0 * (atan2(height, 8.3f) / 3.141592653589793));
     if (*throwElevation < 90.0f) {
         *launchSpeed =
-            (f32) (8.300000190734863 /
-                   (0.3333333432674408 * cos((3.141592653589793 * (f64) *throwElevation) / 180.0)));
+            (f32) (8.3f /
+                   (0.33333334f * cos((3.141592653589793 * (f64) *throwElevation) / 180.0)));
         return;
     }
     *launchSpeed = 0.0f;

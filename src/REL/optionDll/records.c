@@ -14,12 +14,12 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 #include <math.h>
+#include "REL/optionDll/main.h"
+#include "REL/optionDll/records.h"
+#include "REL/optionDll/sound_test.h"
 
 #define OPTION_LAST_CHARACTER_BANK_FLAG 2
 #define OPTION_LAST_BOARD_BANK_FLAG 51
-
-void fn_1_C3FC(s16 selection);
-s16 fn_1_C324(s16 flag, s16 type);
 
 typedef void (*VoidFunc)(void);
 
@@ -78,37 +78,6 @@ char lbl_1_data_472[7] = "dpic00";
 
 char lbl_1_data_479[8] = "dpic01";
 
-char lbl_1_data_481[5] = "%05d";
-
-char lbl_1_data_486[6] = "%d";
-
-OptionRecordDisplayEntry lbl_1_data_48C[9] = {
-    {606, 0, 0, MESSNUM(MESS_SAF_TEST, 23)},
-    {608, 1, 1, MESSNUM(MESS_SAF_TEST, 25)},
-    {618, 2, 0, MESSNUM(MESS_SAF_TEST, 23)},
-    {638, 3, 0, MESSNUM(MESS_SAF_TEST, 23)},
-    {648, 4, 0, MESSNUM(MESS_SAF_TEST, 23)},
-    {650, 5, 0, MESSNUM(MESS_SAF_TEST, 23)},
-    {652, 6, 0, MESSNUM(MESS_SAF_TEST, 23)},
-    {678, 7, 1, MESSNUM(MESS_SAF_TEST, 24)},
-    {-1, 0, 0, 0},
-};
-
-char lbl_1_data_4D4[4] = "%2d";
-
-char lbl_1_data_4D8[5] = "%02d";
-
-char lbl_1_data_4DD[5] = "%8d";
-
-s16 lbl_1_data_4E2[7] = {0, 1, 2, 3, 6, -1, 0};
-
-u32 lbl_1_data_4F0[8] = {
-    MESSNUM(MESS_OPTION_MESS, 52), MESSNUM(MESS_OPTION_MESS, 53),
-    MESSNUM(MESS_OPTION_MESS, 54), MESSNUM(MESS_OPTION_MESS, 55),
-    MESSNUM(MESS_OPTION_MESS, 56), MESSNUM(MESS_OPTION_MESS, 57),
-    MESSNUM(MESS_OPTION_MESS, 58), 0
-};
-
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 extern OptionWork lbl_1_bss_8;
@@ -124,45 +93,14 @@ extern char lbl_1_bss_A08[216];
 /* Each visible row uses a 30-byte segment of the shared formatting buffer. */
 #define OPTION_RECORD_TEXT(row) (((char (*)[30])lbl_1_bss_A08)[row])
 
-void fn_1_A0(void);
-void fn_1_804(void);
-void fn_1_FDC(void);
-void fn_1_1044(void);
 void fn_1_EA6C(void);
-void fn_1_1084(void);
-void fn_1_3AE0(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages);
-void fn_1_18B8(s16 cameraNo);
-void fn_1_18D8(void);
-void fn_1_19B8(s32 value);
-void fn_1_19E0(void);
 void fn_1_E6F8(void);
 void fn_1_F1D8(void);
 void fn_1_F394(void);
 void fn_1_F0B0(void);
 void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
 BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-void fn_1_3BD8(OMOBJ *obj);
-s16 fn_1_1DF0(s16 currentOption);
-
-void fn_1_B1A0(s16 mode, s16 argument);
-void fn_1_4738(void);
-void fn_1_6898(void);
-void fn_1_5620(void);
-void fn_1_6504(s16 prizeNo);
-void fn_1_6590(s16 firstPrize);
-void fn_1_7728(s16 firstEntry);
-void fn_1_7A74(void);
-void fn_1_85E4(s16 item, float progress);
-void fn_1_879C(void);
-void fn_1_8CA4(s16 recordIndex);
-void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage);
-void fn_1_C3FC(s16 selection);
 float fn_1_F684(s16 groupId, s16 memberNo);
-void fn_1_B02C(s16 first, s16 count);
-void fn_1_9F74(void);
-void fn_1_C484(void);
-void fn_1_E538(s16 page);
 extern int HuMCMicGet(void);
 int sprintf(char *buffer, const char *format, int value);
 
@@ -229,7 +167,7 @@ void fn_1_4738(void)
     HuWinBGTPLvlSet(countWindow, 0.0f);
     HuWinAttrSet(countWindow, HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSpeedSet(countWindow, 0);
-    sprintf(countText, lbl_1_data_481, lbl_1_bss_8.boardRecord[board]);
+    sprintf(countText, "%05d", lbl_1_bss_8.boardRecord[board]);
     HuWinInsertMesSet(countWindow, (u32)countText, 0);
     HuWinMesSet(countWindow, MESSNUM(MESS_SAF_TEST, 22));
     HuAudFXPlay(1205);
@@ -291,7 +229,7 @@ void fn_1_4738(void)
                     }
                 }
                 HuWinMesSet(titleWindow, MESSNUM(MESS_OPTION_MESS, 68) + board);
-                sprintf(countText, lbl_1_data_481,
+                sprintf(countText, "%05d",
                     lbl_1_bss_8.boardRecord[board]);
             } else {
                 for (item = 0; item < 11; item++) {
@@ -326,7 +264,7 @@ void fn_1_4738(void)
                 for (digit = amount = 0; digit < 6; digit++) {
                     amount += lbl_1_bss_8.boardRecord[digit];
                 }
-                sprintf(countText, lbl_1_data_481, amount);
+                sprintf(countText, "%05d", amount);
             }
             HuWinInsertMesSet(countWindow, (u32)countText, 0);
             HuWinMesSet(countWindow, MESSNUM(MESS_SAF_TEST, 22));
@@ -487,7 +425,7 @@ void fn_1_5620(void)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
@@ -506,7 +444,7 @@ void fn_1_5620(void)
                     } else {
                         if (pageStart < count - 7) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
@@ -611,7 +549,7 @@ void fn_1_6590(s16 firstPrize)
             OPTION_RECORD_TEXT(i)[0] = 14;
             OPTION_RECORD_TEXT(i)[1] = 19;
             OPTION_RECORD_TEXT(i)[2] = 16;
-            sprintf(&OPTION_RECORD_TEXT(i)[3], lbl_1_data_486,
+            sprintf(&OPTION_RECORD_TEXT(i)[3], "%d",
                 lbl_1_bss_8.prizeId[firstPrize + i]);
             /* Byte 2 is the fixed 0x10 spacing character, so this leading-zero cleanup never
              * runs. */
@@ -625,6 +563,18 @@ void fn_1_6590(s16 firstPrize)
         }
     }
 }
+
+OptionRecordDisplayEntry lbl_1_data_48C[9] = {
+    {606, 0, 0, MESSNUM(MESS_SAF_TEST, 23)},
+    {608, 1, 1, MESSNUM(MESS_SAF_TEST, 25)},
+    {618, 2, 0, MESSNUM(MESS_SAF_TEST, 23)},
+    {638, 3, 0, MESSNUM(MESS_SAF_TEST, 23)},
+    {648, 4, 0, MESSNUM(MESS_SAF_TEST, 23)},
+    {650, 5, 0, MESSNUM(MESS_SAF_TEST, 23)},
+    {652, 6, 0, MESSNUM(MESS_SAF_TEST, 23)},
+    {678, 7, 1, MESSNUM(MESS_SAF_TEST, 24)},
+    {-1, 0, 0, 0},
+};
 
 /* Opens the fixed list of eight minigame records, hiding locked minigame names and results. */
 void fn_1_6898(void)
@@ -745,7 +695,7 @@ void fn_1_6898(void)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
@@ -764,7 +714,7 @@ void fn_1_6898(void)
                     } else {
                         if (pageStart < count - 7) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
@@ -854,23 +804,23 @@ void fn_1_7728(s16 firstEntry)
             case 0:
                 /* Format 60 Hz frame counts as minutes, seconds, and truncated hundredths. */
                 timePart = recordValue / 3600;
-                sprintf(OPTION_RECORD_TEXT(row), lbl_1_data_4D4, timePart);
+                sprintf(OPTION_RECORD_TEXT(row), "%2d", timePart);
                 recordValue -= timePart * 3600;
                 HuWinInsertMesSet(lbl_1_bss_9EC[row][1],
                     (u32)OPTION_RECORD_TEXT(row), 0);
                 timePart = recordValue / 60;
-                sprintf(&OPTION_RECORD_TEXT(row)[10], lbl_1_data_4D8, timePart);
+                sprintf(&OPTION_RECORD_TEXT(row)[10], "%02d", timePart);
                 recordValue -= timePart * 60;
                 HuWinInsertMesSet(lbl_1_bss_9EC[row][1],
                     (u32)&OPTION_RECORD_TEXT(row)[10], 1);
                 recordValue = (u32)(1.6666666f * recordValue);
-                sprintf(&OPTION_RECORD_TEXT(row)[20], lbl_1_data_4D8,
+                sprintf(&OPTION_RECORD_TEXT(row)[20], "%02d",
                     recordValue);
                 HuWinInsertMesSet(lbl_1_bss_9EC[row][1],
                     (u32)&OPTION_RECORD_TEXT(row)[20], 2);
                 break;
             case 1:
-                sprintf(OPTION_RECORD_TEXT(row), lbl_1_data_4DD, recordValue);
+                sprintf(OPTION_RECORD_TEXT(row), "%8d", recordValue);
                 HuWinInsertMesSet(lbl_1_bss_9EC[row][1],
                     (u32)OPTION_RECORD_TEXT(row), 0);
                 break;
@@ -879,6 +829,15 @@ void fn_1_7728(s16 firstEntry)
         }
     }
 }
+
+s16 lbl_1_data_4E2[7] = {0, 1, 2, 3, 6, -1, 0};
+
+u32 lbl_1_data_4F0[8] = {
+    MESSNUM(MESS_OPTION_MESS, 52), MESSNUM(MESS_OPTION_MESS, 53),
+    MESSNUM(MESS_OPTION_MESS, 54), MESSNUM(MESS_OPTION_MESS, 55),
+    MESSNUM(MESS_OPTION_MESS, 56), MESSNUM(MESS_OPTION_MESS, 57),
+    MESSNUM(MESS_OPTION_MESS, 58), 0
+};
 
 /* Called by Option Mode to browse the ten saved Decathlon records. */
 void fn_1_7A74(void)
@@ -1360,7 +1319,7 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
@@ -1379,7 +1338,7 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
                     } else {
                         if (pageStart < entryCount - 7) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
@@ -1490,7 +1449,7 @@ void fn_1_9F74(void)
     HuWinBGTPLvlSet(summaryWindow, 0.0f);
     HuWinAttrSet(summaryWindow, HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSpeedSet(summaryWindow, 0);
-    sprintf(countText, lbl_1_data_486, count);
+    sprintf(countText, "%d", count);
     HuWinInsertMesSet(summaryWindow, (u32)countText, 0);
     HuWinMesSet(summaryWindow, MESSNUM(MESS_OPTION_MESS, 60));
 
@@ -1595,7 +1554,7 @@ void fn_1_9F74(void)
                         if (delta < 0) {
                             if (pageStart != 0) {
                                 scale = 1.0 +
-                                    0.30000001192092896 * sin(3.141592653589793 *
+                                    0.3f * sin(3.141592653589793 *
                                         (180.0f * progress) /
                                         180.0);
                             } else {
@@ -1614,7 +1573,7 @@ void fn_1_9F74(void)
                         } else {
                             if (pageStart < count - 5) {
                                 scale = 1.0 +
-                                    0.30000001192092896 * sin(3.141592653589793 *
+                                    0.3f * sin(3.141592653589793 *
                                         (180.0f * progress) /
                                         180.0);
                             } else {
@@ -1701,7 +1660,7 @@ void fn_1_B02C(s16 first, s16 count)
             HuWinHomeClear(lbl_1_bss_9EC[i][0]);
             HuWinHomeClear(lbl_1_bss_9EC[i][1]);
         } else {
-            sprintf(lbl_1_bss_9D8[i], lbl_1_data_486, first + i + 1);
+            sprintf(lbl_1_bss_9D8[i], "%d", first + i + 1);
             HuWinInsertMesSet(lbl_1_bss_9EC[i][0],
                 (u32)lbl_1_bss_9D8[i], 0);
             HuWinMesSet(lbl_1_bss_9EC[i][0], MESSNUM(MESS_OPTION_MESS, 61));
@@ -1903,7 +1862,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
@@ -1922,7 +1881,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
                     } else {
                         if (pageStart < minigameCount - 7) {
                             scale = 1.0 +
-                                0.30000001192092896 * sin(3.141592653589793 *
+                                0.3f * sin(3.141592653589793 *
                                     (180.0f * progress) /
                                     180.0);
                         } else {

@@ -96,13 +96,13 @@ void fn_8003DAA4(OMOBJ *outViewObj)
         float rotZ = lbl_80266A58[cameraIndex].z;
         cameraPos.x =
             lbl_80266B18[cameraIndex].x+(lbl_80266BD8[cameraIndex]
-            *(sin(3.141592653589793*rotY/180.0)*cos(3.141592653589793*rotX/180.0)));
+                *(sin(3.141592653589793*rotY/180.0)*cos(3.141592653589793*rotX/180.0)));
         cameraPos.y =
             lbl_80266B18[cameraIndex].y
             +(lbl_80266BD8[cameraIndex]*-sin(3.141592653589793*rotX/180.0));
         cameraPos.z =
             lbl_80266B18[cameraIndex].z+(lbl_80266BD8[cameraIndex]
-            *(cos(3.141592653589793*rotY/180.0)*cos(3.141592653589793*rotX/180.0)));
+                *(cos(3.141592653589793*rotY/180.0)*cos(3.141592653589793*rotX/180.0)));
         cameraTarget.x = lbl_80266B18[cameraIndex].x;
         cameraTarget.y = lbl_80266B18[cameraIndex].y;
         cameraTarget.z = lbl_80266B18[cameraIndex].z;

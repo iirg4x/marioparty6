@@ -17,36 +17,6 @@ void fn_1_26C(s16 mode, s16 frame);
 void fn_1_270(s16 frame);
 void fn_1_60C(void);
 void fn_1_868(s16 frame);
-void fn_1_86C(void);
-void fn_1_8D4(void);
-s32 fn_1_BEC(void);
-s16 fn_1_EC8(void);
-s16 fn_1_112C(s16 frame);
-void fn_1_15C8(void);
-s32 fn_1_1C48(s32 frame);
-void fn_1_26B8(s16 player, s16 motion);
-void fn_1_2820(void);
-s16 fn_1_2FF8(void);
-void fn_1_3090(void);
-s16 fn_1_3274(M640Player *player, HuVecF *spinnerRotation);
-s16 fn_1_33D0(float rotationDegrees);
-void fn_1_345C(s16 side, s16 slot, s16 previewIndex);
-void fn_1_351C(s16 side, s16 slot);
-void fn_1_355C(void);
-void fn_1_36D8(M640Player *player);
-s16 fn_1_37F4(s16 side, M640Player *player);
-u16 fn_1_39F0(s16 side, M640Player *player);
-void fn_1_3C24(s16 side, s16 slot);
-void fn_1_4C90(s16 side);
-void fn_1_4CD8(void);
-void fn_1_4DDC(s16 side, s16 part);
-void fn_1_4FFC(s16 side, s16 part);
-void fn_1_519C(s16 side, s16 part);
-void fn_1_52D0(OMOBJ *obj);
-void fn_1_5A28(void);
-void fn_1_5DF0(void);
-void fn_1_60AC(OMOBJ *obj);
-void fn_1_623C(void);
 
 MGSEQ_PARAM lbl_1_data_0 = {
     300,
