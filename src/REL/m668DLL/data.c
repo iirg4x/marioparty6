@@ -1,5 +1,5 @@
 /* Burnstile sequence parameters, resource IDs, formation positions, and shared callback state. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m668DLL/player.h"
 #include "REL/m668DLL/data.h"
 #include "datadir_enum.h"
@@ -56,7 +56,7 @@ HuVecF lbl_1_bss_340[64];
 HuVecF lbl_1_bss_40[64];
 ANIMDATA *lbl_1_bss_3C;
 M668PlayerWork *lbl_1_bss_2C[4];
-s16 *lbl_1_bss_28[1];
+M668RotorWork *lbl_1_bss_28[1];
 s32 lbl_1_bss_24;
 M668StageWork *lbl_1_bss_20;
 s32 lbl_1_bss_18[2];

@@ -20,7 +20,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #ifndef M650_H
 #define M650_H
 
@@ -163,5 +162,37 @@ void fn_1_8EC(void);
 void fn_1_F90(OMOBJ *object);
 void fn_1_6F54(void);
 s16 fn_1_4D58(s16 frame);
+
+void fn_1_A0(void);
+void fn_1_304(s16, s16);
+void fn_1_3AC(s16, s16);
+void fn_1_3B0(s16, s16);
+void fn_1_3B4(s16, s16);
+void fn_1_3B8(void);
+void fn_1_484(void);
+void fn_1_1228(void);
+s16 fn_1_69B0(s16);
+void fn_1_2010(s16);
+void fn_1_21CC(OMOBJ *);
+void fn_1_22A8(s16, s16);
+void fn_1_2320(s16, s16);
+void fn_1_2464(s16);
+void fn_1_26D0(void);
+void fn_1_273C(s16);
+s16 fn_1_2CAC(s16);
+void fn_1_2F1C(s16);
+void fn_1_33F8(s16);
+void fn_1_3F28(s16);
+void fn_1_4430(s16);
+void fn_1_473C(s16);
+void fn_1_48C0(s16);
+void fn_1_49C8(s16);
+void fn_1_4BD4(s16);
+void fn_1_5354(void);
+void fn_1_5394(void);
+void fn_1_5544(s16);
+s16 fn_1_5728(void);
+void fn_1_5A24(s16);
+void fn_1_5E40(void);
 
 #endif

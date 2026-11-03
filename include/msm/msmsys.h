@@ -66,8 +66,6 @@ typedef struct MSMSys_s {
     s32 timer;
 } MSM_SYS;
 
-s32 msmSysSearchGroupStack(s32 groupIndex, s32 excludedSlot);
-s32 msmSysGroupInit(DVDFileInfo *file);
 void msmSysIrqDisable(void);
 void msmSysIrqEnable(void);
 BOOL msmSysCheckBaseGroup(s32 soundGroupId);

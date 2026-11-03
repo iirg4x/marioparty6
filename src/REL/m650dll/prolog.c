@@ -1,8 +1,8 @@
 /* Runs the minigame module's static constructors and its startup hook. */
+#include "REL/m650/m650.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
 
 /* Called by the REL loader to run constructors before minigame setup. */
 int _prolog(void)

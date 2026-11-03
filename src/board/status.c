@@ -6,6 +6,8 @@
 #include "game/board/player.h"
 #include "game/board/main.h"
 #include "game/board/pause.h"
+#include "game/board/masu.h"
+#include "game/board/guide.h"
 
 #include "game/disp.h"
 #include "game/flag.h"
@@ -16,8 +18,6 @@
 extern int mbCapColorGet(int capsuleNo);
 extern int mbSingleMgUnlockNumGet(void);
 extern int mbSingleStepGet(void);
-extern int mbMasuNumGet(void);
-extern float mbSinDeg(float angle);
 extern int mbLanguageGet(void);
 
 #define STATUS_SPRNO_BACK 0

@@ -12,27 +12,11 @@
 
 #include "humath.h"
 
-/* Returns the magnitude of one camera-space coordinate for frustum checks. */
-#ifdef __MWERKS__
-static inline float MathAbsFloat(register float value)
-{
-    asm {
-        fabs value, value
-    }
-    return value;
-}
-#else
-static inline float MathAbsFloat(float value)
-{
-    return (float)fabs((double)value);
-}
-#endif
-
 #define MB_TRIG_TABLE_COUNT 2048
 #define MB_TRIG_TABLE_BYTES (MB_TRIG_TABLE_COUNT * sizeof(float))
 #define MB_TRIG_BYTE_MASK (MB_TRIG_TABLE_BYTES - sizeof(float))
 #define MB_TRIG_DEG_SCALE (MB_TRIG_TABLE_BYTES / 360.0f)
-#define MB_TRIG_RAD_SCALE 1303.7972412109375f
+#define MB_TRIG_RAD_SCALE 1303.7972f
 #define MB_TRIG_COS_OFFSET(angle, scale) \
     (((s32)((angle) * (scale)) + 2) & MB_TRIG_BYTE_MASK)
 #define MB_TRIG_SIN_OFFSET(angle, scale) \
@@ -361,8 +345,8 @@ void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle)
     offset = (s32)(angle * MB_TRIG_DEG_SCALE);
     table = cosTab;
     MTXRotTrig(mtx, axis,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Looks up sine and cosine in the shared table, then rotates about the selected axis in radians. */
@@ -374,8 +358,8 @@ void mbMtxRotAxisRad(Mtx mtx, u8 axis, float angle)
     offset = (s32)(angle * MB_TRIG_RAD_SCALE);
     table = cosTab;
     MTXRotTrig(mtx, axis,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Applies an X-axis matrix rotation using an angle measured in degrees. */
@@ -385,8 +369,8 @@ void mbMtxRotXDeg(Mtx mtx, float angle)
     float *table = cosTab;
 
     mbMtxRotTrigX(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Applies an X-axis matrix rotation using an angle measured in radians. */
@@ -396,8 +380,8 @@ void mbMtxRotXRad(Mtx mtx, float angle)
     float *table = cosTab;
 
     mbMtxRotTrigX(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Applies a Y-axis matrix rotation using an angle measured in degrees. */
@@ -407,8 +391,8 @@ void mbMtxRotYDeg(Mtx mtx, float angle)
     float *table = cosTab;
 
     mbMtxRotTrigY(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Applies a Y-axis matrix rotation using an angle measured in radians. */
@@ -418,8 +402,8 @@ void mbMtxRotYRad(Mtx mtx, float angle)
     float *table = cosTab;
 
     mbMtxRotTrigY(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Applies a Z-axis matrix rotation using an angle measured in degrees. */
@@ -429,8 +413,8 @@ void mbMtxRotZDeg(Mtx mtx, float angle)
     float *table = cosTab;
 
     mbMtxRotTrigZ(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Applies a Z-axis matrix rotation using an angle measured in radians. */
@@ -440,8 +424,8 @@ void mbMtxRotZRad(Mtx mtx, float angle)
     float *table = cosTab;
 
     mbMtxRotTrigZ(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)]);
 }
 
 /* Builds a scaled X-axis rotation matrix from a degree angle and scale vector. */
@@ -451,8 +435,8 @@ void mbMtxScaleRotXDeg(Mtx mtx, HuVecF *scale, float angle)
     float *table = cosTab;
 
     mbMtxRotTrigScaleX(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)], scale);
 }
 
 /* Builds a scaled Y-axis rotation matrix from a degree angle and scale vector. */
@@ -462,8 +446,8 @@ void mbMtxScaleRotYDeg(Mtx mtx, float angle, HuVecF *scale)
     float *table = cosTab;
 
     mbMtxRotTrigScaleY(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)], scale);
 }
 
 /* Builds a scaled Z-axis rotation matrix from a degree angle and scale vector. */
@@ -473,8 +457,8 @@ void mbMtxScaleRotZDeg(Mtx mtx, float angle, HuVecF *scale)
     float *table = cosTab;
 
     mbMtxRotTrigScaleZ(mtx,
-        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
-        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
+        table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)],
+        table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)], scale);
 }
 
 /* Starts with an X rotation (or identity) and appends the nonzero Y and Z rotations. */
@@ -773,7 +757,7 @@ void mbNormPosto3D(HuVecF *normPos, s16 cameraMask, HuVecF *worldPos)
     cameraP = &Hu3DCamera[cameraNo];
     halfFov = cameraP->fov * 0.5f;
     cosine = mbCosDeg(halfFov);
-    absoluteDepth = MathAbsFloat(normPos->z);
+    absoluteDepth = FloatAbs(normPos->z);
     fovTan = mbSinDeg(halfFov) / cosine;
     depth = fovTan * absoluteDepth;
     worldPos->x = normPos->x * (HU_DISP_ASPECT * depth);
@@ -949,9 +933,9 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     PSVECAdd(&object->mesh.mesh.min, &object->mesh.mesh.max, &center);
     PSVECScale(&center, &center, 0.5f);
     PSMTXMultVec(mtx, &center, &centerView);
-    frustumHalfHeight = MathAbsFloat(centerView.z * negativeFovTan);
-    if (MathAbsFloat(centerView.x) <= frustumHalfHeight * aspect
-        && MathAbsFloat(centerView.y) <= frustumHalfHeight
+    frustumHalfHeight = FloatAbs(centerView.z * negativeFovTan);
+    if (FloatAbs(centerView.x) <= frustumHalfHeight * aspect
+        && FloatAbs(centerView.y) <= frustumHalfHeight
         && centerView.y < -nearPlaneDistance) {
         /* A center inside the view bounds is sufficient to keep this object enabled. */
         return;
@@ -1071,8 +1055,8 @@ enum {
     BBOX_MIN_Y = offsetof(HSF_OBJECT, mesh.mesh.min.y),
     BBOX_MIN_Z = offsetof(HSF_OBJECT, mesh.mesh.min.z)
 };
-static const float bboxMaxInitial = -1000000.0f;
-static const float bboxMinInitial = 1000000.0f;
+static const float bboxMaxInitial = -1e6f;
+static const float bboxMinInitial = 1e6f;
 
 /* Computes the local-space minimum and maximum of the model's vertex positions. */
 static asm void ObjectBBoxUpdate(register HSF_OBJECT *object)
@@ -1147,8 +1131,8 @@ static void ObjectBBoxUpdate(HSF_OBJECT *object)
     s32 count = object->mesh.vertex->count;
     s32 i;
 
-    object->mesh.mesh.max.x = object->mesh.mesh.max.y = -1000000.0f;
-    object->mesh.mesh.min.x = object->mesh.mesh.min.y = 1000000.0f;
+    object->mesh.mesh.max.x = object->mesh.mesh.max.y = -1e6f;
+    object->mesh.mesh.min.x = object->mesh.mesh.min.y = 1e6f;
     object->mesh.mesh.max.z = object->mesh.mesh.max.x;
     object->mesh.mesh.min.z = object->mesh.mesh.min.x;
     for (i = 0; i < count; i++, vertex++) {
@@ -1216,8 +1200,8 @@ static void ObjectCullHook(HSF_OBJECT *object, HSF_TRANSFORM *transform,
     if (transform->rot.y != 0.0f) {
         s32 offset = (s32)(transform->rot.y * MB_TRIG_DEG_SCALE);
         float *table = cosTab;
-        float sine = *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK));
-        float cosine = *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK));
+        float sine = table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)];
+        float cosine = table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)];
 
         if (rotF == FALSE) {
             rotF = TRUE;
@@ -1229,8 +1213,8 @@ static void ObjectCullHook(HSF_OBJECT *object, HSF_TRANSFORM *transform,
     if (transform->rot.z != 0.0f) {
         s32 offset = (s32)(transform->rot.z * MB_TRIG_DEG_SCALE);
         float *table = cosTab;
-        float sine = *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK));
-        float cosine = *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK));
+        float sine = table[((offset - 2046) & MB_TRIG_BYTE_MASK) / sizeof(*table)];
+        float cosine = table[((offset + 2) & MB_TRIG_BYTE_MASK) / sizeof(*table)];
 
         if (rotF == FALSE) {
             rotF = TRUE;

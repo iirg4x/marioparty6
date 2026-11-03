@@ -11,11 +11,6 @@ double cos(double);
 #include "game/sprite.h"
 #include "messdir_enum.h"
 
-#define MSM_SE_CMN_26 0x19
-#define MSM_SE_CMN_27 0x1A
-#define MSM_SE_CMN_28 0x1B
-#define MSM_SE_CMN_29 0x1C
-
 #define GAMEMES_MESS_MINIGAME_START MESSNUM(MESS_MG_INST_SYS, 10)
 #define GAMEMES_MESS_MINIGAME_FINISH MESSNUM(MESS_MG_INST_SYS, 11)
 #define GAMEMES_MESS_WINNER MESSNUM(MESS_MG_INST_SYS, 12)

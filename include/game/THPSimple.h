@@ -76,20 +76,21 @@ typedef struct {
     /* 0x19E */ s16 drawObjectId;
 } UnkThpStruct10; // Size 0x1A0
 
-BOOL THPSimpleInit(s32 arg0);
+BOOL THPSimpleInit(s32 audioSystemMode);
 void THPSimpleQuit(void);
-s32 THPSimpleOpen(char *arg0);
+s32 THPSimpleOpen(char *fileName);
 s32 THPSimpleRead(DVDFileInfo *fileInfo, void *addr, s32 length, s32 offset);
 s32 THPSimpleClose(void);
 s32 THPSimpleCalcNeedMemory(void);
-s32 THPSimpleSetBuffer(void *arg0);
-s32 THPSimplePreLoad(s32 arg0);
+s32 THPSimpleSetBuffer(void *bufferMemory);
+s32 THPSimplePreLoad(s32 loopMovie);
 void THPSimpleAudioStart(void);
 void THPSimpleAudioStop(void);
 s32 THPSimpleLoadStop(void);
 s32 THPSimpleDecode(void);
-s32 THPSimpleDrawCurrentFrame(GXRenderModeObj *arg0, GXColor *arg1, Mtx arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6);
-s32 THPSimpleGetVideoInfo(UnkThpStruct04 *arg0);
+s32 THPSimpleDrawCurrentFrame(GXRenderModeObj *renderMode, GXColor *drawColor, Mtx modelView,
+                              s32 originX, s32 originY, s32 drawWidth, s32 drawHeight);
+s32 THPSimpleGetVideoInfo(UnkThpStruct04 *videoInfo);
 s32 THPSimpleGetTotalFrame(void);
 float THPSimpleGetFrameRate(void);
 s32 THPSimpleSetVolume(s32 targetVolume, s32 rampDuration);

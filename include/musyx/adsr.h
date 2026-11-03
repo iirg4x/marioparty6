@@ -24,6 +24,26 @@ typedef struct ADSR_INFO {
   } data; // offset 0x0, size 0x14
 } ADSR_INFO;
 
+/* On-disk curve values use little-endian byte order for the DLS words. */
+typedef struct ADSR_CURVE {
+  union {
+    struct {
+      u8 atime[4];
+      u8 dtime[4];
+      u16 slevel;
+      u16 rtime;
+      u8 ascale[4];
+      u8 dscale[4];
+    } dls;
+    struct {
+      u16 atime;
+      u16 dtime;
+      u16 slevel;
+      u16 rtime;
+    } linear;
+  } data;
+} ADSR_CURVE;
+
 typedef struct ADSR_VARS {
   u8 mode;
   u8 state;

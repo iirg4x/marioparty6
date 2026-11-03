@@ -606,7 +606,6 @@ static inline s32 GetMotNoPlayTime(CHARWORK *workP, s16 motNo)
     return -1;
 }
 
-s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
 static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag);
 static s16 EffectDustCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
                             EFFECTPARAM *param);

@@ -19,7 +19,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #ifndef M640_H
 #define M640_H
 
@@ -134,5 +133,13 @@ void fn_1_36D8(M640Player *player);
 s16 fn_1_37F4(s16 side, M640Player *player);
 u16 fn_1_39F0(s16 side, M640Player *player);
 s16 fn_1_33D0(float rotationDegrees);
+s16 fn_1_2FF8(void);
+s16 fn_1_3274(M640Player *player, HuVecF *spinnerRotation);
+void fn_1_345C(s16 side, s16 slot, s16 previewIndex);
+void fn_1_4C90(s16 side);
+void fn_1_4DDC(s16 side, s16 part);
+void fn_1_4FFC(s16 side, s16 part);
+void fn_1_519C(s16 side, s16 part);
+void fn_1_623C(void);
 
 #endif

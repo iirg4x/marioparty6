@@ -213,7 +213,7 @@ float MapPos(float worldX, float worldY, float worldZ, float heightAllowance, Hu
 
 // Called by MapPos for each candidate attribute block; finds the nearest height strictly below
 // worldHeightLimit. Wall polygons are skipped, and heightOut remains in object coordinates.
-BOOL PolygonRangeCheck(HSF_MAPATTR *mapAttribute, float x, float z, float *heightOut,
+static BOOL PolygonRangeCheck(HSF_MAPATTR *mapAttribute, float x, float z, float *heightOut,
                        float worldHeightLimit) {
     HuVecF worldPoint;
     float localHeight;

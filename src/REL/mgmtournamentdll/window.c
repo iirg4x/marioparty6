@@ -1,5 +1,5 @@
 /* Shows tournament prompts, player choices and message sound callbacks. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/main.h"
 #include "game/window.h"
 #include "game/process.h"
@@ -8,6 +8,7 @@
 #include "dolphin/pad.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
+#include "REL/mgmtournamentdll/module_types.h"
 
 typedef struct TournamentWindow {
     HUWINID windowId; /* Shared framed dialogue window. */
@@ -30,7 +31,6 @@ void fn_1_71E8(s16 *firstPlayer, s16 *secondPlayer);
 s16 fn_1_7BC0(s16 player);
 s16 fn_1_7C00(s16 player);
 s16 fn_1_7C44(s16 player);
-s16 fn_1_A42C(void);
 void fn_1_2D1C(HUWINID windowId, u32 messageId, s16 callbackCode);
 s32 lbl_1_data_140[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 s32 lbl_1_data_160[14] = {
@@ -197,7 +197,7 @@ void fn_1_1F90(void)
     fn_1_5728();
     HuWinComKeyReset();
     fn_1_1BD0();
-    mode = fn_1_A42C();
+    mode = tournamentLayoutGet();
     if (mode == 0) {
         HuWinMesSet(lbl_1_bss_C8.windowId, MESSNUM(MESS_MGM_TOURNAMENT, 2));
     } else if (mode == 1) {
@@ -302,8 +302,6 @@ s16 fn_1_2128(void)
 void fn_1_2728(s16 player)
 {
 
-    s16 unusedSecondPlayer;
-    s16 unusedFirstPlayer;
     s16 padMask;
     s16 winnerCharacter;
 
@@ -339,11 +337,7 @@ void fn_1_2948(void)
 {
 
     s16 remainingCharacter;
-    s16 unusedFirstPadMask;
-    s16 unusedSecondPadMask;
     s16 player;
-    s16 unusedFirstPlayer;
-    s16 unusedSecondPlayer;
 
     for (player = 0; player < 4; player++) {
         if (MgModeWorkInt[player + 4] == 0) {

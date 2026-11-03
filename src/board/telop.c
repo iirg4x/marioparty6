@@ -4,6 +4,7 @@
 
 #include "game/board/main.h"
 #include "game/board/audio.h"
+#include "game/board/guide.h"
 #include "game/board/pause.h"
 
 #include "game/armem.h"
@@ -296,8 +297,6 @@ void mbTelopTimeSprRotSet(s16 grpId, float rot);
 void mbTelopTimeStarSet(s16 grpId, s32 starNum);
 void mbTelopTimeTPLvlSet(s16 grpId, float tpLvl);
 void mbTelopTimeDispSet(s16 grpId, BOOL dispF);
-extern float mbSinDeg(float angle);
-extern float mbCosDeg(float angle);
 
 /* Creates a character or board speech bubble; callers wait for its object to be deleted when waitF
  * is true. */

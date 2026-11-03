@@ -1,5 +1,7 @@
 /* Controls the Verbal Assault minigame's vehicle, effects, and stage models. */
 #include "REL/m665dll/player.h"
+#include "REL/m665dll/opponent.h"
+#include "REL/m665dll/scene.h"
 #include "REL/m665dll/stage.h"
 #include "math.h"
 #include "REL/m665dll/sequence.h"
@@ -199,8 +201,6 @@ void fn_1_1FFC(void)
     playerWork->speed = 5.0f;
 }
 
-void fn_1_170C(s16 player, s16 mode, f32 frame);
-
 /* Forwards the main player's character motion and blend duration during action or winner
  * updates. */
 void fn_1_2058(s16 motion, f32 blendDuration)
@@ -258,7 +258,7 @@ void fn_1_2158(void) {
             motionMaxTime = fn_8005C1FC(playerWork->character);
             if (fn_8005C1B8(playerWork->character) >= motionMaxTime) {
                 fn_1_2058(0, 8.0f);
-                HuAudFXPlay(0x86E);
+                HuAudFXPlay(2158);
                 fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[0]);
                 fn_8002D414(playerWork->vehicleModel, 0.0f);
                 fn_8002D86C(playerWork->vehicleModel, 1.0f);
@@ -269,7 +269,7 @@ void fn_1_2158(void) {
         case 2:
             if (fn_8002D4E0(playerWork->vehicleModel) >= 40.0f) {
                 lbl_1_bss_2E8.fireEnabled = 1;
-                lbl_1_bss_2E8.fireSoundHandle = HuAudFXPlay(0x86F);
+                lbl_1_bss_2E8.fireSoundHandle = HuAudFXPlay(2159);
                 if (frandmod(2) == 0) {
                     fn_8002D414(playerWork->vehicleModel, 50.0f);
                     fn_1_20A0(4);
@@ -329,7 +329,7 @@ void fn_1_2158(void) {
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
-                HuAudFXPlay(0x879);
+                HuAudFXPlay(2169);
                 return;
             }
             break;
@@ -341,7 +341,7 @@ void fn_1_2158(void) {
                 fn_8002D414(playerWork->vehicleModel, 0.0f);
                 fn_8002D86C(playerWork->vehicleModel, 1.0f);
                 fn_1_20A0(14);
-                HuAudFXPlay(0x86E);
+                HuAudFXPlay(2158);
                 return;
             }
             break;
@@ -349,10 +349,11 @@ void fn_1_2158(void) {
             if (fn_8002D4E0(playerWork->vehicleModel) >= 49.0f) {
                 fn_1_20A0(15);
                 for (modelIndex = 0; modelIndex < 6; modelIndex++) {
-                    fn_80026A44(lbl_1_bss_2E8.missiles[modelIndex].modelID, 1U);
+                    fn_80026A44(lbl_1_bss_2E8.missiles[modelIndex].modelID,
+                                       (1 << 0));
                     lbl_1_bss_2E8.missiles[modelIndex].state = 1;
                 }
-                HuAudFXPlay(0x871);
+                HuAudFXPlay(2161);
                 playerWork->actionFrames = 75;
                 return;
             }
@@ -363,7 +364,7 @@ void fn_1_2158(void) {
                 fn_1_20A0(16);
                 fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
                 fn_8002D414(playerWork->vehicleModel, 49.0f);
-                HuAudFXPlay(0x879);
+                HuAudFXPlay(2169);
                 playerWork->status.main.flags.bits.moving = 1;
                 return;
             }
@@ -386,7 +387,7 @@ void fn_1_2158(void) {
                 fn_8002D414(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(9);
                 lbl_1_bss_2E8.laser.scale = 0.0f;
-                HuAudFXPlay(0x86E);
+                HuAudFXPlay(2158);
                 return;
             }
             break;
@@ -400,9 +401,9 @@ void fn_1_2158(void) {
                         Hu3DModelObjPosGet(playerWork->vehicleModel,
                                             laserHookNames[modelIndex], &hookPosition);
                         fn_80026790(laser->modelIDs[modelIndex], &hookPosition);
-                        fn_80026A44(laser->modelIDs[modelIndex], 1U);
+                        fn_80026A44(laser->modelIDs[modelIndex], (1 << 0));
                     }
-                    HuAudFXPlay(0x870);
+                    HuAudFXPlay(2160);
                 } else {
                     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
                         fn_800267CC(laser->modelIDs[modelIndex], &laserPosition);
@@ -446,7 +447,7 @@ void fn_1_2158(void) {
             if (laser->scale <= 0.0f) {
                 laser->scale = 0.0f;
                 fn_1_20A0(12);
-                HuAudFXPlay(0x879);
+                HuAudFXPlay(2169);
             }
             for (modelIndex = 0; modelIndex < 2; modelIndex++) {
                 fn_800267CC(laser->modelIDs[modelIndex], &laserTrailPosition);
@@ -489,7 +490,7 @@ void fn_1_2158(void) {
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
-                HuAudFXPlay(0x873);
+                HuAudFXPlay(2163);
                 return;
             }
             break;
@@ -518,7 +519,7 @@ void fn_1_2158(void) {
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 40.0f) {
-                HuAudFXPlay(0x879);
+                HuAudFXPlay(2169);
                 return;
             }
             break;
@@ -542,7 +543,7 @@ void fn_1_2158(void) {
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
-                HuAudFXPlay(0x873);
+                HuAudFXPlay(2163);
                 return;
             }
             break;
@@ -592,7 +593,7 @@ void fn_1_2158(void) {
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 40.0f) {
-                HuAudFXPlay(0x879);
+                HuAudFXPlay(2169);
                 return;
             }
             break;
@@ -613,7 +614,7 @@ void fn_1_2158(void) {
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
-                HuAudFXPlay(0x873);
+                HuAudFXPlay(2163);
                 return;
             }
             break;
@@ -648,7 +649,7 @@ void fn_1_2158(void) {
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
-                HuAudFXPlay(0x87A);
+                HuAudFXPlay(2170);
                 return;
             }
             break;
@@ -662,17 +663,17 @@ void fn_1_2158(void) {
             if (fn_8002D4E0(playerWork->vehicleModel) == 15.0f) {
                 lbl_1_bss_2E8.bouncing[0].state = 1;
                 lbl_1_bss_2E8.bouncing[3].state = 1;
-                HuAudFXPlay(0x872);
+                HuAudFXPlay(2162);
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 38.0f) {
                 lbl_1_bss_2E8.bouncing[4].state = 1;
-                HuAudFXPlay(0x872);
+                HuAudFXPlay(2162);
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 62.0f) {
                 lbl_1_bss_2E8.bouncing[2].state = 1;
-                HuAudFXPlay(0x872);
+                HuAudFXPlay(2162);
                 return;
             }
             if (fn_8002D4E0(playerWork->vehicleModel) == 74.0f) {
@@ -683,7 +684,7 @@ void fn_1_2158(void) {
             break;
         case 35:
             if (fn_8002D4E0(playerWork->vehicleModel) == 38.0f) {
-                HuAudFXPlay(0x872);
+                HuAudFXPlay(2162);
                 lbl_1_bss_2E8.bouncing[1].state = 1;
                 lbl_1_bss_2E8.bouncing[5].state = 1;
                 return;
@@ -770,7 +771,7 @@ void fn_1_4200(void) {
         if (playerWork->models.main.damage >= (index + 1) * 50 &&
             playerWork->models.main.brokenHooks <= index) {
             playerWork->models.main.brokenHooks += 1;
-            HuAudFXPlay(0x86D);
+            HuAudFXPlay(2157);
             fn_800269E8(playerWork->models.main.hookModels[index], (1 << 0));
             fn_800275B4(playerWork->vehicleModel, hookNames.names[index]);
             fn_8002741C(playerWork->vehicleModel, hookNames.names[index],
@@ -800,8 +801,6 @@ void fn_1_4200(void) {
         }
     }
 }
-
-s32 frandmod(s32 max);
 
 /* Selects a CPU attack flag using difficulty weights when its selection delay expires. */
 u16 fn_1_4538(M665PlayerWork *work) {
@@ -895,7 +894,7 @@ void fn_1_4768(void) {
         if (rotation.z < 5.0f) {
             rotation.z += 0.25f;
             if (rotation.z == 5.0f) {
-                HuAudFXPlay(0x87C);
+                HuAudFXPlay(2172);
             }
         }
         if (rotation.z > 5.0f) {
@@ -981,8 +980,6 @@ void fn_1_4768(void) {
     }
 }
 
-extern void fn_1_11FD0(M665PlayerWork *playerWork);
-
 /* Tests a point against the main vehicle's bounds for fn_1_112C0. */
 s32 fn_1_4FA4(HuVecF *point) {
     HuVecF playerPosition;
@@ -1011,8 +1008,8 @@ void fn_1_50DC(void) {
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     fn_800275B4((playerWork->vehicleModel), "itemhook");
     fn_80026808((playerWork->vehicleModel), 0.0f, 30.0f, 0.0f);
-    fn_80026760((playerWork->vehicleModel), 0.0f, 0.0f, (-2000.0f));
-    fn_80026760((playerWork->characterModel), (-300.0f), 0.0f, 300.0f);
+    fn_80026760((playerWork->vehicleModel), 0.0f, 0.0f, -2000.0f);
+    fn_80026760((playerWork->characterModel), -300.0f, 0.0f, 300.0f);
     fn_80026E44((playerWork->characterModel));
     mainPlayerIndex = lbl_1_bss_250.mainPlayer;
     if (fn_8006A124(65551) == 0) {
@@ -1043,9 +1040,9 @@ void fn_1_51F8(void) {
     fn_80026808(playerWork->vehicleModel, 5.0f, 30.0f,
                     15.0f);
     fn_80026760(playerWork->vehicleModel, 0.0f, 0.0f,
-                    (-2000.0f));
-    fn_80026760(playerWork->characterModel, (-500.0f), 0.0f,
-                    (-500.0f));
+                    -2000.0f);
+    fn_80026760(playerWork->characterModel, -500.0f, 0.0f,
+                    -500.0f);
     fn_80026E44(playerWork->characterModel);
     i = 0;
     while (i < 2) {
@@ -1063,8 +1060,8 @@ void fn_1_53C0(void) {
 
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     fn_800275B4((playerWork->vehicleModel), "itemhook");
-    fn_80026760((playerWork->vehicleModel), 0.0f, 0.0f, (-2000.0f));
-    fn_80026760((playerWork->characterModel), (-300.0f), 0.0f, (-200.0f));
+    fn_80026760((playerWork->vehicleModel), 0.0f, 0.0f, -2000.0f);
+    fn_80026760((playerWork->characterModel), -300.0f, 0.0f, -200.0f);
     fn_80026E44((playerWork->characterModel));
 }
 
@@ -1138,9 +1135,9 @@ static inline void m665FireSpawn(void) {
             lbl_1_bss_2E8.fire[i].opacity =
                 0.8f;
             fn_80026A44(
-                lbl_1_bss_2E8.fire[i].modelA, 1);
+                lbl_1_bss_2E8.fire[i].modelA, (1 << 0));
             fn_80026A44(
-                lbl_1_bss_2E8.fire[i].modelB, 1);
+                lbl_1_bss_2E8.fire[i].modelB, (1 << 0));
             return;
         }
         i++;
@@ -1185,9 +1182,9 @@ void fn_1_5614(void) {
             lbl_1_bss_2E8.fire[i].opacity =
                 0.8f;
             fn_80026A44(
-                lbl_1_bss_2E8.fire[i].modelA, 1);
+                lbl_1_bss_2E8.fire[i].modelA, (1 << 0));
             fn_80026A44(
-                lbl_1_bss_2E8.fire[i].modelB, 1);
+                lbl_1_bss_2E8.fire[i].modelB, (1 << 0));
             return;
         }
         i++;
@@ -1294,8 +1291,6 @@ void fn_1_5820(void) {
         mainPlayerWork->effect.main.effectState = 0;
     }
 }
-
-void fn_1_D25C(void);
 
 /* Starts the selected main-player action when called from fn_1_4768's object update. */
 void fn_1_60CC(u16 flags) {
@@ -1661,10 +1656,10 @@ void fn_1_7214(s16 killerIndex) {
     }
     if (killerWork->targetPlayer == -1) {
         fn_800267CC(killerWork->modelID, &currentPosition);
-        currentPosition.x += 8.333333015441895 *
+        currentPosition.x += 8.333333f *
             sin(3.141592653589793 * killerWork->angle /
                 180.0);
-        currentPosition.z += 8.333333015441895 *
+        currentPosition.z += 8.333333f *
             cos(3.141592653589793 * killerWork->angle /
                 180.0);
         if (currentPosition.z > 200.0f) {
@@ -1699,10 +1694,10 @@ void fn_1_7214(s16 killerIndex) {
     } else {
         killerWork->angle -= 1.0f;
     }
-    currentPosition.x += 8.333333015441895 *
+    currentPosition.x += 8.333333f *
         sin(3.141592653589793 * killerWork->angle /
             180.0);
-    currentPosition.z += 8.333333015441895 *
+    currentPosition.z += 8.333333f *
         cos(3.141592653589793 * killerWork->angle /
             180.0);
     currentPosition.y -= killerWork->verticalSpeed;
@@ -1748,12 +1743,12 @@ static inline void updateKillerMotionInline(s16 killerIndex) {
         killerWork->angle += 1.0f;
     }
     position.x = position.x +
-                 8.333333015441895 *
+                 8.333333f *
                      sin(3.141592653589793 *
                           killerWork->angle /
                          180.0);
     position.z = position.z +
-                 8.333333015441895 *
+                 8.333333f *
                      cos(3.141592653589793 *
                           killerWork->angle /
                          180.0);
@@ -1828,7 +1823,7 @@ void fn_1_7BA0(s16 killerIndex) {
                              cos(3.141592653589793 *
                                  killerWork->angle /
                                  180.0));
-    if ((playerPosition.x - collisionRadius.x <= (-1000.0f)) ||
+    if ((playerPosition.x - collisionRadius.x <= -1000.0f) ||
         (playerPosition.x + collisionRadius.x >= 1000.0f)) {
         resetPlayerEffect(killerIndex);
         return;
@@ -1937,7 +1932,7 @@ void fn_1_8378(void) {
                     killerWork->trail[index].opacity = 0.0f;
                     killerWork->trail[index].active = 0;
                     fn_800269E8(
-                        killerWork->trail[index].modelID, 1);
+                        killerWork->trail[index].modelID, (1 << 0));
                 }
                 fn_80026CBC(
                     killerWork->trail[index].modelID,
@@ -1961,8 +1956,8 @@ void fn_1_8378(void) {
             Hu3DModelObjPosGet(mainPlayerWork->vehicleModel, "itemhook_killer",
                                &position);
             fn_80026790(killerWork->modelID, &position);
-            HuAudFXPlay(0x876);
-            killerWork->soundHandle = HuAudFXPlay(0x87B);
+            HuAudFXPlay(2166);
+            killerWork->soundHandle = HuAudFXPlay(2171);
             killerWork->state = 3;
             break;
         case 3:
@@ -2119,7 +2114,7 @@ void fn_1_8FC8(void) {
         effectWork = &lbl_1_bss_2E8.rolling[effectIndex];
         switch (effectWork->state) {
         case 1:
-            HuAudFXPlay(0x874);
+            HuAudFXPlay(2164);
             fn_80026A44(effectWork->modelID, (1 << 0));
             fn_800267CC(currentPlayerWork->vehicleModel, &position);
             position.z -= 350.0f;
@@ -2141,8 +2136,8 @@ void fn_1_8FC8(void) {
             position.x += effectWork->horizontalSpeed;
             position.y += effectWork->verticalSpeed;
             position.z += effectWork->depthSpeed;
-            if (position.x < (-1000.0f)) {
-                position.x = (-1000.0f);
+            if (position.x < -1000.0f) {
+                position.x = -1000.0f;
             }
             if (position.x > 1000.0f) {
                 position.x = 1000.0f;
@@ -2157,7 +2152,7 @@ void fn_1_8FC8(void) {
                                  cos(3.141592653589793 * rotation.x /
                                      180.0);
                 effectWork->state = 3;
-                HuAudFXPlay(0x877);
+                HuAudFXPlay(2167);
             }
             fn_80026838(effectWork->modelID, &rotation);
             fn_80026790(effectWork->modelID, &position);
@@ -2334,7 +2329,7 @@ void fn_1_9AE8(void) {
     while (attempt < 7) {
         leaf = &lbl_1_bss_2E8.hazards[lbl_1_bss_2E4];
         if (leaf->state == 0) {
-            HuAudFXPlay(0x875);
+            HuAudFXPlay(2165);
             leaf->state = 1;
             return;
         }
@@ -2349,15 +2344,13 @@ void fn_1_9BAC(s16 hazardIndex) {
 
     fn_800267CC(lbl_1_bss_2E8.hazards[hazardIndex].model, &hazardPosition);
     fn_80026790(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, &hazardPosition);
-    fn_80026A44(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 1U);
-    fn_800269E8(lbl_1_bss_2E8.hazards[hazardIndex].model, 1U);
+    fn_80026A44(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, (1 << 0));
+    fn_800269E8(lbl_1_bss_2E8.hazards[hazardIndex].model, (1 << 0));
     fn_8002D86C(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 1.0f);
     fn_8002D414(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 0.0f);
     lbl_1_bss_2E8.hazards[hazardIndex].state = 5;
-    HuAudFXPlayPan(0x878, (s16) ((s32) (hazardPosition.x / 40.0f) + 64));
+    HuAudFXPlayPan(2168, (s16) ((s32) (hazardPosition.x / 40.0f) + 64));
 }
-
-extern void OSReport(const char *format, ...);
 
 typedef struct ResourcePointers {
     char *first; /* First attachment name in the pair. */
@@ -2402,7 +2395,7 @@ void fn_1_9CF0(void) {
             lbl_1_bss_280[hazardIndex].reserved =
                 lbl_1_bss_280[hazardIndex].depthDistance = 0.0f;
     }
-    previousPosition.x = (-1000.0f);
+    previousPosition.x = -1000.0f;
     previousPosition.y = 0.0f;
     previousPosition.z = 0.0f;
     for (hazardIndex = 0; hazardIndex < 7; hazardIndex++) {
@@ -2454,7 +2447,7 @@ void fn_1_9CF0(void) {
             if (position.y <= 64.0f) {
                 OSReport("%d\n",
                          (s16) (position.x / 40.0f) + 64);
-                HuAudFXPlayPan(0x878,
+                HuAudFXPlayPan(2168,
                     (s16) ((s32) (position.x / 40.0f) + 64));
                 position.y = 64.0f;
                 hazard->state = 4;
@@ -2950,7 +2943,6 @@ void fn_1_C004(void) {
 
 /* Hit processing in fn_1_13024 adds one damage point to the main vehicle during sequence mode 5. */
 void fn_1_C090(void) {
-    void *unused;
     if (fn_80071A8C() == 5)
     {
         lbl_1_bss_10[lbl_1_bss_250.mainPlayer].models.main.damage += 1;

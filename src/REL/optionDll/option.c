@@ -4,6 +4,7 @@
 #include "game/esprite.h"
 #include "game/hu3d.h"
 #include "game/mgdata.h"
+#include "game/mic.h"
 #include "game/object.h"
 #include "game/pad.h"
 #include "game/process.h"
@@ -15,11 +16,12 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 #include <math.h>
+#include <stdio.h>
+#include "REL/optionDll/main.h"
+#include "REL/optionDll/records.h"
+#include "REL/optionDll/sound_test.h"
 
 #define OPTION_MODEL_END ((u32)-1)
-
-void fn_1_C3FC(s16 selection);
-s16 fn_1_C324(s16 flag, s16 type);
 
 typedef void (*VoidFunc)(void);
 
@@ -97,34 +99,33 @@ typedef struct OptionWork {
 
 OptionModelEntry lbl_1_data_1AB0[26] = {
     {DATANUM(0xbe0000, 0), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U,
-        ((1 << 30) | (1 << 0)), 2, 0},
-    {DATANUM(0xbe0000, 1), -1, 0, {0.00000000f, 0.00000000f, -1000.00000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(0xbe0000, 3), -1, 0, {0.00000000f, 0.00000000f, 50.0000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.29999995f, 1.29999995f, 1.29999995f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, ((1 << 30) | (1 << 0)), 2, 0},
+    {DATANUM(0xbe0000, 1), -1, 0, {0.00000000f, 0.00000000f, -1000.0f}, {0.00000000f, 0.00000000f,
+        0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 3), -1, 0, {0.00000000f, 0.00000000f, 50.0f}, {0.00000000f, 0.00000000f,
+        0.00000000f}, {1.3f, 1.3f, 1.3f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 4), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f,
-        0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 5), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f,
-        0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 6), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f,
-        0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 7), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
-        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+        0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
         0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
     {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
@@ -195,47 +196,14 @@ extern s16 lbl_1_bss_6A0;
 extern ANIMDATA *lbl_1_bss_BF8[];
 extern s16 lbl_1_bss_BF0[4];
 
-void fn_1_A0(void);
-void fn_1_804(void);
-void fn_1_FDC(void);
-void fn_1_1044(void);
 void fn_1_EA6C(void);
-void fn_1_1084(void);
-void fn_1_3AE0(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages);
-void fn_1_18B8(s16 cameraNo);
-void fn_1_18D8(void);
-void fn_1_19B8(s32 value);
-void fn_1_19E0(void);
 void fn_1_E6F8(void);
 void fn_1_F1D8(void);
 void fn_1_F394(void);
 void fn_1_F0B0(void);
 void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
 BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-void fn_1_3BD8(OMOBJ *obj);
-s16 fn_1_1DF0(s16 currentOption);
-
-void fn_1_B1A0(s16 mode, s16 argument);
-void fn_1_4738(void);
-void fn_1_6898(void);
-void fn_1_5620(void);
-void fn_1_6504(s16 prizeNo);
-void fn_1_6590(s16 firstPrize);
-void fn_1_7728(s16 firstEntry);
-void fn_1_7A74(void);
-void fn_1_85E4(s16 item, float progress);
-void fn_1_879C(void);
-void fn_1_8CA4(s16 recordIndex);
-void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage);
-void fn_1_C3FC(s16 selection);
 float fn_1_F684(s16 groupId, s16 memberNo);
-void fn_1_B02C(s16 first, s16 count);
-void fn_1_9F74(void);
-void fn_1_C484(void);
-void fn_1_E538(s16 page);
-extern int HuMCMicGet(void);
-int sprintf(char *buffer, const char *format, int value);
 
 /* The settings list calls this when the player previews a sound entry. */
 void fn_1_E688(OptionAudioEntry *entry)

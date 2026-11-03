@@ -1,5 +1,5 @@
 /* Controls the tournament menu camera and its transitions. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -9,6 +9,7 @@
 #include "game/memory.h"
 #include "game/gamework.h"
 #include "datadir_enum.h"
+#include "REL/mgmtournamentdll/module_types.h"
 
 typedef struct TournamentCameraPair {
     Vec position; /* Camera location in world coordinates. */
@@ -18,8 +19,6 @@ typedef struct TournamentCameraPair {
 extern OMOBJMAN *lbl_1_bss_12C;
 extern s16 MgGameNo; /* Saved tournament camera preset, retained across minigame transitions. */
 void fn_1_14C8(OMOBJ *object);
-s16 fn_1_A42C(void);
-void fn_1_143C(s16 viewIndex, u32 durationFrames);
 void fn_1_16F8(HU3D_CAMERA *camera, Vec *startPosition, Vec *startTarget, const Vec *endPosition,
                const Vec *endTarget, f32 durationFrames, f32 elapsedFrames);
 void fn_1_7C78(Vec *center);
@@ -62,7 +61,7 @@ void fn_1_E9C(void) {
 }
 
 /* Return from a minigame installs a camera object using the last saved tournament view. */
-void fn_1_FE8(void)
+void tournamentCameraRestore(void)
 {
     fn_8002858C(lbl_1_bss_C4);
     fn_800262D0(lbl_1_bss_C4);
@@ -81,7 +80,7 @@ void fn_1_1134(void)
 }
 
 /* State 1 plays the opening camera motion, then installs the tournament camera object. */
-void fn_1_1138(void)
+void tournamentCameraOpeningPlay(void)
 {
     f32 motionTime;
     f32 maxTime;
@@ -119,27 +118,27 @@ void fn_1_1138(void)
 }
 
 /* The pre-round scene requests a timed camera move to the current pairing on the bracket. */
-void fn_1_13A4(u32 durationFrames) {
+void tournamentCameraRoundViewSet(u32 durationFrames) {
     s16 roundLayout;
 
-    roundLayout = fn_1_A42C();
+    roundLayout = tournamentLayoutGet();
     if (roundLayout == 0) {
-        fn_1_143C(3, durationFrames);
+        tournamentCameraViewSet(3, durationFrames);
         return;
     }
     if (roundLayout == 1) {
-        fn_1_143C(5, durationFrames);
+        tournamentCameraViewSet(5, durationFrames);
         return;
     }
     if (roundLayout == 2) {
-        fn_1_143C(7, durationFrames);
+        tournamentCameraViewSet(7, durationFrames);
         return;
     }
-    fn_1_143C(9, durationFrames);
+    tournamentCameraViewSet(9, durationFrames);
 }
 
 /* Scene transitions select a preset and save the current view for the timed camera move. */
-void fn_1_143C(s16 viewIndex, u32 durationFrames) {
+void tournamentCameraViewSet(s16 viewIndex, u32 durationFrames) {
     lbl_1_bss_A8->work[0] = viewIndex;
     lbl_1_bss_A8->work[1] = durationFrames;
     lbl_1_bss_A8->work[2] = 0;
@@ -183,8 +182,8 @@ void fn_1_14C8(OMOBJ *object)
     shadowUp.y = 0.2f;
     shadowUp.z = -1.0f;
     shadowTarget = center;
-    Hu3DShadowPosSet((HuVecF *)&shadowPosition,
-                     (HuVecF *)&shadowUp, (HuVecF *)&shadowTarget);
+    Hu3DShadowPosSet(&shadowPosition,
+                     &shadowUp, &shadowTarget);
 }
 
 /* The camera object eases its position and target from the saved view to the preset each frame. */

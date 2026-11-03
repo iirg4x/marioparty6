@@ -200,7 +200,7 @@ OMOVLHIS *omOvlHisGet(s32 historyOffset)
     return &omovlhis[lbl_802C024C-historyOffset];
 }
 
-static void omMain(void);
+void omMain(void);
 
 static void omDestroyObjMan(void);
 
@@ -517,7 +517,7 @@ void omSetSca(OMOBJ *object, float x, float y, float z)
 
 // Child process created by omInitObjMan; invokes eligible callbacks and updates the first valid
 // model's transforms unless model updates are paused.
-static void omMain(void)
+void omMain(void)
 {
     OMOBJMAN *objMan = fn_8000DD9C();
     OMOBJWORK *objWork = objMan->property;

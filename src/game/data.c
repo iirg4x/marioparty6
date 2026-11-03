@@ -6,7 +6,7 @@
 #include "game/process.h"
 #include "dolphin/dvd.h"
 
-#define STAT_ID_ARAM 65536
+#define STAT_ID_ARAM 0x10000
 #define DATA_DIR_ID_MASK 0xFFFF0000
 #define DATA_EVEN_SIZE_MASK 0x1
 

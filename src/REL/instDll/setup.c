@@ -30,6 +30,7 @@
 #include "game/board/tutorial.h"
 #include "dolphin/os.h"
 #include "humath.h"
+#include "REL/instDll.h"
 
 /* Limits, timing values, priorities, and input masks for the instruction screen. */
 enum {
@@ -79,53 +80,16 @@ extern STAGE_MODEL lbl_1_data_520[];
 extern HuVecF lbl_1_data_700;
 extern HuVecF lbl_1_data_718;
 extern HuVecF lbl_1_data_724;
-extern char lbl_1_data_730[];
-extern char lbl_1_data_74A[];
-extern char lbl_1_data_764[];
-extern char lbl_1_data_77E[];
 extern Inst_data_798_view lbl_1_data_798[9];
 extern u32 lbl_1_data_F8[];
 extern GXRenderModeObj *RenderMode;
 
-/* Routines shared by instruction-screen setup and presentation. */
-extern void fn_1_1024(void);
-extern void fn_1_35F8(OMOBJ *obj);
-extern void fn_1_4158(void);
-void fn_1_8FA0(s16 imageIndex);
-void fn_1_96F4(s16 selectedMode);
-void fn_1_4668(STAGE_MODEL *desc);
-void fn_1_539C(void);
-void fn_1_5DE0(void);
-void fn_1_47E4(s16 selectedMode);
-void fn_1_2A1C(void);
-int fn_1_A1E8(void (*childFunction)(void), s32 processState);
-void fn_1_15C8(void);
-void fn_1_4188(void);
-void fn_1_8DB0(void);
-void fn_1_15B4(void);
-HUSPR_GROUPID fn_1_4400(u32 messNum);
-void fn_1_4B48(void);
-extern void fn_1_62A8(void);
-extern void fn_1_8B44(void);
-extern void fn_1_750C(void);
-extern void fn_1_8504(s16 index, Vec *transformed, Vec *result);
-extern void fn_1_8680(void);
-void fn_1_902C(s16 layerNo);
-extern void fn_1_9CF4(HU3D_MODEL *modelP, Mtx *mtx);
-extern void fn_1_99CC(void);
-void fn_1_9CB0(s16 layerNo);
-
-/* Initial stage-preview tint, camera views, and resource text. */
+/* Initial stage-preview tint and camera views. */
 GXColor lbl_1_data_0 = { 20, 0, 0, 0 };
 BOOL lbl_1_data_4 = TRUE;
 OM_CAMERA_VIEW lbl_1_data_8 = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 7e+03f };
 OM_CAMERA_VIEW lbl_1_data_24 = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 3e+03f };
 OM_CAMERA_VIEW lbl_1_data_40 = { { 1.7e+02f, 105.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 1e+02f };
-char lbl_1_data_5C[] = "******* INST ObjectSetup *********\n";
-char lbl_1_data_80[] = "Error: Illegal Group pattern.Adjusted.\n";
-u32 lbl_1_data_A8[] = { DATANUM(0x420000, 2), DATANUM(0x420000, 3), DATANUM(0x420000, 4),
-                        DATANUM(0x420000, 5), DATANUM(0x420000, 6) };
-
 extern HU3D_MODELID lbl_1_bss_49E[6];
 extern InstDllMotionRecord lbl_1_bss_43A[5];
 extern s16 lbl_1_bss_438;
@@ -179,7 +143,7 @@ void fn_1_A0(void)
     s32 selectedSubGameNo;
     s16 nightMode;
 
-    OSReport(lbl_1_data_5C);
+    OSReport("******* INST ObjectSetup *********\n");
     lbl_1_bss_3C = fn_8003A8BC(50, 8192);
     languageNo = lbl_80265E30.languageNo;
     lbl_1_bss_34 = languageNo;
@@ -339,7 +303,7 @@ prior_game_path:
             groupCount[lbl_80265728[i].grpNo]++;
         }
         if (i != 4 || groupCount[0] != 1 || groupCount[1] != 3) {
-            OSReport(lbl_1_data_80);
+            OSReport("Error: Illegal Group pattern.Adjusted.\n");
             lbl_80265728[0].grpNo = 0;
             lbl_80265728[1].grpNo = lbl_80265728[2].grpNo = lbl_80265728[3].grpNo = 1;
         }
@@ -355,7 +319,7 @@ prior_game_path:
             groupCount[lbl_80265728[i].grpNo]++;
         }
         if (i != 4 || groupCount[0] != 2 || groupCount[1] != 2) {
-            OSReport(lbl_1_data_80);
+            OSReport("Error: Illegal Group pattern.Adjusted.\n");
             lbl_80265728[0].grpNo = lbl_80265728[1].grpNo = 0;
             lbl_80265728[2].grpNo = lbl_80265728[3].grpNo = 1;
         }
@@ -376,12 +340,12 @@ checked_player_groups:
     omSysPauseEnable(0);
     Hu3DCameraCreate(3);
     Hu3DCameraPerspectiveSet(1, 5.0f, 20.0f,
-                             15000.0f, 1.2000000476837158f);
+                             15000.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f,
                           640.0f, 480.0f,
                           0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(2, 10.0f, 20.0f,
-                             15000.0f, 1.2000000476837158f);
+                             15000.0f, 1.2f);
     Hu3DCameraViewportSet(2, 0.0f, 0.0f,
                           640.0f, 480.0f,
                           0.0f, 1.0f);
@@ -416,7 +380,7 @@ checked_player_groups:
     shadowUp.x = shadowUp.z = 0.0f;
     shadowDir = lbl_1_data_700;
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowDir);
-    Hu3DShadowTPLvlSet(0.30000001192092896f);
+    Hu3DShadowTPLvlSet(0.3f);
     }
     if (omprevovl >= 6 && omprevovl <= 87) {
         lbl_1_bss_6 = 2;
@@ -431,6 +395,9 @@ checked_player_groups:
     }
     return;
 }
+
+u32 lbl_1_data_A8[] = { DATANUM(0x420000, 2), DATANUM(0x420000, 3), DATANUM(0x420000, 4),
+                        DATANUM(0x420000, 5), DATANUM(0x420000, 6) };
 
 /* Runs the instruction screen as the child process started by fn_1_A0. */
 void fn_1_1024(void)
@@ -960,8 +927,10 @@ void fn_1_2A1C(void)
             }
             if (fn_8002D3C4(lbl_1_bss_6AA[0]) != lbl_1_bss_4AA[1] &&
                 fn_8002D3EC(lbl_1_bss_6AA[0]) != lbl_1_bss_4AA[1]) {
-                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5, ((1 << 30) | (1 << 0)));
-                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5,
+                    ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5,
+                    ((1 << 30) | (1 << 0)));
                 timer = 0;
             }
         } else if (lbl_1_bss_6 == 3) {
@@ -976,8 +945,10 @@ void fn_1_2A1C(void)
         if (timer != 0) {
             timer--;
             if (timer == 5) {
-                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5, ((1 << 30) | (1 << 0)));
-                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5,
+                    ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5,
+                    ((1 << 30) | (1 << 0)));
             }
             lbl_1_bss_10 = 0;
         }
@@ -1022,12 +993,12 @@ void fn_1_35F8(OMOBJ *obj)
         }
         pos.x = lbl_80266B18[1].x
             + (lbl_80266BD8[1] * (sin(3.141592653589793*lbl_80266A58[1].y/180.0)
-            * cos(3.141592653589793*lbl_80266A58[1].x/180.0)));
+                * cos(3.141592653589793*lbl_80266A58[1].x/180.0)));
         pos.y = (lbl_80266B18[1].y
             + (lbl_80266BD8[1] * -sin(3.141592653589793*lbl_80266A58[1].x/180.0)));
         pos.z = (lbl_80266B18[1].z
             + (lbl_80266BD8[1] * (cos(3.141592653589793*lbl_80266A58[1].y/180.0)
-            * cos(3.141592653589793*lbl_80266A58[1].x/180.0))));
+                * cos(3.141592653589793*lbl_80266A58[1].x/180.0))));
         offset.x = lbl_80266B18[1].x - pos.x;
         offset.y = lbl_80266B18[1].y - pos.y;
         offset.z = lbl_80266B18[1].z - pos.z;
