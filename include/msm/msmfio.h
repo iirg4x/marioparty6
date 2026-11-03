@@ -3,7 +3,7 @@
 
 #include "dolphin.h"
 #include "dolphin/types.h"
-#include "game/msm.h"
+#include "msm.h"
 
 struct msmFio {
     MSM_OPEN open;

@@ -1,5 +1,5 @@
 #include "msm/msmfio.h"
-#include "game/msm.h"
+#include "msm.h"
 
 static struct msmFio fio;
 

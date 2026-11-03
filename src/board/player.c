@@ -20,7 +20,7 @@
 #include "game/data.h"
 #include "game/frand.h"
 #include "game/process.h"
-#include "game/msm.h"
+#include "msm.h"
 
 #include "messdir_enum.h"
 #include "msm_se.h"
