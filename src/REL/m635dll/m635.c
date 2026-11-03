@@ -6,7 +6,7 @@
 
 u16 lbl_1_data_0[6] = {
     PAD_BUTTON_A, PAD_BUTTON_B, PAD_BUTTON_X, PAD_BUTTON_Y,
-    0x4000, 0x2000
+    16384, 8192
 };
 char lbl_1_data_C[6] = { 'A', 'B', 'X', 'Y', 'L', 'R' };
 s16 lbl_1_data_12[4][2] = { { 60, 30 }, { 55, 25 }, { 40, 15 }, { 32, 6 } };
@@ -21,7 +21,7 @@ MGSEQ_PARAM lbl_1_data_78 = {
     fn_1_2D0, fn_1_3D8, fn_1_3DC, fn_1_3E0
 };
 
-/* MGSEQ initialization callback: create the object manager and start the sequence. */
+/* Initialize the object manager and start the minigame sequence from the module prolog. */
 void fn_1_A0(void)
 {
     lbl_1_bss_64 = fn_8003A8BC(256, 8192);

@@ -48,7 +48,7 @@ void fn_1_408(s16 frameNo)
             }
             break;
         case 2:
-            if (fn_8003EB94(1)) {
+            if (fn_8003EB94((1 << 0))) {
                 for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                     characterId = lbl_1_bss_BC[playerIndex].charNo;
                     fn_1_30C8(playerIndex, characterId);
