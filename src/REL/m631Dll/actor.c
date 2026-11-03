@@ -651,7 +651,7 @@ s32 fn_1_6C3C(void *callbackData) {
     fn_80026838(actor->characterModelId, &actor->rotation);
     omSetRot(actor->object, actor->rotation.x, actor->rotation.y, actor->rotation.z);
     if (actor->hit != 0) {
-        CharFXPlayPan(actor->charNo, (573+3), (s16) fn_1_51D0(actor->position.x));
+        CharFXPlayPan(actor->charNo, 576, (s16) fn_1_51D0(actor->position.x));
         fn_1_738C(actor);
         return 1;
     }

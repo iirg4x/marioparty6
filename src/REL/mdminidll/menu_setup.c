@@ -3197,7 +3197,7 @@ void fn_1_D554(OMOBJ *controllerObject)
                         if ((lbl_1_bss_28 == 0) && (playerConfig->charNo == 10)) {
                             HuAudFXPlay(4);
                         } else {
-                            CharFXPlay(playerConfig->charNo, (573+14));
+                            CharFXPlay(playerConfig->charNo, 587);
                             playerConfig->selectionPhase = 1;
                             fn_1_8B70(selectionSlot);
                             fn_1_809C(selectionSlot, playerConfig->padNo);
@@ -3363,7 +3363,7 @@ void fn_1_E1C0(OMOBJ *controllerObject)
                             HuAudFXPlay(4);
                             break;
                         }
-                        CharFXPlay(playerConfig->charNo, (573+14));
+                        CharFXPlay(playerConfig->charNo, 587);
                         playerConfig->selectionPhase = 1;
                         playerConfig->comDif = 1;
                         fn_1_8B70(selectionSlot);

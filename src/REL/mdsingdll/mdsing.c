@@ -2458,7 +2458,7 @@ void fn_1_6E94(OMOBJ *obj)
 
     for (frameNo = 0; frameNo < 3; frameNo++) {
         if (motionTime == soundFrames.frames[frameNo + (characterNo * 4)]) {
-            CharFXPlay((s32)characterNo, (177+4));
+            CharFXPlay((s32)characterNo, 181);
         }
     }
 }
@@ -3484,7 +3484,7 @@ void fn_1_BDA8(OMOBJ *obj)
                         }
                         else
                         {
-                            CharFXPlay(selection->characterNo, (573+14));
+                            CharFXPlay(selection->characterNo, 587);
                             selection->choiceState = 1;
                             fn_1_91C0(playerNo);
                             fn_1_876C(playerNo, selection->padNo);
@@ -3598,7 +3598,7 @@ void fn_1_C724(OMOBJ *obj)
                         if (lbl_1_bss_30 == 0 && choice->characterNo == 10) {
                             HuAudFXPlay(4);
                         } else {
-                            CharFXPlay(choice->characterNo, (573+14));
+                            CharFXPlay(choice->characterNo, 587);
                             choice->choiceState = 1;
                             fn_1_91C0(playerNo);
                             fn_1_876C(playerNo, 4);
@@ -7578,7 +7578,7 @@ s32 fn_1_2987C(void)
             20.0f, 100.0f);
         fn_1_3F0C(3, MESSNUM(MESS_SINGLE_RESULT, 2), 1);
         HuPrcSleep(30);
-        CharFXPlay(lbl_1_bss_22, (573+12));
+        CharFXPlay(lbl_1_bss_22, 585);
         HuPrcSleep(150);
         fn_1_3DB4();
         fn_8002CCC0(lbl_1_bss_C->mdlId[0], lbl_1_bss_C->mtnId[0],
@@ -7592,7 +7592,7 @@ s32 fn_1_2987C(void)
             0.0f, 10.0f, 0);
         HuPrcSleep(30);
         HuAudJinglePlay(MSM_STREAM_CARDOP);
-        CharFXPlay(lbl_1_bss_22, (573+0));
+        CharFXPlay(lbl_1_bss_22, 573);
         fn_1_251D8();
         sprintf(scoreText, lbl_1_data_CCE, lbl_1_bss_40);
         fn_1_4144(3, (s32)scoreText, 0);
@@ -7734,7 +7734,7 @@ s32 fn_1_2AD60(void)
     fn_8002CCC0(lbl_1_bss_10->mdlId[lbl_1_bss_22],
         lbl_1_bss_10->mtnId[38], 0.0f, 10.0f, 0);
     HuPrcSleep(30);
-    CharFXPlay(lbl_1_bss_22, (573+12));
+    CharFXPlay(lbl_1_bss_22, 585);
     HuPrcSleep(150);
     fn_1_778C();
     HuAudSStreamFadeOut(lbl_1_data_320[2], 1000);

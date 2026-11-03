@@ -929,7 +929,7 @@ enter_shop:
             /* A full inventory silently rejects this add; payment and the pickup animation have
              * already occurred. */
             mbPlayerCapsuleAdd(visitWork->playerNo, offer[selectionResult].capsuleNo);
-            mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, (573+6));
+            mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, 579);
             mbPlayerMotionShiftSet(visitWork->playerNo, 12, 0.0f, 4.0f, 0);
             mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);
             mbWinTopInsertMesSet(offer[selectionResult].messageId, 0);
@@ -1041,7 +1041,7 @@ enter_shop:
                     -offer[selectionResult].cost);
                 mbCapCapsuleGet(visitWork->playerNo, offer[selectionResult].capsuleNo);
                 mbPlayerCapsuleAdd(visitWork->playerNo, offer[selectionResult].capsuleNo);
-                mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, (573+6));
+                mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, 579);
                 mbPlayerMotionShiftSet(visitWork->playerNo, 12, 0.0f, 4.0f, 0);
                 if (discardedInventoryIndex == -1) {
                     mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);

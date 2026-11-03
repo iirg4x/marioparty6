@@ -3955,7 +3955,7 @@ void fn_1_F9E0(OMOBJ *obj)
                             HuAudFXPlay(4);
                             continue;
                         }
-                        CharFXPlay(entry->chrSel, (573+14));
+                        CharFXPlay(entry->chrSel, 587);
                         entry->characterChoiceState = 1;
                         fn_1_A318(i);
                         fn_1_8E24(i, entry->padNo);
@@ -4071,7 +4071,7 @@ void fn_1_1064C(OMOBJ *obj)
                             HuAudFXPlay(4);
                             break;
                         }
-                        CharFXPlay(entry->chrSel, (573+14));
+                        CharFXPlay(entry->chrSel, 587);
                         entry->characterChoiceState = 1;
                         entry->computerDifficulty = 1;
                         fn_1_A318(i);
@@ -4267,7 +4267,7 @@ void fn_1_11B84(OMOBJ *obj)
                             HuAudFXPlay(4);
                             break;
                         }
-                        CharFXPlay(entry->chrSel, (573+14));
+                        CharFXPlay(entry->chrSel, 587);
                         entry->characterChoiceState = 1;
                         entry->computerDifficulty = 1;
                         fn_1_A318(i);

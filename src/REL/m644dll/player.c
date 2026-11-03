@@ -1074,7 +1074,7 @@ void fn_1_5F50(OMOBJ *object)
         state->attack_frames = 0;
     }
     if (fn_80087114(state->player, (1 << 0)) != 0)
-        CharFXPlay(state->player->charNo, (573+15));
+        CharFXPlay(state->player->charNo, 588);
     if (state->player_type == 1) fn_1_4940(object);
     if (state->boarding_phase == 3) {
         fn_8007E818(state->player);

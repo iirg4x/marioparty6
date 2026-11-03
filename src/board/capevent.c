@@ -8234,11 +8234,11 @@ int mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF, BOOL waitF)
     coinDisp = mbCoinDispCapsuleCreate(&pos, coinNum);
     if (winMotF) {
         if (coinNum > 0) {
-            mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+            mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
             mbev_CapPlayerMotShiftWait(
                 playerNo, 12, 0, TRUE);
         } else {
-            mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
             mbev_CapPlayerMotShiftWait(
                 playerNo, 13, 0, TRUE);
         }

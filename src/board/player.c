@@ -4280,11 +4280,11 @@ static void MasuCoinExec(int playerNo, int coinNum)
         HuPrcVSleep();
     }
     if (coinNum >= 0) {
-        mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+        mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
         mbPlayerMotionShiftSet(
             playerNo, 12, 0.0f, 4.0f, 0);
     } else {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
         mbPlayerMotionShiftSet(
             playerNo, 13, 0.0f, 4.0f, 0);
     }

@@ -1744,10 +1744,10 @@ void fn_1_29F4(W04SpaceModels *models, int moveCount)
     mbCameraMoveWait();
     if (models->starCount != 0) {
         mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f, 0);
-        CharFXPlay(lbl_80265750[playerNo].charNo, (573+0));
+        CharFXPlay(lbl_80265750[playerNo].charNo, 573);
     } else {
         mbPlayerMotionShiftSet(playerNo, 8, 0.0f, 8.0f, 0);
-        CharFXPlay(lbl_80265750[playerNo].charNo, (573+12));
+        CharFXPlay(lbl_80265750[playerNo].charNo, 585);
     }
     if (models->starCount == 0) {
         mbAudFXPlay(W04_RIDE_END_SOUND);
@@ -3047,11 +3047,11 @@ void fn_1_709C(int playerNo, s16 spaceId)
             if (lbl_1_bss_570[index] >= 0) {
                 mbPlayerMotionShiftSet(index, 7, 0.0f, 8.0f, 0);
                 lbl_1_bss_580[index] = 1;
-                CharFXPlay(lbl_80265750[index].charNo, (573+2));
+                CharFXPlay(lbl_80265750[index].charNo, 575);
             } else {
                 mbPlayerMotionShiftSet(index, 8, 0.0f, 8.0f, 0);
                 lbl_1_bss_580[index] = -1;
-                CharFXPlay(lbl_80265750[index].charNo, (573+12));
+                CharFXPlay(lbl_80265750[index].charNo, 585);
             }
         }
         mbCoinAddAllProcExecV(lbl_1_bss_570, lbl_1_bss_580, TRUE);
@@ -3070,10 +3070,10 @@ void fn_1_709C(int playerNo, s16 spaceId)
                 playerNo = mbPlayerTeamFindPlayer(index, motionIndex);
                 if (lbl_1_bss_570[index] >= 0) {
                     mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f, 0);
-                    CharFXPlay(lbl_80265750[playerNo].charNo, (573+2));
+                    CharFXPlay(lbl_80265750[playerNo].charNo, 575);
                 } else {
                     mbPlayerMotionShiftSet(playerNo, 8, 0.0f, 8.0f, 0);
-                    CharFXPlay(lbl_80265750[playerNo].charNo, (573+12));
+                    CharFXPlay(lbl_80265750[playerNo].charNo, 585);
                 }
             }
             if (lbl_1_bss_570[index] >= 0) {
@@ -3949,10 +3949,10 @@ void fn_1_AC10(int activePlayerNo, s16 eventSpaceId)
     for (index = 0; index < 4; index++) {
         if (lbl_1_bss_D80[index] > 0) {
             mbPlayerMotionShiftSet(index, 7, 0.0f, 8.0f, 0);
-            CharFXPlay(lbl_80265750[index].charNo, (573+2));
+            CharFXPlay(lbl_80265750[index].charNo, 575);
         } else {
             mbPlayerMotionShiftSet(index, 8, 0.0f, 8.0f, 0);
-            CharFXPlay(lbl_80265750[index].charNo, (573+12));
+            CharFXPlay(lbl_80265750[index].charNo, 585);
         }
     }
     mbCoinAddAllProcExecV(lbl_1_bss_D80, lbl_1_data_670, TRUE);

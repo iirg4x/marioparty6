@@ -1122,7 +1122,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbMoveNumDispSet(playerNo, FALSE);
     if (mbPlayerCoinGet(playerNo) < lbl_1_data_6EC[timeSlot]) {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
         mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
         if (lbl_80265B70.curTime == 0) {
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 5), -1);
@@ -1714,7 +1714,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 mbPlayerPosGet(playerNo, &playerPosition);
                 playerPosition.y += 250.0f;
                 coinDisplay = mbCoinDispCapsuleCreate(&playerPosition, awardCoins);
-                mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+                mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
                 mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo) && !mbCoinDispKillCheck(coinDisplay)) {
                     HuPrcVSleep();
@@ -1726,7 +1726,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 10), speaker);
                 mbWinTopWait();
             } else {
-                mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+                mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
                 mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo)) {
                     HuPrcVSleep();
@@ -1869,7 +1869,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
     mbMoveNumDispSet(playerNo, FALSE);
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     if (mbPlayerStarGet(playerNo) < 1) {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
         mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
         mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 35), -1);
         mbWinTopWait();
@@ -2345,7 +2345,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                 }
                 mbStarAddExec(playerNo, rewardCount);
                 starDisplay = mbStarDispPlayerCreate(playerNo, rewardCount);
-                mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+                mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
                 mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo) && !mbStarDispCheck(starDisplay)) {
                     HuPrcVSleep();
@@ -2386,7 +2386,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                         &lbl_1_bss_468[hiddenObject].position);
                     HuPrcVSleep();
                 }
-                mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+                mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
                 mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo)) {
                     HuPrcVSleep();
@@ -2705,7 +2705,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
             while (!mbPlayerRotateCheck(playerNo)) {
                 HuPrcVSleep();
             }
-            mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
             mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 28), -1);
             mbWinTopWait();
@@ -2723,7 +2723,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
             while (!mbPlayerRotateCheck(playerNo)) {
                 HuPrcVSleep();
             }
-            mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
             mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 29), -1);
             mbWinTopWait();
@@ -3177,7 +3177,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
         mbWinTopWait();
         for (index = 0; index < 4; ++index) {
             if (winner == index) {
-                mbPlayerWinLoseVoicePlay(chosenPlayers[index], 12, (573+6));
+                mbPlayerWinLoseVoicePlay(chosenPlayers[index], 12, 579);
                 mbPlayerMotionShiftSet(chosenPlayers[index], 12, 0.0f, 8.0f, 0);
             } else {
                 mbPlayerMotionShiftSet(chosenPlayers[index], 13, 0.0f, 8.0f, 0);
@@ -4518,7 +4518,7 @@ void fn_1_109C8(void)
         mbWinTopInsertMesSet((u32)priceText, 0);
         mbWinTopWait();
         if (coinCount < lbl_1_bss_4D0->nightReward) {
-            mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
+            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
             mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 47), -1);
             mbWinTopWait();

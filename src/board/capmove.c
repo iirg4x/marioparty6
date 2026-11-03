@@ -1556,7 +1556,7 @@ void mbev_CapKillerMove(void)
                 }
                 mbev_CapPlayerMoveIdleCreate(j, 12);
                 mbAudFXPlay(1059);
-                CharFXPlay(lbl_80265750[j].charNo, (573+9));
+                CharFXPlay(lbl_80265750[j].charNo, 582);
                 fn_8006A030(j, 20, 7, 3);
                 fn_8006A030(playerNo, 20, 7, 3);
                 hitF = TRUE;
@@ -1762,7 +1762,7 @@ void mbev_CapKillerMove(void)
             }
             mbAudFXPlay(1059);
             mbev_CapPlayerMoveHitCreate(j, TRUE, TRUE);
-            CharFXPlay(lbl_80265750[j].charNo, (573+9));
+            CharFXPlay(lbl_80265750[j].charNo, 582);
             fn_8006A030(j, 20, 7, 3);
             fn_8006A030(playerNo, 20, 7, 3);
             hitF = TRUE;

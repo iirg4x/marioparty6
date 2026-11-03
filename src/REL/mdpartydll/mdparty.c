@@ -3442,7 +3442,7 @@ void fn_1_12364(OMOBJ *obj)
                             HuAudFXPlay(4);
                             continue;
                         }
-                        CharFXPlay(entry->chrSel, (573+14));
+                        CharFXPlay(entry->chrSel, 587);
                         entry->characterChoiceState = 1;
                         fn_1_AF70(i);
                         fn_1_9A7C(i, entry->padNo);
@@ -3555,7 +3555,7 @@ void fn_1_12FD8(OMOBJ *obj)
                             HuAudFXPlay(4);
                             break;
                         }
-                        CharFXPlay(entry->chrSel, (573+14));
+                        CharFXPlay(entry->chrSel, 587);
                         entry->characterChoiceState = 1;
                         /* Confirming a CPU character resets its difficulty to 1, including after
                          * back navigation. */
@@ -3752,7 +3752,7 @@ void fn_1_14510(OMOBJ *obj)
                             HuAudFXPlay(4);
                             break;
                         }
-                        CharFXPlay(entry->chrSel, (573+14));
+                        CharFXPlay(entry->chrSel, 587);
                         entry->characterChoiceState = 1;
                         entry->computerDifficulty = 1;
                         fn_1_AF70(i);

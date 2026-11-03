@@ -634,7 +634,7 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             }
             fn_80087104(playerP2, (1 << 5));
             fn_80087104(playerP1, (1 << 8));
-            fn_800591C8(playerP1->charNo, (573+15), 0);
+            fn_800591C8(playerP1->charNo, 588, 0);
             return FALSE;
         }
         break;

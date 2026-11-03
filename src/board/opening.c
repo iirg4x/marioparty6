@@ -493,7 +493,7 @@ static void ev_OpeningParty(void)
         if (!GWTeamFGet()) {
             mbStatusDispSet(i, TRUE);
         }
-        mbPlayerWinLoseVoicePlay(i, 12, (573 + 6));
+        mbPlayerWinLoseVoicePlay(i, 12, 579);
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             0);
         fn_8006A030(i, 20, 20, 0);
@@ -528,7 +528,7 @@ static void ev_OpeningParty(void)
         ((1 << 30) | (1 << 0)));
 
     for (i = 0; i < 4; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, (573 + 6));
+        mbPlayerWinLoseVoicePlay(i, 12, 579);
         mbPlayerMotionShiftSet(i, 7, 0.0f, 8.0f,
             0);
     }
@@ -553,7 +553,7 @@ static void ev_OpeningParty(void)
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
     for (i = 0; i < 4; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, (573 + 6));
+        mbPlayerWinLoseVoicePlay(i, 12, 579);
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             0);
     }

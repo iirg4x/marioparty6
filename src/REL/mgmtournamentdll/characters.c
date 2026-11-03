@@ -944,7 +944,7 @@ void fn_1_8238(OMOBJ *object) {
                     playerWork->rotation.y =
                         180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
                     fn_1_6278(object, 4);
-                    fn_800591C8(playerWork->characterNo, (573+20), 0);
+                    fn_800591C8(playerWork->characterNo, 593, 0);
                     playerWork->sceneState = 5;
                     playerWork->velocity.x = playerWork->velocity.y = playerWork->velocity.z = 0.0f;
                     playerWork->velocity.y = 14.0f;
@@ -1129,7 +1129,7 @@ void fn_1_8238(OMOBJ *object) {
             break;
         case 16:
     fn_1_6278(object, 8);
-            fn_800591C8(playerWork->characterNo, (573+6), 0);
+            fn_800591C8(playerWork->characterNo, 579, 0);
             playerWork->sceneState = 17;
             break;
         case 17:
@@ -1171,7 +1171,7 @@ void fn_1_8238(OMOBJ *object) {
                 if (180.0f <= playerWork->rotation.y) {
     fn_1_6278(object, 12);
                     playerWork->sceneState = 23;
-                    CharFXPlay(playerWork->characterNo, (573+4));
+                    CharFXPlay(playerWork->characterNo, 577);
                 }
             }
             break;
@@ -1224,7 +1224,7 @@ void fn_1_8238(OMOBJ *object) {
             if (value > 96) {
                 value = 96;
             }
-            CharFXPlayPan(playerWork->characterNo, (573+6), value);
+            CharFXPlayPan(playerWork->characterNo, 579, value);
             break;
         case 26:
             if (object->work[1] != 0) {

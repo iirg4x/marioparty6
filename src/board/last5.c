@@ -850,7 +850,7 @@ static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
     }
 
     mbGuideMotionShiftSet(guideObj, 1, TRUE);
-    mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+    mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
     mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 12.0f, 0);
     mbCoinAddProcExec(playerNo, coinCount, TRUE, TRUE);
     mbPlayerMotionEndWait(playerNo);
@@ -997,7 +997,7 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     mbCameraStackPop(0);
     HuPrcVSleep();
     mbWipeDissolveFadeIn();
-    mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+    mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
     mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 12.0f,
         0);
     mbPlayerMotionEndWait(playerNo);
@@ -1125,11 +1125,11 @@ MBMODELID modelId;
         mbWipeDissolveFadeIn();
         playerOrCoinDelta = coinAverage - mbPlayerCoinGet(playerTbl[i]);
         if (playerOrCoinDelta > 0) {
-            mbPlayerWinLoseVoicePlay(playerTbl[i], 12, (573+6));
+            mbPlayerWinLoseVoicePlay(playerTbl[i], 12, 579);
             mbPlayerMotionShiftSet(playerTbl[i], 12, 0.0f, 12.0f,
                 0);
         } else if (playerOrCoinDelta < 0) {
-            mbPlayerWinLoseVoicePlay(playerTbl[i], 13, (573+12));
+            mbPlayerWinLoseVoicePlay(playerTbl[i], 13, 585);
             mbPlayerMotionShiftSet(playerTbl[i], 13, 0.0f, 12.0f,
                 0);
         }
