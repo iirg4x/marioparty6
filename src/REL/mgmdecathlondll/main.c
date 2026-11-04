@@ -74,13 +74,6 @@ void _epilog(void) {
     }
 }
 
-extern void fn_1_7BF8(void);
-extern void fn_1_92B8(void);
-extern void fn_1_BC00(void);
-extern void fn_1_E64C(s16 mode, s16 playerNo);
-extern s32 fn_1_E23C(s16 mode, s16 playerNo);
-extern void fn_1_9688(void);
-
 /* The state process calls this on entry to initialize or restore Decathlon Park. */
 void fn_1_ED78(void) {
     OMOVLHIS *overlayHistory;
@@ -150,9 +143,6 @@ void fn_1_ED78(void) {
     }
 }
 
-extern s32 fn_1_184(void);
-extern void fn_1_21DC(void);
-
 /* An exit choice fades out, saves mode data, and returns to the preceding overlay. */
 void fn_1_F0D8(void) {
     if (lbl_1_data_C90 >= 0) {
@@ -178,32 +168,9 @@ void fn_1_F0D8(void) {
 extern s16 lbl_802C0278;
 
 extern void fn_1_ED78(void);
-extern s32 fn_1_184(void);
-extern s16 fn_1_28E8(void);
-extern void fn_1_188(s16 playerNo);
-extern void fn_1_2704(void);
-extern void fn_1_78DC(void);
-extern void fn_1_5AFC(void);
-extern s16 fn_1_7A6C(void);
-extern void fn_1_8708(void);
-extern void fn_1_87EC(void);
-extern void fn_1_97F0(void);
-extern void fn_1_98F4(void);
-extern void fn_1_337C(void);
-extern void fn_1_C344(s16 enabled);
 extern s16 fn_1_C51C(void);
-extern s32 fn_1_4130(void);
-extern void fn_1_9CD0(void);
-extern void fn_1_5130(void);
-extern void fn_1_9AFC(void);
-extern void fn_1_5DF8(void);
-extern void fn_1_8778(u16 enabled);
-extern void fn_1_6DC4(u16 mode);
 extern s16 fn_1_6188(void);
 extern s16 fn_1_567C(void);
-extern void fn_1_E7A4(void);
-extern s16 fn_1_22E0(void);
-extern void fn_1_21DC(void);
 
 /* Menu cancellation fades the mode music before starting the shared exit sequence. */
 static inline void decathlonModeExit(void) {

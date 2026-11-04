@@ -238,5 +238,12 @@ extern M662SinePath lbl_1_data_150[17];
 extern M662LinearPath lbl_1_data_32C[10];
 extern s32 lbl_1_data_448[40];
 extern char lbl_1_data_4E8[4][32];
+void fn_1_57A8(void);
+void fn_1_984(void);
+void fn_1_2670(void);
+f32 fn_1_3C74(f32 limit);
+void fn_1_48E8(M662Player *player, s16 spatialMode);
+void fn_1_4EFC(s16 streamSlot, s16 fadeSpeed);
+void fn_1_5008(s16 soundSlot, s16 spatialMode, HuVecF *position);
 
 #endif

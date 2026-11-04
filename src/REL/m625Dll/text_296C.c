@@ -24,32 +24,15 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 #include "game/hu3d.h"
+#include "REL/m625Dll/motion.h"
+#include "REL/m625Dll.h"
 
 #define M625_SE_PLAYER_START 1796
 #define M625_SE_SWIM_START 1800
 #define M625_SE_TIMER_TICK 1801
 
-extern s16 fn_1_12700(void);
-extern s16 fn_1_12760(void);
-extern s32 fn_1_12768(s16 obstacleIndex);
-extern void fn_1_127B0(s16 obstacleIndex, Point3d *position);
-extern s32 fn_1_13AA8(f32 maxY, f32 minY, f32 minX, f32 maxX, Point3d position);
-extern void fn_1_11040(void);
-extern s32 fn_1_12254(Point3d position, Point3d *movement, f32 radius);
-extern s32 fn_1_137DC(Point3d position, Point3d rotation, Point3d *movement,
-    f32 radius, f32 height, Point3d otherPosition, Point3d otherRotation,
-    Point3d *otherMovement, f32 otherRadius, f32 otherHeight);
-extern s32 fn_1_13318(Point3d position, f32 radius, Point3d center, f32 centerRadius);
-extern s32 fn_1_133A4(Point3d position, Point3d *movement, f32 radius,
-    Point3d origin, Point3d normal, f32 amount);
-extern void fn_1_11470(Point3d position);
-extern void fn_1_12D7C(s16 playerIndex);
 extern char *CharHeadObjNameTbl[];
 extern s16 lbl_1_bss_814;
-extern void fn_1_11698(void);
-f32 fn_1_1C58(f32, f32);
-void fn_1_11700(void);
-void fn_1_12560(void);
 
 void fn_1_296C(s16 index, s16 sequence);
 void fn_1_2C60(s16 index, Point3d *result);

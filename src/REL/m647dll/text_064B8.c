@@ -3,17 +3,6 @@
 #include <string.h>
 #include "msm_se.h"
 
-s16 fn_1_2B30(s16 index);
-s16 fn_1_2B4C(s16 index);
-void fn_1_32F4(s16 index);
-
-typedef struct M647OffsetTable_s {
-    f32 offsets[4]; /* World-unit offsets for each activity model. */
-} M647OffsetTable;
-
-static const M647OffsetTable lbl_1_rodata_1F8 = {{100.0f, 120.0f, 70.0f, 110.0f}};
-static const M647OffsetTable lbl_1_rodata_208 = {{30.0f, 70.0f, 70.0f, 20.0f}};
-
 typedef struct M647MotionAssets_s {
     u32 motionDataNumbers[3]; /* Motion archive entries; zero marks an unused slot. */
 } M647MotionAssets;
@@ -67,7 +56,6 @@ char lbl_1_data_450[6] = {'A', 'B', 'X', 'Y', 'L', 'R'};
 u16 lbl_1_data_456[] = { (1 << 8), (1 << 9), (1 << 10), (1 << 11), (1 << 14), (1 << 13) };
 f32 lbl_1_data_464[8] = { 40.0f, 120.0f, 40.0f, 195.0f, 40.0f, 270.0f, 40.0f, 345.0f };
 
-extern s16 fn_1_2B68(s16 index);
 extern s16 fn_1_34A0(s16 index);
 u16 fn_1_84E4(s16 playerIndex);
 s32 fn_1_8FF0(s16 playerIndex);
@@ -193,21 +181,18 @@ void fn_1_64C8(void) {
 
 /* Creates shared activity models and attaches their item models during setup. */
 void fn_1_66BC(void) {
-    M647OffsetTable heightOffsets;
-    M647OffsetTable xOffsets;
-    M647AnimState *state;
+    M647AnimState *state = &lbl_1_bss_174;
+    f32 heightOffsets[4] = {100.0f, 120.0f, 70.0f, 110.0f};
+    f32 xOffsets[4] = {30.0f, 70.0f, 70.0f, 20.0f};
     s32 modelIndex;
     HU3D_MODELID attachmentModelId;
 
-    state = &lbl_1_bss_174;
-    heightOffsets = lbl_1_rodata_1F8;
-    xOffsets = lbl_1_rodata_208;
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         state->modelIds[modelIndex] = fn_80025A04(
             fn_80008DD0(lbl_1_data_384[modelIndex], 0x10000000, 2));
         fn_80026760(state->modelIds[modelIndex],
-                        7000.0f - xOffsets.offsets[modelIndex],
-                        heightOffsets.offsets[modelIndex], 0.0f);
+                        7000.0f - xOffsets[modelIndex],
+                        heightOffsets[modelIndex], 0.0f);
         fn_80026B64(state->modelIds[modelIndex], 1);
         fn_800269E8(state->modelIds[modelIndex], 1);
 

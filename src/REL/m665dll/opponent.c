@@ -332,13 +332,13 @@ typedef struct ThresholdTable {
 /* Rolls difficulty-based movement overrides for the three other players. */
 void fn_1_D25C(void)
 {
-    ThresholdTable thresholds = {{20, 40, 60, 95}};
+    s16 thresholds[4] = {20, 40, 60, 95};
     s32 playerIndex;
     M665PlayerWork *playerWork;
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         playerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
         if ((playerWork->difficulty != -1) &&
-            (frandmod(100) < thresholds.chancePercentages[playerWork->difficulty])) {
+            (frandmod(100) < thresholds[playerWork->difficulty])) {
             playerWork->movementOverride = 1;
             playerWork->movementAngle = -300.0f;
         }

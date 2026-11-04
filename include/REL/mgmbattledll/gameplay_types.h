@@ -143,5 +143,6 @@ s32 fn_1_18434(void);
 void fn_1_18508(void);
 void fn_1_1899C(void);
 void fn_1_19080(void);
+void fn_1_3070(s16 winId, u32 messageId, s16 characterCode);
 
 #endif

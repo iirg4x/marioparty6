@@ -21,4 +21,14 @@ typedef struct M668RotorWork_s {
 typedef char M668RotorWork_size[(sizeof(M668RotorWork) == 88) ? 1 : -1];
 extern M668StageWork *lbl_1_bss_20;
 extern void fn_1_218(OMOBJ *, OMOBJ_FUNC);
+extern void fn_1_118(s16 mode, s16 frameNo);
+extern void fn_1_158(s16 mode, s16 frameNo);
+extern void fn_1_15C(s16 mode, s16 frameNo);
+extern void fn_1_160(s16 mode, s16 frameNo);
+extern void fn_1_164(s16 mode, s16 frameNo);
+extern void fn_1_168(s16 mode, s16 frameNo);
+extern void fn_1_16C(s16 mode, s16 frameNo);
+extern void fn_1_170(s16 mode, s16 frameNo);
+extern void fn_1_174(s16 mode, s16 frameNo);
+extern void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
 #endif

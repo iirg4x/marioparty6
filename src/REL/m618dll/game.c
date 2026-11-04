@@ -18,7 +18,6 @@
 #define M618_SOUND_PLAYER_SECTION_3 1755 /* Course-section cue for player 3. */
 #define M618_SOUND_PLAYER_SECTION_4 1756 /* Course-section cue for player 4. */
 #define M618_SOUND_START 1758 /* Cue when players move to the starting position. */
-#define M618_CHAR_EFFECT_FALL 576 /* Character effect played when a player falls. */
 
 int lbl_1_data_28[4] = { 1, 2, 4, 8 };
 unsigned int lbl_1_data_38[4] = { DATANUM(0x930000, 6), DATANUM(0x930000, 34),
@@ -493,7 +492,7 @@ void fn_1_214C(void)
                                                                 : M618_SOUND_PLAYER_FALL_4)));
                 fn_80087158(lbl_1_bss_114[playerIndex].player, (1 << 0));
                 if (lbl_1_bss_114[playerIndex].fallState != 2) {
-                    CharFXPlay(lbl_80265728[playerIndex].charNo, M618_CHAR_EFFECT_FALL);
+                    CharFXPlay(lbl_80265728[playerIndex].charNo, 576);
                 }
             }
             if (((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x407F) == 0) ||

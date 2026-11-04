@@ -11,7 +11,6 @@ typedef struct {
 } PadMaskTable;
 typedef struct { s16 values[4]; } MessageIndices;
 
-void fn_1_3070(s16 winId, u32 messageId, s16 characterCode);
 void fn_1_45BC(void);
 
 u32 lbl_1_data_0[14] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };

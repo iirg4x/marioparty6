@@ -5,6 +5,7 @@
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 #include "string.h"
+#include "REL/m659Dll.h"
 
 OMOBJ *lbl_1_bss_60;
 int lbl_1_data_1D8[4] = {5, 3, 2, 2};
@@ -24,7 +25,6 @@ extern OMOBJ *lbl_1_bss_60;
 
 extern int lbl_1_data_1D8[4];
 int abs(int absoluteInput);
-double fn_1_4ABC(HuVecF a, HuVecF b);
 
 /* Creates the computer-player manager during minigame startup. */
 void fn_1_5944(OMOBJMAN *manager)

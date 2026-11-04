@@ -139,8 +139,6 @@ void fn_1_21DC(void) {
 
 /* Window prompts call this to enable pads belonging to human players. */
 void fn_1_220C(void) {
-    s16 fn_1_9784(s16 player);
-    s16 fn_1_97BC(s16 player);
     s16 padMask;
     s16 player;
 
@@ -161,8 +159,6 @@ void fn_1_220C(void) {
 void fn_1_22C0(void) {
     HuWinComKeyReset();
 }
-
-extern void fn_1_6E38(void);
 
 /* The mode sequence calls this for the opening rules and play-or-exit choices. */
 s16 fn_1_22E0(void) {
@@ -234,8 +230,6 @@ s16 fn_1_22E0(void) {
 
 /* Before the next event, the sequence announces its place in the ten-event schedule. */
 void fn_1_2704(void) {
-    s16 fn_1_9784(s16 playerNo);
-    s16 fn_1_97BC(s16 playerNo);
     s16 waitFrame;
     s16 padMask;
     s16 playerNo;
@@ -268,7 +262,6 @@ void fn_1_2704(void) {
 }
 
 void fn_1_2CF0(HUWINID window, s16 mode);
-extern void fn_1_6E38(void);
 
 /* The mode sequence calls this to show the game name and collect the next-game choice. */
 s16 fn_1_28E8(void) {
@@ -443,15 +436,9 @@ void fn_1_2CF0(HUWINID window, s16 mode) {
     }
 }
 
-extern s16 fn_1_9784(s16 player);
-extern s16 fn_1_97BC(s16 player);
-extern s16 fn_1_9744(s16 player);
 extern s32 fn_1_50E4(s32 mode, s32 record, s32 score);
-extern void fn_1_E058(s16 *playerOrder, s16 *scores);
-extern void fn_1_D484(s16 *values);
 extern s32 frandmod(s32 modulus);
 extern void fn_1_3878(HUWINID window, s16 mode, s16 row, s16 visible);
-extern void fn_1_6E38(void);
 
 /* The player-score formatter clears the player's insertion text before appending its digits. */
 static inline void decathlonResultEntryClear(s16 index) {
@@ -1070,9 +1057,6 @@ typedef struct DecathlonMessageText {
 } DecathlonMessageText;
 
 extern s16 MgModeScore[4];
-extern s16 fn_1_9784(s16 playerNo);
-extern s16 fn_1_97BC(s16 playerNo);
-extern void fn_1_6E38(void);
 
 /* Result screens test whether the new score beats a record; timed events require a positive
  * time. */
@@ -1167,10 +1151,6 @@ void fn_1_5130(void) {
     HuPrcSleep(10);
 }
 }
-
-extern s16 fn_1_9784(s16 player);
-extern s16 fn_1_97BC(s16 player);
-extern void fn_1_6E38(void);
 
 /* The end-of-mode sequence calls this to ask whether to return to the board. */
 s32 fn_1_567C(void) {

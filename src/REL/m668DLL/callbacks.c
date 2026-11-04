@@ -29,13 +29,6 @@
 #define M668_SE_ROTOR_HIT 2188
 #define M668_SE_STAGE_START 2189
 
-typedef struct TeamTemplate {
-    s32 group[4];
-} TeamTemplate;
-
-extern const TeamTemplate lbl_1_rodata_68;
-extern const TeamTemplate lbl_1_rodata_78;
-
 extern const HuVecF lbl_1_rodata_88;
 extern const HuVecF lbl_1_rodata_94;
 extern const HuVecF lbl_1_rodata_A0;
@@ -50,7 +43,6 @@ extern ANIMDATA *lbl_1_bss_3C;
 extern void *lbl_1_bss_640;
 extern void *lbl_1_bss_644;
 
-extern void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
 extern void fn_1_1FC4(OMOBJ *obj);
 extern void fn_1_6EC8(OMOBJ *obj);
 extern void fn_1_3858(OMOBJ *obj);
@@ -60,10 +52,6 @@ void fn_1_4508(OMOBJ *obj);
 extern void fn_1_494C(OMOBJ *obj);
 extern void fn_1_72CC(OMOBJ *obj);
 
-typedef struct M668TeamTemplate_s {
-    s32 group[4];
-} M668TeamTemplate;
-
 extern M668StageWork *lbl_1_bss_20;
 extern void fn_1_2064(OMOBJ *obj);
 extern void fn_1_216C(OMOBJ *obj);
@@ -72,7 +60,6 @@ extern void fn_1_2340(OMOBJ *obj);
 extern s32 lbl_1_bss_18[2];
 extern s32 lbl_1_bss_24;
 extern M668PlayerWork *lbl_1_bss_2C[4];
-extern const M668TeamTemplate lbl_1_rodata_BC;
 extern s32 lbl_1_bss_8;
 
 extern const GXColor lbl_1_rodata_CC;
@@ -239,28 +226,23 @@ extern const HuVecF lbl_1_rodata_324;
 static inline M668PlayerWork *fn_1_18B4(s32 index) { return lbl_1_bss_2C[index]; }
 static inline M668RotorWork *fn_1_18CC(s32 index) { return lbl_1_bss_28[index]; }
 
-const TeamTemplate lbl_1_rodata_68 = {{-1, -1, -1, -1}};
-const TeamTemplate lbl_1_rodata_78 = {{0, 0, 0, 0}};
-
 /* Select the configured two-team split during stage setup, falling back to player pairs. */
 void fn_1_18E4(s32 out[4])
 {
     /* Called during stage setup to use the configured two-team split, falling back to player pairs
      * otherwise. */
-    TeamTemplate playerByTeam;
-    TeamTemplate playersPerTeam;
+    s32 playerByTeam[4] = {-1, -1, -1, -1};
+    s32 playersPerTeam[4] = {0, 0, 0, 0};
     s32 playerIndex;
 
-    playerByTeam = lbl_1_rodata_68;
-    playersPerTeam = lbl_1_rodata_78;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        playerByTeam.group[lbl_80265728[playerIndex].grpNo] = playerIndex;
-        playersPerTeam.group[lbl_80265728[playerIndex].grpNo]++;
+        playerByTeam[lbl_80265728[playerIndex].grpNo] = playerIndex;
+        playersPerTeam[lbl_80265728[playerIndex].grpNo]++;
     }
 
-    if ((playerByTeam.group[0] == -1) || (playerByTeam.group[1] == -1) ||
-        (playerByTeam.group[2] != -1) || (playerByTeam.group[3] != -1) ||
-        (playersPerTeam.group[0] != 2) || (playersPerTeam.group[1] != 2)) {
+    if ((playerByTeam[0] == -1) || (playerByTeam[1] == -1) ||
+        (playerByTeam[2] != -1) || (playerByTeam[3] != -1) ||
+        (playersPerTeam[0] != 2) || (playersPerTeam[1] != 2)) {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             out[playerIndex] = playerIndex / 2;
         }
@@ -383,26 +365,21 @@ void fn_1_2064(OMOBJ *obj)
     }
 }
 
-const M668TeamTemplate lbl_1_rodata_BC = {{-1, -1, -1, -1}};
-
 /* After elimination, records the winning characters and fades the stage music. */
 void fn_1_216C(OMOBJ *obj)
 {
     /* Stage callback after a team is eliminated; records the winning characters and fades the stage
      * music. */
-    M668TeamTemplate winner;
+    M668StageWork *stageWork = obj->data;
+    s32 winner[4] = {-1, -1, -1, -1};
     s32 winnerCount;
     s32 playerIndex;
-    M668StageWork *stageWork;
-
-    stageWork = obj->data;
-    winner = lbl_1_rodata_BC;
     winnerCount = 0;
     if (lbl_1_bss_20->state == 0) {
         playerIndex = 0;
         while (playerIndex < 4) {
             if (lbl_1_bss_24 == lbl_1_bss_2C[playerIndex]->teamNo) {
-                winner.group[winnerCount] = (s32) lbl_1_bss_2C[playerIndex]->charNo;
+                winner[winnerCount] = (s32) lbl_1_bss_2C[playerIndex]->charNo;
                 if (fn_8006A124(65551U) == 0) {
                     lbl_80265750[playerIndex].mgCoinBonus = 10;
                 }
@@ -410,8 +387,8 @@ void fn_1_216C(OMOBJ *obj)
             }
             playerIndex += 1;
         }
-        fn_80071C18((s16) winner.group[0], (s16) winner.group[1],
-            (s16) winner.group[2], (s16) winner.group[3]);
+        fn_80071C18((s16) winner[0], (s16) winner[1],
+            (s16) winner[2], (s16) winner[3]);
         if (stageWork->streamHandle != -1) {
             HuAudSStreamFadeOut((s32) stageWork->streamHandle, 100);
         }

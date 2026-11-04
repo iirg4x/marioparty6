@@ -15,14 +15,6 @@
 #include "datadir_enum.h"
 #include "msm_se.h"
 
-typedef struct M631AvoidanceDampingTable {
-    f32 byDifficulty[4]; /* Direction damping for the four computer difficulty levels. */
-} M631AvoidanceDampingTable;
-
-typedef struct M631ActorChanceTable {
-    s32 byDifficulty[4]; /* Percentage thresholds for the four computer difficulty levels. */
-} M631ActorChanceTable;
-
 /* Character motion resources, shared through the Mario motion archive. */
 u32 lbl_1_data_100[8] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1),
@@ -31,40 +23,8 @@ u32 lbl_1_data_100[8] = {
     DATANUM(0x930000, 39), DATANUM(0x930000, 40)
 };
 
-typedef struct M631S32Table4 {
-    s32 byDifficulty[4]; /* Integer behavior settings, indexed by computer difficulty. */
-} M631S32Table4;
-
-typedef struct M631F32Table4 {
-    f32 byDifficulty[4]; /* Squared avoidance-strength thresholds by computer difficulty. */
-} M631F32Table4;
-
-typedef struct M631ChanceLevelTable {
-    s32 byDifficulty[4]; /* Waiting percentages for the four computer difficulty levels. */
-} M631ChanceLevelTable;
-
-extern f32 fn_1_2528(void);
 extern void fn_1_AFF8(void *, f32, s32);
 extern void fn_1_AF2C(void *, u32, u32, u32, u32, const HuVecF *);
-extern void *fn_1_B0B8(s32 (*)(void *), void *);
-extern M631AnimationNode *fn_1_31D8(M631AnimationQueue *);
-extern void fn_1_32C8(M631AnimationNode *);
-extern s32 fn_1_37FC(void *);
-extern void fn_1_38E8(M631MotionPairNode *, M631MotionPairNode *);
-extern void fn_1_228C(HU3D_MODELID *);
-extern M631AnimationQueue *fn_1_2E9C(void);
-extern void fn_1_3B44(M631ActorWork *);
-extern void fn_1_3B7C(HuVecF *);
-extern void fn_1_3BC4(void);
-extern void fn_1_3BF4(M631ActorMotionState *);
-extern s32 fn_1_51D0(f32);
-extern void fn_1_5014(HuVecF *);
-extern s32 fn_1_AAD8(void *);
-extern M631ActorWork *fn_1_469C(const HuVecF *);
-extern s16 fn_1_50B4(void);
-extern void fn_1_5054(void);
-extern void fn_1_5084(void);
-extern void fn_1_50DC(HuVecF *, f32);
 
 void fn_1_5284(OMOBJ *object);
 void fn_1_55CC(OMOBJ *object);
@@ -841,7 +801,7 @@ s32 fn_1_749C(void *callbackData) {
  * its arena role. */
 void fn_1_75D0(M631ActorWork *actor)
 {
-    M631AvoidanceDampingTable dampingFactors = {{0.5f, 0.7f, 0.8f, 0.9f}};
+    f32 dampingFactors[4] = {0.5f, 0.7f, 0.8f, 0.9f};
     M631MotionController *node;
     node = &actor->motionController;
     if (actor->isGroundPlayer != 0) {
@@ -851,7 +811,7 @@ void fn_1_75D0(M631ActorWork *actor)
             fn_1_AF2C(node, (u32)node, (u32)fn_1_A2F4, (u32)fn_1_A418,
                       (u32)fn_1_A730, &node->sourcePosition);
             actor->motionController.scale =
-                dampingFactors.byDifficulty[actor->difficulty];
+                dampingFactors[actor->difficulty];
         } else {
             fn_1_AF2C(node, (u32)node, (u32)fn_1_A2A4, (u32)fn_1_A334,
                       (u32)fn_1_A4FC, &node->sourcePosition);
@@ -872,8 +832,8 @@ void fn_1_75D0(M631ActorWork *actor)
  * releases. */
 void fn_1_7738(M631ActorWork *work)
 {
-    M631ActorChanceTable waitProbability = {{30, 25, 10, 0}};
-    M631ActorChanceTable sweepProbability = {{50, 50, 50, 50}};
+    s32 waitProbability[4] = {30, 25, 10, 0};
+    s32 sweepProbability[4] = {50, 50, 50, 50};
     M631ActorWork *target;
     f32 xDelta;
     f32 zDelta;
@@ -887,7 +847,7 @@ void fn_1_7738(M631ActorWork *work)
         const HuVecF *searchPosition;
         s32 chance = frandmod(100);
 
-        if (chance < waitProbability.byDifficulty[work->difficulty]) {
+        if (chance < waitProbability[work->difficulty]) {
             work->motionController.behaviorState = 10;
             return;
         }
@@ -905,7 +865,7 @@ void fn_1_7738(M631ActorWork *work)
         }
         chance = frandmod(100);
         if (work->position.x > 350.0f &&
-            chance < sweepProbability.byDifficulty[work->difficulty]) {
+            chance < sweepProbability[work->difficulty]) {
             work->motionController.behaviorState = 30;
             return;
         }
@@ -1090,11 +1050,11 @@ void fn_1_7738(M631ActorWork *work)
 void fn_1_80F8(M631ActorWork *work)
 {
     M631ActorWork *target;
-    M631ActorChanceTable waitThreshold = {{50, 45, 10, 0}};
-    M631ActorChanceTable chaseThreshold = {{60, 70, 50, 70}};
-    M631ActorChanceTable approachThreshold = {{95, 95, 80, 95}};
-    M631ActorChanceTable repositionProbability = {{10, 20, 50, 60}};
-    M631ActorChanceTable releaseProbability = {{30, 50, 90, 100}};
+    s32 waitThreshold[4] = {50, 45, 10, 0};
+    s32 chaseThreshold[4] = {60, 70, 50, 70};
+    s32 approachThreshold[4] = {95, 95, 80, 95};
+    s32 repositionProbability[4] = {10, 20, 50, 60};
+    s32 releaseProbability[4] = {30, 50, 90, 100};
     f32 xDelta;
     f32 zDelta;
     f32 step;
@@ -1108,11 +1068,11 @@ void fn_1_80F8(M631ActorWork *work)
         s32 chance = frandmod(100);
         s16 behaviorChoice;
 
-        if (chance < waitThreshold.byDifficulty[work->difficulty]) {
+        if (chance < waitThreshold[work->difficulty]) {
             work->motionController.behaviorState = 10;
             return;
         }
-        if (chance < chaseThreshold.byDifficulty[work->difficulty]) {
+        if (chance < chaseThreshold[work->difficulty]) {
             if (work->difficulty < 2) {
                 work->motionController.behaviorState = 20;
                 return;
@@ -1137,7 +1097,7 @@ void fn_1_80F8(M631ActorWork *work)
                 return;
             }
         }
-        if (chance < approachThreshold.byDifficulty[work->difficulty]) {
+        if (chance < approachThreshold[work->difficulty]) {
             work->motionController.behaviorState = 30;
         } else {
             work->motionController.behaviorState = 40;
@@ -1158,7 +1118,7 @@ void fn_1_80F8(M631ActorWork *work)
             work->motionController.behaviorState = 0;
         }
         if (work->motionController.alertState != 0 &&
-            frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            frandmod(100) < releaseProbability[work->difficulty]) {
             work->releaseRequested = 1;
             return;
         }
@@ -1193,7 +1153,7 @@ void fn_1_80F8(M631ActorWork *work)
         if (work->motionController.alertState != 0 && work->releaseCooldown == 0 &&
             work->releaseFrames == 0) {
             fn_1_5084();
-            if (frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            if (frandmod(100) < releaseProbability[work->difficulty]) {
                 work->releaseRequested = 1;
             }
             work->motionController.behaviorState = 0;
@@ -1229,7 +1189,7 @@ void fn_1_80F8(M631ActorWork *work)
         work->accelerationFrames = 0;
         if (work->releaseCooldown == 0 && work->releaseFrames == 0) {
             fn_1_5084();
-            if (frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            if (frandmod(100) < releaseProbability[work->difficulty]) {
                 work->releaseRequested = 1;
             }
             work->motionController.behaviorState = 0;
@@ -1263,7 +1223,7 @@ void fn_1_80F8(M631ActorWork *work)
         }
         if (work->motionController.alertState != 0 && work->releaseCooldown == 0 &&
             work->releaseFrames == 0) {
-            if (frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            if (frandmod(100) < releaseProbability[work->difficulty]) {
                 work->releaseRequested = 1;
             }
             work->motionController.behaviorState = 0;
@@ -1302,7 +1262,7 @@ void fn_1_80F8(M631ActorWork *work)
         if (work->releaseCooldown == 0 && work->releaseFrames == 0) {
             work->releaseRequested = 1;
             if (work->motionController.behaviorState != 0) {
-                if (frandmod(100) < repositionProbability.byDifficulty[work->difficulty]) {
+                if (frandmod(100) < repositionProbability[work->difficulty]) {
                     work->motionController.behaviorState++;
                     return;
                 }
@@ -1339,7 +1299,7 @@ void fn_1_80F8(M631ActorWork *work)
 
         if (work->motionController.alertState != 0 && work->releaseCooldown == 0 &&
             work->releaseFrames == 0) {
-            if (frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            if (frandmod(100) < releaseProbability[work->difficulty]) {
                 work->releaseRequested = 1;
             }
             work->motionController.behaviorState = 0;
@@ -1373,7 +1333,7 @@ void fn_1_80F8(M631ActorWork *work)
         work->accelerationFrames = 0;
         if (work->releaseCooldown == 0 && work->releaseFrames == 0) {
             work->releaseRequested = 1;
-                if (frandmod(100) < repositionProbability.byDifficulty[work->difficulty]) {
+                if (frandmod(100) < repositionProbability[work->difficulty]) {
                 work->motionController.behaviorState = 32;
                 return;
             }
@@ -1419,7 +1379,7 @@ void fn_1_80F8(M631ActorWork *work)
         f32 angle;
         if (work->motionController.alertState != 0 && work->releaseCooldown == 0 &&
             work->releaseFrames == 0) {
-                if (frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+                if (frandmod(100) < releaseProbability[work->difficulty]) {
                 work->releaseRequested = 1;
             }
             work->motionController.behaviorState = 0;
@@ -1455,7 +1415,7 @@ void fn_1_80F8(M631ActorWork *work)
             work->motionController.behaviorState = 0;
         }
         if (work->releaseCooldown == 0 && work->releaseFrames == 0 &&
-            frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            frandmod(100) < releaseProbability[work->difficulty]) {
             work->releaseRequested = 1;
             return;
         }
@@ -1475,7 +1435,7 @@ void fn_1_80F8(M631ActorWork *work)
         if (headingTarget.z > 400.0f) headingTarget.z = 400.0f;
         if (work->motionController.alertState != 0 && work->releaseCooldown == 0 &&
             work->releaseFrames == 0) {
-            if (frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            if (frandmod(100) < releaseProbability[work->difficulty]) {
                 work->releaseRequested = 1;
             }
             work->motionController.behaviorState = 0;
@@ -1509,7 +1469,7 @@ void fn_1_80F8(M631ActorWork *work)
             work->motionController.behaviorState = 0;
         }
         if (work->releaseCooldown == 0 && work->releaseFrames == 0 &&
-            frandmod(100) < releaseProbability.byDifficulty[work->difficulty]) {
+            frandmod(100) < releaseProbability[work->difficulty]) {
             work->releaseRequested = 1;
         }
         break;
@@ -1521,10 +1481,10 @@ void fn_1_80F8(M631ActorWork *work)
  * waits. */
 void fn_1_954C(M631ActorWork *work)
 {
-    M631S32Table4 stopProbability = {{75, 50, 25, 0}};
-    M631S32Table4 turnProbability = {{20, 50, 100, 100}};
-    M631S32Table4 turnDuration = {{60, 60, 30, 30}};
-    M631F32Table4 speedThreshold = {{10000.0f, 10000.0f, 0.01f, 0.01f}};
+    s32 stopProbability[4] = {75, 50, 25, 0};
+    s32 turnProbability[4] = {20, 50, 100, 100};
+    s32 turnDuration[4] = {60, 60, 30, 30};
+    f32 speedThreshold[4] = {10000.0f, 10000.0f, 0.01f, 0.01f};
     f32 velocityX;
     f32 velocityZ;
     f32 angle;
@@ -1550,8 +1510,8 @@ void fn_1_954C(M631ActorWork *work)
     work->motionController.previousAngle = work->behaviorAngle;
     speedSquared = velocityX * velocityX + velocityZ * velocityZ;
     if (speedSquared >
-            speedThreshold.byDifficulty[work->difficulty] &&
-        frandmod(100) < turnProbability.byDifficulty[work->difficulty]) {
+            speedThreshold[work->difficulty] &&
+        frandmod(100) < turnProbability[work->difficulty]) {
         work->movementStrength = 1.0f;
         if (0.0f == velocityZ) {
             if (velocityX >= 0.0f) {
@@ -1580,7 +1540,7 @@ void fn_1_954C(M631ActorWork *work)
         switch (work->motionController.behaviorState) {
         case 0:
             work->motionController.stateFrames = 0;
-            if (frandmod(100) < stopProbability.byDifficulty[work->difficulty]) {
+            if (frandmod(100) < stopProbability[work->difficulty]) {
                 work->movementStrength = 0.0f;
                 work->motionController.behaviorState = 2;
                 break;
@@ -1611,7 +1571,7 @@ void fn_1_954C(M631ActorWork *work)
         case 2:
             work->motionController.stateFrames++;
             if (work->motionController.stateFrames >=
-                turnDuration.byDifficulty[work->difficulty]) {
+                turnDuration[work->difficulty]) {
                 work->motionController.behaviorState = 0;
             }
             break;
@@ -1624,7 +1584,7 @@ void fn_1_954C(M631ActorWork *work)
  * fallback heading uses the negative airborne position measured from the arena origin. */
 void fn_1_9A70(M631ActorWork *motion)
 {
-    M631ChanceLevelTable waitProbability = {{50, 30, 10, 0}};
+    s32 waitProbability[4] = {50, 30, 10, 0};
     f32 headingX;
     f32 headingZ;
     f32 speedSquared;
@@ -1678,7 +1638,7 @@ void fn_1_9A70(M631ActorWork *motion)
         case 0:
         motion->motionController.stateFrames = 0;
         motion->movementStrength = 1.0f;
-        if (frandmod(100) < waitProbability.byDifficulty[motion->difficulty]) {
+        if (frandmod(100) < waitProbability[motion->difficulty]) {
             motion->motionController.behaviorState = 2;
             break;
         } else {

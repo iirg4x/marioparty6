@@ -26,6 +26,6 @@ void *lbl_1_bss_1AC;
 void *lbl_1_bss_1A4[2];
 void *lbl_1_bss_1A0;
 void *lbl_1_bss_19C;
-void *lbl_1_bss_198;
+u16 *lbl_1_bss_198;
 SafState lbl_1_bss_4;
 f32 lbl_1_bss_0;

@@ -65,5 +65,9 @@ extern M625LightAsset lbl_1_data_108[10];
 extern M625LightPreset lbl_1_data_180[2];
 extern GXColor lbl_1_data_1C0;
 extern f32 lbl_1_data_1C4[2][3];
+void fn_1_15C8(void);
+void fn_1_1BAC(void);
+void fn_1_1BB0(Point3d *position);
+f32 fn_1_1C58(f32 position, f32 direction);
 
 #endif

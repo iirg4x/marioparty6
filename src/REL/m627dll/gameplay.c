@@ -585,9 +585,6 @@ void fn_1_798(OMOBJ *sequenceObject)
     fn_1_140(sequenceObject, fn_1_8DC);
 }
 
-/* Mark unfilled winner character slots with -1 before recording the winning group. */
-static const M627WinnerList winnerDefaults = {{ -1, -1, -1, -1 }};
-
 /* At opening phase 2, installs the callback that waits for result mode. */
 void fn_1_8DC(OMOBJ *sequenceObject)
 {
@@ -602,18 +599,17 @@ void fn_1_8DC(OMOBJ *sequenceObject)
 /* Installed by fn_1_8DC; records active winners and awards coins when result mode begins. */
 void fn_1_92C(OMOBJ *sequenceObject)
 {
-    M627WinnerList winner;
     s32 winnerCount;
     s32 playerIndex;
     void *sequenceData;
 
     sequenceData = sequenceObject->data;
     if (fn_80071A8C() == 6) {
-        winner = winnerDefaults;
+        s32 winner[4] = { -1, -1, -1, -1 };
         winnerCount = 0;
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (lbl_1_bss_18[playerIndex]->active == 1) {
-                winner.characterIds[winnerCount] = lbl_1_bss_18[playerIndex]->player->charNo;
+                winner[winnerCount] = lbl_1_bss_18[playerIndex]->player->charNo;
                 winnerCount++;
                 if (fn_8006A124(65551) == 0) {
                     /* Non-practice games receive the result coin bonus. */
@@ -621,8 +617,7 @@ void fn_1_92C(OMOBJ *sequenceObject)
                 }
             }
         }
-        fn_80071C18(winner.characterIds[0], winner.characterIds[1],
-                       winner.characterIds[2], winner.characterIds[3]);
+        fn_80071C18(winner[0], winner[1], winner[2], winner[3]);
         fn_1_140(sequenceObject, NULL);
         return;
     }
@@ -1270,7 +1265,7 @@ void fn_1_2BF4(OMOBJ *object)
         fn_80008DD0(DATANUM(0x560000, 15), 0x10000000, 2));
     fn_800269E8(setup->blockClearModel, ((1 << 30) | (1 << 1)));
     fn_800269E8(setup->blockClearModel, (1 << 0));
-    fn_1_25E4((const u8 (*)[11])grid, setup);
+    fn_1_25E4(grid, setup);
 
     for (boundaryIndex = 0; boundaryIndex < 7; boundaryIndex++) {
         setup->modelsObject->mdlId[boundaryIndex] = fn_80025A04(

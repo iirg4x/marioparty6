@@ -52,11 +52,7 @@
 #define TOURNAMENT_BONUS_ODDS_TWO_LEVELS 75
 #define TOURNAMENT_BONUS_ODDS_THREE_LEVELS 85
 #define TOURNAMENT_BONUS_ODDS_EQUAL_LEVEL 50
-#define TOURNAMENT_PERCENT_RANGE 100
 #define TOURNAMENT_ROUND_COIN_BONUS 10
-#define TOURNAMENT_CHARACTER_PRIORITY 4608
-#define TOURNAMENT_CHARACTER_MOTION_COUNT 13
-#define TOURNAMENT_CHARACTER_LIGHT_INTENSITY 192
 #define TOURNAMENT_ORDER_UNUSED 255
 #define TOURNAMENT_ALL_MOTION_PAUSE_FLAGS \
     (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) | \
@@ -361,7 +357,7 @@ void fn_1_6D78(void)
         } else {
             chance = TOURNAMENT_BONUS_ODDS_THREE_LEVELS;
         }
-        if (frandmod(TOURNAMENT_PERCENT_RANGE) < chance) {
+        if (frandmod(100) < chance) {
             chance = firstPlayer;
         } else {
             chance = secondPlayer;
@@ -375,14 +371,14 @@ void fn_1_6D78(void)
         } else {
             chance = TOURNAMENT_BONUS_ODDS_THREE_LEVELS;
         }
-        if (frandmod(TOURNAMENT_PERCENT_RANGE) < chance) {
+        if (frandmod(100) < chance) {
             chance = secondPlayer;
         } else {
             chance = firstPlayer;
         }
     } else {
         chance = TOURNAMENT_BONUS_ODDS_EQUAL_LEVEL;
-        if (frandmod(TOURNAMENT_PERCENT_RANGE) < chance) {
+        if (frandmod(100) < chance) {
             chance = firstPlayer;
         } else {
             chance = secondPlayer;
@@ -491,8 +487,7 @@ void fn_1_74BC(void)
 
     player = 0;
     while (player < 4) {
-        playerObject = fn_8003AB38(lbl_1_bss_12C, TOURNAMENT_CHARACTER_PRIORITY, 1,
-                                  TOURNAMENT_CHARACTER_MOTION_COUNT, -1, fn_1_8238);
+        playerObject = fn_8003AB38(lbl_1_bss_12C, 4608, 1, 13, -1, fn_1_8238);
         lbl_1_bss_114[player] = playerObject;
         playerObject->stat |= (1 << 8);
         playerObject->work[0] = playerObject->work[1] =
@@ -509,7 +504,7 @@ void fn_1_74BC(void)
         playerData->sceneState = 0;
         *playerObject->mdlId = fn_80057068(playerData->characterNo, 2);
         motionIndex = 0;
-        while (motionIndex < TOURNAMENT_CHARACTER_MOTION_COUNT) {
+        while (motionIndex < 13) {
             playerObject->mtnId[motionIndex] = fn_8005B0B8(
                 playerData->characterNo, lbl_1_data_510[motionIndex]);
             motionIndex++;
@@ -528,8 +523,7 @@ void fn_1_74BC(void)
         fn_80026838(*playerObject->mdlId, &playerData->rotation);
         Hu3DLLightCreate(*playerObject->mdlId, 0.0f, 1500.0f, 1500.0f, 0.0f,
                          -0.7f, -0.7f,
-                         TOURNAMENT_CHARACTER_LIGHT_INTENSITY, TOURNAMENT_CHARACTER_LIGHT_INTENSITY,
-                         TOURNAMENT_CHARACTER_LIGHT_INTENSITY);
+                         192, 192, 192);
         fn_8005DEB0(playerData->characterNo,
             (s16)lbl_1_data_510[8], 0);
         fn_8005DEB0(playerData->characterNo,
@@ -768,7 +762,6 @@ void fn_1_818C(void) {
     }
 }
 
-s16 fn_1_3F00(void);
 void fn_1_6278(OMOBJ *, s16);
 s32 fn_1_E378(Point3d *, Point3d *);
 void fn_1_E4D0(f32 angleX, f32 angleY, f32 angleZ, Vec source, Vec *destination);
@@ -1427,7 +1420,6 @@ s16 tournamentLayoutGet(void)
 extern s16 lbl_1_bss_D8;
 
 void fn_1_AA04(void);
-void fn_1_3394(s16, s16);
 
 /* Moves players into the opening lineup, then shuffles them for the next round. */
 void fn_1_A6B4(void)
@@ -1595,8 +1587,6 @@ void fn_1_AB48(void)
     }
     HuPrcSleep(76);
 }
-
-void fn_1_3394(s16, s16);
 
 /* When fn_1_AD50 resets the bracket, send any listed result pose to its return-to-idle state,
  * even if that pose has not finished. */
@@ -1812,8 +1802,6 @@ void fn_1_B2E0(void)
     }
 }
 
-HU3D_MODELID fn_1_0(s16, s16, HuVecF *);
-
 /* Creates the framed minigame preview using game index zero, hides it at zero scale,
  * and prepares the still-image cycle for the tournament reveal. */
 void fn_1_B57C(void) {
@@ -1830,7 +1818,6 @@ void fn_1_B57C(void) {
 }
 
 extern u8 MgModeWork[256];
-void fn_1_2A4(s16 count, u8 *gameOrder);
 
 /* Builds and shuffles minigame indices for the preview's still-image cycle, loading at most five
  * image pairs. The initial prefix count is computed but unused. */
@@ -1899,9 +1886,6 @@ void fn_1_B80C(void)
     lbl_1_bss_108 = 0;
 }
 
-s32 fn_1_43C();                                 /* Cycles the preview still image. */
-s32 fn_1_5E0(u8, s16);                          /* Replaces the selected preview still. */
-s32 fn_1_6F4();                                 /* Starts the selected preview movie. */
 extern u8 MgModePlayNum;
 
 extern s32 lbl_1_data_850;
@@ -1964,12 +1948,6 @@ void fn_1_B850(void) {
     fn_1_6F4();
     HuPrcVSleep();
 }
-
-void fn_1_2728(s16 player);
-void fn_1_3394(s16 model, s16 mode);
-void fn_1_34B0(s16 model);
-void fn_1_3F18(s16 mode);
-void fn_1_56B4(s16 mode);
 
 void fn_1_7DA8(s16 player, s16 flag);
 
@@ -2367,11 +2345,6 @@ extern s32 lbl_1_data_84C;
 extern s32 lbl_1_data_854;
 extern s32 lbl_1_data_858;
 
-void fn_1_56B4(s16 mode);
-void fn_1_5740(s16 mode, s16 duration);
-void fn_1_43BC(void);
-void fn_1_4A94(s16 player, s16 characterNo, s16 group, Vec position);
-
 s16 fn_1_7BC0(s16 player);
 
 void fn_1_7D58(s16 player, s16 flag);
@@ -2513,9 +2486,6 @@ void fn_1_CF6C(void)
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-
-void fn_1_E9C(void);
-void fn_1_DC28(void);
 
 /* Starts the tournament menu's object manager and board process. */
 void fn_1_D544(void)

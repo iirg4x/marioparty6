@@ -73,24 +73,12 @@ typedef struct M647ActivityCallbacks_s {
     void (*entries[4])(s16 index); /* Activity update callback by activity index. */
 } M647ActivityCallbacks;
 
-typedef struct M647SoundTable_s {
-    u32 soundIds[14]; /* Finish sound for each character ID. */
-} M647SoundTable;
-
-typedef struct M647TimerThresholds_s {
-    s16 values[4]; /* CPU selection wait by difficulty. */
-} M647TimerThresholds;
-
 extern s16 lbl_802C0278;
 
 void fn_1_62FC(s32 selection);
 void fn_1_6414(void);
 void fn_1_A94(void);
 void fn_1_DA8(void);
-extern f32 fn_1_A790(void);
-extern f32 fn_1_A854(void);
-s16 fn_1_8648(void);
-extern s16 fn_1_A518(s16 index);
 void fn_1_15A4(s16 layerNo);
 void fn_1_17C4(s16 layerNo);
 s16 fn_1_62B8(void);
@@ -101,8 +89,6 @@ void fn_1_5978(void);
 void fn_1_5F08(void);
 void fn_1_6484(s16 value);
 void fn_1_64A4(void);
-extern void fn_1_6ED0(s16 entryIndex, f32 speed);
-extern void fn_1_AC40(s16 entryIndex);
 void fn_1_B04(void);
 void fn_1_B50(void);
 void fn_1_C4C(void);
@@ -140,11 +126,6 @@ void fn_1_381C(void);
 s16 fn_1_3A44(void);
 void fn_1_3B54(M647PlayerRecord *input, Point3d *position);
 void fn_1_A74(OMOBJ *object);
-void fn_1_B108(void);
-void fn_1_8A40(s16 index);
-void fn_1_98CC(s16 index);
-void fn_1_7230(s16 playerIndex);
-void fn_1_7D68(s16 playerIndex);
 
 /* Updates celebration particles each frame through the object manager callback. */
 void fn_1_A74(OMOBJ *object) { fn_1_B108(); }
@@ -731,12 +712,12 @@ void fn_1_2CD0(void) {
 
 /* Records a player's finish order and plays the character's finish sound. */
 void fn_1_32F4(s16 recordIndex) {
-    M647SoundTable soundTable = { { 579, 555, 699, 795, 747, 483, 771, 507, 723, 651, 531, 675, 627,
-                                    603 } };
+    u32 soundTable[14] = { 579, 555, 699, 795, 747, 483, 771, 507, 723, 651, 531, 675, 627,
+                           603 };
 
     if (lbl_1_bss_54[recordIndex].finishPlace >= 4) {
         lbl_1_bss_54[recordIndex].finishPlace = lbl_1_bss_18;
-        HuAudFXPlay(soundTable.soundIds[lbl_1_bss_54[recordIndex].characterId]);
+        HuAudFXPlay(soundTable[lbl_1_bss_54[recordIndex].characterId]);
         lbl_1_bss_18++;
     }
 }
@@ -927,7 +908,7 @@ s16 fn_1_3AB4(s16 startIndex, s16 direction) {
 
 /* Handles human or CPU movement and slot selection during the player's turn. */
 void fn_1_3B54(M647PlayerRecord *input, Point3d *position) {
-    M647TimerThresholds timerThresholds = {{45, 40, 40, 40}};
+    s16 timerThresholds[4] = {45, 40, 40, 40};
     f32 destinationX;
     s16 selectedSlot;
     s16 randomValue;
@@ -968,7 +949,7 @@ void fn_1_3B54(M647PlayerRecord *input, Point3d *position) {
             position->x == lbl_1_data_150[input->selectedSlot]) {
             fn_1_6484(input->selectedSlot);
         }
-        if (input->timer > timerThresholds.values[input->cpuDifficulty]) {
+        if (input->timer > timerThresholds[input->cpuDifficulty]) {
             input->timer = 0;
             if (input->selectedSlot != 0) {
                 randomValue = (s16)frandmod(input->selectedSlot);

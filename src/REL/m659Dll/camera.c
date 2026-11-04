@@ -26,6 +26,7 @@ void fn_1_804(void);
 #include "game/flag.h"
 #include "game/wipe.h"
 #include "game/data.h"
+#include "REL/m659Dll.h"
 
 void fn_1_B2C(s16 mode, s16 frameNo);
 void fn_1_BF0(s16 mode, s16 frameNo);
@@ -43,17 +44,7 @@ MGSEQ_PARAM lbl_1_data_2C = {
 };
 extern HU3D_MODELID lbl_1_bss_28;
 void fn_1_1454(OMOBJMAN *manager);
-void fn_1_41F4(OMOBJMAN *manager);
-void fn_1_4E68(OMOBJMAN *manager);
-void fn_1_5944(OMOBJMAN *manager);
 void fn_1_1610(s16 side, u16 camera);
-void fn_1_16A8(s16 side, int result);
-void fn_1_16E4(void);
-void fn_1_1790(s16 side);
-void fn_1_17E8(s16 side);
-void fn_1_2648(OMOBJ *obj);
-void fn_1_3328(void);
-void fn_1_57BC(void);
 
 /* Clears shared game state before the minigame objects are created. */
 void fn_1_0(void)

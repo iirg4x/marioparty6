@@ -7,6 +7,7 @@
 #include "msm_stream.h"
 #include "dolphin/types.h"
 #include "dolphin/os.h"
+#include "REL/resultDll.h"
 typedef struct ResultTeamDisplay {
     s32 sprites[3]; /* Team emblem, rank indicator and coin-award icon sprites. */
     s32 awardDigits[3]; /* Digit sprites for the team's coin award. */
@@ -43,17 +44,10 @@ extern s32 lbl_1_bss_638;
 extern s32 lbl_1_bss_624;
 extern float lbl_1_bss_B8C[2];
 extern float lbl_1_bss_B94[2];
-extern void fn_1_47A8(void);
 extern void fn_1_523C(void);
 extern void fn_1_4D48(void);
-extern s32 fn_1_C45C(s32 dataNum);
 extern void fn_1_62F0(void);
-extern s16 fn_1_78B4(s32 team);
-extern void fn_1_3698(void);
 extern void fn_1_6B78(void);
-extern s32 fn_1_356C(void);
-extern void fn_1_3640(s32 readResult);
-extern void fn_1_4694(void);
 void fn_1_60F8(void);
 
 extern f32 lbl_1_bss_7E8[9][10];
@@ -64,10 +58,8 @@ extern s32 lbl_1_bss_660;
 extern Vec lbl_1_data_4F0[2];
 void fn_1_71F0(void);
 
-extern void fn_1_3FB0(s16 *coinAwards);
 extern void fn_1_766C(s32 team, s32 coinAward);
 extern void fn_1_73D4(s32 team, s32 coinTotal);
-extern int fn_1_7840(int team, int occurrence);
 
 #include "game/charman.h"
 #include "game/sprite.h"
@@ -90,9 +82,6 @@ extern f32 lbl_1_data_4E0[4];
 
 extern s32 lbl_1_data_50C[2];
 
-s32 fn_1_C45C(s32 dataNum);
-s16 fn_1_78B4(s32 team);
-int fn_1_7840(int team, int occurrence);
 void fn_1_73D4(s32 team, s32 coinTotal);
 void fn_1_7520(s32 team, s32 starTotal);
 void fn_1_766C(s32 team, s32 coinAward);
@@ -102,12 +91,6 @@ static inline s16 ResultNightModeGet(void)
 {
     return lbl_802C0278;
 }
-
-
-typedef struct ResultTeamDisplayFields {
-    s32 handles[26]; /* Packed fields follow ResultTeamDisplay order. */
-} ResultTeamDisplayFields;
-
 
 
 extern s8 lbl_1_data_514[110];
@@ -738,7 +721,7 @@ void fn_1_71F0(void)
 /* Updates the three coin-total digits when the team panel is built and as awards count up. */
 void fn_1_73D4(s32 team, s32 coinTotal)
 {
-    ResultTeamDisplayFields displayFields = ((ResultTeamDisplayFields *)lbl_1_bss_AB8)[team];
+    ResultTeamDisplay displayFields = lbl_1_bss_AB8[team];
     s32 digits[3];
     s32 remainder;
 
@@ -748,27 +731,27 @@ void fn_1_73D4(s32 team, s32 coinTotal)
     remainder = coinTotal;
     digits[0] = coinTotal / 100;
     if (digits[0] == 0) {
-        espAttrSet(displayFields.handles[11], HUSPR_ATTR_DISPOFF);
+        espAttrSet(displayFields.coinDigits[1], HUSPR_ATTR_DISPOFF);
     } else {
-        espAttrReset(displayFields.handles[11], HUSPR_ATTR_DISPOFF);
-        espBankSet(displayFields.handles[11], digits[0]);
+        espAttrReset(displayFields.coinDigits[1], HUSPR_ATTR_DISPOFF);
+        espBankSet(displayFields.coinDigits[1], digits[0]);
     }
     remainder = coinTotal - (digits[0] * 100);
     digits[1] = remainder / 10;
     if ((digits[1] == 0) && (digits[0] == 0)) {
-        espAttrSet(displayFields.handles[12], HUSPR_ATTR_DISPOFF);
+        espAttrSet(displayFields.coinDigits[2], HUSPR_ATTR_DISPOFF);
     } else {
-        espAttrReset(displayFields.handles[12], HUSPR_ATTR_DISPOFF);
-        espBankSet(displayFields.handles[12], digits[1]);
+        espAttrReset(displayFields.coinDigits[2], HUSPR_ATTR_DISPOFF);
+        espBankSet(displayFields.coinDigits[2], digits[1]);
     }
     remainder -= digits[1] * 10;
-    espBankSet(displayFields.handles[13], remainder);
+    espBankSet(displayFields.coinDigits[3], remainder);
 }
 
 /* Updates the three star-total digits while the team result panel is built. */
 void fn_1_7520(s32 team, s32 starTotal)
 {
-    ResultTeamDisplayFields displayFields = ((ResultTeamDisplayFields *)lbl_1_bss_AB8)[team];
+    ResultTeamDisplay displayFields = lbl_1_bss_AB8[team];
     s32 digits[3];
     s32 remainder;
 
@@ -778,27 +761,27 @@ void fn_1_7520(s32 team, s32 starTotal)
     remainder = starTotal;
     digits[0] = starTotal / 100;
     if (digits[0] == 0) {
-        espAttrSet(displayFields.handles[7], HUSPR_ATTR_DISPOFF);
+        espAttrSet(displayFields.starDigits[1], HUSPR_ATTR_DISPOFF);
     } else {
-        espAttrReset(displayFields.handles[7], HUSPR_ATTR_DISPOFF);
-        espBankSet(displayFields.handles[7], digits[0]);
+        espAttrReset(displayFields.starDigits[1], HUSPR_ATTR_DISPOFF);
+        espBankSet(displayFields.starDigits[1], digits[0]);
     }
     remainder = starTotal - (digits[0] * 100);
     digits[1] = remainder / 10;
     if ((digits[1] == 0) && (digits[0] == 0)) {
-        espAttrSet(displayFields.handles[8], HUSPR_ATTR_DISPOFF);
+        espAttrSet(displayFields.starDigits[2], HUSPR_ATTR_DISPOFF);
     } else {
-        espAttrReset(displayFields.handles[8], HUSPR_ATTR_DISPOFF);
-        espBankSet(displayFields.handles[8], digits[1]);
+        espAttrReset(displayFields.starDigits[2], HUSPR_ATTR_DISPOFF);
+        espBankSet(displayFields.starDigits[2], digits[1]);
     }
     remainder -= digits[1] * 10;
-    espBankSet(displayFields.handles[9], remainder);
+    espBankSet(displayFields.starDigits[3], remainder);
 }
 
 /* Updates the two visible digits of a team's coin award during the count-up. */
 void fn_1_766C(s32 team, s32 coinAward)
 {
-    ResultTeamDisplayFields displayFields = ((ResultTeamDisplayFields *)lbl_1_bss_AB8)[team];
+    ResultTeamDisplay displayFields = lbl_1_bss_AB8[team];
     s32 digits[3];
     s32 remainder;
 
@@ -808,13 +791,13 @@ void fn_1_766C(s32 team, s32 coinAward)
     remainder = coinAward;
     digits[0] = coinAward / 10;
     if (digits[0] == 0) {
-        espAttrSet(displayFields.handles[4], HUSPR_ATTR_DISPOFF);
+        espAttrSet(displayFields.awardDigits[1], HUSPR_ATTR_DISPOFF);
     } else {
-        espAttrReset(displayFields.handles[4], HUSPR_ATTR_DISPOFF);
-        espBankSet(displayFields.handles[4], digits[0]);
+        espAttrReset(displayFields.awardDigits[1], HUSPR_ATTR_DISPOFF);
+        espBankSet(displayFields.awardDigits[1], digits[0]);
     }
     remainder -= digits[0] * 10;
-    espBankSet(displayFields.handles[5], remainder);
+    espBankSet(displayFields.awardDigits[2], remainder);
 }
 
 /* Selects the team introduction message for its two characters while panels are built. */

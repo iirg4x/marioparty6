@@ -12,6 +12,7 @@
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 #include "string.h"
+#include "REL/m659Dll.h"
 
 /* Course model labels and zeroed cells retained with the scene data. */
 char lbl_1_data_198[62] =
@@ -34,10 +35,8 @@ typedef struct M659Scene {
 } M659Scene;
 
 OMOBJ *lbl_1_bss_58;
-void fn_1_329C(OMOBJMAN *manager);
 void fn_1_530C(OMOBJ *obj);
 void fn_1_564C(OMOBJ *obj);
-int fn_1_1840(s16 player);
 
 /* Creates the scenery object, initializes its scale and depth, and creates obstacle management. */
 void fn_1_4E68(OMOBJMAN *manager)

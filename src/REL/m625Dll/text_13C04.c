@@ -21,33 +21,20 @@
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
+#include "REL/m625Dll.h"
+#include "REL/m625Dll/players.h"
+#include "REL/m625Dll/wave.h"
+#include "REL/m625Dll/camera.h"
 
 s32 lbl_1_bss_818;
 s16 lbl_1_bss_816;
 s16 lbl_1_bss_814;
 HUPROCESS *lbl_1_bss_810;
 extern s16 lbl_802C0278;
-extern void fn_1_1B0(void);
-extern void fn_1_15C8(void);
-extern void fn_1_2D48(void);
-extern void fn_1_1284C(void);
 extern s32 fn_1_41C(s32);
 extern s32 fn_1_3E8C(s32);
-extern void fn_1_CB0(void);
-extern void fn_1_4E60(void);
-extern void fn_1_EF40(void);
-extern void fn_1_12C80(void);
-extern void fn_1_1BAC(void);
-extern void fn_1_4E80(void);
-extern s32 fn_1_EF24(s16);
 extern void fn_1_12F98(s16, s32);
-extern void fn_1_12EA8(void);
-extern s16 fn_1_C19C(void);
-extern void fn_1_C270(s16);
 extern u8 fn_1_CB4(s16);
-extern u8 fn_1_C438(void);
-
-void fn_1_DE68(void);
 
 /* Called by sequence initialization to set up the stage, shadows, water, and camera. */
 void fn_1_13C04(s16 mode, s16 frameNo)

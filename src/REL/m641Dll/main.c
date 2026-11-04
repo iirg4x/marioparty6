@@ -44,6 +44,7 @@
 #include "game/board/tutorial.h"
 
 #include "datadir_enum.h"
+#include "REL/m641Dll/m641Dll.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -121,29 +122,9 @@ void fn_1_1433C(void) {
 
 extern void fn_1_B0C0();
 
-extern void fn_1_1D7C(void);
-
-extern void fn_1_13FC4();
-
-extern void fn_1_682C(s16);
-
-extern void fn_1_B0E0(void);
-
-extern void fn_1_14118(void);
-
-extern void fn_1_8A7C(void);
-
-extern void fn_1_10530(void);
-
 extern s16 fn_1_141C0(void);
 
-extern void fn_1_10550(s16);
-
 extern u8 fn_1_10844(s16);
-
-extern void fn_1_10D10();
-
-extern void fn_1_8D9C(s16);
 
 extern u8 fn_1_820C(s32);
 
