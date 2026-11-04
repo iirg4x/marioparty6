@@ -29,29 +29,13 @@
 
 extern s32 lbl_1_bss_8;
 extern s16 lbl_1_bss_1210[4];
-extern s16 fn_1_1D7C(void);
-extern s16 fn_1_1D84(void);
-extern s16 fn_1_1EF4(s16, s16);
-extern void fn_1_1F54(s16, s16, Point3d *);
-extern s32 fn_1_10C5C(Point3d *, Point3d *);
-extern f64 fn_1_10E3C(f64, f64);
-
-s32 fn_1_10C5C(Point3d *, Point3d *);
-
-extern s32 fn_1_20D0(const Point3d *, const Point3d *, const Point3d *, const Point3d *);
-extern void fn_1_F6E0(s16, Point3d *);
-extern void fn_1_1054C(const Point3d *, const Point3d *, s16, s32);
 
 extern s16 lbl_1_bss_125C;
 M613PlayerState lbl_1_bss_11C[4];
 s32 lbl_1_bss_10C[4];
 s32 lbl_1_bss_FC[4];
 s16 lbl_1_bss_F8;
-extern s16 fn_1_FA48(void);
 extern void fn_1_F2A4(void);
-extern void fn_1_FC40(void);
-extern void fn_1_1A7C(void);
-extern void fn_1_106C0(void);
 
 void fn_1_3C80(s16 playerIndex, s16 mode);
 void fn_1_3EB0(s16 playerIndex);

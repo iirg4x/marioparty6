@@ -1,5 +1,4 @@
 /* Creates and updates Odd Card Out score, timer, and message UI. */
-#define _MATH_H
 #include "REL/m602Dll.h"
 
 #define MSM_SE_M602_PLAYER_INTRO 1569

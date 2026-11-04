@@ -1,5 +1,4 @@
 /* Defines Odd Card Out lighting, particles, and effect resources. */
-#define _MATH_H
 #include "REL/m602Dll.h"
 
 #define MSM_SE_M602_CORRECT_CHOICE_EFFECT 1574

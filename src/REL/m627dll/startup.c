@@ -8,6 +8,7 @@
 #include "game/memory.h"
 #include "msm_stream.h"
 #include <string.h>
+#include "REL/m627dll/gameplay.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -24,7 +25,6 @@ void fn_1_420(s16 mode, s16 frameNo);
 void fn_1_424(s16 mode, s16 frameNo);
 void fn_1_428(s16 mode, s16 frameNo);
 void fn_1_42C(s16 mode, s16 frameNo);
-void fn_1_798(OMOBJ *object);
 
 MGSEQ_PARAM lbl_1_data_0 = {
     300, 0,

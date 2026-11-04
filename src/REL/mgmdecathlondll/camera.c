@@ -55,8 +55,6 @@ void fn_1_184(void)
 {
 }
 
-void fn_8002858C(s16 cameraId);
-void HuPrcVSleep();
 void fn_1_264(s16 modelId, s16 cameraMask, f32 durationFrames, s16 easingMode);
 void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
               Vec *initialTarget, f32 durationFrames, s16 easingMode);

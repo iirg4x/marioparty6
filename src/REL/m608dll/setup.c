@@ -1,5 +1,4 @@
 /* Initializes Snow Whirled's course, riders, camera, score panels, and sequence. */
-#define _MATH_H
 #include <math.h>
 #include "REL/m608dll.h"
 

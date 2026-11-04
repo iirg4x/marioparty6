@@ -1,5 +1,4 @@
 /* Creates and updates player score displays and the course record display. */
-#define _MATH_H
 #include <math.h>
 #include "REL/m608dll.h"
 

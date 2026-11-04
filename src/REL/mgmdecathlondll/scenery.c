@@ -23,6 +23,7 @@
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "msm_se.h"
+#include "string.h"
 
 #define MSM_SE_DECA_EVENT_REVEAL 1239
 #define MSM_SE_DECA_EVENT_READY 1240
@@ -216,7 +217,6 @@ void fn_1_6E80(OMOBJ *object) {
     }
 }
 
-s32 memset(void *, s32, s32);
 void fn_1_7A94(OMOBJ *obj);
 s32 lbl_1_data_374[10] = {
     DATANUM(0x9e0000, 35), DATANUM(0x9e0000, 36),

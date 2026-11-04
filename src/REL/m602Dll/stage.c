@@ -1,5 +1,4 @@
 /* Maintains Odd Card Out card columns, round combinations, and stage effects. */
-#define _MATH_H
 #include "REL/m602Dll.h"
 
 /* The signed words below contain unused positive and negative 1000.0 values. */

@@ -22,7 +22,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #include <stddef.h>
 
 #define M632_ARENA_COLLISION_SE_ID 1846 /* Sound played when arena collision checks report a hit. */

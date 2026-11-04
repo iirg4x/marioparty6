@@ -1,5 +1,4 @@
 /* Owns the on-screen direction prompts used while riders roll through the course. */
-#define _MATH_H
 #include <math.h>
 #include "REL/m608dll.h"
 

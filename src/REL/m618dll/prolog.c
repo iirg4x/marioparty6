@@ -1,8 +1,8 @@
 /* Runs module constructors and destructors when Lift Leapers loads or unloads. */
+#include "REL/m618dll.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
 
 /* Runs registered constructors, then initializes the minigame module. */
 int _prolog(void)

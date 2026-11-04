@@ -80,5 +80,13 @@ typedef struct M664EffectModel {
                         * hitting a player. */
     s16 effectMotionId; /* Motion played by the impact effect. */
 } M664EffectModel;
+void fn_1_2F8(s16 mode, s16 frameNo);
+void fn_1_318(s16 mode, s16 frameNo);
+void fn_1_34C(s16 mode, s16 frameNo);
+void fn_1_36C(s16 mode, s16 frameNo);
+void fn_1_38C(s16 mode, s16 frameNo);
+s32 fn_1_4C0(void);
+void fn_1_560(void);
+void fn_1_8DC(void);
 
 #endif

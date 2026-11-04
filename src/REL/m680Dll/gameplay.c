@@ -21,19 +21,6 @@
 #define MSM_SE_M680_ROUND_START 2330
 #define MSM_SE_M680_WIN_CUE 579
 #define M680_WIN_JINGLE_ID 67
-#define M680_OBJECT_MANAGER_SLOTS 10
-#define M680_OBJECT_MANAGER_HEAP_SIZE 4096
-#define M680_ROOT_OBJECT_PRIORITY 101
-#define M680_PLAYER_OBJECT_PRIORITY 100
-#define M680_PLAYER_MODEL_COUNT 10
-#define M680_BACKGROUND_COLOR_LEVEL 63
-#define M680_ROUND_TIMER_FRAMES 600
-#define M680_GRID_NODE_COUNT 10
-#define M680_SEQUENCE_DELAY_15_FRAMES 15
-#define M680_SEQUENCE_DELAY_20_FRAMES 20
-#define M680_RUMBLE_SETTING_20 20
-#define M680_SEQUENCE_DELAY_30_FRAMES 30
-#define M680_SEQUENCE_DELAY_60_FRAMES 60
 #define M680_SEQUENCE_STATE_INITIALIZE 0
 #define M680_SEQUENCE_STATE_START_DELAY_SETUP 1
 #define M680_SEQUENCE_STATE_START_DELAY 2
@@ -85,18 +72,6 @@
 #define M680_PIECE_STATE_NEXT_ROUND 300
 #define M680_PIECE_STATE_FIRST_GROUP 400
 #define M680_PIECE_STATE_SECOND_GROUP 500
-#define M680_PICKUP_ANIMATION_FRAMES 15
-#define M680_VICTORY_DELAY_FRAMES 30
-#define M680_SEQUENCE_FRAME_LIMIT 31
-#define M680_STAGE_REVERSE_START_FRAME 24
-#define M680_STAGE_REVERSE_FRAME_LIMIT 25
-#define M680_STAGE_MARKER_STEP_FRAMES 12
-#define M680_STAGE_TRANSITION_FRAMES 240
-#define M680_LOSS_EFFECT_START_FRAME 50
-#define M680_PLAYER_ELIMINATION_START_FRAME 60
-#define M680_ROUND_TRANSITION_DELAY_FRAMES 45
-#define M680_LOSS_RUMBLE_SETTING 40
-#define M680_LOSS_RUMBLE_DURATION 20
 #define M680_SEQUENCE_STATE_PLAYER_RESULT_SETUP 121
 #define M680_SEQUENCE_STATE_PLAYER_RESULT_WAIT 122
 #define M680_SEQUENCE_STATE_STAGE_PROGRESS 123
@@ -133,11 +108,6 @@
 #define M680_PIECE_MODEL_BASE 43
 #define M680_HOOK_MODEL_BASE 24
 #define M680_ITEM_MODEL_BASE 14
-#define M680_STAGE_TRANSITION_START_FRAMES 30
-#define M680_STAGE_TRANSITION_WAIT_FRAMES 90
-#define M680_PIECE_MOVE_FRAMES 12
-#define M680_PIECE_RETRY_WAIT_FRAMES 11
-#define M680_PIECE_PATH_MAX_STEPS 20
 #define M680_PIECE_GATE_COLUMN 10
 #define M680_PIECE_GATE_END_COLUMN 11
 #define M680_PIECE_STAGE_END_COLUMN 12
@@ -147,11 +117,6 @@
 #define M680_PIECE_COLOR_IDLE_RED 27
 #define M680_PIECE_COLOR_IDLE_GREEN 149
 #define M680_PIECE_COLOR_IDLE_BLUE 206
-#define M680_LIGHT_AMBIENT_COMPONENT 175
-#define M680_SHADOW_COLOR_RED 47
-#define M680_SHADOW_COLOR_GREEN 31
-#define M680_SHADOW_COLOR_BLUE 79
-#define M680_COMPUTER_CHOICE_PERCENT 100
 #define M680_SEARCH_ATTEMPT_PERCENT 20
 #define M680_PATH_SEGMENT_FRAMES 35
 #define M680_PIECE_STATE_SELECTED_PATH_START 101
@@ -172,13 +137,9 @@
 #define M680_PIECE_STATE_SECOND_GROUP_START 501
 #define M680_PIECE_STATE_SECOND_GROUP_MOVE 502
 #define M680_PIECE_STATE_SECOND_GROUP_TURN 503
-#define M680_BOARD_LAST_CELL 12
 #define M680_BOARD_EXIT_ROW 13
 #define M680_WINNER_APPROACH_FRAMES 29
 #define M680_WINNER_PAUSE_FRAMES 24
-#define M680_GROUP_REVEAL_FRAMES 48
-#define M680_GROUP_EXIT_FRAMES 96
-#define M680_EFFECT_PHASE_THIRD 11
 
 /* Smooths the staged attachment's heading by at most fifteen degrees per update. */
 static inline void m680UpdateAngle(M680MotionWork *work)
@@ -311,10 +272,6 @@ s32 fn_1_A658();
 s32 fn_1_A708();
 void fn_1_A7E8();
 s16 fn_1_AABC(f32 position);
-void fn_1_AD38();
-void fn_1_AB70();
-void fn_1_B844();
-void fn_1_BAF8(M680CharacterState *state);
 
 const u16 lbl_1_rodata_10[4] = {1, 2, 4, 8};
 MGSEQ_PARAM lbl_1_data_0 = {
@@ -404,22 +361,22 @@ void fn_1_A0(void)
         }
     }
     fn_1_AB70(4, entries);
-    lbl_1_bss_8.manager = fn_8003A8BC(M680_OBJECT_MANAGER_SLOTS, M680_OBJECT_MANAGER_HEAP_SIZE);
+    lbl_1_bss_8.manager = fn_8003A8BC(10, 4096);
     fn_80069F1C(lbl_1_bss_8.manager);
-    rootObject = fn_8003AB38(lbl_1_bss_8.manager, M680_ROOT_OBJECT_PRIORITY, 0, 0, -1, fn_1_1E2C);
+    rootObject = fn_8003AB38(lbl_1_bss_8.manager, 101, 0, 0, -1, fn_1_1E2C);
     lbl_1_bss_0 = rootObject;
     rootObject->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M680State), 0x10000000);
     boardWork = rootObject->data;
     for (player = 0; player < 4; player++) {
-        rootObject = fn_8003AB38(lbl_1_bss_8.manager, M680_PLAYER_OBJECT_PRIORITY, 1,
-                                M680_PLAYER_MODEL_COUNT, 0, fn_1_AD38);
+        rootObject = fn_8003AB38(lbl_1_bss_8.manager, 100, 1,
+                                10, 0, fn_1_AD38);
         rootObject->data =
             HuMemDirectMallocNum(HEAP_HEAP, sizeof(M680CharacterState), 0x10000000);
         rootObject->work[0] = entries[player].player;
         rootObject->work[1] = player;
     }
-    Hu3DBGColorSet(M680_BACKGROUND_COLOR_LEVEL, M680_BACKGROUND_COLOR_LEVEL,
-                   M680_BACKGROUND_COLOR_LEVEL);
+    Hu3DBGColorSet(63, 63,
+                   63);
     Hu3DNoSyncSet(1);
     fn_1_1D10(boardWork);
     fn_1_19B4(boardWork);
@@ -434,7 +391,7 @@ void fn_1_280(void) {
 
     sequence = lbl_1_bss_0->data;
     sequence->timer = MgTimerCreate(0);
-    MgTimerParamSet(sequence->timer, M680_ROUND_TIMER_FRAMES, 0, 0);
+    MgTimerParamSet(sequence->timer, 600, 0, 0);
     MgTimerPosSet(sequence->timer, 525.0f, 64.0f);
     sequence->round = 0;
     sequence->playerCount = 0;
@@ -510,14 +467,14 @@ void fn_1_42C(void) {
             /* fallthrough */
         case M680_SEQUENCE_STATE_START_DELAY:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_30_FRAMES) {
+            if (work->frame >= 30) {
                 work->state = M680_SEQUENCE_STATE_FIRST_GROUP_SETUP;
                 break;
             }
             break;
         case M680_SEQUENCE_STATE_FIRST_GROUP_SETUP:
             work->frame = 0;
-            for (index = 0; index < M680_GRID_NODE_COUNT; index++) {
+            for (index = 0; index < 10; index++) {
                 fn_80026760(work->grid[index].itemModel, 0.0f, 800.0f, 0.0f);
             }
             HuAudFXPlay(MSM_SE_M680_ROUND_START);
@@ -526,7 +483,7 @@ void fn_1_42C(void) {
         case M680_SEQUENCE_STATE_FIRST_GROUP_REVEAL:
             work->frame++;
             fn_1_9630(work, 0);
-            if (work->frame >= M680_SEQUENCE_DELAY_30_FRAMES) {
+            if (work->frame >= 30) {
                 fn_1_9898(work, 0);
                 work->frame = 0;
                 work->state += 1;
@@ -535,7 +492,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_GROUP_GAP:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_20_FRAMES) {
+            if (work->frame >= 20) {
                 HuAudFXPlay(MSM_SE_M680_ROUND_START);
                 work->frame = 0;
                 work->state += 1;
@@ -545,7 +502,7 @@ void fn_1_42C(void) {
         case M680_SEQUENCE_STATE_SECOND_GROUP_REVEAL:
             work->frame++;
             fn_1_9630(work, 5);
-            if (work->frame >= M680_SEQUENCE_DELAY_30_FRAMES) {
+            if (work->frame >= 30) {
                 fn_1_9898(work, 5);
                 work->frame = 0;
                 work->state += 1;
@@ -554,7 +511,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_FINAL_GAP:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_20_FRAMES) {
+            if (work->frame >= 20) {
                 work->frame = 0;
                 work->state += 1;
                 break;
@@ -562,7 +519,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_FINAL_DELAY:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_20_FRAMES) {
+            if (work->frame >= 20) {
                 work->state = M680_SEQUENCE_STATE_ROUND_SETUP;
                 break;
             }
@@ -572,12 +529,12 @@ void fn_1_42C(void) {
             work->state++;
             fn_1_95C0(work);
             fn_1_A388(&work->effect);
-            for (index = 0; index < M680_GRID_NODE_COUNT; index++) {
+            for (index = 0; index < 10; index++) {
                 work->grid[index].state = 1;
             }
             /* fallthrough */
         case M680_SEQUENCE_STATE_GRID_SELECTION:
-            if (work->gridIndex >= M680_GRID_NODE_COUNT) {
+            if (work->gridIndex >= 10) {
                 work->state = M680_SEQUENCE_STATE_PLAYER_ENTRANCE;
                 break;
             }
@@ -590,21 +547,21 @@ void fn_1_42C(void) {
             /* fallthrough */
         case M680_SEQUENCE_STATE_PLAYER_ENTRANCE_WAIT:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_60_FRAMES) {
+            if (work->frame >= 60) {
                 fn_1_9580(work);
                 work->state = M680_SEQUENCE_STATE_SELECTION_SETUP;
                 break;
             }
             break;
         case M680_SEQUENCE_STATE_SELECTION_SETUP:
-            MgTimerParamSet(work->timer, M680_ROUND_TIMER_FRAMES, 0, 0);
+            MgTimerParamSet(work->timer, 600, 0, 0);
             MgTimerRecordDispOn(work->timer);
             MgTimerModeOnSet(work->timer, 1);
             work->selected = fn_1_7730(work);
             fn_1_A7E8(work);
             fn_80026A44(work->cursorModel, (1 << 0));
             player = work->players->player;
-            fn_8006A030(player->playerIndex, M680_RUMBLE_SETTING_20, 7, 3);
+            fn_8006A030(player->playerIndex, 20, 7, 3);
             if (player->playerType != 0) {
                 fn_1_9400(work);
             }
@@ -645,7 +602,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_PLAYER_PICKUP_DELAY:
             work->frame++;
-            if (work->frame >= M680_PICKUP_ANIMATION_FRAMES) {
+            if (work->frame >= 15) {
                 player = work->players->player;
                 fn_8005C2C8(player->character, player->motionIds[3], 0.0f, 5.0f, 0U);
                 work->frame = 0;
@@ -655,7 +612,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_ITEM_ATTACH_DELAY:
             work->frame++;
-            if (work->frame >= M680_PICKUP_ANIMATION_FRAMES) {
+            if (work->frame >= 15) {
                 HuAudFXPlay(MSM_SE_M680_ITEM_ATTACH);
                 player = work->players->player;
                 fn_80027508(work->selected->hookModel);
@@ -691,7 +648,7 @@ void fn_1_42C(void) {
             /* fallthrough */
         case M680_SEQUENCE_STATE_VICTORY_DELAY:
             work->frame++;
-            if (work->frame >= M680_VICTORY_DELAY_FRAMES) {
+            if (work->frame >= 30) {
                 player = work->players->player;
                 fn_8005C2C8(player->character, player->motionIds[6], 0.0f, 5.0f, 0U);
                 fn_1_BE08(fn_1_9CA0, work->selected);
@@ -735,14 +692,14 @@ void fn_1_42C(void) {
             /* fallthrough */
         case M680_SEQUENCE_STATE_LOSS_DELAY:
             work->frame++;
-            if (work->frame == M680_LOSS_EFFECT_START_FRAME) {
+            if (work->frame == 50) {
                 HuAudFXPlay(MSM_SE_M680_LOSS_EFFECT);
                 fn_1_9D5C(&work->phaseEffect);
             }
-            if (work->frame >= M680_PLAYER_ELIMINATION_START_FRAME) {
+            if (work->frame >= 60) {
                 player = work->players->player;
-                fn_8006A030(player->playerIndex, M680_LOSS_RUMBLE_SETTING,
-                          M680_LOSS_RUMBLE_DURATION, 0);
+                fn_8006A030(player->playerIndex, 40,
+                          20, 0);
                 fn_8005C2C8(player->character, player->motionIds[5], 0.0f, 5.0f,
                                    ((1 << 30) | (1 << 0)));
                 fn_8002CCC0(work->selected->model, work->selected->motions[7], 0.0f, 5.0f,
@@ -761,7 +718,7 @@ void fn_1_42C(void) {
             work->selected->position.y += 60.0f;
             work->selected->position.x += 20.0f;
             work->selected->position.z += 10.0f;
-            if (work->frame >= M680_PICKUP_ANIMATION_FRAMES) {
+            if (work->frame >= 15) {
                 node = work->players->next;
             while (node) {
                     player = node->player;
@@ -784,7 +741,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_ELIMINATION_DELAY:
             work->frame++;
-            if (work->frame >= M680_PICKUP_ANIMATION_FRAMES) {
+            if (work->frame >= 15) {
                 work->state = M680_SEQUENCE_STATE_ROUND_RESULT;
                 break;
             }
@@ -830,7 +787,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_ROUND_TRANSITION_DELAY:
             work->frame++;
-            if (work->frame >= M680_ROUND_TRANSITION_DELAY_FRAMES) {
+            if (work->frame >= 45) {
                 if (work->result != 0) {
                     HuAudFXPlay(MSM_SE_M680_STAGE_PROGRESS);
                     fn_1_BE08(fn_1_A0E4, work);
@@ -845,7 +802,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_WAIT_FOR_ROUND_TRANSITION:
             work->frame++;
-            if (work->frame >= M680_VICTORY_DELAY_FRAMES) {
+            if (work->frame >= 30) {
                 if (work->roundWins >= 5) {
                     work->state = M680_SEQUENCE_STATE_FINAL_ROUND;
                     break;
@@ -855,7 +812,7 @@ void fn_1_42C(void) {
             }
             break;
         case M680_SEQUENCE_STATE_SET_WINNING_PIECES:
-            for (index = 0; index < M680_GRID_NODE_COUNT; index++) {
+            for (index = 0; index < 10; index++) {
                 if (work->grid[index].ready == 0) {
                     work->grid[index].state = M680_PIECE_STATE_WINNER;
                 }
@@ -867,7 +824,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_WAIT_FOR_FINAL_STAGE_TURN:
             work->frame++;
-            if (work->frame == M680_SEQUENCE_DELAY_60_FRAMES) {
+            if (work->frame == 60) {
                 HuAudFXPlay(MSM_SE_M680_STAGE_PROGRESS);
                 fn_1_BE08(fn_1_A234, work);
                 work->transitionTimer = 0;
@@ -877,17 +834,17 @@ void fn_1_42C(void) {
                     fn_8002D414(work->markers[index], 0.0f);
                 }
             }
-            for (index = 0; index < M680_GRID_NODE_COUNT; index++) {
+            for (index = 0; index < 10; index++) {
                 if (work->grid[index].state != 0) {
                     break;
                 }
             }
-            if (index == M680_GRID_NODE_COUNT) {
+            if (index == 10) {
                 fn_800269E8(work->models[5], (1 << 0));
                 fn_80026A44(work->models[6], (1 << 0));
                 fn_80026A44(work->models[3], (1 << 0));
                 fn_800269E8(work->models[4], (1 << 0));
-                if (work->frame < M680_SEQUENCE_DELAY_60_FRAMES) {
+                if (work->frame < 60) {
                     HuAudFXPlay(MSM_SE_M680_STAGE_PROGRESS);
                     fn_1_BE08(fn_1_A234, work);
                     work->transitionTimer = 0;
@@ -904,8 +861,8 @@ void fn_1_42C(void) {
             }
             break;
         case M680_SEQUENCE_STATE_WAIT_FOR_STAGE_TURN_END:
-            if (work->transitionTimer >= M680_STAGE_TRANSITION_FRAMES) {
-                fn_1_99B4(&work->transitions[0], M680_SEQUENCE_DELAY_15_FRAMES, 0);
+            if (work->transitionTimer >= 240) {
+                fn_1_99B4(&work->transitions[0], 15, 0);
                 work->gridIndex = 0;
                 work->frame = 0;
                 work->state += 1;
@@ -914,35 +871,35 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_START_FIRST_GROUP_REVEAL:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_15_FRAMES) {
-                fn_1_99B4(&work->transitions[1], M680_GRID_NODE_COUNT, 0);
+            if (work->frame >= 15) {
+                fn_1_99B4(&work->transitions[1], 10, 0);
                 work->state += 1;
                 break;
             }
             break;
         case M680_SEQUENCE_STATE_REVEAL_FIRST_GROUP:
             work->frame++;
-            if (work->frame >= M680_STAGE_MARKER_STEP_FRAMES) {
+            if (work->frame >= 12) {
                 count = 9 - work->gridIndex;
                 work->grid[count].state = M680_PIECE_STATE_FIRST_GROUP;
                 fn_80026A44(work->grid[count].model, (1 << 0));
                 work->gridIndex += 1;
                 work->frame = 0;
-                if (work->gridIndex >= M680_GRID_NODE_COUNT) {
+                if (work->gridIndex >= 10) {
                     work->state += 1;
                     break;
                 }
             }
             break;
         case M680_SEQUENCE_STATE_WAIT_FOR_FIRST_GROUP_CLEAR:
-            if (work->frame < M680_SEQUENCE_FRAME_LIMIT) {
+            if (work->frame < 31) {
                 work->frame++;
             }
-            if (work->frame == M680_VICTORY_DELAY_FRAMES) {
-                fn_1_99B4(&work->transitions[0], M680_SEQUENCE_DELAY_15_FRAMES, 1);
+            if (work->frame == 30) {
+                fn_1_99B4(&work->transitions[0], 15, 1);
             }
             if ((s16) !work->grid[0].state) {
-                fn_1_99B4(&work->transitions[1], M680_GRID_NODE_COUNT, 1);
+                fn_1_99B4(&work->transitions[1], 10, 1);
                 work->frame = 0;
                 work->state += 1;
                 break;
@@ -950,12 +907,12 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_START_SECOND_GROUP_REVEAL:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_15_FRAMES) {
+            if (work->frame >= 15) {
                 fn_80026A44(work->models[5], (1 << 0));
                 fn_800269E8(work->models[6], (1 << 0));
                 fn_800269E8(work->models[3], (1 << 0));
                 fn_80026A44(work->models[4], (1 << 0));
-                fn_1_99B4(&work->transitions[2], M680_GRID_NODE_COUNT, 0);
+                fn_1_99B4(&work->transitions[2], 10, 0);
                 work->frame = 0;
                 work->gridIndex = 0;
                 work->state += 1;
@@ -964,30 +921,30 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_REVEAL_SECOND_GROUP:
             work->frame++;
-            if (work->frame >= M680_STAGE_MARKER_STEP_FRAMES) {
+            if (work->frame >= 12) {
                 count = 9 - work->gridIndex;
                 work->grid[count].state = M680_PIECE_STATE_SECOND_GROUP;
                 work->gridIndex += 1;
                 work->frame = 0;
-                if (work->gridIndex >= M680_GRID_NODE_COUNT) {
+                if (work->gridIndex >= 10) {
                     work->state += 1;
                     break;
                 }
             }
             break;
         case M680_SEQUENCE_STATE_WAIT_FOR_SECOND_GROUP_CLEAR:
-            if (work->frame < M680_STAGE_REVERSE_FRAME_LIMIT) {
+            if (work->frame < 25) {
                 work->frame++;
             }
-            if (work->frame == M680_STAGE_REVERSE_START_FRAME) {
-                fn_1_99B4(&work->transitions[2], M680_GRID_NODE_COUNT, 1);
+            if (work->frame == 24) {
+                fn_1_99B4(&work->transitions[2], 10, 1);
             }
-            for (index = 0; index < M680_GRID_NODE_COUNT; index++) {
+            for (index = 0; index < 10; index++) {
                 if (work->grid[index].state != 0) {
                     break;
                 }
             }
-            if (index == M680_GRID_NODE_COUNT) {
+            if (index == 10) {
                 work->frame = 0;
                 work->state += 1;
                 break;
@@ -995,7 +952,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_FINAL_STAGE_DELAY:
             work->frame++;
-            if (work->frame >= M680_SEQUENCE_DELAY_60_FRAMES) {
+            if (work->frame >= 60) {
                 work->state = 0;
                 break;
             }
@@ -1027,7 +984,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_PLAYER_RESULT_WAIT:
             work->frame++;
-            if (work->frame >= M680_STAGE_TRANSITION_START_FRAMES) {
+            if (work->frame >= 30) {
                 HuAudFXPlay(MSM_SE_M680_STAGE_PROGRESS);
                 fn_1_BE08(fn_1_A0E4, work);
                 work->transitionTimer = 0;
@@ -1038,7 +995,7 @@ void fn_1_42C(void) {
             break;
         case M680_SEQUENCE_STATE_STAGE_PROGRESS:
             work->frame++;
-            if (work->frame >= M680_STAGE_TRANSITION_WAIT_FRAMES) {
+            if (work->frame >= 90) {
                 if (work->round >= 3) {
                     work->state = M680_SEQUENCE_STATE_ADVANCE_MINIGAME;
                     break;
@@ -1219,8 +1176,8 @@ void fn_1_1B0C(void)
     fn_800285BC();
     light = Hu3DGLightCreate(target.x, target.y, target.z,
                              direction.x, direction.y, direction.z,
-                             M680_LIGHT_AMBIENT_COMPONENT, M680_LIGHT_AMBIENT_COMPONENT,
-                             M680_LIGHT_AMBIENT_COMPONENT);
+                             175, 175,
+                             175);
     Hu3DAmbColorSet(1.0f, 1.0f, 1.0f);
     Hu3DGLightStaticSet(light, 1);
     Hu3DGLightInfinitytSet(light);
@@ -1244,7 +1201,7 @@ void fn_1_1BF8(void)
     PSVECNormalize(&correctedUp, &correctedUp);
     Hu3DShadowCreate(45.0f, 20.0f, 20000.0f);
     Hu3DShadowPosSet(&position, &correctedUp, &target);
-    fn_8002AAB4(M680_SHADOW_COLOR_RED, M680_SHADOW_COLOR_GREEN, M680_SHADOW_COLOR_BLUE);
+    fn_8002AAB4(47, 31, 79);
 }
 
 /* Initializes model and motion handles, actor pointers, phase flags, input buttons and elimination
@@ -1756,12 +1713,12 @@ void fn_1_39D0(M680GridNode *work) {
             work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
             work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
             work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-            if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+            if (work->frames >= 12) {
                 work->steps++;
-                if (work->steps >= M680_PIECE_PATH_MAX_STEPS) {
+                if (work->steps >= 20) {
                     work->state++;
                     } else if ((work->column == 9) && (work->row == 7) &&
-                               (work->steps < M680_PIECE_MOVE_FRAMES)) {
+                               (work->steps < 12)) {
                     if ((board->gate.busy == 0) && (board->cells[10][7].state == 0) &&
                         (board->cells[10][8].state == 0)) {
                         board->cells[10][7].state = 1;
@@ -1823,7 +1780,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             if ((work->column == work->targetColumn) && (work->row == work->targetRow)) {
                 work->state = 9;
             } else if (board->repath != 0) {
@@ -1847,7 +1804,7 @@ void fn_1_39D0(M680GridNode *work) {
         /* fallthrough */
     case M680_PIECE_STATE_PATH_RETRY_WAIT:
         work->frames++;
-        if (work->frames >= M680_PIECE_RETRY_WAIT_FRAMES) {
+        if (work->frames >= 11) {
             work->state = 4;
         }
         break;
@@ -1883,7 +1840,7 @@ void fn_1_39D0(M680GridNode *work) {
         /* fallthrough */
     case M680_PIECE_STATE_GATE_APPROACH_WAIT:
         work->frames++;
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             work->steps++;
             work->state++;
         }
@@ -1908,7 +1865,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             work->steps++;
             work->state++;
         }
@@ -1928,7 +1885,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             work->steps++;
             work->state++;
         }
@@ -1948,7 +1905,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             work->steps++;
             work->state++;
         }
@@ -1966,7 +1923,7 @@ void fn_1_39D0(M680GridNode *work) {
         /* fallthrough */
     case M680_PIECE_STATE_GATE_RETURN_WAIT:
         work->frames++;
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             work->steps++;
             if (board->cells[10][7].state == 0) {
                 board->cells[10][7].state = 1;
@@ -2045,7 +2002,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             fn_1_A5F4(&board->gate.elapsedFrames, 1);
             work->steps++;
             work->state = 2;
@@ -2057,7 +2014,7 @@ void fn_1_39D0(M680GridNode *work) {
         /* fallthrough */
     case M680_PIECE_STATE_RESULT_RETRY_WAIT:
         work->frames++;
-        if (work->frames >= M680_PIECE_RETRY_WAIT_FRAMES) {
+        if (work->frames >= 11) {
             work->steps++;
             work->state = M680_PIECE_STATE_RESULT_MOVE;
         }
@@ -2085,7 +2042,7 @@ void fn_1_39D0(M680GridNode *work) {
         break;
     case M680_PIECE_STATE_WIN_RETRY_WAIT:
         work->frames++;
-        if (work->frames >= M680_STAGE_TRANSITION_START_FRAMES) {
+        if (work->frames >= 30) {
             work->steps += 7;
             work->state = 2;
         }
@@ -2118,7 +2075,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             if ((work->column == work->targetColumn) && (work->row == work->targetRow)) {
                 work->state++;
             } else {
@@ -2143,7 +2100,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->state++;
         /* fallthrough */
     case M680_PIECE_STATE_WINNER_START:
-        if ((work->row < M680_BOARD_LAST_CELL) &&
+        if ((work->row < 12) &&
             (board->cells[work->column][work->row + 1].state == 0)) {
             board->cells[work->column][work->row].state = 0;
             work->row++;
@@ -2158,7 +2115,7 @@ void fn_1_39D0(M680GridNode *work) {
                 fn_8002CCC0(work->model, work->motions[2], 0.0f, 5.0f,
                     ((1 << 30) | (1 << 0)));
             }
-        } else if ((work->column < M680_BOARD_LAST_CELL) &&
+        } else if ((work->column < 12) &&
                    (board->cells[work->column + 1][work->row].state == 0)) {
             board->cells[work->column][work->row].state = 0;
             work->column++;
@@ -2184,9 +2141,9 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
-            if ((work->column == M680_BOARD_LAST_CELL) &&
-                (work->row == M680_BOARD_LAST_CELL)) {
+        if (work->frames >= 12) {
+            if ((work->column == 12) &&
+                (work->row == 12)) {
                 work->state = M680_PIECE_STATE_WINNER_FINISH;
             } else {
                 work->state = M680_PIECE_STATE_WINNER_START;
@@ -2203,7 +2160,7 @@ void fn_1_39D0(M680GridNode *work) {
         /* fallthrough */
     case M680_PIECE_STATE_WINNER_WAIT:
         work->frames++;
-        if (work->frames >= M680_PIECE_RETRY_WAIT_FRAMES) {
+        if (work->frames >= 11) {
             work->state = M680_PIECE_STATE_WINNER_START;
         }
         break;
@@ -2229,8 +2186,8 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
-            if (work->column == M680_BOARD_LAST_CELL) {
+        if (work->frames >= 12) {
+            if (work->column == 12) {
                 work->state = 0;
             } else {
                 work->state = M680_PIECE_STATE_NEXT_ROUND;
@@ -2256,7 +2213,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_GROUP_REVEAL_FRAMES) {
+        if (work->frames >= 48) {
             work->state++;
         }
         break;
@@ -2275,7 +2232,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_GROUP_EXIT_FRAMES) {
+        if (work->frames >= 96) {
             fn_800269E8(work->model, (1 << 0));
             work->state++;
         }
@@ -2303,7 +2260,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             work->state++;
         }
         break;
@@ -2322,7 +2279,7 @@ void fn_1_39D0(M680GridNode *work) {
         work->position.x = work->destination.x * progress + work->start.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->start.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->start.z * (1.0f - progress);
-        if (work->frames >= M680_PIECE_MOVE_FRAMES) {
+        if (work->frames >= 12) {
             work->column = 3;
             work->row = 4;
             work->direction = 0;
@@ -2536,7 +2493,7 @@ void fn_1_6B38(M680GridNode *work)
             }
         } else {
             if (candidateDirections[0] != work->direction ||
-                frandmod(M680_COMPUTER_CHOICE_PERCENT) <
+                frandmod(100) <
                     work->searchAttempts * M680_SEARCH_ATTEMPT_PERCENT) {
                 offsetIndex = frandmod(candidateCount);
             } else {
@@ -3546,7 +3503,7 @@ s32 fn_1_9D9C(void *state) {
         fn_8002D414(effect->models[1], 0.0f);
         fn_80026790(effect->models[1], &position);
     }
-    if (effect->phase == M680_EFFECT_PHASE_THIRD) {
+    if (effect->phase == 11) {
         position.x = 105.0f;
         position.y = 180.0f;
         position.z = 1350.0f;

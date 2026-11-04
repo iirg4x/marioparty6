@@ -10,6 +10,7 @@
 #include "game/gamework.h"
 #include "datadir_enum.h"
 #include "REL/mgmtournamentdll/module_types.h"
+#include "game/hsfex.h"
 
 typedef struct TournamentCameraPair {
     Vec position; /* Camera location in world coordinates. */
@@ -22,7 +23,6 @@ void fn_1_14C8(OMOBJ *object);
 void fn_1_16F8(HU3D_CAMERA *camera, Vec *startPosition, Vec *startTarget, const Vec *endPosition,
                const Vec *endTarget, f32 durationFrames, f32 elapsedFrames);
 void fn_1_7C78(Vec *center);
-extern f32 InterpolateBMLine(f32 *samples, f32 *sampleTimes, f32 frame);
 
 HU3D_MOTIONID lbl_1_bss_C6; /* Opening camera animation. */
 HU3D_MODELID lbl_1_bss_C4; /* Model driving the opening camera animation. */

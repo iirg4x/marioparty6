@@ -4,6 +4,7 @@
 #include "game/audio.h"
 #include "game/mg/seqman.h"
 #include "game/charman.h"
+#include "REL/m630dll.h"
 
 void fn_1_F0(s16 mode, s16 frameNo);
 void fn_1_3BC(s16 mode, s16 frameNo);
@@ -14,14 +15,6 @@ void fn_1_448(s16 mode, s16 frameNo);
 void fn_1_474(s16 mode, s16 frameNo);
 void fn_1_494(s16 mode, s16 frameNo);
 void fn_1_4B4(s16 mode, s16 frameNo);
-void fn_1_4E8(void);
-void fn_1_5D0(void);
-void fn_1_AF0(void);
-int fn_1_594(void);
-void fn_1_B50(void);
-int fn_1_1670(void);
-void fn_1_1E70(void);
-void fn_1_1E90(void);
 
 MGSEQ_PARAM lbl_1_data_0 = {
     30, 2, fn_1_F0, fn_1_3BC, fn_1_3DC, fn_1_3FC, fn_1_428,

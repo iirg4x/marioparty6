@@ -1,8 +1,8 @@
 /* Module entry and exit hooks run the registered static initializers and finalizers. */
+#include "REL/m612dll.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
 
 /* The loader calls this entry point before the Memory Lane scene is initialized. */
 int _prolog(void)

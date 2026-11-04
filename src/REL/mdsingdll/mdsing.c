@@ -21,7 +21,6 @@ int HuAudSStreamPlay(s16 streamId);
 int HuAudJinglePlay(s16 streamId);
 s32 CharFXPlay(s16 charNo, s16 seId);
 BOOL SLSaveFlagGet(void);
-s32 SLSaveCheck(void);
 #endif
 #include "game/board/main.h"
 #include "game/charman.h"
@@ -444,7 +443,6 @@ static inline s16 fn_1_19A20_for_1B5EC(void);
 static inline void fn_1_64C_inlined_2(void);
 static inline void fn_1_7900_inlined(void);
 static inline s16 fn_1_2EF24_inlined_2(void);
-static inline s16 mdsingCoinBonusGet(s32 playerNo);
 static inline s32 fn_1_1A494_for_20624(void);
 static inline void fn_1_5E8_for_20624(void);
 static inline void fn_1_1DCE0_for_20624(void);
@@ -5953,12 +5951,6 @@ void fn_1_1F30C(void)
     }
 }
 
-/* Read a player's board coin bonus when choosing the Solo return sequence. */
-static inline s16 mdsingCoinBonusGet(s32 playerNo)
-{
-    return lbl_80265750[playerNo].mgCoinBonus;
-}
-
 /* When the guide's X is above -200, request its return, close dialogue and wait ninety ticks,
  * even if the movement helper declines the request. */
 static inline s32 fn_1_1A494_for_20624(void)
@@ -6018,7 +6010,7 @@ s16 fn_1_20624(s16 mode)
     HuPrcSleep(5);
     if (lbl_1_bss_28 == 0 || lbl_1_bss_28 == 2) {
         lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_W01);
-    } else if (lbl_1_bss_28 == 1 && mdsingCoinBonusGet(0) == 1) {
+    } else if (lbl_1_bss_28 == 1 && GWMgCoinBonusGet(0) == 1) {
         lbl_1_data_320[1] = HuAudSStreamPlay(MSM_STREAM_MGINST);
     } else {
         lbl_1_data_320[2] = HuAudSStreamPlay(MSM_STREAM_RESULT);
@@ -7764,7 +7756,7 @@ s32 fn_1_2C158(void)
     Vec positions[2] = {
         { 0.0f, 0.0f, 0.0f }, { 350.0f, 0.0f, 1000.0f }
     };
-    if (mdsingCoinBonusGet(0) == -1) {
+    if (GWMgCoinBonusGet(0) == -1) {
         result = fn_1_2AD60();
     } else {
         fn_8003D070();

@@ -40,6 +40,11 @@ typedef struct M680CharacterState {
 
 void fn_1_AB70(s32 count, M680PlayerRankEntry *entries);
 void fn_1_6538(M680CharacterState *work, s32 player);
+void fn_1_AD38(OMOBJ *object);
+void fn_1_B844(M680CharacterState *work, s32 targetIndex, s32 speedIndex);
+void fn_1_BAF8(M680CharacterState *state);
+void fn_1_A0(void);
+void fn_1_9600(void);
 
 extern u32 lbl_1_data_6C0[10];
 
