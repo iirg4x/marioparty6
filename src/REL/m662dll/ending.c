@@ -23,15 +23,9 @@
 #include "datadir_enum.h"
 #include "REL/m662dll/game.h"
 
-extern void fn_1_4EFC(s32, s32);
-extern void fn_1_984(void);
-extern void fn_1_2670(void);
-extern s32 fn_1_48E8(void *, s32);
-extern s32 fn_1_57A8(void);
 s32 fn_1_A7A4(void);
 static void fn_1_ADD8(M662Player *);
 extern s32 fn_1_2DA0(f32 *, f32, f32, f32);
-extern void fn_1_5008(s16, s16, void *);
 
 /* Finish-phase callback: requests the main music fade and keeps input, ending camera and scene
  * updates running. */

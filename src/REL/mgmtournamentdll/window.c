@@ -25,12 +25,6 @@ typedef struct TournamentMessageSound {
 TournamentWindow lbl_1_bss_C8;
 extern int MgModeWorkInt[16];
 extern s32 lbl_1_data_848;
-void fn_1_5728(void);
-s32 fn_1_6A24(void);
-void fn_1_71E8(s16 *firstPlayer, s16 *secondPlayer);
-s16 fn_1_7BC0(s16 player);
-s16 fn_1_7C00(s16 player);
-s16 fn_1_7C44(s16 player);
 void fn_1_2D1C(HUWINID windowId, u32 messageId, s16 callbackCode);
 s32 lbl_1_data_140[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 s32 lbl_1_data_160[14] = {

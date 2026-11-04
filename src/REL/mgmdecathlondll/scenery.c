@@ -233,7 +233,6 @@ typedef struct MgmDecathlonAnimationData_s {
 } MgmDecathlonAnimationData;
 
 extern u8 MgModePlayNum;
-extern s16 fn_1_9784(s16 playerNo);
 
 /* Mode setup prepares the hidden announcement actor and the symbols for all ten events. */
 void fn_1_75C4(void) {
@@ -567,10 +566,6 @@ void fn_1_87EC(void) {
         lbl_1_bss_90->work[2] = 1;
     }
 }
-
-extern void fn_1_9E50(Vec *center);
-extern s32 fn_1_FB2C(Vec *direction, Vec *unitDirection);
-extern f64 fn_1_FD44(Vec first, Vec second);
 
 /* Accepts the spectator audio status without changing the scene. */
 static inline void DebugValue(u32 audioStatusBits) { }

@@ -32,5 +32,15 @@ typedef struct M625MotionState {
 
 extern M625MotionState lbl_1_bss_4B8[13];
 extern HU3D_MODELID lbl_1_bss_7C4;
+void fn_1_11040(void);
+void fn_1_11470(Point3d position);
+void fn_1_11698(void);
+void fn_1_11700(void);
+s32 fn_1_12254(Point3d position, Point3d *movement, f32 collisionRadius);
+void fn_1_12560(void);
+s16 fn_1_12700(void);
+s16 fn_1_12760(void);
+s32 fn_1_12768(s16 effectIndex);
+void fn_1_127B0(s16 effectIndex, Point3d *position);
 
 #endif

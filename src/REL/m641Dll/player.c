@@ -57,27 +57,16 @@
 
 typedef struct {
     s16 motionId;       /* Character motion-table index, or -1 when unused. */
-    s16 padding;        /* Unused two-byte padding between the motion ID and blend duration. */
     f32 blendTime;      /* Motion blend duration in frames. */
     u32 attributes;     /* Character-model attributes applied with this motion. */
     s32 voiceEnabled;   /* Nonzero enables character voice and effect cues. */
 } M641MotionInfo;
-
-#define M641_MOTION_COUNT 14
-
-#define M641_CHARACTER_MOTION_COUNT 13
-
-#define M641_MOVEMENT_STATE_HIT_REACTION 10
 
 #define M641_MOVEMENT_STATE_COLLISION_LAUNCH 11
 
 #define M641_MOVEMENT_STATE_COLLISION_AIRBORNE 12
 
 #define M641_MOVEMENT_STATE_COLLISION_LANDING 13
-
-#define M641_MOTION_INDEX_WIN 12
-
-#define M641_MOTION_INDEX_LOSS 13
 
 #define M641_STICK_LIMIT 56
 
@@ -119,20 +108,20 @@ Point3d lbl_1_data_2DC[2][4] = {
 f32 lbl_1_data_33C[2] = {-140.0f, 140.0f};
 
 M641MotionInfo lbl_1_data_344[14] = {
-    {0, 0, 0.0f, ((1 << 30) | (1 << 0)), 1},
-    {0, 0, 8.0f, ((1 << 30) | (1 << 0)), 1},
-    {1, 0, 8.0f, ((1 << 30) | (1 << 0)), 1},
-    {2, 0, 8.0f, ((1 << 30) | (1 << 0)), 1},
-    {3, 0, 8.0f, ((1 << 30) | (1 << 0)), 1},
-    {4, 0, 0.0f, ((1 << 30) | (1 << 0)), 1},
-    {5, 0, 0.0f, ((1 << 30) | (1 << 0)), 1},
-    {6, 0, 0.0f, ((1 << 30) | (1 << 0)), 1},
-    {7, 0, 0.0f, ((1 << 30) | (1 << 0)), 1},
-    {8, 0, 8.0f, ((1 << 30) | (1 << 0)), 0},
-    {9, 0, 8.0f, ((1 << 30) | (1 << 0)), 1},
-    {10, 0, 4.0f, ((1 << 30) | (1 << 0)), 1},
-    {11, 0, 8.0f, ((1 << 30) | (1 << 0)), 1},
-    {12, 0, 8.0f, ((1 << 30) | (1 << 0)), 1}
+    {0, 0.0f, ((1 << 30) | (1 << 0)), 1},
+    {0, 8.0f, ((1 << 30) | (1 << 0)), 1},
+    {1, 8.0f, ((1 << 30) | (1 << 0)), 1},
+    {2, 8.0f, ((1 << 30) | (1 << 0)), 1},
+    {3, 8.0f, ((1 << 30) | (1 << 0)), 1},
+    {4, 0.0f, ((1 << 30) | (1 << 0)), 1},
+    {5, 0.0f, ((1 << 30) | (1 << 0)), 1},
+    {6, 0.0f, ((1 << 30) | (1 << 0)), 1},
+    {7, 0.0f, ((1 << 30) | (1 << 0)), 1},
+    {8, 8.0f, ((1 << 30) | (1 << 0)), 0},
+    {9, 8.0f, ((1 << 30) | (1 << 0)), 1},
+    {10, 4.0f, ((1 << 30) | (1 << 0)), 1},
+    {11, 8.0f, ((1 << 30) | (1 << 0)), 1},
+    {12, 8.0f, ((1 << 30) | (1 << 0)), 1}
 };
 
 s16 lbl_1_data_424[4] = {0, 0, 0, 0};
@@ -149,7 +138,7 @@ void fn_1_9F7C(s16 playerIndex, s16 motionIndex) {
     s16 characterMotionIndex;
 
     if ((playerIndex < 0) || (playerIndex >= 4) || (motionIndex < 0) ||
-        (motionIndex >= M641_MOTION_COUNT)) {
+        (motionIndex >= 14)) {
         return;
     }
     if (motionIndex != lbl_1_bss_590[playerIndex].currentMotion) {
@@ -199,22 +188,6 @@ void fn_1_31C(s16 mode, s16 frameNo);
 void fn_1_320(s16 mode, s16 frameNo);
 
 void fn_1_10278(void);
-
-void fn_1_1403C(s16 groupIndex, s16 playerIndex, s32 amount);
-
-f32 fn_1_1D80();
-
-f32 fn_1_1DB4();
-
-f32 fn_1_1DC4();
-
-s32 fn_1_540(Point3d *first, f32 firstRadius, f32 firstExtent, Point3d *firstDisplacement,
-             Point3d *second, f32 secondRadius, f32 secondExtent, Point3d *secondDisplacement);
-
-s16 fn_1_8400(s16 boardIndex, s16 participant, Point3d *position, Point3d *displacement, f32 radius,
-              f32 height, s16 *kind, Point3d *contact);
-
-void fn_1_9EC8(s16 effectId, Point3d *position);
 
 void fn_1_C368(s16 playerIndex);
 
@@ -281,7 +254,7 @@ void fn_1_A220(void) {
             M641_COLLISION_RECOVERY_STATE_RESULT_SEQUENCE;
         lbl_1_bss_590[playerIndex].modelId =
             fn_80057068(lbl_1_bss_590[playerIndex].characterNo, 8);
-        for (motionIndex = 0; motionIndex < M641_CHARACTER_MOTION_COUNT; motionIndex++) {
+        for (motionIndex = 0; motionIndex < 13; motionIndex++) {
             lbl_1_bss_590[playerIndex].motionIds[motionIndex] = fn_8005B0B8(
                 lbl_1_bss_590[playerIndex].characterNo, lbl_1_data_2A8[motionIndex]);
         }
@@ -575,7 +548,7 @@ void fn_1_B108(void) {
                 fn_1_9EC8(lbl_1_bss_590[index].groupNo, secondHit);
             } else if ((lbl_1_bss_590[index].movementState != 8) &&
                        (lbl_1_bss_590[index].movementState != 9) &&
-                       (lbl_1_bss_590[index].movementState != M641_MOVEMENT_STATE_HIT_REACTION) &&
+                       (lbl_1_bss_590[index].movementState != 10) &&
                        (lbl_1_bss_590[index].movementState !=
                         M641_MOVEMENT_STATE_COLLISION_LAUNCH) &&
                        (lbl_1_bss_590[index].movementState !=
@@ -600,7 +573,7 @@ void fn_1_B108(void) {
                 CharFXPlayPan(lbl_1_bss_590[index].characterNo, 582, (s16)scalarValue));
             } else if ((lbl_1_bss_590[index].movementState != 8) &&
                        (lbl_1_bss_590[index].movementState != 9) &&
-                       (lbl_1_bss_590[index].movementState != M641_MOVEMENT_STATE_HIT_REACTION) &&
+                       (lbl_1_bss_590[index].movementState != 10) &&
                        (lbl_1_bss_590[index].movementState !=
                         M641_MOVEMENT_STATE_COLLISION_LAUNCH) &&
                        (lbl_1_bss_590[index].movementState !=
@@ -635,7 +608,7 @@ void fn_1_B108(void) {
                 fn_1_9EC8(lbl_1_bss_590[index].groupNo, fourthHit);
             } else if ((lbl_1_bss_590[index].movementState != 8) &&
                        (lbl_1_bss_590[index].movementState != 9) &&
-                       (lbl_1_bss_590[index].movementState != M641_MOVEMENT_STATE_HIT_REACTION) &&
+                       (lbl_1_bss_590[index].movementState != 10) &&
                        (lbl_1_bss_590[index].movementState !=
                         M641_MOVEMENT_STATE_COLLISION_LAUNCH) &&
                        (lbl_1_bss_590[index].movementState !=
@@ -771,8 +744,8 @@ void fn_1_C368(s16 playerIndex) {
             if ((velocity.x > 0.0f) && (lbl_1_bss_590[playerIndex].rotation.y >= 90.0f)) {
                 lbl_1_bss_590[playerIndex].velocity = velocity;
             }
-            if ((lbl_1_bss_590[playerIndex].currentMotion != M641_MOTION_INDEX_WIN) &&
-                (lbl_1_bss_590[playerIndex].currentMotion != M641_MOTION_INDEX_LOSS)) {
+            if ((lbl_1_bss_590[playerIndex].currentMotion != 12) &&
+                (lbl_1_bss_590[playerIndex].currentMotion != 13)) {
                 if (lbl_1_bss_590[playerIndex].stickX != 0) {
                     threshold = 28;
                     threshold = threshold * threshold;
@@ -1087,7 +1060,7 @@ void fn_1_FE64(s16 playerIndex) {
     lbl_1_bss_590[playerIndex].velocity = movementVelocity;
 }
 
-extern Point3d lbl_1_data_180[14];
+extern Point3d lbl_1_data_180[2][7];
 
 /* Fade-in, finish, main, pre-winner, and start updates tilt the character toward its movement
  * direction here. */
@@ -1169,11 +1142,7 @@ void fn_1_10530(void)
     fn_1_B108();
 }
 
-extern s16 fn_1_141A4(s16 playerIndex);
-
 extern s16 fn_1_9B30(s16 boardIndex);
-
-extern void fn_1_9CD0(s16 boardIndex, s16 spaceIndex, Point3d *position, s16 *state);
 
 s16 lbl_1_data_464[4] = {0, 0, 0, 0};
 
@@ -1344,8 +1313,6 @@ void fn_1_10D10(void) {
 M641CharacterRecord lbl_1_bss_590[4];
 
 Point3d lbl_1_bss_560[4];
-
-extern s16 fn_1_141A4(s16 playerIndex);
 
 void fn_1_10550(s16 groupNo);
 

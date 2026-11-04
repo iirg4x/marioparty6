@@ -19,7 +19,6 @@ typedef struct DecathlonModelGroup {
     HU3D_MODELID resultModels[4][10]; /* decimal digit models for the remaining event award */
 } DecathlonModelGroup;
 
-extern s16 fn_1_9744(s16 playerNo);
 extern void fn_1_C6C8(OMOBJ *obj);
 extern void fn_1_C344(s16 enabled);
 extern void fn_1_D518(s16 playerNo, s16 positionNo);

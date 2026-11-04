@@ -20,6 +20,7 @@
 #include "game/frand.h"
 #include "game/mgdata.h"
 #include "game/window.h"
+#include "REL/resultDll.h"
 typedef struct ResultDisplay {
     s32 rankSprite[2]; /* Current and projected rank badges. */
     s32 placeSprite; /* The player's numeric place. */
@@ -41,10 +42,6 @@ extern s16 lbl_1_bss_628;
 extern OMOBJMAN *lbl_1_bss_62C;
 extern OMOBJ *lbl_1_bss_630;
 extern void fn_1_560(void);
-extern void fn_1_49C4(void);
-extern void fn_1_7A18(void);
-
-#define RESULT_SPRITE_HIDDEN 4
 
 extern s32 lbl_1_bss_2C;
 extern s16 lbl_1_bss_1C;
@@ -86,7 +83,6 @@ extern s32 lbl_1_bss_620;
 void fn_1_47A8(void);
 void fn_1_1074(void);
 void fn_1_940(void);
-s32 fn_1_C45C(s32 dataNum);
 void fn_1_2068(void);
 s32 fn_1_45D0(s32 player);
 void fn_1_3698(void);
@@ -116,7 +112,6 @@ extern Point3d lbl_1_data_1A4[4];
 
 extern s32 lbl_1_data_240[2];
 
-s32 fn_1_C45C(s32 dataNum);
 s32 fn_1_45D0(s32 player);
 
 void fn_1_31F0(s32 player, s32 value);
@@ -813,8 +808,8 @@ void fn_1_2878(void)
     }
     if (unchangedCount >= 4) {
         for (player = 0; player < 4; player++) {
-            espAttrSet(lbl_1_bss_488[player].rankSprite[0], RESULT_SPRITE_HIDDEN);
-            espAttrReset(lbl_1_bss_488[player].rankSprite[1], RESULT_SPRITE_HIDDEN);
+            espAttrSet(lbl_1_bss_488[player].rankSprite[0], 4);
+            espAttrReset(lbl_1_bss_488[player].rankSprite[1], 4);
         }
         lbl_1_bss_8 = 1;
         return;
@@ -888,8 +883,8 @@ void fn_1_2EBC(void)
             if (lbl_1_bss_5F4[player] != lbl_1_bss_5EC[player]) {
                 if (switchRank != 0) {
                     espBankSet(lbl_1_bss_488[player].placeSprite, lbl_1_bss_5EC[player]);
-                    espAttrSet(lbl_1_bss_488[player].rankSprite[0], RESULT_SPRITE_HIDDEN);
-                    espAttrReset(lbl_1_bss_488[player].rankSprite[1], RESULT_SPRITE_HIDDEN);
+                    espAttrSet(lbl_1_bss_488[player].rankSprite[0], 4);
+                    espAttrReset(lbl_1_bss_488[player].rankSprite[1], 4);
                 }
                 espScaleSet(lbl_1_bss_488[player].placeSprite,
                             lbl_1_bss_24 * lbl_1_data_204[lbl_1_bss_5EC[player]],

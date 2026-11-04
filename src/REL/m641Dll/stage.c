@@ -114,18 +114,11 @@ typedef struct M641CameraConfiguration {
 #define M641_HU3D_SHADOW_FLAGS 0x40000004
 #define M641_HU3D_MOTATTR_FLAG 0x40000000
 
-#define M641_SCHEDULE_ENTRY_COUNT 60
-
-#define M641_MOTION_INFO_COUNT 14
-
 #define M641_SCHEDULE_GROUP_DURATION_FRAMES 600
-#define M641_SCHEDULE_RANDOM_OFFSET_FRAMES 60
-#define M641_SCHEDULE_SPLIT_FRAME 900
 #define M641_SCHEDULE_MAX_FRAME 1770
 #define M641_SCHEDULE_LATE_BASE_FRAME 1680
 #define M641_SCHEDULE_SECOND_LATE_BASE_FRAME 1740
 #define M641_SCHEDULE_FINAL_STEP_FRAMES 10
-#define M641_SCHEDULE_FINAL_RANDOM_OFFSET_COUNT 10
 #define M641_SCHEDULE_END_FRAME 1800
 #define M641_SPACE_FADE_TIMER_FRAMES 120
 #define M641_SHORT_SPACE_FADE_TIMER_FRAMES 90
@@ -145,12 +138,17 @@ M641CameraConfiguration lbl_1_data_0[2][2] = {
     }
 };
 
-Point3d lbl_1_data_180[14] = {
+Point3d lbl_1_data_180[2][7] = {
+    {
     {-420.0f, 350.0f, 0.0f}, {-280.0f, 350.0f, 0.0f}, {-140.0f, 350.0f, 0.0f},
     {0.0f, 350.0f, 0.0f}, {140.0f, 350.0f, 0.0f}, {280.0f, 350.0f, 0.0f},
-    {420.0f, 350.0f, 0.0f}, {-420.0f, 100.0f, 0.0f}, {-280.0f, 100.0f, 0.0f},
+    {420.0f, 350.0f, 0.0f},
+    },
+    {
+    {-420.0f, 100.0f, 0.0f}, {-280.0f, 100.0f, 0.0f},
     {-140.0f, 100.0f, 0.0f}, {0.0f, 100.0f, 0.0f}, {140.0f, 100.0f, 0.0f},
     {280.0f, 100.0f, 0.0f}, {420.0f, 100.0f, 0.0f},
+    },
 };
 
 s16 lbl_1_data_228[6][2] = {
@@ -168,7 +166,6 @@ s32 lbl_1_data_248 = -1;
 
 typedef struct M641LightConfiguration {
     HU3D_LIGHTID primaryLight;
-    s16 padding; /* Unused two-byte alignment padding before primaryPosition. */
     HuVecF primaryPosition;
     HuVecF primaryDirection;
     GXColor primaryColor;
@@ -180,7 +177,7 @@ typedef struct M641LightConfiguration {
 } M641LightConfiguration;
 
 M641LightConfiguration lbl_1_data_24C = {
-    0, 0,
+    0,
     {0.0f, 3000.0f, 3000.0f},
     {0.0f, -1.0f, -1.0f},
     {255, 255, 255, 255},
@@ -281,22 +278,6 @@ void fn_1_15FC(void) {
 
 extern Point3d lbl_1_bss_C;
 
-extern s32 fn_1_E10(const Point3d *firstPosition, const Point3d *firstDisplacement,
-                    f32 firstRadius, const Point3d *secondPosition,
-                    const Point3d *secondDisplacement, f32 secondRadius,
-                    f32 *result);
-
-extern void fn_1_146B8(Point3d *source, Point3d *destination);
-
-s32 fn_1_8C(Point3d *first, Point3d *firstDisplacement, f32 firstRadius, Point3d *second,
-            Point3d *secondDisplacement, f32 secondRadius);
-
-s32 fn_1_540(Point3d *first, f32 firstRadius, f32 firstExtent, Point3d *firstDisplacement,
-             Point3d *second, f32 secondRadius, f32 secondExtent, Point3d *secondDisplacement);
-
-s32 fn_1_8C8(Point3d *first, f32 firstRadius, f32 firstExtent, Point3d *second, f32 secondRadius,
-             f32 secondExtent);
-
 extern f32 lbl_1_bss_20;
 
 extern s16 lbl_1_bss_24[6];
@@ -366,7 +347,7 @@ void fn_1_1798(void) {
             fn_80025A04(fn_80008DD0(DATANUM(0x640000, 1), 0x10000000, 2));
         lbl_1_bss_24[4] =
             fn_80025A04(fn_80008DD0(DATANUM(0x640000, 3), 0x10000000, 2));
-        lbl_1_bss_20 = 4.0f + lbl_1_data_180[7].y;
+        lbl_1_bss_20 = 4.0f + lbl_1_data_180[1][0].y;
         lbl_1_bss_24[5] = fn_80025A04(
             fn_80008DD0(DATANUM(0x640000, 11), 0x10000000, 2));
         fn_80026B64(lbl_1_bss_24[5], 3);
@@ -396,9 +377,9 @@ void fn_1_1798(void) {
         fn_80027080(lbl_1_bss_24[0], lbl_1_data_28C);
     }
     if (lbl_1_bss_7DC == 0) {
-        lbl_1_bss_558[0] = lbl_1_data_180[0].y;
+        lbl_1_bss_558[0] = lbl_1_data_180[0][0].y;
     } else {
-        lbl_1_bss_558[0] = lbl_1_data_180[7].y;
+        lbl_1_bss_558[0] = lbl_1_data_180[1][0].y;
     }
     fn_1_1DD4();
 }
@@ -410,7 +391,7 @@ void fn_1_1D7C(void) {
  * position here. */
 f32 fn_1_1D80(void) {
     if (lbl_1_bss_7DC == 0) {
-        return lbl_1_data_180[0].y;
+        return lbl_1_data_180[0][0].y;
     }
     return 1500.0f;
 }
@@ -630,11 +611,11 @@ void fn_1_1DD4(void) {
 
     if (lbl_1_bss_7DC == 0) {
         for (entryIndex = 0; entryIndex < 7; entryIndex++) {
-            lbl_1_bss_30[entryIndex] = ((Point3d (*)[7])lbl_1_data_180)[0][entryIndex];
+            lbl_1_bss_30[entryIndex] = lbl_1_data_180[0][entryIndex];
         }
     } else {
         for (entryIndex = 0; entryIndex < 7; entryIndex++) {
-            lbl_1_bss_30[entryIndex] = ((Point3d (*)[7])lbl_1_data_180)[1][entryIndex];
+            lbl_1_bss_30[entryIndex] = lbl_1_data_180[1][entryIndex];
         }
     }
 
@@ -696,7 +677,7 @@ void fn_1_2DD8(void) {
     for (boardIndex = 0; boardIndex < 2; boardIndex++) {
         lbl_1_bss_84.boards[boardIndex].nextScheduled = 0;
         lbl_1_bss_84.boards[boardIndex].queueCount = 0;
-        for (groupIndex = 0; groupIndex < M641_SCHEDULE_ENTRY_COUNT; groupIndex++) {
+        for (groupIndex = 0; groupIndex < 60; groupIndex++) {
             lbl_1_bss_84.boards[boardIndex].scheduledTime[groupIndex] = -1;
             lbl_1_bss_84.boards[boardIndex].scheduledType[groupIndex] = -1;
             lbl_1_bss_84.boards[boardIndex].queuedType[groupIndex] = -1;
@@ -709,9 +690,9 @@ void fn_1_2DD8(void) {
         for (entryIndex = 0; entryIndex < countTable[groupIndex]; entryIndex++, positionIndex++) {
             lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] =
                 groupIndex * M641_SCHEDULE_GROUP_DURATION_FRAMES +
-                frandmod(M641_SCHEDULE_RANDOM_OFFSET_FRAMES);
+                frandmod(60);
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] >
-                M641_SCHEDULE_SPLIT_FRAME) {
+                900) {
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] +=
                     (M641_SCHEDULE_GROUP_DURATION_FRAMES / (countTable[groupIndex] + 1)) *
                     entryIndex;
@@ -734,7 +715,7 @@ void fn_1_2DD8(void) {
                 groupIndex * M641_SCHEDULE_GROUP_DURATION_FRAMES +
                 (M641_SCHEDULE_GROUP_DURATION_FRAMES / (countTable[groupIndex + 15] + 1)) *
                     entryIndex +
-                frandmod(M641_SCHEDULE_RANDOM_OFFSET_FRAMES);
+                frandmod(60);
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] < 0)
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] = 0;
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] >=
@@ -749,7 +730,7 @@ void fn_1_2DD8(void) {
                 groupIndex * M641_SCHEDULE_GROUP_DURATION_FRAMES +
                 (M641_SCHEDULE_GROUP_DURATION_FRAMES / (countTable[groupIndex + 12] + 1)) *
                     entryIndex +
-                frandmod(M641_SCHEDULE_RANDOM_OFFSET_FRAMES);
+                frandmod(60);
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] < 0)
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] = 0;
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] >=
@@ -764,7 +745,7 @@ void fn_1_2DD8(void) {
                 groupIndex * M641_SCHEDULE_GROUP_DURATION_FRAMES +
                 (M641_SCHEDULE_GROUP_DURATION_FRAMES / (countTable[groupIndex + 9] + 1)) *
                     entryIndex +
-                frandmod(M641_SCHEDULE_RANDOM_OFFSET_FRAMES);
+                frandmod(60);
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] < 0)
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] = 0;
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] >=
@@ -779,7 +760,7 @@ void fn_1_2DD8(void) {
                 groupIndex * M641_SCHEDULE_GROUP_DURATION_FRAMES +
                 (M641_SCHEDULE_GROUP_DURATION_FRAMES / (countTable[groupIndex + 6] + 1)) *
                     (entryIndex + 1) +
-                frandmod(M641_SCHEDULE_RANDOM_OFFSET_FRAMES);
+                frandmod(60);
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] < 0)
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] = 0;
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] >=
@@ -794,7 +775,7 @@ void fn_1_2DD8(void) {
                 groupIndex * M641_SCHEDULE_GROUP_DURATION_FRAMES +
                 (M641_SCHEDULE_GROUP_DURATION_FRAMES / (countTable[groupIndex + 3] + 1)) *
                     entryIndex +
-                frandmod(M641_SCHEDULE_RANDOM_OFFSET_FRAMES);
+                frandmod(60);
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] < 0)
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] = 0;
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] >=
@@ -815,17 +796,17 @@ void fn_1_2DD8(void) {
     lbl_1_bss_84.boards[boardIndex].scheduledType[positionIndex] = 3;
     positionIndex++;
     lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] =
-        frandmod(M641_SCHEDULE_FINAL_RANDOM_OFFSET_COUNT) + M641_SCHEDULE_MAX_FRAME;
+        frandmod(10) + M641_SCHEDULE_MAX_FRAME;
     lbl_1_bss_84.boards[boardIndex].scheduledType[positionIndex] = 0;
     positionIndex++;
     lbl_1_bss_84.boards[boardIndex].scheduledTime[positionIndex] =
-        M641_SCHEDULE_END_FRAME - (frandmod(M641_SCHEDULE_FINAL_RANDOM_OFFSET_COUNT) + 5);
+        M641_SCHEDULE_END_FRAME - (frandmod(10) + 5);
     lbl_1_bss_84.boards[boardIndex].scheduledType[positionIndex] = 2;
 
     positionIndex++;
     boardIndex = 0;
-    for (groupIndex = 0; groupIndex < M641_SCHEDULE_ENTRY_COUNT; groupIndex++) {
-        for (entryIndex = groupIndex + 1; entryIndex < M641_SCHEDULE_ENTRY_COUNT; entryIndex++) {
+    for (groupIndex = 0; groupIndex < 60; groupIndex++) {
+        for (entryIndex = groupIndex + 1; entryIndex < 60; entryIndex++) {
             if (lbl_1_bss_84.boards[boardIndex].scheduledTime[groupIndex] >= 0 &&
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[entryIndex] >= 0 &&
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[groupIndex] >
@@ -848,7 +829,7 @@ void fn_1_2DD8(void) {
     RandomizeActionTimeCopy(&positionIndex);
 
     for (groupIndex = 1; groupIndex < 2; groupIndex++) {
-        for (entryIndex = 0; entryIndex < M641_SCHEDULE_ENTRY_COUNT; entryIndex++) {
+        for (entryIndex = 0; entryIndex < 60; entryIndex++) {
             lbl_1_bss_84.boards[groupIndex].scheduledTime[entryIndex] =
                 lbl_1_bss_84.boards[boardIndex].scheduledTime[entryIndex];
             DebugValue(positionIndex);
@@ -968,8 +949,6 @@ void fn_1_4660(s16 boardIndex, s16 spaceIndex, s16 kind);
 s16 fn_1_9ABC(s16);
 
 s32 fn_1_9C24(s16, s16);
-
-s16 fn_1_A204(s16);
 
 extern Point3d lbl_1_bss_560[4];
 
@@ -1238,7 +1217,7 @@ void fn_1_4660(s16 boardIndex, s16 spaceIndex, s16 kind) {
         case 1:
             fn_80026A44(lbl_1_bss_84.boards[boardIndex].specialModel, 1);
             fn_80026A44(lbl_1_bss_84.boards[boardIndex].specialSecondModel, 1);
-            position = lbl_1_data_180[lbl_1_bss_84.boards[boardIndex].specialSpace];
+            position = lbl_1_data_180[0][lbl_1_bss_84.boards[boardIndex].specialSpace];
         position.y = lbl_1_bss_558[0] - (100.0f * direction);
             fn_80026790(lbl_1_bss_84.boards[boardIndex].specialModel, &position);
             fn_80026790(lbl_1_bss_84.boards[boardIndex].specialSecondModel, &position);
@@ -1434,7 +1413,7 @@ void fn_1_682C(s16 frame) {
                         availableCount = -1;
                     }
                     if (lbl_1_bss_7DC == 1) {
-                        position = ((Point3d (*)[7])lbl_1_data_180)[1][chosenSpace];
+                        position = lbl_1_data_180[1][chosenSpace];
                         for (queueIndex = 0; queueIndex < 4; queueIndex++) {
                             if (boardIndex == fn_1_A204(queueIndex) && action != -1 &&
                                 (((position.x - 70.0f <= lbl_1_bss_560[queueIndex].x - 40.0f) &&
@@ -1497,7 +1476,7 @@ void fn_1_682C(s16 frame) {
                         availableCount = -1;
                     }
                     if (lbl_1_bss_7DC == 1) {
-                        position = ((Point3d (*)[7])lbl_1_data_180)[1][chosenSpace];
+                        position = lbl_1_data_180[1][chosenSpace];
                         for (scanIndex = 0; scanIndex < 4; scanIndex++) {
                             if (boardIndex == fn_1_A204(scanIndex) && action != -1 &&
                                 (((position.x - 70.0f <= lbl_1_bss_560[scanIndex].x - 40.0f) &&
@@ -1552,7 +1531,7 @@ void fn_1_682C(s16 frame) {
                         availableCount = -1;
                     }
                     if (lbl_1_bss_7DC == 1) {
-                        position = ((Point3d (*)[7])lbl_1_data_180)[1][chosenSpace];
+                        position = lbl_1_data_180[1][chosenSpace];
                         for (scanIndex = 0; scanIndex < 4; scanIndex++) {
                             if (boardIndex == fn_1_A204(scanIndex) && action != -1 &&
                                 (((position.x - 70.0f <= lbl_1_bss_560[scanIndex].x - 40.0f) &&
@@ -1607,7 +1586,7 @@ void fn_1_682C(s16 frame) {
                         availableCount = -1;
                     }
                     if (lbl_1_bss_7DC == 1) {
-                        position = ((Point3d (*)[7])lbl_1_data_180)[1][chosenSpace];
+                        position = lbl_1_data_180[1][chosenSpace];
                         for (scanIndex = 0; scanIndex < 4; scanIndex++) {
                             if (boardIndex == fn_1_A204(scanIndex) && action != -1 &&
                                 (((position.x - 70.0f <= lbl_1_bss_560[scanIndex].x - 40.0f) &&
@@ -1986,7 +1965,6 @@ void fn_1_8D9C(s16 winningGroup) {
 
 typedef struct M641MotionInfo {
     s16 motionId;
-    s16 padding;
     f32 blendTime;
     u32 attributes;
     s32 voiceEnabled;
@@ -2017,7 +1995,7 @@ s32 fn_1_9B30(s16 boardIndex) {
     s16 spaceIndex;
     s32 count;
 
-    for (spaceIndex = 0, count = 0; spaceIndex < M641_SCHEDULE_ENTRY_COUNT; spaceIndex++) {
+    for (spaceIndex = 0, count = 0; spaceIndex < 60; spaceIndex++) {
         if ((lbl_1_bss_84.boards[boardIndex].scheduledType[spaceIndex] == 0) ||
             (lbl_1_bss_84.boards[boardIndex].scheduledType[spaceIndex] == 1)) {
             count++;
@@ -2052,7 +2030,7 @@ void fn_1_9CD0(s16 boardIndex, s16 spaceIndex, Point3d *position, s16 *result) {
     } else {
         tableMode = 1;
     }
-    *position = ((Point3d (*)[7])lbl_1_data_180)[tableMode][spaceIndex];
+    *position = lbl_1_data_180[tableMode][spaceIndex];
     if ((lbl_1_bss_84.boards[boardIndex].spaceFlags[spaceIndex] == 0) &&
         ((lbl_1_bss_84.boards[boardIndex].spaceState[spaceIndex] == 3) ||
          (lbl_1_bss_84.boards[boardIndex].spaceState[spaceIndex] == 4))) {
@@ -2073,8 +2051,6 @@ void fn_1_9CD0(s16 boardIndex, s16 spaceIndex, Point3d *position, s16 *result) {
     }
     *result = -1;
 }
-
-void fn_1_FF1C(s16 playerIndex);
 
 /* Fade-in, finish, main, pre-winner, and start hooks emit the impact burst beside a space, offset
  * toward the active board side. */
@@ -2097,10 +2073,6 @@ void fn_1_9EC8(s16 effectId, Point3d *position) {
     fn_8005D864(effectType, position, &effectOffset);
 }
 
-extern void fn_1_B108(void);
-
-extern void fn_1_11AD8(void);
-
 extern s32 lbl_1_data_2A8;
 
 extern s32 lbl_1_data_2DC;
@@ -2111,7 +2083,7 @@ static inline void fn_1_9F7C(s16 playerIndex, s16 motionIndex) {
     s16 motionId;
 
     if ((playerIndex < 0) || (playerIndex >= 4) || (motionIndex < 0) ||
-        (motionIndex >= M641_MOTION_INFO_COUNT)) {
+        (motionIndex >= 14)) {
         return;
     }
     if (motionIndex != lbl_1_bss_590[playerIndex].currentMotion) {
@@ -2140,8 +2112,6 @@ static inline void fn_1_9F7C(s16 playerIndex, s16 motionIndex) {
         lbl_1_bss_590[playerIndex].currentMotion = motionIndex;
     }
 }
-
-void fn_1_A220(void);
 
  s32 fn_1_ACE0(s16 frame);
 

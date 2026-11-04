@@ -16,6 +16,7 @@
 #include "string.h"
 #include "msm_stream.h"
 #include "REL/mgmtournamentdll/module_types.h"
+#include "REL/mgmtournamentdll/mgmbingodll_module_types.h"
 
 #define TOURNAMENT_GAME_COUNT 101
 #define TOURNAMENT_GAME_NONE 255
@@ -27,47 +28,10 @@ s32 lbl_1_data_84C = -1; /* Music stream started after the champion presentation
 s32 lbl_1_data_850 = -1; /* Sound handle for the minigame selection prop. */
 s32 lbl_1_data_854 = -1; /* Champion sound handle stopped at the final prompt. */
 s32 lbl_1_data_858 = -1; /* Champion presentation jingle handle. */
-void fn_1_2E28(void);
-void fn_1_1A8C(void);
-void fn_1_5154(void);
-void fn_1_74BC(void);
-void fn_1_3E04(void);
-void fn_1_7924(void);
-void fn_1_3F8C(void);
-void fn_1_5590(void);
-void fn_1_B57C(void);
 extern s16 MgModeSubMode;
 extern u8 MgModePlayNum;
 extern u8 MgModeWork[256];
 extern s16 lbl_1_bss_128;
-void fn_1_1134(void);
-void fn_1_1BA0(void);
-void fn_1_1D74(void);
-void fn_1_1E80(void);
-void fn_1_1F90(void);
-s16 fn_1_2128(void);
-s16 fn_1_2BA0(void);
-void fn_1_2948(void);
-void fn_1_34F0(void);
-void fn_1_4A1C(void);
-void fn_1_56B4(s16 mode);
-void fn_1_5740(s16 mode, s16 duration);
-void fn_1_57E0(s16 duration);
-void fn_1_5A44(s16 duration);
-void fn_1_64A8(void);
-void fn_1_6D78(void);
-void fn_1_7F0(void);
-void fn_1_824(void);
-void fn_1_818C(void);
-void fn_1_A6B4(void);
-void fn_1_AB48(void);
-void fn_1_AD50(void);
-void fn_1_B014(void);
-void fn_1_B2E0(void);
-void fn_1_B80C(void);
-void fn_1_B850(void);
-s16 fn_1_BAD4(void);
-void fn_1_CF6C(void);
 void fn_1_D69C(void);
 
 /* Overlay entry initializes the tournament roster and scene, restoring the saved mode on return. */

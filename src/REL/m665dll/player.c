@@ -90,18 +90,6 @@
 
 #include "game/board/player.h"
 
-typedef struct HookNameTable {
-    char *names[6]; /* Vehicle attachment names for the six hook effects. */
-} HookNameTable;
-
-typedef struct ChildNameTable {
-    char *names[2]; /* Vehicle attachment names for the two propellers. */
-} ChildNameTable;
-
-typedef struct RandomValueTable {
-    s16 values[4]; /* Selection-frame bases indexed by difficulty. */
-} RandomValueTable;
-
 #define M665_MEMORY_TAG (1 << 28)
 
 void fn_1_6E8C(void);
@@ -124,10 +112,10 @@ void fn_1_1C60(void) {
     s16 modelId;
     s16 motionId;
     s32 index;
-    struct HookNameTable hookNames = { { "itemhook_lc1", "itemhook_lc2", "itemhook_lc3",
-                                         "itemhook_lc4", "itemhook_lc5", "itemhook_lc6" } };
-    struct ChildNameTable childNames = {{"itemhook_propeller1", "itemhook_propeller2"}};
-    struct RandomValueTable randomValues = {{180, 120, 60, 30}};
+    char *hookNames[6] = { "itemhook_lc1", "itemhook_lc2", "itemhook_lc3",
+                           "itemhook_lc4", "itemhook_lc5", "itemhook_lc6" };
+    char *childNames[2] = {"itemhook_propeller1", "itemhook_propeller2"};
+    s16 randomValues[4] = {180, 120, 60, 30};
 
     mainPlayerIndex = lbl_1_bss_250.mainPlayer;
     playerWork = &lbl_1_bss_10[mainPlayerIndex];
@@ -150,7 +138,7 @@ void fn_1_1C60(void) {
         modelId = fn_80025A04(fn_80008DD0(DATANUM(0x7c0000, 13),
                                                        M665_MEMORY_TAG,
                                                        2));
-        fn_8002741C(playerWork->vehicleModel, childNames.names[index],
+        fn_8002741C(playerWork->vehicleModel, childNames[index],
                          modelId);
         fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
         fn_80026E44(modelId);
@@ -159,7 +147,7 @@ void fn_1_1C60(void) {
     for (index = 0; index < 6; index++) {
         modelId = fn_80025A04(
             fn_80008DD0(DATANUM(0x7c0000, 21), M665_MEMORY_TAG, 2));
-        fn_8002741C(playerWork->vehicleModel, hookNames.names[index],
+        fn_8002741C(playerWork->vehicleModel, hookNames[index],
                          modelId);
         fn_8002D86C(modelId, 0.0f);
         playerWork->models.main.hookModels[index] = modelId;
@@ -187,8 +175,8 @@ void fn_1_1C60(void) {
     fn_1_8E90();
     fn_1_B09C();
     /* This setup also indexes the delay table with -1 for a human main player. */
-    playerWork->effect.main.selectionFrames = randomValues.values[playerWork->difficulty] +
-                       frandmod(randomValues.values[playerWork->difficulty]);
+    playerWork->effect.main.selectionFrames = randomValues[playerWork->difficulty] +
+                       frandmod(randomValues[playerWork->difficulty]);
 }
 
 /* Starts the main player's vehicle movement when the sequence fade-in hook runs. */
@@ -1144,10 +1132,6 @@ static inline void m665FireSpawn(void) {
     }
 }
 
-typedef struct ModelHookNames {
-    char *name[6]; /* Vehicle attachment names for the six effect models. */
-} ModelHookNames;
-
 void fn_1_6188(void);
 
 /* Spawns a fire effect along a direction from the vehicle's fire attachment. */
@@ -1310,10 +1294,10 @@ void fn_1_60CC(u16 flags) {
 
 /* Creates and attaches missile models during the sequence initialization hook. */
 void fn_1_6188(void) {
-    ModelHookNames hookNames = {{
+    char *hookNames[6] = {
         "itemhook_miss1", "itemhook_miss2", "itemhook_miss3",
         "itemhook_miss4", "itemhook_miss5", "itemhook_miss6",
-    }};
+    };
     M665PlayerWork *playerWork;
     s16 baseModel;
     s16 modelID;
@@ -1330,7 +1314,7 @@ void fn_1_6188(void) {
             modelID = fn_80025D4C(baseModel);
         }
         fn_800269E8(modelID, ((1 << 30) | (1 << 0)));
-        fn_8002741C(playerWork->vehicleModel, hookNames.name[i], modelID);
+        fn_8002741C(playerWork->vehicleModel, hookNames[i], modelID);
         fn_80026E44(modelID);
         fn_8002D86C(modelID, 0.0f);
         lbl_1_bss_2E8.missiles[i].modelID = modelID;

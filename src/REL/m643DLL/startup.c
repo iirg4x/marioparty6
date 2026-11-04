@@ -8,7 +8,6 @@
 OMOBJMAN *lbl_1_bss_0;
 extern MGSEQ_PARAM lbl_1_data_0;
 void fn_1_F4(void);
-void fn_1_17A0(OMOBJ *object);
 void *fn_1_16C(s32 priority, u32 bytes, OMOBJ_FUNC callback);
 /* Creates the actor manager and starts the minigame's actor update process. */
 void fn_1_A0(void)

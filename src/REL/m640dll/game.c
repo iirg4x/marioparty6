@@ -1,6 +1,7 @@
 /* Sets up both sides, advances player turns and piece placement, and runs the result animation. */
 #include <math.h>
 #include "REL/m640/m640.h"
+#include "REL/m640dll.h"
 #define M640_WIN_CELEBRATION_SFX 1917
 #define M640_PIECE_PART_0_LANDING_SFX 1906
 #define M640_PIECE_PART_1_LANDING_SFX 1907
@@ -23,18 +24,6 @@
 #define M640_PLAYER_HIT_SFX_3 1927
 
 void fn_1_A0(void);
-void fn_1_F0(s16 mode, s16 frame);
-void fn_1_114(s16 mode, s16 frame);
-void fn_1_13C(s16 mode, s16 frame);
-void fn_1_170(s16 mode, s16 frame);
-void fn_1_1B8(s16 mode, s16 frame);
-void fn_1_220(s16 mode, s16 frame);
-void fn_1_240(s16 mode, s16 frame);
-void fn_1_268(s16 mode, s16 frame);
-void fn_1_26C(s16 mode, s16 frame);
-void fn_1_270(s16 frame);
-void fn_1_60C(void);
-void fn_1_868(s16 frame);
 void fn_1_86C(void);
 void fn_1_8D4(void);
 s32 fn_1_BEC(void);

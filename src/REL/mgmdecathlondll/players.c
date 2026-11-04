@@ -79,23 +79,11 @@ DecathlonMotionSetting lbl_1_data_4F8[9] = {
     {7, 8.0f, ((1 << 30) | (1 << 0)), 1},
 };
 
-extern s32 fn_1_FB2C(Vec *direction, Vec *unitDirection);
-extern void fn_1_FC84(f32 angle_x, f32 angle_y, f32 angle_z,
-                      Vec source, Vec *destination);
-extern f64 fn_1_FD44(Vec first, Vec second);
-
 extern void fn_1_9F30(OMOBJ *object);
 
 extern s16 MgModeScore[4];
-extern void fn_1_65A0(s16 playerNo);
 
 extern s16 fn_1_9744(s16 playerNo);
-extern void fn_1_C6C8(OMOBJ *obj);
-extern void fn_1_C344(s16 enabled);
-extern void fn_1_D518(s16 playerNo, s16 positionNo);
-extern void fn_1_D788(s16 playerNo);
-extern void fn_1_DAEC(s16 playerNo);
-extern void fn_1_DCF8(void);
 
 /* The player actor update calls this when a movement or result state selects a motion. */
 void fn_1_90DC(OMOBJ *object, s16 motionSettingIndex) {

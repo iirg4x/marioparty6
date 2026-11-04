@@ -6,6 +6,7 @@
 #include "game/hu3d.h"
 
 #include "game/frand.h"
+#include "REL/m641Dll/m641Dll.h"
 
 extern s32 lbl_1_bss_11C;
 
@@ -32,7 +33,7 @@ s32 fn_1_0(Point3d *point, f32 firstRadius, Point3d *center,
     return 0;
 }
 
-extern Point3d lbl_1_data_180[14];
+extern Point3d lbl_1_data_180[2][7];
 
 extern Point3d lbl_1_bss_0;
 
@@ -42,8 +43,6 @@ extern s32 fn_1_E10(const Point3d *firstPosition, const Point3d *firstDisplaceme
                     f32 firstRadius, const Point3d *secondPosition,
                     const Point3d *secondDisplacement, f32 secondRadius,
                     f32 *result);
-
-extern void fn_1_146B8(Point3d *source, Point3d *destination);
 
 typedef struct M641LightConfiguration {
     HU3D_LIGHTID primaryLight;
@@ -71,8 +70,6 @@ extern Point3d lbl_1_rodata_78;
 extern Point3d lbl_1_rodata_84;
 
 extern Point3d lbl_1_rodata_90;
-
-extern void fn_1_1DD4(void);
 
 /* fn_1_540 resolves swept contact here, modifying both positions and displacement vectors. */
 s32 fn_1_8C(Point3d *first, Point3d *firstDisplacement, f32 firstRadius,

@@ -60,7 +60,7 @@ typedef struct OptionPrizeEntry {
     u32 name; /* Message used as the prize name or section heading. */
     u32 description; /* Prize description message, or OPTION_PRIZE_MESSAGE_NONE. */
     s16 id; /* Prize value copied into the collection's prize ID list. */
-    s16 reserved; /* Unused trailing halfword. */
+    s16 unk0E; /* Initialized in the table; the game's code never reads it. */
 } OptionPrizeEntry;
 
 typedef struct OptionRecordDisplayEntry {
@@ -239,7 +239,6 @@ extern char lbl_1_data_450[];
 extern char lbl_1_data_462[];
 extern char lbl_1_data_46A[];
 
-#define OPTION_SUBSTICK_STEP_MASK 0xF8
 void fn_1_EA6C(void);
 void fn_1_E6F8(void);
 void fn_1_F1D8(void);
@@ -1297,7 +1296,7 @@ void fn_1_3BD8(OMOBJ *object)
     PSVECCrossProduct(&up, &delta, &delta);
     PSVECNormalize(&delta, &delta);
 
-    subStick = lbl_802BFFF4[0] & OPTION_SUBSTICK_STEP_MASK;
+    subStick = lbl_802BFFF4[0] & 0xF8;
     if (subStick != 0) {
         lbl_80266B18[1].x += (delta.x * (float)subStick) * 0.05f;
         lbl_80266B18[1].y += (delta.y * (float)subStick) * 0.05f;
@@ -1306,7 +1305,7 @@ void fn_1_3BD8(OMOBJ *object)
 
     PSVECNormalize(&roll, &delta);
 
-    subStick = -(lbl_802BFFF0[0] & OPTION_SUBSTICK_STEP_MASK);
+    subStick = -(lbl_802BFFF0[0] & 0xF8);
     if (subStick != 0) {
         lbl_80266B18[1].x += (delta.x * (float)subStick) * 0.05f;
         lbl_80266B18[1].y += (delta.y * (float)subStick) * 0.05f;

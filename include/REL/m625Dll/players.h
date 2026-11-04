@@ -62,5 +62,16 @@ extern M625MotionPreset lbl_1_data_2B8[11];
 extern s16 lbl_1_data_36C[4];
 extern s32 lbl_1_data_3E4;
 extern s16 lbl_1_data_3E8[4];
+void fn_1_2D48(void);
+void fn_1_4E60(void);
+void fn_1_4E80(void);
+s16 fn_1_C19C(void);
+void fn_1_C270(s16 mode);
+u8 fn_1_C438(void);
+void fn_1_DE68(void);
+s32 fn_1_EF24(s16 playerIndex);
+void fn_1_EF40(void);
+void fn_1_EF54(void);
+void fn_1_10E90(Point3d position, f32 scale, f32 randomVelocity, f32 verticalAcceleration);
 
 #endif

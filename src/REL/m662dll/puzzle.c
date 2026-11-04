@@ -29,8 +29,6 @@ void fn_1_984(void), fn_1_5884(void), fn_1_2670(void), fn_1_4EAC(void);
 s16 fn_1_9C1C(void);
 s32 fn_1_A170(void);
 int fn_1_2DA0(f32 *, f32, f32, f32);
-f32 fn_1_3C74(f32);
-void fn_1_5008(s16, s16, void *);
 extern s16 lbl_1_bss_C60;
 
 /* Optional model-value debug hook; no output in the release game. */

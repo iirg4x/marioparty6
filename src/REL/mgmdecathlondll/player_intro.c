@@ -201,8 +201,6 @@ typedef struct DecathlonMotionState {
     s16 countdown; /* frames until appearance; -1 playing; -1000 finished */
 } DecathlonMotionState;
 
-extern s16 fn_1_9784(s16 controller);
-
 /* The entrance object's per-frame callback reveals timed models and hides each after its motion. */
 void fn_1_6224(OMOBJ *object) {
     DecathlonMotionState *motion;
@@ -263,8 +261,6 @@ void fn_1_6224(OMOBJ *object) {
         }
     }
 }
-
-void fn_1_68C0(OMOBJ *object);
 
 /* The final score celebration creates this marker for each player tied for the lead. */
 void fn_1_65A0(s16 playerNo) {

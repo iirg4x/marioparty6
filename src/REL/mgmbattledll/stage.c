@@ -1927,7 +1927,7 @@ void fn_1_9E10(Point3d position) {
     for (index = 0; index < 32; index++) {
         s16 *particleScale;
 
-        particleScale = &((MgBattleParticle *)lbl_1_bss_290->data)[index].state;
+        particleScale = &(((MgBattleParticle *)lbl_1_bss_290->data + index)->state);
         scale.x = scale.y = scale.z = 0.0f;
         *particleScale = frandmod(20) + 1;
         *particleScale = (s16)(-12.5f * (f32)*particleScale);
@@ -1966,7 +1966,7 @@ void fn_1_A0E4(OMOBJ *object) {
     index = 0;
     while (index < 32)
     {
-        particle = &((MgBattleParticle *)object->data)[index];
+        particle = (MgBattleParticle *)object->data + index;
         fn_8002691C(object->mdlId[index], & scale);
         fn_800267CC(object->mdlId[index], & position);
         particle->rotation += 12.0f;

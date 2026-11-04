@@ -23,16 +23,15 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 #include "REL/m625Dll/motion.h"
+#include "REL/m625Dll/players.h"
+#include "REL/m625Dll/wave.h"
+#include "REL/m625Dll.h"
 
 #define MSM_SE_M625_WATER_SPLASH_1 1797
 #define MSM_SE_M625_WATER_SPLASH_2 1798
 #define MSM_SE_M625_OBJECT_HIT 1799
 
 extern s16 lbl_802C0278;
-void fn_1_1BB0(Point3d *);
-void fn_1_EF54(void);
-void fn_1_10E90(Point3d, f32, f32, f32);
-s32 fn_1_13318(Point3d, f32, Point3d, f32);
 void fn_1_12464(s16);
 
 /* Called during stage setup to create the falling-object model pool. */

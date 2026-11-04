@@ -9,16 +9,6 @@
 #include "game/sprite.h"
 #include "REL/m668DLL/rotor.h"
 
-extern void fn_1_118(s16, s16);
-extern void fn_1_158(s16, s16);
-extern void fn_1_15C(s16, s16);
-extern void fn_1_160(s16, s16);
-extern void fn_1_164(s16, s16);
-extern void fn_1_168(s16, s16);
-extern void fn_1_16C(s16, s16);
-extern void fn_1_170(s16, s16);
-extern void fn_1_174(s16, s16);
-
 M668SequenceDataRecord lbl_1_data_0 = {
     { 0, 0, fn_1_118, fn_1_158, fn_1_15C, fn_1_160, fn_1_164,
       fn_1_168, fn_1_16C, fn_1_170, fn_1_174 },

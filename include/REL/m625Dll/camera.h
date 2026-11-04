@@ -48,5 +48,8 @@ extern M625CameraParams lbl_1_data_0;
 extern M625CameraPose lbl_1_data_50;
 extern M625CameraPose lbl_1_data_74[2];
 extern M625CameraPose lbl_1_data_BC[2];
+void fn_1_1B0(void);
+void fn_1_CB0(void);
+void fn_1_1398(Point3d *result, const Point3d *point, f32 distance);
 
 #endif

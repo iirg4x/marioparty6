@@ -1388,7 +1388,7 @@ config.libs = [
                 "REL/m621dll/runtime.c",
                 source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-pooldata", "off"],
+                extra_cflags=["-pooldata off"],
                 shift_jis=False,
                 boot_runtime_source_selected=True,
             ),

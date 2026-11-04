@@ -117,9 +117,6 @@ typedef struct M627TaperedCollisionVolume {
     f32 lowerCenterRadius; /* Horizontal radius at lowerCenter, in collision-space units. */
     f32 angle; /* Side slope angle in degrees. */
 } M627TaperedCollisionVolume;
-typedef struct M627WinnerList {
-    s32 characterIds[4]; /* Unused winner slots remain -1. */
-} M627WinnerList;
 void fn_1_798(OMOBJ *sequenceObject);
 void *fn_1_A0(s32 priority, u32 bytes, OMOBJ_FUNC update);
 void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback);

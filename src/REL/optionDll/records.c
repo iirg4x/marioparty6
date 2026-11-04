@@ -19,9 +19,6 @@
 #include "REL/optionDll/sound_test.h"
 #include "game/mic.h"
 
-#define OPTION_LAST_CHARACTER_BANK_FLAG 2
-#define OPTION_LAST_BOARD_BANK_FLAG 51
-
 typedef void (*VoidFunc)(void);
 
 typedef struct OptionMessageEntry OptionMessageEntry;
@@ -132,7 +129,7 @@ void fn_1_4738(void)
     for (item = 0; item < 11; item++) {
         HuSprAttrReset(lbl_1_bss_5D4, item + 8, HUSPR_ATTR_DISPOFF);
         HuSprScaleSet(lbl_1_bss_5D4, item + 8, 1.0f, 1.0f);
-        if (item == 10 && fn_8003D2F0(OPTION_LAST_CHARACTER_BANK_FLAG) == FALSE)
+        if (item == 10 && fn_8003D2F0(2) == FALSE)
             HuSprBankSet(lbl_1_bss_5D4, item + 8, 11);
         else HuSprBankSet(lbl_1_bss_5D4, item + 8, item);
         if (item < 6) {
@@ -188,11 +185,11 @@ void fn_1_4738(void)
         if (lbl_802C0008[0] & 0x2000) delta = 1;
         if (delta != 0) {
             board += delta;
-            if (board == 5 && fn_8003D2F0(OPTION_LAST_BOARD_BANK_FLAG) == FALSE) board += delta;
+            if (board == 5 && fn_8003D2F0(51) == FALSE) board += delta;
             if (board < 0) {
                 board = 6;
                 /* The totals page is 6, so the board-5 branch below is never taken. */
-                if (board == 5 && fn_8003D2F0(OPTION_LAST_BOARD_BANK_FLAG) == FALSE) board = 4;
+                if (board == 5 && fn_8003D2F0(51) == FALSE) board = 4;
             }
             if (board >= 7) board = 0;
             if (delta < 0) HuSprBankSet(lbl_1_bss_5D4, 5, 1);

@@ -6,6 +6,7 @@
 #include "msm_se.h"
 #include "msm_stream.h"
 #include "game/hu3d.h"
+#include "REL/resultDll.h"
 typedef struct ResultSceneHandles {
     s32 spriteId[2];
     s32 scoreSpriteId[3];
@@ -46,21 +47,13 @@ extern ResultParticleGroup lbl_1_bss_10A4[64];
 extern s32 lbl_1_bss_BA0;
 extern s32 lbl_1_bss_624;
 
-extern void fn_1_AC54(void);
-extern void fn_1_47A8(void);
 extern void fn_1_7E0C(void);
 extern void fn_1_7D34(void);
-extern s32 fn_1_C45C(s32 dataNum);
 extern void fn_1_8858(void);
 extern void fn_1_8D4C(void);
 extern void fn_1_924C(void);
 extern void fn_1_95D8(void);
-extern void fn_1_3698(void);
-extern s32 fn_1_356C(void);
-extern void fn_1_ACB8(void);
-extern void fn_1_3640(s32 readResult);
 extern void fn_1_86B0(void);
-extern void fn_1_4694(void);
 
 /* Runs the result presentation and waits for a player to continue unless all players are
  * computer-controlled. */
@@ -88,8 +81,6 @@ typedef struct ResultCleanupRecord {
     s16 value[8];
 } ResultCleanupRecord;
 
-extern void fn_1_B39C(s16 modelId);
-
 extern HuVecF lbl_1_data_620[4];
 extern HuVecF lbl_1_data_6B0[4];
 
@@ -101,7 +92,6 @@ extern s16 lbl_1_bss_61C;
 
 extern f32 lbl_1_data_6F0[4];
 extern void fn_1_A238(HuVecF *position);
-extern void fn_1_3FB0(s16 *coinAwards);
 extern void fn_1_9B90(s32 player, s32 value);
 
 #include "dolphin/types.h"
@@ -152,8 +142,6 @@ typedef struct ResultParticleSystem {
 extern GXColor lbl_1_data_82C[4];
 extern u8 lbl_1_data_83C[16];
 extern u8 lbl_1_data_84C[32];
-extern s16 fn_1_AD24(ANIMDATA *anim, s16 count);
-extern void fn_1_C420(s16 modelId, void *callback);
 void fn_1_A928(void *model, ResultParticleSystem *system, Mtx matrix);
 
 /* Advances a result effect's particles during drawing and records how many remain alive. */

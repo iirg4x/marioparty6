@@ -25,23 +25,7 @@
 #define MSM_SE_M631_05 1843
 #define MSM_SE_M631_06 1844
 
-typedef struct M631ActorDefaults {
-    s32 lanePairs[6][2]; /* Allowed pairs of the five conveyor lanes. */
-} M631ActorDefaults;
-
-typedef struct M631CameraPoints {
-    Point3d points[2]; /* Gameplay and results camera vectors, in that order. */
-} M631CameraPoints;
-
-typedef struct M631SearchIndexDefaults {
-    s32 actorIndexes[3]; /* Group-one candidates, ordered with their distances. */
-} M631SearchIndexDefaults;
-
 typedef void (*VoidFunc)(void);
-
-typedef struct M631VerticalPositions {
-    f32 heights[3]; /* Effect heights for ground, middle and upper contact. */
-} M631VerticalPositions;
 
 HUPROCESS *lbl_1_bss_C; /* Object-manager process for this minigame. */
 OMOBJ *lbl_1_bss_8; /* Scene object; its data owns the shared minigame state. */
@@ -54,19 +38,8 @@ extern const VoidFunc _dtors[];
 
 extern s16 lbl_802C0278;
 
-extern void fn_1_A8F0(M631ActorWork *);
-extern void fn_1_AA78(M631ActorWork *);
-extern M631MotionPairNode *fn_1_B004(void);
-extern void fn_1_AF94(M631ActorCallbackWork *);
 extern void fn_1_AFF8(void *, f32, s32);
 extern void fn_1_AF2C(void *, u32, u32, u32, u32, const HuVecF *);
-extern void fn_1_5284(OMOBJ *);
-extern void *fn_1_B0B8(s32 (*)(void *), void *);
-extern void fn_1_AB4C(void);
-extern void fn_1_AB60(void);
-extern void fn_1_B014(void);
-extern void fn_1_B1AC(void);
-extern void fn_1_5AAC(M631ActorWork *, s32, s32);
 
 /* Camera-selection masks, one bit per camera. */
 const u16 lbl_1_rodata_10[4] = {1, 2, 4, 8};
@@ -1230,7 +1203,7 @@ void fn_1_2B60(void) { }
  * pairs. */
 void fn_1_2B64(M631ActionQueue *work)
 {
-    M631ActorDefaults defaults = {{{0, 2}, {0, 3}, {0, 4}, {1, 3}, {1, 4}, {2, 4}}};
+    s32 defaults[6][2] = {{0, 2}, {0, 3}, {0, 4}, {1, 3}, {1, 4}, {2, 4}};
     s32 selected[2];
     M631ActionNode *newNode;
     M631ActionNode *actor;
@@ -1261,8 +1234,8 @@ void fn_1_2B64(M631ActionQueue *work)
         }
         if (work->stage == 4) {
             modelIndex = frandmod(6);
-            selected[0] = defaults.lanePairs[modelIndex][0];
-            selected[1] = defaults.lanePairs[modelIndex][1];
+            selected[0] = defaults[modelIndex][0];
+            selected[1] = defaults[modelIndex][1];
             count = 2;
         } else {
             count = 1;
@@ -1557,12 +1530,12 @@ s32 fn_1_3690(void *callbackData) {
  * reported. */
 inline void fn_1_3704(M631AnimationNode *work, s32 positionIndex)
 {
-    M631VerticalPositions yPositions = {{0.0f, 100.0f, 200.0f}};
+    f32 yPositions[3] = {0.0f, 100.0f, 200.0f};
     if (fn_1_B0B8(fn_1_3690, work) != 0U) {
         fn_80026A44(work->effectModelId, ((1 << 30) | (1 << 1)));
         fn_8002D414(work->effectModelId, 0.0f);
         work->targetPosition.x = work->position.x;
-        work->targetPosition.y = yPositions.heights[positionIndex];
+        work->targetPosition.y = yPositions[positionIndex];
         work->targetPosition.z = work->position.z;
         fn_80026790(work->effectModelId, &work->targetPosition);
         fn_80026808(work->effectModelId, 0.0f, 0.0f, 0.0f);
@@ -1701,8 +1674,8 @@ void fn_1_3D00(M631SceneWork *scene) {
  * bob. */
 void fn_1_3E60(M631SceneWork *work)
 {
-    M631CameraPoints eyePositions = {{{0.0f, 2000.0f, 2800.0f}, {0.0f, 1000.0f, 2600.0f}}};
-    M631CameraPoints lookAtPositions = {{{0.0f, 200.0f, -70.0f}, {0.0f, 250.0f, 0.0f}}};
+    Point3d eyePositions[2] = {{0.0f, 2000.0f, 2800.0f}, {0.0f, 1000.0f, 2600.0f}};
+    Point3d lookAtPositions[2] = {{0.0f, 200.0f, -70.0f}, {0.0f, 250.0f, 0.0f}};
     Point3d direction;
     Point3d forward;
     Point3d right;
@@ -1714,8 +1687,8 @@ void fn_1_3E60(M631SceneWork *work)
         while (work->cameraAngle > 180.0f) {
             work->cameraAngle -= 360.0f;
         }
-        eye = &eyePositions.points[work->endingScene];
-        lookAt = &lookAtPositions.points[work->endingScene];
+        eye = &eyePositions[work->endingScene];
+        lookAt = &lookAtPositions[work->endingScene];
         /* Both additions affect the same eye-position Y component. */
         eye->y += 50.0 *
                      sin((3.141592653589793 * (f64)work->cameraAngle) /
@@ -1843,7 +1816,7 @@ void fn_1_449C(M631SceneWork *work)
 M631ActorWork *fn_1_469C(const HuVecF *position)
 {
     M631SceneWork *scene = lbl_1_bss_8->data;
-    M631SearchIndexDefaults indexes = {{0, 1, 2}};
+    s32 indexes[3] = {0, 1, 2};
     f32 distances[3];
     s32 candidateCount;
     s32 index;
@@ -1859,7 +1832,7 @@ M631ActorWork *fn_1_469C(const HuVecF *position)
     index = 0;
     while (index < 3) {
         if (scene->motionGroups[1].actorSlots[index]->hit == 0) {
-            indexes.actorIndexes[candidateCount] = index;
+            indexes[candidateCount] = index;
             distances[candidateCount] =
                 (position->x -
                  scene->motionGroups[1].actorSlots[index]->position.x) *
@@ -1877,27 +1850,27 @@ M631ActorWork *fn_1_469C(const HuVecF *position)
         return 0;
     }
     if (candidateCount == 1) {
-        result = scene->motionGroups[1].actorSlots[indexes.actorIndexes[0]];
+        result = scene->motionGroups[1].actorSlots[indexes[0]];
         return result;
     }
     if (candidateCount == 2) {
         if (distances[0] < distances[1]) {
-            result = scene->motionGroups[1].actorSlots[indexes.actorIndexes[0]];
+            result = scene->motionGroups[1].actorSlots[indexes[0]];
         } else {
-            result = scene->motionGroups[1].actorSlots[indexes.actorIndexes[1]];
+            result = scene->motionGroups[1].actorSlots[indexes[1]];
         }
         return result;
     }
     if (distances[0] < distances[1]) {
         if (distances[0] < distances[2]) {
-            result = scene->motionGroups[1].actorSlots[indexes.actorIndexes[0]];
+            result = scene->motionGroups[1].actorSlots[indexes[0]];
         } else {
-            result = scene->motionGroups[1].actorSlots[indexes.actorIndexes[2]];
+            result = scene->motionGroups[1].actorSlots[indexes[2]];
         }
     } else if (distances[1] < distances[2]) {
-        result = scene->motionGroups[1].actorSlots[indexes.actorIndexes[1]];
+        result = scene->motionGroups[1].actorSlots[indexes[1]];
     } else {
-        result = scene->motionGroups[1].actorSlots[indexes.actorIndexes[2]];
+        result = scene->motionGroups[1].actorSlots[indexes[2]];
     }
     return result;
 }

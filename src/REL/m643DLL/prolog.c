@@ -1,7 +1,7 @@
 /* Runs C++ static constructors and the minigame startup hook on load. */
+#include "REL/m643DLL/m643.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[], _dtors[];
-void fn_1_A0(void);
 /* The runtime invokes this entry point to run constructors before setup. */
 int _prolog(void)
 {

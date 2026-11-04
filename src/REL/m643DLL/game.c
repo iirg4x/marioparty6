@@ -27,9 +27,6 @@ extern s16 lbl_1_bss_148;
 extern s32 lbl_1_bss_144;
 extern const s32 lbl_1_rodata_60[2];
 extern HuVecF lbl_1_data_B8, lbl_1_data_AC;
-void *fn_1_16C(s32 priority, u32 size, OMOBJ_FUNC callback);
-void fn_1_20C(OMOBJ *object, OMOBJ_FUNC callback);
-void fn_1_298(HuVecF *out, f32 x, f32 y, f32 z);
 void fn_1_2E38(OMOBJ *object);
 void fn_1_2EF4(OMOBJ *object);
 void fn_1_2F5C(OMOBJ *object);
@@ -45,16 +42,12 @@ extern M643PlatformWork *lbl_1_bss_14C[2];
 
 void fn_1_40FC(OMOBJ *object);
 
-void fn_1_460(HuVecF *out, HuVecF *a, HuVecF *b);
-void fn_1_6B0(HuVecF *out, const HuVecF *vec, f32 scale);
-
 extern const s16 lbl_1_rodata_178[4];
 extern const s32 lbl_1_rodata_60[2];
 extern HuVecF lbl_1_data_B8;
 extern HuVecF lbl_1_data_C4[4][39];
 extern s32 lbl_1_bss_8;
 extern s16 lbl_1_bss_148;
-void fn_1_20C(OMOBJ *object, OMOBJ_FUNC callback);
 void fn_1_64B4(OMOBJ *object);
 void fn_1_6674(OMOBJ *object);
 void fn_1_6750(OMOBJ *object);
@@ -64,10 +57,6 @@ void fn_1_58DC(OMOBJ *object);
 void fn_1_5438(OMOBJ *object);
 
 extern s32 lbl_1_bss_C[2][39];
-void fn_1_498(HuVecF *out, HuVecF *a, HuVecF *b);
-f32 fn_1_2A8(HuVecF *value);
-
-f32 fn_1_3C8(const HuVecF *value);
 
 #define M643_AIM_LINE_COLOR_BIT_PATTERN 0xDEFB
 #define M643_PLATFORM_LINE_COLOR_BIT_PATTERN 0xD800
@@ -89,19 +78,14 @@ extern const M643TeamTemplate lbl_1_rodata_180;
 extern u32 lbl_1_data_50[2][2];
 void fn_1_2A98(OMOBJ *object);
 
-f32 fn_1_3F8(HuVecF *a, HuVecF *b);
-f32 fn_1_214(f32 value);
-
 void fn_1_90A8(OMOBJ *object);
 void fn_1_96A4(OMOBJ *object);
 void fn_1_9A48(OMOBJ *object);
 void fn_1_9AF4(OMOBJ *object);
 void fn_1_9C74(OMOBJ *object);
-void fn_1_460(HuVecF *out, HuVecF *a, HuVecF *b);
 
 extern const HuVecF lbl_1_rodata_190, lbl_1_rodata_19C, lbl_1_rodata_1A8, lbl_1_rodata_1B4;
 extern const HuVecF lbl_1_rodata_1C0, lbl_1_rodata_1CC, lbl_1_rodata_1D8;
-f32 fn_1_4D0(HuVecF *out, const HuVecF *value);
 void fn_1_23C4(OMOBJ *object);
 void fn_1_83C8(OMOBJ *object);
 void fn_1_1EB0(OMOBJ *object);
@@ -120,19 +104,15 @@ s32 fn_1_C5B0(M643TeamScenePrefix *work);
 extern const HuVecF lbl_1_rodata_410, lbl_1_rodata_41C;
 void fn_1_A444(OMOBJ *object);
 void fn_1_A6F0(OMOBJ *object);
-void fn_1_6B0(HuVecF *out, const HuVecF *value, f32 scale);
 
 extern const GXVtxDescList lbl_1_rodata_378[3];
 extern const GXVtxAttrFmtList lbl_1_rodata_390[3];
 extern const HuVecF lbl_1_rodata_3C0;
 
 extern const HuVecF lbl_1_rodata_42C;
-s32 fn_1_77C(Mtx matrix, const HuVecF *start, const HuVecF *end, const HuVecF *direction);
-s32 fn_1_E74(HuVecF *angles, Mtx matrix);
 
 extern const s32 lbl_1_rodata_138[4];
 
-void fn_1_20C(OMOBJ *object, OMOBJ_FUNC callback);
 void fn_1_2058(OMOBJ *object);
 
 extern M643PlayerPrefix *lbl_1_bss_174[2];
@@ -145,19 +125,11 @@ void fn_1_2300(OMOBJ *object);
 void fn_1_2354(OMOBJ *object);
 
 extern const s32 lbl_1_rodata_60[2];
-void fn_1_20C(OMOBJ *object, OMOBJ_FUNC callback);
-void fn_1_298(HuVecF *out, f32 x, f32 y, f32 z);
-void fn_1_498(HuVecF *out, HuVecF *a, HuVecF *b);
-f32 fn_1_4D0(HuVecF *out, const HuVecF *vec);
-void fn_1_6B0(HuVecF *out, const HuVecF *vec, f32 scale);
 void fn_1_B21C(OMOBJ *object);
 void fn_1_B408(OMOBJ *object);
 
 extern s32 lbl_1_bss_8;
 extern HuVecF lbl_1_data_C4[4][39];
-void fn_1_460(HuVecF *out, HuVecF *a, HuVecF *b);
-s32 fn_1_77C(Mtx out, const HuVecF *start, const HuVecF *end, const HuVecF *up);
-s32 fn_1_E74(HuVecF *out, Mtx matrix);
 void fn_1_B7F0(OMOBJ *object);
 void fn_1_B95C(OMOBJ *object);
 void fn_1_BC10(OMOBJ *object);

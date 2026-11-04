@@ -24,7 +24,7 @@ struct M621Effect_s {
 void fn_1_5168(OMOBJ *obj);
 
 struct M621Environment_s {
-    u8 reservedBytes[4]; /* Unused bytes; their game meaning is unknown. */
+    u8 unk00[4]; /* Cleared on allocation; the game's code never reads these bytes. */
     OMOBJ *modelObj; /* Scene model object containing the stage assets. */
     HU3D_MODELID hookModel; /* Hook model attached to the character model. */
     HU3D_MOTIONID hookMotion; /* Hook animation motion. */

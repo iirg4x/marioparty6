@@ -43,9 +43,7 @@
 #define SAF_TEST_MESSAGE_ID ((u32)((SAF_MICQUIZ_MESSAGE_BANK << 16) | SAF_TEST_MESSAGE_INDEX))
 #define SAF_MARIO_DATA_DIR_ID 0x8e0000
 #define SAF_INSET_BASE_INTENSITY 24
-#define SAF_INSET_MIN_ALPHA 224U
 #define SAF_DEPTH_RAMP_FIRST 240
-#define SAF_DEPTH_PALETTE_ENTRIES 256
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -229,7 +227,6 @@ void fn_1_9EC(HSF_OBJECT *object, HSF_TRANSFORM *transform, Mtx *previousMatrix,
     }
 }
 
-enum { MOTCHK_SUBSTICK_AXIS_MASK = 0xF8 };
 extern u32 lbl_1_bss_49C[8];
 
 /* Updates the motion-check camera from controller input on each object-manager tick. */
@@ -293,14 +290,14 @@ void fn_1_B30(OMOBJ *cameraObject)
             + offset.x * sin(3.141592653589793*rotZ/180.0)));
     VECCrossProduct(&dir, &offset, &offset);
     VECNormalize(&offset, &offset);
-    stickPos = (lbl_802BFFF4[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    stickPos = (lbl_802BFFF4[0] & 0xF8);
     if (stickPos != 0) {
         lbl_80266A4C.x += 0.05f * (offset.x * stickPos);
         lbl_80266A4C.y += 0.05f * (offset.y * stickPos);
         lbl_80266A4C.z += 0.05f * (offset.z * stickPos);
     }
     VECNormalize(&yOfs, &offset);
-    stickPos = -(lbl_802BFFF0[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    stickPos = -(lbl_802BFFF0[0] & 0xF8);
     if (stickPos != 0) {
         lbl_80266A4C.x += 0.05f * (offset.x * stickPos);
         lbl_80266A4C.y += 0.05f * (offset.y * stickPos);
@@ -540,7 +537,7 @@ void fn_1_2380(void) {
     GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_TEXA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
     /* Keep only bright captured pixels while accumulating their spread. */
-    GXSetAlphaCompare(GX_GEQUAL, SAF_INSET_MIN_ALPHA, GX_AOP_OR, GX_GEQUAL, SAF_INSET_MIN_ALPHA);
+    GXSetAlphaCompare(GX_GEQUAL, 224U, GX_AOP_OR, GX_GEQUAL, 224U);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
     GXSetZMode(0U, GX_ALWAYS, 0U);
     GXInitTexObj(&textureObject, lbl_1_bss_1A0, 320U, 240U, GX_TF_I8, GX_CLAMP, GX_CLAMP, 0U);
@@ -700,7 +697,7 @@ void fn_1_301C(void) {
     GXWGFifo.f32 = 1.0f;
 }
 
-extern void *lbl_1_bss_198;
+extern u16 *lbl_1_bss_198;
 extern void *lbl_1_bss_19C;
 
 f64 exp(f64);
@@ -719,21 +716,21 @@ void fn_1_33FC(void) {
     lbl_1_bss_198 = HuMemDirectMallocNum(2, bufferSizeBytes, 0x10000000);
     /* The first 240 entries stay transparent; the last 16 fade into the depth ramp. */
     for (paletteEntry = 0; paletteEntry < SAF_DEPTH_RAMP_FIRST; ++paletteEntry) {
-        ((u16 *)lbl_1_bss_198)[paletteEntry] = 0;
+        lbl_1_bss_198[paletteEntry] = 0;
     }
-    for (paletteEntry = SAF_DEPTH_RAMP_FIRST; paletteEntry < SAF_DEPTH_PALETTE_ENTRIES;
+    for (paletteEntry = SAF_DEPTH_RAMP_FIRST; paletteEntry < 256;
          ++paletteEntry) {
         alphaRamp = (f32)(1.0 -
                      ((f32)(paletteEntry - SAF_DEPTH_RAMP_FIRST) / 15.0f));
         alphaLevel = (s32)(255.0 *
                       exp((f64)(-8.0f * alphaRamp) *
                           log(2.0)));
-        ((u16 *)lbl_1_bss_198)[paletteEntry] = (u16)(((u8)alphaLevel << 8) | (u8)alphaLevel);
+        lbl_1_bss_198[paletteEntry] = (u16)(((u8)alphaLevel << 8) | (u8)alphaLevel);
     }
     DCFlushRange(lbl_1_bss_198, (u32)bufferSizeBytes);
 }
 
-extern void *lbl_1_bss_198;
+extern u16 *lbl_1_bss_198;
 extern void *lbl_1_bss_19C;
 
 /* When invoked for the depth view, captures Z8 depth and draws it through the alpha palette. */
@@ -764,7 +761,7 @@ void fn_1_35CC(void) {
     GXSetChanCtrl(GX_COLOR1A1, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
     GXSetNumTexGens(1U);
     GXSetNumTevStages(1U);
-    GXInitTlutObj(&tlutObj, lbl_1_bss_198, GX_TL_IA8, SAF_DEPTH_PALETTE_ENTRIES);
+    GXInitTlutObj(&tlutObj, lbl_1_bss_198, GX_TL_IA8, 256);
     GXLoadTlut(&tlutObj, 0U);
     GXInitTexObjCI(&texObj, lbl_1_bss_19C, 640U, 480U, GX_TF_C8,
                    GX_CLAMP, GX_CLAMP, 0U, 0U);

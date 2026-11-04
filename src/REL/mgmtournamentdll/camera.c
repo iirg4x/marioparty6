@@ -22,7 +22,6 @@ extern s16 MgGameNo; /* Saved tournament camera preset, retained across minigame
 void fn_1_14C8(OMOBJ *object);
 void fn_1_16F8(HU3D_CAMERA *camera, Vec *startPosition, Vec *startTarget, const Vec *endPosition,
                const Vec *endTarget, f32 durationFrames, f32 elapsedFrames);
-void fn_1_7C78(Vec *center);
 
 HU3D_MOTIONID lbl_1_bss_C6; /* Opening camera animation. */
 HU3D_MODELID lbl_1_bss_C4; /* Model driving the opening camera animation. */

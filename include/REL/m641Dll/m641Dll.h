@@ -95,5 +95,41 @@ typedef struct M641RouteState {
 
 extern M641CharacterRecord lbl_1_bss_590[4];
 extern M641RouteState lbl_1_bss_84;
+s32 fn_1_8C(Point3d *first, Point3d *firstDisplacement, f32 firstRadius, Point3d *second,
+            Point3d *secondDisplacement, f32 secondRadius);
+s32 fn_1_540(Point3d *first, f32 firstRadius, f32 firstExtent, Point3d *firstDisplacement,
+             Point3d *second, f32 secondRadius, f32 secondExtent, Point3d *secondDisplacement);
+s32 fn_1_8C8(Point3d *first, f32 firstRadius, f32 firstExtent, Point3d *second, f32 secondRadius,
+             f32 secondExtent);
+s32 fn_1_E10(const Point3d *firstPosition, const Point3d *firstDisplacement, f32 firstRadius,
+             const Point3d *secondPosition, const Point3d *secondDisplacement, f32 secondRadius,
+             f32 *result);
+s16 fn_1_A204(s16 playerIndex);
+void fn_1_A220(void);
+void fn_1_B0E0(void);
+void fn_1_B108(void);
+void fn_1_FF1C(s16 playerIndex);
+void fn_1_10530(void);
+void fn_1_10550(s16 groupNo);
+void fn_1_10D10(void);
+void fn_1_11AD8(void);
+void fn_1_13FC4(void);
+void fn_1_1403C(s16 groupIndex, s16 playerIndex, s32 amount);
+void fn_1_14118(void);
+s16 fn_1_141A4(s16 index);
+void fn_1_1D7C(void);
+f32 fn_1_1D80(void);
+f32 fn_1_1DB4(void);
+f32 fn_1_1DC4(void);
+void fn_1_1DD4(void);
+void fn_1_682C(s16 frame);
+s16 fn_1_8400(s16 boardIndex, s16 participant, Point3d *targetPosition,
+              Point3d *targetDisplacement, f32 targetRadius, f32 targetHeight, s16 *collisionKind,
+              Point3d *collisionPosition);
+void fn_1_8A7C(void);
+void fn_1_8D9C(s16 winningGroup);
+void fn_1_9CD0(s16 boardIndex, s16 spaceIndex, Point3d *position, s16 *result);
+void fn_1_9EC8(s16 effectId, Point3d *position);
+s32 fn_1_146B8(Point3d *sourceVector, Point3d *unitVector);
 
 #endif

@@ -3,10 +3,10 @@
 #include "REL/m625Dll/wave.h"
 #include "datadir_enum.h"
 #include "game/memory.h"
+#include "REL/m625Dll/camera.h"
 
 extern s16 lbl_802C0278;
 extern HUPROCESS *lbl_1_bss_810;
-void fn_1_1398(Point3d *, const Point3d *, f32);
 void fn_1_1FEC(const f32 *);
 void fn_1_1E80(void);
 void fn_1_20AC(void);
