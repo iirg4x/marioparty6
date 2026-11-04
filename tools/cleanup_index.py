@@ -284,6 +284,19 @@ def _load_audit() -> Any:
 _AUDIT = _load_audit()
 
 
+def _load_decisions() -> Any:
+    """cleanup_decisions.py next to this file: each site's status, decided or open (4 Nov)."""
+    path = Path(__file__).resolve().with_name("cleanup_decisions.py")
+    spec = importlib.util.spec_from_file_location("mp6_cleanup_decisions", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+_DECISIONS = _load_decisions()
+
+
 def _audit_category(finding: Mapping[str, Any]) -> Optional[Tuple[str, str, str, str]]:
     category, rule = finding["category"], finding["rule"]
     if (category, rule) in AUDIT_SKIPPED or (category, None) in AUDIT_SKIPPED:
@@ -307,8 +320,10 @@ def _audit_sites(findings: Iterable[Mapping[str, Any]], sources: Mapping[str, st
         lines = lines_of.setdefault(path, sources.get(path, "").split("\n"))
         line = max(1, int(finding["line"] or 1))
         excerpt = lines[line - 1].strip() if line - 1 < len(lines) else ""
+        # "_rule" is read by the decision status and removed before the document is written
         sites.append({"path": path, "line": line, "endLine": line, "category": mapped[0],
-                      "detail": str(finding["text"])[:300], "source": " ".join(excerpt.split())[:220]})
+                      "detail": str(finding["text"])[:300], "source": " ".join(excerpt.split())[:220],
+                      "_rule": "{}/{}".format(finding["category"], finding["rule"])})
     return sites
 
 
@@ -1470,10 +1485,12 @@ METHODOLOGY = [
 
 def cleanup_document(sources: Mapping[str, str], commit: str, generated_at: Optional[str] = None,
                      methodology: Optional[Sequence[str]] = None, scan: Any = None, repository: Any = None,
-                     symbols: Optional[Mapping[str, str]] = None) -> dict:
+                     symbols: Optional[Mapping[str, str]] = None, record_root: Optional[Path] = None) -> dict:
     """The cleanup payload for {path: text}, shared by the published site (git objects) and the local dashboard
     (the working tree, which passes cached versions of `scan` and `repository`). `symbols` holds the symbols.txt
-    files, read only for address names whose original name is known."""
+    files, read only for address names whose original name is known. Every site gets a status, decided or open
+    (cleanup_decisions.py); `record_root`, the local dashboard's harness decisions parent, adds each decision
+    record's full path."""
 
     sites: List[dict] = []
     for path in sorted(sources):
@@ -1490,6 +1507,10 @@ def cleanup_document(sources: Mapping[str, str], commit: str, generated_at: Opti
             categories.append({"id": site["category"], "label": site["category"].replace("-", " "),
                                "family": "match-hack", "description": site.get("detail", "")[:120]})
     sites.sort(key=lambda item: (item["path"], item["line"], item["endLine"], order[item["category"]], item["source"]))
+    _DECISIONS.apply(sites, sources)
+    status = _DECISIONS.summary(sites, record_root)
+    notes = list(methodology if methodology is not None else METHODOLOGY)
+    notes.insert(1, _DECISIONS.METHODOLOGY_NOTE)
     return {
         "schemaVersion": 1,
         "commit": commit,
@@ -1497,8 +1518,10 @@ def cleanup_document(sources: Mapping[str, str], commit: str, generated_at: Opti
         "scannedFiles": len(sources),
         "families": [dict(item) for item in FAMILY_DEFINITIONS],
         "categories": categories,
+        "statusCounts": status["statusCounts"],
+        "decisions": status["decisions"],
         "sites": sites,
-        "methodology": list(methodology if methodology is not None else METHODOLOGY),
+        "methodology": notes,
     }
 
 

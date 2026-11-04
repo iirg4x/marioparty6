@@ -89,6 +89,16 @@
                   <strong class="skeleton-value"></strong>
                   <span class="skeleton-line skeleton-short"></span>
                 </article>
+                <article class="cleanup-summary-card skeleton-card">
+                  <span class="skeleton-label"></span>
+                  <strong class="skeleton-value"></strong>
+                  <span class="skeleton-line skeleton-short"></span>
+                </article>
+                <article class="cleanup-summary-card skeleton-card">
+                  <span class="skeleton-label"></span>
+                  <strong class="skeleton-value"></strong>
+                  <span class="skeleton-line skeleton-short"></span>
+                </article>
               </div>
 
               <div class="cleanup-workbench">
@@ -131,6 +141,16 @@
                 <strong id="cleanup-site-count">—</strong>
                 <small id="cleanup-site-note">Awaiting cleanup scan</small>
               </article>
+              <article class="cleanup-summary-card" data-status="open">
+                <span>Open sites</span>
+                <strong id="cleanup-open-count">—</strong>
+                <small id="cleanup-open-note">No recorded decision covers them</small>
+              </article>
+              <article class="cleanup-summary-card" data-status="decided">
+                <span>Decided sites</span>
+                <strong id="cleanup-decided-count">—</strong>
+                <small id="cleanup-decided-note">Listed, covered by a recorded decision</small>
+              </article>
               <article class="cleanup-summary-card">
                 <span>Source files</span>
                 <strong id="cleanup-file-count">—</strong>
@@ -155,8 +175,13 @@
                 </form>
 
                 <details class="cleanup-filter-disclosure" id="cleanup-filters-disclosure" open>
-                  <summary>Filter by type or directory</summary>
+                  <summary>Filter by status, type or directory</summary>
                   <div class="cleanup-facet-fields">
+                <fieldset class="cleanup-facet" id="cleanup-status-facet">
+                  <legend>Status</legend>
+                  <div class="cleanup-facet-list" id="cleanup-status-facets"></div>
+                </fieldset>
+
                 <fieldset class="cleanup-facet" id="cleanup-family-facet">
                   <legend>Family</legend>
                   <div class="cleanup-facet-list" id="cleanup-family-facets"></div>
@@ -215,6 +240,15 @@
                 </div>
               </div>
             </div>
+
+            <details class="cleanup-methodology cleanup-decisions" id="cleanup-decisions">
+              <summary>
+                <span>Decided and open sites</span>
+                <span class="cleanup-methodology-status" id="cleanup-decisions-status">Scan unavailable</span>
+                <span class="cleanup-methodology-chevron" aria-hidden="true">›</span>
+              </summary>
+              <div class="cleanup-methodology-body" id="cleanup-decisions-body"></div>
+            </details>
 
             <details class="cleanup-methodology" id="cleanup-methodology">
               <summary>

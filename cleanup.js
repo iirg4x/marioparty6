@@ -135,7 +135,12 @@
         ? asText(item.source.snippet || item.source.text || item.source.value)
         : asText(item.source || item.snippet);
       const endLine = integer(item.endLine ?? item.end_line);
+      // Since 4 Nov 2026 each site says whether a recorded decision covers it; a site without a status is open.
+      const decisionId = asText(item.decision);
+      const status = asText(item.status) === "decided" && decisionId ? "decided" : "open";
       sites.push({
+        status,
+        decision: status === "decided" ? decisionId : "",
         path,
         line,
         endLine: endLine !== null && endLine >= line ? endLine : line,
@@ -150,6 +155,26 @@
       });
     }
 
+    const decisions = (Array.isArray(raw.decisions) ? raw.decisions : [])
+      .filter(isObject)
+      .map((decision) => ({
+        id: asText(decision.id),
+        label: asText(decision.label, humanize(decision.id)),
+        date: asText(decision.date),
+        record: asText(decision.record),
+        recordPath: asText(decision.recordPath),
+        summary: asText(decision.summary),
+      }))
+      .filter((decision) => decision.id);
+    const decisionById = new Map(decisions.map((decision) => [decision.id, decision]));
+    for (const site of sites) {
+      if (site.status === "decided" && !decisionById.has(site.decision)) {
+        const decision = { id: site.decision, label: humanize(site.decision), date: "", record: "", recordPath: "", summary: "" };
+        decisions.push(decision);
+        decisionById.set(decision.id, decision);
+      }
+    }
+
     const scannedValue = Array.isArray(raw.scannedFiles)
       ? raw.scannedFiles.length
       : finiteNumber(raw.scannedFiles);
@@ -158,6 +183,8 @@
       generatedAt: asText(raw.generatedAt),
       scannedFiles: scannedValue,
       categories,
+      decisions,
+      decisionById,
       sites,
       methodology: Array.isArray(raw.methodology)
         ? raw.methodology.map((note) => asText(note)).filter(Boolean)
@@ -171,6 +198,7 @@
       bound: false,
       data: null,
       search: "",
+      statuses: new Set(),
       families: new Set(),
       categories: new Set(),
       directories: new Set(),
@@ -220,11 +248,14 @@
       site.detail,
       site.source,
       site.offset,
+      site.status,
+      site.decision,
     ].join(" ").toLowerCase();
   }
 
   function siteMatches(site, state, ignore = "") {
     if (ignore !== "search" && !searchWords(state).every((word) => siteSearchText(site).includes(word))) return false;
+    if (ignore !== "status" && state.statuses.size && !state.statuses.has(site.status)) return false;
     if (ignore !== "family" && state.families.size && !state.families.has(site.family)) return false;
     if (ignore !== "category" && state.categories.size && !state.categories.has(site.category)) return false;
     if (ignore !== "directory" && state.directories.size && !state.directories.has(site.directory)) return false;
@@ -253,7 +284,8 @@
   }
 
   function activeFilterCount(state) {
-    return state.families.size + state.categories.size + state.directories.size + (state.search.trim() ? 1 : 0);
+    return state.statuses.size + state.families.size + state.categories.size + state.directories.size
+      + (state.search.trim() ? 1 : 0);
   }
 
   function sourceHref(site, data) {
@@ -275,6 +307,20 @@
     return text;
   }
 
+  function decisionRecordText(decision) {
+    if (!decision) return "";
+    return [decision.label, decision.date, decision.recordPath || decision.record, decision.summary].filter(Boolean).join(" · ");
+  }
+
+  function renderStatus(site, data) {
+    if (site.status !== "decided") {
+      return '<span class="cleanup-site-status" data-status="open" title="No recorded decision covers this site">Open</span>';
+    }
+    const decision = data?.decisionById?.get(site.decision);
+    const record = decisionRecordText(decision) || site.decision;
+    return `<span class="cleanup-site-status" data-status="decided" title="${escapeHtml(record)}">Decided · ${escapeHtml(decision?.label || site.decision)}</span>`;
+  }
+
   function renderSite(site, data, options = {}) {
     const href = sourceHref(site, data);
     const line = href
@@ -284,9 +330,11 @@
     const source = site.source ? `<code class="cleanup-site-source">${escapeHtml(site.source)}</code>` : "";
     const offset = site.offset ? `<span class="cleanup-site-offset">${escapeHtml(site.offset)}</span>` : "";
     const path = options.showPath ? `<span class="cleanup-site-path mono">${escapeHtml(site.path)}</span>` : "";
-    return `<article class="cleanup-site-row" data-family="${escapeHtml(site.family)}">
+    const status = renderStatus(site, data);
+    return `<article class="cleanup-site-row" data-family="${escapeHtml(site.family)}" data-status="${escapeHtml(site.status)}">
       <div class="cleanup-site-head">
         ${path}
+        ${status}
         <span class="cleanup-site-category" data-family="${escapeHtml(site.family)}" title="${escapeHtml(site.categoryDescription)}">${escapeHtml(site.categoryLabel)}</span>
         ${detail}
         ${offset}
@@ -340,25 +388,45 @@
     return entries;
   }
 
-  function facetOption(kind, id, label, count, checked, family = "") {
+  function facetOption(kind, id, label, count, checked, family = "", split = null) {
     const name = `cleanup-${kind}`;
     const dataFamily = family ? ` data-family="${escapeHtml(family)}"` : "";
+    // a category's open and decided parts, when some of its sites are decided
+    const splitText = split && split.decided
+      ? `<span class="cleanup-facet-split">${formatNumber(split.open)} open · ${formatNumber(split.decided)} decided</span>`
+      : "";
     return `<label class="cleanup-facet-option"${dataFamily}>
       <input type="checkbox" name="${name}" value="${escapeHtml(id)}" data-cleanup-filter="${kind}"${checked ? " checked" : ""} />
-      <span class="cleanup-facet-option-text"><span>${escapeHtml(label)}</span><span class="cleanup-facet-count">${formatNumber(count)}</span></span>
+      <span class="cleanup-facet-option-text"><span>${escapeHtml(label)}${splitText}</span><span class="cleanup-facet-count">${formatNumber(count)}</span></span>
     </label>`;
   }
 
+  function statusCounts(sites) {
+    let decided = 0;
+    for (const site of sites) if (site.status === "decided") decided += 1;
+    return { open: sites.length - decided, decided };
+  }
+
   function renderFacets(state) {
+    const statusRoot = element(state.main, "cleanup-status-facets");
     const familyRoot = element(state.main, "cleanup-family-facets");
     const categoryRoot = element(state.main, "cleanup-category-facets");
     const directoryRoot = element(state.main, "cleanup-directory-facets");
     if (!familyRoot || !categoryRoot || !directoryRoot) return;
     if (!state.data) {
+      if (statusRoot) statusRoot.innerHTML = '<span class="cleanup-facet-empty">Scan unavailable.</span>';
       familyRoot.innerHTML = '<span class="cleanup-facet-empty">Scan unavailable.</span>';
       categoryRoot.innerHTML = '<span class="cleanup-facet-empty">Scan unavailable.</span>';
       directoryRoot.innerHTML = '<span class="cleanup-facet-empty">Scan unavailable.</span>';
       return;
+    }
+
+    if (statusRoot) {
+      const counts = statusCounts(filteredSites(state, "status"));
+      statusRoot.innerHTML = [
+        facetOption("status", "open", "Open", counts.open, state.statuses.has("open")),
+        facetOption("status", "decided", "Decided", counts.decided, state.statuses.has("decided")),
+      ].join("");
     }
 
     familyRoot.innerHTML = FAMILY_DEFS.map((family) => facetOption(
@@ -371,13 +439,21 @@
     )).join("");
 
     const categoryCounts = new Map();
-    for (const site of filteredSites(state, "category")) categoryCounts.set(site.category, (categoryCounts.get(site.category) || 0) + 1);
+    const categoryDecided = new Map();
+    for (const site of filteredSites(state, "category")) {
+      categoryCounts.set(site.category, (categoryCounts.get(site.category) || 0) + 1);
+      if (site.status === "decided") categoryDecided.set(site.category, (categoryDecided.get(site.category) || 0) + 1);
+    }
     const categories = state.data.categories
       .filter((category) => state.data.sites.some((site) => site.category === category.id) || state.categories.has(category.id))
       .map((category) => ({ category, count: categoryCounts.get(category.id) || 0 }))
       .sort((a, b) => (b.count - a.count) || a.category.label.localeCompare(b.category.label));
     categoryRoot.innerHTML = categories.length
-      ? categories.map(({ category, count }) => facetOption("category", category.id, category.label, count, state.categories.has(category.id), category.family)).join("")
+      ? categories.map(({ category, count }) => {
+        const decided = categoryDecided.get(category.id) || 0;
+        return facetOption("category", category.id, category.label, count, state.categories.has(category.id), category.family,
+          { open: count - decided, decided });
+      }).join("")
       : '<span class="cleanup-facet-empty">No categories in this scan.</span>';
 
     const directories = currentDirectories(state);
@@ -457,6 +533,8 @@
     const data = state.data;
     if (!data) {
       setText(state.main, "cleanup-site-count", "—");
+      setText(state.main, "cleanup-open-count", "—");
+      setText(state.main, "cleanup-decided-count", "—");
       setText(state.main, "cleanup-file-count", "—");
       setText(state.main, "cleanup-scanned-count", "—");
       setText(state.main, "cleanup-site-note", "Awaiting cleanup scan");
@@ -472,7 +550,13 @@
       return;
     }
     const fileCount = new Set(data.sites.map((site) => site.path)).size;
+    const counts = statusCounts(data.sites);
     setText(state.main, "cleanup-site-count", formatNumber(data.sites.length));
+    setText(state.main, "cleanup-open-count", formatNumber(counts.open));
+    setText(state.main, "cleanup-decided-count", formatNumber(counts.decided));
+    setText(state.main, "cleanup-open-note", "No recorded decision covers them");
+    const used = data.decisions.filter((decision) => data.sites.some((site) => site.decision === decision.id)).length;
+    setText(state.main, "cleanup-decided-note", `Listed, covered by ${formatNumber(used)} recorded decision${used === 1 ? "" : "s"}`);
     setText(state.main, "cleanup-file-count", formatNumber(fileCount));
     setText(state.main, "cleanup-scanned-count", formatNumber(data.scannedFiles));
     setText(state.main, "cleanup-site-note", data.generatedAt ? `Generated ${formatDate(data.generatedAt)}` : "Syntactic candidates in the scan");
@@ -523,6 +607,58 @@
     body.innerHTML = `<ul>${notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>`;
   }
 
+  function renderDecisions(state) {
+    const status = element(state.main, "cleanup-decisions-status");
+    const body = element(state.main, "cleanup-decisions-body");
+    if (!status || !body) return;
+    const data = state.data;
+    if (!data) {
+      status.textContent = "Scan unavailable";
+      body.innerHTML = "";
+      return;
+    }
+    const counts = statusCounts(data.sites);
+    status.textContent = `${formatNumber(counts.open)} open · ${formatNumber(counts.decided)} decided`;
+    const covered = new Map();
+    const byCategory = new Map();
+    for (const site of data.sites) {
+      if (site.status === "decided") covered.set(site.decision, (covered.get(site.decision) || 0) + 1);
+      let row = byCategory.get(site.category);
+      if (!row) {
+        row = { label: site.categoryLabel, open: 0, decided: 0 };
+        byCategory.set(site.category, row);
+      }
+      row[site.status === "decided" ? "decided" : "open"] += 1;
+    }
+    const decisionRows = data.decisions.map((decision) => `<tr>
+        <th scope="row">${escapeHtml(decision.label)}<small class="mono">${escapeHtml(decision.id)}</small></th>
+        <td>${escapeHtml(decision.date)}</td>
+        <td class="mono cleanup-decision-record" title="${escapeHtml(decision.recordPath || decision.record)}">${escapeHtml(decision.record)}</td>
+        <td>${escapeHtml(decision.summary)}</td>
+        <td class="cleanup-number">${formatNumber(covered.get(decision.id) || 0)}</td>
+      </tr>`).join("");
+    const categoryRows = Array.from(byCategory.values())
+      .sort((a, b) => (b.decided - a.decided) || ((b.open + b.decided) - (a.open + a.decided)) || a.label.localeCompare(b.label))
+      .map((row) => `<tr>
+        <th scope="row">${escapeHtml(row.label)}</th>
+        <td class="cleanup-number">${formatNumber(row.open)}</td>
+        <td class="cleanup-number">${formatNumber(row.decided)}</td>
+        <td class="cleanup-number">${formatNumber(row.open + row.decided)}</td>
+      </tr>`).join("");
+    body.innerHTML = `<p>Every site stays listed. A site is decided when a recorded decision covers it, and it names that decision; every other site is open.</p>
+      <div class="cleanup-table-wrap"><table class="cleanup-decision-table">
+        <caption>Recorded decisions</caption>
+        <thead><tr><th scope="col">Decision</th><th scope="col">Date</th><th scope="col">Record</th><th scope="col">What it keeps</th><th scope="col" class="cleanup-number">Sites</th></tr></thead>
+        <tbody>${decisionRows || '<tr><td colspan="5">This scan names no decisions.</td></tr>'}</tbody>
+      </table></div>
+      <div class="cleanup-table-wrap"><table class="cleanup-split-table">
+        <caption>Open and decided by category</caption>
+        <thead><tr><th scope="col">Category</th><th scope="col" class="cleanup-number">Open</th><th scope="col" class="cleanup-number">Decided</th><th scope="col" class="cleanup-number">All</th></tr></thead>
+        <tbody>${categoryRows}</tbody>
+        <tfoot><tr><th scope="row">All categories</th><td class="cleanup-number">${formatNumber(counts.open)}</td><td class="cleanup-number">${formatNumber(counts.decided)}</td><td class="cleanup-number">${formatNumber(data.sites.length)}</td></tr></tfoot>
+      </table></div>`;
+  }
+
   function revokeDownload(state) {
     if (!state.downloadUrl) return;
     try { window.URL?.revokeObjectURL(state.downloadUrl); } catch { /* URL APIs may be unavailable in tests. */ }
@@ -543,7 +679,7 @@
       link.removeAttribute("data-cleanup-ready");
       return;
     }
-    const lines = ["path\tline\tendLine\tcategory\tfamily\tdetail\tsource\toffset"];
+    const lines = ["path\tline\tendLine\tcategory\tfamily\tdetail\tsource\toffset\tstatus\tdecision\trecord"];
     for (const site of sites) {
       lines.push([
         site.path,
@@ -554,6 +690,9 @@
         site.detail,
         site.source,
         site.offset,
+        site.status,
+        site.decision,
+        state.data.decisionById.get(site.decision)?.record || "",
       ].map(tsvValue).join("\t"));
     }
     state.downloadUrl = window.URL.createObjectURL(new Blob([`${lines.join("\n")}\n`], { type: "text/tab-separated-values;charset=utf-8" }));
@@ -604,6 +743,7 @@
     const groups = groupSites(sites, state);
     renderResultStatus(state, sites, groups);
     renderResults(state);
+    renderDecisions(state);
     renderMethodology(state);
     updateDownload(state, sites);
   }
@@ -616,6 +756,7 @@
 
   function clearFilters(state) {
     state.search = "";
+    state.statuses.clear();
     state.families.clear();
     state.categories.clear();
     state.directories.clear();
@@ -643,7 +784,8 @@
   }
 
   function toggleFilter(state, kind, value, checked) {
-    const target = kind === "family" ? state.families : kind === "category" ? state.categories : state.directories;
+    const targets = { status: state.statuses, family: state.families, category: state.categories, directory: state.directories };
+    const target = targets[kind];
     if (!target) return;
     if (checked) target.add(value);
     else target.delete(value);
