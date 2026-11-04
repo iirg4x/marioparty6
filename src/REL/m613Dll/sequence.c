@@ -21,23 +21,11 @@ HUPROCESS *lbl_1_bss_1258;
 
 extern s16 lbl_802C0278;
 extern void fn_1_F048(void);
-extern void fn_1_11F8(void);
-extern void fn_1_4208(void);
-extern void fn_1_F3C4(void);
 
 extern u8 fn_1_F23C(s16 value);
 extern u8 fn_1_4D38(s16 value);
 extern void fn_1_F2A0(void);
 extern void fn_1_5038(void);
-extern void fn_1_18FC(void);
-extern void fn_1_F850(void);
-
-extern void fn_1_F568(void);
-extern void fn_1_5058(void);
-extern void fn_1_C2AC(void);
-
-extern s32 fn_1_C850(s16 value);
-extern void fn_1_D0C8(void);
 
 int _prolog(void);
 void _epilog(void);

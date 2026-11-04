@@ -19,7 +19,6 @@
 #define M638_TEAM1_FINISH_END_SFX_ID 1898
 #define M638_TEAM0_ACTIVITY_SFX_ID 1883
 #define M638_TEAM1_ACTIVITY_SFX_ID 1884
-#define M638_FLAG_SKIP_WINNER_COIN_BONUS 65551U
 
 MGSEQ_PARAM lbl_1_data_0 = {
     300, 1, fn_1_1EC, fn_1_284, fn_1_528, fn_1_598, fn_1_77C, fn_1_A28,
@@ -446,7 +445,7 @@ void fn_1_77C(s16 mode, s16 frameNo)
                            scene->teams[scene->winner].players[1]->charNo, -1, -1);
             scene->time = MgTimerValueGet(scene->timer);
             if ((scene->time < scene->record) &&
-                (fn_8006A124(M638_FLAG_SKIP_WINNER_COIN_BONUS) == 0) &&
+                (fn_8006A124(65551U) == 0) &&
                 ((scene->teams[scene->winner].players[0]->isCom == 0) ||
                  (scene->teams[scene->winner].players[1]->isCom == 0))) {
                 scene->newRecord = 1;
@@ -612,11 +611,11 @@ void fn_1_D84(s16 mode, s16 frameNo)
                                scene->teams[scene->winner].players[1]->motions[2],
                                0.0f, 5.0f, 0U);
             firstWinnerPlayerNo = scene->teams[scene->winner].players[0]->playerNo;
-            if (fn_8006A124(M638_FLAG_SKIP_WINNER_COIN_BONUS) == 0) {
+            if (fn_8006A124(65551U) == 0) {
                 lbl_80265750[firstWinnerPlayerNo].mgCoinBonus = 10;
             }
             secondWinnerPlayerNo = scene->teams[scene->winner].players[1]->playerNo;
-            if (fn_8006A124(M638_FLAG_SKIP_WINNER_COIN_BONUS) == 0) {
+            if (fn_8006A124(65551U) == 0) {
                 lbl_80265750[secondWinnerPlayerNo].mgCoinBonus = 10;
             }
             Hu3DModelObjPosGet(scene->teams[scene->winner].actor.modelA,
@@ -1323,13 +1322,13 @@ s32 fn_1_368C(void *data)
 }
 
 /* Called by the sequence init hook fn_1_1EC: load the reflection map and both team courses. */
-void fn_1_3804(void *sceneData)
+void fn_1_3804(M638SceneView *sceneData)
 {
     Hu3DReflectMapSet(fn_80008DD0(DATANUM(0x610000, 52), 0x10000000, 2));
-    fn_1_386C(&((M638SceneView *)sceneData)->teams[0].course, 0);
-    fn_1_386C(&((M638SceneView *)sceneData)->teams[1].course, 1);
-    fn_1_4948(&((M638SceneView *)sceneData)->teams[0].course);
-    fn_1_4948(&((M638SceneView *)sceneData)->teams[1].course);
+    fn_1_386C(&sceneData->teams[0].course, 0);
+    fn_1_386C(&sceneData->teams[1].course, 1);
+    fn_1_4948(&sceneData->teams[0].course);
+    fn_1_4948(&sceneData->teams[1].course);
 }
 
 /* Called twice by fn_1_3804, once per team camera, to load course models and event props. */

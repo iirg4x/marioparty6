@@ -61,7 +61,6 @@ void fn_1_F4(void)
 extern void *lbl_1_bss_0;
 void fn_1_1A48(OMOBJ *obj);
 void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
-u32 fn_80071A9C(void);
 /* Sequence initialization callback creates the stage object and requests the next phase. */
 void fn_1_118(s16 mode, s16 frameNo)
 {

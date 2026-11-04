@@ -17,9 +17,6 @@ extern s16 lbl_1_bss_0;
 
 extern s16 lbl_1_bss_125E;
 
-extern s32 fn_1_10C5C(Point3d *, Point3d *);
-extern s32 fn_1_10DB4(f32, f32, f32 *);
-
 void fn_1_F3C4(void);
 void fn_1_F568(void);
 void fn_1_F620(s16 playerIndex, s32 delta);

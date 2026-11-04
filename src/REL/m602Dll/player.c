@@ -1,5 +1,4 @@
 /* Controls Odd Card Out player models, choices, and reactions. */
-#define _MATH_H
 #include "REL/m602Dll.h"
 #include "msm_se.h"
 

@@ -1,10 +1,10 @@
 // Runs the overlay's startup and shutdown entry points.
 #include "math.h"
+#include "REL/ttwarsdll.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
 
 // The REL loader calls this when ttwarsdll starts; constructors run before the overlay scene setup.
 int _prolog(void)

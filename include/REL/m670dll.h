@@ -81,5 +81,14 @@ int fn_1_2F44(HuVecF *pos);
 void fn_1_3098(OMOBJ *obj);
 void fn_1_3B30(void);
 void fn_1_3BDC(void);
+void fn_1_1F8(s16 mode, s16 frameNo);
+void fn_1_218(s16 mode, s16 frameNo);
+void fn_1_42C(s16 mode, s16 frameNo);
+void fn_1_5AC(s16 mode, s16 frameNo);
+void fn_1_B4C(s16 mode, s16 frameNo);
+void fn_1_C68(s16 mode, s16 frameNo);
+void fn_1_12C4(s16 mode, s16 frameNo);
+void fn_1_1428(s16 mode, s16 frameNo);
+void fn_1_142C(s16 mode, s16 frameNo);
 
 #endif

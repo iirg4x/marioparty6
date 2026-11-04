@@ -32,7 +32,6 @@ extern s32 lbl_1_bss_B88;
 extern s32 lbl_1_bss_64C[2];
 extern s32 lbl_1_bss_950[9][10];
 
-extern void fn_8005BB8C(s16 charNo);
 extern s32 lbl_1_bss_664;
 extern s16 lbl_1_bss_654;
 extern float lbl_1_bss_65C;

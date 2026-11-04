@@ -17,6 +17,7 @@
 #include "REL/optionDll/main.h"
 #include "REL/optionDll/records.h"
 #include "REL/optionDll/sound_test.h"
+#include "game/mic.h"
 
 #define OPTION_LAST_CHARACTER_BANK_FLAG 2
 #define OPTION_LAST_BOARD_BANK_FLAG 51
@@ -101,7 +102,6 @@ void fn_1_F0B0(void);
 void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
 BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
 float fn_1_F684(s16 groupId, s16 memberNo);
-extern int HuMCMicGet(void);
 int sprintf(char *buffer, const char *format, int value);
 
 /* Called by the Option Mode menu to show board and character record totals. */

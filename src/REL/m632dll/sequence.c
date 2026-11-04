@@ -60,9 +60,9 @@ void fn_1_140(s32 playerIndex, s32 cameraId)
     Hu3D3Dto2D(&worldPosition, (s16) cameraId, &screenPosition);
     voicePan = (s32) screenPosition.x;
     voicePan /= 5;
-    if ((s32) voicePan < 32) {
+    if (voicePan < 32) {
         voicePan = 32;
-    } else if ((s32) voicePan > 96) {
+    } else if (voicePan > 96) {
         voicePan = 96;
     }
     fn_80060F14((s16) lbl_1_bss_0.charNo[playerIndex], (s16) voicePan);

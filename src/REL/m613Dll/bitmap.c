@@ -6,6 +6,8 @@
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
+#include "game/object.h"
+#include "game/audio.h"
 
 #define M613_MODEL_DATA_GROUP_FLAG 0x10000000
 
@@ -16,23 +18,7 @@ HSF_BITMAP *lbl_1_bss_10;
 M613ValueKey *lbl_1_bss_C;
 s32 lbl_1_bss_8;
 extern s16 lbl_1_bss_1210[4];
-extern void fn_1_D61C(void);
-extern void fn_1_DD54(void);
-extern void fn_1_DCF4(s16);
-extern void fn_1_DE20(s16);
-extern void HuAudFXPanning(s32, s16);
-extern s32 fn_1_10C5C(Point3d *, Point3d *);
-extern f64 fn_1_10E3C(f64, f64);
 
-extern void fn_1_9C7C(s16 playerIndex);
-extern void fn_1_3FFC(f32 angleX, f32 angleY, f32 angleZ,
-                     Vec source, Vec *destination);
-extern void fn_1_DBDC(s16 playerIndex);
-extern f32 fn_1_99A4(Point3d movingPosition, Point3d displacement,
-                     f32 radius, u8 side);
-extern void fn_8006A030(s16 playerIndex, s16 duration, s16 strength, s16 count);
-extern s32 HuAudFXPlay(s32 soundId);
-extern void fn_1_B4A8(void);
 extern s16 lbl_1_bss_0;
 
 typedef struct {
@@ -45,8 +31,6 @@ typedef struct {
     Vec nightDirection;
     GXColor nightColor;
 } M613LightingData;
-
-extern s32 fn_1_10C5C(Point3d *, Point3d *);
 
 /* Walks and clips an integer pixel path; after the loop it clears drawPosition again, which repeats
  * the last sample or is unset if no step ran. */

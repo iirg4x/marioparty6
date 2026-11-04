@@ -1,5 +1,4 @@
 /* Course model, motion and per-player animation resource names and IDs. */
-#define _MATH_H
 #include <math.h>
 #include "REL/m608dll.h"
 

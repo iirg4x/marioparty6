@@ -9,8 +9,6 @@
 
 #define M680_VOICE_OFF_MOTION 36
 
-void fn_1_6538(M680CharacterState *work, s32 player);
-void fn_1_9600(void);
 void fn_1_AFF8(OMOBJ *object);
 void fn_1_B0A4(M680CharacterState *work);
 void fn_1_B0A8(M680CharacterState *work);

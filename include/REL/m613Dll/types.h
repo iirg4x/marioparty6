@@ -92,5 +92,40 @@ extern M613ValueKey *lbl_1_bss_C;
 extern s16 lbl_1_bss_1210[4];
 extern s16 lbl_1_bss_D60[3][200];
 extern s32 lbl_1_bss_400[3][200];
+void fn_1_11F8(void);
+void fn_1_18FC(void);
+void fn_1_1A7C(void);
+s16 fn_1_1D7C(void);
+s16 fn_1_1D84(void);
+s16 fn_1_1EF4(s16 row, s16 column);
+void fn_1_1F54(s16 row, s16 column, Point3d *position);
+s32 fn_1_20D0(const Point3d *point0, const Point3d *point1, const Point3d *point2,
+              const Point3d *point3);
+void fn_1_3FFC(f32 angle_x, f32 angle_y, f32 angle_z, const Vec source, Vec *destination);
+void fn_1_4208(void);
+void fn_1_5058(void);
+f32 fn_1_99A4(Point3d movingPosition, Point3d displacement, f32 radius, u8 side);
+void fn_1_9C7C(s16 playerIndex);
+void fn_1_B4A8(void);
+void fn_1_C2AC(void);
+s32 fn_1_C850(s16 frameNo);
+void fn_1_D0C8(void);
+void fn_1_D61C(void);
+void fn_1_DBDC(s16 playerIndex);
+void fn_1_DCF4(s16 playerIndex);
+void fn_1_DD54(void);
+void fn_1_DE20(s16 playerIndex);
+void fn_1_F3C4(void);
+void fn_1_F568(void);
+void fn_1_F6E0(s16 playerIndex, Point3d *position);
+void fn_1_F850(void);
+s16 fn_1_FA48(void);
+void fn_1_FC40(void);
+void fn_1_1054C(const Point3d *sourcePosition, const Point3d *targetPosition, s16 playerIndex,
+                s32 progressAmount);
+void fn_1_106C0(void);
+s32 fn_1_10C5C(Point3d *direction, Point3d *unitDirection);
+s32 fn_1_10DB4(f32 numerator, f32 denominator, f32 *ratio);
+f64 fn_1_10E3C(f64 x, f64 y);
 
 #endif

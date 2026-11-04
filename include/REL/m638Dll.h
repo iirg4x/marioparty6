@@ -313,7 +313,7 @@ s32 fn_1_2ED0(void *data);
 s32 fn_1_2F94(void *data);
 void fn_1_309C(M638TeamActorView *work, s32 camera);
 s32 fn_1_368C(void *data);
-void fn_1_3804(void *sceneData);
+void fn_1_3804(M638SceneView *sceneData);
 void fn_1_386C(M638CourseView *course, s32 camera);
 void fn_1_4948(M638CourseView *course);
 void fn_1_4B4C(M638CourseView *course);

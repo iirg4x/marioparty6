@@ -918,10 +918,6 @@ M642ParticleOwner lbl_1_data_1504[3] = {
 void *lbl_1_data_1558[1] = { lbl_1_data_14B0 };
 
 void *lbl_1_data_155C[1] = { lbl_1_data_1504 };
-#define fn_1_91EC fn_1_91EC
-#define fn_1_92D4 fn_1_92D4
-#define lbl_1_data_1468 lbl_1_data_1468
-#define lbl_1_data_148C lbl_1_data_148C
 
 /* Selects the day or night grid resource table for a scene index. */
 void *fn_1_91EC(s32 index)
@@ -929,11 +925,6 @@ void *fn_1_91EC(s32 index)
     if (fn_1_92D4() == 0) return lbl_1_data_1468[index];
     return lbl_1_data_148C[index];
 }
-
-#define fn_1_9250 fn_1_9250
-#define fn_1_92D4 fn_1_92D4
-#define lbl_1_data_1558 lbl_1_data_1558
-#define lbl_1_data_155C lbl_1_data_155C
 
 /* Selects the day or night particle owner list for a scene index. */
 void *fn_1_9250(s32 index)

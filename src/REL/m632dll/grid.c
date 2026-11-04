@@ -1,5 +1,4 @@
 /* Arena grid generation and CPU movement helpers. */
-#define _MATH_H
 #include <math.h>
 #include "REL/m632dll.h"
 

@@ -1,5 +1,4 @@
 /* Scene and collision setup for the M632 minigame. */
-#define _MATH_H
 #include "REL/m632dll.h"
 
 static int lbl_1_data_78[5] = { DATANUM(0x5b0000, 0), DATANUM(0x5b0000, 2), DATANUM(0x5b0000, 2),

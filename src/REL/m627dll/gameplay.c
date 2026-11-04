@@ -31,8 +31,6 @@
 #define MSM_SE_M627_TURN_SECOND_SCREEN 1818
 
 extern OMOBJMAN *lbl_1_bss_0;
-void *fn_1_A0(s32 priority, u32 bytes, OMOBJ_FUNC update);
-void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback);
 
 s32 lbl_1_data_30[7] = { DATANUM(0x560000, 1), DATANUM(0x560000, 2),
     DATANUM(0x560000, 3), DATANUM(0x560000, 4), DATANUM(0x560000, 5),

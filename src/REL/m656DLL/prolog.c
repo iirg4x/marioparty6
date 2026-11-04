@@ -1,8 +1,8 @@
 /* Runs the minigame module's static constructors and destructors. */
+#include "REL/m656DLL.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
 
 /* Runs the module constructors before the minigame's runtime setup. */
 int _prolog(void)

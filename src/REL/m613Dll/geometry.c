@@ -2,8 +2,8 @@
 #include "REL/m613Dll/geometry.h"
 #include "game/main.h"
 #include <math.h>
+#include "REL/m613Dll/types.h"
 
-extern s32 fn_1_10C5C(Point3d *, Point3d *);
 extern void fn_1_1138(f32, f32, f32, const Vec *, Vec *);
 s32 fn_1_E8C(Point3d *firstPosition, const Point3d *firstDisplacement, f32 firstRadius,
              Point3d *secondPosition, const Point3d *secondDisplacement, f32 secondRadius,

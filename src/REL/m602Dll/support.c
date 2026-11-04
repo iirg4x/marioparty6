@@ -1,5 +1,4 @@
 /* Moves the Odd Card Out intro camera and shakes it during the impact reaction. */
-#define _MATH_H
 #include "REL/m602Dll.h"
 
 /* Remaining camera-shake frames; zero restores the centered camera pose. */

@@ -1,5 +1,4 @@
 /* Sets computer-player timing and button choices for the four riders. */
-#define _MATH_H
 #include <math.h>
 #include "REL/m608dll.h"
 

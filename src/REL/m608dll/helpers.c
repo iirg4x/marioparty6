@@ -1,5 +1,4 @@
 /* Camera, model and shadow helpers used during the rolling course sequence. */
-#define _MATH_H
 #include <math.h>
 #include "REL/m608dll.h"
 

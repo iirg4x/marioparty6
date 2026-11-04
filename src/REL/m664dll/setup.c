@@ -7,6 +7,7 @@
 #include "game/mg/actman.h"
 #include "game/audio.h"
 #include "game/gamemes.h"
+#include "REL/m664dll/m664dll.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -17,19 +18,11 @@ void fn_1_D8(s16 mode, s16 frameNo);
 void fn_1_27C(s16 mode, s16 frameNo);
 void fn_1_29C(s16 mode, s16 frameNo);
 void fn_1_2BC(s16 mode, s16 frameNo);
-void fn_1_2F8(s16 mode, s16 frameNo);
-void fn_1_318(s16 mode, s16 frameNo);
-void fn_1_34C(s16 mode, s16 frameNo);
-void fn_1_36C(s16 mode, s16 frameNo);
-void fn_1_38C(s16 mode, s16 frameNo);
 /* No sequence timer is requested; the main callback decides when play ends. */
 MGSEQ_PARAM lbl_1_data_0 = {
     0, 0, fn_1_D8, fn_1_27C, fn_1_29C, fn_1_2BC, fn_1_2F8, fn_1_318, fn_1_34C, fn_1_36C, fn_1_38C
 };
 
-void fn_1_560(void);
-void fn_1_8DC(void);
-s32 fn_1_4C0(void);
 void fn_1_A0(void);
 
 /* The overlay loader calls this to run constructors and start the minigame sequence. */
