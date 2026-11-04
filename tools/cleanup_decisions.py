@@ -32,6 +32,13 @@ DECIDED = "decided"
 DECISION_FOLDER = "decisions"
 DECISIONS: Sequence[Mapping[str, str]] = (
     {
+        "id": "unread-fields",
+        "label": "Unread fields keep their offset names",
+        "date": "2026-10-09",
+        "record": "decisions/20261009-user-unread-fields.json",
+        "summary": "A field no code reads keeps its offset name with an explicit never-read comment at its declaration.",
+    },
+    {
         "id": "hex-stays-hex",
         "label": "Hex stays hex",
         "date": "2026-11-01",
@@ -99,6 +106,64 @@ HOOK_DEFINITION = re.compile(r"^[ \t]{0,8}(?:static[ \t]{1,4})?inline[ \t]{1,4}(
 HOOK_CALL = re.compile(r"^[ \t]{0,40}(Debug[A-Z]\w{0,40})[ \t]{0,4}\((.{1,300})\)[ \t]{0,4};[ \t]{0,4}$")
 HOOK_CATEGORIES = ("placeholder-statement", "no-op")
 
+FIELD_CATEGORIES = ("offset-field", "decompiler-name", "numbered-name")
+# names.py UNREAD_NOTE, plus the passive wording used by the fields/refactor tasks.
+UNREAD_COMMENT = re.compile(r"\bnever[ \t]+reads?\b", re.IGNORECASE)
+FIELD_DECLARATION = re.compile(
+    r"^[ \t]*(?:[A-Za-z_]\w*[ \t]+)+[* \t]*"
+    r"((?:field|unk(?:nown)?)_?[0-9A-Fa-f]{1,4}|value_?[0-9A-Fa-f]{2,4})"
+    r"[ \t]*(?:\[[^\]\n]*\][ \t]*)*(?::[ \t]*\d+[ \t]*)?;[ \t\r]*$")
+SOURCE_PART = re.compile(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.DOTALL)
+RECORD_HEAD = re.compile(r"\b(?:struct|union|class)\b[^;{}()]*$")
+
+
+def _field_declarations(text: str) -> Dict[int, str]:
+    """Commented offset declarations directly in a record, never locals, globals or uses."""
+    comments = [""] * len(text.split("\n"))
+
+    def blank(match):
+        value = match.group()
+        if value.startswith(("/*", "//")):
+            first = text.count("\n", 0, match.start())
+            for index, line in enumerate(value.split("\n"), first):
+                comments[index] += line
+        return re.sub(r"[^\n]", " ", value)
+
+    code = SOURCE_PART.sub(blank, text)
+    declarations, stack, head = {}, [], ""
+    for index, line in enumerate(code.split("\n")):
+        declaration = FIELD_DECLARATION.fullmatch(line)
+        if declaration and stack and stack[-1] and any(
+                UNREAD_COMMENT.search(comments[k]) for k in range(max(0, index - 1), index + 1)):
+            declarations[index] = declaration.group(1)
+        # A method body introduces a non-record scope even inside a class. Inheritance is allowed.
+        for part in re.split(r"([{};])", line):
+            if part == "{":
+                stack.append(bool(RECORD_HEAD.search(head)))
+                head = ""
+            elif part == "}":
+                if stack:
+                    stack.pop()
+                head = ""
+            elif part == ";":
+                head = ""
+            else:
+                head += part
+        head += "\n"
+    return declarations
+
+
+def field_read_anywhere(sources: Mapping[str, str], field: str) -> bool:
+    """Snapshot adapter of harness/header_fields.py read_anywhere: the identical use pattern and predicate.
+
+    The snapshot replaces git grep's src/include lines. Like the harness, a read on ANY struct with this field
+    name blocks the decision; only a plain assignment (including array/member targets) is write-only.
+    Keep this predicate in sync with the harness; the local regression compares both implementations.
+    """
+    use = re.compile(r"(?:->|\.)\s*" + field + r"\b((?:\s*(?:\.|->)\s*\w+|\s*\[[^\]]*\])*)\s*(=(?!=))?")
+    return any(not match.group(2) for text in sources.values() if field in text
+               for line in text.splitlines() for match in use.finditer(line))
+
 
 def _is_code(line: str) -> bool:
     return bool(line.strip()) and not COMMENT_LINE.match(line)
@@ -141,13 +206,15 @@ def debug_hook_call(text: str, lines: Sequence[str], index: int) -> bool:
 
 
 def classify(site: Mapping[str, object], sources: Mapping[str, str],
-             lines_of: Optional[Dict[str, List[str]]] = None) -> Optional[str]:
+             lines_of: Optional[Dict[str, List[str]]] = None,
+             fields_of: Optional[Dict[str, Dict[int, str]]] = None,
+             readers: Optional[Dict[str, bool]] = None) -> Optional[str]:
     """The id of the decision covering `site`, or None (open)."""
     by_rule = RULE_DECISIONS.get(str(site.get("_rule") or ""))
     if by_rule:
         return by_rule
     category = site.get("category")
-    if category != "invented-assert" and category not in HOOK_CATEGORIES:
+    if category != "invented-assert" and category not in HOOK_CATEGORIES + FIELD_CATEGORIES:
         return None
     path = str(site.get("path") or "")
     text = sources.get(path)
@@ -158,6 +225,21 @@ def classify(site: Mapping[str, object], sources: Mapping[str, str],
     if lines is None:
         lines = cache[path] = text.split("\n")
     index = int(site.get("line") or 0) - 1
+    if category in FIELD_CATEGORIES:
+        fields = fields_of if fields_of is not None else {}
+        if path not in fields:
+            fields[path] = _field_declarations(text) if UNREAD_COMMENT.search(text) else {}
+        field = fields[path].get(index)
+        if field is None:
+            return None
+        # Numbered-name findings identify one name, even when other declarations share the line.
+        named = re.match(r"([A-Za-z_]\w*):", str(site.get("detail") or ""))
+        if named and named.group(1) != field:
+            return None
+        seen = readers if readers is not None else {}
+        if field not in seen:
+            seen[field] = field_read_anywhere(sources, field)
+        return None if seen[field] else "unread-fields"
     if category == "invented-assert":
         return assert_false_form(lines, index)
     return "debug-value-hook" if debug_hook_call(text, lines, index) else None
@@ -166,8 +248,10 @@ def classify(site: Mapping[str, object], sources: Mapping[str, str],
 def apply(sites: Iterable[dict], sources: Mapping[str, str]) -> None:
     """Give every site its status (and decided ones their decision), and drop the private "_rule"."""
     lines_of: Dict[str, List[str]] = {}
+    fields_of: Dict[str, Dict[int, str]] = {}
+    readers: Dict[str, bool] = {}
     for site in sites:
-        decision = classify(site, sources, lines_of)
+        decision = classify(site, sources, lines_of, fields_of, readers)
         site.pop("_rule", None)
         site["status"] = DECIDED if decision else OPEN
         if decision:
@@ -202,7 +286,8 @@ def summary(sites: Sequence[Mapping[str, object]], record_root: Optional[Path] =
 METHODOLOGY_NOTE = ("Every site has a status: decided when a recorded user decision covers it, otherwise open. A "
                     "decided site names its decision and its record, and stays listed: the status hides nothing. "
                     "Decided kinds: hex numbers (hex stays hex), sound ids no header names, ASSERT(FALSE) under a "
-                    "do-nothing case or as an -O0 if-body, and the debug hook for a dropped evaluation.")
+                    "do-nothing case or as an -O0 if-body, the debug hook for a dropped evaluation, and offset-named "
+                    "field declarations with a never-read comment and no reader under the harness fields check.")
 
 
 __all__ = ["DECISIONS", "RULE_DECISIONS", "apply", "classify", "summary", "METHODOLOGY_NOTE", "OPEN", "DECIDED"]
