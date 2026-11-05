@@ -84,9 +84,10 @@ static void msmStreamDvdCallback(s32 result, DVDFileInfo* fileInfo);
 static void msmStreamStopSub(s32 streamNo, s32 speed);
 static void msmStreamDvdCallback2(s32 result, DVDFileInfo* fileInfo);
 static u32 msmStreamUpdateFunc(void* buffer1, u32 len1, void* buffer2, u32 len2, u32 user);
-static s32 msmStreamSlotInit(MSM_STREAM_SLOT* arg0, MSM_STREAM_PACK* arg1, STREAM_PARAM* arg2, s32 arg3);
+static s32 msmStreamSlotInit(MSM_STREAM_SLOT *slot, MSM_STREAM_PACK* pack, STREAM_PARAM* param,
+                             s32 no);
 static void msmStreamPauseOff(s32 streamNo);
-static void msmStreamPauseOn(s32 streamNo, s32 arg1);
+static void msmStreamPauseOn(s32 streamNo, s32 speed);
 static s32 msmStreamPackStartStereo(s32 streamId, MSM_STREAMPARAM *param, s32 sampleOfs);
 static s32 msmStreamPackStartMono(s32 streamId, MSM_STREAMPARAM *param, s32 sampleOfs);
 static void msmStreamSlotOff(s32 streamNo);
@@ -134,8 +135,8 @@ s32 msmStreamGetStatus(int streamNo) {
 }
 
 static void msmStreamUpdateBaseParam(MSM_STREAM_SLOT* slot) {
-    s32 pan;
     s32 vol;
+    s32 pan;
 
     if (StreamInfo.outputMode != 0) {
         pan = slot->panBase + slot->pan - 64;
@@ -253,25 +254,31 @@ static inline BOOL msmStreamIsPlay(MSM_STREAM_SLOT* slot) {
     }
 }
 
+/* Stops one stream and its left and right partner slots at once, ignoring a stream number out of range. */
+static inline void msmStreamStopNow(s32 streamNo, s32 speed) {
+    MSM_STREAM_SLOT* slot;
+
+    if (streamNo >= 0 && streamNo < StreamInfo.header.chanMax) {
+        slot = &StreamInfo.slot[streamNo];
+        msmSysIrqDisable();
+        msmStreamStopSub(streamNo, speed);
+        if (slot->slotL != -1) {
+            msmStreamStopSub(slot->slotL, speed);
+        }
+        if (slot->slotR != -1) {
+            msmStreamStopSub(slot->slotR, speed);
+        }
+        msmSysIrqEnable();
+    }
+}
+
 void msmStreamStopAll(s32 speed)
 {
-    MSM_STREAM_SLOT* slot;
     s32 i;
 
     msmSysIrqDisable();
     for (i = 0; i < StreamInfo.header.chanMax; i++) {
-        if (i >= 0 && i < StreamInfo.header.chanMax) {
-            slot = &StreamInfo.slot[i];
-            msmSysIrqDisable();
-            msmStreamStopSub(i, speed);
-            if (slot->slotL != -1) {
-                msmStreamStopSub(slot->slotL, speed);
-            }
-            if (slot->slotR != -1) {
-                msmStreamStopSub(slot->slotR, speed);
-            }
-            msmSysIrqEnable();
-        }
+        msmStreamStopNow(i, speed);
     }
     msmSysIrqEnable();
 }
@@ -471,63 +478,80 @@ s32 msmStreamInit(char *pdtPath) {
 }
 
 static void msmStreamPauseOff(s32 streamNo) {
-    MSM_STREAM_SLOT* slot;
-    u32 ofs;
+    MSM_STREAM_SLOT * slot;
+    u32 halfSize;
+    u32 loopLength;
+    u32 streamPosition;
     u32 readSize;
-
-    slot = &StreamInfo.slot[streamNo];
-    if (slot->pauseTime == 0) {
+    slot = & StreamInfo.slot[streamNo];
+    if (slot->pauseTime == 0)
+    {
         return;
     }
-    if (slot->pauseF == 0) {
+    if (slot->pauseF == 0)
+    {
         slot->pauseTime = 0;
         return;
     }
-    if (slot->pauseTimeMax != 0) {
-        slot->pauseTimeMax = -(slot->pauseTime + 1);
-        if (slot->pauseTimeMax == 0) {
+    if (slot->pauseTimeMax != 0)
+    {
+        slot->pauseTimeMax = - (slot->pauseTime + 1);
+        if (slot->pauseTimeMax == 0)
+        {
             slot->pauseVol = 127;
             msmStreamUpdateBaseParam(slot);
         }
         slot->pauseTime = 0;
         slot->pauseF = 0;
-    } else if (slot->status == 0 && DVDFastOpen(StreamInfo.pdtEntryNum, &slot->file) == TRUE) {
-        if (--slot->pauseTime != 0) {
-            slot->pauseTimeMax = -slot->pauseTime;
-            slot->fadeVol = 0;
-            slot->pauseVol = 0;
-        } else {
-            slot->pauseVol = 127;
-        }
-        slot->pauseTime = 0;
-        slot->firstF = TRUE;
-        slot->streamOffF = 0;
-        slot->shutdownF = 0;
-        slot->pauseF = 0;
-        slot->updateAramF = 0;
-        slot->bufNo = 1;
-        slot->unk64 = slot->unk68 = (slot->pauseLen / SND_STREAM_ADPCM_BLKBYTES) * SND_STREAM_ADPCM_BLKSIZE;
-        slot->unk6C = 0;
-        slot->streamPos = slot->pauseLen;
-        readSize = slot->streamBufSize / 2;
-        if ((ofs = slot->loopLen - slot->streamPos) < slot->streamBufSize / 2) {
-            if (slot->loopLen > slot->streamPos) {
-                readSize = ofs;
-                slot->streamReadSize = slot->streamBufSize / 2 - ofs;
-                slot->streamReadBuf = (void*) ((u32) slot->streamBuf + ofs);
-                memset(slot->streamReadBuf, 0, slot->streamReadSize);
-            } else {
-                slot->streamPos = 0;
-                slot->unk68 = 0;
-                slot->unk64 = 0;
+    }
+    else
+    {
+        if (slot->status == 0 && DVDFastOpen(StreamInfo.pdtEntryNum, & slot->file) == TRUE)
+        {
+            if (--slot->pauseTime != 0)
+            {
+                slot->pauseTimeMax = - slot->pauseTime;
+                slot->fadeVol = 0;
+                slot->pauseVol = 0;
             }
+            else
+            {
+                slot->pauseVol = 127;
+            }
+            slot->pauseTime = 0;
+            slot->firstF = TRUE;
+            slot->streamOffF = 0;
+            slot->shutdownF = 0;
+            slot->pauseF = 0;
+            slot->updateAramF = 0;
+            slot->bufNo = 1;
+            slot->unk64 = slot->unk68 = (slot->pauseLen / SND_STREAM_ADPCM_BLKBYTES) * SND_STREAM_ADPCM_BLKSIZE;
+            slot->unk6C = 0;
+            slot->streamPos = slot->pauseLen;
+            readSize = slot->streamBufSize / 2;
+            streamPosition = slot->streamPos;
+            loopLength = slot->loopLen;
+            if (loopLength - streamPosition < (halfSize = readSize))
+            {
+                if (loopLength > streamPosition)
+                {
+                    readSize = loopLength - streamPosition;
+                    slot->streamReadSize = halfSize - readSize;
+                    slot->streamReadBuf = (void *)((u32) slot->streamBuf + readSize);
+                    memset(slot->streamReadBuf, 0, slot->streamReadSize);
+                }
+                else
+                {
+                    slot->streamPos = 0;
+                    slot->unk68 = 0;
+                    slot->unk64 = 0;
+                }
+            }
+            slot->status = 2;
+            slot->streamPos += readSize;
+            slot->readBusyF = TRUE;
+            DVDReadAsyncPrio(& slot->file, slot->streamBuf, readSize, slot->streamBaseOfs + (slot->streamPos - readSize), msmStreamDvdCallback, 1);
         }
-        slot->status = 2;
-        slot->streamPos += readSize;
-        slot->readBusyF = TRUE;
-        DVDReadAsyncPrio(&slot->file, slot->streamBuf, readSize,
-                         slot->streamBaseOfs + (slot->streamPos - readSize),
-                         msmStreamDvdCallback, 1);
     }
 }
 
@@ -919,8 +943,7 @@ static void msmStreamData(s32 streamNo) {
                     linkedStreamNo = -1;
                 }
                 if (linkedStreamNo >= 0) {
-                    linkedSlot = &StreamInfo.slot[linkedStreamNo];
-                    if (linkedSlot->updateAramF != TRUE) {
+                    if ((linkedSlot = &StreamInfo.slot[linkedStreamNo])->updateAramF != TRUE) {
                         linkedSlot->updateAramF = TRUE;
                         msmStreamPauseOn(linkedStreamNo, 0);
                         linkedSlot->pauseLen = slot->pauseLen;
@@ -1126,9 +1149,10 @@ static u32 msmStreamUpdateFunc(void* buffer1, u32 len1, void* buffer2, u32 len2,
     return len;
 }
 
-static s32 msmStreamSlotInit(MSM_STREAM_SLOT *slot, MSM_STREAM_PACK* pack, STREAM_PARAM* param, s32 no) {
+static s32 msmStreamSlotInit(MSM_STREAM_SLOT *slot, MSM_STREAM_PACK* pack, STREAM_PARAM* param,
+                             s32 no) {
     MSM_STREAM *stream;
-    u32 temp_r3;
+    u32 streamPos;
     u32 halfSize;
     s32 ret;
 
@@ -1168,11 +1192,11 @@ static s32 msmStreamSlotInit(MSM_STREAM_SLOT *slot, MSM_STREAM_PACK* pack, STREA
     slot->slotL = -1;
     slot->slotR = -1;
     slot->streamPos = param->sampleOfs;
-    halfSize = slot->streamBufSize / 2;
-    ret = halfSize;
-    if ((temp_r3 = slot->loopLen - slot->streamPos) < halfSize) {
-        if (slot->loopLen > slot->streamPos) {
-            ret = temp_r3;
+    ret = slot->streamBufSize / 2;
+    streamPos = slot->streamPos;
+    if (slot->loopLen - streamPos < (halfSize = ret)) {
+        if (slot->loopLen > streamPos) {
+            ret = slot->loopLen - streamPos;
             slot->streamReadSize = halfSize - ret;
             slot->streamReadBuf = (void*) ((u32) slot->streamBuf + ret);
             memset(slot->streamReadBuf, 0, slot->streamReadSize);
