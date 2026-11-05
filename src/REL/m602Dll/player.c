@@ -2,10 +2,10 @@
 #include "REL/m602Dll.h"
 #include "msm_se.h"
 
-#define MSM_SE_M602_CHOICE 1570
-#define MSM_SE_M602_CORRECT 1573
-#define MSM_SE_M602_FALLING_WEIGHT 1575
-#define MSM_SE_M602_IMPACT 1579
+
+
+
+
 
 u32 lbl_1_data_3D0[12] = {
     DATANUM(0x930000, 0), DATANUM(0x8e0000, 62),
@@ -494,13 +494,13 @@ void fn_1_647C(void)
                                 (u16) lbl_1_bss_318[player].cardChoice);
                 fn_8006A030(player, 20, 7, 3);
                 if (player == 0) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 32);
+                    HuAudFXPanning(HuAudFXPlay(1570), 32);
                 } else if (player == 1) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 53);
+                    HuAudFXPanning(HuAudFXPlay(1570), 53);
                 } else if (player == 2) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 75);
+                    HuAudFXPanning(HuAudFXPlay(1570), 75);
                 } else if (player == 3) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 96);
+                    HuAudFXPanning(HuAudFXPlay(1570), 96);
                 }
             }
             if ((s32) (lbl_1_bss_318[player].choiceButtons & PAD_BUTTON_A) != 0) {
@@ -513,13 +513,13 @@ void fn_1_647C(void)
                                 (u16) lbl_1_bss_318[player].cardChoice);
                 fn_8006A030(player, 20, 7, 3);
                 if (player == 0) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 32);
+                    HuAudFXPanning(HuAudFXPlay(1570), 32);
                 } else if (player == 1) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 53);
+                    HuAudFXPanning(HuAudFXPlay(1570), 53);
                 } else if (player == 2) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 75);
+                    HuAudFXPanning(HuAudFXPlay(1570), 75);
                 } else if (player == 3) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 96);
+                    HuAudFXPanning(HuAudFXPlay(1570), 96);
                 }
             }
             if ((s32) (lbl_1_bss_318[player].choiceButtons & PAD_TRIGGER_R) != 0) {
@@ -532,13 +532,13 @@ void fn_1_647C(void)
                                 (u16) lbl_1_bss_318[player].cardChoice);
                 fn_8006A030(player, 20, 7, 3);
                 if (player == 0) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 32);
+                    HuAudFXPanning(HuAudFXPlay(1570), 32);
                 } else if (player == 1) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 53);
+                    HuAudFXPanning(HuAudFXPlay(1570), 53);
                 } else if (player == 2) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 75);
+                    HuAudFXPanning(HuAudFXPlay(1570), 75);
                 } else if (player == 3) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CHOICE), 96);
+                    HuAudFXPanning(HuAudFXPlay(1570), 96);
                 }
             }
         }
@@ -639,13 +639,13 @@ s16 fn_1_6F14(void)
                                          lbl_1_bss_318[player].localLight, 0.0f, -5000.0f, 0.0f,
                                          0.0f, 1.0f, 0.0f);
                         if (player == 0) {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CORRECT), 32);
+                            HuAudFXPanning(HuAudFXPlay(1573), 32);
                         } else if (player == 1) {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CORRECT), 53);
+                            HuAudFXPanning(HuAudFXPlay(1573), 53);
                         } else if (player == 2) {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CORRECT), 75);
+                            HuAudFXPanning(HuAudFXPlay(1573), 75);
                         } else {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_CORRECT), 96);
+                            HuAudFXPanning(HuAudFXPlay(1573), 96);
                         }
                     }
                     if (lbl_1_bss_2F2 >= 30) {
@@ -866,7 +866,7 @@ s16 fn_1_6F14(void)
                             fn_80026790(lbl_1_bss_30A, &lbl_1_bss_2FC);
                             fn_80026A44(lbl_1_bss_30A, (1 << 0));
                             count += 1;
-                            lbl_1_data_400 = HuAudFXPlay(MSM_SE_M602_FALLING_WEIGHT);
+                            lbl_1_data_400 = HuAudFXPlay(1575);
                             if (player == 0) {
                                 HuAudFXPanning(lbl_1_data_400, 32);
                             } else if (player == 1) {
@@ -912,16 +912,16 @@ s16 fn_1_6F14(void)
                         }
                         lbl_1_data_400 = -1;
                         if (player == 0) {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_IMPACT), 32);
+                            HuAudFXPanning(HuAudFXPlay(1579), 32);
                             HuAudFXPlayPan(939, 32);
                         } else if (player == 1) {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_IMPACT), 53);
+                            HuAudFXPanning(HuAudFXPlay(1579), 53);
                             HuAudFXPlayPan(939, 53);
                         } else if (player == 2) {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_IMPACT), 75);
+                            HuAudFXPanning(HuAudFXPlay(1579), 75);
                             HuAudFXPlayPan(939, 75);
                         } else {
-                            HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_IMPACT), 96);
+                            HuAudFXPanning(HuAudFXPlay(1579), 96);
                             HuAudFXPlayPan(939, 96);
                         }
                     }

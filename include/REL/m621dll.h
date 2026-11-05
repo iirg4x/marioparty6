@@ -21,8 +21,7 @@ typedef struct M621TargetPart_s {
     HuVecF velocity; /* Per-update movement in world units. */
     HU3D_MODELID model; /* Visible model for this segment. */
     MGACTOR *actor; /* Collision and movement actor for this segment. */
-    /* Unused bytes retained in the segment record; their game meaning is unknown. */
-    u8 reservedBytes[2];
+    u8 unk1C[2]; /* The game's code never reads these bytes; their meaning is unknown. */
     HU3D_MODELID effectModel; /* Linked disappearance effect for this segment. */
     s16 effectPlayerNo; /* Player index selecting the segment-hit effect, 0 through 3. */
 } M621TargetPart;

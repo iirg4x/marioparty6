@@ -7,8 +7,9 @@
 #include "game/frand.h"
 #include "game/gamework.h"
 #include "game/hsfex.h"
+#include "msm_stream.h"
 
-#define M618_BGM_LIFT_LEAPERS 82 /* Music during the minigame. */
+
 #define M618_SOUND_PLAYER_FALL_1 1749 /* Fall cue for player 1. */
 #define M618_SOUND_PLAYER_FALL_2 1750 /* Fall cue for player 2. */
 #define M618_SOUND_PLAYER_FALL_3 1751 /* Fall cue for player 3. */
@@ -17,7 +18,7 @@
 #define M618_SOUND_PLAYER_SECTION_2 1754 /* Course-section cue for player 2. */
 #define M618_SOUND_PLAYER_SECTION_3 1755 /* Course-section cue for player 3. */
 #define M618_SOUND_PLAYER_SECTION_4 1756 /* Course-section cue for player 4. */
-#define M618_SOUND_START 1758 /* Cue when players move to the starting position. */
+
 
 int lbl_1_data_28[4] = { 1, 2, 4, 8 };
 unsigned int lbl_1_data_38[4] = { DATANUM(0x930000, 6), DATANUM(0x930000, 34),
@@ -108,7 +109,7 @@ void fn_1_644(void)
     int player;
     float destX;
     if (lbl_1_bss_38 == -1) {
-        lbl_1_bss_38 = HuAudFXPlay(M618_SOUND_START);
+        lbl_1_bss_38 = HuAudFXPlay(1758);
     }
     for (player = 0; player < 4; player++) {
         destX = 160.0f + lbl_1_data_48[lbl_1_bss_114[player].stageSection].x;
@@ -144,7 +145,7 @@ void fn_1_84C(void)
         fn_1_4BE0();
     }
     if (lbl_1_bss_40 == -1) {
-        lbl_1_bss_40 = HuAudBGMPlay(M618_BGM_LIFT_LEAPERS);
+        lbl_1_bss_40 = HuAudBGMPlay(MSM_STREAM_MGWARS);
     }
 }
 

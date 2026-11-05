@@ -8,12 +8,13 @@
 #include "game/gamemes.h"
 #include "string.h"
 #include "math.h"
+#include "msm_stream.h"
 
-#define M657_OBJECT_CAPACITY 160
+
 #define M657_OBJECT_MANAGER_PRIORITY 131072 /* Scheduler priority for the minigame object
                                              * manager. */
 /* BGM resource selected when the entrance sequence begins. */
-#define M657_BGM_LUNAR_TICS 87
+
 
 /* This module calls the MSL library entry, not the stdlib.h builtin macro. */
 int abs(int value);
@@ -46,7 +47,7 @@ void fn_1_6C(void)
 /* Creates the object manager and initializes its shared game-system callbacks. */
 void fn_1_70(void)
 {
-    lbl_1_data_0->objman = fn_8003A8BC(M657_OBJECT_CAPACITY, M657_OBJECT_MANAGER_PRIORITY);
+    lbl_1_data_0->objman = fn_8003A8BC(160, M657_OBJECT_MANAGER_PRIORITY);
     fn_80069F1C(lbl_1_data_0->objman);
 }
 
@@ -236,7 +237,7 @@ void fn_1_BD4(s16 mode, s16 frameNo)
     s16 count = 0;
 
     if (fn_80071DE4() == 0) {
-        lbl_1_data_0->music = HuAudBGMPlay(M657_BGM_LUNAR_TICS);
+        lbl_1_data_0->music = HuAudBGMPlay(MSM_STREAM_STORY_BOWSER);
     }
     fn_1_4EE4(0);
     fn_1_4EE4(1);

@@ -1,11 +1,11 @@
 /* Runs the Odd Card Out intro, round, and result sequence callbacks. */
 #include "REL/m602Dll.h"
 
-#define MSM_SE_M602_ROUND_START 1571
-#define MSM_SE_M602_CARD_REVEAL 1578
-#define MSM_SE_M602_RESULT_CARD 1572
+
+
+
 #define M602_CARD_STOPPED_FRONT_FLAG (1 << 1)
-#define M602_CARD_STOPPED_MASK 0x3
+
 
 /* static */
 MGSEQ_PARAM lbl_1_data_0 = {
@@ -141,7 +141,7 @@ void fn_1_2AC(s16 mode, s16 frameNo)
         fn_1_2998();
         fn_1_22DC();
         fn_1_61E0();
-        HuAudFXPlay(MSM_SE_M602_ROUND_START);
+        HuAudFXPlay(1571);
     } else if (lbl_1_bss_10 == 0) {
         fn_1_22DC();
         fn_1_61E0();
@@ -152,7 +152,7 @@ void fn_1_2AC(s16 mode, s16 frameNo)
             fn_1_9F34();
             lbl_1_bss_10 = 2;
             lbl_1_bss_0 = 0;
-            HuAudFXPlay(MSM_SE_M602_CARD_REVEAL);
+            HuAudFXPlay(1578);
         }
     } else if (lbl_1_bss_10 == 2) {
         fn_1_22DC();
@@ -168,11 +168,11 @@ void fn_1_2AC(s16 mode, s16 frameNo)
         if (lbl_1_bss_0 == 60) {
             columnOrPlayerIndex = fn_1_2B28();
             if (columnOrPlayerIndex == 0) {
-                HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_RESULT_CARD), 32);
+                HuAudFXPanning(HuAudFXPlay(1572), 32);
             } else if (columnOrPlayerIndex == 1) {
-                HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_RESULT_CARD), 64);
+                HuAudFXPanning(HuAudFXPlay(1572), 64);
             } else {
-                HuAudFXPanning(HuAudFXPlay(MSM_SE_M602_RESULT_CARD), 96);
+                HuAudFXPanning(HuAudFXPlay(1572), 96);
             }
         }
         if (lbl_1_bss_0 > 150) {
@@ -182,9 +182,9 @@ void fn_1_2AC(s16 mode, s16 frameNo)
         fn_1_22DC();
         fn_1_6DB8();
     } else if (lbl_1_bss_10 == 4) {
-        if (((s32) (fn_1_2E3C(0) & M602_CARD_STOPPED_MASK) != 0) &&
-            ((s32) (fn_1_2E3C(1) & M602_CARD_STOPPED_MASK) != 0) &&
-            ((s32) (fn_1_2E3C(2) & M602_CARD_STOPPED_MASK) != 0)) {
+        if (((s32) (fn_1_2E3C(0) & 0x3) != 0) &&
+            ((s32) (fn_1_2E3C(1) & 0x3) != 0) &&
+            ((s32) (fn_1_2E3C(2) & 0x3) != 0)) {
             if (lbl_1_bss_0 == 1) {
                 fn_1_6F00();
                 oddColumnIndex = fn_1_2D5C();

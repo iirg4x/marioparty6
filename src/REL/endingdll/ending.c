@@ -7,7 +7,9 @@
 #include "dolphin.h"
 #include "game/armem.h"
 
+#include "game/frand.h"
 #include "game/gamework.h"
+#include "game/main.h"
 #include "game/pad.h"
 #include "game/hu3d.h"
 #include "game/object.h"
@@ -15,20 +17,9 @@
 #include "game/sprite.h"
 #include "game/window.h"
 #include "game/wipe.h"
+#include "REL/endingdll/ending.h"
 
 typedef void (*VoidFunc)(void);
-
-typedef struct EndingWindowPlayers {
-    s16 player[4];
-} EndingWindowPlayers;
-
-typedef struct EndingSpritePositions {
-    Vec position[10];
-} EndingSpritePositions;
-
-typedef struct EndingModelObjectNames {
-    char *name[10];
-} EndingModelObjectNames;
 
 typedef struct EndingAudioState {
     s32 channel[32];
@@ -42,10 +33,6 @@ typedef struct EndingParticleCounts {
     s16 count[5];
 } EndingParticleCounts;
 
-typedef struct EndingScenePositions {
-    HuVecF position[3];
-} EndingScenePositions;
-
 typedef struct EndingMotionWork {
     s16 state; /* 0 is inactive; 1 is moving for the particle and entrance work. */
     float time; /* Callback time in frames; negative values can encode a delayed start or hidden
@@ -57,17 +44,17 @@ typedef struct EndingMotionWork {
     float start; /* Starting yaw in degrees or starting x position, depending on callback. */
     float end; /* Target yaw in degrees or target x position, depending on callback. */
     float finalMotionStarted; /* Zero until the character's follow-up motion starts. */
-    float reserved; /* Retained storage with no reads or writes in this source file. */
+    float unk_3C; /* Retained storage with no reads or writes in this source file. */
 } EndingMotionWork;
 
 #define sind(x) sin((3.141592653589793 * (x)) / 180.0)
-#define ENDING_ANIMATION_ALLOC_TAG 805306368
-#define ENDING_FX_ID_1393 1393
-#define ENDING_FX_ID_1394 1394
-#define ENDING_FX_ID_1396 1396
-#define ENDING_FX_ID_1397 1397
-#define ENDING_FX_ID_1399 1399
-#define ENDING_FX_ID_1400 1400
+
+
+
+
+
+
+
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -115,52 +102,6 @@ extern GXColor lbl_1_rodata_B8;
 extern EndingParticleCounts lbl_1_rodata_390;
 
 extern u32 lbl_1_data_128[3];
-
-int rand8(void);
-s32 frandmod(s32 modulus);
-void fn_1_98(HUWINID window, u32 message, s16 character);
-void fn_1_25C(OMOBJ *object);
-void fn_1_1C0C(s16 index, s16 motion, float time);
-void fn_1_10DEC(s16 index, HuVecF *pos, s16 mode);
-void fn_1_DD14(void);
-void fn_1_F1B8(s16 display, HuVecF *pos);
-void fn_1_12838(void);
-void fn_1_E1EC(s16 display, HuVecF *pos);
-void fn_1_EAB8(s16 display, HuVecF *pos);
-void fn_1_F068(s16 index, s16 display, HuVecF *pos);
-void fn_1_F11C(s16 index, s16 count);
-void fn_1_F23C(s16 count);
-void fn_1_111B0(s16 display);
-void fn_1_11208(s16 index, HuVecF *pos, s16 mode);
-void fn_1_E0EC(s16 groupId, u32 attr);
-void fn_1_EB54(s16 time);
-void fn_1_1160(OMOBJ *object);
-void fn_1_3B4C(OMOBJ *object);
-void fn_1_3D5C(OMOBJ *object);
-void fn_1_36E0(OMOBJ *object);
-void fn_1_23D8(OMOBJ *object);
-void fn_1_2AEC(OMOBJ *object);
-void fn_1_E270(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_EBCC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_F2CC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_FDD4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_10628(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_112E0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_11714(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_702C(void);
-void fn_1_8F80(OMOBJ *object);
-void fn_1_A964(void);
-void fn_1_B568(void);
-void fn_1_BE30(void);
-void fn_1_C7DC(void);
-void fn_1_E16C(HUSPR_GROUPID groupId, s32 attr);
-void fn_1_D434(void);
-void fn_1_7B4(void);
-void fn_1_45C0(OMOBJ *object);
-void fn_1_4BC8(OMOBJ *object);
-void fn_1_11F34(void);
-void fn_1_DF60(HuVecF *dest, HuVecF *target, float time);
-float fn_1_DDF8(float start, float end, float time, float duration);
 
 /* Plays ending sound effects while audio is enabled; scene callbacks use this wrapper. */
 int fn_1_0(int seId)
@@ -242,25 +183,25 @@ void fn_1_25C(OMOBJ *object)
     firstWork = &lbl_1_bss_1A5C[0];
     secondWork = &lbl_1_bss_1A5C[1];
 
-    target.x = sin(((3.141592653589793) * object->work[0]) /
-        (180.0)) * (180.0);
-    target.y = (10.0f) + firstWork->startOrVelocity.y;
-    if (target.y > (400.0f)) {
-        target.y = (400.0f);
+    target.x = sin((3.141592653589793 * object->work[0]) /
+        180.0) * 180.0;
+    target.y = 10.0f + firstWork->startOrVelocity.y;
+    if (target.y > 400.0f) {
+        target.y = 400.0f;
     }
-    target.z = cos(((3.141592653589793) * object->work[0]) /
-        (180.0)) * (180.0);
-    fn_1_DF60(&firstWork->startOrVelocity, &target, (10.0f));
+    target.z = cos((3.141592653589793 * object->work[0]) /
+        180.0) * 180.0;
+    fn_1_DF60(&firstWork->startOrVelocity, &target, 10.0f);
 
-    target.x = sin(((3.141592653589793) * object->work[1]) /
-        (180.0)) * (180.0);
-    target.y = (10.0f) + firstWork->startOrVelocity.y;
-    if (target.y > (400.0f)) {
-        target.y = (400.0f);
+    target.x = sin((3.141592653589793 * object->work[1]) /
+        180.0) * 180.0;
+    target.y = 10.0f + firstWork->startOrVelocity.y;
+    if (target.y > 400.0f) {
+        target.y = 400.0f;
     }
-    target.z = cos(((3.141592653589793) * object->work[1]) /
-        (180.0)) * (180.0);
-    fn_1_DF60(&secondWork->startOrVelocity, &target, (10.0f));
+    target.z = cos((3.141592653589793 * object->work[1]) /
+        180.0) * 180.0;
+    fn_1_DF60(&secondWork->startOrVelocity, &target, 10.0f);
 
     if ((object->work[0] += 2) > 360) {
         object->work[0] -= 360;
@@ -336,18 +277,18 @@ void fn_1_790(void)
 /* Creates the two fixed global lights used by the ending models. */
 void fn_1_7B4(void)
 {
-    EndingLightVectors positions = {
-        { { 0.0f, 1.0f, 1.0f }, { -1.0f, 1.0f, -1.0f } }
+    HuVecF positions[2] = {
+        { 0.0f, 1.0f, 1.0f }, { -1.0f, 1.0f, -1.0f }
     };
-    EndingLightVectors directions = {
-        { { 0.0f, -1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f } }
+    HuVecF directions[2] = {
+        { 0.0f, -1.0f, -1.0f }, { 1.0f, -1.0f, -1.0f }
     };
     GXColor color = { 255, 255, 255, 255 };
     s16 light;
 
     for (light = 0; light < 2; light++) {
         lbl_1_bss_1A56[light] = fn_800286D0(
-            &positions.vector[light], &directions.vector[light], &color);
+            &positions[light], &directions[light], &color);
         Hu3DGLightInfinitytSet(lbl_1_bss_1A56[light]);
         Hu3DGLightStaticSet(lbl_1_bss_1A56[light], TRUE);
     }
@@ -363,15 +304,15 @@ void fn_1_904(void)
 void fn_1_924(void)
 {
     lbl_1_bss_1A52[0] = Hu3DLLightCreate(lbl_1_bss_C->mdlId[0],
-        (-300.0f), (200.0f), (100.0f),
-        0.0f, 0.0f, (-1.0f),
+        -300.0f, 200.0f, 100.0f,
+        0.0f, 0.0f, -1.0f,
         128, 128, 128);
     fn_80028B58(lbl_1_bss_C->mdlId[0], lbl_1_bss_1A52[0]);
     fn_800296E0(lbl_1_bss_C->mdlId[0], lbl_1_bss_1A52[0], 1);
 
     lbl_1_bss_1A52[1] = Hu3DLLightCreate(lbl_1_bss_10->mdlId[0],
-        (300.0f), (200.0f), (100.0f),
-        0.0f, 0.0f, (-1.0f),
+        300.0f, 200.0f, 100.0f,
+        0.0f, 0.0f, -1.0f,
         128, 128, 128);
     fn_80028B58(lbl_1_bss_10->mdlId[0], lbl_1_bss_1A52[1]);
     fn_800296E0(lbl_1_bss_10->mdlId[0], lbl_1_bss_1A52[1], 1);
@@ -391,7 +332,7 @@ void fn_1_B2C(void)
     HuVecF up = { 0.0f, 1.0f, 0.0f };
     HuVecF target = { 0.0f, 0.0f, 0.0f };
 
-    Hu3DShadowCreate((30.0f), (10.0f), (10000.0f));
+    Hu3DShadowCreate(30.0f, 10.0f, 10000.0f);
     Hu3DShadowPosSet(&position, &up, &target);
 }
 
@@ -450,23 +391,23 @@ void fn_1_DAC(s16 window, u32 message, s16 delay)
 /* Creates the four character dialogue windows and the small caption window at scene start. */
 void fn_1_F34(void)
 {
-    EndingWindowPlayers players = { { 0, 4, 3, 5 } };
+    s16 players[4] = { 0, 4, 3, 5 };
     s16 window;
 
     HuWinInit(1);
     for (window = 0; window < 4; window++) {
         lbl_1_bss_1A48[window] = HuWinExCreateFrame(
-            (16.0f), (372.0f), 544, 68, -1,
-            players.player[window]);
+            16.0f, 372.0f, 544, 68, -1,
+            players[window]);
         HuWinDispOff(lbl_1_bss_1A48[window]);
-        HuWinBGTPLvlSet(lbl_1_bss_1A48[window], (0.8999999761581421f));
+        HuWinBGTPLvlSet(lbl_1_bss_1A48[window], 0.9f);
         winData[lbl_1_bss_1A48[window]].padMask = 1;
     }
     for (window = 0; window < 4; window++) {
         HuWinCallbackSet(lbl_1_bss_1A48[window], fn_1_98);
     }
-    lbl_1_bss_1A48[4] = HuWinExCreateFrame((16.0f),
-        (337.0f), 544, 42, -1, 0);
+    lbl_1_bss_1A48[4] = HuWinExCreateFrame(16.0f,
+        337.0f, 544, 42, -1, 0);
     HuWinDispOff(lbl_1_bss_1A48[4]);
     HuWinBGTPLvlSet(lbl_1_bss_1A48[4], 0.0f);
 }
@@ -487,17 +428,17 @@ void fn_1_1160(OMOBJ *object)
 {
     switch (object->work[0]) {
         case 0:
-            lbl_1_bss_28 += (0.10000000149011612f);
+            lbl_1_bss_28 += 0.1f;
             HuSprGrpPosSet(lbl_1_bss_1A1C[0], lbl_1_bss_28,
                 0.0f);
             break;
         case 1:
-            lbl_1_bss_28 -= (0.10000000149011612f);
+            lbl_1_bss_28 -= 0.1f;
             HuSprGrpPosSet(lbl_1_bss_1A1C[0], lbl_1_bss_28,
                 0.0f);
             break;
         case 2:
-            lbl_1_bss_28 -= (0.10000000149011612f);
+            lbl_1_bss_28 -= 0.1f;
             HuSprGrpPosSet(lbl_1_bss_1A1C[0], 0.0f,
                 lbl_1_bss_28);
             break;
@@ -557,8 +498,7 @@ void fn_1_12A8(s16 state)
 /* Loads and lays out the ten character markers used by the ending scene. */
 void fn_1_14F4(void)
 {
-    EndingSpritePositions positions = {
-        {
+    Vec positions[10] = {
             { 288, 263, 0 },
             { 225, 365, 1 },
             { 120, 303, 1 },
@@ -569,7 +509,6 @@ void fn_1_14F4(void)
             { 476, 343, 1 },
             { 301, 371, 2 },
             { 471, 403, 3 },
-        }
     };
     s16 index;
 
@@ -580,11 +519,11 @@ void fn_1_14F4(void)
     lbl_1_bss_1A1C[0] = HuSprGrpCreate(10);
     for (index = 0; index < 10; index++) {
         lbl_1_bss_1A08[index] = HuSprCreate(lbl_1_bss_1A20[index],
-            positions.position[index].z, 0);
+            positions[index].z, 0);
         HuSprGrpMemberSet(lbl_1_bss_1A1C[0], index,
             lbl_1_bss_1A08[index]);
         HuSprPosSet(lbl_1_bss_1A1C[0], index,
-            positions.position[index].x, positions.position[index].y);
+            positions[index].x, positions[index].y);
     }
     HuSprGrpPosSet(lbl_1_bss_1A1C[0], 0.0f,
         0.0f);
@@ -607,8 +546,8 @@ void fn_1_16D4(void)
     lbl_1_bss_1A1C[1] = HuSprGrpCreate(1);
     sprite = HuSprCreate(animation, 0, 0);
     HuSprGrpMemberSet(lbl_1_bss_1A1C[1], 0, sprite);
-    HuSprGrpPosSet(lbl_1_bss_1A1C[1], (288.0f),
-        (240.0f));
+    HuSprGrpPosSet(lbl_1_bss_1A1C[1], 288.0f,
+        240.0f);
     fn_1_E0EC(lbl_1_bss_1A1C[1], 4);
 }
 
@@ -651,19 +590,19 @@ void fn_1_193C(OMOBJ *object)
         if (0.0f == work->time) {
             fn_8002CCC0(lbl_1_bss_8->mdlId[model],
                 lbl_1_bss_8->mtnId[3 + (model * 6)],
-                0.0f, (10.0f), ((1 << 30) | (1 << 0)));
+                0.0f, 10.0f, ((1 << 30) | (1 << 0)));
         }
         fn_80026874(object->mdlId[model], &rotation);
         rotation.y = fn_1_DDF8(work->start, work->end, work->time,
             work->duration);
         fn_80026838(object->mdlId[model], &rotation);
-        if ((work->time += (1.0f)) > work->duration) {
-            work->time = (1.0f) + work->duration;
+        if ((work->time += 1.0f) > work->duration) {
+            work->time = 1.0f + work->duration;
     if (0.0f == work->finalMotionStarted) {
-        work->finalMotionStarted = (1.0f);
+        work->finalMotionStarted = 1.0f;
                 fn_8002CCC0(lbl_1_bss_8->mdlId[model],
                     lbl_1_bss_8->mtnId[model * 6], 0.0f,
-                    (5.0f), ((1 << 30) | (1 << 0)));
+                    5.0f, ((1 << 30) | (1 << 0)));
             }
         }
     }
@@ -673,8 +612,7 @@ void fn_1_193C(OMOBJ *object)
 void fn_1_1B20(void)
 {
     Mtx matrix;
-    EndingModelObjectNames names = {
-        {
+    char *names[10] = {
             "test005-mario",
             "test005-luigi",
             "test005-peach",
@@ -685,12 +623,11 @@ void fn_1_1B20(void)
             "test005-kinopio",
             "test005-teresa",
             "test005-koopa",
-        }
     };
     s16 model;
 
     for (model = 0; model < 10; model++) {
-        fn_80023398(lbl_1_bss_4->mdlId[0], names.name[model], matrix);
+        fn_80023398(lbl_1_bss_4->mdlId[0], names[model], matrix);
         fn_80026760(lbl_1_bss_8->mdlId[model], matrix[0][3],
             matrix[1][3], matrix[2][3]);
     }
@@ -709,32 +646,32 @@ void fn_1_1C0C(s16 characterIndex, s16 motionModel, float turnDuration)
     characterPosition.x -= motionPosition.x;
     characterPosition.z -= motionPosition.z;
     characterPosition.y = -(atan2(characterPosition.x, -characterPosition.z) /
-        (3.141592653589793) * (180.0));
+        3.141592653589793 * 180.0);
     fn_80026874(lbl_1_bss_8->mdlId[characterIndex], &motionPosition);
     for (;;) {
         if (motionPosition.y < 0.0f) {
-            motionPosition.y += (360.0f);
+            motionPosition.y += 360.0f;
         } else {
             break;
         }
     }
     for (;;) {
-        if (motionPosition.y >= (360.0f)) {
-            motionPosition.y -= (360.0f);
+        if (motionPosition.y >= 360.0f) {
+            motionPosition.y -= 360.0f;
         } else {
             break;
         }
     }
     for (;;) {
         if (characterPosition.y < 0.0f) {
-            characterPosition.y += (360.0f);
+            characterPosition.y += 360.0f;
         } else {
             break;
         }
     }
     for (;;) {
-        if (characterPosition.y >= (360.0f)) {
-            characterPosition.y -= (360.0f);
+        if (characterPosition.y >= 360.0f) {
+            characterPosition.y -= 360.0f;
         } else {
             break;
         }
@@ -783,7 +720,7 @@ void fn_1_1FC4(void)
 
     HuPrcSleep(2);
     for (characterIndex = 0; characterIndex < 10; characterIndex++) {
-        fn_8002D86C(lbl_1_bss_8->mdlId[characterIndex], (0.25f));
+        fn_8002D86C(lbl_1_bss_8->mdlId[characterIndex], 0.25f);
     }
 }
 
@@ -829,7 +766,7 @@ void fn_1_2208(s16 motionIndex, float blend, u32 attr,
             if (lbl_1_bss_19F4[characterIndex] == 0) {
                 fn_1_1E90(characterIndex, motionIndex, blend, attr);
                 fn_8002D86C(lbl_1_bss_8->mdlId[characterIndex],
-                    (0.25f));
+                    0.25f);
             }
             lbl_1_bss_19F4[characterIndex]--;
             if (lbl_1_bss_19F4[characterIndex] <= -10) {
@@ -868,13 +805,13 @@ void fn_1_23D8(OMOBJ *object)
         object->mtnId[(model * 6) + 5] = fn_80030458(
                 object->mdlId[model], fn_80008DD0(DATANUM(0x220000, 118) + model,
                 0x10000000, 2));
-        fn_800268B0(object->mdlId[model], (0.8999999761581421f),
-            (0.8999999761581421f), (0.8999999761581421f));
+        fn_800268B0(object->mdlId[model], 0.9f,
+            0.9f, 0.9f);
         fn_8002CCC0(object->mdlId[model], object->mtnId[model * 6],
             0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-        work->time = (11.0f);
-        work->duration = (10.0f);
-                work->finalMotionStarted = (1.0f);
+        work->time = 11.0f;
+        work->duration = 10.0f;
+                work->finalMotionStarted = 1.0f;
     }
     object->objFunc = fn_1_193C;
 }
@@ -908,11 +845,11 @@ void fn_1_2790(HuVecF *position, float x, float y, float z)
 /* Evaluates one axis of the curved character entrance path at normalized progress. */
 float fn_1_27A0(float start, float middle, float end, float time)
 {
-    float inverse = (1.0f) - time;
+    float inverse = 1.0f - time;
 
     return end * (time * time)
         + (start * (inverse * inverse)
-        + (2.0f) * (middle * (inverse * time)));
+        + 2.0f * (middle * (inverse * time)));
 }
 
 /* Builds a point on the characters' quadratic entrance path for fn_1_2AEC. */
@@ -955,7 +892,7 @@ void fn_1_2AEC(OMOBJ *object)
             fn_1_12988(4, &position, 0, 6);
             firstWork->state = 0;
             fn_8002CCC0(lbl_1_bss_C->mdlId[0], lbl_1_bss_C->mtnId[0],
-                0.0f, (30.0f), ((1 << 30) | (1 << 0)));
+                0.0f, 30.0f, ((1 << 30) | (1 << 0)));
         }
     }
 
@@ -970,7 +907,7 @@ void fn_1_2AEC(OMOBJ *object)
             fn_1_12988(5, &position, 0, 6);
             secondWork->state = 0;
             fn_8002CCC0(lbl_1_bss_10->mdlId[0], lbl_1_bss_10->mtnId[0],
-                0.0f, (30.0f), ((1 << 30) | (1 << 0)));
+                0.0f, 30.0f, ((1 << 30) | (1 << 0)));
         }
     }
 }
@@ -1058,7 +995,7 @@ void fn_1_36E0(OMOBJ *object)
         value = rotationValue;
         fn_80026808(object->mdlId[0], 0.0f, value,
             0.0f);
-        if ((work->time += (1.0f)) > work->duration) {
+        if ((work->time += 1.0f) > work->duration) {
             object->objFunc = NULL;
         }
     } else {
@@ -1085,7 +1022,7 @@ void fn_1_36E0(OMOBJ *object)
         value = positionValue;
         fn_800267CC(object->mdlId[0], &position);
         fn_80026760(object->mdlId[0], value, position.y, position.z);
-        if ((work->time += (1.0f)) > work->duration) {
+        if ((work->time += 1.0f) > work->duration) {
             object->objFunc = NULL;
         }
     }
@@ -1152,12 +1089,12 @@ void fn_1_3B4C(OMOBJ *object)
     fn_800269E8(object->mdlId[0], (1 << 0));
     fn_8002CCC0(object->mdlId[0], object->mtnId[0],
         0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-    fn_80026760(object->mdlId[0], (-200.0f),
-        (200.0f), 0.0f);
+    fn_80026760(object->mdlId[0], -200.0f,
+        200.0f, 0.0f);
     fn_80026808(object->mdlId[0], 0.0f,
-        (15.0f), 0.0f);
-    fn_800268B0(object->mdlId[0], (1.25f),
-        (1.25f), (1.25f));
+        15.0f, 0.0f);
+    fn_800268B0(object->mdlId[0], 1.25f,
+        1.25f, 1.25f);
     object->objFunc = NULL;
 }
 
@@ -1196,12 +1133,12 @@ void fn_1_3D5C(OMOBJ *object)
     fn_800269E8(object->mdlId[0], (1 << 0));
     fn_8002CCC0(object->mdlId[0], object->mtnId[0],
         0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-    fn_80026760(object->mdlId[0], (200.0f),
-        (200.0f), 0.0f);
+    fn_80026760(object->mdlId[0], 200.0f,
+        200.0f, 0.0f);
     fn_80026808(object->mdlId[0], 0.0f,
-        (-15.0f), 0.0f);
-    fn_800268B0(object->mdlId[0], (1.25f),
-        (1.25f), (1.25f));
+        -15.0f, 0.0f);
+    fn_800268B0(object->mdlId[0], 1.25f,
+        1.25f, 1.25f);
     object->objFunc = NULL;
 }
 
@@ -1230,7 +1167,7 @@ void fn_1_3FC0(void)
 
     fn_8002CEB0(object->mdlId[0], object->mtnId[0]);
     fn_8002CF98(object->mdlId[0], 0.0f);
-    model->motShapeWork.speed = (2.0f);
+    model->motShapeWork.speed = 2.0f;
     object->work[3] = 1;
 }
 
@@ -1242,7 +1179,7 @@ void fn_1_4058(void)
 
     fn_8002CEB0(object->mdlId[0], object->mtnId[0]);
     fn_8002CF98(object->mdlId[0], 0.0f);
-    model->motShapeWork.speed = (-2.0f);
+    model->motShapeWork.speed = -2.0f;
     object->work[3] = 0;
 }
 
@@ -1271,37 +1208,37 @@ void fn_1_40F0(OMOBJ *object)
                     0.0f);
                 fn_8002C95C(object->mdlId[model + 9],
                     object->mtnId[model + 2]);
-            } else if (work->time < (50.0f)) {
+            } else if (work->time < 50.0f) {
                 fn_80026A44(object->mdlId[model + 2],
                     (1 << 0));
                 fn_80026A44(object->mdlId[model + 9],
                     (1 << 0));
-                alpha = fn_1_DDF8(0.0f, (0.800000011920929f),
-                    work->time, (50.0f));
+                alpha = fn_1_DDF8(0.0f, 0.8f,
+                    work->time, 50.0f);
                 fn_80026CBC(object->mdlId[model + 2], alpha);
                 fn_80026CBC(object->mdlId[model + 9], alpha);
-            } else if (work->time < (90.0f)) {
+            } else if (work->time < 90.0f) {
                 fn_80026A44(object->mdlId[model + 2],
                     (1 << 0));
                 fn_80026A44(object->mdlId[model + 9],
                     (1 << 0));
                 fn_80026CBC(object->mdlId[model + 2],
-                    (0.800000011920929f));
+                    0.8f);
                 fn_80026CBC(object->mdlId[model + 9],
-                    (0.800000011920929f));
+                    0.8f);
             } else {
                 fn_80026A44(object->mdlId[model + 2],
                     (1 << 0));
                 fn_80026A44(object->mdlId[model + 9],
                     (1 << 0));
-                alpha = fn_1_DDF8((0.800000011920929f), 0.0f,
-                    work->time - (90.0f), (30.0f));
+                alpha = fn_1_DDF8(0.8f, 0.0f,
+                    work->time - 90.0f, 30.0f);
                 fn_80026CBC(object->mdlId[model + 2], alpha);
                 fn_80026CBC(object->mdlId[model + 9], alpha);
             }
         }
-        if ((work->time += (1.0f)) > (120.0f)) {
-            work->time = (-90.0f);
+        if ((work->time += 1.0f) > 120.0f) {
+            work->time = -90.0f;
             fn_800269E8(object->mdlId[model + 2], (1 << 0));
             fn_800269E8(object->mdlId[model + 9], (1 << 0));
         }
@@ -1336,15 +1273,15 @@ void fn_1_45C0(OMOBJ *object)
             0.0f, 0.0f, ((1 << 30) | (1 << 0)));
         fn_80026760(object->mdlId[model], position.x, position.y,
             position.z);
-        fn_80026808(object->mdlId[model], (25.0f),
+        fn_80026808(object->mdlId[model], 25.0f,
             0.0f, 0.0f);
-        fn_800268B0(object->mdlId[model], (0.800000011920929f),
-            (0.800000011920929f), (0.800000011920929f));
+        fn_800268B0(object->mdlId[model], 0.8f,
+            0.8f, 0.8f);
     }
     fn_80026B8C(object->mdlId[0], 0);
     fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
     fn_80026760(object->mdlId[1], position.x, position.y,
-        position.z - (100.0f));
+        position.z - 100.0f);
 
     for (model = 9; model < 16; model++) {
         object->mdlId[model] = fn_80025A04(fn_80008DD0(
@@ -1355,10 +1292,10 @@ void fn_1_45C0(OMOBJ *object)
             0.0f, 0.0f, ((1 << 30) | (1 << 0)));
         fn_80026760(object->mdlId[model], position.x, position.y,
             position.z);
-        fn_80026808(object->mdlId[model], (25.0f),
+        fn_80026808(object->mdlId[model], 25.0f,
             0.0f, 0.0f);
-        fn_800268B0(object->mdlId[model], (0.800000011920929f),
-            (0.800000011920929f), (0.800000011920929f));
+        fn_800268B0(object->mdlId[model], 0.8f,
+            0.8f, 0.8f);
     }
 
     for (model = 0; model < 7; model++) {
@@ -1368,7 +1305,7 @@ void fn_1_45C0(OMOBJ *object)
     modelData = &lbl_802C01C8[effectObject->mdlId[0]];
     fn_8002CEB0(effectObject->mdlId[0], effectObject->mtnId[0]);
     fn_8002CF98(effectObject->mdlId[0], 0.0f);
-    modelData->motShapeWork.speed = (-2.0f);
+    modelData->motShapeWork.speed = -2.0f;
     effectObject->work[3] = 0;
     fn_1_E1EC(1, &position);
     fn_1_EAB8(1, &position);
@@ -1445,11 +1382,11 @@ void fn_1_4BC8(OMOBJ *object)
         return;
     }
     if (lbl_1_bss_2C == 0) {
-        HuWinPosSet(lbl_1_bss_1A48[4], (16.0f),
-            (337.0f));
+        HuWinPosSet(lbl_1_bss_1A48[4], 16.0f,
+            337.0f);
     } else {
-        HuWinPosSet(lbl_1_bss_1A48[4], (16.0f),
-            (400.0f));
+        HuWinPosSet(lbl_1_bss_1A48[4], 16.0f,
+            400.0f);
     }
     HuWinDispOn(lbl_1_bss_1A48[4]);
     HuWinAttrSet(lbl_1_bss_1A48[4], HUWIN_ATTR_ALIGN_CENTER);
@@ -1663,11 +1600,11 @@ void fn_1_6AB4(s16 motion0, s16 motion1, s16 window, s32 message,
 
     if (motion0 != 0) {
         fn_8002CCC0(lbl_1_bss_C->mdlId[0], lbl_1_bss_C->mtnId[2],
-            0.0f, (30.0f), ((1 << 30) | (1 << 0)));
+            0.0f, 30.0f, ((1 << 30) | (1 << 0)));
     }
     if (motion1 != 0) {
         fn_8002CCC0(lbl_1_bss_10->mdlId[0], lbl_1_bss_10->mtnId[2],
-            0.0f, (30.0f), ((1 << 30) | (1 << 0)));
+            0.0f, 30.0f, ((1 << 30) | (1 << 0)));
     }
     if (window != -1 && message != -1) {
         if (lbl_1_data_38 != -1 && lbl_1_data_38 != window &&
@@ -1702,11 +1639,11 @@ void fn_1_6AB4(s16 motion0, s16 motion1, s16 window, s32 message,
     }
     if (motion0 != 0) {
         fn_8002CCC0(lbl_1_bss_C->mdlId[0], lbl_1_bss_C->mtnId[0],
-            0.0f, (30.0f), ((1 << 30) | (1 << 0)));
+            0.0f, 30.0f, ((1 << 30) | (1 << 0)));
     }
     if (motion1 != 0) {
         fn_8002CCC0(lbl_1_bss_10->mdlId[0], lbl_1_bss_10->mtnId[0],
-            0.0f, (30.0f), ((1 << 30) | (1 << 0)));
+            0.0f, 30.0f, ((1 << 30) | (1 << 0)));
     }
 }
 
@@ -1719,10 +1656,10 @@ void fn_1_6EC4(void)
     fn_1_1B20();
     motion = lbl_1_bss_18->mdlId[0];
     for (index = 0; index < 10; index++) {
-        fn_1_1C0C(index, motion, (1.0f));
+        fn_1_1C0C(index, motion, 1.0f);
     }
     HuPrcVSleep();
-    fn_8002D86C(lbl_1_bss_4->mdlId[0], (0.25f));
+    fn_8002D86C(lbl_1_bss_4->mdlId[0], 0.25f);
 }
 
 /* Runs the opening ending dialogue and character motions; the overlay entrypoint fn_1_DD14 calls
@@ -1882,7 +1819,7 @@ void fn_1_8F80(OMOBJ *object)
             work->controlOrPosition.x = frandmod(60) - 30;
             work->controlOrPosition.y = frandmod(100) + 230;
             work->controlOrPosition.z = 130.0f;
-            work->endOrEffectParams.y = frandmod(20) - (1.0f);
+            work->endOrEffectParams.y = frandmod(20) - 1.0f;
             work->endOrEffectParams.x = frandmod(10) * 0.01f + 0.2f;
             fn_80026790(object->mdlId[model], &work->controlOrPosition);
             fn_80026808(object->mdlId[model], 0.0f,
@@ -1956,10 +1893,10 @@ void fn_1_951C(void)
 
     fn_80027CD0(1, &pos, &up, &target);
     pos.x = 0.0f;
-    pos.y = (250.0f);
-    pos.z = (400.0f);
+    pos.y = 250.0f;
+    pos.z = 400.0f;
     target.x = 0.0f;
-    target.y = (280.0f);
+    target.y = 280.0f;
     target.z = 0.0f;
     Hu3DCameraPosSetV(1, &pos, &up, &target);
 }
@@ -2013,16 +1950,16 @@ void fn_1_A58C(void)
     s16 sprite;
 
     fileData = fn_8005607C(
-        DATANUM(0xf20000, 51), ENDING_ANIMATION_ALLOC_TAG, 2);
+        DATANUM(0xf20000, 51), 0x30000000, 2);
     animation = HuSprAnimRead(fileData);
     lbl_1_data_10E = HuSprGrpCreate(1);
     sprite = HuSprCreate(animation, 1, 0);
     HuSprGrpMemberSet(lbl_1_data_10E, 0, sprite);
-    HuSprTPLvlSet(lbl_1_data_10E, 0, (0.30000001192092896f));
-    HuSprGrpPosSet(lbl_1_data_10E, (288.0f),
-        (240.0f));
-    HuSprScaleSet(lbl_1_data_10E, 0, (20.0f),
-        (20.0f));
+    HuSprTPLvlSet(lbl_1_data_10E, 0, 0.3f);
+    HuSprGrpPosSet(lbl_1_data_10E, 288.0f,
+        240.0f);
+    HuSprScaleSet(lbl_1_data_10E, 0, 20.0f,
+        20.0f);
 }
 
 /* Removes the center-screen ending emblem when the overlay is dismissed. */
@@ -2115,20 +2052,20 @@ void fn_1_A964(void)
     Hu3DCameraPosSetV(1, &cameraPosition, &cameraUp, &cameraTarget);
 
     if (lbl_1_bss_26 == 0) {
-        firstSound = HuAudFXPlay(ENDING_FX_ID_1393);
+        firstSound = HuAudFXPlay(1393);
     } else {
         firstSound = -1;
     }
     lbl_1_bss_1D5C.channel[8] = firstSound;
     if (lbl_1_bss_26 == 0) {
-        secondSound = HuAudFXPlay(ENDING_FX_ID_1394);
+        secondSound = HuAudFXPlay(1394);
     } else {
         secondSound = -1;
     }
     lbl_1_bss_1D5C.channel[9] = secondSound;
 
     fileData = fn_8005607C(
-        DATANUM(0xf20000, 51), ENDING_ANIMATION_ALLOC_TAG, 2);
+        DATANUM(0xf20000, 51), 0x30000000, 2);
     animation = HuSprAnimRead(fileData);
     lbl_1_data_10E = HuSprGrpCreate(1);
     sprite = HuSprCreate(animation, 1, 0);
@@ -2211,15 +2148,15 @@ void fn_1_B244(void)
             fn_80008DD0(DATANUM(0x220000, 49) + index, 0x10000000,
                 2));
     }
-    fn_800268B0(object->mdlId[1], (0.800000011920929f),
-        (0.800000011920929f), (0.800000011920929f));
+    fn_800268B0(object->mdlId[1], 0.8f,
+        0.8f, 0.8f);
     fn_8002741C(object->mdlId[0], "c005m0-itemhook-r",
         object->mdlId[1]);
     fn_8002C95C(lbl_1_bss_14->mdlId[0], lbl_1_bss_14->mtnId[0]);
     fn_8002C95C(lbl_1_bss_4->mdlId[0], lbl_1_bss_4->mtnId[0]);
     HuPrcVSleep();
-    fn_8002D414(lbl_1_bss_14->mdlId[0], (60.0f));
-    fn_8002D414(lbl_1_bss_4->mdlId[1], (60.0f));
+    fn_8002D414(lbl_1_bss_14->mdlId[0], 60.0f);
+    fn_8002D414(lbl_1_bss_4->mdlId[1], 60.0f);
 }
 
 /* Runs the staff-roll model, lighting, and audio sequence; the ending entrypoint calls this
@@ -2289,7 +2226,7 @@ void fn_1_B568(void)
     lightId = modelData->lightId[0];
     Hu3DGLightColorSet(lightId, 64, 64, 64, 255);
     if (lbl_1_bss_26 == 0) {
-        HuAudFXPlay(ENDING_FX_ID_1396);
+        HuAudFXPlay(1396);
     }
 
     WipeCreate(1, 0, 10);
@@ -2301,8 +2238,8 @@ void fn_1_B568(void)
     HuPrcSleep(35);
     for (frame = 0; frame < 65; frame++) {
         HuPrcVSleep();
-        color = fn_1_DDF8((64.0f), (255.0f),
-            frame, (65.0f));
+        color = fn_1_DDF8(64.0f, 255.0f,
+            frame, 65.0f);
         Hu3DGLightColorSet(lightId, color, color, color, 255);
     }
     Hu3DGLightColorSet(lightId, 255, 255, 255, 255);
@@ -2320,7 +2257,7 @@ void fn_1_B568(void)
     fn_80028D70();
     fn_80029850(lbl_1_bss_4->mdlId[2], 1);
     if (lbl_1_bss_26 == 0) {
-        sound = HuAudFXPlay(ENDING_FX_ID_1397);
+        sound = HuAudFXPlay(1397);
     } else {
         sound = -1;
     }
@@ -2390,7 +2327,7 @@ void fn_1_BBEC(void)
         0.0f, 0.0f, 0);
     fn_80026E44(object->mdlId[2]);
     HuPrcVSleep();
-    fn_8002D86C(lbl_1_bss_4->mdlId[4], (0.25f));
+    fn_8002D86C(lbl_1_bss_4->mdlId[4], 0.25f);
 }
 
 /* Runs the final staff-roll camera and prop sequence; called by the ending entrypoint. */
@@ -2453,12 +2390,12 @@ void fn_1_BE30(void)
     fn_80026E44(mainObject->mdlId[2]);
     HuPrcVSleep();
 
-    fn_8002D86C(lbl_1_bss_4->mdlId[4], (0.25f));
+    fn_8002D86C(lbl_1_bss_4->mdlId[4], 0.25f);
     fn_8002803C(lbl_1_bss_4->mdlId[3], 1);
     fn_80028D70();
     fn_80029850(lbl_1_bss_4->mdlId[3], 1);
     if (lbl_1_bss_26 == 0) {
-        HuAudFXPlay(ENDING_FX_ID_1399);
+        HuAudFXPlay(1399);
     }
     WipeCreate(1, 0, 10);
     while (WipeCheck()) {
@@ -2469,8 +2406,8 @@ void fn_1_BE30(void)
     lbl_1_bss_24 = 1;
     for (frame = 0; frame < 160; frame++) {
         HuPrcVSleep();
-        height = fn_1_DDF8(0.0f, (200.0f),
-            frame, (200.0f));
+        height = fn_1_DDF8(0.0f, 200.0f,
+            frame, 200.0f);
         fn_80026760(lbl_1_bss_14->mdlId[2], 0.0f,
             0.0f, height);
     }
@@ -2479,7 +2416,7 @@ void fn_1_BE30(void)
     fn_80026760(lbl_1_bss_14->mdlId[2], 0.0f,
         0.0f, 0.0f);
     fn_80026808(lbl_1_bss_14->mdlId[2], 0.0f,
-        (-25.0f), 0.0f);
+        -25.0f, 0.0f);
     fn_8002CCC0(lbl_1_bss_14->mdlId[2], lbl_1_bss_14->mtnId[2],
         0.0f, 0.0f, ((1 << 30) | (1 << 0)));
 
@@ -2487,7 +2424,7 @@ void fn_1_BE30(void)
     fn_80028D70();
     fn_80029850(lbl_1_bss_4->mdlId[4], 1);
     if (lbl_1_bss_26 == 0) {
-        sound = HuAudFXPlay(ENDING_FX_ID_1400);
+        sound = HuAudFXPlay(1400);
     } else {
         sound = -1;
     }
@@ -2536,10 +2473,10 @@ void fn_1_C4F0(void)
 
     fn_80027CD0(1, &pos, &up, &target);
     pos.x = 0.0f;
-    pos.y = (500.0f);
-    pos.z = (1500.0f);
+    pos.y = 500.0f;
+    pos.z = 1500.0f;
     target.x = 0.0f;
-    target.y = (500.0f);
+    target.y = 500.0f;
     target.z = 0.0f;
     Hu3DCameraPosSetV(1, &pos, &up, &target);
     fn_1_EB54(1);
@@ -2549,16 +2486,14 @@ inline void fn_1_12A8(s16 state);
 inline void fn_1_C40C(void);
 inline void fn_1_C4F0(void);
 
-const EndingScenePositions lbl_1_rodata_2CC = {
-    { { -150.0f, 700.0f, 1200.0f }, { 150.0f, 700.0f, 1200.0f }, { 0.0f, 700.0f, 1200.0f } }
-};
-
 /* Runs the three-character closing tableau and its staggered particle and sound cues. */
 void fn_1_C7DC(void)
 {
-    float particleY = (650.0f);
+    float particleY = 650.0f;
     float phaseDuration;
-    EndingScenePositions positions = lbl_1_rodata_2CC;
+    HuVecF positions[3] = {
+        { -150.0f, 700.0f, 1200.0f }, { 150.0f, 700.0f, 1200.0f }, { 0.0f, 700.0f, 1200.0f }
+    };
 
     HuAudFXStop(lbl_1_bss_1D5C.channel[6]);
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 10);
@@ -2569,32 +2504,32 @@ void fn_1_C7DC(void)
     fn_1_C4F0();
 
     fn_1_12A8(0);
-    fn_1_EAB8(1, &positions.position[0]);
-    positions.position[0].y = particleY;
-    fn_1_F1B8(1, &positions.position[0]);
+    fn_1_EAB8(1, &positions[0]);
+    positions[0].y = particleY;
+    fn_1_F1B8(1, &positions[0]);
     fn_1_F23C(1);
     HuPrcSleep(60);
     lbl_1_bss_1D5C.channel[10] = fn_1_0(1402);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 10);
     lbl_1_bss_2C = 1;
     lbl_1_bss_24 = 1;
-    phaseDuration = (60.0f);
+    phaseDuration = 60.0f;
     HuPrcSleep(60);
 
     lbl_1_bss_1D5C.channel[11] = fn_1_0(1403);
     fn_1_12A8(1);
-    fn_1_EAB8(1, &positions.position[1]);
-    positions.position[1].y = particleY;
-    fn_1_F1B8(1, &positions.position[1]);
-    phaseDuration = (60.0f);
+    fn_1_EAB8(1, &positions[1]);
+    positions[1].y = particleY;
+    fn_1_F1B8(1, &positions[1]);
+    phaseDuration = 60.0f;
     HuPrcSleep(48);
 
     lbl_1_bss_1D5C.channel[7] = fn_1_0(1404);
     fn_1_12A8(2);
-    fn_1_EAB8(1, &positions.position[2]);
-    positions.position[2].y = particleY;
-    fn_1_F1B8(1, &positions.position[2]);
-    phaseDuration = (120.0f);
+    fn_1_EAB8(1, &positions[2]);
+    positions[2].y = particleY;
+    fn_1_F1B8(1, &positions[2]);
+    phaseDuration = 120.0f;
     HuPrcSleep(132);
     lbl_1_bss_24 = 0;
     HuPrcSleep(5);

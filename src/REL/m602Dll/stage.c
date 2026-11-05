@@ -4,7 +4,7 @@
 /* The signed words below contain unused positive and negative 1000.0 values. */
 #define M602_POSITIVE_1000_BITS 0x447A0000
 #define M602_NEGATIVE_1000_BITS (-998637568)
-#define MSM_SE_M602_WINNER_STAGE 1576
+
 #define M602_CARD_STOPPED_BACK_FLAG (1 << 0)
 #define M602_CARD_STOPPED_FRONT_FLAG (1 << 1)
 #define M602_CARD_TURNING_BACK_FLAG (1 << 2)
@@ -650,7 +650,7 @@ s16 fn_1_34A4(s16 frameNo)
                 fn_80026A44(lbl_1_bss_2E, (1 << 0));
                 fn_8002D414(lbl_1_bss_2E, 0.0f);
                 fn_800269E8(lbl_1_bss_2E, ((1 << 30) | (1 << 0)));
-                HuAudFXPlay(MSM_SE_M602_WINNER_STAGE);
+                HuAudFXPlay(1576);
                 fn_1_4C84();
                 lbl_1_bss_2C -= 1;
             }

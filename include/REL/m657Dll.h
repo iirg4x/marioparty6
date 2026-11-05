@@ -61,12 +61,12 @@ typedef struct {
     HuVecF vel;
     /* Set while the player is falling into the arena. */
     BOOL falling;
-    /* Four allocated bytes with no demonstrated use. */
-    u8 unaccessedStateBytes[4];
+    /* The game's code never reads these four bytes. */
+    u8 unk34[4];
     /* Per-player minigame state. */
     s32 state;
-    /* Four allocated bytes with no demonstrated use. */
-    u8 unaccessedWinnerBytes[4];
+    /* The game's code never reads these four bytes. */
+    u8 unk3C[4];
     /* Whether this team is a winner. */
     BOOL winner;
     /* Normalized descent progress, calculated from the 2573-unit start height. */
@@ -91,8 +91,8 @@ typedef struct {
     u32 buttons;
     /* Buttons sampled during the preceding player update. */
     u32 prevButtons;
-    /* Twenty allocated bytes with no demonstrated use. */
-    u8 unaccessedInputBytes[20];
+    /* The game's code never reads these twenty bytes. */
+    u8 unk64[20];
     /* Set when the exit animation has finished. */
     BOOL exitFinished;
     /* Whether this player is computer-controlled. */
@@ -157,8 +157,8 @@ typedef struct {
     MGSCORE *hundredths;
     /* Sprite group containing the decimal separator. */
     HUSPR_GROUPID separator;
-    /* Six allocated bytes with no demonstrated use. */
-    u8 unaccessedScoreBytes[6];
+    /* The game's code never reads these six bytes. */
+    u8 unk0E[6];
     /* Remaining time in frames; negative values show time after the shared countdown. */
     s32 frames;
     /* Whether this team's score display is still being updated. */
@@ -184,8 +184,8 @@ typedef struct {
 typedef struct {
     /* Arena item position and associated value. */
     M657ArenaItem item;
-    /* Twelve allocated bytes with no demonstrated use. */
-    u8 unaccessedArenaBytes[12];
+    /* The game's code never reads these twelve bytes. */
+    u8 unk10[12];
     /* Arena object state machine. */
     s16 state;
 } M657ArenaWork;

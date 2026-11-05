@@ -6,8 +6,9 @@
 #include "game/gamemes.h"
 #include "game/memory.h"
 #include "string.h"
+#include "msm_stream.h"
 
-#define M621_START_STREAM_ID 72
+
 
 OMOBJMAN *lbl_1_bss_0;
 
@@ -87,7 +88,7 @@ void fn_1_358(s16 mode, s16 frameNo)
 void fn_1_35C(s16 mode, s16 frameNo)
 {
     if (lbl_1_data_28 == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
-        lbl_1_data_28 = HuAudSStreamPlay(M621_START_STREAM_ID);
+        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_MGTOUR_END);
     }
 }
 

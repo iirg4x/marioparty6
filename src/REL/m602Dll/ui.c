@@ -1,7 +1,7 @@
 /* Creates and updates Odd Card Out score, timer, and message UI. */
 #include "REL/m602Dll.h"
 
-#define MSM_SE_M602_PLAYER_INTRO 1569
+
 
 u8 lbl_1_data_4B0[3] = { 64, 64, 64 };
 
@@ -169,7 +169,7 @@ void fn_1_A648(s16 frameNo)
         if ((lbl_1_rodata_1AC[player] <= frameNo) && (frameNo < lbl_1_rodata_1AC[player + 1])) {
             highlightOn = 1;
             if (frameNo == lbl_1_rodata_1AC[player]) {
-                HuAudFXPlay(MSM_SE_M602_PLAYER_INTRO);
+                HuAudFXPlay(1569);
             }
         } else {
             highlightOn = 0;

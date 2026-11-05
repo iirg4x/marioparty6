@@ -76,7 +76,7 @@ struct _struct_lbl_1_bss_3C_0x8 {
 struct _struct_lbl_1_data_4B4_0xC {
     f32 x; /* Horizontal screen position in pixels. */
     f32 y; /* Vertical screen position in pixels. */
-    u8 unreadBytes[4]; /* Zero-filled bytes that the game never reads. */
+    u8 unk08[4]; /* Zero-filled bytes that the game never reads. */
 };
 
 /* Stage light position, direction, and color. */

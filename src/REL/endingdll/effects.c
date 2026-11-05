@@ -1,5 +1,5 @@
 // Particle effects used by the ending sequence and its staff displays.
-#include "dolphin/math.h"
+#include <math.h>
 #include "datadir_enum.h"
 #include "messdir_enum.h"
 #include "msm.h"
@@ -7,7 +7,9 @@
 #include "dolphin.h"
 #include "game/armem.h"
 
+#include "game/frand.h"
 #include "game/gamework.h"
+#include "game/main.h"
 #include "game/pad.h"
 #include "game/hu3d.h"
 #include "game/object.h"
@@ -15,6 +17,7 @@
 #include "game/sprite.h"
 #include "game/window.h"
 #include "game/wipe.h"
+#include "REL/endingdll/ending.h"
 
 ANIMDATA *lbl_1_bss_1E30[3];
 s16 lbl_1_bss_1E2C;
@@ -49,10 +52,6 @@ typedef struct EndingAudioState {
 typedef struct EndingLightVectors {
     HuVecF vector[2];
 } EndingLightVectors;
-
-typedef struct EndingParticleCounts {
-    s16 count[5];
-} EndingParticleCounts;
 
 typedef struct EndingScenePositions {
     HuVecF position[3];
@@ -117,7 +116,7 @@ extern HuVecF lbl_1_rodata_2B8;
 extern EndingScenePositions lbl_1_rodata_2CC;
 
 extern HuVecF lbl_1_rodata_288;
-extern EndingParticleCounts lbl_1_rodata_390;
+extern s16 lbl_1_rodata_390[5];
 
 extern s16 lbl_1_data_10E;
 extern s16 lbl_1_data_38;
@@ -132,13 +131,7 @@ extern char lbl_1_data_25[];
 extern char lbl_1_data_DD[];
 extern char lbl_1_data_CB[];
 
-int rand8(void);
-s32 frandmod(s32 modulus);
-void fn_1_98(HUWINID window, u32 message, s16 character);
-void fn_1_25C(OMOBJ *object);
-void fn_1_1C0C(s16 index, s16 motion, float time);
 void fn_1_10DEC(s16 index, HuVecF *pos, s16 mode);
-void fn_1_DD14(void);
 void fn_1_F1B8(s16 display, HuVecF *pos);
 void fn_1_12838(void);
 void fn_1_E1EC(s16 display, HuVecF *pos);
@@ -150,12 +143,6 @@ void fn_1_111B0(s16 display);
 void fn_1_11208(s16 index, HuVecF *pos, s16 mode);
 void fn_1_E0EC(s16 groupId, s32 attr);
 void fn_1_EB54(s16 time);
-void fn_1_1160(OMOBJ *object);
-void fn_1_3B4C(OMOBJ *object);
-void fn_1_3D5C(OMOBJ *object);
-void fn_1_36E0(OMOBJ *object);
-void fn_1_23D8(OMOBJ *object);
-void fn_1_2AEC(OMOBJ *object);
 void fn_1_E270(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
 void fn_1_EBCC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
 void fn_1_F2CC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
@@ -163,17 +150,7 @@ void fn_1_FDD4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
 void fn_1_10628(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
 void fn_1_112E0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
 void fn_1_11714(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_702C(void);
-void fn_1_8F80(OMOBJ *object);
-void fn_1_A964(void);
-void fn_1_B568(void);
-void fn_1_BE30(void);
-void fn_1_C7DC(void);
 void fn_1_E16C(HUSPR_GROUPID groupId, s32 attr);
-void fn_1_D434(void);
-void fn_1_7B4(void);
-void fn_1_45C0(OMOBJ *object);
-void fn_1_4BC8(OMOBJ *object);
 void fn_1_11F34(void);
 void fn_1_DF60(HuVecF *dest, HuVecF *target, float time);
 float fn_1_DDF8(float start, float end, float time, float duration);
@@ -374,10 +351,10 @@ static inline float tail23_ending_lerp(float start, float end, float time)
 static inline void ending_inline_EF58(void)
 {
     lbl_1_bss_1E2A = fn_8003216C(lbl_1_bss_1E30[1], 4);
-    fn_80026760(lbl_1_bss_1E2A, (0.0f),
-        (100.0f), (200.0f));
-    fn_800268B0(lbl_1_bss_1E2A, (1.0f),
-        (1.0f), (1.0f));
+    fn_80026760(lbl_1_bss_1E2A, 0.0f,
+        100.0f, 200.0f);
+    fn_800268B0(lbl_1_bss_1E2A, 1.0f,
+        1.0f, 1.0f);
     fn_80026B8C(lbl_1_bss_1E2A, 6);
     fn_800326D0(lbl_1_bss_1E2A, fn_1_EBCC);
     fn_8003269C(lbl_1_bss_1E2A, 1);
@@ -390,10 +367,10 @@ static inline void ending_inline_1025C(void)
 
     for (i = 0; i < 2; i++) {
         lbl_1_bss_1E22[i] = fn_8003216C(lbl_1_bss_1E30[1], 10);
-        fn_80026760(lbl_1_bss_1E22[i], (0.0f),
-            (0.0f), (0.0f));
-        fn_800268B0(lbl_1_bss_1E22[i], (1.0f),
-            (1.0f), (1.0f));
+        fn_80026760(lbl_1_bss_1E22[i], 0.0f,
+            0.0f, 0.0f);
+        fn_800268B0(lbl_1_bss_1E22[i], 1.0f,
+            1.0f, 1.0f);
         fn_800269E8(lbl_1_bss_1E22[i], (1 << 0));
         fn_80026B8C(lbl_1_bss_1E22[i], 2);
         fn_800326D0(lbl_1_bss_1E22[i], fn_1_FDD4);
@@ -408,10 +385,10 @@ static inline void ending_inline_10C28(void)
 
     for (i = 0; i < 2; i++) {
         lbl_1_bss_1E1E[i] = fn_8003216C(lbl_1_bss_1E30[0], 128);
-        fn_80026760(lbl_1_bss_1E1E[i], (0.0f),
-            (0.0f), (0.0f));
-        fn_800268B0(lbl_1_bss_1E1E[i], (1.0f),
-            (1.0f), (1.0f));
+        fn_80026760(lbl_1_bss_1E1E[i], 0.0f,
+            0.0f, 0.0f);
+        fn_800268B0(lbl_1_bss_1E1E[i], 1.0f,
+            1.0f, 1.0f);
         fn_800269E8(lbl_1_bss_1E1E[i], (1 << 0));
         fn_80026B8C(lbl_1_bss_1E1E[i], 2);
         fn_800326D0(lbl_1_bss_1E1E[i], fn_1_10628);
@@ -422,7 +399,7 @@ static inline void ending_inline_10C28(void)
 /* Return the linear fade value used by particle hooks as their age advances. */
 float fn_1_DDF8(float start, float end, float time, float duration)
 {
-    if (time <= (0.0f)) {
+    if (time <= 0.0f) {
         return start;
     }
     if (time >= duration) {
@@ -446,10 +423,10 @@ float fn_1_DE3C(float startValue, float endValue, float time, float duration)
 /* Move one ending-scene value toward its target over the remaining frames. */
 float fn_1_DF18(float start, float end, float time)
 {
-    if (start == end || time <= (1.0f)) {
+    if (start == end || time <= 1.0f) {
         return end;
     }
-    return (start * (time - (1.0f)) + end) / time;
+    return (start * (time - 1.0f) + end) / time;
 }
 
 /* Ease a scene position toward its target; called by ending scene updates. */
@@ -520,10 +497,10 @@ void fn_1_E270(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
             data->accel.x = frandmod(360);
             data->accel.y = frandmod(720) + 360;
             data->accel.z = frandmod(40) + 80;
-            data->speedDecay = (0.0f);
+            data->speedDecay = 0.0f;
             data->colorIdx = frandmod(180) + 60;
             data->speedDecay = frandmod(60);
-            data->scale = (10.0f);
+            data->scale = 10.0f;
             data->color.r = ENDING_COLOR_COMPONENT_MAX;
             data->color.g = ENDING_COLOR_COMPONENT_MAX;
             data->color.b = ENDING_COLOR_COMPONENT_MAX;
@@ -536,31 +513,31 @@ void fn_1_E270(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
                 amount = fn_1_DDF8(0.0f, 360.0f, data->accel.x, data->accel.y);
                 data->pos.x =
                     (float) (data->accel.z *
-                             sin(((3.141592653589793) * (amount * data->vel.x)) / (180.0)));
+                             sin((3.141592653589793 * (amount * data->vel.x)) / 180.0));
                 data->pos.y =
                     (float) (data->accel.z *
-                             cos(((3.141592653589793) * (amount * data->vel.y)) / (180.0)));
+                             cos((3.141592653589793 * (amount * data->vel.y)) / 180.0));
                 data->pos.z =
                     (float) (data->accel.z *
-                             sin(((3.141592653589793) * (amount * data->vel.z)) / (180.0)));
+                             sin((3.141592653589793 * (amount * data->vel.z)) / 180.0));
                 data->scale = frandmod(30) + 10;
                 if (rand8() % 10 == 0)
                 {
-                    data->zRot = frandmod(360) * (0.01745329238474369f);
+                    data->zRot = frandmod(360) * 0.017453292f;
                 }
                 data->color.a = fn_1_DE3C(0.0f, 255.0f, data->speedDecay, data->colorIdx);
-                if ((data->accel.x += (1.0f)) > data->accel.y)
+                if ((data->accel.x += 1.0f) > data->accel.y)
                 {
                     data->vel.x = frandmod(4) + 1;
                     data->vel.y = frandmod(4) + 1;
                     data->vel.z = frandmod(4) + 1;
-                    data->accel.x = (0.0f);
+                    data->accel.x = 0.0f;
                     data->accel.y = frandmod(720) + 360;
                     data->accel.z = frandmod(40) + 80;
                 }
-                if ((data->speedDecay += (1.0f)) > data->colorIdx)
+                if ((data->speedDecay += 1.0f) > data->colorIdx)
                 {
-                    data->speedDecay = (0.0f);
+                    data->speedDecay = 0.0f;
                     data->colorIdx = frandmod(180) + 60;
                 }
             }
@@ -573,10 +550,10 @@ void fn_1_E270(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
 void fn_1_E9A8(void)
 {
     lbl_1_bss_1E2C = fn_8003216C(lbl_1_bss_1E30[0], 16);
-    fn_80026760(lbl_1_bss_1E2C, (0.0f),
-        (0.0f), (0.0f));
-    fn_800268B0(lbl_1_bss_1E2C, (1.0f),
-        (1.0f), (1.0f));
+    fn_80026760(lbl_1_bss_1E2C, 0.0f,
+        0.0f, 0.0f);
+    fn_800268B0(lbl_1_bss_1E2C, 1.0f,
+        1.0f, 1.0f);
     fn_80026B8C(lbl_1_bss_1E2C, 6);
     fn_800326D0(lbl_1_bss_1E2C, fn_1_E270);
     fn_8003269C(lbl_1_bss_1E2C, 1);
@@ -592,7 +569,7 @@ void fn_1_EAB8(s16 display, HuVecF *pos)
 {
     if (pos != NULL) {
         fn_80026760(lbl_1_bss_1E2A, pos->x, pos->y,
-            (100.0f) + pos->z);
+            100.0f + pos->z);
     }
     if (display == 0) {
         fn_800269E8(lbl_1_bss_1E2A, (1 << 0));
@@ -723,7 +700,7 @@ void fn_1_F11C(s16 index, s16 count)
     data = particle->data;
     while (i < particle->maxCnt) {
         data->time = 0;
-        data->scale = (0.0f);
+        data->scale = 0.0f;
         i++;
         data++;
     }
@@ -755,7 +732,7 @@ void fn_1_F23C(s16 count)
     data = particle->data;
     while (i < particle->maxCnt) {
         data->time = 0;
-        data->scale = (0.0f);
+        data->scale = 0.0f;
         i++;
         data++;
     }
@@ -780,9 +757,9 @@ void fn_1_F2CC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
         if (data->time == 0 && initialized == 0) {
             initialized = 1;
             data->time = 1;
-            data->pos.x = (0.0f);
-            data->pos.y = (0.0f);
-            data->pos.z = (0.0f);
+            data->pos.x = 0.0f;
+            data->pos.y = 0.0f;
+            data->pos.z = 0.0f;
             data->color.r = ENDING_COLOR_COMPONENT_MAX;
             data->color.g = ENDING_COLOR_COMPONENT_MAX;
             data->color.b = ENDING_COLOR_COMPONENT_MAX;
@@ -792,17 +769,17 @@ void fn_1_F2CC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
                 data->vel.y = frandmod(50) + 25;
                 data->vel.z = frandmod(100) - 50;
                 PSVECNormalize(&data->vel, &data->vel);
-                data->vel.x *= (3.0f);
-                data->vel.y *= (2.0f);
-                data->vel.z *= (3.0f);
+                data->vel.x *= 3.0f;
+                data->vel.y *= 2.0f;
+                data->vel.z *= 3.0f;
             } else if (particle->dataCnt == 1) {
                 data->vel.x = frandmod(100) - 50;
                 data->vel.y = frandmod(100) - 50;
                 data->vel.z = frandmod(100) - 50;
                 PSVECNormalize(&data->vel, &data->vel);
-                data->vel.x *= (1.5f);
-                data->vel.y *= (1.5f);
-                data->vel.z *= (1.5f);
+                data->vel.x *= 1.5f;
+                data->vel.y *= 1.5f;
+                data->vel.z *= 1.5f;
             } else if (particle->dataCnt == 2) {
                 data->pos.x = frandmod(2000) - 1000;
                 data->pos.y = frandmod(1000);
@@ -813,7 +790,7 @@ void fn_1_F2CC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
                 PSVECNormalize(&data->vel, &data->vel);
             }
 
-            data->speedDecay = (0.0f);
+            data->speedDecay = 0.0f;
             data->colorIdx = frandmod(180) + 180;
             continue;
         }
@@ -824,7 +801,7 @@ void fn_1_F2CC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
             data->pos.z += data->vel.z;
             if (particle->dataCnt == 0 ||
                 ((particle->dataCnt == 2 || particle->dataCnt == 1) && rand8() % 5 == 0)) {
-                data->zRot = frandmod(360) * (0.01745329238474369f);
+                data->zRot = frandmod(360) * 0.017453292f;
             }
             if (particle->dataCnt == 0) {
                 data->scale = frandmod(10) + 5;
@@ -833,9 +810,9 @@ void fn_1_F2CC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
             }
 
             data->color.a = fn_1_DDF8(255.0f, 0.0f, data->speedDecay, data->colorIdx);
-            if ((data->speedDecay += (1.0f)) > data->colorIdx) {
+            if ((data->speedDecay += 1.0f) > data->colorIdx) {
                 data->time = 0;
-                data->scale = (0.0f);
+                data->scale = 0.0f;
             }
         }
     }
@@ -849,10 +826,10 @@ void fn_1_F9B8(void)
 
     for (i = 0; i < 2; i++) {
         lbl_1_bss_1E26[i] = fn_8003216C(lbl_1_bss_1E30[0], 360);
-        fn_80026760(lbl_1_bss_1E26[i], (0.0f),
-            (0.0f), (0.0f));
-        fn_800268B0(lbl_1_bss_1E26[i], (1.0f),
-            (1.0f), (1.0f));
+        fn_80026760(lbl_1_bss_1E26[i], 0.0f,
+            0.0f, 0.0f);
+        fn_800268B0(lbl_1_bss_1E26[i], 1.0f,
+            1.0f, 1.0f);
         fn_80026B8C(lbl_1_bss_1E26[i], 6);
         fn_800326D0(lbl_1_bss_1E26[i], fn_1_F2CC);
         fn_8003269C(lbl_1_bss_1E26[i], 1);
@@ -1183,7 +1160,7 @@ void fn_1_11208(s16 index, HuVecF *pos, s16 mode)
     if (mode == 0) {
         data->time = 0;
         data->color.a = 0;
-        data->scale = (0.0f);
+        data->scale = 0.0f;
     } else {
         data->time = 1;
         data->pos.x = pos->x;
@@ -1194,7 +1171,7 @@ void fn_1_11208(s16 index, HuVecF *pos, s16 mode)
         data->color.r = 255;
         data->color.r = 255;
         data->color.a = 32;
-        data->scale = (100.0f);
+        data->scale = 100.0f;
     }
 }
 
@@ -1219,10 +1196,10 @@ void fn_1_112E0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 void fn_1_11368(void)
 {
     lbl_1_bss_1E1C = fn_8003216C(lbl_1_bss_1E30[1], 100);
-    fn_80026760(lbl_1_bss_1E1C, (0.0f),
-        (0.0f), (0.0f));
-    fn_800268B0(lbl_1_bss_1E1C, (1.0f),
-        (1.0f), (1.0f));
+    fn_80026760(lbl_1_bss_1E1C, 0.0f,
+        0.0f, 0.0f);
+    fn_800268B0(lbl_1_bss_1E1C, 1.0f,
+        1.0f, 1.0f);
     fn_80026B8C(lbl_1_bss_1E1C, 6);
     fn_800326D0(lbl_1_bss_1E1C, fn_1_112E0);
     fn_8003269C(lbl_1_bss_1E1C, 1);
@@ -1361,14 +1338,14 @@ void fn_1_11714(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 /* Create six groups of five winner particle emitters during ending effect setup. */
 void fn_1_11C94(void)
 {
-    EndingParticleCounts counts = { { 10, 10, 10, 10, 256 } };
+    s16 counts[5] = { 10, 10, 10, 10, 256 };
     s16 group;
     s16 model;
 
     for (group = 0; group < 6; group++) {
         for (model = 0; model < 5; model++) {
             lbl_1_bss_1DE0[group][model] = fn_8003216C(
-                lbl_1_bss_1E30[2], counts.count[model]);
+                lbl_1_bss_1E30[2], counts[model]);
             fn_80026760(lbl_1_bss_1DE0[group][model],
                 0.0f, 0.0f, 0.0f);
             fn_800268B0(lbl_1_bss_1DE0[group][model],

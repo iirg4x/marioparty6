@@ -7,22 +7,22 @@
 
 #include "REL/m664dll/m664dll.h"
 
-#define MSM_SE_M664_OPENING_CUE 2136
-#define MSM_SE_M664_PLAYER_ACTION 2126
-#define MSM_SE_M664_OPENING_TRANSITION 2127
-#define MSM_SE_M664_SCENE_TRANSITION 2135
-#define MSM_SE_M664_COURSE_REVEAL 2129
-#define MSM_SE_M664_LATE_SCENE_CUE 2137
-#define MSM_SE_M664_LATE_SCENE_TRANSITION 2133
-#define MSM_SE_M664_PROP_RELEASE 2131
-#define MSM_SE_M664_PROP_LANDING 2132
-#define MSM_SE_M664_NUT_DROP 2138
-#define MSM_SE_M664_HOOK_IMPACT 2139
-#define MSM_SE_M664_PROP_MISS 2140
-#define MSM_SE_M664_NUT_IMPACT 2130
-#define MSM_SE_M664_SCENE_SOUND 2134
-#define MSM_SE_M664_SCENE_EFFECT 2141
-#define MSM_SE_M664_PLAYER_STUN 2142
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #define M664_SOUND_PAN_MIN 32
 #define M664_SOUND_PAN_MAX 96
@@ -601,11 +601,11 @@ void fn_1_560(void) {
     lbl_1_bss_8C4 += 1;
     if (lbl_1_bss_8C4 > 10) {
         if (lbl_1_bss_8C4 == 11) {
-            lbl_1_bss_10.soundHandle[0] = HuAudFXPlay(MSM_SE_M664_OPENING_CUE);
-            HuAudFXPlay(MSM_SE_M664_PLAYER_ACTION);
+            lbl_1_bss_10.soundHandle[0] = HuAudFXPlay(2136);
+            HuAudFXPlay(2126);
         }
         if (lbl_1_bss_8C4 == 110) {
-            HuAudFXPlay(MSM_SE_M664_OPENING_TRANSITION);
+            HuAudFXPlay(2127);
         }
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             fn_8002D86C(lbl_1_bss_85C[playerIndex].modelId, 1.0f);
@@ -646,7 +646,7 @@ void fn_1_560(void) {
                         fn_800269E8(lbl_1_bss_85C[playerIndex].modelId,
                             ((1 << 30) | (1 << 2)));
                         if (playerIndex == 0) {
-                            HuAudFXPlay(MSM_SE_M664_PLAYER_ACTION);
+                            HuAudFXPlay(2126);
                         }
                     }
                 }
@@ -1856,7 +1856,7 @@ void fn_1_5108(void) {
     }
 
     if (lbl_1_bss_8C0 == 315) {
-        HuAudFXPlay(MSM_SE_M664_SCENE_TRANSITION);
+        HuAudFXPlay(2135);
     }
 }
 
@@ -1888,7 +1888,7 @@ void fn_1_5860(void) {
     switch (lbl_1_bss_8C0) {
     case 1368:
         fn_8002D86C(lbl_1_bss_89C, 1.0f);
-        HuAudFXPlay(MSM_SE_M664_COURSE_REVEAL);
+        HuAudFXPlay(2129);
         break;
     }
 }
@@ -2271,8 +2271,8 @@ void fn_1_6D7C(void)
     if (lbl_1_bss_8C0 == 3338) fn_8002D86C(lbl_1_bss_69E[1], 1.0f);
     if (lbl_1_bss_8C0 == 3353) fn_8002D86C(lbl_1_bss_69E[1], 0.0f);
     if (lbl_1_bss_8C0 == 3618) fn_8002D86C(lbl_1_bss_69E[1], 1.0f);
-    if (lbl_1_bss_8C0 == 3618) HuAudFXPlay(MSM_SE_M664_LATE_SCENE_CUE);
-    if (lbl_1_bss_8C0 == 3633) HuAudFXPlay(MSM_SE_M664_LATE_SCENE_TRANSITION);
+    if (lbl_1_bss_8C0 == 3618) HuAudFXPlay(2137);
+    if (lbl_1_bss_8C0 == 3633) HuAudFXPlay(2133);
     switch (lbl_1_bss_8C0) {
     case 3838: case 3588: case 2638:
         fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][0], lbl_1_bss_460);
@@ -2464,7 +2464,7 @@ void fn_1_8244(void) {
                                &lbl_1_bss_248[side][effectSet].startPosition);
         } else if (lbl_1_bss_248[side][effectSet].state38 == 2) {
             if (lbl_1_bss_248[side][effectSet].motionFrame == 0) {
-                fn_1_B910(MSM_SE_M664_PROP_RELEASE, lbl_1_bss_46C[motionIndex], 1);
+                fn_1_B910(2131, lbl_1_bss_46C[motionIndex], 1);
             }
             lbl_1_bss_248[side][effectSet].motionFrame++;
             blend = (f32) lbl_1_bss_248[side][effectSet].motionFrame / 120.0f;
@@ -2487,10 +2487,10 @@ void fn_1_8244(void) {
                 lbl_1_bss_248[side][effectSet].state40 =
                     lbl_1_bss_248[side][effectSet].destinationY > 0.0f ? 1 : -1;
                 if (lbl_1_bss_248[side][effectSet].state40 == 1) {
-                    fn_1_B910(MSM_SE_M664_PROP_LANDING,
+                    fn_1_B910(2132,
                               lbl_1_bss_248[side][effectSet].modelId, 1);
                 } else {
-                    fn_1_B910(MSM_SE_M664_PROP_MISS,
+                    fn_1_B910(2140,
                               lbl_1_bss_248[side][effectSet].modelId, 1);
                 }
             }
@@ -2687,7 +2687,7 @@ void fn_1_9704(void) {
                     0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
-                fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[0][pieceIndex], 1);
+                fn_1_B910(2138, lbl_1_bss_81C[0][pieceIndex], 1);
             }
         }
         if (lbl_1_bss_8C0 >= 1780 && lbl_1_bss_744[1][pieceIndex] != 0) {
@@ -2697,7 +2697,7 @@ void fn_1_9704(void) {
                     0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
-                fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[1][pieceIndex], 1);
+                fn_1_B910(2138, lbl_1_bss_81C[1][pieceIndex], 1);
             }
         }
         if (lbl_1_bss_8C0 >= 1860 && lbl_1_bss_744[2][pieceIndex] != 0) {
@@ -2707,7 +2707,7 @@ void fn_1_9704(void) {
                     0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
-                fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[2][pieceIndex], 1);
+                fn_1_B910(2138, lbl_1_bss_81C[2][pieceIndex], 1);
             }
         }
         if (lbl_1_bss_8C0 >= 2020 && lbl_1_bss_744[3][pieceIndex] != 0) {
@@ -2717,7 +2717,7 @@ void fn_1_9704(void) {
                     0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
-                fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[3][pieceIndex], 1);
+                fn_1_B910(2138, lbl_1_bss_81C[3][pieceIndex], 1);
             }
         }
         if (lbl_1_bss_8C0 >= 2115 && lbl_1_bss_744[4][pieceIndex] != 0) {
@@ -2727,7 +2727,7 @@ void fn_1_9704(void) {
                     0.2f * (f32) (lbl_1_bss_8C0 - eventFrame);
             }
             if (lbl_1_bss_8C0 == eventFrame) {
-                fn_1_B910(MSM_SE_M664_NUT_DROP, lbl_1_bss_81C[4][pieceIndex], 1);
+                fn_1_B910(2138, lbl_1_bss_81C[4][pieceIndex], 1);
             }
         }
     }
@@ -2764,12 +2764,12 @@ void fn_1_9704(void) {
                     fn_80086910(&collisionStart, &collisionEnd,
                                          -1U, (MGACTOR_COLMAP_POLY *)&hitPolygon) != 0) {
                     lbl_1_bss_6F4[boardIndex][pieceIndex] = 1;
-                    fn_1_B910(MSM_SE_M664_NUT_IMPACT,
+                    fn_1_B910(2130,
                               lbl_1_bss_81C[boardIndex][pieceIndex], 1);
                 }
                 if (objectPosition.y < 0.0f) {
                     lbl_1_bss_6F4[boardIndex][pieceIndex] = -1;
-                    fn_1_B910(MSM_SE_M664_PROP_MISS,
+                    fn_1_B910(2140,
                               lbl_1_bss_81C[boardIndex][pieceIndex], 1);
                 }
             }
@@ -2816,7 +2816,7 @@ void fn_1_9704(void) {
     fn_80026790(lbl_1_bss_7CA, &objectPosition);
     fn_80026838(lbl_1_bss_7CA, &objectRotation);
     if (lbl_1_bss_8C0 >= 1700 && lbl_1_bss_8C0 <= 2380 && eventFrame == 20) {
-        fn_1_B910(MSM_SE_M664_HOOK_IMPACT, lbl_1_bss_7CA, 1);
+        fn_1_B910(2139, lbl_1_bss_7CA, 1);
     }
 }
 
@@ -3162,12 +3162,12 @@ s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask) {
     modelPosition = lbl_802C01C8[modelId].pos;
     Hu3D3Dto2D(&modelPosition, cameraMask, &screenPosition);
 
-    if (((soundEffect & 0x7FFF) == MSM_SE_M664_PROP_MISS) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_PLAYER_STUN) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_SCENE_EFFECT) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_SCENE_SOUND) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_HOOK_IMPACT) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_NUT_DROP)) {
+    if (((soundEffect & 0x7FFF) == 2140) ||
+        ((soundEffect & 0x7FFF) == 2142) ||
+        ((soundEffect & 0x7FFF) == 2141) ||
+        ((soundEffect & 0x7FFF) == 2134) ||
+        ((soundEffect & 0x7FFF) == 2139) ||
+        ((soundEffect & 0x7FFF) == 2138)) {
         if (screenPosition.x < 0.0f) {
             screenPosition.x = 0.0f;
         }
@@ -3183,15 +3183,15 @@ s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask) {
         }
     }
 
-    if (((soundEffect & 0x7FFF) == MSM_SE_M664_PROP_MISS) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_PLAYER_STUN) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_SCENE_EFFECT) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_SCENE_SOUND) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_PROP_RELEASE) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_PROP_LANDING) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_HOOK_IMPACT) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_NUT_DROP) ||
-        ((soundEffect & 0x7FFF) == MSM_SE_M664_NUT_IMPACT)) {
+    if (((soundEffect & 0x7FFF) == 2140) ||
+        ((soundEffect & 0x7FFF) == 2142) ||
+        ((soundEffect & 0x7FFF) == 2141) ||
+        ((soundEffect & 0x7FFF) == 2134) ||
+        ((soundEffect & 0x7FFF) == 2131) ||
+        ((soundEffect & 0x7FFF) == 2132) ||
+        ((soundEffect & 0x7FFF) == 2139) ||
+        ((soundEffect & 0x7FFF) == 2138) ||
+        ((soundEffect & 0x7FFF) == 2130)) {
         panAmount = screenPosition.x;
     } else {
         panAmount = 576.0f - screenPosition.x;
@@ -3200,7 +3200,7 @@ s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask) {
 
     if ((soundEffect & 0x8000) == 0) {
         soundHandle = HuAudFXPlay(soundEffect & 0x7FFF);
-        if ((soundEffect & 0x7FFF) == MSM_SE_M664_SCENE_SOUND) {
+        if ((soundEffect & 0x7FFF) == 2134) {
             lbl_1_bss_8 = soundHandle;
         }
     } else {

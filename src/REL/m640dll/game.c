@@ -2,10 +2,10 @@
 #include <math.h>
 #include "REL/m640/m640.h"
 #include "REL/m640dll.h"
-#define M640_WIN_CELEBRATION_SFX 1917
-#define M640_PIECE_PART_0_LANDING_SFX 1906
-#define M640_PIECE_PART_1_LANDING_SFX 1907
-#define M640_PIECE_MOTION_CUE_SFX 1918
+
+
+
+
 #define M640_PLAYER_MISS_SFX_0 1928
 #define M640_PLAYER_MISS_SFX_1 1929
 #define M640_PLAYER_MISS_SFX_2 1930
@@ -520,7 +520,7 @@ s32 fn_1_1C48(s32 frame)
         }
     }
     if ((s16)frame == 40) {
-        HuAudFXPlay(M640_WIN_CELEBRATION_SFX);
+        HuAudFXPlay(1917);
         if ((s16)(team->bucketPieces[0] / 4) == (s16)(team->bucketPieces[1] / 4)
             && (s16)(team->bucketPieces[0] / 4) == (s16)(team->bucketPieces[2] / 4)
             && (s16)(team->bucketPieces[0] / 4) == (s16)(team->bucketPieces[3] / 4)) {
@@ -1193,9 +1193,9 @@ void fn_1_52D0(OMOBJ *pieceUpdateObject)
                     piecePosition.y = bucketLandingHeight[team->nextBucket];
                     piece->speed *= -0.18f;
                     if (piece->part == 0) {
-                        HuAudFXPlay(M640_PIECE_PART_0_LANDING_SFX);
+                        HuAudFXPlay(1906);
                     } else {
-                        HuAudFXPlay(M640_PIECE_PART_1_LANDING_SFX);
+                        HuAudFXPlay(1907);
                     }
                     piece->state = 2;
                     fn_8002D86C(team->bucketEffectModels[team->nextBucket], 1.0f);
@@ -1217,7 +1217,7 @@ void fn_1_52D0(OMOBJ *pieceUpdateObject)
                 pieceMotionEndTime = fn_8002D530(piece->pieceModel);
                 pieceMotionTime = fn_8002D4E0(piece->pieceModel);
                 if (pieceMotionTime == placementSoundCueTimes[team->nextBucket][piece->part]) {
-                    HuAudFXPlay(M640_PIECE_MOTION_CUE_SFX);
+                    HuAudFXPlay(1918);
                 }
                 if (pieceMotionTime >= pieceMotionEndTime) {
                     if (piece->part == 1) {
@@ -1253,9 +1253,9 @@ void fn_1_52D0(OMOBJ *pieceUpdateObject)
                 piece->speed += 1.0f;
                 if (piecePosition.y <= bucketLandingHeight[piece->part]) {
                     if (piece->part == 0) {
-                        HuAudFXPlay(M640_PIECE_PART_0_LANDING_SFX);
+                        HuAudFXPlay(1906);
                     } else {
-                        HuAudFXPlay(M640_PIECE_PART_1_LANDING_SFX);
+                        HuAudFXPlay(1907);
                     }
                     piecePosition.y = bucketLandingHeight[piece->part];
                     piece->speed *= -0.18f;
