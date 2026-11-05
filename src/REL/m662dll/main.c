@@ -32,12 +32,6 @@
 #define MSM_SE_M662_MODEL_MOTION 2120
 #define MSM_SE_M662_CUE 2121
 
-/* Motion resource IDs shared by both characters. */
-typedef struct MotionIds { u32 resourceIds[6]; } MotionIds;
-/* Bit masks for the four available scene cameras. */
-typedef struct M662CameraIds { s16 cameraMasks[4]; } M662CameraIds;
-/* Position, rotation, zoom, viewport and projection values for each camera. */
-typedef struct M662CameraPresetTable { f32 parameters[4][13]; } M662CameraPresetTable;
 extern s16 lbl_802C0278;
 extern void fn_1_1DC8(s16);
 extern void fn_1_1DFC(void), fn_1_223C(void), fn_1_8B34(void), fn_1_4D04(void);
@@ -229,9 +223,9 @@ void fn_1_3C4(void)
 /* During model setup, loads six motions per character and requests the initial looping motion. */
 void fn_1_808(void)
 {
-    MotionIds motionIds = { { CHARMOT_HSF_c000m1_300, CHARMOT_HSF_c000m1_302,
+    u32 motionIds[6] = { CHARMOT_HSF_c000m1_300, CHARMOT_HSF_c000m1_302,
                               CHARMOT_HSF_c000m1_303, CHARMOT_HSF_c000m1_304,
-                              CHARMOT_HSF_c000m1_306, CHARMOT_HSF_c000m1_351 } };
+                              CHARMOT_HSF_c000m1_306, CHARMOT_HSF_c000m1_351 };
     s16 playerIndex;
     s16 motionIndex;
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
@@ -239,7 +233,7 @@ void fn_1_808(void)
             lbl_1_bss_3F4[playerIndex].motionIds[motionIndex] =
                 fn_8005B0B8(
                     lbl_1_bss_2F4[playerIndex].characterNo,
-                    motionIds.resourceIds[motionIndex]);
+                    motionIds[motionIndex]);
         }
         fn_8002C95C(lbl_1_bss_4B4[playerIndex].modelId,
                       lbl_1_bss_3F4[playerIndex].motionIds[0]);
@@ -442,46 +436,46 @@ void fn_1_10F0(void)
 /* Loads a camera preset during setup and writes its position, rotation and zoom to the shared
  * camera controls. */
 void fn_1_1918(s16 cameraIndex) {
-    M662CameraPresetTable presets = { {
+    f32 presets[4][13] = {
         { 0.0f, 1573.0f, -446.0f, -15.2f, 0.0f, 0.0f, 3317.7f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 17.55f },
         { 0.0f, 293.0f, -326.0f, -15.2f, 0.0f, 0.0f, 3409.7f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 17.5f },
         { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
         { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f }
-    } };
-    M662CameraIds cameraIds = { { 1, 2, 4, 8 } };
+    };
+    s16 cameraIds[4] = { 1, 2, 4, 8 };
     lbl_1_bss_B08.cameras[cameraIndex].cameraIndex = cameraIndex;
-    lbl_1_bss_B08.cameras[cameraIndex].position.x = presets.parameters[cameraIndex][0];
-    lbl_1_bss_B08.cameras[cameraIndex].position.y = presets.parameters[cameraIndex][1];
-    lbl_1_bss_B08.cameras[cameraIndex].position.z = presets.parameters[cameraIndex][2];
-    lbl_1_bss_B08.cameras[cameraIndex].rotation.x = presets.parameters[cameraIndex][3];
-    lbl_1_bss_B08.cameras[cameraIndex].rotation.y = presets.parameters[cameraIndex][4];
-    lbl_1_bss_B08.cameras[cameraIndex].rotation.z = presets.parameters[cameraIndex][5];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[0] = presets.parameters[cameraIndex][6];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[1] = presets.parameters[cameraIndex][7];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[2] = presets.parameters[cameraIndex][8];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[3] = presets.parameters[cameraIndex][9];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[4] = presets.parameters[cameraIndex][10];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[5] = presets.parameters[cameraIndex][11];
-    lbl_1_bss_B08.cameras[cameraIndex].fieldOfView = presets.parameters[cameraIndex][12];
+    lbl_1_bss_B08.cameras[cameraIndex].position.x = presets[cameraIndex][0];
+    lbl_1_bss_B08.cameras[cameraIndex].position.y = presets[cameraIndex][1];
+    lbl_1_bss_B08.cameras[cameraIndex].position.z = presets[cameraIndex][2];
+    lbl_1_bss_B08.cameras[cameraIndex].rotation.x = presets[cameraIndex][3];
+    lbl_1_bss_B08.cameras[cameraIndex].rotation.y = presets[cameraIndex][4];
+    lbl_1_bss_B08.cameras[cameraIndex].rotation.z = presets[cameraIndex][5];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[0] = presets[cameraIndex][6];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[1] = presets[cameraIndex][7];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[2] = presets[cameraIndex][8];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[3] = presets[cameraIndex][9];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[4] = presets[cameraIndex][10];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[5] = presets[cameraIndex][11];
+    lbl_1_bss_B08.cameras[cameraIndex].fieldOfView = presets[cameraIndex][12];
 
-    Hu3DCameraCreate(cameraIds.cameraMasks[cameraIndex]);
-    Hu3DCameraViewportSet(cameraIds.cameraMasks[cameraIndex],
+    Hu3DCameraCreate(cameraIds[cameraIndex]);
+    Hu3DCameraViewportSet(cameraIds[cameraIndex],
                           lbl_1_bss_B08.cameras[cameraIndex].viewport[2],
                           lbl_1_bss_B08.cameras[cameraIndex].viewport[3],
                           lbl_1_bss_B08.cameras[cameraIndex].viewport[4],
                           lbl_1_bss_B08.cameras[cameraIndex].viewport[5],
                           0.0f, 1.0f);
-    Hu3DCameraPerspectiveSet(cameraIds.cameraMasks[cameraIndex],
+    Hu3DCameraPerspectiveSet(cameraIds[cameraIndex],
                              lbl_1_bss_B08.cameras[cameraIndex].fieldOfView,
                              20.0f, 40000.0f,
                              lbl_1_bss_B08.cameras[cameraIndex].viewport[1]);
-    lbl_80266A4C.x = presets.parameters[cameraIndex][0];
-    lbl_80266A4C.y = presets.parameters[cameraIndex][1];
-    lbl_80266A4C.z = presets.parameters[cameraIndex][2];
-    lbl_80266A40.x = presets.parameters[cameraIndex][3];
-    lbl_80266A40.y = presets.parameters[cameraIndex][4];
-    lbl_80266A40.z = presets.parameters[cameraIndex][5];
-    lbl_802C028C = presets.parameters[cameraIndex][6];
+    lbl_80266A4C.x = presets[cameraIndex][0];
+    lbl_80266A4C.y = presets[cameraIndex][1];
+    lbl_80266A4C.z = presets[cameraIndex][2];
+    lbl_80266A40.x = presets[cameraIndex][3];
+    lbl_80266A40.y = presets[cameraIndex][4];
+    lbl_80266A40.z = presets[cameraIndex][5];
+    lbl_802C028C = presets[cameraIndex][6];
     fn_1_1DC8(cameraIndex);
 }
 

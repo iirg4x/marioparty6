@@ -9,8 +9,8 @@
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 
-#define M613_MODEL_DATA_GROUP_FLAG 0x10000000
-#define MSM_SE_M613_PROGRESS 1711
+
+
 
 extern s32 lbl_1_bss_8;
 extern s16 lbl_1_bss_0;
@@ -52,10 +52,10 @@ void fn_1_F3C4(void) {
     while (player < 4) {
         if (night == 0) {
             lbl_1_bss_1218[player].model = fn_80025A04(fn_80008DD0(
-                DATANUM(0x480000, 13), M613_MODEL_DATA_GROUP_FLAG, 2));
+                DATANUM(0x480000, 13), 0x10000000, 2));
         } else {
             lbl_1_bss_1218[player].model = fn_80025A04(fn_80008DD0(
-                DATANUM(0x480000, 14), M613_MODEL_DATA_GROUP_FLAG, 2));
+                DATANUM(0x480000, 14), 0x10000000, 2));
         }
         fn_80026B64(lbl_1_bss_1218[player].model, 1);
         fn_80026B8C(lbl_1_bss_1218[player].model, 5);
@@ -148,9 +148,9 @@ void fn_1_F850(void) {
             fn_800269E8(lbl_1_bss_1218[player].model, ((1 << 30) | (1 << 0)));
             if ((motionFrame + 1 == clipStart) && (lbl_1_bss_125E == 3)) {
                 if ((player == 0) || (player == 2)) {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M613_PROGRESS), 32);
+                    HuAudFXPanning(HuAudFXPlay(1711), 32);
                 } else {
-                    HuAudFXPanning(HuAudFXPlay(MSM_SE_M613_PROGRESS), 96);
+                    HuAudFXPanning(HuAudFXPlay(1711), 96);
                 }
             }
         } else {
@@ -217,10 +217,10 @@ void fn_1_FC40(void) {
     while (player < 4) {
         if (night == 0) {
             lbl_1_bss_1218[player].effectModel = fn_80025A04(fn_80008DD0(
-                DATANUM(0x480000, 15), M613_MODEL_DATA_GROUP_FLAG, 2));
+                DATANUM(0x480000, 15), 0x10000000, 2));
         } else {
             lbl_1_bss_1218[player].effectModel = fn_80025A04(fn_80008DD0(
-                DATANUM(0x480000, 16), M613_MODEL_DATA_GROUP_FLAG, 2));
+                DATANUM(0x480000, 16), 0x10000000, 2));
         }
         fn_80026B64(lbl_1_bss_1218[player].effectModel, 1);
         fn_80026B8C(lbl_1_bss_1218[player].effectModel, 5);
@@ -247,13 +247,13 @@ void fn_1_FE58(void) {
     night = nightMode;
 
     animation = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x480000, 17), M613_MODEL_DATA_GROUP_FLAG, 2));
+        fn_80008DD0(DATANUM(0x480000, 17), 0x10000000, 2));
     lbl_1_bss_1210[0] = fn_8003216C(animation, 200);
     animation = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x480000, 18), M613_MODEL_DATA_GROUP_FLAG, 2));
+        fn_80008DD0(DATANUM(0x480000, 18), 0x10000000, 2));
     lbl_1_bss_1210[1] = fn_8003216C(animation, 200);
     animation = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x480000, 19), M613_MODEL_DATA_GROUP_FLAG, 2));
+        fn_80008DD0(DATANUM(0x480000, 19), 0x10000000, 2));
     lbl_1_bss_1210[2] = fn_8003216C(animation, 200);
 
     particleIndex = 0;

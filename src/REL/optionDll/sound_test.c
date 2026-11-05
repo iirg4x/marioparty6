@@ -60,7 +60,6 @@ typedef struct OptionPrizeEntry {
     u32 name; /* Message shown as the prize name. */
     u32 description; /* Message shown as the prize description. */
     s16 id; /* Prize value copied into the collection's prize ID list. */
-    s16 reserved; /* Unused trailing halfword in the prize record. */
 } OptionPrizeEntry;
 
 typedef struct OptionRecordDisplayEntry {

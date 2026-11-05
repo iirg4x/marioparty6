@@ -10,8 +10,7 @@
 #include "game/charman.h"
 
 typedef struct M616CpuParam {
-    u32 unreadCpuSetting; /* CPU setting stored with the difficulty data but not read by this
-                           * game. */
+    u32 unk00; /* The game's code never reads this field. */
     u32 repeatPercent; /* Chance, from 0 to 100, of repeating the prior answer. */
 } M616CpuParam;
 

@@ -9,7 +9,7 @@
 #include "game/object.h"
 #include "game/audio.h"
 
-#define M613_MODEL_DATA_GROUP_FLAG 0x10000000
+
 
 M613BitmapState lbl_1_bss_1C;
 HSF_BITMAP *lbl_1_bss_18;
@@ -126,18 +126,18 @@ void fn_1_11F8(void) {
 
     if (nightMode == 0) {
         lbl_1_bss_1C.modelIds[1] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 0), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 0), 0x10000000, 2));
         lbl_1_bss_1C.modelIds[0] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 2), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 2), 0x10000000, 2));
         lbl_1_bss_1C.modelIds[2] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 4), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 4), 0x10000000, 2));
     } else {
         lbl_1_bss_1C.modelIds[1] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 1), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 1), 0x10000000, 2));
         lbl_1_bss_1C.modelIds[0] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 3), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 3), 0x10000000, 2));
         lbl_1_bss_1C.modelIds[2] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 5), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 5), 0x10000000, 2));
     }
 
     fn_800269E8(lbl_1_bss_1C.modelIds[0], ((1 << 30) | (1 << 0)));
@@ -245,14 +245,14 @@ void fn_1_1A7C(void) {
     fn_800269E8(lbl_1_bss_1C.modelIds[1], 1);
     if (selectedNight == 0) {
         lbl_1_bss_1C.modelIds[3] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 6), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 6), 0x10000000, 2));
         lbl_1_bss_1C.modelIds[4] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 8), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 8), 0x10000000, 2));
     } else {
         lbl_1_bss_1C.modelIds[3] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 7), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 7), 0x10000000, 2));
         lbl_1_bss_1C.modelIds[4] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x480000, 9), M613_MODEL_DATA_GROUP_FLAG, 2));
+            fn_80008DD0(DATANUM(0x480000, 9), 0x10000000, 2));
     }
     fn_800269E8(lbl_1_bss_1C.modelIds[3], ((1 << 30) | (1 << 0)));
     fn_800269E8(lbl_1_bss_1C.modelIds[4], ((1 << 30) | (1 << 0)));

@@ -4,6 +4,7 @@
 #include "game/audio.h"
 #include "REL/m630/game.h"
 #include "game/pad.h"
+#include "msm_stream.h"
 
 void fn_1_4010(void);
 void fn_1_43E8(int player);
@@ -35,8 +36,8 @@ void fn_1_7204(int player);
 #include "game/hu3d.h"
 
 /* Audio IDs and data numbers used for Stage Fright's sounds, models, and motions. */
-#define M630_BGM_GAMEPLAY 81
-#define M630_SFX_OBJECT_IMPACT 1833
+
+
 #define M630_SFX_ROW_1_MOVE 1834
 #define M630_SFX_ROW_2_MOVE 1835
 #define M630_SFX_ROW_3_MOVE 1836
@@ -193,7 +194,7 @@ void fn_1_AF0(void)
 {
     lbl_1_bss_828.frameCount = lbl_1_bss_828.actionTimer = 0;
     if (lbl_1_bss_8 == -1) {
-        lbl_1_bss_8 = HuAudBGMPlay(M630_BGM_GAMEPLAY);
+        lbl_1_bss_8 = HuAudBGMPlay(MSM_STREAM_MGMUS_24);
     }
 }
 
@@ -913,7 +914,7 @@ void fn_1_43E8(int player)
             lbl_1_bss_1D4[row].pos[i].z -= 40.0f;
             if (lbl_1_bss_1D4[row].pos[i].z < lbl_1_bss_754[0].pos.z - 210.0f) {
                 lbl_1_bss_1D4[row].itemState[i] = -2;
-                fn_1_7724(M630_SFX_OBJECT_IMPACT, lbl_1_bss_1D4[row].model[i], 1);
+                fn_1_7724(1833, lbl_1_bss_1D4[row].model[i], 1);
             }
         } else if (lbl_1_bss_1D4[row].itemState[i] < 0) {
             if (lbl_1_bss_1D4[row].transparency[i] == 1.0f) {
@@ -978,7 +979,7 @@ int fn_1_4CD4(int player)
                 PSVECSubtract(&itemPos, &playerPos, &delta);
                 distance = PSVECMag(&delta);
                 if (distance < 65.2f) {
-                    fn_1_7724(M630_SFX_OBJECT_IMPACT, lbl_1_bss_754[player].modelId, 1);
+                    fn_1_7724(1833, lbl_1_bss_754[player].modelId, 1);
                     lbl_1_bss_1D4[i].itemState[j] = -1;
                     lbl_1_bss_1D4[i].playerIndex[j] = player;
                     if (lbl_1_bss_754[player].hitState == 0) {

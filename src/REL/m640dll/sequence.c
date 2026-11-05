@@ -1,8 +1,9 @@
 /* Registers the M640 sequence modes and dispatches their intro, gameplay, and result callbacks. */
 #include "REL/m640/m640.h"
-#define M640_SEQUENCE_BGM 83
-#define M640_INTRO_TRACKED_SFX 1919
-#define M640_INTRO_CAMERA_SPLIT_SFX 1908
+#include "msm_stream.h"
+
+
+
 
 void fn_1_A0(void);
 void fn_1_F0(s16 mode, s16 frame);
@@ -59,7 +60,7 @@ void fn_1_114(s16 mode, s16 frame)
 void fn_1_13C(s16 mode, s16 frame)
 {
     if (frame == 0) {
-        HuAudBGMPlay(M640_SEQUENCE_BGM);
+        HuAudBGMPlay(MSM_STREAM_MGMUS_25);
     }
 }
 
@@ -119,7 +120,7 @@ void fn_1_270(s16 frame)
     int side, piecePart;
 
     if (frame == 30) {
-        lbl_1_bss_0 = HuAudFXPlay(M640_INTRO_TRACKED_SFX);
+        lbl_1_bss_0 = HuAudFXPlay(1919);
     }
     switch (lbl_1_bss_4E8.state) {
     case 0:
@@ -149,7 +150,7 @@ void fn_1_270(s16 frame)
         break;
     case 2:
         if (fn_1_112C(lbl_1_bss_4E8.frame++)) {
-            HuAudFXPlay(M640_INTRO_CAMERA_SPLIT_SFX);
+            HuAudFXPlay(1908);
             lbl_1_bss_4E8.state++;
         }
         break;

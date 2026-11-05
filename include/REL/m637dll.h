@@ -86,7 +86,7 @@ typedef struct M637Record08 {
     s32 inputPlanActive; /* Nonzero while a planned sequence of presses is being executed. */
     s32 pendingButtonPresses; /* Presses left in the current input plan. */
     s32 remainingDetours; /* Difficulty-dependent number of reversed input plans still to take. */
-    unsigned char unusedBytes[4]; /* Not accessed by the minigame. */
+    unsigned char unk10[4]; /* The game's code never reads this storage. */
     s32 targetReelIndex; /* Index 0 or 1 into the central target displays. */
     s32 teamIndex; /* Team index 0 or 1. */
     s32 teamReelIndex; /* Player's reel within the team, 0 or 1. */

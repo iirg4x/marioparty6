@@ -4,13 +4,13 @@
 #include "game/flag.h"
 #include "msm_stream.h"
 
-#define M637_SFX_ROUND_START 1881
-#define M637_SFX_REEL_LAUNCH 1876
-#define M637_SFX_SLOT_LEFT 1877
-#define M637_SFX_SLOT_RIGHT 1878
-#define M637_SFX_REEL_STOP 1882
-#define M637_SFX_TEAM_LEFT_STOP 1879
-#define M637_SFX_TEAM_RIGHT_STOP 1880
+
+
+
+
+
+
+
 #define M637_SFX_REEL_LEFT_SPEED_UP 1872
 #define M637_SFX_REEL_RIGHT_SPEED_UP 1873
 #define M637_SFX_REEL_LEFT_SPEED_DOWN 1874
@@ -105,7 +105,7 @@ s32 fn_1_65C(void)
             MgTimerPosSet(lbl_1_bss_34C, 288.0f, 410.0f);
             lbl_1_bss_36C = 0;
             lbl_1_bss_374 += 1;
-            HuAudFXPlay(M637_SFX_ROUND_START);
+            HuAudFXPlay(1881);
         }
         break;
     case 1:
@@ -345,7 +345,7 @@ void fn_1_1464(s32 animationMode)
     if (animationMode != 0) {
         if (animationMode == 1) {
             if (++lbl_1_bss_35C == 56) {
-                HuAudFXPlay(M637_SFX_REEL_LAUNCH);
+                HuAudFXPlay(1876);
             }
             lbl_1_bss_100 =
                 (f32) (650.0 * sin((3.141592653589793 * (f64) lbl_1_bss_F8[0]) / 180.0));
@@ -1001,9 +1001,9 @@ s32 fn_1_36E8(s32 acceptPlayerInput)
                                        (1 << 0));
                     if ((s32) lbl_1_bss_1D0[teamIndex].alignmentState[slotIndex] == 1) {
                         if (teamIndex == 0) {
-                            HuAudFXPlay(M637_SFX_SLOT_LEFT);
+                            HuAudFXPlay(1877);
                         } else {
-                            HuAudFXPlay(M637_SFX_SLOT_RIGHT);
+                            HuAudFXPlay(1878);
                         }
                         lbl_1_bss_1D0[teamIndex].alignmentState[slotIndex] = 2;
                     }
@@ -1124,7 +1124,7 @@ s32 fn_1_4C24(s32 selectionLimit)
             }
         }
         lbl_1_bss_114 += 1;
-        HuAudFXPlay(M637_SFX_REEL_STOP);
+        HuAudFXPlay(1882);
         break;
     case 1:
     case 2:
@@ -1407,7 +1407,7 @@ s32 fn_1_603C(void)
             fn_80026A44(lbl_1_bss_1D0->matchIndicatorModels[0], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0->matchIndicatorModels[1], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0->teamMatchEffectModel, (1 << 0));
-            HuAudFXPlay(M637_SFX_TEAM_LEFT_STOP);
+            HuAudFXPlay(1879);
         } else {
             fn_800269E8(lbl_1_bss_1D0->matchIndicatorModels[0], (1 << 0));
             fn_800269E8(lbl_1_bss_1D0->matchIndicatorModels[1], (1 << 0));
@@ -1417,7 +1417,7 @@ s32 fn_1_603C(void)
             fn_80026A44(lbl_1_bss_1D0[1].matchIndicatorModels[0], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0[1].matchIndicatorModels[1], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0[1].teamMatchEffectModel, (1 << 0));
-            HuAudFXPlay(M637_SFX_TEAM_RIGHT_STOP);
+            HuAudFXPlay(1880);
         } else {
             fn_800269E8(lbl_1_bss_1D0[1].matchIndicatorModels[0], (1 << 0));
             fn_800269E8(lbl_1_bss_1D0[1].matchIndicatorModels[1], (1 << 0));

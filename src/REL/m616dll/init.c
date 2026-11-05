@@ -111,8 +111,7 @@ void fn_1_1590(void)
         HuVecF lightPos;
         HuVecF pos = { 100.0f, 800.0f, 1000.0f };
         HuVecF dir = { 0.3f, -0.8f, 0.3f };
-        /* Initialized but not used below. */
-        HuVecF unusedLightPosition = { 20.0f, 45.0f, 1000.0f };
+        HuVecF lightPosition = { 20.0f, 45.0f, 1000.0f };
         GXColor color = { 255, 255, 255, 255 };
 
         light = fn_800286D0(&pos, &dir, &color);

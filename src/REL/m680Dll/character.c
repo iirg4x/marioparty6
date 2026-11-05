@@ -7,7 +7,7 @@
 #include "game/charman.h"
 #include "game/hu3d.h"
 
-#define M680_VOICE_OFF_MOTION 36
+
 
 void fn_1_AFF8(OMOBJ *object);
 void fn_1_B0A4(M680CharacterState *work);
@@ -104,7 +104,7 @@ void fn_1_AD38(OMOBJ *object)
     fn_8005DDEC(6);
     fn_8005F77C(data->character, 0);
     /* This character motion is loaded without its voice cue. */
-    fn_8005DEB0(data->character, M680_VOICE_OFF_MOTION, 0);
+    fn_8005DEB0(data->character, 36, 0);
     fn_80026B8C(data->modelId, 3);
     fn_80026E44(data->modelId);
 

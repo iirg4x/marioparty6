@@ -5,8 +5,8 @@
 #include "string.h"
 
 /* Arena entrance sound-effect resource IDs. */
-#define M657_SFX_START_CUE_A 2087
-#define M657_SFX_START_CUE_B 2088
+
+
 
 OMOBJ *lbl_1_bss_28;
 
@@ -164,8 +164,8 @@ void fn_1_1F6C(OMOBJ *obj)
         case 2:
             if (fn_80071A8C() == 3) {
                 arenaWork->state++;
-                HuAudFXPlayPan(M657_SFX_START_CUE_A, 48);
-                HuAudFXPlayPan(M657_SFX_START_CUE_B, 80);
+                HuAudFXPlayPan(2087, 48);
+                HuAudFXPlayPan(2088, 80);
             }
             break;
         case 3:

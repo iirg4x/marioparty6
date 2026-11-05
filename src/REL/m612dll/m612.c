@@ -20,6 +20,7 @@
 #include "string.h"
 #include "math.h"
 #include "REL/m612dll.h"
+#include "msm_stream.h"
 
 /* Memory Lane model and motion resources, named by their use in this scene. */
 #define M612_DATA_DAY_TILE DATANUM(0x470000, 0)
@@ -59,12 +60,12 @@
 #define M612_CHAR_MOTION_FALL DATANUM(0x930000, 34)
 #define M612_CHAR_MOTION_RISE DATANUM(0x930000, 63)
 #define M612_CHAR_MOTION_EXTRA DATANUM(0x930000, 23)
-#define M612_SE_TILE_MARK 1698
-#define M612_SE_MARKER_LAND 1699
-#define M612_SE_PLAYER_FALL 1700
-#define M612_SE_GUIDE_MOVE 1701
-#define M612_SE_GUIDE_STEP 1702
-#define M612_RESULT_BGM 83
+
+
+
+
+
+
 
 M612Scene lbl_1_bss_4AC;
 static s32 lbl_1_bss_49C[4];
@@ -450,7 +451,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             lbl_1_bss_2E8 = 0.0f;
             lbl_1_bss_14 = 0;
             lbl_1_bss_4AC.state = 1;
-            HuAudFXPlay(M612_SE_GUIDE_MOVE);
+            HuAudFXPlay(1701);
             return;
         case 1:
             lbl_1_bss_2EC = 0.016666668f * (f32) lbl_1_bss_14;
@@ -475,7 +476,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             break;
         case 3:
             if ((s32) (lbl_1_bss_14 % 120) == 0) {
-                HuAudFXPlay(M612_SE_GUIDE_MOVE);
+                HuAudFXPlay(1701);
             }
             lbl_1_bss_14 += 1;
             if (lbl_1_bss_308 == 6) {
@@ -564,7 +565,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
 void fn_1_1DBC(s16 mode, s16 frameNo)
 {
     if ((lbl_1_data_8C == -1) && ((s32) (GameMesStatGet(fn_80071DF4()) & 0x10) != 0)) {
-        lbl_1_data_8C = HuAudBGMPlay(M612_RESULT_BGM);
+        lbl_1_data_8C = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
     }
 }
 
@@ -1004,7 +1005,7 @@ void fn_1_2CEC(s32 player)
                     fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][4], 0.0f,
                                        10.0f, 0U);
                     lbl_1_bss_42C[player] = 4;
-                    HuAudFXPlay(M612_SE_TILE_MARK);
+                    HuAudFXPlay(1698);
                     lbl_1_bss_1C = 1;
                 } else {
                     fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][5], 0.0f,
@@ -1068,7 +1069,7 @@ void fn_1_2CEC(s32 player)
         fallPos.y = -(800.0f * fallTime);
         fn_80026790((s16) lbl_1_bss_48C[player], &fallPos);
         if (lbl_1_bss_3EC[player] == 0 && lbl_1_bss_1C == 1) {
-            HuAudFXPlay(M612_SE_PLAYER_FALL);
+            HuAudFXPlay(1700);
         }
         lbl_1_bss_3EC[player]++;
         if (lbl_1_bss_3EC[player] == 30) {
@@ -1611,7 +1612,7 @@ void fn_1_54D4(OMOBJ *obj)
             if ((s32) lbl_1_bss_37C[playerIndex] == 30) {
                 lbl_1_bss_37C[playerIndex] = 0;
                 lbl_1_bss_36C[playerIndex] = 5;
-                HuAudFXPlay(M612_SE_MARKER_LAND);
+                HuAudFXPlay(1699);
             } else {
                 lbl_1_bss_37C[playerIndex]++;
             }
@@ -1704,7 +1705,7 @@ void fn_1_5924(OMOBJ *obj)
                 *lbl_1_bss_3BC = (column << 4) | (row & 0xF);
             }
             lbl_1_bss_2F0 += 1;
-            HuAudFXPlayVolPan(M612_SE_GUIDE_STEP, (s16) (32.0f + (11.142858f * (f32) row)),
+            HuAudFXPlayVolPan(1702, (s16) (32.0f + (11.142858f * (f32) row)),
                               (s16) (48.0f + (4.571429f * (f32) column)));
             return;
         case 4:

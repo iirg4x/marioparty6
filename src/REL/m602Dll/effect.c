@@ -1,8 +1,8 @@
 /* Defines Odd Card Out lighting, particles, and effect resources. */
 #include "REL/m602Dll.h"
 
-#define MSM_SE_M602_CORRECT_CHOICE_EFFECT 1574
-#define MSM_SE_M602_WINNER_PARTICLES 1577
+
+
 
 M602Light lbl_1_data_278 = {
     0, { 0.0f, 1500.0f, 1000.0f }, { 0.0f, -1500.0f, -1000.0f }, { 255, 255, 255, 255 }
@@ -270,7 +270,7 @@ void fn_1_4AAC(void)
     s16 effectModelIndex;
 
     if ((lbl_1_bss_234 != 0) && (lbl_1_bss_234 == 147)) {
-        HuAudFXPlay(MSM_SE_M602_CORRECT_CHOICE_EFFECT);
+        HuAudFXPlay(1574);
         effectModelIndex = 0;
         while (effectModelIndex < 3) {
             fn_80026A44(lbl_1_bss_236[effectModelIndex], (1 << 0));
@@ -301,5 +301,5 @@ void fn_1_4C84(void)
 {
     Hu3DParManTimeLimitSet(lbl_1_bss_232, 480);
     Hu3DParManAttrReset(lbl_1_bss_232, (1 << 0));
-    HuAudFXPlay(MSM_SE_M602_WINNER_PARTICLES);
+    HuAudFXPlay(1577);
 }

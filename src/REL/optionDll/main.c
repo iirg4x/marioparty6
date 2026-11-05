@@ -227,8 +227,11 @@ OptionWork lbl_1_bss_8;
 
 s16 lbl_1_bss_6;
 
-/* A nonzero word in the first four bytes enables pad control of the Option Mode camera. */
-u8 lbl_1_bss_0[6];
+/* The game's code does not read these two bytes. */
+u8 lbl_1_bss_4[2];
+
+/* A nonzero value enables pad control of the Option Mode camera. */
+s32 lbl_1_bss_0;
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -1230,7 +1233,7 @@ void fn_1_3BD8(OMOBJ *object)
     s8 subStick;
     float cameraRollDegrees;
 
-    if (!(*(s32 *)lbl_1_bss_0)) {
+    if (!lbl_1_bss_0) {
         return;
     }
 

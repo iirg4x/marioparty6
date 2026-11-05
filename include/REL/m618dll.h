@@ -27,7 +27,7 @@ typedef struct M618Player {
     int aiRouteChoice; /* AI-selected lift route: 0 for none, otherwise 1 through 4. */
     int aiWaitFrames; /* Frames remaining before the CPU's next lift-jump decision; movement
                        * continues during this wait. */
-    unsigned char unidentifiedBytes[4]; /* Purpose is not established by the game logic. */
+    unsigned char unk4C[4]; /* The game's code never reads this field. */
     HuVecF nearbyLiftPosition; /* Course position of the next lift used by the CPU. */
     int stageSection; /* Current course section, numbered 0 through 3. */
     int jumpFrames; /* Frames elapsed in the short scripted jump. */
@@ -53,7 +53,7 @@ typedef struct M618Model {
     HU3D_MODELID colModel; /* Collision model positioned at this course object's platform
                             * position. */
     float collisionHeight; /* Y coordinate of the synchronized collision model position. */
-    unsigned char unidentifiedBytes[4]; /* Purpose is not established by the game logic. */
+    unsigned char unk08[4]; /* The game's code never reads this field. */
 } M618Model;
 
 extern int lbl_1_bss_0;
