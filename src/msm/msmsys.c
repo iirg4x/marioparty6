@@ -148,7 +148,7 @@ static s32 msmSysLoadBaseGroup(void *sampleBuffer)
 
 /* Group loaders choose the last empty slot or encode the newest replaceable slot as -(index + 1).
 * If no eligible slot is empty or replaceable, the returned replacement value is uninitialized. */
-s32 msmSysSearchGroupStack(s32 groupIndex, s32 excludedSlot)
+static s32 msmSysSearchGroupStack(s32 groupIndex, s32 excludedSlot)
 {
     MSM_GRP_STACK *groupStack;
     u32 loadSequence;
@@ -184,7 +184,7 @@ s32 msmSysSearchGroupStack(s32 groupIndex, s32 excludedSlot)
 }
 
 /* msmSysInit calls this to read group metadata and allocate base and stack buffers. */
-s32 msmSysGroupInit(DVDFileInfo *file)
+static s32 msmSysGroupInit(DVDFileInfo *file)
 {
     s32 groupIndex;
     MSM_GRP_STACK *groupStack;
