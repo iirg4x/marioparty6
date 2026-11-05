@@ -3,6 +3,7 @@
 #include "REL/m637dll.h"
 #include "game/flag.h"
 #include "msm_stream.h"
+#include "humath.h"
 
 
 
@@ -348,13 +349,13 @@ void fn_1_1464(s32 animationMode)
                 HuAudFXPlay(1876);
             }
             lbl_1_bss_100 =
-                (f32) (650.0 * sin((3.141592653589793 * (f64) lbl_1_bss_F8[0]) / 180.0));
+                (f32) (650.0 * sin((M_PI * (f64) lbl_1_bss_F8[0]) / 180.0));
             fn_80026760(lbl_1_bss_10C, 0.0f, 950.0f - lbl_1_bss_100, -300.0f);
             lbl_1_bss_F8[0] += 0.9f;
         } else if (animationMode == 2) {
             if (lbl_1_bss_F8[1] <= 90.0f) {
                 lbl_1_bss_100 =
-                    (f32) (50.0 * sin((3.141592653589793 * (f64) lbl_1_bss_F8[1]) / 180.0));
+                    (f32) (50.0 * sin((M_PI * (f64) lbl_1_bss_F8[1]) / 180.0));
                 fn_80026760(lbl_1_bss_10C, 0.0f, 300.0f + lbl_1_bss_100, -300.0f);
                 lbl_1_bss_F8[1] += 1.125f;
                 if (lbl_1_bss_F8[1] > 90.0f) {
@@ -444,9 +445,9 @@ void fn_1_181C(void)
         lbl_1_bss_2A0[characterIndex].model = fn_80057068(characterId, (1 << 1));
         fn_80026760(lbl_1_bss_2A0[characterIndex].model,
                         (f32) ((f64) sideOffset + ((f64) playerOffset *
-                                                   cos((3.141592653589793 * -teamAngle) / 180.0))),
+                                                   cos((M_PI * -teamAngle) / 180.0))),
                         -20.0f,
-                        (f32) (playerOffset * sin((3.141592653589793 * -teamAngle) / 180.0)));
+                        (f32) (playerOffset * sin((M_PI * -teamAngle) / 180.0)));
         fn_80026808(lbl_1_bss_2A0[characterIndex].model, 0.0f, teamAngle, 0.0f);
         fn_80026B64(lbl_1_bss_2A0[characterIndex].model, 1U);
         fn_800269E8(lbl_1_bss_2A0[characterIndex].model, ((1 << 30) | (1 << 0)));

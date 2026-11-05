@@ -9,6 +9,7 @@
 #include "math.h"
 #include "game/gamework.h"
 #include "game/gamemes.h"
+#include "humath.h"
 
 
 
@@ -407,7 +408,7 @@ int fn_1_1240(COL_NARROW_PARAM *firstCollider, COL_NARROW_PARAM *secondCollider)
     up.y = 1.0f;
     up.z = 0.0f;
     dot = PSVECDotProduct(&up, &delta);
-    if (dot < -cos(3.141592653589793 / 3.0)) {
+    if (dot < -cos(M_PI / 3.0)) {
         horizontal = delta;
         horizontal.y = 0.0f;
         if (fabsf(PSVECSquareMag(&horizontal)) < 0.001) {
@@ -1410,7 +1411,7 @@ void fn_1_3E18(OMOBJ *obj)
             /* Decrement before computing wobble; the remaining standing-segment count sets this
              * segment's phase offset. */
             standingCount--;
-            wobble = 10.0 * sin((3.141592653589793 * (((360.0f * part->timer) / 120.0f)
+            wobble = 10.0 * sin((M_PI * (((360.0f * part->timer) / 120.0f)
                 + (120.0f * standingCount))) / 180.0);
             if (below != NULL) {
                 part->velocity.y -= 0.7f;
@@ -1553,7 +1554,7 @@ void fn_1_47B4(OMOBJ *obj)
             part->timer++;
             /* The phase index starts at zero and descends for each standing segment. */
             wobblePhaseIndex--;
-            wobble = 10.0 * sin((3.141592653589793 * (((360.0f * part->timer) / 120.0f)
+            wobble = 10.0 * sin((M_PI * (((360.0f * part->timer) / 120.0f)
                 + (120.0f * wobblePhaseIndex))) / 180.0);
             if (below != NULL) {
                 part->velocity.y -= 0.7f;

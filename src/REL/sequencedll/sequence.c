@@ -128,7 +128,7 @@ static void SeqModeInit(s16 mode, s16 frameNo)
  * before main mode. */
 static void SeqModeFadeIn(s16 mode, s16 frameNo)
 {
-    lbl_802C028C = ((1-sin(3.141592653589793*((frameNo/60.0)*90)/180.0))*5000)+500;
+    lbl_802C028C = ((1-sin(M_PI*((frameNo/60.0)*90)/180.0))*5000)+500;
     if(frameNo >= 60) {
         fn_80071A9C();
     }
@@ -157,9 +157,9 @@ static void SeqModePreWin(s16 mode, s16 frameNo)
         }
         return;
     }
-    lbl_80266A40.x = -20*cos(3.141592653589793*((frameNo/60.0)*90)/180.0);
-    lbl_80266A4C.y = 150-(50*sin(3.141592653589793*((frameNo/60.0)*90)/180.0));
-    lbl_802C028C = 500-(sin(3.141592653589793*((frameNo/60.0)*90)/180.0)*200);
+    lbl_80266A40.x = -20*cos(M_PI*((frameNo/60.0)*90)/180.0);
+    lbl_80266A4C.y = 150-(50*sin(M_PI*((frameNo/60.0)*90)/180.0));
+    lbl_802C028C = 500-(sin(M_PI*((frameNo/60.0)*90)/180.0)*200);
 }
 
 /* Winner-stage hook: at frame 0, plays victory after ten jumps or draw otherwise, without setting
@@ -190,7 +190,7 @@ static void PlayerObjExec(OMOBJ *playerObj)
         fn_8005C2C8(charNo, charMotId[1], 0, 8, 0);
     }
     if(jumpTimer >= 0) {
-        fn_80026760(charMdlId, 0, 150*sin(3.141592653589793*((jumpTimer/30.0)*180.0)/180.0), 0);
+        fn_80026760(charMdlId, 0, 150*sin(M_PI*((jumpTimer/30.0)*180.0)/180.0), 0);
         jumpTimer++;
         if(jumpTimer == 28) {
             fn_8005C2C8(charNo, charMotId[2], 0, 8, 0);

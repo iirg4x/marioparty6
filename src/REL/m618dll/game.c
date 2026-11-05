@@ -8,6 +8,7 @@
 #include "game/gamework.h"
 #include "game/hsfex.h"
 #include "msm_stream.h"
+#include "humath.h"
 
 
 #define M618_SOUND_PLAYER_FALL_1 1749 /* Fall cue for player 1. */
@@ -859,7 +860,7 @@ void fn_1_44CC(int playerNo)
         lbl_1_bss_114[playerNo].liftModelPosition.y =
             (f32) ((f64) (2000.0f + playerModelPosition.y) -
                    (1200.0 *
-                    sin((3.1415926535897931 * (f64) lbl_1_bss_114[playerNo].recoveryAngle) /
+                    sin((M_PI * (f64) lbl_1_bss_114[playerNo].recoveryAngle) /
                         180.0)));
         fn_80026760(lbl_1_bss_114[playerNo].model, playerModelPosition.x,
                         lbl_1_bss_114[playerNo].liftModelPosition.y, playerModelPosition.z);

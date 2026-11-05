@@ -9,6 +9,7 @@
 #include "game/wipe.h"
 #include "game/mg/seqman.h"
 #include "game/board/object.h"
+#include "humath.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -242,7 +243,7 @@ f64 fn_1_10E3C(f64 x, f64 y) {
     f64 angle;
 
     angle = acos(x / sqrtf((x * x) + (y * y)));
-    angle = 180.0 * (angle / 3.141592653589793);
+    angle = 180.0 * (angle / M_PI);
     if (y < 0.0) {
         angle = 360.0 - angle;
     }

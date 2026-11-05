@@ -3,6 +3,7 @@
 #include "game/main.h"
 #include <math.h>
 #include "REL/m613Dll/types.h"
+#include "dolphin/mtx.h"
 
 extern void fn_1_1138(f32, f32, f32, const Vec *, Vec *);
 s32 fn_1_E8C(Point3d *firstPosition, const Point3d *firstDisplacement, f32 firstRadius,
@@ -345,10 +346,10 @@ void fn_1_1138(f32 angle_x, f32 angle_y, f32 angle_z,
     Mtx x_rotation;
     Mtx y_rotation;
 
-    PSMTXRotRad(x_rotation, 'x', 0.017453292f * angle_x);
-    PSMTXRotRad(y_rotation, 'y', 0.017453292f * angle_y);
+    PSMTXRotRad(x_rotation, 'x', MTXDegToRad(angle_x));
+    PSMTXRotRad(y_rotation, 'y', MTXDegToRad(angle_y));
     PSMTXConcat(y_rotation, x_rotation, x_rotation);
-    PSMTXRotRad(y_rotation, 'z', 0.017453292f * angle_z);
+    PSMTXRotRad(y_rotation, 'z', MTXDegToRad(angle_z));
     PSMTXConcat(y_rotation, x_rotation, x_rotation);
     PSMTXMultVecSR(x_rotation, source, destination);
 }

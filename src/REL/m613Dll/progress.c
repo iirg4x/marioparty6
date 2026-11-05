@@ -8,6 +8,7 @@
 #include "game/frand.h"
 #include "game/mg/seqman.h"
 #include "game/charman.h"
+#include "humath.h"
 
 
 
@@ -315,14 +316,14 @@ void fn_1_10104(HU3D_MODEL *unusedObject, HU3D_PARTICLE *manager, Mtx unusedMatr
                     }
                     movement.y =
                         (f32) (movement.y +
-                               500.0 * sin((3.141592653589793 * (f64) distancePerDegreeOrAngle) /
+                               500.0 * sin((M_PI * (f64) distancePerDegreeOrAngle) /
                                            180.0));
                     if ((piece->accel.x - piece->vel.x) > 0.0) {
-                        piece->zRot = (f32)((3.141592653589793 *
+                        piece->zRot = (f32)((M_PI *
                                                  (f64)(-1.0f * distancePerDegreeOrAngle)) /
                                                 180.0);
                     } else {
-                        piece->zRot = (f32)((3.141592653589793 * (f64)distancePerDegreeOrAngle) /
+                        piece->zRot = (f32)((M_PI * (f64)distancePerDegreeOrAngle) /
                                                 180.0);
                     }
                     PSVECAdd(&piece->vel, &movement, &piece->pos);

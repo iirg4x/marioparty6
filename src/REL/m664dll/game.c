@@ -112,6 +112,7 @@ const Point3d lbl_1_rodata_6C[2] = {
 #include "datadir_enum.h"
 
 #include "msm_stream.h"
+#include "humath.h"
 
 s16 lbl_1_bss_94C;
 
@@ -277,7 +278,6 @@ void fn_1_A428(void);
 
 void fn_1_640C(void);
 
-void fn_1_640C(void);
 
 #include "game/hu3d.h"
 
@@ -301,17 +301,12 @@ extern const Point3d lbl_1_rodata_A8;
 
 extern const Point3d lbl_1_rodata_B4;
 
-void fn_1_2188(void);
 
-void fn_1_2E08(void);
 
-void fn_1_4060(void);
 
-void fn_1_640C(void);
 
 void fn_1_A8F0(void);
 
-void fn_1_A428(void);
 
 s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
@@ -443,7 +438,6 @@ extern void fn_1_AC58(s32 playerIndex);
 
 extern void fn_1_3868(s32 playerIndex);
 
-extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
 s32 fn_1_420C(s16 *collisionMap);
 
@@ -479,7 +473,6 @@ void fn_1_9704(void);
 
 void fn_1_5D3C(void);
 
-extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
 void fn_1_1A70(void);
 
@@ -489,13 +482,11 @@ extern const Point3d lbl_1_rodata_2B8;
 
 void fn_1_5D90(void);
 
-void fn_1_640C(void);
 
 extern Point3d lbl_1_rodata_2EC;
 
 extern s16 fn_1_B910(s16, s16, s16);
 
-extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
 void fn_1_B8FC(M664InputSettings *inputSettings, s32 stickX, s32 stickY, s32 buttonsDown,
                s32 buttonsHeld);
@@ -1147,7 +1138,7 @@ void fn_1_2848(void) {
         lbl_1_bss_C8[playerIndex].player->actor->rotY =
             180.0 *
             (atan2((f64) separation.x, (f64) separation.z) /
-             3.141592653589793);
+             M_PI);
     }
     fn_800856A8();
 }
@@ -1228,7 +1219,7 @@ void fn_1_2E08(void) {
                         lbl_1_bss_C8[playerIndex].movementOrigin.y =
                             lbl_1_bss_C8[playerIndex].launchHeight +
                             1200.0 *
-                                sin((3.141592653589793 *
+                                sin((M_PI *
                                      (f64) (1.5f *
                                             (f32) lbl_1_bss_C8[playerIndex].movementTimer)) /
                                     180.0);
@@ -2036,7 +2027,7 @@ void fn_1_5D90(void)
         }
         lbl_1_bss_41C[modelIndex].rotation.y +=
             (phaseRange / motionRate) *
-            sin((lbl_1_bss_41C[modelIndex].yawPhase * 3.141592653589793) / 180.0);
+            sin((lbl_1_bss_41C[modelIndex].yawPhase * M_PI) / 180.0);
         fn_80026838(lbl_1_bss_41C[modelIndex].modelId[0], &lbl_1_bss_41C[modelIndex].rotation);
         fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].rotation);
     }
@@ -2073,12 +2064,12 @@ void fn_1_640C(void) {
         if (lbl_1_bss_3F8 > 0) {
             lbl_1_bss_41C[modelIndex].position.y +=
                 0.8f *
-                sin((3.141592653589793 * lbl_1_bss_41C[modelIndex].heightPhase) /
+                sin((M_PI * lbl_1_bss_41C[modelIndex].heightPhase) /
                     180.0);
         } else {
             lbl_1_bss_41C[modelIndex].position.y +=
                 0.4f *
-                sin((3.141592653589793 * lbl_1_bss_41C[modelIndex].heightPhase) /
+                sin((M_PI * lbl_1_bss_41C[modelIndex].heightPhase) /
                     180.0);
         }
         fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0],
@@ -2313,11 +2304,11 @@ void fn_1_6D7C(void)
         { Point3d origin = {0.0f, 0.0f, 0.0f}; source = &origin; target = *source; }
         PSVECSubtract(&target, &position, &delta);
         /* the direction in degrees, wrapped into (-180, 180] */
-        angle = 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793) > 180.0
-                    ? 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793) - 360.0
-                    : 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793) <= -180.0
-                          ? 360.0 + 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793)
-                          : 180.0 * (atan2(-delta.z, delta.x) / 3.141592653589793);
+        angle = 180.0 * (atan2(-delta.z, delta.x) / M_PI) > 180.0
+                    ? 180.0 * (atan2(-delta.z, delta.x) / M_PI) - 360.0
+                    : 180.0 * (atan2(-delta.z, delta.x) / M_PI) <= -180.0
+                          ? 360.0 + 180.0 * (atan2(-delta.z, delta.x) / M_PI)
+                          : 180.0 * (atan2(-delta.z, delta.x) / M_PI);
         fn_80026808(lbl_1_bss_46C[index + 5], 0.0f, angle, 0.0f);
     }
     switch (lbl_1_bss_8C0) {
@@ -2474,7 +2465,7 @@ void fn_1_8244(void) {
             lbl_1_bss_248[side][effectSet].position.y =
                 (f32) ((f64) (blend * lbl_1_bss_248[side][effectSet].destinationY +
                               (1.0f - blend) * lbl_1_bss_248[side][effectSet].startPosition.y) +
-                       1200.0 * sin(3.141592653589793 * (f64) blend));
+                       1200.0 * sin(M_PI * (f64) blend));
             lbl_1_bss_248[side][effectSet].position.z =
                 blend * lbl_1_bss_248[side][effectSet].destinationZ +
                 (1.0f - blend) * lbl_1_bss_248[side][effectSet].startPosition.z;
@@ -2808,7 +2799,7 @@ void fn_1_9704(void) {
     if (eventFrame >= 20 && eventFrame < 60) {
         lbl_1_bss_794 += 4.5f;
         objectPosition.y = (f32)((f64)objectPosition.y +
-            150.0 * sin((3.141592653589793 * (f64)lbl_1_bss_794) / 180.0));
+            150.0 * sin((M_PI * (f64)lbl_1_bss_794) / 180.0));
     } else {
         lbl_1_bss_794 = 0.0f;
     }
