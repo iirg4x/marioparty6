@@ -52,7 +52,6 @@ void fn_1_394(s16, s16);
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
 
 /* Runs static constructors, then starts Trick or Tree when the module is loaded. */
 int _prolog(void)
@@ -536,21 +535,21 @@ inline void fn_1_1FD0(void) {
     lbl_1_bss_ACC.position.x =
         lbl_1_bss_ACC.aim.x +
         lbl_1_bss_ACC.range *
-            (cos(3.141592653589793 * lbl_1_bss_ACC.orientation.x /
+            (cos(M_PI * lbl_1_bss_ACC.orientation.x /
                  180.0) *
-             sin(3.141592653589793 * lbl_1_bss_ACC.orientation.y /
+             sin(M_PI * lbl_1_bss_ACC.orientation.y /
                  180.0));
     lbl_1_bss_ACC.position.y =
         lbl_1_bss_ACC.aim.y +
         lbl_1_bss_ACC.range *
-            -sin(3.141592653589793 * lbl_1_bss_ACC.orientation.x /
+            -sin(M_PI * lbl_1_bss_ACC.orientation.x /
                  180.0);
     lbl_1_bss_ACC.position.z =
         lbl_1_bss_ACC.aim.z +
         lbl_1_bss_ACC.range *
-            (cos(3.141592653589793 * lbl_1_bss_ACC.orientation.x /
+            (cos(M_PI * lbl_1_bss_ACC.orientation.x /
                  180.0) *
-             cos(3.141592653589793 * lbl_1_bss_ACC.orientation.y /
+             cos(M_PI * lbl_1_bss_ACC.orientation.y /
                  180.0));
     PSVECSubtract(&lbl_1_bss_ACC.aim, &lbl_1_bss_ACC.position,
                   &lbl_1_bss_ACC.direction);
@@ -584,24 +583,24 @@ inline void fn_1_234C(void)
 {
     lbl_1_bss_A7C.position.x = (f32)((f64)lbl_1_bss_A7C.target.x +
         ((f64)lbl_1_bss_A7C.radius *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-          sin((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[1]) / 180.0))));
+         (cos((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0))));
     lbl_1_bss_A7C.position.y = (f32)((f64)lbl_1_bss_A7C.target.y +
         ((f64)lbl_1_bss_A7C.radius *
-         -sin((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[0]) / 180.0)));
+         -sin((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0)));
     lbl_1_bss_A7C.position.z = (f32)((f64)lbl_1_bss_A7C.target.z +
         ((f64)lbl_1_bss_A7C.radius *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-          cos((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[1]) / 180.0))));
+         (cos((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0))));
 
     lbl_1_bss_A7C.up.x = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-        sin((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[1]) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0));
     lbl_1_bss_A7C.up.y = (f32)cos(
-        (3.141592653589793 * (f64)lbl_1_bss_A7C.angle[0]) / 180.0);
+        (M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0);
     lbl_1_bss_A7C.up.z = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-        cos((3.141592653589793 * (f64)lbl_1_bss_A7C.angle[1]) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0));
 
     Hu3DShadowTPLvlSet(lbl_1_bss_A7C.textureLevel);
     Hu3DShadowPosSet(&lbl_1_bss_A7C.position, &lbl_1_bss_A7C.up,

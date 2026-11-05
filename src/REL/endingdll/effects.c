@@ -18,6 +18,7 @@
 #include "game/window.h"
 #include "game/wipe.h"
 #include "REL/endingdll/ending.h"
+#include "humath.h"
 
 ANIMDATA *lbl_1_bss_1E30[3];
 s16 lbl_1_bss_1E2C;
@@ -70,7 +71,7 @@ typedef struct EndingMotionWork {
     float unk_3C;
 } EndingMotionWork;
 
-#define sind(x) sin((3.141592653589793 * (x)) / 180.0)
+#define sind(x) sin((M_PI * (x)) / 180.0)
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -513,13 +514,13 @@ void fn_1_E270(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
                 amount = fn_1_DDF8(0.0f, 360.0f, data->accel.x, data->accel.y);
                 data->pos.x =
                     (float) (data->accel.z *
-                             sin((3.141592653589793 * (amount * data->vel.x)) / 180.0));
+                             sin((M_PI * (amount * data->vel.x)) / 180.0));
                 data->pos.y =
                     (float) (data->accel.z *
-                             cos((3.141592653589793 * (amount * data->vel.y)) / 180.0));
+                             cos((M_PI * (amount * data->vel.y)) / 180.0));
                 data->pos.z =
                     (float) (data->accel.z *
-                             sin((3.141592653589793 * (amount * data->vel.z)) / 180.0));
+                             sin((M_PI * (amount * data->vel.z)) / 180.0));
                 data->scale = frandmod(30) + 10;
                 if (rand8() % 10 == 0)
                 {

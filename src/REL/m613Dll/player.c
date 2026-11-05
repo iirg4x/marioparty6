@@ -87,10 +87,10 @@ M613MotionEntry lbl_1_data_FC[6] = {
 static inline void m613RotateWithMatrices(f32 angleX, f32 angleY, f32 angleZ,
                                          const Vec *source, Vec *destination,
                                          Mtx xRotation, Mtx yRotation) {
-    PSMTXRotRad(xRotation, 'x', 0.017453292f * angleX);
-    PSMTXRotRad(yRotation, 'y', 0.017453292f * angleY);
+    PSMTXRotRad(xRotation, 'x', MTXDegToRad(angleX));
+    PSMTXRotRad(yRotation, 'y', MTXDegToRad(angleY));
     PSMTXConcat(yRotation, xRotation, xRotation);
-    PSMTXRotRad(yRotation, 'z', 0.017453292f * angleZ);
+    PSMTXRotRad(yRotation, 'z', MTXDegToRad(angleZ));
     PSMTXConcat(yRotation, xRotation, xRotation);
     PSMTXMultVecSR(xRotation, source, destination);
 }
@@ -138,10 +138,10 @@ void fn_1_3EB0(s16 playerIndex)
     Mtx combinedMatrix;
     Point3d rotatedPosition;
 
-    PSMTXRotRad(rotationMatrix, 'x', 0.017453292f * lbl_1_bss_11C[playerIndex].rotation.x);
-    PSMTXRotRad(combinedMatrix, 'y', 0.017453292f * lbl_1_bss_11C[playerIndex].rotation.y);
+    PSMTXRotRad(rotationMatrix, 'x', MTXDegToRad(lbl_1_bss_11C[playerIndex].rotation.x));
+    PSMTXRotRad(combinedMatrix, 'y', MTXDegToRad(lbl_1_bss_11C[playerIndex].rotation.y));
     PSMTXConcat(combinedMatrix, rotationMatrix, rotationMatrix);
-    PSMTXRotRad(combinedMatrix, 'z', 0.017453292f * lbl_1_bss_11C[playerIndex].rotation.z);
+    PSMTXRotRad(combinedMatrix, 'z', MTXDegToRad(lbl_1_bss_11C[playerIndex].rotation.z));
     PSMTXConcat(combinedMatrix, rotationMatrix, rotationMatrix);
     PSMTXMultVecSR(rotationMatrix, &lbl_1_bss_11C[playerIndex].hookPosition, &rotatedPosition);
     PSVECAdd(&lbl_1_bss_11C[playerIndex].position, &rotatedPosition, &rotatedPosition);

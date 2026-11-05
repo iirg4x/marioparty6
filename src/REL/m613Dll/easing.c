@@ -1,6 +1,7 @@
 /* Interpolates a position between two endpoints with a cosine ease. */
 #include <math.h>
 #include "game/main.h"
+#include "humath.h"
 
 /* Writes a cosine-eased position using elapsedFrames divided by durationFrames. */
 void fn_1_EE98(Point3d *result, Point3d *start, Point3d *end, s16 durationFrames,
@@ -8,7 +9,7 @@ void fn_1_EE98(Point3d *result, Point3d *start, Point3d *end, s16 durationFrames
     Point3d position;
     f32 amount;
 
-    amount = (f32)cos((3.141592653589793 *
+    amount = (f32)cos((M_PI *
                        (f64)((180.0f / (f32)durationFrames) * (f32)elapsedFrames)) /
                       180.0);
     amount = 1.0f - (0.5f * (1.0f + amount));

@@ -16,6 +16,7 @@
 #include "msm_stream.h"
 #include <math.h>
 #include "REL/optionDll/sound_test.h"
+#include "humath.h"
 
 /* The title-message list ends with an empty zero entry. */
 #define OPTION_AUDIO_EMPTY_BIT_PATTERN 0x00000000U
@@ -972,15 +973,15 @@ void fn_1_C484(void)
                     for (frame = 1; frame <= 5; frame++) {
                         if (listOffset != 0) {
                             scale = 1.0 + 0.3f *
-                                sin(3.141592653589793 * (180.0f * ((float)frame / 5.0f)) / 180.0);
+                                sin(M_PI * (180.0f * ((float)frame / 5.0f)) / 180.0);
                         } else {
-                            scale = (float)cos((3.141592653589793 *
+                            scale = (float)cos((M_PI *
                                 (double)(90.0f * ((float)frame / 5.0f))) / 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                         if (((listOffset * 2) < (itemCount - 14)) &&
                             (lowerArrowScale < 0.1f)) {
-                            scale = (float)sin((3.141592653589793 *
+                            scale = (float)sin((M_PI *
                                 (double)(90.0f * ((float)frame / 5.0f))) / 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
                             HuSprAttrReset(lbl_1_bss_5D4, 3, 4);
@@ -999,14 +1000,14 @@ void fn_1_C484(void)
                     for (frame = 1; frame <= 5; frame++) {
                     if ((listOffset * 2) < (itemCount - 14)) {
                             scale = 1.0 + 0.3f *
-                                sin(3.141592653589793 * (180.0f * ((float)frame / 5.0f)) / 180.0);
+                                sin(M_PI * (180.0f * ((float)frame / 5.0f)) / 180.0);
                         } else {
-                            scale = (float)cos((3.141592653589793 *
+                            scale = (float)cos((M_PI *
                                 (double)(90.0f * ((float)frame / 5.0f))) / 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
                         if ((listOffset != 0) && (upperArrowScale < 0.1f)) {
-                            scale = (float)sin((3.141592653589793 *
+                            scale = (float)sin((M_PI *
                                 (double)(90.0f * ((float)frame / 5.0f))) / 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                             HuSprAttrReset(lbl_1_bss_5D4, 2, 4);
@@ -1024,7 +1025,7 @@ void fn_1_C484(void)
                     for (frame = 1; frame <= 5; frame++) {
                         progress = (float)frame / 5.0f;
                         scale = 1.0 + 0.3f *
-                            sin(3.141592653589793 * (180.0f * progress) / 180.0);
+                            sin(M_PI * (180.0f * progress) / 180.0);
                         if (rowDelta < 0) {
                             HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                         } else {

@@ -20,6 +20,7 @@
 #include "REL/optionDll/main.h"
 #include "REL/optionDll/records.h"
 #include "REL/optionDll/sound_test.h"
+#include "humath.h"
 
 #define OPTION_MODEL_END ((u32)-1)
 
@@ -389,7 +390,7 @@ void fn_1_F0B0(void)
         0.0f);
     for (frame = 1; frame <= 55; frame++) {
         progress = (float)frame / 55.0f;
-        scale = cos((3.141592653589793 *
+        scale = cos((M_PI *
             (90.0f * progress)) / 180.0);
         HuSprScaleSet(lbl_1_bss_BF0[0], memberNo, scale, scale);
         HuSprTPLvlSet(lbl_1_bss_BF0[0], memberNo, progress);

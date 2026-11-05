@@ -27,6 +27,7 @@
 #include "REL/optionDll/main.h"
 #include "REL/optionDll/records.h"
 #include "REL/optionDll/sound_test.h"
+#include "humath.h"
 
 #define OPTION_MOTION_BLEND_START 0.0f
 #define OPTION_MOTION_RETURN_BLEND_FRAMES 8.0f
@@ -785,7 +786,7 @@ void fn_1_19E0(void)
             targetPos.z += 50.0f;
             rotation = 180.0 *
                 (atan2(targetPos.x - startPos.x,
-                    targetPos.z - startPos.z) / 3.141592653589793);
+                    targetPos.z - startPos.z) / M_PI);
             for (frame = 1; frame <= 40; frame++) {
                 progress = (float)frame / 40.0f;
                 PSVECSubtract(&targetPos, &startPos,
@@ -891,7 +892,7 @@ s16 fn_1_1DF0(s16 selectedOption)
     HuAudFXPlay(52);
     for (frame = 1; frame <= 10; frame++) {
         progress = (float)frame / 10.0f;
-        scale = 1.2f * sin(3.141592653589793 * (90.0 * progress) / 180.0);
+        scale = 1.2f * sin(M_PI * (90.0 * progress) / 180.0);
         for (index = 0; index < 7; index++) {
             if (selectedOption != index) {
                 fn_800268B0(lbl_1_bss_66E[index + 7], scale, scale, scale);
@@ -911,10 +912,10 @@ s16 fn_1_1DF0(s16 selectedOption)
             progress = (float)frame / 10.0f;
             /* This sine value is overwritten below; model scale grows linearly during the
              * entrance. */
-            scale = sin(3.141592653589793 * (90.0 * progress) / 180.0);
+            scale = sin(M_PI * (90.0 * progress) / 180.0);
             position = screenPositions[selectedOption];
             position.y += progress * ((selectedOption & 1) ? -48 : 48);
-            position.z += -200.0 * sin(3.141592653589793 * (90.0 * progress) / 180.0);
+            position.z += -200.0 * sin(M_PI * (90.0 * progress) / 180.0);
             Hu3D2Dto3D(&position, 2, &worldPosition);
             fn_80026790(lbl_1_bss_66E[selectedOption + 7], &worldPosition);
             scale = 0.3f * progress;
@@ -971,14 +972,14 @@ s16 fn_1_1DF0(s16 selectedOption)
                     progress = (float)frame / 10.0f;
                     position = screenPositions[selectedOption];
                     position.y += ((selectedOption & 1) ? -48 : 48) *
-                                  sin(3.141592653589793 * (90.0 * progress) / 180.0);
-                    position.z += -200.0 * sin(3.141592653589793 * (90.0 * progress) / 180.0);
+                                  sin(M_PI * (90.0 * progress) / 180.0);
+                    position.z += -200.0 * sin(M_PI * (90.0 * progress) / 180.0);
                     Hu3D2Dto3D(&position, 2, &worldPosition);
                     fn_80026790(lbl_1_bss_66E[selectedOption + 7], &worldPosition);
                     scale = 0.3f * progress;
                     fn_800268B0(lbl_1_bss_66E[selectedOption + 7],
                         1.2f + scale, 1.2f + scale, 0.5f + scale);
-                    scale = 1.0 + 0.3f * sin(3.141592653589793 * (180.0f * progress) / 180.0);
+                    scale = 1.0 + 0.3f * sin(M_PI * (180.0f * progress) / 180.0);
                     if (delta < 0) {
                         HuSprScaleSet(lbl_1_bss_5D4, 0, scale, scale);
                     } else {
@@ -1058,7 +1059,7 @@ s16 fn_1_1DF0(s16 selectedOption)
             } else {
                 rotationSum += 72.0f;
                 fn_80026808(lbl_1_bss_66E[index + 7], 0.0f, rotationSum, 0.0f);
-                scale = cos(3.141592653589793 * (90.0f * progress) / 180.0);
+                scale = cos(M_PI * (90.0f * progress) / 180.0);
                 fn_800268B0(lbl_1_bss_66E[index + 7],
                     1.2f * scale, 1.2f * scale, 0.5f * scale);
             }
@@ -1153,7 +1154,7 @@ s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages)
                               selection->choiceAnimation[selectedIndex],
                               selection->choiceAnimationBank[selectedIndex]);
                 }
-                scale = sin(3.141592653589793 *
+                scale = sin(M_PI *
                     (180.0f * progress) / 180.0) *
                     0.3f + 1.0;
                 if (direction < 0) {
@@ -1246,55 +1247,55 @@ void fn_1_3BD8(OMOBJ *object)
     }
 
     eye.x = lbl_80266B18[1].x + (lbl_80266BD8[1] *
-        (sin(3.141592653589793 * lbl_80266A58[1].y / 180.0) *
-         cos(3.141592653589793 * lbl_80266A58[1].x / 180.0)));
+        (sin(M_PI * lbl_80266A58[1].y / 180.0) *
+         cos(M_PI * lbl_80266A58[1].x / 180.0)));
     eye.y = lbl_80266B18[1].y + (lbl_80266BD8[1] *
-        -sin(3.141592653589793 * lbl_80266A58[1].x / 180.0));
+        -sin(M_PI * lbl_80266A58[1].x / 180.0));
     eye.z = lbl_80266B18[1].z + (lbl_80266BD8[1] *
-        (cos(3.141592653589793 * lbl_80266A58[1].y / 180.0) *
-         cos(3.141592653589793 * lbl_80266A58[1].x / 180.0)));
+        (cos(M_PI * lbl_80266A58[1].y / 180.0) *
+         cos(M_PI * lbl_80266A58[1].x / 180.0)));
 
     delta.x = lbl_80266B18[1].x - eye.x;
     delta.y = lbl_80266B18[1].y - eye.y;
     delta.z = lbl_80266B18[1].z - eye.z;
 
-    up.x = sin(3.141592653589793 * lbl_80266A58[1].y / 180.0) *
-           sin(3.141592653589793 * lbl_80266A58[1].x / 180.0);
-    up.y = cos(3.141592653589793 * lbl_80266A58[1].x / 180.0);
-    up.z = cos(3.141592653589793 * lbl_80266A58[1].y / 180.0) *
-           sin(3.141592653589793 * lbl_80266A58[1].x / 180.0);
+    up.x = sin(M_PI * lbl_80266A58[1].y / 180.0) *
+           sin(M_PI * lbl_80266A58[1].x / 180.0);
+    up.y = cos(M_PI * lbl_80266A58[1].x / 180.0);
+    up.z = cos(M_PI * lbl_80266A58[1].y / 180.0) *
+           sin(M_PI * lbl_80266A58[1].x / 180.0);
 
     cameraRollDegrees = lbl_80266A58[1].z;
 
     roll.x = (up.x * ((delta.x * delta.x) +
                ((1.0f - (delta.x * delta.x)) *
-                cos(3.141592653589793 * cameraRollDegrees / 180.0)))) +
+                cos(M_PI * cameraRollDegrees / 180.0)))) +
              (up.y * (((delta.x * delta.y) *
-               (1.0 - cos(3.141592653589793 * cameraRollDegrees / 180.0))) -
-               (delta.z * sin(3.141592653589793 * cameraRollDegrees / 180.0)))) +
+               (1.0 - cos(M_PI * cameraRollDegrees / 180.0))) -
+               (delta.z * sin(M_PI * cameraRollDegrees / 180.0)))) +
              (up.z * (((delta.x * delta.z) *
-               (1.0 - cos(3.141592653589793 * cameraRollDegrees / 180.0))) +
-               (delta.y * sin(3.141592653589793 * cameraRollDegrees / 180.0))));
+               (1.0 - cos(M_PI * cameraRollDegrees / 180.0))) +
+               (delta.y * sin(M_PI * cameraRollDegrees / 180.0))));
 
     roll.y = (up.x * (((delta.x * delta.y) *
-               (1.0 - cos(3.141592653589793 * cameraRollDegrees / 180.0))) +
-               (delta.z * sin(3.141592653589793 * cameraRollDegrees / 180.0)))) +
+               (1.0 - cos(M_PI * cameraRollDegrees / 180.0))) +
+               (delta.z * sin(M_PI * cameraRollDegrees / 180.0)))) +
              (up.y * ((delta.y * delta.y) +
                ((1.0f - (delta.y * delta.y)) *
-                cos(3.141592653589793 * cameraRollDegrees / 180.0)))) +
+                cos(M_PI * cameraRollDegrees / 180.0)))) +
              (up.z * (((delta.y * delta.z) *
-               (1.0 - cos(3.141592653589793 * cameraRollDegrees / 180.0))) -
-               (delta.x * sin(3.141592653589793 * cameraRollDegrees / 180.0))));
+               (1.0 - cos(M_PI * cameraRollDegrees / 180.0))) -
+               (delta.x * sin(M_PI * cameraRollDegrees / 180.0))));
 
     roll.z = (up.x * (((delta.x * delta.z) *
-               (1.0 - cos(3.141592653589793 * cameraRollDegrees / 180.0))) -
-               (delta.y * sin(3.141592653589793 * cameraRollDegrees / 180.0)))) +
+               (1.0 - cos(M_PI * cameraRollDegrees / 180.0))) -
+               (delta.y * sin(M_PI * cameraRollDegrees / 180.0)))) +
              (up.y * (((delta.y * delta.z) *
-               (1.0 - cos(3.141592653589793 * cameraRollDegrees / 180.0))) +
-               (delta.x * sin(3.141592653589793 * cameraRollDegrees / 180.0)))) +
+               (1.0 - cos(M_PI * cameraRollDegrees / 180.0))) +
+               (delta.x * sin(M_PI * cameraRollDegrees / 180.0)))) +
              (up.z * ((delta.z * delta.z) +
                ((1.0f - (delta.z * delta.z)) *
-                cos(3.141592653589793 * cameraRollDegrees / 180.0))));
+                cos(M_PI * cameraRollDegrees / 180.0))));
 
     PSVECCrossProduct(&up, &delta, &delta);
     PSVECNormalize(&delta, &delta);

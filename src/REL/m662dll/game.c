@@ -22,6 +22,7 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 #include "REL/m662dll/game.h"
+#include "humath.h"
 
 extern s16 lbl_1_bss_C58[4];
 void fn_1_984(void), fn_1_AD68(void), fn_1_2670(void);
@@ -194,7 +195,7 @@ void fn_1_5A5C(void)
             facingOffset.x = player->position.x - slotPositions[player->slot].x;
             facingOffset.z = player->position.z - slotPositions[player->slot].z;
             player->targetAngle =
-                180.0 + 180.0 * (atan2(facingOffset.x, facingOffset.z) / 3.141592653589793);
+                180.0 + 180.0 * (atan2(facingOffset.x, facingOffset.z) / M_PI);
             lbl_1_bss_3F4[playerIndex].shiftState = 1;
             lbl_1_bss_3F4[playerIndex].shiftMotion = 1;
             lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
@@ -588,9 +589,9 @@ s16 fn_1_795C(M662Puzzle *puzzle)
         case 0: {
             M662SinePath *path = &lbl_1_data_150[puzzle->pathIndex];
             carrier->position.x = (f32)((f64)path->centerX +
-                (f64)path->amplitude * sin((3.141592653589793 * (f64)puzzle->progress) / 180.0));
+                (f64)path->amplitude * sin((M_PI * (f64)puzzle->progress) / 180.0));
             carrier->position.z = (f32)(path->centerZ +
-                100.0 * cos((3.141592653589793 * (f64)puzzle->progress) / 180.0));
+                100.0 * cos((M_PI * (f64)puzzle->progress) / 180.0));
             unfinishedAxes = fn_1_2DA0(&puzzle->progress, path->duration, path->start, path->end);
             if (unfinishedAxes == 0) {
                 segmentFinished = 1;

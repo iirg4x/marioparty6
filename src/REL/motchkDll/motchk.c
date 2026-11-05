@@ -10,6 +10,7 @@
 
 #include "datanum/saf.h"
 #include "datanum/mario.h"
+#include "humath.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -390,56 +391,56 @@ void CameraMain(OMOBJ *cameraObj)
     lbl_802C028C += lbl_802BFFEC[PAD_CHAN0]/2;
     lbl_802C028C -= lbl_802BFFE8[PAD_CHAN0]/2;
     cameraPosition.x = lbl_80266A4C.x
-        + (lbl_802C028C * (sin(3.141592653589793*lbl_80266A40.y/180.0)
-            * cos(3.141592653589793*lbl_80266A40.x/180.0)));
+        + (lbl_802C028C * (sin(M_PI*lbl_80266A40.y/180.0)
+            * cos(M_PI*lbl_80266A40.x/180.0)));
     cameraPosition.y = (lbl_80266A4C.y
-        + (lbl_802C028C * -sin(3.141592653589793*lbl_80266A40.x/180.0)));
+        + (lbl_802C028C * -sin(M_PI*lbl_80266A40.x/180.0)));
     cameraPosition.z = (lbl_80266A4C.z
-        + (lbl_802C028C * (cos(3.141592653589793*lbl_80266A40.y/180.0)
-            * cos(3.141592653589793*lbl_80266A40.x/180.0))));
+        + (lbl_802C028C * (cos(M_PI*lbl_80266A40.y/180.0)
+            * cos(M_PI*lbl_80266A40.x/180.0))));
     viewOffset.x = lbl_80266A4C.x - cameraPosition.x;
     viewOffset.y = lbl_80266A4C.y - cameraPosition.y;
     viewOffset.z = lbl_80266A4C.z - cameraPosition.z;
-    cameraUp.x = (sin(3.141592653589793*lbl_80266A40.y/180.0)
-        * sin(3.141592653589793*lbl_80266A40.x/180.0));
-    cameraUp.y = cos(3.141592653589793*lbl_80266A40.x/180.0);
-    cameraUp.z = (cos(3.141592653589793*lbl_80266A40.y/180.0)
-        * sin(3.141592653589793*lbl_80266A40.x/180.0));
+    cameraUp.x = (sin(M_PI*lbl_80266A40.y/180.0)
+        * sin(M_PI*lbl_80266A40.x/180.0));
+    cameraUp.y = cos(M_PI*lbl_80266A40.x/180.0);
+    cameraUp.z = (cos(M_PI*lbl_80266A40.y/180.0)
+        * sin(M_PI*lbl_80266A40.x/180.0));
     cameraRoll = lbl_80266A40.z;
     /* Compute the up direction for vertical panning; CRot.z stays zero in this preview, so it
      * remains unrolled. */
     rolledUp.x = cameraUp.x * (viewOffset.x * viewOffset.x +
                                (1.0f
                                    - viewOffset.x * viewOffset.x)
-                                   * cos(3.141592653589793*cameraRoll/180.0)) +
+                                   * cos(M_PI*cameraRoll/180.0)) +
                  cameraUp.y * (viewOffset.x * viewOffset.y * (1.0f
-                     - cos(3.141592653589793*cameraRoll/180.0)) -
-                               viewOffset.z * sin(3.141592653589793*cameraRoll/180.0)) +
+                     - cos(M_PI*cameraRoll/180.0)) -
+                               viewOffset.z * sin(M_PI*cameraRoll/180.0)) +
                  cameraUp.z * (viewOffset.x * viewOffset.z * (1.0f
-                     - cos(3.141592653589793*cameraRoll/180.0)) +
-                               viewOffset.y * sin(3.141592653589793*cameraRoll/180.0));
+                     - cos(M_PI*cameraRoll/180.0)) +
+                               viewOffset.y * sin(M_PI*cameraRoll/180.0));
 
     rolledUp.y = cameraUp.y * (viewOffset.y * viewOffset.y +
                                (1.0f
                                    - viewOffset.y * viewOffset.y)
-                                   * cos(3.141592653589793*cameraRoll/180.0)) +
+                                   * cos(M_PI*cameraRoll/180.0)) +
                  cameraUp.x * (viewOffset.x * viewOffset.y * (1.0f
-                     - cos(3.141592653589793*cameraRoll/180.0)) +
-                               viewOffset.z * sin(3.141592653589793*cameraRoll/180.0)) +
+                     - cos(M_PI*cameraRoll/180.0)) +
+                               viewOffset.z * sin(M_PI*cameraRoll/180.0)) +
                  cameraUp.z * (viewOffset.y * viewOffset.z * (1.0f
-                     - cos(3.141592653589793*cameraRoll/180.0)) -
-                               viewOffset.x * sin(3.141592653589793*cameraRoll/180.0));
+                     - cos(M_PI*cameraRoll/180.0)) -
+                               viewOffset.x * sin(M_PI*cameraRoll/180.0));
 
     rolledUp.z = cameraUp.z * (viewOffset.z * viewOffset.z +
                                (1.0f
                                    - viewOffset.z * viewOffset.z)
-                                   * cos(3.141592653589793*cameraRoll/180.0)) +
+                                   * cos(M_PI*cameraRoll/180.0)) +
                  (cameraUp.x * (viewOffset.x * viewOffset.z * (1.0
-                     - cos(3.141592653589793*cameraRoll/180.0)) -
-                                viewOffset.y * sin(3.141592653589793*cameraRoll/180.0)) +
+                     - cos(M_PI*cameraRoll/180.0)) -
+                                viewOffset.y * sin(M_PI*cameraRoll/180.0)) +
                   cameraUp.y * (viewOffset.y * viewOffset.z * (1.0
-                      - cos(3.141592653589793*cameraRoll/180.0)) +
-                                viewOffset.x * sin(3.141592653589793*cameraRoll/180.0)));
+                      - cos(M_PI*cameraRoll/180.0)) +
+                                viewOffset.x * sin(M_PI*cameraRoll/180.0)));
     /* This perpendicular direction is the horizontal substick pan axis. */
     VECCrossProduct(&cameraUp, &viewOffset, &viewOffset);
     VECNormalize(&viewOffset, &viewOffset);

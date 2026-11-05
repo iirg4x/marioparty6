@@ -7,6 +7,7 @@
 #include "game/frand.h"
 #include "math.h"
 #include "REL/m630/game.h"
+#include "humath.h"
 
 void fn_1_7C34(Mtx matrix, int cameraId);
 int fn_1_7EF4(HuVecF *src, HuVecF *dst);
@@ -43,7 +44,7 @@ void fn_1_78A4(M630Player *player)
         if (direction.x < 0.0f) {
             angle = -angle;
         }
-        player->rotationY = (180.0f * angle) / 3.141592653589793;
+        player->rotationY = (180.0f * angle) / M_PI;
     }
     magnitude = move.x * move.x + move.z * move.z;
     if (magnitude > 25.0f) {

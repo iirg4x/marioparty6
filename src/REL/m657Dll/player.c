@@ -8,6 +8,7 @@
 #include "game/frand.h"
 #include "string.h"
 #include "math.h"
+#include "humath.h"
 
 #define M657_SFX_TEAM0_ACTION_PRESS 2085
 #define M657_SFX_TEAM1_ACTION_PRESS 2086
@@ -638,7 +639,7 @@ void fn_1_3B50(OMOBJ *obj)
         }
         PSVECSubtract(&target, &work->player.pos, &player->vel);
         PSVECNormalize(&player->vel, &player->vel);
-        player->rot.z = 180.0*(atan2(player->vel.y, player->vel.x)/3.141592653589793)-90.0;
+        player->rot.z = 180.0*(atan2(player->vel.y, player->vel.x)/M_PI)-90.0;
         player->state++;
         /* fallthrough */
     case 1:

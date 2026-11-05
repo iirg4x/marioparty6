@@ -18,6 +18,7 @@
 #include "REL/optionDll/records.h"
 #include "REL/optionDll/sound_test.h"
 #include "game/mic.h"
+#include "humath.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -422,18 +423,18 @@ void fn_1_5620(void)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                         if (pageStart < count - 7 &&
                             lowerArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
@@ -441,18 +442,18 @@ void fn_1_5620(void)
                     } else {
                         if (pageStart < count - 7) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
                         if (pageStart != 0 &&
                             upperArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
@@ -692,18 +693,18 @@ void fn_1_6898(void)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                         if (pageStart < count - 7 &&
                             lowerArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
@@ -711,18 +712,18 @@ void fn_1_6898(void)
                     } else {
                         if (pageStart < count - 7) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
                         if (pageStart != 0 &&
                             upperArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
@@ -1316,18 +1317,18 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                         if (pageStart < entryCount - 7 &&
                             lowerArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
@@ -1335,18 +1336,18 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
                     } else {
                         if (pageStart < entryCount - 7) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
                         if (pageStart != 0 &&
                             upperArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
@@ -1551,18 +1552,18 @@ void fn_1_9F74(void)
                         if (delta < 0) {
                             if (pageStart != 0) {
                                 scale = 1.0 +
-                                    0.3f * sin(3.141592653589793 *
+                                    0.3f * sin(M_PI *
                                         (180.0f * progress) /
                                         180.0);
                             } else {
-                                scale = cos(3.141592653589793 *
+                                scale = cos(M_PI *
                                     (90.0f * progress) /
                                     180.0);
                             }
                             HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                             if (pageStart < count - 5 &&
                                 lowerArrowScale < 0.1f) {
-                                scale = sin(3.141592653589793 *
+                                scale = sin(M_PI *
                                     (90.0f * progress) /
                                     180.0);
                                 HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
@@ -1570,18 +1571,18 @@ void fn_1_9F74(void)
                         } else {
                             if (pageStart < count - 5) {
                                 scale = 1.0 +
-                                    0.3f * sin(3.141592653589793 *
+                                    0.3f * sin(M_PI *
                                         (180.0f * progress) /
                                         180.0);
                             } else {
-                                scale = cos(3.141592653589793 *
+                                scale = cos(M_PI *
                                     (90.0f * progress) /
                                     180.0);
                             }
                             HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
                             if (pageStart != 0 &&
                                 upperArrowScale < 0.1f) {
-                                scale = sin(3.141592653589793 *
+                                scale = sin(M_PI *
                                     (90.0f * progress) /
                                     180.0);
                                 HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
@@ -1859,18 +1860,18 @@ void fn_1_B1A0(s16 mode, s16 argument)
                     if (delta < 0) {
                         if (pageStart != 0) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);
                         if (pageStart < minigameCount - 7 &&
                             lowerArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
@@ -1878,18 +1879,18 @@ void fn_1_B1A0(s16 mode, s16 argument)
                     } else {
                         if (pageStart < minigameCount - 7) {
                             scale = 1.0 +
-                                0.3f * sin(3.141592653589793 *
+                                0.3f * sin(M_PI *
                                     (180.0f * progress) /
                                     180.0);
                         } else {
-                            scale = cos(3.141592653589793 *
+                            scale = cos(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                         }
                         HuSprScaleSet(lbl_1_bss_5D4, 3, scale, scale);
                         if (pageStart != 0 &&
                             upperArrowScale < 0.1f) {
-                            scale = sin(3.141592653589793 *
+                            scale = sin(M_PI *
                                 (90.0f * progress) /
                                 180.0);
                             HuSprScaleSet(lbl_1_bss_5D4, 2, scale, scale);

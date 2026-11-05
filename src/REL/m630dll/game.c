@@ -34,6 +34,7 @@ void fn_1_6360(int player);
 void fn_1_6D70(int player);
 void fn_1_7204(int player);
 #include "game/hu3d.h"
+#include "humath.h"
 
 /* Audio IDs and data numbers used for Stage Fright's sounds, models, and motions. */
 
@@ -254,7 +255,7 @@ void fn_1_B50(void)
             lbl_1_bss_754[0].pos.y =
                 lbl_1_data_4C[0].y +
                 (300.0f / lbl_1_bss_828.actionTimer) *
-                    sin((3.141592653589793 * (6.0f * lbl_1_bss_828.frameCount)) / 180.0);
+                    sin((M_PI * (6.0f * lbl_1_bss_828.frameCount)) / 180.0);
             lbl_1_bss_754[0].pos.x += lbl_1_bss_744.losingPlayerSlideStep;
             fn_80026790(lbl_1_bss_754[0].modelId, &lbl_1_bss_754[0].pos);
             lbl_1_bss_754[0].rotationY += lbl_1_bss_744.losingPlayerSlideStep > 0.0f ? -3.0f : 3.0f;

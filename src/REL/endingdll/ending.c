@@ -18,6 +18,7 @@
 #include "game/window.h"
 #include "game/wipe.h"
 #include "REL/endingdll/ending.h"
+#include "humath.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -47,7 +48,7 @@ typedef struct EndingMotionWork {
     float unk_3C; /* Retained storage with no reads or writes in this source file. */
 } EndingMotionWork;
 
-#define sind(x) sin((3.141592653589793 * (x)) / 180.0)
+#define sind(x) sin((M_PI * (x)) / 180.0)
 
 
 
@@ -183,23 +184,23 @@ void fn_1_25C(OMOBJ *object)
     firstWork = &lbl_1_bss_1A5C[0];
     secondWork = &lbl_1_bss_1A5C[1];
 
-    target.x = sin((3.141592653589793 * object->work[0]) /
+    target.x = sin((M_PI * object->work[0]) /
         180.0) * 180.0;
     target.y = 10.0f + firstWork->startOrVelocity.y;
     if (target.y > 400.0f) {
         target.y = 400.0f;
     }
-    target.z = cos((3.141592653589793 * object->work[0]) /
+    target.z = cos((M_PI * object->work[0]) /
         180.0) * 180.0;
     fn_1_DF60(&firstWork->startOrVelocity, &target, 10.0f);
 
-    target.x = sin((3.141592653589793 * object->work[1]) /
+    target.x = sin((M_PI * object->work[1]) /
         180.0) * 180.0;
     target.y = 10.0f + firstWork->startOrVelocity.y;
     if (target.y > 400.0f) {
         target.y = 400.0f;
     }
-    target.z = cos((3.141592653589793 * object->work[1]) /
+    target.z = cos((M_PI * object->work[1]) /
         180.0) * 180.0;
     fn_1_DF60(&secondWork->startOrVelocity, &target, 10.0f);
 
@@ -336,7 +337,6 @@ void fn_1_B2C(void)
     Hu3DShadowPosSet(&position, &up, &target);
 }
 
-void fn_1_B2C(void);
 
 s16 lbl_1_data_38 = -1;
 
@@ -646,7 +646,7 @@ void fn_1_1C0C(s16 characterIndex, s16 motionModel, float turnDuration)
     characterPosition.x -= motionPosition.x;
     characterPosition.z -= motionPosition.z;
     characterPosition.y = -(atan2(characterPosition.x, -characterPosition.z) /
-        3.141592653589793 * 180.0);
+        M_PI * 180.0);
     fn_80026874(lbl_1_bss_8->mdlId[characterIndex], &motionPosition);
     for (;;) {
         if (motionPosition.y < 0.0f) {
@@ -990,7 +990,7 @@ void fn_1_36E0(OMOBJ *object)
             rotationValue = end;
         } else {
             rotationValue = start + ((end - start) *
-                sin((3.141592653589793 * (90.0f / duration * time)) / 180.0));
+                sin((M_PI * (90.0f / duration * time)) / 180.0));
         }
         value = rotationValue;
         fn_80026808(object->mdlId[0], 0.0f, value,
@@ -1017,7 +1017,7 @@ void fn_1_36E0(OMOBJ *object)
             positionValue = end;
         } else {
             positionValue = start + ((end - start) *
-                sin((3.141592653589793 * (90.0f / duration * time)) / 180.0));
+                sin((M_PI * (90.0f / duration * time)) / 180.0));
         }
         value = positionValue;
         fn_800267CC(object->mdlId[0], &position);

@@ -6,6 +6,7 @@
 #include "game/board/player.h"
 #include "game/charman.h"
 #include "game/hu3d.h"
+#include "humath.h"
 
 
 
@@ -219,7 +220,7 @@ s32 fn_1_B26C(void *argument)
         work->position.x = work->destination.x * progress + work->origin.x * (1.0f - progress);
         work->position.y = work->destination.y * progress + work->origin.y * (1.0f - progress);
         work->position.z = work->destination.z * progress + work->origin.z * (1.0f - progress);
-        amplitude = (f32)(50.0 * sin(3.141592653589793 * (f64)progress));
+        amplitude = (f32)(50.0 * sin(M_PI * (f64)progress));
         targetDeltaZ = work->destination.z - work->origin.z;
         targetDeltaX = work->destination.x - work->origin.x;
         if (0.0f == targetDeltaZ) {
@@ -249,7 +250,7 @@ s32 fn_1_B26C(void *argument)
             currentAngleResult = (f32)atan2((f64)currentDeltaX, (f64)currentDeltaZ);
             currentAngle = currentAngleResult;
         }
-        work->targetAngle = (f32)((f64)(180.0f * currentAngle) / 3.141592653589793);
+        work->targetAngle = (f32)((f64)(180.0f * currentAngle) / M_PI);
         if (work->motionIds[2] != fn_8002D3C4(work->modelId) &&
             work->motionIds[2] != fn_8002D3EC(work->modelId)) {
             fn_8005C2C8(work->character, work->motionIds[2], 0.0f, 5.0f,
