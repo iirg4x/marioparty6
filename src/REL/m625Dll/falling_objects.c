@@ -165,8 +165,8 @@ void fn_1_11700(void)
                 panning = (lbl_1_bss_4B8[effectIndex].position.x - -600.0f) /
                           1200.0f;
                 panning = 32.0f + 64.0f * panning;
-                HuAudFXPanning(HuAudFXPlay(1797), (s16)panning);
-                HuAudFXPanning(HuAudFXPlay(1798), (s16)panning);
+                HuAudFXPanning(HuAudFXPlay(MSM_SE_MG625_OBJECT_SPLASH), (s16)panning);
+                HuAudFXPanning(HuAudFXPlay(MSM_SE_MG625_OBJECT_SPLASH_RIPPLE), (s16)panning);
             }
             if (lbl_1_bss_4B8[effectIndex].effectTimer == 0 &&
                 lbl_1_bss_4B8[effectIndex].position.y <= -10.0f) {
@@ -313,7 +313,7 @@ void fn_1_12464(s16 index)
         lbl_1_bss_4B8[index].state = 3;
         pan = (lbl_1_bss_4B8[index].position.x - -600.0f) / 1200.0f;
         pan = 32.0f + 64.0f * pan;
-        HuAudFXPanning(HuAudFXPlay(1799), (s16)pan);
+        HuAudFXPanning(HuAudFXPlay(MSM_SE_MG625_OBJECT_HIT), (s16)pan);
     }
 }
 

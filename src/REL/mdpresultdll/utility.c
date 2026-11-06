@@ -19,6 +19,8 @@
 #include "messdir_enum.h"
 
 #include "REL/mdpresultDll.h"
+#include "humath.h"
+#include "dolphin/mtx.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -45,24 +47,24 @@ void fn_1_20108(HUSPR_GROUPID groupId, s32 attr);
 void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number);
 void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 number);
 void fn_1_21714(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color);
+    float accelX, GXColor *color);
 void fn_1_217EC(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color, float accelY);
+    float accelX, GXColor *color, float accelY);
 void fn_1_21904(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color);
+    float accelX, GXColor *color);
 void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color);
+    float accelX, GXColor *color);
 void fn_1_26070(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color);
+    float accelX, GXColor *color);
 void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color);
+    float accelX, GXColor *color);
 void fn_1_26BE4(s16 index);
 void fn_1_26EB0(HuVecF *position);
 void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix);
 void fn_1_22E48(MDRESULT_TRAIL_WORK *work);
 void fn_1_23AA8(void);
-void fn_1_23DA0(s16 index, u8 *color, const HuVecF *position);
-void fn_1_243DC(s16 index, const HuVecF *position, u8 *color,
+void fn_1_23DA0(s16 index, GXColor *color, const HuVecF *position);
+void fn_1_243DC(s16 index, const HuVecF *position, GXColor *color,
     float velocityY, float velocityZ, float accelX, s16 mode);
 void fn_1_20188(HUSPR_GROUPID groupId, s32 attr);
 void fn_1_25DB0(s16 index, HuVecF *position, float alpha);
@@ -183,7 +185,7 @@ float fn_1_1FC94(float start, float end, float time, float duration)
         return end;
     }
     return (float)(start + ((end - start) *
-        sin((3.141592653589793 * ((90.0f / duration) * time)) /
+        sin((M_PI * ((90.0f / duration) * time)) /
             180.0)));
 }
 
@@ -198,7 +200,7 @@ float fn_1_1FD7C(float start, float end, float time, float duration)
     }
     return (float)(start + ((end - start) *
         (1.0 - cos(
-            (3.141592653589793 * ((90.0f / duration) * time)) /
+            (M_PI * ((90.0f / duration) * time)) /
                 180.0))));
 }
 
@@ -209,7 +211,7 @@ float fn_1_1FE74(float start, float end, float time, float duration)
         return start;
     }
     return (float)(start + ((end - start) *
-        sin((3.141592653589793 * ((180.0f / duration) * time)) /
+        sin((M_PI * ((180.0f / duration) * time)) /
             180.0)));
 }
 
@@ -221,7 +223,7 @@ float fn_1_1FF48(float start, float end, float time, float duration)
         return start;
     }
     return (float)(start + ((end - start) *
-        sin((3.141592653589793 * ((360.0f / duration) * time)) /
+        sin((M_PI * ((360.0f / duration) * time)) /
             180.0)));
 }
 
@@ -594,7 +596,7 @@ void fn_1_216E8(void)
 /* Sets the first particle parameters when each optional value is positive or a color pointer is
  * supplied. */
 void fn_1_21714(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color)
+    float accelX, GXColor *color)
 {
     HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_14B0[index]];
     HU3D_PARTICLE *particle = model->hookData;
@@ -612,9 +614,9 @@ void fn_1_21714(s16 index, s16 parManId, HuVecF *velocity,
         data->accel.x = accelX;
     }
     if (color) {
-        data->color.r = color[0];
-        data->color.g = color[1];
-        data->color.b = color[2];
+        data->color.r = color->r;
+        data->color.g = color->g;
+        data->color.b = color->b;
         data->color.a = 0;
     }
     data->accel.y = 0.0f;
@@ -622,7 +624,7 @@ void fn_1_21714(s16 index, s16 parManId, HuVecF *velocity,
 
 /* Applies fn_1_21714 particle parameters and then sets the particle Y acceleration. */
 void fn_1_217EC(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color, float accelY)
+    float accelX, GXColor *color, float accelY)
 {
     HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_14B0[index]];
     HU3D_PARTICLE *particle = model->hookData;
@@ -635,7 +637,7 @@ void fn_1_217EC(s16 index, s16 parManId, HuVecF *velocity,
 /* Resets every particle for an effect slot, activates the first particle, applies its settings, and
  * shows the model. */
 void fn_1_21904(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color)
+    float accelX, GXColor *color)
 {
     HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_14B0[index]];
     HU3D_PARTICLE *particle = model->hookData;
@@ -1174,15 +1176,15 @@ void fn_1_23D38(s16 index, HuVecF *position, float verticalOffset)
 }
 
 /* Starts a stationary colored trail at a position and restores its model visibility. */
-void fn_1_23DA0(s16 index, u8 *color, const HuVecF *position)
+void fn_1_23DA0(s16 index, GXColor *color, const HuVecF *position)
 {
     MDRESULT_TRAIL_WORK *work = &lbl_1_bss_1320[index];
     s16 i;
 
     work->state = 1;
-    work->color.r = color[0];
-    work->color.g = color[1];
-    work->color.b = color[2];
+    work->color.r = color->r;
+    work->color.g = color->g;
+    work->color.b = color->b;
     work->color.a = 0;
     work->moving = 0;
     for (i = 0; i < work->pointCount; i++) {
@@ -1275,7 +1277,7 @@ void fn_1_2436C(s16 index, HuVecF *position)
 
 /* Initializes one particle in the selected effect with position, color, velocity, and lifetime
  * settings. */
-void fn_1_243DC(s16 index, const HuVecF *position, u8 *color,
+void fn_1_243DC(s16 index, const HuVecF *position, GXColor *color,
     float velocityY, float velocityZ, float accelX, s16 mode)
 {
     HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_131A];
@@ -1290,18 +1292,18 @@ void fn_1_243DC(s16 index, const HuVecF *position, u8 *color,
     data->pos.y = position->y;
     data->pos.z = position->z;
     data->scale = 0.0f;
-    data->color.r = color[0];
-    data->color.g = color[1];
-    data->color.b = color[2];
-    data->color.a = color[3];
+    data->color.r = color->r;
+    data->color.g = color->g;
+    data->color.b = color->b;
+    data->color.a = color->a;
     data->vel.x = 0.0f;
     data->vel.y = velocityY;
     data->vel.z = velocityZ;
-    data->speedDecay = color[0];
-    data->colorIdx = color[1];
-    data->scaleBase = color[2];
+    data->speedDecay = color->r;
+    data->colorIdx = color->g;
+    data->scaleBase = color->b;
     data->accel.x = accelX;
-    data->accel.y = color[3];
+    data->accel.y = color->a;
 }
 
 /* Particle callback for the result burst model; updates particles from their configured positions
@@ -1417,16 +1419,16 @@ void fn_1_24C58(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             data->accel.y = frandmod(60) + 60;
             data->accel.z = frandmod(360);
             data->scaleBase = -(frandmod(2) + 1);
-            data->zRot = 0.017453292f * data->accel.z;
+            data->zRot = MTXDegToRad(data->accel.z);
             if (i < 16) {
                 data->vel.z = frandmod(25) + 350;
             } else {
                 data->vel.z = frandmod(25) + 150;
             }
-            data->vel.x = (float)((-sin((3.141592653589793 *
+            data->vel.x = (float)((-sin((M_PI *
                 (57.29578f * data->zRot)) / 180.0) *
                 data->vel.z));
-            data->vel.y = (float)(cos((3.141592653589793 *
+            data->vel.y = (float)(cos((M_PI *
                 (57.29578f * data->zRot)) / 180.0) *
                 data->vel.z);
             data->scale = 0.4f * data->vel.z;
@@ -1444,11 +1446,11 @@ void fn_1_24C58(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 data->accel.y);
             data->color.a = 255.0f * alpha;
             data->accel.z += data->scaleBase;
-            data->zRot = 0.017453292f * data->accel.z;
-            data->vel.x = (float)((-sin((3.141592653589793 *
+            data->zRot = MTXDegToRad(data->accel.z);
+            data->vel.x = (float)((-sin((M_PI *
                 (57.29578f * data->zRot)) / 180.0) *
                 data->vel.z));
-            data->vel.y = (float)(cos((3.141592653589793 *
+            data->vel.y = (float)(cos((M_PI *
                 (57.29578f * data->zRot)) / 180.0) *
                 data->vel.z);
             data->pos.x = data->vel.x;
@@ -1566,7 +1568,7 @@ void fn_1_25DB0(s16 index, HuVecF *position, float alpha)
 /* For valid effect slots 0 through 8, initializes the first particle with the supplied optional
  * settings. */
 void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color)
+    float accelX, GXColor *color)
 {
     if (index < 0 || index > 8) {
         return;
@@ -1593,7 +1595,7 @@ void fn_1_25FF4(s16 index)
 /* For valid effect slots 0 through 8, initializes the effect using the alternate particle setup
  * routine. */
 void fn_1_26070(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color)
+    float accelX, GXColor *color)
 {
     if (index < 0 || index > 8) {
         return;
@@ -1694,7 +1696,7 @@ void fn_1_26478(s16 index, HuVecF *position, const GXColor *color)
 /* Initializes the main particle burst and five secondary particles with progressively lower alpha
  * values. */
 void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, u8 *color)
+    float accelX, GXColor *color)
 {
     u8 attrs[5][3] = {
         { 10, 255, 1 }, { 10, 255, 1 }, { 40, 128, 0 },
@@ -1707,7 +1709,7 @@ void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
     fn_1_21904(index, parManId, velocity, accelX, color);
     fn_1_23DA0(index, color, velocity);
     for (j = 0; j < 5; j++) {
-        color[3] = attrs[j][1];
+        color->a = attrs[j][1];
         fn_1_243DC(j + index * 5, velocity, color, 1.0f, -1.0f,
             attrs[j][0], attrs[j][2]);
     }

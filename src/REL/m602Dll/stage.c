@@ -650,7 +650,7 @@ s16 fn_1_34A4(s16 frameNo)
                 fn_80026A44(lbl_1_bss_2E, (1 << 0));
                 fn_8002D414(lbl_1_bss_2E, 0.0f);
                 fn_800269E8(lbl_1_bss_2E, ((1 << 30) | (1 << 0)));
-                HuAudFXPlay(1576);
+                HuAudFXPlay(MSM_SE_MG602_WINNER_STAGE_APPEAR);
                 fn_1_4C84();
                 lbl_1_bss_2C -= 1;
             }

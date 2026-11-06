@@ -10,17 +10,6 @@
 #include "msm_stream.h"
 #include "humath.h"
 
-
-#define M618_SOUND_PLAYER_FALL_1 1749 /* Fall cue for player 1. */
-#define M618_SOUND_PLAYER_FALL_2 1750 /* Fall cue for player 2. */
-#define M618_SOUND_PLAYER_FALL_3 1751 /* Fall cue for player 3. */
-#define M618_SOUND_PLAYER_FALL_4 1752 /* Fall cue for player 4. */
-#define M618_SOUND_PLAYER_SECTION_1 1753 /* Course-section cue for player 1. */
-#define M618_SOUND_PLAYER_SECTION_2 1754 /* Course-section cue for player 2. */
-#define M618_SOUND_PLAYER_SECTION_3 1755 /* Course-section cue for player 3. */
-#define M618_SOUND_PLAYER_SECTION_4 1756 /* Course-section cue for player 4. */
-
-
 int lbl_1_data_28[4] = { 1, 2, 4, 8 };
 unsigned int lbl_1_data_38[4] = { DATANUM(0x930000, 6), DATANUM(0x930000, 34),
                                   DATANUM(0x930000, 40), DATANUM(0x930000, 63) };
@@ -110,7 +99,7 @@ void fn_1_644(void)
     int player;
     float destX;
     if (lbl_1_bss_38 == -1) {
-        lbl_1_bss_38 = HuAudFXPlay(1758);
+        lbl_1_bss_38 = HuAudFXPlay(MSM_SE_MG618_COURSE_START);
     }
     for (player = 0; player < 4; player++) {
         destX = 160.0f + lbl_1_data_48[lbl_1_bss_114[player].stageSection].x;
@@ -488,13 +477,13 @@ void fn_1_214C(void)
                 ((s32) lbl_1_bss_44[playerIndex][3] == -1)) {
                 lbl_1_bss_44[playerIndex][3] = HuAudFXPlay(
                     playerIndex == 0
-                        ? M618_SOUND_PLAYER_FALL_1
-                        : (playerIndex == 1 ? M618_SOUND_PLAYER_FALL_2
-                                            : (playerIndex == 2 ? M618_SOUND_PLAYER_FALL_3
-                                                                : M618_SOUND_PLAYER_FALL_4)));
+                        ? MSM_SE_MG618_PLAYER_FALL_P1
+                        : (playerIndex == 1 ? MSM_SE_MG618_PLAYER_FALL_P2
+                                            : (playerIndex == 2 ? MSM_SE_MG618_PLAYER_FALL_P3
+                                                                : MSM_SE_MG618_PLAYER_FALL_P4)));
                 fn_80087158(lbl_1_bss_114[playerIndex].player, (1 << 0));
                 if (lbl_1_bss_114[playerIndex].fallState != 2) {
-                    CharFXPlay(lbl_80265728[playerIndex].charNo, 576);
+                    CharFXPlay(lbl_80265728[playerIndex].charNo, MSM_SE_CHARVOICE_HIT_YELP);
                 }
             }
             if (((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x407F) == 0) ||
@@ -661,10 +650,10 @@ void fn_1_3294(int playerNo)
                     ((s32) lbl_1_bss_44[playerNo][0] == -1)) {
                     lbl_1_bss_44[playerNo][0] = HuAudFXPlay(
                         playerNo == 0
-                            ? M618_SOUND_PLAYER_SECTION_1
-                            : (playerNo == 1 ? M618_SOUND_PLAYER_SECTION_2
-                                             : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
-                                                              : M618_SOUND_PLAYER_SECTION_4)));
+                            ? MSM_SE_MG618_SECTION_LIFT_P1
+                            : (playerNo == 1 ? MSM_SE_MG618_SECTION_LIFT_P2
+                                             : (playerNo == 2 ? MSM_SE_MG618_SECTION_LIFT_P3
+                                                              : MSM_SE_MG618_SECTION_LIFT_P4)));
                 }
                 fn_80080520(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
                 if (lbl_1_bss_114[playerNo].player->actor->pos.x >=
@@ -706,10 +695,10 @@ void fn_1_3294(int playerNo)
                 ((s32) lbl_1_bss_44[playerNo][1] == -1)) {
                 lbl_1_bss_44[playerNo][1] = HuAudFXPlay(
                     playerNo == 0
-                        ? M618_SOUND_PLAYER_SECTION_1
-                        : (playerNo == 1 ? M618_SOUND_PLAYER_SECTION_2
-                                         : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
-                                                          : M618_SOUND_PLAYER_SECTION_4)));
+                        ? MSM_SE_MG618_SECTION_LIFT_P1
+                        : (playerNo == 1 ? MSM_SE_MG618_SECTION_LIFT_P2
+                                         : (playerNo == 2 ? MSM_SE_MG618_SECTION_LIFT_P3
+                                                          : MSM_SE_MG618_SECTION_LIFT_P4)));
             }
             fn_80080520(lbl_1_bss_114[playerNo].player, 0, 0, 0, PAD_BUTTON_A);
             if (++lbl_1_bss_114[playerNo].actionFrames == 15) {
@@ -728,10 +717,10 @@ void fn_1_3294(int playerNo)
                     ((s32) lbl_1_bss_44[playerNo][2] == -1)) {
                     lbl_1_bss_44[playerNo][2] = HuAudFXPlay(
                         playerNo == 0
-                            ? M618_SOUND_PLAYER_SECTION_1
-                            : (playerNo == 1 ? M618_SOUND_PLAYER_SECTION_2
-                                             : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
-                                                              : M618_SOUND_PLAYER_SECTION_4)));
+                            ? MSM_SE_MG618_SECTION_LIFT_P1
+                            : (playerNo == 1 ? MSM_SE_MG618_SECTION_LIFT_P2
+                                             : (playerNo == 2 ? MSM_SE_MG618_SECTION_LIFT_P3
+                                                              : MSM_SE_MG618_SECTION_LIFT_P4)));
                 }
                 fn_80080520(lbl_1_bss_114[playerNo].player, -30, 0, 0, 0);
                 if (lbl_1_bss_114[playerNo].player->actor->pos.x <=
@@ -759,10 +748,10 @@ void fn_1_3294(int playerNo)
                 ((s32) lbl_1_bss_44[playerNo][0] == -1)) {
                 lbl_1_bss_44[playerNo][0] = HuAudFXPlay(
                     playerNo == 0
-                        ? M618_SOUND_PLAYER_SECTION_1
-                        : (playerNo == 1 ? M618_SOUND_PLAYER_SECTION_2
-                                         : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
-                                                          : M618_SOUND_PLAYER_SECTION_4)));
+                        ? MSM_SE_MG618_SECTION_LIFT_P1
+                        : (playerNo == 1 ? MSM_SE_MG618_SECTION_LIFT_P2
+                                         : (playerNo == 2 ? MSM_SE_MG618_SECTION_LIFT_P3
+                                                          : MSM_SE_MG618_SECTION_LIFT_P4)));
             }
             fn_80080520(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
             if (lbl_1_bss_114[playerNo].player->actor->pos.x >= endX) {
@@ -793,10 +782,10 @@ void fn_1_3294(int playerNo)
                     ((s32) lbl_1_bss_44[playerNo][1] == -1)) {
                     lbl_1_bss_44[playerNo][1] = HuAudFXPlay(
                         playerNo == 0
-                            ? M618_SOUND_PLAYER_SECTION_1
-                            : (playerNo == 1 ? M618_SOUND_PLAYER_SECTION_2
-                                             : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
-                                                              : M618_SOUND_PLAYER_SECTION_4)));
+                            ? MSM_SE_MG618_SECTION_LIFT_P1
+                            : (playerNo == 1 ? MSM_SE_MG618_SECTION_LIFT_P2
+                                             : (playerNo == 2 ? MSM_SE_MG618_SECTION_LIFT_P3
+                                                              : MSM_SE_MG618_SECTION_LIFT_P4)));
                 }
                 fn_80080520(lbl_1_bss_114[playerNo].player, 0, 0, 0, PAD_BUTTON_A);
                 if (lbl_1_bss_114[playerNo].actionFrames == 60) {
@@ -821,10 +810,10 @@ void fn_1_3294(int playerNo)
                     ((s32) lbl_1_bss_44[playerNo][2] == -1)) {
                     lbl_1_bss_44[playerNo][2] = HuAudFXPlay(
                         playerNo == 0
-                            ? M618_SOUND_PLAYER_SECTION_1
-                            : (playerNo == 1 ? M618_SOUND_PLAYER_SECTION_2
-                                             : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
-                                                              : M618_SOUND_PLAYER_SECTION_4)));
+                            ? MSM_SE_MG618_SECTION_LIFT_P1
+                            : (playerNo == 1 ? MSM_SE_MG618_SECTION_LIFT_P2
+                                             : (playerNo == 2 ? MSM_SE_MG618_SECTION_LIFT_P3
+                                                              : MSM_SE_MG618_SECTION_LIFT_P4)));
                 }
                 fn_80080520(lbl_1_bss_114[playerNo].player, -30, 0, 0, 0);
                 if (lbl_1_bss_114[playerNo].player->actor->pos.x <= endX) {

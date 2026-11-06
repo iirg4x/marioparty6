@@ -168,7 +168,7 @@ void fn_1_4738(void)
     sprintf(countText, "%05d", lbl_1_bss_8.boardRecord[board]);
     HuWinInsertMesSet(countWindow, (u32)countText, 0);
     HuWinMesSet(countWindow, MESSNUM(MESS_SAF_TEST, 22));
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
         HuWinPosSet(titleWindow, 288.0f - 200.0f * progress, 200.0f - 147.0f * progress);
@@ -195,7 +195,7 @@ void fn_1_4738(void)
             if (board >= 7) board = 0;
             if (delta < 0) HuSprBankSet(lbl_1_bss_5D4, 5, 1);
             else HuSprBankSet(lbl_1_bss_5D4, 6, 1);
-            HuAudFXPlay(1207);
+            HuAudFXPlay(MSM_SE_MENU_TAB_CHANGE);
             HuPrcSleep(3);
             if (board < 6) {
                 for (item = 19; item < 69; item++) {
@@ -270,11 +270,11 @@ void fn_1_4738(void)
             HuSprBankSet(lbl_1_bss_5D4, 5, 0);
             HuSprBankSet(lbl_1_bss_5D4, 6, 0);
         }
-        if (lbl_802C0008[0] & 0x200) { HuAudFXPlay(3); break; }
+        if (lbl_802C0008[0] & 0x200) { HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL); break; }
         HuPrcVSleep();
     }
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(1206);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
         scale = 1.0 - progress;
@@ -352,7 +352,7 @@ void fn_1_5620(void)
             1.0f);
     }
     HuSprScaleSet(lbl_1_bss_5D4, 2, 0.0f, 0.0f);
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -400,7 +400,7 @@ void fn_1_5620(void)
             repeatCount = 0;
         }
         if (delta != 0) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
             selected += delta;
             if (selected < 0 || selected >= 7) {
                 if (selected < 0) {
@@ -471,7 +471,7 @@ void fn_1_5620(void)
             fn_1_19B8(1);
         }
         if (lbl_802C0008[0] & 0x200) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             break;
         }
         HuPrcVSleep();
@@ -479,7 +479,7 @@ void fn_1_5620(void)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(1206);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -634,7 +634,7 @@ void fn_1_6898(void)
             1.0f);
     }
     HuSprScaleSet(lbl_1_bss_5D4, 2, 0.0f, 0.0f);
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -677,7 +677,7 @@ void fn_1_6898(void)
             }
         }
         if (delta != 0) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
             selected += delta;
             if (selected < 0 || selected >= 7) {
                 if (selected < 0) {
@@ -739,7 +739,7 @@ void fn_1_6898(void)
             }
         }
         if (lbl_802C0008[0] & 0x200) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             break;
         }
         HuPrcVSleep();
@@ -747,7 +747,7 @@ void fn_1_6898(void)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(1206);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -864,7 +864,7 @@ void fn_1_7A74(void)
     HuWinAttrSet(window, HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSpeedSet(window, 0);
     HuWinMesSet(window, MESSNUM(MESS_OPTION_MESS, 44));
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
 
     for (frame = 1; frame <= 10; frame++) {
         progress = frame / 10.0f;
@@ -916,7 +916,7 @@ void fn_1_7A74(void)
             horizontalDelta = verticalDelta = 0;
         }
         if (horizontalDelta != 0 || verticalDelta != 0) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
             rotation = 0.0f;
             fn_80026808(lbl_1_bss_66E[selectedRecord + 14],
                 0.0f, 0.0f, 0.0f);
@@ -931,7 +931,7 @@ void fn_1_7A74(void)
         if (lbl_802C0008[0] & 0x100) {
             record = &lbl_1_bss_8.decaRecord[selectedRecord];
             if (record->character != -1) {
-                HuAudFXPlay(1);
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
                 rotation = 0.0f;
                 fn_80026808(lbl_1_bss_66E[selectedRecord + 14],
                     0.0f, 0.0f, 0.0f);
@@ -958,11 +958,11 @@ void fn_1_7A74(void)
     HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 48));
                 HuWinDispOn(lbl_1_bss_6A0);
             } else {
-                HuAudFXPlay(4);
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_DENIED);
             }
         }
         if (lbl_802C0008[0] & 0x200) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             break;
         }
         rotation += rotationStep;
@@ -979,7 +979,7 @@ void fn_1_7A74(void)
     }
 
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(1206);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
     for (frame = 1; frame <= 10; frame++) {
         progress = 1.0f - frame / 10.0f;
         HuWinPosSet(window,
@@ -1203,7 +1203,7 @@ void fn_1_8CA4(s16 recordIndex)
     while ((lbl_802C0008[0] & 0x200) == 0) {
         HuPrcVSleep();
     }
-    HuAudFXPlay(3);
+    HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
     HuWinDispOff(lbl_1_bss_6A0);
     HuSprAttrSet(lbl_1_bss_5D4, selectedCharacter + 94, HUSPR_ATTR_DISPOFF);
     for (i = 0; i < 5; i++) {
@@ -1264,7 +1264,7 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
         HuSprScaleSet(lbl_1_bss_5D4, 3, 0.0f,
             0.0f);
     }
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -1366,7 +1366,7 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
             }
         }
         if (lbl_802C0008[0] & 0x200) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             break;
         }
         HuPrcVSleep();
@@ -1374,7 +1374,7 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(1206);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -1473,7 +1473,7 @@ void fn_1_9F74(void)
             1.0f);
     }
     HuSprScaleSet(lbl_1_bss_5D4, 2, 0.0f, 0.0f);
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -1507,7 +1507,7 @@ void fn_1_9F74(void)
         while (!(lbl_802C0008[0] & 0x200)) {
             HuPrcVSleep();
         }
-        HuAudFXPlay(3);
+        HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
     } else {
         selected = 0;
         fn_1_C3FC(selected + 2);
@@ -1529,7 +1529,7 @@ void fn_1_9F74(void)
                 repeatCount = 0;
             }
             if (delta != 0) {
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                 selected += delta;
                 if (selected < 0 || selected >= 5) {
                     if (selected < 0) {
@@ -1599,7 +1599,7 @@ void fn_1_9F74(void)
                 }
             }
             if (lbl_802C0008[0] & 0x200) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
                 break;
             }
             HuPrcVSleep();
@@ -1609,7 +1609,7 @@ void fn_1_9F74(void)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(1206);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -1740,7 +1740,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
         HuSprScaleSet(lbl_1_bss_5D4, 3, 0.0f,
             0.0f);
     }
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -1781,7 +1781,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
             if (typeIndex >= typeCount) {
                 typeIndex = 0;
             }
-            HuAudFXPlay(1207);
+            HuAudFXPlay(MSM_SE_MENU_TAB_CHANGE);
             if (delta < 0) {
                 HuSprBankSet(lbl_1_bss_5D4, 5, 1);
             } else {
@@ -1837,7 +1837,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
             repeatCount = 0;
         }
         if (delta != 0) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
             selected += delta;
             repeatCount++;
             if (repeatCount < 5) {
@@ -1910,7 +1910,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
             }
         }
         if (lbl_802C0008[0] & 0x200) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             break;
         }
         HuPrcVSleep();
@@ -1918,7 +1918,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(1206);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,

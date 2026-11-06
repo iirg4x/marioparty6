@@ -23,9 +23,8 @@ typedef struct M670Cpu_s {
 
 typedef struct M670Work_s {
     OMOBJMAN *objman; /* Object manager for the playfield and player callbacks. */
-    /* The round logic does not access these words; their role is unknown. */
-    int reservedWordA;
-    int reservedWordB;
+    int unk04; /* The game's code never reads this field. */
+    int unk08; /* The game's code never reads this field. */
     HU3D_MODELID cameraModel[3]; /* Camera models paired with the three camera motions. */
     HU3D_MOTIONID cameraMotion[3]; /* Opening, solo-player, and group camera motions. */
     HU3D_MODELID models[3]; /* Shared scene models, including the solo result platform. */
@@ -35,8 +34,7 @@ typedef struct M670Work_s {
     HuVecF pillarPos[24]; /* World-space base position of each pillar. */
     int collisionCount; /* Number of collision models registered with the playfield. */
     HU3D_MODELID collisionModels[24]; /* Collision models passed to the playfield collision map. */
-    /* The round logic does not access this halfword; its role is unknown. */
-    s16 reservedHalfword;
+    s16 unk294; /* The game's code never reads this field. */
     HU3D_MODELID positionModel; /* Model whose named points define pillar and spawn positions. */
     HU3D_MODELID winnerModel; /* Model containing named positions for the winners. */
     s16 characterNo[4]; /* Character IDs for the four player slots. */

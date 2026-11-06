@@ -451,7 +451,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             lbl_1_bss_2E8 = 0.0f;
             lbl_1_bss_14 = 0;
             lbl_1_bss_4AC.state = 1;
-            HuAudFXPlay(1701);
+            HuAudFXPlay(MSM_SE_MG612_PATH_DEMO_LOOP);
             return;
         case 1:
             lbl_1_bss_2EC = 0.016666668f * (f32) lbl_1_bss_14;
@@ -476,7 +476,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             break;
         case 3:
             if ((s32) (lbl_1_bss_14 % 120) == 0) {
-                HuAudFXPlay(1701);
+                HuAudFXPlay(MSM_SE_MG612_PATH_DEMO_LOOP);
             }
             lbl_1_bss_14 += 1;
             if (lbl_1_bss_308 == 6) {
@@ -1005,7 +1005,7 @@ void fn_1_2CEC(s32 player)
                     fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][4], 0.0f,
                                        10.0f, 0U);
                     lbl_1_bss_42C[player] = 4;
-                    HuAudFXPlay(1698);
+                    HuAudFXPlay(MSM_SE_MG612_PLAYER_TILE_STEP);
                     lbl_1_bss_1C = 1;
                 } else {
                     fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][5], 0.0f,
@@ -1069,7 +1069,7 @@ void fn_1_2CEC(s32 player)
         fallPos.y = -(800.0f * fallTime);
         fn_80026790((s16) lbl_1_bss_48C[player], &fallPos);
         if (lbl_1_bss_3EC[player] == 0 && lbl_1_bss_1C == 1) {
-            HuAudFXPlay(1700);
+            HuAudFXPlay(MSM_SE_MG612_PLAYER_TILE_FALL);
         }
         lbl_1_bss_3EC[player]++;
         if (lbl_1_bss_3EC[player] == 30) {
@@ -1612,7 +1612,7 @@ void fn_1_54D4(OMOBJ *obj)
             if ((s32) lbl_1_bss_37C[playerIndex] == 30) {
                 lbl_1_bss_37C[playerIndex] = 0;
                 lbl_1_bss_36C[playerIndex] = 5;
-                HuAudFXPlay(1699);
+                HuAudFXPlay(MSM_SE_MG612_PATH_MARKER_LAND);
             } else {
                 lbl_1_bss_37C[playerIndex]++;
             }
@@ -1705,7 +1705,8 @@ void fn_1_5924(OMOBJ *obj)
                 *lbl_1_bss_3BC = (column << 4) | (row & 0xF);
             }
             lbl_1_bss_2F0 += 1;
-            HuAudFXPlayVolPan(1702, (s16) (32.0f + (11.142858f * (f32) row)),
+            HuAudFXPlayVolPan(MSM_SE_MG612_PATH_TILE_REVEAL,
+                              (s16) (32.0f + (11.142858f * (f32) row)),
                               (s16) (48.0f + (4.571429f * (f32) column)));
             return;
         case 4:

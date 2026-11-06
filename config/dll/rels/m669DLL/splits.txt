@@ -5,3 +5,23 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m669DLL/startup.c:
+	.text       start:0x00000000 end:0x00001E94
+	.rodata     start:0x00000000 end:0x00000068
+	.data       start:0x00000000 end:0x00000058
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m669DLL/collision.c:
+	.text       start:0x00001E94 end:0x00004F88
+	.rodata     start:0x00000068 end:0x00000090
+
+REL/m669DLL/game.c:
+	.text       start:0x00004F88 end:0x00014990
+	.rodata     start:0x00000090 end:0x00000668
+	.data       start:0x00000058 end:0x00000180
+	.bss        start:0x00000008 end:0x000000D0
+
+REL/m669DLL/runtime.c:
+	.text       start:0x00014990 end:0x000153D4
+	.rodata     start:0x00000668 end:0x00000680

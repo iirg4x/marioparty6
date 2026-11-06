@@ -847,7 +847,7 @@ void fn_1_C484(void)
     }
     fn_1_E538(0);
     HuAudSStreamAllFadeOut(500);
-    HuAudFXPlay(1205);
+    HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
     for (frame = 1; frame <= 10; frame++) {
         progress = (float)frame / 10.0f;
         HuWinPosSet(mainWindow, 288.0f - (200.0f * progress),
@@ -885,7 +885,7 @@ void fn_1_C484(void)
         }
         /* Tab selection wraps around and resets the cursor to the first audio entry. */
         if (currentGroup != previousGroup) {
-            HuAudFXPlay(1207);
+            HuAudFXPlay(MSM_SE_MENU_TAB_CHANGE);
             if (currentGroup < previousGroup) {
                 HuSprBankSet(lbl_1_bss_5D4, 5, 1);
             } else {
@@ -961,7 +961,7 @@ void fn_1_C484(void)
         }
         /* Vertical moves shift the visible page when the cursor crosses either edge. */
         if (columnDelta != 0 || rowDelta != 0) {
-        HuAudFXPlay(0);
+        HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
             selectedCell = columnDelta + (rowDelta * 2) + selectedCell;
             if (rowDelta != 0) {
                 upperArrowScale = fn_1_F684(lbl_1_bss_5D4, 2);
@@ -1052,7 +1052,7 @@ void fn_1_C484(void)
             HuPrcVSleep();
             continue;
         }
-        HuAudFXPlay(1206);
+        HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
         HuWinDispOff(lbl_1_bss_6A0);
         HuAudSStreamAllFadeOut(150);
         for (frame = 1; frame <= 10; frame++) {

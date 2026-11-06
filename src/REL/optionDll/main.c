@@ -389,7 +389,7 @@ void fn_1_804(void)
     HuWinExOpen(lbl_1_bss_6A2[0]);
     HuWinDispOff(lbl_1_bss_6A0);
     HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 0));
-    HuAudFXPlay(941);
+    HuAudFXPlay(MSM_SE_GUIDE_NIGHT_HAPPY);
     fn_1_19B8(1);
     HuWinMesWait(lbl_1_bss_6A2[0]);
     fn_1_19B8(2);
@@ -508,7 +508,7 @@ void fn_1_804(void)
                 lbl_1_bss_8.soundMode = soundMode;
                 lbl_80265E30.outputMode = soundMode;
                 msmSysSetOutputMode(lbl_80265E30.outputMode);
-                HuAudFXPlay(39);
+                HuAudFXPlay(MSM_SE_CMN_OPTION_SOUND_MODE_CHANGE);
                 HuWinMesSet(lbl_1_bss_6A2[0], (s32)MESSNUM(MESS_OPTION_MESS, 16) + soundMode);
                 fn_1_19B8(1);
                 HuWinMesWait(lbl_1_bss_6A2[0]);
@@ -889,7 +889,7 @@ s16 fn_1_1DF0(s16 selectedOption)
     HuSprPosSet(lbl_1_bss_5D4, 1, position.x, position.y);
     HuSprScaleSet(lbl_1_bss_5D4, 1, 0.0f, 0.0f);
     HuWinMesSet(lbl_1_bss_6A2[0], (u32)lbl_1_data_390);
-    HuAudFXPlay(52);
+    HuAudFXPlay(MSM_SE_CMN_MODEL_POP_IN);
     for (frame = 1; frame <= 10; frame++) {
         progress = (float)frame / 10.0f;
         scale = 1.2f * sin(M_PI * (90.0 * progress) / 180.0);
@@ -904,7 +904,7 @@ s16 fn_1_1DF0(s16 selectedOption)
 
     if (selectedOption == -1) {
         HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 1));
-        HuAudFXPlay(942);
+        HuAudFXPlay(MSM_SE_GUIDE_NIGHT_INTRO);
         fn_1_19B8(1);
         HuWinMesWait(lbl_1_bss_6A2[0]);
         selectedOption = 0;
@@ -962,7 +962,7 @@ s16 fn_1_1DF0(s16 selectedOption)
                 if (selectedOption >= 7) {
                     selectedOption = 0;
                 }
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                 position = screenPositions[previousOption];
                 Hu3D2Dto3D(&position, 2, &worldPosition);
                 fn_80026790(lbl_1_bss_66E[previousOption + 7], &worldPosition);
@@ -994,13 +994,13 @@ s16 fn_1_1DF0(s16 selectedOption)
             }
 
             if (lbl_802C0008[0] & PAD_BUTTON_A) {
-                HuAudFXPlay(1);
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
                 break;
             }
             if ((lbl_802C0008[0] & PAD_BUTTON_B) || (lbl_802C0008[0] & PAD_BUTTON_X)) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
                 HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 50));
-                HuAudFXPlay(941);
+                HuAudFXPlay(MSM_SE_GUIDE_NIGHT_HAPPY);
                 HuWinMesWait(lbl_1_bss_6A2[0]);
                 HuWinChoiceSet(lbl_1_bss_6A2[0], -1);
                 while (optionWindow->stat != 0) {
@@ -1038,7 +1038,7 @@ s16 fn_1_1DF0(s16 selectedOption)
 
     HuWinMesSet(lbl_1_bss_6A2[0], (u32)lbl_1_data_390);
     rotationSum = 0.0f;
-    HuAudFXPlay(53);
+    HuAudFXPlay(MSM_SE_CMN_MODEL_POP_OUT);
     for (frame = 1; frame <= 10; frame++) {
         progress = (float)frame / 10.0f;
         for (index = 0; index < 7; index++) {
@@ -1142,7 +1142,7 @@ s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages)
             if (selectedIndex >= selection->choiceCount) {
                 selectedIndex = 0;
             }
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
             for (frame = 1; frame <= 10; frame++) {
                 progress = (float)frame / 10.0f;
                 fn_80026808(modelId, 0.0f,
@@ -1170,11 +1170,11 @@ s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages)
             previousChoiceIndex = selectedIndex;
         }
         if (lbl_802C0008[0] & PAD_BUTTON_A) {
-            HuAudFXPlay(2);
+            HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
             break;
         }
         if (lbl_802C0008[0] & PAD_BUTTON_B) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             selectedIndex = -1;
             break;
         }

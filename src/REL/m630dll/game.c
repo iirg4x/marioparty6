@@ -38,13 +38,6 @@ void fn_1_7204(int player);
 
 /* Audio IDs and data numbers used for Stage Fright's sounds, models, and motions. */
 
-
-#define M630_SFX_ROW_1_MOVE 1834
-#define M630_SFX_ROW_2_MOVE 1835
-#define M630_SFX_ROW_3_MOVE 1836
-#define M630_SFX_ROW_1_LAUNCH 1832
-#define M630_SFX_ROW_2_LAUNCH 1837
-#define M630_SFX_ROW_3_LAUNCH 1838
 #define M630_DATA_STAGE_MODEL_FIRST DATANUM(0x590000, 0)
 #define M630_DATA_STAGE_MODEL DATANUM(0x590000, 2)
 #define M630_DATA_STAGE_SHADOW_MODEL DATANUM(0x590000, 3)
@@ -704,8 +697,8 @@ void fn_1_3464(int player)
     }
     if (lbl_1_bss_C[row] == -1) {
         lbl_1_bss_C[row] =
-            HuAudFXPlay(row == 0 ? M630_SFX_ROW_1_MOVE
-                                 : (row == 1 ? M630_SFX_ROW_2_MOVE : M630_SFX_ROW_3_MOVE));
+            HuAudFXPlay(row == 0 ? MSM_SE_MG630_ROW_1_MOVE
+                                 : (row == 1 ? MSM_SE_MG630_ROW_2_MOVE : MSM_SE_MG630_ROW_3_MOVE));
     }
     if (row == 0) {
         if (lbl_1_bss_6FC[row].direction == 0) {
@@ -775,8 +768,8 @@ int fn_1_3B2C(int player, float targetX)
     row = player - 1;
     if (lbl_1_bss_C[row] == -1) {
         lbl_1_bss_C[row] =
-            HuAudFXPlay(row == 0 ? M630_SFX_ROW_1_MOVE
-                                 : (row == 1 ? M630_SFX_ROW_2_MOVE : M630_SFX_ROW_3_MOVE));
+            HuAudFXPlay(row == 0 ? MSM_SE_MG630_ROW_1_MOVE
+                                 : (row == 1 ? MSM_SE_MG630_ROW_2_MOVE : MSM_SE_MG630_ROW_3_MOVE));
     }
     if (row == 0) {
         if (lbl_1_bss_6FC[row].direction == 0) {
@@ -908,14 +901,15 @@ void fn_1_43E8(int player)
         if (lbl_1_bss_1D4[row].itemState[i] == 2 && lbl_1_bss_1D4[row].phaseState == 4) {
             lbl_1_bss_1D4[row].itemState[i] = 1;
             fn_80026A44(lbl_1_bss_1D4[row].model[i], 1);
-            HuAudFXPlay(row == 0 ? M630_SFX_ROW_1_LAUNCH
-                                 : (row == 1 ? M630_SFX_ROW_2_LAUNCH : M630_SFX_ROW_3_LAUNCH));
+            HuAudFXPlay(row == 0
+                            ? MSM_SE_MG630_ROW_1_LAUNCH
+                            : (row == 1 ? MSM_SE_MG630_ROW_2_LAUNCH : MSM_SE_MG630_ROW_3_LAUNCH));
         }
         if (lbl_1_bss_1D4[row].itemState[i] == 1) {
             lbl_1_bss_1D4[row].pos[i].z -= 40.0f;
             if (lbl_1_bss_1D4[row].pos[i].z < lbl_1_bss_754[0].pos.z - 210.0f) {
                 lbl_1_bss_1D4[row].itemState[i] = -2;
-                fn_1_7724(1833, lbl_1_bss_1D4[row].model[i], 1);
+                fn_1_7724(MSM_SE_MG630_ITEM_VANISH, lbl_1_bss_1D4[row].model[i], 1);
             }
         } else if (lbl_1_bss_1D4[row].itemState[i] < 0) {
             if (lbl_1_bss_1D4[row].transparency[i] == 1.0f) {
@@ -980,7 +974,7 @@ int fn_1_4CD4(int player)
                 PSVECSubtract(&itemPos, &playerPos, &delta);
                 distance = PSVECMag(&delta);
                 if (distance < 65.2f) {
-                    fn_1_7724(1833, lbl_1_bss_754[player].modelId, 1);
+                    fn_1_7724(MSM_SE_MG630_ITEM_VANISH, lbl_1_bss_754[player].modelId, 1);
                     lbl_1_bss_1D4[i].itemState[j] = -1;
                     lbl_1_bss_1D4[i].playerIndex[j] = player;
                     if (lbl_1_bss_754[player].hitState == 0) {

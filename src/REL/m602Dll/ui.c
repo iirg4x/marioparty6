@@ -169,7 +169,7 @@ void fn_1_A648(s16 frameNo)
         if ((lbl_1_rodata_1AC[player] <= frameNo) && (frameNo < lbl_1_rodata_1AC[player + 1])) {
             highlightOn = 1;
             if (frameNo == lbl_1_rodata_1AC[player]) {
-                HuAudFXPlay(1569);
+                HuAudFXPlay(MSM_SE_MG602_INTRO_PLAYER_POSE);
             }
         } else {
             highlightOn = 0;

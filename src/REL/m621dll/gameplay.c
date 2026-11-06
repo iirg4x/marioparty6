@@ -167,7 +167,7 @@ void fn_1_70C(OMOBJ *obj)
     M621Round *round = obj->data;
 
     if (fn_80071A8C() == 2) {
-        round->sound = fn_1_594(64, 1778);
+        round->sound = fn_1_594(64, MSM_SE_MG621_ROUND_START);
         round->timer = 0;
         fn_1_140(obj, fn_1_778);
         return;
@@ -918,7 +918,7 @@ void fn_1_2A54(M621Player *player, M621Target *target)
         part->timer = 0;
         part->state = 3;
         fn_80086BC8(part->actor, &pos);
-        fn_1_420(&pos, 1776);
+        fn_1_420(&pos, MSM_SE_MG621_STACK_PART_KNOCKED);
         pos.y += 75.0f;
         pos.z += 80.0f;
         fn_1_51F4(player->playerNo, &pos);
@@ -967,7 +967,7 @@ void fn_1_2C6C(M621Player *player, M621Target *target, s16 partIndex)
         part->timer = 0;
         part->state = 3;
         fn_80086BC8(part->actor, &pos);
-        fn_1_420(&pos, 1776);
+        fn_1_420(&pos, MSM_SE_MG621_STACK_PART_KNOCKED);
         pos.y += 50.0f;
         pos.z += 55.0f;
         fn_1_51F4(player->playerNo, &pos);
@@ -1236,11 +1236,11 @@ void fn_1_390C(OMOBJ *obj)
             }
             target->firstStackF = 0;
             if (lbl_1_data_37E) {
-                fn_1_594(64, 1775);
+                fn_1_594(64, MSM_SE_MG621_STACK_APPEAR);
                 lbl_1_data_37E = 0;
             }
         } else {
-            fn_1_420(&target->position, 1775);
+            fn_1_420(&target->position, MSM_SE_MG621_STACK_APPEAR);
         }
         fn_1_140(obj, fn_1_3A78);
         return;
@@ -1469,7 +1469,7 @@ void fn_1_3E18(OMOBJ *obj)
             part->timer--;
             if (part->timer <= 0) {
                 fn_80086BC8(part->actor, &pos);
-                fn_1_420(&pos, 1776);
+                fn_1_420(&pos, MSM_SE_MG621_STACK_PART_KNOCKED);
                 pos.y += 50.0f;
                 pos.z += 55.0f;
                 fn_1_51F4(part->effectPlayerNo, &pos);
@@ -1534,7 +1534,7 @@ void fn_1_47B4(OMOBJ *obj)
     if (target->timer >= 30) {
         target->timer = 0;
         if (lbl_1_data_380) {
-            fn_1_594(64, 1777);
+            fn_1_594(64, MSM_SE_MG621_STACK_COLLAPSE);
             lbl_1_data_380 = 0;
         }
         fn_1_140(obj, fn_1_4CB0);

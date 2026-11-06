@@ -270,7 +270,7 @@ void fn_1_4AAC(void)
     s16 effectModelIndex;
 
     if ((lbl_1_bss_234 != 0) && (lbl_1_bss_234 == 147)) {
-        HuAudFXPlay(1574);
+        HuAudFXPlay(MSM_SE_MG602_CORRECT_CARD_EFFECT);
         effectModelIndex = 0;
         while (effectModelIndex < 3) {
             fn_80026A44(lbl_1_bss_236[effectModelIndex], (1 << 0));
@@ -301,5 +301,5 @@ void fn_1_4C84(void)
 {
     Hu3DParManTimeLimitSet(lbl_1_bss_232, 480);
     Hu3DParManAttrReset(lbl_1_bss_232, (1 << 0));
-    HuAudFXPlay(1577);
+    HuAudFXPlay(MSM_SE_MG602_WINNER_STAGE_PARTICLES);
 }

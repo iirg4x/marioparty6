@@ -537,7 +537,7 @@ void fn_1_4E80(void)
 
                 pan = (lbl_1_bss_1D8[index].position.x - -600.0f) / pan;
                 pan = 32.0f + (64.0f * pan);
-                HuAudFXPanning(HuAudFXPlay(1801), (s16) pan);
+                HuAudFXPanning(HuAudFXPlay(MSM_SE_MG625_PLAYER_SURFACE), (s16) pan);
             }
             lbl_1_data_36C[index] = 0;
         } else if (lbl_1_bss_1D8[index].status == 1) {
@@ -840,7 +840,7 @@ void fn_1_6CE0(s16 playerIndex)
             motionTime = 1200.0f;
             motionTime = (lbl_1_bss_1D8[playerIndex].position.x - -600.0f) / motionTime;
             motionTime = 32.0f + 64.0f * motionTime;
-            HuAudFXPanning(HuAudFXPlay(1796), motionTime);
+            HuAudFXPanning(HuAudFXPlay(MSM_SE_MG625_PLAYER_DIVE), motionTime);
             return;
         }
 
@@ -1131,7 +1131,7 @@ void fn_1_860C(s16 playerIndex)
                 motionTime = 1200.0f;
                 motionTime = (lbl_1_bss_1D8[playerIndex].position.x - -600.0f) / motionTime;
                 motionTime = 32.0f + 64.0f * motionTime;
-            HuAudFXPanning(HuAudFXPlay(1800), motionTime);
+            HuAudFXPanning(HuAudFXPlay(MSM_SE_MG625_PLAYER_SPLASH), motionTime);
             }
         } else {
             lbl_1_bss_1D8[playerIndex].targetRotation.x = 90.0f;
@@ -1144,7 +1144,7 @@ void fn_1_860C(s16 playerIndex)
                 motionTime = 1200.0f;
                 motionTime = (lbl_1_bss_1D8[playerIndex].position.x - -600.0f) / motionTime;
                 motionTime = 32.0f + 64.0f * motionTime;
-            HuAudFXPanning(HuAudFXPlay(1800), motionTime);
+            HuAudFXPanning(HuAudFXPlay(MSM_SE_MG625_PLAYER_SPLASH), motionTime);
             }
         }
         break;

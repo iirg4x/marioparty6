@@ -672,9 +672,9 @@ void fn_1_3738(s16 team, s16 value)
         }
         if (value > 9) {
             if (team == 0) {
-                HuAudFXPlay(M635_SFX_RACE_TEAM_0);
+                HuAudFXPlay(MSM_SE_MG635_RACE_FINAL_STEP_TEAM_0);
             } else {
-                HuAudFXPlay(M635_SFX_RACE_TEAM_1);
+                HuAudFXPlay(MSM_SE_MG635_RACE_FINAL_STEP_TEAM_1);
             }
         }
     }
@@ -741,9 +741,9 @@ void fn_1_3C34(void)
                     model->time = lbl_1_data_1A8[step - 1][0];
                     fn_8002D414(model->model, model->time);
                     if (team == 0) {
-                        HuAudFXPlay(M635_SFX_SCORE_TEAM_0);
+                        HuAudFXPlay(MSM_SE_MG635_SCORE_STEP_TEAM_0);
                     } else {
-                        HuAudFXPlay(M635_SFX_SCORE_TEAM_1);
+                        HuAudFXPlay(MSM_SE_MG635_SCORE_STEP_TEAM_1);
                     }
                 }
                 fn_8002D86C(model->model, 1.0f);
@@ -755,9 +755,9 @@ void fn_1_3C34(void)
                 fn_8002D86C(lbl_1_bss_4.team[team].lateStageModel, 1.0f);
             } else if (model->time == 710) {
                 if (team == 0) {
-                    HuAudFXPlay(M635_SFX_TEAM_0_STAGE_CUE);
+                    HuAudFXPlay(MSM_SE_MG635_LATE_STAGE_TEAM_0);
                 } else {
-                    HuAudFXPlay(M635_SFX_TEAM_1_STAGE_CUE);
+                    HuAudFXPlay(MSM_SE_MG635_LATE_STAGE_TEAM_1);
                 }
             }
             model = &work->memberOneScoreModel;

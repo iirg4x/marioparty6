@@ -226,7 +226,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                 fn_1_22BC(playerNo, 10, 0);
                 fn_8006A030(playerNo, 10, 7, 3);
                 fn_1_215C(playerNo, 12);
-                HuAudFXPlay(1741);
+                HuAudFXPlay(MSM_SE_MG616_CHOICE_CHANGE);
             }
             lbl_1_bss_10.choices[playerNo] = choiceId;
             playerMotion = lbl_1_bss_10.characterMotions[playerNo][10];
@@ -294,7 +294,8 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                     if (hasUniqueChoice[playerNo] == 1) {
                         lbl_1_bss_10.scores[playerNo]++;
                         fn_1_22BC(playerNo, 7, 0);
-                        CharFXPlay(lbl_1_bss_10.characterNos[playerNo], 579);
+                        CharFXPlay(lbl_1_bss_10.characterNos[playerNo],
+                                   MSM_SE_CHARVOICE_HAPPY_CHEER);
                         fn_1_2104(playerNo, lbl_1_bss_10.scores[playerNo]);
                         switch (lbl_1_bss_10.choices[playerNo]) {
                         case 1:
@@ -315,8 +316,8 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                     }
                 }
                 fn_1_2254(0);
-                HuAudFXPlay(1742);
-                HuAudFXPlay(1743);
+                HuAudFXPlay(MSM_SE_MG616_RESULT_REVEAL_1);
+                HuAudFXPlay(MSM_SE_MG616_RESULT_REVEAL_2);
                 lbl_1_bss_10.sequenceState = 5;
                 lbl_1_bss_10.sequenceFrame = 0;
             } else {
@@ -347,8 +348,8 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                 }
             }
             if (playerNo == 4) {
-                HuAudFXPlay(1745);
-                HuAudFXPlay(1744);
+                HuAudFXPlay(MSM_SE_MG616_MOTIONS_DONE_1);
+                HuAudFXPlay(MSM_SE_MG616_MOTIONS_DONE_2);
                 for (playerNo = 0; playerNo < 4; playerNo++) {
                     if (lbl_1_bss_10.scores[playerNo] == 3) {
                         break;
@@ -424,8 +425,8 @@ void fn_1_F78(s16 mode, s16 frameNo)
             }
             if (resultMotion != -1) {
                 fn_1_2254(resultMotion);
-                HuAudFXPlay(1742);
-                HuAudFXPlay(1743);
+                HuAudFXPlay(MSM_SE_MG616_RESULT_REVEAL_1);
+                HuAudFXPlay(MSM_SE_MG616_RESULT_REVEAL_2);
             }
             winnerSeatMask = 0;
             {
@@ -450,8 +451,8 @@ void fn_1_F78(s16 mode, s16 frameNo)
             }
         }
         if (playerNo == 4) {
-            HuAudFXPlay(1745);
-            HuAudFXPlay(1744);
+            HuAudFXPlay(MSM_SE_MG616_MOTIONS_DONE_1);
+            HuAudFXPlay(MSM_SE_MG616_MOTIONS_DONE_2);
             fn_80071A9C();
         }
     }

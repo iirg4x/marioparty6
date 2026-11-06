@@ -3,26 +3,6 @@
 #include "REL/m640/m640.h"
 #include "REL/m640dll.h"
 
-
-
-
-#define M640_PLAYER_MISS_SFX_0 1928
-#define M640_PLAYER_MISS_SFX_1 1929
-#define M640_PLAYER_MISS_SFX_2 1930
-#define M640_PLAYER_MISS_SFX_3 1931
-#define M640_PLAYER_SPIN_SFX_0 1932
-#define M640_PLAYER_SPIN_SFX_1 1933
-#define M640_PLAYER_SPIN_SFX_2 1934
-#define M640_PLAYER_SPIN_SFX_3 1935
-#define M640_PLAYER_SELECT_SFX_0 1920
-#define M640_PLAYER_SELECT_SFX_1 1921
-#define M640_PLAYER_SELECT_SFX_2 1922
-#define M640_PLAYER_SELECT_SFX_3 1923
-#define M640_PLAYER_HIT_SFX_0 1924
-#define M640_PLAYER_HIT_SFX_1 1925
-#define M640_PLAYER_HIT_SFX_2 1926
-#define M640_PLAYER_HIT_SFX_3 1927
-
 void fn_1_A0(void);
 void fn_1_86C(void);
 void fn_1_8D4(void);
@@ -520,7 +500,7 @@ s32 fn_1_1C48(s32 frame)
         }
     }
     if ((s16)frame == 40) {
-        HuAudFXPlay(1917);
+        HuAudFXPlay(MSM_SE_MG640_RESULT_CELEBRATION_START);
         if ((s16)(team->bucketPieces[0] / 4) == (s16)(team->bucketPieces[1] / 4)
             && (s16)(team->bucketPieces[0] / 4) == (s16)(team->bucketPieces[2] / 4)
             && (s16)(team->bucketPieces[0] / 4) == (s16)(team->bucketPieces[3] / 4)) {
@@ -815,8 +795,8 @@ void fn_1_355C(void)
             player->turnLoopSoundHandle = -1;
         }
         if (player->selectionSoundHandle != -1) {
-            s16 missSoundByPlayer[] = { M640_PLAYER_MISS_SFX_0, M640_PLAYER_MISS_SFX_1,
-                                        M640_PLAYER_MISS_SFX_2, M640_PLAYER_MISS_SFX_3 };
+            s16 missSoundByPlayer[] = { MSM_SE_MG640_PLAYER_MISS_P1, MSM_SE_MG640_PLAYER_MISS_P2,
+                                        MSM_SE_MG640_PLAYER_MISS_P3, MSM_SE_MG640_PLAYER_MISS_P4 };
             HuAudFXPlay(missSoundByPlayer[player->slot + player->side * 2]);
             player->selectionSoundHandle = -1;
         }
@@ -904,14 +884,16 @@ void fn_1_3C24(s16 side, s16 slot)
     switch (player->state) {
     case 1:
         {
-        s16 spinSoundByPlayer[] = { M640_PLAYER_SPIN_SFX_0, M640_PLAYER_SPIN_SFX_1,
-                                    M640_PLAYER_SPIN_SFX_2, M640_PLAYER_SPIN_SFX_3 };
+        s16 spinSoundByPlayer[] = { MSM_SE_MG640_PLAYER_SPIN_P1, MSM_SE_MG640_PLAYER_SPIN_P2,
+                                    MSM_SE_MG640_PLAYER_SPIN_P3, MSM_SE_MG640_PLAYER_SPIN_P4 };
         player->turnLoopSoundHandle = HuAudFXPlay(spinSoundByPlayer[slot + side * 2]);
         }
         player->state = 2;
         {
-            s16 selectionSoundByPlayer[] = { M640_PLAYER_SELECT_SFX_0, M640_PLAYER_SELECT_SFX_1,
-                                             M640_PLAYER_SELECT_SFX_2, M640_PLAYER_SELECT_SFX_3 };
+            s16 selectionSoundByPlayer[] = { MSM_SE_MG640_PLAYER_SELECT_P1,
+                                             MSM_SE_MG640_PLAYER_SELECT_P2,
+                                             MSM_SE_MG640_PLAYER_SELECT_P3,
+                                             MSM_SE_MG640_PLAYER_SELECT_P4 };
             player->selectionSoundHandle = HuAudFXPlay(selectionSoundByPlayer[slot + side * 2]);
         }
         fn_8002D414(player->turnActionModel, 0.0f);
@@ -975,16 +957,20 @@ void fn_1_3C24(s16 side, s16 slot)
             if (player->selectedBucket == lbl_1_bss_4FC[side].nextBucket) {
                 fn_1_4FFC(side, player->selectedBucket);
                 {
-                    s16 hitSoundByPlayer[] = { M640_PLAYER_HIT_SFX_0, M640_PLAYER_HIT_SFX_1,
-                                               M640_PLAYER_HIT_SFX_2, M640_PLAYER_HIT_SFX_3 };
+                    s16 hitSoundByPlayer[] = { MSM_SE_MG640_PLAYER_HIT_P1,
+                                               MSM_SE_MG640_PLAYER_HIT_P2,
+                                               MSM_SE_MG640_PLAYER_HIT_P3,
+                                               MSM_SE_MG640_PLAYER_HIT_P4 };
                     HuAudFXPlay(hitSoundByPlayer[slot + side * 2]);
                 }
                 player->selectionSoundHandle = -1;
             } else {
                 fn_1_4DDC(side, player->selectedBucket);
                 {
-                    s16 missSoundByPlayer[] = { M640_PLAYER_MISS_SFX_0, M640_PLAYER_MISS_SFX_1,
-                                                M640_PLAYER_MISS_SFX_2, M640_PLAYER_MISS_SFX_3 };
+                    s16 missSoundByPlayer[] = { MSM_SE_MG640_PLAYER_MISS_P1,
+                                                MSM_SE_MG640_PLAYER_MISS_P2,
+                                                MSM_SE_MG640_PLAYER_MISS_P3,
+                                                MSM_SE_MG640_PLAYER_MISS_P4 };
                     HuAudFXPlay(missSoundByPlayer[slot + side * 2]);
                 }
                 player->selectionSoundHandle = -1;
@@ -996,8 +982,8 @@ void fn_1_3C24(s16 side, s16 slot)
             fn_1_26B8(player->playerNo, 0);
         }
         if (fn_8002D4E0(player->turnActionModel) >= 109.0f) {
-            s16 spinSoundByPlayer[] = { M640_PLAYER_SPIN_SFX_0, M640_PLAYER_SPIN_SFX_1,
-                                        M640_PLAYER_SPIN_SFX_2, M640_PLAYER_SPIN_SFX_3 };
+            s16 spinSoundByPlayer[] = { MSM_SE_MG640_PLAYER_SPIN_P1, MSM_SE_MG640_PLAYER_SPIN_P2,
+                                        MSM_SE_MG640_PLAYER_SPIN_P3, MSM_SE_MG640_PLAYER_SPIN_P4 };
             player->turnLoopSoundHandle = HuAudFXPlay(spinSoundByPlayer[slot + side * 2]);
             fn_8002D730(player->turnActionModel, 0.0f, 60.0f);
             fn_8002D414(player->turnActionModel, 60.0f);
@@ -1193,9 +1179,9 @@ void fn_1_52D0(OMOBJ *pieceUpdateObject)
                     piecePosition.y = bucketLandingHeight[team->nextBucket];
                     piece->speed *= -0.18f;
                     if (piece->part == 0) {
-                        HuAudFXPlay(1906);
+                        HuAudFXPlay(MSM_SE_MG640_PIECE_LAND_FIRST);
                     } else {
-                        HuAudFXPlay(1907);
+                        HuAudFXPlay(MSM_SE_MG640_PIECE_LAND_LATER);
                     }
                     piece->state = 2;
                     fn_8002D86C(team->bucketEffectModels[team->nextBucket], 1.0f);
@@ -1217,7 +1203,7 @@ void fn_1_52D0(OMOBJ *pieceUpdateObject)
                 pieceMotionEndTime = fn_8002D530(piece->pieceModel);
                 pieceMotionTime = fn_8002D4E0(piece->pieceModel);
                 if (pieceMotionTime == placementSoundCueTimes[team->nextBucket][piece->part]) {
-                    HuAudFXPlay(1918);
+                    HuAudFXPlay(MSM_SE_MG640_PIECE_PLACE_TIMED);
                 }
                 if (pieceMotionTime >= pieceMotionEndTime) {
                     if (piece->part == 1) {
@@ -1253,9 +1239,9 @@ void fn_1_52D0(OMOBJ *pieceUpdateObject)
                 piece->speed += 1.0f;
                 if (piecePosition.y <= bucketLandingHeight[piece->part]) {
                     if (piece->part == 0) {
-                        HuAudFXPlay(1906);
+                        HuAudFXPlay(MSM_SE_MG640_PIECE_LAND_FIRST);
                     } else {
-                        HuAudFXPlay(1907);
+                        HuAudFXPlay(MSM_SE_MG640_PIECE_LAND_LATER);
                     }
                     piecePosition.y = bucketLandingHeight[piece->part];
                     piece->speed *= -0.18f;

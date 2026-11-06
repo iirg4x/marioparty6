@@ -139,12 +139,12 @@ void fn_1_98(HUWINID winId, u32 mess, s16 index)
         -1,
     };
     s32 fxNum[16] = {
-        949, 950, 951,
-        952, 953, 954,
-        955, -1,
-        941, 942, 943,
-        944, 945, 946,
-        947, -1,
+        MSM_SE_GUIDE_DAY_HAPPY, MSM_SE_GUIDE_DAY_INTRO, MSM_SE_GUIDE_DAY_APOLOGY,
+        MSM_SE_GUIDE_DAY_EXPLAIN, MSM_SE_GUIDE_DAY_SURPRISE, MSM_SE_GUIDE_DAY_DISAPPOINTED,
+        MSM_SE_GUIDE_DAY_LAUGH, -1,
+        MSM_SE_GUIDE_NIGHT_HAPPY, MSM_SE_GUIDE_NIGHT_INTRO, MSM_SE_GUIDE_NIGHT_APOLOGY,
+        MSM_SE_GUIDE_NIGHT_EXPLAIN, MSM_SE_GUIDE_NIGHT_SURPRISE, MSM_SE_GUIDE_NIGHT_DISAPPOINTED,
+        MSM_SE_GUIDE_NIGHT_LAUGH, -1,
     };
     s16 i;
 
@@ -229,8 +229,8 @@ void fn_1_558(OMOBJ *object)
     fn_1_10DEC(0, &work0->startOrVelocity, 1);
     fn_1_10DEC(1, &work1->startOrVelocity, 1);
     if (++object->work[2] > 60) {
-        fn_1_0(1407);
-        fn_1_0(1406);
+        fn_1_0(MSM_SE_BANK_ENDING_HOOK_ORBIT_LEFT);
+        fn_1_0(MSM_SE_BANK_ENDING_HOOK_ORBIT_RIGHT);
         object->work[2] = 0;
         object->objFunc = fn_1_25C;
     }
@@ -734,7 +734,7 @@ void fn_1_2034(s16 motionIndex, float blend, u32 attr, s16 delay)
         lbl_1_bss_19F4[characterIndex] = (rand8() % delay) + 1;
     }
     if (motionIndex == 4) {
-        fn_1_0(596);
+        fn_1_0(MSM_SE_CHARVOICE_ENDING_CHEER_3);
     }
     for (frame = 0; frame < delay + 5; frame++) {
         HuPrcVSleep();
@@ -947,8 +947,8 @@ void fn_1_31FC(void)
         0.0f, 0.0f, 0);
     fn_8002CCC0(lbl_1_bss_10->mdlId[0], lbl_1_bss_10->mtnId[1],
         0.0f, 0.0f, 0);
-    lbl_1_bss_1D5C.channel[2] = fn_1_44(1150, 90, 64);
-    lbl_1_bss_1D5C.channel[3] = fn_1_44(1148, 90, 64);
+    lbl_1_bss_1D5C.channel[2] = fn_1_44(MSM_SE_BRD00_MENU_DAY_HOST_ENTER, 90, 64);
+    lbl_1_bss_1D5C.channel[3] = fn_1_44(MSM_SE_BRD00_MENU_NIGHT_HOST_ENTER, 90, 64);
     object->objFunc = fn_1_2AEC;
 }
 
@@ -1675,8 +1675,8 @@ void fn_1_702C(void)
     fn_1_924();
     HuPrcSleep(30);
     lbl_1_bss_1DDC = HuAudSStreamPlay(MSM_STREAM_W04);
-    lbl_1_bss_1D5C.channel[0] = fn_1_0(1413);
-    lbl_1_bss_1D5C.channel[1] = fn_1_0(1423);
+    lbl_1_bss_1D5C.channel[0] = fn_1_0(MSM_SE_BANK_DEPOSIT_DONE);
+    lbl_1_bss_1D5C.channel[1] = fn_1_0(MSM_SE_BANK_BALANCE_LOOP_4);
     WipeCreate(1, 0, 60);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
@@ -1691,7 +1691,7 @@ void fn_1_702C(void)
     fn_1_31FC();
     fn_1_6AB4(0, 0, 3, MESSNUM(MESS_ENDING, 1), -1, 30, -1, 0);
     HuPrcSleep(50);
-    fn_1_0(594);
+    fn_1_0(MSM_SE_CHARVOICE_ENDING_CHEER_1);
     fn_1_2034(2, 5.0f, 0U, 20);
 
     HuPrcSleep(110);
@@ -1709,7 +1709,7 @@ void fn_1_702C(void)
     fn_1_35F4(1, 5, 30.0f, 0U);
     fn_1_6AB4(0, 0, 3, MESSNUM(MESS_ENDING, 5), -1, 30, -1, 0);
     HuPrcSleep(50);
-    fn_1_0(595);
+    fn_1_0(MSM_SE_CHARVOICE_ENDING_CHEER_2);
     fn_1_2034(2, 5.0f, 0U, 20);
 
     HuPrcSleep(110);
@@ -1731,17 +1731,17 @@ void fn_1_702C(void)
     fn_8002D678(lbl_1_bss_10->mdlId[0], 15.0f, 45.0f);
     HuPrcSleep(60);
     fn_1_2034(4, 5.0f, ((1 << 30) | (1 << 0)), 10);
-    fn_1_0(1405);
+    fn_1_0(MSM_SE_BANK_ENDING_LIGHT_BLINK);
     fn_1_EB54(1);
     HuPrcSleep(30);
     fn_1_EB54(0);
     HuPrcSleep(30);
-    fn_1_0(1405);
+    fn_1_0(MSM_SE_BANK_ENDING_LIGHT_BLINK);
     fn_1_EB54(1);
     HuPrcSleep(30);
     fn_1_EB54(0);
     HuPrcSleep(30);
-    fn_1_0(1405);
+    fn_1_0(MSM_SE_BANK_ENDING_LIGHT_BLINK);
     fn_1_EB54(1);
     HuPrcSleep(30);
     fn_1_EB54(0);
@@ -1764,7 +1764,7 @@ void fn_1_702C(void)
     HuPrcSleep(60);
     fn_1_35F4(0, 5, 30.0f, 0U);
     fn_1_35F4(1, 5, 30.0f, 0U);
-    lbl_1_bss_1D5C.channel[4] = fn_1_0(1392);
+    lbl_1_bss_1D5C.channel[4] = fn_1_0(MSM_SE_BANK_ENDING_OPENING_AMBIENT_LOOP);
     fn_1_EB54(1);
     HuPrcSleep(30);
     fn_1_3FC0();
@@ -2052,13 +2052,13 @@ void fn_1_A964(void)
     Hu3DCameraPosSetV(1, &cameraPosition, &cameraUp, &cameraTarget);
 
     if (lbl_1_bss_26 == 0) {
-        firstSound = HuAudFXPlay(1393);
+        firstSound = HuAudFXPlay(MSM_SE_BANK_ENDING_STAFF_AMBIENT_A_LOOP);
     } else {
         firstSound = -1;
     }
     lbl_1_bss_1D5C.channel[8] = firstSound;
     if (lbl_1_bss_26 == 0) {
-        secondSound = HuAudFXPlay(1394);
+        secondSound = HuAudFXPlay(MSM_SE_BANK_ENDING_STAFF_AMBIENT_B_LOOP);
     } else {
         secondSound = -1;
     }
@@ -2226,7 +2226,7 @@ void fn_1_B568(void)
     lightId = modelData->lightId[0];
     Hu3DGLightColorSet(lightId, 64, 64, 64, 255);
     if (lbl_1_bss_26 == 0) {
-        HuAudFXPlay(1396);
+        HuAudFXPlay(MSM_SE_BANK_ENDING_STAFF_PROP_REVEAL);
     }
 
     WipeCreate(1, 0, 10);
@@ -2257,7 +2257,7 @@ void fn_1_B568(void)
     fn_80028D70();
     fn_80029850(lbl_1_bss_4->mdlId[2], 1);
     if (lbl_1_bss_26 == 0) {
-        sound = HuAudFXPlay(1397);
+        sound = HuAudFXPlay(MSM_SE_BANK_ENDING_STAFF_MODEL_AMBIENT);
     } else {
         sound = -1;
     }
@@ -2395,7 +2395,7 @@ void fn_1_BE30(void)
     fn_80028D70();
     fn_80029850(lbl_1_bss_4->mdlId[3], 1);
     if (lbl_1_bss_26 == 0) {
-        HuAudFXPlay(1399);
+        HuAudFXPlay(MSM_SE_BANK_ENDING_FINAL_PROP_REVEAL);
     }
     WipeCreate(1, 0, 10);
     while (WipeCheck()) {
@@ -2424,7 +2424,7 @@ void fn_1_BE30(void)
     fn_80028D70();
     fn_80029850(lbl_1_bss_4->mdlId[4], 1);
     if (lbl_1_bss_26 == 0) {
-        sound = HuAudFXPlay(1400);
+        sound = HuAudFXPlay(MSM_SE_BANK_ENDING_FINAL_PROP_AMBIENT);
     } else {
         sound = -1;
     }
@@ -2509,14 +2509,14 @@ void fn_1_C7DC(void)
     fn_1_F1B8(1, &positions[0]);
     fn_1_F23C(1);
     HuPrcSleep(60);
-    lbl_1_bss_1D5C.channel[10] = fn_1_0(1402);
+    lbl_1_bss_1D5C.channel[10] = fn_1_0(MSM_SE_BANK_ENDING_CLOSING_AMBIENT_LOOP);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 10);
     lbl_1_bss_2C = 1;
     lbl_1_bss_24 = 1;
     phaseDuration = 60.0f;
     HuPrcSleep(60);
 
-    lbl_1_bss_1D5C.channel[11] = fn_1_0(1403);
+    lbl_1_bss_1D5C.channel[11] = fn_1_0(MSM_SE_BANK_ENDING_CLOSING_PARTICLE_FIRST);
     fn_1_12A8(1);
     fn_1_EAB8(1, &positions[1]);
     positions[1].y = particleY;
@@ -2524,7 +2524,7 @@ void fn_1_C7DC(void)
     phaseDuration = 60.0f;
     HuPrcSleep(48);
 
-    lbl_1_bss_1D5C.channel[7] = fn_1_0(1404);
+    lbl_1_bss_1D5C.channel[7] = fn_1_0(MSM_SE_BANK_ENDING_CLOSING_PARTICLE_SECOND);
     fn_1_12A8(2);
     fn_1_EAB8(1, &positions[2]);
     positions[2].y = particleY;

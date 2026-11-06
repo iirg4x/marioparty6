@@ -141,7 +141,7 @@ void fn_1_2AC(s16 mode, s16 frameNo)
         fn_1_2998();
         fn_1_22DC();
         fn_1_61E0();
-        HuAudFXPlay(1571);
+        HuAudFXPlay(MSM_SE_MG602_CARD_SHUFFLE_START);
     } else if (lbl_1_bss_10 == 0) {
         fn_1_22DC();
         fn_1_61E0();
@@ -152,7 +152,7 @@ void fn_1_2AC(s16 mode, s16 frameNo)
             fn_1_9F34();
             lbl_1_bss_10 = 2;
             lbl_1_bss_0 = 0;
-            HuAudFXPlay(1578);
+            HuAudFXPlay(MSM_SE_MG602_CARDS_SETTLE);
         }
     } else if (lbl_1_bss_10 == 2) {
         fn_1_22DC();
@@ -168,11 +168,11 @@ void fn_1_2AC(s16 mode, s16 frameNo)
         if (lbl_1_bss_0 == 60) {
             columnOrPlayerIndex = fn_1_2B28();
             if (columnOrPlayerIndex == 0) {
-                HuAudFXPanning(HuAudFXPlay(1572), 32);
+                HuAudFXPanning(HuAudFXPlay(MSM_SE_MG602_CORRECT_CARD_REVEAL), 32);
             } else if (columnOrPlayerIndex == 1) {
-                HuAudFXPanning(HuAudFXPlay(1572), 64);
+                HuAudFXPanning(HuAudFXPlay(MSM_SE_MG602_CORRECT_CARD_REVEAL), 64);
             } else {
-                HuAudFXPanning(HuAudFXPlay(1572), 96);
+                HuAudFXPanning(HuAudFXPlay(MSM_SE_MG602_CORRECT_CARD_REVEAL), 96);
             }
         }
         if (lbl_1_bss_0 > 150) {

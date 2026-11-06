@@ -1,6 +1,7 @@
 /* Arena grid generation and CPU movement helpers. */
 #include <math.h>
 #include "REL/m632dll.h"
+#include "humath.h"
 
 /* Model-hook callback registered by fn_1_4C90; it leaves the supplied model transform unchanged. */
 void fn_1_4C8C(HU3D_MODEL *modelP, Mtx *mtx)
@@ -286,11 +287,11 @@ void fn_1_5400(s32 playerIndex)
                 lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(20) + 20);
             } else {
                 randomAngle = (f32) (u32) frandmod(360);
-                direction.x = (f32) (cos((3.141592653589793 * (f64) randomAngle) / 180.0) -
-                                     sin((3.141592653589793 * (f64) randomAngle) / 180.0));
+                direction.x = (f32) (cos((M_PI * (f64) randomAngle) / 180.0) -
+                                     sin((M_PI * (f64) randomAngle) / 180.0));
                 direction.y = 0.0f;
-                direction.z = (f32) (sin((3.141592653589793 * (f64) randomAngle) / 180.0) +
-                                     cos((3.141592653589793 * (f64) randomAngle) / 180.0));
+                direction.z = (f32) (sin((M_PI * (f64) randomAngle) / 180.0) +
+                                     cos((M_PI * (f64) randomAngle) / 180.0));
                 PSVECNormalize(&direction, &direction);
                 lbl_1_bss_0.playerDirection[playerIndex] = direction;
                 lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(60) + 30);

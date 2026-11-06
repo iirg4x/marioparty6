@@ -305,7 +305,7 @@ void fn_1_EA6C(void)
         HuWinAttrSet(window, 2048);
         HuWinMesSpeedSet(window, 0);
         HuWinMesSet(window, MESSNUM(MESS_OPTION_MESS, 65));
-        HuAudFXPlay(1205);
+        HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_OPEN);
         for (index = 1; index <= 10; index++) {
             progress = (float)index / 10.0f;
             HuWinPosSet(window,
@@ -344,7 +344,7 @@ void fn_1_EA6C(void)
         for (index = 0; index < 8; index++) {
             HuSprAttrSet(lbl_1_bss_BF0[0], index + 21, 4);
         }
-        HuAudFXPlay(1206);
+        HuAudFXPlay(MSM_SE_MENU_OPTION_WINDOW_CLOSE);
         HuWinDispOff(lbl_1_bss_6A0);
         for (index = 1; index <= 10; index++) {
             progress = 1.0f -

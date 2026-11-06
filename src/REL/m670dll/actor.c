@@ -19,7 +19,7 @@ void fn_1_2384(MGACTOR *actor, int playerNo)
     HuVecF normal;
     HuVecF pos;
     if ((actor->colGroundAttr & 0x80) && fn_80071A8C() == 5) {
-        normal = *(HuVecF *)((HSF_FACE *)actor->colObj->mesh.face->data)[actor->colFace].nbt;
+        normal = actor->colObj->mesh.face->faces[actor->colFace].normal;
         fn_80086BC8(actor, &pos);
         pos.x += 8.0f * normal.x;
         pos.z += 8.0f * normal.z;
