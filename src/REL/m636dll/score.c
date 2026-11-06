@@ -1,5 +1,5 @@
 /* Picture resources, target pixels and two-point team score displays for Pixel Perfect. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m636dll.h"
 
 #define PIXEL_EARNED_POINT_ANIM DATANUM(0x9b0000, 31)
@@ -169,15 +169,15 @@ void fn_1_6478(void)
             HuSprGrpMemberSet(scoreGroup, pointIndex,
                               HuSprCreate(lbl_1_bss_0.earnedPointAnim, 0, 0));
             HuSprPosSet(scoreGroup, pointIndex,
-                        pointIndex * 24 + lbl_1_data_230[side * 2] - (12.0f),
+                        pointIndex * 24 + lbl_1_data_230[side * 2] - 12.0f,
                         lbl_1_data_230[side * 2 + 1]);
             HuSprAttrSet(scoreGroup, pointIndex, HUSPR_ATTR_DISPOFF);
             /* Empty markers occupy the same positions as earned ones, at half opacity. */
             HuSprGrpMemberSet(scoreGroup, pointIndex + 2,
                               HuSprCreate(lbl_1_bss_0.emptyPointAnim, 0, 0));
-            HuSprTPLvlSet(scoreGroup, pointIndex + 2, (0.5f));
+            HuSprTPLvlSet(scoreGroup, pointIndex + 2, 0.5f);
             HuSprPosSet(scoreGroup, pointIndex + 2,
-                        pointIndex * 24 + lbl_1_data_230[side * 2] - (12.0f),
+                        pointIndex * 24 + lbl_1_data_230[side * 2] - 12.0f,
                         lbl_1_data_230[side * 2 + 1]);
             HuSprAttrSet(scoreGroup, pointIndex + 2, HUSPR_ATTR_DISPOFF);
         }
@@ -191,7 +191,7 @@ void fn_1_6790(BOOL visible)
     s32 side;
 
     for (side = 0; side < 2; side++) {
-        HUSPR_GROUPID scoreBox = *(s16 *)((s8 *)&lbl_1_bss_0 + PIXEL_SCORE_BOXES_OFFSET + side * 2);
+        HUSPR_GROUPID scoreBox = lbl_1_bss_0.scoreBoxes[side];
         MgScoreBoxDispSet(scoreBox, visible);
     }
 }
@@ -204,11 +204,9 @@ void fn_1_67F4(void) {
 
     side = 0;
     while (side < 2) {
-        scoreGroup = (*(s16 *) ((s8 *) ((s32 *) ((u8 *) &lbl_1_bss_0 + (side * 2))) +
-                                (PIXEL_SCORE_GROUPS_OFFSET)));
+        scoreGroup = lbl_1_bss_0.scoreGroups[side];
         pointIndex = 0;
-        while (pointIndex < (s32) (*(s32 *) ((s8 *) ((s32 *) ((u8 *) &lbl_1_bss_0 + (side * 4))) +
-                                             (PIXEL_TEAM_POINTS_OFFSET)))) {
+        while (pointIndex < lbl_1_bss_0.teamPoints[side]) {
             HuSprAttrReset(scoreGroup, (s16) pointIndex, HUSPR_ATTR_DISPOFF);
             HuSprAttrSet(scoreGroup, (s16) (pointIndex + 2), HUSPR_ATTR_DISPOFF);
             pointIndex += 1;

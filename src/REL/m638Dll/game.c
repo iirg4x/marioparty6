@@ -1,22 +1,23 @@
 /* Gondola Glide scene setup, split-screen play, course events, and results. */
 #include <math.h>
 #include "REL/m638Dll.h"
+#include "msm_stream.h"
 
-#define M638_OVERLAY_MEMORY_ID 0x10000000
-#define M638_GAMEPLAY_BGM_ID 79
-#define M638_PLAY_START_SFX_ID 13
-#define M638_TEAM0_WIN_SFX_ID 1893
-#define M638_TEAM1_WIN_SFX_ID 1894
-#define M638_TEAM0_EVENT_BUTTON0_SFX_ID 1889
-#define M638_TEAM0_EVENT_BUTTON1_SFX_ID 1887
-#define M638_TEAM1_EVENT_BUTTON0_SFX_ID 1890
-#define M638_TEAM1_EVENT_BUTTON1_SFX_ID 1888
-#define M638_TEAM0_BOOST_SFX_ID 1885
-#define M638_TEAM1_BOOST_SFX_ID 1886
-#define M638_TEAM0_FINISH_MOTION_SFX_ID 1895
-#define M638_TEAM1_FINISH_MOTION_SFX_ID 1896
-#define M638_TEAM0_FINISH_END_SFX_ID 1897
-#define M638_TEAM1_FINISH_END_SFX_ID 1898
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #define M638_TEAM0_ACTIVITY_SFX_ID 1883
 #define M638_TEAM1_ACTIVITY_SFX_ID 1884
 
@@ -248,11 +249,11 @@ void fn_1_A0(void)
     fn_80069F1C(lbl_1_bss_C);
     obj = fn_8003AB38(lbl_1_bss_C, 101, 0, 0, -1, fn_1_1988);
     lbl_1_bss_4 = obj;
-    obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M638SceneView), M638_OVERLAY_MEMORY_ID);
+    obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M638SceneView), 0x10000000);
     scene = obj->data;
     for (player = 0; player < 4; player++) {
         obj = fn_8003AB38(lbl_1_bss_C, 100, 1, 5, 0, fn_1_67EC);
-        obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M638PlayerView), M638_OVERLAY_MEMORY_ID);
+        obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M638PlayerView), 0x10000000);
         obj->work[0] = player;
     }
     Hu3DBGColorSet(0, 0, 0);
@@ -347,7 +348,7 @@ void fn_1_528(s16 mode, s16 frameNo)
     scene = lbl_1_bss_4->data;
     switch (scene->startState) {
     case 0:
-        lbl_1_bss_8 = HuAudBGMPlay(M638_GAMEPLAY_BGM_ID);
+        lbl_1_bss_8 = HuAudBGMPlay(MSM_STREAM_MGMUS_22);
         scene->startState++;
         /* fallthrough */
     case 1:
@@ -367,7 +368,7 @@ void fn_1_598(s16 mode, s16 frameNo)
     switch (scene->playState) {
     case 0:
         MgTimerModeOnSet(scene->timer, 0);
-        HuAudFXPlay(M638_PLAY_START_SFX_ID);
+        HuAudFXPlay(13);
         espAttrReset(scene->teams[0].sprites[0], 4U);
         espAttrReset(scene->teams[1].sprites[0], 4U);
         espAttrReset(scene->teams[0].sprites[1], 4U);
@@ -396,9 +397,9 @@ void fn_1_598(s16 mode, s16 frameNo)
                 scene->winner = 1;
             }
             if (scene->winner == 0) {
-                HuAudFXPlay(M638_TEAM0_WIN_SFX_ID);
+                HuAudFXPlay(1893);
             } else if (scene->winner == 1) {
-                HuAudFXPlay(M638_TEAM1_WIN_SFX_ID);
+                HuAudFXPlay(1894);
             }
             MgTimerModeOffSet(scene->timer);
             scene->teams[0].active = 0;
@@ -1061,14 +1062,14 @@ void fn_1_2288(M638TeamView *team)
                 team->course.pairIndex[team->button] ^= 1;
                 if (team->variant == 0) {
                     if (team->button != 0) {
-                        HuAudFXPlay(M638_TEAM0_EVENT_BUTTON1_SFX_ID);
+                        HuAudFXPlay(1887);
                     } else {
-                        HuAudFXPlay(M638_TEAM0_EVENT_BUTTON0_SFX_ID);
+                        HuAudFXPlay(1889);
                     }
                 } else if (team->button != 0) {
-                    HuAudFXPlay(M638_TEAM1_EVENT_BUTTON1_SFX_ID);
+                    HuAudFXPlay(1888);
                 } else {
-                    HuAudFXPlay(M638_TEAM1_EVENT_BUTTON0_SFX_ID);
+                    HuAudFXPlay(1890);
                 }
             }
         }
@@ -1133,10 +1134,10 @@ void fn_1_2CDC(M638TeamView *team)
         (team->blend > 0.0f)) {
         fn_1_5760(&team->scale, team->blend / 0.4f);
         if (team->variant == 0) {
-            HuAudFXPlay(M638_TEAM0_BOOST_SFX_ID);
+            HuAudFXPlay(1885);
             return;
         }
-        HuAudFXPlay(M638_TEAM1_BOOST_SFX_ID);
+        HuAudFXPlay(1886);
     }
 }
 
@@ -2117,9 +2118,9 @@ s32 fn_1_647C(void *data)
         team->output = team->source * weight;
         if (motionTime >= 570.0f) {
             if (team->variant == 0) {
-                HuAudFXPlay(M638_TEAM0_FINISH_MOTION_SFX_ID);
+                HuAudFXPlay(1895);
             } else {
-                HuAudFXPlay(M638_TEAM1_FINISH_MOTION_SFX_ID);
+                HuAudFXPlay(1896);
             }
             team->output = 0.0f;
             team->state++;
@@ -2137,9 +2138,9 @@ s32 fn_1_647C(void *data)
         team->blend = 0.3f * weight;
         if (fn_8002D75C(team->model)) {
             if (team->variant == 0) {
-                HuAudFXPlay(M638_TEAM0_FINISH_END_SFX_ID);
+                HuAudFXPlay(1897);
             } else {
-                HuAudFXPlay(M638_TEAM1_FINISH_END_SFX_ID);
+                HuAudFXPlay(1898);
             }
             team->state = 2;
             team->blend = 0.0f;

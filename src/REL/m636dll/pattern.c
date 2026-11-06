@@ -1,8 +1,8 @@
 /* Picture-cell reveals and the teams' floor-panel pixel patterns for Pixel Perfect. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m636dll.h"
 
-#define PIXEL_CELL_COUNT 16
+
 #define PIXEL_PICTURE_ROW_BYTES 16
 #define PIXEL_PICTURE_PIXEL_BYTES 256
 #define PIXEL_CELL_MODEL_SET_BYTES 32
@@ -27,9 +27,9 @@
 #define PIXEL_REFERENCE_CELL_MODELS_OFFSET 578
 #define PIXEL_TARGET_PIXELS_OFFSET 562
 
-#define PIXEL_CELL_TRANSITION_SOUND 1869
-#define PIXEL_GROUND_POUND_LAND_FLAG 0x200
-#define PIXEL_FLOOR_GROUND_FLAG 0x1
+
+
+
 
 /* Alternating initial floor pixels; the final array element is zero. */
 u8 lbl_1_data_140[16] = {0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1};
@@ -48,37 +48,32 @@ void fn_1_2F10(MGACTOR *actor, int playerSlot)
     s32 column;
 
     playerIndex = playerSlot;
-    side = *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET);
-    player = *(MGPLAYER **)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
-    if (fn_80087114(player, PIXEL_GROUND_POUND_LAND_FLAG) != 0 &&
-        (actor->colGroundAttr & PIXEL_FLOOR_GROUND_FLAG) != 0) {
+    side = lbl_1_bss_0.teamSide[playerIndex];
+    player = lbl_1_bss_0.players[playerIndex];
+    if (fn_80087114(player, 0x200) != 0 &&
+        (actor->colGroundAttr & 0x1) != 0) {
         fn_80086BC8(actor, &pos);
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_LANDING_COUNTER_OFFSET) = 90;
+        lbl_1_bss_0.landingCounter[playerIndex] = 90;
         /* Each floor is translated to a positive 800-by-800 grid of 200-unit pixels. */
         offsetX = (s32)lbl_1_data_270[side][0];
         offsetZ = (s32)lbl_1_data_270[side][1];
-        column = (s32)((pos.x + offsetX) / (200.0f));
-        row = (s32)((pos.z + offsetZ) / (200.0f));
+        column = (s32)((pos.x + offsetX) / 200.0f);
+        row = (s32)((pos.z + offsetZ) / 200.0f);
         if (fn_1_3AE0(side, column, row) == 1) {
             return;
         }
         if (fn_1_3984(0) != 0 || fn_1_3984(1) != 0 ||
-            MgTimerDoneCheck(*(MGTIMER **)((u8 *)&lbl_1_bss_0 + PIXEL_TIMER_OFFSET)) != 0) {
+            MgTimerDoneCheck(lbl_1_bss_0.timer) != 0) {
             return;
         }
-        if (((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_COUNT +
-             PIXEL_TEAM_PIXELS_OFFSET)[column + row * 4] == 1) {
-            ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_COUNT +
-             PIXEL_TEAM_PIXELS_OFFSET)[column + row * 4] = 0;
-            fn_8002C95C(*(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
-                                    (column + row * 4) * 2 + PIXEL_FLOOR_PANEL_MODELS_OFFSET),
-                          *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_TURN_OFF_MOTION_OFFSET));
+        if (lbl_1_bss_0.teamPixels[side][column + row * 4] == 1) {
+            lbl_1_bss_0.teamPixels[side][column + row * 4] = 0;
+            fn_8002C95C(lbl_1_bss_0.panelModels[side][column + row * 4],
+                          lbl_1_bss_0.panelMotions[3]);
         } else {
-            ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_COUNT +
-             PIXEL_TEAM_PIXELS_OFFSET)[column + row * 4] = 1;
-            fn_8002C95C(*(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
-                                    (column + row * 4) * 2 + PIXEL_FLOOR_PANEL_MODELS_OFFSET),
-                          *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_TURN_ON_MOTION_OFFSET));
+            lbl_1_bss_0.teamPixels[side][column + row * 4] = 1;
+            fn_8002C95C(lbl_1_bss_0.panelModels[side][column + row * 4],
+                          lbl_1_bss_0.panelMotions[2]);
         }
     }
 }
@@ -94,30 +89,29 @@ void fn_1_31BC(void)
     s32 isCorner;
     s32 previousWasCorner;
 
-    *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_DRAW_HOOK_OFFSET) = fn_800260F4(fn_1_3C94);
-    fn_80026B8C(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_DRAW_HOOK_OFFSET), 0);
+    lbl_1_bss_0.floorDrawHook = fn_800260F4(fn_1_3C94);
+    fn_80026B8C(lbl_1_bss_0.floorDrawHook, 0);
 
     for (cellIndex = 0; cellIndex < 16; cellIndex++) {
-        *((u8 *)&lbl_1_bss_0 + PIXEL_TEAM_PIXELS_OFFSET + cellIndex) = lbl_1_data_140[cellIndex];
-        *((u8 *) &lbl_1_bss_0 + PIXEL_RIGHT_TEAM_PIXELS_OFFSET + cellIndex) =
-            lbl_1_data_140[cellIndex];
+        lbl_1_bss_0.teamPixels[0][cellIndex] = lbl_1_data_140[cellIndex];
+        lbl_1_bss_0.teamPixels[1][cellIndex] = lbl_1_data_140[cellIndex];
 
-        panelModel = *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_PANEL_MODELS_OFFSET + cellIndex * 2);
-        if (*((u8 *)&lbl_1_bss_0 + PIXEL_TEAM_PIXELS_OFFSET + cellIndex) == 0) {
-            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
+        panelModel = lbl_1_bss_0.panelModels[0][cellIndex];
+        if (lbl_1_bss_0.teamPixels[0][cellIndex] == 0) {
+            fn_8002C95C(panelModel, lbl_1_bss_0.panelMotions[0]);
         } else {
-            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
+            fn_8002C95C(panelModel, lbl_1_bss_0.panelMotions[1]);
         }
 
-        panelModel = *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_RIGHT_FLOOR_MODELS_OFFSET + cellIndex * 2);
-        if (*((u8 *)&lbl_1_bss_0 + PIXEL_RIGHT_TEAM_PIXELS_OFFSET + cellIndex) == 0) {
-            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
+        panelModel = lbl_1_bss_0.panelModels[1][cellIndex];
+        if (lbl_1_bss_0.teamPixels[1][cellIndex] == 0) {
+            fn_8002C95C(panelModel, lbl_1_bss_0.panelMotions[0]);
         } else {
-            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
+            fn_8002C95C(panelModel, lbl_1_bss_0.panelMotions[1]);
         }
     }
 
-    *(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) = frand() % 3;
+    lbl_1_bss_0.selectedPicture = frand() % 3;
     previousWasCorner = 0;
     isCorner = 0;
 
@@ -126,8 +120,7 @@ void fn_1_31BC(void)
             chosenCell = frand() & 0xF;
 
             for (previousChoice = 0; previousChoice < cellIndex; previousChoice++) {
-                if (*(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_CELL_CHOICES_OFFSET +
-                              previousChoice * 4) == chosenCell) {
+                if (lbl_1_bss_0.roundCellChoices[previousChoice] == chosenCell) {
                     break;
                 }
             }
@@ -142,7 +135,7 @@ void fn_1_31BC(void)
             }
 
             /* The third picture never selects either top corner. */
-            if (*(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) == 2) {
+            if (lbl_1_bss_0.selectedPicture == 2) {
                 if (chosenCell == 0 || chosenCell == 3) {
                     if (chosenCell == 0) {
                         OSReport("左上出たのでスキップ\n");
@@ -160,8 +153,7 @@ void fn_1_31BC(void)
             }
 
             previousWasCorner = isCorner;
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_CELL_CHOICES_OFFSET + cellIndex * 4) =
-                chosenCell;
+            lbl_1_bss_0.roundCellChoices[cellIndex] = chosenCell;
             OSReport("piece %d ... %d\n", cellIndex, chosenCell);
             break;
         }
@@ -175,40 +167,38 @@ void fn_1_3460(s32 pictureIndex, s32 cellIndex)
     s32 otherCell;
     s16 modelId;
 
-    modelId = *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
-                        pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + cellIndex * 2);
+    modelId = lbl_1_bss_0.pictureCellModels[pictureIndex][cellIndex];
     fn_800269E8(
-        *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_INTRO_MODELS_OFFSET + pictureIndex * 2),
+        lbl_1_bss_0.pictureIntroModels[pictureIndex],
         (1 << 0));
     otherCell = 0;
-    while (otherCell < PIXEL_CELL_COUNT) {
-        fn_800269E8(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
-                                   pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + otherCell * 2),
+    while (otherCell < 16) {
+        fn_800269E8(lbl_1_bss_0.pictureCellModels[pictureIndex][otherCell],
                          (1 << 0));
         otherCell++;
     }
     fn_80026A44(modelId, (1 << 0));
-    fn_8002D414(modelId, (0.0f));
+    fn_8002D414(modelId, 0.0f);
 
-    fn_800269E8(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_MODEL_OFFSET),
+    fn_800269E8(lbl_1_bss_0.referenceModel,
                      (1 << 0));
     otherCell = 0;
-    while (otherCell < PIXEL_CELL_COUNT) {
+    while (otherCell < 16) {
         fn_800269E8(
-            *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + otherCell * 2),
+            lbl_1_bss_0.referenceCellModels[otherCell],
             (1 << 0));
         otherCell++;
     }
     fn_8002D414(
-        *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2),
-        (0.0f));
+        lbl_1_bss_0.referenceCellModels[cellIndex],
+        0.0f);
     fn_80026A44(
-        *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2),
+        lbl_1_bss_0.referenceCellModels[cellIndex],
         (1 << 0));
     fn_80026A44(
-        *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2),
+        lbl_1_bss_0.referenceCellModels[cellIndex],
         ((1 << 30) | (1 << 2)));
-    HuAudFXPlay(PIXEL_CELL_TRANSITION_SOUND);
+    HuAudFXPlay(1869);
 }
 
 /* The round sequence polls this while waiting for the selected picture-cell reveal to finish. */
@@ -216,8 +206,7 @@ BOOL fn_1_35E0(s32 pictureIndex, s32 cellIndex)
 {
     s16 modelId;
 
-    modelId = (*(s16 *) ((s8 *) (&lbl_1_bss_0) + (pictureIndex * PIXEL_CELL_MODEL_SET_BYTES) +
-                         (cellIndex * 2) + (PIXEL_PICTURE_CELL_MODELS_OFFSET)));
+    modelId = lbl_1_bss_0.pictureCellModels[pictureIndex][cellIndex];
     if (fn_8002D75C(modelId) == 1) {
         return 1;
     }
@@ -232,13 +221,11 @@ void fn_1_364C(s32 pictureIndex, s32 cellIndex)
     s16 modelId;
     f32 lastFrame;
 
-    modelId = *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
-                        pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + cellIndex * 2);
+    modelId = lbl_1_bss_0.pictureCellModels[pictureIndex][cellIndex];
     lastFrame = Hu3DMotionMotionMaxTimeGet(fn_8002D3C4(modelId));
     otherCell = 0;
-    while (otherCell < PIXEL_CELL_COUNT) {
-        fn_800269E8(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
-                                   pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + otherCell * 2),
+    while (otherCell < 16) {
+        fn_800269E8(lbl_1_bss_0.pictureCellModels[pictureIndex][otherCell],
                          (1 << 0));
         otherCell++;
     }
@@ -248,18 +235,18 @@ void fn_1_364C(s32 pictureIndex, s32 cellIndex)
     fn_8002D414(modelId, lastFrame);
 
     otherCell = 0;
-    while (otherCell < PIXEL_CELL_COUNT) {
+    while (otherCell < 16) {
         fn_800269E8(
-            *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + otherCell * 2),
+            lbl_1_bss_0.referenceCellModels[otherCell],
             (1 << 0));
         otherCell++;
     }
-    modelId = *(s16 *)((s8 *)&lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2);
+    modelId = lbl_1_bss_0.referenceCellModels[cellIndex];
     lastFrame = Hu3DMotionMotionMaxTimeGet(fn_8002D3C4(modelId));
     fn_8002D414(modelId, lastFrame);
     fn_80026A44(modelId, (1 << 0));
     fn_800269E8(modelId, ((1 << 30) | (1 << 2)));
-    HuAudFXPlay(PIXEL_CELL_TRANSITION_SOUND);
+    HuAudFXPlay(1869);
 }
 
 /* The round and finish sequences poll this until reverse playback reaches its endpoint or time
@@ -268,10 +255,9 @@ s32 fn_1_37A8(s32 pictureIndex, s32 cellIndex)
 {
     HU3D_MODELID modelId;
 
-    modelId = *(HU3D_MODELID *) ((u8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
-                                 pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + cellIndex * 2);
+    modelId = lbl_1_bss_0.pictureCellModels[pictureIndex][cellIndex];
     if (fn_8002D75C(modelId) == 1 ||
-        fn_8002D4E0(modelId) <= (0.0f)) {
+        fn_8002D4E0(modelId) <= 0.0f) {
         return 1;
     }
     return 0;
@@ -295,15 +281,15 @@ void fn_1_3834(s32 pictureIndex, s32 cellIndex)
     OSReport("pic:%d, pat:%d (%d, %d)\n", pictureIndex, cellIndex, pixelColumn, pixelRow);
     /* Picture rows contain sixteen pixels; the floor target rows contain four. */
     for (rowIndex = 0; rowIndex < 4; rowIndex++) {
-        memcpy((u8 *)&lbl_1_bss_0 + rowIndex * 4 + PIXEL_TARGET_PIXELS_OFFSET, sourceRow, 4);
+        memcpy(&lbl_1_bss_0.targetPixels[rowIndex * 4], sourceRow, 4);
         sourceRow += PIXEL_PICTURE_ROW_BYTES;
     }
     for (rowIndex = 0; rowIndex < 4; rowIndex++) {
         OSReport("%02X %02X %02X %02X\n",
-            ((u8 *)&lbl_1_bss_0 + PIXEL_TARGET_PIXELS_OFFSET)[rowIndex * 4],
-            ((u8 *)&lbl_1_bss_0 + PIXEL_TARGET_PIXELS_OFFSET)[rowIndex * 4 + 1],
-            ((u8 *)&lbl_1_bss_0 + PIXEL_TARGET_PIXELS_OFFSET)[rowIndex * 4 + 2],
-            ((u8 *)&lbl_1_bss_0 + PIXEL_TARGET_PIXELS_OFFSET)[rowIndex * 4 + 3]);
+            lbl_1_bss_0.targetPixels[rowIndex * 4],
+            lbl_1_bss_0.targetPixels[rowIndex * 4 + 1],
+            lbl_1_bss_0.targetPixels[rowIndex * 4 + 2],
+            lbl_1_bss_0.targetPixels[rowIndex * 4 + 3]);
     }
 }
 
@@ -313,9 +299,9 @@ int fn_1_3984(s32 side)
     u8 *teamPixels;
     u8 *targetPixels;
 
-    teamPixels = (u8 *)&lbl_1_bss_0 + (side * PIXEL_CELL_COUNT) + PIXEL_TEAM_PIXELS_OFFSET;
-    targetPixels = (u8 *)&lbl_1_bss_0 + PIXEL_TARGET_PIXELS_OFFSET;
-    if (memcmp(teamPixels, targetPixels, PIXEL_CELL_COUNT) == 0) {
+    teamPixels = lbl_1_bss_0.teamPixels[side];
+    targetPixels = lbl_1_bss_0.targetPixels;
+    if (memcmp(teamPixels, targetPixels, 16) == 0) {
         return 1;
     }
     return 0;
@@ -330,10 +316,10 @@ s32 fn_1_39FC(s32 side)
     s32 cellIndex;
     s32 mismatchCount;
 
-    teamPixels = (u8 *)&lbl_1_bss_0 + side * PIXEL_CELL_COUNT + PIXEL_TEAM_PIXELS_OFFSET;
-    targetPixels = (u8 *)&lbl_1_bss_0 + PIXEL_TARGET_PIXELS_OFFSET;
+    teamPixels = lbl_1_bss_0.teamPixels[side];
+    targetPixels = lbl_1_bss_0.targetPixels;
     mismatchCount = 0;
-    for (cellIndex = 0; cellIndex < PIXEL_CELL_COUNT; cellIndex++) {
+    for (cellIndex = 0; cellIndex < 16; cellIndex++) {
         if (*teamPixels != *targetPixels) {
             mismatchCount++;
         }
@@ -349,8 +335,8 @@ s32 fn_1_3A84(s32 side, s32 cellIndex)
     u8 *teamPixels;
     u8 *targetPixels;
 
-    teamPixels = (u8 *)&lbl_1_bss_0 + PIXEL_TEAM_PIXELS_OFFSET + (side * PIXEL_CELL_COUNT);
-    targetPixels = (u8 *)&lbl_1_bss_0 + PIXEL_TARGET_PIXELS_OFFSET;
+    teamPixels = lbl_1_bss_0.teamPixels[side];
+    targetPixels = lbl_1_bss_0.targetPixels;
     if (teamPixels[cellIndex] == targetPixels[cellIndex]) {
         return 1;
     } else {
@@ -365,13 +351,12 @@ s32 fn_1_3AE0(s32 side, s32 column, s32 row)
 
     HU3D_MODELID panelModel;
 
-    panelModel = *(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
-                           PIXEL_FLOOR_PANEL_MODELS_OFFSET + (column + row * 4) * 2);
+    panelModel = lbl_1_bss_0.panelModels[side][column + row * 4];
     motionId = fn_8002D3C4(panelModel);
     /* The play update replaces these motions after they end, releasing the pixel for another
      * flip. */
-    if (motionId == *(s16*)((u8*)&lbl_1_bss_0 + PIXEL_PANEL_TURN_ON_MOTION_OFFSET)
-        || motionId == *(s16*)((u8*)&lbl_1_bss_0 + PIXEL_PANEL_TURN_OFF_MOTION_OFFSET)) {
+    if (motionId == lbl_1_bss_0.panelMotions[2]
+        || motionId == lbl_1_bss_0.panelMotions[3]) {
         OSReport("crossfading...\n");
         return 1;
     }
@@ -389,18 +374,17 @@ void fn_1_3BA0(void)
     side = 0;
     while (side < 2) {
         cellIndex = 0;
-        while (cellIndex < PIXEL_CELL_COUNT) {
-            modelId = *(s16 *)((u8 *)&lbl_1_bss_0 + (side * PIXEL_CELL_MODEL_SET_BYTES)
-                     + (cellIndex * 2) + PIXEL_FLOOR_PANEL_MODELS_OFFSET);
+        while (cellIndex < 16) {
+            modelId = lbl_1_bss_0.panelModels[side][cellIndex];
             if (fn_8002D75C(modelId) == 1) {
                 if ((s16)fn_8002D3C4(modelId)
-                    == *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_TURN_ON_MOTION_OFFSET)) {
+                    == lbl_1_bss_0.panelMotions[2]) {
                     fn_8002C95C(modelId,
-                                  *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
+                                  lbl_1_bss_0.panelMotions[1]);
                 } else if ((s16)fn_8002D3C4(modelId)
-                           == *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_TURN_OFF_MOTION_OFFSET)) {
+                           == lbl_1_bss_0.panelMotions[3]) {
                     fn_8002C95C(modelId,
-                                  *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
+                                  lbl_1_bss_0.panelMotions[0]);
                 }
             }
             cellIndex += 1;

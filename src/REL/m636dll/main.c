@@ -1,20 +1,17 @@
 /* Pixel Perfect scene, floor panel and player setup. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m636dll.h"
 
 /* Player action mask with punch and kick cleared. */
-#define PIXEL_PLAYER_ACTION_MASK 0xFFFFFFF3
 
-#define PIXEL_CAMERA_OBJECT_OFFSET 12
-#define PIXEL_CAMERA_MODEL_OFFSET 20
-#define PIXEL_TIMER_OFFSET 68
+
 #define PIXEL_MUSIC_HANDLE_OFFSET 628
 #define PIXEL_EXTRA_SCENE_MODEL_OFFSET 632
 #define PIXEL_EXTRA_SCENE_MOTION_OFFSET 634
-#define PIXEL_CAMERA_UPDATE_PRIORITY 32730
-#define PIXEL_SCENE_SETUP_PRIORITY 10
-#define PIXEL_SCENE_MODEL_CAPACITY 10U
-#define PIXEL_LIGHT_CHANNEL_MAX 255U
+
+
+
+
 #define PIXEL_ACTOR_INITIAL_FLAGS 0
 
 #define PIXEL_STAGE_RESOURCE DATANUM(0x5f0000, 0)
@@ -64,27 +61,27 @@ unsigned int lbl_1_data_E0[11] = {
 void fn_1_1F98(void) {
     s16 lightId;
 
-    (*(HUPROCESS **)((s8 *)(&lbl_1_bss_0) + (0))) = fn_80080418();
-    lbl_80266A40.x = (-35.0f);
-    lbl_80266A40.y = (0.0f);
-    lbl_80266A40.z = (0.0f);
-    lbl_80266A4C.x = (0.0f);
-    lbl_80266A4C.y = (700.0f);
-    lbl_80266A4C.z = (400.0f);
-    lbl_802C028C = (1000.0f);
+    lbl_1_bss_0.process = fn_80080418();
+    lbl_80266A40.x = -35.0f;
+    lbl_80266A40.y = 0.0f;
+    lbl_80266A40.z = 0.0f;
+    lbl_80266A4C.x = 0.0f;
+    lbl_80266A4C.y = 700.0f;
+    lbl_80266A4C.z = 400.0f;
+    lbl_802C028C = 1000.0f;
     Hu3DCameraCreate((1 << 0));
-    Hu3DCameraPerspectiveSet((1 << 0), (45.0f), (20.0f), (15000.0f), (1.2f));
-    Hu3DCameraViewportSet((1 << 0), (0.0f), (0.0f), (640.0f), (480.0f), (0.0f), (1.0f));
-    (*(OMOBJ **) ((s8 *) (&lbl_1_bss_0) + (PIXEL_CAMERA_OBJECT_OFFSET))) =
-        fn_8003AB38((*(HUPROCESS **) ((s8 *) (&lbl_1_bss_0) + (0))), PIXEL_CAMERA_UPDATE_PRIORITY,
+    Hu3DCameraPerspectiveSet((1 << 0), 45.0f, 20.0f, 15000.0f, 1.2f);
+    Hu3DCameraViewportSet((1 << 0), 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
+    lbl_1_bss_0.cameraObject =
+        fn_8003AB38(lbl_1_bss_0.process, 32730,
                    0U, 0U, -1, fn_1_6360);
-    (*(s16 *)((s8 *)(&lbl_1_bss_0) + (PIXEL_CAMERA_MODEL_OFFSET))) = -1;
+    lbl_1_bss_0.cameraModel = -1;
     lightId =
-        Hu3DGLightCreate((0.0f), (1000.0f), (1000.0f), (0.0f), (-1.0f), (-1.0f),
-                         PIXEL_LIGHT_CHANNEL_MAX, PIXEL_LIGHT_CHANNEL_MAX, PIXEL_LIGHT_CHANNEL_MAX);
-    (*(MGTIMER **)((s8 *)(&lbl_1_bss_0) + (PIXEL_TIMER_OFFSET))) = MgTimerCreate(0);
-    fn_8003AB38((*(HUPROCESS **) ((s8 *) (&lbl_1_bss_0) + (0))), PIXEL_SCENE_SETUP_PRIORITY,
-               PIXEL_SCENE_MODEL_CAPACITY, 0U, -1, fn_1_21E4);
+        Hu3DGLightCreate(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, -1.0f,
+                         255U, 255U, 255U);
+    lbl_1_bss_0.timer = MgTimerCreate(0);
+    fn_8003AB38(lbl_1_bss_0.process, 10,
+               10U, 0U, -1, fn_1_21E4);
     fn_80070788(&lbl_1_data_0);
 }
 
@@ -118,16 +115,16 @@ void fn_1_21E4(OMOBJ *setupObject)
     Point3d shadowTarget;
     lightId = fn_800286D0(&lightPos, &lightDir, &lightColor);
     Hu3DGLightInfinitytSet(lightId);
-    shadowPos.x = (0.0f);
-    shadowPos.y = (10000.0f);
-    shadowPos.z = (0.0f);
-    shadowUp.x = (0.0f);
-    shadowUp.y = (1.0f);
-    shadowUp.z = (0.0f);
-    shadowTarget.x = (0.0f);
-    shadowTarget.y = (0.0f);
-    shadowTarget.z = (-0.1f);
-    Hu3DShadowCreate((8.5f), (5000.0f), (13000.0f));
+    shadowPos.x = 0.0f;
+    shadowPos.y = 10000.0f;
+    shadowPos.z = 0.0f;
+    shadowUp.x = 0.0f;
+    shadowUp.y = 1.0f;
+    shadowUp.z = 0.0f;
+    shadowTarget.x = 0.0f;
+    shadowTarget.y = 0.0f;
+    shadowTarget.z = -0.1f;
+    Hu3DShadowCreate(8.5f, 5000.0f, 13000.0f);
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
     fn_1_6478();
     fn_1_6790(1);
@@ -174,9 +171,9 @@ void fn_1_21E4(OMOBJ *setupObject)
         READ_MOTION(lbl_1_bss_0.finishModel, PIXEL_FINISH_END_MOTION_RESOURCE);
     fn_800269E8(lbl_1_bss_0.finishModel, ((1 << 30) | (1 << 0)));
     fn_8002C95C(lbl_1_bss_0.finishModel, lbl_1_bss_0.finishMotions[0]);
-    BSS16(PIXEL_EXTRA_SCENE_MODEL_OFFSET) = READ_MODEL(PIXEL_EXTRA_SCENE_MODEL_RESOURCE);
-    BSS16(PIXEL_EXTRA_SCENE_MOTION_OFFSET) =
-        READ_MOTION(BSS16(PIXEL_EXTRA_SCENE_MODEL_OFFSET), PIXEL_EXTRA_SCENE_MOTION_RESOURCE);
+    lbl_1_bss_0.extraSceneModel = READ_MODEL(PIXEL_EXTRA_SCENE_MODEL_RESOURCE);
+    lbl_1_bss_0.extraSceneMotion =
+        READ_MOTION(lbl_1_bss_0.extraSceneModel, PIXEL_EXTRA_SCENE_MOTION_RESOURCE);
     lbl_1_bss_0.panelBaseModel = READ_MODEL(PIXEL_PANEL_MODEL_RESOURCE);
     lbl_1_bss_0.panelMotions[0] = READ_MOTION(lbl_1_bss_0.panelBaseModel, PIXEL_PANEL_OFF_RESOURCE);
     lbl_1_bss_0.panelMotions[1] = READ_MOTION(lbl_1_bss_0.panelBaseModel, PIXEL_PANEL_ON_RESOURCE);
@@ -185,17 +182,17 @@ void fn_1_21E4(OMOBJ *setupObject)
     lbl_1_bss_0.panelMotions[3] =
         READ_MOTION(lbl_1_bss_0.panelBaseModel, PIXEL_PANEL_TURN_OFF_RESOURCE);
     fn_80027080(lbl_1_bss_0.panelBaseModel, "636dot-StagePCPanel");
-    boardY = (0.0f);
+    boardY = 0.0f;
     /* The two 4-by-4 floors are separated along X and share linked panel geometry. */
     for (setupIndex = 0; setupIndex < 2; setupIndex++) {
         if (setupIndex == 0) {
-            boardX = (-850.0f);
-            boardY = (0.02f);
-            boardZ = (-400.0f);
+            boardX = -850.0f;
+            boardY = 0.02f;
+            boardZ = -400.0f;
         } else {
-            boardX = (50.0f);
-            boardY = (0.02f);
-            boardZ = (-400.0f);
+            boardX = 50.0f;
+            boardY = 0.02f;
+            boardZ = -400.0f;
         }
         for (row = 0; row < 4; row++) {
             for (column = 0; column < 4; column++) {
@@ -221,8 +218,8 @@ void fn_1_21E4(OMOBJ *setupObject)
     fn_800804E8(&collisionModel, 1, 5);
     {
     s32 teamPlayerCounts[2] = {0, 0};
-    actorParam.height = (150.0f);
-    actorParam.radius = (50.0f);
+    actorParam.height = 150.0f;
+    actorParam.radius = 50.0f;
     actorParam.param = 0;
     actorParam.type = 0;
     actorParam.attr = PIXEL_ACTOR_INITIAL_FLAGS;
@@ -238,7 +235,7 @@ void fn_1_21E4(OMOBJ *setupObject)
                  lbl_1_bss_0.teamSide[setupIndex]);
         /* Player creation replaces the landing motion in the shared motion list. */
         lbl_1_bss_0.players[setupIndex] = fn_80080728(
-            (s16) setupIndex, &actorParam, 8, (1 << 0), PIXEL_PLAYER_ACTION_MASK, lbl_1_data_E0);
+            (s16) setupIndex, &actorParam, 8, (1 << 0), 0xFFFFFFF3, lbl_1_data_E0);
         fn_8007ED60(lbl_1_bss_0.players[setupIndex]);
         actorParam.param++;
         lbl_1_bss_0.players[setupIndex]->actor->pos.x =
@@ -249,16 +246,16 @@ void fn_1_21E4(OMOBJ *setupObject)
             lbl_1_data_240[side * 2 + teamPlayerCounts[side]].z;
         teamPlayerCounts[side]++;
         /* The yaw setter receives the player base here rather than its actor. */
-        fn_80086CA8((MGACTOR *)lbl_1_bss_0.players[setupIndex], (90.0f));
+        fn_80086CA8((MGACTOR *)lbl_1_bss_0.players[setupIndex], 90.0f);
         fn_80026E44((s16)lbl_1_bss_0.players[setupIndex]->actor->mdlId);
         fn_80087158(lbl_1_bss_0.players[setupIndex], (1 << 0));
     }
     fn_1_31BC();
     /* Scene setup creates another timer and replaces the earlier stored timer pointer. */
-    *(MGTIMER **)((u8 *)&lbl_1_bss_0 + PIXEL_TIMER_OFFSET) = MgTimerCreate(0);
+    lbl_1_bss_0.timer = MgTimerCreate(0);
     fn_8002C2AC(8);
     fn_1_6790(0);
-    BSS32(PIXEL_MUSIC_HANDLE_OFFSET) = -1;
+    lbl_1_bss_0.musicHandle = -1;
     setupObject->objFunc = NULL;
     }
     }

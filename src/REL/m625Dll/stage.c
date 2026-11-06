@@ -4,6 +4,8 @@
 #include "datadir_enum.h"
 #include "game/memory.h"
 #include "REL/m625Dll/camera.h"
+#include "humath.h"
+#include "dolphin/gx.h"
 
 extern s16 lbl_802C0278;
 extern HUPROCESS *lbl_1_bss_810;
@@ -252,7 +254,7 @@ void fn_1_20AC(void)
         for (index = 0; index < peakCount; index += 1) {
             vertices = peakVertices[index];
             vertices->y = peakY + 5.0 *
-                sin(3.141592653589793 *
+                sin(M_PI *
                     (f64)(2.0f * vertices->x + phaseTime) / 180.0);
         }
         for (index = 0; index < 32; index += 1) {
@@ -271,7 +273,7 @@ void fn_1_20AC(void)
                         distance -= lbl_1_bss_0.phase[index];
                         vertices->y = (f32)((f64)vertices->y +
                             ((f64)lbl_1_bss_0.amplitude[index] *
-                            cos((3.141592653589793 *
+                            cos((M_PI *
                             (f64)(90.0f *
                             (distance / 50.0f))) /
                             180.0)));
@@ -339,8 +341,8 @@ void fn_1_2528(HU3D_DRAW_OBJ *waterDrawObject, HSF_MATERIAL *material) {
     GXSetNumTexGens(3);
     GXSetNumTevStages(2);
     GXSetNumChans(0);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_NONE);
-    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
 }
 
 M625LightModelState lbl_1_bss_194;

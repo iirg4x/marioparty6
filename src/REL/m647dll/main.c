@@ -3,7 +3,7 @@
 #include "REL/m647dll/module_types.h"
 #include "game/flag.h"
 
-#define INSECTIRIDE_INTRO_SOUND 1997
+
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -178,7 +178,7 @@ void fn_1_440(s16 frame) {
         case 0:
             fn_80071B08();
             lbl_1_bss_174.musicHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_LAST_KOOPA);
-            lbl_1_bss_174.soundEffectId = HuAudFXPlay(INSECTIRIDE_INTRO_SOUND);
+            lbl_1_bss_174.soundEffectId = HuAudFXPlay(1997);
             lbl_1_bss_174.sequencePhase++;
             break;
         case 1:

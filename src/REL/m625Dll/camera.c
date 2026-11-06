@@ -4,6 +4,7 @@
 extern s16 lbl_1_bss_814;
 #include "game/main.h"
 #include "math.h"
+#include "humath.h"
 
 /* Interpolates a point between camera poses with the minigame's eased timing curve. */
 void fn_1_0(Point3d *result, Point3d *start, Point3d *end, s16 duration, s16 elapsed)
@@ -11,7 +12,7 @@ void fn_1_0(Point3d *result, Point3d *start, Point3d *end, s16 duration, s16 ela
     Point3d position;
     f32 interpolation;
 
-    interpolation = (f32)cos((3.141592653589793 *
+    interpolation = (f32)cos((M_PI *
                               (f64)((180.0f / (f32)duration) *
                                     (f32)elapsed)) /
                              180.0);
@@ -109,7 +110,7 @@ s32 fn_1_41C(s16 frame)
         elapsed = frame - 60;
         positionEndA = lbl_1_data_74[1].position;
         positionStartA = lbl_1_data_74[0].position;
-        positionFactorA = (f32)cos((3.141592653589793 *
+        positionFactorA = (f32)cos((M_PI *
                                      (f64)(3.0508475f * (f32)elapsed)) /
                                     180.0);
         positionFactorA = 1.0f -
@@ -119,7 +120,7 @@ s32 fn_1_41C(s16 frame)
                                positionFactorA);
         targetEndA = lbl_1_data_74[1].target;
         targetStartA = lbl_1_data_74[0].target;
-        targetFactorA = (f32)cos((3.141592653589793 *
+        targetFactorA = (f32)cos((M_PI *
                                    (f64)(3.0508475f * (f32)elapsed)) /
                                   180.0);
         targetFactorA = 1.0f -
@@ -141,7 +142,7 @@ s32 fn_1_41C(s16 frame)
         elapsed = frame - 180;
         positionEndB = lbl_1_data_50.position;
         positionStartB = lbl_1_data_74[1].position;
-        positionFactorB = (f32)cos((3.141592653589793 *
+        positionFactorB = (f32)cos((M_PI *
                                      (f64)(3.0508475f * (f32)elapsed)) /
                                     180.0);
         positionFactorB = 1.0f -
@@ -151,7 +152,7 @@ s32 fn_1_41C(s16 frame)
                                positionFactorB);
         targetEndB = lbl_1_data_50.target;
         targetStartB = lbl_1_data_74[1].target;
-        targetFactorB = (f32)cos((3.141592653589793 *
+        targetFactorB = (f32)cos((M_PI *
                                    (f64)(3.0508475f * (f32)elapsed)) /
                                   180.0);
         targetFactorB = 1.0f -
@@ -222,7 +223,7 @@ s32 fn_1_CB4(s16 frame)
         if (lbl_1_bss_814 == 0) {
         positionEndA = lbl_1_data_BC[0].position;
         positionStartA = lbl_1_data_50.position;
-        factorA = (f32)cos((3.141592653589793 *
+        factorA = (f32)cos((M_PI *
                              (f64)(4.5f * (f32)frameInShot)) /
                             180.0);
         factorA = 1.0f -
@@ -232,7 +233,7 @@ s32 fn_1_CB4(s16 frame)
 
         targetEndA = lbl_1_data_BC[0].target;
         targetStartA = lbl_1_data_50.target;
-        factorB = (f32)cos((3.141592653589793 *
+        factorB = (f32)cos((M_PI *
                              (f64)(4.5f * (f32)frameInShot)) /
                             180.0);
         factorB = 1.0f -
@@ -241,7 +242,7 @@ s32 fn_1_CB4(s16 frame)
         } else {
         positionEndB = lbl_1_data_BC[1].position;
         positionStartB = lbl_1_data_50.position;
-        factorC = (f32)cos((3.141592653589793 *
+        factorC = (f32)cos((M_PI *
                              (f64)(4.5f * (f32)frameInShot)) /
                             180.0);
         factorC = 1.0f -
@@ -251,7 +252,7 @@ s32 fn_1_CB4(s16 frame)
 
         targetEndB = lbl_1_data_BC[1].target;
         targetStartB = lbl_1_data_50.target;
-        factorD = (f32)cos((3.141592653589793 *
+        factorD = (f32)cos((M_PI *
                              (f64)(4.5f * (f32)frameInShot)) /
                             180.0);
         factorD = 1.0f -
