@@ -92,20 +92,29 @@ void fn_1_67F4(void);
 
 /* State shared by the scene, round sequence and CPU player routines. */
 typedef struct M636WorkingData {
-    u8 sequenceState[PIXEL_SEQUENCE_STATE_BYTES]; /* Object manager, round state, frame counter and
-                                                   * camera object. */
+    HUPROCESS *process;
+    s16 sequenceMode;
+    u8 sequenceGap[2];
+    u32 sequenceFrame;
+    OMOBJ *cameraObject;
     s16 cameraMotions[2]; /* Opening and play-view camera motion IDs. */
-    u8 cameraAndTimerState[PIXEL_CAMERA_TIMER_STATE_BYTES]; /* Camera model/time values and
-                                                             * countdown timer pointer. */
+    s16 cameraModel; /* Active motion-driven camera model. */
+    f32 cameraFrame;
+    f32 cameraLastFrame;
+    u8 cameraAndTimerState[36]; /* Remaining camera and timing values. */
+    MGTIMER *timer;
     s32 charNo[4]; /* Character IDs for the four player slots. */
     s32 padNo[4]; /* Controller ports for the four player slots. */
     s32 teamSide[4]; /* Team side for each player: 0 is left, 1 is right. */
     MGPLAYER *players[4]; /* Player records owned by the actor manager. */
-    u8 aiState[PIXEL_CPU_STATE_BYTES]; /* Landing counters, CPU enable state, CPU modes and mode
-                                        * timers. */
+    s32 landingCounter[4];
+    s32 cpuActive;
+    s32 cpuMode[4];
+    s32 cpuFrameCounter[4];
     s32 targetCell[4]; /* CPU target panel, 0-15; -1 means no panel selected. */
-    u8 steeringAndScores[PIXEL_STEERING_SCORES_BYTES]; /* CPU direction vectors, team points and
-                                                        * round index. */
+    Point3d cpuStickDirection[4];
+    s32 teamPoints[2]; /* Round points for the left and right teams. */
+    s32 roundIndex;
     s32 mode; /* Round/result outcome: 1 left, 2 right, 3 timeout or draw. */
     u8 referenceModelPrefix[2]; /* Storage immediately before the reference display model. */
     s16 referenceModel; /* Reference display model hidden when a cell is shown. */
@@ -119,13 +128,17 @@ typedef struct M636WorkingData {
     s16 panelBaseModel; /* Model shared by the two teams' floor panels. */
     s16 panelMotions[4]; /* Off, on, turn-on and turn-off panel motions. */
     s16 panelModels[2][16]; /* Floor panel models, indexed by team and cell. */
-    u8 roundIndicatorState[4]; /* Marks whether the round indicator has returned to idle. */
+    s32 roundIndicatorState; /* Marks whether the round indicator has returned to idle. */
     s16 model; /* Scene model with idle and team-result motions. */
     s16 motion[3]; /* Idle, left-result and right-result scene motion IDs. */
     s16 finishModel; /* Model animated when the final round finishes. */
     s16 finishMotions[2]; /* Initial and game-finish motion IDs. */
-    u8 patternState[PIXEL_PATTERN_STATE_BYTES]; /* Picture selection, five cell choices and
-                                                 * team/target pixel grids. */
+    u8 patternState[14];
+    s32 selectedPicture;
+    s32 roundCellChoices[5];
+    s16 floorDrawHook;
+    u8 teamPixels[2][16];
+    u8 targetPixels[16];
     s16 referenceCellModels[16]; /* Reference display models for the sixteen picture cells. */
     HUSPR_GROUPID scoreBoxes[2]; /* Background sprite group for each team's score. */
     HUSPR_GROUPID scoreGroups[2]; /* Two earned markers and two empty markers per team. */
@@ -151,14 +164,9 @@ extern u32 lbl_1_data_2AC[3][16];
 extern u32 lbl_1_data_36C[3];
 extern u8 lbl_1_data_378[768];
 
-#define BSS16(offset) (*(s16 *)((u8 *)&lbl_1_bss_0 + (offset)))
-#define BSS32(offset) (*(s32 *)((u8 *)&lbl_1_bss_0 + (offset)))
 #define BSS_ARRAY32(offset) ((s32 *)((u8 *)&lbl_1_bss_0 + (offset)))
-#define PLAYER(index)                                                                              \
-    (*(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + (index) * sizeof(MGPLAYER *) +                          \
-                     PIXEL_PLAYER_RECORDS_OFFSET))
-#define TIMER (*(MGTIMER **)((u8 *)&lbl_1_bss_0 + PIXEL_TIMER_RECORD_OFFSET))
-#define TICK (*(u32 *)((u8 *)&lbl_1_bss_0 + 8))
+#define TIMER (lbl_1_bss_0.timer)
+#define TICK (lbl_1_bss_0.sequenceFrame)
 #define READ_MODEL(resource)                                                                       \
     fn_80025A04(fn_80008DD0((resource), 0x10000000, 2))
 #define READ_MOTION(model, resource)                                                               \

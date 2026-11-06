@@ -86,8 +86,7 @@ typedef struct M635Sprite {
     s16 timer; /* Frames used by the prompt hide or blink animation. */
     s16 member; /* Sprite member index currently shown for the prompt. */
     float scale; /* Horizontal and vertical scale used during prompt animation. */
-    /* Four bytes that the prompt code does not read or write. */
-    u8 unaccessedBytes[4];
+    u8 unk0C[4]; /* The game's code never reads or writes these bytes. */
 } M635Sprite;
 
 extern M635Work lbl_1_bss_4;

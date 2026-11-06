@@ -9,9 +9,6 @@
 #include "game/wipe.h"
 #include "messdir_enum.h"
 
-#define MESSAGE_WINDOW_DIMENSION_MASK 0xFFF0
-#define MESSAGE_KEY_WAIT_BIT_PATTERN 0xFF
-
 typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
@@ -54,9 +51,9 @@ void _epilog(void)
 void ObjectSetup(void)
 {
     OSReport("******* Message Checker *********\n");
-    objman = fn_8003A8BC(50, 8192);
+    objman = fn_8003A8BC(50, 0x2000);
     HuWinInit(0);
-    fn_8000DAC0(fn_1_110, 1000, 12288, 0, objman);
+    fn_8000DAC0(fn_1_110, 1000, 0x3000, 0, objman);
 }
 
 /* Message-directory lookup names in display order; fn_1_188 changes '_' to '=' and truncates at
@@ -196,9 +193,9 @@ static void fn_1_188(void)
                 storedDimension = messageWindowSize.x;
                 /* Scale stored dimensions by 21 pixels per width unit and 26 per height unit, then
                  * add a 16-pixel margin and align each dimension to 16 pixels. */
-                messageWindowSize.x = (storedDimension * 21 + 31) & MESSAGE_WINDOW_DIMENSION_MASK;
+                messageWindowSize.x = (storedDimension * 21 + 31) & 0xFFF0;
                 storedDimension = messageWindowSize.y;
-                messageWindowSize.y = (storedDimension * 26 + 31) & MESSAGE_WINDOW_DIMENSION_MASK;
+                messageWindowSize.y = (storedDimension * 26 + 31) & 0xFFF0;
             }
 
             messageWin = HuWinCreate(HUWIN_POS_CENTER, 200.0f, messageWindowSize.x,
@@ -208,7 +205,7 @@ static void fn_1_188(void)
             messageHasKeyWait = FALSE;
             textCursor = HuWinMesPtrGet(packedMessageId);
             while (*textCursor != '\0') {
-                if (*textCursor == MESSAGE_KEY_WAIT_BIT_PATTERN) {
+                if (*textCursor == 0xFF) {
                     messageHasKeyWait = TRUE;
                 }
                 textCursor++;

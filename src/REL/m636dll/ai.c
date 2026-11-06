@@ -1,15 +1,9 @@
 /* CPU target selection, jumping and teammate avoidance for Pixel Perfect. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m636dll.h"
+#include "humath.h"
 
-#define PIXEL_CELL_COUNT 16
-#define PIXEL_PLAYER_SIDE_WORD_INDEX 26
-#define PIXEL_PLAYER_SIDE_OFFSET 104
-#define PIXEL_PLAYER_RECORD_OFFSET 120
-#define PIXEL_CPU_MODE_OFFSET 156
-#define PIXEL_CPU_FRAME_COUNTER_OFFSET 172
-#define PIXEL_CPU_TARGET_CELL_OFFSET 188
-#define PIXEL_CPU_STICK_DIRECTION_OFFSET 204
+
 
 #define PIXEL_CPU_PAUSE 0
 #define PIXEL_CPU_CHOOSE 1
@@ -22,9 +16,9 @@ s32 fn_1_3D28(s32 playerIndex)
 {
     s32 cellIndex;
     do {
-        cellIndex = frandmod(PIXEL_CELL_COUNT);
+        cellIndex = frandmod(16);
     } while (cellIndex ==
-             *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_CPU_TARGET_CELL_OFFSET + playerIndex * 4));
+             lbl_1_bss_0.targetCell[playerIndex]);
     return cellIndex;
 }
 
@@ -35,7 +29,7 @@ s32 fn_1_3D80(s32 playerSlot)
     s32 cellIndex;
     s32 mismatchCount;
     s32 side;
-    side = ((s32 *)((u8 *)&lbl_1_bss_0 + playerSlot * 4))[PIXEL_PLAYER_SIDE_WORD_INDEX];
+    side = lbl_1_bss_0.teamSide[playerSlot];
     mismatchCount = 0;
     cellIndex = 0;
     for (; cellIndex < 16; cellIndex++) {
@@ -66,7 +60,7 @@ s32 fn_1_3E30(s32 playerIndex){
     s32 teammateIndex;
     s32 cellIndex;
 
-    nearestDistance = (99999.0f);
+    nearestDistance = 99999.0f;
     player = lbl_1_bss_0.players[playerIndex];
     side = lbl_1_bss_0.teamSide[playerIndex];
     gridPosition = player->actor->pos;
@@ -74,9 +68,9 @@ s32 fn_1_3E30(s32 playerIndex){
     offsetX = lbl_1_data_270[side][0];
     offsetZ = lbl_1_data_270[side][1];
     gridPosition.x += offsetX;
-    gridPosition.y = (0.0f);
+    gridPosition.y = 0.0f;
     gridPosition.z += offsetZ;
-    for (cellIndex = 0; cellIndex < PIXEL_CELL_COUNT; cellIndex++) {
+    for (cellIndex = 0; cellIndex < 16; cellIndex++) {
         if (fn_1_3A84(side, cellIndex) == 0) {
             /* Skip a teammate's target only if this CPU already has one and at least two pixels
              * are wrong. */
@@ -90,9 +84,9 @@ s32 fn_1_3E30(s32 playerIndex){
                 }
             }
             if (teammateIndex == 4) {
-                cellCenter.x = (100.0f) + (200.0f) * (cellIndex % 4);
-                cellCenter.y = (0.0f);
-                cellCenter.z = (100.0f) + (200.0f) * (cellIndex / 4);
+                cellCenter.x = 100.0f + 200.0f * (cellIndex % 4);
+                cellCenter.y = 0.0f;
+                cellCenter.z = 100.0f + 200.0f * (cellIndex / 4);
                 PSVECSubtract(&cellCenter, &gridPosition, &difference);
                 distance = PSVECMag(&difference);
                 if (distance < nearestDistance) {
@@ -121,22 +115,22 @@ void fn_1_40E0(s32 playerIndex)
     s32 pressedButtons;
     s32 heldButtons;
 
-    player = *(MGPLAYER **)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
+    player = lbl_1_bss_0.players[playerIndex];
     gridPosition = player->actor->pos;
     stickX = 0;
     stickY = 0;
     pressedButtons = 0;
     heldButtons = 0;
     offsetX =
-        lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)]
+        lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]]
                       [0];
     offsetZ =
-        lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)]
+        lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]]
                       [1];
     gridPosition.x += offsetX;
-    gridPosition.y = (0.0f);
+    gridPosition.y = 0.0f;
     gridPosition.z += offsetZ;
-    switch (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET)) {
+    switch (lbl_1_bss_0.cpuMode[playerIndex]) {
     case PIXEL_CPU_CHOOSE: {
         s32 chosenCell;
         {
@@ -144,116 +138,113 @@ void fn_1_40E0(s32 playerIndex)
             if (choiceRoll < 5) {
                 chosenCell = fn_1_3D80(playerIndex);
             } else if (choiceRoll < 15) {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_PAUSE;
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) =
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] =
                     frandmod(120) + 60;
                 break;
             } else {
                 chosenCell = fn_1_3D28(playerIndex);
             }
         }
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET) = chosenCell;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) = PIXEL_CPU_MOVE;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+        lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
+        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
     case PIXEL_CPU_MOVE: {
         s32 targetCell;
         f32 distance;
-        targetCell = *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET);
-        cellCenter.x = (100.0f) + (200.0f) * (targetCell % 4);
-        cellCenter.y = (0.0f);
-        cellCenter.z = (100.0f) + (200.0f) * (targetCell / 4);
+        targetCell = lbl_1_bss_0.targetCell[playerIndex];
+        cellCenter.x = 100.0f + 200.0f * (targetCell % 4);
+        cellCenter.y = 0.0f;
+        cellCenter.z = 100.0f + 200.0f * (targetCell / 4);
         PSVECSubtract(&cellCenter, &gridPosition, &difference);
         distance = PSVECMag(&difference);
-        if (distance < (100.0f)) {
+        if (distance < 100.0f) {
             if ((u32) frandmod(100) < 60 &&
                 fn_1_3A84(
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET),
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                              PIXEL_CPU_TARGET_CELL_OFFSET)) == 0) {
+                    lbl_1_bss_0.teamSide[playerIndex],
+                    lbl_1_bss_0.targetCell[playerIndex]) == 0) {
                 pressedButtons = PAD_BUTTON_A;
                 heldButtons = PAD_BUTTON_A;
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_JUMP;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump\n");
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_CHOOSE;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
             f32 directionLength;
             PSVECSubtract(&cellCenter, &gridPosition, &direction);
             directionLength = PSVECMag(&direction);
-            if ((0.0f) != directionLength) {
+            if (0.0f != directionLength) {
                 direction.x /= directionLength;
                 direction.y /= directionLength;
                 direction.z /= directionLength;
             }
-            gridPosition.x += (56.0f) * direction.x;
-            gridPosition.y += (56.0f) * direction.y;
-            gridPosition.z += (56.0f) * direction.z;
+            gridPosition.x += 56.0f * direction.x;
+            gridPosition.y += 56.0f * direction.y;
+            gridPosition.z += 56.0f * direction.z;
             fn_1_5F54(playerIndex, &gridPosition, &cellCenter, &difference, 1);
-            stickX = (s32)((56.0f) * difference.x);
-            stickY = (s32)((56.0f) * difference.z);
-            *(Point3d *) ((u8 *) &lbl_1_bss_0 + playerIndex * 12 +
-                          PIXEL_CPU_STICK_DIRECTION_OFFSET) = difference;
+            stickX = (s32)(56.0f * difference.x);
+            stickY = (s32)(56.0f * difference.z);
+            lbl_1_bss_0.cpuStickDirection[playerIndex] = difference;
         }
-        if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >=
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         /* The earlier 120-frame exit makes this 180-frame timeout unreachable. */
-        if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >=
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             180) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     }
     case PIXEL_CPU_PAUSE:
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))--;
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) <= 0) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])--;
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <= 0) {
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     case PIXEL_CPU_JUMP:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) < 15) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
-        } else if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                             PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 16) {
-            if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) <
+        } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
+            if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <
                 17) {
                 pressedButtons = PAD_BUTTON_A;
                 heldButtons = PAD_BUTTON_A;
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_GROUND_POUND;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop\n");
                 break;
             }
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     case PIXEL_CPU_GROUND_POUND:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 10) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
             OSReport("to search\n");
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     }
     fn_80080520(player, stickX, stickY, pressedButtons, heldButtons);
@@ -275,30 +266,30 @@ void fn_1_48FC(s32 playerIndex)
     s32 pressedButtons;
     s32 heldButtons;
 
-    player = *(MGPLAYER **)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
+    player = lbl_1_bss_0.players[playerIndex];
     gridPosition = player->actor->pos;
     stickX = 0;
     stickY = 0;
     pressedButtons = 0;
     heldButtons = 0;
     offsetX =
-        lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)]
+        lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]]
                       [0];
     offsetZ =
-        lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)]
+        lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]]
                       [1];
     gridPosition.x += offsetX;
-    gridPosition.y = (0.0f);
+    gridPosition.y = 0.0f;
     gridPosition.z += offsetZ;
-    switch (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET)) {
+    switch (lbl_1_bss_0.cpuMode[playerIndex]) {
     case PIXEL_CPU_CHOOSE: {
         s32 chosenCell;
         {
             s32 choiceRoll = frandmod(100);
             if (choiceRoll < 5) {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_PAUSE;
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) =
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] =
                     frandmod(120) + 60;
                 break;
             } else if (choiceRoll < 30) {
@@ -307,106 +298,103 @@ void fn_1_48FC(s32 playerIndex)
                 chosenCell = fn_1_3D28(playerIndex);
             }
         }
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET) = chosenCell;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) = PIXEL_CPU_MOVE;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+        lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
+        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
     case PIXEL_CPU_MOVE: {
         s32 targetCell;
         f32 distance;
-        targetCell = *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET);
-        cellCenter.x = (100.0f) + (200.0f) * (targetCell % 4);
-        cellCenter.y = (0.0f);
-        cellCenter.z = (100.0f) + (200.0f) * (targetCell / 4);
+        targetCell = lbl_1_bss_0.targetCell[playerIndex];
+        cellCenter.x = 100.0f + 200.0f * (targetCell % 4);
+        cellCenter.y = 0.0f;
+        cellCenter.z = 100.0f + 200.0f * (targetCell / 4);
         PSVECSubtract(&cellCenter, &gridPosition, &difference);
         distance = PSVECMag(&difference);
-        if (distance < (80.0f)) {
+        if (distance < 80.0f) {
             if ((u32) frandmod(100) < 80 &&
                 fn_1_3A84(
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET),
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                              PIXEL_CPU_TARGET_CELL_OFFSET)) == 0) {
+                    lbl_1_bss_0.teamSide[playerIndex],
+                    lbl_1_bss_0.targetCell[playerIndex]) == 0) {
                 pressedButtons = PAD_BUTTON_A;
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_JUMP;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump\n");
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_CHOOSE;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
             f32 directionLength;
             PSVECSubtract(&cellCenter, &gridPosition, &direction);
             directionLength = PSVECMag(&direction);
-            if ((0.0f) != directionLength) {
+            if (0.0f != directionLength) {
                 direction.x /= directionLength;
                 direction.y /= directionLength;
                 direction.z /= directionLength;
             }
-            gridPosition.x += (56.0f) * direction.x;
-            gridPosition.y += (56.0f) * direction.y;
-            gridPosition.z += (56.0f) * direction.z;
+            gridPosition.x += 56.0f * direction.x;
+            gridPosition.y += 56.0f * direction.y;
+            gridPosition.z += 56.0f * direction.z;
             fn_1_5F54(playerIndex, &gridPosition, &cellCenter, &difference, 1);
-            stickX = (s32)((56.0f) * difference.x);
-            stickY = (s32)((56.0f) * difference.z);
-            *(Point3d *) ((u8 *) &lbl_1_bss_0 + playerIndex * 12 +
-                          PIXEL_CPU_STICK_DIRECTION_OFFSET) = difference;
+            stickX = (s32)(56.0f * difference.x);
+            stickY = (s32)(56.0f * difference.z);
+            lbl_1_bss_0.cpuStickDirection[playerIndex] = difference;
         }
-        if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >=
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         /* The earlier 120-frame exit makes this 180-frame timeout unreachable. */
-        if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >=
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             180) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     }
     case PIXEL_CPU_PAUSE:
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))--;
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) <= 0) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])--;
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <= 0) {
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     case PIXEL_CPU_JUMP:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) < 15) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
-        } else if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                             PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 16) {
-            if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) <
+        } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
+            if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <
                 17) {
                 pressedButtons = PAD_BUTTON_A;
                 heldButtons = PAD_BUTTON_A;
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_GROUND_POUND;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop\n");
                 break;
             }
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     case PIXEL_CPU_GROUND_POUND:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 10) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
             OSReport("to search\n");
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     }
     fn_80080520(player, stickX, stickY, pressedButtons, heldButtons);
@@ -428,126 +416,123 @@ void fn_1_50A8(s32 playerIndex)
     s32 pressedButtons;
     s32 heldButtons;
 
-    player = *(MGPLAYER **)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
+    player = lbl_1_bss_0.players[playerIndex];
     gridPosition = player->actor->pos;
     stickX = 0;
     stickY = 0;
     pressedButtons = 0;
     heldButtons = 0;
     offsetX =
-        lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)]
+        lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]]
                       [0];
     offsetZ =
-        lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)]
+        lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]]
                       [1];
     gridPosition.x += offsetX;
-    gridPosition.y = (0.0f);
+    gridPosition.y = 0.0f;
     gridPosition.z += offsetZ;
-    switch (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET)) {
+    switch (lbl_1_bss_0.cpuMode[playerIndex]) {
     case PIXEL_CPU_CHOOSE: {
         s32 chosenCell = fn_1_3D80(playerIndex);
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET) = chosenCell;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) = PIXEL_CPU_MOVE;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+        lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
+        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
     case PIXEL_CPU_MOVE: {
         s32 targetCell;
         f32 distance;
-        targetCell = *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET);
+        targetCell = lbl_1_bss_0.targetCell[playerIndex];
         if (targetCell < 0) {
             break;
         }
-        cellCenter.x = (100.0f) + (200.0f) * (targetCell % 4);
-        cellCenter.y = (0.0f);
-        cellCenter.z = (100.0f) + (200.0f) * (targetCell / 4);
+        cellCenter.x = 100.0f + 200.0f * (targetCell % 4);
+        cellCenter.y = 0.0f;
+        cellCenter.z = 100.0f + 200.0f * (targetCell / 4);
         PSVECSubtract(&cellCenter, &gridPosition, &difference);
         distance = PSVECMag(&difference);
-        if (distance < (80.0f)) {
+        if (distance < 80.0f) {
             if (fn_1_3A84(
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET),
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                              PIXEL_CPU_TARGET_CELL_OFFSET)) == 0) {
+                    lbl_1_bss_0.teamSide[playerIndex],
+                    lbl_1_bss_0.targetCell[playerIndex]) == 0) {
                 pressedButtons = PAD_BUTTON_A;
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_JUMP;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump\n");
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_CHOOSE;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
             f32 directionLength;
             PSVECSubtract(&cellCenter, &gridPosition, &direction);
             directionLength = PSVECMag(&direction);
-            if ((0.0f) != directionLength) {
+            if (0.0f != directionLength) {
                 direction.x /= directionLength;
                 direction.y /= directionLength;
                 direction.z /= directionLength;
             }
-            gridPosition.x += (56.0f) * direction.x;
-            gridPosition.y += (56.0f) * direction.y;
-            gridPosition.z += (56.0f) * direction.z;
+            gridPosition.x += 56.0f * direction.x;
+            gridPosition.y += 56.0f * direction.y;
+            gridPosition.z += 56.0f * direction.z;
             fn_1_5F54(playerIndex, &gridPosition, &cellCenter, &difference, 1);
-            stickX = (s32)((56.0f) * difference.x);
-            stickY = (s32)((56.0f) * difference.z);
-            *(Point3d *) ((u8 *) &lbl_1_bss_0 + playerIndex * 12 +
-                          PIXEL_CPU_STICK_DIRECTION_OFFSET) = difference;
+            stickX = (s32)(56.0f * difference.x);
+            stickY = (s32)(56.0f * difference.z);
+            lbl_1_bss_0.cpuStickDirection[playerIndex] = difference;
         }
-        if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >=
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         /* The earlier 120-frame exit makes this 180-frame timeout unreachable. */
-        if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >=
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             180) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     }
     case PIXEL_CPU_PAUSE:
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))--;
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) <= 0) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])--;
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <= 0) {
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     case PIXEL_CPU_JUMP:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) < 15) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
-        } else if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                             PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 16) {
-            if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) <
+        } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
+            if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <
                 17) {
                 pressedButtons = PAD_BUTTON_A;
                 heldButtons = PAD_BUTTON_A;
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_GROUND_POUND;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop\n");
                 break;
             }
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     case PIXEL_CPU_GROUND_POUND:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 10) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
             OSReport("to search\n");
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     }
     fn_80080520(player, stickX, stickY, pressedButtons, heldButtons);
@@ -567,115 +552,111 @@ void fn_1_582C(s32 playerIndex)
     s32 pressedButtons;
     s32 heldButtons;
 
-    player = *(MGPLAYER **)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
+    player = lbl_1_bss_0.players[playerIndex];
     stickX = 0;
     stickY = 0;
     pressedButtons = 0;
     heldButtons = 0;
-    switch (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET)) {
+    switch (lbl_1_bss_0.cpuMode[playerIndex]) {
     case PIXEL_CPU_JUMP:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) < 15) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
-        } else if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                             PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 16) {
-            if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) <
+        } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
+            if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <
                 17) {
                 pressedButtons = PAD_BUTTON_A;
                 heldButtons = PAD_BUTTON_A;
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_GROUND_POUND;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop(%d)\n", playerIndex);
                 break;
             }
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     case PIXEL_CPU_GROUND_POUND:
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >= 10) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
             OSReport("to search(%d)\n", playerIndex);
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     case PIXEL_CPU_CHOOSE: {
         s32 chosenCell;
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) == 0) {
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] == 0) {
             chosenCell = fn_1_3D28(playerIndex);
         } else if ((u32)frandmod(100) < 20) {
             chosenCell = fn_1_3D80(playerIndex);
         } else {
             chosenCell = fn_1_3E30(playerIndex);
         }
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET) = chosenCell;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) = PIXEL_CPU_MOVE;
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+        lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
+        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
     case PIXEL_CPU_MOVE: {
         s32 targetCell;
         f32 distance;
-        targetCell = *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET);
+        targetCell = lbl_1_bss_0.targetCell[playerIndex];
         gridPosition = player->actor->pos;
-        gridPosition.x += lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                                                   PIXEL_PLAYER_SIDE_OFFSET)][0];
-        gridPosition.y = (0.0f);
-        gridPosition.z += lbl_1_data_270[*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                                                   PIXEL_PLAYER_SIDE_OFFSET)][1];
+        gridPosition.x += lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]][0];
+        gridPosition.y = 0.0f;
+        gridPosition.z += lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]][1];
         if (targetCell == -1) {
             OSReport("idx : -1\n");
         }
         if (targetCell == -1) {
             break;
         }
-        *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_TARGET_CELL_OFFSET) = targetCell;
-        cellCenter.x = (100.0f) + (200.0f) * (targetCell % 4);
-        cellCenter.y = (0.0f);
-        cellCenter.z = (100.0f) + (200.0f) * (targetCell / 4);
+        lbl_1_bss_0.targetCell[playerIndex] = targetCell;
+        cellCenter.x = 100.0f + 200.0f * (targetCell % 4);
+        cellCenter.y = 0.0f;
+        cellCenter.z = 100.0f + 200.0f * (targetCell / 4);
         PSVECSubtract(&cellCenter, &gridPosition, &difference);
         distance = PSVECMag(&difference);
-        if (distance < (80.0f)) {
+        if (distance < 80.0f) {
             if (fn_1_3A84(
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET),
-                    *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 +
-                              PIXEL_CPU_TARGET_CELL_OFFSET)) == 0) {
+                    lbl_1_bss_0.teamSide[playerIndex],
+                    lbl_1_bss_0.targetCell[playerIndex]) == 0) {
                 pressedButtons = PAD_BUTTON_A;
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_JUMP;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump(%d)\n", playerIndex);
             } else {
-                *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+                lbl_1_bss_0.cpuMode[playerIndex] =
                     PIXEL_CPU_CHOOSE;
-                *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+                lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
             f32 directionLength;
             PSVECSubtract(&cellCenter, &gridPosition, &direction);
             directionLength = PSVECMag(&direction);
-            if ((0.0f) != directionLength) {
+            if (0.0f != directionLength) {
                 direction.x /= directionLength;
                 direction.y /= directionLength;
                 direction.z /= directionLength;
             }
-            gridPosition.x += (56.0f) * direction.x;
-            gridPosition.y += (56.0f) * direction.y;
-            gridPosition.z += (56.0f) * direction.z;
+            gridPosition.x += 56.0f * direction.x;
+            gridPosition.y += 56.0f * direction.y;
+            gridPosition.z += 56.0f * direction.z;
             fn_1_5F54(playerIndex, &gridPosition, &cellCenter, &difference, 1);
-            stickX = (s32)((56.0f) * difference.x);
-            stickY = (s32)((56.0f) * difference.z);
+            stickX = (s32)(56.0f * difference.x);
+            stickY = (s32)(56.0f * difference.z);
         }
-        if (*(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) >=
+        if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
-            *(s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_MODE_OFFSET) =
+            lbl_1_bss_0.cpuMode[playerIndex] =
                 PIXEL_CPU_CHOOSE;
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET) = 0;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }
-        (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
+        (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
     }
     }
@@ -700,44 +681,42 @@ void fn_1_5F54(s32 playerIndex, Point3d *start, Point3d *target, Point3d *stickD
     s32 teammateIndex;
     MGPLAYER *teammate;
 
-    avoidanceAngle = (0.0f);
+    avoidanceAngle = 0.0f;
     teammateSeen = 0;
     startPosition = *start;
     PSVECSubtract(target, start, stickDirection);
     /* Distance and player are fetched here but do not affect the avoidance calculation. */
     targetDistance = PSVECMag(stickDirection);
     movingPlayer =
-        *(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
-    directionAngle = (f32) ((180.0) * (atan2((f64) stickDirection->z, (f64) stickDirection->x) /
-                                       (3.141592653589793)));
+        lbl_1_bss_0.players[playerIndex];
+    directionAngle = (f32) (180.0 * (atan2((f64) stickDirection->z, (f64) stickDirection->x) /
+                                       M_PI));
     for (teammateIndex = 0; teammateIndex < 4; teammateIndex++) {
         teammate =
-            *(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + teammateIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
+            lbl_1_bss_0.players[teammateIndex];
         if (playerIndex != teammateIndex &&
-            *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET) ==
-                *(s32 *)((u8 *)&lbl_1_bss_0 + teammateIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET) &&
+            lbl_1_bss_0.teamSide[playerIndex] ==
+                lbl_1_bss_0.teamSide[teammateIndex] &&
             fn_80087148(teammate, (1 << 4)) != (1 << 4)) {
             teammatePosition = teammate->actor->pos;
             if (gridCoordinates != 0) {
-                teammatePosition.x += lbl_1_data_270[*(
-                    s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)][0];
-                teammatePosition.y = (0.0f);
-                teammatePosition.z += lbl_1_data_270[*(
-                    s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET)][1];
+                teammatePosition.x += lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]][0];
+                teammatePosition.y = 0.0f;
+                teammatePosition.z += lbl_1_data_270[lbl_1_bss_0.teamSide[playerIndex]][1];
             }
             teammateSeen = 1;
             PSVECSubtract(&startPosition, &teammatePosition, &difference);
             distance = PSVECMag(&difference);
-            if (distance < (160.0f)) {
+            if (distance < 160.0f) {
                 lateralOffset = (teammatePosition.x - target->x) *
-                                    sin(((3.141592653589793) * (f64) directionAngle) / (180.0)) +
+                                    sin((M_PI * (f64) directionAngle) / 180.0) +
                                 (target->z - teammatePosition.z) *
-                                    cos(((3.141592653589793) * (f64) directionAngle) / (180.0));
-                lateralOffset /= (90.0f);
-                if (lateralOffset >= (0.0f)) {
-                    avoidanceAngle += (80.0f) / ((1.0f) + lateralOffset);
+                                    cos((M_PI * (f64) directionAngle) / 180.0);
+                lateralOffset /= 90.0f;
+                if (lateralOffset >= 0.0f) {
+                    avoidanceAngle += 80.0f / (1.0f + lateralOffset);
                 } else {
-                    avoidanceAngle -= (80.0f) / ((1.0f) - lateralOffset);
+                    avoidanceAngle -= 80.0f / (1.0f - lateralOffset);
                 }
             }
         }
@@ -745,11 +724,11 @@ void fn_1_5F54(s32 playerIndex, Point3d *start, Point3d *target, Point3d *stickD
     if (teammateSeen != 0) {
         /* Nearby teammates bend the heading; a distant teammate still selects this path. */
         directionAngle += avoidanceAngle;
-        stickDirection->x = (f32)cos(((3.141592653589793) * (f64)directionAngle) / (180.0));
-        stickDirection->z = (f32)sin(((3.141592653589793) * (f64)directionAngle) / (180.0));
+        stickDirection->x = (f32)cos((M_PI * (f64)directionAngle) / 180.0);
+        stickDirection->z = (f32)sin((M_PI * (f64)directionAngle) / 180.0);
     }
     distance = PSVECMag(stickDirection);
-    if ((0.0f) != distance) {
+    if (0.0f != distance) {
         stickDirection->x /= distance;
         stickDirection->y /= distance;
         stickDirection->z /= distance;

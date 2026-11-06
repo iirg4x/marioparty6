@@ -22,9 +22,9 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 
-#define M625_OBJECT_SLOT_COUNT 300
-#define M625_PROCESS_STACK_SIZE 4096
-#define M625_SEQUENCE_PRIORITY 2000
+
+
+
 
 /* Called by falling-object collision checks to test the distance between two centers. */
 s32 fn_1_13318(Point3d point, f32 radius_a, Point3d center, f32 radius_b)
@@ -211,9 +211,9 @@ extern MGSEQ_PARAM lbl_1_data_448;
 
 /* Called by the REL prolog to create the minigame object manager and sequence. */
 void fn_1_13B88(void) {
-    lbl_1_bss_810 = fn_8003A8BC(M625_OBJECT_SLOT_COUNT, M625_PROCESS_STACK_SIZE);
+    lbl_1_bss_810 = fn_8003A8BC(300, 4096);
     fn_80069F1C(lbl_1_bss_810);
-    fn_800707B4(&lbl_1_data_448, M625_SEQUENCE_PRIORITY);
+    fn_800707B4(&lbl_1_data_448, 2000);
     fn_80071D20(4, fn_1_13E14);
     fn_80071CE8(2, -1);
     fn_80071CE8(7, -1);

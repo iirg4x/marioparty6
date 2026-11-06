@@ -41,7 +41,7 @@
 #define SAF_MICQUIZ_MESSAGE_BANK 28
 #define SAF_TEST_MESSAGE_INDEX 66
 #define SAF_TEST_MESSAGE_ID ((u32)((SAF_MICQUIZ_MESSAGE_BANK << 16) | SAF_TEST_MESSAGE_INDEX))
-#define SAF_MARIO_DATA_DIR_ID 0x8e0000
+
 #define SAF_INSET_BASE_INTENSITY 24
 #define SAF_DEPTH_RAMP_FIRST 240
 
@@ -196,7 +196,7 @@ void fn_1_6E0(void) {
     fn_8000BFB4(fn_8000B7A8(3), -1);
     fn_80009A30();
     fn_8000BFB4(fn_8000B7A8(3), -1);
-    fn_800078C8(SAF_MARIO_DATA_DIR_ID);
+    fn_800078C8(0x8e0000);
     lbl_1_bss_1AC = HuMemDirectMallocNum(
         2, GXGetTexBufferSize(640U, 480U, GX_TF_Z24X8, 0U, 0U), 0x10000000);
     fn_1_1754();
@@ -217,7 +217,7 @@ void fn_1_9EC(HSF_OBJECT *object, HSF_TRANSFORM *transform, Mtx *previousMatrix,
     mtxRotCat(work, 3.0f + transform->rot.x, transform->rot.y, transform->rot.z);
     mtxTransCat(work, transform->pos.x,
         (f32)((f64)transform->pos.y +
-              (3.0 * sin((3.141592653589793 * (f64)lbl_1_bss_0) /
+              (3.0 * sin((M_PI * (f64)lbl_1_bss_0) /
                                     180.0))),
         transform->pos.z);
     PSMTXConcat(*previousMatrix, work, *currentMatrix);
@@ -252,42 +252,42 @@ void fn_1_B30(OMOBJ *cameraObject)
     lbl_802C028C += lbl_802BFFEC[0]/2;
     lbl_802C028C -= lbl_802BFFE8[0]/2;
     pos.x = lbl_80266A4C.x
-        + (lbl_802C028C * (sin(3.141592653589793*lbl_80266A40.y/180.0)
-        * cos(3.141592653589793*lbl_80266A40.x/180.0)));
-    pos.y = (lbl_80266A4C.y + (lbl_802C028C * -sin(3.141592653589793*lbl_80266A40.x/180.0)));
+        + (lbl_802C028C * (sin(M_PI*lbl_80266A40.y/180.0)
+        * cos(M_PI*lbl_80266A40.x/180.0)));
+    pos.y = (lbl_80266A4C.y + (lbl_802C028C * -sin(M_PI*lbl_80266A40.x/180.0)));
     pos.z = (lbl_80266A4C.z
-        + (lbl_802C028C * (cos(3.141592653589793*lbl_80266A40.y/180.0)
-        * cos(3.141592653589793*lbl_80266A40.x/180.0))));
+        + (lbl_802C028C * (cos(M_PI*lbl_80266A40.y/180.0)
+        * cos(M_PI*lbl_80266A40.x/180.0))));
     offset.x = lbl_80266A4C.x - pos.x;
     offset.y = lbl_80266A4C.y - pos.y;
     offset.z = lbl_80266A4C.z - pos.z;
-    dir.x = (sin(3.141592653589793*lbl_80266A40.y/180.0)
-        * sin(3.141592653589793*lbl_80266A40.x/180.0));
-    dir.y = cos(3.141592653589793*lbl_80266A40.x/180.0);
-    dir.z = (cos(3.141592653589793*lbl_80266A40.y/180.0)
-        * sin(3.141592653589793*lbl_80266A40.x/180.0));
+    dir.x = (sin(M_PI*lbl_80266A40.y/180.0)
+        * sin(M_PI*lbl_80266A40.x/180.0));
+    dir.y = cos(M_PI*lbl_80266A40.x/180.0);
+    dir.z = (cos(M_PI*lbl_80266A40.y/180.0)
+        * sin(M_PI*lbl_80266A40.x/180.0));
     rotZ = lbl_80266A40.z;
     /* Compute the camera-relative vertical pan direction, including CRot.z roll. */
     yOfs.x = dir.x * (offset.x * offset.x
-        + (1.0f - offset.x * offset.x) * cos(3.141592653589793*rotZ/180.0))
-        + dir.y * (offset.x * offset.y * (1.0 - cos(3.141592653589793*rotZ/180.0))
-            - offset.z * sin(3.141592653589793*rotZ/180.0))
-        + dir.z * (offset.x * offset.z * (1.0 - cos(3.141592653589793*rotZ/180.0))
-            + offset.y * sin(3.141592653589793*rotZ/180.0));
+        + (1.0f - offset.x * offset.x) * cos(M_PI*rotZ/180.0))
+        + dir.y * (offset.x * offset.y * (1.0 - cos(M_PI*rotZ/180.0))
+            - offset.z * sin(M_PI*rotZ/180.0))
+        + dir.z * (offset.x * offset.z * (1.0 - cos(M_PI*rotZ/180.0))
+            + offset.y * sin(M_PI*rotZ/180.0));
 
     yOfs.y = dir.y * (offset.y * offset.y
-        + (1.0f - offset.y * offset.y) * cos(3.141592653589793*rotZ/180.0))
-        + dir.x * (offset.x * offset.y * (1.0 - cos(3.141592653589793*rotZ/180.0))
-            + offset.z * sin(3.141592653589793*rotZ/180.0))
-        + dir.z * (offset.y * offset.z * (1.0 - cos(3.141592653589793*rotZ/180.0))
-            - offset.x * sin(3.141592653589793*rotZ/180.0));
+        + (1.0f - offset.y * offset.y) * cos(M_PI*rotZ/180.0))
+        + dir.x * (offset.x * offset.y * (1.0 - cos(M_PI*rotZ/180.0))
+            + offset.z * sin(M_PI*rotZ/180.0))
+        + dir.z * (offset.y * offset.z * (1.0 - cos(M_PI*rotZ/180.0))
+            - offset.x * sin(M_PI*rotZ/180.0));
 
     yOfs.z = dir.z * (offset.z * offset.z
-        + (1.0f - offset.z * offset.z) * cos(3.141592653589793*rotZ/180.0))
-        + (dir.x * (offset.x * offset.z * (1.0 - cos(3.141592653589793*rotZ/180.0))
-            - offset.y * sin(3.141592653589793*rotZ/180.0))
-        + dir.y * (offset.y * offset.z * (1.0 - cos(3.141592653589793*rotZ/180.0))
-            + offset.x * sin(3.141592653589793*rotZ/180.0)));
+        + (1.0f - offset.z * offset.z) * cos(M_PI*rotZ/180.0))
+        + (dir.x * (offset.x * offset.z * (1.0 - cos(M_PI*rotZ/180.0))
+            - offset.y * sin(M_PI*rotZ/180.0))
+        + dir.y * (offset.y * offset.z * (1.0 - cos(M_PI*rotZ/180.0))
+            + offset.x * sin(M_PI*rotZ/180.0)));
     VECCrossProduct(&dir, &offset, &offset);
     VECNormalize(&offset, &offset);
     stickPos = (lbl_802BFFF4[0] & 0xF8);
@@ -359,7 +359,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
     up.x = up.z = 0.0f;
     up.y = 1.0f;
     C_MTXLookAt(modelview, &eye, &up, &target);
-    GXLoadPosMtxImm(modelview, 0U);
+    GXLoadPosMtxImm(modelview, GX_PNMTX0);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
@@ -371,8 +371,8 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
     GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
     GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_KONST, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
-    GXSetChanCtrl(GX_COLOR0A0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
-    GXSetChanCtrl(GX_COLOR1A1, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0A0, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR1A1, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXSetNumTexGens(1U);
     GXSetNumTevStages(1U);
     GXSetZMode(1U, GX_LEQUAL, 1U);
@@ -385,7 +385,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
         GXPixModeSync();
         GXLoadTexObj(&texture, GX_TEXMAP0);
         distance = farDepth;
-        eye.x = eye.y = distance * tan(3.141592653589793 * (camera->fov / 2.0f) / 180.0);
+        eye.x = eye.y = distance * tan(M_PI * (camera->fov / 2.0f) / 180.0);
         eye.x *= 1.2f;
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         GXPosition3f32(-eye.x, eye.y, -distance);
@@ -409,7 +409,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
         GXPixModeSync();
         GXLoadTexObj(&texture, GX_TEXMAP0);
         distance = middleDepth;
-        eye.x = eye.y = distance * tan(3.141592653589793 * (camera->fov / 2.0f) / 180.0);
+        eye.x = eye.y = distance * tan(M_PI * (camera->fov / 2.0f) / 180.0);
         eye.x *= 1.2f;
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         GXPosition3f32(-eye.x, eye.y, -distance);
@@ -433,7 +433,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
         GXPixModeSync();
         GXLoadTexObj(&texture, GX_TEXMAP0);
         distance = nearDepth;
-        eye.x = eye.y = distance * tan(3.141592653589793 * (camera->fov / 2.0f) / 180.0);
+        eye.x = eye.y = distance * tan(M_PI * (camera->fov / 2.0f) / 180.0);
         eye.x *= 1.2f;
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         GXPosition3f32(-eye.x, eye.y, -distance);
@@ -488,7 +488,7 @@ void fn_1_2380(void) {
     C_MTXOrtho(projectionMatrix, 0.0f, 480.0f, 0.0f, 640.0f, 0.0f, 8000.0f);
     GXSetProjection(projectionMatrix, GX_ORTHOGRAPHIC);
     PSMTXIdentity(modelViewMatrix);
-    GXLoadPosMtxImm(modelViewMatrix, 0U);
+    GXLoadPosMtxImm(modelViewMatrix, GX_PNMTX0);
     GXSetScissor(0U, 0U, 200U, 150U);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -653,7 +653,7 @@ void fn_1_301C(void) {
                640.0f, 0.0f, 8000.0f);
     GXSetProjection(work.ortho, GX_ORTHOGRAPHIC);
     PSMTXIdentity(work.identity);
-    GXLoadPosMtxImm(work.identity, 0U);
+    GXLoadPosMtxImm(work.identity, GX_PNMTX0);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
@@ -745,7 +745,7 @@ void fn_1_35CC(void) {
                640.0f, 0.0f, 8000.0f);
     GXSetProjection(ortho, GX_ORTHOGRAPHIC);
     PSMTXIdentity(identity);
-    GXLoadPosMtxImm(identity, 0U);
+    GXLoadPosMtxImm(identity, GX_PNMTX0);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
@@ -757,8 +757,8 @@ void fn_1_35CC(void) {
     GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
     GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_TEXA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
-    GXSetChanCtrl(GX_COLOR0A0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
-    GXSetChanCtrl(GX_COLOR1A1, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0A0, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR1A1, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXSetNumTexGens(1U);
     GXSetNumTevStages(1U);
     GXInitTlutObj(&tlutObj, lbl_1_bss_198, GX_TL_IA8, 256);
@@ -888,7 +888,7 @@ void fn_1_3BB0(void) {
         for (vertexIndex = 0; vertexIndex < topEdgeVertexCount; vertexIndex += 1) {
             vertices = topEdgeVertices[vertexIndex];
             vertices->y = topEdgeY + 5.0 *
-                sin(3.141592653589793 * (2.0f * vertices->x + wavePhaseDegrees) / 180.0);
+                sin(M_PI * (2.0f * vertices->x + wavePhaseDegrees) / 180.0);
         }
         for (vertexIndex = 0; vertexIndex < 32; vertexIndex += 1) {
             if (-100000.0f != lbl_1_bss_4.rippleX[vertexIndex]) {
@@ -907,7 +907,7 @@ void fn_1_3BB0(void) {
                         distance -= lbl_1_bss_4.rippleRadius[vertexIndex];
                         vertices->y = (f32)((f64)vertices->y +
                             ((f64)lbl_1_bss_4.rippleHeight[vertexIndex] *
-                            cos((3.141592653589793 *
+                            cos((M_PI *
                             (f64)(90.0f *
                             (distance / 50.0f))) /
                             180.0)));
@@ -982,6 +982,6 @@ void fn_1_4114(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
     GXSetNumTexGens(3);
     GXSetNumTevStages(2);
     GXSetNumChans(0);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_NONE);
-    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
 }

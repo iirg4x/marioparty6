@@ -26,10 +26,12 @@
 #include "game/hu3d.h"
 #include "REL/m625Dll/motion.h"
 #include "REL/m625Dll.h"
+#include "humath.h"
+#include "dolphin/mtx.h"
 
-#define M625_SE_PLAYER_START 1796
-#define M625_SE_SWIM_START 1800
-#define M625_SE_TIMER_TICK 1801
+
+
+
 
 extern char *CharHeadObjNameTbl[];
 extern s16 lbl_1_bss_814;
@@ -535,7 +537,7 @@ void fn_1_4E80(void)
 
                 pan = (lbl_1_bss_1D8[index].position.x - -600.0f) / pan;
                 pan = 32.0f + (64.0f * pan);
-                HuAudFXPanning(HuAudFXPlay(M625_SE_TIMER_TICK), (s16) pan);
+                HuAudFXPanning(HuAudFXPlay(1801), (s16) pan);
             }
             lbl_1_data_36C[index] = 0;
         } else if (lbl_1_bss_1D8[index].status == 1) {
@@ -838,7 +840,7 @@ void fn_1_6CE0(s16 playerIndex)
             motionTime = 1200.0f;
             motionTime = (lbl_1_bss_1D8[playerIndex].position.x - -600.0f) / motionTime;
             motionTime = 32.0f + 64.0f * motionTime;
-            HuAudFXPanning(HuAudFXPlay(M625_SE_PLAYER_START), motionTime);
+            HuAudFXPanning(HuAudFXPlay(1796), motionTime);
             return;
         }
 
@@ -1069,10 +1071,10 @@ void fn_1_860C(s16 playerIndex)
         }
         direction.x = direction.y = 0.0f;
         direction.z = 1.0f;
-        PSMTXRotRad(rotationMatrix, 'x', 0.017453292f * lbl_1_bss_1D8[playerIndex].rotation.x);
-        PSMTXRotRad(axisMatrix, 'y', 0.017453292f * lbl_1_bss_1D8[playerIndex].rotation.y);
+        PSMTXRotRad(rotationMatrix, 'x', MTXDegToRad(lbl_1_bss_1D8[playerIndex].rotation.x));
+        PSMTXRotRad(axisMatrix, 'y', MTXDegToRad(lbl_1_bss_1D8[playerIndex].rotation.y));
         PSMTXConcat(axisMatrix, rotationMatrix, rotationMatrix);
-        PSMTXRotRad(axisMatrix, 'z', 0.017453292f * lbl_1_bss_1D8[playerIndex].rotation.z);
+        PSMTXRotRad(axisMatrix, 'z', MTXDegToRad(lbl_1_bss_1D8[playerIndex].rotation.z));
         PSMTXConcat(axisMatrix, rotationMatrix, rotationMatrix);
         PSMTXMultVecSR(rotationMatrix, &direction, &direction);
         direction.z = 0.0f;
@@ -1129,7 +1131,7 @@ void fn_1_860C(s16 playerIndex)
                 motionTime = 1200.0f;
                 motionTime = (lbl_1_bss_1D8[playerIndex].position.x - -600.0f) / motionTime;
                 motionTime = 32.0f + 64.0f * motionTime;
-            HuAudFXPanning(HuAudFXPlay(M625_SE_SWIM_START), motionTime);
+            HuAudFXPanning(HuAudFXPlay(1800), motionTime);
             }
         } else {
             lbl_1_bss_1D8[playerIndex].targetRotation.x = 90.0f;
@@ -1142,7 +1144,7 @@ void fn_1_860C(s16 playerIndex)
                 motionTime = 1200.0f;
                 motionTime = (lbl_1_bss_1D8[playerIndex].position.x - -600.0f) / motionTime;
                 motionTime = 32.0f + 64.0f * motionTime;
-            HuAudFXPanning(HuAudFXPlay(M625_SE_SWIM_START), motionTime);
+            HuAudFXPanning(HuAudFXPlay(1800), motionTime);
             }
         }
         break;
@@ -2349,7 +2351,7 @@ void fn_1_10D74(HU3D_MODEL *model, HU3D_PARTICLE *particleSystem, Mtx matrix)
     for (index = 0; index < particleSystem->maxCnt; index++, particle++) {
         if (particle->scale) {
             PSVECAdd(&particle->vel, &particle->pos, &particle->pos);
-            particle->vel.x = (f32)sin((3.141592653589793 * (f64)particle->time) /
+            particle->vel.x = (f32)sin((M_PI * (f64)particle->time) /
                                        180.0);
             if (particle->pos.y >= particle->accel.y) {
                 particle->scale = 0.0f;

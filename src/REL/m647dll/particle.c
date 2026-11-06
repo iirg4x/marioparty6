@@ -1,5 +1,6 @@
 /* Insectiride: model drawing and motion for the celebration particles. */
 #include "REL/m647dll/module_types.h"
+#include "humath.h"
 
 GXColor lbl_1_data_5A8[4] = {
     {255, 64, 64, 255}, {255, 255, 0, 255},
@@ -129,13 +130,13 @@ void fn_1_B38C(const Point3d *origin, s32 count) {
             pitchAngle = (f32)frandmod(360);
             yawAngle = (f32)frandmod(360);
             particle->position.x = (f32)((f64)origin->x +
-                ((f64)radius * (sin((3.141592653589793 * (f64)yawAngle) / 180.0) *
-                                cos((3.141592653589793 * (f64)pitchAngle) / 180.0))));
+                ((f64)radius * (sin((M_PI * (f64)yawAngle) / 180.0) *
+                                cos((M_PI * (f64)pitchAngle) / 180.0))));
             particle->position.y = (f32)((f64)origin->y +
-                ((f64)radius * -sin((3.141592653589793 * (f64)pitchAngle) / 180.0)));
+                ((f64)radius * -sin((M_PI * (f64)pitchAngle) / 180.0)));
             particle->position.z = (f32)((f64)origin->z +
-                ((f64)radius * (cos((3.141592653589793 * (f64)yawAngle) / 180.0) *
-                                cos((3.141592653589793 * (f64)pitchAngle) / 180.0))));
+                ((f64)radius * (cos((M_PI * (f64)yawAngle) / 180.0) *
+                                cos((M_PI * (f64)pitchAngle) / 180.0))));
             particle->velocity.x = (f32)((f64)0.8f *
                 (((f64)(f32)frandmod(201) - 100.0) / 100.0));
             particle->velocity.y = -6.5f * ((f32)frandmod(100) / 100.0f);

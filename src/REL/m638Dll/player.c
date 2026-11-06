@@ -2,8 +2,8 @@
 #include <math.h>
 #include "REL/m638Dll.h"
 
-#define M638_TEAM0_REACTION_SFX_ID 1891
-#define M638_TEAM1_REACTION_SFX_ID 1892
+
+
 
 u32 lbl_1_data_548[5] = {
     DATANUM(0x930000, 0), DATANUM(0x8e0000, 103),
@@ -114,9 +114,9 @@ void fn_1_6C98(M638PlayerView *player)
     switch (player->state) {
     case 1:
         if (player->team->variant == 0) {
-            HuAudFXPlay(M638_TEAM0_REACTION_SFX_ID);
+            HuAudFXPlay(1891);
         } else {
-            HuAudFXPlay(M638_TEAM1_REACTION_SFX_ID);
+            HuAudFXPlay(1892);
         }
         fn_80026A44(player->model, ((1 << 30) | (1 << 1)));
         fn_80026A44(player->model, ((1 << 30) | (1 << 2)));

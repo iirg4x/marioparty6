@@ -2,41 +2,24 @@
 #include "math.h"
 #include "REL/m636dll.h"
 
-#define PIXEL_INTRO_START_SOUND 1867
-#define PIXEL_INTRO_END_SOUND 1868
-#define PIXEL_ROUND_WIN_SOUND 1870
-#define PIXEL_GAME_FINISH_SOUND 1871
-/* Disable body-contact movement correction while players enter the result lineup. */
-#define PIXEL_RESULT_PUSH_CORRECTION_OFF_FLAG 0x8
+
+
+
+
 #define PIXEL_RESULT_COLLISION_ATTRS \
-    ((1 << 24) | (1 << 2) | PIXEL_RESULT_PUSH_CORRECTION_OFF_FLAG)
+    ((1 << 24) | (1 << 2) | 0x8)
 
 /* Byte positions of the scene state read by the sequence hooks. */
 #define PIXEL_CHARACTER_IDS_OFFSET 72
 #define PIXEL_PLAYER_SIDE_OFFSET 104
 #define PIXEL_PLAYER_RECORD_OFFSET 120
 #define PIXEL_LANDING_COUNTER_OFFSET 136
-#define PIXEL_CPU_ACTIVE_OFFSET 152
 #define PIXEL_CPU_MODE_OFFSET 156
 #define PIXEL_CPU_FRAME_COUNTER_OFFSET 172
 #define PIXEL_CPU_TARGET_CELL_OFFSET 188
-#define PIXEL_LEFT_POINTS_OFFSET 252
-#define PIXEL_RIGHT_POINTS_OFFSET 256
-#define PIXEL_ROUND_INDEX_OFFSET 260
-#define PIXEL_ROUND_OUTCOME_OFFSET 264
 #define PIXEL_PICTURE_INTRO_MODELS_OFFSET 274
 #define PIXEL_PICTURE_RESULT_MODELS_OFFSET 280
 #define PIXEL_PICTURE_FINISH_MODELS_OFFSET 382
-#define PIXEL_ROUND_INDICATOR_MODEL_OFFSET 388
-#define PIXEL_ROUND_IDLE_MOTION_OFFSET 390
-#define PIXEL_ROUND_RESET_MOTION_OFFSET 392
-#define PIXEL_ROUND_LEFT_RESULT_MOTION_OFFSET 394
-#define PIXEL_ROUND_RIGHT_RESULT_MOTION_OFFSET 396
-#define PIXEL_ROUND_INDICATOR_IDLE_OFFSET 472
-#define PIXEL_SCENE_MODEL_OFFSET 476
-#define PIXEL_SCENE_IDLE_MOTION_OFFSET 478
-#define PIXEL_SCENE_LEFT_RESULT_MOTION_OFFSET 480
-#define PIXEL_SCENE_RIGHT_RESULT_MOTION_OFFSET 482
 #define PIXEL_FINISH_MODEL_OFFSET 484
 #define PIXEL_GAME_FINISH_MOTION_OFFSET 488
 #define PIXEL_SELECTED_PICTURE_OFFSET 504
@@ -104,9 +87,7 @@ void fn_1_1EC(void)
     s32 voicePan;
     s32 playerIndex;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        playerPosition = (*(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + playerIndex * sizeof(MGPLAYER *) +
-                                          PIXEL_PLAYER_RECORD_OFFSET))
-                             ->actor->pos;
+        playerPosition = lbl_1_bss_0.players[playerIndex]->actor->pos;
         Hu3D3Dto2D(&playerPosition, 1, &screenPosition);
         voicePan = (s32)screenPosition.x;
         voicePan /= 5;
@@ -115,8 +96,7 @@ void fn_1_1EC(void)
         } else if (voicePan > PIXEL_VOICE_PAN_MAX) {
             voicePan = PIXEL_VOICE_PAN_MAX;
         }
-        fn_80060F14((s16) * (s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * sizeof(s32) +
-                                              PIXEL_CHARACTER_IDS_OFFSET),
+        fn_80060F14((s16)lbl_1_bss_0.charNo[playerIndex],
                              (s16) voicePan);
     }
 }
@@ -141,31 +121,22 @@ void fn_1_2F4(s16 mode, s16 frameNo) {
         /* Seed the floor target from picture 0, cell 0, regardless of the chosen introduction
          * picture. */
         fn_1_3834(0, 0);
-        introModel =
-            *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_INTRO_MODELS_OFFSET +
-                      (*(s32 *) ((s8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2));
-        fn_8002D414(introModel, (0.0f));
+        introModel = lbl_1_bss_0.pictureIntroModels[lbl_1_bss_0.selectedPicture];
+        fn_8002D414(introModel, 0.0f);
         fn_80026A44(introModel, (1 << 0));
-        HuAudFXPlay(PIXEL_INTRO_START_SOUND);
+        HuAudFXPlay(1867);
         fn_1_6398(0);
     } else {
-        introModel =
-            *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_INTRO_MODELS_OFFSET +
-                      (*(s32 *) ((s8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2));
+        introModel = lbl_1_bss_0.pictureIntroModels[lbl_1_bss_0.selectedPicture];
         if (fn_8002D75C(introModel) == 1) {
             fn_1_6398(1);
-            HuAudFXPlay(PIXEL_INTRO_END_SOUND);
+            HuAudFXPlay(1868);
             fn_80071A9C();
         }
     }
     playerIndex = 0;
     while (playerIndex < 4) {
-        playerPosition =
-            *(Point3d *) ((s8 *) (*(void **) ((s8 *) (*(void **) ((s8 *) &lbl_1_bss_0 +
-                                                                  PIXEL_PLAYER_RECORD_OFFSET +
-                                                                  playerIndex * 4)) +
-                                              PIXEL_PLAYER_ACTOR_OFFSET)) +
-                          PIXEL_ACTOR_POSITION_OFFSET);
+        playerPosition = lbl_1_bss_0.players[playerIndex]->actor->pos;
         Hu3D3Dto2D(&playerPosition, 1, &screenPosition);
         voicePan = (s32)screenPosition.x;
         voicePan /= 5;
@@ -175,7 +146,7 @@ void fn_1_2F4(s16 mode, s16 frameNo) {
             voicePan = PIXEL_VOICE_PAN_MAX;
         }
         fn_80060F14(
-            (s16) * (s32 *) ((s8 *) &lbl_1_bss_0 + PIXEL_CHARACTER_IDS_OFFSET + playerIndex * 4),
+            (s16)lbl_1_bss_0.charNo[playerIndex],
             (s16) voicePan);
         playerIndex += 1;
     }
@@ -192,29 +163,27 @@ void fn_1_494(s16 mode, s16 frameNo)
     s32 musicHandle;
 
     if (frameNo == 0) {
-        *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_CPU_ACTIVE_OFFSET) = 0;
+        lbl_1_bss_0.cpuActive = 0;
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_CPU_MODE_OFFSET + playerIndex * 4) = 1;
-            *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_CPU_TARGET_CELL_OFFSET + playerIndex * 4) = -1;
+            lbl_1_bss_0.cpuMode[playerIndex] = 1;
+            lbl_1_bss_0.targetCell[playerIndex] = -1;
         }
-        *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_ROUND_INDEX_OFFSET) = 0;
-        *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_LEFT_POINTS_OFFSET) =
-            *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_RIGHT_POINTS_OFFSET) = 0;
+        lbl_1_bss_0.roundIndex = 0;
+        lbl_1_bss_0.teamPoints[0] = lbl_1_bss_0.teamPoints[1] = 0;
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            player =
-                *(MGPLAYER **) ((s8 *) &lbl_1_bss_0 + PIXEL_PLAYER_RECORD_OFFSET + playerIndex * 4);
+            player = lbl_1_bss_0.players[playerIndex];
             fn_80087158(player, (1 << 0));
         }
-        *(s16 *)((s8 *)&lbl_1_bss_0 + 4) = 0;
-        *(s32 *)((s8 *)&lbl_1_bss_0 + 8) = 0;
+        lbl_1_bss_0.sequenceMode = 0;
+        lbl_1_bss_0.sequenceFrame = 0;
     }
-    previousMusicHandle = *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_MUSIC_HANDLE_OFFSET);
+    previousMusicHandle = lbl_1_bss_0.musicHandle;
     musicHandle = previousMusicHandle;
     if (musicHandle == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
         musicHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
     }
     storedMusicHandle = musicHandle;
-    *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_MUSIC_HANDLE_OFFSET) = storedMusicHandle;
+    lbl_1_bss_0.musicHandle = storedMusicHandle;
 }
 
 /* The main hook runs picture reveals, 20-second rounds and team reactions until two points or five
@@ -230,7 +199,7 @@ void fn_1_5F0(s16 mode, s16 frameNo)
     if (frameNo == 0) {
         fn_1_6790(1);
     }
-    if (BSS32(PIXEL_CPU_ACTIVE_OFFSET) == 1) {
+    if (lbl_1_bss_0.cpuActive == 1) {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (lbl_80265728[playerIndex].type != 0) {
                 fn_1_3C98(playerIndex);
@@ -239,44 +208,41 @@ void fn_1_5F0(s16 mode, s16 frameNo)
     }
     fn_800856A8();
     fn_1_1EC();
-    switch (BSS16(4)) {
+    switch (lbl_1_bss_0.sequenceMode) {
     case 0:
-        fn_1_3460(BSS32(PIXEL_SELECTED_PICTURE_OFFSET),
-                  (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET)) * 4 +
-                             PIXEL_ROUND_CELL_CHOICES_OFFSET)));
-        fn_1_3834(BSS32(PIXEL_SELECTED_PICTURE_OFFSET),
-                  (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET)) * 4 +
-                             PIXEL_ROUND_CELL_CHOICES_OFFSET)));
-        fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                      BSS16(PIXEL_ROUND_RESET_MOTION_OFFSET));
-        fn_800269E8(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET), ((1 << 30) | (1 << 0)));
+        fn_1_3460(lbl_1_bss_0.selectedPicture,
+                  lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex]);
+        fn_1_3834(lbl_1_bss_0.selectedPicture,
+                  lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex]);
+        fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                      lbl_1_bss_0.roundIndicatorMotions[1]);
+        fn_800269E8(lbl_1_bss_0.roundIndicatorModel, ((1 << 30) | (1 << 0)));
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             MGPLAYER *player;
-                player = PLAYER(playerIndex);
+                player = lbl_1_bss_0.players[playerIndex];
             fn_80087158(player, (1 << 0));
-            (*(s32 *)((u8 *)&lbl_1_bss_0 + (playerIndex) * 4 + PIXEL_CPU_MODE_OFFSET)) = 1;
-            (*(s32 *)((u8 *)&lbl_1_bss_0 + (playerIndex) * 4 + PIXEL_CPU_TARGET_CELL_OFFSET)) = -1;
-            (*(s32 *)((u8 *)&lbl_1_bss_0 + (playerIndex) * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET)) = 0;
+            lbl_1_bss_0.cpuMode[playerIndex] = 1;
+            lbl_1_bss_0.targetCell[playerIndex] = -1;
+            lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
-        BSS32(PIXEL_CPU_ACTIVE_OFFSET) = 0;
-        BSS16(4) = 1;
+        lbl_1_bss_0.cpuActive = 0;
+        lbl_1_bss_0.sequenceMode = 1;
         TICK = 0;
         break;
     case 1:
-        if (fn_1_35E0(BSS32(PIXEL_SELECTED_PICTURE_OFFSET),
-                      (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET)) * 4 +
-                                 PIXEL_ROUND_CELL_CHOICES_OFFSET))) != 0) {
+        if (fn_1_35E0(lbl_1_bss_0.selectedPicture,
+                      lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex]) != 0) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player;
-                player = PLAYER(playerIndex);
+                player = lbl_1_bss_0.players[playerIndex];
                 fn_80087168(player, (1 << 0));
             }
-            BSS32(PIXEL_CPU_ACTIVE_OFFSET) = 1;
+            lbl_1_bss_0.cpuActive = 1;
             MgTimerParamSet(TIMER, 1200, 0, 0);
             MgTimerModeOnSet(TIMER, 1);
             MgTimerRecordDispOn(TIMER);
-            BSS32(PIXEL_ROUND_INDICATOR_IDLE_OFFSET) = 0;
-            BSS16(4) = 2;
+            lbl_1_bss_0.roundIndicatorState = 0;
+            lbl_1_bss_0.sequenceMode = 2;
             TICK = 0;
         }
         break;
@@ -287,19 +253,16 @@ void fn_1_5F0(s16 mode, s16 frameNo)
             unusedRoundCounter = 0;
             roundOutcome = 0;
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                if ((*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
-                               PIXEL_LANDING_COUNTER_OFFSET)) != 0) {
-                    (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
-                               PIXEL_LANDING_COUNTER_OFFSET))--;
+                if (lbl_1_bss_0.landingCounter[playerIndex] != 0) {
+                    lbl_1_bss_0.landingCounter[playerIndex]--;
                 }
             }
-            if (BSS32(PIXEL_ROUND_INDICATOR_IDLE_OFFSET) == 0 &&
-                fn_1_35E0(BSS32(PIXEL_SELECTED_PICTURE_OFFSET),
-                          (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET)) * 4 +
-                                     PIXEL_ROUND_CELL_CHOICES_OFFSET))) != 0) {
-                BSS32(PIXEL_ROUND_INDICATOR_IDLE_OFFSET) = 1;
-                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                              BSS16(PIXEL_ROUND_IDLE_MOTION_OFFSET));
+            if (lbl_1_bss_0.roundIndicatorState == 0 &&
+                fn_1_35E0(lbl_1_bss_0.selectedPicture,
+                          lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex]) != 0) {
+                lbl_1_bss_0.roundIndicatorState = 1;
+                fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                              lbl_1_bss_0.roundIndicatorMotions[0]);
             }
             leftComplete = fn_1_3984(0);
             rightComplete = fn_1_3984(1);
@@ -323,37 +286,37 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                 int nextRoundState;
                 switch (roundOutcome) {
                 case 1:
-                    BSS32(PIXEL_LEFT_POINTS_OFFSET)++;
-                    HuAudFXPlay(PIXEL_ROUND_WIN_SOUND);
+                    lbl_1_bss_0.teamPoints[0]++;
+                    HuAudFXPlay(1870);
                     break;
                 case 2:
-                    BSS32(PIXEL_RIGHT_POINTS_OFFSET)++;
-                    HuAudFXPlay(PIXEL_ROUND_WIN_SOUND);
+                    lbl_1_bss_0.teamPoints[1]++;
+                    HuAudFXPlay(1870);
                     break;
                 }
-                BSS32(PIXEL_ROUND_OUTCOME_OFFSET) = roundOutcome;
+                lbl_1_bss_0.mode = roundOutcome;
                 /* Every outcome advances the round, including a timeout. */
                 if (roundOutcome != 3);
-                BSS32(PIXEL_ROUND_INDEX_OFFSET)++;
+                lbl_1_bss_0.roundIndex++;
                 if (roundOutcome != 3) {
                     MgTimerRecordDispOff(TIMER);
                 }
-                if (BSS32(PIXEL_LEFT_POINTS_OFFSET) == 2 || BSS32(PIXEL_RIGHT_POINTS_OFFSET) == 2 ||
-                    BSS32(PIXEL_ROUND_INDEX_OFFSET) == 5) {
+                if (lbl_1_bss_0.teamPoints[0] == 2 || lbl_1_bss_0.teamPoints[1] == 2 ||
+                    lbl_1_bss_0.roundIndex == 5) {
                     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                        fn_80087158(PLAYER(playerIndex), (1 << 0));
+                        fn_80087158(lbl_1_bss_0.players[playerIndex], (1 << 0));
                     }
-                    BSS32(PIXEL_CPU_ACTIVE_OFFSET) = 0;
-                    if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 1) {
-                        fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                                      BSS16(PIXEL_ROUND_LEFT_RESULT_MOTION_OFFSET));
-                        fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
-                                      BSS16(PIXEL_SCENE_LEFT_RESULT_MOTION_OFFSET));
-                    } else if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 2) {
-                        fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                                      BSS16(PIXEL_ROUND_RIGHT_RESULT_MOTION_OFFSET));
-                        fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
-                                      BSS16(PIXEL_SCENE_RIGHT_RESULT_MOTION_OFFSET));
+                    lbl_1_bss_0.cpuActive = 0;
+                    if (lbl_1_bss_0.mode == 1) {
+                        fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                                      lbl_1_bss_0.roundIndicatorMotions[2]);
+                        fn_8002C95C(lbl_1_bss_0.model,
+                                      lbl_1_bss_0.motion[1]);
+                    } else if (lbl_1_bss_0.mode == 2) {
+                        fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                                      lbl_1_bss_0.roundIndicatorMotions[3]);
+                        fn_8002C95C(lbl_1_bss_0.model,
+                                      lbl_1_bss_0.motion[2]);
                     }
                     fn_80071A9C();
                     break;
@@ -363,7 +326,7 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                 } else {
                     nextRoundState = 3;
                 }
-                BSS16(4) = (s16)nextRoundState;
+                lbl_1_bss_0.sequenceMode = (s16)nextRoundState;
                 TICK = 0;
                 break;
             } else {
@@ -375,29 +338,29 @@ void fn_1_5F0(s16 mode, s16 frameNo)
         if (TICK == 0) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 /* The player pointer is fetched here without being used afterward. */
-                transitionPlayer = PLAYER(playerIndex);
-                fn_80087158(PLAYER(playerIndex), (1 << 0));
+                transitionPlayer = lbl_1_bss_0.players[playerIndex];
+                fn_80087158(lbl_1_bss_0.players[playerIndex], (1 << 0));
             }
-            BSS32(PIXEL_CPU_ACTIVE_OFFSET) = 0;
-            if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 1) {
-                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                              BSS16(PIXEL_ROUND_LEFT_RESULT_MOTION_OFFSET));
-                fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
-                              BSS16(PIXEL_SCENE_LEFT_RESULT_MOTION_OFFSET));
-            } else if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 2) {
-                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                              BSS16(PIXEL_ROUND_RIGHT_RESULT_MOTION_OFFSET));
-                fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
-                              BSS16(PIXEL_SCENE_RIGHT_RESULT_MOTION_OFFSET));
+            lbl_1_bss_0.cpuActive = 0;
+            if (lbl_1_bss_0.mode == 1) {
+                fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                              lbl_1_bss_0.roundIndicatorMotions[2]);
+                fn_8002C95C(lbl_1_bss_0.model,
+                              lbl_1_bss_0.motion[1]);
+            } else if (lbl_1_bss_0.mode == 2) {
+                fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                              lbl_1_bss_0.roundIndicatorMotions[3]);
+                fn_8002C95C(lbl_1_bss_0.model,
+                              lbl_1_bss_0.motion[2]);
             } else {
-                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                              BSS16(PIXEL_ROUND_RESET_MOTION_OFFSET));
+                fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                              lbl_1_bss_0.roundIndicatorMotions[1]);
             }
-            fn_800269E8(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET), ((1 << 30) | (1 << 0)));
+            fn_800269E8(lbl_1_bss_0.roundIndicatorModel, ((1 << 30) | (1 << 0)));
         } else {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player;
-                player = PLAYER(playerIndex);
+                player = lbl_1_bss_0.players[playerIndex];
                 {
                 s16 idleMotion = player->omObj->mtnId[0];
                 if (idleMotion != (s16)fn_8002D3C4((s16)player->actor->mdlId)) {
@@ -408,34 +371,31 @@ void fn_1_5F0(s16 mode, s16 frameNo)
             if (playerIndex == 4) {
                 for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                     MGPLAYER *player;
-                player = PLAYER(playerIndex);
-                if ((*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
-                               PIXEL_PLAYER_SIDE_OFFSET)) == 0) {
+                player = lbl_1_bss_0.players[playerIndex];
+                if (lbl_1_bss_0.teamSide[playerIndex] == 0) {
                     int resultMotion;
-                    if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 1) {
+                    if (lbl_1_bss_0.mode == 1) {
                         resultMotion = 5;
                     } else {
                         resultMotion = 6;
                     }
-                    fn_8005C2C8((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
-                                                        PIXEL_CHARACTER_IDS_OFFSET)),
-                                       player->omObj->mtnId[resultMotion], (0.0f), (0.80000001f),
+                    fn_8005C2C8((s16)lbl_1_bss_0.charNo[playerIndex],
+                                       player->omObj->mtnId[resultMotion], 0.0f, 0.8f,
                                        0);
                 } else {
                     int resultMotion;
-                    if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 2) {
+                    if (lbl_1_bss_0.mode == 2) {
                         resultMotion = 5;
                     } else {
                         resultMotion = 6;
                     }
-                    fn_8005C2C8((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
-                                                        PIXEL_CHARACTER_IDS_OFFSET)),
-                                       player->omObj->mtnId[resultMotion], (0.0f), (0.80000001f),
+                    fn_8005C2C8((s16)lbl_1_bss_0.charNo[playerIndex],
+                                       player->omObj->mtnId[resultMotion], 0.0f, 0.8f,
                                        0);
                 }
                 }
                 OSReport("****************************************\n");
-                BSS16(4) = 4;
+                lbl_1_bss_0.sequenceMode = 4;
                 TICK = 0;
                 break;
             }
@@ -443,46 +403,43 @@ void fn_1_5F0(s16 mode, s16 frameNo)
         TICK++;
         break;
     case 4:
-        if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) != 3) {
+        if (lbl_1_bss_0.mode != 3) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                if (fn_8002D75C((s16)PLAYER(playerIndex)->actor->mdlId) == 0) {
+                if (fn_8002D75C((s16)lbl_1_bss_0.players[playerIndex]->actor->mdlId) == 0) {
                     break;
                 }
             }
             if (playerIndex == 4) {
                 OSReport("**** all charracter motion end.\n");
                 for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                player = PLAYER(playerIndex);
-                fn_8005C2C8((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
-                                                    PIXEL_CHARACTER_IDS_OFFSET)),
-                                   player->omObj->mtnId[0], (0.0f), (10.0f), 0);
+                player = lbl_1_bss_0.players[playerIndex];
+                fn_8005C2C8((s16)lbl_1_bss_0.charNo[playerIndex],
+                                   player->omObj->mtnId[0], 0.0f, 10.0f, 0);
                 }
-                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                              BSS16(PIXEL_ROUND_IDLE_MOTION_OFFSET));
-                fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
-                              BSS16(PIXEL_SCENE_IDLE_MOTION_OFFSET));
+                fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+                              lbl_1_bss_0.roundIndicatorMotions[0]);
+                fn_8002C95C(lbl_1_bss_0.model,
+                              lbl_1_bss_0.motion[0]);
                 /* The next-round transition is unconditional after the reactions end. */
-                if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 1 ||
-                    BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 2)
+                if (lbl_1_bss_0.mode == 1 ||
+                    lbl_1_bss_0.mode == 2)
                     ;
-                BSS16(4) = 5;
+                lbl_1_bss_0.sequenceMode = 5;
                 TICK = 0;
             }
         } else {
-            BSS16(4) = 5;
+            lbl_1_bss_0.sequenceMode = 5;
             TICK = 0;
         }
         break;
     case 5:
         if (TICK == 0) {
-            fn_1_364C(BSS32(PIXEL_SELECTED_PICTURE_OFFSET),
-                      (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET) - 1) * 4 +
-                                 PIXEL_ROUND_CELL_CHOICES_OFFSET)));
+            fn_1_364C(lbl_1_bss_0.selectedPicture,
+                      lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex - 1]);
         } else if (fn_1_37A8(
-                       BSS32(PIXEL_SELECTED_PICTURE_OFFSET),
-                       (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET) - 1) * 4 +
-                                  PIXEL_ROUND_CELL_CHOICES_OFFSET))) != 0) {
-            BSS16(4) = 0;
+                       lbl_1_bss_0.selectedPicture,
+                       lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex - 1]) != 0) {
+            lbl_1_bss_0.sequenceMode = 0;
             TICK = 0;
             break;
         }
@@ -490,13 +447,13 @@ void fn_1_5F0(s16 mode, s16 frameNo)
         break;
     case 6:
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            if ((s16)fn_8002D3EC((s16)PLAYER(playerIndex)->actor->mdlId) != -1) {
+            if ((s16)fn_8002D3EC((s16)lbl_1_bss_0.players[playerIndex]->actor->mdlId) != -1) {
                 break;
             }
         }
         if (playerIndex == 4) {
-            fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET), BSS16(PIXEL_SCENE_IDLE_MOTION_OFFSET));
-            BSS16(4) = 0;
+            fn_8002C95C(lbl_1_bss_0.model, lbl_1_bss_0.motion[0]);
+            lbl_1_bss_0.sequenceMode = 0;
             TICK = 0;
         }
         break;
@@ -512,32 +469,25 @@ void fn_1_12E0(s16 mode, s16 frameNo)
     fn_800856A8();
     fn_1_1EC();
     if (frameNo == 0) {
-        fn_1_364C(*(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET),
-                  *(s32 *) ((u8 *) &lbl_1_bss_0 +
-                            (*(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_INDEX_OFFSET) - 1) * 4 +
-                            PIXEL_ROUND_CELL_CHOICES_OFFSET));
-        fn_8002C95C(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-            *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_RESET_MOTION_OFFSET));
-        fn_800269E8(*(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+        fn_1_364C(lbl_1_bss_0.selectedPicture,
+                  lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex - 1]);
+        fn_8002C95C(lbl_1_bss_0.roundIndicatorModel,
+            lbl_1_bss_0.roundIndicatorMotions[1]);
+        fn_800269E8(lbl_1_bss_0.roundIndicatorModel,
                          ((1 << 30) | (1 << 0)));
-        fn_8002C95C(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FINISH_MODEL_OFFSET),
-            *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_GAME_FINISH_MOTION_OFFSET));
-        fn_80026A44(*(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_FINISH_MODEL_OFFSET),
+        fn_8002C95C(lbl_1_bss_0.finishModel, lbl_1_bss_0.finishMotions[1]);
+        fn_80026A44(lbl_1_bss_0.finishModel,
                            ((1 << 30) | (1 << 0)));
         fn_80026A44(
-            *(s16 *) ((u8 *) &lbl_1_bss_0 +
-                      *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2 +
-                      PIXEL_PICTURE_FINISH_MODELS_OFFSET),
+            lbl_1_bss_0.pictureFinishModels[lbl_1_bss_0.selectedPicture],
             (1 << 0));
         fn_8002D414(
-            *(s16 *) ((u8 *) &lbl_1_bss_0 +
-                      *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2 +
-                      PIXEL_PICTURE_FINISH_MODELS_OFFSET),
-            (0.0f));
+            lbl_1_bss_0.pictureFinishModels[lbl_1_bss_0.selectedPicture],
+            0.0f);
         /* The finish sound also plays after the final round times out. */
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_OUTCOME_OFFSET) != 3);
-        HuAudFXPlay(PIXEL_GAME_FINISH_SOUND);
-        musicHandle = *(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_MUSIC_HANDLE_OFFSET);
+        if (lbl_1_bss_0.mode != 3);
+        HuAudFXPlay(1871);
+        musicHandle = lbl_1_bss_0.musicHandle;
         if (musicHandle != -1) {
             HuAudSStreamFadeOut(musicHandle, 100);
         }
@@ -559,36 +509,28 @@ void fn_1_151C(s16 mode, s16 frameNo)
     if (frameNo == 0) {
         s32 winnerCount;
         /* The shared-win branch gives all players ten coins outside practice. */
-        if (*(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_LEFT_POINTS_OFFSET) == 2 &&
-            *(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_RIGHT_POINTS_OFFSET) == 2) {
+        if (lbl_1_bss_0.teamPoints[0] == 2 && lbl_1_bss_0.teamPoints[1] == 2) {
             for (index = 0; index < 4; index++) {
-                winnerCharacters[index] =
-                    (s16) * (s32 *) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_CHARACTER_IDS_OFFSET);
+                winnerCharacters[index] = (s16)lbl_1_bss_0.charNo[index];
                 if (fn_8006A124(65551) == 0) {
                     lbl_80265750[index].mgCoinBonus = 10;
                 }
             }
-        } else if (*(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_LEFT_POINTS_OFFSET) == 2 &&
-            *(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_RIGHT_POINTS_OFFSET) != 2) {
+        } else if (lbl_1_bss_0.teamPoints[0] == 2 && lbl_1_bss_0.teamPoints[1] != 2) {
             winnerCount = 0;
             for (index = 0; index < 4; index++) {
-                if (*(s32 *)((u8 *)&lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_SIDE_OFFSET) == 0) {
-                    winnerCharacters[winnerCount++] =
-                        (s16) *
-                        (s32 *) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_CHARACTER_IDS_OFFSET);
+                if (lbl_1_bss_0.teamSide[index] == 0) {
+                    winnerCharacters[winnerCount++] = (s16)lbl_1_bss_0.charNo[index];
                     if (fn_8006A124(65551) == 0) {
                         lbl_80265750[index].mgCoinBonus = 10;
                     }
                 }
             }
-        } else if (*(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_LEFT_POINTS_OFFSET) != 2 &&
-            *(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_RIGHT_POINTS_OFFSET) == 2) {
+        } else if (lbl_1_bss_0.teamPoints[0] != 2 && lbl_1_bss_0.teamPoints[1] == 2) {
             winnerCount = 0;
             for (index = 0; index < 4; index++) {
-                if (*(s32 *)((u8 *)&lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_SIDE_OFFSET) == 1) {
-                    winnerCharacters[winnerCount++] =
-                        (s16) *
-                        (s32 *) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_CHARACTER_IDS_OFFSET);
+                if (lbl_1_bss_0.teamSide[index] == 1) {
+                    winnerCharacters[winnerCount++] = (s16)lbl_1_bss_0.charNo[index];
                     if (fn_8006A124(65551) == 0) {
                         lbl_80265750[index].mgCoinBonus = 10;
                     }
@@ -599,31 +541,22 @@ void fn_1_151C(s16 mode, s16 frameNo)
         }
         if (isDraw != 0) {
             fn_80071C70();
-            *(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_OUTCOME_OFFSET) = 3;
+            lbl_1_bss_0.mode = 3;
         } else {
             fn_80071C18(winnerCharacters[0], winnerCharacters[1], winnerCharacters[2],
                            winnerCharacters[3]);
         }
     }
-    if (fn_1_37A8(*(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET),
-                  *(s32 *) ((u8 *) &lbl_1_bss_0 +
-                            (*(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_INDEX_OFFSET) - 1) * 4 +
-                            PIXEL_ROUND_CELL_CHOICES_OFFSET)) != 0) {
-        s16 resultModel =
-            *(s16 *) ((u8 *) &lbl_1_bss_0 +
-                      *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2 +
-                      PIXEL_PICTURE_RESULT_MODELS_OFFSET);
-        fn_8002D414(resultModel, (0.0f));
+    if (fn_1_37A8(lbl_1_bss_0.selectedPicture,
+                  lbl_1_bss_0.roundCellChoices[lbl_1_bss_0.roundIndex - 1]) != 0) {
+        s16 resultModel = lbl_1_bss_0.pictureResultModels[lbl_1_bss_0.selectedPicture];
+        fn_8002D414(resultModel, 0.0f);
         fn_80026A44(resultModel, (1 << 0));
         fn_80026A44(resultModel, ((1 << 30) | (1 << 0)));
     }
     for (index = 0; index < 4; index++) {
-        fn_80087168(
-            *(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_RECORD_OFFSET),
-            (1 << 0));
-        fn_800805CC(
-            (*(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_RECORD_OFFSET))->actor,
-            PIXEL_RESULT_COLLISION_ATTRS);
+        fn_80087168(lbl_1_bss_0.players[index], (1 << 0));
+        fn_800805CC(lbl_1_bss_0.players[index]->actor, PIXEL_RESULT_COLLISION_ATTRS);
     }
     /* This hook yields inside its own loop until all four players reach their lineup positions. */
     arrivedCount = 0;
@@ -641,26 +574,25 @@ void fn_1_151C(s16 mode, s16 frameNo)
         s32 teamSide;
         arrivedCount = 0;
         for (index = 0; index < 4; index++) {
-            player = *(MGPLAYER **)((u8 *)&lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_RECORD_OFFSET);
+            player = lbl_1_bss_0.players[index];
             playerPosition = player->actor->pos;
-            teamSide = *(s32 *)((u8 *)&lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_SIDE_OFFSET);
+            teamSide = lbl_1_bss_0.teamSide[index];
             lineupTarget = &lineupPositions[teamSide * 2 + sidePlayerCounts[teamSide]];
             fn_800805CC(
-                (*(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_RECORD_OFFSET))
-                    ->actor,
+                lbl_1_bss_0.players[index]->actor,
                 PIXEL_RESULT_COLLISION_ATTRS);
             /* Lineup distance ignores height, using each player's floor position. */
-            playerPosition.y = (0.0f);
+            playerPosition.y = 0.0f;
             PSVECSubtract(&playerPosition, lineupTarget, &moveDirection);
             targetDistance = PSVECMag(&moveDirection);
-            if (targetDistance >= (10.0f)) {
+            if (targetDistance >= 10.0f) {
                 fn_1_5F54(index, &playerPosition, lineupTarget, &moveDirection, 0);
-                fn_80080520(player, (s32)((56.0f) * moveDirection.x),
-                    (s32)((56.0f) * moveDirection.z), 0, 0);
+                fn_80080520(player, (s32)(56.0f * moveDirection.x),
+                    (s32)(56.0f * moveDirection.z), 0, 0);
             } else {
                 fn_80080520(player, 0, 0, 0, 0);
                 fn_80087158(player, (1 << 0));
-                fn_80086CA8(player->actor, (0.0f));
+                fn_80086CA8(player->actor, 0.0f);
                 arrivedCount++;
             }
             sidePlayerCounts[teamSide]++;
@@ -689,10 +621,10 @@ void fn_1_1C74(s16 mode, s16 frameNo)
                 MGPLAYER *player = lbl_1_bss_0.players[playerIndex];
                 if (lbl_1_bss_0.teamSide[playerIndex] == 0) {
                     fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[5],
-                                       (0.0f), (0.80000001f), 0);
+                                       0.0f, 0.8f, 0);
                 } else {
                     fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6],
-                                       (0.0f), (0.80000001f), 0);
+                                       0.0f, 0.8f, 0);
                 }
             }
         } else if (lbl_1_bss_0.mode == 2) {
@@ -700,19 +632,19 @@ void fn_1_1C74(s16 mode, s16 frameNo)
                 MGPLAYER *player = lbl_1_bss_0.players[playerIndex];
                 if (lbl_1_bss_0.teamSide[playerIndex] == 0) {
                     fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6],
-                                       (0.0f), (0.80000001f), 0);
+                                       0.0f, 0.8f, 0);
                     OSReport("### lose ... %d\n", playerIndex);
                 } else {
                     fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[5],
-                                       (0.0f), (0.80000001f), 0);
+                                       0.0f, 0.8f, 0);
                     OSReport("### win ... %d\n", playerIndex);
                 }
             }
         } else {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player = lbl_1_bss_0.players[playerIndex];
-                fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6], (0.0f),
-                                   (0.80000001f), 0);
+                fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6], 0.0f,
+                                   0.8f, 0);
                 OSReport("### timeover ... ", playerIndex);
             }
         }

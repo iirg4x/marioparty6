@@ -6,7 +6,7 @@
 
 u16 lbl_1_data_0[6] = {
     PAD_BUTTON_A, PAD_BUTTON_B, PAD_BUTTON_X, PAD_BUTTON_Y,
-    16384, 8192
+    0x4000, 0x2000
 };
 char lbl_1_data_C[6] = { 'A', 'B', 'X', 'Y', 'L', 'R' };
 s16 lbl_1_data_12[4][2] = { { 60, 30 }, { 55, 25 }, { 40, 15 }, { 32, 6 } };
