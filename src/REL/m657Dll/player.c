@@ -10,11 +10,6 @@
 #include "math.h"
 #include "humath.h"
 
-#define M657_SFX_TEAM0_ACTION_PRESS 2085
-#define M657_SFX_TEAM1_ACTION_PRESS 2086
-#define M657_SFX_TEAM0_LANDING 2089
-#define M657_SFX_TEAM1_LANDING 2090
-
 typedef struct {
     /* Shadow camera field of view in degrees. */
     float fov;
@@ -351,7 +346,7 @@ void fn_1_2C20(s32 state)
         player = &work->player;
         if (work->player.winner) {
             motion = 1;
-            CharFXPlay(work->player.charNo, 577);
+            CharFXPlay(work->player.charNo, MSM_SE_CHARVOICE_RESULT_WINNER_CHEER);
             fn_1_2840(obj, motion);
         } else if (state == 0) {
             fn_1_2840(obj, motion);
@@ -546,7 +541,8 @@ void fn_1_3468(OMOBJ *obj)
             }
             fn_1_294C(obj);
             if (work->buttons & PAD_BUTTON_A) {
-                int sounds[2] = { M657_SFX_TEAM0_ACTION_PRESS, M657_SFX_TEAM1_ACTION_PRESS };
+                int sounds[2] = { MSM_SE_MG657_ACTION_PRESS_TEAM_A,
+                                  MSM_SE_MG657_ACTION_PRESS_TEAM_B };
 
                 if (work->prevButtons != work->buttons) {
                     work->sound = HuAudFXPlayPan(sounds[player->team], 48+32*player->team);
@@ -588,7 +584,7 @@ void fn_1_3468(OMOBJ *obj)
     if (player->falling) {
         player->pos.y -= speed;
         if (player->pos.y <= 0.0f) {
-            int sounds[2] = { M657_SFX_TEAM0_LANDING, M657_SFX_TEAM1_LANDING };
+            int sounds[2] = { MSM_SE_MG657_LANDING_TEAM_A, MSM_SE_MG657_LANDING_TEAM_B };
 
             HuAudFXPlayPan(sounds[player->team], 48+32*player->team);
             if (work->sound != -1) {

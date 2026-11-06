@@ -365,7 +365,7 @@ void fn_1_1814(void) {
 void fn_1_185C(void) {
     s32 modelIndex;
 
-    lbl_1_bss_10 = HuAudFXPlay(1993);
+    lbl_1_bss_10 = HuAudFXPlay(MSM_SE_MG647_OBSTACLE_LOOP);
     fn_8002D414(lbl_1_bss_174.modelId, 41.0f);
     fn_8002D730(lbl_1_bss_174.modelId, 41.0f, 47.0f);
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
@@ -712,8 +712,20 @@ void fn_1_2CD0(void) {
 
 /* Records a player's finish order and plays the character's finish sound. */
 void fn_1_32F4(s16 recordIndex) {
-    u32 soundTable[14] = { 579, 555, 699, 795, 747, 483, 771, 507, 723, 651, 531, 675, 627,
-                           603 };
+    u32 soundTable[14] = { MSM_SE_CHARVOICE_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_LUIGI_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_PEACH_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_YOSHI_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_WARIO_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_DAISY_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_WALUIGI_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_KINOPIO_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_TERESA_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_MINIKOOPA_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_KINOPIKO_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_MINIKOOPAR_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_MINIKOOPAG_HAPPY_CHEER,
+                           MSM_SE_CHARVOICE_MINIKOOPAB_HAPPY_CHEER };
 
     if (lbl_1_bss_54[recordIndex].finishPlace >= 4) {
         lbl_1_bss_54[recordIndex].finishPlace = lbl_1_bss_18;
@@ -1037,7 +1049,7 @@ void fn_1_4204(void) {
         if ((lbl_1_bss_174.playerTurn) != 0) {
             fn_1_2B84(playerIndex, 2);
             selectedIndex = fn_1_3A44();
-            HuAudFXPlayPan(1992, 80);
+            HuAudFXPlayPan(MSM_SE_MG647_SLOT_PICK, 80);
             fn_8002D86C((lbl_1_bss_174.entranceModelId), 1.0f);
             fn_8002D414((lbl_1_bss_174.entranceModelId), 0.0f);
             record->inputPhase = 2;
@@ -1063,7 +1075,7 @@ void fn_1_4204(void) {
             selectedIndex = fn_1_3A44();
             fn_8002D86C((lbl_1_bss_174.entranceModelId), 1.0f);
             fn_8002D414((lbl_1_bss_174.entranceModelId), 0.0f);
-            HuAudFXPlay(1992);
+            HuAudFXPlay(MSM_SE_MG647_SLOT_PICK);
             record->selectedSlot = selectedIndex;
             record->targetX = lbl_1_data_150[3];
             record->inputPhase++;
@@ -1248,7 +1260,7 @@ void fn_1_5430(void) {
                             0.0f);
         }
         if (delay > 42) {
-            HuAudFXPlay(1994);
+            HuAudFXPlay(MSM_SE_MG647_PLAYERS_DROP_LAND);
             lbl_1_bss_174.phaseFrame = 0;
             lbl_1_bss_174.sequencePhase = 2;
             for (index = 0; index < 4; index++) {
@@ -1342,7 +1354,7 @@ void fn_1_5978(void) {
                                        0.0f, 8.0f, lbl_1_data_D0[3][1]);
                     initialMotionPlayer->motionState = 3;
                 }
-                HuAudFXPlay(1995);
+                HuAudFXPlay(MSM_SE_MG647_MOUNT_JUMP);
             } else {
                 if (player->frame < 40) {
                     fn_800267CC(player->modelId, &modelPosition);
@@ -1382,7 +1394,7 @@ void fn_1_5978(void) {
                     }
                     fn_80026790(player->modelId,
                                      &lbl_1_data_2D4[player->activityIndex]);
-                    HuAudFXPlay(1996);
+                    HuAudFXPlay(MSM_SE_MG647_MOUNT_LAND);
                 } else if (player->frame == 65) {
                     fn_1_370C(selectedIndex);
                     fn_1_2B84(player->playerIndex, 5);
@@ -1420,7 +1432,7 @@ void fn_1_5F08(void) {
             for (index = 0; index < 4; index++) {
                 fn_1_6ED0((s16)index, 1.0f);
             }
-            lbl_1_bss_174.soundEffectId = HuAudFXPlay(1997);
+            lbl_1_bss_174.soundEffectId = HuAudFXPlay(MSM_SE_MG647_LAUNCH_START);
         }
         for (index = 0; index < 4; index++) {
             if (lbl_1_bss_174.phaseFrame == index * 6 + 30) {
@@ -1448,9 +1460,9 @@ void fn_1_5F08(void) {
             lbl_80266BD8[0] = 2500.0f;
         }
         if (lbl_1_bss_174.phaseFrame == 81) {
-            HuAudFXPlay(1998);
+            HuAudFXPlay(MSM_SE_MG647_LAUNCH_BEAT);
         } else if (lbl_1_bss_174.phaseFrame == 141) {
-            HuAudFXPlay(1998);
+            HuAudFXPlay(MSM_SE_MG647_LAUNCH_BEAT);
         } else if (lbl_1_bss_174.phaseFrame == 200) {
             lbl_1_bss_174.musicHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_26);
         }
@@ -1466,7 +1478,7 @@ void fn_1_5F08(void) {
             fn_8003E8E4(1, &view, 60);
             lbl_1_bss_174.phaseFrame = 0;
             lbl_1_bss_174.sequencePhase = 5;
-            HuAudFXPlay(2011);
+            HuAudFXPlay(MSM_SE_MG647_LAUNCH_END);
             fn_80071CE8(5, 1);
         }
         lbl_1_bss_174.phaseFrame++;

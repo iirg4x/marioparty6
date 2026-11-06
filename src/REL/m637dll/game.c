@@ -5,17 +5,6 @@
 #include "msm_stream.h"
 #include "humath.h"
 
-
-
-
-
-
-
-
-#define M637_SFX_REEL_LEFT_SPEED_UP 1872
-#define M637_SFX_REEL_RIGHT_SPEED_UP 1873
-#define M637_SFX_REEL_LEFT_SPEED_DOWN 1874
-#define M637_SFX_REEL_RIGHT_SPEED_DOWN 1875
 #define M637_ESP_SCORE_FRONT DATANUM(0x9b0000, 30)
 #define M637_ESP_SCORE_BACK DATANUM(0x9b0000, 31)
 
@@ -106,7 +95,7 @@ s32 fn_1_65C(void)
             MgTimerPosSet(lbl_1_bss_34C, 288.0f, 410.0f);
             lbl_1_bss_36C = 0;
             lbl_1_bss_374 += 1;
-            HuAudFXPlay(1881);
+            HuAudFXPlay(MSM_SE_MG637_ROUND_TIMER_START);
         }
         break;
     case 1:
@@ -346,7 +335,7 @@ void fn_1_1464(s32 animationMode)
     if (animationMode != 0) {
         if (animationMode == 1) {
             if (++lbl_1_bss_35C == 56) {
-                HuAudFXPlay(1876);
+                HuAudFXPlay(MSM_SE_MG637_SLOT_MACHINE_ANIMATION);
             }
             lbl_1_bss_100 =
                 (f32) (650.0 * sin((M_PI * (f64) lbl_1_bss_F8[0]) / 180.0));
@@ -935,16 +924,16 @@ s32 fn_1_36E8(s32 acceptPlayerInput)
                 if (lbl_1_bss_358 != (s32) lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex]) {
                     if (teamIndex == 0) {
                         if (lbl_1_bss_354 == 1) {
-                            leftTeamTickSound = M637_SFX_REEL_LEFT_SPEED_UP;
+                            leftTeamTickSound = MSM_SE_MG637_REEL_LEFT_SPEED_UP;
                         } else {
-                            leftTeamTickSound = M637_SFX_REEL_LEFT_SPEED_DOWN;
+                            leftTeamTickSound = MSM_SE_MG637_REEL_LEFT_SPEED_DOWN;
                         }
                         HuAudFXPlay(leftTeamTickSound);
                     } else {
                         if (lbl_1_bss_354 == 1) {
-                            rightTeamTickSound = M637_SFX_REEL_RIGHT_SPEED_UP;
+                            rightTeamTickSound = MSM_SE_MG637_REEL_RIGHT_SPEED_UP;
                         } else {
-                            rightTeamTickSound = M637_SFX_REEL_RIGHT_SPEED_DOWN;
+                            rightTeamTickSound = MSM_SE_MG637_REEL_RIGHT_SPEED_DOWN;
                         }
                         HuAudFXPlay(rightTeamTickSound);
                     }
@@ -1002,9 +991,9 @@ s32 fn_1_36E8(s32 acceptPlayerInput)
                                        (1 << 0));
                     if ((s32) lbl_1_bss_1D0[teamIndex].alignmentState[slotIndex] == 1) {
                         if (teamIndex == 0) {
-                            HuAudFXPlay(1877);
+                            HuAudFXPlay(MSM_SE_MG637_REEL_ALIGN_TEAM_0);
                         } else {
-                            HuAudFXPlay(1878);
+                            HuAudFXPlay(MSM_SE_MG637_REEL_ALIGN_TEAM_1);
                         }
                         lbl_1_bss_1D0[teamIndex].alignmentState[slotIndex] = 2;
                     }
@@ -1125,7 +1114,7 @@ s32 fn_1_4C24(s32 selectionLimit)
             }
         }
         lbl_1_bss_114 += 1;
-        HuAudFXPlay(1882);
+        HuAudFXPlay(MSM_SE_MG637_REEL_SYMBOLS_SET);
         break;
     case 1:
     case 2:
@@ -1383,7 +1372,8 @@ s32 fn_1_603C(void)
             fn_8005C2C8(lbl_80265728[lbl_1_bss_290[playerSlot]].charNo,
                                lbl_1_bss_2A0[playerSlot].motion[stopMotionIndex], 0.0f, 4.0f, 0U);
             if (lbl_1_bss_2A0[playerSlot].scoredRound != 0) {
-                CharFXPlay(lbl_80265728[lbl_1_bss_290[playerSlot]].charNo, 579);
+                CharFXPlay(lbl_80265728[lbl_1_bss_290[playerSlot]].charNo,
+                           MSM_SE_CHARVOICE_HAPPY_CHEER);
             }
             playerSlot += 1;
         }
@@ -1408,7 +1398,7 @@ s32 fn_1_603C(void)
             fn_80026A44(lbl_1_bss_1D0->matchIndicatorModels[0], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0->matchIndicatorModels[1], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0->teamMatchEffectModel, (1 << 0));
-            HuAudFXPlay(1879);
+            HuAudFXPlay(MSM_SE_MG637_TEAM_MATCH_TEAM_0);
         } else {
             fn_800269E8(lbl_1_bss_1D0->matchIndicatorModels[0], (1 << 0));
             fn_800269E8(lbl_1_bss_1D0->matchIndicatorModels[1], (1 << 0));
@@ -1418,7 +1408,7 @@ s32 fn_1_603C(void)
             fn_80026A44(lbl_1_bss_1D0[1].matchIndicatorModels[0], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0[1].matchIndicatorModels[1], (1 << 0));
             fn_80026A44(lbl_1_bss_1D0[1].teamMatchEffectModel, (1 << 0));
-            HuAudFXPlay(1880);
+            HuAudFXPlay(MSM_SE_MG637_TEAM_MATCH_TEAM_1);
         } else {
             fn_800269E8(lbl_1_bss_1D0[1].matchIndicatorModels[0], (1 << 0));
             fn_800269E8(lbl_1_bss_1D0[1].matchIndicatorModels[1], (1 << 0));

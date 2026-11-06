@@ -124,13 +124,13 @@ void fn_1_2F4(s16 mode, s16 frameNo) {
         introModel = lbl_1_bss_0.pictureIntroModels[lbl_1_bss_0.selectedPicture];
         fn_8002D414(introModel, 0.0f);
         fn_80026A44(introModel, (1 << 0));
-        HuAudFXPlay(1867);
+        HuAudFXPlay(MSM_SE_MG636_PICTURE_REVEAL_START);
         fn_1_6398(0);
     } else {
         introModel = lbl_1_bss_0.pictureIntroModels[lbl_1_bss_0.selectedPicture];
         if (fn_8002D75C(introModel) == 1) {
             fn_1_6398(1);
-            HuAudFXPlay(1868);
+            HuAudFXPlay(MSM_SE_MG636_PICTURE_REVEAL_DONE);
             fn_80071A9C();
         }
     }
@@ -287,11 +287,11 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                 switch (roundOutcome) {
                 case 1:
                     lbl_1_bss_0.teamPoints[0]++;
-                    HuAudFXPlay(1870);
+                    HuAudFXPlay(MSM_SE_MG636_TEAM_POINT);
                     break;
                 case 2:
                     lbl_1_bss_0.teamPoints[1]++;
-                    HuAudFXPlay(1870);
+                    HuAudFXPlay(MSM_SE_MG636_TEAM_POINT);
                     break;
                 }
                 lbl_1_bss_0.mode = roundOutcome;
@@ -486,7 +486,7 @@ void fn_1_12E0(s16 mode, s16 frameNo)
             0.0f);
         /* The finish sound also plays after the final round times out. */
         if (lbl_1_bss_0.mode != 3);
-        HuAudFXPlay(1871);
+        HuAudFXPlay(MSM_SE_MG636_GAME_FINISH);
         musicHandle = lbl_1_bss_0.musicHandle;
         if (musicHandle != -1) {
             HuAudSStreamFadeOut(musicHandle, 100);

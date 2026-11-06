@@ -27,11 +27,6 @@
 #include "game/printfunc.h"
 #include "msm_stream.h"
 
-#define MSM_SE_M662_INTRO 2118
-#define MSM_SE_M662_PATH_MOVE 2119
-#define MSM_SE_M662_MODEL_MOTION 2120
-#define MSM_SE_M662_CUE 2121
-
 extern s16 lbl_802C0278;
 extern void fn_1_1DC8(s16);
 extern void fn_1_1DFC(void), fn_1_223C(void), fn_1_8B34(void), fn_1_4D04(void);
@@ -1371,9 +1366,8 @@ void fn_1_5008(s16 soundSlot, s16 spatialMode, HuVecF *position)
 }
 
 /* Intro, path movement, model motion and ending-cue effects. */
-s16 lbl_1_data_F6[5] = {
-    MSM_SE_M662_INTRO, MSM_SE_M662_PATH_MOVE, MSM_SE_M662_MODEL_MOTION, MSM_SE_M662_CUE, 0
-};
+s16 lbl_1_data_F6[5] = { MSM_SE_MG662_INTRO, MSM_SE_MG662_PATH_MOVE, MSM_SE_MG662_TREE_MOTION,
+                         MSM_SE_MG662_ENDING_BEAT, 0 };
 
 u16 lbl_1_bss_C60;
 s16 lbl_1_bss_C58[4];

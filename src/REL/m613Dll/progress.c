@@ -149,9 +149,9 @@ void fn_1_F850(void) {
             fn_800269E8(lbl_1_bss_1218[player].model, ((1 << 30) | (1 << 0)));
             if ((motionFrame + 1 == clipStart) && (lbl_1_bss_125E == 3)) {
                 if ((player == 0) || (player == 2)) {
-                    HuAudFXPanning(HuAudFXPlay(1711), 32);
+                    HuAudFXPanning(HuAudFXPlay(MSM_SE_MG613_PROGRESS_STEP), 32);
                 } else {
-                    HuAudFXPanning(HuAudFXPlay(1711), 96);
+                    HuAudFXPanning(HuAudFXPlay(MSM_SE_MG613_PROGRESS_STEP), 96);
                 }
             }
         } else {

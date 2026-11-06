@@ -592,11 +592,11 @@ void fn_1_560(void) {
     lbl_1_bss_8C4 += 1;
     if (lbl_1_bss_8C4 > 10) {
         if (lbl_1_bss_8C4 == 11) {
-            lbl_1_bss_10.soundHandle[0] = HuAudFXPlay(2136);
-            HuAudFXPlay(2126);
+            lbl_1_bss_10.soundHandle[0] = HuAudFXPlay(MSM_SE_MG664_WATER_AMBIENCE_LOOP);
+            HuAudFXPlay(MSM_SE_MG664_INTRO_OPENING_HIT);
         }
         if (lbl_1_bss_8C4 == 110) {
-            HuAudFXPlay(2127);
+            HuAudFXPlay(MSM_SE_MG664_INTRO_SECOND_BEAT);
         }
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             fn_8002D86C(lbl_1_bss_85C[playerIndex].modelId, 1.0f);
@@ -637,7 +637,7 @@ void fn_1_560(void) {
                         fn_800269E8(lbl_1_bss_85C[playerIndex].modelId,
                             ((1 << 30) | (1 << 2)));
                         if (playerIndex == 0) {
-                            HuAudFXPlay(2126);
+                            HuAudFXPlay(MSM_SE_MG664_INTRO_OPENING_HIT);
                         }
                     }
                 }
@@ -1847,7 +1847,7 @@ void fn_1_5108(void) {
     }
 
     if (lbl_1_bss_8C0 == 315) {
-        HuAudFXPlay(2135);
+        HuAudFXPlay(MSM_SE_MG664_INTRO_MID_BEAT);
     }
 }
 
@@ -1879,7 +1879,7 @@ void fn_1_5860(void) {
     switch (lbl_1_bss_8C0) {
     case 1368:
         fn_8002D86C(lbl_1_bss_89C, 1.0f);
-        HuAudFXPlay(2129);
+        HuAudFXPlay(MSM_SE_MG664_COURSE_REVEAL);
         break;
     }
 }
@@ -2262,8 +2262,8 @@ void fn_1_6D7C(void)
     if (lbl_1_bss_8C0 == 3338) fn_8002D86C(lbl_1_bss_69E[1], 1.0f);
     if (lbl_1_bss_8C0 == 3353) fn_8002D86C(lbl_1_bss_69E[1], 0.0f);
     if (lbl_1_bss_8C0 == 3618) fn_8002D86C(lbl_1_bss_69E[1], 1.0f);
-    if (lbl_1_bss_8C0 == 3618) HuAudFXPlay(2137);
-    if (lbl_1_bss_8C0 == 3633) HuAudFXPlay(2133);
+    if (lbl_1_bss_8C0 == 3618) HuAudFXPlay(MSM_SE_MG664_ENDING_START);
+    if (lbl_1_bss_8C0 == 3633) HuAudFXPlay(MSM_SE_MG664_ENDING_FOLLOWUP);
     switch (lbl_1_bss_8C0) {
     case 3838: case 3588: case 2638:
         fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][0], lbl_1_bss_460);

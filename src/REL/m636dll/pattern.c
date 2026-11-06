@@ -198,7 +198,7 @@ void fn_1_3460(s32 pictureIndex, s32 cellIndex)
     fn_80026A44(
         lbl_1_bss_0.referenceCellModels[cellIndex],
         ((1 << 30) | (1 << 2)));
-    HuAudFXPlay(1869);
+    HuAudFXPlay(MSM_SE_MG636_CELL_FLIP);
 }
 
 /* The round sequence polls this while waiting for the selected picture-cell reveal to finish. */
@@ -246,7 +246,7 @@ void fn_1_364C(s32 pictureIndex, s32 cellIndex)
     fn_8002D414(modelId, lastFrame);
     fn_80026A44(modelId, (1 << 0));
     fn_800269E8(modelId, ((1 << 30) | (1 << 2)));
-    HuAudFXPlay(1869);
+    HuAudFXPlay(MSM_SE_MG636_CELL_FLIP);
 }
 
 /* The round and finish sequences poll this until reverse playback reaches its endpoint or time

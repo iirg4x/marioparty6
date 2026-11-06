@@ -402,11 +402,11 @@ void fn_1_7230(s16 playerIndex) {
             inputResult = fn_1_76E0(playerIndex);
             if (inputResult > 0) {
                 fn_1_7660();
-                HuAudFXPlay(2006);
+                HuAudFXPlay(MSM_SE_MG647_TAP_SUCCESS);
                 fn_8002C95C(lbl_1_bss_224.entries[2].modelId,
                               lbl_1_bss_224.entries[2].motionIds[1]);
                 fn_1_A6C8(entry, 2);
-                HuAudFXPlay(2007);
+                HuAudFXPlay(MSM_SE_MG647_TAP_ADVANCE);
                 entry->activity.tap.frame = 0;
             } else if (inputResult < 0) {
                 fn_1_7618();
@@ -487,7 +487,7 @@ void fn_1_7618(void) {
     M647ActivityEntry *entry = &lbl_1_bss_224.entries[2];
 
     HuSprAttrReset(entry->groupId, 3, 4);
-    HuAudFXPlay(2010);
+    HuAudFXPlay(MSM_SE_MG647_PROMPT_SHOW);
 }
 
 /* Hides the tap activity's two markers and six button prompts. */
@@ -641,11 +641,11 @@ void fn_1_7D68(s16 playerIndex) {
                 if (entry->activity.row.successCount >= 10) {
                     fn_1_81BC();
                     fn_1_A6C8(entry, 2);
-                    HuAudFXPlay(2008);
+                    HuAudFXPlay(MSM_SE_MG647_ROW_COMPLETE);
                     entry->activity.row.successCount = 0;
                     fn_8002C95C(lbl_1_bss_224.entries[3].modelId,
                                   lbl_1_bss_224.entries[3].motionIds[1]);
-                    HuAudFXPlay(2009);
+                    HuAudFXPlay(MSM_SE_MG647_ROW_REWARD);
                 }
                 fn_1_83EC(playerIndex);
             } else if (inputResult < 0) {
@@ -730,7 +730,7 @@ void fn_1_8174(void) {
     M647ActivityEntry *entry = &lbl_1_bss_224.entries[3];
 
     HuSprAttrReset(entry->groupId, 3, 4);
-    HuAudFXPlay(2010);
+    HuAudFXPlay(MSM_SE_MG647_PROMPT_SHOW);
 }
 
 /* Hides the row activity's prompt sprites. */
@@ -948,7 +948,7 @@ void fn_1_8A40(s16 playerIndex) {
                     fn_1_8F2C();
                     fn_8002C95C(lbl_1_bss_224.entries[0].modelId,
                               lbl_1_bss_224.entries[0].motionIds[1]);
-                    HuAudFXPlay(2000);
+                    HuAudFXPlay(MSM_SE_MG647_GRID_START);
                     state->activity.grid.row = 0;
                     fn_1_A6C8(state, 2);
                     state->activity.grid.row = 0;
@@ -967,7 +967,7 @@ void fn_1_8A40(s16 playerIndex) {
                 fn_80026790(state->modelId, &state->position);
             }
             if ((f32)state->activity.grid.frame == 45.0f) {
-                HuAudFXPlay(2001);
+                HuAudFXPlay(MSM_SE_MG647_GRID_STEP);
             }
             if (++(state->activity.grid.frame) >= 60) {
                 fn_8002C95C(lbl_1_bss_224.entries[0].modelId,
@@ -1043,7 +1043,7 @@ void fn_1_8E0C(void) {
     HuSprPosSet(entry->groupId, 3,
                  (f32)((entry->activity.grid.row << 5) + 56), 0.0f);
     HuSprAttrReset(entry->groupId, 3, 4);
-    HuAudFXPlay(2010);
+    HuAudFXPlay(MSM_SE_MG647_PROMPT_SHOW);
 }
 
 /* Updates visibility of the current grid prompt sprites. */
@@ -1104,7 +1104,7 @@ s32 fn_1_8FF0(s16 playerIndex) {
     buttons &= 0x6F00;
     if (buttons != 0) {
         if (buttons == lbl_1_data_456[table->entries[0].activity.grid.buttonOrder[promptIndex]]) {
-            HuAudFXPlay(1999);
+            HuAudFXPlay(MSM_SE_MG647_GRID_BUTTON_CORRECT);
             return 1;
         }
         return -1;
@@ -1307,7 +1307,7 @@ void fn_1_98CC(s16 playerIndex) {
                 (&lbl_1_bss_224.entries[1])->modelId,
                 lbl_1_bss_224.entries[1].motionIds[1]);
             fn_1_A6C8(leverEntry, 1);
-            HuAudFXPlay(2002);
+            HuAudFXPlay(MSM_SE_MG647_LEVER_PULL);
             fn_8002D86C(leverEntry->activity.lever.frontModelId, 1.0f);
             leverEntry->activity.lever.speed = 1.0f;
             fn_1_975C();
@@ -1322,7 +1322,7 @@ void fn_1_98CC(s16 playerIndex) {
                         ((1 << 30) | (1 << 2)));
                     fn_8002D414(leverEntry->activity.lever.frontModelId,
                                       leverEntry->activity.lever.savedMotionTime);
-                    HuAudFXPlay(2003);
+                    HuAudFXPlay(MSM_SE_MG647_LEVER_RELEASE);
                 }
             } else if ((f32)motionTime <= leverEntry->activity.lever.speed) {
                 leverEntry->activity.lever.counter = 0;
@@ -1332,7 +1332,7 @@ void fn_1_98CC(s16 playerIndex) {
                 fn_8002D414(leverEntry->activity.lever.frontModelId,
                                   leverEntry->activity.lever.savedMotionTime);
                 fn_1_A6C8(leverEntry, 1);
-                HuAudFXPlay(2002);
+                HuAudFXPlay(MSM_SE_MG647_LEVER_PULL);
             }
             result = fn_1_A200(playerIndex);
             if (result == 1) {
@@ -1340,10 +1340,10 @@ void fn_1_98CC(s16 playerIndex) {
                 fn_8002C95C(
                     (&lbl_1_bss_224.entries[1])->modelId,
                     lbl_1_bss_224.entries[1].motionIds[1]);
-                HuAudFXPlay(2004);
+                HuAudFXPlay(MSM_SE_MG647_LEVER_ENGAGE);
                 fn_1_A6C8(leverEntry, 2);
                 if (leverEntry->activity.lever.phase == 0) {
-                    HuAudFXPlay(2003);
+                    HuAudFXPlay(MSM_SE_MG647_LEVER_RELEASE);
                 }
                 fn_1_A2D4(playerIndex);
                 fn_800269E8(leverEntry->modelId, ((1 << 30) | (1 << 2)));
@@ -1384,7 +1384,7 @@ void fn_1_98CC(s16 playerIndex) {
                 fn_8002D86C(leverEntry->modelId, 1.0f);
                 leverEntry->activity.lever.speed = 1.0f;
                 leverEntry->status = 1;
-                HuAudFXPlay(2002);
+                HuAudFXPlay(MSM_SE_MG647_LEVER_PULL);
                 leverEntry->activity.lever.frame = 0;
             }
             break;
@@ -1399,13 +1399,13 @@ void fn_1_98CC(s16 playerIndex) {
                     fn_80026790(leverEntry->modelId, &leverEntry->position);
                 }
                 if (motionTime < 3) {
-                    HuAudFXPlay(2002);
+                    HuAudFXPlay(MSM_SE_MG647_LEVER_PULL);
                     fn_80026A44(leverEntry->modelId, ((1 << 30) | (1 << 2)));
                     leverEntry->activity.lever.phase = 1;
                 }
             } else if (leverEntry->activity.lever.phase == 1) {
                 if (motionTime >= 114) {
-                    HuAudFXPlay(2003);
+                    HuAudFXPlay(MSM_SE_MG647_LEVER_RELEASE);
                     fn_800269E8(leverEntry->modelId, ((1 << 30) | (1 << 2)));
                     fn_8002D414(leverEntry->modelId, (f32)motionTime);
                     leverEntry->activity.lever.phase = 2;
@@ -1475,7 +1475,7 @@ s16 fn_1_A200(s16 playerIndex) {
     buttons = (u16)(buttons & 0x6F00);
     if (buttons != 0) {
         if ((u16)buttons == (1 << 8)) {
-            HuAudFXPlay(2005);
+            HuAudFXPlay(MSM_SE_MG647_LEVER_BUTTON_PRESS);
             return 1;
         }
         return -1;

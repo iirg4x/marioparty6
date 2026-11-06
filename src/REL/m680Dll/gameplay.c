@@ -478,7 +478,7 @@ void fn_1_42C(void) {
             for (index = 0; index < 10; index++) {
                 fn_80026760(work->grid[index].itemModel, 0.0f, 800.0f, 0.0f);
             }
-            HuAudFXPlay(2330);
+            HuAudFXPlay(MSM_SE_MG680_ITEM_GROUP_SETUP);
             work->state += 1;
             /* fallthrough */
         case M680_SEQUENCE_STATE_FIRST_GROUP_REVEAL:
@@ -494,7 +494,7 @@ void fn_1_42C(void) {
         case M680_SEQUENCE_STATE_GROUP_GAP:
             work->frame++;
             if (work->frame >= 20) {
-                HuAudFXPlay(2330);
+                HuAudFXPlay(MSM_SE_MG680_ITEM_GROUP_SETUP);
                 work->frame = 0;
                 work->state += 1;
                 break;
@@ -614,7 +614,7 @@ void fn_1_42C(void) {
         case M680_SEQUENCE_STATE_ITEM_ATTACH_DELAY:
             work->frame++;
             if (work->frame >= 15) {
-                HuAudFXPlay(2322);
+                HuAudFXPlay(MSM_SE_MG680_ITEM_PICKUP);
                 player = work->players->player;
                 fn_80027508(work->selected->hookModel);
                 fn_8002741C(player->modelId, fn_8005C0F0(player->character, 4, 0),
@@ -654,8 +654,8 @@ void fn_1_42C(void) {
                 fn_8005C2C8(player->character, player->motionIds[6], 0.0f, 5.0f, 0U);
                 fn_1_BE08(fn_1_9CA0, work->selected);
                 work->selected->winTimer = 0;
-                HuAudFXPlay(999);
-                CharFXPlay(player->character, 579);
+                HuAudFXPlay(MSM_SE_GUIDE_COIN_COLLECTOR_TALK);
+                CharFXPlay(player->character, MSM_SE_CHARVOICE_HAPPY_CHEER);
                 fn_8002CCC0(work->selected->model, work->selected->motions[5], 0.0f, 5.0f,
                                    ((1 << 30) | (1 << 0)));
                 work->roundWins++;
@@ -679,7 +679,7 @@ void fn_1_42C(void) {
             }
             break;
         case M680_SEQUENCE_STATE_LOSS_START:
-            HuAudFXPlay(2323);
+            HuAudFXPlay(MSM_SE_MG680_ROUND_LOSS_START);
             fn_1_BE08(fn_1_9F18, work->selected);
             node = work->players->next;
             while (node) {
@@ -694,7 +694,7 @@ void fn_1_42C(void) {
         case M680_SEQUENCE_STATE_LOSS_DELAY:
             work->frame++;
             if (work->frame == 50) {
-                HuAudFXPlay(2324);
+                HuAudFXPlay(MSM_SE_MG680_ROUND_LOSS_RESULT);
                 fn_1_9D5C(&work->phaseEffect);
             }
             if (work->frame >= 60) {
@@ -790,7 +790,7 @@ void fn_1_42C(void) {
             work->frame++;
             if (work->frame >= 45) {
                 if (work->result != 0) {
-                    HuAudFXPlay(2325);
+                    HuAudFXPlay(MSM_SE_MG680_ROUND_ADVANCE);
                     fn_1_BE08(fn_1_A0E4, work);
                     work->transitionTimer = 0;
                     work->frame = 0;
@@ -826,7 +826,7 @@ void fn_1_42C(void) {
         case M680_SEQUENCE_STATE_WAIT_FOR_FINAL_STAGE_TURN:
             work->frame++;
             if (work->frame == 60) {
-                HuAudFXPlay(2325);
+                HuAudFXPlay(MSM_SE_MG680_ROUND_ADVANCE);
                 fn_1_BE08(fn_1_A234, work);
                 work->transitionTimer = 0;
                 for (index = 0; index < 5; index++) {
@@ -846,7 +846,7 @@ void fn_1_42C(void) {
                 fn_80026A44(work->models[3], (1 << 0));
                 fn_800269E8(work->models[4], (1 << 0));
                 if (work->frame < 60) {
-                    HuAudFXPlay(2325);
+                    HuAudFXPlay(MSM_SE_MG680_ROUND_ADVANCE);
                     fn_1_BE08(fn_1_A234, work);
                     work->transitionTimer = 0;
                     for (index = 0; index < 5; index++) {
@@ -986,7 +986,7 @@ void fn_1_42C(void) {
         case M680_SEQUENCE_STATE_PLAYER_RESULT_WAIT:
             work->frame++;
             if (work->frame >= 30) {
-                HuAudFXPlay(2325);
+                HuAudFXPlay(MSM_SE_MG680_ROUND_ADVANCE);
                 fn_1_BE08(fn_1_A0E4, work);
                 work->transitionTimer = 0;
                 work->frame = 0;
@@ -2978,7 +2978,7 @@ s32 fn_1_8288(void *argument)
         }
         break;
     case 3:
-            HuAudFXPlayPan(2327, fn_1_AABC(work->position.x));
+            HuAudFXPlayPan(MSM_SE_MG680_EFFECT_FINISH_PAN, fn_1_AABC(work->position.x));
         fn_8002CCC0(work->model, work->endMotion, 0.0f,
                            5.0f, ((1 << 30) | (1 << 0)));
         fn_8002D894(work->model, 1.0f);
@@ -3073,21 +3073,21 @@ s32 fn_1_8CAC(M680State *argument)
     fn_1_8B24(argument, controller);
     input = &argument->buttons;
     if (input->pressed & 0x10) {
-        HuAudFXPlay(2321);
+        HuAudFXPlay(MSM_SE_MG680_CHOICE_CONFIRM);
         return 1;
     }
 
     if (input->pressed & 1) {
         if ((input->pressed & 8) && argument->selected->left &&
             argument->selected->left->down && argument->selected->left->down->ready == 0) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = argument->selected->left->down;
             fn_1_A7E8(argument);
             return 0;
         }
         if ((input->pressed & 4) && argument->selected->left &&
             argument->selected->left->up && argument->selected->left->up->ready == 0) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = argument->selected->left->up;
             fn_1_A7E8(argument);
             return 0;
@@ -3095,7 +3095,7 @@ s32 fn_1_8CAC(M680State *argument)
         candidate = argument->selected->left;
         while (candidate) {
             if (candidate->ready == 0) {
-                HuAudFXPlay(2320);
+                HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                 argument->selected = candidate;
                 fn_1_A7E8(argument);
                 return 0;
@@ -3110,7 +3110,7 @@ s32 fn_1_8CAC(M680State *argument)
             }
             while (candidate) {
                 if (candidate->ready == 0) {
-                    HuAudFXPlay(2320);
+                    HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                     argument->selected = candidate;
                     fn_1_A7E8(argument);
                     return 0;
@@ -3124,14 +3124,14 @@ check_down:
     if (input->pressed & 2) {
         if ((input->pressed & 8) && argument->selected->right &&
             argument->selected->right->down && argument->selected->right->down->ready == 0) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = argument->selected->right->down;
             fn_1_A7E8(argument);
             return 0;
         }
         if ((input->pressed & 4) && argument->selected->right &&
             argument->selected->right->up && argument->selected->right->up->ready == 0) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = argument->selected->right->up;
             fn_1_A7E8(argument);
             return 0;
@@ -3139,7 +3139,7 @@ check_down:
         candidate = argument->selected->right;
         while (candidate) {
             if (candidate->ready == 0) {
-                HuAudFXPlay(2320);
+                HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                 argument->selected = candidate;
                 fn_1_A7E8(argument);
                 return 0;
@@ -3154,7 +3154,7 @@ check_down:
             }
             while (candidate) {
                 if (candidate->ready == 0) {
-                    HuAudFXPlay(2320);
+                    HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                     argument->selected = candidate;
                     fn_1_A7E8(argument);
                     return 0;
@@ -3167,7 +3167,7 @@ check_down:
 check_side:
     if ((input->pressed & 8) && argument->selected->down) {
         if (argument->selected->down->ready == 0) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = argument->selected->down;
             fn_1_A7E8(argument);
             return 0;
@@ -3191,12 +3191,12 @@ check_side:
             candidateCount++;
             if (candidate->ready == 0) {
                 if (fallback && selectedCount <= candidateCount) {
-                    HuAudFXPlay(2320);
+                    HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                     argument->selected = fallback;
                     fn_1_A7E8(argument);
                     return 0;
                 }
-                HuAudFXPlay(2320);
+                HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                 argument->selected = candidate;
                 fn_1_A7E8(argument);
                 return 0;
@@ -3204,7 +3204,7 @@ check_side:
             candidate = candidate->right;
         }
         if (fallback) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = fallback;
             fn_1_A7E8(argument);
             return 0;
@@ -3212,7 +3212,7 @@ check_side:
     }
     if ((input->pressed & 4) && argument->selected->up) {
         if (argument->selected->up->ready == 0) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = argument->selected->up;
             fn_1_A7E8(argument);
             return 0;
@@ -3236,12 +3236,12 @@ check_side:
             candidateCount++;
             if (candidate->ready == 0) {
                 if (fallback && selectedCount <= candidateCount) {
-                    HuAudFXPlay(2320);
+                    HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                     argument->selected = fallback;
                     fn_1_A7E8(argument);
                     return 0;
                 }
-                HuAudFXPlay(2320);
+                HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
                 argument->selected = candidate;
                 fn_1_A7E8(argument);
                 return 0;
@@ -3249,7 +3249,7 @@ check_side:
             candidate = candidate->right;
         }
         if (fallback) {
-            HuAudFXPlay(2320);
+            HuAudFXPlay(MSM_SE_MG680_CURSOR_MOVE);
             argument->selected = fallback;
             fn_1_A7E8(argument);
             return 0;
@@ -3378,7 +3378,7 @@ void fn_1_9898(M680State *work, s32 firstIndex)
     s32 index;
 
     for (index = firstIndex; index < firstIndex + 5; index++) {
-        HuAudFXPlay(2318);
+        HuAudFXPlay(MSM_SE_MG680_ITEM_GROUP_START);
         fn_8002CCC0(
             work->grid[index].model,
             work->grid[index].motions[3], 0.0f,
@@ -3402,10 +3402,10 @@ void fn_1_99B4(M680MotionDurationState *durationWork, s32 duration, s32 reverse)
     durationWork->elapsedFrames = 0;
     durationWork->duration = duration;
     if (reverse != 0) {
-        HuAudFXPlay(2329);
+        HuAudFXPlay(MSM_SE_MG680_TRANSITION_REVERSE);
         fn_1_BE08(fn_1_9B00, durationWork);
     } else {
-        HuAudFXPlay(2328);
+        HuAudFXPlay(MSM_SE_MG680_TRANSITION_FORWARD);
         fn_1_BE08(fn_1_9A34, durationWork);
     }
 }
@@ -3557,7 +3557,7 @@ s32 fn_1_A0E4(void *boardData)
     rotation = phaseAngle + 30.0f * progress;
     fn_80026808(board->models[37], 0.0f, -rotation, 0.0f);
     if (board->transitionTimer >= 90) {
-        HuAudFXPlay(2326);
+        HuAudFXPlay(MSM_SE_MG680_ROUND_MARKER_SET);
         fn_80026A44(board->markers[board->roundWins - 1], ((1 << 30) | (1 << 1)));
         return 1;
     }
@@ -3601,7 +3601,7 @@ void fn_1_A388(M680EffectState *effect) {
     fn_80026760(effect->model_a, effect->x, effect->y, effect->z);
     fn_80026760(effect->model_b, effect->x, effect->y, effect->z - 43.0f);
     fn_80026760(effect->model_c, effect->x, effect->y, 43.0f + effect->z);
-    effect->audio_handle = HuAudFXPlayPan(2319, fn_1_AABC(effect->x));
+    effect->audio_handle = HuAudFXPlayPan(MSM_SE_MG680_FUSE_EFFECT_LOOP, fn_1_AABC(effect->x));
     fn_1_BE08(fn_1_A490, effect);
 }
 

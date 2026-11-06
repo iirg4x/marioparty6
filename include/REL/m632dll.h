@@ -24,15 +24,8 @@
 #include "math.h"
 #include <stddef.h>
 
-#define M632_ARENA_COLLISION_SE_ID 1846 /* Sound played when arena collision checks report a hit. */
-#define M632_PLAYER_ELIMINATION_SE_ID 1847 /* Sound played when an arena collision knocks out a
-                                            * player. */
-#define M632_OPENING_SEQUENCE_CUE_SE_ID 1848 /* Sound played at frame 98 of the opening sequence. */
 #define M632_PLAY_MODE_BGM_STREAM_ID 73 /* Background music stream started by the sequence callback
                                          * when allowed. */
-#define M632_INTRO_CHARACTER_SE_ID 581 /* Character effect played at setup and used for opening
-                                        * voice selection. */
-#define M632_GROUP1_INTRO_SE_ID 576 /* Character effect played for group 1 at opening frame 112. */
 
 #define fn_1_7364 __cvt_fp2unsigned
 #define fn_1_75B8 __div2u

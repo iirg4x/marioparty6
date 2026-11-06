@@ -114,9 +114,9 @@ void fn_1_6C98(M638PlayerView *player)
     switch (player->state) {
     case 1:
         if (player->team->variant == 0) {
-            HuAudFXPlay(1891);
+            HuAudFXPlay(MSM_SE_MG638_PLAYER_REACTION_LEFT);
         } else {
-            HuAudFXPlay(1892);
+            HuAudFXPlay(MSM_SE_MG638_PLAYER_REACTION_RIGHT);
         }
         fn_80026A44(player->model, ((1 << 30) | (1 << 1)));
         fn_80026A44(player->model, ((1 << 30) | (1 << 2)));

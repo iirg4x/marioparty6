@@ -3,24 +3,6 @@
 #include "REL/m638Dll.h"
 #include "msm_stream.h"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#define M638_TEAM0_ACTIVITY_SFX_ID 1883
-#define M638_TEAM1_ACTIVITY_SFX_ID 1884
-
 MGSEQ_PARAM lbl_1_data_0 = {
     300, 1, fn_1_1EC, fn_1_284, fn_1_528, fn_1_598, fn_1_77C, fn_1_A28,
     fn_1_D84, fn_1_11EC, fn_1_11F0,
@@ -368,7 +350,7 @@ void fn_1_598(s16 mode, s16 frameNo)
     switch (scene->playState) {
     case 0:
         MgTimerModeOnSet(scene->timer, 0);
-        HuAudFXPlay(13);
+        HuAudFXPlay(MSM_SE_CMN_TIMER_START);
         espAttrReset(scene->teams[0].sprites[0], 4U);
         espAttrReset(scene->teams[1].sprites[0], 4U);
         espAttrReset(scene->teams[0].sprites[1], 4U);
@@ -397,9 +379,9 @@ void fn_1_598(s16 mode, s16 frameNo)
                 scene->winner = 1;
             }
             if (scene->winner == 0) {
-                HuAudFXPlay(1893);
+                HuAudFXPlay(MSM_SE_MG638_WINNER_LEFT);
             } else if (scene->winner == 1) {
-                HuAudFXPlay(1894);
+                HuAudFXPlay(MSM_SE_MG638_WINNER_RIGHT);
             }
             MgTimerModeOffSet(scene->timer);
             scene->teams[0].active = 0;
@@ -935,7 +917,7 @@ void fn_1_1F18(M638TeamView *team, s32 camera)
 void fn_1_2288(M638TeamView *team)
 {
     Point3d eventPosition;
-    s32 sounds[2] = { M638_TEAM0_ACTIVITY_SFX_ID, M638_TEAM1_ACTIVITY_SFX_ID };
+    s32 sounds[2] = { MSM_SE_MG638_SWING_LOOP_LEFT, MSM_SE_MG638_SWING_LOOP_RIGHT };
     M638Prop *eventProp;
     M638SceneView *sceneState;
     f32 targetActorRotation;
@@ -1062,14 +1044,14 @@ void fn_1_2288(M638TeamView *team)
                 team->course.pairIndex[team->button] ^= 1;
                 if (team->variant == 0) {
                     if (team->button != 0) {
-                        HuAudFXPlay(1887);
+                        HuAudFXPlay(MSM_SE_MG638_COURSE_EVENT_LEFT_BUTTON_1);
                     } else {
-                        HuAudFXPlay(1889);
+                        HuAudFXPlay(MSM_SE_MG638_COURSE_EVENT_LEFT_BUTTON_0);
                     }
                 } else if (team->button != 0) {
-                    HuAudFXPlay(1888);
+                    HuAudFXPlay(MSM_SE_MG638_COURSE_EVENT_RIGHT_BUTTON_1);
                 } else {
-                    HuAudFXPlay(1890);
+                    HuAudFXPlay(MSM_SE_MG638_COURSE_EVENT_RIGHT_BUTTON_0);
                 }
             }
         }
@@ -1134,10 +1116,10 @@ void fn_1_2CDC(M638TeamView *team)
         (team->blend > 0.0f)) {
         fn_1_5760(&team->scale, team->blend / 0.4f);
         if (team->variant == 0) {
-            HuAudFXPlay(1885);
+            HuAudFXPlay(MSM_SE_MG638_SWING_BOOST_LEFT);
             return;
         }
-        HuAudFXPlay(1886);
+        HuAudFXPlay(MSM_SE_MG638_SWING_BOOST_RIGHT);
     }
 }
 
@@ -2118,9 +2100,9 @@ s32 fn_1_647C(void *data)
         team->output = team->source * weight;
         if (motionTime >= 570.0f) {
             if (team->variant == 0) {
-                HuAudFXPlay(1895);
+                HuAudFXPlay(MSM_SE_MG638_FINISH_POSE_LEFT);
             } else {
-                HuAudFXPlay(1896);
+                HuAudFXPlay(MSM_SE_MG638_FINISH_POSE_RIGHT);
             }
             team->output = 0.0f;
             team->state++;
@@ -2138,9 +2120,9 @@ s32 fn_1_647C(void *data)
         team->blend = 0.3f * weight;
         if (fn_8002D75C(team->model)) {
             if (team->variant == 0) {
-                HuAudFXPlay(1897);
+                HuAudFXPlay(MSM_SE_MG638_FINISH_END_LEFT);
             } else {
-                HuAudFXPlay(1898);
+                HuAudFXPlay(MSM_SE_MG638_FINISH_END_RIGHT);
             }
             team->state = 2;
             team->blend = 0.0f;

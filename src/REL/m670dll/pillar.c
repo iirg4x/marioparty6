@@ -10,11 +10,11 @@ float lbl_1_bss_3B8[24];
 #include "game/frand.h"
 #include "game/mg/seqman.h"
 #include "game/charman.h"
-#define M670_SE_PILLAR_LAMP_CUE 2199
-#define M670_SE_PILLAR_DROP 2200
-#define M670_SE_PILLAR_RISE_COMPLETE 2201
-#define M670_SE_ROUND_CYCLE_CUE 2198
-#define M670_SE_PILLAR_CYCLE_CUE 2203
+
+
+
+
+
 /* Sequence and pillar updates use this to change round animation states; state 2 resets the
  * nonselected pillars and then clears selectedWord to -1. */
 void fn_1_2A24(unsigned int state)
@@ -59,7 +59,7 @@ void fn_1_2A24(unsigned int state)
                     fn_8002C95C(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][3]);
                 }
             }
-            HuAudFXPlay(M670_SE_PILLAR_LAMP_CUE);
+            HuAudFXPlay(MSM_SE_MG670_PILLAR_LAMP_REVEAL);
         }
         break;
     case 5:
@@ -158,7 +158,7 @@ void fn_1_3098(OMOBJ *obj)
                 for (i = 0; i < 4; i++) {
                     fn_8006A030(i, 20, 4, 4);
                 }
-                HuAudFXPlay(M670_SE_PILLAR_RISE_COMPLETE);
+                HuAudFXPlay(MSM_SE_MG670_PILLARS_SETTLED);
             }
             lbl_1_bss_47C = 0.0f;
         }
@@ -271,7 +271,7 @@ void fn_1_3098(OMOBJ *obj)
                     oldTime = lbl_1_bss_418[i];
                     lbl_1_bss_418[i] += 1.0f;
                     if (oldTime < 0 && lbl_1_bss_418[i] >= 0) {
-                        fn_1_15B8(M670_SE_PILLAR_DROP, &lbl_1_bss_10.pillarPos[i]);
+                        fn_1_15B8(MSM_SE_MG670_PILLAR_MOVE_START, &lbl_1_bss_10.pillarPos[i]);
                     }
                 }
             }
@@ -287,8 +287,8 @@ void fn_1_3098(OMOBJ *obj)
             break;
         }
         if (obj->work[0] == 30) {
-            HuAudFXPlay(M670_SE_ROUND_CYCLE_CUE);
-            HuAudFXPlay(M670_SE_PILLAR_CYCLE_CUE);
+            HuAudFXPlay(MSM_SE_MG670_ROUND_PROMPT);
+            HuAudFXPlay(MSM_SE_MG670_ROUND_RESET_BEAT);
         }
         obj->work[0]--;
         break;
@@ -317,7 +317,7 @@ void fn_1_3098(OMOBJ *obj)
         if (done) {
             fn_1_2460(lbl_1_bss_10.soloPlayer, 1);
             fn_1_2A24(2);
-            HuAudFXPlay(M670_SE_PILLAR_RISE_COMPLETE);
+            HuAudFXPlay(MSM_SE_MG670_PILLARS_SETTLED);
         } else {
             obj->work[0]++;
         }

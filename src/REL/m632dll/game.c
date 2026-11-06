@@ -422,8 +422,7 @@ int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             rayTo.y = rayFrom.y = 600.0f;
             if (fn_80086910(&rayFrom, &rayTo, 1U, &collisionPolygon) != 0) {
                 launchTarget = collisionPolygon.pos;
-                if (((HSF_FACE *) collisionPolygon.obj->mesh.face->data)[collisionPolygon.triNo]
-                        .nbt[2] < 0.0f) {
+                if (collisionPolygon.obj->mesh.face->faces[collisionPolygon.triNo].nbt[2] < 0.0f) {
                     launchTarget.y = 600.0f;
                 } else {
                     launchTarget.y = 1200.0f;
@@ -439,7 +438,7 @@ int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             lbl_1_bss_0.playerMotionVec[b->paramB] = motionDirection;
             lbl_1_bss_0.playerState[b->paramB] = 1;
             lbl_1_bss_0.activeMask &= ~(1 << b->paramB);
-            soundHandle = HuAudFXPlay(M632_PLAYER_ELIMINATION_SE_ID);
+            soundHandle = HuAudFXPlay(MSM_SE_MG632_PLAYER_ELIMINATION);
             playerPosition = player->actor->pos;
             Hu3D3Dto2D(&playerPosition, 1, &screenPosition);
             pan = (s32) screenPosition.x;
@@ -743,7 +742,7 @@ void fn_1_3934(void)
     lbl_1_bss_0.stream = -1;
     playerIndex = 0;
     while (playerIndex < 4) {
-        CharFXPlay(lbl_1_bss_0.charNo[playerIndex], M632_INTRO_CHARACTER_SE_ID);
+        CharFXPlay(lbl_1_bss_0.charNo[playerIndex], MSM_SE_CHARVOICE_EXCITED_SHOUT);
         playerIndex += 1;
     }
     fn_80070788(&lbl_1_data_0);

@@ -381,7 +381,7 @@ void fn_1_192C(OMOBJ *obj)
     }
     if (work->pos.z < 1700.0f) {
         if (work->effectHandle == -1) {
-            work->effectHandle = CharFXPlay(work->characterNo, 581);
+            work->effectHandle = CharFXPlay(work->characterNo, MSM_SE_CHARVOICE_EXCITED_SHOUT);
         }
         if (work->motionIds[2] != fn_8002D3C4(work->modelId) &&
             fn_8002D3EC(work->modelId) == -1) {
@@ -419,7 +419,7 @@ void fn_1_192C(OMOBJ *obj)
             fn_8002741C(work->resultHookModel, hooks[work->groupNo], work->modelId);
             fn_80026A44(work->resultHookModel, ((1 << 30) | (1 << 1)));
             fn_1_B0(work->playerNo);
-            CharFXPlay(work->characterNo, 576);
+            CharFXPlay(work->characterNo, MSM_SE_CHARVOICE_HIT_YELP);
             fn_8006A030(work->playerNo, 20, 20, 0);
         } else {
             HuVecF target = lbl_1_data_9C;
@@ -492,7 +492,7 @@ void fn_1_2034(OMOBJ *obj)
         fn_80027508(work->resultHookModel);
         obj->objFunc = fn_1_242C;
         HuAudFXFadeOut(lbl_1_data_AC, 500);
-        HuAudFXPlay(2058);
+        HuAudFXPlay(MSM_SE_MG651_RESULT_COLLAPSE);
         return;
     }
     target = lbl_1_data_9C;
@@ -622,9 +622,9 @@ void fn_1_29A4(OMOBJ *obj)
 {
     M651Work64 *work = obj->data;
     if (lbl_1_bss_64.sceneFrame == 55) {
-        HuAudFXPlay(2053);
-        HuAudFXPlay(2054);
-        lbl_1_data_AC = HuAudFXPlay(2055);
+        HuAudFXPlay(MSM_SE_MG651_SCENE_START_IMPACT);
+        HuAudFXPlay(MSM_SE_MG651_SCENE_START_RUMBLE);
+        lbl_1_data_AC = HuAudFXPlay(MSM_SE_MG651_METEOR_APPROACH_LOOP);
         HuAudFXPitchSet(lbl_1_data_AC, lbl_1_data_B0);
     }
     lbl_1_bss_64.sceneFrame++;
@@ -672,7 +672,7 @@ void fn_1_2D8C(OMOBJ *obj)
         if (lbl_1_bss_64.secondBackgroundScale < 0.0f) lbl_1_bss_64.secondBackgroundScale = 0.0f;
         if (lbl_1_bss_64.firstBackgroundScale < 0.2f)
             fn_80026A44(lbl_1_bss_64.sceneModels[3], ((1 << 30) | (1 << 1)));
-        if ((float)lbl_1_bss_64.sceneFrame == 90.0f) HuAudFXPlay(2059);
+        if ((float)lbl_1_bss_64.sceneFrame == 90.0f) HuAudFXPlay(MSM_SE_MG651_RESULT_SHRINK);
         if ((float)lbl_1_bss_64.sceneFrame > 120.0f) {
             fn_1_190();
             obj->objFunc = NULL;
@@ -692,7 +692,7 @@ void fn_1_2D8C(OMOBJ *obj)
             float animatedSceneFrame = fn_8002D4E0(lbl_1_bss_64.animatedSceneModel);
             for (cueIndex = 0; cueIndex < 6; cueIndex++) {
                 if (animatedSceneFrame == soundCueFrames[cueIndex])
-                    HuAudFXPlayPan(2060, soundCuePan[cueIndex]);
+                    HuAudFXPlayPan(MSM_SE_MG651_METEOR_FLYBY, soundCuePan[cueIndex]);
             }
         }
         {
@@ -704,7 +704,7 @@ void fn_1_2D8C(OMOBJ *obj)
             float sceneMotionFrame = fn_8002D4E0(lbl_1_bss_64.sceneModels[1]);
             for (cueIndex = 0; cueIndex < 19; cueIndex++) {
                 if (sceneMotionFrame == sceneCueFrames[cueIndex])
-                    HuAudFXPlay(2056);
+                    HuAudFXPlay(MSM_SE_MG651_METEOR_SCENE_BEAT);
             }
         }
     }

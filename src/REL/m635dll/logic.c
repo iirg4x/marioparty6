@@ -23,9 +23,9 @@ void fn_1_408(s16 frameNo)
 
     if (frameNo == 30) {
         if (lbl_1_bss_4.nightF == 0) {
-            lbl_1_bss_0 = HuAudFXPlay(M635_SFX_DAY_INTRO);
+            lbl_1_bss_0 = HuAudFXPlay(MSM_SE_MG635_DAY_INTRO);
         } else {
-            lbl_1_bss_0 = HuAudFXPlay(M635_SFX_NIGHT_INTRO);
+            lbl_1_bss_0 = HuAudFXPlay(MSM_SE_MG635_NIGHT_INTRO);
         }
     } else if (frameNo == 90) {
         HuAudFXStop(lbl_1_bss_0);

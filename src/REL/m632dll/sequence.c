@@ -1,6 +1,7 @@
 /* Sequence callbacks for M632 setup, play, and results. */
 #include <math.h>
 #include "REL/m632dll.h"
+#include "humath.h"
 
 MGSEQ_PARAM lbl_1_data_0 = {
     0,
@@ -199,7 +200,7 @@ void fn_1_5A8(s16 mode, s16 frameNo)
             index += 1;
         }
         if ((u32) lbl_1_bss_0.frame == 98U) {
-            HuAudFXPlay(M632_OPENING_SEQUENCE_CUE_SE_ID);
+            HuAudFXPlay(MSM_SE_MG632_OPENING_SEQUENCE_CUE);
         }
         if ((u32) lbl_1_bss_0.frame == 20U) {
             int voiceA[14] = {177,147,327,447,387,57,417,87,357,297,117,297,237,207};
@@ -208,7 +209,7 @@ void fn_1_5A8(s16 mode, s16 frameNo)
             while (index < 4) {
                 if (lbl_1_bss_0.group[index] == 1) {
                     charNo = lbl_1_bss_0.charNo[index];
-                    soundId = M632_INTRO_CHARACTER_SE_ID;
+                    soundId = MSM_SE_CHARVOICE_EXCITED_SHOUT;
                     if (soundId < 573) {
                         soundId -= 177;
                         soundId += voiceA[charNo];
@@ -225,7 +226,7 @@ void fn_1_5A8(s16 mode, s16 frameNo)
             index = 0;
             while (index < 4) {
                 if (lbl_1_bss_0.group[index] == 1) {
-                    CharFXPlay(lbl_1_bss_0.charNo[index], M632_GROUP1_INTRO_SE_ID);
+                    CharFXPlay(lbl_1_bss_0.charNo[index], MSM_SE_CHARVOICE_HIT_YELP);
                 }
                 index += 1;
             }
@@ -498,7 +499,7 @@ void fn_1_17C0(s16 mode, s16 frameNo)
     fn_80026808(lbl_1_bss_0.collisionModel, lbl_1_bss_0.tilt.x, 0.0f, lbl_1_bss_0.tilt.z);
     fn_80026808(lbl_1_bss_0.sceneModels[1], lbl_1_bss_0.tilt.x, 0.0f, lbl_1_bss_0.tilt.z);
     angle = (f32) (360.0 - (180.0 + 180.0 * (atan2((f64) lbl_1_bss_0.tilt.z, -lbl_1_bss_0.tilt.x) /
-                                             3.141592653589793)));
+                                             M_PI)));
     model = controller->actor->mdlId;
     currentTilt = lbl_1_bss_0.tilt;
     motionLength = 80.0f;
@@ -543,7 +544,7 @@ void fn_1_17C0(s16 mode, s16 frameNo)
         collisionCenter.x /= (f32) lbl_1_bss_0.collisionCount;
         collisionCenter.y /= (f32) lbl_1_bss_0.collisionCount;
         collisionCenter.z /= (f32) lbl_1_bss_0.collisionCount;
-        arenaCollisionSoundHandle = HuAudFXPlay(M632_ARENA_COLLISION_SE_ID);
+        arenaCollisionSoundHandle = HuAudFXPlay(MSM_SE_MG632_ARENA_COLLISION);
         Hu3D3Dto2D(&collisionCenter, 2, &centerScreenPosition);
         panA = (s32) centerScreenPosition.x;
         panA /= 5;
@@ -562,7 +563,7 @@ void fn_1_17C0(s16 mode, s16 frameNo)
     while (index < lbl_1_bss_0.collisionCount) {
         if (lbl_1_bss_0.collisionPairs[index][0] == 0 &&
             lbl_1_bss_0.collisionPairs[index][1] == 1 && lbl_1_bss_0.collisionTimers[index] >= 30) {
-            collisionPairSoundHandle = HuAudFXPlay(M632_ARENA_COLLISION_SE_ID);
+            collisionPairSoundHandle = HuAudFXPlay(MSM_SE_MG632_ARENA_COLLISION);
             actorPosition = lbl_1_bss_0.collisionActors[index]->pos;
             Hu3D3Dto2D(&actorPosition, 2, &actorScreenPosition);
             panB = (s32) actorScreenPosition.x;
@@ -887,12 +888,12 @@ void fn_1_2F90(void)
                                     modelPosition.z);
                     fn_800268B0((s16) player->actor->mdlId, 0.2f, 0.2f, 0.2f);
                     motionDirection.x =
-                        (f32) (cos((3.141592653589793 * (f64) launchAngle) / 180.0) -
-                               sin((3.141592653589793 * (f64) launchAngle) / 180.0));
+                        (f32) (cos((M_PI * (f64) launchAngle) / 180.0) -
+                               sin((M_PI * (f64) launchAngle) / 180.0));
                     motionDirection.y = 5.0f;
                     motionDirection.z =
-                        (f32) (sin((3.141592653589793 * (f64) launchAngle) / 180.0) +
-                               cos((3.141592653589793 * (f64) launchAngle) / 180.0));
+                        (f32) (sin((M_PI * (f64) launchAngle) / 180.0) +
+                               cos((M_PI * (f64) launchAngle) / 180.0));
                     PSVECNormalize(&motionDirection, &motionDirection);
                     lbl_1_bss_0.playerMotionVec[playerIndex] = motionDirection;
                     lbl_1_bss_0.playerState[playerIndex] = 3;

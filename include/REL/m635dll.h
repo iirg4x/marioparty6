@@ -7,15 +7,6 @@
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 
-#define M635_SFX_SCORE_TEAM_0 1859
-#define M635_SFX_SCORE_TEAM_1 1860
-#define M635_SFX_TEAM_0_STAGE_CUE 1861
-#define M635_SFX_TEAM_1_STAGE_CUE 1862
-#define M635_SFX_RACE_TEAM_0 1863
-#define M635_SFX_RACE_TEAM_1 1864
-#define M635_SFX_DAY_INTRO 1865
-#define M635_SFX_NIGHT_INTRO 1866
-
 typedef struct M635Model {
     s16 model; /* Engine model handle for one animated stage object. */
     s16 time; /* Current animation frame for this model. */

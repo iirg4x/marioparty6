@@ -9,9 +9,9 @@
 #include "game/mic.h"
 #include "game/wipe.h"
 #include "messdir_enum.h"
-#define M670_BGM_MICROPHONE_ROUND 73
-#define M670_SE_ROUND_CYCLE_CUE 2198
-#define M670_SE_WORD_RECOGNIZED 2202
+
+
+
 typedef struct M670MicResponse_s {
     s16 status; /* Recognition status; nonzero responses are ignored. */
     u16 confidence; /* Recognition confidence compared with the game's 3000 threshold. */
@@ -47,7 +47,7 @@ void fn_1_A0(u16 *micResponse)
             case 5: lbl_1_bss_10.selectedWord = 5; break;
             }
             fn_1_2460(lbl_1_bss_10.soloPlayer, 2);
-            HuAudFXPlay(M670_SE_WORD_RECOGNIZED);
+            HuAudFXPlay(MSM_SE_MG670_ANSWER_SELECT);
         }
     }
 }
@@ -66,7 +66,7 @@ void fn_1_218(s16 mode, s16 frameNo)
         fn_1_2A24(1);
     }
     if (frameNo == 50) {
-        HuAudFXPlay(M670_SE_ROUND_CYCLE_CUE);
+        HuAudFXPlay(MSM_SE_MG670_ROUND_PROMPT);
     }
     fn_800856A8();
 }
@@ -116,7 +116,7 @@ void fn_1_42C(s16 mode, s16 frameNo)
             fn_1_22F0(i, 100.0f);
         }
     }
-    lbl_1_bss_10.music = fn_1_2AC(lbl_1_bss_10.music, M670_BGM_MICROPHONE_ROUND);
+    lbl_1_bss_10.music = fn_1_2AC(lbl_1_bss_10.music, 73);
     fn_800856A8();
     fn_1_34C();
 }

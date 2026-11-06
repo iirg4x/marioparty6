@@ -164,8 +164,8 @@ void fn_1_1F6C(OMOBJ *obj)
         case 2:
             if (fn_80071A8C() == 3) {
                 arenaWork->state++;
-                HuAudFXPlayPan(2087, 48);
-                HuAudFXPlayPan(2088, 80);
+                HuAudFXPlayPan(MSM_SE_MG657_ARENA_ENTRANCE_LEFT, 48);
+                HuAudFXPlayPan(MSM_SE_MG657_ARENA_ENTRANCE_RIGHT, 80);
             }
             break;
         case 3:

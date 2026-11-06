@@ -120,7 +120,7 @@ void fn_1_270(s16 frame)
     int side, piecePart;
 
     if (frame == 30) {
-        lbl_1_bss_0 = HuAudFXPlay(1919);
+        lbl_1_bss_0 = HuAudFXPlay(MSM_SE_MG640_INTRO_DEMO_LOOP);
     }
     switch (lbl_1_bss_4E8.state) {
     case 0:
@@ -150,7 +150,7 @@ void fn_1_270(s16 frame)
         break;
     case 2:
         if (fn_1_112C(lbl_1_bss_4E8.frame++)) {
-            HuAudFXPlay(1908);
+            HuAudFXPlay(MSM_SE_MG640_INTRO_DEMO_DONE);
             lbl_1_bss_4E8.state++;
         }
         break;
