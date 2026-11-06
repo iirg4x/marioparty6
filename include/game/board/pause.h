@@ -16,5 +16,15 @@ void mbPauseHookPop(MBPAUSEHOOK hook);
 void mbPauseSet(BOOL pauseF);
 int mbPauseDataDirGet(int type);
 int mbPauseDataNumGet(int dataNum);
+BOOL mbConfigExec(int playerNo, int modelId);
+void mbPauseGuideCreate(void);
+void mbPauseGuideKill(void);
+void mbPauseDispCopyCreate(void);
+void mbPauseDispCopyKill(void);
+s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum);
+void mbPausePanelPosSet(s16 panelId, float panelX, float panelY);
+void mbPausePanelBankSet(s16 panelId, int animBank);
+void mbPausePanelGrowSet(s16 panelId, int time, int delay, float scale);
+void mbPausePanelKill(s16 panelId);
 
 #endif

@@ -103,35 +103,35 @@ int mbMasuMAttrMatchTblGet(u32 attr, u32 mask, s16 *list);
 int mbMasuFind_TypeStepGet(s16 id, s16 type);
 int mbMasuFind_TypeStepGet2(s16 id, s16 type, BOOL hookF, BOOL dispF);
 int mbMasuFind_AttrStepGet(s16 id, u16 attr);
-int mbMasuFind_AttrMatchStepGet(s16 id, u16 arg1, u16 arg2);
-int mbMasuFind_AttrStepGet2(s16 id, u16 arg1, u16 arg2, BOOL hookF,
+int mbMasuFind_AttrMatchStepGet(s16 id, u16 attrValue, u16 attrMask);
+int mbMasuFind_AttrStepGet2(s16 id, u16 attrValue, u16 attrMask, BOOL hookF,
     BOOL dispF);
 int mbMasuFind_MAttrStepGet(s16 id, u32 attr);
-int mbMasuFind_MAttrMatchStepGet(s16 id, u32 arg1, u32 arg2);
-int mbMasuFind_MAttrStepGet2(s16 id, u32 arg1, u32 arg2, BOOL hookF,
+int mbMasuFind_MAttrMatchStepGet(s16 id, u32 mAttrValue, u32 mAttrMask);
+int mbMasuFind_MAttrStepGet2(s16 id, u32 mAttrValue, u32 mAttrMask, BOOL hookF,
     BOOL dispF);
 int mbMasuFind_IdStepGet(s16 id, s16 targetId);
 int mbMasuFind_IdStepGet2(s16 id, s16 targetId, BOOL hookF, BOOL dispF);
 s16 mbMasuFind_TypeSearch(s16 id, s16 type);
 s16 mbMasuFind_TypeIdGet(s16 id, s16 type, BOOL hookF, BOOL dispF);
 s16 mbMasuFind_AttrIdGet(s16 id, u16 attr);
-s16 mbMasuFind_AttrMatchIdGet(s16 id, u16 arg1, u16 arg2);
-s16 mbMasuFind_AttrMatchIdGet2(s16 id, u16 arg1, u16 arg2, BOOL hookF,
+s16 mbMasuFind_AttrMatchIdGet(s16 id, u16 attrValue, u16 attrMask);
+s16 mbMasuFind_AttrMatchIdGet2(s16 id, u16 attrValue, u16 attrMask, BOOL hookF,
     BOOL dispF);
 s16 mbMasuFind_MAttrIdGet(s16 id, u32 attr);
-s16 mbMasuFind_MAttrMatchIdGet(s16 id, u32 arg1, u32 arg2);
-s16 mbMasuFind_MAttrMatchIdGet2(s16 id, u32 arg1, u32 arg2, BOOL hookF,
+s16 mbMasuFind_MAttrMatchIdGet(s16 id, u32 mAttrValue, u32 mAttrMask);
+s16 mbMasuFind_MAttrMatchIdGet2(s16 id, u32 mAttrValue, u32 mAttrMask, BOOL hookF,
     BOOL dispF);
 int mbMasuFind_TypeListGet(s16 id, s16 type, s16 *list);
 int mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF,
     s16 *list);
 int mbMasuFind_AttrNumGet(s16 id, u16 attr, u32 unused);
-int mbMasuFind_AttrMatchNumGet(s16 id, u16 arg1, u16 arg2, u32 unused);
-int mbMasuFind_AttrMatchNumGet2(s16 id, u16 arg1, u16 arg2, BOOL hookF,
+int mbMasuFind_AttrMatchNumGet(s16 id, u16 attrValue, u16 attrMask, u32 unused);
+int mbMasuFind_AttrMatchNumGet2(s16 id, u16 attrValue, u16 attrMask, BOOL hookF,
     BOOL dispF, u32 unused);
 s16 mbMasuFind_MAttrNumGet(s16 id, u32 attr);
-int mbMasuFind_MAttrMatchListGet(s16 id, u32 arg1, u32 arg2, s16 *list);
-int mbMasuFind_MAttrMatchListGet2(s16 id, u32 arg1, u32 arg2, BOOL hookF,
+int mbMasuFind_MAttrMatchListGet(s16 id, u32 mAttrValue, u32 mAttrMask, s16 *list);
+int mbMasuFind_MAttrMatchListGet2(s16 id, u32 mAttrValue, u32 mAttrMask, BOOL hookF,
     BOOL dispF, s16 *list);
 int mbMasuFind_IdListGet(s16 id, s16 targetId, s16 *list);
 int mbMasuFind_IdListGet2(s16 id, s16 targetId, BOOL hookF, BOOL dispF,

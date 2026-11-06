@@ -47,6 +47,7 @@ s32 HuMemUsedMemoryBlockGet(void *heap);
 s32 HuMemMemorySizeGet(void *heap);
 s32 HuMemMemoryAllocSizeGet(s32 size);
 void fn_8000BFB4(void *heap, s16 status);
+void *mbMallocFlushModelNum(s32 size, u32 num);
 
 static inline void *ModelHeapMallocNum(s32 size, u32 allocationNo)
 {

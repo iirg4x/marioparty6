@@ -79,6 +79,7 @@ struct MbParticle_s {
     HuVecF vel;
     union {
         s16 work[8];
+        HuVecF fireDirection;
         struct {
             s16 _work10[6];
             void *hookData;

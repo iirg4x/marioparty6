@@ -70,6 +70,7 @@ double asin(double x);
 double atan2(double y, double x);
 double fmod(double x, double y);
 double log(double x);
+double log10(double x);
 double pow(double x, double y);
 float tanf(float x);
 #ifndef _MATH_H

@@ -52,7 +52,7 @@ int mbGuideSpeakerNoGet(void);
 MBMODELID mbObjCreate(int dataNum, int *motData, BOOL link);
 int mbObjMotionNoCreate(int modelId, int dataNum, int motNo);
 int mbObjMotionIDGet(int modelId, int motNo);
-int mbObjMotionShiftIDGet(int modelId);
+int mbObjMotionShiftIDGet(MBMODELID modelId);
 BOOL mbObjMotionEndCheck(int modelId);
 void mbObjMotionSet(int modelId, int motNo, u32 attr);
 void mbObjMotionShiftSet(int modelId, int motNo, float start, float end, BOOL loopF);
@@ -70,7 +70,7 @@ void mbObjAttrSet(int modelId, u32 attr);
 void mbObjDispSet(int modelId, BOOL dispF);
 void mbObjKill(int modelId);
 void mbObjHookSet(int modelId, char *objName, int hookMdlId);
-MBOBJMODEL *mbObjGet(int modelId);
+MBOBJMODEL *mbObjGet(MBMODELID modelId);
 
 void mbObjFadeCreate(int modelId, HuVecF *pos);
 void mbObjFadeKill(int modelId);
