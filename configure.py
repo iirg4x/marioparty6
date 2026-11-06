@@ -437,7 +437,22 @@ config.libs = [
                 mw_version="GC/1.3",
             ),
             Object(Matching, "MSL_C.PPCEABI.bare.H/misc_io.c"),
-            Object(NonMatching, "MSL_C.PPCEABI.bare.H/printf.c"),
+            Object(
+                Matching,
+                "MSL_C.PPCEABI.bare.H/printf.c",
+                mw_version="GC/1.3.2",
+                shift_jis=False,
+                # The vendor source includes the CodeWarrior MSL headers by name,
+                # so their roots come before the project's include/.
+                cflags=[
+                    *cflags_runtime[: cflags_runtime.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_runtime[cflags_runtime.index("-i include") :],
+                    "-inline deferred",
+                ],
+            ),
             Object(
                 Matching,
                 "MSL_C.PPCEABI.bare.H/qsort.c",
