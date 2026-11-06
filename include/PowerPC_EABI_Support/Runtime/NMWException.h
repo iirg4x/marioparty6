@@ -14,7 +14,7 @@ typedef char local_cond_type;
 
 typedef struct CatchInfo {
 	void* location;
-	void* typeinfo;
+	char* typeinfo;
 	void* dtor;
 	void* sublocation;
 	s32 pointercopy;

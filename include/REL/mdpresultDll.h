@@ -201,7 +201,7 @@ typedef struct MdResultPlayerSpriteWork_s {
     HU3D_MODELID models[3]; /* Character and result-scene model IDs. */
     HUSPR_GROUPID group; /* Main player-result sprite group. */
     HUSPRID sprites[14]; /* Individual score and label sprites. */
-    u32 reservedFlags; /* Preserved per-player flags; no use is visible here. */
+    u32 unk24; /* The game's code never reads this field. */
 } MDRESULT_PLAYER_SPRITE_WORK;
 
 typedef struct MdResultEmitterWork_s {
@@ -219,10 +219,24 @@ typedef struct MdResultEmitterVertex_s {
 typedef struct MdResultPlayerWork_s {
     HU3D_MODELID models[3]; /* Models used for this player's result display. */
     HUSPR_GROUPID group; /* Main sprite group. */
-    float values[6]; /* Per-player display values used during score presentation. */
-    HUSPR_GROUPID secondGroup; /* Additional sprite group used by this display. */
-    s16 state[2]; /* Result-display state for the two presentation stages. */
-    HUWINID winId; /* Message window associated with this player display. */
+    union {
+        struct {
+            float values[6]; /* Per-player display values used during score presentation. */
+            HUSPR_GROUPID secondGroup; /* Additional sprite group used by this display. */
+            s16 state[2]; /* Result-display state for the two presentation stages. */
+            HUWINID winId; /* Message window associated with this player display. */
+        };
+        struct {
+            HUSPRID sprites[14];
+            u32 unk24; /* The game's code never reads this field. */
+        } sprite;
+        struct {
+            HUSPRID sprites[12];
+            HUSPR_GROUPID secondGroup;
+            HUSPRID secondSprites[2];
+            HUWINID winId;
+        } alternate;
+    };
 } MDRESULT_PLAYER_WORK;
 
 typedef struct MdResultPlayerAltWork_s {
@@ -289,12 +303,12 @@ typedef struct MdResultModelEffectWork_s {
     float verticalDrift; /* Y movement per frame, plus the shared drift value. */
     float depthSpeed; /* Z movement per frame. */
     float horizontalLimit; /* X boundary that restarts the model's travel. */
-    float reservedFloat28; /* Unused by the visible effect routines. */
-    float reservedFloat2C; /* Unused by the visible effect routines. */
-    float reservedFloat30; /* Unused by the visible effect routines. */
-    float reservedFloat34; /* Unused by the visible effect routines. */
-    float reservedFloat38; /* Unused by the visible effect routines. */
-    float reservedFloat3C; /* Unused by the visible effect routines. */
+    float unk28; /* The game's code never reads this field. */
+    float unk2C; /* The game's code never reads this field. */
+    float unk30; /* The game's code never reads this field. */
+    float unk34; /* The game's code never reads this field. */
+    float unk38; /* The game's code never reads this field. */
+    float unk3C; /* The game's code never reads this field. */
 } MDRESULT_MODEL_EFFECT_WORK;
 
 struct MdResultCameraWork_s {
@@ -308,7 +322,7 @@ struct MdResultCameraWork_s {
     MDRESULT_CAMERA_CALLBACK callback; /* Active camera motion callback. */
     s16 reserved; /* Unused by the visible camera routines. */
     s16 cameraMode; /* Mode selected by the result sequence for camera motion. */
-    float reservedParam; /* Unused by the visible camera routines. */
+    float unk44; /* The game's code never reads this field. */
 };
 
 #endif

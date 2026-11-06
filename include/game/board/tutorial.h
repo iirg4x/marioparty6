@@ -49,5 +49,6 @@ void mbTutorialWinMesExec(int message);
 void mbTutorialWinMesMasuExec(int message, int masuId);
 void mbTutorialMgCallInit(void);
 void mbTutorialMgCallClose(void);
+void mbTutorialMgCallExec(int type);
 
 #endif

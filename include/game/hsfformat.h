@@ -140,6 +140,7 @@ typedef struct HsfBuffer_s {
         void *data;
         HuVecF *positions;
         HuVec2f *coordinates;
+        struct HsfFace_s *faces;
     };
 } HSF_BUFFER;
 
@@ -164,7 +165,10 @@ typedef struct HsfFace_s {
         } strip;
         HSF_FACE_INDEX index[4];
     };
-    float nbt[3];
+    union {
+        float nbt[3];
+        HuVecF normal;
+    };
 } HSF_FACE;
 
 typedef struct HsfTransform_s {

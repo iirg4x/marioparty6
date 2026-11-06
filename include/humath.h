@@ -3,6 +3,11 @@
 
 #include "dolphin/mtx.h"
 
+/* pi as a double: the genuine MSL math.h does not define it (it is not standard C) */
+#ifndef M_PI
+#define M_PI 3.141592653589793
+#endif
+
 typedef Vec HuVecF;
 
 typedef struct HuVec2f_s {
