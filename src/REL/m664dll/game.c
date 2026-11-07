@@ -672,7 +672,7 @@ void fn_1_8DC(void) {
     fn_1_640C();
     fn_800856A8();
     if (lbl_1_bss_C == -1) {
-        lbl_1_bss_C = HuAudBGMPlay(MSM_STREAM_MGMUS_26);
+        lbl_1_bss_C = HuAudBGMPlay(MSM_STREAM_FAST_AND_FURIOUS);
     }
 }
 
@@ -841,7 +841,7 @@ void fn_1_13DC(void) {
                         232.0f + lbl_1_bss_41C[0].position.y, 0.0f);
     }
     if (lbl_1_bss_C == -1) {
-        lbl_1_bss_C = HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+        lbl_1_bss_C = HuAudJinglePlay(MSM_STREAM_WINNING);
     }
 }
 

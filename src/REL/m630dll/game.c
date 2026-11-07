@@ -188,7 +188,7 @@ void fn_1_AF0(void)
 {
     lbl_1_bss_828.frameCount = lbl_1_bss_828.actionTimer = 0;
     if (lbl_1_bss_8 == -1) {
-        lbl_1_bss_8 = HuAudBGMPlay(MSM_STREAM_MGMUS_24);
+        lbl_1_bss_8 = HuAudBGMPlay(MSM_STREAM_UPBEAT);
     }
 }
 

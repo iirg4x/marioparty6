@@ -116,7 +116,7 @@ void fn_1_190(s16 sequenceMode, s16 frameNo)
         fn_1_5FDC(10, 8);
         Hu3DModelObjPosGet(lbl_1_bss_3E80.playerModelsA[1], lbl_1_data_127, &boardPosition);
         fn_1_5DA4(boardPosition);
-        lbl_1_bss_3E80.courseMusicStreamHandle = HuAudSStreamPlay(MSM_STREAM_MGMUS_22);
+        lbl_1_bss_3E80.courseMusicStreamHandle = HuAudSStreamPlay(MSM_STREAM_RELAXED);
         return;
     }
     if (fn_1_5F64() != 0) {

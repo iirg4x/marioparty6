@@ -361,7 +361,7 @@ checked_player_groups:
     lbl_1_bss_40->work[0] = 2;
     fn_8003AB38(lbl_1_bss_3C, 0, 32, 32, -1, fn_1_35F8);
     HuAudSStreamStop(0);
-    HuAudSStreamPlay(MSM_STREAM_MGMUS_LAST);
+    HuAudSStreamPlay(MSM_STREAM_WARMING_UP);
     Hu3DBGColorSet(0, 0, 0);
     HuWinInit(1);
     fn_8000DAC0(fn_1_1024, 1000, 12288, 0, lbl_1_bss_3C);

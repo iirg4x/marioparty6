@@ -2795,7 +2795,7 @@ void fn_1_17E40(void) {
             HuPrcVSleep();
         }
     }
-    lbl_1_data_8DC = HuAudSStreamPlay(MSM_STREAM_MGMUS_KOOPA);
+    lbl_1_data_8DC = HuAudSStreamPlay(MSM_STREAM_BREAK_TIME);
     fn_1_19080();
     HuPrcVSleep();
 }
@@ -2950,7 +2950,7 @@ void fn_1_1899C(void) {
 
     GameMesCreate(4, 3, characterIds[0], characterIds[1], characterIds[2],
         characterIds[3]);
-    lbl_1_data_8E8 = HuAudJinglePlay(MSM_STREAM_MGMUS_12);
+    lbl_1_data_8E8 = HuAudJinglePlay(MSM_STREAM_EXCELLENT);
     fn_1_3BB4();
     if (MgGameNo != 3) {
         if (MgGameNo == 5) {

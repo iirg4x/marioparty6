@@ -76,12 +76,12 @@
 #define MSM_SE_MICQUIZ_PANEL_RETURN 1297
 #define MSM_SE_MICQUIZ_OPENING_MODEL_REVEAL 1298
 #define MSM_SE_MICQUIZ_EVENT_PANEL_APPEAR 1299
-#define MSM_STREAM_MICQUIZ_WIN_JINGLE 93
-#define MSM_STREAM_MICQUIZ_INTRODUCTION 95
-#define MSM_STREAM_MICQUIZ_GRID_SELECTION 96
-#define MSM_STREAM_MICQUIZ_OPENING_PRESENTATION 97
+#define MSM_STREAM_QUIZ_MASTER 93
+#define MSM_STREAM_SPEAK_UP_THEME 95
+#define MSM_STREAM_QUIZ_SONG 96
+#define MSM_STREAM_BOWSER_QUIZ 97
 #define MSM_STREAM_MICQUIZ_ALTERNATE_GRID_SELECTION 98
-#define MSM_STREAM_MICQUIZ_RESULTS 99
+#define MSM_STREAM_WELL_DONE 99
 
 /* Screen positions for the four repeating event decorations. */
 struct _struct_lbl_1_data_21C_0x8 {
@@ -1700,7 +1700,7 @@ void fn_1_40FC(void) {
     wideCamera = lbl_1_data_614;
     wideView = &wideCamera;
     fn_1_A838(wideView, 120, 4);
-    lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_MICQUIZ_OPENING_PRESENTATION);
+    lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_BOWSER_QUIZ);
     fn_80026A44(lbl_1_bss_234, ((1 << 30) | (1 << 1)));
     fn_80026A44(lbl_1_bss_236, ((1 << 30) | (1 << 1)));
     for (playerNo = 0; playerNo < 6; playerNo++) {
@@ -2017,7 +2017,7 @@ s32 fn_1_4E70(void)
         fn_1_5FA0();
         fn_1_18168();
         fn_1_5B74();
-        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_RESULT);
+        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_TOO_BAD);
     } else {
         if (fn_1_632C() == 0) {
             fn_1_16A24();
@@ -2050,7 +2050,7 @@ s32 fn_1_4E70(void)
             }
         }
         HuAudFXPlay(32);
-        lbl_1_bss_74 = HuAudJinglePlay(MSM_STREAM_MICQUIZ_WIN_JINGLE);
+        lbl_1_bss_74 = HuAudJinglePlay(MSM_STREAM_QUIZ_MASTER);
         do {
             HuPrcVSleep();
         } while (HuAudSStreamStatGet(lbl_1_bss_74) != 0);
@@ -2058,7 +2058,7 @@ s32 fn_1_4E70(void)
         for (index = 0; index < 4; index++) {
             fn_800269E8(lbl_1_bss_1FA[lbl_1_bss_7C[index]], (1 << 0));
         }
-        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_MICQUIZ_RESULTS);
+        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_WELL_DONE);
         fn_80026CBC(lbl_1_bss_1D0, 0.0f);
         fn_80026A44(lbl_1_bss_1D0, (1 << 0));
         angle = 0.0;
@@ -2490,7 +2490,7 @@ void fn_1_7688(void) {
 
     history = omOvlHisGet(0);
     if (lbl_1_bss_258 == 0) {
-        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_MICQUIZ_INTRODUCTION);
+        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_SPEAK_UP_THEME);
         fn_1_A790(0, 60);
         HuPrcSleep(10);
         if (lbl_802C0248 == 0) {
@@ -2592,7 +2592,7 @@ void fn_1_7688(void) {
         }
         fn_1_8520();
         fn_1_19DD4(0, 1, 1);
-        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_MICQUIZ_GRID_SELECTION);
+        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_QUIZ_SONG);
         fn_1_F6B4();
         if (HuMCMicGet() == 1) {
             fn_1_24A54(lbl_1_bss_4D8->currentPlayer);
@@ -2607,7 +2607,7 @@ void fn_1_7688(void) {
     fn_1_83F0();
     fn_1_A790(0, 60);
     if (lbl_1_bss_4D8->presenterLayout == 0) {
-        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_MICQUIZ_GRID_SELECTION);
+        lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_QUIZ_SONG);
     } else {
         lbl_1_bss_4E8 = HuAudSStreamPlay(MSM_STREAM_MICQUIZ_ALTERNATE_GRID_SELECTION);
     }

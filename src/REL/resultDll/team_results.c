@@ -154,7 +154,7 @@ void fn_1_49C4(void)
     fn_1_523C();
     fn_8000DAC0(fn_1_4D48, 100, 8192, 0, parent);
     WipeCreate(1, 0, 20);
-    HuAudSStreamPlay(MSM_STREAM_PARTYRESULT_WAIT);
+    HuAudSStreamPlay(MSM_STREAM_TAKING_A_BREAK);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
     }

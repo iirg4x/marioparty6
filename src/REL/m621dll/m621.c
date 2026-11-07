@@ -88,7 +88,7 @@ void fn_1_358(s16 mode, s16 frameNo)
 void fn_1_35C(s16 mode, s16 frameNo)
 {
     if (lbl_1_data_28 == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
-        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_MGTOUR_END);
+        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_FRANTIC);
     }
 }
 

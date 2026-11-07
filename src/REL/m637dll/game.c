@@ -353,7 +353,7 @@ void fn_1_1464(s32 animationMode)
                 }
             }
             if (lbl_1_bss_350 == -1) {
-            lbl_1_bss_350 = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
+            lbl_1_bss_350 = HuAudBGMPlay(MSM_STREAM_SLOW_AND_STEADY);
             }
         } else {
             lbl_1_bss_100 -= 6.0f;

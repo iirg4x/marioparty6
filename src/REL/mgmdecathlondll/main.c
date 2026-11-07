@@ -136,7 +136,7 @@ void fn_1_ED78(void) {
         fn_1_C2FC();
         decathlonScoreDigitsHideAll();
     }
-    lbl_1_data_C70 = HuAudSStreamPlay(MSM_STREAM_MGMUS_4);
+    lbl_1_data_C70 = HuAudSStreamPlay(MSM_STREAM_DECATHLON_PARK);
     WipeCreate(1, 0, 50);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
@@ -374,7 +374,7 @@ void fn_1_F184(void) {
                 HuPrcVSleep();
             }
         }
-        lbl_1_data_C74 = HuAudSStreamPlay(MSM_STREAM_MGMUS_KOOPA);
+        lbl_1_data_C74 = HuAudSStreamPlay(MSM_STREAM_BREAK_TIME);
         MgModeSubMode = 15;
         fn_1_5DF8();
         fn_1_8778(1);

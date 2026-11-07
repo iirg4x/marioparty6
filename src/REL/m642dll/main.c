@@ -1487,7 +1487,7 @@ void fn_1_4180(OMOBJ *object)
     s32 playerIndex, teamCoins, team;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (lbl_1_bss_1C[playerIndex]->state == 10 && lbl_1_bss_2C->sound == -1) {
-            lbl_1_bss_2C->sound = HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+            lbl_1_bss_2C->sound = HuAudJinglePlay(MSM_STREAM_WINNING);
         }
         if (lbl_1_bss_1C[playerIndex]->state != 0) {
             return;

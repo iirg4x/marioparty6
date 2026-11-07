@@ -122,7 +122,7 @@ void fn_1_5A08(s16 mode, s16 frameNo);
 #include "math.h"
 
 /* Stream played when Pop Star's start banner sounds. */
-#define M629_BGM_STREAM_ID MSM_STREAM_MGMUS_24
+#define M629_BGM_STREAM_ID MSM_STREAM_UPBEAT
 /* Rollover bound for the piston animation frame counter. */
 #define M629_FRAME_COUNTER_LIMIT 4026531840U
 /* Motion-table bits select the solo actor and the three opponents. */

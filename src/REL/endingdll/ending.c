@@ -1674,7 +1674,7 @@ void fn_1_702C(void)
     fn_80029850(lbl_1_bss_4->mdlId[0], 1);
     fn_1_924();
     HuPrcSleep(30);
-    lbl_1_bss_1DDC = HuAudSStreamPlay(MSM_STREAM_W04);
+    lbl_1_bss_1DDC = HuAudSStreamPlay(MSM_STREAM_WHOOP_IT_UP);
     lbl_1_bss_1D5C.channel[0] = fn_1_0(MSM_SE_BANK_DEPOSIT_DONE);
     lbl_1_bss_1D5C.channel[1] = fn_1_0(MSM_SE_BANK_BALANCE_LOOP_4);
     WipeCreate(1, 0, 60);

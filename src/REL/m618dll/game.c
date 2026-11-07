@@ -135,7 +135,7 @@ void fn_1_84C(void)
         fn_1_4BE0();
     }
     if (lbl_1_bss_40 == -1) {
-        lbl_1_bss_40 = HuAudBGMPlay(MSM_STREAM_MGWARS);
+        lbl_1_bss_40 = HuAudBGMPlay(MSM_STREAM_AMUSING);
     }
 }
 

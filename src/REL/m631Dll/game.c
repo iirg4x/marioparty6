@@ -272,7 +272,7 @@ void fn_1_4FC(s16 mode, s16 time)
 
     switch (scene->startPhase) {
     case 0:
-        lbl_1_bss_4 = HuAudBGMPlay(MSM_STREAM_MGMUS_19);
+        lbl_1_bss_4 = HuAudBGMPlay(MSM_STREAM_TENACIOUS);
         scene->startPhase++;
         break;
     default:

@@ -125,7 +125,7 @@ void fn_1_254(s16 mode, s16 frameNo) {
 void fn_1_2D4(s16 mode, s16 frameNo) {
     if ((lbl_1_data_C == -1) &&
         ((GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0)) {
-        lbl_1_data_C = HuAudSStreamPlay(MSM_STREAM_MGMUS_22);
+        lbl_1_data_C = HuAudSStreamPlay(MSM_STREAM_RELAXED);
     }
 }
 

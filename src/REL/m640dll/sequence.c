@@ -60,7 +60,7 @@ void fn_1_114(s16 mode, s16 frame)
 void fn_1_13C(s16 mode, s16 frame)
 {
     if (frame == 0) {
-        HuAudBGMPlay(MSM_STREAM_MGMUS_25);
+        HuAudBGMPlay(MSM_STREAM_SLOW_AND_STEADY);
     }
 }
 

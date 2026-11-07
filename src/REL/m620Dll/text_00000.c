@@ -145,7 +145,7 @@ void fn_1_324(s16 checkValue, s16 frameNo)
     }
 
     if (lbl_1_bss_4C == -1 && frameNo >= 18) {
-        lbl_1_bss_4C = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
+        lbl_1_bss_4C = HuAudBGMPlay(MSM_STREAM_SLOW_AND_STEADY);
         lbl_1_bss_48 = HuAudFXPlay(M620_SEQUENCE_START_SOUND_ID);
     }
 

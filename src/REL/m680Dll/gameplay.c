@@ -437,7 +437,7 @@ void fn_1_3C8(void)
 
     switch (sequence->musicStarted) {
     case 0:
-        lbl_1_bss_4 = HuAudBGMPlay(MSM_STREAM_MGMUS_26);
+        lbl_1_bss_4 = HuAudBGMPlay(MSM_STREAM_FAST_AND_FURIOUS);
         sequence->musicStarted++;
         break;
     default:
@@ -1112,7 +1112,7 @@ void fn_1_17E4(void)
                 sequence->grid[index].handTimer = 0;
             }
         }
-                HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+                HuAudJinglePlay(MSM_STREAM_WINNING);
         sequence->frame = 0;
         sequence->finishPhase++;
         break;

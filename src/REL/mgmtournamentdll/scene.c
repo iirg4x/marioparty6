@@ -145,7 +145,7 @@ void fn_1_D69C(void)
         fn_1_5590();
     }
     fn_1_B57C();
-    lbl_1_data_848 = HuAudSStreamPlay(MSM_STREAM_MGMUS_5);
+    lbl_1_data_848 = HuAudSStreamPlay(MSM_STREAM_ENDURANCE_ALLEY);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 50);
     while (WipeCheck() != 0) {
         HuPrcVSleep();

@@ -231,7 +231,7 @@ SequenceUpdate *response;
 /* The start callback starts the minigame's streamed music on its first frame. */
 void fn_1_33C(s16 mode, s16 frameNo) {
     if (frameNo == 0) {
-        lbl_1_bss_250.audioHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_19);
+        lbl_1_bss_250.audioHandle = HuAudBGMPlay(MSM_STREAM_TENACIOUS);
     }
 }
 

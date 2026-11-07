@@ -213,7 +213,7 @@ void fn_1_11410(void)
     }
     fn_1_11A60();
     fn_1_90F4();
-    lbl_1_data_AC8 = HuAudSStreamPlay(MSM_STREAM_MGMUS_6);
+    lbl_1_data_AC8 = HuAudSStreamPlay(MSM_STREAM_TREETOP_BINGO);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 50);
     fn_1_799C(1);
     HuPrcVSleep();

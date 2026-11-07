@@ -494,7 +494,7 @@ void fn_1_B60(s16 mode, s16 frameNo)
 
     switch (audioView->audioState) {
     case 0:
-        lbl_1_bss_4 = HuAudBGMPlay(MSM_STREAM_SD_TOUR_WIN);
+        lbl_1_bss_4 = HuAudBGMPlay(MSM_STREAM_DOOM_AND_GLOOM);
         audioView->audioState++;
         break;
     case 1:

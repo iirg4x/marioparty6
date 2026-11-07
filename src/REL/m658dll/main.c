@@ -119,7 +119,7 @@ void fn_1_288(s16 mode, s16 frameNo)
 /* Starts the sequence music once it is ready and no wipe is running. */
 void fn_1_2BC(s16 mode, s16 frameNo) {
     if ((fn_1_C38() != 0) && ((s32) lbl_1_data_28 == -1) && (WipeCheck() == 0)) {
-        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_STORY_BOWSER);
+        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_DUELING_FOR_PRIZES);
     }
 }
 

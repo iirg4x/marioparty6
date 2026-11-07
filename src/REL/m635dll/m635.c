@@ -56,7 +56,7 @@ void fn_1_134(s16 mode, s16 frameNo)
 void fn_1_164(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {
-        lbl_1_bss_4.music = HuAudBGMPlay(MSM_STREAM_MGMUS_21);
+        lbl_1_bss_4.music = HuAudBGMPlay(MSM_STREAM_LAID_BACK);
     }
     fn_1_2CE8();
     fn_1_3C34();

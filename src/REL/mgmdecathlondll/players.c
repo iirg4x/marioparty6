@@ -340,7 +340,7 @@ void fn_1_9AFC(void) {
     }
     GameMesCreate(4, 3, gameMessageArgs[0], gameMessageArgs[1], gameMessageArgs[2],
                   gameMessageArgs[3]);
-    lbl_1_data_C94 = HuAudJinglePlay(MSM_STREAM_MGMUS_12);
+    lbl_1_data_C94 = HuAudJinglePlay(MSM_STREAM_EXCELLENT);
 }
 
 /* The main sequence advances each player's active celebration into its result state. */

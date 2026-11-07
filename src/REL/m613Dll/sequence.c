@@ -136,7 +136,7 @@ void fn_1_10A40(s16 mode, s16 frameNo) {
     lbl_1_bss_125E = 2;
     lbl_1_bss_125C = 0;
     if (frameNo == 0) {
-        lbl_1_bss_1260 = HuAudBGMPlay(MSM_STREAM_CAPSULE_WANWAN);
+        lbl_1_bss_1260 = HuAudBGMPlay(MSM_STREAM_BLISSFUL);
     }
     fn_1_F2A0();
     fn_1_5038();

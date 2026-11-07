@@ -4577,7 +4577,7 @@ s32 fn_1_15378(void)
     fn_1_23C0();
     fn_1_DC38(selected);
     HuPrcSleep(90);
-    lbl_1_bss_12B0[2] = HuAudSStreamPlay(MSM_STREAM_MGTOUR);
+    lbl_1_bss_12B0[2] = HuAudSStreamPlay(MSM_STREAM_WINNER);
     HuPrcSleep(510);
 
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -4602,7 +4602,7 @@ s32 fn_1_15378(void)
     fn_1_23C0();
     HuAudSStreamFadeOut(lbl_1_bss_12B0[2], 1000);
     HuPrcSleep(60);
-    lbl_1_bss_12B0[1] = HuAudSStreamPlay(MSM_STREAM_MGCIRCUIT);
+    lbl_1_bss_12B0[1] = HuAudSStreamPlay(MSM_STREAM_CHAMP);
     lbl_1_bss_129C = HuAudFXPlay(MSM_SE_MENU_MINIGAME_CIRCUIT_AMBIENT_LOOP);
     fn_1_E658(selected);
     return TRUE;

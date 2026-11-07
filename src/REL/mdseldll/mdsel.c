@@ -2354,7 +2354,7 @@ BOOL fn_1_B304(void)
 {
     HuPrcSleep(5);
     fn_1_FEC(-1);
-    lbl_1_bss_1A2C = HuAudSStreamPlay(MSM_STREAM_MODESEL);
+    lbl_1_bss_1A2C = HuAudSStreamPlay(MSM_STREAM_TIME_TO_PLAY);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
     WipeWait();
     return TRUE;

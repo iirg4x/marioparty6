@@ -1568,7 +1568,7 @@ void fn_1_6634(void)
     obj->work[1] = 0;
     obj->objFunc = fn_1_1758;
     HuPrcSleep(10);
-    lbl_1_bss_824 = HuAudSStreamPlay(MSM_STREAM_W05);
+    lbl_1_bss_824 = HuAudSStreamPlay(MSM_STREAM_MARIO_PARTY_SIX);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
     while (WipeCheck()) {
         HuPrcVSleep();
@@ -1607,7 +1607,7 @@ static inline void staff_begin_sequence_inline(void)
 {
     staff_initialize_work_pair_inline();
     HuPrcSleep(10);
-    lbl_1_bss_824 = HuAudSStreamPlay(MSM_STREAM_W05);
+    lbl_1_bss_824 = HuAudSStreamPlay(MSM_STREAM_MARIO_PARTY_SIX);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
     while (WipeCheck()) {
         HuPrcVSleep();

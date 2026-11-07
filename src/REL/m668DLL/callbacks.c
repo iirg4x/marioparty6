@@ -330,7 +330,7 @@ void fn_1_1FC4(OMOBJ *obj)
     if (lbl_1_bss_20->state == 0) {
         if ((work->streamHandle == -1) &&
             ((s32)(GameMesStatGet(fn_80071DF4()) & 0x10) != 0)) {
-            work->streamHandle = HuAudSStreamPlay(MSM_STREAM_SD_TOUR_WIN);
+            work->streamHandle = HuAudSStreamPlay(MSM_STREAM_DOOM_AND_GLOOM);
         }
         if (fn_80071A8C() == 5) {
             fn_1_218(obj, fn_1_2064);

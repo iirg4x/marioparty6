@@ -80,7 +80,7 @@ void fn_1_160(s16 mode, s16 frameNo)
         fn_1_1FF4(0);
         lbl_1_bss_10.timingState = 0;
         fn_80071B08();
-        lbl_1_bss_10.streamNo = HuAudSStreamPlay(MSM_STREAM_MGMUS_25);
+        lbl_1_bss_10.streamNo = HuAudSStreamPlay(MSM_STREAM_SLOW_AND_STEADY);
     }
     characterModel = lbl_1_bss_10.characterModels[0];
     fn_80023398(lbl_1_bss_10.openingMotionModel, "P1stmov", matrix);

@@ -272,7 +272,7 @@ void ObjectSetup(void)
     HuWinInit(1);
     HuWinMesLanguageSet(lbl_802BF788);
     HuWinMesRead();
-    HuAudSStreamPlay(MSM_STREAM_TITLE);
+    HuAudSStreamPlay(MSM_STREAM_SETTING_UP);
     OSReport(lbl_1_data_E2, SAVE_BOX_SIZE);
 }
 

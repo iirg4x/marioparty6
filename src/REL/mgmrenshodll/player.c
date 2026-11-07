@@ -1278,25 +1278,25 @@ void fn_1_D5A0(void)
     }
     if (MgModePlayNum == 31) {
         HuAudSStreamFadeOut(lbl_1_data_500, 1000);
-        lbl_1_data_504 = HuAudJinglePlay(MSM_STREAM_MGMUS_DONKEY);
+        lbl_1_data_504 = HuAudJinglePlay(MSM_STREAM_LONG_ROAD);
         HuAudSStreamParamSet(lbl_1_data_504, 0U, 0U);
         HuAudSStreamParamSet(lbl_1_data_504, 127U, 1000U);
     }
     if (MgModePlayNum == 41) {
         HuAudSStreamFadeOut(lbl_1_data_504, 1000);
-        lbl_1_data_508 = HuAudJinglePlay(MSM_STREAM_MGMUS_7);
+        lbl_1_data_508 = HuAudJinglePlay(MSM_STREAM_ALMOST_ENDLESS_ROAD);
         HuAudSStreamParamSet(lbl_1_data_508, 0U, 0U);
         HuAudSStreamParamSet(lbl_1_data_508, 127U, 1000U);
     }
     if (MgModePlayNum == 61) {
         HuAudSStreamFadeOut(lbl_1_data_508, 1000);
-        lbl_1_data_50C = HuAudJinglePlay(MSM_STREAM_MGMUS_8);
+        lbl_1_data_50C = HuAudJinglePlay(MSM_STREAM_UP_HIGH);
         HuAudSStreamParamSet(lbl_1_data_50C, 0U, 0U);
         HuAudSStreamParamSet(lbl_1_data_50C, 127U, 1000U);
     }
     if (MgModePlayNum == 81) {
         HuAudSStreamFadeOut(lbl_1_data_50C, 1000);
-        lbl_1_data_510 = HuAudJinglePlay(MSM_STREAM_MGMUS_9);
+        lbl_1_data_510 = HuAudJinglePlay(MSM_STREAM_PUSHING_THE_LIMIT);
         HuAudSStreamParamSet(lbl_1_data_510, 0U, 0U);
         HuAudSStreamParamSet(lbl_1_data_510, 127U, 1000U);
     }
@@ -1346,7 +1346,7 @@ void fn_1_D964(void)
             }
             HuPrcVSleep();
         }
-        lbl_1_data_518 = HuAudSStreamPlay(MSM_STREAM_MGMUS_10);
+        lbl_1_data_518 = HuAudSStreamPlay(MSM_STREAM_HUNDRED_WINS_IN_A_ROW);
         fn_1_AB9C(fn_1_A00C(), 1);
         fn_1_7D08(1);
         wait = 1;

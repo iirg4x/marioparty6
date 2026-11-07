@@ -619,7 +619,7 @@ void fn_1_1F98(OMOBJ *object)
     }
     if (work->musicHandle == -1 &&
         (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
-        work->musicHandle = HuAudSStreamPlay(MSM_STREAM_MGWARS);
+        work->musicHandle = HuAudSStreamPlay(MSM_STREAM_AMUSING);
     }
     if (fn_80071A8C() == 5) {
         fn_1_20C(object, fn_1_2058);

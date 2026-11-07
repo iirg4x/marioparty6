@@ -35,7 +35,7 @@ HUPROCESS *lbl_1_bss_4;
 u16 lbl_1_bss_2;
 s16 lbl_1_bss_0;
 
-#define MSM_STREAM_M666 73
+#define MSM_STREAM_JAZZY 73
 #define MSM_SE_M666_OPENING_EFFECT_FIRST 2175
 #define MSM_SE_M666_OPENING_EFFECT_SECOND 2174
 
@@ -122,7 +122,7 @@ void fn_1_144(void *sequenceMode, s16 frameNo)
 void fn_1_190(s16 mode, s16 frame)
 {
     if (frame == 0) {
-        lbl_1_bss_DF0.soundHandle = HuAudBGMPlay(MSM_STREAM_M666);
+        lbl_1_bss_DF0.soundHandle = HuAudBGMPlay(MSM_STREAM_JAZZY);
     }
 }
 

@@ -64,7 +64,7 @@ void fn_1_1D0(s16 sequenceMode, s16 sequenceFrame)
 {
     if (fn_80071DE4() == 0) {
         lbl_1_data_10 = HuAudFXPlay(MSM_SE_MG651_OPENING_AMBIENCE);
-        lbl_1_data_C = HuAudSStreamPlay(MSM_STREAM_STORY_BOWSER);
+        lbl_1_data_C = HuAudSStreamPlay(MSM_STREAM_DUELING_FOR_PRIZES);
     }
     if (fn_80071DE4() == 180) {
         HuAudFXFadeOut(lbl_1_data_10, 1000);
