@@ -7,10 +7,14 @@ Sections:
 	.bss        type:bss align:8
 
 REL/mdbankdll/mdbank.c:
-	.text       start:0x00000000 end:0x000137DC
-	.rodata     start:0x00000000 end:0x000002C0
+	.text       start:0x00000000 end:0x00011064
+	.rodata     start:0x00000000 end:0x00000240
 	.data       start:0x00000000 end:0x00000A28
 	.bss        start:0x00000000 end:0x000019F8
+
+REL/mdbankdll/utility.c:
+	.text       start:0x00011064 end:0x000137DC
+	.rodata     start:0x00000240 end:0x000002C0
 
 REL/mdbankdll/runtime.c:
 	.text       start:0x000137DC end:0x00014220

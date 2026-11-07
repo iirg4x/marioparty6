@@ -336,7 +336,7 @@ int msmStreamPlay(int streamId, MSM_STREAMPARAM* streamParam) {
     pack = (MSM_STREAM_PACK*) (StreamInfo.streamPackFlag
         + (StreamInfo.streamPackList[streamId] - StreamInfo.header.streamPackOfs));
     msmSysIrqDisable();
-    if (pack->flag & MSM_STREAM_FLAG_STEREO) {
+    if (pack->flag & MSM_STREAMPACK_STEREO) {
         result = msmStreamPackStartStereo(streamId, streamParam, 0);
     } else {
         result = msmStreamPackStartMono(streamId, streamParam, 0);

@@ -1868,7 +1868,11 @@ config.libs = [
     Rel(
         "mdbankdll",
         objects={
-            Object(NonMatching, "REL/mdbankdll/mdbank.c"),
+            Object(
+                Matching,
+                "REL/mdbankdll/mdbank.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
             Object(
                 Matching,
                 "REL/mdbankdll/runtime.c",
@@ -1876,6 +1880,11 @@ config.libs = [
                 mw_version=config.linker_version,
                 shift_jis=False,
                 boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/mdbankdll/utility.c",
+                extra_cflags=["-pooldata", "off"],
             ),
         },
     ),
