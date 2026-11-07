@@ -297,20 +297,12 @@ void M669VecSubtract(HuVecF *dst, const HuVecF *a, const HuVecF *b)
     PSVECSubtract(a, b, dst);
 }
 
-static inline float fn_1_2F0_inlined(HuVecF *vec);
-
-/* Returns vector length for the basis and normalization helpers. */
-static inline float fn_1_2F0_inlined(HuVecF *vec)
-{
-    return sqrtf(vec->z * vec->z + (vec->x * vec->x + vec->y * vec->y));
-}
-
 /* Normalizes a vector and returns its original length; very short vectors become zero. */
 float fn_1_554(HuVecF *out, HuVecF *vec)
 {
     float length;
     float scale;
-    length = fn_1_2F0_inlined(vec);
+    length = fn_1_32C(vec);
     if (length > 1.1920929e-7f) {
         scale = 1.0f / length;
         out->x = vec->x * scale;
@@ -339,24 +331,6 @@ void fn_1_76C(HuVecF *dst, const HuVecF *src, Mtx mtx)
     dst->z = (src->z * mtx[2][2]) + ((src->x * mtx[0][2]) + (src->y * mtx[1][2]));
 }
 
-static inline float fn_1_2F0_inlined(HuVecF *vec);
-
-static inline void fn_1_6F8_inlined(HuVecF *out, HuVecF *vec, float scale);
-
-static inline float fn_1_440_inlined(HuVecF *a, HuVecF *b);
-
-/* Scales a vector while constructing a matrix basis. */
-static inline void fn_1_6F8_inlined(HuVecF *out, HuVecF *vec, float scale)
-{
-    PSVECScale(vec, out, scale);
-}
-
-/* Returns a dot product for basis projection and translation terms. */
-static inline float fn_1_440_inlined(HuVecF *a, HuVecF *b)
-{
-    return PSVECDotProduct(a, b);
-}
-
 /* Builds a basis from start, end and up; returns zero if it cannot form usable forward and vertical
  * directions. */
 s32 fn_1_800(Mtx out, HuVecF *start, HuVecF *end, HuVecF *up)
@@ -365,26 +339,26 @@ s32 fn_1_800(Mtx out, HuVecF *start, HuVecF *end, HuVecF *up)
     float length;
     int diagonal;
     PSVECSubtract(end, start, &forward);
-    length = fn_1_2F0_inlined(&forward);
+    length = fn_1_32C(&forward);
     if (length < 0.000001f) return 0;
-    if (length != 0.0f) fn_1_6F8_inlined(&forward, &forward, 1.0f / length);
-    fn_1_6F8_inlined(&vertical, &forward, fn_1_440_inlined(up, &forward));
+    if (length != 0.0f) M669VecScale(&forward, &forward, 1.0f / length);
+    M669VecScale(&vertical, &forward, M669VecDot(up, &forward));
     PSVECSubtract(up, &vertical, &vertical);
-    length = fn_1_2F0_inlined(&vertical);
+    length = fn_1_32C(&vertical);
     if (0.000001f > length) {
         HuVecF axis = { 0.0f, 1.0f, 0.0f };
-        fn_1_6F8_inlined(&vertical, &forward, forward.y);
+        M669VecScale(&vertical, &forward, forward.y);
         PSVECSubtract(&axis, &vertical, &vertical);
-        length = fn_1_2F0_inlined(&vertical);
+        length = fn_1_32C(&vertical);
         if (0.000001f > length) {
             HuVecF axis = { 0.0f, 0.0f, 1.0f };
-            fn_1_6F8_inlined(&vertical, &forward, forward.z);
+            M669VecScale(&vertical, &forward, forward.z);
             PSVECSubtract(&axis, &vertical, &vertical);
-            length = fn_1_2F0_inlined(&vertical);
+            length = fn_1_32C(&vertical);
             if (0.000001f > length) return 0;
         }
     }
-    if (length != 0.0f) fn_1_6F8_inlined(&vertical, &vertical, 1.0f / length);
+    if (length != 0.0f) M669VecScale(&vertical, &vertical, 1.0f / length);
     PSVECCrossProduct(&vertical, &forward, &side);
 /* The clear covers nine contiguous floats, including out[0][3] and out[1][3].
  * The translation entry out[2][3] is left unchanged. */
@@ -524,30 +498,6 @@ void fn_1_172C(M669Vector4 *out, Mtx44 matrix, HuVecF *vec)
     *out = result;
 }
 
-static inline float fn_1_518_inlined(HuVecF *out, HuVecF *vec);
-
-static inline float fn_1_2F0_inlined(HuVecF *vec);
-
-/* Normalizes a basis vector and returns its original length; very short vectors become zero. */
-static inline float fn_1_518_inlined(HuVecF *out, HuVecF *vec)
-{
-    float length;
-    float scale;
-    length = fn_1_2F0_inlined(vec);
-    if (length > 1.1920929e-7f) {
-        scale = 1.0f / length;
-        out->x = vec->x * scale;
-        out->y = vec->y * scale;
-        out->z = vec->z * scale;
-    } else {
-        length = 0.0f;
-        out->x = 0.0f;
-        out->y = 0.0f;
-        out->z = 0.0f;
-    }
-    return length;
-}
-
 /* Builds a four-by-four basis and translation matrix from start, end and up, with fixed Z sign
  * changes. */
 s32 fn_1_1810(Mtx44 out, HuVecF *start, HuVecF *end, HuVecF *up)
@@ -555,12 +505,12 @@ s32 fn_1_1810(Mtx44 out, HuVecF *start, HuVecF *end, HuVecF *up)
     HuVecF forward, vertical, side;
     float dot;
     PSVECSubtract(end, start, &forward);
-    fn_1_518_inlined(&forward, &forward);
-    dot = fn_1_440_inlined(up, &forward);
+    fn_1_554(&forward, &forward);
+    dot = M669VecDot(up, &forward);
     vertical.x = up->x - dot * forward.x;
     vertical.y = up->y - dot * forward.y;
     vertical.z = up->z - dot * forward.z;
-    fn_1_518_inlined(&vertical, &vertical);
+    fn_1_554(&vertical, &vertical);
     PSVECCrossProduct(&vertical, &forward, &side);
     PSVECScale(&side, &side, -1.0f);
     out[0][0] = side.x;
@@ -575,9 +525,9 @@ s32 fn_1_1810(Mtx44 out, HuVecF *start, HuVecF *end, HuVecF *up)
     out[2][1] = -vertical.z;
     out[2][2] = -forward.z;
     out[2][3] = 0.0f;
-    out[3][0] = -fn_1_440_inlined(start, &side);
-    out[3][1] = -fn_1_440_inlined(start, &vertical);
-    out[3][2] = -fn_1_440_inlined(start, &forward);
+    out[3][0] = -M669VecDot(start, &side);
+    out[3][1] = -M669VecDot(start, &vertical);
+    out[3][2] = -M669VecDot(start, &forward);
     out[3][3] = 1.0f;
     return 1;
 }
