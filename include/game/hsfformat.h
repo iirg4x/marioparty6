@@ -94,21 +94,21 @@ typedef struct HsfPalette_s {
 typedef struct HsfAttribute_s {
     char *name;
     void *animWorkP;
-    u8 unk8[2];
+    u8 unk_08[2]; /* No code names this field. */
     u8 colorCombineMode;
     u8 unkB;
     float kColor;
-    u8 unk10[4];
+    u8 unk_10[4]; /* No code names this field. */
     float nbtTpLvl;
-    u8 unk18[8];
+    u8 unk_18[8]; /* No code names this field. */
     float textureEnable;
-    u8 unk24[4];
+    u8 unk_24[4]; /* No code names this field. */
     HuVec2f scale;
     HuVec2f trans;
-    u8 unk38[44];
+    u8 unk_38[44]; /* No code names this field. */
     u32 wrapS;
     u32 wrapT;
-    u8 unk6C[12];
+    u8 unk_6C[12]; /* No code names this field. */
     u32 maxLod;
     u32 flag;
     HSF_BITMAP *bitmap;
@@ -116,7 +116,7 @@ typedef struct HsfAttribute_s {
 
 typedef struct HsfMaterial_s {
     char *name;
-    u8 unk4[4];
+    u8 unk_04[4]; /* No code names this field. */
     u16 pass;
     u8 vtxMode;
     u8 litColor[3];
