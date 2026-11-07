@@ -12,7 +12,7 @@
 
 typedef struct StaffMotionWork {
     s16 state; /* 0: orbit, 1: move to the staff pose, 2: settled. */
-    s16 reservedState; /* Unused staff motion state slot. */
+    s16 unk_02; /* The game's code never reads this member. */
     f32 angleOrFrame; /* Orbit angle in degrees, then elapsed pose-transition frames. */
     f32 reservedValue; /* Unused staff motion value. */
     HuVecF position; /* Model position at the start of the pose transition; later reused for the
@@ -20,11 +20,21 @@ typedef struct StaffMotionWork {
     HuVecF curveControl; /* Middle world-space control point for the quadratic pose path. */
     HuVecF curveEnd; /* Final world-space point for the quadratic pose path. */
     f32 angleStep; /* Orbit angle added each update, in degrees. */
-    HuVecF reservedVector; /* Unused staff motion vector. */
+    HuVecF unk_34; /* The game's code never reads this member. */
     HuVecF rotation; /* Saved model rotation in degrees during pose transition. */
     HuVecF orbitRadius; /* Current X, Y, and Z radii of the character's orbit, in world units. */
     HuVecF orbitRadiusTarget; /* X, Y, and Z orbit radii approached by the per-frame update. */
 } STAFF_MOTION_WORK;
+
+typedef struct StaffFigureWork {
+    s16 direction; /* 0 enters from positive X; 1 enters from negative X. */
+    u16 unk_02; /* The figure callbacks do not read this word. */
+    f32 delay; /* Negative values count up before movement begins. */
+    f32 unk_08; /* The figure callbacks do not read this value. */
+    HuVecF position; /* Current XYZ position in world units. */
+    f32 speed; /* Horizontal movement in world units per frame. */
+    u8 unk_1C[72]; /* No code names this field. */
+} STAFF_FIGURE_WORK;
 
 extern OMOBJMAN *lbl_1_bss_0;
 extern OMOBJ *lbl_1_bss_4;
@@ -52,7 +62,7 @@ extern s16 lbl_1_bss_12A;
 extern HuVecF lbl_1_bss_12C[32];
 extern s16 lbl_1_bss_2AC[44];
 extern s16 lbl_1_bss_304[];
-extern f32 lbl_1_bss_310[325];
+extern STAFF_FIGURE_WORK lbl_1_bss_310[13];
 extern HUSPRID lbl_1_bss_828;
 extern HUSPR_GROUPID lbl_1_bss_82A;
 extern s32 lbl_1_bss_824;

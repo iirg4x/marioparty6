@@ -2,9 +2,12 @@
 #include <math.h>
 #include "dolphin.h"
 #include "datadir_enum.h"
+#include "game/audio.h"
 #include "game/data.h"
+#include "game/frand.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
+#include "game/main.h"
 #include "game/memory.h"
 #include "messdir_enum.h"
 #include "msm_stream.h"
@@ -14,16 +17,12 @@
 #include "game/window.h"
 #include "game/wipe.h"
 #include "REL/staffdll.h"
+#include "humath.h"
 
-#define sind(x) sin((3.141592653589793 * (x)) / 180.0)
-#define cosd(x) cos((3.141592653589793 * (x)) / 180.0)
+#define sind(x) sin((M_PI * (x)) / 180.0)
+#define cosd(x) cos((M_PI * (x)) / 180.0)
 
 typedef void (*VoidFunc)(void);
-
-typedef struct StaffLightVectors {
-    HuVecF entries[2]; /* Two light position or direction vectors; only positions use world
-                        * units. */
-} STAFF_LIGHT_VECTORS;
 
 typedef struct StaffModelResource {
     s32 modelData; /* Archive entry for a staff model. */
@@ -34,10 +33,6 @@ typedef struct StaffParticleTarget {
     u8 scale; /* Target particle scale. */
     u8 alpha; /* Target particle alpha. */
 } STAFF_PARTICLE_TARGET;
-
-typedef struct StaffParticleColorTable {
-    GXColor color[2]; /* RGB particle tint for each of the two staff characters. */
-} STAFF_PARTICLE_COLOR_TABLE;
 
 STAFF_MODEL_RESOURCE lbl_1_data_0[13] = {
     { DATANUM(0xcd0000, 2), DATANUM(0xcd0000, 13) },
@@ -260,11 +255,6 @@ STAFF_TEXT_ENTRY lbl_1_data_68[196] = {
     { 1, MESSNUM(MESS_STAFF_NAME, 123), 0 },
     { -1, -1, -1 },
 };
-char lbl_1_data_998[] = "gN00m1-itemhook_R";
-char lbl_1_data_9AA[] = "bg03";
-char lbl_1_data_9AF[] = "gN01m1-itemhook_R";
-char lbl_1_data_9C1[55] = "\n-----===== MARIO PARTY 6 :: STAFF ROLL =====-----\n\n";
-s32 lbl_1_data_9F8[2] = {DATANUM(0xcd0000, 41), DATANUM(0xcd0000, 42)};
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -290,11 +280,6 @@ void fn_1_43D4(OMOBJ *obj);
 void fn_1_A1F4(s16 modelNo, HuVecF *position, s16 state);
 void fn_1_9E30(s16 modelNo, HuVecF *pos, s16 display);
 void fn_1_A434(s16 modelNo, HuVecF *position, s16 state);
-
-int rand8(void);
-s32 frandmod(s32 modulus);
-void HuAudFadeOut(s32 speed);
-void HuAudSStreamFadeOut(int streamNo, s32 speed);
 
 /* Interpolates a value over time; called by staff particle update callbacks. */
 float fn_1_0(float start, float end, float time, float duration)
@@ -389,7 +374,7 @@ void fn_1_67C(
 /* Sets *value to base plus amplitude times the sine of speed * time degrees. */
 static inline void StaffSineMove(f32 *value, f64 base, f64 amplitude, f32 speed, f32 time)
 {
-    *value = base + amplitude * sin(3.141592653589793 * (speed * time) / 180.0);
+    *value = base + amplitude * sin(M_PI * (speed * time) / 180.0);
 }
 
 /* Moves the staff camera along its entrance path on each object-manager update. */
@@ -414,9 +399,9 @@ void fn_1_884(OMOBJ *obj)
     if (positionTimeX <= 0.0f) {
         positionX = 0.0f;
     } else if (positionTimeX >= 120.0f) {
-        positionX = (-180.0f);
+        positionX = -180.0f;
     } else {
-        StaffSineMove(&positionX, 0.0, (-180.0), 0.75f, positionTimeX);
+        StaffSineMove(&positionX, 0.0, -180.0, 0.75f, positionTimeX);
     }
     position.x = positionX;
     positionTimeY = lbl_1_bss_28;
@@ -425,7 +410,7 @@ void fn_1_884(OMOBJ *obj)
     } else if (positionTimeY >= 120.0f) {
         positionY = 280.0f;
     } else {
-        StaffSineMove(&positionY, 340.0, (-60.0), 0.75f, positionTimeY);
+        StaffSineMove(&positionY, 340.0, -60.0, 0.75f, positionTimeY);
     }
     position.y = positionY;
     positionTimeZ = lbl_1_bss_28;
@@ -434,16 +419,16 @@ void fn_1_884(OMOBJ *obj)
     } else if (positionTimeZ >= 120.0f) {
         positionZ = 1300.0f;
     } else {
-        StaffSineMove(&positionZ, 1400.0, (-100.0), 0.75f, positionTimeZ);
+        StaffSineMove(&positionZ, 1400.0, -100.0, 0.75f, positionTimeZ);
     }
     position.z = positionZ;
     targetTimeX = lbl_1_bss_28;
     if (targetTimeX <= 0.0f) {
         targetX = 0.0f;
     } else if (targetTimeX >= 120.0f) {
-        targetX = (-180.0f);
+        targetX = -180.0f;
     } else {
-        StaffSineMove(&targetX, 0.0, (-180.0), 0.75f, targetTimeX);
+        StaffSineMove(&targetX, 0.0, -180.0, 0.75f, targetTimeX);
     }
     target.x = targetX;
     targetTimeY = lbl_1_bss_28;
@@ -452,16 +437,16 @@ void fn_1_884(OMOBJ *obj)
     } else if (targetTimeY >= 120.0f) {
         targetY = 280.0f;
     } else {
-        StaffSineMove(&targetY, 340.0, (-60.0), 0.75f, targetTimeY);
+        StaffSineMove(&targetY, 340.0, -60.0, 0.75f, targetTimeY);
     }
     target.y = targetY;
     targetTimeZ = lbl_1_bss_28;
     if (targetTimeZ <= 0.0f) {
-        targetZ = (-700.0f);
+        targetZ = -700.0f;
     } else if (targetTimeZ >= 120.0f) {
-        targetZ = (-1100.0f);
+        targetZ = -1100.0f;
     } else {
-        StaffSineMove(&targetZ, (-700.0), (-400.0), 0.75f, targetTimeZ);
+        StaffSineMove(&targetZ, -700.0, -400.0, 0.75f, targetTimeZ);
     }
     target.z = targetZ;
     Hu3DCameraPosSet(1, position.x, position.y, position.z,
@@ -481,7 +466,7 @@ void fn_1_E20(void)
     Hu3DCameraPosSet(1, 0.0f, 340.0f,
         1400.0f, 0.0f, 1.0f,
         0.0f, 0.0f, 340.0f,
-        (-700.0f));
+        -700.0f);
 }
 
 /* Disables the staff-roll camera during overlay cleanup. */
@@ -493,14 +478,14 @@ void fn_1_F44(void)
 /* Creates the two fixed lights used by staff-roll models. */
 void fn_1_F68(void)
 {
-    STAFF_LIGHT_VECTORS positions = {{{0.0f, 1.0f, 1.0f}, {-1.0f, 1.0f, -1.0f}}};
-    STAFF_LIGHT_VECTORS directions = {{{0.0f, -1.0f, -1.0f}, {1.0f, -1.0f, -1.0f}}};
+    HuVecF positions[2] = {{0.0f, 1.0f, 1.0f}, {-1.0f, 1.0f, -1.0f}};
+    HuVecF directions[2] = {{0.0f, -1.0f, -1.0f}, {1.0f, -1.0f, -1.0f}};
     GXColor color = { 255, 255, 255, 255 };
     s16 i;
 
     for (i = 0; i < 2; i++) {
         lbl_1_bss_82C[i] = fn_800286D0(
-            &positions.entries[i], &directions.entries[i], &color);
+            &positions[i], &directions[i], &color);
         Hu3DGLightInfinitytSet(lbl_1_bss_82C[i]);
         Hu3DGLightStaticSet(lbl_1_bss_82C[i], TRUE);
     }
@@ -645,7 +630,8 @@ void fn_1_1758(OMOBJ *obj)
         if (obj->work[1] == 1) {
             firstWork->state = 1;
             firstWork->angleOrFrame = 0.0f;
-            fn_8002CCC0(first->mdlId[0], first->mtnId[1], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(first->mdlId[0], first->mtnId[1], 0.0f, 30.0f,
+                ((1 << 30) | (1 << 0)));
             fn_800267CC(first->mdlId[0], &firstWork->position);
             fn_1_610(&firstWork->curveControl, (firstWork->position.x + initial[0].x) / 2,
                 2.0f * ((firstWork->position.y + initial[0].y) / 2),
@@ -681,7 +667,8 @@ void fn_1_1758(OMOBJ *obj)
         if (obj->work[1] == 1) {
             secondWork->state = 1;
             secondWork->angleOrFrame = 0.0f;
-            fn_8002CCC0(second->mdlId[0], second->mtnId[1], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(second->mdlId[0], second->mtnId[1], 0.0f, 30.0f,
+                ((1 << 30) | (1 << 0)));
             fn_800267CC(second->mdlId[0], &secondWork->position);
             fn_1_610(&secondWork->curveControl, (secondWork->position.x + initial[1].x) / 2,
                 2.0f * ((secondWork->position.y + initial[1].y) / 2),
@@ -749,25 +736,25 @@ void fn_1_2BD4(OMOBJ *obj)
     firstWork = &lbl_1_bss_5C[0];
     secondWork = &lbl_1_bss_5C[1];
     target.x = 200.0 *
-        sin(3.141592653589793 * (f64)obj->work[0] / 180.0) -
+        sin(M_PI * (f64)obj->work[0] / 180.0) -
         180.0;
     target.y = 50.0f + firstWork->position.y;
     if (target.y > 600.0f) {
         fn_1_A1F4(0, NULL, 1);
     }
     target.z = 200.0 *
-        cos(3.141592653589793 * (f64)obj->work[0] / 180.0);
+        cos(M_PI * (f64)obj->work[0] / 180.0);
     fn_1_370(&firstWork->position, &target, 10.0f);
 
     target.x = 200.0 *
-        sin(3.141592653589793 * (f64)obj->work[1] / 180.0) -
+        sin(M_PI * (f64)obj->work[1] / 180.0) -
         180.0;
     target.y = 50.0f + secondWork->position.y;
     if (target.y > 600.0f) {
         fn_1_A1F4(1, NULL, 1);
     }
     target.z = 200.0 *
-        cos(3.141592653589793 * (f64)obj->work[1] / 180.0);
+        cos(M_PI * (f64)obj->work[1] / 180.0);
     fn_1_370(&secondWork->position, &target, 10.0f);
 
     if ((obj->work[0] += 4) > 360) {
@@ -780,7 +767,6 @@ void fn_1_2BD4(OMOBJ *obj)
     fn_1_9E30(1, &secondWork->position, 1);
 }
 
-void fn_1_9E30(s16 modelNo, HuVecF *pos, s16 display);
 
 /* Advances staff motions through their entrance, pose, and looping sequence. */
 void fn_1_3140(OMOBJ *obj)
@@ -792,17 +778,17 @@ void fn_1_3140(OMOBJ *obj)
 
     if (obj->work[0] < 30) {
         Hu3DModelObjPosGet(
-            first->mdlId[0], lbl_1_data_998, &firstWork->position);
+            first->mdlId[0], "gN00m1-itemhook_R", &firstWork->position);
         Hu3DModelObjPosGet(
-            second->mdlId[0], lbl_1_data_998, &secondWork->position);
+            second->mdlId[0], "gN00m1-itemhook_R", &secondWork->position);
         fn_1_9E30(0, &firstWork->position, 1);
         fn_1_9E30(1, &secondWork->position, 1);
     }
     if (obj->work[0] == 30) {
         Hu3DModelObjPosGet(
-            first->mdlId[0], lbl_1_data_998, &firstWork->position);
+            first->mdlId[0], "gN00m1-itemhook_R", &firstWork->position);
         Hu3DModelObjPosGet(
-            second->mdlId[0], lbl_1_data_998, &secondWork->position);
+            second->mdlId[0], "gN00m1-itemhook_R", &secondWork->position);
         lbl_1_bss_C->work[0] = 0;
         lbl_1_bss_C->work[1] = 180;
         lbl_1_bss_C->objFunc = fn_1_2BD4;
@@ -871,7 +857,7 @@ void fn_1_3568(OMOBJ *obj)
         StaffSineMove(&bobOffset, 0.0, 10.0, 1.0f, frame);
     }
     positionOffset = bobOffset;
-    fn_80026760(lbl_1_bss_4->mdlId[0], (-180.0f),
+    fn_80026760(lbl_1_bss_4->mdlId[0], -180.0f,
         325.0f + positionOffset, 0.0f);
     if (++obj->work[1] > 360) {
         obj->work[1] -= 360;
@@ -911,9 +897,9 @@ void fn_1_389C(OMOBJ *obj)
         fn_8002CCC0(obj->mdlId[i], obj->mtnId[i],
             0.0f, 0.0f, ((1 << 30) | (1 << 0)));
     }
-    obj->work[0] = fn_80031C10(obj->mdlId[1], lbl_1_data_9AA);
+    obj->work[0] = fn_80031C10(obj->mdlId[1], "bg03");
     Hu3DTexScrollPosMoveSet(
-        obj->work[0], 0.0f, (-0.001f), 0.0f);
+        obj->work[0], 0.0f, -0.001f, 0.0f);
     fn_800268B0(obj->mdlId[0], 2.0f, 2.0f,
         2.0f);
     obj->objFunc = fn_1_3568;
@@ -979,7 +965,7 @@ void fn_1_3C38(OMOBJ *obj)
         obj->mtnId[i] = fn_80030458(obj->mdlId[0], fn_80008DD0((DATANUM(0xcd0000, 36) + i),
             0x10000000, 2));
     }
-    fn_8002741C(obj->mdlId[0], lbl_1_data_9AF, obj->mdlId[1]);
+    fn_8002741C(obj->mdlId[0], "gN01m1-itemhook_R", obj->mdlId[1]);
     fn_8002CCC0(obj->mdlId[0], obj->mtnId[0], 0.0f,
         0.0f, ((1 << 30) | (1 << 0)));
     fn_800268B0(obj->mdlId[0], 0.85f,
@@ -1008,59 +994,58 @@ void fn_1_3D8C(OMOBJ *obj)
 void fn_1_3E2C(OMOBJ *obj)
 {
     s16 i;
-    f32 *work;
+    STAFF_FIGURE_WORK *figure;
 
-    /* Each figure uses 25 floats: a direction halfword at the start, a delay at [1],
-    * XYZ position at [3..5], and speed at [6]. The negative delay counts up;
-    * movement starts once it becomes positive. */
-    work = lbl_1_bss_310;
-    for (i = 0; i < 13; i++, work += 25) {
-        if (work[1] > 0.0f) {
+    /* Negative delays count up before movement begins; position and speed use
+     * world units. */
+    figure = lbl_1_bss_310;
+    for (i = 0; i < 13; i++, figure++) {
+        if (figure->delay > 0.0f) {
             fn_80026A44(obj->mdlId[i], (1 << 0));
-            if (((s16 *)work)[0] == 0) {
-                work[3] -= work[6];
-                if (work[3] < (-1500.0f)) {
-                    ((s16 *)work)[0] = rand8() % 2;
-                    work[1] = -frandmod(600);
-                    if (((s16 *)work)[0] == 0) {
-                        work[3] = 1500.0f;
-                        work[4] = frandmod(800) - 25;
-                        work[5] = -200 - i * 100;
-                        fn_80026808(obj->mdlId[i], 0.0f, (-90.0f), 0.0f);
+            if (figure->direction == 0) {
+                figure->position.x -= figure->speed;
+                if (figure->position.x < (-1500.0f)) {
+                    figure->direction = rand8() % 2;
+                    figure->delay = -frandmod(600);
+                    if (figure->direction == 0) {
+                        figure->position.x = 1500.0f;
+                        figure->position.y = frandmod(800) - 25;
+                        figure->position.z = -200 - i * 100;
+                        fn_80026808(obj->mdlId[i], 0.0f, -90.0f, 0.0f);
                     } else {
-                        work[3] = (-1500.0f);
-                        work[4] = frandmod(800) - 25;
-                        work[5] = -200 - i * 100;
+                        figure->position.x = -1500.0f;
+                        figure->position.y = frandmod(800) - 25;
+                        figure->position.z = -200 - i * 100;
                         fn_80026808(obj->mdlId[i], 0.0f, 90.0f, 0.0f);
                     }
-                    work[6] = frandmod(8) + 2;
+                    figure->speed = frandmod(8) + 2;
                     fn_800269E8(obj->mdlId[i], (1 << 0));
-                    fn_8002D86C(obj->mdlId[i], 1.0f + work[6] / 10.0f);
+                    fn_8002D86C(obj->mdlId[i], 1.0f + figure->speed / 10.0f);
                 }
             } else {
-                work[3] += work[6];
-                if (work[3] > 1500.0f) {
-                    ((s16 *)work)[0] = rand8() % 2;
-                    work[1] = -frandmod(600);
-                    if (((s16 *)work)[0] == 0) {
-                        work[3] = 1500.0f;
-                        work[4] = frandmod(800) - 25;
-                        work[5] = -200 - i * 100;
-                        fn_80026808(obj->mdlId[i], 0.0f, (-90.0f), 0.0f);
+                figure->position.x += figure->speed;
+                if (figure->position.x > 1500.0f) {
+                    figure->direction = rand8() % 2;
+                    figure->delay = -frandmod(600);
+                    if (figure->direction == 0) {
+                        figure->position.x = 1500.0f;
+                        figure->position.y = frandmod(800) - 25;
+                        figure->position.z = -200 - i * 100;
+                        fn_80026808(obj->mdlId[i], 0.0f, -90.0f, 0.0f);
                     } else {
-                        work[3] = (-1500.0f);
-                        work[4] = frandmod(800) - 25;
-                        work[5] = -200 - i * 100;
+                        figure->position.x = -1500.0f;
+                        figure->position.y = frandmod(800) - 25;
+                        figure->position.z = -200 - i * 100;
                         fn_80026808(obj->mdlId[i], 0.0f, 90.0f, 0.0f);
                     }
-                    work[6] = frandmod(8) + 2;
+                    figure->speed = frandmod(8) + 2;
                     fn_800269E8(obj->mdlId[i], (1 << 0));
-                    fn_8002D86C(obj->mdlId[i], 1.0f + work[6] / 10.0f);
+                    fn_8002D86C(obj->mdlId[i], 1.0f + figure->speed / 10.0f);
                 }
             }
-            fn_80026790(obj->mdlId[i], (HuVecF *)&work[3]);
+            fn_80026790(obj->mdlId[i], &figure->position);
         } else {
-            work[1] += 1.0f;
+            figure->delay += 1.0f;
         }
     }
 }
@@ -1069,28 +1054,28 @@ void fn_1_3E2C(OMOBJ *obj)
 void fn_1_43D4(OMOBJ *obj)
 {
     s16 i;
-    f32 *work;
+    STAFF_FIGURE_WORK *figure;
 
-    work = lbl_1_bss_310;
-    for (i = 0; i < 13; i++, work += 25) {
-        ((s16 *)work)[0] = rand8() % 2;
-        work[1] = -frandmod(600);
-        if (((s16 *)work)[0] == 0) {
-            work[3] = 1500.0f;
-            work[4] = frandmod(800) - 25;
-            work[5] = -200 - (i * 100);
+    figure = lbl_1_bss_310;
+    for (i = 0; i < 13; i++, figure++) {
+        figure->direction = rand8() % 2;
+        figure->delay = -frandmod(600);
+        if (figure->direction == 0) {
+            figure->position.x = 1500.0f;
+            figure->position.y = frandmod(800) - 25;
+            figure->position.z = -200 - (i * 100);
             fn_80026808(obj->mdlId[i], 0.0f,
-                (-90.0f), 0.0f);
+                -90.0f, 0.0f);
         } else {
-            work[3] = (-1500.0f);
-            work[4] = frandmod(800) - 25;
-            work[5] = -200 - (i * 100);
+            figure->position.x = -1500.0f;
+            figure->position.y = frandmod(800) - 25;
+            figure->position.z = -200 - (i * 100);
             fn_80026808(obj->mdlId[i], 0.0f,
                 90.0f, 0.0f);
         }
-        work[6] = frandmod(8) + 2;
+        figure->speed = frandmod(8) + 2;
         fn_8002D86C(obj->mdlId[i],
-            1.0f + (work[6] / 10.0f));
+            1.0f + (figure->speed / 10.0f));
     }
     obj->objFunc = fn_1_3E2C;
 }
@@ -1107,16 +1092,16 @@ void fn_1_4668(OMOBJ *obj)
         obj->work[2] = rand8() % 2;
         if (rand8() % 2 == 0) {
             fn_80026760(obj->mdlId[modelIndex], 900.0f,
-                (f32)(frandmod(200) + 525), (-500.0f));
+                (f32)(frandmod(200) + 525), -500.0f);
         } else {
             fn_80026760(obj->mdlId[modelIndex], 900.0f,
-                (f32)(-frandmod(200) + 125), (-500.0f));
+                (f32)(-frandmod(200) + 125), -500.0f);
         }
         fn_800267CC(obj->mdlId[modelIndex], &position);
-        fn_80026808(obj->mdlId[modelIndex], 0.0f, (-90.0f),
+        fn_80026808(obj->mdlId[modelIndex], 0.0f, -90.0f,
             0.0f);
         if (obj->work[2] == 1) {
-            position.x = (-900.0f);
+            position.x = -900.0f;
             fn_80026790(obj->mdlId[modelIndex], &position);
             fn_80026808(obj->mdlId[modelIndex], 0.0f, 90.0f,
                 0.0f);
@@ -1469,7 +1454,7 @@ void fn_1_54F0(void)
 /* Loads the ending staff-roll scene and starts its process from overlay entry. */
 void fn_1_5A7C(void)
 {
-    OSReport(lbl_1_data_9C1);
+    OSReport("\n-----===== MARIO PARTY 6 :: STAFF ROLL =====-----\n\n");
     lbl_1_bss_0 = fn_8003A8BC(11, 8192);
     HuWinInit(1);
     fn_1_E20();
@@ -2322,6 +2307,8 @@ void fn_1_964C(void)
     }
 }
 
+s32 lbl_1_data_9F8[2] = {DATANUM(0xcd0000, 41), DATANUM(0xcd0000, 42)};
+
 /* Loads both particle animations and creates each staff-roll particle system. */
 void fn_1_96A4(void)
 {
@@ -2482,10 +2469,10 @@ static inline void staff_start_drifting_effect(s16 modelNo, HuVecF *position, GX
  * position. */
 void fn_1_A1F4(s16 modelNo, HuVecF *position, s16 state)
 {
-    STAFF_PARTICLE_COLOR_TABLE colorTable = {{{255, 114, 46, 0}, {109, 207, 246, 0}}};
+    GXColor colorTable[2] = {{255, 114, 46, 0}, {109, 207, 246, 0}};
 
     if (state == 1) {
-        staff_start_falling_effect(modelNo, position, &colorTable.color[modelNo]);
+        staff_start_falling_effect(modelNo, position, &colorTable[modelNo]);
     } else if (state == 0) {
         staff_stop_falling_effect(modelNo);
     } else if (state == 2) {
@@ -2495,10 +2482,10 @@ void fn_1_A1F4(s16 modelNo, HuVecF *position, s16 state)
 /* Initializes, stops, or hides one staff character's drifting-particle model. */
 void fn_1_A434(s16 modelNo, HuVecF *position, s16 state)
 {
-    STAFF_PARTICLE_COLOR_TABLE colorTable = {{{255, 114, 46, 0}, {109, 207, 246, 0}}};
+    GXColor colorTable[2] = {{255, 114, 46, 0}, {109, 207, 246, 0}};
 
     if (state == 1) {
-        staff_start_drifting_effect(modelNo, position, &colorTable.color[modelNo]);
+        staff_start_drifting_effect(modelNo, position, &colorTable[modelNo]);
     } else if (state == 0) {
         staff_stop_drifting_effect(modelNo);
     } else if (state == 2) {
@@ -2510,7 +2497,7 @@ HU3D_LIGHTID lbl_1_bss_82C[2];
 HUSPR_GROUPID lbl_1_bss_82A;
 HUSPRID lbl_1_bss_828;
 s32 lbl_1_bss_824;
-f32 lbl_1_bss_310[325];
+STAFF_FIGURE_WORK lbl_1_bss_310[13];
 s16 lbl_1_bss_304[6];
 s16 lbl_1_bss_2AC[44];
 HuVecF lbl_1_bss_12C[32];
