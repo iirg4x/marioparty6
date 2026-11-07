@@ -229,9 +229,14 @@ typedef struct Hu3DParticleData_s {
     s16 cameraBit;
     HuVecF vel;
     HuVecF accel;
-    float speedDecay;
-    float colorIdx;
-    float scaleBase;
+    union {
+        struct {
+            float speedDecay;
+            float colorIdx;
+            float scaleBase;
+        };
+        Vec effectDirection;
+    };
     float scale;
     float scaleY;
     float zRot;
