@@ -5,3 +5,19 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m607DLL/shared/prolog.c:
+	.text       start:0x00000000 end:0x00000364
+	.rodata     start:0x00000000 end:0x00000060
+	.data       start:0x00000000 end:0x00000028
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m607DLL/minigame.c:
+	.text       start:0x00000364 end:0x0000F4FC
+	.rodata     start:0x00000060 end:0x00000280
+	.data       start:0x00000028 end:0x0000018E
+	.bss        start:0x00000008 end:0x0000005C
+
+REL/m607DLL/runtime.c:
+	.text       start:0x0000F4FC end:0x0000FF40
+	.rodata     start:0x00000280 end:0x00000298
