@@ -4,8 +4,8 @@
 #include "dolphin.h"
 #include "musyx/musyx.h"
 
-#define MSM_STREAM_FLAG_STEREO 0x1
-#define MSM_STREAM_FLAG_LOOP 0x2
+#define MSM_STREAMPACK_STEREO 0x1
+#define MSM_STREAMPACK_LOOP 0x2
 
 #define MSM_FILE_VERSION 2
 #define MSM_PDT_FILE_VERSION 1
@@ -33,7 +33,7 @@ typedef struct MSMHeader_s {
     s32 dummyMusSize;
     s32 grpSetOfs;
     s32 grpSetSize;
-    s32 pad[2];
+    s32 unk_58[2]; /* No code names this field. */
 } MSM_HEADER; // sizeof 0x60
 
 typedef struct MSMInfo_s {
@@ -47,7 +47,7 @@ typedef struct MSMInfo_s {
     s8 stackDepthA;
     s8 stackDepthB;
     s8 surroundF;
-    s8 unkC[2];
+    s8 unkC[2]; /* No code names this field. */
     s8 auxParamA;
     s8 auxParamB;
     s32 minMem;
@@ -94,7 +94,6 @@ typedef struct {
 
 typedef struct MSMAuxParam_s {
     s8 type;
-	u8 pad[3];
     union {
         MSM_AUXPARAM_REVERBHI revHi;
         MSM_AUXPARAM_REVERBSTD revStd;
@@ -114,7 +113,7 @@ typedef struct MSMSe_s {
 	u8 chorus;
 	s8 emitterF;
 	s8 emiComp;
-	u8 pad[3];
+	u8 unk_0D[3]; /* No code names this field. */
 } MSM_SE;
 
 typedef struct MSMMus_s {
@@ -124,7 +123,7 @@ typedef struct MSMMus_s {
 	s32 songSize;
 	s8 songGrp;
 	s8 vol;
-	u8 pad[2];
+	u8 unk_0E[2]; /* No code names this field. */
 } MSM_MUS; // Size 0x10
 
 typedef struct MSMGrpHead_s {
@@ -142,7 +141,7 @@ typedef struct MSMGrpInfo_s {
     s32 dataSize;
     s32 sampOfs;
     s32 sampSize;
-    u8 pad[12];
+    u8 unk_14[12]; /* No code names this field. */
 } MSM_GRP_INFO;
 
 typedef struct MSMGrpSet_s {
