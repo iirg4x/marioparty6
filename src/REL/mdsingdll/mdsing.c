@@ -5240,16 +5240,16 @@ s32 fn_1_19570(void)
 
     HuPrcSleep(5);
     if (lbl_1_bss_28 == 0 || lbl_1_bss_28 == 2) {
-        lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_W01);
+        lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_BRIGHTON_THEME);
     } else {
         if (lbl_1_bss_28 == 1) {
             coinBonus = lbl_80265750->mgCoinBonus;
             if (coinBonus == 1) {
-                lbl_1_data_320[1] = HuAudSStreamPlay(MSM_STREAM_MGINST);
+                lbl_1_data_320[1] = HuAudSStreamPlay(MSM_STREAM_WAY_TO_GO);
                 goto music_started;
             }
         }
-        lbl_1_data_320[2] = HuAudSStreamPlay(MSM_STREAM_RESULT);
+        lbl_1_data_320[2] = HuAudSStreamPlay(MSM_STREAM_TOO_BAD);
     }
 music_started:
     if (lbl_1_bss_28 == 1) {
@@ -6009,11 +6009,11 @@ s16 fn_1_20624(s16 mode)
 
     HuPrcSleep(5);
     if (lbl_1_bss_28 == 0 || lbl_1_bss_28 == 2) {
-        lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_W01);
+        lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_BRIGHTON_THEME);
     } else if (lbl_1_bss_28 == 1 && GWMgCoinBonusGet(0) == 1) {
-        lbl_1_data_320[1] = HuAudSStreamPlay(MSM_STREAM_MGINST);
+        lbl_1_data_320[1] = HuAudSStreamPlay(MSM_STREAM_WAY_TO_GO);
     } else {
-        lbl_1_data_320[2] = HuAudSStreamPlay(MSM_STREAM_RESULT);
+        lbl_1_data_320[2] = HuAudSStreamPlay(MSM_STREAM_TOO_BAD);
     }
     if (lbl_1_bss_28 == 1) {
         fn_80026A44(lbl_1_bss_10->mdlId[lbl_1_bss_22], (1 << 0));
@@ -7569,7 +7569,7 @@ s32 fn_1_2987C(void)
         fn_8002CCC0(lbl_1_bss_C->mdlId[0], lbl_1_bss_C->mtnId[4],
             0.0f, 10.0f, 0);
         HuPrcSleep(30);
-        HuAudJinglePlay(MSM_STREAM_CARDOP);
+        HuAudJinglePlay(MSM_STREAM_GETTING_A_STAR);
         CharFXPlay(lbl_1_bss_22, 573);
         fn_1_251D8();
         sprintf(scoreText, "%d", lbl_1_bss_40);
@@ -7731,7 +7731,7 @@ s32 fn_1_2AD60(void)
             &positions.start, &positions.end, elapsedFrames, 90.0f, 0.0f);
     }
     lbl_1_bss_10->objFunc = NULL;
-    lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_W01);
+    lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_BRIGHTON_THEME);
     fn_1_51F4();
     fn_1_3F0C(3, MESSNUM(MESS_SINGLE_RESULT, 3), 1);
     if (fn_1_3E14(1) == 0) {
@@ -7775,7 +7775,7 @@ s32 fn_1_2C158(void)
                 elapsedFrames, 90.0f, 0.0f);
         }
         lbl_1_bss_10->objFunc = NULL;
-        lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_W01);
+        lbl_1_data_320[0] = HuAudSStreamPlay(MSM_STREAM_BRIGHTON_THEME);
         result = fn_1_2A81C();
     }
     return result;

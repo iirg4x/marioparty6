@@ -78,7 +78,7 @@ void fn_1_168(s16 sequenceMode, s16 sequenceFrame)
 void fn_1_188(s16 sequenceMode, s16 sequenceFrame)
 {
     if (sequenceFrame == 0) {
-        lbl_1_bss_0.audio = HuAudBGMPlay(MSM_STREAM_MGMUS_21);
+        lbl_1_bss_0.audio = HuAudBGMPlay(MSM_STREAM_LAID_BACK);
     }
 }
 

@@ -1071,7 +1071,7 @@ void fn_1_FD14(void) {
     }
     GameMesCreate(4, 3, players[0], players[1],
                   players[2], players[3]);
-    lbl_1_data_AD4 = HuAudJinglePlay(MSM_STREAM_MGMUS_12);
+    lbl_1_data_AD4 = HuAudJinglePlay(MSM_STREAM_EXCELLENT);
     fn_1_10970(1);
 
     player = 0;
@@ -1092,7 +1092,7 @@ void fn_1_FD14(void) {
             HuPrcVSleep();
         }
     }
-    lbl_1_data_ACC = HuAudSStreamPlay(MSM_STREAM_MGMUS_KOOPA);
+    lbl_1_data_ACC = HuAudSStreamPlay(MSM_STREAM_BREAK_TIME);
 }
 
 OMOBJ *lbl_1_bss_ACC[4];

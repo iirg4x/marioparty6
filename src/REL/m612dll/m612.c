@@ -565,7 +565,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
 void fn_1_1DBC(s16 mode, s16 frameNo)
 {
     if ((lbl_1_data_8C == -1) && ((s32) (GameMesStatGet(fn_80071DF4()) & 0x10) != 0)) {
-        lbl_1_data_8C = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
+        lbl_1_data_8C = HuAudBGMPlay(MSM_STREAM_SLOW_AND_STEADY);
     }
 }
 

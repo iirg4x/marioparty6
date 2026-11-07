@@ -7,7 +7,7 @@
 #include "msm_stream.h"
 #include "msm_se.h"
 
-#define MSM_STREAM_RENSHO 56
+#define MSM_STREAM_REALLY_LONG_ROAD 56
 #define GW_MGNO_BASE 601
 #define MSM_SE_RENSHO_PREVIEW_ENTER 1212
 #define MSM_SE_RENSHO_PREVIEW_HOLD 1213
@@ -313,18 +313,18 @@ void fn_1_DDB8(void)
     }
     if (MgModeWorkInt[0] != 0) {
         if (MgModePlayNum <= 31) {
-            lbl_1_data_500 = HuAudSStreamPlay(MSM_STREAM_RENSHO);
+            lbl_1_data_500 = HuAudSStreamPlay(MSM_STREAM_REALLY_LONG_ROAD);
         } else if (MgModePlayNum <= 41) {
-            lbl_1_data_504 = HuAudSStreamPlay(MSM_STREAM_MGMUS_DONKEY);
+            lbl_1_data_504 = HuAudSStreamPlay(MSM_STREAM_LONG_ROAD);
         } else if (MgModePlayNum <= 61) {
-            lbl_1_data_508 = HuAudSStreamPlay(MSM_STREAM_MGMUS_7);
+            lbl_1_data_508 = HuAudSStreamPlay(MSM_STREAM_ALMOST_ENDLESS_ROAD);
         } else if (MgModePlayNum <= 81) {
-            lbl_1_data_50C = HuAudSStreamPlay(MSM_STREAM_MGMUS_8);
+            lbl_1_data_50C = HuAudSStreamPlay(MSM_STREAM_UP_HIGH);
         } else {
-            lbl_1_data_510 = HuAudSStreamPlay(MSM_STREAM_MGMUS_9);
+            lbl_1_data_510 = HuAudSStreamPlay(MSM_STREAM_PUSHING_THE_LIMIT);
         }
     } else {
-        lbl_1_data_514 = HuAudSStreamPlay(MSM_STREAM_RESULT);
+        lbl_1_data_514 = HuAudSStreamPlay(MSM_STREAM_TOO_BAD);
     }
     if (MgModePlayNum == 0) {
         MgModeWorkInt[0] = 0;

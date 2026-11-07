@@ -192,7 +192,7 @@ void fn_1_1A738(void) {
     HuPrcVSleep();
     fn_1_1B394(0);
     fn_1_44E0();
-    lbl_1_data_8D8 = HuAudSStreamPlay(MSM_STREAM_MGMUS_3);
+    lbl_1_data_8D8 = HuAudSStreamPlay(MSM_STREAM_BATTLE_BRIDGE);
     WipeCreate(1, 0, 60);
     while (WipeCheck()) {
         HuPrcVSleep();

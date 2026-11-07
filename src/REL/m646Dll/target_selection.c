@@ -492,9 +492,9 @@ void fn_1_9F80(OMOBJ *obj)
             if (fn_8006A124(196610) == 0) {
                 fn_1_55A0();
                 if (fn_1_9380() == 0) {
-        HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+        HuAudJinglePlay(MSM_STREAM_WINNING);
                 } else {
-        HuAudJinglePlay(MSM_STREAM_FILESEL);
+        HuAudJinglePlay(MSM_STREAM_BAD_NEWS);
                 }
             }
             work->phase++;

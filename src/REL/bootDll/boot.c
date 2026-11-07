@@ -674,7 +674,7 @@ s32 BootTitleExec(s32 firstRun)
     if (!firstRun) {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, TITLE_WIPE_FRAMES);
         HuPrcSleep(TITLE_STREAM_DELAY_FRAMES);
-        HuAudSStreamPlay(MSM_STREAM_TEST);
+        HuAudSStreamPlay(MSM_STREAM_PARTY_MUSIC);
         WipeWait();
         while (fn_8002D4E0(TitleMdlId[2]) < 70.0f) {
             HuPrcVSleep();
@@ -686,7 +686,7 @@ s32 BootTitleExec(s32 firstRun)
         fn_8002D414(TitleMdlId[1], 70.0f);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, TITLE_WIPE_FRAMES);
         HuPrcSleep(TITLE_STREAM_DELAY_FRAMES);
-        HuAudSStreamPlay(MSM_STREAM_TEST);
+        HuAudSStreamPlay(MSM_STREAM_PARTY_MUSIC);
         WipeWait();
     }
 

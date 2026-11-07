@@ -330,7 +330,7 @@ void fn_1_528(s16 mode, s16 frameNo)
     scene = lbl_1_bss_4->data;
     switch (scene->startState) {
     case 0:
-        lbl_1_bss_8 = HuAudBGMPlay(MSM_STREAM_MGMUS_22);
+        lbl_1_bss_8 = HuAudBGMPlay(MSM_STREAM_RELAXED);
         scene->startState++;
         /* fallthrough */
     case 1:

@@ -2389,7 +2389,7 @@ void fn_1_CF6C(void)
     messageCharacters[firstPlayer] = tournamentPlayerCharacterGet(firstPlayer);
     GameMesCreate(4, 3, messageCharacters[0], messageCharacters[1], messageCharacters[2],
                   messageCharacters[3]);
-    lbl_1_data_858 = HuAudJinglePlay(MSM_STREAM_MGMUS_12);
+    lbl_1_data_858 = HuAudJinglePlay(MSM_STREAM_EXCELLENT);
     fn_1_43BC();
     fn_1_56B4(1);
     tournamentPlayerStateSet(firstPlayer, 22);
@@ -2429,7 +2429,7 @@ void fn_1_CF6C(void)
             HuPrcVSleep();
         }
     }
-    lbl_1_data_84C = HuAudSStreamPlay(MSM_STREAM_MGMUS_KOOPA);
+    lbl_1_data_84C = HuAudSStreamPlay(MSM_STREAM_BREAK_TIME);
         tournamentCameraViewSet(12, 60);
     fn_1_5740(15, 60);
     HuPrcSleep(60);

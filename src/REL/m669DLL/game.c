@@ -457,7 +457,7 @@ void fn_1_561C(OMOBJ *object)
 
     if (work->streamHandle == -1 &&
         (GameMesStatGet(fn_80071DF4()) & 0x10) != 0) {
-        work->streamHandle = HuAudSStreamPlay(MSM_STREAM_M666);
+        work->streamHandle = HuAudSStreamPlay(MSM_STREAM_JAZZY);
     }
     if (fn_80071A8C() == 5) {
         fn_1_248(object, fn_1_56A4);

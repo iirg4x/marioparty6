@@ -7149,7 +7149,7 @@ s32 fn_1_262E8(void) {
     if (lbl_1_bss_28 == 1) {
         fn_1_25B50();
     }
-    lbl_1_data_0 = HuAudSStreamPlay(MSM_STREAM_W01);
+    lbl_1_data_0 = HuAudSStreamPlay(MSM_STREAM_BRIGHTON_THEME);
     WipeCreate(1, 0, 60);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
@@ -8425,7 +8425,7 @@ s16 fn_1_34C78(s16 mode) {
     if (lbl_1_bss_28 == 1) {
         fn_1_25B50();
     }
-    lbl_1_data_0 = HuAudSStreamPlay(MSM_STREAM_W01);
+    lbl_1_data_0 = HuAudSStreamPlay(MSM_STREAM_BRIGHTON_THEME);
     WipeCreate(1, 0, 60);
     while (WipeCheck() != 0) {
         HuPrcVSleep();

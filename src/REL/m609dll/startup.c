@@ -1150,7 +1150,7 @@ void fn_1_43F4(void) {
 
     (lbl_1_bss_30.musicHandle) = -1;
     (lbl_1_bss_30.jingleHandle) = -1;
-    (lbl_1_bss_30.musicId) = MSM_STREAM_MGTOUR_END;
+    (lbl_1_bss_30.musicId) = MSM_STREAM_FRANTIC;
     (lbl_1_bss_30.jingleId) = -1;
     (lbl_1_bss_30.panXLow) = 32;
     (lbl_1_bss_30.panXHigh) = 96;

@@ -207,7 +207,7 @@ void MinigameCore::showRecord(int recordValue)
         return;
     MinigameCore &game = static_cast<MinigameCore &>(getChecked());
     game.messageId = GameMesCreate(GAMEMES_MES_MG_RECORD, recordValue);
-    HuAudJinglePlay(MSM_STREAM_MGMUS_16);
+    HuAudJinglePlay(MSM_STREAM_SUCCESS);
 }
 
 // Game phase code requests a 60-frame incoming wipe using the previously selected effect.

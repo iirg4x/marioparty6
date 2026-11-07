@@ -83,7 +83,7 @@ void fn_1_13DAC(s32 mode, s16 frameNo)
     lbl_1_bss_816 = 2;
     lbl_1_bss_814 = 1;
     if (frameNo == 0) {
-        lbl_1_bss_818 = HuAudBGMPlay(MSM_STREAM_CAPSULE_WANWAN);
+        lbl_1_bss_818 = HuAudBGMPlay(MSM_STREAM_BLISSFUL);
     }
     fn_1_CB0();
     fn_1_4E60();

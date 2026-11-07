@@ -131,7 +131,7 @@ void fn_1_2EC(s16 mode, s16 frameNo) {
     }
     if (frameNo == 0) {
         fn_80071B08();
-        HuAudJinglePlay(MSM_STREAM_FILESEL);
+        HuAudJinglePlay(MSM_STREAM_BAD_NEWS);
     }
     if (((s16)fn_1_A740() != 0) && (frameNo > 200)) {
         fn_80071A9C();
@@ -296,7 +296,7 @@ void fn_1_73C(void) {
                 fn_80071A9C();
             }
             if (lbl_1_bss_174.phaseFrame == 30) {
-                HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+                HuAudJinglePlay(MSM_STREAM_WINNING);
                 fn_1_353C();
             }
             if ((lbl_1_bss_174.phaseFrame % 4) == 0) {

@@ -244,7 +244,7 @@ void fn_1_36C(s16 mode, s16 frame)
 void fn_1_620(s16 mode, s16 frame)
 {
     if (fn_1_BD8(mode, frame) == 0 && lbl_1_bss_64 == -1) {
-        lbl_1_bss_64 = HuAudBGMPlay(MSM_STREAM_MGMUS_26);
+        lbl_1_bss_64 = HuAudBGMPlay(MSM_STREAM_FAST_AND_FURIOUS);
     }
 }
 

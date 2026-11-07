@@ -1578,7 +1578,7 @@ void fn_1_51B4(void) {
 
     lbl_1_bss_9C8.firstStream = -1;
     lbl_1_bss_9C8.secondStream = -1;
-    lbl_1_bss_9C8.bgmId = MSM_STREAM_MGMUS_27;
+    lbl_1_bss_9C8.bgmId = MSM_STREAM_NIGHT_DUEL;
     lbl_1_bss_9C8.jingleId = -1;
     lbl_1_bss_9C8.panMinimum = 32;
     lbl_1_bss_9C8.panMaximum = 96;

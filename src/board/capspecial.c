@@ -2151,7 +2151,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
     mbObjLayerSet(targetObj, 3);
     mbObjScaleSet(targetObj, 2.0f, 2.0f, 2.0f);
     ev_CapMiracleSprCreate();
-    mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_STORY_END, FALSE);
+    mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_ROUND_OF_MIRACLES, FALSE);
     mbWipeDissolveFadeIn();
     mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbAudGuidePlay(950); /* event guide voice resource */

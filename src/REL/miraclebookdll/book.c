@@ -33,7 +33,7 @@
 
 #include "game/wipe.h"
 
-#define MSM_STREAM_MBOOK 94
+#define MSM_STREAM_MIRACLE_BOOK 94
 #define MSM_SE_MBOOK_OPEN 1408
 #define MSM_SE_MBOOK_PAGE_TURN 1409
 #define MSM_SE_MBOOK_REVERSE_PAGE_TURN 1410
@@ -374,7 +374,7 @@ s32 fn_1_394(void)
     s32 result = 0;
 
     if (lbl_1_bss_AC == -1) {
-        lbl_1_bss_AC = HuAudBGMPlay(MSM_STREAM_MBOOK);
+        lbl_1_bss_AC = HuAudBGMPlay(MSM_STREAM_MIRACLE_BOOK);
     }
     fn_1_A30();
     fn_1_4E94();

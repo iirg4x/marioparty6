@@ -162,7 +162,7 @@ void fn_1_300(s16 mode, s16 frameNo) {
     if (frameNo < 18) {
         return;
     }
-    lbl_1_bss_20 = HuAudBGMPlay(MSM_STREAM_MGTOUR_END);
+    lbl_1_bss_20 = HuAudBGMPlay(MSM_STREAM_FRANTIC);
 }
 
 /* Sequence callback that idles while its supplied mode and frame are not accepted. */

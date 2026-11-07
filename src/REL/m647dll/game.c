@@ -1464,7 +1464,7 @@ void fn_1_5F08(void) {
         } else if (lbl_1_bss_174.phaseFrame == 141) {
             HuAudFXPlay(MSM_SE_MG647_LAUNCH_BEAT);
         } else if (lbl_1_bss_174.phaseFrame == 200) {
-            lbl_1_bss_174.musicHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_26);
+            lbl_1_bss_174.musicHandle = HuAudBGMPlay(MSM_STREAM_FAST_AND_FURIOUS);
         }
         if (maxMotionTime == (motionTimeCopy = fn_8002D4E0(
                 lbl_1_bss_174.motionModelId))) {

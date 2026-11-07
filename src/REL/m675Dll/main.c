@@ -241,7 +241,7 @@ void fn_1_310(s16 mode, s16 frame)
 
     if (lbl_1_bss_34 == -1 && frame >= 18) {
 
-        lbl_1_bss_34 = HuAudBGMPlay(MSM_STREAM_MGMUS_30);
+        lbl_1_bss_34 = HuAudBGMPlay(MSM_STREAM_GAMING_WITH_DK);
 
         lbl_1_bss_30 = HuAudFXPlay(MSM_SE_M675_2224);
 
@@ -387,10 +387,10 @@ void fn_1_6F4(s16 mode, s16 frame) {
         }
 
         if (hasScore != 0) {
-            HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+            HuAudJinglePlay(MSM_STREAM_WINNING);
             return;
         }
-        HuAudJinglePlay(MSM_STREAM_FILESEL);
+        HuAudJinglePlay(MSM_STREAM_BAD_NEWS);
     }
 }
 

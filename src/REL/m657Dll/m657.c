@@ -237,7 +237,7 @@ void fn_1_BD4(s16 mode, s16 frameNo)
     s16 count = 0;
 
     if (fn_80071DE4() == 0) {
-        lbl_1_data_0->music = HuAudBGMPlay(MSM_STREAM_STORY_BOWSER);
+        lbl_1_data_0->music = HuAudBGMPlay(MSM_STREAM_DUELING_FOR_PRIZES);
     }
     fn_1_4EE4(0);
     fn_1_4EE4(1);

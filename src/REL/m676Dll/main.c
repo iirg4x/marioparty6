@@ -182,7 +182,7 @@ void fn_1_384(s16 sequenceMode, s16 frameNo)
         lbl_1_bss_198 = 0;
     }
     if (lbl_1_bss_190 == -1 && frameNo >= 18) {
-        lbl_1_bss_190 = HuAudBGMPlay(MSM_STREAM_MGMUS_30);
+        lbl_1_bss_190 = HuAudBGMPlay(MSM_STREAM_GAMING_WITH_DK);
         lbl_1_bss_18C = HuAudFXPlay(M676_SOUND_RESOURCE_ID_2230);
     }
     switch (lbl_1_bss_198) {
@@ -338,10 +338,10 @@ void fn_1_8D0(s16 sequenceMode, s16 frameNo)
     }
 
     if (anyAward != 0) {
-        HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+        HuAudJinglePlay(MSM_STREAM_WINNING);
         return;
     }
-    HuAudJinglePlay(MSM_STREAM_FILESEL);
+    HuAudJinglePlay(MSM_STREAM_BAD_NEWS);
 }
 
 /* Sequence callback for this phase; the shared entry also clears the camera-fit spheres. */

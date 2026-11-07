@@ -280,7 +280,7 @@ void fn_1_560(void)
     fn_1_1074();
     fn_8000DAC0(fn_1_940, 100, 8192, 0, lbl_1_bss_62C);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 20);
-    HuAudSStreamPlay(MSM_STREAM_PARTYRESULT_WAIT);
+    HuAudSStreamPlay(MSM_STREAM_TAKING_A_BREAK);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
     }

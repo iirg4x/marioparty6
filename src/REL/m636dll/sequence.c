@@ -180,7 +180,7 @@ void fn_1_494(s16 mode, s16 frameNo)
     previousMusicHandle = lbl_1_bss_0.musicHandle;
     musicHandle = previousMusicHandle;
     if (musicHandle == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
-        musicHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
+        musicHandle = HuAudBGMPlay(MSM_STREAM_SLOW_AND_STEADY);
     }
     storedMusicHandle = musicHandle;
     lbl_1_bss_0.musicHandle = storedMusicHandle;

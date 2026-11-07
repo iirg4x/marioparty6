@@ -1983,7 +1983,7 @@ s32 fn_1_A3FC(void)
         lbl_1_bss_9D0[3] = lbl_1_bss_4 >> 1;
         fn_1_4B58();
     }
-    lbl_1_bss_9D8 = HuAudSStreamPlay(MSM_STREAM_MGMUS_2);
+    lbl_1_bss_9D8 = HuAudSStreamPlay(MSM_STREAM_MINI_GAME_TOUR);
     HuAudFXPlay(MGMFREE_SE_MODE_MENU_ENTRY_FX);
     WipeCreate(1, 0, 60);
     while (WipeCheck() != 0) {

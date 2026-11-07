@@ -4817,7 +4817,7 @@ s32 fn_1_17E78(void)
 {
     HuPrcSleep(5);
     if (lbl_1_bss_0 == 1) fn_1_17894();
-    lbl_1_data_94 = HuAudSStreamPlay(MSM_STREAM_W02);
+    lbl_1_data_94 = HuAudSStreamPlay(MSM_STREAM_TWILA_THEME);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
     while (WipeCheck() != 0) HuPrcVSleep();
     return 1;
@@ -5307,7 +5307,7 @@ s16 fn_1_1E86C(s32 unused)
     if (lbl_1_bss_0 == 1) {
         fn_1_17894();
     }
-    lbl_1_data_94 = HuAudSStreamPlay(MSM_STREAM_W02);
+    lbl_1_data_94 = HuAudSStreamPlay(MSM_STREAM_TWILA_THEME);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
     while (WipeCheck() != 0) {
         HuPrcVSleep();

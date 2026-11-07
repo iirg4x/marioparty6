@@ -169,10 +169,10 @@ static void SeqModeWin(s16 mode, s16 frameNo)
     if(frameNo == 0) {
         if(jumpNum >= 10) {
             fn_8005C2C8(charNo, charMotId[3], 0, 8, 0);
-            HuAudJinglePlay(MSM_STREAM_MGMUS_17);
+            HuAudJinglePlay(MSM_STREAM_WINNING);
         } else {
             fn_8005C2C8(charNo, charMotId[4], 0, 8, 0);
-            HuAudJinglePlay(MSM_STREAM_FILESEL);
+            HuAudJinglePlay(MSM_STREAM_BAD_NEWS);
         }
     }
 }

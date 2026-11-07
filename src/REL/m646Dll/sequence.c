@@ -231,7 +231,7 @@ void fn_1_8A4(s16 sequenceMode, s16 phaseFrame)
 {
     if ((lbl_1_data_0->streamId == -1) &&
         ((s32)(GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0)) {
-        lbl_1_data_0->streamId = HuAudSStreamPlay(MSM_STREAM_MGMUS_26);
+        lbl_1_data_0->streamId = HuAudSStreamPlay(MSM_STREAM_FAST_AND_FURIOUS);
     }
 }
 

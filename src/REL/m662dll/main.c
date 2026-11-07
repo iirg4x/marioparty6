@@ -1231,7 +1231,7 @@ void fn_1_4D04(void) {
 
     lbl_1_bss_210.bgmHandle = -1;
     lbl_1_bss_210.jingleHandle = -1;
-    lbl_1_bss_210.bgmId = MSM_STREAM_MGMUS_27;
+    lbl_1_bss_210.bgmId = MSM_STREAM_NIGHT_DUEL;
     lbl_1_bss_210.jingleId = -1;
     lbl_1_bss_210.panMinimum = 48;
     lbl_1_bss_210.panMaximum = 80;

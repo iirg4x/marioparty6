@@ -96,7 +96,7 @@ void fn_1_10C(s16 mode, s16 frameNo)
     fn_1_5254();
     fn_1_9ED8();
     fn_1_A074();
-    lbl_1_bss_C = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
+    lbl_1_bss_C = HuAudBGMPlay(MSM_STREAM_SLOW_AND_STEADY);
     fn_80071A9C();
 }
 

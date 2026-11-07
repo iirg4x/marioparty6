@@ -127,7 +127,7 @@ void fn_1_1F8(void)
 {
     if (lbl_1_data_28 == -1 &&
         (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
-        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_CAPSULE_WANWAN);
+        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_BLISSFUL);
     }
 }
 
