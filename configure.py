@@ -3748,6 +3748,79 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m615DLL",
+        objects={
+            Object(
+                Matching,
+                "REL/m615DLL/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                shift_jis=False,
+                mw_version=config.linker_version,
+                boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/m615DLL/main.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m615DLL/startup.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m615DLL/geometry.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m615DLL/collision.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m615DLL/game.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

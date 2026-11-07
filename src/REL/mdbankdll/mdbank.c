@@ -12,6 +12,7 @@
 #include "game/wipe.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
+#include "msm_stream.h"
 #include "REL/mdbankdll.h"
 
 typedef struct MdbankAnimSet {
@@ -2698,7 +2699,7 @@ s32 fn_1_9464(void)
         shapeObj->work[2] = 1;
         fn_1_5C1C(1);
     }
-    lbl_1_bss_1988 = HuAudSStreamPlay(92);
+    lbl_1_bss_1988 = HuAudSStreamPlay(MSM_STREAM_STAR_GATHERING);
     HuAudFXPlay(MSM_SE_BANK_DEPOSIT_DONE);
     fn_1_92A4();
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
@@ -3015,7 +3016,7 @@ short fn_1_EA98(s32 unused0, s32 unused1)
         obj->objFunc = fn_1_5988;
     }
 
-    lbl_1_bss_1988 = HuAudSStreamPlay(0x5C);
+    lbl_1_bss_1988 = HuAudSStreamPlay(MSM_STREAM_STAR_GATHERING);
     HuAudFXPlay(MSM_SE_BANK_DEPOSIT_DONE);
     if (lbl_1_bss_1930[0] > 80) {
         lbl_1_data_0 = HuAudFXPlay(MSM_SE_BANK_BALANCE_LOOP_4);
