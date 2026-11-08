@@ -5,3 +5,45 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m663dll/text_bss.c:
+	.bss        start:0x00000000 end:0x000015AA
+
+REL/m663dll/main.c:
+	.text       start:0x00000000 end:0x000064A4
+	.rodata     start:0x00000000 end:0x00000318
+	.data       start:0x00000000 end:0x00000100
+
+REL/m663dll/sound_control.c:
+	.text       start:0x000064A4 end:0x00006654
+
+REL/m663dll/sound_stop.c:
+	.text       start:0x00006654 end:0x00006804
+
+REL/m663dll/game.c:
+	.text       start:0x00006804 end:0x00009EC8
+	.rodata     start:0x00000318 end:0x000006D0
+	.data       start:0x00000100 end:0x00000160
+
+REL/m663dll/game_init.c:
+	.text       start:0x00009EC8 end:0x0000BCC8
+	.rodata     start:0x000006D0 end:0x00000818
+	.data       start:0x00000160 end:0x00000284
+
+REL/m663dll/transition_constants.c:
+	.rodata     start:0x00000818 end:0x00000848
+
+REL/m663dll/transition.c:
+	.text       start:0x0000BCC8 end:0x0000C4F8
+
+REL/m663dll/com_player.c:
+	.text       start:0x0000C4F8 end:0x0000D83C
+	.rodata     start:0x00000848 end:0x000008E0
+
+REL/m663dll/score.c:
+	.text       start:0x0000D83C end:0x0000DD08
+	.rodata     start:0x000008E0 end:0x00000908
+
+REL/m663dll/runtime.c:
+	.text       start:0x0000DD08 end:0x0000E74C
+	.rodata     start:0x00000908 end:0x00000920
