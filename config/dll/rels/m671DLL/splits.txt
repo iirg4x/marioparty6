@@ -85,3 +85,4 @@ REL/framework/thread.cpp:
 	.text       start:0x00021458 end:0x000218D0
 	.rodata     start:0x00000A48 end:0x00000A98
 	.data       start:0x00000B70 end:0x00000C1C
+	.bss        start:0x00000A88 end:0x00000A89

@@ -116,6 +116,7 @@ REL/framework/thread.cpp:
 	.text       start:0x00023390 end:0x00023808
 	.rodata     start:0x00000B88 end:0x00000BD8
 	.data       start:0x00001588 end:0x00001638
+	.bss        start:0x00000AC8 end:0x00000AC9
 
 REL/framework/timer.cpp:
 	.text       start:0x00023808 end:0x00023C54

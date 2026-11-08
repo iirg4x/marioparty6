@@ -5,9 +5,8 @@ static const char rcsid[] = "$Id: subthread.cpp,v 1.6 2004/02/17 09:22:00 hanama
 
 extern "C" {
 #include "REL/framework/assertion.h"
+#include "REL/framework/hu_archive.h"
 }
-
-void operator delete(void *);
 
 // Called by MinigameCore during construction; this thread hook has no effect.
 void emptyThreadHook() {}

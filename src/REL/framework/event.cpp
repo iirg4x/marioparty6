@@ -11,6 +11,7 @@ extern "C" {
 }
 
 #include "REL/framework/event_callback_inline.h"
+#include "REL/framework/minigame_singleton.h"
 
 static const char rcsid[] = "$Id: event.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
 
@@ -93,20 +94,8 @@ void CEventBroadcaster::removeListener(unsigned long listener)
     }
 }
 
-/* Tracks the active event interface and rejects construction while another one exists. */
-template<class Owner> struct EventSingleton {
-    static EventSingleton *self; /* Active interface instance, or null before creation/after
-                                  * deletion. */
-    /* Interface construction reports and aborts if the singleton slot is already occupied. */
-    EventSingleton() {
-        !self ? (void)0 : __msl_assertion_failed("self == 0", "singleton.h", 50);
-        self = this;
-    }
-    ~EventSingleton() { self = 0; }
-};
-template<class Owner> EventSingleton<Owner> *EventSingleton<Owner>::self;
 /* Minigame-facing lifetime owner of the shared event map, queue, and clock. */
-struct EventManager : EventSingleton<EventManager> {
+struct EventManager : MinigameSingleton<EventManager> {
     EventManager();
     ~EventManager();
 };

@@ -7,9 +7,8 @@ extern "C" {
 #include "game/mg/timer.h"
 #include "game/flag.h"
 #include "REL/framework/assertion.h"
+#include "REL/framework/hu_archive.h"
 }
-
-void operator delete(void *);
 
 // Provides the minigame framework object with control of its HUD timer.
 struct TimerOwner {
