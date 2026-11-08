@@ -9,7 +9,8 @@ extern "C" {
 
 void initializeThreadStack(unsigned long *storage, unsigned long count);
 int checkThreadStack(unsigned long *begin, int mode);
-extern unsigned char threadStackDebugEnabled;
+/* Nonzero fills new thread stacks with a pattern and reports how much of them a thread used. */
+unsigned char threadStackDebugEnabled;
 void *operator new[](unsigned long);
 void operator delete[](void *);
 extern "C" int printf(const char *, ...);

@@ -1,6 +1,7 @@
 // Shadow-camera helpers and setup used by minigame scenes.
 #include <cmath>
 #include "REL/framework/scene_shadow.h"
+#include "humath.h"
 
 static const char rcsid[] = "$Id: scene_shadow.cpp,v 1.17.2.6 2004/07/16 11:12:51 shohyama Exp $";
 
@@ -46,7 +47,7 @@ float calculateShadowCameraPosition(Vec *position, const Vec *direction,
 void configureShadowCamera(short mask, const Vec *direction, Vec *target,
                            float width, float depth, float fov)
 {
-    float angle = 3.141592653589793 * (fov / 2.0f) / 180.0;
+    float angle = M_PI * (fov / 2.0f) / 180.0;
     width *= 0.5f;
     depth *= 0.5f;
     Vec position, normal, up;
@@ -75,8 +76,8 @@ SceneShadow::SceneShadow(short mask, const Vec *lightDirection, float fieldOfVie
 {
     CameraPerspective &camera = perspective;
     camera.marginLeft = camera.marginRight = camera.marginTop = camera.marginBottom = 8;
-    camera.fovRadians = 3.141592653589793 * fieldOfView / 180.0;
-    fn_8002A3B0(180.0 * (camera.fovRadians / 3.141592653589793), 0.1f, 1.0f, mask);
+    camera.fovRadians = M_PI * fieldOfView / 180.0;
+    fn_8002A3B0(180.0 * (camera.fovRadians / M_PI), 0.1f, 1.0f, mask);
     fn_8002A8CC(480, mask);
     fn_8002A7D8(0.4f, mask);
     for (int index = 0; index < 16; ++index) {

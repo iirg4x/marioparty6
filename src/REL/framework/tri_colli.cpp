@@ -25,9 +25,10 @@ static inline double vectorDotDouble(const Vector3 *first, const Vector3 *second
 }
 
 // Stores the tree that ray queries will visit.
-void TriangleCollision::setCollisionTree(CollisionTree *tree)
+TriangleCollision *TriangleCollision::setCollisionTree(CollisionTree *tree)
 {
     collisionTree = tree;
+    return this;
 }
 
 // How far the turn from one corner direction to the next leans along the triangle's normal.

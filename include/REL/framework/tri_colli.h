@@ -80,7 +80,7 @@ struct TriangleCollision {
     float maximumDistance;
     CollisionTree *collisionTree;
 
-    void setCollisionTree(CollisionTree *tree);
+    TriangleCollision *setCollisionTree(CollisionTree *tree);
     bool castRay(const Vector3 *start, const Vector3 *end);
     bool castNode(OctreeDebugNode *node);
     bool intersectSegment(Vector3 *point, const Vector3 *start, const Vector3 *end);

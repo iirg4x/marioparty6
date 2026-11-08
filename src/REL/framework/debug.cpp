@@ -1,3 +1,4 @@
+#include "REL/framework/debug.h"
 // Debug camera frame helpers and controller-stick input scaling for minigames.
 static const char rcsid[] = "$Id: debug.cpp,v 1.13.2.2 2004/04/16 11:22:07 shohyama Exp $";
 
@@ -42,7 +43,7 @@ float getDebugSubStickX(int padIndex) { return (1.0f / 44.0f) * lbl_802BFFF4[pad
 float getDebugSubStickY(int padIndex) { return (1.0f / 44.0f) * lbl_802BFFF0[padIndex]; }
 
 // Debug event processing can call this hook; it performs no work.
-void debugEventHook() {}
+void debugEventHook(void *, int) {}
 
 // Combines the debug camera frame with its packed flags.
 struct CameraSetup {
@@ -66,7 +67,7 @@ CameraSetup::CameraSetup()
 }
 
 // Debug reset processing can call this hook; it performs no work.
-void debugResetHook() {}
+void debugResetHook(CameraFrame *, s32, s32) {}
 
 // Replacing a debug camera frame copies its eye, up direction, and target from another frame.
 void copyDebugCameraFrame(CameraFrame *destination, const CameraFrame *source)
