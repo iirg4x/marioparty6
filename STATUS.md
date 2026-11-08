@@ -22,6 +22,8 @@ Shared C++ framework (`framework:minigame_core.cpp`): **34 complete source files
 
 Every module's runtime (`runtime.c`) compiles from the original CodeWarrior `Runtime.PPCEABI.H` source; the 88 per-module copies are gone, and every linked REL still matches retail.
 
+1 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
+
 3 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
 
 9 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 3 audit findings fewer; every linked REL still matches retail.
