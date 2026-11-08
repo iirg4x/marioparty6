@@ -185,6 +185,11 @@ static inline GW_PLAYER *GWPlayerGet(int playerNo)
 extern u32 lbl_802C0280[];
 extern s16 lbl_802C0278;
 
+static inline s16 GWMgNightFGet(void)
+{
+    return lbl_802C0278;
+}
+
 extern s16 lbl_802BF788;
 extern s16 lbl_802BF78A;
 
