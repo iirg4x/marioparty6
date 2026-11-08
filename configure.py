@@ -3862,6 +3862,24 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m614Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m614Dll/main.c",
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/m614Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
