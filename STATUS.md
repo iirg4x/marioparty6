@@ -24,6 +24,8 @@ Every module's runtime (`runtime.c`) compiles from the original CodeWarrior `Run
 
 The shared REL framework sources and headers carry their cleaned versions; every linked output still matches retail.
 
+The shared REL framework sources and headers carry their cleaned versions; every linked output still matches retail.
+
 18 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
 
 25 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
