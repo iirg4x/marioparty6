@@ -1,6 +1,7 @@
 /* Word Herd startup, sequence hooks, vector helpers and matrix transforms. */
 #include <math.h>
 #include "REL/m669DLL/vector.h"
+#include "game/matrix_angle.h"
 
 #include "dolphin/gx.h"
 
@@ -376,18 +377,6 @@ s32 fn_1_800(Mtx out, HuVecF *start, HuVecF *end, HuVecF *up)
     return 1;
 }
 
-static inline float M669AngleXY(float x, float y);
-
-/* Returns atan2(x, y), explicitly choosing a signed right angle when y is zero. */
-static inline float M669AngleXY(float x, float y)
-{
-    if (y == 0.0f) {
-        if (x >= 0.0f) return M_PI / 2;
-        else return -(M_PI / 2);
-    }
-    return atan2f(x, y);
-}
-
 /* Extracts rotation angles in radians after measuring column scales; degenerate columns produce
  * zero angles. */
 s32 fn_1_EF8(HuVecF *out, Mtx matrix)
@@ -415,11 +404,11 @@ s32 fn_1_EF8(HuVecF *out, Mtx matrix)
                 out->y = -angleY;
                 cosY = cos(out->y);
                 if (cosY > 0.00000001f) {
-                    out->x = -M669AngleXY(matrix[2][1] / scaleY, matrix[2][2] / scaleZ);
-                    out->z = -M669AngleXY(matrix[1][0], matrix[0][0]);
+                    out->x = -HuAngleXY(matrix[2][1] / scaleY, matrix[2][2] / scaleZ);
+                    out->z = -HuAngleXY(matrix[1][0], matrix[0][0]);
                 } else {
                     /* Use the alternate X angle near a right-angle Y rotation, fixing Z to pi. */
-                    out->x = -M669AngleXY(matrix[0][1], matrix[1][1]);
+                    out->x = -HuAngleXY(matrix[0][1], matrix[1][1]);
                     out->z = M_PI;
                 }
                 return 1;
