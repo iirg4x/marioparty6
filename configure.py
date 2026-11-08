@@ -4720,6 +4720,122 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m699Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m699Dll/collision.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/m699effect.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/main.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/model.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/player.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/player_setup.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/score.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m699Dll/system.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
