@@ -3,9 +3,34 @@
 #define _MATH_H
 
 #include "game/board/main.h"
+#include "game/board/audio.h"
+#include "game/board/branch.h"
+#include "game/board/camera.h"
+#include "game/board/capevent.h"
+#include "game/board/capselect.h"
+#include "game/board/capsule.h"
+#include "game/board/coin.h"
+#include "game/board/dice.h"
+#include "game/board/effect.h"
+#include "game/board/gate.h"
+#include "game/board/masu.h"
+#include "game/board/math.h"
+#include "game/board/mgcall.h"
+#include "game/board/object.h"
+#include "game/board/opening.h"
 #include "game/board/pause.h"
 #include "game/board/player.h"
+#include "game/board/scroll.h"
+#include "game/board/single.h"
+#include "game/board/snpc.h"
+#include "game/board/star.h"
+#include "game/board/status.h"
+#include "game/board/telop.h"
+#include "game/board/tutorial.h"
+#include "game/board/window.h"
+#include "game/board/wipe.h"
 #include "game/hu3d.h"
+#include "game/audio.h"
 #include "game/data.h"
 #include "game/gamework.h"
 #include "game/flag.h"
@@ -17,11 +42,6 @@
 #include "string.h"
 
 typedef void (*MBHOOK)(void);
-
-static inline s16 GWMgNightFGet(void)
-{
-    return lbl_802C0278;
-}
 
 static inline void GWMgPackSet(s32 mgPack)
 {
@@ -70,86 +90,6 @@ BOOL mbSaveNewF; /* Set while mbObjectSetup initializes a new board save. */
 HUPROCESS *mbMainProc; /* Child process that runs mbMain. */
 OMOBJMAN *mbObjMan; /* Object manager whose teardown invokes mbOMDestroy. */
 
-extern void mbBoardDataDirRead(void);
-extern void mbMathInit(void);
-extern void mbMathClose(void);
-extern void mbSNpcInit(void);
-extern void mbTutorialInit(void);
-extern void mbTutorialCreate(void);
-extern void mbTutorialCall(s32 mode);
-extern BOOL mbTutorialExitReqGet(void);
-extern void mbConfigPadDisableSet(BOOL disableF);
-extern void mbExitWatchCreate(void);
-extern void mbExitReq(void);
-extern void mbWipeWait(void);
-extern void mbWipeFadeIn(void);
-extern void mbWipeDissolveFadeOut(void);
-extern void mbWipeSpecialInit(void);
-extern void mbWipeSpecialClose(void);
-extern void mbCameraInit(void);
-extern void mbCameraZoomSet(float zoom);
-extern void mbCameraRotSet(float x, float y, float z);
-extern void mbCameraCenterSet(float x, float y, float z);
-extern void mbCameraMoveOnSet(BOOL onF);
-extern void mbCameraMoveStop(void);
-extern void mbAudInit(void);
-extern void mbAudClose(void);
-extern void mbObjInit(void);
-extern void mbObjClose(void);
-extern void mbPauseInit(void);
-extern void mbWinInit(void);
-extern void mbWinClose(void);
-extern void mbEffInit(void);
-extern void mbEffClose(void);
-extern void mbGateInit(void);
-extern void mbGateClose(void);
-extern void mbCapInit(void);
-extern void mbCoinInit(void);
-extern void mbCoinClose(void);
-extern void mbBranchInit(void);
-extern void mbStarInit(void);
-extern void mbStarClose(void);
-extern void mbStarFlagInit(void);
-extern void mbStarNextNoSet(s32 no);
-extern s32 mbStarNoRandGet(void);
-extern void mbStarNoSet(s32 no);
-extern void mbStarReset(void);
-extern void mbMasuCapsuleReset(void);
-extern void mbev_CapBankCoinInit(void);
-extern void mbev_CapInit(void);
-extern void mbMasuClose(void);
-extern void mbMasuPlayerPrizeReset(s32 playerNo);
-extern void mbStatusInit(void);
-extern void mbStatusClose(void);
-extern void mbStatusDispForceSetAll(BOOL dispF);
-extern void mbStatusColorAllSet(s32 color);
-extern void mbStatusMasuDispSet(BOOL dispF);
-extern void mbDiceInit(void);
-extern void mbDiceClose(void);
-extern void mbTauntInit(void);
-extern void mbTauntClose(void);
-extern void mbScrollClose(void);
-extern void fn_8019A620(void);
-extern void mbSingleInit(void);
-extern void mbSingleClose(void);
-extern void mbSingleSaveInit(s32 teamChar, s32 mgPack, s32 storyComDif);
-extern void mbSingleGameEnd(void);
-extern s32 mbSingleCall(s32 mode, s32 modeArg);
-extern s32 mbev_SingleMgEnd(s32 playerNo);
-extern s32 mbev_MgCall(void);
-extern void mbMgCallDataClose(void);
-extern void mbMgCallInit(void);
-extern void mbev_Opening(void);
-extern void mbev_Last5(void);
-extern void mbev_CapKettouEndCall(s32 playerNo);
-extern void mbev_CapDonkeyEndCall(s32 playerNo);
-extern void mbev_CapKoopaEndCall(s32 playerNo);
-extern void mbMusBoardPlay(void);
-extern void mbTelopLastTurnCreate(void);
-extern void mbTelopTimeChangeCreate(void);
-extern void mbTelopTimeChangeKill(void);
-extern BOOL mbTelopTimeChangeCheck(void);
-extern void HuAudAllStop(void);
 extern void mbLightFuncSet(MBHOOK lightSetHook, MBHOOK lightResetHook);
 extern void mbDirClose(void);
 extern void mbBGReadWait(s32 dataReadStat);
