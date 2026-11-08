@@ -369,7 +369,7 @@ config.libs = [
                 mw_version="GC/1.3.2",
                 extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"],
             ),
-            Object(Matching, "Runtime.PPCEABI.H/ptmf.c"),
+            Object(Matching, "Runtime.PPCEABI.H/ptmf.c", shift_jis=False),
             Object(Matching, "Runtime.PPCEABI.H/runtime.c", shift_jis=False, runtime_source_selected=True),
             Object(Matching, "Runtime.PPCEABI.H/__init_cpp_exceptions.cpp"),
             Object(
