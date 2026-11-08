@@ -3880,6 +3880,30 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m601Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m601Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata", "off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/m601Dll/sequence_callbacks.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m601Dll/shared.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

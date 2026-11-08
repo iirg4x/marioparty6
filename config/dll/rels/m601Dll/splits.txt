@@ -5,3 +5,16 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m601Dll/shared.c:
+	.text       start:0x00000000 end:0x0000A2AC
+	.rodata     start:0x00000000 end:0x00000490
+	.data       start:0x00000000 end:0x000001F0
+	.bss        start:0x00000000 end:0x00000444
+
+REL/m601Dll/sequence_callbacks.c:
+	.text       start:0x0000A2AC end:0x0000A44C
+
+REL/m601Dll/runtime.c:
+	.text       start:0x0000A44C end:0x0000AE90
+	.rodata     start:0x00000490 end:0x000004A8
