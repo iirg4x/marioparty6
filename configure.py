@@ -4020,6 +4020,108 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m661dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m661dll/main.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/object_motion.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/object_setup.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/player_paths.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/round_result.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/score.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/score_display.c",
+                mw_version=config.linker_version,
+            ),
+            Object(
+                Matching,
+                "REL/m661dll/sound.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
