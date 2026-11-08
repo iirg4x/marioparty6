@@ -5,3 +5,13 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:32
+
+REL/m606Dll/camera.c:
+	.text       start:0x00000000 end:0x00010114
+	.rodata     start:0x00000000 end:0x00000E88
+	.data       start:0x00000000 end:0x000001E8
+	.bss        start:0x00000000 end:0x0000BDE8
+
+REL/m606Dll/runtime.c:
+	.text       start:0x00010114 end:0x00010B58
+	.rodata     start:0x00000E88 end:0x00000EA0
