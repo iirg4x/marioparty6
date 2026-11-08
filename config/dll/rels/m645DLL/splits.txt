@@ -5,3 +5,39 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m645DLL/shared/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m645DLL/process.c:
+	.text       start:0x000000A0 end:0x00000144
+	.rodata     start:0x00000000 end:0x00000010
+	.data       start:0x00000000 end:0x00000028
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m645DLL/object.c:
+	.text       start:0x00000144 end:0x000006D0
+	.rodata     start:0x00000010 end:0x00000038
+
+REL/m645DLL/vector_bounds.c:
+	.text       start:0x000006D0 end:0x000008C0
+
+REL/m645DLL/collision.c:
+	.text       start:0x000008C0 end:0x00002970
+	.rodata     start:0x00000038 end:0x00000060
+
+REL/m645DLL/route_node.c:
+	.text       start:0x00002970 end:0x0000299C
+
+REL/m645DLL/route_selection.c:
+	.text       start:0x0000299C end:0x000029CC
+
+REL/m645DLL/setup.c:
+	.text       start:0x000029CC end:0x0000FCE0
+	.rodata     start:0x00000060 end:0x000002E0
+	.data       start:0x00000028 end:0x000005C4
+	.bss        start:0x00000008 end:0x00000170
+
+REL/m645DLL/runtime.c:
+	.text       start:0x0000FCE0 end:0x00010724
+	.rodata     start:0x000002E0 end:0x000002F8

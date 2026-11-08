@@ -3904,6 +3904,59 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m645DLL",
+        objects={
+            Object(
+                Matching,
+                "REL/m645DLL/collision.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/object.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/process.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/route_node.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/route_selection.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/setup.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/shared/prolog.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m645DLL/vector_bounds.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
