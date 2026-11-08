@@ -3844,6 +3844,24 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m606Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m606Dll/camera.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m606Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
