@@ -6332,6 +6332,32 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m678Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m678Dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata", "off"],
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/m678Dll/sequence_hooks.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
