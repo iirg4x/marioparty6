@@ -4836,6 +4836,34 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m679dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m679dll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                shift_jis=False,
+                mw_version=config.linker_version,
+                boot_runtime_source_selected=True,
+            ),
+            Object(
+                Matching,
+                "REL/m679dll/prolog.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m679dll/maze.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m679dll/timer.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
