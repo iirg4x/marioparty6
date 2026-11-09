@@ -37,7 +37,7 @@ REL/framework/chara.cpp:
 REL/framework/chara_motion.cpp:
 	.text       start:0x000278E8 end:0x00028888
 	.rodata     start:0x00001608 end:0x00001648
-	.data       start:0x00002410 end:0x00002470
+	.data       start:0x00001768 end:0x00002470
 
 REL/framework/debug.cpp:
 	.text       start:0x00028888 end:0x00028AD0
