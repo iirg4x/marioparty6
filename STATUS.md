@@ -2,19 +2,19 @@
 
 The current state of the supported `GP6E01` build on this branch. This page is regenerated from `progress/report.json` whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-09 18:49 UTC.
+Updated 2026-11-09 19:21 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 82.37% | 68.31% |
+| Entire project | 83.25% | 68.46% |
 | Main DOL | 91.95% | 78.94% |
-| REL modules | 80.33% | 61.57% |
+| REL modules | 81.40% | 61.82% |
 
 ## REL modules
 
-**110 of 128** modules have all of their code recovered as matching source.
+**111 of 128** modules have all of their code recovered as matching source.
 
 Still partial (14):
 
@@ -35,7 +35,7 @@ Still partial (14):
 | Seer Terror (`m677DLL`) | 28.7% | 318 of 1079 |
 | What Goes Up... (`m604DLL`) | 11.7% | 93 of 449 |
 
-Not recovered here yet (4): `micquizishidll`, `micquizmyokodll`, `micquizohdedll`, `mikeactdll`.
+Not recovered here yet (3): `micquizishidll`, `micquizohdedll`, `mikeactdll`.
 
 ## Main DOL
 
