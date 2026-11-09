@@ -6,20 +6,114 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m654DLL/cpu_control.cpp:
+	.text       start:0x00000000 end:0x00000B80
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x00000058
+	.data       start:0x00000000 end:0x00000070
+	.bss        start:0x00000000 end:0x00000010
+
+REL/m654DLL/time_conversion.cpp:
+	.text       start:0x00000B80 end:0x00000BB4
+
+REL/m654DLL/scene_object_owner.cpp:
+	.text       start:0x00000BB4 end:0x00001218
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x00000058 end:0x00000078
+	.data       start:0x00000070 end:0x000000A0
+	.bss        start:0x00000010 end:0x00000038
+
+REL/m654DLL/module_root.cpp:
+	.text       start:0x00001218 end:0x00001270
+	.rodata     start:0x00000078 end:0x00000080
+
+REL/m654DLL/camera_owner.cpp:
+	.text       start:0x00001270 end:0x000012F0
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000080 end:0x00000090
+	.bss        start:0x00000038 end:0x00000048
+
+REL/m654DLL/camera.cpp:
+	.text       start:0x000012F0 end:0x00001C54
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000090 end:0x00000140
+	.data       start:0x000000A0 end:0x00000118
+	.bss        start:0x00000048 end:0x00000050
+
+REL/m654DLL/man_map.cpp:
+	.text       start:0x00001C54 end:0x00003274
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x00000140 end:0x000001B8
+	.data       start:0x00000118 end:0x00000220
+	.bss        start:0x00000050 end:0x00000060
+
+REL/m654DLL/player.cpp:
+	.text       start:0x00003274 end:0x00006290
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x000001B8 end:0x000002D8
+	.data       start:0x00000220 end:0x000003F8
+	.bss        start:0x00000060 end:0x00000098
+
+REL/m654DLL/score_display.cpp:
+	.text       start:0x00006290 end:0x000080E0
+	.ctors      start:0x00000018 end:0x0000001C
+	.rodata     start:0x000002D8 end:0x00000350
+	.data       start:0x000003F8 end:0x00000490
+	.bss        start:0x00000098 end:0x000000A8
+
+REL/m654DLL/sprite_draw.cpp:
+	.text       start:0x000080E0 end:0x000085D8
+	.ctors      start:0x0000001C end:0x00000020
+	.rodata     start:0x00000350 end:0x000003B8
+	.bss        start:0x000000A8 end:0x000000C0
+
+REL/m654DLL/switch_panel.cpp:
+	.text       start:0x000085D8 end:0x00009B98
+	.ctors      start:0x00000020 end:0x00000024
+	.rodata     start:0x000003B8 end:0x00000528
+	.data       start:0x00000490 end:0x000006A0
+	.bss        start:0x000000C0 end:0x000000E0
+
+REL/m654DLL/player_table_1vs1.cpp:
+	.text       start:0x00009B98 end:0x00009C5C
+	.rodata     start:0x00000528 end:0x00000538
+	.data       start:0x000006A0 end:0x000006D0
+
+REL/m654DLL/sound_spatial.cpp:
+	.text       start:0x00009C5C end:0x0000C038
+	.rodata     start:0x00000538 end:0x00000560
+	.data       start:0x000006D0 end:0x000007A0
+
 REL/framework/heap.cpp:
 	.text       start:0x0000C038 end:0x0000C1B8
 	.rodata     start:0x00000560 end:0x00000598
 	.data       start:0x000007A0 end:0x000007C0
 	.bss        start:0x000000E0 end:0x000000E8
 
+REL/m654DLL/global_object.cpp:
+	.text       start:0x0000C1B8 end:0x0000C240
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x000000E8 end:0x000000F0
+
+REL/m654DLL/ptmf.c:
+	.text       start:0x0000C240 end:0x0000C388
+	.rodata     start:0x00000598 end:0x000005A8
+
 REL/framework/new.cpp:
 	.text       start:0x0000C388 end:0x0000C550
 	.rodata     start:0x000005A8 end:0x000005E0
 	.data       start:0x000007C0 end:0x000007E8
 
+REL/m654DLL/pad_control.cpp:
+	.text       start:0x0000C550 end:0x0000CB08
+	.rodata     start:0x000005E0 end:0x00000638
+
 REL/framework/camera.cpp:
 	.text       start:0x0000CB08 end:0x0000D2DC
 	.rodata     start:0x00000638 end:0x000006A8
+
+REL/m654DLL/camera_view.cpp:
+	.text       start:0x0000D2DC end:0x0000D314
 
 REL/framework/camera_ut0.cpp:
 	.text       start:0x0000D314 end:0x0000E70C
@@ -29,6 +123,12 @@ REL/framework/camera_ut0.cpp:
 REL/framework/camera_ut1.cpp:
 	.text       start:0x0000E70C end:0x0000EA90
 	.rodata     start:0x00000708 end:0x00000750
+
+REL/m654DLL/registered_value.cpp:
+	.text       start:0x0000EA90 end:0x0000EFCC
+	.rodata     start:0x00000750 end:0x00000758
+	.data       start:0x00000840 end:0x00000878
+	.bss        start:0x000000F0 end:0x000000F8
 
 REL/framework/chara_motion.cpp:
 	.text       start:0x0000EFCC end:0x0000FF6C
@@ -55,9 +155,21 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000890 end:0x000008D0
 	.data       start:0x00001698 end:0x00001720
 
+REL/m654DLL/free.cpp:
+	.text       start:0x0001843C end:0x00018718
+	.data       start:0x00001720 end:0x00001740
+
+REL/m654DLL/heap_alloc.cpp:
+	.text       start:0x00018718 end:0x000187E4
+
 REL/framework/linknode.cpp:
 	.text       start:0x000187E4 end:0x00018960
 	.rodata     start:0x000008D0 end:0x00000910
+
+REL/m654DLL/linknode.cpp:
+	.text       start:0x00018960 end:0x000194DC
+	.ctors      start:0x00000024 end:0x00000028
+	.bss        start:0x00000100 end:0x00000118
 
 REL/framework/minigame_core.cpp:
 	.text       start:0x000194DC end:0x0001A058
@@ -66,15 +178,30 @@ REL/framework/minigame_core.cpp:
 	.data       start:0x00001740 end:0x00001778
 	.bss        start:0x00000118 end:0x00000128
 
+REL/m654DLL/model.cpp:
+	.text       start:0x0001A058 end:0x0001B4E8
+	.rodata     start:0x00000968 end:0x00000970
+	.data       start:0x00001778 end:0x00001798
+	.bss        start:0x00000128 end:0x00000130
+
 REL/framework/mt19937.cpp:
 	.text       start:0x0001B4E8 end:0x0001C4E8
 	.rodata     start:0x00000970 end:0x000009E0
+
+REL/m654DLL/p_info.cpp:
+	.text       start:0x0001C4E8 end:0x0001D404
+	.rodata     start:0x000009E0 end:0x000009F8
+	.data       start:0x00001798 end:0x00001820
 
 REL/framework/random.cpp:
 	.text       start:0x0001D404 end:0x0001D594
 	.ctors      start:0x0000002C end:0x00000030
 	.rodata     start:0x000009F8 end:0x00000A38
 	.bss        start:0x00000130 end:0x00000AF8
+
+REL/m654DLL/runtime.c:
+	.text       start:0x0001D594 end:0x0001DFD8
+	.rodata     start:0x00000A38 end:0x00000A50
 
 REL/framework/scene_shadow.cpp:
 	.text       start:0x0001DFD8 end:0x0001FF30
