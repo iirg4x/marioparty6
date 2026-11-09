@@ -1,7 +1,7 @@
 /* Sets up and runs the Shoot Yer Mouth Off minigame. */
 #include "dolphin/gx.h"
 
-#include "dolphin/math.h"
+#include <math.h>
 
 #include "dolphin/types.h"
 
@@ -33,6 +33,8 @@
 
 #include "game/object.h"
 
+#include "game/printfunc.h"
+
 #include "game/gamemes.h"
 
 #include "game/data.h"
@@ -62,6 +64,7 @@
 #include "REL/m666dll/recovered.h"
 
 #include "REL/m666dll/tables.h"
+#include "humath.h"
 
 #define M666_CLUSTER_MOTION_CLEAR_MASK ((s32)((3U << 30) | (1U << 0)))
 #define M666_TRANSFORM_TRAILING_DATA_TWO (2 << 16)
@@ -71,17 +74,6 @@
 #define M666_TRANSFORM_TRAILING_DATA_SEVEN (7 << 16)
 #define M666_FLOAT_30_BIT_PATTERN 0x41F00000
 #define M666_FLOAT_28_BIT_PATTERN 0x41E00000
-
-/* Sound effects named for the events that trigger them. */
-#define MSM_SE_M666_TARGET_ASSIGNMENT 2173
-#define MSM_SE_M666_BOMB_HOOK 2174
-#define MSM_SE_M666_LANE_CENTER_CROSSING 2175
-#define MSM_SE_M666_LANE_ACTIVATION 2176
-#define MSM_SE_M666_MARKER_ROTATION 2177
-#define MSM_SE_M666_EVENT_ANIMATION_FRAME 2178
-#define MSM_SE_M666_OBSTACLE_RESET 2179
-#define MSM_SE_M666_PLAYER_RELEASE 2180
-#define MSM_SE_M666_EVENT_FALLBACK 2181
 
 typedef struct {
     MGACTOR *actor;
@@ -102,8 +94,8 @@ typedef struct {
     s16 state;
     s16 timer;
     s16 targetPlayerIndex;
-    /* Written with the obstacle grid-cell index; game code never reads this field. */
-    s16 unknown1E;
+    /* The obstacle's cell in the 3x3 floor grid (column + row * 3); game code never reads it. */
+    s16 gridCell;
     f32 verticalStep;
     f32 actorRotation;
 } M666MovingObstacle;
@@ -116,15 +108,10 @@ typedef struct {
 } M666SequenceParticle;
 
 typedef struct {
-    /* Game code never reads these bytes. */
-    u8 unk00[4];
+    u8 unk_00[4]; /* No code names this field. */
     s16 rootModelId;
-    /* Game code never reads these bytes. */
-    u8 unk06[2];
-    union {
-        u8 particleStorage[96];
-        M666SequenceParticle particles[8];
-    };
+    u8 unk06[2]; /* No code names this field. */
+    M666SequenceParticle particles[8];
     s16 state;
     union {
         s16 status;
@@ -239,29 +226,15 @@ void fn_1_92C(void) {
 extern HUPROCESS *lbl_1_bss_4;
 
 typedef struct {
-    Vec positions[6];
-} M666ShadowPositionTable;
-
-typedef struct {
     f32 x;
     f32 y;
 } M666ShadowPlane;
 
 typedef struct {
-    union {
-        Vec position;
-        struct {
-            f32 x;
-            f32 y;
-            f32 z;
-        };
-    };
-    /* Game code never reads these bytes. */
-    u8 unk0C[4];
-    union {
-        s16 direction;
-        s16 unknown10;
-    };
+    Vec position;
+    /* 180, 90, 0 or -90 degrees, following direction 0-3 in the table. */
+    f32 unk_0C;
+    s16 direction;
 } M666DataPoint;
 
 typedef struct {
@@ -443,20 +416,16 @@ u32 lbl_1_data_6F0[14] = {
 };
 
 M666DataPoint lbl_1_data_728[9] = {
-    {{-300.0f, -100.0f, -680.0f}, {67, 52, 0, 0}, 0},
-    {{0.0f, -100.0f, -680.0f}, {67, 52, 0, 0}, 0},
-    {{300.0f, -100.0f, -680.0f}, {67, 52, 0, 0}, 0},
-    {{680.0f, -100.0f, 0.0f}, {66, 180, 0, 0}, 1},
-    {{300.0f, -100.0f, 680.0f}, {0, 0, 0, 0}, 2},
-    {{0.0f, -100.0f, 680.0f}, {0, 0, 0, 0}, 2},
-    {{-300.0f, -100.0f, 680.0f}, {0, 0, 0, 0}, 2},
-    {{-680.0f, -100.0f, 300.0f}, {194, 180, 0, 0}, 3},
-    {{-680.0f, -100.0f, -300.0f}, {194, 180, 0, 0}, 3}
+    {{-300.0f, -100.0f, -680.0f}, 180.0f, 0},
+    {{0.0f, -100.0f, -680.0f}, 180.0f, 0},
+    {{300.0f, -100.0f, -680.0f}, 180.0f, 0},
+    {{680.0f, -100.0f, 0.0f}, 90.0f, 1},
+    {{300.0f, -100.0f, 680.0f}, 0.0f, 2},
+    {{0.0f, -100.0f, 680.0f}, 0.0f, 2},
+    {{-300.0f, -100.0f, 680.0f}, 0.0f, 2},
+    {{-680.0f, -100.0f, 300.0f}, -90.0f, 3},
+    {{-680.0f, -100.0f, -300.0f}, -90.0f, 3}
 };
-
-extern s32 HuMCProbe(s32 channel);
-
-extern void fn_8006A030(s16 playerNo, s16 duration, s16 off, s16 on);
 
 typedef struct {
     s16 playerNumber;
@@ -519,12 +488,12 @@ void fn_1_9D4(void) {
 
 /* Creates the lighting, shadows, models and initial positions for fn_1_8BC. */
 void fn_1_B54(void) {
-    M666ShadowPositionTable shadowPositions = { { { -300.0f, 60.0f, -820.0f },
+    Vec shadowPositions[6] = { { -300.0f, 60.0f, -820.0f },
                                                   { 0.0f, 60.0f, -820.0f },
                                                   { 300.0f, 60.0f, -820.0f },
                                                   { 300.0f, 60.0f, 820.0f },
                                                   { 0.0f, 60.0f, 820.0f },
-                                                  { -300.0f, 60.0f, 820.0f } } };
+                                                  { -300.0f, 60.0f, 820.0f } };
     Vec shadowPosition = {0.0f, 10000.0f, -100.0f};
     Vec shadowUpVector = {0.0f, 1.0f, 0.0f};
     Vec shadowTargetPosition = {0.0f, 0.0f, -1000.0f};
@@ -553,7 +522,7 @@ void fn_1_B54(void) {
     for (modelIndex = 0; modelIndex < 6; modelIndex++) {
         modelId = fn_80025A04(fn_80008DD0(
             lbl_1_data_A0[lbl_1_bss_DF0.night], 0x10000000, 2));
-        fn_80026790(modelId, &shadowPositions.positions[modelIndex]);
+        fn_80026790(modelId, &shadowPositions[modelIndex]);
         if (modelIndex >= 3) {
             fn_80026808(modelId, 0.0f, 180.0f,
                             0.0f);
@@ -577,8 +546,8 @@ void fn_1_B54(void) {
 
     for (modelIndex = 0; modelIndex < 9; modelIndex++) {
         lbl_1_bss_E14[modelIndex] = 180.0 *
-            (atan2((f64)lbl_1_data_728[modelIndex].z,
-                   (f64)lbl_1_data_728[modelIndex].x) / 3.141592653589793);
+            (atan2((f64)lbl_1_data_728[modelIndex].position.z,
+                   (f64)lbl_1_data_728[modelIndex].position.x) / M_PI);
     }
 
     modelId = collisionModelId = fn_80025A04(fn_80008DD0(
@@ -593,11 +562,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_A0(void);
-
 extern MGSEQ_PARAM lbl_1_data_0;
-
-extern void HuMCThresholdSet(s32 threshold);
 
 extern void fn_1_8BC(void);
 
@@ -605,15 +570,9 @@ extern char lbl_1_data_28[20];
 
 extern s16 lbl_1_bss_0;
 
-void fn_1_4AC(void);
-
 void fn_1_3C9C(void);
 
-s32 fn_1_D7DC(void);
-
-typedef struct M666MicrophoneResponse M666MicrophoneResponse;
-
-extern void fn_1_324(M666MicrophoneResponse *response);
+s16 fn_1_D7DC(void);
 
 extern void fn_1_92C(void);
 
@@ -642,13 +601,6 @@ void fn_1_B30C(void);
 void fn_1_7CA0(void);
 
 void fn_1_7D24(void);
-
-typedef struct {
-    s16 modelId;
-    s16 active;
-    f32 scale;
-    f32 alpha;
-} M666SequenceModelView;
 
 /* Called by fn_1_78C for the microphone-player victory; sets its winner and awards 10 coins
  * outside practice mode. */
@@ -1014,7 +966,7 @@ void fn_1_1CBC(s16 playerIndex) {
                         heading = (f32)(180.0 *
                                   (atan2((f64) separation.z,
                                          (f64) separation.x) /
-                                   3.141592653589793));
+                                   M_PI));
                         fn_80086CA8(
                             lbl_1_bss_8[playerIndex].player->actor,
                             360.0f - heading);
@@ -1030,43 +982,21 @@ void fn_1_1CBC(s16 playerIndex) {
 u16 lbl_1_data_7DC[11] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100};
 
 char lbl_1_data_7F2[13] = "itemhook_bom";
-char lbl_1_data_7FF[17] = "near heiho:%d\n";
-
-const M666FourChoiceTable lbl_1_rodata_148 = {{45, 315, 225, 135}};
 
 /* Stores a randomized target angle and input timer when an avoidance direction is chosen. */
 void fn_1_2388(s16 playerIndex, s16 choiceIndex) {
-    M666FourChoiceTable avoidanceAngles;
-    M666PlayerRecord *playerState;
-
-    playerState = &lbl_1_bss_8[playerIndex];
-    avoidanceAngles = lbl_1_rodata_148;
+    M666PlayerRecord *playerState = &lbl_1_bss_8[playerIndex];
+    s16 avoidanceAngles[4] = {45, 315, 225, 135};
     playerState->targetAngle =
-        (f32)(((s16 *)avoidanceAngles.values)[choiceIndex] + 10 - frandmod(20));
+        (f32)(avoidanceAngles[choiceIndex] + 10 - frandmod(20));
     playerState->nudgeTimer = frandmod(15) + 15;
     playerState->nudgeDirection = choiceIndex;
 }
 
-typedef struct {
-    f32 values[4];
-} M666AvoidanceRangeTable;
-
 /* Sets the selected player's temporary avoidance angle and input timer. */
 static inline void m666SetAvoidanceInput(s16 playerIndex, s16 direction) {
-    M666FourChoiceTable avoidanceAngles;
-    M666PlayerRecord *player;
-
-    player = &lbl_1_bss_8[playerIndex];
-    avoidanceAngles = lbl_1_rodata_148;
-    player->targetAngle =
-        (f32)(((s16 *)avoidanceAngles.values)[direction] + 10 - frandmod(20));
-    player->nudgeTimer = frandmod(15) + 15;
-    player->nudgeDirection = direction;
+    fn_1_2388(playerIndex, direction);
 }
-
-    /* Per-difficulty probabilities for enabling the additional CPU steering-angle offset. */
-const M666FourChoiceTable lbl_1_rodata_158 = {{90, 50, 10, 0}};
-const M666AvoidanceRangeTable lbl_1_rodata_160 = {{250.0f, 300.0f, 350.0f, 400.0f}};
 
 /* Chooses CPU steering around nearby obstacles and lanes; fn_1_3C9C calls it for active players. */
 void fn_1_2458(s16 playerIndex) {
@@ -1089,15 +1019,13 @@ void fn_1_2458(s16 playerIndex) {
     s16 occupiedCell;
     s16 outsideSteeringRadius;
     M666PlayerRecord *player = &lbl_1_bss_8[playerIndex];
-    M666AvoidanceRangeTable avoidanceRanges;
     s16 directions[4];
-    M666FourChoiceTable directionThresholds;
+    s16 directionThresholds[4] = {90, 50, 10, 0};
+    f32 avoidanceRanges[4] = {250.0f, 300.0f, 350.0f, 400.0f};
     M666PlayerRecord *currentPlayer;
     MGPLAYER *gamePlayer;
     MGACTOR *playerActor;
 
-    directionThresholds = lbl_1_rodata_158;
-    avoidanceRanges = lbl_1_rodata_160;
     gamePlayer = lbl_1_bss_8[playerIndex].player;
     playerActor = gamePlayer->actor;
     if (player->comDifficulty == -1) {
@@ -1172,7 +1100,7 @@ void fn_1_2458(s16 playerIndex) {
                                    lbl_1_data_7F2, &objectPosition);
 check_object_distance:
                 distance = sqrtf(PSVECSquareDistance(&objectPosition, &playerPosition));
-            if (distance >= avoidanceRanges.values[player->comDifficulty]) {
+            if (distance >= avoidanceRanges[player->comDifficulty]) {
                 continue;
             }
             if (distance < closestDistance) {
@@ -1216,7 +1144,7 @@ check_object_distance:
         objectDelta.z = playerPosition.z - nearestObjectPosition.z;
             desiredAngle = (f32)(180.0 +
             ((180.0 * (atan2((f64)objectDelta.z, (f64)objectDelta.x) /
-                       3.141592653589793)) - 45.0));
+                       M_PI)) - 45.0));
         while (desiredAngle < 0.0f) {
             desiredAngle += 360.0f;
         }
@@ -1236,7 +1164,7 @@ check_object_distance:
             if (player->targetAngle == -500.0f ||
                 (lbl_1_bss_604[closestGroup][obstacleIndex].state == 6 &&
                  distance < 190.0f)) {
-                if (frandmod(100) < ((s16 *)directionThresholds.values)[player->comDifficulty]) {
+                if (frandmod(100) < directionThresholds[player->comDifficulty]) {
                     player->addSteeringOffset = 1;
                 }
                 player->targetAngle = desiredAngle;
@@ -1263,7 +1191,7 @@ check_object_distance:
         }
     } else if (nearbyObstacleFound != 0) {
         if (player->targetAngle == -500.0f) {
-            if (frandmod(100) < ((s16 *)directionThresholds.values)[player->comDifficulty]) {
+            if (frandmod(100) < directionThresholds[player->comDifficulty]) {
                 player->addSteeringOffset = 1;
             }
             player->targetAngle = desiredAngle;
@@ -1377,15 +1305,15 @@ check_object_distance:
         }
         fn_80080520(player->player,
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
-                  sin((3.141592653589793 * (f64)currentAngle) / 180.0)),
+                  sin((M_PI * (f64)currentAngle) / 180.0)),
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
-                  cos((3.141592653589793 * (f64)currentAngle) / 180.0)), 0, 0);
+                  cos((M_PI * (f64)currentAngle) / 180.0)), 0, 0);
     } else if (player->wanderFrames != 0) {
         fn_80080520(player->player,
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
-                  sin((3.141592653589793 * (f64)player->wanderAngle) / 180.0)),
+                  sin((M_PI * (f64)player->wanderAngle) / 180.0)),
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
-                  cos((3.141592653589793 * (f64)player->wanderAngle) / 180.0)), 0, 0);
+                  cos((M_PI * (f64)player->wanderAngle) / 180.0)), 0, 0);
         player->wanderFrames -= 1;
     } else if (frandmod(1000) < 30) {
         player->wanderFrames = frandmod(15) + 10;
@@ -1394,9 +1322,7 @@ check_object_distance:
     player->unknownFlag10 = 0;
 }
 
-void fn_1_1CBC(s16 playerIndex);
 
-void fn_1_2458(s16 playerIndex);
 
 /* Updates all three players' movement and collision state each frame from the sequence
  * callbacks. */
@@ -1435,7 +1361,7 @@ void fn_1_3C9C(void) {
             position.y = direction.y +
                 (8.0 *
                   sin(((f64)(lbl_1_bss_8[playerIndex].displacementPhase++ * 8) *
-                      3.141592653589793) / 180.0)) + position.y;
+                      M_PI) / 180.0)) + position.y;
             position.z += direction.z;
             fn_80026790(lbl_1_bss_8[playerIndex].modelId, &position);
             fn_8002691C(lbl_1_bss_8[playerIndex].modelId, &scale);
@@ -1453,10 +1379,10 @@ void fn_1_3C9C(void) {
             fn_80086C8C(actor, &direction);
             fn_800267CC((s16)actor->mdlId, &position);
             direction.x = (f32)(40.0 *
-                cos((lbl_1_bss_8[playerIndex].pushAngle * 3.141592653589793) /
+                cos((lbl_1_bss_8[playerIndex].pushAngle * M_PI) /
                     180.0));
             direction.z = (f32)(40.0 *
-                sin((lbl_1_bss_8[playerIndex].pushAngle * 3.141592653589793) /
+                sin((lbl_1_bss_8[playerIndex].pushAngle * M_PI) /
                     180.0));
             position.x += direction.x;
             position.y += direction.y;
@@ -1499,7 +1425,7 @@ static inline void setPlayerMotionState(s16 playerIndex, s16 motionState) {
                                     M666_CLUSTER_MOTION_CLEAR_MASK);
             fn_80026808(lbl_1_bss_8[playerIndex].modelId, 0.0f,
                             (f32) (180.0 * (atan2((f64) position.x, (f64) position.z) /
-                                          3.141592653589793)), 0.0f);
+                                          M_PI)), 0.0f);
             position.x = 2000.0f;
             position.z = 2000.0f;
             fn_80086B04(playerActor, &position);
@@ -1524,7 +1450,8 @@ void fn_1_40F8(s16 playerIndex, s16 action) {
         fn_80086E3C(player);
         fn_800805CC(playerActor, 2U);
         fn_80086CBC(playerActor, 0.0f);
-        fn_8005C2C8(player->charNo, player->omObj->mtnId[14], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
+        fn_8005C2C8(player->charNo, player->omObj->mtnId[14], 0.0f, 0.0f,
+            ((1 << 30) | (1 << 0)));
         if (action == 1) {
             fn_80026A44(lbl_1_bss_8[playerIndex].modelId, 1U);
             fn_80086BC8(playerActor, &actorPosition);
@@ -1534,7 +1461,7 @@ void fn_1_40F8(s16 playerIndex, s16 action) {
                                     M666_CLUSTER_MOTION_CLEAR_MASK);
             fn_80026808(lbl_1_bss_8[playerIndex].modelId, 0.0f,
                             (f32) (180.0 * (atan2((f64) actorPosition.x, (f64) actorPosition.z) /
-                                            3.141592653589793)),
+                                            M_PI)),
                             0.0f);
             actorPosition.x = 2000.0f;
             actorPosition.z = 2000.0f;
@@ -1577,7 +1504,7 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
                 separation.z = playerPosition.z - targetPosition.z;
                 heading = (f32) (180.0 *
                           (atan2((f64) separation.z, (f64) separation.x) /
-                           3.141592653589793));
+                           M_PI));
                 fn_80086CA8(lbl_1_bss_8[(s16) playerIndex].player->actor,
                                360.0f - heading);
                 lbl_1_bss_8[(s16) playerIndex].pushAngle = heading;
@@ -1595,12 +1522,12 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
                 separation.y = 0.0f;
                 separation.z = targetPosition.z - playerPosition.z;
                 angleDirection.x = (f32) sin(
-                    (3.141592653589793 *
+                    (M_PI *
                      (f64) (lbl_1_bss_8[(s16) playerIndex].targetAngle -
                             45.0f)) / 180.0);
                 angleDirection.y = 0.0f;
                 angleDirection.z = (f32) -cos(
-                    (3.141592653589793 *
+                    (M_PI *
                      (f64) (lbl_1_bss_8[(s16) playerIndex].targetAngle -
                             45.0f)) / 180.0);
                 if (PSVECDotProduct(&separation, &angleDirection) > 0.0f) {
@@ -1622,12 +1549,12 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
                 separation.y = 0.0f;
                 separation.z = targetPosition.z - playerPosition.z;
                 angleDirection.x = (f32) sin(
-                    (3.141592653589793 *
+                    (M_PI *
                      (f64) (lbl_1_bss_8[(s16) playerIndex].targetAngle -
                             45.0f)) / 180.0);
                 angleDirection.y = 0.0f;
                 angleDirection.z = (f32) -cos(
-                    (3.141592653589793 *
+                    (M_PI *
                      (f64) (lbl_1_bss_8[(s16) playerIndex].targetAngle -
                             45.0f)) / 180.0);
                 lbl_1_bss_8[(s16) playerIndex].unknownFlag10 = 1;
@@ -1693,37 +1620,25 @@ void fn_1_C630(void);
 
 void fn_1_5654(s16 eventStatus);
 
-typedef struct {
-    s16 values[4];
-} DelayChoiceTable;
-
-const DelayChoiceTable lbl_1_rodata_1CC = {{180, 120, 60, 30}};
-
 /* Returns a random minigame event code after its difficulty-scaled delay expires. */
 u16 fn_1_4C60(void) {
-    DelayChoiceTable delayChoices;
-    M666Bss98Work *state;
-
-    state = &lbl_1_bss_98;
-    delayChoices = lbl_1_rodata_1CC;
+    M666Bss98Work *state = &lbl_1_bss_98;
+    s16 delayChoices[4] = {180, 120, 60, 30};
     if (state->delayCounter != 0) {
         state->delayCounter -= 1;
         return 0;
     }
-    state->delayCounter = (s16)(delayChoices.values[state->difficulty] +
-                                frandmod(delayChoices.values[state->difficulty]));
+    state->delayCounter = (s16)(delayChoices[state->difficulty] +
+                                frandmod(delayChoices[state->difficulty]));
     return lbl_1_data_7DC[frandmod(11)];
 }
 
 /* Advances the opening character motion and triggers the selected minigame event. */
 void fn_1_4D20(void) {
-    DelayChoiceTable delayChoices;
     s16 eventSentinel;
     u16 eventCode;
-    u16 selectedCode;
     f32 maximumMotionTime;
     M666Bss98Work *work;
-    M666Bss98Work *delayWork;
 
     work = &lbl_1_bss_98;
     eventCode = 0;
@@ -1732,18 +1647,7 @@ void fn_1_4D20(void) {
             if (work->difficulty == -1) {
                 eventCode = lbl_1_bss_2;
             } else {
-                delayWork = &lbl_1_bss_98;
-                delayChoices = lbl_1_rodata_1CC;
-                if (delayWork->delayCounter != 0) {
-                    delayWork->delayCounter -= 1;
-                    selectedCode = 0;
-                } else {
-                    delayWork->delayCounter =
-                        (s16)(delayChoices.values[delayWork->difficulty] +
-                              frandmod(delayChoices.values[delayWork->difficulty]));
-                    selectedCode = lbl_1_data_7DC[frandmod(11)];
-                }
-                eventCode = selectedCode;
+                eventCode = fn_1_4C60();
             }
         }
     } else {
@@ -1782,40 +1686,25 @@ void fn_1_4D20(void) {
 
 typedef M666PerimeterWork M666SetupWorkView;
 
-typedef struct {
-    s16 values[3];
-} M666WorkTypeTable;
-
-const M666WorkTypeTable lbl_1_rodata_1D4 = {{0, 1, 3}};
-
-typedef struct {
-    s32 fileIds[10];
-} M666SpriteFileTable;
-
-const M666SpriteFileTable lbl_1_rodata_1DC = { { DATANUM(0x7d0000, 60), DATANUM(0x7d0000, 61),
-                                                 DATANUM(0x7d0000, 62), DATANUM(0x7d0000, 63),
-                                                 DATANUM(0x7d0000, 64), DATANUM(0x7d0000, 65),
-                                                 DATANUM(0x7d0000, 66), DATANUM(0x7d0000, 67),
-                                                 DATANUM(0x7d0000, 68), DATANUM(0x7d0000, 69) } };
-
 /* Loads ten sprite animations and creates three perimeter models, each with seven joint motions
  * and a sprite group. */
 void fn_1_4F24(void) {
-    M666SpriteFileTable spriteFileIds;
+    s16 workTypes[3] = {0, 1, 3};
+    s32 spriteFileIds[10] = { DATANUM(0x7d0000, 60), DATANUM(0x7d0000, 61),
+                              DATANUM(0x7d0000, 62), DATANUM(0x7d0000, 63),
+                              DATANUM(0x7d0000, 64), DATANUM(0x7d0000, 65),
+                              DATANUM(0x7d0000, 66), DATANUM(0x7d0000, 67),
+                              DATANUM(0x7d0000, 68), DATANUM(0x7d0000, 69) };
     ANIMDATA *spriteAnimations[10];
-    M666WorkTypeTable workTypes;
     s32 modelIndex;
     s32 loopIndex;
     s16 modelId;
     s16 spriteGroupId;
     s16 jointMotionId;
 
-    workTypes = lbl_1_rodata_1D4;
-    spriteFileIds = lbl_1_rodata_1DC;
-
     for (modelIndex = 0; modelIndex < 10; modelIndex++) {
         spriteAnimations[modelIndex] = HuSprAnimRead(
-            fn_80008DD0(spriteFileIds.fileIds[modelIndex], 0x10000000, 2));
+            fn_80008DD0(spriteFileIds[modelIndex], 0x10000000, 2));
     }
 
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
@@ -1835,7 +1724,7 @@ void fn_1_4F24(void) {
         fn_8002C95C(modelId, lbl_1_bss_D84[modelIndex].jointMotionIds[0]);
         fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
         lbl_1_bss_D84[modelIndex].modelId = modelId;
-        lbl_1_bss_D84[modelIndex].direction = workTypes.values[modelIndex];
+        lbl_1_bss_D84[modelIndex].direction = workTypes[modelIndex];
         lbl_1_bss_D84[modelIndex].rotation = lbl_1_data_1CC[modelIndex];
         lbl_1_bss_D84[modelIndex].targetIndex = -1;
         spriteGroupId = HuSprGrpCreate(10);
@@ -1902,19 +1791,19 @@ s16 fn_1_535C(s16 eventCode) {
     bestFacing = -1.0f;
     bestModelIndex = -1;
     for (candidateModelIndex = 0; candidateModelIndex < 3; candidateModelIndex++) {
-        perimeterWork = &((M666PerimeterTurnWork *)&lbl_1_bss_D84)[candidateModelIndex];
+        perimeterWork = &lbl_1_bss_D84[candidateModelIndex];
         if (perimeterWork->motionState != 0) {
             continue;
         }
 
-        fn_800267CC(((M666PerimeterTurnWork *) &lbl_1_bss_D84)[candidateModelIndex].modelId,
+        fn_800267CC(lbl_1_bss_D84[candidateModelIndex].modelId,
                         &modelPosition);
         relativeAngle = 180.0 *
-            (atan2((f64)modelPosition.z, (f64)modelPosition.x) / 3.141592653589793);
+            (atan2((f64)modelPosition.z, (f64)modelPosition.x) / M_PI);
         perimeterWork->facingAngle = relativeAngle - 45.0f;
         relativeAngle -= lbl_1_bss_E14[eventCode - 1];
-        if (cos((3.141592653589793 * relativeAngle) / 180.0) >= bestFacing) {
-            bestFacing = cos((3.141592653589793 * relativeAngle) / 180.0);
+        if (cos((M_PI * relativeAngle) / 180.0) >= bestFacing) {
+            bestFacing = cos((M_PI * relativeAngle) / 180.0);
             bestModelIndex = candidateModelIndex;
             while (relativeAngle >= 180.0f) {
                 relativeAngle -= 360.0f;
@@ -1931,14 +1820,13 @@ s16 fn_1_535C(s16 eventCode) {
     }
 
     if (bestModelIndex != -1) {
-        ((M666PerimeterTurnWork *)&lbl_1_bss_D84)[bestModelIndex].turnDirection = angleDirection;
+        lbl_1_bss_D84[bestModelIndex].turnDirection = angleDirection;
     }
     return bestModelIndex;
 }
 
 typedef M666PerimeterWork M666PerimeterMotionWork;
 
-s16 fn_1_535C(s16 eventCode);
 
 s16 fn_1_CB8C(s16 slotIndex, s16 perimeterIndex);
 
@@ -1969,10 +1857,10 @@ void fn_1_5654(s16 eventCode) {
     if (eventCode <= 9) {
         selectedPerimeterIndex = fn_1_535C(eventCode);
         if (selectedPerimeterIndex != -1) {
-            OSReport(lbl_1_data_7FF, selectedPerimeterIndex);
+            OSReport("near heiho:%d\n", selectedPerimeterIndex);
             if (fn_1_CB8C(eventCode - 1, selectedPerimeterIndex) == 0) {
-                HuAudFXPlayPan(2173, (s16)(64.0 -
-                    (32.0 * sin((3.141592653589793 *
+                HuAudFXPlayPan(MSM_SE_MG666_TARGET_ASSIGNMENT, (s16)(64.0 -
+                    (32.0 * sin((M_PI *
                      (f64)lbl_1_bss_D84[selectedPerimeterIndex].facingAngle) /
                      180.0))));
                 lbl_1_bss_D84[selectedPerimeterIndex].motionState = 1;
@@ -1987,7 +1875,7 @@ void fn_1_5654(s16 eventCode) {
                 HuSprAttrReset(lbl_1_bss_D84[selectedPerimeterIndex].spriteGroupId,
                                eventCode - 1, 4);
                 lbl_1_bss_DC[eventCode - 1].state = 1;
-                lbl_1_bss_DC[eventCode - 1].soundHandle = HuAudFXPlay(2177);
+                lbl_1_bss_DC[eventCode - 1].soundHandle = HuAudFXPlay(MSM_SE_MG666_MARKER_ROTATION);
                 lbl_1_bss_DC[eventCode - 1].perimeterIndex = selectedPerimeterIndex;
                 return;
             }
@@ -2000,7 +1888,7 @@ void fn_1_5654(s16 eventCode) {
                                        lbl_1_bss_D84[perimeterIndex].jointMotionIds[6],
                                        0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
-                    HuAudFXPlay(2181);
+                    HuAudFXPlay(MSM_SE_MG666_TARGET_MISS);
                 }
             }
         }
@@ -2014,7 +1902,7 @@ void fn_1_5654(s16 eventCode) {
                                    lbl_1_bss_D84[perimeterIndex].jointMotionIds[6],
                                    0.0f, 8.0f,
                                    ((1 << 30) | (1 << 0)));
-                HuAudFXPlay(2181);
+                HuAudFXPlay(MSM_SE_MG666_TARGET_MISS);
             }
         }
     }
@@ -2128,7 +2016,7 @@ void fn_1_6030(s32 perimeterIndex) {
     M666PerimeterMotionState *reversePositiveXArrival;
     M666PerimeterMotionState *reversePositiveZArrival;
 
-    perimeter = &((M666PerimeterMotionState *)lbl_1_bss_D84)[perimeterIndex];
+    perimeter = &lbl_1_bss_D84[perimeterIndex];
     targetDirection = lbl_1_data_728[perimeter->targetIndex].direction;
     fn_800267CC(perimeter->modelId, &position);
 
@@ -2147,7 +2035,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.x >= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     positiveXArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(positiveXArrival->modelId,
                                        positiveXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2172,7 +2060,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.z >= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     positiveZArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(positiveZArrival->modelId,
                                        positiveZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2197,7 +2085,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.x <= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     negativeXArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(negativeXArrival->modelId,
                                        negativeXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2222,7 +2110,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.z <= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     negativeZArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(negativeZArrival->modelId,
                                        negativeZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2250,7 +2138,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.x <= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     reverseNegativeXArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(reverseNegativeXArrival->modelId,
                                        reverseNegativeXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2275,7 +2163,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.z <= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     reverseNegativeZArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(reverseNegativeZArrival->modelId,
                                        reverseNegativeZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2300,7 +2188,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.x >= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     reversePositiveXArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(reversePositiveXArrival->modelId,
                                        reversePositiveXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2325,7 +2213,7 @@ void fn_1_6030(s32 perimeterIndex) {
                 if (position.z >= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     reversePositiveZArrival =
-                        &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
+                        &lbl_1_bss_D84[(s16) perimeterIndex];
                     fn_8002CCC0(reversePositiveZArrival->modelId,
                                        reversePositiveZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
@@ -2369,8 +2257,8 @@ void fn_1_6D70(s16 perimeterIndex) {
     case 2:
         if (perimeter->rotation == 180.0f) {
             position.z -= 2.5f;
-            if (position.z <= lbl_1_data_728[0].z) {
-                position.z = lbl_1_data_728[0].z;
+            if (position.z <= lbl_1_data_728[0].position.z) {
+                position.z = lbl_1_data_728[0].position.z;
                 northboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
                 fn_8002CCC0(northboundPerimeter->modelId,
                                    northboundPerimeter->jointMotionIds[4],
@@ -2388,8 +2276,8 @@ void fn_1_6D70(s16 perimeterIndex) {
     case 3:
         if (perimeter->rotation == 90.0f) {
             position.x += 2.5f;
-            if (position.x >= lbl_1_data_728[3].x) {
-                position.x = lbl_1_data_728[3].x;
+            if (position.x >= lbl_1_data_728[3].position.x) {
+                position.x = lbl_1_data_728[3].position.x;
                 eastboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
                 fn_8002CCC0(eastboundPerimeter->modelId,
                                    eastboundPerimeter->jointMotionIds[4],
@@ -2409,8 +2297,8 @@ void fn_1_6D70(s16 perimeterIndex) {
     case 6:
         if (perimeter->rotation == 0.0f) {
             position.z += 2.5f;
-            if (position.z >= lbl_1_data_728[4].z) {
-                position.z = lbl_1_data_728[4].z;
+            if (position.z >= lbl_1_data_728[4].position.z) {
+                position.z = lbl_1_data_728[4].position.z;
                 southboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
                 fn_8002CCC0(southboundPerimeter->modelId,
                                    southboundPerimeter->jointMotionIds[4],
@@ -2429,8 +2317,8 @@ void fn_1_6D70(s16 perimeterIndex) {
     case 8:
         if (perimeter->rotation == -90.0f) {
             position.x -= 2.5f;
-            if (position.x <= lbl_1_data_728[7].x) {
-                position.x = lbl_1_data_728[7].x;
+            if (position.x <= lbl_1_data_728[7].position.x) {
+                position.x = lbl_1_data_728[7].position.x;
                 westboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
                 fn_8002CCC0(westboundPerimeter->modelId,
                                    westboundPerimeter->jointMotionIds[4],
@@ -2547,15 +2435,11 @@ void fn_1_7348(s16 perimeterIndex) {
 
 typedef M666PerimeterWork M666PerimeterMotion;
 
-void fn_1_6030(s32 perimeterIndex);
 
-void fn_1_6D70(s16 perimeterIndex);
 
-void fn_1_7348(s16 perimeterIndex);
 
 void fn_1_CBE8(s16 eventParameter);
 
-void fn_1_5A78(void);
 
 /* Updates the three perimeter models, their motion states, and their screen-space sprites. */
 void fn_1_77B0(void) {
@@ -2587,7 +2471,7 @@ void fn_1_77B0(void) {
                 }
             }
             if (18.0f == fn_8002D4E0(perimeterMotion->modelId)) {
-                HuAudFXPlay(2178);
+                HuAudFXPlay(MSM_SE_MG666_PERIMETER_MOTION_BEAT);
             }
             break;
         case 4:
@@ -3035,8 +2919,8 @@ static inline void m666ResetObstacle(s32 groupIndex, s32 obstacleIndex) {
     if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
         fn_8006A030(lbl_1_bss_98.playerIndex, 20, 4, 4);
     }
-    HuAudFXPlayPan(2179, 64.0 -
-        32.0 * sin((3.141592653589793 * (f64)modelPosition.x) /
+    HuAudFXPlayPan(MSM_SE_MG666_OBSTACLE_RESET, 64.0 -
+        32.0 * sin((M_PI * (f64)modelPosition.x) /
                                180.0));
 }
 
@@ -3143,7 +3027,7 @@ void fn_1_8B88(s32 groupIndex, s32 entryIndex) {
         direction.y = 0.0f;
         direction.z = targetPosition.z - actorPosition.z;
         desiredRotation = (f32)(180.0 *
-            (atan2((f64)direction.x, (f64)direction.z) / 3.141592653589793));
+            (atan2((f64)direction.x, (f64)direction.z) / M_PI));
         rotationDifference = desiredRotation - entry->actorRotation;
         while (rotationDifference > 180.0f) {
             rotationDifference -= 360.0f;
@@ -3182,7 +3066,7 @@ void fn_1_8B88(s32 groupIndex, s32 entryIndex) {
     } else {
         gridZ = 1;
     }
-    entry->unknown1E = gridX + (gridZ * 3);
+    entry->gridCell = gridX + (gridZ * 3);
 }
 
 /* Resets an obstacle's models and actor, enters state 6, and signals players
@@ -3217,8 +3101,8 @@ void fn_1_901C(s32 groupIndex, s32 entryIndex) {
     if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
         fn_8006A030(lbl_1_bss_98.playerIndex, 20, 4, 4);
     }
-    HuAudFXPlayPan(2179, (s16)(64.0 -
-        32.0 * sin((3.141592653589793 * (f64)modelPosition.x) / 180.0)));
+    HuAudFXPlayPan(MSM_SE_MG666_OBSTACLE_RESET, (s16)(64.0 -
+        32.0 * sin((M_PI * (f64)modelPosition.x) / 180.0)));
 }
 
 /* Advances all moving obstacles through their states, updating models, actors, effects,
@@ -3235,7 +3119,7 @@ void fn_1_9260(void) {
     lbl_1_bss_E94.x = lbl_1_bss_E94.y = lbl_1_bss_E94.z = 0.0f;
     for (groupIndex = 0; groupIndex < 6; groupIndex++) {
         for (obstacleIndex = 0; obstacleIndex < 8; obstacleIndex++) {
-            obstacle = (M666MovingObstacle *)&lbl_1_bss_604[groupIndex][obstacleIndex];
+            obstacle = &lbl_1_bss_604[groupIndex][obstacleIndex];
             fn_800267CC(obstacle->modelId, &position);
             switch (obstacle->state) {
             case 2:
@@ -3288,9 +3172,9 @@ void fn_1_9260(void) {
                     fn_80086CB0(obstacle->actor, &angle);
                     fn_80026808(obstacle->alternateModelId,
                                     0.0f, angle, 0.0f);
-                    HuAudFXPlayPan(929,
+                    HuAudFXPlayPan(MSM_SE_GUIDE_OBJECT_CATCH,
                                    64.0 - 32.0 *
-                                   sin((3.141592653589793 * (f64)position.x) /
+                                   sin((M_PI * (f64)position.x) /
                                        180.0));
                     obstacle->timer = 0;
                 }
@@ -3307,13 +3191,13 @@ void fn_1_9260(void) {
 
                     M666Bss580Entry *group =
                         &lbl_1_bss_580[(s16)groupIndex];
-                    M666MovingObstacle *slotObstacle = (M666MovingObstacle *)
+                    M666MovingObstacle *slotObstacle =
                         &lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex];
 
                     group->data.obstacleGroup.slotIndices[
                         group->data.obstacleGroup.activeCount] = (s16)obstacleIndex;
-                    ((M666MovingObstacle *)&lbl_1_bss_604[(s16)groupIndex]
-                        [(s16)obstacleIndex])->slotIndex =
+                    lbl_1_bss_604[(s16)groupIndex]
+                        [(s16)obstacleIndex].slotIndex =
                         group->data.obstacleGroup.activeCount;
                     group->data.obstacleGroup.activeCount += 1;
                     fn_80026790(slotObstacle->modelId,
@@ -3379,7 +3263,7 @@ void fn_1_9D3C(s16 groupIndex) {
         fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
         fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
         fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));
-        HuAudFXPlay(2174);
+        HuAudFXPlay(MSM_SE_MG666_BOMB_HOOK);
     }
 }
 
@@ -3499,17 +3383,10 @@ void fn_1_A1CC(void) {
                 modelId = fn_80025A04(
         fn_80008DD0(DATANUM(0x7d0000, 44), 0x10000000, 2));
                 fn_800269E8(modelId, 1);
-                ((M666SequenceModelView *)
-                    (lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage +
-                     modelIndex * 12))->modelId = modelId;
-                ((M666SequenceModelView *)
-                    (lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage +
-                     modelIndex * 12))->active = 0;
-                ((M666SequenceModelView *)
-                    (lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage +
-                     modelIndex * 12))->scale = ((M666SequenceModelView *)
-                    (lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage +
-                     modelIndex * 12))->alpha = 0.0f;
+                lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId = modelId;
+                lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].active = 0;
+                lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].scale =
+                    lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].alpha = 0.0f;
             }
         }
     }
@@ -3523,9 +3400,7 @@ void fn_1_A430(s16 groupIndex, s16 itemIndex) {
     s32 modelIndex;
 
     for (modelIndex = 0; modelIndex < 8; modelIndex++) {
-        if (((M666SequenceModelView *)
-                  lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-                .active != 0) {
+        if (lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].active != 0) {
             continue;
         }
 
@@ -3541,34 +3416,20 @@ void fn_1_A430(s16 groupIndex, s16 itemIndex) {
         position.y += -30.0f + (f32)frandmod(60);
         position.z += -30.0f + (f32)frandmod(60);
         fn_80026790(
-            ((M666SequenceModelView *)
-                  lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-                .modelId,
+            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
             &position);
         fn_80026A44(
-            ((M666SequenceModelView *)
-                  lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-                .modelId,
+            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
             1);
         fn_80026CBC(
-            ((M666SequenceModelView *)
-                  lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-                .modelId,
+            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
             1.0f);
         fn_800268B0(
-            ((M666SequenceModelView *)
-                  lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-                .modelId,
+            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
             1.0f, 1.0f, 1.0f);
-        ((M666SequenceModelView *)
-              lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-            .active = 1;
-        ((M666SequenceModelView *)
-              lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-            .alpha = 1.0f;
-        ((M666SequenceModelView *)
-              lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
-            .scale = 1.0f;
+        lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].active = 1;
+        lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].alpha = 1.0f;
+        lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].scale = 1.0f;
         return;
     }
 }
@@ -3621,7 +3482,7 @@ void fn_1_A798(void) {
                             lbl_1_bss_148[groupIndex].items[loopIndex].laneIndex--;
                         }
                     }
-                    HuAudFXPlay(2175);
+                    HuAudFXPlay(MSM_SE_MG666_LANE_CENTER_CROSSING);
                     lane->state = 4;
                 }
                 break;
@@ -3758,7 +3619,7 @@ void fn_1_B370(s16 groupIndex) {
         if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
             fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
         }
-        HuAudFXPlay(2176);
+        HuAudFXPlay(MSM_SE_MG666_LANE_ACTIVATION);
     }
 }
 
@@ -3900,10 +3761,10 @@ void fn_1_B854(void) {
                 modelPosition.y -= actorWork->verticalStep;
             if (modelPosition.y <= 0.0f) {
                 if (actorWork->impactState == 0) {
-                    HuAudFXPlayPan(939, (s16)(64.0 - 32.0 *
-                        sin(3.141592653589793 * (f64)modelPosition.x / 180.0)));
-                    HuAudFXPlayPan(938, (s16)(64.0 - 32.0 *
-                        sin(3.141592653589793 * (f64)modelPosition.x / 180.0)));
+                    HuAudFXPlayPan(MSM_SE_GUIDE_HEAVY_SLAM, (s16)(64.0 - 32.0 *
+                        sin(M_PI * (f64)modelPosition.x / 180.0)));
+                    HuAudFXPlayPan(MSM_SE_GUIDE_SLAM_RUMBLE, (s16)(64.0 - 32.0 *
+                        sin(M_PI * (f64)modelPosition.x / 180.0)));
                     fn_80026A44(actorWork->modelIds[1], 1);
                     fn_8002D414(actorWork->modelIds[1], 0.0f);
                     fn_8002D86C(actorWork->modelIds[1], 1.0f);
@@ -3999,7 +3860,7 @@ void fn_1_B854(void) {
                         /* Restarts the sine-displacement phase used by fn_1_3C9C in motion state
                          * 2. */
                         lbl_1_bss_8[otherGroup].displacementPhase = 0;
-                        HuAudFXPlay(2180);
+                        HuAudFXPlay(MSM_SE_MG666_PLAYER_RELEASE);
                     }
                 }
             }
@@ -4015,24 +3876,18 @@ void fn_1_B854(void) {
     }
 }
 
-typedef struct {
-    Vec points[9];
-} M666SpawnPointTable;
-
-const M666SpawnPointTable lbl_1_rodata_2AC = { { { -300.0f, 1000.0f, -300.0f },
-                                                 { 0.0f, 1000.0f, -300.0f },
-                                                 { 300.0f, 1000.0f, -300.0f },
-                                                 { -300.0f, 1000.0f, 0.0f },
-                                                 { 0.0f, 1000.0f, 0.0f },
-                                                 { 300.0f, 1000.0f, 0.0f },
-                                                 { -300.0f, 1000.0f, 300.0f },
-                                                 { 0.0f, 1000.0f, 300.0f },
-                                                 { 300.0f, 1000.0f, 300.0f } } };
-
 /* Starts three staggered falling-model arrivals at distinct grid points when fn_1_4D20 selects
  * event code 10. */
 void fn_1_C630(void) {
-    M666SpawnPointTable spawnPoints;
+    Vec spawnPoints[9] = { { -300.0f, 1000.0f, -300.0f },
+                           { 0.0f, 1000.0f, -300.0f },
+                           { 300.0f, 1000.0f, -300.0f },
+                           { -300.0f, 1000.0f, 0.0f },
+                           { 0.0f, 1000.0f, 0.0f },
+                           { 300.0f, 1000.0f, 0.0f },
+                           { -300.0f, 1000.0f, 300.0f },
+                           { 0.0f, 1000.0f, 300.0f },
+                           { 300.0f, 1000.0f, 300.0f } };
     Vec modelPosition;
     M666PerimeterMotionWork *perimeterMotion;
     s32 spawnIndex;
@@ -4041,7 +3896,6 @@ void fn_1_C630(void) {
     s32 spriteIndex;
     s32 perimeterIndex;
 
-    spawnPoints = lbl_1_rodata_2AC;
     if (lbl_1_bss_E3C[0].state != 0) {
         return;
     }
@@ -4077,9 +3931,9 @@ void fn_1_C630(void) {
         } while (1);
 
         lbl_1_bss_E3C[spawnIndex].pointIndex = chosenPoint;
-        modelPosition.x = spawnPoints.points[chosenPoint].x;
+        modelPosition.x = spawnPoints[chosenPoint].x;
         modelPosition.y = 1000.0f;
-        modelPosition.z = spawnPoints.points[chosenPoint].z;
+        modelPosition.z = spawnPoints[chosenPoint].z;
 
         modelPosition.x += -50.0f + (f32)frandmod(100);
         modelPosition.z += -50.0f + (f32)frandmod(100);
@@ -4136,7 +3990,7 @@ static inline void activateSequenceMarker(s16 groupIndex) {
         if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
             fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
         }
-        HuAudFXPlay(2176);
+        HuAudFXPlay(MSM_SE_MG666_LANE_ACTIVATION);
     }
 }
 
@@ -4158,7 +4012,7 @@ static inline void hookBombModel(s16 groupIndex) {
         fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
         fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
         fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));
-        HuAudFXPlay(2174);
+        HuAudFXPlay(MSM_SE_MG666_BOMB_HOOK);
     }
 }
 
@@ -4232,8 +4086,6 @@ void fn_1_CBE8(s16 targetPointIndex) {
     }
 }
 
-s16 print8(s16 x, s16 y, f32 scale, char *format, ...);
-
 void fn_1_D620(OMOBJ *obj);
 
 /* Runs each frame after fn_1_D794 registers it, advancing the minigame scene and target-marker
@@ -4275,7 +4127,7 @@ void fn_1_D794(void) {
 
 /* Returns whether all three players have left active play; on success selects the microphone-
  * player result before fn_1_1D0 advances the sequence. */
-s32 fn_1_D7DC(void) {
+s16 fn_1_D7DC(void) {
     s32 playerIndex;
 
     playerIndex = 0;

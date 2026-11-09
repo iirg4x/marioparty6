@@ -2,15 +2,15 @@
 
 The current state of the supported `GP6E01` build on this branch. This page is regenerated from `progress/report.json` whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-09 17:20 UTC.
+Updated 2026-11-09 18:49 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 82.37% | 68.35% |
+| Entire project | 82.37% | 68.31% |
 | Main DOL | 91.95% | 78.94% |
-| REL modules | 80.33% | 61.64% |
+| REL modules | 80.33% | 61.57% |
 
 ## REL modules
 
