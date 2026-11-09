@@ -6372,6 +6372,31 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "micquizmyokodll",
+        objects={
+            Object(
+                Matching,
+                "REL/micquizmyokodll/main.cpp",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/micquizmyokodll/runtime.c",
+                source="Runtime.PPCEABI.H/runtime.c",
+                mw_version=config.linker_version,
+                shift_jis=False,
+                boot_runtime_source_selected=True,
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
