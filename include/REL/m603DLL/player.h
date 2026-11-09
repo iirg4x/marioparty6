@@ -2,7 +2,7 @@
 #define REL_M603DLL_PLAYER_H
 
 #include <vector>
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 #define M603_OWNED_MODEL_DECLARATION
 #include "REL/m603DLL/model.h"
 

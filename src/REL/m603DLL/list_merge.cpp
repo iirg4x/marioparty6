@@ -11,11 +11,11 @@ extern "C" {
 }
 
 #include "REL/m603DLL/model.h"
-#include "REL/m603DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 
 void operator delete(void *);
 
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 
 typedef bool (*Predicate)(Node *, Node *);
 NodeLinks *fn_1_1A12C(Predicate, NodeLinks *);

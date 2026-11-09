@@ -11,7 +11,7 @@
 #include "REL/m603DLL/player.h"
 #include "dolphin/types.h"
 #include "dolphin/os.h"
-#include "REL/m603DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 
 
 #include "REL/m603DLL/random.h"

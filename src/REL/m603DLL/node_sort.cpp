@@ -1,9 +1,9 @@
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 
 typedef bool (*Predicate)(Node *, Node *);
 NodeLinks *fn_1_1A12C(Predicate, NodeLinks *);
 
-void Node::fn_1_1A074(Predicate predicate)
+void Node::sort(Predicate predicate)
 {
     bool isEmpty = false;
     if (link0 == this) {

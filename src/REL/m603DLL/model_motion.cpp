@@ -7,7 +7,7 @@ extern "C" {
 #include "datadir_enum.h"
 #include "REL/m603DLL.h"
 }
-#include "REL/m603DLL/framework/linknode.h"
+#include "REL/framework/linknode.h"
 #define M603_OWNED_MODEL_DECLARATION
 #include "REL/m603DLL/model.h"
 #undef M603_OWNED_MODEL_DECLARATION
