@@ -1,306 +1,62 @@
 # Mario Party 6 recovery status
 
-This page is the public project snapshot for the supported `GP6E01` build. It is intentionally short; detailed experiments belong in commits and pull requests rather than a permanent running notebook.
+The current state of the supported `GP6E01` build on this branch. This page is regenerated from `progress/report.json` whenever recovered sources change; the history of how it got here is in the commits and pull requests.
+
+Updated 2026-11-09 17:20 UTC.
 
 ## Progress
 
-Last published full-project snapshot: **October 22, 2026**
-
-Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
-
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 64.67% | 74.15% |
-| Main DOL | 90.36% | 99.25% |
-| REL modules | 59.22% | 58.25% |
-
-`actmanDLL` compiles against the original CodeWarrior MSL math headers; its linked REL still matches retail.
-
-Names with no original evidence behind them are now written as numbers and address names across the shared headers and their consumers; the linked game still matches retail.
-
-Shared C++ framework (`framework:minigame_core.cpp`): **34 complete source files** compile once against the original CodeWarrior MSL C++ library headers (`std::vector`, `std::map`, `std::multimap`, `std::set`, `std::priority_queue`); all **21 consumer RELs** match retail.
-
-Every module's runtime (`runtime.c`) compiles from the original CodeWarrior `Runtime.PPCEABI.H` source; the 88 per-module copies are gone, and every linked REL still matches retail.
-
-7 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-52 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-58 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-50 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-The shared REL framework sources and headers carry their cleaned versions; every linked output still matches retail.
-
-49 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-5 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-15 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-66 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-39 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-The shared REL framework sources and headers carry their cleaned versions; every linked output still matches retail.
-
-The shared REL framework sources and headers carry their cleaned versions; every linked output still matches retail.
-
-18 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-25 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-12 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-4 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-3 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-1 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-3 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 0 audit findings fewer; every linked REL still matches retail.
-
-9 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 3 audit findings fewer; every linked REL still matches retail.
-
-6 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 307 audit findings fewer; every linked REL still matches retail.
-
-MSL C's `printf.c` is the original CodeWarrior source, byte for byte, with the MSL C headers it includes, and compiles as a matching unit; main.dol still matches retail.
-
-53 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 380 audit findings fewer; every linked REL still matches retail.
-
-23 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 903 audit findings fewer; every linked REL still matches retail.
-
-2 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 9 audit findings fewer; every linked REL still matches retail.
-
-33 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 394 audit findings fewer; every linked REL still matches retail.
-
-68 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 70 audit findings fewer; every linked REL still matches retail.
-
-52 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 68 audit findings fewer; every linked REL still matches retail.
-
-75 source and header files now carry their cleaned versions, shared headers together with every source that compiles them, 752 audit findings fewer; every linked REL still matches retail.
-
-105 source files of 34 modules now carry their cleaned versions, 2661 audit findings fewer; every linked REL still matches retail.
-
-Mole-it! (`m641Dll`) selects all **92 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Verbal Assault (`m665dll`) selects all **133 functions** from **5 complete translation units**; its linked REL matches retail.
-
-Shoot Yer Mouth Off (`m666dll`) selects all **110 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Cashapult (`m642dll`) selects all **151 functions** from **4 complete translation units**; its linked REL matches retail.
-
-Trap Ease Artist (`m620Dll`) selects all **243 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Light Up My Night (`m617dll`) selects all **107 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Insectiride (`m647dll`) selects all **154 functions** from **5 complete translation units**; its linked REL matches retail.
-
-Boo'd Off the Stage (`m660dll`) selects all **114 functions** from **6 complete translation units**; its linked REL matches retail.
-
-Blooper Scooper (`m619Dll`) selects all **131 functions** from **5 complete translation units**; its linked REL matches retail.
-
-Daft Rafts (`m609dll`) selects all **119 functions** from **7 complete translation units**; its linked REL matches retail.
-
-Pier Factor (`m676Dll`) selects all **287 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Mowtown (`m613Dll`) selects all **103 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Tally Me Banana (`m674Dll`) selects all **248 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Snow Brawl (`m626Dll`) selects all **233 functions** from **9 complete translation units**; its linked REL matches retail.
-
-Strawberry Shortfuse (`m680Dll`) selects all **110 functions** from **5 complete translation units**; its linked REL matches retail.
-
-Sink or Swim (`m625Dll`) selects all **96 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Rocky Road (`m644dll`) selects all **148 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Speak Up (`micquizdll`) selects all **373 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Trick or Tree (`m662dll`) selects all **97 functions** from **5 complete translation units**; its linked REL matches retail.
-
-Solo Mode (`mdsingdll`) selects all **306 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Conveyor Bolt (`m631Dll`) selects all **128 functions** from **4 complete translation units**; its linked REL matches retail.
-
-Mic Mode (`mdmicdll`) selects all **326 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Treetop Bingo (`mgmbingodll`) selects all **140 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Battle Bridge (`mgmbattledll`) selects all **145 functions** from **6 complete translation units**; its linked REL matches retail.
-
-Mario Party 6 (`micquizseldll`) selects all **173 functions** from **2 complete translation units**; its linked REL matches retail.
-
-Decathlon Park (`mgmdecathlondll`) selects all **120 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Banana Shake (`m675Dll`) selects all **237 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Endurance Alley (`mgmrenshodll`) selects all **123 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Ball Dozers (`m627dll`) selects all **94 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Ending (`endingdll`) selects all **159 functions** from **3 complete translation units**; its linked REL matches retail.
-
-T Minus Five (`m658dll`) selects all **146 functions** from **4 complete translation units**; its linked REL matches retail.
-
-Option Mode (`optionDll`) selects all **61 functions** from **5 complete translation units**; its linked REL matches retail.
-
-staffdll (`staffdll`) selects all **97 functions** from **2 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/pitchco.c` now builds from source; `main.dol` matches retail byte for byte.
-
-Pokey Punch-out (`m621dll`) selects all **86 functions** from **4 complete translation units**; its linked REL matches retail.
-
-Mount Duel (`mgmtournamentdll`) selects all **125 functions** from **9 complete translation units**; its linked REL matches retail.
-
-REL source cleanup: `miraclebookdll`, `w05Dll`, `ttwarsdll`, `m657Dll`, `mgmfreedll`; reviewed source cleanup and generated progress; all selected RELs match retail byte for byte.
-
-DOL source cleanup: `src/game/THPSimple.c`, `src/game/actman.c`, `src/game/data.c`, `src/game/decode.c`, `src/game/hsfman.c`, `src/game/hsfmotion.c`, `src/game/mgtimer.c`, `src/game/mic.c`, `src/game/saveload.c`; reviewed source cleanup and generated progress; `main.dol` matches retail byte for byte.
-
-Wrasslin' Rapids (`m664dll`) selects all **71 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Miracle Book (`miraclebookdll`) selects all **58 functions** from **3 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/fftmod.c` now builds from source; `main.dol` matches retail byte for byte.
-
-DOL source: `src/Runtime.PPCEABI.H/Gecko_ExceptionPPC.cpp` now builds from source; `main.dol` matches retail byte for byte.
-
-Party Mode (`mdpartydll`) selects all **334 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Shared C++ framework (`framework:octtree_debug.cpp`): **30 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
-
-Burnstile (`m668DLL`) selects all **91 functions** from **6 complete translation units**; its linked REL matches retail.
-
-Boot (`bootDll`) selects all **68 functions** from **4 complete translation units**; its linked REL matches retail.
-
-Thirsty Gulch (`s01Dll`) selects all **63 functions** from **3 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/flblocks/acne.c` now builds from source; `main.dol` matches retail byte for byte.
-
-DOL source: `src/gssdk_lib/asrpho/rec1600/creaspt.c` now builds from source; `main.dol` matches retail byte for byte.
-
-DOL source: `src/dolphin/mic/mic.c` now builds from source; `main.dol` matches retail byte for byte.
-
-Towering Treetop (`w01Dll`) selects all **151 functions** from **2 complete translation units**; its linked REL matches retail.
-
-Mode Select (`mdseldll`) selects all **132 functions** from **2 complete translation units**; its linked REL matches retail.
-
-File Select (`fileseldll`) selects all **88 functions** from **4 complete translation units**; its linked REL matches retail.
-
-openingDll (`openingDll`) selects all **60 functions** from **2 complete translation units**; its linked REL matches retail.
-
-E. Gadd's Garage (`w02Dll`) selects all **137 functions** from **3 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/rec1600/creasp.c` now builds from source; `main.dol` matches retail byte for byte.
-
-Castaway Bay (`w05Dll`) selects all **119 functions** from **3 complete translation units**; its linked REL matches retail.
-
-w10Dll (`w10Dll`) selects all **46 functions** from **3 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/exev_dp.c` now builds from source; `main.dol` matches retail byte for byte.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/pitchwin.c` now builds from source; `main.dol` matches retail byte for byte.
-
-Faire Square (`w03Dll`) selects all **64 functions** from **3 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/combiner.c` now builds from source; `main.dol` matches retail byte for byte.
-
-resultDll (`resultDll`) selects all **76 functions** from **6 complete translation units**; its linked REL matches retail.
-
-Stamp By Me (`m649Dll`) selects all **190 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Talkie Walkie (`m667dll`) selects all **172 functions** from **5 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/slidhist.c` now builds from source; `main.dol` matches retail byte for byte.
-
-DOL source: `src/msm/msmsys.c` now builds from source; `main.dol` matches retail byte for byte.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/trigglr.c` now builds from source; `main.dol` matches retail byte for byte.
-
-Shared C++ framework (`framework:camera.cpp`): **28 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
-
-DOL source: `src/gssdk_lib/gsapi/callbacks.c` now builds from source; `main.dol` matches retail byte for byte.
-
-Clockwork Castle (`w06Dll`) selects all **76 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Shared C++ framework (`framework:random.cpp`): **22 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
-
-Shared C++ framework (`framework:new.cpp`): **1 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
-
-Pixel Perfect (`m636dll`) selects all **64 functions** from **8 complete translation units**; its linked REL matches retail.
-
-Jump the Gun (`m643DLL`) selects all **128 functions** from **5 complete translation units**; its linked REL matches retail.
-
-Snowflake Lake (`w04Dll`) selects all **134 functions** from **3 complete translation units**; its linked REL matches retail.
-
-w11Dll (`w11Dll`) selects all **40 functions** from **3 complete translation units**; its linked REL matches retail.
-
-DOL source: `src/gssdk_lib/asrpho/common/blocks/undersam.c` now builds from source; `main.dol` matches retail byte for byte.
-
-TT Wars (`ttwarsdll`) selects all **50 functions** from **3 complete translation units**; its linked REL matches retail.
-
-Motion Check (`safdll`) selects all **37 functions** from three complete translation units; its linked REL matches retail.
-
-Hyper Sniper (`m646Dll`) selects all **166 functions** from ten complete translation units; its linked REL matches retail.
-
-Pop Star (`m629Dll`) selects all **45 functions** from two complete translation units; its linked REL matches retail.
-
-Minigame Instructions (`instDll`) selects all **49 functions** from six complete translation units; its linked REL matches retail.
-
-Mini-game Tour (`mgmfreedll`) selects all **109 functions** from native source. Its three translation units, data, and linked REL reproduce retail.
-
-Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**22 are fully source-selected** (`m602Dll`, `m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m629Dll`, `m630dll`, `m632dll`, `m633dll`, `m635dll`, `m637dll`, `m638Dll`, `m640dll`, `m646Dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m668DLL`, `m670dll`) and **60 remain**. This scope is distinct
-from the game's 136 REL containers, which also include non-minigame modules.
-
-Board recovery is **40 / 40 owners Matching**. Board Single closes the final
-owner with **58 / 58 functions** matching instructions and effective physical
-relocations. Its source-selected build, including the consistent gamework
-provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
-
-Mini-Game Mode (`mdminidll`) selects all **259 functions** from **3 complete translation units**; its linked REL matches retail.
-Fresh compilation verifies instruction bytes and effective relocations for every
-function, with zero protected-function losses. All six allocated sections and
-the complete linked REL are retail-identical. Composed translation units supply
-the functions that share inline definitions and constant pools; their standalone
-fallback entries are not selected. M630 remains retail-identical with its own
-typed audio-call context unchanged. Minigame Mode is not one of the 82 numbered
-minigame modules, so the numbered-module census above is unchanged.
-
-The generated byte percentages above use the build's standard object accounting;
-the separate 259-function count includes verified composed-source selections.
-Earlier modules retain their storage and legacy-behavior disclosures in source.
-The main DOL has **352 / 396 build objects Matching**, with **44** left.
-All newly enabled source objects participate in the verified retail-identical build.
-
-Earlier aggregate REL build-object counts mixed reconstruction units and are
-withdrawn. DTK splits change as source is recovered; those counts must not be
-presented as minigames. Byte totals and the fixed registered-module census above
-are the progress measures.
+| Entire project | 82.37% | 68.35% |
+| Main DOL | 91.95% | 78.94% |
+| REL modules | 80.33% | 61.64% |
+
+## REL modules
+
+**110 of 128** modules have all of their code recovered as matching source.
+
+Still partial (14):
+
+| Module | Code | Functions |
+| --- | ---: | ---: |
+| Granite Getaway (`m605DLL`) | 55.0% | 387 of 760 |
+| Cog Jog (`m624DLL`) | 49.1% | 283 of 654 |
+| Sumo of Doom-o (`m653DLL`) | 48.1% | 327 of 697 |
+| Cash Flow (`m623DLL`) | 47.3% | 379 of 813 |
+| Pitifall (`m655DLL`) | 45.2% | 320 of 743 |
+| Tricky Tires (`m610DLL`) | 41.1% | 381 of 859 |
+| Light Breeze (`m639DLL`) | 41.0% | 279 of 645 |
+| Pit Boss (`m671DLL`) | 36.7% | 235 of 609 |
+| Treasure Trawlers (`m611DLL`) | 35.8% | 278 of 767 |
+| Dark 'n Crispy (`m673DLL`) | 34.9% | 262 of 682 |
+| Dust 'til Dawn (`m634DLL`) | 33.2% | 241 of 678 |
+| Surge and Destroy (`m628DLL`) | 32.1% | 265 of 769 |
+| Seer Terror (`m677DLL`) | 28.7% | 318 of 1079 |
+| What Goes Up... (`m604DLL`) | 11.7% | 93 of 449 |
+
+Not recovered here yet (4): `micquizishidll`, `micquizmyokodll`, `micquizohdedll`, `mikeactdll`.
+
+## Main DOL
+
+**5547 of 5915** functions are recovered as matching source; 368 remain, all in files that are not yet matching as a whole:
+
+- `gssdk_lib/asrpho`: 361
+- `gssdk_lib/gsapi`: 7
 
 ## Verification
 
-The published snapshot passed the configured project build and retail hash checks:
+Every configured output must match retail:
 
 ```sh
-ninja -j1
+ninja
 build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 ```
 
-On Windows, use `build/tools/dtk.exe`.
-
-All 137 configured outputs passed the retail checksum gate, and rebuilt `main.dol` compared byte-identical with retail SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
+On Windows, use `build/tools/dtk.exe`. All 137 configured outputs pass the retail checksum gate, and the rebuilt `main.dol` is byte-identical to retail (SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`).
 
 ## Recovery standard
 
-A source file is marked Matching only when the configured compiler reproduces the target output. Matching is necessary, but recovered code should also remain readable and supported by evidence from callers, consumers, relocations, data layout, strings, and related source.
+A source file is marked Matching only when the configured compiler reproduces the target output. Matching is necessary, but recovered code should also remain readable and supported by evidence from the original game.
 
-Unknown names or fields should stay explicit until their meaning is known. Compiler-specific constructs should not be added solely to force a match unless the target clearly requires them.
-
-## Keeping this page current
-
-Update this file only after a complete verified build changes the public progress
-snapshot or verification gate. Keep it to current aggregate state; owner milestones,
-investigation logs, and rejected experiments belong in commit history and recovery
-evidence rather than this page.
+Unknown names or fields stay explicit until their meaning is known. Compiler-specific constructs are not added solely to force a match unless the target clearly requires them.
