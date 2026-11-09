@@ -5,14 +5,14 @@
     "all": {
       "label": "Code",
       "code": {
-        "matched": 9969360,
+        "matched": 10062084,
         "total": 12427492,
-        "percent": 80.220209
+        "percent": 80.966329
       },
       "data": {
-        "matched": 1635775,
+        "matched": 1639783,
         "total": 1849324,
-        "percent": 88.452591
+        "percent": 88.669319
       }
     },
     "dol": {
@@ -31,14 +31,14 @@
     "modules": {
       "label": "DLLs",
       "code": {
-        "matched": 7983480,
+        "matched": 8076204,
         "total": 10253524,
-        "percent": 77.860841
+        "percent": 78.765154
       },
       "data": {
-        "matched": 923119,
+        "matched": 927127,
         "total": 1131996,
-        "percent": 81.547903
+        "percent": 81.901968
       }
     }
   }

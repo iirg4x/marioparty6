@@ -6,20 +6,123 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m672DLL/collision_object.cpp:
+	.text       start:0x00000000 end:0x00000758
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x00000010
+	.data       start:0x00000000 end:0x00000050
+	.bss        start:0x00000000 end:0x00000020
+
+REL/m672DLL/player_controller.cpp:
+	.text       start:0x00000758 end:0x0000140C
+	.rodata     start:0x00000010 end:0x000000D8
+	.data       start:0x00000050 end:0x000000A8
+
+REL/m672DLL/particles.cpp:
+	.text       start:0x0000140C end:0x0000672C
+	.rodata     start:0x000000D8 end:0x000001E0
+	.data       start:0x000000A8 end:0x00000150
+
+REL/m672DLL/resources.cpp:
+	.text       start:0x0000672C end:0x0000749C
+	.rodata     start:0x000001E0 end:0x000002D8
+	.data       start:0x00000150 end:0x000001C0
+	.bss        start:0x00000020 end:0x00000030
+
+REL/m672DLL/scene_sequence.cpp:
+	.text       start:0x0000749C end:0x0000803C
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x000002D8 end:0x00000310
+	.data       start:0x000001C0 end:0x00000208
+	.bss        start:0x00000030 end:0x00000040
+
+REL/m672DLL/effect_motion.cpp:
+	.text       start:0x0000803C end:0x00008B50
+	.rodata     start:0x00000310 end:0x000003A8
+	.data       start:0x00000208 end:0x00000260
+
+REL/m672DLL/singleton_node.cpp:
+	.text       start:0x00008B50 end:0x00008CC8
+	.data       start:0x00000260 end:0x00000288
+
+REL/m672DLL/sprite_draw.cpp:
+	.text       start:0x00008CC8 end:0x00009314
+	.rodata     start:0x000003A8 end:0x000003C8
+	.data       start:0x00000288 end:0x00000298
+
+REL/m672DLL/sprite_transform.cpp:
+	.text       start:0x00009314 end:0x0000A270
+	.rodata     start:0x000003C8 end:0x00000428
+	.data       start:0x00000298 end:0x00000360
+
+REL/m672DLL/module_setup.cpp:
+	.text       start:0x0000A270 end:0x0000A348
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000428 end:0x00000438
+	.bss        start:0x00000040 end:0x00000050
+
+REL/m672DLL/camera_owner.cpp:
+	.text       start:0x0000A348 end:0x0000AC4C
+	.rodata     start:0x00000438 end:0x000004A0
+	.data       start:0x00000360 end:0x000003B0
+
+REL/m672DLL/scene_effects.cpp:
+	.text       start:0x0000AC4C end:0x0000BD40
+	.rodata     start:0x000004A0 end:0x00000548
+	.data       start:0x000003B0 end:0x00000480
+
+REL/m672DLL/player.cpp:
+	.text       start:0x0000BD40 end:0x0000FC10
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000548 end:0x00000668
+	.data       start:0x00000480 end:0x00000600
+	.bss        start:0x00000050 end:0x00000060
+
+REL/m672DLL/particle_effect.cpp:
+	.text       start:0x0000FC10 end:0x000100E4
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x00000668 end:0x000006B0
+	.data       start:0x00000600 end:0x00000618
+	.bss        start:0x00000060 end:0x00000068
+
+REL/m672DLL/audio_projection.c:
+	.text       start:0x000100E4 end:0x00012488
+	.rodata     start:0x000006B0 end:0x000006E8
+	.data       start:0x00000618 end:0x000006E8
+
+REL/m672DLL/sound_pitch.cpp:
+	.text       start:0x00012488 end:0x000124C0
+
 REL/framework/heap.cpp:
 	.text       start:0x000124C0 end:0x00012640
 	.rodata     start:0x000006E8 end:0x00000720
 	.data       start:0x000006E8 end:0x00000708
 	.bss        start:0x00000068 end:0x00000070
 
+REL/m672DLL/global_object.cpp:
+	.text       start:0x00012640 end:0x000126C8
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x00000070 end:0x00000078
+
+REL/m672DLL/ptmf.c:
+	.text       start:0x000126C8 end:0x00012810
+	.rodata     start:0x00000720 end:0x00000730
+
 REL/framework/new.cpp:
 	.text       start:0x00012810 end:0x000129D8
 	.rodata     start:0x00000730 end:0x00000768
 	.data       start:0x00000708 end:0x00000730
 
+REL/m672DLL/controller_range.cpp:
+	.text       start:0x000129D8 end:0x00013494
+	.rodata     start:0x00000768 end:0x000007C0
+
 REL/framework/camera.cpp:
 	.text       start:0x00013494 end:0x00013C68
 	.rodata     start:0x000007C0 end:0x00000830
+
+REL/m672DLL/camera.cpp:
+	.text       start:0x00013C68 end:0x00013CA0
 
 REL/framework/event.cpp:
 	.text       start:0x00013CA0 end:0x000198E0
@@ -47,9 +150,19 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000948 end:0x00000988
 	.data       start:0x00000898 end:0x00000920
 
+REL/m672DLL/free.cpp:
+	.text       start:0x0001CCD0 end:0x0001CFAC
+	.data       start:0x00000920 end:0x00000940
+
+REL/m672DLL/heap.cpp:
+	.text       start:0x0001CFAC end:0x0001D078
+
 REL/framework/linknode.cpp:
 	.text       start:0x0001D078 end:0x0001D1F4
 	.rodata     start:0x00000988 end:0x000009C8
+
+REL/m672DLL/linknode.cpp:
+	.text       start:0x0001D1F4 end:0x0001DA54
 
 REL/framework/minigame_core.cpp:
 	.text       start:0x0001DA54 end:0x0001E5D0
@@ -57,6 +170,16 @@ REL/framework/minigame_core.cpp:
 	.rodata     start:0x000009C8 end:0x00000A20
 	.data       start:0x00000940 end:0x00000978
 	.bss        start:0x00000080 end:0x00000090
+
+REL/m672DLL/model.cpp:
+	.text       start:0x0001E5D0 end:0x0001FA60
+	.rodata     start:0x00000A20 end:0x00000A28
+	.data       start:0x00000978 end:0x00000998
+	.bss        start:0x00000090 end:0x00000098
+
+REL/m672DLL/model_motion.cpp:
+	.text       start:0x0001FA60 end:0x00020834
+	.data       start:0x00000998 end:0x00000A18
 
 REL/framework/mt19937.cpp:
 	.text       start:0x00020834 end:0x00021834
@@ -71,6 +194,10 @@ REL/framework/random.cpp:
 	.ctors      start:0x00000018 end:0x0000001C
 	.rodata     start:0x00000AD0 end:0x00000B10
 	.bss        start:0x00000098 end:0x00000A60
+
+REL/m672DLL/runtime.c:
+	.text       start:0x00021CA8 end:0x000226EC
+	.rodata     start:0x00000B10 end:0x00000B28
 
 REL/framework/startup.cpp:
 	.text       start:0x000226EC end:0x00022790
