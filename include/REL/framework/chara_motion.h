@@ -21,11 +21,17 @@ struct MotionOwner {
     unsigned int currentDataNum; // Selected resource number; unsigned -1 means none selected yet.
     MotionOwner(unsigned int characterNo);
     ~MotionOwner();
+    void fn_1_DAF0(float timeFrames);
+    float fn_1_DB20();
+    float fn_1_DB48();
 };
 
 typedef MotionOwner CharacterMotion;
 
 // Names indexed by the low 16-bit motion resource number, used for a missed-preload warning.
 extern const char *characterMotionNames[];
+void createCharacterMotion(CharacterMotion *character, unsigned int dataNum);
+void selectCharacterMotion(CharacterMotion *character, unsigned int dataNum);
+void setMotionOwnerTime(CharacterMotion *character, float timeFrames);
 
 #endif
