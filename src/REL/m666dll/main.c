@@ -27,6 +27,8 @@
 #include "msm_se.h"
 #include "msm_stream.h"
 #include "game/hu3d.h"
+#include "game/mic.h"
+#include "REL/m666dll/recovered.h"
 
 M666SoundWork lbl_1_bss_DC[9];
 M666Bss98Work lbl_1_bss_98;
@@ -35,14 +37,9 @@ HUPROCESS *lbl_1_bss_4;
 u16 lbl_1_bss_2;
 s16 lbl_1_bss_0;
 
-#define MSM_STREAM_JAZZY 73
-#define MSM_SE_M666_OPENING_EFFECT_FIRST 2175
-#define MSM_SE_M666_OPENING_EFFECT_SECOND 2174
-
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
 void fn_1_D8(void);
 void fn_1_144(void *sequenceMode, s16 frameNo);
 void fn_1_190(s16 mode, s16 frame);
@@ -87,10 +84,6 @@ void fn_1_A0(void) {
     fn_80070788(&lbl_1_data_0);
 }
 
-#include "game/mic.h"
-#include "REL/m666dll/recovered.h"
-
-extern void HuMCThresholdSet(s32 threshold);
 extern void fn_1_8BC(void);
 char lbl_1_data_28[20] = "/mic/ctx/m666_words";
 
@@ -104,8 +97,6 @@ void fn_1_D8(void) {
     fn_80071A9C();
     fn_800856A8();
 }
-
-void fn_1_4AC(void);
 
 /* Updates the microphone choice on the selection callback, then advances its sequence. */
 void fn_1_144(void *sequenceMode, s16 frameNo)
@@ -127,10 +118,8 @@ void fn_1_190(s16 mode, s16 frame)
 }
 
 extern void fn_1_4D20(void);
-extern s32 fn_1_3C9C(void);
+extern void fn_1_3C9C(void);
 extern s16 fn_1_D7DC(void);
-typedef struct M666MicrophoneResponse M666MicrophoneResponse;
-extern void fn_1_324(M666MicrophoneResponse *response);
 
 /* Registers the microphone response callback on the first gameplay frame and advances the scene. */
 void fn_1_1D0(void *sequenceMode, s16 frameNo) {
@@ -146,7 +135,6 @@ void fn_1_1D0(void *sequenceMode, s16 frameNo) {
     }
 }
 
-extern void HuMCListenerKill(void);
 extern void fn_1_92C(void);
 
 /* Clears listener and sequence state on the cleanup callback before updating actors. */
@@ -195,8 +183,6 @@ struct M666MicrophoneResponse {
     s32 word;
 };
 
-char lbl_1_data_3C[12] = "Result %d\n";
-
 /* Handles the microphone listener response: scores below 3000 select event 100; otherwise the first
  * recognized word selects events 1-10. */
 void fn_1_324(M666MicrophoneResponse *response) {
@@ -223,12 +209,8 @@ void fn_1_324(M666MicrophoneResponse *response) {
     case 9: lbl_1_bss_2 = 10; break;
     default: lbl_1_bss_2 = 0; break;
     }
-    OSReport(lbl_1_data_3C, response->word);
+    OSReport("Result %d\n", response->word);
 }
-
-typedef struct {
-    s16 effectIds[14];
-} M666EffectTable;
 
 void fn_1_17C8(s16 motionIndex, f32 blend, u32 flags);
 void fn_1_1004(s16 motionIndex, f32 blend);
@@ -246,8 +228,20 @@ void fn_1_80E0(void);
 
 /* Advances the microphone selection sequence from fn_1_144, including its timed effects. */
 void fn_1_4AC(void) {
-    M666EffectTable effectTable = { { 579, 555, 699, 795, 747, 483, 771, 507, 723, 651, 531, 675,
-                                      627, 603 } };
+    s16 effectIds[14] = { MSM_SE_CHARVOICE_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_LUIGI_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_PEACH_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_YOSHI_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_WARIO_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_DAISY_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_WALUIGI_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_KINOPIO_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_TERESA_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_MINIKOOPA_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_KINOPIKO_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_MINIKOOPAR_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_MINIKOOPAG_HAPPY_CHEER,
+                          MSM_SE_CHARVOICE_MINIKOOPAB_HAPPY_CHEER };
 
     switch (lbl_1_bss_DF0.sequenceState) {
     case 0:
@@ -262,7 +256,7 @@ void fn_1_4AC(void) {
         if (lbl_1_bss_DF0.timer++ < 80) {
             return;
         }
-        HuAudFXPlay(effectTable.effectIds[lbl_1_bss_98.charNo]);
+        HuAudFXPlay(effectIds[lbl_1_bss_98.charNo]);
         fn_1_1004(2, 8.0f);
         fn_1_9ED8();
         fn_1_B30C();
@@ -279,8 +273,8 @@ void fn_1_4AC(void) {
             fn_1_7CA0();
         }
         if (lbl_1_bss_DF0.timer == 30) {
-            HuAudFXPlay(MSM_SE_M666_OPENING_EFFECT_FIRST);
-            HuAudFXPlay(MSM_SE_M666_OPENING_EFFECT_SECOND);
+            HuAudFXPlay(MSM_SE_MG666_LANE_CENTER_CROSSING);
+            HuAudFXPlay(MSM_SE_MG666_BOMB_HOOK);
             return;
         }
         break;
@@ -340,11 +334,9 @@ void fn_1_78C(void) {
 void fn_1_F8C(void);
 
 typedef struct {
-    /* Game code never reads these bytes. */
-    u8 unk00[4];
+    u8 unk_00[4]; /* No code names this field. */
     s16 rootModelId;
-    /* Game code never reads these bytes. */
-    u8 unk06[2];
+    u8 unk06[2]; /* No code names this field. */
     u8 particleStorage[96];
     s16 state;
     s16 status;

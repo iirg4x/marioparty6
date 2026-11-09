@@ -5,6 +5,11 @@
 #include "game/mg/actman.h"
 #include "REL/m666dll/tables.h"
 
+typedef struct M666MicrophoneResponse M666MicrophoneResponse;
+void fn_1_A0(void);
+void fn_1_324(M666MicrophoneResponse *response);
+void fn_1_4AC(void);
+
 extern u16 lbl_1_bss_2;
 
 typedef struct M666ActorWork {

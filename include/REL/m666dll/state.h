@@ -7,8 +7,7 @@
 typedef struct {
     s16 shadowModelId;
     s16 modelId;
-    /* Game code never reads these bytes. */
-    u8 unk04[18];
+    u8 unk_04[18]; /* No code names this field. */
     s16 night;
     s16 sequenceState;
     s16 timer;
@@ -56,8 +55,7 @@ typedef struct {
     s16 motionState;
     s16 eventStatus;
     s16 delayCounter;
-    /* Game code never reads these bytes. */
-    u8 unk1C[40];
+    u8 unk_1C[40]; /* No code names this field. */
 } M666Bss98Work;
 
 extern M666Bss98Work lbl_1_bss_98;
