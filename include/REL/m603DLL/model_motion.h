@@ -1,7 +1,7 @@
 #ifndef REL_M603DLL_MODEL_MOTION_H
 #define REL_M603DLL_MODEL_MOTION_H
 
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 #define M603_OWNED_MODEL_DECLARATION
 #include "REL/m603DLL/model.h"
 #undef M603_OWNED_MODEL_DECLARATION

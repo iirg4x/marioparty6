@@ -2,7 +2,7 @@
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 #include "REL/m603DLL/timer_owner.h"
 #include "REL/m603DLL/camera_frame.h"
 

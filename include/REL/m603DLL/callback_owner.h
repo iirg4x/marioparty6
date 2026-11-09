@@ -1,7 +1,7 @@
 #ifndef M603_CALLBACK_OWNER_H
 #define M603_CALLBACK_OWNER_H
 #include "dolphin/types.h"
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 
 struct CallbackOwner;
 

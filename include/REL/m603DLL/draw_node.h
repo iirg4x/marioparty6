@@ -1,6 +1,6 @@
 #ifndef REL_M603DLL_DRAW_NODE_H
 #define REL_M603DLL_DRAW_NODE_H
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 #define M603_OWNED_MODEL_DECLARATION
 #include "REL/m603DLL/model.h"
 class DrawNode;

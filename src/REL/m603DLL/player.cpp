@@ -26,7 +26,7 @@ extern "C" {
 #include "game/wipe.h"
 #include "game/mg/timer.h"
 }
-#include "REL/m603DLL/linknode.h"
+#include "REL/framework/linknode.h"
 #include "REL/m603DLL/random.h"
 #include "REL/m603DLL/sprite_fade.h"
 #include "REL/framework/minigame_core.h"

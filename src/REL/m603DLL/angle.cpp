@@ -1,6 +1,6 @@
 #include "dolphin/types.h"
 #include "dolphin/os.h"
-#include "REL/m603DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 
 static inline s32 WrapAngleDifference_inlined(s32 difference);
 
