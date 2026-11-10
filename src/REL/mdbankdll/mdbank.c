@@ -292,7 +292,7 @@ void fn_1_8284(void);
 void fn_1_8340(void);
 void fn_1_83CC(void);
 void fn_1_86C0(void);
-void fn_1_91A4(void);
+void ObjectSetup(void);
 int _prolog(void);
 void _epilog(void);
 void fn_1_92A4(void);
@@ -2603,7 +2603,7 @@ void fn_1_86C0(void)
         lbl_1_bss_0);
 }
 
-void fn_1_91A4(void)
+void ObjectSetup(void)
 {
     OSReport("\n-----===== MARIO PARTY 6 :: STAR BANK =====-----\n\n");
     lbl_1_bss_2C = lbl_802C0248;
@@ -2613,7 +2613,7 @@ void fn_1_91A4(void)
 
 int _prolog(void)
 {
-    extern void fn_1_91A4(void);
+    extern void ObjectSetup(void);
 
     const MDBANK_VOID_FUNC *ctor = _ctors;
 
@@ -2621,7 +2621,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_91A4();
+    ObjectSetup();
     return 0;
 }
 

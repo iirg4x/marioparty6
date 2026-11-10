@@ -9,7 +9,7 @@ OMOBJMAN *lbl_1_bss_4;
 s32 lbl_1_bss_0;
 
 /* Creates the object manager and starts the Slot Trot sequence. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_4 = fn_8003A8BC(200, 8192);
     fn_80069F1C(lbl_1_bss_4);

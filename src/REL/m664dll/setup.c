@@ -23,7 +23,7 @@ MGSEQ_PARAM lbl_1_data_0 = {
     0, 0, fn_1_D8, fn_1_27C, fn_1_29C, fn_1_2BC, fn_1_2F8, fn_1_318, fn_1_34C, fn_1_36C, fn_1_38C
 };
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* The overlay loader calls this to run constructors and start the minigame sequence. */
 int _prolog(void)
@@ -34,7 +34,7 @@ int _prolog(void)
         (*constructor)();
         constructor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -50,7 +50,7 @@ void _epilog(void)
 }
 
 /* Called at overlay startup to create the actor manager and register the phase callbacks. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_4 = fn_80080418();
     fn_80070788(&lbl_1_data_0);

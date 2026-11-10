@@ -20,7 +20,7 @@
 
 int _prolog(void);
 void _epilog(void);
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_1E8(s16 mode, s16 frameNo);
 void fn_1_250(s16 mode, s16 frameNo);
 void fn_1_B60(s16 mode, s16 frameNo);
@@ -227,7 +227,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -242,7 +242,7 @@ void _epilog(void)
 }
 
 /* Called by the module entry point to create the scene and player processes. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     OMOBJ *object;
     s32 playerIndex;
     void *sceneState;

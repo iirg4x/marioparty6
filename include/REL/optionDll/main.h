@@ -3,7 +3,7 @@
 #include "dolphin/types.h"
 #include "game/object.h"
 struct OptionSelectionData;
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_804(void);
 void fn_1_FDC(void);
 void fn_1_1044(void);

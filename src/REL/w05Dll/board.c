@@ -232,7 +232,7 @@ OMOBJ *mbev_CapEffCoinCreate(void);
 void mbev_CapEffCoinKill(OMOBJ *object);
 void mbev_CapCoinAdd(OMOBJ *object, int playerNo, int coinNum, BOOL highF);
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F4(void);
 void fn_1_1D50(void);
 void fn_1_1DBC(OMOBJ *object);
@@ -487,7 +487,7 @@ static inline void *W05SurfaceScratchAlloc(void) {
 static inline void *W05SurfaceListAlloc(s32 size, u32 allocationNo) {
     return HuMemDirectMallocNum(2, size, allocationNo);
 }
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_80265B70.partyF = TRUE;
     mbObjectSetup(4, fn_1_F4, fn_1_1D50);
 }

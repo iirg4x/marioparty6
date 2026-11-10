@@ -19,7 +19,7 @@ const Point3d lbl_1_rodata_C8 = {20.0f, 45.0f, 1000.0f};
 const GXColor lbl_1_rodata_D4 = {255, 255, 255, 255};
 
 /* Called by _prolog before MgSeqCreate starts play; builds the course and all rider objects. */
-void fn_1_43C8(void)
+void ObjectSetup(void)
 {
     Point3d playerModelOffset;
     Point3d lightTarget;

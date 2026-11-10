@@ -33,7 +33,7 @@ extern void fn_1_1DFC(void), fn_1_223C(void), fn_1_8B34(void), fn_1_4D04(void);
 extern s32 fn_1_8B8C(void), fn_1_8BCC(void), fn_1_57C8(void), fn_1_A430(void);
 extern s32 fn_1_A4B0(void), fn_1_A758(void), fn_1_A780(void);
 void fn_1_1918(s16);
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_130(s16, s16);
 void fn_1_260(s16, s16);
 void fn_1_28C(s16, s16);
@@ -56,7 +56,7 @@ int _prolog(void)
         (*constructor)();
         constructor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -71,7 +71,7 @@ void _epilog(void)
 }
 
 /* Creates the scene manager and starts the minigame phase controller at module startup. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_C50[0] = fn_8003A8BC(256, 1000);
     fn_80069F1C(lbl_1_bss_C50[0]);
     fn_8003AB38(lbl_1_bss_C50[0], 32730, 0U, 0U, -1, fn_8003D4FC);

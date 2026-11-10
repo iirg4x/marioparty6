@@ -14,7 +14,7 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
-void fn_1_148(void);
+void ObjectSetup(void);
 void fn_1_2CC(void);
 void fn_1_2F0(s16 mode, s16 frameNo);
 void fn_1_368(s16 mode, s16 frameNo);
@@ -42,7 +42,7 @@ int _prolog(void)
         (*constructor)();
         constructor++;
     }
-    fn_1_148();
+    ObjectSetup();
     return 0;
 }
 
@@ -78,7 +78,7 @@ void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback)
 }
 
 /* Called by the module prolog to set lighting and shadows before starting the sequence process. */
-void fn_1_148(void)
+void ObjectSetup(void)
 {
     HU3D_LIGHTID directionalLight;
 

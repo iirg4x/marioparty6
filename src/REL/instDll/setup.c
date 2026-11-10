@@ -131,7 +131,7 @@ BOOL lbl_1_bss_0;
 
 /* Initializes minigame state and launches either the instruction screen or the selected
  * minigame. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s32 i;
     s32 count;
@@ -399,7 +399,7 @@ checked_player_groups:
 u32 lbl_1_data_A8[] = { DATANUM(0x420000, 2), DATANUM(0x420000, 3), DATANUM(0x420000, 4),
                         DATANUM(0x420000, 5), DATANUM(0x420000, 6) };
 
-/* Runs the instruction screen as the child process started by fn_1_A0. */
+/* Runs the instruction screen as the child process started by ObjectSetup. */
 void fn_1_1024(void)
 {
     s32 flag_1;
@@ -973,7 +973,8 @@ void fn_1_2A1C(void)
     HuPrcEnd();
 }
 
-/* Updates the preview camera from player one's controls; fn_1_A0 registers this object callback. */
+/* Updates the preview camera from player one's controls; ObjectSetup registers this object
+ * callback. */
 void fn_1_35F8(OMOBJ *obj)
 {
     HuVecF pos;

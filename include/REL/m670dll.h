@@ -66,7 +66,7 @@ extern s8 *lbl_1_data_250[6];
 
 BOOL fn_1_1460(HuVecF *src, HuVecF *dst);
 void fn_1_15B8(int soundId, HuVecF *pos);
-void fn_1_1658(void);
+void ObjectSetup(void);
 void fn_1_22F0(int pillarNo, float height);
 void fn_1_2384(MGACTOR *actor, int playerNo);
 void fn_1_2460(int playerNo, int state);

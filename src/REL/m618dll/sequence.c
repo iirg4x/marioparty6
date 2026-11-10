@@ -18,7 +18,7 @@ MGSEQ_PARAM lbl_1_data_0 = {
 };
 
 /* Module entry point: creates the minigame actor manager and starts the sequence. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_4 = fn_80080418();
     fn_800707B4(&lbl_1_data_0, 8192);

@@ -6,7 +6,7 @@ extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
 HUPROCESS *lbl_1_bss_0;
-void fn_1_164(void);
+void ObjectSetup(void);
 
 int _prolog(void)
 {
@@ -15,7 +15,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_164();
+    ObjectSetup();
     return 0;
 }
 
@@ -85,7 +85,7 @@ MGSEQ_PARAM lbl_1_data_4 = {
     fn_1_154, fn_1_158, fn_1_15C, fn_1_160
 };
 
-void fn_1_164(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0 = fn_80080418();
     fn_80070788(&lbl_1_data_4);

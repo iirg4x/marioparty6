@@ -115,7 +115,7 @@ void fn_1_3D4(s16 sequenceMode, s16 sequenceFrame);
 void fn_1_400(s16 sequenceMode, s16 sequenceFrame);
 void fn_1_404(s16 sequenceMode, s16 sequenceFrame);
 void fn_1_408(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_40C(void);
+void ObjectSetup(void);
 void fn_1_4A0(void);
 void fn_1_62C(void);
 void fn_1_69C(OMOBJ *obj);

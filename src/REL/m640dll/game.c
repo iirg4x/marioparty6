@@ -3,7 +3,7 @@
 #include "REL/m640/m640.h"
 #include "REL/m640dll.h"
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_86C(void);
 void fn_1_8D4(void);
 s32 fn_1_BEC(void);

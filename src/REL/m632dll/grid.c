@@ -9,7 +9,7 @@ void fn_1_4C8C(HU3D_MODEL *modelP, Mtx *mtx)
 
 }
 
-/* Called during fn_1_3934 scene setup; creates one camera-2 hook and initializes CPU timers and
+/* Called during ObjectSetup scene setup; creates one camera-2 hook and initializes CPU timers and
  * gridA weights. */
 void fn_1_4C90(void)
 {

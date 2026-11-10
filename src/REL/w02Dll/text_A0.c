@@ -1417,7 +1417,7 @@ void fn_1_838C(void);
 
 void fn_1_8440(OMOBJ *object);
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 void fn_1_14F9C(OMOBJ *object);
 
@@ -1659,7 +1659,7 @@ HuVecF lbl_1_data_504 = { 0.0f, 544.0f, -2233.0f };
 
 float lbl_1_data_510 = 14778.0f;
 
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     GWPartySet(TRUE);
     mbObjectSetup(1, fn_1_F4, fn_1_1B70);
 }

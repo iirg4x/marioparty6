@@ -138,7 +138,7 @@ static MGSEQ_PARAM lbl_1_data_90 = {
 };
 
 /* Called by _prolog to create the Memory Lane scene and register its callbacks. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s16 lightId;
     s16 playerIndex;

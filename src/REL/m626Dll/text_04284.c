@@ -32,7 +32,7 @@ extern void fn_1_4548(OMOBJ *object);
 extern void fn_1_4EA8(OMOBJ *object);
 extern s32 fn_1_960(s32 player, u32 group, s16 character);
 
-/* Called by fn_1_A0 during startup to create players and assign fallback teams. */
+/* Called by ObjectSetup during startup to create players and assign fallback teams. */
 void fn_1_42DC(HUPROCESS *process)
 {
     s32 fallbackGroup;

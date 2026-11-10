@@ -16,7 +16,7 @@
 
 /* Called from the REL prolog after constructors; create resources and register the sequence
  * callbacks. */
-void fn_1_1590(void)
+void ObjectSetup(void)
 {
     s32 assetIndex;
     s32 motionIndex;

@@ -9,7 +9,7 @@
 
 struct StageModel_s;
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_1024(void);
 void fn_1_35F8(OMOBJ *obj);
 void fn_1_4158(void);

@@ -5,7 +5,7 @@
 
 
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F0(s16 mode, s16 frame);
 void fn_1_114(s16 mode, s16 frame);
 void fn_1_13C(s16 mode, s16 frame);
@@ -36,7 +36,7 @@ HUPROCESS *lbl_1_bss_4;
 s32 lbl_1_bss_0;
 
 /* Called by the module prolog to create the object manager and register the M640 sequence. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_4 = fn_8003A8BC(256, 8192);
     fn_80069F1C(lbl_1_bss_4);

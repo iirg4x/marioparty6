@@ -291,7 +291,7 @@ struct _struct_lbl_1_data_330_0x8 {
     f32 courseTimeThreshold; /* Course motion time at which the actor advances to the next state. */
     f32 propRotationScale; /* Multiplier for the event prop rotation at this actor state. */
 };
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_1EC(s16 mode, s16 frameNo);
 void fn_1_284(s16 mode, s16 frameNo);
 void fn_1_528(s16 mode, s16 frameNo);

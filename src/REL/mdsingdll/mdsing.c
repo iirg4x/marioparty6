@@ -259,7 +259,7 @@ void fn_1_17D38(void);
 void fn_1_188C0(void);
 void fn_1_18A18(void);
 void fn_1_18A98(void);
-void fn_1_18AB8(void);
+void ObjectSetup(void);
 void fn_1_18DB0(OMOBJ *obj, MDCAMERA_WORK *camera);
 void fn_1_19114(OMOBJ *obj, MDMinidllCameraState *state);
 void fn_1_1933C(OMOBJ *obj, MDMinidllCameraState *state);
@@ -5098,7 +5098,7 @@ void fn_1_18A98(void)
 }
 
 /* Choose direct board reentry or normal Solo menu setup from the overlay entry event. */
-void fn_1_18AB8(void)
+void ObjectSetup(void)
 {
     s16 coinBonus;
     s16 retryCoinBonus;
@@ -5153,7 +5153,7 @@ int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_18AB8();
+    ObjectSetup();
     return 0;
 }
 

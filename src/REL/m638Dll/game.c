@@ -221,7 +221,7 @@ u8 lbl_1_bss_0[4];
 const u16 lbl_1_rodata_10[4] = { 1, 2, 4, 8 };
 
 /* Create the scene and player objects, prepare the cameras, then start the sequence. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     OMOBJ *obj;
     s32 player;

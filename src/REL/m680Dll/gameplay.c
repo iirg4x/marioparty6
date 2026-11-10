@@ -201,7 +201,7 @@ static inline void m680UpdateAngle(M680MotionWork *work)
         motion = work->motions[index]; \
     }
 
-void fn_1_A0();
+void ObjectSetup();
 void fn_1_280();
 void fn_1_308();
 void fn_1_3C8();
@@ -346,7 +346,7 @@ s32 lbl_1_data_46C[15] = {
 };
 
 /* Orders players and creates the board objects when the minigame entry point starts. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     M680PlayerRankEntry entries[4];
     OMOBJ *rootObject;

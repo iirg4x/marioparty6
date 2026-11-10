@@ -72,7 +72,7 @@ extern OMOBJ *lbl_1_bss_650;
 
 extern HUPROCESS *lbl_1_bss_654;
 
-/* Called by fn_1_A0 to create the particle, ring, and trail effect models. */
+/* Called by ObjectSetup to create the particle, ring, and trail effect models. */
 void fn_1_B7D4(HUPROCESS *managerProcess)
 {
     HUPROCESS *unusedProcess;

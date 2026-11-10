@@ -144,7 +144,7 @@ f32 lbl_1_data_1A0 = 20474.0f;
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* Runs module constructors, then initializes Clockwork Castle at module startup. */
 int _prolog(void) {
@@ -153,7 +153,7 @@ int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -173,7 +173,7 @@ void _epilog(void) {
 }
 
 /* Enables party mode and registers Clockwork Castle's board setup and close callbacks. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_80265B70.partyF = TRUE;
     mbObjectSetup(5, fn_1_F4, fn_1_99C);

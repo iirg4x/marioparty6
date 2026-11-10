@@ -12,7 +12,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 

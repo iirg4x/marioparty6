@@ -131,7 +131,7 @@ extern MGSEQ_PARAM lbl_1_data_0;
 extern u32 lbl_1_data_28[9];
 extern s32 lbl_1_data_4C[4], lbl_1_data_5C[3];
 extern char lbl_1_data_68[13];
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F0(s16 mode, s16 frameNo);
 void fn_1_334(s16 mode, s16 frameNo);
 void fn_1_3B8(s16 mode, s16 frameNo);

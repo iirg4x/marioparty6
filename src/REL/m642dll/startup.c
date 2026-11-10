@@ -9,7 +9,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_148(void);
+void ObjectSetup(void);
 
 /* Runs when the minigame REL is loaded, before its sequence starts. */
 int _prolog(void)
@@ -19,7 +19,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_148();
+    ObjectSetup();
     return 0;
 }
 
@@ -59,7 +59,7 @@ void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback)
 void fn_1_19C(void);
 
 /* Creates the actor manager and starts the sequence process during REL startup. */
-void fn_1_148(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0.manager = fn_80080418();
     fn_80080E8C();

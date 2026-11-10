@@ -6,7 +6,7 @@
 #include "REL/m666dll/tables.h"
 
 typedef struct M666MicrophoneResponse M666MicrophoneResponse;
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_324(M666MicrophoneResponse *response);
 void fn_1_4AC(void);
 

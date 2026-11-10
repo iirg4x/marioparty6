@@ -193,7 +193,7 @@ void fn_1_8DE8(void);
 
 s16 fn_1_89C0(s32 windowNo);
 
-void fn_1_A0(void);
+extern "C" void ObjectSetup(void);
 
 void fn_1_110(OMOBJ *obj);
 
@@ -412,7 +412,7 @@ extern u32 lbl_1_data_12C[0x14];
 extern u32 lbl_1_data_17C[0x14];
 extern "C" int _prolog(void);
 extern "C" void _epilog(void);
-extern "C++" void fn_1_A0(void);
+extern "C" void ObjectSetup(void);
 extern "C++" void fn_1_110(OMOBJ *obj);
 extern "C++" void fn_1_148(OMOBJ *object);
 extern "C++" void fn_1_1F4(void);
@@ -613,7 +613,7 @@ extern f32 lbl_1_data_560[11];
 extern u32 lbl_1_data_A0[18];
 extern s32 lbl_1_data_1F8;
 s16 fn_1_89C0(s32 windowNo);
-void fn_1_A0(void);
+extern "C" void ObjectSetup(void);
 void fn_1_110(OMOBJ *obj);
 void fn_1_220(OMOBJ *object);
 void fn_1_148(OMOBJ *object);
@@ -629,7 +629,7 @@ void fn_1_2B14(s16 playerIndex);
 void fn_1_3258(void);
 extern "C" int _prolog(void);
 extern "C" void _epilog(void);
-extern "C++" void fn_1_A0(void);
+extern "C" void ObjectSetup(void);
 extern "C++" void fn_1_110(OMOBJ *obj);
 extern "C++" void fn_1_148(OMOBJ *object);
 extern "C++" void fn_1_1F4(void);
@@ -1157,7 +1157,7 @@ extern "C" int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -1172,7 +1172,7 @@ extern "C" void _epilog(void) {
 void fn_1_8E38(s32 windowNo);
 
 extern "C" {
-extern "C++" void fn_1_A0(void) {
+extern "C" void ObjectSetup(void) {
     OMOBJ *object;
 
     lbl_1_bss_2B8[0] = fn_8003A8BC(0xC8, 0x2000);

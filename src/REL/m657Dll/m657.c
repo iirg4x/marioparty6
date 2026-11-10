@@ -185,7 +185,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_784();
+    ObjectSetup();
     return 0;
 }
 
@@ -200,7 +200,7 @@ void _epilog(void)
 }
 
 /* Builds all minigame objects and starts the sequence manager from the REL entry. */
-void fn_1_784(void)
+void ObjectSetup(void)
 {
     fn_1_0();
     fn_1_70();

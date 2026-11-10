@@ -79,7 +79,7 @@ void fn_1_15B8(int soundId, HuVecF *worldPos)
 }
 /* Called by the overlay prolog to create the playfield, players, microphone context and selection
  * window, and sequence. */
-void fn_1_1658(void)
+void ObjectSetup(void)
 {
     MGACTOR_PARAM param;
     HuVecF lightPos, lightAim, lightDir;

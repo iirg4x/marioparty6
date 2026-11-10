@@ -4,7 +4,7 @@
 
 #include "dolphin/types.h"
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F0(void);
 void fn_1_484(void);
 

@@ -132,7 +132,7 @@ void fn_1_2F8C(s16 mode, s16 frameNo);
 void fn_1_2F90(void);
 void fn_1_3510(MGACTOR *actorP, int param);
 int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b);
-void fn_1_3934(void);
+void ObjectSetup(void);
 void fn_1_4C8C(HU3D_MODEL *modelP, Mtx *mtx);
 void fn_1_4C90(void);
 void fn_1_4D48(void);

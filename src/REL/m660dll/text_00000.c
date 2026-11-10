@@ -149,7 +149,7 @@ s32 fn_1_D5A4(void);
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 void fn_1_118(s16 mode, s16 frameNo);
 void fn_1_26C(s16 mode, s16 frameNo);
@@ -174,7 +174,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -189,7 +189,7 @@ void _epilog(void)
 }
 
 /* Creates the actor object and starts the minigame sequence during startup. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_2678.objects = fn_80080418();
     fn_8003AB38(lbl_1_bss_2678.objects, 32730, 0U, 0U, -1, fn_8003D4FC);
     fn_80070788(&lbl_1_data_0);

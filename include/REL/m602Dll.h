@@ -295,7 +295,7 @@ extern s16 lbl_1_bss_492[4];
 
 extern s16 lbl_1_bss_49A[4];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 void fn_1_10C(s16 mode, s16 frameNo);
 

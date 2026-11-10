@@ -18,7 +18,7 @@ extern HU3D_LIGHTID lbl_1_bss_0;
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_804(void);
+void ObjectSetup(void);
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 #include "game/gamework.h"
@@ -192,7 +192,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_804();
+    ObjectSetup();
     return 0;
 }
 
@@ -207,7 +207,7 @@ void _epilog(void)
 }
 
 /* Creates minigame systems and scene objects, then starts the minigame sequence. */
-void fn_1_804(void)
+void ObjectSetup(void)
 {
     fn_1_0();
     fn_1_5C();

@@ -1,7 +1,7 @@
 /* Runs result setup before the results overlay starts. */
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* Runs setup functions before the results overlay begins. */
 int _prolog(void) {
@@ -10,7 +10,7 @@ int _prolog(void) {
         (*constructor)();
         constructor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 

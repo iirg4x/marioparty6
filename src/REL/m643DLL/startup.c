@@ -10,7 +10,7 @@ extern MGSEQ_PARAM lbl_1_data_0;
 void fn_1_F4(void);
 void *fn_1_16C(s32 priority, u32 bytes, OMOBJ_FUNC callback);
 /* Creates the actor manager and starts the minigame's actor update process. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0 = fn_80080418();
     fn_8000DAC0(fn_1_F4, 100, 36864, 0, lbl_1_bss_0);

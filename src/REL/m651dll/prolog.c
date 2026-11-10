@@ -14,7 +14,7 @@ int _prolog(void)
         (*constructorEntry)();
         constructorEntry++;
     }
-    fn_1_40C();
+    ObjectSetup();
     return 0;
 }
 

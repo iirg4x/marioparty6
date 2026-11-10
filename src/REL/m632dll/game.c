@@ -368,7 +368,7 @@ static char lbl_1_data_480[21] = "632hakoniwaB-stageBb";
 
 M632State lbl_1_bss_0;
 
-/* Ground-correction hook installed by fn_1_3934; records a ground-contact flag for that actor. */
+/* Ground-correction hook installed by ObjectSetup; records a ground-contact flag for that actor. */
 void fn_1_3510(MGACTOR *actorP, int param)
 {
     if ((u32) (actorP->colGroundAttr & 128) != 0) {
@@ -376,7 +376,7 @@ void fn_1_3510(MGACTOR *actorP, int param)
     }
 }
 
-/* Narrow-phase hook installed by fn_1_3934; adjusts arena contact and the active round's
+/* Narrow-phase hook installed by ObjectSetup; adjusts arena contact and the active round's
  * player-launch response. */
 int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
 {
@@ -456,7 +456,7 @@ int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
 
 /* Called by _prolog during module load to create the arena, players, collision actors, lighting,
  * and sequence state. */
-void fn_1_3934(void)
+void ObjectSetup(void)
 {
     Point3d shadowPosition;
     Point3d shadowDirection;

@@ -486,8 +486,8 @@ void fn_1_1360(s16 mode, s16 frameNo)
 {
 }
 
-/* Object callback registered by fn_1_1590; ignore the callback object and sample the active camera
- * model's motion time each update. */
+/* Object callback registered by ObjectSetup; ignore the callback object and sample the active
+ * camera model's motion time each update. */
 void fn_1_1364(OMOBJ *cameraObject)
 {
     lbl_1_bss_10.cameraTime = fn_8002D4E0(lbl_1_bss_10.activeCameraModel);

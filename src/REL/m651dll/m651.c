@@ -144,7 +144,7 @@ void fn_1_408(s16 sequenceMode, s16 sequenceFrame)
 
 /* Called by _prolog; creates the object manager and sequence, clears player slots, and builds the
  * scene. */
-void fn_1_40C(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0 = fn_8003A8BC(30, 8192);
     fn_80069F1C(lbl_1_bss_0);

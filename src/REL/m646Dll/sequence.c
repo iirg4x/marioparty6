@@ -32,7 +32,7 @@ s32 fn_1_A0FC(void);
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_4D4(void);
+void ObjectSetup(void);
 
 void fn_1_0(void);
 void fn_1_90(void);
@@ -47,7 +47,7 @@ void fn_1_318(void);
 void fn_1_430(void);
 int _prolog(void);
 void _epilog(void);
-void fn_1_4D4(void);
+void ObjectSetup(void);
 void fn_1_858(s16 mode, s16 frame);
 void fn_1_878(s16 mode, s16 frame);
 void fn_1_8A4(s16 mode, s16 frame);
@@ -177,7 +177,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_4D4();
+    ObjectSetup();
     return 0;
 }
 
@@ -192,7 +192,7 @@ void _epilog(void)
 }
 
 /* Initializes the camera, stage, player, collision, score, and targeting objects. */
-void fn_1_4D4(void)
+void ObjectSetup(void)
 {
     OMOBJMAN *cameraManager;
     fn_1_0();

@@ -18,7 +18,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 int _prolog(void)
 {
@@ -27,7 +27,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -49,7 +49,7 @@ const Point3d lbl_1_rodata_1C = { 0.0f, 1.0f, 0.0f };
 
 const Point3d lbl_1_rodata_28 = { 0.0f, 0.0f, 0.0f };
 
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     Point3d shadowPosition;
     Point3d shadowUp;

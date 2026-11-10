@@ -32,7 +32,7 @@ s16 lbl_1_bss_C[4];
 s16 lbl_1_bss_4[4];
 s32 lbl_1_bss_0;
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 s32 fn_1_A68(s16 sequenceMode, s16 frameNo);
 void fn_1_B08(OMOBJ *object, u32 camera, s32 transitionIndex);
 s32 fn_1_E18(s32 resourceIndex);
@@ -74,7 +74,7 @@ int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -88,7 +88,7 @@ void _epilog(void) {
 }
 
 /* Set up the board, camera, audio ranges, sequence callbacks, and gameplay objects. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     extern void fn_1_4E4(s16 sequenceMode, s16 frameNo);
     extern void Hu3DBGColorSet(u8, u8, u8);
     extern s32 fn_80008DD0(s32, u32, s32);

@@ -27,7 +27,7 @@ void fn_1_F0(void);
 /* static */
 HUPROCESS *lbl_1_bss_0;
 
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_0 = fn_80080418();
     fn_8000DAC0(fn_1_F0, 0x64U, 0x6000U, 0, lbl_1_bss_0);
 }

@@ -198,7 +198,7 @@ void fn_1_52C(s16 mode, s16 frameNo)
 }
 
 /* Creates Rocky Road's actor manager, sequence and scene objects when the module starts. */
-void fn_1_530(void) {
+void ObjectSetup(void) {
     lbl_1_bss_0[0] = fn_80080418();
     fn_80070788(&lbl_1_data_14);
     fn_1_1690();

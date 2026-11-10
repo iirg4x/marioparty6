@@ -22,7 +22,7 @@ MGSEQ_PARAM lbl_1_data_78 = {
 };
 
 /* Initialize the object manager and start the minigame sequence from the module prolog. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_64 = fn_8003A8BC(256, 8192);
     fn_80069F1C(lbl_1_bss_64);

@@ -79,7 +79,7 @@ void fn_1_135C(s16 mode, s16 frameNo);
 void fn_1_1360(s16 mode, s16 frameNo);
 void fn_1_1364(OMOBJ *cameraObject);
 void fn_1_139C(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL timingLag);
-void fn_1_1590(void);
+void ObjectSetup(void);
 void fn_1_1FF4(s32 cameraIndex);
 BOOL fn_1_20D8(void);
 void fn_1_2104(s32 playerNo, s32 motionNo);

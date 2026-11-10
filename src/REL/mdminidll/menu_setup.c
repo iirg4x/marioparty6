@@ -4606,7 +4606,7 @@ void fn_1_16400(void)
 #include "game/mgdata.h"
 /* Overlay entry releases prior mode archives, refreshes unlock availability and resets minigame
  * flags before creating the menu. */
-void fn_1_16F28(void)
+void ObjectSetup(void)
 {
     OSReport(lbl_1_data_960);
     HuARDirFree(0x9f0000);
@@ -4653,7 +4653,7 @@ void fn_1_16F28(void)
 typedef void (*MDMinidllVoidFunc)(void);
 extern const MDMinidllVoidFunc _ctors[];
 extern const MDMinidllVoidFunc _dtors[];
-void fn_1_16F28(void);
+void ObjectSetup(void);
 
 /* Overlay entry runs each constructor, then initializes the minigame-mode menu. */
 int _prolog(void)
@@ -4663,7 +4663,7 @@ int _prolog(void)
         (*constructor)();
         constructor++;
     }
-    fn_1_16F28();
+    ObjectSetup();
     return 0;
 }
 

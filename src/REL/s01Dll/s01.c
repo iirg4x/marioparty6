@@ -101,7 +101,7 @@ extern HuVecF lbl_1_data_128;
 #define lbl_1_rodata_B4 90.0f
 extern s32 lbl_1_bss_44;
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F4(void);
 void fn_1_270(OMOBJ *boardObject);
 void fn_1_274(OMOBJ *boardObject);
@@ -167,7 +167,7 @@ void mbWipeSpecialWait(void);
 #include "REL/s01Dll/common.h"
 
 // Selects single-player mode and registers the Thirsty Gulch board hooks.
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_80265B70.partyF = FALSE;
     mbObjectSetup(6, fn_1_F4, fn_1_270);

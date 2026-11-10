@@ -810,8 +810,8 @@ void fn_1_36F8(void)
     }
 }
 
-/* Called by fn_1_40C; builds lighting, camera, player characters, scene models, and meteor objects
- * in setup order. */
+/* Called by ObjectSetup; builds lighting, camera, player characters, scene models, and meteor
+ * objects in setup order. */
 void fn_1_3F30(void)
 {
     fn_1_1344();

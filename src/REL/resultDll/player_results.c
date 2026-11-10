@@ -162,7 +162,7 @@ f32 lbl_1_data_204[4] = {1.0f, 0.98f, 0.96f, 0.94f};
 /* Called by _prolog when this overlay opens; sets up result cameras and starts the corresponding
  * result
  * process. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s32 player;
     s32 lightId;
@@ -247,7 +247,7 @@ u32 lbl_1_data_248[6][2] = {
     { RESULT_BG_BOARD_5_DAY, RESULT_BG_BOARD_5_NIGHT }
 };
 
-/* Started by fn_1_A0 for ordinary minigames; presents player results and waits for confirmation
+/* Started by ObjectSetup for ordinary minigames; presents player results and waits for confirmation
  * unless all players are computer-controlled before returning to the board. */
 void fn_1_560(void)
 {

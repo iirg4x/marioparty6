@@ -196,7 +196,7 @@ void fn_1_41D4(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousM
                f32 (*currentMatrix)[3][4]);
 void fn_1_42B8(void);
 void fn_1_437C(s16 layerNo);
-void fn_1_43C8(void);
+void ObjectSetup(void);
 void fn_1_5DA4(Point3d position);
 void fn_1_5E6C(s32 cameraIndex);
 BOOL fn_1_5F64(void);

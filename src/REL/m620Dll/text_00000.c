@@ -24,7 +24,7 @@ static const f64 m620_rodata_leading_constants[2] = {0.5, 3.0};
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* Run the registered constructors and initialize Trap Ease Artist as the REL loads. */
 int _prolog(void)
@@ -34,7 +34,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -79,7 +79,7 @@ extern void fn_1_64A8(OMOBJMAN *);
 extern void fn_1_B7D4(OMOBJMAN *);
 
 /* Create the minigame manager, sequence hooks, camera, and actor setup from _prolog. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s32 index;
 

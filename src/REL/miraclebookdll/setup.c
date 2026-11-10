@@ -182,7 +182,7 @@ extern s32 lbl_1_data_398[];
 
 extern f32 lbl_1_data_3E8[];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 void fn_1_1CC(void);
 
@@ -269,7 +269,7 @@ s32 _prolog(void)
         (*ctors)();
         ctors++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -285,7 +285,7 @@ void _epilog(void)
 }
 
 // Called by the overlay prolog to create the scene manager, lighting and entry process.
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     HuVecF lightPos = {0.0f, 1000.0f, 5000.0f};
     HuVecF lightDir = {0.0f, -1.0f, -1.0f};

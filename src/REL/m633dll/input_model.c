@@ -4,7 +4,7 @@
 
 /* Called by the REL prolog to initialize minigame state, configure camera 1, and register the
  * sequence callbacks. */
-void fn_1_128C(void)
+void ObjectSetup(void)
 {
     s32 setupIndex;
     f32 timerX;

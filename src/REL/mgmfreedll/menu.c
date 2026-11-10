@@ -1778,7 +1778,7 @@ void fn_1_7AE8(void)
 }
 
 /* Enter MGMfree from the minigame event and save the event state for the return path. */
-void fn_1_8548(void)
+void ObjectSetup(void)
 {
     OSReport(lbl_1_data_49F);
     MgPauseExitF = 1;
@@ -1795,7 +1795,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_8548();
+    ObjectSetup();
     return 0;
 }
 

@@ -117,7 +117,7 @@ extern M621Environment *lbl_1_bss_4C;
 
 void *fn_1_A0(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
 void fn_1_140(OMOBJ *obj, OMOBJ_FUNC callback);
-void fn_1_148(void);
+void ObjectSetup(void);
 void fn_1_2BC(void);
 void fn_1_2E0(s16 mode, s16 frameNo);
 void fn_1_358(s16 mode, s16 frameNo);

@@ -48,7 +48,7 @@ void fn_80060F40();
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_118(s16 mode, s16 frameNo);
 void fn_1_280(s16 mode, s16 frameNo);
 void fn_1_2AC(s16 mode, s16 frameNo);

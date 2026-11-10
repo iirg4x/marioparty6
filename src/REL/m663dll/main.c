@@ -54,7 +54,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 int _prolog(void)
 {
@@ -63,7 +63,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -103,7 +103,7 @@ MGSEQ_PARAM lbl_1_data_0 = {
 
 /* Module setup: creates the minigame object manager and camera object, registers the
  * sequence hooks, and sets the delay frames for sequence modes 2 and 7. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_15A0 = fn_80080418();
     fn_8003AB38(lbl_1_bss_15A0, 0x7FDA, 0U, 0U, -1, fn_8003D4FC);
     fn_80070788(&lbl_1_data_0);

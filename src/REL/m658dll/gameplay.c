@@ -476,7 +476,7 @@ void fn_1_1158(M658PlayerWork *work)
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_148(void);
+void ObjectSetup(void);
 extern HUPROCESS *lbl_1_bss_0;
 extern OMOBJMAN *lbl_1_bss_0;
 extern const HuVecF lbl_1_rodata_10, lbl_1_rodata_1C, lbl_1_rodata_28;

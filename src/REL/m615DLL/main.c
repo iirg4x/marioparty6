@@ -9,7 +9,7 @@
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* Runs the module's static constructors, then sets up the module. */
 int _prolog(void) {
@@ -18,7 +18,7 @@ int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -35,7 +35,7 @@ void _epilog(void) {
 
 extern OMOBJMAN *lbl_1_bss_4;
 
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s16 night;
 

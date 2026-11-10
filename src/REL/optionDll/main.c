@@ -259,7 +259,7 @@ int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -273,7 +273,7 @@ void _epilog(void) {
 }
 
 /* The overlay entry calls this to initialize Option Mode's scene and saved records. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     HuVecF shadowPos;
     HuVecF shadowTarget;
