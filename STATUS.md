@@ -1,48 +1,49 @@
 # Mario Party 6 recovery status
 
-The current state of the supported `GP6E01` build on this branch. This page is regenerated from `progress/report.json` whenever recovered sources change; the history of how it got here is in the commits and pull requests.
+The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-09 19:21 UTC.
+Updated 2026-11-10 10:27 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 83.25% | 68.46% |
-| Main DOL | 91.95% | 78.94% |
-| REL modules | 81.40% | 61.82% |
+| Entire project | 83.14% | 93.15% |
+| Main DOL | 91.35% | 99.35% |
+| REL modules | 81.40% | 89.22% |
 
 ## REL modules
 
-**111 of 128** modules have all of their code recovered as matching source.
+**110 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
 
-Still partial (14):
+Partial (15):
 
-| Module | Code | Functions |
+| Module | Code | Data |
 | --- | ---: | ---: |
-| Granite Getaway (`m605DLL`) | 55.0% | 387 of 760 |
-| Cog Jog (`m624DLL`) | 49.1% | 283 of 654 |
-| Sumo of Doom-o (`m653DLL`) | 48.1% | 327 of 697 |
-| Cash Flow (`m623DLL`) | 47.3% | 379 of 813 |
-| Pitifall (`m655DLL`) | 45.2% | 320 of 743 |
-| Tricky Tires (`m610DLL`) | 41.1% | 381 of 859 |
-| Light Breeze (`m639DLL`) | 41.0% | 279 of 645 |
-| Pit Boss (`m671DLL`) | 36.7% | 235 of 609 |
-| Treasure Trawlers (`m611DLL`) | 35.8% | 278 of 767 |
-| Dark 'n Crispy (`m673DLL`) | 34.9% | 262 of 682 |
-| Dust 'til Dawn (`m634DLL`) | 33.2% | 241 of 678 |
-| Surge and Destroy (`m628DLL`) | 32.1% | 265 of 769 |
-| Seer Terror (`m677DLL`) | 28.7% | 318 of 1079 |
-| What Goes Up... (`m604DLL`) | 11.7% | 93 of 449 |
+| Full Tilt (`m652DLL`) | 100.00% | 100.00% |
+| Granite Getaway (`m605DLL`) | 55.01% | 74.15% |
+| Cog Jog (`m624DLL`) | 49.14% | 54.76% |
+| Sumo of Doom-o (`m653DLL`) | 48.09% | 75.92% |
+| Cash Flow (`m623DLL`) | 47.32% | 61.53% |
+| Pitifall (`m655DLL`) | 45.17% | 65.54% |
+| Tricky Tires (`m610DLL`) | 41.10% | 70.81% |
+| Light Breeze (`m639DLL`) | 41.04% | 66.44% |
+| Pit Boss (`m671DLL`) | 36.65% | 53.77% |
+| Treasure Trawlers (`m611DLL`) | 35.82% | 46.02% |
+| Dark 'n Crispy (`m673DLL`) | 34.90% | 49.53% |
+| Dust 'til Dawn (`m634DLL`) | 33.16% | 46.32% |
+| Surge and Destroy (`m628DLL`) | 32.12% | 65.00% |
+| Seer Terror (`m677DLL`) | 28.74% | 41.87% |
+| What Goes Up... (`m604DLL`) | 11.69% | 42.42% |
 
 Not recovered here yet (3): `micquizishidll`, `micquizohdedll`, `mikeactdll`.
 
 ## Main DOL
 
-**5547 of 5915** functions are recovered as matching source; 368 remain, all in files that are not yet matching as a whole:
+**5438 of 5914** functions are recovered as matching source; 476 remain:
 
-- `gssdk_lib/asrpho`: 361
-- `gssdk_lib/gsapi`: 7
+- `gssdk_lib/asrpho`: 446
+- `gssdk_lib/gsapi`: 30
 
 ## Verification
 
