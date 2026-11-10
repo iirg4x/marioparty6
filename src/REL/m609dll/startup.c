@@ -41,7 +41,7 @@ s32 fn_1_111A8(void);
 s32 fn_1_11658(void);
 s32 fn_1_1183C(void);
 s32 fn_1_1188C(void);
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_118(s16 mode, s16 frameNo);
 void fn_1_25C(s16 mode, s16 frameNo);
 void fn_1_288(s16 mode, s16 frameNo);
@@ -152,7 +152,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -167,7 +167,7 @@ void _epilog(void)
 }
 
 /* Initializes the actor manager, registers the camera-view object, and starts the sequence. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_6D7C = fn_80080418();
     fn_8003AB38(lbl_1_bss_6D7C, 32730, 0U, 0U, -1, fn_8003D4FC);
     fn_80070788(&lbl_1_data_0);

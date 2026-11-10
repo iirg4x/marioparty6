@@ -240,7 +240,7 @@ void fn_1_4ECC(Point3d *start, Point3d *end, Point3d *out, f32 t)
     out->z = start->z + (t * (end->z - start->z));
 }
 
-/* fn_1_A0 creates the four player objects and their shared update manager here. */
+/* ObjectSetup creates the four player objects and their shared update manager here. */
 void fn_1_4F24(HUPROCESS *manager)
 {
     s32 i;

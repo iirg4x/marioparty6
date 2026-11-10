@@ -90,7 +90,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* REL entry point: runs the constructor table and starts the minigame actor manager. */
 int _prolog(void)
@@ -100,7 +100,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -119,7 +119,7 @@ void fn_1_F0(void);
 HUPROCESS *lbl_1_bss_0;
 
 /* Creates the actor manager during REL startup and schedules the minigame update process. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_0 = fn_80080418();
     fn_8000DAC0(fn_1_F0, 100U, 12288U, 0, lbl_1_bss_0);
 }

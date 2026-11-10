@@ -41,7 +41,7 @@ void fn_1_FB38(OMOBJ *object);
 void fn_1_FDA0(OMOBJ *object);
 void fn_1_FF9C(M674ScoreEntry *entry);
 
-/* Called by fn_1_A0 during setup to create the score display object. */
+/* Called by ObjectSetup during setup to create the score display object. */
 void fn_1_FA48(HUPROCESS *process)
 {
     OMOBJ *object;

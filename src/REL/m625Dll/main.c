@@ -178,7 +178,7 @@ s32 fn_1_13AA8(f32 top, f32 bottom, f32 left, f32 right, Point3d position) {
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_13B88(void);
+void ObjectSetup(void);
 
 /* Called when the REL loads to run its static constructors and initialize the minigame. */
 int _prolog(void)
@@ -188,7 +188,7 @@ int _prolog(void)
         (*constructor)();
         constructor++;
     }
-    fn_1_13B88();
+    ObjectSetup();
     return 0;
 }
 
@@ -210,7 +210,7 @@ extern HUPROCESS *lbl_1_bss_810;
 extern MGSEQ_PARAM lbl_1_data_448;
 
 /* Called by the REL prolog to create the minigame object manager and sequence. */
-void fn_1_13B88(void) {
+void ObjectSetup(void) {
     lbl_1_bss_810 = fn_8003A8BC(300, 4096);
     fn_80069F1C(lbl_1_bss_810);
     fn_800707B4(&lbl_1_data_448, 2000);

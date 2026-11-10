@@ -6,7 +6,7 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 extern HUPROCESS *lbl_1_bss_0[2];
-void fn_1_530(void);
+void ObjectSetup(void);
 
 /* Runs module constructors before starting Rocky Road's object manager. */
 int _prolog(void)
@@ -16,7 +16,7 @@ int _prolog(void)
         (*constructor)();
         constructor++;
     }
-    fn_1_530();
+    ObjectSetup();
     return 0;
 }
 

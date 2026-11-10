@@ -81,7 +81,7 @@ static Vec lbl_1_data_560[4] = {
 
 void fn_1_A528(void *entry);
 
-/* fn_1_A0 creates this object at startup; its first update builds the player score displays. */
+/* ObjectSetup creates this object at startup; its first update builds the player score displays. */
 void fn_1_A220(OMOBJMAN *manager)
 {
     OMOBJ *object;

@@ -520,7 +520,7 @@ void fn_1_8488(void);
 void fn_1_8520(void);
 int _prolog(void);
 void _epilog(void);
-s32 fn_1_A0(void);
+s32 ObjectSetup(void);
 void fn_1_38B0(void);
 void fn_1_3BFC(void);
 void fn_1_3E7C(void);
@@ -973,7 +973,7 @@ int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -987,7 +987,7 @@ void _epilog(void) {
 }
 
 /* Create the quiz scene, presenter and player models, cameras, and round processes on entry. */
-s32 fn_1_A0(void) {
+s32 ObjectSetup(void) {
     OMOVLHIS *history;
     f32 characterHeight;
     s32 index;

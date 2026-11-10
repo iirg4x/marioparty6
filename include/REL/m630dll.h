@@ -9,6 +9,6 @@ void fn_1_B50(void);
 int fn_1_1670(void);
 void fn_1_1E70(void);
 void fn_1_1E90(void);
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 #endif

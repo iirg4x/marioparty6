@@ -92,7 +92,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_9D88(void);
+void ObjectSetup(void);
 
 int _prolog(void)
 {
@@ -101,7 +101,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_9D88();
+    ObjectSetup();
     return 0;
 }
 
@@ -2077,7 +2077,7 @@ void fn_1_9D78(OMOBJ *obj)
     obj->objFunc = fn_1_656C;
 }
 
-void fn_1_9D88(void)
+void ObjectSetup(void)
 {
     Vec lightPosition;
     Vec shadowPosition;

@@ -14,7 +14,7 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 OMOBJMAN *lbl_1_bss_0;
-void fn_1_148(void);
+void ObjectSetup(void);
 void fn_1_264(void);
 void fn_1_768(void);
 s32 fn_1_C38(void);
@@ -45,7 +45,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_148();
+    ObjectSetup();
     return 0;
 }
 
@@ -81,7 +81,7 @@ void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback)
 }
 
 /* Starts the minigame actor manager, shared shadows and sequence process at load. */
-void fn_1_148(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0 = fn_80080418();
     fn_80080E8C();

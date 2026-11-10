@@ -7,7 +7,7 @@ int _prolog(void)
 {
     const VoidFunc *ctor = _ctors;
     while (*ctor != 0) { (*ctor)(); ctor++; }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 /* The runtime invokes this entry point to run registered destructors on unload. */

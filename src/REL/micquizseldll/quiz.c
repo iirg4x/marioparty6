@@ -165,7 +165,7 @@ u32 lbl_1_data_23C[16] = {
 
 int _prolog(void);
 void _epilog(void);
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_244(OMOBJ *obj);
 void fn_1_680(void);
 s32 fn_1_6B8(void);
@@ -326,7 +326,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -341,7 +341,7 @@ void _epilog(void)
 }
 
 /* Initializes the selection overlay and its menu object; called by the overlay prolog. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     OMOVLHIS *overlayHistory;
 
     OSReport(lbl_1_data_4E4);

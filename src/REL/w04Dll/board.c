@@ -378,7 +378,7 @@ extern int lbl_1_data_798[4];
 extern HuVecF lbl_1_data_4A0[3][2];
 extern float lbl_1_data_4E8[3][2];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F4(void);
 void fn_1_9DC(void);
 void fn_1_A04(void);
@@ -753,7 +753,7 @@ HuVecF lbl_1_data_470 = { 0.0f, 500.0f, 0.0f };
 #include "REL/w04Dll/common.h"
 
 // Enter party mode and register this board's creation and closing hooks.
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     GWPartySet(TRUE);
     mbObjectSetup(3, fn_1_F4, fn_1_9DC);

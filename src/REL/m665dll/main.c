@@ -74,7 +74,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 void fn_1_778(void);
 
@@ -87,7 +87,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -139,7 +139,7 @@ extern u8 lbl_1_bss_20[8];
 extern u32 lbl_1_data_68[][2];
 
 /* Runs during module loading to initialize its global object manager and sequence. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_8 = fn_8003A8BC(256, 8192);
     fn_80069F1C(lbl_1_bss_8);

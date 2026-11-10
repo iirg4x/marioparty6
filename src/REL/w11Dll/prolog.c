@@ -1,7 +1,7 @@
 /* Starts and stops the tutorial board module's static initialization. */
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* The module loader calls this to run constructors and start tutorial board setup. */
 int _prolog(void)
@@ -11,7 +11,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 

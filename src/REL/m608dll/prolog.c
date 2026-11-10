@@ -2,7 +2,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_43C8(void);
+void ObjectSetup(void);
 
 /* Called by the module loader on entry; runs constructors before scene setup. */
 int _prolog(void)
@@ -12,7 +12,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_43C8();
+    ObjectSetup();
     return 0;
 }
 

@@ -8,7 +8,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_440(s16 frame);
 void fn_1_73C(void);
 void fn_1_AF18(s16 mode);
@@ -36,7 +36,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -51,7 +51,7 @@ void _epilog(void)
 }
 
 /* Creates the object manager and registers the minigame sequence callbacks. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_4 = fn_8003A8BC(256, 8192);
     fn_80069F1C(lbl_1_bss_4);

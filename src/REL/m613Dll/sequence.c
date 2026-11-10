@@ -30,7 +30,7 @@ extern void fn_1_5038(void);
 
 int _prolog(void);
 void _epilog(void);
-void fn_1_10814(void);
+void ObjectSetup(void);
 void fn_1_10890(s16 mode, s16 frameNo);
 void fn_1_109BC(s16 unusedMode, s16 value);
 void fn_1_10A40(s16 mode, s16 frameNo);
@@ -62,7 +62,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_10814();
+    ObjectSetup();
     return 0;
 }
 
@@ -77,7 +77,7 @@ void _epilog(void)
 }
 
 /* Called by the module prolog to start the object manager and configure sequence phases. */
-void fn_1_10814(void) {
+void ObjectSetup(void) {
     lbl_1_bss_1258 = fn_8003A8BC(300, 4096);
     fn_80069F1C(lbl_1_bss_1258);
     fn_800707B4(&lbl_1_data_270, 2000);

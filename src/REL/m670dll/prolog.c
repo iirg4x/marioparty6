@@ -12,7 +12,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_1658();
+    ObjectSetup();
     return 0;
 }
 /* The overlay loader calls this while unloading the game scene. */

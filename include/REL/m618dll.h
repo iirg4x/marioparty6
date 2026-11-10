@@ -84,7 +84,7 @@ extern int lbl_1_data_28[4];
 extern unsigned int lbl_1_data_38[4];
 extern HuVec2f lbl_1_data_48[4];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_DC(s16 mode, s16 frameNo);
 void fn_1_1EC(s16 mode, s16 frameNo);
 void fn_1_294(s16 mode, s16 frameNo);

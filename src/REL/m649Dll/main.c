@@ -157,7 +157,7 @@ extern u32 lbl_1_bss_1C[4];
 extern s32 lbl_1_bss_C[4];
 
 /* Initializes the sequence manager, shared camera, score display, props, and effects at startup. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s32 i, resource;
     lbl_1_bss_70 = 0;

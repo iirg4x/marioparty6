@@ -46,7 +46,7 @@ const u16 lbl_1_rodata_10[4] = {1, 2, 4, 8};
 
 int _prolog(void);
 void _epilog(void);
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_1F8(s16 mode, s16 time);
 void fn_1_248(s16 mode, s16 time);
 void fn_1_4FC(s16 mode, s16 time);
@@ -137,7 +137,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -153,7 +153,7 @@ void _epilog(void)
 
 /* Creates the scene and four player objects, initializes the view and starts the minigame
  * sequence. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     OMOBJ * object;
     s32 playerIndex;
     void * scene;

@@ -901,7 +901,7 @@ double fn_1_2D08(void *fitParams, void *fitSpheres, s32 sphereCount, Vec *camera
     return distance;
 }
 
-/* fn_1_A0 calls this at startup to create the audio object and its sound-tracking records. */
+/* ObjectSetup calls this at startup to create the audio object and its sound-tracking records. */
 void fn_1_3250(HUPROCESS *objectManager, u32 audioConfig) {
     OMOBJ *object;
     u32 *objectState;

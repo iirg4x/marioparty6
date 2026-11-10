@@ -198,7 +198,7 @@ extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
 extern HuVecF lbl_1_data_AC;
 
 /* Called from the module prolog to set W10's 20-turn rules and install board setup callbacks. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     GWPartySet(TRUE);
     fn_8006A1C4(65550);

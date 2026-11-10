@@ -95,7 +95,7 @@ extern char lbl_1_data_369[39];
 int _prolog(void);
 void _epilog(void);
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* Runs static constructors, then initializes the opening overlay objects. */
 int _prolog(void)
@@ -106,7 +106,7 @@ int _prolog(void)
         (**ctors)();
         ctors++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -125,7 +125,7 @@ void _epilog(void)
 
 /* Called by _prolog to initialize the camera, lights, windows, object manager, and opening
  * process. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     OSReport(lbl_1_data_369);
     lbl_1_bss_1E4 = fn_8003A8BC(50, 8192);

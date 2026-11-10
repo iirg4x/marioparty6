@@ -154,7 +154,7 @@ void fn_1_C78(s16 mode, s16 frameNo);
 void fn_1_118C(s16 mode, s16 frameNo);
 void fn_1_1284(s16 mode, s16 frameNo);
 void fn_1_1288(s16 mode, s16 frameNo);
-void fn_1_128C(void);
+void ObjectSetup(void);
 void fn_1_1598(OMOBJ *obj);
 void fn_1_258C(void);
 void fn_1_26B4(OMOBJ *obj);

@@ -91,7 +91,7 @@ extern M635PositionStep lbl_1_data_2E8[21];
 extern HuVecF lbl_1_data_F8[4];
 extern M635Motion lbl_1_data_158[6];
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F0(s16 mode, s16 frameNo);
 void fn_1_134(s16 mode, s16 frameNo);
 void fn_1_164(s16 mode, s16 frameNo);

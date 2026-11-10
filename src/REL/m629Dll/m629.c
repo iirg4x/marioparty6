@@ -108,7 +108,7 @@ void fn_1_4290(HU3D_MODEL *model, Mtx *matrix);
 void fn_1_4368(HU3D_MODEL *model, Mtx *matrix);
 void fn_1_444C(OMOBJ *obj);
 void fn_1_53B8(OMOBJ *obj);
-void fn_1_53C8(void);
+void ObjectSetup(void);
 void fn_1_58BC(s16 mode, s16 frameNo);
 void fn_1_5A08(s16 mode, s16 frameNo);
 
@@ -284,7 +284,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_53C8();
+    ObjectSetup();
     return 0;
 }
 
@@ -1219,7 +1219,7 @@ void fn_1_53B8(OMOBJ *obj)
 
 /* Called by _prolog to initialize the sequence, camera, lighting, sound queues, and object
  * manager. */
-void fn_1_53C8(void)
+void ObjectSetup(void)
 {
     s32 i;
     s16 nightF;

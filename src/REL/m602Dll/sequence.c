@@ -67,7 +67,7 @@ s16 lbl_1_bss_0;
 
 /* Module initialization registers the callbacks and lets the intro and pre-winner scenes
  * choose when their sequence phases finish. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_8 = fn_8003A8BC(300, 4096);
     fn_80069F1C(lbl_1_bss_8);

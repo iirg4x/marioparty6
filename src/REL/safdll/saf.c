@@ -48,7 +48,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* The overlay loader calls this entry point to run static setup and start the scene. */
 int _prolog(void)
@@ -58,7 +58,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 /* The overlay loader calls this entry point when unloading the module. */
@@ -80,7 +80,7 @@ extern char lbl_1_data_30;
 extern char lbl_1_data_4;
 
 /* Starts the motion-check scene when the overlay loader enters this module. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     f32 reportValueLeft;
     f32 reportValueRight;
     f64 sum;
@@ -112,7 +112,7 @@ void fn_1_A0(void) {
 }
 extern void fn_1_6E0(void);
 
-/* Runs as fn_1_A0's child process, showing the overlay's wipe and controller demonstrations. */
+/* Runs as ObjectSetup's child process, showing the overlay's wipe and controller demonstrations. */
 void fn_1_3AC(void) {
     f32 unused = 0.0f;
     HUWINID window;

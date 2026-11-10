@@ -70,7 +70,7 @@ void fn_1_10288(s32 type, s32 index, Vec *position, s32 requestValue)
     }
 }
 
-/* Creates the scene-effect object and its hooks when fn_1_A0 initializes the board. */
+/* Creates the scene-effect object and its hooks when ObjectSetup initializes the board. */
 void fn_1_1033C(HUPROCESS *process) {
     HUPROCESS *unusedProcess;
     OMOBJ *effectObject;

@@ -106,7 +106,7 @@ extern s32 lbl_1_bss_0;
 
 extern OMOBJMAN *lbl_1_bss_4;
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 void fn_1_1CC(void);
 

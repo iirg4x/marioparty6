@@ -65,7 +65,7 @@ extern s32 lbl_1_bss_8;
 extern s32 lbl_1_bss_C;
 extern OMOBJMAN *lbl_1_bss_4;
 extern s32 lbl_1_data_28[2][4];
-void fn_1_A0(void);
+void ObjectSetup(void);
 void *fn_1_2BC(s32 priority, u32 bytes, void (*update)(OMOBJ *));
 void fn_1_35C(OMOBJ *object, OMOBJ_FUNC callback);
 void fn_1_B2C(OMOBJ *obj);

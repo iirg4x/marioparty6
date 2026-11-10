@@ -12,7 +12,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* Runs the overlay constructors and starts Snow Brawl after the module loads. */
 int _prolog(void)
@@ -22,7 +22,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -108,7 +108,7 @@ s16 lbl_1_bss_8[4];
 s16 lbl_1_bss_0[4];
 
 /* Starts Snow Brawl's object manager, sequence, camera, fog, audio and actors. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s32 index;
     s16 nightMode;

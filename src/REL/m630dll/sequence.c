@@ -25,7 +25,7 @@ HUPROCESS *lbl_1_bss_0;
 /* The module prolog calls this after constructors to create the object manager and start the
  * sequence. */
 
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0 = fn_8003A8BC(200, 8192);
     fn_80069F1C(lbl_1_bss_0);

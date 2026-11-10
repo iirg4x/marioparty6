@@ -47,7 +47,7 @@ void fn_1_EA98(OMOBJ *object);
 void fn_1_ED00(OMOBJ *object);
 void fn_1_EEFC(ScoreDisplayEntry *entry);
 
-/* Called by fn_1_A0 during setup to create the score-display object. */
+/* Called by ObjectSetup during setup to create the score-display object. */
 void fn_1_E9A8(HUPROCESS *process)
 {
     OMOBJ *object;

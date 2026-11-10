@@ -243,7 +243,7 @@ extern const M601VoidFunc _ctors[];
 
 extern const M601VoidFunc _dtors[];
 
-void fn_1_9F7C(void);
+void ObjectSetup(void);
 
 int _prolog(void)
 {
@@ -252,7 +252,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_9F7C();
+    ObjectSetup();
     return 0;
 }
 
@@ -2012,7 +2012,7 @@ static inline void DebugCheckLighting(int enabled)
     }
 }
 
-void fn_1_9F7C(void)
+void ObjectSetup(void)
 {
     s16 nightMode;
     HuVecF shadowPosition;

@@ -8,7 +8,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 
 /* The REL loader calls this entry point to run constructors and start the game. */
 int _prolog(void)
@@ -18,7 +18,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -33,7 +33,7 @@ void _epilog(void)
 }
 
 /* Called at startup to create actor management and configure the sequence delays. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_38E4 = fn_80080418();
     fn_8003AB38(lbl_1_bss_38E4, 32730, 0U, 0U, -1, fn_8003D4FC);

@@ -10,7 +10,7 @@
 #define MSM_SE_M675_2224 2224
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[], _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 OMOBJMAN *lbl_1_bss_40;
 /* Opening phase/timer, music handle and looping sound handle. */
 s32 lbl_1_bss_3C, lbl_1_bss_38, lbl_1_bss_34, lbl_1_bss_30;
@@ -127,7 +127,7 @@ int _prolog(void)
 
     }
 
-    fn_1_A0();
+    ObjectSetup();
 
     return 0;
 
@@ -151,7 +151,7 @@ void _epilog(void)
 }
 
 /* Initializes Banana Shake's objects, camera, resources and sequence callbacks. */
-void fn_1_A0(void) {
+void ObjectSetup(void) {
 
     s32 index;
 

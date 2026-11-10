@@ -186,7 +186,7 @@ int mbCoinAddExec(int playerNo, int coinCount);
 void mbStarObjPosSet(int objectId, float x, float y, float z);
 int mbAudFXPlay(s16 seId);
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F4(void);
 void fn_1_1790(void);
 void fn_1_1BB4(OMOBJ *object);
@@ -340,7 +340,7 @@ HuVecF lbl_1_data_0[100] = {
 
 /* Enables board mode and registers the board's load and close callbacks. */
 
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     GWPartySet(TRUE);
     mbObjectSetup(2, fn_1_F4, fn_1_1790);

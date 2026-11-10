@@ -58,7 +58,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -79,7 +79,7 @@ MGSEQ_PARAM lbl_1_data_0 = {
     (MGSEQ_FUNC)fn_1_300
 };
 
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_4 = fn_80080418();
     fn_80070788(&lbl_1_data_0);
 }

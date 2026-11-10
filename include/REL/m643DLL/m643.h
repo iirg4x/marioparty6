@@ -169,7 +169,7 @@ f32 fn_1_4D0(HuVecF *dst, const HuVecF *src);
 void fn_1_6B0(HuVecF *dst, const HuVecF *src, f32 scale);
 s32 fn_1_77C(Mtx matrix, const Vec *start, const Vec *end, const Vec *direction);
 s32 fn_1_E74(Vec *angles, Mtx matrix);
-void fn_1_A0(void);
+void ObjectSetup(void);
 void *fn_1_16C(s32 priority, u32 bytes, OMOBJ_FUNC callback);
 void fn_1_20C(OMOBJ *object, OMOBJ_FUNC callback);
 #endif

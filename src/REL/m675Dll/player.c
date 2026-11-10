@@ -284,7 +284,7 @@ M675PlayerConfig lbl_1_data_364 = {
     10
 };
 
-/* Called by fn_1_A0 to create the player manager and four player objects. */
+/* Called by ObjectSetup to create the player manager and four player objects. */
 void fn_1_4F2C(HUPROCESS *manager)
 {
     OMOBJ *object;

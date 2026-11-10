@@ -40,7 +40,7 @@ void fn_1_140(OMOBJ *obj, OMOBJ_FUNC callback)
 }
 
 /* Create the actor object manager, scene lighting and shadow, then start the minigame process. */
-void fn_1_148(void)
+void ObjectSetup(void)
 {
     HU3D_LIGHTID light;
 

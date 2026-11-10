@@ -93,7 +93,7 @@ extern s16 lbl_1_bss_0;
 extern HuVecF s02MapScrollDelta;
 extern s32 lbl_1_bss_10[3];
 extern S02Work s02Work;
-void S02OverlayInitialize(void);
+void ObjectSetup(void);
 void fn_1_F4(void);
 void S02ObjectClose(OMOBJ *obj);
 void S02MapObjectScrollUpdate(OMOBJ *obj);
@@ -157,7 +157,7 @@ int _prolog(void)
         (**ctors)();
         ctors++;
     }
-    S02OverlayInitialize();
+    ObjectSetup();
     return 0;
 }
 
@@ -173,7 +173,7 @@ void _epilog(void)
 }
 
 /* Selects the S02 board and registers its setup and close callbacks. */
-void S02OverlayInitialize(void)
+void ObjectSetup(void)
 {
     lbl_80265B70.partyF = FALSE;
     mbObjectSetup(7, fn_1_F4, S02ObjectClose);

@@ -132,7 +132,7 @@ void mbMapHookSet(void (*hook)(BOOL enterF));
 
 int _prolog(void);
 void _epilog(void);
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F4(void);
 void fn_1_5EC(void);
 void fn_1_5F0(OMOBJ *obj);
@@ -190,7 +190,7 @@ int _prolog(void)
         (**ctors)();
         ctors++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -206,7 +206,7 @@ void _epilog(void)
 }
 
 /* The REL startup path disables party mode and installs the S03 board callbacks. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     GWPartySet(FALSE);
     mbObjectSetup(S03_BOARD_NO, fn_1_F4, fn_1_5EC);

@@ -323,7 +323,7 @@ void fn_1_D40C(void);
 void fn_1_F0E0(OMOBJ *obj);
 void fn_1_F138(void);
 void fn_1_10098(void);
-void fn_1_100B8(void);
+void ObjectSetup(void);
 int _prolog(void);
 void _epilog(void);
 s32 fn_1_102E4(void);
@@ -3966,7 +3966,7 @@ void fn_1_10098(void)
 }
 
 /* Waits for the result overlay setup process to finish. */
-void fn_1_100B8(void)
+void ObjectSetup(void)
 {
     OSReport(lbl_1_data_719);
     fn_80009A30();
@@ -3982,7 +3982,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_100B8();
+    ObjectSetup();
     return 0;
 }
 

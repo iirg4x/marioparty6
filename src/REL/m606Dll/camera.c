@@ -228,7 +228,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_F64C(void);
+void ObjectSetup(void);
 
 /* Runs the module constructors before setting up its stage cameras and light. */
 int _prolog(void)
@@ -238,7 +238,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_F64C();
+    ObjectSetup();
     return 0;
 }
 
@@ -3007,7 +3007,7 @@ const GXColor colorE64 = { 192, 192, 255, 255 };
 
 const GXColor colorE68 = { 192, 255, 192, 255 };
 
-void fn_1_F64C(void)
+void ObjectSetup(void)
 {
     s16 nightMode;
     float cameraVector2Z;

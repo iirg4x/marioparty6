@@ -15,7 +15,7 @@ HUPROCESS *lbl_1_bss_0; /* Object-manager process used by the minigame's scene o
 typedef void (*M667VoidFunc)(void);
 extern const M667VoidFunc _ctors[];
 extern const M667VoidFunc _dtors[];
-void fn_1_148(void);
+void ObjectSetup(void);
 
 /* The loader runs constructors, then initializes the minigame module. */
 int _prolog(void)
@@ -25,7 +25,7 @@ int _prolog(void)
         (*constructor)();
         constructor++;
     }
-    fn_1_148();
+    ObjectSetup();
     return 0;
 }
 
@@ -64,7 +64,7 @@ void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback)
 
 /* Minigame startup creates the actor manager, selects spherical collision positioning, and
  * starts its sequence process. */
-void fn_1_148(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0 = fn_80080418();
     fn_80080E8C();

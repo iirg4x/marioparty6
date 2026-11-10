@@ -140,7 +140,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-extern void fn_1_129D0(void);
+extern void ObjectSetup(void);
 
 int _prolog(void)
 {
@@ -151,7 +151,7 @@ int _prolog(void)
         ctor++;
     }
 
-    fn_1_129D0();
+    ObjectSetup();
     return 0;
 }
 
@@ -4132,7 +4132,7 @@ extern s32 lbl_1_bss_148;
 extern HUPROCESS *lbl_1_bss_150;
 
 /* Sets the minigame camera, lighting, shadows, and sequence state. */
-void fn_1_129D0(void)
+void ObjectSetup(void)
 {
     s32 i;
     s16 nightFlag;

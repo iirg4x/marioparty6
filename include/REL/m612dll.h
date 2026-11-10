@@ -25,7 +25,7 @@ extern HU3D_MOTIONID lbl_1_bss_44C[4][8];
 extern s8 lbl_1_data_198[90][60];
 extern s8 lbl_1_data_16B0[10][7];
 extern GXColor lbl_1_data_84[2];
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_8F0(void);
 void fn_1_F0C(void);
 s32 fn_1_13A4(s32 column, s32 row);

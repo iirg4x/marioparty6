@@ -36,7 +36,7 @@ extern void fn_1_1033C(OMOBJMAN *);
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[], _dtors[];
-void fn_1_A0(void);
+void ObjectSetup(void);
 s32 fn_1_A4C(s16 mode, s16 state);
 void fn_1_AD4(void);
 extern s32 fn_1_F7BC(void), fn_1_F828(void), fn_1_F8B4(void);
@@ -110,7 +110,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_A0();
+    ObjectSetup();
     return 0;
 }
 
@@ -125,7 +125,7 @@ void _epilog(void)
 }
 
 /* Module startup: initialize the sequence, timer, camera, audio, and scene objects. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     s32 index;
     s32 resource;

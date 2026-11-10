@@ -16,7 +16,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_1590();
+    ObjectSetup();
     return 0;
 }
 

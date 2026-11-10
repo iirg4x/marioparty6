@@ -213,7 +213,7 @@ void fn_1_438(OMOBJ *obj);
 void fn_1_5C4(OMOBJ *obj);
 void fn_1_5C8(void);
 void fn_1_6E0(void);
-void fn_1_784(void);
+void ObjectSetup(void);
 void fn_1_B10(s16 mode, s16 frameNo);
 void fn_1_BD4(s16 mode, s16 frameNo);
 void fn_1_C74(s16 mode, s16 frameNo);

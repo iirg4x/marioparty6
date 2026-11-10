@@ -3,7 +3,7 @@ typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-extern void fn_1_128C(void);
+extern void ObjectSetup(void);
 
 /* The REL loader calls this on entry; run registered constructors before initializing minigame
  * state. */
@@ -16,7 +16,7 @@ int _prolog(void)
         ctor++;
     }
 
-    fn_1_128C();
+    ObjectSetup();
     return 0;
 }
 

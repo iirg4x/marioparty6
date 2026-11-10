@@ -52,7 +52,7 @@ extern const VoidFunc _ctors[];
 
 extern const VoidFunc _dtors[];
 
-void fn_1_142C0(void);
+void ObjectSetup(void);
 
 /* Module startup runs registered constructors, then initializes the minigame manager. */
 int _prolog(void)
@@ -62,7 +62,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_142C0();
+    ObjectSetup();
     return 0;
 }
 
@@ -87,7 +87,7 @@ extern MGSEQ_PARAM lbl_1_data_4B0;
 void fn_1_144B8(s16 mode, s16 frameNo);
 
 /* _prolog calls this to configure the object manager and minigame sequence phases. */
-void fn_1_142C0(void) {
+void ObjectSetup(void) {
     lbl_1_bss_7D8 = fn_8003A8BC(300, 4096);
     fn_80069F1C(lbl_1_bss_7D8);
     fn_800707B4(&lbl_1_data_4B0, 2000);

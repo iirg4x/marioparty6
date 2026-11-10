@@ -48,7 +48,7 @@ void fn_1_510(void);
 void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(void));
 
 /* Module startup selects tutorial rules and installs the board setup and close callbacks. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     GWPartySet(FALSE);
     fn_8006A1C4(65550);

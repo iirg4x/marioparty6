@@ -640,7 +640,7 @@ void fn_1_7EE4(void);
 void fn_1_9244(void);
 void fn_1_92DC(void);
 void fn_1_202DC(s16 gameNo);
-void fn_1_251FC(void);
+void ObjectSetup(void);
 s32 fn_1_262E8(void);
 void fn_1_2400(void);
 void fn_1_25B4(MDMIC_CAMERA_WORK *camera, float weight);
@@ -6910,7 +6910,7 @@ void fn_1_24614(void)
 }
 
 /* Overlay setup releases previous mode archives and cached character motion archives. */
-void fn_1_251FC(void) {
+void ObjectSetup(void) {
     s16 characterNo;
 
     OSReport(lbl_1_data_F60);
@@ -6968,7 +6968,7 @@ int _prolog(void) {
         (*ctor)();
         ctor++;
     }
-    fn_1_251FC();
+    ObjectSetup();
     return 0;
 }
 

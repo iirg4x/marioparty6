@@ -2,7 +2,7 @@
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void fn_1_3934(void);
+void ObjectSetup(void);
 
 /* Module-load entry point: runs registered constructors, then initializes the M632 scene. */
 int _prolog(void)
@@ -12,7 +12,7 @@ int _prolog(void)
         (*ctor)();
         ctor++;
     }
-    fn_1_3934();
+    ObjectSetup();
     return 0;
 }
 

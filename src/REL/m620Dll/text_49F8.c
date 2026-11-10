@@ -157,7 +157,7 @@ void fn_1_4D68(OMOBJ *object);
 
 void fn_1_10D4(s32 player, s32 character, s32 charNo);
 
-/* Called by fn_1_A0 to create the actor manager and four player objects. */
+/* Called by ObjectSetup to create the actor manager and four player objects. */
 void fn_1_4A50(HUPROCESS *manager)
 {
     OMOBJ *object;
