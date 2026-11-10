@@ -4,7 +4,7 @@
 typedef struct MicquizResponseEntry_s {
     int key;
     int flag;
-    unsigned char unk_08[4]; /* No code names this field. */
+    unsigned char unknown_08[4]; /* No code names this field. */
     int state;
 } MicquizResponseEntry;
 
