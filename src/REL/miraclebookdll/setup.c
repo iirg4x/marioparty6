@@ -27,20 +27,9 @@
 
 #include "game/wipe.h"
 
-typedef void (*VoidFunc)(void);
+#include "REL/miraclebookdll/book.h"
 
-typedef struct UnkMiracleBookHook_s {
-    f32 textureMatrix00;
-    f32 textureMatrix01;
-    f32 textureMatrix02;
-    f32 textureMatrix10;
-    f32 textureMatrix11;
-    f32 textureMatrix12;
-    GXColor color;
-    f32 textureOffsetY;
-    f32 textureOffsetSpeed;
-    f32 effectFramesRemaining;
-} UNK_MIRACLEBOOK_HOOK;
+typedef void (*VoidFunc)(void);
 
 typedef struct MiracleBookVecTable_s {
     HuVecF entries[5];
@@ -71,8 +60,6 @@ extern void *lbl_1_bss_C;
 extern ANIMDATA *lbl_1_bss_10;
 
 extern ANIMDATA *lbl_1_bss_14;
-
-extern UNK_MIRACLEBOOK_HOOK lbl_1_bss_18[2];
 
 extern s16 lbl_1_bss_68[5];
 
@@ -186,76 +173,6 @@ void ObjectSetup(void);
 
 void fn_1_1CC(void);
 
-void fn_1_2AC(OMOBJMAN *objMan);
-
-s32 fn_1_2FCC(s32 dir);
-
-void fn_1_3154(s32 dir);
-
-void fn_1_3734(s32 cameraMoveDirection);
-
-s32 fn_1_394(void);
-
-void fn_1_434(void);
-
-void fn_1_4CC(void);
-
-void fn_1_A30(void);
-
-void fn_1_3418(void);
-
-void fn_1_34C4(void);
-
-void fn_1_3E40(void);
-
-s32 fn_1_427C(void);
-
-void fn_1_479C(void);
-
-void fn_1_4E94(void);
-
-void fn_1_4EFC(void);
-
-void fn_1_4FD4(void);
-
-void fn_1_5904(void);
-
-void fn_1_5ED0(s32 displaySprites);
-
-void fn_1_60A4(void);
-
-void fn_1_69A8(void);
-
-void fn_1_69F8(void);
-
-void fn_1_6B8C(void);
-
-void fn_1_7158(void);
-
-void fn_1_71E0(s32 messNo);
-
-void fn_1_7324(void);
-
-s32 fn_1_7354(void);
-
-void fn_1_7560(void);
-
-void fn_1_7998(void);
-
-void fn_1_8A0C(s16 layerNo);
-
-void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
-
-void fn_1_8F10(OMOBJ *obj);
-
-void fn_1_9130(s16 hookNo, HuVecF *pos);
-
-void fn_1_92B4(OMOBJ *obj);
-
-void fn_1_95B8(void);
-
-void fn_1_9718(void);
-
 OMOBJMAN *lbl_1_bss_4;
 
 s32 lbl_1_bss_0;
@@ -324,7 +241,7 @@ void fn_1_1CC(void)
             HuAudAllStop();
             fn_80026648();
             fn_80028D70();
-            fn_8003A5E4(1, 1);
+            fn_8003A5E4(1, TRUE);
             break;
     }
     HuPrcVSleep();

@@ -5,7 +5,7 @@
 
 typedef struct Position {
     HuVecF position;
-    unsigned char unk_0C[12]; /* No code names this field. */
+    unsigned char unknown_0C[12]; /* No code names this field. */
     HuVecF offset;
 } Position;
 
