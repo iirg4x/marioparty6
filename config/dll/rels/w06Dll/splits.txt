@@ -12,7 +12,7 @@ REL/w06Dll/board_main.c:
 	.data       start:0x00000000 end:0x00000820
 	.bss        start:0x00000000 end:0x000004B6
 
-REL/w06Dll/text_0E3EC.c:
+REL/w06Dll/cpu_branch.c:
 	.text       start:0x0000E3EC end:0x0000E50C
 
 REL/w06Dll/runtime.c:

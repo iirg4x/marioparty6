@@ -2322,7 +2322,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/w06Dll/text_0E3EC.c",
+                "REL/w06Dll/cpu_branch.c",
                 extra_cflags=["-pooldata", "off"],
             ),
         },
@@ -2532,7 +2532,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/w02Dll/text_A0.c",
+                "REL/w02Dll/board.c",
                 extra_cflags=["-pooldata", "off"],
             ),
         },
