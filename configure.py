@@ -1933,6 +1933,12 @@ config.libs = [
         },
     ),
     Rel(
+        "mikeactdll",
+        objects={
+            Object(Matching, "REL/mikeactdll/update_hooks.c"),
+        },
+    ),
+    Rel(
         "miraclebookdll",
         objects={
             Object(
