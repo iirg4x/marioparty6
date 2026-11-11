@@ -7,7 +7,7 @@
 #include "REL/framework/world_units.h"
 #include "REL/framework/minigame_core.h"
 #include <vector>
-#include "REL/m652DLL/range_operations.h"
+#include <cmath>
 #include "dolphin/types.h"
 extern "C" {
 #include "humath.h"
@@ -26,7 +26,7 @@ extern "C" {
 #include <math.h>
 #include "dolphin/mtx.h"
 #include "game/hu3d.h"
-#include "REL/m652DLL/framework/range.h"
+#include "REL/framework/range.h"
 extern "C" {
 #include "dolphin/os.h"
 }
@@ -34,13 +34,13 @@ extern "C" {
 #include "datanum/charmot.h"
 #include "REL/m652DLL/player_state.h"
 void sendEvent(int, unsigned long, float);
+
+// The racer's four character motions, in the order the constructor creates them on its
+// model (createCharacterMotions).
 extern "C" {
-// Each target object is one float, read at offset zero.
 extern const unsigned int lbl_1_rodata_320[4] = {0x930022, 0x93003F, 0x930006, 0x930028};
-const float lbl_1_rodata_330[1] = {0.0f};
-const float lbl_1_rodata_334[1] = {405.0f};
-const float lbl_1_rodata_338[1] = {100.0f};
 }
+
 /* The players of the two sides. */
 
 struct Racer;
@@ -78,7 +78,7 @@ int fn_1_56A8(int value)
 
 void fn_1_56D0(void)
 {
-    static Point3d startingPosition = {lbl_1_rodata_330[0], lbl_1_rodata_334[0], lbl_1_rodata_338[0]};
+    static Point3d startingPosition = {cmToWorld(0.0f), cmToWorld(405.0f), cmToWorld(100.0f)};
     s32 players[entry_num];
     makePlayerTable1vs1(players);
     std::vector<int> indices(2);
@@ -150,12 +150,6 @@ void Racer::fn_1_5B3C(ItemUpdate5B3C update)
     }
 }
 
-extern "C" {
-const MGACTOR_PARAM lbl_1_rodata_33C = {0};
-}
-
-void createCharacterMotions(MotionOwner *, unsigned int *, long);
-
 Racer::Racer(int character, int index, Point3d *position)
     : PlayerInfo(character), MotionOwner(characterNo()), GameObject(1),
       callback(&Racer::fn_1_5B28), index(index), playerMask((unsigned short)(1U << index)),
@@ -163,7 +157,7 @@ Racer::Racer(int character, int index, Point3d *position)
       firstRegistered(index), secondRegistered(index + 2),
       child(isComputer() ? (RacerControl *)new ComputerControl(this) : new HumanControl(this))
 {
-    MGACTOR_PARAM actorParam = lbl_1_rodata_33C;
+    MGACTOR_PARAM actorParam = {0};
     float firstProperty;
     float secondProperty;
     short modelId;
@@ -179,9 +173,9 @@ Racer::Racer(int character, int index, Point3d *position)
     fn_80026B8C(modelId, 2);
     createCharacterMotions(&static_cast<MotionOwner &>(*this), const_cast<unsigned int *>(lbl_1_rodata_320), 4);
     fn_80086AA8(player->actor, position);
-    motion.x = lbl_1_rodata_330[0];
-    motion.y = lbl_1_rodata_330[0];
-    motion.z = lbl_1_rodata_330[0];
+    motion.x = 0.0f;
+    motion.y = 0.0f;
+    motion.z = 0.0f;
     firstProperty = 350.0f;
     firstRegistered.radius = firstProperty;
     secondProperty = 150.0f;
@@ -289,7 +283,7 @@ unsigned char Racer::fn_1_63E8()
         object = this->playerNo;
         MinigameCore::addWinner(object);
         if (!isComputer()) {
-            sendEvent(0, 1, lbl_1_rodata_330[0]);
+            sendEvent(0, 1, 0.0f);
         }
         this->flags.hasWon = 1;
         lbl_1_bss_B8++;
@@ -305,12 +299,12 @@ void Racer::fn_1_64F0()
     int mode;
     int actorState;
     void (Racer::*values)();
-    this->motion.x = lbl_1_rodata_330[0];
+    this->motion.x = 0.0f;
     this->flags.stateFlag = 1;
     fn_80087158(this->player, 1);
     fn_80086E3C(this->player);
     shiftCharacterMotion(&static_cast<MotionOwner &>(*this), CHARMOT_HSF_c000m1_344,
-              (float)secondsToFrames(0.3), lbl_1_rodata_330[0],
+              (float)secondsToFrames(0.3), 0.0f,
               ((1 << 30) | (1 << 0)));
     if (this->index == 0) { mode = 0x80F; }
     else { mode = 0x810; }
@@ -330,9 +324,9 @@ void Racer::fn_1_65FC()
     if (this->position.y > -2000.0f) {
         return;
     }
-    motion.x = lbl_1_rodata_330[0];
-    motion.y = lbl_1_rodata_330[0];
-    motion.z = lbl_1_rodata_330[0];
+    motion.x = 0.0f;
+    motion.y = 0.0f;
+    motion.z = 0.0f;
     fn_1_7370(this, 0);
     rumble(2, 0x18);
     sendEvent(index + 2, 0, 1.0f);
@@ -355,9 +349,6 @@ void Racer::fn_1_66F4()
     }
 }
 
-extern "C" {
-const HuVecF lbl_1_rodata_380 = {0.0f, 0.0f, 0.0f};
-}
 template<class T> T fn_1_77B0(T value);
 void sendEvent(int channel, unsigned long value, float delay);
 
@@ -377,11 +368,11 @@ void Racer::fn_1_68F8()
 
 void Racer::fn_1_6978()
 {
-    HuVecF target = lbl_1_rodata_380;
-    target.y = lbl_1_rodata_334[0];
+    HuVecF target = {0.0f, 0.0f, 0.0f};
+    target.y = 405.0f;
     target.z = -5050.0f;
     if (fn_8007E8B4(player, &target, (float)fn_1_77B0(200.0), 30.0f) != 0) {
-        sendEvent(index + 1, 2, lbl_1_rodata_330[0]);
+        sendEvent(index + 1, 2, 0.0f);
         fn_1_6A38();
     }
 }
@@ -419,10 +410,10 @@ void Racer::fn_1_6AA4()
                                  (double)(cameraPosition.z - actorPosition->z)) /
                            M_PI));
     fn_80086CB0(player->actor, &rotation);
-    Range range(lbl_1_rodata_330[0], 360.0f, rotation);
+    Range<float> range(0.0f, 360.0f, rotation);
     fn_80086CA8(player->actor,
-                   fn_1_7628(&range, targetAngle, 0.2));
-    difference = fn_1_75EC(&range, targetAngle);
+                   range.step(targetAngle, 0.2));
+    difference = range.distanceTo(targetAngle);
     absoluteDifference = __fabsf(difference);
     error = absoluteDifference;
     if (error < 1.0) {
@@ -438,7 +429,7 @@ void Racer::fn_1_6C30()
     unsigned int motion;
     if (flags.hasWon) motion = CHARMOT_HSF_c000m1_306;
     else motion = CHARMOT_HSF_c000m1_351;
-    shiftCharacterMotion(&static_cast<MotionOwner &>(*this), motion, 16.0f, lbl_1_rodata_330[0], 0);
+    shiftCharacterMotion(&static_cast<MotionOwner &>(*this), motion, 16.0f, 0.0f, 0);
     void (Racer::*action)() = &Racer::fn_1_5B28;
     callback = action;
 }
@@ -483,7 +474,7 @@ void fn_1_6CE8(Racer *object)
         clampedX = positionX;
     }
     object->firstRegistered.center.x = clampedX;
-    positionY = object->position.y + lbl_1_rodata_338[0];
+    positionY = object->position.y + cmToWorld(100.0f);
     if (positionY < -500.0f) {
         clampedY = -500.0f;
     } else if (positionY > 500.0f) {
@@ -573,7 +564,7 @@ void fn_1_7124(Racer *actor)
         return;
     }
 
-    radius = lbl_1_rodata_338[0];
+    radius = 100.0f;
     baseAngle = RandomFloat(6.2831855f);
     for (index = 0; index < 3; index++) {
         double sineOffset;
@@ -627,10 +618,10 @@ void fn_1_73E4(Racer *work)
     int character;
     CallbackWords copy;
 
-    work->rotation = lbl_1_rodata_330[0];
+    work->rotation = 0.0f;
     shiftCharacterMotion(&static_cast<MotionOwner &>(*work), CHARMOT_HSF_c000m1_376,
-                         lbl_1_rodata_330[0],
-              lbl_1_rodata_330[0], ((1 << 30) | (1 << 0)));
+                         0.0f,
+              0.0f, ((1 << 30) | (1 << 0)));
     character = work->characterNo();
     fn_8005C47C((short)character, 1);
     fn_8005DFC0((short)character, 1);
@@ -661,76 +652,11 @@ void fn_1_754C(Racer *work)
     work->flags.stateFlag = 0;
     fn_80086F00(work->player, &work->position);
     fn_8008697C(work->player, &work->position);
-    fn_80086CC4(work->player->actor, lbl_1_rodata_330[0]);
+    fn_80086CC4(work->player->actor, 0.0f);
     values = &Racer::fn_1_66F4;
     work->callback = values;
 }
 
-template<> inline float fn_1_75EC<float>(Range *self, float value)
-{
-    return self->fn_1_7CE0(self->current, value);
-}
-template<> inline float fn_1_7628<float>(Range *range, float step, double rate)
-{
-    float progress = range->fn_1_7CE0(range->current, step);
-    return range->current = range->fn_1_1370(range->current + rate * progress);
-}
-template<class T> T RangeT<T>::fn_1_1370(T value) {
-    if (value < this->minimum) {
-        return this->maximum - (f32) std::fmod((f64) (this->minimum - value), (f64) this->period);
-    }
-    if (value >= this->maximum) {
-        return this->minimum + (f32) std::fmod((f64) (value - this->maximum), (f64) this->period);
-    }
-    return value;
-}
-
 template<class T> T fn_1_77B0(T value) {
     return 0.016666666666666666 * value;
-}
-
-template<class T> inline T rangeMinimum(T a, T b) { return a < b ? a : b; }
-template<class T> inline T rangeMaximum(T a, T b) { return a > b ? a : b; }
-
-template<class T> RangeT<T>::RangeT(T a, T b, T initial)
-{
-    minimum = rangeMinimum(a, b);
-    maximum = rangeMaximum(a, b);
-    period = maximum - minimum;
-    current = fn_1_1370(initial);
-}
-
-template<class T> T RangeT<T>::fn_1_7CE0(T first, T second) const
-{
-    T wrappedSecond;
-    T wrappedFirst;
-    T difference;
-    T magnitude;
-
-    if (second < this->minimum) {
-        wrappedSecond = this->maximum -
-            (T)std::fmod((double)(this->minimum - second), (double)this->period);
-    } else if (second >= this->maximum) {
-        wrappedSecond = this->minimum +
-            (T)std::fmod((double)(second - this->maximum), (double)this->period);
-    } else {
-        wrappedSecond = second;
-    }
-
-    if (first < this->minimum) {
-        wrappedFirst = this->maximum -
-            (T)std::fmod((double)(this->minimum - first), (double)this->period);
-    } else if (first >= this->maximum) {
-        wrappedFirst = this->minimum +
-            (T)std::fmod((double)(first - this->maximum), (double)this->period);
-    } else {
-        wrappedFirst = first;
-    }
-
-    difference = wrappedSecond - wrappedFirst;
-    magnitude = Abs7CE0(difference);
-    return magnitude < this->period / 2.0f
-        ? difference
-        : (this->period - magnitude) *
-          (T)(difference < lbl_1_rodata_330[0] ? 1 : -1);
 }

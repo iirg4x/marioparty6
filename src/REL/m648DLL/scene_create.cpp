@@ -3,18 +3,15 @@
 
 #include "REL/framework/linknode.h"
 #include "REL/m648DLL/motion_lists.h"
+#include "REL/m648DLL/scene.h"
 
 void *operator new(unsigned long);
 
 extern "C" void *fn_1_21C(void *);
 extern "C" void fn_1_1AE30(void *, int, unsigned long);
 
-extern "C" { void *__ct__13MinigameStateFv(void *); }
-
 extern "C" void ObjectSetup()
 {
-    void *constructed = ::operator new(880);
-    if (constructed != 0) constructed = __ct__13MinigameStateFv(constructed);
-    void *root = constructed;
-    static_cast<MinigameCore *>(root)->setup(1, 8192);
+    MinigameState *state = new MinigameState;
+    state->setup(1, 8192);
 }

@@ -68,9 +68,6 @@ void fn_1_81B4(void)
     GXSetVtxAttrFmtv(GX_VTXFMT0, lbl_1_rodata_378);
 }
 
-/* Current alpha interpolation value. */
-static inline float AlphaScale8314(void) { return lbl_1_bss_A8.getValue(); }
-
 void fn_1_8314(SpriteParameters *sprite)
 {
     if (sprite->scaleY <= lbl_1_rodata_3AC) {
@@ -80,7 +77,8 @@ void fn_1_8314(SpriteParameters *sprite)
     HuSprTexLoad(sprite->animation, 0, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
 
     GXColor color = lbl_1_rodata_3A8;
-    color.a = (unsigned char)((double)AlphaScale8314() * (double)(lbl_1_rodata_3B0 * sprite->scaleY));
+    color.a = (unsigned char)((double)lbl_1_bss_A8.getValue()
+                              * (double)(lbl_1_rodata_3B0 * sprite->scaleY));
     GXSetTevColor(GX_TEVREG0, color);
 
     float halfWidth = sprite->halfWidth * sprite->scaleX;

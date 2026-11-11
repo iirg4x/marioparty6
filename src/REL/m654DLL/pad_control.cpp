@@ -6,7 +6,7 @@ extern "C" {
 #include "game/mg/actman.h"
 }
 #include "humath.h"
-#include "REL/m654DLL/framework/range_impl.h"
+#include "REL/framework/range.h"
 
 PadControl::PadControl(unsigned short type, float value)
     : cameraBit((unsigned int)type), range(-3.1415927f, 3.1415927f, value),
@@ -17,7 +17,7 @@ PadControl::~PadControl() {}
 
 void fn_1_C630(PadControl *object, float factor)
 {
-    object->range.fn_1_4D94(factor);
+    object->range.set(factor);
     object->angle_primary = 0.0f;
     object->angle_secondary = 0.0f;
     object->flags_primary = 0;
@@ -67,7 +67,7 @@ void PadControl::fn_1_C6E8(const Vec *movement, f32 amount)
     C_MTXLookAt(cameraMatrix, &cameraPosition, &cameraUp, &cameraTarget);
     PSMTXMultVecSR(cameraMatrix, &cameraMovement, &cameraMovement);
     angle = atan2(cameraMovement.x, cameraMovement.z);
-    halfAngle = range.fn_1_4DD0(angle) / 2.0f;
+    halfAngle = range.distanceTo(angle) / 2.0f;
     absoluteAngle = __fabsf(halfAngle);
     absoluteAngleDouble = absoluteAngle;
     angleFactor = 1.0 - (absoluteAngleDouble / M_PI);
@@ -80,9 +80,9 @@ void PadControl::fn_1_C6E8(const Vec *movement, f32 amount)
     } else {
         adjustedAmount = amount;
     }
-    range.fn_1_4E0C(angle, adjustedAmount);
-    angle_primary = radius * sin(range.fn_1_CB00());
-    angle_secondary = -radius * cos(range.fn_1_CB00());
+    range.step(angle, adjustedAmount);
+    angle_primary = radius * sin(range.get());
+    angle_secondary = -radius * cos(range.get());
 }
 
 void PadControl::fn_1_C918(MGPLAYER *player)
@@ -125,5 +125,3 @@ void PadControl::fn_1_CAB4() {
     flags_primary = 0;
     flags_secondary = 0;
 }
-
-template<class Value> Value Range<Value>::fn_1_CB00() { return current; }

@@ -19,39 +19,8 @@ extern "C" {
 #include "REL/m648DLL/light_shadow.h"
 #include "REL/m648DLL/kuribo_motion_owner.h"
 #include "REL/m648DLL/animation_object.h"
-#define __ct__11ThreadEntryFUl __ct__11ThreadEntryFUl
-#define __ct__10TimerOwnerFi __ct__10TimerOwnerFi
-#define __dt__10TimerOwnerFv __dt__10TimerOwnerFv
+#include "REL/m648DLL/scene.h"
 
-struct TimerOwner {
-    s32 value;
-    TimerOwner(int);
-    ~TimerOwner();
-    void setParameters(int, int, int);
-    void setPosition(float, float);
-    void setMode(int);
-    void start();
-};
-struct TimerManager;
-struct MinigameState : MinigameCore, ThreadEntry {
-    TimerManager *resource;
-    TimerOwner timer;
-    s32 progress;
-    bool nightMode;
-    u8 unobservedAfterNightMode[3];
-    u32 record;
-    MinigameState();
-    virtual ~MinigameState();
-    virtual void setupObjects(OMOBJMAN *);
-    virtual void updateGame();
-    virtual void finishGame();
-    virtual void fn_1_4148();
-    virtual void run(void *);
-    s32 fn_1_3ED0();
-    void fn_1_3F2C();
-    void fn_1_406C();
-    u8 fn_1_40BC();
-};
 MinigameState::MinigameState() : ThreadEntry(0x8000), timer(0) {
     record = fn_8003C860(4);
 }
@@ -69,10 +38,7 @@ struct MinigameSceneView {
 #include "REL/m648DLL/first_list_object.h"
 #include "REL/m648DLL/animation_setup_owner.h"
 #include "REL/m648DLL/player.h"
-
-extern "C" {
-void RandomSeed__FUl(void);
-}
+#include "REL/framework/random.h"
 
 /* Starts the M648 screen resources and refreshes each player's night effect. */
 void MinigameState::setupObjects(OMOBJMAN *)
@@ -81,8 +47,7 @@ void MinigameState::setupObjects(OMOBJMAN *)
     s32 effect;
     s16 nightSetting;
     s16 nightFlag;
-    OSGetTick();
-    RandomSeed__FUl();
+    RandomSeed(OSGetTick());
     nightSetting = lbl_802C0278;
     this->nightMode = ! nightSetting;
     new ParticleAnimationOwner();
@@ -124,14 +89,6 @@ void MinigameState::updateGame()
     fn_1_B7C4();
 }
 
-extern "C" {
-void wipeIn__12MinigameCoreFv();
-void showStart__12MinigameCoreFv();
-u8 messageDone__12MinigameCoreFv();
-void requestExit__12MinigameCoreFv();
-
-}
-
 void MinigameState::run(void *)
 {
     s32 effectHandle;
@@ -141,7 +98,7 @@ void MinigameState::run(void *)
     u8 finished;
 
     postRequest(0);
-    wipeIn__12MinigameCoreFv();
+    wipeIn();
     if (nightMode != 0) {
         openingCount = 0;
         while ((f32)openingCount < 12.0f) {
@@ -163,8 +120,8 @@ void MinigameState::run(void *)
     }
     bgmHandle = HuAudBGMPlay(MSM_STREAM_LAID_BACK);
     postRequest(1);
-    showStart__12MinigameCoreFv();
-    while (messageDone__12MinigameCoreFv() == 0) {
+    showStart();
+    while (messageDone() == 0) {
         ThreadEntry::suspend(0);
     }
     finished = 0;
@@ -177,7 +134,7 @@ void MinigameState::run(void *)
         finished = 1;
     }
     progress = 0;
-    while ((u8)fn_1_40BC() == 0) {
+    while ((u8)advanceProgress() == 0) {
         if (fn_8006A124(0x30002) == 0 && finished == 0 && progress > 0x3F48) {
             timer.setMode(1);
             finished = 1;
@@ -189,11 +146,11 @@ void MinigameState::run(void *)
     }
     HuAudSStreamFadeOut(bgmHandle, 0x64);
     if (fn_8006A124(0x30002) == 0) {
-        fn_1_3F2C();
+        showResults();
     } else {
-        fn_1_406C();
+        showFinishOnly();
     }
-    requestExit__12MinigameCoreFv();
+    requestExit();
     for (;;) {
         ThreadEntry::suspend((void *)-1);
     }
@@ -212,7 +169,7 @@ extern s32 lbl_1_bss_98;
 extern "C" {
 }
 
-s32 MinigameState::fn_1_3ED0()
+s32 MinigameState::updateRecord()
 {
     s32 changed = 0;
     u32 frame = fn_1_B62C();
@@ -223,7 +180,7 @@ s32 MinigameState::fn_1_3ED0()
     return changed;
 }
 
-void MinigameState::fn_1_3F2C()
+void MinigameState::showResults()
 {
     u32 frame;
     u8 changed;
@@ -274,7 +231,7 @@ void MinigameState::fn_1_3F2C()
 }
 
 void fn_1_B8BC(void);
-void MinigameState::fn_1_406C()
+void MinigameState::showFinishOnly()
 {
     fn_1_B8BC();
     fn_1_BC1C();
@@ -284,24 +241,20 @@ void MinigameState::fn_1_406C()
     }
 }
 
-extern "C" {
-extern u8 isDone__10TimerOwnerFv(void *timerOwner);
-}
-
 /* Advances the sequence count and checks whether its completion work is ready. */
-u8 MinigameState::fn_1_40BC()
+u8 MinigameState::advanceProgress()
 {
     u8 ready;
 
     if (!fn_8006A124(0x30002)) {
         progress++;
         ready = 1;
-        if (!fn_1_B848() && !isDone__10TimerOwnerFv(&timer)) {
+        if (!fn_1_B848() && !timer.isDone()) {
             ready = 0;
         }
         return ready;
     }
-    return isDone__10TimerOwnerFv(&timer);
+    return timer.isDone();
 }
 
 extern "C" {

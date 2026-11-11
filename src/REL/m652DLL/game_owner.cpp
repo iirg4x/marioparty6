@@ -26,6 +26,7 @@ struct EventManager : MinigameSingleton<EventManager> {
 #include "REL/m652DLL/player_work.h"
 #include "REL/m652DLL/player_algorithms.h"
 #include "REL/m652DLL/module_root.h"
+#include "REL/m652DLL/man_map.h"
 
 extern "C" {
 extern int lbl_1_bss_2C, lbl_1_bss_30;
@@ -89,11 +90,7 @@ void process_event_queue();
 void updateGameObjects();
 void RandomSeed(unsigned long);
 extern "C" {
-
-void *__ct__10MapManagerFv(void *);
 void fn_1_56D0();
-
-void *__nw__FUl(unsigned long);
 }
 inline void FrameCountdown::advanceAndUpdate(TimerOwner *resource)
 {
@@ -132,7 +129,6 @@ ModuleRoot::ModuleRoot()
 ModuleRoot::~ModuleRoot() {}
 void ModuleRoot::setupObjects(OMOBJMAN *)
 {
-    void *finalObject;
     int index;
 
     RandomSeed(OSGetTick());
@@ -144,10 +140,7 @@ void ModuleRoot::setupObjects(OMOBJMAN *)
         index++;
     }
 
-    finalObject = __nw__FUl(0x54);
-    if (finalObject) {
-        finalObject = __ct__10MapManagerFv(finalObject);
-    }
+    new MapManager;
     fn_1_56D0();
     soundSetCameraLayout(2);
 }

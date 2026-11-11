@@ -8,7 +8,6 @@
 #include "REL/m603DLL/zako.h"
 #include "REL/m603DLL/random.h"
 #include "REL/m603DLL/score_owner.h"
-#include "REL/m603DLL/night.h"
 #include "datadir_enum.h"
 
 extern "C" {
@@ -17,6 +16,7 @@ extern "C" {
 #include "game/hu3d.h"
 #include "game/sprite.h"
 #include "game/memory.h"
+#include "game/gamework.h"
 #include "REL/m603DLL.h"
 }
 
@@ -56,7 +56,6 @@ extern u8 lbl_1_bss_D4;
 extern s32 lbl_1_data_594;
 const s32 lbl_1_rodata_3F0[4] = {1, 2, 4, 8};
 extern s32 fn_1_1BBC4(void *, const void *);
-extern void setPosition__5ModelFP3Vec(void *, Vec *);
 }
 
 extern void fn_1_A9EC(HU3D_MODEL *, Mtx *);

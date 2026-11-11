@@ -11,8 +11,10 @@
 #include "REL/m681DLL/owner_182c.h"
 #include "REL/m681DLL/monitor.h"
 #include "REL/m681DLL/model_pair.h"
+#include "REL/m681DLL/player_object.h"
 #include "REL/framework/singleton.h"
 #include "REL/framework/world_units.h"
+#include "REL/framework/scene_shadow.h"
 
 extern "C" void fn_8005DDEC(s16 layerNo);
 
@@ -39,8 +41,6 @@ void fn_1_EEC(BoardController *)
     new VectorStateComposite;
 }
 
-extern "C" { void configureShadowCamera__FsPC3VecP3Vecfff(s32, Vec *, Vec *, f32, f32, f32); }
-
 extern "C" { const Vec lbl_1_rodata_E8 = { -16.0f, 176.0f, -80.0f }; }
 
 void *operator new(u32 size);
@@ -57,35 +57,21 @@ void fn_1_F30(BoardController *owner)
     ModelPair *currentChild = owner->child.value;
     fn_1_2FD4(currentChild, &current);
     Vec defaultValue = lbl_1_rodata_E8;
-    configureShadowCamera__FsPC3VecP3Vecfff(1, &current, &defaultValue,
-               800.0f, 600.0f, 5.0f);
+    configureShadowCamera(1, &current, &defaultValue, 800.0f, 600.0f, 5.0f);
 }
-
-extern "C" { void *__ct__21ModelOwnerComposite84Fi(void *object, s32 index); }
 
 extern "C" {}
  Vec *fn_1_8184(ModelOwnerComposite84 *object, Vec *value);
 extern "C" { }
-
-extern "C" { void *__ct__12PlayerObjectFlPC14PositionVector(void *object, s32 index, const Vec *value); }
 
 void fn_1_1014(BoardController *)
 {
     new M681GameState;
 
     for (s32 index = 0; index < 4; ++index) {
-        void *layer;
-        if ((layer = ::operator new(0x54)) != 0) {
-            layer = __ct__21ModelOwnerComposite84Fi(layer, index);
-        }
-        void *effectOwner = layer;
-        void *effect = ::operator new(0xD8);
-        if (effect != 0) {
-            Vec value;
-            effect = __ct__12PlayerObjectFlPC14PositionVector(
-                effect, index, fn_1_8184(
-                static_cast<ModelOwnerComposite84 *>(effectOwner), &value));
-        }
+        ModelOwnerComposite84 *character = new ModelOwnerComposite84(index);
+        Vec position;
+        new PlayerObject(index, fn_1_8184(character, &position));
     }
 
     fn_8005DDEC(4);

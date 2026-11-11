@@ -90,16 +90,8 @@ extern "C" {
 #include "REL/framework/list_object.h"
 
 extern "C" {
-
-}
-
-extern "C" {
 #include <math.h>
 }
-
-extern "C" { extern void __ct__4NodeFv(void *object); }
-
-extern "C" { extern void insert4__4NodeFP4Node(void *node, void *parent); }
 
 extern "C" { extern void __msl_assertion_failed(const char *expression, const char *file, int line); }
 
@@ -119,26 +111,6 @@ TimerManager::TimerManager(s32 value, u8 enabled) {
     active = enabled;
     if (active == 0) fn_1_D268();
 }
-
-/* Native C++ callback and singleton-lifetime recovery.
- * Class names are reconstructed. These are consumed interface views, not
- * claims about complete original class layouts; none is allocated here.
- * The callback descriptor at +4 is a real pointer-to-member, not a C callback
- * or a manually encoded compiler helper. Unknown word +0 is not padding.
- * Fragment selectors choose entire functions, not compiler behavior or TUs. */
-
-struct TimerOwner {
-    u32 nodeLinks[2];
-    const u8 *callbackTable;
-    u32 ownerState;
-    MGTIMER *timer;
-    u32 unknown14;
-    u8 active;
-};
-
-extern "C" { void *__dt__4NodeFv(void *object, s16 mode); }
-
-extern "C" { void __dl__FPv(void *object); }
 
 TimerManager::~TimerManager() {
     if (display != 0) MgTimerKill(timer);
@@ -174,9 +146,9 @@ void TimerManager::fn_1_D330() {
     }
 }
 
-void fn_1_D404(TimerOwner *object)
+void TimerManager::fn_1_D404()
 {
-    MgTimerModeOnSet(object->timer, 0);
+    MgTimerModeOnSet(timer, 0);
 }
 
 void TimerManager::fn_1_D438() {
@@ -195,11 +167,6 @@ s32 TimerManager::fn_1_D464()
     return result;
 }
 
-struct TimerOwnerView {
-    unsigned char unknown00[16]; /* No code names this field. */
-    MGTIMER *timer;
-};
-
 struct TimerModeObject {
     u8 unknown00[0x14]; /* No code names this field. */
     s32 mode;
@@ -214,9 +181,9 @@ struct TimerWork {
     u8 type;
 };
 
-void fn_1_D4BC(TimerOwnerView *owner)
+void TimerManager::fn_1_D4BC()
 {
-    MgTimerValueGet(owner->timer);
+    MgTimerValueGet(timer);
 }
 
 void TimerManager::flagEnabled(int mode)

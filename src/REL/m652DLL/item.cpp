@@ -48,12 +48,6 @@ static inline void SetDirection2664(MotionDirection &vector, double x, double y,
     vector.z = z;
 }
 
-extern "C" {
-void setHook__5ModelFPcs(void *, char *, short);
-void setRotationY__5ModelFf(void *, float);
-
-}
-
 PlayerItem::PlayerItem(Racer *player, int modelIndex)
     : GameObject(2), OwnedModel(DATANUM(0x6f0000, 10)), EventListener(),
       callback(&PlayerItem::fn_1_2660), playerWork(player),
@@ -66,9 +60,9 @@ PlayerItem::PlayerItem(Racer *player, int modelIndex)
     setShadow();
     setAttribute(((1 << 30) | (1 << 0)));
     setAttribute((1 << 0));
-    setRotationY__5ModelFf(&static_cast<OwnedModel &>(*this), 0.0f);
+    setRotationY(0.0f);
     modelId = (short)model.modelId;
-    setHook__5ModelFPcs(&static_cast<OwnedModel &>(*this), "itemhook_I", modelId);
+    setHook("itemhook_I", modelId);
     position.x = 0.0f;
     position.y = 0.0f;
     position.z = 0.0f;
@@ -200,16 +194,11 @@ void PlayerItem::fn_1_2CF8()
     }
 }
 
-extern "C" {
-Vec *getObjectPosition__5ModelFPcP3Vec(void *, char *, Vec *);
-}
-
 void PlayerItem::fn_1_2DB8()
 {
     Vec hookPosition;
     setPosition(&position);
-    getObjectPosition__5ModelFPcP3Vec(&static_cast<OwnedModel &>(*this), "itemhook_I",
-                                          &hookPosition);
+    getObjectPosition("itemhook_I", &hookPosition);
     fn_1_74B4(playerWork, &hookPosition);
 }
 

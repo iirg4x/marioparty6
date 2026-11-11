@@ -10,14 +10,7 @@
 
 extern "C" {
 void __msl_assertion_failed(const char *expression, const char *file, int line);
-void __ct__10OwnedModelFUi(void *object, u32 value);
-void setAttribute__5ModelFUl(void *object, u32 value);
-void setLayer__5ModelFs(void *object, s32 value);
-void setLightsDynamic__5ModelFb(void *object, s32 value);
-Vec *getObjectPosition__5ModelFPcP3Vec(void *object, const char *name, Vec *result);
-void updateMotion__5ModelFv(void *object);
-void *__nw__FUl(u32 size);
-const char *lbl_1_data_25C[2] = { "kurinullr", "kurinulll" };
+char *lbl_1_data_25C[2] = { "kurinullr", "kurinulll" };
 }
 
 void *operator new(unsigned long);
@@ -28,24 +21,18 @@ ModelPair::ModelPair()
     Vec result;
     s32 index;
 
-    setLayer__5ModelFs(this, 0);
-    setLightsDynamic__5ModelFb(this, 0);
-    setAttribute__5ModelFUl(this, 0x40000001);
-    setLayer__5ModelFs(&secondModel, 2);
-    updateMotion__5ModelFv(this);
+    firstModel.setLayer(0);
+    firstModel.setLightsDynamic(false);
+    firstModel.setAttribute(0x40000001);
+    secondModel.setLayer(2);
+    firstModel.updateMotion();
 
     for (index = 0; index < 2; ++index) {
-        new MotionObject(
-            getObjectPosition__5ModelFPcP3Vec(this, lbl_1_data_25C[index], &result),
-            index);
+        new MotionObject(&firstModel.getObjectPosition(lbl_1_data_25C[index], &result), index);
     }
 }
 
 void operator delete(void *);
-
-extern "C" {
-void Replace__5ModelFs(void *, short);
-}
 
 ModelPair::~ModelPair() {}
 
@@ -65,13 +52,6 @@ Vec *fn_1_2FD4(ModelPair *object, Vec *direction)
 
 extern s32 lbl_1_bss_78;
 extern f32 lbl_1_bss_7C;
-
-extern "C" {
-
-}
-
-extern "C" {
-}
 
 extern "C" {
 s32 lbl_1_bss_78 = minutesToFrames(60L);

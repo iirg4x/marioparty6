@@ -19,7 +19,7 @@ struct ModePair { s32 values[2]; };
 struct ModeBase;
 struct Accessory533C;
 struct PlayerObject : GameObject, PlayerConfigSelection, EventListener {
-    PlayerObject(s32 player, const PositionVector *initialState);
+    PlayerObject(s32 player, const Vec *initialState);
     virtual ~PlayerObject();
     virtual void update();
     virtual void receive(const EventPacket *event);
@@ -27,7 +27,7 @@ struct PlayerObject : GameObject, PlayerConfigSelection, EventListener {
     std::auto_ptr<ModeBase> resourceNode;
     std::auto_ptr<ModelResource> resource;
     ModePair modes;
-    PositionVector state;
+    Vec state;
     Vec rotation;
     Transition firstAngle;
     Transition secondAngle;

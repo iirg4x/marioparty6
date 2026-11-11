@@ -15,11 +15,12 @@ extern "C" {
 }
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/game_object.h"
+#include "REL/framework/event.h"
+#include "REL/framework/random.h"
 #include "REL/m681DLL/owner_182c.h"
 #include "REL/framework/world_units.h"
 
 extern "C" {
-
 extern s32 lbl_1_data_F18;
 extern float lbl_1_bss_1BC;
 extern s8 lbl_1_data_2758;
@@ -27,12 +28,6 @@ s32 fn_1_367CC(s32 *player);
 
 extern char lbl_1_data_13C[];
 extern char lbl_1_data_CE[];
-
-}
-
-extern "C" {
-void sendEvent__FiUlf(s32, s32, f32);
-
 }
 
 M681GameState::M681GameState() : GameObject(2)
@@ -65,7 +60,7 @@ void M681GameState::update()
     (this->*callback)();
     if (current > minimum) {
         current = minimum;
-        sendEvent__FiUlf(1, 0, 0.0f);
+        sendEvent(1, 0, 0.0f);
     }
     fn_1_2138();
 }
@@ -77,7 +72,7 @@ void M681GameState::fn_1_1B0C()
 {
     frameCount++;
     if ((f32)frameCount >= secondsToFrames(interval)) {
-        sendEvent__FiUlf(0, 7, 0.0f);
+        sendEvent(0, 7, 0.0f);
         frameCount = 0;
     }
 }
@@ -93,7 +88,7 @@ void M681GameState::fn_1_1B98()
     if ((f32)frameCount > secondsToFrames(interval)) {
         interval = MaxF182C(0.2f, interval - 0.1f);
         frameCount = 0;
-        sendEvent__FiUlf(0, 8, 0.0f);
+        sendEvent(0, 8, 0.0f);
     }
 }
 
@@ -107,7 +102,6 @@ void M681GameState::receive(const EventPacket *selection)
 {
     switch (selection->type) {
     case 1: {
-
         fn_1_1FB0();
         fn_1_381C(&MinigameSingleton<Monitor>::getChecked(), &textureChoices, 2.4f);
         M681GameState::Callback callback =
@@ -116,7 +110,6 @@ void M681GameState::receive(const EventPacket *selection)
         break;
     }
     case 5: {
-
         fn_1_1FB0();
         fn_1_381C(&MinigameSingleton<Monitor>::getChecked(), &textureChoices, interval);
         ++state4C;
@@ -164,24 +157,23 @@ void M681GameState::receive(const EventPacket *selection)
     }
 }
 
-extern "C" s32 RandomUnsigned__Fv(void);
 extern "C" {
 const s32 lbl_1_rodata_150[8] = { 4, 1, 3, 0, 4, 2, 3, 0 };
 }
 
 void M681GameState::fn_1_1FB0()
 {
-    textureChoices.values[0] = lbl_1_rodata_150[RandomUnsigned__Fv() % 3];
-    textureChoices.values[1] = *(&lbl_1_rodata_150[RandomUnsigned__Fv() % 3] + 4);
-    textureChoices.values[2] = lbl_1_rodata_150[RandomUnsigned__Fv() % 4];
-    textureChoices.values[3] = *(&lbl_1_rodata_150[RandomUnsigned__Fv() % 4] + 4);
+    textureChoices.values[0] = lbl_1_rodata_150[(s32)RandomUnsigned() % 3];
+    textureChoices.values[1] = *(&lbl_1_rodata_150[(s32)RandomUnsigned() % 3] + 4);
+    textureChoices.values[2] = lbl_1_rodata_150[(s32)RandomUnsigned() % 4];
+    textureChoices.values[3] = *(&lbl_1_rodata_150[(s32)RandomUnsigned() % 4] + 4);
 
     if (textureChoices.values[1] == 3 && textureChoices.values[0] == 3) {
-        if (RandomUnsigned__Fv() % 2 != 0) {
-            textureChoices.values[0] = lbl_1_rodata_150[RandomUnsigned__Fv() % 2];
+        if ((s32)RandomUnsigned() % 2 != 0) {
+            textureChoices.values[0] = lbl_1_rodata_150[(s32)RandomUnsigned() % 2];
             return;
         }
-        textureChoices.values[1] = *(&lbl_1_rodata_150[RandomUnsigned__Fv() % 2] + 4);
+        textureChoices.values[1] = *(&lbl_1_rodata_150[(s32)RandomUnsigned() % 2] + 4);
     }
 }
 
@@ -190,12 +182,6 @@ void M681GameState::fn_1_2138()
 }
 
 extern "C" {
-
-}
-
-extern "C" {
-
 s32 lbl_1_bss_48 = minutesToFrames(60L);
 f32 lbl_1_bss_4C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
-
 }

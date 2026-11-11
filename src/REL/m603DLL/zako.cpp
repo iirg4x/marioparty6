@@ -4,7 +4,6 @@
 #include "REL/framework/frame_time_inline.h"
 #include "REL/m603DLL/zako.h"
 #include "REL/m603DLL/random.h"
-#include "REL/m603DLL/night.h"
 #include "datadir_enum.h"
 
 extern "C" {
@@ -12,6 +11,7 @@ extern "C" {
 #include "game/hu3d.h"
 #include "game/sprite.h"
 #include "game/memory.h"
+#include "game/gamework.h"
 #include "REL/m603DLL.h"
 }
 
@@ -38,8 +38,8 @@ const u32 lbl_1_rodata_398[17] = {
     DATANUM(0x3e0000, 35),
     DATANUM(0x3e0000, 36)
 };
-extern s16 lbl_802C0278;
 }
+// The model and two motions, 17 draw nodes in each of four groups, by day two motion models each.
 DrawModelPool::DrawModelPool()
     : model(DATANUM(0x3e0000, 10))
 {

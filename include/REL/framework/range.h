@@ -1,25 +1,43 @@
-#ifndef REL_M654DLL_FRAMEWORK_RANGE_IMPL_H
-#define REL_M654DLL_FRAMEWORK_RANGE_IMPL_H
+// A value kept between two bounds: a value outside them is wrapped back in by the period
+// (maximum - minimum), the way an angle is.
+//
+// The class and member names are descriptive.
+#ifndef REL_FRAMEWORK_RANGE_H
+#define REL_FRAMEWORK_RANGE_H
 
-#include "REL/m654DLL/framework/range.h"
+template <class Value> class Range {
+public:
+    Value minimum, maximum, period, current;
+    // The shorter signed way from `from` to `to` around the range.
+    Value distance(Value from, Value to);
+    // Sets the current value, wrapped into the range.
+    void set(Value value);
+    Value distanceTo(Value value);
+    // Moves the current value `rate` of the shorter way towards `target`; returns the new value.
+    Value step(Value target, double rate);
+    // The value wrapped into [minimum, maximum).
+    Value wrap(Value value);
+    Value get();
+    Range(Value from, Value to, Value initial);
+};
 
-template<class Value> void Range<Value>::fn_1_4D94(Value value)
+template<class Value> void Range<Value>::set(Value value)
 {
-    current = fn_1_1370(value);
+    current = wrap(value);
 }
 
-template<class Value> Value Range<Value>::fn_1_4DD0(Value value)
+template<class Value> Value Range<Value>::distanceTo(Value value)
 {
-    return fn_1_5C30(current, value);
+    return distance(current, value);
 }
 
-template<class Value> Value Range<Value>::fn_1_4E0C(Value step, double rate)
+template<class Value> Value Range<Value>::step(Value target, double rate)
 {
-    Value progress = fn_1_5C30(current, step);
-    return current = fn_1_1370(current + rate * progress);
+    Value progress = distance(current, target);
+    return current = wrap(current + rate * progress);
 }
 
-template<class Value> Value Range<Value>::fn_1_1370(Value value)
+template<class Value> Value Range<Value>::wrap(Value value)
 {
     if (value < minimum) {
         return maximum - (Value)fmod((double)(minimum - value), (double)period);
@@ -39,10 +57,10 @@ template<class Value> Range<Value>::Range(Value a, Value b, Value initial)
     minimum = rangeMinimum(a, b);
     maximum = rangeMaximum(a, b);
     period = maximum - minimum;
-    current = fn_1_1370(initial);
+    current = wrap(initial);
 }
 
-template<class Value> Value Range<Value>::fn_1_5C30(Value first, Value second)
+template<class Value> Value Range<Value>::distance(Value first, Value second)
 {
     Value wrappedSecond;
     Value wrappedFirst;
@@ -77,5 +95,7 @@ template<class Value> Value Range<Value>::fn_1_5C30(Value first, Value second)
         ? difference
         : (period - magnitude) * (Value)(difference < 0.0f ? 1 : -1);
 }
+
+template<class Value> Value Range<Value>::get() { return current; }
 
 #endif

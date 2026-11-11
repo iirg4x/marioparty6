@@ -12,6 +12,7 @@ extern "C" {
 #include "game/gamework.h"
 #include "REL/framework/assertion.h"
 }
+
 #include "REL/framework/model.h"
 #include "REL/framework/linknode.h"
 #include "REL/framework/singleton.h"
@@ -21,15 +22,20 @@ extern "C" {
 #include "REL/m648DLL/multi_model_owner.h"
 #include "REL/framework/frame_time_inline.h"
 #include "msm_se.h"
+
 u32 RandomUnsigned();
 float RandomFloat();
+
 static const int NUMBEROF_MOTION = 6;
+
 /* The framework version of this game converts seconds to frames in line
    (the player timers below). Its phase durations open this file's .bss (0x5E0),
    ahead of the selected entry and the player list head, whose destructor ends
    the file. */
+
 extern "C" { Node *lbl_1_bss_5EC; }
 class CPlayer;
+
 #include "REL/m648DLL/flying_object.h"
 #include "REL/m648DLL/player.h"
 
@@ -38,12 +44,6 @@ extern "C" {
 void fn_1_C148(CPlayer *object);
 }
 
-extern "C" {
-void __ct__4NodeFv(void *object);
-void *__dt__4NodeFv(void *object, s16 mode);
-void __dl__FPv(void *object);
-void Replace__5ModelFs(void *model, s32 mode);
-}
 void operator delete(void *);
 
 extern "C" {
@@ -335,7 +335,6 @@ void fn_1_BC84()
 }
 
 extern "C" {
-
 s32 fn_1_CCE4(CPlayer *owner);
 }
 
@@ -443,8 +442,6 @@ void CPlayer::fn_1_C038()
 extern "C" {
 void fn_1_C22C(CPlayer *object);
 void fn_1_C1C4(CPlayer *object);
-void setRotation__5ModelFP3Vec(void *model, Vec *position);
-void setPosition__5ModelFP3Vec(void *model, void *position);
 }
 
 void fn_1_C148(CPlayer *object)
@@ -460,8 +457,8 @@ void fn_1_C1C4(CPlayer *object)
 {
     Vec position = { 0.0f, 0.0f, 0.0f };
     position.y = object->height;
-    setRotation__5ModelFP3Vec(&object->characterModel, &position);
-    setPosition__5ModelFP3Vec(&object->characterModel, &object->position);
+    object->characterModel.setRotation(&position);
+    object->characterModel.setPosition(&object->position);
 }
 
 void fn_1_C22C(CPlayer *player)

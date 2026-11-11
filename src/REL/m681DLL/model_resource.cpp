@@ -30,13 +30,9 @@
 extern "C" {
 #include "REL/m681DLL.h"
 #include "REL/framework/world_units.h"
-s32 __ct__10OwnedModelFUi(void *, s32);
-s32 setAttribute__5ModelFUl(void *, s32);
 extern s32 lbl_1_bss_90;
 extern f32 lbl_1_bss_94;
 void fn_80023398(s32 objectId, u32 modelId, Mtx matrix);
-void Replace__5ModelFs(void *object, s16 releaseMode);
-void __dl__FPv(void *object);
 }
 
 struct ModelObject {

@@ -147,11 +147,6 @@ void fn_1_381C(Monitor *state,
     state->callback = initialValues;
 }
 
-static inline TextureSetupWork *CurrentTexture38C0()
-{
-    return MinigameSingleton<TextureSetupWork>::self;
-}
-
 void Monitor::update()
 {
     f64 fade;
@@ -168,7 +163,7 @@ void Monitor::update()
     setOverlayMotionTime(fadeAmount * this->max_frames);
 
     if (this->active != 0) {
-        if (CurrentTexture38C0() == 0) {
+        if (MinigameSingleton<TextureSetupWork>::current() == 0) {
             new TextureSetupWork;
         }
     }

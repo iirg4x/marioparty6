@@ -67,9 +67,6 @@ f32 fn_1_BE44(const Vec *direction)
 }
 
 extern "C" {
-void *__nw__FUl(unsigned long);
-PolyNode *__ct__8PolyNodeFi(void *, int);
-ModelMotion *__ct__11ModelMotionFUi(ModelMotion *, int);
 EventHandlerManager *fn_1_198E0(EventHandlerManager *, int);
 PlayerController *fn_1_C90(PlayerController *, Player *, int);
 PlayerController *fn_1_7C8(PlayerController *, Player *);
@@ -78,10 +75,6 @@ void fn_1_8E0C(s16 *, u8);
 void fn_1_EA98(Player *, u32, u8);
 template<class Receiver> void fn_1_EF74(EventHandlerManager *, const PlayerCallbackBinding &, int);
 extern "C" {
-void setPosition__5ModelFP3Vec(ModelMotion *, const Vec *);
-void setRotationY__5ModelFf(ModelMotion *, float);
-void setLayer__5ModelFs(ModelMotion *, short);
-void setAttribute__5ModelFUl(ModelMotion *, unsigned int);
 GroundSprite *fn_1_8CC8(GroundSprite *, ANIMDATA *, const Vec *);
 void __msl_assertion_failed(const char *, const char *, int);
 
@@ -172,10 +165,10 @@ Player::Player(int playerNo, const WorldPosition *position)
     fn_1_EA98(this, 0, 1);
     fn_1_D8CC();
     this->modelScale = 0.0f;
-    setPosition__5ModelFP3Vec(this->model, &this->origin.value.value);
-    setRotationY__5ModelFf(this->model, this->modelScale);
-    setLayer__5ModelFs(this->model, 5);
-    setAttribute__5ModelFUl(this->model, ((1 << 30) | (1 << 1)));
+    this->model->setPosition(&this->origin.value.value);
+    this->model->setRotationY(this->modelScale);
+    this->model->setLayer(5);
+    this->model->setAttribute(((1 << 30) | (1 << 1)));
     fn_8002741C(this->model->id(), "itemhook_char", this->modelId);
     resources = &Resources::getChecked();
     this->effect.reset(new GroundSprite(resources->animation(1), &this->origin.value.value));
@@ -217,11 +210,6 @@ static inline void SetPoint(Point3d *position, double x, double y, double z)
     position->x = x;
     position->y = y;
     position->z = z;
-}
-
-extern "C" {
-extern void resetAttribute__5ModelFUl(ModelMotion *,u32);
-
 }
 
 static inline const Point3d *PlayerTarget(Player *work)
@@ -490,7 +478,7 @@ void Player::fn_1_DC04()
     switch (state) {
     case 0:
         if (elapsed < delay) break;
-        resetAttribute__5ModelFUl(PlayerMotionModel(this), ((1 << 30) | (1 << 1)));
+        PlayerMotionModel(this)->resetAttribute(((1 << 30) | (1 << 1)));
         fn_1_48BC(sequence.get());
         elapsed = 0.0f;
         ++state;

@@ -2,7 +2,7 @@
 #define M672_CONTROLLERS_BF64_H
 #include "dolphin/types.h"
 #include "dolphin/mtx/GeoTypes.h"
-#include "REL/m672DLL/framework/range.h"
+#include "REL/framework/range.h"
 struct Player;
 typedef struct PadState8F4 {
     f32 x;
@@ -16,7 +16,7 @@ struct MgPlayer_s;
 class VirtualPad {
 public:
     u16 type;
-    Range bounds;
+    Range<float> bounds;
     float horizontal, vertical; s32 buttonsDown, buttons;
     VirtualPad(u16, float);
     ~VirtualPad();

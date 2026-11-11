@@ -3,6 +3,7 @@
 #include "REL/framework/singleton.h"
 #include "REL/framework/list_object.h"
 #include "REL/m648DLL/camera_view.h"
+#include "REL/framework/debug.h"
 class CameraManager : public RequestObject, public MinigameSingleton<CameraManager> {
 public:
     CameraManager();
@@ -17,7 +18,7 @@ public:
     s16 modelId;
     u8 listenerActive;
     u8 byteValue;
-    u8 cameraSetup[0x28];
+    CameraSetup cameraSetup;
     void fn_1_89D4();
     void fn_1_8A68();
     void fn_1_8ACC();

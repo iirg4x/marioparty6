@@ -1,6 +1,7 @@
 #include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 #include "REL/m681DLL/motion_object.h"
+#include "REL/framework/random.h"
 
 struct MotionPreset {
     const unsigned long *modelData;
@@ -8,7 +9,6 @@ struct MotionPreset {
 };
 
 extern "C" {
-f32 RandomFloat__Fff(f32, f32);
 extern const s32 lbl_1_rodata_178[2] = { 0x008C0010, 0x008C0013 };
 extern const unsigned long lbl_1_rodata_180[2] = { 0x008C0011, 0x008C0012 };
 extern const unsigned long lbl_1_rodata_188[2] = { 0x008C0014, 0x008C0015 };
@@ -28,7 +28,7 @@ MotionObject::MotionObject(Vec *position, int variant)
     const MotionPreset *preset = lbl_1_rodata_190 + variant;
     addMotions(preset->modelData, preset->motionIndex);
     setMotion(*preset->modelData);
-    setMotionSpeed(RandomFloat__Fff(0.9f, 1.1f));
+    setMotionSpeed(RandomFloat(0.9f, 1.1f));
     setAttribute(0x40000001);
     registerChannel(0);
 }

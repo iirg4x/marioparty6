@@ -81,13 +81,8 @@ extern u8 fn_1_7E10(void *);
 }
 
 extern "C" {
-
-void *__nw__FUl(unsigned long);
-
 void fn_1_6E04(void *);
 }
-
-extern "C" { void *__nw__FUl(unsigned long); }
 
 extern "C" { void fn_1_6E04(void *); }
 

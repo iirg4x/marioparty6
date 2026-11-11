@@ -1,3 +1,4 @@
+#include "REL/framework/frame_time_inline.h"
 #include "REL/framework/phase_duration_statics.h"
 #include "REL/framework/misc_diff_deg.h"
 #include "humath.h"
@@ -34,7 +35,6 @@ extern "C" {
 #include "dolphin/types.h"
 
 typedef Vec PositionOwner123C;
-
 }
 
 #include "REL/m648DLL/animation_setup_owner.h"
@@ -49,24 +49,16 @@ public:
 };
 
 extern "C" {
-
-extern void __ct__10OwnedModelFUi(void *object, s32 flags);
-extern void *__nw__FUl(s32 size);
 extern void *fn_1_10208(s32 size);
 extern const char lbl_1_data_5C[], lbl_1_data_B4[];
 
 void fn_1_123C(PositionOwner123C *position, s32 index);
-
 }
 
 extern "C" {
 void fn_1_23C4(PositionOwner123C *position, s32 index);
 
-extern void __ct__10OwnedModelFUi(void *object, s32 flags);
-
-extern void *__nw__FUl(s32 size);
 extern char lbl_1_data_A0[];
-
 }
 
 void fn_1_123C(PositionOwner123C *position, s32 index)
@@ -136,12 +128,6 @@ extern const char lbl_1_data_5C[];
 
 void fn_1_1AFC();
 
-extern "C" void Replace__5ModelFs(void *, s32);
-
-extern "C" void *__dt__4NodeFv(void *, s16);
-
-void __dl__FPv(void *);
-
 struct AnimationSetupView : Node {
     const void *vtable;
     s32 flags;
@@ -154,7 +140,6 @@ AnimationSetupOwner::~AnimationSetupOwner()
 }
 
 extern "C" {
-
 void fn_1_19C(void);
 }
 
@@ -166,7 +151,6 @@ void AnimationSetupOwner::update()
 }
 
 extern "C" {
-
 struct RequestOwner {
     u32 nodeData[3];
     u32 pending;
@@ -188,7 +172,6 @@ void AnimationSetupOwner::flagEnabled(int request)
 }
 
 extern "C" {
-
 extern ListRoot<SetupAnimationOwner> animationSetupCallbacks;
 }
 
@@ -264,25 +247,19 @@ void SetupAnimationOwner::fn_1_1CAC()
 }
 
 extern "C" {
-
 typedef Vec SequencePosition;
 
 typedef struct SequenceModel {
     s16 modelId;
 } SequenceModel;
-
 }
 
-static inline f32 Constant120_0f(void) { return 120.0f; }
-
 extern "C" {
-
 extern void fn_1_1BCF4(void *object);
 
 extern void fn_1_1BDB8(void *object, void *list);
 
 extern void fn_1_1DBA4(void *model, void *position, f32 angle);
-
 }
 
 /* Chooses the initial destination and easing targets. */
@@ -290,7 +267,7 @@ void SetupAnimationOwner::fn_1_1D28()
 {
     s32 index;
 
-    framesRemaining = (s32)(60.0f + RandomFloat() * Constant120_0f());
+    framesRemaining = (s32)(secondsToFrames(1.0f) + RandomFloat() * secondsToFrames(2.0f));
     index = mode;
     fn_1_123C(&destination, index);
     {
@@ -308,8 +285,7 @@ static inline void fn_1_2CE0_for_2EDC(PlayAnimationOwner *owner)
     s32 sequence;
     f32 scale;
 
-    owner->framesRemaining = (s32)(60.0f
-        + (RandomFloat() * Constant120_0f()));
+    owner->framesRemaining = (s32)(secondsToFrames(1.0f) + RandomFloat() * secondsToFrames(2.0f));
     sequence = owner->mode;
     angle = 40.0f
           + (((f32)(sequence * 10)
@@ -334,8 +310,7 @@ static inline void fn_1_1D28_for_1F14(SetupAnimationOwner *owner)
     s32 sequence;
     f32 scale;
 
-    owner->framesRemaining = (s32)(60.0f
-        + (RandomFloat() * Constant120_0f()));
+    owner->framesRemaining = (s32)(secondsToFrames(1.0f) + RandomFloat() * secondsToFrames(2.0f));
     sequence = owner->mode;
     angle = 40.0f
           + (((f32)(sequence * 10)
@@ -377,11 +352,9 @@ void SetupAnimationOwner::fn_1_1F14()
 }
 
 extern "C" {
-
 extern s8 lbl_1_bss_60;
 
 extern f64 lbl_1_bss_58;
-
 }
 
 void SetupAnimationOwner::fn_1_2290()
@@ -465,9 +438,7 @@ void AnimationOwner::flagEnabled(int request)
 }
 
 extern "C" {
-
 extern ListRoot<PlayAnimationOwner> animationCallbacks;
-
 }
 
 PlayAnimationOwner::PlayAnimationOwner(const LinkedModel *sequenceIndex, s32 initialMode)
@@ -535,7 +506,7 @@ void PlayAnimationOwner::fn_1_2C64()
 
 static inline void fn_1_1D28_for_2CE0(PlayAnimationOwner *owner)
 {
-    owner->framesRemaining = (s32)(60.0f + RandomFloat() * Constant120_0f());
+    owner->framesRemaining = (s32)(secondsToFrames(1.0f) + RandomFloat() * secondsToFrames(2.0f));
     fn_1_23C4(&owner->destination, owner->mode);
     {
         f32 scale = 2.0f;
@@ -573,11 +544,9 @@ void PlayAnimationOwner::fn_1_2EDC()
 }
 
 extern "C" {
-
 extern s8 lbl_1_bss_80;
 
 extern f64 lbl_1_bss_78;
-
 }
 
 void PlayAnimationOwner::fn_1_3268()
@@ -601,7 +570,6 @@ void PlayAnimationOwner::fn_1_3268()
 }
 
 extern "C" {
-
 ListRoot<SetupAnimationOwner> animationSetupCallbacks;
 f64 lbl_1_bss_58;
 s8 lbl_1_bss_60;

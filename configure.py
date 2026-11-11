@@ -347,7 +347,11 @@ config.libs = [
         "host": False,
         "objects": [
             Object(Matching, "Runtime.PPCEABI.H/__va_arg.c"),
-            Object(Matching, "Runtime.PPCEABI.H/global_destructor_chain.c"),
+            Object(
+                Matching,
+                "Runtime.PPCEABI.H/global_destructor_chain.c",
+                extra_cflags=["-inline auto,deferred"],
+            ),
             Object(
                 Matching,
                 "Runtime.PPCEABI.H/New.cp",
