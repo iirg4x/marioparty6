@@ -2,12 +2,12 @@
 #define M654_MODEL_ANIMATION_OWNER_H
 // The map scene: its models, its lights and the door opening at the start of a round.
 #include <vector>
-#include "REL/m654DLL/manager_event_base.h"
-#include "REL/m654DLL/registered_value.h"
-#include "REL/m654DLL/owned_model.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/category_sphere.h"
+#include "REL/framework/model.h"
+#include "REL/framework/singleton.h"
 
-class ModelAnimationOwner : public ManagerEventBase, public MinigameSingleton<ModelAnimationOwner> {
+class ModelAnimationOwner : public RequestObject, public MinigameSingleton<ModelAnimationOwner> {
 public:
     void (ModelAnimationOwner::*callback)();
     OwnedModel animation;
@@ -21,8 +21,8 @@ public:
 
     ModelAnimationOwner();
     virtual ~ModelAnimationOwner();
-    virtual void handleEvent(int event);
-    virtual void advanceFrame();
+    virtual void flagEnabled(int event);
+    virtual void update();
     void fn_1_20A0();
     void fn_1_246C();
     void fn_1_254C();

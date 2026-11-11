@@ -8,7 +8,7 @@ SingletonCallbackOwner::~SingletonCallbackOwner()
 {
 }
 
-void SingletonCallbackOwner::clearFlag(int bit)
+void SingletonCallbackOwner::flagEnabled(int bit)
 {
     flags &= ~(1U << bit);
 }

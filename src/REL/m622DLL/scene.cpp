@@ -1,8 +1,8 @@
 #include "REL/framework/minigame_core.h"
-#include "REL/m622DLL/frame_time.h"
+#include "REL/framework/sound.h"
+#include "REL/framework/phase_durations.h"
 #include "REL/m622DLL/random.h"
 #include "dolphin/types.h"
-#include "REL/m622DLL/model.h"
 #include "REL/m622DLL/scene_owner.h"
 #include "REL/m622DLL/model_setup_owner.h"
 extern "C" {
@@ -38,36 +38,21 @@ extern "C" { extern s16 lbl_1_bss_B0; }
 
 extern "C" { extern s16 lbl_1_bss_B2; }
 
-
-
-
-
-extern "C" { void __ct__10OwnedModelFUi(void *modelSlot, s32 dataNumber); }
-
-extern "C" { void fn_1_33950__5ModelFUl(void *modelSlot, s32 enabled); }
-
-
-static inline s16 model_handle_id(const s16 *model)
-{
-    return *model;
-}
-
 /* Initializes the scene models and builds a shuffled action table for each phase. */
 SceneOwnerB9C::SceneOwnerB9C()
+    : model0(DATANUM(0x510000, 4)),
+      model1(DATANUM(0x510000, 5)),
+      model2(DATANUM(0x510000, 6)),
+      model3(DATANUM(0x510000, 9)),
+      model4(DATANUM(0x510000, 7)),
+      model5(DATANUM(0x510000, 8)),
+      model6(DATANUM(0x510000, 10)),
+      model7(DATANUM(0x510000, 11)),
+      model8(DATANUM(0x510000, 12)),
+      model9(DATANUM(0x510000, 15)),
+      model10(DATANUM(0x510000, 16)),
+      model11(DATANUM(0x510000, 1))
 {
-    __ct__10OwnedModelFUi(&model0, DATANUM(0x510000, 4));
-    __ct__10OwnedModelFUi(&model1, DATANUM(0x510000, 5));
-    __ct__10OwnedModelFUi(&model2, DATANUM(0x510000, 6));
-    __ct__10OwnedModelFUi(&model3, DATANUM(0x510000, 9));
-    __ct__10OwnedModelFUi(&model4, DATANUM(0x510000, 7));
-    __ct__10OwnedModelFUi(&model5, DATANUM(0x510000, 8));
-    __ct__10OwnedModelFUi(&model6, DATANUM(0x510000, 10));
-    __ct__10OwnedModelFUi(&model7, DATANUM(0x510000, 11));
-    __ct__10OwnedModelFUi(&model8, DATANUM(0x510000, 12));
-    __ct__10OwnedModelFUi(&model9, DATANUM(0x510000, 15));
-    __ct__10OwnedModelFUi(&model10, DATANUM(0x510000, 16));
-    __ct__10OwnedModelFUi(&model11, DATANUM(0x510000, 1));
-
     updateCount = 0;
     phaseStarted = 0;
     sceneState = 0;
@@ -78,25 +63,25 @@ SceneOwnerB9C::SceneOwnerB9C()
     unknown368 = 0;
     soundActive = 0;
 
-    fn_1_33950__5ModelFUl(&model0, 1);
-    fn_1_33950__5ModelFUl(&model1, 1);
-    fn_1_33950__5ModelFUl(&model2, 1);
-    fn_1_33950__5ModelFUl(&model3, 1);
-    fn_1_33950__5ModelFUl(&model6, 1);
-    fn_1_33950__5ModelFUl(&model4, 1);
-    fn_1_33950__5ModelFUl(&model5, 1);
-    fn_1_33950__5ModelFUl(&model7, 1);
-    fn_1_33950__5ModelFUl(&model8, 1);
-    fn_1_33950__5ModelFUl(&model9, 1);
-    fn_1_33950__5ModelFUl(&model10, 1);
+    model0.setAttribute(1);
+    model1.setAttribute(1);
+    model2.setAttribute(1);
+    model3.setAttribute(1);
+    model6.setAttribute(1);
+    model4.setAttribute(1);
+    model5.setAttribute(1);
+    model7.setAttribute(1);
+    model8.setAttribute(1);
+    model9.setAttribute(1);
+    model10.setAttribute(1);
 
-    fn_80026A44(model_handle_id(&model11.modelId), 1);
-    fn_80026760(model_handle_id(&model11.modelId),
+    fn_80026A44(model11, 1);
+    fn_80026760(model11,
                      pathPosition = 0.0f,
                      0.0f, 0.0f);
-    fn_80026B8C(model_handle_id(&model11.modelId), 2);
+    fn_80026B8C(model11, 2);
 
-    s16 motionModelId = model_handle_id(&model7.modelId);
+    s16 motionModelId = model7;
     lbl_1_bss_B0 = fn_80030458(
         motionModelId, fn_80008DD0(DATANUM(0x510000, 13), 0x10000000, 2));
     lbl_1_bss_B2 = fn_80030458(
@@ -186,14 +171,14 @@ void SceneOwnerB9C::fn_1_E00()
 {
     if (updateCount < 4) {
         s32 phase = updateCount;
-        ModelVector position = {{-730.0f, 60.0f, 0.0f}};
-        position.values[2] = (f32)((phase * 0x122) - 0x24E);
+        Vec position = {-730.0f, 60.0f, 0.0f};
+        position.z = (f32)((phase * 0x122) - 0x24E);
 
-        ModelEntry *scene = new ModelEntry(&model0.modelId,
+        ModelEntry *scene = new ModelEntry(model0,
                                   &position, phase);
 
-        new ModelPairOwner(&model1.modelId,
-                                &model2.modelId,
+        new ModelPairOwner(model1,
+                                model2,
                                 &position, (u32)phase);
 
         s32 selectedAction = phases[phase].selectedAction[sceneIndex];
@@ -203,22 +188,22 @@ void SceneOwnerB9C::fn_1_E00()
         FourModelOwner *fourModels = 0;
         switch (selectedAction) {
         case 0:
-            placement = new ModelCameraPlacement(&model3.modelId,
+            placement = new ModelCameraPlacement(model3,
                                      &position, phase);
             break;
         case 1:
-            pulse = new ModelPulseOwner(&model6.modelId,
+            pulse = new ModelPulseOwner(model6,
                                      &position, phase);
             break;
         case 2:
-            pair = new MovingPair(&model4.modelId,
-                                     &model5.modelId,
+            pair = new MovingPair(model4,
+                                     model5,
                                      &position, phase);
             break;
         case 3:
-            fourModels = new FourModelOwner(&model7.modelId,
-                                     &model8.modelId, &model9.modelId,
-                                     &model10.modelId,
+            fourModels = new FourModelOwner(model7,
+                                     model8, model9,
+                                     model10,
                                      &position, phase);
             break;
         }
@@ -266,7 +251,7 @@ void SceneOwnerB9C::fn_1_1058()
     if ((pathPosition += lbl_1_bss_AC) > 200.0f) {
         pathPosition -= 200.0f;
     }
-    fn_80026760(scene_model_id(&model11.modelId),
+    fn_80026760(model11,
                     pathPosition, 0.0f, 0.0f);
 }
 
@@ -294,7 +279,7 @@ void SceneOwnerB9C::update()
     fn_1_3C60();
 }
 
-void SceneOwnerB9C::clearFlag(int request)
+void SceneOwnerB9C::flagEnabled(int request)
 {
     flags &= ~(1U << request);
     switch (request) {
@@ -307,9 +292,9 @@ void SceneOwnerB9C::clearFlag(int request)
     }
 }
 
-void fn_1_1978(s16 modelId, const f32 *position, u8 mode)
+void fn_1_1978(s16 modelId, const Vec *position, u8 mode)
 {
-    f32 value = *position;
+    f32 value = position->x;
 
     if (value > 0.0f && mode == 0) {
         fn_800269E8(modelId, (1 << 0));
@@ -329,34 +314,24 @@ void fn_1_1978(s16 modelId, const f32 *position, u8 mode)
     }
 }
 
-extern "C" {
-typedef SceneList<ModelEntry> DrawRoot;
-extern DrawRoot lbl_1_bss_40;
+extern "C" ListRoot<ModelEntry> lbl_1_bss_40;
 
-void __ct__4NodeFv(void *object);
-void insert4__4NodeFP4Node(void *object, void *list);
-void fn_1_33A3C__5ModelFP3Vec(void *destination, const void *source);
-void fn_1_B02C(s32, s32, void *);
-
-
-}
-
-ModelEntry::ModelEntry(const void *modelData,
-                           const ModelVector1A7C *frameData, s32 requestId)
+ModelEntry::ModelEntry(const OwnedModel &modelData,
+                           const Vec *position, s32 requestId)
     : active(0),
       requestId(requestId),
-      frameData(*frameData),
-      model((const OwnedModel *)modelData)
+      frameData(*position),
+      model(modelData)
 {
     Callback initialData;
     s16 modelIdForCalls;
 
-    insert4__4NodeFP4Node(this, &lbl_1_bss_40);
-    modelIdForCalls = scene_model_id(&this->model.modelId);
+    insert4(&lbl_1_bss_40);
+    modelIdForCalls = model;
     fn_80026B8C(modelIdForCalls, 2);
     fn_80026A44(modelIdForCalls, 1);
     fn_800269E8(modelIdForCalls, 0x4000);
-    fn_1_33A3C__5ModelFP3Vec(&this->model, &this->frameData);
+    model.setPosition(&frameData);
     initialData = &ModelEntry::fn_1_1CF4;
     this->initialData = initialData;
 }
@@ -378,9 +353,9 @@ void fn_1_1CC4()
 extern "C" { extern f32 lbl_1_bss_AC;  extern s32 lbl_1_bss_B4; }
 void ModelEntry::fn_1_1CF4()
 {
-    frameData.values[0] += lbl_1_bss_AC;
-    fn_1_33A3C__5ModelFP3Vec(&model, &frameData);
-    if (frameData.values[0] > 550.0f && lbl_1_bss_B4 == requestId) {
+    frameData.x += lbl_1_bss_AC;
+    model.setPosition(&frameData);
+    if (frameData.x > 550.0f && lbl_1_bss_B4 == requestId) {
         delete this;
     }
 }
@@ -388,26 +363,26 @@ void ModelEntry::fn_1_1CF4()
 extern "C" {  }
 ModelEntry *fn_1_1DB8(s32 ownerId)
 {
-    ModelEntry *current = lbl_1_bss_40.begin();
-    ModelEntry *sentinel = lbl_1_bss_40.end();
+    ModelEntry *current = lbl_1_bss_40.front();
+    Node *sentinel = lbl_1_bss_40.end_node();
     while (current != sentinel) {
-        if (current->frameData.values[0] > 60.0f &&
-            current->frameData.values[0] < 230.0f &&
+        if (current->frameData.x > 60.0f &&
+            current->frameData.x < 230.0f &&
             current->requestId == ownerId && current->active == 0) {
             return current;
         }
-        current = DrawRoot::next(current);
+        current = current->next();
     }
     return 0;
 }
 
 s32 fn_1_1E68(s32 requestId)
 {
-    ModelEntry *current = lbl_1_bss_40.begin();
-    ModelEntry *sentinel = lbl_1_bss_40.end();
+    ModelEntry *current = lbl_1_bss_40.front();
+    Node *sentinel = lbl_1_bss_40.end_node();
     while (current != sentinel) {
-        if (current->frameData.values[0] > 160.0f &&
-            current->frameData.values[0] < 211.0f &&
+        if (current->frameData.x > 160.0f &&
+            current->frameData.x < 211.0f &&
             current->requestId == requestId) {
             if (current->model0 != 0) return 0;
             if (current->model1 != 0) return 1;
@@ -415,7 +390,7 @@ s32 fn_1_1E68(s32 requestId)
             if (current->model3 != 0) return 3;
             return 4;
         }
-        current = DrawRoot::next(current);
+        current = current->next();
     }
     return -1;
 }
@@ -428,22 +403,20 @@ bool ModelEntry::fn_1_1F5C()
 
 s32 ModelEntry::fn_1_1F84(s16 characterModelId, s16 itemId)
 {
-    static const ModelVector1A7C initialModelData = {{0.0f, -10.0f, 0.0f}};
-    ModelVector1A7C modelData;
-    Callback initialData;
+    static const Vec initialModelData = {0.0f, -10.0f, 0.0f};
     char *hookId;
-    if (frameData.values[0] > 190.0f && frameData.values[0] < 230.0f) {
+    if (frameData.x > 190.0f && frameData.x < 230.0f) {
         active = 1;
         this->characterModelId = characterModelId;
         itemHookId = itemId;
         frame = 0;
         hookId = fn_8005C0F0(itemHookId, 1, 0);
         fn_8002741C(this->characterModelId, hookId, model);
-        modelData = initialModelData;
-        fn_1_33A3C__5ModelFP3Vec(&model, &modelData);
-        initialData = &ModelEntry::fn_1_217C;
+        Vec modelData = initialModelData;
+        model.setPosition(&modelData);
+        Callback initialData = &ModelEntry::fn_1_217C;
         this->initialData = initialData;
-        fn_1_B02C(1, MSM_SE_MG622_ITEM_ATTACH, &frameData);
+        soundPlayAt(1, MSM_SE_MG622_ITEM_ATTACH, &frameData);
         return 1;
     }
     return 0;
@@ -454,11 +427,11 @@ s32 ModelEntry::fn_1_20C0()
     if (model0 != 0) { model0->fn_1_2E08(); return 0; }
     if (model1 != 0) { model1->fn_1_3678(); return 1; }
     if (model2 != 0) {
-        fn_1_B02C(1, MSM_SE_MG622_ENTRY_MODEL_ACTION, &frameData);
+        soundPlayAt(1, MSM_SE_MG622_ENTRY_MODEL_ACTION, &frameData);
         model2->fn_1_49CC(); return 2;
     }
     if (model3 != 0) {
-        fn_1_B02C(1, MSM_SE_GUIDE_OBJECT_CATCH, &frameData);
+        soundPlayAt(1, MSM_SE_GUIDE_OBJECT_CATCH, &frameData);
         model3->fn_1_3FE0(); return 3;
     }
     return 4;
@@ -505,41 +478,31 @@ void ModelEntry::fn_1_2368(ModelCameraPlacement *cameraPlacement,
 }
 
 
-extern "C" {
+extern "C" ListRoot<ModelPairOwner> lbl_1_bss_54;
 
-extern void __ct__4NodeFv(void *object);
-extern void insert4__4NodeFP4Node(void *object, void *list);
-extern void fn_1_33A3C__5ModelFP3Vec(void *modelId, const void *vector);
-}
-
-typedef SceneList<ModelPairOwner> PairRoot;
-extern "C" PairRoot lbl_1_bss_54;
-
-ModelPairOwner::ModelPairOwner(const s16 *firstSource,
-                         const s16 *secondSource, const ModelVector *vector,
+ModelPairOwner::ModelPairOwner(const OwnedModel &firstSource,
+                         const OwnedModel &secondSource, const Vec *position,
                          u32 requestId)
     : requestId(requestId),
-      vector(*vector),
-      firstModel((const OwnedModel *)firstSource),
-      secondModel((const OwnedModel *)secondSource)
+      vector(*position),
+      firstModel(firstSource),
+      secondModel(secondSource)
 {
     s16 modelIdForCalls;
 
-    insert4__4NodeFP4Node(this, &lbl_1_bss_54);
+    insert4(&lbl_1_bss_54);
 
-    modelIdForCalls = scene_model_id(&this->firstModel.modelId);
+    modelIdForCalls = firstModel;
     fn_80026B8C(modelIdForCalls, 2);
     fn_80026A44(modelIdForCalls, 1);
     fn_800269E8(modelIdForCalls, 0x4000);
-    fn_1_33A3C__5ModelFP3Vec(&this->firstModel, &this->vector);
+    firstModel.setPosition(&vector);
 
-    modelIdForCalls = scene_model_id(&this->secondModel.modelId);
+    modelIdForCalls = secondModel;
     fn_80026B8C(modelIdForCalls, 1);
     fn_80026A44(modelIdForCalls, 1);
-    fn_1_33A3C__5ModelFP3Vec(&this->secondModel, &this->vector);
+    secondModel.setPosition(&vector);
 }
-
-ModelPairNode::~ModelPairNode() {}
 
 void ModelPairOwner::fn_1_24D8()
 {
@@ -562,16 +525,16 @@ extern s32 lbl_1_bss_B4;
 
 void ModelPairOwner::fn_1_2618()
 {
-    vector.values[0] += lbl_1_bss_AC;
-    fn_1_33A3C__5ModelFP3Vec(&firstModel, &vector);
+    vector.x += lbl_1_bss_AC;
+    firstModel.setPosition(&vector);
     s16 modelId = secondModel;
-    if (vector.values[0] > (-648.0f) && vector.values[0] < (-321.0f)) {
+    if (vector.x > (-648.0f) && vector.x < (-321.0f)) {
         fn_80026A44(modelId, 1);
-        fn_1_33A3C__5ModelFP3Vec(&secondModel, &vector);
+        secondModel.setPosition(&vector);
     } else {
         fn_800269E8(modelId, 1);
     }
-    if (vector.values[0] > 550.0f && lbl_1_bss_B4 == requestId) {
+    if (vector.x > 550.0f && lbl_1_bss_B4 == requestId) {
         delete this;
     }
 }
@@ -583,29 +546,26 @@ void fn_1_2774(ModelPairOwner *self)
 
 
 
-typedef SceneList<ModelCameraPlacement> PlacementRoot;
-extern "C" PlacementRoot lbl_1_bss_68;
+extern "C" ListRoot<ModelCameraPlacement> lbl_1_bss_68;
 
-ModelCameraPlacement::ModelCameraPlacement(void *modelData,
-    const ModelCameraVector *cameraValues, s32 mode)
+ModelCameraPlacement::ModelCameraPlacement(const OwnedModel &modelData,
+    const Vec *cameraValues, s32 mode)
     : active(0),
       mode(mode),
       cameraPosition(*cameraValues),
       modelScale(0.4f),
       modelOffset(0.0f),
-      model((const OwnedModel *)modelData)
+      model(modelData)
 {
     s16 modelIdForCalls;
-    insert4__4NodeFP4Node(this, &lbl_1_bss_68);
-    modelIdForCalls = scene_model_id(&model.modelId);
+    insert4(&lbl_1_bss_68);
+    modelIdForCalls = model;
     fn_800268B0(modelIdForCalls, modelScale, modelScale, modelScale);
-    fn_1_1978(modelIdForCalls, &cameraPosition.values[0], 0);
+    fn_1_1978(modelIdForCalls, &cameraPosition, 0);
     fn_800269E8(modelIdForCalls, 0x4000);
     Callback initialValues = &ModelCameraPlacement::fn_1_2C18;
     this->initialValues = initialValues;
 }
-
-ModelCameraNode::~ModelCameraNode() {}
 
 void ModelCameraPlacement::fn_1_2AFC()
 {
@@ -622,22 +582,22 @@ void fn_1_2BE8()
 
 void ModelCameraPlacement::fn_1_2C18()
 {
-    ModelCameraVector position;
-    cameraPosition.values[0] += lbl_1_bss_AC;
-    position.values[0] = cameraPosition.values[0];
-    position.values[1] = cameraPosition.values[1];
-    position.values[2] = cameraPosition.values[2];
-    position.values[1] += 30.0f + modelOffset;
-    fn_1_33A3C__5ModelFP3Vec(&model, &position);
-    fn_1_1978(model, &cameraPosition.values[0], active);
-    if (cameraPosition.values[0] > 550.0f && lbl_1_bss_B4 == mode) {
+    Vec position;
+    cameraPosition.x += lbl_1_bss_AC;
+    position.x = cameraPosition.x;
+    position.y = cameraPosition.y;
+    position.z = cameraPosition.z;
+    position.y += 30.0f + modelOffset;
+    model.setPosition(&position);
+    fn_1_1978(model, &cameraPosition, active);
+    if (cameraPosition.x > 550.0f && lbl_1_bss_B4 == mode) {
         delete this;
     }
 }
 
 void ModelCameraPlacement::fn_1_2E08()
 {
-    s16 modelIdForCalls = scene_model_id(&model.modelId);
+    s16 modelIdForCalls = model;
     fn_80026A44(modelIdForCalls, ((1 << 30) | (1 << 1)));
     fn_800269E8(modelIdForCalls, ((1 << 30) | (1 << 0)));
     active = 1;
@@ -665,29 +625,26 @@ void fn_1_3120(ModelCameraPlacement *self)
 
 extern "C" {  }
 
-typedef SceneList<ModelPulseOwner> PulseRoot;
-extern "C" PulseRoot lbl_1_bss_7C;
+extern "C" ListRoot<ModelPulseOwner> lbl_1_bss_7C;
 
-ModelPulseOwner::ModelPulseOwner(const void *modelData,
-    const ModelVector *frameData, s32 requestId)
+ModelPulseOwner::ModelPulseOwner(const OwnedModel &modelData,
+    const Vec *position, s32 requestId)
     : initialized(0),
       requestId(requestId),
-      frameData(*frameData),
+      frameData(*position),
       scale(0.4f),
-      model((const OwnedModel *)modelData)
+      model(modelData)
 {
     CallbackState callback;
     s16 modelId;
-    insert4__4NodeFP4Node(this, &lbl_1_bss_7C);
-    modelId = scene_model_id(&model.modelId);
+    insert4(&lbl_1_bss_7C);
+    modelId = model;
     fn_800268B0(modelId, scale, scale, scale);
-    fn_1_1978(modelId, &this->frameData.values[0], 0);
+    fn_1_1978(modelId, &frameData, 0);
     fn_800269E8(modelId, 0x4000);
     callback = &ModelPulseOwner::fn_1_3490;
     this->callback = callback;
 }
-
-ModelPulseNode::~ModelPulseNode() {}
 
 void ModelPulseOwner::fn_1_3374()
 {
@@ -704,15 +661,15 @@ void fn_1_3460()
 
 void ModelPulseOwner::fn_1_3490()
 {
-    ModelVector position;
-    frameData.values[0] += lbl_1_bss_AC;
-    position.values[0] = frameData.values[0];
-    position.values[1] = frameData.values[1];
-    position.values[2] = frameData.values[2];
-    position.values[1] += 4.3f;
-    fn_1_33A3C__5ModelFP3Vec(&model, &position);
-    fn_1_1978(model, &frameData.values[0], initialized);
-    if (frameData.values[0] > 550.0f && lbl_1_bss_B4 == requestId) {
+    Vec position;
+    frameData.x += lbl_1_bss_AC;
+    position.x = frameData.x;
+    position.y = frameData.y;
+    position.z = frameData.z;
+    position.y += 4.3f;
+    model.setPosition(&position);
+    fn_1_1978(model, &frameData, initialized);
+    if (frameData.x > 550.0f && lbl_1_bss_B4 == requestId) {
         delete this;
     }
 }
@@ -739,47 +696,45 @@ void fn_1_38F4(ModelPulseOwner *self)
 }
 
 
-typedef SceneList<FourModelOwner> FourRoot;
-extern "C" FourRoot lbl_1_bss_A4;
+extern "C" ListRoot<FourModelOwner> lbl_1_bss_A4;
 
 FourModelOwner::FourModelOwner(
-    const void *firstModelData,
-    const void *secondModelData,
-    const void *thirdModelData,
-    const void *fourthModelData,
-    const struct ModelVector *frameData,
+    const OwnedModel &firstModelData,
+    const OwnedModel &secondModelData,
+    const OwnedModel &thirdModelData,
+    const OwnedModel &fourthModelData,
+    const Vec *frameData,
     s32 requestId)
     : initialized(0),
       requestId(requestId),
       frameData(*frameData),
       scale(0.4f),
-      model0((const OwnedModel *)firstModelData),
-      model1((const OwnedModel *)secondModelData),
-      model2((const OwnedModel *)thirdModelData),
-      model3((const OwnedModel *)fourthModelData)
+      model0(firstModelData),
+      model1(secondModelData),
+      model2(thirdModelData),
+      model3(fourthModelData)
 {
-    struct ModelVector initialData;
+    Vec initialData;
     FourModelOwner::Callback callback;
     s16 modelIdCopy;
 
-    insert4__4NodeFP4Node(this, &lbl_1_bss_A4);
+    insert4(&lbl_1_bss_A4);
 
-    modelIdCopy = scene_model_id(&this->model0.modelId);
+    modelIdCopy = model0;
     fn_800268B0(modelIdCopy, this->scale, this->scale,
                       this->scale);
     fn_800269E8(modelIdCopy, 0x4000);
-    modelIdCopy = scene_model_id(&this->model1.modelId);
+    modelIdCopy = model1;
     fn_800268B0(modelIdCopy, this->scale, this->scale,
                       this->scale);
-    fn_1_33950__5ModelFUl(&this->model0, 1);
-    fn_1_33950__5ModelFUl(&this->model1, 1);
-    fn_1_33950__5ModelFUl(&this->model2, 1);
-    fn_1_33950__5ModelFUl(&this->model3, 1);
+    this->model0.setAttribute(1);
+    this->model1.setAttribute(1);
+    this->model2.setAttribute(1);
+    this->model3.setAttribute(1);
     callback = &FourModelOwner::fn_1_3C90;
     this->callback = callback;
 }
 
-FourModelNode::~FourModelNode() {}
 void FourModelOwner::fn_1_3B08()
 {
     while (!lbl_1_bss_A4.empty()) { delete lbl_1_bss_A4.back(); }
@@ -792,22 +747,22 @@ void fn_1_3C60()
 
 void FourModelOwner::fn_1_3C90()
 {
-    ModelVector position;
-    frameData.values[0] += lbl_1_bss_AC;
-    position.values[0] = frameData.values[0];
-    position.values[1] = frameData.values[1];
-    position.values[2] = frameData.values[2];
-    position.values[1] += 4.3f;
-    fn_1_33A3C__5ModelFP3Vec(&model0, &position);
-    fn_1_33A3C__5ModelFP3Vec(&model1, &position);
-    if (frameData.values[0] > 0.0f) {
-        fn_1_1978(model0, &frameData.values[0], initialized);
-        fn_1_33950__5ModelFUl(&model1, 1);
+    Vec position;
+    frameData.x += lbl_1_bss_AC;
+    position.x = frameData.x;
+    position.y = frameData.y;
+    position.z = frameData.z;
+    position.y += 4.3f;
+    model0.setPosition(&position);
+    model1.setPosition(&position);
+    if (frameData.x > 0.0f) {
+        fn_1_1978(model0, &frameData, initialized);
+        model1.setAttribute(1);
     } else {
-        fn_1_1978(model1, &frameData.values[0], 0);
-        fn_1_33950__5ModelFUl(&model0, 1);
+        fn_1_1978(model1, &frameData, 0);
+        model0.setAttribute(1);
     }
-    if (frameData.values[0] > 550.0f && lbl_1_bss_B4 == requestId) {
+    if (frameData.x > 550.0f && lbl_1_bss_B4 == requestId) {
         delete this;
     }
 }
@@ -857,10 +812,10 @@ void FourModelOwner::fn_1_40A0()
             fn_80026A44(transitionModelIdForCalls, ((1 << 30) | (1 << 0)));
             fn_80026A44(transitionModelIdForCalls, 1);
             fn_8002D414(transitionModelIdForCalls, 0.0f);
-            fn_80026760(transitionModelIdForCalls, frameData.values[0],
-                (f32)(4.3 + (f64)frameData.values[1]), frameData.values[2]);
+            fn_80026760(transitionModelIdForCalls, frameData.x,
+                (f32)(4.3 + (f64)frameData.y), frameData.z);
             fn_80026B8C(transitionModelIdForCalls, 5);
-            fn_1_B02C(1, MSM_SE_MG622_TRANSITION_MODEL_APPEAR, &frameData);
+            soundPlayAt(1, MSM_SE_MG622_TRANSITION_MODEL_APPEAR, &frameData);
             state = 2;
             return;
         }
@@ -882,41 +837,38 @@ extern "C" {
 char lbl_1_data_BC[12] = "itemhook_c";
 }
 
-typedef SceneList<MovingPair> MovingRoot;
-extern "C" MovingRoot lbl_1_bss_90;
+extern "C" ListRoot<MovingPair> lbl_1_bss_90;
 
 void fn_1_4D70(MovingPair *);
 
 MovingPair::MovingPair(
-    const void *frontModelData,
-    const void *backModelData,
-    const struct ModelVector *frameData,
+    const OwnedModel &frontModelData,
+    const OwnedModel &backModelData,
+    const Vec *frameData,
     s32 requestId)
     : initialized(0),
       requestId(requestId),
       frameData(*frameData),
-      frontModel((const OwnedModel *)frontModelData),
-      backModel((const OwnedModel *)backModelData)
+      frontModel(frontModelData),
+      backModel(backModelData)
 {
-    struct ModelVector initialData;
+    Vec initialData;
     s16 modelIdForCalls;
     MovingPair::Callback callback;
 
-    insert4__4NodeFP4Node(this, &lbl_1_bss_90);
-    modelIdForCalls = scene_model_id(&this->frontModel.modelId);
+    insert4(&lbl_1_bss_90);
+    modelIdForCalls = frontModel;
     fn_800269E8(modelIdForCalls, ((1 << 30) | (1 << 1)));
     fn_800269E8(modelIdForCalls, (1 << 14));
     fn_8002D414(modelIdForCalls, 0.0f);
-    modelIdForCalls = scene_model_id(&this->backModel.modelId);
+    modelIdForCalls = backModel;
     fn_800269E8(modelIdForCalls, ((1 << 30) | (1 << 1)));
     fn_800269E8(modelIdForCalls, (1 << 14));
-    fn_800269E8(scene_model_id(&this->frontModel.modelId), (1 << 0));
-    fn_800269E8(scene_model_id(&this->backModel.modelId), (1 << 0));
+    fn_800269E8(frontModel, (1 << 0));
+    fn_800269E8(backModel, (1 << 0));
     callback = &MovingPair::fn_1_46CC;
     this->callback = callback;
 }
-
-MovingPairNode::~MovingPairNode() {}
 
 
 
@@ -934,21 +886,21 @@ void fn_1_469C()
 
 void MovingPair::fn_1_46CC()
 {
-    ModelVector position;
-    frameData.values[0] += lbl_1_bss_AC;
-    position.values[0] = frameData.values[0];
-    position.values[1] = frameData.values[1];
-    position.values[2] = frameData.values[2];
-    fn_1_33A3C__5ModelFP3Vec(&frontModel, &position);
-    fn_1_33A3C__5ModelFP3Vec(&backModel, &position);
-    if (frameData.values[0] > 0.0f) {
-        fn_1_1978(frontModel, &frameData.values[0], initialized);
+    Vec position;
+    frameData.x += lbl_1_bss_AC;
+    position.x = frameData.x;
+    position.y = frameData.y;
+    position.z = frameData.z;
+    frontModel.setPosition(&position);
+    backModel.setPosition(&position);
+    if (frameData.x > 0.0f) {
+        fn_1_1978(frontModel, &frameData, initialized);
         fn_800269E8(backModel, 1);
     } else {
-        fn_1_1978(backModel, &frameData.values[0], 0);
+        fn_1_1978(backModel, &frameData, 0);
         fn_800269E8(frontModel, 1);
     }
-    if (frameData.values[0] > 550.0f && lbl_1_bss_B4 == requestId) {
+    if (frameData.x > 550.0f && lbl_1_bss_B4 == requestId) {
         delete this;
     }
 }
@@ -965,21 +917,21 @@ void MovingPair::fn_1_49CC()
 
 void MovingPair::fn_1_4A70()
 {
-    ModelVector position;
-    frameData.values[0] += lbl_1_bss_AC;
-    position.values[0] = frameData.values[0];
-    position.values[1] = frameData.values[1];
-    position.values[2] = frameData.values[2];
-    fn_1_33A3C__5ModelFP3Vec(&frontModel, &position);
-    fn_1_33A3C__5ModelFP3Vec(&backModel, &position);
-    if (frameData.values[0] > 0.0f) {
-        fn_1_1978(frontModel, &frameData.values[0], initialized);
+    Vec position;
+    frameData.x += lbl_1_bss_AC;
+    position.x = frameData.x;
+    position.y = frameData.y;
+    position.z = frameData.z;
+    frontModel.setPosition(&position);
+    backModel.setPosition(&position);
+    if (frameData.x > 0.0f) {
+        fn_1_1978(frontModel, &frameData, initialized);
         fn_800269E8(backModel, 1);
     } else {
-        fn_1_1978(backModel, &frameData.values[0], 0);
+        fn_1_1978(backModel, &frameData, 0);
         fn_800269E8(frontModel, 1);
     }
-    if (frameData.values[0] > 550.0f && lbl_1_bss_B4 == requestId) {
+    if (frameData.x > 550.0f && lbl_1_bss_B4 == requestId) {
         delete this;
     }
 }
@@ -991,30 +943,13 @@ void fn_1_4D70(MovingPair *self)
     (self->*self->callback)();
 }
 
-template <class T> void visitSceneNodes(T *current, T *sentinel, void (*visitor)(T *))
-{
-    while (current != sentinel) {
-        visitor(current);
-        current = SceneList<T>::next(current);
-    }
-}
-
-template <class T> void SceneList<T>::visit(void (*visitor)(T *))
-{
-    visitSceneNodes(begin(), end(), visitor);
-}
-
 extern "C" {
-
-s32 lbl_1_bss_28 = secondsToFrames(2L);
-s32 lbl_1_bss_2C = (s32)secondsToFrames(3.5);
-s32 lbl_1_bss_30 = (s32)secondsToFrames(3.5);
-SceneList<ModelEntry> lbl_1_bss_40;
-SceneList<ModelPairOwner> lbl_1_bss_54;
-SceneList<ModelCameraPlacement> lbl_1_bss_68;
-SceneList<ModelPulseOwner> lbl_1_bss_7C;
-SceneList<MovingPair> lbl_1_bss_90;
-SceneList<FourModelOwner> lbl_1_bss_A4;
+ListRoot<ModelEntry> lbl_1_bss_40;
+ListRoot<ModelPairOwner> lbl_1_bss_54;
+ListRoot<ModelCameraPlacement> lbl_1_bss_68;
+ListRoot<ModelPulseOwner> lbl_1_bss_7C;
+ListRoot<MovingPair> lbl_1_bss_90;
+ListRoot<FourModelOwner> lbl_1_bss_A4;
 f32 lbl_1_bss_AC;
 s16 lbl_1_bss_B0;
 s16 lbl_1_bss_B2;

@@ -2,6 +2,8 @@
 #ifndef FRAMEWORK_OCTTREE_MAN_H
 #define FRAMEWORK_OCTTREE_MAN_H
 
+#include <memory>
+
 extern "C" {
 #include "dolphin/mtx.h"
 }
@@ -26,7 +28,7 @@ struct OctreeArchive {
     virtual void *find(const char *);
 };
 
-// Owns an archive or debug drawing object and deletes it on replacement or destruction.
+// Owns an archive or leaf selection and deletes it on replacement or destruction.
 template <class Value> struct OctreeOwned {
     Value *pointer; // Owned object, or null before it is assigned.
     OctreeOwned() : pointer(0) {}
@@ -50,7 +52,8 @@ template <class Value> struct OctreeOwned {
     }
 };
 
-struct OctreeRenderCallback;
+struct OwnedModel;
+struct Hu3DModel_s;
 struct OctreeNodeSet;
 void initializeOctreeNodes(OctreeDebugNode *, int);
 OctreeDebugNode *findOctreeLeaf(OctreeDebugNode *, float, float, float);
@@ -64,7 +67,7 @@ struct Octree {
     Vec *vertices; // Positions shared by the archived triangles.
     long vertexCount; // Number of positions in the vertex table.
     unsigned short *triangleIndices; // Leaf ranges index the triangle table through this array.
-    OctreeOwned<OctreeRenderCallback> renderer; // Null until enableDebug creates its drawing hook.
+    std::auto_ptr<OwnedModel> renderer; // Null until enableDebug creates its drawing hook model.
     OctreeOwned<OctreeNodeSet> selected; // Leaves queued for the next debug draw, or null before
                                          // enableDebug.
     Octree(OctreeArchive *);
@@ -83,7 +86,7 @@ struct Octree {
     OctreeTriangle *triangleTable() const { return triangles; }
     Vec *vertexTable() const { return vertices; }
     unsigned short *indexTable() const { return triangleIndices; }
-    static void render(void *, Mtx);
+    static void render(Hu3DModel_s *, Mtx *);
     void drawNode(OctreeDebugNode *);
 };
 

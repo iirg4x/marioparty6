@@ -1,7 +1,7 @@
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/m603DLL/model_motion.h"
-#include "REL/m603DLL/frame_time.h"
+#include "REL/framework/frame_time_inline.h"
 #include "REL/m603DLL/zako.h"
 #include "REL/m603DLL/random.h"
 #include "REL/m603DLL/night.h"
@@ -16,7 +16,7 @@ extern "C" {
 }
 
 #include "REL/m603DLL/draw_node.h"
-#include "REL/m603DLL/singleton_32930.h"
+#include "REL/framework/assertion.h"
 
 extern "C" {
 const u32 lbl_1_rodata_398[17] = {
@@ -87,7 +87,7 @@ void fn_1_995C();
 void fn_1_D698();
 void fn_1_9794();
 
-void DrawModelPool::extra()
+void DrawModelPool::update()
 {
     if ((s32)(RandomUnsigned() & 0x3FUL) < 3) {
         fn_1_995C();
@@ -96,9 +96,9 @@ void DrawModelPool::extra()
     fn_1_D698();
 }
 
-void DrawModelPool::update(unsigned long bit)
+void DrawModelPool::flagEnabled(int bit)
 {
-    state &= ~(1UL << bit);
+    flags &= ~(1UL << bit);
     switch (bit) {
     case 0:
     case 1:
@@ -110,11 +110,4 @@ void DrawModelPool::update(unsigned long bit)
         fn_1_A12C();
         break;
     }
-}
-
-extern "C" {
-
-s32 lbl_1_bss_B8 = secondsToFrames(2L);
-s32 lbl_1_bss_BC = secondsToFrames(3.5);
-s32 lbl_1_bss_C0 = secondsToFrames(3.5);
 }

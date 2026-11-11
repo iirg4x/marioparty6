@@ -2,6 +2,9 @@
 static const char rcsid[] = "$Id: octtree_debug.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
 
 #include "REL/framework/octtree_debug.h"
+extern "C" {
+#include "game/hu3d.h"
+}
 
 #define OCTREE_PALETTE_ENTRY_BYTES 4
 #define OCTREE_OUTLINE_VERTEX_COUNT 4
@@ -10,8 +13,8 @@ static const char rcsid[] = "$Id: octtree_debug.cpp,v 1.22 2004/09/09 12:24:38 s
 // Later calls preserve that hook and any leaves already queued for drawing.
 void Octree::enableDebug()
 {
-    if (!renderer) {
-        renderer = new OctreeRenderCallback(render);
+    if (renderer.get() == NULL) {
+        renderer.reset(new OwnedModel(render));
         renderer->setHookData(this);
         selected = new OctreeNodeSet;
     }
@@ -34,7 +37,7 @@ void Octree::select(const Vec &position)
 
 // Hu3D calls this model hook to draw the selected leaves using its supplied matrix.
 // The selection is consumed by this callback and must be submitted again for later draws.
-void Octree::render(void *hookModel, Mtx transform)
+void Octree::render(Hu3DModel_s *hookModel, Mtx *transform)
 {
     static const GXColor octreeDebugColors[] ATTRIBUTE_ALIGN(32) = {
         {255, 0, 0, 255}, {204, 204, 204, 255}, {204, 204, 0, 255},
@@ -45,7 +48,7 @@ void Octree::render(void *hookModel, Mtx transform)
     };
     static const GXColor material = {255, 255, 255, 0};
     static const GXColor ambient = {192, 192, 192, 0};
-    GXLoadPosMtxImm(transform, 0);
+    GXLoadPosMtxImm(*transform, 0);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_CLR0, GX_INDEX8);
@@ -62,7 +65,7 @@ void Octree::render(void *hookModel, Mtx transform)
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     // Hu3D passes its model to this hook; its hook data holds the octree from enableDebug.
-    Octree *tree = static_cast<Octree *>(static_cast<HU3D_MODEL *>(hookModel)->hookData);
+    Octree *tree = static_cast<Octree *>(hookModel->hookData);
     OctreeNodeSet &selectedNodes = *tree->selected;
     std::for_each(selectedNodes.begin(), selectedNodes.end(),
                   std::bind1st(std::mem_fun(&Octree::drawNode), tree));

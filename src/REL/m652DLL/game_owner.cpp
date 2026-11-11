@@ -1,9 +1,7 @@
-void fn_1_86AC(long);
-bool fn_1_17FB8();
-void fn_1_18044();
-void fn_1_180B4();
-#include "REL/m652DLL/time_conversion.h"
-template<> long secondsToFrames<long>(long);
+#include "REL/framework/list_object.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
+#include "REL/framework/sound.h"
 #include "msm_stream.h"
 #include <math.h>
 #include "dolphin.h"
@@ -22,10 +20,12 @@ struct EventManager : MinigameSingleton<EventManager> {
     ~EventManager();
 };
 #include "REL/m652DLL/camera_split.h"
+#include "REL/m652DLL/player_camera.h"
 #include "REL/framework/event_packet.h"
 #include "REL/framework/game_object_man.h"
 #include "REL/m652DLL/player_work.h"
 #include "REL/m652DLL/player_algorithms.h"
+#include "REL/m652DLL/module_root.h"
 
 extern "C" {
 extern int lbl_1_bss_2C, lbl_1_bss_30;
@@ -45,23 +45,6 @@ public:
     void setMode(int);
     void start();
     void setRecordTime(int);
-};
-
-template <class Resource> class OwnedResource {
-public:
-    Resource *value;
-    OwnedResource() {}
-    OwnedResource(Resource *initial) : value(initial) {}
-    ~OwnedResource() { delete value; }
-    operator Resource *() const { return value; }
-    Resource *operator->() const { return value; }
-    void reset(Resource *replacement)
-    {
-        if (value != replacement) {
-            delete value;
-            value = replacement;
-        }
-    }
 };
 
 class FrameCountdown {
@@ -92,37 +75,14 @@ public:
     unsigned char saveRecord();
 };
 
-class ModuleRoot : public MinigameCore, public ThreadEntry,
-                            public EventListener {
-public:
-    OwnedResource<ResultView> result;
-    ModuleRoot();
-    virtual ~ModuleRoot();
-    virtual void setupObjects(OMOBJMAN *);
-    virtual void updateGame();
-    virtual void finishGame();
-    virtual void receive(const EventPacket *event);
-    virtual void run(void *);
-};
-extern void fn_1_17F20(int);
 unsigned char fn_1_203C(ModuleRoot *);
 extern "C" {
-
-extern int fn_1_1F998(TimerOwner *, int);
 
 extern void fn_1_596C(void);
 extern void fn_1_59BC(void);
 extern void fn_1_5A0C(void);
-extern unsigned int fn_1_A900(int);
 extern int lbl_1_bss_2C;
 extern int lbl_1_bss_30;
-extern void __dt__10TimerOwnerFv(void *, int);
-extern void fn_1_1503C(void *, int);
-extern void fn_1_F8D4(void *, int);
-extern void fn_1_FFA0(void *, int);
-extern void fn_1_1F20C(void *, int);
-extern void __dt__12MinigameCoreFv(void *, int);
-extern void __dl__FPv(void *);
 }
 
 void process_event_queue();
@@ -130,7 +90,6 @@ void updateGameObjects();
 void RandomSeed(unsigned long);
 extern "C" {
 
-void *__ct__12PlayerCameraFUi(void *, int);
 void *__ct__10MapManagerFv(void *);
 void fn_1_56D0();
 
@@ -173,7 +132,6 @@ ModuleRoot::ModuleRoot()
 ModuleRoot::~ModuleRoot() {}
 void ModuleRoot::setupObjects(OMOBJMAN *)
 {
-    void *indexedObject;
     void *finalObject;
     int index;
 
@@ -182,10 +140,7 @@ void ModuleRoot::setupObjects(OMOBJMAN *)
 
     index = 0;
     while (index < 2) {
-        indexedObject = __nw__FUl(0x94);
-        if (indexedObject) {
-            indexedObject = __ct__12PlayerCameraFUi(indexedObject, index);
-        }
+        new PlayerCamera(index);
         index++;
     }
 
@@ -194,14 +149,14 @@ void ModuleRoot::setupObjects(OMOBJMAN *)
         finalObject = __ct__10MapManagerFv(finalObject);
     }
     fn_1_56D0();
-    fn_1_86AC(2);
+    soundSetCameraLayout(2);
 }
 
 void ModuleRoot::updateGame()
 {
     resume(0);
     process_event_queue();
-    fn_1_18044();
+    updateRequestObjects();
     updateGameObjects();
     fn_800856A8();
 }
@@ -224,18 +179,18 @@ void ModuleRoot::run(void *)
     {
         ThreadEntry::suspend(0);
     }
-    fn_1_17F20(0);
-    while (fn_1_17FB8() == 0)
+    postRequest(0);
+    while (requestsCleared() == 0)
     {
         ThreadEntry::suspend(0);
     }
-    fn_1_17F20(1);
+    postRequest(1);
     MinigameCore::showStart();
     while (MinigameCore::messageDone() == 0)
     {
         ThreadEntry::suspend(0);
     }
-    fn_1_17F20(2);
+    postRequest(2);
     fn_1_596C();
     secondTimer->setMode(0);
     while (fn_1_203C(this) == 0)
@@ -253,7 +208,7 @@ void ModuleRoot::run(void *)
     {
         firstTimer->reset();
     }
-    fn_1_17F20(3);
+    postRequest(3);
     fn_1_59BC();
     MinigameCore::showFinish();
     HuAudSStreamFadeOut(music, 0x64);
@@ -269,7 +224,7 @@ void ModuleRoot::run(void *)
         }
     }
     fn_1_5A0C();
-    fn_1_17F20(4);
+    postRequest(4);
     MinigameCore::showWinners();
     HuAudJinglePlay((short)(Racer::fn_1_5B2C() > 0 ? 0x43 : 0x45));
     while (MinigameCore::messageDone() == 0)
@@ -301,29 +256,14 @@ unsigned char fn_1_203C(ModuleRoot *owner)
     TimerOwner *childArgument = child;
     return childArgument->isDone();
 }
-void ModuleRoot::finishGame() { fn_1_180B4(); }
-
-template<> inline long secondsToFrames<long>(long value)
-{
-    return value * 60;
-}
+void ModuleRoot::finishGame() { deleteRequestObjects(); }
 
 extern "C" {
 
 int lbl_1_bss_20 = secondsToFrames<long>(2);
 int lbl_1_bss_24 = secondsToFrames(3.5);
 int lbl_1_bss_28 = secondsToFrames(3.5);
-int lbl_1_bss_2C = fn_1_2178(5);
+int lbl_1_bss_2C = minutesToFrames(5L);
 int lbl_1_bss_30 = secondsToFrames<long>(30);
-float lbl_1_bss_34 = framesToSeconds(framesToSeconds(980.665));
-}
-
-template<class T> int fn_1_2178(T amount)
-{
-    return amount * 0x3C * 0x3C;
-}
-
-template<class T> T secondsToFrames(T value)
-{
-    return 60.0 * value;
+float lbl_1_bss_34 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

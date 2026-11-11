@@ -1,10 +1,10 @@
 #include "REL/m652DLL/map_singleton.h"
-#include "REL/framework/minigame_singleton.h"
-#include "REL/m652DLL/player_config.h"
+#include "REL/framework/sound.h"
+#include "REL/framework/player_table_1vs1.h"
+#include "REL/framework/singleton.h"
 #include "REL/m652DLL/player_functions.h"
-#include "REL/m652DLL/float3.h"
-#include "REL/m652DLL/time_conversion.h"
-
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
 #include "REL/framework/minigame_core.h"
 #include <vector>
 #include "REL/m652DLL/range_operations.h"
@@ -22,7 +22,7 @@ extern "C" {
 }
 #include "REL/m652DLL/model_child.h"
 #include "REL/framework/chara_motion.h"
-#include "REL/m652DLL/player_identity.h"
+#include "REL/framework/p_info.h"
 #include <math.h>
 #include "dolphin/mtx.h"
 #include "game/hu3d.h"
@@ -49,9 +49,9 @@ struct Racer;
 
 extern "C" {
 
-int lbl_1_bss_88 = fn_1_2178(5);
+int lbl_1_bss_88 = minutesToFrames(5L);
 int lbl_1_bss_8C = secondsToFrames<long>(30);
-float lbl_1_bss_90 = framesToSeconds(framesToSeconds(980.665));
+float lbl_1_bss_90 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 int lbl_1_bss_94 = secondsToFrames<long>(2);
 int lbl_1_bss_98 = Frames07EF8(3.5f);
 int lbl_1_bss_9C = Frames07EF8(3.5f);
@@ -60,17 +60,13 @@ std::vector<Racer *> sm_players;
 int lbl_1_bss_B8;
 }
 
-struct ItemSelection { int itemIds[2]; };
-
 extern "C" {
-void fn_1_8110(ItemSelection *);
 int fn_1_56A8(int value);
 void fn_1_56D0(void);
 void fn_1_596C(void);
 void fn_1_59BC(void);
 void fn_1_5A0C(void);
 s32 fn_1_5A5C(void);
-void __msl_assertion_failed(const char *expression, const char *file, int line);
 }
 
 long RandomInteger(long limit);
@@ -83,8 +79,8 @@ int fn_1_56A8(int value)
 void fn_1_56D0(void)
 {
     static Point3d startingPosition = {lbl_1_rodata_330[0], lbl_1_rodata_334[0], lbl_1_rodata_338[0]};
-    ItemSelection state;
-    fn_1_8110(&state);
+    s32 players[entry_num];
+    makePlayerTable1vs1(players);
     std::vector<int> indices(2);
     indices.clear();
     int insertionIndex;
@@ -95,8 +91,8 @@ void fn_1_56D0(void)
     sm_players.clear();
     for (index = 0; index < 2; ++index) {
         int &selectedIndex = indices.at(index);
-        int *element = state.itemIds + selectedIndex;
-        Racer *object = new Racer(*element, selectedIndex, &startingPosition);
+        s32 *player = players + selectedIndex;
+        Racer *object = new Racer(*player, selectedIndex, &startingPosition);
         sm_players.push_back(object);
     }
     fn_8005DDEC(2);
@@ -122,8 +118,7 @@ s32 fn_1_5A5C(void)
 {
     s32 index;
     Racer *player;
-
-    (sm_players.size() == entry_num) ? (void)0 : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 121);
+    assert(sm_players.size() == entry_num);
     index = 0;
     while (index < 2) {
         player = sm_players[index];
@@ -136,56 +131,17 @@ s32 fn_1_5A5C(void)
     return 1;
 }
 
-struct Racer;
-
-struct PositionStorage {
-    Point3d value;
-};
-
-extern "C" {
-void __msl_assertion_failed(const char *, const char *, int);
-}
-
-struct RacerControlStorage {
-    const void *vtable;
-    Racer *racer;
-};
-
-extern "C" {
-extern const unsigned int lbl_1_data_4E8[];
-extern const unsigned int __vt__12RacerControl;
-extern const unsigned int __vt__12HumanControl;
-
-const MGACTOR_PARAM lbl_1_rodata_33C = {0};
-void __msl_assertion_failed(const char *, const char *, int);
-
-int fn_1_14BAC(void *, int);
-void fn_1_1B248(void *, int);
-
-void *fn_1_21A4(void *, void *, int);
-void *__ct__15ComputerControlFP5Racer(void *, void *);
-void *__nw__FUl(unsigned int);
-void *__ct__6SphereFl(void *, long);
-void *__ct__11MotionOwnerFUi(void *, unsigned int);
-
-}
-
-void createCharacterMotions(MotionOwner *, unsigned int *, long);
-
 void Racer::fn_1_5B28() {}
 
-extern "C" int lbl_1_bss_B8;
-int Racer::fn_1_5B2C()
-{
-    return lbl_1_bss_B8;
-}
+int Racer::fn_1_5B2C() { return lbl_1_bss_B8; }
 
+// Runs one update on both racers.
 void Racer::fn_1_5B3C(ItemUpdate5B3C update)
 {
     int index;
     Racer *item;
 
-    (sm_players.size() == entry_num) ? (void)0 : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 0x90);
+    assert(sm_players.size() == entry_num);
     index = 0;
     while (index < 2) {
         item = sm_players[index];
@@ -194,18 +150,24 @@ void Racer::fn_1_5B3C(ItemUpdate5B3C update)
     }
 }
 
+extern "C" {
+const MGACTOR_PARAM lbl_1_rodata_33C = {0};
+}
+
+void createCharacterMotions(MotionOwner *, unsigned int *, long);
+
 Racer::Racer(int character, int index, Point3d *position)
-    : Player(character), MotionOwner(fn_1_1B2B8(&playerNo)), GameObject(1),
+    : PlayerInfo(character), MotionOwner(characterNo()), GameObject(1),
       callback(&Racer::fn_1_5B28), index(index), playerMask((unsigned short)(1U << index)),
       position(*position), rotation(180.0f),
       firstRegistered(index), secondRegistered(index + 2),
-      child(fn_1_1B2F0(&playerNo) ? (RacerControl *)new ComputerControl(this) : new HumanControl(this))
+      child(isComputer() ? (RacerControl *)new ComputerControl(this) : new HumanControl(this))
 {
     MGACTOR_PARAM actorParam = lbl_1_rodata_33C;
     float firstProperty;
     float secondProperty;
     short modelId;
-    actorParam.height = fn_1_37688();
+    actorParam.height = height();
     actorParam.radius = 42.0f;
     actorParam.param = character;
     player = fn_80080728((s16) character, &actorParam, 1, (unsigned short) playerMask, 3U, 0);
@@ -221,11 +183,11 @@ Racer::Racer(int character, int index, Point3d *position)
     motion.y = lbl_1_rodata_330[0];
     motion.z = lbl_1_rodata_330[0];
     firstProperty = 350.0f;
-    firstRegistered.w = firstProperty;
+    firstRegistered.radius = firstProperty;
     secondProperty = 150.0f;
-    secondRegistered.w = secondProperty;
-    firstRegistered.fn_1_DA68(position);
-    secondRegistered.fn_1_DA68(position);
+    secondRegistered.radius = secondProperty;
+    firstRegistered = *position;
+    secondRegistered = *position;
     fn_80086CA8(player->actor, rotation);
     fn_1_7094(this);
     {
@@ -275,7 +237,6 @@ extern void __msl_assertion_failed(const char *, const char *, int);
 
 }
 void fn_1_524C(MapManager *, int);
-void fn_1_9308(s16, s32, Point3d *);
 void shiftCharacterMotion(MotionOwner *, unsigned int, float, float, unsigned long);
 
 unsigned char Racer::fn_1_6258()
@@ -327,7 +288,7 @@ unsigned char Racer::fn_1_63E8()
     if (lbl_1_bss_B8 < 1) {
         object = this->playerNo;
         MinigameCore::addWinner(object);
-        if ((unsigned char)fn_1_1B2F0(&playerNo) == 0) {
+        if (!isComputer()) {
             sendEvent(0, 1, lbl_1_rodata_330[0]);
         }
         this->flags.hasWon = 1;
@@ -354,7 +315,7 @@ void Racer::fn_1_64F0()
     if (this->index == 0) { mode = 0x80F; }
     else { mode = 0x810; }
     actorState = mode;
-    fn_1_9308((short)this->playerMask, actorState, &this->position);
+    soundPlayAt((short)this->playerMask, actorState, &this->position);
     values = &Racer::fn_1_65FC;
     this->callback = values;
 }
@@ -373,7 +334,7 @@ void Racer::fn_1_65FC()
     motion.y = lbl_1_rodata_330[0];
     motion.z = lbl_1_rodata_330[0];
     fn_1_7370(this, 0);
-    fn_1_1B338(2, 0x18);
+    rumble(2, 0x18);
     sendEvent(index + 2, 0, 1.0f);
     nextCallback = &Racer::fn_1_5B28;
     this->callback = nextCallback;
@@ -486,9 +447,6 @@ extern "C" {
 
 static const Vec rotationOrigin = {0.0f, 0.0f, 0.0f};
 
-extern "C++" void fn_1_9F78(short modelId, short state,
-                      Point3d *position);
-
 }
 
 void fn_1_6CE8(Racer *object)
@@ -524,7 +482,7 @@ void fn_1_6CE8(Racer *object)
     } else {
         clampedX = positionX;
     }
-    object->firstRegistered.x = clampedX;
+    object->firstRegistered.center.x = clampedX;
     positionY = object->position.y + lbl_1_rodata_338[0];
     if (positionY < -500.0f) {
         clampedY = -500.0f;
@@ -533,7 +491,7 @@ void fn_1_6CE8(Racer *object)
     } else {
         clampedY = positionY;
     }
-    object->firstRegistered.y = clampedY;
+    object->firstRegistered.center.y = clampedY;
     positionZ = object->position.z;
     if (positionZ < -5600.0f) {
         clampedZ = -5600.0f;
@@ -542,13 +500,13 @@ void fn_1_6CE8(Racer *object)
     } else {
         clampedZ = positionZ;
     }
-    object->firstRegistered.z = clampedZ;
-    object->secondRegistered.fn_1_DA68(&object->position);
+    object->firstRegistered.center.z = clampedZ;
+    object->secondRegistered = object->position;
     {
-        float verticalSpeed = object->secondRegistered.w;
-        object->secondRegistered.y += verticalSpeed;
+        float verticalSpeed = object->secondRegistered.radius;
+        object->secondRegistered.center.y += verticalSpeed;
     }
-    fn_1_9F78(object->playerMask, (short)fn_1_1B2B8(&object->playerNo),
+    soundPanCharacterVoice(object->playerMask, (short)object->characterNo(),
               &object->position);
 }
 
@@ -647,8 +605,8 @@ void fn_1_7124(Racer *actor)
     fn_80026EF0(resetModelId);
 }
 
-void fn_1_7370(void *self, unsigned char enabled) {
-    int character = fn_1_1B2B8((s32 *)self);
+void fn_1_7370(Racer *self, unsigned char enabled) {
+    int character = self->characterNo();
     if (enabled) {
         fn_8005C47C(character, 1);
     } else {
@@ -673,7 +631,7 @@ void fn_1_73E4(Racer *work)
     shiftCharacterMotion(&static_cast<MotionOwner &>(*work), CHARMOT_HSF_c000m1_376,
                          lbl_1_rodata_330[0],
               lbl_1_rodata_330[0], ((1 << 30) | (1 << 0)));
-    character = fn_1_1B2B8(&work->playerNo);
+    character = work->characterNo();
     fn_8005C47C((short)character, 1);
     fn_8005DFC0((short)character, 1);
     copy = &Racer::fn_1_74B0;
@@ -685,7 +643,7 @@ void Racer::fn_1_74B0() {}
 void fn_1_74B4(Racer *work, const Vec *offset)
 {
     int character = (short)work->player->actor->mdlId;
-    char *hook = fn_8005C0F0((short)fn_1_1B2B8(&work->playerNo), 1, 4);
+    char *hook = fn_8005C0F0((short)work->characterNo(), 1, 4);
     Vec objectPosition;
     Vec *positionForAddition;
     Vec *position;
@@ -730,8 +688,6 @@ template<class T> T RangeT<T>::fn_1_1370(T value) {
 template<class T> T fn_1_77B0(T value) {
     return 0.016666666666666666 * value;
 }
-
-template<class T> T secondsToFrames(T value) { return 60 * value; }
 
 template<class T> inline T rangeMinimum(T a, T b) { return a < b ? a : b; }
 template<class T> inline T rangeMaximum(T a, T b) { return a > b ? a : b; }

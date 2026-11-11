@@ -84,7 +84,7 @@ ShadowModelOwner::~ShadowModelOwner()
  fn_800262D0(cameraModels[2]);
  fn_800262D0(cameraModels[3]);
 }
-void ShadowModelOwner::extra() {}
+void ShadowModelOwner::update() {}
 
 /* Pause the selected model's motion. */
 void ShadowModelOwner::fn_1_5914(int modelIndex)
@@ -95,9 +95,9 @@ void ShadowModelOwner::fn_1_5914(int modelIndex)
 
 void fn_1_5968(void) {}
 
-void ShadowModelOwner::update(unsigned long request)
+void ShadowModelOwner::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0:
     case 1:

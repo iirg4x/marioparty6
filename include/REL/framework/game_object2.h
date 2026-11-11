@@ -4,6 +4,9 @@
 
 #include "REL/framework/game_object.h"
 #include "REL/framework/model.h"
+extern "C" {
+#include "game/hu3d.h"
+}
 
 // A manager-registered game object whose model hook calls its drawing method.
 struct RenderObject : GameObject, OwnedModel {

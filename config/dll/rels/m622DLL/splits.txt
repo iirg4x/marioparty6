@@ -59,7 +59,7 @@ REL/m622DLL/texture_capture_owner.cpp:
 	.data       start:0x00000348 end:0x000003A8
 	.bss        start:0x000000F8 end:0x00000100
 
-REL/m622DLL/sound.c:
+REL/framework/sound.c:
 	.text       start:0x00009EF8 end:0x0000C2D4
 	.rodata     start:0x00000398 end:0x000003D0
 	.data       start:0x000003A8 end:0x00000478
@@ -85,11 +85,8 @@ REL/framework/new.cpp:
 	.data       start:0x00000498 end:0x000004C0
 
 REL/framework/camera.cpp:
-	.text       start:0x0000C7EC end:0x0000CFC0
+	.text       start:0x0000C7EC end:0x0000CFF8
 	.rodata     start:0x00000450 end:0x000004C0
-
-REL/m622DLL/camera.cpp:
-	.text       start:0x0000CFC0 end:0x0000CFF8
 
 REL/framework/camera_ut1.cpp:
 	.text       start:0x0000CFF8 end:0x0000D37C
@@ -99,21 +96,18 @@ REL/framework/debug.cpp:
 	.text       start:0x0000D37C end:0x0000D5C4
 	.rodata     start:0x00000508 end:0x00000560
 
-REL/m622DLL/free.cpp:
-	.text       start:0x0000D5C4 end:0x0000D828
+REL/framework/memory_manager.cpp:
+	.text       start:0x0000D5C4 end:0x0000D6A8
+
+REL/framework/free.cpp:
+	.text       start:0x0000D6A8 end:0x0000D96C
 	.data       start:0x000004C0 end:0x000004E0
 
-REL/m622DLL/memory_manager.cpp:
-	.text       start:0x0000D828 end:0x0000D96C
-
 REL/framework/linknode.cpp:
-	.text       start:0x0000D96C end:0x0000DAE8
+	.text       start:0x0000D96C end:0x0000E348
 	.rodata     start:0x00000560 end:0x000005A0
 
-REL/m622DLL/linknode.cpp:
-	.text       start:0x0000DAE8 end:0x0000E348
-
-REL/m622DLL/callback_list.cpp:
+REL/framework/list_object.cpp:
 	.text       start:0x0000E348 end:0x0000E664
 	.ctors      start:0x00000010 end:0x00000014
 	.bss        start:0x00000110 end:0x00000128
@@ -125,7 +119,7 @@ REL/framework/minigame_core.cpp:
 	.data       start:0x000004E0 end:0x00000518
 	.bss        start:0x00000128 end:0x00000138
 
-REL/m622DLL/model.cpp:
+REL/framework/model.cpp:
 	.text       start:0x0000F1E0 end:0x00010670
 	.rodata     start:0x000005F8 end:0x00000600
 	.data       start:0x00000518 end:0x00000538

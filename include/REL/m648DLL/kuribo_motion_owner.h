@@ -9,8 +9,8 @@ extern "C" {
 }
 
 #include "REL/framework/model.h"
-#include "REL/framework/minigame_singleton.h"
-#include "REL/m648DLL/list_object.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/list_object.h"
 
 class KuriboMotionOwner : public RequestObject, public MinigameSingleton<KuriboMotionOwner> {
 public:
@@ -19,7 +19,7 @@ public:
     OwnedModel motion;
     KuriboMotionOwner();
     virtual ~KuriboMotionOwner();
-    virtual void clearRequest(int request);
+    virtual void flagEnabled(int request);
     virtual void update();
     HU3D_MOTIONID addMotion(unsigned int dataNum);
     void fn_1_61D4(Vec *position, s32 objectIndex);

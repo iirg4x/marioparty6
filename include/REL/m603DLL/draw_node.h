@@ -1,21 +1,19 @@
 #ifndef REL_M603DLL_DRAW_NODE_H
 #define REL_M603DLL_DRAW_NODE_H
-#include "REL/framework/linknode.h"
-#define M603_OWNED_MODEL_DECLARATION
-#include "REL/m603DLL/model.h"
+#include "REL/framework/list.h"
+#include "REL/framework/model.h"
+extern "C" {
+#include "game/hu3d.h"
+}
 class DrawNode;
 void fn_1_9B88(int request);
 extern "C" int fn_1_9D34(int playerIndex, unsigned char markEntries);
-struct DrawMotionNode : Node {
+struct DrawNode : ListNode<DrawNode> {
     typedef void (DrawNode::*Callback)();
     Callback callback;
     s32 currentMotion;
-    ~DrawMotionNode();
-};
-struct DrawNode : DrawMotionNode {
     DrawNode(const OwnedModel *,u32,s32,s32);
     ~DrawNode();
-    DrawNode *next_node() { return static_cast<DrawNode *>(link0); }
     void fn_1_9ED0();
     OwnedModel firstModel;
     OwnedModel secondModel;

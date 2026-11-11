@@ -4,7 +4,7 @@
 #include "REL/framework/game_object.h"
 #include "REL/framework/model.h"
 #include "REL/framework/event_packet.h"
-#include "REL/m652DLL/registered_value.h"
+#include "REL/framework/category_sphere.h"
 struct Racer;
 class PlayerItem : public GameObject, public OwnedModel, public EventListener {
 public:
@@ -15,7 +15,7 @@ public:
     void (PlayerItem::*callback)();
     Racer *playerWork;
     OwnedModel model;
-    Sphere registered;
+    RegisteredValue registered;
     Point3d position;
     Point3d start;
     Point3d destination;

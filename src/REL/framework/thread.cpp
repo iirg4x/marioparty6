@@ -19,7 +19,7 @@ extern "C" int printf(const char *, ...);
 #define THREAD_STACK_GUARD_WORD_COUNT 8
 
 // Called while constructing a worker that lets this wrapper allocate its stack.
-NativeThread::NativeThread(void *(*entryFunction)(void *), void *entryArgument,
+CThread::CThread(void *(*entryFunction)(void *), void *entryArgument,
                            unsigned long stackBytes, OSPriority schedulingPriority,
                            unsigned short threadFlags) {
     unsigned long stackWords = stackBytes / sizeof(unsigned long);
@@ -31,7 +31,7 @@ NativeThread::NativeThread(void *(*entryFunction)(void *), void *entryArgument,
 }
 
 // Called by an owner that supplies the memory used for the native thread's stack.
-NativeThread::NativeThread(void *(*entryFunction)(void *), void *entryArgument, void *stackBuffer,
+CThread::CThread(void *(*entryFunction)(void *), void *entryArgument, void *stackBuffer,
                            unsigned long stackBytes, OSPriority schedulingPriority,
                            unsigned short threadFlags) {
     storage = 0;
@@ -42,7 +42,7 @@ NativeThread::NativeThread(void *(*entryFunction)(void *), void *entryArgument, 
 }
 
 // Called by either constructor to prepare the stack and create the suspended OS thread.
-void NativeThread::initialize(void *(*entryFunction)(void *), void *entryArgument,
+void CThread::initialize(void *(*entryFunction)(void *), void *entryArgument,
                               unsigned long *stackStorage, unsigned long stackWords,
                               OSPriority schedulingPriority, unsigned short threadFlags) {
     (schedulingPriority >= 0 && schedulingPriority <= 31) ? (void)0 :
@@ -60,7 +60,7 @@ void NativeThread::initialize(void *(*entryFunction)(void *), void *entryArgumen
 }
 
 // Cancels a nonterminated thread without joining it, then frees any wrapper-owned stack.
-NativeThread::~NativeThread() {
+CThread::~CThread() {
     if (!OSIsThreadTerminated(&thread)) {
         OSCancelThread(&thread);
     }
@@ -76,7 +76,7 @@ NativeThread::~NativeThread() {
 
 // Called after the owner resumes a worker and it suspends or finishes; returns untouched stack
 // bytes.
-unsigned long NativeThread::stackUsage() {
+unsigned long CThread::stackUsage() {
     unsigned long *stackStart = thread.stackEnd;
     if (checkThreadStack(stackStart, 1)) {
         OSPanic("thread.cpp", 133, "stack overflow\n");

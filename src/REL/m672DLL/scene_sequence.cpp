@@ -8,7 +8,8 @@
 #include "REL/m672DLL/camera_owner_a348.h"
 #include "REL/m672DLL/singleton_callback_owner.h"
 #include "REL/m672DLL/event.h"
-#include "REL/m672DLL/linknode.h"
+#include "REL/framework/linknode.h"
+#include "REL/framework/phase_durations.h"
 extern "C" {
 #include <math.h>
 #include "game/audio.h"
@@ -17,14 +18,13 @@ extern "C" {
 }
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
-#include "REL/m672DLL/early_callback_8980.h"
+#include "REL/m672DLL/member_callback.h"
 #include "REL/framework/event_hm.h"
-#include "REL/m672DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 #include "REL/m672DLL/effect_bf64.h"
 #include "REL/m672DLL/collision_object.h"
 #include "REL/m672DLL/event_queue.h"
 #include "REL/framework/game_object.h"
-#include "REL/m672DLL/singleton_32930.h"
 
 class OwnedReleasedModel : public Model {
 public:
@@ -144,10 +144,6 @@ void SceneOwner672::run(void *)
     s32 transitionIndex;
     s32 resultCode;
     s32 jingle;
-    TimerOwner *playSequence;
-    TimerOwner *timingSequence;
-    TimerOwner *modeSequence;
-    TimerOwner *stopSequence;
     s32 tailWaitIndex;
     s32 index;
 
@@ -171,19 +167,15 @@ void SceneOwner672::run(void *)
         ThreadEntry::suspend(0);
     }
     sendEvent(0, 2, 0.0f);
-    playSequence = this->sequence.pointer;
-    playSequence->setParameters(0x708, 0, 0);
-    timingSequence = this->sequence.pointer;
-    timingSequence->setPosition(50.0f, 63.0f);
-    modeSequence = this->sequence.pointer;
-    modeSequence->setMode(1);
+    sequence->setParameters(0x708, 0, 0);
+    sequence->setPosition(50.0f, 63.0f);
+    sequence->setMode(1);
     while (fn_1_7BDC(this) == 0) {
         ThreadEntry::suspend(0);
     }
     HuAudSStreamFadeOut(musicHandle, 0x64);
     sendEvent(0, 3, 0.0f);
-    stopSequence = this->sequence.pointer;
-    stopSequence->start();
+    sequence->start();
     MinigameCore::showFinish();
     resultCode = fn_1_7EE8(this);
     tailWaitIndex = 0;
@@ -222,15 +214,10 @@ struct PlayerFlags {
     unsigned char finished;
 };
 
-static inline TimerOwner *getSequence(SceneOwner672 *object)
-{
-    return object->sequence.pointer;
-}
-
 extern "C" u8 fn_1_7BDC(SceneOwner672 *object);
 u8 fn_1_7BDC(SceneOwner672 *object)
 {
-    if (getSequence(object)->isDone()) {
+    if (object->sequence->isDone()) {
         return 1;
     }
 
@@ -288,15 +275,3 @@ s32 fn_1_7EE8(void *)
     }
     return inactiveCount;
 }
-
-template <class Time> Time secondsToFrames(Time seconds);
-
-extern "C" s32 lbl_1_bss_30;
-extern "C" s32 lbl_1_bss_34;
-extern "C" s32 lbl_1_bss_38;
-s32 lbl_1_bss_30 = secondsToFrames(2L);
-s32 lbl_1_bss_34 = secondsToFrames(3.5);
-s32 lbl_1_bss_38 = secondsToFrames(3.5);
-
-/* Shared secondsToFrames template; native instances multiply by 60. */
-template<class Time> Time secondsToFrames(Time seconds) { return 60 * seconds; }

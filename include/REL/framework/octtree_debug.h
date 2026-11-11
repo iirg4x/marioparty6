@@ -15,8 +15,4 @@ extern "C" {
 
 // Ordered selection of leaves; the entries do not own the leaf geometry.
 struct OctreeNodeSet : std::set<OctreeDebugNode *> {};
-// Owns the Hu3D drawing hook installed by enableDebug; Model releases it on destruction.
-struct OctreeRenderCallback : Model {
-    OctreeRenderCallback(void (*)(void *, Mtx));
-};
 #endif

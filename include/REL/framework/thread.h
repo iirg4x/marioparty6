@@ -19,16 +19,16 @@ struct ThreadOwner {
 };
 
 // Owns a native thread and, when allocated by the wrapper, its stack buffer.
-struct NativeThread {
+struct CThread {
     // OS scheduling state, saved context and stack bounds.
     OSThread thread;
     // Allocated stack to delete; null when the caller supplies the stack buffer.
     unsigned long *storage;
-    NativeThread(void *(*entry)(void *), void *argument, unsigned long stackBytes,
+    CThread(void *(*entry)(void *), void *argument, unsigned long stackBytes,
                  OSPriority priority, unsigned short flags);
-    NativeThread(void *(*entry)(void *), void *argument, void *stackBuffer,
+    CThread(void *(*entry)(void *), void *argument, void *stackBuffer,
                  unsigned long stackBytes, OSPriority priority, unsigned short flags);
-    ~NativeThread();
+    ~CThread();
     void initialize(void *(*entry)(void *), void *argument,
                     unsigned long *stackBuffer, unsigned long stackWords,
                     OSPriority priority, unsigned short flags);
@@ -56,7 +56,7 @@ struct ThreadEntry {
     // Entered by the OS on the first resume, with that resume's argument.
     virtual void run(void *initialArgument) = 0;
     // Native worker; starts suspended and uses the owner's base priority at creation.
-    NativeThread thread;
+    CThread m_th;
     // Signaled before worker suspension or entry-point return, releasing the waiting owner.
     ThreadSemaphore handoffSemaphore;
     // Last pointer supplied by either participant; first set by the owner's resume.

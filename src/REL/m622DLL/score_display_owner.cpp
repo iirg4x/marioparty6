@@ -61,7 +61,7 @@ extern "C" {
 }
 
 #include "datadir_enum.h"
-#include "REL/m622DLL/framework/linknode.h"
+#include "REL/framework/linknode.h"
 
 #include "REL/m622DLL/score_display_owner.h"
 
@@ -191,7 +191,7 @@ void ScoreDisplayOwner::update()
     }
 }
 
-void ScoreDisplayOwner::clearFlag(int request)
+void ScoreDisplayOwner::flagEnabled(int request)
 {
     flags &= ~(1U << request);
     switch (request) {

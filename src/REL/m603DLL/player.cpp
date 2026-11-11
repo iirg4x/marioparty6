@@ -1,8 +1,8 @@
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
-#include "REL/m603DLL/frame_time.h"
+#include "REL/framework/frame_time_inline.h"
 #include "REL/m603DLL/night.h"
-#include "REL/m603DLL/callback_owner.h"
+#include "REL/framework/list_object.h"
 #include "REL/m603DLL/draw_node.h"
 #include "REL/m603DLL/draw_owner.h"
 #include "REL/m603DLL/ufo.h"
@@ -30,8 +30,7 @@ extern "C" {
 #include "REL/m603DLL/random.h"
 #include "REL/m603DLL/sprite_fade.h"
 #include "REL/framework/minigame_core.h"
-#define M603_OWNED_MODEL_DECLARATION
-#include "REL/m603DLL/model.h"
+#include "REL/framework/model.h"
 extern "C" {
 #include "game/data.h"
 extern "C" {
@@ -41,18 +40,19 @@ extern "C" {
 }
 #include "REL/m603DLL/player.h"
 #include "REL/m603DLL/score_owner.h"
-// These existing intrusive-list accessor bodies operate on the proven zero-offset Node base.
-struct CharacterList : Node {
-    ~CharacterList() {}
-    bool empty() const { return link0 == this && link0 == link4; }
-    Node *first_node() { return link0; }
-    PlayerModelOwner *begin() { return static_cast<PlayerModelOwner *>(first_node()); }
-    Node *last_node() { return link4; }
-    Node *end_node() { return this; }
-    PlayerModelOwner *front() { return static_cast<PlayerModelOwner *>(first_node()); }
-    PlayerModelOwner *back() { return static_cast<PlayerModelOwner *>(last_node()); }
+
+extern "C" ListRoot<PlayerModelOwner> lbl_1_bss_AC;
+extern "C" {
+extern PlayerModelOwner *lbl_1_bss_9C;
+extern s16 lbl_802C0278;
+}
+void fn_1_6ADC(PlayerModelOwner *);
+extern s32 fn_1_C4E8(s32 playerIndex, u8 markEntries, s32 currentValue);
+
+struct CharacterIndexOrder {
+    int values[4];
 };
-extern "C" CharacterList lbl_1_bss_AC;
+
 typedef PlayerModelOwner::Callback MotionCallback5A6C;
 extern "C" {
 extern s32 lbl_1_data_F18;
@@ -113,15 +113,15 @@ PlayerModelOwner::PlayerModelOwner(s32 playerIndex, bool alternate)
     rotation.x = 0.0f;
     rotation.y = 180.0f;
     rotation.z = 0.0f;
-    this->firstModel.fn_1_33A3C(&this->position);
-    this->firstModel.fn_1_33ACC(& rotation);
+    this->firstModel.setPosition(&this->position);
+    this->firstModel.setRotation(& rotation);
     modelPosition.x = this->position.x;
     modelPosition.y = this->position.y;
     modelPosition.z = this->position.z;
     modelPosition.x -= 50.0f;
     modelPosition.z -= 100.0f;
-    this->secondModel.fn_1_33A3C(& modelPosition);
-    this->secondModel.fn_1_33ACC(& rotation);
+    this->secondModel.setPosition(& modelPosition);
+    this->secondModel.setRotation(& rotation);
     if (playerIndex == 0)
     {
         modelId = (s16)this->firstModel;
@@ -160,27 +160,16 @@ HU3D_MOTIONID PlayerModelOwner::fn_1_61DC(unsigned int dataNum)
 
 }
 
-void fn_1_6ADC(Node *);
-
-template<class T> void fn_1_7AC0(T *, T *, void (*)(T *));
-template<class List> void fn_1_7A60(List *, void (*)(Node *));
-
-extern "C" { extern PlayerModelOwner *lbl_1_bss_9C; }
-
 /* Updates all callbacks, then moves the first character to the list's opposite end. */
 void fn_1_6258()
 {
-    fn_1_7A60(&lbl_1_bss_AC, fn_1_6ADC);
+    lbl_1_bss_AC.visit(fn_1_6ADC);
     PlayerModelOwner *node = lbl_1_bss_AC.front();
     if (node != lbl_1_bss_AC.end_node()) {
         node->unlink();
         node->insert4(&lbl_1_bss_AC);
     }
 }
-
-struct CharacterIndexOrder {
-    int values[4];
-};
 
 bool fn_1_62DC()
 {
@@ -201,7 +190,7 @@ bool fn_1_62DC()
     CharacterIndexOrder order = { { 0, 1, 2, 3 } };
     int result = 0;
     index = 0;
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         entries[index] = node;
         scores[index] = ScoreDisplay::getChecked().fn_1_83E4(node->playerIndex);
         std::printf("chk %d %d\n", index, scores[index]);
@@ -265,7 +254,7 @@ bool fn_1_6594()
     PlayerModelOwner *node = lbl_1_bss_AC.front();
     Node *end = lbl_1_bss_AC.end_node();
     int count = 0;
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         if (node->ready) ++count;
     }
     return count == 4;
@@ -278,14 +267,10 @@ void fn_1_6614()
     PlayerModelOwner *node = lbl_1_bss_AC.front();
     Node *end = lbl_1_bss_AC.end_node();
     int index = 0;
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         characters[index++] = node->characterId;
     }
 }
-
-extern "C" { extern s16 lbl_802C0278; }
-
-extern s32 fn_1_C4E8(s32 playerIndex, u8 markEntries, s32 currentValue);
 
 static inline BOOL nightBonusActive75A8(void)
 {
@@ -294,13 +279,11 @@ static inline BOOL nightBonusActive75A8(void)
 
 /* fn_1_6690: mechanical copy of fn_1_BC1C in m648DLL (100% alike), names and constants adapted by copier.py; to be placed in its file. */
 
-extern "C" { extern CharacterList lbl_1_bss_5FC; }
-
 void fn_1_6690()
 {
     PlayerModelOwner *node = lbl_1_bss_AC.front();
     Node *end = lbl_1_bss_AC.end_node();
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         node->active = 0;
     }
 }
@@ -317,7 +300,7 @@ void fn_1_66F4(void)
     node = middle;
     sentinel = &lbl_1_bss_AC;
 
-    for (; node != sentinel; node = node->next_node()) {
+    for (; node != sentinel; node = node->next()) {
         ScoreDisplay::getChecked().fn_1_8268(node->playerIndex, node->characterId);
     }
 }
@@ -333,7 +316,7 @@ void fn_1_67A0(void)
     middle = first;
     node = middle;
     sentinel = &lbl_1_bss_AC;
-    for (; node != sentinel; node = node->next_node()) {
+    for (; node != sentinel; node = node->next()) {
         s16 model;
         model = node->firstModel;
         fn_80026A44(model, 1);
@@ -352,7 +335,7 @@ void fn_1_6884(void)
 {
     PlayerModelOwner *node = lbl_1_bss_AC.front();
     Node *sentinel = lbl_1_bss_AC.end_node();
-    for (; node != sentinel; node = node->next_node()) {
+    for (; node != sentinel; node = node->next()) {
         PlayerModelOwner::Callback values = &PlayerModelOwner::fn_1_70D8;
         node->callback = values;
     }
@@ -405,11 +388,10 @@ void fn_1_6A14(s32 modelId, Vec *position, Vec *direction)
     }
 }
 
-void fn_1_6ADC(Node *node)
+void fn_1_6ADC(PlayerModelOwner *owner)
 {
-    (static_cast<PlayerModelOwner *>(node)->*
-        static_cast<PlayerModelOwner *>(node)->callback)();
-    static_cast<PlayerModelOwner *>(node)->callbackCount++;
+    (owner->*owner->callback)();
+    owner->callbackCount++;
 }
 
 extern "C" {
@@ -436,8 +418,8 @@ void PlayerModelOwner::fn_1_6BE0()
     s16 modelId = firstModel;
 
     if (active == 0) {
-        firstModel.fn_1_33950(1);
-        secondModel.fn_1_33950(1);
+        firstModel.setAttribute(1);
+        secondModel.setAttribute(1);
         {
             Callback transformState = &PlayerModelOwner::fn_1_72CC;
             this->callback = transformState;
@@ -451,8 +433,8 @@ void PlayerModelOwner::fn_1_6BE0()
 void PlayerModelOwner::fn_1_6D64()
 {
     if (this->active == 0) {
-        this->firstModel.fn_1_33950(1);
-        this->secondModel.fn_1_33950(1);
+        this->firstModel.setAttribute(1);
+        this->secondModel.setAttribute(1);
         {
             PlayerModelOwner::Callback transformState = &PlayerModelOwner::fn_1_72CC;
             this->callback = transformState;
@@ -468,18 +450,18 @@ void PlayerModelOwner::fn_1_6E64()
     this->position.x = (f32)(this->playerIndex * 0xB4 - 0x10E);
     this->position.y = 0.0f;
     this->position.z = -400.0f;
-    this->firstModel.fn_1_33A3C(&this->position);
+    this->firstModel.setPosition(&this->position);
     {
         Vec origin = { 0.0f, 0.0f, 0.0f };
-        this->firstModel.fn_1_33ACC(&origin);
+        this->firstModel.setRotation(&origin);
         {
             Vec secondPosition;
             secondPosition.x = this->position.x;
             secondPosition.y = this->position.y;
             secondPosition.z = this->position.z;
             secondPosition.z += 150.0f;
-            this->secondModel.fn_1_33A3C(&secondPosition);
-            this->secondModel.fn_1_33ACC(&origin);
+            this->secondModel.setPosition(&secondPosition);
+            this->secondModel.setRotation(&origin);
         }
     }
 }
@@ -518,8 +500,6 @@ void PlayerModelOwner::fn_1_72CC()
 }
 
 extern "C" {
-
-extern s16 lbl_802C0278;
 
 f32 PlayerModelOwner::fn_1_734C(bool *buttonPressed)
 {
@@ -602,7 +582,7 @@ void PlayerModelOwner::fn_1_75A8()
     f32 motion;
     s32 playerValue;
 
-    inputMode = fn_1_1AB30();
+    inputMode = currentRequest();
     if (inputMode == 0 || inputMode != 2 || this->ready == 1U) {
         return;
     }
@@ -641,37 +621,13 @@ void fn_1_794C()
     PlayerModelOwner *node = lbl_1_bss_AC.front();
     Node *end = lbl_1_bss_AC.end_node();
     int index = 0;
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         characters[index++] = node->characterId;
     }
     new SpriteFade(characters);
 }
 
-typedef void (*ListVisitor)(Node *);
-
-/* Dispatches the visitor from the first entry up to the list sentinel. */
-template<class List>
-void fn_1_7A60(List *list, ListVisitor visitor)
-{
-    fn_1_7AC0<Node>(list->begin(), list->end_node(), visitor);
-}
-
-/* Follows each entry's next link after invoking the visitor. */
-template<class T>
-void fn_1_7AC0(T *current, T *sentinel, void (*callback)(T *))
-{
-    while (current != sentinel) {
-        callback(current);
-        T *next = current->link0;
-        current = next;
-    }
-}
-
 extern "C" {
-
-    s32 lbl_1_bss_90 = secondsToFrames(2L);
-    s32 lbl_1_bss_94 = (s32)secondsToFrames(3.5);
-    s32 lbl_1_bss_98 = (s32)secondsToFrames(3.5);
     PlayerModelOwner *lbl_1_bss_9C;
-    CharacterList lbl_1_bss_AC;
+    ListRoot<PlayerModelOwner> lbl_1_bss_AC;
 }

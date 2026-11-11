@@ -1,11 +1,8 @@
 #include "REL/framework/minigame_core.h"
+#include "REL/framework/frame_time_inline.h"
 
-#include "REL/m648DLL/framework/linknode.h"
+#include "REL/framework/linknode.h"
 #include "REL/m648DLL/motion_lists.h"
-
-struct KuriboListSentinel : Node { ~KuriboListSentinel(); };
-
-KuriboListSentinel::~KuriboListSentinel() {}
 
 void *operator new(unsigned long);
 

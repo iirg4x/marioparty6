@@ -1,7 +1,6 @@
 #include "REL/m654DLL/sprite_manager.h"
-#include "REL/m654DLL/time_conversion.h"
-#include "REL/m654DLL/unit_conversion.h"
-template<class Time> Time secondsToFrames(Time);
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
 #include "REL/framework/game_object_man.h"
 // Each player's score display and the sprite manager that draws them over the scene.
 #include "REL/m654DLL/display_provider.h"
@@ -17,8 +16,8 @@ extern "C" {
 
 extern "C" {
 
-s32 lbl_1_bss_98 = fn_1_B80(1);
-float lbl_1_bss_9C = framesToSeconds(framesToSeconds(980.665));
+s32 lbl_1_bss_98 = minutesToFrames(1L);
+float lbl_1_bss_9C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 s32 lbl_1_bss_A0 = (s32)secondsToFrames(0.5);
 s32 lbl_1_bss_A4 = (s32)secondsToFrames(0.2);
 }
@@ -166,14 +165,14 @@ GameObject *fn_1_6EA8(int index, int character, int side)
     return slot->value;
 }
 
-void SpriteManager::handleEvent(int event)
+void SpriteManager::flagEnabled(int event)
 {
     if (event == 3) {
         lbl_1_bss_A8.fn_1_75F8(1.0f, lbl_1_bss_A4);
     }
-    eventMask &= ~(1UL << event);
+    flags &= ~(1UL << event);
 }
-void SpriteManager::advanceFrame() { lbl_1_bss_A8.fn_1_7670(); }
+void SpriteManager::update() { lbl_1_bss_A8.fn_1_7670(); }
 
 void fn_1_74AC(HuSprite_s *)
 {
@@ -213,6 +212,3 @@ float ParameterInterpolation::fn_1_7670()
     }
     return result;
 }
-
-// Same-game framework time conversion.
-template<class Time> Time secondsToFrames(Time seconds) { return 60 * seconds; }

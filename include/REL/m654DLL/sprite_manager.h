@@ -1,8 +1,8 @@
 #ifndef REL_M654_SPRITE_MANAGER_H
 #define REL_M654_SPRITE_MANAGER_H
 #include "REL/framework/game_object.h"
-#include "REL/m654DLL/manager_event_base.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/singleton.h"
 // Owns one player's score display: a new display replaces and deletes the one held.
 struct ScoreDisplaySlot {
     GameObject *value;
@@ -17,12 +17,12 @@ struct ScoreDisplaySlot {
         return *this;
     }
 };
-struct SpriteManager : ManagerEventBase, MinigameSingleton<SpriteManager> {
+struct SpriteManager : RequestObject, MinigameSingleton<SpriteManager> {
     ScoreDisplaySlot owners[4];
     SpriteManager();
     virtual ~SpriteManager();
-    virtual void handleEvent(int event);
-    virtual void advanceFrame();
+    virtual void flagEnabled(int event);
+    virtual void update();
 };
 GameObject *fn_1_6EA8(int, int, int);
 #endif

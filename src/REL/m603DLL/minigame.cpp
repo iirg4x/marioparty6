@@ -1,5 +1,5 @@
-#include "REL/m603DLL/frame_time.h"
-#include "REL/m603DLL/callback_owner.h"
+#include "REL/framework/frame_time_inline.h"
+#include "REL/framework/list_object.h"
 #include "REL/m603DLL/flow.h"
 #include "REL/m603DLL/camera_group.h"
 #include "REL/m603DLL/shadow_owner.h"
@@ -13,10 +13,8 @@
 #include "dolphin/os.h"
 #include "REL/framework/thread.h"
 
-
 #include "REL/m603DLL/random.h"
 #include "msm_stream.h"
-#include "REL/m603DLL/singleton_32930.h"
 
 MinigameThreadOwner::MinigameThreadOwner() : ThreadEntry(0x8000),timer(0) {}
 MinigameThreadOwner::~MinigameThreadOwner() {}
@@ -25,11 +23,6 @@ extern "C" {
 #include "game/wipe.h"
 extern s16 lbl_802C0278;
 }
-
-
-
-
-
 
 void fn_1_794C(void);
 
@@ -58,14 +51,12 @@ void MinigameThreadOwner::setupObjects(OMOBJMAN *)
 void MinigameThreadOwner::updateGame()
 {
     this->resume(0);
-    fn_1_1A9F8();
+    updateRequestObjects();
     fn_1_6258();
 }
 
-
 void fn_1_9C58(void);
 void fn_1_6690(void);
-bool fn_1_1A96C(void);
 void fn_1_66F4(void);
 void fn_1_9BF4(void);
 void fn_1_BB5C(void);
@@ -86,19 +77,19 @@ void MinigameThreadOwner::run(void *)
 {
     int musicHandle;
 
-    fn_1_1A8D4(0);
+    postRequest(0);
     MinigameCore::wipeIn();
     musicHandle = HuAudBGMPlay(MSM_STREAM_SLOW_AND_STEADY);
-    while (!fn_1_1A96C()) {
+    while (!requestsCleared()) {
         suspend(0);
     }
     fn_1_654();
-    fn_1_1A8D4(1);
+    postRequest(1);
     MinigameCore::showStart();
     while (!MinigameCore::messageDone()) {
         suspend(0);
     }
-    fn_1_1A8D4(2);
+    postRequest(2);
     frame = 0;
     timer.setParameters(0x258,0,0);
     timer.setPosition(286.0f,416.0f);
@@ -107,7 +98,7 @@ void MinigameThreadOwner::run(void *)
         suspend(0);
     }
     timer.start();
-    fn_1_1A8D4(3);
+    postRequest(3);
     HuAudSStreamFadeOut(musicHandle, 0x64);
     fn_1_60C();
     fn_1_7C4();
@@ -195,7 +186,7 @@ void MinigameThreadOwner::fn_1_7C4()
     fn_1_67A0();
     (&ScoreDisplay::getChecked())->fn_1_83F4();
     DrawListOwner::getChecked().fn_1_3714();
-    fn_1_1A8D4(4);
+    postRequest(4);
     WipeCreate(1, 6, 0x3C);
     for (closingFrames = 0; closingFrames < 0x78; closingFrames++) {
         suspend(0);
@@ -211,7 +202,6 @@ void MinigameThreadOwner::fn_1_7C4()
         fn_1_6614();
     }
 }
-
 
 unsigned char fn_1_6594();
 
@@ -231,11 +221,5 @@ void MinigameThreadOwner::fn_1_A08() {}
 void MinigameThreadOwner::finishGame()
 {
     fn_1_59C8();
-    fn_1_1AA68();
-}
-
-extern "C" {
-long lbl_1_bss_0 = secondsToFrames(2L);
-long lbl_1_bss_4 = (long)secondsToFrames(3.5);
-long lbl_1_bss_8 = (long)secondsToFrames(3.5);
+    deleteRequestObjects();
 }

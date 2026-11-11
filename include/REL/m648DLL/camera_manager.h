@@ -1,13 +1,13 @@
 #ifndef REL_M648_CAMERA_MANAGER_H
 #define REL_M648_CAMERA_MANAGER_H
-#include "REL/framework/minigame_singleton.h"
-#include "REL/m648DLL/list_object.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/list_object.h"
 #include "REL/m648DLL/camera_view.h"
 class CameraManager : public RequestObject, public MinigameSingleton<CameraManager> {
 public:
     CameraManager();
     virtual ~CameraManager();
-    virtual void clearRequest(int mode);
+    virtual void flagEnabled(int mode);
     virtual void update();
     CameraView view;
     s32 motionFrame;

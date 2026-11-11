@@ -2,8 +2,10 @@
 #include "REL/m654DLL/parameter_interpolation.h"
 #include "dolphin/os.h"
 
+extern "C" {
+#include <math.h>
+}
 #include "REL/framework/model.h"
-
 
 SpriteParameters::SpriteParameters(ANIMDATA *image) {
  halfWidth = (float)((double)image->bmp->sizeX / 2.0);
@@ -65,11 +67,6 @@ void fn_1_81B4(void)
     GXSetVtxDescv(lbl_1_rodata_360);
     GXSetVtxAttrFmtv(GX_VTXFMT0, lbl_1_rodata_378);
 }
-
-
-
-
-
 
 /* Current alpha interpolation value. */
 static inline float AlphaScale8314(void) { return lbl_1_bss_A8.getValue(); }

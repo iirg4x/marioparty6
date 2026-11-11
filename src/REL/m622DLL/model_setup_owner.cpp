@@ -4,22 +4,17 @@ extern "C" {
 }
 #include "REL/m622DLL/model_setup_owner.h"
 
-static inline s16 model_id(const s16 *model)
-{
-    return *model;
-}
-
 ModelSetupOwner::ModelSetupOwner() : model(DATANUM(0x510000, 0)), hookModel(DATANUM(0x510000, 2))
 {
     s16 currentModel;
 
-    currentModel = model_id(&model.modelId);
+    currentModel = model;
     fn_80029850(currentModel, 1);
-    model.fn_1_33CB0(2);
-    model.fn_1_33950(((1 << 30) | (1 << 0)));
+    model.setLayer(2);
+    model.setAttribute(((1 << 30) | (1 << 0)));
     fn_80026A44(currentModel, (1 << 0));
-    currentModel = model_id(&hookModel.modelId);
-    hookModel.fn_1_33CB0(2);
+    currentModel = hookModel;
+    hookModel.setLayer(2);
     fn_80026A44(currentModel, ((1 << 30) | (1 << 0)));
     fn_80026A44(currentModel, (1 << 0));
 }
@@ -49,7 +44,7 @@ void ModelSetupOwner::fn_1_65F8()
     fn_800269E8(modelId, 0x40000002);
 }
 
-void ModelSetupOwner::clearFlag(int request)
+void ModelSetupOwner::flagEnabled(int request)
 {
     flags &= ~(1U << request);
     switch (request) {

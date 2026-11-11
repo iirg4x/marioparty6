@@ -1,4 +1,4 @@
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 #include <cmath>
 #include "dolphin/types.h"
 extern "C" {
@@ -7,8 +7,7 @@ extern "C" {
 #include "REL/m681DLL.h"
 }
 #include "REL/m681DLL/texture_node.h"
-#include "REL/m681DLL/tail_types.h"
-
+#include "REL/framework/world_units.h"
 
 extern "C" {
 
@@ -20,29 +19,24 @@ extern void fn_1_BDC(void *sequence,
                      unsigned long count,
                      const signed char *value);
 
-
 signed char lbl_1_data_0 = -1;
 
 extern const unsigned char lbl_1_data_4[];
-
 
 TextureNode0::TextureNode0(const PositionVector *initialPosition, f32 initialScale)
     : RenderObject(1), position(*initialPosition), scale(initialScale), vertexCount(0x20),
       textureBuffer(GXGetTexBufferSize(4, 4, GX_TF_Z24X8, GX_FALSE, GX_FALSE), lbl_1_data_0)
 {
-    this->fn_1_33CB0(2);
+    this->setLayer(2);
     GXInitTexObj(&textureObject, &textureBuffer[0], 4, 4, GX_TF_Z24X8,
                  GX_REPEAT, GX_REPEAT, GX_FALSE);
     GXInitTexObjLOD(&textureObject, GX_NEAR, GX_NEAR,
                     0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
 }
 
-
 }
 
-
 extern "C" {
-
 
 typedef struct TevColorStorage {
     GXColor value;
@@ -230,7 +224,6 @@ void TextureNode0::fn_1_944()
 
 }
 
-
 class ReleasedModel : public Model {
 public:
     ~ReleasedModel() { Replace(-1); }
@@ -260,7 +253,6 @@ extern "C" { void fn_1_14BCC(void *object, short releaseMode); }
 
 extern "C" { void __dl__FPv(void *object); }
 
-
 extern "C" {
 
 typedef struct Position {
@@ -277,15 +269,11 @@ extern s8 lbl_1_data_2758;
 
 s32 fn_1_367CC(s32 *player);
 
-
 }
-
 
 extern "C" {
 
-
 }
-
 
 extern "C" {
 
@@ -297,14 +285,9 @@ extern f32 lbl_1_bss_54;
 
 }
 
-static inline f32 accelerationPerFrame(f64 accelerationPerSecondSquared)
-{
-    return (f32)((accelerationPerSecondSquared * 100.0) / (60.0 * 60.0));
-}
-
 extern "C" {
 
 s32 lbl_1_bss_0 = minutesToFrames(60L);
-f32 lbl_1_bss_4 = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 
 }

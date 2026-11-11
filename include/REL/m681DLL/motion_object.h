@@ -1,8 +1,8 @@
 #ifndef REL_M681DLL_MOTION_OBJECT_H
 #define REL_M681DLL_MOTION_OBJECT_H
 
-#include "REL/m681DLL/owned_model.h"
-#include "REL/m681DLL/model_motion.h"
+#include "REL/framework/model.h"
+#include "REL/framework/model_motion.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_packet.h"
 

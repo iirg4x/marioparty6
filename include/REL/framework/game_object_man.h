@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "REL/framework/game_object.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
 
 // The list head of one category. Objects link in through their own node, so the head holds no
 // object and doubles as the end position of the list.

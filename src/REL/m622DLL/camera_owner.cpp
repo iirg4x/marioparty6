@@ -1,7 +1,6 @@
 #include "REL/framework/debug.h"
-#include "REL/m622DLL/camera_frame.h"
 #include "REL/m622DLL/callback_object.h"
-#include "REL/m622DLL/framework/linknode.h"
+#include "REL/framework/linknode.h"
 #include <cmath>
 extern "C" {
 #include "game/hu3d.h"
@@ -50,8 +49,6 @@ void CameraOwner::fn_1_58DC()
 
 void fn_1_5970() {}
 
-
-
 void CameraOwner::fn_1_5974()
 {
     cameraApplyToHud(&frame, 1);
@@ -61,7 +58,6 @@ void CameraOwner::fn_1_59A4()
 {
     cameraApplyToHud(&frame, 1);
 }
-
 
 struct CameraInterpolationTemps {
     CameraPose targetTransform;
@@ -75,7 +71,7 @@ void CameraOwner::fn_1_59D4()
     if ((float)(++frameCount) < 90.0f)
         return;
     Vec *targetPosition = &target->position;
-    PSVECAdd(targetPosition, &lbl_1_rodata_1BC, &temporary.targetFrame.eye);
+    PSVECAdd(targetPosition, &lbl_1_rodata_1BC, &temporary.targetFrame.position);
     PSVECAdd(targetPosition, &lbl_1_rodata_1C8, &temporary.targetFrame.target);
     temporary.targetFrame.up.x = 0.0f;
     temporary.targetFrame.up.y = 1.0f;
@@ -95,7 +91,7 @@ void CameraOwner::fn_1_5AE8(CallbackObject *value)
     callback = next;
 }
 
-void CameraOwner::clearFlag(int mode)
+void CameraOwner::flagEnabled(int mode)
 {
     switch (mode) {
     case 0: {

@@ -4,7 +4,7 @@
 #include <vector>
 #include "dolphin/types.h"
 #include "REL/framework/game_object.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
 
 /* Splits the screen between the two players' cameras. */
 class CameraSplit : public GameObject, public MinigameSingleton<CameraSplit> {

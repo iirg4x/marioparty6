@@ -2,7 +2,6 @@
 #include "REL/m603DLL/sprite_fade.h"
 #include "datadir_enum.h"
 #include "msm_se.h"
-#include "REL/m603DLL/singleton_32930.h"
 extern "C" {
 #include "game/data.h"
 #include "game/memory.h"
@@ -11,18 +10,6 @@ extern "C" {
 #include "game/audio.h"
 #include "game/gamemes.h"
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 struct ScorePosition { f32 x, y; };
 extern "C" const ScorePosition lbl_1_rodata_310[4] = {
@@ -93,7 +80,7 @@ void fn_1_84E4(void *, PlayerScoreEntry *entry)
     MgScoreTPLvlSet(entry->score, 1.0f);
 }
 
-void ScoreDisplay::extra()
+void ScoreDisplay::update()
 {
     int index;
     if (soundPending != 0) {
@@ -112,9 +99,9 @@ void ScoreDisplay::extra()
     }
 }
 
-void ScoreDisplay::update(unsigned long request)
+void ScoreDisplay::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0: case 1: case 2: case 3: case 4: break;
     }
@@ -173,7 +160,7 @@ SpriteFade::~SpriteFade()
     }
 }
 
-void SpriteFade::extra()
+void SpriteFade::update()
 {
     if (transitionState != 0) {
         hold();
@@ -208,9 +195,9 @@ void SpriteFade::advance()
     }
 }
 
-void SpriteFade::update(unsigned long request)
+void SpriteFade::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0: case 1: case 2: case 4: break;
     case 3: reverse = 1; break;

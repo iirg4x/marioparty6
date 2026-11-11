@@ -5,7 +5,7 @@
 #include "REL/m672DLL/event.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_hm.h"
-#include "REL/m672DLL/model_bf64.h"
+#include "REL/framework/model.h"
 #include "REL/framework/camera_frame.h"
 
 class CameraVector {
@@ -14,8 +14,9 @@ public:
     const Vec &getValue() const;
 };
 
-typedef class CameraWork : public CameraFrame {
+typedef class CameraWork {
 public:
+    CameraFrame frame;
     CameraVector cameraPosition;
     CameraVector cameraTarget;
     Vec unknown3C;
@@ -23,10 +24,10 @@ public:
     s8 enabled;
 
     void setPosition(const Vec &value) {
-        vectors[0].x = value.x; vectors[0].y = value.y; vectors[0].z = value.z;
+        frame.position.x = value.x; frame.position.y = value.y; frame.position.z = value.z;
     }
     void setTarget(const Vec &value) {
-        vectors[2].x = value.x; vectors[2].y = value.y; vectors[2].z = value.z;
+        frame.target.x = value.x; frame.target.y = value.y; frame.target.z = value.z;
     }
     void setPosition(const CameraVector &target) {
         setPosition(target.getValue());
@@ -38,7 +39,7 @@ public:
 
 class CameraOwner;
 typedef void (CameraOwner::*CameraCallbackA348)();
-#include "REL/m672DLL/early_callback_8980.h"
+#include "REL/m672DLL/member_callback.h"
 typedef std::mem_fun1_t<void, CameraOwner, EventMessage *> CameraMemberFunction;
 typedef CallbackBinding<CameraOwner> CameraCallbackPayload;
 

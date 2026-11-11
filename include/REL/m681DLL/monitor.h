@@ -3,9 +3,9 @@
 #include <vector>
 #include "dolphin/types.h"
 #include "REL/m681DLL/monitor_interface.h"
-#include "REL/m681DLL/owned_model.h"
-#include "REL/m681DLL/model_motion.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/model.h"
+#include "REL/framework/model_motion.h"
+#include "REL/framework/singleton.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_packet.h"
 extern "C" {

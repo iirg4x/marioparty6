@@ -1,17 +1,13 @@
 #ifndef M681_GAME_SEQUENCE_H
 #define M681_GAME_SEQUENCE_H
 
+#include <memory>
 #include "dolphin/types.h"
-#include "REL/m681DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/event_packet.h"
 
 struct EffectLayer;
-struct EffectOwner {
-    EffectLayer *value;
-    explicit EffectOwner(EffectLayer *object) : value(object) {}
-    ~EffectOwner();
-};
 
 class GameSequenceController : public MinigameCore, public ThreadEntry,
                            public EventListener {
@@ -24,7 +20,7 @@ public:
     virtual void receive(const EventPacket *);
     virtual void run(void *);
     u8 eventReceived;
-    EffectOwner ownedObject;
+    std::auto_ptr<EffectLayer> ownedObject;
 };
 
 extern "C" {

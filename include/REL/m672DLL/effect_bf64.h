@@ -3,7 +3,10 @@
 
 // Draws the player's ground sprite through an owned Hu3D model.
 #include "REL/framework/game_object.h"
-#include "REL/m672DLL/model_bf64.h"
+#include "REL/framework/model.h"
+extern "C" {
+#include "game/hu3d.h"
+}
 extern "C" {
 #include "game/animdata.h"
 }

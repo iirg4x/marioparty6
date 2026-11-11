@@ -1,11 +1,10 @@
-#include "REL/m648DLL/time_conversion.h"
-#include "REL/m648DLL/camera_frame.h"
+#include "REL/framework/camera_frame.h"
 extern "C" {
 #include "dolphin/types.h"
 }
 #include "dolphin/mtx.h"
 #include "game/memory.h"
-#include "REL/m648DLL/framework/model.h"
+#include "REL/framework/model.h"
 #include "REL/m648DLL/motion_lists.h"
 extern "C" {
 #include "game/audio.h"
@@ -24,7 +23,7 @@ BOOL fn_8002D75C(s16 modelId);
 #include "REL/framework/assertion.h"
 }
 #include "REL/m648DLL/camera_view.h"
-#include "REL/m648DLL/list_object.h"
+#include "REL/framework/list_object.h"
 void fn_1_BC84();
 
 #include "REL/m648DLL/camera_manager.h"
@@ -100,7 +99,7 @@ void CameraManager::fn_1_8A68()
     if (--timer < 0) {
         CameraManagerCallback nextCallback = &CameraManager::fn_1_8ACC;
         callback = nextCallback;
-        state &= ~1;
+        flags &= ~1;
     }
 }
 
@@ -119,11 +118,6 @@ s16 fn_8002C4C0(void *motionData);
 BOOL fn_8002D75C(s16 modelId);
 }
 
-struct CameraPose {
-    Vec position;
-    float rotation[4];
-};
-
 struct CameraTransforms {
     CameraPose targetTransform;
     CameraPose currentTransform;
@@ -135,8 +129,6 @@ struct CameraTarget {
     s32 unknownSecond;
     Vec position;
 };
-
-void get_camera_pose_from_frame(const CameraFrame *, CameraPose *);
 
 /* Initialized bytes of unknown meaning; the camera vectors follow at 0x21C. */
 extern "C" const u8 lbl_1_rodata_200[0x1C] = {
@@ -163,8 +155,8 @@ void CameraManager::fn_1_8B2C() {
     get_camera_pose_from_frame(&view, &temporary.currentTransform);
     get_camera_pose_from_frame(&temporary.targetFrame, &temporary.targetTransform);
     interpolate_camera_poses(&view,
-        reinterpret_cast<const CameraPose *>(&temporary.currentTransform),
-        reinterpret_cast<const CameraPose *>(&temporary.targetTransform), 0.05f);
+        &temporary.currentTransform,
+        &temporary.targetTransform, 0.05f);
     cameraApplyToHud(&view, 1);
 }
 
@@ -188,11 +180,11 @@ void CameraManager::fn_1_8C40(Node *target)
 
 static inline void fn_1_17D0(CameraManager *owner, s32 request)
 {
-    owner->state &= ~(1UL << request);
+    owner->flags &= ~(1UL << request);
 }
 
 /* Selects the audio listener update behavior for the requested camera mode. */
-void CameraManager::clearRequest(int mode)
+void CameraManager::flagEnabled(int mode)
 {
     switch (mode) {
     case 0: {

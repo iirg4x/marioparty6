@@ -1,36 +1,36 @@
 /* The kuribo: the manager that loads their model and motions, and the walkers it places on the model's objects. */
-#include <vector>
 #include <cmath>
 extern "C" {
-#include "dolphin/types.h"
+#include <math.h>
 #include "dolphin/mtx.h"
 #include "dolphin/gx.h"
 #include "game/hu3d.h"
 #include "game/data.h"
 }
 #include "REL/framework/model.h"
-#include "REL/framework/minigame_singleton.h"
-#include "REL/m648DLL/list_object.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/list_object.h"
+#include <vector>
 #include "REL/m648DLL/light_shadow.h"
 #include "REL/m648DLL/kuribo_motion_owner.h"
 #include "REL/m648DLL.h"
 #include "humath.h"
 #include "REL/m648DLL/kuribo.h"
+#include "REL/framework/frame_time_inline.h"
 extern "C" {
-extern void fn_1_34228__11ModelObjectFPc(void *motionId, char *name);
+extern void hideObject__5ModelFPc(void *motionId, char *name);
 extern void *__nw__FUl(s32);
 }
 extern "C" {
 extern void __ct__4NodeFv(void *object);
-extern Vec lbl_1_bss_D4[0x21];
+Vec lbl_1_bss_D4[0x21];
 #include "game/gamework.h"
 }
 static const int NUMBEROF_PMOTION = 3;
-template <class Time>
-inline Time secondsToFrames(Time seconds)
-{
-    return 60 * seconds;
-}
+/* The framework version this game was built with converts seconds to frames in line (the random
+   waits below). Its three phase durations open this file's .bss (0xC8), ahead of the walkers'
+   shadow circle and their list head; the head's destructor ends the file, after the static
+   initialiser. */
 u32 RandomUnsigned();
 float RandomFloat();
 /* Removes the walkers when their manager shuts down. */
@@ -52,8 +52,8 @@ KuriboMotionOwner::KuriboMotionOwner() : model(DATANUM(0x6b0000, 9)), motion(DAT
     addMotion(DATANUM(0x6b0000, 10));
     addMotion(DATANUM(0x6b0000, 11));
     addMotion(DATANUM(0x6b0000, 12));
-    (m_mot_id.size() == NUMBEROF_PMOTION) ? (void)0
-        : __msl_assertion_failed("m_mot_id.size() == NUMBEROF_PMOTION", __FILE__, __LINE__);
+    // The walkers need all three motions.
+    assert(m_mot_id.size() == NUMBEROF_PMOTION);
 
     for (index = 0; index < 0x21; index++) {
         f32 angle = 360.0f * ((f32)(index & 0x1F) / 32.0f) - 180.0f;
@@ -69,7 +69,7 @@ KuriboMotionOwner::KuriboMotionOwner() : model(DATANUM(0x6b0000, 9)), motion(DAT
 
     currentModel = motion;
     for (s32 spriteIndex = 0; spriteIndex < 0x10; spriteIndex++) {
-        fn_1_34228__11ModelObjectFPc(&motion, objectNames[spriteIndex]);
+        hideObject__5ModelFPc(&motion, objectNames[spriteIndex]);
         new Kuribo(model, spriteIndex);
     }
 }
@@ -103,9 +103,9 @@ void KuriboMotionOwner::fn_1_61D4(Vec *position, s32 objectIndex)
     Hu3DModelObjPosGet((s16)motion, objectNames[objectIndex], position);
 }
 
-void KuriboMotionOwner::clearRequest(int request)
+void KuriboMotionOwner::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0:
     case 1:
@@ -116,19 +116,7 @@ void KuriboMotionOwner::clearRequest(int request)
     }
 }
 
-struct KuriboList : Node {
-    bool empty() const { return link0 == this && link0 == link4; }
-    Node *last_node() { return link4; }
-    Kuribo *back() { return static_cast<Kuribo *>(last_node()); }
-    Node *first_node() { return link0; }
-    Kuribo *begin() { return static_cast<Kuribo *>(first_node()); }
-    Node *end() { return this; }
-    template <class Visitor> void forEach(Visitor visitor);
-};
-
-template <class Visitor> void visitKuribos(Node *current, Node *sentinel, Visitor visitor);
-
-extern "C" { extern KuriboList lbl_1_bss_26C; }
+extern "C" { ListRoot<Kuribo> lbl_1_bss_26C; }
 
 extern "C" { void fn_1_7C38(HU3D_MODEL *model, Mtx *matrix); }
 
@@ -136,9 +124,6 @@ Kuribo::Kuribo(const OwnedModel &member, s32 objectIndex) : model(member)
 {
     s16 currentModel;
     HU3D_MODEL *model;
-    f32 randomValue;
-    f32 durationRandom;
-    f32 finalDuration;
 
     this->objectIndex = objectIndex;
     this->updateCount = 0;
@@ -155,16 +140,11 @@ Kuribo::Kuribo(const OwnedModel &member, s32 objectIndex) : model(member)
     this->hookIndex = fn_800260F4(fn_1_7C38);
     model = &lbl_802C01C8[this->hookIndex];
     model->hookData = this;
-    randomValue = RandomFloat();
-    durationRandom = 60.0f * randomValue;
-    finalDuration = durationRandom;
-    this->timer = (s32)(secondsToFrames(1.0f) + finalDuration);
+    this->timer = (s32)(secondsToFrames(RandomFloat()) + secondsToFrames(1.0f));
     this->fn_1_67D4(0, 0);
     Kuribo::Callback callbackData = &Kuribo::fn_1_6D5C;
     this->callback = callbackData;
 }
-
-KuriboListNode::~KuriboListNode() {}
 
 Kuribo::~Kuribo()
 {
@@ -184,7 +164,7 @@ void fn_1_66AC(Kuribo *object);
 
 void fn_1_6630()
 {
-    lbl_1_bss_26C.forEach(fn_1_6660);
+    lbl_1_bss_26C.visit(fn_1_6660);
 }
 
 void fn_1_6660(Kuribo *object)
@@ -194,9 +174,9 @@ void fn_1_6660(Kuribo *object)
     object->updateCount++;
 }
 
-extern "C" { void fn_1_33ACC__5ModelFP3Vec(void *object, Vec *rotation); }
+extern "C" { void setRotation__5ModelFP3Vec(void *object, Vec *rotation); }
 
-extern "C" { void fn_1_33A3C__5ModelFP3Vec(void *object, void *position); }
+extern "C" { void setPosition__5ModelFP3Vec(void *object, void *position); }
 
 void fn_1_66AC(Kuribo *object)
 {
@@ -207,8 +187,8 @@ void fn_1_66AC(Kuribo *object)
     rotation.x = 0.0f;
     rotation.y = (f32)-angle;
     rotation.z = 0.0f;
-    fn_1_33ACC__5ModelFP3Vec(&object->model, &rotation);
-    fn_1_33A3C__5ModelFP3Vec(&object->model, &object->position);
+    setRotation__5ModelFP3Vec(&object->model, &rotation);
+    setPosition__5ModelFP3Vec(&object->model, &object->position);
 }
 
 void Kuribo::fn_1_67D4(s32 motionId, u8 queued)
@@ -223,12 +203,6 @@ void Kuribo::fn_1_67D4(s32 motionId, u8 queued)
     }
 }
 
-static inline f32 RandomSecondFrames(void)
-{
-    f32 random = RandomFloat();
-    return 60.0f * random;
-}
-
 void Kuribo::fn_1_68D4()
 {
     Callback completionCallback;
@@ -236,7 +210,7 @@ void Kuribo::fn_1_68D4()
     Callback centerCallback;
     Callback rightCallback;
     s32 completionState;
-    completionState = fn_1_1C92C();
+    completionState = currentRequest();
     if (completionState == 3) {
         completionCallback = &Kuribo::fn_1_7B4C;
         callback = completionCallback;
@@ -251,13 +225,13 @@ void Kuribo::fn_1_68D4()
         return;
     case 1:
     case 2:
-        timer = (s32)(RandomSecondFrames() + secondsToFrames(1.0f));
+        timer = (s32)(secondsToFrames(RandomFloat()) + secondsToFrames(1.0f));
         fn_1_67D4(2, 0);
         centerCallback = &Kuribo::fn_1_76B0;
         callback = centerCallback;
         return;
     default:
-        timer = (s32)(RandomSecondFrames() + secondsToFrames(1.0f));
+        timer = (s32)(secondsToFrames(RandomFloat()) + secondsToFrames(1.0f));
         fn_1_67D4(0, 0);
         rightCallback = &Kuribo::fn_1_6D5C;
         callback = rightCallback;
@@ -345,19 +319,5 @@ void fn_1_7CB0(Kuribo *kuribo, f32 matrix[3][4])
         vertexX = kuribo->position.x + lbl_1_bss_D4[index].x;
         GXPosition3f32(vertexX, vertexY, vertexZ);
         GXColor4u8(0, 0, 0, 0);
-    }
-}
-
-template <class Visitor> void KuriboList::forEach(Visitor visitor)
-{
-    visitKuribos(begin(), end(), visitor);
-}
-
-template <class Visitor> void visitKuribos(Node *current, Node *sentinel, Visitor visitor)
-{
-    while (current != sentinel) {
-        visitor(static_cast<Kuribo *>(current));
-        Node *next = current->link0;
-        current = next;
     }
 }

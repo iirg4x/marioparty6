@@ -18,7 +18,7 @@ REL/framework/new.cpp:
 	.data       start:0x000005B8 end:0x000005E0
 
 REL/framework/camera.cpp:
-	.text       start:0x0001655C end:0x00016D30
+	.text       start:0x0001655C end:0x00016D68
 	.rodata     start:0x000007A0 end:0x00000810
 
 REL/framework/camera_ut0.cpp:
@@ -31,7 +31,7 @@ REL/framework/camera_ut1.cpp:
 	.rodata     start:0x00000870 end:0x000008B8
 
 REL/framework/chara.cpp:
-	.text       start:0x000191CC end:0x00019310
+	.text       start:0x000191CC end:0x00019360
 	.rodata     start:0x000008C0 end:0x000008F8
 
 REL/framework/chara_motion.cpp:
@@ -75,7 +75,7 @@ REL/framework/hu_archive.cpp:
 	.data       start:0x00001668 end:0x000016B0
 
 REL/framework/linknode.cpp:
-	.text       start:0x00028A40 end:0x00028BBC
+	.text       start:0x00028A40 end:0x0002941C
 	.rodata     start:0x00000B48 end:0x00000B88
 
 REL/framework/minigame_core.cpp:
@@ -88,6 +88,12 @@ REL/framework/minigame_core.cpp:
 REL/framework/misc_rotarc.cpp:
 	.text       start:0x00029F98 end:0x0002A2F4
 	.rodata     start:0x00000BE0 end:0x00000C48
+
+REL/framework/model.cpp:
+	.text       start:0x0002A2F4 end:0x0002B784
+	.rodata     start:0x00000C48 end:0x00000C50
+	.data       start:0x00001708 end:0x00001728
+	.bss        start:0x000000B0 end:0x000000B8
 
 REL/framework/mt19937.cpp:
 	.text       start:0x0002B784 end:0x0002C784

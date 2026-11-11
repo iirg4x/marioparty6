@@ -1,4 +1,4 @@
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 #include "math.h"
 #include "REL/m681DLL/monitor_interface.h"
 #include "game/main.h"
@@ -16,9 +16,9 @@ extern "C" {
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/game_object.h"
 #include "REL/m681DLL/owner_182c.h"
+#include "REL/framework/world_units.h"
 
 extern "C" {
-
 
 extern s32 lbl_1_data_F18;
 extern float lbl_1_bss_1BC;
@@ -191,18 +191,11 @@ void M681GameState::fn_1_2138()
 
 extern "C" {
 
-
-}
-
-static inline f32 accelerationPerFrame(f64 accelerationPerSecondSquared)
-{
-    return (f32)((accelerationPerSecondSquared * 100.0) / (60.0 * 60.0));
 }
 
 extern "C" {
 
 s32 lbl_1_bss_48 = minutesToFrames(60L);
-f32 lbl_1_bss_4C = accelerationPerFrame(9.80665);
-
+f32 lbl_1_bss_4C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 
 }

@@ -5,18 +5,7 @@ extern "C" {
 #include "dolphin/mtx.h"
 }
 
-// A camera frame stores the eye position, the direction above the eye, and the look target.
-struct CameraFrame {
-    Vec position; // World-space camera eye position.
-    Vec up;        // Direction that defines which way is above the camera.
-    Vec target;    // World-space point the camera looks toward.
-};
-
-// A camera pose stores the eye position and its orientation independently of the look target.
-struct CameraPose {
-    Vec position;         // World-space camera eye position.
-    Quaternion rotation; // Camera orientation.
-};
+#include "REL/framework/camera_frame.h"
 
 void cameraInverseLookAt(const CameraFrame *, Mtx);
 

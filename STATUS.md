@@ -2,39 +2,38 @@
 
 The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-11 01:59 UTC.
+Updated 2026-11-11 07:13 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 83.14% | 93.15% |
+| Entire project | 83.77% | 93.17% |
 | Main DOL | 91.35% | 99.35% |
-| REL modules | 81.40% | 89.22% |
+| REL modules | 82.17% | 89.26% |
 
 ## REL modules
 
-**110 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
+**111 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
 
-Partial (15):
+Partial (14):
 
 | Module | Code | Data |
 | --- | ---: | ---: |
-| Full Tilt (`m652DLL`) | 100.00% | 100.00% |
-| Granite Getaway (`m605DLL`) | 55.01% | 74.15% |
-| Cog Jog (`m624DLL`) | 49.14% | 54.76% |
-| Sumo of Doom-o (`m653DLL`) | 48.09% | 75.92% |
-| Cash Flow (`m623DLL`) | 47.32% | 61.53% |
-| Pitifall (`m655DLL`) | 45.17% | 65.54% |
-| Tricky Tires (`m610DLL`) | 41.10% | 70.81% |
-| Light Breeze (`m639DLL`) | 41.04% | 66.44% |
-| Pit Boss (`m671DLL`) | 36.65% | 53.77% |
-| Treasure Trawlers (`m611DLL`) | 35.82% | 46.02% |
-| Dark 'n Crispy (`m673DLL`) | 34.90% | 49.53% |
-| Dust 'til Dawn (`m634DLL`) | 33.16% | 46.32% |
-| Surge and Destroy (`m628DLL`) | 32.12% | 65.00% |
-| Seer Terror (`m677DLL`) | 28.74% | 41.87% |
-| What Goes Up... (`m604DLL`) | 11.69% | 42.42% |
+| Granite Getaway (`m605DLL`) | 59.42% | 74.52% |
+| Sumo of Doom-o (`m653DLL`) | 53.24% | 76.33% |
+| Cash Flow (`m623DLL`) | 51.09% | 61.83% |
+| Cog Jog (`m624DLL`) | 50.85% | 54.76% |
+| Pitifall (`m655DLL`) | 46.59% | 65.54% |
+| Tricky Tires (`m610DLL`) | 44.62% | 71.16% |
+| Light Breeze (`m639DLL`) | 42.59% | 66.44% |
+| Treasure Trawlers (`m611DLL`) | 40.00% | 46.46% |
+| Dark 'n Crispy (`m673DLL`) | 39.81% | 50.02% |
+| Pit Boss (`m671DLL`) | 38.26% | 53.77% |
+| Dust 'til Dawn (`m634DLL`) | 38.04% | 46.80% |
+| Surge and Destroy (`m628DLL`) | 36.52% | 65.39% |
+| Seer Terror (`m677DLL`) | 31.85% | 42.10% |
+| What Goes Up... (`m604DLL`) | 13.56% | 42.42% |
 
 Not recovered here yet (3): `micquizishidll`, `micquizohdedll`, `mikeactdll`.
 

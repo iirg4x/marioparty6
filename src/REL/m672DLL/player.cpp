@@ -1,4 +1,4 @@
-#include "REL/m672DLL/sound_pitch.h"
+#include "REL/framework/sound.h"
 #include "REL/framework/minigame_core.h"
 #include "REL/m672DLL/event.h"
 #include "REL/m672DLL/random.h"
@@ -6,8 +6,8 @@ extern "C" {
 #include <math.h>
 #include "game/audio.h"
 }
-#include "REL/m672DLL/player_bf64.h"
-#include "REL/m672DLL/linknode.h"
+#include "REL/m672DLL/player.h"
+#include "REL/framework/linknode.h"
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -34,7 +34,7 @@ extern "C" {
 #include "game/board/tutorial.h"
 #include "REL/m672DLL/resources.h"
 #include "REL/framework/event_callback_inline.h"
-template <class Time> Time secondsToFrames(Time seconds);
+#include "REL/framework/phase_durations.h"
 #include <new>
 extern "C" float lbl_1_data_480 = 980.665f;
 
@@ -70,33 +70,33 @@ extern "C" {
 void *__nw__FUl(unsigned long);
 PolyNode *__ct__8PolyNodeFi(void *, int);
 ModelMotion *__ct__11ModelMotionFUi(ModelMotion *, int);
-EventHandlerManager *fn_1_198E0(CallbackTableBF64 *, int);
+EventHandlerManager *fn_1_198E0(EventHandlerManager *, int);
 PlayerController *fn_1_C90(PlayerController *, Player *, int);
 PlayerController *fn_1_7C8(PlayerController *, Player *);
 }
 void fn_1_8E0C(s16 *, u8);
 void fn_1_EA98(Player *, u32, u8);
-template<class Receiver> void fn_1_EF74(CallbackTableBF64 *, const BoundBF64 &, int);
+template<class Receiver> void fn_1_EF74(EventHandlerManager *, const PlayerCallbackBinding &, int);
 extern "C" {
-void fn_1_33A3C__5ModelFP3Vec(ModelMotion *, const Vec *);
-void fn_1_33B5C__5ModelFf(ModelMotion *, float);
-void fn_1_33CB0__5ModelFs(ModelMotion *, short);
-void fn_1_33950__5ModelFUl(ModelMotion *, unsigned int);
+void setPosition__5ModelFP3Vec(ModelMotion *, const Vec *);
+void setRotationY__5ModelFf(ModelMotion *, float);
+void setLayer__5ModelFs(ModelMotion *, short);
+void setAttribute__5ModelFUl(ModelMotion *, unsigned int);
 GroundSprite *fn_1_8CC8(GroundSprite *, ANIMDATA *, const Vec *);
 void __msl_assertion_failed(const char *, const char *, int);
 
 extern const unsigned char lbl_1_data_588[];
-extern PlayerMethodBF64 lbl_1_data_484, lbl_1_data_490, lbl_1_data_49C;
-extern PlayerMethodBF64 lbl_1_data_4A8, lbl_1_data_4F8;
+extern PlayerHandler lbl_1_data_484, lbl_1_data_490, lbl_1_data_49C;
+extern PlayerHandler lbl_1_data_4A8, lbl_1_data_4F8;
 }
-static inline MemberBF64 MakeMemberBF64(PlayerMethodBF64 value)
+static inline PlayerMemberFunction PlayerMember(PlayerHandler value)
 {
-    return MemberBF64(value);
+    return PlayerMemberFunction(value);
 }
 
-static inline BoundBF64 BindBF64(const MemberBF64 &member, Player *owner)
+static inline PlayerCallbackBinding BindPlayer(const PlayerMemberFunction &member, Player *owner)
 {
-    return BoundBF64(member, owner);
+    return PlayerCallbackBinding(member, owner);
 }
 
 PlayerController *fn_1_BE9C(Player *owner, int playerNo)
@@ -118,11 +118,11 @@ Player::Player(int playerNo, const WorldPosition *position)
     MGACTOR_PARAM actorParam;
     WorldPosition floorPosition;
     Resources *resources;
-    fn_1_EF74<Player>(&this->callbacks, BindBF64(MakeMemberBF64(&Player::fn_1_EB5C), this), 0);
-    fn_1_EF74<Player>(&this->callbacks, BindBF64(MakeMemberBF64(&Player::fn_1_EBF4), this), 2);
-    fn_1_EF74<Player>(&this->callbacks, BindBF64(MakeMemberBF64(&Player::fn_1_EC80), this), 3);
-    fn_1_EF74<Player>(&this->callbacks, BindBF64(MakeMemberBF64(&Player::fn_1_ED84), this), 4);
-    this->controller = fn_1_BE9C(this, playerNo);
+    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_EB5C), this), 0);
+    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_EBF4), this), 2);
+    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_EC80), this), 3);
+    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_ED84), this), 4);
+    this->controller.reset(fn_1_BE9C(this, playerNo));
     actorParam.height = 150.0f;
     actorParam.radius = 60.000004f;
     actorParam.param = playerNo;
@@ -172,21 +172,21 @@ Player::Player(int playerNo, const WorldPosition *position)
     fn_1_EA98(this, 0, 1);
     fn_1_D8CC();
     this->modelScale = 0.0f;
-    fn_1_33A3C__5ModelFP3Vec(this->model, &this->origin.value.value);
-    fn_1_33B5C__5ModelFf(this->model, this->modelScale);
-    fn_1_33CB0__5ModelFs(this->model, 5);
-    fn_1_33950__5ModelFUl(this->model, ((1 << 30) | (1 << 1)));
-    fn_8002741C(this->model->getId(), "itemhook_char", this->modelId);
+    setPosition__5ModelFP3Vec(this->model, &this->origin.value.value);
+    setRotationY__5ModelFf(this->model, this->modelScale);
+    setLayer__5ModelFs(this->model, 5);
+    setAttribute__5ModelFUl(this->model, ((1 << 30) | (1 << 1)));
+    fn_8002741C(this->model->id(), "itemhook_char", this->modelId);
     resources = &Resources::getChecked();
-    this->effect = new GroundSprite(resources->animation(1), &this->origin.value.value);
+    this->effect.reset(new GroundSprite(resources->animation(1), &this->origin.value.value));
     this->effect->setAlpha(0.0f);
     this->effect->setRadius(200.0f);
-    fn_1_8E0C((s16 *)(void *)this->effect, 1);
+    fn_1_8E0C((s16 *)(void *)this->effect.get(), 1);
     floorPosition = this->origin;
     floorPosition.value.value.y = 0.0f;
-    this->sequence = new RingParticles(resources->animation(3),
-                                      resources->animation(0), 10, 2,
-                                      floorPosition);
+    this->sequence.reset(new RingParticles(resources->animation(3),
+                                           resources->animation(0), 10, 2,
+                                           floorPosition));
     this->soundFrame = 0;
     this->soundHandle = -1;
     this->setUpdate(&Player::fn_1_DC00);
@@ -204,15 +204,15 @@ extern std::vector<CollisionShape *> lbl_1_bss_C;
 
 }
 
-static inline CollisionShape *&CollisionAtCF2C(unsigned long index)
+static inline CollisionShape *&CollisionShapeAt(unsigned long index)
 {
     return lbl_1_bss_C.at(index);
 }
-static inline s32 CollisionStateCF2C(CollisionObject *object) { return object->state; }
-static inline u8 CollisionActiveCF2C(CollisionObject *object) { return object->active; }
-static inline f32 CollisionRadiusCF2C(CollisionObject *object) { return object->radius; }
-static inline f32 SeparationLengthCF2C(Point3d *value) { return PSVECMag(value); }
-static inline void SetPositionCF2C(Point3d *position, double x, double y, double z)
+static inline s32 CollisionState(CollisionObject *object) { return object->state; }
+static inline u8 CollisionActive(CollisionObject *object) { return object->active; }
+static inline f32 CollisionRadius(CollisionObject *object) { return object->radius; }
+static inline f32 SeparationLength(Point3d *value) { return PSVECMag(value); }
+static inline void SetPoint(Point3d *position, double x, double y, double z)
 {
     position->x = x;
     position->y = y;
@@ -220,15 +220,15 @@ static inline void SetPositionCF2C(Point3d *position, double x, double y, double
 }
 
 extern "C" {
-extern void fn_1_33988__5ModelFUl(ModelMotion *,u32);
+extern void resetAttribute__5ModelFUl(ModelMotion *,u32);
 
 }
 
-static inline const Point3d *PlayerTargetD21C(Player *work)
+static inline const Point3d *PlayerTarget(Player *work)
 {
     return &lbl_1_rodata_598[work->playerNo];
 }
-static inline f32 LengthD21C(Point3d *vector)
+static inline f32 DirectionLength(Point3d *vector)
 {
     return PSVECMag(vector);
 }
@@ -246,26 +246,20 @@ extern float lbl_1_bss_1BC;
 extern s8 lbl_1_bss_218, lbl_1_bss_219, lbl_1_data_2758;
 s32 fn_1_367CC(s32 *player);
 
-extern s32 fn_1_11218(s32, s32, const Point3d *);
-extern void fn_1_48BC(void *);
-extern void fn_1_48C8(void *);
+extern void fn_1_48BC(RingParticles *);
+extern void fn_1_48C8(RingParticles *);
 
-int lbl_1_bss_50 = secondsToFrames(2L);
-int lbl_1_bss_54 = secondsToFrames(3.5);
-int lbl_1_bss_58 = secondsToFrames(3.5);
 float lbl_1_bss_5C = 0.016666666666666666 * (0.016666666666666666 * lbl_1_data_480);
 
 }
 
-static inline s16 DropModelIdDC04(ModelMotion *model) { return (s16)model->modelId; }
-static inline ModelMotion *GetDropModelDC04(Player *work) { return work->model.pointer; }
-static inline GroundSprite *GetDropEffectDC04(Player *work) { return work->effect.pointer; }
-static inline void *GetDropSequenceDC04(Player *work) { return work->sequence.pointer; }
-static inline void DropOpacityDC04(GroundSprite *effect, f32 opacity)
+static inline s16 MotionModelId(ModelMotion *model) { return (s16)model->modelId; }
+static inline ModelMotion *PlayerMotionModel(Player *work) { return work->model.pointer; }
+static inline void SetGroundAlpha(GroundSprite *effect, f32 opacity)
 {
     effect->alpha = opacity;
 }
-static inline void DropPositionDC04(Player *work)
+static inline void PlaceAtPosition(Player *work)
 {
     fn_80086AA8(work->player->actor, &work->position.value);
     fn_80086CA8(work->player->actor, work->rotation);
@@ -273,13 +267,6 @@ static inline void DropPositionDC04(Player *work)
     fn_80026808(work->modelId, 0.0f, 180.0f, 0.0f);
 }
 
-extern "C" {
-typedef struct {
-    u8 unknown00[0x3C]; /* No code names this field. */
-    void *rawPositionOwner;
-} ActorE5EC;
-
-}
 extern void fn_1_EA98(Player *work, u32 mode, u8 state);
 extern "C" {
 
@@ -293,7 +280,7 @@ Player::~Player()
 void Player::update()
 {
     fn_80086BC8(player->actor, &position.value);
-    PlayerController *controllerValue = controller;
+    PlayerController *controllerValue = controller.get();
     fn_1_758(controllerValue);
     if (frameUpdate) {
         (this->*frameUpdate)();
@@ -320,23 +307,23 @@ void fn_1_CF2C(Player *work)
     adjustedPosition = work->position;
     adjustedPosition.value.y += 50.0f;
     for (index = 0; index < objectCount; ++index) {
-        CollisionObject *object = (CollisionObject *)CollisionAtCF2C(index);
-        s32 state = CollisionStateCF2C(object);
-        if (CollisionActiveCF2C(object) != 0 && state == 1) {
+        CollisionObject *object = (CollisionObject *)CollisionShapeAt(index);
+        s32 state = CollisionState(object);
+        if (CollisionActive(object) != 0 && state == 1) {
             EffectVector otherPosition = object->position;
             VectorValue fullCorrection;
             VectorValue correction;
             Point3d separation;
             PSVECSubtract(&adjustedPosition.value, &otherPosition.value, &separation);
-            distance = SeparationLengthCF2C(&separation);
-            minimumDistance = 60.000004f + CollisionRadiusCF2C(object);
+            distance = SeparationLength(&separation);
+            minimumDistance = 60.000004f + CollisionRadius(object);
             if (!(distance >= minimumDistance)) {
                 correction.setScaled(&separation,
                                      (minimumDistance - distance) / distance);
                 fullCorrection.setScaled(&correction.value, 1.0f);
                 PSVECAdd(&fullCorrection.value, &adjustedPosition.value,
                          &adjustedPosition.value);
-                SetPositionCF2C(&work->position.value, adjustedPosition.value.x,
+                SetPoint(&work->position.value, adjustedPosition.value.x,
                                work->position.value.y, adjustedPosition.value.z);
                 fn_80086B04(work->player->actor, &work->position.value);
             }
@@ -360,7 +347,7 @@ void Player::fn_1_D120()
     fn_80026FCC(modelId);
     sendEvent(1, 2, 0.0f);
     {
-        PlayerUpdateBF64 movement;
+        PlayerUpdate movement;
         movement = &Player::fn_1_D21C;
         frameUpdate = movement;
     }
@@ -374,7 +361,7 @@ void Player::fn_1_D21C()
 {
     static const f32 lbl_1_rodata_5C8[4] = {22.5f,22.5f,22.5f,22.5f};
     Point3d direction;
-    PlayerUpdateBF64 movement;
+    PlayerUpdate movement;
     f32 fadeOut;
     f32 fadeIn;
     f32 magnitude;
@@ -398,8 +385,8 @@ void Player::fn_1_D21C()
         fn_1_EA98(this, 1, 1);
         ++phase;
     case 1:
-        PSVECSubtract(PlayerTargetD21C(this), &position.value, &direction);
-        magnitude = LengthD21C(&direction);
+        PSVECSubtract(PlayerTarget(this), &position.value, &direction);
+        magnitude = DirectionLength(&direction);
         if (magnitude > 0.0f) PSVECNormalize(&direction, &direction);
         rotation = fn_1_BE44(&direction);
         fn_80026808(modelId, 0.0f, rotation, 0.0f);
@@ -503,8 +490,8 @@ void Player::fn_1_DC04()
     switch (state) {
     case 0:
         if (elapsed < delay) break;
-        fn_1_33988__5ModelFUl(GetDropModelDC04(this), ((1 << 30) | (1 << 1)));
-        fn_1_48BC(GetDropSequenceDC04(this));
+        resetAttribute__5ModelFUl(PlayerMotionModel(this), ((1 << 30) | (1 << 1)));
+        fn_1_48BC(sequence.get());
         elapsed = 0.0f;
         ++state;
     case 1:
@@ -517,13 +504,13 @@ void Player::fn_1_DC04()
         elapsed = 0.0f;
         ++state;
     case 3:
-        fn_80027508(DropModelIdDC04(GetDropModelDC04(this)));
+        fn_80027508(MotionModelId(PlayerMotionModel(this)));
         rotation = 180.0f;
         position.value.x = origin.value.value.x;
         position.value.y = origin.value.value.y;
         position.value.z = origin.value.value.z;
         position.value.y += 278.7f;
-        DropPositionDC04(this);
+        PlaceAtPosition(this);
         fn_80026E44(modelId);
         velocity.value.y = -3.3333333f;
         ++state;
@@ -532,7 +519,7 @@ void Player::fn_1_DC04()
         velocity.value.y += 5.0f * -lbl_1_bss_5C;
         movement.value.y = 0.5f * (movement.value.y + velocity.value.y);
         PSVECAdd(&movement.value, &position.value, &position.value);
-        DropPositionDC04(this);
+        PlaceAtPosition(this);
         if (position.value.y > 0.0f) break;
         fn_8006A030((s16)playerNo, 45, 7, 3);
         fn_80086F00(player, &position.value);
@@ -541,12 +528,12 @@ void Player::fn_1_DC04()
         fn_80086CA8(player->actor, rotation);
         fn_80026808(modelId, 0.0f, 180.0f, 0.0f);
         fn_8005DFC0(charNo, 1);
-        fn_1_48C8(GetDropSequenceDC04(this));
+        fn_1_48C8(sequence.get());
         ++state;
     case 5:
-        if (fn_8002D75C(DropModelIdDC04(GetDropModelDC04(this)))) {
-            fn_800269E8(DropModelIdDC04(GetDropModelDC04(this)), 1);
-            effect.clear();
+        if (fn_8002D75C(MotionModelId(PlayerMotionModel(this)))) {
+            fn_800269E8(MotionModelId(PlayerMotionModel(this)), 1);
+            effect.reset();
             ++state;
         }
         break;
@@ -554,24 +541,24 @@ void Player::fn_1_DC04()
     if (state >= 3) {
         if (elapsed < 0.5f) {
             opacity = 0.4f * (1.0f - elapsed / 0.5f);
-            DropOpacityDC04(GetDropEffectDC04(this), opacity);
+            SetGroundAlpha(effect.get(), opacity);
         }
     } else if (state == 1) {
         fadeIn = (f64)0.4f * elapsed;
-        DropOpacityDC04(GetDropEffectDC04(this), fadeIn);
+        SetGroundAlpha(effect.get(), fadeIn);
     }
     if (state > 0) {
         if (soundFrame == 0)
-            soundHandle = fn_1_11218(1, 0x8A5, &position.value);
+            soundHandle = soundPlayAt(1, 0x8A5, &position.value);
         if (soundFrame == 121)
-            fn_1_11218(1, 0x8A6, &position.value);
+            soundPlayAt(1, 0x8A6, &position.value);
         if (soundFrame < 140) {
             volume = 8191.0f * (1.0f - 0.5f * ((f32)soundFrame / 140.0f));
-            fn_1_12488(soundHandle, volume);
+            soundSetPitch(soundHandle, volume);
         }
         if (soundFrame > 150) {
             risingVolume = 8191.0f * (0.5f * ((f32)(soundFrame - 150) / 87.0f));
-            fn_1_12488(soundHandle, risingVolume);
+            soundSetPitch(soundHandle, risingVolume);
         }
         if (soundFrame > 236 && soundHandle != -1) {
             HuAudFXStop(soundHandle);
@@ -603,7 +590,7 @@ void Player::fn_1_E5EC()
     if (!(movementElapsed < 2.0f)) {
         fn_800269E8(modelId, 1);
         {
-            PlayerUpdateBF64 values;
+            PlayerUpdate values;
             values = &Player::fn_1_DBF4;
             frameUpdate = values;
         }
@@ -624,13 +611,13 @@ void Player::fn_1_E718()
     adjustedPosition.value.y += 50.0f;
     for (index = 0; index < objectCount; ++index) {
         CollisionObject *object = (CollisionObject *)lbl_1_bss_C.at(index);
-        s32 state = CollisionStateCF2C(object);
+        s32 state = CollisionState(object);
 
-        if (CollisionActiveCF2C(object) != 0 && state == 2) {
+        if (CollisionActive(object) != 0 && state == 2) {
             objectPosition = object->position;
             PSVECSubtract(&adjustedPosition.value, &objectPosition.value, &separation);
-            distance = SeparationLengthCF2C(&separation);
-            minimumDistance = 60.000004f + CollisionRadiusCF2C(object);
+            distance = SeparationLength(&separation);
+            minimumDistance = 60.000004f + CollisionRadius(object);
             if (distance >= minimumDistance) {
                 continue;
             }
@@ -642,12 +629,12 @@ void Player::fn_1_E718()
     if ((u8)found != 0) {
         CharFXPlay(charNo, 0x240);
         fn_1_EA98(this, 6, 1);
-        SetPositionCF2C(&velocity.value, 0.0,
+        SetPoint(&velocity.value, 0.0,
                        200.0f * lbl_1_bss_5C, 0.0);
         sendEvent(1, 3, 0.0f);
         fn_8006A030((s16)playerNo, 0x2D, 7, 3);
         {
-            PlayerUpdateBF64 callbackValues = &Player::fn_1_E5EC;
+            PlayerUpdate callbackValues = &Player::fn_1_E5EC;
             frameUpdate = callbackValues;
         }
     }
@@ -688,7 +675,7 @@ void fn_1_EA98(Player *object, u32 motionId, u8 loop)
 }
 void Player::fn_1_EB5C(EventMessage *)
 {
-    PlayerUpdateBF64 initialValues;
+    PlayerUpdate initialValues;
     state = 0;
     elapsed = 0.0f;
     delay = RandomFloat(0.0f, 1.0f);
@@ -697,17 +684,15 @@ void Player::fn_1_EB5C(EventMessage *)
 }
 void Player::fn_1_EBF4(EventMessage *)
 {
-    PlayerController *action;
-    PlayerUpdateBF64 values;
+    PlayerUpdate values;
     fn_80087168(player, 1);
-    action = controller.pointer;
-    action->reset();
+    controller->reset();
     values = &Player::fn_1_E29C;
     frameUpdate = values;
 }
 void Player::fn_1_EC80(EventMessage *)
 {
-    PlayerUpdateBF64 values;
+    PlayerUpdate values;
     fn_80086E3C(player);
     if (active == 0) {
         short motion;
@@ -726,7 +711,7 @@ void Player::fn_1_EC80(EventMessage *)
 }
 void Player::fn_1_ED84(EventMessage *)
 {
-    PlayerUpdateBF64 values;
+    PlayerUpdate values;
     fn_80086E3C(player);
     if (active != 0) {
         if (currentMotionIndex != 7) {
@@ -745,18 +730,15 @@ void Player::fn_1_ED84(EventMessage *)
 
 template<class Receiver>
 struct PlayerCallbackRecord : EventCallback {
-    MemberBF64 method;
+    PlayerMemberFunction method;
     Receiver *receiver;
-    explicit PlayerCallbackRecord(const BoundBF64 &payload)
+    explicit PlayerCallbackRecord(const PlayerCallbackBinding &payload)
         : EventCallback(), method(payload.function), receiver(payload.receiver) {}
     virtual ~PlayerCallbackRecord() {}
     virtual void receive(EventMessage *message) { method(receiver, message); }
 };
 template<class Receiver>
-void fn_1_EF74(CallbackTableBF64 *owner, const BoundBF64 &payload, int key)
+void fn_1_EF74(EventHandlerManager *owner, const PlayerCallbackBinding &payload, int key)
 {
     owner->addHandler(new PlayerCallbackRecord<Receiver>(payload), key);
 }
-
-/* Shared secondsToFrames template; native instances multiply by 60. */
-template<class Time> Time secondsToFrames(Time seconds) { return 60 * seconds; }

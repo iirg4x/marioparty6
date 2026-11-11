@@ -1,12 +1,12 @@
 #include "REL/m672DLL/random.h"
 #include "REL/framework/minigame_core.h"
-#include "REL/m672DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 #include "dolphin/types.h"
 #include <string.h>
 #include "REL/m672DLL/collision_object.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_hm.h"
-#include "REL/m672DLL/model_bf64.h"
+#include "REL/framework/model.h"
 #include "REL/framework/event_callback_inline.h"
 
 #include "dolphin/os.h"
@@ -47,7 +47,7 @@ CameraOwner::CameraOwner()
     Hu3DCameraPerspectiveSet(1, 45.0f, 1.0f, 10000.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     Hu3DCameraScissorSet(1, 0, 0, 0x280, 0x1E0);
-    model.fn_1_33950(1);
+    model.setAttribute(1);
     modelId = (s16)model.modelId;
     fn_8002803C(modelId, 1);
 
@@ -57,9 +57,9 @@ CameraOwner::CameraOwner()
     camera->cameraPosition.value.y = source->pos.y;
     camera->cameraPosition.value.z = source->pos.z;
     camera->setPosition(camera->cameraPosition);
-    camera->vectors[1].x = source->up.x;
-    camera->vectors[1].y = source->up.y;
-    camera->vectors[1].z = source->up.z;
+    camera->frame.up.x = source->up.x;
+    camera->frame.up.y = source->up.y;
+    camera->frame.up.z = source->up.z;
     camera->cameraTarget.value.x = source->target.x;
     camera->cameraTarget.value.y = source->target.y;
     camera->cameraTarget.value.z = source->target.z;
@@ -78,7 +78,7 @@ void CameraOwner::update()
     if (updateCallback) {
         (this->*updateCallback)();
     }
-    cameraApplyToHud(&camera, 1);
+    cameraApplyToHud(&camera.frame, 1);
 }
 
 void CameraOwner::fn_1_A6E4() {}
@@ -89,8 +89,8 @@ void CameraOwner::fn_1_A6E8()
     double zOffset;
     float blendFactor;
     Vec movement;
-    Vec *targets = camera.vectors;
-    Vec *results = cameraCopy.vectors;
+    Vec *targets = &camera.frame.position;
+    Vec *results = &cameraCopy.frame.position;
 
     zOffset = 100.0f * RandomFloat(-0.5f, 0.5f);
     xOffset = 100.0f * RandomFloat(-0.5f, 0.5f);
@@ -117,7 +117,7 @@ void CameraOwner::fn_1_A924(EventMessage *)
 
 void CameraOwner::fn_1_A978(float amount)
 {
-    Vec *first = camera.vectors;
+    Vec *first = &camera.frame.position;
     Vec *firstValue = first;
     Vec *second = first + 2;
 

@@ -4,8 +4,8 @@
 #include "humath.h"
 #include "REL/framework/chara_motion.h"
 #include "REL/framework/game_object.h"
-#include "REL/m652DLL/player_identity.h"
-#include "REL/m652DLL/registered_value.h"
+#include "REL/framework/p_info.h"
+#include "REL/framework/category_sphere.h"
 extern "C" {
 #include "game/mg/actman.h"
 }
@@ -24,7 +24,7 @@ struct MotionFlags {
     unsigned char unknown_0 : 1;
 };
 
-struct Racer : Player, MotionOwner, GameObject {
+struct Racer : PlayerInfo, MotionOwner, GameObject {
     void fn_1_6134();
     void fn_1_61C0();
     unsigned char fn_1_6258();
@@ -55,8 +55,8 @@ struct Racer : Player, MotionOwner, GameObject {
     Point3d position;
     Vec motion;
     float rotation;
-    Sphere firstRegistered;
-    Sphere secondRegistered;
+    RegisteredValue firstRegistered;
+    RegisteredValue secondRegistered;
     std::auto_ptr<RacerControl> child;
 };
 

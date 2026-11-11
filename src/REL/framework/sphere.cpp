@@ -3,6 +3,7 @@ static const char rcsid[] = "$Id: sphere.cpp,v 1.8.2.1 2004/06/04 03:56:51 shohy
 
 #include <dolphin/math.h>
 #include <dolphin/mtx.h>
+#include "REL/framework/sphere.h"
 
 // Wraps a displacement passed to the sphere center correction helpers.
 struct Vector3 {
@@ -11,17 +12,6 @@ struct Vector3 {
 
     Point3d *getVector() { return &vector; }
     operator Point3d *() { return getVector(); }
-};
-
-// Describes a collision sphere in the caller's coordinate system.
-struct Sphere {
-    // Center position in the caller's coordinate units.
-    Point3d center;
-    // Radius in the same units as the center coordinates.
-    f32 radius;
-
-    f32 getRadius() const { return radius; }
-    void translate(Point3d *offset) { PSVECAdd(offset, &center, &center); }
 };
 
 inline f32 vectorMagnitude(Point3d *vector) { return PSVECMag(vector); }

@@ -1,5 +1,5 @@
-#include "REL/m603DLL/frame_time.h"
-#include "REL/m603DLL/callback_owner.h"
+#include "REL/framework/frame_time_inline.h"
+#include "REL/framework/list_object.h"
 #include "REL/m603DLL/draw_owner.h"
 #include "REL/m603DLL/camera_group.h"
 #include "REL/m603DLL/shadow_owner.h"
@@ -14,12 +14,7 @@ extern "C" {
 
 }
 
-class ModelDrawNode : public Node {
-public:
-    ~ModelDrawNode();
-};
-
-class ModelDrawOwner : public ModelDrawNode {
+class ModelDrawOwner : public ListNode<ModelDrawOwner> {
 public:
     s32 frameCount;
     s32 cameraIndex;
@@ -39,20 +34,11 @@ extern "C" void fn_1_3A94();
 void fn_1_499C();
 void DrawListOwner::fn_1_3714() { fn_1_48CC(); }
 extern "C" {
-void DrawListOwner::update(unsigned long bit) { state &= ~(1UL << bit); }
-void DrawListOwner::extra() { fn_1_3A94(); fn_1_499C(); }
+void DrawListOwner::flagEnabled(int bit) { flags &= ~(1UL << bit); }
+void DrawListOwner::update() { fn_1_3A94(); fn_1_499C(); }
 
-template<class Element>
-struct DrawListRoot : Node {
-    bool empty() const { return link0 == this && link0 == link4; }
-    Node *last_node() { return link4; }
-    Element *back() { return static_cast<Element *>(last_node()); }
-    Node *first_node() { return link0; }
-    Element *begin() { return static_cast<Element *>(first_node()); }
-    Node *end() { return this; }
-};
-extern DrawListRoot<FadeWork> lbl_1_bss_70;
-extern DrawListRoot<ModelDrawOwner> lbl_1_bss_84;
+extern ListRoot<FadeWork> lbl_1_bss_70;
+extern ListRoot<ModelDrawOwner> lbl_1_bss_84;
 const u32 lbl_1_rodata_198[4] = {1, 2, 4, 8};
 }
 void fn_1_3AD4(HU3D_MODEL*, Mtx*);
@@ -78,17 +64,14 @@ FadeWork::FadeWork(s32 context)
     }
 }
 
-FadeNode::~FadeNode() {}
-
 FadeWork::~FadeWork()
 {
     fn_800262D0(modelId);
 }
 void fn_1_39C4() { while (!lbl_1_bss_70.empty()) delete lbl_1_bss_70.back(); }
-void fn_1_3AC4(Node*);
-void fn_1_5018(DrawListRoot<FadeWork>*,void(*)(Node*));
-void fn_1_3A94() { fn_1_5018(&lbl_1_bss_70,fn_1_3AC4); }
-void fn_1_3AC4(Node *node) { static_cast<FadeNode*>(node)->progress = static_cast<FadeNode*>(node)->progress + 1; }
+void fn_1_3AC4(FadeWork *);
+void fn_1_3A94() { lbl_1_bss_70.visit(fn_1_3AC4); }
+void fn_1_3AC4(FadeWork *work) { work->progress = work->progress + 1; }
 void fn_1_3AD4(HU3D_MODEL *model,Mtx *matrix) { fn_8002472C(); FadeWork *hookData=(FadeWork *)model->hookData; hookData->fn_1_3B1C(matrix); }
 
 void FadeWork::fn_1_3B1C(void *context)
@@ -236,15 +219,12 @@ ModelDrawOwner::ModelDrawOwner(s32 cameraIndex)
 }
 extern "C" {
 
-ModelDrawNode::~ModelDrawNode() {}
 ModelDrawOwner::~ModelDrawOwner() { fn_800262D0(modelId); }
 }
-static inline ModelDrawOwner *lastModelDrawOwner(DrawListRoot<ModelDrawOwner> &root) { return static_cast<ModelDrawOwner *>(root.last_node()); }
-void fn_1_48CC() { while (!lbl_1_bss_84.empty()) delete lastModelDrawOwner(lbl_1_bss_84); }
-void fn_1_49CC(Node*);
-extern "C" void fn_1_5078(DrawListRoot<ModelDrawOwner>*,void(*)(Node*));
-void fn_1_499C() { fn_1_5078(&lbl_1_bss_84,fn_1_49CC); }
-void fn_1_49CC(Node *node) { static_cast<ModelDrawOwner*>(node)->frameCount = static_cast<ModelDrawOwner*>(node)->frameCount + 1; }
+void fn_1_48CC() { while (!lbl_1_bss_84.empty()) delete lbl_1_bss_84.back(); }
+void fn_1_49CC(ModelDrawOwner *);
+void fn_1_499C() { lbl_1_bss_84.visit(fn_1_49CC); }
+void fn_1_49CC(ModelDrawOwner *owner) { owner->frameCount = owner->frameCount + 1; }
 void fn_1_4A24(void*,void*); void fn_1_4A54(void*,void*);
 void fn_1_49DC(HU3D_MODEL *model,Mtx *matrix) { fn_8002472C(); void *hookData=model->hookData; fn_1_4A24(hookData,matrix); }
 void fn_1_4A24(void *first,void *second) { fn_1_4A54(first,second); }
@@ -366,12 +346,6 @@ void fn_1_4A54(void *first,void *second)
 }
 
 
-void fn_1_5138(Node*,Node*,void(*)(Node*));
-void fn_1_50D8(Node*,Node*,void(*)(Node*));
-void fn_1_5018(DrawListRoot<FadeWork> *list,void(*visitor)(Node*)) { fn_1_5138(list->begin(),list->end(),visitor); }
-void fn_1_5078(DrawListRoot<ModelDrawOwner> *list,void(*visitor)(Node*)) { fn_1_50D8(list->begin(),list->end(),visitor); }
-void fn_1_50D8(Node *current,Node *sentinel,void(*callback)(Node*)) { while(current!=sentinel) { callback(current); Node *next=current->link0; current=next; } }
-void fn_1_5138(Node *current,Node *sentinel,void(*callback)(Node*)) { while(current!=sentinel) { callback(current); Node *next=current->link0; current=next; } }
 extern "C" {
 
 
@@ -379,11 +353,8 @@ extern "C" {
 
 
 
-s32 lbl_1_bss_58 = secondsToFrames(2L);
-s32 lbl_1_bss_5C = (s32)secondsToFrames(3.5);
-s32 lbl_1_bss_60 = (s32)secondsToFrames(3.5);
-DrawListRoot<FadeWork> lbl_1_bss_70;
-DrawListRoot<ModelDrawOwner> lbl_1_bss_84;
+ListRoot<FadeWork> lbl_1_bss_70;
+ListRoot<ModelDrawOwner> lbl_1_bss_84;
 s8 lbl_1_bss_8C;
 
 

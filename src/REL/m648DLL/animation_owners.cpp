@@ -1,5 +1,5 @@
-#include "REL/m648DLL/time_conversion.h"
-#include "REL/m648DLL/angle_difference.h"
+#include "REL/framework/phase_duration_statics.h"
+#include "REL/framework/misc_diff_deg.h"
 #include "humath.h"
 unsigned long RandomUnsigned();
 float RandomFloat();
@@ -7,7 +7,6 @@ extern "C" {
 #include "dolphin/mtx.h"
 #include <math.h>
 #include "game/hu3d.h"
-#include "REL/m648DLL/singleton_32930.h"
 }
 #include "REL/m648DLL/motion_lists.h"
 #include "datadir_enum.h"
@@ -25,13 +24,11 @@ extern "C" {
 
 #include "include/game/gamemes.h"
 
-#include "REL/m648DLL/framework/linknode.h"
-
-#include "REL/m648DLL/framework/model.h"
+#include "REL/framework/model.h"
 
 #include "REL/framework/linknode.h"
-#include "REL/framework/minigame_singleton.h"
-#include "REL/m648DLL/list_object.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/list_object.h"
 
 extern "C" {
 #include "dolphin/types.h"
@@ -40,32 +37,14 @@ typedef Vec PositionOwner123C;
 
 }
 
-template <class CallbackOwner> struct AnimationCallbackRoot : Node {
-    bool empty() const { return link0 == this && link0 == link4; }
-    Node *last_node() { return link4; }
-    DrawNode *back() { return static_cast<DrawNode *>(last_node()); }
-    Node *first_node() { return link0; }
-    Node *end_node() { return this; }
-    DrawNode *front() { return static_cast<DrawNode *>(first_node()); }
-};
-typedef AnimationCallbackRoot<SetupAnimationOwner> AnimationSetupRoot;
-typedef AnimationCallbackRoot<PlayAnimationOwner> AnimationRoot;
-
-class AnimationSetupOwner : public RequestObject, public MinigameSingleton<AnimationSetupOwner> {
-public:
-    OwnedModel model0, model1, model2;
-    AnimationSetupOwner();
-    virtual ~AnimationSetupOwner();
-    virtual void clearRequest(int request);
-    virtual void update();
-};
+#include "REL/m648DLL/animation_setup_owner.h"
 
 class AnimationOwner : public RequestObject, public MinigameSingleton<AnimationOwner> {
 public:
     OwnedModel model;
     AnimationOwner();
     virtual ~AnimationOwner();
-    virtual void clearRequest(int request);
+    virtual void flagEnabled(int request);
     virtual void update();
 };
 
@@ -195,9 +174,9 @@ struct RequestOwner {
 };
 }
 
-void AnimationSetupOwner::clearRequest(int request)
+void AnimationSetupOwner::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0:
     case 1:
@@ -210,7 +189,7 @@ void AnimationSetupOwner::clearRequest(int request)
 
 extern "C" {
 
-extern AnimationSetupRoot animationSetupCallbacks;
+extern ListRoot<SetupAnimationOwner> animationSetupCallbacks;
 }
 
 SetupAnimationOwner::SetupAnimationOwner(const LinkedModel *sequenceIndex, s32 initialMode)
@@ -233,14 +212,12 @@ SetupAnimationOwner::SetupAnimationOwner(const LinkedModel *sequenceIndex, s32 i
     fn_80026B8C(currentModel, 2);
     fn_80026B64(currentModel, 1);
     angle = (360.0f * RandomFloat()) - 180.0f;
-    model.fn_1_33A3C(&motionPosition);
+    model.setPosition(&motionPosition);
     fn_1_1D28();
 
     finalCallback = &SetupAnimationOwner::fn_1_1F14;
     callback = finalCallback;
 }
-
-SetupAnimationNode::~SetupAnimationNode() {}
 
 void fn_1_1AFC()
 {
@@ -258,12 +235,10 @@ void *operator new(unsigned long);
 
 void fn_1_1C6C(SetupAnimationOwner *);
 
-extern "C" { void fn_1_33FC(AnimationSetupRoot *, void (*)(SetupAnimationOwner *)); }
-
 void fn_1_1BE8()
 {
-    fn_1_33FC(&animationSetupCallbacks, fn_1_1C6C);
-    DrawNode *node = animationSetupCallbacks.front();
+    animationSetupCallbacks.visit(fn_1_1C6C);
+    SetupAnimationOwner *node = animationSetupCallbacks.front();
     if (node != animationSetupCallbacks.end_node()) {
         node->unlink();
         node->insert4(&animationSetupCallbacks);
@@ -284,8 +259,8 @@ void SetupAnimationOwner::fn_1_1CAC()
     position.x = 0.0f;
     position.y = height;
     position.z = 0.0f;
-    model.fn_1_33ACC(&position);
-    model.fn_1_33A3C(&motionPosition);
+    model.setRotation(&position);
+    model.setPosition(&motionPosition);
 }
 
 extern "C" {
@@ -397,7 +372,7 @@ void SetupAnimationOwner::fn_1_1F14()
                      (f64)(destination.z - motionPosition.z))
                / M_PI));
     }
-    angle += (f32)fn_1_377C(desiredAngle, angle, scale);
+    angle += limitedDegreeDifference(desiredAngle, angle, scale);
     fn_1_2290();
 }
 
@@ -476,9 +451,9 @@ void AnimationOwner::update()
     fn_1_2BA0();
 }
 
-void AnimationOwner::clearRequest(int request)
+void AnimationOwner::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0:
     case 1:
@@ -491,7 +466,7 @@ void AnimationOwner::clearRequest(int request)
 
 extern "C" {
 
-extern AnimationRoot animationCallbacks;
+extern ListRoot<PlayAnimationOwner> animationCallbacks;
 
 }
 
@@ -515,14 +490,12 @@ PlayAnimationOwner::PlayAnimationOwner(const LinkedModel *sequenceIndex, s32 ini
     fn_80026B8C(currentModel, 2);
     fn_80026B64(currentModel, 1);
     angle = (360.0f * RandomFloat()) - 180.0f;
-    model.fn_1_33A3C(&motionPosition);
+    model.setPosition(&motionPosition);
     fn_1_2CE0();
 
     finalCallback = &PlayAnimationOwner::fn_1_2EDC;
     callback = finalCallback;
 }
-
-PlayAnimationNode::~PlayAnimationNode() {}
 
 void fn_1_2AB4()
 {
@@ -532,12 +505,10 @@ void fn_1_2AB4()
 
 void fn_1_2C24(PlayAnimationOwner *);
 
-extern "C" { void fn_1_339C(AnimationRoot *, void (*)(PlayAnimationOwner *)); }
-
 void fn_1_2BA0()
 {
-    fn_1_339C(&animationCallbacks, fn_1_2C24);
-    DrawNode *node = animationCallbacks.front();
+    animationCallbacks.visit(fn_1_2C24);
+    PlayAnimationOwner *node = animationCallbacks.front();
     if (node != animationCallbacks.end_node()) {
         node->unlink();
         node->insert4(&animationCallbacks);
@@ -558,8 +529,8 @@ void PlayAnimationOwner::fn_1_2C64()
     position.x = 0.0f;
     position.y = height;
     position.z = 0.0f;
-    model.fn_1_33ACC(&position);
-    model.fn_1_33A3C(&motionPosition);
+    model.setRotation(&position);
+    model.setPosition(&motionPosition);
 }
 
 static inline void fn_1_1D28_for_2CE0(PlayAnimationOwner *owner)
@@ -597,7 +568,7 @@ void PlayAnimationOwner::fn_1_2EDC()
                      (f64)(destination.z - motionPosition.z))
                / M_PI));
     }
-    angle += (f32)fn_1_377C(desiredAngle, angle, scale);
+    angle += limitedDegreeDifference(desiredAngle, angle, scale);
     fn_1_3268();
 }
 
@@ -630,47 +601,11 @@ void PlayAnimationOwner::fn_1_3268()
 }
 
 extern "C" {
-void fn_1_345C(Node *current, Node *sentinel, void (*callback)(PlayAnimationOwner *));
-void fn_1_34BC(Node *current, Node *sentinel, void (*callback)(SetupAnimationOwner *));
-}
 
-void fn_1_339C(AnimationRoot *list, void (*visitor)(PlayAnimationOwner *))
-{
-    fn_1_345C(list->front(), list->end_node(), visitor);
-}
-
-void fn_1_33FC(AnimationSetupRoot *list, void (*visitor)(SetupAnimationOwner *))
-{
-    fn_1_34BC(list->front(), list->end_node(), visitor);
-}
-
-void fn_1_345C(Node *current, Node *sentinel, void (*callback)(PlayAnimationOwner *))
-{
-    while (current != sentinel) {
-        callback(static_cast<PlayAnimationOwner *>(current));
-        Node *next = current->link0;
-        current = next;
-    }
-}
-
-void fn_1_34BC(Node *current, Node *sentinel, void (*callback)(SetupAnimationOwner *))
-{
-    while (current != sentinel) {
-        callback(static_cast<SetupAnimationOwner *>(current));
-        Node *next = current->link0;
-        current = next;
-    }
-}
-
-extern "C" {
-
-s32 lbl_1_bss_38 = secondsToFrames(2L);
-s32 lbl_1_bss_3C = (s32)secondsToFrames(3.5);
-s32 lbl_1_bss_40 = (s32)secondsToFrames(3.5);
-AnimationSetupRoot animationSetupCallbacks;
+ListRoot<SetupAnimationOwner> animationSetupCallbacks;
 f64 lbl_1_bss_58;
 s8 lbl_1_bss_60;
-AnimationRoot animationCallbacks;
+ListRoot<PlayAnimationOwner> animationCallbacks;
 f64 lbl_1_bss_78;
 s8 lbl_1_bss_80;
 }

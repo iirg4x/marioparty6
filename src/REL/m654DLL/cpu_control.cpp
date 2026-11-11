@@ -1,11 +1,12 @@
 #include "REL/m654DLL/framework_calls.h"
-#include "REL/m654DLL/time_conversion.h"
-#include "REL/m654DLL/unit_conversion.h"
+#include "REL/framework/p_info.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
 // The computer's walk: picks a panel by its level's weight, walks to it and steps on it.
 #include <vector>
 #include "REL/m654DLL/mode_object.h"
 #include "REL/m654DLL/pad_control.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
 class EventManager;
 
 struct PlayerActorView {
@@ -34,10 +35,6 @@ struct SampleWeights29C {
 };
 
 extern "C" {
-void __dl__FPv(void *);
-}
-int fn_1_1C5BC(s32 *playerNo);
-extern "C" {
 int fn_1_8AD4(std::vector<Vec> *sequence);
 
 unsigned char fn_1_4B68(void *object);
@@ -47,7 +44,7 @@ inline PlayerControl::~PlayerControl() {}
 
 HumanControl::~HumanControl() {}
 
-ComputerControl::ComputerControl(void *owner) : PlayerControl(static_cast<Player *>(owner)), callback(&ComputerControl::fn_1_170), weightIndex(fn_1_1C5BC((s32 *)owner)), cameraControl(1, 0.0f)
+ComputerControl::ComputerControl(void *owner) : PlayerControl(static_cast<Player *>(owner)), callback(&ComputerControl::fn_1_170), weightIndex(static_cast<PlayerInfo *>(owner)->difficulty()), cameraControl(1, 0.0f)
 {
     fn_1_C630(&cameraControl, 0.0f);
 }
@@ -151,8 +148,8 @@ void PlayerControl::enter() {}
 void HumanControl::update() {}
 
 extern "C" {
-int lbl_1_bss_0 = fn_1_B80(1);
-float lbl_1_bss_4 = framesToSeconds(framesToSeconds(980.665));
+int lbl_1_bss_0 = minutesToFrames(1L);
+float lbl_1_bss_4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }
 
 // Native event singleton slot, consumed by the framework event methods (.bss+0x8).

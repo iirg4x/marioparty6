@@ -1,10 +1,9 @@
 #include "math.h"
-#include "REL/m654DLL/time_conversion.h"
-#include "REL/m654DLL/unit_conversion.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
 #include "REL/framework/debug.h"
 #include "dolphin/types.h"
-#include "REL/m654DLL/framework/linknode.h"
-#include "REL/m654DLL/camera_setup.h"
+#include "REL/framework/linknode.h"
 #include "REL/m654DLL/camera_transition.h"
 #include "REL/m654DLL/camera_node_owner.h"
 extern "C" {
@@ -14,33 +13,13 @@ extern "C" {
 extern "C" {
 #include "game/hu3d.h"
 #include "REL/m654DLL/pad_control.h"
-
-double fn_1_11F4(double);
 }
 
 extern "C" {
-extern void __dl__FPv(void *);
-}
-
-extern "C" {
-extern const unsigned char __vt__16ManagerEventBase[];
-extern const unsigned char __vt__13CameraManager[];
-
 const CameraPosePair lbl_1_rodata_90[2] = {
     {{{0.0f, 923.52576f, 1120.26f}, {-0.17122246f, 0.0f, -0.0f, 0.9852325f}}, {{0.0f, 929.43555f, 980.26f}, {-0.43945006f, 0.0f, -0.0f, 0.8982671f}}},
     {{{0.0f, 1029.89f, 1700.26f}, {-0.24941446f, 0.0f, -0.0f, 0.96839684f}}, {{793.18365f, 997.13837f, 541.37195f}, {-0.100574255f, 0.0f, -0.0f, 0.9949296f}}}
 };
-
-extern Node lbl_1_bss_10C;
-Node *__ct__4NodeFv(Node *object);
-void insert4__4NodeFP4Node(Node *object, Node *link);
-void __ct__11CameraSetupFv(CameraSetup *camera);
-
-void fn_1_1132C(void *object, int value);
-void fn_1_111CC(void *object);
-void __msl_assertion_failed(const char *expression, const char *file,
-                            int line);
-
 }
 CameraManager::CameraManager()
     : callback(&CameraManager::fn_1_1948), startPose(lbl_1_rodata_90[0].frame), targetPose(lbl_1_rodata_90[0].parameters), elapsed(0)
@@ -53,19 +32,17 @@ CameraManager::CameraManager()
 }
 
 extern "C" {
-void __dt__13EventListenerFv(void *, short);
-void __dt__4NodeFv(void *, short);
 void fn_1_1978(CameraManager *, const CameraPose *, const CameraPose *, int);
 
-int lbl_1_bss_48 = fn_1_B80(1);
-float lbl_1_bss_4C = framesToSeconds(framesToSeconds(980.665));
+int lbl_1_bss_48 = minutesToFrames(1L);
+float lbl_1_bss_4C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }
 void operator delete(void *);
 typedef void (CameraManager::*CameraNodeCallback)();
 template <class T> inline T Square(const T &value) { return value * value; }
 CameraManager::~CameraManager() {}
 
-void CameraManager::handleEvent(int state)
+void CameraManager::flagEnabled(int state)
 {
     this->activeBit = state;
     switch (state) {
@@ -76,12 +53,12 @@ void CameraManager::handleEvent(int state)
         fn_1_1978(this, &lbl_1_rodata_90[0].parameters, &lbl_1_rodata_90[1].frame, secondsToFrames<long>(2));
         break;
     default:
-        this->eventMask &= ~(1 << state);
+        this->flags &= ~(1 << state);
         break;
     }
 }
 
-void CameraManager::advanceFrame()
+void CameraManager::update()
 {
     this->run();
     this->elapsed++;
@@ -107,9 +84,9 @@ void CameraManager::receive(const EventPacket *camera)
         startZ = targetPosition->z + FollowEyeDistance();
         startY = targetPosition->y + FollowEyeHeight();
         startX = targetPosition->x;
-        path.eye.x = startX;
-        path.eye.y = startY;
-        path.eye.z = startZ;
+        path.position.x = startX;
+        path.position.y = startY;
+        path.position.z = startZ;
         endZ = targetPosition->z;
         endY = targetPosition->y + FollowTargetHeight();
         endX = targetPosition->x;
@@ -152,10 +129,9 @@ void CameraManager::fn_1_1A38()
     if (elapsed >= duration) {
         startPose = targetPose;
         unsigned int bitIndex = activeBit;
-        eventMask &= ~(1 << bitIndex);
+        flags &= ~(1 << bitIndex);
         CameraNodeCallback callback = &CameraManager::fn_1_1948;
         this->callback = callback;
     }
 }
 
-void ManagerEventBase::advanceFrame() {}

@@ -20,7 +20,7 @@ REL/m652DLL/game_owner.cpp:
 	.data       start:0x000000D8 end:0x00000118
 	.bss        start:0x00000020 end:0x00000048
 
-REL/m652DLL/model_motion.cpp:
+REL/m652DLL/item.cpp:
 	.text       start:0x000021A4 end:0x00002F54
 	.ctors      start:0x00000008 end:0x0000000C
 	.rodata     start:0x00000138 end:0x000001B8
@@ -28,13 +28,9 @@ REL/m652DLL/model_motion.cpp:
 	.bss        start:0x00000048 end:0x00000058
 
 REL/m652DLL/root.cpp:
-	.text       start:0x00002F54 end:0x00002FAC
-	.rodata     start:0x000001B8 end:0x000001C0
-
-REL/m652DLL/timing_2FAC.cpp:
-	.text       start:0x00002FAC end:0x0000302C
+	.text       start:0x00002F54 end:0x0000302C
 	.ctors      start:0x0000000C end:0x00000010
-	.rodata     start:0x000001C0 end:0x000001D0
+	.rodata     start:0x000001B8 end:0x000001D0
 	.bss        start:0x00000058 end:0x00000068
 
 REL/m652DLL/camera_view.cpp:
@@ -45,14 +41,10 @@ REL/m652DLL/camera_view.cpp:
 	.bss        start:0x00000068 end:0x00000078
 
 REL/m652DLL/man_map.cpp:
-	.text       start:0x0000488C end:0x00005644
-	.rodata     start:0x000002A0 end:0x00000318
-	.data       start:0x00000280 end:0x000003E0
-
-REL/m652DLL/player_defaults.cpp:
-	.text       start:0x00005644 end:0x000056A8
+	.text       start:0x0000488C end:0x000056A8
 	.ctors      start:0x00000014 end:0x00000018
-	.rodata     start:0x00000318 end:0x00000320
+	.rodata     start:0x000002A0 end:0x00000320
+	.data       start:0x00000280 end:0x000003E0
 	.bss        start:0x00000078 end:0x00000088
 
 REL/m652DLL/player.cpp:
@@ -62,12 +54,12 @@ REL/m652DLL/player.cpp:
 	.data       start:0x000003E0 end:0x00000578
 	.bss        start:0x00000088 end:0x000000C0
 
-REL/m652DLL/player_table.c:
+REL/framework/player_table_1vs1.cpp:
 	.text       start:0x00008110 end:0x000081D4
 	.rodata     start:0x00000430 end:0x00000440
 	.data       start:0x00000578 end:0x000005A8
 
-REL/m652DLL/sound.cpp:
+REL/framework/sound.c:
 	.text       start:0x000081D4 end:0x0000A5B0
 	.rodata     start:0x00000440 end:0x00000468
 	.data       start:0x000005A8 end:0x00000678
@@ -78,7 +70,7 @@ REL/framework/heap.cpp:
 	.data       start:0x00000678 end:0x00000698
 	.bss        start:0x000000C0 end:0x000000C8
 
-REL/m652DLL/global_object.cpp:
+REL/m652DLL/global_destructor_chain.cpp:
 	.text       start:0x0000A730 end:0x0000A7B8
 	.dtors      start:0x00000000 end:0x00000004
 	.bss        start:0x000000C8 end:0x000000D0
@@ -97,11 +89,8 @@ REL/m652DLL/camera_arc_motion.cpp:
 	.rodata     start:0x000004E8 end:0x00000540
 
 REL/framework/camera.cpp:
-	.text       start:0x0000B0BC end:0x0000B890
+	.text       start:0x0000B0BC end:0x0000B8C8
 	.rodata     start:0x00000540 end:0x000005B0
-
-REL/m652DLL/shadow_view.cpp:
-	.text       start:0x0000B890 end:0x0000B8C8
 
 REL/framework/camera_ut0.cpp:
 	.text       start:0x0000B8C8 end:0x0000D46C
@@ -112,7 +101,7 @@ REL/framework/camera_ut1.cpp:
 	.text       start:0x0000D46C end:0x0000D7F0
 	.rodata     start:0x00000610 end:0x00000658
 
-REL/m652DLL/registered_value.cpp:
+REL/framework/category_sphere.cpp:
 	.text       start:0x0000D7F0 end:0x0000DD2C
 	.rodata     start:0x00000658 end:0x00000660
 	.data       start:0x00000718 end:0x00000750
@@ -143,24 +132,18 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000798 end:0x000007D8
 	.data       start:0x00001570 end:0x000015F8
 
-REL/m652DLL/heap_split.cpp:
+REL/framework/memory_manager.cpp:
 	.text       start:0x0001719C end:0x00017280
 
-REL/m652DLL/heap.cpp:
+REL/framework/free.cpp:
 	.text       start:0x00017280 end:0x00017544
 	.data       start:0x000015F8 end:0x00001618
 
 REL/framework/linknode.cpp:
-	.text       start:0x00017544 end:0x000176C0
+	.text       start:0x00017544 end:0x00017F20
 	.rodata     start:0x000007D8 end:0x00000818
 
-REL/m652DLL/linknode_chain_rebuild.cpp:
-	.text       start:0x000176C0 end:0x00017778
-
-REL/m652DLL/list_sort.cpp:
-	.text       start:0x00017778 end:0x00017F20
-
-REL/m652DLL/node.cpp:
+REL/framework/list_object.cpp:
 	.text       start:0x00017F20 end:0x0001823C
 	.ctors      start:0x0000001C end:0x00000020
 	.bss        start:0x000000E0 end:0x000000F8
@@ -172,7 +155,7 @@ REL/framework/minigame_core.cpp:
 	.data       start:0x00001618 end:0x00001650
 	.bss        start:0x000000F8 end:0x00000108
 
-REL/m652DLL/model.cpp:
+REL/framework/model.cpp:
 	.text       start:0x00018DB8 end:0x0001A248
 	.rodata     start:0x00000870 end:0x00000878
 	.data       start:0x00001650 end:0x00001670
@@ -182,7 +165,7 @@ REL/framework/mt19937.cpp:
 	.text       start:0x0001A248 end:0x0001B248
 	.rodata     start:0x00000878 end:0x000008E8
 
-REL/m652DLL/p_info.cpp:
+REL/framework/p_info.cpp:
 	.text       start:0x0001B248 end:0x0001C6B8
 	.rodata     start:0x000008E8 end:0x00000900
 	.data       start:0x00001670 end:0x000016F8

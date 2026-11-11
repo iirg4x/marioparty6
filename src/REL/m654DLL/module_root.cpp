@@ -1,3 +1,4 @@
+#include "REL/framework/phase_durations.h"
 #include "REL/m654DLL/scene_owner.h"
 
 extern "C" void ObjectSetup() {

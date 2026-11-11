@@ -1105,22 +1105,58 @@ config.libs = [
             Object(Matching, "REL/framework/game_object.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/game_object_man.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/linknode.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/list_object.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/misc_diff_deg.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/misc_rotarc.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/particle.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/sphere.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/startup.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/camera_ut1.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/category_sphere.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/event_hm.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/debug.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/gxdl.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/minigame_core.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/model.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/model_motion.cpp", extra_cflags=["-pooldata off"]),
+            Object(
+                Matching,
+                "REL/framework/sound.c",
+                # the game's include folder first: the game's math.h, whose sqrtf statics this file shares with player_table_1vs1.cpp
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include") + 1:],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
+            Object(
+                Matching,
+                "REL/framework/player_table_1vs1.cpp",
+                # the game's include folder first: its math.h gives this file's sqrtf statics their global names
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include") + 1:],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
             Object(Matching, "REL/framework/chara_motion.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/random.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/thread.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/mt19937.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/p_chara.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/p_info.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/plane.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/heap.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/free.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/memory_manager.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/chara.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/subthread.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/camera.cpp", extra_cflags=["-pooldata off"]),
@@ -4149,43 +4185,7 @@ config.libs = [
         objects={
             Object(
                 Matching,
-                "REL/m622DLL/camera.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m622DLL/free.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m622DLL/global_destructor_chain.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m622DLL/linknode.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
@@ -4324,54 +4324,6 @@ config.libs = [
                 ],
                 extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
-            Object(
-                Matching,
-                "REL/m622DLL/sound.c",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off"],
-            ),
-            Object(
-                Matching,
-                "REL/m622DLL/memory_manager.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m622DLL/callback_list.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m622DLL/model.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
         },
     ),
     Rel(
@@ -4403,30 +4355,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m648DLL/callback_list_startup.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/callback_walk.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m648DLL/camera_follow.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -4436,42 +4364,6 @@ config.libs = [
                     *cflags_rel[cflags_rel.index("-i include"):],
                 ],
                 extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/camera_startup.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/camera_view.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/consumer_cohort.c",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off"],
             ),
             Object(
                 Matching,
@@ -4499,31 +4391,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m648DLL/heap.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m648DLL/heap_settings.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/heap_split.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -4547,18 +4415,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m648DLL/kuribo_list_startup.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m648DLL/light_shadow.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -4571,43 +4427,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m648DLL/list_sort.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/model.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m648DLL/multi_model_owner.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/node_flags.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -4643,34 +4463,10 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m648DLL/player_list_startup.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m648DLL/ptmf.c",
                 source="Runtime.PPCEABI.H/ptmf.c",
                 shift_jis=False,
                 mw_version=config.linker_version,
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/registered_value.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
             Object(
                 Matching,
@@ -4695,30 +4491,6 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m648DLL/scene_create.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/sound.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m648DLL/sound_pitch.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -4903,30 +4675,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m603DLL/callback_dispatch.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m603DLL/callback_list.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m603DLL/draw_dispatch.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -4951,31 +4699,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m603DLL/free.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m603DLL/global_destructors.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m603DLL/heap_alloc.cpp",
+                "REL/m603DLL/global_destructor_chain.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -4989,18 +4713,6 @@ config.libs = [
                 Matching,
                 "REL/m603DLL/heap_config.c",
                 extra_cflags=["-pooldata", "off"],
-            ),
-            Object(
-                Matching,
-                "REL/m603DLL/list_merge.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
             Object(
                 Matching,
@@ -5028,31 +4740,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m603DLL/model.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m603DLL/model_motion.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m603DLL/node_sort.cpp",
+                "REL/m603DLL/motion_model.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5083,18 +4771,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m603DLL/registered_value.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m603DLL/runtime.c",
                 source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
@@ -5104,18 +4780,6 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m603DLL/score_sprite.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m603DLL/shadow_camera.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5192,18 +4856,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m681DLL/camera.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m681DLL/camera_sequence.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -5217,30 +4869,6 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m681DLL/character_model.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m681DLL/character_motion_transition.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m681DLL/free.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5277,18 +4905,6 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m681DLL/game_start.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m681DLL/model_motion.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5348,18 +4964,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m681DLL/p_info.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m681DLL/player.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -5391,71 +4995,11 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m681DLL/registered_value.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m681DLL/runtime.c",
                 source="Runtime.PPCEABI.H/runtime.c",
                 mw_version=config.linker_version,
                 shift_jis=False,
                 boot_runtime_source_selected=True,
-            ),
-            Object(
-                Matching,
-                "REL/m681DLL/sound.c",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off"],
-            ),
-            Object(
-                Matching,
-                "REL/m681DLL/sound_pitch.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m681DLL/text_16FD4.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m681DLL/model.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
             Object(
                 Matching,
@@ -5524,55 +5068,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m652DLL/global_object.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/heap.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/heap_split.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/linknode_chain_rebuild.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/list_sort.cpp",
+                "REL/m652DLL/global_destructor_chain.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5596,67 +5092,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m652DLL/model.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/model_flags.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/model_motion.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/node.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/p_info.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/player_defaults.cpp",
+                "REL/m652DLL/item.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5680,34 +5116,10 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m652DLL/player_table.c",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
-                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off"],
-            ),
-            Object(
-                Matching,
                 "REL/m652DLL/ptmf.c",
                 source="Runtime.PPCEABI.H/ptmf.c",
                 shift_jis=False,
                 mw_version=config.linker_version,
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/registered_value.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
             Object(
                 Matching,
@@ -5729,64 +5141,11 @@ config.libs = [
                 shift_jis=False,
                 boot_runtime_source_selected=True,
             ),
-            Object(
-                Matching,
-                "REL/m652DLL/shadow_view.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/sound.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m652DLL/timing_2FAC.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
         },
     ),
     Rel(
         "m672DLL",
         objects={
-            Object(
-                Matching,
-                "REL/m672DLL/audio_projection.c",
-                extra_cflags=["-pooldata", "off"],
-            ),
-            Object(
-                Matching,
-                "REL/m672DLL/camera.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
             Object(
                 Matching,
                 "REL/m672DLL/collision_object.cpp",
@@ -5825,43 +5184,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m672DLL/free.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m672DLL/global_object.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m672DLL/heap.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m672DLL/linknode.cpp",
+                "REL/m672DLL/global_destructor_chain.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5877,30 +5200,6 @@ config.libs = [
                 source="Runtime.PPCEABI.H/ptmf.c",
                 shift_jis=False,
                 mw_version=config.linker_version,
-            ),
-            Object(
-                Matching,
-                "REL/m672DLL/model.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m672DLL/model_motion.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
             Object(
                 Matching,
@@ -6020,18 +5319,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m672DLL/sound_pitch.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m672DLL/sprite_draw.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -6085,30 +5372,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m654DLL/camera_owner.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/camera_view.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m654DLL/cpu_control.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -6121,43 +5384,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m654DLL/free.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/global_object.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/heap_alloc.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/linknode.cpp",
+                "REL/m654DLL/global_destructor_chain.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -6170,18 +5397,6 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m654DLL/man_map.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/model.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -6229,34 +5444,10 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m654DLL/p_info.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m654DLL/ptmf.c",
                 source="Runtime.PPCEABI.H/ptmf.c",
                 shift_jis=False,
                 mw_version=config.linker_version,
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/registered_value.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
             Object(
                 Matching,
@@ -6292,18 +5483,6 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m654DLL/sound_spatial.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
                 "REL/m654DLL/sprite_draw.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
@@ -6317,32 +5496,6 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m654DLL/switch_panel.cpp",
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include"):],
-                ],
-                extra_cflags=["-pooldata", "off", "-char", "signed"],
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/player_table_1vs1.cpp",
-                # the game's include folder first: its math.h gives this file's sqrtf statics their global names
-                cflags=[
-                    *cflags_rel[:cflags_rel.index("-i include")],
-                    "-i include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
-                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
-                    *cflags_rel[cflags_rel.index("-i include") + 1:],
-                ],
-                extra_cflags=["-pooldata", "off"],
-            ),
-            Object(
-                Matching,
-                "REL/m654DLL/time_conversion.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",

@@ -1,6 +1,9 @@
 // Game objects that draw through an owned Hu3D model hook.
 static const char rcsid[] = "$Id: game_object2.cpp,v 1.21 2004/09/09 12:24:38 saf Exp $";
 
+extern "C" {
+#include <math.h>
+}
 #include "REL/framework/game_object2.h"
 
 // During derived-object construction, registers its category and creates its drawing hook model.

@@ -1,5 +1,5 @@
 #include "REL/framework/debug.h"
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 extern "C" {
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
@@ -39,6 +39,7 @@ VectorStateComposite::VectorStateComposite() : GameObject(3), EventListener(), d
 #include "REL/m681DLL/global_state.h"
 extern "C" {
 #include "REL/m681DLL.h"
+#include "REL/framework/world_units.h"
 }
 
 VectorStateComposite::~VectorStateComposite()
@@ -68,7 +69,6 @@ extern "C" {
 
 }
 
-
 static inline double minimum7C34(double first, double second)
 {
     return first < second ? first : second;
@@ -94,7 +94,6 @@ void VectorStateComposite::fn_1_7C34()
     }
 }
 
-
 void fn_1_7DBC(void) {}
 
 void VectorStateComposite::receive(const EventPacket *settings)
@@ -115,21 +114,14 @@ extern s32 lbl_1_bss_B0;
 extern f32 lbl_1_bss_B4;
 }
 
-
 extern "C" {
-
 
 }
 
 extern "C" {
-}
-
-static inline f32 accelerationPerFrame(f64 accelerationPerSecondSquared)
-{
-    return (f32)((accelerationPerSecondSquared * 100.0) / (60.0 * 60.0));
 }
 
 extern "C" {
 s32 lbl_1_bss_B0 = minutesToFrames(60L);
-f32 lbl_1_bss_B4 = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_B4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

@@ -10,9 +10,7 @@ extern "C" {
 #include "dolphin/os.h"
 }
 
-extern "C" {
 #include "REL/m648DLL/positioned_model_owner.h"
-}
 
 extern "C" {
 #include "dolphin/types.h"
@@ -54,52 +52,11 @@ extern "C" {
 #include <math.h>
 }
 
-extern "C" {
-extern void *__ct__4NodeFv(void *);
-}
+#include "REL/framework/list_object.h"
 
 extern "C" {
-extern u8 lbl_1_data_5C[];
-}
-
-#include "REL/m648DLL/list_object.h"
-
-struct NodeOwner : Node { ~NodeOwner() {} };
-
-struct ModelNode : NodeOwner {
-    short modelId;
-    ~ModelNode() { fn_800262D0(modelId); }
-};
-
-struct HookedModelCleanup : Node { s16 modelId; };
-
-struct ParticleListRoot : Node {
-    ~ParticleListRoot() {}
-    Node *first_node() { return link0; }
-    HookedModelCleanup *begin() { return static_cast<HookedModelCleanup *>(first_node()); }
-    Node *end() { return this; }
-    bool empty() const { return link0==this && link0==link4; }
-    Node *last_node() { return link4; }
-    ModelNode *back() { return static_cast<ModelNode *>(last_node()); }
-    void fn_1_A630(void (*visitor)(HookedModelCleanup *));
-};
-
-struct AlternateParticleListRoot : Node {
-    ~AlternateParticleListRoot() {}
-    Node *first_node() { return link0; }
-    HookedModelCleanup *begin() { return static_cast<HookedModelCleanup *>(first_node()); }
-    Node *end() { return this; }
-    bool empty() const { return link0==this && link0==link4; }
-    Node *last_node() { return link4; }
-    ModelNode *back() { return static_cast<ModelNode *>(last_node()); }
-    void fn_1_A690(void (*visitor)(HookedModelCleanup *));
-};
-
-typedef ParticleListRoot ModelRoot;
-
-extern "C" {
-extern ModelRoot lbl_1_bss_5AC;
-extern AlternateParticleListRoot lbl_1_bss_5C0;
+extern ListRoot<WhiteParticles> lbl_1_bss_5AC;
+extern ListRoot<ColorParticles> lbl_1_bss_5C0;
 }
 
 #include "REL/m648DLL/managers.h"
@@ -122,113 +79,25 @@ void fn_1_9BA4(void);
 
 void fn_1_A12C(void);
 
-extern "C" {
-void *__dt__4NodeFv(void *object, s16 mode);
-}
-
-extern "C" {
-void __dl__FPv(void *object);
-}
-
 void fn_1_970C();
 void fn_1_9C74();
 void fn_1_A218();
 
 ANIMDATA *fn_1_93AC(u32 entryIndex);
 
-struct ParticleModelEntry : Node {
-    HU3D_MODELID modelId;
-    s32 state;
-};
-
 void fn_1_97C0(HU3D_MODEL *, HU3D_PARTICLE *, Mtx);
 
 void fn_1_9D28(HU3D_MODEL *, HU3D_PARTICLE *, Mtx);
 
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-extern const GXColor lbl_1_rodata_2B8[8];
-}
-
-#include "REL/m648DLL/framework/linknode.h"
-
-struct ParticleEntryNode : Node { ~ParticleEntryNode(); };
-
-struct ParticleListNode {
-    ParticleListNode *previous;
-    ParticleListNode *next;
-};
-
-struct ParticleModelOwner : ParticleListNode {
-    short model_id;
-    int state;
-    ~ParticleModelOwner();
-};
-
-extern "C" {
-}
-
-void operator delete(void *);
-
 void fn_1_963C(void);
 
-extern "C" {
-}
-
-void fn_1_973C(HookedModelCleanup *);
-
-extern "C" {
-}
+void fn_1_973C(WhiteParticles *);
 
 extern "C" {
 #include "dolphin.h"
 }
 
-extern "C" {
-}
-
-struct AlternateParticleEntryNode : Node { ~AlternateParticleEntryNode(); };
-
-struct ParticleModelOwnerAlt : ParticleListNode {
-    short model_id;
-    int state;
-    ~ParticleModelOwnerAlt();
-};
-
-extern "C" {
-}
-
-void operator delete(void *);
-
-void fn_1_9BA4(void);
-
-extern "C" {
-}
-
-void fn_1_9CA4(HookedModelCleanup *);
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
+void fn_1_9CA4(ColorParticles *);
 
 #include "game/main.h"
 
@@ -264,144 +133,11 @@ extern "C" {
 
 #include "datadir_enum.h"
 
-class EffectNode;
-
-extern "C" void Replace__5ModelFs(s16 *, s16);
-
-class LinkFields {
-public:
-    LinkFields *next;
-    LinkFields *previous;
-};
-
-class EffectNode {
-public:
-    LinkFields links;
-    s16 hookId;
-    s32 sourceId;
-    f32 interval;
-    s32 mode;
-    f32 progress;
-    f32 updateRate;
-    f32 threshold;
-    s32 state;
-    ~EffectNode();
-};
-
-extern "C" {
-}
-
 void fn_1_A0E8(HU3D_MODEL *model, Mtx *data);
 
-#include "REL/m648DLL/framework/model.h"
-
-void operator delete(void *);
-
-typedef Model ReleasedModel;
-
-struct OwnedReleasedModel : ReleasedModel { ~OwnedReleasedModel() {} };
-
-struct DrawNode : NodeOwner,OwnedReleasedModel { ~DrawNode() {} };
-
-struct PositionedModelListRoot : Node {
-    ~PositionedModelListRoot() {}
-    Node *first_node() { return link0; }
-    PositionedModelOwner *front() { return static_cast<PositionedModelOwner *>(first_node()); }
-    bool empty() const { return link0==this && link0==link4; }
-    Node *last_node() { return link4; }
-    DrawNode *back() { return static_cast<DrawNode *>(last_node()); }
-};
-
-extern PositionedModelListRoot lbl_1_bss_5D4;
-
-void fn_1_A12C(void);
-
-/* Recipient symbol bindings for a retained source (copy of m648DLL fn_1_728). */
-struct PositionedModelListRoot;
-
-class PositionedModelOwner;
-
-extern "C" {
-}
+extern ListRoot<PositionedModelOwner> lbl_1_bss_5D4;
 
 void fn_1_A248(PositionedModelOwner *);
-
-void fn_1_A6F0(PositionedModelListRoot *, void (*)(PositionedModelOwner *));
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-extern "C" {
-}
-
-void fn_1_A898(Node *, Node *, void (*)(HookedModelCleanup *));
-
-void fn_1_A838(Node *, Node *, void (*)(HookedModelCleanup *));
-
-#include "REL/m648DLL/linknode.h"
-
-void fn_1_A6F0(PositionedModelListRoot *list, void (*callback)(PositionedModelOwner *))
-;
 
 ParticleAnimationOwner::ParticleAnimationOwner() {
     s32 animationIndex;
@@ -446,39 +182,29 @@ ANIMDATA *fn_1_93AC(u32 entryIndex)
     return ParticleAnimationOwner::getChecked().animations[entryIndex];
 }
 
-void ParticleAnimationOwner::clearRequest(int request) { state &= ~(1UL << request); }
+void ParticleAnimationOwner::flagEnabled(int request) { flags &= ~(1UL << request); }
 
 void ParticleAnimationOwner::update() { fn_1_970C(); fn_1_9C74(); fn_1_A218(); }
 
-ParticleModelEntry *fn_1_946C(ParticleModelEntry *object, HuVecF *position)
+WhiteParticles::WhiteParticles(Vec *position)
 {
     ANIMDATA *particleAnimation;
-    ParticleModelEntry *node;
 
-    node = object;
-    __ct__4NodeFv(node);
-    object->insert4(&lbl_1_bss_5AC);
+    insert4(&lbl_1_bss_5AC);
     particleAnimation = fn_1_93AC(0);
-    object->modelId = fn_8003216C(particleAnimation, 1);
-    fn_80026790(object->modelId, position);
-    fn_80026B8C(object->modelId, 5);
-    fn_800324E0(object->modelId, 100.0f);
-    fn_800326D0(object->modelId, fn_1_97C0);
-    fn_80032620(object->modelId, 0.0f);
-    fn_8003269C(object->modelId, 0);
-    object->state = 0;
-    return object;
+    modelId = fn_8003216C(particleAnimation, 1);
+    fn_80026790(modelId, position);
+    fn_80026B8C(modelId, 5);
+    fn_800324E0(modelId, 100.0f);
+    fn_800326D0(modelId, fn_1_97C0);
+    fn_80032620(modelId, 0.0f);
+    fn_8003269C(modelId, 0);
+    state = 0;
 }
 
-ParticleEntryNode::~ParticleEntryNode() {}
-
-extern "C" void fn_800262D0(short model_id);
-
-ParticleModelOwner::~ParticleModelOwner() {
-    fn_800262D0(model_id);
-    if (this != 0) {
-        __dt__4NodeFv(this, 0);
-    }
+WhiteParticles::~WhiteParticles()
+{
+    fn_800262D0(modelId);
 }
 
 void fn_1_963C() {
@@ -487,19 +213,15 @@ void fn_1_963C() {
 
 void fn_1_970C()
 {
-    lbl_1_bss_5AC.fn_1_A630(fn_1_973C);
+    lbl_1_bss_5AC.visit(fn_1_973C);
 }
 
-void fn_1_973C(struct HookedModelCleanup *owner)
+void fn_1_973C(WhiteParticles *owner)
 {
     HU3D_PARTICLE *particle = static_cast<HU3D_PARTICLE *>(lbl_802C01C8[owner->modelId].hookData);
 
-    if (particle->dataCnt < 0 && owner) {
-        fn_800262D0(owner->modelId);
-        if (owner) {
-            __dt__4NodeFv(owner, 0);
-        }
-        __dl__FPv(owner);
+    if (particle->dataCnt < 0) {
+        delete owner;
     }
 }
 
@@ -568,33 +290,25 @@ void fn_1_97C0(HU3D_MODEL *model, HU3D_PARTICLE *owner, Mtx matrix)
     DCStoreRangeNoSync(owner->data, owner->maxCnt * 0x48);
 }
 
-ParticleModelEntry *fn_1_99D4(ParticleModelEntry *object, HuVecF *position)
+ColorParticles::ColorParticles(Vec *position)
 {
     ANIMDATA *particleAnimation;
-    ParticleModelEntry *node;
 
-    node = object;
-    __ct__4NodeFv(node);
-    object->insert4(&lbl_1_bss_5C0);
+    insert4(&lbl_1_bss_5C0);
     particleAnimation = fn_1_93AC(1);
-    object->modelId = fn_8003216C(particleAnimation, 8);
-    fn_80026790(object->modelId, position);
-    fn_80026B8C(object->modelId, 5);
-    fn_800324E0(object->modelId, 40.0f);
-    fn_800326D0(object->modelId, fn_1_9D28);
-    fn_80032620(object->modelId, 0.0f);
-    fn_8003269C(object->modelId, 0);
-    object->state = 0;
-    return object;
+    modelId = fn_8003216C(particleAnimation, 8);
+    fn_80026790(modelId, position);
+    fn_80026B8C(modelId, 5);
+    fn_800324E0(modelId, 40.0f);
+    fn_800326D0(modelId, fn_1_9D28);
+    fn_80032620(modelId, 0.0f);
+    fn_8003269C(modelId, 0);
+    state = 0;
 }
 
-AlternateParticleEntryNode::~AlternateParticleEntryNode() {}
-
-ParticleModelOwnerAlt::~ParticleModelOwnerAlt() {
-    fn_800262D0(model_id);
-    if (this != 0) {
-        __dt__4NodeFv(this, 0);
-    }
+ColorParticles::~ColorParticles()
+{
+    fn_800262D0(modelId);
 }
 
 void fn_1_9BA4() {
@@ -603,19 +317,15 @@ void fn_1_9BA4() {
 
 void fn_1_9C74()
 {
-    lbl_1_bss_5C0.fn_1_A690(fn_1_9CA4);
+    lbl_1_bss_5C0.visit(fn_1_9CA4);
 }
 
-void fn_1_9CA4(struct HookedModelCleanup *owner)
+void fn_1_9CA4(ColorParticles *owner)
 {
     HU3D_PARTICLE *particle = static_cast<HU3D_PARTICLE *>(lbl_802C01C8[owner->modelId].hookData);
 
-    if (particle->dataCnt < 0 && owner) {
-        fn_800262D0(owner->modelId);
-        if (owner) {
-            __dt__4NodeFv(owner, 0);
-        }
-        __dl__FPv(owner);
+    if (particle->dataCnt < 0) {
+        delete owner;
     }
 }
 
@@ -680,21 +390,12 @@ PositionedModelOwner::PositionedModelOwner(const Vec *value)
     : model(fn_1_A0E8), position(*value)
 {
     insert4(&lbl_1_bss_5D4);
-    model.fn_1_33E80(this);
-    model.fn_1_33CB0(5);
+    model.setHookData(this);
+    model.setLayer(5);
     updatesRemaining = 0xF;
 }
 
-EffectNode::~EffectNode() {
-    if (&hookId != 0) {
-        if (&hookId != 0) {
-            Replace__5ModelFs(&hookId, -1);
-        }
-    }
-    if (this != 0) {
-        __dt__4NodeFv(this, 0);
-    }
-}
+PositionedModelOwner::~PositionedModelOwner() {}
 
 void fn_1_A0E8(HU3D_MODEL *model, Mtx *data) {
     PositionedModelOwner *hookData = static_cast<PositionedModelOwner *>(model->hookData);
@@ -707,22 +408,15 @@ void fn_1_A12C() {
 
 void fn_1_A218()
 {
-    fn_1_A6F0(&lbl_1_bss_5D4,
-                           fn_1_A248);
+    lbl_1_bss_5D4.visitMoved(fn_1_A248);
 }
 
 void fn_1_A248(PositionedModelOwner *object) { object->fn_1_A270(); }
 
 void PositionedModelOwner::fn_1_A270() {
     updatesRemaining = updatesRemaining - 1;
-    if ((updatesRemaining < 0) && this) {
-        if (&model.modelId && &model.modelId) {
-            Replace__5ModelFs(&model.modelId, -1);
-        }
-        if (this) {
-            __dt__4NodeFv(this, 0);
-        }
-        __dl__FPv(this);
+    if (updatesRemaining < 0) {
+        delete this;
     }
 }
 
@@ -769,67 +463,8 @@ void PositionedModelOwner::fn_1_A2F8(Mtx viewMatrix)
     }
 }
 
-void ParticleListRoot::fn_1_A630(void (*visitor)(HookedModelCleanup *)) {
-    fn_1_A898(begin(), end(), visitor);
-}
-
-void AlternateParticleListRoot::fn_1_A690(void (*visitor)(HookedModelCleanup *)) {
-    fn_1_A838(begin(), end(), visitor);
-}
-
-void fn_1_A6F0(PositionedModelListRoot *list, void (*callback)(PositionedModelOwner *))
-{
-    unsigned char isEmpty = 0;
-    if (list->link0 == list && list->link0 == list->link4)
-        isEmpty = 1;
-
-    if (!isEmpty) {
-        unsigned char isDone;
-        PositionedModelListRoot pending;
-        list->moveAllTo(&pending);
-
-        goto checkPending;
-    processPending:
-        {
-            PositionedModelOwner *current = pending.front();
-            current->unlink();
-            current->insert4(list);
-            callback(current);
-        }
-    checkPending:
-        isDone = 0;
-        if (pending.link0 == &pending && pending.link0 == pending.link4)
-            isDone = 1;
-        if (!isDone)
-            goto processPending;
-    }
-}
-
-// The three sentinels and their compiler-managed destructor registrations.
 extern "C" {
-ModelRoot lbl_1_bss_5AC;
-AlternateParticleListRoot lbl_1_bss_5C0;
-PositionedModelListRoot lbl_1_bss_5D4;
+ListRoot<WhiteParticles> lbl_1_bss_5AC;
+ListRoot<ColorParticles> lbl_1_bss_5C0;
 }
-
-void fn_1_A838(Node *current,
-                                        Node *sentinel,
-                                        void (*callback)(HookedModelCleanup *))
-{
-    while (current != sentinel) {
-        callback(static_cast<HookedModelCleanup *>(current));
-        Node *next = current->link0;
-        current = next;
-    }
-}
-
-void fn_1_A898(Node *current,
-                                        Node *sentinel,
-                                        void (*callback)(HookedModelCleanup *))
-{
-    while (current != sentinel) {
-        callback(static_cast<HookedModelCleanup *>(current));
-        Node *next = current->link0;
-        current = next;
-    }
-}
+ListRoot<PositionedModelOwner> lbl_1_bss_5D4;

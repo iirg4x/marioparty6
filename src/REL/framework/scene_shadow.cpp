@@ -225,9 +225,9 @@ void SceneShadow::update()
                     continue;
                 }
                 CameraFrame frame;
-                frame.eye.x = 0.0f;
-                frame.eye.y = 0.0f;
-                frame.eye.z = 0.0f;
+                frame.position.x = 0.0f;
+                frame.position.y = 0.0f;
+                frame.position.z = 0.0f;
                 frame.target.x = direction.x;
                 frame.target.y = direction.y;
                 frame.target.z = direction.z;
@@ -235,9 +235,9 @@ void SceneShadow::update()
                 float farPlane = fitCameraToSpheres(&frame, &perspective, &gathered);
                 HU3D_SHADOW &shadow = Hu3DShadowBuf[camera];
                 shadow.far = farPlane;
-                shadow.camPos.x = frame.eye.x;
-                shadow.camPos.y = frame.eye.y;
-                shadow.camPos.z = frame.eye.z;
+                shadow.camPos.x = frame.position.x;
+                shadow.camPos.y = frame.position.y;
+                shadow.camPos.z = frame.position.z;
                 shadow.camTarget.x = frame.target.x;
                 shadow.camTarget.y = frame.target.y;
                 shadow.camTarget.z = frame.target.z;

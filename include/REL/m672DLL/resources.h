@@ -4,14 +4,16 @@
 
 #include "REL/framework/event_packet.h"
 #include <math.h>
-#include "REL/m672DLL/model_bf64.h"
+#include "REL/framework/model.h"
+extern "C" {
+#include "game/hu3d.h"
+}
 
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
 class Resources;
-typedef MinigameSingleton<Resources> Singleton3488;
 
 /* The animations and models the whole minigame shares. */
-class Resources : public Singleton3488, public EventListener {
+class Resources : public MinigameSingleton<Resources>, public EventListener {
 public:
     short lightId;
     operator short() { return lightId; }
