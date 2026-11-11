@@ -27,88 +27,11 @@ extern "C" {
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
-
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS,
-                  GXTexWrapMode wrapT, GXTexFilter filter);
-void fn_1_9F08(void);
-void fn_1_DDF8(void);
-void fn_1_10C08(void);
-void fn_1_1122C(s32 playerIndex);
-void fn_1_11D38(void);
-void fn_1_11F34(void);
-void fn_1_12144(void);
-void fn_1_12340(s32 messageIndex);
-void fn_1_127CC(s32 quizMode);
-void fn_1_15D80(s32 select, s32 padNo);
-void fn_1_15FB0(void);
-void fn_1_16574(void);
-void fn_1_1850C(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-void fn_1_18964(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-void fn_1_18DD0(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-void fn_1_19118(s32 messageIndex);
-void fn_1_19288(void);
-void fn_1_19B30(s32 motionNo, f32 startTime, u32 attr);
 void fn_1_8200(void);
 void fn_1_8280(s32 modelIndex);
 void fn_1_829C(s16 layerNo);
 void fn_1_1BAC(s32 messageSet);
 void fn_1_3258(void);
-void fn_1_9868(void);
-void fn_1_D4F4(void);
-void fn_1_E7EC(void);
-void fn_1_E8A8(void);
-void fn_1_E964(s32 action);
-void fn_1_EC84(void);
-void fn_1_ECE0(void);
-void fn_1_ED38(void);
-void fn_1_ED90(void);
-void fn_1_F09C(void);
-void fn_1_F334(void);
-void fn_1_F9F4(s32 flag, s32 mode);
-void fn_1_FF84(void);
-void fn_1_100DC(void);
-s32 fn_1_102B0(s32 player);
-void fn_1_8F58(void);
-void fn_1_10E34(void);
-void fn_1_11030(void);
-void fn_1_11940(void);
-void fn_1_16E74(void);
-void fn_1_16F6C(void);
-void fn_1_177F0(u32 message);
-void fn_1_17A30(s32 choice);
-void fn_1_17CA8(u32 choice);
-void fn_1_17F24(void);
-void fn_1_C1E4(void);
-void fn_1_C558(void);
-void fn_1_E1E4(void);
-void fn_1_E4E8(void);
-void fn_1_FB04(void);
-
-typedef struct MicquizModeWork_s {
-    s32 playerActive[4]; /* Nonzero for each participating player. */
-    u8 playerCount; /* Number of participating players. */
-    u8 questionCount; /* Current question count shown by the pause display. */
-    u8 currentPlayer; /* Player whose turn selects the question; zero through three. */
-    s8 answeringPlayer; /* Player stored with the round result; minus one before a response. */
-    s8 responseRecord[4]; /* Response outcomes in the first pair, answering player numbers in the
-                           * last pair. */
-    s32 roundResult; /* Result returned by the question response process. */
-    s16 roundPoints; /* Point amount returned by the question response process. */
-    u8 questionLevel; /* Selected question level. */
-    u8 savedQuestionLevel; /* Saved question level restored after a rejected selection. */
-    u8 questionColumn; /* Selected question column. */
-    u8 savedQuestionColumn; /* Saved question column restored after a rejected selection. */
-    u8 questionFlags[5][5]; /* Flag bytes for the five-by-five question grid. */
-    s16 playerScore[4]; /* Current score for each player. */
-    u8 playerRank[4]; /* One-based placing for each player; equal values indicate ties. */
-    u8 playerCharacter[4]; /* Character number for each player. */
-    u16 questionEvent; /* Question event used for timing and presentation. */
-    s32 presenterLayout; /* Presenter dialogue layout; zero uses the paired windows. */
-    s32 presentationBusy; /* Nonzero until the requested presentation transition finishes. */
-    s32 compactPauseDisplay; /* Nonzero uses the compact pause HUD and returns one overlay level. */
-    s32 pauseAllowed; /* Nonzero allows the Start-button pause menu. */
-    s32 pauseDisplayActive; /* Nonzero while the pause display draw pass is active. */
-} MicquizModeWork;
 
 typedef struct MicquizControlWork_s {
     s16 sideModelIds[2];

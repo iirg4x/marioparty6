@@ -6,7 +6,7 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
-REL/micquizmyokodll/main.cpp:
+REL/micquizmyokodll/main.c:
 	.text       start:0x00000000 end:0x0001A138
 	.rodata     start:0x00000000 end:0x00000450
 	.data       start:0x00000000 end:0x0000067C

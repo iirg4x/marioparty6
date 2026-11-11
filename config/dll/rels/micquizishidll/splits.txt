@@ -5,3 +5,79 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/micquizishidll/main.c:
+	.text       start:0x00000000 end:0x00014EE0
+	.rodata     start:0x00000000 end:0x000002C8
+	.data       start:0x00000000 end:0x000005F0
+	.bss        start:0x00000000 end:0x000003D8
+
+REL/micquizishidll/count.c:
+	.text       start:0x00014EE0 end:0x0001706C
+	.rodata     start:0x000002C8 end:0x00000370
+	.data       start:0x000005F0 end:0x00000778
+	.bss        start:0x000003D8 end:0x000008A0
+
+REL/micquizishidll/count_second.c:
+	.text       start:0x0001706C end:0x000197D4
+	.rodata     start:0x00000370 end:0x00000400
+	.data       start:0x00000778 end:0x000009E0
+	.bss        start:0x000008A0 end:0x00000D50
+
+REL/micquizishidll/memory.c:
+	.text       start:0x000197D4 end:0x0001C210
+	.rodata     start:0x00000400 end:0x000004B0
+	.data       start:0x000009E0 end:0x00001188
+	.bss        start:0x00000D50 end:0x00000E38
+
+REL/micquizishidll/cube.c:
+	.text       start:0x0001C210 end:0x0001FB04
+	.rodata     start:0x000004B0 end:0x00000568
+	.data       start:0x00001188 end:0x000014A8
+	.bss        start:0x00000E38 end:0x00001598
+
+REL/micquizishidll/comparison.c:
+	.text       start:0x0001FB04 end:0x000229E0
+	.rodata     start:0x00000568 end:0x000005F8
+	.data       start:0x000014A8 end:0x000016F8
+	.bss        start:0x00001598 end:0x00001820
+
+REL/micquizishidll/comparison_moving.c:
+	.text       start:0x000229E0 end:0x00026810
+	.rodata     start:0x000005F8 end:0x00000750
+	.data       start:0x000016F8 end:0x000019A0
+	.bss        start:0x00001820 end:0x000018D0
+
+REL/micquizishidll/selection_scene.c:
+	.text       start:0x00026810 end:0x0002A164
+	.rodata     start:0x00000750 end:0x000007E0
+	.data       start:0x000019A0 end:0x00001D18
+	.bss        start:0x000018D0 end:0x00001B28
+
+REL/micquizishidll/hint_scene.c:
+	.text       start:0x0002A164 end:0x0002C624
+	.rodata     start:0x000007E0 end:0x00000880
+	.data       start:0x00001D18 end:0x00001E88
+	.bss        start:0x00001B28 end:0x00001B90
+
+REL/micquizishidll/selection_process.c:
+	.text       start:0x0002C624 end:0x0002EDB4
+	.rodata     start:0x00000880 end:0x00000940
+	.data       start:0x00001E88 end:0x000022E0
+	.bss        start:0x00001B90 end:0x00001BE8
+
+REL/micquizishidll/tutorial.c:
+	.text       start:0x0002EDB4 end:0x0002F83C
+	.rodata     start:0x00000940 end:0x00000990
+	.data       start:0x000022E0 end:0x00002370
+	.bss        start:0x00001BE8 end:0x00001C00
+
+REL/micquizishidll/quiz_mix.c:
+	.text       start:0x0002F83C end:0x00032810
+	.rodata     start:0x00000990 end:0x00000A20
+	.data       start:0x00002370 end:0x000027C2
+	.bss        start:0x00001C00 end:0x00001CC8
+
+REL/micquizishidll/runtime.c:
+	.text       start:0x00032810 end:0x00033254
+	.rodata     start:0x00000A20 end:0x00000A38
