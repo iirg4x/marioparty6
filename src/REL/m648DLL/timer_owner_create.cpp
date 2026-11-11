@@ -87,8 +87,7 @@ extern "C" {
 #include "datadir_enum.h"
 }
 
-#include "REL/m648DLL/singleton_32930.h"
-#include "REL/m648DLL/list_object.h"
+#include "REL/framework/list_object.h"
 
 extern "C" {
 
@@ -220,9 +219,9 @@ void fn_1_D4BC(TimerOwnerView *owner)
     MgTimerValueGet(owner->timer);
 }
 
-void TimerManager::clearRequest(int mode)
+void TimerManager::flagEnabled(int mode)
 {
-    state = state & ~(1UL << mode);
+    flags = flags & ~(1UL << mode);
 
     switch (mode) {
     case 0:
@@ -337,9 +336,9 @@ void ScoreManager::update()
     }
 }
 
-void ScoreManager::clearRequest(int request)
+void ScoreManager::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0:
     case 1:

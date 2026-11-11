@@ -1,8 +1,8 @@
-#include "REL/m648DLL/time_conversion.h"
+#include "REL/framework/frame_time_inline.h"
 /* Initializes the M648 tree screen's embedded sequence and timer state. */
 #include "dolphin/types.h"
 #include "dolphin/os.h"
-#include "REL/m648DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 #include "REL/framework/game_object.h"
 extern "C" {
 #include "game/gamework.h"
@@ -19,7 +19,6 @@ extern "C" {
 #include "REL/m648DLL/light_shadow.h"
 #include "REL/m648DLL/kuribo_motion_owner.h"
 #include "REL/m648DLL/animation_object.h"
-#include "REL/m648DLL/time_conversion_body.h"
 #define __ct__11ThreadEntryFUl __ct__11ThreadEntryFUl
 #define __ct__10TimerOwnerFi __ct__10TimerOwnerFi
 #define __dt__10TimerOwnerFv __dt__10TimerOwnerFv
@@ -67,27 +66,17 @@ struct MinigameSceneView {
 };
 
 #include "REL/m648DLL/managers.h"
+#include "REL/m648DLL/first_list_object.h"
+#include "REL/m648DLL/animation_setup_owner.h"
+#include "REL/m648DLL/player.h"
 
 extern "C" {
 void RandomSeed__FUl(void);
-void *__nw__FUl(u32 size);
-void *__ct__20AnimationUpdateOwnerFv(void *resource);
-void *__ct__17KuriboMotionOwnerFv(void *resource);
-void *__ct__15FirstListObjectFv(void *resource);
-void *__ct__19AnimationSetupOwnerFv(void *resource);
-void *__ct__19CallbackMotionOwnerFl(void *resource, s32 player, s32 effect, bool nightMode);
-void *__ct__18CallbackModelOwnerFb(void *resource, bool nightMode);
 }
 
 /* Starts the M648 screen resources and refreshes each player's night effect. */
 void MinigameState::setupObjects(OMOBJMAN *)
 {
-    void * resource10A;
-    void * resource20;
-    void * resource10B;
-    void * resource18B;
-    void * resource84B;
-    void * resource14;
     s32 player;
     s32 effect;
     s16 nightSetting;
@@ -103,28 +92,12 @@ void MinigameState::setupObjects(OMOBJMAN *)
     {
         this->resource = new TimerManager(this->record, 0);
     }
-    resource10A = __nw__FUl(0x10);
-    if (resource10A != 0)
-    {
-        resource10A = __ct__20AnimationUpdateOwnerFv(resource10A);
-    }
-    resource20 = __nw__FUl(0x20);
-    if (resource20 != 0)
-    {
-        resource20 = __ct__17KuriboMotionOwnerFv(resource20);
-    }
-    resource10B = __nw__FUl(0x10);
-    if (resource10B != 0)
-    {
-        resource10B = __ct__15FirstListObjectFv(resource10B);
-    }
+    new AnimationUpdateOwner();
+    new KuriboMotionOwner();
+    new FirstListObject();
     if (this->nightMode != 0)
     {
-        resource18B = __nw__FUl(0x18);
-        if (resource18B != 0)
-        {
-            resource18B = __ct__19AnimationSetupOwnerFv(resource18B);
-        }
+        new AnimationSetupOwner();
     }
     fn_8005DDEC(3);
     player = 0;
@@ -133,18 +106,10 @@ void MinigameState::setupObjects(OMOBJMAN *)
         nightFlag = lbl_802C0278;
         effect = (player << 1) + (u8)(nightFlag != 0);
         printf("CPlayer %d %d\n", player, lbl_80265728[player].charNo);
-        resource84B = __nw__FUl(0x84);
-        if (resource84B != 0)
-        {
-            resource84B = __ct__19CallbackMotionOwnerFl(resource84B, player, effect, this->nightMode);
-        }
+        new CPlayer(player, effect, this->nightMode);
         ++player;
     }
-    resource14 = __nw__FUl(0x14);
-    if (resource14 != 0)
-    {
-        resource14 = __ct__18CallbackModelOwnerFb(resource14, this->nightMode);
-    }
+    new CallbackModelOwner(this->nightMode);
 }
 
 struct ThreadConsumer {
@@ -155,7 +120,7 @@ struct ThreadConsumer {
 void MinigameState::updateGame()
 {
     ThreadEntry::resume(0);
-    fn_1_1C7F4();
+    updateRequestObjects();
     fn_1_B7C4();
 }
 
@@ -175,7 +140,7 @@ void MinigameState::run(void *)
     s32 closingCount;
     u8 finished;
 
-    fn_1_1C6D0(0);
+    postRequest(0);
     wipeIn__12MinigameCoreFv();
     if (nightMode != 0) {
         openingCount = 0;
@@ -193,17 +158,17 @@ void MinigameState::run(void *)
         }
         HuAudFXFadeOut(effectHandle, 0x190);
     }
-    while ((u8)fn_1_1C768() == 0) {
+    while (requestsCleared() == 0) {
         ThreadEntry::suspend(0);
     }
     bgmHandle = HuAudBGMPlay(MSM_STREAM_LAID_BACK);
-    fn_1_1C6D0(1);
+    postRequest(1);
     showStart__12MinigameCoreFv();
     while (messageDone__12MinigameCoreFv() == 0) {
         ThreadEntry::suspend(0);
     }
     finished = 0;
-    fn_1_1C6D0(2);
+    postRequest(2);
     timer.setParameters(0x708, 0, 0);
     if (fn_8006A124(0x30002) == 0) {
         timer.setPosition(286.0f, 416.0f);
@@ -274,7 +239,7 @@ void MinigameState::fn_1_3F2C()
         suspend(0);
     }
 
-    fn_1_1C6D0(3);
+    postRequest(3);
     changed = 0;
     frame = fn_1_B62C();
     if (record > frame) {
@@ -293,7 +258,7 @@ void MinigameState::fn_1_3F2C()
         }
     }
 
-    fn_1_1C6D0(4);
+    postRequest(4);
     jingleEnabled = fn_1_BEA8();
     if ((u8)jingleEnabled != 0) {
         jingleSound = MSM_STREAM_BAD_NEWS;
@@ -342,9 +307,4 @@ u8 MinigameState::fn_1_40BC()
 extern "C" {
 }
 void MinigameState::fn_1_4148() {}
-void MinigameState::finishGame() { fn_1_AE90(); fn_1_1C864(); }
-extern "C" {
-s32 lbl_1_bss_90 = secondsToFrames(2L);
-s32 lbl_1_bss_94 = (s32)secondsToFrames(3.5);
-s32 lbl_1_bss_98 = (s32)secondsToFrames(3.5);
-}
+void MinigameState::finishGame() { fn_1_AE90(); deleteRequestObjects(); }

@@ -1,18 +1,8 @@
 #include "dolphin/gx.h"
-#include "REL/m603DLL/callback_owner.h"
+#include "REL/framework/list_object.h"
 #include "REL/m603DLL/model_motion.h"
 #include "humath.h"
-template <class Time> Time secondsToFrames(Time seconds);
-extern "C" {
-long lbl_1_bss_C8 = secondsToFrames(2L);
-long lbl_1_bss_CC = (long)secondsToFrames(3.5);
-long lbl_1_bss_D0 = (long)secondsToFrames(3.5);
-}
-
-template <class Time> inline Time secondsToFrames(Time seconds)
-{
-    return 60 * seconds;
-}
+#include "REL/framework/frame_time_inline.h"
 
 #include <cmath>
 #include "REL/m603DLL/zako.h"
@@ -30,25 +20,9 @@ extern "C" {
 #include "REL/m603DLL.h"
 }
 
-
 #include "REL/m603DLL/draw_node.h"
-#include "REL/m603DLL/singleton_32930.h"
 
-typedef void (*DrawVisitor)(DrawNode *);
-struct DrawNodeList : Node {
-    void fn_1_B34C(DrawVisitor);
-    ~DrawNodeList() {}
-    bool empty() const { return link0 == this && link0 == link4; }
-    Node *first_node() { return link0; }
-    Node *last_node() { return link4; }
-    Node *end_node() { return this; }
-    Node *end() { return this; }
-    DrawNode *begin() { return static_cast<DrawNode *>(first_node()); }
-    DrawNode *front() { return static_cast<DrawNode *>(first_node()); }
-    DrawNode *back() { return static_cast<DrawNode *>(last_node()); }
-};
-extern "C" DrawNodeList lbl_1_bss_588;
-
+extern "C" ListRoot<DrawNode> lbl_1_bss_588;
 
 extern "C" {
 char lbl_1_data_450[] = "mapmodel-dmy_a";
@@ -82,12 +56,10 @@ extern u8 lbl_1_bss_D4;
 extern s32 lbl_1_data_594;
 const s32 lbl_1_rodata_3F0[4] = {1, 2, 4, 8};
 extern s32 fn_1_1BBC4(void *, const void *);
-extern void fn_1_33A3C__5ModelFP3Vec(void *, Vec *);
+extern void setPosition__5ModelFP3Vec(void *, Vec *);
 }
 
-
 extern void fn_1_A9EC(HU3D_MODEL *, Mtx *);
-
 
 extern "C" {
 
@@ -98,7 +70,7 @@ void fn_1_DB70(s32);
 extern "C" {
 }
 DrawNode::DrawNode(const OwnedModel *sourceModel, u32 modelData, s32 cameraIndex, s32 groupIndex)
-    : firstModel(sourceModel), secondModel(modelData)
+    : firstModel(*sourceModel), secondModel(modelData)
 {
     s16 model;
     s16 motion;
@@ -144,7 +116,7 @@ DrawNode::DrawNode(const OwnedModel *sourceModel, u32 modelData, s32 cameraIndex
     fn_80026B8C(this->hookModel, 6);
     fn_80026B64(this->hookModel,
                        (u16)lbl_1_rodata_3F0[groupIndex]);
-    firstModel.fn_1_33A3C(&position);
+    firstModel.setPosition(&position);
     fn_1_A060(0, 0);
     {
         DrawNode::Callback callback = &DrawNode::fn_1_A238;
@@ -171,7 +143,6 @@ DrawNode::DrawNode(const OwnedModel *sourceModel, u32 modelData, s32 cameraIndex
         }
     }
 }
-DrawMotionNode::~DrawMotionNode() {}
 DrawNode::~DrawNode() { fn_800262D0(hookModel); }
 void fn_1_9794() {
     while (!lbl_1_bss_588.empty()) delete lbl_1_bss_588.back();
@@ -188,7 +159,7 @@ const RandomIndexTable lbl_1_rodata_450 = {{
 
 }
 void fn_1_9E90(DrawNode *);
-void fn_1_98AC() { lbl_1_bss_588.fn_1_B34C(fn_1_9E90); }
+void fn_1_98AC() { lbl_1_bss_588.visit(fn_1_9E90); }
 int fn_1_98DC(DrawNode *current)
 {
     int candidate;
@@ -202,7 +173,7 @@ int fn_1_98DC(DrawNode *current)
             break;
         }
         for (step = 0; step < 17; step++) {
-            current = current->next_node();
+            current = current->next();
         }
     }
     return 0;
@@ -220,7 +191,7 @@ void fn_1_995C(void)
     bool randomMotion;
     f32 motionFrames;
 
-    gameMode = fn_1_1AB30();
+    gameMode = currentRequest();
     if (gameMode != 2) {
         return;
     }
@@ -235,7 +206,7 @@ void fn_1_995C(void)
     }
 
     for (step = 0; step != skipCount; step++) {
-        entry = entry->next_node();
+        entry = entry->next();
     }
 
     if ((u8)fn_1_98DC(entry) != 0) {
@@ -243,15 +214,15 @@ void fn_1_995C(void)
                        2.0f * RandomFloat();
         entry->fn_1_A718(randomMotion, motionFrames);
         for (firstStep = 0; firstStep < 17; firstStep++) {
-            entry = entry->next_node();
+            entry = entry->next();
         }
         entry->fn_1_A718(randomMotion, motionFrames);
         for (secondStep = 0; secondStep < 17; secondStep++) {
-            entry = entry->next_node();
+            entry = entry->next();
         }
         entry->fn_1_A718(randomMotion, motionFrames);
         for (thirdStep = 0; thirdStep < 17; thirdStep++) {
-            entry = entry->next_node();
+            entry = entry->next();
         }
         entry->fn_1_A718(randomMotion, motionFrames);
     }
@@ -260,7 +231,7 @@ void fn_1_9B88(int request)
 {
     DrawNode *node = lbl_1_bss_588.front();
     Node *end = lbl_1_bss_588.end_node();
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         node->fn_1_A160(request);
     }
 }
@@ -268,7 +239,7 @@ void fn_1_9BF4()
 {
     DrawNode *node = lbl_1_bss_588.front();
     Node *end = lbl_1_bss_588.end_node();
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         node->effectGate = 1;
     }
 }
@@ -276,7 +247,7 @@ void fn_1_9C58()
 {
     DrawNode *node = lbl_1_bss_588.front();
     Node *end = lbl_1_bss_588.end_node();
-    for (; node != end; node = node->next_node()) {
+    for (; node != end; node = node->next()) {
         node->motionPending = 1;
         node->remainingFrames = node->cameraIndex * 4;
     }
@@ -326,7 +297,7 @@ int fn_1_9D34(int playerIndex, unsigned char markEntries)
                 visibleCount++;
             }
         }
-        node = node->next_node();
+        node = node->next();
     }
     return weightedCount;
 }
@@ -341,7 +312,7 @@ void DrawNode::fn_1_9ED0()
 
     modelId = secondModel;
     Hu3DModelObjPosGet(modelId, lbl_1_data_550[cameraIndex], &objectPosition);
-    secondModel.fn_1_34228(lbl_1_data_550[cameraIndex]);
+    secondModel.hideObject(lbl_1_data_550[cameraIndex]);
 
     angle = 180.0 *
             (std::atan2((f64)objectPosition.x, -(f64)objectPosition.z) / M_PI);
@@ -360,8 +331,8 @@ void DrawNode::fn_1_9ED0()
     if (motionState != 0) {
         fn_1_DDA8(resourceState, &objectPosition, &rotation);
     } else {
-        firstModel.fn_1_33ACC(&rotation);
-        firstModel.fn_1_33A3C(&objectPosition);
+        firstModel.setRotation(&rotation);
+        firstModel.setPosition(&objectPosition);
     }
 }
 inline void DrawNode::fn_1_A060(s32 motionId, u8 queued)
@@ -434,7 +405,7 @@ void DrawNode::fn_1_A3A8()
 }
 void DrawNode::fn_1_A524()
 {
-    s32 mode = fn_1_1AB30();
+    s32 mode = currentRequest();
 
     if (mode == 1 || mode == 2) {
         s16 primaryModel;
@@ -544,23 +515,11 @@ void DrawNode::fn_1_A858(void)
     duration++;
 }
 
-
-
-
-
 typedef struct {
     f32 x;
     f32 y;
     f32 unknown08;
 } AAA4Point;
-
-
-
-
-
-
-
-
 
 void fn_1_A9EC(HU3D_MODEL *model, Mtx *matrix)
 {
@@ -693,23 +652,10 @@ void DrawNode::fn_1_B0C0(Mtx matrix)
     }
 }
 
-void fn_1_B3AC(Node *,Node *,DrawVisitor);
-void DrawNodeList::fn_1_B34C(DrawVisitor visitor)
-{
-    fn_1_B3AC(begin(), end(), visitor);
-}
-void fn_1_B3AC(Node *current, Node *sentinel, DrawVisitor callback)
-{
-    while (current != sentinel) {
-        callback(static_cast<DrawNode *>(current));
-        Node *next = current->link0;
-        current = next;
-    }
-}
 extern "C" {
 u8 lbl_1_bss_D4;
 Vec lbl_1_bss_D8[0x21];
 Vec lbl_1_bss_264[0x21];
 Vec lbl_1_bss_3F0[0x21];
-DrawNodeList lbl_1_bss_588;
+ListRoot<DrawNode> lbl_1_bss_588;
 }

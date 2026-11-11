@@ -2,7 +2,7 @@
 #define REL_M672DLL_AC4C_OWNER_H
 
 #include "REL/framework/game_object.h"
-#include "REL/m672DLL/model_bf64.h"
+#include "REL/framework/model.h"
 
 #include "REL/framework/event_hm.h"
 typedef EventHandlerManager ChildRecord;
@@ -11,7 +11,7 @@ struct AC4COwner;
 
 typedef void (AC4COwner::*AC4CCallback)(EventMessage *);
 
-#include "REL/m672DLL/early_callback_8980.h"
+#include "REL/m672DLL/member_callback.h"
 typedef std::mem_fun1_t<void, AC4COwner, EventMessage *> AC4CMemberFunction;
 typedef CallbackBinding<AC4COwner> AC4CPayload;
 

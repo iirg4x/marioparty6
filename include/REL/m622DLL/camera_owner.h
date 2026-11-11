@@ -1,11 +1,11 @@
 #ifndef M622_CAMERA_OWNER_H
 #define M622_CAMERA_OWNER_H
-#include "REL/m622DLL/camera_frame.h"
+#include "REL/framework/debug.h"
 #include "REL/m622DLL/callback_object.h"
-#include "REL/m622DLL/game_object.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/singleton.h"
 
-class CameraOwner : public GameObject, public MinigameSingleton<CameraOwner> {
+class CameraOwner : public RequestObject, public MinigameSingleton<CameraOwner> {
 public:
     typedef void (CameraOwner::*Callback)();
     CameraFrame frame;
@@ -17,7 +17,7 @@ public:
 
     CameraOwner();
     virtual ~CameraOwner();
-    virtual void clearFlag(int mode);
+    virtual void flagEnabled(int mode);
     virtual void update();
 
     void fn_1_58DC();

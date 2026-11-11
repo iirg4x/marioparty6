@@ -7,48 +7,24 @@ extern "C" {
 #include "game/pad.h"
 }
 #include "datadir_enum.h"
+#include "REL/framework/sound.h"
+#include "REL/framework/list.h"
 #include "REL/m622DLL/callback_object.h"
-#include "REL/m622DLL/frame_time.h"
+#include "REL/framework/phase_durations.h"
 #include "REL/m622DLL/random.h"
-#include "REL/m622DLL/root_list.h"
+#include "REL/framework/list_object.h"
 #include "REL/m622DLL/scene_models.h"
 #include "REL/m622DLL/score_display_owner.h"
 
-template <class T> void visitNodes(T *current, Node *sentinel, void (*callback)(T *))
-{
-    while (current != sentinel) {
-        callback(current);
-        T *next = static_cast<T *>(current->link0);
-        current = next;
-    }
-}
-
-struct CallbackList : Node {
-    ~CallbackList() {}
-    bool empty() const { return link0 == this && link0 == link4; }
-    Node *first_node() { return link0; }
-    Node *last_node() { return link4; }
-    Node *end_node() { return this; }
-    CallbackObject *front() { return static_cast<CallbackObject *>(first_node()); }
-    CallbackObject *back() { return static_cast<CallbackObject *>(last_node()); }
-    template <class Visitor> void visit(Visitor visitor);
-};
-
-template <class Visitor> void CallbackList::visit(Visitor visitor)
-{
-    visitNodes(front(), end_node(), visitor);
-}
+// The contestants.
+extern ListRoot<CallbackObject> lbl_1_bss_E8;
 
 extern "C" {
-extern CallbackList lbl_1_bss_E8;
 extern u8 lbl_1_bss_D8;
 extern u8 lbl_1_bss_D9;
 }
 void fn_1_72E8(CallbackObject *);
 void fn_1_8238(CallbackObject *owner);
-extern "C" {
-void fn_1_B02C(s16 cameraMask, s32 soundId, Point3d *point);
-}
 
 static const Vec lbl_1_rodata_260[4] = {
     {210.0f, 0.0f, -655.0f},
@@ -123,8 +99,7 @@ CallbackObject::CallbackObject(s32 playerNo)
     fn_1_6F34(DATANUM(0x930000, 21));
     fn_1_6F34(DATANUM(0x930000, 38));
     fn_1_6F34(DATANUM(0x930000, 40));
-    (m_mot_id.size() == NUMBEROF_MOTION) ? (void)0
-                           : __msl_assertion_failed("m_mot_id.size() == NUMBEROF_MOTION", __FILE__, 0x66);
+    assert(m_mot_id.size() == NUMBEROF_MOTION);
     fn_8005B4BC((s16)character);
     currentModel = model;
     fn_80026B8C(currentModel, 3);
@@ -253,8 +228,8 @@ void CallbackObject::fn_1_733C()
 {
     Vec rotation = {0.0f, 0.0f, 0.0f};
     rotation.y = rotationY;
-    model.fn_1_33ACC(&rotation);
-    model.fn_1_33A3C(&position);
+    model.setRotation(&rotation);
+    model.setPosition(&position);
 }
 
 void CallbackObject::fn_1_73A4() {
@@ -278,11 +253,6 @@ void CallbackObject::fn_1_73A4() {
     }
 }
 
-static inline s16 model_handle_id(const s16 *model)
-{
-    return *model;
-}
-
 static inline void fn_1_770C_for_callbacks(CallbackObject *owner)
 {
     s16 modelIdCopy;
@@ -294,7 +264,7 @@ static inline void fn_1_770C_for_callbacks(CallbackObject *owner)
             owner->motionEnded = 1;
         }
     } else {
-        modelIdCopy = model_handle_id(&owner->model.modelId);
+        modelIdCopy = owner->model;
         motionId = owner->m_mot_id.at(5);
         if (owner->state != 5) {
             fn_80026A44(modelIdCopy, ((1 << 30) | (1 << 1)));
@@ -308,18 +278,13 @@ static inline void fn_1_770C_for_callbacks(CallbackObject *owner)
 
 /* Restores the saved motion and counter values after the owner reaches its limit. */
 
-static inline s16 modelIdFor7B78(const CallbackObject *owner)
-{
-    return owner->model.modelId;
-}
-
 static inline void fn_1_7460_for_7B78(CallbackObject *owner,
                                      s32 motionId, u32 shiftFlags)
 {
     s16 modelId;
     s16 selectedMotion;
 
-    modelId = modelIdFor7B78(owner);
+    modelId = owner->model;
     selectedMotion = owner->m_mot_id.at(motionId);
     if (owner->state != motionId) {
         fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
@@ -340,7 +305,7 @@ static inline void fn_1_7460_for_7960(CallbackObject *owner, s32 motionId,
     s16 modelId;
     s16 selectedMotion;
 
-    modelId = model_handle_id(&owner->model.modelId);
+    modelId = owner->model;
     selectedMotion = owner->m_mot_id.at(motionId);
     if (owner->state != motionId) {
         fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
@@ -360,7 +325,7 @@ static inline void fn_1_7460(MotionTransitionOwner *owner,
     s16 modelId;
     s16 selectedMotion;
 
-    modelId = model_handle_id(&owner->model.modelId);
+    modelId = owner->model;
     selectedMotion = owner->m_mot_id.at(motionId);
     if (owner->state != motionId) {
         fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
@@ -377,7 +342,7 @@ void fn_1_7460(CallbackObject *owner, s32 motionId,
     s16 modelId;
     s16 selectedMotion;
 
-    modelId = model_handle_id(&owner->model.modelId);
+    modelId = owner->model;
     selectedMotion = owner->m_mot_id.at(motionId);
     if (owner->state != motionId) {
         fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
@@ -400,7 +365,7 @@ void CallbackObject::fn_1_7520()
         fn_1_7460(this, 1);
     }
 
-    if (fn_1_E5A4() == 2) {
+    if (currentRequest() == 2) {
         this->rotationY = 0.0f;
         callback = &MotionTransitionOwner::fn_1_7FEC;
         this->callback = callback;
@@ -489,13 +454,13 @@ void CallbackObject::fn_1_7B78()
 
     if (requestList != 0) {
         if (frameCount == 14) {
-            if ((u8)requestList->fn_1_1F84(modelIdFor7B78(this), (s16)character) != 0) {
+            if ((u8)requestList->fn_1_1F84(model, (s16)character) != 0) {
                 requestType = requestList->fn_1_20C0();
                 switch (requestType) {
     case 0:
         mgCoin++;
         if (lbl_1_bss_D8 == 0) {
-            fn_1_B02C(1, MSM_SE_CMN_COIN_GET, &position);
+            soundPlayAt(1, MSM_SE_CMN_COIN_GET, &position);
             lbl_1_bss_D8 = 1;
         }
         applyCounterEvent(this);
@@ -503,7 +468,7 @@ void CallbackObject::fn_1_7B78()
     case 1:
         mgCoin += 5;
         if (lbl_1_bss_D9 == 0) {
-            fn_1_B02C(1, MSM_SE_CMN_COIN_GET_LARGE, &position);
+            soundPlayAt(1, MSM_SE_CMN_COIN_GET_LARGE, &position);
             lbl_1_bss_D9 = 1;
         }
         applyCounterEvent(this);
@@ -541,7 +506,7 @@ void CallbackObject::fn_1_7F60()
 
 void CallbackObject::fn_1_7FEC()
 {
-    if (fn_1_E5A4() != 2) {
+    if (currentRequest() != 2) {
         fn_1_7460(this, 0, 0);
         return;
     }
@@ -636,11 +601,8 @@ bool CallbackObject::fn_1_8250()
 }
 
 extern "C" {
-s32 lbl_1_bss_C8 = secondsToFrames(2L);
-s32 lbl_1_bss_CC = (s32)secondsToFrames(3.5);
-s32 lbl_1_bss_D0 = (s32)secondsToFrames(3.5);
 s32 lbl_1_bss_D4;
 u8 lbl_1_bss_D8;
 u8 lbl_1_bss_D9;
-CallbackList lbl_1_bss_E8;
+ListRoot<CallbackObject> lbl_1_bss_E8;
 }

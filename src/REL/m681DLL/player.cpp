@@ -1,5 +1,5 @@
 #include "REL/m681DLL.h"
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 extern "C" {
 #include "dolphin/types.h"
 #include "math.h"
@@ -13,21 +13,18 @@ extern "C" {
 }
 
 #include "datadir_enum.h"
-#include "REL/m681DLL/owned_model.h"
+#include "REL/framework/model.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_hm.h"
-#include "REL/m681DLL/work_6b44.h"
+#include "REL/m681DLL/player_object.h"
 #include "REL/m681DLL/global_state.h"
 #include "REL/m681DLL/character_sequence.h"
 #include "REL/m681DLL/player_input.h"
+#include "REL/framework/world_units.h"
 
-static inline f32 accelerationPerFrame(f64 value)
-{
-    return (f32)((value * 100.0) / (60.0 * 60.0));
-}
 extern "C" {
 u32 lbl_1_bss_98 = minutesToFrames(60L);
-f32 lbl_1_bss_9C = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_9C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 u32 lbl_1_bss_A0 = secondsToFrames(2L);
 u32 lbl_1_bss_A4 = secondsToFrames(3.5);
 u32 lbl_1_bss_A8 = secondsToFrames(3.5);
@@ -36,24 +33,14 @@ u32 lbl_1_bss_A8 = secondsToFrames(3.5);
 void *operator new(unsigned long);
 extern "C" {
 }
-s32 fn_1_1BDA4(s32 *);
-extern "C" {
-void selectCharacterMotion__FP11MotionOwnerUi(CharacterMotion *, unsigned int);
-void setCharacterMotionOverlay__FP11MotionOwnersUi(CharacterMotion *, s16, unsigned int);
-}
+void setCharacterMotionOverlay(CharacterMotion *character, s16 modelId, unsigned int dataNum);
 s16 fn_1_2508(s32);
-extern "C" {
-
-void shiftCharacterMotion__FP11MotionOwnerUiffUl(CharacterMotion *, u32, f32, f32, u32);
-}
+void shiftCharacterMotion(CharacterMotion *character, unsigned int dataNum, float shift, float start,
+                          unsigned long attributes);
 void sendEvent(int, unsigned long, float);
 
 extern "C" {
 }
-s32 fn_1_1BDDC(s32 *);
-extern "C" {
-}
-s32 fn_1_1BE08(s32 *);
 extern "C" {
 
 void createCharacterMotions__FP11MotionOwnerPUil(CharacterMotion *, const void *, s32);
@@ -71,104 +58,127 @@ const u32 lbl_1_rodata_288[] = {
 typedef PlayerObject::Callback Callback533C;
 
 PlayerObject::PlayerObject(s32 player, const PositionVector *initialState)
-    : GameObject(0), PlayerConfigSelection(player, 1), EventListener()
+    : GameObject(0), PlayerConfigSelection(player, 1), EventListener(),
+      resourceNode(isComputer()
+          ? (ModeBase *)new ModeObject(difficulty())
+          : (ModeBase *)new ModeToggle()),
+      resource(new ModelResource(player)),
+      state(*initialState),
+      firstAngle(0.0f, 0),
+      secondAngle(0.0f, 0),
+      firstItem(new OwnedModel(DATANUM(0x8c0000, 9))),
+      secondItem(new OwnedModel(DATANUM(0x8c0000, 10))),
+      elapsed(0),
+      fallFrames(0),
+      progress(0.0f),
+      velocity(0.0f),
+      landingDelay(2.0f),
+      landingFrames(0.0f),
+      animationScale(0.2f),
+      unkAC(6.0f),
+      unkB0(0.0f),
+      unkB8(0),
+      count(0),
+      active(1),
+      choseWrong(0),
+      firstItemHook(fn_8005C0F0((s16)characterNo(), 2, 1)),
+      secondItemHook(fn_8005C0F0((s16)characterNo(), 2, 0))
 {
-    void *actor = (u8)fn_1_1BDDC(&sequence) != 0
-          ? (ModeBase *)new ModeObject(fn_1_1BE08(&sequence))
-          : (ModeBase *)new ModeToggle();
-    this->resourceNode.reset(actor);
-    void *accessory = new ModelResource(player);
-    this->resource.reset(accessory);
-    state = *initialState;
-    firstAngle.set( 0.0f, 0);
-    secondAngle.set( 0.0f, 0);
-    void *firstItem = new OwnedModel(DATANUM(0x8c0000, 9));
-    this->firstItem.reset(firstItem);
-    void *createdSecondItem = new OwnedModel(DATANUM(0x8c0000, 10));
-    this->secondItem.reset(createdSecondItem);
-    elapsed = 0;
-    fallFrames = 0;
-    progress = 0.0f;
-    velocity = 0.0f;
-    firstValue = 2.0f;
-    secondValue = 0.0f;
-    animationScale = 0.2f;
-    thirdValue = 6.0f;
-    fourthValue = 0.0f;
-    fifthValue = 0;
-    count = 0;
-    active = 1;
-    sixthValue = 0;
-    firstItemHook = fn_8005C0F0(
-        (s16)fn_1_1BDA4(&sequence), 2, 1);
-    secondItemHook = fn_8005C0F0(
-        (s16)fn_1_1BDA4(&sequence), 2, 0);
     registerChannel(0);
     registerChannel(1);
     {
         Callback533C callback = &PlayerObject::fn_1_5E8C;
         this->callback = callback;
     }
-    fn_1_33CB0(4);
-    createCharacterMotions__FP11MotionOwnerPUil(&motion, &lbl_1_rodata_288, 9);
-    selectCharacterMotion__FP11MotionOwnerUi(&motion, DATANUM(0x8e0000, 193));
-    setCharacterMotionOverlay__FP11MotionOwnersUi(&motion, *static_cast<Model *>(this), DATANUM(0x8e0000, 194));
-    fullAngle = fn_1_3464C();
-    setCharacterMotionOverlay__FP11MotionOwnersUi(&motion, *static_cast<Model *>(this), DATANUM(0x8e0000, 213));
-    fn_1_33950(((1 << 30) | (1 << 9)));
-    void *firstItemModel = this->firstItem.value;
-    fn_1_7398(((u8 *)this), 1, firstItemModel);
-    void *secondItemModel = this->secondItem.value;
-    fn_1_7398(((u8 *)this), 0, secondItemModel);
+    setLayer(4);
+    createCharacterMotions__FP11MotionOwnerPUil(&static_cast<MotionOwner &>(*this),
+                                                &lbl_1_rodata_288, 9);
+    selectCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 193));
+    setCharacterMotionOverlay(&static_cast<MotionOwner &>(*this), *static_cast<Model *>(this),
+                              DATANUM(0x8e0000, 194));
+    fullAngle = getOverlayMotionMaxTime();
+    setCharacterMotionOverlay(&static_cast<MotionOwner &>(*this), *static_cast<Model *>(this),
+                              DATANUM(0x8e0000, 213));
+    setAttribute(((1 << 30) | (1 << 9)));
+    fn_1_7398(this, 1, firstItem.get());
+    fn_1_7398(this, 0, secondItem.get());
     modes.values[0] = 0;
     modes.values[1] = 0;
     rotation.x = 0.0f;
     rotation.y = 0.0f;
     rotation.z = 0.0f;
-    fn_1_33A3C(&state.value);
-    fn_1_33ACC(&rotation);
-    fn_80060F14((s16)fn_1_1BDA4(&sequence), fn_1_2508(player));
-}
-
-OwnedModelOwner::~OwnedModelOwner() { delete value; }
-
-ModelResourceOwner::~ModelResourceOwner() { delete value; }
-
-ModeOwner::~ModeOwner()
-{
-    delete value;
+    setPosition(&state.value);
+    setRotation(&rotation);
+    fn_80060F14((s16)characterNo(), fn_1_2508(player));
 }
 
 PlayerObject::~PlayerObject() {}
 
-extern "C" {
+// Plays the choosing motion and turns the two item arms toward the player's current choices.
+inline void PlayerObject::showChoices()
+{
+    s32 animationMode;
+    f32 transitionAngle;
+    f32 fullAngle;
+    f32 halfAngle;
+    f32 reducedAngle;
 
-extern s32 fn_1_33950__5ModelFUl(void *object, s32 flags);
+    selectCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 197));
+    setAttribute(((1 << 30) | (1 << 1)));
+    setCharacterMotionOverlay(&static_cast<MotionOwner &>(*this), *this, DATANUM(0x8e0000, 194));
+    setAttribute(((1 << 30) | (1 << 10)));
 
+    transitionAngle = this->fullAngle;
+    animationMode = (s32)secondsToFrames(animationScale);
+    fullAngle = transitionAngle;
+    halfAngle = (f32)(0.5 * (f64)transitionAngle);
+    reducedAngle = (f32)(0.2 * (f64)transitionAngle);
+
+    switch (modes.values[0]) {
+    case 2:
+        break;
+    case 0:
+        firstAngle.set(reducedAngle, animationMode);
+        break;
+    case 4:
+        firstAngle.set(fullAngle, animationMode);
+        break;
+    case 3:
+        firstAngle.set(0.0f, animationMode);
+        break;
+    case 1:
+        firstAngle.set(halfAngle, animationMode);
+        break;
+    }
+
+    switch (modes.values[1]) {
+    case 0:
+        secondAngle.set(reducedAngle, animationMode);
+        break;
+    case 4:
+        secondAngle.set(fullAngle, animationMode);
+        break;
+    case 3:
+        secondAngle.set(0.0f, animationMode);
+        break;
+    case 2:
+        secondAngle.set(halfAngle, animationMode);
+        break;
+    }
 }
+
 void fn_1_5A44(PlayerObject *object)
 {
-    s16 *modelFlags;
-    s16 *modelFlagsAddress;
-    s16 rawModelFlag;
-    s16 modelFlagArgument;
     s32 animationMode;
     f32 transitionAngle;
     f32 fullAngle;
     f32 halfAngle;
     f32 reducedAngle;
 
-    selectCharacterMotion__FP11MotionOwnerUi(&object->motion, DATANUM(0x8e0000, 197));
-    fn_1_33950__5ModelFUl(&object->modelId, ((1 << 30) | (1 << 1)));
-    modelFlags = (s16 *)object;
-    if (modelFlags != 0) {
-        modelFlags += 0x14;
-    }
-    modelFlagsAddress = modelFlags;
-    rawModelFlag = (s16)*modelFlagsAddress;
-    modelFlagArgument = rawModelFlag;
-    setCharacterMotionOverlay__FP11MotionOwnersUi(&object->motion, modelFlagArgument, DATANUM(0x8e0000, 194));
-    fn_1_33950__5ModelFUl(&object->modelId, ((1 << 30) | (1 << 10)));
+    selectCharacterMotion(&static_cast<MotionOwner &>(*object), DATANUM(0x8e0000, 197));
+    object->setAttribute(((1 << 30) | (1 << 1)));
+    setCharacterMotionOverlay(&static_cast<MotionOwner &>(*object), *object, DATANUM(0x8e0000, 194));
+    object->setAttribute(((1 << 30) | (1 << 10)));
 
     transitionAngle = object->fullAngle;
     animationMode = (s32)secondsToFrames(object->animationScale);
@@ -180,103 +190,40 @@ void fn_1_5A44(PlayerObject *object)
     case 2:
         break;
     case 0:
-        object->firstAngle.set( reducedAngle, animationMode);
+        object->firstAngle.set(reducedAngle, animationMode);
         break;
     case 4:
-        object->firstAngle.set( fullAngle, animationMode);
+        object->firstAngle.set(fullAngle, animationMode);
         break;
     case 3:
-        object->firstAngle.set( 0.0f, animationMode);
+        object->firstAngle.set(0.0f, animationMode);
         break;
     case 1:
-        object->firstAngle.set( halfAngle, animationMode);
+        object->firstAngle.set(halfAngle, animationMode);
         break;
     }
 
     switch (object->modes.values[1]) {
     case 0:
-        object->secondAngle.set( reducedAngle, animationMode);
+        object->secondAngle.set(reducedAngle, animationMode);
         break;
     case 4:
-        object->secondAngle.set( fullAngle, animationMode);
+        object->secondAngle.set(fullAngle, animationMode);
         break;
     case 3:
-        object->secondAngle.set( 0.0f, animationMode);
+        object->secondAngle.set(0.0f, animationMode);
         break;
     case 2:
-        object->secondAngle.set( halfAngle, animationMode);
+        object->secondAngle.set(halfAngle, animationMode);
         break;
     }
 }
-extern "C" {
 
-}
 void fn_1_5C60(PlayerObject *object)
 {
-    s16 *modelFlags;
-    s16 *modelFlagsAddress;
-    s16 rawModelFlag;
-    s16 modelFlagArgument;
-    s32 animationMode;
-    f32 transitionAngle;
-    f32 reducedAngle;
-    f32 halfAngle;
-    f32 fullAngle;
-
     object->modes.values[0] = 0;
     object->modes.values[1] = 0;
-    selectCharacterMotion__FP11MotionOwnerUi(&object->motion, DATANUM(0x8e0000, 197));
-    fn_1_33950__5ModelFUl(&object->modelId, ((1 << 30) | (1 << 1)));
-    modelFlags = (s16 *)object;
-    if (modelFlags != 0) {
-        modelFlags += 0x14;
-    }
-    modelFlagsAddress = modelFlags;
-    rawModelFlag = (s16)*modelFlagsAddress;
-    modelFlagArgument = rawModelFlag;
-    setCharacterMotionOverlay__FP11MotionOwnersUi(&object->motion, modelFlagArgument, DATANUM(0x8e0000, 194));
-    fn_1_33950__5ModelFUl(&object->modelId, ((1 << 30) | (1 << 10)));
-
-    transitionAngle = object->fullAngle;
-    animationMode = (s32)secondsToFrames(object->animationScale);
-    fullAngle = transitionAngle;
-    halfAngle = (f32)(0.5 * (f64)transitionAngle);
-    reducedAngle = (f32)(0.2 * (f64)transitionAngle);
-
-    switch (object->modes.values[0]) {
-    case 2:
-        break;
-    case 0:
-        object->firstAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->firstAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->firstAngle.set( 0.0f, animationMode);
-        break;
-    case 1:
-        object->firstAngle.set( halfAngle, animationMode);
-        break;
-    }
-
-    switch (object->modes.values[1]) {
-    case 0:
-        object->secondAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->secondAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->secondAngle.set( 0.0f, animationMode);
-        break;
-    case 2:
-        object->secondAngle.set( halfAngle, animationMode);
-        break;
-    }
-}
-extern "C" {
-
+    object->showChoices();
 }
 
 void PlayerObject::fn_1_5E8C(void)
@@ -287,72 +234,10 @@ extern "C" {
 
 }
 
-void Work6B44::fn_1_5E90()
+void PlayerObject::fn_1_5E90()
 {
     if (rotation.y <= 180.0f) {
-        rotation.y += perFrame(150.0);
-    }
-}
-
-static inline s16 modelFlag5EF4(const s16 *modelFlags)
-{
-    return *modelFlags;
-}
-
-static inline s32 sequence5EF4(const PlayerObject *object)
-{
-    return object->sequence;
-}
-
-static inline void fn_1_5A44_for_5EF4(PlayerObject *object)
-{
-    s32 animationMode;
-    f32 transitionAngle;
-    f32 fullAngle;
-    f32 halfAngle;
-    f32 reducedAngle;
-
-    selectCharacterMotion__FP11MotionOwnerUi(&object->motion, DATANUM(0x8e0000, 197));
-    object->fn_1_33950(((1 << 30) | (1 << 1)));
-    setCharacterMotionOverlay__FP11MotionOwnersUi(&object->motion, *object, DATANUM(0x8e0000, 194));
-    object->fn_1_33950(((1 << 30) | (1 << 10)));
-
-    transitionAngle = object->fullAngle;
-    animationMode = (s32)secondsToFrames(object->animationScale);
-    fullAngle = transitionAngle;
-    halfAngle = (f32)(0.5 * (f64)transitionAngle);
-    reducedAngle = (f32)(0.2 * (f64)transitionAngle);
-
-    switch (object->modes.values[0]) {
-    case 2:
-        break;
-    case 0:
-        object->firstAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->firstAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->firstAngle.set( 0.0f, animationMode);
-        break;
-    case 1:
-        object->firstAngle.set( halfAngle, animationMode);
-        break;
-    }
-
-    switch (object->modes.values[1]) {
-    case 0:
-        object->secondAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->secondAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->secondAngle.set( 0.0f, animationMode);
-        break;
-    case 2:
-        object->secondAngle.set( halfAngle, animationMode);
-        break;
+        rotation.y += framesToSeconds(150.0);
     }
 }
 
@@ -363,10 +248,10 @@ void PlayerObject::fn_1_5EF4()
 
     state = &MinigameSingleton<M681GameState>::getChecked();
 
-    sendEvent(sequence5EF4(this) + 2, 0, 2.4f);
+    sendEvent(number() + 2, 0, 2.4f);
     this->modes.values[0] = state->textureChoices.values[0];
     this->modes.values[1] = state->textureChoices.values[1];
-    fn_1_5A44_for_5EF4(this);
+    showChoices();
 
     trailingValues = &PlayerObject::fn_1_5E8C;
     this->callback = trailingValues;
@@ -380,7 +265,7 @@ void PlayerObject::fn_1_61B8()
 
         this->modes.values[0] = 0;
         this->modes.values[1] = 0;
-        fn_1_5A44_for_5EF4(this);
+        showChoices();
         trailingValues = &PlayerObject::fn_1_5E8C;
         this->callback = trailingValues;
     }
@@ -396,58 +281,6 @@ void PlayerObject::fn_1_643C()
 
 }
 
-static inline void fn_1_5A44_for_6450(PlayerObject *object)
-{
-    s32 animationMode;
-    f32 transitionAngle;
-    f32 fullAngle;
-    f32 halfAngle;
-    f32 reducedAngle;
-
-    selectCharacterMotion__FP11MotionOwnerUi(&object->motion, DATANUM(0x8e0000, 197));
-    object->fn_1_33950(((1 << 30) | (1 << 1)));
-    setCharacterMotionOverlay__FP11MotionOwnersUi(&object->motion, *object, DATANUM(0x8e0000, 194));
-    object->fn_1_33950(((1 << 30) | (1 << 10)));
-
-    transitionAngle = object->fullAngle;
-    animationMode = (s32)secondsToFrames(object->animationScale);
-    fullAngle = transitionAngle;
-    halfAngle = (f32)(0.5 * (f64)transitionAngle);
-    reducedAngle = (f32)(0.2 * (f64)transitionAngle);
-
-    switch (object->modes.values[0]) {
-    case 2:
-        break;
-    case 0:
-        object->firstAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->firstAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->firstAngle.set( 0.0f, animationMode);
-        break;
-    case 1:
-        object->firstAngle.set( halfAngle, animationMode);
-        break;
-    }
-
-    switch (object->modes.values[1]) {
-    case 0:
-        object->secondAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->secondAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->secondAngle.set( 0.0f, animationMode);
-        break;
-    case 2:
-        object->secondAngle.set( halfAngle, animationMode);
-        break;
-    }
-}
-
 /* Whether either mode differs from the previous frame's pair. */
 static inline bool ModesChanged6450(PlayerObject *object, const ModePair &previous)
 {
@@ -457,15 +290,13 @@ static inline bool ModesChanged6450(PlayerObject *object, const ModePair &previo
 void PlayerObject::fn_1_6450()
 {
     ModePair previousModes = this->modes;
-    ModeBase *callback;
 
     if (this->active == 1) {
-        callback = this->resourceNode.value;
-        callback->update(this);
+        resourceNode->update(this);
     }
 
     if (ModesChanged6450(this, previousModes)) {
-        fn_1_5A44_for_6450(this);
+        showChoices();
     }
 
     this->progress += 1.0f;
@@ -473,7 +304,7 @@ void PlayerObject::fn_1_6450()
 
 extern "C" {
 
-typedef Work6B44::Callback DustCallbackState;
+typedef PlayerObject::Callback DustCallbackState;
 
 typedef M681GameState HookManager;
 
@@ -489,10 +320,10 @@ void PlayerObject::fn_1_66F0()
         }
 
         if (changed != 0) {
-            this->sixthValue = 1;
-            sendEvent(sequence5EF4(this) + 2, 1, 0.0f);
+            this->choseWrong = 1;
+            sendEvent(number() + 2, 1, 0.0f);
         } else {
-            sendEvent(sequence5EF4(this) + 2, 0, 0.0f);
+            sendEvent(number() + 2, 0, 0.0f);
         }
     }
 
@@ -508,17 +339,17 @@ void PlayerObject::fn_1_6824()
 
     M681GameState &manager = MinigameSingleton<M681GameState>::getChecked();
 
-    if (this->sixthValue == 1 && this->active == 1) {
+    if (this->choseWrong == 1 && this->active == 1) {
         manager.minimum = manager.minimum - 1;
         this->active = 0;
-        this->firstValue = this->firstValue + manager.state40;
+        this->landingDelay = this->landingDelay + manager.state40;
         manager.state40 += 0.2f;
-        fn_8005C7A4((s16)fn_1_1BDA4(&this->sequence),
+        fn_8005C7A4((s16)characterNo(),
                                 this->firstItemHook);
-        fn_8005C7A4((s16)fn_1_1BDA4(&this->sequence),
+        fn_8005C7A4((s16)characterNo(),
                                 this->secondItemHook);
         {
-            DustCallbackState callbackState = &Work6B44::fn_1_7410;
+            DustCallbackState callbackState = &PlayerObject::fn_1_7410;
             this->callback = callbackState;
         }
     }
@@ -536,17 +367,17 @@ void PlayerObject::fn_1_6824()
 
 }
 
-void Work6B44::update()
+void PlayerObject::update()
 {
     (this->*callback)();
     if (firstAngle.elapsed <= firstAngle.frames) {
-        motion.fn_1_DAF0(firstAngle.advance());
+        fn_1_DAF0(firstAngle.advance());
     }
     if (secondAngle.elapsed <= secondAngle.frames) {
-        Model::fn_1_34528(secondAngle.advance());
+        Model::setOverlayMotionTime(secondAngle.advance());
     }
-    Model::fn_1_33A3C(&state.value);
-    Model::fn_1_33ACC(&rotation);
+    Model::setPosition(&state.value);
+    Model::setRotation(&rotation);
 }
 
 extern "C" {
@@ -559,16 +390,16 @@ void PlayerObject::fn_1_6A50()
 
     if (this->rotation.y <= 360.0f) {
         this->rotation.y = this->rotation.y +
-                      perFrame(240.0);
+                      framesToSeconds(240.0);
     } else {
-        shiftCharacterMotion__FP11MotionOwnerUiffUl(&this->motion, DATANUM(0x930000, 0), 8.0f,
+        shiftCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x930000, 0), 8.0f,
                   0.0f, ((1 << 30) | (1 << 0)));
         callback = &PlayerObject::fn_1_5E8C;
         this->callback = callback;
     }
-    fn_8005C7A4((s16)fn_1_1BDA4(&this->sequence),
+    fn_8005C7A4((s16)characterNo(),
                             this->firstItemHook);
-    fn_8005C7A4((s16)fn_1_1BDA4(&this->sequence),
+    fn_8005C7A4((s16)characterNo(),
                             this->secondItemHook);
 }
 
@@ -579,73 +410,7 @@ extern "C" {
 }
 float RandomFloat(float maximum);
 
-static inline s16 modelFlag6B44(const s16 *modelFlags)
-{
-    return *modelFlags;
-}
-static inline s32 sequence6B44(const Work6B44 *object)
-{
-    return object->sequence;
-}
-
-static inline void fn_1_5A44_for_6B44(Work6B44 *object)
-{
-    s16 *modelFlags;
-    s32 animationMode;
-    f32 transitionAngle;
-    f32 fullAngle;
-    f32 halfAngle;
-    f32 reducedAngle;
-
-    selectCharacterMotion__FP11MotionOwnerUi(&object->motion, DATANUM(0x8e0000, 197));
-    object->Model::fn_1_33950(((1 << 30) | (1 << 1)));
-    modelFlags = (s16 *)object;
-    if (modelFlags != 0) {
-        modelFlags += 0x14;
-    }
-    setCharacterMotionOverlay__FP11MotionOwnersUi(&object->motion, modelFlag6B44(modelFlags), DATANUM(0x8e0000, 194));
-    object->Model::fn_1_33950(((1 << 30) | (1 << 10)));
-
-    transitionAngle = object->fullAngle;
-    animationMode = (s32)secondsToFrames(object->animationScale);
-    fullAngle = transitionAngle;
-    halfAngle = (f32)(0.5 * (f64)transitionAngle);
-    reducedAngle = (f32)(0.2 * (f64)transitionAngle);
-
-    switch (object->modes.values[0]) {
-    case 2:
-        break;
-    case 0:
-        object->firstAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->firstAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->firstAngle.set( 0.0f, animationMode);
-        break;
-    case 1:
-        object->firstAngle.set( halfAngle, animationMode);
-        break;
-    }
-
-    switch (object->modes.values[1]) {
-    case 0:
-        object->secondAngle.set( reducedAngle, animationMode);
-        break;
-    case 4:
-        object->secondAngle.set( fullAngle, animationMode);
-        break;
-    case 3:
-        object->secondAngle.set( 0.0f, animationMode);
-        break;
-    case 2:
-        object->secondAngle.set( halfAngle, animationMode);
-        break;
-    }
-}
-
-void Work6B44::receive(const EventPacket *event)
+void PlayerObject::receive(const EventPacket *event)
 {
     if (event->channel == 1) {
         if (event->type == 0 && this->active == 0)
@@ -656,12 +421,12 @@ void Work6B44::receive(const EventPacket *event)
     M681GameState *manager = &MinigameSingleton<M681GameState>::getChecked();
     switch (event->type) {
     case 0: {
-        Work6B44::Callback next = &Work6B44::fn_1_5E90;
+        PlayerObject::Callback next = &PlayerObject::fn_1_5E90;
         this->callback = next;
         break;
     }
     case 2: {
-        Work6B44::Callback next = &Work6B44::fn_1_5EF4;
+        PlayerObject::Callback next = &PlayerObject::fn_1_5EF4;
         this->callback = next;
         break;
     }
@@ -672,7 +437,7 @@ void Work6B44::receive(const EventPacket *event)
         this->secondAngle.set(
                     (f32)(0.2 * (f64)this->fullAngle),
                     (s32)secondsToFrames(this->animationScale));
-        Work6B44::Callback next = &Work6B44::fn_1_61B8;
+        PlayerObject::Callback next = &PlayerObject::fn_1_61B8;
         this->callback = next;
         break;
     }
@@ -681,8 +446,8 @@ void Work6B44::receive(const EventPacket *event)
         if (this->active == 1) {
             this->modes.values[0] = 0;
             this->modes.values[1] = 0;
-            fn_1_5A44_for_6B44(this);
-            Work6B44::Callback next = &Work6B44::fn_1_643C;
+            showChoices();
+            PlayerObject::Callback next = &PlayerObject::fn_1_643C;
             this->callback = next;
         }
         if (manager->interval >= 2.0f)
@@ -694,7 +459,7 @@ void Work6B44::receive(const EventPacket *event)
         break;
     case 7:
         if (this->active == 1) {
-            Work6B44::Callback next = &Work6B44::fn_1_6450;
+            PlayerObject::Callback next = &PlayerObject::fn_1_6450;
             this->callback = next;
         }
         this->progress = 0.0f;
@@ -708,38 +473,39 @@ void Work6B44::receive(const EventPacket *event)
             this->secondAngle.set(
                         (f32)(0.2 * (f64)this->fullAngle),
                         (s32)secondsToFrames(0.2));
-            Work6B44::Callback next = &Work6B44::fn_1_66F0;
+            PlayerObject::Callback next = &PlayerObject::fn_1_66F0;
             this->callback = next;
         }
         break;
     case 9:
         if (this->active == 1) {
-            Work6B44::Callback next = &Work6B44::fn_1_6824;
+            PlayerObject::Callback next = &PlayerObject::fn_1_6824;
             this->callback = next;
         }
         break;
     case 11:
-        this->Model::fn_1_34764();
+        this->Model::clearOverlayMotion();
         if (this->active == 1) {
-            shiftCharacterMotion__FP11MotionOwnerUiffUl(&this->motion, DATANUM(0x930000, 1),
+            shiftCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x930000, 1),
                        8.0f, 0.0f, ((1 << 30) | (1 << 0)));
-            Work6B44::Callback next = &Work6B44::fn_1_6A50;
+            PlayerObject::Callback next = &PlayerObject::fn_1_6A50;
             this->callback = next;
             M681GameState &state = *&MinigameSingleton<M681GameState>::getChecked();
-            state.negativeState = sequence6B44(this);
+            state.negativeState = number();
         }
         break;
     case 12: {
         s32 count = manager->poseActive() ? this->count :
             (manager->state4C == 1 ? 3 : this->count - 1);
-        s32 sequence = sequence6B44(this);
+        s32 sequence = number();
         if (!fn_8006A124(65551))
             lbl_80265750[sequence].mgCoinBonus = (s16)count;
         if (this->active != 0) {
-            fn_80060F14((s16)fn_1_1BDA4(&this->sequence), 0x40);
-            shiftCharacterMotion__FP11MotionOwnerUiffUl(&this->motion, DATANUM(0x930000, 6), 8.0f, 0.0f, 0);
+            fn_80060F14((s16)characterNo(), 0x40);
+            shiftCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x930000, 6), 8.0f,
+                                 0.0f, 0);
         }
-        Work6B44::Callback next = &Work6B44::fn_1_5E8C;
+        PlayerObject::Callback next = &PlayerObject::fn_1_5E8C;
         this->callback = next;
         break;
     }
@@ -747,7 +513,7 @@ void Work6B44::receive(const EventPacket *event)
         break;
     default:
         if (this->active == 1) {
-            Work6B44::Callback next = &Work6B44::fn_1_5E8C;
+            PlayerObject::Callback next = &PlayerObject::fn_1_5E8C;
             this->callback = next;
         }
         break;
@@ -757,18 +523,18 @@ void Work6B44::receive(const EventPacket *event)
 void fn_1_7398(void *owner, s16 item, const void *hookModel)
 {
     char *hookName = fn_8005C0F0(
-        (s16)fn_1_1BDA4(&((Work6B44 *)owner)->sequence), 2, item);
+        (s16)((PlayerObject *)owner)->characterNo(), 2, item);
     s16 hookModelId = ((const Model *)hookModel)->modelId;
-    ((Work6B44 *)owner)->Model::fn_1_347D4( hookName, hookModelId);
+    ((PlayerObject *)owner)->Model::setHook( hookName, hookModelId);
 }
 
-void Work6B44::fn_1_7410()
+void PlayerObject::fn_1_7410()
 {
     this->elapsed++;
     if ((f64)this->elapsed >= secondsToFrames(1.0)) {
-        shiftCharacterMotion__FP11MotionOwnerUiffUl(&this->motion, 0x930019,
+        shiftCharacterMotion(&static_cast<MotionOwner &>(*this), 0x930019,
                   8.0f, 0.0f, 0);
-        Callback result = &Work6B44::fn_1_74E8;
+        Callback result = &PlayerObject::fn_1_74E8;
         this->callback = result;
     }
 }
@@ -776,12 +542,11 @@ void Work6B44::fn_1_7410()
 extern "C" {
 
 }
-extern void fn_1_1BE24(s32 *playerIndex, s32 frames, s32 duration);
 extern "C" {
 
 }
 
-void Work6B44::fn_1_74E8()
+void PlayerObject::fn_1_74E8()
 {
     Callback callback;
 
@@ -790,13 +555,13 @@ void Work6B44::fn_1_74E8()
         secondsToFrames(2.0)) {
         s16 pan;
 
-        fn_1_1BE24(&sequence, 2, 0x18);
-        shiftCharacterMotion__FP11MotionOwnerUiffUl(&motion, DATANUM(0x8e0000, 114),
+        rumble(2, 0x18);
+        shiftCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 114),
                   8.0f, 0.0f, 0);
-        Model::fn_1_340D8();
-        pan = fn_1_2508(fn_1_1BDA4(&sequence));
-        CharFXPlayPan((s16)fn_1_1BDA4(&sequence), 0x24C, pan);
-        callback = &Work6B44::fn_1_7608;
+        Model::resetShadow();
+        pan = fn_1_2508(characterNo());
+        CharFXPlayPan((s16)characterNo(), 0x24C, pan);
+        callback = &PlayerObject::fn_1_7608;
         this->callback = callback;
     }
 }
@@ -806,22 +571,22 @@ extern "C" {
 void fn_1_5168(Model *);
 extern "C" {
 }
-void Work6B44::fn_1_7608()
+void PlayerObject::fn_1_7608()
 {
     M681GameState &manager = MinigameSingleton<M681GameState>::getChecked();
     fallFrames = fallFrames + 1;
     state.value.y = state.value.y - (1.5f * fallFrames);
     if (state.value.y <= -300.0f) {
-        secondValue += 1.0f;
-        if (secondValue >= secondsToFrames(firstValue)) {
-            fn_1_5168(this->resource);
+        landingFrames += 1.0f;
+        if (landingFrames >= secondsToFrames(landingDelay)) {
+            fn_1_5168(this->resource.get());
             {
-                Callback callbackWork = &Work6B44::fn_1_77E4;
+                Callback callbackWork = &PlayerObject::fn_1_77E4;
                 this->callback = callbackWork;
             }
-            Model::fn_1_33CB0(1);
-            selectCharacterMotion__FP11MotionOwnerUi(&motion, DATANUM(0x8e0000, 197));
-            Model::fn_1_33950(((1 << 30) | (1 << 1)));
+            Model::setLayer(1);
+            selectCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 197));
+            Model::setAttribute(((1 << 30) | (1 << 1)));
             firstAngle.set( fullAngle, (s32)secondsToFrames(0.1f));
             secondAngle.set( fullAngle, (s32)secondsToFrames(0.1f));
         }
@@ -832,12 +597,11 @@ extern "C" {
 void fn_1_524C(void *model, Mtx matrix);
 }
 
-void Work6B44::fn_1_77E4()
+void PlayerObject::fn_1_77E4()
 {
-    void *model = this->resource.value;
     Mtx matrix;
 
-    fn_1_524C(model, matrix);
+    fn_1_524C(resource.get(), matrix);
     Hu3DMtxTransGet(matrix, &this->state.value);
     Hu3DMtxRotGet(matrix, &this->rotation);
 }

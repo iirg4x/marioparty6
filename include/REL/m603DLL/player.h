@@ -2,13 +2,13 @@
 #define REL_M603DLL_PLAYER_H
 
 #include <vector>
-#include "REL/framework/linknode.h"
-#define M603_OWNED_MODEL_DECLARATION
-#include "REL/m603DLL/model.h"
+#include "REL/framework/list.h"
+#include "REL/framework/model.h"
+extern "C" {
+#include "game/hu3d.h"
+}
 
-struct PlayerNode : Node {};
-
-struct PlayerModelOwner : PlayerNode {
+struct PlayerModelOwner : ListNode<PlayerModelOwner> {
     enum { NUMBEROF_MOTION = 4 };
     Vec position;
     typedef void (PlayerModelOwner::*Callback)();
@@ -49,10 +49,6 @@ struct PlayerModelOwner : PlayerNode {
     void fn_1_6F60();
     void fn_1_70D8();
     void fn_1_72CC();
-    PlayerModelOwner *next_node()
-    {
-        return static_cast<PlayerModelOwner *>(link0);
-    }
 };
 void fn_1_59C8(void);
 void fn_1_6258(void);

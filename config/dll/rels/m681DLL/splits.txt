@@ -96,13 +96,10 @@ REL/m681DLL/character_model.cpp:
 	.data       start:0x00000520 end:0x00000570
 	.bss        start:0x000000B8 end:0x000000C8
 
-REL/m681DLL/sound.c:
-	.text       start:0x00008500 end:0x0000A8A4
+REL/framework/sound.c:
+	.text       start:0x00008500 end:0x0000A8DC
 	.rodata     start:0x00000478 end:0x000004B0
 	.data       start:0x00000570 end:0x00000640
-
-REL/m681DLL/sound_pitch.cpp:
-	.text       start:0x0000A8A4 end:0x0000A8DC
 
 REL/framework/heap.cpp:
 	.text       start:0x0000A8DC end:0x0000AA5C
@@ -120,11 +117,8 @@ REL/framework/new.cpp:
 	.data       start:0x00000660 end:0x00000688
 
 REL/framework/camera.cpp:
-	.text       start:0x0000AD6C end:0x0000B540
+	.text       start:0x0000AD6C end:0x0000B578
 	.rodata     start:0x00000530 end:0x000005A0
-
-REL/m681DLL/camera.cpp:
-	.text       start:0x0000B540 end:0x0000B578
 
 REL/framework/camera_ut0.cpp:
 	.text       start:0x0000B578 end:0x0000D11C
@@ -135,18 +129,15 @@ REL/framework/camera_ut1.cpp:
 	.text       start:0x0000D11C end:0x0000D4A0
 	.rodata     start:0x00000600 end:0x00000648
 
-REL/m681DLL/registered_value.cpp:
+REL/framework/category_sphere.cpp:
 	.text       start:0x0000D4A0 end:0x0000D9DC
 	.rodata     start:0x00000648 end:0x00000650
 	.data       start:0x000006E0 end:0x00000718
 	.bss        start:0x000000D0 end:0x000000D8
 
 REL/framework/chara.cpp:
-	.text       start:0x0000D9DC end:0x0000DB20
+	.text       start:0x0000D9DC end:0x0000DB70
 	.rodata     start:0x00000650 end:0x00000688
-
-REL/m681DLL/character_motion_transition.cpp:
-	.text       start:0x0000DB20 end:0x0000DB70
 
 REL/framework/chara_motion.cpp:
 	.text       start:0x0000DB70 end:0x0000EB10
@@ -178,16 +169,16 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000800 end:0x00000840
 	.data       start:0x00001550 end:0x000015D8
 
-REL/m681DLL/free.cpp:
-	.text       start:0x00017110 end:0x000174B8
+REL/framework/memory_manager.cpp:
+	.text       start:0x00017110 end:0x000171F4
+
+REL/framework/free.cpp:
+	.text       start:0x000171F4 end:0x000174B8
 	.data       start:0x000015D8 end:0x000015F8
 
 REL/framework/linknode.cpp:
-	.text       start:0x000174B8 end:0x00017634
+	.text       start:0x000174B8 end:0x00017E94
 	.rodata     start:0x00000840 end:0x00000880
-
-REL/m681DLL/text_16FD4.cpp:
-	.text       start:0x00017634 end:0x00017E94
 
 REL/framework/minigame_core.cpp:
 	.text       start:0x00017E94 end:0x00018A10
@@ -196,13 +187,13 @@ REL/framework/minigame_core.cpp:
 	.data       start:0x000015F8 end:0x00001630
 	.bss        start:0x000000E0 end:0x000000F0
 
-REL/m681DLL/model.cpp:
+REL/framework/model.cpp:
 	.text       start:0x00018A10 end:0x00019EA0
 	.rodata     start:0x000008D8 end:0x000008E0
 	.data       start:0x00001630 end:0x00001650
 	.bss        start:0x000000F0 end:0x000000F8
 
-REL/m681DLL/model_motion.cpp:
+REL/framework/model_motion.cpp:
 	.text       start:0x00019EA0 end:0x0001AC74
 	.data       start:0x00001650 end:0x000016D0
 
@@ -210,8 +201,11 @@ REL/framework/mt19937.cpp:
 	.text       start:0x0001AC74 end:0x0001BC74
 	.rodata     start:0x000008E0 end:0x00000950
 
-REL/m681DLL/p_info.cpp:
-	.text       start:0x0001BC74 end:0x0001D1A4
+REL/framework/p_chara.cpp:
+	.text       start:0x0001BC74 end:0x0001BD34
+
+REL/framework/p_info.cpp:
+	.text       start:0x0001BD34 end:0x0001D1A4
 	.rodata     start:0x00000950 end:0x00000968
 	.data       start:0x000016D0 end:0x00001758
 

@@ -18,7 +18,7 @@ REL/framework/new.cpp:
 	.data       start:0x00000800 end:0x00000828
 
 REL/framework/camera.cpp:
-	.text       start:0x00011E6C end:0x00012640
+	.text       start:0x00011E6C end:0x00012678
 	.rodata     start:0x00000660 end:0x000006D0
 
 REL/framework/event.cpp:
@@ -48,7 +48,7 @@ REL/framework/game_object_man.cpp:
 	.data       start:0x00000990 end:0x00000A18
 
 REL/framework/linknode.cpp:
-	.text       start:0x0001BA50 end:0x0001BBCC
+	.text       start:0x0001BA50 end:0x0001C42C
 	.rodata     start:0x00000828 end:0x00000868
 
 REL/framework/minigame_core.cpp:

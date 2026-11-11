@@ -7,23 +7,7 @@ extern "C" {
 #include "game/pad.h"
 }
 
-// Three components of a camera position or direction, ordered X, Y, Z.
-struct CameraVector {
-    float coordinates[3]; // X, Y, and Z components.
-};
-
-// Describes the eye, up direction, and look target of the debug camera.
-struct CameraFrame {
-    CameraVector eye;    // Camera position in world space.
-    CameraVector up;     // Direction above the camera.
-    CameraVector target; // World-space point the camera looks toward.
-};
-
-// Holds a camera's eye position and orientation for a pose query.
-struct CameraPose {
-    Vec position;        // World-space camera eye position.
-    Quaternion rotation; // Camera orientation.
-};
+#include "REL/framework/camera_frame.h"
 void get_camera_pose_from_frame(const CameraFrame *, CameraPose *);
 
 // A debug camera pose query converts the frame to a pose, then discards the result.
@@ -45,17 +29,6 @@ float getDebugSubStickY(int padIndex) { return (1.0f / 44.0f) * lbl_802BFFF0[pad
 // Debug event processing can call this hook; it performs no work.
 void debugEventHook(void *, int) {}
 
-// Combines the debug camera frame with its packed flags.
-struct CameraSetup {
-    CameraFrame frame; // Eye, up direction, and target used by the debug camera.
-    unsigned char highFlag : 1, // Highest flag bit; initialized to zero.
-                  middleFlag : 1, // Next flag bit; initialized to zero.
-                  lowFlag : 1, // Last single-bit flag; initialized to one.
-                  remainingFlagBits : 5; // The constructor leaves these bits unchanged.
-    CameraSetup();
-};
-void cameraSetDefaultFrame(CameraFrame *);
-
 // Constructing a debug camera setup sets its flags and the default frame at Z = 5000.
 CameraSetup::CameraSetup()
 {
@@ -73,7 +46,5 @@ void debugResetHook(CameraFrame *, s32, s32) {}
 void copyDebugCameraFrame(CameraFrame *destination, const CameraFrame *source)
 {
     CameraFrame *frame = destination;
-    frame->eye = source->eye;
-    frame->up = source->up;
-    frame->target = source->target;
+    *frame = *source;
 }

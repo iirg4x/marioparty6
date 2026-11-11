@@ -1,4 +1,3 @@
-#include "REL/m603DLL/singleton_32930.h"
 #include "REL/m603DLL/ufo.h"
 extern "C" {
 #include "game/audio.h"
@@ -7,7 +6,7 @@ extern "C" {
 #include "dolphin/gx.h"
 #include "humath.h"
 
-template <class Time> Time secondsToFrames(Time seconds);
+#include "REL/framework/frame_time_inline.h"
 
 #include <cmath>
 #include "REL/m603DLL/score_owner.h"
@@ -18,14 +17,13 @@ extern "C" {
 #include "dolphin/mtx.h"
 #include "game/hsfex.h"
 }
-#include "REL/m603DLL/callback_owner.h"
+#include "REL/framework/list_object.h"
 #include "REL/m603DLL/camera_owner.h"
 #include "REL/m603DLL/random.h"
 
 typedef Vec FloatTripletB520;
 
 extern "C" {
-
 
 extern const u8 lbl_1_data_A4C[];
 extern const u8 lbl_1_data_EC[];
@@ -37,11 +35,7 @@ class CameraModelOwner;
 }
 void fn_1_C710(CameraModelOwner *);
 
-struct CameraModelNode : Node {
-    ~CameraModelNode();
-};
-
-struct CameraModelOwner : CameraModelNode {
+struct CameraModelOwner : ListNode<CameraModelOwner> {
     CameraModelOwner(const OwnedModel *,unsigned int,s32,s32);
     ~CameraModelOwner();
     void fn_1_CD7C(Mtx);
@@ -77,33 +71,14 @@ struct CameraModelOwner : CameraModelNode {
     f32 depth;
     u8 state54;
     s32 callbackIndex;
-    CameraModelOwner *next_node() { return static_cast<CameraModelOwner *>(link0); }
 };
 
-struct CameraModelList : Node {
- ~CameraModelList() {}
- Node *first_node() { return link0; }
- Node *last_node() { return link4; }
- Node *end_node() { return this; }
- Node *end() { return this; }
- CameraModelOwner *begin() { return static_cast<CameraModelOwner *>(first_node()); }
- CameraModelOwner *front() { return static_cast<CameraModelOwner *>(first_node()); }
- CameraModelOwner *back() { return static_cast<CameraModelOwner *>(last_node()); }
- bool empty() const { return link0 == this && link0 == link4; }
-};
 extern "C" {
-long lbl_1_bss_590 = secondsToFrames(2L);
-long lbl_1_bss_594 = (long)secondsToFrames(3.5);
-long lbl_1_bss_598 = (long)secondsToFrames(3.5);
 FloatTripletB520 lbl_1_bss_59C[0x21];
 FloatTripletB520 lbl_1_bss_728[0x21];
 FloatTripletB520 lbl_1_bss_8B4[0x21];
 u8 lbl_1_bss_A40;
-CameraModelList lbl_1_bss_A50;
-}
-template <class Time> inline Time secondsToFrames(Time seconds)
-{
-    return 60 * seconds;
+ListRoot<CameraModelOwner> lbl_1_bss_A50;
 }
 
 static inline void CameraModelCreate(CameraModelPool *object, s32 modelIndex, s32 cameraGroup)
@@ -166,15 +141,15 @@ CameraModelPool::~CameraModelPool()
     fn_1_BF18();
 }
 
-void CameraModelPool::extra()
+void CameraModelPool::update()
 {
     if ((s32)(RandomUnsigned() & 0x1FFUL) == 0) fn_1_C0FC();
     fn_1_C04C();
 }
 
-void CameraModelPool::update(unsigned long bit)
+void CameraModelPool::flagEnabled(int bit)
 {
-    state &= ~(1UL << bit);
+    flags &= ~(1UL << bit);
     switch (bit) {
     case 0:
     case 1:
@@ -193,10 +168,6 @@ void fn_1_BB5C()
     lbl_1_bss_A40 = 1;
 }
 
-
-
-
-
 extern "C" {
 
 char *lbl_1_data_9A4[3] = {"mapmodel10-ufo_act", "mapmodel12-ufo_act_b",
@@ -213,7 +184,7 @@ extern void fn_1_CD34(HU3D_MODEL *, Mtx *);
 extern "C" {
 
 CameraModelOwner::CameraModelOwner(const OwnedModel *sourceModel, unsigned int motionData, s32 cameraIndex, s32 cameraGroup)
-    : modelId(sourceModel), motionId(motionData)
+    : modelId(*sourceModel), motionId(motionData)
 {
     s16 primaryModelId;
     s16 foregroundModelId;
@@ -244,7 +215,7 @@ CameraModelOwner::CameraModelOwner(const OwnedModel *sourceModel, unsigned int m
     fn_80026B64(foregroundModelId, lbl_1_rodata_5F8[cameraGroup]);
 
     fn_8002741C(this->motionId, lbl_1_data_9A4[cameraIndex], this->modelId);
-    motionId.fn_1_34228(lbl_1_data_9A4[this->cameraIndex]);
+    motionId.hideObject(lbl_1_data_9A4[this->cameraIndex]);
     motionIdValue = fn_8002D3C4(foregroundModelId);
     fn_8002C95C(foregroundModelId, motionIdValue);
     fn_800269E8(foregroundModelId, ((1 << 30) | (1 << 1)));
@@ -257,15 +228,12 @@ CameraModelOwner::CameraModelOwner(const OwnedModel *sourceModel, unsigned int m
     fn_80026B8C(this->hookModelId, 6);
     fn_80026B64(this->hookModelId, lbl_1_rodata_5F8[cameraGroup]);
 
-    this->modelId.fn_1_33A3C(&this->position);
+    this->modelId.setPosition(&this->position);
     callbackState = &CameraModelOwner::fn_1_C994;
     this->callbackState = callbackState;
 }
 
 }
-
-
-CameraModelNode::~CameraModelNode() {}
 
 CameraModelOwner::~CameraModelOwner()
 {
@@ -282,10 +250,9 @@ void fn_1_BF18()
 }
 
 typedef void (*CameraVisitor)(CameraModelOwner *);
-void fn_1_D270(CameraModelList *, CameraVisitor);
 void fn_1_C04C()
 {
-    fn_1_D270(&lbl_1_bss_A50, fn_1_C710);
+    lbl_1_bss_A50.visit(fn_1_C710);
 }
 
 int fn_1_C07C(CameraModelOwner *current)
@@ -295,7 +262,7 @@ int fn_1_C07C(CameraModelOwner *current)
     for (candidate = 0; candidate < 4; candidate++) {
         if (!current->groupFlags[1] && !current->groupFlags[0]) return 1;
         if (candidate == 3) break;
-        for (step = 0; step < 3; step++) current = current->next_node();
+        for (step = 0; step < 3; step++) current = current->next();
     }
     return 0;
 }
@@ -310,19 +277,19 @@ void fn_1_C0FC()
     s32 firstStep;
     s32 secondStep;
     s32 thirdStep;
-    gameMode = fn_1_1AB30();
+    gameMode = currentRequest();
     if (gameMode == 2) {
         entry = lbl_1_bss_A50.front();
         end = lbl_1_bss_A50.end_node();
         startIndex = ((u16)RandomUnsigned() * 3) >> 16;
-        for (step = 0; step != startIndex; step++) entry = entry->next_node();
+        for (step = 0; step != startIndex; step++) entry = entry->next();
         if ((u8)fn_1_C07C(entry) != 0) {
             entry->fn_1_CA14(0);
-            for (firstStep = 0; firstStep < 3; firstStep++) entry = entry->next_node();
+            for (firstStep = 0; firstStep < 3; firstStep++) entry = entry->next();
             entry->fn_1_CA14(1);
-            for (secondStep = 0; secondStep < 3; secondStep++) entry = entry->next_node();
+            for (secondStep = 0; secondStep < 3; secondStep++) entry = entry->next();
             entry->fn_1_CA14(2);
-            for (thirdStep = 0; thirdStep < 3; thirdStep++) entry = entry->next_node();
+            for (thirdStep = 0; thirdStep < 3; thirdStep++) entry = entry->next();
             entry->fn_1_CA14(3);
         }
     }
@@ -332,14 +299,14 @@ void fn_1_C280(int request)
 {
     CameraModelOwner *node = lbl_1_bss_A50.front();
     Node *end = lbl_1_bss_A50.end_node();
-    for (; node != end; node = node->next_node()) node->fn_1_C8C0(request);
+    for (; node != end; node = node->next()) node->fn_1_C8C0(request);
 }
 
 void fn_1_C2EC()
 {
     CameraModelOwner *node = lbl_1_bss_A50.front();
     Node *end = lbl_1_bss_A50.end_node();
-    for (; node != end; node = node->next_node()) node->fn_1_C350();
+    for (; node != end; node = node->next()) node->fn_1_C350();
 }
 
 void CameraModelOwner::fn_1_C350()
@@ -395,7 +362,7 @@ s32 fn_1_C4E8(s32 cameraIndex, u8 markEntries, s32 currentValue)
                 currentValue++;
             }
         }
-        node = node->next_node();
+        node = node->next();
     }
     return matchedCount;
 }
@@ -435,8 +402,8 @@ void CameraModelOwner::fn_1_C750()
     translation.x = 0.0f;
     translation.y = 0.0f;
     translation.z = 0.0f;
-    modelId.fn_1_33ACC(&rotation);
-    modelId.fn_1_33A3C(&translation);
+    modelId.setRotation(&rotation);
+    modelId.setPosition(&translation);
 }
 void CameraModelOwner::fn_1_C8C0(s32 playerIndex)
 {
@@ -617,20 +584,5 @@ void CameraModelOwner::fn_1_CDD4(Mtx matrix)
         GXWGFifo.u8 = 0;
         GXWGFifo.u8 = (u8)frame;
         vertex++;
-    }
-}
-
-
-void fn_1_D2D0(Node *, Node *, CameraVisitor);
-void fn_1_D270(CameraModelList *list, CameraVisitor visitor)
-{
-    fn_1_D2D0(list->begin(), list->end(), visitor);
-}
-void fn_1_D2D0(Node *current, Node *sentinel, CameraVisitor callback)
-{
-    while (current != sentinel) {
-        callback(static_cast<CameraModelOwner *>(current));
-        Node *next = current->link0;
-        current = next;
     }
 }

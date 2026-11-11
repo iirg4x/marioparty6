@@ -1,13 +1,11 @@
 #include "REL/m652DLL/map_singleton.h"
-#include "REL/framework/minigame_singleton.h"
-#include "REL/m652DLL/player_config.h"
+#include "REL/framework/singleton.h"
 #include "REL/m652DLL/player_functions.h"
 #include "REL/m652DLL/player_work.h"
 #include "REL/m652DLL/tail_types.h"
 void fn_1_ABA8(CameraArcMotion *object, float value);
-#include "REL/m652DLL/time_conversion.h"
-template<> double secondsToFrames<double>(double value);
-template<> float secondsToFrames<float>(float value);
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
 class MapManager;
 #include <vector>
 #include <cmath>
@@ -62,7 +60,7 @@ inline RacerControl::~RacerControl() {}
 HumanControl::~HumanControl() {}
 
 ComputerControl::ComputerControl(Racer *racer)
-    : RacerControl(racer), index(fn_1_1B31C((s32 *)racer)),
+    : RacerControl(racer), index(racer->difficulty()),
       unknown0C(-1), currentStep(0), nextStep(0),
       rotation(1.4f), collisionTimer(0), timer(0), moving(1), steps(2),
       padControl((u16)this->racer->playerMask, 3.1415927f)
@@ -380,15 +378,10 @@ s32 fn_1_CBC(ComputerControl *work, const HuVecF *target, float amount)
 void RacerControl::reset() {}
 void HumanControl::update() {}
 
-template<> inline double secondsToFrames<double>(double value) { return 60.0 * value; }
-template<> inline float secondsToFrames<float>(float value) { return 60.0f * value; }
-
 extern "C" {  }
 
 /* Route assertion messages. */
-const float lbl_1_rodata_10C[1] = {-1800.0f};
-const float lbl_1_rodata_110[1] = {-4300.0f};
-RouteStep lbl_1_data_0[2] = { { 0, 6, 9, lbl_1_rodata_10C[0] }, { 1, 7, 11, lbl_1_rodata_110[0] } };
+RouteStep lbl_1_data_0[2] = { { 0, 6, 9, cmToWorld(-1800.0f) }, { 1, 7, 11, cmToWorld(-4300.0f) } };
 HuVecF lbl_1_data_20[2] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
 char lbl_1_data_38[10] = "self != 0";
 char lbl_1_data_42[14] = "singleton.h";

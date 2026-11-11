@@ -20,16 +20,16 @@ OSPriority queryCurrentThreadPriority()
 // Creates a suspended, detached worker at the caller's priority with no pending handoff.
 // The first resume supplies its initial argument before the entry point runs.
 ThreadEntry::ThreadEntry(unsigned long stackBytes)
-    : thread(entryPoint, this, stackBytes, queryCurrentThreadPriority(), OS_THREAD_ATTR_DETACH),
+    : m_th(entryPoint, this, stackBytes, queryCurrentThreadPriority(), OS_THREAD_ATTR_DETACH),
       handoffSemaphore(0) {}
 
-// When the owner deletes the worker, NativeThread cancels it if needed and frees its stack.
+// When the owner deletes the worker, CThread cancels it if needed and frees its stack.
 ThreadEntry::~ThreadEntry() {}
 
 // Reports whether the worker's native thread is terminated.
 bool threadHasTerminated(ThreadEntry *worker)
 {
-    return (bool)OSIsThreadTerminated(worker->thread);
+    return (bool)OSIsThreadTerminated(worker->m_th);
 }
 
 // Called by the owner to pass an argument and wait for the worker's handoff signal.
@@ -37,14 +37,14 @@ bool threadHasTerminated(ThreadEntry *worker)
 // Returns the last exchanged argument immediately if the worker is already terminated.
 void *ThreadEntry::resume(void *incomingArgument)
 {
-    if (OSIsThreadTerminated(thread)) {
+    if (OSIsThreadTerminated(m_th)) {
         return exchangedArgument;
     }
     exchangedArgument = incomingArgument;
-    OSResumeThread(thread);
+    OSResumeThread(m_th);
     OSWaitSemaphore(handoffSemaphore);
     // The unused stack count is discarded, but the stack and OS thread checks still run.
-    thread.stackUsage();
+    m_th.stackUsage();
     OSCheckActiveThreads();
     return exchangedArgument;
 }
@@ -53,13 +53,13 @@ void *ThreadEntry::resume(void *incomingArgument)
 // After the owner resumes it, returns the new argument supplied by that owner.
 void *ThreadEntry::suspend(void *outgoingArgument)
 {
-    OSGetCurrentThread() == thread ? (void)0 :
+    OSGetCurrentThread() == m_th ? (void)0 :
         __msl_assertion_failed("::OSGetCurrentThread() == m_th", "subthread.cpp", 77);
-    !OSIsThreadTerminated(thread) ? (void)0 :
+    !OSIsThreadTerminated(m_th) ? (void)0 :
         __msl_assertion_failed("!::OSIsThreadTerminated(m_th)", "subthread.cpp", 80);
     exchangedArgument = outgoingArgument;
     OSSignalSemaphore(handoffSemaphore);
-    OSSuspendThread(thread);
+    OSSuspendThread(m_th);
     return exchangedArgument;
 }
 

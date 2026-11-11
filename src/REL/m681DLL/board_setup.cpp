@@ -1,34 +1,30 @@
 #include "REL/m681DLL/character_model.h"
 #include "REL/m681DLL/board_setup.h"
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 
 #include "dolphin/mtx.h"
 
-#include "REL/m681DLL/framework/model.h"
+#include "REL/framework/model.h"
 #include "REL/m681DLL/vector_state.h"
 #include "REL/m681DLL/event_manager.h"
 #include "REL/m681DLL/owner_182c.h"
 #include "REL/m681DLL/monitor.h"
 #include "REL/m681DLL/model_pair.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/world_units.h"
 
 extern "C" void fn_8005DDEC(s16 layerNo);
 
-
 extern "C" {
 
 }
 
-
 extern "C" {
 
-
 }
-
 
 void operator delete(void *);
-
 
 inline Owner47C::~Owner47C() { delete value; }
 
@@ -36,14 +32,12 @@ BoardController::BoardController() {}
 
 BoardController::~BoardController() {}
 
-
 void *operator new(u32 size);
 
 void fn_1_EEC(BoardController *)
 {
     new VectorStateComposite;
 }
-
 
 extern "C" { void configureShadowCamera__FsPC3VecP3Vecfff(s32, Vec *, Vec *, f32, f32, f32); }
 
@@ -66,7 +60,6 @@ void fn_1_F30(BoardController *owner)
     configureShadowCamera__FsPC3VecP3Vecfff(1, &current, &defaultValue,
                800.0f, 600.0f, 5.0f);
 }
-
 
 extern "C" { void *__ct__21ModelOwnerComposite84Fi(void *object, s32 index); }
 
@@ -98,7 +91,6 @@ void fn_1_1014(BoardController *)
     fn_8005DDEC(4);
 }
 
-
 void fn_1_10D8(BoardController *)
 {
     new Monitor;
@@ -106,18 +98,12 @@ void fn_1_10D8(BoardController *)
 
 extern "C" {
 
-
 }
 
 extern "C" {
-}
-
-static inline f32 accelerationPerFrame(f64 accelerationPerSecondSquared)
-{
-    return (f32)((accelerationPerSecondSquared * 100.0) / (60.0 * 60.0));
 }
 
 extern "C" {
 s32 lbl_1_bss_8 = minutesToFrames(60L);
-f32 lbl_1_bss_C = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

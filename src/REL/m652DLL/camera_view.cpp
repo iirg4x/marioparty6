@@ -2,49 +2,28 @@ extern "C" {
 #include "game/hu3d.h"
 }
 #include "REL/framework/debug.h"
-#include "REL/m652DLL/time_conversion.h"
-#include "REL/m652DLL/node_owner.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
+#include "REL/framework/list_object.h"
 #include <vector>
 #include "dolphin/types.h"
 #include "REL/framework/game_object.h"
-#include "REL/m652DLL/framework/camera_frame.h"
+#include "REL/framework/camera_frame.h"
+#include "REL/framework/category_sphere.h"
 #include "REL/framework/event_packet.h"
 #include "REL/m652DLL/camera_split.h"
-#include "REL/m652DLL/camera_perspective.h"
+#include "REL/framework/scene_shadow.h"
+#include "REL/m652DLL/player_camera.h"
 #include "humath.h"
 
 static inline int CameraFrames(int value) { return value * 60; }
 
 extern "C" {
-unsigned int lbl_1_bss_68 = fn_1_2178(5);
+unsigned int lbl_1_bss_68 = minutesToFrames(5L);
 unsigned int lbl_1_bss_6C = CameraFrames(30);
-float lbl_1_bss_70 = framesToSeconds(framesToSeconds(980.665));
+float lbl_1_bss_70 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }
 
-extern "C" FlagNodeList lbl_1_bss_EC;
-
-struct CameraSetup : CameraFrame {
-    unsigned char flag7 : 1, flag6 : 1, flag5 : 1, unknown24 : 5;
-    CameraSetup();
-};
-
-class PlayerCamera : public FlagNode, public CameraFrame,
-                  public EventListener {
-public:
-    typedef void (PlayerCamera::*Action)();
-    PlayerCamera(unsigned int index);
-    virtual ~PlayerCamera();
-    virtual void flagEnabled(int mask);
-    virtual void update();
-    virtual void receive(const EventPacket *event);
-    void fn_1_4118(); void fn_1_3E2C(); void fn_1_4458(); void fn_1_414C();
-    Action action;
-    int count;
-    unsigned short modelId;
-    CameraPose position;
-    int frame;
-    CameraSetup state;
-};
 extern "C" const CameraPose lbl_1_rodata_1D0[3] = {
 {{0.0f,925.32f,-3348.63f},{-0.13663656f,0.0f,-0.0f,0.99062127f}},
 {{0.0f,1613.5106f,904.49774f},{-0.42033017f,0.0f,-0.0f,0.9073713f}},
@@ -183,7 +162,7 @@ PlayerCamera::PlayerCamera(unsigned int index)
 {
     set_camera_frame_from_pose(&static_cast<CameraFrame &>(*this), lbl_1_rodata_1D0);
     registerChannel(count + 1);
-    set_camera_frame_from_pose(&state, &lbl_1_rodata_1D0[1]);
+    set_camera_frame_from_pose(&state.frame, &lbl_1_rodata_1D0[1]);
 }
 
 PlayerCamera::~PlayerCamera() {}
@@ -232,7 +211,7 @@ void PlayerCamera::update()
 {
  (this->*action)();
  frame++;
- debugResetHook(&state, count, modelId);
+ debugResetHook(&state.frame, count, modelId);
 }
 
 extern "C" {
@@ -323,10 +302,6 @@ void PlayerCamera::fn_1_414C()
                              &parameterState, &motionState, 0.1f);
  cameraApplyToHud(&static_cast<CameraFrame &>(*this), modelId);
 }
-/* The camera module's sphere; other files see it through its registered values. */
-struct Sphere;
-
-extern "C" void fn_1_DAD8(std::vector<Sphere *> *output, long modelId);
 
 float fitCameraToSpheres(CameraFrame *camera, CameraPerspective *value, std::vector<Sphere *> *setup);
 
@@ -341,7 +316,7 @@ void fn_1_41B4(PlayerCamera *object, CameraPose *pose)
     CameraFrame camera;
 
     setup.clear();
-    fn_1_DAD8(&setup, object->count);
+    collectCategoryValues(&setup, object->count);
     if (setup.size() == 0) {
         get_camera_pose_from_frame(&static_cast<CameraFrame &>(*object), pose);
         return;

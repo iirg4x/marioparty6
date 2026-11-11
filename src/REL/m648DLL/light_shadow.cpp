@@ -5,13 +5,12 @@ extern "C" {
 #include "dolphin/mtx.h"
 #include "datadir_enum.h"
 #include "game/hu3d.h"
-#include "REL/m648DLL/singleton_32930.h"
 }
 
 #include "REL/framework/linknode.h"
 #include "REL/m648DLL/light_shadow.h"
-#include "REL/m648DLL/list_object.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/singleton.h"
 
 extern "C" {
 void *__dt__4NodeFv(void *object, s16 mode);
@@ -19,14 +18,9 @@ void __dl__FPv(void *object);
 void Replace__5ModelFs(void *model, s32 mode);
 }
 
-
-
-
-
 extern "C" {
 extern const u8 lbl_1_data_5C[];
 extern u8 lbl_1_data_440[];
-
 
 extern char lbl_1_data_428[];
 extern char lbl_1_data_432[];
@@ -45,11 +39,11 @@ CallbackModelOwner::CallbackModelOwner(bool shadow)
     s16 currentModel;
     currentModel = this->modelId;
     fn_80029850(currentModel, 1);
-    this->modelId.fn_1_33CB0(1);
-    this->modelId.fn_1_33950(((1 << 30) | (1 << 0)));
-    this->shadowModelId.fn_1_33CB0(1);
-    this->shadowModelId.fn_1_33950(((1 << 30) | (1 << 0)));
-    this->shadowModelId.fn_1_33950(((1 << 30) | (1 << 6)));
+    this->modelId.setLayer(1);
+    this->modelId.setAttribute(((1 << 30) | (1 << 0)));
+    this->shadowModelId.setLayer(1);
+    this->shadowModelId.setAttribute(((1 << 30) | (1 << 0)));
+    this->shadowModelId.setAttribute(((1 << 30) | (1 << 6)));
     Vec first = {0.0f, 0.0f, 0.0f};
     if (shadow) {
         Vec offset = {0.5f, -1.0f, -0.5f};
@@ -68,9 +62,9 @@ void CallbackModelOwner::update()
 {
 }
 
-void CallbackModelOwner::clearRequest(int request)
+void CallbackModelOwner::flagEnabled(int request)
 {
-    state &= ~(1UL << request);
+    flags &= ~(1UL << request);
     switch (request) {
     case 0:
     case 1:

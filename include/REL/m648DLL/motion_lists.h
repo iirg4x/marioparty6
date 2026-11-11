@@ -1,7 +1,7 @@
 #ifndef REL_M648_MOTION_LISTS_H
 #define REL_M648_MOTION_LISTS_H
 #include "REL/framework/linknode.h"
-#include "REL/m648DLL/framework/model.h"
+#include "REL/framework/model.h"
 void operator delete(void *);
 struct NodeOwner : Node { unsigned char ownerState[0x28]; ~NodeOwner() {} };
 typedef Model ReleasedModel;

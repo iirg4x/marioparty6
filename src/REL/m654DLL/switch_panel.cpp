@@ -1,6 +1,7 @@
 #include "REL/m654DLL/framework_calls.h"
-#include "REL/m654DLL/time_conversion.h"
-#include "REL/m654DLL/unit_conversion.h"
+#include "REL/framework/sound.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
 // The floor switches: shuffles the panels into the rows, shows which were stepped on and plays each panel's effect.
 #include <vector>
 #include <algorithm>
@@ -8,7 +9,6 @@
 #include "REL/framework/event_packet.h"
 #include "REL/framework/game_object_man.h"
 #include "REL/m654DLL/model_animation_owner.h"
-
 extern "C" {
 #include "REL/m654DLL/pad_control.h"
 #include "game/audio.h"
@@ -34,27 +34,20 @@ char *lbl_1_data_4F4[5] = {"s6_null", "s7_null", "s8_null", "s9_null", 0};
 char *lbl_1_data_52C[5] = {"s11_null", "s14_null", "s17_null", "s20null2", 0};
 char *lbl_1_data_588[9] = {"s10_null", "s12_null", "s13_null", "s15_null", "s16_null", "s18_null", "s19_null", "s21_null", 0};
 char **lbl_1_data_5AC[5] = {lbl_1_data_498, lbl_1_data_4C0, lbl_1_data_4F4, lbl_1_data_52C, lbl_1_data_588};
-void __msl_assertion_failed(const char *expression, const char *file, int line);
-int lbl_1_bss_C0 = fn_1_B80(1);
-float lbl_1_bss_C4 = framesToSeconds(framesToSeconds(980.665));
+int lbl_1_bss_C0 = minutesToFrames(1L);
+float lbl_1_bss_C4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 std::vector<short> lbl_1_bss_D4;
+void fn_1_8600(Model *anchorModel);
+int fn_1_8AD4(std::vector<Vec> *owner);
 }
 
-// The panel kinds; the constructor's assert names NUMBER_OF_TYPE.
-enum PanelType { NUMBER_OF_TYPE = 3 };
+enum PanelType { NUMBER_OF_TYPE = 3 }; // The panel kinds; the constructor's assert names NUMBER_OF_TYPE.
 
-void RandomSeed(unsigned long seed);
-unsigned long RandomUnsigned();
-long RandomInteger(long range);
-
-int fn_1_85D8(int range)
-{
-    return RandomInteger(range);
-}
+int fn_1_85D8(int range) { return RandomInteger(range); }
 
 class SwitchPanel : public GameObject, public EventListener {
 public:
-    SwitchPanel(int type, int initialMode, Model *initialValue, char *setting);
+    SwitchPanel(int type, int row, Model *anchorModel, char *anchorObject);
     virtual ~SwitchPanel();
     virtual void update();
     virtual void receive(const EventPacket *event);
@@ -62,9 +55,8 @@ public:
     void fn_1_8F40();
     void fn_1_90FC(int value, Vec *position);
     void fn_1_94A4(Vec *position);
-
-    Model *unknown14;
-    char *unknown18;
+    Model *anchorModel;   // Model whose named object the panel follows.
+    char *anchorObject;   // Name of that object in the anchor model.
     int type;
     unsigned char active : 1;
     unsigned char unknown20 : 7;
@@ -77,12 +69,7 @@ public:
     int soundCountdown;
 };
 
-extern "C" {
-void fn_1_8600(Model *setting);
-int fn_1_8AD4(std::vector<Vec> *owner);
-}
-
-void fn_1_8600(Model *setting)
+void fn_1_8600(Model *anchorModel)
 {
     char **configuration;
     unsigned int seed = lbl_1_rodata_3D0[(int)RandomUnsigned() % 71];
@@ -98,15 +85,15 @@ void fn_1_8600(Model *setting)
     for (int panelRow = 0; panelRow < 5; panelRow += 1) {
         configuration = lbl_1_data_5AC[panelRow];
         while (*configuration != 0) {
-            new SwitchPanel(types.back(), panelRow, setting, *configuration++);
+            new SwitchPanel(types.back(), panelRow, anchorModel, *configuration++);
             types.pop_back();
         }
     }
-    types.empty() ? (void)0 : (void)__msl_assertion_failed("types.empty()", "switch_panel.cpp", 0x5C);
+    assert(types.empty());
     lbl_1_bss_D4.clear();
     for (int modelIndex = 0; modelIndex < 3; modelIndex++) {
         Model *model = new OwnedModel(lbl_1_rodata_3C4[modelIndex]);
-        model->fn_1_33950((1 << 0));
+        model->setAttribute((1 << 0));
         lbl_1_bss_D4.push_back(*model);
     }
 }
@@ -120,8 +107,7 @@ int fn_1_8AD4(std::vector<Vec> *owner)
     int count = sequence.size();
     owner->clear();
     completedCount = 0;
-    index = 0;
-    while (index < count) {
+    for (index = 0; index < count; index++) {
         SwitchPanel *entry = static_cast<SwitchPanel *>(sequence[index]);
         if ((unsigned char)entry->active == 0) {
             if (entry->type == 0) {
@@ -131,15 +117,14 @@ int fn_1_8AD4(std::vector<Vec> *owner)
                 owner->push_back(entry->position);
             }
         }
-        index++;
     }
     return completedCount;
 }
 
-SwitchPanel::SwitchPanel(int type, int initialMode, Model *initialValue, char *setting)
+SwitchPanel::SwitchPanel(int type, int row, Model *anchorModel, char *anchorObject)
     : GameObject(1),
-      unknown14(initialValue),
-      unknown18(setting),
+      anchorModel(anchorModel),
+      anchorObject(anchorObject),
       type(type),
       firstModel(0x710004),
       secondModel(lbl_1_rodata_3B8[type]),
@@ -147,16 +132,14 @@ SwitchPanel::SwitchPanel(int type, int initialMode, Model *initialValue, char *s
       soundCountdown(0)
 {
     int index;
+    assert((type >= 0) && (type < NUMBER_OF_TYPE));
 
-    ((type >= 0) && (type < NUMBER_OF_TYPE)) ? (void)0
-        : __msl_assertion_failed("(type >= 0) && (type < NUMBER_OF_TYPE)", "switch_panel.cpp", 0x87);
-
-    firstModel.fn_1_33CB0(2);
-    secondModel.fn_1_33CB0(2);
-    firstModel.fn_1_34108();
-    secondModel.fn_1_34108();
+    firstModel.setLayer(2);
+    secondModel.setLayer(2);
+    firstModel.setShadowMap();
+    secondModel.setShadowMap();
     fn_1_8EF0();
-    registerChannel(initialMode + 5);
+    registerChannel(row + 5);
     for (index = 0; index < 4; index++) {
         registerChannel(index + 1);
     }
@@ -174,19 +157,18 @@ SwitchPanel::~SwitchPanel()
 
 void SwitchPanel::fn_1_8EF0()
 {
-    firstModel.fn_1_33950(1);
-    secondModel.fn_1_33988(1);
+    firstModel.setAttribute(1);
+    secondModel.resetAttribute(1);
     active = 1;
 }
 
 void SwitchPanel::fn_1_8F40()
 {
-    firstModel.fn_1_33988(1);
-    secondModel.fn_1_33950(1);
+    firstModel.resetAttribute(1);
+    secondModel.setAttribute(1);
     active = 0;
 }
 
-int fn_1_AD90(s16 cameraMask, s32 effectId, Point3d *targetPoint);
 extern "C" {
 
 void fn_8002C95C(int modelId, short motionId);
@@ -204,12 +186,12 @@ void SwitchPanel::update()
     float value;
     unsigned char stopSound;
 
-    unknown14->fn_1_344A0(unknown18, &position);
-    value = unknown14->fn_1_33BAC();
-    firstModel.fn_1_33A3C(&position);
-    firstModel.fn_1_33B5C(value);
-    secondModel.fn_1_33A3C(&position);
-    secondModel.fn_1_33B5C(value);
+    anchorModel->getObjectPosition(anchorObject, &position);
+    value = anchorModel->getRotationY();
+    firstModel.setPosition(&position);
+    firstModel.setRotationY(value);
+    secondModel.setPosition(&position);
+    secondModel.setRotationY(value);
     if (soundHandle != -1) {
         stopSound = 0;
         if (soundCountdown > 0 && (soundCountdown -= 1) == 0) {
@@ -257,7 +239,7 @@ void SwitchPanel::fn_1_90FC(int value, Vec *target)
             case 0:
                 fn_1_94A4(&position);
                 soundCountdown = 0;
-                fn_1_AD90(1, 0x81B, &position);
+                soundPlayAt(1, 0x81B, &position);
                 break;
             case 1: {
                 Vec targetPosition = {0.0f, 0.0f, 0.0f};
@@ -266,7 +248,7 @@ void SwitchPanel::fn_1_90FC(int value, Vec *target)
                 targetPosition.z = target->z;
                 fn_1_94A4(&targetPosition);
                 MinigameSingleton<ModelAnimationOwner>::getChecked().fn_1_226C();
-                soundHandle = fn_1_AD90(1, 0x81A, &targetPosition);
+                soundHandle = soundPlayAt(1, 0x81A, &targetPosition);
                 break;
             }
             default:

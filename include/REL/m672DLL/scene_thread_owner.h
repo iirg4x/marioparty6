@@ -1,8 +1,8 @@
 #ifndef REL_M672DLL_SCENE_THREAD_OWNER_H
 #define REL_M672DLL_SCENE_THREAD_OWNER_H
 #include "REL/framework/minigame_core.h"
-#include "REL/m672DLL/framework/thread.h"
-#include "REL/m672DLL/framework/owner.h"
+#include "REL/framework/thread.h"
+#include <memory>
 struct SceneChild672;
 typedef struct MgTimer_s MGTIMER;
 struct TimerOwner {
@@ -23,8 +23,8 @@ struct SceneOwner672 : MinigameCore, ThreadEntry {
     virtual void setupObjects(OMOBJMAN *);
     virtual void updateGame();
     virtual void finishGame();
-    ScenePointer672<TimerOwner> sequence;
-    ScenePointer672<SceneChild672> child;
+    std::auto_ptr<TimerOwner> sequence;
+    std::auto_ptr<SceneChild672> child;
 };
 
 #endif

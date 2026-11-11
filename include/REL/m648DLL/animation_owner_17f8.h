@@ -2,24 +2,17 @@
 #define REL_M648_ANIMATION_OWNER_17F8_H
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
-#include "REL/m648DLL/owned_model.h"
-#include "REL/framework/linknode.h"
+#include "REL/framework/model.h"
+#include "REL/framework/list.h"
 class SetupAnimationOwner;
 class PlayAnimationOwner;
-// The nodes of the two update lists: each frame the list's visitor calls the owner's current step (callback).
-struct SetupAnimationNode : Node {
-    void (SetupAnimationOwner::*callback)();
-    ~SetupAnimationNode();
-};
-struct PlayAnimationNode : Node {
-    void (PlayAnimationOwner::*callback)();
-    ~PlayAnimationNode();
-};
 typedef OwnedModel LinkedModel;
 // One animated model of the setup list: the list's node, and the update its visitor runs each frame.
-class SetupAnimationOwner : public SetupAnimationNode {
+class SetupAnimationOwner : public ListNode<SetupAnimationOwner> {
 public:
     typedef void (SetupAnimationOwner::*Callback)();
+    // The current step, which the list's visitor calls each frame.
+    Callback callback;
     s32 mode;
     Vec motionPosition;
     Vec destination;
@@ -38,9 +31,11 @@ public:
     void fn_1_2290();
 };
 // One animated model of the play list: the list's node, and the update its visitor runs each frame.
-class PlayAnimationOwner : public PlayAnimationNode {
+class PlayAnimationOwner : public ListNode<PlayAnimationOwner> {
 public:
     typedef void (PlayAnimationOwner::*Callback)();
+    // The current step, which the list's visitor calls each frame.
+    Callback callback;
     s32 mode;
     Vec motionPosition;
     Vec destination;

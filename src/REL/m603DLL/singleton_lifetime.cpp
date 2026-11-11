@@ -1,6 +1,5 @@
 #include "math.h"
-#include "REL/m603DLL/callback_owner.h"
-#include "REL/m603DLL/singleton_32930.h"
+#include "REL/framework/list_object.h"
 #include "REL/m603DLL/player_position.h"
 extern "C" {
 #include "game/hu3d.h"
@@ -365,7 +364,7 @@ void CameraOwnerBBC::fn_1_251C()
 
     if ((f32)this->elapsedFrames > 60.0f) {
         if ((f32)this->elapsedFrames > 120.0f) {
-            this->state &= ~1;
+            this->flags &= ~1;
             {
                 CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_2080;
                 this->callback = callback;
@@ -419,7 +418,7 @@ void fn_1_26F8(CameraOwnerBBC *object)
     }
 }
 
-void CameraOwnerBBC::update(unsigned long mode)
+void CameraOwnerBBC::flagEnabled(int mode)
 {
     lbl_1_bss_50 = mode;
     switch (mode) {
@@ -437,29 +436,29 @@ void CameraOwnerBBC::update(unsigned long mode)
         break;
     }
     case 1:
-        this->state &= ~(1UL << mode);
+        this->flags &= ~(1UL << mode);
         break;
     case 2: {
         CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_1C48;
         this->callback = callback;
-        this->state &= ~(1UL << mode);
+        this->flags &= ~(1UL << mode);
         break;
     }
     case 3:
-        this->state &= ~(1UL << mode);
+        this->flags &= ~(1UL << mode);
         break;
     case 4: {
         fn_1_26F8(this);
         CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_1F4C;
         this->callback = callback;
-        this->state &= ~(1UL << mode);
+        this->flags &= ~(1UL << mode);
         break;
     }
     default:
         break;
     }
 }
-void CameraOwnerBBC::extra(){if(callback){(this->*callback)();}}
+void CameraOwnerBBC::update(){if(callback){(this->*callback)();}}
 s16 fn_1_2BFC(HuVecF *position, s32 playerIndex)
 {
     HuVecF screenPosition;
@@ -544,13 +543,12 @@ s32 fn_1_2F58(HuVecF *position, s32 soundEffect, s32 playerIndex)
     s32 soundHandle;
 
     soundHandle = -1;
-    if (fn_1_1AB30() == 2) {
+    if (currentRequest() == 2) {
         soundHandle = HuAudFXPlay(soundEffect);
         setSoundPanning(position, soundHandle, playerIndex);
     }
     return soundHandle;
 }
-
 
 void fn_1_310C(HuVecF *position, s32 soundHandle,
                            s32 playerIndex, f32 pitchInput)
@@ -636,6 +634,3 @@ void fn_1_3448(HuVecF *position, s32 index) {
 
 CameraOwnerBBC::~CameraOwnerBBC(){}
 
-void CallbackOwner::extra()
-{
-}

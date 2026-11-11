@@ -1,12 +1,12 @@
-#include "REL/m654DLL/time_conversion.h"
-#include "REL/m654DLL/sound_spatial.h"
-#include "REL/m654DLL/unit_conversion.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/sound.h"
+#include "REL/framework/world_units.h"
 #include "REL/m654DLL/camera_node_owner.h"
 #include "REL/m654DLL/timer_owner.h"
 #include "REL/m654DLL/scene_owner.h"
-#include "REL/m654DLL/manager_event_base.h"
+#include "REL/framework/list_object.h"
 #include "math.h"
-#include "REL/m654DLL/singleton_32930.h"
+#include "REL/m654DLL/model_animation_owner.h"
 #include "REL/framework/thread.h"
 extern "C" {
 #include "dolphin/gx.h"
@@ -35,28 +35,16 @@ extern "C" {
 
 }
 #include "dolphin/types.h"
-template<class Time> Time secondsToFrames(Time);
 inline int secondsToFrames(int seconds) { return 60 * seconds; }
 void RandomSeed(unsigned long);
 void process_event_queue();
 void updateGameObjects();
 void *operator new(unsigned long);
 /* Scales the argument by 60 before forwarding it to the sequence helper. */
-extern void fn_1_192E4(void);
-
-extern int fn_1_191C0(int mode);
-extern unsigned char fn_1_19258(void);
 extern "C" {
 
 extern int lbl_1_bss_1C;
 
-}
-
-extern "C" {
-
-extern void *__ct__19ModelAnimationOwnerFv(void *owner);
-
-/* Starts the module services and creates their game and scene owners. */
 }
 
 /* Initializes timing values and the startup sequence state. */
@@ -68,7 +56,6 @@ extern float lbl_1_bss_20;
 
 }
 
-void fn_1_19354(void);
 
 extern "C" {
 /* Initializes the callback table and attached registry/timer storage. */
@@ -84,22 +71,17 @@ SceneObjectOwner::~SceneObjectOwner() {}
 
 void SceneObjectOwner::setupObjects(OMOBJMAN *)
 {
-    void *sceneOwner;
-
     RandomSeed(OSGetTick());
     new CameraManager;
-    sceneOwner = operator new(0x3C);
-    if (sceneOwner != 0) {
-        sceneOwner = __ct__19ModelAnimationOwnerFv(sceneOwner);
-    }
+    new ModelAnimationOwner;
     fn_1_3274();
-    fn_1_A134(0);
+    soundSetCameraLayout(0);
 }
 void SceneObjectOwner::updateGame()
 {
     resume(0);
     process_event_queue();
-    fn_1_192E4();
+    updateRequestObjects();
     updateGameObjects();
     fn_800856A8();
 }
@@ -119,24 +101,24 @@ void SceneObjectOwner::run(void *argument)
     while ((unsigned char)fn_1_3528() == 0) {
         suspend(0);
     }
-    fn_1_191C0(0);
-    while ((unsigned char)fn_1_19258() == 0) {
+    postRequest(0);
+    while (requestsCleared() == 0) {
         suspend(0);
     }
-    fn_1_191C0(1);
-    while ((unsigned char)fn_1_19258() == 0) {
+    postRequest(1);
+    while (requestsCleared() == 0) {
         suspend(0);
     }
     fn_1_3398(1);
     while ((unsigned char)fn_1_3528() == 0) {
         suspend(0);
     }
-    fn_1_191C0(2);
+    postRequest(2);
     MinigameCore::showStart();
     while ((unsigned char)MinigameCore::messageDone() == 0) {
         suspend(0);
     }
-    fn_1_191C0(3);
+    postRequest(3);
     fn_1_3494();
     reinterpret_cast<TimerOwner *>(view)->setPosition(288.0f, 416.0f);
     reinterpret_cast<TimerOwner *>(view)->setParameters(lbl_1_bss_1C, 0, 0);
@@ -145,7 +127,7 @@ void SceneObjectOwner::run(void *argument)
         suspend(0);
     }
     reinterpret_cast<TimerOwner *>(view)->start();
-    fn_1_191C0(4);
+    postRequest(4);
     fn_1_35F8();
     MinigameCore::showFinish();
     HuAudSStreamFadeOut(bgmHandle, 0x64);
@@ -156,7 +138,7 @@ void SceneObjectOwner::run(void *argument)
         suspend(0);
     }
     fn_1_3768();
-    fn_1_191C0(5);
+    postRequest(5);
     MinigameCore::showWinners();
     HuAudJinglePlay((short)(fn_1_37FC() > 0 ? 0x43 : 0x45));
     while ((unsigned char)MinigameCore::messageDone() == 0) {
@@ -178,20 +160,19 @@ unsigned char SceneObjectOwner::fn_1_10DC()
 }
 void SceneObjectOwner::finishGame()
 {
-    fn_1_19354();
+    deleteRequestObjects();
 }
 extern "C" {
 int lbl_1_bss_10 = secondsToFrames(2);
 int lbl_1_bss_14 = secondsToFrames(3.5);
 int lbl_1_bss_18 = secondsToFrames(3.5);
-int lbl_1_bss_1C = fn_1_B80(1);
-float lbl_1_bss_20 = framesToSeconds(framesToSeconds(980.665));
+int lbl_1_bss_1C = minutesToFrames(1L);
+float lbl_1_bss_20 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }
 
 void* operator new(unsigned long);
 
 // Same-game framework time conversion.
-template<class Time> Time secondsToFrames(Time seconds) { return 60 * seconds; }
 
 // Active game-object registry.
 template<> GameObjectManager *MinigameSingleton<GameObjectManager>::self = 0;

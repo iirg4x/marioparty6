@@ -8,8 +8,8 @@ ParticleGameObject::ParticleGameObject(ANIMDATA *animation, Vec *position)
     : GameObject(3), model(fn_1_FDB8, animation, 64)
 {
     short particleId;
-    model.fn_1_33A3C(position);
-    model.fn_1_33CB0(2);
+    model.setPosition(position);
+    model.setLayer(2);
     model.SetScale(0.0f);
     model.SetTransparency(0.0f);
     particleId = (short)model.modelId;

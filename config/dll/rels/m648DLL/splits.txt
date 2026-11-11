@@ -32,35 +32,21 @@ REL/m648DLL/scene.cpp:
 	.bss        start:0x00000090 end:0x000000A8
 
 REL/m648DLL/multi_model_owner.cpp:
-	.text       start:0x00004200 end:0x000058B8
-	.rodata     start:0x00000170 end:0x00000180
-	.data       start:0x00000108 end:0x00000170
-
-REL/m648DLL/callback_walk.cpp:
-	.text       start:0x000058B8 end:0x00005978
-
-REL/m648DLL/callback_list_startup.cpp:
-	.text       start:0x00005978 end:0x00005A8C
+	.text       start:0x00004200 end:0x00005A8C
 	.ctors      start:0x0000000C end:0x00000010
-	.rodata     start:0x00000180 end:0x00000190
+	.rodata     start:0x00000170 end:0x00000190
+	.data       start:0x00000108 end:0x00000170
 	.bss        start:0x000000A8 end:0x000000C8
 
 REL/m648DLL/kuribo.cpp:
-	.text       start:0x00005A8C end:0x0000854C
-	.rodata     start:0x00000190 end:0x000001E0
-	.data       start:0x00000170 end:0x00000378
-
-REL/m648DLL/kuribo_list_startup.cpp:
-	.text       start:0x0000854C end:0x00008608
+	.text       start:0x00005A8C end:0x00008660
 	.ctors      start:0x00000010 end:0x00000014
-	.rodata     start:0x000001E0 end:0x000001F0
+	.rodata     start:0x00000190 end:0x000001F0
+	.data       start:0x00000170 end:0x00000378
 	.bss        start:0x000000C8 end:0x00000278
 
 REL/m648DLL/scene_create.cpp:
-	.text       start:0x00008608 end:0x000086C0
-
-REL/m648DLL/camera_startup.cpp:
-	.text       start:0x000086C0 end:0x00008740
+	.text       start:0x00008660 end:0x00008740
 	.ctors      start:0x00000014 end:0x00000018
 	.rodata     start:0x000001F0 end:0x00000200
 	.bss        start:0x00000278 end:0x00000288
@@ -83,14 +69,10 @@ REL/m648DLL/light_shadow.cpp:
 	.data       start:0x00000428 end:0x00000458
 
 REL/m648DLL/player.cpp:
-	.text       start:0x0000AE34 end:0x0000CF44
-	.rodata     start:0x00000328 end:0x000003F8
-	.data       start:0x00000458 end:0x00000588
-
-REL/m648DLL/player_list_startup.cpp:
-	.text       start:0x0000CF44 end:0x0000D058
+	.text       start:0x0000AE34 end:0x0000D058
 	.ctors      start:0x0000001C end:0x00000020
-	.rodata     start:0x000003F8 end:0x00000408
+	.rodata     start:0x00000328 end:0x00000408
+	.data       start:0x00000458 end:0x00000588
 	.bss        start:0x000005E0 end:0x00000608
 
 REL/m648DLL/timer_owner_create.cpp:
@@ -98,17 +80,10 @@ REL/m648DLL/timer_owner_create.cpp:
 	.rodata     start:0x00000408 end:0x00000440
 	.data       start:0x00000588 end:0x000005C8
 
-REL/m648DLL/consumer_cohort.c:
-	.text       start:0x0000DADC end:0x0000DBA4
-	.rodata     start:0x00000440 end:0x00000450
-
-REL/m648DLL/sound.cpp:
-	.text       start:0x0000DBA4 end:0x0000FE80
-	.rodata     start:0x00000450 end:0x00000478
+REL/framework/sound.c:
+	.text       start:0x0000DADC end:0x0000FEB8
+	.rodata     start:0x00000440 end:0x00000478
 	.data       start:0x000005C8 end:0x00000698
-
-REL/m648DLL/sound_pitch.cpp:
-	.text       start:0x0000FE80 end:0x0000FEB8
 
 REL/framework/heap.cpp:
 	.text       start:0x0000FEB8 end:0x00010038
@@ -134,11 +109,8 @@ REL/framework/new.cpp:
 	.data       start:0x000006B8 end:0x000006E0
 
 REL/framework/camera.cpp:
-	.text       start:0x000103D0 end:0x00010BA4
+	.text       start:0x000103D0 end:0x00010BDC
 	.rodata     start:0x00000500 end:0x00000570
-
-REL/m648DLL/camera_view.cpp:
-	.text       start:0x00010BA4 end:0x00010BDC
 
 REL/framework/camera_ut0.cpp:
 	.text       start:0x00010BDC end:0x00012BBC
@@ -149,7 +121,7 @@ REL/framework/camera_ut1.cpp:
 	.text       start:0x00012BBC end:0x00012F40
 	.rodata     start:0x000005D0 end:0x00000618
 
-REL/m648DLL/registered_value.cpp:
+REL/framework/category_sphere.cpp:
 	.text       start:0x00012F40 end:0x0001347C
 	.rodata     start:0x00000618 end:0x00000620
 	.data       start:0x00000738 end:0x00000770
@@ -176,21 +148,18 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000718 end:0x00000758
 	.data       start:0x00000888 end:0x00000910
 
-REL/m648DLL/heap_split.cpp:
-	.text       start:0x0001B94C end:0x0001BC28
+REL/framework/memory_manager.cpp:
+	.text       start:0x0001B94C end:0x0001BA30
+
+REL/framework/free.cpp:
+	.text       start:0x0001BA30 end:0x0001BCF4
 	.data       start:0x00000910 end:0x00000930
 
-REL/m648DLL/heap.cpp:
-	.text       start:0x0001BC28 end:0x0001BCF4
-
 REL/framework/linknode.cpp:
-	.text       start:0x0001BCF4 end:0x0001BE70
+	.text       start:0x0001BCF4 end:0x0001C6D0
 	.rodata     start:0x00000758 end:0x00000798
 
-REL/m648DLL/list_sort.cpp:
-	.text       start:0x0001BE70 end:0x0001C6D0
-
-REL/m648DLL/node_flags.cpp:
+REL/framework/list_object.cpp:
 	.text       start:0x0001C6D0 end:0x0001C9EC
 	.ctors      start:0x00000020 end:0x00000024
 	.bss        start:0x00000630 end:0x00000648
@@ -202,7 +171,7 @@ REL/framework/minigame_core.cpp:
 	.data       start:0x00000930 end:0x00000968
 	.bss        start:0x00000648 end:0x00000658
 
-REL/m648DLL/model.cpp:
+REL/framework/model.cpp:
 	.text       start:0x0001D568 end:0x0001E9F8
 	.rodata     start:0x000007F0 end:0x000007F8
 	.data       start:0x00000968 end:0x00000988

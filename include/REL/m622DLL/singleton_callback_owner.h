@@ -1,13 +1,13 @@
 #ifndef REL_M622DLL_SINGLETON_CALLBACK_OWNER_H
 #define REL_M622DLL_SINGLETON_CALLBACK_OWNER_H
 
-#include "REL/m622DLL/game_object.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/singleton.h"
 
-struct SingletonCallbackOwner : GameObject, MinigameSingleton<SingletonCallbackOwner> {
+struct SingletonCallbackOwner : RequestObject, MinigameSingleton<SingletonCallbackOwner> {
     SingletonCallbackOwner();
     virtual ~SingletonCallbackOwner();
-    virtual void clearFlag(int bit);
+    virtual void flagEnabled(int bit);
     virtual void update();
 };
 

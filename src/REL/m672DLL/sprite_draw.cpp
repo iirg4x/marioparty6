@@ -20,7 +20,7 @@ extern "C" {
 #include "game/data.h"
 }
 #include "REL/m672DLL/sprite_transform.h"
-#include "REL/m672DLL/owner_9314.h"
+#include "REL/m672DLL/animated_owner.h"
 
 GroundSprite::GroundSprite(ANIMDATA *image, const Vec *position)
     : GameObject(16), OwnedModel(fn_1_8EAC), animation(image), origin(*position)
@@ -28,7 +28,7 @@ GroundSprite::GroundSprite(ANIMDATA *image, const Vec *position)
     radius = 1.0f;
     alpha = 1.0f;
     setHookData(this);
-    fn_1_33CB0(2);
+    setLayer(2);
 }
 GroundSprite::~GroundSprite() {}
 void fn_1_8E0C(s16 *modelIds, u8 reset)

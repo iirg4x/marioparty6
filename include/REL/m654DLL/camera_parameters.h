@@ -6,6 +6,5 @@ struct CameraParam {
     int second;
     float value;
 };
-int fn_1_A054(int soundId);
 
 #endif

@@ -10,8 +10,9 @@ extern "C" {
 #include <string.h>
 #include <vector>
 #include "REL/m672DLL/collision_object.h"
-#include "REL/m672DLL/sequence_bf64.h"
+#include "REL/m672DLL/particle_groups.h"
 #include "humath.h"
+#include "REL/framework/frame_time.h"
 
 extern "C" {
 double sin(double);
@@ -25,7 +26,6 @@ void fn_1_48BC(RingParticles *ring);
 void fn_1_48C8(RingParticles *ring);
 }
 
-template <class Time> Time secondsToFrames(Time seconds);
 inline unsigned char isZero(EffectVector direction);
 
 ParticleGroup::ParticleGroup(ANIMDATA *value, int count, const EffectVector &point)
@@ -33,11 +33,11 @@ ParticleGroup::ParticleGroup(ANIMDATA *value, int count, const EffectVector &poi
 {
 }
 
-RisingParticles::RisingParticles(ANIMDATA *value, int count, int layer, const WorldPosition *point)
-    : ParticleGroup(value, count, point->value), stopWhenExpired(0)
+RisingParticles::RisingParticles(ANIMDATA *value, int count, int layer, WorldPosition point)
+    : ParticleGroup(value, count, point.value), stopWhenExpired(0)
 {
     RisingParticle item;
-    fn_1_33CB0((short)layer);
+    setLayer((short)layer);
     callback = 0;
 
     for (int i = 0; i < particleCount; ++i) {
@@ -191,13 +191,13 @@ void RisingParticles::draw(Mtx *camera)
     }
 }
 
-CollidingParticles::CollidingParticles(int value, int count, int layer, WorldPosition point)
-    : ParticleGroup((ANIMDATA *)value, count, point.value), emitAngle(0.0f), angle(0.0f), started(0), stopped(0)
+CollidingParticles::CollidingParticles(ANIMDATA *value, int count, int layer, WorldPosition point)
+    : ParticleGroup(value, count, point.value), emitAngle(0.0f), angle(0.0f), started(0), stopped(0)
 {
     CollidingParticle item;
     int i;
 
-    fn_1_33CB0((short)layer);
+    setLayer((short)layer);
     callback = 0;
 
     for (i = 0; i < particleCount; ++i) {
@@ -431,7 +431,7 @@ void fn_1_3568(CollidingParticles *work)
 RingParticles::RingParticles(ANIMDATA *first, ANIMDATA *second, int count, int layer, WorldPosition point)
     : ParticleGroup(first, count, point.value), secondTexture(second)
 {
-    fn_1_33CB0((short)layer);
+    setLayer((short)layer);
     fn_1_3810(this);
 }
 
@@ -635,11 +635,6 @@ void fn_1_48BC(RingParticles *ring)
 void fn_1_48C8(RingParticles *ring)
 {
     ring->fadingOut = 1;
-}
-
-template <class Time> Time secondsToFrames(Time seconds)
-{
-    return 60 * seconds;
 }
 
 inline unsigned char isZero(EffectVector direction)

@@ -2,21 +2,15 @@
 #define REL_FRAMEWORK_GAME_OBJECT_H
 
 // Game objects carry a collection link and the category used by their manager.
-#include "REL/framework/linknode.h"
+#include "REL/framework/list.h"
 
-struct GameObjectNode : Node {
-    ~GameObjectNode() {}
-};
-
-struct GameObject : GameObjectNode {
+struct GameObject : ListNode<GameObject> {
     virtual ~GameObject();
     virtual void update() = 0;
     int category; // Selects the manager's collection for this object.
     explicit GameObject(int category);
     // The category the manager files this object under.
     int getCategory() const { return category; }
-    // The object after this one in its group; the group's head at the end.
-    GameObject *next() { return static_cast<GameObject *>(link0); }
 };
 
 #endif

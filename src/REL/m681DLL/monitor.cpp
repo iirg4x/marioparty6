@@ -1,6 +1,9 @@
-#include "REL/m681DLL/frame_time.h"
+// The monitor: the screen model whose overlay motion follows the time left in a round, and the
+// texture the current frame is copied into.
+#include "REL/framework/frame_time.h"
+#include "REL/framework/sound.h"
 #include <vector>
-#include "REL/m681DLL/render_object.h"
+#include "REL/framework/game_object2.h"
 #include "REL/m681DLL/monitor_interface.h"
 #include "REL/framework/minigame_core.h"
 #include "dolphin/mtx.h"
@@ -11,8 +14,8 @@
 
 #include "dolphin/gx.h"
 
-#include "REL/m681DLL/owned_model.h"
-#include "REL/m681DLL/model_motion.h"
+#include "REL/framework/model.h"
+#include "REL/framework/model_motion.h"
 
 extern "C" {
 #include "game/sprite.h"
@@ -57,34 +60,12 @@ extern "C" {
 
 #include "datadir_enum.h"
 #include "REL/m681DLL/owner_182c.h"
+#include "REL/framework/world_units.h"
 #include "REL/m681DLL/monitor.h"
-
-extern "C" {
-
-
-extern char lbl_1_data_27A[];
-
-
-}
-
-extern "C" {
-
-extern s32 fn_1_2140(s32 value);
-
-extern s32 lbl_1_bss_50;
-
-extern f32 lbl_1_bss_54;
-
-extern s32 lbl_1_bss_78;
-
-
-extern f32 lbl_1_bss_7C;
-
-
-}
 
 #include "REL/m681DLL/character_sequence.h"
 
+// Copies each drawn frame into a texture; the monitor makes one once the round is active.
 struct TextureSetupWork : RenderObject, MinigameSingleton<TextureSetupWork> {
     std::vector<signed char> buffer;
     GXTexObj texture;
@@ -94,24 +75,21 @@ struct TextureSetupWork : RenderObject, MinigameSingleton<TextureSetupWork> {
     virtual void update();
 };
 
-extern void fn_1_33CB0__5ModelFs(void *object, s32 mode);
-
-
-
 TextureSetupWork::TextureSetupWork()
     : RenderObject(4), MinigameSingleton<TextureSetupWork>(),
       buffer(GXGetTexBufferSize(0x140, 0xF0, GX_TF_RGB565, GX_FALSE, GX_FALSE), s8())
 {
-    fn_1_33CB0(6);
+    setLayer(6);
     GXInitTexObj(&texture, &buffer[0], 0x140, 0xF0, GX_TF_RGB565,
                  GX_CLAMP, GX_CLAMP, GX_FALSE);
 }
 
+// Loads the copied frame as a texture map.
 void fn_1_31E8(TextureSetupWork *object, GXTexMapID map) {
     GXLoadTexObj(&object->texture, map);
 }
 
-
+// Copies the 640x480 frame buffer into the 320x240 RGB565 texture.
 void TextureSetupWork::draw(Mtx *)
 {
     GXSetTexCopySrc(0, 0, 0x280, 0x1E0);
@@ -120,33 +98,11 @@ void TextureSetupWork::draw(Mtx *)
     GXPixModeSync();
 }
 
-typedef struct AnimData_s AnimData329C;
-
-
-extern "C" { extern const u8 lbl_1_data_2EC[]; }
-
 extern "C" const s32 lbl_1_rodata_200[3] = { DATANUM(0x8c0000, 14), DATANUM(0x8c0000, 15), DATANUM(0x8c0000, 13) };
-
-extern "C" { void __msl_assertion_failed(const char *, const char *, int); }
-
-extern "C" { void __ct__10GameObjectFi(void *, s32); }
-
-extern "C" { void fn_1_19EA0(void *, s32); }
-
-extern "C" { void __ct__13EventListenerFv(void *); }
-
-extern "C" { void fn_1_192C0(void *, s32); }
-
-extern "C" { void fn_1_18F60(void *, s32); }
-
-extern "C" { void fn_1_19B38(void *, f32); }
-
-extern "C" { f32 fn_1_19C5C(void *); }
 
 extern "C" void fn_1_3E38(HU3D_DRAW_OBJ *, HSF_MATERIAL *);
 
-extern "C" { void registerChannel__13EventListenerFi(void *, s32); }
-
+// Loads the monitor model, its overlay motion and the three sprite animations it shows.
 Monitor::Monitor()
     : MinigameSingleton<Monitor>(), GameObject(4), ModelMotion(DATANUM(0x8c0000, 11)), EventListener(),
       callback(&Monitor::fn_1_3C24), max_frames(0.0f), textureScale(0x30), delay(0x24),
@@ -154,14 +110,14 @@ Monitor::Monitor()
 {
     s32 index;
 
-    fn_1_33CB0(3);
-    fn_1_33950( ((1 << 30) | (1 << 0)));
-    fn_1_1A058(DATANUM(0x8c0000, 12));
-    fn_1_1A2CC(DATANUM(0x8c0000, 12));
-    fn_1_33950(((1 << 30) | (1 << 10)));
-    this->max_frames = fn_1_3464C();
-    this->max_frames > 0.0f ? (void)0 : __msl_assertion_failed("max_frames > 0", "monitor.cpp", 0x77);
-    fn_1_34528(0.0f);
+    setLayer(3);
+    setAttribute( ((1 << 30) | (1 << 0)));
+    addMotion(DATANUM(0x8c0000, 12));
+    setOverlayMotion(DATANUM(0x8c0000, 12));
+    setAttribute(((1 << 30) | (1 << 10)));
+    this->max_frames = getOverlayMotionMaxTime();
+    assert(max_frames > 0);
+    setOverlayMotionTime(0.0f);
 
     for (index = 0; index < 3; ++index) {
         animations.push_back(HuSprAnimRead(fn_80008DD0(
@@ -178,7 +134,6 @@ Monitor::~Monitor()
 
 typedef void (Monitor::*Callback381C)();
 
-
 void fn_1_381C(Monitor *state,
                             InitializationValues *values,
                             f32 duration)
@@ -191,7 +146,6 @@ void fn_1_381C(Monitor *state,
     Callback381C initialValues = &Monitor::fn_1_3C28;
     state->callback = initialValues;
 }
-
 
 static inline TextureSetupWork *CurrentTexture38C0()
 {
@@ -211,7 +165,7 @@ void Monitor::update()
         fade = 1.0 - (f32)this->remainingFrames() / (f32)this->duration;
     }
     fadeAmount = (f32)fade;
-    fn_1_34528(fadeAmount * this->max_frames);
+    setOverlayMotionTime(fadeAmount * this->max_frames);
 
     if (this->active != 0) {
         if (CurrentTexture38C0() == 0) {
@@ -219,7 +173,6 @@ void Monitor::update()
         }
     }
 }
-
 
 void Monitor::receive(const EventPacket *action)
 {
@@ -264,9 +217,6 @@ void Monitor::fn_1_3C24()
 {
 }
 
-extern "C" { s32 fn_1_88F8(s32 message); }
-
-
 template <class Value>
 static inline Value fadeStep3C28(const Monitor *state, Value first, Value second)
 {
@@ -289,10 +239,10 @@ void Monitor::fn_1_3C28()
     currentStep = fadeStep3C28(this, 1, 4);
     if (this->remaining > 0) {
         if (previousStep != currentStep) {
-            fn_1_88F8(0x91B);
+            soundPlay(0x91B);
         }
     } else {
-        fn_1_88F8(0x91C);
+        soundPlay(0x91C);
         callbackData = &Monitor::fn_1_3C24;
         this->callback = callbackData;
     }
@@ -359,9 +309,7 @@ void fn_1_4000(GXTevStageID stage,
 
 extern "C" {
 
-
 extern void HuSprTexLoad(ANIMDATA *, s16, s16, GXTexWrapMode, GXTexWrapMode, GXTexFilter);
-extern void __msl_assertion_failed(const char *expression, const char *file, int line);
 extern void *lbl_1_bss_88;
 extern const char lbl_1_data_293[];
 
@@ -508,12 +456,7 @@ extern "C" { extern s32 lbl_1_data_C; }
 
 extern "C" { extern s32 lbl_1_data_0; }
 
-static inline f32 accelerationPerFrame(f64 accelerationPerSecondSquared)
-{
-    return (f32)((accelerationPerSecondSquared * 100.0) / (60.0 * 60.0));
-}
-
 extern "C" {
 s32 lbl_1_bss_80 = minutesToFrames(60L);
-f32 lbl_1_bss_84 = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_84 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

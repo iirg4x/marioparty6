@@ -2,8 +2,8 @@
 #ifndef REL_M622DLL_SCORE_DISPLAY_OWNER_H
 #define REL_M622DLL_SCORE_DISPLAY_OWNER_H
 
-#include "REL/m622DLL/game_object.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/singleton.h"
 
 struct MgScore_s;
 
@@ -18,13 +18,13 @@ struct ScoreDisplay {
     f32 y;
 };
 
-struct ScoreDisplayOwner : GameObject, MinigameSingleton<ScoreDisplayOwner> {
+struct ScoreDisplayOwner : RequestObject, MinigameSingleton<ScoreDisplayOwner> {
     u8 active;
     ScoreDisplay displays[4];
 
     ScoreDisplayOwner();
     virtual ~ScoreDisplayOwner();
-    virtual void clearFlag(int bit);
+    virtual void flagEnabled(int bit);
     virtual void update();
 };
 

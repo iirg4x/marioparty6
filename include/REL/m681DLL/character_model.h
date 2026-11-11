@@ -2,8 +2,8 @@
 #define REL_M681DLL_CHARACTER_MODEL_H
 
 #include <memory>
-#include "REL/m681DLL/owned_model.h"
-#include "REL/m681DLL/model_motion.h"
+#include "REL/framework/model.h"
+#include "REL/framework/model_motion.h"
 #include "REL/m681DLL/transition.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_packet.h"

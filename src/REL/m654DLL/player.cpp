@@ -1,12 +1,12 @@
 #include "REL/m654DLL/sprite_manager.h"
+#include "REL/framework/sound.h"
+#include "REL/framework/player_table_1vs1.h"
 #include "REL/m654DLL/display_provider.h"
-#include "REL/m654DLL/player_height_view.h"
-#include "REL/m654DLL/time_conversion.h"
+#include "REL/framework/p_info.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/world_units.h"
 #include "REL/framework/minigame_core.h"
-#include "REL/m654DLL/sound_spatial.h"
 #include "humath.h"
-template<class Time> Time secondsToFrames(Time);
-template<class Time> Time framesToSeconds(Time);
 long RandomInteger(long limit);
 #include "REL/m654DLL/framework_calls.h"
 // The two contestants: their walk along queued points, their reactions to phase events and their wrapped facing.
@@ -30,22 +30,8 @@ void selectCharacterMotion(MotionOwner *, unsigned int);
 u8 characterMotionEnded(s32 *);
 void shiftCharacterMotion(MotionOwner *, unsigned int, float, float, u32);
 
-/* Coordinates go through an inline unit conversion: the startup code proves one inline call per value. */
-static inline float cmToWorld(float centimeters) { return centimeters; }
+#include "REL/m654DLL/player.h"
 
-struct PlayerInitializationData {
-    Vec position;
-    Vec path[2];
-};
-
-extern "C" {
-void __msl_assertion_failed(const char *condition, const char *file, int line);
-}
-void fn_1_1C4E8(s32 *playerNo, s32 number);
-int fn_1_1C558(s32 *playerNo);
-unsigned char fn_1_1C590(s32 *playerNo);
-int fn_1_1C5D8(s32 *playerNo, s32 type, s32 duration);
-void fn_1_9B98(s32 *playersByGroup);
 extern "C" {
 
 void fn_1_3274();
@@ -55,15 +41,15 @@ int fn_1_3528();
 void fn_1_35F8();
 void fn_1_3768();
 int fn_1_37FC();
-void fn_1_4BC0(void *state, bool enabled);
+void fn_1_4BC0(Player *owner, bool enabled);
 void fn_1_4C34(Player *owner, unsigned char enabled);
 unsigned char fn_1_4B68(Player *object);
 int fn_1_4C98(const struct PlayerFilter *filter, const struct PlayerFilter *other);
 
 double fmod(double, double);
 double atan2(double y, double x);
-int lbl_1_bss_60 = fn_1_B80(1);
-float lbl_1_bss_64 = framesToSeconds(framesToSeconds(980.665));
+int lbl_1_bss_60 = minutesToFrames(1L);
+float lbl_1_bss_64 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 int lbl_1_bss_68 = secondsToFrames<long>(2);
 int lbl_1_bss_6C = secondsToFrames(3.5);
 int lbl_1_bss_70 = secondsToFrames(3.5);
@@ -71,6 +57,7 @@ int lbl_1_bss_70 = secondsToFrames(3.5);
 const int entry_num = 2;
 std::vector<Player *> sm_players;
 int lbl_1_bss_8C;
+// Each player's start point and the two points of its walk in, given in centimetres.
 PlayerInitializationData lbl_1_data_220[2] = {
     {{cmToWorld(-750.0f), cmToWorld(526.0f), cmToWorld(-1200.0f)}, {{cmToWorld(-650.0f), cmToWorld(526.0f), cmToWorld(-650.0f)}, {cmToWorld(-140.0f), cmToWorld(110.0f), cmToWorld(-60.0f)}}},
     {{cmToWorld(750.0f), cmToWorld(526.0f), cmToWorld(-1200.0f)}, {{cmToWorld(650.0f), cmToWorld(526.0f), cmToWorld(-650.0f)}, {cmToWorld(140.0f), cmToWorld(110.0f), cmToWorld(-60.0f)}}}
@@ -78,53 +65,13 @@ PlayerInitializationData lbl_1_data_220[2] = {
 
 }
 
-struct PlayerInfo : public PlayerHeightView {
-    PlayerInfo(int no) { fn_1_1C4E8(&playerNo, no); }
-    int number() const { return playerNo; }
-};
-
-class Player : public PlayerInfo, public MotionOwner, public GameObject, public EventListener {
-public:
-    Player(int playerId, PlayerInitializationData *spawnData);
-    virtual ~Player();
-    virtual void update();
-    virtual void receive(const EventPacket *event);
-    void fn_1_35F4();
-    void fn_1_3E84();
-    void fn_1_3F20();
-    void fn_1_3FE0();
-    void fn_1_404C();
-    void fn_1_411C();
-    void fn_1_41A8();
-    void fn_1_4250();
-    void fn_1_42DC();
-    void fn_1_43A0();
-    void fn_1_4428();
-    void fn_1_44FC();
-    void fn_1_4610();
-    void fn_1_4654();
-    void fn_1_46BC();
-    void fn_1_4858();
-    void fn_1_4A0C();
-    void fn_1_4ACC();
-
-    void (Player::*callback)();
-    MGPLAYER *player;
-    unsigned char inactive : 1;
-    unsigned char started : 1;
-    unsigned char reachedPlace : 1;
-    unsigned char attributeEnabled : 1;
-    unsigned char transitionStarted : 1;
-    unsigned char flagsLow : 3;
-    GameObject *display;
-    std::vector<Vec> path;
-    Vec position;
-    Vec velocity;
-    float rotationY;
-    std::auto_ptr<PlayerControl> mode;
-};
-
 static const unsigned int playerMotions[3] = {0x93001E, 0x930006, 0x930028};
+
+// The value a weight of the way from start to end.
+static inline double blendPlayerPosition(double start, double end, double weight)
+{
+    return (1.0 - weight) * start + weight * end;
+}
 
 void fn_1_3274()
 {
@@ -133,7 +80,7 @@ void fn_1_3274()
     Player *createdPlayer;
     PlayerInitializationData *playerData = lbl_1_data_220;
     int playerIndex;
-    fn_1_9B98(playerNumbers);
+    makePlayerTable1vs1(playerNumbers);
     sm_players.clear();
     playerNo = 0;
     while (playerNo < 2) {
@@ -153,15 +100,13 @@ void fn_1_3398(int setupMode)
     int index;
     Player *player;
 
-    (sm_players.size() == entry_num) ? (void)0
-                               : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 0x67);
+    assert(sm_players.size() == entry_num);
     for (index = 0; index < 2; index++) {
         player = sm_players[index];
-        if (setupMode == 0) {
+        if (setupMode == 0)
             player->fn_1_3E84();
-        } else {
+        else
             player->fn_1_3FE0();
-        }
     }
     if (setupMode == 0) {
         MinigameSingleton<ModelAnimationOwner>::getChecked().fn_1_2218();
@@ -172,14 +117,10 @@ void fn_1_3494()
 {
     int playerIndex;
     Player *player;
-
-    (sm_players.size() == entry_num) ? (void)0
-                               : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 0x78);
-    playerIndex = 0;
-    while (playerIndex < 2) {
+    assert(sm_players.size() == entry_num);
+    for (playerIndex = 0; playerIndex < 2; playerIndex += 1) {
         player = sm_players[playerIndex];
         player->fn_1_411C();
-        playerIndex += 1;
     }
 }
 
@@ -188,32 +129,23 @@ int fn_1_3528()
     int index;
     Player *player;
     void (Player::*expected)();
-
-    (sm_players.size() == entry_num) ? (void)0
-                               : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 0x84);
-    index = 0;
-    while (index < 2) {
+    assert(sm_players.size() == entry_num);
+    for (index = 0; index < 2; index += 1) {
         player = sm_players[index];
         expected = &Player::fn_1_35F4;
         if (player->callback != expected) return 0;
-        index += 1;
     }
     return 1;
 }
 
 void Player::fn_1_35F4() {}
 
-static inline double blendPlayerPosition(double start, double end, double weight)
-{
-    return (1.0 - weight) * start + weight * end;
-}
-
+// Sends the players on to their last points: 140 to the left and to the right, 110 up and 200 along z,
+// with the player's attribute set first.
 void fn_1_35F8()
 {
     int playerIndex;
-
-    (sm_players.size() == entry_num) ? (void)0
-                               : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 0x94);
+    assert(sm_players.size() == entry_num);
     playerIndex = 0;
     while (playerIndex < 2) {
         Player *player = sm_players[playerIndex];
@@ -231,9 +163,7 @@ void fn_1_3768()
 {
     int playerIndex;
     Player *player;
-
-    (sm_players.size() == entry_num) ? (void)0
-                               : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 0xA6);
+    assert(sm_players.size() == entry_num);
     playerIndex = 0;
     while (playerIndex < 2) {
         player = sm_players[playerIndex];
@@ -246,7 +176,7 @@ int fn_1_37FC() { return lbl_1_bss_8C; }
 
 Player::Player(int playerId, PlayerInitializationData *spawnData)
     : PlayerInfo(playerId),
-      MotionOwner(fn_1_1C558(&playerNo)),
+      MotionOwner(characterNo()),
       GameObject(0),
       callback(&Player::fn_1_35F4),
       inactive(1),
@@ -254,20 +184,20 @@ Player::Player(int playerId, PlayerInitializationData *spawnData)
       reachedPlace(0),
       attributeEnabled(0),
       transitionStarted(0),
-      display(fn_1_6EA8(playerId, fn_1_1C558(&playerNo),
+      display(fn_1_6EA8(playerId, characterNo(),
                         (int)(spawnData->position.x == 0.0f ? 0.0f :
                               (spawnData->position.x < 0.0f ? -1.0f : 1.0f)))),
       path(spawnData->path, spawnData->path + 2),
       position(spawnData->position),
       rotationY(0.0f),
-      mode(fn_1_1C590(&playerNo) != 0 ? static_cast<PlayerControl *>(new ComputerControl(this))
+      mode(isComputer() ? static_cast<PlayerControl *>(new ComputerControl(this))
                                  : static_cast<PlayerControl *>(new HumanControl(this)))
 {
     MGACTOR_PARAM playerParameters = {0.0f, 0.0f, 0, 0, (COL_NARROW_HOOK)fn_1_4C98, 0, 0, 0};
     short modelId;
     void (Player::*nextCallback)();
 
-    playerParameters.height = fn_1_37688();
+    playerParameters.height = height();
     playerParameters.radius = 42.0f;
     playerParameters.param = playerId;
     player = fn_80080728((short)playerId, &playerParameters, 1, 1, 0x33, 0);
@@ -379,11 +309,6 @@ void Player::fn_1_41A8()
     }
 }
 
-struct DisplayState {
-    unsigned char unknown00[0x34]; /* No code names this field. */
-    int progress;
-};
-
 void Player::fn_1_4250()
 {
     DisplayState *sequence = (DisplayState *)display;
@@ -419,7 +344,7 @@ void Player::fn_1_43A0()
 {
     void (Player::*state)();
 
-    fn_1_1C5D8(&playerNo, 2, (int)secondsToFrames(0.8));
+    rumble(2, (int)secondsToFrames(0.8));
     state = &Player::fn_1_4428;
     callback = state;
 }
@@ -437,16 +362,6 @@ void Player::fn_1_4428()
         callback = values;
     }
 }
-
-struct PlayerModelMotion {
-    unsigned char unknown00[0x1C]; /* No code names this field. */
-    short motionId;
-};
-
-struct PlayerMotionResource {
-    unsigned char unknown00[0x48]; /* No code names this field. */
-    PlayerModelMotion *model;
-};
 
 void Player::fn_1_44FC()
 {
@@ -573,10 +488,11 @@ void Player::fn_1_4ACC()
         fn_80086BC8(player->actor, &position);
         PSVECSubtract(&position, &originalPosition, &velocity);
         fn_80086CB0(player->actor, &rotationY);
-        fn_1_BA00(1, (short)fn_1_1C558(&playerNo), &position);
+        soundPanCharacterVoice(1, (short)characterNo(), &position);
     }
 }
 
+// Whether the player's actor collision code has any of the bits 0x407F set.
 unsigned char fn_1_4B68(Player *object)
 {
     u32 collisionCode = 0;
@@ -585,9 +501,9 @@ unsigned char fn_1_4B68(Player *object)
 }
 
 /* Updates the character's movement attribute and voice flag for the active state. */
-void fn_1_4BC0(void *state, bool enabled)
+void fn_1_4BC0(Player *owner, bool enabled)
 {
-    int character = fn_1_1C558((s32 *)state);
+    int character = owner->characterNo();
 
     if (enabled) {
         fn_8005C47C(character, 1);
@@ -607,12 +523,8 @@ void fn_1_4C34(Player *owner, unsigned char enabled)
     }
 }
 
-struct PlayerFilter {
-    int unknown00; /* the game's code never reads this field */
-    int playerId;
-    int flags;
-};
-
+// The actors' collision hook: when neither side has flags, the player whose actor param is the first side's
+// player id is marked as started.
 int fn_1_4C98(const PlayerFilter *filter, const PlayerFilter *other)
 {
     int index;
@@ -621,8 +533,7 @@ int fn_1_4C98(const PlayerFilter *filter, const PlayerFilter *other)
     if (filter->flags != 0 || other->flags != 0) {
         return 0;
     }
-    (sm_players.size() == entry_num) ? (void)0
-                               : __msl_assertion_failed("sm_players.size() == entry_num", "player.cpp", 0x218);
+    assert(sm_players.size() == entry_num);
     match = 0;
     index = 0;
     while (index < 2) {
@@ -639,11 +550,3 @@ int fn_1_4C98(const PlayerFilter *filter, const PlayerFilter *other)
     match->started = 1;
     return 1;
 }
-
-template<class Time> Time framesToSeconds(Time value)
-{
-    return (1.0 / 60.0) * value;
-}
-
-// Same-game framework time conversion.
-template<class Time> Time secondsToFrames(Time seconds) { return 60 * seconds; }

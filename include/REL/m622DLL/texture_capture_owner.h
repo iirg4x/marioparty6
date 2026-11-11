@@ -5,12 +5,12 @@
 extern "C" {
 #include "dolphin/gx.h"
 }
-#include "REL/m622DLL/game_object.h"
-#include "REL/framework/minigame_singleton.h"
-#include "REL/m622DLL/owned_model.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/model.h"
 #include <vector>
 
-struct TextureCaptureOwner : GameObject, MinigameSingleton<TextureCaptureOwner>, OwnedModel {
+struct TextureCaptureOwner : RequestObject, MinigameSingleton<TextureCaptureOwner>, OwnedModel {
     u16 unknownValue;
     GXTexObj textures[2];
     std::vector<signed char> firstBuffer;
@@ -18,7 +18,7 @@ struct TextureCaptureOwner : GameObject, MinigameSingleton<TextureCaptureOwner>,
 
     TextureCaptureOwner();
     virtual ~TextureCaptureOwner();
-    virtual void clearFlag(int bit);
+    virtual void flagEnabled(int bit);
     virtual void update();
 };
 

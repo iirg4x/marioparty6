@@ -11,7 +11,8 @@ extern "C" {
 }
 
 #include "REL/framework/event_callback_inline.h"
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/frame_time.h"
 
 static const char rcsid[] = "$Id: event.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
 
@@ -54,7 +55,6 @@ struct CEventBroadcaster : std::map<int, EventReceivers> {
     void registerListener(int, unsigned long);
     void removeListener(unsigned long);
 };
-template <class Time> Time framesToSeconds(Time frames);
 void dispatch_event(CEventBroadcaster *, const EventPacket&);
 
 inline CEventBroadcaster *current_event_owner() { return active_event_owner; }
@@ -205,10 +205,4 @@ void sendEvent(int channel, unsigned long value, float delay)
     packet.channel = channel;
     packet.type = value;
     sendEvent(packet, delay);
-}
-
-/* Convert the event owner's frame count to seconds at the minigame's 60 Hz update rate. */
-template <class Time> Time framesToSeconds(Time frames)
-{
-    return (1.0 / 60.0) * frames;
 }

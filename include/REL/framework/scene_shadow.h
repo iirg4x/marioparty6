@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "REL/framework/game_object.h"
+#include "REL/framework/camera_frame.h"
 
 extern "C" {
 #include "dolphin/mtx.h"
@@ -20,13 +21,10 @@ struct CameraPerspective {
     int marginBottom; // Pixels kept clear at the bottom edge.
     float fovRadians; // Vertical field of view in radians.
     CameraPerspective();
-};
-
-// Stores the eye, up direction, and look target used to orient a camera.
-struct CameraFrame {
-    Vec eye;    // Camera position in world space.
-    Vec up;     // Camera's up direction.
-    Vec target; // World-space point the camera looks toward.
+    // Preserves clipping planes and applies the stored field of view with integer aspect division.
+    void apply(s32 cameraBit);
+    // Reads the engine's field of view in degrees into fovRadians, in radians.
+    void read(s32 cameraBit);
 };
 
 struct Sphere;

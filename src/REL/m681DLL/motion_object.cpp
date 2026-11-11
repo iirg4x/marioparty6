@@ -1,4 +1,4 @@
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 #include "REL/m681DLL/motion_object.h"
 
@@ -23,13 +23,13 @@ MotionObject::MotionObject(Vec *position, int variant)
 {
     modelData = lbl_1_rodata_190[variant].modelData;
     enabled = 0;
-    fn_1_33A3C(position);
-    fn_1_33CB0(5);
+    setPosition(position);
+    setLayer(5);
     const MotionPreset *preset = lbl_1_rodata_190 + variant;
-    fn_1_1A0F4(preset->modelData, preset->motionIndex);
-    fn_1_1A1B8(*preset->modelData);
-    fn_1_34680(RandomFloat__Fff(0.9f, 1.1f));
-    fn_1_33950(0x40000001);
+    addMotions(preset->modelData, preset->motionIndex);
+    setMotion(*preset->modelData);
+    setMotionSpeed(RandomFloat__Fff(0.9f, 1.1f));
+    setAttribute(0x40000001);
     registerChannel(0);
 }
 
@@ -37,15 +37,16 @@ MotionObject::~MotionObject() {}
 
 extern "C" {
 #include "REL/m681DLL.h"
+#include "REL/framework/world_units.h"
 }
 
 void MotionObject::update()
 {
-    f32 value = fn_1_34560();
+    f32 value = getMotionTime();
     if (enabled != 0) {
-        fn_1_33988(0x40000001);
-        if ((u8)fn_1_346CC() != 0) {
-            fn_1_1A218(modelData[0], (f32)secondsToFrames(0.2),
+        resetAttribute(0x40000001);
+        if (isMotionEnd() != 0) {
+            shiftMotion(modelData[0], (f32)secondsToFrames(0.2),
                        0.0f, 0x40000001);
             enabled = 0;
         }
@@ -63,7 +64,7 @@ void MotionObject::receive(const EventPacket *input)
     case 3:
     case 8:
     case 12:
-        fn_1_1A218(modelData[1], (f32)secondsToFrames(0.2),
+        shiftMotion(modelData[1], (f32)secondsToFrames(0.2),
                    0.0f, 0x40000001);
         break;
     default:
@@ -77,12 +78,7 @@ extern f32 lbl_1_bss_54;
 
 }
 
-
-static inline f32 accelerationPerFrame(f64 value)
-{
-    return (f32)((value * 100.0) / (60.0 * 60.0));
-}
 extern "C" {
 s32 lbl_1_bss_50 = minutesToFrames(60L);
-f32 lbl_1_bss_54 = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_54 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

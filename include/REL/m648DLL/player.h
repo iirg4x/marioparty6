@@ -3,17 +3,15 @@
 
 #include <vector>
 #include "REL/framework/model.h"
-#include "REL/framework/linknode.h"
+#include "REL/framework/list.h"
 #include "REL/m648DLL/multi_model_owner.h"
 
-struct CameraEffectOwner318;
-
-struct PlayerListNode : Node { ~PlayerListNode(); };
+class FlyingObject;
 
 /* One player: its object on the list at .bss 0x5FC. */
-class CallbackMotionOwner : public PlayerListNode {
+class CPlayer : public ListNode<CPlayer> {
 public:
-    typedef void (CallbackMotionOwner::*Callback)();
+    typedef void (CPlayer::*Callback)();
     Vec position;
     Callback callback;
     u8 gameOver;
@@ -39,10 +37,10 @@ public:
     u8 active;
     s32 timer;
     MotionHookModels *spriteA;
-    CameraEffectOwner318 *spriteB;
+    FlyingObject *spriteB;
     std::vector<s16> m_mot_id;
-    CallbackMotionOwner(s32 playerNo);
-    ~CallbackMotionOwner();
+    CPlayer(s32 playerNo, s32 effect, bool nightMode);
+    ~CPlayer();
     s16 addMotion(u32 dataNum);
     void fn_1_BD30();
     void fn_1_BDDC();
@@ -54,7 +52,6 @@ public:
     void fn_1_C498();
     void fn_1_C7BC();
     bool allPlayersFinished();
-    CallbackMotionOwner *next_node() { return static_cast<CallbackMotionOwner *>(link0); }
 };
 
 #endif

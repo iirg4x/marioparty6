@@ -1,6 +1,6 @@
-#include "REL/m672DLL/motion_owner_b2e4.h"
+#include "REL/m672DLL/hanging_cage.h"
 #include <vector>
-#include "REL/m672DLL/owner_9314.h"
+#include "REL/m672DLL/animated_owner.h"
 #include "REL/m672DLL/event_lifetime.h"
 #include "REL/m672DLL/singleton_callback_owner.h"
 /* Current callback owner, published during construction and cleared on destruction. */
@@ -18,7 +18,8 @@ extern "C" {
 #include <functional>
 #include "REL/m672DLL/resources.h"
 #include "REL/m672DLL/ac4c_owner.h"
-#include "REL/m672DLL/player_bf64.h"
+#include "REL/m672DLL/player.h"
+#include "REL/m672DLL/spinner.h"
 void *operator new(unsigned long);
 
 extern "C" {
@@ -72,11 +73,11 @@ void fn_1_6E04(Resources *object)
     lightAnimation = new OwnedModel(DATANUM(0x830000, 1));
     animation = new OwnedModel(DATANUM(0x830000, 0));
     shadowAnimation = new OwnedModel(DATANUM(0x830000, 2));
-    lightAnimation->fn_1_33DF8(false);
-    lightAnimation->fn_1_33CB0(1);
-    animation->fn_1_33950(1);
-    shadowAnimation->fn_1_33CB0(1);
-    shadowAnimation->fn_1_34108();
+    lightAnimation->setLightsDynamic(false);
+    lightAnimation->setLayer(1);
+    animation->setAttribute(1);
+    shadowAnimation->setLayer(1);
+    shadowAnimation->setShadowMap();
     object->lightId = fn_80029D24(*lightAnimation, lbl_1_data_166);
     object->models.push_back(lightAnimation);
     object->models.push_back(animation);
@@ -131,26 +132,6 @@ void fn_1_71BC(void *state)
     }
 }
 
-extern "C" {
-struct AnimatedOwner;
-struct VecValue;
-struct Spinner;
-struct WorldPosition;
-extern struct AnimatedOwner *fn_1_9314(struct AnimatedOwner *, int, struct VecValue *, f32);
-extern void *__ct__7SpinnerFlP13WorldPositionlllllllll(struct Spinner *, s32, struct WorldPosition *, s32, s32, s32, s32, s32,
-                     s32, s32, s32, s32);
-
-}
-
-typedef struct {
-    s32 firstValue;
-    s32 secondValue;
-} ManagerValues7230;
-typedef struct {
-    u8 unknown_00[0x10]; /* No code names this field. */
-    ManagerValues7230 *values;
-} Manager7230;
-
 void fn_1_7230(void *manager)
 {
 
@@ -160,42 +141,21 @@ void fn_1_7230(void *manager)
     new AnimatedOwner(0x830012, (VecValue *)initialPosition, -45.0f);
 
     {
-        Vec entryPositions[5] = {
-            {-400.0f, 0.0f, -2000.0f},
-            {400.0f, 0.0f, -2000.0f},
-            {0.0f, 0.0f, -1350.0f},
-            {-400.0f, 0.0f, -700.0f},
-            {400.0f, 0.0f, -700.0f}
+        WorldPosition entryPositions[5] = {
+            {{{-400.0f, 0.0f, -2000.0f}}},
+            {{{400.0f, 0.0f, -2000.0f}}},
+            {{{0.0f, 0.0f, -1350.0f}}},
+            {{{-400.0f, 0.0f, -700.0f}}},
+            {{{400.0f, 0.0f, -700.0f}}}
         };
 
         static const s32 lbl_1_rodata_2C0[5] = { 0x830004, 0x830005, 0x830006, 0x830007, 0x830008 };
 
         for (index = 0; index < 5; ++index) {
-            struct Spinner *resource = (Spinner *)::operator new(0x78);
-            if (resource != 0) {
-                ManagerValues7230 **firstSlot =
-                    &((Manager7230 *)manager)->values;
-                ManagerValues7230 *firstValues = *firstSlot;
-                ManagerValues7230 *firstValuesCopy = firstValues;
-                ManagerValues7230 **secondSlot =
-                    &((Manager7230 *)manager)->values;
-                s32 *secondValuePointer = &(*secondSlot)->secondValue;
-                s32 *secondValuePointerCopy = secondValuePointer;
-                ManagerValues7230 **thirdSlot =
-                    &((Manager7230 *)manager)->values;
-                ManagerValues7230 *thirdValues = *thirdSlot;
-                ManagerValues7230 *thirdValuesCopy = thirdValues;
-                Vec *valuesPointer;
-
-                Vec values = entryPositions[index];
-                valuesPointer = &values;
-                resource = (Spinner *)__ct__7SpinnerFlP13WorldPositionlllllllll(resource, lbl_1_rodata_2C0[index],
-                                     (struct WorldPosition *)valuesPointer,
-                                     thirdValuesCopy->firstValue, 0xF, 4,
-                                     *secondValuePointerCopy, 4,
-                                     firstValuesCopy->firstValue, 0x50, 4,
-                                     index);
-            }
+            new Spinner(lbl_1_rodata_2C0[index], entryPositions[index],
+                        ((Resources *)manager)->animations[0], 0xF, 4,
+                        ((Resources *)manager)->animations[1], 4,
+                        ((Resources *)manager)->animations[0], 0x50, 4, index);
         }
     }
 }

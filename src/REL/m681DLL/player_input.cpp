@@ -1,18 +1,16 @@
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 #include "REL/framework/event_packet.h"
 #include "REL/m681DLL/global_state.h"
 
 #include "REL/m681DLL/player_input.h"
-#include "REL/m681DLL/work_6b44.h"
+#include "REL/m681DLL/player_object.h"
 
 u32 RandomUnsigned();
 extern "C" {
 #include "REL/m681DLL.h"
+#include "REL/framework/world_units.h"
 void __msl_assertion_failed(const char *, const char *, int);
-s32 fn_1_36C6C__6PlayerFv(void *);
-s32 fn_1_37530__6PlayerFv(void *);
-s32 fn_1_375DC__6PlayerFv(void *);
 extern u32 lbl_1_bss_70;
 }
 
@@ -68,9 +66,9 @@ void ModeToggle::update(PlayerObject *work)
     s32 actionValue;
     s32 action;
 
-    currentButtons = fn_1_36C6C__6PlayerFv(&work->sequence) & 0xD;
-    nextButtons = fn_1_37530__6PlayerFv(&work->sequence);
-    actionButtons = fn_1_375DC__6PlayerFv(&work->sequence);
+    currentButtons = work->buttons() & 0xD;
+    nextButtons = work->stickDirections();
+    actionButtons = work->subStickDirections();
     lbl_1_bss_70 = work->modes.values[0];
     previousSelection = work->modes.values[0];
     currentCode = currentButtons & 0xD;
@@ -175,14 +173,9 @@ void ModeObject::update(PlayerObject *result)
 extern "C" {
 }
 
-static inline f32 accelerationPerFrame(f64 accelerationPerSecondSquared)
-{
-    return (f32)((accelerationPerSecondSquared * 100.0) / (60.0 * 60.0));
-}
-
 extern "C" {
 s32 lbl_1_bss_68 = minutesToFrames(60L);
-f32 lbl_1_bss_6C = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_6C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }
 
 extern "C" {

@@ -1,4 +1,5 @@
-#include "REL/m654DLL/time_conversion.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/sound.h"
 #include "REL/m654DLL/framework_calls.h"
 // The map scene: builds its models and lights, then runs the door opening when the round starts.
 #include "REL/m654DLL/model_animation_owner.h"
@@ -6,16 +7,15 @@
 #include "REL/m654DLL/camera_parameters.h"
 #include "REL/framework/scene_shadow.h"
 #include "humath.h"
-#include "REL/m654DLL/unit_conversion.h"
+#include "REL/framework/world_units.h"
 
 extern "C" {
 #include "game/hu3d.h"
 #include "REL/m654DLL/pad_control.h"
 #include "game/mg/actman.h"
-void __msl_assertion_failed(const char *, const char *, int);
-int lbl_1_bss_50 = fn_1_B80(1);
-float lbl_1_bss_54 = framesToSeconds(framesToSeconds(980.665));
-Float3 lbl_1_data_118[6] = {
+int lbl_1_bss_50 = minutesToFrames(1L);
+float lbl_1_bss_54 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
+Vec lbl_1_data_118[6] = {
     {cmToWorld(-500.0f), cmToWorld(100.0f), cmToWorld(-350.0f)},
     {cmToWorld(500.0f), cmToWorld(100.0f), cmToWorld(-350.0f)},
     {cmToWorld(-500.0f), cmToWorld(100.0f), cmToWorld(750.0f)},
@@ -51,18 +51,25 @@ ModelAnimationOwner::ModelAnimationOwner()
     GXColor lightColor;
     int lights;
 
+    // The map model on layer 1, and the two secondary models, both moved 200 along z; the first is on
+    // layer 1 too.
     scale.z = 200.0f;
-    animation.fn_1_33CB0(1);
-    animation.fn_1_33950(0x40000002);
-    secondaryAnimation0.fn_1_33CB0(1);
-    secondaryAnimation0.fn_1_33A3C(&scale);
-    secondaryAnimation1.fn_1_33A3C(&scale);
-    additionalAnimation.fn_1_33CB0(4);
-    additionalAnimation.fn_1_33950(0x40000002);
-    additionalAnimation.fn_1_33950(1);
-    lights = animation.fn_1_33DF8(0);
-    (lights > 0) ? (void)0 : __msl_assertion_failed("lights > 0", "man_map.cpp", 0x47);
-    animation.fn_1_33D68("inf_light1", &lightPosition, &lightDirection, &lightColor);
+    animation.setLayer(1);
+    animation.setAttribute(0x40000002);
+    secondaryAnimation0.setLayer(1);
+    secondaryAnimation0.setPosition(&scale);
+    secondaryAnimation1.setPosition(&scale);
+
+    // The additional model, on layer 4.
+    additionalAnimation.setLayer(4);
+    additionalAnimation.setAttribute(0x40000002);
+    additionalAnimation.setAttribute(1);
+
+    // The map model's lights, of which there must be at least one; the first, inf_light1, gives the
+    // shadow its direction.
+    lights = animation.setLightsDynamic(0);
+    assert(lights > 0);
+    animation.setLight("inf_light1", &lightPosition, &lightDirection, &lightColor);
     new SceneShadow(1, &lightDirection, 5.0f, 0x64);
     fn_1_22C4(this);
     fn_1_8600(&secondaryAnimation0);
@@ -74,16 +81,16 @@ ModelAnimationOwner::~ModelAnimationOwner() {}
 
 void ModelAnimationOwner::fn_1_2218()
 {
-    animation.fn_1_33988(((1 << 30) | (1 << 1)));
-    animation.fn_1_344F0(0.0f);
-    fn_1_A054(0x81D);
+    animation.resetAttribute(((1 << 30) | (1 << 1)));
+    animation.setMotionTime(0.0f);
+    soundPlay(0x81D);
 }
 
 void ModelAnimationOwner::fn_1_226C()
 {
-    additionalAnimation.fn_1_33988(((1 << 30) | (1 << 1)));
-    additionalAnimation.fn_1_33988(1);
-    additionalAnimation.fn_1_344F0(0.0f);
+    additionalAnimation.resetAttribute(((1 << 30) | (1 << 1)));
+    additionalAnimation.resetAttribute(1);
+    additionalAnimation.setMotionTime(0.0f);
 }
 
 void fn_1_22C4(void *owner)
@@ -106,7 +113,7 @@ void fn_1_22C4(void *owner)
 
 template<class T> inline T Square(const T &value) { return value * value; }
 
-void ModelAnimationOwner::handleEvent(int event)
+void ModelAnimationOwner::flagEnabled(int event)
 {
     switch (event) {
     case 1:
@@ -114,19 +121,19 @@ void ModelAnimationOwner::handleEvent(int event)
         break;
     case 2:
         values.resize(4);
-        eventMask &= ~(1UL << event);
+        flags &= ~(1UL << event);
         break;
     default:
-        eventMask &= ~(1UL << event);
+        flags &= ~(1UL << event);
         break;
     }
 }
 
-void ModelAnimationOwner::advanceFrame()
+void ModelAnimationOwner::update()
 {
     (this->*callback)();
-    secondaryAnimation0.fn_1_33B5C(angle);
-    secondaryAnimation1.fn_1_33B5C(angle);
+    secondaryAnimation0.setRotationY(angle);
+    secondaryAnimation1.setRotationY(angle);
     elapsed++;
 }
 
@@ -139,7 +146,7 @@ void ModelAnimationOwner::fn_1_246C()
         index++;
     }
     elapsed = 0;
-    fn_1_A054(0x81C);
+    soundPlay(0x81C);
     void (ModelAnimationOwner::*nextCallback)() = &ModelAnimationOwner::fn_1_254C;
     callback = nextCallback;
 }
@@ -153,7 +160,7 @@ void ModelAnimationOwner::fn_1_254C()
     angle = (float)(360.0 * quarteredDifference);
     if (elapsed >= duration) {
         angle = 0.0f;
-        eventMask &= ~2U;
+        flags &= ~2U;
         void (ModelAnimationOwner::*nextCallback)() = &ModelAnimationOwner::fn_1_20A0;
         callback = nextCallback;
     }

@@ -8,7 +8,7 @@ extern "C" {
 #include "game/pad.h"
 #include "game/board/player.h"
 }
-#include "REL/m672DLL/player_bf64.h"
+#include "REL/m672DLL/player.h"
 #include "math.h"
 inline PlayerController::~PlayerController() {}
 

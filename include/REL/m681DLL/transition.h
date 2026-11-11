@@ -7,6 +7,7 @@ struct TransitionState {
     Value current;
     Value start;
     Value end;
+    TransitionState(Value end, int frames) { set(end, frames); }
     Value advance();
     void set(Value end, int frames);
     void reset(Value start, Value end, int frames);

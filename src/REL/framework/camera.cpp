@@ -7,12 +7,7 @@ extern "C" {
 #include "game/hu3d.h"
 }
 
-// Stores the eye, up direction, and look target used to orient a minigame camera.
-struct CameraFrame {
-    Vec eye;    // Camera position in world space.
-    Vec up;     // Camera's up direction.
-    Vec target; // World-space point the camera looks toward.
-};
+#include "REL/framework/camera_frame.h"
 
 void cameraExtractBasis(CameraFrame *, Vec *, Vec *, Vec *);
 void cameraTranslate(CameraFrame *, Vec *);
@@ -36,7 +31,7 @@ void cameraRotateAroundRightAndWorldYAxis(CameraFrame *camera, float rightAxisAn
     PSMTXConcat(axisRotation, yRotation, rotation);
     PSMTXMultVecSR(rotation, &lookAtZAxis, &lookAtZAxis);
     PSMTXMultVecSR(rotation, &up, &camera->up);
-    PSVECSubtract(&camera->eye, &lookAtZAxis, &camera->target);
+    PSVECSubtract(&camera->position, &lookAtZAxis, &camera->target);
 }
 
 // Minigame camera controls call this to set the view's tilt relative to the horizon. It also sets
@@ -58,7 +53,7 @@ void cameraTiltToAngle(CameraFrame *camera, float tiltDegrees)
     PSMTXRotAxisRad(rotation, &right, tiltDegrees);
     PSMTXMultVecSR(rotation, &lookAtZAxis, &lookAtZAxis);
     PSMTXMultVecSR(rotation, &up, &camera->up);
-    PSVECSubtract(&camera->eye, &lookAtZAxis, &camera->target);
+    PSVECSubtract(&camera->position, &lookAtZAxis, &camera->target);
 }
 
 // Minigame camera controls call this to roll the view around the eye-to-target axis.
@@ -66,7 +61,7 @@ void cameraRollAroundViewAxis(CameraFrame *camera, float rollDegrees)
 {
     Vec axis;
     Mtx rotation;
-    PSVECSubtract(&camera->target, &camera->eye, &axis);
+    PSVECSubtract(&camera->target, &camera->position, &axis);
     PSMTXRotAxisRad(rotation, &axis, 0.017453292f * rollDegrees);
     PSMTXMultVec(rotation, &camera->up, &camera->up);
 }
@@ -87,7 +82,7 @@ void cameraRebuildUpVector(CameraFrame *camera)
 void cameraExtractBasis(CameraFrame *camera, Vec *right, Vec *up, Vec *lookAtZAxis)
 {
     Mtx lookAt;
-    C_MTXLookAt(lookAt, &camera->eye, &camera->up, &camera->target);
+    C_MTXLookAt(lookAt, &camera->position, &camera->up, &camera->target);
     right->x = lookAt[0][0];
     right->y = lookAt[0][1];
     right->z = lookAt[0][2];
@@ -103,7 +98,7 @@ void cameraExtractBasis(CameraFrame *camera, Vec *right, Vec *up, Vec *lookAtZAx
 // failure is ignored.
 void cameraInverseLookAt(const CameraFrame *camera, Mtx matrix)
 {
-    C_MTXLookAt(matrix, &camera->eye, &camera->up, &camera->target);
+    C_MTXLookAt(matrix, &camera->position, &camera->up, &camera->target);
     PSMTXInverse(matrix, matrix);
 }
 
@@ -113,7 +108,7 @@ void cameraTranslateByLocalOffset(CameraFrame *camera, Vec *localOffset)
 {
     Mtx matrix;
     Vec transformedPosition;
-    C_MTXLookAt(matrix, &camera->eye, &camera->up, &camera->target);
+    C_MTXLookAt(matrix, &camera->position, &camera->up, &camera->target);
     PSMTXInverse(matrix, matrix);
     // Rotate a camera-local offset into world space, then move the eye and target by that amount.
     PSMTXMultVecSR(matrix, localOffset, &transformedPosition);
@@ -124,7 +119,7 @@ void cameraTranslateByLocalOffset(CameraFrame *camera, Vec *localOffset)
 void cameraTranslate(CameraFrame *camera, Vec *translation)
 {
     PSVECAdd(translation, &camera->target, &camera->target);
-    PSVECAdd(translation, &camera->eye, &camera->eye);
+    PSVECAdd(translation, &camera->position, &camera->position);
 }
 
 // Minigame setup calls this to initialize a frame at the default eye, up, and target.
@@ -133,9 +128,9 @@ void cameraSetDefaultFrame(CameraFrame *camera)
     camera->up.x = 0.0f;
     camera->up.y = 1.0f;
     camera->up.z = 0.0f;
-    camera->eye.x = 0.0f;
-    camera->eye.y = 0.0f;
-    camera->eye.z = 5000.0f;
+    camera->position.x = 0.0f;
+    camera->position.y = 0.0f;
+    camera->position.z = 5000.0f;
     camera->target.x = 0.0f;
     camera->target.y = 0.0f;
     camera->target.z = 0.0f;
@@ -169,21 +164,27 @@ void cameraBlendEyePosition(CameraFrame *camera, const Vec *startPosition, const
     PSVECScale(startPosition, &startContribution, 1.0f - blendAmount);
     PSVECScale(endPosition, &blendedPosition, blendAmount);
     PSVECAdd(&startContribution, &blendedPosition, &blendedPosition);
-    PSVECSubtract(&blendedPosition, &camera->eye, &eyeMovement);
-    camera->eye.x = blendedPosition.x;
-    camera->eye.y = blendedPosition.y;
-    camera->eye.z = blendedPosition.z;
+    PSVECSubtract(&blendedPosition, &camera->position, &eyeMovement);
+    camera->position.x = blendedPosition.x;
+    camera->position.y = blendedPosition.y;
+    camera->position.z = blendedPosition.z;
     PSVECAdd(&camera->target, &eyeMovement, &camera->target);
 }
 
 // Minigame camera code calls this to copy a frame into each HUD camera selected by the mask.
 void cameraApplyToHud(CameraFrame *camera, s32 cameraMask)
 {
-    Hu3DCameraPosSetV(cameraMask, &camera->eye, &camera->up, &camera->target);
+    Hu3DCameraPosSetV(cameraMask, &camera->position, &camera->up, &camera->target);
 }
 
 // Minigame camera code calls this to read the first HUD camera selected by the mask.
 void cameraReadFromHud(CameraFrame *camera, s32 cameraMask)
 {
-    fn_80027CD0(cameraMask, &camera->eye, &camera->up, &camera->target);
+    fn_80027CD0(cameraMask, &camera->position, &camera->up, &camera->target);
+}
+
+// Minigame camera code calls this to cast the shadows from the frame's eye toward its target.
+void cameraApplyToShadow(CameraFrame *camera)
+{
+    Hu3DShadowPosSet(&camera->position, &camera->up, &camera->target);
 }

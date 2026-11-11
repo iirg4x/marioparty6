@@ -5,7 +5,7 @@
 extern "C" {
 #include "game/object.h"
 }
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
 
 template <class Time> Time secondsToFrames(Time seconds);
 
@@ -27,10 +27,6 @@ public:
                    // then.
     int messageFrames; // Delay in frames; zero or negative means expired, showWinners sets it to
                        // 210.
-
-    static const long introDelay; // Introduction duration: 120 frames.
-    static const long startDelay; // Start duration and winner-display delay: 210 frames.
-    static const long finishDelay; // Finish duration: 210 frames.
 
     void setup(int objectLimit, int managerPriority);
     void setupActorManager();

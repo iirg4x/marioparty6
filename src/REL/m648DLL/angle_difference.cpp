@@ -1,43 +1,29 @@
-#include "dolphin/types.h"
-#include "REL/m648DLL/framework/linknode.h"
-#include "REL/m648DLL/motion_lists.h"
-#include "REL/m648DLL/angle_difference.h"
+// misc_diff_deg.cpp's code without its $Id string: this module links its own copy of the file,
+// an older revision, among its game files.
+#include "REL/framework/misc_diff_deg.h"
 
-static inline s32 AngleToUnits(f64 angle)
+// Supplies degree-angle comparisons, including limitedDegreeDifference, with the shortest turn.
+// Integer turn units quantize both inputs; a half-turn tie returns -180 degrees.
+float degreeDifference(float targetDegrees, float currentDegrees)
 {
-    return (s32)(182.04444444444445 * angle);
+    int targetAngle = degreeToAngle(targetDegrees);
+    int currentAngle = degreeToAngle(currentDegrees);
+    int turnUnits = wrappedAngleDifference(targetAngle, currentAngle);
+    return angleToDegree(turnUnits);
 }
 
-static inline s32 WrapAngleDifference(s32 firstUnits, s32 secondUnits)
+// Supplies callers limiting a degree-angle turn with the shortest difference capped in either
+// direction.
+// The limit is used as supplied: negative values are not converted to a positive turn limit.
+float limitedDegreeDifference(float targetDegrees, float currentDegrees, float maxTurnDegrees)
 {
-    return (u16)((firstUnits - secondUnits) - 0x8000) - 0x8000;
-}
-
-static inline f32 AngleUnitsToDegrees_inlined(s32 angleUnits)
-{
-    return (f32)(0.0054931640625 * (f64)angleUnits);
-}
-
-f32 fn_1_36C4(f64 firstAngle, f64 secondAngle)
-{
-    s32 firstUnits = AngleToUnits(firstAngle);
-    s32 secondUnits = AngleToUnits(secondAngle);
-    s32 difference = WrapAngleDifference(firstUnits, secondUnits);
-    return AngleUnitsToDegrees_inlined(difference);
-}
-static inline f32 ClampAngleDifference_inlined(f32 angleDifference, f32 limit)
-{
-    if (angleDifference < -limit) {
-        return -limit;
-    }
-    if (angleDifference > limit) {
-        return limit;
-    }
-    return angleDifference;
-}
-
-f32 fn_1_377C(f64 firstAngle, f64 secondAngle, f32 limit)
-{
-    f32 difference = fn_1_36C4(firstAngle, secondAngle);
-    return ClampAngleDifference_inlined(difference, limit);
+    float turnDegrees = degreeDifference(targetDegrees, currentDegrees);
+    float limitedTurnDegrees;
+    if (turnDegrees < -maxTurnDegrees)
+        limitedTurnDegrees = -maxTurnDegrees;
+    else if (turnDegrees > maxTurnDegrees)
+        limitedTurnDegrees = maxTurnDegrees;
+    else
+        limitedTurnDegrees = turnDegrees;
+    return limitedTurnDegrees;
 }

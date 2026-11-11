@@ -1,6 +1,6 @@
 #include "msm_stream.h"
 #include "REL/m681DLL.h"
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 
 #include "dolphin/os.h"
@@ -13,7 +13,7 @@
 #include "REL/m681DLL/board_setup.h"
 #include "REL/framework/game_object_man.h"
 
-#include "REL/m681DLL/framework/thread.h"
+#include "REL/framework/thread.h"
 
 #include "REL/m681DLL/global_state.h"
 
@@ -58,47 +58,17 @@ extern "C" {
 #include "game/board/object.h"
 
 #include "game/board/tutorial.h"
+#include "REL/framework/world_units.h"
 
 #include "datadir_enum.h"
 
-
-struct BoardMember {
-    void *vtable;
-};
-
-struct BoardView {
-    void *vtable;
-    u8 unk_4[0x1C]; /* No code names this field. */
-    BoardMember boardMember;
-    u8 unk_24[0x334]; /* No code names this field. */
-    BoardMember effectsMember;
-    u8 initialized;
-    void *effectOwner;
-};
-
 #include "REL/m681DLL/event_manager.h"
-
 
 struct EffectLayer {
     EventManager events;
     GameObjectManager layer;
     BoardController state;
 };
-
-extern "C" { void __ct__12MinigameCoreFv(void *); }
-
-extern "C" { void __ct__11ThreadEntryFUl(void *, u32); }
-
-extern "C" { void __ct__13EventListenerFv(void *); }
-
-extern "C" { void *__ct__12EventManagerFv(void *); }
-
-
-extern "C" { void *__ct__15BoardControllerFv(void *); }
-
-extern "C" { void registerChannel__13EventListenerFi(void *, s32); }
-
-extern "C" { extern const char __vt__22GameSequenceController[]; }
 
 void *operator new(unsigned long size);
 
@@ -108,31 +78,7 @@ GameSequenceController::GameSequenceController()
     registerChannel(0);
 }
 
-extern "C" {
-/* Releases the owned object's nested resources and optional allocation. */
-void __dt__15BoardControllerFv(void *, short);
-void __dt__17GameObjectManagerFv(void *, short);
-void __dt__12EventManagerFv(void *, short);
-void __dl__FPv(void *);
-void fn_1_FDE4(void *, short);
-void fn_1_1FF38(void *, short);
-void fn_1_17F9C(void *, short);
-
-
-}
-
-extern "C" { extern void __dt__15BoardControllerFv(void *, s16), __dt__17GameObjectManagerFv(void *, s16), __dt__12EventManagerFv(void *, s16); }
-
-extern "C" { extern void __dl__FPv(void *); }
-
-EffectOwner::~EffectOwner() { delete value; }
-
 GameSequenceController::~GameSequenceController() {}
-
-
-extern "C" { char lbl_1_data_60[] = "self != 0"; }
-
-extern "C" { char lbl_1_data_6A[] = "singleton.h"; }
 
 extern "C" { void __msl_assertion_failed(const char *, const char *, int); }
 
@@ -154,17 +100,10 @@ extern "C" {}
  void fn_1_10D8(BoardController *);
 extern "C" { }
 
-static inline BoardController &currentBoardController()
-{
-    (MinigameSingleton<BoardController>::self != 0) ? (void)0 :
-        __msl_assertion_failed(lbl_1_data_60, lbl_1_data_6A, 38);
-    return *MinigameSingleton<BoardController>::self;
-}
-
 void GameSequenceController::setupObjects(OMOBJMAN *)
 {
     RandomSeed(OSGetTick());
-    BoardController *controller = &currentBoardController();
+    BoardController *controller = &MinigameSingleton<BoardController>::getChecked();
     fn_1_EEC(controller);
     fn_1_F30(controller);
     fn_1_1014(controller);
@@ -182,14 +121,7 @@ void GameSequenceController::updateGame()
     updateGameObjects();
 }
 
-
 void sendEvent(int, unsigned long, float);
-
-static inline M681GameState *sequenceState1484()
-{
-    (MinigameSingleton<M681GameState>::self != 0) ? (void)0 : __msl_assertion_failed(lbl_1_data_60, lbl_1_data_6A, 38);
-    return MinigameSingleton<M681GameState>::self;
-}
 
 void GameSequenceController::run(void *)
 {
@@ -217,14 +149,13 @@ void GameSequenceController::run(void *)
     secondWait = 0;
     while (secondWait < secondsToFrames(3L)) { suspend(0); ++secondWait; }
     sendEvent(0, 0xC, 0.0f);
-    cueCount = sequenceState1484()->minimum;
+    cueCount = MinigameSingleton<M681GameState>::getChecked().minimum;
     HuAudJinglePlay((s16)(cueCount > 0 ? 0x43 : 0x45));
     thirdWait = 0;
     while (thirdWait < secondsToFrames(3L)) { suspend(0); ++thirdWait; }
     MinigameCore::requestExit();
     for (;;) suspend((void *)-1);
 }
-
 
 extern "C" {
 
@@ -252,16 +183,10 @@ void GameSequenceController::receive(const EventPacket *event)
     }
 }
 
-
-static inline f32 accelerationPerFrame(f64 accelerationPerSecondSquared)
-{
-    return (f32)((accelerationPerSecondSquared * 100.0) / (60.0 * 60.0));
-}
-
 extern "C" {
 s32 lbl_1_bss_28 = secondsToFrames(2.0);
 s32 lbl_1_bss_2C = secondsToFrames(3.5);
 s32 lbl_1_bss_30 = secondsToFrames(3.5);
 s32 lbl_1_bss_34 = minutesToFrames(60L);
-f32 lbl_1_bss_38 = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_38 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

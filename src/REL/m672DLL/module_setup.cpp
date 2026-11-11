@@ -1,12 +1,13 @@
 #include "REL/m672DLL/random.h"
 #include "REL/framework/minigame_core.h"
-#include "REL/m672DLL/framework/thread.h"
+#include "REL/framework/thread.h"
+#include "REL/framework/phase_duration_statics.h"
 #include "dolphin/types.h"
 #include <string.h>
 #include "REL/m672DLL/collision_object.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_hm.h"
-#include "REL/m672DLL/model_bf64.h"
+#include "REL/framework/model.h"
 #include "REL/framework/event_callback_inline.h"
 
 /* Capacity of the minigame heap used by initializeMemoryManager. */
@@ -24,13 +25,4 @@ void* operator new(unsigned long);
 extern "C" void ObjectSetup() {
     SceneOwner672* root=new SceneOwner672;
     root->setupActorManager();
-}
-
-
-template <class Time> Time secondsToFrames(Time seconds);
-
-extern "C" {
-s32 lbl_1_bss_40 = secondsToFrames(2L);
-s32 lbl_1_bss_44 = secondsToFrames(3.5);
-s32 lbl_1_bss_48 = secondsToFrames(3.5);
 }

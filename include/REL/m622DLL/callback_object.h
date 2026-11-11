@@ -5,8 +5,8 @@
 #include <vector>
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
-#include "REL/m622DLL/owned_model.h"
-#include "REL/m622DLL/framework/linknode.h"
+#include "REL/framework/model.h"
+#include "REL/framework/linknode.h"
 
 #include "REL/m622DLL/scene_models.h"
 

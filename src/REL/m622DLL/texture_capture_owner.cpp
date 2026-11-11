@@ -87,8 +87,8 @@ TextureCaptureOwner::TextureCaptureOwner()
       firstBuffer(GXGetTexBufferSize(640, 480, GX_TF_I4, 0, 0)),
       secondBuffer(GXGetTexBufferSize(640, 480, GX_TF_I4, 0, 0))
 {
-    fn_1_33E80(this);
-    fn_1_33CB0(4);
+    setHookData(this);
+    setLayer(4);
     GXInitTexObj(&textures[0], firstBuffer.begin(),
                  640, 480, GX_TF_I4, GX_CLAMP, GX_CLAMP, 0);
     GXInitTexObj(&textures[1], secondBuffer.begin(),
@@ -116,7 +116,7 @@ TextureCaptureOwner::~TextureCaptureOwner()
 {
 }
 
-void TextureCaptureOwner::clearFlag(int bit)
+void TextureCaptureOwner::flagEnabled(int bit)
 {
     flags &= ~(1U << bit);
 }

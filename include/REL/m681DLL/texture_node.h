@@ -1,16 +1,8 @@
 #ifndef REL_M681DLL_TEXTURE_NODE_H
 #define REL_M681DLL_TEXTURE_NODE_H
 
-#include "REL/framework/game_object.h"
-#include "REL/m681DLL/owned_model.h"
+#include "REL/framework/game_object2.h"
 #include "REL/m681DLL/character_sequence.h"
-
-struct RenderObject : GameObject, OwnedModel {
-    explicit RenderObject(int category);
-    virtual ~RenderObject();
-    virtual void draw(Mtx *matrix) = 0;
-    static void drawCallback(HU3D_MODEL *model, Mtx *matrix);
-};
 
 struct PositionVector { Vec value; };
 typedef std::vector<signed char> TextureBuffer0;

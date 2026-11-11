@@ -3,6 +3,7 @@ static const char rcsid[] = "$Id: minigame_core.cpp,v 1.35.2.1 2004/06/23 07:40:
 
 #include "dolphin/math.h"
 #include "REL/framework/minigame_core.h"
+#include "REL/framework/phase_durations.h"
 
 extern "C" {
 #include "game/audio.h"
@@ -15,11 +16,6 @@ extern "C" {
 }
 
 void emptyThreadHook();
-
-// Durations in frames for the game's introduction, start and finish phases.
-const long MinigameCore::introDelay = secondsToFrames(2L);
-const long MinigameCore::startDelay = secondsToFrames(3.5);
-const long MinigameCore::finishDelay = secondsToFrames(3.5);
 
 // Constructed before the game's own setup; begin with no message delay or winners.
 MinigameCore::MinigameCore() : messageFrames(0)
@@ -226,11 +222,4 @@ void MinigameCore::wipeOut()
 void MinigameCore::requestExit()
 {
     omSysExitReq = 1;
-}
-
-// Convert the phase durations from seconds to frames at 60 frames per second.
-template <class Time>
-Time secondsToFrames(Time seconds)
-{
-    return 60 * seconds;
 }

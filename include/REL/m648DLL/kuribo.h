@@ -1,9 +1,9 @@
 #ifndef REL_M648_KURIBO_H
 #define REL_M648_KURIBO_H
-struct KuriboListNode : Node { ~KuriboListNode(); };
+#include "REL/framework/list.h"
 
 /* One kuribo: walks by a callback chosen at random and follows object objectIndex of the manager's model. */
-class Kuribo : public KuriboListNode {
+class Kuribo : public ListNode<Kuribo> {
 public:
     typedef void (Kuribo::*Callback)();
     Callback callback;

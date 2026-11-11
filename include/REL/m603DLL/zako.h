@@ -2,12 +2,14 @@
 #define REL_M603DLL_ZAKO_H
 
 #include <vector>
-#include "REL/m603DLL/callback_owner.h"
-#include "REL/framework/minigame_singleton.h"
-#define M603_OWNED_MODEL_DECLARATION
-#include "REL/m603DLL/model.h"
+#include "REL/framework/list_object.h"
+#include "REL/framework/singleton.h"
+#include "REL/framework/model.h"
+extern "C" {
+#include "game/hu3d.h"
+}
 
-class DrawModelPool : public CallbackOwner, public MinigameSingleton<DrawModelPool> {
+class DrawModelPool : public RequestObject, public MinigameSingleton<DrawModelPool> {
 public:
     enum { NUMBEROF_PMOTION = 2 };
     std::vector<s16> m_mot_id;
@@ -15,8 +17,8 @@ public:
 
     DrawModelPool();
     virtual ~DrawModelPool();
-    virtual void update(unsigned long bit);
-    virtual void extra();
+    virtual void flagEnabled(int bit);
+    virtual void update();
     HU3D_MOTIONID fn_1_8EA0(unsigned int dataNum);
 };
 

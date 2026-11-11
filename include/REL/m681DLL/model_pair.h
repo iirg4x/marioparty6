@@ -1,9 +1,8 @@
 #ifndef REL_M681DLL_MODEL_PAIR_H
 #define REL_M681DLL_MODEL_PAIR_H
 
-#include "REL/m681DLL/owned_model.h"
-#include "REL/framework/minigame_singleton.h"
-
+#include "REL/framework/model.h"
+#include "REL/framework/singleton.h"
 
 typedef Model ReleasedModel;
 
@@ -15,7 +14,6 @@ struct ModelPair : MinigameSingleton<ModelPair> {
     ReleasedModel2E74 secondModel;
     ~ModelPair();
 };
-
 
 extern "C" {
 Vec *fn_1_2FD4(ModelPair *, Vec *);

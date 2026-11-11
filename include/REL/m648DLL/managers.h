@@ -2,7 +2,7 @@
 #define REL_M648_MANAGERS_H
 
 #include "REL/framework/minigame_core.h"
-#include "REL/m648DLL/list_object.h"
+#include "REL/framework/list_object.h"
 extern "C" {
 #include "game/mg/timer.h"
 #include "game/mg/score.h"
@@ -14,7 +14,7 @@ typedef CameraManager RequestOwner8C40;
 struct ParticleAnimationOwner : RequestObject, MinigameSingleton<ParticleAnimationOwner> {
     ParticleAnimationOwner();
     virtual ~ParticleAnimationOwner();
-    virtual void clearRequest(int);
+    virtual void flagEnabled(int);
     virtual void update();
     ANIMDATA *animations[2];
 };
@@ -26,7 +26,7 @@ struct TimerManager : RequestObject, MinigameSingleton<TimerManager> {
     u8 active;
     TimerManager(s32 value, u8 active);
     virtual ~TimerManager();
-    virtual void clearRequest(int mode);
+    virtual void flagEnabled(int mode);
     void fn_1_D268();
     void fn_1_D330();
     void fn_1_D438();
@@ -46,7 +46,7 @@ struct ScoreManager : RequestObject, MinigameSingleton<ScoreManager> {
     ScoreCounterSlot slots[4];
     ScoreManager();
     virtual ~ScoreManager();
-    virtual void clearRequest(int request);
+    virtual void flagEnabled(int request);
     virtual void update();
     void fn_1_D77C(s32 playerNo, s32 characterNo);
     void fn_1_D8D8(int index, int value);

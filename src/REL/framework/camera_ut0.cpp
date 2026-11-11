@@ -21,20 +21,9 @@ template <class T> inline T cameraMax(T first, T second)
     return first > second ? first : second;
 }
 
-// Stores the eye, up direction, and look target used to orient a minigame camera.
-struct CameraFrame {
-    Vec eye;    // Camera position in world space.
-    Vec up;     // Camera's up direction.
-    Vec target; // World-space point the camera looks toward.
-};
+#include "REL/framework/camera_frame.h"
 
-// One sphere the camera must keep in view.
-struct Sphere {
-    Point3d center; // Center position in world space.
-    f32 radius;     // Radius in world units; a nonpositive radius is left out of the fit.
-
-    f32 getRadius() const { return radius; }
-};
+#include "REL/framework/sphere.h"
 
 // Display size, fitting margins, and field of view used when a camera is fitted.
 struct CameraPerspective {
@@ -105,7 +94,7 @@ s32 CameraFitter::collect(CameraFrame *pose, std::vector<Sphere *> *spheres)
     if (sphereCount <= 0) {
         return 0;
     }
-    C_MTXLookAt(view, &pose->eye, &pose->up, &pose->target);
+    C_MTXLookAt(view, &pose->position, &pose->up, &pose->target);
     centers.clear();
     radii.clear();
     centers.reserve(sphereCount);
@@ -206,12 +195,12 @@ void CameraFitter::reposition(CameraFrame *pose, CameraPerspective *perspective)
     pose->target.x = (left + right) / 2.0f;
     pose->target.y = (top + bottom) / 2.0f;
     pose->target.z = targetDepth;
-    pose->eye.x = pose->target.x;
-    pose->eye.y = pose->target.y;
-    pose->eye.z = pose->target.z + distance;
+    pose->position.x = pose->target.x;
+    pose->position.y = pose->target.y;
+    pose->position.z = pose->target.z + distance;
     PSMTXTranspose(view, view);
     PSMTXMultVecSR(view, &pose->target, &pose->target);
-    PSMTXMultVecSR(view, &pose->eye, &pose->eye);
+    PSMTXMultVecSR(view, &pose->position, &pose->position);
 }
 
 // Initializes the display size, fitting margins, and a 45-degree field of view.

@@ -1,4 +1,5 @@
-#include "REL/m681DLL/frame_time.h"
+#include "REL/framework/frame_time.h"
+#include "REL/framework/sound.h"
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "datadir_enum.h"
@@ -10,20 +11,19 @@ extern "C" {
 #include "game/hu3d.h"
 #include "game/audio.h"
 }
-#include "REL/m681DLL/owned_model.h"
-#include "REL/m681DLL/model_motion.h"
+#include "REL/framework/model.h"
+#include "REL/framework/model_motion.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_packet.h"
 #include "REL/m681DLL/texture_node.h"
 
 #include "REL/m681DLL/character_model.h"
+#include "REL/framework/world_units.h"
 
 extern "C" {
 }
 s16 fn_1_2508(s32 player);
 extern "C" {
-void fn_1_8920(s32 value);
-s32 fn_1_88F8(s32 sound);
 char *lbl_1_data_534[4] = { "st01", "st02", "st03", "st04" };
 s32 lbl_1_data_544 = -1;
 extern const s32 lbl_1_rodata_428[4] = {
@@ -38,18 +38,17 @@ extern const unsigned long lbl_1_rodata_438[2] = {
 ModelOwnerComposite84::ModelOwnerComposite84(int character)
     : GameObject(5), ModelMotion(lbl_1_rodata_428[character]), EventListener(),
       character(character), motionData(lbl_1_data_534[character]),
-      firstTimer(0), secondTimer(0), nestedResource()
+      firstTimer(0), secondTimer(0), nestedResource(), transition(-180.0f, 0)
 {
     PositionVector callbackData;
     f32 currentValue;
 
-    transition.set( -180.0f, 0);
-    modelValue = &fn_1_33F28(motionData)->mesh.base.rot.y;
-    fn_1_33CB0(5);
-    fn_1_33988(((1 << 30) | (1 << 0)));
-    fn_1_33950(((1 << 30) | (1 << 1)));
-    fn_1_1A0F4(lbl_1_rodata_438, 2);
-    fn_1_34734();
+    modelValue = &getObject(motionData)->mesh.base.rot.y;
+    setLayer(5);
+    resetAttribute(((1 << 30) | (1 << 0)));
+    setAttribute(((1 << 30) | (1 << 1)));
+    addMotions(lbl_1_rodata_438, 2);
+    updateMotion();
     currentValue = transition.current;
     *modelValue = currentValue;
     fn_1_8184(this, &callbackData.value);
@@ -65,7 +64,7 @@ ModelOwnerComposite84::~ModelOwnerComposite84() {}
 
 Vec *fn_1_8184(ModelOwnerComposite84 *owner, Vec *value)
 {
-    return owner->fn_1_344A0(owner->motionData, value);
+    return &owner->getObjectPosition(owner->motionData, value);
 }
 
 void ModelOwnerComposite84::update()
@@ -76,15 +75,15 @@ void ModelOwnerComposite84::update()
     if (transition.elapsed <= transition.frames) {
         *modelValue = transition.advance();
         if (transition.elapsed > transition.frames && lbl_1_data_544 != -1) {
-            fn_1_8920(lbl_1_data_544);
+            soundStop(lbl_1_data_544);
             lbl_1_data_544 = -1;
-            fn_1_88F8(0x921);
+            soundPlay(0x921);
         }
     }
 
     if (lbl_1_bss_C0.flag != 0) {
         lbl_1_bss_C0.flag = 0;
-        fn_1_88F8(0x91F);
+        soundPlay(0x91F);
     }
 
     firstTimerExpired = 0;
@@ -114,7 +113,7 @@ void ModelOwnerComposite84::receive(const EventPacket *request)
         if (request->type == 0) {
             transition.set( 0.0f, (s32)secondsToFrames(1.2));
             if (lbl_1_data_544 == -1) {
-                lbl_1_data_544 = fn_1_88F8(0x920);
+                lbl_1_data_544 = soundPlay(0x920);
             }
         }
         return;
@@ -131,26 +130,22 @@ void ModelOwnerComposite84::receive(const EventPacket *request)
 
 void ModelOwnerComposite84::fn_1_83F8()
 {
-    fn_1_1A1B8(DATANUM(0x8c0000, 6));
-    fn_1_33988(((1 << 30) | (1 << 1)));
+    setMotion(DATANUM(0x8c0000, 6));
+    resetAttribute(((1 << 30) | (1 << 1)));
     lbl_1_bss_C0.flag = 1;
 }
 
 void ModelOwnerComposite84::fn_1_8450()
 {
-    fn_1_1A1B8(DATANUM(0x8c0000, 7));
-    fn_1_33988(((1 << 30) | (1 << 1)));
+    setMotion(DATANUM(0x8c0000, 7));
+    resetAttribute(((1 << 30) | (1 << 1)));
     firstTimer = 50;
     secondTimer = 120;
 }
 
-static inline f32 accelerationPerFrame(f64 value)
-{
-    return (f32)((value * 100.0) / (60.0 * 60.0));
-}
 extern "C" {
 s32 lbl_1_bss_B8 = minutesToFrames(60L);
-f32 lbl_1_bss_BC = accelerationPerFrame(9.80665);
+f32 lbl_1_bss_BC = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }
 
 extern "C" { M681C0State lbl_1_bss_C0; }

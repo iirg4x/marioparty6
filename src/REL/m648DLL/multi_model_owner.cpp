@@ -1,4 +1,5 @@
-#include "REL/m648DLL/callback_walk.h"
+#include "REL/m648DLL/multi_model_owner.h"
+#include "REL/framework/frame_time_inline.h"
 extern "C" {
 #include "dolphin/types.h"
 }
@@ -26,8 +27,6 @@ extern "C" {
 extern "C" {
 #include "game/memory.h"
 }
-
-#include "REL/m648DLL/framework/linknode.h"
 
 #include "REL/framework/linknode.h"
 
@@ -105,53 +104,9 @@ extern "C" {
 
 #include "REL/framework/model.h"
 #include "REL/m648DLL/animation_object.h"
-#include "REL/m648DLL/multi_model_owner.h"
-extern "C" {
-}
-
-extern "C" {
-
-extern void *__ct__4NodeFv(void *object);
-extern void *insert4__4NodeFP4Node(void *node, void *parent);
-extern void __msl_assertion_failed(const char *expression, const char *file,
-                                   int line);
-
-extern void *lbl_1_bss_9C;
-extern char lbl_1_data_108[];
-extern char lbl_1_data_112[];
-extern const u8 lbl_1_data_5C[];
-extern const u8 lbl_1_data_15C[];
-void *__ct__4NodeFv(void *object);
-
-void *insert4__4NodeFP4Node(void *node, void *parent);
-
-}
-
 AnimationUpdateOwner::AnimationUpdateOwner() {}
 
-extern "C" {
-
-}
-
-/* Native C++ callback and singleton-lifetime recovery.
- * Class names are reconstructed. These are consumed interface views, not
- * claims about complete original class layouts; none is allocated here.
- * The callback descriptor at +4 is a real pointer-to-member, not a C callback
- * or a manually encoded compiler helper. Unknown word +0 is not padding.
- * Fragment selectors choose entire functions, not compiler behavior or TUs. */
-
-struct CallbackListOwner {
-    u32 nodeLinks[2];
-    const u8 *callbackTable;
-    u32 ownerState[2];
-};
-
-extern "C" const u8 lbl_1_data_15C[];
-extern "C" const u8 lbl_1_data_5C[];
-extern "C" void *lbl_1_bss_9C;
 void fn_1_4B3C(void);
-extern "C" void *__dt__4NodeFv(void *object, s16 mode);
-void operator delete(void *object);
 
 AnimationUpdateOwner::~AnimationUpdateOwner() { fn_1_4B3C(); }
 
@@ -162,11 +117,10 @@ void AnimationUpdateOwner::update()
     fn_1_4D00();
 }
 
-struct SoundRequestFlags { u32 state[3]; u32 flags; };
 void fn_1_4ABC(void);
-void AnimationUpdateOwner::clearRequest(int bit)
+void AnimationUpdateOwner::flagEnabled(int bit)
 {
-    state &= ~(1UL << bit);
+    flags &= ~(1UL << bit);
     switch (bit) {
     case 0:
     case 1:
@@ -201,196 +155,53 @@ void fn_1_44E0(Vec *position, s32 index)
     position->z = -400.0f;
 }
 
-extern "C" {
-extern void *__ct__4NodeFv(void *);
-}
-
-extern "C" {
-extern void *insert4__4NodeFP4Node(void *, void *);
-}
-
-extern "C" {
-extern void __ct__10OwnedModelFUi(void *, s32);
-}
-
-struct MotionHookModels;
 void fn_1_4EB8(MotionHookModels *, s32);
 
-struct CallbackListRoot;
-extern CallbackListRoot lbl_1_bss_C0;
+ListRoot<MotionHookModels> lbl_1_bss_C0;
 
 /* Creates the owner and configures its seven linked motion models. */
-MotionHookModels *fn_1_453C(MotionHookModels *owner,
-                                     s32 sequence, s32 mode)
+MotionHookModels::MotionHookModels(s32 sequence, s32 mode)
+    : hookModel(DATANUM(0x6b0000, 7)),
+      itemModel0(DATANUM(0x6b0000, 22)),
+      itemModel1(DATANUM(0x6b0000, 23)),
+      itemModel2(DATANUM(0x6b0000, 24)),
+      itemModel3(DATANUM(0x6b0000, 25)),
+      itemModel4(DATANUM(0x6b0000, 26)),
+      itemModel5(DATANUM(0x6b0000, 27)),
+      complete(0),
+      mode(mode),
+      sequence(sequence),
+      callbackCount(0)
 {
+    s16 currentModel;
     s16 motionId;
-    MotionHookModels * baseOwner;
-    s16 modelOneId;
-    s16 modelTwoId;
-    s16 modelThreeId;
-    s16 modelFourId;
-    s16 currentModelOne;
-    s16 modelFiveId;
-    s16 modelSixId;
-    s16 modelSevenId;
-    s16 currentModelTwo;
-    s16 currentModelThree;
-    s16 currentModelFour;
-    s16 currentModelFive;
-    s16 currentModelSix;
-    s16 currentModelSeven;
-    baseOwner = owner;
-    __ct__4NodeFv(baseOwner);
-    __ct__10OwnedModelFUi(& owner->hookModel, DATANUM(0x6b0000, 7));
-    __ct__10OwnedModelFUi(& owner->models[0], DATANUM(0x6b0000, 22));
-    __ct__10OwnedModelFUi(& owner->models[1], DATANUM(0x6b0000, 23));
-    __ct__10OwnedModelFUi(& owner->models[2], DATANUM(0x6b0000, 24));
-    __ct__10OwnedModelFUi(& owner->models[3], DATANUM(0x6b0000, 25));
-    __ct__10OwnedModelFUi(& owner->models[4], DATANUM(0x6b0000, 26));
-    __ct__10OwnedModelFUi(& owner->models[5], DATANUM(0x6b0000, 27));
-    owner->complete = 0;
-    owner->mode = mode;
-    owner->sequence = sequence;
-    owner->callbackCount = 0;
-    insert4__4NodeFP4Node(owner, &lbl_1_bss_C0);
-    modelOneId = (s16) owner->hookModel.modelId;
-    currentModelOne = modelOneId;
-    fn_80026B8C(currentModelOne, 3);
-    fn_80026B64(currentModelOne, 1U);
-    fn_80026A44(currentModelOne, 1U);
-    fn_800269E8(currentModelOne, 0x40000002U);
-    fn_80026E44(currentModelOne);
-    fn_80026F9C(currentModelOne);
-    modelTwoId = (s16) owner->models[0].modelId;
-    currentModelTwo = modelTwoId;
-    fn_80026B8C(currentModelTwo, 3);
-    fn_80026B64(currentModelTwo, 1U);
-    fn_800269E8(currentModelTwo, 1U);
-    fn_800269E8(currentModelTwo, 0x40000002U);
-    fn_80026E44(currentModelTwo);
-    fn_80026F9C(currentModelTwo);
-    modelThreeId = (s16) owner->models[1].modelId;
-    currentModelThree = modelThreeId;
-    fn_80026B8C(currentModelThree, 3);
-    fn_80026B64(currentModelThree, 1U);
-    fn_800269E8(currentModelThree, 1U);
-    fn_800269E8(currentModelThree, 0x40000002U);
-    fn_80026E44(currentModelThree);
-    fn_80026F9C(currentModelThree);
-    modelFourId = (s16) owner->models[2].modelId;
-    currentModelFour = modelFourId;
-    fn_80026B8C(currentModelFour, 3);
-    fn_80026B64(currentModelFour, 1U);
-    fn_800269E8(currentModelFour, 1U);
-    fn_800269E8(currentModelFour, 0x40000002U);
-    fn_80026E44(currentModelFour);
-    fn_80026F9C(currentModelFour);
-    modelFiveId = (s16) owner->models[3].modelId;
-    currentModelFive = modelFiveId;
-    fn_80026B8C(currentModelFive, 3);
-    fn_80026B64(currentModelFive, 1U);
-    fn_800269E8(currentModelFive, 1U);
-    fn_800269E8(currentModelFive, 0x40000002U);
-    fn_80026E44(currentModelFive);
-    fn_80026F9C(currentModelFive);
-    modelSixId = (s16) owner->models[4].modelId;
-    currentModelSix = modelSixId;
-    fn_80026B8C(currentModelSix, 3);
-    fn_80026B64(currentModelSix, 1U);
-    fn_800269E8(currentModelSix, 1U);
-    fn_800269E8(currentModelSix, 0x40000002U);
-    fn_80026E44(currentModelSix);
-    fn_80026F9C(currentModelSix);
-    modelSevenId = (s16) owner->models[5].modelId;
-    currentModelSeven = modelSevenId;
-    fn_80026B8C(currentModelSeven, 3);
-    fn_80026B64(currentModelSeven, 1U);
-    fn_800269E8(currentModelSeven, 1U);
-    fn_800269E8(currentModelSeven, 0x40000002U);
-    fn_80026E44(currentModelSeven);
-    fn_80026F9C(currentModelSeven);
-    owner->position.x = (f32)(sequence * 0x104 - 0x186);
-    owner->position.y = 0.0f;
-    owner->position.z = - 400.0f;
-    {
-        s16 modelId = (s16) owner->hookModel.modelId;
-        s16 modelId2 = modelId;
-        motionId = fn_80030458(modelId2, fn_80008DD0(DATANUM(0x6b0000, 8), 0x10000000, 2));
-        fn_8002C95C(modelId2, motionId);
-    }
-    fn_1_4EB8(owner, 7);
-    owner->fn_1_52D8();
-    return owner;
+
+    insert4(&lbl_1_bss_C0);
+    fn_1_4454(hookModel, 1);
+    fn_1_4454(itemModel0, 0);
+    fn_1_4454(itemModel1, 0);
+    fn_1_4454(itemModel2, 0);
+    fn_1_4454(itemModel3, 0);
+    fn_1_4454(itemModel4, 0);
+    fn_1_4454(itemModel5, 0);
+    fn_1_44E0(&position, sequence);
+    currentModel = hookModel;
+    motionId = fn_80030458(currentModel, fn_80008DD0(DATANUM(0x6b0000, 8), 0x10000000, 2));
+    fn_8002C95C(currentModel, motionId);
+    fn_1_4EB8(this, 7);
+    fn_1_52D8();
 }
 
-struct MotionHookNode : Node { ~MotionHookNode(); };
+MotionHookModels::~MotionHookModels() {}
 
-MotionHookNode::~MotionHookNode() {}
-
-void operator delete(void *node);
-
-typedef OwnedModel ReleasedModel;
-
-extern "C" { void *__dt__4NodeFv(void *node, s16 state); }
-
-extern "C" { void fn_1_10308(void *node); }
-
-CallbackListEntry *fn_1_4960(CallbackListEntry *entry, s16 destroyOwner)
-{
-    if (entry != 0) {
-        entry->model6.~ReleasedModel();
-        entry->model5.~ReleasedModel();
-        entry->model4.~ReleasedModel();
-        entry->model3.~ReleasedModel();
-        entry->model2.~ReleasedModel();
-        entry->model1.~ReleasedModel();
-        entry->model0.~ReleasedModel();
-        if (entry != 0) {
-            __dt__4NodeFv(entry, 0);
-        }
-        if (destroyOwner > 0) {
-            operator delete(entry);
-        }
-    }
-    return entry;
-}
-
-/* Releases every callback entry, including its seven associated models. */
-
-struct ListNode {
-    ListNode *next;
-    ListNode *previous;
-};
-
-struct ListEntry : ListNode {
-    ListEntry *next_node() { return static_cast<ListEntry *>(next); }
-};
-
-struct ListRoot : ListNode {
-    ListNode *first_node() { return next; }
-    ListNode *end_node() { return this; }
-    ListEntry *front() { return static_cast<ListEntry *>(first_node()); }
-};
-
-extern "C" { extern ListRoot lbl_1_bss_588; }
-
-extern "C" { extern ListRoot lbl_1_bss_A50; }
-
-extern "C" { void fn_1_A160(ListEntry *, int); }
-
-extern "C" { void fn_1_C8C0(ListEntry *, int); }
-
-extern "C" { void fn_1_C350(ListEntry *); }
-
-struct MotionHookModels;
 void fn_1_50C0(MotionHookModels *);
 
 void fn_1_4ABC()
 {
-    CallbackListEntry *node = lbl_1_bss_C0.front();
+    MotionHookModels *node = lbl_1_bss_C0.front();
     Node *end = lbl_1_bss_C0.end_node();
-    for (; node != end; node = node->next_node()) {
-        fn_1_50C0(reinterpret_cast<MotionHookModels *>(node));
+    for (; node != end; node = node->next()) {
+        fn_1_50C0(node);
     }
 }
 
@@ -404,24 +215,18 @@ u8 MotionHookModels::fn_1_4B20(s32 sequenceType) {
 void fn_1_4B3C(void)
 {
     while (!lbl_1_bss_C0.empty()) {
-        CallbackListEntry *entry = lbl_1_bss_C0.back();
-        fn_1_4960(entry, 1);
+        delete lbl_1_bss_C0.back();
     }
 }
 
-typedef CallbackListRoot ListCallbackState;
-
-typedef CountedCallback ListCallbackNode;
-
-void fn_1_4D30(ListCallbackNode *);
+void fn_1_4D30(MotionHookModels *);
 
 void fn_1_4D00()
 {
-    fn_1_58B8(&lbl_1_bss_C0,
-                           fn_1_4D30);
+    lbl_1_bss_C0.visit(fn_1_4D30);
 }
 
-void fn_1_4D30(CountedCallback *object)
+void fn_1_4D30(MotionHookModels *object)
 {
     (object->*object->callback)();
     object->fn_1_4D7C();
@@ -434,35 +239,24 @@ void MotionHookModels::fn_1_4D7C() {
     rotation.x = 0.0f;
     rotation.y = 0.0f;
     rotation.z = 0.0f;
-    hookModel.fn_1_33ACC(&rotation);
-    hookModel.fn_1_33A3C(&position);
+    hookModel.setRotation(&rotation);
+    hookModel.setPosition(&position);
 }
 
 unsigned long RandomUnsigned();
 
-struct MotionSelection {
-    u8 unknown_00[0x0A]; /* No code names this field. */
-    s16 firstSelection;
-    s16 secondSelection;
-    s16 thirdSelection;
-    s16 fourthSelection;
-    s16 fifthSelection;
-    s16 sixthSelection;
-};
-
-s16 fn_1_4DEC(const MotionSelection *selection, s32 index)
+s16 MotionHookModels::fn_1_4DEC(s32 selection) const
 {
-    s16 initialValue = selection->firstSelection;
-    s16 result = initialValue;
-    switch (index) {
-    case 0: { s16 selected = selection->firstSelection; result = selected; break; }
-    case 1: { s16 selected = selection->secondSelection; result = selected; break; }
-    case 2: { s16 selected = selection->thirdSelection; result = selected; break; }
-    case 3: { s16 selected = selection->fourthSelection; result = selected; break; }
-    case 4: { s16 selected = selection->fifthSelection; result = selected; break; }
-    case 5: { s16 selected = selection->sixthSelection; result = selected; break; }
+    s16 modelId = itemModel0;
+    switch (selection) {
+    case 0: modelId = itemModel0; break;
+    case 1: modelId = itemModel1; break;
+    case 2: modelId = itemModel2; break;
+    case 3: modelId = itemModel3; break;
+    case 4: modelId = itemModel4; break;
+    case 5: modelId = itemModel5; break;
     }
-    return result;
+    return modelId;
 }
 
 extern "C" { char lbl_1_data_11E[14] = "itemhook_R"; }
@@ -470,12 +264,12 @@ extern "C" { char lbl_1_data_11E[14] = "itemhook_R"; }
 void fn_1_4EB8(MotionHookModels *owner, s32 selection)
 {
     if (owner->attributeState >= 0) {
-        s16 previousModelId = owner->selectMotion(owner->attributeState);
+        s16 previousModelId = owner->fn_1_4DEC(owner->attributeState);
         fn_800269E8(previousModelId, (1 << 0));
         fn_800275B4(owner->hookModel, lbl_1_data_11E);
     }
 
-    s16 modelId = owner->selectMotion(selection);
+    s16 modelId = owner->fn_1_4DEC(selection);
     fn_80026A44(modelId, (1 << 0));
     fn_8002741C(owner->hookModel, lbl_1_data_11E, modelId);
     owner->attributeState = selection;
@@ -486,20 +280,6 @@ void fn_1_50C0(MotionHookModels *owner)
 {
     fn_1_4EB8(owner, ((u16)RandomUnsigned() * 6) >> 16);
     owner->fn_1_538C();
-}
-
-static inline void changeHook5548(MotionHookModels *owner, s32 selection)
-{
-    if (owner->attributeState >= 0) {
-        s16 previousModelId = owner->selectMotion(owner->attributeState);
-        fn_800269E8(previousModelId, (1 << 0));
-        fn_800275B4(owner->hookModel, lbl_1_data_11E);
-    }
-
-    s16 modelId = owner->selectMotion(selection);
-    fn_80026A44(modelId, (1 << 0));
-    fn_8002741C(owner->hookModel, lbl_1_data_11E, modelId);
-    owner->attributeState = selection;
 }
 
 /* Restarts a completed motion and installs its next callback. */
@@ -514,7 +294,7 @@ void MotionHookModels::fn_1_52D8()
     fn_80026A44(currentModel, ((1 << 30) | (1 << 2)));
     fn_8002D414(currentModel, 0.0f);
 
-    CallbackSetup5548 position = &MotionHookModels::fn_1_5388;
+    Callback position = &MotionHookModels::fn_1_5388;
     callback = position;
 }
 
@@ -522,12 +302,10 @@ void MotionHookModels::fn_1_5388()
 {
 }
 
-typedef CallbackSetup5548 MotionCallbackRecord;
-
 inline void MotionHookModels::fn_1_538C()
 {
     s16 currentModel;
-    MotionCallbackRecord callback;
+    Callback callback;
 
     currentModel = this->hookModel;
     fn_80026A44(currentModel, ((1 << 30) | (1 << 1)));
@@ -549,7 +327,7 @@ void MotionHookModels::fn_1_548C()
 {
     s16 currentModel;
     s16 modelId;
-    MotionCallbackRecord next;
+    Callback next;
 
     complete = 0;
     modelId = (s16)hookModel.modelId;
@@ -567,7 +345,7 @@ void MotionHookModels::fn_1_5548()
 {
     if (fn_8002D75C(this->hookModel) != 0 && this->shouldRestart != 0)
     {
-        changeHook5548(this, ((u16)RandomUnsigned() * 6) >> 16);
+        fn_1_4EB8(this, ((u16)RandomUnsigned() * 6) >> 16);
         this->fn_1_538C();
     }
 }
@@ -583,7 +361,7 @@ void MotionHookModels::fn_1_5800()
     fn_8002D414(currentModel, fn_8002D530(currentModel));
 
     {
-        MotionCallbackRecord next = &MotionHookModels::fn_1_58B4;
+        Callback next = &MotionHookModels::fn_1_58B4;
         callback = next;
     }
 }

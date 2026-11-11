@@ -1,7 +1,7 @@
 #ifndef REL_M681DLL_OWNER_182C_H
 #define REL_M681DLL_OWNER_182C_H
 
-#include "REL/framework/minigame_singleton.h"
+#include "REL/framework/singleton.h"
 #include "REL/framework/game_object.h"
 #include "REL/m681DLL/event_callback.h"
 #include "REL/m681DLL/monitor_interface.h"
