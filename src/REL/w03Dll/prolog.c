@@ -1,8 +1,8 @@
 /* Faire Square REL startup and shutdown hooks. */
+#include "REL/w03Dll.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* The REL loader calls this on load to run constructors and initialize the board. */
 int _prolog(void) {

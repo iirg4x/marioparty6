@@ -11,25 +11,29 @@
 #include "game/printfunc.h"
 #include "game/board/branch.h"
 #include "game/board/camera.h"
+#include "game/board/capevent.h"
 #include "game/board/capsule.h"
+#include "game/board/capmove.h"
+#include "game/board/capthrow.h"
+#include "game/board/captrap.h"
+#include "game/board/capspecial.h"
 #include "game/board/coin.h"
+#include "game/board/math.h"
 #include "game/board/object.h"
 #include "game/board/masu.h"
 #include "game/object.h"
 #include "game/board/main.h"
 #include "game/board/player.h"
 #include "game/board/status.h"
+#include "game/board/star.h"
+#include "game/board/telop.h"
 #include "game/esprite.h"
 #include "game/process.h"
 #include "game/board/window.h"
 
 #include "humath.h"
 #include "messdir_enum.h"
-
-float mbSinDeg(float deg);
-float mbCosDeg(float deg);
-s8 mbPadStkXGet(int playerNo);
-s8 mbPadStkYGet(int playerNo);
+#include "msm_se.h"
 
 #define CAPSULE_KOOPA 43
 
@@ -294,13 +298,6 @@ struct CapEffParticleSystemWork {
     HU3D_MODEL *_unk5C;
 };
 
-typedef struct CapEffGlowKinokoParticleWork {
-    s16 _unk00;
-    s16 _unk02;
-    s16 _unk04;
-    u8 _unk06[102];
-} CAPEFFGLOWKINOKOPARTICLEWORK;
-
 typedef struct CapEffRingWork {
     int modelId[3];
     int particleCount;
@@ -372,18 +369,18 @@ typedef struct CapEffCoinWork {
     int modelId;
     int objIdx;
     int activeF;
-    int _unk0C;
-    int _unk10;
-    int _unk14;
-    float _unk18;
-    float _unk1C;
+    int mode;
+    int timeMax;
+    int time;
+    float rotSpeed;
+    float gravity;
     float maxY;
-    float _unk24;
-    float _unk28;
-    HuVecF _unk2C;
-    HuVecF _unk38;
-    HuVecF _unk44;
-    HuVecF _unk50;
+    float fade;
+    float fadeStep;
+    HuVecF pos;
+    HuVecF rot;
+    HuVecF scale;
+    HuVecF vel;
     OMOBJ *glowObj;
 } CAPEFFCOINWORK;
 
@@ -471,13 +468,13 @@ typedef struct CapEffOpenWork {
 typedef struct CapCoinManWork {
     int objIdx;
     int activeF;
-    int _unk08;
+    int screenSpaceF;
     int modelId;
     int playerNo;
     int coinNum;
-    int _unk18;
-    int _unk1C;
-    float _unk20;
+    int time;
+    int timeMax;
+    float arcHeight;
     HuVecF pos;
     HuVecF targetPos;
 } CAPCOINMANWORK;
@@ -485,13 +482,13 @@ typedef struct CapCoinManWork {
 typedef struct CapStarManWork {
     int objIdx;
     int activeF;
-    int _unk08;
+    int screenSpaceF;
     int modelId;
     int playerNo;
     int starNum;
-    int _unk18;
-    int _unk1C;
-    float _unk20;
+    int time;
+    int timeMax;
+    float arcHeight;
     HuVecF pos;
     HuVecF targetPos;
 } CAPSTARMANWORK;
@@ -593,67 +590,8 @@ typedef struct EvCapsuleData {
     int trapCapsuleF;
 } EVCAPSULEDATA;
 
-void mbev_CapKinoko(void);
-void mbev_CapKinokoKill(void);
-void mbev_CapSKinoko(void);
-void mbev_CapSKinokoKill(void);
-void mbev_CapPKinoko(void);
-void mbev_CapPKinokoKill(void);
-void mbev_CapMKinoko(void);
-void mbev_CapMKinokoKill(void);
-void mbev_CapKiller(void);
-void mbev_CapKillerKill(void);
-void mbev_CapDokan(void);
-void mbev_CapDokanKill(void);
-void mbev_CapHanachan(void);
-void mbev_CapHanachanKill(void);
-void mbev_CapNKinoko(void);
-void mbev_CapNKinokoKill(void);
-void mbev_CapTogezo(void);
-void mbev_CapTogezoKill(void);
-void mbev_CapKuribo(void);
-void mbev_CapKuriboKill(void);
-void mbev_CapPakkun(void);
-void mbev_CapPakkunKill(void);
-void mbev_CapJango(void);
-void mbev_CapJangoKill(void);
-void mbev_CapKokamekku(void);
-void mbev_CapKokamekkuKill(void);
-void mbev_CapKamekku(void);
-void mbev_CapKamekkuKill(void);
-void mbev_CapThrowman(void);
-void mbev_CapThrowmanKill(void);
-void mbev_CapBoble(void);
-void mbev_CapBobleKill(void);
-void mbev_CapBobleTrap(void *workP);
-void mbev_CapBiriQ(void);
-void mbev_CapBiriQKill(void);
-void mbev_CapBiriQTrap(void *workP);
-void mbev_CapTumujikun(void);
-void mbev_CapTumujikunKill(void);
-void mbev_CapTumujikunTrap(void *workP);
-void mbev_CapDossun(void);
-void mbev_CapDossunKill(void);
-void mbev_CapDossunTrap(void *workP);
-void mbev_CapBomhei(void);
-void mbev_CapBomheiKill(void);
-void mbev_CapBomheiTrap(void *workP);
-void mbev_CapPatapata(void);
-void mbev_CapPatapataKill(void);
 void mbev_CapNull(void);
 void mbev_CapNullKill(void);
-void mbev_CapKillerMove(void);
-void mbev_CapKillerMoveKill(void);
-void mbev_CapKettou(void);
-void mbev_CapKettouKill(void);
-void mbev_CapMiracle(void);
-void mbev_CapMiracleKill(void);
-void mbev_CapKoopa(void);
-void mbev_CapKoopaKill(void);
-void mbev_CapDonkey(void);
-void mbev_CapDonkeyKill(void);
-void mbev_CapTeresa(void);
-void mbev_CapTeresaKill(void);
 void mbev_CapDebugCam(void);
 void mbev_CapDebugCamKlll(void);
 void mbev_CapDebugWarp(void);
@@ -781,7 +719,6 @@ static void ev_CapWorkOMExec(OMOBJ *obj);
 static void ev_CapWorkInit(EVCAPWORK *work, int capsuleNo);
 static void ev_CapWorkClose(EVCAPWORK *work);
 static void ev_CapCall(CAPWORK *work, BOOL waitF);
-void mbev_CapWait(CAPWORK *work);
 static void ev_CapBiriQShockOMExec(OMOBJ *obj);
 static void ev_CapKill(void);
 static void ev_CapBiriQMetalShock(void);
@@ -789,7 +726,6 @@ static void ev_CapBiriQMetalShockDestroy(void);
 static void ev_CapBonusCoin(void);
 static void ev_CapBonusCoinKill(void);
 static void ev_CapBonusCoinWin(void);
-void mbev_CapBiriQMetalShock(void *workP);
 void mbev_CapEffExplodeOMExec(OMOBJ *obj);
 void mbev_CapEffBoostOMExec(OMOBJ *obj);
 void mbev_CapEffSnowOMExec(OMOBJ *obj);
@@ -837,19 +773,7 @@ void mbev_CapStarManKill(OMOBJ *obj);
 void mbev_CapEffCapLoseKill(OMOBJ *obj);
 void mbev_CapObjMotionOMExec(OMOBJ *obj);
 void mbev_CapPlayerMotionOMExec(OMOBJ *obj);
-int mbCapObjColorCreate(int capsuleNo, BOOL createF);
-void mbCapObjColorPosSet(int id, float x, float y, float z);
-void mbCapObjColorPosSetV(int id, HuVecF *pos);
-void mbCapObjColorScaleSet(int id, float x, float y, float z);
-void mbCapObjColorAlphaSet(int id, u8 alpha);
-void mbCapObjColorLayerSet(int id, u8 layer);
-void mbCapObjColorKill(int id);
 void mbev_CapEffColorSet(GXColor *color, int colorNo);
-extern int mbStarObjCreate(void);
-extern void mbStarObjKill(int objNo);
-extern void mbStarObjDispSet(int objNo, BOOL dispF);
-extern void mbStarObjPosSetV(int objNo, HuVecF *pos);
-extern void mbStarObjScaleSet(int objNo, float x, float y, float z);
 static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode);
 int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF pos, HuVecF rot, HuVecF scale,
@@ -866,10 +790,6 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max);
 OMOBJ *mbev_CapEffCoinCreate(void);
 void mbev_CapEffCoinKill(OMOBJ *obj);
 
-extern s16 mbCapValueTypeGet(s16 value);
-extern s16 mbCapValuePlayerGet(s16 value);
-extern s16 mbCapUseModeGet(s16 capsuleNo);
-extern EVCAPSULEDATA ev_CapsuleData[];
 void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C,
     BOOL unk10);
 static void ev_CapEffOpen(void);
@@ -981,7 +901,7 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
     memset(&work.flags, 0, sizeof(CAPWORKFLAG));
     masuId = lbl_80265750[work.playerNo].masuId;
     cameraView = mbCameraPlayerViewNoGet();
-    mbAudFXPlay(1035);
+    mbAudFXPlay(MSM_SE_BRD00_CAPSULE_CALL_ALERT);
     if (!moveF && !stopF) {
         mbev_CapEffOpenCreate(work.playerNo, work.masuId, TRUE, TRUE, TRUE);
     }
@@ -1042,13 +962,9 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
     return FALSE;
 }
 
-extern EVCAPSULEDATA ev_CapsuleData[];
-extern int mbBGRead(int dataNum);
-s16 mbCoinDispCapsuleCreate(HuVecF *pos, int coinNum);
 void mbev_CapBonusCoinCall(int playerNo, int capsuleNo, int coinNum,
     BOOL waitF);
 void mbev_CapBonusCoin(int playerNo, int coinNum, BOOL waitF, BOOL flag);
-int mbCapBonusCoinNumGet(int playerNo, int capsuleNo);
 int mbev_CapPlayerSquishVoiceSet(int *playerNo, int masuId, BOOL voiceF);
 BOOL mbev_CapCullCheck(int playerNo, int masuId);
 BOOL mbev_CapPointCullCheck(HuVecF *pos);
@@ -1058,11 +974,7 @@ int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF);
  * initial shuffle. Other modes choose uniformly. */
 int mbev_CapPlayerComSelRandomGet(int playerNo, int selection, int *playerList,
     int playerNum);
-void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
 
-extern s16 mbCapMasuTypeGet(s16 masuId);
-extern s16 mbCapValuePlayerGet(s16 value);
-extern s16 mbCapMasuDispTypeGet(s16 masuId);
 void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C, BOOL unk10);
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
 
@@ -1079,7 +991,7 @@ BOOL mbev_CapCallTrap(int playerNo, int masuId, int masuIdNext)
     if (mbev_CapPlayerCheck(targetPlayerNo, playerNo)) {
         return TRUE;
     }
-    mbAudFXPlay(1035);
+    mbAudFXPlay(MSM_SE_BRD00_CAPSULE_CALL_ALERT);
     if (lbl_80265750[playerNo].biriQF) {
         biriQMasuNum = 60;
     }
@@ -1115,7 +1027,7 @@ void mbev_CapCallKettou(int playerNo, int masuId, BOOL stopF)
     work.masuIdNext = -1;
     work.flags._flag01 = stopF;
     HuPrcSleep(10);
-    mbAudFXPlay(1104);
+    mbAudFXPlay(MSM_SE_BRD00_HATENA_SPACE_TRIGGER);
     ev_CapCall(&work, TRUE);
 }
 
@@ -2136,7 +2048,7 @@ static void ev_CapEffOpen(void)
             ringObj, pos, rot, scale, 3, 10, 1, color);
 
         for (i = 0; i <= workP->timeMax; i++) {
-            weight = cos((3.141592653589793 * (90.0f
+            weight = cos((M_PI * (90.0f
                 * ((float)i / (float)workP->timeMax))) / 180.0);
             mbMasuPosGet((s16)workP->masuId, &pos);
             PSVECAdd(&pos, &workP->pos, &pos);
@@ -2196,7 +2108,7 @@ static void ev_CapEffOpen(void)
             ringObj, pos, rot, scale, 3, 10, 1, color);
 
         for (i = 0; i <= workP->timeMax; i++) {
-            weight = cos((3.141592653589793 * (90.0f
+            weight = cos((M_PI * (90.0f
                 * ((float)i / (float)workP->timeMax))) / 180.0);
             mbMasuPosGet((s16)workP->masuId, &pos);
             PSVECAdd(&pos, &workP->pos, &pos);
@@ -2517,14 +2429,14 @@ void mbev_CapDebugWarp(void)
             mbMasuPosGet(linkTbl[i], &tempPos);
             PSVECSubtract(&tempPos, &pos, &tempPos);
             angleTbl[i] = ev_CapRotCamera(
-                180.0f * (atan2(tempPos.x, tempPos.z) / 3.141592653589793));
+                180.0f * (atan2(tempPos.x, tempPos.z) / M_PI));
         }
         stickX = (float)mbPadStkXGet(0);
         stickY = (float)mbPadStkYGet(0);
         if (fabs((double)stickX) > 8.0 || fabs((double)stickY) > 8.0) {
             for (i = 0; i < linkNum; i++) {
                 if (fabs((double)mbev_CapAngleWrap(angleTbl[i],
-                        180.0f * (atan2(stickX, -stickY) / 3.141592653589793))) < 30.0) {
+                        180.0f * (atan2(stickX, -stickY) / M_PI))) < 30.0) {
                     masuId = linkTbl[i];
                     prevPos = pos;
                     mbMasuPosGet((s16)masuId, &pos);
@@ -2996,9 +2908,8 @@ void mbev_CapPlayerMoveObjExec(OMOBJ *obj)
 
         case 1:
             weight = (float)++workP->time / 60.0f;
-            mbev_CapBezierGetV(weight, (float *)&workP->posStart,
-                (float *)&workP->posEnd, (float *)&workP->outboundEndPos,
-                (float *)&pos);
+            mbev_CapBezierGetV(weight, &workP->posStart.x,
+                &workP->posEnd.x, &workP->outboundEndPos.x, &pos.x);
             mbPlayerPosSetV(workP->playerNo, &pos);
             mbPlayerRotSet(workP->playerNo, workP->rot.x,
                 workP->rot.y + ((720.0f * weight) * workP->rotSpeed),
@@ -4739,13 +4650,13 @@ void mbev_CapEffGlowKinokoAddAlt(OMOBJ *obj, HuVecF *posP, int time,
 }
 
 /* Capsule event code stores per-particle setup values and clears the third extra field. */
-int mbev_CapEffGlowKinokoTimeSet(OMOBJ *obj, int index, int unk08, int unk0A)
+int mbev_CapEffGlowKinokoTimeSet(OMOBJ *obj, int index, int motionMode, int phase)
 {
     int i;
     CAPEFFBOOSTWORK *workP;
     HU3D_MODEL *modelP;
-    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
-    CAPEFFGLOWKINOKOPARTICLEWORK *particleWorkP;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    CAPEFFGLOWPARTICLEWORK *particleWorkP;
 
     for (i = 0; i < 8; i++) {
         if (ev_CapEffGlowOMObj[i] == obj) {
@@ -4759,10 +4670,10 @@ int mbev_CapEffGlowKinokoTimeSet(OMOBJ *obj, int index, int unk08, int unk0A)
     if (index < 0 || index >= particleP->num) {
         return FALSE;
     }
-    particleWorkP = &((CAPEFFGLOWKINOKOPARTICLEWORK *)particleP->data)[index];
-    particleWorkP->_unk00 = unk08;
-    particleWorkP->_unk02 = unk0A;
-    particleWorkP->_unk04 = 0;
+    particleWorkP = &particleP->data[index];
+    particleWorkP->mode = motionMode;
+    particleWorkP->phase = phase;
+    particleWorkP->cycle = 0;
     return TRUE;
 }
 
@@ -5213,9 +5124,9 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
         PSVECAdd(&part->pos2, &delta, &particle[0].pos);
         PSVECSubtract(&part->pos1, &part->pos2, &delta);
         horizontal = sqrtf(delta.x * delta.x + delta.z * delta.z);
-        particle[0].rotX = 180.0 * (atan2(-delta.y, horizontal) / 3.141592653589793);
+        particle[0].rotX = 180.0 * (atan2(-delta.y, horizontal) / M_PI);
         particle[0].rotY = 90.0
-            + (180.0 * (atan2(delta.x, delta.z) / 3.141592653589793));
+            + (180.0 * (atan2(delta.x, delta.z) / M_PI));
         particle[0].angle = 0.0f;
         particle[0].pat = mbRandMod(4);
         horizontal = PSVECMag(&delta);
@@ -5427,7 +5338,7 @@ OMOBJ *mbev_CapEffRayCreate(float yOffset, float widthSpread)
             mbev_CapEffColorSet(&particleP->color[j],
                 mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
             particleP->color[j].a =
-                255.0 * sin(3.141592653589793 * (180.0f * t) / 180.0);
+                255.0 * sin(M_PI * (180.0f * t) / 180.0);
         }
     }
     DCFlushRangeNoSync(workP->particleP, 128 * sizeof(CAPEFFRAYPARTICLEWORK));
@@ -5886,15 +5797,15 @@ OMOBJ *mbev_CapEffCoinCreate(void)
     for (i = 0; i < 128; i++, workP2++) {
         workP2->modelId = -1;
         workP2->activeF = 0;
-        workP2->_unk0C = 1;
-        workP2->_unk10 = 0;
-        workP2->_unk14 = 0;
-        workP2->_unk1C = 0.0f;
-        workP2->maxY = -1000000.0f;
-        workP2->_unk2C.x = workP2->_unk2C.y = workP2->_unk2C.z = 0.0f;
-        workP2->_unk38.x = workP2->_unk38.y = workP2->_unk38.z = 0.0f;
-        workP2->_unk44.x = workP2->_unk44.y = workP2->_unk44.z = 1.0f;
-        workP2->_unk50.x = workP2->_unk50.y = workP2->_unk50.z = 0.0f;
+        workP2->mode = 1;
+        workP2->timeMax = 0;
+        workP2->time = 0;
+        workP2->gravity = 0.0f;
+        workP2->maxY = -1e6f;
+        workP2->pos.x = workP2->pos.y = workP2->pos.z = 0.0f;
+        workP2->rot.x = workP2->rot.y = workP2->rot.z = 0.0f;
+        workP2->scale.x = workP2->scale.y = workP2->scale.z = 1.0f;
+        workP2->vel.x = workP2->vel.y = workP2->vel.z = 0.0f;
     }
     return obj;
 }
@@ -5935,28 +5846,28 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
         if (!workP->activeF) {
             continue;
         }
-        PSVECAdd(&workP->_unk2C, &workP->_unk50, &workP->_unk2C);
-        workP->_unk50.y -= workP->_unk1C;
-        workP->_unk50.y *= 0.95f;
-        workP->_unk38.y += workP->_unk18;
-        mbCoinObjPosSetV(workP->modelId, &workP->_unk2C);
-        mbCoinObjRotSetV(workP->modelId, &workP->_unk38);
-        mbCoinObjScaleSetV(workP->modelId, &workP->_unk44);
-        if (workP->_unk0C == 0) {
-            workP->_unk24 = workP->_unk24 - workP->_unk28;
-            speed = 1.0f - workP->_unk24;
+        PSVECAdd(&workP->pos, &workP->vel, &workP->pos);
+        workP->vel.y -= workP->gravity;
+        workP->vel.y *= 0.95f;
+        workP->rot.y += workP->rotSpeed;
+        mbCoinObjPosSetV(workP->modelId, &workP->pos);
+        mbCoinObjRotSetV(workP->modelId, &workP->rot);
+        mbCoinObjScaleSetV(workP->modelId, &workP->scale);
+        if (workP->mode == 0) {
+            workP->fade = workP->fade - workP->fadeStep;
+            speed = 1.0f - workP->fade;
             alpha = mbCosDeg(90.0f * (speed * speed));
             mbCoinObjAlphaSet(workP->modelId, alpha);
         }
-        if (++workP->_unk14 > workP->_unk10
-            || (workP->_unk50.y < 0.0f
-                && workP->_unk2C.y < workP->maxY)) {
+        if (++workP->time > workP->timeMax
+            || (workP->vel.y < 0.0f
+                && workP->pos.y < workP->maxY)) {
             workP->activeF = FALSE;
             if (workP->modelId >= 0) {
                 mbCoinObjNumDec(workP->modelId);
             }
             workP->modelId = -1;
-            switch (workP->_unk0C) {
+            switch (workP->mode) {
             case 1: {
                 HuVecF pos;
                 HuVecF vel;
@@ -5971,7 +5882,7 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
 
                 for (j = 0, angle = 0.0f; j < 16; j++) {
                     angle += 22.5f * (1.0f + MBCapsuleEffRandF());
-                    posTemp = workP->_unk2C;
+                    posTemp = workP->pos;
                     speed = 2.5f * (1.0f + MBCapsuleEffRandF());
                     angleX = 45.0f - (90.0f * MBCapsuleEffRandF());
                     cosAngleX1 = mbCosDeg(angleX);
@@ -6018,7 +5929,7 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
 
                 for (j = 0, angle = 0.0f; j < 32; j++) {
                     angle += 22.5f * (1.0f + MBCapsuleEffRandF());
-                    posTemp = workP->_unk2C;
+                    posTemp = workP->pos;
                     speed = 2.5f * (1.0f + MBCapsuleEffRandF());
                     angleX = 45.0f - (90.0f * MBCapsuleEffRandF());
                     cosAngleX1 = mbCosDeg(angleX);
@@ -6065,7 +5976,7 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
 
                 for (j = 0, angle = 0.0f; j < 16; j++) {
                     angle += 22.5f * (1.0f + MBCapsuleEffRandF());
-                    posTemp = workP->_unk2C;
+                    posTemp = workP->pos;
                     speed = 50.0f * (1.0f + (0.2f * MBCapsuleEffRandF()));
                     angleX = -(75.0f + (15.0f * MBCapsuleEffRandF()));
                     cosAngleX1 = mbCosDeg(angleX);
@@ -6098,7 +6009,7 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
             }
 
             case 4:
-                posTemp = workP->_unk2C;
+                posTemp = workP->pos;
                 posTemp.y -= 50.0f;
                 mbCoinEffCreate(&posTemp);
                 break;
@@ -6174,24 +6085,24 @@ int mbev_CapEffCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale,
         return -1;
     }
     workP->activeF = 1;
-    workP->_unk0C = arg;
-    workP->_unk10 = time;
-    workP->_unk14 = 0;
-    workP->_unk1C = gravity;
-    workP->maxY = -1000000.0f;
-    workP->_unk24 = 1.0f;
-    workP->_unk28 = 1.0f / (float)time;
-    workP->_unk2C = *pos;
-    workP->_unk38.y = 360.0f * MBCapsuleEffRandF();
-    workP->_unk38.x = 30.0f * (-0.5f + MBCapsuleEffRandF());
-    workP->_unk38.z = 0.0f;
-    workP->_unk44.x = workP->_unk44.y = workP->_unk44.z = scale;
-    workP->_unk50 = *vel;
-    workP->_unk18 = 10.0f * (-0.5f + MBCapsuleEffRandF());
+    workP->mode = arg;
+    workP->timeMax = time;
+    workP->time = 0;
+    workP->gravity = gravity;
+    workP->maxY = -1e6f;
+    workP->fade = 1.0f;
+    workP->fadeStep = 1.0f / (float)time;
+    workP->pos = *pos;
+    workP->rot.y = 360.0f * MBCapsuleEffRandF();
+    workP->rot.x = 30.0f * (-0.5f + MBCapsuleEffRandF());
+    workP->rot.z = 0.0f;
+    workP->scale.x = workP->scale.y = workP->scale.z = scale;
+    workP->vel = *vel;
+    workP->rotSpeed = 10.0f * (-0.5f + MBCapsuleEffRandF());
     workP->modelId = mbCoinCreate2();
-    mbCoinObjPosSetV(workP->modelId, &workP->_unk2C);
-    mbCoinObjRotSetV(workP->modelId, &workP->_unk38);
-    mbCoinObjScaleSetV(workP->modelId, &workP->_unk44);
+    mbCoinObjPosSetV(workP->modelId, &workP->pos);
+    mbCoinObjRotSetV(workP->modelId, &workP->rot);
+    mbCoinObjScaleSetV(workP->modelId, &workP->scale);
     return coinNo;
 }
 
@@ -6378,12 +6289,12 @@ OMOBJ *mbev_CapCoinManCreate(void)
     for (i = 0; i < 64; i++, workP++) {
         workP->modelId = -1;
         workP->activeF = 0;
-        workP->_unk08 = 1;
+        workP->screenSpaceF = 1;
         workP->playerNo = -1;
         workP->coinNum = 0;
-        workP->_unk18 = 0;
-        workP->_unk1C = 0;
-        workP->_unk20 = 0.0f;
+        workP->time = 0;
+        workP->timeMax = 0;
+        workP->arcHeight = 0.0f;
         workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
         workP->targetPos.x = workP->targetPos.y = workP->targetPos.z = 0.0f;
     }
@@ -6417,30 +6328,30 @@ void mbev_CapCoinManOMExec(OMOBJ *obj)
     }
     for (i = 0; i < 64; i++, workP++) {
         if (workP->activeF) {
-            weight = (float)workP->_unk18 / (float)workP->_unk1C;
+            weight = (float)workP->time / (float)workP->timeMax;
             mbev_CapVecChase(weight, &workP->pos, &workP->targetPos, &pos);
-            if (workP->_unk20) {
+            if (workP->arcHeight) {
                 sinValue = mbSinDeg(180.0f * weight);
-                pos.y += workP->_unk20 * sinValue;
+                pos.y += workP->arcHeight * sinValue;
             }
-            if (workP->_unk08) {
+            if (workP->screenSpaceF) {
                 Hu3D2Dto3D(&pos, 1, &pos3D);
                 mbCoinObjPosSetV((s16)workP->modelId, &pos3D);
             } else {
                 mbCoinObjPosSetV((s16)workP->modelId, &pos);
             }
-            if (++workP->_unk18 >= workP->_unk1C) {
+            if (++workP->time >= workP->timeMax) {
                 mbCoinObjNumDec((s16)workP->modelId);
                 workP->modelId = -1;
                 workP->activeF = FALSE;
                 if (workP->playerNo != -1 && workP->coinNum > 0) {
                     mbPlayerCoinAdd(workP->playerNo, workP->coinNum);
-                    if (!workP->_unk08) {
+                    if (!workP->screenSpaceF) {
                         mbPlayerPosGet(workP->playerNo, &pos);
                         pos.y += 50.0f;
                         mbCoinEffCreate(&pos);
                     }
-                    mbAudFXPlay(7);
+                    mbAudFXPlay(MSM_SE_CMN_COIN_GET);
                 }
             }
         }
@@ -6486,7 +6397,7 @@ int mbev_CapCoinManNumGet(OMOBJ *obj)
 
 /* Capsule events create a managed coin with a target, player award and travel duration. */
 int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
-    float scale, float arcHeight, int unk1C, int playerNo, int coinNum,
+    float scale, float arcHeight, int timeMax, int playerNo, int coinNum,
     int screenSpaceF)
 {
     CAPCOINMANWORK *workP;
@@ -6510,12 +6421,12 @@ int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
         return -1;
     }
     workP->activeF = TRUE;
-    workP->_unk08 = screenSpaceF;
+    workP->screenSpaceF = screenSpaceF;
     workP->playerNo = playerNo;
     workP->coinNum = coinNum;
-    workP->_unk18 = 0;
-    workP->_unk1C = unk1C;
-    workP->_unk20 = arcHeight;
+    workP->time = 0;
+    workP->timeMax = timeMax;
+    workP->arcHeight = arcHeight;
     workP->pos = *pos;
     workP->targetPos = *targetPos;
     workP->modelId = mbCoinCreate2();
@@ -6579,12 +6490,12 @@ int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
         result = -1;
     } else {
         workP->activeF = TRUE;
-        workP->_unk08 = TRUE;
+        workP->screenSpaceF = TRUE;
         workP->playerNo = playerNo;
         workP->coinNum = coinNum;
-        workP->_unk18 = 0;
-        workP->_unk1C = time;
-        workP->_unk20 = arcHeight;
+        workP->time = 0;
+        workP->timeMax = time;
+        workP->arcHeight = arcHeight;
         workP->pos = pos;
         workP->targetPos = targetPos;
         workP->modelId = mbCoinCreate2();
@@ -6636,12 +6547,12 @@ int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         result = -1;
     } else {
         workP->activeF = TRUE;
-        workP->_unk08 = 0;
+        workP->screenSpaceF = 0;
         workP->playerNo = playerNo;
         workP->coinNum = coinNum;
-        workP->_unk18 = 0;
-        workP->_unk1C = time;
-        workP->_unk20 = arcHeight;
+        workP->time = 0;
+        workP->timeMax = time;
+        workP->arcHeight = arcHeight;
         workP->pos = *from;
         workP->targetPos = *to;
         workP->modelId = mbCoinCreate2();
@@ -6689,12 +6600,12 @@ OMOBJ *mbev_CapStarManCreate(void)
         workP->modelId = mbStarObjCreate();
         mbStarObjDispSet(workP->modelId, FALSE);
         workP->activeF = 0;
-        workP->_unk08 = 0;
+        workP->screenSpaceF = 0;
         workP->playerNo = -1;
         workP->starNum = 0;
-        workP->_unk18 = 0;
-        workP->_unk1C = 0;
-        workP->_unk20 = 0.0f;
+        workP->time = 0;
+        workP->timeMax = 0;
+        workP->arcHeight = 0.0f;
         workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
         workP->targetPos.x = workP->targetPos.y = workP->targetPos.z = 0.0f;
     }
@@ -6727,25 +6638,25 @@ void mbev_CapStarManOMExec(OMOBJ *obj)
     }
     for (i = 0; i < 8; i++, workP++) {
         if (workP->activeF && workP->modelId != -1) {
-            weight = (float)workP->_unk18 / (float)workP->_unk1C;
+            weight = (float)workP->time / (float)workP->timeMax;
             PSVECSubtract(&workP->targetPos, &workP->pos, &pos);
             PSVECScale(&pos, &pos, weight);
             PSVECAdd(&workP->pos, &pos, &pos);
-            if (workP->_unk20) {
+            if (workP->arcHeight) {
                 sinWeight = mbSinDeg(180.0f * weight);
-                pos.y += workP->_unk20 * sinWeight;
+                pos.y += workP->arcHeight * sinWeight;
             }
-            if (workP->_unk08) {
+            if (workP->screenSpaceF) {
                 Hu3D2Dto3D(&pos, 1, &pos3D);
                 mbStarObjPosSetV(workP->modelId, &pos3D);
             } else {
                 mbStarObjPosSetV(workP->modelId, &pos);
             }
-            if (++workP->_unk18 >= workP->_unk1C) {
+            if (++workP->time >= workP->timeMax) {
                 mbStarObjDispSet(workP->modelId, FALSE);
                 workP->activeF = FALSE;
                 if (workP->playerNo != -1 && workP->starNum > 0) {
-                    if (!workP->_unk08) {
+                    if (!workP->screenSpaceF) {
                         mbPlayerPosGet(workP->playerNo, &pos);
                         pos.y += 50.0f;
                         mbCoinEffCreate(&pos);
@@ -6796,7 +6707,7 @@ int mbev_CapStarManNumGet(OMOBJ *obj)
 
 /* Capsule events place one traveling star with its destination, duration and award. */
 int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
-    float scale, float arcHeight, int unk1C, int playerNo, int starNum,
+    float scale, float arcHeight, int timeMax, int playerNo, int starNum,
     int screenSpaceF)
 {
     CAPSTARMANWORK *workP;
@@ -6819,12 +6730,12 @@ int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
         return -1;
     }
     workP->activeF = TRUE;
-    workP->_unk08 = screenSpaceF;
+    workP->screenSpaceF = screenSpaceF;
     workP->playerNo = playerNo;
     workP->starNum = starNum;
-    workP->_unk18 = 0;
-    workP->_unk1C = unk1C;
-    workP->_unk20 = arcHeight;
+    workP->time = 0;
+    workP->timeMax = timeMax;
+    workP->arcHeight = arcHeight;
     workP->pos = *pos;
     workP->targetPos = *targetPos;
     mbStarObjDispSet(workP->modelId, TRUE);
@@ -6884,12 +6795,12 @@ int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
         result = -1;
     } else {
         workP->activeF = TRUE;
-        workP->_unk08 = TRUE;
+        workP->screenSpaceF = TRUE;
         workP->playerNo = playerNo;
         workP->starNum = starNum;
-        workP->_unk18 = 0;
-        workP->_unk1C = time;
-        workP->_unk20 = arcHeight;
+        workP->time = 0;
+        workP->timeMax = time;
+        workP->arcHeight = arcHeight;
         workP->pos = pos;
         workP->targetPos = targetPos;
         mbStarObjDispSet(workP->modelId, TRUE);
@@ -6937,12 +6848,12 @@ int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         result = -1;
     } else {
         workP->activeF = TRUE;
-        workP->_unk08 = 0;
+        workP->screenSpaceF = 0;
         workP->playerNo = playerNo;
         workP->starNum = starNum;
-        workP->_unk18 = 0;
-        workP->_unk1C = time;
-        workP->_unk20 = arcHeight;
+        workP->time = 0;
+        workP->timeMax = time;
+        workP->arcHeight = arcHeight;
         workP->pos = *from;
         workP->targetPos = *to;
         mbStarObjDispSet(workP->modelId, TRUE);
@@ -8234,11 +8145,11 @@ int mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF, BOOL waitF)
     coinDisp = mbCoinDispCapsuleCreate(&pos, coinNum);
     if (winMotF) {
         if (coinNum > 0) {
-            mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
+            mbPlayerWinLoseVoicePlay(playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
             mbev_CapPlayerMotShiftWait(
                 playerNo, 12, 0, TRUE);
         } else {
-            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+            mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
             mbev_CapPlayerMotShiftWait(
                 playerNo, 13, 0, TRUE);
         }
@@ -8742,11 +8653,11 @@ static float ev_CapRotCamera(float angle)
 
     camera = mbCameraGet();
     fn_80022E38(mtx, camera->rot.x, camera->rot.y, camera->rot.z);
-    dir.x = sin((3.141592653589793 * angle) / 180.0);
+    dir.x = sin((M_PI * angle) / 180.0);
     dir.y = 0.0f;
-    dir.z = cos((3.141592653589793 * angle) / 180.0);
+    dir.z = cos((M_PI * angle) / 180.0);
     PSMTXMultVec(mtx, &dir, &dir);
-    return 180.0 * (atan2(dir.x, dir.z) / 3.141592653589793);
+    return 180.0 * (atan2(dir.x, dir.z) / M_PI);
 }
 
 /* Capsule movement computes src + weight * (target - src) for each vector component. */
@@ -8766,8 +8677,8 @@ void mbev_CapVecRotGet(HuVecF *vec, HuVecF *rot)
     HuVecF result;
 
     result.x = (180.0*(atan2((-vec->y),
-        (sqrtf((vec->x*vec->x)+(vec->z*vec->z)))) / 3.141592653589793));
-    result.y = (180.0*(atan2(vec->x, vec->z) / 3.141592653589793));
+        (sqrtf((vec->x*vec->x)+(vec->z*vec->z)))) / M_PI));
+    result.y = (180.0*(atan2(vec->x, vec->z) / M_PI));
     result.z = 0.0f;
     *rot = result;
 }

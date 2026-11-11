@@ -1,54 +1,40 @@
 /* Implements the W10 board setup and its board tutorial scenes. */
 #include "REL/w10Dll/module_context.h"
+#include "game/board/camera.h"
+#include "game/board/player.h"
+#include "game/board/mgcall.h"
+#include "game/board/star.h"
+#include "game/board/telop.h"
 
 s8 lbl_1_data_0[5] = { 1, 12, 21, 7, -1 };
 #include "humath.h"
 #include "game/esprite.h"
 #include "game/board/effect.h"
-extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
+#include "game/board/math.h"
+#include "game/board/capsule.h"
+#include "game/board/wipe.h"
+#include "game/board/dice.h"
 extern void fn_1_2EF8(void);
-#include "REL/w10Dll/module_context.h"
 
 extern void fn_1_1F4(void);
 extern void fn_1_418(void);
-void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(void));
 
-#include "REL/w10Dll/module_context.h"
 #include "game/board/masu.h"
 #include "game/board/opening.h"
 #include "game/board/main.h"
 #include "msm_grp.h"
 
-extern void mbScrollInit(int dataNum);
-extern int mbCapThrowColCreate(int dataNum);
-extern void mbLightFuncSet(void (*setHook)(void), void (*resetHook)(void));
-extern void mbev_ShopInit(int dataNum);
-extern void mbStarMasuNextSet(int masuId);
 extern void fn_1_458(OMOBJ *obj);
 extern void fn_1_45C(void);
 extern void fn_1_490(void);
 extern void fn_1_494(void);
 extern MBMODELID lbl_1_bss_10;
 
-/* Returns whether the current board time uses W10's day assets. */
-static inline BOOL MBTimeDayGet(void)
-{
-    return lbl_80265B70.curTime == 0;
-}
 
-#include "REL/w10Dll/module_context.h"
-
-extern MBMODELID lbl_1_bss_10;
-
-#include "REL/w10Dll/module_context.h"
-
-extern MBMODELID lbl_1_bss_10;
 
 void fn_1_4BC(void);
 
-#include "REL/w10Dll/module_context.h"
 
-extern s8 lbl_1_data_0[5];
 extern void fn_1_2CB8(void);
 extern void fn_1_554(void);
 extern void fn_1_A68(void);
@@ -57,49 +43,17 @@ extern void fn_1_1924(void);
 extern void fn_1_2484(void);
 extern void fn_1_2B34(void);
 
-#include "REL/w10Dll/module_context.h"
 
-extern void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset,
-    float zoom, float fov, s16 maxTime);
-extern void mbCameraMoveWait(void);
-extern void mbCameraPlayerViewSetFast(int playerNo, int viewNo);
-extern void mbCameraStackPop(int maxTime);
-extern int mbCameraStackPush(void);
-extern void mbCapMasuPlayerTypeSet(s16 masuId, s16 capsuleNo, s16 playerNo);
-extern s16 mbMasuFind_MAttrIdGet(s16 id, u32 attr);
-extern void mbMoveNumDispSet(int playerNo, BOOL dispF);
-extern int mbPlayerCapsuleAdd(int playerNo, int capsuleNo);
-extern void mbPlayerMotIdleSet(int playerNo);
-extern u32 mbPlayerNameMesGet(int playerNo);
-extern void mbWinInsertMesSet(s16 winNo, u32 insertMes, int insertMesNo);
-extern void mbWipeDissolveFadeIn(void);
-extern void mbWipeDissolveFadeOut(void);
 extern void fn_1_306C(float x, float y, float z);
 extern void fn_1_30EC(void);
 
-#include "REL/w10Dll/module_context.h"
 #include "game/board/status.h"
 #include "game/board/window.h"
 
-extern s16 mbTelopTimeSprCreate(void);
-extern void mbTelopTimeStarSet(s16 group, int stars);
-extern void mbTelopTimeTPLvlSet(s16 group, float level);
-extern void mbTelopTimeSprRotSet(s16 group, float time);
-extern void mbWipeDissolveFadeIn(void);
-extern void mbWipeFadeOut(void);
 extern void fn_1_30EC(void);
 
-#include "REL/w10Dll/module_context.h"
 
-extern void mbPlayerDispSet(int playerNo, BOOL dispF);
-extern float mbCameraPlayerViewZoomGet(int viewNo);
-extern void mbCameraZoomSet(float zoom);
 extern void mbGuideFadeIn(OMOBJ *obj);
-extern s16 mbMasuFind_TypeSearch(s16 id, s16 type);
-extern void mbMasuTypeSet(s16 id, int type);
-extern void mbStarDispSetAll(BOOL dispF);
-extern void mbWipeDissolveFadeIn(void);
-extern void mbWipeDissolveFadeOut(void);
 extern void fn_1_306C(float x, float y, float z);
 
 extern u8 lbl_1_data_58[9];
@@ -113,36 +67,15 @@ extern u8 lbl_1_data_7E[4];
 extern u8 lbl_1_data_82[4];
 extern u8 lbl_1_data_86[4];
 extern u8 lbl_1_data_8A[4];
-extern float lbl_1_data_8[10][2];
-extern int mbBoardDataNumGet(int dataNum);
-extern BOOL mbStatusOffCheckAll(void);
-extern float mbSinDeg(float angle);
-extern void mbMgCallVsEffCreate(void);
-extern void mbTutorialMgCallExec(int mode);
+extern HuVec2f lbl_1_data_8[10];
 extern void mbGuideMotionShiftSet(OMOBJ *guide, s16 motion, BOOL shift);
 extern BOOL mbGuideMotionCheck(OMOBJ *guide);
-extern void mbPlayerPosReset(int player);
-extern void mbWipeFadeIn(void);
 
-#include "REL/w10Dll/module_context.h"
 
 typedef struct W10SPRPAIR_s {
     s16 spriteIds[2]; /* Banner ID at 0, label ID at 1; -1 means that sprite is unused. */
 } W10SPRPAIR;
 
-#include "REL/w10Dll/module_context.h"
-
-extern void mbCameraOffsetSet(float x, float y, float z);
-extern void mbCameraRotSet(float x, float y, float z);
-extern void mbPlayerDispSet(int playerNo, BOOL dispF);
-extern void mbPlayerPosSetV(int playerNo, const HuVecF *pos);
-extern void mbPlayerWinLoseVoicePlay(int playerNo, int motNo, int seId);
-extern void mbPlayerMotionShiftSet(int playerNo, int motNo, float start, float end, u32 attr);
-extern void mbPlayerMotionEndWait(int playerNo);
-extern void mbWipeDissolveFadeIn(void);
-extern void mbWipeFadeOut(void);
-
-#include "REL/w10Dll/module_context.h"
 
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -170,30 +103,12 @@ extern void mbWipeFadeOut(void);
 
 typedef u16 (*W10DICEPADHOOK)(int playerNo);
 
-extern void mbDiceExec(int playerNo, int diceType, void *valueTbl, int tutorialVal,
-    BOOL padWinF, BOOL waitF, void *pos, int color);
 extern BOOL mbDiceKillCheckAll(int playerCount);
-extern void mbDiceNumShrinkSet(int playerNo);
-extern void mbDicePadBtnHookSet(int playerNo, W10DICEPADHOOK hook);
-extern void mbPlayerMotIdleSet(int playerNo);
-extern void mbPlayerMotionEndWait(int playerNo);
-extern void mbPlayerMotionShiftSet(int playerNo, int motNo, float start, float end,
-    u32 attr);
-extern u32 mbPlayerNameMesGet(int playerNo);
-extern void mbPlayerWinLoseVoicePlay(int playerNo, int voiceNo, int seNo);
-extern void mbStatusDispSet(int playerNo, BOOL enable);
-extern void mbWinInsertMesSet(s16 winNo, u32 insertMes, int insertMesNo);
 extern u16 fn_1_2EA8(int playerNo);
 extern int lbl_1_bss_0[4];
 extern int lbl_1_data_9C[4];
 
-#include "REL/w10Dll/module_context.h"
-
 extern int mbGuideModelGet(OMOBJ *obj);
-extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
-
-#include "REL/w10Dll/module_context.h"
-#include "game/board/camera.h"
 
 extern HuVecF lbl_1_data_AC;
 
@@ -245,7 +160,6 @@ void fn_1_418(void) {
 
 /* Per-frame board object callback; this object has no frame behavior. */
 void fn_1_458(OMOBJ *obj) {
-    (void)obj;
 }
 
 /* Imports W10's HSF lights as static global lights during the board lighting pass. */
@@ -483,15 +397,6 @@ void fn_1_D78(int message, u8 *colors)
     mbTutorialWinKeyWait(window);
 }
 
-/* Returns the sine magnitude used to scale the tutorial banner. */
-static inline float fabsf2(register float x)
-{
-    asm {
-        fabs x, x
-    }
-    return x;
-}
-
 /* Called by fn_1_1924 to reposition panels and show an optional banner; it returns its sprites for
  * the reveal or fades and kills them. */
 void fn_1_E3C(int message, u8 *layout, int bannerNo, s16 *sprites)
@@ -510,8 +415,8 @@ void fn_1_E3C(int message, u8 *layout, int bannerNo, s16 *sprites)
     banner = -1;
     label = -1;
     for (player = 0; player < 4; player++) {
-        mbStatusPosGet(player, (HuVecF *)&position);
-        mbStatusMoveTo(player, (HuVecF *)&position, (HuVecF *)lbl_1_data_8[layout[player]]);
+        mbStatusPosGet(player, &position);
+        mbStatusMoveTo(player, &position, (HuVecF *)&lbl_1_data_8[layout[player]]);
     }
     while (!mbStatusOffCheckAll()) {
         mbTutorialVSleep();
@@ -527,12 +432,13 @@ void fn_1_E3C(int message, u8 *layout, int bannerNo, s16 *sprites)
         espBankSet(label, lbl_1_data_58[bannerNo]);
         espPosSet(label, 288.0f, -0.7f * 288.0f);
         espScaleSet(label, 0.75f, 0.75f);
-        mbAudFXPlay(1112);
+        mbAudFXPlay(MSM_SE_BRD00_VERSUS_BANNER_SLIDE);
         for (player = 1; player <= 30; player++) {
             progress = (float)player / 30.0f;
             xScale = 0.5f * mbSinDeg(90.0f * progress) +
                 1.5f * mbSinDeg(180.0f * progress);
-            yScale = 0.5f * mbSinDeg(90.0f * progress) + 1.5f * fabsf2(mbSinDeg(360.0f * progress));
+            yScale = 0.5f * mbSinDeg(90.0f * progress)
+                + 1.5f * FloatAbs(mbSinDeg(360.0f * progress));
             espPosSet(banner, 288.0f - 32.0f * (1.0f - progress),
                 0.7f * 288.0f + 64.0f * mbSinDeg(180.0f * progress));
             espScaleSet(banner, xScale, yScale);
@@ -580,12 +486,12 @@ void fn_1_135C(s16 *sprites)
     if (sprites != NULL) {
         for (frame = 1; frame <= 12U; frame++) {
             progress = (float)frame / 12.0f;
-            scale = 0.1f + 0.4f * cos(3.141592653589793*(90.0f * progress)/180.0);
+            scale = 0.1f + 0.4f * cos(M_PI*(90.0f * progress)/180.0);
             espScaleSet(sprites[0], scale, scale);
             mbTutorialVSleep();
         }
         for (frame = 0; frame < 4; frame++) {
-            mbStatusPosGet(frame, (HuVecF *)&position);
+            mbStatusPosGet(frame, &position);
             if (position.x >= 288.0f) {
                 position.x = 704.0f;
             } else {
@@ -596,9 +502,9 @@ void fn_1_135C(s16 *sprites)
             } else if (position.y < 0.7f * 288.0f - 16.0f) {
                 position.y -= 128.0f;
             }
-            mbStatusMoveSet(frame, NULL, (HuVecF *)&position, 1, 15);
+            mbStatusMoveSet(frame, NULL, &position, 1, 15);
         }
-        mbAudFXPlay(1113);
+        mbAudFXPlay(MSM_SE_BRD00_VERSUS_EFFECT_BURST);
         mbMgCallVsEffCreate();
         for (frame = 1; frame <= 30U; frame++) {
             progress = (float)frame / 30.0f;
@@ -771,7 +677,7 @@ void fn_1_2B34(void)
     mbWipeDissolveFadeIn();
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 71));
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        mbPlayerWinLoseVoicePlay(playerNo, 7, 579);
+        mbPlayerWinLoseVoicePlay(playerNo, 7, MSM_SE_CHARVOICE_HAPPY_CHEER);
         mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f, 0);
     }
     for (playerNo = 0; playerNo < 4; playerNo++) {
@@ -857,7 +763,7 @@ void fn_1_2EF8(void) {
         mbTutorialWinKeyWait(winNo);
         mbDiceNumShrinkSet(i);
         mbStatusDispSet(i, TRUE);
-        mbPlayerWinLoseVoicePlay(i, 12, 579);
+        mbPlayerWinLoseVoicePlay(i, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f, 0);
         mbPlayerMotionEndWait(i);
         mbPlayerMotIdleSet(i);
@@ -891,7 +797,7 @@ void fn_1_30EC(void)
     mbCameraRotSet(-40.0f, 0.0f, 0.0f);
 }
 
-float lbl_1_data_8[10][2] = {
+HuVec2f lbl_1_data_8[10] = {
     { 150.8f, 0.7f * 288.0f - 72.0f },
     { 425.2f, 0.7f * 288.0f - 72.0f },
     { 150.8f, 0.7f * 288.0f - 36.0f },

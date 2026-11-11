@@ -216,4 +216,7 @@ typedef struct W05BoardWork_s {
     s32 skipRequested;
     s32 skipEnabled;
 } W05_BOARD_WORK;
+void ObjectSetup(void);
+void fn_1_F4(void);
+void fn_1_1D50(void);
 #endif

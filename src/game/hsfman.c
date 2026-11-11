@@ -40,6 +40,7 @@
 #include "hiliteData2.inc"
 #include "hiliteData3.inc"
 #include "hiliteData4.inc"
+#include "humath.h"
 
 typedef struct FbCopyLayer_s {
     s16 layerNo;       /* Hook slot for the copy; post-layer slots include HU3D_LAYER_HOOK_POST. */
@@ -177,6 +178,7 @@ void fn_80024CAC(void)
 
 static void Hu3DShadowExec(BOOL bgColorF);
 static void Hu3DReflectModelExec(void);
+void Hu3DReflectMapSet(ANIMDATA *anim);
 
 #define HU3D_ATTR_CAMERA_UPDATE ((1 << 13)|(1 << 0))
 #define HU3D_ATTR_NOUPDATE_ALL ((1 << 24)|(1 << 3)|(1 << 0))
@@ -1577,11 +1579,11 @@ BOOL fn_8002803C(HU3D_MODELID modelId, u16 cameraBit)
         upRot = obj->camera.upRot;
         cameraP->upRot = upRot;
         HuSubVecF(&up, &obj->camera.pos, &obj->camera.target);
-        upOfs.x = ((up.x * up.y * (1-cos(3.141592653589793*upRot/180.0)))
-            - (up.z * sin(3.141592653589793*upRot/180.0)));
-        upOfs.y = ((up.y * up.y) + (1-(up.y*up.y)) * cos(3.141592653589793*upRot/180.0));
-        upOfs.z = (((up.y * up.z) * (1-cos(3.141592653589793*upRot/180.0)))
-            + (up.x * sin(3.141592653589793*upRot/180.0)));
+        upOfs.x = ((up.x * up.y * (1-cos(M_PI*upRot/180.0)))
+            - (up.z * sin(M_PI*upRot/180.0)));
+        upOfs.y = ((up.y * up.y) + (1-(up.y*up.y)) * cos(M_PI*upRot/180.0));
+        upOfs.z = (((up.y * up.z) * (1-cos(M_PI*upRot/180.0)))
+            + (up.x * sin(M_PI*upRot/180.0)));
         VECNormalize(&upOfs, &up);
         Hu3DCameraPosSet(cameraBit, obj->camera.pos.x, obj->camera.pos.y, obj->camera.pos.z,
             up.x, up.y, up.z,
@@ -1959,10 +1961,10 @@ static void Hu3DLightPASet(HU3D_LIGHT *lightP, float posX, float posY, float pos
     lightP->pos.y = posY;
     lightP->pos.z = posZ;
     lightP->dir.x =
-        sin(3.141592653589793*((float)(angleY-180.0))/180.0)*cos(3.141592653589793*angleX/180.0);
-    lightP->dir.y = -sin(3.141592653589793*angleX/180.0);
+        sin(M_PI*((float)(angleY-180.0))/180.0)*cos(M_PI*angleX/180.0);
+    lightP->dir.y = -sin(M_PI*angleX/180.0);
     lightP->dir.z =
-        cos(3.141592653589793*((float)(angleY-180.0))/180.0)*cos(3.141592653589793*angleX/180.0);
+        cos(M_PI*((float)(angleY-180.0))/180.0)*cos(M_PI*angleX/180.0);
     VECNormalize(&lightP->dir, &lightP->dir);
 }
 
@@ -2844,7 +2846,7 @@ void fn_8002BF48(void)
     MTXLookAt(modelview, &pos, &up, &target);
     GXLoadPosMtxImm(modelview, GX_PNMTX0);
     z = cameraP->far-1;
-    pos.x = pos.y = z*tan(3.141592653589793*(cameraP->fov/2)/180.0);
+    pos.x = pos.y = z*tan(M_PI*(cameraP->fov/2)/180.0);
     pos.x *= cameraP->aspect;
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition3f32(-pos.x, -pos.y, -z);

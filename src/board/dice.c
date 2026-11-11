@@ -4,6 +4,7 @@
 #include "game/board/audio.h"
 #include "game/board/camera.h"
 #include "game/board/coin.h"
+#include "game/board/dice.h"
 #include "game/board/effect.h"
 #include "game/board/main.h"
 #include "game/board/object.h"
@@ -19,8 +20,12 @@
 #include "game/sprite.h"
 
 #include "humath.h"
+#include "dolphin/math.h"
+#include "game/board/math.h"
 #include "string.h"
 #include "messdir_enum.h"
+#include "game/board/snpc.h"
+#include "game/board/single.h"
 
 #define DICE_PLAYERNO_NULL 4
 #define DICE_MAX DICE_PLAYERNO_NULL+1
@@ -35,9 +40,6 @@
 #define DICETYPE_BLOCK 10
 
 #define DICE_COLOR_GREEN 0
-
-#define DICE_MATCH_STREAM_TWO 40
-#define DICE_MATCH_STREAM_THREE 41
 
 typedef void (*DICEHITHOOK)(int result);
 typedef u16 (*DICEPADBTNHOOK)(int playerNo);
@@ -263,27 +265,17 @@ static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx bottomMtx,
     Mtx topMtx);
 static void DiceSNpcNumUpdate(OMOBJ *obj);
 
-void mbObjBiriQColorSet(MBMODELID modelId, BOOL setF, float alpha,
-    GXColor color);
-void mbObjBiriQCreate(MBMODELID modelId);
-float mbSinDeg(float angle);
-int mbSingleCall(int mode, int arg);
 static void ev_DiceZorome(DICE_WORK *work);
 static void ev_DiceZoromeCoin(int playerNo, int coin);
 static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx);
-BOOL mbPauseEnableCheck(void);
 OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
     int value, int color, BOOL followF);
 OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     BOOL flagF, int color);
-void mbCoinAddExec(int playerNo, int coin);
 int mbGuideSpeakerNoGet(void);
-void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
 
-BOOL mbDiceKillCheck(int playerNo);
 void mbDiceKill(int playerNo);
-int mbDiceResultGet(int playerNo);
 int mbDiceMaxGet(int diceType);
 int mbDiceValueMaxGet(int diceType);
 void mbDiceNumObjKill(OMOBJ *obj);
@@ -291,37 +283,6 @@ int mbDiceTypeGet(int playerNo);
 void mbDiceTutorialNumSet(int playerNo, int tutorialVal);
 int mbDiceTutorialNumGet(int playerNo);
 int mbDiceValueNoGet(int playerNo);
-
-// Returns the magnitude used by dice effect angles and number color pulses.
-static inline float DiceAbsFloat(register float value)
-{
-#ifdef __MWERKS__
-    asm {
-        fabs value, value
-    }
-    return value;
-#else
-    return __fabsf(value);
-#endif
-}
-
-// Copies a three-component vector used for dice positions, labels, and effects.
-static inline void DiceVecCopy(register const HuVecF *src, register HuVecF *dst)
-{
-#ifdef __MWERKS__
-    register __vec2x32float__ xy;
-    register float z;
-    asm {
-        psq_l xy, 0(src), 0, 0
-        lfs z, 8(src)
-        psq_st xy, 0(dst), 0, 0
-        stfs z, 8(dst)
-    }
-#else
-    HuVecF value = *src;
-    *dst = value;
-#endif
-}
 
 // Board setup clears dice process, hook, fade, and result-number object pointers.
 void mbDiceInit(void)
@@ -631,7 +592,7 @@ static void DiceObjCreate(DICE_WORK *work)
     }
     mbObjLayerSet(obj->mdlId[0], 4);
     mbObjCameraSet(obj->mdlId[0], (1 << 1));
-    mbAudFXPlay(1007);
+    mbAudFXPlay(MSM_SE_BRD00_DICE_APPEAR);
     if (mbObjMotionIDGet(obj->mdlId[0], 0) >= 0) {
         mbObjMotionSet(obj->mdlId[0], 0, 0);
         mbObjMotionSpeedSet(obj->mdlId[0], 0.0f);
@@ -720,7 +681,7 @@ static void DiceObjOMExec(OMOBJ *obj)
                 objWork->mode = 1;
                 objWork->time = 0;
                 objWork->maxTime = 12;
-                objWork->diceSeNo = mbAudFXPlay(1005);
+                objWork->diceSeNo = mbAudFXPlay(MSM_SE_BRD00_DICE_ROLL_LOOP);
             }
             break;
 
@@ -730,7 +691,7 @@ static void DiceObjOMExec(OMOBJ *obj)
                 time = 1.0f;
             }
             objWork->time++;
-            scale = sin(3.141592653589793*(time * 180.0f)/180.0);
+            scale = sin(M_PI*(time * 180.0f)/180.0);
             mbObjScaleSet(obj->mdlId[0], 1.0f + scale,
                 1.0f - (0.5f * scale), 1.0f + scale);
             modelPos.y = obj->trans.y + (150.0f * scale);
@@ -945,12 +906,12 @@ static void DiceExec(DICE_WORK *work)
         }
         if (btn == PAD_BUTTON_Y && GWPartyGet() != FALSE) {
             diceResult[work->playerNo] = -4;
-            mbAudFXPlay(1);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
             break;
         }
         if (btn == PAD_BUTTON_X) {
             diceResult[work->playerNo] = -3;
-            mbAudFXPlay(1);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
             break;
         }
         if (btn == PAD_BUTTON_B && work->playerNo < 4) {
@@ -1055,7 +1016,7 @@ static void DiceObjHit(DICE_WORK *work)
             work->result[work->no] = mbObjMotionTimeGet(obj->mdlId[0]) + 0.5f;
         }
     }
-    mbAudFXPlay(1008);
+    mbAudFXPlay(MSM_SE_BRD00_DICE_HIT_STOP);
     if (diceHitHook[work->playerNo] != NULL) {
         diceHitHook[work->playerNo](work->result[work->no]);
     }
@@ -1209,8 +1170,8 @@ static inline void DiceNumPosSet(HuVecF *src, HuVecF *dst)
 
     MTXLookAt(lookAt, &cameraP->pos, &cameraP->up, &cameraP->target);
     MTXMultVec(lookAt, src, &camPos);
-    tanFov = sin(3.141592653589793*(cameraP->fov
-        * 0.5f)/180.0) / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
+    tanFov = sin(M_PI*(cameraP->fov
+        * 0.5f)/180.0) / cos(M_PI*(cameraP->fov * 0.5f)/180.0);
     x = camPos.x / (tanFov * camPos.z);
     y = camPos.y / (tanFov * camPos.z);
     normPos.x = -2000.0f * (x * tanFov);
@@ -1339,9 +1300,9 @@ static void DiceNumObjOMExec(OMOBJ *obj)
     }
     time = (float)objWork->time / objWork->maxTime;
     // This direction vector is calculated but unused; digit positions use time directly below.
-    dir.z = cos(3.141592653589793*(time * 90)/180.0);
-    dir.y = sin(3.141592653589793*(time * 90)/180.0);
-    dir.x = sin(3.141592653589793*(time * 180)/180.0);
+    dir.z = cos(M_PI*(time * 90)/180.0);
+    dir.y = sin(M_PI*(time * 90)/180.0);
+    dir.x = sin(M_PI*(time * 180)/180.0);
     for (i = 0; i < 2; i++) {
         float angle;
 
@@ -1384,7 +1345,7 @@ static void DiceNumObjOMExec(OMOBJ *obj)
         if (!objWork->rotF) {
             modelPos.y = obj->trans.y
                 + (time * (bendPos.y - obj->trans.y))
-                + (100 * (1.1f * sin(3.141592653589793*(time * 180)/180.0)));
+                + (100 * (1.1f * sin(M_PI*(time * 180)/180.0)));
         } else {
             modelPos.y = obj->trans.y
                 + (time * (bendPos.y - obj->trans.y));
@@ -1446,7 +1407,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
             }
             maxAngle = rotAngle;
             angle = time * 720;
-            MTXRotDeg(topRot, 'z', maxAngle * sin(3.141592653589793*angle/180.0));
+            MTXRotDeg(topRot, 'z', maxAngle * sin(M_PI*angle/180.0));
             MTXIdentity(bottomRot);
             posY = obj->rot.y;
             if (++objWork->time > objWork->maxTime) {
@@ -1473,7 +1434,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
                 angle = 0;
             }
             MTXRotDeg(bottomRot, 'y', angle);
-            posY = obj->rot.y + (100 * (2 * sin(3.141592653589793*(time * 180)/180.0)));
+            posY = obj->rot.y + (100 * (2 * sin(M_PI*(time * 180)/180.0)));
             if (++objWork->time > objWork->maxTime) {
                 if (objWork->bendF) {
                     objWork->bendMode = 0;
@@ -1495,7 +1456,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
             pos.y = posY;
             mbObjPosSetV(obj->mdlId[i], &pos);
             mbObjBiriQColorSet(obj->mdlId[i], TRUE,
-                DiceAbsFloat(0.4f * mbSinDeg(360 * colorTime)),
+                FloatAbs(0.4f * mbSinDeg(360 * colorTime)),
                 biriQColor);
         }
     }
@@ -1539,8 +1500,8 @@ static void DiceNumObjShrinkOMExec(OMOBJ *obj)
         return;
     }
     time = (float)(objWork->time++) / objWork->maxTime;
-    scaleX = sin(3.141592653589793*(time * 270)/180.0);
-    scaleY = sin(3.141592653589793*((time * 270) + 180)/180.0);
+    scaleX = sin(M_PI*(time * 270)/180.0);
+    scaleY = sin(M_PI*((time * 270) + 180)/180.0);
     posY = obj->rot.y + (100 * time);
     for (i = 0; i < 2; i++) {
         if (obj->mdlId[i] >= 0) {
@@ -1669,7 +1630,7 @@ OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
             value += (s8)work->value;
             if (!createF) {
                 color = work->color;
-                DiceVecCopy(&obj->rot, &objPos);
+                MBBoardVecCopy(&obj->rot, &objPos);
                 VECSubtract(&objPos, pos, &offset);
                 createF = TRUE;
             }
@@ -1754,7 +1715,7 @@ static void ev_DiceZorome(DICE_WORK *work)
             } else {
                 coin = 10;
             }
-            streamId = DICE_MATCH_STREAM_TWO;
+            streamId = MSM_STREAM_PLAYING_TOGETHER;
             break;
 
         case 3:
@@ -1763,7 +1724,7 @@ static void ev_DiceZorome(DICE_WORK *work)
             } else {
                 coin = 30;
             }
-            streamId = DICE_MATCH_STREAM_THREE;
+            streamId = MSM_STREAM_WINNING_TOGETHER;
             break;
 
         default:
@@ -1777,7 +1738,7 @@ static void ev_DiceZorome(DICE_WORK *work)
     HuPrcSleep(10);
     mbMusJingleWait(mbMusJinglePlay((s16)streamId));
     mbMusPauseFadeOut(0, FALSE, 1000);
-    mbAudGuidePlay(950);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPE, 10), mbGuideSpeakerNoGet());
     mbWinTopInsertMesSet(MESSNUM_PTR(diceMatchCoinStr), 0);
     mbWinTopWait();
@@ -1903,9 +1864,9 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
             magnitude = __fabsf(pitch);
 #endif
             pitch = 90.0f * (pitch * magnitude);
-            data->vel.x = sin(3.141592653589793*angle/180.0) * cos(3.141592653589793*pitch/180.0);
-            data->vel.y = sin(3.141592653589793*pitch/180.0);
-            data->vel.z = cos(3.141592653589793*angle/180.0) * cos(3.141592653589793*pitch/180.0);
+            data->vel.x = sin(M_PI*angle/180.0) * cos(M_PI*pitch/180.0);
+            data->vel.y = sin(M_PI*pitch/180.0);
+            data->vel.z = cos(M_PI*angle/180.0) * cos(M_PI*pitch/180.0);
             speed = 0.016666668f *
                 (100.0f + (100.0f * (2.0f * frandf())));
             VECScale(&data->vel, &data->vel, speed);
@@ -2047,14 +2008,14 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     data->pos.x = 0.0f;
                     angles.y = 360.0f * frandf();
                     angles.x = (1.6f * frandf()) - 0.8f;
-                    ratio = DiceAbsFloat(angles.x);
+                    ratio = FloatAbs(angles.x);
                     angles.x = angles.x * ratio;
                     angles.x = 90.0f * angles.x;
-                    data->vel.x = sin(3.141592653589793*angles.y/180.0)
-                        * cos(3.141592653589793*angles.x/180.0);
-                    data->vel.y = sin(3.141592653589793*angles.x/180.0);
-                    data->vel.z = cos(3.141592653589793*angles.y/180.0)
-                        * cos(3.141592653589793*angles.x/180.0);
+                    data->vel.x = sin(M_PI*angles.y/180.0)
+                        * cos(M_PI*angles.x/180.0);
+                    data->vel.y = sin(M_PI*angles.x/180.0);
+                    data->vel.z = cos(M_PI*angles.y/180.0)
+                        * cos(M_PI*angles.x/180.0);
                     speed = 0.016666668f *
                         (800.0f + (100.0f * (8.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2079,14 +2040,14 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     data->pos.y += 50.0f;
                     angles.y = 360.0f * frandf();
                     angles.x = 0.7f + (0.3f * frandf());
-                    ratio = DiceAbsFloat(angles.x);
+                    ratio = FloatAbs(angles.x);
                     angles.x = angles.x * ratio;
                     angles.x = 90.0f * angles.x;
-                    data->vel.x = sin(3.141592653589793*angles.y/180.0)
-                        * cos(3.141592653589793*angles.x/180.0);
-                    data->vel.y = sin(3.141592653589793*angles.x/180.0);
-                    data->vel.z = cos(3.141592653589793*angles.y/180.0)
-                        * cos(3.141592653589793*angles.x/180.0);
+                    data->vel.x = sin(M_PI*angles.y/180.0)
+                        * cos(M_PI*angles.x/180.0);
+                    data->vel.y = sin(M_PI*angles.x/180.0);
+                    data->vel.z = cos(M_PI*angles.y/180.0)
+                        * cos(M_PI*angles.x/180.0);
                     speed = 0.016666668f *
                         (300.0f + (100.0f * (3.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2157,11 +2118,11 @@ static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     ratio = (1.6f * frandf()) - 0.8f;
                     rotX = __fabsf(ratio);
                     rotX = 90.0f * (ratio * rotX);
-                    data->vel.x = sin(3.141592653589793*rotY/180.0)
-                        * cos(3.141592653589793*rotX/180.0);
-                    data->vel.y = sin(3.141592653589793*rotX/180.0);
-                    data->vel.z = cos(3.141592653589793*rotY/180.0)
-                        * cos(3.141592653589793*rotX/180.0);
+                    data->vel.x = sin(M_PI*rotY/180.0)
+                        * cos(M_PI*rotX/180.0);
+                    data->vel.y = sin(M_PI*rotX/180.0);
+                    data->vel.z = cos(M_PI*rotY/180.0)
+                        * cos(M_PI*rotX/180.0);
                     speed = 0.016666668f *
                         (500.0f + (100.0f * (9.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2189,11 +2150,11 @@ static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     ratio = 0.7f + (0.3f * frandf());
                     rotX = __fabsf(ratio);
                     rotX = 90.0f * (ratio * rotX);
-                    data->vel.x = sin(3.141592653589793*rotY/180.0)
-                        * cos(3.141592653589793*rotX/180.0);
-                    data->vel.y = sin(3.141592653589793*rotX/180.0);
-                    data->vel.z = cos(3.141592653589793*rotY/180.0)
-                        * cos(3.141592653589793*rotX/180.0);
+                    data->vel.x = sin(M_PI*rotY/180.0)
+                        * cos(M_PI*rotX/180.0);
+                    data->vel.y = sin(M_PI*rotX/180.0);
+                    data->vel.z = cos(M_PI*rotY/180.0)
+                        * cos(M_PI*rotX/180.0);
                     speed = 0.016666668f *
                         (300.0f + (100.0f * (3.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2397,7 +2358,7 @@ static void DiceObjEffPuffDraw(HU3D_MODEL *modelP, Mtx *mtx)
 
         fn_80022E38(rot, eff->rot.x, eff->rot.y, eff->rot.z);
         MTXMultVec(rot, &back, &pos);
-        VECScale(&pos, &pos, sin(3.141592653589793*(time * 90.0f)/180.0) * eff->radius);
+        VECScale(&pos, &pos, sin(M_PI*(time * 90.0f)/180.0) * eff->radius);
         MTXTrans(trans, obj->trans.x + pos.x, obj->trans.y + pos.y + 50.0f,
             obj->trans.z + pos.z);
         MTXConcat(trans, rot, modelview);
@@ -2473,7 +2434,7 @@ static void DiceObjEffTriDraw(HU3D_MODEL *modelP, Mtx *mtx)
             2.0f * eff->scale.y, 2.0f * eff->scale.z);
         fn_80022E38(rot, eff->rot.x, eff->rot.y, eff->rot.z);
         MTXMultVec(rot, &back, &pos);
-        VECScale(&pos, &pos, sin(3.141592653589793*(time * 90.0f)/180.0) * eff->radius);
+        VECScale(&pos, &pos, sin(M_PI*(time * 90.0f)/180.0) * eff->radius);
         MTXTrans(trans, obj->trans.x + pos.x, obj->trans.y + pos.y - 50.0f,
             obj->trans.z + pos.z);
         MTXConcat(rot, scale, modelview);
@@ -2605,8 +2566,8 @@ OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     VECAdd(pos, offset, &posSum);
     mbPos3DtoNorm(&posSum, 1, &posNorm);
     obj->rot.z = posNorm.z;
-    DiceVecCopy(pos, &obj->trans);
-    DiceVecCopy(offset, &obj->scale);
+    MBBoardVecCopy(pos, &obj->trans);
+    MBBoardVecCopy(offset, &obj->scale);
     return obj;
 }
 
@@ -2642,13 +2603,13 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     mbPos3DtoNorm(&pos, 1, &posNorm);
     // Keep the camera-space depth captured when the NPC number was created.
     posNorm.z = obj->rot.z;
-    tanFov = sin(3.141592653589793*(camera2P->fov * 0.5f)/180.0)
-        / cos(3.141592653589793*(camera2P->fov * 0.5f)/180.0);
+    tanFov = sin(M_PI*(camera2P->fov * 0.5f)/180.0)
+        / cos(M_PI*(camera2P->fov * 0.5f)/180.0);
     scaleX = 1.2f * (tanFov * -posNorm.z);
     scaleY = tanFov * -posNorm.z;
     posNorm.x *= scaleX;
     posNorm.y *= scaleY;
-    DiceVecCopy(&posNorm, &pos);
+    MBBoardVecCopy(&posNorm, &pos);
     mbCameraRotGet(&posNorm);
     pitchAngle = -posNorm.x;
     for (i = 0; i < 20; i++) {
@@ -2657,8 +2618,8 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     if (work->dispF) {
         int modelNo;
 
-        scale = sin(3.141592653589793*(cameraP->fov * 0.5f)/180.0)
-            / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
+        scale = sin(M_PI*(cameraP->fov * 0.5f)/180.0)
+            / cos(M_PI*(cameraP->fov * 0.5f)/180.0);
         scale = tanFov / scale;
         modelNo = work->value / 10;
         if (modelNo != 0) {
@@ -2701,15 +2662,15 @@ void mbDiceSNpcNumSet(OMOBJ *obj, u8 value)
 
 void mbDiceSNpcNumPosSet(OMOBJ *obj, HuVecF *pos)
 {
-    DiceVecCopy(pos, &obj->trans);
+    MBBoardVecCopy(pos, &obj->trans);
 }
 
 void mbDiceSNpcNumOfsSet(OMOBJ *obj, HuVecF *offset)
 {
-    DiceVecCopy(offset, &obj->scale);
+    MBBoardVecCopy(offset, &obj->scale);
 }
 
 void mbDiceSNpcNumOfsGet(OMOBJ *obj, HuVecF *offset)
 {
-    DiceVecCopy(&obj->scale, offset);
+    MBBoardVecCopy(&obj->scale, offset);
 }

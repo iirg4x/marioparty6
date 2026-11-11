@@ -4,14 +4,22 @@
 #include "math.h"
 #include "datanum/charmot.h"
 #include "game/audio.h"
+#include "game/data.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/process.h"
 #include "game/wipe.h"
 #include "game/board/main.h"
+#include "game/board/audio.h"
+#include "game/board/camera.h"
 #include "game/board/masu.h"
+#include "game/board/math.h"
 #include "game/board/object.h"
+#include "game/board/opening.h"
+#include "game/board/pause.h"
+#include "game/board/player.h"
+#include "game/board/wipe.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -22,7 +30,7 @@ typedef struct S01Marker {
 
 typedef struct S01Npc {
     s16 npcModelId;
-    s16 padding;
+    s16 unk_02; /* not read by the game's code */
     s32 eventId;
 } S01Npc;
 
@@ -52,13 +60,8 @@ typedef struct S01WarpWork {
     HuVecF playerOrigin;
 } S01WarpWork;
 
-enum {
-    S01_OBJECT_PRIORITY = 8204,
-};
-
 #define S01_MASU_SINGLE_RETURN_EVENT_BIT (1 << 7)
 #define S01_MASU_NPC_EVENT_MASK (7 << 4)
-#define S01_MASU_MARKER_MOVE_INDEX_MASK 3
 #define S01_MASU_MARKER_LOCATION_MASK (3 << 2)
 
 extern const VoidFunc _ctors[];
@@ -103,7 +106,7 @@ extern s32 lbl_1_bss_44;
 
 void ObjectSetup(void);
 void fn_1_F4(void);
-void fn_1_270(OMOBJ *boardObject);
+void fn_1_270(void);
 void fn_1_274(OMOBJ *boardObject);
 int fn_1_2B8(int playerIndex, s16 masuId);
 int fn_1_314(int playerIndex, s16 masuId);
@@ -124,47 +127,8 @@ void fn_1_C38(void);
 void fn_1_CEC(void);
 void fn_1_DAC(int playerIndex, s16 masuId);
 
-void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(OMOBJ *));
-void HuAudSndGrpSetSet(s16 grpSet);
-void fn_800097F4(int dataNum);
-void mbLightFuncSet(VoidFunc setHook, VoidFunc resetHook);
-void mbMapCameraSet(const HuVecF *rot, const HuVecF *position, float zoom);
-void mbMapHookSet(void (*hook)(BOOL enterF));
-void mbOpeningViewSet(HuVecF *rot, HuVecF *position, float zoom);
-void mbPlayerTurnCloseHookSet(void (*hook)(int playerIndex));
-void mbPlayerTurnInitHookSet(void (*hook)(int playerIndex));
-void mbScrollInit(int dataNum);
-float mbSinDeg(float headingDegrees);
-int mbAudFXPlay(int seId);
-void mbAudFXStop(int handle);
-void mbCameraPlayerViewSetFast(int playerIndex, int viewNo);
-void mbCameraShakeSet(int maxTime, float power);
-void mbCameraFocusObjSet(int modelId);
-void mbCameraMovePlayer(s16 playerIndex, HuVecF *rot, HuVecF *offset,
-    float zoom, float fov, s16 maxTime);
-void mbCameraMovePos(HuVecF *position, HuVecF *rot, HuVecF *offset,
-    float zoom, float fov, s16 maxTime);
-void mbMoveNumDispSet(int playerIndex, BOOL display);
-void mbPauseDisableSet(BOOL disable);
-void mbPlayerColSnapPlayerSet(int playerIndex, BOOL snapF);
-int mbPlayerMotionCreate(int playerIndex, int dataNum);
-int mbPlayerMotionKill(int playerIndex, int motNo);
-void mbPlayerMotionShiftSet(
-    int playerIndex, int motNo, float start, float end, u32 attr);
-void mbPlayerPosGet(int playerIndex, HuVecF *position);
-void mbPlayerPosSetV(int playerIndex, const HuVecF *position);
-void mbPlayerRotYSet(int playerIndex, float rotY);
-void mbPlayerRotateStart(int playerIndex, s16 endAngle, s16 maxTime);
-void mbSingleReturnWrite(void);
-void mbWipeCreate(s16 mode, s16 type, s16 time);
-void mbWipeDissolveFadeOut(void);
-void mbWipeFadeOut(void);
-void mbWipeFadeOutTime(int time);
-void mbWipeSpecialCreate(int state, int type, int time);
-void mbWipeSpecialKill(void);
-void mbWipeSpecialWait(void);
-
 #include "REL/s01Dll/common.h"
+#include "humath.h"
 
 // Selects single-player mode and registers the Thirsty Gulch board hooks.
 void ObjectSetup(void)
@@ -197,7 +161,7 @@ void fn_1_F4(void)
     mbev_MasuHatenaSet(fn_1_374);
     mbMapCameraSet(NULL, &lbl_1_data_0, lbl_1_rodata_7C);
     mbMapHookSet(fn_1_46C);
-    fn_8003AB38(mbObjMan, S01_OBJECT_PRIORITY, 0, 0, -1, fn_1_274);
+    fn_8003AB38(mbObjMan, 8204, 0, 0, -1, fn_1_274);
     fn_1_4C8();
     fn_1_8F0();
     fn_1_AFC();
@@ -206,7 +170,7 @@ void fn_1_F4(void)
 }
 
 // No close-time returnWork is needed for the board object manager.
-void fn_1_270(OMOBJ *boardObject)
+void fn_1_270(void)
 {
 }
 
@@ -248,9 +212,9 @@ int fn_1_374(int playerIndex, s16 masuId)
 {
     u32 masuAttributes = mbMasuMAttrGet(masuId);
 
-    if (masuAttributes & S01_MASU_MARKER_MOVE_INDEX_MASK) {
+    if (masuAttributes & 3) {
         fn_1_590(playerIndex, mbev_MasuBitGet(masuAttributes,
-            S01_MASU_MARKER_MOVE_INDEX_MASK) - 1);
+            3) - 1);
         return 0;
     }
     return 0;
@@ -320,7 +284,7 @@ void fn_1_590(int playerIndex, int eventId)
     mbPlayerRotateStart(playerIndex, 0, 15);
     mbCameraPlayerViewSetFast(playerIndex, 2);
     mbCameraShakeSet(48, lbl_1_rodata_88);
-    soundHandle = mbAudFXPlay(1549);
+    soundHandle = mbAudFXPlay(MSM_SE_SBRD_MARKER_SHAKE_LOOP);
     HuPrcSleep(48);
     mbPlayerMotionShiftSet(playerIndex, 9, 0.0f,
         lbl_1_rodata_8C, 0);
@@ -335,7 +299,7 @@ void fn_1_590(int playerIndex, int eventId)
         progress = elapsedFrame / lbl_1_rodata_90;
         if ((u32)elapsedFrame == 0) {
             mbObjMotionSpeedSet(marker->markerModelId, 1.0f);
-            mbAudFXPlay(1550);
+            mbAudFXPlay(MSM_SE_SBRD_MARKER_LAUNCH);
             mbAudFXStop(soundHandle);
         } else if ((u32)elapsedFrame == 24) {
             mbPlayerMotionShiftSet(playerIndex, routeMove.playerMotionId,
@@ -475,7 +439,7 @@ void fn_1_CEC(void)
         &signTarget);
     PSVECSubtract(&signTarget, &signPosition, &signDirection);
     headingDegrees = (float)(180.0
-        * (atan2(signDirection.x, signDirection.z) / 3.141592653589793));
+        * (atan2(signDirection.x, signDirection.z) / M_PI));
     mbObjRotYSet(signModelId[0], headingDegrees);
     mbObjPosSetV(signModelId[0], &signTarget);
 }
@@ -504,7 +468,7 @@ void fn_1_DAC(int playerIndex, s16 masuId)
     mbMasuPosGet(masuId, &returnWork.destination);
     PSVECSubtract(&returnWork.destination, &returnWork.playerOrigin, &returnWork.movementVector);
     headingDegrees = (float)(180.0
-        * (atan2(returnWork.movementVector.x, returnWork.movementVector.z) / 3.141592653589793));
+        * (atan2(returnWork.movementVector.x, returnWork.movementVector.z) / M_PI));
     mbPlayerRotYSet(playerIndex, headingDegrees);
     mbPlayerMotionShiftSet(playerIndex, 2, 0.0f,
         lbl_1_rodata_8C, ((1 << 30) | (1 << 0)));
@@ -527,11 +491,11 @@ void fn_1_DAC(int playerIndex, s16 masuId)
         lbl_1_rodata_8C, ((1 << 30) | (1 << 0)));
     HuPrcSleep(30);
     mbCameraShakeSet(60, lbl_1_rodata_88);
-    soundHandle = mbAudFXPlay(1549);
+    soundHandle = mbAudFXPlay(MSM_SE_SBRD_MARKER_SHAKE_LOOP);
     HuPrcSleep(60);
     mbObjMotionSpeedSet(marker->markerModelId, 1.0f);
     fn_8006A030((s16)playerIndex, 20, 20, 0);
-    mbAudFXPlay(1550);
+    mbAudFXPlay(MSM_SE_SBRD_MARKER_LAUNCH);
     mbAudFXStop(soundHandle);
     HuPrcSleep(12);
     mbPlayerMotionShiftSet(playerIndex, 9, 0.0f,
@@ -562,7 +526,7 @@ void fn_1_DAC(int playerIndex, s16 masuId)
     mbWipeCreate(1, WIPE_TYPE_CROSS_COPY, 30);
     mbMusFadeOutSpeed(0, 1000);
     mbWipeSpecialCreate(1, 6, 90);
-    mbAudFXPlay(1551);
+    mbAudFXPlay(MSM_SE_SBRD_STAGE_TRANSITION);
 
     // The following loop computes progress but does not use it.
     for (elapsedFrame = 0; (u32)elapsedFrame <= 90; elapsedFrame++) {

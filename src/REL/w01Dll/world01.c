@@ -1,21 +1,23 @@
 // Board-specific models, events, and motion used by Towering Treetop.
-#include <math.h>
 #include "dolphin.h"
 #include "humath.h"
 #include "REL/w01Dll_world01.h"
-
+#include <math.h>
 #include "game/board/audio.h"
 #include "game/board/camera.h"
+#include "game/board/capevent.h"
 #include "game/board/coin.h"
 #include "game/board/comchoice.h"
 #include "game/board/effect.h"
 #include "game/board/main.h"
+#include "game/board/math.h"
 #include "game/board/object.h"
 #include "game/board/masu.h"
 #include "game/board/player.h"
 #include "game/board/opening.h"
 #include "game/board/status.h"
 #include "game/board/window.h"
+#include "game/board/wipe.h"
 #include "game/data.h"
 #include "game/audio.h"
 #include "game/frand.h"
@@ -31,34 +33,20 @@
 #include "messdir_enum.h"
 #include "datadir_enum.h"
 #include "msm_grp.h"
-
-void mbWipeDissolveFadeOut(void);
-void mbWipeDissolveFadeIn(void);
-
-#define MBNO_WORLD_1 0
+#include "msm_se.h"
+#include "game/board/capspecial.h"
+#include "game/board/telop.h"
+#include "dolphin/mtx.h"
 
 #define W01_DATA_DAY 0xd70000
 #define W01_DATA_NIGHT 0xd80000
-#define W01_FILE_MASU 4
-#define W01_FILE_GATE 5
-#define W01_FILE_SCROLL 2
-#define W01_FILE_CAP_THROW_COLLISION 3
-#define W01_FILE_SHOP 22
-#define W01_FILE_SHOP_RETURN 26
-#define W01_FILE_SHOP_MODEL 23
-#define W01_FILE_PATH_MARKER 8
-#define W01_FILE_PATH_MODEL 9
-#define W01_FILE_SPRING_MODEL 10
-#define W01_FILE_SPRING_MAIN_MODEL 11
 #define W01_OBJ_ATTR_BOARD_MODEL ((1 << 30) | (1 << 0))
 #define W01_OBJ_ATTR_EFFECT_PAUSED ((1 << 30) | (1 << 1))
-#define W01_FILE_EFFECT_ROOT 27
-#define W01_FILE_EFFECT_CHILD 31
 #define W01_MESSAGE_OPENING_1 MESSNUM(MESS_BOARD_W01, 22)
 #define W01_MESSAGE_OPENING_2 MESSNUM(MESS_BOARD_W01, 23)
 #define W01_MESSAGE_OPENING_3 MESSNUM(MESS_BOARD_W01, 24)
-#define W01_MASU_ATTR_EVENT_GROUP_MASK 0x00001C00
-#define W01_MASU_ATTR_EVENT_INDEX_MASK 0x00030000
+
+
 #define W01_MASU_ATTR_MOVE_HOOK_DASH (1 << 8)
 #define W01_MASU_ATTR_MOVE_HOOK_PATH (1 << 14)
 #define W01_MASU_ATTR_MOVE_HOOK_SPRING_A (1 << 22)
@@ -69,13 +57,12 @@ void mbWipeDissolveFadeIn(void);
 #define W01_MASU_ATTR_HATENA_STAR (1 << 29)
 #define W01_MASU_ATTR_HATENA_EVENT (1 << 6)
 #define W01_MASU_ATTR_HATENA_CAPSULE (1 << 15)
-#define W01_MASU_ATTR_EVENT_TYPE_MASK 0xE0000000
+
 #define W01_MASU_ATTR_LINK (1 << 13)
 
-#define W01_DATA_DIR_LIGHT_EFFECT 0x130000
+
 #define W01_MODEL_LIGHT_DAY DATANUM(0x130000, 5)
 #define W01_MODEL_LIGHT_NIGHT DATANUM(0x130000, 0)
-#define W01_FILE_WH_EFFECT_STAR_ANIM 51
 #define W01_MODEL_GATE_BASE DATANUM(0x130000, 8)
 #define W01_MESSAGE_WH_INTRO_DAY MESSNUM(MESS_BOARD_W01, 4)
 #define W01_MESSAGE_WH_INTRO_NIGHT MESSNUM(MESS_BOARD_W01, 9)
@@ -85,8 +72,8 @@ void mbWipeDissolveFadeIn(void);
 #define W01_MESSAGE_WH_PLAYER_MOVE_NIGHT MESSNUM(MESS_BOARD_W01, 11)
 #define W01_MESSAGE_WH_CHOICE_HELP MESSNUM(MESS_BOARD_W01, 8)
 #define W01_MESSAGE_WH_RESULT MESSNUM(MESS_BOARD_W01, 7)
-#define W01_SOUND_WH_EVENT_DAY 987
-#define W01_SOUND_WH_EVENT_NIGHT 961
+
+
 
 // Board resource IDs selected by the current time of day.
 #define W01_MODEL_NEXT_TURN_DAY DATANUM(0xd70000, 37)
@@ -109,11 +96,6 @@ void mbWipeDissolveFadeIn(void);
 #define W01_MESSAGE_STAR_RESULT_NIGHT MESSNUM(MESS_BOARD_W01, 3)
 #define W01_DATA_STAR_ANIM_DAY DATANUM(0x50000, 99)
 #define W01_DATA_STAR_ANIM_NIGHT DATANUM(0x50000, 94)
-#define W01_FILE_FLOATING_MASU 14
-#define W01_FILE_MOTION_VARIANT_A 12
-#define W01_FILE_MOTION_VARIANT_B 13
-#define W01_FILE_MASU_MOTION_EFFECT 50
-#define W01_FILE_COIN_FIELD_MAIN 32
 
 #define W01_COLOR_TREE_BARK_BIT_PATTERN 0x685747FF
 #define W01_COLOR_TREE_LIGHT_BIT_PATTERN 0xBEB095FF
@@ -146,16 +128,11 @@ void mbWipeDissolveFadeIn(void);
 #define W01_MODEL_WH_EFFECT_DAY_2 DATANUM(0xd70000, 29)
 #define W01_MODEL_WH_EFFECT_DAY_3 DATANUM(0xd70000, 30)
 
-static inline BOOL MBTimeDayGet(void)
-{
-    return lbl_80265B70.curTime == 0;
-}
-
 typedef void (*VoidFunc)(void);
 typedef float (*W01CurveEval)();
 
 typedef struct W01StarMasuWork {
-    u8 unusedPrefix[4]; // Not accessed by the board's star-space code.
+    u8 unk_00[4]; // Not accessed by the board's star-space code.
     u8 count; // Number of available star positions.
     u8 order[8]; // Order in which the star positions are visited.
     u8 index; // Current entry in the star-position order.
@@ -188,10 +165,10 @@ typedef struct W01PathWork {
     BOOL initF;
     W01_PATH_MARKER marker[6];
     s16 modelId[7];
-    u8 unusedBytesBeforeEndpoints[18];
+    u8 unk_5E[18]; /* not read by the game's code */
     HuVecF endPoint[2];
     s16 lastMasuId;
-    u8 unusedBytesAtEnd[2];
+    u8 unk_8A[2]; /* not read by the game's code */
 } W01_PATH_WORK;
 
 typedef struct W01MotionWork {
@@ -229,7 +206,7 @@ typedef struct W01WhParticle {
     HuVecF velocity; // Translational velocity in board units per second.
     HuVecF acceleration; // Per-axis multiplier for the shared wind acceleration.
     s16 delay; // Frames before release; -1 keeps the particle attached.
-    u8 unusedAfterDelay[2]; // Not accessed by the particle update.
+    u8 unk_3E[2]; // Not accessed by the particle update.
     float phase; // Swing angle in radians after release.
     float phaseVelocity; // Change in swing angle per second.
 } W01_WH_PARTICLE;
@@ -241,7 +218,7 @@ typedef struct W01WhEffectWork {
     s32 particleCount; // Number of entries in the particle array.
     s32 state; // Nonzero keeps all particles attached; zero allows timed releases.
     s16 fadeState; // One while fading out; zero leaves opacity unchanged.
-    u8 unusedAfterFadeState[2]; // Not accessed by the ride update.
+    u8 unk_22[2]; // The game's code never reads this storage.
     s32 playerNo; // Rider's player number, or -1 when empty.
     HuVecF pos; // Target position; Y is 1000 units above the model's base.
     HuVecF bobVelocity; // Y is vertical velocity in board units per second; X and Z are only
@@ -249,13 +226,13 @@ typedef struct W01WhEffectWork {
     OMOBJ *object; // Object manager entry that updates this ride.
     s16 time; // Elapsed fade frames.
     s16 maxTime; // Fade duration in frames.
-    u8 unusedAfterTimers[4]; // Not accessed by the ride update.
+    u8 unk_48[4]; // The game's code never reads this storage.
     s32 pathMotionF; // Nonzero follows the scripted path instead of vertical bobbing.
 } W01_WH_EFFECT_WORK;
 
 typedef struct W01WhEffectStorage {
     W01_WH_EFFECT_WORK work[3];
-    s32 unusedTail; // Not accessed by the special-space event.
+    u8 unk_F0[4]; // The game's code never reads this storage.
 } W01_WH_EFFECT_STORAGE;
 
 typedef struct W01SortEntry {
@@ -380,22 +357,21 @@ typedef struct W01CoinEntry {
     HU3D_MODELID particleModelId; // Landing effect for an unoccupied space.
 } W01_COIN_ENTRY;
 
-typedef struct W01Work13D8 {
+typedef struct W01CoinEventWork {
     HuVecF pos; // Model joint from which the opening coin burst is launched.
     MBMODELID modelId; // Day/night scenery that triggers the falling objects.
-    u8 unusedAfterModelId[2]; // Not accessed by the coin event.
+    u8 unk_0E[2]; // The game's code never reads this storage.
     s32 count; // Falling-object capacity: 50 by day or 30 at night.
     W01_COIN_ENTRY *data; // Falling objects reused for each group of players.
     s16 playerMotion[4]; // Reaction motion loaded for each player during the event.
     float hitReactionAmount[4]; // Set to 0.5 when a night coin strikes each player.
     s16 coinCount[4]; // Available coins for loss effects, indexed by player or team.
-} W01_WORK_13D8;
+} W01_COIN_EVENT_WORK;
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
 extern void ObjectSetup(void);
-void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF);
 
 void MB1_Create(void);
 void MB1_Kill(void);
@@ -503,22 +479,9 @@ void fn_1_139E8(s32 value);
 void fn_1_13D04(void);
 void fn_1_13D8C(const HuVecF *pos, s32 count);
 void fn_1_13F50(void);
-float fn_1_14A90(HuVecF *a, HuVecF *b, HuVecF *c, float t);
-float fn_1_14BF0(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t);
 
-extern s8 mbPadStkXGet(s32 playerNo);
-extern int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF,
-    BOOL fastF);
 void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
     GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
-float mbAngleEaseOut(float angleStart, float angleEnd, float weight);
-BOOL mbAngleAdd(float *angle, float target, float speed);
-void mbBezierCalcV(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *out, float t);
-float mbCosRad(float angle);
-void mbev_CapTeresaFadeCreate(MBMODELID modelId);
-void mbev_CapTeresaFadeKill(MBMODELID modelId);
-void mbev_CapTeresaFadeSet(float alpha);
-void mbev_CapCallTeresa(s32 playerNo, s16 masuId);
 
 extern W01_COIN_EFFECT lbl_1_bss_0[32];
 extern ANIMDATA *lbl_1_bss_4A4[3];
@@ -560,7 +523,7 @@ extern char *lbl_1_data_5AC[2];
 extern ANIMDATA *lbl_1_bss_1378;
 extern W01_MASU_MOTION_WORK lbl_1_bss_137C[3];
 extern ANIMDATA *lbl_1_bss_13D0[2];
-extern W01_WORK_13D8 lbl_1_bss_13D8;
+extern W01_COIN_EVENT_WORK lbl_1_bss_13D8;
 extern HuVecF lbl_1_bss_1410;
 extern HuVecF lbl_1_bss_141C;
 extern HuVecF lbl_1_bss_1428;
@@ -590,99 +553,99 @@ extern u32 lbl_1_data_3CC[6];
 #include "REL/w01Dll/common.h"
 
 HuVecF lbl_1_data_0[12] = {
-    { 404.027008f, 1906.98206f, 1602.27002f },
-    { 396.404999f, 2867.03394f, 1602.27002f },
-    { 18.9190006f, 3527.53809f, 1154.26001f },
-    { -754.16803f, 3896.76392f, 773.219971f },
-    { -1705.32202f, 3967.57495f, 808.460022f },
-    { -2371.5061f, 3583.61597f, 1288.19995f },
-    { -2375.78809f, 3020.53711f, 2043.45996f },
-    { -1626.78699f, 2637.13989f, 2411.20996f },
-    { -698.375977f, 2401.67603f, 2472.97998f },
-    { 53.3510017f, 1964.24194f, 2809.17993f },
-    { 181.735001f, 1186.63196f, 3321.38989f },
-    { -174.188995f, 353.940002f, 3609.05005f },
+    { 404.027f, 1906.982f, 1602.27f },
+    { 396.405f, 2867.034f, 1602.27f },
+    { 18.919f, 3527.538f, 1154.26f },
+    { -754.168f, 3896.764f, 773.22f },
+    { -1705.322f, 3967.575f, 808.46f },
+    { -2371.506f, 3583.616f, 1288.2f },
+    { -2375.788f, 3020.537f, 2043.46f },
+    { -1626.787f, 2637.14f, 2411.21f },
+    { -698.376f, 2401.676f, 2472.98f },
+    { 53.351f, 1964.242f, 2809.18f },
+    { 181.735f, 1186.632f, 3321.39f },
+    { -174.189f, 353.94f, 3609.05f },
 };
 
 HuVecF lbl_1_data_90[12] = {
-    { 404.802002f, 1890.11499f, 1602.85999f },
-    { 439.242004f, 2983.51807f, 1617.85999f },
-    { 927.995972f, 3885.56396f, 1689.91003f },
-    { 1776.69104f, 3710.54199f, 2248.30005f },
-    { 1953.88196f, 3086.91504f, 3105.08008f },
-    { 1433.67896f, 2476.20288f, 3817.66992f },
-    { 473.901001f, 2028.14001f, 3948.48999f },
-    { -401.07901f, 2214.43799f, 3363.45996f },
-    { -1225.10095f, 2654.67603f, 2796.34009f },
-    { -2118.948f, 3099.05493f, 2348.8999f },
-    { -3120.92212f, 3248.05298f, 1954.5f },
-    { -4150.38916f, 3105.95801f, 1612.21997f },
+    { 404.802f, 1890.115f, 1602.86f },
+    { 439.242f, 2983.518f, 1617.86f },
+    { 927.996f, 3885.564f, 1689.91f },
+    { 1776.691f, 3710.542f, 2248.3f },
+    { 1953.882f, 3086.915f, 3105.08f },
+    { 1433.679f, 2476.203f, 3817.67f },
+    { 473.901f, 2028.14f, 3948.49f },
+    { -401.079f, 2214.438f, 3363.46f },
+    { -1225.101f, 2654.676f, 2796.34f },
+    { -2118.948f, 3099.055f, 2348.9f },
+    { -3120.922f, 3248.053f, 1954.5f },
+    { -4150.389f, 3105.958f, 1612.22f },
 };
 
 HuVecF lbl_1_data_120[12] = {
-    { 408.268005f, 1911.20703f, 1602.91003f },
-    { 433.165009f, 2978.89502f, 1595.72998f },
-    { 1236.23901f, 3596.29907f, 1349.63f },
-    { 1914.06299f, 4131.42383f, 785.950012f },
-    { 1573.44299f, 4661.84521f, -1.50999999f },
-    { 544.370972f, 4590.06787f, -155.270004f },
-    { -261.341003f, 4232.13916f, 424.76001f },
-    { -1040.27795f, 3881.41211f, 1059.76001f },
-    { -2057.96509f, 3734.85693f, 1021.5f },
-    { -2606.16602f, 3961.7251f, 195.229996f },
-    { -2294.73608f, 4305.59277f, -733.590027f },
-    { -1306.53503f, 4351.29004f, -1093.0f },
+    { 408.268f, 1911.207f, 1602.91f },
+    { 433.165f, 2978.895f, 1595.73f },
+    { 1236.239f, 3596.299f, 1349.63f },
+    { 1914.063f, 4131.424f, 785.95f },
+    { 1573.443f, 4661.845f, -1.51f },
+    { 544.371f, 4590.068f, -155.27f },
+    { -261.341f, 4232.139f, 424.76f },
+    { -1040.278f, 3881.412f, 1059.76f },
+    { -2057.965f, 3734.857f, 1021.5f },
+    { -2606.166f, 3961.725f, 195.23f },
+    { -2294.736f, 4305.593f, -733.59f },
+    { -1306.535f, 4351.29f, -1093.0f },
 };
 
 HuVecF lbl_1_data_1B0[12] = {
-    { 403.17099f, 1884.61694f, 1602.96997f },
-    { 382.664001f, 2773.30005f, 1602.95996f },
-    { -54.8709984f, 3486.78589f, 1583.27002f },
-    { -745.963013f, 3927.35303f, 1297.28003f },
-    { -834.242981f, 4531.97705f, 683.26001f },
-    { -268.617004f, 4994.30078f, 244.289993f },
-    { 581.713989f, 4841.61279f, 301.369995f },
-    { 1314.87903f, 4417.08301f, 566.929993f },
-    { 2000.25f, 3940.82007f, 873.309998f },
-    { 2682.96606f, 3462.44092f, 1182.35999f },
-    { 3422.87598f, 3048.47095f, 1444.17004f },
-    { 4277.73877f, 2853.7959f, 1547.18994f },
+    { 403.171f, 1884.617f, 1602.97f },
+    { 382.664f, 2773.3f, 1602.96f },
+    { -54.871f, 3486.786f, 1583.27f },
+    { -745.963f, 3927.353f, 1297.28f },
+    { -834.243f, 4531.977f, 683.26f },
+    { -268.617f, 4994.301f, 244.29f },
+    { 581.714f, 4841.613f, 301.37f },
+    { 1314.879f, 4417.083f, 566.93f },
+    { 2000.25f, 3940.82f, 873.31f },
+    { 2682.966f, 3462.441f, 1182.36f },
+    { 3422.876f, 3048.471f, 1444.17f },
+    { 4277.739f, 2853.796f, 1547.19f },
 };
 
 HuVecF lbl_1_data_240[33] = {
-    { 2920.08008f, 1710.0f, 2709.8501f },
-    { 3089.85205f, 1706.49597f, 2852.22998f },
-    { 3166.70996f, 1706.47205f, 2911.93994f },
-    { 3250.04907f, 1706.69495f, 2961.80005f },
-    { 3341.96191f, 1707.15503f, 2992.53003f },
-    { 3438.21191f, 1703.54602f, 3002.6001f },
-    { 3533.875f, 1697.70496f, 2991.15991f },
-    { 3622.98096f, 1684.93701f, 2956.05005f },
-    { 3702.10596f, 1666.28503f, 2902.58008f },
-    { 3770.43896f, 1646.99902f, 2836.01001f },
-    { 3822.20508f, 1628.02795f, 2756.01001f },
-    { 3849.38599f, 1610.38403f, 2664.43994f },
-    { 3855.09302f, 1594.14099f, 2568.65991f },
-    { 3844.302f, 1577.95605f, 2473.30005f },
-    { 3813.25195f, 1559.65198f, 2383.1001f },
-    { 3757.56396f, 1534.15698f, 2307.8501f },
-    { 3687.271f, 1497.80005f, 2251.36011f },
-    { 3612.48706f, 1450.34302f, 2211.08008f },
-    { 3538.58203f, 1392.55896f, 2185.26001f },
-    { 3467.92212f, 1326.41199f, 2175.30005f },
-    { 3401.72412f, 1255.21399f, 2180.31006f },
-    { 3339.53296f, 1181.96399f, 2196.31006f },
-    { 3279.57104f, 1108.56702f, 2218.93994f },
-    { 3220.48389f, 1036.03894f, 2246.22998f },
-    { 3160.87012f, 965.549988f, 2277.40991f },
-    { 3098.6709f, 899.880981f, 2313.58008f },
-    { 3032.37109f, 842.26001f, 2355.63989f },
-    { 2962.41089f, 793.103027f, 2402.31006f },
-    { 2890.0459f, 750.547974f, 2451.78003f },
-    { 2816.50391f, 711.81897f, 2502.6499f },
-    { 2742.33594f, 675.369995f, 2554.30005f },
-    { 2667.83594f, 640.229004f, 2606.37988f },
-    { 2593.18506f, 605.703003f, 2658.65991f },
+    { 2920.08f, 1710.0f, 2709.85f },
+    { 3089.852f, 1706.496f, 2852.23f },
+    { 3166.71f, 1706.472f, 2911.94f },
+    { 3250.049f, 1706.695f, 2961.8f },
+    { 3341.962f, 1707.155f, 2992.53f },
+    { 3438.212f, 1703.546f, 3002.6f },
+    { 3533.875f, 1697.705f, 2991.16f },
+    { 3622.981f, 1684.937f, 2956.05f },
+    { 3702.106f, 1666.285f, 2902.58f },
+    { 3770.439f, 1646.999f, 2836.01f },
+    { 3822.205f, 1628.028f, 2756.01f },
+    { 3849.386f, 1610.384f, 2664.44f },
+    { 3855.093f, 1594.141f, 2568.66f },
+    { 3844.302f, 1577.956f, 2473.3f },
+    { 3813.252f, 1559.652f, 2383.1f },
+    { 3757.564f, 1534.157f, 2307.85f },
+    { 3687.271f, 1497.8f, 2251.36f },
+    { 3612.487f, 1450.343f, 2211.08f },
+    { 3538.582f, 1392.559f, 2185.26f },
+    { 3467.922f, 1326.412f, 2175.3f },
+    { 3401.724f, 1255.214f, 2180.31f },
+    { 3339.533f, 1181.964f, 2196.31f },
+    { 3279.571f, 1108.567f, 2218.94f },
+    { 3220.484f, 1036.039f, 2246.23f },
+    { 3160.87f, 965.55f, 2277.41f },
+    { 3098.671f, 899.881f, 2313.58f },
+    { 3032.371f, 842.26f, 2355.64f },
+    { 2962.411f, 793.103f, 2402.31f },
+    { 2890.046f, 750.548f, 2451.78f },
+    { 2816.504f, 711.819f, 2502.65f },
+    { 2742.336f, 675.37f, 2554.3f },
+    { 2667.836f, 640.229f, 2606.38f },
+    { 2593.185f, 605.703f, 2658.66f },
 };
 extern HuVecF lbl_1_data_4E0[1];
 extern int *lbl_1_data_4FC[2];
@@ -744,7 +707,7 @@ void _epilog(void)
 void ObjectSetup(void)
 {
     GWPartySet(TRUE);
-    mbObjectSetup(MBNO_WORLD_1, MB1_Create, MB1_Kill);
+    mbObjectSetup(0, MB1_Create, MB1_Kill);
 }
 
 // ObjectSetup registers this initializer; it loads the time-of-day board data
@@ -761,7 +724,7 @@ void MB1_Create(void)
     mbObjDirSet(W01_DATA_DAY, W01_DATA_NIGHT);
     mbMasuInit(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT);
     modelIds[0] = mbObjCreate(
-        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_MASU, 0, FALSE);
+        DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 4), 0, FALSE);
     mbObjAttrSet(modelIds[0], W01_OBJ_ATTR_BOARD_MODEL);
     timeOfDayIndex = MBTimeDayGet() ? 0 : 1;
     for (modelIndex = 0; lbl_1_data_3F4[timeOfDayIndex][modelIndex] != 0; modelIndex++) {
@@ -772,12 +735,12 @@ void MB1_Create(void)
         mbObjAttrSet((&modelIds[1])[modelIndex], W01_OBJ_ATTR_BOARD_MODEL);
     }
     (&modelIds[1])[modelIndex] = mbObjCreate(
-        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_GATE, 0, FALSE);
+        DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 5), 0, FALSE);
     mbObjLayerSet((&modelIds[1])[modelIndex], 1);
     modelIndex++;
-    mbScrollInit((MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SCROLL);
+    mbScrollInit(DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 2));
     mbCapThrowColCreate(
-        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_CAP_THROW_COLLISION);
+        DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 3));
     mbLightFuncSet(MB1_LightSet, MB1_LightReset);
     if (mbSaveNewF) {
         memset(lbl_1_bss_1618, 0, 16);
@@ -790,9 +753,9 @@ void MB1_Create(void)
     mbOpeningStarInstHookSet(0);
     mbOpeningViewSet(&lbl_1_data_408, &lbl_1_data_414, 10000.0f);
     mbev_ShopExInit(
-        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SHOP, fn_1_9F4);
+        DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 22), fn_1_9F4);
     mbev_ShopBackCreate(
-        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SHOP_RETURN,
+        DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 26),
         -1, -1, TRUE);
     mbev_MasuMoveEndSet(fn_1_760);
     mbev_MasuMoveStartSet(fn_1_734);
@@ -849,7 +812,7 @@ void fn_1_644(void)
 void fn_1_6D4(OMOBJ *obj)
 {
     if (mbExitCheck()) {
-        omDelObjEx((OMOBJMAN *)fn_8000DD9C(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
     } else {
         fn_1_13CC();
         fn_1_4004();
@@ -874,8 +837,8 @@ int fn_1_760(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & W01_MASU_ATTR_EVENT_INDEX_MASK) {
-        fn_1_7B70(mbev_MasuBitGet(mAttr, W01_MASU_ATTR_EVENT_INDEX_MASK) - 1);
+    if (mAttr & 0x00030000) {
+        fn_1_7B70(mbev_MasuBitGet(mAttr, 0x00030000) - 1);
     }
     if (mAttr & W01_MASU_ATTR_MOVE_HOOK_DASH) {
         mbPlayerMoveHookSet(playerNo, fn_1_2D08);
@@ -958,7 +921,7 @@ void fn_1_9F4(int modelId, int shopNo)
     s16 objId;
 
     objId = mbObjCreate(
-        (dayF ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SHOP_MODEL,
+        DATANUM(dayF ? W01_DATA_DAY : W01_DATA_NIGHT, 23),
         NULL, TRUE);
     mbObjAttrSet(objId, W01_OBJ_ATTR_BOARD_MODEL);
     mbObjHookSet((s16)modelId, lbl_1_data_420, objId);
@@ -1112,13 +1075,13 @@ void fn_1_10A0(void)
     work->endMasuId = mbMasuFind_MAttrIdGet(-1, (1 << 5));
     PSVECSubtract(&work->endPos, &work->startPos, &work->delta);
     work->length = PSVECMag(&work->delta);
-    work->angle = (float)((atan2(-work->delta.x, -work->delta.z) / 3.141592653589793)
+    work->angle = (float)((atan2(-work->delta.x, -work->delta.z) / M_PI)
         * 180.0);
     work->halfLength = 0.5f * work->length;
     for (i = 0; i < 6; i++, marker++) {
         dayF = (lbl_80265B70.curTime == 0);
         marker->modelId = mbObjCreate(
-            (dayF ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_PATH_MARKER,
+            DATANUM(dayF ? W01_DATA_DAY : W01_DATA_NIGHT, 8),
             NULL, TRUE);
         mbObjRotYSet(marker->modelId, work->angle);
         attr = mbev_MasuAttrGet(i + 1, 7);
@@ -1137,7 +1100,7 @@ void fn_1_10A0(void)
     for (i = 0; i < 7; i++) {
         dayF2 = (lbl_80265B70.curTime == 0);
         work->modelId[i] = mbObjCreate(
-            (dayF2 ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_PATH_MODEL,
+            DATANUM(dayF2 ? W01_DATA_DAY : W01_DATA_NIGHT, 9),
             NULL, TRUE);
     }
     work->initF = TRUE;
@@ -1336,7 +1299,7 @@ void fn_1_13CC(void)
         work->lastMasuId = lbl_80265750[playerNo].masuId;
     }
     if (masuId >= 0 && work->lastMasuId != masuId) {
-        mbAudFXPlay(0x594);
+        mbAudFXPlay(MSM_SE_BRD01_SWING_MOVE);
         work->lastMasuId = playerMasuId;
     }
     halfLength = work->halfLength;
@@ -1368,7 +1331,7 @@ void fn_1_13CC(void)
         mbObjPosSetV(marker->modelId, &pos);
         mbObjRotGet(marker->modelId, &rot);
         rot.x = (float)((atan2(delta.y,
-            sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / 3.141592653589793)
+            sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
             * 180.0);
         mbObjRotSetV(marker->modelId, &rot);
         mbMtxRot(matrix, rot.x, rot.y, rot.z);
@@ -1396,7 +1359,7 @@ void fn_1_13CC(void)
             pos.z = work->endPoint[0].z + (100.0f * (0.5f * delta.z));
             mbObjPosSetV(work->modelId[modelNo], &pos);
             rot.x = (180.0*(atan2(delta.y,
-                (sqrtf((delta.z * delta.z) + (delta.x * delta.x)))) / 3.141592653589793));
+                (sqrtf((delta.z * delta.z) + (delta.x * delta.x)))) / M_PI));
             rot.y = work->angle;
             rot.z = 0.0f;
             mbObjRotSetV(work->modelId[modelNo], &rot);
@@ -1409,7 +1372,7 @@ void fn_1_13CC(void)
             pos.z = work->endPoint[1].z - (100.0f * (0.5f * delta.z));
             mbObjPosSetV(work->modelId[modelNo], &pos);
             rot.x = (float)((atan2(delta.y,
-                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / 3.141592653589793)
+                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
                 * 180.0);
             rot.y = work->angle;
             rot.z = 0.0f;
@@ -1425,7 +1388,7 @@ void fn_1_13CC(void)
             pos.z -= 0.5f * delta.z;
             mbObjPosSetV(work->modelId[modelNo], &pos);
             rot.x = (float)((atan2(delta.y,
-                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / 3.141592653589793)
+                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
                 * 180.0);
             rot.y = work->angle;
             rot.z = 0.0f;
@@ -1473,7 +1436,7 @@ void fn_1_2A1C(void)
     work->endMasuId = mbMasuFind_MAttrIdGet(-1, (1 << 9));
     PSVECSubtract(&work->endPos, &work->startPos, &work->dir);
     work->length = PSVECMag(&work->dir);
-    work->angle = (180.0*(atan2((-work->dir.x), (-work->dir.z)) / 3.141592653589793));
+    work->angle = (180.0*(atan2((-work->dir.x), (-work->dir.z)) / M_PI));
     work->state = -1;
     for (i = 0; i < 16; i++) {
         dayF1 = !lbl_80265B70.curTime;
@@ -1483,7 +1446,7 @@ void fn_1_2A1C(void)
             dataDir1 = W01_DATA_NIGHT;
         }
         work->pathModelId[i] = mbObjCreate(
-            dataDir1 | W01_FILE_SPRING_MODEL, NULL, TRUE);
+            DATANUM(dataDir1, 10), NULL, TRUE);
         mbObjRotYSet(work->pathModelId[i], work->angle);
     }
     dayF2 = !lbl_80265B70.curTime;
@@ -1493,7 +1456,7 @@ void fn_1_2A1C(void)
         dataDir2 = W01_DATA_NIGHT;
     }
     work->mainModelId = mbObjCreate(
-        dataDir2 | W01_FILE_SPRING_MAIN_MODEL, NULL, TRUE);
+        DATANUM(dataDir2, 11), NULL, TRUE);
     mbObjRotYSet(work->mainModelId, work->angle);
     fn_1_3214(0.05f);
     mbObjPosGet(work->mainModelId, &pos);
@@ -1505,7 +1468,7 @@ void fn_1_2A1C(void)
             dataDir3 = W01_DATA_NIGHT;
         }
         segment->modelId = mbObjCreate(
-            dataDir3 | W01_FILE_SPRING_MODEL, NULL, TRUE);
+            DATANUM(dataDir3, 10), NULL, TRUE);
         mbObjScaleSet(segment->modelId, 0.7f, 0.7f, 0.5f);
         segment->pos.x = pos.x;
         segment->pos.y = pos.y - (50.0f * (i + 1));
@@ -1538,7 +1501,7 @@ void fn_1_2D08(int playerNo)
     motionId = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_SPRING_LAUNCH);
     mbPlayerPosGet(playerNo, &playerPos);
     PSVECSubtract(&targetPos, &playerPos, &delta);
-    angle = (180.0*(atan2(work->dir.x, work->dir.z) / 3.141592653589793));
+    angle = (180.0*(atan2(work->dir.x, work->dir.z) / M_PI));
     mbPlayerRotYSet(playerNo, angle);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, FALSE);
     for (time = 0; time < 18; time++) {
@@ -1554,11 +1517,11 @@ void fn_1_2D08(int playerNo)
         HuPrcVSleep();
     }
     work->state = playerNo;
-    mbAudFXPlay(0x594);
+    mbAudFXPlay(MSM_SE_BRD01_SWING_MOVE);
     for (time = 3; time < 54; time++) {
         weight = (float)(s32)time / 59.0f;
         if (time == 12) {
-            CharFXPlay(lbl_80265750[playerNo].charNo, 0x243);
+            CharFXPlay(lbl_80265750[playerNo].charNo, MSM_SE_CHARVOICE_HAPPY_CHEER);
         }
         fn_1_3214(weight);
         if ((((s32)time - 3) % 30) == 0) {
@@ -1570,7 +1533,7 @@ void fn_1_2D08(int playerNo)
     mbPlayerPosGet(playerNo, &playerPos);
     mbMasuPosGet(work->endMasuId, &targetPos);
     PSVECSubtract(&targetPos, &playerPos, &delta);
-    angle = (180.0*(atan2(delta.x, delta.z) / 3.141592653589793));
+    angle = (180.0*(atan2(delta.x, delta.z) / M_PI));
     mbPlayerRotYSet(playerNo, angle);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 4.0f, FALSE);
     for (time = 0; time <= 18; time++) {
@@ -1664,7 +1627,7 @@ void fn_1_3214(float value)
         mbObjPosSetV(work->pathModelId[i], &modelPos);
         mbObjRotGet(work->pathModelId[i], &rot);
         rot.x = (float)((atan2(delta.y,
-            sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / 3.141592653589793)
+            sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
             * 180.0);
         mbObjRotSetV(work->pathModelId[i], &rot);
         scale = PSVECMag(&delta) / 100.0f;
@@ -1731,8 +1694,8 @@ void fn_1_4004(void)
         mbObjPosSetV(segment->modelId, &modelPos);
 
         rot.x = (180.0*(atan2(delta.y,
-            (sqrtf((delta.z * delta.z) + (delta.x * delta.x)))) / 3.141592653589793));
-        rot.y = (180.0*(atan2((-delta.x), (-delta.z)) / 3.141592653589793));
+            (sqrtf((delta.z * delta.z) + (delta.x * delta.x)))) / M_PI));
+        rot.y = (180.0*(atan2((-delta.x), (-delta.z)) / M_PI));
         rot.z = 0.0f;
         mbObjRotSetV(segment->modelId, &rot);
         prevPos = segment->pos;
@@ -1777,8 +1740,7 @@ void fn_1_45A0(void)
     lbl_1_bss_148C = work;
     for (i = 0; i < lbl_1_bss_1490; i++, work++) {
         work->modelId = mbObjCreate(
-            (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
-                | W01_FILE_FLOATING_MASU,
+            DATANUM(MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 14),
             NULL, TRUE);
         mbObjAttrSet(work->modelId, ((1 << 30) | (1 << 0)));
         work->pos.x = lbl_1_data_48C[i].x;
@@ -1786,8 +1748,8 @@ void fn_1_45A0(void)
         work->pos.z = lbl_1_data_48C[i].z;
         mbObjPosSet(work->modelId, work->pos.x, work->pos.y - 1000.0f,
             work->pos.z);
-        attr = mbev_MasuAttrGet(i + 1, W01_MASU_ATTR_EVENT_GROUP_MASK);
-        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, W01_MASU_ATTR_EVENT_GROUP_MASK);
+        attr = mbev_MasuAttrGet(i + 1, 0x00001C00);
+        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 0x00001C00);
         work->maxTime = 240;
         work->time = mbRandMod(work->maxTime);
         work->speed = 1.0f;
@@ -1918,14 +1880,12 @@ void fn_1_4D88(void)
         for (j = 0; j < 2; j++) {
             dayF1 = !lbl_80265B70.curTime;
             work->modelId[j] = mbObjCreate(
-                (dayF1 ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
-                    | W01_FILE_MOTION_VARIANT_A,
+                DATANUM(dayF1 ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 12),
                 NULL, TRUE);
         }
         dayF2 = !lbl_80265B70.curTime;
         work->modelId[2] = mbObjCreate(
-            (dayF2 ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
-                | W01_FILE_MOTION_VARIANT_B,
+            DATANUM(dayF2 ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 13),
             NULL, TRUE);
         work->firstMass = 1.0f;
         work->secondMass = 20.0f;
@@ -1971,7 +1931,7 @@ void fn_1_4F94(int playerNo)
     // This preliminary subtraction reads targetPos before it is set; the boarding loop replaces
     // delta.
     PSVECSubtract(&targetPos, &playerPos, &delta);
-    angle = (float)((atan2(lbl_1_bss_1410.x, lbl_1_bss_1410.z) / 3.141592653589793)
+    angle = (float)((atan2(lbl_1_bss_1410.x, lbl_1_bss_1410.z) / M_PI)
         * 180.0);
     mbPlayerRotYSet(playerNo, angle);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, FALSE);
@@ -1993,17 +1953,17 @@ void fn_1_4F94(int playerNo)
     work->firstMass = 20.0f;
     work->swingState[2] = 2.0f;
     work->activePlayerNo = playerNo;
-    mbAudFXPlay(0x594);
+    mbAudFXPlay(MSM_SE_BRD01_SWING_MOVE);
     for (time = 0; time < 120; time++) {
         HuPrcVSleep();
     }
     work->firstMass = 1.0f;
     work->activePlayerNo = -1;
-    mbAudFXPlay(0x594);
+    mbAudFXPlay(MSM_SE_BRD01_SWING_MOVE);
     mbMasuPosGet(lbl_1_bss_1434, &targetPos);
     // Face the last boarding delta here; the destination delta below only drives the landing
     // position.
-    angle = (float)((atan2(delta.x, delta.z) / 3.141592653589793) * 180.0);
+    angle = (float)((atan2(delta.x, delta.z) / M_PI) * 180.0);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, FALSE);
     mbPlayerPosGet(playerNo, &playerPos2);
     rotY = mbPlayerRotYGet(playerNo);
@@ -2015,7 +1975,7 @@ void fn_1_4F94(int playerNo)
         }
         pos2.x = playerPos2.x + (weight2 * delta2.x);
         pos2.y = playerPos2.y + (weight2 * delta2.y)
-            + (200.0 * sin((3.141592653589793 * (180.0f * weight2)) / 180.0));
+            + (200.0 * sin((M_PI * (180.0f * weight2)) / 180.0));
         pos2.z = playerPos2.z + (weight2 * delta2.z);
         mbPlayerPosSetV(playerNo, &pos2);
         rotWeight = (float)(s32)time2 / 6.0f;
@@ -2110,13 +2070,13 @@ void fn_1_5888(s32 index)
     points[1].y = points[0].y
         - (work->armLength[1] * mbCosRad(work->swingState[1]));
     points[1].z = 0.0f;
-    angle = -((atan2(lbl_1_bss_1410.z, lbl_1_bss_1410.x) / 3.141592653589793) * 180.0);
+    angle = -((atan2(lbl_1_bss_1410.z, lbl_1_bss_1410.x) / M_PI) * 180.0);
     mbMtxRotAxisDeg(matrix, 'y', angle);
     mtxTransCat(matrix, work->anchorPos.x, work->anchorPos.y,
         work->anchorPos.z);
-    quat2.x = sin(3.141592653589793 / 4.0);
+    quat2.x = sin(M_PI / 4.0);
     quat2.y = quat2.z = 0.0f;
-    quat2.w = cos(3.141592653589793 / 4.0);
+    quat2.w = cos(M_PI / 4.0);
     normal.x = -lbl_1_bss_1410.z;
     normal.y = 0.0f;
     normal.z = lbl_1_bss_1410.x;
@@ -2156,7 +2116,7 @@ void fn_1_5C18(void)
 // MB1_Create calls this to create the day/night coin field and load its animations.
 void fn_1_5C7C(void)
 {
-    W01_WORK_13D8 *work;
+    W01_COIN_EVENT_WORK *work;
     BOOL dayF;
     s32 time;
     BOOL dayF2;
@@ -2179,7 +2139,7 @@ void fn_1_5C7C(void)
     } else {
         dataDir = W01_DATA_DIR_NIGHT;
     }
-    work->modelId = mbObjCreate(dataDir | W01_FILE_COIN_FIELD_MAIN, lbl_1_data_4FC[time], FALSE);
+    work->modelId = mbObjCreate(DATANUM(dataDir, 32), lbl_1_data_4FC[time], FALSE);
     mbObjMotionSet(work->modelId, 0, ((1 << 30) | (1 << 0)));
     mbObjPosSet(work->modelId, 0.0f, 4300.0f, -1350.0f);
 
@@ -2263,7 +2223,7 @@ void fn_1_5FB4(s32 playerNo, s16 id)
     s32 *dataOrder;
     s32 i;
     s32 j;
-    W01_WORK_13D8 *work;
+    W01_COIN_EVENT_WORK *work;
     s32 k;
     s32 curPlayerNo;
     s16 winId;
@@ -2345,7 +2305,7 @@ void fn_1_5FB4(s32 playerNo, s16 id)
             }
             pos.x = startPos.x + (weight * delta.x);
             pos.y = startPos.y + (weight * delta.y)
-                + (100.0 * sin((3.141592653589793 * (180.0f * weight)) / 180.0));
+                + (100.0 * sin((M_PI * (180.0f * weight)) / 180.0));
             pos.z = startPos.z + (weight * delta.z);
             mbPlayerPosSetV(playerNo, &pos);
             weight2 = (float)moveI / 6.0f;
@@ -2373,7 +2333,7 @@ void fn_1_5FB4(s32 playerNo, s16 id)
     HuPrcSleep(30);
     mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 2.0f, 0);
     mbCameraShakeSet(30, 200.0f);
-    mbAudFXPlay(0x596);
+    mbAudFXPlay(MSM_SE_BRD01_GROUND_SLAM);
     for (i = 0; i < 4; i++) {
         fn_8006A030(i, 20, 20, 0);
     }
@@ -2527,7 +2487,7 @@ s32 fn_1_6D98(void)
     W01_COIN_ENTRY *data;
     s32 i;
     s32 count;
-    W01_WORK_13D8 *work;
+    W01_COIN_EVENT_WORK *work;
     HuVecF pos;
     float angle;
     s32 playerNo;
@@ -2623,8 +2583,9 @@ s32 fn_1_6D98(void)
                                 work->coinCount[teamNo2]--;
                             }
                         }
-                        mbAudFXPlay(0x597);
-                        CharFXPlay(lbl_80265750[data->playerNo].charNo, 0x248);
+                        mbAudFXPlay(MSM_SE_BRD01_COIN_STEAL);
+                        CharFXPlay(lbl_80265750[data->playerNo].charNo,
+                                   MSM_SE_CHARVOICE_COIN_LOSS_GROAN);
                     }
                 }
                 break;
@@ -2753,8 +2714,7 @@ void fn_1_7944(void)
 
     work = lbl_1_bss_137C;
     lbl_1_bss_1378 = HuSprAnimDataRead(
-        (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
-            | W01_FILE_MASU_MOTION_EFFECT);
+        DATANUM(MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 50));
     HuSprAnimLock(lbl_1_bss_1378);
     for (i = 0; i < 3; i++, work++) {
         work->modelId = mbObjCreate(
@@ -2762,9 +2722,9 @@ void fn_1_7944(void)
                 | (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT),
             NULL, FALSE);
         mbObjMotionSpeedSet(work->modelId, 0.0f);
-    attr = mbev_MasuAttrGet(i + 1, W01_MASU_ATTR_EVENT_INDEX_MASK);
+    attr = mbev_MasuAttrGet(i + 1, 0x00030000);
     work->masuId = mbMasuFind_MAttrMatchIdGet(
-        -1, attr, W01_MASU_ATTR_EVENT_INDEX_MASK);
+        -1, attr, 0x00030000);
         strcpy(work->objName, lbl_1_data_56C[i]);
 
         work->effectModelId[0] = mbParticleCreate(lbl_1_bss_1378, 20);
@@ -2799,7 +2759,7 @@ void fn_1_7B70(s32 index)
     mbMasuPosGet(work->masuId, &pos);
     pos.y -= 100.0f;
     fn_1_7D14(work, &pos);
-    mbAudFXPlay(0x590);
+    mbAudFXPlay(MSM_SE_BRD01_SPACE_EFFECT_APPEAR);
     work->active = TRUE;
 }
 
@@ -3095,7 +3055,7 @@ void fn_1_8860(int playerNo)
         mbObjMotionShapeTimeSet(work->modelId, 0.0f);
         mbObjMotionShapeSpeedSet(work->modelId, 1.0f);
         modelId = mbObjModelIDGet(work->modelId);
-        mbAudFXPlay(0x591);
+        mbAudFXPlay(MSM_SE_BRD01_PLAYER_LAUNCH_START);
         for (i = 0; (u32)i < 60; i++) {
             if ((u32)i == 30) {
                 mbPlayerScaleSet(playerNo, 1.0f, 0.5f, 1.0f);
@@ -3104,11 +3064,11 @@ void fn_1_8860(int playerNo)
             mbPlayerPosSetV(playerNo, &pos);
             HuPrcVSleep();
         }
-        mbAudFXPlay(0x592);
+        mbAudFXPlay(MSM_SE_BRD01_PLAYER_LAND);
         mbPlayerPosGet(playerNo, &playerPos);
         mbMasuPosGet(work->linkMasuId[0], &masuPos);
         PSVECSubtract(&masuPos, &playerPos, &delta);
-        rotY = (float)((atan2(delta.x, delta.z) / 3.141592653589793) * 180.0);
+        rotY = (float)((atan2(delta.x, delta.z) / M_PI) * 180.0);
         mbPlayerRotYSet(playerNo, 180.0f + rotY);
         mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 2.0f, 0);
         mbPlayerRotGet(playerNo, &playerRot);
@@ -3144,7 +3104,7 @@ void fn_1_8860(int playerNo)
         mbObjMotionShapeSpeedSet(work->modelId, 0.0f);
         lbl_80265750[playerNo].masuId = work->linkMasuId[0];
     } else {
-        mbAudFXPlay(0x593);
+        mbAudFXPlay(MSM_SE_BRD01_PLAYER_BOUNCE_BACK);
         mbObjMotionTimeSet(work->modelId, 5.0f);
         mbObjMotionSpeedSet(work->modelId, 1.0f);
         mbObjMotionShapeTimeSet(work->modelId, 5.0f);
@@ -3152,7 +3112,7 @@ void fn_1_8860(int playerNo)
         mbPlayerPosGet(playerNo, &playerPos);
         mbMasuPosGet(work->linkMasuId[1], &masuPos);
         PSVECSubtract(&masuPos, &playerPos, &delta);
-        rotY = (float)((atan2(delta.x, delta.z) / 3.141592653589793) * 180.0);
+        rotY = (float)((atan2(delta.x, delta.z) / M_PI) * 180.0);
         mbPlayerRotYSet(playerNo, rotY);
         lbl_80265750[playerNo].masuIdNext = work->linkMasuId[1];
         fn_8006A030(playerNo, 20, 4, 4);
@@ -3167,7 +3127,7 @@ void fn_1_8860(int playerNo)
             }
             movePos.x = startPos.x + (weight2 * moveDelta.x);
             movePos.y = startPos.y + (weight2 * moveDelta.y)
-                + (300.0 * sin(3.141592653589793 * (180.0f * weight2) / 180.0f));
+                + (300.0 * sin(M_PI * (180.0f * weight2) / 180.0f));
             movePos.z = startPos.z + (weight2 * moveDelta.z);
             mbPlayerPosSetV(playerNo, &movePos);
             rotT = (float)j / 6.0f;
@@ -3272,14 +3232,12 @@ void fn_1_9574(void)
     work = lbl_1_bss_1240.work;
     modelIdP = lbl_1_bss_1238;
     modelIdP[0] = mbObjCreate(
-        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT)
-            | W01_FILE_EFFECT_ROOT, NULL, FALSE);
+        DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 27), NULL, FALSE);
     mbObjAttrSet(modelIdP[0], W01_OBJ_ATTR_EFFECT_PAUSED);
     mbObjPosSet(modelIdP[0], 410.0f, 1900.0f, 1137.0f);
 
     modelIdP[1] = mbObjCreate(
-        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT)
-            | W01_FILE_EFFECT_CHILD, NULL, FALSE);
+        DATANUM(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT, 31), NULL, FALSE);
     mbObjAttrSet(modelIdP[1], W01_OBJ_ATTR_BOARD_MODEL);
     mbObjHookSet(modelIdP[0], lbl_1_data_638, modelIdP[1]);
 
@@ -3317,14 +3275,13 @@ void fn_1_9574(void)
     }
 
     for (i = 0; i < 4; i++) {
-        attr = mbev_MasuAttrGet(i + 2, W01_MASU_ATTR_EVENT_TYPE_MASK);
+        attr = mbev_MasuAttrGet(i + 2, 0xE0000000);
         lbl_1_bss_1230[i] =
-            mbMasuFind_MAttrMatchIdGet(-1, attr, W01_MASU_ATTR_EVENT_TYPE_MASK);
+            mbMasuFind_MAttrMatchIdGet(-1, attr, 0xE0000000);
     }
 
     lbl_1_bss_121C = HuSprAnimRead(fn_80008DD0(
-        (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
-            | W01_FILE_WH_EFFECT_STAR_ANIM,
+        DATANUM(MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 51),
         0x10000000, 2));
     HuSprAnimLock(lbl_1_bss_121C);
     lbl_1_bss_120C[0] = fn_1_C7DC(&lbl_1_bss_1214[0]);
@@ -3336,7 +3293,7 @@ void fn_1_9574(void)
     lbl_1_bss_1224.x = 12000.0f;
     lbl_1_bss_1224.y = 3000.0f;
     lbl_1_bss_1224.z = 2400.0f;
-    fn_800097F4(W01_DATA_DIR_LIGHT_EFFECT);
+    fn_800097F4(0x130000);
 }
 
 // MB1_Kill releases the special-space glow animation and particle buffers.
@@ -3415,11 +3372,11 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     if (MBTimeDayGet()) {
         winId = mbWinCreate(2, W01_MESSAGE_WH_INTRO_DAY, 8);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(W01_SOUND_WH_EVENT_DAY);
+        mbAudFXPlay(MSM_SE_GUIDE_SHOP_DAY_PROMPT);
     } else {
         winId = mbWinCreate(2, W01_MESSAGE_WH_INTRO_NIGHT, 9);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(W01_SOUND_WH_EVENT_NIGHT);
+        mbAudFXPlay(MSM_SE_GUIDE_SHOP_NIGHT_PROMPT);
     }
     mbWinWait(winId);
     if (MBTimeDayGet()) {
@@ -3562,7 +3519,7 @@ void fn_1_9AEC(s32 playerNo, s16 id)
         }
         pos2.x = startPos.x + (weight3 * delta2.x);
         pos2.y = startPos.y + (weight3 * delta2.y)
-            + (100.0 * sin((3.141592653589793 * (180.0f * weight3)) / 180.0));
+            + (100.0 * sin((M_PI * (180.0f * weight3)) / 180.0));
         pos2.z = startPos.z + (weight3 * delta2.z);
         mbPlayerPosSetV(playerNo, &pos2);
         weight2 = (float)k / 6.0f;
@@ -3578,7 +3535,7 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     fn_8006A030(playerNo, 20, 4, 4);
     HuPrcSleep(30);
     mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 5.0f, 0);
-    mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
+    mbPlayerWinLoseVoicePlay(playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
     mbPlayerMotionEndWait(playerNo);
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
     mbPlayerMotionKill(playerNo, motionId);
@@ -3697,7 +3654,7 @@ s32 fn_1_A82C(s32 playerNo)
         }
         HuPrcVSleep();
     }
-    mbAudFXPlay(1);
+    mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
     if (mesId >= 0) {
         GameMesTimerEnd(mesId);
         mesId = -1;
@@ -3764,7 +3721,7 @@ void fn_1_AFD4(s32 index, s32 state)
     W01_WH_EFFECT_WORK *work = &lbl_1_bss_1240.work[index];
 
     if (state >= 0) {
-        work->bobVelocity.y += -833.333374f;
+        work->bobVelocity.y += -833.3334f;
     }
     work->playerNo = state;
 }
@@ -3881,8 +3838,8 @@ s32 fn_1_B434(W01_WH_PARTICLE **particleP)
 
         PSMTXMultVec(matrix, &vertices[i], &pos);
         particle->rot.x = (180.0*(atan2(pos.y,
-            (sqrtf((pos.z * pos.z) + (pos.x * pos.x)))) / 3.141592653589793)) - 90.0f;
-        particle->rot.y = (180.0*(atan2((-pos.x), (-pos.z)) / 3.141592653589793));
+            (sqrtf((pos.z * pos.z) + (pos.x * pos.x)))) / M_PI)) - 90.0f;
+        particle->rot.y = (180.0*(atan2((-pos.x), (-pos.z)) / M_PI));
         particle->rot.z = 0.0f;
         particle->baseRot = particle->rot;
 
@@ -3890,7 +3847,7 @@ s32 fn_1_B434(W01_WH_PARTICLE **particleP)
         particle->acceleration.y = 0.5f + (0.5f * frandf());
         particle->acceleration.z = 0.5f + (0.5f * frandf());
         particle->delay = mbRandMod(60) + 1;
-        particle->phase = 0.017453292f * particle->rot.x;
+        particle->phase = MTXDegToRad(particle->rot.x);
         particle->phaseVelocity = 0.0f;
     }
     return particleCount;
@@ -3914,7 +3871,7 @@ void fn_1_B7D8(s32 index)
         particle->acceleration.y = 0.8f + (0.2f * frandf());
         particle->acceleration.z = 0.8f + (0.2f * frandf());
         particle->delay = mbRandMod(60) + 1;
-        particle->phase = 0.017453292f * particle->rot.x;
+        particle->phase = MTXDegToRad(particle->rot.x);
         particle->phaseVelocity = 0.0f;
     }
     work->state = 1;
@@ -4599,7 +4556,7 @@ static inline void W01PlayerJumpFinish(int playerNo, HuVecF *dstPos,
         }
         pos.x = srcPos.x + (t * delta.x);
         pos.y = srcPos.y + (t * delta.y)
-            + (jumpHeight * sin(3.141592653589793*(180.0f * t)/180.0));
+            + (jumpHeight * sin(M_PI*(180.0f * t)/180.0));
         pos.z = srcPos.z + (t * delta.z);
         mbPlayerPosSetV(playerNo, &pos);
         rotT = time / 6.0f;
@@ -4713,8 +4670,8 @@ void fn_1_E234(int playerNo)
         mbPlayerPosGet(playerNo, &playerPos);
         PSVECSubtract(&pos, &playerPos, &delta);
         rot.x = -(180.0*(atan2(delta.y,
-            (sqrtf((delta.z * delta.z) + (delta.x * delta.x)))) / 3.141592653589793));
-        rot.y = (180.0*(atan2(delta.x, delta.z) / 3.141592653589793));
+            (sqrtf((delta.z * delta.z) + (delta.x * delta.x)))) / M_PI));
+        rot.y = (180.0*(atan2(delta.x, delta.z) / M_PI));
         rot.z = 0.0f;
         mbPlayerRotSetV(playerNo, &rot);
         mbPlayerPosSetV(playerNo, &pos);
@@ -4731,7 +4688,7 @@ void fn_1_E234(int playerNo)
     mbPlayerPosGet(playerNo, &endPlayerPos);
     mbMasuPosGet(linkMasuId, &masuPos);
     PSVECSubtract(&masuPos, &endPlayerPos, &delta);
-    angle = (180.0*(atan2(delta.x, delta.z) / 3.141592653589793));
+    angle = (180.0*(atan2(delta.x, delta.z) / M_PI));
     mbPlayerRotSet(playerNo, 0.0f, angle, 0.0f);
     W01PlayerJumpFinish(playerNo, &masuPos, angle, 100.0f, 18);
     mbPlayerMotionKill(playerNo, motionId);
@@ -4795,7 +4752,7 @@ void fn_1_ED00(void)
         pos.z = radius * mbSinDeg(angle);
         PSMTXMultVec(matrix, &pos, &entry->homePos);
         entry->index = i;
-        entry->bobAmplitude = 60.000003814697266f + (100.0f * frandf());
+        entry->bobAmplitude = 60.000004f + (100.0f * frandf());
         entry->spinAngle = 360.0f * frandf();
         entry->spinSpeed = 8.0f * ((2.0f * frandf()) - 1.0f);
         entry->orbitRadius = entry->targetOrbitRadius = 80.0f
@@ -4870,7 +4827,7 @@ void fn_1_F1F4(s32 playerNo, s16 id)
     mbCameraPlayerViewSet(playerNo, 1);
     mbPlayerMotionShiftSet(playerNo, motionId[0], 0.0f, 4.0f, 0);
     work->state = 1;
-    audNo = mbAudFXPlay(0x595);
+    audNo = mbAudFXPlay(MSM_SE_BRD01_MACHINE_RUN_LOOP);
     HuPrcSleep(30);
     mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 4.0f, 0);
     rotY = mbPlayerRotYGet(playerNo);
@@ -4900,7 +4857,7 @@ void fn_1_F1F4(s32 playerNo, s16 id)
     fn_1_10900();
     mbPlayerMotionShiftSet(playerNo, 15, 0.0f, 4.0f, ((1 << 30) | (1 << 0)));
     fn_8006A030(playerNo, 20, 7, 3);
-    CharFXPlay(lbl_80265750[playerNo].charNo, 0x240);
+    CharFXPlay(lbl_80265750[playerNo].charNo, MSM_SE_CHARVOICE_HIT_YELP);
     coinPos.x = playerPos.x;
     coinPos.y = playerPos.y + 100.0f;
     coinPos.z = playerPos.z;
@@ -5059,10 +5016,10 @@ GXColor lbl_1_data_668[3] = {
     { 128, 128, 32, 255 },
 };
 HuVecF lbl_1_data_674[4] = {
-    { 0.0f, 0.0f, 0.612372458f },
-    { 0.577350259f, 0.0f, -0.204124138f },
-    { -0.288675129f, 0.5f, -0.204124138f },
-    { -0.288675129f, -0.5f, -0.204124138f },
+    { 0.0f, 0.0f, 0.61237246f },
+    { 0.57735026f, 0.0f, -0.20412414f },
+    { -0.28867513f, 0.5f, -0.20412414f },
+    { -0.28867513f, -0.5f, -0.20412414f },
 };
 s32 lbl_1_data_6A4[12] = {
     0, 2, 1, 0, 3, 2, 0, 1, 3, 1, 2, 3,
@@ -5122,7 +5079,7 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
                 entry->state = 1;
                 mbPlayerPosGet(playerNo, &playerPos);
                 PSVECSubtract(&playerPos, &entry->pos, &delta);
-                angle = (atan2(delta.x, delta.z) / 3.141592653589793) * 180.0f;
+                angle = (atan2(delta.x, delta.z) / M_PI) * 180.0f;
                 distance = PSVECMag(&delta);
                 if (distance < entry->orbitRadius) {
                     ratio = entry->orbitRadius
@@ -5175,8 +5132,8 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
                 entry->pos = pos;
                 entry->rot.x = (atan2(-delta.y,
                     sqrtf((delta.z * delta.z) + (delta.x * delta.x)))
-                    / 3.141592653589793) * 180.0f;
-                entry->rot.y = (atan2(delta.x, delta.z) / 3.141592653589793) * 180.0f;
+                    / M_PI) * 180.0f;
+                entry->rot.y = (atan2(delta.x, delta.z) / M_PI) * 180.0f;
             }
             break;
         }
@@ -5201,9 +5158,9 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
             pos.z = playerPos.z - (entry->orbitRadius * mbCosDeg(entry->orbitAngle));
             PSVECSubtract(&pos, &entry->pos, &delta);
             rot.x = (atan2(-delta.y,
-                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / 3.141592653589793)
+                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
                 * 180.0f;
-            rot.y = (atan2(delta.x, delta.z) / 3.141592653589793) * 180.0f;
+            rot.y = (atan2(delta.x, delta.z) / M_PI) * 180.0f;
             distance = PSVECMag(&delta);
             entry->orbitAngle += (360.0f * entry->orbitDirection)
                 * (10.0f / (6.2831855f * distance));
@@ -5231,7 +5188,7 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
             PSVECAdd(&entry->startPos, &move, &entry->pos);
             mbPlayerPosGet(playerNo, &playerPos);
             PSVECSubtract(&entry->pos, &playerPos, &delta);
-            angle2 = (atan2(-delta.x, -delta.z) / 3.141592653589793) * 180.0f;
+            angle2 = (atan2(-delta.x, -delta.z) / M_PI) * 180.0f;
             entry->rot.x = -80.0f * (1.0f - mbCosDeg(90.0f * time));
             entry->rot.y = mbAngleLerp(entry->rot.y, angle2, time);
             if (entry->timer > entry->maxTime) {
@@ -5251,7 +5208,7 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
                 entry->startPos = entry->pos;
                 mbPlayerPosGet(playerNo, &playerPos);
                 PSVECSubtract(&entry->pos, &playerPos, &delta);
-                angle = (atan2(delta.z, delta.x) / 3.141592653589793) * 180.0f;
+                angle = (atan2(delta.z, delta.x) / M_PI) * 180.0f;
                 entry->targetPos.x = playerPos.x + (50.0f * mbCosDeg(angle));
                 entry->targetPos.y = entry->targetY;
                 entry->targetPos.z = playerPos.z + (50.0f * mbSinDeg(angle));
@@ -5284,9 +5241,9 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
         case 6: {
             PSVECSubtract(&entry->homePos, &entry->pos, &delta);
             rot.x = (atan2(-delta.y,
-                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / 3.141592653589793)
+                sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
                 * 180.0f;
-            rot.y = (atan2(delta.x, delta.z) / 3.141592653589793) * 180.0f;
+            rot.y = (atan2(delta.x, delta.z) / M_PI) * 180.0f;
             distance = PSVECMag(&delta);
             if ((distance < 50.0f) || (++entry->timer > entry->maxTime)) {
                 entry->state = 0;
@@ -5384,8 +5341,7 @@ void fn_1_10AA8(void)
     mbObjDispSet(work->modelId[5], FALSE);
     layer = mbMasuLayerGet();
     mbMasuLayerSet(1);
-    mbMasuDataRead((MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
-        | 1);
+    mbMasuDataRead(DATANUM(MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 1));
     mbMasuLayerSet(layer);
     lbl_1_bss_EE4 = HuSprAnimDataRead(
         DATANUM((MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT), 49));
@@ -5458,7 +5414,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     firstMasuId = mbMasuAttrFindLink(id, W01_MASU_ATTR_LINK);
     mbMasuPosGet(firstMasuId, &firstTarget);
     PSVECSubtract(&firstTarget, &initialPos, &direction);
-    targetAngle = (float)((atan2(direction.x, direction.z) / 3.141592653589793) * 180.0);
+    targetAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     mbPlayerPosGet(playerNo, &firstStart);
     firstStartAngle = mbPlayerRotYGet(playerNo);
@@ -5470,7 +5426,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         }
         firstPos.x = firstStart.x + (firstWeight * firstDelta.x);
         firstPos.y = firstStart.y + (firstWeight * firstDelta.y)
-            + (100.0 * sin((3.141592653589793 * (180.0f * firstWeight)) / 180.0));
+            + (100.0 * sin((M_PI * (180.0f * firstWeight)) / 180.0));
         firstPos.z = firstStart.z + (firstWeight * firstDelta.z);
         mbPlayerPosSetV(playerNo, &firstPos);
         firstAngleWeight = (float)firstTime / 6.0f;
@@ -5488,7 +5444,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     secondMasuId = mbMasuLinkGet(firstMasuId, 0);
     mbMasuPosGet(secondMasuId, &secondTarget);
     PSVECSubtract(&secondTarget, &firstTarget, &direction);
-    targetAngle = (float)((atan2(direction.x, direction.z) / 3.141592653589793) * 180.0);
+    targetAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
     HuPrcSleep(3);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     mbPlayerPosGet(playerNo, &secondStart);
@@ -5501,7 +5457,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         }
         secondPos.x = secondStart.x + (secondWeight * secondDelta.x);
         secondPos.y = (float)(secondStart.y + (secondWeight * secondDelta.y)
-            + (100.0 * sin((3.141592653589793 * (180.0f * secondWeight)) / 180.0)));
+            + (100.0 * sin((M_PI * (180.0f * secondWeight)) / 180.0)));
         secondPos.z = secondStart.z + (secondWeight * secondDelta.z);
         mbPlayerPosSetV(playerNo, &secondPos);
         secondAngleWeight = (float)secondTime / 6.0f;
@@ -5607,7 +5563,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
             }
             if (inputF) {
                 if (soundTime == 0) {
-                    mbAudFXPlay(0x598);
+                    mbAudFXPlay(MSM_SE_BRD01_ROTATE_INPUT_TICK);
                     soundTime = 12;
                 }
                 inputF = 0;
@@ -5639,7 +5595,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     mbObjMotionShapeTimeSet(work->modelId[2], 0.0f);
     mbObjMotionShapeSpeedSet(work->modelId[2], 1.0f);
     mbWipeDissolveFadeIn();
-    soundId = mbAudFXPlay(0x599);
+    soundId = mbAudFXPlay(MSM_SE_BRD01_CRANK_RUN_LOOP);
     winNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W01, 16), -1);
     mbWinWait(winNo);
 
@@ -5662,7 +5618,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbObjMotionShapeSpeedSet(work->modelId[3], 1.0f);
         mbCameraShakeSet(30, 500.0f);
         mbAudFXStop(soundId);
-        mbAudFXPlay(0x59A);
+        mbAudFXPlay(MSM_SE_BRD01_CRANK_STOP_SLAM);
         for (i = 0; i < 4; i++) {
             fn_8006A030((s16)i, 20, 20, 0);
         }
@@ -5811,7 +5767,7 @@ void fn_1_12090(void)
             mbMasuPosGet(nextMasuId[playerNo], &targetPos);
             PSVECSubtract(&targetPos, &startPos, &delta);
             mbPlayerRotYSet(
-                playerNo, (float)((atan2(delta.x, delta.z) / 3.141592653589793) * 180.0));
+                playerNo, (float)((atan2(delta.x, delta.z) / M_PI) * 180.0));
             lbl_80265750[playerNo].masuIdNext = nextMasuId[playerNo];
             HuPrcVSleep();
             mbPlayerColSnapPlayerSet(playerNo, FALSE);
@@ -5825,7 +5781,7 @@ void fn_1_12090(void)
                 mbPlayerPosSetV(playerNo, &pos);
                 HuPrcVSleep();
             }
-            CharFXPlay(lbl_80265750[playerNo].charNo, 0xC3);
+            CharFXPlay(lbl_80265750[playerNo].charNo, MSM_SE_CHAR_HIP_DROP);
             fn_8006A030(playerNo, 20, 7, 3);
             mbPlayerMotionShiftSet(playerNo, motionId[1], 0.0f, 4.0f, 0);
             HuPrcSleep(30);
@@ -5879,12 +5835,12 @@ void fn_1_124C8(void)
     linkMasuId = mbMasuAttrFindLink(work->masuId, W01_MASU_ATTR_LINK);
     mbMasuPosGet(linkMasuId, &work->linkPos);
     PSVECSubtract(&work->masuPos, &work->linkPos, &work->direction);
-    work->rotY = (float)((atan2(work->direction.x, work->direction.z) / 3.141592653589793)
+    work->rotY = (float)((atan2(work->direction.x, work->direction.z) / M_PI)
         * 180.0);
     mbObjRotSet(work->baseModelId, 0.0f, work->rotY, 0.0f);
     mbObjRotSet(work->hookModelId, 0.0f, work->rotY, 0.0f);
     mbObjPosSetV(work->hookModelId, &work->linkPos);
-    fn_800097F4(W01_DATA_DIR_LIGHT_EFFECT);
+    fn_800097F4(0x130000);
 }
 
 // fn_1_760 calls this for the gate space; the daytime branch shows its restriction.
@@ -6339,7 +6295,7 @@ s16 lbl_1_bss_1434;
 HuVecF lbl_1_bss_1428;
 HuVecF lbl_1_bss_141C;
 HuVecF lbl_1_bss_1410;
-W01_WORK_13D8 lbl_1_bss_13D8;
+W01_COIN_EVENT_WORK lbl_1_bss_13D8;
 ANIMDATA *lbl_1_bss_13D0[2];
 W01_MASU_MOTION_WORK lbl_1_bss_137C[3];
 ANIMDATA *lbl_1_bss_1378;

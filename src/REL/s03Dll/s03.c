@@ -6,12 +6,14 @@
 #include "game/board/audio.h"
 #include "game/board/camera.h"
 #include "game/board/capsule.h"
+#include "game/board/capevent.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
 #include "game/board/opening.h"
 #include "game/board/pause.h"
+#include "game/board/wipe.h"
 #include "game/data.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
@@ -21,33 +23,18 @@
 #include "datanum/charmot.h"
 #include "msm_se.h"
 #include "string.h"
+#include "humath.h"
 
 typedef void (*VoidFunc)(void);
-typedef void (*MBHook)(void);
 
 enum {
-    S03_BOARD_NO = 8,
-    S03_WORK_CLEAR_SIZE = 112,
-    S03_SAVE_CLEAR_SIZE = 8,
     S03_MOTION_DATA_COUNT = 16,
     S03_HOOK_NAME_SIZE = 16,
-    S03_HOOK_COUNT = 10,
-    S03_OBJECT_LAYER = 3,
-    S03_OBJECT_PRIORITY = 8204,
-    S03_MASU_ATTR_MOVE_START = 0x0002,
-    S03_MASU_ATTR_HATENA = 0x0001,
-    S03_MASU_LINK_FLAG = 0x2000,
-    S03_ROTATE_HALF_TURN = 180,
-    S03_ROTATE_MODE = 15,
     S03_MOVE_DURATION = 90,
     S03_MOVE_START_DELAY = 30,
-    S03_RING_HIT_TIME = 18,
-    S03_VIBRATION_TIME = 20,
     S03_LIFT_FRAMES = 60,
     S03_SWING_FRAMES = 120,
     S03_CHAIN_FRAMES = 240,
-    S03_MUSIC_FADE_SPEED = 1000,
-    S03_CAPSULE_LOAD_DELAY = 180,
 };
 
 typedef struct S03ParticleWork {
@@ -99,7 +86,7 @@ typedef struct S03Work {
     float effectAngle;              /* Angle offset used to compute the source model's position
                                      * around the chain path. */
     HuVecF playerOffset;           /* Player offset from ch_h1, in source-model local units. */
-    u32 unusedWord;                /* Not read by this board's code. */
+    u32 unknownWord;               /* Final word of the target's 116-byte state object. */
 } S03Work;
 
 extern const VoidFunc _ctors[];
@@ -108,27 +95,6 @@ extern OMOBJ *lbl_1_bss_0;        /* Active player-path update object. */
 extern S03Work lbl_1_bss_4;       /* Main S03 event state. */
 extern u32 *lbl_1_bss_78;         /* Board save-data buffer. */
 extern BOOL mbSaveNewF;
-
-/* Fixed board-space positions, camera values and model-joint names used by S03. */
-extern HuVecF lbl_1_data_0;
-extern HuVecF lbl_1_data_C;
-extern HuVecF lbl_1_data_18[2];
-extern HuVecF lbl_1_data_30;
-extern HuVecF lbl_1_data_3C;
-extern float lbl_1_data_48;
-extern char lbl_1_data_4C[];
-extern char lbl_1_data_52[];
-extern char lbl_1_data_5C[];
-extern char lbl_1_data_62[];
-extern HuVecF lbl_1_data_6C[2];
-extern char lbl_1_data_84[];
-extern HuVecF lbl_1_data_8C[2];
-
-void mbObjectSetup(s32 boardNo, MBHook init, MBHook close);
-void mbLightFuncSet(MBHook setHook, MBHook resetHook);
-void mbScrollInit(int dataNum);
-void mbMapCameraSet(const HuVecF *rot, const HuVecF *pos, float zoom);
-void mbMapHookSet(void (*hook)(BOOL enterF));
 
 int _prolog(void);
 void _epilog(void);
@@ -151,35 +117,8 @@ void fn_1_2670(void);
 void fn_1_2858(const HuVecF *pos, HuVecF *out);
 void fn_1_2A20(OMOBJ *obj);
 
-void mbPauseDisableSet(BOOL disable);
-void mbSingleReturnWrite(void);
-void mbWipeDissolveFadeOutTime(int time);
-void mbWipeDissolveFadeInTime(int time);
-void mbWipeFadeOut(void);
-void mbWipeFadeOutTime(int time);
-void mbWipeSpecialCreate(int state, int type, int time);
-void mbWipeSpecialWait(void);
-void mbWipeSpecialKill(void);
-int mbBGRead(int dataNum);
-void mbBGReadWait(int readStat);
-void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
-    HuVecF *out);
-void mbev_CapBezierGetV(float t, float *a, float *b, float *c, float *out);
-float mbev_CapAngleWrap(float a, float b);
-float mbev_CapAngleLerp(float a, float b, float t);
-OMOBJ *mbev_CapEffRingHitCreate(void);
 int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot,
     HuVecF *scale, int kind, int time, int bank, GXColor *color);
-void mbev_CapEffRingKill(OMOBJ *obj);
-OMOBJ *mbev_CapEffExplodeCreate(void);
-void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *pos);
-int mbev_CapEffExplodeAnimGet(OMOBJ *obj);
-void mbev_CapEffExplodeKill(OMOBJ *obj);
-void mbev_CapPlayerMotShiftWait(int playerNo, int motionNo, u32 attr,
-    BOOL waitF);
-void mbev_CapPlayerMotShiftSet(int playerNo, int motionNo, u32 attr,
-    BOOL waitF);
-void fn_8006A030(s16 playerNo, s16 time, s16 amp, s16 mode);
 
 /* The REL loader calls this entry point to run constructors and register S03. */
 int _prolog(void)
@@ -209,8 +148,19 @@ void _epilog(void)
 void ObjectSetup(void)
 {
     GWPartySet(FALSE);
-    mbObjectSetup(S03_BOARD_NO, fn_1_F4, fn_1_5EC);
+    mbObjectSetup(8, fn_1_F4, fn_1_5EC);
 }
+
+/* Fixed board-space positions and camera values used by S03. */
+HuVecF lbl_1_data_0 = { 327.0f, 5221.0f, 320.0f };
+HuVecF lbl_1_data_C = { 0.0f, 0.0f, 300.0f };
+HuVecF lbl_1_data_18[2] = {
+    { 0.0f, 4500.0f, 636.0f },
+    { 0.0f, 2500.0f, 636.0f },
+};
+HuVecF lbl_1_data_30 = { -51.0f, 0.0f, 0.0f };
+HuVecF lbl_1_data_3C = { 1.0f, 7419.0f, 3655.0f };
+float lbl_1_data_48 = 3898.0f;
 
 /* Called by mbObjectSetup on board entry; creates the S03 models, paths and event hooks. */
 void fn_1_F4(void)
@@ -227,7 +177,7 @@ void fn_1_F4(void)
     HuAudSndGrpSetSet(MSM_GRP_SBRD);
     lbl_1_bss_78 = lbl_80265B70.boardWork;
     mbMasuInit(DATANUM(0xc90000, 0));
-    memset(work, 0, S03_WORK_CLEAR_SIZE);
+    memset(work, 0, 112);
     work->effectObj = NULL;
     work->particleWork = NULL;
 
@@ -236,7 +186,7 @@ void fn_1_F4(void)
     mbScrollInit(DATANUM(0xc90000, 1));
     mbLightFuncSet(fn_1_728, fn_1_764);
     if (mbSaveNewF) {
-        memset(lbl_1_bss_78, 0, S03_SAVE_CLEAR_SIZE);
+        memset(lbl_1_bss_78, 0, 8);
     }
 
     modelId = mbObjCreate(DATANUM(0xc90000, 4), NULL, FALSE);
@@ -245,14 +195,14 @@ void fn_1_F4(void)
     modelId = mbObjCreate(DATANUM(0xc90000, 5), NULL, FALSE);
     mbObjAttrSet(modelId, (((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6))));
     modelId = mbObjCreate(DATANUM(0xc90000, 6), NULL, FALSE);
-    mbObjLayerSet(modelId, S03_OBJECT_LAYER);
+    mbObjLayerSet(modelId, 3);
     hookModelId = mbObjCreate(DATANUM(0xc90000, 12), NULL, FALSE);
     mbObjAttrSet(hookModelId, ((1 << 30) | (1 << 0)));
-    mbObjLayerSet(hookModelId, S03_OBJECT_LAYER);
+    mbObjLayerSet(hookModelId, 3);
     mbObjScaleSet(hookModelId, 1.5f, 1.5f,
         1.5f);
-    for (i = 0; i < S03_HOOK_COUNT; i++) {
-        sprintf(name, lbl_1_data_4C, i + 1);
+    for (i = 0; i < 10; i++) {
+        sprintf(name, "b_h%d", i + 1);
         mbObjHookSet(modelId, name, hookModelId);
     }
 
@@ -275,7 +225,7 @@ void fn_1_F4(void)
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjDispSet(modelId, FALSE);
     fn_80030644(mbObjModelIDGet(modelId));
-    fn_80023398(mbObjModelIDGet(modelId), lbl_1_data_52, matrix);
+    fn_80023398(mbObjModelIDGet(modelId), "kusari_h1", matrix);
     work->chainHookOffset.x = matrix[0][3];
     work->chainHookOffset.y = matrix[1][3];
     work->chainHookOffset.z = matrix[2][3];
@@ -288,12 +238,12 @@ void fn_1_F4(void)
     work->sourceModelId = modelId;
     mbObjDispSet(modelId, FALSE);
     fn_80030644(mbObjModelIDGet(work->sourceModelId));
-    fn_80023398(mbObjModelIDGet(work->sourceModelId), lbl_1_data_5C,
+    fn_80023398(mbObjModelIDGet(work->sourceModelId), "ch_h1",
         matrix);
     work->chainPos.x = matrix[0][3];
     work->chainPos.y = matrix[1][3];
     work->chainPos.z = matrix[2][3];
-    fn_80023398(mbObjModelIDGet(work->sourceModelId), lbl_1_data_62,
+    fn_80023398(mbObjModelIDGet(work->sourceModelId), "kusari_h2",
         matrix);
     work->chainEndPos.x = matrix[0][3];
     work->chainEndPos.y = matrix[1][3];
@@ -313,7 +263,7 @@ void fn_1_F4(void)
     mbMapCameraSet(NULL, &lbl_1_data_C, 9800.0f);
     mbMapHookSet(fn_1_768);
     mbOpeningInstHookSet(fn_1_634);
-    fn_8003AB38(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, -1, fn_1_5F0);
+    fn_8003AB38(mbObjMan, 8204, 0, 0, -1, fn_1_5F0);
     fn_800097F4(DATANUM(0xc90000, 0));
     mbOpeningViewSet(&lbl_1_data_30, &lbl_1_data_3C, lbl_1_data_48);
 }
@@ -342,7 +292,7 @@ int fn_1_638(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & S03_MASU_ATTR_MOVE_START) {
+    if (mAttr & 0x0002) {
         mbPauseDisableSet(TRUE);
         fn_1_1450(playerNo, id);
     }
@@ -363,7 +313,7 @@ int fn_1_6CC(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & S03_MASU_ATTR_HATENA) {
+    if (mAttr & 0x0001) {
         fn_1_76C(playerNo, id);
     }
     return 0;
@@ -438,7 +388,7 @@ void fn_1_76C(int playerNo, s16 id)
     }
 
     masuId = id;
-    linkedMasu = mbMasuAttrFindLink(masuId, S03_MASU_LINK_FLAG);
+    linkedMasu = mbMasuAttrFindLink(masuId, 0x2000);
     mbMasuPosGet(masuId, &pathPos0);
     mbMasuPosGet(linkedMasu, &pathPos1);
     mbObjPosSetV(work->eventModelId, &pathPos1);
@@ -452,7 +402,7 @@ void fn_1_76C(int playerNo, s16 id)
     }
     startMasu = time;
 
-    fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 4, 4);
+    fn_8006A030((s16)playerNo, 20, 4, 4);
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f,
         8.0f, ((1 << 30) | (1 << 0)));
     masuPos.x = masuPos.z = 0.0f;
@@ -460,12 +410,12 @@ void fn_1_76C(int playerNo, s16 id)
     mbCameraMovePlayer((s16)playerNo, NULL, &masuPos,
         1200.0f, -1.0f, 30);
     mbCameraMoveWait();
-    mbAudFXPlay(1554);
+    mbAudFXPlay(MSM_SE_SBRD_PATH_MODEL_START);
     mbObjMotionTimeSet(work->pathModelId[pathIndex], 0.0f);
     mbObjMotionSpeedSet(work->pathModelId[pathIndex], 1.0f);
-    mbPlayerRotateStart(playerNo, S03_ROTATE_HALF_TURN, S03_ROTATE_MODE);
+    mbPlayerRotateStart(playerNo, 180, 15);
     HuPrcSleep(10);
-    mbAudFXPlay(1001);
+    mbAudFXPlay(MSM_SE_GUIDE_EVENT_NPC_TALK);
     mbObjMotionShiftSet(work->eventModelId, 2, 0.0f,
         8.0f, ((1 << 30) | (1 << 0)));
 
@@ -474,14 +424,14 @@ void fn_1_76C(int playerNo, s16 id)
         mbev_CapVecChase(t, &pathPos1, &pathPos0, &masuPos);
         masuPos.y += 0.5
             * (100.0
-                * sin((3.141592653589793 * (180.0f * t))
+                * sin((M_PI * (180.0f * t))
                     / 180.0));
         mbObjPosSetV(work->eventModelId, &masuPos);
         if (time == 6 || time == 12 || time == 18 || time == 24) {
-            mbAudFXPlay(1555);
+            mbAudFXPlay(MSM_SE_SBRD_EVENT_MODEL_STEP);
         }
         if (time == 24) {
-            lbl_1_bss_0 = fn_8003AB38(mbObjMan, S03_OBJECT_PRIORITY, 0, 0,
+            lbl_1_bss_0 = fn_8003AB38(mbObjMan, 8204, 0, 0,
                 -1, fn_1_1238);
             mbPlayerMotionSet(playerNo, 9, 0);
             moveWork = lbl_1_bss_0->data = HuMemDirectMallocNum(
@@ -521,9 +471,9 @@ void fn_1_76C(int playerNo, s16 id)
             ringPosArg = masuPos;
             ringPosPtr = &ringPosArg;
             mbev_CapEffRingAdd(ringObj, ringPosPtr, ringRotPtr,
-                ringScalePtr, 1, S03_RING_HIT_TIME, 2, colorPtr);
-            mbAudFXPlay(1556);
-            fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
+                ringScalePtr, 1, 18, 2, colorPtr);
+            mbAudFXPlay(MSM_SE_SBRD_RING_EFFECT);
+            fn_8006A030((s16)playerNo, 20, 7, 3);
         }
         HuPrcVSleep();
     }
@@ -547,7 +497,7 @@ void fn_1_76C(int playerNo, s16 id)
     mbPlayerDispSet(playerNo, TRUE);
     for (time = 1; (float)time < 30.0f; time++) {
         t = (float)time / 30.0f;
-        t = (float)cos((3.141592653589793 * (90.0f * t))
+        t = (float)cos((M_PI * (90.0f * t))
             / 180.0);
         mbev_CapVecChase(t, &pathPos0, &pathPos1, &masuPos);
         mbPlayerPosSetV(playerNo, &masuPos);
@@ -557,8 +507,8 @@ void fn_1_76C(int playerNo, s16 id)
         mbPlayerMtxSet(playerNo, &matrixX);
         HuPrcVSleep();
     }
-    fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 20, 0);
-    mbAudFXPlay(995);
+    fn_8006A030((s16)playerNo, 20, 20, 0);
+    mbAudFXPlay(MSM_SE_GUIDE_DONKEY_APPEAR);
     {
         explodeObj = mbev_CapEffExplodeCreate();
 
@@ -611,12 +561,12 @@ void fn_1_1238(OMOBJ *obj)
         return;
     }
     t = (float)++moveWork->elapsedFrames / (float)moveWork->durationFrames;
-    mbev_CapBezierGetV(t, (float *)&moveWork->startPos,
-        (float *)&moveWork->controlPos, (float *)&moveWork->endPos,
-        (float *)&playerPos);
+    mbev_CapBezierGetV(t, &moveWork->startPos.x,
+        &moveWork->controlPos.x, &moveWork->endPos.x,
+        &playerPos.x);
     mbPlayerPosSetV(moveWork->playerNo, &playerPos);
     MTXRotDeg(matrixX, 'X',
-        180.0 * -sin((3.141592653589793 * (90.0f * t)) / 180.0));
+        180.0 * -sin((M_PI * (90.0f * t)) / 180.0));
     MTXRotDeg(matrixY, 'Y', 720.0f * t);
     PSMTXConcat(matrixX, matrixY, matrixX);
     mbPlayerMtxSet(moveWork->playerNo, &matrixX);
@@ -628,6 +578,11 @@ void fn_1_1238(OMOBJ *obj)
         mbPlayerDispSet(moveWork->playerNo, FALSE);
     }
 }
+
+HuVecF lbl_1_data_6C[2] = {
+    { -15.0f, 0.0f, 0.0f },
+    { -90.0f, 0.0f, 0.0f },
+};
 
 /* Runs when a player starts moving from the marked masu: lifts the player to the chain, swings them
  * through the event, then writes the single-event return state. */
@@ -655,7 +610,8 @@ void fn_1_1450(int playerNo, s16 id)
     float scale;
     float angle;
 
-    if (lbl_80265750[playerNo].charNo == 2 || lbl_80265750[playerNo].charNo == 5) {
+    if (lbl_80265750[playerNo].charNo == 2
+        || lbl_80265750[playerNo].charNo == 5) {
         playerMotion[0] = mbPlayerMotionCreate(playerNo,
             CHARMOT_HSF_c000m1_399);
     } else {
@@ -677,7 +633,7 @@ void fn_1_1450(int playerNo, s16 id)
     mbMasuPosGet(id, &targetPos);
     PSVECSubtract(&targetPos, &playerPos, &delta);
     angle = (float)(180.0
-        * (atan2(delta.x, delta.z) / 3.141592653589793));
+        * (atan2(delta.x, delta.z) / M_PI));
     mbPlayerRotYSet(playerNo, angle);
     mbPlayerMotionShiftSet(playerNo, 2, 0.0f,
         8.0f, ((1 << 30) | (1 << 0)));
@@ -690,7 +646,7 @@ void fn_1_1450(int playerNo, s16 id)
         mbPlayerPosSetV(playerNo, &movePos);
         if (time == 0 || time == S03_MOVE_START_DELAY || time == S03_LIFT_FRAMES
             || time == S03_MOVE_DURATION || time == S03_SWING_FRAMES) {
-            fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
+            fn_8006A030((s16)playerNo, 20, 7, 3);
         }
         HuPrcVSleep();
     }
@@ -704,17 +660,17 @@ void fn_1_1450(int playerNo, s16 id)
         movePos.y = playerPos.y + t * delta.y
             + (2.0
                 * (100.0
-                    * sin((3.141592653589793 * (180.0f * t))
+                    * sin((M_PI * (180.0f * t))
                         / 180.0)));
         movePos.z = playerPos.z + scale * delta.z;
         mbPlayerPosSetV(playerNo, &movePos);
-        if (time == S03_VIBRATION_TIME) {
+        if (time == 20) {
             mbPlayerMotionShiftSet(playerNo, 5, 0.0f,
                 8.0f, 0);
         }
         if (time == 0 || time == S03_MOVE_START_DELAY || time == S03_LIFT_FRAMES
             || time == S03_MOVE_DURATION || time == S03_SWING_FRAMES) {
-            fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
+            fn_8006A030((s16)playerNo, 20, 7, 3);
         }
         HuPrcVSleep();
     }
@@ -730,7 +686,7 @@ void fn_1_1450(int playerNo, s16 id)
         mbPlayerPosSetV(playerNo, &movePos);
         if (time == 0 || time == S03_MOVE_START_DELAY || time == S03_LIFT_FRAMES
             || time == S03_MOVE_DURATION || time == S03_SWING_FRAMES) {
-            fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
+            fn_8006A030((s16)playerNo, 20, 7, 3);
         }
         HuPrcVSleep();
     }
@@ -745,28 +701,28 @@ void fn_1_1450(int playerNo, s16 id)
         modelPos = lbl_1_data_0;
         modelPos.y += 5.0
             * (100.0
-                * cos((3.141592653589793 * (90.0f * scale))
+                * cos((M_PI * (90.0f * scale))
                     / 180.0));
         PSVECSubtract(&modelPos, &work->chainPos, &modelPos);
         mbObjPosSetV(work->sourceModelId, &modelPos);
         HuPrcVSleep();
     }
-    mbObjHookSet(work->sourceModelId, lbl_1_data_5C,
+    mbObjHookSet(work->sourceModelId, "ch_h1",
         work->markerModelId);
-    mbAudFXPlay(1557);
+    mbAudFXPlay(MSM_SE_SBRD_HOOK_ATTACH);
     {
         explodeObj = mbev_CapEffExplodeCreate();
 
         dustPos = targetPos;
         dustPosPtr = &dustPos;
         mbev_CapEffDustHeavyAdd(explodeObj, dustPosPtr);
-        fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 20, 0);
+        fn_8006A030((s16)playerNo, 20, 20, 0);
         mbev_CapPlayerMotShiftWait(playerNo, 9, 0, TRUE);
         mbCameraFocusObjSet(-1);
         mbPlayerMotionShiftSet(playerNo, playerMotion[2],
             0.0f, 8.0f, ((1 << 30) | (1 << 0)));
 
-        moveObj = fn_8003AB38(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, -1,
+        moveObj = fn_8003AB38(mbObjMan, 8204, 0, 0, -1,
             fn_1_22F8);
         work->effectObj = moveObj;
         moveObj->work[0] = playerNo;
@@ -781,7 +737,7 @@ void fn_1_1450(int playerNo, s16 id)
         moveObj->rot.z = 0.0f;
 
         readStat = mbBGRead(DATANUM(0xe0000, 0));
-        HuPrcSleep(S03_CAPSULE_LOAD_DELAY);
+        HuPrcSleep(180);
         mbBGReadWait(readStat);
         work->chainAttachedModelId = mbObjCreate(DATANUM(0xe0000, 0), NULL,
             FALSE);
@@ -793,7 +749,7 @@ void fn_1_1450(int playerNo, s16 id)
         HuPrcVSleep();
         fn_800097F4(DATANUM(0xe0000, 0));
         mbObjMotionSet(work->chainAttachedModelId, 1, ((1 << 30) | (1 << 0)));
-        mbObjHookSet(work->chainModelId, lbl_1_data_84, work->chainAttachedModelId);
+        mbObjHookSet(work->chainModelId, "koopa_h", work->chainAttachedModelId);
         mbObjPosGet(work->sourceModelId, &modelPos);
         fn_1_2858(&modelPos, &pos);
         mbObjPosSetV(work->chainModelId, &pos);
@@ -803,14 +759,14 @@ void fn_1_1450(int playerNo, s16 id)
         while (work->effectObj) {
             HuPrcVSleep();
         }
-        mbPlayerRotateStart(playerNo, 0, S03_ROTATE_MODE);
+        mbPlayerRotateStart(playerNo, 0, 15);
         while (!mbPlayerRotateCheck(playerNo)) {
             HuPrcVSleep();
         }
         mbPlayerMotionShiftSet(playerNo, playerMotion[3],
             0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         HuPrcSleep(S03_LIFT_FRAMES);
-        mbAudFXPlay(1558);
+        mbAudFXPlay(MSM_SE_SBRD_LIFT_END);
         modelPos.x = modelPos.z = 0.0f;
         modelPos.y = 600.0f;
         mbCameraMoveMasu(id, &lbl_1_data_6C[0], &modelPos,
@@ -818,14 +774,14 @@ void fn_1_1450(int playerNo, s16 id)
         work->heldPlayerNo = playerNo;
         HuPrcSleep(S03_MOVE_START_DELAY);
         mbAudFXDelaySet(S03_MOVE_START_DELAY);
-        mbAudFXPlay(971);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
         mbev_CapPlayerMotShiftSet(work->chainAttachedModelId, 2, 0,
             TRUE);
         mbObjMotionShiftSet(work->chainAttachedModelId, 1, 0.0f,
             8.0f, ((1 << 30) | (1 << 0)));
         mbPlayerMotionShiftSet(playerNo, playerMotion[0], 0,
             8.0f, 0);
-        fn_8006A030((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
+        fn_8006A030((s16)playerNo, 20, 7, 3);
         work->chainMotionState++;
     }
 
@@ -834,7 +790,7 @@ void fn_1_1450(int playerNo, s16 id)
         modelPos.x = pos.x;
         modelPos.y = pos.y + (2.0
             * (100.0
-                * sin((3.141592653589793 * (90.0f * t))
+                * sin((M_PI * (90.0f * t))
                     / 180.0)));
         modelPos.z = pos.z;
         mbObjPosSetV(work->chainModelId, &modelPos);
@@ -846,13 +802,13 @@ void fn_1_1450(int playerNo, s16 id)
         modelPos.x = pos.x;
         modelPos.y = pos.y + (0.1f
             * (100.0
-                * sin((3.141592653589793 * (720.0f * t))
+                * sin((M_PI * (720.0f * t))
                     / 180.0)));
         modelPos.z = pos.z;
         mbObjPosSetV(work->chainModelId, &modelPos);
         mbObjRotSet(work->chainModelId, 0.0f,
             (float)(180.0
-                * sin((3.141592653589793 * (90.0f * t))
+                * sin((M_PI * (90.0f * t))
                     / 180.0)),
             0.0f);
         HuPrcVSleep();
@@ -871,23 +827,23 @@ void fn_1_1450(int playerNo, s16 id)
 
         t = (float)time / S03_CHAIN_FRAMES;
         curvePhase = (float)time / S03_SWING_FRAMES;
-        scale = (float)sin((3.141592653589793 * (90.0f * (t * t))) / 180.0);
+        scale = (float)sin((M_PI * (90.0f * (t * t))) / 180.0);
         mbev_CapBezierGetV(
             scale,
-            (float *)&curveA, (float *)&curveB, (float *)&curveC,
-            (float *)&pos);
+            &curveA.x, &curveB.x, &curveC.x,
+            &pos.x);
         pos.y += 0.1f
             * (100.0
-                * sin((3.141592653589793 * (720.0f * t))
+                * sin((M_PI * (720.0f * t))
                     / 180.0));
         mbObjPosSetV(work->chainModelId, &pos);
         if (time == S03_SWING_FRAMES) {
             mbWipeSpecialCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE,
                 S03_SWING_FRAMES);
         }
-        if (time == S03_CAPSULE_LOAD_DELAY) {
-            mbMusFadeOutSpeed(MB_MUS_CHAN_BG, S03_MUSIC_FADE_SPEED);
-            mbMusFadeOutSpeed(MB_MUS_CHAN_FG, S03_MUSIC_FADE_SPEED);
+        if (time == 180) {
+            mbMusFadeOutSpeed(MB_MUS_CHAN_BG, 1000);
+            mbMusFadeOutSpeed(MB_MUS_CHAN_FG, 1000);
         }
         HuPrcVSleep();
     }
@@ -966,7 +922,7 @@ void fn_1_22F8(OMOBJ *obj)
 
     mbPlayerRotGet(playerNo, &playerRot);
     targetYaw = (float)(180.0
-        * (atan2(delta.x, delta.z) / 3.141592653589793));
+        * (atan2(delta.x, delta.z) / M_PI));
     wrappedYaw = mbev_CapAngleWrap(targetYaw, playerRot.y);
     angleRate = (float)(10.0
         * (1.0
@@ -1040,8 +996,16 @@ void fn_1_2858(const HuVecF *pos, HuVecF *out)
     }
     *out = particle->innerChainPoint;
     PSVECSubtract(out, &work->chainHookOffset, out);
-    fn_8003AB38(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, -1, fn_1_2A20);
+    fn_8003AB38(mbObjMan, 8204, 0, 0, -1, fn_1_2A20);
 }
+
+HuVecF lbl_1_data_8C[2] = {
+    { 0.0f, -25.0f, 0.0f },
+    { 0.0f, 50.0f, 0.0f },
+};
+u32 *lbl_1_bss_78;
+S03Work lbl_1_bss_4;
+OMOBJ *lbl_1_bss_0;
 
 /* Runs each object-manager frame to animate chain sway and growth, pose the chain particle and
  * source model from the chain path, and align the carried player to the source model joint. */
@@ -1070,14 +1034,14 @@ void fn_1_2A20(OMOBJ *obj)
             work->rotation.y -= 360.0f;
         }
         chainRot.y += work->scale.y
-            * sin((3.141592653589793 * work->rotation.y)
+            * sin((M_PI * work->rotation.y)
                 / 180.0);
         if ((work->rotation.z += 3.0f
                 + (2.0f * MBCapsuleEffRandF())) > 360.0f) {
             work->rotation.z -= 360.0f;
         }
         chainRot.z += work->scale.z
-            * sin((3.141592653589793 * work->rotation.z)
+            * sin((M_PI * work->rotation.z)
                 / 180.0);
         break;
     case 2:
@@ -1089,20 +1053,20 @@ void fn_1_2A20(OMOBJ *obj)
             work->rotation.x -= 360.0f;
         }
         chainRot.x += work->scale.x
-            * sin((3.141592653589793 * work->rotation.x)
+            * sin((M_PI * work->rotation.x)
                 / 180.0);
         if ((work->rotation.y += 3.0f * MBCapsuleEffRandF()) > 360.0f) {
             work->rotation.y -= 360.0f;
         }
         chainRot.y += work->scale.y
-            * sin((3.141592653589793 * work->rotation.y)
+            * sin((M_PI * work->rotation.y)
                 / 180.0);
         if ((work->rotation.z += 3.0f
                 + (2.0f * MBCapsuleEffRandF())) > 360.0f) {
             work->rotation.z -= 360.0f;
         }
         chainRot.z += work->scale.z
-            * sin((3.141592653589793 * work->rotation.z)
+            * sin((M_PI * work->rotation.z)
                 / 180.0);
         break;
     }
@@ -1133,7 +1097,7 @@ void fn_1_2A20(OMOBJ *obj)
             /* This sample reads player 0's position even when another player is held. */
             mbPlayerPosGet(work->playerOffsetCaptured, &work->playerOffset);
             fn_80023398(mbObjModelIDGet(work->sourceModelId),
-                lbl_1_data_5C, matrix);
+                "ch_h1", matrix);
             work->playerOffset.x -= matrix[0][3];
             work->playerOffset.y -= matrix[1][3];
             work->playerOffset.z -= matrix[2][3];
@@ -1141,7 +1105,7 @@ void fn_1_2A20(OMOBJ *obj)
         }
         fn_80030644(mbObjModelIDGet(work->sourceModelId));
         fn_80023398(mbObjModelIDGet(work->sourceModelId),
-            lbl_1_data_5C, matrix);
+            "ch_h1", matrix);
         PSMTXMultVec(matrix, &work->playerOffset, &playerPos);
         matrix[0][3] = matrix[1][3] = matrix[2][3] = 0.0f;
         mbPlayerMtxSet(work->heldPlayerNo, &matrix);
@@ -1152,30 +1116,3 @@ void fn_1_2A20(OMOBJ *obj)
             1.0f, 1.0f);
     }
 }
-
-HuVecF lbl_1_data_0 = { 327.0f, 5221.0f, 320.0f };
-HuVecF lbl_1_data_C = { 0.0f, 0.0f, 300.0f };
-HuVecF lbl_1_data_18[2] = {
-    { 0.0f, 4500.0f, 636.0f },
-    { 0.0f, 2500.0f, 636.0f },
-};
-HuVecF lbl_1_data_30 = { -51.0f, 0.0f, 0.0f };
-HuVecF lbl_1_data_3C = { 1.0f, 7419.0f, 3655.0f };
-float lbl_1_data_48 = 3898.0f;
-char lbl_1_data_4C[] = "b_h%d";
-char lbl_1_data_52[] = "kusari_h1";
-char lbl_1_data_5C[] = "ch_h1";
-char lbl_1_data_62[] = "kusari_h2";
-HuVecF lbl_1_data_6C[2] = {
-    { -15.0f, 0.0f, 0.0f },
-    { -90.0f, 0.0f, 0.0f },
-};
-char lbl_1_data_84[] = "koopa_h";
-HuVecF lbl_1_data_8C[2] = {
-    { 0.0f, -25.0f, 0.0f },
-    { 0.0f, 50.0f, 0.0f },
-};
-
-u32 *lbl_1_bss_78;
-S03Work lbl_1_bss_4;
-OMOBJ *lbl_1_bss_0;

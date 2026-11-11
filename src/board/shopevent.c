@@ -6,6 +6,7 @@
 #include "game/board/main.h"
 #include "game/board/audio.h"
 #include "game/board/capsule.h"
+#include "game/board/capselect.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/pause.h"
@@ -25,6 +26,11 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 #include "string.h"
+#include "game/board/camera.h"
+#include "game/board/comchoice.h"
+#include "game/board/coin.h"
+#include "game/board/scroll.h"
+#include "game/board/telop.h"
 
 typedef void (*MBSHOPOBJHOOK)(int modelId, int shopNo);
 
@@ -34,14 +40,6 @@ enum {
     SHOP_LIST_ENTRY_SIZE = 16,
     SHOP_TUTORIAL_ENTRY = 19,
     SHOP_TUTORIAL_SELECT = 20,
-    SHOP_SFX_NIGHT_SUCCESS = 960,
-    SHOP_SFX_NIGHT_PROMPT = 961,
-    SHOP_SFX_NIGHT_UNAVAILABLE = 962,
-    SHOP_SFX_DAY_SUCCESS = 986,
-    SHOP_SFX_DAY_PROMPT = 987,
-    SHOP_SFX_DAY_UNAVAILABLE = 988,
-    SHOP_SFX_OPEN = 1143,
-    SHOP_SFX_CLOSE = 1144,
     SHOP_DATA_NIGHT_MODEL = DATANUM(0x130000, 0),
     SHOP_DATA_NIGHT_MOTION = DATANUM(0x130000, 1),
     SHOP_DATA_NIGHT_MOTION_CLOSE = DATANUM(0x130000, 4),
@@ -162,32 +160,9 @@ static GXColor ev_ShopLightColor = { 255, 255, 255, 255 };
 
 void mbev_ShopCreate(int dataNum, int motDataNum);
 void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, char *hookName);
-extern int mbCapObjCreate(int capsuleNo, BOOL flag);
-extern void mbCapObjKill(int objId);
-extern int mbCapDescWinCreate(int capsuleNo);
-extern s8 mbPadStkXGet(s32 padNo);
 extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
     HuVecF *out);
-extern s32 mbBGRead(s32 dataNum);
-extern void mbBGReadWait(s32 statId);
-extern int mbCapUseMesGet(int capsuleNo);
-extern int mbCapBuyCostGet(s16 capsuleNo, s16 playerNo);
 extern int mbCapShopListGet(int playerNo, s8 *shopList);
-extern int mbCapDelete(int capsuleNo, BOOL repeatF);
-extern void mbCapNumInc(int capsuleNo, int mode);
-extern int mbCapObjColorCreate(int capsuleNo, BOOL createF);
-extern void mbCapObjColorLayerSet(int id, int layer);
-extern void mbCapObjColorPosSetV(int id, HuVecF *pos);
-extern void mbCapCapsuleGet(int playerNo, int capsuleNo);
-extern void mbCapObjColorKill(int id);
-void mbCapObjColorScaleSet(int id, float x, float y, float z);
-extern int mbCoinAddExec(int playerNo, int coinNum);
-extern int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF,
-    BOOL fastF);
-extern void mbCameraPlayerViewSet(int playerNo, int viewNo);
-extern void mbComChoiceLeftSet(void);
-extern void mbComChoiceRightSet(void);
-extern void mbev_Scroll(int playerNo, BOOL mapF);
 static void ev_ShopOMExec(OMOBJ *obj);
 static void ev_ShopOpenSet(int shopNo, BOOL openF);
 static void ev_Shop(MBSHOPWORK *visitWork);
@@ -317,7 +292,7 @@ void mbev_ShopCreate(int dataNum, int motDataNum)
         if (shopWork->modelId != -1) {
             mbObjPosSetV(shopWork->modelId, &masuPos);
             mbObjRotSet(shopWork->modelId, 0.0f, (180.0*(atan2(approachDirection.x,
-                approachDirection.z) / 3.141592653589793)),
+                approachDirection.z) / M_PI)),
                         0.0f);
             mbObjMotionSpeedSet(shopWork->modelId, 0.0f);
         }
@@ -472,7 +447,7 @@ static void ev_ShopOpenSet(int shopNo, BOOL openF)
     shopWork->motionExecF = TRUE;
     shopWork->openF = openF;
     if (shopWork->openF) {
-        mbAudFXPlay(SHOP_SFX_OPEN);
+        mbAudFXPlay(MSM_SE_BRD00_SHOP_OPEN);
         mbObjMotionSet(shopWork->modelId, 0, 0);
         mbObjMotionSpeedSet(shopWork->modelId, 1.0f);
         for (attachedModelSlot = 0; attachedModelSlot < 8; attachedModelSlot++) {
@@ -494,7 +469,7 @@ static void ev_ShopOpenSet(int shopNo, BOOL openF)
             }
         }
     } else {
-        mbAudFXPlay(SHOP_SFX_CLOSE);
+        mbAudFXPlay(MSM_SE_BRD00_SHOP_CLOSE);
         if (shopWork->modelMotionF) {
             mbObjMotionSet(shopWork->modelId, 1, 0);
             mbObjMotionSpeedSet(shopWork->modelId, 1.0f);
@@ -682,9 +657,9 @@ shop_found:
         /* Ordinary visits stop on the final turn; the tutorial controls entry itself. */
         if (lbl_80265B70.turnNo >= lbl_80265B70.turnMax) {
             if (!lbl_80265B70.curTime) {
-                mbAudFXPlay(SHOP_SFX_DAY_PROMPT);
+                mbAudFXPlay(MSM_SE_GUIDE_SHOP_DAY_PROMPT);
             } else {
-                mbAudFXPlay(SHOP_SFX_NIGHT_PROMPT);
+                mbAudFXPlay(MSM_SE_GUIDE_SHOP_NIGHT_PROMPT);
             }
             mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_LAST_TURN), winType);
             mbWinTopWait();
@@ -725,9 +700,9 @@ shop_found:
             }
         } else {
             if (!lbl_80265B70.curTime) {
-                mbAudFXPlay(SHOP_SFX_DAY_UNAVAILABLE);
+                mbAudFXPlay(MSM_SE_GUIDE_SHOP_DAY_UNAVAILABLE);
             } else {
-                mbAudFXPlay(SHOP_SFX_NIGHT_UNAVAILABLE);
+                mbAudFXPlay(MSM_SE_GUIDE_SHOP_NIGHT_UNAVAILABLE);
             }
             mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_NOT_ENOUGH_COINS),
                 winType);
@@ -763,12 +738,12 @@ enter_shop:
         eventPos.y += 100.0f;
         displayOffset = ev_ShopCapsulePlayer[offerNum - 1][loopIndex];
         eventPos.x += displayOffset.y
-            * sin((3.141592653589793 * (displayOffset.x
-                + (180.0 * (atan2(direction.x, direction.z) / 3.141592653589793))))
+            * sin((M_PI * (displayOffset.x
+                + (180.0 * (atan2(direction.x, direction.z) / M_PI))))
                 / 180.0);
         eventPos.z += displayOffset.y
-            * cos((3.141592653589793 * (displayOffset.x
-                + (180.0 * (atan2(direction.x, direction.z) / 3.141592653589793))))
+            * cos((M_PI * (displayOffset.x
+                + (180.0 * (atan2(direction.x, direction.z) / M_PI))))
                 / 180.0);
         mbCapObjColorPosSetV(capsuleObjId[loopIndex], &eventPos);
         mbCapObjColorScaleSet(capsuleObjId[loopIndex], 0.5f, 0.5f, 0.5f);
@@ -817,7 +792,7 @@ enter_shop:
     }
     mbObjPosSetV(shopModelId, &eventPos);
     mbObjRotSet(shopModelId, 0.0f,
-        (float)(180.0 + ((atan2(direction.x, direction.z) / 3.141592653589793) * 180.0)),
+        (float)(180.0 + ((atan2(direction.x, direction.z) / M_PI) * 180.0)),
         0.0f);
     mbObjMotionSet(shopModelId, 1, ((1 << 30) | (1 << 0)));
     ev_ShopOpenSet(shopNo, TRUE);
@@ -837,7 +812,7 @@ enter_shop:
     }
     mbMasuPosGet((s16)visitWork->shopNo, &playerPos);
     PSVECSubtract(&shopPos, &playerPos, &direction);
-    facingAngle = (float)((atan2(direction.x, direction.z) / 3.141592653589793) * 180.0);
+    facingAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
     mbPlayerRotateStart(visitWork->playerNo, facingAngle, 15);
     while (!mbPlayerRotateCheck(visitWork->playerNo)) {
         HuPrcVSleep();
@@ -895,7 +870,7 @@ enter_shop:
     }
     PSVECSubtract(&masuPos, &shopPos, &direction);
     mbPlayerRotateStart(visitWork->playerNo,
-        (atan2(direction.x, direction.z) / 3.141592653589793) * 180.0, 15);
+        (atan2(direction.x, direction.z) / M_PI) * 180.0, 15);
     while (!mbPlayerRotateCheck(visitWork->playerNo)) {
         HuPrcVSleep();
     }
@@ -929,7 +904,7 @@ enter_shop:
             /* A full inventory silently rejects this add; payment and the pickup animation have
              * already occurred. */
             mbPlayerCapsuleAdd(visitWork->playerNo, offer[selectionResult].capsuleNo);
-            mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, 579);
+            mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
             mbPlayerMotionShiftSet(visitWork->playerNo, 12, 0.0f, 4.0f, 0);
             mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);
             mbWinTopInsertMesSet(offer[selectionResult].messageId, 0);
@@ -947,17 +922,17 @@ enter_shop:
         }
         mbStatusDispFocusSet(visitWork->playerNo, TRUE);
         if (!lbl_80265B70.curTime) {
-            mbAudFXPlay(SHOP_SFX_DAY_PROMPT);
+            mbAudFXPlay(MSM_SE_GUIDE_SHOP_DAY_PROMPT);
         } else {
-            mbAudFXPlay(SHOP_SFX_NIGHT_PROMPT);
+            mbAudFXPlay(MSM_SE_GUIDE_SHOP_NIGHT_PROMPT);
         }
         mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_GREETING), winType);
         mbWinTopWait();
         if (lbl_80265B70.curTime && lbl_80265750[visitWork->playerNo].rank >= 2) {
             if (!lbl_80265B70.curTime) {
-                mbAudFXPlay(SHOP_SFX_DAY_SUCCESS);
+                mbAudFXPlay(MSM_SE_GUIDE_SHOP_DAY_SUCCESS);
             } else {
-                mbAudFXPlay(SHOP_SFX_NIGHT_SUCCESS);
+                mbAudFXPlay(MSM_SE_GUIDE_SHOP_NIGHT_SUCCESS);
             }
             mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_NIGHT_RESTRICTION),
                 winType);
@@ -974,9 +949,9 @@ enter_shop:
                 break;
             default:
                 if (!lbl_80265B70.curTime) {
-                    mbAudFXPlay(SHOP_SFX_DAY_UNAVAILABLE);
+                    mbAudFXPlay(MSM_SE_GUIDE_SHOP_DAY_UNAVAILABLE);
                 } else {
-                    mbAudFXPlay(SHOP_SFX_NIGHT_UNAVAILABLE);
+                    mbAudFXPlay(MSM_SE_GUIDE_SHOP_NIGHT_UNAVAILABLE);
                 }
                 mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_NO_OFFERS), winType);
                 mbWinTopWait();
@@ -1041,7 +1016,7 @@ enter_shop:
                     -offer[selectionResult].cost);
                 mbCapCapsuleGet(visitWork->playerNo, offer[selectionResult].capsuleNo);
                 mbPlayerCapsuleAdd(visitWork->playerNo, offer[selectionResult].capsuleNo);
-                mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, 579);
+                mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
                 mbPlayerMotionShiftSet(visitWork->playerNo, 12, 0.0f, 4.0f, 0);
                 if (discardedInventoryIndex == -1) {
                     mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);
@@ -1059,9 +1034,9 @@ enter_shop:
                 mbObjMotionShiftSet(shopModelId, 3, 0.0f, 8.0f,
                     ((1 << 30) | (1 << 0)));
                 if (!lbl_80265B70.curTime) {
-                    mbAudFXPlay(SHOP_SFX_DAY_SUCCESS);
+                    mbAudFXPlay(MSM_SE_GUIDE_SHOP_DAY_SUCCESS);
                 } else {
-                    mbAudFXPlay(SHOP_SFX_NIGHT_SUCCESS);
+                    mbAudFXPlay(MSM_SE_GUIDE_SHOP_NIGHT_SUCCESS);
                 }
                 mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_THANK_YOU), winType);
                 mbWinTopWait();
@@ -1080,7 +1055,7 @@ enter_shop:
     mbMasuPosGet((s16)visitWork->shopNo, &playerPos);
     PSVECSubtract(&playerPos, &shopPos, &direction);
     /* The return angle is calculated but is not applied to the player. */
-    facingAngle = (float)((atan2(direction.x, direction.z) / 3.141592653589793) * 180.0);
+    facingAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
         MBSHOPOMWORK *shopWork = shopObj->data;
@@ -1305,18 +1280,18 @@ static int ev_ShopSelect(MBSHOPWORK *visitWork, SHOP_OFFER *offer, int offerNum,
             mbObjMotionSpeedSet(capsuleObjId[previousOfferIndex], 0.0f);
             mbObjMotionTimeSet(capsuleObjId[previousOfferIndex], 0.0f);
             mbObjScaleSet(capsuleObjId[previousOfferIndex], 1.0f, 1.0f, 1.0f);
-            mbAudFXPlay(0);
+            mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
             for (loopIndex = 1; loopIndex <= SHOP_SELECT_MOVE_FRAMES; loopIndex++) {
                 scrollProgress = loopIndex / 20.0f;
 
-                mbev_CapVecChase(sin((3.141592653589793 * (90.0f * scrollProgress)) / 180.0),
+                mbev_CapVecChase(sin((M_PI * (90.0f * scrollProgress)) / 180.0),
                     &previousCursorPos, &selectedCursorPos, &screenPos);
                 espPosSet(cursorSprId,
                     screenPos.x + SHOP_SELECT_CURSOR_OFFSET,
                     screenPos.y + SHOP_SELECT_CURSOR_OFFSET);
                 descriptionScroll.x = previousWindowOffset
                     + ((selectedWindowOffset - previousWindowOffset)
-                        * sin((3.141592653589793 * (90.0f * scrollProgress)) / 180.0));
+                        * sin((M_PI * (90.0f * scrollProgress)) / 180.0));
                 for (componentIndex = 0; componentIndex < offerNum; componentIndex++) {
                     PSVECAdd(&descriptionBasePos[componentIndex], &descriptionScroll, &screenPos);
                     mbWinPosSet(descWinId[componentIndex], screenPos.x, screenPos.y);
@@ -1329,16 +1304,16 @@ static int ev_ShopSelect(MBSHOPWORK *visitWork, SHOP_OFFER *offer, int offerNum,
             previousOfferIndex = selectedOfferIndex;
             pulseFrame = 0;
         }
-        capsuleScale = 1.0f + (0.2f * fabs(sin((3.141592653589793
+        capsuleScale = 1.0f + (0.2f * fabs(sin((M_PI
             * ((90.0f * pulseFrame) / 12.0f)) / 180.0)));
         /* Only the selected capsule plays its motion and pulses above normal size. */
         mbObjScaleSet(capsuleObjId[selectedOfferIndex], capsuleScale, capsuleScale, capsuleScale);
         pulseFrame++;
         if (pressedButtons & PAD_BUTTON_A) {
-            mbAudFXPlay(1);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
             selectionDoneF = TRUE;
         } else if (pressedButtons & PAD_BUTTON_B) {
-            mbAudFXPlay(3);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             selectedOfferIndex = -1;
             selectionDoneF = TRUE;
         }

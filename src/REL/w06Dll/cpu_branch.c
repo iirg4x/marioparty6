@@ -1,6 +1,6 @@
 // Chooses the computer's branch toward the star on Clockwork Castle.
 #include "dolphin.h"
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/board/audio.h"
 #include "game/board/camera.h"
 #include "game/board/opening.h"
@@ -8,8 +8,7 @@
 #include "game/board/window.h"
 #include "game/wipe.h"
 #include "messdir_enum.h"
-
-int mbSNpcMasuGet(void);
+#include "game/board/snpc.h"
 
 #define W06_BRANCH_NEAREST_STEP_INITIAL_VALUE 10000
 

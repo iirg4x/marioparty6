@@ -377,7 +377,7 @@ void fn_1_3370(int playerIndex, HuVecF *destination, float destinationHeadingDeg
             mbPlayerMotionShiftSet(playerIndex, 5, 0.0f, 2.0f, 0);
         playerPosition.x = startPosition.x + (parameterT * travelDelta.x);
         playerPosition.y = startPosition.y + (parameterT * travelDelta.y) +
-                           (jumpArcHeight * sin(3.141592653589793*(180.0f * parameterT)/180.0));
+                           (jumpArcHeight * sin(M_PI*(180.0f * parameterT)/180.0));
         playerPosition.z = startPosition.z + (parameterT * travelDelta.z);
         mbPlayerPosSetV(playerIndex, &playerPosition);
         headingBlend = elapsedFrame / 6.0f;

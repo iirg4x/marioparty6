@@ -1,8 +1,10 @@
 /* Runs board startup constructors, initializes the board and runs shutdown destructors. */
+#include "game/gamework.h"
+#include "REL/w05Dll/work.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* The REL manager calls this after linking Castaway Bay; run constructors before board setup. */
 int _prolog(void)
@@ -25,9 +27,3 @@ void _epilog(void)
         dtor++;
     }
 }
-
-#include "game/gamework.h"
-
-void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(void));
-void fn_1_F4(void);
-void fn_1_1D50(void);

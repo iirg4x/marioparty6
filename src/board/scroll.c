@@ -17,6 +17,10 @@
 #include "game/pad.h"
 #include "game/sprite.h"
 #include "messdir_enum.h"
+#include "game/board/wipe.h"
+#include "game/board/telop.h"
+#include "game/board/math.h"
+#include "humath.h"
 
 typedef void (*MBSCROLLHOOK)(BOOL enterF);
 typedef s16 (*MBSCROLLSTARFINDFUNC)(int playerNo);
@@ -150,23 +154,9 @@ static void MapSprPlayerColAll(void);
 static void MapSprKill(void);
 static void MapPathDraw(s16 masuId, Mtx *mtx);
 
-extern void mbWipeDissolveFadeOut(void);
-extern void mbWipeDissolveFadeIn(void);
-extern BOOL mbWipeSpecialStatGet(void);
-extern void mbWipeSpecialFadeInCreate(int type, BOOL pauseF);
-extern void *fn_802137C0(s32 size);
-extern float mbSinDeg(float angle);
-extern s8 mbPadStkXGet(int padNo);
-extern s8 mbPadStkYGet(int padNo);
 extern const float lbl_802C3550;
 extern const float lbl_802C3554;
 extern const float lbl_802C3558;
-
-// Selects the daytime board-space icon variant from the current game time.
-static inline BOOL MBTimeDayGet(void)
-{
-    return lbl_80265B70.curTime == 0;
-}
 
 // Called when the board scroll feature opens; prepares collision and map assets.
 void mbScrollInit(int dataNum)
@@ -210,9 +200,9 @@ void mbev_Scroll(int playerNo, BOOL mapF)
             }
             mapF = FALSE;
         }
-        mbAudFXPlay(1);
+        mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
     }
-    mbAudFXPlay(3);
+    mbAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
     mbMusParamSet(MB_MUS_CHAN_BG, 127, 100);
     mbCameraStackIdxSet(cameraStackNo, -1);
     mbStatusDispRestoreForce();
@@ -320,9 +310,9 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
     rot.z = 0.0f;
     mbPlayerPosGet(playerNo, &scrollPos);
     RotateScrollView(&rot, &scrollPos, &scrollPos);
-    dir.x = sin(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
-    dir.y = -sin(3.141592653589793*rot.x/180.0);
-    dir.z = cos(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
+    dir.x = sin(M_PI*rot.y/180.0) * cos(M_PI*rot.x/180.0);
+    dir.y = -sin(M_PI*rot.x/180.0);
+    dir.z = cos(M_PI*rot.y/180.0) * cos(M_PI*rot.x/180.0);
     PSVECScale(&dir, &dir, 100.0f);
     if (!CheckScrollCol(&scrollPos, &dir, &cameraPos)) {
         ResolveScrollCol(&dir, &scrollPos, &scrollPos, &cameraPos);
@@ -403,11 +393,11 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
 static void RotateScrollView(HuVecF *rot, HuVecF *pos, HuVecF *posOut)
 {
     posOut->x = pos->x
-        + (sin(3.141592653589793*rot->y/180.0)
-        * (pos->y / (sin(3.141592653589793*rot->x/180.0) / cos(3.141592653589793*rot->x/180.0))));
+        + (sin(M_PI*rot->y/180.0)
+        * (pos->y / (sin(M_PI*rot->x/180.0) / cos(M_PI*rot->x/180.0))));
     posOut->z = pos->z
-        + (cos(3.141592653589793*rot->y/180.0)
-        * (pos->y / (sin(3.141592653589793*rot->x/180.0) / cos(3.141592653589793*rot->x/180.0))));
+        + (cos(M_PI*rot->y/180.0)
+        * (pos->y / (sin(M_PI*rot->x/180.0) / cos(M_PI*rot->x/180.0))));
     posOut->y = 0.0f;
 }
 
@@ -667,24 +657,24 @@ void mbev_StarScroll(HuVecF *startPos, HuVecF *endPos, s16 time)
 
     mbCameraRotGet(&rot);
     startCameraPos.x = startPos->x
-        + (sin(3.141592653589793*rot.y/180.0)
-        * (startPos->y / (sin(3.141592653589793*rot.x/180.0)
-        / cos(3.141592653589793*rot.x/180.0))));
+        + (sin(M_PI*rot.y/180.0)
+        * (startPos->y / (sin(M_PI*rot.x/180.0)
+        / cos(M_PI*rot.x/180.0))));
     startCameraPos.z = startPos->z
-        + (cos(3.141592653589793*rot.y/180.0)
-        * (startPos->y / (sin(3.141592653589793*rot.x/180.0)
-        / cos(3.141592653589793*rot.x/180.0))));
+        + (cos(M_PI*rot.y/180.0)
+        * (startPos->y / (sin(M_PI*rot.x/180.0)
+        / cos(M_PI*rot.x/180.0))));
     startCameraPos.y = 0.0f;
     endCameraPos.x = endPos->x
-        + (sin(3.141592653589793*rot.y/180.0)
-        * (endPos->y / (sin(3.141592653589793*rot.x/180.0) / cos(3.141592653589793*rot.x/180.0))));
+        + (sin(M_PI*rot.y/180.0)
+        * (endPos->y / (sin(M_PI*rot.x/180.0) / cos(M_PI*rot.x/180.0))));
     endCameraPos.z = endPos->z
-        + (cos(3.141592653589793*rot.y/180.0)
-        * (endPos->y / (sin(3.141592653589793*rot.x/180.0) / cos(3.141592653589793*rot.x/180.0))));
+        + (cos(M_PI*rot.y/180.0)
+        * (endPos->y / (sin(M_PI*rot.x/180.0) / cos(M_PI*rot.x/180.0))));
     endCameraPos.y = 0.0f;
-    dir.x = sin(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
-    dir.y = -sin(3.141592653589793*rot.x/180.0);
-    dir.z = cos(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
+    dir.x = sin(M_PI*rot.y/180.0) * cos(M_PI*rot.x/180.0);
+    dir.y = -sin(M_PI*rot.x/180.0);
+    dir.z = cos(M_PI*rot.y/180.0) * cos(M_PI*rot.x/180.0);
     PSVECScale(&dir, &dir, 100.0f);
     if (!CheckScrollCol(&startCameraPos, &dir, &cameraPos)) {
         ResolveScrollCol(&dir, &startCameraPos, NULL, &cameraPos);
@@ -1076,7 +1066,7 @@ static void MapSprPlayerPosCalc(int playerPosNo)
             arrowPos.x = work->pos2D.x + (0.5f * dir.x);
             arrowPos.y = work->pos2D.y + (0.5f * dir.y);
             espPosSet(work->arrowSprId[0], arrowPos.x, arrowPos.y);
-            rot = (atan2(dir.x, -dir.y) / 3.141592653589793) * 180.0;
+            rot = (atan2(dir.x, -dir.y) / M_PI) * 180.0;
             espZRotSet(work->arrowSprId[0], rot);
             scale = mag / 64.0f;
             espScaleSet(work->arrowSprId[0], 1.0f, scale);
@@ -1226,10 +1216,10 @@ static void MapPathDraw(s16 masuId, Mtx *mtx)
     camera = &Hu3DCamera[0];
     PSMTXMultVec(*mtx, &pos, &posCamera);
     x = posCamera.z
-        * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0) / cos(3.141592653589793*(camera->fov
+        * (sin(M_PI*(camera->fov / 2.0f)/180.0) / cos(M_PI*(camera->fov
         / 2.0f)/180.0)) * 1.2f;
     y = posCamera.z
-        * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0) / cos(3.141592653589793*(camera->fov
+        * (sin(M_PI*(camera->fov / 2.0f)/180.0) / cos(M_PI*(camera->fov
         / 2.0f)/180.0));
     pos2D.x = 288.0f + (posCamera.x * (288.0f / -x));
     pos2D.y = 240.0f + (posCamera.y * (240.0f / y));
@@ -1248,10 +1238,10 @@ static void MapPathDraw(s16 masuId, Mtx *mtx)
             mbMasuPosGet(linkMasuId, &pos);
             camera2 = &Hu3DCamera[0];
             PSMTXMultVec(*mtx, &pos, &endPosCamera);
-            endX = endPosCamera.z * (sin(3.141592653589793*(camera2->fov / 2.0f)/180.0)
-                / cos(3.141592653589793*(camera2->fov / 2.0f)/180.0)) * 1.2f;
-            endY = endPosCamera.z * (sin(3.141592653589793*(camera2->fov / 2.0f)/180.0)
-                / cos(3.141592653589793*(camera2->fov / 2.0f)/180.0));
+            endX = endPosCamera.z * (sin(M_PI*(camera2->fov / 2.0f)/180.0)
+                / cos(M_PI*(camera2->fov / 2.0f)/180.0)) * 1.2f;
+            endY = endPosCamera.z * (sin(M_PI*(camera2->fov / 2.0f)/180.0)
+                / cos(M_PI*(camera2->fov / 2.0f)/180.0));
             endPos.x = 288.0f + (endPosCamera.x * (288.0f / -endX));
             endPos.y = 240.0f + (endPosCamera.y * (240.0f / endY));
             endPos.z = 0.0f;
@@ -1261,7 +1251,7 @@ static void MapPathDraw(s16 masuId, Mtx *mtx)
             pathScale = mag / 16.0f;
             pos.x = pos2D.x + (0.5f * dir.x);
             pos.y = pos2D.y + (0.5f * dir.y);
-            fn_80022E38(pathMtx, 0.0f, 0.0f, (atan2(dir.x, -dir.y) / 3.141592653589793) * 180.0f);
+            fn_80022E38(pathMtx, 0.0f, 0.0f, (atan2(dir.x, -dir.y) / M_PI) * 180.0f);
             mtxScaleCat(pathMtx, 1.0f, pathScale, 0.0f);
             mtxTransCat(pathMtx, pos.x, pos.y, 0.0f);
             GXLoadPosMtxImm(pathMtx, GX_PNMTX0);
@@ -1374,10 +1364,10 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 mbMasuPosGet(i, &pos);
                 camera = &Hu3DCamera[0];
                 PSMTXMultVec(cameraMtx, &pos, &posCamera);
-                x = posCamera.z * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0)
-                    / cos(3.141592653589793*(camera->fov / 2.0f)/180.0)) * 1.2f;
-                y = posCamera.z * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0)
-                    / cos(3.141592653589793*(camera->fov / 2.0f)/180.0));
+                x = posCamera.z * (sin(M_PI*(camera->fov / 2.0f)/180.0)
+                    / cos(M_PI*(camera->fov / 2.0f)/180.0)) * 1.2f;
+                y = posCamera.z * (sin(M_PI*(camera->fov / 2.0f)/180.0)
+                    / cos(M_PI*(camera->fov / 2.0f)/180.0));
                 pos.x = 288.0f + (posCamera.x * (288.0f / -x));
                 pos.y = 240.0f + (posCamera.y * (240.0f / y));
                 pos.z = 0.0f;
