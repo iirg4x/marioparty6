@@ -1,8 +1,5 @@
 /* Microphone quiz setup, the main object running its rounds, shared helpers and module exit. */
 #include "msm_se.h"
-double cos(double x);
-double sin(double x);
-double fmod(double x, double y);
 
 #include "math.h"
 
@@ -14,12 +11,7 @@ double fmod(double x, double y);
 
 #include "string.h"
 
-#include "REL/micquizishidll/mode_work.h"
-#include "REL/micquizishidll/object_work.h"
-
 #include "game/mgdata.h"
-
-#include "REL/micquizishidll/process_manager.h"
 
 #include "game/object.h"
 
@@ -99,115 +91,13 @@ double fmod(double x, double y);
 
 #include <math.h>
 #include <dolphin/mtx.h>
-#include "REL/micquizishidll/selection_record.h"
 #include "REL/micquiz/quiz_common.h"
-
-struct QuizSelectionEntry { s32 count; s32 minCount; s32 maxCountExclusive; };
-
-void ObjectSetup(void);
-void fn_1_224(OMOBJ *obj);
-void fn_1_234(OMOBJ *object);
-void fn_1_7D8(OMOBJ *object);
-void fn_1_82C(HuVecF *out, f32 x, f32 y, f32 z);
-void fn_1_83C(void);
-void fn_1_A38(u32 message);
-void fn_1_C78(void);
-void fn_1_E74(u32 message);
-void fn_1_10B4(u32 message);
-void fn_1_12F4(void);
-void fn_1_14F0(u32 message);
-void fn_1_1730(void);
-void fn_1_192C(void);
-void fn_1_1B28(void);
-void fn_1_1D24(void);
-void fn_1_1F20(u32 message);
-void fn_1_2160(void);
-void fn_1_235C(void);
-void fn_1_2558(void);
-void fn_1_2670(void);
-void fn_1_2788(OMOBJ *object, s32 motion, f32 scale, u32 attribute);
-void fn_1_2800(void);
-s32 fn_1_29AC(s32 value);
-s32 fn_1_2A18(Vec *position0, f32 radius0, Vec *position1, f32 radius1);
-s32 fn_1_2A78(Vec *position0, Vec *position1, f32 radius0, f32 radius1);
-f32 fn_1_2AD8(f32 start, f32 end, f32 amount);
-f32 fn_1_2BDC(f32 start, f32 end, s32 frameCount);
-void fn_1_2D18(HU3D_MODELID modelId, char *objName, Vec *position);
-void fn_1_2D70(void);
+#include "REL/micquizishidll.h"
 
 typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
 
-extern f32 lbl_1_bss_104;
-
-extern OMOBJ *lbl_1_bss_108;
-
-extern s32 lbl_1_bss_1C;
-
-extern s32 lbl_1_bss_20;
-
-void fn_1_14EE0(void);
-
-void fn_1_1598C(OMOBJ *object);
-
-void fn_1_1706C(void);
-
-void fn_1_17BEC(OMOBJ *object);
-
-void fn_1_197D4(void);
-
-void fn_1_19FD8(OMOBJ *object);
-
-void fn_1_1C210(void);
-
-void fn_1_1DBBC(OMOBJ *object);
-
-void fn_1_1FB04(void);
-
-void fn_1_20804(OMOBJ *object);
-
-void fn_1_229E0(void);
-
-void fn_1_24B40(OMOBJ *object);
-
-void fn_1_26810(void);
-
-void fn_1_27CA0(OMOBJ *object);
-
-void fn_1_2A164(void);
-
-void fn_1_2B290(OMOBJ *object);
-
-void fn_1_2C624(void);
-
-void fn_1_2CEA4(OMOBJ *object);
-
-void fn_1_2EDB4(void);
-
-void fn_1_2F2B8(OMOBJ *object);
-
-void fn_1_2F890(void);
-
-void fn_1_2FFA4(OMOBJ *object);
-
-double acos(double x);
-
-float fn_1_220(float x);
-
-extern s32 lbl_1_bss_74[6];
-
-extern s32 lbl_1_bss_24[0x14];
-
-extern s32 lbl_1_bss_100;
-
-extern s32 lbl_1_bss_90;
-
-extern struct QuizSelectionEntry lbl_1_data_41C[];
-
-extern f64 fmod(f64, f64);
-
-extern OM_CAMERA_VIEW lbl_1_data_388;
 HUPROCESS *lbl_1_bss_114[0xB];
 s32 lbl_1_bss_110;
 u8 lbl_1_bss_10C[0x4];
@@ -238,26 +128,6 @@ MicquizResponse *micQuizResponse;
 s32 micQuizTimeoutHandled;
 HUPROCESS *micQuizRingProc;
 
-s32 fn_1_367CC(s32 *player);
-
-extern s16 lbl_1_bss_CE;
-
-extern s16 lbl_1_bss_D0;
-
-extern s16 lbl_1_bss_D2[4];
-
-void fn_1_7C28(void);
-
-void fn_1_81CC(void);
-
-extern void fn_1_FD14(void);
-
-extern s32 fn_1_19BD4(s32 mode);
-
-s32 fn_1_9330(void);
-
-extern u8 lbl_1_bss_9E[0x2];
-
 /* Initialized word with unknown meaning. */
 u32 gap_04_00000384_data = 0xFFFFFFFF;
 
@@ -275,6 +145,12 @@ Point3d lbl_1_data_47C = { 0.0f, 0.0f, 0.0f };
 u8 lbl_1_data_488[4] = { 255, 255, 255, 255 };
 u8 lbl_1_data_48C[0x40] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x2F, 0x00, 0x00, 0xC2, 0xC8, 0x00, 0x00, 0x45, 0xFA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+void ObjectSetup(void);
+void fn_1_224(OMOBJ *obj);
+void fn_1_234(OMOBJ *object);
+s32 fn_1_29AC(s32 value);
+void fn_1_7D8(OMOBJ *object);
 
 /* Runs the REL's static constructors, then sets up the minigame. */
 int _prolog(void) {
@@ -333,7 +209,6 @@ void fn_1_224(OMOBJ *obj)
    minigame when it ends. */
 void fn_1_234(OMOBJ *object) {
     s32 selectedValue;
-    u8 selectionType;
 
     if (omSysExitReq != 0) {
         HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
@@ -343,8 +218,7 @@ void fn_1_234(OMOBJ *object) {
 
     switch (object->work[0]) {
     case 0:
-        selectionType = micQuizModeWork->questionColumn;
-        switch (selectionType) {
+        switch (MicQuizQuestionColumnGet()) {
         case 0:
             if (micQuizModeWork->randomEnabled != 0) {
                 selectedValue = frandmod(2);

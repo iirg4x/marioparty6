@@ -35,7 +35,6 @@
 #include "humath.h"
 #include "msm_se.h"
 #include "msm_stream.h"
-#include "REL/micquizmyokodll.h"
 #include "dolphin.h"
 #include "game/hu3d.h"
 #include "game/process.h"
@@ -96,22 +95,15 @@ extern MicquizControlWork lbl_1_bss_10A;
 extern s32 lbl_1_bss_1C;
 extern MicquizAnimationState lbl_1_bss_54;
 extern MicquizSequence lbl_1_bss_D4;
-extern s16 omSysExitReq;
 extern MicquizHostState lbl_1_bss_F4;
 extern s16 lbl_1_data_3FC[6];
-extern HUPROCESS *lbl_1_bss_2A4[];
 extern s16 lbl_1_bss_48[6];
-extern MicquizAccessoryPoolEntry lbl_1_bss_98[];
 extern HUPROCESS *lbl_1_bss_2A4[5];
 extern MicquizAccessoryPoolEntry lbl_1_bss_98[6];
 
-extern MicquizPlayerWork lbl_1_bss_128[];
-extern s16 lbl_1_data_388[];
-extern char lbl_1_data_5F8[];
 extern u16 lbl_1_rodata_33C[5];
 extern u32 lbl_1_data_4B8[9];
 extern MicquizPlayerWork lbl_1_bss_128[5];
-extern s16 lbl_1_bss_20[20];
 
 extern s32 lbl_1_data_43C[6];
 extern s16 lbl_1_bss_CE;
@@ -119,10 +111,8 @@ extern s16 lbl_1_bss_D2[4];
 extern s16 lbl_1_bss_18A;
 extern s16 lbl_1_bss_8C;
 extern s16 lbl_1_bss_8E;
-extern u16 lbl_802C0008[4];
 int _prolog(void);
 void _epilog(void);
-void fn_1_220(OMOBJ *process);
 void fn_1_938(void);
 void fn_1_1EB4(void);
 s32 fn_1_45B0(s16 playerIndex);

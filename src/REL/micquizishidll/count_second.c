@@ -1,9 +1,5 @@
 /* Second counting round: objects under a fading light, the count answer and its check. */
 #include "msm_stream.h"
-#include "REL/micquizishidll/module_base.h"
-
-#include "REL/micquizishidll/process_manager.h"
-
 #include "math.h"
 
 #include "dolphin/gx.h"
@@ -50,88 +46,25 @@
 
 #include "datadir_enum.h"
 
-#include "REL/micquizishidll/micquizishidll_callback_views_v1.h"
-
 #include "dolphin/os.h"
-
-#include "REL/micquizishidll/micquizishidll_record_views_v1.h"
 
 #include "dolphin/types.h"
 
 #include "game/hu3d.h"
 
-#include "REL/micquizishidll/related_types.h"
-
 #include "game/printfunc.h"
-#include "REL/micquizishidll/micquizishidll_message_setup_views_v2.h"
+#include "REL/micquizishidll.h"
+
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
+void MicQuizCountdownInit(void);
+void MicQuizPauseInit(HUPROCESS *parentProcess);
 
 typedef struct {
     s32 firstValue;
     s32 secondValue;
     s32 thirdValue;
 } MicquizBoardEntry;
-
-typedef struct MicquizObjectWork_s {
-    s32 savedValue;
-    s32 currentValue;
-    u8 unknown_08[4]; /* No code names this field. */
-    HuVecF savedPosition;
-    HuVecF position;
-    u8 unknown_24[0xC]; /* No code names this field. */
-    HuVecF rotation;
-    s32 selectionId;
-    s32 initializedValue;
-    s32 state;
-    s32 ownerId;
-    s16 modelId;
-    s16 motionIds[4];
-} MicquizObjectWork;
-
-extern s32 lbl_1_bss_FC;
-
-extern f32 lbl_1_bss_8C;
-
-extern f32 lbl_1_bss_104;
-
-extern s16 micQuizGameMes;
-
-extern u32 lbl_1_bss_100;
-
-extern s32 lbl_1_bss_D40;
-
-extern s32 lbl_1_bss_8A0;
-
-extern s32 lbl_1_bss_8A4;
-
-extern s32 lbl_1_bss_8A8;
-
-extern s32 lbl_1_bss_8AC;
-
-extern s16 lbl_1_bss_A4;
-
-extern s16 lbl_1_bss_A2;
-
-extern s16 lbl_1_bss_A0;
-
-extern s16 lbl_1_bss_9C[3];
-
-extern s16 lbl_1_bss_D44;
-
-extern s16 lbl_1_bss_D4A;
-
-extern s16 lbl_1_bss_D46[2];
-
-extern s32 lbl_1_bss_90;
-
-extern s32 lbl_1_bss_98;
-
-extern s32 lbl_1_bss_20;
-
-extern s32 lbl_1_bss_24[0x14];
-
-extern MicQuizRecord lbl_1_bss_BB0[8][4];
-
-extern MicquizBoardEntry lbl_1_bss_8B0[8][8];
 
 s16 lbl_1_bss_D4A;
 s16 lbl_1_bss_D46[2];
@@ -144,28 +77,6 @@ s32 lbl_1_bss_8AC;
 s32 lbl_1_bss_8A8;
 s32 lbl_1_bss_8A4;
 s32 lbl_1_bss_8A0;
-
-extern OMOBJ *lbl_1_bss_AC[0x14];
-
-extern OMOBJ *lbl_1_bss_A8;
-
-extern OM_CAMERA_VIEW lbl_1_data_830;
-
-extern s32 lbl_1_data_794[5][3];
-
-extern Point3d lbl_1_data_80C;
-
-extern Point3d lbl_1_data_818;
-
-extern Point3d lbl_1_data_824;
-
-extern Vec lbl_1_data_850;
-
-extern Vec lbl_1_data_85C;
-
-extern u8 lbl_1_data_880[4];
-
-extern f32 lbl_1_data_898[];
 
 u8 lbl_1_data_778[0x1C] = { 0x00, 0xA4, 0x00, 0x7A, 0x00, 0xA4, 0x00, 0x7B, 0x00, 0xA4, 0x00, 0x7C,
         0x00, 0xA4, 0x00, 0x7D, 0x00, 0xA4, 0x00, 0x7E, 0x00, 0xA4, 0x00, 0x7F, 0x00, 0xA4, 0x00, 0x80 };
@@ -182,7 +93,7 @@ Vec lbl_1_data_850 = { 0.0f, 1000.0f, 50.0f };
 Vec lbl_1_data_85C = { 0.0f, 0.0f, -550.0f };
 Point3d lbl_1_data_868 = { 0.0f, 300.0f, 500.0f };
 Point3d lbl_1_data_874 = { 0.0f, 0.0f, -1000.0f };
-u8 lbl_1_data_880[4] = "";
+u8 lbl_1_data_880[4] = { 0, 0, 0, 0 };
 u8 lbl_1_data_884[0x14] = {
     0x44, 0x48, 0x00, 0x00, 0x44, 0x2F, 0x00, 0x00, 0x44, 0x16, 0x00, 0x00, 0x43, 0xFA, 0x00, 0x00,
     0x43, 0xC8, 0x00, 0x00
@@ -191,33 +102,18 @@ f32 lbl_1_data_898[6] = { 20.0f, 20.0f, 20.0f, 20.0f, 15.0f, 1.0f };
 
 s32 lbl_1_data_8B0 = -1;
 
-u8 MicQuizQuestionLevelGet(void);
-
-extern s32 MicQuizRandRange(s32, s32);
-
-void fn_1_2800(void);
-
 s32 fn_1_17974(void);
-
 void fn_1_17A88(void);
-
 void fn_1_17BC8(void);
-
-void fn_1_1833C(OMOBJ *);
-
-void MicQuizCountdownInit(void);
-
-s32 MicQuizCurrentPlayerGet(void);
-
-s32 MicQuizPortraitShow(s32);
-
-void MicQuizPauseInit(HUPROCESS *);
-
-s32 MicQuizMicContextSet(s32);
-
-/* Debug hook: release code ignores the value after evaluating the call. */
-static inline void DebugValue(s32 value) {
-}
+void fn_1_1833C(OMOBJ *object);
+void fn_1_18604(OMOBJ *object);
+s32 fn_1_18670(Vec *position, s32 motionType, s32 objectIndex);
+void fn_1_18858(void);
+void fn_1_18998(void);
+s32 fn_1_18A5C(void);
+s32 fn_1_18D3C(void);
+s32 fn_1_19280(void);
+void fn_1_19560(void);
 
 /* Sets up the second counting round: camera, spot light and shadow, the objects and their slots. */
 void fn_1_1706C(void) {
@@ -278,9 +174,9 @@ void fn_1_1706C(void) {
     while (index < 8) {
         slot = 0;
         while (slot < 4) {
-            lbl_1_bss_BB0[index][slot].word00 = -1;
-            lbl_1_bss_BB0[index][slot].word04 = -1;
-            lbl_1_bss_BB0[index][slot].word08 = -1;
+            lbl_1_bss_BB0[index][slot].motionType = -1;
+            lbl_1_bss_BB0[index][slot].objectIndex = -1;
+            lbl_1_bss_BB0[index][slot].placed = -1;
             slot += 1;
         }
         index += 1;
@@ -313,7 +209,7 @@ void fn_1_1706C(void) {
     MicQuizCountdownInit();
     MicQuizPortraitShow(MicQuizCurrentPlayerGet());
     MicQuizPauseInit(*lbl_1_bss_114);
-    DebugValue(MicQuizMicContextSet(0));
+    MicQuizMicContextSet(0);
     fn_8000DAC0(fn_1_17BC8, 0x64U, 0x1800U, 0, *lbl_1_bss_114);
     lbl_1_bss_20 = HuAudSStreamPlay(MSM_STREAM_QUESTION_MUSIC_SECOND);
 }
@@ -339,18 +235,12 @@ s32 fn_1_17974(void) {
     OSReport("Q Sel Error!!!!!!!!\n");
 }
 
-s32 MicQuizExpectedAnswerSet(s32);
-
-extern s32 lbl_1_bss_74;
-
-extern s32 lbl_1_bss_94;
-
 /* Counts the objects that make up the answer, reports it and records it. */
 void fn_1_17A88(void) {
     s32 answerCount;
     s32 index;
     answerCount = 0;
-    lbl_1_bss_94 = lbl_1_bss_74;
+    lbl_1_bss_94 = lbl_1_bss_74[0];
     switch (lbl_1_bss_98)
     {
     case 0 :
@@ -387,43 +277,9 @@ void fn_1_17BC8(void) {
     MicQuizResponseRun(0);
 }
 
-extern u32 lbl_1_data_3A4[6][4];
-
-extern s32 lbl_1_data_404[6];
-
-void fn_1_18604(OMOBJ *object);
-
-s32 fn_1_18670(Vec *position, s32 objectType, s32 motionData);
-
-extern s32 lbl_1_bss_110;
-
-extern u32 micQuizNpcAnswerMes[0x11];
-
-s32 MicQuizCountdownUpdate(void);
-
-void fn_1_18858(void);
-
-void fn_1_18998(void);
-
-s32 fn_1_18A5C(void);
-
-s32 fn_1_18D3C(void);
-
-s32 fn_1_19280(void);
-
-void fn_1_19560(void);
-
-void MicQuizQuestionReadySet(void);
-
-void MicQuizListenStart(void);
-
-s32 MicQuizResponseStateGet(void);
-
-void fn_1_83C(void);
-
 /* Runs the second counting round's mode steps: the question message, the light fade, the
    objects, the answer and the closing wipe. */
-void fn_1_17BEC(void) {
+void fn_1_17BEC(OMOBJ *object) {
     s32 index;
     MicquizObjectWork *work;
 
@@ -590,22 +446,22 @@ void fn_1_1833C(OMOBJ *object) {
         }
     }
 
-    work->initializedValue = 0;
-    work->selectionId = object->work[0];
-    work->ownerId = object->work[1];
+    work->currentMotion = 0;
+    work->motionType = object->work[0];
+    work->objectIndex = object->work[1];
     work->rotation.x = work->rotation.z = 0.0f;
     work->rotation.y = 0.0f;
     work->state = 0;
 
     fn_80026E44(work->modelId);
     fn_800269E8(work->modelId, ((1 << 30) | (1 << 0)));
-    positionResult = fn_1_18670(&work->position, object->work[0], work->ownerId);
-    if (work->selectionId == 4) {
+    positionResult = fn_1_18670(&work->position, object->work[0], work->objectIndex);
+    if (work->motionType == 4) {
         fn_800268B0(work->modelId, 0.5f, 0.5f, 0.5f);
     }
 
     work->savedPosition = work->position;
-    work->savedValue = work->currentValue;
+    work->initialFrames = work->remainingFrames;
     if (work->motionIds[0] != -1) {
         fn_8002C95C(work->modelId, work->motionIds[0]);
     }
@@ -619,11 +475,11 @@ void fn_1_1833C(OMOBJ *object) {
 
 /* Claims a free slot of a group for an object and returns 1, or returns 0 when the slot is
    taken. */
-s32 fn_1_18578(s32 groupIndex, s32 entryIndex, s32 word00, s32 word04) {
-    if (lbl_1_bss_BB0[groupIndex][entryIndex].word00 == -1) {
-        lbl_1_bss_BB0[groupIndex][entryIndex].word00 = word00;
-        lbl_1_bss_BB0[groupIndex][entryIndex].word04 = word04;
-        lbl_1_bss_BB0[groupIndex][entryIndex].word08 = 1;
+s32 fn_1_18578(s32 groupIndex, s32 entryIndex, s32 motionType, s32 objectIndex) {
+    if (lbl_1_bss_BB0[groupIndex][entryIndex].motionType == -1) {
+        lbl_1_bss_BB0[groupIndex][entryIndex].motionType = motionType;
+        lbl_1_bss_BB0[groupIndex][entryIndex].objectIndex = objectIndex;
+        lbl_1_bss_BB0[groupIndex][entryIndex].placed = 1;
         return 1;
     }
     return 0;
@@ -645,18 +501,8 @@ void fn_1_18604(OMOBJ *object) {
         work->rotation.z);
 }
 
-extern char lbl_1_data_1113;
-
-extern char lbl_1_data_1134;
-
-extern char lbl_1_data_1153;
-
-extern char lbl_1_data_116D;
-
-void fn_1_2788(OMOBJ *object, s32 motion, f32 scale, s32 attribute);
-
 /* Finds a random free place on the grid for an object and returns its position. */
-s32 fn_1_18670(Vec *position, s32 selectionId, s32 ownerId) {
+s32 fn_1_18670(Vec *position, s32 motionType, s32 objectIndex) {
     s32 row;
     s32 column;
     s32 slotClaimed;
@@ -665,10 +511,10 @@ s32 fn_1_18670(Vec *position, s32 selectionId, s32 ownerId) {
     do {
         row = frandmod(8);
         column = frandmod(4);
-        if (lbl_1_bss_BB0[row][column].word00 == -1) {
-            lbl_1_bss_BB0[row][column].word00 = selectionId;
-            lbl_1_bss_BB0[row][column].word04 = ownerId;
-            lbl_1_bss_BB0[row][column].word08 = 1;
+        if (lbl_1_bss_BB0[row][column].motionType == -1) {
+            lbl_1_bss_BB0[row][column].motionType = motionType;
+            lbl_1_bss_BB0[row][column].objectIndex = objectIndex;
+            lbl_1_bss_BB0[row][column].placed = 1;
             slotClaimed = 1;
         } else {
             slotClaimed = 0;
@@ -695,7 +541,7 @@ void fn_1_18858(void) {
         work = lbl_1_bss_AC[index]->data;
         switch (lbl_1_bss_98) {
         case 0:
-            if (work->selectionId != lbl_1_bss_94) {
+            if (work->motionType != lbl_1_bss_94) {
                 fn_800269E8(work->modelId, (1 << 0));
             } else {
                 fn_80026A44(work->modelId, (1 << 0));
@@ -705,7 +551,7 @@ void fn_1_18858(void) {
             fn_80026A44(work->modelId, (1 << 0));
             break;
         case 2:
-            if (work->selectionId == lbl_1_bss_94) {
+            if (work->motionType == lbl_1_bss_94) {
                 fn_800269E8(work->modelId, (1 << 0));
             } else {
                 fn_80026A44(work->modelId, (1 << 0));
@@ -735,9 +581,9 @@ void fn_1_18998(void)
     }
 }
 
-/* fn_1_18A5C: mechanical copy of fn_1_19280 in micquizishidll (96% alike), names and constants adapted by copier.py; to be placed in its file. */
-
-static inline void update_light_color_inlined(void) {
+/* Steps the light color toward 0 on every channel, sets the light's color and returns 1 once
+   every channel is 0. */
+s32 fn_1_18A5C(void) {
     f32 decrement;
     union {
         u32 packed;
@@ -770,11 +616,6 @@ static inline void update_light_color_inlined(void) {
     Hu3DGLightColorSet((s16)lbl_1_bss_D40, (u8)lbl_1_bss_8AC,
                        (u8)lbl_1_bss_8A8, (u8)lbl_1_bss_8A4,
                        (u8)lbl_1_bss_8A0);
-}
-
-/* Steps the light color fade and returns 1 once every channel has reached 0. */
-s32 fn_1_18A5C(void) {
-    update_light_color_inlined();
     if (lbl_1_bss_8AC == 0 && lbl_1_bss_8A8 == 0 &&
         lbl_1_bss_8A4 == 0 && lbl_1_bss_8A0 == 0) {
         return 1;
@@ -782,9 +623,8 @@ s32 fn_1_18A5C(void) {
     return 0;
 }
 
-extern f64 lbl_1_rodata_3C8;
-
-/* Steps the light color toward 0 on every channel and sets the light's color. */
+/* Steps the light color toward 0xFF on every channel, sets the light's color and returns 1 once
+   every channel is 0xFF. */
 s32 fn_1_18D3C(void) {
     f32 increment;
     union {
@@ -825,8 +665,31 @@ s32 fn_1_18D3C(void) {
     return 0;
 }
 
-/* Steps the light color toward 0xFF on every channel and sets the light's color. */
-static inline void update_light_color(void) {
+/* Debug control: moves the light with the second pad and prints its position. */
+void fn_1_1901C(void) {
+    lbl_1_data_85C.x += 2.0f * ((f32)(s8)lbl_802BFFF4[1] / 44.0f);
+    lbl_1_data_85C.z -= 2.0f * ((f32)(s8)lbl_802BFFF0[1] / 44.0f);
+    if (lbl_802C0010[1] & 4) {
+        lbl_1_data_850.y -= 5.0f;
+        if (lbl_1_data_850.y <= 0.0f) {
+            lbl_1_data_850.y = 0.0f;
+        }
+    }
+    if (lbl_802C0010[1] & 8) {
+        lbl_1_data_850.y += 5.0f;
+    }
+    Hu3DGLightPosAimSetV((s16)lbl_1_bss_D40, &lbl_1_data_850,
+        &lbl_1_data_85C);
+    fontcolor = 0xE;
+    print8(0x10, 0x58, 2.0f, "POS X:%.02f Y:%.02f Z:%.02f",
+        lbl_1_data_850.x, lbl_1_data_850.y, lbl_1_data_850.z);
+    print8(0x10, 0x68, 2.0f, "VEC X:%.02f Y:%.02f Z:%.02f",
+        lbl_1_data_85C.x, lbl_1_data_85C.y, lbl_1_data_85C.z);
+}
+
+/* Steps the light color toward 0xFF on every channel, sets the light's color and returns 1 once
+   every channel is 0xFF. */
+s32 fn_1_19280(void) {
     f32 increment;
     union {
         u32 packed;
@@ -859,36 +722,6 @@ static inline void update_light_color(void) {
     Hu3DGLightColorSet((s16)lbl_1_bss_D40, (u8)lbl_1_bss_8AC,
                        (u8)lbl_1_bss_8A8, (u8)lbl_1_bss_8A4,
                        (u8)lbl_1_bss_8A0);
-}
-
-extern char lbl_1_data_9C4[0x1C];
-
-/* Debug control: moves the light with the second pad and prints its position. */
-void fn_1_1901C(void) {
-    lbl_1_data_85C.x += 2.0f * ((f32)(s8)lbl_802BFFF4[1] / 44.0f);
-    lbl_1_data_85C.z -= 2.0f * ((f32)(s8)lbl_802BFFF0[1] / 44.0f);
-    if (lbl_802C0010[1] & 4) {
-        lbl_1_data_850.y -= 5.0f;
-        if (lbl_1_data_850.y <= 0.0f) {
-            lbl_1_data_850.y = 0.0f;
-        }
-    }
-    if (lbl_802C0010[1] & 8) {
-        lbl_1_data_850.y += 5.0f;
-    }
-    Hu3DGLightPosAimSetV((s16)lbl_1_bss_D40, &lbl_1_data_850,
-        &lbl_1_data_85C);
-    fontcolor = 0xE;
-    print8(0x10, 0x58, 2.0f, "POS X:%.02f Y:%.02f Z:%.02f",
-        lbl_1_data_850.x, lbl_1_data_850.y, lbl_1_data_850.z);
-    print8(0x10, 0x68, 2.0f, lbl_1_data_9C4,
-        lbl_1_data_85C.x, lbl_1_data_85C.y, lbl_1_data_85C.z);
-}
-char lbl_1_data_9C4[0x1C] = "VEC X:%.02f Y:%.02f Z:%.02f";
-
-/* Steps the light color fade and returns 1 once every channel has reached 0xFF. */
-s32 fn_1_19280(void) {
-    update_light_color();
     if (lbl_1_bss_8AC == 0xFF && lbl_1_bss_8A8 == 0xFF &&
         lbl_1_bss_8A4 == 0xFF && lbl_1_bss_8A0 == 0xFF) {
         return 1;

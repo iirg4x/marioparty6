@@ -1,8 +1,4 @@
 /* Mix quiz: the cast models, mic answers that step through the cast, and the quiz's end. */
-#include "REL/micquizishidll/micquizishidll_wipe_input_views_v2.h"
-
-#include "REL/micquizishidll/module_base.h"
-
 #include "game/window.h"
 
 #include "dolphin/os.h"
@@ -57,17 +53,8 @@
 
 #include "datadir_enum.h"
 
-#include "REL/micquizishidll/related_types.h"
-
-#include "REL/micquizishidll/process_manager.h"
-
-#include "REL/micquizishidll/micquizishidll_memory_button_views_v1.h"
-
-#include "REL/micquizishidll/micquizishidll_menu_callback_views_v1.h"
-
-#include "REL/micquizishidll/micquizishidll_message_setup_views_v2.h"
-#include "REL/micquizishidll.h"
 #include <game/mic.h>
+#include "REL/micquizishidll.h"
 
 typedef struct MotionFiles {
     s32 fileIds[4];
@@ -121,10 +108,34 @@ Vec lbl_1_data_25BC[6][3] = { { { -75.0f, 0.0f, -150.0f }, { 75.0f, 0.0f, -150.0
 u8 lbl_1_data_2694[0x48] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF,
         0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x0A, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-extern HU3D_MODELID lbl_1_bss_1C54[6];
-extern HU3D_MODELID lbl_1_bss_1CB0[10];
+void fn_1_301DC(void);
+void fn_1_3066C(s32 showWindows, s32 moveForward);
+void fn_1_30FD8(s32 argument);
+s32 fn_1_31548(s32 mode);
+void fn_1_31C50(s32 playerNo, s32 motionNo, f32 startTime, u32 attr);
+void fn_1_31D20(s32 playerNo, s32 motionNo, f32 startTime, u32 attr);
+void fn_1_31DF0(void);
+void fn_1_31F4C(void);
+void fn_1_31FA0(s32 playerId);
+s32 fn_1_3232C(void);
+void fn_1_32470(void);
+void fn_1_325D8(void);
+void fn_1_32664(void);
+void fn_1_326F0(void);
+void fn_1_32724(void);
+void fn_1_3275C(void);
+extern MicquizResponse *lbl_1_bss_1C00;
+extern s32 lbl_1_bss_1C04;
+extern s32 lbl_1_bss_1C08;
+extern s16 lbl_1_bss_1C0C[3];
+extern s16 lbl_1_bss_1C12[2];
+extern s16 lbl_1_bss_1C16;
+extern s32 lbl_1_bss_1C18[3];
 extern MotionPair lbl_1_bss_1C24[6];
+extern HU3D_MODELID lbl_1_bss_1C54[6];
 extern MotionPair lbl_1_bss_1C60[10];
+extern HU3D_MODELID lbl_1_bss_1CB0[10];
+extern s32 lbl_1_bss_1CC4;
 
 /* Waits for START, then sets the mode to 2, starts the closing wipe and ends this process. */
 void fn_1_2F83C(void) {
@@ -139,54 +150,6 @@ void fn_1_2F83C(void) {
         HuPrcVSleep();
     }
 }
-
-void fn_1_301DC(void);
-
-void fn_1_3066C(s32, s32);
-
-void fn_1_30FD8(s32);
-
-void fn_1_31DF0(void);
-
-void fn_1_31F4C(void);
-
-void fn_1_326F0(void);
-
-extern f32 lbl_1_bss_104;
-
-extern HUPROCESS *lbl_1_bss_114[0xB];
-
-extern s32 lbl_1_bss_1C04;
-
-extern s32 lbl_1_bss_1C08;
-
-extern s32 lbl_1_bss_FC;
-
-extern s16 lbl_1_bss_9C[2];
-
-extern s16 lbl_1_bss_1C0C[3];
-
-extern s16 lbl_1_bss_1C12[2];
-
-extern s16 lbl_1_bss_1C16;
-
-extern s32 lbl_1_bss_1CC4;
-
-extern s32 lbl_1_bss_110;
-
-extern s16 lbl_1_bss_A0;
-
-extern s16 lbl_1_bss_A2;
-
-extern s16 lbl_1_bss_A4;
-
-extern OMOBJ *lbl_1_bss_A8;
-
-extern u8 lbl_1_data_488[4];
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
 
 /* Sets up the mix quiz scene: camera, lights and shadow, the scene objects and the
    /mic/ctx/micquiz_mix context. */
@@ -272,7 +235,7 @@ void fn_1_2F890(void) {
 
 /* Runs the mix quiz's mode steps: after the opening wipe starts the quiz processes, and at the
    end closes the mic selection window and the mic. */
-void fn_1_2FFA4(void) {
+void fn_1_2FFA4(OMOBJ *object) {
     switch (lbl_1_bss_FC) {
     case 0:
         if (WipeCheck() == 0) {
@@ -366,12 +329,6 @@ void fn_1_302A0(void) {
            lbl_80266A58[0].z);
     print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
 }
-
-extern s32 lbl_1_bss_1C18[3];
-
-void fn_1_31C50(s32 playerNo, s32 motionNo, f32 startTime, u32 attr);
-
-void fn_1_31D20(s32 playerNo, s32 motionNo, f32 startTime, u32 attr);
 
 /* Animates the cast models while the cast changes, forward or backward, hiding the message
    windows first when asked. */
@@ -763,11 +720,6 @@ void fn_1_31D20(s32 playerNo, s32 motionNo, f32 startTime, u32 attr) {
     }
 }
 
-void fn_1_31FA0(s32 playerId);
-s32 fn_1_3232C(void);
-void fn_1_325D8(void);
-void fn_1_32664(void);
-
 /* The quiz loop: reads each mic answer and moves the cast forward or back, until the quiz is
    left through a wipe. */
 void fn_1_31DF0(void) {
@@ -921,18 +873,6 @@ void fn_1_31FA0(s32 playerId) {
     MicQuizMicHudStateSet(0);
     HuPrcSleep(0x3C);
 }
-
-extern void fn_1_32470(void);
-
-typedef struct MicquizResponse {
-    s16 result;
-    u16 score;
-    s16 wordCount;
-    s16 *words;
-    s32 recognizedWord;
-} MicquizResponse;
-
-extern MicquizResponse *lbl_1_bss_1C00;
 
 /* Opens a mic selection, waits for the choice and returns the recognized response. */
 s32 fn_1_3232C(void) {

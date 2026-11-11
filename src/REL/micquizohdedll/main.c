@@ -15,8 +15,7 @@
 
 #include "game/object.h"
 
-#include "REL/micquizohdedll/module_types.h"
-#include "REL/micquizohdedll/shared_types.h"
+#include "REL/micquizohdedll.h"
 
 #include "game/main.h"
 
@@ -95,11 +94,10 @@
 #include "game/board/masu.h"
 #include "REL/micquiz/quiz_common.h"
 
-typedef struct MicquizSpriteData MicquizSpriteData;
-struct MicquizSpriteData {
-    struct MicquizScreenPosition positions[4];
-    u32 unknown_20[16]; /* No code names this field. */
-};
+void fn_1_548(OMOBJ *obj);
+void fn_1_558(OMOBJ *obj);
+void fn_1_6D8(void);
+
 MicquizBss60Storage lbl_1_bss_60;
 OMOBJ * lbl_1_bss_5C;
 MicquizBss48Storage lbl_1_bss_48;
@@ -108,88 +106,21 @@ OMOBJ * lbl_1_bss_40;
 f32 lbl_1_bss_3C;
 MicquizBss28Storage lbl_1_bss_28;
 s16 lbl_1_bss_24;
-MicQuizResponseStorage lbl_1_bss_1C;
+MicquizResponseStorage lbl_1_bss_1C;
 f32 micQuizPauseBgScroll;
 ANIMDATA * micQuizPauseBgAnim;
 HUPROCESS * micQuizMicPulseProc;
 HUPROCESS * micQuizIndicatorSwingProc;
-struct MicquizResponse *micQuizResponse;
+MicquizResponse *micQuizResponse;
 s32 micQuizTimeoutHandled;
 HUPROCESS * micQuizRingProc;
 
-extern s32 lbl_1_data_388[0x36];
-extern Point3d lbl_1_data_460;
-extern Point3d lbl_1_data_46C;
-extern GXColor lbl_1_data_478;
 /* Camera view followed by initialized words with unknown meaning. */
 typedef struct MicquizCameraData MicquizCameraData;
 struct MicquizCameraData {
     OM_CAMERA_VIEW camera;
     u32 unknown_1C[9]; /* No code names this field. */
 };
-extern MicquizCameraData lbl_1_data_47C;
-
-void fn_1_2118(s16 layerNo);
-
-void fn_1_6C90(void);
-
-void fn_1_6DE4(void);
-
-void fn_1_7380(void);
-
-void fn_1_7740(void);
-
-void fn_1_6F38(void);
-
-void fn_1_707C(void);
-
-void fn_1_7684(void);
-
-void fn_1_7C28(void);
-
-void fn_1_7F34(void);
-
-void fn_1_81CC(void);
-
-void fn_1_53F0(void);
-
-void fn_1_8E1C(void);
-
-void fn_1_8F74(void);
-
-void fn_1_8BAC(void);
-
-void fn_1_12A6C(s32 mode);
-
-s32 fn_1_367CC(s32 *player);
-
-/* Positions and offsets separated by bytes with unknown meaning. */
-typedef struct Position {
-    HuVecF position;
-    unsigned char unknown_0C[12]; /* No code names this field. */
-    HuVecF offset;
-} Position;
-
-/* Start the quiz process and select its active camera. */
-static inline void startMicquizProcess(OMOBJMAN *parent) {
-    f32 perspective;
-    f32 field10;
-    f32 fieldC;
-    s32 camera;
-    s32 matchedBit;
-
-    micQuizPauseProc = fn_8000DAC0(MicQuizPauseWatch, -0x218, 0x2000, 0, fn_8000DD9C());
-    HuPrcSetStat(micQuizPauseProc, 0xC);
-    micQuizModeWork->pauseAllowed = 0;
-    for (camera = 0; camera < 0x10; camera++) {
-        fn_80027D8C(1 << camera, &perspective, &field10, &fieldC);
-        if (-1.0f != perspective) {
-            matchedBit = 1 << camera;
-        }
-    }
-    micQuizPauseCameraBit = matchedBit;
-    micQuizParentProc = parent;
-}
 
 /* Initialized word with unknown meaning. */
 u32 gap_04_00000384_data = 0xFFFFFFFF;
@@ -248,7 +179,7 @@ void ObjectSetup(void) {
     lbl_1_bss_40->work[0] = 0;
     lbl_1_bss_5C = object;
     MicQuizHudCreate();
-    startMicquizProcess(lbl_1_bss_60.value);
+    MicQuizPauseInit(lbl_1_bss_60.value);
     if (micQuizModeWork != 0) {
         lbl_1_data_388[0] = micQuizModeWork->randomEnabled;
         lbl_1_bss_28.value = micQuizModeWork->mode0Option;
@@ -260,14 +191,8 @@ void fn_1_548(OMOBJ *obj)
     obj->objFunc = fn_1_558;
 }
 
-void fn_1_12D08(void);
-
-void fn_1_1D4AC(OMOBJ *obj);
-
 /* Advance quiz startup and begin the exit wipe when requested. */
 void fn_1_558(OMOBJ *obj) {
-    u8 activeMode;
-
     if (omSysExitReq != 0) {
         if (lbl_1_data_4BC != -1) {
             HuAudSStreamFadeOut(lbl_1_data_4BC, 0x1F4);
@@ -279,8 +204,7 @@ void fn_1_558(OMOBJ *obj) {
 
     switch (obj->work[0]) {
     case 0:
-        activeMode = micQuizModeWork->questionColumn;
-        if (activeMode == 0) {
+        if (MicQuizQuestionColumnGet() == 0) {
             obj->work[0] = 2;
         } else {
             obj->work[0] = 2;

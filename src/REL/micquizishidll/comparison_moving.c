@@ -58,134 +58,16 @@
 
 #include "msm_se.h"
 
-#include "REL/micquizishidll/shared_types.h"
-
-#include "REL/micquizishidll/micquizishidll_callback_views_v1.h"
-
 #include <dolphin/mtx.h>
 
 #include <string.h>
+#include "REL/micquizishidll.h"
 
-void fn_1_229E0(void);
-
-void fn_1_239D4(OMOBJ *object);
-
-void fn_1_23878(void);
-
-void fn_1_245FC(OMOBJ *object, Vec *position, Vec *velocity, s32 side, f32 travel,
-                f32 velocityScale);
-
-void fn_1_24248(Vec *position, Vec *velocity, s32 side, f32 travel, f32 velocityScale);
-
-void fn_1_23E44(OMOBJ *object);
-
-void fn_1_24A68(void *source, HuVecF *position, s32 mode, s32 index);
-
-/* The release debug hook evaluates its argument without retaining it. */
-static inline void DebugValue(s32 value) { }
-
-s32 fn_1_259E8(Vec *position0, f32 radius0, Vec *position1, f32 radius1);
-
-void fn_1_25A90(void);
-
-void fn_1_252CC(void);
-
-void fn_1_25368(void);
-
-void fn_1_24FA4(void);
-
-s32 fn_1_262D4(s32 effectIndex, s32 blendMode);
-
-void fn_1_26438(f32 positionX, f32 positionY, f32 positionZ, s32 modelIndex, f32 rotationY);
-
-s16 fn_1_26168(ANIMDATA *animation, s32 blendMode, s32 alternatePosition);
-
-void fn_1_26558(HU3D_MODEL *model, HU3D_PARTICLE *particleData, Mtx matrix);
-
-typedef struct MicQuizModelPair {
-    s16 firstModelId;
-    s16 secondModelId;
-} MicQuizModelPair;
-
-extern s16 lbl_1_bss_18BC[2];
-
-extern s16 lbl_1_bss_18C2[2];
-
-extern s16 lbl_1_bss_18C6[2];
-
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
 void MicQuizCountdownInit(void);
-
-u8 MicQuizQuestionLevelGet(void);
-
-extern s32 lbl_1_bss_100;
-
-extern s32 lbl_1_bss_110;
-
-extern s32 lbl_1_bss_20;
-
-extern f32 lbl_1_bss_104;
-
-extern f32 lbl_1_bss_8C;
-
-extern u32 lbl_1_bss_FC;
-
-extern HUPROCESS *lbl_1_bss_114[0xB];
-
-extern s32 lbl_1_bss_1820[2];
-
-extern ANIMDATA *lbl_1_bss_1830[2];
-
-extern s32 lbl_1_bss_1840;
-
-extern OMOBJ *lbl_1_bss_1844[2][12];
-
-extern s16 lbl_1_bss_18A4;
-
-extern s16 lbl_1_bss_18A6;
-
-extern ANIMDATA *lbl_1_bss_18A8;
-
-extern s32 lbl_1_bss_18AC[2];
-
-extern s16 lbl_1_bss_18B4[2];
-
-extern s16 lbl_1_bss_18B8[2];
-
-extern s16 lbl_1_bss_18C0;
-
-extern s16 lbl_1_bss_18CA;
-
-extern s16 lbl_1_bss_9C[2];
-
-extern s16 lbl_1_bss_A0;
-
-extern s16 lbl_1_bss_A4;
-
-extern OMOBJ *lbl_1_bss_A8;
-
-extern OM_CAMERA_VIEW lbl_1_data_1714;
-
-extern Point3d lbl_1_data_1730;
-
-extern Point3d lbl_1_data_173C;
-
-extern Point3d lbl_1_data_1748;
-
-extern s32 lbl_1_data_17E4[2];
-
-extern s32 lbl_1_data_17EC[5];
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
-
-extern u8 lbl_1_data_488[4];
-
-void MicQuizExpectedAnswerSet(s32);
-
-void MicQuizPauseInit(HUPROCESS *);
-
-void fn_1_255E8(void);
+void MicQuizExpectedAnswerSet(s32 expectedAnswer);
+void MicQuizPauseInit(HUPROCESS *parentProcess);
 
 u8 lbl_1_data_16F8[0x1C] = { 0x00, 0xA4, 0x00, 0x7A, 0x00, 0xA4, 0x00, 0x7B, 0x00, 0xA4, 0x00, 0x7C,
         0x00, 0xA4, 0x00, 0x7D, 0x00, 0xA4, 0x00, 0x7E, 0x00, 0xA4, 0x00, 0x7F, 0x00, 0xA4, 0x00, 0x80 };
@@ -201,6 +83,42 @@ HuVecF lbl_1_data_1754[12] = { { -130.0f, 150.0f, -200.0f }, { 130.0f, 150.0f, -
 s32 lbl_1_data_17E4[2] = { 0xA40068, 0xA40069 };
 s32 lbl_1_data_17EC[5] = { 4, 6, 8, 10, 12 };
 s32 lbl_1_data_1800[5] = { 1, 2, 3, 4, 5 };
+
+void fn_1_23878(void);
+void fn_1_239D4(OMOBJ *object);
+void fn_1_23E44(OMOBJ *object);
+void fn_1_24248(Vec *position, Vec *velocity, s32 side, f32 travel, f32 velocityScale);
+void fn_1_245FC(OMOBJ *object, Vec *, Vec *, s32 side, f32, f32 velocityScale);
+void fn_1_24A68(void *source, HuVecF *position, s32 mode, s32 index);
+void fn_1_24FA4(void);
+void fn_1_252CC(void);
+void fn_1_25368(void);
+void fn_1_25524(void);
+void fn_1_255E8(void);
+s32 fn_1_259E8(Vec *position0, f32 radius0, Vec *position1, f32 radius1);
+void fn_1_25A90(void);
+void fn_1_25DF4(void);
+s16 fn_1_26168(ANIMDATA *animation, s32 blendMode, s32 alternatePosition);
+s32 fn_1_262D4(s32 effectIndex, s32 blendMode);
+void fn_1_26438(f32 positionX, f32 positionY, f32 positionZ, s32 modelIndex, f32 rotationY);
+void fn_1_26558(HU3D_MODEL *model, HU3D_PARTICLE *particleData, Mtx matrix);
+extern s32 lbl_1_bss_1820[2];
+extern s16 lbl_1_bss_182A[2];
+extern ANIMDATA *lbl_1_bss_1830[2];
+extern s32 lbl_1_bss_1840;
+extern OMOBJ *lbl_1_bss_1844[2][12];
+extern s16 lbl_1_bss_18A4;
+extern s16 lbl_1_bss_18A6;
+extern ANIMDATA *lbl_1_bss_18A8;
+extern s32 lbl_1_bss_18AC[2];
+extern s16 lbl_1_bss_18B4[2];
+extern s16 lbl_1_bss_18B8[2];
+extern s16 lbl_1_bss_18BC[2];
+extern s16 lbl_1_bss_18C0;
+extern s16 lbl_1_bss_18C2[2];
+extern s16 lbl_1_bss_18C6[2];
+extern s16 lbl_1_bss_18CA;
+extern HU3D_PARMAN_PARAM lbl_1_data_194C[1];
 
 /* Sets up the comparison round: picks the left and right answers, creates the camera, lights and
    models, and reports which side is correct. */
@@ -614,23 +532,9 @@ void fn_1_24A68(void *source, HuVecF *position, s32 mode, s32 index) {
     position->z = baseOffset.z + lbl_1_data_1754[index].z;
 }
 
-void MicQuizQuestionReadySet(void);
-
-void MicQuizListenStart(void);
-
-s32 MicQuizCountdownUpdate(void);
-
-void fn_1_235C(void);
-
-extern s16 micQuizGameMes;
-
-void fn_1_25524(void);
-
-s32 MicQuizResponseStateGet(void);
-
 /* Runs the comparison round's mode steps: the question message, the objects, the answer, and the
    closing wipe. */
-void fn_1_24B40(void) {
+void fn_1_24B40(OMOBJ *object) {
     MicQuizCountdownUpdate();
 
     switch (lbl_1_bss_FC) {
@@ -736,17 +640,6 @@ typedef struct QuizAnimationProcess {
     u32 animationSelection;
 } QuizAnimationProcess;
 
-extern char lbl_1_data_18A8[];
-
-extern char lbl_1_data_18AE[];
-
-extern char lbl_1_data_18A8[6];
-
-extern char lbl_1_data_18AE[5];
-
-char lbl_1_data_18A8[6] = "10fig";
-char lbl_1_data_18AE[5] = "1fig";
-
 /* Shows the result: switches the counter models' animation banks and swings them. */
 void fn_1_24FA4(void) {
     QuizAnimationProcess *process;
@@ -780,9 +673,9 @@ void fn_1_24FA4(void) {
         model = fn_80025D4C(lbl_1_bss_18A4);
         fn_80026A44(model, 1);
         scaleAnimation = fn_80030B2C(lbl_1_bss_18A8, model,
-                                        lbl_1_data_18A8);
+                                        "10fig");
         textureAnimation = fn_80030B2C(lbl_1_bss_18A8, model,
-                                          lbl_1_data_18AE);
+                                          "1fig");
         majorBank = majorSelection / 10;
         minorBank = majorSelection - (majorBank * 10);
         Hu3DAnimBankSet(scaleAnimation, majorBank);
@@ -791,7 +684,7 @@ void fn_1_24FA4(void) {
         model = fn_80025D4C(lbl_1_bss_18A6);
         fn_80026A44(model, 1);
         textureAnimation = fn_80030B2C(lbl_1_bss_18A8, model,
-                                          lbl_1_data_18AE);
+                                          "1fig");
         Hu3DAnimBankSet(textureAnimation, majorSelection);
     }
 
@@ -894,10 +787,6 @@ s32 fn_1_2548C(void) {
     return 1;
 }
 
-typedef signed short s16;
-
-typedef float f32;
-
 void fn_1_25524(void)
 {
     HuVecF positions[2];
@@ -923,22 +812,6 @@ void fn_1_255E8(void) {
     MicQuizResponseRun(5);
 }
 
-extern char lbl_1_data_18B3[];
-
-extern char lbl_1_data_18D2[];
-
-extern char lbl_1_data_18EF[];
-
-extern char lbl_1_data_18B3[31];
-
-extern char lbl_1_data_18D2[29];
-
-extern char lbl_1_data_18EF[13];
-
-char lbl_1_data_18B3[31] = "Center X:%.02f Y:%.02f Z:%.02f";
-char lbl_1_data_18D2[29] = "CRot X:%.02f Y:%.02f Z:%.02f";
-char lbl_1_data_18EF[13] = "CZoom:%.02f";
-
 /* Debug view: prints the camera's center, rotation and zoom in a window. */
 void fn_1_2560C(void) {
     GXColor windowColor;
@@ -961,11 +834,11 @@ void fn_1_2560C(void) {
 
     printWin(0x10, 0x28, 0xF0, 0x54, &windowColor);
     fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, lbl_1_data_18B3, lbl_80266B18[0].x, lbl_80266B18[0].y,
+    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
            lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, lbl_1_data_18D2, lbl_80266A58[0].x, lbl_80266A58[0].y,
+    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
            lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, lbl_1_data_18EF, lbl_80266BD8[0]);
+    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
 }
 
 /* Returns 1 when two spheres overlap. */
@@ -982,8 +855,6 @@ s32 fn_1_259E8(Vec *position0, f32 radius0, Vec *position1, f32 radius1) {
     }
     return 0;
 }
-
-void fn_1_25DF4(void);
 
 /* Moves the answer model in with a sine swing, starts its effect and ends this process. */
 void fn_1_25A90(void) {
@@ -1053,6 +924,7 @@ void fn_1_25A90(void) {
     }
 }
 
+/* Stores a selection and its slot in a process's property word, selection in the high half. */
 static inline void SetProcessProperty(HUPROCESS *process, u8 selection, u16 slot) {
     process->property = (void *)((selection << 16) | slot);
 }
@@ -1131,10 +1003,6 @@ void fn_1_25DF4(void) {
     }
 }
 
-extern HU3D_PARMAN_PARAM lbl_1_data_18FC[];
-
-extern HU3D_PARMAN_PARAM lbl_1_data_194C[];
-
 HU3D_PARMAN_PARAM lbl_1_data_18FC[1] = { { 30, 0, 3.3f, 120.0f, 7.0f, { 0.0f, -0.05f, 0.0f }, 2.0f,
         1.0f, 30.0f, 0.98f, 2, { { 255, 255, 255, 255 }, { 255, 255, 64, 255 }, { 0, 0, 0, 0 },
                 { 0, 0, 0, 0 } }, { { 255, 128, 128, 0 }, { 255, 64, 32, 0 }, { 0, 0, 0, 0 },
@@ -1171,7 +1039,6 @@ s16 fn_1_26168(ANIMDATA *animation, s32 blendMode, s32 alternatePosition) {
     Hu3DParManPosSet(particleManager, position.x, position.y, position.z);
     return particleManager;
 }
-extern s16 lbl_1_bss_182A[2];
 
 /* Creates the given effect model and starts it. */
 s32 fn_1_262D4(s32 effectIndex, s32 blendMode) {
@@ -1274,8 +1141,6 @@ void fn_1_26558(HU3D_MODEL *model, HU3D_PARTICLE *particleData, Mtx matrix) {
         particle += 1;
     }
 }
-
-extern u8 lbl_1_bss_1828[0x2];
 
 s16 lbl_1_bss_18CA;
 s16 lbl_1_bss_18C6[2];

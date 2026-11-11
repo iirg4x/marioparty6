@@ -837,7 +837,7 @@ void fn_1_3588(void) {
     }
 }
 
-/* fn_1_38D4: mechanical copy of fn_1_2EA4 in m661dll (100% alike), names and constants adapted by copier.py; to be placed in its file. */
+/* Moves *value one step of (end - start) / step toward end and returns the frames left; once it has gone as far as end, it sets *value to end and returns 0. */
 
 s32 fn_1_38D4(f32 *value, f32 step, f32 start, f32 end)
 {

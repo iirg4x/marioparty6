@@ -1,5 +1,4 @@
 /* Microphone quiz model animation, screen effects, and response handling. */
-#include "REL/micquizohdedll/shared_types.h"
 #include "game/hu3d.h"
 #include "math.h"
 #include "msm_stream.h"
@@ -13,8 +12,6 @@
 #include "dolphin/mtx.h"
 
 #include "string.h"
-
-#include "REL/micquizohdedll/sequence_context.h"
 
 #include "game/main.h"
 
@@ -58,13 +55,13 @@
 
 #include "humath.h"
 
-#include "REL/micquizohdedll/micquizishidll_callback_views_v1.h"
-
 #include "messdir_enum.h"
 
 #include "game/window.h"
 
 #include "game/process.h"
+
+#include "game/init.h"
 
 #include "game/flag.h"
 
@@ -87,12 +84,7 @@
 #include "game/board/masu.h"
 
 #include "game/board/player.h"
-
-typedef struct Position {
-    HuVecF position;
-    unsigned char unknown_0C[12]; /* No code names this field. */
-    HuVecF offset;
-} Position;
+#include "REL/micquizohdedll.h"
 
 typedef struct MicquizOverlayRGB {
     s32 red;
@@ -100,9 +92,100 @@ typedef struct MicquizOverlayRGB {
     s32 blue;
 } MicquizOverlayRGB;
 
-extern char lbl_1_data_6D0[];
+void fn_1_138E0(void);
+void fn_1_144B0(void);
+void fn_1_195DC(s16 unused);
+void fn_1_19AE4(s16 layerNo);
+void fn_1_19B24(s16 level);
+void fn_1_1A550(s16 layerNo);
+void fn_1_1AA0C(s16 unused);
+void fn_1_1ADAC(void);
+void fn_1_1AED4(void);
+void fn_1_1AED8(s16 layerNo);
+void fn_1_1BD68(void *hookContext, f32 (*positionMatrix)[4]);
+void fn_1_1C088(HU3D_MODEL *model, f32 (*positionMatrix)[4]);
+void fn_1_1D488(void);
 
-extern char lbl_1_data_6D9[];
+/* Quiz animation and transition state. */
+ANIMDATA *lbl_1_bss_590;
+f32 lbl_1_bss_58C;
+s32 lbl_1_bss_588;
+s32 lbl_1_bss_584;
+s16 lbl_1_bss_580;
+s16 lbl_1_bss_57E;
+s16 lbl_1_bss_57C;
+s16 lbl_1_bss_57A;
+s16 lbl_1_bss_578;
+s16 lbl_1_bss_570[4];
+s16 lbl_1_bss_56E;
+s16 lbl_1_bss_56C;
+void *lbl_1_bss_568;
+u16 * lbl_1_bss_564;
+void *lbl_1_bss_55C[2];
+s32 lbl_1_bss_558;
+f32 lbl_1_bss_554;
+s32 lbl_1_bss_550;
+s32 lbl_1_bss_54C;
+s32 lbl_1_bss_548;
+s32 lbl_1_bss_544;
+s32 lbl_1_bss_540;
+s32 lbl_1_bss_53C;
+s32 lbl_1_bss_538;
+s32 lbl_1_bss_534;
+s32 lbl_1_bss_530;
+u32 lbl_1_bss_52C;
+s16 lbl_1_bss_528;
+s16 lbl_1_bss_526;
+s16 lbl_1_bss_524;
+s16 lbl_1_bss_522;
+s16 lbl_1_bss_516[6];
+s16 lbl_1_bss_514;
+MicquizCameraState lbl_1_bss_414[8];
+GXTexObj lbl_1_bss_3F4;
+GXTexObj lbl_1_bss_3D4;
+GXTexObj lbl_1_bss_3B4;
+s32 lbl_1_bss_38C[0xA];
+f32 lbl_1_bss_388;
+s32 lbl_1_bss_384;
+f32 lbl_1_bss_380;
+MicquizBss370Storage lbl_1_bss_370;
+s32 lbl_1_bss_36C;
+s32 lbl_1_bss_368;
+s32 lbl_1_bss_364;
+f32 lbl_1_bss_360;
+f32 lbl_1_bss_35C;
+s32 lbl_1_bss_358;
+f32 lbl_1_bss_354;
+f32 lbl_1_bss_350;
+s32 lbl_1_bss_33C[5];
+MicquizBss334Storage lbl_1_bss_334;
+s32 lbl_1_bss_330;
+s32 lbl_1_bss_32C;
+s32 lbl_1_bss_328;
+
+f32 lbl_1_data_530 = 1.0f;
+s16 lbl_1_data_534 = -1;
+s16 lbl_1_data_536 = -1;
+s16 lbl_1_data_538 = -1;
+s16 lbl_1_data_53A = -1;
+OM_CAMERA_VIEW lbl_1_data_53C[2] = { { { 0.0f, 57.0f, 0.7f }, { -8.0f, 0.0f, 0.0f }, 800.0f },
+                                     { { 0.0f, 57.0f, 0.7f }, { -6.0f, 0.0f, 0.0f }, 750.0f } };
+s32 lbl_1_data_574[5] = { 10, 20, 30, 40, 50 };
+s32 lbl_1_data_588[0x16] = {
+    0x8E0000, 0x360000, 0xC00000, 0xF30000, 0xEC0000, 0x140000, 0xE60000, 0x300000,
+    0xCF0000, 0xA80000, 0x2A0000, 0x930000, 0x3B0000, 0xC50000, 0xF80000, 0xF10000,
+    0x190000, 0xEB0000, 0x350000, 0xD40000, 0xBC0000, 0x2F0000
+};
+Point3d lbl_1_data_5E0[0xE] = { { 0.0f, 0.0f, 0.0f },     { 0.0f, -19.0f, 0.0f },
+                                { 0.0f, -40.0f, -14.0f }, { 0.0f, -11.0f, -25.0f },
+                                { 0.0f, 5.0f, -17.0f },   { 0.0f, -36.0f, -14.0f },
+                                { 0.0f, -53.0f, -31.0f }, { 0.0f, 36.0f, -2.0f },
+                                { 0.0f, 35.5f, -30.0f },  { 0.0f, 48.0f, -36.0f },
+                                { 0.0f, 36.0f, -2.0f },   { 0.0f, 48.0f, -36.0f },
+                                { 0.0f, 48.0f, -36.0f },  { 0.0f, 48.0f, -36.0f } };
+Point3d lbl_1_data_688[6] = { { 20.0f, 61.0f, -25.0f },  { -138.0f, 58.0f, -25.0f },
+                              { 40.0f, 50.0f, -25.0f },  { 60.0f, 22.0f, -25.0f },
+                              { -21.0f, 42.5f, -25.0f }, { 0.0f, 103.0f, -25.0f } };
 
 /* Adjust the two cameras from controller input. */
 void fn_1_12578(void) {
@@ -135,13 +218,13 @@ void fn_1_12578(void) {
         }
         fontcolor = color;
         print8(0x40 + index * 2, 0x188 + index * 2,
-               2.0f, lbl_1_data_6D0,
+               2.0f, "%f,%f,%f",
                lbl_80266B18->x, lbl_80266B18->y, lbl_80266B18->z);
         print8(0x40 + index * 2, 0x198 + index * 2,
-               2.0f, lbl_1_data_6D0,
+               2.0f, "%f,%f,%f",
                lbl_80266A58->x, lbl_80266A58->y, lbl_80266A58->z);
         print8(0x40 + index * 2, 0x1A8 + index * 2,
-               2.0f, lbl_1_data_6D9, lbl_80266BD8[0]);
+               2.0f, "%f", lbl_80266BD8[0]);
     }
 }
 
@@ -155,52 +238,6 @@ s32 fn_1_12960(void) {
     }
     return 0;
 }
-
-f32 lbl_1_data_530 = 1.0f;
-s16 lbl_1_data_534 = -1;
-s16 lbl_1_data_536 = -1;
-s16 lbl_1_data_538 = -1;
-s16 lbl_1_data_53A = -1;
-OM_CAMERA_VIEW lbl_1_data_53C[2] = { { { 0.0f, 57.0f, 0.7f }, { -8.0f, 0.0f, 0.0f }, 800.0f },
-                                     { { 0.0f, 57.0f, 0.7f }, { -6.0f, 0.0f, 0.0f }, 750.0f } };
-s32 lbl_1_data_574[5] = { 10, 20, 30, 40, 50 };
-s32 lbl_1_data_588[0x16] = {
-    0x8E0000, 0x360000, 0xC00000, 0xF30000, 0xEC0000, 0x140000, 0xE60000, 0x300000,
-    0xCF0000, 0xA80000, 0x2A0000, 0x930000, 0x3B0000, 0xC50000, 0xF80000, 0xF10000,
-    0x190000, 0xEB0000, 0x350000, 0xD40000, 0xBC0000, 0x2F0000
-};
-Point3d lbl_1_data_5E0[0xE] = { { 0.0f, 0.0f, 0.0f },     { 0.0f, -19.0f, 0.0f },
-                                { 0.0f, -40.0f, -14.0f }, { 0.0f, -11.0f, -25.0f },
-                                { 0.0f, 5.0f, -17.0f },   { 0.0f, -36.0f, -14.0f },
-                                { 0.0f, -53.0f, -31.0f }, { 0.0f, 36.0f, -2.0f },
-                                { 0.0f, 35.5f, -30.0f },  { 0.0f, 48.0f, -36.0f },
-                                { 0.0f, 36.0f, -2.0f },   { 0.0f, 48.0f, -36.0f },
-                                { 0.0f, 48.0f, -36.0f },  { 0.0f, 48.0f, -36.0f } };
-Point3d lbl_1_data_688[6] = { { 20.0f, 61.0f, -25.0f },  { -138.0f, 58.0f, -25.0f },
-                              { 40.0f, 50.0f, -25.0f },  { 60.0f, 22.0f, -25.0f },
-                              { -21.0f, 42.5f, -25.0f }, { 0.0f, 103.0f, -25.0f } };
-char lbl_1_data_6D0[9] = "%f,%f,%f";
-
-char lbl_1_data_6D9[3] = "%f";
-
-/* Microphone context and model hook names, separated by null bytes. */
-char lbl_1_data_6DC[] = "/mic/ctx/micquiz_chara";
-/* Additional hook-name strings; their use is unknown. */
-char micquizUnreferencedHookNames[2][0x10] = { "chara_hook", "wario_hook" };
-
-char lbl_1_data_713[9] = "itemhook";
-char lbl_1_data_71C[2][0x10] = { "chara_hook", "wario_hook" };
-char lbl_1_data_73C[8] = "db_ch";
-Point3d lbl_1_data_744 = { 0.0f, 0.0f, 0.0f };
-f32 lbl_1_data_750 = -128.0f;
-s32 lbl_1_data_754[0x16] = {
-    127, 0x41A00000, 0x42740000, -0x3E380000,
-    0x41A00000, 0x42740000, -0x3E380000, -0x3CF60000,
-    0x42680000, -0x3E380000, 0x42200000, 0x42480000,
-    -0x3E380000, 0x42700000, 0x41B00000, -0x3E380000,
-    -0x3E580000, 0x422A0000, -0x3E380000, 0,
-    0x42CE0000, -0x3E380000
-};
 
 /* Set opacity on each material of the model. */
 void fn_1_129A8(s16 modelIndex, s32 opacity) {
@@ -225,14 +262,6 @@ void fn_1_129A8(s16 modelIndex, s32 opacity) {
         material++;
     }
 }
-
-extern f32 lbl_1_bss_554;
-
-extern s32 lbl_1_bss_550;
-
-extern s32 lbl_1_bss_584;
-
-extern s32 lbl_1_bss_544;
 
 /* Set the model scale using the selected scale curve. */
 void fn_1_12A84(f32 scale) {
@@ -263,14 +292,6 @@ void fn_1_12A84(f32 scale) {
     }
 }
 
-/* Create models and hooks for the selected quiz item. */
-void fn_1_138E0(void);
-
-/* Load the selected character model and its motions. */
-void fn_1_144B0(void);
-
-void fn_1_1D488(void);
-
 const Point3d lbl_1_rodata_32C = { -100.0f, 8000.0f, 100.0f };
 
 const Point3d lbl_1_rodata_338 = { 0.0f, 1.0f, 0.0f };
@@ -279,27 +300,6 @@ const Point3d lbl_1_rodata_344 = { 0.0f, 0.0f, 0.0f };
 
 /* Initialize quiz models, cameras, shadows, effects, and sound. */
 void fn_1_12D08(void) {
-    extern MicquizBss28Storage lbl_1_bss_28;
-    extern MicquizBss334Storage lbl_1_bss_334;
-    extern MicquizCameraState lbl_1_bss_414[8];
-    extern s16 lbl_1_bss_522, lbl_1_bss_524, lbl_1_bss_526, lbl_1_bss_528;
-    extern s32 lbl_1_bss_52C, lbl_1_bss_534, lbl_1_bss_538, lbl_1_bss_53C;
-    extern s32 lbl_1_bss_540, lbl_1_bss_544, lbl_1_bss_548, lbl_1_bss_54C;
-    extern s32 lbl_1_bss_550;
-    extern f32 lbl_1_bss_554;
-    extern s32 lbl_1_bss_558;
-    extern u16 *lbl_1_bss_564;
-    extern s32 lbl_1_bss_584, lbl_1_bss_588;
-    extern f32 lbl_1_bss_58C;
-    extern MicquizBss60Storage lbl_1_bss_60;
-    extern s32 lbl_1_data_388[0x36];
-    extern s32 lbl_1_data_4BC;
-    extern f32 lbl_1_data_530;
-    extern OM_CAMERA_VIEW lbl_1_data_53C[2];
-    extern s32 lbl_1_data_574[5];
-    extern struct MicquizCountTable { s32 values[5]; } lbl_1_rodata_350;
-    extern u8 MicQuizQuestionLevelGet(void);
-    extern s32 MicQuizCurrentPlayerGet(void);
     Point3d shadowPosition = lbl_1_rodata_32C;
     Point3d shadowTarget = lbl_1_rodata_338;
     Point3d shadowOffset = lbl_1_rodata_344;
@@ -414,27 +414,16 @@ void fn_1_12D08(void) {
     }
     MicQuizExpectedAnswerSet(lbl_1_bss_540);
     MicQuizPortraitShow(MicQuizCurrentPlayerGet());
-    MicQuizMicInit(lbl_1_data_6DC, 3);
+    MicQuizMicInit("/mic/ctx/micquiz_chara", 3);
     fn_8000DAC0(fn_1_1D488, 0x64, 0x1800, 0, lbl_1_bss_60.value);
     lbl_1_data_4BC = HuAudSStreamPlay(MSM_STREAM_QUESTION_MUSIC_FIRST);
 }
 
-void fn_1_1AED4(void);
-
-/* Render the quiz screen effect and its textured overlay. */
-void fn_1_1AED8(s16 layerNo);
+/* Additional hook-name strings; their use is unknown. */
+char micquizUnreferencedHookNames[2][0x10] = { "chara_hook", "wario_hook" };
 
 /* Create models and hooks for the selected quiz item. */
 void fn_1_138E0(void) {
-    extern s16 lbl_1_bss_516[6];
-    extern s32 lbl_1_bss_530, lbl_1_bss_534, lbl_1_bss_538;
-    extern s32 lbl_1_bss_53C, lbl_1_bss_540, lbl_1_bss_584;
-    extern s16 lbl_1_bss_56C, lbl_1_bss_56E;
-    extern ANIMDATA * lbl_1_bss_590;
-    extern s32 lbl_1_data_52C;
-    extern s16 lbl_1_data_534, lbl_1_data_536, lbl_1_data_538, lbl_1_data_53A;
-    extern Point3d lbl_1_data_5E0[0xE];
-    extern Point3d lbl_1_data_688[6];
     Point3d position;
     s32 i;
     s32 modelIndex;
@@ -487,7 +476,7 @@ void fn_1_138E0(void) {
                 fn_80026B64(model, 1);
                 fn_80026760(lbl_1_data_53A, 0.0f, 130.0f, 50.0f);
                 fn_800268B0(lbl_1_data_53A, 0.75f, 0.75f, 0.75f);
-                fn_8002741C(lbl_1_data_53A, lbl_1_data_713, model);
+                fn_8002741C(lbl_1_data_53A, "itemhook", model);
                 break;
                     }
                 case 2 :
@@ -557,10 +546,10 @@ void fn_1_138E0(void) {
             lbl_1_bss_530 = rand8() % 9;
             for (i = 0; i < lbl_1_data_52C + 1; i++)
             {
-                fn_8002583C(1, (s16) i, (HU3D_LAYER_HOOK) fn_1_19AE4);
+                fn_8002583C(1, (s16) i, fn_1_19AE4);
                 fn_8002583C(1, (s16)(i + 8), fn_1_19B24);
             }
-            fn_8002583C(1, 0xE, (HU3D_LAYER_HOOK) fn_1_1A550);
+            fn_8002583C(1, 0xE, fn_1_1A550);
             Hu3DReflectMapSet(fn_80008DD0(stageModelFiles[lbl_1_bss_530] + DATANUM(0xa60000, 0x22),
                                           0x10000000, 2));
             lbl_1_data_534 =
@@ -601,16 +590,10 @@ void fn_1_138E0(void) {
     }
 }
 
+char lbl_1_data_71C[2][0x10] = { "chara_hook", "wario_hook" };
+
 /* Load the selected character model and its motions. */
 void fn_1_144B0(void) {
-    extern s16 lbl_1_bss_24;
-    extern s32 lbl_1_bss_534, lbl_1_bss_538, lbl_1_bss_53C, lbl_1_bss_540, lbl_1_bss_584;
-    extern s16 lbl_1_bss_570[4], lbl_1_bss_578, lbl_1_bss_57A, lbl_1_bss_57C, lbl_1_bss_57E;
-    extern s32 lbl_1_data_52C;
-    extern s16 lbl_1_data_53A;
-    extern s32 lbl_1_data_588[0x16];
-    extern Point3d lbl_1_data_5E0[0xE], lbl_1_data_688[6];
-    extern char lbl_1_data_71C[2][0x10], lbl_1_data_73C[8];
     struct JointMotionOffsets { s32 values[3]; };
 
     Point3d position;
@@ -699,7 +682,7 @@ void fn_1_144B0(void) {
                 }
                 break;
             case 3:                                 /* switch 2 */
-                fn_8002741C(lbl_1_data_53A, lbl_1_data_73C, lbl_1_bss_24);
+                fn_8002741C(lbl_1_data_53A, "db_ch", lbl_1_bss_24);
                 if ((lbl_1_bss_540 == 7) || (lbl_1_bss_540 == 0xA)) {
                     fn_80026760(lbl_1_bss_24, 0.0f, 30.0f, 5.0f);
                 }
@@ -757,7 +740,16 @@ void fn_1_144B0(void) {
     }
 }
 
-extern GXTexObj lbl_1_bss_3F4;
+Point3d lbl_1_data_744 = { 0.0f, 0.0f, 0.0f };
+f32 lbl_1_data_750 = -128.0f;
+s32 lbl_1_data_754[0x16] = {
+    127, 0x41A00000, 0x42740000, -0x3E380000,
+    0x41A00000, 0x42740000, -0x3E380000, -0x3CF60000,
+    0x42680000, -0x3E380000, 0x42200000, 0x42480000,
+    -0x3E380000, 0x42700000, 0x41B00000, -0x3E380000,
+    -0x3E580000, 0x422A0000, -0x3E380000, 0,
+    0x42CE0000, -0x3E380000
+};
 
 void fn_1_14F00(s32 sourceLeftInput, s32 sourceTopInput,
                 s32 sourceWidthInput, s32 sourceHeightInput,
@@ -878,10 +870,6 @@ void fn_1_14F00(s32 sourceLeftInput, s32 sourceTopInput,
         }
     }
 }
-
-extern f32 lbl_1_bss_350;
-
-extern GXTexObj lbl_1_bss_3D4;
 
 void fn_1_157F8(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                 s32 sourceHeight, GXTexFmt textureFormat, f32 speed) {
@@ -1006,13 +994,7 @@ void fn_1_157F8(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
     }
 }
 
-extern f32 lbl_1_bss_354;
-
 enum { MICQUIZ_WIPE_FRAME_PERIOD = 0x1000000 };
-
-extern s32 lbl_1_bss_358;
-
-extern GXTexObj lbl_1_bss_3B4;
 
 void fn_1_15F60(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                 s32 sourceHeight, GXTexFmt textureFormat, f32 speed) {
@@ -1160,10 +1142,6 @@ void fn_1_15F60(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
         GXPixModeSync();
     }
 }
-
-extern f32 lbl_1_bss_35C;
-
-extern u16 *lbl_1_bss_564;
 
 void fn_1_16804(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                 s32 sourceHeight, GXTexFmt textureFormat, f32 strength) {
@@ -1320,14 +1298,6 @@ void fn_1_16804(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
     }
 }
 
-extern f32 lbl_1_bss_360;
-
-extern s32 lbl_1_bss_364;
-
-extern s32 lbl_1_bss_368;
-
-extern s32 lbl_1_bss_36C;
-
 /* Distort a captured screen region with the noise texture. */
 void fn_1_17478(s32 sourceLeft, s32 sourceTop, s32 sourceWidth, s32 sourceHeight,
                 enum _GXTexFmt textureFormat, f32 strength) {
@@ -1449,8 +1419,6 @@ void fn_1_17478(s32 sourceLeft, s32 sourceTop, s32 sourceWidth, s32 sourceHeight
     }
 }
 
-extern MicquizBss370Storage lbl_1_bss_370;
-
 /* Draw a captured screen region on a displaced grid. */
 void fn_1_17E20(s32 sourceLeft, s32 sourceTop, s32 sourceWidth, s32 sourceHeight,
                 enum _GXTexFmt textureFormat, f32 strength) {
@@ -1553,8 +1521,6 @@ void fn_1_17E20(s32 sourceLeft, s32 sourceTop, s32 sourceWidth, s32 sourceHeight
 
 void fn_1_187F0(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                 s32 sourceHeight, GXTexFmt textureFormat, f32 strength) {
-    extern f32 lbl_1_bss_380;
-    extern u16 *lbl_1_bss_564;
     GXTexObj alphaTexture;
     GXTexObj colorTexture;
     f32 matrix[2][3];
@@ -1712,10 +1678,6 @@ void fn_1_187F0(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
     }
 }
 
-extern s32 lbl_1_bss_534;
-
-extern GXRenderModeObj *RenderMode;
-
 /* Capture the viewport and apply the selected screen effect. */
 void fn_1_195DC(s16 unused) {
     f32 copyScale;
@@ -1839,14 +1801,6 @@ void fn_1_19AE4(s16 layerNo) {
     GXSetDstAlpha(1U, 0xFFU);
     GXSetAlphaUpdate(1U);
 }
-
-extern s32 lbl_1_bss_328;
-
-extern s32 lbl_1_bss_32C;
-
-extern s32 lbl_1_bss_384;
-
-extern s32 lbl_1_data_52C;
 
 /* Draw and capture the screen using the requested effect level. */
 void fn_1_19B24(s16 level) {
@@ -2186,21 +2140,12 @@ void fn_1_1ADAC(void) {
     GXSetCopyFilter(RenderMode->aa, RenderMode->sample_pattern, 1, RenderMode->vfilter);
 }
 
-s32 fn_1_367CC(s32 *player);
-
 void fn_1_1AED4(void)
 {
 }
 
 /* Render the quiz screen effect and its textured overlay. */
 void fn_1_1AED8(s16 layerNo) {
-    extern s32 lbl_1_bss_328;
-    extern f32 lbl_1_bss_554;
-    extern u16 *lbl_1_bss_564;
-    extern ANIMDATA *lbl_1_bss_590;
-    extern f32 lbl_1_data_530;
-    extern GXRenderModeObj *RenderMode;
-    extern void HuSprTexLoad(ANIMDATA *, s16, s16, GXTexWrapMode, GXTexWrapMode, GXTexFilter);
     union {
         Mtx44 projection;
         struct {
@@ -2583,8 +2528,6 @@ void fn_1_1C088(HU3D_MODEL *model, f32 (*positionMatrix)[4]) {
     GXSetCopyFilter(RenderMode->aa, RenderMode->sample_pattern, 1, RenderMode->vfilter);
 }
 
-extern s32 lbl_1_bss_540;
-
 /* Draw the captured screen texture. */
 void fn_1_1CB64(s16 layerNo) {
     union {
@@ -2733,72 +2676,15 @@ void fn_1_1D488(void) {
     MicQuizResponseRun(3);
 }
 
-void HuMCClose(void);
-
-void HuMCSelWinContextKill(void);
-
-s32 MicQuizCountdownUpdate();
-
-/* Draw and capture the screen using the requested effect level. */
-void fn_1_19B24(s16 layerNo);
-
-s32 MicQuizResponseStateGet(void);
-
-f32 MicQuizTimeLeftGet(void);
-
-s32 MicQuizPresenterLayoutGet();
-
-extern s16 lbl_1_bss_24;
-
-extern s32 lbl_1_bss_330;
-
-extern s32 lbl_1_bss_33C[5];
-
-extern f32 lbl_1_bss_388;
-
-extern s32 lbl_1_bss_38C[0xA];
-
-extern MicquizCameraState lbl_1_bss_414[8];
-
-extern s16 lbl_1_bss_514;
-
-extern s16 lbl_1_bss_516[6];
-
-extern s16 lbl_1_bss_522;
-
-extern s16 lbl_1_bss_524;
-
-extern s32 lbl_1_bss_538;
-
-extern s32 lbl_1_bss_53C;
-
-extern s16 lbl_1_bss_56C;
-
-extern s16 lbl_1_bss_56E;
-
-extern s16 lbl_1_bss_570[4];
-
-extern s16 lbl_1_bss_578;
-
-extern s16 lbl_1_bss_57A;
-
-extern s16 lbl_1_bss_57E;
-
-extern s32 lbl_1_bss_588;
-
-extern f32 lbl_1_bss_58C;
-
-extern s32 lbl_1_data_4BC;
-
 /* Report model transforms, motion values, and animation state when enabled. */
-static inline void DebugSequence(s32 value, HU3D_MODEL **model, s32 enabled) {
+static inline void DebugModelReport(OMOBJ *object, HU3D_MODEL **model, s32 enabled) {
     s32 index;
     s32 state;
     if (enabled) {
         OSReport("%f,%f,%f", (*model)->pos.x, (*model)->pos.y, (*model)->pos.z);
         state = lbl_1_bss_588;
         if (state < 0 || state > 7) {
-            OSReport("%f,%f,%f", (f64)state, (f64)value, (f64)enabled);
+            OSReport("%f,%f,%f", (f64)state, (f64)object->work[0], (f64)enabled);
         } else if (state == 7) {
             OSReport("%f", (f64)state);
         } else if (state == 0) {
@@ -2830,7 +2716,7 @@ static inline void DebugSequence(s32 value, HU3D_MODEL **model, s32 enabled) {
 const Point3d lbl_1_rodata_A20 = { 0.0f, 75.0f, 22.0f };
 
 /* Advance model animation, quiz transitions, and queued sound effects. */
-void fn_1_1D4AC(s32 value) {
+void fn_1_1D4AC(OMOBJ *object) {
     Mtx rotationMatrix;
     Point3d modelOffset;
     Point3d rotatedOffset;
@@ -3320,14 +3206,8 @@ void fn_1_1D4AC(s32 value) {
             lbl_1_bss_414[i].pendingCount -= 1;
         }
     }
-    DebugSequence(value, &model, 0);
+    DebugModelReport(object, &model, 0);
 }
-
-extern MicQuizResponseStorage lbl_1_bss_1C;
-
-extern s16 lbl_1_bss_580;
-
-void HuMCSelWinMaxTimeSet(f32 maxTime);
 
 /* Request a microphone choice and return its quiz selection. */
 s32 fn_1_2086C(s32 selectionCount) {
@@ -3339,76 +3219,19 @@ s32 fn_1_2086C(s32 selectionCount) {
     HuMCSelWinContextSet(lbl_1_bss_580, 0, (u8)selectionCount);
     HuMCSelWinMaxTimeSet(30.0f);
     HuMCSelWinChoiceGet();
-    lbl_1_bss_1C.response = (MicQuizResponse *)HuMCCurResponseGet();
+    lbl_1_bss_1C.response = (MicquizResponse *)HuMCCurResponseGet();
     HuMCSelWinContextKill();
 
-    if (lbl_1_bss_1C.response->status == 0) {
-        choice = lbl_1_bss_1C.response->choice;
-    } else if (lbl_1_bss_1C.response->status == -1) {
+    if (lbl_1_bss_1C.response->result == 0) {
+        choice = lbl_1_bss_1C.response->recognizedWord;
+    } else if (lbl_1_bss_1C.response->result == -1) {
         OSReport("HUMC_RESULT_EMPTY\n");
-    } else if (lbl_1_bss_1C.response->status == -2) {
+    } else if (lbl_1_bss_1C.response->result == -2) {
         OSReport("HUMC_RESULT_ERROR\n");
-    } else if (lbl_1_bss_1C.response->status == -3) {
+    } else if (lbl_1_bss_1C.response->result == -3) {
         MicQuizMicHudStateSet(0);
         return -1;
     }
     result = fn_1_760(choice - 1, lbl_1_bss_540);
     return result;
 }
-
-/* Quiz animation and transition state. */
-ANIMDATA *lbl_1_bss_590;
-f32 lbl_1_bss_58C;
-s32 lbl_1_bss_588;
-s32 lbl_1_bss_584;
-s16 lbl_1_bss_580;
-s16 lbl_1_bss_57E;
-s16 lbl_1_bss_57C;
-s16 lbl_1_bss_57A;
-s16 lbl_1_bss_578;
-s16 lbl_1_bss_570[4];
-s16 lbl_1_bss_56E;
-s16 lbl_1_bss_56C;
-void *lbl_1_bss_568;
-u16 * lbl_1_bss_564;
-void *lbl_1_bss_55C[2];
-s32 lbl_1_bss_558;
-f32 lbl_1_bss_554;
-s32 lbl_1_bss_550;
-s32 lbl_1_bss_54C;
-s32 lbl_1_bss_548;
-s32 lbl_1_bss_544;
-s32 lbl_1_bss_540;
-s32 lbl_1_bss_53C;
-s32 lbl_1_bss_538;
-s32 lbl_1_bss_534;
-s32 lbl_1_bss_530;
-u32 lbl_1_bss_52C;
-s16 lbl_1_bss_528;
-s16 lbl_1_bss_526;
-s16 lbl_1_bss_524;
-s16 lbl_1_bss_522;
-s16 lbl_1_bss_516[6];
-s16 lbl_1_bss_514;
-MicquizCameraState lbl_1_bss_414[8];
-GXTexObj lbl_1_bss_3F4;
-GXTexObj lbl_1_bss_3D4;
-GXTexObj lbl_1_bss_3B4;
-s32 lbl_1_bss_38C[0xA];
-f32 lbl_1_bss_388;
-s32 lbl_1_bss_384;
-f32 lbl_1_bss_380;
-MicquizBss370Storage lbl_1_bss_370;
-s32 lbl_1_bss_36C;
-s32 lbl_1_bss_368;
-s32 lbl_1_bss_364;
-f32 lbl_1_bss_360;
-f32 lbl_1_bss_35C;
-s32 lbl_1_bss_358;
-f32 lbl_1_bss_354;
-f32 lbl_1_bss_350;
-s32 lbl_1_bss_33C[5];
-MicquizBss334Storage lbl_1_bss_334;
-s32 lbl_1_bss_330;
-s32 lbl_1_bss_32C;
-s32 lbl_1_bss_328;
