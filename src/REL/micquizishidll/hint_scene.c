@@ -89,94 +89,14 @@
 #include "game/mic.h"
 
 #include "game/hsfformat.h"
+#include "REL/micquizishidll.h"
 
-#include "REL/micquizishidll/model_hint.h"
-
-extern s32 lbl_1_bss_100;
-
-extern f32 lbl_1_bss_104;
-
-extern s32 lbl_1_bss_110;
-
-extern HUPROCESS *lbl_1_bss_114[0xB];
-
-extern s16 micQuizGameMes;
-
-extern ANIMDATA *lbl_1_bss_1B28;
-
-extern HUPROCESS *lbl_1_bss_1B2C;
-
-extern f32 lbl_1_bss_1B4C;
-
-extern f32 lbl_1_bss_1B58;
-
-extern s32 lbl_1_bss_1B5C;
-
-extern s16 lbl_1_bss_1B60;
-
-extern f32 lbl_1_bss_1B64;
-
-extern s16 lbl_1_bss_1B68;
-
-extern ANIMDATA *lbl_1_bss_1B6C;
-
-extern s16 lbl_1_bss_1B74;
-
-extern s16 lbl_1_bss_1B76[2];
-
-extern s16 lbl_1_bss_1B7A;
-
-extern s16 lbl_1_bss_1B7C;
-
-extern s16 lbl_1_bss_1B7E;
-
-extern s16 lbl_1_bss_1B80[2];
-
-extern s16 lbl_1_bss_1B84;
-
-extern s16 lbl_1_bss_1B86;
-
-extern s16 lbl_1_bss_1B88;
-
-extern s16 lbl_1_bss_1B8A;
-
-extern OMOBJ *lbl_1_bss_1B8C;
-
-extern s32 lbl_1_bss_20;
-
-extern f32 lbl_1_bss_8C;
-
-extern u32 lbl_1_bss_FC;
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
-
-extern u8 lbl_1_data_488[0x44];
-
-u8 MicQuizQuestionLevelGet(void);
-
-s32 MicQuizCurrentPlayerGet(void);
-
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
 void MicQuizCountdownInit(void);
-
-s32 MicQuizPortraitShow(s32 baseIndex);
-
-void fn_1_2AEBC(s16 layerNo);
-
-void fn_1_2B26C(void);
-
-void fn_1_2BD60(s16 modelId);
-
-void fn_1_2BDE0(s16 modelId, f32 ambientRed, f32 ambientGreen, f32 ambientBlue);
-
-s32 MicQuizExpectedAnswerSet(s32 assetIndex);
-
-s32 MicQuizPauseInit(HUPROCESS *process);
-
-void MicQuizMicContextSet(s32 mode);
-
-void fn_1_2AF88(void);
+void MicQuizListenStart(void);
+void MicQuizMicContextSet(s32 questionType);
+void MicQuizQuestionReadySet(void);
 
 s32 lbl_1_data_1D18[7] = {
     0xA4007A, 0xA4007B, 0xA4007C, 0xA4007D, 0xA4007E, 0xA4007F, 0xA40080
@@ -199,6 +119,37 @@ MicquizCameraRange lbl_1_data_1D98[5] = {
     {2.0f, 600.0f}, {1.5f, 900.0f}, {1.0f, 1200.0f},
     {0.5f, 1500.0f}, {0.5f, 1800.0f}
 };
+
+void fn_1_2AEBC(s16 layerNo);
+void fn_1_2AF08(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination);
+void fn_1_2AF88(void);
+void fn_1_2B26C(void);
+void fn_1_2BD60(s16 modelId);
+void fn_1_2BDE0(s16 modelId, f32 ambientRed, f32 ambientGreen, f32 ambientBlue);
+extern ANIMDATA *lbl_1_bss_1B28;
+extern HUPROCESS *lbl_1_bss_1B2C;
+extern Point3d lbl_1_bss_1B30[2];
+extern f32 lbl_1_bss_1B48;
+extern f32 lbl_1_bss_1B4C;
+extern f32 lbl_1_bss_1B50;
+extern f32 lbl_1_bss_1B54;
+extern f32 lbl_1_bss_1B58;
+extern s32 lbl_1_bss_1B5C;
+extern s16 lbl_1_bss_1B60;
+extern f32 lbl_1_bss_1B64;
+extern s16 lbl_1_bss_1B68;
+extern ANIMDATA *lbl_1_bss_1B6C;
+extern s16 lbl_1_bss_1B74;
+extern s16 lbl_1_bss_1B76[2];
+extern s16 lbl_1_bss_1B7A;
+extern s16 lbl_1_bss_1B7C;
+extern s16 lbl_1_bss_1B7E;
+extern s16 lbl_1_bss_1B80[2];
+extern s16 lbl_1_bss_1B84;
+extern s16 lbl_1_bss_1B86;
+extern s16 lbl_1_bss_1B88;
+extern s16 lbl_1_bss_1B8A;
+extern OMOBJ *lbl_1_bss_1B8C;
 
 /* Sets up the hint round: cameras, lights, the colored models and their textures. */
 void fn_1_2A164(void) {
@@ -362,8 +313,6 @@ void fn_1_2ADF8(void)
     }
 }
 
-void fn_1_2AF08(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination);
-
 void fn_1_2AEBC(s16 layerNo) {
     fn_1_2AF08(0, 0, 0x100, 0x100, 6, lbl_1_bss_1B28->bmp->data);
     fn_8002BF48();
@@ -375,10 +324,6 @@ void fn_1_2AF08(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format,
     GXSetTexCopyDst((u16)width, (u16)height, format, 0);
     GXCopyTex(destination, 1);
 }
-
-extern f32 lbl_1_bss_1B50;
-
-extern f32 lbl_1_bss_1B54;
 
 /* Moves the two hint models back and forth between their places, with a sound at each turn. */
 void fn_1_2AF88(void) {
@@ -445,23 +390,9 @@ void fn_1_2B26C(void)
     MicQuizResponseRun(2);
 }
 
-extern Point3d lbl_1_bss_1B30[2];
-
-extern f32 lbl_1_bss_1B48;
-
-s32 MicQuizCountdownUpdate(void);
-
-void fn_1_1730(void);
-
-void MicQuizQuestionReadySet(void);
-
-void MicQuizListenStart(void);
-
-s32 MicQuizResponseStateGet(void);
-
 /* Runs the hint round's mode steps: the question message, the hint display (open, show, close),
    the answer and the closing wipe. */
-void fn_1_2B290(void) {
+void fn_1_2B290(OMOBJ *object) {
     s32 currentMode;
     f32 modelAlpha;
 

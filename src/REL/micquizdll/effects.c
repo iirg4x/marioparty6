@@ -1,7 +1,8 @@
 /* Speak Up: animated model pieces emitted around the players. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/micquizdll/module_types.h"
 #include "REL/micquizdll/model_work.h"
+#include "humath.h"
 
 /* Red, yellow, blue, and green variants for emitted pieces. */
 GXColor lbl_1_data_E68[4] = {
@@ -141,15 +142,15 @@ void fn_1_32250(const Vec *position, s32 pieceCount) {
             azimuthAngle = (f32)frandmod(360);
             record->position[0] =
                 (f32) ((f64) position->x +
-                       ((f64) radius * (sin((3.141592653589793 * (f64) azimuthAngle) / 180.0) *
-                                        cos((3.141592653589793 * (f64) elevationAngle) / 180.0))));
+                       ((f64) radius * (sin((M_PI * (f64) azimuthAngle) / 180.0) *
+                                        cos((M_PI * (f64) elevationAngle) / 180.0))));
             record->position[1] = (f32)((f64)position->y +
-                ((f64)radius * -sin((3.141592653589793 * (f64)elevationAngle) / 180.0)));
+                ((f64)radius * -sin((M_PI * (f64)elevationAngle) / 180.0)));
             record->position[2] = (f32)((f64)position->z +
-                ((f64)radius * (cos((3.141592653589793 * (f64)azimuthAngle) / 180.0) *
-                cos((3.141592653589793 * (f64)elevationAngle) / 180.0))));
+                ((f64)radius * (cos((M_PI * (f64)azimuthAngle) / 180.0) *
+                cos((M_PI * (f64)elevationAngle) / 180.0))));
 
-            record->velocity[0] = (f32)(0.8999999761581421 *
+            record->velocity[0] = (f32)(0.9f *
                 (((f64)(f32)frandmod(201) - 100.0) / 100.0));
             record->velocity[1] = -6.5f * ((f32)frandmod(100) / 100.0f);
             if (record->velocity[1] > -2.6000001f) {

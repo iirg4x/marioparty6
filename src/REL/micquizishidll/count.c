@@ -1,12 +1,5 @@
 /* Counting round: objects moving on a grid, the count answer and its check. */
 #include "msm_stream.h"
-#include "REL/micquizishidll/related_types.h"
-
-#include "REL/micquizishidll/module_base.h"
-#include "REL/micquizishidll/object_work.h"
-
-#include "REL/micquizishidll/process_manager.h"
-
 #include "dolphin/types.h"
 
 #include "math.h"
@@ -54,110 +47,19 @@
 #include "datadir_enum.h"
 #include "messdir_enum.h"
 
-#include "REL/micquizishidll/micquizishidll_callback_views_v1.h"
-
-#include "REL/micquizishidll/micquizishidll_record_views_v1.h"
-
 #include "dolphin/os.h"
-#include "REL/micquizishidll/micquizishidll_message_setup_views_v2.h"
+#include "REL/micquizishidll.h"
 
-void MicQuizWinSoundCallback(HUWINID work, u32 answerId, s16 soundIndex);
-
-struct QuizSelectionEntry {
-    s32 count;
-    s32 minCount;
-    s32 maxCountExclusive;
-};
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
+void MicQuizMicContextSet(s32 questionType);
+void MicQuizPortraitShow(s32 playerIndex);
 
 struct QuizCardEntries {
     s32 marker;
     s32 objectIndex;
     s32 placementState;
 };
-
-extern s32 lbl_1_bss_20;
-
-extern s32 lbl_1_bss_FC;
-
-extern s16 micQuizGameMes;
-
-extern s32 lbl_1_bss_100;
-
-extern f32 lbl_1_bss_104;
-
-extern s32 lbl_1_bss_110;
-
-extern OMOBJ *lbl_1_bss_A8;
-
-extern s16 lbl_1_bss_A0;
-
-extern s16 lbl_1_bss_A2;
-
-extern s16 lbl_1_bss_A4;
-
-extern s16 lbl_1_bss_9C[2];
-
-extern s16 lbl_1_bss_3DC[1];
-
-extern s16 lbl_1_bss_3D8[2];
-
-extern OMOBJ *lbl_1_bss_AC[0x14];
-
-extern s32 lbl_1_bss_24[0x14];
-
-extern s32 lbl_1_bss_98;
-
-extern s32 lbl_1_bss_90;
-
-extern f32 lbl_1_bss_880[8];
-
-extern s32 lbl_1_bss_860[8];
-
-extern MicQuizRecordGroup lbl_1_bss_6E0[8];
-
-extern struct QuizCardEntries lbl_1_bss_3E0[8][8];
-
-extern struct QuizSelectionEntry lbl_1_data_41C[];
-
-extern f32 lbl_1_data_66C[5];
-
-extern OM_CAMERA_VIEW lbl_1_data_388;
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
-
-extern u8 lbl_1_data_488[4];
-
-extern Point3d lbl_1_data_648;
-
-extern Point3d lbl_1_data_654;
-
-extern Point3d lbl_1_data_660;
-
-u8 MicQuizQuestionLevelGet(void);
-
-s32 MicQuizRandRange(s32, s32);
-
-void fn_1_2800(void);
-
-void fn_1_15F94(OMOBJ *);
-
-s32 fn_1_15714(void);
-
-void fn_1_15828(void);
-
-s32 MicQuizCountdownInit(void);
-
-s32 MicQuizCurrentPlayerGet(void);
-
-void MicQuizPortraitShow(s32 baseIndex);
-
-s32 MicQuizPauseInit(HUPROCESS *);
-
-void MicQuizMicContextSet(s32);
-
-void fn_1_15968(void);
 
 u8 lbl_1_data_5F0[0x1C] = { 0x00, 0xA4, 0x00, 0x7A, 0x00, 0xA4, 0x00, 0x7B, 0x00, 0xA4, 0x00, 0x7C,
         0x00, 0xA4, 0x00, 0x7D, 0x00, 0xA4, 0x00, 0x7E, 0x00, 0xA4, 0x00, 0x7F, 0x00, 0xA4, 0x00, 0x80 };
@@ -167,6 +69,29 @@ Point3d lbl_1_data_648 = { -100.0f, 8000.0f, -400.0f };
 Point3d lbl_1_data_654 = { 0.0f, 1.0f, 0.0f };
 Point3d lbl_1_data_660 = { 0.0f, 0.0f, -400.0f };
 f32 lbl_1_data_66C[5] = { 400.0f, 325.0f, 250.0f, 175.0f, 100.0f };
+
+s32 fn_1_15714(void);
+void fn_1_15828(void);
+void fn_1_15968(void);
+void fn_1_15F94(OMOBJ *object);
+void fn_1_161F8(void);
+void fn_1_162F8(OMOBJ *object);
+void fn_1_164B8(s16 modelId, f32 animationSpeed, s32 motionType);
+s32 fn_1_16628(f32 angle);
+s32 fn_1_166D4(HuVecF *position, s32 motionType, s32 objectIndex);
+void fn_1_16874(void);
+s32 fn_1_168F4(void);
+void fn_1_16960(void);
+s32 fn_1_16BA8(s32 row, s32 column, s32 value);
+void fn_1_16D74(void);
+void fn_1_16E38(void);
+s32 fn_1_16EFC(s32 distance);
+extern s16 lbl_1_bss_3D8[2];
+extern s16 lbl_1_bss_3DC[1];
+extern struct QuizCardEntries lbl_1_bss_3E0[8][8];
+extern MicQuizRecordGroup lbl_1_bss_6E0[8];
+extern s32 lbl_1_bss_860[8];
+extern f32 lbl_1_bss_880[8];
 
 /* Builds the quiz camera and models, then creates the card workers. */
 void fn_1_14EE0(void) {
@@ -229,9 +154,9 @@ void fn_1_14EE0(void) {
     }
     for (index = 0; index < 8; index++) {
         for (column = 0; column < 4; column++) {
-            lbl_1_bss_6E0[index].entries[column].word00 = -1;
-            lbl_1_bss_6E0[index].entries[column].word04 = -1;
-            lbl_1_bss_6E0[index].entries[column].word08 = -1;
+            lbl_1_bss_6E0[index].entries[column].motionType = -1;
+            lbl_1_bss_6E0[index].entries[column].objectIndex = -1;
+            lbl_1_bss_6E0[index].entries[column].placed = -1;
         }
     }
     for (index = 0; index < 8; index++) {
@@ -295,18 +220,12 @@ s32 fn_1_15714(void) {
     OSReport("Q Sel Error!!!!!!!!\n");
 }
 
-s32 MicQuizExpectedAnswerSet(s32);
-
-extern s32 lbl_1_bss_74;
-
-extern s32 lbl_1_bss_94;
-
 /* Counts the objects that make up the answer, reports it and records it. */
 void fn_1_15828(void) {
     s32 count;
     s32 index;
     count = 0;
-    lbl_1_bss_94 = lbl_1_bss_74;
+    lbl_1_bss_94 = lbl_1_bss_74[0];
     switch (lbl_1_bss_98)
     {
     case 0 :
@@ -343,41 +262,9 @@ void fn_1_15968(void) {
     MicQuizResponseRun(0);
 }
 
-extern f32 lbl_1_bss_8C;
-
-extern u32 micQuizNpcAnswerMes[0x11];
-
-void MicQuizCountdownUpdate(void);
-
-void fn_1_161F8(void);
-
-void fn_1_16874(void);
-
-s32 fn_1_168F4(void);
-
-void fn_1_16960(void);
-
-void fn_1_16D74(void);
-
-void fn_1_16E38(void);
-
-s32 fn_1_16EFC(s32 value);
-
-s32 MicQuizResponseStateGet(void);
-
-void fn_1_83C(void);
-
-void MicQuizQuestionReadySet(void);
-
-void MicQuizListenStart(void);
-
-u64 HuMCClose(void);
-
-void HuMCSelWinContextKill(void);
-
 /* Runs the counting round's mode steps: the question message, the objects' moves, the answer and
    the closing wipe. */
-void fn_1_1598C(void) {
+void fn_1_1598C(OMOBJ *object) {
     MicQuizCountdownUpdate();
     switch (lbl_1_bss_FC) {
     case 0:
@@ -501,21 +388,14 @@ void fn_1_1598C(void) {
     case 12:
         if (WipeCheck() == 0) {
             HuMCSelWinContextKill();
-            OSReport("                                    HuMCClose()\n", (u32)HuMCClose());
+            HuMCClose();
+            OSReport("                                    HuMCClose()\n");
             OSReport(" COUNT END==========================\n");
             fn_8003A5E4(1, 1);
         }
         break;
     }
 }
-
-extern u32 lbl_1_data_3A4[6][4];
-
-extern s32 lbl_1_data_404[6];
-
-void fn_1_162F8(OMOBJ *object);
-
-s32 fn_1_166D4(HuVecF *position, s32 objectType, s32 motionData);
 
 /* Creates one counted object: its model, motions and a free place, then hands it to its update
    step. */
@@ -567,8 +447,6 @@ void fn_1_15F94(OMOBJ *object) {
     object->objFunc = fn_1_162F8;
 }
 
-extern OMOBJ *lbl_1_bss_AC[];
-
 /* Puts every counted object back at its saved place with its starting frame count. */
 void fn_1_161F8(void) {
     s32 index;
@@ -583,21 +461,15 @@ void fn_1_161F8(void) {
 
 /* Claims a free slot of a group for an object and returns 1, or returns 0 when the slot is
    taken. */
-s32 fn_1_1626C(s32 groupIndex, s32 entryIndex, s32 word00, s32 word04) {
-    if (lbl_1_bss_6E0[groupIndex].entries[entryIndex].word00 == -1) {
-        lbl_1_bss_6E0[groupIndex].entries[entryIndex].word00 = word00;
-        lbl_1_bss_6E0[groupIndex].entries[entryIndex].word04 = word04;
-        lbl_1_bss_6E0[groupIndex].entries[entryIndex].word08 = 1;
+s32 fn_1_1626C(s32 groupIndex, s32 entryIndex, s32 motionType, s32 objectIndex) {
+    if (lbl_1_bss_6E0[groupIndex].entries[entryIndex].motionType == -1) {
+        lbl_1_bss_6E0[groupIndex].entries[entryIndex].motionType = motionType;
+        lbl_1_bss_6E0[groupIndex].entries[entryIndex].objectIndex = objectIndex;
+        lbl_1_bss_6E0[groupIndex].entries[entryIndex].placed = 1;
         return 1;
     }
     return 0;
 }
-
-extern void fn_1_164B8(s16 modelId, f32 animationSpeed, s32 motionType);
-
-extern s32 fn_1_16628(f32 angle);
-
-extern void fn_1_2788(OMOBJ *object, s32 motion, f32 scale, u32 attribute);
 
 /* Updates a counted object each frame by its state: its motion, place and turn. */
 void fn_1_162F8(OMOBJ *object) {
@@ -695,7 +567,7 @@ s32 fn_1_16628(f32 angle) {
 }
 
 /* Finds a random free place on the grid for an object and returns its position. */
-s32 fn_1_166D4(HuVecF *position, s32 firstValue, s32 secondValue) {
+s32 fn_1_166D4(HuVecF *position, s32 motionType, s32 objectIndex) {
     s32 row;
     s32 column;
     s32 result;
@@ -703,10 +575,10 @@ s32 fn_1_166D4(HuVecF *position, s32 firstValue, s32 secondValue) {
     do {
         row = frandmod(8);
         column = frandmod(4);
-        if (lbl_1_bss_6E0[row].entries[column].word00 == -1) {
-            lbl_1_bss_6E0[row].entries[column].word00 = firstValue;
-            lbl_1_bss_6E0[row].entries[column].word04 = secondValue;
-            lbl_1_bss_6E0[row].entries[column].word08 = 1;
+        if (lbl_1_bss_6E0[row].entries[column].motionType == -1) {
+            lbl_1_bss_6E0[row].entries[column].motionType = motionType;
+            lbl_1_bss_6E0[row].entries[column].objectIndex = objectIndex;
+            lbl_1_bss_6E0[row].entries[column].placed = 1;
             result = 1;
         } else {
             result = 0;
@@ -743,8 +615,6 @@ s32 fn_1_168F4(void) {
     }
     return 1;
 }
-
-s32 fn_1_16BA8(s32, s32, s32);
 
 /* Places the counted objects on random free grid cells, shows them and starts their motions. */
 void fn_1_16960(void) {

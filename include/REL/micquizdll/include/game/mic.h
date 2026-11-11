@@ -15,7 +15,7 @@ int HuMCResponseGet(void);
 void HuMCSelWinCreate(f32 x, f32 y);
 /* Legacy callers use this entry without a prototype. */
 #if !defined(__MWERKS__)
-void HuMCSelWinItemSet(s32 messageBase, s16 itemCount, s16 padNo);
+s32 HuMCSelWinItemSet(s32 messageBase,s16 itemCount,s16 padNo);
 #endif
 
 #endif

@@ -1,38 +1,21 @@
 /* Tutorial: its scene, the pointer sprite and the tutorial messages. */
-#include "REL/micquizishidll/module_base.h"
-#include "REL/micquizishidll/process_manager.h"
-#include "REL/micquizishidll/micquizishidll_sprite_position_views_v1.h"
-#include "REL/micquizishidll/micquizishidll_message_setup_views_v2.h"
-#include "REL/micquizishidll/micquizishidll_memory_button_views_v1.h"
-#include "REL/micquizishidll/micquizishidll_menu_animation_views_v1.h"
 #include "game/hsfformat.h"
 #include "messdir_enum.h"
 #include "REL/micquizishidll.h"
-#include "REL/micquizishidll/micquizishidll_menu_callback_views_v1.h"
 
-void MicQuizMicHudMotionSet(s32);
 void fn_1_2F368(void);
-void fn_1_2F57C(void);
-void fn_1_2F7F8(s32);
-void MicQuizPortraitShow(void);
 void fn_1_2F3E4(void);
-
-extern s32 lbl_1_bss_110;
+void fn_1_2F57C(void);
+void fn_1_2F7F8(s32 positionIndex);
 extern s32 lbl_1_bss_1BE8;
+extern HuVec2f lbl_1_bss_1BEC;
 extern s16 lbl_1_bss_1BF4;
 extern ANIMDATA *lbl_1_bss_1BF8;
-extern s16 lbl_1_bss_9C[2];
-extern s16 lbl_1_bss_A0;
-extern s16 lbl_1_bss_A2;
-extern s16 lbl_1_bss_A4;
-extern OMOBJ *lbl_1_bss_A8;
+extern MicQuizSpritePosition lbl_1_data_22FC[6];
 extern Point3d lbl_1_data_232C;
 extern Point3d lbl_1_data_2338;
 extern Point3d lbl_1_data_2344;
 extern OM_CAMERA_VIEW lbl_1_data_2350;
-extern Point3d lbl_1_data_470;
-extern Point3d lbl_1_data_47C;
-extern u8 lbl_1_data_488[4];
 
 /* Sets up the tutorial: camera, lights and shadow, the models and the sprites. */
 void fn_1_2EDB4(void) {
@@ -71,8 +54,7 @@ void fn_1_2EDB4(void) {
     lbl_1_bss_1BEC.y = 0.0f;
     lbl_1_bss_1BE8 = 2;
     MicQuizCountdownInit();
-    MicQuizCurrentPlayerGet();
-    MicQuizPortraitShow();
+    MicQuizPortraitShow(MicQuizCurrentPlayerGet());
     MicQuizMarkerHide();
     MicQuizMicHudStateSet(0);
     lbl_1_bss_FC = 0;
@@ -83,7 +65,7 @@ void fn_1_2EDB4(void) {
 
 /* Runs the tutorial's mode steps: after the opening wipe starts the tutorial, and at the end
    leaves it. */
-void fn_1_2F2B8(void) {
+void fn_1_2F2B8(OMOBJ *object) {
     OMOVLHIS *history;
 
     history = omOvlHisGet(-1);
@@ -220,12 +202,6 @@ MicQuizSpritePosition lbl_1_data_22FC[6] = { { 279.0f, 116.0f }, { 90.0f, 113.0f
 Point3d lbl_1_data_232C = { -100.0f, 8000.0f, -400.0f };
 Point3d lbl_1_data_2338 = { 0.0f, 1.0f, 0.0f };
 Point3d lbl_1_data_2344 = { 0.0f, 0.0f, -400.0f };
-
-extern u8 lbl_1_bss_1BF6[0x2];
-
-extern u8 lbl_1_bss_1BFC[0x4];
-
-extern HuVec2f lbl_1_bss_1BEC;
 
 u8 lbl_1_bss_1BFC[0x4];
 ANIMDATA *lbl_1_bss_1BF8;

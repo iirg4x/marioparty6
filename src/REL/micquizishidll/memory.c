@@ -85,28 +85,14 @@
 #include "game/board/masu.h"
 
 #include "game/board/player.h"
-#include "REL/micquizishidll/micquizishidll_message_setup_views_v2.h"
-#include "REL/micquizishidll/module_base.h"
+#include "REL/micquizishidll.h"
 
-void MicQuizResponseRun(s32 mode);
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
+void MicQuizCountdownInit(void);
+void MicQuizPortraitShow(s32 playerIndex);
 
 struct TargetPoints { Vec positions[8]; };
-
-extern s32 lbl_1_bss_100;
-
-extern s32 lbl_1_bss_110;
-
-extern s32 lbl_1_bss_20;
-
-extern HUPROCESS *lbl_1_bss_114[0xB];
-
-extern f32 lbl_1_bss_8C;
-
-extern s16 lbl_1_bss_9C[2];
-
-extern s16 lbl_1_bss_A0;
-
-extern OMOBJ *lbl_1_bss_A8;
 
 struct MemoryHintState {
     s32 shown;
@@ -125,14 +111,6 @@ s32 lbl_1_bss_D60;
 s32 lbl_1_bss_D5C;
 struct MemoryHintState lbl_1_bss_D54;
 s32 lbl_1_bss_D50;
-
-extern u32 lbl_1_bss_FC;
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
-
-extern u8 lbl_1_data_488[4];
 
 u32 lbl_1_data_9E0[7] = {
     0xA4007A, 0xA4007B, 0xA4007C, 0xA4007D, 0xA4007E, 0xA4007F, 0xA40080
@@ -211,29 +189,24 @@ s32 lbl_1_data_F98[8] = {
     0x1E000C, 0x1E000F, 0x1E000E, 0x1E0011
 };
 
-void MicQuizCountdownInit(void);
-
-void MicQuizPortraitShow(s32 baseIndex);
-
 void fn_1_19FB4(void);
-
-void fn_1_1A4F8(OMOBJ *);
-
+s32 fn_1_1A48C(void);
+void fn_1_1A4F8(OMOBJ *obj);
+void fn_1_1A708(OMOBJ *object);
+s32 fn_1_1AE10(OMOBJ *object, f32 targetX, f32 unusedHeight, f32 targetZ, f32 width, f32 height);
+void fn_1_1AFC8(OMOBJ *object);
+void fn_1_1B2A4(OMOBJ *object);
+void fn_1_1B5FC(OMOBJ *obj, s32 motion, f32 blend, u32 attr);
+void fn_1_1BABC(void);
+s32 fn_1_1BB8C(void);
 void fn_1_1BBF8(void);
-
+s32 fn_1_1BD00(s32 value);
 void fn_1_1BD78(void);
-
+s32 fn_1_1BE5C(s32 value);
 void fn_1_1BEC8(void);
-
+s32 fn_1_1BFA4(s32 value);
 void fn_1_1C010(void);
-
-s32 MicQuizPauseInit(HUPROCESS *);
-
-u8 MicQuizQuestionLevelGet(void);
-
-s32 MicQuizCurrentPlayerGet(void);
-
-s32 MicQuizMicContextSet(s32);
+void fn_1_1C14C(void);
 
 /* Sets up the memory round: camera, lights, the objects and the models. */
 void fn_1_197D4(void) {
@@ -320,10 +293,6 @@ void fn_1_19FB4(void) {
     MicQuizResponseRun(3);
 }
 
-extern f32 lbl_1_bss_104;
-
-extern s16 micQuizGameMes;
-
 typedef struct MicquizModelWork_s {
     Vec displacement;
     Vec movement;
@@ -342,27 +311,9 @@ typedef struct MicquizModelWork_s {
     HU3D_MOTIONID motions[4];
 } MicquizModelWork;
 
-s32 MicQuizCountdownUpdate(void);
-
-s32 fn_1_1A48C(void);
-
-void fn_1_1BABC(void);
-
-s32 fn_1_1BB8C(void);
-
-void fn_1_1C14C(void);
-
-void MicQuizQuestionReadySet(void);
-
-s32 MicQuizResponseStateGet(void);
-
-u64 HuMCClose(void);
-
-void HuMCSelWinContextKill(void);
-
 /* Runs the memory round's mode steps: the hint, the objects' moves, the answer, and the closing
    wipe. */
-void fn_1_19FD8(void) {
+void fn_1_19FD8(OMOBJ *modeObject) {
     s32 objectIndex;
     s32 randomIndex;
     OMOBJ *object;
@@ -459,7 +410,8 @@ void fn_1_19FD8(void) {
     case 11:
         if (WipeCheck() == 0) {
             HuMCSelWinContextKill();
-            OSReport(" MEMORY END==========================\n", (u32)HuMCClose());
+            HuMCClose();
+            OSReport(" MEMORY END==========================\n");
             fn_8003A5E4(1, 1);
         }
         break;
@@ -481,8 +433,6 @@ s32 fn_1_1A48C(void) {
     }
     return 1;
 }
-
-extern void fn_1_1A708(OMOBJ *obj);
 
 /* Creates a memory object's model and motions at its place, then hands it to its update step. */
 void fn_1_1A4F8(OMOBJ *obj) {
@@ -516,14 +466,6 @@ void fn_1_1A4F8(OMOBJ *obj) {
     fn_80026808(work->model, work->rotation.x, work->rotation.y, work->rotation.z);
     obj->objFunc = fn_1_1A708;
 }
-
-s32 fn_1_1AE10(OMOBJ *, f32, f32, f32, f32, f32);
-
-void fn_1_1B5FC(OMOBJ *, s32, f32, u32);
-
-void MicQuizListenStart(void);
-
-extern s16 lbl_1_data_458[0xC];
 
 /* Updates a memory object each frame by its state, with its motions and sounds. */
 void fn_1_1A708(OMOBJ *object) {
@@ -652,10 +594,6 @@ void fn_1_1A708(OMOBJ *object) {
     fn_80026760(work->model, work->position.x, work->position.y, work->position.z);
     fn_80026808(work->model, work->rotation.x, work->rotation.y, work->rotation.z);
 }
-
-extern void fn_1_1B2A4(OMOBJ *object);
-
-extern void fn_1_1AFC8(OMOBJ *object);
 
 s32 fn_1_1AE10(OMOBJ *object, f32 targetX, f32 unusedHeight, f32 targetZ,
                f32 width, f32 height) {
@@ -868,8 +806,6 @@ s32 fn_1_1BB8C(void) {
     return 1;
 }
 
-s32 fn_1_1BD00(s32 value);
-
 /* Gives each object a random target place no other object took. */
 void fn_1_1BBF8(void) {
     s32 index;
@@ -903,8 +839,6 @@ s32 fn_1_1BD00(s32 value) {
     return 1;
 }
 
-s32 fn_1_1BE5C(s32 value);
-
 /* Fills the player list with eight different random values and reports it. */
 void fn_1_1BD78(void) {
     s32 index;
@@ -936,8 +870,6 @@ s32 fn_1_1BE5C(s32 value) {
     return 1;
 }
 
-s32 fn_1_1BFA4(s32 value);
-
 /* Fills the object list with eight different random values and reports it. */
 void fn_1_1BEC8(void) {
     s32 index;
@@ -968,8 +900,6 @@ s32 fn_1_1BFA4(s32 value) {
     }
     return 1;
 }
-
-void MicQuizExpectedAnswerSet(s32 result);
 
 /* Picks the question and the answer index at random, reports them and records the answer. */
 void fn_1_1C010(void) {

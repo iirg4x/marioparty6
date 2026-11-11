@@ -2,8 +2,6 @@
 #include "msm_stream.h"
 #include "dolphin/types.h"
 
-#include "REL/micquizishidll/module_base.h"
-
 #include "game/hu3d.h"
 
 #include "game/printfunc.h"
@@ -12,18 +10,16 @@
 
 #include "humath.h"
 
-#include "REL/micquizishidll.h"
-
-#include "REL/micquizishidll/micquizishidll_message_setup_views_v2.h"
-
 #include "game/object.h"
 
-#include "REL/micquizishidll/shared_types.h"
-
-#include "REL/micquizishidll/micquizishidll_callback_views_v1.h"
-
-#include "REL/micquizishidll/micquizishidll_model_views_v1.h"
 #include <math.h>
+#include "REL/micquizishidll.h"
+
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
+void MicQuizCountdownInit(void);
+void MicQuizExpectedAnswerSet(s32 expectedAnswer);
+void MicQuizMicContextSet(s32 questionType);
 
 typedef struct QuizMotionFiles {
     s32 modelFileIds[2];
@@ -38,90 +34,6 @@ s32 lbl_1_data_14F4[6] = { 0xA40000, 0xA40005, 0xA4000A, 0xA40014, 0xA4001A, 0xA
 OM_CAMERA_VIEW lbl_1_data_150C = { { 0.0f, 210.0f, 0.0f }, { -8.57f, 0.0f, 0.0f }, 2294.0f };
 u8 lbl_1_data_1528[0x24] = { 0xC2, 0xC8, 0x00, 0x00, 0x45, 0xFA, 0x00, 0x00, 0xC3, 0xC8, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC3, 0xC8, 0x00, 0x00 };
-
-extern OM_CAMERA_VIEW lbl_1_data_12EC;
-
-extern char lbl_1_data_145C[];
-
-extern char lbl_1_data_147B[];
-
-extern char lbl_1_data_1498[];
-
-extern s32 lbl_1_bss_15A4;
-
-extern s32 lbl_1_bss_15A8[2];
-
-extern s16 lbl_1_bss_1750[1];
-
-extern s32 lbl_1_bss_100;
-
-extern s32 lbl_1_bss_110;
-
-extern s32 lbl_1_bss_20;
-
-extern f32 lbl_1_bss_104;
-
-extern f32 lbl_1_bss_8C;
-
-extern u32 lbl_1_bss_FC;
-
-extern HUPROCESS *lbl_1_bss_114[0xB];
-
-extern s32 lbl_1_bss_15B0[2][23];
-
-extern s32 lbl_1_bss_1668[2][23];
-
-extern s16 lbl_1_bss_1598;
-
-extern s16 lbl_1_bss_159A;
-
-extern ANIMDATA *lbl_1_bss_159C;
-
-extern s16 lbl_1_bss_1754[2];
-
-extern s16 lbl_1_bss_1758[2];
-
-extern s16 lbl_1_bss_175C[2];
-
-extern s16 lbl_1_bss_1760[2];
-
-extern s16 lbl_1_bss_1764;
-
-extern OMOBJ *lbl_1_bss_1768[2][23];
-
-extern OMOBJ *lbl_1_bss_A8;
-
-extern s16 lbl_1_bss_9C[2];
-
-extern s16 lbl_1_bss_A0;
-
-extern s16 lbl_1_bss_A4;
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
-
-extern u8 lbl_1_data_488[4];
-
-extern MicquizSelectionConfig lbl_1_data_15CC[5];
-
-u8 MicQuizQuestionLevelGet(void);
-
-void MicQuizCountdownInit(void);
-
-s32 MicQuizCurrentPlayerGet(void);
-
-void MicQuizExpectedAnswerSet(s32);
-
-s32 MicQuizPauseInit(HUPROCESS *);
-
-void MicQuizMicContextSet(s32);
-
-s32 MicQuizRandRange(s32, s32);
-
-void fn_1_22434(void);
-
-void fn_1_22458(void);
 
 OMOBJ *lbl_1_bss_1768[2][23];
 
@@ -155,15 +67,27 @@ s16 lbl_1_bss_159A;
 
 s16 lbl_1_bss_1598;
 
-extern char *lbl_1_data_1584[18];
-
-extern s32 lbl_1_data_1608[5];
-
 char *lbl_1_data_1584[18] = { "2", "4", "6", "8", "10", "11", "o1", "o2", "o3", "o4", "o5", "o6",
                              "o7", "o8", "o9", "o10", "o11", "o12" };
 MicquizSelectionConfig lbl_1_data_15CC[5] = { { 5, 2, 3 }, { 5, 4, 6 }, { 5, 7, 9 }, { 5, 10, 12 },
                                              { 1, 13, 15 } };
 s32 lbl_1_data_1608[5] = { 1, 2, 3, 4, 5 };
+
+void fn_1_20B70(void);
+void fn_1_211C4(u8 firstFlag, u8 secondFlag);
+void fn_1_21230(void);
+void fn_1_21568(void);
+void fn_1_21604(void);
+void fn_1_216A0(void);
+void fn_1_21764(OMOBJ *object);
+void fn_1_21B14(OMOBJ *object);
+void fn_1_21E00(void);
+void fn_1_22058(void);
+s32 fn_1_2233C(s32 value, s32 groupIndex);
+s32 fn_1_223B8(s32 value, s32 groupIndex);
+void fn_1_22434(void);
+void fn_1_22458(void);
+void fn_1_225AC(HU3D_MODELID modelId, char *objName, Vec *position);
 
 /* Sets up the comparison round: picks the left and right answers, creates the camera, lights and
    models, and reports which side is correct. */
@@ -289,18 +213,9 @@ void fn_1_1FB04(void) {
     lbl_1_bss_20 = HuAudSStreamPlay(MSM_STREAM_QUESTION_MUSIC_FOURTH);
 }
 
-extern s16 micQuizGameMes;
-
-void fn_1_216A0(void);
-
-s32 MicQuizResponseStateGet(void);
-
-/* Debug value hook: does nothing in the release build. */
-static inline void DebugValue(s32 value) { }
-
 /* Runs the comparison round's mode steps: the question message, the objects, the answer, and the
    closing wipe. */
-void fn_1_20804(void) {
+void fn_1_20804(OMOBJ *object) {
     MicQuizCountdownUpdate();
 
     switch (lbl_1_bss_FC) {
@@ -647,8 +562,6 @@ void fn_1_216A0(void)
     }
 }
 
-void fn_1_225AC(HU3D_MODELID modelId, char *objName, Vec *position);
-
 /* Creates one comparison object: its model, joint motions and place, then hands it to its update
    step. */
 void fn_1_21764(OMOBJ *object) {
@@ -767,7 +680,7 @@ void fn_1_21B14(OMOBJ *object) {
                     work->rotation.z);
 }
 
-typedef struct MicquizObjectWork {
+typedef struct MicquizNameObjectWork {
     Vec position;
     Vec targetPosition;
     u8 unknown_18[0x20]; /* No code names this field. */
@@ -783,13 +696,13 @@ typedef struct MicquizObjectWork {
     s32 groupIndex;
     s32 state;
     s16 modelId;
-} MicquizObjectWork;
+} MicquizNameObjectWork;
 
 /* Sets each object's move from its place to a model joint's place, with a vertical speed. */
 void fn_1_21E00(void) {
     s32 group;
     s32 index;
-    MicquizObjectWork *work;
+    MicquizNameObjectWork *work;
 
     group = 0;
     while (group < 2) {
@@ -956,22 +869,6 @@ void fn_1_225AC(HU3D_MODELID modelId, char *objName, Vec *position) {
     position->z = matrix[2][3];
 }
 
-extern char lbl_1_data_16AF[];
-
-extern char lbl_1_data_16CE[];
-
-extern char lbl_1_data_16EB[];
-
-extern char lbl_1_data_16AF[31];
-
-extern char lbl_1_data_16CE[29];
-
-extern char lbl_1_data_16EB[12];
-
-char lbl_1_data_16AF[31] = "Center X:%.02f Y:%.02f Z:%.02f";
-char lbl_1_data_16CE[29] = "CRot X:%.02f Y:%.02f Z:%.02f";
-char lbl_1_data_16EB[12] = "CZoom:%.02f";
-
 /* Debug view: prints the camera's center, rotation and zoom in a window. */
 void fn_1_22604(void) {
     GXColor windowColor;
@@ -994,9 +891,9 @@ void fn_1_22604(void) {
 
     printWin(0x10, 0x28, 0xF0, 0x54, &windowColor);
     fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, lbl_1_data_16AF, lbl_80266B18[0].x, lbl_80266B18[0].y,
+    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
            lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, lbl_1_data_16CE, lbl_80266A58[0].x, lbl_80266A58[0].y,
+    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
            lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, lbl_1_data_16EB, lbl_80266BD8[0]);
+    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
 }

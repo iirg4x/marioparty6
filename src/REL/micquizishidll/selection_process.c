@@ -85,91 +85,18 @@
 
 #include "game/board/player.h"
 
-#include "REL/micquizishidll/selection_record.h"
-
 #include "game/mic.h"
 
 #include "msm_se.h"
+#include "REL/micquizishidll.h"
 
-#include "REL/micquizishidll/related_types.h"
-
-void fn_1_2E138(void);
-
-void fn_1_2C624(void);
-
-void fn_1_2CE80(void);
-
-extern Point3d lbl_1_data_1F2C[5][8];
-
-void fn_1_2E2EC(void);
-
-extern Vec lbl_1_data_1F2C[5][8];
-
-s32 fn_1_2E240(s32 value);
-
-extern MicquizSelectionEntry micQuizChoiceRecords[8];
-
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
 void MicQuizCountdownInit(void);
-
-u8 MicQuizQuestionLevelGet(void);
-
-s32 MicQuizCurrentPlayerGet(void);
-
-void MicQuizMicContextSet(s32 mode);
-
-extern s32 lbl_1_bss_100;
-
-extern s32 lbl_1_bss_20;
-
-extern s32 lbl_1_bss_1BE0;
-
-extern s32 lbl_1_bss_1BA0;
-
-extern f32 lbl_1_bss_1BD8;
-
-extern u32 lbl_1_bss_FC;
-
-extern s32 lbl_1_bss_110;
-
-extern HUPROCESS *lbl_1_bss_114[0xB];
-
-extern OMOBJ *lbl_1_bss_A8;
-
-extern s16 lbl_1_bss_1BDC;
-
-extern s16 lbl_1_bss_1BD4;
-
-extern s16 lbl_1_bss_1BC4[8];
-
-extern s16 lbl_1_bss_1BB4[8];
-
-extern s16 lbl_1_bss_1BB2;
-
-extern s16 lbl_1_bss_1BB0;
-
-extern s16 lbl_1_bss_1BAC[2];
-
-extern s32 lbl_1_data_1F04[5];
-
-extern s32 lbl_1_data_1EE4[8];
-
-extern OM_CAMERA_VIEW lbl_1_data_1EA4;
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
-
-extern u8 lbl_1_data_488[4];
-
-extern Point3d lbl_1_data_1EC0;
-
-extern Point3d lbl_1_data_1ECC;
-
-extern Point3d lbl_1_data_1ED8;
-
-void MicQuizExpectedAnswerSet(s32);
-
-s32 MicQuizPauseInit(HUPROCESS *);
+void MicQuizExpectedAnswerSet(s32 expectedAnswer);
+void MicQuizListenStart(void);
+void MicQuizMicContextSet(s32 questionType);
+void MicQuizQuestionReadySet(void);
 
 u8 lbl_1_data_1E88[0x1C] = { 0x00, 0xA4, 0x00, 0x7A, 0x00, 0xA4, 0x00, 0x7B, 0x00, 0xA4, 0x00, 0x7C,
         0x00, 0xA4, 0x00, 0x7D, 0x00, 0xA4, 0x00, 0x7E, 0x00, 0xA4, 0x00, 0x7F, 0x00, 0xA4, 0x00, 0x80 };
@@ -194,6 +121,32 @@ Point3d lbl_1_data_1F2C[5][8] = { { { -190.0f, 100.0f, -230.0f }, { -70.0f, 100.
                                                                                 -170.0f }, { 70.0f,
                                                                                         100.0f, -170.0f }, { 180.0f, 100.0f, -220.0f }, { 260.0f, 100.0f, -390.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } }, { { -260.0f, 100.0f, -410.0f }, { -200.0f, 100.0f, -260.0f }, { -110.0f, 100.0f, -180.0f }, { 0.0f, 100.0f, -150.0f }, { 110.0f, 100.0f, -180.0f }, { 200.0f, 100.0f, -260.0f }, { 260.0f, 100.0f, -410.0f }, { 0.0f, 0.0f, 0.0f } }, { { -220.0f, 100.0f, -520.0f }, { -250.0f, 100.0f, -360.0f }, { -170.0f, 100.0f, -210.0f }, { -60.0f, 100.0f, -160.0f }, { 60.0f, 100.0f, -160.0f }, { 170.0f, 100.0f, -210.0f }, { 250.0f, 100.0f, -360.0f }, { 220.0f, 100.0f, -520.0f } } };
 
+void fn_1_2CE80(void);
+void fn_1_2E074(void);
+void fn_1_2E138(void);
+s32 fn_1_2E240(s32 value);
+s32 fn_1_2E29C(s32 key);
+void fn_1_2E2EC(void);
+void fn_1_2E85C(void);
+void fn_1_2E89C(void);
+void fn_1_2EC80(s16 modelId);
+extern f32 lbl_1_bss_1B90;
+extern f32 lbl_1_bss_1B94;
+extern s32 lbl_1_bss_1B98;
+extern s32 lbl_1_bss_1B9C;
+extern s32 lbl_1_bss_1BA0;
+extern s32 lbl_1_bss_1BA4;
+extern s32 lbl_1_bss_1BA8;
+extern s16 lbl_1_bss_1BAC[2];
+extern s16 lbl_1_bss_1BB0;
+extern s16 lbl_1_bss_1BB2;
+extern s16 lbl_1_bss_1BB4[8];
+extern s16 lbl_1_bss_1BC4[8];
+extern s16 lbl_1_bss_1BD4;
+extern f32 lbl_1_bss_1BD8;
+extern s16 lbl_1_bss_1BDC;
+extern s32 lbl_1_bss_1BE0;
+
 /* Sets up the fruit round: picks the answer fruit and the choices, reports the answer, creates
    the camera, lights and models. */
 void fn_1_2C624(void) {
@@ -204,9 +157,9 @@ void fn_1_2C624(void) {
     lbl_1_bss_1BE0 = lbl_1_data_1F04[lbl_1_bss_100];
     fn_1_2E138();
     lbl_1_bss_1BA0 = frandmod(lbl_1_bss_1BE0);
-    MicQuizExpectedAnswerSet(micQuizChoiceRecords[lbl_1_bss_1BA0].selection);
+    MicQuizExpectedAnswerSet(micQuizChoiceRecords[lbl_1_bss_1BA0].answerIndex);
 
-    switch (micQuizChoiceRecords[lbl_1_bss_1BA0].selection) {
+    switch (micQuizChoiceRecords[lbl_1_bss_1BA0].answerIndex) {
     case 0:
         OSReport("    ANS:STRAWBERRY\n");
         break;
@@ -290,7 +243,7 @@ void fn_1_2C624(void) {
                         position.z + 40.0f);
         micQuizChoiceRecords[index].modelId = fn_80025A04(
             fn_80008DD0(
-                lbl_1_data_1EE4[micQuizChoiceRecords[index].selection],
+                lbl_1_data_1EE4[micQuizChoiceRecords[index].answerIndex],
                 0x10000000, 2));
         fn_80026760(micQuizChoiceRecords[index].modelId, position.x,
                         position.y, position.z);
@@ -320,53 +273,13 @@ void fn_1_2C624(void) {
     lbl_1_bss_20 = HuAudSStreamPlay(MSM_STREAM_FUN_TIMES);
 }
 
-void MicQuizResponseRunAlt(s32 mode);
-
 void fn_1_2CE80(void) {
     MicQuizResponseRunAlt(6);
 }
 
-void fn_1_2558(void);
-
-void MicQuizPresenterMotionSet(s32 motionNo, f32 startTime, u32 attr);
-
-void MicQuizQuestionReadySet(void);
-
-void MicQuizListenStart(void);
-
-s32 MicQuizCountdownUpdate(void);
-
-s32 MicQuizRecognizedAnswerGet(void);
-
-extern f32 lbl_1_bss_104;
-
-extern s16 micQuizGameMes;
-
-extern s16 micQuizPresenterModel;
-
-extern f32 lbl_1_bss_1B90;
-
-extern f32 lbl_1_bss_1B94;
-
-extern s32 lbl_1_bss_1B98;
-
-extern s32 lbl_1_bss_1B9C;
-
-extern s32 lbl_1_bss_1BA4;
-
-extern s32 lbl_1_bss_1BA8;
-
-void fn_1_2E074(void);
-
-s32 fn_1_2E29C(s32 selection);
-
-void fn_1_2E85C(void);
-
-s32 MicQuizResponseStateGet(void);
-
 /* Runs the fruit round's mode steps: the question message, the items' moves toward the players,
    the answer and the closing wipe. */
-void fn_1_2CEA4(void) {
+void fn_1_2CEA4(OMOBJ *object) {
     Vec startPosition;
     Vec targetPosition;
     Vec direction;
@@ -569,12 +482,20 @@ void fn_1_2CEA4(void) {
     }
 }
 
-/* Debug view: prints the camera's center, rotation and zoom in a window. */
-static inline void cameraDebugWindow(GXColor *windowColor) {
-    windowColor->r = 0;
-    windowColor->g = 0;
-    windowColor->b = 0x90;
-    windowColor->a = 0xC0;
+/* Debug view: moves the camera with the first pad, prints its center, rotation and zoom in a
+   window, then its position and target. */
+void fn_1_2DA80(void) {
+    Vec cameraPosition;
+    Vec centerPosition;
+    GXColor windowColor;
+    f32 rotationZ;
+    f32 rotationY;
+    f32 rotationX;
+
+    windowColor.r = 0;
+    windowColor.g = 0;
+    windowColor.b = 0x90;
+    windowColor.a = 0xC0;
 
     lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
     lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
@@ -587,25 +508,13 @@ static inline void cameraDebugWindow(GXColor *windowColor) {
 
     if (lbl_802C0008[0] & 0x800) fn_8003E488(1, &lbl_1_data_1EA4);
 
-    printWin(0x10, 0x28, 0x180, 0x54, windowColor);
+    printWin(0x10, 0x28, 0x180, 0x54, &windowColor);
     fontcolor = FONT_COLOR_YELLOW;
     print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x,
            lbl_80266B18[0].y, lbl_80266B18[0].z);
     print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x,
            lbl_80266A58[0].y, lbl_80266A58[0].z);
     print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
-}
-
-/* Debug view: the camera window, plus the camera's position and target. */
-void fn_1_2DA80(void) {
-    Vec cameraPosition;
-    Vec centerPosition;
-    GXColor windowColor;
-    f32 rotationZ;
-    f32 rotationY;
-    f32 rotationX;
-
-    cameraDebugWindow(&windowColor);
 
     rotationX = lbl_80266A58[0].x;
     rotationY = lbl_80266A58[0].y;
@@ -656,10 +565,10 @@ void fn_1_2E138(void) {
     index = 0;
     while (index < 8)
     {
-        micQuizChoiceRecords[index].selection = -1;
-        micQuizChoiceRecords[index].inUse = 0;
+        micQuizChoiceRecords[index].answerIndex = -1;
+        micQuizChoiceRecords[index].answered = 0;
         micQuizChoiceRecords[index].modelId = 0;
-        micQuizChoiceRecords[index].state = 1;
+        micQuizChoiceRecords[index].availabilityState = 1;
         index += 1;
     }
     index = 0;
@@ -670,8 +579,8 @@ void fn_1_2E138(void) {
             selection = frandmod(8);
         }
         while (fn_1_2E240(selection) == 0);
-        micQuizChoiceRecords[index].selection = selection;
-        micQuizChoiceRecords[index].state = 0;
+        micQuizChoiceRecords[index].answerIndex = selection;
+        micQuizChoiceRecords[index].availabilityState = 0;
         index += 1;
     }
 }
@@ -681,7 +590,7 @@ s32 fn_1_2E240(s32 value) {
     s32 index;
 
     for (index = 0; index < lbl_1_bss_1BE0; index++) {
-        if (value == micQuizChoiceRecords[index].selection) {
+        if (value == micQuizChoiceRecords[index].answerIndex) {
             return 0;
         }
     }
@@ -692,35 +601,22 @@ s32 fn_1_2E29C(s32 key)
 {
     s32 index;
     for (index = 0; index < 8; index++) {
-        if (key == micQuizChoiceRecords[index].selection) return index;
+        if (key == micQuizChoiceRecords[index].answerIndex) return index;
     }
     return -1;
 }
 
-void fn_1_2D18(HU3D_MODELID modelId, char *objName, Vec *position);
-
-extern char lbl_1_data_22BC[];
-
-extern char lbl_1_data_22CE[];
-
-/* Returns the result row of the given choice, or -1. */
-static inline s32 findResultRow(s32 selection) {
+/* Returns the index of the choice record that holds this answer, or -1. */
+static inline s32 ChoiceRecordFind(s32 answer) {
     s32 row;
 
     for (row = 0; row < 8; row++) {
-        if (selection == micQuizChoiceRecords[row].selection) {
+        if (answer == micQuizChoiceRecords[row].answerIndex) {
             return row;
         }
     }
     return -1;
 }
-
-extern char lbl_1_data_22BC[18];
-
-extern char lbl_1_data_22CE[14];
-
-char lbl_1_data_22BC[18] = "g000m0-itemhook_M";
-char lbl_1_data_22CE[14] = "g000m0-ns_hed";
 
 /* Moves the answered item to its result place, turning it, with a sound. */
 void fn_1_2E2EC(void) {
@@ -741,11 +637,11 @@ void fn_1_2E2EC(void) {
         row = lbl_1_bss_1BA4;
     } else {
         selection = lbl_1_bss_1BA8;
-        row = findResultRow(selection);
+        row = ChoiceRecordFind(selection);
     }
 
-    fn_1_2D18(micQuizPresenterModel, lbl_1_data_22BC, &itemPosition);
-    fn_1_2D18(micQuizPresenterModel, lbl_1_data_22CE, &animationTargetPosition);
+    fn_1_2D18(micQuizPresenterModel, "g000m0-itemhook_M", &itemPosition);
+    fn_1_2D18(micQuizPresenterModel, "g000m0-ns_hed", &animationTargetPosition);
     PSVECSubtract(&itemPosition, &animationTargetPosition, &difference);
     targetAngle = (f32)(180.0 *
                         (atan2((f64)difference.x, (f64)difference.z) /
@@ -791,7 +687,7 @@ void fn_1_2E2EC(void) {
     }
     }
     HuAudFXPlay(0x535);
-    micQuizChoiceRecords[row].state = 1;
+    micQuizChoiceRecords[row].availabilityState = 1;
     fn_800269E8(micQuizChoiceRecords[row].modelId, 1U);
 
     angle = 90.0f;
@@ -809,14 +705,10 @@ void fn_1_2E2EC(void) {
     }
 }
 
-void fn_1_2E89C(void);
-
 /* Starts the process that swings the choice models, under the main process. */
 void fn_1_2E85C(void) {
     fn_8000DAC0(fn_1_2E89C, 0x64U, 0x1800U, 0, lbl_1_bss_114[0]);
 }
-
-void fn_1_2EC80(s16 modelId);
 
 /* Swings random choice models, dims them and ends this process. */
 void fn_1_2E89C(void) {
@@ -837,12 +729,12 @@ void fn_1_2E89C(void) {
             if (selection == lbl_1_bss_1BA0) {
                 continue;
             }
-            if (micQuizChoiceRecords[selection].inUse == 0) {
+            if (micQuizChoiceRecords[selection].answered == 0) {
                 break;
             }
         }
         selectedIndices[index] = selection;
-        micQuizChoiceRecords[selection].inUse = 1;
+        micQuizChoiceRecords[selection].answered = 1;
         index++;
     }
 

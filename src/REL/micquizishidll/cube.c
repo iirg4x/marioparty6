@@ -6,8 +6,6 @@
 
 #include "dolphin/gx.h"
 
-#include "REL/micquizishidll/grid.h"
-
 #include "game/hu3d.h"
 
 #include "game/object.h"
@@ -17,58 +15,15 @@
 #include "game/process.h"
 #include "game/mic.h"
 #include "humath.h"
+#include "REL/micquizishidll.h"
 
-extern s32 lbl_1_bss_100;
-
-extern f32 lbl_1_bss_104;
-
-extern s32 lbl_1_bss_110;
-
-extern HUPROCESS *lbl_1_bss_114[0xB];
-
-extern s32 lbl_1_bss_20;
-
-extern f32 lbl_1_bss_8C;
-
-extern s16 lbl_1_bss_9C[2];
-
-extern s16 lbl_1_bss_A0;
-
-extern s16 lbl_1_bss_A2;
-
-extern s16 lbl_1_bss_A4;
-
-extern OMOBJ *lbl_1_bss_A8;
-
-extern u32 lbl_1_bss_FC;
-
-extern Point3d lbl_1_data_470;
-
-extern Point3d lbl_1_data_47C;
-
-extern u8 lbl_1_data_488[4];
-
-u8 MicQuizQuestionLevelGet(void);
-
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
 void MicQuizCountdownInit(void);
-
-void MicQuizExpectedAnswerSet(s32);
-
-s32 MicQuizPauseInit(HUPROCESS *);
-
-void MicQuizMicContextSet(s32);
-
-void fn_1_1D578(void);
-
-void fn_1_1D6BC(OMOBJ *);
-
-void fn_1_1D82C(OMOBJ *);
-
-void fn_1_1DB98(void);
-
-void fn_1_1E524(s16 modelId);
-
-void fn_1_1E6B8(void);
+void MicQuizExpectedAnswerSet(s32 expectedAnswer);
+void MicQuizListenStart(void);
+void MicQuizMicContextSet(s32 questionType);
+void MicQuizQuestionReadySet(void);
 
 static s32 lbl_1_data_1188[7] = {0xA4007A, 0xA4007B, 0xA4007C, 0xA4007D, 0xA4007E, 0xA4007F,
                                  0xA40080};
@@ -113,6 +68,38 @@ f32 lbl_1_data_1348[5] = {1.2f, 0.8f, 0.6f, 0.48f, 0.4f};
 s32 lbl_1_data_135C[5] = {128, 84, 64, 52, 44};
 
 char *lbl_1_data_13A8[6] = {"v77_men1", "v77_men2", "v77_men3", "v77_men4", "v77_men5", "v77_men6"};
+
+void fn_1_1D578(void);
+void fn_1_1D6BC(OMOBJ *work);
+void fn_1_1D82C(OMOBJ *object);
+void fn_1_1DA74(OMOBJ *object);
+void fn_1_1DB00(OMOBJ *object);
+void fn_1_1DB98(void);
+void fn_1_1E364(void);
+void fn_1_1E460(void);
+void fn_1_1E524(s16 modelId);
+void fn_1_1E600(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination);
+void fn_1_1E6B8(void);
+extern s16 lbl_1_bss_1024[0x24];
+extern s32 lbl_1_bss_106C;
+extern QuizGridCell lbl_1_bss_1070[36];
+extern s16 lbl_1_bss_1190;
+extern ANIMDATA *lbl_1_bss_1194[0x24];
+extern s16 lbl_1_bss_1224;
+extern OMOBJ *lbl_1_bss_1228;
+extern OMOBJ *lbl_1_bss_122C;
+extern s32 lbl_1_bss_1230;
+extern QuizGridTileView lbl_1_bss_1234[0x24];
+extern s32 lbl_1_bss_1594;
+extern HUPROCESS *lbl_1_bss_E38;
+extern f32 lbl_1_bss_E3C;
+extern s32 lbl_1_bss_E40[6];
+extern s32 lbl_1_bss_E58;
+extern ANIMDATA *lbl_1_bss_E5C;
+extern s16 lbl_1_bss_E60;
+extern s16 lbl_1_bss_E62;
+extern Vec lbl_1_bss_E64;
+extern s16 lbl_1_bss_E70[0xDA];
 
 /* Builds the quiz grid, its tile animations, and the scene's display tasks. */
 void fn_1_1C210(void) {
@@ -325,8 +312,6 @@ void fn_1_1D578(void) {
     }
 }
 
-void fn_1_1DA74(OMOBJ *object);
-
 /* Creates a character model with its motions at its place. */
 void fn_1_1D6BC(OMOBJ *work) {
     QuizCharacterMotionView *model;
@@ -350,8 +335,6 @@ void fn_1_1D6BC(OMOBJ *work) {
     fn_80026B64(model->modelId, 1);
     work->objFunc = fn_1_1DA74;
 }
-
-void fn_1_1DB00(OMOBJ *object);
 
 /* Creates the hint character's model, scaled, with its motions, and keeps its model for the
    hint. */
@@ -415,25 +398,9 @@ void fn_1_1DB98(void) {
     MicQuizResponseRun(4);
 }
 
-extern s16 micQuizGameMes;
-
-s32 MicQuizCountdownUpdate(void);
-
-void fn_1_192C(void);
-
-void fn_1_1E364(void);
-
-void fn_1_1E460(void);
-
-void MicQuizQuestionReadySet(void);
-
-void MicQuizListenStart(void);
-
-s32 MicQuizResponseStateGet(void);
-
 /* Runs the cube round's mode steps: the question message, the cube's fade, the hint, the answer
    and the closing wipe. */
-void fn_1_1DBBC(void) {
+void fn_1_1DBBC(OMOBJ *object) {
     f32 transparency;
     QuizCharacterMotionView *work = lbl_1_bss_1228->data;
     s32 index;
@@ -570,16 +537,14 @@ void fn_1_1E364(void) {
 
     motionId = lbl_1_bss_E62;
     HuPrcSleep(8);
-wait_for_motion:
+    for (;;) {
         HuPrcVSleep();
         motionTime = fn_8002D4E0(motionId);
-        if (motionTime != (f32)lbl_1_data_11BC[lbl_1_bss_E58][0]) {
-            if (motionTime != (f32)lbl_1_data_11BC[lbl_1_bss_E58][0]) {
-                goto wait_for_motion;
-            }
+        if (motionTime == (f32)lbl_1_data_11BC[lbl_1_bss_E58][0] ||
+            motionTime == (f32)lbl_1_data_11BC[lbl_1_bss_E58][0]) {
+            HuAudFXPlay(lbl_1_data_11A4[lbl_1_bss_E58].motionSound);
         }
-        HuAudFXPlay(lbl_1_data_11A4[lbl_1_bss_E58].motionSound);
-    goto wait_for_motion;
+    }
 }
 
 void fn_1_1E460(void)
@@ -600,8 +565,6 @@ void fn_1_1E460(void)
         i += 1;
     }
 }
-
-void fn_1_1E600(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination);
 
 /* Layer hook: draws the cube grid's cells from their images. */
 void fn_1_1E524(s16 modelId) {
@@ -635,8 +598,6 @@ s32 fn_1_1E680(f32 value) {
     }
     return 0;
 }
-
-f32 fn_1_2AD8(f32 start, f32 end, f32 amount);
 
 /* Updates tile rotation and spacing for the quiz board's entrance and idle states. */
 void fn_1_1E6B8(void) {

@@ -1,6 +1,5 @@
 /* Pairing round: the character models, the paired entries and the answer. */
 #include "msm_stream.h"
-#include "REL/micquizishidll/selection_scene.h"
 #include "dolphin/gx.h"
 #include "dolphin/os.h"
 #include "math.h"
@@ -16,50 +15,13 @@
 #include "game/wipe.h"
 #include "datadir_enum.h"
 #include "humath.h"
+#include "REL/micquizishidll.h"
 
-int MicQuizMicContextSet();
-s32 MicQuizCurrentPlayerGet(void);
-
-extern s32 lbl_1_bss_100;
-extern f32 lbl_1_bss_104;
-extern s32 lbl_1_bss_110;
-extern HUPROCESS *lbl_1_bss_114[0xB];
-extern s32 lbl_1_bss_18D8;
-extern s16 lbl_1_bss_18F8[2];
-extern s16 lbl_1_bss_18FC[2];
-extern s32 lbl_1_bss_20;
-extern f32 lbl_1_bss_8C;
-extern s16 lbl_1_bss_9C[2];
-extern s16 lbl_1_bss_A0;
-extern s16 lbl_1_bss_A2;
-extern s16 lbl_1_bss_A4;
-extern OMOBJ *lbl_1_bss_A8;
-extern s32 lbl_1_bss_FC;
-extern Point3d lbl_1_data_470;
-extern Point3d lbl_1_data_47C;
-extern u8 lbl_1_data_488[4];
-
-u8 MicQuizQuestionLevelGet(void);
+/* quiz.h leaves these out (other files call them without a prototype); this file's calls take
+ * them with one. */
 void MicQuizCountdownInit(void);
-void MicQuizExpectedAnswerSet(s32);
-void MicQuizPauseInit(HUPROCESS *);
-
-void fn_1_27740(OMOBJ *);
-void fn_1_278F4(OMOBJ *);
-void fn_1_27AA8(OMOBJ *);
-void fn_1_27C7C(void);
-void fn_1_281AC(s16);
-void fn_1_28288(s16);
-
-extern void fn_1_29300(s16 modelId);
-extern s32 lbl_1_bss_18D0;
-extern s32 lbl_1_bss_18D4;
-extern s32 lbl_1_bss_18DC;
-extern s32 lbl_1_bss_18E0[6];
-extern s16 micQuizGameMes;
-extern s16 lbl_1_data_458[12];
-
-int MicQuizPortraitShow(s32 baseIndex);
+void MicQuizExpectedAnswerSet(s32 expectedAnswer);
+void MicQuizPauseInit(HUPROCESS *parentProcess);
 
 u32 lbl_1_data_19A0[7] = {
     0x00A4007A, 0x00A4007B, 0x00A4007C, 0x00A4007D,
@@ -104,6 +66,42 @@ OM_CAMERA_VIEW lbl_1_data_1C24 = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 8
 Point3d lbl_1_data_1C40 = { -100.0f, 8000.0f, -400.0f };
 Point3d lbl_1_data_1C4C = { 0.0f, 1.0f, 0.0f };
 Point3d lbl_1_data_1C58 = { 0.0f, 0.0f, -400.0f };
+
+void fn_1_27740(OMOBJ *work);
+void fn_1_278F4(OMOBJ *work);
+void fn_1_27AA8(OMOBJ *work);
+void fn_1_27C08(OMOBJ *object);
+void fn_1_27C7C(void);
+void fn_1_280E8(void);
+void fn_1_281AC(s16 layer);
+void fn_1_28288(s16 layer);
+void fn_1_28364(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination);
+void fn_1_284F0(void);
+void fn_1_28C98(void);
+void fn_1_291E4(s32 *slotIndexOut, s32 *partnerIndexOut);
+s32 fn_1_29294(void);
+void fn_1_29300(s16 modelId);
+void fn_1_29380(void);
+void fn_1_294F4(void);
+void fn_1_29A0C(void);
+extern s32 lbl_1_bss_18D0;
+extern s32 lbl_1_bss_18D4;
+extern s32 lbl_1_bss_18D8;
+extern s32 lbl_1_bss_18DC;
+extern s32 lbl_1_bss_18E0[6];
+extern s16 lbl_1_bss_18F8[2];
+extern s16 lbl_1_bss_18FC[2];
+extern s16 lbl_1_bss_1900[0x14];
+extern QuizModelList lbl_1_bss_1928;
+extern QuizSelectionTable lbl_1_bss_1954;
+extern s32 lbl_1_bss_1A48;
+extern s16 lbl_1_bss_1A4C[0x14];
+extern TexturePair lbl_1_bss_1A74[20];
+extern s16 lbl_1_bss_1B14;
+extern s16 lbl_1_bss_1B16;
+extern OMOBJ *lbl_1_bss_1B18;
+extern OMOBJ *lbl_1_bss_1B1C;
+extern QuizObjectStorage lbl_1_bss_1B20;
 
 /* Sets up the quiz selection scene, models, answer animations, and scene tasks. */
 void fn_1_26810(void) {
@@ -240,8 +238,6 @@ void fn_1_26810(void) {
     lbl_1_bss_20 = HuAudSStreamPlay(MSM_STREAM_QUESTION_MUSIC_FIFTH);
 }
 
-void fn_1_27C08(OMOBJ *object);
-
 /* Creates a character model with its motions at its place and darkens its materials. */
 void fn_1_27740(OMOBJ *work) {
     QuizCharacterModel *model;
@@ -335,29 +331,9 @@ void fn_1_27C7C(void) {
     MicQuizResponseRun(3);
 }
 
-s32 MicQuizCountdownUpdate(void);
-
-void fn_1_1B28(void);
-
-void fn_1_280E8(void);
-
-void fn_1_28C98(void);
-
-void fn_1_284F0(void);
-
-void fn_1_29380(void);
-
-void fn_1_294F4(void);
-
-void MicQuizQuestionReadySet(void);
-
-void MicQuizListenStart(void);
-
-s32 MicQuizResponseStateGet(void);
-
 /* Runs the pairing round's mode steps: the question message, the cubes, the answer and the
    closing wipe. */
-void fn_1_27CA0(void) {
+void fn_1_27CA0(OMOBJ *object) {
     s32 currentMode;
     HUPROCESS *childProcess = NULL;
 
@@ -473,8 +449,6 @@ void fn_1_280E8(void)
         i += 1;
     }
 }
-
-void fn_1_28364(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination);
 
 /* Layer hook: draws the twenty entries from their first image while the entries are shown. */
 void fn_1_281AC(s16 layer) {
@@ -715,10 +689,6 @@ void fn_1_284F0(void) {
     }
 }
 
-void fn_1_291E4(s32 *slotIndex, s32 *partnerIndex);
-
-s32 fn_1_29294(void);
-
 /* Swaps the matched pair's positions and motions, then waits for the next match. */
 void fn_1_28C98(void) {
     Point3d firstPosition;
@@ -883,8 +853,6 @@ void fn_1_29380(void) {
         HuPrcVSleep();
     }
 }
-
-void fn_1_29A0C(void);
 
 /* Re-centers the revealed answers, then starts their return animations. */
 void fn_1_294F4(void) {
