@@ -2,32 +2,13 @@
 static const char rcsid[] = "$Id: timer.cpp,v 1.14.2.2 2004/05/17 02:46:28 shohyama Exp $";
 
 #include "dolphin/math.h"
+#include "REL/framework/timer.h"
 
 extern "C" {
-#include "game/mg/timer.h"
 #include "game/flag.h"
 #include "REL/framework/assertion.h"
 #include "REL/framework/hu_archive.h"
 }
-
-// Provides the minigame framework object with control of its HUD timer.
-struct TimerOwner {
-    MGTIMER *m_tm; // Timer state and display resources owned by this object.
-    TimerOwner(int displayType);
-    ~TimerOwner();
-    void setParameters(int startTime, int endTime, int recordTime);
-    void setPosition(float screenX, float screenY);
-    void getPosition(float *screenX, float *screenY);
-    void setMode(int endBehavior);
-    void start();
-    void setRecordTime(int recordTime);
-    void setBackColor(unsigned char red, unsigned char green, unsigned char blue);
-    void getValue();
-    void turnModeOff();
-    void showRecord();
-    void reset();
-    unsigned char isDone();
-};
 
 // Minigame object construction creates its timer and rejects unsupported display types.
 TimerOwner::TimerOwner(int displayType) {
@@ -49,8 +30,8 @@ void TimerOwner::setParameters(int startTime, int endTime, int recordTime) {
     MgTimerParamSet(m_tm, startTime, endTime, recordTime);
 }
 
-// Calls the timer value getter but discards its current frame-count return value.
-void TimerOwner::getValue() { MgTimerValueGet(m_tm); }
+// Minigame result code reads the current frame count.
+int TimerOwner::getValue() { return MgTimerValueGet(m_tm); }
 
 // Minigame setup or UI control places the HUD timer in screen-pixel coordinates.
 void TimerOwner::setPosition(float screenX, float screenY) {

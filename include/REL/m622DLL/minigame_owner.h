@@ -3,7 +3,7 @@
 
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/thread.h"
-#include "REL/m622DLL/timer_owner.h"
+#include "REL/framework/timer.h"
 
 struct MinigameThreadOwner : MinigameCore, ThreadEntry {
     MinigameThreadOwner();

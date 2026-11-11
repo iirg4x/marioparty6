@@ -1,5 +1,5 @@
 #include "REL/framework/game_object_man.h"
-#include "REL/m654DLL/timer_owner.h"
+#include "REL/framework/timer.h"
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/thread.h"
 struct EventManager : MinigameSingleton<EventManager> {

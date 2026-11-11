@@ -204,7 +204,7 @@ Player::Player(int playerId, PlayerInitializationData *spawnData)
     fn_80080DD4(player->actor, 1);
     fn_80087158(player, 1);
     fn_8007ED60(player);
-    createCharacterMotions(&static_cast<MotionOwner &>(*this), const_cast<unsigned int *>(playerMotions), 3);
+    createCharacterMotions(&static_cast<MotionOwner &>(*this), playerMotions, 3);
     modelId = (short)player->actor->mdlId;
     fn_80026B8C(modelId, 3);
     velocity.x = 0.0f;

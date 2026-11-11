@@ -355,7 +355,7 @@ __dt__Q23std64vector<Q23std10pair<Ui,s>,Q23std29allocator<Q23std10pair<Ui,s>>>Fv
 __dt__Q23std72__vector_imp<Q23std10pair<Ui,s>,Q23std29allocator<Q23std10pair<Ui,s>>,0>Fv = .text:0x0001943C; // type:function size:0x58
 __dt__11MotionOwnerFv = .text:0x00019494; // type:function size:0xF8
 createCharacterMotion__FP11MotionOwnerUi = .text:0x0001958C; // type:function size:0x90
-createCharacterMotions__FP11MotionOwnerPUil = .text:0x0001961C; // type:function size:0xB8
+createCharacterMotions__FP11MotionOwnerPCUil = .text:0x0001961C; // type:function size:0xB8
 selectCharacterMotion__FP11MotionOwnerUi = .text:0x000196D4; // type:function size:0x74
 setCharacterMotionAttributes__FP11MotionOwnerUiUs = .text:0x00019748; // type:function size:0x3C
 setMotionOwnerTime__FP11MotionOwnerf = .text:0x00019784; // type:function size:0x3C

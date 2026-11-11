@@ -39,7 +39,7 @@ struct DifficultyParameter {
 #include "REL/m652DLL/racer_control.h"
 extern "C" {
 
-extern RouteStep lbl_1_data_0[];
+RouteStep lbl_1_data_0[2] = { { 0, 6, 9, cmToWorld(-1800.0f) }, { 1, 7, 11, cmToWorld(-4300.0f) } };
 const DifficultyParameter lbl_1_rodata_10[] = {
     {1.2f, 2.2f, 40.0f, 1.0f, 1.5f, 5},
     {1.2f, 2.0f, 38.0f, 0.8f, 0.8f, 3},
@@ -252,22 +252,10 @@ signed char lbl_1_bss_10[0x8];
 template<> MapManager *MinigameSingleton<MapManager>::self = 0;
 extern "C" {
 
-extern HuVecF lbl_1_data_20[2];
-
-extern char lbl_1_data_38[];
-extern char lbl_1_data_42[];
-
-extern void __msl_assertion_failed(const char *expression, const char *file, int line);
+HuVecF lbl_1_data_20[2] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
 
 }
 unsigned char fn_1_5190(MapManager *owner, int currentStep, int nextStep, Vec *position);
-
-static inline MapManager *Owner990(void)
-{
-    (MinigameSingleton<MapManager>::self != 0) ? (void)0
-        : __msl_assertion_failed(lbl_1_data_38, lbl_1_data_42, 0x26);
-    return MinigameSingleton<MapManager>::self;
-}
 
 static inline double StepDistance990(double rotation)
 {
@@ -306,7 +294,8 @@ void fn_1_990(ComputerControl *work, const HuVecF *position, HuVecF *delta)
         work->rotation = RandomFloat(*waypointX, *waypointY);
     }
 
-    hasTarget = fn_1_5190(Owner990(), work->currentStep, work->nextStep, &target);
+    hasTarget = fn_1_5190(&MinigameSingleton<MapManager>::getChecked(), work->currentStep,
+                          work->nextStep, &target);
     speed = (float)StepDistance990(hasTarget != 0 ? work->rotation : 3.5);
 
     if (hasTarget == 0) {
@@ -377,11 +366,3 @@ s32 fn_1_CBC(ComputerControl *work, const HuVecF *target, float amount)
 
 void RacerControl::reset() {}
 void HumanControl::update() {}
-
-extern "C" {  }
-
-/* Route assertion messages. */
-RouteStep lbl_1_data_0[2] = { { 0, 6, 9, cmToWorld(-1800.0f) }, { 1, 7, 11, cmToWorld(-4300.0f) } };
-HuVecF lbl_1_data_20[2] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
-char lbl_1_data_38[10] = "self != 0";
-char lbl_1_data_42[14] = "singleton.h";

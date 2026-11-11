@@ -83,7 +83,7 @@ REL/framework/heap.cpp:
 	.data       start:0x000007A0 end:0x000007C0
 	.bss        start:0x000000E0 end:0x000000E8
 
-REL/m654DLL/global_destructor_chain.cpp:
+REL/m654DLL/global_destructor_chain.c:
 	.text       start:0x0000C1B8 end:0x0000C240
 	.dtors      start:0x00000000 end:0x00000004
 	.bss        start:0x000000E8 end:0x000000F0
