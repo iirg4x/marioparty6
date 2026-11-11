@@ -91,7 +91,7 @@ REL/framework/heap.cpp:
 	.data       start:0x00000698 end:0x000006B8
 	.bss        start:0x00000608 end:0x00000610
 
-REL/m648DLL/global_destructor_chain.cpp:
+REL/m648DLL/global_destructor_chain.c:
 	.text       start:0x00010038 end:0x000100C0
 	.dtors      start:0x00000000 end:0x00000004
 	.bss        start:0x00000610 end:0x00000618

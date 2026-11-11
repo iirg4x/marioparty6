@@ -2,7 +2,7 @@
 #include "REL/framework/sound.h"
 #include "REL/framework/world_units.h"
 #include "REL/m654DLL/camera_node_owner.h"
-#include "REL/m654DLL/timer_owner.h"
+#include "REL/framework/timer.h"
 #include "REL/m654DLL/scene_owner.h"
 #include "REL/framework/list_object.h"
 #include "math.h"

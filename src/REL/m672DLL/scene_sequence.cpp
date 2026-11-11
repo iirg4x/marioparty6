@@ -60,11 +60,6 @@ public:
 
 void *operator new(unsigned long);
 
-extern "C" {
-char lbl_1_data_1C0[] = "self != 0";
-char lbl_1_data_1CA[] = "singleton.h";
-}
-
 SceneOwner672::~SceneOwner672() {}
 
 extern "C" {
@@ -91,20 +86,11 @@ void fn_1_7230(void *);
 void fn_1_7404(void *);
 void fn_1_7408(void *);
 
-static inline void *sceneState_inlined();
-
-static inline void *sceneState_inlined()
-{
-    (Resources::self != 0) ? (void)0
-        : __msl_assertion_failed(lbl_1_data_1C0, lbl_1_data_1CA, 0x26);
-    return Resources::self;
-}
-
 void SceneOwner672::setupObjects(OMOBJMAN *)
 {
     new CameraOwner;
 
-    void *state = sceneState_inlined();
+    void *state = &Resources::getChecked();
     fn_1_6E04(state);
     fn_1_71BC(state);
     fn_1_7230(state);

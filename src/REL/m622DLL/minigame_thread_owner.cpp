@@ -6,7 +6,7 @@
 #include "msm_stream.h"
 #include "REL/framework/thread.h"
 #include "REL/framework/minigame_core.h"
-#include "REL/m622DLL/timer_owner.h"
+#include "REL/framework/timer.h"
 #include "REL/framework/list_object.h"
 
 #include "REL/m622DLL/minigame_owner.h"
@@ -18,7 +18,7 @@
 #include "REL/m622DLL/score_display_owner.h"
 
 extern "C" {
-extern s16 lbl_802C0278;
+#include "game/gamework.h"
 void fn_8005DDEC(s32);
 }
 
@@ -34,11 +34,9 @@ MinigameThreadOwner::~MinigameThreadOwner()
 void MinigameThreadOwner::setupObjects(OMOBJMAN *)
 {
     s32 index;
-    s16 nightMode;
 
     RandomSeed(OSGetTick());
-    nightMode = lbl_802C0278;
-    this->dayMode = !nightMode;
+    this->dayMode = !GWMgNightFGet();
 
     new CameraOwner();
     new ScoreDisplayOwner();

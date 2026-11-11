@@ -2,7 +2,7 @@
 #define REL_M603DLL_FLOW_H
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/thread.h"
-#include "REL/m603DLL/timer_owner.h"
+#include "REL/framework/timer.h"
 class MinigameThreadOwner : public MinigameCore, public ThreadEntry {
 public:
     TimerOwner timer;

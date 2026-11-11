@@ -9,6 +9,7 @@
 #include "game/mg/timer.h"
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/thread.h"
+#include "REL/framework/timer.h"
 extern "C" {
 #include "game/audio.h"
 #include "game/gamework.h"
@@ -31,23 +32,6 @@ struct EventManager : MinigameSingleton<EventManager> {
 extern "C" {
 extern int lbl_1_bss_2C, lbl_1_bss_30;
 }
-class TimerOwner {
-public:
-    MGTIMER *timer;
-    int getValue();
-    unsigned char isDone();
-    void turnModeOff();
-    void showRecord();
-    void reset();
-    TimerOwner(int mode);
-    ~TimerOwner();
-    void setParameters(int,int,int);
-    void setPosition(float,float);
-    void setMode(int);
-    void start();
-    void setRecordTime(int);
-};
-
 class FrameCountdown {
 public:
     int value;

@@ -25,14 +25,6 @@ MinigameState::MinigameState() : ThreadEntry(0x8000), timer(0) {
     record = fn_8003C860(4);
 }
 MinigameState::~MinigameState() {}
-struct MinigameSceneView {
-    u8 unobservedPrefix[0x358];
-    void *resource;
-    u8 unobservedAfterResource[8];
-    bool nightMode;
-    u8 unobservedAfterNightMode[3];
-    s32 record;
-};
 
 #include "REL/m648DLL/managers.h"
 #include "REL/m648DLL/first_list_object.h"
@@ -45,11 +37,8 @@ void MinigameState::setupObjects(OMOBJMAN *)
 {
     s32 player;
     s32 effect;
-    s16 nightSetting;
-    s16 nightFlag;
     RandomSeed(OSGetTick());
-    nightSetting = lbl_802C0278;
-    this->nightMode = ! nightSetting;
+    this->nightMode = !GWMgNightFGet();
     new ParticleAnimationOwner();
     new CameraManager();
     new ScoreManager();
@@ -68,8 +57,7 @@ void MinigameState::setupObjects(OMOBJMAN *)
     player = 0;
     while (player < 4)
     {
-        nightFlag = lbl_802C0278;
-        effect = (player << 1) + (u8)(nightFlag != 0);
+        effect = (player << 1) + (u8)(GWMgNightFGet() != 0);
         printf("CPlayer %d %d\n", player, lbl_80265728[player].charNo);
         new CPlayer(player, effect, this->nightMode);
         ++player;

@@ -4189,7 +4189,7 @@ config.libs = [
         objects={
             Object(
                 Matching,
-                "REL/m622DLL/global_destructor_chain.cpp",
+                "REL/m622DLL/global_destructor_chain.c",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
@@ -4197,6 +4197,7 @@ config.libs = [
                     '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
                     *cflags_rel[cflags_rel.index("-i include"):],
                 ],
+                source="Runtime.PPCEABI.H/global_destructor_chain.c",
                 extra_cflags=["-pooldata", "off", "-char", "signed"],
             ),
             Object(
@@ -4383,7 +4384,8 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m648DLL/global_destructor_chain.cpp",
+                "REL/m648DLL/global_destructor_chain.c",
+                source="Runtime.PPCEABI.H/global_destructor_chain.c",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -4703,7 +4705,8 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m603DLL/global_destructor_chain.cpp",
+                "REL/m603DLL/global_destructor_chain.c",
+                source="Runtime.PPCEABI.H/global_destructor_chain.c",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5072,7 +5075,8 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m652DLL/global_destructor_chain.cpp",
+                "REL/m652DLL/global_destructor_chain.c",
+                source="Runtime.PPCEABI.H/global_destructor_chain.c",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5188,7 +5192,8 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m672DLL/global_destructor_chain.cpp",
+                "REL/m672DLL/global_destructor_chain.c",
+                source="Runtime.PPCEABI.H/global_destructor_chain.c",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
@@ -5388,7 +5393,8 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/m654DLL/global_destructor_chain.cpp",
+                "REL/m654DLL/global_destructor_chain.c",
+                source="Runtime.PPCEABI.H/global_destructor_chain.c",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",

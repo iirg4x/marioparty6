@@ -78,10 +78,10 @@ void createCharacterMotion(CharacterMotion *character, unsigned int dataNum)
 }
 
 // Motion preload requests load every resource in the supplied array into this character's list.
-void createCharacterMotions(CharacterMotion *character, unsigned int *dataNums, s32 count)
+void createCharacterMotions(CharacterMotion *character, const unsigned int *dataNums, s32 count)
 {
-    unsigned int *last = dataNums + count;
-    for (unsigned int *cursor = dataNums; cursor != last; ++cursor) {
+    const unsigned int *last = dataNums + count;
+    for (const unsigned int *cursor = dataNums; cursor != last; ++cursor) {
         unsigned int dataNum = *cursor;
         s16 motionId = fn_8005B0B8((s16)character->charNo, dataNum);
         character->motions.push_back(std::make_pair(dataNum, s16(motionId)));

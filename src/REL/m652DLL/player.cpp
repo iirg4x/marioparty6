@@ -171,7 +171,7 @@ Racer::Racer(int character, int index, Point3d *position)
     fn_8007ED60(player);
     modelId = (short)player->actor->mdlId;
     fn_80026B8C(modelId, 2);
-    createCharacterMotions(&static_cast<MotionOwner &>(*this), const_cast<unsigned int *>(lbl_1_rodata_320), 4);
+    createCharacterMotions(&static_cast<MotionOwner &>(*this), lbl_1_rodata_320, 4);
     fn_80086AA8(player->actor, position);
     motion.x = 0.0f;
     motion.y = 0.0f;
