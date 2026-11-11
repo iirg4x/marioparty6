@@ -5,16 +5,22 @@
 #include "game/board/audio.h"
 #include "game/board/branch.h"
 #include "game/board/camera.h"
+#include "game/board/capevent.h"
+#include "game/board/capselect.h"
 #include "game/board/coin.h"
+#include "game/board/dice.h"
 #include "game/board/effect.h"
 #include "game/board/gate.h"
 #include "game/board/main.h"
+#include "game/board/math.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/pause.h"
 #include "game/board/player.h"
+#include "game/board/snpc.h"
 #include "game/board/status.h"
 #include "game/board/tutorial.h"
+#include "game/board/wipe.h"
 #include "game/audio.h"
 #include "game/charman.h"
 #include "game/data.h"
@@ -26,6 +32,11 @@
 #include "msm_se.h"
 
 #include "string.h"
+#include "game/board/single.h"
+#include "game/board/scroll.h"
+#include "game/board/star.h"
+#include "game/board/telop.h"
+#include "humath.h"
 
 enum {
     MESS_CHARANAME_MARIO,
@@ -49,9 +60,6 @@ enum {
     PLAYER_MOVE_NUM_OBJ_PRIORITY = 32258,
     PLAYER_MOVE_PROCESS_PRIORITY = 8205,
     PLAYER_MOVE_PROCESS_STACK_SIZE = 24576,
-    PLAYER_MOVE_COUNT_SFX = 1006,
-    PLAYER_COIN_GAIN_SFX = 1101,
-    PLAYER_COIN_LOSS_SFX = 1102
 };
 
 #define FLAG_BOARD_WALKDONE 65552
@@ -88,8 +96,6 @@ typedef struct PlayerColWork {
     s8 time;
     // Total collision-animation frames.
     s8 maxTime;
-    // Alignment padding in the collision object's work record.
-    u8 _pad06[2];
     // Starting yaw used while rotating around a space.
     float rotYStart;
     // Radius of the circular placement around a space.
@@ -100,7 +106,6 @@ static GXColor metalDefaultColor[2] = {
     { 128, 190, 140, 255 },
     { 100, 50, 130, 255 }
 };
-
 
 static const int charMdlFileTbl[14] = {
     0x900000, 0x380000, 0xc20000, 0xf50000,
@@ -209,48 +214,6 @@ static BOOL PlayerViewSet(
 static void MasuCoinExec(int playerNo, int coinNum);
 static void ev_PlayerStartTurn(int playerNo);
 static void ev_PlayerEndTurn(int playerNo);
-int mbSingleTeamCharGet(void);
-int mbCapSelect(void);
-int mbSingleCall(int mode, int arg);
-int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
-    int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
-int mbDiceExec(int playerNo, int diceType, s8 *valueTbl, int tutorialVal,
-    BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
-void mbDiceKill(int playerNo);
-int mbDiceMaxGet(int diceType);
-int mbDiceValueMaxGet(int diceType);
-void mbev_Scroll(int playerNo, BOOL mapF);
-void mbev_CapKillerMoveCall(int playerNo);
-void mbev_CapCallKettou(int playerNo, s16 id, BOOL stopF);
-void mbev_CapCallTrap(int playerNo, s16 id, s16 idNext);
-void mbev_CapBiriQShockCreate(int playerNo);
-void mbStarDispSetAll(BOOL dispF);
-void mbStarMasuDispSet(int masuId, BOOL dispF);
-void mbTelopTimeCreate(void);
-void mbTelopPlayerCreate(int playerNo);
-s16 mbCoinDispMasuCreate(HuVecF *pos, int coinNum, BOOL playSe);
-void mbCoinAddExec(int playerNo, int coinNum);
-void mbDiceNumKill(int playerNo);
-void mbDiceObjHit(int playerNo);
-void mbObjMetalCreate(MBMODELID modelId);
-void mbObjMetalKill(MBMODELID modelId);
-void mbObjMetalTPLvlSet(MBMODELID modelId, float level);
-void mbObjMetalColorSet(
-    MBMODELID modelId, GXColor shadowColor, GXColor hiliteColor);
-void mbObjBiriQCreate(MBMODELID modelId);
-void mbObjBiriQKill(MBMODELID modelId);
-void mbObjBiriQColorSet(
-    MBMODELID modelId, BOOL enableF, float level, GXColor color);
-BOOL mbWipeSpecialStatGet(void);
-void mbWipeFadeIn(void);
-void mbWipeFadeOut(void);
-void mbWipeDissolveFadeIn(void);
-void mbWipeSpecialFadeOutCreate(int type, int time);
-void mbWipeSpecialFadeInCreate(int type, int time);
-BOOL mbPauseEnableCheck(void);
-void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
-float mbSinDeg(float angle);
-float mbAngleEaseOut(float angleStart, float angleEnd, float weight);
 
 // Creates player models and collision objects when the board initializes.
 // With noEventF true, resets player setup, spaces, capsules and playerMode.
@@ -784,7 +747,7 @@ repeat:
             }
             skipCapsuleSelectF = FALSE;
             mbDiceKill(playerNo);
-            mbAudFXPlay(3);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             break;
         case -7:
             skipCapsuleSelectF = TRUE;
@@ -884,7 +847,7 @@ repeat:
         if (!mbev_MasuMove(playerNo, nextSpaceId)) {
             spaceHiddenF = !mbMasuDispCheck(nextSpaceId);
             if (!spaceHiddenF) {
-                mbAudFXPlay(PLAYER_MOVE_COUNT_SFX);
+                mbAudFXPlay(MSM_SE_BRD00_MOVE_COUNT);
                 lbl_80265750[playerNo].moveNum--;
                 if (lbl_80265750[playerNo].moveNum < 0) {
                     lbl_80265750[playerNo].moveNum = 0;
@@ -1101,7 +1064,7 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
                     motSpeed = -motSpeed;
                 }
                 playerRot.x = playerRot.z = 0.0f;
-                playerRot.y = (180.0*(atan2(moveDir.x, moveDir.z) / 3.141592653589793));
+                playerRot.y = (180.0*(atan2(moveDir.x, moveDir.z) / M_PI));
                 mbPlayerRotSetV(playerNo, &playerRot);
                 setAngle = TRUE;
                 break;
@@ -1116,7 +1079,7 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
             float rotY;
 
             VECSubtract(&objP->rot, &objP->trans, &playerRot);
-            rotY = 90.0f - (180.0*(atan2(playerRot.z, playerRot.x) / 3.141592653589793));
+            rotY = 90.0f - (180.0*(atan2(playerRot.z, playerRot.x) / M_PI));
             mbPlayerRotYSet(playerNo, rotY);
         } else {
             mbPlayerRotSetV(playerNo, rot);
@@ -1224,7 +1187,7 @@ static void PlayerMoveOMExec(OMOBJ *objP)
             weight = (float)workP->elapsedFrames / (workP->totalFrames - 2);
         }
         mbPlayerPosSet(workP->playerNo, objP->trans.x,
-            objP->trans.y + (100.0f * (2.0f * sin(3.141592653589793*(weight * 180.0f)/180.0))),
+            objP->trans.y + (100.0f * (2.0f * sin(M_PI*(weight * 180.0f)/180.0))),
             objP->trans.z);
         if (workP->elapsedFrames == workP->totalFrames - 5) {
             mbPlayerMotionShiftSet(workP->playerNo, 5, 2.0f, 2.0f,
@@ -1309,7 +1272,7 @@ static void PlayerRotateOMExec(OMOBJ *objP)
         return;
     }
     angle = (float)(workP->elapsedFrames++) / workP->totalFrames;
-    weight = sin(3.141592653589793*(angle * 90.0f)/180.0);
+    weight = sin(M_PI*(angle * 90.0f)/180.0);
     rotY = objP->rot.y + (weight * objP->scale.y);
     mbPlayerRotYSet(workP->playerNo, rotY);
     if (workP->elapsedFrames >= workP->totalFrames) {
@@ -1412,8 +1375,8 @@ void mbMoveNumCreateColor(int playerNo, BOOL carF, int color)
         pos.y += 300.0f;
         MTXLookAt(lookAt, &cameraP->pos, &cameraP->up, &cameraP->target);
         MTXMultVec(lookAt, &pos, &posNorm);
-        tanFov = sin(3.141592653589793*(cameraP->fov * 0.5f)/180.0)
-            / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
+        tanFov = sin(M_PI*(cameraP->fov * 0.5f)/180.0)
+            / cos(M_PI*(cameraP->fov * 0.5f)/180.0);
         objP->rot.y = posNorm.y / (tanFov * posNorm.z);
         objP->rot.z = -posNorm.z;
     }
@@ -1459,8 +1422,8 @@ static void MoveNumOMExec(OMOBJ *objP)
     mbPos3DtoNorm(&pos, 1, &posNorm);
     posNorm.y += objP->trans.y;
     posNorm.z = objP->trans.z;
-    tanFov = sin(3.141592653589793*(camera2P->fov * 0.5f)/180.0)
-        / cos(3.141592653589793*(camera2P->fov * 0.5f)/180.0);
+    tanFov = sin(M_PI*(camera2P->fov * 0.5f)/180.0)
+        / cos(M_PI*(camera2P->fov * 0.5f)/180.0);
     scaleX = 1.2f * (tanFov * -posNorm.z);
     scaleY = tanFov * -posNorm.z;
     posNorm.x *= scaleX;
@@ -1474,8 +1437,8 @@ static void MoveNumOMExec(OMOBJ *objP)
     if (workP->dispF) {
         int modelNo;
 
-        scale = sin(3.141592653589793*(cameraP->fov * 0.5f)/180.0)
-            / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
+        scale = sin(M_PI*(cameraP->fov * 0.5f)/180.0)
+            / cos(M_PI*(cameraP->fov * 0.5f)/180.0);
         scale = tanFov / scale;
         modelNo = lbl_80265750[workP->playerNo].moveNum / 10;
         if (modelNo != 0) {
@@ -2001,7 +1964,7 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo)
             }
         }
         VECSubtract(&posMasu, &posPlayer, &posDiff);
-        rotY = 90.0f - (180.0*(atan2(posDiff.z, posDiff.x) / 3.141592653589793));
+        rotY = 90.0f - (180.0*(atan2(posDiff.z, posDiff.x) / M_PI));
         mbPlayerRotYSet(playerNo, rotY);
         workP->rotYStart = rotY;
     }
@@ -3920,7 +3883,7 @@ void mbPlayerStarAdd(int playerNo, int starNum)
 {
     int star;
 
-    mbAudFXPlay(8);
+    mbAudFXPlay(MSM_SE_CMN_STAR_GET);
     star = mbPlayerStarGet(playerNo) + starNum;
     if (star < 0) {
         star = 0;
@@ -4271,20 +4234,20 @@ static void MasuCoinExec(int playerNo, int coinNum)
     mbPlayerPosGet(playerNo, &pos);
     pos.y += 250.0f;
     if (coinNum >= 0) {
-        mbAudFXPlay(PLAYER_COIN_GAIN_SFX);
+        mbAudFXPlay(MSM_SE_BRD00_COIN_GAIN);
     } else {
-        mbAudFXPlay(PLAYER_COIN_LOSS_SFX);
+        mbAudFXPlay(MSM_SE_BRD00_COIN_LOSS);
     }
     coinDisplayId = mbCoinDispMasuCreate(&pos, coinNum, FALSE);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
     if (coinNum >= 0) {
-        mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
+        mbPlayerWinLoseVoicePlay(playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
         mbPlayerMotionShiftSet(
             playerNo, 12, 0.0f, 4.0f, 0);
     } else {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+        mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
         mbPlayerMotionShiftSet(
             playerNo, 13, 0.0f, 4.0f, 0);
     }

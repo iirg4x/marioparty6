@@ -11,6 +11,8 @@ typedef struct MbCoinObj_s {
     u32 work[6];
 } MBCOINOBJ;
 
+void mbCoinInit(void);
+void mbCoinClose(void);
 s16 mbCoinCreate(void);
 s16 mbCoinCreate2(void);
 s16 mbCoinObjCreate(int modelNo, int motNo);
@@ -33,12 +35,19 @@ void mbCoinObjDispSet(s16 objId, BOOL dispF);
 BOOL mbCoinObjDispGet(s16 objId);
 void mbCoinObjLayerSet(s16 objId, u16 layer);
 void mbCoinObjMotSet(s16 objId, int motNo);
+s16 mbCoinDispCreate(HuVecF *pos, int coinNum, int sign, BOOL playSe);
+s16 mbCoinDispCapsuleCreate(HuVecF *pos, int coinNum);
+s16 mbCoinDispMasuCreate(HuVecF *pos, int coinNum, BOOL playSe);
 void mbCoinDispKill(s16 no);
 BOOL mbCoinDispKillCheck(s16 no);
 
 void mbCoinEffCreate(HuVecF *pos);
 
 int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF);
+int mbCoinAddExec(int playerNo, int coinNum);
+void mbCoinAddAllExec(int player0Change, int player1Change, int player2Change, int player3Change);
 int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF);
+void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF);
+int mbStatTeamMinValGet(int teamNo, int value, int max, int *addNum, int *result);
 
 #endif

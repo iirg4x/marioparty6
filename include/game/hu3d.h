@@ -511,7 +511,6 @@ u8 fn_80029E00(HU3D_MODELID modelId, HU3D_LIGHTID lightId);
 u8 fn_80029E44(HU3D_MODELID modelId, HU3D_LIGHTID lightId);
 
 s16 fn_80029E8C(HU3D_MODEL *modelP, Mtx cameraMtx, Mtx cameraMtxXPose, float hilitePower);
-void Hu3DReflectMapSet(ANIMDATA *anim);
 void fn_8002A2A4(s16 no);
 void Hu3DFogSet(float start, float end, u8 r, u8 g, u8 b);
 void Hu3DFogClear(void);

@@ -1,8 +1,11 @@
+#include "humath.h"
 // Board curve evaluation and path movement, and the event timer: the board's common code, compiled
 // after the board's own (as w04Dll's REL/w04Dll/common.h).
 #ifndef REL_W01DLL_COMMON_H
 #define REL_W01DLL_COMMON_H
 
+float fn_1_14A90(HuVecF *a, HuVecF *b, HuVecF *c, float t);
+float fn_1_14BF0(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t);
 float fn_1_14D34(float pointA, float pointB, float pointC, float pointD,
     float t);
 
@@ -420,7 +423,7 @@ void fn_1_161AC(int playerNo, HuVecF *dstPos, float dstRotY,
         }
         playerPos.x = startPos.x + (progress * delta.x);
         playerPos.y = startPos.y + (progress * delta.y)
-            + (jumpHeight * sin(3.141592653589793*(180.0f * progress)/180.0));
+            + (jumpHeight * sin(M_PI*(180.0f * progress)/180.0));
         playerPos.z = startPos.z + (progress * delta.z);
         mbPlayerPosSetV(playerNo, &playerPos);
         rotationProgress = frame / 6.0f;

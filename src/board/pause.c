@@ -1,11 +1,14 @@
 /* Board pause menu, its single-player minigame list, and pause-state controls. */
 #define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double);
-double cos(double);
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h"
 
 #include "game/board/pause.h"
 #include "game/board/main.h"
+#include "game/board/math.h"
+#include "game/board/masu.h"
+#include "game/board/single.h"
+#include "game/board/telop.h"
+#include "game/board/wipe.h"
 #include "game/board/audio.h"
 #include "game/board/effect.h"
 #include "game/board/guide.h"
@@ -52,35 +55,6 @@ static inline s32 GWMgPackGet(void)
     }
     return lbl_80265B70.mgPack;
 }
-
-/* board externs not yet in headers */
-extern HUPROCESS *mbMainProc;
-extern s32 mbBGRead(int dataNum);
-extern void mbBGReadWait(s32 handle);
-extern BOOL mbWipeSpecialCheck(void);
-extern int mbWipeSpecialStatGet(void);
-extern void mbExitReq(void);
-extern int mbLanguageGet(void);
-extern void mbPauseGuideCreate(void);
-extern void mbPauseGuideKill(void);
-extern void mbPauseDispCopyCreate(void);
-extern void mbPauseDispCopyKill(void);
-extern void mbPauseEnableSet(void);
-extern void mbPauseEnableReset(void);
-extern s16 mbTelopTimeSprCreate(void);
-extern void mbTelopTimeSprRotSet(s16 id, float rot);
-extern void mbTelopTimeDispSet(s16 id, BOOL disp);
-extern void mbTelopTimeSprKill(s16 id);
-extern void mbNormPosto3D(HuVecF *src, int camId, HuVecF *dst);
-extern BOOL mbConfigExec(int playerNo, int modelId);
-extern s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum);
-extern void mbPausePanelPosSet(s16 id, float x, float y);
-extern void mbPausePanelBankSet(s16 id, int bank);
-extern void mbPausePanelGrowSet(s16 id, int a, int b, float scale);
-extern void mbPausePanelKill(s16 id);
-extern int mbSingleStepGet(void);
-extern int mbMasuNumGet(void);
-extern BOOL mbSingleMgUnlockGet(int mgNo);
 
 typedef struct MgList_s {
     s16 category;   /* Category index shown by this page. */
@@ -285,7 +259,7 @@ static void PauseMain(void)
     }
     fn_80006F3C();
     HuPrcSleep(1);
-    mbAudFXPlay(5);
+    mbAudFXPlay(MSM_SE_CMN_START_BUTTON_CONFIRM);
     while(!mbEffFadeDoneCheck()) {
         HuPrcVSleep();
     }
@@ -532,7 +506,7 @@ static int PauseScreenExec(PAUSEWORK *work)
         }
         if(lbl_802C0008[padNo] & PAD_BUTTON_A) {
             result = 1;
-            mbAudFXPlay(2);
+            mbAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
             break;
         }
         i++;
@@ -865,7 +839,7 @@ static int PauseSingleExec(PAUSEWORK *work)
         }
         if(lbl_802C0008[padNo] & PAD_BUTTON_A) {
             result = 1;
-            mbAudFXPlay(2);
+            mbAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
             break;
         }
         if(lbl_802C0008[padNo] & PAD_BUTTON_START) {
@@ -909,7 +883,7 @@ static int PauseSingleExec(PAUSEWORK *work)
                 pauseSingleWork.moveCnt[0] = pauseSingleWork.moveCnt[1] = 0;
             }
             if(page != newPage || top != newTop) {
-                mbAudFXPlay(0);
+                mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                 PauseSingleMGTypeSet(pauseMGList, &pauseSingleWork, newPage, newTop);
                 page = newPage;
                 top = newTop;

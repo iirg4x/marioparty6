@@ -1,6 +1,45 @@
+#include "humath.h"
 // Evaluate board curves and paths, and move players between their points.
 #ifndef REL_W04DLL_COMMON_H
 #define REL_W04DLL_COMMON_H
+
+// Curve and path helpers used by board movement.
+float fn_1_DF78(W04CurveEval speedAtParameter, HuVecF *curvePointA,
+    HuVecF *curvePointB, HuVecF *curvePointC, HuVecF *curvePointD,
+    float targetParameter);
+float fn_1_E120(W04CurveEval speedAtParameter, HuVecF *curvePointA,
+    HuVecF *curvePointB, HuVecF *curvePointC, HuVecF *curvePointD,
+    float targetParameter);
+float fn_1_E330(W04CurveEval speedAtParameter, HuVecF *curvePointA,
+    HuVecF *curvePointB, HuVecF *curvePointC, HuVecF *curvePointD,
+    float t, float targetDistance, int maxStep);
+float fn_1_E64C(W04CurveEval speedAtParameter, HuVecF *curvePointA,
+    HuVecF *curvePointB, HuVecF *curvePointC, HuVecF *curvePointD,
+    float t, float targetDistance, int maxStep);
+f32 fn_1_E900(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, f32 t);
+f32 fn_1_E9A4(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
+    HuVecF *pointD, f32 t);
+f32 fn_1_EA60(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
+    HuVecF *pointD, f32 t);
+f32 fn_1_EB1C(f32 pointA, f32 pointB, f32 pointC, f32 pointD, f32 t);
+f32 fn_1_EBA4(f32 pointA, f32 pointB, f32 pointC, f32 pointD, f32 t);
+void fn_1_EC7C(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
+    HuVecF *pointD, HuVecF *position, float t);
+void fn_1_EF3C(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
+    HuVecF *pointD, HuVecF *slope, float t);
+void fn_1_F2EC(HuVecF *points, int count, HuVecF *position, float t);
+float fn_1_F45C(int basisIndex, int degree, float t);
+void fn_1_F9D0(HuVecF *points, int count, HuVecF *outPosition, float t);
+void fn_1_FC8C(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
+    HuVecF *c, HuVecF *d);
+void fn_1_FE68(HuVecF *points, s32 index, s32 count, HuVecF *pointA,
+    HuVecF *pointB, HuVecF *tangentA, HuVecF *tangentB);
+void fn_1_FFB8(HuVecF *startPosition, HuVecF *endPosition,
+    HuVecF *position, f32 t);
+void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
+    float jumpHeight, int maxTime);
+void fn_1_102BC(void);
+OSTick fn_1_102E8(void);
 
 // Estimate curve length using ten trapezoid intervals.
 float fn_1_DF78(W04CurveEval speedAtParameter, HuVecF *curvePointA,
@@ -401,7 +440,7 @@ void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
         }
         playerPos.x = startPos.x + (progress * delta.x);
         playerPos.y = startPos.y + (progress * delta.y)
-            + (jumpHeight * sin(3.141592653589793*(180.0f * progress)/180.0));
+            + (jumpHeight * sin(M_PI*(180.0f * progress)/180.0));
         playerPos.z = startPos.z + (progress * delta.z);
         mbPlayerPosSetV(playerNo, &playerPos);
         rotationProgress = frame / 6.0f;

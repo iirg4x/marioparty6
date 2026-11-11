@@ -12,12 +12,16 @@
 #include "game/board/camera.h"
 #include "game/board/window.h"
 #include "game/board/main.h"
+#include "game/board/capsule.h"
+#include "game/board/wipe.h"
+#include "game/board/math.h"
 #include "humath.h"
 #include "datadir_enum.h"
 #include "game/board/guide.h"
 #include "game/board/masu.h"
 #include "game/board/opening.h"
 #include "msm_grp.h"
+#include "msm_se.h"
 #include "game/hu3d.h"
 #include "game/board/status.h"
 #include "game/board/audio.h"
@@ -26,9 +30,6 @@
 
 #define TUTORIAL_FALL_SPACE_FLAG (1 << 0)
 #define TUTORIAL_NET_SPACE_FLAG (1 << 1)
-#define MSM_SE_BRDTT_NET_START 1539
-#define MSM_SE_BRDTT_FALL_PREPARE 1540
-#define MSM_SE_BRDTT_FALL_DROP 1541
 
 void mbObjDirSet(int dataDirDay, int dataDirNight);
 void mbObjPosSet(MBMODELID modelId, float x, float y, float z);
@@ -41,11 +42,10 @@ HU3D_MODELID mbObjModelIDGet(MBMODELID modelId);
 void mbObjAttrReset(MBMODELID modelId, u32 attr);
 float mbObjMotionShapeTimeGet(MBMODELID modelId);
 
-f32 lbl_1_data_0[3] = { -0.75f, -0.699999988f, -750.0f };
+f32 lbl_1_data_0[3] = { -0.75f, -0.7f, -750.0f };
 
 void fn_1_1F4(void);
 void fn_1_510(void);
-void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(void));
 
 /* Module startup selects tutorial rules and installs the board setup and close callbacks. */
 void ObjectSetup(void)
@@ -63,20 +63,12 @@ void ObjectSetup(void)
     mbObjectSetup(10, fn_1_1F4, fn_1_510);
 }
 
-void mbScrollInit(int dataNum);
-int mbCapThrowColCreate(int dataNum);
-void mbLightFuncSet(void (*setHook)(void), void (*resetHook)(void));
 void fn_1_550(OMOBJ *obj);
 void fn_1_554(void);
 void fn_1_588(void);
 int fn_1_58C(int playerNo, s16 spaceId);
 void fn_1_918(void);
 extern MBMODELID lbl_1_bss_0, lbl_1_bss_2, lbl_1_bss_4;
-/* Asset setup tests whether the board is currently in its daytime state. */
-static inline BOOL MBTimeDayGet(void)
-{
-    return lbl_80265B70.curTime == 0;
-}
 
 /* The board initializer loads the tutorial scene and installs its lighting and movement hooks. */
 void fn_1_1F4(void)
@@ -149,8 +141,6 @@ int fn_1_58C(int playerNo, s16 spaceId)
     return 0;
 }
 
-void mbWipeDissolveFadeOut(void);
-void mbWipeCreate(s16 mode, s16 type, s16 time);
 extern MBMODELID lbl_1_bss_0, lbl_1_bss_2;
 /* The marked-space hook drops the player, then keeps them attached to the animated net. */
 void fn_1_5DC(s32 playerNo, s16 spaceId)
@@ -173,21 +163,21 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
     mbPlayerMotionShiftSet(playerNo, fallMotions[0], 0.0f, 4.0f, ((1 << 30) | (1 << 0)));
     HuPrcSleep(120);
     mbObjAttrReset(lbl_1_bss_2, ((1 << 30) | (1 << 1)));
-    mbAudFXPlay(1540);
+    mbAudFXPlay(MSM_SE_BRDTT_FALL_PREPARE);
     mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 4.0f, 0);
     HuPrcSleep(30);
     mbCameraFocusReset();
     mbPlayerMotionShiftSet(playerNo, fallMotions[1], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbAudFXPlay(1541);
+    mbAudFXPlay(MSM_SE_BRDTT_FALL_DROP);
     /* Disable collision snapping so the scripted downward acceleration can move the player. */
     fallVelocity.x = fallVelocity.z = 0.0f;
-    fallVelocity.y = -6.66666698f;
+    fallVelocity.y = -6.666667f;
     for (fallFrame = 0; fallFrame < 60U; fallFrame++) {
         mbPlayerPosGet(playerNo, &playerPosition);
         PSVECAdd(&playerPosition, &fallVelocity, &playerPosition);
         mbPlayerPosSetV(playerNo, &playerPosition);
-        fallVelocity.y += -2.72222257f;
+        fallVelocity.y += -2.7222226f;
         HuPrcVSleep();
     }
     mbTutorialCall(23);
@@ -218,7 +208,7 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
         currentShapeTime = mbObjMotionShapeTimeGet(lbl_1_bss_0);
         /* Play once each time the looping shape motion passes frame 2. */
         if (currentShapeTime > 2.0f && previousShapeTime <= 2.0f) {
-            mbAudFXPlay(1539);
+            mbAudFXPlay(MSM_SE_BRDTT_NET_START);
         }
         previousShapeTime = currentShapeTime;
         HuPrcVSleep();
@@ -261,7 +251,7 @@ void fn_1_C00(s32 message, s32 illustrationData, s32 iconData, s32 iconBank);
 void fn_1_984(void)
 {
     s32 windowId;
-    fn_1_127C(-0.75f, -0.699999988f, -800.0f);
+    fn_1_127C(-0.75f, -0.7f, -800.0f);
     mbTutorialCallWait(3);
     windowId = mbTutorialWinCreate(MESSNUM(MESS_BOARD_TUTORIAL, 73));
     mbTutorialWinKeyWait(windowId);
@@ -339,8 +329,6 @@ void fn_1_C00(s32 message, s32 illustrationData, s32 iconData, s32 iconBank)
 
 extern void fn_1_F20(f32 time);
 extern void fn_1_10A0(f32 time);
-extern void mbWipeFadeIn(void);
-extern void mbWipeFadeOut(void);
 
 /* The tutorial process plays the opening camera and guide paths before the first turn. */
 void fn_1_DF0(void)
@@ -366,7 +354,7 @@ void fn_1_DF0(void)
         fn_1_F20(pathTime);
         fn_1_10A0(pathTime);
         mbTutorialVSleep();
-        pathTime += 1.20000005f;
+        pathTime += 1.2f;
     }
     mbWipeFadeOut();
     mbGuideScreenSet(guideObject, TRUE);
@@ -434,8 +422,6 @@ void fn_1_F20(f32 pathTime)
 extern W11PositionSample lbl_1_data_154[11];
 extern W11ScalarSample lbl_1_data_204[8];
 extern W11ScalarSample lbl_1_data_244[12];
-extern void fn_1_12FC(const u8 *values, s32 stride, W11CurveWork *work, f32 time);
-extern f32 fn_1_1454(const u8 *values, s32 stride, W11CurveWork *work);
 
 /* The opening loop samples the guide's world position and X/Y rotation from its path tables. */
 void fn_1_10A0(f32 pathTime)
@@ -460,11 +446,6 @@ void fn_1_10A0(f32 pathTime)
     mbObjRotSet(guideModelId, guidePitch, guideYaw, 0.0f);
 }
 
-extern void mbWipeSpecialCreate(s16 mode, s16 type, s16 maxTime);
-extern void mbWipeSpecialWait(void);
-extern void mbWipeFadeOutTime(s16 maxTime);
-extern void mbWipeSpecialKill(void);
-
 /* The tutorial process presents the net-scene messages and plays its final exit transition. */
 void fn_1_1200(void)
 {
@@ -481,8 +462,6 @@ void fn_1_1200(void)
     mbWipeFadeOutTime(1);
     mbWipeSpecialKill();
 }
-
-extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
 
 /* The movement lesson positions the screen-space guide using normalized coordinates and depth. */
 void fn_1_127C(float screenX, float screenY, float depth)
@@ -543,8 +522,6 @@ void fn_1_12FC(const u8 *timeSamples, s32 sampleStride, W11CurveWork *curveWork,
     }
 }
 
-extern f32 mbHermiteCalc(f32 a, f32 b, f32 c, f32 d, f32 t);
-
 /* Camera and guide updates interpolate one value channel using the selected time segment. */
 f32 fn_1_1454(const u8 *valueSamples, s32 sampleStride, W11CurveWork *curveWork)
 {
@@ -577,7 +554,7 @@ f32 fn_1_1454(const u8 *valueSamples, s32 sampleStride, W11CurveWork *curveWork)
     return mbHermiteCalc(startValue, endValue, startTangent, endTangent, curveWork->progress);
 }
 
-f32 lbl_1_data_20[3] = { -0.75f, -0.699999988f, -750.0f };
+f32 lbl_1_data_20[3] = { -0.75f, -0.7f, -750.0f };
 
 /* Camera-center samples: path time followed by world-space X, Y, and Z. */
 W11PositionSample lbl_1_data_2C[8] = {
@@ -662,9 +639,9 @@ W11ScalarSample lbl_1_data_244[12] = {
     { 300.0f, -180.0f },
     { 348.0f, 0.0f },
     { 390.0f, 180.0f },
-    { 432.0f, 432.000031f },
+    { 432.0f, 432.00003f },
     { 540.0f, 324.0f },
     { -1.0f, 0.0f },
 };
 
-f32 lbl_1_data_2A4[3] = { -0.75f, -0.699999988f, -750.0f };
+f32 lbl_1_data_2A4[3] = { -0.75f, -0.7f, -750.0f };

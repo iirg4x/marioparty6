@@ -1,7 +1,7 @@
 /* Starts and stops the tutorial board module's static initialization. */
+#include "REL/w11Dll.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
-void ObjectSetup(void);
 
 /* The module loader calls this to run constructors and start tutorial board setup. */
 int _prolog(void)

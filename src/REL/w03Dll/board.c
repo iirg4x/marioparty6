@@ -35,6 +35,13 @@
 #include "dolphin/types.h"
 #include "game/hu3d.h"
 #include "game/board/coin.h"
+#include "game/board/math.h"
+#include "game/board/dice.h"
+#include "game/board/scroll.h"
+#include "game/board/star.h"
+#include "game/board/telop.h"
+#include "game/board/wipe.h"
+#include "game/board/capsule.h"
 #include "game/board/object_data.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
@@ -44,27 +51,7 @@
 #include "game/board/status.h"
 #include "datanum/effect.h"
 #include "datanum/charmot.h"
-
-#define MSM_SE_W03_SLOT_REEL_SPIN 1475
-#define MSM_SE_W03_SLOT_REEL_STOP 1476
-#define MSM_SE_W03_SLOT_MACHINE_WAIT 1477
-#define MSM_SE_W03_SLOT_SYMBOL_STOP 1478
-#define MSM_SE_W03_LOTTERY_OBJECT_MOVE 1479
-#define MSM_SE_W03_SLOT_PRIZE_REVEAL 1480
-#define MSM_SE_W03_SLOT_COIN_PAYOUT 1481
-#define MSM_SE_W03_SLOT_JACKPOT 1482
-#define MSM_SE_W03_LAUNCH_ENGINE 1483
-#define MSM_SE_W03_MOVE_START 1471
-#define MSM_SE_W03_MOVE_STEP 1472
-#define MSM_SE_W03_TRANSPORT_START 1473
-#define MSM_SE_W03_TRANSPORT_DEPART 1474
-#define MSM_SE_W03_TRANSPORT_PASS 1487
-#define MSM_SE_W03_TRANSPORT_ARRIVE 1488
-#define MSM_SE_W03_LOTTERY_OBJECT_LAUNCH 1490
-#define MSM_SE_W03_STAR_REWARD 1491
-#define W03_MATTR_TRANSPORT_EXIT 64
-#define W03_OFFSET_FINAL_MODEL_5 152
-#define W03_OFFSET_MOTION_MODEL 156
+#include "humath.h"
 
 typedef void (*VoidFunc)(void);
 typedef void (*MBHook)(void);
@@ -73,19 +60,19 @@ typedef struct W03SavedState_s {
     u8 otherState;
     u16 displayValue;
     u8 wheelRotations[3];
-    u8 nightReward;
+    u8 starPrice;
 } W03SAVEDSTATE;
 typedef struct W03Objects_s {
     int initialModels[6];
     int totalSprite;
-    int playerSprites[4];
-    int playerDigits[4][3];
+    int payoutSymbolSprites[4];
+    int payoutDigits[4][3];
     int lateModel;
     int carouselModels[6];
     int lotteryModels[4];
     int finalModels[6];
     int motionModel;
-    int diceModel;
+    int guideModel;
     int modelState;
     ANIMDATA *digitAnimations[10];
     s16 digitAnimationIds[3];
@@ -116,17 +103,12 @@ typedef struct W03StarAward_s {
     int frame;
     int delay;
     int phase;
-    int soundId;
+    int soundHandle;
 } W03STARAWARD;
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void mbObjectSetup(s32 boardNo, MBHook init, MBHook close);
 extern BOOL mbSaveNewF;
-void mbev_ShopInit(int dataNum);
-void mbScrollInit(int dataNum);
-int mbCapThrowColCreate(int dataNum);
-void mbMapCameraSet(const HuVecF *rot, const HuVecF *pos, float zoom);
 OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF, BOOL altMtxF, BOOL layerF);
 int mbGuideModelGet(OMOBJ *obj);
 void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo);
@@ -134,57 +116,7 @@ void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
 void mbGuideMotionShiftSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
 void mbGuideEnd(OMOBJ *obj, BOOL endF);
 void mbGuideKill(OMOBJ *obj);
-void mbTelopTimeChangeCreate(void);
-BOOL mbTelopTimeChangeCheck(void);
-int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl, int *tutorialVal,
-    BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
-BOOL mbDiceKillCheck(int playerNo);
-int mbDiceResultGet(int playerNo);
-void mbDiceNumKill(int playerNo);
-MBMODELID mbObjCreate(int dataNum, const int *motionData, BOOL link);
-void mbObjKill(MBMODELID modelId);
-BOOL mbObjDispGet(MBMODELID modelId);
-void mbObjDispSet(MBMODELID modelId, BOOL visible);
-void mbObjPosSetV(MBMODELID modelId, const HuVecF *position);
-void mbObjPosGet(MBMODELID modelId, HuVecF *position);
-void mbObjRotSetV(MBMODELID modelId, const HuVecF *rotation);
-void mbObjScaleSet(MBMODELID modelId, float x, float y, float z);
-void mbObjAlphaSet(MBMODELID modelId, u8 alpha);
-extern f32 mbCosDeg(f32 degrees);
-extern f32 mbSinDeg(f32 degrees);
-extern u32 mbRandMod(u32 limit);
-extern u32 frand(void);
-extern f32 frandf(void);
-void mbDiceObjHit(s32 playerNo);
-extern s16 fn_80030B2C(void *dataP, s16 modelId, char *bitmapName);
-extern void fn_80031010(s16 animId);
 int sprintf();
-s16 mbCoinDispCapsuleCreate(HuVecF *position, int coinCount);
-int mbStarObjCreate(void);
-void mbStarObjKill(int objectId);
-void mbStarObjPosSetV(int objectId, const HuVecF *position);
-void mbStarObjRotSetV(int objectId, const HuVecF *rotation);
-void mbStarObjScaleSetV(int objectId, const HuVecF *scale);
-void mbStarObjDispSet(int objectId, BOOL visible);
-void mbStarObjDispFlagSet(int objectId, BOOL visible);
-int mbStarAddExec(int playerNo, int starCount);
-int mbStarDispPlayerCreate(int playerNo, int starCount);
-BOOL mbStarDispCheck(int displayId);
-s8 mbPadStkXGet(s32 padNo);
-s8 mbPadStkYGet(s32 padNo);
-void mbWipeFadeIn(void);
-void mbWipeFadeOut(void);
-s32 mbBGRead(s32 boardDataNum);
-void mbBGReadWait(s32 readId);
-void mbCoinAddAllExec(int player0, int player1, int player2, int player3);
-void mbStarAddAllExec(int player0, int player1, int player2, int player3);
-void mbev_PlayerColMasu(int playerNo, int spaceId, BOOL active);
-void mbWipeSpecialFadeInCreate(int type, int time);
-void mbWipeSpecialFadeOutCreate(int type, int time);
-int abs(int value);
-int mbCoinAddExec(int playerNo, int coinCount);
-void mbStarObjPosSet(int objectId, float x, float y, float z);
-int mbAudFXPlay(s16 seId);
 
 void ObjectSetup(void);
 void fn_1_F4(void);
@@ -338,7 +270,7 @@ HuVecF lbl_1_data_0[100] = {
     {-9.61f, 4e+02f, 2233.0f}
 };
 
-/* Enables board mode and registers the board's load and close callbacks. */
+/* Enables party mode and registers the board's load and close callbacks. */
 
 void ObjectSetup(void)
 {
@@ -369,16 +301,6 @@ s32 lbl_1_bss_8;
 s32 lbl_1_bss_4;
 
 OMOBJ *lbl_1_bss_0;
-
-void mbev_NextTimeSet(void (*hook)(void));
-
-void mbLightFuncSet(void (*setHook)(void), void (*resetHook)(void));
-
-void mbStarMasuFuncSet(void (*hook)(void));
-
-void mbStarMoveHookSet(void (*hook)(void));
-
-void mbScrollStarFindFuncSet(s16 (*hook)(int playerNo));
 
 /* Day and night Faire Square use the same board-file number layout. */
 
@@ -425,7 +347,7 @@ char lbl_1_data_5B4[3][8] = {"r1", "r2", "r3"};
 
 int lbl_1_data_5CC[4] = {0, 3, 2, 1};
 
-HuVecF lbl_1_data_5DC = {-28.5000000f, 0.0f, 0.0f};
+HuVecF lbl_1_data_5DC = {-28.5f, 0.0f, 0.0f};
 
 HuVecF lbl_1_data_5E8 = {0.0f, -112.0f, 547.0f};
 
@@ -433,7 +355,7 @@ float lbl_1_data_5F4 = 14000.0f;
 
 HuVecF lbl_1_data_5F8 = {318.0f, 0.0f, 0.0f};
 
-HuVecF lbl_1_data_604 = {-70.5000000f, -400.0f, 1458.0f};
+HuVecF lbl_1_data_604 = {-70.5f, -400.0f, 1458.0f};
 
 float lbl_1_data_610[4] = {14299.0f, 0.0f, 20.0f, 0.0f};
 
@@ -456,7 +378,7 @@ void fn_1_F4(void)
     if (mbSaveNewF) {
         lbl_1_bss_4D0->nightEventCount = 0;
         lbl_1_bss_4D0->displayValue = 0;
-        lbl_1_bss_4D0->nightReward = 20;
+        lbl_1_bss_4D0->starPrice = 20;
         for (index = 0; index < 3; index++) {
             lbl_1_bss_4D0->wheelRotations[index] = 0;
         }
@@ -572,7 +494,7 @@ void fn_1_F4(void)
     espDispOff(objectId);
     for (index = 0; index < 4; index++) {
         digitIndex = lbl_1_data_5CC[index];
-        lbl_1_bss_4D4.playerSprites[index] = objectId =
+        lbl_1_bss_4D4.payoutSymbolSprites[index] = objectId =
             espEntry(boardDataNum(0xdb0000 + 19 + digitIndex), 110, 0);
         espDrawNoSet(objectId, 32);
         espPosSet(objectId, lbl_1_data_57C[0], lbl_1_data_58C[index]);
@@ -580,7 +502,7 @@ void fn_1_F4(void)
     }
     for (index = 0; index < 4; index++) {
         for (digitIndex = 0; digitIndex < 3; digitIndex++) {
-            lbl_1_bss_4D4.playerDigits[index][digitIndex] = objectId =
+            lbl_1_bss_4D4.payoutDigits[index][digitIndex] = objectId =
                 espEntry(boardDataNum(34), 100, 0);
             espBankSet(objectId, lbl_1_data_5A8[digitIndex]);
             espDrawNoSet(objectId, 32);
@@ -596,6 +518,7 @@ void fn_1_F4(void)
     for (index = 0; index < 16; index++) {
         lbl_1_bss_10[index].modelId = -1;
         lbl_1_bss_10[index].position.x = 0.0f;
+        /* These initializers write each vector's Y twice and leave its Z unchanged. */
         lbl_1_bss_10[index].position.y = 0.0f;
         lbl_1_bss_10[index].position.y = 0.0f;
         lbl_1_bss_10[index].rotation.x = 0.0f;
@@ -639,7 +562,8 @@ void fn_1_F4(void)
     mbOpeningStarInstHookSet(fn_1_126C0);
 }
 
-/* Releases the board models, digit animations and sprites when the overlay closes. */
+/* Releases most board models, digit texture animations and sprites on close.
+ * The transport's normal model is not explicitly killed here. */
 void fn_1_1790(void)
 {
     s32 i;
@@ -710,11 +634,11 @@ void fn_1_1790(void)
     }
     espKill((s16)lbl_1_bss_4D4.totalSprite);
     for (i = 0; i < 4; i++) {
-        espKill((s16)lbl_1_bss_4D4.playerSprites[i]);
+        espKill((s16)lbl_1_bss_4D4.payoutSymbolSprites[i]);
     }
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 3; j++) {
-            espKill((s16)lbl_1_bss_4D4.playerDigits[i][j]);
+            espKill((s16)lbl_1_bss_4D4.payoutDigits[i][j]);
         }
     }
 }
@@ -726,7 +650,7 @@ void fn_1_1BB4(OMOBJ *object)
 
 /* Refreshes the board model's light information whenever the board light hook runs. */
 void fn_1_1BB8(void) {
-        if ((u8) (((*(u8 *)((s8 *)(&lbl_80265B70) + 16)) >> 6U) & 1) == 0) {
+        if (lbl_80265B70.curTime == 0) {
             Hu3DBGColorSet(255U, 255U, 255U);
     } else {
         Hu3DBGColorSet(0U, 0U, 0U);
@@ -788,7 +712,7 @@ int fn_1_1D5C(s16 spaceId, u32 attributes, s16 *links, BOOL end) {
     return -1;
 }
 
-/* Hides the players, runs the time-change guide, then restores them when the event ends. */
+/* Runs the guide announcement and nighttime star-price roll when the board changes time. */
 void fn_1_1D64(void) {
     HUPROCESS *eventProcess;
     s16 helpWindow;
@@ -831,23 +755,17 @@ void fn_1_1D64(void) {
     }
 }
 
-/* Runs the guide announcement and nighttime reward roll when the board changes time. */
-
-void mbDicePadBtnHookSet(int playerNo, u16 (*hook)(int));
-
-void mbDiceMotHookSet(int playerNo, void (*hook)(int));
-
 s32 lbl_1_data_620[6] = {3, 5, 10, 20, 30, 40};
 s8 lbl_1_data_638[5] = {1, 2, 4, 5, -1};
 s8 lbl_1_data_63D[4] = {12, 23, 7, -1};
-/* Nighttime reward amounts, dice outcomes and guide motion slots. */
+/* Nighttime star prices, dice outcomes and guide motion slots. */
 
-/* Runs the time-change announcement and the guide's nighttime reward roll. */
+/* Runs the time-change announcement and the guide's nighttime star-price roll. */
 void fn_1_1F20(void)
 {
     HuVecF guidePosition;
     HuVecF cameraRotation;
-    char rewardText[16];
+    char priceText[16];
     HuVecF dicePosition;
     int diceResult;
     s32 *processState;
@@ -879,14 +797,14 @@ void fn_1_1F20(void)
     guidePosition.y -= 100.0;
     guide = mbGuideCreateFlag(&guidePosition, lbl_1_data_63D, FALSE, TRUE, FALSE);
     mbGuideMotionNextSet(guide, 1);
-    lbl_1_bss_4D4.diceModel = (s16)mbGuideModelGet(guide);
+        lbl_1_bss_4D4.guideModel = (s16)mbGuideModelGet(guide);
     if (lbl_80265B70.curTime == 0) {
-        mbAudGuidePlay(949);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
         mbGuideMotionShiftSet(guide, 12, TRUE);
         windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 68), 6);
         mbWinPlayerDisable(windowNo, -1);
         mbWinTopWait();
-        mbAudGuidePlay(949);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
         mbGuideMotionSet(guide, 7, TRUE);
         windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 61), 6);
         mbWinPlayerDisable(windowNo, -1);
@@ -898,25 +816,25 @@ void fn_1_1F20(void)
         }
     } else {
         if (lbl_1_bss_4D0->nightEventCount == 0) {
-            mbAudGuidePlay(949);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
             mbGuideMotionShiftSet(guide, 12, TRUE);
             windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 63), 7);
             mbWinPlayerDisable(windowNo, -1);
             mbWinTopWait();
         } else {
-            mbAudGuidePlay(949);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
             mbGuideMotionShiftSet(guide, 12, TRUE);
             windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 64), 7);
             mbWinPlayerDisable(windowNo, -1);
             mbWinTopWait();
         }
         lbl_1_bss_4D0->nightEventCount++;
-        mbAudGuidePlay(950);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
         mbGuideMotionShiftSet(guide, 12, TRUE);
         windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 65), 7);
         mbWinPlayerDisable(windowNo, -1);
         mbWinTopWait();
-        mbObjPosGet((s16)lbl_1_bss_4D4.diceModel, &dicePosition);
+        mbObjPosGet((s16)lbl_1_bss_4D4.guideModel, &dicePosition);
         diceResult = mbDiceProcExec(-1, 13, lbl_1_data_638, NULL,
             FALSE, FALSE, &dicePosition, 0);
         lbl_1_bss_4 = 50.0f * (0.3f +
@@ -927,15 +845,15 @@ void fn_1_1F20(void)
             HuPrcVSleep();
         }
         playerNo = mbDiceResultGet(-1) - 1;
-        lbl_1_bss_4D0->nightReward = (u8)lbl_1_data_620[playerNo];
-        sprintf(rewardText, "%d", lbl_1_bss_4D0->nightReward);
-        mbAudGuidePlay(950);
+        lbl_1_bss_4D0->starPrice = (u8)lbl_1_data_620[playerNo];
+        sprintf(priceText, "%d", lbl_1_bss_4D0->starPrice);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
         mbGuideMotionShiftSet(guide, 12, TRUE);
         windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 66), 7);
-        mbWinTopInsertMesSet((u32)rewardText, 0);
+        mbWinTopInsertMesSet((u32)priceText, 0);
         mbWinPlayerDisable(windowNo, -1);
         mbWinTopWait();
-        mbAudGuidePlay(949);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
         mbGuideMotionSet(guide, 7, TRUE);
         windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 62), 7);
         mbWinPlayerDisable(windowNo, -1);
@@ -959,7 +877,7 @@ s32 fn_1_2490(void) {
     return 0;
 }
 
-/* Bounces the board dice and triggers its hit effect when the dice-motion hook runs. */
+/* Bounces the guide and triggers the dice hit effect when the dice-motion hook runs. */
 void fn_1_24C4(void) {
     HuVecF dicePosition;
     f32 frameCount;
@@ -967,13 +885,13 @@ void fn_1_24C4(void) {
     s32 frame;
 
     frameCount = 24.0f;
-    mbObjPosGet((s16)lbl_1_bss_4D4.diceModel, &dicePosition);
-    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.diceModel, 23, 0.0f,
+    mbObjPosGet((s16)lbl_1_bss_4D4.guideModel, &dicePosition);
+    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.guideModel, 23, 0.0f,
         8.0f, 0);
     for (frame = 0; (f32)frame < frameCount; frame++) {
         time = (f32)frame / frameCount;
         mbObjPosSet(
-            (s16)lbl_1_bss_4D4.diceModel,
+            (s16)lbl_1_bss_4D4.guideModel,
             dicePosition.x,
             (f32)(dicePosition.y +
                   (100.0 *
@@ -985,7 +903,7 @@ void fn_1_24C4(void) {
     for (frame = 0; (f32)frame < (1.0f + frameCount); frame++) {
         time = (f32)frame / frameCount;
         mbObjPosSet(
-            (s16)lbl_1_bss_4D4.diceModel,
+            (s16)lbl_1_bss_4D4.guideModel,
             dicePosition.x,
             (f32)(dicePosition.y +
                   (100.0 *
@@ -994,7 +912,7 @@ void fn_1_24C4(void) {
         HuPrcVSleep();
     }
     HuPrcSleep(60);
-    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.diceModel, 1, 0.0f,
+    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.guideModel, 1, 0.0f,
         8.0f, ((1 << 30) | (1 << 0)));
 }
 
@@ -1122,7 +1040,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbMoveNumDispSet(playerNo, FALSE);
     if (mbPlayerCoinGet(playerNo) < lbl_1_data_6EC[timeSlot]) {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+        mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
         mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
         if (lbl_80265B70.curTime == 0) {
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 5), -1);
@@ -1197,15 +1115,15 @@ void fn_1_2718(int playerNo, s16 landingSpace)
         } else {
             for (index = 0; index < lbl_1_data_6EC[timeSlot]; index++) {
                 mbPlayerCoinAdd(playerNo, -1);
-                mbAudFXPlay(14);
-                mbAudFXPlay(MSM_SE_W03_SLOT_COIN_PAYOUT);
+                mbAudFXPlay(MSM_SE_CMN_COIN_LOSE);
+                mbAudFXPlay(MSM_SE_BRD03_SLOT_COIN_PAYOUT);
                 if (++lbl_1_bss_4D0->displayValue > 999) {
                     lbl_1_bss_4D0->displayValue = 999;
                 }
                 fn_1_DE88(lbl_1_bss_4D0->displayValue);
                 HuPrcSleep(6);
             }
-            mbAudFXPlay(15);
+            mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
             mbPlayerMotionShiftSet(playerNo, 2, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             nextSpace = mbMasuTypeFindLink(landingSpace, 0);
             mbPlayerMasuMoveSpeed(playerNo, nextSpace, 20, FALSE);
@@ -1219,7 +1137,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 initialAngle = atan2(initialDirection.z, initialDirection.x);
                 currentAngle = atan2(currentDirection.z, currentDirection.x);
                 rotationDelta = 180.0 * ((double)(currentAngle - initialAngle)
-                    / 3.141592653589793);
+                    / M_PI);
                 mbObjRotSet((s16)lbl_1_bss_4D4.motionModel, hostRotation.x,
                     hostRotation.y - rotationDelta, hostRotation.z);
                 HuPrcVSleep();
@@ -1240,12 +1158,12 @@ void fn_1_2718(int playerNo, s16 landingSpace)
             }
             espDispOn((s16)lbl_1_bss_4D4.totalSprite);
             for (index = 0; index < 4; index++) {
-                espDispOn((s16)lbl_1_bss_4D4.playerSprites[index]);
+        espDispOn((s16)lbl_1_bss_4D4.payoutSymbolSprites[index]);
             }
             for (index = 0; index < 4; index++) {
                 for (detailIndex = 0; detailIndex < 3; detailIndex++) {
                     if (detailIndex != 0) {
-                        espDispOn((s16)lbl_1_bss_4D4.playerDigits[index][detailIndex]);
+                        espDispOn((s16)lbl_1_bss_4D4.payoutDigits[index][detailIndex]);
                     }
                 }
                 if (lbl_80265B70.curTime == 0) {
@@ -1257,30 +1175,31 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                     displayCoins = lbl_1_bss_4D0->displayValue;
                 }
                 if (displayCoins >= 100) {
-                    espDispOn((s16)lbl_1_bss_4D4.playerDigits[index][0]);
+                    espDispOn((s16)lbl_1_bss_4D4.payoutDigits[index][0]);
                     hundreds = displayCoins / 100;
-                    espBankSet((s16)lbl_1_bss_4D4.playerDigits[index][0], hundreds);
+                    espBankSet((s16)lbl_1_bss_4D4.payoutDigits[index][0], hundreds);
                     displayCoins -= hundreds * 100;
-                    espPosSet((s16)lbl_1_bss_4D4.playerSprites[index],
+                    espPosSet((s16)lbl_1_bss_4D4.payoutSymbolSprites[index],
                         lbl_1_data_644[index], lbl_1_data_654[index]);
                 } else {
                     spritePosition.x = 12.0f + lbl_1_data_644[0];
-                    espPosSet((s16)lbl_1_bss_4D4.playerSprites[index], spritePosition.x,
+                    espPosSet((s16)lbl_1_bss_4D4.payoutSymbolSprites[index], spritePosition.x,
                         lbl_1_data_654[index]);
                 }
-                espBankSet((s16)lbl_1_bss_4D4.playerDigits[index][1], displayCoins / 10);
-                espBankSet((s16)lbl_1_bss_4D4.playerDigits[index][2], displayCoins % 10);
+                espBankSet((s16)lbl_1_bss_4D4.payoutDigits[index][1], displayCoins / 10);
+                espBankSet((s16)lbl_1_bss_4D4.payoutDigits[index][2], displayCoins % 10);
             }
             for (scan = 0; (float)scan <= 10.0f; scan++) {
                 strikeProgress = (float)scan / 10.0f;
                 displayScale = mbSinDeg(90.0f * strikeProgress);
                 espScaleSet((s16)lbl_1_bss_4D4.totalSprite, 0.7f, 2.1f * displayScale);
                 for (index = 0; index < 4; index++) {
-                    espScaleSet((s16)lbl_1_bss_4D4.playerSprites[index], 0.8f, 0.8f * displayScale);
+                    espScaleSet((s16) lbl_1_bss_4D4.payoutSymbolSprites[index], 0.8f,
+                                0.8f * displayScale);
                 }
                 for (index = 0; index < 4; index++) {
                     for (detailIndex = 0; detailIndex < 3; detailIndex++) {
-                        espScaleSet((s16)lbl_1_bss_4D4.playerDigits[index][detailIndex],
+                        espScaleSet((s16)lbl_1_bss_4D4.payoutDigits[index][detailIndex],
                             0.6f, 0.6f * displayScale);
                     }
                 }
@@ -1298,22 +1217,22 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 20.0f + particlePosition.y, particlePosition.z);
             mbObjRotSet((s16)lbl_1_bss_4D4.initialModels[4], 0.0f, 45.0f, 0.0f);
             mbObjAlphaSet((s16)lbl_1_bss_4D4.initialModels[4], 0);
-            mbAudFXPlay(MSM_SE_W03_SLOT_PRIZE_REVEAL);
+            mbAudFXPlay(MSM_SE_BRD03_SLOT_PRIZE_REVEAL);
             for (index = 0; (float)index < 25.0f; index++) {
                 alpha = (255.0f * (float)index) / 25.0f;
                 mbObjAlphaSet((s16)lbl_1_bss_4D4.initialModels[4], (s32)alpha);
                 HuPrcVSleep();
             }
             HuPrcSleep(10);
-            mbAudFXPlay(MSM_SE_W03_SLOT_REEL_SPIN);
+            mbAudFXPlay(MSM_SE_BRD03_SLOT_REEL_SPIN);
             mbObjMotionSpeedSet((s16)lbl_1_bss_4D4.initialModels[3], 1.0f);
             while (mbObjMotionTimeGet((s16)lbl_1_bss_4D4.initialModels[3]) < 100.0f) {
                 HuPrcVSleep();
             }
-            mbAudFXPlay(MSM_SE_W03_SLOT_REEL_STOP);
+            mbAudFXPlay(MSM_SE_BRD03_SLOT_REEL_STOP);
             mbParticleKill(stopParticle);
             stopParticle = -1;
-            soundHandle = mbAudFXPlay(MSM_SE_W03_SLOT_MACHINE_WAIT);
+            soundHandle = mbAudFXPlay(MSM_SE_BRD03_SLOT_MACHINE_WAIT);
             timerFrames = 1200;
             timer = GameMesCreate(1, 20, -1, -1);
             HuSprGrpDrawNoSet(GameMesGet(timer)->grpId[0], 32);
@@ -1372,7 +1291,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                                 }
                                 reelParts[index]->mesh.base.rot.x = 45.0f * (float)results[index];
                                 stopped[index] = 1;
-                                mbAudFXPlay(MSM_SE_W03_SLOT_SYMBOL_STOP);
+                                mbAudFXPlay(MSM_SE_BRD03_SLOT_SYMBOL_STOP);
                                 stoppedCount++;
                             }
                         }
@@ -1444,7 +1363,9 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                                 stopped[index] = 1;
                                 comReel++;
                                 reelFinished = 1;
-                                mbAudFXPlay(MSM_SE_W03_SLOT_SYMBOL_STOP);
+                                mbAudFXPlay(MSM_SE_BRD03_SLOT_SYMBOL_STOP);
+                                /* This draw sets an unused flag; the reel assistance below does not
+                                 * consult it. */
                                 if (index == 0 && mbRandMod(10) < 6) {
                                     assistChosen = 1;
                                 }
@@ -1489,14 +1410,14 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                             fn_80026B8C(stopParticle, 5);
                             particlePosition.y += 20.0f;
                             fn_80026790(stopParticle, &particlePosition);
-                            mbAudFXPlay(1049);
+                            mbAudFXPlay(MSM_SE_BRD00_PRIZE_SPARKLE);
                         } else if (stoppedCount == 1) {
                             initialSpeeds[2] = speeds[2] = thirdSpeed;
                         } else if (stoppedCount == 0) {
                             initialSpeeds[1] = initialSpeeds[2] = speeds[1] = speeds[2] =
                                 secondSpeed;
                         }
-                        mbAudFXPlay(1060);
+                        mbAudFXPlay(MSM_SE_BRD00_IMPACT_THUMP);
                         fn_8006A030(playerNo, 20, 7, 3);
                         hitState = 2;
                         hitFrame = 0;
@@ -1606,11 +1527,12 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 displayScale = mbCosDeg(90.0f * strikeProgress);
                 espScaleSet((s16)lbl_1_bss_4D4.totalSprite, 0.7f, 2.1f * displayScale);
                 for (index = 0; index < 4; index++) {
-                    espScaleSet((s16)lbl_1_bss_4D4.playerSprites[index], 0.8f, 0.8f * displayScale);
+                    espScaleSet((s16) lbl_1_bss_4D4.payoutSymbolSprites[index], 0.8f,
+                                0.8f * displayScale);
                 }
                 for (index = 0; index < 4; index++) {
                     for (detailIndex = 0; detailIndex < 3; detailIndex++) {
-                        espScaleSet((s16)lbl_1_bss_4D4.playerDigits[index][detailIndex],
+                        espScaleSet((s16)lbl_1_bss_4D4.payoutDigits[index][detailIndex],
                             0.6f, 0.6f * displayScale);
                     }
                 }
@@ -1618,11 +1540,11 @@ void fn_1_2718(int playerNo, s16 landingSpace)
             }
             espDispOff((s16)lbl_1_bss_4D4.totalSprite);
             for (index = 0; index < 4; index++) {
-                espDispOff((s16)lbl_1_bss_4D4.playerSprites[index]);
+                espDispOff((s16)lbl_1_bss_4D4.payoutSymbolSprites[index]);
             }
             for (index = 0; index < 4; index++) {
                 for (detailIndex = 0; detailIndex < 3; detailIndex++) {
-                    espDispOff((s16)lbl_1_bss_4D4.playerDigits[index][detailIndex]);
+                    espDispOff((s16)lbl_1_bss_4D4.payoutDigits[index][detailIndex]);
                 }
             }
             for (index = 0; index < 3; index++) {
@@ -1645,7 +1567,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                     jackpotCoins = lbl_1_bss_4D0->displayValue;
                     awardCoins = lbl_1_bss_4D0->displayValue;
                     for (index = 0; index < jackpotCoins; index++) {
-                        mbAudFXPlay(MSM_SE_W03_SLOT_COIN_PAYOUT);
+                        mbAudFXPlay(MSM_SE_BRD03_SLOT_COIN_PAYOUT);
                         fn_1_DE88(--lbl_1_bss_4D0->displayValue);
                         HuPrcSleep(payoutInterval);
                     }
@@ -1694,7 +1616,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 mbObjRotSet((s16)lbl_1_bss_4D4.initialModels[5], 0.0f, 45.0f, 0.0f);
                 HuPrcSleep(50);
                 mbObjMotionSpeedSet((s16)lbl_1_bss_4D4.initialModels[5], 1.0f);
-                mbAudFXPlay(MSM_SE_W03_SLOT_JACKPOT);
+                mbAudFXPlay(MSM_SE_BRD03_SLOT_JACKPOT);
                 mbEffConfettiCreate(&prizePosition, 100, 20.0f);
                 fn_1_E00C(awardCoins);
                 HuPrcSleep(30);
@@ -1704,7 +1626,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 mbParticleHookSet(prizeParticle, fn_1_F704);
                 fn_80026B8C(prizeParticle, 5);
                 fn_80026790(prizeParticle, &prizePosition);
-                mbAudFXPlay(1049);
+                mbAudFXPlay(MSM_SE_BRD00_PRIZE_SPARKLE);
                 for (index = 0; (float)index < 25.0f; index++) {
                     alpha = 255.0f - (255.0f * (float)index) / 25.0f;
                     mbObjAlphaSet((s16)lbl_1_bss_4D4.initialModels[5], (s32)alpha);
@@ -1714,7 +1636,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 mbPlayerPosGet(playerNo, &playerPosition);
                 playerPosition.y += 250.0f;
                 coinDisplay = mbCoinDispCapsuleCreate(&playerPosition, awardCoins);
-                mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
+                mbPlayerWinLoseVoicePlay(playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
                 mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo) && !mbCoinDispKillCheck(coinDisplay)) {
                     HuPrcVSleep();
@@ -1726,7 +1648,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 10), speaker);
                 mbWinTopWait();
             } else {
-                mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+                mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
                 mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo)) {
                     HuPrcVSleep();
@@ -1869,7 +1791,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
     mbMoveNumDispSet(playerNo, FALSE);
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     if (mbPlayerStarGet(playerNo) < 1) {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+        mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
         mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
         mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 35), -1);
         mbWinTopWait();
@@ -1947,7 +1869,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                 angleStart = atan2(initialDirection.z, initialDirection.x);
                 angleNow = atan2(currentDirection.z, currentDirection.x);
                 rotationStep = 180.0 * ((double)(angleNow - angleStart)
-                    / 3.141592653589793);
+                    / M_PI);
                 mbObjRotSet((s16)lbl_1_bss_4D4.motionModel, hostRotation.x,
                     hostRotation.y - rotationStep, hostRotation.z);
                 HuPrcVSleep();
@@ -2034,7 +1956,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                         mbObjPosSetV((s16)lbl_1_bss_4D4.carouselModels[index],
                             &lbl_1_bss_468[index].position);
                         if (objectTimers[index]++ >= 30) {
-                            soundHandles[index] = mbAudFXPlay(MSM_SE_W03_LOTTERY_OBJECT_MOVE);
+                            soundHandles[index] = mbAudFXPlay(MSM_SE_BRD03_LOTTERY_OBJECT_MOVE);
                             lbl_1_bss_468[index].position.y = lbl_1_data_70C.y;
                             objectTimers[index] = 0;
                             objectStates[index] = 2;
@@ -2092,6 +2014,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
             fn_1_12A14(0);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 38), speaker);
             mbWinTopWait();
+            /* The first count is unused; the outer shuffle loop draws a new bound on each test. */
             unusedShuffleCount = mbRandMod(3) + 2;
             shuffleDirection = mbRandMod(2);
             for (index = 0; index < objectCount; index++) {
@@ -2161,7 +2084,8 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                     }
                 } else if ((int)choice == (int)comChoice && repeatDelay <= 0 && comDelay <= 0) {
                     /* The CPU closes its choice without sending the A press used by a human
-                     * player. */
+                     * player: the original's typo, `|` where `|=` was meant, so the OR's result
+                     * is discarded. */
                     buttons | PAD_BUTTON_A;
                     break;
                 } else {
@@ -2222,7 +2146,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                 mbStarObjRotSetV(starObjects[0], &starRotations[0]);
             }
             scaleStep = 0.013333334f;
-            mbAudFXPlay(MSM_SE_W03_STAR_REWARD);
+            mbAudFXPlay(MSM_SE_BRD03_STAR_REWARD);
             for (index = 0; index < 60U; index++) {
                 starScales[0].x += scaleStep;
                 starScales[0].y += scaleStep;
@@ -2345,7 +2269,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                 }
                 mbStarAddExec(playerNo, rewardCount);
                 starDisplay = mbStarDispPlayerCreate(playerNo, rewardCount);
-                mbPlayerWinLoseVoicePlay(playerNo, 12, 579);
+                mbPlayerWinLoseVoicePlay(playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
                 mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo) && !mbStarDispCheck(starDisplay)) {
                     HuPrcVSleep();
@@ -2375,7 +2299,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                 mbStarObjScaleSetV(starObjects[0], &starScales[0]);
                 mbStarObjRotSetV(starObjects[0], &starRotations[0]);
                 scaleStep = 0.013333334f;
-                mbAudFXPlay(MSM_SE_W03_STAR_REWARD);
+                mbAudFXPlay(MSM_SE_BRD03_STAR_REWARD);
                 for (index = 0; index < 60U; index++) {
                     starScales[0].x += scaleStep;
                     starScales[0].y += scaleStep;
@@ -2386,7 +2310,7 @@ void fn_1_5900(int playerNo, s16 landingSpace)
                         &lbl_1_bss_468[hiddenObject].position);
                     HuPrcVSleep();
                 }
-                mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+                mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
                 mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
                 while (!mbPlayerMotionEndCheck(playerNo)) {
                     HuPrcVSleep();
@@ -2463,7 +2387,7 @@ void fn_1_8154(s32 reverse)
     }
 
     for (objectIndex = 0; objectIndex < objectCount; objectIndex++) {
-        soundHandles[objectIndex] = mbAudFXPlay(MSM_SE_W03_LOTTERY_OBJECT_LAUNCH);
+        soundHandles[objectIndex] = mbAudFXPlay(MSM_SE_BRD03_LOTTERY_OBJECT_LAUNCH);
     }
 
     speed = 0.1f;
@@ -2569,7 +2493,7 @@ void fn_1_8758(void)
         lbl_1_bss_468[secondObject].position.y;
     secondDisplacement.z = lbl_1_bss_468[firstObject].position.z -
         lbl_1_bss_468[secondObject].position.z;
-    mbAudFXPlay(MSM_SE_W03_LOTTERY_OBJECT_MOVE);
+    mbAudFXPlay(MSM_SE_BRD03_LOTTERY_OBJECT_MOVE);
     for (frame = 0; (f32)frame < duration; frame++) {
         progress = (f32)frame / duration;
         mbObjPosSet((s16)lbl_1_bss_4D4.carouselModels[firstObject],
@@ -2627,7 +2551,8 @@ HuVecF lbl_1_data_7D8[4] = { { -583.0f, 2306.0f, -2215.0f },
                              { -206.0f, 2306.0f, -2215.0f },
                              { 209.0f, 2306.0f, -2215.0f },
                              { 616.0f, 2306.0f, -2215.0f } };
-/* Offers the lottery to the landing player, then lets each player choose a position. */
+/* Offers the lottery to the landing player; three players choose positions and the fourth gets the
+ * remaining one. */
 void fn_1_8F60(int playerNo, s16 landingSpace)
 {
     HuVecF choicePositions[MASU_LINK_MAX];
@@ -2670,7 +2595,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
     int finished;
     int helpWindow;
     MASU *nextSpace;
-    int soundId;
+    int soundHandle;
     HuVecF *entranceEndPtr;
     HuVecF *entranceStartPtr;
     HuVecF *exitEndPtr;
@@ -2705,7 +2630,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
             while (!mbPlayerRotateCheck(playerNo)) {
                 HuPrcVSleep();
             }
-            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+            mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
             mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 28), -1);
             mbWinTopWait();
@@ -2723,7 +2648,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
             while (!mbPlayerRotateCheck(playerNo)) {
                 HuPrcVSleep();
             }
-            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+            mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
             mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 29), -1);
             mbWinTopWait();
@@ -2996,7 +2921,8 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
                         }
                     } else {
                         /* The CPU closes its choice without sending a human player's confirmation
-                         * press. */
+                         * press: the original's typo, `|` where `|=` was meant, so the OR's result
+                         * is discarded. */
                         buttons | 0x100;
                         break;
                     }
@@ -3112,7 +3038,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
         mbMusPauseFadeOut(0, TRUE, 1000);
         mbCameraMovePos(&lbl_1_data_7C0, NULL, NULL, 2500.0f, -1.0f, 120);
         HuPrcSleep(60);
-        soundId = mbAudFXPlay(31);
+        soundHandle = mbAudFXPlay(MSM_SE_CMN_DRUMROLL);
         for (index = 0; index < 4; ++index) {
             stopTimes[index] = 580.0f;
             stopTimes[index] = stopTimes[index] * lbl_1_data_770[outcomes[index] - 1];
@@ -3156,7 +3082,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
         while (mbObjMotionTimeGet((s16)lbl_1_bss_4D4.lotteryModels[winner]) < 600.0f) {
             HuPrcVSleep();
         }
-        mbAudFXPlay(32);
+        mbAudFXPlay(MSM_SE_CMN_DRUMROLL_END_HIT);
         if (boardIsDay()) {
             coinPosition = lbl_1_data_7D8[winner];
             coinPositionPtr = &coinPosition;
@@ -3177,7 +3103,7 @@ void fn_1_8F60(int playerNo, s16 landingSpace)
         mbWinTopWait();
         for (index = 0; index < 4; ++index) {
             if (winner == index) {
-                mbPlayerWinLoseVoicePlay(chosenPlayers[index], 12, 579);
+                mbPlayerWinLoseVoicePlay(chosenPlayers[index], 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
                 mbPlayerMotionShiftSet(chosenPlayers[index], 12, 0.0f, 8.0f, 0);
             } else {
                 mbPlayerMotionShiftSet(chosenPlayers[index], 13, 0.0f, 8.0f, 0);
@@ -3291,7 +3217,7 @@ void fn_1_B148(s32 playerNo, s32 coinCount, HuVecF *awardPosition)
                     mbCoinObjDispSet((s16)coinIds[coinIndex], FALSE);
                     landed[coinIndex] = 1;
                     collectedCount++;
-                    mbAudFXPlay(7);
+                    mbAudFXPlay(MSM_SE_CMN_COIN_GET);
                 }
                 mbCoinObjPosSetV((s16)coinIds[coinIndex], &positions[coinIndex]);
             }
@@ -3448,7 +3374,7 @@ void fn_1_BD88(s32 playerNo, s16 landingSpace)
     mbObjMotionTimeSet((s16)lbl_1_bss_4D4.finalModels[1], 0.0f);
     active = 1;
     mbPlayerMotionShiftSet(playerNo, waitingMotion, 0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    soundHandle = mbAudFXPlay(MSM_SE_W03_LAUNCH_ENGINE);
+    soundHandle = mbAudFXPlay(MSM_SE_BRD03_LAUNCH_ENGINE);
     while (active != 0) {
         fn_80023398((s16)launchModelId, "fook", launchMatrix);
         Hu3DMtxRotGet(launchMatrix, &launchRotation);
@@ -3555,7 +3481,7 @@ void fn_1_C59C(s32 playerNo, s16 entranceSpace)
     s32 playerIndex;
 
     cameraZoom = mbCameraZoomGet();
-    exitSpace = mbMasuFind_MAttrIdGet(-1, W03_MATTR_TRANSPORT_EXIT);
+    exitSpace = mbMasuFind_MAttrIdGet(-1, 64);
     mbMasuPosGet(exitSpace, &exitPosition);
     particleAnimation = HuSprAnimRead(fn_80008634(DATANUM(0x210000, 2), 0x10000000));
     entranceMotionLength = mbObjMotionMaxTimeGet((s16)lbl_1_bss_4D4.finalModels[3]);
@@ -3606,7 +3532,7 @@ void fn_1_C59C(s32 playerNo, s16 entranceSpace)
         mbPlayerRotYSet(movingPlayers[playerIndex], 100.0f);
         mbPlayerMotionShiftSet(movingPlayers[playerIndex], 9, 0.0f, 4.0f, 0);
     }
-    mbAudFXPlay(MSM_SE_W03_TRANSPORT_START);
+    mbAudFXPlay(MSM_SE_BRD03_TRANSPORT_START);
     while (!mbObjMotionEndCheck((s16)lbl_1_bss_4D4.finalModels[3])) {
         HuPrcVSleep();
     }
@@ -3627,11 +3553,11 @@ void fn_1_C59C(s32 playerNo, s16 entranceSpace)
         HuPrcSleep(10);
     }
     HuPrcSleep(20);
-    mbAudFXPlay(MSM_SE_W03_TRANSPORT_DEPART);
-    mbAudFXPlay(MSM_SE_W03_TRANSPORT_PASS);
+    mbAudFXPlay(MSM_SE_BRD03_TRANSPORT_DEPART);
+    mbAudFXPlay(MSM_SE_BRD03_TRANSPORT_PASS);
     fn_8006A030(playerNo, 20, 7, 3);
     HuPrcSleep(10);
-    mbAudFXPlay(MSM_SE_W03_TRANSPORT_ARRIVE);
+    mbAudFXPlay(MSM_SE_BRD03_TRANSPORT_ARRIVE);
     while (!mbObjMotionEndCheck((s16)lbl_1_bss_4D4.finalModels[3])) {
         HuPrcVSleep();
     }
@@ -3645,13 +3571,13 @@ void fn_1_C59C(s32 playerNo, s16 entranceSpace)
     mbCameraMoveWait();
     HuPrcSleep(20);
     fn_8006A030(playerNo, 20, 7, 3);
-    mbAudFXPlay(MSM_SE_W03_TRANSPORT_PASS);
+    mbAudFXPlay(MSM_SE_BRD03_TRANSPORT_PASS);
     mbObjMotionSpeedSet((s16)lbl_1_bss_4D4.finalModels[4], 1.0f);
     mbObjMotionTimeSet((s16)lbl_1_bss_4D4.finalModels[4], 0.0f);
     mbObjMotionStartEndSet((s16)lbl_1_bss_4D4.finalModels[4], 0, 90);
     while (mbObjMotionTimeGet((s16)lbl_1_bss_4D4.finalModels[4]) < 80.0f) {
         if (70.0f == mbObjMotionTimeGet((s16)lbl_1_bss_4D4.finalModels[4])) {
-            mbAudFXPlay(MSM_SE_W03_TRANSPORT_START);
+            mbAudFXPlay(MSM_SE_BRD03_TRANSPORT_START);
         }
         HuPrcVSleep();
     }
@@ -3689,9 +3615,9 @@ void fn_1_C59C(s32 playerNo, s16 entranceSpace)
     mbObjMotionStartEndSet((s16)lbl_1_bss_4D4.finalModels[4], 90,
         mbObjMotionMaxTimeGet((s16)lbl_1_bss_4D4.finalModels[4]));
     mbAudFXDelaySet(17);
-    mbAudFXPlay(MSM_SE_W03_MOVE_STEP);
+    mbAudFXPlay(MSM_SE_BRD03_MOVE_STEP);
     HuPrcSleep(18);
-    mbAudFXPlay(MSM_SE_W03_TRANSPORT_ARRIVE);
+    mbAudFXPlay(MSM_SE_BRD03_TRANSPORT_ARRIVE);
     HuPrcSleep(40);
     for (playerIndex = 0; playerIndex < movingCount; playerIndex++) {
         mbPlayerMotionSpeedSet(movingPlayers[playerIndex], 0.1f);
@@ -3767,7 +3693,7 @@ static HSF_OBJECT *fn_1_D198(HU3D_MODEL *model, char *name, HSF_OBJECT *object)
     return NULL;
 }
 
-/* Moves an object between two positions, optionally turning it before the move. */
+/* Both moves sample frames 0 through 74 of 75 and do not snap to the endpoint here. */
 void fn_1_D9E0(s32 motionObjectId, s32 movingObjectId, f32 yaw, f32 turnAngle,
     HuVecF *startPosition, HuVecF *endPosition, s32 turnFirst)
 {
@@ -3779,7 +3705,7 @@ void fn_1_D9E0(s32 motionObjectId, s32 movingObjectId, f32 yaw, f32 turnAngle,
     mbObjMotionShiftSet((s16)lbl_1_bss_4D4.motionModel, 3, 0.0f,
         8.0f, ((1 << 30) | (1 << 0)));
     if (turnFirst == 0) {
-        mbAudFXPlay(MSM_SE_W03_MOVE_START);
+        mbAudFXPlay(MSM_SE_BRD03_MOVE_START);
         for (frame = 0; (f32)frame < 75.0f; frame++) {
             if (mbObjMotionTimeGet((s16)motionObjectId) >= 60.0f) {
                 mbObjMotionSpeedSet((s16)motionObjectId, 0.0f);
@@ -3793,9 +3719,9 @@ void fn_1_D9E0(s32 motionObjectId, s32 movingObjectId, f32 yaw, f32 turnAngle,
             HuPrcVSleep();
         }
         mbAudFXDelaySet(4);
-        mbAudFXPlay(MSM_SE_W03_MOVE_STEP);
+        mbAudFXPlay(MSM_SE_BRD03_MOVE_STEP);
     } else {
-        mbAudFXPlay(MSM_SE_W03_MOVE_START);
+        mbAudFXPlay(MSM_SE_BRD03_MOVE_START);
         yawStep = turnAngle / 15.000001f;
         for (frame = 0; (f32)frame < 15.000001f; frame++) {
             yaw -= yawStep;
@@ -3812,7 +3738,7 @@ void fn_1_D9E0(s32 motionObjectId, s32 movingObjectId, f32 yaw, f32 turnAngle,
         for (frame = 0; (f32)frame < 75.0f; frame++) {
             if (25.0f == (f32)frame) {
                 mbAudFXDelaySet(20);
-                mbAudFXPlay(MSM_SE_W03_MOVE_STEP);
+                mbAudFXPlay(MSM_SE_BRD03_MOVE_STEP);
                 mbObjMotionSpeedSet((s16)motionObjectId, 2.0f);
             }
             progress = (f32)frame / 75.0f;
@@ -3853,10 +3779,6 @@ void fn_1_DE88(s32 coinTotal)
         lbl_1_bss_4D4.digitAnimations[coinTotal],
         mbObjModelIDGet((s16)lbl_1_bss_4D4.initialModels[2]), lbl_1_data_4B0[2]);
 }
-
-void mbDicePadBtnHookSet(int playerNo, u16 (*hook)(int));
-
-void mbDiceMotHookSet(int playerNo, void (*hook)(int));
 
 /* The coin-machine award drops its prize toward the active player, then releases the models. */
 void fn_1_E00C(int coinCount)
@@ -3933,7 +3855,7 @@ void fn_1_E00C(int coinCount)
                     100.0f + playerPosition.y) {
                     if (mbPlayerCoinGet(lbl_80265B70.turnPlayerNo) < 999) {
                         mbPlayerCoinAdd(lbl_80265B70.turnPlayerNo, 1);
-                        mbAudFXPlay(7);
+                        mbAudFXPlay(MSM_SE_CMN_COIN_GET);
                     }
                     mbCoinEffCreate(&lbl_1_bss_10[coinIndex].position);
                     mbObjDispSet((s16)lbl_1_bss_10[coinIndex].modelId, FALSE);
@@ -3958,7 +3880,7 @@ void fn_1_E00C(int coinCount)
         }
         HuPrcVSleep();
     }
-    mbAudFXPlay(15);
+    mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
     for (coinIndex = 0; coinIndex < 16; coinIndex++) {
         endingModelId = (s16)lbl_1_bss_10[coinIndex].modelId;
         mbObjKill(endingModelId);
@@ -4168,7 +4090,7 @@ void fn_1_F1E8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     }
 }
 
-/* Spawns rising white particles and fades them as their lifetime expires. */
+/* Spawns white particles with upward acceleration and fades them as their lifetime expires. */
 void fn_1_F704(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 {
     HuVecF direction;
@@ -4293,6 +4215,8 @@ void fn_1_FCB4(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
             particle->vel.x *= 0.9f;
             particle->vel.y *= 0.9f;
             particle->vel.z *= 0.9f;
+            /* Alpha subtraction wraps as an unsigned byte; the zero check does not clamp
+             * underflow. */
             particle->color.a -= 5;
             if (particle->color.a == 0) {
                 particle->color.a = 0;
@@ -4308,7 +4232,8 @@ void fn_1_FCB4(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     }
 }
 
-/* Seeds and advances a radial particle burst when ParticleDraw invokes its hook. */
+/* Unregistered radial-burst callback: seeds particles in mode zero and advances active
+ * particles. */
 void fn_1_100CC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 {
     GXColor initialColor = {255, 255, 192, 192};
@@ -4359,6 +4284,8 @@ void fn_1_100CC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
             particle->vel.x *= 0.9f;
             particle->vel.y *= 0.9f;
             particle->vel.z *= 0.9f;
+            /* Alpha subtraction wraps as an unsigned byte; the zero check does not clamp
+             * underflow. */
             particle->color.a -= 5;
             if (particle->color.a == 0) {
                 particle->color.a = 0;
@@ -4443,10 +4370,11 @@ void fn_1_104FC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     }
 }
 
-/* Shows the player display and hides the alternate display at turn initialization. */
+/* Restores the transport's normal model and hides its exit animation model at turn
+ * initialization. */
 void fn_1_1097C(int playerNo) {
-    mbObjDispSet((s16) (*(s32 *)((s8 *)(&lbl_1_bss_4D4) + (W03_OFFSET_MOTION_MODEL))), 1);
-    mbObjDispSet((s16) (*(s32 *)((s8 *)(&lbl_1_bss_4D4) + (W03_OFFSET_FINAL_MODEL_5))), 0);
+    mbObjDispSet((s16)lbl_1_bss_4D4.finalModels[5], 1);
+    mbObjDispSet((s16)lbl_1_bss_4D4.finalModels[4], 0);
 }
 
 s8 lbl_1_data_9A0[4] = {12, 6, 7, -1};
@@ -4499,7 +4427,8 @@ void fn_1_109C8(void)
         messageOffset = 1;
     }
     if (lbl_80265B70.curTime == 0) {
-        lbl_1_bss_4D0->nightReward = 20;
+        /* Daytime star purchases reset the price to 20 coins. */
+        lbl_1_bss_4D0->starPrice = 20;
     }
     panelVisible = 0;
     playerNo = lbl_80265B70.turnPlayerNo;
@@ -4513,12 +4442,12 @@ void fn_1_109C8(void)
         mbWinCreate(2, MESSNUM(MESS_BOARD_STAR, 10) + messageOffset, -1);
         mbWinTopWait();
     } else {
-        sprintf(priceText, "%d", lbl_1_bss_4D0->nightReward);
+        sprintf(priceText, "%d", lbl_1_bss_4D0->starPrice);
         mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 45), -1);
         mbWinTopInsertMesSet((u32)priceText, 0);
         mbWinTopWait();
-        if (coinCount < lbl_1_bss_4D0->nightReward) {
-            mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+        if (coinCount < lbl_1_bss_4D0->starPrice) {
+            mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
             mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 47), -1);
             mbWinTopWait();
@@ -4546,30 +4475,30 @@ void fn_1_109C8(void)
                 lbl_80265750[playerNo].masuId = guideSpace;
                 mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 HuPrcSleep(30);
-                mbMusPlay(1, 12, 127, 0);
+                mbMusPlay(1, MSM_STREAM_STAR_SPACE, 127, 0);
                 mbPlayerPosGet(playerNo, &playerPosition);
                 guidePosition = playerPosition;
                 guidePosition.y += 200.0f;
                 guidePosition.z -= 200.0f;
                 guide = mbGuideCreateFlag(&guidePosition, lbl_1_data_9A0, FALSE, TRUE, FALSE);
                 mbGuideMotionNextSet(guide, 1);
-                lbl_1_bss_4D4.diceModel = (MBMODELID)mbGuideModelGet(guide);
-                mbAudGuidePlay(949);
+                lbl_1_bss_4D4.guideModel = (MBMODELID)mbGuideModelGet(guide);
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
                 mbGuideMotionShiftSet(guide, 12, TRUE);
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 48) + messageOffset, guideCharacter);
                 mbWinTopWait();
-                mbAudGuidePlay(950);
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
                 mbGuideMotionShiftSet(guide, 12, TRUE);
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 50) + messageOffset, guideCharacter);
                 mbWinTopInsertMesSet((u32)priceText, 0);
                 mbWinTopWait();
-                mbAudGuidePlay(950);
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
                 mbGuideMotionShiftSet(guide, 12, TRUE);
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 52) + messageOffset, guideCharacter);
                 mbWinTopWait();
 
 selectQuantity:
-                maxQuantity = coinCount / lbl_1_bss_4D0->nightReward;
+                maxQuantity = coinCount / lbl_1_bss_4D0->starPrice;
                 if (maxQuantity >= 5) {
                     maxQuantity = 5;
                 }
@@ -4614,7 +4543,7 @@ selectQuantity:
                         }
                     }
                     if (buttons & PAD_BUTTON_A) {
-                        mbAudFXPlay(2);
+                        mbAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                         break;
                     } else if (buttons & PAD_BUTTON_B) {
                         if (panelVisible) {
@@ -4640,7 +4569,7 @@ selectQuantity:
                             mbWinKill(helpWindow);
                             panelVisible = 0;
                         }
-                        mbAudGuidePlay(950);
+                        mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
                         mbGuideMotionShiftSet(guide, 12, TRUE);
                         mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W03, 59) + messageOffset,
                                           guideCharacter, 0);
@@ -4649,7 +4578,7 @@ selectQuantity:
                         }
                         mbWinTopWait();
                         if (mbWinTopChoiceGet() != 1 && mbWinTopChoiceGet() != -1) {
-                            mbAudGuidePlay(951);
+                            mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY);
                             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 61) + messageOffset,
                                         guideCharacter);
                             mbWinTopWait();
@@ -4688,7 +4617,7 @@ selectQuantity:
                             previousDirection = direction = repeatFrames = 0;
                         }
                         if (lastQuantity != quantity) {
-                            mbAudFXPlay(0);
+                            mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                             espBankSet((s16)lbl_1_bss_4D4.largeDisplayDigits[2], quantity);
                             lastQuantity = quantity;
                             if ((float)repeatFrames < 22.5f) {
@@ -4722,16 +4651,16 @@ selectQuantity:
                     mbWinKill(helpWindow);
                     panelVisible = 0;
                 }
-                totalCost = quantity * lbl_1_bss_4D0->nightReward;
+                totalCost = quantity * lbl_1_bss_4D0->starPrice;
                 sprintf(quantityText, "%d", quantity);
                 sprintf(priceText, "%d", totalCost);
-                mbAudGuidePlay(949);
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
                 mbGuideMotionShiftSet(guide, 12, TRUE);
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 55) + messageOffset, guideCharacter);
                 mbWinTopInsertMesSet((u32)quantityText, 0);
                 mbWinTopInsertMesSet((u32)priceText, 1);
                 mbWinTopWait();
-                mbAudGuidePlay(950);
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
                 mbGuideMotionShiftSet(guide, 12, TRUE);
                 mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W03, 57) + messageOffset, guideCharacter,
                                   0);
@@ -4740,7 +4669,7 @@ selectQuantity:
                 }
                 mbWinTopWait();
                 if (mbWinTopChoiceGet() != 1 && mbWinTopChoiceGet() != -1) {
-                    mbAudGuidePlay(949);
+                    mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
                     mbGuideMotionShiftSet(guide, 12, TRUE);
                     mbWinCreate(2, MESSNUM(MESS_BOARD_STAR, 6) + messageOffset, guideCharacter);
                     mbWinTopWait();
@@ -4749,7 +4678,7 @@ selectQuantity:
                         HuPrcVSleep();
                     }
                     mbCoinAddExec(playerNo, -totalCost);
-                    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.diceModel, 6,
+                    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.guideModel, 6,
                         0.0f, 8.0f, 0);
                     HuPrcSleep(60);
                     mbPlayerPosGet(playerNo, &awardPosition);
@@ -4777,8 +4706,9 @@ selectQuantity:
                                 switch (stars[index].phase) {
                                 case 0:
                                     if (stars[index].frame == 1) {
-                                        stars[index].soundId = mbAudFXPlay(1095);
-                                        mbAudFXPlay(1096);
+                                        stars[index].soundHandle =
+                                            mbAudFXPlay(MSM_SE_BRD00_STAR_GET_RISE_LOOP);
+                                        mbAudFXPlay(MSM_SE_BRD00_STAR_GET_JINGLE);
                                         mbStarObjDispSet(stars[index].objectId, TRUE);
                                     }
                                     progress = (float)stars[index].frame / 60.0f;
@@ -4796,7 +4726,7 @@ selectQuantity:
                                     break;
                                 case 1:
                                     if (stars[index].frame >= 10) {
-                                        mbAudFXStop(stars[index].soundId);
+                                        mbAudFXStop(stars[index].soundHandle);
                                         stars[index].phase = 2;
                                         stars[index].frame = 0;
                                     }
@@ -4804,7 +4734,7 @@ selectQuantity:
                                 case 2:
                                     progress = (float)stars[index].frame / 90.0f;
                                     if (stars[index].frame == 1) {
-                                        mbAudFXPlay(1097);
+                                        mbAudFXPlay(MSM_SE_BRD00_STAR_GET_FINISH);
                                     }
                                     if (stars[index].frame == 30) {
                                         mbStarObjDispFlagSet(stars[index].objectId, FALSE);
@@ -4851,18 +4781,18 @@ selectQuantity:
                     }
                     HuPrcSleep(10);
                     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, ((1 << 30) | (1 << 0)));
-                    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.diceModel, 1,
+                    mbObjMotionShiftSet((s16)lbl_1_bss_4D4.guideModel, 1,
                         0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-                    jingle = mbMusJinglePlay(39);
+                    jingle = mbMusJinglePlay(MSM_STREAM_GETTING_A_STAR);
                     starDisplay = mbStarDispPlayerCreate(playerNo, quantity);
-                    mbPlayerWinLoseVoicePlay(playerNo, 7, 573);
+                    mbPlayerWinLoseVoicePlay(playerNo, 7, MSM_SE_CHARVOICE_STAR_WIN_CHEER);
                     mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f, 0);
                     mbMusJingleWait(jingle);
                     mbPlayerMotionEndWait(playerNo);
                     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                     HuPrcSleep(10);
-                    mbMusPlay(1, 12, 127, 0);
-                    mbAudGuidePlay(949);
+                    mbMusPlay(1, MSM_STREAM_STAR_SPACE, 127, 0);
+                    mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
                     mbGuideMotionSet(guide, 7, TRUE);
                     mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 61) + messageOffset, guideCharacter);
                     mbWinTopWait();
@@ -4902,8 +4832,8 @@ s16 fn_1_12220(int playerNo) {
     return mbMasuFind_TypeIdGet(lbl_80265750[playerNo].masuId, 7, TRUE, TRUE);
 }
 
-/* Chooses the nearest space when requested, or favors qualifying coin/star spaces before
- * randomizing. */
+/* Returns a branch index using distance to a star space when requested,
+ * otherwise using coin/star affordability checks and random choices. */
 int fn_1_12268(int playerNo, int masuCount, s16 *masuIds, BOOL chooseNearest) {
     s16 candidateMasu[5];
     s16 stepCounts[5];
@@ -4958,7 +4888,7 @@ int fn_1_12268(int playerNo, int masuCount, s16 *masuIds, BOOL chooseNearest) {
                 }
                 return candidateMasu[mbRandMod((u32)candidateCount)];
             }
-            if (coinCount >= lbl_1_bss_4D0->nightReward && randomValue >= 5) {
+            if (coinCount >= lbl_1_bss_4D0->starPrice && randomValue >= 5) {
                 return i;
             }
             return candidateMasu[mbRandMod((u32)candidateCount)];
@@ -4991,7 +4921,7 @@ void fn_1_124FC(void) {
     s16 masuId;
     s16 guideObjectId;
 
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 69), 6);
     mbWinPlayerDisable(windowNo, -1);
     mbWinTopWait();
@@ -5008,17 +4938,17 @@ void fn_1_124FC(void) {
     guideObjectId = mbOpeningGuideObjIdGet();
     mbObjPosSetV(guideObjectId, &guidePosition);
     mbWipeDissolveFadeIn();
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 70), 6);
     mbWinPlayerDisable(windowNo, -1);
     mbWinTopWait();
     windowNo = -1;
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 71), 6);
     mbWinPlayerDisable(windowNo, -1);
     mbWinTopWait();
     windowNo = -1;
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 72), 6);
     mbWinPlayerDisable(windowNo, -1);
     mbWinTopWait();
@@ -5053,7 +4983,7 @@ void fn_1_126C0(void) {
     mbMasuPosGet(guideMasuId, &cameraPosition);
     mbWipeFadeIn();
     HuPrcSleep(10);
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 73), 6);
     mbWinPlayerDisable(windowNo, -1);
     guidePosition = cameraPosition;
@@ -5077,7 +5007,7 @@ void fn_1_126C0(void) {
         HuPrcVSleep();
     }
     mbObjMotionShiftSet(guideObjectId, 12, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 74), 6);
     mbWinPlayerDisable(windowNo, -1);
     mbWinTopWait();
@@ -5088,7 +5018,12 @@ void fn_1_126C0(void) {
     mbWipeFadeIn();
 }
 
-s32 lbl_1_data_9CC[4][2] = {{986, 960}, {987, 961}, {988, 962}, {-1, -1}};
+s32 lbl_1_data_9CC[4][2] = {
+    {MSM_SE_GUIDE_SHOP_DAY_SUCCESS, MSM_SE_GUIDE_SHOP_NIGHT_SUCCESS},
+    {MSM_SE_GUIDE_SHOP_DAY_PROMPT, MSM_SE_GUIDE_SHOP_NIGHT_PROMPT},
+    {MSM_SE_GUIDE_SHOP_DAY_UNAVAILABLE, MSM_SE_GUIDE_SHOP_NIGHT_UNAVAILABLE},
+    {-1, -1}
+};
 /* Board events call this with a cue index to play its day or night voice effect. */
 int fn_1_12A14(s32 cueIndex) {
     s32 timeSlot;

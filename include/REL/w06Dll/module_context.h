@@ -22,5 +22,6 @@
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
+s32 fn_1_E3EC(s32 playerNo, s32 linkCount, const s16 *spaceIds);
 
 #endif
