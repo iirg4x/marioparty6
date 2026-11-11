@@ -1,209 +1,68 @@
-extern "C" {
+// Mic quiz minigame (micquizmyokodll): a parade of houses, each with npcs, items and
+// sometimes a guest character, scrolls past the host; the player then answers by voice
+// which character was at a house, or how many items or npcs of one type went by.
+// This file holds the scene setup, the main object's state machine, the answer timer and the
+// reveal.
 #include "math.h"
-}
-
-extern "C" {
 #include "dolphin/gx.h"
-}
-
-extern "C" {
 #include "dolphin/types.h"
-}
-
-extern "C" {
 #include "dolphin/os.h"
-}
-
-extern "C" {
 #include "dolphin/mtx.h"
-}
-
-extern "C" {
 #include "game/window.h"
-}
-
 #include "REL/micquizmyokodll/module_types.h"
-
-extern "C" {
 #include "game/main.h"
-}
-
-extern "C" {
 #include "game/object.h"
-}
-
-extern "C" {
 #include "game/audio.h"
-}
-
-extern "C" {
 #include "game/charman.h"
-}
-
-extern "C" {
 #include "game/gamemes.h"
-}
-
-extern "C" {
 #include "game/hsfex.h"
-}
-
-extern "C" {
 #include "game/data.h"
-}
-
-extern "C" {
 #include "game/gamework.h"
-}
-
-extern "C" {
 #include "game/memory.h"
-}
-
-extern "C" {
 #include "game/mg/seqman.h"
-}
-
-extern "C" {
 #include "game/mg/timer.h"
-}
-
-extern "C" {
 #include "game/mg/score.h"
-}
-
-extern "C" {
 #include "game/pad.h"
-}
-
-extern "C" {
 #include "game/frand.h"
-}
-
-extern "C" {
 #include "game/sprite.h"
-}
-
-extern "C" {
 #include "game/wipe.h"
-}
-
-extern "C" {
 #include "game/mg/actman.h"
-}
-
-extern "C" {
 #include "game/board/object.h"
-}
-
-extern "C" {
 #include "game/board/tutorial.h"
-}
-
-extern "C" {
 #include "datadir_enum.h"
-}
-
-extern "C" {
 #include "messdir_enum.h"
-}
-
-extern "C" {
 #include "game/mic.h"
-}
-
-extern "C" {
 #include "humath.h"
-}
-
-extern "C" {
 #include "msm_se.h"
 #include "msm_stream.h"
-}
-
 #include "REL/micquizmyokodll.h"
-
-extern "C" {
 #include "dolphin.h"
-}
-
-extern "C" {
 #include "game/hu3d.h"
-}
-
-extern "C" {
 #include "game/process.h"
-}
-
-extern "C" {
 #include "game/flag.h"
-}
-
-extern "C" {
 #include "game/armem.h"
-}
-
-extern "C" {
 #include "game/mgdata.h"
-}
-
-extern "C" {
 #include "game/printfunc.h"
-}
-
-extern "C" {
 #include "game/saveload.h"
-}
-
-extern "C" {
 #include "game/esprite.h"
-}
-
-extern "C" {
 #include "game/thpmain.h"
-}
-
-extern "C" {
 #include "game/board/main.h"
-}
-
-extern "C" {
 #include "game/board/audio.h"
-}
-
-extern "C" {
 #include "game/board/masu.h"
-}
-
-extern "C" {
 #include "game/board/player.h"
-}
-
 #include "REL/micquizmyokodll/shared_types.h"
-
 #include "REL/micquizmyokodll/message_tables.h"
-
-extern "C" {
 #include "game/init.h"
-}
-
 #include "REL/micquizmyokodll/response_table.h"
 
-void fn_1_8DE8(void);
-
-s16 fn_1_89C0(s32 windowNo);
-
-extern "C" void ObjectSetup(void);
+void ObjectSetup(void);
 
 void fn_1_110(OMOBJ *obj);
 
 void fn_1_220(OMOBJ *object);
 
-extern "C" {
 #include <string.h>
-}
-
-extern s16 lbl_1_bss_31E;
+#include "REL/micquiz/quiz_common.h"
 
 void fn_1_148(OMOBJ *object);
 
@@ -223,40 +82,12 @@ void fn_1_31CC(s16 playerIndex);
 
 void fn_1_1F4(void);
 
-extern s16 lbl_1_bss_324;
-
-extern s16 lbl_1_bss_326;
-
-extern s16 lbl_1_bss_328;
-
-extern s16 lbl_1_bss_32A;
-
 void fn_1_2B14(s16 playerIndex);
 
 void fn_1_3258(void);
 
 typedef void (*VoidFunc)(void);
 typedef MicquizPlayerWork MicquizPlayerModels;
-struct _struct_lbl_1_data_21C_0x8 {
-              f32 positionX;
-              f32 positionY;
-};
-typedef struct MicquizResponse {
-    s16 result;
-    u8 unknown_02[0xA]; /* No code names this field. */
-    s32 choicesRemaining;
-} MicquizResponse;
-extern ANIMDATA *lbl_1_bss_33C;
-extern ANIMDATA *lbl_1_bss_338;
-extern s16 lbl_1_bss_334;
-extern s16 lbl_1_bss_332;
-extern u8 lbl_1_bss_32C[0x4];
-extern s16 lbl_1_bss_322;
-extern s16 lbl_1_bss_320;
-extern s16 lbl_1_bss_31C;
-extern HU3D_MODELID lbl_1_bss_31A;
-extern HU3D_MOTIONID lbl_1_bss_30C[7];
-extern HUPROCESS *lbl_1_bss_2E4[0xA];
 extern s16 lbl_1_bss_20[0x14];
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -267,41 +98,15 @@ extern MicquizAnimationState lbl_1_bss_54;
 extern MicquizSequence lbl_1_bss_D4;
 extern s16 omSysExitReq;
 extern MicquizHostState lbl_1_bss_F4;
-extern s16 lbl_1_bss_330;
-extern HUSPR_GROUPID lbl_1_bss_404[];
-extern s32 lbl_1_bss_4A0;
-extern s32 lbl_1_bss_4AC;
-extern s32 lbl_1_bss_4BC;
-extern s32 lbl_1_bss_4C0;
-extern s32 lbl_1_bss_4C4;
-extern s32 lbl_1_bss_4C8;
-extern s32 lbl_1_bss_4E4;
-extern HUPROCESS *lbl_1_bss_4EC;
-extern s32 lbl_1_data_1FC;
 extern s16 lbl_1_data_3FC[6];
 extern HUPROCESS *lbl_1_bss_2A4[];
-extern HUPROCESS *lbl_1_bss_348;
-extern s32 lbl_1_bss_3E0;
-extern MicquizModeWork *lbl_1_bss_47C;
 extern s16 lbl_1_bss_48[6];
 extern MicquizAccessoryPoolEntry lbl_1_bss_98[];
-extern s32 lbl_1_data_48[5];
 extern HUPROCESS *lbl_1_bss_2A4[5];
 extern MicquizAccessoryPoolEntry lbl_1_bss_98[6];
-extern s32 lbl_1_bss_49C;
-extern s16 lbl_1_bss_4B0;
-extern s16 lbl_1_bss_570;
-extern char lbl_1_data_350[0x18];
-extern char lbl_1_data_2E0[0x15];
-extern char lbl_1_data_2F5[0x16];
-extern char lbl_1_data_30B[0x17];
-extern char lbl_1_data_322[0x15];
-extern char lbl_1_data_337[0x19];
 
 extern MicquizPlayerWork lbl_1_bss_128[];
 extern s16 lbl_1_data_388[];
-
-extern s32 lbl_1_bss_4B8;
 extern char lbl_1_data_5F8[];
 extern u16 lbl_1_rodata_33C[5];
 extern u32 lbl_1_data_4B8[9];
@@ -309,286 +114,30 @@ extern MicquizPlayerWork lbl_1_bss_128[5];
 extern s16 lbl_1_bss_20[20];
 
 extern s32 lbl_1_data_43C[6];
-extern s16 lbl_1_bss_34C;
-extern s16 lbl_1_bss_34E;
-extern s16 lbl_1_bss_410;
-extern s32 lbl_1_bss_480;
-extern f32 lbl_1_bss_484;
-extern f32 lbl_1_bss_488;
-extern s16 lbl_1_bss_382;
 extern s16 lbl_1_bss_CE;
 extern s16 lbl_1_bss_D2[4];
-extern s32 lbl_1_data_1F4;
-extern ANIMDATA *lbl_1_bss_14;
-extern f32 lbl_1_bss_18;
-extern s32 lbl_1_bss_48C;
-extern s32 lbl_1_bss_340;
-extern s32 lbl_1_bss_344;
-extern ANIMDATA *lbl_1_bss_3E8;
-extern ANIMDATA *lbl_1_bss_3EC;
-extern ANIMDATA *lbl_1_bss_3F0;
-extern ANIMDATA *lbl_1_bss_3F4[4];
-extern s32 lbl_1_data_1C[0xB];
-extern ANIMDATA *lbl_1_bss_454;
-extern ANIMDATA *lbl_1_bss_3E4;
-extern s16 lbl_1_bss_40A;
-extern s16 lbl_1_bss_40C;
-extern s16 lbl_1_bss_40E;
-extern s16 lbl_1_bss_412;
-extern s16 lbl_1_bss_414;
-extern s16 lbl_1_bss_416;
-extern s16 lbl_1_bss_418;
-extern s16 lbl_1_bss_422;
-extern ANIMDATA *lbl_1_bss_424[2];
-extern ANIMDATA *lbl_1_bss_42C;
-extern ANIMDATA *lbl_1_bss_430;
-extern ANIMDATA *lbl_1_bss_434;
-extern ANIMDATA *lbl_1_bss_438;
-extern ANIMDATA *lbl_1_bss_43C;
-extern ANIMDATA *lbl_1_bss_440;
-extern ANIMDATA *lbl_1_bss_444;
-extern ANIMDATA *lbl_1_bss_448;
-extern ANIMDATA *lbl_1_bss_478;
-extern ANIMDATA *lbl_1_bss_470[2];
-extern ANIMDATA *lbl_1_bss_46C;
-extern ANIMDATA *lbl_1_bss_468;
-extern ANIMDATA *lbl_1_bss_464;
-extern ANIMDATA *lbl_1_bss_460;
-extern ANIMDATA *lbl_1_bss_45C;
-extern ANIMDATA *lbl_1_bss_458;
-extern ANIMDATA *lbl_1_bss_450;
-extern s16 lbl_1_bss_44C;
-extern s16 lbl_1_data_20A;
-extern s16 lbl_1_data_20C;
-extern s16 lbl_1_data_20E;
-extern s16 lbl_1_data_210[4];
-extern s16 lbl_1_data_218;
-extern s16 lbl_1_data_21A;
-extern struct _struct_lbl_1_data_21C_0x8 lbl_1_data_21C[0xC];
-extern s16 lbl_1_bss_378[4][3];
-extern ANIMDATA *lbl_1_bss_390[4][3];
-
-extern MGSCORE *lbl_1_bss_350[2];
-extern s16 lbl_1_bss_358[4];
-extern ANIMDATA *lbl_1_bss_360[4];
-extern s16 lbl_1_bss_370;
-extern ANIMDATA *lbl_1_bss_374;
-extern s16 lbl_1_bss_3C0[4];
-extern ANIMDATA *lbl_1_bss_3C8[4];
-extern s16 lbl_1_bss_3D8;
-extern ANIMDATA *lbl_1_bss_3DC;
-extern u8 lbl_1_bss_406[0x4];
-extern HUSPR_GROUPID lbl_1_bss_404[1];
-extern s16 lbl_1_data_208;
-extern u8 lbl_1_bss_41A[0x8];
-extern s16 lbl_1_bss_490;
-extern HUPROCESS *lbl_1_bss_C;
 extern s16 lbl_1_bss_18A;
-extern u32 lbl_1_data_A0[];
-extern s32 lbl_1_bss_524;
 extern s16 lbl_1_bss_8C;
 extern s16 lbl_1_bss_8E;
-extern s32 lbl_1_bss_4;
-extern s32 lbl_1_bss_4CC;
-extern s32 lbl_1_bss_4E8;
-extern s32 lbl_1_bss_4DC;
-extern s32 lbl_1_bss_4E0;
-extern s32 lbl_1_bss_4D0;
 extern u16 lbl_802C0008[4];
-extern s32 lbl_1_bss_4B4;
-extern s32 lbl_1_bss_4D4;
-extern s32 lbl_1_bss_4D8;
-extern u32 lbl_1_data_1CC[2];
-extern u32 lbl_1_data_1D4[8];
-extern u32 lbl_1_data_5C[0x11];
-extern u32 lbl_1_data_E8[0x11];
-extern s16 lbl_1_bss_472;
-extern s32 lbl_1_bss_4A4;
-extern MicquizResponse *lbl_1_bss_8;
-extern HUPROCESS *lbl_1_bss_0;
-extern HUPROCESS *lbl_1_bss_10;
-extern s16 lbl_1_bss_4A8;
-extern u32 lbl_1_data_12C[0x14];
-extern u32 lbl_1_data_17C[0x14];
-extern "C" int _prolog(void);
-extern "C" void _epilog(void);
-extern "C" void ObjectSetup(void);
-extern "C++" void fn_1_110(OMOBJ *obj);
-extern "C++" void fn_1_148(OMOBJ *object);
-extern "C++" void fn_1_1F4(void);
-extern "C++" void fn_1_220(OMOBJ *process);
-extern "C++" void fn_1_938(void);
-extern "C++" s32 fn_1_16B4(void);
-inline void fn_1_8FCC_inlined_main(s32 windowNo, u32 messageId, s16 insertNo);
-inline void fn_1_8D14_inlined_main(u32 messageId, s16 messageSpeed, u8 windowIndex);
-extern "C++" s32 fn_1_17A8(void);
-extern "C++" void fn_1_1898(void);
-extern "C++" void fn_1_1A4C(void);
-extern "C++" void fn_1_1BAC(s32 messageSet);
-extern "C++" void fn_1_1EB4(void);
-extern "C++" void fn_1_1F04(void);
-extern "C++" void fn_1_2B14(s16 playerIndex);
-extern "C++" void fn_1_31CC(s16 playerIndex);
-extern "C++" void fn_1_3258(void);
-extern "C++" s32 fn_1_45B0(s16 playerIndex);
-extern "C++" s32 fn_1_4728(s16 playerIndex);
-extern "C++" void fn_1_48C8(void);
-extern "C++" void fn_1_5194(void);
-extern "C++" void fn_1_5288(void);
-extern "C++" void fn_1_7188(void);
-extern "C++" void fn_1_71D0(void);
-extern "C++" void fn_1_7754(void);
-extern "C++" s32 fn_1_7FAC(void);
-extern "C++" void fn_1_8200(void);
-extern "C++" void fn_1_8280(s32 modelIndex);
-extern "C++" void fn_1_829C(s16 layerNo);
-extern "C++" void fn_1_834C(void);
-extern "C++" void fn_1_8394(s32 count);
-extern "C++" void fn_1_83A4(void);
-extern "C++" void fn_1_83B8(void);
-extern "C++" s32 fn_1_83FC(void);
-extern "C++" void fn_1_840C(void);
-extern "C++" void fn_1_8560(void);
-extern "C++" s16 fn_1_89C0(s32 windowNo);
-extern "C++" void fn_1_8A3C(void);
-extern "C++" void fn_1_8BA8(void);
-extern "C++" void fn_1_8D14(u32 messageId, s16 messageSpeed, u8 windowNo);
-extern "C++" void fn_1_8DE8(void);
-extern "C++" void fn_1_8E38(s32 windowNo);
-extern "C" void fn_1_8F58(void);
-extern "C++" short fn_1_8F98(short choice);
-extern "C++" void fn_1_8FCC(s32 windowNo, u32 messageId, s16 insertNo);
-extern "C++" void fn_1_9080(void);
-extern "C++" void fn_1_90AC(void);
-extern "C++" void fn_1_90D8(s32 );
-extern "C++" void fn_1_9128(u32 messageType);
-extern "C++" void fn_1_9214(s32 );
-extern "C++" void fn_1_9280(s16 layerNo);
-extern "C++" void fn_1_9784(HUPROCESS *);
-extern "C++" void fn_1_9868(void);
-extern "C++" void fn_1_9D5C(void);
-extern "C++" void fn_1_9E44(void);
-extern "C++" void fn_1_9F08(void);
-extern "C++" void fn_1_BA0C(void);
-extern "C++" void fn_1_C1E4(void);
-extern "C++" void fn_1_C3FC(void);
-extern "C++" void fn_1_C558(void);
-extern "C++" void fn_1_C768(void);
-extern "C++" void fn_1_C884(void);
-extern "C++" void fn_1_CD18(s32 mode);
-extern "C++" void fn_1_D058(void);
-extern "C++" void fn_1_D18C(void);
-extern "C++" void fn_1_D3E4(void);
-extern "C++" void fn_1_D4F4(void);
-extern "C++" void fn_1_DDF8(void);
-extern "C++" void fn_1_DF4C(void);
-extern "C++" void fn_1_E0A0(void);
-extern "C++" void fn_1_E1E4(void);
-extern "C++" void fn_1_E4E8(void);
-extern "C++" void fn_1_E7EC(void);
-extern "C++" void fn_1_E8A8(void);
-extern "C++" void fn_1_E964(s32 action);
-extern "C++" void fn_1_EC84(void);
-extern "C++" void fn_1_ECE0(void);
-extern "C++" void fn_1_ED38(void);
-extern "C++" void fn_1_ED90(void);
-extern "C++" void fn_1_F09C(void);
-extern "C++" void fn_1_F334(void);
-extern "C++" void fn_1_F5CC(void);
-extern "C++" void fn_1_F608(void);
-extern "C++" void fn_1_F7F4(s32 );
-extern "C++" void fn_1_F890(void);
-extern "C++" void fn_1_F920(void);
-extern "C++" void fn_1_F9F4(s32 flag, s32 mode);
-extern "C++" void fn_1_FB04(void);
-extern "C++" void fn_1_FD14(void);
-extern "C++" void fn_1_FF84(void);
-extern "C++" void fn_1_100DC(void);
-extern "C++" void fn_1_10234(void);
-extern "C++" void fn_1_10238(void);
-extern "C++" u8 fn_1_1023C(void);
-extern "C++" u8 fn_1_10250(void);
-extern "C++" void fn_1_10264(s8 player, u16 points, s32 result);
-extern "C++" u8 fn_1_1029C(void);
-extern "C++" s32 fn_1_102B0(s32 player);
-extern "C++" f32 fn_1_102C8(void);
-extern "C++" void fn_1_1043C(void);
-extern "C++" void fn_1_10460(void);
-extern "C++" s32 fn_1_10484(void);
-extern "C++" s32 fn_1_10498(void);
-extern "C++" void fn_1_104AC(void);
-extern "C++" void fn_1_104C4(void);
-extern "C++" void fn_1_104DC(void);
-extern "C++" void fn_1_10788(u32 message);
-extern "C++" void fn_1_109C8(u32 message);
-extern "C++" void fn_1_10C08(void);
-extern "C++" void fn_1_10E34(void);
-extern "C++" void fn_1_11030(void);
-extern "C++" void fn_1_1122C(s32 playerIndex);
-extern "C++" void fn_1_114D0(void);
-extern "C++" void fn_1_116CC(u32 message);
-extern "C++" void fn_1_11940(void);
-extern "C++" void fn_1_11B3C(void);
-extern "C++" void fn_1_11D38(void);
-extern "C++" void fn_1_11F34(void);
-extern "C++" void fn_1_12144(void);
-extern "C++" void fn_1_12340(s32 messageIndex);
-extern "C++" void fn_1_1259C(char *path, s32 mode);
-extern "C++" void fn_1_12608(s32 argument);
-extern "C++" void fn_1_12774(void);
-extern "C++" void fn_1_127A0(void);
-extern "C++" void fn_1_127CC(s32 quizMode);
-extern "C++" void fn_1_13EB8(s32 mode);
-extern "C++" s32 fn_1_15090(s32 playerIndex, s32 responseMode);
-extern "C++" s32 fn_1_154D8(s32 , s32 );
-extern "C++" void fn_1_154F0(void);
-extern "C++" void fn_1_15610(void);
-extern "C++" void fn_1_15A0C(s32 );
-extern "C" void fn_1_15C20(void);
-extern "C" void fn_1_15C80(void);
-extern "C" void fn_1_15CD0(void);
-extern "C++" void fn_1_15D30(void);
-extern "C++" void fn_1_15D80(s32 select, s32 padNo);
-extern "C++" void fn_1_15EC0(s32 padNo, s32 direction);
-extern "C++" void fn_1_15FB0(void);
-extern "C++" void fn_1_16574(void);
-extern "C++" void fn_1_16988(s32 );
-extern "C++" void fn_1_16AEC(void);
-extern "C++" void fn_1_16D64(void);
-extern "C++" void fn_1_16E74(void);
-extern "C++" void fn_1_16F6C(void);
-extern "C++" void fn_1_17248(s32 mode, s32 wait);
-extern "C++" void fn_1_177F0(u32 message);
-extern "C++" void fn_1_17A30(s32 choice);
-extern "C++" void fn_1_17CA8(u32 choice);
-extern "C++" void fn_1_17F20(void);
-extern "C++" void fn_1_17F24(void);
-extern "C++" void fn_1_17F64(HUPROCESS* parent);
-extern "C++" void fn_1_17FB4(void);
-extern "C++" void fn_1_17FEC(void);
-extern "C++" void fn_1_18138(void);
-extern "C++" s32 fn_1_18300(void);
-extern "C++" void fn_1_183E0(s32 value);
-extern "C++" s32 fn_1_18470(s32 , s32 );
-extern "C++" s32 fn_1_184AC(s32 );
-extern "C++" void fn_1_1850C(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-extern "C++" void fn_1_18964(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-extern "C++" void fn_1_18DD0(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-extern "C++" void fn_1_19118(s32 messageIndex);
-extern "C++" void fn_1_19288(void);
-extern "C++" s32 fn_1_193A0(void);
-extern "C++" void fn_1_193B4(s32 useCurrentPlayer, s32 playerFieldOffset);
-extern "C++" void fn_1_1988C(void);
-extern "C" int fn_1_19968(int key);
-extern "C" int fn_1_199B8(int key);
-extern "C" void fn_1_19A24(void);
-extern "C" void fn_1_19B30(s32 motionNo, f32 startTime, u32 attr);
-extern "C" void fn_1_19BD4(s32 );
-extern "C" void fn_1_19BE8(int base);
-extern "C++" void fn_1_19CD0(s32 baseIndex);
-extern "C" void fn_1_19DE4(void);
-extern "C" void fn_1_19EE0(void);
-extern "C" void fn_1_19FB0(HUWINID window, u32 answerId, s16 soundIndex);
+int _prolog(void);
+void _epilog(void);
+void fn_1_220(OMOBJ *process);
+void fn_1_938(void);
+void fn_1_1EB4(void);
+s32 fn_1_45B0(s16 playerIndex);
+s32 fn_1_4728(s16 playerIndex);
+void fn_1_48C8(void);
+void fn_1_5194(void);
+void fn_1_5288(void);
+void fn_1_7188(void);
+void fn_1_71D0(void);
+void fn_1_7754(void);
+s32 fn_1_7FAC(void);
+void fn_1_8200(void);
+void fn_1_8280(s32 modelIndex);
+void fn_1_829C(s16 layerNo);
+void fn_1_834C(void);
 
 extern Point3d lbl_1_data_408;
 extern Point3d lbl_1_data_414;
@@ -609,310 +158,6 @@ extern s32 lbl_1_data_424[6];
 extern s32 lbl_1_data_454[5];
 extern s32 lbl_1_data_468[5];
 extern f32 lbl_1_data_560[11];
-
-extern u32 lbl_1_data_A0[18];
-extern s32 lbl_1_data_1F8;
-s16 fn_1_89C0(s32 windowNo);
-extern "C" void ObjectSetup(void);
-void fn_1_110(OMOBJ *obj);
-void fn_1_220(OMOBJ *object);
-void fn_1_148(OMOBJ *object);
-void fn_1_1898(void);
-void fn_1_1A4C(void);
-void fn_1_1BAC(s32 messageSet);
-void fn_1_1F04(void);
-s32 fn_1_16B4(void);
-s32 fn_1_17A8(void);
-void fn_1_31CC(s16 playerIndex);
-void fn_1_1F4(void);
-void fn_1_2B14(s16 playerIndex);
-void fn_1_3258(void);
-extern "C" int _prolog(void);
-extern "C" void _epilog(void);
-extern "C" void ObjectSetup(void);
-extern "C++" void fn_1_110(OMOBJ *obj);
-extern "C++" void fn_1_148(OMOBJ *object);
-extern "C++" void fn_1_1F4(void);
-extern "C++" void fn_1_220(OMOBJ *process);
-extern "C++" void fn_1_938(void);
-extern "C++" s32 fn_1_16B4(void);
-inline void fn_1_8FCC_inlined_main(s32 windowNo, u32 messageId, s16 insertNo);
-inline void fn_1_8D14_inlined_main(u32 messageId, s16 messageSpeed, u8 windowIndex);
-extern "C++" s32 fn_1_17A8(void);
-extern "C++" void fn_1_1898(void);
-extern "C++" void fn_1_1A4C(void);
-extern "C++" void fn_1_1BAC(s32 messageSet);
-extern "C++" void fn_1_1EB4(void);
-extern "C++" void fn_1_1F04(void);
-extern "C++" void fn_1_2B14(s16 playerIndex);
-extern "C++" void fn_1_31CC(s16 playerIndex);
-extern "C++" void fn_1_3258(void);
-extern "C++" s32 fn_1_45B0(s16 playerIndex);
-extern "C++" s32 fn_1_4728(s16 playerIndex);
-extern "C++" void fn_1_48C8(void);
-extern "C++" void fn_1_5194(void);
-extern "C++" void fn_1_5288(void);
-extern "C++" void fn_1_7188(void);
-extern "C++" void fn_1_71D0(void);
-extern "C++" void fn_1_7754(void);
-extern "C++" s32 fn_1_7FAC(void);
-extern "C++" void fn_1_8200(void);
-extern "C++" void fn_1_8280(s32 modelIndex);
-extern "C++" void fn_1_829C(s16 layerNo);
-extern "C++" void fn_1_834C(void);
-extern "C++" void fn_1_8394(s32 count);
-extern "C++" void fn_1_83A4(void);
-extern "C++" void fn_1_83B8(void);
-extern "C++" s32 fn_1_83FC(void);
-extern "C++" void fn_1_840C(void);
-extern "C++" void fn_1_8560(void);
-extern "C++" s16 fn_1_89C0(s32 windowNo);
-extern "C++" void fn_1_8A3C(void);
-extern "C++" void fn_1_8BA8(void);
-extern "C++" void fn_1_8D14(u32 messageId, s16 messageSpeed, u8 windowNo);
-extern "C++" void fn_1_8DE8(void);
-extern "C++" void fn_1_8E38(s32 windowNo);
-extern "C" void fn_1_8F58(void);
-extern "C++" short fn_1_8F98(short choice);
-extern "C++" void fn_1_8FCC(s32 windowNo, u32 messageId, s16 insertNo);
-extern "C++" void fn_1_9080(void);
-extern "C++" void fn_1_90AC(void);
-extern "C++" void fn_1_90D8(s32 );
-extern "C++" void fn_1_9128(u32 messageType);
-extern "C++" void fn_1_9214(s32 );
-extern "C++" void fn_1_9280(s16 layerNo);
-extern "C++" void fn_1_9784(HUPROCESS *);
-extern "C++" void fn_1_9868(void);
-extern "C++" void fn_1_9D5C(void);
-extern "C++" void fn_1_9E44(void);
-extern "C++" void fn_1_9F08(void);
-extern "C++" void fn_1_BA0C(void);
-extern "C++" void fn_1_C1E4(void);
-extern "C++" void fn_1_C3FC(void);
-extern "C++" void fn_1_C558(void);
-extern "C++" void fn_1_C768(void);
-extern "C++" void fn_1_C884(void);
-extern "C++" void fn_1_CD18(s32 mode);
-extern "C++" void fn_1_D058(void);
-extern "C++" void fn_1_D18C(void);
-extern "C++" void fn_1_D3E4(void);
-extern "C++" void fn_1_D4F4(void);
-extern "C++" void fn_1_DDF8(void);
-extern "C++" void fn_1_DF4C(void);
-extern "C++" void fn_1_E0A0(void);
-extern "C++" void fn_1_E1E4(void);
-extern "C++" void fn_1_E4E8(void);
-extern "C++" void fn_1_E7EC(void);
-extern "C++" void fn_1_E8A8(void);
-extern "C++" void fn_1_E964(s32 action);
-extern "C++" void fn_1_EC84(void);
-extern "C++" void fn_1_ECE0(void);
-extern "C++" void fn_1_ED38(void);
-extern "C++" void fn_1_ED90(void);
-extern "C++" void fn_1_F09C(void);
-extern "C++" void fn_1_F334(void);
-extern "C++" void fn_1_F5CC(void);
-extern "C++" void fn_1_F608(void);
-extern "C++" void fn_1_F7F4(s32 );
-extern "C++" void fn_1_F890(void);
-extern "C++" void fn_1_F920(void);
-extern "C++" void fn_1_F9F4(s32 flag, s32 mode);
-extern "C++" void fn_1_FB04(void);
-extern "C++" void fn_1_FD14(void);
-extern "C++" void fn_1_FF84(void);
-extern "C++" void fn_1_100DC(void);
-extern "C++" void fn_1_10234(void);
-extern "C++" void fn_1_10238(void);
-extern "C++" u8 fn_1_1023C(void);
-extern "C++" u8 fn_1_10250(void);
-extern "C++" void fn_1_10264(s8 player, u16 points, s32 result);
-extern "C++" u8 fn_1_1029C(void);
-extern "C++" s32 fn_1_102B0(s32 player);
-extern "C++" f32 fn_1_102C8(void);
-extern "C++" void fn_1_1043C(void);
-extern "C++" void fn_1_10460(void);
-extern "C++" s32 fn_1_10484(void);
-extern "C++" s32 fn_1_10498(void);
-extern "C++" void fn_1_104AC(void);
-extern "C++" void fn_1_104C4(void);
-extern "C++" void fn_1_104DC(void);
-extern "C++" void fn_1_10788(u32 message);
-extern "C++" void fn_1_109C8(u32 message);
-extern "C++" void fn_1_10C08(void);
-extern "C++" void fn_1_10E34(void);
-extern "C++" void fn_1_11030(void);
-extern "C++" void fn_1_1122C(s32 playerIndex);
-extern "C++" void fn_1_114D0(void);
-extern "C++" void fn_1_116CC(u32 message);
-extern "C++" void fn_1_11940(void);
-extern "C++" void fn_1_11B3C(void);
-extern "C++" void fn_1_11D38(void);
-extern "C++" void fn_1_11F34(void);
-extern "C++" void fn_1_12144(void);
-extern "C++" void fn_1_12340(s32 messageIndex);
-extern "C++" void fn_1_1259C(char *path, s32 mode);
-extern "C++" void fn_1_12608(s32 argument);
-extern "C++" void fn_1_12774(void);
-extern "C++" void fn_1_127A0(void);
-extern "C++" void fn_1_127CC(s32 quizMode);
-extern "C++" void fn_1_13EB8(s32 mode);
-extern "C++" s32 fn_1_15090(s32 playerIndex, s32 responseMode);
-extern "C++" s32 fn_1_154D8(s32 , s32 );
-extern "C++" void fn_1_154F0(void);
-extern "C++" void fn_1_15610(void);
-extern "C++" void fn_1_15A0C(s32 );
-extern "C" void fn_1_15C20(void);
-extern "C" void fn_1_15C80(void);
-extern "C" void fn_1_15CD0(void);
-extern "C++" void fn_1_15D30(void);
-extern "C++" void fn_1_15D80(s32 select, s32 padNo);
-extern "C++" void fn_1_15EC0(s32 padNo, s32 direction);
-extern "C++" void fn_1_15FB0(void);
-extern "C++" void fn_1_16574(void);
-extern "C++" void fn_1_16988(s32 );
-extern "C++" void fn_1_16AEC(void);
-extern "C++" void fn_1_16D64(void);
-extern "C++" void fn_1_16E74(void);
-extern "C++" void fn_1_16F6C(void);
-extern "C++" void fn_1_17248(s32 mode, s32 wait);
-extern "C++" void fn_1_177F0(u32 message);
-extern "C++" void fn_1_17A30(s32 choice);
-extern "C++" void fn_1_17CA8(u32 choice);
-extern "C++" void fn_1_17F20(void);
-extern "C++" void fn_1_17F24(void);
-extern "C++" void fn_1_17F64(HUPROCESS* parent);
-extern "C++" void fn_1_17FB4(void);
-extern "C++" void fn_1_17FEC(void);
-extern "C++" void fn_1_18138(void);
-extern "C++" s32 fn_1_18300(void);
-extern "C++" void fn_1_183E0(s32 value);
-extern "C++" s32 fn_1_18470(s32 , s32 );
-extern "C++" s32 fn_1_184AC(s32 );
-extern "C++" void fn_1_1850C(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-extern "C++" void fn_1_18964(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-extern "C++" void fn_1_18DD0(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-extern "C++" void fn_1_19118(s32 messageIndex);
-extern "C++" void fn_1_19288(void);
-extern "C++" s32 fn_1_193A0(void);
-extern "C++" void fn_1_193B4(s32 useCurrentPlayer, s32 playerFieldOffset);
-extern "C++" void fn_1_1988C(void);
-extern "C" int fn_1_19968(int key);
-extern "C" int fn_1_199B8(int key);
-extern "C" void fn_1_19A24(void);
-extern "C" void fn_1_19B30(s32 motionNo, f32 startTime, u32 attr);
-extern "C" void fn_1_19BD4(s32 );
-extern "C" void fn_1_19BE8(int base);
-extern "C++" void fn_1_19CD0(s32 baseIndex);
-extern "C" void fn_1_19DE4(void);
-extern "C" void fn_1_19EE0(void);
-extern "C" void fn_1_19FB0(HUWINID window, u32 answerId, s16 soundIndex);
-void fn_1_8E38(s32 windowNo);
-void fn_1_938(void);
-void fn_1_1EB4(void);
-void fn_1_12608(s32 argument);
-void fn_1_19CD0(s32 baseIndex);
-void fn_1_8FCC(s32 windowNo, u32 messageId, s16 insertNo);
-void fn_1_8D14(u32 messageId, s16 messageSpeed, u8 windowNo);
-void fn_1_16988(s32);
-s32 fn_1_102B0(s32);
-void fn_1_19FB0(HUWINID winId, u32 answerId, s16 soundIndex);
-static void fn_1_20B74_inlined(s32 windowNo);
-static void fn_1_20D08_inlined(s32 windowNo, u32 messageId, s16 insertNo);
-static void fn_1_20A50_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex);
-static void fn_1_20C94_inlined(void);
-static s16 fn_1_206FC_inlined(s32 windowNo);
-static void fn_1_20B24_inlined(void);
-void fn_1_1850C(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-static void fn_1_1278_inlined(s32 windowNo);
-static void fn_1_140C_inlined(s32 windowNo, u32 messageId, s16 insertNo);
-static void fn_1_1154_inlined(u32 messageId, s16 messageSpeed, u8 windowNo);
-static void fn_1_1398_inlined(void);
-static s16 fn_1_E00_inlined(s32 windowNo);
-static void fn_1_1228_inlined(void);
-void fn_1_18964(s32 primaryMessageIndex, s32 secondaryMessageIndex);
-static void fn_1_1278_inlined_11558_inlined(s32 windowNo);
-static void fn_1_140C_inlined_11558_inlined(s32 windowNo, u32 messageId, s16 insertNo);
-static void fn_1_1154_inlined_11558_inlined(u32 messageId, s16 messageSpeed, u8 windowNo);
-static void fn_1_1398_inlined_11558_inlined(void);
-static s16 fn_1_E00_inlined_11558_inlined(s32 windowNo);
-static void fn_1_1228_inlined_11558_inlined(void);
-void fn_1_19118(s32 messageIndex);
-static void fn_1_1278_inlined_8BC8_inlined(s32 windowNo);
-static void fn_1_140C_inlined_8BC8_inlined(s32 windowNo, u32 messageId, s16 insertNo);
-static void fn_1_1154_inlined_8BC8_inlined(u32 messageId, s16 messageSpeed, u8 windowNo);
-static void fn_1_1398_inlined_8BC8_inlined(void);
-static s16 fn_1_E00_inlined_8BC8_inlined(s32 windowNo);
-static void fn_1_1228_inlined_8BC8_inlined(void);
-void fn_1_109C8(u32 message);
-static void fn_1_8BC8_inlined(u32 message);
-static void fn_1_8E08_inlined(u32 message);
-void fn_1_17248(s32 mode, s32 wait);
-void fn_1_9868(void);
-void fn_1_19BD4(s32 );
-extern "C" s16 HuMCSelModeGet(void);
-extern "C" s32 omPadErrChk(u8 playerIndex);
-void fn_1_9D5C(void);
-void fn_1_9E44(void);
-void fn_1_C3FC(void);
-void fn_1_C768(void);
-s32 fn_1_10498(void);
-void fn_1_15A0C(s32 mode);
-static void fn_1_13F8_inlined(void);
-static void fn_1_12A4_inlined(void);
-static void fn_1_2029C_inlined_23748_inlined(void);
-static void fn_1_20148_inlined_23748_inlined(void);
-void fn_1_154F0(void);
-void fn_1_F608(void);
-void fn_1_F890(void);
-extern void fn_1_FD14(void);
-static void fn_1_20B74_inlined_966C_inlined(s32 windowNo);
-static void fn_1_20D08_inlined_966C_inlined(s32 windowNo, u32 messageId, s16 insertNo);
-static void fn_1_20A50_inlined_966C_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex);
-static void fn_1_20C94_inlined_966C_inlined(void);
-static s16 fn_1_206FC_inlined_966C_inlined(s32 windowNo);
-static void fn_1_20B24_inlined_966C_inlined(void);
-static void fn_1_8E38_inlined_inlined_inlined_inlined(s32 windowNo);
-static void fn_1_8FCC_inlined_inlined_inlined_inlined(s32 windowNo, u32 messageId, s16 insertMessageNo);
-static void fn_1_8D14_inlined_inlined_inlined_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex);
-static void fn_1_8F58_inlined_inlined_inlined_inlined(void);
-static void fn_1_8DE8_inlined_inlined_inlined_inlined(void);
-static s16 fn_1_89C0_inlined_inlined_inlined_inlined(s32 windowNo);
-static void fn_1_1CD0_inlined(s32 mode);
-static void fn_1_1BAC_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex);
-static void fn_1_1DF0_inlined(void);
-static void insertWindowMessage_inlined(s32 windowNo, u32 messageId, s16 insertNo);
-static s16 fn_1_1858_inlined(s32 windowNo);
-static void fn_1_1C80_inlined(void);
-void fn_1_1988C(void);
-static void fn_1_935C_inlined(void);
-static s32 fn_1_9134_for_B664_inlined(void);
-static void SetQuizResponseMessageForB664_inlined(u32 messageType);
-static void fn_1_1A40_inlined(void);
-static s32 CurrentQuizAnswerForB664_inlined(void);
-static void fn_1_18D4_inlined(void);
-static void fn_1_90FC_inlined(s8 field13, u16 field1C, s32 field18);
-static void SetQuizResponseMessage_inlined(u32 messageType);
-void fn_1_17F64(HUPROCESS *process);
-s32 fn_1_154D8(s32 responseIndex, s32 count);
-void fn_1_15C80(void);
-void fn_1_15C20(void);
-void fn_1_F5CC(void);
-void fn_1_15EC0(s32 padNo, s32 direction);
-static void fn_1_20B74_inlined_inlined(s32 windowNo);
-static void fn_1_20A50_inlined_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex);
-static void fn_1_20C94_inlined_inlined(void);
-static s16 fn_1_206FC_inlined_inlined(s32 windowNo);
-static void fn_1_20B24_inlined_inlined(void);
-static void fn_1_2E2B0_AnimateOut_inlined_inlined(void);
-void fn_1_16AEC(void);
-void fn_1_16D64(void);
-void fn_1_16E74(void);
-void fn_1_16F6C(void);
-void fn_1_17FEC(void);
-void fn_1_17FB4(void);
-void fn_1_183E0(s32 value);
-void fn_1_19288(void);
-static const GXColor lbl_1_rodata_10 = {0,0,0,0xFF}; static const GXColor lbl_1_rodata_14 = {0,0xFF,0,0xFF};
 static inline u8 GetQuizCourse(void) ;
 
 static inline s32 GetSelectionMode(void) ;
@@ -921,237 +166,90 @@ static inline s32 GetQuizPlayer(void) ;
 
 static inline void TimeDigitsSet(void) ;
 
-static inline void TimeLimitInit(void) ;
-
-static inline void fn_1_12608_inlined_main(s32 argument) ;
-
-static inline void fn_1_19CD0_inlined_main(s32 baseIndex) ;
-
-static inline s16 fn_1_89C0_inlined_main(s32 windowNo)
-;
-
-static inline void fn_1_8DE8_inlined_main(void)
-;
-
-static inline void fn_1_8E38_inlined_main(s32 windowNo)
-;
-
-static inline void fn_1_20B74_inlined(s32 windowNo)
-;
-
-static inline void fn_1_20D08_inlined(s32 windowNo, u32 messageId, s16 insertNo)
-;
-
-static inline void fn_1_20A50_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex)
-;
-
-static inline void fn_1_20C94_inlined(void)
-;
-
-static inline s16 fn_1_206FC_inlined(s32 windowNo)
-;
-
-static inline void fn_1_20B24_inlined(void)
-;
-
-static inline void fn_1_1278_inlined(s32 windowNo)
-;
-
-static inline void fn_1_140C_inlined(s32 windowNo, u32 messageId, s16 insertNo)
-;
-
-static inline void fn_1_1154_inlined(u32 messageId, s16 messageSpeed, u8 windowNo)
-;
-
-static inline void fn_1_1398_inlined(void)
-;
-
-static inline s16 fn_1_E00_inlined(s32 windowNo)
-;
-
-static inline void fn_1_1228_inlined(void)
-;
-
-static inline void fn_1_1278_inlined_11558_inlined(s32 windowNo)
-;
-
-static inline void fn_1_140C_inlined_11558_inlined(s32 windowNo, u32 messageId, s16 insertNo)
-;
-
-static inline void fn_1_1154_inlined_11558_inlined(u32 messageId, s16 messageSpeed, u8 windowNo)
-;
-
-static inline void fn_1_1398_inlined_11558_inlined(void)
-;
-
-static inline s16 fn_1_E00_inlined_11558_inlined(s32 windowNo)
-;
-
-static inline void fn_1_1228_inlined_11558_inlined(void)
-;
-
-static inline void fn_1_1278_inlined_8BC8_inlined(s32 windowNo)
-;
-
-static inline void fn_1_140C_inlined_8BC8_inlined(s32 windowNo, u32 messageId, s16 insertNo)
-;
-
-static inline void fn_1_1154_inlined_8BC8_inlined(u32 messageId, s16 messageSpeed, u8 windowNo)
-;
-
-static inline void fn_1_1398_inlined_8BC8_inlined(void)
-;
-
-static inline s16 fn_1_E00_inlined_8BC8_inlined(s32 windowNo)
-;
-
-static inline void fn_1_1228_inlined_8BC8_inlined(void)
-;
-
-static inline void fn_1_8BC8_inlined(u32 message)
-;
-
-static inline void fn_1_8E08_inlined(u32 message)
-;
-
-static inline void fn_1_13F8_inlined(void) ;
-
-static inline void fn_1_12A4_inlined(void) ;
-
-static inline void fn_1_2029C_inlined_23748_inlined(void)
-;
-
-static inline void fn_1_20148_inlined_23748_inlined(void)
-;
-
-static inline void CreatePlayerScoreDigits(void) ;
-
-static inline void fn_1_20B74_inlined_966C_inlined(s32 windowNo)
-;
-
-static inline void fn_1_20D08_inlined_966C_inlined(s32 windowNo, u32 messageId, s16 insertNo)
-;
-
-static inline void fn_1_20A50_inlined_966C_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex)
-;
-
-static inline void fn_1_20C94_inlined_966C_inlined(void)
-;
-
-static inline s16 fn_1_206FC_inlined_966C_inlined(s32 windowNo)
-;
-
-static inline void fn_1_20B24_inlined_966C_inlined(void)
-;
-
-static inline void fn_1_8E38_inlined_inlined_inlined_inlined(s32 windowNo)
-;
-
-static inline void fn_1_8FCC_inlined_inlined_inlined_inlined(s32 windowNo, u32 messageId,
-                                                     s16 insertMessageNo)
-;
-
-static inline void fn_1_8D14_inlined_inlined_inlined_inlined(u32 messageId, s16 messageSpeed,
-                                                     u8 windowIndex)
-;
-
-static inline void fn_1_8F58_inlined_inlined_inlined_inlined(void)
-;
-
-static inline void fn_1_8DE8_inlined_inlined_inlined_inlined(void)
-;
-
-static inline s16 fn_1_89C0_inlined_inlined_inlined_inlined(s32 windowNo)
-;
-
-static inline void fn_1_1CD0_inlined(s32 mode)
-;
-
-static inline void fn_1_1BAC_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex)
-;
-
-static inline void fn_1_1DF0_inlined(void)
-;
-
-static inline void insertWindowMessage_inlined(s32 windowNo, u32 messageId, s16 insertNo)
-;
-
-static inline s16 fn_1_1858_inlined(s32 windowNo)
-;
-
-static inline void fn_1_1C80_inlined(void)
-;
-
-static inline void fn_1_9128_for_13EB8(u32 messageType)
-;
-
-static inline void fn_1_935C_inlined(void)
-;
-
-static inline s32 fn_1_9134_for_B664_inlined(void)
-;
-
-static inline void SetQuizResponseMessageForB664_inlined(u32 messageType)
-;
-
-static inline void fn_1_1A40_inlined(void)
-;
-
-static inline s32 CurrentQuizAnswerForB664_inlined(void)
-;
-
-static inline void fn_1_18D4_inlined(void)
-;
-
-static inline void fn_1_90FC_inlined(s8 field13, u16 field1C, s32 field18)
-;
-
-static inline void SetQuizResponseMessage_inlined(u32 messageType)
-;
-
-static inline void fn_1_8A3C_for_15610(void)
-;
-
-static inline void fn_1_9128_for_15610(u32 messageType)
-;
-
-static inline void fn_1_20B74_inlined_inlined(s32 windowNo)
-;
-
-static inline void fn_1_20A50_inlined_inlined(u32 messageId, s16 messageSpeed, u8 windowIndex)
-;
-
-static inline void fn_1_20C94_inlined_inlined(void)
-;
-
-static inline s16 fn_1_206FC_inlined_inlined(s32 windowNo)
-;
-
-static inline void fn_1_20B24_inlined_inlined(void)
-;
-
-static inline void fn_1_2E2B0_AnimateOut_inlined_inlined(void) ;
-
-static inline s16 fn_1_89C0_193B4(s32 windowNo)
-;
-
-static inline void fn_1_8DE8_193B4(void)
-;
-
-static inline void fn_1_8E38_193B4(s32 windowNo)
-;
-
-static inline void fn_1_8FCC_193B4(s32 windowNo, u32 messageId, s16 insertNo)
-;
-
-static inline void fn_1_8D14_193B4(u32 messageId, s16 messageSpeed, u8 windowNo)
-;
-
-static inline void fn_1_8F58_193B4(void)
-;
-#include "REL/micquizmyokodll/physical_support.h"
-
-extern "C" int _prolog(void) {
+static inline void TimeLimitInit(void) ;/* Unknown initialized bytes at .data 0x384..0x388. */
+u8 lbl_1_data_384[4] = {0xFF,0xFF,0xFF,0xFF};
+s16 lbl_1_data_388[6] = { 0x0, 0x0, 0x0, 0x0, 0x50, 0x0 };
+
+u32 lbl_1_data_394[5][2] = {
+    { MESSNUM(MESS_MICQUIZ_Q, 19), MESSNUM(MESS_MICQUIZ_Q, 51) },
+    { MESSNUM(MESS_MICQUIZ_Q, 20), MESSNUM(MESS_MICQUIZ_Q, 52) },
+    { MESSNUM(MESS_MICQUIZ_Q, 21), MESSNUM(MESS_MICQUIZ_Q, 53) },
+    { MESSNUM(MESS_MICQUIZ_Q, 22), MESSNUM(MESS_MICQUIZ_Q, 54) },
+    { MESSNUM(MESS_MICQUIZ, 29), MESSNUM(MESS_MICQUIZ, 85) }
+};
+u32 lbl_1_data_3BC[5] = {
+    MESSNUM(MESS_MICQUIZ_Q, 23), MESSNUM(MESS_MICQUIZ_Q, 24), MESSNUM(MESS_MICQUIZ_Q, 25),
+    MESSNUM(MESS_MICQUIZ_Q, 26), MESSNUM(MESS_MICQUIZ_Q, 27)
+};
+u32 lbl_1_data_3D0[5] = {
+    MESSNUM(MESS_MICQUIZ_Q, 28), MESSNUM(MESS_MICQUIZ_Q, 29), MESSNUM(MESS_MICQUIZ_Q, 31),
+    MESSNUM(MESS_MICQUIZ_Q, 32), MESSNUM(MESS_MICQUIZ_Q, 33)
+};
+u32 lbl_1_data_3E4[6] = {
+    MESSNUM(MESS_QUIZ_CHARA, 12), MESSNUM(MESS_QUIZ_CHARA, 13), MESSNUM(MESS_QUIZ_CHARA, 14),
+    MESSNUM(MESS_QUIZ_CHARA, 17), MESSNUM(MESS_QUIZ_CHARA, 15), MESSNUM(MESS_QUIZ_CHARA, 16)
+};
+s16 lbl_1_data_3FC[6] = { 1, 2, 3, 4, 5, 0 };
+Point3d lbl_1_data_408 = { -2000.0f, 10000.0f, -400.0f };
+Point3d lbl_1_data_414 = { -0.4f, -0.8f, -0.8f };
+GXColor lbl_1_data_420 = { 0xC0, 0xC0, 0xC0, 0xC0 };
+s32 lbl_1_data_424[6] = {
+    DATANUM(0xa50000, 0), DATANUM(0xa50000, 5), DATANUM(0xa50000, 10),
+    DATANUM(0xa50000, 15), DATANUM(0xa50000, 20), DATANUM(0xa50000, 25)
+};
+s32 lbl_1_data_43C[6] = {
+    960, 981, 986,
+    999, 0, 939
+};
+s32 lbl_1_data_454[5] = {
+    DATANUM(0xa50000, 50), DATANUM(0xa50000, 51), DATANUM(0xa50000, 52),
+    DATANUM(0xa50000, 54), DATANUM(0xa50000, 56)
+};
+s32 lbl_1_data_468[5] = {
+    DATANUM(0xa50000, 57), DATANUM(0xa50000, 58), DATANUM(0xa50000, 59),
+    DATANUM(0xa50000, 60), DATANUM(0xa50000, 61)
+};
+s32 lbl_1_data_47C[5] = {
+    DATANUM(0xa50000, 30), DATANUM(0xa50000, 31), DATANUM(0xa50000, 32),
+    DATANUM(0xa50000, 33), DATANUM(0xa50000, 34)
+};
+s32 lbl_1_data_490[5] = {
+    DATANUM(0xa50000, 35), DATANUM(0xa50000, 36), DATANUM(0xa50000, 37),
+    DATANUM(0xa50000, 38), DATANUM(0xa50000, 39)
+};
+s32 lbl_1_data_4A4[5] = {
+    DATANUM(0xa50000, 40), DATANUM(0xa50000, 41), DATANUM(0xa50000, 42),
+    DATANUM(0xa50000, 43), DATANUM(0xa50000, 44)
+};
+u32 lbl_1_data_4B8[9] = {
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1), DATANUM(0x930000, 39),
+    DATANUM(0x930000, 38), DATANUM(0x930000, 40), DATANUM(0x930000, 3),
+    DATANUM(0x930000, 4), DATANUM(0x930000, 11), DATANUM(0x930000, 34)
+};
+s32 lbl_1_data_4DC[11] = {
+    0x910000, 0x390000, 0xc30000, 0xf60000, 0xef0000,
+    0x170000, 0xe90000, 0x330000, 0xd20000, 0xba0000,
+    0x2d0000
+};
+s32 lbl_1_data_508[11] = {
+    0x930000, 0x3b0000, 0xc50000, 0xf80000, 0xf10000,
+    0x190000, 0xeb0000, 0x350000, 0xd40000, 0xbc0000,
+    0x2f0000
+};
+s32 lbl_1_data_534[11] = {
+    0x8e0000, 0x360000, 0xc00000, 0xf30000, 0xec0000,
+    0x140000, 0xe60000, 0x300000, 0xcf0000, 0xa80000, 0x2a0000
+};
+
+f32 lbl_1_data_560[11] = {
+    85.0f, 80.0f, 60.0f, 85.0f, 100.0f, 60.0f,
+    50.0f, 140.0f, 105.0f, 140.0f, 140.0f
+};
+
+extern s16 lbl_1_bss_2D8;
+
+// Module entry: runs every static constructor in the list, then sets up the minigame.
+int _prolog(void) {
     const VoidFunc *ctor = _ctors;
     while (*ctor != 0) {
         (*ctor)();
@@ -1161,7 +259,8 @@ extern "C" int _prolog(void) {
     return 0;
 }
 
-extern "C" void _epilog(void) {
+// Module exit: runs every static destructor in the list.
+void _epilog(void) {
     const VoidFunc *dtor = _dtors;
     while (*dtor != 0) {
         (*dtor)();
@@ -1169,27 +268,26 @@ extern "C" void _epilog(void) {
     }
 }
 
-void fn_1_8E38(s32 windowNo);
-
-extern "C" {
-extern "C" void ObjectSetup(void) {
+// Creates the module's object-manager process and the main game object, whose first
+// call (fn_1_110) builds the scene and switches it to the per-frame update.
+void ObjectSetup(void) {
     OMOBJ *object;
 
     lbl_1_bss_2B8[0] = fn_8003A8BC(0xC8, 0x2000);
     fn_80069F1C(lbl_1_bss_2B8[0]);
     object = fn_8003AB38(lbl_1_bss_2B8[0], 0x2000, 0U, 0U, -1, fn_1_110);
 }
-}
 
-extern "C" {
-extern "C++" void fn_1_110(OMOBJ *obj)
+void fn_1_110(OMOBJ *obj)
 {
     fn_1_938();
     obj->objFunc = fn_1_220;
 }
-}
 
-extern "C++" void fn_1_148(OMOBJ *object) {
+// Exit step of the main object: once the screen wipe has finished, frees the snapshot
+// sprites, fades out the music, closes the message window and the microphone, and leaves the
+// minigame.
+void fn_1_148(OMOBJ *object) {
     s32 animationIndex;
 
     if (WipeCheck() == 0) {
@@ -1206,15 +304,14 @@ extern "C++" void fn_1_148(OMOBJ *object) {
     }
 }
 
-void fn_1_938(void);
-
-extern "C++" void fn_1_1F4(void) {
-    fn_1_127CC(lbl_1_bss_D4.responseMode);
+void fn_1_1F4(void) {
+    MicQuizResponseRun(lbl_1_bss_D4.responseMode);
 }
 
-void fn_1_1EB4(void);
-
-extern "C++" void fn_1_220(OMOBJ *process) {
+// Per-frame update of the main object: handles an exit request, ticks the answer timer down
+// (time up at zero), and steps through the phases: intro messages, the houses scrolling past,
+// the question, waiting for the spoken answer, the hint-board replay and the answer reveal.
+void fn_1_220(OMOBJ *process) {
     s32 animationIndex;
     s32 soundValue;
     s32 soundBank;
@@ -1231,21 +328,21 @@ extern "C++" void fn_1_220(OMOBJ *process) {
         process->objFunc = fn_1_148;
     }
 
-    if (lbl_1_bss_4C8 == 0) {
-        lbl_1_bss_4BC++;
-        if (lbl_1_bss_4BC >= lbl_1_bss_4C0) {
+    if (micQuizCountdownState == 0) {
+        micQuizCountdownFrame++;
+        if (micQuizCountdownFrame >= micQuizCountdownStepFrames) {
             HuAudFXPlay(MSM_SE_MICQUIZ_COUNTDOWN_TICK);
-            lbl_1_bss_4C4--;
-            lbl_1_bss_4BC = 0;
-            soundValue = lbl_1_bss_4C4;
+            micQuizCountdownValue--;
+            micQuizCountdownFrame = 0;
+            soundValue = micQuizCountdownValue;
             if (soundValue >= 0) {
                 soundBank = soundValue / 10;
                 soundSlot = soundValue - (soundBank * 10);
-                HuSprBankSet(lbl_1_bss_404[0], 0, soundBank);
-                HuSprBankSet(lbl_1_bss_404[0], 1, soundSlot);
+                HuSprBankSet(micQuizCountdownGroup[0], 0, soundBank);
+                HuSprBankSet(micQuizCountdownGroup[0], 1, soundSlot);
             }
-            if (lbl_1_bss_4C4 <= 0) {
-                lbl_1_bss_4C8 = 2;
+            if (micQuizCountdownValue <= 0) {
+                micQuizCountdownState = 2;
             }
         }
     }
@@ -1266,9 +363,9 @@ extern "C++" void fn_1_220(OMOBJ *process) {
         break;
     case 2:
         if (lbl_1_bss_10A.timer++ == 0x2D) {
-            lbl_1_bss_330 = GameMesCreate(2, 0);
+            micQuizGameMes = GameMesCreate(2, 0);
         } else if (lbl_1_bss_10A.timer > 0x2D &&
-                   GameMesStatGet(lbl_1_bss_330) == 0) {
+                   GameMesStatGet(micQuizGameMes) == 0) {
             fn_8005C2C8(lbl_1_bss_F4.charNo, lbl_1_bss_F4.motionIds[1],
                                0.0f, 0.0f,
                                ((1 << 30) | (1 << 0)));
@@ -1308,26 +405,26 @@ extern "C++" void fn_1_220(OMOBJ *process) {
         if ((s16)fn_1_17A8() != 0) {
             lbl_1_bss_10A.flag_40 = 0;
             fn_1_1BAC(lbl_1_bss_D4.phase + 1);
-            if (lbl_1_bss_31E != -1) {
-                HuWinMesWait(lbl_1_bss_31E);
+            if (micQuizActiveWin != -1) {
+                HuWinMesWait(micQuizActiveWin);
             }
-            lbl_1_bss_4A0 = 1;
+            micQuizQuestionReady = 1;
             lbl_1_bss_10A.phase++;
         }
         break;
     case 7: {
-        s32 firstResult = lbl_1_bss_4AC;
+        s32 firstResult = micQuizResponseState;
         if (firstResult == 3) {
             lbl_1_bss_10A.phase = 9;
             fn_1_48C8();
         } else {
-            s32 secondResult = lbl_1_bss_4AC;
+            s32 secondResult = micQuizResponseState;
             if (secondResult == 4) {
                 lbl_1_bss_10A.completionFlag = 1;
                 lbl_1_bss_10A.phase = 9;
                 fn_1_48C8();
             } else {
-                s32 thirdResult = lbl_1_bss_4AC;
+                s32 thirdResult = micQuizResponseState;
                 if (thirdResult == 2) {
                     lbl_1_bss_10A.phase = 12;
                 }
@@ -1361,12 +458,12 @@ extern "C++" void fn_1_220(OMOBJ *process) {
             Hu3DAmbColorSet(1.0f, 1.0f,
                             1.0f);
             fn_1_8200();
-            if (lbl_1_data_1FC != 2) {
-                lbl_1_data_1FC = 2;
-                fn_8000DAC0(fn_1_16E74, 0x64, 0x1800, 0, lbl_1_bss_4EC);
+            if (micQuizMicHudMotion[0] != 2) {
+                micQuizMicHudMotion[0] = 2;
+                fn_8000DAC0(MicQuizMicGlowFadeIn, 0x64, 0x1800, 0, micQuizParentProc);
             }
-            lbl_1_bss_4E4 = 1;
-            lbl_1_bss_4AC = 1;
+            micQuizListenReady = 1;
+            micQuizResponseState = 1;
         }
         break;
     case 8:
@@ -1379,87 +476,55 @@ extern "C++" void fn_1_220(OMOBJ *process) {
 }
 
 static inline u8 GetQuizCourse(void) {
-    return lbl_1_bss_47C->questionLevel;
+    return micQuizModeWork->questionLevel;
 }
 
 static inline s32 GetQuizPlayer(void) {
-    return lbl_1_bss_47C->currentPlayer;
+    return micQuizModeWork->currentPlayer;
 }
 
 static inline s32 GetSelectionMode(void) {
-    return lbl_1_bss_47C->questionEvent;
+    return micQuizModeWork->questionEvent;
 }
 
+// Draws the remaining answer time as two digits (tens and ones) on the timer sprites.
 static inline void TimeDigitsSet(void) {
     s32 time;
     s32 tens;
     s32 ones;
 
-    time = lbl_1_bss_4C4;
+    time = micQuizCountdownValue;
     if (time >= 0) {
         tens = time / 10;
         ones = time - tens * 10;
-        HuSprBankSet(lbl_1_bss_404[0], 0, tens);
-        HuSprBankSet(lbl_1_bss_404[0], 1, ones);
+        HuSprBankSet(micQuizCountdownGroup[0], 0, tens);
+        HuSprBankSet(micQuizCountdownGroup[0], 1, ones);
     }
 }
 
+// Sets the answer time from the question level (one level up or down for question events 2 and 5),
+// spreads 900 (event 4) or 1800 frames over it per tick, keeps the countdown stopped and draws the
+// digits.
 static inline void TimeLimitInit(void) {
-    lbl_1_bss_4C8 = 1;
-    lbl_1_bss_4C4 = lbl_1_data_48[GetQuizCourse()];
+    micQuizCountdownState = 1;
+    micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse()];
     if (GetSelectionMode() == 2) {
-        lbl_1_bss_4C4 = lbl_1_data_48[GetQuizCourse() + 1];
+        micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse() + 1];
     } else if (GetSelectionMode() == 5) {
-        lbl_1_bss_4C4 = lbl_1_data_48[GetQuizCourse() - 1];
+        micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse() - 1];
     } else {
-        lbl_1_bss_4C4 = lbl_1_data_48[GetQuizCourse()];
+        micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse()];
     }
-    if (GetSelectionMode() == 4) lbl_1_bss_4C0 = 0x384 / lbl_1_bss_4C4;
-    else lbl_1_bss_4C0 = 0x708 / lbl_1_bss_4C4;
-    lbl_1_bss_4BC = 0;
+    if (GetSelectionMode() == 4) micQuizCountdownStepFrames = 0x384 / micQuizCountdownValue;
+    else micQuizCountdownStepFrames = 0x708 / micQuizCountdownValue;
+    micQuizCountdownFrame = 0;
     TimeDigitsSet();
 }
 
-static inline void fn_1_12608_inlined_main(s32 argument) {
-    lbl_1_bss_49C = argument;
-    HuMCInit(0);
-    HuMCSelWinCreate(-10000.0f, 88.0f);
-    if (argument == 0) {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_2E0);
-    } else if (argument == 1) {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_2F5);
-    } else if (argument == 2) {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_30B);
-    } else if (argument == 3) {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_30B);
-    } else if (argument == 4) {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_322);
-    } else if (argument == 5) {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_337);
-    } else if (argument == 6) {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_350);
-    } else {
-        lbl_1_bss_4B0 = HuMCContextCreate(lbl_1_data_30B);
-    }
-}
-
-static inline void fn_1_19CD0_inlined_main(s32 baseIndex) {
-    f32 scale;
-    f32 angle;
-    s16 spriteIndex;
-    spriteIndex = baseIndex + 4;
-    angle = 0.0f;
-    HuSprScaleSet(lbl_1_bss_570, spriteIndex, 0.0f, 0.0f);
-    HuSprAttrReset(lbl_1_bss_570, spriteIndex, 4);
-    do {
-        HuPrcVSleep();
-        scale = (f32)sin((M_PI * (f64)angle) / 180.0);
-        HuSprScaleSet(lbl_1_bss_570, spriteIndex, scale, scale);
-        angle += 9.0f;
-    } while (!(angle >= 90.0f));
-}
-
-extern "C++" void fn_1_938(void) {
+// Builds the scene: full-screen camera and a small 192x164 snapshot camera, light and shadow,
+// scrolling background and stage models, the host with its nine motions, the timer, the random
+// houses and question (fn_1_1F04), the microphone context and the helper processes.
+void fn_1_938(void) {
     Point3d shadowPosition = {0.0f, 3000.0f, 0.0f};
     Point3d shadowDirection = {0.0f, 1.0f, 0.0f};
     Point3d shadowTarget = {0.0f, 0.0f, -1000.0f};
@@ -1484,19 +549,19 @@ extern "C++" void fn_1_938(void) {
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 192.0f, 164.0f, 0.0f, 1.0f);
     Hu3DCameraScissorSet(1, 0, 0, 0xC0, 0xA4);
     Hu3DCameraPosSet(1, 0.0f, 543.0f, 1615.03f, 0.0f, 1.0f, 0.0f, 0.0f, 202.32f, -31.21f);
-    fn_1_9F08();
+    MicQuizHudCreate();
     parentProcess = lbl_1_bss_2B8[0];
-    lbl_1_bss_348 = fn_8000DAC0(fn_1_9868, 0xFDE8, 0x2000, 0, fn_8000DD9C());
-    HuPrcSetStat(lbl_1_bss_348, 0xC);
-    lbl_1_bss_47C->pauseAllowed = 0;
+    micQuizPauseProc = fn_8000DAC0(MicQuizPauseWatch, 0xFDE8, 0x2000, 0, fn_8000DD9C());
+    HuPrcSetStat(micQuizPauseProc, 0xC);
+    micQuizModeWork->pauseAllowed = 0;
     for (cameraIndex = 0; cameraIndex < 0x10; cameraIndex++) {
         fn_80027D8C(1 << cameraIndex, &fov, &near, &far);
         if (fov != -1.0f) cameraMask = 1 << cameraIndex;
     }
-    lbl_1_bss_3E0 = cameraMask;
-    lbl_1_bss_4EC = parentProcess;
+    micQuizPauseCameraBit = cameraMask;
+    micQuizParentProc = parentProcess;
     TimeLimitInit();
-    fn_1_19CD0_inlined_main(GetQuizPlayer());
+    MicQuizPortraitShow(GetQuizPlayer());
     lbl_1_bss_10A.mode = GetQuizCourse();
     lightId = fn_800286D0(&lbl_1_data_408, &lbl_1_data_414, &lbl_1_data_420);
     Hu3DGLightStaticSet(lightId, 1);
@@ -1541,11 +606,13 @@ extern "C++" void fn_1_938(void) {
     for (index = 0; index < 6; index++) lbl_1_bss_98[index].modelId = -1;
     for (index = 0; index < 5; index++) lbl_1_bss_48[index] = -1;
     fn_1_1F04();
-    fn_1_12608_inlined_main(lbl_1_bss_D4.responseMode);
+    MicQuizMicContextSet(lbl_1_bss_D4.responseMode);
     fn_8000DAC0(fn_1_1F4, 0xA, 0x1800, 0, lbl_1_bss_2B8[0]);
 }
 
-extern "C++" s32 fn_1_16B4(void) {
+// Slides stage models 2 and 3 apart (mirrored, 20 units per frame) until model 3 reaches
+// x = 450; returns 1 once fully open.
+s32 fn_1_16B4(void) {
     Point3d position;
     s32 i;
 
@@ -1566,14 +633,9 @@ extern "C++" s32 fn_1_16B4(void) {
     return 0;
 }
 
-void fn_1_12608(s32 argument);
-
-void fn_1_19CD0(s32 baseIndex);
-
-inline void fn_1_8FCC_inlined_main(s32 windowNo, u32 messageId, s16 insertNo) ;
-inline void fn_1_8D14_inlined_main(u32 messageId, s16 messageSpeed, u8 windowIndex) ;
-
-extern "C++" s32 fn_1_17A8(void) {
+// Slides stage models 2 and 3 back together (20 units per frame) until they meet at x = 0;
+// returns 1 once closed.
+s32 fn_1_17A8(void) {
     Point3d position;
     s32 i;
 
@@ -1594,7 +656,9 @@ extern "C++" s32 fn_1_17A8(void) {
     return 0;
 }
 
-extern "C++" void fn_1_1898(void) {
+// Every frame: while the parade scrolls, moves both pairs of background models left at
+// different speeds and wraps them around; otherwise, if the walk flag is set, walks the host right.
+void fn_1_1898(void) {
     Point3d position;
     s32 i;
 
@@ -1624,69 +688,18 @@ extern "C++" void fn_1_1898(void) {
     }
 }
 
-static inline s16 fn_1_89C0_inlined_main(s32 windowNo)
-{
-    s16 window;
-
-    switch (windowNo) {
-    case 0: window = lbl_1_bss_32A; break;
-    case 1: window = lbl_1_bss_328; break;
-    case 2: window = lbl_1_bss_326; break;
-    case 3: window = lbl_1_bss_324; break;
-    }
-    return window;
-}
-
-static inline void fn_1_8DE8_inlined_main(void)
-{
-    if (lbl_1_bss_31E != -1) {
-        HuWinExClose(lbl_1_bss_31E);
-        lbl_1_bss_31E = -1;
-    }
-}
-
-static inline void fn_1_8E38_inlined_main(s32 windowNo)
-{
-    s16 window = fn_1_89C0_inlined_main(windowNo);
-
-    if (lbl_1_bss_31E != window) {
-        if (lbl_1_bss_31E != -1) {
-            fn_1_8DE8_inlined_main();
-        }
-        HuWinExOpen(window);
-        lbl_1_bss_31E = window;
-    }
-}
-
-extern "C++" void fn_1_1A4C(void) {
-    if (lbl_1_bss_47C->presenterLayout == 0) {
-        fn_1_8E38_inlined_main(2);
+// Opens the host's message window: window 2 or 3 depending on the presenter layout.
+void fn_1_1A4C(void) {
+    if (micQuizModeWork->presenterLayout == 0) {
+        MicQuizWinOpen(2);
     } else {
-        fn_1_8E38_inlined_main(3);
+        MicQuizWinOpen(3);
     }
 }
-inline void fn_1_8D14_inlined_main(u32 messageId, s16 messageSpeed, u8 windowIndex) {
-    s16 selectedWindow;
-    s16 attributeWindow;
-    s16 messageWindow;
-    switch (windowIndex) {
-    case 0: selectedWindow = lbl_1_bss_32A; break;
-    case 1: selectedWindow = lbl_1_bss_328; break;
-    case 2: selectedWindow = lbl_1_bss_326; break;
-    case 3: selectedWindow = lbl_1_bss_324; break;
-    }
-    attributeWindow = selectedWindow;
-    messageWindow = attributeWindow;
-    HuWinAttrSet(messageWindow, 0x10);
-    HuWinMesSet(messageWindow, messageId);
-    HuWinMesSpeedSet(messageWindow, messageSpeed);
-}
 
-inline void fn_1_8FCC_inlined_main(s32 windowNo, u32 messageId, s16 insertNo) {
-    HuWinInsertMesSet(fn_1_89C0_inlined_main(windowNo), messageId, insertNo);
-}
-
-extern "C++" void fn_1_1BAC(s32 messageSet) {
+// Shows message set messageSet in the host's window (the layout picks window and table column);
+// sets 1-3 also insert the name of the house, item type or npc type the question is about.
+void fn_1_1BAC(s32 messageSet) {
     s32 windowMode;
     s32 dataSetIndex;
     u32 mainMessage;
@@ -1694,7 +707,7 @@ extern "C++" void fn_1_1BAC(s32 messageSet) {
     u32 secondInsertMessage;
     u32 thirdInsertMessage;
 
-    if (lbl_1_bss_47C->presenterLayout == 0) {
+    if (micQuizModeWork->presenterLayout == 0) {
         windowMode = 2;
         dataSetIndex = 0;
     } else {
@@ -1704,47 +717,43 @@ extern "C++" void fn_1_1BAC(s32 messageSet) {
 
     mainMessage = lbl_1_data_394[messageSet][dataSetIndex];
 
-    fn_1_8D14_inlined_main(mainMessage, 1, windowMode);
+    MicQuizWinMesSet(mainMessage, 1, windowMode);
 
     switch (messageSet) {
     case 1:
     {
         firstInsertMessage = lbl_1_data_3BC[lbl_1_bss_D4.playerIndex];
-        fn_1_8FCC_inlined_main(windowMode, firstInsertMessage, 0);
+        MicQuizWinInsertMesSet(windowMode, firstInsertMessage, 0);
         break;
     }
     case 2:
     {
         secondInsertMessage = lbl_1_data_3D0[lbl_1_bss_D4.playerIndex];
-        fn_1_8FCC_inlined_main(windowMode, secondInsertMessage, 0);
+        MicQuizWinInsertMesSet(windowMode, secondInsertMessage, 0);
         break;
     }
     case 3:
     {
         thirdInsertMessage = lbl_1_data_3E4[lbl_1_bss_D4.playerIndex];
-        fn_1_8FCC_inlined_main(windowMode, thirdInsertMessage, 0);
+        MicQuizWinInsertMesSet(windowMode, thirdInsertMessage, 0);
         break;
     }
     }
 }
 
-extern "C++" void fn_1_1EB4(void)
+void fn_1_1EB4(void)
 {
-    if (lbl_1_bss_31E != -1) {
-        HuWinExClose(lbl_1_bss_31E);
-        lbl_1_bss_31E = -1;
+    if (micQuizActiveWin != -1) {
+        HuWinExClose(micQuizActiveWin);
+        micQuizActiveWin = -1;
     }
 }
 
-void fn_1_8FCC(s32 windowNo, u32 messageId, s16 insertNo);
-
-void fn_1_8D14(u32 messageId, s16 messageSpeed, u8 windowNo);
-
-static inline void fn_1_8394_inlined_main(s32 count) ;
-
-static inline void fn_1_8394_inlined_main(s32 count) { lbl_1_bss_4B8 = count; }
-
-extern "C++" void fn_1_1F04(void) {
+// Randomly generates the parade: per house a unique house type, maybe a guest character (at most
+// 3),
+// 1-3 npcs and 1-3 items of one type each; then picks the question and its answer, and creates
+// the hint boards with their snapshot textures and the snapshot draw hook.
+void fn_1_1F04(void) {
     s16 positionUsed[5];
     s16 firstModelRemaining[6];
     s16 secondModelRemaining[5];
@@ -1833,7 +842,8 @@ extern "C++" void fn_1_1F04(void) {
         lbl_1_bss_128[playerIndex].accessorySetIndex = selectionValue;
         do {
             selectionValue = frandmod(3) + 1;
-        } while (firstModelRemaining[lbl_1_bss_128[playerIndex].accessorySetIndex] - selectionValue < 0);
+        } while (firstModelRemaining[lbl_1_bss_128[playerIndex].accessorySetIndex] - selectionValue
+                 < 0);
         firstModelRemaining[lbl_1_bss_128[playerIndex].accessorySetIndex] -= selectionValue;
         lbl_1_bss_128[playerIndex].accessoryCount = selectionValue;
 
@@ -1843,7 +853,8 @@ extern "C++" void fn_1_1F04(void) {
         lbl_1_bss_128[playerIndex].secondarySetIndex = selectionValue;
         do {
             selectionValue = frandmod(3) + 1;
-        } while (secondModelRemaining[lbl_1_bss_128[playerIndex].secondarySetIndex] - selectionValue < 0);
+        } while (secondModelRemaining[lbl_1_bss_128[playerIndex].secondarySetIndex] - selectionValue
+                 < 0);
         secondModelRemaining[lbl_1_bss_128[playerIndex].secondarySetIndex] -= selectionValue;
         lbl_1_bss_128[playerIndex].secondaryCount = selectionValue;
         OSReport("house:%d\n", lbl_1_bss_128[playerIndex].positionIndex);
@@ -1870,34 +881,37 @@ extern "C++" void fn_1_1F04(void) {
         lbl_1_bss_D4.playerIndex = lbl_1_bss_128[selectedPlayer].positionIndex;
         lbl_1_bss_D4.modelIndex = lbl_1_bss_128[selectedPlayer].characterId;
         lbl_1_bss_D4.responseMode = 3;
-        fn_1_8394_inlined_main(lbl_1_bss_128[selectedPlayer].characterId);
+        MicQuizExpectedAnswerSet(lbl_1_bss_128[selectedPlayer].characterId);
         break;
     case 1:
         lbl_1_bss_D4.playerIndex = lbl_1_bss_128[selectedPlayer].secondarySetIndex;
         lbl_1_bss_D4.modelIndex = 0;
         for (listIndex = 0; listIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; listIndex++) {
-            if (lbl_1_bss_128[listIndex].secondarySetIndex == lbl_1_bss_128[selectedPlayer].secondarySetIndex) {
+            if (lbl_1_bss_128[listIndex].secondarySetIndex
+                == lbl_1_bss_128[selectedPlayer].secondarySetIndex) {
                 lbl_1_bss_D4.modelIndex += lbl_1_bss_128[listIndex].secondaryCount;
             }
         }
         lbl_1_bss_D4.responseMode = 1;
-        fn_1_8394_inlined_main(lbl_1_bss_D4.modelIndex);
+        MicQuizExpectedAnswerSet(lbl_1_bss_D4.modelIndex);
         break;
     case 2:
         lbl_1_bss_D4.playerIndex = lbl_1_bss_128[selectedPlayer].accessorySetIndex;
         lbl_1_bss_D4.modelIndex = 0;
         for (listIndex = 0; listIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; listIndex++) {
-            if (lbl_1_bss_128[listIndex].accessorySetIndex == lbl_1_bss_128[selectedPlayer].accessorySetIndex) {
+            if (lbl_1_bss_128[listIndex].accessorySetIndex
+                == lbl_1_bss_128[selectedPlayer].accessorySetIndex) {
                 lbl_1_bss_D4.modelIndex += lbl_1_bss_128[listIndex].accessoryCount;
             }
         }
         lbl_1_bss_D4.responseMode = 0;
-        fn_1_8394_inlined_main(lbl_1_bss_D4.modelIndex);
+        MicQuizExpectedAnswerSet(lbl_1_bss_D4.modelIndex);
         break;
     }
 
     textureSize = GXGetTexBufferSize(0xC0, 0xA4, 6, 0, 0);
-    for (animationIndex = 0; animationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; animationIndex++) {
+    for (animationIndex = 0; animationIndex
+         < lbl_1_data_3FC[lbl_1_bss_10A.mode]; animationIndex++) {
         s16 modelId = fn_80025A04(fn_80008DD0(DATANUM(0xa50000, 49), 0x10000000, 2));
         fn_80026760(modelId, 0.0f, 1000.0f, -30.0f);
         fn_800269E8(modelId, 1);
@@ -1916,7 +930,10 @@ extern "C++" void fn_1_1F04(void) {
     lbl_1_bss_54.currentModel = lbl_1_bss_54.frame = 0;
 }
 
-extern "C++" void fn_1_2B14(s16 playerIndex) {
+// Builds one house of the parade off-screen to the right: the house model (plus an extra model
+// for house type 2 and a motion for type 3), its row of npcs and its row of items at random
+// spacing.
+void fn_1_2B14(s16 playerIndex) {
     Point3d modelPosition;
     MicquizPlayerWork *player;
     s32 modelIndex;
@@ -2046,16 +1063,18 @@ extern "C++" void fn_1_2B14(s16 playerIndex) {
     }
 }
 
-extern "C++" void fn_1_31CC(s16 playerIndex) {
+// Starts a house scrolling if it is not running yet: builds its models and launches fn_1_3258.
+void fn_1_31CC(s16 playerIndex) {
     if (lbl_1_bss_2A4[playerIndex] == 0) {
         fn_1_2B14(playerIndex);
         lbl_1_bss_2A4[playerIndex] = fn_8000DAC0(fn_1_3258, 0x64U, 0x1800U, 0, lbl_1_bss_2B8[0]);
     }
-}
+}char lbl_1_data_5F8[12] = "v75G_hint";
 
-extern MicquizPlayerWork lbl_1_bss_128[5];char lbl_1_data_5F8[12] = "v75G_hint";
-
-extern "C++" void fn_1_3258(void) {
+// Process for the passing house: every frame scrolls the house, items and npcs left, freezes the
+// snapshot when the asked-about part reaches its mark, and plays the guest's routine for that house
+// type.
+void fn_1_3258(void) {
     Point3d position;
     Point3d effectPosition;
     Point3d secondPosition;
@@ -2405,7 +1424,9 @@ extern "C++" void fn_1_3258(void) {
     }
 }
 
-extern "C++" s32 fn_1_45B0(s16 playerIndex) {
+// Returns 1 once a house and all its npcs and items have scrolled off the left edge, hiding the
+// house and stopping its process; returns 0 while any of them is still on screen.
+s32 fn_1_45B0(s16 playerIndex) {
     Point3d position;
     MicquizPlayerModels *player;
     s32 modelIndex;
@@ -2441,7 +1462,9 @@ extern "C++" s32 fn_1_45B0(s16 playerIndex) {
     return 1;
 }
 
-extern "C++" s32 fn_1_4728(s16 playerIndex) {
+// Returns 1 once a house and all its npcs and items have scrolled off the left edge, hiding each
+// of them and stopping the house's process; returns 0 while any is still on screen.
+s32 fn_1_4728(s16 playerIndex) {
     Point3d position;
     MicquizPlayerModels *player;
     s32 modelIndex;
@@ -2479,7 +1502,10 @@ extern "C++" s32 fn_1_4728(s16 playerIndex) {
     return 1;
 }
 
-extern "C++" void fn_1_48C8(void) {
+// Sets up the answer reveal: brings the asked house back to the center with its guest, or moves
+// the host off to the left and lays out every item of the asked type in rings, or every npc in
+// rows.
+void fn_1_48C8(void) {
     MicquizPlayerModels *player;
     Point3d position;
     s32 playerIndex;
@@ -2634,7 +1660,9 @@ extern "C++" void fn_1_48C8(void) {
     }
 }
 
-extern "C++" void fn_1_5194(void) {
+// For a character question, places the asked house at the center far back (z = -900) with its
+// motion stopped; does nothing for the count questions.
+void fn_1_5194(void) {
     MicquizPlayerWork *playerWork;
 
     playerWork = &lbl_1_bss_128[lbl_1_bss_D4.playerSlot];
@@ -2653,7 +1681,11 @@ extern "C++" void fn_1_5194(void) {
     }
 }
 
-extern "C++" void fn_1_5288(void) {
+// Plays the answer reveal each frame: the guest repeats its routine at the house, or the host walks
+// in
+// and each item appears with a puff of smoke, or the npcs come in and react; then the result motion
+// plays and the game fades out and ends.
+void fn_1_5288(void) {
     Point3d position;
     Point3d effectPosition;
     s16 counter;
@@ -2685,11 +1717,13 @@ extern "C++" void fn_1_5288(void) {
                 break;
             case 1:                                 /* switch 3 */
                 if (lbl_1_bss_D4.timer++ > 0x1E) {
-                    lbl_1_bss_47C->presentationBusy = 0;
+                    micQuizModeWork->presentationBusy = 0;
                     if (lbl_1_bss_10A.completionFlag == 0) {
-                        fn_8005C2C8(player->characterId, player->characterMotions[2], 0.0f, 8.0f, 0U);
+                        fn_8005C2C8(player->characterId, player->characterMotions[2], 0.0f, 8.0f,
+                                    0U);
                     } else {
-                        fn_8005C2C8(player->characterId, player->characterMotions[4], 0.0f, 8.0f, 0U);
+                        fn_8005C2C8(player->characterId, player->characterMotions[4], 0.0f, 8.0f,
+                                    0U);
                     }
                     lbl_1_bss_D4.timer = 0;
                     lbl_1_bss_D4.motionStep += 1;
@@ -2733,7 +1767,8 @@ for (animationIndex = 0; animationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; an
                 lbl_1_bss_D4.oscillationPhase += 1.0f;
                 lbl_1_bss_D4.sequenceValue += 6.6666665f;
                 lbl_1_bss_D4.sequenceOffset += 3.3333333f;
-                lbl_1_bss_D4.verticalMotion = (f32) (200.0 * sin((M_PI * (f64) (6.0f * lbl_1_bss_D4.oscillationPhase)) / 180.0));
+                lbl_1_bss_D4.verticalMotion = (f32) (200.0
+                        * sin((M_PI * (f64) (6.0f * lbl_1_bss_D4.oscillationPhase)) / 180.0));
                 if (lbl_1_bss_D4.oscillationPhase >= 30.0f) {
                     fn_8005C2C8(player->characterId, player->characterMotions[6], 0.0f, 8.0f, 0U);
                     lbl_1_bss_D4.motionStep += 1;
@@ -2741,8 +1776,9 @@ for (animationIndex = 0; animationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; an
                 break;
             case 2:                                 /* switch 4 */
                 if (fn_8005C1FC(player->characterId) <= fn_8005C1B8(player->characterId)) {
-                    lbl_1_bss_47C->presentationBusy = 0;
-                    fn_8005C2C8(player->characterId, player->characterMotions[0], 0.0f, 8.0f, 0x40000001U);
+                    micQuizModeWork->presentationBusy = 0;
+                    fn_8005C2C8(player->characterId, player->characterMotions[0], 0.0f, 8.0f,
+                                0x40000001U);
                     lbl_1_bss_D4.motionStep += 1;
                 }
                 break;
@@ -2754,7 +1790,8 @@ for (animationIndex = 0; animationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; an
                 break;
             case 4:                                 /* switch 4 */
                 if (WipeCheck() == 0) {
-for (secondAnimationIndex = 0; secondAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; secondAnimationIndex++) {
+for (secondAnimationIndex = 0; secondAnimationIndex
+     < lbl_1_data_3FC[lbl_1_bss_10A.mode]; secondAnimationIndex++) {
                         HuSprAnimKill(lbl_1_bss_54.spriteAnimations[secondAnimationIndex]);
 }
                     HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
@@ -2765,7 +1802,9 @@ for (secondAnimationIndex = 0; secondAnimationIndex < lbl_1_data_3FC[lbl_1_bss_1
                 }
                 break;
             }
-        fn_80026760(player->characterModelId, position.x, lbl_1_bss_D4.verticalMotion + (position.y + lbl_1_bss_D4.sequenceValue), (position.z + lbl_1_bss_D4.sequenceOffset) - 100.0f);
+        fn_80026760(player->characterModelId, position.x,
+                lbl_1_bss_D4.verticalMotion + (position.y + lbl_1_bss_D4.sequenceValue), (position.z
+                        + lbl_1_bss_D4.sequenceOffset) - 100.0f);
             return;
         case 2:                                     /* switch 2 */
             switch (lbl_1_bss_D4.motionStep) {        /* switch 5; irregular */
@@ -2792,8 +1831,9 @@ for (secondAnimationIndex = 0; secondAnimationIndex < lbl_1_data_3FC[lbl_1_bss_1
                 lbl_1_bss_D4.sequenceValue -= 4.0f;
                 if (lbl_1_bss_D4.sequenceValue <= 0.0f) {
                     lbl_1_bss_D4.sequenceValue = 0.0f;
-                    lbl_1_bss_47C->presentationBusy = 0;
-                    fn_8005C2C8(player->characterId, player->characterMotions[0], 0.0f, 8.0f, 0x40000001U);
+                    micQuizModeWork->presentationBusy = 0;
+                    fn_8005C2C8(player->characterId, player->characterMotions[0], 0.0f, 8.0f,
+                                0x40000001U);
                     lbl_1_bss_D4.motionStep += 1;
                 }
                 break;
@@ -2805,7 +1845,8 @@ for (secondAnimationIndex = 0; secondAnimationIndex < lbl_1_data_3FC[lbl_1_bss_1
                 break;
             case 5:                                 /* switch 5 */
                 if (WipeCheck() == 0) {
-for (thirdAnimationIndex = 0; thirdAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; thirdAnimationIndex++) {
+for (thirdAnimationIndex = 0; thirdAnimationIndex
+     < lbl_1_data_3FC[lbl_1_bss_10A.mode]; thirdAnimationIndex++) {
                         HuSprAnimKill(lbl_1_bss_54.spriteAnimations[thirdAnimationIndex]);
 }
                     HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
@@ -2816,7 +1857,8 @@ for (thirdAnimationIndex = 0; thirdAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
                 }
                 break;
             }
-        fn_80026760(player->alternateModelId, position.x, 330.0f + position.y + lbl_1_bss_D4.sequenceValue, position.z);
+        fn_80026760(player->alternateModelId, position.x,
+                    330.0f + position.y + lbl_1_bss_D4.sequenceValue, position.z);
             return;
         case 3:                                     /* switch 2 */
             switch (lbl_1_bss_D4.motionStep) {        /* switch 6; irregular */
@@ -2829,7 +1871,8 @@ for (thirdAnimationIndex = 0; thirdAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
     effectPosition.x = position.x - 200.0f;
                     effectPosition.y = 200.0f + position.y;
                     effectPosition.z = 10.0f + position.z;
-                    fn_8005C2C8(player->characterId, player->characterMotions[8], 0.0f, 8.0f, 0x40000001U);
+                    fn_8005C2C8(player->characterId, player->characterMotions[8], 0.0f, 8.0f,
+                                0x40000001U);
                     fn_8005CF90(-1, &effectPosition, 2.0f);
                     HuAudFXPlay(0x523);
                     lbl_1_bss_D4.motionStep += 1;
@@ -2839,7 +1882,7 @@ for (thirdAnimationIndex = 0; thirdAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
                 lbl_1_bss_D4.sequenceValue -= 9.0f;
                 lbl_1_bss_D4.sequenceOffset += 2.5f;
                 if (lbl_1_bss_D4.sequenceValue < -200.0f) {
-                    lbl_1_bss_47C->presentationBusy = 0;
+                    micQuizModeWork->presentationBusy = 0;
                 }
                 if (lbl_1_bss_D4.sequenceValue < -800.0f) {
                     fn_1_834C();
@@ -2848,7 +1891,8 @@ for (thirdAnimationIndex = 0; thirdAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
                 break;
             case 3:                                 /* switch 6 */
                 if (WipeCheck() == 0) {
-for (fourthAnimationIndex = 0; fourthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; fourthAnimationIndex++) {
+for (fourthAnimationIndex = 0; fourthAnimationIndex
+     < lbl_1_data_3FC[lbl_1_bss_10A.mode]; fourthAnimationIndex++) {
                         HuSprAnimKill(lbl_1_bss_54.spriteAnimations[fourthAnimationIndex]);
 }
                     HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
@@ -2859,7 +1903,8 @@ for (fourthAnimationIndex = 0; fourthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_1
                 }
                 break;
             }
-        fn_80026760(player->characterModelId, position.x + lbl_1_bss_D4.sequenceValue, 130.0f + position.y + lbl_1_bss_D4.sequenceOffset, position.z - 100.0f);
+        fn_80026760(player->characterModelId, position.x + lbl_1_bss_D4.sequenceValue,
+                    130.0f + position.y + lbl_1_bss_D4.sequenceOffset, position.z - 100.0f);
             return;
         case 4:                                     /* switch 2 */
             switch (lbl_1_bss_D4.motionStep) {        /* switch 7; irregular */
@@ -2876,7 +1921,9 @@ for (fourthAnimationIndex = 0; fourthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_1
                 break;
             case 1:                                 /* switch 7 */
                 lbl_1_bss_D4.oscillationPhase += 8.0f;
-                position.y = (f32) ((f64) position.y + ((f64) lbl_1_bss_D4.verticalMotion * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
+                position.y = (f32) ((f64) position.y
+                        + ((f64) lbl_1_bss_D4.verticalMotion
+                           * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
                 lbl_1_bss_D4.verticalMotion -= 0.04f;
                 lbl_1_bss_D4.sequenceOffset += lbl_1_bss_D4.sequenceValue;
                 lbl_1_bss_D4.sequenceValue -= 1.0f;
@@ -2889,18 +1936,23 @@ for (fourthAnimationIndex = 0; fourthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_1
             case 2:                                 /* switch 7 */
                 lbl_1_bss_D4.sequenceOffset = (f32) (70.0f + (position.y - 180.0f));
                 lbl_1_bss_D4.oscillationPhase += 8.0f;
-                position.y = (f32) ((f64) position.y + ((f64) lbl_1_bss_D4.verticalMotion * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
+                position.y = (f32) ((f64) position.y
+                        + ((f64) lbl_1_bss_D4.verticalMotion
+                           * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
                 lbl_1_bss_D4.verticalMotion -= 0.04f;
                 if (fn_8005C1FC(player->characterId) <= fn_8005C1B8(player->characterId)) {
-                    lbl_1_bss_47C->presentationBusy = 0;
-                    fn_8005C2C8(player->characterId, player->characterMotions[0], 0.0f, 8.0f, 0x40000001U);
+                    micQuizModeWork->presentationBusy = 0;
+                    fn_8005C2C8(player->characterId, player->characterMotions[0], 0.0f, 8.0f,
+                                0x40000001U);
                     lbl_1_bss_D4.motionStep += 1;
                 }
                 break;
             case 3:                                 /* switch 7 */
                 lbl_1_bss_D4.sequenceOffset = (f32) (70.0f + (position.y - 180.0f));
                 lbl_1_bss_D4.oscillationPhase += 8.0f;
-                position.y = (f32) ((f64) position.y + ((f64) lbl_1_bss_D4.verticalMotion * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
+                position.y = (f32) ((f64) position.y
+                        + ((f64) lbl_1_bss_D4.verticalMotion
+                           * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
                 lbl_1_bss_D4.verticalMotion -= 0.04f;
                 if (lbl_1_bss_D4.timer++ > 0x1E) {
                     fn_1_834C();
@@ -2910,10 +1962,13 @@ for (fourthAnimationIndex = 0; fourthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_1
             case 4:                                 /* switch 7 */
                 lbl_1_bss_D4.sequenceOffset = (f32) (70.0f + (position.y - 180.0f));
                 lbl_1_bss_D4.oscillationPhase += 8.0f;
-                position.y = (f32) ((f64) position.y + ((f64) lbl_1_bss_D4.verticalMotion * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
+                position.y = (f32) ((f64) position.y
+                        + ((f64) lbl_1_bss_D4.verticalMotion
+                           * sin((M_PI * (f64) lbl_1_bss_D4.oscillationPhase) / 180.0)));
                 lbl_1_bss_D4.verticalMotion -= 0.04f;
                 if (WipeCheck() == 0) {
-for (fifthAnimationIndex = 0; fifthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; fifthAnimationIndex++) {
+for (fifthAnimationIndex = 0; fifthAnimationIndex
+     < lbl_1_data_3FC[lbl_1_bss_10A.mode]; fifthAnimationIndex++) {
                         HuSprAnimKill(lbl_1_bss_54.spriteAnimations[fifthAnimationIndex]);
 }
                     HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
@@ -2925,7 +1980,8 @@ for (fifthAnimationIndex = 0; fifthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
                 break;
             }
     fn_80026760(player->modelId, position.x, position.y, position.z);
-             fn_80026760(player->characterModelId, position.x, 180.0f + lbl_1_bss_D4.sequenceOffset, position.z - 50.0f);
+             fn_80026760(player->characterModelId, position.x, 180.0f + lbl_1_bss_D4.sequenceOffset,
+                         position.z - 50.0f);
             return;
         }
         break;
@@ -2945,7 +2001,8 @@ for (fifthAnimationIndex = 0; fifthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
                 fn_80026874(lbl_1_bss_F4.modelId, &position);
                 position.y -= 5.0f;
                 if (position.y <= 0.0f) {
-                    fn_8005C2C8(lbl_1_bss_F4.charNo, lbl_1_bss_F4.motionIds[0], 0.0f, 8.0f, 0x40000001U);
+                    fn_8005C2C8(lbl_1_bss_F4.charNo, lbl_1_bss_F4.motionIds[0], 0.0f, 8.0f,
+                                0x40000001U);
                     position.y = 0.0f;
                     lbl_1_bss_D4.motionStep += 1;
                 }
@@ -2977,7 +2034,7 @@ for (fifthAnimationIndex = 0; fifthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
                     if (lbl_1_bss_20[lbl_1_bss_D4.timer - 1] != -1) {
                         fn_80026A44(lbl_1_bss_20[lbl_1_bss_D4.timer - 1], 1U);
                     }
-                    lbl_1_bss_47C->presentationBusy = 0;
+                    micQuizModeWork->presentationBusy = 0;
                     lbl_1_bss_D4.timer = 0;
                     lbl_1_bss_D4.motionStep += 1;
                     return;
@@ -3004,7 +2061,8 @@ for (fifthAnimationIndex = 0; fifthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A
                 break;
             case 6:                                 /* switch 8 */
                 if (WipeCheck() == 0) {
-for (sixthAnimationIndex = 0; sixthAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; sixthAnimationIndex++) {
+for (sixthAnimationIndex = 0; sixthAnimationIndex
+     < lbl_1_data_3FC[lbl_1_bss_10A.mode]; sixthAnimationIndex++) {
                         HuSprAnimKill(lbl_1_bss_54.spriteAnimations[sixthAnimationIndex]);
 }
                     HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
@@ -3038,10 +2096,13 @@ for (index = 0; index < lbl_1_bss_D4.modelIndex; index++) {
                 fn_80026874(lbl_1_bss_F4.modelId, &position);
                 position.y -= 5.0f;
                 if (position.y <= 0.0f) {
-                    fn_8005C2C8(lbl_1_bss_F4.charNo, lbl_1_bss_F4.motionIds[0], 0.0f, 8.0f, 0x40000001U);
+                    fn_8005C2C8(lbl_1_bss_F4.charNo, lbl_1_bss_F4.motionIds[0], 0.0f, 8.0f,
+                                0x40000001U);
                     position.y = 0.0f;
 for (index = 0; index < lbl_1_bss_D4.modelIndex; index++) {
-                        fn_8002CCC0(lbl_1_bss_20[index], lbl_1_bss_98[lbl_1_bss_D4.playerIndex].jointMotions[0], 0.0f, 8.0f, 0x40000001U);
+                        fn_8002CCC0(lbl_1_bss_20[index],
+                                lbl_1_bss_98[lbl_1_bss_D4.playerIndex].jointMotions[
+                                        0], 0.0f, 8.0f, 0x40000001U);
 }
                     lbl_1_bss_D4.motionStep += 1;
                 }
@@ -3056,7 +2117,7 @@ for (index = 0; index < lbl_1_bss_D4.modelIndex; index++) {
                 lbl_1_bss_D4.motionStep += 1;
                 return;
             case 3:                                 /* switch 9 */
-                lbl_1_bss_47C->presentationBusy = 0;
+                micQuizModeWork->presentationBusy = 0;
                 lbl_1_bss_D4.motionStep += 1;
                 return;
             case 4:                                 /* switch 9 */
@@ -3067,12 +2128,16 @@ for (index = 0; index < lbl_1_bss_D4.modelIndex; index++) {
                 }
 for (index = 0; index < lbl_1_bss_D4.modelIndex; index++) {
                     if (lbl_1_bss_10A.completionFlag == 0) {
-                        fn_8002CCC0(lbl_1_bss_20[index], lbl_1_bss_98[lbl_1_bss_D4.playerIndex].jointMotions[3], 0.0f, 8.0f, 0x40000001U);
+                        fn_8002CCC0(lbl_1_bss_20[index],
+                                lbl_1_bss_98[lbl_1_bss_D4.playerIndex].jointMotions[
+                                        3], 0.0f, 8.0f, 0x40000001U);
                         if ((index == 0) && (lbl_1_bss_D4.playerIndex != 4)) {
                             HuAudFXPlay(lbl_1_data_43C[lbl_1_bss_D4.playerIndex]);
                         }
                     } else {
-                        fn_8002CCC0(lbl_1_bss_20[index], lbl_1_bss_98[lbl_1_bss_D4.playerIndex].jointMotions[0], 0.0f, 8.0f, 0x40000001U);
+                        fn_8002CCC0(lbl_1_bss_20[index],
+                                lbl_1_bss_98[lbl_1_bss_D4.playerIndex].jointMotions[
+                                        0], 0.0f, 8.0f, 0x40000001U);
                     }
 }
                 lbl_1_bss_D4.motionStep += 1;
@@ -3086,7 +2151,8 @@ for (index = 0; index < lbl_1_bss_D4.modelIndex; index++) {
                 break;
             case 6:                                 /* switch 9 */
                 if (WipeCheck() == 0) {
-for (seventhAnimationIndex = 0; seventhAnimationIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]; seventhAnimationIndex++) {
+for (seventhAnimationIndex = 0; seventhAnimationIndex
+     < lbl_1_data_3FC[lbl_1_bss_10A.mode]; seventhAnimationIndex++) {
                         HuSprAnimKill(lbl_1_bss_54.spriteAnimations[seventhAnimationIndex]);
 }
                     HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
@@ -3101,7 +2167,8 @@ for (seventhAnimationIndex = 0; seventhAnimationIndex < lbl_1_data_3FC[lbl_1_bss
     }
 }
 
-extern "C++" void fn_1_7188(void) {
+// Looks up the asked house and checks the question type, but takes no action for any type.
+void fn_1_7188(void) {
     MicquizPlayerWork *playerWork;
 
     playerWork = &lbl_1_bss_128[lbl_1_bss_D4.playerSlot];
@@ -3115,7 +2182,9 @@ extern "C++" void fn_1_7188(void) {
     }
 }
 
-extern "C++" void fn_1_71D0(void) {
+// Places the reveal scene by question type: the asked house at the center, or the host at the
+// center facing front with every item of the asked type in rings, or the host off to the left.
+void fn_1_71D0(void) {
     Point3d position;
     MicquizPlayerWork *currentPlayer;
 
@@ -3215,7 +2284,10 @@ extern "C++" void fn_1_71D0(void) {
     }
 }
 
-extern "C++" void fn_1_7754(void) {
+// Reveal by question type, then fade-out and exit: restarts the house motion; or the host plays
+// motion 4 with its character's voice and the items appear one by one; or the host walks in, lands
+// and plays motion 4.
+void fn_1_7754(void) {
     MicquizPlayerWork *player;
     Point3d modelTransform;
     f32 motionTime;
@@ -3246,9 +2318,9 @@ extern "C++" void fn_1_7754(void) {
                     animationIndex++;
                 }
                 HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
-                if (lbl_1_bss_31E != -1) {
-                    HuWinExClose(lbl_1_bss_31E);
-                    lbl_1_bss_31E = -1;
+                if (micQuizActiveWin != -1) {
+                    HuWinExClose(micQuizActiveWin);
+                    micQuizActiveWin = -1;
                 }
                 HuMCListenerKill();
                 HuMCClose();
@@ -3309,9 +2381,9 @@ extern "C++" void fn_1_7754(void) {
                     exitAnimationIndex++;
                 }
                 HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
-                if (lbl_1_bss_31E != -1) {
-                    HuWinExClose(lbl_1_bss_31E);
-                    lbl_1_bss_31E = -1;
+                if (micQuizActiveWin != -1) {
+                    HuWinExClose(micQuizActiveWin);
+                    micQuizActiveWin = -1;
                 }
                 HuMCListenerKill();
                 HuMCClose();
@@ -3375,9 +2447,9 @@ extern "C++" void fn_1_7754(void) {
                     shutdownAnimationIndex++;
                 }
                 HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
-                if (lbl_1_bss_31E != -1) {
-                    HuWinExClose(lbl_1_bss_31E);
-                    lbl_1_bss_31E = -1;
+                if (micQuizActiveWin != -1) {
+                    HuWinExClose(micQuizActiveWin);
+                    micQuizActiveWin = -1;
                 }
                 HuMCListenerKill();
                 HuMCClose();
@@ -3391,7 +2463,9 @@ extern "C++" void fn_1_7754(void) {
     }
 }
 
-extern "C++" s32 fn_1_7FAC(void) {
+// Drops the hint boards one after another (180 frames shared among the houses) until each lands
+// at y = 30; returns 1 once every board has started falling.
+s32 fn_1_7FAC(void) {
     Point3d position;
     s16 frameLimit;
     s32 index;
@@ -3423,7 +2497,8 @@ extern "C++" s32 fn_1_7FAC(void) {
     return 0;
 }
 
-extern "C++" void fn_1_8200(void) {
+// Hides all hint boards and calls fn_800258A8(2, 8).
+void fn_1_8200(void) {
     s32 modelIndex;
 
     modelIndex = 0;
@@ -3434,145 +2509,46 @@ extern "C++" void fn_1_8200(void) {
     fn_800258A8(2, 8);
 }
 
-extern "C++" void fn_1_8280(s32 modelIndex) {
+void fn_1_8280(s32 modelIndex) {
     lbl_1_bss_54.playerStates[modelIndex] = 1;
 }
 
-extern "C++" void fn_1_829C(s16 layerNo) {
+// Snapshot draw hook: copies the 192x164 frame into the texture of every house whose hint
+// has not been frozen yet.
+void fn_1_829C(s16 layerNo) {
     s32 modelIndex;
 
     modelIndex = 0;
     while (modelIndex < lbl_1_data_3FC[lbl_1_bss_10A.mode]) {
         if (lbl_1_bss_54.playerStates[modelIndex] == 0) {
-            fn_8002BCDC(0, 0, 0xC0, 0xA4, GX_TF_RGBA8, 0, lbl_1_bss_54.spriteAnimations[modelIndex]->bmp->data);
+            fn_8002BCDC(0, 0, 0xC0, 0xA4, GX_TF_RGBA8, 0,
+                        lbl_1_bss_54.spriteAnimations[modelIndex]->bmp->data);
         }
         modelIndex += 1;
     }
     fn_8002BF48();
 }
 
-extern "C++" void fn_1_834C(void) {
+void fn_1_834C(void) {
     HuPrcSleep(0x3C);
     HuAudSStreamFadeOut(lbl_1_bss_1C, 0x64);
     WipeCreate(2, 0, 0x1E);
 }
-HUPROCESS *lbl_1_bss_0;
-s32 lbl_1_bss_4;
-MicquizResponse *lbl_1_bss_8;
-HUPROCESS *lbl_1_bss_C;
-HUPROCESS *lbl_1_bss_10;
-ANIMDATA *lbl_1_bss_14;
-f32 lbl_1_bss_18;
-s32 lbl_1_bss_1C;
-s16 lbl_1_bss_20[0x14];
-s16 lbl_1_bss_48[6];
-MicquizAnimationState lbl_1_bss_54;
-MicquizAccessoryPoolEntry lbl_1_bss_98[6];
-MicquizSequence lbl_1_bss_D4;
-MicquizHostState lbl_1_bss_F4;
-MicquizControlWork lbl_1_bss_10A;
-MicquizPlayerWork lbl_1_bss_128[5];
-HUPROCESS *lbl_1_bss_2A4[5];
 HUPROCESS *lbl_1_bss_2B8[11];
-HUPROCESS *lbl_1_bss_2E4[0xA];
-HU3D_MOTIONID lbl_1_bss_30C[7];
-HU3D_MODELID lbl_1_bss_31A;
-s16 lbl_1_bss_31C;
-s16 lbl_1_bss_31E;
-s16 lbl_1_bss_320;
-s16 lbl_1_bss_322;
-s16 lbl_1_bss_324;
-s16 lbl_1_bss_326;
-s16 lbl_1_bss_328;
-s16 lbl_1_bss_32A;
-u8 lbl_1_bss_32C[0x4];
-s16 lbl_1_bss_330;
-s16 lbl_1_bss_332;
-s16 lbl_1_bss_334;
-ANIMDATA *lbl_1_bss_338;
-ANIMDATA *lbl_1_bss_33C;
-s32 lbl_1_bss_340;
-s32 lbl_1_bss_344;
-HUPROCESS *lbl_1_bss_348;
-s16 lbl_1_bss_34C;
-s16 lbl_1_bss_34E;
-MGSCORE *lbl_1_bss_350[2];
-s16 lbl_1_bss_358[4];
-ANIMDATA *lbl_1_bss_360[4];
-s16 lbl_1_bss_370;
-ANIMDATA *lbl_1_bss_374;
-s16 lbl_1_bss_378[4][3];
-ANIMDATA *lbl_1_bss_390[4][3];
-s16 lbl_1_bss_3C0[4];
-ANIMDATA *lbl_1_bss_3C8[4];
-s16 lbl_1_bss_3D8;
-ANIMDATA *lbl_1_bss_3DC;
-s32 lbl_1_bss_3E0;
-ANIMDATA *lbl_1_bss_3E4;
-ANIMDATA *lbl_1_bss_3E8;
-ANIMDATA *lbl_1_bss_3EC;
-ANIMDATA *lbl_1_bss_3F0;
-ANIMDATA *lbl_1_bss_3F4[4];
-HUSPR_GROUPID lbl_1_bss_404[1];
-u8 lbl_1_bss_406[0x4];
-s16 lbl_1_bss_40A;
-s16 lbl_1_bss_40C;
-s16 lbl_1_bss_40E;
-s16 lbl_1_bss_410;
-s16 lbl_1_bss_412;
-s16 lbl_1_bss_414;
-s16 lbl_1_bss_416;
-s16 lbl_1_bss_418;
-u8 lbl_1_bss_41A[0x8];
-s16 lbl_1_bss_422;
-ANIMDATA *lbl_1_bss_424[2];
-ANIMDATA *lbl_1_bss_42C;
-ANIMDATA *lbl_1_bss_430;
-ANIMDATA *lbl_1_bss_434;
-ANIMDATA *lbl_1_bss_438;
-ANIMDATA *lbl_1_bss_43C;
-ANIMDATA *lbl_1_bss_440;
-ANIMDATA *lbl_1_bss_444;
-ANIMDATA *lbl_1_bss_448;
-s16 lbl_1_bss_44C;
-ANIMDATA *lbl_1_bss_450;
-ANIMDATA *lbl_1_bss_454;
-ANIMDATA *lbl_1_bss_458;
-ANIMDATA *lbl_1_bss_45C;
-ANIMDATA *lbl_1_bss_460;
-ANIMDATA *lbl_1_bss_464;
-ANIMDATA *lbl_1_bss_468;
-ANIMDATA *lbl_1_bss_46C;
-ANIMDATA *lbl_1_bss_470[2];
-ANIMDATA *lbl_1_bss_478;
-MicquizModeWork *lbl_1_bss_47C;
-s32 lbl_1_bss_480;
-f32 lbl_1_bss_484;
-f32 lbl_1_bss_488;
-s32 lbl_1_bss_48C;
-s16 lbl_1_bss_490;
-u8 lbl_1_bss_492[0xA];
-s32 lbl_1_bss_49C;
-s32 lbl_1_bss_4A0;
-s32 lbl_1_bss_4A4;
-s16 lbl_1_bss_4A8;
-s32 lbl_1_bss_4AC;
-s16 lbl_1_bss_4B0;
-s32 lbl_1_bss_4B4;
-s32 lbl_1_bss_4B8;
-s32 lbl_1_bss_4BC;
-s32 lbl_1_bss_4C0;
-s32 lbl_1_bss_4C4;
-s32 lbl_1_bss_4C8;
-s32 lbl_1_bss_4CC;
-s32 lbl_1_bss_4D0;
-s32 lbl_1_bss_4D4;
-s32 lbl_1_bss_4D8;
-s32 lbl_1_bss_4DC;
-s32 lbl_1_bss_4E0;
-s32 lbl_1_bss_4E4;
-s32 lbl_1_bss_4E8;
-HUPROCESS *lbl_1_bss_4EC;
-MicquizResponseEntry lbl_1_bss_4F0[8];
-s16 lbl_1_bss_570;
-u8 lbl_1_bss_572[0xA];
+HUPROCESS *lbl_1_bss_2A4[5];
+MicquizPlayerWork lbl_1_bss_128[5];
+MicquizControlWork lbl_1_bss_10A;
+MicquizHostState lbl_1_bss_F4;
+MicquizSequence lbl_1_bss_D4;
+MicquizAccessoryPoolEntry lbl_1_bss_98[6];
+MicquizAnimationState lbl_1_bss_54;
+s16 lbl_1_bss_48[6];
+s16 lbl_1_bss_20[0x14];
+s32 lbl_1_bss_1C;
+f32 micQuizPauseBgScroll;
+ANIMDATA *micQuizPauseBgAnim;
+HUPROCESS *micQuizMicPulseProc;
+HUPROCESS *micQuizIndicatorSwingProc;
+MicquizResponse *micQuizResponse;
+s32 micQuizTimeoutHandled;
+HUPROCESS *micQuizRingProc;
