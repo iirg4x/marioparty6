@@ -38,6 +38,10 @@ typedef std::vector<Sphere *> ShadowSpheres;
 void collectCategorySpheres(ShadowSpheres *, long);
 // Fits a camera around the spheres and returns its final eye-to-target distance.
 float fitCameraToSpheres(CameraFrame *, CameraPerspective *, ShadowSpheres *);
+// Points shadow camera `mask` along `direction` at `target`, with the given width, depth and field
+// of view.
+void configureShadowCamera(short mask, const Vec *direction, Vec *target, float width, float depth,
+                           float fov);
 
 // Manages the shadow renderer and its camera-specific scene selections.
 struct SceneShadow : GameObject {

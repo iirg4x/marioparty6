@@ -31,6 +31,7 @@ typedef MotionOwner CharacterMotion;
 // Names indexed by the low 16-bit motion resource number, used for a missed-preload warning.
 extern const char *characterMotionNames[];
 void createCharacterMotion(CharacterMotion *character, unsigned int dataNum);
+void createCharacterMotions(CharacterMotion *character, unsigned int *dataNums, s32 count);
 void selectCharacterMotion(CharacterMotion *character, unsigned int dataNum);
 void setMotionOwnerTime(CharacterMotion *character, float timeFrames);
 float getMotionOwnerTransitionTime(s32 *characterNo);

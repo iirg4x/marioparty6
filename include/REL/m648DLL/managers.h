@@ -29,8 +29,10 @@ struct TimerManager : RequestObject, MinigameSingleton<TimerManager> {
     virtual void flagEnabled(int mode);
     void fn_1_D268();
     void fn_1_D330();
+    void fn_1_D404();
     void fn_1_D438();
     s32 fn_1_D464();
+    void fn_1_D4BC();
 };
 typedef struct ScoreCounterSlot {
     HUSPR_GROUPID groupId;

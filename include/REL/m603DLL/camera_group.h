@@ -4,9 +4,9 @@
 #include "dolphin/mtx.h"
 #include "REL/framework/list_object.h"
 #include "REL/framework/singleton.h"
+#include "REL/framework/camera_frame.h"
 
-struct CameraGroupBBC {
-    Vec position, rotation, target;
+struct CameraGroupBBC : CameraFrame {
     f32 left, top;
     u32 unknownValue;
     f32 width, height;
@@ -16,7 +16,7 @@ struct CameraGroupBBC {
 struct CameraOwnerBBC : RequestObject, MinigameSingleton<CameraOwnerBBC> {
  typedef void (CameraOwnerBBC::*Callback)();
  f32 insetX,insetY; u32 unknownValue; u8 transitionRequested;
- CameraGroupBBC cameras[4]; u8 menuState[0x24]; s32 elapsedFrames; Callback callback; s16 modelId; s32 selectedCamera;
+ CameraGroupBBC cameras[4]; CameraFrame menuState; s32 elapsedFrames; Callback callback; s16 modelId; s32 selectedCamera;
  CameraOwnerBBC(); virtual ~CameraOwnerBBC(); virtual void flagEnabled(int); virtual void update();
  void fn_1_1944(); void fn_1_1C48(); void fn_1_1F4C(); void fn_1_2080(); void fn_1_251C();
  void fn_1_F30(int playerIndex);

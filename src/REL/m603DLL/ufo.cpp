@@ -30,7 +30,6 @@ extern const u8 lbl_1_data_EC[];
 extern const char lbl_1_data_950[];
 extern const char lbl_1_data_95A[];
 const s32 lbl_1_rodata_598[3] = {DATANUM(0x3e0000, 17), DATANUM(0x3e0000, 18), DATANUM(0x3e0000, 19)};
-extern void *__nw__FUl(unsigned long);
 class CameraModelOwner;
 }
 void fn_1_C710(CameraModelOwner *);
@@ -174,10 +173,7 @@ char *lbl_1_data_9A4[3] = {"mapmodel10-ufo_act", "mapmodel12-ufo_act_b",
                               "mapmodel14-ufo_act_c"};
 
 const u32 lbl_1_rodata_5F8[4] = {1, 2, 4, 8};
-extern void __ct__4NodeFv(void *);
-extern void insert4__4NodeFP4Node(void *, void *);
 
-extern void __ct__10OwnedModelFUi(void *, s32);
 }
 
 extern void fn_1_CD34(HU3D_MODEL *, Mtx *);

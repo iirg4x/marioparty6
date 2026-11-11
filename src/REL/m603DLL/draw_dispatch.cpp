@@ -3,7 +3,6 @@
 #include "REL/m603DLL/draw_owner.h"
 #include "REL/m603DLL/camera_group.h"
 #include "REL/m603DLL/shadow_owner.h"
-#include "REL/m603DLL/night.h"
 #include <new>
 extern "C" {
 #include "dolphin/types.h"
@@ -11,6 +10,7 @@ extern "C" {
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
 #include "game/hu3d.h"
+#include "game/gamework.h"
 
 }
 
@@ -57,7 +57,7 @@ FadeWork::FadeWork(s32 context)
     fn_80026B8C(modelId, 6);
     fn_80026B64(modelId, (u16)lbl_1_rodata_198[context]);
 
-    if (NightActive()) {
+    if (GWMgNightFGet() != 0) {
         CameraOwnerBBC::getChecked().fn_1_F30(this->context);
         ShadowModelOwner::getChecked().fn_1_5914(this->context);
         new ModelDrawOwner(this->context);
@@ -76,8 +76,7 @@ void fn_1_3AD4(HU3D_MODEL *model,Mtx *matrix) { fn_8002472C(); FadeWork *hookDat
 
 void FadeWork::fn_1_3B1C(void *context)
 {
-    s16 night = lbl_802C0278;
-    if (!night) {
+    if (GWMgNightFGet() == 0) {
         fn_1_3B8C(context);
     } else {
         fn_1_43A0(context);

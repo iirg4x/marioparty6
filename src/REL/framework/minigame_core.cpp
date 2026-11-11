@@ -68,7 +68,7 @@ void MinigameCore::updateCallback(OMOBJ *object)
         HuAudFadeOut(1000);
         object->objFunc = exitCallback;
     } else {
-        MinigameCore &game = static_cast<MinigameCore &>(getUnchecked());
+        MinigameCore &game = *current();
         game.update();
     }
 }
@@ -87,7 +87,7 @@ void MinigameCore::updateGame() {}
 // Once it ends, run game cleanup, delete the game, and request the preceding overlay.
 void MinigameCore::exitCallback(OMOBJ *)
 {
-    MinigameCore *game = static_cast<MinigameCore *>(&getUnchecked());
+    MinigameCore *game = current();
     if (WipeCheck()) {
         game->updateGame();
         game->decrementMessageFrames();

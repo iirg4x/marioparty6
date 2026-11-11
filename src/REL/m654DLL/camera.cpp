@@ -65,11 +65,6 @@ void CameraManager::update()
     debugResetHook(&this->finalCamera.frame, 0, 1);
 }
 
-/* Offsets of the follow camera from the target position. */
-static inline float FollowEyeDistance() { return 600.0f; }
-static inline float FollowEyeHeight() { return 200.0f; }
-static inline float FollowTargetHeight() { return 100.0f; }
-
 void CameraManager::receive(const EventPacket *camera)
 {
     if (camera->type == 4 && camera->context != 0) {
@@ -81,14 +76,14 @@ void CameraManager::receive(const EventPacket *camera)
         double endY;
         double endZ;
         CameraFrame path;
-        startZ = targetPosition->z + FollowEyeDistance();
-        startY = targetPosition->y + FollowEyeHeight();
+        startZ = targetPosition->z + cmToWorld(600.0f);
+        startY = targetPosition->y + cmToWorld(200.0f);
         startX = targetPosition->x;
         path.position.x = startX;
         path.position.y = startY;
         path.position.z = startZ;
         endZ = targetPosition->z;
-        endY = targetPosition->y + FollowTargetHeight();
+        endY = targetPosition->y + cmToWorld(100.0f);
         endX = targetPosition->x;
         path.target.x = endX;
         path.target.y = endY;

@@ -9,9 +9,7 @@ extern "C" {
 #include "game/memory.h"
 #include "game/audio.h"
 #include <stdio.h>
-extern s16 lbl_802C0278;
 f32 lbl_1_bss_40[4]; s32 lbl_1_bss_50; extern u16 lbl_802C0008[];
-void cameraApplyToHud__FP11CameraFramel(void*,s32);
 }
 void debugEventHook(void*, int);
 void operator delete(void*);
@@ -32,9 +30,9 @@ CameraOwnerBBC::CameraOwnerBBC() : transitionRequested(0), callback(&CameraOwner
         group->position.x = lbl_1_rodata_A0.x;
         group->position.y = lbl_1_rodata_A0.y;
         group->position.z = lbl_1_rodata_A0.z;
-        group->rotation.x = lbl_1_rodata_AC.x;
-        group->rotation.y = lbl_1_rodata_AC.y;
-        group->rotation.z = lbl_1_rodata_AC.z;
+        group->up.x = lbl_1_rodata_AC.x;
+        group->up.y = lbl_1_rodata_AC.y;
+        group->up.z = lbl_1_rodata_AC.z;
         group->target.x = lbl_1_rodata_B8.x;
         group->target.y = lbl_1_rodata_B8.y;
         group->target.z = lbl_1_rodata_B8.z;
@@ -199,8 +197,7 @@ void fn_1_164C(CameraOwnerBBC *records)
                 player->position.y += 50.0f * difference.y / distance;
                 player->position.z += 50.0f * difference.z / distance;
             }
-            cameraApplyToHud__FP11CameraFramel(
-                player, lbl_1_rodata_60[playerIndex]);
+            cameraApplyToHud(player, lbl_1_rodata_60[playerIndex]);
         }
     }
 }
@@ -243,8 +240,7 @@ void CameraOwnerBBC::fn_1_1944()
                 player->position.y += 50.0f * difference.y / distance;
                 player->position.z += 50.0f * difference.z / distance;
             }
-            cameraApplyToHud__FP11CameraFramel(
-                player, lbl_1_rodata_60[playerIndex]);
+            cameraApplyToHud(player, lbl_1_rodata_60[playerIndex]);
         }
     }
 }
@@ -287,8 +283,7 @@ void CameraOwnerBBC::fn_1_1C48()
                 player->position.y += 50.0f * difference.y / distance;
                 player->position.z += 50.0f * difference.z / distance;
             }
-            cameraApplyToHud__FP11CameraFramel(
-                player, lbl_1_rodata_60[playerIndex]);
+            cameraApplyToHud(player, lbl_1_rodata_60[playerIndex]);
         }
     }
 }
@@ -296,17 +291,17 @@ void CameraOwnerBBC::fn_1_1F4C()
 {
  CameraGroupBBC *frame=&cameras[0];
  frame->position.x=0.0f;frame->position.y=550.0f;frame->position.z=250.0f;frame->target.x=0.0f;frame->target.y=120.0f;frame->target.z=-350.0f;
- cameraApplyToHud__FP11CameraFramel(frame,lbl_1_rodata_60[0]);
+ cameraApplyToHud(frame,lbl_1_rodata_60[0]);
 }
 
 void fn_1_1FF0(CameraOwnerBBC *object)
 {
-    debugEventHook(&object->menuState[0], 0);
+    debugEventHook(&object->menuState, 0);
     if ((lbl_802C0008[0] & 0x800) != 0) {
         CameraOwnerBBC::Callback values = &CameraOwnerBBC::fn_1_1C48;
         object->callback = values;
     }
-    cameraApplyToHud__FP11CameraFramel(&object->menuState[0], 1);
+    cameraApplyToHud(&object->menuState, 1);
 }
 
 void CameraOwnerBBC::fn_1_2080()
@@ -347,7 +342,7 @@ void CameraOwnerBBC::fn_1_2080()
                 camera->position.y += 50.0f * difference.y / length;
                 camera->position.z += 50.0f * difference.z / length;
             }
-    cameraApplyToHud__FP11CameraFramel(camera, lbl_1_rodata_60[index]);
+    cameraApplyToHud(camera, lbl_1_rodata_60[index]);
         }
         index++;
         }
@@ -385,9 +380,9 @@ void CameraOwnerBBC::fn_1_251C()
                 camera->position.x = cameraPosition.x;
                 camera->position.y = cameraPosition.y;
                 camera->position.z = cameraPosition.z;
-                camera->rotation.x = cameraRotation.x;
-                camera->rotation.y = cameraRotation.y;
-                camera->rotation.z = cameraRotation.z;
+                camera->up.x = cameraRotation.x;
+                camera->up.y = cameraRotation.y;
+                camera->up.z = cameraRotation.z;
                 camera->target.x = cameraTarget.x;
                 camera->target.y = cameraTarget.y;
                 camera->target.z = cameraTarget.z;

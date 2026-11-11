@@ -1,7 +1,7 @@
 /* Model handles and camera copies used by the shared shadow model. */
 
 #include "REL/m603DLL/shadow_owner.h"
-#include "REL/m603DLL/shadow_camera.h"
+#include "REL/framework/scene_shadow.h"
 #include "datadir_enum.h"
 #include "dolphin/types.h"
 
@@ -12,24 +12,11 @@ extern "C" {
 #include "game/hu3d.h"
 #include "game/memory.h"
 
-
-
-
-
 extern const u8 lbl_1_data_EC[], lbl_1_data_210[];
 const Vec lbl_1_rodata_210 = { 0.0f, -1.0f, 0.01f };
 const Vec lbl_1_rodata_21C = { 0.0f, 0.0f, -400.0f };
 const u32 lbl_1_rodata_228[4] = { 1, 2, 4, 8 };
-
-
-void insert4__4NodeFP4Node(void *, void *);
-void *__ct__4NodeFv(void *);
-
-
-
 }
-
-
 
 static inline void fn_1_D7D4(s16 model)
 {

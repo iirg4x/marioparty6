@@ -29,12 +29,6 @@ void fn_1_BC84();
 #include "REL/m648DLL/camera_manager.h"
 
 typedef void (CameraManager::*CameraManagerCallback)();
-extern "C" {
-void __ct__4NodeFv(void *);
-void insert4__4NodeFP4Node(void *, void *);
-void __ct__11CameraSetupFv(void *);
-
-}
 
 extern "C" {
 extern s32 lbl_1_bss_40;
@@ -46,7 +40,6 @@ extern s32 lbl_1_bss_278;
 
 extern s32 lbl_1_bss_27C;
 extern s32 lbl_1_bss_280;
-
 }
 
 void fn_1_8740(Vec *position, Vec *direction) {
@@ -59,20 +52,10 @@ void fn_1_8740(Vec *position, Vec *direction) {
 }
 
 CameraManager::CameraManager()
+    : callback(&CameraManager::fn_1_8ACC), target(0), modelId(-1), listenerActive(0)
 {
-    callback = &CameraManager::fn_1_8ACC;
-    target = 0;
-    modelId = -1;
-    listenerActive = 0;
-    __ct__11CameraSetupFv(cameraSetup);
     Hu3DCameraCreate(1);
     Hu3DBGColorSet(0, 0, 0);
-}
-
-extern "C" {
-
-void *__dt__4NodeFv(void *object, s16 mode);
-void __dl__FPv(void *object);
 }
 
 CameraManager::~CameraManager() {
@@ -90,8 +73,6 @@ void CameraManager::fn_1_89D4()
             this->callback = nextCallback;
         }
     }
-}
-extern "C" {
 }
 
 void CameraManager::fn_1_8A68()

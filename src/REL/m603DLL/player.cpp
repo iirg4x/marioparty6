@@ -1,7 +1,6 @@
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/frame_time_inline.h"
-#include "REL/m603DLL/night.h"
 #include "REL/framework/list_object.h"
 #include "REL/m603DLL/draw_node.h"
 #include "REL/m603DLL/draw_owner.h"
@@ -41,10 +40,11 @@ extern "C" {
 #include "REL/m603DLL/player.h"
 #include "REL/m603DLL/score_owner.h"
 
+// Every player's model owner; and the sole highest scorer once the scores are ranked (zero while
+// the top scores are tied or before the ranking).
 extern "C" ListRoot<PlayerModelOwner> lbl_1_bss_AC;
 extern "C" {
 extern PlayerModelOwner *lbl_1_bss_9C;
-extern s16 lbl_802C0278;
 }
 void fn_1_6ADC(PlayerModelOwner *);
 extern s32 fn_1_C4E8(s32 playerIndex, u8 markEntries, s32 currentValue);
@@ -272,12 +272,7 @@ void fn_1_6614()
     }
 }
 
-static inline BOOL nightBonusActive75A8(void)
-{
-    return NightActive();
-}
-
-/* fn_1_6690: mechanical copy of fn_1_BC1C in m648DLL (100% alike), names and constants adapted by copier.py; to be placed in its file. */
+/* Clears the active flag of every player model owner in the list. */
 
 void fn_1_6690()
 {
@@ -519,7 +514,7 @@ f32 PlayerModelOwner::fn_1_734C(bool *buttonPressed)
     }
 
     playerValue = fn_1_9D34(this->playerIndex, 0);
-    if (NightActive()) {
+    if (GWMgNightFGet() != 0) {
         playerValue += fn_1_C4E8(this->playerIndex, 0, playerValue);
     }
     switch (this->difficulty) {
@@ -605,7 +600,7 @@ void PlayerModelOwner::fn_1_75A8()
         this->ready = 1;
         fn_1_9B88(this->playerIndex);
         playerValue = fn_1_9D34(this->playerIndex, 1);
-        if (nightBonusActive75A8()) {
+        if (GWMgNightFGet() != 0) {
             fn_1_C280(this->playerIndex);
             playerValue += fn_1_C4E8(this->playerIndex, 1, playerValue);
         }

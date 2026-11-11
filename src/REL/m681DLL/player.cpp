@@ -31,25 +31,15 @@ u32 lbl_1_bss_A8 = secondsToFrames(3.5);
 }
 
 void *operator new(unsigned long);
-extern "C" {
-}
 void setCharacterMotionOverlay(CharacterMotion *character, s16 modelId, unsigned int dataNum);
 s16 fn_1_2508(s32);
 void shiftCharacterMotion(CharacterMotion *character, unsigned int dataNum, float shift, float start,
                           unsigned long attributes);
 void sendEvent(int, unsigned long, float);
 
-extern "C" {
-}
-extern "C" {
-
-void createCharacterMotions__FP11MotionOwnerPUil(CharacterMotion *, const void *, s32);
-
-}
 void fn_1_7398(void *, s16, const void *);
 extern "C" {
-
-const u32 lbl_1_rodata_288[] = {
+const unsigned int lbl_1_rodata_288[] = {
     0x930000, 0x930001, 0x930006, 0x8E00C1, 0x930019,
     0x8E0072, 0x8E00D5, 0x8E00C2, 0x8E00C5
 };
@@ -57,7 +47,7 @@ const u32 lbl_1_rodata_288[] = {
 
 typedef PlayerObject::Callback Callback533C;
 
-PlayerObject::PlayerObject(s32 player, const PositionVector *initialState)
+PlayerObject::PlayerObject(s32 player, const Vec *initialState)
     : GameObject(0), PlayerConfigSelection(player, 1), EventListener(),
       resourceNode(isComputer()
           ? (ModeBase *)new ModeObject(difficulty())
@@ -91,8 +81,8 @@ PlayerObject::PlayerObject(s32 player, const PositionVector *initialState)
         this->callback = callback;
     }
     setLayer(4);
-    createCharacterMotions__FP11MotionOwnerPUil(&static_cast<MotionOwner &>(*this),
-                                                &lbl_1_rodata_288, 9);
+    createCharacterMotions(&static_cast<MotionOwner &>(*this),
+                           const_cast<unsigned int *>(lbl_1_rodata_288), 9);
     selectCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 193));
     setCharacterMotionOverlay(&static_cast<MotionOwner &>(*this), *static_cast<Model *>(this),
                               DATANUM(0x8e0000, 194));
@@ -107,7 +97,7 @@ PlayerObject::PlayerObject(s32 player, const PositionVector *initialState)
     rotation.x = 0.0f;
     rotation.y = 0.0f;
     rotation.z = 0.0f;
-    setPosition(&state.value);
+    setPosition(&state);
     setRotation(&rotation);
     fn_80060F14((s16)characterNo(), fn_1_2508(player));
 }
@@ -230,10 +220,6 @@ void PlayerObject::fn_1_5E8C(void)
 {
 }
 
-extern "C" {
-
-}
-
 void PlayerObject::fn_1_5E90()
 {
     if (rotation.y <= 180.0f) {
@@ -272,13 +258,11 @@ void PlayerObject::fn_1_61B8()
 }
 
 extern "C" {
-
 void PlayerObject::fn_1_643C()
 {
     this->modes.values[0] = 0;
     this->modes.values[1] = 0;
 }
-
 }
 
 /* Whether either mode differs from the previous frame's pair. */
@@ -303,7 +287,6 @@ void PlayerObject::fn_1_6450()
 }
 
 extern "C" {
-
 typedef PlayerObject::Callback DustCallbackState;
 
 typedef M681GameState HookManager;
@@ -336,7 +319,6 @@ void PlayerObject::fn_1_66F0()
 
 void PlayerObject::fn_1_6824()
 {
-
     M681GameState &manager = MinigameSingleton<M681GameState>::getChecked();
 
     if (this->choseWrong == 1 && this->active == 1) {
@@ -364,7 +346,6 @@ void PlayerObject::fn_1_6824()
         sendEvent(0, 5, 0.0f);
     }
 }
-
 }
 
 void PlayerObject::update()
@@ -376,12 +357,11 @@ void PlayerObject::update()
     if (secondAngle.elapsed <= secondAngle.frames) {
         Model::setOverlayMotionTime(secondAngle.advance());
     }
-    Model::setPosition(&state.value);
+    Model::setPosition(&state);
     Model::setRotation(&rotation);
 }
 
 extern "C" {
-
 typedef Callback533C CallbackState;
 
 void PlayerObject::fn_1_6A50()
@@ -402,12 +382,8 @@ void PlayerObject::fn_1_6A50()
     fn_8005C7A4((s16)characterNo(),
                             this->secondItemHook);
 }
-
 }
 
-extern "C" {
-
-}
 float RandomFloat(float maximum);
 
 void PlayerObject::receive(const EventPacket *event)
@@ -539,13 +515,6 @@ void PlayerObject::fn_1_7410()
     }
 }
 
-extern "C" {
-
-}
-extern "C" {
-
-}
-
 void PlayerObject::fn_1_74E8()
 {
     Callback callback;
@@ -566,17 +535,13 @@ void PlayerObject::fn_1_74E8()
     }
 }
 
-extern "C" {
-}
 void fn_1_5168(Model *);
-extern "C" {
-}
 void PlayerObject::fn_1_7608()
 {
     M681GameState &manager = MinigameSingleton<M681GameState>::getChecked();
     fallFrames = fallFrames + 1;
-    state.value.y = state.value.y - (1.5f * fallFrames);
-    if (state.value.y <= -300.0f) {
+    state.y = state.y - (1.5f * fallFrames);
+    if (state.y <= -300.0f) {
         landingFrames += 1.0f;
         if (landingFrames >= secondsToFrames(landingDelay)) {
             fn_1_5168(this->resource.get());
@@ -602,12 +567,8 @@ void PlayerObject::fn_1_77E4()
     Mtx matrix;
 
     fn_1_524C(resource.get(), matrix);
-    Hu3DMtxTransGet(matrix, &this->state.value);
+    Hu3DMtxTransGet(matrix, &this->state);
     Hu3DMtxRotGet(matrix, &this->rotation);
-}
-
-extern "C" {
-
 }
 
 extern "C" {

@@ -19,13 +19,13 @@ extern "C" {
 #include "REL/framework/chara_motion.h"
 #include "REL/framework/event_packet.h"
 #include "REL/framework/game_object.h"
-#include "REL/m654DLL/framework/range_impl.h"
+#include "REL/framework/range.h"
 #include "REL/m654DLL/model_animation_owner.h"
 #include "Runtime.PPCEABI.H/NMWException.h"
 
 #include "REL/m654DLL/mode_object.h"
 
-void createCharacterMotions(MotionOwner *, unsigned int *, s32);
+// framework/chara_motion.cpp
 void selectCharacterMotion(MotionOwner *, unsigned int);
 u8 characterMotionEnded(s32 *);
 void shiftCharacterMotion(MotionOwner *, unsigned int, float, float, u32);
@@ -452,12 +452,12 @@ void Player::fn_1_4858()
     fn_80086CB0(player->actor, &rotation);
     Range<float> range(0.0f, 360.0f, rotation);
     void (Player::*defaults)();
-    fn_80086CA8(player->actor, range.fn_1_4E0C(targetAngle, 0.1));
-    difference = range.fn_1_4DD0(targetAngle);
+    fn_80086CA8(player->actor, range.step(targetAngle, 0.1));
+    difference = range.distanceTo(targetAngle);
     absoluteDifference = __fabsf(difference);
     error = absoluteDifference;
     if (error < 1.0) {
-        range.fn_1_4D94(targetAngle);
+        range.set(targetAngle);
         fn_80087158(player, (1 << 2));
         defaults = &Player::fn_1_35F4;
         callback = defaults;

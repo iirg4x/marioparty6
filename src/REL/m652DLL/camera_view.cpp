@@ -267,7 +267,7 @@ void PlayerCamera::fn_1_3E2C()
     frameCount = secondsToFrames<long>(5);
     amount = Square3E2C(1.0 -
         cos((M_PI * (double)this->frame) / (double)frameCount)) / 4.0;
-    if (&CameraSplit::getUnchecked() != 0 && amount > 0.2) {
+    if (CameraSplit::current() != 0 && amount > 0.2) {
         current = &CameraSplit::getChecked();
         step = (((int)this->count + 1) * 640) / 2;
         fraction = (amount - 0.2) / 0.8;
@@ -359,7 +359,7 @@ void PlayerCamera::fn_1_4458()
                              cameraTarget, cameraDefault, (float)amount);
     cameraApplyToHud(&static_cast<CameraFrame &>(*this), this->modelId);
 
-    if (&CameraSplit::getUnchecked() != 0) {
+    if (CameraSplit::current() != 0) {
         current = &CameraSplit::getChecked();
         index = 0;
         for (; index < 1; index++) {

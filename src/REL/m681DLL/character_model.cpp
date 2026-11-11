@@ -40,7 +40,7 @@ ModelOwnerComposite84::ModelOwnerComposite84(int character)
       character(character), motionData(lbl_1_data_534[character]),
       firstTimer(0), secondTimer(0), nestedResource(), transition(-180.0f, 0)
 {
-    PositionVector callbackData;
+    Vec callbackData;
     f32 currentValue;
 
     modelValue = &getObject(motionData)->mesh.base.rot.y;
@@ -51,8 +51,8 @@ ModelOwnerComposite84::ModelOwnerComposite84(int character)
     updateMotion();
     currentValue = transition.current;
     *modelValue = currentValue;
-    fn_1_8184(this, &callbackData.value);
-    callbackData.value.y = 0.0f;
+    fn_1_8184(this, &callbackData);
+    callbackData.y = 0.0f;
     new TextureNode0(&callbackData, 95.0f);
     lbl_1_bss_C0.flag = 0;
     lbl_1_data_544 = -1;

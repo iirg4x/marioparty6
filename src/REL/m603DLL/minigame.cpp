@@ -21,7 +21,7 @@ MinigameThreadOwner::~MinigameThreadOwner() {}
 
 extern "C" {
 #include "game/wipe.h"
-extern s16 lbl_802C0278;
+#include "game/gamework.h"
 }
 
 void fn_1_794C(void);
@@ -29,11 +29,9 @@ void fn_1_794C(void);
 void MinigameThreadOwner::setupObjects(OMOBJMAN *)
 {
     s32 playerIndex;
-    s16 nightSetting;
 
     RandomSeed(OSGetTick());
-    nightSetting = lbl_802C0278;
-    nightMode = !nightSetting;
+    nightMode = !GWMgNightFGet();
 
     new ShadowModelOwner(nightMode);
     new CameraOwnerBBC();

@@ -106,7 +106,6 @@ void AC4COwner::update()
 }
 
 extern "C" {
-
 typedef struct {
     Vec value;
 } MotionVector;
@@ -118,12 +117,9 @@ void AC4COwner::fn_1_AF34(EventMessage *)
         this->updateCallback = value;
     }
 }
-
 }
 
 extern "C" {
-
-
 const MotionVector lbl_1_rodata_4A4 = {{0.0f, 0.0f, -2900.0f}};
 
 void AC4COwner::fn_1_AF78(EventMessage *)
@@ -148,11 +144,9 @@ void AC4COwner::fn_1_AF78(EventMessage *)
     movement = &AC4COwner::fn_1_B140;
     this->updateCallback = movement;
 }
-
 }
 
 extern "C" {
-
 /* Position and offset vectors separated by an unknown interval. */
 typedef struct Position {
     HuVecF position;
@@ -175,13 +169,6 @@ s32 fn_1_367CC(s32 *player);
 void AC4COwner::fn_1_B050()
 {
 }
-
-}
-
-extern "C" {
-
-extern void resetAttribute__5ModelFUl(void *, u32);
-
 }
 
 void AC4COwner::fn_1_B054()
@@ -213,13 +200,11 @@ void AC4COwner::fn_1_B054()
     }
 }
 extern "C" {
-
 extern void __msl_assertion_failed(const char *expression, const char *file, int line);
 
 const s32 lbl_1_rodata_4C8[3] = {40, 53, 58};
 
 const MotionVector lbl_1_rodata_4D4 = {{0.0f, 0.0f, -2900.0f}};
-
 }
 
 void AC4COwner::fn_1_B140()

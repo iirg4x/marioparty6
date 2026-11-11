@@ -14,7 +14,7 @@ BOOL fn_80086DD0(MGACTOR *actorP, u32 *code);
 void fn_80087158(MGPLAYER *playerP, u16 attr);
 }
 #include "REL/framework/linknode.h"
-#include "REL/m652DLL/framework/range.h"
+#include "REL/framework/range.h"
 
 /* Shared event, timer, and player interfaces. */
 

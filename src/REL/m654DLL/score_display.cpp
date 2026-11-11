@@ -154,11 +154,9 @@ SpriteManager::SpriteManager()
 
 SpriteManager::~SpriteManager() {}
 
-static inline SpriteManager *Existing6EA8() { return MinigameSingleton<SpriteManager>::self; }
-
 GameObject *fn_1_6EA8(int index, int character, int side)
 {
-    if (Existing6EA8() == 0) new SpriteManager;
+    if (MinigameSingleton<SpriteManager>::current() == 0) new SpriteManager;
     float x = side < 0 ? 80.0f : 496.0f;
     ScoreDisplaySlot *slot = &MinigameSingleton<SpriteManager>::getChecked().owners[index];
     *slot = new DisplayProviderDP(character, (int)x, 64);

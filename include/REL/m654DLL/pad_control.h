@@ -3,7 +3,7 @@
 
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
-#include "REL/m654DLL/framework/range.h"
+#include "REL/framework/range.h"
 
 struct MgPlayer_s;
 

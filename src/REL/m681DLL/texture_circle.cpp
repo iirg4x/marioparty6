@@ -10,11 +10,6 @@ extern "C" {
 #include "REL/framework/world_units.h"
 
 extern "C" {
-
-extern "C" { void *__nw__FUl(unsigned long); }
-
-extern void __ct__10RenderNodeFi(void *object, s32 type);
-
 extern void fn_1_BDC(void *sequence,
                      unsigned long count,
                      const signed char *value);
@@ -23,7 +18,7 @@ signed char lbl_1_data_0 = -1;
 
 extern const unsigned char lbl_1_data_4[];
 
-TextureNode0::TextureNode0(const PositionVector *initialPosition, f32 initialScale)
+TextureNode0::TextureNode0(const Vec *initialPosition, f32 initialScale)
     : RenderObject(1), position(*initialPosition), scale(initialScale), vertexCount(0x20),
       textureBuffer(GXGetTexBufferSize(4, 4, GX_TF_Z24X8, GX_FALSE, GX_FALSE), lbl_1_data_0)
 {
@@ -33,11 +28,9 @@ TextureNode0::TextureNode0(const PositionVector *initialPosition, f32 initialSca
     GXInitTexObjLOD(&textureObject, GX_NEAR, GX_NEAR,
                     0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
 }
-
 }
 
 extern "C" {
-
 typedef struct TevColorStorage {
     GXColor value;
 } TevColorStorage;
@@ -53,7 +46,6 @@ extern const GXVtxAttrFmtList lbl_1_rodata_2C[] = {
     {GX_VA_TEX0, GX_TEX_ST, GX_F32, 0},
     {GX_VA_NULL, GX_POS_XY, GX_U8, 0},
 };
-
 }
 
 static inline void configureTevStage488(GXTevStageID stage,
@@ -76,7 +68,6 @@ static inline void configureTevStage488(GXTevStageID stage,
 }
 
 extern "C" {
-
 TextureNode0::~TextureNode0()
 {
 }
@@ -96,9 +87,9 @@ void TextureNode0::draw(Mtx *matrix)
     if (!(this->scale <= 0.0f)) {
         scale = this->scale;
         PSMTXScale(transform, scale, scale, scale);
-        translationZ = this->position.value.z;
-        translationY = this->position.value.y;
-        translationX = this->position.value.x;
+        translationZ = this->position.z;
+        translationY = this->position.y;
+        translationX = this->position.x;
         PSMTXTransApply(transform, transform, translationX, translationY,
                         translationZ);
         PSMTXConcat(*matrix, transform, transform);
@@ -221,7 +212,6 @@ void TextureNode0::fn_1_944()
         GXWGFifo.u16 = 0x2040;
     }
 }
-
 }
 
 class ReleasedModel : public Model {
@@ -251,10 +241,7 @@ extern "C" { extern const unsigned char lbl_1_data_4[]; }
 
 extern "C" { void fn_1_14BCC(void *object, short releaseMode); }
 
-extern "C" { void __dl__FPv(void *object); }
-
 extern "C" {
-
 typedef struct Position {
     Vec position;
     unsigned char unk_0C[12]; /* No code names this field. */
@@ -268,26 +255,17 @@ extern float lbl_1_bss_1BC;
 extern s8 lbl_1_data_2758;
 
 s32 fn_1_367CC(s32 *player);
-
 }
 
 extern "C" {
-
-}
-
-extern "C" {
-
 extern s32 fn_1_2140(s32 value);
 
 extern s32 lbl_1_bss_50;
 
 extern f32 lbl_1_bss_54;
-
 }
 
 extern "C" {
-
 s32 lbl_1_bss_0 = minutesToFrames(60L);
 f32 lbl_1_bss_4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
-
 }

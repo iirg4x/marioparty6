@@ -7,6 +7,7 @@ extern "C" {
 #include "game/hu3d.h"
 #include "game/data.h"
 }
+
 #include "REL/framework/model.h"
 #include "REL/framework/singleton.h"
 #include "REL/framework/list_object.h"
@@ -17,22 +18,21 @@ extern "C" {
 #include "humath.h"
 #include "REL/m648DLL/kuribo.h"
 #include "REL/framework/frame_time_inline.h"
+
 extern "C" {
-extern void hideObject__5ModelFPc(void *motionId, char *name);
-extern void *__nw__FUl(s32);
-}
-extern "C" {
-extern void __ct__4NodeFv(void *object);
 Vec lbl_1_bss_D4[0x21];
 #include "game/gamework.h"
 }
+
 static const int NUMBEROF_PMOTION = 3;
+
 /* The framework version this game was built with converts seconds to frames in line (the random
    waits below). Its three phase durations open this file's .bss (0xC8), ahead of the walkers'
    shadow circle and their list head; the head's destructor ends the file, after the static
    initialiser. */
 u32 RandomUnsigned();
 float RandomFloat();
+
 /* Removes the walkers when their manager shuts down. */
 
 extern "C" { void fn_1_653C(); }
@@ -69,7 +69,7 @@ KuriboMotionOwner::KuriboMotionOwner() : model(DATANUM(0x6b0000, 9)), motion(DAT
 
     currentModel = motion;
     for (s32 spriteIndex = 0; spriteIndex < 0x10; spriteIndex++) {
-        hideObject__5ModelFPc(&motion, objectNames[spriteIndex]);
+        motion.hideObject(objectNames[spriteIndex]);
         new Kuribo(model, spriteIndex);
     }
 }
@@ -174,10 +174,6 @@ void fn_1_6660(Kuribo *object)
     object->updateCount++;
 }
 
-extern "C" { void setRotation__5ModelFP3Vec(void *object, Vec *rotation); }
-
-extern "C" { void setPosition__5ModelFP3Vec(void *object, void *position); }
-
 void fn_1_66AC(Kuribo *object)
 {
     KuriboMotionOwner::getChecked().fn_1_61D4(&object->position, object->objectIndex);
@@ -187,8 +183,8 @@ void fn_1_66AC(Kuribo *object)
     rotation.x = 0.0f;
     rotation.y = (f32)-angle;
     rotation.z = 0.0f;
-    setRotation__5ModelFP3Vec(&object->model, &rotation);
-    setPosition__5ModelFP3Vec(&object->model, &object->position);
+    object->model.setRotation(&rotation);
+    object->model.setPosition(&object->position);
 }
 
 void Kuribo::fn_1_67D4(s32 motionId, u8 queued)

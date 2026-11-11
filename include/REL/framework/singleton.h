@@ -18,7 +18,7 @@
 // pointer of its own.
 //
 // getChecked() asserts that the object exists: callers may run before it is constructed or after
-// it is deleted. getUnchecked() is for frame callbacks, which run only while it exists. Only one
+// it is deleted. current() returns the pointer unchecked, zero when no object exists. Only one
 // object of a class may exist at a time; constructing a second one while the first is alive
 // asserts.
 template <class Game> class MinigameSingleton {
@@ -39,9 +39,9 @@ public:
         return *self;
     }
 
-    static Game &getUnchecked()
+    static Game *current()
     {
-        return *self;
+        return self;
     }
 
     // During construction, require that no other object is current, then select this one.

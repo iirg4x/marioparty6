@@ -2,12 +2,12 @@
 #define M652DLL_CAMERA_ARC_MOTION_H
 
 #include "dolphin/mtx.h"
-#include "REL/m652DLL/framework/range.h"
+#include "REL/framework/range.h"
 
 class CameraArcMotion {
 public:
     u16 cameraBit;
-    Range angle;
+    Range<float> angle;
     f32 horizontalMotion;
     f32 forwardMotion;
     u32 flags_primary;
