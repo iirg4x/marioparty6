@@ -6,11 +6,117 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m639DLL/charger.cpp:
+	.text       start:0x00000000 end:0x000006C0
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x00000020
+	.data       start:0x00000000 end:0x00000090
+	.bss        start:0x00000000 end:0x00000018
+
+REL/m639DLL/control.cpp:
+	.text       start:0x000006C0 end:0x00000AB8
+	.rodata     start:0x00000020 end:0x00000070
+	.data       start:0x00000090 end:0x000000D0
+
+REL/m639DLL/game_master.cpp:
+	.text       start:0x00000AB8 end:0x00001384
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x00000070 end:0x00000098
+	.data       start:0x000000D0 end:0x00000138
+	.bss        start:0x00000018 end:0x00000048
+
+REL/m639DLL/line_object.cpp:
+	.text       start:0x00001384 end:0x00002B74
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000098 end:0x00000140
+	.data       start:0x00000138 end:0x00000168
+	.bss        start:0x00000048 end:0x00000058
+
+REL/m639DLL/mode_selection.cpp:
+	.text       start:0x00002B74 end:0x00002F20
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000140 end:0x00000158
+	.data       start:0x00000168 end:0x00000188
+	.bss        start:0x00000058 end:0x00000068
+
+REL/m639DLL/camera_owner.cpp:
+	.text       start:0x00002F20 end:0x000038CC
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x00000158 end:0x00000200
+	.data       start:0x00000188 end:0x00000210
+	.bss        start:0x00000068 end:0x00000078
+
+REL/m639DLL/participant_owner.cpp:
+	.text       start:0x000038CC end:0x00005640
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x00000200 end:0x000002C8
+	.data       start:0x00000210 end:0x00000280
+	.bss        start:0x00000078 end:0x00000088
+
+REL/m639DLL/man_map.cpp:
+	.text       start:0x00005640 end:0x00005C80
+	.ctors      start:0x00000018 end:0x0000001C
+	.rodata     start:0x000002C8 end:0x000002D0
+	.data       start:0x00000280 end:0x000002E0
+	.bss        start:0x00000088 end:0x00000098
+
+REL/m639DLL/player.cpp:
+	.text       start:0x00005C80 end:0x0000BD9C
+	.ctors      start:0x0000001C end:0x00000020
+	.rodata     start:0x000002D0 end:0x000003B8
+	.data       start:0x000002E0 end:0x00000458
+	.bss        start:0x00000098 end:0x000000B8
+
+REL/m639DLL/material_animation.cpp:
+	.text       start:0x0000BD9C end:0x0000C28C
+	.ctors      start:0x00000020 end:0x00000024
+	.rodata     start:0x000003B8 end:0x00000400
+	.data       start:0x00000458 end:0x00000488
+	.bss        start:0x000000B8 end:0x000000C8
+
+REL/m639DLL/shadow_fit.cpp:
+	.text       start:0x0000C28C end:0x0000C6FC
+	.rodata     start:0x00000400 end:0x00000420
+	.data       start:0x00000488 end:0x000004C0
+
+REL/m639DLL/resource_parameters.cpp:
+	.text       start:0x0000C6FC end:0x0000CD58
+	.rodata     start:0x00000420 end:0x00000490
+	.bss        start:0x000000C8 end:0x000000D0
+
+REL/m639DLL/toudai.cpp:
+	.text       start:0x0000CD58 end:0x0000DE1C
+	.ctors      start:0x00000024 end:0x00000028
+	.rodata     start:0x00000490 end:0x00000530
+	.data       start:0x000004C0 end:0x00000668
+	.bss        start:0x000000D0 end:0x000000E0
+
+REL/m639DLL/model_pair_owner.cpp:
+	.text       start:0x0000DE1C end:0x0000E9B0
+	.ctors      start:0x00000028 end:0x0000002C
+	.rodata     start:0x00000530 end:0x000005E0
+	.data       start:0x00000668 end:0x00000728
+	.bss        start:0x000000E0 end:0x000000F0
+
+REL/framework/sound.c:
+	.text       start:0x0000E9B0 end:0x00010D8C
+	.rodata     start:0x000005E0 end:0x00000618
+	.data       start:0x00000728 end:0x000007F8
+
 REL/framework/heap.cpp:
 	.text       start:0x00010D8C end:0x00010F0C
 	.rodata     start:0x00000618 end:0x00000650
 	.data       start:0x000007F8 end:0x00000818
 	.bss        start:0x000000F0 end:0x000000F8
+
+REL/m639DLL/global_destructor_chain.c:
+	.text       start:0x00010F0C end:0x00010F94
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x000000F8 end:0x00000100
+
+REL/m639DLL/ptmf.c:
+	.text       start:0x00010F94 end:0x000110DC
+	.rodata     start:0x00000650 end:0x00000660
 
 REL/framework/new.cpp:
 	.text       start:0x000110DC end:0x000112A4
@@ -64,9 +170,21 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000960 end:0x000009A0
 	.data       start:0x000016D0 end:0x00001758
 
+REL/framework/memory_manager.cpp:
+	.text       start:0x0001D10C end:0x0001D1F0
+
+REL/framework/free.cpp:
+	.text       start:0x0001D1F0 end:0x0001D4B4
+	.data       start:0x00001758 end:0x00001778
+
 REL/framework/linknode.cpp:
 	.text       start:0x0001D4B4 end:0x0001DE90
 	.rodata     start:0x000009A0 end:0x000009E0
+
+REL/framework/list_object.cpp:
+	.text       start:0x0001DE90 end:0x0001E1AC
+	.ctors      start:0x0000002C end:0x00000030
+	.bss        start:0x00000108 end:0x00000120
 
 REL/framework/minigame_core.cpp:
 	.text       start:0x0001E1AC end:0x0001ED28
@@ -75,15 +193,33 @@ REL/framework/minigame_core.cpp:
 	.data       start:0x00001778 end:0x000017B0
 	.bss        start:0x00000120 end:0x00000130
 
+REL/framework/model.cpp:
+	.text       start:0x0001ED28 end:0x000201B8
+	.rodata     start:0x00000A38 end:0x00000A40
+	.data       start:0x000017B0 end:0x000017D0
+	.bss        start:0x00000130 end:0x00000138
+
 REL/framework/mt19937.cpp:
 	.text       start:0x000201B8 end:0x000211B8
 	.rodata     start:0x00000A40 end:0x00000AB0
+
+REL/framework/p_chara.cpp:
+	.text       start:0x000211B8 end:0x00021278
+
+REL/framework/p_info.cpp:
+	.text       start:0x00021278 end:0x000226E8
+	.rodata     start:0x00000AB0 end:0x00000AC8
+	.data       start:0x000017D0 end:0x00001858
 
 REL/framework/random.cpp:
 	.text       start:0x000226E8 end:0x00022878
 	.ctors      start:0x00000034 end:0x00000038
 	.rodata     start:0x00000AC8 end:0x00000B08
 	.bss        start:0x00000138 end:0x00000B00
+
+REL/m639DLL/runtime.c:
+	.text       start:0x00022878 end:0x000232BC
+	.rodata     start:0x00000B08 end:0x00000B20
 
 REL/framework/startup.cpp:
 	.text       start:0x000232BC end:0x00023360
