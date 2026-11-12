@@ -6,11 +6,104 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m655DLL/screen_sprite_work.cpp:
+	.text       start:0x00000000 end:0x00002148
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x00000118
+	.data       start:0x00000000 end:0x00000060
+	.bss        start:0x00000000 end:0x00000018
+
+REL/m655DLL/motion_timing.cpp:
+	.text       start:0x00002148 end:0x00002484
+	.rodata     start:0x00000118 end:0x00000128
+	.data       start:0x00000060 end:0x000000A0
+
+REL/m655DLL/sequence.cpp:
+	.text       start:0x00002484 end:0x00002CB8
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x00000128 end:0x00000158
+	.data       start:0x000000A0 end:0x000000E0
+	.bss        start:0x00000018 end:0x00000050
+
+REL/m655DLL/goal.cpp:
+	.text       start:0x00002CB8 end:0x000039C4
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000158 end:0x00000178
+	.data       start:0x000000E0 end:0x000001B8
+	.bss        start:0x00000050 end:0x00000060
+
+REL/m655DLL/heiho.cpp:
+	.text       start:0x000039C4 end:0x0000585C
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000178 end:0x00000238
+	.data       start:0x000001B8 end:0x00000308
+	.bss        start:0x00000060 end:0x00000070
+
+REL/m655DLL/icon.cpp:
+	.text       start:0x0000585C end:0x000064DC
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x00000238 end:0x00000328
+	.data       start:0x00000308 end:0x00000378
+	.bss        start:0x00000070 end:0x00000078
+
+REL/m655DLL/board_view_setup.cpp:
+	.text       start:0x000064DC end:0x000065BC
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x00000328 end:0x00000340
+	.bss        start:0x00000078 end:0x00000088
+
+REL/m655DLL/camera.cpp:
+	.text       start:0x000065BC end:0x00007458
+	.ctors      start:0x00000018 end:0x0000001C
+	.rodata     start:0x00000340 end:0x00000420
+	.data       start:0x00000378 end:0x00000430
+	.bss        start:0x00000088 end:0x00000098
+
+REL/m655DLL/man_map.cpp:
+	.text       start:0x00007458 end:0x00007798
+	.ctors      start:0x0000001C end:0x00000020
+	.rodata     start:0x00000420 end:0x00000458
+	.data       start:0x00000430 end:0x00000458
+	.bss        start:0x00000098 end:0x000000A0
+
+REL/m655DLL/player.cpp:
+	.text       start:0x00007798 end:0x0000ACC8
+	.ctors      start:0x00000020 end:0x00000024
+	.rodata     start:0x00000458 end:0x000005A8
+	.data       start:0x00000458 end:0x00000650
+	.bss        start:0x000000A0 end:0x000000E0
+
+REL/m655DLL/rope.cpp:
+	.text       start:0x0000ACC8 end:0x0000D954
+	.ctors      start:0x00000024 end:0x00000028
+	.rodata     start:0x000005A8 end:0x000006A0
+	.data       start:0x00000650 end:0x00000708
+	.bss        start:0x000000E0 end:0x000000F8
+
+REL/framework/player_table_1vs1.cpp:
+	.text       start:0x0000D954 end:0x0000DA18
+	.rodata     start:0x000006A0 end:0x000006B0
+	.data       start:0x00000708 end:0x00000738
+
+REL/framework/sound.c:
+	.text       start:0x0000DA18 end:0x0000FDF4
+	.rodata     start:0x000006B0 end:0x000006D8
+	.data       start:0x00000738 end:0x00000808
+
 REL/framework/heap.cpp:
 	.text       start:0x0000FDF4 end:0x0000FF74
 	.rodata     start:0x000006D8 end:0x00000710
 	.data       start:0x00000808 end:0x00000828
 	.bss        start:0x000000F8 end:0x00000100
+
+REL/m655DLL/global_object.cpp:
+	.text       start:0x0000FF74 end:0x0000FFFC
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x00000100 end:0x00000108
+
+REL/m655DLL/ptmf.c:
+	.text       start:0x0000FFFC end:0x00010144
+	.rodata     start:0x00000710 end:0x00000720
 
 REL/framework/new.cpp:
 	.text       start:0x00010144 end:0x0001030C
@@ -29,6 +122,12 @@ REL/framework/camera_ut0.cpp:
 REL/framework/camera_ut1.cpp:
 	.text       start:0x00012504 end:0x00012888
 	.rodata     start:0x00000828 end:0x00000870
+
+REL/framework/category_sphere.cpp:
+	.text       start:0x00012888 end:0x00012DC4
+	.rodata     start:0x00000870 end:0x00000878
+	.data       start:0x000008A8 end:0x000008E0
+	.bss        start:0x00000108 end:0x00000110
 
 REL/framework/chara.cpp:
 	.text       start:0x00012DC4 end:0x00012F58
@@ -69,9 +168,21 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000A60 end:0x00000AA0
 	.data       start:0x00001750 end:0x000017D8
 
+REL/framework/memory_manager.cpp:
+	.text       start:0x0001D170 end:0x0001D254
+
+REL/framework/free.cpp:
+	.text       start:0x0001D254 end:0x0001D518
+	.data       start:0x000017D8 end:0x000017F8
+
 REL/framework/linknode.cpp:
 	.text       start:0x0001D518 end:0x0001DEF4
 	.rodata     start:0x00000AA0 end:0x00000AE0
+
+REL/framework/list_object.cpp:
+	.text       start:0x0001DEF4 end:0x0001E210
+	.ctors      start:0x00000028 end:0x0000002C
+	.bss        start:0x00000118 end:0x00000130
 
 REL/framework/minigame_core.cpp:
 	.text       start:0x0001E210 end:0x0001ED8C
@@ -80,15 +191,37 @@ REL/framework/minigame_core.cpp:
 	.data       start:0x000017F8 end:0x00001830
 	.bss        start:0x00000130 end:0x00000140
 
+REL/framework/model.cpp:
+	.text       start:0x0001ED8C end:0x0002021C
+	.rodata     start:0x00000B38 end:0x00000B40
+	.data       start:0x00001830 end:0x00001850
+	.bss        start:0x00000140 end:0x00000148
+
+REL/framework/model_motion.cpp:
+	.text       start:0x0002021C end:0x00020FF0
+	.data       start:0x00001850 end:0x000018D0
+
 REL/framework/mt19937.cpp:
 	.text       start:0x00020FF0 end:0x00021FF0
 	.rodata     start:0x00000B40 end:0x00000BB0
+
+REL/framework/p_chara.cpp:
+	.text       start:0x00021FF0 end:0x000220B0
+
+REL/framework/p_info.cpp:
+	.text       start:0x000220B0 end:0x00023520
+	.rodata     start:0x00000BB0 end:0x00000BC8
+	.data       start:0x000018D0 end:0x00001958
 
 REL/framework/random.cpp:
 	.text       start:0x00023520 end:0x000236B0
 	.ctors      start:0x00000030 end:0x00000034
 	.rodata     start:0x00000BC8 end:0x00000C08
 	.bss        start:0x00000148 end:0x00000B10
+
+REL/m655DLL/runtime.c:
+	.text       start:0x000236B0 end:0x000240F4
+	.rodata     start:0x00000C08 end:0x00000C20
 
 REL/framework/scene_shadow.cpp:
 	.text       start:0x000240F4 end:0x00025F2C
