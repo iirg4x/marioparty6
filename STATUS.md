@@ -2,35 +2,32 @@
 
 The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-12 16:45 UTC.
+Updated 2026-11-12 22:47 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 88.30% | 95.22% |
+| Entire project | 90.49% | 95.96% |
 | Main DOL | 91.35% | 99.35% |
-| REL modules | 87.65% | 92.60% |
+| REL modules | 90.31% | 93.81% |
 
 ## REL modules
 
-**116 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
+**119 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
 
-Partial (11):
+Partial (8):
 
 | Module | Code | Data |
 | --- | ---: | ---: |
 | Granite Getaway (`m605DLL`) | 59.42% | 74.52% |
 | Cash Flow (`m623DLL`) | 51.09% | 61.83% |
-| Pitifall (`m655DLL`) | 46.59% | 65.54% |
 | Tricky Tires (`m610DLL`) | 44.62% | 71.16% |
 | Treasure Trawlers (`m611DLL`) | 40.00% | 46.46% |
 | Dark 'n Crispy (`m673DLL`) | 39.81% | 50.02% |
-| Pit Boss (`m671DLL`) | 38.26% | 53.77% |
 | Dust 'til Dawn (`m634DLL`) | 38.04% | 46.80% |
 | Surge and Destroy (`m628DLL`) | 36.52% | 65.39% |
 | Seer Terror (`m677DLL`) | 31.85% | 42.10% |
-| What Goes Up... (`m604DLL`) | 13.56% | 42.42% |
 
 Not recovered here yet (1): `mikeactdll`.
 

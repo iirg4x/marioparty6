@@ -16,6 +16,7 @@ public:
     // Moves the current value `rate` of the shorter way towards `target`; returns the new value.
     Value step(Value target, double rate);
     // The value wrapped into [minimum, maximum).
+    void add(Value change);
     Value wrap(Value value);
     Value get();
     Range(Value from, Value to, Value initial);
@@ -26,6 +27,11 @@ template<class Value> void Range<Value>::set(Value value)
     current = wrap(value);
 }
 
+template<class Value> void Range<Value>::add(Value change)
+{
+    current = wrap(current + change);
+}
+
 template<class Value> Value Range<Value>::distanceTo(Value value)
 {
     return distance(current, value);
@@ -33,8 +39,7 @@ template<class Value> Value Range<Value>::distanceTo(Value value)
 
 template<class Value> Value Range<Value>::step(Value target, double rate)
 {
-    Value progress = distance(current, target);
-    return current = wrap(current + rate * progress);
+    return current = wrap(current + rate * distanceTo(target));
 }
 
 template<class Value> Value Range<Value>::wrap(Value value)
@@ -62,29 +67,11 @@ template<class Value> Range<Value>::Range(Value a, Value b, Value initial)
 
 template<class Value> Value Range<Value>::distance(Value first, Value second)
 {
-    Value wrappedSecond;
-    Value wrappedFirst;
     Value difference;
     Value magnitude;
     Value thresholdDistance;
 
-    if (second < minimum) {
-        wrappedSecond = maximum - (Value)fmod((double)(minimum - second), (double)period);
-    } else if (second >= maximum) {
-        wrappedSecond = minimum + (Value)fmod((double)(second - maximum), (double)period);
-    } else {
-        wrappedSecond = second;
-    }
-
-    if (first < minimum) {
-        wrappedFirst = maximum - (Value)fmod((double)(minimum - first), (double)period);
-    } else if (first >= maximum) {
-        wrappedFirst = minimum + (Value)fmod((double)(first - maximum), (double)period);
-    } else {
-        wrappedFirst = first;
-    }
-
-    difference = wrappedSecond - wrappedFirst;
+    difference = wrap(second) - wrap(first);
     if (difference < 0.0f) {
         thresholdDistance = -difference;
     } else {
