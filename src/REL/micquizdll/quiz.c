@@ -3403,11 +3403,9 @@ s32 fn_1_C458(void) {
     HUPROCESS *firstParent;
     HUPROCESS *secondParent;
     HUPROCESS *thirdParent;
-    s32 playerNo;
 
     process = 0;
-    playerNo = micQuizModeWork->currentPlayer;
-    inputPlayer = playerNo;
+    inputPlayer = MicQuizCurrentPlayerGet();
     if (HuMCMicGet() == 1) {
         for (;;) {
             lbl_1_bss_1C = 1;
@@ -3635,13 +3633,11 @@ void fn_1_CE28(s32 levelIndex, s32 column, s32 selection, s32 flags)
     f32 rotationY;
     f32 opacityAngle;
     f32 opacity;
-    s32 mode;
 
     if (selection != 8) {
         fn_1_DD68(levelIndex, column, selection);
     }
-    mode = micQuizModeWork->currentPlayer;
-    fn_1_DD10(levelIndex, column, mode);
+    fn_1_DD10(levelIndex, column, MicQuizCurrentPlayerGet());
     HuAudFXPlay(MSM_SE_MICQUIZ_PANEL_REVEAL);
 
     angle = 0.0f;
@@ -4553,20 +4549,14 @@ void fn_1_121A4(void) {
 /* Name the current player in the layout-specific round follow-up. */
 void fn_1_123A0(void) {
     if (micQuizModeWork->presenterLayout == 0) {
-        s32 playerIndex;
-
         MicQuizWinOpen(1);
-        playerIndex = micQuizModeWork->currentPlayer;
         MicQuizWinInsertMesSet(1,
-                micQuizCharaNameMes[micQuizModeWork->playerCharacter[playerIndex]], 0);
+            micQuizCharaNameMes[micQuizModeWork->playerCharacter[MicQuizCurrentPlayerGet()]], 0);
         MicQuizWinMesSet(MESSNUM(MESS_MICQUIZ, 43), 1, 1);
     } else {
-        s32 playerIndex;
-
         MicQuizWinOpen(3);
-        playerIndex = micQuizModeWork->currentPlayer;
         MicQuizWinInsertMesSet(3,
-                micQuizCharaNameMes[micQuizModeWork->playerCharacter[playerIndex]], 0);
+            micQuizCharaNameMes[micQuizModeWork->playerCharacter[MicQuizCurrentPlayerGet()]], 0);
         MicQuizWinMesSet(MESSNUM(MESS_MICQUIZ, 99), 1, 3);
     }
     MicQuizWinMesWait();

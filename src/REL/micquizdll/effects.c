@@ -11,7 +11,6 @@ GXColor lbl_1_data_E68[4] = {
     {0, 128, 255, 255},
     {64, 255, 64, 255},
 };
-char lbl_1_data_E78[] = "m569_ef2";
 
 MicquizModelRecord lbl_1_bss_5E4[240];
 MicquizModelWork lbl_1_bss_5D8;
@@ -30,7 +29,7 @@ void fn_1_31E74(HU3D_MODEL *hookModel, Mtx *parentMatrix) {
     fn_8002472C();
     model = &lbl_802C01C8[lbl_1_bss_5D8.bodyModel];
     modelData = model->hsf;
-    object = fn_80026BF4(lbl_1_bss_5D8.bodyModel, lbl_1_data_E78);
+    object = fn_80026BF4(lbl_1_bss_5D8.bodyModel, "m569_ef2");
     /* Each record supplies another transform for the shared piece geometry. */
     for (recordIndex = 0; recordIndex < 240; recordIndex += 1) {
         record = &lbl_1_bss_5E4[recordIndex];
