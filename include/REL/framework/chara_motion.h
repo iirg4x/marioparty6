@@ -36,5 +36,6 @@ void shiftCharacterMotion(MotionOwner *character, unsigned int dataNum, float bl
 void setMotionOwnerTime(MotionOwner *character, float timeFrames);
 float getMotionOwnerTransitionTime(s32 *characterNo);
 float getMotionOwnerMaximumTime(s32 *characterNo);
+bool characterMotionShiftInactive(s32 *characterNo);
 
 #endif

@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-#include "REL/framework/game_object.h"
+#include "REL/framework/game_object_man_api.h"
 #include "REL/framework/singleton.h"
 
 // The list head of one category. Objects link in through their own node, so the head holds no
@@ -51,14 +51,5 @@ public:
     void updateGroup(const GroupMap::value_type &entry);
 };
 
-// Update every group, in category order, with its hooks.
-void updateGameObjects();
-// Install a category's hook; a null hook removes it.
-void setPreUpdateHook(int category, void (*hook)());
-void setPostUpdateHook(int category, void (*hook)());
-// The number of objects in a category; zero when the category has no group.
-int countGameObjects(int category);
-// Replace the list's contents with the category's objects.
-void collectGameObjects(int category, std::vector<GameObject *> *list);
 
 #endif

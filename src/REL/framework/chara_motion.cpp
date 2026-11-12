@@ -134,9 +134,9 @@ u8 characterMotionEnded(s32 *characterNo)
 }
 
 // Animation transition queries return one when the engine has no incoming motion handle.
-u32 characterMotionShiftInactive(s32 *characterNo)
+bool characterMotionShiftInactive(s32 *characterNo)
 {
-    return (u32)fn_8005C284((s16)*characterNo) >> 31U;
+    return fn_8005C284((s16)*characterNo) < 0;
 }
 
 // Blend when the requested resource changes or the main motion reaches its endpoint.
