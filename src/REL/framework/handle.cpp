@@ -30,20 +30,7 @@ struct HandleEntry {
 };
 
 // Registers object pointers in reusable slots without owning the objects themselves.
-class HandleAllocator {
-    HandleEntry *entries; // Array whose first entry is the free-list sentinel.
-    HandleEntry *allocated; // Sentinel after the handle slots, for the allocated list.
-    unsigned long capacity; // Exclusive slot-index limit; usable indices are 1 through capacity -
-                            // 1.
-public:
-    HandleAllocator(unsigned long slotLimit);
-    ~HandleAllocator();
-    unsigned long acquire(void *object);
-    void *release(unsigned long handleValue);
-    void *lookup(unsigned long handleValue);
-    unsigned long allocatedCount() const;
-    unsigned long freeCount() const;
-};
+#include "REL/framework/handle.h"
 
 // Creates empty handle lists when the allocator is constructed, before objects register.
 HandleAllocator::HandleAllocator(unsigned long slotLimit)

@@ -6,16 +6,109 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m624DLL/attacker.cpp:
+	.text       start:0x00000000 end:0x0000107C
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x00000098
+	.data       start:0x00000000 end:0x000000D0
+	.bss        start:0x00000000 end:0x00000020
+
+REL/m624DLL/actor_route_update.cpp:
+	.text       start:0x0000107C end:0x00001C10
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x00000098 end:0x00000110
+	.data       start:0x000000D0 end:0x000002B0
+
+REL/m624DLL/actor_sequence.cpp:
+	.text       start:0x00001C10 end:0x00003630
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000110 end:0x00000190
+	.data       start:0x000002B0 end:0x00000360
+	.bss        start:0x00000020 end:0x00000028
+
+REL/m624DLL/module_lifetime.cpp:
+	.text       start:0x00003630 end:0x00003B78
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000190 end:0x000001A8
+	.data       start:0x00000360 end:0x000003A8
+	.bss        start:0x00000028 end:0x00000048
+
+REL/m624DLL/heap_capacity.cpp:
+	.rodata     start:0x000001A8 end:0x000001B0
+
+REL/m624DLL/scene_start.cpp:
+	.text       start:0x00003B78 end:0x00003C50
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x000001B0 end:0x000001C0
+	.bss        start:0x00000048 end:0x00000058
+
+REL/m624DLL/camera_transition.cpp:
+	.text       start:0x00003C50 end:0x00004840
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x000001C0 end:0x00000278
+	.data       start:0x000003A8 end:0x00000428
+	.bss        start:0x00000058 end:0x00000068
+
+REL/m624DLL/man_map.cpp:
+	.text       start:0x00004840 end:0x000057B8
+	.ctors      start:0x00000018 end:0x0000001C
+	.rodata     start:0x00000278 end:0x000002E0
+	.data       start:0x00000428 end:0x000006B0
+	.bss        start:0x00000068 end:0x00000070
+
+REL/m624DLL/node_callbacks.cpp:
+	.text       start:0x000057B8 end:0x000060B8
+	.ctors      start:0x0000001C end:0x00000020
+	.data       start:0x000006B0 end:0x000006F8
+	.bss        start:0x00000070 end:0x00000088
+
+REL/m624DLL/player.cpp:
+	.text       start:0x000060B8 end:0x00007628
+	.ctors      start:0x00000020 end:0x00000024
+	.rodata     start:0x000002E0 end:0x00000320
+	.data       start:0x000006F8 end:0x000007E0
+	.bss        start:0x00000088 end:0x000000B0
+
+REL/m624DLL/player_runner.cpp:
+	.text       start:0x00007628 end:0x00009FF8
+	.ctors      start:0x00000024 end:0x00000028
+	.rodata     start:0x00000320 end:0x00000448
+	.data       start:0x000007E0 end:0x000008D8
+	.bss        start:0x000000B0 end:0x000000C8
+
+REL/framework/player_table_1vs1.cpp:
+	.text       start:0x00009FF8 end:0x0000A0BC
+	.rodata     start:0x00000448 end:0x00000458
+	.data       start:0x000008D8 end:0x00000908
+
+REL/framework/sound.c:
+	.text       start:0x0000A0BC end:0x0000C498
+	.rodata     start:0x00000458 end:0x00000480
+	.data       start:0x00000908 end:0x000009D8
+
 REL/framework/heap.cpp:
 	.text       start:0x0000C498 end:0x0000C618
 	.rodata     start:0x00000480 end:0x000004B8
 	.data       start:0x000009D8 end:0x000009F8
 	.bss        start:0x000000C8 end:0x000000D0
 
+REL/m624DLL/global_object.cpp:
+	.text       start:0x0000C618 end:0x0000C6A0
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x000000D0 end:0x000000D8
+
+REL/m624DLL/ptmf.c:
+	.text       start:0x0000C6A0 end:0x0000C7E8
+	.rodata     start:0x000004B8 end:0x000004C8
+
 REL/framework/new.cpp:
 	.text       start:0x0000C7E8 end:0x0000C9B0
 	.rodata     start:0x000004C8 end:0x00000500
 	.data       start:0x000009F8 end:0x00000A20
+
+REL/m624DLL/pad_control.cpp:
+	.text       start:0x0000C9B0 end:0x0000CFA4
+	.rodata     start:0x00000500 end:0x00000558
 
 REL/framework/camera.cpp:
 	.text       start:0x0000CFA4 end:0x0000D7B0
@@ -29,6 +122,12 @@ REL/framework/camera_ut0.cpp:
 REL/framework/camera_ut1.cpp:
 	.text       start:0x0000EBA8 end:0x0000EF2C
 	.rodata     start:0x00000628 end:0x00000670
+
+REL/framework/category_sphere.cpp:
+	.text       start:0x0000EF2C end:0x0000F468
+	.rodata     start:0x00000670 end:0x00000678
+	.data       start:0x00000A78 end:0x00000AB0
+	.bss        start:0x000000D8 end:0x000000E0
 
 REL/framework/debug.cpp:
 	.text       start:0x0000F468 end:0x0000F6B0
@@ -56,9 +155,21 @@ REL/framework/handle.cpp:
 	.rodata     start:0x000007B0 end:0x000007F0
 	.data       start:0x00000C50 end:0x00000C70
 
+REL/framework/memory_manager.cpp:
+	.text       start:0x00017D9C end:0x00017E80
+
+REL/framework/free.cpp:
+	.text       start:0x00017E80 end:0x00018144
+	.data       start:0x00000C70 end:0x00000C90
+
 REL/framework/linknode.cpp:
 	.text       start:0x00018144 end:0x00018B20
 	.rodata     start:0x000007F0 end:0x00000830
+
+REL/framework/list_object.cpp:
+	.text       start:0x00018B20 end:0x00018E3C
+	.ctors      start:0x00000028 end:0x0000002C
+	.bss        start:0x000000F0 end:0x00000108
 
 REL/framework/minigame_core.cpp:
 	.text       start:0x00018E3C end:0x000199B8
@@ -66,6 +177,12 @@ REL/framework/minigame_core.cpp:
 	.rodata     start:0x00000830 end:0x00000888
 	.data       start:0x00000C90 end:0x00000CC8
 	.bss        start:0x00000108 end:0x00000118
+
+REL/framework/model.cpp:
+	.text       start:0x000199B8 end:0x0001AE48
+	.rodata     start:0x00000888 end:0x00000890
+	.data       start:0x00000CC8 end:0x00000CE8
+	.bss        start:0x00000118 end:0x00000120
 
 REL/framework/mt19937.cpp:
 	.text       start:0x0001AE48 end:0x0001BE48
@@ -76,6 +193,10 @@ REL/framework/random.cpp:
 	.ctors      start:0x00000030 end:0x00000034
 	.rodata     start:0x00000900 end:0x00000940
 	.bss        start:0x00000120 end:0x00000AE8
+
+REL/m624DLL/runtime.c:
+	.text       start:0x0001BFD8 end:0x0001CA1C
+	.rodata     start:0x00000940 end:0x00000958
 
 REL/framework/scene_shadow.cpp:
 	.text       start:0x0001CA1C end:0x0001EA94
