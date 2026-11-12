@@ -2178,20 +2178,14 @@ s32 MicQuizPlayerActiveCheck(s32 playerNo) {
 
 /* Return the remaining answer time as a fraction of the selected question allowance. */
 f32 MicQuizTimeLeftGet(void) {
-    u8 nextIndex;
-    u8 previousIndex;
-    u8 currentIndex;
     s32 selectedIndex;
 
     if (MicQuizQuestionEventGet() == 2) {
-        nextIndex = micQuizModeWork->questionLevel;
-        selectedIndex = nextIndex + 1;
+        selectedIndex = MicQuizQuestionLevelGet() + 1;
     } else if (MicQuizQuestionEventGet() == 5) {
-        previousIndex = micQuizModeWork->questionLevel;
-        selectedIndex = previousIndex - 1;
+        selectedIndex = MicQuizQuestionLevelGet() - 1;
     } else {
-        currentIndex = micQuizModeWork->questionLevel;
-        selectedIndex = currentIndex;
+        selectedIndex = MicQuizQuestionLevelGet();
     }
     return ((f32)micQuizCountdownValue
             - ((f32)micQuizCountdownFrame / (f32)micQuizCountdownStepFrames)) /
@@ -3872,36 +3866,18 @@ void MicQuizTempMes(void) {
 /* Initialize the answer countdown from the selected level and question event. */
 void MicQuizCountdownInit(void)
 {
-    u8 currentIndex;
-    s32 firstMode;
-    u8 nextIndex;
-    s32 nextMode;
-    u8 previousIndex;
-    u8 fallbackIndex;
-    s32 timingMode;
-
     micQuizCountdownState = 1;
-    currentIndex = micQuizModeWork->questionLevel;
-    micQuizCountdownValue = micQuizCountdownStarts[currentIndex];
-    firstMode = micQuizModeWork->questionEvent;
-
-    if (firstMode == 2) {
-        nextIndex = micQuizModeWork->questionLevel;
-        micQuizCountdownValue = micQuizCountdownStarts[nextIndex + 1];
+    micQuizCountdownValue = micQuizCountdownStarts[MicQuizQuestionLevelGet()];
+    if (MicQuizQuestionEventGet() == 2) {
+        micQuizCountdownValue = micQuizCountdownStarts[MicQuizQuestionLevelGet() + 1];
+    } else if (MicQuizQuestionEventGet() == 5) {
+        micQuizCountdownValue = micQuizCountdownStarts[MicQuizQuestionLevelGet() - 1];
     } else {
-        nextMode = micQuizModeWork->questionEvent;
-        if (nextMode == 5) {
-            previousIndex = micQuizModeWork->questionLevel;
-            micQuizCountdownValue = micQuizCountdownStarts[previousIndex - 1];
-        } else {
-            fallbackIndex = micQuizModeWork->questionLevel;
-            micQuizCountdownValue = micQuizCountdownStarts[fallbackIndex];
-        }
+        micQuizCountdownValue = micQuizCountdownStarts[MicQuizQuestionLevelGet()];
     }
 
-    timingMode = micQuizModeWork->questionEvent;
     /* This event gives each countdown step half the usual number of frames. */
-    if (timingMode == 4) {
+    if (MicQuizQuestionEventGet() == 4) {
         micQuizCountdownStepFrames = 900 / micQuizCountdownValue;
     } else {
         micQuizCountdownStepFrames = 1800 / micQuizCountdownValue;

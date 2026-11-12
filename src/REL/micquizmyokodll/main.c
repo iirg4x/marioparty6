@@ -148,15 +148,7 @@ extern s32 lbl_1_data_424[6];
 extern s32 lbl_1_data_454[5];
 extern s32 lbl_1_data_468[5];
 extern f32 lbl_1_data_560[11];
-static inline u8 GetQuizCourse(void) ;
-
-static inline s32 GetSelectionMode(void) ;
-
-static inline s32 GetQuizPlayer(void) ;
-
-static inline void TimeDigitsSet(void) ;
-
-static inline void TimeLimitInit(void) ;/* Unknown initialized bytes at .data 0x384..0x388. */
+/* Unknown initialized bytes at .data 0x384..0x388. */
 u8 lbl_1_data_384[4] = {0xFF,0xFF,0xFF,0xFF};
 s16 lbl_1_data_388[6] = { 0x0, 0x0, 0x0, 0x0, 0x50, 0x0 };
 
@@ -465,52 +457,6 @@ void fn_1_220(OMOBJ *process) {
     fn_1_1898();
 }
 
-static inline u8 GetQuizCourse(void) {
-    return micQuizModeWork->questionLevel;
-}
-
-static inline s32 GetQuizPlayer(void) {
-    return micQuizModeWork->currentPlayer;
-}
-
-static inline s32 GetSelectionMode(void) {
-    return micQuizModeWork->questionEvent;
-}
-
-// Draws the remaining answer time as two digits (tens and ones) on the timer sprites.
-static inline void TimeDigitsSet(void) {
-    s32 time;
-    s32 tens;
-    s32 ones;
-
-    time = micQuizCountdownValue;
-    if (time >= 0) {
-        tens = time / 10;
-        ones = time - tens * 10;
-        HuSprBankSet(micQuizCountdownGroup[0], 0, tens);
-        HuSprBankSet(micQuizCountdownGroup[0], 1, ones);
-    }
-}
-
-// Sets the answer time from the question level (one level up or down for question events 2 and 5),
-// spreads 900 (event 4) or 1800 frames over it per tick, keeps the countdown stopped and draws the
-// digits.
-static inline void TimeLimitInit(void) {
-    micQuizCountdownState = 1;
-    micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse()];
-    if (GetSelectionMode() == 2) {
-        micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse() + 1];
-    } else if (GetSelectionMode() == 5) {
-        micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse() - 1];
-    } else {
-        micQuizCountdownValue = micQuizCountdownStarts[GetQuizCourse()];
-    }
-    if (GetSelectionMode() == 4) micQuizCountdownStepFrames = 0x384 / micQuizCountdownValue;
-    else micQuizCountdownStepFrames = 0x708 / micQuizCountdownValue;
-    micQuizCountdownFrame = 0;
-    TimeDigitsSet();
-}
-
 // Builds the scene: full-screen camera and a small 192x164 snapshot camera, light and shadow,
 // scrolling background and stage models, the host with its nine motions, the timer, the random
 // houses and question (fn_1_1F04), the microphone context and the helper processes.
@@ -550,9 +496,9 @@ void fn_1_938(void) {
     }
     micQuizPauseCameraBit = cameraMask;
     micQuizParentProc = parentProcess;
-    TimeLimitInit();
-    MicQuizPortraitShow(GetQuizPlayer());
-    lbl_1_bss_10A.mode = GetQuizCourse();
+    MicQuizCountdownInit();
+    MicQuizPortraitShow(MicQuizCurrentPlayerGet());
+    lbl_1_bss_10A.mode = MicQuizQuestionLevelGet();
     lightId = fn_800286D0(&lbl_1_data_408, &lbl_1_data_414, &lbl_1_data_420);
     Hu3DGLightStaticSet(lightId, 1);
     Hu3DGLightInfinitytSet(lightId);
@@ -581,7 +527,7 @@ void fn_1_938(void) {
     lbl_1_bss_10A.modelIds[3] = modelId;
     modelId = fn_80025A04(fn_80008DD0(DATANUM(0xa50000, 48), 0x10000000, 2));
     lbl_1_bss_10A.modelIds[4] = modelId;
-    lbl_1_bss_F4.charNo = lbl_80265728[GetQuizPlayer()].charNo;
+    lbl_1_bss_F4.charNo = lbl_80265728[MicQuizCurrentPlayerGet()].charNo;
     modelId = fn_80057068(lbl_1_bss_F4.charNo, 8);
     fn_80026760(modelId, 0.0f, 15.0f, -350.0f);
     fn_80026808(modelId, 0.0f, 90.0f, 0.0f);
