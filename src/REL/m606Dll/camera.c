@@ -69,33 +69,7 @@
 
 #include "game/thpmain.h"
 #include "msm_se.h"
-typedef struct MgTimer_s {
-    s32 mode;
-    s32 prevMode;
-    s32 type;
-    s32 offType;
-    BOOL dispOnF;
-    BOOL stopF;
-    s32 scaleDir;
-    BOOL boxDispF;
-    u8 flashFlag;
-    s32 maxTime;
-    s32 endTime;
-    s32 speed;
-    s32 time;
-    s32 recordTime;
-    s32 fadeOutTime;
-    HuVec2f pos;
-    s16 timeUnit;
-    GAMEMESID gameMesId;
-    HUSPR_GROUPID boxId;
-    HUSPRID espId[15];
-    float digitScale;
-    HUPROCESS *proc;
-    u8 digitR;
-    u8 digitG;
-    u8 digitB;
-} MGTIMER;
+#include "game/mg/timer_types.h"
 
 MGTIMER* MgTimerCreate(int type);
 void MgTimerKill(MGTIMER* timer);
@@ -910,15 +884,15 @@ extern GXColor colorD0;
 
 
 /* Updates player movement and the attached stage effects. */
-static inline void applyModel(M606PlayerWork*work, OMOBJ *obj, Point3d playerPosition, MGPLAYER*player)
+static inline void applyModel(M606PlayerWork*work, OMOBJ *obj, const Point3d *playerPosition, MGPLAYER*player)
 {
     HU3D_MODEL *model;
 
     if (work->playerIndex <= 0 || work->state != 3) {
         model = &lbl_802C01C8[*obj->mdlId];
-        obj->trans.x = playerPosition.x;
-        obj->trans.y = playerPosition.y;
-        obj->trans.z = playerPosition.z;
+        obj->trans.x = playerPosition->x;
+        obj->trans.y = playerPosition->y;
+        obj->trans.z = playerPosition->z;
         obj->rot.y = player->actor->rotY;
         obj->scale.x = model->scale.x;
         obj->scale.y = model->scale.y;
@@ -935,7 +909,6 @@ void fn_1_35B8(OMOBJ *obj)
     Point3d playerPosition;
     s32 angleStep;
     void *hook;
-    HU3D_MODEL *model;
     s32 motionIndex;
     M606MotionEntry *motion;
     /* These initialized locals are never read; their purpose is unknown. */
@@ -981,16 +954,7 @@ void fn_1_35B8(OMOBJ *obj)
     }
 
     fn_80086BC8(player->actor, &playerPosition);
-    if (work->playerIndex <= 0 || work->state != 3) {
-        model = &lbl_802C01C8[*obj->mdlId];
-        obj->trans.x = playerPosition.x;
-        obj->trans.y = playerPosition.y;
-        obj->trans.z = playerPosition.z;
-        obj->rot.y = player->actor->rotY;
-        obj->scale.x = model->scale.x;
-        obj->scale.y = model->scale.y;
-        obj->scale.z = model->scale.z;
-    }
+    applyModel(work, obj, &playerPosition, player);
     for (motionIndex = 0; motionIndex < 19; motionIndex++) {
         motion = &lbl_1_bss_A168[work->playerIndex][motionIndex];
         if ((motion->startX - 100.0f < playerPosition.x) &&
