@@ -40,7 +40,7 @@ bool spheresOverlap(Sphere *first, Sphere *second)
 // Used for minigame collision response to move overlapping centers apart.
 // firstShare divides the correction between the spheres; correctionScale scales that correction.
 // Returns 0 without moving separated or just-touching spheres, and 1 after applying a correction.
-s32 resolveSphereContact(Sphere *first, Sphere *second, f32 firstShare, f32 correctionScale)
+bool resolveSphereContact(Sphere *first, Sphere *second, f32 firstShare, f32 correctionScale)
 {
     Point3d separation;
     Vector3 correction;

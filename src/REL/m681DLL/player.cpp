@@ -31,9 +31,9 @@ u32 lbl_1_bss_A8 = secondsToFrames(3.5);
 }
 
 void *operator new(unsigned long);
-void setCharacterMotionOverlay(CharacterMotion *character, s16 modelId, unsigned int dataNum);
+void setCharacterMotionOverlay(MotionOwner *character, s16 modelId, unsigned int dataNum);
 s16 fn_1_2508(s32);
-void shiftCharacterMotion(CharacterMotion *character, unsigned int dataNum, float shift, float start,
+void shiftCharacterMotion(MotionOwner *character, unsigned int dataNum, float shift, float start,
                           unsigned long attributes);
 void sendEvent(int, unsigned long, float);
 
@@ -81,8 +81,7 @@ PlayerObject::PlayerObject(s32 player, const Vec *initialState)
         this->callback = callback;
     }
     setLayer(4);
-    createCharacterMotions(&static_cast<MotionOwner &>(*this),
-                           const_cast<unsigned int *>(lbl_1_rodata_288), 9);
+    createCharacterMotions(&static_cast<MotionOwner &>(*this), lbl_1_rodata_288, 9);
     selectCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 193));
     setCharacterMotionOverlay(&static_cast<MotionOwner &>(*this), *static_cast<Model *>(this),
                               DATANUM(0x8e0000, 194));

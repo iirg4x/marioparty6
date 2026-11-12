@@ -47,7 +47,7 @@ const char *characterMotionNames[] = {
     "c000m1_678", "c000m1_679", "c000m1_680", "c000m1_681", "c000m1_682", "c000m1_eye",
 };
 
-HU3D_MOTIONID getCharacterMotion(CharacterMotion *, unsigned int);
+HU3D_MOTIONID getCharacterMotion(MotionOwner *, unsigned int);
 template <class Function>
 void applyMotionCleanup(MotionRecord *first, MotionRecord *last, Function cleanup);
 
@@ -70,7 +70,7 @@ MotionOwner::~MotionOwner()
 
 // Character setup and lazy lookup load one motion and remember its returned engine handle.
 // The motion and shared effect directories are closed after each load.
-void createCharacterMotion(CharacterMotion *character, unsigned int dataNum)
+void createCharacterMotion(MotionOwner *character, unsigned int dataNum)
 {
     s16 motionId = fn_8005B0B8((s16)character->charNo, dataNum);
     character->motions.push_back(std::make_pair(dataNum, s16(motionId)));
@@ -78,7 +78,7 @@ void createCharacterMotion(CharacterMotion *character, unsigned int dataNum)
 }
 
 // Motion preload requests load every resource in the supplied array into this character's list.
-void createCharacterMotions(CharacterMotion *character, const unsigned int *dataNums, s32 count)
+void createCharacterMotions(MotionOwner *character, const unsigned int *dataNums, s32 count)
 {
     const unsigned int *last = dataNums + count;
     for (const unsigned int *cursor = dataNums; cursor != last; ++cursor) {
@@ -91,7 +91,7 @@ void createCharacterMotions(CharacterMotion *character, const unsigned int *data
 
 // Select the resource when it changes or the main motion reaches its endpoint.
 // During a blend, the endpoint test still uses the main motion, not the incoming motion.
-void selectCharacterMotion(CharacterMotion *character, unsigned int dataNum)
+void selectCharacterMotion(MotionOwner *character, unsigned int dataNum)
 {
     if (dataNum != character->currentDataNum || fn_8005C240(character->charNo)) {
         fn_8005BE80(character->charNo, getCharacterMotion(character, dataNum));
@@ -100,13 +100,13 @@ void selectCharacterMotion(CharacterMotion *character, unsigned int dataNum)
 }
 
 // Motion setup adds engine motion-slot attributes, loading the requested resource if absent.
-void setCharacterMotionAttributes(CharacterMotion *character, unsigned int dataNum, u16 attributes)
+void setCharacterMotionAttributes(MotionOwner *character, unsigned int dataNum, u16 attributes)
 {
     fn_8002DC74(getCharacterMotion(character, dataNum), attributes);
 }
 
 // setCharacterMotionTime seeks the main motion in frames; the engine clamps it to its duration.
-void setMotionOwnerTime(CharacterMotion *character, float timeFrames)
+void setMotionOwnerTime(MotionOwner *character, float timeFrames)
 {
     fn_8005C16C((s16)character->charNo, timeFrames);
 }
@@ -142,7 +142,7 @@ u32 characterMotionShiftInactive(s32 *characterNo)
 // Blend when the requested resource changes or the main motion reaches its endpoint.
 // blendFrames is the blend duration; startFrame is the incoming frame, with speed reset to one.
 // Replacing an active blend promotes its incoming motion to main before starting the new blend.
-void shiftCharacterMotion(CharacterMotion *character, unsigned int dataNum,
+void shiftCharacterMotion(MotionOwner *character, unsigned int dataNum,
                           float blendFrames, float startFrame, u32 attributes)
 {
     if (dataNum != character->currentDataNum || fn_8005C240(character->charNo)) {
@@ -156,7 +156,7 @@ void shiftCharacterMotion(CharacterMotion *character, unsigned int dataNum,
 }
 
 // Overlay animation requests attach the cached or newly loaded motion at frame zero and speed one.
-void setCharacterMotionOverlay(CharacterMotion *character, HU3D_MODELID modelId,
+void setCharacterMotionOverlay(MotionOwner *character, HU3D_MODELID modelId,
                                unsigned int dataNum)
 {
     fn_8002CAA8(modelId, getCharacterMotion(character, dataNum));
@@ -170,7 +170,7 @@ bool motionRecordMatches(const MotionRecord &record, unsigned int dataNum)
 
 // Motion selection, attributes and overlays look up a cached handle, loading it if absent.
 // Failed load handles are cached too and returned on later lookups without retry.
-HU3D_MOTIONID getCharacterMotion(CharacterMotion *character, unsigned int dataNum)
+HU3D_MOTIONID getCharacterMotion(MotionOwner *character, unsigned int dataNum)
 {
     MotionRecord *record = character->motions.begin();
     MotionRecord *last = character->motions.end();

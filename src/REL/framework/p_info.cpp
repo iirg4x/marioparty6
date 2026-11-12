@@ -38,7 +38,7 @@ int PlayerInfo::characterNo()
     return lbl_80265728[playerNo].charNo;
 }
 
-s16 PlayerInfo::groupNo()
+int PlayerInfo::groupNo()
 {
     return lbl_80265728[playerNo].grpNo;
 }
