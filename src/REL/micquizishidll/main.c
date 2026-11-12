@@ -128,9 +128,6 @@ MicquizResponse *micQuizResponse;
 s32 micQuizTimeoutHandled;
 HUPROCESS *micQuizRingProc;
 
-/* Initialized word with unknown meaning. */
-u32 gap_04_00000384_data = 0xFFFFFFFF;
-
 OM_CAMERA_VIEW lbl_1_data_388 = { { 0.0f, 210.0f, 0.0f }, { -23.5f, 0.0f, 0.0f }, 6195.0f };
 u32 lbl_1_data_3A4[6][4] = { { 0xA40001, 0xA40002, 0xA40003, 0xA40004 },
         { 0xA40006, 0xA40007, 0xA40008, 0xA40009 }, { 0xA4000B, 0xA4000C, 0xA4000D,

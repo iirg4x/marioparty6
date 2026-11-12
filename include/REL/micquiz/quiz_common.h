@@ -4314,3 +4314,6 @@ void MicQuizWinSoundCallback(HUWINID windowId, u32 answerId, s16 soundIndex) {
         }
     }
 }
+
+/* The game's code never reads this field. */
+s32 lbl_1_data_384 = -1;
