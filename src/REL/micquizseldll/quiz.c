@@ -1,5 +1,6 @@
-/* Player selection, quiz flow, windows, characters and result displays for the quiz menu. */
-#include "REL/micquizseldll/module_types.h"
+/* The development selection menu of the microphone quizzes: picks a quiz, its difficulty
+ * and options, and starts the quiz module. The quiz code all five modules share is compiled
+ * in from quiz_common.h. */
 #include "game/window.h"
 #include "math.h"
 #include "game/main.h"
@@ -53,6 +54,8 @@
 #define QUIZ_MENU_OPTION_COLOR 12
 #define QUIZ_MENU_OPTION_COUNT_COLOR 3
 
+typedef void (*VoidFunc)(void);
+
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
@@ -65,9 +68,12 @@ s32 fn_1_6B8(void);
 void fn_1_8E8(void);
 void fn_1_D00(void);
 
-/* Labels and choices for the development selection menu. */
-s32 lbl_1_data_384 = -1;
-u16 lbl_1_data_388[] = {105, 103, 103, 103, 103, 103, 103, 103};
+/* Per menu entry: the quiz module it starts, its last option index (-1: no options) and its label;
+ * then each entry's option labels. */
+u16 lbl_1_data_388[] = {
+    DLL_micquizohdedll, DLL_micquizishidll, DLL_micquizishidll, DLL_micquizishidll,
+    DLL_micquizishidll, DLL_micquizishidll, DLL_micquizishidll, DLL_micquizishidll
+};
 s32 lbl_1_data_398[] = {1, 1, 1, 1, 2, -1, -1, -1};
 char *lbl_1_data_424[] = {
     "Picture Quiz", "Counting Quiz", "Memory Quiz", "Comparison Quiz",
@@ -338,9 +344,6 @@ void fn_1_8E8(void) {
         }
     }
 }
-
-#define MICQUIZ_WINDOW_PLAYER_MASK 0xFF
-#define MICQUIZ_PAUSE_PROCESS_FLAGS 0xC
 
 /* Draws menu labels and stored option values when the development menu updates. */
 void fn_1_D00(void) {

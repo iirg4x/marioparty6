@@ -148,8 +148,6 @@ extern s32 lbl_1_data_424[6];
 extern s32 lbl_1_data_454[5];
 extern s32 lbl_1_data_468[5];
 extern f32 lbl_1_data_560[11];
-/* Unknown initialized bytes at .data 0x384..0x388. */
-u8 lbl_1_data_384[4] = {0xFF,0xFF,0xFF,0xFF};
 s16 lbl_1_data_388[6] = { 0x0, 0x0, 0x0, 0x0, 0x50, 0x0 };
 
 u32 lbl_1_data_394[5][2] = {

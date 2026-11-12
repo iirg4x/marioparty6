@@ -122,9 +122,6 @@ struct MicquizCameraData {
     u32 unknown_1C[9]; /* No code names this field. */
 };
 
-/* Initialized word with unknown meaning. */
-u32 gap_04_00000384_data = 0xFFFFFFFF;
-
 s32 lbl_1_data_388[0x36] = {
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x8e0000, 0x360000, 0xc00000, 0xf30000,

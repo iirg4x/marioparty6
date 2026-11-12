@@ -425,8 +425,6 @@ void fn_1_1F938(s32 firstPlayer, s32 secondPlayer);
 void fn_1_1FC10(s32 playerIndex);
 void fn_1_1FE98(void);
 
-/* These bytes are not read by this mode; their purpose is unknown. */
-u8 lbl_1_data_384[4] = { 255, 255, 255, 255 };
 /* Character voice cues for introductions and score reactions. */
 s16 lbl_1_data_388[11] = { MSM_SE_CHARMIC_INTRO_CALL,         MSM_SE_CHARMIC_LUIGI_INTRO_CALL,
                            MSM_SE_CHARMIC_PEACH_INTRO_CALL,   MSM_SE_CHARMIC_YOSHI_INTRO_CALL,
