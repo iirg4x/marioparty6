@@ -24,7 +24,7 @@ struct Sphere {
 };
 
 bool spheresOverlap(Sphere *first, Sphere *second);
-s32 resolveSphereContact(Sphere *first, Sphere *second, f32 firstShare, f32 correctionScale);
+bool resolveSphereContact(Sphere *first, Sphere *second, f32 firstShare, f32 correctionScale);
 s32 intersectSpherePaths(f32 *contactTime, Point3d *firstStart, Sphere *first,
                          Point3d *secondStart, Sphere *second);
 
