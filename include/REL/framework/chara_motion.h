@@ -26,14 +26,14 @@ struct MotionOwner {
     float fn_1_DB48();
 };
 
-typedef MotionOwner CharacterMotion;
-
 // Names indexed by the low 16-bit motion resource number, used for a missed-preload warning.
 extern const char *characterMotionNames[];
-void createCharacterMotion(CharacterMotion *character, unsigned int dataNum);
-void createCharacterMotions(CharacterMotion *character, const unsigned int *dataNums, s32 count);
-void selectCharacterMotion(CharacterMotion *character, unsigned int dataNum);
-void setMotionOwnerTime(CharacterMotion *character, float timeFrames);
+void createCharacterMotion(MotionOwner *character, unsigned int dataNum);
+void createCharacterMotions(MotionOwner *character, const unsigned int *dataNums, s32 count);
+void selectCharacterMotion(MotionOwner *character, unsigned int dataNum);
+void shiftCharacterMotion(MotionOwner *character, unsigned int dataNum, float blendFrames, float startFrame,
+                          u32 attributes);
+void setMotionOwnerTime(MotionOwner *character, float timeFrames);
 float getMotionOwnerTransitionTime(s32 *characterNo);
 float getMotionOwnerMaximumTime(s32 *characterNo);
 

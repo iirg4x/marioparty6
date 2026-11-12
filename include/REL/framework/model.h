@@ -96,4 +96,8 @@ struct OwnedModel : Model {
 
 inline OwnedModel::~OwnedModel() {}
 
+// Set the attributes every model created afterwards receives (model.cpp's two flags).
+void enableDefaultAttributeA();
+void enableDefaultAttributesB();
+
 #endif

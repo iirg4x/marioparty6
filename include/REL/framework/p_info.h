@@ -12,7 +12,7 @@ public:
     PlayerInfo(int playerNo);
     int padNo();                    // controller number, -1 for a computer player
     int characterNo();
-    s16 groupNo();                  // team
+    int groupNo();                  // team
     bool isComputer();
     int difficulty();               // computer difficulty
     void rumble(s32 type, s32 duration);
