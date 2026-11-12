@@ -1,6 +1,8 @@
 // Registers object pointers with reusable handles and keeps free and allocated slot lists.
 static const char rcsid[] = "$Id: handle.cpp,v 1.6 2004/02/17 09:22:00 hanamasu Exp $";
 
+#include "REL/framework/handle.h"
+
 extern "C" {
 #include "REL/framework/assertion.h"
 }
@@ -27,22 +29,6 @@ struct HandleEntry {
     void *object; // Registered pointer, cleared when the slot is released.
     Handle handle; // Slot index and reuse generation.
     unsigned long count() const;
-};
-
-// Registers object pointers in reusable slots without owning the objects themselves.
-class HandleAllocator {
-    HandleEntry *entries; // Array whose first entry is the free-list sentinel.
-    HandleEntry *allocated; // Sentinel after the handle slots, for the allocated list.
-    unsigned long capacity; // Exclusive slot-index limit; usable indices are 1 through capacity -
-                            // 1.
-public:
-    HandleAllocator(unsigned long slotLimit);
-    ~HandleAllocator();
-    unsigned long acquire(void *object);
-    void *release(unsigned long handleValue);
-    void *lookup(unsigned long handleValue);
-    unsigned long allocatedCount() const;
-    unsigned long freeCount() const;
 };
 
 // Creates empty handle lists when the allocator is constructed, before objects register.
