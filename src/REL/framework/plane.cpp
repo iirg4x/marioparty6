@@ -3,14 +3,7 @@ static const char rcsid[] = "$Id: plane.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $
 
 #include <dolphin/mtx.h>
 
-// Stores a unit normal and signed offset for the plane equation.
-struct Plane {
-    Point3d normal; // Unit direction perpendicular to the plane.
-    f32 distanceFromOrigin; // Signed offset in the same units as the input points.
-
-    void setFromPoints(Point3d *firstPoint, Point3d *secondPoint, Point3d *thirdPoint);
-    void setFromNormalAndPoint(Point3d *inputNormal, Point3d *pointOnPlane);
-};
+#include "REL/framework/plane.h"
 
 // Builds the plane normal from three points, then stores the plane using the first point.
 void Plane::setFromPoints(Point3d *firstPoint, Point3d *secondPoint, Point3d *thirdPoint)
@@ -32,5 +25,5 @@ void Plane::setFromNormalAndPoint(Point3d *inputNormal, Point3d *pointOnPlane)
 
     PSVECNormalize(inputNormal, &this->normal);
     projectedDistance = PSVECDotProduct(&this->normal, pointOnPlane);
-    this->distanceFromOrigin = -projectedDistance;
+    this->distance = -projectedDistance;
 }

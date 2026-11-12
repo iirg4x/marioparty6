@@ -11,7 +11,7 @@ extern "C" {
 }
 
 #include "REL/framework/event_callback_inline.h"
-#include "REL/framework/singleton.h"
+#include "REL/framework/event_manager.h"
 #include "REL/framework/frame_time.h"
 
 static const char rcsid[] = "$Id: event.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
@@ -93,12 +93,6 @@ void CEventBroadcaster::removeListener(unsigned long listener)
         (*position).second.erase(listener);
     }
 }
-
-/* Minigame-facing lifetime owner of the shared event map, queue, and clock. */
-struct EventManager : MinigameSingleton<EventManager> {
-    EventManager();
-    ~EventManager();
-};
 
 /* Construct the shared event owner when the minigame event interface starts. */
 EventManager::EventManager()

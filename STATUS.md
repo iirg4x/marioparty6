@@ -2,26 +2,25 @@
 
 The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-12 01:52 UTC.
+Updated 2026-11-12 05:09 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 86.56% | 94.61% |
+| Entire project | 87.11% | 94.76% |
 | Main DOL | 91.35% | 99.35% |
-| REL modules | 85.54% | 91.61% |
+| REL modules | 86.21% | 91.85% |
 
 ## REL modules
 
-**113 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
+**114 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
 
-Partial (14):
+Partial (13):
 
 | Module | Code | Data |
 | --- | ---: | ---: |
 | Granite Getaway (`m605DLL`) | 59.42% | 74.52% |
-| Sumo of Doom-o (`m653DLL`) | 53.24% | 76.33% |
 | Cash Flow (`m623DLL`) | 51.09% | 61.83% |
 | Cog Jog (`m624DLL`) | 50.85% | 54.76% |
 | Pitifall (`m655DLL`) | 46.59% | 65.54% |

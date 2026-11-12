@@ -9,4 +9,7 @@ void sendEvent(const EventPacket &packet, float delay);
 void sendEvent(int channel, unsigned long value, void *context, float delay);
 void sendEvent(int channel, unsigned long value, float delay);
 
+// Delivers the queued packets whose time has come.
+void process_event_queue();
+
 #endif

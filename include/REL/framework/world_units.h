@@ -2,7 +2,7 @@
 #ifndef REL_FRAMEWORK_WORLD_UNITS_H
 #define REL_FRAMEWORK_WORLD_UNITS_H
 
-inline float cmToWorld(float centimeters)
+template <class Length> inline Length cmToWorld(Length centimeters)
 {
     return centimeters;
 }

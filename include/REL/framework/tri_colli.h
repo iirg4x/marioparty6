@@ -14,18 +14,7 @@ extern "C" {
 
 #include "REL/framework/octtree_man.h"
 #include "REL/framework/vector3.h"
-
-// A plane's unit normal and its signed offset from the origin.
-struct PlaneEquation {
-    Vector3 normal;
-    float distance;
-};
-
-// A plane built from triangle corners or from a normal and a point on it.
-struct Plane : PlaneEquation {
-    void setFromPoints(Vec *first, Vec *second, Vec *third);
-    void setFromNormalAndPoint(Vec *normal, Vec *point);
-};
+#include "REL/framework/plane.h"
 
 // The octree as collision queries reach it.
 struct CollisionTree : Octree {
