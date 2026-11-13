@@ -16,20 +16,6 @@
 
 #define BLOCK_CHECK_BROKEN(block) (((u32)((block)->next) & MEMORY_CHAIN_BROKEN_MASK) == 0)
 
-typedef struct MemoryBlock_s MEMORY_BLOCK;
-
-struct MemoryBlock_s {
-    s32 spanBytes;                 /* Block size in bytes, including this 32-byte header. */
-    u8 validityMarker;             /* Allocated marker while live; free marker after release. */
-    u8 isAllocated;                /* 1 while game data owns this block; 0 when it is reusable. */
-    MEMORY_BLOCK *previous;        /* Previous block by address in this heap's circular list. */
-    MEMORY_BLOCK *next;            /* Next block by address in this heap's circular list. */
-    u32 allocationTag;             /* Group used by numbered frees; -256 marks an unnumbered
-                                    * block. */
-    u32 callerAddress;             /* Caller return address shown by heap diagnostics. */
-    u32 dataFileId;                /* Resource data number associated with this payload, if any. */
-};
-
 static void *HuMemMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocationTag,
                                u32 callerAddress);
 static void *HuMemTailMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocationTag,

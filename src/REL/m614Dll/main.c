@@ -32,6 +32,7 @@
 #include "game/charman.h"
 
 #include "game/sprite.h"
+#include "game/sprput.h"
 
 #include "game/esprite.h"
 
@@ -2071,7 +2072,6 @@ void fn_1_91E8(OMOBJ *obj)
     obj->objFunc = fn_1_55A0;
 }
 
-
 void fn_1_9D78(OMOBJ *obj)
 {
     obj->objFunc = fn_1_656C;
@@ -2160,9 +2160,6 @@ void ObjectSetup(void)
     fn_80070788(&lbl_1_data_18);
 }
 
-
-
-
 void fn_1_A38C(s16 mode, s16 frameNo)
 {
     s32 i;
@@ -2218,8 +2215,6 @@ typedef struct {
 extern M614SpriteSlot esprite[HUSPR_MAX];
 
 extern M614AnimationSlot espanim[HUSPR_MAX];
-
-extern void HuSprTexLoad(ANIMDATA *animation, s16 image, s16 map, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
 
 void fn_1_A574(HU3D_MODEL *model, Mtx *matrix)
 {

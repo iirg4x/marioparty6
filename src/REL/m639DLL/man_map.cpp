@@ -8,6 +8,7 @@
 #include "REL/framework/world_units.h"
 // The map scene: its five models, the scene light and the events that start its motion.
 #include "REL/m639DLL/scene_owner.h"
+#include "REL/m639DLL/model_pair_owner.h"
 #include "REL/m639DLL/lighthouse_light.h"
 #include "REL/m639DLL/mode_game.h"
 #include "REL/framework/sound.h"
@@ -18,7 +19,6 @@ extern "C" {
 #include "game/data.h"
 }
 
-void fn_1_DE1C(Model *model);
 /* Lighthouse entry points are declared in lighthouse_light.h.
    The constructor registers both lights in their game-object group.
  */

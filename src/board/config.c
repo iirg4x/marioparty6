@@ -780,7 +780,6 @@ static void ConfigExec(void)
                         pauseWork.menu[cursorPos].optionIndex = 1;
                     }
                 }
-                (void)previousOptionIndex;
                 mbPausePanelAnmNoSet(
                     (s16)pauseWork.menu[cursorPos].panelId, 12,
                     pauseWork.menu[cursorPos].optionIndex);

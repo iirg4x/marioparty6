@@ -1,5 +1,4 @@
 /* Manages game sprites by reusing loaded animation data and placing sprites in one group. */
-#define _MATH_H
 #include "game/esprite.h"
 #include "game/data.h"
 #include "game/sprite.h"
@@ -10,9 +9,9 @@ typedef struct esprite_s {
 } ESPRITE;
 
 typedef struct espanim_s {
-    /* 0x00 */ unsigned int dataNumber; /* Resource number for this animation. */
-    /* 0x04 */ u16 referenceCount; /* Number of live sprites using this animation. */
-    /* 0x08 */ ANIMDATA *animation; /* Sprite animation data shared by those sprites. */
+    unsigned int dataNumber; /* Resource number for this animation. */
+    u16 referenceCount; /* Number of live sprites using this animation. */
+    ANIMDATA *animation; /* Sprite animation data shared by those sprites. */
 } ESPANIM;
 
 ESPRITE esprite[HUSPR_MAX];

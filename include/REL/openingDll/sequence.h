@@ -3,6 +3,25 @@
 #ifndef REL_OPENINGDLL_SEQUENCE_H
 #define REL_OPENINGDLL_SEQUENCE_H
 
+#include "REL/openingDll/opening.h"
+#include "humath.h"
+#include "messdir_enum.h"
+#include "msm_se.h"
+
+#define OPENING_CHAR_COUNT 10
+#define OPENING_DVD_RESERVE_BYTES 1048576
+#define OPENING_GUIDE_ALTERNATE_FLAG (1 << 15)
+#define OPENING_GUIDE_INDEX_MASK 0xFF
+#define OPENING_PRIMARY_GUIDE_INDEX 10
+#define OPENING_SECONDARY_GUIDE_INDEX 11
+
+typedef struct OpeningEventWork {
+    void (*callback)(s32, s32); /* Opening animation callback run by its child process. */
+    s32 eventPrimaryParameter; /* Callback's primary value, such as a duration or character
+                                * index. */
+    s32 eventSecondaryParameter; /* Callback's second value, such as an angle or animation index. */
+} OpeningEventWork;
+
 void fn_1_28C(void);
 void fn_1_320(void);
 void fn_1_A00(s32 enablePrompt);
@@ -244,7 +263,7 @@ void fn_1_A00(s32 enablePrompt)
     Hu3DGLightColorSet(lbl_1_bss_1DE[0], 255, 255, 255, 255);
     Hu3DGLightColorSet(lbl_1_bss_1DE[1], 0, 0, 0, 255);
 
-    HuAudSStreamPlay(MSM_STREAM_OPENING);
+    HuAudSStreamPlay(MSM_STREAM_HERE_WE_GO);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 30);
     while (WipeCheck()) {
         HuPrcVSleep();
@@ -258,11 +277,11 @@ void fn_1_A00(s32 enablePrompt)
         /* This flag enables skipping before any prompt is shown: A works only in overlay 1,
          * and Start works in every overlay. */
         if (enablePrompt != 0) {
-            if (frame > 250 && omcurovl != 1) {
+            if (frame > 250 && omcurovl != DLL_bootdll) {
                 HuWinDispOn(messageWinId);
             }
 
-            if (omcurovl == 1 && (lbl_802C0008[0] & PAD_BUTTON_A)) {
+            if (omcurovl == DLL_bootdll && (lbl_802C0008[0] & PAD_BUTTON_A)) {
                 break;
             }
             if (lbl_802C0008[0] & PAD_BUTTON_START) {
@@ -521,7 +540,7 @@ void fn_1_1BD8(void)
             if (counter > 1000) {
                 break;
             }
-            easeFactor = (float)sin(3.141592653589793 *
+            easeFactor = (float)sin(M_PI *
                               (90.f * (counter / 1000.f)) /
                               180.);
             bgObj->mesh.base.rot.z = -200.f * easeFactor;
@@ -546,7 +565,7 @@ void fn_1_1BD8(void)
             easeFactor = (float)(counter / 30.f);
             bgObj->mesh.base.rot.z = (float)(-200. +
                                               20. *
-                                                  sin(3.141592653589793 *
+                                                  sin(M_PI *
                                                       (90.f * easeFactor) /
                                                       180.));
             if (counter == 1) {
@@ -567,7 +586,7 @@ void fn_1_1BD8(void)
             easeFactor = (float)(counter / 30.f);
             bgObj->mesh.base.rot.z = savedRotZ +
                                      (-200.f - savedRotZ) *
-                                         sin(3.141592653589793 *
+                                         sin(M_PI *
                                              (90.f * easeFactor) /
                                              180.);
             break;
@@ -582,7 +601,7 @@ void fn_1_1BD8(void)
             easeFactor = (float)(counter / 30.f);
             bgObj->mesh.base.rot.z = savedRotZ +
                                      (-160.f - savedRotZ) *
-                                         sin(3.141592653589793 *
+                                         sin(M_PI *
                                              (90.f * easeFactor) /
                                              180.);
             break;
@@ -597,7 +616,7 @@ void fn_1_1BD8(void)
             easeFactor = (float)(counter / 30.f);
             bgObj->mesh.base.rot.z = savedRotZ +
                                      (-180.f - savedRotZ) *
-                                         sin(3.141592653589793 *
+                                         sin(M_PI *
                                              (90.f * easeFactor) /
                                              180.);
             break;
@@ -615,7 +634,7 @@ void fn_1_2104(s32 characterIndex, s32 targetAngle)
 
     startAngle = (&lbl_1_bss_24.x)[characterIndex - 10];
     for (i = 1; i <= 20; i++) {
-        wave = (float)sin(3.141592653589793 *
+        wave = (float)sin(M_PI *
                           (90.f * (i / 20.f)) /
                           180.);
         fn_1_45D4((s16)characterIndex,
@@ -655,13 +674,13 @@ void fn_1_2304(u32 guideChar, s32 frameCount)
     s16 phase;
     BOOL alternate;
     float focusValue;
-    OpeningFocusObject *object;
+    HSF_OBJECT *object;
 
     alternate = guideChar & OPENING_GUIDE_ALTERNATE_FLAG;
     /* Starting this guide event clears the shared flag that can stop both guide animations. */
     lbl_1_bss_8 = 0;
     guideChar &= OPENING_GUIDE_INDEX_MASK;
-    object = (OpeningFocusObject *)fn_80026BF4(lbl_1_bss_1CE[2], lbl_1_data_2F0[guideChar]);
+    object = fn_80026BF4(lbl_1_bss_1CE[2], lbl_1_data_2F0[guideChar]);
 
     if (guideChar == 10) {
         if (!alternate) {
@@ -680,8 +699,8 @@ void fn_1_2304(u32 guideChar, s32 frameCount)
     focusValue = 1.2f;
     phase = 1;
     for (frame = 1, toggleCounter = 0; frame <= frameCount; frame++) {
-        object->secondaryFocusScale = focusValue;
-        object->primaryFocusScale = focusValue;
+        object->mesh.base.scale.y = focusValue;
+        object->mesh.base.scale.x = focusValue;
 
         if (toggleCounter++ > 5) {
             phase ^= 1;
@@ -726,7 +745,7 @@ void fn_1_2304(u32 guideChar, s32 frameCount)
             fn_1_46B4((s16)guideChar, 77);
         }
     }
-    object->primaryFocusScale = object->secondaryFocusScale = 1.0f;
+    object->mesh.base.scale.x = object->mesh.base.scale.y = 1.0f;
 }
 
 /* Continuously counter-rotates both guide characters against the stage, reduces their sway in the
@@ -747,12 +766,12 @@ void fn_1_257C(u32 frameCount)
         object = fn_80026BF4(lbl_1_bss_1CE[2], lbl_1_data_2F0[10]);
         object->mesh.base.rot.z = -background->mesh.base.rot.z;
         object->mesh.base.rot.z += amplitude *
-                                   sin(3.141592653589793 * phase / 180.);
+                                   sin(M_PI * phase / 180.);
 
         object = fn_80026BF4(lbl_1_bss_1CE[2], lbl_1_data_2F0[11]);
         object->mesh.base.rot.z = -background->mesh.base.rot.z;
         object->mesh.base.rot.z += amplitude *
-                                   cos(3.141592653589793 * phase / 180.);
+                                   cos(M_PI * phase / 180.);
 
         phase += 5.0f;
         if (i > frameCount - 10) {
@@ -784,13 +803,13 @@ void fn_1_2708(u32 frameCount)
     fn_80026790(lbl_1_bss_1CE[3], &pos);
     fn_800268B0(lbl_1_bss_1CE[3], 0.0f, 0.0f,
                       0.0f);
-    HuAudFXPlay(1200);
+    HuAudFXPlay(MSM_SE_MENU_OPENING_LIGHT_START);
 
     for (i = 1; i <= frameCount; i++) {
         if (i <= 0.7 * frameCount) {
             endFrame = (s16)(0.7 * frameCount);
             scaleY = (float)(0.9f *
-                             (sin(3.141592653589793 *
+                             (sin(M_PI *
                                   (130.f * ((float)i / endFrame)) /
                                   180.) *
                               (1.0 / sin(2.2689280275926285))));
@@ -799,7 +818,7 @@ void fn_1_2708(u32 frameCount)
             startFrame = (s16)((float)i - 0.3f * frameCount);
             endFrame = (s16)(0.7f * frameCount);
             scaleX = (float)(0.9f *
-                             (sin(3.141592653589793 *
+                             (sin(M_PI *
                                   (130.f * ((float)startFrame / endFrame)) /
                                   180.) *
                               (1.0 / sin(2.2689280275926285))));
@@ -819,12 +838,12 @@ void fn_1_2B9C(u32 frameCount)
     for (frame = 1; frame <= frameCount; frame++) {
         scale = (float)(0.9f *
                         (1.0 -
-                         sin(3.141592653589793 *
+                         sin(M_PI *
                              (90.f * ((float)frame / frameCount)) /
                              180.)));
         scaleY = (float)(0.9f *
                          (1.0 -
-                          sin(3.141592653589793 *
+                          sin(M_PI *
                               (90.f * ((float)frame / frameCount)) /
                               180.)));
         fn_800268B0(lbl_1_bss_1CE[3], scale, scaleY, 1.0f);
@@ -868,7 +887,7 @@ void fn_1_2D74(u32 frameCount)
         if (i <= 0.7 * halfFrames) {
             endFrame = (s16)(0.7 * halfFrames);
             scaleY = (float)(0.9f *
-                             (sin(3.141592653589793 *
+                             (sin(M_PI *
                                   (130.f * ((float)i / endFrame)) /
                                   180.) *
                               (1.0 / sin(2.2689280275926285))));
@@ -877,7 +896,7 @@ void fn_1_2D74(u32 frameCount)
             startFrame = (s16)((float)i - 0.3f * halfFrames);
             endFrame = (s16)(0.7f * halfFrames);
             scaleX = (float)(0.9f *
-                             (sin(3.141592653589793 *
+                             (sin(M_PI *
                                   (130.f * ((float)startFrame / endFrame)) /
                                   180.) *
                               (1.0 / sin(2.2689280275926285))));
@@ -886,16 +905,16 @@ void fn_1_2D74(u32 frameCount)
         HuPrcVSleep();
     }
 
-    HuAudFXPlay(1201);
+    HuAudFXPlay(MSM_SE_MENU_OPENING_STAR_APPEAR);
     for (i = 1; i <= halfFrames; i++) {
         scaleX = (float)(0.5 *
-                         (sin(3.141592653589793 *
+                         (sin(M_PI *
                              (130.f * ((float)i / halfFrames)) /
                              180.) *
                           (1.0 / sin(2.2689280275926285))));
         fn_800268B0(lbl_1_bss_1CE[5], scaleX, scaleX, 0.5f);
         scaleX = (float)(0.5 *
-                         sin(3.141592653589793 *
+                         sin(M_PI *
                              (90.f * ((float)i / halfFrames)) /
                              180.));
         fn_800268B0(lbl_1_bss_1CE[6], scaleX, scaleX, 0.5f);
@@ -915,7 +934,7 @@ void fn_1_34EC(u32 frameCount)
     for (frame = 1; frame <= halfFrames; frame++) {
         scale = (float)(0.5 *
                         (1.0 -
-                         sin(3.141592653589793 *
+                         sin(M_PI *
                              (90.f * ((float)frame / halfFrames)) /
                              180.)));
         fn_800268B0(lbl_1_bss_1CE[5], scale, scale, 0.5f);
@@ -926,12 +945,12 @@ void fn_1_34EC(u32 frameCount)
     for (frame = 1; frame <= halfFrames; frame++) {
         scale = (float)(0.9f *
                         (1.0 -
-                         sin(3.141592653589793 *
+                         sin(M_PI *
                              (90.f * ((float)frame / halfFrames)) /
                              180.)));
         scaleY = (float)(0.9f *
                          (1.0 -
-                          sin(3.141592653589793 *
+                          sin(M_PI *
                               (90.f * ((float)frame / halfFrames)) /
                               180.)));
         fn_800268B0(lbl_1_bss_1CE[4], scale, scaleY, scale);
@@ -949,9 +968,9 @@ void fn_1_37F0(void)
     while (TRUE) {
         position = lbl_1_bss_14;
         position.x += 3.0 *
-                      sin(3.141592653589793 * (phase / 2.f) / 180.);
+                      sin(M_PI * (phase / 2.f) / 180.);
         position.y += 5.0 *
-                      sin(3.141592653589793 * phase / 180.);
+                      sin(M_PI * phase / 180.);
         fn_80026790(lbl_1_bss_1CE[5], &position);
         fn_80026790(lbl_1_bss_1CE[6], &position);
         phase += 1.0f;
@@ -981,17 +1000,17 @@ void fn_1_392C(u32 frameCount)
     fn_80026790(lbl_1_bss_1CE[6], &pos);
     fn_800268B0(lbl_1_bss_1CE[6], 0.0f, 0.0f,
                       0.0f);
-    HuAudFXPlay(1202);
+    HuAudFXPlay(MSM_SE_MENU_OPENING_STAR_LIGHT_START);
 
     for (i = 1; i <= frameCount; i++) {
         scale = (float)(0.5 *
-                        (sin(3.141592653589793 *
+                        (sin(M_PI *
                              (130.f * ((float)i / frameCount)) /
                              180.) *
                          (1.0 / sin(2.2689280275926285))));
         fn_800268B0(lbl_1_bss_1CE[5], scale, scale, 0.5f);
         scale = (float)(0.5 *
-                        sin(3.141592653589793 *
+                        sin(M_PI *
                             (90.f * ((float)i / frameCount)) /
                             180.));
         fn_800268B0(lbl_1_bss_1CE[6], scale, scale, 0.5f);
@@ -1012,17 +1031,17 @@ void fn_1_3C28(void)
         rot = 720.f * ((float)i / 60.f);
         fn_80026808(lbl_1_bss_1CE[5], 0.0f, 0.0f,
                         (float)(30. *
-                                sin(3.141592653589793 * rot / 180.)));
+                                sin(M_PI * rot / 180.)));
         HuPrcVSleep();
     }
 
     for (i = 1; i <= 30; i++) {
         if (i == 5) {
-            HuAudFXPlay(1203);
+            HuAudFXPlay(MSM_SE_MENU_OPENING_STAR_END_BURST);
         }
         rot = (float)(720. *
                       (1.0 -
-                       cos(3.141592653589793 *
+                       cos(M_PI *
                            (90.f * ((float)i / 30.f)) /
                            180.)));
         fn_80026808(lbl_1_bss_1CE[5], 0.0f, rot,
@@ -1030,7 +1049,7 @@ void fn_1_3C28(void)
         HuPrcVSleep();
     }
 
-    HuAudFXPlay(1201);
+    HuAudFXPlay(MSM_SE_MENU_OPENING_STAR_APPEAR);
     fn_80026A44(lbl_1_bss_1CE[7], (1 << 0));
     fn_8002D414(lbl_1_bss_1CE[7], 0.0f);
     fn_800267CC(lbl_1_bss_1CE[5], &pos);
@@ -1040,18 +1059,18 @@ void fn_1_3C28(void)
 
     for (i = 1; i <= 60; i++) {
         if (i == 5) {
-            HuAudFXPlay(1204);
+            HuAudFXPlay(MSM_SE_MENU_OPENING_STAR_END_FADE);
         }
         rot = (float)i / 60.f;
         PSVECSubtract(&target, &pos, &vec);
         PSVECScale(&vec, &vec,
                    (float)(1.0 -
-                           cos(3.141592653589793 *
+                           cos(M_PI *
                                (90.f * rot) /
                                180.)));
         PSVECAdd(&pos, &vec, &vec);
         vec.y -= 100. *
-                 sin(3.141592653589793 *
+                 sin(M_PI *
                      (180.f * ((float)i / 50.f)) /
                      180.);
         lbl_1_bss_14 = vec;
@@ -1195,8 +1214,8 @@ void fn_1_45D4(s16 characterIndex, float angleDegrees)
     HSF_OBJECT *object;
 
     object = fn_80026BF4(lbl_1_bss_1CE[2], lbl_1_data_2F0[characterIndex]);
-    object->mesh.base.pos.x = 450. * sin(3.141592653589793 * angleDegrees / 180.);
-    object->mesh.base.pos.y = 450. * cos(3.141592653589793 * angleDegrees / 180.);
+    object->mesh.base.pos.x = 450. * sin(M_PI * angleDegrees / 180.);
+    object->mesh.base.pos.y = 450. * cos(M_PI * angleDegrees / 180.);
 }
 
 /* Immediately assigns a loaded animation resource to a character animation slot. */
@@ -1264,14 +1283,14 @@ void fn_1_48AC(void)
 
         PSVECSubtract(&endPos, &lbl_1_data_320, &ofs);
         PSVECScale(&ofs, &ofs,
-                   (float)sin(3.141592653589793 *
+                   (float)sin(M_PI *
                               (90.f * rate) /
                               180.));
         PSVECAdd(&lbl_1_data_320, &ofs, &lbl_1_bss_54);
 
         PSVECSubtract(&endRot, &lbl_1_data_32C, &ofs);
         PSVECScale(&ofs, &ofs,
-                   (float)sin(3.141592653589793 *
+                   (float)sin(M_PI *
                               (90.f * rate) /
                               180.));
         PSVECAdd(&lbl_1_data_32C, &ofs, &lbl_1_bss_3C);
@@ -1279,7 +1298,7 @@ void fn_1_48AC(void)
         PSMTXTrans(matrix,
                    (float)(150. *
                            (1.0 -
-                            sin(3.141592653589793 *
+                            sin(M_PI *
                                 (90.f * rate) /
                                 180.))),
                    0.0f,
@@ -1289,7 +1308,7 @@ void fn_1_48AC(void)
         lbl_1_bss_38 = (float)(0.05f +
                                0.95f *
                                    (1.0 -
-                                    sin(3.141592653589793 *
+                                    sin(M_PI *
                                         (90.f * rate) /
                                         180.)));
         HuPrcVSleep();
@@ -1321,10 +1340,10 @@ void fn_1_4C30(void)
         /* Apply the previous bob offset before calculating the offset for the next update. */
         PSVECAdd(&lbl_1_bss_54, &lbl_1_bss_48, &model->pos);
         lbl_1_bss_48.x = lbl_1_bss_38 *
-                         (5.0 * sin(3.141592653589793 * phase / 180.));
+                         (5.0 * sin(M_PI * phase / 180.));
         lbl_1_bss_48.y = lbl_1_bss_38 *
                          (20. *
-                          cos(3.141592653589793 * (2.0f * phase) / 180.));
+                          cos(M_PI * (2.0f * phase) / 180.));
         model->rot = lbl_1_bss_3C;
         phase += 1.0f;
         if (phase > 720.f) {
@@ -1386,22 +1405,22 @@ void fn_1_4ECC(HuVecF *rotation, HuVecF *target, float distance)
 
     position.x = target->x +
                  (distance *
-                  (sin(3.141592653589793 * y / 180.) *
-                   cos(3.141592653589793 * x / 180.)));
+                  (sin(M_PI * y / 180.) *
+                   cos(M_PI * x / 180.)));
     position.y = target->y +
-                 (distance * -sin(3.141592653589793 * x / 180.));
+                 (distance * -sin(M_PI * x / 180.));
     position.z = target->z +
                  (distance *
-                  (cos(3.141592653589793 * y / 180.) *
-                   cos(3.141592653589793 * x / 180.)));
+                  (cos(M_PI * y / 180.) *
+                   cos(M_PI * x / 180.)));
     cameraTarget.x = target->x;
     cameraTarget.y = target->y;
     cameraTarget.z = target->z;
-    up.x = sin(3.141592653589793 * y / 180.) *
-           sin(3.141592653589793 * x / 180.);
-    up.y = cos(3.141592653589793 * x / 180.);
-    up.z = cos(3.141592653589793 * y / 180.) *
-           sin(3.141592653589793 * x / 180.);
+    up.x = sin(M_PI * y / 180.) *
+           sin(M_PI * x / 180.);
+    up.y = cos(M_PI * x / 180.);
+    up.z = cos(M_PI * y / 180.) *
+           sin(M_PI * x / 180.);
 
     Hu3DCameraPosSet(1,
                      position.x,
