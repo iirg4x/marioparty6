@@ -1,5 +1,7 @@
 /* Board coin models, particles, and the floating coin-count display. */
 #include "dolphin/math.h"
+#include "humath.h"
+#include "game/board/math.h"
 
 #include "game/board/audio.h"
 #include "game/board/camera.h"
@@ -26,7 +28,7 @@
 #define COIN_MODEL_MAX 14
 
 #define COIN_OBJ_ID_MASK 0xFFF
-#define COIN_OBJ_ID_BASE 16384
+#define COIN_OBJ_ID_BASE 0x4000
 #define COIN_OBJ_SLOT_MASK (COIN_OBJ_BANK_SIZE - 1)
 
 #define COIN_OBJ_ATTR_USED (1 << 0)
@@ -63,7 +65,7 @@ enum {
 
 typedef struct MbCoinObjBank_s {
     int count; /* Number of allocated coin objects in this bank. */
-    u32 attr[COIN_OBJ_BANK_SIZE]; /* Allocation, visibility, camera, and model-kind bits per
+    int attr[COIN_OBJ_BANK_SIZE]; /* Allocation, visibility, camera, and model-kind bits per
                                    * slot. */
     s8 motNo[COIN_OBJ_BANK_SIZE]; /* Motion sample selected for each numbered model. */
     MBCOINOBJ obj[COIN_OBJ_BANK_SIZE]; /* Transform and alpha state for each slot. */
@@ -98,14 +100,6 @@ typedef struct CoinEffData_s {
     s16 modelId; /* Particle model handle, or zero when no effect is allocated. */
     s16 count; /* Number of particles still alive in this effect. */
 } COINEFFDATA;
-
-extern void mbMtxRotYDeg(Mtx mtx, float angle);
-extern void mbMtxRotZDeg(Mtx mtx, float angle);
-extern void mbMtxScaleRotXDeg(Mtx mtx, HuVecF *scale, float angle);
-extern float mbSinDeg(float angle);
-extern float mbCosDeg(float angle);
-extern void mbPos3Dto2D(HuVecF *src, HuVecF *dst);
-extern void mbPos2Dto3D(HuVecF *src, HuVecF *dst);
 
 static void CoinInit(void);
 static void CoinClose(void);
@@ -171,24 +165,6 @@ static MBCOINOBJDATA coinObjData;
 static HUPROCESS *coinMdlProc;
 static int coin2MdlId;
 static int coin1MdlId;
-
-/* Copy a three-component position without changing its floating-point values. */
-static inline void CoinVecCopy(register const HuVecF *src, register HuVecF *dst)
-{
-#ifdef __MWERKS__
-    register __vec2x32float__ xy;
-    register float z;
-    asm {
-        psq_l xy, 0(src), 0, 0
-        lfs z, 8(src)
-        psq_st xy, 0(dst), 0, 0
-        stfs z, 8(dst)
-    }
-#else
-    HuVecF value = *src;
-    *dst = value;
-#endif
-}
 
 #ifdef __MWERKS__
 /* Write a world position into the translation column of a model matrix. */
@@ -361,7 +337,7 @@ static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
          bankIndex < COIN_OBJ_BANK_MAX;
          bankIndex++, bankPP++) {
         if (*bankPP != NULL && (*bankPP)->count != 0) {
-            attrP = (int *)&(*bankPP)->attr[0];
+            attrP = &(*bankPP)->attr[0];
             for (objectIndex = 0; objectIndex < COIN_OBJ_BANK_SIZE; objectIndex++, attrP++) {
                 if (*attrP != 0
                     && (*attrP & cameraBit) != 0
@@ -446,7 +422,7 @@ static inline s16 CoinCreate(void)
         }
     }
     bankP = coinObjData.bank[bankNo];
-    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+    for (attrP = &bankP->attr[0], objNo = 0;
          objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
         if (*attrP == 0) {
             break;
@@ -489,7 +465,7 @@ s16 mbCoinCreate2(void)
         }
     }
     bankP = coinObjData.bank[bankNo];
-    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+    for (attrP = &bankP->attr[0], objNo = 0;
          objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
         if (*attrP == 0) {
             break;
@@ -526,7 +502,7 @@ static inline s16 CoinModelCreate(int modelNo)
         }
     }
     bankP = coinObjData.bank[bankNo];
-    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+    for (attrP = &bankP->attr[0], objNo = 0;
          objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
         if (*attrP == 0) {
             break;
@@ -573,7 +549,7 @@ static inline s16 CoinModelCreate2(int modelNo)
         }
     }
     bankP = coinObjData.bank[bankNo];
-    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+    for (attrP = &bankP->attr[0], objNo = 0;
          objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
         if (*attrP == 0) {
             break;
@@ -683,7 +659,7 @@ void mbCoinObjPosGet(s16 objId, HuVecF *pos)
     objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     objP = &bankP->obj[objNo];
-    CoinVecCopy(&objP->pos, pos);
+    MBBoardVecCopy(&objP->pos, pos);
 }
 
 /* Set an object's rotation in degrees around each axis. */
@@ -724,7 +700,7 @@ void mbCoinObjRotGet(s16 objId, HuVecF *rot)
     objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     objP = &bankP->obj[objNo];
-    CoinVecCopy(&objP->rot, rot);
+    MBBoardVecCopy(&objP->rot, rot);
 }
 
 /* Set an object's scale independently on each axis. */
@@ -765,7 +741,7 @@ void mbCoinObjScaleGet(s16 objId, HuVecF *scale)
     objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     objP = &bankP->obj[objNo];
-    CoinVecCopy(&objP->scale, scale);
+    MBBoardVecCopy(&objP->scale, scale);
 }
 
 /* Store opacity without clamping; zero is transparent and one is fully visible. */
@@ -913,19 +889,6 @@ static void CoinMain(void)
     }
 }
 
-/* Return the absolute value used for particle distance checks. */
-static inline float CoinAbsFloat(register float value)
-{
-#ifdef __MWERKS__
-    asm {
-        fabs value, value
-    }
-    return value;
-#else
-    return __fabsf(value);
-#endif
-}
-
 /* Add up to 20 colored particles at a world position for a collected coin. */
 void mbCoinEffCreate(HuVecF *pos)
 {
@@ -941,7 +904,7 @@ void mbCoinEffCreate(HuVecF *pos)
     int remaining;
     int i;
 
-    mbAudFXPlay(7);
+    mbAudFXPlay(MSM_SE_CMN_COIN_GET);
     effNo = -1;
     for (effP = &coinEffData[0], i = 0; i < COIN_EFF_MAX; i++, effP++) {
         if (effP->modelId != 0) {
@@ -950,9 +913,9 @@ void mbCoinEffCreate(HuVecF *pos)
                 break;
             }
             if (effP->count <= 80
-                && CoinAbsFloat(pos->x - effP->pos.x) < 300.0f
-                && CoinAbsFloat(pos->y - effP->pos.y) < 300.0f
-                && CoinAbsFloat(pos->z - effP->pos.z) < 300.0f) {
+                && FloatAbs(pos->x - effP->pos.x) < 300.0f
+                && FloatAbs(pos->y - effP->pos.y) < 300.0f
+                && FloatAbs(pos->z - effP->pos.z) < 300.0f) {
                 effNo = i;
                 break;
             }
@@ -986,7 +949,7 @@ void mbCoinEffCreate(HuVecF *pos)
             particleDataP->pos.x = particleDataP->pos.y = particleDataP->pos.z = 0.0f;
             angle = 360.0f * frandf();
             angleY = (1.7f * frandf()) - 0.7f;
-            angleY = 90.0f * (angleY * CoinAbsFloat(angleY));
+            angleY = 90.0f * (angleY * FloatAbs(angleY));
             particleDataP->vel.x = mbSinDeg(angle) * mbCosDeg(angleY);
             particleDataP->vel.y = mbSinDeg(angleY);
             particleDataP->vel.z = mbCosDeg(angle) * mbCosDeg(angleY);
@@ -1137,9 +1100,9 @@ s16 mbCoinDispCreate(HuVecF *pos, int coinNum, int sign, BOOL playSe)
     CoinDispObjUpdate(displayObj);
     if (playSe) {
         if (!displayWork->sign) {
-            mbAudFXPlay(1127);
+            mbAudFXPlay(MSM_SE_BRD00_COIN_DISPLAY_GAIN);
         } else {
-            mbAudFXPlay(1128);
+            mbAudFXPlay(MSM_SE_BRD00_COIN_DISPLAY_LOSS);
         }
     }
     return displayWork->no;
@@ -1451,7 +1414,7 @@ static inline int CoinAdd(int playerNo, int coinNum, BOOL fastF)
     coinDiff = num;
     if (!fastF) {
         coinChg = (num >= 0) ? 1 : -1;
-        seId = (coinChg > 0) ? 7 : 14;
+        seId = (coinChg > 0) ? MSM_SE_CMN_COIN_GET : MSM_SE_CMN_COIN_LOSE;
         for (i = 0; i < abs(num); i++) {
             mbPlayerCoinAdd(playerNo, coinChg);
             mbAudFXPlay(seId);
@@ -1473,7 +1436,7 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     if (coinDiff != 0 || dispF) {
         HuVecF pos;
 
-        mbAudFXPlay(15);
+        mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
         mbPlayerPosGet(playerNo, &pos);
         pos.y += 250.0f;
         dispNo = mbCoinDispCreate(&pos, coinDiff, dispF, TRUE);
@@ -1492,7 +1455,7 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 
     coinDiff = CoinAdd(playerNo, coinNum, fastF);
     if (coinDiff != 0) {
-        mbAudFXPlay(15);
+        mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
     }
     if (dispF && coinDiff != 0) {
         HuVecF pos;
@@ -1627,7 +1590,7 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result)
                 if (--time[i] == 0) {
                     mbPlayerCoinAdd(i, coinChg[i]);
                     coinNum[i] -= coinChg[i];
-                    mbAudFXPlay(7);
+                    mbAudFXPlay(MSM_SE_CMN_COIN_GET);
                     time[i] = delay[i];
                 }
                 playerNum++;
@@ -1642,7 +1605,7 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result)
         }
     }
     /* One change-end cue plays after the batch, regardless of the changes' direction. */
-    mbAudFXPlay(15);
+    mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
 }
 
 /* Change all four players using per-player display choices, then wait for active displays. */

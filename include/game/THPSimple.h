@@ -9,7 +9,10 @@
 // Compressed frame storage, its zero-based movie frame number, and a ready flag.
 // THPSimpleDecode clears frameReady after processing all components; video failure leaves it set.
 typedef struct {
-    /* 0x00 */ s32 *frameData;
+    /* 0x00 */ union {
+        s32 *frameData;
+        u8 *frameBytes; // Packed frame header followed by compressed components.
+    };
     /* 0x04 */ s32 frameNumber;
     /* 0x08 */ s32 frameReady;
 } UnkThpStruct01; // Size 0xC

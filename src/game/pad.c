@@ -1,13 +1,12 @@
 /* Controller input sampling, directional input conversion, and rumble control. */
 /* This file does not use the inline sqrt helpers pulled in by dolphin.h. */
-#define _MATH_H
 #include "dolphin.h"
 #include "humath.h"
 #include "game/main.h"
 #include "game/pad.h"
+#include "game/mic.h"
 
 /* The mic subsystem uses this retrace call to maintain its periodic wake alarm. */
-extern void HuMCPeriodicProc(void);
 
 typedef struct PadRumble_s {
     s16 maxTime;      // Elapsed-retrace cutoff; zero disables the pattern, otherwise the motor is
@@ -21,7 +20,7 @@ typedef struct PadRumble_s {
                        // rumble cycle.
 } RUMBLEDATA;
 
-static void PadReadVSync(u32 retraceCount);
+void PadReadVSync(u32 retraceCount);
 static void PadADConv(s16 pad, PADStatus *status);
 
 static u32 GlobalCounterOld = -1;
@@ -126,7 +125,7 @@ void fn_80005D90(void)
 
 /* VI post-retrace callback: when no disc error is active, samples controllers, updates input
  * repeats and rumble, and resets channels; always runs system callbacks and advances VCounter. */
-static void PadReadVSync(u32 retraceCount)
+void PadReadVSync(u32 retraceCount)
 {
     u32 channelsToReset;
     s16 padIndex;

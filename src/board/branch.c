@@ -16,6 +16,10 @@
 #include "game/pad.h"
 
 #include "humath.h"
+#include "game/board/tutorial.h"
+#include "game/board/scroll.h"
+#include "game/board/telop.h"
+#include "game/board/math.h"
 
 #define MB_BRANCH_ATTR_DEFAULT 0xA020
 
@@ -30,13 +34,6 @@ typedef struct BranchGuideWork_s {
     s16 mdlTemp;
     MBMODELID modelId[4];
 } BRANCHGUIDEWORK;
-
-extern void mbPos3Dto2D(HuVecF *pos3D, HuVecF *pos2D);
-extern s8 mbPadStkXGet(int padNo);
-extern s8 mbPadStkYGet(int padNo);
-extern int mbTutorialCall(int mode);
-extern void mbConfigPadDisableSet(BOOL disableF);
-extern void mbev_Scroll(int playerNo, BOOL mapF);
 
 static OMOBJ *guideOMObj[4];
 static MBBRANCHCOMSTARHOOK branchComStarHook;
@@ -109,12 +106,12 @@ static void BranchGuideCreate(int playerNo, int masuId, s16 *linkTbl, int linkNu
         mbObjLayerSet(work->modelId[i], 4);
         mbMasuPosGet(linkTbl[i], &posLink);
         PSVECSubtract(&posLink, &pos, &dirLink);
-        angle = fmod((180.0*(atan2(dirLink.x, dirLink.z) / 3.141592653589793)), 360.0);
+        angle = fmod((180.0*(atan2(dirLink.x, dirLink.z) / M_PI)), 360.0);
         mbObjRotSet(work->modelId[i], 0.0f, angle, 0.0f);
         mbObjLayerSet(work->modelId[i], 4);
-        posLink.x = pos.x + (100.0 * sin(3.141592653589793*angle/180.0));
+        posLink.x = pos.x + (100.0 * sin(M_PI*angle/180.0));
         posLink.y = pos.y;
-        posLink.z = pos.z + (100.0 * cos(3.141592653589793*angle/180.0));
+        posLink.z = pos.z + (100.0 * cos(M_PI*angle/180.0));
         mbObjPosSetV(work->modelId[i], &posLink);
         mbObjScaleSet(work->modelId[i], obj->scale.x, obj->scale.y, obj->scale.z);
     }
@@ -145,7 +142,7 @@ static void BranchGuideOMExec(OMOBJ *obj)
     }
     obj->scale.x = work->angle;
     obj->scale.x = obj->scale.y = obj->scale.z =
-        sin(3.141592653589793*((float)work->angle)/180.0) + 3.0;
+        sin(M_PI*((float)work->angle)/180.0) + 3.0;
     mbObjScaleSet(work->modelId[work->choice], obj->scale.x, obj->scale.y, obj->scale.z);
 }
 
@@ -210,7 +207,7 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
         mbMasuPosGet(branchLinkTbl[i], &posLink);
         mbPos3Dto2D(&posLink, &posLink2D);
         PSVECSubtract(&posLink2D, &pos2D, &dir2D);
-        anglePath[i] = fmod((180.0*(atan2((-dir2D.y), dir2D.x) / 3.141592653589793)), 360.0);
+        anglePath[i] = fmod((180.0*(atan2((-dir2D.y), dir2D.x) / M_PI)), 360.0);
     }
     if (!debugF) {
         mbPlayerMotIdleSet(playerNo);
@@ -260,8 +257,8 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
                 } else {
                     choiceAuto = choice;
                 }
-                dir.x = 64.0 * cos(3.141592653589793*anglePath[choiceAuto]/180.0);
-                dir.y = 64.0 * sin(3.141592653589793*anglePath[choiceAuto]/180.0);
+                dir.x = 64.0 * cos(M_PI*anglePath[choiceAuto]/180.0);
+                dir.y = 64.0 * sin(M_PI*anglePath[choiceAuto]/180.0);
                 btnDown = 0;
                 choiceTime = 6;
             } else {
@@ -279,12 +276,12 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
         }
         if (btnDown == PAD_BUTTON_A) {
             *masuId = branchLinkTbl[choice];
-            mbAudFXPlay(2);
+            mbAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
             BranchGuideKill(playerNo);
             break;
         }
         if (btnDown == PAD_BUTTON_Y || btnDown == PAD_BUTTON_X) {
-            mbAudFXPlay(1);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
             mbMoveNumDispSet(playerNo, FALSE);
             BranchGuideKill(playerNo);
             mbPlayerMotIdleSet(playerNo);
@@ -299,7 +296,7 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
             return TRUE;
         }
         if (dir.x != 0.0f || dir.y != 0.0f) {
-            float angle = (180.0*(atan2(dir.y, dir.x) / 3.141592653589793));
+            float angle = (180.0*(atan2(dir.y, dir.x) / M_PI));
             int branchDir = -1;
             float bestDiff = 9999.0f;
 
@@ -318,7 +315,7 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
             }
             if (bestDiff < 45.0f) {
                 if (choice != branchDir) {
-                    mbAudFXPlay(0);
+                    mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                     choice = branchDir;
                     BranchGuideChoiceSet(playerNo, choice);
                 }

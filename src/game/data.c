@@ -160,7 +160,7 @@ HUDATASTAT *fn_800078C8(int dataNum)
 
 // Called by numbered readers; loads missing archives under the requested tag, but reuses resident
 // archives without changing their tag.
-static HUDATASTAT *HuDataDirReadNum(int dataNum, s32 memoryTag)
+HUDATASTAT *HuDataDirReadNum(int dataNum, s32 memoryTag)
 {
     HUDATASTAT *readStat;
     s32 statId;
@@ -251,7 +251,7 @@ void fn_80007C88(s32 dvdResult, DVDFileInfo* dvdFileInfo)
             readSize = HU_DVD_BLOCKSIZE;
         }
         // Continue writing at the next byte in the archive buffer.
-        DVDReadAsyncPrio(dvdFileInfo, ((u8 *) readStat->dirP) + readStat->readOfs,
+        DVDReadAsyncPrio(dvdFileInfo, readStat->dirBytes + readStat->readOfs,
                          OSRoundUp32B(readSize), readStat->readOfs, fn_80007C88, 3);
     } else {
         readStat->status = 0;
@@ -713,14 +713,14 @@ static void *HuDataDecodeIt(u8 *alignedReadBuffer, s32 entryHeaderOffset, s32 me
                             HEAPID targetHeap)
 {
     void *encodedData;
-    s32 *entryHeader;
+    void *entryHeader;
     s32 decodedSize, decodeType;
 
     void *decodedData;
     // The selected entry header may be unaligned within the aligned DVD read buffer.
-    entryHeader = (s32 *)&alignedReadBuffer[entryHeaderOffset];
+    entryHeader = &alignedReadBuffer[entryHeaderOffset];
     if((u32)entryHeader & 0x3) {
-        u8 *headerByte = (u8 *)entryHeader;
+        u8 *headerByte = entryHeader;
         decodedSize = *headerByte++ << 24;
         decodedSize += *headerByte++ << 16;
         decodedSize += *headerByte++ << 8;

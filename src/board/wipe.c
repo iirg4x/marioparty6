@@ -1,9 +1,6 @@
 // Board scene transitions and their full-screen wipe effects.
-#define _MATH_H
+#include <math.h>
 #define M_PI 3.141592653589793
-double sin(double x);
-double cos(double x);
-double atan2(double y, double x);
 
 #include "datadir_enum.h"
 #include "game/data.h"
@@ -18,12 +15,9 @@ double atan2(double y, double x);
 #include "game/board/main.h"
 
 #include <string.h>
+#include "game/board/tutorial.h"
+#include "game/board/math.h"
 
-extern BOOL mbTutorialExitReqGet(void);
-extern BOOL mbPauseEnableCheck(void);
-extern void *fn_802137C0(s32 size);
-extern float mbSinDeg(float angle);
-extern float mbCosDeg(float angle);
 void mbWipeSpecialKill(void);
 void mbWipeSpecialWait(void);
 
@@ -461,8 +455,8 @@ static void WipeMasuMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     camera = &Hu3DCamera[lbl_802C01A6];
     wipeData = &wipeSpecialData;
     GXSetNumTexGens(1);
-    tanFov = sin(3.141592653589793 * (0.5f * camera->fov) / 180.0)
-        / cos(3.141592653589793 * (0.5f * camera->fov) / 180.0);
+    tanFov = sin(M_PI * (0.5f * camera->fov) / 180.0)
+        / cos(M_PI * (0.5f * camera->fov) / 180.0);
     MTXIdentity(texMtx);
     texMtx[0][0] = (-0.5f * drawObj->matrix[0][0])
         / (camera->aspect * (tanFov * drawObj->matrix[2][3]));
@@ -529,7 +523,7 @@ static void WipeShapeUpdate(HU3D_MODEL *model, Mtx *mtx,
             wipeData->elapsedFrames++;
         }
         // The outgoing shape starts at half scale and contracts toward zero.
-        shapeScale = 0.5 * (1.0 - sin(3.141592653589793 * (90.0f * progress) / 180.0));
+        shapeScale = 0.5 * (1.0 - sin(M_PI * (90.0f * progress) / 180.0));
         fn_800268B0(wipeData->masuModelId[wipeData->updateType - 1],
             shapeScale, shapeScale, shapeScale);
         if (wipeData->elapsedFrames > wipeData->durationFrames) {
@@ -581,7 +575,7 @@ static void WipeGridUpdate(HU3D_MODEL *model, Mtx *mtx,
         if (!mbPauseEnableCheck()) {
             wipeData->elapsedFrames++;
         }
-        cellScale = 1.0 - sin(3.141592653589793 * (90.0f * progress) / 180.0);
+        cellScale = 1.0 - sin(M_PI * (90.0f * progress) / 180.0);
         gridCell = gridWork->entry;
         for (gridIndex = 0; gridIndex < gridWork->count; gridCell++, gridIndex++) {
             MTXScale(gridCell->transform, cellScale, cellScale, 1.0f);
@@ -639,16 +633,16 @@ static void WipePaperVtxUpdate(WIPE_PAPER_WORK *paperWork, float progress)
 
     paperVertex = paperWork->vtx;
     foldRadius = 200.0f * (1.0f - progress);
-    foldTravel = progress * (paperWork->length + ((float)3.141592653589793 * foldRadius));
+    foldTravel = progress * (paperWork->length + ((float)M_PI * foldRadius));
     for (sampleIndex = 0; sampleIndex < 64; sampleIndex++, paperVertex++) {
         profileDistance = paperVertex->distance + foldTravel;
         if (profileDistance < paperWork->length) {
             foldProfile[sampleIndex].x = profileDistance;
             foldProfile[sampleIndex].y = 0.0f;
             paperVertex->bend = 0.0f;
-        } else if (profileDistance < paperWork->length + ((float)3.141592653589793 * foldRadius)) {
+        } else if (profileDistance < paperWork->length + ((float)M_PI * foldRadius)) {
             profileDistance -= paperWork->length;
-            foldAngle = 360.0f * (profileDistance / (2.0f * (float)3.141592653589793 * foldRadius));
+            foldAngle = 360.0f * (profileDistance / (2.0f * (float)M_PI * foldRadius));
             foldProfile[sampleIndex].x = paperWork->length + (foldRadius * mbSinDeg(foldAngle));
             foldProfile[sampleIndex].y = foldRadius * (1.0f - mbCosDeg(foldAngle));
             if (foldAngle > 90.0f) {
@@ -656,7 +650,7 @@ static void WipePaperVtxUpdate(WIPE_PAPER_WORK *paperWork, float progress)
             }
             paperVertex->bend = foldAngle;
         } else {
-            profileDistance -= paperWork->length + ((float)3.141592653589793 * foldRadius);
+            profileDistance -= paperWork->length + ((float)M_PI * foldRadius);
             foldProfile[sampleIndex].x = paperWork->length - profileDistance;
             foldProfile[sampleIndex].y = 2.0f * foldRadius;
             paperVertex->bend = 0.0f;
@@ -669,7 +663,7 @@ static void WipePaperVtxUpdate(WIPE_PAPER_WORK *paperWork, float progress)
         segmentDirection.x = foldProfile[sampleIndex + 1].x - foldProfile[sampleIndex].x;
         segmentDirection.y = foldProfile[sampleIndex + 1].y - foldProfile[sampleIndex].y;
         paperVertex->angle = 180.0 * (atan2(segmentDirection.y,
-            segmentDirection.x) / 3.141592653589793);
+            segmentDirection.x) / M_PI);
     }
 }
 
@@ -1027,7 +1021,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
         PSVECSubtract(&paperVertex[1].pos[0], &paperVertex->pos[0], &segmentDeltas[0]);
         PSVECSubtract(&paperVertex[1].pos[1], &paperVertex->pos[1], &segmentDeltas[1]);
         PSMTXRotAxisRad(rotationMtx, &paperWork->rotationAxis,
-            ((float)3.141592653589793 / 180.0f) * paperVertex->angle);
+            ((float)M_PI / 180.0f) * paperVertex->angle);
         PSMTXMultVec(rotationMtx, &segmentDeltas[0], &segmentDeltas[0]);
         PSMTXMultVec(rotationMtx, &segmentDeltas[1], &segmentDeltas[1]);
         PSVECAdd(&currentEndpoints[0], &segmentDeltas[0], &nextEndpoints[0]);
@@ -1035,7 +1029,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
 
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         PSMTXRotAxisRad(rotationMtx, &paperWork->rotationAxis,
-            ((float)3.141592653589793 / 180.0f) * (90.0f + paperVertex->bend));
+            ((float)M_PI / 180.0f) * (90.0f + paperVertex->bend));
         PSMTXMultVec(rotationMtx, &paperWork->sweepDirection, &lightingNormal);
         GXPosition3f32(currentEndpoints[0].x, currentEndpoints[0].y, currentEndpoints[0].z);
         GXNormal3f32(lightingNormal.x, lightingNormal.y, lightingNormal.z);
@@ -1045,7 +1039,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
         GXTexCoord2f32(paperVertex->texCoord[1].x, paperVertex->texCoord[1].y);
 
         PSMTXRotAxisRad(rotationMtx, &paperWork->rotationAxis,
-            ((float)3.141592653589793 / 180.0f) * (90.0f + paperVertex[1].bend));
+            ((float)M_PI / 180.0f) * (90.0f + paperVertex[1].bend));
         PSMTXMultVec(rotationMtx, &paperWork->sweepDirection, &lightingNormal);
         GXPosition3f32(nextEndpoints[1].x, nextEndpoints[1].y, nextEndpoints[1].z);
         GXNormal3f32(lightingNormal.x, lightingNormal.y, lightingNormal.z);

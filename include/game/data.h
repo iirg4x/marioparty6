@@ -10,7 +10,10 @@
 
 typedef struct HuDataStat_s {
     s32 dirId;
-    void *dirP;
+    union {
+        void *dirP;
+        u8 *dirBytes; // Byte address for continuing an archive read.
+    };
     void *fileDataP;
     u32 rawLen;
     u32 readLen;

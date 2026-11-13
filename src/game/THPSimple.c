@@ -258,7 +258,7 @@ s32 THPSimpleSetBuffer(void *bufferMemory) {
             nextBuffer += chromaPlaneBytes;
         }
         for(bufferIndex = 0; bufferIndex < 10; bufferIndex++) {
-            SimpleControl.readBuffers[bufferIndex].frameData = (s32*) nextBuffer;
+            SimpleControl.readBuffers[bufferIndex].frameBytes = nextBuffer;
             nextBuffer += ROUND_UP_32(SimpleControl.header.mBufferSize);
             SimpleControl.readBuffers[bufferIndex].frameReady = 0;
         }
@@ -426,9 +426,8 @@ s32 THPSimpleDecode(void) {
 
     if(SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameReady != 0) {
         componentSizes = SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameData + 2;
-        componentData = (u8 *) (&SimpleControl.readBuffers[SimpleControl.decodeFrameSlot]
-                                     .frameData[SimpleControl.componentInfo.mNumComponents] +
-                                2);
+        componentData = SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameBytes +
+                        SimpleControl.componentInfo.mNumComponents*sizeof(s32) + 2*sizeof(s32);
         if(SimpleControl.hasAudio != 0) {
             if(SimpleControl.audioBuffers[SimpleControl.audioDecodeSlot].samplesRemaining == 0) {
                 for (componentIndex = 0;

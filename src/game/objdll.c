@@ -1,6 +1,7 @@
 // Loads, starts, and releases the object modules used as game overlays.
-#define _MATH_H
 #include "game/objdll.h"
+
+static s32 omDLLSearch(s16 overlayNumber);
 #include "game/dvd.h"
 #include "game/memory.h"
 
@@ -145,7 +146,7 @@ void omDLLUnlink(OMDLLINFO *moduleInfo, s16 callEpilog)
 }
 
 // Finds the loaded slot whose module name matches the requested overlay table entry.
-s32 omDLLSearch(s16 overlayNumber)
+static s32 omDLLSearch(s16 overlayNumber)
 {
 	s32 slot;
 	OVLTBL *overlayEntry = &omDLLFileList[overlayNumber];

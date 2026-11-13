@@ -5,12 +5,14 @@
 #include "game/board/camera.h"
 #include "game/board/coin.h"
 #include "game/board/comchoice.h"
+#include "game/board/dice.h"
 #include "game/board/effect.h"
 #include "game/board/main.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
 #include "game/board/status.h"
 #include "game/board/window.h"
+#include "game/board/wipe.h"
 #include "game/data.h"
 #include "game/flag.h"
 #include "game/gamework.h"
@@ -26,35 +28,21 @@
 #include "dolphin/mtx.h"
 #include "dolphin/os.h"
 #include "dolphin/pad.h"
+#include "game/board/star.h"
+#include "game/board/telop.h"
+#include "game/board/math.h"
+#include "humath.h"
 
 extern void mbMasuPosGet(s16 id, HuVecF *pos);
 extern s16 mbMasuFind_AttrIdGet(s16 id, u16 attr);
 extern s16 mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF, s16 *list);
-extern float mbHermiteCalcSlope(float a, float b, float c, float d, float t);
-extern void mbHermiteCalcV(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d,
-    HuVecF *dst, float t);
-extern void mbDiceExec(int playerNo, int type, void *pos, int value, BOOL flag1,
-    BOOL flag2, void *hook, int color);
-extern void mbDicePadBtnHookSet(int playerNo, u16 (*hook)(int playerNo));
 extern BOOL mbDiceKillCheckAll(void);
-extern void mbDiceNumShrinkSet(int playerNo);
-extern void mbDirClose(void);
 extern OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF,
     BOOL altMtxF, BOOL layerF);
 extern void mbGuideKill(OMOBJ *obj);
 extern MBMODELID mbGuideModelGet(OMOBJ *obj);
 extern void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo);
 extern void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
-extern void mbPlayerColSnapSet(BOOL enable);
-extern void mbPlayerSwap(int playerNo1, int playerNo2);
-extern BOOL mbPlayerRotateCheckAll(void);
-extern u32 mbPlayerNameMesGet(int playerNo);
-extern void mbTelopCreate(int playerNo, int telopNo, BOOL statF);
-extern BOOL mbTelopCheck(void);
-extern void mbStarMapViewProcExec(void);
-extern void mbWipeFadeIn(void);
-extern void mbWipeFadeOut(void);
-extern void mbWipeWait(void);
 
 #define OPENING_PROCESS_PRIORITY 8204
 #define OPENING_PROCESS_STACK_SIZE 16384
@@ -379,7 +367,7 @@ static void ev_OpeningParty(void)
         ((1 << 30) | (1 << 0)));
 
     mbWipeFadeIn();
-    mbMusPlay(0, 11, 127, 0);
+    mbMusPlay(0, MSM_STREAM_BOARD_PARTY, 127, 0);
     {
         int boardNo = lbl_80265B70.boardNo;
 
@@ -403,7 +391,7 @@ static void ev_OpeningParty(void)
         VECSubtract(&guidePos, &playerPos, &playerRotDir);
         playerRotAngle = 90.0
             - (180.0
-                * (atan2(playerRotDir.z, playerRotDir.x) / 3.141592653589793));
+                * (atan2(playerRotDir.z, playerRotDir.x) / M_PI));
         mbPlayerRotateStart(i, playerRotAngle, 30);
     }
     while (!mbPlayerRotateCheckAll()) {
@@ -412,7 +400,7 @@ static void ev_OpeningParty(void)
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(950);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
     {
         int boardNo = lbl_80265B70.boardNo;
 
@@ -420,7 +408,7 @@ static void ev_OpeningParty(void)
     }
     mbWinTopWait();
 
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     mbWinCreateChoice(2, MESSNUM(MESS_BOARD_OPENING, 9), 6, 0);
     if (allComF) {
         lbl_80265B70.turnPlayerNo = 0;
@@ -433,7 +421,7 @@ static void ev_OpeningParty(void)
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 10), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
@@ -475,7 +463,7 @@ static void ev_OpeningParty(void)
     PlayerOrderSet(playerOrder);
     mbStatusReset();
     for (i = 0; i < 4; i++) {
-        mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
         mbWinCreateTime(2, MESSNUM(MESS_BOARD_OPENING, 11) + i, -1);
         mbWinTopInsertMesSet(mbPlayerNameMesGet(i), 0);
         if (lbl_80265750[i].comF || HuPadStatGet(lbl_80265750[i].padNo) != PAD_ERR_NONE) {
@@ -493,7 +481,7 @@ static void ev_OpeningParty(void)
         if (!GWTeamFGet()) {
             mbStatusDispSet(i, TRUE);
         }
-        mbPlayerWinLoseVoicePlay(i, 12, 579);
+        mbPlayerWinLoseVoicePlay(i, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             0);
         fn_8006A030(i, 20, 20, 0);
@@ -516,7 +504,7 @@ static void ev_OpeningParty(void)
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 15), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 6, 0.0f, 8.0f,
@@ -528,7 +516,7 @@ static void ev_OpeningParty(void)
         ((1 << 30) | (1 << 0)));
 
     for (i = 0; i < 4; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, 579);
+        mbPlayerWinLoseVoicePlay(i, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
         mbPlayerMotionShiftSet(i, 7, 0.0f, 8.0f,
             0);
     }
@@ -547,13 +535,13 @@ static void ev_OpeningParty(void)
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(950);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 16), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
     for (i = 0; i < 4; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, 579);
+        mbPlayerWinLoseVoicePlay(i, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             0);
     }
@@ -654,7 +642,7 @@ static void OpeningCoinExec(void)
             mbCoinObjRotSetV(coinWork->coinId, &coinWork->rot);
             if (coinWork->pos.y <= playerPos.y + 150.0f) {
                 mbCoinObjKill(coinWork->coinId);
-                HuAudFXPlay(7);
+                HuAudFXPlay(MSM_SE_CMN_COIN_GET);
                 mbPlayerCoinAdd(coinWork->playerNo, 1);
                 coinWork->dispF = FALSE;
                 coinNum--;
@@ -665,7 +653,7 @@ static void OpeningCoinExec(void)
         }
         HuPrcVSleep();
     }
-    mbAudFXPlay(15);
+    mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
 }
 
 // Called by ev_OpeningParty to drop players onto the starting space in sequence and await landing.
@@ -1030,14 +1018,14 @@ static void ev_OpeningSingle(void)
     singleGuideEffOnF = TRUE;
     mbCameraMovePlayer(playerNo, NULL, NULL, 1800.0f, -1.0f, 60);
     mbObjDispSet(guideMdlId, TRUE);
-    singleFXNo = mbAudFXPlay(1093);
+    singleFXNo = mbAudFXPlay(MSM_SE_BRD00_GUIDE_FLY_IN_LOOP);
     for (i = 0; i <= 180u; i++) {
         t = i / 180.0f;
         OpeningBezierCalc(guidePath, 5, &guidePos, t);
         mbObjPosSetV(guideMdlId, &guidePos);
         guideCurPos = guidePos;
         VECSubtract(&guidePos, &prevSegmentDir, &segmentDir);
-        angle = (180.0*(atan2(segmentDir.x, segmentDir.z) / 3.141592653589793));
+        angle = (180.0*(atan2(segmentDir.x, segmentDir.z) / M_PI));
         if (i == 150u) {
             mbObjMotionShiftSet(guideMdlId, 4, 0.0f, 16.0f,
                 ((1 << 30) | (1 << 0)));
@@ -1057,7 +1045,7 @@ static void ev_OpeningSingle(void)
     HuPrcSleep(60);
 
     mbGuideMotionSet(singleGuideObj, 12, TRUE);
-    mbAudGuidePlay(950);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
     singleWinId = mbWinCreate(2, singleWelcomeMesTbl[MBBoardNoGet() - 6], 6);
     mbWinTopPosGet(&winPos);
     winPos.y -= 35.0f;
@@ -1065,7 +1053,7 @@ static void ev_OpeningSingle(void)
     mbWinTopWait();
     singleWinId = -1;
 
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     singleWinId = mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 17), 6);
     mbWinTopPosGet(&winPos);
     winPos.y -= 35.0f;
@@ -1073,7 +1061,7 @@ static void ev_OpeningSingle(void)
     mbWinTopWait();
     singleWinId = -1;
 
-    mbAudGuidePlay(950);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
     singleWinId = mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 18), 6);
     mbWinTopPosGet(&winPos);
     winPos.y -= 35.0f;
@@ -1084,7 +1072,7 @@ static void ev_OpeningSingle(void)
     mbObjMotionShiftSet(guideMdlId, 5, 0.0f, 8.0f, 0);
     fallVelocity.x = fallVelocity.y = fallVelocity.z = 0.0f;
     mbObjPosGet(guideMdlId, &guidePos);
-    singleFXNo = mbAudFXPlay(1093);
+    singleFXNo = mbAudFXPlay(MSM_SE_BRD00_GUIDE_FLY_IN_LOOP);
     for (i = 0; i < 120u; i++) {
         fallVelocity.y += -16.333334f;
         guidePos.y -= 0.016666668f * fallVelocity.y;

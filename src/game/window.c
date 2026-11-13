@@ -1123,7 +1123,7 @@ static void HuWinKeyWait(HUWINID winId)
     if(winP->pushKey & HuWinActivePadGet(winP)) {
         winP->activePadKey = HuWinActivePadGet(winP);
         winP->stat = HUWIN_STAT_DRAWMES;
-        HuAudFXPlay(24);
+        HuAudFXPlay(MSM_SE_CMN_MESSAGE_ADVANCE);
         HuWinSprKill(winId, winP->keyWaitSprNo);
         if(winP->attr & HUWIN_ATTR_KEYWAIT_CLEAR) {
             _HuWinHomeClear(winP);
@@ -1362,7 +1362,7 @@ static void HuWinChoice(HUWIN *winP) {
     }
     if(winP->choice != choice) {
         winP->choice = choice;
-        HuAudFXPlay(0);
+        HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
     } else if(key & PAD_BUTTON_A) {
         if(winP->choiceEndSe >= 0) {
             HuAudFXPlay(winP->choiceEndSe);
@@ -1370,7 +1370,7 @@ static void HuWinChoice(HUWIN *winP) {
         winP->activePadKey = key;
         winP->stat = 0;
     } else if((key & PAD_BUTTON_B) && !(winP->attr & HUWIN_ATTR_NOCANCEL)) {
-        HuAudFXPlay(3);
+        HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
         // Canceling keeps the previously stored activePadKey.
         winP->choice = -1;
         winP->stat = 0;
@@ -2475,7 +2475,7 @@ void HuWinExOpen(HUWINID winId)
         for(i=1; i<=10; i++) {
             t = 90.0-(9.0*i);
             HuSpr3DRotSet(winP->sprId[HUWIN_SPR_BEGIN], -t*3, 0, 0);
-            t = ((1-sin(3.141592653589793*t/180.0))*0.5)+0.5;
+            t = ((1-sin(M_PI*t/180.0))*0.5)+0.5;
             HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, t, t);
             HuPrcVSleep();
         }
@@ -2508,7 +2508,7 @@ void HuWinExClose(HUWINID winId)
     } else {
         for(i=1; i<=5; i++) {
             t = 18.0*i;
-            t = 1-sin(3.141592653589793*t/180.0);
+            t = 1-sin(M_PI*t/180.0);
             HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, t, t);
             HuPrcVSleep();
         }
@@ -2540,7 +2540,7 @@ void HuWinExSpeakerSet(HUWINID winId, s16 speakerNo)
     s16 i;
 
     for(i=0; i<=10; i++) {
-        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, cos(3.141592653589793*(9.0f*i)/180.0));
+        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, cos(M_PI*(9.0f*i)/180.0));
         HuPrcVSleep();
     }
     HuWinSprKill(winId, HUWIN_SPR_BEGIN);
@@ -2550,7 +2550,7 @@ void HuWinExSpeakerSet(HUWINID winId, s16 speakerNo)
         HuWinAnimSet(winId, anim, 0, 48, 48);
     }
     for(i=0; i<=10; i++) {
-        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, sin(3.141592653589793*(9.0f*i)/180.0));
+        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, sin(M_PI*(9.0f*i)/180.0));
         HuPrcVSleep();
     }
     HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, 1.0f);
@@ -2628,7 +2628,7 @@ void HuWinWarningOpen(HUWINID winId)
         HuWinDispOn(warning->winId);
         for(i=1; i<=8; i++) {
             scale = i/8.0f;
-            scale = sin(3.141592653589793*(scale*120)/180.0)*(1.0/sin(3.141592653589793*120/180.0));
+            scale = sin(M_PI*(scale*120)/180.0)*(1.0/sin(M_PI*120/180.0));
             HuWinScaleSet(winId, scale, scale);
             HuPrcVSleep();
         }
@@ -2657,7 +2657,7 @@ void HuWinWarningClose(HUWINID winId)
         }
         for(i=1; i<=8; i++) {
             scale = 1.0-(i/8.0f);
-            scale = sin(3.141592653589793*(scale*120)/180.0)*(1.0/sin(3.141592653589793*120/180.0));
+            scale = sin(M_PI*(scale*120)/180.0)*(1.0/sin(M_PI*120/180.0));
             HuWinScaleSet(winId, scale, scale);
             HuPrcVSleep();
         }

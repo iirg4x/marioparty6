@@ -6,7 +6,10 @@
 
 typedef struct Decode_s
 {
-    u8 *src;  // Current byte in the packed source data.
+    union {
+        u8 *src; // Current byte in the packed source data.
+        u32 *compressedWords; // Zlib input begins with two words before its byte payload.
+    };
     u8 *dst;  // Next byte to write in the decoded destination.
     u32 size; // Output bytes remaining for size-driven decoders; HuDecodeZlib does not use this
               // field.
@@ -273,7 +276,7 @@ static int HuDecodeZlib(DECODE *decode)
     z_stream stream;
     u32 outputLimitStorage;
     int zlibResult;
-    u32 *compressedWords = (u32 *)decode->src;
+    u32 *compressedWords = decode->compressedWords;
     stream.avail_in = compressedWords[1];
     compressedWords += 2;
     stream.next_in = (Bytef *)compressedWords;

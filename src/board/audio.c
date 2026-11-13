@@ -1,6 +1,7 @@
 // Board music and sound-effect playback helpers.
 #define _MATH_H
 
+#include "game/hsfex.h"
 #include "game/board/audio.h"
 #include "game/board/main.h"
 #include "game/charman.h"
@@ -8,6 +9,7 @@
 #include "game/memory.h"
 
 #include <string.h>
+#include "game/board/player.h"
 
 typedef struct MBAudFXObj_s {
     int seId; // Sound-effect resource ID.
@@ -63,17 +65,17 @@ enum {
 };
 
 static BOARDMUSDATA boardMusData[] = {
-    { 0, 13, 14, TRUE },
-    { 1, 15, 16, TRUE },
-    { 2, 17, 18, TRUE },
-    { 3, 19, 20, TRUE },
-    { 4, 21, 22, TRUE },
-    { 5, 23, 24, TRUE },
-    { 6, 45, 45, FALSE },
-    { 7, 46, 46, FALSE },
-    { 8, 47, 47, FALSE },
-    { 9, 37, 38, TRUE },
-    { 10, 44, 44, FALSE },
+    { 0, MSM_STREAM_TOWERING_TREETOP, MSM_STREAM_EVENING_TREETOP, TRUE },
+    { 1, MSM_STREAM_E_GADD_S_GARAGE, MSM_STREAM_NIGHT_AT_THE_GARAGE, TRUE },
+    { 2, MSM_STREAM_FAIRE_SQUARE, MSM_STREAM_SQUARE_AT_NIGHT, TRUE },
+    { 3, MSM_STREAM_SNOWFLAKE_LAKE, MSM_STREAM_SNOWY_NIGHT, TRUE },
+    { 4, MSM_STREAM_CASTAWAY_BAY, MSM_STREAM_NIGHT_ON_THE_BAY, TRUE },
+    { 5, MSM_STREAM_CLOCKWORK_CASTLE, MSM_STREAM_NIGHT_AT_THE_CASTLE, TRUE },
+    { 6, MSM_STREAM_THIRSTY_GULCH, MSM_STREAM_THIRSTY_GULCH, FALSE },
+    { 7, MSM_STREAM_ASTRO_AVENUE, MSM_STREAM_ASTRO_AVENUE, FALSE },
+    { 8, MSM_STREAM_INFERNAL_TOWER, MSM_STREAM_INFERNAL_TOWER, FALSE },
+    { 9, MSM_STREAM_BRIGHTON_S_EXPLANATION, MSM_STREAM_TWILA_S_EXPLANATION, TRUE },
+    { 10, MSM_STREAM_SD_BATTLE, MSM_STREAM_SD_BATTLE, FALSE },
     { -1, 0, 0, FALSE }
 };
 
@@ -103,13 +105,6 @@ static HUPROCESS *audFXProc;
 static HUPROCESS *musBoardFadeProc;
 
 extern HUPROCESS *mbMainProc;
-extern void mbPlayerPosGet(int playerNo, Vec *pos);
-extern void Hu3D3Dto2D(Vec *src, s16 cameraBit, Vec *dst);
-
-static inline int BoardNoGet(void)
-{
-    return lbl_80265B70.boardNo;
-}
 
 static void MusPlay(void);
 static void MusPlayKill(void);
@@ -201,7 +196,7 @@ void mbAudInit(void)
     for (i = 0; i < MB_AUD_FX_DELAY_MAX; i++, delayFx++) {
         delayFx->seId = MSM_SE_NONE;
     }
-    mbAudFXPlay(1106);
+    mbAudFXPlay(MSM_SE_BRD00_AUDIO_INIT_PRIME);
 }
 
 // Selects the current board's day/night stream and starts it on the background channel.
@@ -211,7 +206,7 @@ void mbMusBoardPlay(void)
     int musId = boardMusData[0].dayMusId;
 
     for (i = 0; boardMusData[i].boardNo != 0xFFFFFFFF; i++) {
-        if (boardMusData[i].boardNo == BoardNoGet()) {
+        if (boardMusData[i].boardNo == MBBoardNoGet()) {
             if (boardMusData[i].timeF) {
                 if (lbl_80265B70.curTime == FALSE) {
                     musId = boardMusData[i].dayMusId;
@@ -638,7 +633,7 @@ static void MusBoardFade(void)
         int musId = boardMusData[0].dayMusId;
 
         for (i = 0; boardMusData[i].boardNo != 0xFFFFFFFF; i++) {
-            if (boardMusData[i].boardNo == BoardNoGet()) {
+            if (boardMusData[i].boardNo == MBBoardNoGet()) {
                 if (boardMusData[i].timeF) {
                     if (lbl_80265B70.curTime == FALSE) {
                         musId = boardMusData[i].dayMusId;

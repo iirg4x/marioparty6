@@ -266,7 +266,7 @@ void fn_8000E37C(s32 schedulerTicks)
                 HuMemDirectFree(processcur->heap);
             case 1:
                 /* The allocator marks a live heap block with byte 0xA5 at this offset. */
-                if(((u8 *)(processcur->heap))[4] != PROCESS_HEAP_VALIDITY_MARKER) {
+                if(processcur->heap[4] != PROCESS_HEAP_VALIDITY_MARKER) {
                     printf("stack overlap error.(process pointer %x)\n", processcur);
                     while(1);
                 } else {

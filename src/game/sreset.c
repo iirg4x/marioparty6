@@ -57,7 +57,10 @@ static s16 XfbH;
 /* TRUE for a framebuffer mode other than VI_XFBMODE_SF; the drawing code does not read it. */
 static BOOL XfbProg;
 /* Both video buffers receive the same disc-error bitmap. */
-static void *Xfb[2] = {};
+static union {
+    u32 *words;
+    u8 *bytes;
+} Xfb[2] = {};
 /* Keep showing loading during busy/cover-closed states after a disc problem was displayed. */
 static BOOL trychkBusyWait;
 /* Set after reset preparation; the monitor and main loop both act on it. */
@@ -133,8 +136,8 @@ void HuDvdErrDispInit(GXRenderModeObj *renderMode, void *firstFramebuffer, void 
 	 * the exact chord. */
 	HuPreRstChk();
 	HuDvdErrWait = FALSE;
-	Xfb[0] = firstFramebuffer;
-	Xfb[1] = secondFramebuffer;
+	Xfb[0].words = firstFramebuffer;
+	Xfb[1].words = secondFramebuffer;
 	if(renderMode) {
 		XfbW = (u16)(((u16)renderMode->fbWidth+15) & ~SR_XFB_WIDTH_ALIGN_MASK);
 		XfbH = renderMode->xfbHeight;
@@ -346,8 +349,8 @@ static void _HuDvdErrDispXFB(s32 errorImage)
                 HuRestartSystem();
             }
         }
-        firstFramebuffer = Xfb[0];
-        secondFramebuffer = Xfb[1];
+        firstFramebuffer = Xfb[0].words;
+        secondFramebuffer = Xfb[1].words;
         /* Redraw if another renderer overwrote either buffer at the sampled pixel. */
         DCInvalidateRange(&firstFramebuffer[(640/2)*200], sizeof(u16)*640);
         DCInvalidateRange(&secondFramebuffer[(640/2)*200], sizeof(u16)*640);
@@ -366,7 +369,11 @@ static void _HuDvdErrDispXFB(s32 errorImage)
  */
 static void DvdErrDispXFB(void *bitmap)
 {
-    s16 *bitmapHeader;
+    struct {
+        s16 width;
+        s16 height;
+        u32 bits[];
+    } *bitmapHeader;
     u8 *firstPixelPair;
     u8 *secondPixelPair;
     u32 drawIndex;
@@ -381,28 +388,28 @@ static void DvdErrDispXFB(void *bitmap)
     s32 rowStrideBytes;
     u8 chromaCb;
     u8 chromaCr;
-    firstFramebuffer = Xfb[0];
-    secondFramebuffer = Xfb[1];
+    firstFramebuffer = Xfb[0].words;
+    secondFramebuffer = Xfb[1].words;
     /* YUYV pairs use zero luma and neutral chroma for the cleared background. */
     for (drawIndex = 0; drawIndex < XfbW * XfbH * 2 / 4;
          drawIndex++, firstFramebuffer++, secondFramebuffer++) {
         *firstFramebuffer = *secondFramebuffer = SR_XFB_BLACK_BIT_PATTERN;
     }
-    DCFlushRangeNoSync(Xfb[0], XfbW*XfbH*2);
-	DCFlushRangeNoSync(Xfb[1], XfbW*XfbH*2);
+    DCFlushRangeNoSync(Xfb[0].words, XfbW*XfbH*2);
+	DCFlushRangeNoSync(Xfb[1].words, XfbW*XfbH*2);
     bitmapHeader = bitmap;
-    bitmapWords = (u32 *)(&bitmapHeader[2]);
-    rowOffsetBytes = ((XfbW/2)-(bitmapHeader[0]/2))*2;
+    bitmapWords = bitmapHeader->bits;
+    rowOffsetBytes = ((XfbW/2)-(bitmapHeader->width/2))*2;
 	rowStrideBytes = XfbW*2;
 	chromaCb = chromaCr = 128;
     /* Error text is horizontally centered and begins at framebuffer row 200. */
-    for(bitmapRow=0; bitmapRow<bitmapHeader[1]; bitmapRow++) {
+    for(bitmapRow=0; bitmapRow<bitmapHeader->height; bitmapRow++) {
         void *rowStartAddresses[2];
-        firstPixelPair = ((u8 *)(Xfb[0])+((bitmapRow+200)*rowStrideBytes)+rowOffsetBytes);
+        firstPixelPair = (Xfb[0].bytes+((bitmapRow+200)*rowStrideBytes)+rowOffsetBytes);
 		rowStartAddresses[1] = firstPixelPair;
-		secondPixelPair = ((u8 *)(Xfb[1])+((bitmapRow+200)*rowStrideBytes)+rowOffsetBytes);
+		secondPixelPair = (Xfb[1].bytes+((bitmapRow+200)*rowStrideBytes)+rowOffsetBytes);
 		rowStartAddresses[0] = secondPixelPair;
-        for(drawIndex=0; drawIndex<bitmapHeader[0]; drawIndex += 32) {
+        for(drawIndex=0; drawIndex<bitmapHeader->width; drawIndex += 32) {
             bitmapBits = *bitmapWords++;
             for (bitIndex = 0; bitIndex < 32;
                  bitIndex += 2, bitmapBits >>= 2, firstPixelPair += 4, secondPixelPair += 4) {
@@ -431,8 +438,8 @@ static void DvdErrDispXFB(void *bitmap)
 				}
             }
         }
-        DCFlushRangeNoSync(rowStartAddresses[1], bitmapHeader[0]*2);
-        DCFlushRangeNoSync(rowStartAddresses[0], bitmapHeader[0]*2);
+        DCFlushRangeNoSync(rowStartAddresses[1], bitmapHeader->width*2);
+        DCFlushRangeNoSync(rowStartAddresses[0], bitmapHeader->width*2);
     }
     PPCSync();
 }

@@ -1,8 +1,6 @@
 /* Manages board models, their motions, transforms, visibility, and shadows. */
-#define _MATH_H
+#include <math.h>
 #define M_PI 3.141592653589793
-
-double cos(double);
 
 #include "game/board/object.h"
 #include "game/board/audio.h"
@@ -12,10 +10,7 @@ double cos(double);
 #include "game/memory.h"
 
 #include "string.h"
-
-extern void *fn_802137C0(s32 size);
-extern void mbPos3Dto2D(HuVecF *pos3D, HuVecF *pos2D);
-extern void mbObjCullInit(MBMODELID modelId);
+#include "game/board/math.h"
 
 static OMOBJ *objManOMObj;
 static MBOBJMODEL *objManData;
@@ -117,7 +112,7 @@ static void ObjManOMExec(OMOBJ *obj)
                 if (fadePos < 0.0f) {
                     fadePos = 0.0f;
                 }
-                fade = 1.0 - cos((3.141592653589793 * (90.0f * fadePos)) / 180.0);
+                fade = 1.0 - cos((M_PI * (90.0f * fadePos)) / 180.0);
             } else {
                 fade = 1.0f;
             }

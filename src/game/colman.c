@@ -1,15 +1,15 @@
 // Provides collision detection and response for minigame models and bodies.
 #define _MATH_H
 #include "dolphin/math.h"
+#include "game/mg/colman.h"
+#include "game/hu3d.h"
+#include "game/frand.h"
+#include "humath.h"
 
 extern inline float fabsf(float x)
 {
     return fabs(x);
 }
-
-#include "game/mg/colman.h"
-#include "game/hu3d.h"
-#include "game/frand.h"
 
 #define COL_MAT_ATTR_MASK 0x3F0000 // Material bits encoding the surface response.
 
@@ -3153,8 +3153,8 @@ static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code
         switch(attrParam->type) {
             case 0:
                 normal = point->normal;
-                c = cos((float)3.141592653589793);
-                s = sin((float)3.141592653589793);
+                c = cos((float)M_PI);
+                s = sin((float)M_PI);
                 normMtx[0][0] = ((1-c)*(normal.x*normal.x))+c;
                 normMtx[0][1] = ((1-c)*(normal.x*normal.y))-(normal.z*s);
                 normMtx[0][2] = ((1-c)*(normal.x*normal.z))+(normal.y*s);
