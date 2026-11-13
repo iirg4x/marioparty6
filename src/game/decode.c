@@ -6,7 +6,7 @@
 
 typedef struct Decode_s
 {
-    u8 *src;  // Current byte in the packed source data.
+    u8 *src; // Current byte in the packed source data.
     u8 *dst;  // Next byte to write in the decoded destination.
     u32 size; // Output bytes remaining for size-driven decoders; HuDecodeZlib does not use this
               // field.

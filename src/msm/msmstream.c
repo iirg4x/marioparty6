@@ -25,7 +25,7 @@ typedef struct {
     /* 0x2C */ s8 span;
     /* 0x2D */ s8 auxA;
     /* 0x2E */ s8 auxB;
-    /* 0x30 */ void* streamBuf;
+    /* 0x30 */ u8* streamBuf;
     /* 0x34 */ u32 streamBufSize;
     /* 0x38 */ u32 streamFrq;
     /* 0x3C */ struct {
@@ -324,7 +324,7 @@ s32 msmStreamStop(int streamNo, s32 speed) {
 }
 
 int msmStreamPlay(int streamId, MSM_STREAMPARAM* streamParam) {
-    MSM_STREAM_PACK* pack;
+    s8* pack;
     s32 result;
 
     if (streamId < 0 || streamId >= StreamInfo.header.streamMax) {
@@ -333,10 +333,10 @@ int msmStreamPlay(int streamId, MSM_STREAMPARAM* streamParam) {
     if (StreamInfo.streamPackList[streamId] == 0) {
         return MSM_ERR_REMOVEDID;
     }
-    pack = (MSM_STREAM_PACK*) (StreamInfo.streamPackFlag
-        + (StreamInfo.streamPackList[streamId] - StreamInfo.header.streamPackOfs));
+    pack = StreamInfo.streamPackFlag
+        + (StreamInfo.streamPackList[streamId] - StreamInfo.header.streamPackOfs);
     msmSysIrqDisable();
-    if (pack->flag & MSM_STREAMPACK_STEREO) {
+    if (*pack & MSM_STREAMPACK_STEREO) {
         result = msmStreamPackStartStereo(streamId, streamParam, 0);
     } else {
         result = msmStreamPackStartMono(streamId, streamParam, 0);
@@ -537,7 +537,7 @@ static void msmStreamPauseOff(s32 streamNo) {
                 {
                     readSize = loopLength - streamPosition;
                     slot->streamReadSize = halfSize - readSize;
-                    slot->streamReadBuf = (void *)((u32) slot->streamBuf + readSize);
+                    slot->streamReadBuf = slot->streamBuf + readSize;
                     memset(slot->streamReadBuf, 0, slot->streamReadSize);
                 }
                 else
@@ -900,7 +900,7 @@ static void msmStreamShutdown(s32 streamNo) {
 static void msmStreamData(s32 streamNo) {
     s32 dataSize;
     u32 readSize;
-    void* dataPtr;
+    u8* dataPtr;
     MSM_STREAM_SLOT* slot;
     s32 off1;
     s32 linkedStreamNo;
@@ -909,14 +909,14 @@ static void msmStreamData(s32 streamNo) {
     slot = &StreamInfo.slot[streamNo];
     readSize = dataSize = slot->streamBufSize / 2;
     dataPtr = (slot->bufNo != 0)
-        ? (void*) ((u32) slot->streamBuf + dataSize)
+        ? slot->streamBuf + dataSize
         :  slot->streamBuf;
     slot->streamReadSize = off1 = 0;
     if (slot->streamPos + readSize > slot->loopLen) {
         if (slot->loopLen > slot->streamPos) {
             readSize = slot->loopLen - slot->streamPos;
             slot->streamReadSize = dataSize - readSize;
-            slot->streamReadBuf = (void*) ((u32) dataPtr + readSize);
+            slot->streamReadBuf = dataPtr + readSize;
         } else if (slot->stereoF != 0) {
             slot->streamPos = slot->streamPosStart;
         } else {
@@ -1198,7 +1198,7 @@ static s32 msmStreamSlotInit(MSM_STREAM_SLOT *slot, MSM_STREAM_PACK* pack, STREA
         if (slot->loopLen > streamPos) {
             ret = slot->loopLen - streamPos;
             slot->streamReadSize = halfSize - ret;
-            slot->streamReadBuf = (void*) ((u32) slot->streamBuf + ret);
+            slot->streamReadBuf = slot->streamBuf + ret;
             memset(slot->streamReadBuf, 0, slot->streamReadSize);
         } else {
             ret = 0;

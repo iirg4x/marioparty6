@@ -28,6 +28,7 @@ void mbDiceSNpcNumOfsSet(OMOBJ *obj, HuVecF *offset);
 void mbDiceSNpcNumOfsGet(OMOBJ *obj, HuVecF *offset);
 void mbDiceSNpcNumKill(OMOBJ *obj);
 void mbDiceSNpcNumDispSet(OMOBJ *obj, BOOL dispF);
+void mbDiceSNpcNumSet(OMOBJ *obj, int value);
 void mbDiceSNpcNumPosSet(OMOBJ *obj, HuVecF *pos);
 void mbDiceNumShrinkSet(int playerNo);
 

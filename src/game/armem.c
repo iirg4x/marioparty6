@@ -13,18 +13,18 @@
 typedef struct ARMemBlock_s ARMEM_BLOCK;
 
 struct ARMemBlock_s {
-    /* 0x00 */ u8 inUse; /* 1 while reserved or allocated, 0 while free; the sentinel is 1. */
-    /* 0x02 */ u16 dataDirId; /* Data directory ID, or 0xFFFF when unassociated. */
-    /* 0x04 */ AMEM_PTR aramAddress; /* Start address of this range in ARAM. */
-    /* 0x08 */ u32 size; /* Length of this ARAM range in bytes. */
-    /* 0x0C */ ARMEM_BLOCK *next; /* Next range in address order, ending at the sentinel. */
+    u8 inUse; /* 1 while reserved or allocated, 0 while free; the sentinel is 1. */
+    u16 dataDirId; /* Data directory ID, or 0xFFFF when unassociated. */
+    AMEM_PTR aramAddress; /* Start address of this range in ARAM. */
+    u32 size; /* Length of this ARAM range in bytes. */
+    ARMEM_BLOCK *next; /* Next range in address order, ending at the sentinel. */
 }; // Size 0x10
 
 typedef struct ARQueReq_s {
-    /* 0x00 */ ARQRequest request; /* ARAM-to-main-memory request for the resource copy. */
-    /* 0x20 */ s32 dataNum; /* Directory-base data number (directory ID in the upper 16 bits) used
+    ARQRequest request; /* ARAM-to-main-memory request for the resource copy. */
+    s32 dataNum; /* Directory-base data number (directory ID in the upper 16 bits) used
                              * to register the returned archive buffer. */
-    /* 0x24 */ void *destination; /* Main-memory buffer filled by the ARAM transfer. */
+    void *destination; /* Main-memory buffer filled by the ARAM transfer. */
 } ARQUEREQ; // Size 0x28
 
 static void ArqCallBack(u32 requestAddress);

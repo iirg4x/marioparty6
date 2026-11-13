@@ -1,5 +1,4 @@
 /* Starts THP movie playback and draws its frames as a model or sprite. */
-#define _MATH_H
 #include "game/thpmain.h"
 #include "game/hu3d.h"
 #include "game/init.h"

@@ -13,7 +13,7 @@ struct Process_s {
     HUPROCESS *parent;
     HUPROCESS *nextChild;
     HUPROCESS *firstChild;
-    void *heap;
+    u8 *heap;
     u16 exec;
     u16 stat;
     u16 prio;

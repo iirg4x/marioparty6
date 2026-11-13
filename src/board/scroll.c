@@ -434,7 +434,7 @@ static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
     normBufP = objP->mesh.normal;
     for (faceP = faceBufP->data, i = 0; i < faceBufP->count; i++, faceP++) {
         if (faceP->type == 2) {
-            vtxP[0] = ((HuVecF *)vtxBufP->data) + faceP->index[0].vertex;
+            vtxP[0] = vtxBufP->positions + faceP->index[0].vertex;
             planeDot = (faceP->nbt[0] * vtxP[0]->x) + (faceP->nbt[1] * vtxP[0]->y)
                 + (faceP->nbt[2] * vtxP[0]->z);
             rayT = ((planeDot - (faceP->nbt[0] * target->x)) - (faceP->nbt[1] * target->y)
@@ -451,24 +451,24 @@ static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
             out.y = target->y + (rayT * dir->y);
             out.z = target->z + (rayT * dir->z);
             if (faceP->type == 2) {
-                vtxP[1] = ((HuVecF *)vtxBufP->data) + faceP->index[1].vertex;
-                vtxP[2] = ((HuVecF *)vtxBufP->data) + faceP->index[2].vertex;
+                vtxP[1] = vtxBufP->positions + faceP->index[1].vertex;
+                vtxP[2] = vtxBufP->positions + faceP->index[2].vertex;
                 PSVECSubtract(vtxP[1], vtxP[0], &edge);
                 PSVECSubtract(&out, vtxP[1], &up);
                 PSVECCrossProduct(&edge, &up, &cross);
-                if (PSVECDotProduct(&cross, (HuVecF *)faceP->nbt) < 0.0f) {
+                if (PSVECDotProduct(&cross, &faceP->normal) < 0.0f) {
                     continue;
                 }
                 PSVECSubtract(vtxP[2], vtxP[1], &edge);
                 PSVECSubtract(&out, vtxP[2], &up);
                 PSVECCrossProduct(&edge, &up, &cross);
-                if (PSVECDotProduct(&cross, (HuVecF *)faceP->nbt) < 0.0f) {
+                if (PSVECDotProduct(&cross, &faceP->normal) < 0.0f) {
                     continue;
                 }
                 PSVECSubtract(vtxP[0], vtxP[2], &edge);
                 PSVECSubtract(&out, vtxP[0], &up);
                 PSVECCrossProduct(&edge, &up, &cross);
-                if (PSVECDotProduct(&cross, (HuVecF *)faceP->nbt) < 0.0f) {
+                if (PSVECDotProduct(&cross, &faceP->normal) < 0.0f) {
                     continue;
                 }
             }
@@ -574,15 +574,15 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *startPos, HuVecF *closestFaceP
     }
     vtxBufP = objP->mesh.vertex;
     for (faceP = scrollColTriData, no = 0; no < scrollColTriNum; no++, faceP++) {
-        if (PSVECDotProduct(dir, (HuVecF *)faceP->nbt) < 0.0f) {
+        if (PSVECDotProduct(dir, &faceP->normal) < 0.0f) {
             continue;
         }
         for (i = 0; i < 3; i++) {
             xzMag = sqrtf((dir->x*dir->x)+(dir->z*dir->z));
-            scaleY = (((HuVecF *)vtxBufP->data) + faceP->index[i].vertex)->y / (dir->y / xzMag);
-            inVtx[i].x = (((HuVecF *)vtxBufP->data) + faceP->index[i].vertex)->x
+            scaleY = (vtxBufP->positions + faceP->index[i].vertex)->y / (dir->y / xzMag);
+            inVtx[i].x = (vtxBufP->positions + faceP->index[i].vertex)->x
                 - (scaleY * (dir->x / xzMag));
-            inVtx[i].z = (((HuVecF *)vtxBufP->data) + faceP->index[i].vertex)->z
+            inVtx[i].z = (vtxBufP->positions + faceP->index[i].vertex)->z
                 - (scaleY * (dir->z / xzMag));
             inVtx[i].y = 0.0f;
         }
@@ -621,7 +621,7 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *startPos, HuVecF *closestFaceP
         float dot;
 
         faceP = outFaceP;
-        vtxP = ((HuVecF *)vtxBufP->data) + faceP->index[0].vertex;
+        vtxP = vtxBufP->positions + faceP->index[0].vertex;
         dot = (faceP->nbt[0] * vtxP->x) + (faceP->nbt[1] * vtxP->y) + (faceP->nbt[2] * vtxP->z);
         scale = ((dot - (faceP->nbt[0] * outPos2.x)) - (faceP->nbt[1] * outPos2.y)
             - (faceP->nbt[2] * outPos2.z))

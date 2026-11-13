@@ -11,6 +11,12 @@
 #include "game/init.h"
 #include "game/main.h"
 
+typedef struct {
+    s16 width;
+    s16 height;
+    u32 bits[];
+} DvdErrBitmap;
+
 BOOL HuSoftResetButtonCheck(void);
 void HuDvdErrDispInit(GXRenderModeObj *rmode, void *xfb1, void *xfb2);
 void HuRestartSystem(void);
@@ -366,7 +372,7 @@ static void _HuDvdErrDispXFB(s32 errorImage)
  */
 static void DvdErrDispXFB(void *bitmap)
 {
-    s16 *bitmapHeader;
+    DvdErrBitmap *bitmapHeader;
     u8 *firstPixelPair;
     u8 *secondPixelPair;
     u32 drawIndex;
@@ -391,18 +397,18 @@ static void DvdErrDispXFB(void *bitmap)
     DCFlushRangeNoSync(Xfb[0], XfbW*XfbH*2);
 	DCFlushRangeNoSync(Xfb[1], XfbW*XfbH*2);
     bitmapHeader = bitmap;
-    bitmapWords = (u32 *)(&bitmapHeader[2]);
-    rowOffsetBytes = ((XfbW/2)-(bitmapHeader[0]/2))*2;
+    bitmapWords = bitmapHeader->bits;
+    rowOffsetBytes = ((XfbW/2)-(bitmapHeader->width/2))*2;
 	rowStrideBytes = XfbW*2;
 	chromaCb = chromaCr = 128;
     /* Error text is horizontally centered and begins at framebuffer row 200. */
-    for(bitmapRow=0; bitmapRow<bitmapHeader[1]; bitmapRow++) {
+    for(bitmapRow=0; bitmapRow<bitmapHeader->height; bitmapRow++) {
         void *rowStartAddresses[2];
         firstPixelPair = ((u8 *)(Xfb[0])+((bitmapRow+200)*rowStrideBytes)+rowOffsetBytes);
 		rowStartAddresses[1] = firstPixelPair;
 		secondPixelPair = ((u8 *)(Xfb[1])+((bitmapRow+200)*rowStrideBytes)+rowOffsetBytes);
 		rowStartAddresses[0] = secondPixelPair;
-        for(drawIndex=0; drawIndex<bitmapHeader[0]; drawIndex += 32) {
+        for(drawIndex=0; drawIndex<bitmapHeader->width; drawIndex += 32) {
             bitmapBits = *bitmapWords++;
             for (bitIndex = 0; bitIndex < 32;
                  bitIndex += 2, bitmapBits >>= 2, firstPixelPair += 4, secondPixelPair += 4) {
@@ -431,8 +437,8 @@ static void DvdErrDispXFB(void *bitmap)
 				}
             }
         }
-        DCFlushRangeNoSync(rowStartAddresses[1], bitmapHeader[0]*2);
-        DCFlushRangeNoSync(rowStartAddresses[0], bitmapHeader[0]*2);
+        DCFlushRangeNoSync(rowStartAddresses[1], bitmapHeader->width*2);
+        DCFlushRangeNoSync(rowStartAddresses[0], bitmapHeader->width*2);
     }
     PPCSync();
 }

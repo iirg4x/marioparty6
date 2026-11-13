@@ -58,12 +58,6 @@ enum {
 };
 
 enum {
-    TELOP_SE_CHARACTER_APPEAR = 1011,
-    TELOP_SE_CHARACTER_DISMISS = 1012,
-    TELOP_SE_TIME_NOTICE = 1132,
-};
-
-enum {
     GW_BANK_FLAG_CHARACTER_BASE = 36,
 };
 
@@ -141,20 +135,20 @@ static const u32 telopFileTbl[27] = {
 };
 
 static const s32 tauntSeTbl[14] = {
-    573 + 16,
-    549 + 16,
-    693 + 16,
-    789 + 16,
-    741 + 16,
-    477 + 16,
-    765 + 16,
-    501 + 16,
-    717 + 16,
-    645 + 16,
-    525 + 16,
-    645 + 16,
-    645 + 16,
-    645 + 16,
+    MSM_SE_CHARVOICE_TAUNT,
+    MSM_SE_CHARVOICE_LUIGI_TAUNT,
+    MSM_SE_CHARVOICE_PEACH_TAUNT,
+    MSM_SE_CHARVOICE_YOSHI_TAUNT,
+    MSM_SE_CHARVOICE_WARIO_TAUNT,
+    MSM_SE_CHARVOICE_DAISY_TAUNT,
+    MSM_SE_CHARVOICE_WALUIGI_TAUNT,
+    MSM_SE_CHARVOICE_KINOPIO_TAUNT,
+    MSM_SE_CHARVOICE_TERESA_TAUNT,
+    MSM_SE_CHARVOICE_MINIKOOPA_TAUNT,
+    MSM_SE_CHARVOICE_KINOPIKO_TAUNT,
+    MSM_SE_CHARVOICE_MINIKOOPA_TAUNT,
+    MSM_SE_CHARVOICE_MINIKOOPA_TAUNT,
+    MSM_SE_CHARVOICE_MINIKOOPA_TAUNT,
 };
 
 static u32 telopTurnFileTbl[3] = {
@@ -320,7 +314,7 @@ void mbTelopCreate(int playerNo, int telopNo, BOOL waitF)
     telopOMObj->mdlId[0] = espEntry(mbBoardDataNumGet(telopFileTbl[telopNo]), 100, 0);
     espDrawNoSet(telopOMObj->mdlId[0], 32);
     if (telopNo < 16) {
-        mbAudFXPlay(TELOP_SE_CHARACTER_APPEAR);
+        mbAudFXPlay(MSM_SE_BRD00_TELOP_CHARACTER_APPEAR);
     }
     if (waitF) {
         while (telopOMObj) {
@@ -390,7 +384,7 @@ static void TelopOMExec(OMOBJ *obj)
                 telopWork->time = 0;
                 telopWork->maxTime = telopWork->telopNo >= 16 ? 60 : 30;
                 if (telopWork->telopNo < 16) {
-                    mbAudFXPlay(TELOP_SE_CHARACTER_DISMISS);
+                    mbAudFXPlay(MSM_SE_BRD00_TELOP_CHARACTER_DISMISS);
                 }
             } else {
                 int playerPadNo = lbl_80265750[telopWork->playerNo].padNo;
@@ -401,7 +395,7 @@ static void TelopOMExec(OMOBJ *obj)
                     telopWork->time = 0;
                     telopWork->maxTime = telopWork->telopNo >= 16 ? 30 : 15;
                     if (telopWork->telopNo < 16) {
-                        mbAudFXPlay(TELOP_SE_CHARACTER_DISMISS);
+                        mbAudFXPlay(MSM_SE_BRD00_TELOP_CHARACTER_DISMISS);
                     }
                 }
             }
@@ -481,7 +475,7 @@ void mbTelopLastTurnCreate(void)
     turnNoticeObj->trans.x = 0.0f;
     HuSprGrpTPLvlSet(turnNoticeWork->grpId, turnNoticeObj->trans.x);
     HuSprGrpPosSet(turnNoticeWork->grpId, 288.0f, 96.0f);
-    mbAudFXPlay(TELOP_SE_TIME_NOTICE);
+    mbAudFXPlay(MSM_SE_BRD00_TELOP_TIME_NOTICE);
     mbPauseHookPush(TelopLastTurnPauseHook);
 }
 
@@ -1130,7 +1124,7 @@ void mbTelopTimeChangeCreate(void)
             240.0f + telopTimeStarSprOfsTbl[languageIndex][starIndex].y);
         espScaleSet(timeChangeObj->mdlId[starIndex + 5], 0.75f, 0.75f);
     }
-    mbAudFXPlay(TELOP_SE_TIME_NOTICE);
+    mbAudFXPlay(MSM_SE_BRD00_TELOP_TIME_NOTICE);
 }
 
 /* The object manager calls this each frame through the day/night notice phases. */

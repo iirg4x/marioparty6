@@ -15,13 +15,10 @@
 #include "game/pad.h"
 #include "game/wipe.h"
 #include "messdir_enum.h"
+#include "game/board/wipe.h"
+#include "humath.h"
 
 extern BOOL mbSaveNewF;
-extern void mbExitReq(void);
-extern void mbPauseEnableSet(void);
-extern BOOL mbWipeSpecialCheck(void);
-extern BOOL mbWipeSpecialStatGet(void);
-extern void mbWipeWait(void);
 
 typedef struct TutorialCallWork_s {
     int scene; /* Board event scene currently waiting for a tutorial response. */
@@ -155,78 +152,78 @@ static OMOBJ *tutorialGuideObj;
 #define MES_BOARD_GUIDE_005C MESSNUM(MESS_BOARD_TUTORIAL, 92)
 
 static TUTORIALGUIDEDATA tutorialGuideTbl[] = {
-    { MES_BOARD_GUIDE_0000, 950 },
-    { MES_BOARD_GUIDE_0001, 952 },
-    { MES_BOARD_GUIDE_0007, 952 },
-    { MES_BOARD_GUIDE_0008, 952 },
-    { MES_BOARD_GUIDE_000A, 950 },
-    { MES_BOARD_GUIDE_000B, 952 },
-    { MES_BOARD_GUIDE_000C, 952 },
-    { MES_BOARD_GUIDE_000D, 952 },
-    { MES_BOARD_GUIDE_000E, 952 },
-    { MES_BOARD_GUIDE_000F, 952 },
-    { MES_BOARD_GUIDE_0010, 952 },
-    { MES_BOARD_GUIDE_0011, 952 },
-    { MES_BOARD_GUIDE_0014, 950 },
-    { MES_BOARD_GUIDE_0015, 952 },
-    { MES_BOARD_GUIDE_0016, 950 },
-    { MES_BOARD_GUIDE_0017, 952 },
-    { MES_BOARD_GUIDE_0018, 950 },
-    { MES_BOARD_GUIDE_0019, 950 },
-    { MES_BOARD_GUIDE_001B, 952 },
-    { MES_BOARD_GUIDE_001C, 952 },
-    { MES_BOARD_GUIDE_001D, 952 },
-    { MES_BOARD_GUIDE_001E, 952 },
-    { MES_BOARD_GUIDE_001F, 950 },
-    { MES_BOARD_GUIDE_0020, 952 },
-    { MES_BOARD_GUIDE_0021, 952 },
-    { MES_BOARD_GUIDE_0023, 950 },
-    { MES_BOARD_GUIDE_0024, 952 },
-    { MES_BOARD_GUIDE_0025, 952 },
-    { MES_BOARD_GUIDE_0026, 952 },
-    { MES_BOARD_GUIDE_0027, 950 },
-    { MES_BOARD_GUIDE_0028, 952 },
-    { MES_BOARD_GUIDE_0029, 950 },
-    { MES_BOARD_GUIDE_002A, 952 },
-    { MES_BOARD_GUIDE_002D, 950 },
-    { MES_BOARD_GUIDE_002E, 952 },
-    { MES_BOARD_GUIDE_002F, 952 },
-    { MES_BOARD_GUIDE_0031, 952 },
-    { MES_BOARD_GUIDE_0032, 950 },
-    { MES_BOARD_GUIDE_0033, 952 },
-    { MES_BOARD_GUIDE_0034, 952 },
-    { MES_BOARD_GUIDE_0035, 950 },
-    { MES_BOARD_GUIDE_0036, 952 },
-    { MES_BOARD_GUIDE_0038, 952 },
-    { MES_BOARD_GUIDE_0039, 952 },
-    { MES_BOARD_GUIDE_003A, 950 },
-    { MES_BOARD_GUIDE_003C, 952 },
-    { MES_BOARD_GUIDE_003E, 952 },
-    { MES_BOARD_GUIDE_003F, 950 },
-    { MES_BOARD_GUIDE_0040, 952 },
-    { MES_BOARD_GUIDE_0041, 952 },
-    { MES_BOARD_GUIDE_0042, 952 },
-    { MES_BOARD_GUIDE_0043, 952 },
-    { MES_BOARD_GUIDE_0044, 952 },
-    { MES_BOARD_GUIDE_0045, 952 },
-    { MES_BOARD_GUIDE_0046, 952 },
-    { MES_BOARD_GUIDE_0047, 952 },
-    { MES_BOARD_GUIDE_0049, 950 },
-    { MES_BOARD_GUIDE_004A, 952 },
-    { MES_BOARD_GUIDE_004C, 950 },
-    { MES_BOARD_GUIDE_004D, 950 },
-    { MES_BOARD_GUIDE_004E, 952 },
-    { MES_BOARD_GUIDE_004F, 950 },
-    { MES_BOARD_GUIDE_0050, 950 },
-    { MES_BOARD_GUIDE_0051, 950 },
-    { MES_BOARD_GUIDE_0052, 952 },
-    { MES_BOARD_GUIDE_0054, 950 },
-    { MES_BOARD_GUIDE_0055, 950 },
-    { MES_BOARD_GUIDE_0057, 950 },
-    { MES_BOARD_GUIDE_0058, 952 },
-    { MES_BOARD_GUIDE_0059, 950 },
-    { MES_BOARD_GUIDE_005B, 952 },
-    { MES_BOARD_GUIDE_005C, 950 },
+    { MES_BOARD_GUIDE_0000, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0001, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0007, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0008, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_000A, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_000B, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_000C, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_000D, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_000E, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_000F, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0010, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0011, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0014, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0015, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0016, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0017, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0018, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0019, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_001B, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_001C, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_001D, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_001E, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_001F, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0020, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0021, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0023, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0024, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0025, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0026, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0027, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0028, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0029, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_002A, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_002D, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_002E, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_002F, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0031, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0032, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0033, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0034, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0035, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0036, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0038, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0039, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_003A, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_003C, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_003E, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_003F, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0040, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0041, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0042, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0043, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0044, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0045, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0046, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0047, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0049, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_004A, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_004C, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_004D, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_004E, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_004F, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0050, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0051, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0052, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0054, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0055, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0057, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_0058, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_0059, MSM_SE_GUIDE_DAY_INTRO },
+    { MES_BOARD_GUIDE_005B, MSM_SE_GUIDE_DAY_EXPLAIN },
+    { MES_BOARD_GUIDE_005C, MSM_SE_GUIDE_DAY_INTRO },
     { -1, -1 },
 };
 
@@ -1035,14 +1032,14 @@ void mbTutorialMgCallExec(int type)
             }
             espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
             espDispOn(data->espId[2]);
-            mbAudFXPlay(1009);
+            mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_TICK);
         }
         mbTutorialVSleep();
     }
     tutorialMgCallCursorPos = result;
     espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
     TutorialMgCallGrowSet(data->obj[tutorialMgCallCursorPos]);
-    mbAudFXPlay(1134);
+    mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_STOP);
     HuPrcSleep(120);
 }
 
@@ -1095,7 +1092,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
                 work->state = 1;
             } else {
                 weight = (float)work->time++ / work->maxTime;
-                sinValue = sin((3.141592653589793 * (90.0f * weight)) / 180.0);
+                sinValue = sin((M_PI * (90.0f * weight)) / 180.0);
                 if ((work->cursorNo & 1) == 0) {
                     obj->trans.x = -160.0f + (448.0f * sinValue);
                 } else {
@@ -1126,7 +1123,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
             if (work->time <= work->maxTime) {
                 weight = (float)work->time++ / work->maxTime;
                 obj->scale.x = obj->scale.y =
-                    1.0f + (0.2f * sin((3.141592653589793 * (720.0f * (1.0f - weight))) / 180.0));
+                    1.0f + (0.2f * sin((M_PI * (720.0f * (1.0f - weight))) / 180.0));
             }
             break;
         case 5:
@@ -1134,7 +1131,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
                 weight = (float)work->time++ / work->maxTime;
                 obj->trans.y = obj->rot.y + (weight * (96.0f - obj->rot.y));
                 obj->scale.x = obj->scale.y =
-                    0.5f + (0.5f * cos((3.141592653589793 * (90.0f * weight)) / 180.0));
+                    0.5f + (0.5f * cos((M_PI * (90.0f * weight)) / 180.0));
             }
             break;
     }

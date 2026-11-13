@@ -20,6 +20,11 @@
 #include "game/sprite.h"
 #include <stdlib.h>
 #include <string.h>
+#include "game/board/capselect.h"
+#include "game/board/single.h"
+#include "game/board/math.h"
+#include "game/board/capevent.h"
+#include "humath.h"
 
 typedef struct MasuFindWork_s {
     s16 id; /* Space on the current search path. */
@@ -79,19 +84,7 @@ static s16 masuFindStep;
 static s16 masuFindId;
 static s16 masuFindResultNum;
 
-extern void *fn_802137C0(s32 size);
-extern float mbCosDeg(float angle);
-extern float mbSinDeg(float angle);
-extern int mbSingleCall(int mode, int arg);
 extern void mbev_StarMasu();
-extern int mbev_Shop(int playerNo, int shopNo);
-extern void mbCapMasuExec(int playerNo, int id);
-extern int mbev_CapCall(int playerNo, int capsuleNo, BOOL moveF, BOOL stopF);
-extern void mbev_CapCallDonkey(int playerNo);
-extern void mbev_CapCallKoopa(int playerNo);
-extern void mbev_CapCallKettou(int playerNo, s16 id, BOOL stopF);
-extern void mbev_CapCallMiracle(int playerNo, int id);
-extern void mbev_SingleMg(int playerNo, s16 id);
 static void MasuDispInit(void);
 static void MasuDispClose(void);
 static u32 MasuDisplayListMake(void **displayList);
@@ -344,12 +337,6 @@ static u32 MasuDisplayListKaoMake(void **displayList)
 
 #undef MASU_DL_BUF_SIZE
 
-/* Returns whether the board is in its first, daytime turn. */
-static inline BOOL MasuDayCheck(void)
-{
-    return !lbl_80265B70.curTime;
-}
-
 /* HU3D hook installed by MasuDispInit; draws visible spaces and capsule markers. */
 void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
@@ -407,7 +394,7 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 if (patNo == -1) {
                     continue;
                 }
-                patNo = MasuDayCheck() ? 4 : 3;
+                patNo = MBTimeDayGet() ? 4 : 3;
             }
         } else {
             patNo = masuSinglePatTbl[masuP->type];
@@ -1064,7 +1051,7 @@ static int ev_MasuHatena(int playerNo, s16 id)
     int result = TRUE;
 
     if (masuev_HatenaHook) {
-        mbAudFXPlay(1104);
+        mbAudFXPlay(MSM_SE_BRD00_HATENA_SPACE_TRIGGER);
         fn_8006A030(playerNo, 20, 7, 3);
         mbPlayerColSnapPlayerSet(playerNo, FALSE);
         result = masuev_HatenaHook(playerNo, id);
@@ -1353,7 +1340,7 @@ void mbMasuCornerPosGet(s16 id, int cornerNo, HuVecF *pos)
             posLink.z = linkP->matrix[2][3];
         }
         VECSubtract(&posLink, &posMasu, &linkDir);
-        linkAngle = (180.0*(atan2((-linkDir.z), linkDir.x) / 3.141592653589793));
+        linkAngle = (180.0*(atan2((-linkDir.z), linkDir.x) / M_PI));
         if (linkAngle < 0.0f) {
             linkAngle += 360.0f;
         }
@@ -2198,7 +2185,7 @@ void mbMasuPlayerColorSet(int playerNo)
             return;
         }
         if (colorTbl[i][0] == 6) {
-            color = MasuDayCheck() ? STATUS_COLOR_BLUE : STATUS_COLOR_RED;
+            color = MBTimeDayGet() ? STATUS_COLOR_BLUE : STATUS_COLOR_RED;
         } else {
             color = colorTbl[i][1];
         }

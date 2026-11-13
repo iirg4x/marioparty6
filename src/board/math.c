@@ -33,7 +33,7 @@ void mbMathInit(void)
 
     cosTab = HuMemDirectMallocNum(HEAP_HEAP, MB_TRIG_TABLE_BYTES, 0x10000000);
     for (i = 0; i < MB_TRIG_TABLE_COUNT;) {
-        cosTab[i] = cos(3.141592653589793*((360.0f / MB_TRIG_TABLE_COUNT) * i)/180.0);
+        cosTab[i] = cos(M_PI*((360.0f / MB_TRIG_TABLE_COUNT) * i)/180.0);
         i++;
     }
 }
@@ -562,7 +562,7 @@ float mbAngleWrap(float angle)
 void mbAngleWrapV(HuVecF *rotation)
 {
     int i;
-    float *component = (float *)rotation;
+    float *component = &rotation->x;
 
     for (i = 0; i < 3; i++) {
         *component = mbAngleWrap(*component);
@@ -871,13 +871,13 @@ float mbAngleLerp(float startAngle, float endAngle, float t)
 /* Starts angle interpolation quickly, then eases toward the end angle. */
 float mbAngleEaseOut(float startAngle, float endAngle, float t)
 {
-    return mbAngleLerp(startAngle, endAngle, sin(3.141592653589793*(t * 90.0f)/180.0));
+    return mbAngleLerp(startAngle, endAngle, sin(M_PI*(t * 90.0f)/180.0));
 }
 
 /* Starts angle interpolation slowly, then eases toward the end angle. */
 float mbAngleEaseIn(float startAngle, float endAngle, float t)
 {
-    return mbAngleLerp(startAngle, endAngle, 1.0f - cos(3.141592653589793*(t * 90.0f)/180.0));
+    return mbAngleLerp(startAngle, endAngle, 1.0f - cos(M_PI*(t * 90.0f)/180.0));
 }
 
 /* Moves a projected board position along camera depth by the requested scale. */
@@ -890,8 +890,8 @@ float mbMathDistScale(HuVecF *worldPos, float scale, HuVecF *scaledWorldPos)
     float z;
 
     mbPos3Dto2D(worldPos, &pos);
-    tanFov = sin(3.141592653589793*(cameraP->fov
-        * 0.5f)/180.0) / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
+    tanFov = sin(M_PI*(cameraP->fov
+        * 0.5f)/180.0) / cos(M_PI*(cameraP->fov * 0.5f)/180.0);
     depth = pos.z * tanFov;
     z = (depth / scale) / tanFov;
     pos.z = z;

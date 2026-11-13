@@ -16,9 +16,6 @@
 #include "humath.h"
 #include "math.h"
 
-#define ROULETTE_SE_SPIN 1013
-#define ROULETTE_SE_RESULT 1015
-
 static s8 rouletteAngleNo = -1;
 static HUSPR_GROUPID rouletteSprGrpId = HUSPR_GRP_NONE;
 static int rouletteSeNo = MSM_SENO_NONE;
@@ -451,7 +448,7 @@ static void RouletteWait(ROULETTE_WORK *work)
             mbAudFXStop(rouletteSeNo);
             rouletteSeNo = MSM_SENO_NONE;
         }
-        mbAudFXPlay(ROULETTE_SE_RESULT);
+        mbAudFXPlay(MSM_SE_BRD00_ROULETTE_RESULT);
     }
     pointerAngle += angularSpeed;
     if(pointerAngle > 360) {
@@ -496,11 +493,11 @@ static void RouletteDispOn(ROULETTE_WORK *work)
         fn_8006A124(65550); // The check result is intentionally unused here.
         work->time = 90;
         work->mode = 2;
-        rouletteSeNo = mbAudFXPlay(ROULETTE_SE_SPIN);
+        rouletteSeNo = mbAudFXPlay(MSM_SE_BRD00_ROULETTE_SPIN);
     }
     OSs8tof32(&work->time, &angle);
-    HuSprGrpScaleSet(rouletteSprGrpId, sin(3.141592653589793*angle/180.0),
-        sin(3.141592653589793*angle/180.0));
+    HuSprGrpScaleSet(rouletteSprGrpId, sin(M_PI*angle/180.0),
+        sin(M_PI*angle/180.0));
 }
 
 // Called by RouletteOMExec in state 4; shrinks the roulette and requests object cleanup.
@@ -517,8 +514,8 @@ static void RouletteDispOff(ROULETTE_WORK *work)
         rouletteComValueF = FALSE;
     }
     OSs8tof32(&work->time, &angle);
-    HuSprGrpScaleSet(rouletteSprGrpId, sin(3.141592653589793*angle/180.0),
-        sin(3.141592653589793*angle/180.0));
+    HuSprGrpScaleSet(rouletteSprGrpId, sin(M_PI*angle/180.0),
+        sin(M_PI*angle/180.0));
 }
 
 // Called by RouletteOMExec during deletion; removes the pause hook and destroys the sprite group.

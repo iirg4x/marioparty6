@@ -4,6 +4,7 @@
 #include "game/disp.h"
 
 #include "math.h"
+#include "humath.h"
 
 #define DISP_HALF_W (HU_DISP_WIDTH/2.0f)
 #define DISP_HALF_H (HU_DISP_HEIGHT/2.0f)
@@ -149,12 +150,12 @@ void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, 
 
             case CAM_PATH_EASE_OUT:
                 easedFrame =
-                    durationFrames*sin(3.141592653589793*((frame/durationFrames)*90)/180.0);
+                    durationFrames*sin(M_PI*((frame/durationFrames)*90)/180.0);
                 break;
 
             case CAM_PATH_EASE_IN:
                 easedFrame =
-                    durationFrames*(1-cos(3.141592653589793*((frame/durationFrames)*90)/180.0));
+                    durationFrames*(1-cos(M_PI*((frame/durationFrames)*90)/180.0));
                 break;
         }
         for(sample=samples, intervalIndex=0; intervalIndex<sampleCount; intervalIndex++, sample++) {
@@ -403,15 +404,15 @@ static void SetObjCamMotion(HU3D_MODELID modelId, HSF_TRACK *cameraTrack, float 
             VECSubtract(&sample->pos, &sample->target, &viewDirection);
             VECNormalize(&viewDirection, &viewDirection);
             cameraUp.x = viewDirection.x * viewDirection.y * (1.0
-                - cos(3.141592653589793*channelValue/180.0)) -
-                         viewDirection.z * sin(3.141592653589793*channelValue/180.0);
+                - cos(M_PI*channelValue/180.0)) -
+                         viewDirection.z * sin(M_PI*channelValue/180.0);
             cameraUp.y = viewDirection.y * viewDirection.y +
                          (1.0f
                              - viewDirection.y * viewDirection.y)
-                             * cos(3.141592653589793*channelValue/180.0);
+                             * cos(M_PI*channelValue/180.0);
             cameraUp.z = viewDirection.y * viewDirection.z * (1.0
-                - cos(3.141592653589793*channelValue/180.0)) +
-                         viewDirection.x * sin(3.141592653589793*channelValue/180.0);
+                - cos(M_PI*channelValue/180.0)) +
+                         viewDirection.x * sin(M_PI*channelValue/180.0);
             VECNormalize(&cameraUp, &sample->up);
             break;
     }
@@ -528,13 +529,13 @@ int CamMotionExPathGet(HU3D_MODELID modelId, s16 sampleFrameStep, float duration
 
                 case CAM_PATH_EASE_OUT:
                     sample->time =
-                        durationFrames*sin(3.141592653589793*((sample->time/durationFrames)*90)
+                        durationFrames*sin(M_PI*((sample->time/durationFrames)*90)
                         /180.0);
                     break;
 
                 case CAM_PATH_EASE_IN:
                     sample->time =
-                        durationFrames*(1-cos(3.141592653589793*((sample->time/durationFrames)*90)
+                        durationFrames*(1-cos(M_PI*((sample->time/durationFrames)*90)
                         /180.0));
                     break;
             }
@@ -753,7 +754,7 @@ void Hu3D2Dto3D(HuVecF *screenPosition, s16 cameraMask, HuVecF *worldPosition)
     }
     camera = &Hu3DCamera[cameraIndex];
     halfFovTangent =
-        sin(3.141592653589793*(camera->fov/2)/180.0)/cos(3.141592653589793*(camera->fov/2)/180.0);
+        sin(M_PI*(camera->fov/2)/180.0)/cos(M_PI*(camera->fov/2)/180.0);
     viewHeight = halfFovTangent * screenPosition->z * 2.0f;
     viewWidth = viewHeight * HU_DISP_ASPECT;
     screenFractionX = screenPosition->x / HU_DISP_WIDTH;
@@ -786,10 +787,10 @@ void Hu3D3Dto2D(HuVecF *worldPosition, s16 cameraMask, HuVecF *screenPosition)
     camera = &Hu3DCamera[cameraIndex];
     MTXLookAt(viewMatrix, &camera->pos, &camera->up, &camera->target);
     MTXMultVec(viewMatrix, worldPosition, &viewPosition);
-    halfViewWidth = (sin(3.141592653589793*(camera->fov/2)/180.0)
-        / cos(3.141592653589793*(camera->fov/2)/180.0)) * viewPosition.z * HU_DISP_ASPECT;
-    halfViewHeight = (sin(3.141592653589793*(camera->fov/2)/180.0)
-        / cos(3.141592653589793*(camera->fov/2)/180.0)) * viewPosition.z;
+    halfViewWidth = (sin(M_PI*(camera->fov/2)/180.0)
+        / cos(M_PI*(camera->fov/2)/180.0)) * viewPosition.z * HU_DISP_ASPECT;
+    halfViewHeight = (sin(M_PI*(camera->fov/2)/180.0)
+        / cos(M_PI*(camera->fov/2)/180.0)) * viewPosition.z;
     screenPosition->x = DISP_HALF_W + viewPosition.x * (DISP_HALF_W / -halfViewWidth);
     screenPosition->y = DISP_HALF_H + viewPosition.y * (DISP_HALF_H / halfViewHeight);
     screenPosition->z = 0.0f;
@@ -807,9 +808,9 @@ void Hu3DMtxTransGet(Mtx transform, HuVecF *translation)
 static inline float GetAngleXY(float x, float y) {
     if (y == 0.0f) {
         if (x >= 0.0f) {
-            return 3.141592653589793 / 2;
+            return M_PI / 2;
         } else {
-            return -(3.141592653589793 / 2);
+            return -(M_PI / 2);
         }
     } else {
         return atan2f(x, y);
@@ -845,9 +846,9 @@ void Hu3DMtxRotGet(Mtx transform, HuVecF *rotation)
             if (!(scaleZ < 0.00000001f)) {
                 sineY = -transform[2][0] / scaleX;
                 if (sineY >= 1.0f) {
-                    angleY = 3.141592653589793 / 2;
+                    angleY = M_PI / 2;
                 } else if (sineY <= -1.0f) {
-                    angleY = -(3.141592653589793 / 2);
+                    angleY = -(M_PI / 2);
                 } else {
                     angleY = asinf(sineY);
                 }

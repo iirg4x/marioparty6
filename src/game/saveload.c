@@ -16,6 +16,9 @@
 #include "game/memory.h"
 #include "game/sprite.h"
 
+static s32 SLCardMount(s16 slotNo);
+static s16 SLMessOut(s16 messId);
+
 #define SAVE_BOX_COMMON_OFS 0
 #define SAVE_BOX_BOARD_SYSTEM_OFS (sizeof(GW_COMMON))
 #define SAVE_BOX_BOARD_PLAYER_OFS (SAVE_BOX_BOARD_SYSTEM_OFS+sizeof(GW_SYSTEM))
@@ -770,7 +773,7 @@ s32 SLStatSet(BOOL errorOutF)
 }
 
 // Called by file open/create; mounts curSlotNo and validates sector size (slotNo is unused).
-s32 SLCardMount(s16 slotNo)
+static s32 SLCardMount(s16 slotNo)
 {
     s32 result;
     mount:
@@ -923,7 +926,7 @@ static void SLWinClose(HUWINID winId)
 
 // Displays card/save messages, waits for A on the reinsert prompt, and returns choices for prompts
 // that offer one.
-s16 SLMessOut(s16 messId)
+static s16 SLMessOut(s16 messId)
 {
     u32 messageId;
     HUWINID winId;
@@ -1041,7 +1044,7 @@ s16 SLMessOut(s16 messId)
         while(!(lbl_802C0008[0] & PAD_BUTTON_A)) {
             HuPrcVSleep();
         }
-        HuAudFXPlay(1);
+        HuAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
     }
     if(SLWinId == HUWIN_NONE) {
         HuWinWarningClose(winId);

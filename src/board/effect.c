@@ -1,9 +1,9 @@
 // Board overlays and particle effects, including fades and confetti.
-#define _MATH_H
 #include "game/board/effect.h"
 #include "dolphin/os/OSFastCast.h"
 #include "game/board/main.h"
-#include "game/board/model.h"
+#include "game/board/object.h"
+#include "game/board/math.h"
 #include "game/frand.h"
 #include "game/main.h"
 #include "game/init.h"
@@ -16,18 +16,13 @@
 #define MB_PARTICLE_DISPLAY_LIST_BYTES (128 * 1024)
 #define MB_PARTICLE_SORT_MAGNITUDE_MASK 2147483647
 
-extern void *fn_80213818(s32 size, u32 num);
-extern void *mbMallocFlushModelNum(s32 size, u32 num);
-extern HU3D_MODELID mbObjModelIDGet(MBMODELID modelId);
-extern void mbObjLayerSet(MBMODELID modelId, s16 layer);
-extern void mbObjDispSet(MBMODELID modelId, BOOL dispF);
-extern void mbMtxRot(Mtx mtx, float x, float y, float z);
-extern void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle);
-extern float mbSinDeg(float angle);
-extern float mbCosDeg(float angle);
+typedef struct ParticleColorSort_s {
+    s32 key; // Sort key derived from a particle's depth in the active camera view.
+    u32 index; // Original particle slot associated with the key.
+} PARTICLECOLORSORT;
 
 static int tempColorNum;
-static void *tempColorBuf;
+static PARTICLECOLORSORT *tempColorBuf;
 static OMOBJ *confettiOMObj;
 static OMOBJ *fadeOMObj;
 
@@ -573,11 +568,6 @@ void mbParticleColorCreate(HU3D_MODELID modelId)
     }
 }
 
-typedef struct ParticleColorSort_s {
-    s32 key; // Sort key derived from a particle's depth in the active camera view.
-    u32 index; // Original particle slot associated with the key.
-} PARTICLECOLORSORT;
-
 // Copy one particle sort record while keeping its key and slot paired.
 static inline void ParticleSortEntryCopy(PARTICLECOLORSORT *dst, const PARTICLECOLORSORT *src)
 {
@@ -850,7 +840,7 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
     if (particleP->attr & MB_PARTICLE_ATTR_3D) particle3DF = TRUE;
     for (i = 0; i < particleP->num; i++, particleDataP++) {
         if (particleP->colorF) {
-            particleDataP = &particleP->data[((PARTICLECOLORSORT *)tempColorBuf)[i].index];
+            particleDataP = &particleP->data[tempColorBuf[i].index];
             particleP->color[i] = particleDataP->color;
         }
         if (particleDataP->scale
@@ -1171,19 +1161,6 @@ void mbParManAttrReset(HU3D_MODELID modelId, s32 attr)
 /* Particle random ranges and results use the unsigned SDK domain. */
 #define ParticleRandMod(modulus) ((u32)frandmod((u32)(modulus)))
 
-/* Copy the particle's starting position before its launch direction is calculated. */
-static inline void ParticleVecCopy(register const HuVecF *src, register HuVecF *dst)
-{
-    register __vec2x32float__ xy;
-    register float z;
-    asm {
-        psq_l xy, 0(src), 0, 0
-        lfs z, 8(src)
-        psq_st xy, 0(dst), 0, 0
-        stfs z, 8(dst)
-    }
-}
-
 // Particle hook: emit available slots, integrate motion, apply colors, and retire particles.
 static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
@@ -1251,7 +1228,7 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
                     }
                     PSVECNormalize(&vel, &vel);
                     PSVECScale(&vel, &vel, param->scaleRange);
-                    ParticleVecCopy(&vel, &particleDataP->pos);
+                    MBBoardVecCopy(&vel, &particleDataP->pos);
                     PSVECNormalize(&parManP->vec, &vecDir);
                     if (parManP->attr & (1 << 8)) {
                         upRot = angleStart + (360.0f / param->accelRange) * circleIdx;

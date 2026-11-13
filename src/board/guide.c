@@ -1,8 +1,5 @@
 /* Creates and animates the board guide, including its fade particle effects. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double);
-double cos(double);
+#include <math.h>
 
 #include "game/board/guide.h"
 #include "game/board/audio.h"
@@ -23,8 +20,6 @@ double cos(double);
 #define GUIDE_DATA_SUN_MODEL DATANUM(0x110000, 0)
 #define GUIDE_DATA_MOON_MODEL DATANUM(0x110000, 27)
 #define GUIDE_DATA_ATTACHED_MODEL DATANUM(0x110000, 53)
-#define GUIDE_SOUND_FADE_IN 1120
-#define GUIDE_SOUND_FADE_OUT 1121
 #define GUIDE_DATA_FILE_01 DATANUM(0x110000, 1)
 #define GUIDE_DATA_FILE_02 DATANUM(0x110000, 2)
 #define GUIDE_DATA_FILE_03 DATANUM(0x110000, 3)
@@ -469,7 +464,7 @@ static BOOL GuideFadeInUpdate(OMOBJ *obj)
             work->time = 0;
             work->timeMax = 60;
             work->phase++;
-            mbAudFXPlay(GUIDE_SOUND_FADE_IN);
+            mbAudFXPlay(MSM_SE_BRD00_GUIDE_FADE_IN);
             break;
 
         case 1:
@@ -556,7 +551,7 @@ static BOOL GuideFadeOutUpdate(OMOBJ *obj)
             work->time = 0;
             work->timeMax = 60;
             work->phase++;
-            mbAudFXPlay(GUIDE_SOUND_FADE_OUT);
+            mbAudFXPlay(MSM_SE_BRD00_GUIDE_FADE_OUT);
             break;
 
         case 1:

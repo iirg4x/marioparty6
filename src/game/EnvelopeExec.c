@@ -1,5 +1,4 @@
 /* Builds and updates HSF envelope skinning matrices, vertices, and normals. */
-#define _MATH_H
 #include "game/EnvelopeExec.h"
 #include "game/hsfex.h"
 

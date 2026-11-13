@@ -1,8 +1,5 @@
 /* Draws screen wipes and the loading banner while the game changes scenes or loads. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double x);
-double cos(double x);
+#include <math.h>
 #include "game/wipe.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -489,18 +486,18 @@ static BOOL WipeViewShift(void)
                               HU_FB_WIDTH / 6.0, HU_FB_HEIGHT / 6.0, 0, 1);
                 panelNearPoint.x =
                     halfPanelWidth +
-                    ((halfPanelWidth * cos(3.141592653589793*(270.0f * rotationProgress)/180.0))
+                    ((halfPanelWidth * cos(M_PI*(270.0f * rotationProgress)/180.0))
                         + topLeftViewPoint.x);
                 panelNearPoint.y = topLeftViewPoint.y;
                 panelNearPoint.z =
-                    (halfPanelWidth * sin(3.141592653589793*(270.0f * rotationProgress)/180.0))
+                    (halfPanelWidth * sin(M_PI*(270.0f * rotationProgress)/180.0))
                         + topLeftViewPoint.z;
                 panelFarPoint.x = halfPanelWidth +
-                                  ((halfPanelWidth * cos(3.141592653589793*((270.0f
+                                  ((halfPanelWidth * cos(M_PI*((270.0f
                                       * rotationProgress) + 180.0f)/180.0)) +
                                    topLeftViewPoint.x);
                 panelFarPoint.y = bottomRightViewPoint.y;
-                panelFarPoint.z = (halfPanelWidth * sin(3.141592653589793*((270.0f
+                panelFarPoint.z = (halfPanelWidth * sin(M_PI*((270.0f
                     * rotationProgress) + 180.0f)/180.0)) +
                                   topLeftViewPoint.z;
                 GXBegin(GX_QUADS, GX_VTXFMT0, 4);
@@ -566,7 +563,7 @@ static BOOL WipeImage(int animationDataNumber)
             wipeData.image[0] =
                 HuSprAnimRead(fn_8005607C(animationDataNumber, -256, 2));
         }
-        imageScale = sin(3.141592653589793*(90.0*(wipeData.time/wipeData.maxTime))/180.0);
+        imageScale = sin(M_PI*(90.0*(wipeData.time/wipeData.maxTime))/180.0);
     }
     if(wipeData.mode == WIPE_MODE_IN) {
         if(wipeData.time == 1.0) {
@@ -592,7 +589,7 @@ static BOOL WipeImage(int animationDataNumber)
             /* Keep the effect image full-size on its first incoming frame. */
             imageScale = 1;
         } else {
-            imageScale = cos(3.141592653589793*(90.0*(wipeData.time/wipeData.maxTime))/180.0);
+            imageScale = cos(M_PI*(90.0*(wipeData.time/wipeData.maxTime))/180.0);
         }
     }
     wipeColor = wipeData.color;
@@ -804,7 +801,7 @@ static void TransformPoint(float fieldOfView, float viewportWidth, float viewpor
                            Mtx modelView, Vec *point, Vec *transformedPoint)
 {
     float halfFovTangent =
-        sin(3.141592653589793*(fieldOfView/2)/180.0)/cos(3.141592653589793*(fieldOfView/2)/180.0);
+        sin(M_PI*(fieldOfView/2)/180.0)/cos(M_PI*(fieldOfView/2)/180.0);
     float frustumHeight = 2.0f*(halfFovTangent*point->z);
     float frustumWidth = frustumHeight*(viewportWidth/viewportHeight);
     float normalizedX = point->x/viewportWidth;
@@ -867,8 +864,8 @@ static void WipeLoadDraw(void)
     bannerBitmap = &wipeLoadAnim->bmp[0];
     bannerWidth = bannerBitmap->sizeX*2;
     bannerHeight = bannerBitmap->sizeY*2;
-    pulseOffsetX = (bannerWidth/20.0)*sin(3.141592653589793*wipeLoadTime/180.0);
-    pulseOffsetY = (bannerHeight/20.0)*sin(3.141592653589793*wipeLoadTime/180.0);
+    pulseOffsetX = (bannerWidth/20.0)*sin(M_PI*wipeLoadTime/180.0);
+    pulseOffsetY = (bannerHeight/20.0)*sin(M_PI*wipeLoadTime/180.0);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     
     GXPosition2f32(400-pulseOffsetX, 350-pulseOffsetY);
