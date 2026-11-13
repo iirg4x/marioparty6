@@ -1238,6 +1238,7 @@ void mbObjCullInit(MBMODELID modelId)
     HSF_DATA *hsf;
     s16 i;
     HSF_OBJECT *object;
+    HSF_CONSTDATA *constData;
     BOOL cullF = FALSE;
 
     hsf = lbl_802C01C8[mbObjModelIDGet(modelId)].hsf;
@@ -1247,7 +1248,8 @@ void mbObjCullInit(MBMODELID modelId)
         if (object->mesh.cenvNum == 0 && object->constData != NULL) {
             cullF = TRUE;
             ObjectBBoxUpdate(object);
-            ((HSF_CONSTDATA *)object->constData)->hook = ObjectCullHook;
+            constData = object->constData;
+            constData->hook = ObjectCullHook;
         }
     }
     if (cullF == FALSE) {

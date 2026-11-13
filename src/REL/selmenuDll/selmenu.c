@@ -14,12 +14,11 @@
 #include "game/armem.h"
 #include "game/memory.h"
 #include "game/mgdata.h"
+#include "game/main.h"
 #include "msm.h"
 
 #include "math.h"
 #include "string.h"
-
-extern s32 rand8(void);
 
 /* The selector has thirteen pages with ten visible rows per page. */
 #define SM_PAGE_MAX 13
@@ -32,32 +31,7 @@ extern s32 rand8(void);
 #define SM_KEY_LEFT (1 << 2)
 #define SM_KEY_RIGHT (1 << 3)
 
-#define SM_PLAYER_CONF_COLUMN_MASK (1 << 0)
-#define SM_PLAYER_CONF_COLUMN_CLEAR_MASK ((u16)~SM_PLAYER_CONF_COLUMN_MASK)
-
-#define SM_FLAG_MG_INSTRUCTION_DISPLAY 5
-
-enum {
-    SM_CHAR_MARIO,
-    SM_CHAR_LUIGI,
-    SM_CHAR_PEACH,
-    SM_CHAR_YOSHI,
-    SM_CHAR_WARIO,
-    SM_CHAR_DAISY,
-    SM_CHAR_WALUIGI,
-    SM_CHAR_KINOPIO,
-    SM_CHAR_TERESA,
-    SM_CHAR_MINIKOOPA,
-    SM_CHAR_KINOPIKO,
-    SM_CHAR_MINIKOOPAR,
-    SM_CHAR_MINIKOOPAG,
-    SM_CHAR_MINIKOOPAB,
-    SM_CHAR_FILE_COUNT,
-};
-
 extern OMOVL GameMesOvlPrev;
-
-#define GW_TYPE_MAN 0
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -241,7 +215,7 @@ static OMOBJ *smOutViewObj;
 static GW_PLAYER_CONF smPlayerConf[4];
 /* Current row within smPage; -1 is a temporary sentinel during initial row selection. */
 static s16 smCursorNo;
-/* Last row passed to SMExit; this file writes the value but does not read it. */
+/* Last selected row recorded when the selector exits. */
 static s16 smChar1Prev = -1;
 static u16 smPadBtnDown;
 static u16 smPadDStk;
@@ -349,7 +323,7 @@ void ObjectSetup(void)
     SetDefLight(&pos, &dir, 255, 255, 255, 64, 64, 64, 255, 255, 255);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 5);
     lbl_80265B70.subGameNo = -1;
-    fn_8006A268(65536);
+    fn_8006A268(0x10000);
     lbl_80265B70.turnNo = 1;
     lbl_80265B70.turnMax = 20;
     fn_8000BFB4(fn_8000B7A8(2), -1);
@@ -403,7 +377,7 @@ static void SMPagePrint(void)
     print8(200, 160, 2.5f, "PAGE:%d/%d", smPage + 1, SM_PAGE_MAX);
     for (i = 0; i < SM_PAGE_SIZE; i++) {
         entry = &smPageData[(smPage * SM_PAGE_SIZE) + i];
-        if (entry->on == 1) {
+        if (entry->on == TRUE) {
             if (i == smCursorNo) {
                 fontcolor = FONT_COLOR_CYAN;
             }
@@ -437,7 +411,7 @@ static void SMPageNoAdd(s16 num)
             page = SM_PAGE_MAX - 1;
         }
         for (i = 0; i < SM_PAGE_SIZE; i++) {
-            if (smPageData[(page * SM_PAGE_SIZE) + i].on == 1) {
+            if (smPageData[(page * SM_PAGE_SIZE) + i].on == TRUE) {
                 on = TRUE;
                 break;
             }
@@ -492,7 +466,7 @@ static void SMInit(OMOBJ *obj)
     smPage = -1;
     for (i = 0; i < SM_PAGE_MAX; i++) {
         for (j = 0; j < SM_PAGE_SIZE; j++) {
-            if (smPageData[(i * SM_PAGE_SIZE) + j].on == 1) {
+            if (smPageData[(i * SM_PAGE_SIZE) + j].on == TRUE) {
                 break;
             }
         }
@@ -506,7 +480,7 @@ static void SMInit(OMOBJ *obj)
     SMPageNoAdd(1);
     if (GameMesOvlPrev != -1) {
         for (i = 0; i < SM_PAGE_MAX * SM_PAGE_SIZE; i++) {
-            if (GameMesOvlPrev == smPageData[i].ovl && smPageData[i].on == 1) {
+            if (GameMesOvlPrev == smPageData[i].ovl && smPageData[i].on == TRUE) {
                 smPage = i / SM_PAGE_SIZE;
                 smCursorNo = i % SM_PAGE_SIZE;
                 smCursorNoPrev[smPage] = smCursorNo;
@@ -556,7 +530,7 @@ static void SMMain(OMOBJ *obj)
         return;
     }
     if (smPadBtnDown & PAD_BUTTON_X) {
-        fn_8003A5E4(0, 1);
+        fn_8003A5E4(0, TRUE);
     }
 }
 
@@ -621,46 +595,38 @@ static s16 smCharSelEndF[4];
  * slot. */
 static s16 smCharOnF[SM_CHAR_MAX];
 
-#define SM_CHAR_FILE_STRIDE 2
-#define SM_CHAR_MODEL_FILE_OFFSET 0
-#define SM_CHAR_MOTION_FILE_OFFSET 1
-#define SM_CHAR_FILE(charNo, offset)                                                               \
-    DATANUM(0xcc0000, ((charNo) * SM_CHAR_FILE_STRIDE) + (offset))
-#define SM_CHAR_MODEL_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MODEL_FILE_OFFSET)
-#define SM_CHAR_MOTION_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MOTION_FILE_OFFSET)
-
-static int smCharFileTbl[SM_CHAR_FILE_COUNT] = {
-    SM_CHAR_MODEL_FILE(SM_CHAR_MARIO),
-    SM_CHAR_MODEL_FILE(SM_CHAR_LUIGI),
-    SM_CHAR_MODEL_FILE(SM_CHAR_PEACH),
-    SM_CHAR_MODEL_FILE(SM_CHAR_YOSHI),
-    SM_CHAR_MODEL_FILE(SM_CHAR_WARIO),
-    SM_CHAR_MODEL_FILE(SM_CHAR_DAISY),
-    SM_CHAR_MODEL_FILE(SM_CHAR_WALUIGI),
-    SM_CHAR_MODEL_FILE(SM_CHAR_KINOPIO),
-    SM_CHAR_MODEL_FILE(SM_CHAR_TERESA),
-    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPA),
-    SM_CHAR_MODEL_FILE(SM_CHAR_KINOPIKO),
-    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPAR),
-    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPAG),
-    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPAB),
+static int smCharFileTbl[14] = {
+    DATANUM(0xcc0000, 0),
+    DATANUM(0xcc0000, 2),
+    DATANUM(0xcc0000, 4),
+    DATANUM(0xcc0000, 6),
+    DATANUM(0xcc0000, 8),
+    DATANUM(0xcc0000, 10),
+    DATANUM(0xcc0000, 12),
+    DATANUM(0xcc0000, 14),
+    DATANUM(0xcc0000, 16),
+    DATANUM(0xcc0000, 18),
+    DATANUM(0xcc0000, 20),
+    DATANUM(0xcc0000, 22),
+    DATANUM(0xcc0000, 24),
+    DATANUM(0xcc0000, 26),
 };
 
-static int smCharMotFileTbl[SM_CHAR_FILE_COUNT] = {
-    SM_CHAR_MOTION_FILE(SM_CHAR_MARIO),
-    SM_CHAR_MOTION_FILE(SM_CHAR_LUIGI),
-    SM_CHAR_MOTION_FILE(SM_CHAR_PEACH),
-    SM_CHAR_MOTION_FILE(SM_CHAR_YOSHI),
-    SM_CHAR_MOTION_FILE(SM_CHAR_WARIO),
-    SM_CHAR_MOTION_FILE(SM_CHAR_DAISY),
-    SM_CHAR_MOTION_FILE(SM_CHAR_WALUIGI),
-    SM_CHAR_MOTION_FILE(SM_CHAR_KINOPIO),
-    SM_CHAR_MOTION_FILE(SM_CHAR_TERESA),
-    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPA),
-    SM_CHAR_MOTION_FILE(SM_CHAR_KINOPIKO),
-    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAR),
-    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAG),
-    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAB),
+static int smCharMotFileTbl[14] = {
+    DATANUM(0xcc0000, 1),
+    DATANUM(0xcc0000, 3),
+    DATANUM(0xcc0000, 5),
+    DATANUM(0xcc0000, 7),
+    DATANUM(0xcc0000, 9),
+    DATANUM(0xcc0000, 11),
+    DATANUM(0xcc0000, 13),
+    DATANUM(0xcc0000, 15),
+    DATANUM(0xcc0000, 17),
+    DATANUM(0xcc0000, 19),
+    DATANUM(0xcc0000, 21),
+    DATANUM(0xcc0000, 23),
+    DATANUM(0xcc0000, 25),
+    DATANUM(0xcc0000, 27),
 };
 
 /* Finds the next character not already assigned to a human player when selection changes or
@@ -670,13 +636,13 @@ static s16 SMCharNoAdd(s16 playerNo, s16 num)
     int i;
     s16 charNo;
     for (i = 0; i < SM_CHAR_MAX; i++) {
-        smCharOnF[i] = 0;
+        smCharOnF[i] = FALSE;
     }
     for (i = 0; i < 4; i++) {
         if (smPlayerConf[i].type) {
             continue;
         }
-        smCharOnF[smPlayerConf[i].charNo] = 1;
+        smCharOnF[smPlayerConf[i].charNo] = TRUE;
     }
     if (!num) {
         return;
@@ -711,7 +677,7 @@ static void SMCharComSet(void)
     int j;
     int num;
     int charNo[SM_CHAR_MAX];
-    smCharOnF[4] = 1;
+    smCharOnF[4] = TRUE;
     for (i = 0; i < 4; i++) {
         num = 0;
         for (j = 0; j < SM_CHAR_MAX; j++) {
@@ -722,7 +688,7 @@ static void SMCharComSet(void)
         }
         if (smPlayerConf[i].type == 1) {
             smPlayerConf[i].charNo = charNo[rand8() % num];
-            smCharOnF[smPlayerConf[i].charNo] = 1;
+            smCharOnF[smPlayerConf[i].charNo] = TRUE;
         }
     }
 }
@@ -765,7 +731,7 @@ static void SMCharSelMain(OMOBJ *obj)
         fn_800269E8(smCharMdlId[i], (1 << 0));
     }
     for (i = 0; i < 4; i++) {
-        if (smPlayerConf[i].type == GW_TYPE_MAN) {
+        if (smPlayerConf[i].type == 0) {
             fn_80026A44(smCharMdlId[smPlayerConf[i].charNo], (1 << 0));
             fn_80026B64(smCharMdlId[smPlayerConf[i].charNo], smCharSelCamBitTbl[i]);
         }
@@ -774,7 +740,7 @@ static void SMCharSelMain(OMOBJ *obj)
         if (smCharSelEndF[i] == TRUE) {
             manDoneNum++;
         }
-        if (smPlayerConf[i].type == GW_TYPE_MAN) {
+        if (smPlayerConf[i].type == 0) {
             manNum++;
         }
     }
@@ -784,10 +750,10 @@ static void SMCharSelMain(OMOBJ *obj)
         /* When the confirmation count equals the human count (also immediately with no humans),
          * this path discards all four picks, including COM assignments, and sets them to Wario,
          * MinikoopaR, MinikoopaG, and MinikoopaB. */
-        smPlayerConf[0].charNo = SM_CHAR_WARIO;
-        smPlayerConf[1].charNo = SM_CHAR_MINIKOOPAR;
-        smPlayerConf[2].charNo = SM_CHAR_MINIKOOPAG;
-        smPlayerConf[3].charNo = SM_CHAR_MINIKOOPAB;
+        smPlayerConf[0].charNo = 4;
+        smPlayerConf[1].charNo = 11;
+        smPlayerConf[2].charNo = 12;
+        smPlayerConf[3].charNo = 13;
         SMCopyConfig(lbl_80265728, smPlayerConf);
         fn_800567D8(-1);
         OSReport("%d,%d,%d,%d\n", lbl_80265728[0].charNo, lbl_80265728[1].charNo,
@@ -825,7 +791,7 @@ static void SMCharSelMain(OMOBJ *obj)
         }
         if (lbl_802C0008[port] & PAD_BUTTON_B) {
             if (manDoneNum != 0) {
-                smCharSelEndF[i] = 0;
+                smCharSelEndF[i] = FALSE;
             }
             else {
                 SMCharMdlKill();
@@ -888,7 +854,7 @@ static void SMExit(OMOBJ *obj)
     OSReport("mgNo=%d\n", mg);
     fn_8006A268(65550);
     fn_8006A268(196610);
-    fn_8006A1C4(SM_FLAG_MG_INSTRUCTION_DISPLAY);
+    fn_8006A1C4(5);
     if (lbl_802C0010[0] & PAD_BUTTON_A) {
         lbl_802C0278 = 1;
     }
@@ -896,10 +862,10 @@ static void SMExit(OMOBJ *obj)
         lbl_802C0278 = 0;
     }
     if (mg == -1) {
-        omOvlCallEx(smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl, 1, 0, 0);
+        omOvlCallEx(smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl, TRUE, 0, 0);
     }
     else {
-        omOvlCallEx(4, 1, 0, 0);
+        omOvlCallEx(DLL_instdll, TRUE, 0, 0);
     }
     GameMesOvlPrev = smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl;
     smChar1Prev = smCursorNo;
@@ -1007,15 +973,13 @@ static void SMPlayerConfMain(OMOBJ *obj)
     SMBtnRead();
     if (!smPlayerConfEditF) {
         if (smPadDStkDown & SM_KEY_LEFT) {
-            offset =
-                ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) - 1) & SM_PLAYER_CONF_COLUMN_MASK;
-            smPlayerConfNo = (smPlayerConfNo & SM_PLAYER_CONF_COLUMN_CLEAR_MASK) + offset;
+            offset = ((smPlayerConfNo & 0x1) - 1) & 0x1;
+            smPlayerConfNo = (smPlayerConfNo & 0xFFFE) + offset;
         }
         else {
             if (smPadDStkDown & SM_KEY_RIGHT) {
-                offset = ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) + 1) &
-                         SM_PLAYER_CONF_COLUMN_MASK;
-                smPlayerConfNo = (smPlayerConfNo & SM_PLAYER_CONF_COLUMN_CLEAR_MASK) + offset;
+                offset = ((smPlayerConfNo & 0x1) + 1) & 0x1;
+                smPlayerConfNo = (smPlayerConfNo & 0xFFFE) + offset;
             }
             else if (smPadDStkDown & SM_KEY_DOWN) {
                 if ((smPlayerConfNo += 2) >= 4) {
@@ -1217,7 +1181,7 @@ static void SMSound3DExec(OMOBJ *obj)
                 break;
 
             case 7:
-                musicOffF = (musicOffF) ? 0 : 1;
+                musicOffF = (musicOffF) ? FALSE : TRUE;
                 if (musicOffF) {
                     msmMusSetMasterVolume(0);
                 }
@@ -1264,7 +1228,7 @@ static void SMSound3DExec(OMOBJ *obj)
             case 7:
                 /* Start clears the flag without restoring master volume; left/right applies the
                  * volume change. */
-                musicOffF = 0;
+                musicOffF = FALSE;
                 break;
         }
     }

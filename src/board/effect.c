@@ -619,12 +619,12 @@ static void ParticleColorCopy(PARTICLECOLORSORT *color, int count)
             while (scanLeft->key < pivot) {
                 scanLeft++;
             }
-            i += (u32)((char *)scanLeft - (char *)scanStart) / sizeof(*scanLeft);
+            i += ((u32)scanLeft - (u32)scanStart) / sizeof(*scanLeft);
             scanStart = scanRight;
             while (pivot < scanRight->key) {
                 scanRight--;
             }
-            j -= (u32)((char *)scanStart - (char *)scanRight) / sizeof(*scanRight);
+            j -= ((u32)scanStart - (u32)scanRight) / sizeof(*scanRight);
             if (i >= j) break;
             swapIndex = scanRight->index;
             scanRight->index = scanLeft->index;

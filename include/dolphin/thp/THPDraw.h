@@ -8,9 +8,8 @@
 extern "C" {
 #endif // ifdef __cplusplus
 
-void THPGXRestore(void);
-void THPGXYuv2RgbSetup(GXRenderModeObj* obj);
-void THPGXYuv2RgbDraw(u32* yImage, u32* uImage, u32* vImage, s16 x, s16 y, s16 texWidth, s16 texHeight, s16 polyWidth, s16 polyHeight);
+#include "game/THPDraw.h"
+
 void THPPlayerStop();
 BOOL THPPlayerSetVolume(int, int);
 

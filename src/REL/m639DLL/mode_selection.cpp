@@ -10,7 +10,7 @@
 /* The size of the minigame's heap. */
 extern const s32 heapSize = 0x20000;
 
-#include "REL/m639DLL/frame_durations.h"
+#include "REL/framework/frame_durations.h"
 
 M639StateOwner::M639StateOwner() : initialized(0), selection(-1) {}
 

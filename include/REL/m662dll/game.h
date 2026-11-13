@@ -5,6 +5,7 @@
 #include "dolphin/types.h"
 #include "game/hu3d.h"
 #include "game/mg/seqman.h"
+#include "game/mg/timer.h"
 #include "game/charman.h"
 #include "game/process.h"
 
@@ -245,5 +246,8 @@ f32 fn_1_3C74(f32 limit);
 void fn_1_48E8(M662Player *player, s16 spatialMode);
 void fn_1_4EFC(s16 streamSlot, s16 fadeSpeed);
 void fn_1_5008(s16 soundSlot, s16 spatialMode, HuVecF *position);
+
+MGTIMER *fn_1_2EC0(int, int, int, f32, f32);
+s32 fn_1_2F60(MGTIMER *);
 
 #endif

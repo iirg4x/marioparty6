@@ -36,7 +36,6 @@
 extern void mbMasuPosGet(s16 id, HuVecF *pos);
 extern s16 mbMasuFind_AttrIdGet(s16 id, u16 attr);
 extern s16 mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF, s16 *list);
-extern BOOL mbDiceKillCheckAll(void);
 extern OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF,
     BOOL altMtxF, BOOL layerF);
 extern void mbGuideKill(OMOBJ *obj);
@@ -834,16 +833,15 @@ void mbev_OpeningSingle(void)
     }
 }
 
-// Used by ev_OpeningSingle and OpeningBezierCalc for temporary single-player opening data.
-static inline void *OpeningAlloc(s32 size)
-{
-    return HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
-}
-
 // Used by OpeningBezierCalc to release its temporary control-point copy.
 static inline void OpeningFree(void *ptr)
 {
     HuMemDirectFree(ptr);
+}
+
+static inline void *OpeningAlloc(s32 size)
+{
+    return HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
 }
 
 // Called by ev_OpeningSingle to evaluate the guide's Bezier path at t by repeated interpolation.

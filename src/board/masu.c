@@ -10,6 +10,7 @@
 #include "game/board/main.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
+#include "game/board/star.h"
 #include "game/board/status.h"
 #include "game/board/tutorial.h"
 #include "game/data.h"
@@ -84,7 +85,6 @@ static s16 masuFindStep;
 static s16 masuFindId;
 static s16 masuFindResultNum;
 
-extern void mbev_StarMasu();
 static void MasuDispInit(void);
 static void MasuDispClose(void);
 static u32 MasuDisplayListMake(void **displayList);

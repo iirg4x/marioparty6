@@ -784,7 +784,7 @@ void NightPlayer::update()
     model->setRotation(&rotation);
     if (motion == 4)
     {
-        fn_1_24C0(effect.get(), reinterpret_cast<const Vec *>(&position));
+        fn_1_24C0(effect.get(), &position);
     }
     else
     {

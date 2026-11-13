@@ -6,7 +6,7 @@ extern "C" {
 #include "game/sprite.h"
 }
 struct PlayerPositionHistory : RequestObject {
-    PlayerPositionHistory(void *position, s32 value);
+    PlayerPositionHistory(Vec *position, s32 value);
     virtual ~PlayerPositionHistory();
     virtual void flagEnabled(int bit);
     virtual void update();

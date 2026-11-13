@@ -6,6 +6,7 @@
 
 #include "game/hsfload.h"
 #include "game/sprite.h"
+#include "game/sprput.h"
 #include "game/disp.h"
 #include "game/main.h"
 
@@ -24,9 +25,6 @@ static inline float acosf(float x) { return (float)acos((double)x); }
 #define HSF_DISPLAY_LIST_SIZE 131072
 
 #define MTXBUF_MAX 96
-
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, GXTexWrapMode wrapT,
-                  GXTexFilter filter);
 
 static void objCall(HU3D_MODEL *model, HSF_OBJECT *object);
 static void objMesh(HU3D_MODEL *model, HSF_OBJECT *object);
@@ -480,7 +478,7 @@ BOOL fn_800186B4(HSF_DATA *hsf, HSF_OBJECT *object, Mtx modelMatrix)
         return FALSE;
     }
     fovTangent =
-        sin(3.141592653589793*(fieldOfView*0.5)/180.0)/cos(3.141592653589793*(fieldOfView*0.5)
+        sin(M_PI*(fieldOfView*0.5)/180.0)/cos(M_PI*(fieldOfView*0.5)
         /180.0);
     halfHeightAtDepth = fovTangent*viewDepth;
     halfWidthAtDepth = halfHeightAtDepth*aspect;
@@ -2954,7 +2952,7 @@ HSF_CONSTDATA *fn_800215B4(HSF_OBJECT *object, u32 no)
     return constDataP;
 }
 
-#define VTX_COLOR(obj, idx) (&((GXColor *) obj->mesh.color->data)[idx])
+#define VTX_COLOR(obj, idx) (&obj->mesh.color->colors[idx])
 /* Emits GX vertices and state while building display lists, moving the last detected NBT
 * texture attribute to slot 0. If it precedes the last two slots, the shift can duplicate later
 * attributes and discard the final one. */

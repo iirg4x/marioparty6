@@ -45,7 +45,7 @@ extern const Vec lbl_1_rodata_2D0[4] = {
 #include "REL/m639DLL/game_constants.h"
 // Gravity uses world units per frame squared.
 // Additional frame durations, kept in their initialized order.
-#include "REL/m639DLL/frame_durations.h"
+#include "REL/framework/frame_durations.h"
 // The two 3.5-second values have separate storage.
 // Frame and world-unit conversions are defined by the framework.
 
@@ -216,7 +216,7 @@ Player::Player(long value, long mode, long selector)
     rotation.z = 0.0f;
     setRotation(&rotation);
     short hookModelId = *this;
-    fn_8002741C((short)hookModelId, (char *)itemHook, hookModel);
+    fn_8002741C((short)hookModelId, itemHook, hookModel);
     hookModel.setShadow();
     selectCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 115));
 }
@@ -303,7 +303,7 @@ void Player::fn_1_7050()
     blend = blendInput(blend, 0.2f * (float)inputHistory.count());
     if (blend < 0.1)
     {
-        if (characterMotionShiftInactive((s32 *)&static_cast<MotionOwner &>(*this)))
+        if (characterMotionShiftInactive(&charNo))
         {
             shiftCharacterMotion(&static_cast<MotionOwner &>(*this), DATANUM(0x8e0000, 115), 16.0f, 0.0f, ((1 << 30) | (1 << 0)));
             resetAttribute(((1 << 30) | (1 << 1)));
@@ -350,7 +350,7 @@ void fn_1_75BC(Player *target, float input)
 /* Starts the actor's looping motion and installs its turn update action. */
 void Player::fn_1_7654()
 {
-    fn_8005C7A4((short)characterNo(), (char *)itemHook);
+    fn_8005C7A4((short)characterNo(), itemHook);
     shiftCharacterMotion(&static_cast<MotionOwner &>(*this), CHARMOT_HSF_c000m1_300, 16.0f, 0.0f, ((1 << 30) | (1 << 0)));
     resetAttribute(((1 << 30) | (1 << 1)));
     setCallback(this, &Player::fn_1_7528);

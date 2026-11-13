@@ -194,7 +194,7 @@ void fn_1_2798(HU3D_MODEL *model, Mtx *matrix)
 
 void fn_1_2CFC(PlayerPositionHistory *);
 
-PlayerPositionHistory::PlayerPositionHistory(void *unused, s32 cameraMask)
+PlayerPositionHistory::PlayerPositionHistory(Vec *unused, s32 cameraMask)
 {
     HU3D_MODEL *model;
     s16 handle;

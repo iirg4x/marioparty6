@@ -1,6 +1,7 @@
 /* Board shop events display capsule offers and let a player buy or replace one. */
 /* Use the Dolphin math declarations for the shop's movement and menu animations. */
 #define _MATH_H
+#include "game/board/capevent.h"
 #include "dolphin/math.h"
 
 #include "game/board/main.h"
@@ -160,9 +161,6 @@ static GXColor ev_ShopLightColor = { 255, 255, 255, 255 };
 
 void mbev_ShopCreate(int dataNum, int motDataNum);
 void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, char *hookName);
-extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
-    HuVecF *out);
-extern int mbCapShopListGet(int playerNo, s8 *shopList);
 static void ev_ShopOMExec(OMOBJ *obj);
 static void ev_ShopOpenSet(int shopNo, BOOL openF);
 static void ev_Shop(MBSHOPWORK *visitWork);
@@ -496,6 +494,14 @@ static void ev_ShopOpenSet(int shopNo, BOOL openF)
     }
 }
 
+typedef struct CapsuleList_s {
+    s8 id; // Capsule type, or -1 at the end of a distribution list.
+    s8 cost[3]; // Price alternatives used by purchase and sale rank rules.
+    s8 weight[12]; // Four rank weights each for early rewards, late rewards, and shops.
+} CAPSULE_LIST;
+
+int mbCapShopListGet(int playerNo, CAPSULE_LIST *list);
+
 /* On shop arrival, hides remaining moves and disables pause, then unconditionally enables both
  * after the visit. */
 int mbev_Shop(int playerNo, int shopNo)
@@ -518,7 +524,7 @@ int mbev_Shop(int playerNo, int shopNo)
 }
 
 /* Called while preparing a visit to allocate the temporary capsule offer list. */
-static inline s8 *ev_ShopListAlloc(void)
+static inline CAPSULE_LIST *ev_ShopListAlloc(void)
 {
     return HuMemDirectMallocNum(HEAP_HEAP,
         SHOP_LIST_ENTRY_COUNT * SHOP_LIST_ENTRY_SIZE, 0x10000000);
@@ -548,7 +554,7 @@ static void ev_Shop(MBSHOPWORK *visitWork)
     HuVecF shopPos;
     HuVecF savedPlayerPos;
     HuVecF displayOffset;
-    s8 *shopCapsuleList;
+    CAPSULE_LIST *shopCapsuleList;
     int firstOfferIndex;
     int capsuleObjId[3];
     int secondOfferIndex;
@@ -616,7 +622,7 @@ shop_found:
         for (loopIndex = 0, offerNum = 0;
             loopIndex < 3 && loopIndex < shopCapsuleCount;
             loopIndex++, currentOffer++) {
-            currentOffer->capsuleNo = shopCapsuleList[loopIndex * SHOP_LIST_ENTRY_SIZE];
+            currentOffer->capsuleNo = shopCapsuleList[loopIndex].id;
             currentOffer->cost = mbCapBuyCostGet((s16)currentOffer->capsuleNo,
                 (s16)visitWork->playerNo);
             currentOffer->messageId = mbCapUseMesGet(currentOffer->capsuleNo);
