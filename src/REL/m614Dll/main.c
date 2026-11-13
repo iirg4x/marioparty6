@@ -2071,7 +2071,6 @@ void fn_1_91E8(OMOBJ *obj)
     obj->objFunc = fn_1_55A0;
 }
 
-
 void fn_1_9D78(OMOBJ *obj)
 {
     obj->objFunc = fn_1_656C;
@@ -2159,9 +2158,6 @@ void ObjectSetup(void)
     lbl_1_data_4 = -1;
     fn_80070788(&lbl_1_data_18);
 }
-
-
-
 
 void fn_1_A38C(s16 mode, s16 frameNo)
 {

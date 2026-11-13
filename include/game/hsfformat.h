@@ -140,6 +140,7 @@ typedef struct HsfBuffer_s {
         void *data;
         HuVecF *positions;
         HuVec2f *coordinates;
+        GXColor *colors;
         struct HsfFace_s *faces;
     };
 } HSF_BUFFER;
@@ -367,6 +368,7 @@ typedef struct HsfTrack_s {
     union {
         float value;
         void *data;
+        HSF_BEZIER_KEY *bezier;
     };
 } HSF_TRACK;
 

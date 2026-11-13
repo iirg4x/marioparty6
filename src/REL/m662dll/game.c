@@ -29,9 +29,7 @@ void fn_1_984(void), fn_1_AD68(void), fn_1_2670(void);
 void fn_1_5A5C(void), fn_1_7DE8(void), fn_1_5884(void), fn_1_887C(void);
 s32 fn_1_58B0(void), fn_1_8754(void);
 s16 fn_1_2DA0(f32 *, f32, f32, f32);
-void *fn_1_2EC0(s32, s32, s32, f32, f32);
 void fn_1_2F34(void *), fn_1_2F88(void *);
-s32 fn_1_2F60(MGTIMER *);
 
 /* When a positional effect is updated, changes its pan only while its sound slot and handle are
  * active. */

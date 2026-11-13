@@ -1,4 +1,5 @@
 // Board setup, route markers, NPCs, and player events for Thirsty Gulch.
+#include "REL/s01Dll/s01.h"
 #include "dolphin.h"
 #include "datadir_enum.h"
 #include "math.h"
@@ -104,7 +105,6 @@ extern HuVecF lbl_1_data_128;
 #define lbl_1_rodata_B4 90.0f
 extern s32 lbl_1_bss_44;
 
-void ObjectSetup(void);
 void fn_1_F4(void);
 void fn_1_270(void);
 void fn_1_274(OMOBJ *boardObject);
@@ -178,7 +178,7 @@ void fn_1_270(void)
 void fn_1_274(OMOBJ *boardObject)
 {
     if (mbExitCheck()) {
-        omDelObjEx((OMOBJMAN *)fn_8000DD9C(), boardObject);
+        omDelObjEx(fn_8000DD9C(), boardObject);
     } else {
         fn_1_A50();
         fn_1_CEC();

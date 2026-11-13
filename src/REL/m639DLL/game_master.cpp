@@ -1,4 +1,5 @@
 #include "REL/m639DLL/shadow_fit.h"
+#include "REL/m639DLL/player.h"
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/frame_time.h"
@@ -18,7 +19,7 @@
 
 // These constants keep translation-unit-local initialized storage.
 // Additional frame durations, kept in their initialized order.
-#include "REL/m639DLL/frame_durations.h"
+#include "REL/framework/frame_durations.h"
 // The two 3.5-second values have separate storage.
 // Game durations include the closing interval.
 #include "REL/m639DLL/game_constants.h"
@@ -27,7 +28,6 @@
 extern "C" {
 #include "game/audio.h"
 #include "game/wipe.h"
-void fn_1_5F08();
 }
 #include "REL/framework/random.h"
 #include "REL/framework/event.h"
@@ -73,13 +73,6 @@ void SceneObjectOwner::updateGame() {
     updateGameObjects();
     updateRequestObjects();
 }
-extern "C" {
-
-extern void fn_1_6058(void);
-extern void fn_1_626C(void);
-extern void fn_1_63A4(void);
-
-}
 
 void SceneObjectOwner::run(void *initialArgument)
 {
@@ -99,17 +92,17 @@ void SceneObjectOwner::run(void *initialArgument)
 
     MinigameCore::wipeIn();
     while (WipeCheckIn() != 0)
-        suspend((void *)(0));
+        suspend(0);
 
     postRequest(0);
     while (requestsCleared() == 0)
-        suspend((void *)(0));
+        suspend(0);
 
     music = HuAudBGMPlay(MSM_STREAM_LAID_BACK);
     postRequest(1);
     MinigameCore::showStart();
     while (MinigameCore::messageDone() == 0)
-        suspend((void *)(0));
+        suspend(0);
 
     postRequest(2);
     fn_1_6058();
@@ -124,7 +117,7 @@ void SceneObjectOwner::run(void *initialArgument)
             message->setParameters(closingTime, 0, 0);
             message->setMode(1);
         }
-        suspend((void *)(0));
+        suspend(0);
     }
 
     sendEvent(0, 2, 0.0f);
@@ -141,7 +134,7 @@ void SceneObjectOwner::run(void *initialArgument)
 
     frame = 0;
     while (frame < secondsToFrames(3L) || requestsCleared() == 0) {
-        suspend((void *)(0));
+        suspend(0);
         ++frame;
     }
 
@@ -155,7 +148,7 @@ void SceneObjectOwner::run(void *initialArgument)
     HuAudJinglePlay(jingle);
 
     while (MinigameCore::messageDone() == 0)
-        suspend((void *)(0));
+        suspend(0);
     MinigameCore::requestExit();
     for (;;)
         suspend((void *)(-1));

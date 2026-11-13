@@ -295,10 +295,6 @@ void fn_1_5CC(void)
 
 void fn_1_2A3C(OMOBJ *obj);
 
-extern void HuAudFXPanning(int seNo, s16 pan);
-
-extern s32 HuAudFXVolSet(int seNo, s16 volume);
-
 /* Sets the sound effect's pan and clamps its distance-scaled volume. */
 void fn_1_BC4(s32 handle, float horizontalPosition, float distance)
 {
@@ -1199,8 +1195,6 @@ static inline void DebugReportPlayerPositions(int frameNo, int enabled, float *r
     }
 }
 
-void fn_1_A2AC(s16 mode, s16 frameNo);
-void fn_1_A3B0(s16 mode, s16 frameNo);
 u8 m601UnknownData00[4] = { 255, 255, 0, 0 };
 s32 lbl_1_data_4 = -1;
 s32 lbl_1_data_8 = -1;

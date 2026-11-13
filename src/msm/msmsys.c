@@ -227,13 +227,13 @@ static s32 msmSysGroupInit(DVDFileInfo *file)
         groupStack = &sys.grpStackA[groupIndex];
         groupStack->grpId = groupStack->baseGrpF = 0;
         groupStack->num = 0;
-        groupStack->buf = (void*) ((u32) sys.grpBufA + sys.info->grpBufSizeA * groupIndex);
+        groupStack->buf = sys.grpBufA + sys.info->grpBufSizeA * groupIndex;
     }
     for (groupIndex = 0; groupIndex < sys.grpStackBMax; groupIndex++) {
         groupStack = &sys.grpStackB[groupIndex];
         groupStack->grpId = groupStack->baseGrpF = 0;
         groupStack->num = 0;
-        groupStack->buf = (void*) ((u32) sys.grpBufB + sys.info->grpBufSizeB * groupIndex);
+        groupStack->buf = sys.grpBufB + sys.info->grpBufSizeB * groupIndex;
     }
     sys.sampSize = 0;
     for (groupIndex = 0; groupIndex < sys.baseGrpNum; groupIndex++) {
@@ -841,6 +841,7 @@ void msmSysCheckInit(void)
 s32 msmSysInit(MSM_INIT *initParams, MSM_ARAM *aramConfig)
 {
     s32 initResult;
+    u32 aramAddress;
     void *minimumHeapBlock;
 
     SND_HOOKS sndHooks = { msmMemAlloc, msmMemFree };
@@ -885,8 +886,8 @@ s32 msmSysInit(MSM_INIT *initParams, MSM_ARAM *aramConfig)
         if (aramConfig->skipARInit == 0) {
             ARInit(aramConfig->stackIndex, aramConfig->aramEnd);
             ARQInit();
-            aramConfig = (MSM_ARAM *)ARAlloc(sys.info->aramSize);
-            if ((u32)aramConfig != ARGetBaseAddress()) {
+            aramAddress = ARAlloc(sys.info->aramSize);
+            if (aramAddress != ARGetBaseAddress()) {
                 msmFioClose(&file);
                 return MSM_ERR_OUTOFAMEM;
             }

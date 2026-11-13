@@ -2235,7 +2235,7 @@ static void lightSet(HU3D_LIGHT *lightP, s16 lightBit, Mtx cameraMtxXPose, Mtx c
         case 1:
             GXInitLightAttnA(&lightObj, 1, 0, 0);
             GXInitLightDistAttn(&lightObj, 0, 1, GX_DA_OFF);
-            VECScale(&lightP->dir, &lightP->pos, -1000000.0f);
+            VECScale(&lightP->dir, &lightP->pos, -1e6f);
             break;
 
         case 2:
@@ -2356,7 +2356,7 @@ void Hu3DShadowCreate(float fov, float near, float far)
 }
 
 /* Updates position, up, and target only for enabled shadow cameras also selected by cameraBit. */
-void fn_8002A674(HuVecF *camPos, HuVecF *camUp, HuVecF *camTarget, s16 cameraBit)
+void fn_8002A674(HuVecF *camPos, const HuVecF *camUp, HuVecF *camTarget, s16 cameraBit)
 {
     s16 i;
     for(i=0; i<16; i++) {

@@ -78,7 +78,7 @@ int fn_1_1840(s16 side);
 void fn_1_19DC(OMOBJ *obj, s16 motion);
 void fn_1_2D0C(OMOBJ *obj);
 void fn_1_2FE0(OMOBJ *obj);
-void fn_1_5CB0(OMOBJ *obj);
+void M659ComPlayerSet(OMOBJ *obj);
 int fn_1_5DB4(M659ComSlot *com);
 void fn_1_5E08(M659ComSlot *com);
 void fn_1_5E9C(M659ComSlot *com);

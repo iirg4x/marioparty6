@@ -28,7 +28,7 @@ public:
     virtual ~Player();
     virtual void update();
     void (Player::*callback)();
-    void *itemHook;
+    char *itemHook;
     int mode;
     int selectionNumber;
     int selectionIndex;
@@ -55,10 +55,10 @@ public:
 };
 
 extern "C" {
-void fn_1_5F08();
-void fn_1_6058();
-void fn_1_626C();
-void fn_1_63A4();
+void fn_1_5F08(void);
+void fn_1_6058(void);
+void fn_1_626C(void);
+void fn_1_63A4(void);
 void fn_1_6444(std::vector<Player *> *actors);
 int fn_1_67B4(unsigned int playerNumber);
 void fn_1_68D8(std::vector<Sphere> *spheres);

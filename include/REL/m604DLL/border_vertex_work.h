@@ -7,6 +7,6 @@ struct VectorHolder {
     Vec value;
 };
 
-typedef f32 BorderPair[2][3];
+typedef Vec BorderPair[2];
 
 #endif

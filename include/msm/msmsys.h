@@ -51,12 +51,12 @@ typedef struct MSMSys_s {
     s8 grpStackAMax;
     u8 grpStackADepth;
     s8 grpStackAOfs;
-    void *grpBufA;
+    u8 *grpBufA;
     MSM_GRP_STACK grpStackA[4];
     s8 grpStackBMax;
     u8 grpStackBDepth;
     s8 grpStackBOfs;
-    void *grpBufB;
+    u8 *grpBufB;
     MSM_GRP_STACK grpStackB[10];
     s8 grpLoadNum;
     s8 grpLoadId[15];

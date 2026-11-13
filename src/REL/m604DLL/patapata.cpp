@@ -111,10 +111,10 @@ Patapata::Patapata() : callback(&Patapata::clearStart), model(0x3F0000), finishe
     addMotion(0x3F0001);
     addMotion(0x3F0002);
 
-    // Each course loads two motions
-    // into the model's motion list.
-    // Both calls above append one motion identifier.
-    // Check that both motion identifiers were stored.
+    /*
+     * Spacing keeps the assertion's line number.
+     *
+     */
 
     assert(m_mot_id.size() == NUMBEROF_MOTION);
 
@@ -798,8 +798,7 @@ Vec Noko::getBodyPosition()
     if (mode == 0) {
         handle = *model;
         object = fn_80026BF4(handle, "noko_body");
-        ModelPositionCopy objectPosition(object);
-        objectPositionCopy = objectPosition;
+        objectPositionCopy = ModelPositionCopy(object);
         PSVECAdd(&result, &objectPositionCopy.value, &result);
     }
     return result;

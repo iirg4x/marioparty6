@@ -194,7 +194,7 @@ void fn_1_2798(HU3D_MODEL *model, Mtx *matrix)
 
 void fn_1_2CFC(PlayerPositionHistory *);
 
-PlayerPositionHistory::PlayerPositionHistory(void *unused, s32 cameraMask)
+PlayerPositionHistory::PlayerPositionHistory(Vec *unused, s32 cameraMask)
 {
     HU3D_MODEL *model;
     s16 handle;
@@ -303,9 +303,9 @@ void fn_1_2CFC(PlayerPositionHistory *object) {
         vertex->y = 0.0f;
         vertex->z = 0.0f;
         for (side = 0; side < 2; side++) {
-            ((Vec *)object->borders[index][side])->x = 0.0f;
-            ((Vec *)object->borders[index][side])->y = 0.0f;
-            ((Vec *)object->borders[index][side])->z = 0.0f;
+            object->borders[index][side].x = 0.0f;
+            ((Vec *)&object->borders[index][side])->y = 0.0f;
+            ((Vec *)&object->borders[index][side])->z = 0.0f;
         }
         index++;
         vertex++;
@@ -371,8 +371,8 @@ void fn_1_2E50(PlayerPositionHistory *work)
         PSVECScale(& negative, & negative, - 30.000002f);
         PSVECAdd(& positive, & currentVertex, & positive);
         PSVECAdd(& negative, & currentVertex, & negative);
-        (*(Vec *)work->borders[currentIndex][0]) = (*(Vec *)work->borders[nextIndex][0]) = positive;
-        (*(Vec *)work->borders[currentIndex][1]) = (*(Vec *)work->borders[nextIndex][1]) = negative;
+        work->borders[currentIndex][0] = work->borders[nextIndex][0] = positive;
+        work->borders[currentIndex][1] = work->borders[nextIndex][1] = negative;
     }
 }
 
@@ -399,10 +399,10 @@ void fn_1_3150(PlayerPositionHistory *work)
         for (index = 0, nextIndex = 1;
              index < work->state - 2;
              ++index, ++nextIndex) {
-            currentPositive = (*(Vec *)work->borders[index][0]);
-            currentNegative = (*(Vec *)work->borders[index][1]);
-            nextPositive = (*(Vec *)work->borders[nextIndex][0]);
-            nextNegative = (*(Vec *)work->borders[nextIndex][1]);
+            currentPositive = work->borders[index][0];
+            currentNegative = work->borders[index][1];
+            nextPositive = work->borders[nextIndex][0];
+            nextNegative = work->borders[nextIndex][1];
 
             alpha0 = (s32)((f32)work->countdown -
                                alphaStep * (f32)(lastIndex - index));

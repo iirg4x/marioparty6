@@ -29,4 +29,5 @@ typedef struct M659CollisionTable {
 extern OMOBJ *lbl_1_bss_54;
 extern int lbl_1_bss_50;
 int fn_1_450C(M659Collision *firstCollision, M659Collision *secondCollision);
+int fn_1_4CA4(M659Collision *collision);
 #endif

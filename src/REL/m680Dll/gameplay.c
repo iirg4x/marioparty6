@@ -201,7 +201,6 @@ static inline void m680UpdateAngle(M680MotionWork *work)
         motion = work->motions[index]; \
     }
 
-void ObjectSetup();
 void fn_1_280();
 void fn_1_308();
 void fn_1_3C8();
@@ -225,7 +224,6 @@ void fn_1_39D0();
 void fn_1_613C();
 s32 fn_1_62FC();
 void fn_1_646C();
-void fn_1_6538();
 void fn_1_65FC();
 void fn_1_6624();
 void fn_1_6904();
@@ -251,7 +249,6 @@ void fn_1_9400();
 void fn_1_9448();
 void fn_1_9580();
 void fn_1_95C0();
-void fn_1_9600();
 void fn_1_9630();
 void fn_1_9754();
 void fn_1_9898();
