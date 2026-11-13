@@ -119,7 +119,7 @@ typedef struct GwCommon_s {
 	u8 vibrateF : 1; //0x06 Bit 2
 	u8 mic : 2; //0x06 Bits 0-1
 	OSTime time; //0x08
-	char name[17]; //0x10
+	s8 name[17]; //0x10
 	u32 mgUnlock[4]; //0x24
 	u32 record[8]; //0x34
 	u16 charPlayNum[11][14]; //0x54

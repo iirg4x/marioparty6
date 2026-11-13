@@ -11,14 +11,14 @@ ScalarSourceOwner::~ScalarSourceOwner() {}
 // Samples the controller triggers and applies the right-minus-left difference.
 void ScalarSourceOwner::update()
 {
-    float leftTrigger = ((PlayerInfo *)owner)->triggerL();
-    float rightTrigger = ((PlayerInfo *)owner)->triggerR();
-    fn_1_75BC(static_cast<Player *>(owner), rightTrigger - leftTrigger);
+    float leftTrigger = owner->triggerL();
+    float rightTrigger = owner->triggerR();
+    fn_1_75BC(owner, rightTrigger - leftTrigger);
 }
 
 
-MotionCycleOwner::MotionCycleOwner(void *owner)
- : PlayerControl(owner), valueIndex(((PlayerInfo *)owner)->difficulty()), phase(0.0f) {}
+MotionCycleOwner::MotionCycleOwner(Player *owner)
+ : PlayerControl(owner), valueIndex(owner->difficulty()), phase(0.0f) {}
 MotionCycleOwner::~MotionCycleOwner() {}
 void MotionCycleOwner::clear() { phase = 0.0f; }
 extern "C" const float lbl_1_rodata_24[5] = {5.4f, 6.5f, 10.0f, 12.0f, 0.0f};
@@ -36,12 +36,12 @@ void MotionCycleOwner::update()
         phase = (float)((double)phase - (M_PI * 360.0 / 180.0));
     }
     if (previousPhase < 1.5707964f && phase >= 1.5707964f) {
-        fn_1_75BC(static_cast<Player *>(owner), 1.0f);
+        fn_1_75BC(owner, 1.0f);
         return;
     }
     if (previousPhase < 4.712389f && phase >= 4.712389f) {
-        fn_1_75BC(static_cast<Player *>(owner), -1.0f);
+        fn_1_75BC(owner, -1.0f);
         return;
     }
-    fn_1_75BC(static_cast<Player *>(owner), (float)sin((double)phase));
+    fn_1_75BC(owner, (float)sin((double)phase));
 }

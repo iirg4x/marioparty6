@@ -67,7 +67,6 @@ static s16 SLMessOut(s16 messId);
 #define MESS_MPSYSTEM_CARD_REINSERT MESSNUM(MESS_FILE_SELECT, 58)
 #define MESS_MPSYSTEM_MES_BANK_AWARD MESSNUM(MESS_FILE_SELECT, 67)
 
-void SLCurBoxNoSet(s16 boxNo);
 static HUWINID SLWinOpen(s32 mesNum, s32 insertMesNum1, s32 insertMesNum2, s16 posY);
 static void SLWinClose(HUWINID winId);
 static HUWINID SLBankAwardExec(s16 award);

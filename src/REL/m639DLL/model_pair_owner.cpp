@@ -1,3 +1,4 @@
+#include "REL/m639DLL/model_pair_owner.h"
 #include "REL/framework/event.h"
 #include "REL/framework/game_object_man.h"
 #include "REL/m639DLL/pair_bounds.h"

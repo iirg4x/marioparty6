@@ -44,13 +44,13 @@ void RandomSeed(unsigned long seed);
 extern "C" { BOOL fn_8006A124(u32 flags); }
 
 void updateRequestObjects(void);
-u8 fn_1_6FA4(void *object);
+u8 fn_1_6FA4(CleanupSequenceOwner *object);
 
-void fn_1_7054(void *object);
+void fn_1_7054(CleanupSequenceOwner *object);
 
-void fn_1_7104(void *object);
+void fn_1_7104(CleanupSequenceOwner *object);
 
-void fn_1_71F4(void *object);
+void fn_1_71F4(CleanupSequenceOwner *object);
 
 void fn_1_73A4(CleanupSequenceOwner *object);
 
@@ -62,7 +62,7 @@ u8 fn_1_6E88(CleanupSequenceOwner *object);
 
 extern "C" void fn_800611E4(s16, s16, s16, s16);
 
-extern void fn_1_72E4(void *argument);
+extern void fn_1_72E4(CleanupSequenceOwner *argument);
 
 extern void deleteRequestObjects(void);
 
@@ -248,7 +248,7 @@ u8 fn_1_6E88(CleanupSequenceOwner *owner)
 }
 
 // Whether every player has finished its last motion.
-u8 fn_1_6FA4(void *)
+u8 fn_1_6FA4(CleanupSequenceOwner *)
 {
     ASet<Player> &players = ASet<Player>::getChecked();
     Player *node = players.front();
@@ -260,7 +260,7 @@ u8 fn_1_6FA4(void *)
     return 1;
 }
 
-void fn_1_7054(void *)
+void fn_1_7054(CleanupSequenceOwner *)
 {
     ASet<Player> &players = ASet<Player>::getChecked();
     Player *node = players.front();
@@ -271,7 +271,7 @@ void fn_1_7054(void *)
     }
 }
 
-void fn_1_7104(void *)
+void fn_1_7104(CleanupSequenceOwner *)
 {
     ASet<Player> &players = ASet<Player>::getChecked();
     Player *node = players.front();
@@ -282,7 +282,7 @@ void fn_1_7104(void *)
     }
 }
 
-void fn_1_71F4(void *)
+void fn_1_71F4(CleanupSequenceOwner *)
 {
     ASet<Player> &players = ASet<Player>::getChecked();
     Player *node = players.front();
@@ -293,7 +293,7 @@ void fn_1_71F4(void *)
     }
 }
 
-void fn_1_72E4(void *)
+void fn_1_72E4(CleanupSequenceOwner *)
 {
     ASet<Player>::getChecked().deleteAll();
 }

@@ -518,7 +518,7 @@ void Hu3DAmbColorSet(float r, float g, float b);
 void fn_8002A390(BOOL shineF);
 void fn_8002A3B0(float fov, float near, float far, s16 cameraBit);
 void Hu3DShadowCreate(float fov, float near, float far);
-void fn_8002A674(HuVecF *camPos, HuVecF *camUp, HuVecF *camTarget, s16 cameraBit);
+void fn_8002A674(HuVecF *camPos, const HuVecF *camUp, HuVecF *camTarget, s16 cameraBit);
 void Hu3DShadowPosSet(HuVecF *camPos, HuVecF *camUp, HuVecF *camTarget);
 void fn_8002A7D8(float tpLvl, s16 cameraBit);
 void Hu3DShadowTPLvlSet(float tpLvl);

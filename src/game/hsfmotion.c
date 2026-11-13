@@ -9,6 +9,7 @@
 #include "game/ClusterExec.h"
 #include "game/EnvelopeExec.h"
 #include "game/ShapeExec.h"
+#include "humath.h"
 
 #define HU3D_MOTATTR_SHIFT_ALL                                                                     \
     (((1 << 30) | (1 << 3)) | ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 5)))
@@ -1446,12 +1447,12 @@ void fn_8002F780(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                     HuVecF dir;
                     VECSubtract(&Hu3DCamera[i].pos, &Hu3DCamera[i].target, &dir);
                     VECNormalize(&dir, &dir);
-                    upOfs.x = ((dir.x * dir.y * (1-cos(3.141592653589793*value/180.0)))
-                        - (dir.z * sin(3.141592653589793*value/180.0)));
+                    upOfs.x = ((dir.x * dir.y * (1-cos(M_PI*value/180.0)))
+                        - (dir.z * sin(M_PI*value/180.0)));
                     upOfs.y = ((dir.y * dir.y)
-                        + (1-(dir.y*dir.y)) * cos(3.141592653589793*value/180.0));
-                    upOfs.z = (((dir.y * dir.z) * (1-cos(3.141592653589793*value/180.0)))
-                        + (dir.x * sin(3.141592653589793*value/180.0)));
+                        + (1-(dir.y*dir.y)) * cos(M_PI*value/180.0));
+                    upOfs.z = (((dir.y * dir.z) * (1-cos(M_PI*value/180.0)))
+                        + (dir.x * sin(M_PI*value/180.0)));
                     VECNormalize(&upOfs, &Hu3DCamera[i].up);
                     Hu3DCamera[i].upRot = value;
                 }
@@ -1573,7 +1574,7 @@ float GetCurve(HSF_TRACK *trackP, float time)
             break;
         case 4:
         {
-            float *data = (float *)&trackP->data;
+            float *data = &trackP->value;
             return *data;
         }
 
@@ -1647,7 +1648,7 @@ float GetBezier(s32 keyNum, HSF_TRACK *trackP, float time)
         startKey = 0;
     }
     if (startKey == -1) {
-        key = (HSF_BEZIER_KEY *) trackP->data + trackP->start;
+        key = trackP->bezier + trackP->start;
         keyPrev = key - 1;
         for (startKey=trackP->start; startKey<keyNum; startKey++, key++) {
             if (time >= keyPrev[0][0] && time < key[0][0]) {

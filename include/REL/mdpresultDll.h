@@ -325,4 +325,37 @@ struct MdResultCameraWork_s {
     float unk44; /* The game's code never reads this field. */
 };
 
+float fn_1_1F8BC(float current, float target, float weight);
+void fn_1_1FB50(HuVecF *current, const HuVecF *target, float weight);
+void fn_1_26164(s16 index, HuVecF *position);
+float fn_1_1F878(float start, float end, float time, float duration);
+float fn_1_1FD7C(float start, float end, float time, float duration);
+void fn_1_1F948(HuVecF *result, const HuVecF *start,
+    const HuVecF *middle, const HuVecF *end, float time);
+float fn_1_1FF48(float start, float end, float time, float duration);
+float fn_1_1FE74(float start, float end, float time, float duration);
+void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel);
+float fn_1_1FC94(float start, float end, float time, float duration);
+void fn_1_2001C(HU3D_MODELID modelId, const HuVecF *first,
+    const HuVecF *second);
+void fn_1_20108(HUSPR_GROUPID groupId, s32 attr);
+void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number);
+void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 number);
+void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
+    float accelX, GXColor *color);
+void fn_1_26070(s16 index, s16 parManId, HuVecF *velocity,
+    float accelX, GXColor *color);
+void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
+    float accelX, GXColor *color);
+void fn_1_26BE4(s16 index);
+void fn_1_26EB0(HuVecF *position);
+void fn_1_20188(HUSPR_GROUPID groupId, s32 attr);
+void fn_1_25DB0(s16 index, HuVecF *position, float alpha);
+void fn_1_25D0C(float colorIndex);
+void fn_1_25FF4(s16 index);
+void fn_1_25B90(void);
+void fn_1_26EAC(float ignoredValue);
+void fn_1_26F74(void);
+void fn_1_252F8(void);
+
 #endif
