@@ -1,4 +1,4 @@
-#include "REL/m672DLL/event.h"
+#include "REL/framework/event.h"
 #include "REL/framework/sound.h"
 extern "C" {
 #include "math.h"
@@ -18,76 +18,57 @@ extern "C" {
 #include "game/data.h"
 }
 
-#include "REL/m672DLL/sprite_transform.h"
 #include "REL/m672DLL/animated_owner.h"
-extern "C" {
-}
 
 #include "REL/m672DLL/resources.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/event_callback_inline.h"
 #include "REL/framework/frame_time.h"
-extern "C" {
-void __msl_assertion_failed(const char *, const char *, int);
-void fn_1_1A5B0(void *, int);
-void fn_1_1FA60(ModelMotion *, int);
-void fn_1_198E0(EventHandlerManager *, int);
-void fn_1_1EE80(ModelMotion *, short);
-void fn_1_1EC0C(ModelMotion *, const Vec *);
-void fn_1_1ED2C(ModelMotion *, float);
-void fn_1_1EE00(ModelMotion *, float);
-void fn_1_1F00C(ModelMotion *, const Vec *);
+#include "REL/m672DLL/member_handler.h"
 
-extern const u8 lbl_1_data_33C[];
-extern AnimatedOwnerHandler lbl_1_data_2C8, lbl_1_data_2D4, lbl_1_data_2E0;
+extern "C" {
+
 extern const unsigned long lbl_1_rodata_3C8[];
-extern const VecValue lbl_1_rodata_3DC, lbl_1_rodata_3E8, lbl_1_rodata_3F8;
+extern const EffectVector lbl_1_rodata_3DC, lbl_1_rodata_3E8, lbl_1_rodata_3F8;
 extern const GXColor defaultLightColor;
 }
-template<class Receiver> void fn_1_A108(StateEventTable *, const StateCallbackBinding &, int);
-
-static inline StateMemberMethod AnimatedOwnerMember(AnimatedOwnerHandler fn)
-{
-    return StateMemberMethod(fn);
-}
-static inline StateCallbackBinding BindAnimatedOwner(const StateMemberMethod &fn,
-                                                      AnimatedOwner *owner)
-{
-    return StateCallbackBinding(fn, owner);
-}
 
 extern "C" {
-const unsigned long lbl_1_rodata_3C8[5] = {0x830013, 0x830018, 0x830015, 0x830019, 0x83001A};
-const VecValue lbl_1_rodata_3DC = {{0.0f, 0.0f, 100.0f}};
-const VecValue lbl_1_rodata_3E8 = {{0.0f, 1.0f, -1.0f}};
+const unsigned long lbl_1_rodata_3C8[5] = {DATANUM(0x830000, 0x13), DATANUM(0x830000, 0x18),
+    DATANUM(0x830000, 0x15), DATANUM(0x830000, 0x19), DATANUM(0x830000, 0x1A)};
+const EffectVector lbl_1_rodata_3DC = {{0.0f, 0.0f, 100.0f}};
+const EffectVector lbl_1_rodata_3E8 = {{0.0f, 1.0f, -1.0f}};
 const GXColor defaultLightColor = {200, 200, 200, 255};
-const VecValue lbl_1_rodata_3F8 = {{0.7f, 0.7f, 0.7f}};
+const EffectVector lbl_1_rodata_3F8 = {{0.7f, 0.7f, 0.7f}};
 }
 
-AnimatedOwner::AnimatedOwner(int resource, VecValue *position, float scale)
-    : GameObject(4), ModelMotion(resource), AnimatedOwnerSingleton(), position(*position), state(-1), frame(0), active(0), states(0), events(1)
+// Initializes model motions, handlers, lighting, position/scale, and the initial motion.
+AnimatedOwner::AnimatedOwner(int resource, EffectVector *position, float scale)
+    : GameObject(4), ModelMotion(resource), AnimatedOwnerSingleton(), position(*position),
+        state(-1), frame(0), active(0), states(0), events(1)
 {
-    VecValue lightPosition;
-    VecValue lightDirection;
-    VecValue modelRotation;
+    EffectVector lightPosition;
+    EffectVector lightDirection;
+    EffectVector modelRotation;
     short modelId;
     this->setLayer(3);
     this->setPosition(&position->value);
     this->setRotationY(scale);
     this->setUniformScale(1.0f);
-    fn_1_A108<AnimatedOwner>(&this->states,
-        BindAnimatedOwner(AnimatedOwnerMember(&AnimatedOwner::fn_1_9DFC), this), 0);
-    fn_1_A108<AnimatedOwner>(&this->states,
-        BindAnimatedOwner(AnimatedOwnerMember(&AnimatedOwner::fn_1_9E00), this), 1);
-    fn_1_A108<AnimatedOwner>(&this->states,
-        BindAnimatedOwner(AnimatedOwnerMember(&AnimatedOwner::fn_1_9E04), this), 2);
-    fn_1_A108<AnimatedOwner>(&this->states,
-        BindAnimatedOwner(AnimatedOwnerMember(&AnimatedOwner::fn_1_9F38), this), 3);
-    fn_1_A108<AnimatedOwner>(&this->states,
-        BindAnimatedOwner(AnimatedOwnerMember(&AnimatedOwner::fn_1_9F7C), this), 4);
-    fn_1_A108<AnimatedOwner>(&this->events,
-        BindAnimatedOwner(AnimatedOwnerMember(&AnimatedOwner::fn_1_9E08), this), 2);
+    registerMemberHandler<AnimatedOwner>(&this->states,
+        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9DFC), this), 0);
+    registerMemberHandler<AnimatedOwner>(&this->states,
+        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9E00), this), 1);
+    registerMemberHandler<AnimatedOwner>(&this->states,
+        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9E04), this), 2);
+    registerMemberHandler<AnimatedOwner>(&this->states,
+        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9F38), this), 3);
+    registerMemberHandler<AnimatedOwner>(&this->states,
+        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9F7C), this), 4);
+    registerMemberHandler<AnimatedOwner>(&this->events,
+        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9E08), this), 2);
     addMotions(lbl_1_rodata_3C8, 5);
-    this->fn_1_9AFC(DATANUM(0x830000, 19), 1);
+    this->fn_1_9AFC(DATANUM(0x830000, 0x13), 1);
     this->setUpdate(&AnimatedOwner::fn_1_9B90);
     lightPosition = lbl_1_rodata_3DC;
     lightDirection = lbl_1_rodata_3E8;
@@ -102,21 +83,15 @@ AnimatedOwner::AnimatedOwner(int resource, VecValue *position, float scale)
     fn_80029E44(modelId, *result);
 }
 
+// Releases the model light associated with this animated owner.
 AnimatedOwner::~AnimatedOwner() {
     fn_80028CB8(static_cast<ModelMotion *>(this)->id(), lightId);
 }
 
+// Invokes the selected animated-owner update callback when present.
 void AnimatedOwner::update() { if (updateCallback) (this->*updateCallback)(); }
 
-extern "C" {
-}
-
-struct MotionManager { s32 state; };
-struct MotionContext {
-    u8 unknown00[8]; /* No code names this field. */
-    MotionManager *manager;
-};
-
+// Shifts to a motion when it differs from the current state and records the new state.
 void AnimatedOwner::fn_1_9AFC(unsigned int motion, unsigned char enabled)
 {
     u32 flags;
@@ -133,16 +108,18 @@ void AnimatedOwner::fn_1_9AFC(unsigned int motion, unsigned char enabled)
     }
 }
 
+// Restores motion 19 after completion and counts down the pending event frame timer.
 void AnimatedOwner::fn_1_9B90()
 {
     HU3D_MODELID motionModelId = *this;
 
-    if (state != DATANUM(0x830000, 19) &&
+    if (state != DATANUM(0x830000, 0x13) &&
         fn_8002D75C(motionModelId)) {
-        if (state != DATANUM(0x830000, 19)) {
-            shiftMotion(DATANUM(0x830000, 19), 8.0f,
+        // This nested test repeats the enclosing state != motion-19 condition.
+        if (state != DATANUM(0x830000, 0x13)) {
+            shiftMotion(DATANUM(0x830000, 0x13), 8.0f,
                        0.0f, ((1 << 30) | (1 << 0)));
-            state = DATANUM(0x830000, 19);
+            state = DATANUM(0x830000, 0x13);
         }
     }
 
@@ -154,118 +131,110 @@ void AnimatedOwner::fn_1_9B90()
     }
 }
 
+// Empty animated-owner callback.
 void fn_1_9C8C(void)
 {
 }
 
+// Empty animated-owner callback.
 void fn_1_9C90(void)
 {
 }
 
+// Advances the active motion state and starts the timed sound/update path.
 void AnimatedOwner::fn_1_9C94()
 {
     HU3D_MODELID motionModelId = *this;
 
     if (active == 0) {
         if (fn_8002D75C(motionModelId) != 0 ||
-            state == DATANUM(0x830000, 19)) {
-            if (state != DATANUM(0x830000, 21)) {
-                shiftMotion(DATANUM(0x830000, 21),
+            state == DATANUM(0x830000, 0x13)) {
+            if (state != DATANUM(0x830000, 0x15)) {
+                shiftMotion(DATANUM(0x830000, 0x15),
                            8.0f, 0.0f, 0);
-                state = DATANUM(0x830000, 21);
+                state = DATANUM(0x830000, 0x15);
             }
             active = 1;
         }
     } else if (fn_8002D75C(motionModelId) != 0) {
-        {
-            Vec position = {0.0f, 0.0f, -1350.0f};
-            AnimatedOwnerUpdate values = &AnimatedOwner::fn_1_9B90;
-            updateCallback = values;
-            frame = (unsigned int)secondsToFrames(0.2f);
-            soundPlayAt(1, 0x8A7, &position);
-        }
+        Vec position = {0.0f, 0.0f, -1350.0f};
+        setUpdate(&AnimatedOwner::fn_1_9B90);
+        frame = (unsigned int)secondsToFrames(0.2f);
+        soundPlayAt(1, 0x8A7, &position);
     }
 }
 
+// Empty animated-owner callback used after result events.
 void AnimatedOwner::fn_1_9DF8()
 {
 }
 
+// Empty state callback for handler key 0.
 void AnimatedOwner::fn_1_9DFC(EventMessage *)
 {
 }
 
+// Empty state callback for handler key 1.
 void AnimatedOwner::fn_1_9E00(EventMessage *)
 {
 }
 
+// Empty state callback for handler key 2.
 void AnimatedOwner::fn_1_9E04(EventMessage *)
 {
 }
 
+// Shifts to motion 24, plays sounds, and returns to the motion-19 update path.
 void AnimatedOwner::fn_1_9E08(EventMessage *)
 {
     HU3D_MODELID motionModelId = *this;
     if (!fn_8002D75C(motionModelId) &&
-        state != DATANUM(0x830000, 19)) {
+        state != DATANUM(0x830000, 0x13)) {
         return;
     }
 
-    if (state != DATANUM(0x830000, 24)) {
-        shiftMotion(DATANUM(0x830000, 24), 8.0f,
+    if (state != DATANUM(0x830000, 0x18)) {
+        shiftMotion(DATANUM(0x830000, 0x18), 8.0f,
                    0.0f, 0);
-        state = DATANUM(0x830000, 24);
+        state = DATANUM(0x830000, 0x18);
     }
 
-    {
-        Vec effectPosition = position.value;
-        soundPlayAt(1, 0x3CC, &effectPosition);
-    }
+    Vec effectPosition = position.value;
+    soundPlayAt(1, 0x3CC, &effectPosition);
     soundPlayAtDelayed(1, 0x3C9, &position.value, 0x14);
-    {
-        AnimatedOwnerUpdate values = &AnimatedOwner::fn_1_9B90;
-        updateCallback = values;
-    }
+    setUpdate(&AnimatedOwner::fn_1_9B90);
 }
 
+// Selects the active-motion update callback.
 void AnimatedOwner::fn_1_9F38(EventMessage *)
 {
-    {
-        AnimatedOwnerUpdate value = &AnimatedOwner::fn_1_9C94;
-        updateCallback = value;
-    }
+    setUpdate(&AnimatedOwner::fn_1_9C94);
 }
 
+// Selects the result callback and plays the sound/motion sequence for result code 4 or other codes.
 void AnimatedOwner::fn_1_9F7C(EventMessage *message)
 {
-    AnimatedOwnerUpdate values = &AnimatedOwner::fn_1_9DF8;
-    MotionManager *manager;
+    s32 *resultCode;
 
-    this->updateCallback = values;
-    manager = static_cast<MotionManager *>(message->context);
-    if (manager->state == 4) {
-        if (this->state != DATANUM(0x830000, 25)) {
-            this->shiftMotion(DATANUM(0x830000, 25),
+    setUpdate(&AnimatedOwner::fn_1_9DF8);
+    resultCode = static_cast<s32 *>(message->context);
+    if (*resultCode == 4) {
+        if (this->state != DATANUM(0x830000, 0x19)) {
+            this->shiftMotion(DATANUM(0x830000, 0x19),
                        8.0f, 0.0f, 0);
-            this->state = DATANUM(0x830000, 25);
+            this->state = DATANUM(0x830000, 0x19);
         }
         soundPlayAtDelayed(1, 0x3CB, &this->position.value, 0x1E);
         soundPlayAtDelayed(1, 0x3CD, &this->position.value, 0x6E);
     } else {
-        if (this->state != DATANUM(0x830000, 26)) {
-            this->shiftMotion(DATANUM(0x830000, 26),
+        if (this->state != DATANUM(0x830000, 0x1A)) {
+            this->shiftMotion(DATANUM(0x830000, 0x1A),
                        8.0f, 0.0f, 0);
-            this->state = DATANUM(0x830000, 26);
+            this->state = DATANUM(0x830000, 0x1A);
         }
         soundPlayAt(1, 0x3CF, &this->position.value);
         soundPlayAtDelayed(1, 0x3C9, &this->position.value, 0x41);
         soundPlayAtDelayed(1, 0x3C9, &this->position.value, 0x5A);
         soundPlayAtDelayed(1, 0x3CC, &this->position.value, 0x78);
     }
-}
-
-template<class Receiver>
-void fn_1_A108(StateEventTable *owner, const StateCallbackBinding &payload, int key)
-{
-    owner->addHandler(new MemberCallbackRecord<Receiver>(payload), key);
 }

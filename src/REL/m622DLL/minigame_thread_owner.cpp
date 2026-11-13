@@ -1,7 +1,7 @@
 #include <cmath>
 #include "REL/framework/sound.h"
 #include "REL/framework/phase_durations.h"
-#include "REL/m622DLL/random.h"
+#include "REL/framework/random.h"
 #include "types.h"
 #include "msm_stream.h"
 #include "REL/framework/thread.h"
@@ -10,6 +10,7 @@
 #include "REL/framework/list_object.h"
 
 #include "REL/m622DLL/minigame_owner.h"
+#include "REL/m622DLL/callback_object.h"
 #include "REL/m622DLL/camera_owner.h"
 #include "REL/m622DLL/model_setup_owner.h"
 #include "REL/m622DLL/singleton_callback_owner.h"
@@ -18,19 +19,23 @@
 #include "REL/m622DLL/score_display_owner.h"
 
 extern "C" {
+#include "game/audio.h"
 #include "game/gamework.h"
-void fn_8005DDEC(s32);
+#include "game/charman.h"
 }
 
+/* Initializes the object through its member and base constructors. */
 MinigameThreadOwner::MinigameThreadOwner()
     : MinigameCore(), ThreadEntry(0x8000), timerState(0)
 {
 }
 
+/* Releases the object through its member and base destructors. */
 MinigameThreadOwner::~MinigameThreadOwner()
 {
 }
 
+/* Seeds randomness and creates the camera, stage, displays and four players. */
 void MinigameThreadOwner::setupObjects(OMOBJMAN *)
 {
     s32 index;
@@ -41,7 +46,7 @@ void MinigameThreadOwner::setupObjects(OMOBJMAN *)
     new CameraOwner();
     new ScoreDisplayOwner();
     new TextureCaptureOwner();
-    new SceneOwnerB9C();
+    new SceneOwner();
     fn_8005DDEC(3);
     for (index = 0; index < 4; index++) {
         new CallbackObject(index);
@@ -49,8 +54,7 @@ void MinigameThreadOwner::setupObjects(OMOBJMAN *)
     new ModelSetupOwner();
 }
 
-void fn_1_6FB0(void);
-
+/* Resumes the game thread, updates request objects and advances the players. */
 void MinigameThreadOwner::updateGame()
 {
     this->resume(0);
@@ -58,23 +62,13 @@ void MinigameThreadOwner::updateGame()
     fn_1_6FB0();
 }
 
-extern "C" {
-s32 HuAudBGMPlay(s32 songId);
-void HuAudSStreamFadeOut(s32 stream, s32 duration);
-}
-void fn_1_7054(void);
-u8 fn_1_7138(void);
-extern "C" {
-void HuAudJinglePlay(s32 jingleId);
-
-}
-
+/* Runs the introduction, timed play and result sequence with music and requests. */
 void MinigameThreadOwner::run(void *)
 {
     s32 stream;
     u8 musicMode;
     s32 elapsedFrames;
-    s16 jingleId;
+    s32 jingleId;
 
     soundSetCameraPan(1, 0x30, 0x50, 1.2f);
     postRequest(0);
@@ -123,17 +117,18 @@ void MinigameThreadOwner::run(void *)
     }
 }
 
+/* Returns whether the game timer has completed. */
 u8 MinigameThreadOwner::fn_1_418()
 {
     return timerState.isDone();
 }
 
-void fn_1_67F8(void);
-
+/* Returns without changing state. */
 void MinigameThreadOwner::fn_1_444()
 {
 }
 
+/* Deletes the players and all request objects. */
 void MinigameThreadOwner::finishGame()
 {
     fn_1_67F8();

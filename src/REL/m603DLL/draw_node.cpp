@@ -1,3 +1,5 @@
+#include "REL/m603DLL/draw_owner.h"
+#include "REL/m603DLL/camera_group.h"
 #include "dolphin/gx.h"
 #include "REL/framework/list_object.h"
 #include "REL/m603DLL/model_motion.h"
@@ -6,7 +8,7 @@
 
 #include <cmath>
 #include "REL/m603DLL/zako.h"
-#include "REL/m603DLL/random.h"
+#include "REL/framework/random.h"
 #include "REL/m603DLL/score_owner.h"
 #include "datadir_enum.h"
 
@@ -17,57 +19,46 @@ extern "C" {
 #include "game/sprite.h"
 #include "game/memory.h"
 #include "game/gamework.h"
-#include "REL/m603DLL.h"
 }
 
 #include "REL/m603DLL/draw_node.h"
 
-extern "C" ListRoot<DrawNode> lbl_1_bss_588;
-
 extern "C" {
-char lbl_1_data_450[] = "mapmodel-dmy_a";
-char lbl_1_data_45F[] = "mapmodel-dmy_b";
-char lbl_1_data_46E[] = "mapmodel-dmy_c";
-char lbl_1_data_47D[] = "mapmodel-dmy_d";
-char lbl_1_data_48C[] = "mapmodel-dmy_e";
-char lbl_1_data_49B[] = "mapmodel-dmy_f";
-char lbl_1_data_4AA[] = "mapmodel-dmy_g";
-char lbl_1_data_4B9[] = "mapmodel-dmy_h";
-char lbl_1_data_4C8[] = "mapmodel-dmy_i";
-char lbl_1_data_4D7[] = "mapmodel-dmy_j";
-char lbl_1_data_4E6[] = "mapmodel-dmy_k";
-char lbl_1_data_4F5[] = "mapmodel-dmy_l";
-char lbl_1_data_504[] = "mapmodel-dmy_m";
-char lbl_1_data_513[] = "mapmodel-dmy_n";
-char lbl_1_data_522[] = "mapmodel-dmy_o";
-char lbl_1_data_531[] = "mapmodel-dmy_p";
-char lbl_1_data_540[] = "mapmodel-dmy_q";
-char *lbl_1_data_550[17] = { lbl_1_data_450, lbl_1_data_45F, lbl_1_data_46E, lbl_1_data_47D, lbl_1_data_48C, lbl_1_data_49B, lbl_1_data_4AA, lbl_1_data_4B9, lbl_1_data_4C8, lbl_1_data_4D7, lbl_1_data_4E6, lbl_1_data_4F5, lbl_1_data_504, lbl_1_data_513, lbl_1_data_522, lbl_1_data_531, lbl_1_data_540 };
+u8 lbl_1_bss_D4;
+Vec lbl_1_bss_D8[0x21];
+Vec lbl_1_bss_264[0x21];
+Vec lbl_1_bss_3F0[0x21];
+ListRoot<DrawNode> lbl_1_bss_588;
 }
 
-typedef Vec Vector3f9170;
-
 extern "C" {
-extern Vector3f9170 lbl_1_bss_264[0x21];
-extern Vector3f9170 lbl_1_bss_3F0[0x21];
-extern Vector3f9170 lbl_1_bss_D8[0x21];
-
-extern u8 lbl_1_bss_D4;
-extern s32 lbl_1_data_594;
-const s32 lbl_1_rodata_3F0[4] = {1, 2, 4, 8};
-extern s32 fn_1_1BBC4(void *, const void *);
+char *lbl_1_data_550[17] = {
+    "mapmodel-dmy_a",
+    "mapmodel-dmy_b",
+    "mapmodel-dmy_c",
+    "mapmodel-dmy_d",
+    "mapmodel-dmy_e",
+    "mapmodel-dmy_f",
+    "mapmodel-dmy_g",
+    "mapmodel-dmy_h",
+    "mapmodel-dmy_i",
+    "mapmodel-dmy_j",
+    "mapmodel-dmy_k",
+    "mapmodel-dmy_l",
+    "mapmodel-dmy_m",
+    "mapmodel-dmy_n",
+    "mapmodel-dmy_o",
+    "mapmodel-dmy_p",
+    "mapmodel-dmy_q"
+};
 }
-
-extern void fn_1_A9EC(HU3D_MODEL *, Mtx *);
 
 extern "C" {
 
+const s32 targetCameraBits[4] = {1, 2, 4, 8};
 }
 
-void fn_1_DC8C(s32);
-void fn_1_DB70(s32);
-extern "C" {
-}
+/* Create a scoring target and drawing hook, and initialize the shared circle vertices. */
 DrawNode::DrawNode(const OwnedModel *sourceModel, u32 modelData, s32 cameraIndex, s32 groupIndex)
     : firstModel(*sourceModel), secondModel(modelData)
 {
@@ -95,11 +86,11 @@ DrawNode::DrawNode(const OwnedModel *sourceModel, u32 modelData, s32 cameraIndex
     model = this->firstModel;
     fn_80026A44(model, 1U);
     fn_80026B8C(model, 0);
-    fn_80026B64(model, (u16)lbl_1_rodata_3F0[groupIndex]);
+    fn_80026B64(model, (u16)targetCameraBits[groupIndex]);
     fn_800269E8(model, 0x4000U);
     motion = this->secondModel;
     fn_80026A44(motion, 1U);
-    fn_80026B64(motion, (u16)lbl_1_rodata_3F0[groupIndex]);
+    fn_80026B64(motion, (u16)targetCameraBits[groupIndex]);
     motionId = fn_8002D3C4(motion);
     fn_8002C95C(motion, motionId);
     fn_800269E8(motion, 0x40000002U);
@@ -114,13 +105,11 @@ DrawNode::DrawNode(const OwnedModel *sourceModel, u32 modelData, s32 cameraIndex
     hookModel->hookData = this;
     fn_80026B8C(this->hookModel, 6);
     fn_80026B64(this->hookModel,
-                       (u16)lbl_1_rodata_3F0[groupIndex]);
+                       (u16)targetCameraBits[groupIndex]);
     firstModel.setPosition(&position);
     fn_1_A060(0, 0);
-    {
-        DrawNode::Callback callback = &DrawNode::fn_1_A238;
-        this->callback = callback;
-    }
+    DrawNode::Callback callback = &DrawNode::fn_1_A238;
+    this->callback = callback;
     if (lbl_1_bss_D4 == 0) {
         lbl_1_bss_D4 = 1;
         for (index = 0; index < 0x21; index++) {
@@ -142,23 +131,16 @@ DrawNode::DrawNode(const OwnedModel *sourceModel, u32 modelData, s32 cameraIndex
         }
     }
 }
+/* Release the target drawing hook. */
 DrawNode::~DrawNode() { fn_800262D0(hookModel); }
+/* Delete every scoring target. */
 void fn_1_9794() {
     while (!lbl_1_bss_588.empty()) delete lbl_1_bss_588.back();
 }
 
-extern "C" {
-struct RandomIndexTable { u32 values[64]; };
-const RandomIndexTable lbl_1_rodata_450 = {{
-    0, 1, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-    0, 1, 16, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-    0, 1, 8, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-    0, 0, 0, 8, 8, 8, 16, 16, 16, 16, 16, 16, 7, 7, 8, 8,
-}};
-
-}
-void fn_1_9E90(DrawNode *);
+/* Advance every target callback and its model transform. */
 void fn_1_98AC() { lbl_1_bss_588.visit(fn_1_9E90); }
+/* Check up to four corresponding targets for one that is idle. */
 int fn_1_98DC(DrawNode *current)
 {
     int candidate;
@@ -177,6 +159,7 @@ int fn_1_98DC(DrawNode *current)
     }
     return 0;
 }
+/* Choose and activate an idle target during the playing request. */
 void fn_1_995C(void)
 {
     DrawNode *entry;
@@ -197,8 +180,13 @@ void fn_1_995C(void)
 
     entry = lbl_1_bss_588.front();
     end = lbl_1_bss_588.end_node();
-    RandomIndexTable randomIndices = lbl_1_rodata_450;
-    skipCount = randomIndices.values[RandomUnsigned() & 0x3F];
+    u32 randomIndices[64] = {
+    0, 1, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0, 1, 16, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0, 1, 8, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0, 0, 0, 8, 8, 8, 16, 16, 16, 16, 16, 16, 7, 7, 8, 8,
+};
+    skipCount = randomIndices[RandomUnsigned() & 0x3F];
     randomMotion = 0;
     if (GWMgNightFGet() == 0) {
         randomMotion = ((s32)RandomUnsigned() & 0xF) == 0;
@@ -226,6 +214,7 @@ void fn_1_995C(void)
         entry->fn_1_A718(randomMotion, motionFrames);
     }
 }
+/* Send a request to every scoring target. */
 void fn_1_9B88(int request)
 {
     DrawNode *node = lbl_1_bss_588.front();
@@ -234,6 +223,7 @@ void fn_1_9B88(int request)
         node->fn_1_A160(request);
     }
 }
+/* Enable the scoring effect for every target. */
 void fn_1_9BF4()
 {
     DrawNode *node = lbl_1_bss_588.front();
@@ -242,6 +232,7 @@ void fn_1_9BF4()
         node->effectGate = 1;
     }
 }
+/* Schedule each target opening using its object index. */
 void fn_1_9C58()
 {
     DrawNode *node = lbl_1_bss_588.front();
@@ -251,7 +242,7 @@ void fn_1_9C58()
         node->remainingFrames = node->cameraIndex * 4;
     }
 }
-s32 fn_1_3340(Vec *,s32,u8);
+/* Test whether a copied world position projects into the camera view. */
 int fn_1_9CC8(const Vec *position, int cameraIndex)
 {
     Vec worldPosition = *position;
@@ -262,6 +253,7 @@ int fn_1_9CC8(const Vec *position, int cameraIndex)
         return 0;
     }
 }
+/* Count visible scoring targets, optionally scheduling their photo effects. */
 int fn_1_9D34(int playerIndex, unsigned char markEntries)
 {
     Node *end;
@@ -300,7 +292,9 @@ int fn_1_9D34(int playerIndex, unsigned char markEntries)
     }
     return weightedCount;
 }
+/* Run one target callback and update its model transform. */
 void fn_1_9E90(DrawNode *self) { (self->*self->callback)(); self->fn_1_9ED0(); }
+/* Read the animated object position and update the target and optional motion model. */
 void DrawNode::fn_1_9ED0()
 {
     Vec rotation;
@@ -334,13 +328,14 @@ void DrawNode::fn_1_9ED0()
         firstModel.setPosition(&objectPosition);
     }
 }
+/* Change the target motion when the requested motion differs. */
 inline void DrawNode::fn_1_A060(s32 motionId, u8 queued)
 {
     DrawModelPool *motionSequence;
     s16 modelId;
     s16 selectedMotion;
 
-    motionSequence = (&DrawModelPool::getChecked());
+    motionSequence = &DrawModelPool::getChecked();
     modelId = this->firstModel;
     selectedMotion = motionSequence->m_mot_id.at(motionId);
     if (this->currentMotion != motionId) {
@@ -350,6 +345,7 @@ inline void DrawNode::fn_1_A060(s32 motionId, u8 queued)
         this->currentMotion = motionId;
     }
 }
+/* Handle the target request and select its next callback. */
 void DrawNode::fn_1_A160(s32 key)
 {
     if (this->key == key && this->active == 0) {
@@ -357,20 +353,19 @@ void DrawNode::fn_1_A160(s32 key)
         s16 modelB;
 
         this->active = 1;
-        modelA = this->model_a();
+        modelA = this->secondModel.id();
         fn_800269E8(modelA, ((1 << 30) | (1 << 1)));
-        modelB = this->model_b();
+        modelB = this->firstModel.id();
         fn_800269E8(modelB, ((1 << 30) | (1 << 1)));
-        {
-            DrawNode::Callback callback = &DrawNode::fn_1_A5D4;
-            this->callback = callback;
-        }
+        DrawNode::Callback callback = &DrawNode::fn_1_A5D4;
+        this->callback = callback;
         if (this->motionState != 0) {
             fn_1_DC8C(key);
         }
     }
 }
 
+/* Wait for the staggered opening delay, then start the target animation. */
 void DrawNode::fn_1_A238()
 {
     if (motionPending != 0 && --remainingFrames < 0) {
@@ -378,14 +373,13 @@ void DrawNode::fn_1_A238()
 
         fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
         fn_80026A44(modelId, ((1 << 30) | (1 << 0)));
-        {
-            DrawNode::Callback callback = &DrawNode::fn_1_A3A8;
-            this->callback = callback;
-        }
+        DrawNode::Callback callback = &DrawNode::fn_1_A3A8;
+        this->callback = callback;
     }
     fn_1_A060(1, 0);
 }
 
+/* Wait for the opening animation to finish and restore the target models. */
 void DrawNode::fn_1_A3A8()
 {
     if (duration > 10) {
@@ -402,6 +396,7 @@ void DrawNode::fn_1_A3A8()
     }
     fn_1_A060(1, 0);
 }
+/* Activate the target models when the request reaches intro or play. */
 void DrawNode::fn_1_A524()
 {
     s32 mode = currentRequest();
@@ -410,16 +405,18 @@ void DrawNode::fn_1_A524()
         s16 primaryModel;
         s16 secondaryModel;
 
-        primaryModel = this->primary_model();
+        primaryModel = this->firstModel.id();
         fn_80026A44(primaryModel, 1);
-        secondaryModel = this->secondary_model();
+        secondaryModel = this->secondModel.id();
         fn_80026A44(secondaryModel, 1);
         DrawNode::Callback callback = &DrawNode::fn_1_A5D8;
         this->callback = callback;
     }
 }
 
+/* Leave the target state unchanged. */
 void DrawNode::fn_1_A5D4() {}
+/* Reset the target motion, scoring flags and optional motion model. */
 void DrawNode::fn_1_A5D8()
 {
     s16 modelId = this->firstModel;
@@ -434,6 +431,7 @@ void DrawNode::fn_1_A5D8()
     this->motionVisible = 0;
     this->motionRunning = 0;
 }
+/* Start a target animation with the requested bonus flag and speed. */
 void DrawNode::fn_1_A718(bool motionState, f32 motionFrames)
 {
     s16 modelId;
@@ -445,7 +443,7 @@ void DrawNode::fn_1_A718(bool motionState, f32 motionFrames)
                 this->motionState = motionState;
             }
         }
-        modelId = this->model_id();
+        modelId = this->secondModel.id();
         fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
         fn_80026A44(modelId, ((1 << 30) | (1 << 0)));
         fn_8002D414(modelId, 0.0f);
@@ -461,7 +459,6 @@ void DrawNode::fn_1_A718(bool motionState, f32 motionFrames)
     }
 }
 
-extern f32 lbl_1_data_5F4[17][12];
 f32 lbl_1_data_5F4[17][12] = {
     { 0.0f, 0.2f, 0.8f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f },
     { 0.0f, 0.3f, 0.7f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f },
@@ -482,6 +479,7 @@ f32 lbl_1_data_5F4[17][12] = {
     { 0.0f, 0.2f, 0.79f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f }
 };
 
+/* Advance the target animation and select scoring windows from its timing table. */
 void DrawNode::fn_1_A858(void)
 {
     f32 progress;
@@ -502,7 +500,7 @@ void DrawNode::fn_1_A858(void)
     }
 
     if (duration > 10) {
-        modelId = model_id();
+        modelId = secondModel.id();
         if (fn_8002D75C(modelId) == 1) {
             callback = &DrawNode::fn_1_A5D8;
             this->callback = callback;
@@ -514,12 +512,7 @@ void DrawNode::fn_1_A858(void)
     duration++;
 }
 
-typedef struct {
-    f32 x;
-    f32 y;
-    f32 unknown08;
-} AAA4Point;
-
+/* Dispatch the drawing hook to its target object. */
 void fn_1_A9EC(HU3D_MODEL *model, Mtx *matrix)
 {
     fn_8002472C();
@@ -527,12 +520,14 @@ void fn_1_A9EC(HU3D_MODEL *model, Mtx *matrix)
     static_cast<DrawNode *>(hookData)->fn_1_AA34(*matrix);
 }
 
+/* Draw the enabled photo effect and the target ground shadow. */
 void DrawNode::fn_1_AA34(Mtx matrix)
 {
     if ((effectGate != 0) && (effectFlag != 0)) fn_1_AAA4(matrix);
     if (cameraIndex != 0xB) fn_1_B0C0(matrix);
 }
 
+/* Draw the expanding photo ring and award the target score once. */
 void DrawNode::fn_1_AAA4(Mtx matrix)
 {
     Mtx inverse;
@@ -546,7 +541,7 @@ void DrawNode::fn_1_AAA4(Mtx matrix)
         if (effectFrame == 0) {
             ScoreDisplay *owner;
 
-            owner = (&ScoreDisplay::getChecked());
+            owner = &ScoreDisplay::getChecked();
             owner->soundPending = 1;
         }
         if ((f64)effectFrame > 12.0) {
@@ -556,7 +551,7 @@ void DrawNode::fn_1_AAA4(Mtx matrix)
                 if (motionState != 0) {
                     mode = 3;
                 }
-                (&ScoreDisplay::getChecked())->fn_1_83CC(key, mode);
+                ScoreDisplay::getChecked().fn_1_83CC(key, mode);
             }
             effectFrame = 12;
         }
@@ -569,20 +564,7 @@ void DrawNode::fn_1_AAA4(Mtx matrix)
         PSMTXConcat(matrix, translated, translated);
         PSMTXConcat(translated, inverse, translated);
         GXLoadPosMtxImm(translated, GX_PNMTX0);
-        GXSetNumTevStages(1U);
-        GXSetChanCtrl(GX_COLOR0A0, 0U, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
-        GXSetNumChans(1U);
-        GXSetNumTexGens(0U);
-        GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
-        GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
-        GXSetCullMode(GX_CULL_NONE);
-        GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
-        GXSetZMode(0U, GX_ALWAYS, 0U);
-        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_TEX_ST, GX_RGBA6, 0U);
-        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_TEX_ST, GX_RGBA8, 0U);
-        GXClearVtxDesc();
-        GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-        GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+        configureColorDrawing();
         GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 0x42U);
         color = (colorIndex++ & 7) << 5;
         if (motionState != 0) {
@@ -597,20 +579,19 @@ void DrawNode::fn_1_AAA4(Mtx matrix)
             }
             return;
         }
-        {
-            s32 i;
-            for (i = 0; i < 0x21; i++) {
-                GXPosition3f32(fade * lbl_1_bss_D8[i].x,
-                               fade * lbl_1_bss_D8[i].y, 0.0f);
-                GXColor4u8(0xFF, 0, 0, (u8)alpha);
-                GXPosition3f32(fade * lbl_1_bss_264[i].x,
-                               fade * lbl_1_bss_264[i].y, 0.0f);
-                GXColor4u8(0xFF, 0, 0, (u8)alpha);
-            }
+        s32 i;
+        for (i = 0; i < 0x21; i++) {
+            GXPosition3f32(fade * lbl_1_bss_D8[i].x,
+                           fade * lbl_1_bss_D8[i].y, 0.0f);
+            GXColor4u8(0xFF, 0, 0, (u8)alpha);
+            GXPosition3f32(fade * lbl_1_bss_264[i].x,
+                           fade * lbl_1_bss_264[i].y, 0.0f);
+            GXColor4u8(0xFF, 0, 0, (u8)alpha);
         }
     }
 }
 
+/* Draw the translucent ground shadow beneath the target. */
 void DrawNode::fn_1_B0C0(Mtx matrix)
 {
     f32 x;
@@ -622,20 +603,7 @@ void DrawNode::fn_1_B0C0(Mtx matrix)
     s32 i;
 
     GXLoadPosMtxImm(matrix, GX_PNMTX0);
-    GXSetNumTevStages(1U);
-    GXSetChanCtrl(GX_COLOR0A0, 0U, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
-    GXSetNumChans(1U);
-    GXSetNumTexGens(0U);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
-    GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
-    GXSetCullMode(GX_CULL_NONE);
-    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
-    GXSetZMode(1U, GX_LEQUAL, 0U);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_TEX_ST, GX_RGBA6, 0U);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_TEX_ST, GX_RGBA8, 0U);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+    configureColorDrawing(GX_TRUE, GX_LEQUAL);
     GXBegin(GX_TRIANGLEFAN, GX_VTXFMT0, 0x22U);
     z = this->position.z;
     y = this->position.y - 49.0f;
@@ -649,12 +617,4 @@ void DrawNode::fn_1_B0C0(Mtx matrix)
         GXPosition3f32(xOffset, yPosition, zOffset);
         GXColor4u8(0, 0, 0, 0);
     }
-}
-
-extern "C" {
-u8 lbl_1_bss_D4;
-Vec lbl_1_bss_D8[0x21];
-Vec lbl_1_bss_264[0x21];
-Vec lbl_1_bss_3F0[0x21];
-ListRoot<DrawNode> lbl_1_bss_588;
 }

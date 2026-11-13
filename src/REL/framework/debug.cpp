@@ -8,7 +8,6 @@ extern "C" {
 }
 
 #include "REL/framework/camera_frame.h"
-void get_camera_pose_from_frame(const CameraFrame *, CameraPose *);
 
 // A debug camera pose query converts the frame to a pose, then discards the result.
 void copyDebugCameraPose(const CameraFrame *frame)

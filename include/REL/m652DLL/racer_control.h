@@ -2,7 +2,7 @@
 #define REL_M652DLL_RACER_CONTROL_H
 #include <vector>
 #include "dolphin/types.h"
-#include "REL/m652DLL/tail_types.h"
+#include "REL/m652DLL/camera_arc_motion.h"
 struct Racer;
 struct RouteStep {
     s32 firstPoint;
@@ -13,6 +13,7 @@ struct RouteStep {
 
 class RacerControl {
 public:
+    /* Stores the racer controlled by this object. */
     RacerControl(Racer *racer) : racer(racer) {}
     virtual ~RacerControl();
     virtual void reset();
@@ -23,6 +24,7 @@ public:
 
 class HumanControl : public RacerControl {
 public:
+    /* Initializes the controller with its racer. */
     HumanControl(Racer *racer) : RacerControl(racer) {}
     virtual ~HumanControl();
     virtual void update();
@@ -35,17 +37,16 @@ public:
     virtual void reset();
     virtual void update();
 
-    s32 index;
-    s32 unknown0C;
+    s32 difficulty;
+    s32 resetCount;
     s32 currentStep;
     s32 nextStep;
-    f32 rotation;
+    f32 stepDistanceFactor;
     s32 collisionTimer;
     s32 timer;
     u8 moving : 1;
-    u8 unknownFlags : 7;
     std::vector<RouteStep> steps;
-    CameraArcMotion padControl;
+    PlayerPadControl padControl;
 };
 
 #endif

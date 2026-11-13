@@ -5,13 +5,13 @@
 #include "REL/framework/game_object.h"
 #include "REL/m654DLL/sprite_parameters.h"
 
-struct DisplayProviderDP : GameObject {
+struct DisplayProvider : GameObject {
     short scorebox;
     ANIMDATA *firstAnimation, *secondAnimation;
     std::vector<SpriteParameters> firstList, secondList;
     int activeCount;
-    DisplayProviderDP(int width, int offsetX, int y);
-    virtual ~DisplayProviderDP();
+    DisplayProvider(int character, int offsetX, int y);
+    virtual ~DisplayProvider();
     virtual void update();
     void fn_1_6AEC();
     int fn_1_66F4();

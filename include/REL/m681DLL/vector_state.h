@@ -6,17 +6,17 @@
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_packet.h"
 
-class VectorStateComposite : public GameObject, public EventListener {
+class GameCamera : public GameObject, public EventListener {
 public:
-    typedef void (VectorStateComposite::*Callback)();
+    typedef void (GameCamera::*Callback)();
     CameraFrame frame;
     CameraSetup debugCamera;
     int frameCount;
     Callback callback;
-    VectorStateComposite();
+    GameCamera();
     void fn_1_7C28();
     void fn_1_7C34();
-    virtual ~VectorStateComposite();
+    virtual ~GameCamera();
     virtual void update();
     virtual void receive(const EventPacket *);
 };

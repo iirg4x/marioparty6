@@ -1,12 +1,11 @@
-#ifndef REL_M648_ANIMATION_OWNER_17F8_H
-#define REL_M648_ANIMATION_OWNER_17F8_H
+#ifndef REL_M648_ANIMATION_OWNERS_H
+#define REL_M648_ANIMATION_OWNERS_H
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "REL/framework/model.h"
 #include "REL/framework/list.h"
 class SetupAnimationOwner;
 class PlayAnimationOwner;
-typedef OwnedModel LinkedModel;
 // One animated model of the setup list: the list's node, and the update its visitor runs each frame.
 class SetupAnimationOwner : public ListNode<SetupAnimationOwner> {
 public:
@@ -24,7 +23,7 @@ public:
     s32 framesRemaining;
     f32 scale;
     f32 scaleTarget;
-    SetupAnimationOwner(const LinkedModel *model, s32 initialMode);
+    SetupAnimationOwner(const OwnedModel *model, s32 initialMode);
     void fn_1_1CAC();
     void fn_1_1D28();
     void fn_1_1F14();
@@ -47,7 +46,7 @@ public:
     s32 framesRemaining;
     f32 scale;
     f32 scaleTarget;
-    PlayAnimationOwner(const LinkedModel *model, s32 initialMode);
+    PlayAnimationOwner(const OwnedModel *model, s32 initialMode);
     void fn_1_2C64();
     void fn_1_2CE0();
     void fn_1_2EDC();

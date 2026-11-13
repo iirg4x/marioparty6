@@ -1,20 +1,23 @@
+#include "REL/framework/world_units.h"
+#include <new>
 #include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "datadir_enum.h"
 #include "game/data.h"
 #include "REL/framework/model.h"
-#include "REL/m681DLL/character_sequence.h"
+#include <vector>
 #include "REL/m681DLL/model_pair.h"
 #include "REL/m681DLL/motion_object.h"
+#include "REL/m681DLL/character_model.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
+#include "REL/m681DLL/game_constants.h"
 
 extern "C" {
-void __msl_assertion_failed(const char *expression, const char *file, int line);
 char *lbl_1_data_25C[2] = { "kurinullr", "kurinulll" };
 }
 
-void *operator new(unsigned long);
-
+// Creates the two stage models and their animated child objects.
 ModelPair::ModelPair()
     : firstModel(DATANUM(0x8c0000, 0)), secondModel(DATANUM(0x8c0000, 1))
 {
@@ -32,15 +35,10 @@ ModelPair::ModelPair()
     }
 }
 
-void operator delete(void *);
-
+// Releases both owned stage models.
 ModelPair::~ModelPair() {}
 
-extern "C" {
-#include "REL/m681DLL.h"
-#include "REL/framework/world_units.h"
-}
-
+// Returns the direction of the first model light.
 Vec *fn_1_2FD4(ModelPair *object, Vec *direction)
 {
     Vec position;
@@ -48,12 +46,4 @@ Vec *fn_1_2FD4(ModelPair *object, Vec *direction)
 
     object->firstModel.setLight("inf_light1", &position, direction, &color);
     return direction;
-}
-
-extern s32 lbl_1_bss_78;
-extern f32 lbl_1_bss_7C;
-
-extern "C" {
-s32 lbl_1_bss_78 = minutesToFrames(60L);
-f32 lbl_1_bss_7C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

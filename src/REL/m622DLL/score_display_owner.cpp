@@ -101,13 +101,14 @@ ScoreDisplayOwner::ScoreDisplayOwner()
     }
 }
 
+/* Releases the two shared score sprite animations. */
 ScoreDisplayOwner::~ScoreDisplayOwner()
 {
     HuSprAnimKill(lbl_1_bss_F0);
     HuSprAnimKill(lbl_1_bss_F4);
 }
 
-/* Takes a value for debug output and does nothing with it. */
+/* Accepts the evaluated transparency without changing state. */
 static inline void DebugValue(f32 value) { }
 
 /* Advances the score display and restores its visible score elements. */
@@ -135,6 +136,7 @@ ANIMDATA *lbl_1_bss_F0;
 
 ANIMDATA *lbl_1_bss_F4;
 
+/* Creates and positions the score box, score digits and character sprites for a player. */
 void fn_1_8D74(ScoreDisplayOwner *owner, s32 index, s32 characterId)
 {
     ScoreDisplay *display;
@@ -168,16 +170,19 @@ void fn_1_8D74(ScoreDisplayOwner *owner, s32 index, s32 characterId)
     HuSprGrpPosSet(display->spriteGroup, display->x, display->y);
 }
 
+/* Sets the stored score value for the selected player display. */
 void fn_1_8FC8(ScoreDisplayOwner *owner, s32 index, s32 value)
 {
     owner->displays[index].value = value;
 }
 
+/* Updates one score display. */
 void fn_1_8FD8(void *context, ScoreDisplay *display)
 {
     updateScoreDisplay(display);
 }
 
+/* Updates all four score displays while display updates are enabled. */
 void ScoreDisplayOwner::update()
 {
     s32 index;
@@ -191,6 +196,7 @@ void ScoreDisplayOwner::update()
     }
 }
 
+/* Clears the request flag and enables score display updates for request 2. */
 void ScoreDisplayOwner::flagEnabled(int request)
 {
     flags &= ~(1U << request);

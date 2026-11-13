@@ -14,10 +14,6 @@ struct Vector3 {
     operator Point3d *() { return getVector(); }
 };
 
-inline f32 vectorMagnitude(Point3d *vector) { return PSVECMag(vector); }
-inline f32 vectorDot(Point3d *first, Point3d *second) {
-    return PSVECDotProduct(first, second);
-}
 inline f32 square(const f32 &value) { return value * value; }
 
 // Used for minigame sphere collision checks; touching boundaries do not count as overlap.

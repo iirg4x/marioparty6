@@ -7,72 +7,71 @@
 #include "REL/framework/world_units.h"
 #include "REL/framework/minigame_core.h"
 #include "humath.h"
-long RandomInteger(long limit);
-#include "REL/m654DLL/framework_calls.h"
+#include <cmath>
+using std::fmod;
+#include "REL/framework/random.h"
+#include "REL/framework/event.h"
 // The two contestants: their walk along queued points, their reactions to phase events and their wrapped facing.
 #include <vector>
 #include <memory>
+
 extern "C" {
 #include "game/mg/actman.h"
-#include "REL/m654DLL/pad_control.h"
 }
+#include "REL/m654DLL/pad_control.h"
 #include "REL/framework/chara_motion.h"
 #include "REL/framework/event_packet.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/range.h"
 #include "REL/m654DLL/model_animation_owner.h"
-#include "Runtime.PPCEABI.H/NMWException.h"
 
 #include "REL/m654DLL/mode_object.h"
 
-// framework/chara_motion.cpp
-void selectCharacterMotion(MotionOwner *, unsigned int);
+// Tests fn_8005C240; characterMotionShiftInactive tests a different engine routine.
 u8 characterMotionEnded(s32 *);
-void shiftCharacterMotion(MotionOwner *, unsigned int, float, float, u32);
 
 #include "REL/m654DLL/player.h"
+#include "REL/m654DLL.h"
 
-extern "C" {
+int fn_1_4C98(COL_NARROW_PARAM *filter, COL_NARROW_PARAM *other);
 
-void fn_1_3274();
-void fn_1_3398(int setupMode);
-void fn_1_3494();
-int fn_1_3528();
-void fn_1_35F8();
-void fn_1_3768();
-int fn_1_37FC();
-void fn_1_4BC0(Player *owner, bool enabled);
-void fn_1_4C34(Player *owner, unsigned char enabled);
-unsigned char fn_1_4B68(Player *object);
-int fn_1_4C98(const struct PlayerFilter *filter, const struct PlayerFilter *other);
-
-double fmod(double, double);
-double atan2(double y, double x);
+// One-minute time limit and gravity in world units per frame squared.
 int lbl_1_bss_60 = minutesToFrames(1L);
 float lbl_1_bss_64 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
-int lbl_1_bss_68 = secondsToFrames<long>(2);
-int lbl_1_bss_6C = secondsToFrames(3.5);
-int lbl_1_bss_70 = secondsToFrames(3.5);
+#include "REL/framework/phase_durations.h"
 
 const int entry_num = 2;
 std::vector<Player *> sm_players;
 int lbl_1_bss_8C;
 // Each player's start point and the two points of its walk in, given in centimetres.
 PlayerInitializationData lbl_1_data_220[2] = {
-    {{cmToWorld(-750.0f), cmToWorld(526.0f), cmToWorld(-1200.0f)}, {{cmToWorld(-650.0f), cmToWorld(526.0f), cmToWorld(-650.0f)}, {cmToWorld(-140.0f), cmToWorld(110.0f), cmToWorld(-60.0f)}}},
-    {{cmToWorld(750.0f), cmToWorld(526.0f), cmToWorld(-1200.0f)}, {{cmToWorld(650.0f), cmToWorld(526.0f), cmToWorld(-650.0f)}, {cmToWorld(140.0f), cmToWorld(110.0f), cmToWorld(-60.0f)}}}
+    {
+        {cmToWorld(-750.0f), cmToWorld(526.0f), cmToWorld(-1200.0f)},
+        {
+            {cmToWorld(-650.0f), cmToWorld(526.0f), cmToWorld(-650.0f)},
+            {cmToWorld(-140.0f), cmToWorld(110.0f), cmToWorld(-60.0f)}
+        }
+    },
+    {
+        {cmToWorld(750.0f), cmToWorld(526.0f), cmToWorld(-1200.0f)},
+        {
+            {cmToWorld(650.0f), cmToWorld(526.0f), cmToWorld(-650.0f)},
+            {cmToWorld(140.0f), cmToWorld(110.0f), cmToWorld(-60.0f)}
+        }
+    }
 };
 
-}
+static const unsigned int playerMotions[3] = {
+    0x93001E, 0x930006, 0x930028
+};
 
-static const unsigned int playerMotions[3] = {0x93001E, 0x930006, 0x930028};
-
-// The value a weight of the way from start to end.
+// Linearly interpolates a player position component.
 static inline double blendPlayerPosition(double start, double end, double weight)
 {
     return (1.0 - weight) * start + weight * end;
 }
 
+// Creates both players and randomly chooses which one leads the exit walk.
 void fn_1_3274()
 {
     s32 playerNumbers[2];
@@ -90,11 +89,12 @@ void fn_1_3274()
     }
     playerIndex = RandomInteger(2);
     Player *&chosen = sm_players[playerIndex];
-    chosen->reachedPlace = 1;
+    chosen->leadsExit = 1;
     fn_8005DDEC(3);
     lbl_1_bss_8C = 0;
 }
 
+// Starts the requested entrance step for both players.
 void fn_1_3398(int setupMode)
 {
     int index;
@@ -112,7 +112,7 @@ void fn_1_3398(int setupMode)
         MinigameSingleton<ModelAnimationOwner>::getChecked().fn_1_2218();
     }
 }
-
+// Enables actor control for both players.
 void fn_1_3494()
 {
     int playerIndex;
@@ -123,8 +123,8 @@ void fn_1_3494()
         player->fn_1_411C();
     }
 }
-
-int fn_1_3528()
+// Reports whether both players have reached their idle state.
+unsigned char fn_1_3528()
 {
     int index;
     Player *player;
@@ -138,10 +138,10 @@ int fn_1_3528()
     return 1;
 }
 
+// Leaves the player state idle.
 void Player::fn_1_35F4() {}
 
-// Sends the players on to their last points: 140 to the left and to the right, 110 up and 200 along z,
-// with the player's attribute set first.
+// Marks both players as finishing and queues their final positions.
 void fn_1_35F8()
 {
     int playerIndex;
@@ -158,7 +158,7 @@ void fn_1_35F8()
         playerIndex++;
     }
 }
-
+// Selects the result motion for both players.
 void fn_1_3768()
 {
     int playerIndex;
@@ -172,18 +172,20 @@ void fn_1_3768()
     }
 }
 
+// Returns the number of players who have reached three score marks.
 int fn_1_37FC() { return lbl_1_bss_8C; }
 
+// Creates the actor, collision hook, score display and human or computer control.
 Player::Player(int playerId, PlayerInitializationData *spawnData)
     : PlayerInfo(playerId),
       MotionOwner(characterNo()),
       GameObject(0),
       callback(&Player::fn_1_35F4),
       inactive(1),
-      started(0),
-      reachedPlace(0),
-      attributeEnabled(0),
-      transitionStarted(0),
+      collidedThisFrame(0),
+      leadsExit(0),
+      finishing(0),
+      hasWon(0),
       display(fn_1_6EA8(playerId, characterNo(),
                         (int)(spawnData->position.x == 0.0f ? 0.0f :
                               (spawnData->position.x < 0.0f ? -1.0f : 1.0f)))),
@@ -193,7 +195,7 @@ Player::Player(int playerId, PlayerInitializationData *spawnData)
       mode(isComputer() ? static_cast<PlayerControl *>(new ComputerControl(this))
                                  : static_cast<PlayerControl *>(new HumanControl(this)))
 {
-    MGACTOR_PARAM playerParameters = {0.0f, 0.0f, 0, 0, (COL_NARROW_HOOK)fn_1_4C98, 0, 0, 0};
+    MGACTOR_PARAM playerParameters = {0.0f, 0.0f, 0, 0, fn_1_4C98, 0, 0, 0};
     short modelId;
     void (Player::*nextCallback)();
 
@@ -213,22 +215,26 @@ Player::Player(int playerId, PlayerInitializationData *spawnData)
     fn_80086AA8(player->actor, &position);
     fn_80086CA8(player->actor, rotationY);
     fn_80086E3C(player);
-    fn_1_4BC0(this, 0);
-    fn_1_4C34(this, 0);
+    fn_1_4BC0(0);
+    fn_1_4C34(0);
     registerChannel(number() + 1);
+    // The constructor stores the idle callback again after initialization.
     nextCallback = &Player::fn_1_35F4;
     callback = nextCallback;
 }
 
+// Releases the player control and queued path.
 Player::~Player() {}
 
+// Runs the player state, samples actor movement and clears the collision flag.
 void Player::update()
 {
     (this->*callback)();
     fn_1_4ACC();
-    started = 0;
+    collidedThisFrame = 0;
 }
 
+// Handles score and reaction events.
 void Player::receive(const EventPacket *event)
 {
     switch (event->type) {
@@ -240,31 +246,34 @@ void Player::receive(const EventPacket *event)
     }
 }
 
+// Enables actor movement and starts the first entrance walk.
 void Player::fn_1_3E84()
 {
-    void (Player::*values)();
+    void (Player::*nextCallback)();
 
     inactive = 0;
     fn_80086F00(player, &position);
-    fn_1_4BC0(this, true);
-    fn_1_4C34(this, 1);
+    fn_1_4BC0(true);
+    fn_1_4C34(1);
     fn_8007E818(player);
-    values = &Player::fn_1_3F20;
-    callback = values;
+    nextCallback = &Player::fn_1_3F20;
+    callback = nextCallback;
 }
 
+// Walks to the first queued point and returns to idle when it is reached.
 void Player::fn_1_3F20()
 {
-    void (Player::*initialPosition)();
+    void (Player::*nextCallback)();
     Vec *target = path.begin();
 
     if (fn_8007E8B4(player, target, (float)framesToSeconds(250.0), 10.0f)) {
         path.erase(path.begin());
-        initialPosition = &Player::fn_1_35F4;
-        callback = initialPosition;
+        nextCallback = &Player::fn_1_35F4;
+        callback = nextCallback;
     }
 }
 
+// Starts the second entrance walk.
 void Player::fn_1_3FE0()
 {
     void (Player::*next)();
@@ -274,32 +283,35 @@ void Player::fn_1_3FE0()
     callback = next;
 }
 
+// Walks to the next queued point and changes actor mode on arrival.
 void Player::fn_1_404C()
 {
-    void (Player::*initialPosition)();
+    void (Player::*nextCallback)();
     Vec *target = path.begin();
 
     if (fn_8007E8B4(player, target, (float)framesToSeconds(1000.0), 20.0f) != 0) {
         path.erase(path.begin());
         fn_80080DD4(player->actor, 2);
-        initialPosition = &Player::fn_1_35F4;
-        callback = initialPosition;
+        nextCallback = &Player::fn_1_35F4;
+        callback = nextCallback;
     }
 }
 
+// Enters the selected controller and starts gameplay input.
 void Player::fn_1_411C()
 {
-    void (Player::*values)();
+    void (Player::*nextCallback)();
 
     fn_80087168(player, 1);
     mode->enter();
-    values = &Player::fn_1_41A8;
-    callback = values;
+    nextCallback = &Player::fn_1_41A8;
+    callback = nextCallback;
 }
 
+// Runs gameplay control or starts the finish walk, and sends panel press events.
 void Player::fn_1_41A8()
 {
-    if (attributeEnabled != 0) {
+    if (finishing != 0) {
         fn_1_4654();
         return;
     }
@@ -309,65 +321,66 @@ void Player::fn_1_41A8()
     }
 }
 
+// Adds a score mark and registers the player as a winner on the third mark.
 void Player::fn_1_4250()
 {
-    DisplayState *sequence = (DisplayState *)display;
-    int previousProgress = sequence->progress;
+    DisplayProvider *scoreDisplay = display;
+    int previousProgress = scoreDisplay->activeCount;
     int comparisonProgress = previousProgress;
 
-    if (comparisonProgress < 3 && static_cast<DisplayProviderDP *>(display)->fn_1_66F4() >= 3) {
-        transitionStarted = 1;
+    if (comparisonProgress < 3 && display->fn_1_66F4() >= 3) {
+        hasWon = 1;
         lbl_1_bss_8C += 1;
-        {
-            int callbackId = playerNo;
-            MinigameCore::addWinner(callbackId);
-        }
+        int winnerPlayerNo = playerNo;
+        MinigameCore::addWinner(winnerPlayerNo);
     }
 }
 
+// Stops gameplay control and starts the reaction motion.
 void Player::fn_1_42DC()
 {
     void (Player::*expected)() = &Player::fn_1_41A8;
-    void (Player::*resetPosition)();
+    void (Player::*nextCallback)();
 
     if (callback == expected) {
         inactive = 1;
         fn_80086E3C(player);
         fn_8007EDBC(player);
         selectCharacterMotion(&static_cast<MotionOwner &>(*this), 0x93001E);
-        resetPosition = &Player::fn_1_43A0;
-        callback = resetPosition;
+        nextCallback = &Player::fn_1_43A0;
+        callback = nextCallback;
     }
 }
 
+// Rumbles the controller and waits for the reaction motion.
 void Player::fn_1_43A0()
 {
-    void (Player::*state)();
+    void (Player::*nextCallback)();
 
     rumble(2, (int)secondsToFrames(0.8));
-    state = &Player::fn_1_4428;
-    callback = state;
+    nextCallback = &Player::fn_1_4428;
+    callback = nextCallback;
 }
-
+// Restores actor movement after the reaction motion and starts its turn.
 void Player::fn_1_4428()
 {
-    void (Player::*values)();
-
+    void (Player::*nextCallback)();
     if (characterMotionEnded(&static_cast<MotionOwner &>(*this).charNo) != 0) {
         inactive = 0;
         fn_80086F00(player, &position);
         fn_8007ED60(player);
         fn_8008718C(player, 2, 180.0f + rotationY, (int)secondsToFrames(0.5));
-        values = &Player::fn_1_44FC;
-        callback = values;
+        nextCallback = &Player::fn_1_44FC;
+        callback = nextCallback;
     }
 }
-
+// Waits through the actor turn and resumes gameplay control.
 void Player::fn_1_44FC()
 {
+    void (Player::*nextCallback)();
     switch (player->subMode) {
     case 1:
-        fn_8005C2C8(player->charNo, ((PlayerMotionResource *)player->omObj)->model->motionId,
+        fn_8005C2C8(player->charNo, player->omObj->mtnId[0xE],
                     0.0f, 5.0f, ((1 << 30) | (1 << 0)));
         player->motNo = 0xE;
         player->timer = (float)secondsToFrames(1.5);
@@ -375,61 +388,56 @@ void Player::fn_1_44FC()
         return;
     default:
         mode->enter();
-        void (Player::*callbackData)() = &Player::fn_1_41A8;
-        callback = callbackData;
+        nextCallback = &Player::fn_1_41A8;
+        callback = nextCallback;
         /* fall through */
     case 2:
         return;
     }
 }
-
-/* Marks the player as active for the setup step that invokes this helper. */
+// Sets the actor attribute and marks this player as finishing.
 void Player::fn_1_4610()
 {
     fn_80087158(player, (1 << 0));
-    attributeEnabled = 1;
+    finishing = 1;
 }
-
-/* Enables common stick handling and restores the configured player mode data. */
+// Enables the actor walk and switches to the queued finish path.
 void Player::fn_1_4654()
 {
-    void (Player::*copy)();
-
+    void (Player::*nextCallback)();
     fn_8007E818(player);
-    copy = &Player::fn_1_46BC;
-    callback = copy;
+    nextCallback = &Player::fn_1_46BC;
+    callback = nextCallback;
 }
-
+// Walks to the finish point, passes the lead to the other player and signals a winner.
 void Player::fn_1_46BC()
 {
     Player *selected;
-
-    if (started != 0 && reachedPlace != 0) {
+    if (collidedThisFrame != 0 && leadsExit != 0) {
         fn_8007EEBC(player, 1);
     }
     Vec *target = path.begin();
-    if (fn_8007E8B4(player, target, (float)framesToSeconds(400.0), 10.0f) != 0 && fn_1_4B68(this) != 0) {
-        if (reachedPlace != 0) {
+    if (fn_8007E8B4(player, target, (float)framesToSeconds(400.0), 10.0f) != 0 && fn_1_4B68() != 0) {
+        if (leadsExit != 0) {
             int index = 0;
-
             while (index < 2) {
                 selected = sm_players[index];
-                if (selected->reachedPlace == 0) {
-                    selected->reachedPlace = 1;
+                if (selected->leadsExit == 0) {
+                    selected->leadsExit = 1;
                     break;
                 }
                 index++;
             }
-            reachedPlace = 0;
+            leadsExit = 0;
         }
-        if (transitionStarted != 0) {
+        if (hasWon != 0) {
             sendEvent(0, 4, &position, 0.0f);
         }
         void (Player::*next)() = &Player::fn_1_4858;
         callback = next;
     }
 }
-
+// Turns the actor toward the camera and returns to idle when aligned.
 void Player::fn_1_4858()
 {
     Vec *actorPosition;
@@ -440,47 +448,45 @@ void Player::fn_1_4858()
     float difference;
     float absoluteDifference;
     float error;
-
     if (player->motNo != 0) {
         return;
     }
+    // The original passes the same destination for camera up and target.
     fn_80027CD0(1, &cameraPosition, &cameraTarget, &cameraTarget);
     actorPosition = &player->actor->pos;
-    targetAngle = (float)(180.0 * (atan2((double)(cameraPosition.x - actorPosition->x),
+    targetAngle = (float)(180.0 * (std::atan2((double)(cameraPosition.x - actorPosition->x),
                                          (double)(cameraPosition.z - actorPosition->z)) /
                                    M_PI));
     fn_80086CB0(player->actor, &rotation);
     Range<float> range(0.0f, 360.0f, rotation);
-    void (Player::*defaults)();
+    void (Player::*nextCallback)();
     fn_80086CA8(player->actor, range.step(targetAngle, 0.1));
     difference = range.distanceTo(targetAngle);
     absoluteDifference = __fabsf(difference);
     error = absoluteDifference;
     if (error < 1.0) {
+        // This updates only the local range; the snapped angle is never applied to the actor.
         range.set(targetAngle);
         fn_80087158(player, (1 << 2));
-        defaults = &Player::fn_1_35F4;
-        callback = defaults;
+        nextCallback = &Player::fn_1_35F4;
+        callback = nextCallback;
     }
 }
-
+// Selects the win or loss motion and returns to idle.
 void Player::fn_1_4A0C()
 {
     unsigned int data;
-    void (Player::*state)();
-
-    if (transitionStarted != 0) {
+    void (Player::*nextCallback)();
+    if (hasWon != 0) {
         data = 0x930006;
     } else {
         data = 0x930028;
     }
-
     shiftCharacterMotion(&static_cast<MotionOwner &>(*this), data, (float)secondsToFrames(0.3), 0.0f, 0);
-
-    state = &Player::fn_1_35F4;
-    callback = state;
+    nextCallback = &Player::fn_1_35F4;
+    callback = nextCallback;
 }
-
+// Samples actor position and facing, derives velocity and pans character audio.
 void Player::fn_1_4ACC()
 {
     if (inactive == 0) {
@@ -491,20 +497,17 @@ void Player::fn_1_4ACC()
         soundPanCharacterVoice(1, (short)characterNo(), &position);
     }
 }
-
-// Whether the player's actor collision code has any of the bits 0x407F set.
-unsigned char fn_1_4B68(Player *object)
+// Reports whether the actor collision code contains any bit in 0x407F.
+unsigned char Player::fn_1_4B68()
 {
     u32 collisionCode = 0;
-    fn_80086DD0(object->player->actor, &collisionCode);
+    fn_80086DD0(player->actor, &collisionCode);
     return (unsigned char)((collisionCode & 0x407F) != 0);
 }
-
-/* Updates the character's movement attribute and voice flag for the active state. */
-void fn_1_4BC0(Player *owner, bool enabled)
+// Toggles character attribute bit 1 and the paired engine character setting.
+void Player::fn_1_4BC0(bool enabled)
 {
-    int character = owner->characterNo();
-
+    int character = characterNo();
     if (enabled) {
         fn_8005C47C(character, 1);
     } else {
@@ -512,25 +515,22 @@ void fn_1_4BC0(Player *owner, bool enabled)
     }
     fn_8005DFC0(character, enabled);
 }
-
-void fn_1_4C34(Player *owner, unsigned char enabled)
+// Toggles the actor model through the engine model helpers.
+void Player::fn_1_4C34(unsigned char enabled)
 {
-    int modelId = (short)owner->player->actor->mdlId;
+    int modelId = (short)player->actor->mdlId;
     if (enabled) {
         fn_80026E44((short)modelId);
     } else {
         fn_80026EF0((short)modelId);
     }
 }
-
-// The actors' collision hook: when neither side has flags, the player whose actor param is the first side's
-// player id is marked as started.
-int fn_1_4C98(const PlayerFilter *filter, const PlayerFilter *other)
+// Marks the player named by a type-zero collision pair as collided this frame.
+int fn_1_4C98(COL_NARROW_PARAM *filter, COL_NARROW_PARAM *other)
 {
     int index;
     Player *match;
-
-    if (filter->flags != 0 || other->flags != 0) {
+    if (filter->type != 0 || other->type != 0) {
         return 0;
     }
     assert(sm_players.size() == entry_num);
@@ -538,7 +538,7 @@ int fn_1_4C98(const PlayerFilter *filter, const PlayerFilter *other)
     index = 0;
     while (index < 2) {
         Player *entry = sm_players[index];
-        if (filter->playerId == entry->player->actor->param) {
+        if (filter->paramB == entry->player->actor->param) {
             match = entry;
             break;
         }
@@ -547,6 +547,6 @@ int fn_1_4C98(const PlayerFilter *filter, const PlayerFilter *other)
     if (match == 0) {
         return 0;
     }
-    match->started = 1;
+    match->collidedThisFrame = 1;
     return 1;
 }

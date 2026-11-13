@@ -1,7 +1,9 @@
+#include "REL/framework/world_units.h"
 #include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 #include "REL/m681DLL/motion_object.h"
 #include "REL/framework/random.h"
+#include "REL/m681DLL/game_constants.h"
 
 struct MotionPreset {
     const unsigned long *modelData;
@@ -18,6 +20,7 @@ extern const MotionPreset lbl_1_rodata_190[2] = {
 };
 }
 
+// Creates a stage model with its two motions and a randomized playback speed.
 MotionObject::MotionObject(Vec *position, int variant)
     : GameObject(2), ModelMotion(lbl_1_rodata_178[variant]), EventListener()
 {
@@ -33,13 +36,10 @@ MotionObject::MotionObject(Vec *position, int variant)
     registerChannel(0);
 }
 
+// Releases the stage model and motion resources.
 MotionObject::~MotionObject() {}
 
-extern "C" {
-#include "REL/m681DLL.h"
-#include "REL/framework/world_units.h"
-}
-
+// Restarts the first motion when the enabled motion ends.
 void MotionObject::update()
 {
     f32 value = getMotionTime();
@@ -53,6 +53,7 @@ void MotionObject::update()
     }
 }
 
+// Enables playback or shifts to the second motion for game events.
 void MotionObject::receive(const EventPacket *input)
 {
     switch (input->type) {
@@ -70,15 +71,4 @@ void MotionObject::receive(const EventPacket *input)
     default:
         break;
     }
-}
-
-extern "C" {
-extern s32 lbl_1_bss_50;
-extern f32 lbl_1_bss_54;
-
-}
-
-extern "C" {
-s32 lbl_1_bss_50 = minutesToFrames(60L);
-f32 lbl_1_bss_54 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

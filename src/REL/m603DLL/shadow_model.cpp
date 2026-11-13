@@ -1,30 +1,27 @@
 /* Model handles and camera copies used by the shared shadow model. */
 
 #include "REL/m603DLL/shadow_owner.h"
+#include "REL/m603DLL/camera_owner.h"
 #include "REL/framework/scene_shadow.h"
 #include "datadir_enum.h"
 #include "dolphin/types.h"
-
-void operator delete(void *);
 
 extern "C" {
 #include "game/data.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
 
-extern const u8 lbl_1_data_EC[], lbl_1_data_210[];
-const Vec lbl_1_rodata_210 = { 0.0f, -1.0f, 0.01f };
-const Vec lbl_1_rodata_21C = { 0.0f, 0.0f, -400.0f };
-const u32 lbl_1_rodata_228[4] = { 1, 2, 4, 8 };
 }
 
-static inline void fn_1_D7D4(s16 model)
+/* Clear model attributes 0x40000002 and 1, and set 0x40000001. */
+static inline void configureShadowModelAttributes(s16 model)
 {
     fn_80026A44(model, ((1 << 30) | (1 << 1)));
     fn_800269E8(model, ((1 << 30) | (1 << 0)));
     fn_80026A44(model, 1);
 }
 
+/* Create the stage models, shadow camera and four animated camera copies. */
 ShadowModelOwner::ShadowModelOwner(bool alternate)
     : firstModel(alternate ? DATANUM(0x3e0000, 0) : DATANUM(0x3e0000, 2)),
       shadowModel(alternate ? DATANUM(0x3e0000, 1) : DATANUM(0x3e0000, 3)),
@@ -36,19 +33,18 @@ ShadowModelOwner::ShadowModelOwner(bool alternate)
     fn_80026B8C(model, 1);
     fn_80029850(model, 1);
     fn_80026760(model, 0.0f, 0.0f, 0.0f);
-    fn_1_D7D4(model);
+    configureShadowModelAttributes(model);
     fn_80026B64(model, 0xF);
     model = shadowModel;
     fn_80026B8C(model, 1);
     fn_80026760(model, 0.0f, 0.0f, 0.0f);
-    fn_1_D7D4(model);
+    configureShadowModelAttributes(model);
     fn_80026B64(model, 0xF);
     fn_80026FFC(model);
-    {
-        Vec direction = lbl_1_rodata_210;
-        Vec target = lbl_1_rodata_21C;
-        configureShadowCamera(1, & direction, & target, 650.0f, 650.0f, 5.0f);
-    }
+    Vec direction = { 0.0f, -1.0f, 0.01f };
+    Vec target = { 0.0f, 0.0f, -400.0f };
+    static const u32 cameraBits[4] = { 1, 2, 4, 8 };
+    configureShadowCamera(1, &direction, &target, 650.0f, 650.0f, 5.0f);
     model = animatedModel;
     motion = fn_80030458(animatedModel, fn_80008DD0(DATANUM(0x3e0000, 6), 0x10000000, 2));
     fn_8002C95C(model, motion);
@@ -61,27 +57,31 @@ ShadowModelOwner::ShadowModelOwner(bool alternate)
         model = cameraModels[cameraIndex];
         fn_80026B8C(model, 1);
         fn_80026760(model, 0.0f, 0.0f, 0.0f);
-        fn_1_D7D4(model);
-        fn_80026B64(model, lbl_1_rodata_228[cameraIndex]);
+        configureShadowModelAttributes(model);
+        fn_80026B64(model, cameraBits[cameraIndex]);
     }
 }
+/* Release the three cloned camera models. */
 ShadowModelOwner::~ShadowModelOwner()
 {
  fn_800262D0(cameraModels[1]);
  fn_800262D0(cameraModels[2]);
  fn_800262D0(cameraModels[3]);
 }
+/* Leave the stage model state unchanged. */
 void ShadowModelOwner::update() {}
 
-/* Pause the selected model's motion. */
+/* Set model attribute 0x40000002 on the selected camera copy. */
 void ShadowModelOwner::fn_1_5914(int modelIndex)
 {
     short modelId = cameraModels[modelIndex];
     fn_800269E8(modelId, ((1 << 30) | (1 << 1)));
 }
 
+/* Leave the model state unchanged. */
 void fn_1_5968(void) {}
 
+/* Clear the requested flag bit. */
 void ShadowModelOwner::flagEnabled(int request)
 {
     flags &= ~(1UL << request);

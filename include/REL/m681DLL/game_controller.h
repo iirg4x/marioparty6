@@ -1,9 +1,9 @@
-#ifndef REL_M681DLL_OWNER_182C_H
-#define REL_M681DLL_OWNER_182C_H
+#ifndef REL_M681DLL_GAME_CONTROLLER_H
+#define REL_M681DLL_GAME_CONTROLLER_H
 
 #include "REL/framework/singleton.h"
 #include "REL/framework/game_object.h"
-#include "REL/m681DLL/event_callback.h"
+#include "REL/framework/event_packet.h"
 #include "REL/m681DLL/monitor_interface.h"
 
 struct M681GameState : MinigameSingleton<M681GameState>, GameObject, EventListener {
@@ -11,17 +11,18 @@ struct M681GameState : MinigameSingleton<M681GameState>, GameObject, EventListen
     f32 interval;
     u32 frameCount;
     InitializationValues textureChoices;
-    s32 minimum;
+    s32 playersRemaining;
     s32 current;
-    s32 negativeState;
-    s32 state38;
-    s32 state3C;
-    f32 state40;
-    f32 state44;
-    f32 state48;
-    s32 state4C;
+    s32 winnerPlayer;
+    s32 answeredPlayers;
+    s32 unknown3C; // Initialized to zero and never read.
+    f32 additionalLandingDelay;
+    f32 unknown44; // Initialized to zero and never read.
+    f32 unknown48; // Initialized to zero and never read.
+    s32 roundCount;
     Callback callback;
-    bool poseActive() const { return negativeState >= 0; }
+    // Reports whether a player has been selected for the camera.
+    bool hasWinner() const { return winnerPlayer >= 0; }
     M681GameState();
     virtual ~M681GameState();
     virtual void update();

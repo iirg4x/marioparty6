@@ -1,10 +1,10 @@
+#include <algorithm>
 #include "REL/m654DLL/sprite_manager.h"
 #include "REL/framework/frame_time.h"
 #include "REL/framework/world_units.h"
 #include "REL/framework/game_object_man.h"
 // Each player's score display and the sprite manager that draws them over the scene.
 #include "REL/m654DLL/display_provider.h"
-#include "REL/m654DLL/camera_node_owner.h"
 #include "REL/m654DLL/parameter_interpolation.h"
 #include "REL/m654DLL/sprite_draw.h"
 extern "C" {
@@ -12,23 +12,21 @@ extern "C" {
 #include "game/gamemes.h"
 #include "game/sprite.h"
 }
-#include "REL/m654DLL/scene_owner.h"
 
-extern "C" {
-
+// One-minute time limit and gravity in world units per frame squared.
 s32 lbl_1_bss_98 = minutesToFrames(1L);
 float lbl_1_bss_9C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 s32 lbl_1_bss_A0 = (s32)secondsToFrames(0.5);
 s32 lbl_1_bss_A4 = (s32)secondsToFrames(0.2);
-}
 
 extern const int lbl_1_rodata_2D8[2] = {0x9B001E, 0x9B001F};
 
-DisplayProviderDP::DisplayProviderDP(int width, int offsetX, int y)
+// Creates the character scorebox and three background and animated score marks.
+DisplayProvider::DisplayProvider(int character, int offsetX, int y)
     : GameObject(2),
-      scorebox(MgScoreBoxCreateChar(0x80, 0x30, (short)width)),
-      firstAnimation(HuSprAnimRead(fn_80008DD0(lbl_1_rodata_2D8[0], 0x10000000, 2))),
-      secondAnimation(HuSprAnimRead(fn_80008DD0(lbl_1_rodata_2D8[1], 0x10000000, 2))),
+      scorebox(MgScoreBoxCreateChar(0x80, 0x30, (short)character)),
+      firstAnimation(HuSprAnimDataRead(lbl_1_rodata_2D8[0])),
+      secondAnimation(HuSprAnimDataRead(lbl_1_rodata_2D8[1])),
       activeCount(0)
 {
     float x;
@@ -43,24 +41,26 @@ DisplayProviderDP::DisplayProviderDP(int width, int offsetX, int y)
         SpriteParameters firstParameters(firstAnimation);
         firstParameters.x = x;
         firstParameters.y = (float)y;
-        firstParameters.scaleX = 1.0f;
-        firstParameters.scaleY = 1.0f;
+        firstParameters.scale = 1.0f;
+        firstParameters.opacity = 1.0f;
         firstList.push_back(firstParameters);
 
         SpriteParameters secondParameters(secondAnimation);
         secondParameters.x = x;
         secondParameters.y = (float)y;
-        secondParameters.scaleX = 4.0f;
-        secondParameters.scaleY = 0.0f;
+        secondParameters.scale = 4.0f;
+        secondParameters.opacity = 0.0f;
         secondList.push_back(secondParameters);
         x += 24.0f;
         index++;
     }
 }
 
-DisplayProviderDP::~DisplayProviderDP() {}
+// Releases the score mark lists and game object base.
+DisplayProvider::~DisplayProvider() {}
 
-int DisplayProviderDP::fn_1_66F4()
+// Increments the active score mark count, capped at three.
+int DisplayProvider::fn_1_66F4()
 {
     int incrementedValue;
     int boundedValue;
@@ -78,22 +78,25 @@ int DisplayProviderDP::fn_1_66F4()
     return activeCount = storedValue;
 }
 
-void DisplayProviderDP::update()
+// Applies the shared fade and shrinks newly active marks while fading them in.
+void DisplayProvider::update()
 {
     double tpLevel = lbl_1_bss_A8.value;
     MgScoreBoxTPLvlSet((short)scorebox, tpLevel);
     if (activeCount > 0) {
         SpriteParameters *checkedLastRecord = &secondList.back();
-        if (!(checkedLastRecord->scaleX <= 1.0)) {
+        // These comparisons also admit unordered values.
+        if (!(checkedLastRecord->scale <= 1.0)) {
             int index = 0;
             while (index < activeCount) {
                 SpriteParameters *record = &secondList[index];
-                if (!(record->scaleX <= 1.0)) {
-                    record->scaleX = (float)((double)record->scaleX - (3.0 / (double)lbl_1_bss_A0));
-                    record->scaleY = (float)((double)record->scaleY + (1.0 / (double)lbl_1_bss_A0));
-                    if (record->scaleX <= 1.0) {
-                        record->scaleX = 1.0f;
-                        record->scaleY = 1.0f;
+                if (!(record->scale <= 1.0)) {
+                    record->scale = (float)((double)record->scale - (3.0 / (double)lbl_1_bss_A0));
+                    record->opacity =
+                        (float)((double)record->opacity + (1.0 / (double)lbl_1_bss_A0));
+                    if (record->scale <= 1.0) {
+                        record->scale = 1.0f;
+                        record->opacity = 1.0f;
                     }
                 }
                 index++;
@@ -102,23 +105,21 @@ void DisplayProviderDP::update()
     }
 }
 
-extern "C" {
-void fn_1_6910();
-}
-void fn_1_81B4();
-
+// Collects score displays and draws their score mark sprites.
 void fn_1_6910()
 {
+    // collectGameObjects replaces these two initial null entries.
     std::vector<GameObject *> list(2);
     collectGameObjects(2, &list);
     int count = list.size();
     fn_1_81B4();
     for (int index = 0; index < count; index++) {
-        static_cast<DisplayProviderDP *>(list[index])->fn_1_6AEC();
+        static_cast<DisplayProvider *>(list[index])->fn_1_6AEC();
     }
 }
 
-inline void DisplayProviderDP::fn_1_6AEC()
+// Draws all background marks and the active animated marks.
+inline void DisplayProvider::fn_1_6AEC()
 {
     long fixedIndex;
     long activeIndex;
@@ -131,60 +132,61 @@ inline void DisplayProviderDP::fn_1_6AEC()
     }
 }
 
-extern "C" {
-struct HuSprite_s;
 void fn_1_74AC(HuSprite_s *);
-}
+
+// Deletes the display held by this slot.
 inline ScoreDisplaySlot::~ScoreDisplaySlot() { delete value; }
 
+// Installs the sprite drawing callback and resets the shared fade.
 SpriteManager::SpriteManager()
 {
     short group = HuSprGrpCreate(1);
     short sprite = HuSprFuncCreate(fn_1_74AC, 0x63);
     HuSprGrpMemberSet((short)group, 0, (short)sprite);
-    {
-        ParameterInterpolation transition;
-        lbl_1_bss_A8.duration = transition.duration;
-        lbl_1_bss_A8.elapsed = transition.elapsed;
-        lbl_1_bss_A8.value = transition.value;
-        lbl_1_bss_A8.from = transition.from;
-        lbl_1_bss_A8.to = transition.to;
-    }
+    lbl_1_bss_A8 = ParameterInterpolation(0.0f);
 }
 
+// Releases the owned score displays.
 SpriteManager::~SpriteManager() {}
 
-GameObject *fn_1_6EA8(int index, int character, int side)
+// Creates the sprite manager if needed and replaces one player score display.
+DisplayProvider *fn_1_6EA8(int index, int character, int side)
 {
     if (MinigameSingleton<SpriteManager>::current() == 0) new SpriteManager;
     float x = side < 0 ? 80.0f : 496.0f;
     ScoreDisplaySlot *slot = &MinigameSingleton<SpriteManager>::getChecked().owners[index];
-    *slot = new DisplayProviderDP(character, (int)x, 64);
+    *slot = new DisplayProvider(character, (int)x, 64);
     return slot->value;
 }
 
+// Starts the shared score display fade for phase 3 and clears the phase flag.
 void SpriteManager::flagEnabled(int event)
 {
     if (event == 3) {
-        lbl_1_bss_A8.fn_1_75F8(1.0f, lbl_1_bss_A4);
+        lbl_1_bss_A8.set(1.0f, lbl_1_bss_A4);
     }
     flags &= ~(1UL << event);
 }
-void SpriteManager::update() { lbl_1_bss_A8.fn_1_7670(); }
+// Advances the shared score display fade.
+void SpriteManager::update() { lbl_1_bss_A8.update(); }
 
+// Draws the score displays from the engine sprite callback.
 void fn_1_74AC(HuSprite_s *)
 {
     fn_1_6910();
 }
 
-ScoreDisplaySlot::ScoreDisplaySlot(GameObject *initial) : value(initial) {}
+// Stores the initial display pointer.
+ScoreDisplaySlot::ScoreDisplaySlot(DisplayProvider *initial) : value(initial) {}
 
-void ParameterInterpolation::fn_1_75F8(float end, int frames)
+// Starts interpolation from the current value to the supplied target.
+void ParameterInterpolation::set(float end, int frames)
 {
-    fn_1_763C(value, end, frames);
+    set(value, end, frames);
 }
 
-void ParameterInterpolation::fn_1_763C(float start, float end, int frames)
+// Sets the interpolation endpoints and duration, snapping immediately for zero frames.
+void ParameterInterpolation::set(float start, float end, int frames)
 {
     duration = frames;
     elapsed = 0;
@@ -199,7 +201,8 @@ void ParameterInterpolation::fn_1_763C(float start, float end, int frames)
     }
 }
 
-float ParameterInterpolation::fn_1_7670()
+// Advances the linear interpolation by one frame and returns its current value.
+float ParameterInterpolation::update()
 {
     float result = value;
     if (elapsed <= duration) {

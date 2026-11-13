@@ -13,18 +13,7 @@ extern "C" {
 #include "REL/framework/singleton.h"
 #include "REL/framework/scene_shadow.h"
 
-extern "C" {
-extern const u8 lbl_1_data_5C[];
-extern u8 lbl_1_data_440[];
-
-extern char lbl_1_data_428[];
-extern char lbl_1_data_432[];
-
-void fn_1_1D6D8(void *, s32);
-void fn_1_1DE18(s16 *, s32);
-void fn_1_1DAB8(s16 *, u32);
-}
-
+/* Configures the stage models, layer attributes and shadow camera. */
 CallbackModelOwner::CallbackModelOwner(bool shadow)
     : modelId(shadow ? DATANUM(0x6b0000, 0) : DATANUM(0x6b0000, 1)),
       shadowModelId(shadow ? DATANUM(0x6b0000, 2) : DATANUM(0x6b0000, 3))
@@ -51,10 +40,12 @@ CallbackModelOwner::CallbackModelOwner(bool shadow)
     }
 }
 
+/* Returns without changing state. */
 void CallbackModelOwner::update()
 {
 }
 
+/* Clears the requested flag. */
 void CallbackModelOwner::flagEnabled(int request)
 {
     flags &= ~(1UL << request);
@@ -68,4 +59,5 @@ void CallbackModelOwner::flagEnabled(int request)
     }
 }
 
+/* Releases the object through its member and base destructors. */
 CallbackModelOwner::~CallbackModelOwner() {}

@@ -1,3 +1,5 @@
+#include "REL/m603DLL/draw_owner.h"
+#include "REL/m603DLL/camera_group.h"
 #include "REL/m603DLL/ufo.h"
 extern "C" {
 #include "game/audio.h"
@@ -19,29 +21,20 @@ extern "C" {
 }
 #include "REL/framework/list_object.h"
 #include "REL/m603DLL/camera_owner.h"
-#include "REL/m603DLL/random.h"
-
-typedef Vec FloatTripletB520;
+#include "REL/framework/random.h"
 
 extern "C" {
 
-extern const u8 lbl_1_data_A4C[];
-extern const u8 lbl_1_data_EC[];
-extern const char lbl_1_data_950[];
-extern const char lbl_1_data_95A[];
 const s32 lbl_1_rodata_598[3] = {DATANUM(0x3e0000, 17), DATANUM(0x3e0000, 18), DATANUM(0x3e0000, 19)};
-class CameraModelOwner;
 }
-void fn_1_C710(CameraModelOwner *);
 
+/* Animate, score and draw one UFO for a camera. */
 struct CameraModelOwner : ListNode<CameraModelOwner> {
     CameraModelOwner(const OwnedModel *,unsigned int,s32,s32);
     ~CameraModelOwner();
     void fn_1_CD7C(Mtx);
     void fn_1_CDD4(Mtx);
-    void fn_1_C350();
-    s16 primary_model() const { return modelId; }
-    s16 secondary_model() const { return motionId; }
+    void stopSound();
     typedef void (CameraModelOwner::*Callback)();
     Callback callbackState;
     void fn_1_C750();
@@ -50,41 +43,43 @@ struct CameraModelOwner : ListNode<CameraModelOwner> {
     void fn_1_C994();
     void fn_1_CA14(s32);
     void fn_1_CB64();
-    s16 model_id() const { return motionId; }
-    HU3D_MODELID first_model() const { return modelId; }
-    HU3D_MODELID second_model() const { return motionId; }
     OwnedModel modelId;
-    OwnedModel motionId;
+    OwnedModel animatedModel;
     u8 state18;
-    s32 cameraIndex;
+    s32 ufoKind;
     Vec position;
-    s32 state2C;
+    s32 state;
     s32 cameraGroup;
-    u8 groupFlags[4];
+    u8 motionRunning;
+    u8 stopped;
+    u8 scoringWindow;
+    u8 effectFlag;
     f32 motionSpeed;
     f32 motionLength;
     f32 playbackSpeed;
     s32 countdown;
     s16 hookModelId;
     u32 drawCount;
-    f32 depth;
+    f32 rotationAngle;
     u8 state54;
-    s32 callbackIndex;
+    s32 soundHandle;
 };
 
 extern "C" {
-FloatTripletB520 lbl_1_bss_59C[0x21];
-FloatTripletB520 lbl_1_bss_728[0x21];
-FloatTripletB520 lbl_1_bss_8B4[0x21];
+Vec lbl_1_bss_59C[0x21];
+Vec lbl_1_bss_728[0x21];
+Vec lbl_1_bss_8B4[0x21];
 u8 lbl_1_bss_A40;
 ListRoot<CameraModelOwner> lbl_1_bss_A50;
 }
 
+/* Create one UFO model pair for the supplied kind and camera. */
 static inline void CameraModelCreate(CameraModelPool *object, s32 modelIndex, s32 cameraGroup)
 {
     new CameraModelOwner(&object->modelId, lbl_1_rodata_598[modelIndex], modelIndex, cameraGroup);
 }
 
+/* Create three UFO kinds per camera and initialize the effect circles. */
 CameraModelPool::CameraModelPool()
     : modelId(DATANUM(0x3e0000, 16))
 {
@@ -130,22 +125,20 @@ CameraModelPool::CameraModelPool()
     lbl_1_bss_A40 = 0;
 }
 
-void fn_1_BF18();
-void fn_1_C2EC();
-void fn_1_C0FC();
-void fn_1_C04C();
-
+/* Delete all UFO objects. */
 CameraModelPool::~CameraModelPool()
 {
     fn_1_BF18();
 }
 
+/* Occasionally start UFO motions and update every UFO. */
 void CameraModelPool::update()
 {
     if ((s32)(RandomUnsigned() & 0x1FFUL) == 0) fn_1_C0FC();
     fn_1_C04C();
 }
 
+/* Clear a request flag and stop UFO sounds for request three. */
 void CameraModelPool::flagEnabled(int bit)
 {
     flags &= ~(1UL << bit);
@@ -162,6 +155,7 @@ void CameraModelPool::flagEnabled(int bit)
     }
 }
 
+/* Enable UFO scoring effects. */
 void fn_1_BB5C()
 {
     lbl_1_bss_A40 = 1;
@@ -172,15 +166,13 @@ extern "C" {
 char *lbl_1_data_9A4[3] = {"mapmodel10-ufo_act", "mapmodel12-ufo_act_b",
                               "mapmodel14-ufo_act_c"};
 
-const u32 lbl_1_rodata_5F8[4] = {1, 2, 4, 8};
+const u32 ufoCameraBits[4] = {1, 2, 4, 8};
 
 }
 
-extern void fn_1_CD34(HU3D_MODEL *, Mtx *);
-extern "C" {
-
-CameraModelOwner::CameraModelOwner(const OwnedModel *sourceModel, unsigned int motionData, s32 cameraIndex, s32 cameraGroup)
-    : modelId(*sourceModel), motionId(motionData)
+/* Create and link a camera-specific UFO model pair and effect drawing hook. */
+CameraModelOwner::CameraModelOwner(const OwnedModel *sourceModel, unsigned int motionData, s32 ufoKind, s32 cameraGroup)
+    : modelId(*sourceModel), animatedModel(motionData)
 {
     s16 primaryModelId;
     s16 foregroundModelId;
@@ -189,80 +181,82 @@ CameraModelOwner::CameraModelOwner(const OwnedModel *sourceModel, unsigned int m
     HU3D_MODEL *hookModel;
 
     this->state18 = 0;
-    this->cameraIndex = cameraIndex;
+    this->ufoKind = ufoKind;
     this->cameraGroup = cameraGroup;
-    this->groupFlags[0] = 0;
-    this->groupFlags[1] = 0;
-    this->groupFlags[2] = 0;
-    this->groupFlags[3] = 0;
-    this->depth = 0.0f;
+    this->motionRunning = 0;
+    this->stopped = 0;
+    this->scoringWindow = 0;
+    this->effectFlag = 0;
+    this->rotationAngle = 0.0f;
     this->state54 = 0;
-    this->callbackIndex = -1;
+    this->soundHandle = -1;
     insert4(&lbl_1_bss_A50);
 
     primaryModelId = this->modelId;
     fn_80026A44(primaryModelId, 1);
     fn_80026B8C(primaryModelId, 0);
-    fn_80026B64(primaryModelId, lbl_1_rodata_5F8[cameraGroup]);
+    fn_80026B64(primaryModelId, ufoCameraBits[cameraGroup]);
     fn_800269E8(primaryModelId, 0x4000);
 
-    foregroundModelId = this->motionId;
+    foregroundModelId = this->animatedModel;
     fn_800269E8(foregroundModelId, 1);
-    fn_80026B64(foregroundModelId, lbl_1_rodata_5F8[cameraGroup]);
+    fn_80026B64(foregroundModelId, ufoCameraBits[cameraGroup]);
 
-    fn_8002741C(this->motionId, lbl_1_data_9A4[cameraIndex], this->modelId);
-    motionId.hideObject(lbl_1_data_9A4[this->cameraIndex]);
+    fn_8002741C(this->animatedModel, lbl_1_data_9A4[ufoKind], this->modelId);
+    animatedModel.hideObject(lbl_1_data_9A4[this->ufoKind]);
     motionIdValue = fn_8002D3C4(foregroundModelId);
     fn_8002C95C(foregroundModelId, motionIdValue);
     fn_800269E8(foregroundModelId, ((1 << 30) | (1 << 1)));
 
-    this->state2C = 0;
+    this->state = 0;
     this->position.x = this->position.y = this->position.z = 0.0f;
     this->hookModelId = fn_800260F4(fn_1_CD34);
     hookModel = &lbl_802C01C8[this->hookModelId];
     hookModel->hookData = this;
     fn_80026B8C(this->hookModelId, 6);
-    fn_80026B64(this->hookModelId, lbl_1_rodata_5F8[cameraGroup]);
+    fn_80026B64(this->hookModelId, ufoCameraBits[cameraGroup]);
 
     this->modelId.setPosition(&this->position);
     callbackState = &CameraModelOwner::fn_1_C994;
     this->callbackState = callbackState;
 }
 
-}
-
+/* Stop this UFO sound and release its drawing hook. */
 CameraModelOwner::~CameraModelOwner()
 {
-    if (callbackIndex >= 0) {
-        HuAudFXStop(callbackIndex);
-        callbackIndex = -1;
+    if (soundHandle >= 0) {
+        HuAudFXStop(soundHandle);
+        soundHandle = -1;
     }
     fn_800262D0(hookModelId);
 }
 
+/* Delete every UFO from its list. */
 void fn_1_BF18()
 {
     while (!lbl_1_bss_A50.empty()) delete lbl_1_bss_A50.back();
 }
 
-typedef void (*CameraVisitor)(CameraModelOwner *);
+/* Visit all UFOs to advance their callbacks and transforms. */
 void fn_1_C04C()
 {
     lbl_1_bss_A50.visit(fn_1_C710);
 }
 
+/* Check whether one UFO kind is idle in any of the four camera groups. */
 int fn_1_C07C(CameraModelOwner *current)
 {
     int candidate;
     int step;
     for (candidate = 0; candidate < 4; candidate++) {
-        if (!current->groupFlags[1] && !current->groupFlags[0]) return 1;
+        if (!current->stopped && !current->motionRunning) return 1;
         if (candidate == 3) break;
         for (step = 0; step < 3; step++) current = current->next();
     }
     return 0;
 }
 
+/* Start one randomly selected UFO kind across all four cameras during play. */
 void fn_1_C0FC()
 {
     CameraModelOwner *entry;
@@ -291,6 +285,7 @@ void fn_1_C0FC()
     }
 }
 
+/* Stop the UFOs belonging to a player camera. */
 void fn_1_C280(int request)
 {
     CameraModelOwner *node = lbl_1_bss_A50.front();
@@ -298,23 +293,24 @@ void fn_1_C280(int request)
     for (; node != end; node = node->next()) node->fn_1_C8C0(request);
 }
 
+/* Stop every UFO sound. */
 void fn_1_C2EC()
 {
     CameraModelOwner *node = lbl_1_bss_A50.front();
     Node *end = lbl_1_bss_A50.end_node();
-    for (; node != end; node = node->next()) node->fn_1_C350();
+    for (; node != end; node = node->next()) node->stopSound();
 }
 
-void CameraModelOwner::fn_1_C350()
+/* Stop this UFO sound and clear its handle. */
+void CameraModelOwner::stopSound()
 {
-    if (callbackIndex >= 0) {
-        HuAudFXStop(callbackIndex);
-        callbackIndex = -1;
+    if (soundHandle >= 0) {
+        HuAudFXStop(soundHandle);
+        soundHandle = -1;
     }
 }
 
-extern s32 fn_1_3340(Vec *position, s32 cameraIndex, u8 expandedBounds);
-
+/* Test eight points around a UFO against the camera visibility interval. */
 s32 fn_1_C394(const Vec *center, s32 cameraIndex)
 {
     Vec position;
@@ -322,8 +318,7 @@ s32 fn_1_C394(const Vec *center, s32 cameraIndex)
     f32 angleDegrees;
     f32 angle;
 
-    angleIndex = 0;
-    while (angleIndex < 8) {
+    for (angleIndex = 0; angleIndex < 8; angleIndex++) {
         angleDegrees = (f32)(angleIndex * 0x168) / 8.0f - 180.0f;
         angle = (f32)((M_PI * (f64)angleDegrees) / 180.0);
         position.x = (f32)((f64)center->x + 150.0 * std::cos((f64)angle));
@@ -332,11 +327,11 @@ s32 fn_1_C394(const Vec *center, s32 cameraIndex)
         if ((u8)fn_1_3340(&position, cameraIndex, 1)) {
             return 1;
         }
-        angleIndex++;
     }
     return 0;
 }
 
+/* Count visible scoring UFOs and optionally schedule their three-point effects. */
 s32 fn_1_C4E8(s32 cameraIndex, u8 markEntries, s32 currentValue)
 {
     CameraModelOwner *node;
@@ -348,10 +343,10 @@ s32 fn_1_C4E8(s32 cameraIndex, u8 markEntries, s32 currentValue)
     matchedCount = 0;
 
     while (node != end) {
-        if (node->state18 != 0 && node->cameraGroup == cameraIndex && node->groupFlags[2] != 0) {
+        if (node->state18 != 0 && node->cameraGroup == cameraIndex && node->scoringWindow != 0) {
             if ((u8)fn_1_C394(&node->position, cameraIndex) != 0) {
                 if (markEntries != 0) {
-                    node->groupFlags[3] = 1;
+                    node->effectFlag = 1;
                     node->countdown = (s32)((f32)(-(currentValue + 1)) * secondsToFrames(0.2f));
                 }
                 matchedCount += 3;
@@ -363,12 +358,14 @@ s32 fn_1_C4E8(s32 cameraIndex, u8 markEntries, s32 currentValue)
     return matchedCount;
 }
 
+/* Invoke one UFO callback and update its model transform. */
 void fn_1_C710(CameraModelOwner *self)
 {
     (self->*self->callbackState)();
     self->fn_1_C750();
 }
 
+/* Track the animated UFO object and spin its foreground model unless stopped. */
 void CameraModelOwner::fn_1_C750()
 {
     s16 modelArgument;
@@ -377,21 +374,21 @@ void CameraModelOwner::fn_1_C750()
     Point3d objectPosition;
     Vec translation;
 
-    model = (s32)this->motionId.modelId;
+    model = (s32)this->animatedModel.modelId;
     modelArgument = model;
-    Hu3DModelObjPosGet(modelArgument, lbl_1_data_9A4[this->cameraIndex], &objectPosition);
+    Hu3DModelObjPosGet(modelArgument, lbl_1_data_9A4[this->ufoKind], &objectPosition);
     this->position.x = objectPosition.x;
     this->position.y = objectPosition.y;
     this->position.z = objectPosition.z;
     this->position.y += 50.0f;
-    if (this->groupFlags[1] == 0) {
-        this->depth += 3.0f;
-        if (this->depth > 180.0f) {
-            this->depth -= 360.0f;
+    if (this->stopped == 0) {
+        this->rotationAngle += 3.0f;
+        if (this->rotationAngle > 180.0f) {
+            this->rotationAngle -= 360.0f;
         }
     }
 
-    f64 angle = this->depth;
+    f64 angle = this->rotationAngle;
     rotation.x = 0.0f;
     rotation.y = angle;
     rotation.z = 0.0f;
@@ -401,43 +398,42 @@ void CameraModelOwner::fn_1_C750()
     modelId.setRotation(&rotation);
     modelId.setPosition(&translation);
 }
+/* Stop this UFO motion and sound when its camera matches the player. */
 void CameraModelOwner::fn_1_C8C0(s32 playerIndex)
 {
-    if (this->cameraGroup == playerIndex && this->groupFlags[1] == 0) {
+    if (this->cameraGroup == playerIndex && this->stopped == 0) {
         s16 modelId;
 
-        if (this->callbackIndex >= 0) {
-            HuAudFXStop(this->callbackIndex);
-            this->callbackIndex = -1;
-        }
-        this->groupFlags[1] = 1;
-        modelId = this->model_id();
+        stopSound();
+        this->stopped = 1;
+        modelId = this->animatedModel.id();
         fn_800269E8(modelId, ((1 << 30) | (1 << 1)));
-        {
-            CameraModelOwner::Callback callback = &CameraModelOwner::fn_1_C990;
-            this->callbackState = callback;
-        }
+        CameraModelOwner::Callback callback = &CameraModelOwner::fn_1_C990;
+        this->callbackState = callback;
     }
 }
+/* Leave the stopped UFO state unchanged. */
 void CameraModelOwner::fn_1_C990() {}
+/* Hide both UFO models and clear its motion and scoring flags. */
 void CameraModelOwner::fn_1_C994()
 {
-    HU3D_MODELID first = first_model();
+    HU3D_MODELID first = modelId.id();
     fn_800269E8(first, (1 << 0));
-    HU3D_MODELID second = second_model();
+    HU3D_MODELID second = animatedModel.id();
     fn_800269E8(second, (1 << 0));
-    state2C = 0;
-    groupFlags[2] = 0;
+    state = 0;
+    scoringWindow = 0;
     state18 = 0;
-    groupFlags[0] = 0;
+    motionRunning = 0;
 }
-extern "C" const s32 lbl_1_rodata_624[4] = {0x634,0x635,0x636,0x637};
+const s32 lbl_1_rodata_624[4] = {0x634,0x635,0x636,0x637};
 
+/* Start a UFO motion and sound at a randomized playback speed. */
 void CameraModelOwner::fn_1_CA14(s32 motionIndex)
 {
-    if (this->groupFlags[1] == 0) {
-        this->callbackIndex = HuAudFXPlay(lbl_1_rodata_624[motionIndex]);
-        s16 modelId = this->model_id();
+    if (this->stopped == 0) {
+        this->soundHandle = HuAudFXPlay(lbl_1_rodata_624[motionIndex]);
+        s16 modelId = this->animatedModel.id();
         fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
         fn_80026A44(modelId, ((1 << 30) | (1 << 0)));
         fn_8002D414(modelId, 0.0f);
@@ -445,9 +441,9 @@ void CameraModelOwner::fn_1_CA14(s32 motionIndex)
         this->motionLength = fn_8002D530(modelId);
         this->playbackSpeed = this->motionSpeed / 60.0f;
         fn_8002D86C(modelId, this->playbackSpeed);
-        this->state2C = 0;
+        this->state = 0;
         this->state18 = 0;
-        this->groupFlags[0] = 1;
+        this->motionRunning = 1;
         CameraModelOwner::Callback callback = &CameraModelOwner::fn_1_CB64;
         this->callbackState = callback;
     }
@@ -457,6 +453,7 @@ f32 lbl_1_data_9D4[3][8] = {
  {0.0f,0.123f,0.25f,0.715f,0.8f,1.0f,1.0f,1.0f},
  {0.0f,0.06f,0.254f,0.66f,0.806f,0.886f,0.94f,1.0f}
 };
+/* Advance UFO scoring windows and return to the hidden state after its motion. */
 void CameraModelOwner::fn_1_CB64()
 {
     f32 progress;
@@ -464,41 +461,37 @@ void CameraModelOwner::fn_1_CB64()
     s16 modelId;
     Callback callback;
 
-    groupFlags[2] = 0;
-    progress = (f32)state2C * playbackSpeed / motionLength;
+    scoringWindow = 0;
+    progress = (f32)state * playbackSpeed / motionLength;
     for (frame = 0; frame < 7; frame++) {
-        if (lbl_1_data_9D4[cameraIndex][frame] <= progress &&
-            lbl_1_data_9D4[cameraIndex][frame + 1] > progress) {
+        if (lbl_1_data_9D4[ufoKind][frame] <= progress &&
+            lbl_1_data_9D4[ufoKind][frame + 1] > progress) {
             if ((frame & 1) != 0) {
-                groupFlags[2] = 1;
+                scoringWindow = 1;
             }
             break;
         }
     }
 
-    if (state2C > 10) {
-        modelId = model_id();
+    if (state > 10) {
+        modelId = animatedModel.id();
         if (fn_8002D75C(modelId) == 1) {
-            if (callbackIndex >= 0) {
-                HuAudFXStop(callbackIndex);
-                callbackIndex = -1;
-            }
+            stopSound();
             callback = &CameraModelOwner::fn_1_C994;
             this->callbackState = callback;
             return;
         }
     }
-    {
-        HU3D_MODELID firstModel = first_model();
-        fn_80026A44(firstModel, 1);
-        HU3D_MODELID secondModel = second_model();
-        fn_80026A44(secondModel, 1);
-        state18 = 1;
-        groupFlags[0] = 1;
-        state2C++;
-    }
+    HU3D_MODELID firstModel = this->modelId.id();
+    fn_80026A44(firstModel, 1);
+    HU3D_MODELID secondModel = animatedModel.id();
+    fn_80026A44(secondModel, 1);
+    state18 = 1;
+    motionRunning = 1;
+    state++;
 }
 
+/* Dispatch the model drawing hook to its UFO object. */
 void fn_1_CD34(HU3D_MODEL *model, Mtx *matrix)
 {
     fn_8002472C();
@@ -506,17 +499,18 @@ void fn_1_CD34(HU3D_MODEL *model, Mtx *matrix)
     static_cast<CameraModelOwner *>(hookData)->fn_1_CD7C(*matrix);
 }
 
+/* Draw the UFO effect when both effect flags are enabled. */
 void CameraModelOwner::fn_1_CD7C(Mtx matrix)
 {
-    if (lbl_1_bss_A40 && groupFlags[3]) fn_1_CDD4(matrix);
+    if (lbl_1_bss_A40 && effectFlag) fn_1_CDD4(matrix);
 }
 
+/* Draw a growing colored ring and award the UFO score after its delay. */
 void CameraModelOwner::fn_1_CDD4(Mtx matrix)
 {
     Mtx inverse;
     Mtx transform;
     s32 frame;
-    s32 frameIndex;
     s32 vertex;
     f32 scale;
     s32 colorOffset;
@@ -526,14 +520,14 @@ void CameraModelOwner::fn_1_CDD4(Mtx matrix)
         return;
     }
     if (countdown == 0) {
-        singleton = (&ScoreDisplay::getChecked());
+        singleton = &ScoreDisplay::getChecked();
         singleton->soundPending = 1;
     }
 
     if ((f64)countdown > 12.0) {
         if (state54 == 0) {
             state54 = 1;
-            (&ScoreDisplay::getChecked())->fn_1_83CC(cameraGroup, 3);
+            ScoreDisplay::getChecked().fn_1_83CC(cameraGroup, 3);
         }
         countdown = 12;
     }
@@ -548,37 +542,15 @@ void CameraModelOwner::fn_1_CDD4(Mtx matrix)
     PSMTXConcat(matrix, transform, transform);
     PSMTXConcat(transform, inverse, transform);
     GXLoadPosMtxImm(transform, GX_PNMTX0);
-    GXSetNumTevStages(1);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL,
-                  GX_DF_NONE, GX_AF_NONE);
-    GXSetNumChans(1);
-    GXSetNumTexGens(0);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
-    GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
-    GXSetCullMode(GX_CULL_NONE);
-    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
-    GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_TEX_ST, GX_RGBA8, 0);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+    configureColorDrawing();
     GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 0x42);
     colorOffset = (drawCount++ & 7) << 5;
-    vertex = 0;
-    while (vertex < 33) {
+    for (vertex = 0; vertex < 33; vertex++) {
         GXPosition3f32(scale * lbl_1_bss_59C[vertex].x,
                        scale * lbl_1_bss_59C[vertex].y, 0.0f);
-        GXWGFifo.u8 = 0xFF;
-        GXWGFifo.u8 = (u8)colorOffset;
-        GXWGFifo.u8 = 0;
-        GXWGFifo.u8 = (u8)frame;
+        GXColor4u8(0xFF, (u8)colorOffset, 0, (u8)frame);
         GXPosition3f32(scale * lbl_1_bss_728[vertex].x,
                        scale * lbl_1_bss_728[vertex].y, 0.0f);
-        GXWGFifo.u8 = 0xFF;
-        GXWGFifo.u8 = (u8)colorOffset;
-        GXWGFifo.u8 = 0;
-        GXWGFifo.u8 = (u8)frame;
-        vertex++;
+        GXColor4u8(0xFF, (u8)colorOffset, 0, (u8)frame);
     }
 }

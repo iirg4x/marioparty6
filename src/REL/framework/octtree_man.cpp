@@ -20,7 +20,7 @@ Octree::Octree(OctreeArchive *archiveResource) : archive(archiveResource)
     OctreeArchive *geometryArchive = getArchive();
     triangles = (OctreeTriangle *)geometryArchive->find("TriangleTable");
     triangleCount = octreeArchiveValue<long>(geometryArchive, "TriangleCount");
-    vertices = (Vec *)geometryArchive->find("VertexTable");
+    vertices = (Vector3 *)geometryArchive->find("VertexTable");
     vertexCount = octreeArchiveValue<long>(geometryArchive, "VertexCount");
     nodes = (OctreeDebugNode *)geometryArchive->find("OctTable");
     triangleIndices = (unsigned short *)geometryArchive->find("TriIdxTable");
@@ -48,9 +48,9 @@ bool OctreeTriangleIterator::next()
     if (current >= end) return false;
     // Leaf entries index the shared triangle table, whose records index the vertex table.
     OctreeTriangle *triangle = &triangles[*current++];
-    a = &vertices[triangle->vertex[0]];
-    b = &vertices[triangle->vertex[1]];
-    c = &vertices[triangle->vertex[2]];
+    a[0] = &vertices[triangle->vertex[0]];
+    a[1] = &vertices[triangle->vertex[1]];
+    a[2] = &vertices[triangle->vertex[2]];
     color = (unsigned short)triangle->color;
     return true;
 }

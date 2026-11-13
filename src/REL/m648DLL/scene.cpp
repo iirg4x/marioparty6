@@ -21,9 +21,11 @@ extern "C" {
 #include "REL/m648DLL/animation_object.h"
 #include "REL/m648DLL/scene.h"
 
+/* Reads the saved record for this minigame. */
 MinigameState::MinigameState() : ThreadEntry(0x8000), timer(0) {
     record = fn_8003C860(4);
 }
+/* Releases the object through its member and base destructors. */
 MinigameState::~MinigameState() {}
 
 #include "REL/m648DLL/managers.h"
@@ -65,11 +67,7 @@ void MinigameState::setupObjects(OMOBJMAN *)
     new CallbackModelOwner(this->nightMode);
 }
 
-struct ThreadConsumer {
-    unsigned char unknown_00[32]; /* No code names this field. */
-    unsigned char thread[1];
-};
-
+/* Resumes the thread, updates request objects and updates players. */
 void MinigameState::updateGame()
 {
     ThreadEntry::resume(0);
@@ -77,6 +75,7 @@ void MinigameState::updateGame()
     fn_1_B7C4();
 }
 
+/* Runs the request, music, opening and closing sequence for the minigame. */
 void MinigameState::run(void *)
 {
     s32 effectHandle;
@@ -144,19 +143,7 @@ void MinigameState::run(void *)
     }
 }
 
-extern "C" {
-extern s32 lbl_1_bss_40;
-extern s32 lbl_1_bss_48;
-extern s32 lbl_1_bss_90;
-
-extern s32 lbl_1_bss_94;
-extern s32 lbl_1_bss_98;
-
-}
-
-extern "C" {
-}
-
+/* Replaces the saved record when a player has a lower measurement. */
 s32 MinigameState::updateRecord()
 {
     s32 changed = 0;
@@ -168,6 +155,7 @@ s32 MinigameState::updateRecord()
     return changed;
 }
 
+/* Stops play, compares the record and runs the result display and audio sequence. */
 void MinigameState::showResults()
 {
     u32 frame;
@@ -218,7 +206,7 @@ void MinigameState::showResults()
 
 }
 
-void fn_1_B8BC(void);
+/* Stores player scores, marks game over and waits for the finish message. */
 void MinigameState::showFinishOnly()
 {
     fn_1_B8BC();
@@ -245,7 +233,7 @@ u8 MinigameState::advanceProgress()
     return timer.isDone();
 }
 
-extern "C" {
-}
+/* Returns without changing state. */
 void MinigameState::fn_1_4148() {}
+/* Deletes the players and all request objects. */
 void MinigameState::finishGame() { fn_1_AE90(); deleteRequestObjects(); }

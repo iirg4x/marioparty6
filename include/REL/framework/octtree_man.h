@@ -3,6 +3,7 @@
 #define FRAMEWORK_OCTTREE_MAN_H
 
 #include <memory>
+#include "REL/framework/vector3.h"
 
 extern "C" {
 #include "dolphin/mtx.h"
@@ -64,7 +65,7 @@ struct Octree {
     OctreeDebugNode *nodes; // Node table; its first entry is the root for point lookup.
     OctreeTriangle *triangles; // Triangle records indexing the vertex table.
     long triangleCount; // Number of triangle records in the archive.
-    Vec *vertices; // Positions shared by the archived triangles.
+    Vector3 *vertices; // Positions shared by the archived triangles.
     long vertexCount; // Number of positions in the vertex table.
     unsigned short *triangleIndices; // Leaf ranges index the triangle table through this array.
     std::auto_ptr<OwnedModel> renderer; // Null until enableDebug creates its drawing hook model.
@@ -84,7 +85,7 @@ struct Octree {
     void initializeNodes(long count) { initializeOctreeNodes(nodes, count); }
     OctreeArchive *getArchive() const { return archive.get(); }
     OctreeTriangle *triangleTable() const { return triangles; }
-    Vec *vertexTable() const { return vertices; }
+    Vector3 *vertexTable() const { return vertices; }
     unsigned short *indexTable() const { return triangleIndices; }
     static void render(Hu3DModel_s *, Mtx *);
     void drawNode(OctreeDebugNode *);
@@ -92,16 +93,16 @@ struct Octree {
 
 // Traverses one leaf's triangle references and exposes each triangle to the debug renderer.
 struct OctreeTriangleIterator {
-    const Vec *a, *b, *c; // First, second, and third vertex of the last successful next call.
+    Vector3 *a[3]; // First, second, and third vertex of the last successful next call.
     unsigned short color; // Debug palette index of that triangle.
     unsigned short *current, *end; // Next leaf triangle index and the end of its range.
     OctreeTriangle *triangles; // Shared triangle table addressed by each leaf index.
-    Vec *vertices; // Shared position table addressed by the triangle's three vertex indices.
+    Vector3 *vertices; // Shared position table addressed by the triangle's three vertex indices.
     OctreeTriangleIterator(Octree *, OctreeDebugNode *);
     bool next();
-    const Vec *firstVertex() const { return a; }
-    const Vec *secondVertex() const { return b; }
-    const Vec *thirdVertex() const { return c; }
+    const Vec *firstVertex() const { return a[0]; }
+    const Vec *secondVertex() const { return a[1]; }
+    const Vec *thirdVertex() const { return a[2]; }
 };
 
 #endif

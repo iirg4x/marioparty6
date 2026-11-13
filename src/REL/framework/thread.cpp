@@ -1,70 +1,118 @@
-// Owns native minigame threads and checks the stack space they use.
+/*
+ * Owns native minigame threads and checks the stack space they use.
+ */
 static const char rcsid[] = "$Id: thread.cpp,v 1.6 2004/02/17 09:22:00 hanamasu Exp $";
 
 #include "REL/framework/thread.h"
 
 extern "C" {
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 }
 
-void initializeThreadStack(unsigned long *storage, unsigned long count);
-int checkThreadStack(unsigned long *begin, int mode);
+void initializeThreadStack(
+    unsigned long *storage,
+    unsigned long count
+);
+
+int checkThreadStack(
+    unsigned long *begin,
+    int mode
+);
+
 /* Nonzero fills new thread stacks with a pattern and reports how much of them a thread used. */
 unsigned char threadStackDebugEnabled;
+
 void *operator new[](unsigned long);
+
 void operator delete[](void *);
-extern "C" int printf(const char *, ...);
+
+extern "C" int printf(const char *,
+    ...);
 
 #define THREAD_STACK_DEBUG_BIT_PATTERN 3735927486UL
 #define THREAD_STACK_GUARD_WORD_COUNT 8
 
-// Called while constructing a worker that lets this wrapper allocate its stack.
-CThread::CThread(void *(*entryFunction)(void *), void *entryArgument,
-                           unsigned long stackBytes, OSPriority schedulingPriority,
-                           unsigned short threadFlags) {
+/*
+ * Called while constructing a worker that lets this wrapper allocate its stack.
+ */
+CThread::CThread(
+                           void *(*entryFunction)(void *),
+                           void *entryArgument,
+                           unsigned long stackBytes,
+                           OSPriority schedulingPriority,
+                           unsigned short threadFlags
+)
+{
     unsigned long stackWords = stackBytes / sizeof(unsigned long);
     // Any trailing bytes smaller than one stack word are discarded.
     unsigned long *stackStorage = new unsigned long[stackWords];
+
     storage = stackStorage;
+
     initialize(entryFunction, entryArgument, stackStorage, stackWords, schedulingPriority,
                threadFlags);
 }
 
-// Called by an owner that supplies the memory used for the native thread's stack.
-CThread::CThread(void *(*entryFunction)(void *), void *entryArgument, void *stackBuffer,
-                           unsigned long stackBytes, OSPriority schedulingPriority,
-                           unsigned short threadFlags) {
+// Called by an owner that supplies the memory used for the native
+// thread's stack.
+CThread::CThread(
+                           void *(*entryFunction)(void *),
+                           void *entryArgument,
+                           void *stackBuffer,
+                           unsigned long stackBytes,
+                           OSPriority schedulingPriority,
+                           unsigned short threadFlags
+)
+{
     storage = 0;
+
     unsigned long stackWords = stackBytes / sizeof(unsigned long);
     // Any trailing bytes smaller than one stack word are discarded.
     initialize(entryFunction, entryArgument, (unsigned long *)stackBuffer, stackWords,
                schedulingPriority, threadFlags);
 }
 
-// Called by either constructor to prepare the stack and create the suspended OS thread.
-void CThread::initialize(void *(*entryFunction)(void *), void *entryArgument,
-                              unsigned long *stackStorage, unsigned long stackWords,
-                              OSPriority schedulingPriority, unsigned short threadFlags) {
-    (schedulingPriority >= 0 && schedulingPriority <= 31) ? (void)0 :
-        __msl_assertion_failed("priority >= OS_PRIORITY_MIN && priority <= OS_PRIORITY_MAX",
-                               "thread.cpp", 88);
-    initializeThreadStack(stackStorage, stackWords);
-    checkThreadStack(stackStorage, 0);
+/*
+ * Called by either constructor to prepare the stack and create the suspended OS thread.
+ */
+void CThread::initialize(
+                           void *(*entryFunction)(void *),
+                           void *entryArgument,
+                              unsigned long *stackStorage,
+                              unsigned long stackWords,
+                              OSPriority priority,
+                              unsigned short threadFlags
+)
+{
+    assert(priority >= OS_PRIORITY_MIN && priority <= OS_PRIORITY_MAX);
+
+    initializeThreadStack(stackStorage,
+        stackWords);
+
+    checkThreadStack(stackStorage,
+        0);
+
     bool threadCreated = OSCreateThread(&thread, entryFunction, entryArgument,
                                         stackStorage + stackWords,
-                                        stackWords * sizeof(unsigned long), schedulingPriority,
+                                        stackWords * sizeof(unsigned long), priority,
                                         threadFlags);
-    if (!threadCreated) {
-        OSPanic("thread.cpp", 102, "OSCreateThread() failed.");
+    if (!threadCreated)
+    {
+        OSPanic(__FILE__, __LINE__, "OSCreateThread() failed.");
     }
 }
 
-// Cancels a nonterminated thread without joining it, then frees any wrapper-owned stack.
-CThread::~CThread() {
-    if (!OSIsThreadTerminated(&thread)) {
+// Cancels a nonterminated thread without joining it, then frees any
+// wrapper-owned stack.
+CThread::~CThread()
+{
+    if (!OSIsThreadTerminated(&thread))
+    {
         OSCancelThread(&thread);
     }
-    if (threadStackDebugEnabled) {
+    if (threadStackDebugEnabled)
+    {
         unsigned long totalStackBytes = thread.stackBase -
             reinterpret_cast<unsigned char *>(thread.stackEnd);
         unsigned long unusedStackBytes = stackUsage();
@@ -74,12 +122,15 @@ CThread::~CThread() {
     delete[] storage;
 }
 
-// Called after the owner resumes a worker and it suspends or finishes; returns untouched stack
+// Called after the owner resumes a worker and it suspends or finishes;
+// returns untouched stack
 // bytes.
-unsigned long CThread::stackUsage() {
+unsigned long CThread::stackUsage()
+{
     unsigned long *stackStart = thread.stackEnd;
-    if (checkThreadStack(stackStart, 1)) {
-        OSPanic("thread.cpp", 133, "stack overflow\n");
+    if (checkThreadStack(stackStart, 1))
+    {
+        OSPanic(__FILE__, __LINE__, "stack overflow\n");
     }
     unsigned long *stackWord = stackStart;
     unsigned long *stackEnd = reinterpret_cast<unsigned long *>(thread.stackBase);

@@ -14,7 +14,6 @@ public:
     virtual void update();
 
     u8 modified : 1;
-    u8 unknown10 : 7;
     std::vector<int> positions;
     int screenOffset;
 };

@@ -1,9 +1,10 @@
+#include "REL/framework/square.h"
+#include <new>
 #include "math.h"
 #include "REL/framework/frame_time.h"
 #include "REL/framework/world_units.h"
 #include "REL/framework/debug.h"
 #include "dolphin/types.h"
-#include "REL/framework/linknode.h"
 #include "REL/m654DLL/camera_transition.h"
 #include "REL/m654DLL/camera_node_owner.h"
 extern "C" {
@@ -12,45 +13,41 @@ extern "C" {
 #include "humath.h"
 extern "C" {
 #include "game/hu3d.h"
-#include "REL/m654DLL/pad_control.h"
 }
 
-extern "C" {
 const CameraPosePair lbl_1_rodata_90[2] = {
     {{{0.0f, 923.52576f, 1120.26f}, {-0.17122246f, 0.0f, -0.0f, 0.9852325f}}, {{0.0f, 929.43555f, 980.26f}, {-0.43945006f, 0.0f, -0.0f, 0.8982671f}}},
     {{{0.0f, 1029.89f, 1700.26f}, {-0.24941446f, 0.0f, -0.0f, 0.96839684f}}, {{793.18365f, 997.13837f, 541.37195f}, {-0.100574255f, 0.0f, -0.0f, 0.9949296f}}}
 };
-}
+// Creates camera 1, installs its initial pose and prepares the debug camera.
 CameraManager::CameraManager()
-    : callback(&CameraManager::fn_1_1948), startPose(lbl_1_rodata_90[0].frame), targetPose(lbl_1_rodata_90[0].parameters), elapsed(0)
+    : callback(&CameraManager::fn_1_1948), startPose(lbl_1_rodata_90[0].first), targetPose(lbl_1_rodata_90[0].second), elapsed(0)
 {
     Hu3DCameraCreate(1);
     Hu3DBGColorSet(0, 0, 0);
     set_camera_frame_from_pose(&static_cast<CameraFrame &>(*this), &startPose);
     registerChannel(0);
-    set_camera_frame_from_pose(&finalCamera.frame, &lbl_1_rodata_90[1].frame);
+    set_camera_frame_from_pose(&debugCamera.frame, &lbl_1_rodata_90[1].first);
 }
 
-extern "C" {
 void fn_1_1978(CameraManager *, const CameraPose *, const CameraPose *, int);
 
+// One-minute time limit and gravity in world units per frame squared.
 int lbl_1_bss_48 = minutesToFrames(1L);
 float lbl_1_bss_4C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
-}
-void operator delete(void *);
-typedef void (CameraManager::*CameraNodeCallback)();
-template <class T> inline T Square(const T &value) { return value * value; }
+// Releases the camera manager base objects.
 CameraManager::~CameraManager() {}
 
+// Starts the camera transition for the selected phase.
 void CameraManager::flagEnabled(int state)
 {
     this->activeBit = state;
     switch (state) {
     case 0:
-        fn_1_1978(this, &lbl_1_rodata_90[0].frame, &lbl_1_rodata_90[0].parameters, secondsToFrames<long>(1));
+        fn_1_1978(this, &lbl_1_rodata_90[0].first, &lbl_1_rodata_90[0].second, secondsToFrames<long>(1));
         break;
     case 1:
-        fn_1_1978(this, &lbl_1_rodata_90[0].parameters, &lbl_1_rodata_90[1].frame, secondsToFrames<long>(2));
+        fn_1_1978(this, &lbl_1_rodata_90[0].second, &lbl_1_rodata_90[1].first, secondsToFrames<long>(2));
         break;
     default:
         this->flags &= ~(1 << state);
@@ -58,17 +55,19 @@ void CameraManager::flagEnabled(int state)
     }
 }
 
+// Applies the current camera state, advances its frame and updates the debug camera.
 void CameraManager::update()
 {
     this->run();
     this->elapsed++;
-    debugResetHook(&this->finalCamera.frame, 0, 1);
+    debugResetHook(&this->debugCamera.frame, 0, 1);
 }
 
-void CameraManager::receive(const EventPacket *camera)
+// Starts a camera transition toward the position supplied by event 4.
+void CameraManager::receive(const EventPacket *event)
 {
-    if (camera->type == 4 && camera->context != 0) {
-        Vec *targetPosition = static_cast<Vec *>(camera->context);
+    if (event->type == 4 && event->context != 0) {
+        Vec *targetPosition = static_cast<Vec *>(event->context);
         double startX;
         double startY;
         double startZ;
@@ -92,30 +91,33 @@ void CameraManager::receive(const EventPacket *camera)
         path.up.y = 1.0f;
         path.up.z = 0.0f;
         get_camera_pose_from_frame(&path, &this->targetPose);
-        fn_1_1978(this, &lbl_1_rodata_90[1].frame, &this->targetPose, secondsToFrames<long>(3));
+        fn_1_1978(this, &lbl_1_rodata_90[1].first, &this->targetPose, secondsToFrames<long>(3));
     }
 }
 
+// Applies the current camera frame to camera 1.
 void CameraManager::fn_1_1948() {
     cameraApplyToHud(&static_cast<CameraFrame &>(*this), 1);
 }
 
+// Copies the transition endpoints and selects the interpolating camera state.
 void fn_1_1978(CameraManager *owner, const CameraPose *first,
-                           const CameraPose *second, int mode)
+                           const CameraPose *second, int frames)
 {
     owner->startPose = *first;
     owner->targetPose = *second;
-    owner->duration = mode;
+    owner->duration = frames;
     owner->elapsed = 0;
-    CameraNodeCallback callback = &CameraManager::fn_1_1A38;
-    owner->callback = callback;
+    void (CameraManager::*nextCallback)() = &CameraManager::fn_1_1A38;
+    owner->callback = nextCallback;
 }
 
+// Interpolates the camera with cosine easing, then clears the completed phase flag.
 void CameraManager::fn_1_1A38()
 {
-    int mode = secondsToFrames<long>(3);
+    int transitionFrames = secondsToFrames<long>(3);
     double easedAmount =
-        Square(1.0 -
+        square(1.0 -
                cos(M_PI * (double)elapsed / duration)) / 4.0;
 
     interpolate_camera_poses(&static_cast<CameraFrame &>(*this), &startPose, &targetPose,
@@ -125,8 +127,8 @@ void CameraManager::fn_1_1A38()
         startPose = targetPose;
         unsigned int bitIndex = activeBit;
         flags &= ~(1 << bitIndex);
-        CameraNodeCallback callback = &CameraManager::fn_1_1948;
-        this->callback = callback;
+        void (CameraManager::*nextCallback)() = &CameraManager::fn_1_1948;
+        this->callback = nextCallback;
     }
 }
 

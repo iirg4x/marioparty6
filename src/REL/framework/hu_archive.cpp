@@ -1,48 +1,101 @@
-// Loads framework archive resources and resolves their public names.
-static const char rcsid[] = "$Id: hu_archive.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
+/*
+ * Loads framework archive resources and resolves their public
+ * names.
+ */
+static const char rcsid[] =
+    "$Id: hu_archive.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
 
 #include "REL/framework/hu_archive.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 
-// Reads a minigame archive into the model heap, then binds its tables during construction.
-HuArchive::HuArchive(int dataNumber)
+/*
+ * Reads a minigame archive into the model heap, then binds its
+ * tables during construction.
+ */
+HuArchive::HuArchive(
+    int dataNumber
+)
 {
-    fillArchiveRange((signed char *)&header, (signed char *)&allocation, 0);
-    allocation = fn_80008DD0(dataNumber, 0x10000000, 2);
+    fillArchiveRange(
+        (signed char *)&header, (signed char *)&allocation, 0
+    );
+
+    allocation =
+        fn_80008DD0(dataNumber,
+            0x10000000,
+            2);
+
     relocated = false;
-    Load((ArchiveHeader *)allocation, 0);
+
+    Load(
+        (ArchiveHeader *)allocation, 0
+    );
 }
 
-// Archive destruction leaves the loaded model-heap allocation in place.
-HuArchive::~HuArchive() {}
+/*
+ * Archive destruction leaves the loaded model-heap allocation in
+ * place.
+ */
+HuArchive::~HuArchive()
+{
+}
 
-// Called by Load to replace resource-relative pointer words with addresses in the loaded image.
+/*
+ * Called by Load to replace resource-relative pointer words with
+ * addresses in the loaded image.
+ */
 void HuArchive::Relocate()
 {
-    if (resources && relocations && !relocated) {
-        char *firstAddress = *(char **)(resources + relocations[0]);
-        // The first pointer is treated as an offset only if it lies before the resource block.
-        if (firstAddress < resources) {
-            for (unsigned long index = 0; index < header.relocationCount; ++index) {
-                char **address = (char **)(resources + relocations[index]);
-                *address += (unsigned long)resources;
+    if (resources &&
+        relocations &&
+        !relocated)
+        {
+        char *firstAddress =
+            *(char **)(resources + relocations[0]);
+
+        /*
+         * The first pointer is treated as an offset only if it lies before
+         * the resource block.
+         */
+        if (firstAddress < resources)
+        {
+            for (unsigned long index = 0;
+
+                 index < header.relocationCount;
+
+                 ++index)
+                 {
+                char **address =
+                    (char **)(resources + relocations[index]);
+
+                *address +=
+                    (unsigned long)resources;
             }
+
             relocated = true;
         }
     }
 }
 
-// Supplies the public entry count used by indexed resource access.
+/*
+ * Supplies the public entry count used by indexed resource access.
+ */
 int HuArchive::GetPublicNum() const
 {
     return header.publicCount;
 }
 
-// Called for indexed access and by FindPublic; the assertion accepts index equal to the count.
-void *HuArchive::GetPublic(int index) const
+/*
+ * Called for indexed access and by FindPublic; the assertion
+ * accepts index equal to the count.
+ */
+void *HuArchive::GetPublic(
+    int idx
+) const
 {
-    (index >= 0 && index <= GetPublicNum()) ? (void)0 :
-        __msl_assertion_failed("idx >=0 && idx <= GetPublicNum()", "hu_archive.cpp", 97);
-    return resources + publicEntries[index].resourceOffset;
+    assert(idx >=0 && idx <= GetPublicNum());
+    return resources + publicEntries[idx].resourceOffset;
 }
 
 // Called during construction to bind the image's tables and relocate resources; mode is ignored.

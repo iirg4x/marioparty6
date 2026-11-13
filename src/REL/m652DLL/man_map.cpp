@@ -1,4 +1,3 @@
-#include "REL/m652DLL/map_singleton.h"
 #include "REL/framework/sound.h"
 #include "REL/m652DLL/map_resource.h"
 #include "dolphin/types.h"
@@ -24,9 +23,7 @@ class MapManager;
 void fn_1_50C8(const MapManager *);
 
 extern "C" {
-unsigned int lbl_1_bss_78 = minutesToFrames(5L);
-unsigned int lbl_1_bss_7C = secondsToFrames<long>(30);
-float lbl_1_bss_80 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
+#include "REL/m652DLL/game_constants.h"
 }
 
 extern "C" {
@@ -77,7 +74,10 @@ MapManager::MapManager()
         {
             MapResource * slot = & groups[group][member];
             slot->reset(new OwnedModel(rowResources[member]));
-            slot->configure(visibility, ((1 << 30) | (1 << 0)));
+            slot->configure(
+        visibility,
+        ((1 << 30) | (1 << 0))
+    );
         }
     }
     for (menuIndex = 0; menuIndex < 2; menuIndex++)
@@ -102,6 +102,7 @@ MapManager::MapManager()
     fn_1_50C8(this);
 }
 
+/* Releases the object through its member and base destructors. */
 MapManager::~MapManager() {}
 
 extern "C" {
@@ -133,6 +134,7 @@ char **lbl_1_data_3C0[2] = {lbl_1_data_310, lbl_1_data_394};
 
 }
 
+/* Configures and resets shadows for the three course models. */
 void fn_1_50C8(const MapManager *work)
 {
     int index;
@@ -149,6 +151,7 @@ void fn_1_50C8(const MapManager *work)
 
 extern "C" const int lbl_1_rodata_2D8[2] = {11, 11};
 
+/* Reads a named course point when both indices are in range. */
 unsigned char fn_1_5190(MapManager *work, int modelIndex, int itemIndex, Vec *position)
 {
     char *modelItem;
@@ -170,6 +173,7 @@ extern "C" {
 const Vec lbl_1_rodata_2E0 = {0, 0.0f, 0.0f};
 }
 
+/* Shows a selected model, selects its camera and starts the corresponding sound. */
 void fn_1_524C(MapManager *work, int modelIndex)
 {
     short flags;
@@ -192,6 +196,7 @@ void fn_1_524C(MapManager *work, int modelIndex)
     soundPlayAt((short)flags, setupMode, &setup);
 }
 
+/* Applies collision parameters and reveals the model groups for flag three. */
 void MapManager::flagEnabled(int flagIndex)
 {
     COL_ATTRPARAM parameters;
@@ -221,12 +226,14 @@ void MapManager::flagEnabled(int flagIndex)
 void fn_1_5434(MapManager *work);
 void fn_1_54B4(MapManager *work);
 
+/* Updates the course model motions and their sound triggers. */
 void MapManager::update()
 {
     fn_1_5434(this);
     fn_1_54B4(this);
 }
 
+/* Advances the two course model motions while toggling attribute one. */
 void fn_1_5434(MapManager *work)
 {
     Model *firstModel;
@@ -248,6 +255,7 @@ void fn_1_5434(MapManager *work)
     }
 }
 
+/* Triggers sounds when the course motion passes the configured thresholds. */
 void fn_1_54B4(MapManager *work)
 {
     float value;
@@ -290,6 +298,7 @@ void fn_1_54B4(MapManager *work)
     work->previousValue = value;
 }
 
+/* Takes ownership of the supplied model pointer. */
 MapResource::MapResource(OwnedModel *value)
 {
     this->value = value;

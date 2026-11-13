@@ -13,10 +13,14 @@ public:
     void configure(unsigned int visibility, unsigned long attributes);
 };
 
+/* Deletes the owned model. */
 inline MapResource::~MapResource() { delete value; }
 
+/* Returns the owned model pointer. */
 inline MapResource::operator OwnedModel *() const { return value; }
+/* Returns the owned model reference. */
 inline OwnedModel &MapResource::operator*() const { return *value; }
+/* Deletes the previous model when the replacement differs. */
 inline void MapResource::reset(OwnedModel *replacement)
 {
     if (value != replacement) {
@@ -25,6 +29,7 @@ inline void MapResource::reset(OwnedModel *replacement)
     }
 }
 
+/* Sets the model camera, layer, attributes and shadow map. */
 inline void MapResource::configure(unsigned int visibility, unsigned long attributes)
 {
     (**this).setCamera(visibility);

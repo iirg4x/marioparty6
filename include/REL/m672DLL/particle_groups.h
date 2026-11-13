@@ -7,8 +7,6 @@ extern "C" {
 }
 #include "REL/framework/game_object2.h"
 #include "REL/m672DLL/collision_object.h"
-#include "REL/m672DLL/position_bf64.h"
-
 
 /* A drawn object made of equal particles that share one texture. */
 struct ParticleGroup : RenderObject {
@@ -16,6 +14,7 @@ struct ParticleGroup : RenderObject {
     EffectVector position;
     int particleCount;
     ParticleGroup(ANIMDATA *value, int count, const EffectVector &point);
+    // Performs no additional work when a particle group is destroyed.
     virtual ~ParticleGroup() {}
 };
 
@@ -37,16 +36,18 @@ struct RisingParticles : ParticleGroup {
     unsigned char stopWhenExpired;
     std::vector<RisingParticle> particles;
     void (RisingParticles::*callback)();
-    RisingParticles(ANIMDATA *value, int count, int layer, WorldPosition point);
+    RisingParticles(ANIMDATA *value, int count, int layer, EffectVector point);
     virtual ~RisingParticles();
     virtual void update();
     virtual void draw(Mtx *);
     void initParticle(RisingParticle *particle);
+    // Returns the rising-particle list.
     const std::vector<RisingParticle> &list() const { return particles; }
-    void setPosition(WorldPosition point) {
-        position.value.x = point.value.value.x;
-        position.value.y = point.value.value.y;
-        position.value.z = point.value.value.z;
+    // Copies the supplied point into the group's position.
+    void setPosition(EffectVector point) {
+        position.value.x = point.value.x;
+        position.value.y = point.value.y;
+        position.value.z = point.value.z;
     }
 };
 
@@ -75,16 +76,18 @@ struct CollidingParticles : ParticleGroup {
     std::vector<CollidingParticle> particles;
     std::vector<CollisionObject *> targets;
     void (CollidingParticles::*callback)();
-    void setPosition(WorldPosition point) {
-        offset.x = point.value.value.x;
-        offset.y = point.value.value.y;
-        offset.z = point.value.value.z;
+    // Copies the supplied point into the collision offset.
+    void setPosition(EffectVector point) {
+        offset.x = point.value.x;
+        offset.y = point.value.y;
+        offset.z = point.value.z;
     }
-    CollidingParticles(ANIMDATA *value, int count, int layer, WorldPosition point);
+    CollidingParticles(ANIMDATA *value, int count, int layer, EffectVector point);
     virtual ~CollidingParticles();
     virtual void update();
     virtual void draw(Mtx *);
     void initParticle(CollidingParticle *particle);
+    // Returns the colliding-particle list.
     const std::vector<CollidingParticle> &list() const { return particles; }
 };
 
@@ -107,11 +110,21 @@ struct RingParticles : ParticleGroup {
     int fadeState;
     ANIMDATA *secondTexture;
     std::vector<RingParticle> items;
-    RingParticles(ANIMDATA *, ANIMDATA *, int, int, WorldPosition);
+    RingParticles(ANIMDATA *, ANIMDATA *, int, int, EffectVector);
     virtual ~RingParticles();
     virtual void update();
     virtual void draw(Mtx *);
+    // Returns the ring-particle list.
     const std::vector<RingParticle> &list() const { return items; }
 };
+
+extern "C" {
+void fn_1_3350(CollidingParticles *work);
+void fn_1_3568(CollidingParticles *work);
+void fn_1_3810(RingParticles *state);
+void fn_1_3928(RingParticles *state, RingParticle *vector, int index);
+void fn_1_48BC(RingParticles *);
+void fn_1_48C8(RingParticles *);
+}
 
 #endif

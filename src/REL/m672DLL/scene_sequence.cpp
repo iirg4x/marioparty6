@@ -1,13 +1,15 @@
-#include "REL/m672DLL/random.h"
+#include "dolphin/os.h"
+#include <new>
+#include "REL/framework/random.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
 #include "REL/m672DLL/scene_child.h"
 #include "REL/m672DLL/scene_thread_owner.h"
-#include "REL/m672DLL/camera_owner_a348.h"
+#include "REL/m672DLL/camera_owner.h"
 #include "REL/m672DLL/singleton_callback_owner.h"
-#include "REL/m672DLL/event.h"
+#include "REL/framework/event.h"
 #include "REL/framework/linknode.h"
 #include "REL/framework/phase_durations.h"
 extern "C" {
@@ -21,76 +23,49 @@ extern "C" {
 #include "REL/m672DLL/member_callback.h"
 #include "REL/framework/event_hm.h"
 #include "REL/framework/thread.h"
-#include "REL/m672DLL/effect_bf64.h"
+#include "REL/m672DLL/ground_sprite.h"
 #include "REL/m672DLL/collision_object.h"
-#include "REL/m672DLL/event_queue.h"
 #include "REL/framework/game_object.h"
+#include "REL/m672DLL/resources.h"
+#include "REL/m672DLL/scene_sequence.h"
+#include "REL/m672DLL/player.h"
 
-class OwnedReleasedModel : public Model {
-public:
-    ~OwnedReleasedModel() {}
-};
-
-extern "C" void fn_1_749C(std::vector<OwnedReleasedModel *> *models);
-
-void fn_1_749C(std::vector<OwnedReleasedModel *> *models)
+// Deletes each model pointer in the vector and then clears the vector.
+void fn_1_749C(std::vector<OwnedModel *> *models)
 {
-    OwnedReleasedModel **first = models->begin();
-    OwnedReleasedModel **last = models->end();
+    OwnedModel **first = models->begin();
+    OwnedModel **last = models->end();
     while (first != last) delete *first++;
     models->clear();
 }
 
-extern "C" unsigned long OSGetTick(void);
-extern "C" unsigned long lbl_1_bss_C[];
-
-SceneOwner672::SceneOwner672()
-    : MinigameCore(), ThreadEntry(0x10000), sequence(new TimerOwner(0)),
-      child(new SceneChild672)
+// Initializes the core/thread/hudTimer objects, seeds randomness, and clears collision shapes.
+SceneOwner::SceneOwner()
+    : MinigameCore(), ThreadEntry(0x10000), hudTimer(new TimerOwner(0)),
+      child(new SceneChild)
 {
     RandomSeed(OSGetTick());
-    lbl_1_bss_C[1] = 0;
+    collisionShapes.clear();
 }
 
-class ModelHolder {
-public:
-    OwnedReleasedModel *value;
-    ~ModelHolder() { delete value; }
-};
-
-void *operator new(unsigned long);
-
-SceneOwner672::~SceneOwner672() {}
+// Performs no additional work when the scene owner is destroyed.
+SceneOwner::~SceneOwner() {}
 
 extern "C" {
 
-extern void fn_1_23014(s32, s32, s32, s32);
-extern void fn_1_2308C(s32, f32, f32);
-extern void fn_1_2310C(s32, s32);
-extern u8 fn_1_7BDC(SceneOwner672 *);
-extern void fn_1_231D8(s32);
+extern u8 fn_1_7BDC(SceneOwner *);
 
 extern s32 fn_1_7EE8(void *);
 extern u8 fn_1_7E10(void *);
 
 }
 
-extern "C" {
-void fn_1_6E04(void *);
-}
-
-extern "C" { void fn_1_6E04(void *); }
-
-void fn_1_71BC(void *);
-void fn_1_7230(void *);
-void fn_1_7404(void *);
-void fn_1_7408(void *);
-
-void SceneOwner672::setupObjects(OMOBJMAN *)
+// Creates the camera, shared resources, players, spinners, callbacks, and resource objects.
+void SceneOwner::setupObjects(OMOBJMAN *)
 {
     new CameraOwner;
 
-    void *state = &Resources::getChecked();
+    Resources *state = &Resources::getChecked();
     fn_1_6E04(state);
     fn_1_71BC(state);
     fn_1_7230(state);
@@ -100,25 +75,16 @@ void SceneOwner672::setupObjects(OMOBJMAN *)
     new SingletonCallbackOwner;
 }
 
-extern "C" {
-extern void fn_1_15818(void);
-extern void fn_1_1B460(void);
-extern void fn_1_1DFB4(void);
-
-extern void fn_1_14764(void);
-
-}
-
-void updateGameObjects();
-
-void SceneOwner672::updateGame() {
+// Resumes the core, processes queued events, updates game objects, and advances the engine frame.
+void SceneOwner::updateGame() {
     resume(0);
     process_event_queue();
     updateGameObjects();
     fn_800856A8();
 }
 
-void SceneOwner672::run(void *)
+// Runs the minigame hudTimer, waits on phase conditions, plays result audio, and requests exit.
+void SceneOwner::run(void *)
 {
     s32 musicHandle;
     s32 waitIndex;
@@ -148,15 +114,15 @@ void SceneOwner672::run(void *)
         ThreadEntry::suspend(0);
     }
     sendEvent(0, 2, 0.0f);
-    sequence->setParameters(0x708, 0, 0);
-    sequence->setPosition(50.0f, 63.0f);
-    sequence->setMode(1);
+    hudTimer->setParameters(0x708, 0, 0);
+    hudTimer->setPosition(50.0f, 63.0f);
+    hudTimer->setMode(1);
     while (fn_1_7BDC(this) == 0) {
         ThreadEntry::suspend(0);
     }
     HuAudSStreamFadeOut(musicHandle, 0x64);
     sendEvent(0, 3, 0.0f);
-    sequence->start();
+    hudTimer->start();
     MinigameCore::showFinish();
     resultCode = fn_1_7EE8(this);
     tailWaitIndex = 0;
@@ -185,20 +151,10 @@ void SceneOwner672::run(void *)
     }
 }
 
-void collectGameObjects(int category, std::vector<GameObject *> *objects);
-
-/* Only the two flags these questions read. */
-struct PlayerFlags {
-    unsigned char unknown00[0x48]; /* No code names this field. */
-    unsigned char active;
-    unsigned char unknown49[0xB]; /* No code names this field. */
-    unsigned char finished;
-};
-
-extern "C" u8 fn_1_7BDC(SceneOwner672 *object);
-u8 fn_1_7BDC(SceneOwner672 *object)
+// Returns one when the hudTimer is done or all collected players are active; otherwise zero.
+u8 fn_1_7BDC(SceneOwner *object)
 {
-    if (object->sequence->isDone()) {
+    if (object->hudTimer->isDone()) {
         return 1;
     }
 
@@ -207,7 +163,7 @@ u8 fn_1_7BDC(SceneOwner672 *object)
     int loopLimit = list.size();
     unsigned char result = 1;
     for (int index = 0; index < loopLimit; index++) {
-        PlayerFlags *entryObject = reinterpret_cast<PlayerFlags *>(list[index]);
+        Player *entryObject = static_cast<Player *>(list[index]);
         if (!entryObject->active) {
             result = 0;
         }
@@ -218,23 +174,19 @@ u8 fn_1_7BDC(SceneOwner672 *object)
     return 0;
 }
 
-extern "C" {
-
-u8 fn_1_7E10(void *);
-s32 fn_1_7EE8(void *);
-}
-
-void SceneOwner672::finishGame()
+// Empty scene-owner finish hook.
+void SceneOwner::finishGame()
 {
 }
 
+// Returns one when every collected player is finished; otherwise returns zero.
 u8 fn_1_7E10(void *)
 {
     std::vector<GameObject *> list;
     collectGameObjects(1, &list);
     int count = list.size();
     for (int index = 0; index < count; index++) {
-        PlayerFlags *player = (PlayerFlags *)list[index];
+        Player *player = static_cast<Player *>(list[index]);
         if (!player->finished) {
             return 0;
         }
@@ -242,6 +194,7 @@ u8 fn_1_7E10(void *)
     return 1;
 }
 
+// Counts and returns collected players whose active flag is clear.
 s32 fn_1_7EE8(void *)
 {
     std::vector<GameObject *> list;
@@ -249,7 +202,7 @@ s32 fn_1_7EE8(void *)
     int count = list.size();
     int inactiveCount = 0;
     for (int index = 0; index < count; index++) {
-        PlayerFlags *player = (PlayerFlags *)list[index];
+        Player *player = static_cast<Player *>(list[index]);
         if (!player->active) {
             inactiveCount++;
         }

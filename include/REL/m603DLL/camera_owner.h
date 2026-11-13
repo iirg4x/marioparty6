@@ -2,21 +2,19 @@
 #define REL_M603_CAMERA_OWNER_H
 #include "dolphin/types.h"
 #include "REL/framework/list_object.h"
-extern "C" {
-#include "REL/framework/assertion.h"
-}
 #include "REL/framework/model.h"
 extern "C" {
 #include "game/hu3d.h"
 }
-void operator delete(void *);
-void *operator new(unsigned long);
 
 #include "REL/framework/singleton.h"
 
 #include <vector>
+#include <new>
 
+/* Own the shared UFO model and update the UFO list. */
 struct CameraModelPool : RequestObject, MinigameSingleton<CameraModelPool> {
+    /* Constructed and destroyed here; no module code accesses its elements. */
     std::vector<s16> stateFields;
     OwnedModel modelId;
     CameraModelPool();

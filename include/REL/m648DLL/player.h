@@ -41,7 +41,7 @@ public:
     std::vector<s16> m_mot_id;
     CPlayer(s32 playerNo, s32 effect, bool nightMode);
     ~CPlayer();
-    s16 addMotion(u32 dataNum);
+    HU3D_MOTIONID addMotion(u32 dataNum);
     void fn_1_BD30();
     void fn_1_BDDC();
     void fn_1_BF94();
@@ -53,5 +53,7 @@ public:
     void fn_1_C7BC();
     bool allPlayersFinished();
 };
+
+void fn_1_B8BC(void);
 
 #endif

@@ -4,6 +4,7 @@
 #include "REL/framework/list_object.h"
 #include "REL/m648DLL/camera_view.h"
 #include "REL/framework/debug.h"
+class CPlayer;
 class CameraManager : public RequestObject, public MinigameSingleton<CameraManager> {
 public:
     CameraManager();
@@ -14,7 +15,7 @@ public:
     s32 motionFrame;
     s32 timer;
     void (CameraManager::*callback)();
-    Node *target;
+    CPlayer *target;
     s16 modelId;
     u8 listenerActive;
     u8 byteValue;
@@ -24,7 +25,7 @@ public:
     void fn_1_8ACC();
     void fn_1_8AFC();
     void fn_1_8B2C();
-    void fn_1_8C40(Node *target);
+    void fn_1_8C40(CPlayer *target);
     void fn_1_8F04();
     void fn_1_8F6C();
 };

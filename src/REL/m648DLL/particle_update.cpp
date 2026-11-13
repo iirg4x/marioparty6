@@ -1,10 +1,6 @@
+#include "REL/framework/random.h"
 #include "REL/m648DLL/particle_entry.h"
 #include "humath.h"
-float RandomFloat(float, float);
-
-float RandomFloat(void);
-
-unsigned long RandomUnsigned(void);
 
 extern "C" {
 #include "dolphin/os.h"
@@ -139,6 +135,7 @@ extern ListRoot<PositionedModelOwner> lbl_1_bss_5D4;
 
 void fn_1_A248(PositionedModelOwner *);
 
+/* Loads the two sprite animations and prepares the particle direction tables. */
 ParticleAnimationOwner::ParticleAnimationOwner() {
     s32 animationIndex;
     s32 directionIndex;
@@ -170,6 +167,7 @@ ParticleAnimationOwner::ParticleAnimationOwner() {
 
 void fn_1_963C(void);
 
+/* Deletes all particle objects and releases the two sprite animations. */
 ParticleAnimationOwner::~ParticleAnimationOwner() {
     fn_1_963C();
     fn_1_9BA4();
@@ -182,10 +180,13 @@ ANIMDATA *fn_1_93AC(u32 entryIndex)
     return ParticleAnimationOwner::getChecked().animations[entryIndex];
 }
 
+/* Clears the requested flag. */
 void ParticleAnimationOwner::flagEnabled(int request) { flags &= ~(1UL << request); }
 
+/* Updates the white, colored and positioned particle model lists. */
 void ParticleAnimationOwner::update() { fn_1_970C(); fn_1_9C74(); fn_1_A218(); }
 
+/* Links the particle object and configures its model and particle callback. */
 WhiteParticles::WhiteParticles(Vec *position)
 {
     ANIMDATA *particleAnimation;
@@ -202,20 +203,24 @@ WhiteParticles::WhiteParticles(Vec *position)
     state = 0;
 }
 
+/* Kills the owned particle model. */
 WhiteParticles::~WhiteParticles()
 {
     fn_800262D0(modelId);
 }
 
+/* Deletes every white particle object. */
 void fn_1_963C() {
     while(!lbl_1_bss_5AC.empty()) delete lbl_1_bss_5AC.back();
 }
 
+/* Visits each white particle object. */
 void fn_1_970C()
 {
     lbl_1_bss_5AC.visit(fn_1_973C);
 }
 
+/* Deletes the particle object after its model particle count becomes negative. */
 void fn_1_973C(WhiteParticles *owner)
 {
     HU3D_PARTICLE *particle = static_cast<HU3D_PARTICLE *>(lbl_802C01C8[owner->modelId].hookData);
@@ -225,6 +230,7 @@ void fn_1_973C(WhiteParticles *owner)
     }
 }
 
+/* Initializes and advances the white particle positions, sizes and colors. */
 void fn_1_97C0(HU3D_MODEL *model, HU3D_PARTICLE *owner, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *end = owner->data + owner->maxCnt;
@@ -290,6 +296,7 @@ void fn_1_97C0(HU3D_MODEL *model, HU3D_PARTICLE *owner, Mtx matrix)
     DCStoreRangeNoSync(owner->data, owner->maxCnt * 0x48);
 }
 
+/* Links the particle object and configures its model and particle callback. */
 ColorParticles::ColorParticles(Vec *position)
 {
     ANIMDATA *particleAnimation;
@@ -306,20 +313,24 @@ ColorParticles::ColorParticles(Vec *position)
     state = 0;
 }
 
+/* Kills the owned particle model. */
 ColorParticles::~ColorParticles()
 {
     fn_800262D0(modelId);
 }
 
+/* Deletes every colored particle object. */
 void fn_1_9BA4() {
     while(!lbl_1_bss_5C0.empty()) delete lbl_1_bss_5C0.back();
 }
 
+/* Visits each colored particle object. */
 void fn_1_9C74()
 {
     lbl_1_bss_5C0.visit(fn_1_9CA4);
 }
 
+/* Deletes the particle object after its model particle count becomes negative. */
 void fn_1_9CA4(ColorParticles *owner)
 {
     HU3D_PARTICLE *particle = static_cast<HU3D_PARTICLE *>(lbl_802C01C8[owner->modelId].hookData);
@@ -341,6 +352,7 @@ const GXColor lbl_1_rodata_2B8[8] = {
     {0xFF, 0xFF, 0xFF, 0xFF},
 };
 }
+/* Initializes and advances the colored particle positions, sizes and alpha. */
 void fn_1_9D28(HU3D_MODEL *model, HU3D_PARTICLE *owner, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *end = owner->data + owner->maxCnt;
@@ -386,6 +398,7 @@ void fn_1_9D28(HU3D_MODEL *model, HU3D_PARTICLE *owner, Mtx matrix)
     DCStoreRangeNoSync(owner->data, owner->maxCnt * 0x48);
 }
 
+/* Links the effect model, stores its hook pointer and starts its lifetime counter. */
 PositionedModelOwner::PositionedModelOwner(const Vec *value)
     : model(fn_1_A0E8), position(*value)
 {
@@ -395,24 +408,30 @@ PositionedModelOwner::PositionedModelOwner(const Vec *value)
     updatesRemaining = 0xF;
 }
 
+/* Releases the object through its member and base destructors. */
 PositionedModelOwner::~PositionedModelOwner() {}
 
+/* Draws the positioned effect stored in the model hook data. */
 void fn_1_A0E8(HU3D_MODEL *model, Mtx *data) {
     PositionedModelOwner *hookData = static_cast<PositionedModelOwner *>(model->hookData);
     hookData->fn_1_A2F8(*data);
 }
 
+/* Deletes every positioned effect model. */
 void fn_1_A12C() {
     while(!lbl_1_bss_5D4.empty()) delete lbl_1_bss_5D4.back();
 }
 
+/* Updates the positioned effect model list while allowing deletion. */
 void fn_1_A218()
 {
     lbl_1_bss_5D4.visitMoved(fn_1_A248);
 }
 
+/* Advances one positioned effect model lifetime. */
 void fn_1_A248(PositionedModelOwner *object) { object->fn_1_A270(); }
 
+/* Deletes the effect after its remaining-update counter expires. */
 void PositionedModelOwner::fn_1_A270() {
     updatesRemaining = updatesRemaining - 1;
     if (updatesRemaining < 0) {
@@ -420,6 +439,7 @@ void PositionedModelOwner::fn_1_A270() {
     }
 }
 
+/* Draws the effect quads facing the camera with their current radius and alpha. */
 void PositionedModelOwner::fn_1_A2F8(Mtx viewMatrix)
 {
     Mtx inverseView;

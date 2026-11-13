@@ -1,8 +1,11 @@
-#include "REL/m654DLL/framework_calls.h"
+#include "REL/framework/random.h"
+#include "REL/framework/event.h"
+#include "REL/m654DLL/switch_panel.h"
+#include "REL/m654DLL.h"
 #include "REL/framework/sound.h"
 #include "REL/framework/frame_time.h"
 #include "REL/framework/world_units.h"
-// The floor switches: shuffles the panels into the rows, shows which were stepped on and plays each panel's effect.
+#include "REL/framework/square.h"
 #include <vector>
 #include <algorithm>
 #include <cmath>
@@ -10,10 +13,11 @@
 #include "REL/framework/game_object_man.h"
 #include "REL/m654DLL/model_animation_owner.h"
 extern "C" {
-#include "REL/m654DLL/pad_control.h"
 #include "game/audio.h"
+}
 extern const int lbl_1_rodata_3B8[3] = {0x710005, 0x710006, 0x710007};
 extern const int lbl_1_rodata_3C4[3] = {0x710008, 0x710009, 0x71000B};
+// Seeds selected before shuffling the panel types.
 extern const unsigned int lbl_1_rodata_3D0[71] = {
     0x0082FCE1, 0x0119910D, 0x017F8444, 0x027CF502, 0x0323043B, 0x0330996C,
     0x0AE3A80E, 0x0B2F6F96, 0x0CCF181E, 0x0DD9B868, 0x0EEC8598, 0x100573FE,
@@ -31,20 +35,18 @@ extern const unsigned int lbl_1_rodata_3D0[71] = {
 char *lbl_1_data_498[2] = {"s1_null", 0};
 char *lbl_1_data_4C0[5] = {"s2_null", "s3_null", "s4_null", "s5_null", 0};
 char *lbl_1_data_4F4[5] = {"s6_null", "s7_null", "s8_null", "s9_null", 0};
+// The fourth anchor is named "s20null2" in the model.
 char *lbl_1_data_52C[5] = {"s11_null", "s14_null", "s17_null", "s20null2", 0};
 char *lbl_1_data_588[9] = {"s10_null", "s12_null", "s13_null", "s15_null", "s16_null", "s18_null", "s19_null", "s21_null", 0};
 char **lbl_1_data_5AC[5] = {lbl_1_data_498, lbl_1_data_4C0, lbl_1_data_4F4, lbl_1_data_52C, lbl_1_data_588};
+// One-minute time limit and gravity in world units per frame squared.
 int lbl_1_bss_C0 = minutesToFrames(1L);
 float lbl_1_bss_C4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 std::vector<short> lbl_1_bss_D4;
-void fn_1_8600(Model *anchorModel);
-int fn_1_8AD4(std::vector<Vec> *owner);
-}
 
-enum PanelType { NUMBER_OF_TYPE = 3 }; // The panel kinds; the constructor's assert names NUMBER_OF_TYPE.
-
+enum PanelType { NUMBER_OF_TYPE = 3 }; // Number of panel kinds.
+// Provides the bounded random index used to shuffle panel types.
 int fn_1_85D8(int range) { return RandomInteger(range); }
-
 class SwitchPanel : public GameObject, public EventListener {
 public:
     SwitchPanel(int type, int row, Model *anchorModel, char *anchorObject);
@@ -53,25 +55,23 @@ public:
     virtual void receive(const EventPacket *event);
     void fn_1_8EF0();
     void fn_1_8F40();
-    void fn_1_90FC(int value, Vec *position);
+    void fn_1_90FC(int channel, Vec *position);
     void fn_1_94A4(Vec *position);
     Model *anchorModel;   // Model whose named object the panel follows.
     char *anchorObject;   // Name of that object in the anchor model.
     int type;
-    unsigned char active : 1;
-    unsigned char unknown20 : 7;
-    unsigned char unknown21;
+    unsigned char pressed : 1;
     OwnedModel firstModel;
     OwnedModel secondModel;
-    unsigned char unknown26[2]; /* No code names this field. */
     Vec position;
     int soundHandle;
     int soundCountdown;
 };
-
+// Shuffles the panel types, creates all panel rows and allocates the shared effect models.
 void fn_1_8600(Model *anchorModel)
 {
     char **configuration;
+    // The signed remainder can be negative if the random value has its high bit set.
     unsigned int seed = lbl_1_rodata_3D0[(int)RandomUnsigned() % 71];
     RandomSeed(seed);
     std::vector<int> types(0x15);
@@ -92,35 +92,35 @@ void fn_1_8600(Model *anchorModel)
     assert(types.empty());
     lbl_1_bss_D4.clear();
     for (int modelIndex = 0; modelIndex < 3; modelIndex++) {
+        // Only the id is retained; the allocated wrapper is never deleted.
         Model *model = new OwnedModel(lbl_1_rodata_3C4[modelIndex]);
         model->setAttribute((1 << 0));
         lbl_1_bss_D4.push_back(*model);
     }
 }
-
-int fn_1_8AD4(std::vector<Vec> *owner)
+// Collects unpressed panel positions with type-zero panels first and returns their count.
+int fn_1_8AD4(std::vector<Vec> *positions)
 {
     std::vector<GameObject *> sequence;
-    int completedCount;
-    int index;
+    int typeZeroCount, index;
     collectGameObjects(1, &sequence);
     int count = sequence.size();
-    owner->clear();
-    completedCount = 0;
+    positions->clear();
+    typeZeroCount = 0;
     for (index = 0; index < count; index++) {
         SwitchPanel *entry = static_cast<SwitchPanel *>(sequence[index]);
-        if ((unsigned char)entry->active == 0) {
+        if (entry->pressed == 0) {
             if (entry->type == 0) {
-                owner->insert(owner->begin(), entry->position);
-                completedCount++;
+                positions->insert(positions->begin(), entry->position);
+                typeZeroCount++;
             } else {
-                owner->push_back(entry->position);
+                positions->push_back(entry->position);
             }
         }
     }
-    return completedCount;
+    return typeZeroCount;
 }
-
+// Creates the panel models and subscribes to row and player events.
 SwitchPanel::SwitchPanel(int type, int row, Model *anchorModel, char *anchorObject)
     : GameObject(1),
       anchorModel(anchorModel),
@@ -146,7 +146,7 @@ SwitchPanel::SwitchPanel(int type, int row, Model *anchorModel, char *anchorObje
 }
 
 extern "C" void fn_800262D0(short modelId);
-
+// Drains the shared effect model ids and releases this panel's models.
 SwitchPanel::~SwitchPanel()
 {
     while (!lbl_1_bss_D4.empty()) {
@@ -155,32 +155,23 @@ SwitchPanel::~SwitchPanel()
     }
 }
 
+// Marks the panel pressed and shows its type-specific model.
 void SwitchPanel::fn_1_8EF0()
 {
     firstModel.setAttribute(1);
     secondModel.resetAttribute(1);
-    active = 1;
+    pressed = 1;
 }
 
+// Rearms the panel and shows the unpressed model.
 void SwitchPanel::fn_1_8F40()
 {
     firstModel.resetAttribute(1);
     secondModel.setAttribute(1);
-    active = 0;
+    pressed = 0;
 }
 
-extern "C" {
-
-void fn_8002C95C(int modelId, short motionId);
-void fn_800269E8(short modelId, unsigned long attribute);
-void fn_80026790(short modelId, Vec *position);
-int fn_80036EBC(short modelId);
-void fn_80026B8C(short modelId, short layer);
-void fn_80026A44(short modelId, unsigned long attribute);
-void fn_8002D414(short modelId, float time);
-float fn_8002D530(short modelId);
-}
-
+// Follows the anchor transform and stops the effect sound when its countdown expires.
 void SwitchPanel::update()
 {
     float value;
@@ -204,6 +195,7 @@ void SwitchPanel::update()
     }
 }
 
+// Handles the row reset and player proximity events.
 void SwitchPanel::receive(const EventPacket *event)
 {
     switch (event->type) {
@@ -217,16 +209,14 @@ void SwitchPanel::receive(const EventPacket *event)
     }
 }
 
-static inline float Square90FC(const float &value)
-{
-    return value * value;
-}
-
-void SwitchPanel::fn_1_90FC(int value, Vec *target)
+// Presses a nearby panel and sends its score or reaction event with the matching effects.
+void SwitchPanel::fn_1_90FC(int channel, Vec *target)
 {
     float distance;
-    if (!active) {
-        distance = (float)std::sqrt(Square90FC(target->x - position.x) + Square90FC(target->z - position.z));
+    if (!pressed) {
+        distance = (float)std::sqrt(square(target->x - position.x) +
+                                    square(target->z - position.z));
+        // The negated comparison also admits unordered distances.
         if (!(distance > 75.0)) {
             fn_1_8EF0();
             if (type == 2) {
@@ -234,7 +224,7 @@ void SwitchPanel::fn_1_90FC(int value, Vec *target)
                 return;
             }
             int modeData[2] = {2, 3};
-            sendEvent(value, modeData[type], 0.0f);
+            sendEvent(channel, modeData[type], 0.0f);
             switch (type) {
             case 0:
                 fn_1_94A4(&position);
@@ -258,6 +248,17 @@ void SwitchPanel::fn_1_90FC(int value, Vec *target)
     }
 }
 
+// This module passes the motion model id and reads the linked model query as int.
+extern "C" void fn_8002C95C(int modelId, short motionId);
+extern "C" void fn_800269E8(short modelId, unsigned long attribute);
+extern "C" void fn_80026790(short modelId, Vec *position);
+extern "C" int fn_80036EBC(short modelId);
+extern "C" void fn_80026B8C(short modelId, short layer);
+extern "C" void fn_80026A44(short modelId, unsigned long attribute);
+extern "C" void fn_8002D414(short modelId, float time);
+extern "C" float fn_8002D530(short modelId);
+
+// Restarts the panel effect and uses its motion duration for the sound countdown.
 void SwitchPanel::fn_1_94A4(Vec *position)
 {
     int modelIndex = type;

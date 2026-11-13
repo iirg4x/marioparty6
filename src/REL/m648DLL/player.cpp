@@ -1,3 +1,4 @@
+#include "REL/framework/random.h"
 /* The players: their models, motions, input and the per-frame update of the list at .bss 0x5FC. */
 #include <vector>
 #include <cmath>
@@ -23,9 +24,6 @@ extern "C" {
 #include "REL/framework/frame_time_inline.h"
 #include "msm_se.h"
 
-u32 RandomUnsigned();
-float RandomFloat();
-
 static const int NUMBEROF_MOTION = 6;
 
 /* The framework version of this game converts seconds to frames in line
@@ -33,7 +31,7 @@ static const int NUMBEROF_MOTION = 6;
    ahead of the selected entry and the player list head, whose destructor ends
    the file. */
 
-extern "C" { Node *lbl_1_bss_5EC; }
+extern "C" { CPlayer *lbl_1_bss_5EC; }
 class CPlayer;
 
 #include "REL/m648DLL/flying_object.h"
@@ -44,25 +42,7 @@ extern "C" {
 void fn_1_C148(CPlayer *object);
 }
 
-void operator delete(void *);
-
-extern "C" {
-extern const u8 lbl_1_data_5C[];
-extern const u8 lbl_1_data_440[];
-
-extern void *lbl_1_bss_A4;
-extern const char lbl_1_data_428[];
-extern const char lbl_1_data_432[];
-void fn_1_1BCF4(Node *);
-void fn_1_1BDB8(Node *, const void *);
-void fn_1_1D6D8(void *, s32);
-void fn_1_1DE18(s16 *, s32);
-void fn_1_1DAB8(s16 *, u32);
-
-extern void *lbl_1_bss_20;
-void fn_1_2070C(s32, const Vec *, Vec *, f32, f32, f32);
-}
-
+/* Sets the indexed player position along the row. */
 void fn_1_AE34(Vec *position, s32 index)
 {
     position->x = (f32)(index * 0x104 - 0x186);
@@ -70,6 +50,7 @@ void fn_1_AE34(Vec *position, s32 index)
     position->z = 0.0f;
 }
 
+/* Deletes every player object. */
 void fn_1_AE90()
 {
     while (!lbl_1_bss_5FC.empty()) {
@@ -94,12 +75,17 @@ void fn_1_AF34(s16 modelId, u8 showModel)
 }
 
 static const s32 sPlayerShapeModels[15] = {
-    DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x13), DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x12),
-    DATANUM(0x6b0000, 0x13), DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x14), DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x15),
-    DATANUM(0x6b0000, 0x14), DATANUM(0x6b0000, 0x15), DATANUM(0x6b0000, 0x15), DATANUM(0x6b0000, 0x15), DATANUM(0x6b0000, 0x15),
+    DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x12),
+    DATANUM(0x6b0000, 0x13), DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x12),
+    DATANUM(0x6b0000, 0x13), DATANUM(0x6b0000, 0x12),
+    DATANUM(0x6b0000, 0x14), DATANUM(0x6b0000, 0x12), DATANUM(0x6b0000, 0x15),
+    DATANUM(0x6b0000, 0x14), DATANUM(0x6b0000, 0x15),
+    DATANUM(0x6b0000, 0x15), DATANUM(0x6b0000, 0x15), DATANUM(0x6b0000, 0x15),
 };
 
-/* Creates player playerNo with its six motions, its indicators and its idle motion. */
+/* Creates the character and shape models, loads six motions, and attaches the shape.
+ * Sets up the score box, motion-selection models and flying indicator for this player.
+ * Begins with motion 1 and the waiting callback. */
 CPlayer::CPlayer(s32 playerNo, s32 effect, bool nightMode)
     : gameOver(0),
       characterModel(lbl_80265728[playerNo].charNo, 2),
@@ -120,25 +106,37 @@ CPlayer::CPlayer(s32 playerNo, s32 effect, bool nightMode)
     this->playerNo = playerNo;
     this->characterNo = lbl_80265728[playerNo].charNo;
     this->difficulty = lbl_80265728[playerNo].comDif;
-    this->padNo = lbl_80265728[playerNo].type != 0 ? -1 : lbl_80265728[playerNo].padNo;
+    this->padNo = lbl_80265728[playerNo].type != 0
+        ? -1
+        : lbl_80265728[playerNo].padNo;
     this->currentMotion = -1;
     m_mot_id.clear();
     m_mot_id.reserve(NUMBEROF_MOTION);
-    addMotion(DATANUM(0x930000, 0));
-    addMotion(DATANUM(0x8e0000, 0x99));
-    addMotion(DATANUM(0x8e0000, 0x98));
-    addMotion(DATANUM(0x930000, 6));
-    addMotion(DATANUM(0x930000, 0x28));
-    addMotion(DATANUM(0x930000, 1));
+    addMotion(
+        DATANUM(0x930000, 0)
+    );
+    addMotion(
+        DATANUM(0x8e0000, 0x99)
+    );
+    addMotion(
+        DATANUM(0x8e0000, 0x98)
+    );
+    addMotion(
+        DATANUM(0x930000, 6)
+    );
+    addMotion(
+        DATANUM(0x930000, 0x28)
+    );
+    addMotion(
+        DATANUM(0x930000, 1)
+    );
     assert(m_mot_id.size() == NUMBEROF_MOTION);
     fn_8005B4BC((s16)this->characterNo);
     fn_1_AF34((s16)characterModel, 1);
     fn_1_AF34((s16)shapeModel, 1);
     hook = fn_8005C0F0((s16)this->characterNo, 4, 0);
     fn_8002741C(characterModel, hook, shapeModel);
-    position.x = (f32)((playerNo * 0x104) - 0x186);
-    position.y = 0.0f;
-    position.z = 0.0f;
+    fn_1_AE34(&position, playerNo);
     ScoreManager::getChecked().fn_1_D77C(this->playerNo, this->characterNo);
     ScoreManager::getChecked().fn_1_D8D8(this->playerNo, 0);
     spriteA = new MotionHookModels(playerNo, this->difficulty);
@@ -152,6 +150,7 @@ CPlayer::CPlayer(s32 playerNo, s32 effect, bool nightMode)
     callback = next;
 }
 
+/* Releases the object through its member and base destructors. */
 CPlayer::~CPlayer() {}
 
 /* Returns the smallest measure among active entries with a valid owner index. */
@@ -168,6 +167,7 @@ s32 fn_1_B62C()
     return minimum;
 }
 
+/* Removes the selected players from the player list. */
 void fn_1_B6B8(Vec *positions)
 {
     Node *sentinel;
@@ -192,13 +192,15 @@ void fn_1_B6B8(Vec *positions)
     }
 }
 
-s16 CPlayer::addMotion(u32 dataNum)
+/* Loads a motion, appends its ID and returns it. */
+HU3D_MOTIONID CPlayer::addMotion(u32 dataNum)
 {
     s16 motionId = fn_8005B0B8((s16)characterNo, dataNum);
     m_mot_id.push_back(motionId);
     return motionId;
 }
 
+/* Updates the player list and moves its first entry to the back. */
 void fn_1_B7C4()
 {
     lbl_1_bss_5FC.visit(fn_1_C148);
@@ -209,6 +211,7 @@ void fn_1_B7C4()
     }
 }
 
+/* Reports whether the player list satisfies the completion checks. */
 u8 fn_1_B848(void)
 {
     Node *root;
@@ -230,6 +233,7 @@ u8 fn_1_B848(void)
     return 0;
 }
 
+/* Copies each player rank to the game result score. */
 void fn_1_B8BC(void)
 {
     CPlayer *node = lbl_1_bss_5FC.front();
@@ -244,12 +248,12 @@ void fn_1_B8BC(void)
 }
 
 extern "C" {
-extern void *lbl_1_bss_2C;
 
 /* Selects an eligible queued entry among the four available records. */
 void fn_1_B934(void);
 }
 
+/* Ranks the player measurements, awards scores and selects the camera target. */
 void fn_1_B934(void)
 {
     CPlayer *node = lbl_1_bss_5FC.front();
@@ -308,6 +312,7 @@ void fn_1_B934(void)
         RequestOwner8C40::getChecked().fn_1_8C40(lbl_1_bss_5EC);
 }
 
+/* Marks every player game over. */
 void fn_1_BC1C()
 {
     CPlayer *node = lbl_1_bss_5FC.front();
@@ -317,10 +322,12 @@ void fn_1_BC1C()
     }
 }
 
+/* Returns without changing state. */
 void fn_1_BC80(void)
 {
 }
 
+/* Activates each player and starts its randomized callback delay. */
 void fn_1_BC84()
 {
     ListRoot<CPlayer> *root;
@@ -338,6 +345,7 @@ extern "C" {
 s32 fn_1_CCE4(CPlayer *owner);
 }
 
+/* Runs the waiting motion until the activation timer selects the next callback. */
 void CPlayer::fn_1_BD30()
 {
     if (active != 0) {
@@ -352,6 +360,7 @@ void CPlayer::fn_1_BD30()
     fn_1_C2E8(1, 0);
 }
 
+/* Waits for the character overlay, plays its timed sound and advances the callback state. */
 void CPlayer::fn_1_BDDC()
 {
     if (fn_8005C284((s16)characterNo) < 0 &&
@@ -394,32 +403,33 @@ s32 fn_1_BEA8()
     return allWaiting;
 }
 
+/* Selects the player callback that starts motion 3. */
 void fn_1_BF50(CPlayer *entry)
 {
-    {
-        CPlayer::Callback value = &CPlayer::fn_1_BF94;
-        entry->callback = value;
-    }
+    CPlayer::Callback value = &CPlayer::fn_1_BF94;
+    entry->callback = value;
 }
 
+/* Starts player motion 3 with looping enabled. */
 void CPlayer::fn_1_BF94()
 {
     fn_1_C2E8(3, 1);
 }
 
+/* Selects the player callback that starts motion 4. */
 void fn_1_BFC4(CPlayer *entry)
 {
-    {
-        CPlayer::Callback value = &CPlayer::fn_1_C008;
-        entry->callback = value;
-    }
+    CPlayer::Callback value = &CPlayer::fn_1_C008;
+    entry->callback = value;
 }
 
+/* Starts player motion 4 with looping enabled. */
 void CPlayer::fn_1_C008()
 {
     fn_1_C2E8(4, 1);
 }
 
+/* Shrinks and hides the shape model while advancing the player height. */
 void CPlayer::fn_1_C038()
 {
     scale -= 0.1;
@@ -444,6 +454,7 @@ void fn_1_C22C(CPlayer *object);
 void fn_1_C1C4(CPlayer *object);
 }
 
+/* Runs the player callback, updates vibration and transforms, and advances its measurement. */
 void fn_1_C148(CPlayer *object)
 {
     (object->*object->callback)();
@@ -453,6 +464,7 @@ void fn_1_C148(CPlayer *object)
     object->finalMeasure++;
 }
 
+/* Applies the player height rotation and position to the character model. */
 void fn_1_C1C4(CPlayer *object)
 {
     Vec position = { 0.0f, 0.0f, 0.0f };
@@ -461,6 +473,7 @@ void fn_1_C1C4(CPlayer *object)
     object->characterModel.setPosition(&object->position);
 }
 
+/* Advances the player rumble counters and submits the selected vibration pattern. */
 void fn_1_C22C(CPlayer *player)
 {
     s32 vibrationType;
@@ -482,6 +495,7 @@ void fn_1_C22C(CPlayer *player)
     }
 }
 
+/* Changes the character motion and loop attributes when the motion index changes. */
 void CPlayer::fn_1_C2E8(s32 motionId, u8 queued)
 {
     s16 modelId = (s16)characterModel;
@@ -497,7 +511,6 @@ void CPlayer::fn_1_C2E8(s32 motionId, u8 queued)
 extern "C" {
 void fn_1_CAF4(CPlayer *owner);
 
-extern void *lbl_1_bss_24;
 }
 
 /* Selects an idle motion and enters the completion callback at state two. */
@@ -554,6 +567,7 @@ void CPlayer::fn_1_C498()
     callbackState++;
 }
 
+/* Returns the requested motion index from the controller face buttons. */
 s32 fn_1_C700(CPlayer *owner)
 {
     s32 motionIndex = -1;
@@ -616,6 +630,7 @@ bool CPlayer::allPlayersFinished()
     inactiveCount = 0;
     invalidCount = 0;
 
+    /* The loop advances node but tests this player on every iteration. */
     for (; node != end; node = node->next()) {
         if (padNo >= 0) {
             if (finished == 0) {
@@ -639,15 +654,14 @@ void fn_1_CAF4(CPlayer *owner)
     }
 
     randomValue = RandomFloat();
-    {
-        f32 firstWeights[5] = { 2.5f, 1.5f, 1.0f, 0.5f, 0.1f };
-        f32 secondWeights[5] = { 1.0f, 0.5f, 0.25f, 0.1f, 0.0f };
-        owner->decisionTimer = (s32)(secondsToFrames(randomValue * firstWeights[timingIndex])
-                                   + secondsToFrames(secondWeights[timingIndex]));
-    }
+    f32 firstWeights[5] = { 2.5f, 1.5f, 1.0f, 0.5f, 0.1f };
+    f32 secondWeights[5] = { 1.0f, 0.5f, 0.25f, 0.1f, 0.0f };
+    owner->decisionTimer = (s32)(secondsToFrames(randomValue * firstWeights[timingIndex])
+                               + secondsToFrames(secondWeights[timingIndex]));
 }
 
-static inline s32 fn_1_CCE4ReadValue(MotionHookModels *data)
+/* Returns the hook model group current attribute state. */
+static inline s32 readHookSelection(MotionHookModels *data)
 {
     return data->attributeState;
 }
@@ -671,5 +685,5 @@ s32 fn_1_CCE4(CPlayer *owner)
     owner->decisionTimer = 0;
     s32 selected = ((u16)RandomUnsigned() * 6) >> 16;
     s32 masks[4] = { 1, 3, 7, 15 };
-    return ((masks[selection] & (s32)RandomUnsigned()) == 0) ? selected : fn_1_CCE4ReadValue(owner->spriteA);
+    return ((masks[selection] & (s32)RandomUnsigned()) == 0) ? selected : readHookSelection(owner->spriteA);
 }

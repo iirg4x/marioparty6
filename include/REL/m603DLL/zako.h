@@ -9,6 +9,7 @@ extern "C" {
 #include "game/hu3d.h"
 }
 
+/* Own the shared target model and motions and create the target lists. */
 class DrawModelPool : public RequestObject, public MinigameSingleton<DrawModelPool> {
 public:
     enum { NUMBEROF_PMOTION = 2 };

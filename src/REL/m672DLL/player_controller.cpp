@@ -1,17 +1,21 @@
-#include "REL/m672DLL/random.h"
-#include "REL/m672DLL/controllers_bf64.h"
+#include "REL/framework/random.h"
+#include "REL/m672DLL/controllers.h"
 #include "humath.h"
+#include "REL/framework/sphere.h"
 extern "C" {
 #include <math.h>
 #include "game/gamework.h"
 #include "dolphin.h"
+#include "REL/framework/vector_math.h"
 #include "game/pad.h"
 #include "game/board/player.h"
 }
 #include "REL/m672DLL/player.h"
 #include "math.h"
+// Performs no additional work when the player controller is destroyed.
 inline PlayerController::~PlayerController() {}
 
+// Clears the controller values and invokes the controller update callback.
 void fn_1_758(PlayerController *state)
 {
     state->values.x = 0.0f;
@@ -20,6 +24,7 @@ void fn_1_758(PlayerController *state)
     state->update(&state->values);
 }
 
+// Initializes pad-angle state, resolves the pad number, and selects a random mode bit.
 PadController::PadController(Player *owner) : PlayerController(owner)
 {
     angle = 0.0f;
@@ -30,44 +35,20 @@ PadController::PadController(Player *owner) : PlayerController(owner)
 }
 extern "C" {
 
-typedef struct PadOwner8F4 {
-    u8 unk_0[0x20]; /* No code names this field. */
-    void *player;
-    u8 unk_24[0x24]; /* No code names this field. */
-    f32 angle;
-    f32 angleStep;
-    s32 padIndex;
-} PadOwner8F4;
-
-typedef struct PadAngle8F4 {
-    u8 unknown_00[8]; /* No code names this field. */
-    f32 angle;
-} PadAngle8F4;
-
-const PadAngle8F4 lbl_1_rodata_18[2] = {{{0},90.0f},{{0},-90.0f}};
+const Vec lbl_1_rodata_18[2] = {{0.0f, 0.0f, 90.0f}, {0.0f, 0.0f, -90.0f}};
 
 }
 
-static inline void SetDirection8F4(Vec *direction, double x, double y)
-{
-    direction->x = x;
-    direction->y = y;
-    direction->z = 0.0f;
-}
-
-static inline MGPLAYER *PadPlayer8F4(Player *owner)
+// Returns the game-player pointer held by the Player object.
+static inline MGPLAYER *PadPlayer(Player *owner)
 {
     return owner->player;
 }
 
-static inline double Magnitude8F4(Vec *direction)
+// Builds the pad direction, optionally submits pad values, and stores direction/buttons in state.
+void PadController::update(PadState *state)
 {
-    return PSVECMag(direction);
-}
-
-void PadController::update(PadState8F4 *state)
-{
-    Vec direction;
+    EffectVector direction;
     Mtx angleMatrix;
     Mtx tiltMatrix;
     s32 padIndex;
@@ -75,9 +56,10 @@ void PadController::update(PadState8F4 *state)
     double length;
 
     padIndex = padNumber;
+    // Construction sets mode to 0 or 1; the alternate path accepts -1.
     if (state->mode != -1) {
-        SetDirection8F4(&direction, lbl_802BFFFC[padIndex], lbl_802BFFF8[padIndex]);
-        PSMTXRotRad(angleMatrix, 'z', MTXDegToRad(lbl_1_rodata_18[state->mode].angle));
+        direction.set(lbl_802BFFFC[padIndex], lbl_802BFFF8[padIndex], 0.0);
+        PSMTXRotRad(angleMatrix, 'z', MTXDegToRad(lbl_1_rodata_18[state->mode].z));
         angleWobble = (f32)(40.0 * sin((M_PI * (f64)angle) / 180.0));
         angle += angleStep;
         if (angle > 360.0f) {
@@ -86,24 +68,26 @@ void PadController::update(PadState8F4 *state)
         }
         PSMTXRotRad(tiltMatrix, 'z', MTXDegToRad(angleWobble));
         PSMTXConcat(angleMatrix, tiltMatrix, angleMatrix);
-        PSMTXMultVec(angleMatrix, &direction, &direction);
-        PSVECScale(&direction, &direction, 0.45f);
-        fn_80080520(PadPlayer8F4(player), (s32)direction.x,
-                       (s32)direction.y, lbl_802C0008[padIndex], lbl_802C0010[padIndex]);
+        PSMTXMultVec(angleMatrix, &direction.value, &direction.value);
+        PSVECScale(&direction.value, &direction.value, 0.45f);
+        fn_80080520(PadPlayer(player), (s32)direction.value.x,
+                       (s32)direction.value.y, lbl_802C0008[padIndex], lbl_802C0010[padIndex]);
     } else {
-        SetDirection8F4(&direction, lbl_8024C7D8[padIndex], lbl_8024C7E8[padIndex]);
+        direction.set(lbl_8024C7D8[padIndex], lbl_8024C7E8[padIndex], 0.0);
     }
-    if (direction.x != 0.0f && direction.y != 0.0f) {
-        PSVECNormalize(&direction, &direction);
+    // Normalize only when both horizontal components are nonzero.
+    if (direction.value.x != 0.0f && direction.value.y != 0.0f) {
+        PSVECNormalize(&direction.value, &direction.value);
     }
-    length = Magnitude8F4(&direction);
-    state->x = direction.x;
-    state->y = direction.y;
+    length = vectorMagnitude(&direction.value);
+    state->x = direction.value.x;
+    state->y = direction.value.y;
     state->magnitude = length;
     state->buttonsDown = lbl_802C0008[padIndex];
     state->buttons = lbl_802C0010[padIndex];
 }
 
+// Initializes difficulty, timing, callback, destination, and the inherited controller state.
 ComController::ComController(Player *owner, int difficultyValue)
     : PlayerController(owner)
 {
@@ -111,15 +95,16 @@ ComController::ComController(Player *owner, int difficultyValue)
     elapsed = 0.0f;
     angle = 0.0f;
     angleStep = 2.0f;
-    void (ComController::*initial)(PadState8F4 *) = &ComController::fn_1_EA0;
-    callback = initial;
+    setUpdate(&ComController::fn_1_EA0);
     destination.x = 0.0f;
     destination.y = 0.0f;
     destination.z = -2880.0f;
 }
 
+// Performs no additional work when the computer controller is destroyed.
 ComController::~ComController() {}
-void ComController::update(PadState8F4 *state)
+// Runs the selected callback, submits the input to the current player, and updates pad state.
+void ComController::update(PadState *state)
 {
  Player *source;
  MGPLAYER *currentPlayer;
@@ -131,11 +116,13 @@ void ComController::update(PadState8F4 *state)
  input.fn_1_12DA0(actionPlayer);
 }
 
-void ComController::fn_1_EA0(PadState8F4 *) {}
+// Empty initial computer-controller callback.
+void ComController::fn_1_EA0(PadState *) {}
 extern "C" {
 const float lbl_1_rodata_6C[4] = {0.5f,1.0f,1.5f,2.0f};
 }
-void ComController::fn_1_EA4(PadState8F4 *)
+// Steers toward the destination with periodic destination changes and bounded angular wobble.
+void ComController::fn_1_EA4(PadState *)
 {
     Player *target = player;
     Vec position = target->positionValue();
@@ -170,7 +157,7 @@ void ComController::fn_1_EA4(PadState8F4 *)
     PSMTXMultVec(rotation, &direction, &direction);
     PSVECScale(&direction, &direction, 0.45f * rotationScale);
     input.fn_1_12B70(&direction, 0.1f);
-    elapsed += 0.016666666666666666;
+    elapsed += (1.0 / 60.0);
 }
 
 extern "C" {
@@ -178,6 +165,7 @@ const float lbl_1_rodata_90[4]={400.0f,300.0f,200.0f,100.0f};
 const float lbl_1_rodata_A0[4]={400.0f,500.0f,600.0f,700.0f};
 const float lbl_1_rodata_B0[4]={0.8f,0.6f,0.4f,0.2f};
 }
+// Chooses a difficulty-scaled random destination from the player's current position.
 void ComController::fn_1_10B8()
 {
     Player *state;
@@ -224,7 +212,10 @@ void ComController::fn_1_10B8()
     destination.z = (f32)rotation;
 }
 
-void ComController::reset() { void (ComController::*initial)(PadState8F4 *) = &ComController::fn_1_EA4; callback=initial; }
+// Selects the active computer-controller callback.
+void ComController::reset() { setUpdate(&ComController::fn_1_EA4); }
+// Performs no additional work when the pad controller is destroyed.
 inline PadController::~PadController() {}
 
+// Empty base reset hook.
 inline void PlayerController::reset() {}

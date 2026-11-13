@@ -2,15 +2,24 @@
 #define REL_M672DLL_COLLISION_OBJECT_H
 
 #include "dolphin/mtx.h"
+#include <vector>
 
-/* A position in the world. */
+/* Three coordinates used for positions, velocities, and directions. */
 struct EffectVector {
     Vec value;
+    const Vec &getValue() const;
+    // Scale the supplied vector into this value.
+    EffectVector &setScaled(const Vec *source, f32 scale) {
+        PSVECScale(source, &value, scale);
+        return *this;
+    }
+    // Copy the vector coordinates.
     void set(const EffectVector &other) {
         value.x = other.value.x;
         value.y = other.value.y;
         value.z = other.value.z;
     }
+    // Copy the vector coordinates.
     void set(double x, double y, double z) {
         value.x = x;
         value.y = y;
@@ -20,6 +29,7 @@ struct EffectVector {
 
 /* A position built from its three coordinates. */
 struct EffectPoint : EffectVector {
+    // Initialize the three vector coordinates.
     EffectPoint(double x, double y, double z) {
         value.x = x;
         value.y = y;
@@ -31,25 +41,32 @@ struct EffectPoint : EffectVector {
 class CollisionShape {
 public:
     EffectVector position;
-    int unknown0C;
-    int unknown10;
-    int unknown14;
+    int unidentifiedFirst; // Initialized to zero; its meaning is unknown.
+    int unidentifiedSecond; // Initialized to -1; its meaning is unknown.
+    int unk18; /* No code names this field. */
     int state;
     unsigned char active;
-    CollisionShape() : unknown0C(0), unknown10(-1), state(-1), active(0) {}
+    // Initialize the collision state and activation flag.
+    CollisionShape() : unidentifiedFirst(0), unidentifiedSecond(-1), state(-1), active(0) {}
+    // Destroy the collision shape.
     virtual ~CollisionShape() {}
+    // Return the collision position.
     EffectVector &getPosition() { return position; }
+    // Copy the position coordinates.
     void setPosition(const EffectVector &value) {
         EffectVector &destination = position;
         destination.set(value);
     }
 };
 
+extern std::vector<CollisionShape *> collisionShapes;
+
 /* A sphere of the given radius. */
 class CollisionObject : public CollisionShape {
 public:
     float radius;
     CollisionObject(float radius);
+    // Destroy the collision sphere.
     virtual ~CollisionObject() {}
 };
 

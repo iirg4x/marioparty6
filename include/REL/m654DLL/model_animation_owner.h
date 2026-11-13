@@ -10,13 +10,13 @@
 class ModelAnimationOwner : public RequestObject, public MinigameSingleton<ModelAnimationOwner> {
 public:
     void (ModelAnimationOwner::*callback)();
-    OwnedModel animation;
-    OwnedModel secondAnimation;
-    OwnedModel secondaryAnimation0;
-    OwnedModel secondaryAnimation1;
+    OwnedModel model;
+    OwnedModel secondModel;
+    OwnedModel secondaryModel0;
+    OwnedModel secondaryModel1;
     float angle;
-    OwnedModel additionalAnimation;
-    std::vector<RegisteredValue> values;
+    OwnedModel additionalModel;
+    std::vector<RegisteredValue> spheres;
     int elapsed;
 
     ModelAnimationOwner();
