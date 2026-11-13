@@ -182,21 +182,6 @@ static inline void HuVecMul(
     }
 }
 
-// Copies a three-component board position or rotation vector.
-static inline void HuVecCopy(
-    register HuVecF *srcP, register HuVecF *dstP)
-{
-    register float xy;
-    register float z;
-
-    asm {
-        psq_l xy, 0(srcP), 0, 0
-        lfs z, 8(srcP)
-        psq_st xy, 0(dstP), 0, 0
-        stfs z, 8(dstP)
-    }
-}
-
 static float GetBiriQEffectRadius(
     OMOBJ *objP, int playerNo, int *meshGroupInfo);
 static void BiriQEffectCreate(OMOBJ *objP);
@@ -1428,7 +1413,7 @@ static void MoveNumOMExec(OMOBJ *objP)
     scaleY = tanFov * -posNorm.z;
     posNorm.x *= scaleX;
     posNorm.y *= scaleY;
-    HuVecCopy(&posNorm, &pos);
+    MBBoardVecCopy(&posNorm, &pos);
     mbCameraRotGet(&posNorm);
     rotZ = -posNorm.x;
     for (i = 0; i < 20; i++) {
@@ -1814,7 +1799,7 @@ void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
     }
     for (i = 0; i < 4; i++) {
         if (playerNoTbl[i] >= 0) {
-            HuVecCopy(&posByPlayer[playerNoTbl[i]], &posTbl[i]);
+            MBBoardVecCopy(&posByPlayer[playerNoTbl[i]], &posTbl[i]);
         }
     }
 }
@@ -2917,7 +2902,7 @@ static void MetalEffectHook(
         }
         if (posF) {
             MTXMultVec(modelMtx,
-                &((HuVecF *)objectP->mesh.vertex->data)[dataP->vertexNo],
+                &objectP->mesh.vertex->positions[dataP->vertexNo],
                 &pos);
             VECSubtract(&cameraPos, &pos, &dir);
             weight = VECMag(&dir);
@@ -3249,7 +3234,7 @@ static void BiriQEffect1Hook(
         }
         if (posF) {
             MTXMultVec(modelMtx,
-                &((HuVecF *)objectP->mesh.vertex->data)[dataP->vertexNo],
+                &objectP->mesh.vertex->positions[dataP->vertexNo],
                 &pos);
             VECSubtract(&cameraPos, &pos, &dir);
             weight = VECMag(&dir);

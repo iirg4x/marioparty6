@@ -1,10 +1,7 @@
 /* Builds and animates minigame notices, draw and winner messages, and score/time record
  * displays. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double);
-double cos(double);
 
+#include <math.h>
 #include "game/gamemes.h"
 #include "game/audio.h"
 #include "game/gamework.h"
@@ -18,8 +15,8 @@ double cos(double);
 #define GAMEMES_RECORD_VALUE_MAX 999999
 #define GAMEMES_RECORD_HUNDRED_THOUSANDS 100000
 
-#define sind(x) sin((3.141592653589793 * (x)) / 180.0)
-#define cosd(x) cos((3.141592653589793 * (x)) / 180.0)
+#define sind(x) sin((M_PI * (x)) / 180.0)
+#define cosd(x) cos((M_PI * (x)) / 180.0)
 
 static float WinnerMesNameY[4];
 static float WinnerMesNameX[4];
@@ -217,7 +214,7 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -241,9 +238,9 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -421,7 +418,7 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -445,9 +442,9 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -648,7 +645,7 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -672,9 +669,9 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -870,7 +867,7 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -894,9 +891,9 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1063,7 +1060,7 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1087,9 +1084,9 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1227,7 +1224,7 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1251,9 +1248,9 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1409,7 +1406,7 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1433,9 +1430,9 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1618,7 +1615,7 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1642,9 +1639,9 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1905,7 +1902,7 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == timeStart) {
-                    HuAudFXPlay(0x19);
+                    HuAudFXPlay(MSM_SE_CMN_READY_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == timeEnd) {
@@ -1931,9 +1928,9 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(0x1A);
+                        HuAudFXPlay(MSM_SE_CMN_FINISH_BANNER);
                     } else {
-                        HuAudFXPlay(0x1C);
+                        HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -2101,7 +2098,7 @@ BOOL GameMesMgDrawExec(GAMEMES *mes)
                 }
             }
             if(mes->time == 20) {
-                HuAudFXPlay(0x1C);
+                HuAudFXPlay(MSM_SE_CMN_START_BANNER);
                 mes->stat |= GAMEMES_STAT_FXPLAY;
             }
             if(mes->time >= 140) {
@@ -2358,7 +2355,7 @@ BOOL GameMesMgRecordExec(GAMEMES *mes)
                                      mes->scale.y * GameMesScale);
                 }
                 if(mes->time == 20) {
-                    HuAudFXPlay(0x1B);
+                    HuAudFXPlay(MSM_SE_CMN_RECORD_BANNER);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time >= 100) {

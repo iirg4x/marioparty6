@@ -8,6 +8,8 @@
 #include "game/mg/timer.h"
 #include "datanum/mgconst.h"
 
+void MgTimerDispOff(MGTIMER* timer);
+
 #define MGTIMER_PROCESS_PRIORITY 4096
 #define MGTIMER_PROCESS_STACK_SIZE 4608
 

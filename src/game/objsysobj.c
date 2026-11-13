@@ -1,19 +1,13 @@
 // Camera view and system pause controls used by the object manager.
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double x);
-double cos(double x);
+#include <math.h>
 #include "game/object.h"
 #include "game/pad.h"
 #include "game/hu3d.h"
 #include "game/sprite.h"
 #include "game/process.h"
 #include "game/audio.h"
-
-// Returns the MgDataTbl index associated with an overlay, or -1 if it is not listed.
-extern s32 MgNoGet(s16 ovlNo);
-// Opens the pause menu for the current minigame.
-extern void GameMesPauseCreate(void);
+#include "game/mgdata.h"
+#include "game/gamemes.h"
 
 float lbl_80266BD8[16];
 HuVecF lbl_80266B18[16];
@@ -36,18 +30,18 @@ void fn_8003D4FC(OMOBJ *outViewObj)
     float rotY = lbl_80266A40.y;
     float rotZ = lbl_80266A40.z;
     cameraPos.x =
-        lbl_80266A4C.x+(lbl_802C028C*(sin(3.141592653589793*rotY/180.0)
-        *cos(3.141592653589793*rotX/180.0)));
-    cameraPos.y = lbl_80266A4C.y+(lbl_802C028C*-sin(3.141592653589793*rotX/180.0));
+        lbl_80266A4C.x+(lbl_802C028C*(sin(M_PI*rotY/180.0)
+        *cos(M_PI*rotX/180.0)));
+    cameraPos.y = lbl_80266A4C.y+(lbl_802C028C*-sin(M_PI*rotX/180.0));
     cameraPos.z =
-        lbl_80266A4C.z+(lbl_802C028C*(cos(3.141592653589793*rotY/180.0)
-        *cos(3.141592653589793*rotX/180.0)));
+        lbl_80266A4C.z+(lbl_802C028C*(cos(M_PI*rotY/180.0)
+        *cos(M_PI*rotX/180.0)));
     cameraTarget.x = lbl_80266A4C.x;
     cameraTarget.y = lbl_80266A4C.y;
     cameraTarget.z = lbl_80266A4C.z;
-    rotatedUp.x = sin(3.141592653589793*rotY/180.0)*sin(3.141592653589793*rotX/180.0);
-    rotatedUp.y = cos(3.141592653589793*rotX/180.0);
-    rotatedUp.z = cos(3.141592653589793*rotY/180.0)*sin(3.141592653589793*rotX/180.0);
+    rotatedUp.x = sin(M_PI*rotY/180.0)*sin(M_PI*rotX/180.0);
+    rotatedUp.y = cos(M_PI*rotX/180.0);
+    rotatedUp.z = cos(M_PI*rotY/180.0)*sin(M_PI*rotX/180.0);
     VECSubtract(&cameraPos, &cameraTarget, &viewDir);
     if(viewDir.x == 0.0 && viewDir.y == 0.0 && viewDir.z == 0.0) {
         viewDir.z = 1;
@@ -56,26 +50,26 @@ void fn_8003D4FC(OMOBJ *outViewObj)
     // Apply Rodrigues' rotation to rotate the elevation-derived up vector around the normalized
     // view direction by rotZ; the result is normalized immediately afterward.
     cameraUp.x = (rotatedUp.x*((viewDir.x*viewDir.x)+((1.0f-(viewDir.x
-        * viewDir.x))*cos(3.141592653589793*rotZ/180.0))))
-        + (rotatedUp.y*(((viewDir.x*viewDir.y)*(1.0-cos(3.141592653589793*rotZ/180.0)))
-            -(viewDir.z*sin(3.141592653589793*rotZ/180.0))))
-        + (rotatedUp.z*(((viewDir.x*viewDir.z)*(1.0-cos(3.141592653589793*rotZ/180.0)))
-            +(viewDir.y*sin(3.141592653589793*rotZ/180.0))));
+        * viewDir.x))*cos(M_PI*rotZ/180.0))))
+        + (rotatedUp.y*(((viewDir.x*viewDir.y)*(1.0-cos(M_PI*rotZ/180.0)))
+            -(viewDir.z*sin(M_PI*rotZ/180.0))))
+        + (rotatedUp.z*(((viewDir.x*viewDir.z)*(1.0-cos(M_PI*rotZ/180.0)))
+            +(viewDir.y*sin(M_PI*rotZ/180.0))));
     cameraUp.y = (rotatedUp.y*((viewDir.y*viewDir.y)+((1.0f-(viewDir.y
-        * viewDir.y))*cos(3.141592653589793*rotZ/180.0))))
-        + (rotatedUp.x*(((viewDir.x*viewDir.y)*(1.0-cos(3.141592653589793*rotZ/180.0)))
-            +(viewDir.z*sin(3.141592653589793*rotZ/180.0))))
-        + (rotatedUp.z*(((viewDir.y*viewDir.z)*(1.0-cos(3.141592653589793*rotZ/180.0)))
-            -(viewDir.x*sin(3.141592653589793*rotZ/180.0))));
+        * viewDir.y))*cos(M_PI*rotZ/180.0))))
+        + (rotatedUp.x*(((viewDir.x*viewDir.y)*(1.0-cos(M_PI*rotZ/180.0)))
+            +(viewDir.z*sin(M_PI*rotZ/180.0))))
+        + (rotatedUp.z*(((viewDir.y*viewDir.z)*(1.0-cos(M_PI*rotZ/180.0)))
+            -(viewDir.x*sin(M_PI*rotZ/180.0))));
     cameraUp.z = (rotatedUp.z *
                   ((viewDir.z * viewDir.z)
-                      + ((1.0f - (viewDir.z * viewDir.z)) * cos(3.141592653589793*rotZ/180.0)))) +
+                      + ((1.0f - (viewDir.z * viewDir.z)) * cos(M_PI*rotZ/180.0)))) +
                  ((rotatedUp.x *
-                   (((viewDir.x * viewDir.z) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                       - (viewDir.y * sin(3.141592653589793*rotZ/180.0)))) +
+                   (((viewDir.x * viewDir.z) * (1.0 - cos(M_PI*rotZ/180.0)))
+                       - (viewDir.y * sin(M_PI*rotZ/180.0)))) +
                   (rotatedUp.y *
-                   (((viewDir.y * viewDir.z) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                       + (viewDir.x * sin(3.141592653589793*rotZ/180.0)))));
+                   (((viewDir.y * viewDir.z) * (1.0 - cos(M_PI*rotZ/180.0)))
+                       + (viewDir.x * sin(M_PI*rotZ/180.0)))));
     VECNormalize(&cameraUp, &cameraUp);
     Hu3DCameraPosSet((1 << 0), cameraPos.x, cameraPos.y, cameraPos.z, cameraUp.x, cameraUp.y,
                      cameraUp.z, cameraTarget.x, cameraTarget.y, cameraTarget.z);
@@ -96,24 +90,24 @@ void fn_8003DAA4(OMOBJ *outViewObj)
         float rotZ = lbl_80266A58[cameraIndex].z;
         cameraPos.x =
             lbl_80266B18[cameraIndex].x+(lbl_80266BD8[cameraIndex]
-                *(sin(3.141592653589793*rotY/180.0)*cos(3.141592653589793*rotX/180.0)));
+                *(sin(M_PI*rotY/180.0)*cos(M_PI*rotX/180.0)));
         cameraPos.y =
             lbl_80266B18[cameraIndex].y
-            +(lbl_80266BD8[cameraIndex]*-sin(3.141592653589793*rotX/180.0));
+            +(lbl_80266BD8[cameraIndex]*-sin(M_PI*rotX/180.0));
         cameraPos.z =
             lbl_80266B18[cameraIndex].z+(lbl_80266BD8[cameraIndex]
-                *(cos(3.141592653589793*rotY/180.0)*cos(3.141592653589793*rotX/180.0)));
+                *(cos(M_PI*rotY/180.0)*cos(M_PI*rotX/180.0)));
         cameraTarget.x = lbl_80266B18[cameraIndex].x;
         cameraTarget.y = lbl_80266B18[cameraIndex].y;
         cameraTarget.z = lbl_80266B18[cameraIndex].z;
         // These values are copied to rotatedUp below; cameraUp is overwritten by the roll
         // rotation that follows.
-        cameraUp.x = sin(3.141592653589793*rotY/180.0) * sin(3.141592653589793*rotX/180.0);
-        cameraUp.y = cos(3.141592653589793*rotX/180.0);
-        cameraUp.z = cos(3.141592653589793*rotY/180.0)*sin(3.141592653589793*rotX/180.0);
-        rotatedUp.x = sin(3.141592653589793*rotY/180.0)*sin(3.141592653589793*rotX/180.0);
-        rotatedUp.y = cos(3.141592653589793*rotX/180.0);
-        rotatedUp.z = cos(3.141592653589793*rotY/180.0)*sin(3.141592653589793*rotX/180.0);
+        cameraUp.x = sin(M_PI*rotY/180.0) * sin(M_PI*rotX/180.0);
+        cameraUp.y = cos(M_PI*rotX/180.0);
+        cameraUp.z = cos(M_PI*rotY/180.0)*sin(M_PI*rotX/180.0);
+        rotatedUp.x = sin(M_PI*rotY/180.0)*sin(M_PI*rotX/180.0);
+        rotatedUp.y = cos(M_PI*rotX/180.0);
+        rotatedUp.z = cos(M_PI*rotY/180.0)*sin(M_PI*rotX/180.0);
         VECSubtract(&cameraPos, &cameraTarget, &viewDir);
         VECNormalize(&viewDir, &viewDir);
         // Apply Rodrigues' rotation to rotate the elevation-derived up vector around the normalized
@@ -121,33 +115,33 @@ void fn_8003DAA4(OMOBJ *outViewObj)
         cameraUp.x =
             (rotatedUp.x *
              ((viewDir.x * viewDir.x)
-                 + ((1.0f - (viewDir.x * viewDir.x)) * cos(3.141592653589793*rotZ/180.0)))) +
+                 + ((1.0f - (viewDir.x * viewDir.x)) * cos(M_PI*rotZ/180.0)))) +
             (rotatedUp.y *
-             (((viewDir.x * viewDir.y) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                 - (viewDir.z * sin(3.141592653589793*rotZ/180.0)))) +
+             (((viewDir.x * viewDir.y) * (1.0 - cos(M_PI*rotZ/180.0)))
+                 - (viewDir.z * sin(M_PI*rotZ/180.0)))) +
             (rotatedUp.z *
-             (((viewDir.x * viewDir.z) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                 + (viewDir.y * sin(3.141592653589793*rotZ/180.0))));
+             (((viewDir.x * viewDir.z) * (1.0 - cos(M_PI*rotZ/180.0)))
+                 + (viewDir.y * sin(M_PI*rotZ/180.0))));
         cameraUp.y =
             (rotatedUp.y *
              ((viewDir.y * viewDir.y)
-                 + ((1.0f - (viewDir.y * viewDir.y)) * cos(3.141592653589793*rotZ/180.0)))) +
+                 + ((1.0f - (viewDir.y * viewDir.y)) * cos(M_PI*rotZ/180.0)))) +
             (rotatedUp.x *
-             (((viewDir.x * viewDir.y) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                 + (viewDir.z * sin(3.141592653589793*rotZ/180.0)))) +
+             (((viewDir.x * viewDir.y) * (1.0 - cos(M_PI*rotZ/180.0)))
+                 + (viewDir.z * sin(M_PI*rotZ/180.0)))) +
             (rotatedUp.z *
-             (((viewDir.y * viewDir.z) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                 - (viewDir.x * sin(3.141592653589793*rotZ/180.0))));
+             (((viewDir.y * viewDir.z) * (1.0 - cos(M_PI*rotZ/180.0)))
+                 - (viewDir.x * sin(M_PI*rotZ/180.0))));
         cameraUp.z =
             (rotatedUp.z *
              ((viewDir.z * viewDir.z)
-                 + ((1.0f - (viewDir.z * viewDir.z)) * cos(3.141592653589793*rotZ/180.0)))) +
+                 + ((1.0f - (viewDir.z * viewDir.z)) * cos(M_PI*rotZ/180.0)))) +
             ((rotatedUp.x *
-              (((viewDir.x * viewDir.z) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                  - (viewDir.y * sin(3.141592653589793*rotZ/180.0)))) +
+              (((viewDir.x * viewDir.z) * (1.0 - cos(M_PI*rotZ/180.0)))
+                  - (viewDir.y * sin(M_PI*rotZ/180.0)))) +
              (rotatedUp.y *
-              (((viewDir.y * viewDir.z) * (1.0 - cos(3.141592653589793*rotZ/180.0)))
-                  + (viewDir.x * sin(3.141592653589793*rotZ/180.0)))));
+              (((viewDir.y * viewDir.z) * (1.0 - cos(M_PI*rotZ/180.0)))
+                  + (viewDir.x * sin(M_PI*rotZ/180.0)))));
         VECNormalize(&cameraUp, &cameraUp);
         Hu3DCameraPosSetV(((1 << 0) << cameraIndex), &cameraPos, &cameraUp, &cameraTarget);
     }
@@ -472,22 +466,22 @@ static void CameraMoveProc(void)
         // for the first half and sine-of-sine easing for the second half.
         if(viewWork->interpolationType == 0) {
             angle =
-                sin(3.141592653589793*(90.0f*((float)frame/(float)viewWork->durationFrames))/180.0);
-            weight = sin(3.141592653589793*(90.0f*angle)/180.0);
+                sin(M_PI*(90.0f*((float)frame/(float)viewWork->durationFrames))/180.0);
+            weight = sin(M_PI*(90.0f*angle)/180.0);
         } else if(viewWork->interpolationType == 1) {
             weight =
-                1-cos(3.141592653589793*(90.0f*((float)frame/(float)viewWork->durationFrames))
+                1-cos(M_PI*(90.0f*((float)frame/(float)viewWork->durationFrames))
                 /180.0);
         } else if(viewWork->interpolationType == 2) {
             weight = (float)frame/(float)viewWork->durationFrames;
         } else if(viewWork->durationFrames/2 > frame) {
             angle = (float)frame/(float)(viewWork->durationFrames/2.0);
-            weight = 0.5*(1-cos(3.141592653589793*(90.0f*angle)/180.0));
+            weight = 0.5*(1-cos(M_PI*(90.0f*angle)/180.0));
         } else {
             angle = (float) (frame - (viewWork->durationFrames / 2)) /
                     (float) (viewWork->durationFrames / 2.0);
             weight =
-                0.5+(0.5*sin(3.141592653589793*(90.0*sin(3.141592653589793*(90.0f*angle)/180.0))
+                0.5+(0.5*sin(M_PI*(90.0*sin(M_PI*(90.0f*angle)/180.0))
                 /180.0));
         }
         zoomFrame = zoomStart+(weight*(viewWork->zoomTarget-zoomStart));

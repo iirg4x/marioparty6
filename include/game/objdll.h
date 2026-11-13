@@ -20,7 +20,6 @@ void omDLLEnd(s16 dll, s16 reloadF);
 
 OMDLLINFO *omDLLLink(OMDLLINFO **dllInfoP, s16 dllno, s16 prologF);
 void omDLLUnlink(OMDLLINFO *dllInfo, s16 epilogF);
-s32 omDLLSearch(s16 dllno);
 void omDLLInfoDump(OSModuleInfo *module);
 void omDLLHeaderDump(OSModuleHeader *module);
 

@@ -1,5 +1,4 @@
 /* Evaluates HSF cluster animation and applies its vertex deformation to models. */
-#define _MATH_H
 #include "game/ClusterExec.h"
 #include "game/EnvelopeExec.h"
 #include "game/hu3d.h"
@@ -63,9 +62,9 @@ static void SetClusterMain(HSF_CLUSTER *cluster) {
             for (vertexIndex = 0; vertexIndex < clusterPart->num;
                  vertexIndex++, partVertexIndex++) {
                 modelVertexIndex = *partVertexIndex;
-                Vertextop[modelVertexIndex].x = ((Vec*) vertexBuffer->data)[vertexIndex].x;
-                Vertextop[modelVertexIndex].y = ((Vec*) vertexBuffer->data)[vertexIndex].y;
-                Vertextop[modelVertexIndex].z = ((Vec*) vertexBuffer->data)[vertexIndex].z;
+                Vertextop[modelVertexIndex].x = vertexBuffer->positions[vertexIndex].x;
+                Vertextop[modelVertexIndex].y = vertexBuffer->positions[vertexIndex].y;
+                Vertextop[modelVertexIndex].z = vertexBuffer->positions[vertexIndex].z;
             }
             /* Vertex 0 is the starting shape; later weights are clamped at zero and, when total
              * authored weight exceeds one, divided by that total. */
@@ -82,13 +81,13 @@ static void SetClusterMain(HSF_CLUSTER *cluster) {
                      clusterVertexIndex++, partVertexIndex++) {
                     modelVertexIndex = *partVertexIndex;
                     Vertextop[modelVertexIndex].x +=
-                        blendAmount * (((Vec *) vertexBuffer->data)[clusterVertexIndex].x -
+                        blendAmount * (vertexBuffer->positions[clusterVertexIndex].x -
                                        Vertextop[modelVertexIndex].x);
                     Vertextop[modelVertexIndex].y +=
-                        blendAmount * (((Vec *) vertexBuffer->data)[clusterVertexIndex].y -
+                        blendAmount * (vertexBuffer->positions[clusterVertexIndex].y -
                                        Vertextop[modelVertexIndex].y);
                     Vertextop[modelVertexIndex].z +=
-                        blendAmount * (((Vec *) vertexBuffer->data)[clusterVertexIndex].z -
+                        blendAmount * (vertexBuffer->positions[clusterVertexIndex].z -
                                        Vertextop[modelVertexIndex].z);
                 }
             }
@@ -107,17 +106,17 @@ static void SetClusterMain(HSF_CLUSTER *cluster) {
         for (vertexIndex = 0; vertexIndex < clusterPart->num; vertexIndex++, partVertexIndex++) {
             modelVertexIndex = *partVertexIndex;
             Vertextop[modelVertexIndex].x =
-                ((Vec *) vertexBuffer->data)[vertexIndex].x +
-                blendAmount * (((Vec *) nextVertexBuffer->data)[vertexIndex].x -
-                               ((Vec *) vertexBuffer->data)[vertexIndex].x);
+                vertexBuffer->positions[vertexIndex].x +
+                blendAmount * (nextVertexBuffer->positions[vertexIndex].x -
+                               vertexBuffer->positions[vertexIndex].x);
             Vertextop[modelVertexIndex].y =
-                ((Vec *) vertexBuffer->data)[vertexIndex].y +
-                blendAmount * (((Vec *) nextVertexBuffer->data)[vertexIndex].y -
-                               ((Vec *) vertexBuffer->data)[vertexIndex].y);
+                vertexBuffer->positions[vertexIndex].y +
+                blendAmount * (nextVertexBuffer->positions[vertexIndex].y -
+                               vertexBuffer->positions[vertexIndex].y);
             Vertextop[modelVertexIndex].z =
-                ((Vec *) vertexBuffer->data)[vertexIndex].z +
-                blendAmount * (((Vec *) nextVertexBuffer->data)[vertexIndex].z -
-                               ((Vec *) vertexBuffer->data)[vertexIndex].z);
+                vertexBuffer->positions[vertexIndex].z +
+                blendAmount * (nextVertexBuffer->positions[vertexIndex].z -
+                               vertexBuffer->positions[vertexIndex].z);
         }
     }
 }
@@ -152,9 +151,9 @@ void ClusterProc(HU3D_MODEL *modelP) {
                          * cluster deformation. */
                         for (vertexIndex = 0; vertexIndex < obj->mesh.vertex->count;
                              vertexIndex++) {
-                            Vertextop[vertexIndex].x = ((Vec*) obj->mesh.vtxtop)[vertexIndex].x;
-                            Vertextop[vertexIndex].y = ((Vec*) obj->mesh.vtxtop)[vertexIndex].y;
-                            Vertextop[vertexIndex].z = ((Vec*) obj->mesh.vtxtop)[vertexIndex].z;
+                            Vertextop[vertexIndex].x = obj->mesh.vtxtop[vertexIndex].x;
+                            Vertextop[vertexIndex].y = obj->mesh.vtxtop[vertexIndex].y;
+                            Vertextop[vertexIndex].z = obj->mesh.vtxtop[vertexIndex].z;
                         }
                     }
                     SetClusterMain(cluster);

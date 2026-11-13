@@ -1,16 +1,17 @@
 /* Manages HSF texture animation, texture scrolling, particles, water rendering, and model
  * lifetimes. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-#define PARTICLE_DISPLAY_LIST_MAX_SIZE 131072
-double sin(double x);
-double cos(double x);
+#include <math.h>
+#include "game/process.h"
+#include "datanum/effect.h"
+#include "game/disp.h"
 #include "game/hu3d.h"
 #include "game/sprite.h"
 #include "game/init.h"
 #include "game/main.h"
 
 #include "string.h"
+
+#define PARTICLE_DISPLAY_LIST_MAX_SIZE 131072
 
 HU3D_TEXANIM Hu3DTexAnimData[256];
 HU3D_TEXSCROLL Hu3DTexScrData[16];
@@ -983,8 +984,6 @@ static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
-#include "game/process.h"
-
 static HUPROCESS *parManProc[64];
 
 static float jitterTbl[] = {
@@ -1341,8 +1340,8 @@ static void ParManFunc()
                             VECCrossProduct(&dir, &vecDir, &up);
                         }
                         VECNormalize(&up, &up);
-                        s = sin(3.141592653589793*upRot/180.0);
-                        c = cos(3.141592653589793*upRot/180.0);
+                        s = sin(M_PI*upRot/180.0);
+                        c = cos(M_PI*upRot/180.0);
                         dir.x = up.x * (vecDir.x * vecDir.x + c * (1.0f - vecDir.x * vecDir.x))
                             + up.y * (vecDir.x * vecDir.y * (1.0f - c) - vecDir.z * s)
                             + up.z * (vecDir.x * vecDir.z * (1.0f - c) + vecDir.y * s);
@@ -1353,8 +1352,8 @@ static void ParManFunc()
                             + up.y * (vecDir.y * vecDir.z * (1.0f - c) + vecDir.x * s)
                             + up.z * (vecDir.z * vecDir.z + c * (1.0f - vecDir.z * vecDir.z));
                         VECCrossProduct(&dir, &vecDir, &up);
-                        s = sin(3.141592653589793*rot/180.0);
-                        c = cos(3.141592653589793*rot/180.0);
+                        s = sin(M_PI*rot/180.0);
+                        c = cos(M_PI*rot/180.0);
                         dir.x = vecDir.x * (up.x * up.x + c * (1.0f - up.x * up.x))
                             + vecDir.y * (up.x * up.y * (1.0f - c) - up.z * s)
                             + vecDir.z * (up.x * up.z * (1.0f - c) + up.y * s);
@@ -1472,9 +1471,6 @@ static void ParManHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx mtx)
         DCStoreRangeNoSync(particleP->data, particleP->maxCnt*sizeof(HU3D_PARTICLE_DATA));
     }
 }
-
-#include "datanum/effect.h"
-#include "game/disp.h"
 
 HU3D_WATER lbl_80264C78;
 
@@ -1990,7 +1986,7 @@ static void DrawWave(HU3D_WATER *waterP, s16 waveNo)
     GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_NONE);
     GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_NONE);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-    len = sin(3.141592653589793*(((float)waveP->time/waterP->maxTime)*90.0)/180.0);
+    len = sin(M_PI*(((float)waveP->time/waterP->maxTime)*90.0)/180.0);
     max = waveP->pos;
     min = max;
     size = (0.5*waveP->radius)+(0.5*(len*(waveP->radiusMax-waveP->radius)));

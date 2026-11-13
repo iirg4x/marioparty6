@@ -5,6 +5,7 @@
 #include "game/init.h"
 
 #include "dolphin/mtx.h"
+#include "humath.h"
 
 #define HUSPR_ORDER_MAX 768
 
@@ -866,7 +867,7 @@ void HuSpr3DSet(HUSPRID sprId)
     data3D->rot.x = data3D->rot.y = data3D->rot.z = 0;
     data3D->col = columnCount;
     data3D->row = rowCount;
-    data3D->depthScale = 2*sin(3.141592653589793*30/180.0);
+    data3D->depthScale = 2*sin(M_PI*30/180.0);
 }
 
 /* Sprite clients set custom mesh rotation here when per-sprite 3D data is present. */
@@ -887,7 +888,7 @@ void HuSpr3DFovSet(HUSPRID sprId, float fov)
     HUSPRITE *sprite = &HuSprData[sprId];
     HUSPR_3DDATA *data3D = sprite->data3D;
     if(data3D) {
-        data3D->depthScale = 2*sin(3.141592653589793*(fov/2)/180.0);
+        data3D->depthScale = 2*sin(M_PI*(fov/2)/180.0);
     }
 }
 

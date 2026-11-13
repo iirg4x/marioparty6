@@ -1,6 +1,6 @@
 /* Sprite drawing setup, texture upload, and layered 2D/3D sprite rendering. */
-#define _MATH_H
 #include "game/sprite.h"
+#include "game/sprput.h"
 #include "game/init.h"
 #include "game/hu3d.h"
 #include "game/disp.h"
@@ -8,8 +8,6 @@
 #include "dolphin/gx.h"
 #include "dolphin/vi.h"
 
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, GXTexWrapMode wrapT,
-                  GXTexFilter filter);
 ;
 
 typedef struct HuSprLayer_s {
@@ -22,8 +20,6 @@ static void *bmpNoCC[8];
 static HUSPR_LAYER HuSprLayer[16];
 
 static s16 bmpCCIdx;
-
-void mtxTransCat(Mtx matrix, float x, float y, float z);
 
 static void HuSprLayerHook(s16 layer);
 

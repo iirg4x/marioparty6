@@ -2655,7 +2655,7 @@ void mbDiceSNpcNumDispSet(OMOBJ *obj, BOOL dispF)
     ((DICE_SNPC_NUM_WORK *)(&(obj->work[0])))->dispF = dispF;
 }
 
-void mbDiceSNpcNumSet(OMOBJ *obj, u8 value)
+void mbDiceSNpcNumSet(OMOBJ *obj, int value)
 {
     ((DICE_SNPC_NUM_WORK *)(&(obj->work[0])))->value = (u8)value;
 }

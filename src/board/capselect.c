@@ -4,11 +4,17 @@
 
 #include "game/board/audio.h"
 #include "game/board/camera.h"
+#include "game/board/capevent.h"
+#include "game/board/capselect.h"
+#include "game/board/capsule.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/pause.h"
 #include "game/board/player.h"
+#include "game/board/scroll.h"
+#include "game/board/single.h"
 #include "game/board/status.h"
+#include "game/board/telop.h"
 #include "game/board/tutorial.h"
 #include "game/board/window.h"
 
@@ -40,25 +46,6 @@ enum {
     CAPMASU_OBJECT_PRIORITY = 260,
 };
 
-extern int mbCapObjCreate(int capsuleNo, BOOL flag);
-extern void mbCapObjKill(int objId);
-extern int mbCapUse(int playerNo, int capsuleNo);
-extern int mbCapUseMesGet(int capsuleNo);
-extern s16 mbCapUseModeGet(s16 capsuleNo);
-extern void mbCapNumInc(int capsuleNo, int mode);
-extern int mbCapSelectComGet(int playerNo, int *capsuleTbl,
-    int capsuleNum);
-extern int mbCapSelectDeleteComGet(int playerNo, int *capsuleTbl,
-    int capsuleNum);
-extern int mbCapMasuNextGet(int playerNo);
-extern int mbCapDescWinCreate(int capsuleNo);
-extern int mbSingleCall(int mode, int arg);
-extern s8 mbPadStkXGet(s32 playerNo);
-extern void mbev_Scroll(int playerNo, BOOL mapF);
-extern OMOBJ *mbev_CapEffExplodeCreate(void);
-extern void mbev_CapEffDustExplodeAdd(OMOBJ *obj, HuVecF *pos);
-extern int mbev_CapEffExplodeAnimGet(OMOBJ *obj);
-extern void mbev_CapEffExplodeKill(OMOBJ *obj);
 extern int Hu3D3Dto2D(HuVecF *src, s16 cameraBit, HuVecF *dst);
 
 static HUPROCESS *ev_CapSelectShrinkProc[4] = { NULL, NULL, NULL, NULL };
@@ -109,27 +96,21 @@ typedef struct CapSelectShrinkWork_s {
     HuVecF ringPositions[6]; /* Starting positions on the selection ring. */
 } CAPSELECTSHRINKWORK;
 
-int mbCapSelect(void);
 int mbCapDelete(int capsuleNo, BOOL repeatF);
 static void CapSelect(CAPSELECTWORK *work);
 float mbCapSelectGrow(HuVecF *start, HuVecF *end, MBMODELID modelId,
     float weight, float baseScale);
 static int CapSelectPadExec(CAPSELECTWORK *work);
-void mbCapSelectResultSet(int playerNo, int objId, int result);
-void mbCapSelectResultGet(int playerNo, int *objId, int *result);
-void mbCapSelectResultReset(int playerNo);
 static void CapSelectShrinkCreate(int playerNo, int objId,
     CAPSELECTWORK *selectWork, HuVecF *start, HuVecF *end);
 static void CapSelectShrink(void);
 static void CapSelectShrinkDestroy(void);
-BOOL mbCapSelectShrinkCheck(int playerNo);
 static void CapSelectStoryFSet(BOOL storyF);
 static void CapSelectExtraCapsuleGet(int playerNo, int capsuleNo);
 static int CapSelectCapsuleGet(int playerNo, int selectNo);
 static int CapSelectNumGet(int playerNo);
 static int CapSelectComGet(int playerNo, BOOL deleteF);
 void mbCapMasuExec(int playerNo, int masuId);
-void mbCapCapsuleGet(int playerNo, int capsuleNo);
 static int CapHelpWinCreate(int capsuleNo, BOOL deleteF);
 
 void mbCapMasuObjCreateAll(void);
@@ -276,7 +257,7 @@ retry:
             } else {
                 mbCapSelectResultGet(playerNo, &objId, &result);
                 mbObjPosGet(objId, &pos);
-                mbAudFXPlay(1021);
+                mbAudFXPlay(MSM_SE_BRD00_CAPSULE_DISCARD_EXPLODE);
                 effectObj = mbev_CapEffExplodeCreate();
                 dustPos = pos;
                 dustPositionPtr = &dustPos;
@@ -398,10 +379,10 @@ static void CapSelect(CAPSELECTWORK *work)
     for (i = 0; i < work->capsuleNum; i++) {
         angleTbl[i] = 360.0f - (i * (360.0f / work->capsuleNum));
         end[i].x = center.x
-            + (125.0 * sin((3.141592653589793 * (baseAngle + angleTbl[i])) / 180.0));
+            + (125.0 * sin((M_PI * (baseAngle + angleTbl[i])) / 180.0));
         end[i].y = center.y + 150.0f;
         end[i].z = center.z
-            + (125.0 * cos((3.141592653589793 * (baseAngle + angleTbl[i])) / 180.0));
+            + (125.0 * cos((M_PI * (baseAngle + angleTbl[i])) / 180.0));
         start[i] = playerPos;
         if (retainedObjectId != -1 && retainedChoiceIndex == i) {
             work->objId[i] = retainedObjectId;
@@ -431,7 +412,7 @@ static void CapSelect(CAPSELECTWORK *work)
             espZRotSet(work->arrowSprId[i], 360.0f);
         }
     }
-    mbAudFXPlay(1025);
+    mbAudFXPlay(MSM_SE_BRD00_CAPSULE_SELECT_OPEN);
     for (i = 0; i <= 12U; i++) {
         weight = i / 12.0f;
         for (j = 0; j < work->capsuleNum; j++) {
@@ -515,11 +496,11 @@ static void CapSelect(CAPSELECTWORK *work)
                 weight = i / 12.0f;
                 for (j = 0; j < work->capsuleNum; j++) {
                     end[j].x = center.x
-                        + (125.0 * sin((3.141592653589793 * (baseAngle + angleTbl[j]
+                        + (125.0 * sin((M_PI * (baseAngle + angleTbl[j]
                         + (weight * angleStep))) / 180.0));
                     end[j].y = center.y + 150.0f;
                     end[j].z = center.z
-                        + (125.0 * cos((3.141592653589793 * (baseAngle + angleTbl[j]
+                        + (125.0 * cos((M_PI * (baseAngle + angleTbl[j]
                         + (weight * angleStep))) / 180.0));
                     mbObjPosSetV(work->objId[j], &end[j]);
                     scale = work->scale[j];
@@ -572,11 +553,11 @@ static void CapSelect(CAPSELECTWORK *work)
         }
         scale = work->scale[work->selectNo]
             * (1.0 + (0.2f * fabs(sin(
-            (3.141592653589793 * ((90.0f * work->pulseAngle) / 12.0f)) / 180.0))));
+            (M_PI * ((90.0f * work->pulseAngle) / 12.0f)) / 180.0))));
         mbObjScaleSet(work->objId[work->selectNo], scale, scale, scale);
         for (i = 0; i < 2; i++) {
             scale = 0.5 + (0.1f * fabs(sin(
-                (3.141592653589793 * ((90.0f * work->pulseAngle) / 12.0f)) / 180.0)));
+                (M_PI * ((90.0f * work->pulseAngle) / 12.0f)) / 180.0)));
             espScaleSet(work->arrowSprId[i], scale, scale);
         }
         work->pulseAngle++;
@@ -601,7 +582,7 @@ static void CapSelect(CAPSELECTWORK *work)
     }
     mbCapSelectResultGet(playerNo, &retainedObjectId, &retainedChoiceIndex);
     ev_CapSelectMdlId = retainedObjectId;
-    mbAudFXPlay(1026);
+    mbAudFXPlay(MSM_SE_BRD00_CAPSULE_SELECT_CHOSEN);
     CapSelectShrinkCreate(playerNo, retainedObjectId, work, start, end);
     for (i = 0; i < 3; i++) {
         if (work->winId[i] >= 0) {
@@ -632,7 +613,7 @@ float mbCapSelectGrow(HuVecF *start, HuVecF *end, MBMODELID modelId,
     float weight, float baseScale)
 {
     HuVecF pos;
-    float scale = sin((3.141592653589793 * (90.0f * weight)) / 180.0);
+    float scale = sin((M_PI * (90.0f * weight)) / 180.0);
 
     pos.y = start->y + (scale * (end->y - start->y));
     pos.x = start->x + (weight * (end->x - start->x));
@@ -689,14 +670,14 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
         return move;
     }
     if ((activeButtons & PAD_BUTTON_LEFT) && work->capsuleNum > 1) {
-        mbAudFXPlay(0);
+        mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
         if (--work->selectNo < 0) {
             work->selectNo = work->capsuleNum - 1;
         }
         move = -1;
     }
     if ((activeButtons & PAD_BUTTON_RIGHT) && work->capsuleNum > 1) {
-        mbAudFXPlay(0);
+        mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
         if (++work->selectNo >= work->capsuleNum) {
             work->selectNo = 0;
         }
@@ -704,25 +685,25 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
     }
     if (activeButtons & PAD_BUTTON_A) {
         ev_CapSelectValue[playerNo] = -8;
-        mbAudFXPlay(1);
+        mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
         return move;
     }
     if (activeButtons & PAD_BUTTON_Y) {
         partyF = lbl_80265B70.partyF;
         if (partyF) {
             ev_CapSelectValue[playerNo] = -4;
-            mbAudFXPlay(1);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
             return move;
         }
     }
     if (activeButtons & PAD_BUTTON_X) {
         ev_CapSelectValue[playerNo] = -3;
-        mbAudFXPlay(1);
+        mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
         return move;
     }
     if (activeButtons & PAD_BUTTON_B) {
         ev_CapSelectValue[playerNo] = -7;
-        mbAudFXPlay(3);
+        mbAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
         return move;
     }
     return move;
@@ -822,7 +803,7 @@ static void CapSelectShrink(void)
                 HuVecF pos;
                 float scale;
 
-                scale = sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0);
+                scale = sin((M_PI * (90.0f * (1.0f - weight))) / 180.0);
                 pos.y = ((float *)&work->playerPositions[i])[1]
                     + (scale * (((float *)&work->ringPositions[i])[1]
                     - ((float *)&work->playerPositions[i])[1]));
@@ -848,7 +829,7 @@ static void CapSelectShrink(void)
         HuVecF pos;
         float scale;
 
-        scale = sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0);
+        scale = sin((M_PI * (90.0f * (1.0f - weight))) / 180.0);
         pos.y = ((float *)&work->playerPositions[i])[1]
             + (scale * (((float *)&work->ringPositions[i])[1]
             - ((float *)&work->playerPositions[i])[1]));
@@ -1003,7 +984,7 @@ void mbCapMasuExec(int playerNo, int masuId)
     for (i = 0; i < 16; i++) {
         obj = ev_CapMasuOMObj[i];
         if (obj != NULL) {
-            work = ((CAPMASUWORK *)(obj->data));
+            work = obj->data;
             if (work->masuId == masuId) {
                 break;
             }
@@ -1081,7 +1062,7 @@ void mbCapMasuExec(int playerNo, int masuId)
             mbPlayerCapsuleAdd(playerNo, capsuleNo);
             mbCapNumInc(capsuleNo, FALSE);
             mbPlayerWinLoseVoicePlay(playerNo, 12,
-                573 + 6);
+                MSM_SE_CHARVOICE_HAPPY_CHEER);
             mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 8.0f, 0);
             winId = mbWinCreate(2, MESSNUM(MESS_CAPSULE_MASU, 3), -1);
             mbWinTopInsertMesSet(mbCapUseMesGet(deleteCapsuleNo), 0);
@@ -1095,7 +1076,7 @@ void mbCapMasuExec(int playerNo, int masuId)
     } else {
         mbPlayerCapsuleAdd(playerNo, capsuleNo);
         mbCapNumInc(capsuleNo, FALSE);
-        mbPlayerWinLoseVoicePlay(playerNo, 12, 573 + 6);
+        mbPlayerWinLoseVoicePlay(playerNo, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
         mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 8.0f, 0);
         winId = mbWinCreate(2, MESSNUM(MESS_CAPSULE_MASU, 0), -1);
         mbWinTopInsertMesSet(mbCapUseMesGet(capsuleNo), 0);
@@ -1217,24 +1198,24 @@ void mbCapCapsuleGet(int playerNo, int capsuleNo)
     }
     mbObjScaleSet(objId, 1.0f, 1.0f, 1.0f);
     HuPrcSleep(15);
-    mbAudFXPlay(1040);
+    mbAudFXPlay(MSM_SE_BRD00_MUSHROOM_ORBIT_SHRINK);
     for (i = 0; i < 33.0f; i++) {
         time = i / 33.0f;
-        scale = cos((3.141592653589793 * (90.0f * time)) / 180.0);
-        sinTime = sin((3.141592653589793 * (90.0f * time)) / 180.0);
+        scale = cos((M_PI * (90.0f * time)) / 180.0);
+        sinTime = sin((M_PI * (90.0f * time)) / 180.0);
         pos.x = playerPos.x + (2.0 * (100.0
-            * (sin((3.141592653589793 * (270.0f * sinTime)) / 180.0)
-            * sin((3.141592653589793 * (180.0f * time)) / 180.0))));
+            * (sin((M_PI * (270.0f * sinTime)) / 180.0)
+            * sin((M_PI * (180.0f * time)) / 180.0))));
         pos.z = playerPos.z + (2.0 * (100.0
-            * (cos((3.141592653589793 * (270.0f * sinTime)) / 180.0)
-            * sin((3.141592653589793 * (180.0f * time)) / 180.0))));
+            * (cos((M_PI * (270.0f * sinTime)) / 180.0)
+            * sin((M_PI * (180.0f * time)) / 180.0))));
         pos.y = playerPos.y - (1.5 * (100.0
-            * sin((3.141592653589793 * (90.0f * time)) / 180.0)));
+            * sin((M_PI * (90.0f * time)) / 180.0)));
         mbObjPosSetV(objId, &pos);
         mbObjScaleSet(objId, scale, scale, scale);
         HuPrcVSleep();
     }
-    mbAudFXPlay(1145);
+    mbAudFXPlay(MSM_SE_BRD00_CAPSULE_COLLECT_POP);
     mbCapObjKill(objId);
 }
 
@@ -1247,7 +1228,7 @@ void mbCapMasuDispSet(BOOL dispF)
 /* Per-frame callback that shows, hides, bobs, and scales a capsule-space model. */
 static void CapMasuOMExec(OMOBJ *obj)
 {
-    CAPMASUWORK *work = ((CAPMASUWORK *)(obj->data));
+    CAPMASUWORK *work = obj->data;
     int i;
 
     if (mbExitCheck() || ev_CapMasuOMObj[work->objNo] == NULL) {
@@ -1290,7 +1271,7 @@ static void CapMasuOMExec(OMOBJ *obj)
     }
     mbMasuPosGet(work->masuId, &work->pos);
     work->pos.y += (100.0f * work->scale)
-        + (work->scale * (10.0 * sin((3.141592653589793 * work->angle) / 180.0)));
+        + (work->scale * (10.0 * sin((M_PI * work->angle) / 180.0)));
     mbObjPosSetV(work->modelId, &work->pos);
     mbObjScaleSet(work->modelId, work->scale, work->scale, work->scale);
     if ((work->angle += 2) > 360) {

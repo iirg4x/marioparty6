@@ -1,5 +1,4 @@
 // Updates HSF mesh vertices from shape animation during the Hu3D model update.
-#define _MATH_H
 #include "game/ShapeExec.h"
 #include "game/EnvelopeExec.h"
 
@@ -25,9 +24,9 @@ static void SetShapeMain(HSF_OBJECT *obj) {
         shape = *obj->mesh.shape;
         for (shapeOrVertexIndex = 0; shapeOrVertexIndex < shape->count;
              shapeOrVertexIndex++) {
-            Vertextop[shapeOrVertexIndex].x = ((Vec*) shape->data)[shapeOrVertexIndex].x;
-            Vertextop[shapeOrVertexIndex].y = ((Vec*) shape->data)[shapeOrVertexIndex].y;
-            Vertextop[shapeOrVertexIndex].z = ((Vec*) shape->data)[shapeOrVertexIndex].z;
+            Vertextop[shapeOrVertexIndex].x = shape->positions[shapeOrVertexIndex].x;
+            Vertextop[shapeOrVertexIndex].y = shape->positions[shapeOrVertexIndex].y;
+            Vertextop[shapeOrVertexIndex].z = shape->positions[shapeOrVertexIndex].z;
         }
         // Negative weights are zeroed for blending but remain in the sum; if the sum exceeds 1,
         // each weight is divided by it before sequential blending.
@@ -42,11 +41,11 @@ static void SetShapeMain(HSF_OBJECT *obj) {
             }
             for (vertexIndex = 0; vertexIndex < shape->count; vertexIndex++) {
                 Vertextop[vertexIndex].x +=
-                    blendFactor * (((Vec *) shape->data)[vertexIndex].x - Vertextop[vertexIndex].x);
+                    blendFactor * (shape->positions[vertexIndex].x - Vertextop[vertexIndex].x);
                 Vertextop[vertexIndex].y +=
-                    blendFactor * (((Vec *) shape->data)[vertexIndex].y - Vertextop[vertexIndex].y);
+                    blendFactor * (shape->positions[vertexIndex].y - Vertextop[vertexIndex].y);
                 Vertextop[vertexIndex].z +=
-                    blendFactor * (((Vec *) shape->data)[vertexIndex].z - Vertextop[vertexIndex].z);
+                    blendFactor * (shape->positions[vertexIndex].z - Vertextop[vertexIndex].z);
             }
         }
     } else {
@@ -61,17 +60,17 @@ static void SetShapeMain(HSF_OBJECT *obj) {
         for (shapeOrVertexIndex = 0; shapeOrVertexIndex < shape->count;
              shapeOrVertexIndex++) {
             Vertextop[shapeOrVertexIndex].x =
-                ((Vec *) shape->data)[shapeOrVertexIndex].x +
-                blendFactor * (((Vec *) nextShape->data)[shapeOrVertexIndex].x -
-                               ((Vec *) shape->data)[shapeOrVertexIndex].x);
+                shape->positions[shapeOrVertexIndex].x +
+                blendFactor * (nextShape->positions[shapeOrVertexIndex].x -
+                               shape->positions[shapeOrVertexIndex].x);
             Vertextop[shapeOrVertexIndex].y =
-                ((Vec *) shape->data)[shapeOrVertexIndex].y +
-                blendFactor * (((Vec *) nextShape->data)[shapeOrVertexIndex].y -
-                               ((Vec *) shape->data)[shapeOrVertexIndex].y);
+                shape->positions[shapeOrVertexIndex].y +
+                blendFactor * (nextShape->positions[shapeOrVertexIndex].y -
+                               shape->positions[shapeOrVertexIndex].y);
             Vertextop[shapeOrVertexIndex].z =
-                ((Vec *) shape->data)[shapeOrVertexIndex].z +
-                blendFactor * (((Vec *) nextShape->data)[shapeOrVertexIndex].z -
-                               ((Vec *) shape->data)[shapeOrVertexIndex].z);
+                shape->positions[shapeOrVertexIndex].z +
+                blendFactor * (nextShape->positions[shapeOrVertexIndex].z -
+                               shape->positions[shapeOrVertexIndex].z);
         }
     }
 }

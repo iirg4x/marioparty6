@@ -1,12 +1,5 @@
 /* Message system for timers, minigame notices, pause prompts, and score boxes. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double);
-double cos(double);
-extern inline double fabs(double x)
-{
-   return __fabs(x);
-}
+#include <math.h>
 
 #include "game/gamemes.h"
 #include "game/process.h"
@@ -457,7 +450,7 @@ BOOL GameMesTimerExec(GAMEMES *message)
                         if(message->timerVal != message->dispValue) {
                             message->timerVal = message->dispValue;
                             if(message->dispValue <= 5) {
-                                HuAudFXPlay(6);
+                                HuAudFXPlay(MSM_SE_CMN_COUNTDOWN_TICK);
                                 message->subMode = TIMER_SUBMODE_DIGITUP;
                                 message->angle = 0;
                                 HuSprColorSet(spriteGroup, 0, 255, 112, 160);
@@ -507,8 +500,8 @@ BOOL GameMesTimerExec(GAMEMES *message)
             {
                 float scaleX, scaleY;
                 digitScale =
-                    fabs(((5*sin(3.141592653589793*message->angle/180.0))+1)
-                    -(sin(3.141592653589793*130/180.0)*5));
+                    fabs(((5*sin(M_PI*message->angle/180.0))+1)
+                    -(sin(M_PI*130/180.0)*5));
                 scaleX = message->scale.x*digitScale;
                 scaleY = message->scale.y*digitScale;
                 message->angle += 5.0f*GameMesVWait;
@@ -521,8 +514,8 @@ BOOL GameMesTimerExec(GAMEMES *message)
                 break;
 
             case TIMER_SUBMODE_DIGITUP:
-                digitScale = 1+sin(3.141592653589793*message->angle/180.0);
-                transparency = 1-(0.5*sin(3.141592653589793*message->angle/180.0));
+                digitScale = 1+sin(M_PI*message->angle/180.0);
+                transparency = 1-(0.5*sin(M_PI*message->angle/180.0));
                 message->angle += 18.0f*GameMesVWait;
                 if(message->angle > 180) {
                     message->subMode = GAMEMES_SUBMODE_NONE;
@@ -729,7 +722,7 @@ static void PauseExec(void)
     s16 mgNo;
     float time;
 
-    HuAudFXPlay(5);
+    HuAudFXPlay(MSM_SE_CMN_START_BUTTON_CONFIRM);
     for(i=0; i<GAMEMES_SPRMAX; i++) {
         mes.sprId[i] = mes.grpId[i] = HUSPR_NONE;
     }
@@ -763,7 +756,7 @@ static void PauseExec(void)
     }
     if(!instMes[1] && !instMes[2]) {
         for(i=1; i<=20; i++) {
-            time = sin(3.141592653589793*(i*(90.0f/20.0f))/180.0);
+            time = sin(M_PI*(i*(90.0f/20.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (290*time)-50);
             HuPrcVSleep();
         }
@@ -796,7 +789,7 @@ static void PauseExec(void)
                 }
             }
             for(i=1; i<=20; i++) {
-                time = sin(3.141592653589793*(i*(90.0f/20.0f))/180.0);
+                time = sin(M_PI*(i*(90.0f/20.0f))/180.0);
                 HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
                 HuWinPosSet(winId[0], (482*time)-400, 140);
                 HuWinPosSet(winId[1], (-318*time)+400, 272);
@@ -812,7 +805,7 @@ static void PauseExec(void)
             HuWinMesSpeedSet(winId[0], 0);
             HuWinMesSet(winId[0], instMes[1]);
             for(i=1; i<=20; i++) {
-                time = sin(3.141592653589793*(i*(90.0f/20.0f))/180.0);
+                time = sin(M_PI*(i*(90.0f/20.0f))/180.0);
                 HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
                 HuWinPosSet(winId[0], (482*time)-400, 170);
                 if(winId[2] != HUWIN_NONE) {
@@ -830,13 +823,13 @@ static void PauseExec(void)
     pauseWaitF = FALSE;
     if(winId[0] == HUWIN_NONE && winId[1] == HUWIN_NONE) {
         for(i=1; i<=10; i++) {
-            time = cos(3.141592653589793*(i*(90.0f/10.0f))/180.0);
+            time = cos(M_PI*(i*(90.0f/10.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (290*time)-50);
             HuPrcVSleep();
         }
     } else if(winId[1] != HUWIN_NONE) {
         for(i=1; i<=10; i++) {
-            time = cos(3.141592653589793*(i*(90.0f/10.0f))/180.0);
+            time = cos(M_PI*(i*(90.0f/10.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
             HuWinPosSet(winId[0], (482*time)-400, 140);
             HuWinPosSet(winId[1], (-318*time)+400, 272);
@@ -847,7 +840,7 @@ static void PauseExec(void)
         }
     } else {
         for(i=1; i<=10; i++) {
-            time = cos(3.141592653589793*(i*(90.0f/10.0f))/180.0);
+            time = cos(M_PI*(i*(90.0f/10.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
             HuWinPosSet(winId[0], (482*time)-400, 170);
             if(winId[2] != HUWIN_NONE) {
@@ -1050,7 +1043,7 @@ void GameMesExitCheck(OMOBJ *exitCheckObject)
         return;
     }
     if(lbl_802C0008[lbl_802C0260->work[1]] & PAD_TRIGGER_Z) {
-        HuAudFXPlay(3);
+        HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
         GameMesPauseCancel();
         fn_8003E3F0(FALSE);
         omSysExitReq = TRUE;

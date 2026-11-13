@@ -1,7 +1,5 @@
 /* Starts the game systems and runs the input, update, and render loop at the configured retrace
  * pace. */
-/* Prevent transitive inclusion of math.h; this file uses no math functions. */
-#define _MATH_H
 
 #include "game/main.h"
 #include "game/object.h"
@@ -19,14 +17,13 @@
 #include "game/memory.h"
 #include "game/wipe.h"
 #include "game/frand.h"
+#include "game/mic.h"
 
 #define RAND8_INITIAL_SEED 55789
 #define RAND8_SEED_MULTIPLIER 1103515245
 #define RAND8_SEED_INCREMENT 12345
 
 extern OVLTBL _ovltbl[];
-
-extern void HuMCSysInit(void);
 
 static void LoadProcExec(void *unusedParam);
 static void LoadProcWatch(void);

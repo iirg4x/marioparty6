@@ -25,9 +25,9 @@ static float MapCalcPoint(float x, float y, float z, HuVecF *vertices, u16 *poly
 static BOOL AreaCheck(float x, float z, u16 *polygonData, HuVecF *vertices);
 static s32 MapIflnnerTriangle(float x, float z, u16 *polygonData, HuVecF *vertices);
 static s32 MapIflnnerQuadrangle(float x, float z, u16 *polygonData, HuVecF *vertices);
-static BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
+BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
                                 float *localSphere);
-static s32 PrecalcPntToTriangle(HuVecF *triangleOrigin, HuVecF *firstEdge, HuVecF *secondEdge,
+s32 PrecalcPntToTriangle(HuVecF *triangleOrigin, HuVecF *firstEdge, HuVecF *secondEdge,
                                 HuVecF *faceNormal, HuVecF *relativePoint, HuVecF *closestOffset);
 static void DefSetHitFace(float x, float y, float z);
 
@@ -755,7 +755,7 @@ static inline s32 MapspaceInlineFunc03(float *sphere, s16 *vertexIndices, HuVecF
 
 // Called by MapWallCheck for one wall polygon; tests sphere overlap, records the contact and
 // accumulates horizontal separation. A positive plane-side result also checks OldXYZ.
-static BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
+BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
                                 float *localSphere) {
     HuVecF quadrangle[4];
     HuVecF triangle[3];
@@ -865,7 +865,7 @@ static BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *world
 // Called by both sphere hit tests to compute a closest-point offset from two triangle edges.
 // triangleOrigin is unused. Non-origin endpoint cases only redirect the local output
 // pointer, leaving the caller's vector unchanged; origin endpoint cases write zero.
-static s32 PrecalcPntToTriangle(HuVecF *triangleOrigin, HuVecF *firstEdge, HuVecF *secondEdge,
+s32 PrecalcPntToTriangle(HuVecF *triangleOrigin, HuVecF *firstEdge, HuVecF *secondEdge,
                                 HuVecF *faceNormal, HuVecF *relativePoint, HuVecF *closestOffset) {
     HuVecF projectionVector;
     HuVecF edgeOffset;
