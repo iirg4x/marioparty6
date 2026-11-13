@@ -1,5 +1,4 @@
 // Board window manager for message, choice, help, pause, and blank windows.
-#define _MATH_H
 
 #include "game/board/window.h"
 #include "game/board/main.h"
@@ -12,6 +11,7 @@
 #include "game/pad.h"
 
 #include "string.h"
+#include "game/board/player.h"
 
 #define MBWIN_PROCESS_PRIORITY 8207
 #define MBWIN_PROCESS_STACK_SIZE 16384
@@ -25,9 +25,6 @@ typedef struct MBWinSizeData_s {
 } MBWINSIZEDATA;
 
 extern HUPROCESS *mbMainProc;
-extern void *fn_802137C0(s32 size);
-extern void mbConfigPadDisableSet(BOOL disableF);
-extern BOOL mbPlayerAllComCheck(void);
 
 static BOOL mbWinOnF[MBWIN_MAX];
 static s8 mbWinChoice[MBWIN_MAX];

@@ -1,5 +1,4 @@
 // Creates and updates the numeric score displays used by minigames.
-#define _MATH_H
 #include "game/data.h"
 #include "game/process.h"
 #include "game/mg/score.h"

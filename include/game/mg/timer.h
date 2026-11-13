@@ -8,29 +8,6 @@
 
 #include "humath.h"
 
-#define MGTIMER_MODE_OFF 0
-#define MGTIMER_MODE_ON 1
-#define MGTIMER_MODE_MAX 2
-
-#define MGTIMER_TYPE_NORMAL 0
-#define MGTIMER_TYPE_RECORD 1
-#define MGTIMER_TYPE_SCORE 2
-#define MGTIMER_TYPE_WIDESCORE 3
-#define MGTIMER_TYPE_MAX 4
-
-#define MGTIMER_FLASH_COLOR (1 << 0)
-#define MGTIMER_FLASH_RECORD (1 << 1)
-#define MGTIMER_FLASH_FADEOUT (1 << 2)
-
-#define MGTIMER_OFFTYPE_NORMAL 0
-#define MGTIMER_OFFTYPE_FADEOUT 1
-#define MGTIMER_OFFTYPE_FLASH 2
-
-#define MGTIMER_POS_TOP 0
-#define MGTIMER_POS_BOTTOM 1
-#define MGTIMER_POS_RIGHT 2
-
-
 typedef struct MgTimer_s {
     s32 mode;
     s32 prevMode;
@@ -59,6 +36,29 @@ typedef struct MgTimer_s {
     u8 digitB;
 } MGTIMER;
 
+#define MGTIMER_MODE_OFF 0
+#define MGTIMER_MODE_ON 1
+#define MGTIMER_MODE_MAX 2
+
+#define MGTIMER_TYPE_NORMAL 0
+#define MGTIMER_TYPE_RECORD 1
+#define MGTIMER_TYPE_SCORE 2
+#define MGTIMER_TYPE_WIDESCORE 3
+#define MGTIMER_TYPE_MAX 4
+
+#define MGTIMER_FLASH_COLOR (1 << 0)
+#define MGTIMER_FLASH_RECORD (1 << 1)
+#define MGTIMER_FLASH_FADEOUT (1 << 2)
+
+#define MGTIMER_OFFTYPE_NORMAL 0
+#define MGTIMER_OFFTYPE_FADEOUT 1
+#define MGTIMER_OFFTYPE_FLASH 2
+
+#define MGTIMER_POS_TOP 0
+#define MGTIMER_POS_BOTTOM 1
+#define MGTIMER_POS_RIGHT 2
+
+
 MGTIMER* MgTimerCreate(int type);
 void MgTimerKill(MGTIMER* timer);
 int MgTimerModeGet(MGTIMER* timer);
@@ -73,7 +73,6 @@ void MgTimerRecordSet(MGTIMER* timer, int recordTime);
 void MgTimerColorSet(MGTIMER* timer, u8 r, u8 g, u8 b);
 void MgTimerBackColorSet(MGTIMER* timer, u8 r, u8 g, u8 b);
 void MgTimerDispOn(MGTIMER* timer);
-void MgTimerDispOff(MGTIMER* timer);
 void MgTimerRecordDispOn(MGTIMER* timer);
 void MgTimerRecordDispOff(MGTIMER* timer);
 

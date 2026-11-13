@@ -32,7 +32,7 @@ static struct {
     /* 0x008 */ s32 msmEntryNum;
     /* 0x00C */ MSM_MUS *musData;
     /* 0x010 */ s32 dummyMusOfs;
-    /* 0x014 */ void* musBuf;
+    /* 0x014 */ u8* musBuf;
     /* 0x018 */ MUS_PLAYER player[4];
 } mus;
 
@@ -396,7 +396,7 @@ s32 msmMusInit(MSM_SYS* arg0, DVDFileInfo* arg1) {
     mus.dummyMusOfs = arg0->header->dummyMusOfs;
     mus.msmEntryNum = arg0->msmEntryNum;
     for (var_r8 = 0; var_r8 < mus.musChanMax; var_r8++) {
-        mus.player[var_r8].songBuf = (void*) ((u32) mus.musBuf + arg0->info->dummyMusSize * var_r8);
+        mus.player[var_r8].songBuf = mus.musBuf + arg0->info->dummyMusSize * var_r8;
         mus.player[var_r8].musId = -1;
         mus.player[var_r8].busyF = 0;
     }

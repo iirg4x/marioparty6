@@ -1,68 +1,32 @@
 /* Implements the board pause configuration menu, its panels, guide, and controller setup. */
 #include "dolphin/math.h"
+#include "humath.h"
 #include "stdlib.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
 
 #include "game/board/main.h"
+#include "game/board/math.h"
+#include "game/board/audio.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
+#include "game/board/single.h"
 #include "game/board/window.h"
+#include "game/board/wipe.h"
 #include "game/data.h"
 #include "game/disp.h"
 #include "game/esprite.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
+#include "game/mic.h"
 #include "game/pad.h"
 #include "game/process.h"
+#include "game/saveload.h"
 #include "game/sprite.h"
 
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
-
-extern void *fn_802137C0(s32 size);
-extern void *fn_80213874(s32 size);
-extern void *fn_802138C8(s32 size);
-extern void mbNormPosto2D(HuVecF *src, HuVecF *dst);
-extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
-extern void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
-extern float mbSinDeg(float angle);
-extern float mbCosDeg(float angle);
-extern void fn_80006F3C(void);
-extern s32 HuMCProbe(s32 chan);
-extern s32 HuMCMicGet(void);
-extern void HuMCMicSet(s32 value);
-extern s16 HuPadStatGet(s16 padNo);
-extern void mbWipeFadeOut(void);
-extern BOOL SLSaveFlagGet(void);
-extern BOOL saveExecF;
-extern void mbSingleSaveFlush(int value);
-extern int mbAudGuidePlay(s16 seId);
-
-/* Copies a position vector: a panel's current, starting or target position, or the guide's. */
-static inline void ConfigVecCopy(
-    register HuVecF *srcP, register HuVecF *dstP)
-{
-    register float xy;
-    register float z;
-
-    asm {
-        psq_l xy, 0(srcP), 0, 0
-        lfs z, 8(srcP)
-        psq_st xy, 0(dstP), 0, 0
-        stfs z, 8(dstP)
-    }
-}
-
-/* Returns the nonnegative cosine scale used while the label flips between banks. */
-static inline float ConfigAbsFloat(register float value)
-{
-    asm {
-        fabs value, value
-    }
-    return value;
-}
 
 typedef struct PausePanelWork_s {
 int modelId;              /* Main pause-panel model. */
@@ -548,17 +512,17 @@ static void ConfigExec(void)
             }
             if (previousCursorPos >= 0) {
                 if (pressedDirections & PAD_BUTTON_UP) {
-                    mbAudFXPlay(0);
+                    mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                     cursorPos = (cursorPos + 4) & 7;
                 } else if (pressedDirections & PAD_BUTTON_DOWN) {
-                    mbAudFXPlay(0);
+                    mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                     cursorPos = (cursorPos - 4) & 7;
                 }
                 if (pressedDirections & PAD_BUTTON_RIGHT) {
-                    mbAudFXPlay(0);
+                    mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                     cursorPos = (cursorPos + 1) & 7;
                 } else if (pressedDirections & PAD_BUTTON_LEFT) {
-                    mbAudFXPlay(0);
+                    mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                     cursorPos = (cursorPos - 1) & 7;
                 }
             }
@@ -596,14 +560,14 @@ static void ConfigExec(void)
             }
             pauseWork.activeF = 0;
             if (pauseWork.menu[cursorPos].available == 0) {
-                mbAudFXPlay(4);
+                mbAudFXPlay(MSM_SE_CMN_CHOICE_DENIED);
                 goto config_exec_bottom;
             }
             if (cursorPos == 0) {
                 HuVecF shrinkPos;
                 HuVecF growPos;
 
-                mbAudFXPlay(2);
+                mbAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                 pos.x = lbl_802C4CD4;
                 pos.y = lbl_802C4CC8;
                 pos.z = 0.0f;
@@ -667,7 +631,7 @@ static void ConfigExec(void)
                     HuPrcVSleep();
                     mbPauseGuideTalkSet(pausePlayer);
                 }
-                mbAudFXPlay(3);
+                mbAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
                 PauseCursorHiliteSet(-1, 0, 0);
                 ConfigPadClose();
                 pauseWork.activeF = 0;
@@ -733,7 +697,7 @@ static void ConfigExec(void)
             if (cursorPos == 7) {
                 HuVecF quitPos;
 
-                mbAudFXPlay(1);
+                mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
                 if (ConfigQuitExec()) {
                     mbWipeFadeOut();
                     fn_8006A1C4(65569);
@@ -801,7 +765,7 @@ static void ConfigExec(void)
                 goto config_exec_bottom;
             }
 
-            mbAudFXPlay(1);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
             if (pauseWork.menu[cursorPos].optionCount > 1) {
                 previousOptionIndex = pauseWork.menu[cursorPos].optionIndex;
                 pauseWork.menu[cursorPos].optionIndex++;
@@ -868,7 +832,7 @@ config_exec_bottom:
             pauseWork.prevTalkTime = 1;
             mbPauseGuideTalkSet(pausePlayer);
             pauseWork.menuExitRequested = 1;
-            mbAudFXPlay(3);
+            mbAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             OSReport(configExitMessage);
         }
     }
@@ -1013,7 +977,7 @@ static BOOL ConfigQuitExec(void)
             mbObjPosGet(pausePlayer, &pos);
             mbObjMotionShiftSet(
                 pausePlayer, 23, lbl_802C4CB4, lbl_802C4CDC, 0);
-            mbAudGuidePlay(950);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
             for (i = 0; i < 10; i++) {
                 HuPrcVSleep();
             }
@@ -1512,10 +1476,10 @@ static BOOL ConfigPadMain(void)
         stickDirections = 0;
     }
     if (stickDirections & PAD_BUTTON_RIGHT) {
-        mbAudFXPlay(0);
+        mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
         cursorPos = (cursorPos + 1) & 3;
     } else if (stickDirections & PAD_BUTTON_LEFT) {
-        mbAudFXPlay(0);
+        mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
         cursorPos = (cursorPos - 1) & 3;
     }
     pauseWork.configPadPlayerIndex = cursorPos;
@@ -1545,7 +1509,7 @@ static BOOL ConfigPadMain(void)
         workP->comDif++;
         pauseWork.configPadChangeCooldown = 16;
         pauseWork.activeF = 0;
-        mbAudFXPlay(1);
+        mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
         /* Skip Very Hard without bank flag 3; an unavailable controller makes the human choice fall
          * back to Easy. */
         if (!fn_8003D2F0(3) && workP->comDif == humanOptionIndex - 1) {
@@ -1715,7 +1679,7 @@ static void PauseCursorPosNextSet(s32 time, float x, float y)
     } else {
         cursorP->maxMoveTime = time;
         cursorP->moveTime = time;
-        ConfigVecCopy(&cursorP->pos, &cursorP->posStart);
+        MBBoardVecCopy(&cursorP->pos, &cursorP->posStart);
         cursorP->posDelta.x = x - cursorP->posStart.x;
         cursorP->posDelta.y = y - cursorP->posStart.y;
         cursorP->posDelta.z = lbl_802C4CB4;
@@ -1788,7 +1752,6 @@ static int PauseCursorMove(void)
 /* ConfigMain initializes assignments; ConfigPadOpen and ConfigPadMain refresh connected players. */
 static BOOL PausePlayerComRead(s32 initializeAssignments)
 {
-    extern s16 HuPadStatGet(s16 padNo);
     PAUSE_PAD_WORK *work;
     BOOL changeF;
     s32 i;
@@ -1990,7 +1953,7 @@ void mbPauseGuideCreate(void)
 {
     pausePanelWork = fn_802137C0(sizeof(PAUSE_PANEL_WORK) * 20);
     pauseGuideKillF = FALSE;
-    pauseGuideProc = fn_8000DAC0(PauseGuideMain, 8209, 8192, 0,
+    pauseGuideProc = fn_8000DAC0(PauseGuideMain, 8209, 0x2000, 0,
         mbMainProc);
     HuPrcDestructorSet2(pauseGuideProc, PauseGuideDestroy);
     HuPrcSetStat(pauseGuideProc,
@@ -2052,9 +2015,9 @@ static void PauseGuideMain(void)
                 if (panelWork->time >= panelWork->delay) {
                     panelWork->delay = panelWork->time = 0;
                     if (panelWork->motion == 4) {
-                        mbAudFXPlay(52);
+                        mbAudFXPlay(MSM_SE_CMN_MODEL_POP_IN);
                     } else if (panelWork->motion == 5) {
-                        mbAudFXPlay(53);
+                        mbAudFXPlay(MSM_SE_CMN_MODEL_POP_OUT);
                     }
                 }
             } else {
@@ -2129,8 +2092,8 @@ static void PauseGuideMain(void)
             }
             if (motionComplete) {
                 panelWork->motion = 0;
-                ConfigVecCopy(&panelWork->posTarget, &panelWork->pos);
-                ConfigVecCopy(&panelWork->posTarget, &panelWork->posStart);
+                MBBoardVecCopy(&panelWork->posTarget, &panelWork->pos);
+                MBBoardVecCopy(&panelWork->posTarget, &panelWork->posStart);
                 panelWork->scaleStart = panelWork->scale = panelWork->scaleTarget;
             } else {
                 scaleFactor = mbSinDeg(lbl_802C4D0C * animationProgress);
@@ -2176,7 +2139,7 @@ static void PauseGuideMain(void)
                 if (panelWork->animMaxTime != 0) {
                     /* Collapse and darken the label at mid-flip, then reveal its new bank. */
                     animationProgress = panelWork->animTime / (float)panelWork->animMaxTime;
-                    scaleFactor = ConfigAbsFloat(mbCosDeg(lbl_802C4CF0 * animationProgress));
+                    scaleFactor = FloatAbs(mbCosDeg(lbl_802C4CF0 * animationProgress));
                     espScaleSet(panelWork->sprId, labelBaseScale, labelBaseScale * scaleFactor);
                     if (animationProgress >= lbl_802C4CB0) {
                         espBankSet(panelWork->sprId, panelWork->bank);
@@ -2404,8 +2367,8 @@ void mbPausePanelUnlockSet(s16 panelId)
 
     panelWork = &pausePanelWork[panelId];
     panelWork->motion = 0;
-    ConfigVecCopy(&panelWork->pos, &panelWork->posStart);
-    ConfigVecCopy(&panelWork->pos, &panelWork->posTarget);
+    MBBoardVecCopy(&panelWork->pos, &panelWork->posStart);
+    MBBoardVecCopy(&panelWork->pos, &panelWork->posTarget);
     panelWork->scaleTarget = panelWork->scaleStart = panelWork->scale;
     panelWork->time = panelWork->maxTime = 0;
 }
@@ -2421,9 +2384,9 @@ void mbPausePanelSlideSet(s16 panelId, int durationFrames, HuVecF *targetPos)
     workP->motion = 1;
     workP->maxTime = durationFrames;
     workP->time = 0;
-    ConfigVecCopy(targetPos, &workP->posTarget);
+    MBBoardVecCopy(targetPos, &workP->posTarget);
     workP->posTarget.z = lbl_802C4D1C;
-    ConfigVecCopy(&workP->pos, &workP->posStart);
+    MBBoardVecCopy(&workP->pos, &workP->posStart);
 }
 
 /* ConfigExec animates the highlighted and unhighlighted menu panels to their requested scales. */
@@ -2509,7 +2472,7 @@ void mbPauseGuideMoveSet(MBMODELID modelId, s32 time, HuVecF *posP,
     if (posP == NULL) {
         mbNormPosto3D(posNormP, (1 << 2), &targetPos);
     } else {
-        ConfigVecCopy(posP, &targetPos);
+        MBBoardVecCopy(posP, &targetPos);
     }
     mbObjPosGet(modelId, &modelPos);
     /* Only the horizontal distance, truncated to whole units, chooses the movement style. */

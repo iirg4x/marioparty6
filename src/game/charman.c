@@ -9,6 +9,7 @@
 #include "game/sprite.h"
 
 #include "datanum/effect.h"
+#include "humath.h"
 
 #define EFFECT_WARN 0
 #define EFFECT_DUST 1
@@ -30,8 +31,6 @@
 #define CHAR_ATTR_FX_OFF (1 << 4)
 #define CHAR_EFFECT_SCALE_FLICKER (1 << 0)
 #define CHAR_STEP_GLOBAL_SE (1 << 15)
-#define CHAR_STEP_TYPE4_SE 1345
-#define CHAR_STEP_TYPE5_SE 1353
 #define CHAR_LIGHT_FLAGS_MASK (((1 << 8) - 1) << 8)
 
 typedef struct CharWork_s {
@@ -643,7 +642,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_315):
         case FILENUM(CHARMOT_HSF_c000m1_317):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 582, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_ALARMED_GASP, voiceFlag);
             }
             break;
 
@@ -659,21 +658,21 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 break;
             }
             if((frameNo & (16 - 1)) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2.0;
+                dustEffParam.vel.x = -sin(M_PI*modelP->rot.y/180.0)*2.0;
                 dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2.0;
+                dustEffParam.vel.z = -cos(M_PI*modelP->rot.y/180.0)*2.0;
                 pos.x = modelP->pos.x+(modelP->scale.x*(frandmod(50)-25));
                 pos.y = modelP->pos.y;
                 pos.z = modelP->pos.z+(modelP->scale.x*(frandmod(50)-25));
                 if(charNo == 9) {
-                    pos.x += -sin(3.141592653589793*modelP->rot.y/180.0)*40.0;
-                    pos.z += -cos(3.141592653589793*modelP->rot.y/180.0)*40.0;
+                    pos.x += -sin(M_PI*modelP->rot.y/180.0)*40.0;
+                    pos.z += -cos(M_PI*modelP->rot.y/180.0)*40.0;
                 }
                 EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
             }
             for(i=0; i<4; i++) {
                 if(frameNo == walkVoiceTimeTbl[(charNo*4)+i]) {
-                    PlayStepVoice(charNo, 177, voiceFlag);
+                    PlayStepVoice(charNo, MSM_SE_CHAR_FOOTSTEP_WALK, voiceFlag);
                     break;
                 }
             }
@@ -691,15 +690,15 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 break;
             }
             if((frameNo & (8 - 1)) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*4.0;
+                dustEffParam.vel.x = -sin(M_PI*modelP->rot.y/180.0)*4.0;
                 dustEffParam.vel.y = 2+(0.1*frandmod(10));
-                dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*4.0;
+                dustEffParam.vel.z = -cos(M_PI*modelP->rot.y/180.0)*4.0;
                 pos.x = modelP->pos.x+(modelP->scale.x*(frandmod(50)-25));
                 pos.y = modelP->pos.y;
                 pos.z = modelP->pos.z+(modelP->scale.x*(frandmod(50)-25));
                 if(charNo == 9) {
-                    pos.x += -sin(3.141592653589793*modelP->rot.y/180.0)*40.0;
-                    pos.z += -cos(3.141592653589793*modelP->rot.y/180.0)*40.0;
+                    pos.x += -sin(M_PI*modelP->rot.y/180.0)*40.0;
+                    pos.z += -cos(M_PI*modelP->rot.y/180.0)*40.0;
                 }
                 EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
             }
@@ -708,7 +707,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             for(i=0; i<4; i++) {
                 if(frameNo == runVoiceTimeTbl[(charNo*4)+i]) {
-                    PlayStepVoice(charNo, 181, voiceFlag);
+                    PlayStepVoice(charNo, MSM_SE_CHAR_FOOTSTEP_RUN, voiceFlag);
                     break;
                 }
             }
@@ -720,7 +719,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             for(i=0; i<2; i++) {
                 if(frameNo == jumpVoiceTimeTbl[(charNo*2)+i]) {
-                    PlayStepVoice(charNo, 185, voiceFlag);
+                    PlayStepVoice(charNo, MSM_SE_CHAR_JUMP_LAND, voiceFlag);
                     break;
                 }
             }
@@ -729,14 +728,14 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_464):
             if(frameNo == 1 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 fn_8005F968(charNo, &modelP->pos);
-                PlayStepVoice(charNo, 185, voiceFlag);
+                PlayStepVoice(charNo, MSM_SE_CHAR_JUMP_LAND, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_305):
             fn_80023398(modelId, fn_8005C0F0(charNo, workP->model, 0), hitMtx);
             if(frameNo == 0) {
-                fn_800591C8(charNo, 199, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHAR_ATTACK_WHOOSH_1, voiceFlag);
             }
             dotMax = 10;
             if(frameNo <= dotMax && !(workP->attr & CHAR_ATTR_FX_OFF)) {
@@ -773,7 +772,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case FILENUM(CHARMOT_HSF_c000m1_367):
             if(frameNo == 0) {
-                fn_800591C8(charNo, 200, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHAR_ATTACK_WHOOSH_2, voiceFlag);
             }
             if(frameNo < 10) {
                 fn_80023398(modelId, fn_8005C0F0(charNo, workP->model, 2), hitMtx);
@@ -812,13 +811,13 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     CharEffectHipDropCreate(charNo, &modelP->pos);
                 }
-                fn_800591C8(charNo, 195, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHAR_HIP_DROP, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_324):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 581, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_EXCITED_SHOUT, voiceFlag);
             }
             if(modelP->motIdShift == -1 || motShiftF) {
                 if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
@@ -835,7 +834,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                     }
                     if(frameNo == 30) {
                         fn_8005F968(charNo, &modelP->pos);
-                        PlayStepVoice(charNo, 185, voiceFlag);
+                        PlayStepVoice(charNo, MSM_SE_CHAR_JUMP_LAND, voiceFlag);
                     }
                 }
             }
@@ -856,7 +855,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                                          modelP->pos.z, 20, warnSize, &warnEffParam);
                     }
                     if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                        fn_800591C8(charNo, 582, voiceFlag);
+                        fn_800591C8(charNo, MSM_SE_CHARVOICE_ALARMED_GASP, voiceFlag);
                     }
                 }
             }
@@ -866,7 +865,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_322):
         case FILENUM(CHARMOT_HSF_c000m1_465):
             if(!(workP->attr & CHAR_ATTR_BIRD_ACTIVE) && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 196, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHAR_DIZZY_BIRDS_START, voiceFlag);
                 for(i=0; i<3; i++) {
                     EffectBirdCreate(modelId, modelP->pos.x,
                                      modelP->pos.y + (100.0f * modelP->scale.x), modelP->pos.z,
@@ -887,20 +886,20 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                     EffectSmokeCreate(modelId, pos.x, pos.y, pos.z, 20, &smokeEffParam);
                 }
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
-                    fn_800591C8(charNo, 576, voiceFlag);
+                    fn_800591C8(charNo, MSM_SE_CHARVOICE_HIT_YELP, voiceFlag);
                 }
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_303):
             if(frameNo == 0) {
-                fn_800591C8(charNo, 193, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHAR_JUMP_TAKEOFF, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_308):
             if(frameNo == 0) {
-                fn_800591C8(charNo, 194, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHAR_ATTACK_WHOOSH_3, voiceFlag);
             }
             break;
 
@@ -920,7 +919,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_346):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == handUpAnimLen[charNo]) {
-                    fn_800591C8(charNo, 579, voiceFlag);
+                    fn_800591C8(charNo, MSM_SE_CHARVOICE_HAPPY_CHEER, voiceFlag);
                     workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
                     attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
@@ -960,7 +959,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_364):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == winJumpUpAnimLen[charNo]) {
-                    fn_800591C8(charNo, 575, voiceFlag);
+                    fn_800591C8(charNo, MSM_SE_CHARVOICE_WIN_JUMP_CHEER, voiceFlag);
                     workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
                     attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
@@ -1004,14 +1003,14 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                     fn_80060B10(charNo, 0, 0);
                 }
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
-                    fn_800591C8(charNo, 576, voiceFlag);
+                    fn_800591C8(charNo, MSM_SE_CHARVOICE_HIT_YELP, voiceFlag);
                 }
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_370):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 576, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_HIT_YELP, voiceFlag);
             }
             if(workP->timingHookNo != 0) {
                 fn_80060B10(charNo, 30, 0.8f);
@@ -1020,7 +1019,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case FILENUM(CHARMOT_HSF_c000m1_333):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 584, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_COIN_LOSS_GROAN, voiceFlag);
             }
             break;
 
@@ -1029,7 +1028,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 fn_8005F968(charNo, &modelP->pos);
                 for(i=0; i<2; i++) {
                     if(frameNo == jumpVoiceTimeTbl[(charNo*2)+i]) {
-                        PlayStepVoice(charNo, 185, voiceFlag);
+                        PlayStepVoice(charNo, MSM_SE_CHAR_JUMP_LAND, voiceFlag);
                         break;
                     }
                 }
@@ -1041,26 +1040,26 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case FILENUM(CHARMOT_HSF_c000m1_318):
         case FILENUM(CHARMOT_HSF_c000m1_382):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 582, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_ALARMED_GASP, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_357):
         case FILENUM(CHARMOT_HSF_c000m1_381):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 588, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_BUMP_GRUNT, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_361):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 576, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_HIT_YELP, voiceFlag);
             }
             break;
 
         case FILENUM(CHARMOT_HSF_c000m1_377):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                fn_800591C8(charNo, 581, voiceFlag);
+                fn_800591C8(charNo, MSM_SE_CHARVOICE_EXCITED_SHOUT, voiceFlag);
             }
             break;
     }
@@ -1240,7 +1239,7 @@ static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag)
     if(winVoiceTbl[i][0] != -1) {
         seNo = winVoiceTbl[i][1];
     } else {
-        seNo = 577;
+        seNo = MSM_SE_CHARVOICE_RESULT_WINNER_CHEER;
     }
     fn_800591C8(charNo, seNo, voiceFlag);
     return ret;
@@ -1663,12 +1662,12 @@ static void UpdateEffect(HU3D_PARTICLE_DATA *particleDataP)
     HU3D_MODEL *modelP = &lbl_802C01C8[(int)particleDataP->vel.x];
     float radius;
     if(particleDataP->time < 8) {
-        radius = 0.3+sin(3.141592653589793*(40.0f+(10.0f*(particleDataP->time+1)))/180.0);
+        radius = 0.3+sin(M_PI*(40.0f+(10.0f*(particleDataP->time+1)))/180.0);
         particleDataP->scale = (50.0f*radius)*modelP->scale.x;
         particleDataP->color.a = 255;
-        radius = 0.3+sin(3.141592653589793*(15.0f*(particleDataP->time+1))/180.0);
+        radius = 0.3+sin(M_PI*(15.0f*(particleDataP->time+1))/180.0);
     } else {
-        radius = 0.3+sin(3.141592653589793*135.0f/180.0);
+        radius = 0.3+sin(M_PI*135.0f/180.0);
     }
     radius *= modelP->scale.x;
     particleDataP->pos.x = modelP->pos.x+(particleDataP->accel.x*radius);
@@ -1715,12 +1714,12 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
     Hu3DModelObjPosGet(workP->modelId, CharHeadObjNameTbl[charNo], &particleDataP->pos);
     particleDataP->pos.x =
         particleDataP->pos.x
-            + (modelP->scale.x * (40.0 * sin(3.141592653589793*(particleDataP->vel.y
+            + (modelP->scale.x * (40.0 * sin(M_PI*(particleDataP->vel.y
             + angle)/180.0)));
     particleDataP->pos.y = particleDataP->pos.y+(modelP->scale.y*birdYOfsTbl[charNo]);
     particleDataP->pos.z =
         particleDataP->pos.z
-            + (modelP->scale.z * (40.0 * cos(3.141592653589793*(particleDataP->vel.y
+            + (modelP->scale.z * (40.0 * cos(M_PI*(particleDataP->vel.y
             + angle)/180.0)));
     particleDataP->time++;
     if(particleDataP->time >= 143) {
@@ -1732,7 +1731,7 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
             particleDataP->scale = 0.0f;
             workP->attr &= ~CHAR_ATTR_BIRD_ACTIVE;
             if(particleDataP->vel.y == 0.0) {
-                fn_800591C8(charNo, 201, workP->attr);
+                fn_800591C8(charNo, MSM_SE_CHAR_DIZZY_BIRDS_END, workP->attr);
 
             }
         }
@@ -2320,8 +2319,8 @@ void fn_8005CF90(s16 cameraBit, HuVecF *pos, float scale)
                 particleP = modelP->hookData;
                 particleDataP = &particleP->data[effectNo];
                 particleDataP->parManId = 2;
-                particleDataP->vel.x = scale*(30*sin(3.141592653589793*(i*45)/180.0));
-                particleDataP->vel.y = scale*(30*cos(3.141592653589793*(i*45)/180.0));
+                particleDataP->vel.x = scale*(30*sin(M_PI*(i*45)/180.0));
+                particleDataP->vel.y = scale*(30*cos(M_PI*(i*45)/180.0));
                 particleDataP->vel.z = 0;
                 particleDataP->accel = *pos;
                 particleDataP->speedDecay = 1.15f;
@@ -2380,7 +2379,7 @@ static void UpdateModelEffect(HU3D_PARTICLE_DATA *particleDataP)
     if(angle > 90.0f) {
         angle = 90.0f;
     }
-    speed = sin(3.141592653589793*angle/180.0);
+    speed = sin(M_PI*angle/180.0);
     particleDataP->pos.x = particleDataP->accel.x+(particleDataP->vel.x*speed);
     particleDataP->pos.y = particleDataP->accel.y+(particleDataP->vel.y*speed);
     particleDataP->pos.z = particleDataP->accel.z+(particleDataP->vel.z*speed);
@@ -2422,9 +2421,9 @@ void fn_8005D5A0(s16 cameraBit, HuVecF *pos)
     for(i=0; i<16; i++) {
         s16 angle = i*(360.0f/16.0f);
         s16 effectNo;
-        coinEffParam.vel.x = 5*sin(3.141592653589793*angle/180.0);
+        coinEffParam.vel.x = 5*sin(M_PI*angle/180.0);
         coinEffParam.vel.y = 0.1f*(frandmod(100)-50);
-        coinEffParam.vel.z = 5*cos(3.141592653589793*angle/180.0);
+        coinEffParam.vel.z = 5*cos(M_PI*angle/180.0);
         effectNo = EffectCreate(EFFECT_GLOW, cameraBit, pos->x, pos->y, pos->z, 30, &coinEffParam);
         if(effectNo == -1) {
             break;
@@ -2505,8 +2504,8 @@ void fn_8005D864(s16 cameraBit, HuVecF *pos, HuVecF *rot)
     radius.z = mtx[2][2];
     for(i=0; i<8; i++) {
         angle = i*45;
-        dir.x = sin(3.141592653589793*angle/180.0);
-        dir.y = cos(3.141592653589793*angle/180.0);
+        dir.x = sin(M_PI*angle/180.0);
+        dir.y = cos(M_PI*angle/180.0);
         dir.z = 0.0f;
         VECNormalize(&dir, &dir);
         MTXMultVec(mtx, &dir, &dir);
@@ -2592,12 +2591,12 @@ void fn_8005DB3C(s16 cameraBit, HuVecF *pos, HuVecF *rot)
         float angle = i*45;
         VECNormalize(&radius, &radius);
         dir.x =
-            ((radius.x*radius.y)*(1-cos(3.141592653589793*angle/180.0)))
-            -(radius.z*sin(3.141592653589793*angle/180.0));
-        dir.y = (radius.y*radius.y)+((1-(radius.y*radius.y))*cos(3.141592653589793*angle/180.0));
+            ((radius.x*radius.y)*(1-cos(M_PI*angle/180.0)))
+            -(radius.z*sin(M_PI*angle/180.0));
+        dir.y = (radius.y*radius.y)+((1-(radius.y*radius.y))*cos(M_PI*angle/180.0));
         dir.z =
-            ((radius.y*radius.z)*(1-cos(3.141592653589793*angle/180.0)))
-            +(radius.x*sin(3.141592653589793*angle/180.0));
+            ((radius.y*radius.z)*(1-cos(M_PI*angle/180.0)))
+            +(radius.x*sin(M_PI*angle/180.0));
         VECNormalize(&dir, &dir);
         VECScale(&dir, &shoeHitEffParam.vel, 10);
         effectNo =
@@ -2746,21 +2745,41 @@ s32 fn_8005E1D8(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type)
 
 static s8 npcSeTimeTbl[12] = { 7, 32, 1, 30, 1, 30, 1, 20, 19, 32, 2, 19 };
 
-static u16 npcSeTbl[12] = { 177, 177, 177, 177, 177, 177, 288, 2590, 286, 273, 59367, 59367 };
+static u16 npcSeTbl[12] = { MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_NPC_FOOTSTEP_A,
+                            2590,
+                            MSM_SE_CHAR_NPC_FOOTSTEP_B,
+                            MSM_SE_CHAR_NPC_FOOTSTEP_C,
+                            59367,
+                            59367 };
 
-static u16 npcSeTbl2[7] = { 181, 181, 181, 181, 181, 181, 0 };
+static u16 npcSeTbl2[7] = { MSM_SE_CHAR_FOOTSTEP_RUN,
+                            MSM_SE_CHAR_FOOTSTEP_RUN,
+                            MSM_SE_CHAR_FOOTSTEP_RUN,
+                            MSM_SE_CHAR_FOOTSTEP_RUN,
+                            MSM_SE_CHAR_FOOTSTEP_RUN,
+                            MSM_SE_CHAR_FOOTSTEP_RUN,
+                            0 };
 
 static s8 npcSeTimeTbl2[8] = { 3, 55, -25, -25, -25, -25, -25, -25 };
 
-static u16 npcSeTbl3[4] = { 177, 177, 177, 177 };
+static u16 npcSeTbl3[4] = { MSM_SE_CHAR_FOOTSTEP_WALK, MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_FOOTSTEP_WALK, MSM_SE_CHAR_FOOTSTEP_WALK };
 
 static s8 npcSeTimeTbl3[8] = { 4, 17, -25, -25, -25, -25, -25, -25 };
 
-static u16 npcSeTbl4[4] = { 181, 181, 181, 181 };
+static u16 npcSeTbl4[4] = { MSM_SE_CHAR_FOOTSTEP_RUN, MSM_SE_CHAR_FOOTSTEP_RUN,
+                            MSM_SE_CHAR_FOOTSTEP_RUN, MSM_SE_CHAR_FOOTSTEP_RUN };
 
 static s8 npcSeTimeTbl4[8] = { 1, 23, -25, -25, -25, -25, -25, -25 };
 
-static u16 npcSeTbl5[4] = { 177, 177, 177, 177 };
+static u16 npcSeTbl5[4] = { MSM_SE_CHAR_FOOTSTEP_WALK, MSM_SE_CHAR_FOOTSTEP_WALK,
+                            MSM_SE_CHAR_FOOTSTEP_WALK, MSM_SE_CHAR_FOOTSTEP_WALK };
 
 // Updates dust and NPC footstep sounds each frame while the selected motion is active.
 static void UpdateNpcDust(void)
@@ -2785,9 +2804,9 @@ static void UpdateNpcDust(void)
             case 0:
                 if((time & (16 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.x = -sin(M_PI*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.z = -cos(M_PI*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2808,9 +2827,9 @@ static void UpdateNpcDust(void)
             case 1:
                 if((time & (4 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*4;
+                        dustEffParam.vel.x = -sin(M_PI*modelP->rot.y/180.0)*4;
                         dustEffParam.vel.y = 2+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*4;
+                        dustEffParam.vel.z = -cos(M_PI*modelP->rot.y/180.0)*4;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2834,9 +2853,9 @@ static void UpdateNpcDust(void)
                 }
                 if((time & (32 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.x = -sin(M_PI*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.z = -cos(M_PI*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2858,9 +2877,9 @@ static void UpdateNpcDust(void)
                 }
                 if((time & (4 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.x = -sin(M_PI*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.z = -cos(M_PI*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2882,9 +2901,9 @@ static void UpdateNpcDust(void)
                 }
                 if((time & (8 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.x = -sin(M_PI*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
+                        dustEffParam.vel.z = -cos(M_PI*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2907,26 +2926,26 @@ static void UpdateNpcDust(void)
                 if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                     for(i=0; i<8; i++){ 
                         npcHitEffParam.vel.x =
-                            10*sin(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x;
+                            10*sin(M_PI*(45.0f*i)/180.0)*modelP->scale.x;
                         npcHitEffParam.vel.y = 0;
                         npcHitEffParam.vel.z =
-                            10*cos(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x;
+                            10*cos(M_PI*(45.0f*i)/180.0)*modelP->scale.x;
                         EffectStarCreate(modelId, modelP->pos.x,
                                          modelP->pos.y + (10 * modelP->scale.x), modelP->pos.z, 40,
                                          &npcHitEffParam);
                     }
                     for(i=0; i<8; i++){ 
                         dustEffParam.vel.x =
-                            4*sin(3.141592653589793*((45.0f*i)+22.5)/180.0)*modelP->scale.x;
+                            4*sin(M_PI*((45.0f*i)+22.5)/180.0)*modelP->scale.x;
                         dustEffParam.vel.y = 0;
                         dustEffParam.vel.z =
-                            4*cos(3.141592653589793*((45.0f*i)+22.5)/180.0)*modelP->scale.x;
+                            4*cos(M_PI*((45.0f*i)+22.5)/180.0)*modelP->scale.x;
                         EffectDustCreate(modelId, modelP->pos.x,
                                          modelP->pos.y + (10 * modelP->scale.x), modelP->pos.z, 20,
                                          &dustEffParam);
                     }
                     if(npcNo != -1) {
-                        HuAudFXPlay(195);
+                        HuAudFXPlay(MSM_SE_CHAR_HIP_DROP);
                     }
                 }
                 break;
@@ -2951,9 +2970,9 @@ static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag)
         return;
     }
     if(workP->stepFx == 4) {
-        seId = (CHAR_STEP_GLOBAL_SE | CHAR_STEP_TYPE4_SE);
+        seId = (CHAR_STEP_GLOBAL_SE | MSM_SE_MIKEACT_FOOTSTEP_SPECIAL_A);
     } else if(workP->stepFx == 5) {
-        seId = (CHAR_STEP_GLOBAL_SE | CHAR_STEP_TYPE5_SE);
+        seId = (CHAR_STEP_GLOBAL_SE | MSM_SE_MIKEACT_FOOTSTEP_SPECIAL_B);
     } else if(workP->stepFx == 6) {
         seId = 202;
     } else {
@@ -3027,14 +3046,14 @@ void fn_8005F968(s16 charNo, HuVecF *pos)
     for(i=0; i<12; i++) {
         float speed = (6.0+frandmod(6))*modelP->scale.x;
         Vec effectPos;
-        landEffParam.vel.x = speed*sin(3.141592653589793*(30.0f*i)/180.0);
+        landEffParam.vel.x = speed*sin(M_PI*(30.0f*i)/180.0);
         landEffParam.vel.y = 0;
-        landEffParam.vel.z = speed*cos(3.141592653589793*(30.0f*i)/180.0);
+        landEffParam.vel.z = speed*cos(M_PI*(30.0f*i)/180.0);
         landEffParam.alphaBase = -(frandmod(4)+8);
         speed = (20.0+frandmod(20))*modelP->scale.x;
-        effectPos.x = pos->x+(20*sin(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
+        effectPos.x = pos->x+(20*sin(M_PI*(30.0f*i)/180.0)*modelP->scale.x);
         effectPos.y = pos->y+(10*modelP->scale.x);
-        effectPos.z = pos->z+(20*cos(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
+        effectPos.z = pos->z+(20*cos(M_PI*(30.0f*i)/180.0)*modelP->scale.x);
         landEffParam.gravity = frandmod(20)*0.01;
         EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
                      speed, &landEffParam);
@@ -3050,19 +3069,19 @@ void fn_8005FC84(s16 charNo, HuVecF *pos)
     for(i=0; i<12; i++) {
         float speed = modelP->scale.x*(6.0+frandmod(6));
         Vec effectPos;
-        landEffParam.vel.x = speed*sin(3.141592653589793*(30.0f*i)/180.0);
+        landEffParam.vel.x = speed*sin(M_PI*(30.0f*i)/180.0);
         landEffParam.vel.y = 0;
-        landEffParam.vel.z = speed*cos(3.141592653589793*(30.0f*i)/180.0);
+        landEffParam.vel.z = speed*cos(M_PI*(30.0f*i)/180.0);
         landEffParam.alphaBase = -(frandmod(4)+8);
         speed = modelP->scale.x*(20.0+frandmod(20));
-        effectPos.x = pos->x+(modelP->scale.x*(20.0*sin(3.141592653589793*(30.0f*i)/180.0)));
+        effectPos.x = pos->x+(modelP->scale.x*(20.0*sin(M_PI*(30.0f*i)/180.0)));
         effectPos.y = pos->y+(10*modelP->scale.x);
-        effectPos.z = pos->z+(modelP->scale.x*(20.0*cos(3.141592653589793*(30.0f*i)/180.0)));
+        effectPos.z = pos->z+(modelP->scale.x*(20.0*cos(M_PI*(30.0f*i)/180.0)));
         landEffParam.gravity = 0.01*frandmod(20);
         EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
                      speed, &landEffParam);
     }
-    PlayStepVoice(charNo, 185, 0);
+    PlayStepVoice(charNo, MSM_SE_CHAR_JUMP_LAND, 0);
 }
 
 // Creates a dust ring and outward stars when UpdateCharAnim detects a hip-drop landing.
@@ -3074,22 +3093,22 @@ void CharEffectHipDropCreate(s16 charNo, HuVecF *pos)
     for(i=0; i<12; i++) {
         float speed = (6.0+frandmod(6))*modelP->scale.x;
         Vec effectPos;
-        hipDropLandEffParam.vel.x = speed*sin(3.141592653589793*(30.0f*i)/180.0);
+        hipDropLandEffParam.vel.x = speed*sin(M_PI*(30.0f*i)/180.0);
         hipDropLandEffParam.vel.y = 0;
-        hipDropLandEffParam.vel.z = speed*cos(3.141592653589793*(30.0f*i)/180.0);
+        hipDropLandEffParam.vel.z = speed*cos(M_PI*(30.0f*i)/180.0);
         hipDropLandEffParam.alphaBase = -(frandmod(4)+8);
         speed = (30.0+frandmod(20))*modelP->scale.x;
-        effectPos.x = pos->x+(20*sin(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
+        effectPos.x = pos->x+(20*sin(M_PI*(30.0f*i)/180.0)*modelP->scale.x);
         effectPos.y = pos->y+(15*modelP->scale.x);
-        effectPos.z = pos->z+(20*cos(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
+        effectPos.z = pos->z+(20*cos(M_PI*(30.0f*i)/180.0)*modelP->scale.x);
         hipDropLandEffParam.gravity = frandmod(20)*0.01;
         EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
                      speed, &hipDropLandEffParam);
     }
     for(i=0; i<8; i++) {
-        hipDropStarEffParam.vel.x = (20*sin(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x);
+        hipDropStarEffParam.vel.x = (20*sin(M_PI*(45.0f*i)/180.0)*modelP->scale.x);
         hipDropStarEffParam.vel.y = 5;
-        hipDropStarEffParam.vel.z = (20*cos(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x);
+        hipDropStarEffParam.vel.z = (20*cos(M_PI*(45.0f*i)/180.0)*modelP->scale.x);
         EffectStarCreate(workP->modelId, modelP->pos.x, modelP->pos.y + (10 * modelP->scale.x),
                          modelP->pos.z, 40, &hipDropStarEffParam);
     }
@@ -3100,15 +3119,15 @@ void fn_8006065C(s16 cameraBit, float scale, HuVecF *pos)
 {
     s16 i;
     for(i=0; i<8; i++) {
-        dustEffParam.vel.x = scale*(4*sin(3.141592653589793*(i*45.0f)/180.0));
+        dustEffParam.vel.x = scale*(4*sin(M_PI*(i*45.0f)/180.0));
         dustEffParam.vel.y = 0;
-        dustEffParam.vel.z = scale*(4*cos(3.141592653589793*(i*45.0f)/180.0));
+        dustEffParam.vel.z = scale*(4*cos(M_PI*(i*45.0f)/180.0));
         EffectCreate(EFFECT_DUST, cameraBit, pos->x, pos->y*scale, pos->z, 20*scale, &dustEffParam);
     }
     for(i=0; i<8; i++) {
-        dustEffParam.vel.x = scale*(2*sin(3.141592653589793*((i*45.0f)+22.5)/180.0));
+        dustEffParam.vel.x = scale*(2*sin(M_PI*((i*45.0f)+22.5)/180.0));
         dustEffParam.vel.y = 0;
-        dustEffParam.vel.z = scale*(2*cos(3.141592653589793*((i*45.0f)+22.5)/180.0));
+        dustEffParam.vel.z = scale*(2*cos(M_PI*((i*45.0f)+22.5)/180.0));
         EffectCreate(EFFECT_DUST, cameraBit, pos->x, pos->y*scale, pos->z, 20*scale, &dustEffParam);
     }
 }
@@ -3162,9 +3181,9 @@ void fn_80060B10(s16 charNo, float yOfs, float ofsY)
         pos.y = pos.y-(40.0f*modelP->scale.x);
     }
     pos.y += yOfs;
-    offset.x = sin(3.141592653589793*(modelP->rot.y+180.0f)/180.0);
+    offset.x = sin(M_PI*(modelP->rot.y+180.0f)/180.0);
     offset.y = ofsY;
-    offset.z = cos(3.141592653589793*(modelP->rot.y+180.0f)/180.0);
+    offset.z = cos(M_PI*(modelP->rot.y+180.0f)/180.0);
     fn_800608C4(modelP->cameraBit, &pos, &offset, modelP->scale.x);
 }
 
@@ -3277,16 +3296,16 @@ static void PlayWinLoseVoice(void)
 void fn_800611E4(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4)
 {
     if(charNo1 != -1) {
-        fn_800591C8(charNo1, 585, 0);
+        fn_800591C8(charNo1, MSM_SE_CHARVOICE_SAD_MOAN, 0);
     }
     if(charNo2 != -1) {
-        fn_800591C8(charNo2, 585, 0);
+        fn_800591C8(charNo2, MSM_SE_CHARVOICE_SAD_MOAN, 0);
     }
     if(charNo3 != -1) {
-        fn_800591C8(charNo3, 585, 0);
+        fn_800591C8(charNo3, MSM_SE_CHARVOICE_SAD_MOAN, 0);
     }
     if(charNo4 != -1) {
-        fn_800591C8(charNo4, 585, 0);
+        fn_800591C8(charNo4, MSM_SE_CHARVOICE_SAD_MOAN, 0);
     }
 }
 

@@ -426,9 +426,9 @@ s32 THPSimpleDecode(void) {
 
     if(SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameReady != 0) {
         componentSizes = SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameData + 2;
-        componentData = (u8 *) (&SimpleControl.readBuffers[SimpleControl.decodeFrameSlot]
-                                     .frameData[SimpleControl.componentInfo.mNumComponents] +
-                                2);
+        componentData = (u8 *) (
+            &SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameData[
+                SimpleControl.componentInfo.mNumComponents] + 2);
         if(SimpleControl.hasAudio != 0) {
             if(SimpleControl.audioBuffers[SimpleControl.audioDecodeSlot].samplesRemaining == 0) {
                 for (componentIndex = 0;

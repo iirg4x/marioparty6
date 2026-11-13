@@ -33,9 +33,6 @@ static void SeqExecModeHooks(s16 sequenceMode, s16 phaseFrame);
 static void SeqSetTimerPos(s32 timerPosition, MGTIMER *sequenceTimer);
 
 /* Result jingles selected by this sequence. */
-#define MGSEQ_JINGLE_RECORD 66
-#define MGSEQ_JINGLE_DRAW 69
-#define MGSEQ_JINGLE_WINNER 67
 #define MGSEQ_PROCESS_STACK_SIZE 20480
 #define MGSEQ_EXIT_PROCESS_STACK_SIZE 12288
 
@@ -260,7 +257,7 @@ static void SeqExecProc(void)
                         phaseDuration = 270;
                     }
                     GameMesCreate(GAMEMES_MES_MG_RECORD, seqWork.recordValue);
-                    HuAudJinglePlay(MGSEQ_JINGLE_RECORD);
+                    HuAudJinglePlay(MSM_STREAM_SUCCESS);
                 }
                 if (seqWork.statusFlags & (1 << 0)) {
                     seqWork.statusFlags &= ~(1 << 0);
@@ -277,12 +274,12 @@ static void SeqExecProc(void)
                 if (seqWork.winnerCharNo[0] == -1 && seqWork.winnerCharNo[1] == -1 &&
                     seqWork.winnerCharNo[2] == -1 && seqWork.winnerCharNo[3] == -1) {
                     GameMesCreate(GAMEMES_MES_MG, GAMEMES_MG_TYPE_DRAW);
-                    HuAudJinglePlay(MGSEQ_JINGLE_DRAW);
+                    HuAudJinglePlay(MSM_STREAM_BAD_NEWS);
                 } else {
                     GameMesCreate(GAMEMES_MES_MG_WINNER, GAMEMES_MG_TYPE_WIN,
                                   seqWork.winnerCharNo[0], seqWork.winnerCharNo[1],
                                   seqWork.winnerCharNo[2], seqWork.winnerCharNo[3]);
-                    HuAudJinglePlay(MGSEQ_JINGLE_WINNER);
+                    HuAudJinglePlay(MSM_STREAM_WINNING);
                 }
             }
             phaseDuration = 0;

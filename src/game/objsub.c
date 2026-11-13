@@ -1,16 +1,14 @@
 // Initialize the shared object-system state used when a minigame or mode starts.
-#define _MATH_H
 #include "game/object.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/pad.h"
+#include "game/gamemes.h"
 
 #define OM_GAME_EXIT_CHECK_PRIO 32732
 
 // Set by minigame mode flow when its pause menu should offer an exit action.
 extern BOOL MgPauseExitF;
-// Pause-menu callback that handles the minigame exit action.
-extern void GameMesExitCheck(OMOBJ *obj);
 
 // Called by mode and minigame setup after creating its object manager.
 // Resets each player's minigame coin and score, and resets bonus coins except

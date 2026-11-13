@@ -11,6 +11,7 @@
 
 #include "math.h"
 #include "string.h"
+#include "humath.h"
 
 #define ACTOR_MAX 256
 #define PLAYER_MAX 4
@@ -48,7 +49,6 @@ static void PlayerModeSquishHard(MGPLAYER *playerP);
 static void PlayerModeDefault(MGPLAYER *playerP);
 static void PlayerModeJumpAlt(MGPLAYER *playerP);
 
-s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
 
 static MGPLAYER_MODE_FUNC playerModeFunc[18] = {
     PlayerModeWalk, PlayerModeJump, PlayerModeFall, PlayerModePunch,
@@ -149,7 +149,7 @@ BOOL fn_8007E8B4(MGPLAYER *playerP, HuVecF *targetPos, float forwardSpeed, float
     if(dir.x < 0) {
         angle = -angle;
     }
-    playerP->actor->rotY = (180*angle)/3.141592653589793;
+    playerP->actor->rotY = (180*angle)/M_PI;
     playerP->actor->push.x = playerP->actor->push.y = 0;
     playerP->actor->push.z = forwardSpeed;
     return FALSE;
@@ -176,7 +176,7 @@ BOOL fn_8007EB24(MGACTOR *actorP, HuVecF *targetPos, float forwardSpeed, float a
     if(dir.x < 0) {
         angle = -angle;
     }
-    actorP->rotY = (180*angle)/3.141592653589793;
+    actorP->rotY = (180*angle)/M_PI;
     actorP->push.x = actorP->push.y = 0;
     actorP->push.z = forwardSpeed;
     return FALSE;
@@ -484,7 +484,7 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             up.y = 1;
             up.z = 0;
             dot = VECDotProduct(&up, &dir);
-            if(dot > cos(3.141592653589793/3)) {
+            if(dot > cos(M_PI/3)) {
                 if(fn_80087148(playerP2, (1 << 4))) {
                     if(fabsf(playerP1->actor->velY) <= 1000.0f) {
                         if (playerP2->actor->velY < 0 ||
@@ -497,7 +497,7 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
                         fn_80087104(playerP1, (1 << 2));
                     }
                 }
-            } else if(dot < -cos(3.141592653589793/3)) {
+            } else if(dot < -cos(M_PI/3)) {
                 if(!fn_8008717C(playerP1, (1 << 1))) {
                     HuVecF norm = a->normPos;
                     float velY;
@@ -579,7 +579,7 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             if(dir.x < 0) {
                 angle = -angle;
             }
-            angle = (180*angle)/3.141592653589793;
+            angle = (180*angle)/M_PI;
             if(!fn_8008718C(playerP1, 1, angle, -1)) {
                 return FALSE;
             }
@@ -628,13 +628,13 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             if(dir.x < 0) {
                 angle = -angle;
             }
-            angle = (180*angle)/3.141592653589793;
+            angle = (180*angle)/M_PI;
             if(!fn_8008718C(playerP1, 4, angle, -1)) {
                 return FALSE;
             }
             fn_80087104(playerP2, (1 << 5));
             fn_80087104(playerP1, (1 << 8));
-            fn_800591C8(playerP1->charNo, 588, 0);
+            fn_800591C8(playerP1->charNo, MSM_SE_CHARVOICE_BUMP_GRUNT, 0);
             return FALSE;
         }
         break;
@@ -1624,7 +1624,7 @@ static void PlayerModeSquishHard(MGPLAYER *playerP)
             float t = playerP->timer/100;
             float angle = 270+((playerP->timer*2880)/100);
             float scale;
-            t = (1+(0.5*(t*sin(3.141592653589793*angle/180.0))))-(t*0.45f);
+            t = (1+(0.5*(t*sin(M_PI*angle/180.0))))-(t*0.45f);
             scale = 1+(0.08f*(playerP->timer-93));
             if(fn_80026A90(playerP->actor->mdlId) & (1 << 0)) {
                 fn_80026A44(playerP->actor->mdlId, (1 << 0));
@@ -1799,7 +1799,7 @@ void fn_800856A8(void)
                         if(stickDir.x < 0) {
                             angle = -angle;
                         }
-                        playerP->actor->rotY = (180*angle)/3.141592653589793;
+                        playerP->actor->rotY = (180*angle)/M_PI;
                     }
                 }
                 if(!fn_8008717C(playerP, (1 << 9))) {

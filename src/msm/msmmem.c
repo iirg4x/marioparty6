@@ -86,7 +86,7 @@ void* msmMemAlloc(u32 size) {
     }
     block = (void*)((u32)blockPrev->ptr + (freeSize));
     blockNext = blockPrev->next;
-    if ((mem.ptr > block) || ((void*)((u32)mem.ptr + (u32)mem.size) <= block)) {
+    if ((mem.ptr > block) || ((u32)mem.ptr + mem.size <= (u32)block)) {
         return NULL;
     }
     block->freeSize = allocSize;
@@ -109,7 +109,9 @@ void* msmMemAlloc(u32 size) {
 void msmMemInit(void* ptr, u32 size) {
     MSMBLOCK* block;
     s32 ofs;
+    u8* base;
 
+    base = ptr;
     ofs = (s32)ptr & 0x1F;
     switch (ofs) {
         default:
@@ -120,7 +122,7 @@ void msmMemInit(void* ptr, u32 size) {
             break;
     }
     
-    mem.ptr = (void*)((s32)ptr + ofs);
+    mem.ptr = base + ofs;
     ofs = (s32)ptr + size;
     mem.size = ((ofs - (s32)mem.ptr) & ~0x1F);
     block = &mem.first;
