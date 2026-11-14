@@ -1,12 +1,5 @@
-#ifndef _MSL_COMMON_WCHAR_IO_H
-#define _MSL_COMMON_WCHAR_IO_H
-
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/ansi_files.h"
-
-#ifndef __cplusplus
-typedef unsigned short wchar_t;
+#ifndef MP6_PROJECT_WCHAR_IO_H
+#define MP6_PROJECT_WCHAR_IO_H
+/* Share the public interface with the reconstructed header. */
+#include "Include/wchar_io.h"
 #endif
-
-int fwide(FILE* file, int mode);
-
-#endif /* _MSL_COMMON_WCHAR_IO_H */

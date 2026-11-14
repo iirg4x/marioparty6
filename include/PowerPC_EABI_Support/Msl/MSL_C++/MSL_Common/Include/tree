@@ -1,1864 +1,618 @@
-/* Metrowerks Standard Library
- * Copyright © 1995-2001 Metrowerks Corporation.  All rights reserved.
- *
- * $Date: 2001/05/10 14:39:44 $ 
- * $Revision: 1.13 $ 
- */
+#ifndef MP6_RECONSTRUCTED_TREE
+#define MP6_RECONSTRUCTED_TREE
 
-// tree
+#include <list>
+#include <utility>
+#include <functional>
+#include <limits>
 
-#ifndef _TREE
-#define _TREE
-
-// WARNING
-//
-// tree is a non-standard, non-portable header and container.
-//
-// WARNING
-//
-//	__tree serves as the implementation of map, multimap, set and multiset.  The
-//	node insertion and removal routines are based on algorithms presented in
-//	Cormen, Leiserson, and Rivest, Introduction to Algorithms (MIT Press, 1990).
-//	Modifications to these algorithms include:
-//
-//	1.	Sentinel nodes are not used.  The algorithm has been modified to have
-//		Sentinel nodes modled by null pointers in the leaf nodes.  Nodes represented
-//		in this fashion have a color of black, and are never explicitly referenced.
-//
-//	2.	Point 1 is especially important in the balancing portion of the node delete
-//		routine.  Here a null node is required to know it's parent and whether it is
-//		a left child or right child.  This is fixed up by storing the parent of the
-//		null node (instead of the null node), and a bool representing whether it is
-//		a left child or right child.
-//
-//	3.	The orignal node delete routine called for copying one node into another.
-//		This would cause non-standard behavior, so instead pointers are fixed up
-//		to achieve the same effect.
-//
-//	4.	The "RB-Delete" and "RB-Delete-Fixup" routines are implemented as one
-//		routine here:  "balance_erase".
-
-#include <mslconfig>
-#include <msl_utility>
-#include <memory>
-#include <stdexcept>
-#include <iterator>
-#include <algorithm>
-
-#ifdef _TREE_DEBUG
-	#include <cassert>
-#endif
-
-#pragma options align=native
-
-#ifdef _MSL_FORCE_ENUMS_ALWAYS_INT
-	#if _MSL_FORCE_ENUMS_ALWAYS_INT
-		#pragma enumsalwaysint on
-	#else
-		#pragma enumsalwaysint off
-	#endif
-#endif
-
-#ifdef _MSL_FORCE_ENABLE_BOOL_SUPPORT
-	#if _MSL_FORCE_ENABLE_BOOL_SUPPORT
-		#pragma bool on
-	#else
-		#pragma bool off
-	#endif
-#endif
-
-#ifdef min
-#undef min
-#endif
-
-#ifdef max
-#undef max
-#endif
-
-#ifndef _MSL_NO_CPP_NAMESPACE
-	namespace std {
-#endif
-
-// hh 981203 **** WARNING ****  __pointer_plus_bit is not standard.
-// It is used in the implementation of __tree.  It compacts a bool
-// and a pointer into the space of a pointer.  The pointer must refer
-// to memory with an alignment of 2 or more bytes.
-// Use of this optimization can be turned off in <mslconfig> with the
-// _Inhibit_Optimize_RB_bit flag.
-
-template <class T>
-class __pointer_plus_bit
-{
+namespace std {
+// An aligned node pointer retains the color in its low bit.
+template <class T> class __pointer_plus_bit {
 public:
-	__pointer_plus_bit(T* ptr = 0);
-	__pointer_plus_bit& operator = (const __pointer_plus_bit& x);
-	__pointer_plus_bit& operator = (T* x);
-	operator T* () const;
-	bool bit() const;
-	void bit(bool b);
-	T* operator -> () const;
-private:
-	T* ptr_;
-
-	__pointer_plus_bit(const __pointer_plus_bit&); // not defined
+    T* bits;
+    // Read the pointer or apply the stored key ordering operation.
+    operator T*() const {
+        return reinterpret_cast<T*>(reinterpret_cast<unsigned long>(bits) & ~1UL);
+    }
+    T* operator->() const {
+        return reinterpret_cast<T*>(reinterpret_cast<unsigned long>(bits) & ~1UL);
+    }
+    // Replace the pointer while preserving its stored low bit.
+    __pointer_plus_bit& operator=(T* p) {
+        bits = reinterpret_cast<T*>(reinterpret_cast<unsigned long>(p) |
+            (reinterpret_cast<unsigned long>(bits) & 1UL));
+        return *this;
+    }
+    // Replace the pointer while preserving its stored low bit.
+    __pointer_plus_bit& operator=(const __pointer_plus_bit& p) {
+        bits = reinterpret_cast<T*>((reinterpret_cast<unsigned long>(p.bits) & ~1UL) |
+            (reinterpret_cast<unsigned long>(bits) & 1UL));
+        return *this;
+    }
+    // Read or update the stored low pointer bit.
+    bool bit() const { return reinterpret_cast<unsigned long>(bits) & 1UL; }
+    // Read or update the stored low pointer bit.
+    void bit(bool value) {
+        if (value) bits = reinterpret_cast<T*>(reinterpret_cast<unsigned long>(bits) | 1UL);
+        else bits = reinterpret_cast<T*>(reinterpret_cast<unsigned long>(bits) & ~1UL);
+    }
+};
+// The template name, tag width and three node words are visible in the oracle.
+template <int TagBits> class __red_black_tree {
+public:
+    // Under -enum int the objects pass and hold this enum as a byte; only this region reproduces
+    // that.
+#pragma enumsalwaysint off
+    enum Color { black = 0, red = 1 };
+#pragma enumsalwaysint reset
+    struct node_base {
+        node_base* left;
+        node_base* right;
+        __pointer_plus_bit<node_base> parent;
+        // The low address bit stores the color; node addresses are aligned.
+        Color color() const { return static_cast<Color>(parent.bit()); }
+        // Set the color while preserving the parent address.
+        void set_color(Color value) { parent.bit(value); }
+    };
+    // Holds the root link separately from allocated nodes.
+    struct anchor {
+        node_base* left;
+        // Initialize an empty root link.
+        anchor() : left(0) {}
+    };
+    // Find the first element below a branch.
+    static node_base* leftmost(node_base* p) { while (p->left) p = p->left; return p; }
+    // Advance a bidirectional tree iterator, including the root anchor.
+    static void increment(const node_base*& p);
+    // Advance to the preceding node in sorted order.
+    static void decrement(const node_base*& p) {
+        if (p->left) { p = p->left; while (p->right) p = p->right; }
+        else { while (p != p->parent->right) p = p->parent; p = p->parent; }
+    }
+    // Restore red-black invariants after linking a newly allocated node.
+    static void balance_insert(node_base* p, node_base* root);
+    // Unlink the erased node, moving its successor when both children exist.
+    static void balance_erase(node_base* removed, node_base* root);
+    // Rotate the subtree while preserving its link to the root anchor.
+    static void rotate_left(node_base* p, node_base*& root);
+    // Rotate a branch right while preserving parent links.
+    static void rotate_right(node_base* p, node_base*& root);
 };
 
-template <class T>
-inline
-__pointer_plus_bit<T>::__pointer_plus_bit(T* ptr)
-	: ptr_(ptr)
-{
-}
+// Advance to the next node in sorted order.
+template <int TagBits> void __red_black_tree<TagBits>::increment(const node_base*& p){
+        if (p->right) p = leftmost(p->right);
+        else { while (p != p->parent->left) p = p->parent; p = p->parent; }
+    }
 
-template <class T>
-inline
-__pointer_plus_bit<T>&
-__pointer_plus_bit<T>::operator = (const __pointer_plus_bit& x)
-{
-	ptr_ = (T*)(((size_t)x.ptr_ & ~1) | ((size_t)ptr_ & 1));
-	return *this;
-}
+// Rotate a branch left while preserving parent links.
+template <int TagBits> void __red_black_tree<TagBits>::rotate_left(node_base* p, node_base*& root){
+        node_base* q = p->right;
+        if (root == p) root = q;
+        p->right = q->left;
+        if (q->left) q->left->parent = p;
+        q->parent = p->parent;
+        if (p == p->parent->left) p->parent->left = q;
+        else p->parent->right = q;
+        q->left = p;
+        p->parent = q;
+    }
 
-template <class T>
-inline
-__pointer_plus_bit<T>&
-__pointer_plus_bit<T>::operator = (T* x)
-{
-	ptr_ = (T*)((size_t)x | ((size_t)ptr_ & 1));
-	return *this;
-}
+// Rotate a branch right while preserving parent links.
+template <int TagBits> void __red_black_tree<TagBits>::rotate_right(node_base* p, node_base*& root){
+        node_base* q = p->left;
+        if (root == p) root = q;
+        p->left = q->right;
+        if (q->right) q->right->parent = p;
+        q->parent = p->parent;
+        if (p == p->parent->left) p->parent->left = q;
+        else p->parent->right = q;
+        q->right = p;
+        p->parent = q;
+    }
 
-template <class T>
-inline
-__pointer_plus_bit<T>::operator T* () const
-{
-	return (T*)((size_t)ptr_ & ~1);
-}
+// Restore tree colors and links after insertion.
+template <int TagBits> void __red_black_tree<TagBits>::balance_insert(node_base* p, node_base*
+    root){
+        // Set the color while preserving the parent address.
+        p->set_color(red);
+        while (p != root && p->parent->color() == red) {
+            if (p->parent == p->parent->parent->left) {
+                node_base* uncle = p->parent->parent->right;
+                if (uncle && uncle->color() == red) {
+                    p->parent->set_color(black); uncle->set_color(black);
+                    p = p->parent->parent; p->set_color(red);
+                } else {
+                    if (p == p->parent->right) { p = p->parent; rotate_left(p, root); }
+                    p->parent->set_color(black); p->parent->parent->set_color(red);
+                    // Rotate a branch right while preserving parent links.
+                    rotate_right(p->parent->parent, root);
+                }
+            } else {
+                node_base* uncle = p->parent->parent->left;
+                if (uncle && uncle->color() == red) {
+                    p->parent->set_color(black); uncle->set_color(black);
+                    p = p->parent->parent; p->set_color(red);
+                } else {
+                    if (p == p->parent->left) { p = p->parent; rotate_right(p, root); }
+                    p->parent->set_color(black); p->parent->parent->set_color(red);
+                    // Rotate a branch left while preserving parent links.
+                    rotate_left(p->parent->parent, root);
+                }
+            }
+        }
+        // Set the color while preserving the parent address.
+        root->set_color(black);
+    }
 
-template <class T>
-inline
-bool
-__pointer_plus_bit<T>::bit() const
-{
-	return bool((size_t)ptr_ & 1);
-}
+// Unlink a node and restore tree colors and links.
+template <int TagBits> void __red_black_tree<TagBits>::balance_erase(node_base* removed, node_base*
+    root){
+        node_base* moved = removed;
+        if (removed->left && removed->right) increment(const_cast<const node_base*&>(moved));
+        node_base* child = moved->left ? moved->left : moved->right;
+        node_base* parent = moved->parent;
+        if (child) child->parent = parent;
+        bool left;
+        if (moved == moved->parent->left) { moved->parent->left = child; left = true; }
+        else { moved->parent->right = child; left = false; }
+        // Read the color stored in the low pointer bit.
+        bool repair = moved->color() == black;
+        if (moved != removed) {
+            moved->parent = removed->parent;
+            if (removed == moved->parent->left) moved->parent->left = moved;
+            else moved->parent->right = moved;
+            moved->left = removed->left;
+            if (moved->left) moved->left->parent = moved; else parent = moved;
+            moved->right = removed->right;
+            if (moved->right) moved->right->parent = moved; else parent = moved;
+            // Set the color while preserving the parent address.
+            moved->set_color(removed->color());
+            if (root == removed) root = moved;
+        } else if (!child && removed == root) repair = false;
+        if (repair) {
+            while (child != root && (!child || child->color() == black)) {
+                if (left) {
+                    node_base* sibling = parent->right;
+                    if (sibling->color() == red) {
+                        // Set the color while preserving the parent address.
+                        sibling->set_color(black);
+                        parent->set_color(red);
+                        rotate_left(parent, root);
+                        sibling = parent->right;
+                    }
+                    if ((!sibling->left || sibling->left->color() == black) && (!sibling->right ||
+                        sibling->right->color() == black)) {
+                        // Set the color while preserving the parent address.
+                        sibling->set_color(red);
+                        child = parent;
+                        parent = child->parent;
+                        left = child == parent->left;
+                    } else {
+                        if (!sibling->right || sibling->right->color() == black) {
+                            // Set the color while preserving the parent address.
+                            sibling->left->set_color(black);
+                            sibling->set_color(red);
+                            rotate_right(sibling, root);
+                            sibling = parent->right;
+                        }
+                        // Set the color while preserving the parent address.
+                        sibling->set_color(parent->color());
+                        parent->set_color(black);
+                        sibling->right->set_color(black);
+                        // Rotate a branch left while preserving parent links.
+                        rotate_left(parent, root); child = root;
+                    }
+                } else {
+                    node_base* sibling = parent->left;
+                    if (sibling->color() == red) {
+                        // Set the color while preserving the parent address.
+                        sibling->set_color(black);
+                        parent->set_color(red);
+                        rotate_right(parent, root);
+                        sibling = parent->left;
+                    }
+                    if ((!sibling->left || sibling->left->color() == black) && (!sibling->right ||
+                        sibling->right->color() == black)) {
+                        // Set the color while preserving the parent address.
+                        sibling->set_color(red);
+                        child = parent;
+                        parent = child->parent;
+                        left = child == parent->left;
+                    } else {
+                        if (!sibling->left || sibling->left->color() == black) {
+                            // Set the color while preserving the parent address.
+                            sibling->right->set_color(black);
+                            sibling->set_color(red);
+                            rotate_left(sibling, root);
+                            sibling = parent->left;
+                        }
+                        // Set the color while preserving the parent address.
+                        sibling->set_color(parent->color());
+                        parent->set_color(black);
+                        sibling->left->set_color(black);
+                        // Rotate a branch right while preserving parent links.
+                        rotate_right(parent, root); child = root;
+                    }
+                }
+            }
+            if (child) child->set_color(black);
+        }
+    }
 
-template <class T>
-inline
-void
-__pointer_plus_bit<T>::bit(bool b)
-{
-	if (b)
-		ptr_ = (T*)((size_t)ptr_ | 1);
-	else
-		ptr_ = (T*)((size_t)ptr_ & ~1);
-}
-
-template <class T>
-inline
-T*
-__pointer_plus_bit<T>::operator -> () const
-{
-	return (T*)((size_t)ptr_ & ~1);
-}
-
-template <bool b>
-class __red_black_tree
-{
-protected:
-
-	enum Color {black, red};
-
-	struct node_base;
-	
-	struct anchor
-	{
-		node_base* left_;
-
-		anchor(node_base* left = 0) : left_(left) {}
-	};
-
-	#ifndef _Inhibit_Optimize_RB_bit
-
-		struct node_base
-			: public anchor
-		{
-			node_base* right_;
-			__pointer_plus_bit<node_base> parent_;
-
-			node_base(node_base* left = 0, node_base* right = 0, node_base* parent = 0) : anchor(left), right_(right), parent_(parent) {}
-			Color color() const {return Color(parent_.bit());}
-			void set_color(Color c) {parent_.bit(bool(c));}
-		};
-
-	#else
-
-		struct node_base
-			: public anchor
-		{
-			node_base* right_;
-			node_base* parent_;
-			Color color_;
-
-			node_base(node_base* left = 0, node_base* right = 0, node_base* parent = 0) : anchor(left), right_(right), parent_(parent) {}
-			Color color() const {return color_;}
-			void set_color(Color c) {color_ = c;}
-		};
-
-	#endif
-
-	static node_base* leftmost(node_base* x);
-	static node_base* rightmost(node_base* x);
-	static void increment(const node_base*& x);
-	static void decrement(const node_base*& x);
-	static void balance_insert(node_base* x, node_base* root);
-	static void balance_erase(node_base* z, node_base* root);
+// The two allocator pairs, root anchor and cached first pointer follow oracle offsets.
+template <class T, class Compare, class Allocator> class __tree {
+    typedef __red_black_tree<1> links;
+    typedef typename links::node_base node_base;
+public:
+    typedef T value_type;
+    typedef Allocator allocator_type;
+    typedef unsigned long size_type;
+    // Adds the stored value to the three node-link words.
+    struct node : node_base { T value; };
+    typedef typename Allocator::template rebind<node>::other node_allocator;
+    // Traverses nodes and exposes mutable stored values.
+    class iterator {
+    public:
+        typedef bidirectional_iterator_tag iterator_category;
+        typedef T value_type;
+        typedef long difference_type;
+        typedef T* pointer;
+        typedef T& reference;
+        const node_base* position;
+        // Initialize the mutable iterator from its node.
+        iterator(const node_base* p = 0) : position(p) {}
+        // Access the value at this iterator position.
+        T& operator*() const { return static_cast<node*>(const_cast<node_base*>(position))->value; }
+        // Access the value at this iterator position.
+        T* operator->() const { return &operator*(); }
+        // Advance the iterator in sorted order.
+        iterator& operator++() { links::increment(position); return *this; }
+        // Advance the iterator in sorted order.
+        iterator operator++(int) { iterator old(*this); ++*this; return old; }
+        // Move the iterator backward in sorted order.
+        iterator& operator--() { links::decrement(position); return *this; }
+        // Move the iterator backward in sorted order.
+        iterator operator--(int) { iterator old(*this); --*this; return old; }
+        // Compare the iterator positions.
+        friend bool operator==(const iterator& a, const iterator& b) {
+            return a.position == b.position;
+        }
+        // Compare the iterator positions.
+        friend bool operator!=(const iterator& a, const iterator& b) {
+            return a.position != b.position;
+        }
+    };
+    // Reuses traversal while exposing immutable stored values.
+    class const_iterator {
+    public:
+        typedef bidirectional_iterator_tag iterator_category;
+        typedef T value_type;
+        typedef long difference_type;
+        typedef const T* pointer;
+        typedef const T& reference;
+        friend class __tree;
+        const node_base* position;
+        // Initialize the immutable iterator from its traversal state.
+        const_iterator(const node_base* p = 0) : position(p) {}
+        // Initialize the immutable iterator from its traversal state.
+        const_iterator(const iterator& p) : position(p.position) {}
+        // Access the value at this iterator position.
+        const T& operator*() const { return static_cast<const node*>(position)->value; }
+        // Access the value at this iterator position.
+        const T* operator->() const { return &operator*(); }
+        // Advance the iterator in sorted order.
+        const_iterator& operator++() { links::increment(position); return *this; }
+        // Advance the iterator in sorted order.
+        const_iterator operator++(int) { const_iterator old(*this); ++*this; return old; }
+        // Move the iterator backward in sorted order.
+        const_iterator& operator--() { links::decrement(position); return *this; }
+        // Move the iterator backward in sorted order.
+        const_iterator operator--(int) { const_iterator old(*this); --*this; return old; }
+        // Compare the iterator positions.
+        friend bool operator==(const const_iterator& a, const const_iterator& b) {
+            return a.position == b.position;
+        }
+        // Compare the iterator positions.
+        friend bool operator!=(const const_iterator& a, const const_iterator& b) {
+            return a.position != b.position;
+        }
+        // Compare the iterator positions.
+        friend bool operator==(const iterator& a, const const_iterator& b) {
+            return a.position == b.position;
+        }
+        // Compare the iterator positions.
+        friend bool operator!=(const iterator& a, const const_iterator& b) {
+            return a.position != b.position;
+        }
+    };
 private:
-	static void rotate_left(node_base* x, node_base*& root);
-	static void rotate_right(node_base* x, node_base*& root);
+    Metrowerks::compressed_pair<Allocator, size_type> allocation_count;
+    Metrowerks::compressed_pair<node_allocator, typename links::anchor> node_root;
+    Metrowerks::compressed_pair<Compare, node*> ordering_first;
+    // Access the root anchor as the iterator sentinel.
+    typename links::anchor& tail() { return node_root.second(); }
+    const typename links::anchor& tail() const { return node_root.second(); }
+    // Access the count.
+    // Return the stored root link by reference.
+    node*& root() { return reinterpret_cast<node*&>(tail().left); }
+    // Read the root link through a const tree.
+    const node* root() const { return static_cast<const node*>(tail().left); }
+    // Return the cached first node link by reference.
+    node*& front() { return ordering_first.second(); }
+    size_type& sz() { return allocation_count.second(); }
+    // Access the stored ordering operation.
+    Compare& comp() { return ordering_first.first(); }
+    // Access the stored ordering operation.
+    const Compare& comp() const { return ordering_first.first(); }
+public:
+    // Remove the selected element or key.
+    void erase(iterator p);
+    // Remove the selected element or key.
+    void erase(const_iterator p) { erase(iterator(p.position)); }
+    // Initialize the allocator, ordering operation and tree state.
+    __tree(const Compare& c = Compare(), const Allocator& a = Allocator());
+    // Initialize the allocator, ordering operation and tree state.
+    __tree(const __tree& other);
+    // Destroy the allocated nodes when the tree is nonempty.
+    ~__tree() { if (root()) destroy(static_cast<node*>(root())); }
+    // Access the stored value allocator.
+    Allocator& alloc() { return allocation_count.first(); }
+    // Access the stored node allocator.
+    node_allocator& node_alloc() { return node_root.first(); }
+    // Return the first stored element.
+    iterator begin() { return front(); }
+    // Return the first stored element.
+    const_iterator begin() const { return const_iterator(ordering_first.second()); }
+    // Return the iterator past the last element.
+    iterator end() { return reinterpret_cast<node_base*>(&node_root.second()); }
+    // Return the iterator past the last element.
+    const_iterator end() const {
+        return reinterpret_cast<node_base*>(&const_cast<typename
+            links::anchor&>(node_root.second()));
+    }
+    // Test whether the stored element count is zero.
+    bool empty() const { return allocation_count.second() == 0; }
+    // Return the stored element count.
+    size_type size() const { return allocation_count.second(); }
+    // Return the maximum representable element count.
+    size_type max_size() const { return numeric_limits<size_type>::max(); }
+    // Destroy and release a node and both of its subtrees.
+    // Clone a branch and its stored values.
+    node* copy(const node* p);
+    // Search comparisons accept a key independently of the stored value type.
+    template <class Key> iterator lower_bound(const Key& key);
+    // Find the first element that follows the key.
+    template <class Key> iterator upper_bound(const Key& key);
+    template <class Key> size_type count_one(const Key& key) const { return !(find(key) == end()); }
+    // Allocate, construct and link a node at the selected branch.
+    node* insert_node_at(node* parent, bool left, bool first, const T& value);
+    // Insert a value after traversing its ordering path.
+    iterator insert_multi(const T& value);
+    // Insert a value only when no equivalent key is present.
+    pair<iterator, bool> insert_one(const T& value);
+    // Destroy every stored element and reset the tree.
+    void clear();
+    // Destroy and release a node and both of its subtrees.
+    void destroy(node* p);
+    // Return the equivalent value, inserting a default mapped value when absent.
+    template <class Key, class Mapped> T& find_or_insert(const Key& key);
+    // Remove one equivalent key and return the removal count.
+    template <class Key> size_type erase_one(const Key& key);
+    // Find an element whose key compares equivalent.
+    template <class Key> iterator find(const Key& key);
+    template <class Key> const_iterator find(const Key& key) const {
+        return const_cast<__tree*>(this)->find(key);
+    }
 };
 
-template <bool b>
-inline
-typename __red_black_tree<b>::node_base*
-__red_black_tree<b>::leftmost(node_base* x)
-{
-	while (x->left_ != 0)
-		x = x->left_;
-	return x;
+template <class T, class Compare, class Allocator> __tree<T, Compare,
+    Allocator>::__tree(const Compare& c, const Allocator& a)
+        : allocation_count(a), node_root(node_allocator(a)), ordering_first(c) {
+        ordering_first.second() = reinterpret_cast<node*>(&node_root.second());
+    }
+
+template <class T, class Compare, class Allocator> __tree<T, Compare,
+    Allocator>::__tree(const __tree& other)
+        : allocation_count(other.allocation_count), node_root(other.node_root),
+            ordering_first(other.ordering_first) {
+        if (other.root() != 0) {
+            root() = copy(static_cast<const node*>(other.root()));
+            root()->parent = reinterpret_cast<node_base*>(&tail());
+            front() = static_cast<node*>(links::leftmost(root()));
+        } else front() = reinterpret_cast<node*>(&tail());
+    }
+
+// Copy the branch and reconnect each child's parent before copying its value.
+template <class T, class Compare, class Allocator> typename __tree<T, Compare, Allocator>::node*
+    __tree<T, Compare, Allocator>::copy(const node* p) {
+        node* added = node_alloc().allocate(1);
+        added->left = added->right = 0;
+        if (p->left) {
+            added->left = copy(static_cast<const node*>(p->left));
+            added->left->parent = added;
+        }
+        if (p->right) {
+            added->right = copy(static_cast<const node*>(p->right));
+            added->right->parent = added;
+        }
+        alloc().construct(&added->value, p->value);
+        added->set_color(p->color());
+        return added;
+    }
+
+// Destroy and release a node and both of its subtrees.
+template <class T, class Compare, class Allocator> void __tree<T, Compare, Allocator>::destroy(node*
+    p) {
+        if (p->left) destroy(static_cast<node*>(p->left));
+        if (p->right) destroy(static_cast<node*>(p->right));
+        // Access the stored value allocator.
+        alloc().destroy(&p->value); node_alloc().deallocate(p, 1);
+    }
+
+// Destroy every stored element and reset the tree.
+template <class T, class Compare, class Allocator> void __tree<T, Compare, Allocator>::clear() {
+        if (root()) {
+            // Destroy and release a node and both of its subtrees.
+            destroy(static_cast<node*>(root()));
+            // Access the count.
+            sz() = 0;
+            // Access the root anchor as the iterator sentinel.
+            root() = 0;
+            ordering_first.second() = reinterpret_cast<node*>(&node_root.second());
+        }
+    }
+
+// Find the first element that does not precede the key.
+template <class T, class Compare, class Allocator> template <class Key> typename __tree<T, Compare,
+    Allocator>::iterator __tree<T, Compare, Allocator>::lower_bound(const Key& key) {
+        // Access the root anchor as the iterator sentinel.
+        node_base* p = root();
+        node_base* found =
+            reinterpret_cast<node_base*>(&const_cast<typename links::anchor&>(node_root.second()));
+        while (p) {
+            if (!comp()(static_cast<node*>(p)->value, key)) { found = p; p = p->left; }
+            else p = p->right;
+        }
+        return found;
+    }
+
+// Find the first element that follows the key.
+template <class T, class Compare, class Allocator> template <class Key> typename __tree<T, Compare,
+    Allocator>::iterator __tree<T, Compare, Allocator>::upper_bound(const Key& key) {
+        // Access the root anchor as the iterator sentinel.
+        node_base* p = root();
+        node_base* found =
+            reinterpret_cast<node_base*>(&const_cast<typename links::anchor&>(node_root.second()));
+        while (p) {
+            if (comp()(key, static_cast<node*>(p)->value)) { found = p; p = p->left; }
+            else p = p->right;
+        }
+        return found;
+    }
+
+// Find an element whose key compares equivalent.
+template <class T, class Compare, class Allocator> template <class Key> typename __tree<T, Compare,
+    Allocator>::iterator __tree<T, Compare, Allocator>::find(const Key& key) {
+        // Access the root anchor as the iterator sentinel.
+        node_base* p = root();
+        node_base* found = reinterpret_cast<node_base*>(&node_root.second());
+        while (p) {
+            if (!comp()(static_cast<node*>(p)->value, key)) { found = p; p = p->left; }
+            else p = p->right;
+        }
+        if (found == reinterpret_cast<node_base*>(&node_root.second()) || comp()(key,
+            static_cast<node*>(found)->value)) return end();
+        return found;
+    }
+
+// Allocate, construct and link a node at the selected branch.
+template <class T, class Compare, class Allocator> typename __tree<T, Compare, Allocator>::node*
+    __tree<T, Compare, Allocator>::insert_node_at(node* parent, bool left, bool first, const T&
+    value) {
+        if (size() > max_size() - 1) __msl_error("tree::insert length error\n");
+        // Access the stored node allocator.
+        node* added = node_alloc().allocate(1);
+        // Access the stored value allocator.
+        alloc().construct(&added->value, value);
+        added->left = added->right = 0;
+        added->parent = parent;
+        if (left) parent->left = added; else parent->right = added;
+        // Access the count.
+        ++sz(); links::balance_insert(added, root());
+        if (first) ordering_first.second() = added;
+        return added;
+    }
+
+// Insert a value after traversing its ordering path.
+template <class T, class Compare, class Allocator> typename __tree<T, Compare,
+    Allocator>::iterator __tree<T, Compare, Allocator>::insert_multi(const T& value) {
+        node* parent = reinterpret_cast<node*>(&node_root.second());
+        // Access the root anchor as the iterator sentinel.
+        node* p = static_cast<node*>(root());
+        bool left = true;
+        bool first = true;
+        while (p) {
+            parent = p;
+            if (comp()(value, p->value)) {
+                p = static_cast<node*>(p->left);
+                left = true;
+            } else {
+                p = static_cast<node*>(p->right);
+                left = false;
+                first = false;
+            }
+        }
+        return insert_node_at(parent, left, first, value);
+    }
+
+// Insert a value only when no equivalent key is present.
+template <class T, class Compare, class Allocator> pair<typename __tree<T, Compare,
+    Allocator>::iterator, bool> __tree<T, Compare, Allocator>::insert_one(const T& value) {
+        node_base* before = 0;
+        node_base* parent = reinterpret_cast<node_base*>(&node_root.second());
+        // Access the root anchor as the iterator sentinel.
+        node_base* p = root();
+        bool left = true;
+        bool first = true;
+        while (p) {
+            parent = p;
+            if (comp()(value, static_cast<node*>(p)->value)) {
+                p = p->left; left = true;
+            } else {
+                before = parent;
+                p = p->right; left = false; first = false;
+            }
+        }
+        if (!before || comp()(static_cast<node*>(before)->value, value)) {
+            // Allocate, construct and link a node at the selected branch.
+            p = insert_node_at(static_cast<node*>(parent), left, first, value);
+            return pair<iterator, bool>(iterator(p), true);
+        }
+        return pair<iterator, bool>(iterator(before), false);
+    }
+
+// Return the equivalent value, inserting a default mapped value when absent.
+template <class T, class Compare, class Allocator> template <class Key, class Mapped> T& __tree<T,
+    Compare, Allocator>::find_or_insert(const Key& key) {
+        node* before = 0;
+        node* parent = reinterpret_cast<node*>(&node_root.second());
+        // Access the root anchor as the iterator sentinel.
+        node* p = static_cast<node*>(root());
+        bool left = true;
+        bool first = true;
+        while (p) {
+            parent = p;
+            if (comp()(key, p->value)) {
+                p = static_cast<node*>(p->left); left = true;
+            } else {
+                before = parent;
+                p = static_cast<node*>(p->right); left = false; first = false;
+            }
+        }
+        if (!before || comp()(before->value, key))
+            return insert_node_at(parent, left, first, T(key, Mapped()))->value;
+        return before->value;
+    }
+
+// Remove the selected element or key.
+template <class T, class Compare, class Allocator> void __tree<T, Compare,
+    Allocator>::erase(iterator p) {
+        node* victim = static_cast<node*>(const_cast<node_base*>(p.position));
+        if (p == begin()) ordering_first.second() =
+            static_cast<node*>(const_cast<node_base*>((++p).position));
+        // Unlink a node and restore tree colors and links.
+        links::balance_erase(victim, root());
+        // Access the stored value allocator.
+        alloc().destroy(&victim->value); node_alloc().deallocate(victim, 1); --sz();
+    }
+
+// Remove one equivalent key and return the removal count.
+template <class T, class Compare, class Allocator> template <class Key> typename __tree<T, Compare,
+    Allocator>::size_type __tree<T, Compare, Allocator>::erase_one(const Key& key) {
+        // Find an element whose key compares equivalent.
+        iterator p = find(key); if (p == end()) return 0; erase(p); return 1;
+    }
 }
-
-template <bool b>
-inline
-typename __red_black_tree<b>::node_base*
-__red_black_tree<b>::rightmost(node_base* x)
-{
-	while (x->right_ != 0)
-		x = x->right_;
-	return x;
-}
-
-template <bool b>
-void
-__red_black_tree<b>::increment(const node_base*& x)
-{
-	if (x->right_ != 0)
-		x = leftmost(x->right_);
-	else
-	{
-		while (x != x->parent_->left_)
-			x = x->parent_;
-		x = x->parent_;
-	}
-}
-
-template <bool b>
-void
-__red_black_tree<b>::decrement(const node_base*& x)
-{
-	if (x->left_ != 0)
-		x = rightmost(x->left_);
-	else
-	{
-		while (x == x->parent_->left_)
-			x = x->parent_;
-		x = x->parent_;
-	}
-}
-
-template <bool b>
-void
-__red_black_tree<b>::balance_insert(node_base* x, node_base* root)
-{
-	x->set_color(red);
-	while (x != root && x->parent_->color() == red)
-	{
-		if (x->parent_ == x->parent_->parent_->left_)
-		{
-			node_base* y = x->parent_->parent_->right_;
-			if (y != 0 && y->color() == red)
-			{
-				x->parent_->set_color(black);
-				y->set_color(black);
-				x = x->parent_->parent_;
-				x->set_color(red);
-			}
-			else
-			{
-				if (x == x->parent_->right_)
-				{
-					x = x->parent_;
-					rotate_left(x, root);
-				}
-				x->parent_->set_color(black);
-				x->parent_->parent_->set_color(red);
-				rotate_right(x->parent_->parent_, root);
-			}
-		}
-		else
-		{
-			node_base* y = x->parent_->parent_->left_;
-			if (y != 0 && y->color() == red)
-			{
-				x->parent_->set_color(black);
-				y->set_color(black);
-				x = x->parent_->parent_;
-				x->set_color(red);
-			}
-			else
-			{
-				if (x == x->parent_->left_)
-				{
-					x = x->parent_;
-					rotate_right(x, root);
-				}
-				x->parent_->set_color(black);
-				x->parent_->parent_->set_color(red);
-				rotate_left(x->parent_->parent_, root);
-			}
-		}
-	}
-	root->set_color(black);
-}
-
-template <bool b>
-void
-__red_black_tree<b>::balance_erase(node_base* z, node_base* root)
-{
-	// Remove z from tree
-	node_base* y = z;
-	if (z->left_ != 0 && z->right_ != 0)
-		increment((const node_base*&)y);
-	node_base* x = y->left_ != 0 ? y->left_ : y->right_;
-	node_base* x_parent = y->parent_;
-	if (x != 0)
-		x->parent_ = x_parent;
-	bool x_is_left_child;
-	if (y == y->parent_->left_)
-	{
-		y->parent_->left_ = x;
-		x_is_left_child = true;
-	}
-	else
-	{
-		y->parent_->right_ = x;
-		x_is_left_child = false;
-	}
-	bool removed_black = y->color() == black;
-	if (y != z)
-	{	// Replace z with y
-		y->parent_ = z->parent_;
-		if (z == y->parent_->left_)
-			y->parent_->left_ = y;
-		else
-			y->parent_->right_ = y;
-		y->left_ = z->left_;
-		if (y->left_ != 0)
-			y->left_->parent_ = y;
-		else
-			x_parent = y;
-		y->right_ = z->right_;
-		if (y->right_ != 0)
-			y->right_->parent_ = y;
-		else
-			x_parent = y;
-		y->set_color(z->color());
-		if (root == z)
-			root = y;
-	}
-	else if (x == 0 && z == root)
-		removed_black = false; // removing last node, don't balance
-	if (removed_black)
-	{	// Balance tree
-		while (x != root && (x == 0 || x->color() == black))
-		{
-			if (x_is_left_child)
-			{
-				node_base* w = x_parent->right_;
-				if (w->color() == red)
-				{
-					w->set_color(black);
-					x_parent->set_color(red);
-					rotate_left(x_parent, root);
-					w = x_parent->right_;
-				}
-				if ((w->left_  == 0 || w->left_->color()  == black) &&
-					(w->right_ == 0 || w->right_->color() == black))
-				{
-					w->set_color(red);
-					x = x_parent;
-					x_parent = x->parent_;
-					x_is_left_child = x == x_parent->left_;
-				}
-				else
-				{
-					if (w->right_ == 0 || w->right_->color() == black)
-					{
-						w->left_->set_color(black);
-						w->set_color(red);
-						rotate_right(w, root);
-						w = x_parent->right_;
-					}
-					w->set_color(x_parent->color());
-					x_parent->set_color(black);
-					w->right_->set_color(black);
-					rotate_left(x_parent, root);
-					x = root;
-				}
-			}
-			else
-			{
-				node_base* w = x_parent->left_;
-				if (w->color() == red)
-				{
-					w->set_color(black);
-					x_parent->set_color(red);
-					rotate_right(x_parent, root);
-					w = x_parent->left_;
-				}
-				if ((w->left_  == 0 || w->left_->color()  == black) &&
-					(w->right_ == 0 || w->right_->color() == black))
-				{
-					w->set_color(red);
-					x = x_parent;
-					x_parent = x->parent_;
-					x_is_left_child = x == x_parent->left_;
-				}
-				else
-				{
-					if (w->left_ == 0 || w->left_->color() == black)
-					{
-						w->right_->set_color(black);
-						w->set_color(red);
-						rotate_left(w, root);
-						w = x_parent->left_;
-					}
-					w->set_color(x_parent->color());
-					x_parent->set_color(black);
-					w->left_->set_color(black);
-					rotate_right(x_parent, root);
-					x = root;
-				}
-			}
-		}
-		if (x != 0)
-			x->set_color(black);
-	}
-}
-
-template <bool b>
-void
-__red_black_tree<b>::rotate_left(node_base* x, node_base*& root)
-{
-	node_base* y = x->right_;
-	if (root == x)
-		root = y;
-	x->right_ = y->left_;
-	if (y->left_ != 0)
-		y->left_->parent_ = x;
-	y->parent_ = x->parent_;
-	if (x == x->parent_->left_)
-		x->parent_->left_ = y;
-	else
-		x->parent_->right_ = y;
-	y->left_ = x;
-	x->parent_ = y;
-}
-
-template <bool b>
-void
-__red_black_tree<b>::rotate_right(node_base* x, node_base*& root)
-{
-	node_base* y = x->left_;
-	if (root == x)
-		root = y;
-	x->left_ = y->right_;
-	if (y->right_ != 0)
-		y->right_->parent_ = x;
-	y->parent_ = x->parent_;
-	if (x == x->parent_->left_)
-		x->parent_->left_ = y;
-	else
-		x->parent_->right_ = y;
-	y->right_ = x;
-	x->parent_ = y;
-}
-
-template <class T, class Compare, class Allocator>
-class __tree
-	: private __red_black_tree<true>
-{
-public:
-	//  types:
-	typedef T                                     value_type;
-	typedef Compare                               value_compare;
-	typedef Allocator                             allocator_type;
-	typedef typename Allocator::reference         reference;
-	typedef typename Allocator::const_reference   const_reference;
-	class                                         iterator;
-	class                                         const_iterator;
-	typedef typename Allocator::size_type         size_type;
-	typedef typename Allocator::difference_type   difference_type;
-	typedef typename Allocator::pointer           pointer;
-	typedef typename Allocator::const_pointer     const_pointer;
-	typedef _STD::reverse_iterator<iterator>       reverse_iterator;
-	typedef _STD::reverse_iterator<const_iterator> const_reverse_iterator;
-
-private:
-
-	struct node
-		: public node_base
-	{
-		value_type data_;
-	private:
-		node();  // hh 990826
-	};
-
-	typedef _MSL_REBIND (node)                     node_allocator_type;
-
-public:
-
-#ifdef _Inhibit_Optimize_RB_bit
-
-	struct debug_view
-	{
-		debug_view* left_;
-		debug_view* right_;
-		debug_view* parent_;
-		Color color_;
-		value_type data_;
-	};
-
-#else
-
-	struct debug_view
-	{
-		debug_view* left_;
-		debug_view* right_;
-		__pointer_plus_bit<debug_view> parent_;
-		value_type data_;
-	};
-
 #endif
-
-	friend class iterator;
-	class iterator
-		: public _STD::iterator<bidirectional_iterator_tag, value_type, difference_type, pointer, reference>
-	{
-	public:
-		iterator() {}
-		reference operator * () const {return ptr_->data_;}
-		pointer operator -> () const {return &ptr_->data_;}
-		iterator& operator ++ () {increment((const node_base*&)ptr_); return *this;}
-		iterator operator ++ (int) {iterator temp(*this); ++(*this); return temp;}
-		iterator& operator -- () {decrement((const node_base*&)ptr_); return *this;}
-		iterator operator -- (int) {iterator temp(*this); --(*this); return temp;}
-		friend bool operator ==(const iterator& x, const iterator& y) {return x.ptr_ == y.ptr_;}  // hh 990720
-		friend bool operator !=(const iterator& x, const iterator& y) {return x.ptr_ != y.ptr_;}
-	private:
-		node* ptr_;
-
-		iterator(node* ptr) : ptr_(ptr) {}
-
-		friend class __tree;
-		friend class __tree::const_iterator;
-	};
-
-	friend class const_iterator;
-	class const_iterator
-		: public _STD::iterator<bidirectional_iterator_tag, value_type, difference_type, const_pointer, const_reference>
-	{
-	public:
-		const_iterator() {}
-		const_iterator(const __tree::iterator& i) : ptr_(i.ptr_) {}
-		const_reference operator * () const {return ptr_->data_;}
-		const_pointer operator -> () const {return &ptr_->data_;}
-		const_iterator& operator ++ () {increment((const node_base*&)ptr_); return *this;}
-		const_iterator operator ++ (int) {const_iterator temp(*this); ++(*this); return temp;}
-		const_iterator& operator -- () {decrement((const node_base*&)ptr_); return *this;}
-		const_iterator operator -- (int) {const_iterator temp(*this); --(*this); return temp;}
-		friend bool operator ==(const const_iterator& x, const const_iterator& y) {return x.ptr_ == y.ptr_;}  // hh 990720
-		friend bool operator !=(const const_iterator& x, const const_iterator& y) {return x.ptr_ != y.ptr_;}
-	private:
-		const node* ptr_;
-
-		const_iterator(const node* ptr) : ptr_(ptr) {}
-
-		friend class __tree;
-	};
-
-	//  lib.set.cons construct/copy/destroy:
-	__tree();
-	__tree(const Compare& comp, const Allocator& a);
-#ifndef _MSL_NO_MEMBER_TEMPLATE
-	#ifndef _MSL_MUST_INLINE_MEMBER_TEMPLATE
-		template <class InputIterator>
-			__tree(InputIterator first, InputIterator last, bool multi,
-				const Compare& comp, const Allocator& a);
-	#else
-		template <class InputIterator>
-			__tree(InputIterator first, InputIterator last, bool multi,
-				const Compare& comp, const Allocator& a)
-				: alloc_(a, 0),
-				  node_alloc_(a),
-				  comp_(comp)
-			{
-				#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-					if ((size_t)&tail() & 1)
-						#ifndef _MSL_NO_EXCEPTIONS
-							throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-						#else
-							__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-						#endif	
-				#endif
-				front() = (node*)&tail();
-				#ifndef _MSL_NO_EXCEPTIONS
-				try
-				{
-				#endif
-					if (multi)
-						insert_multi(first, last);
-					else
-						insert_one(first, last);
-				#ifndef _MSL_NO_EXCEPTIONS
-				}
-				catch (...)
-				{
-					if (root() != 0)
-						destroy(root());
-					throw;
-				}
-				#endif
-			}
-	#endif
-#else
-	__tree(const_iterator first, const_iterator last, bool multi,
-		const Compare& comp, const Allocator& a);
-	__tree(const value_type* first, const value_type* last, bool multi,
-		const Compare& comp, const Allocator& a);
-#endif
-	__tree(const __tree& x);
-	~__tree();
-	__tree& operator = (const __tree& x);
-	allocator_type get_allocator() const;
-
-	//  iterators:
-	iterator               begin();
-	const_iterator         begin() const;
-	iterator               end();
-	const_iterator         end() const;
-	reverse_iterator       rbegin();
-	const_reverse_iterator rbegin() const;
-	reverse_iterator       rend();
-	const_reverse_iterator rend() const;
-
-	//  capacity:
-	bool          empty() const;
-	size_type     size() const;
-	size_type     max_size() const;
-
-	//  modifiers:
-#if !defined(_MSL_NO_MEMBER_TEMPLATE) && !defined(_MSL_MUST_INLINE_MEMBER_TEMPLATE)
-	template <class Key, class V> T& find_or_insert(const Key& key);
-#endif
-	pair<iterator,bool> insert_one(const value_type& x);
-	iterator            insert_multi(const value_type& x);
-	iterator            insert_one(iterator position, const value_type& x);
-	iterator            insert_multi(iterator position, const value_type& x);
-#ifndef _MSL_NO_MEMBER_TEMPLATE
-	#ifndef _MSL_MUST_INLINE_MEMBER_TEMPLATE
-		template <class InputIterator> void insert_one(InputIterator first, InputIterator last);
-		template <class InputIterator> void insert_multi(InputIterator first, InputIterator last);
-	#else
-
-		template <class InputIterator>
-		inline
-		void
-		insert_one(InputIterator first, InputIterator last)
-		{
-			for (; first != last; ++first)
-				insert_one(end(), *first);
-		}
-
-		template <class InputIterator>
-		inline
-		void
-		insert_multi(InputIterator first, InputIterator last)
-		{
-			for (; first != last; ++first)
-				insert_multi(end(), *first);
-		}
-
-	#endif
-#else
-	void insert_one(const_iterator first, const_iterator last);
-	void insert_one(const value_type* first, const value_type* last);
-	void insert_multi(const_iterator first, const_iterator last);
-	void insert_multi(const value_type* first, const value_type* last);
-#endif
-
-	void      erase(iterator position);
-#if !defined(_MSL_NO_MEMBER_TEMPLATE) && !defined(_MSL_MUST_INLINE_MEMBER_TEMPLATE)
-	template <class Key> size_type erase_one(const Key& x);
-	template <class Key> size_type erase_multi(const Key& x);
-#else
-	size_type erase_one(const value_type& x);
-	size_type erase_multi(const value_type& x);
-#endif
-	void      erase(iterator first, iterator last);
-	void swap(__tree& x);
-	void clear();
-
-	//  observers:
-	value_compare value_comp() const;
-
-#if !defined(_MSL_NO_MEMBER_TEMPLATE) && !defined(_MSL_MUST_INLINE_MEMBER_TEMPLATE)
-	//  set operations:
-	template <class Key> iterator       find(const Key& x);
-	template <class Key> const_iterator find(const Key& x) const;
-	template <class Key> size_type count_one(const Key& x) const;
-	template <class Key> size_type count_multi(const Key& x) const;
-
-	template <class Key> iterator       lower_bound(const Key& x);
-	template <class Key> const_iterator lower_bound(const Key& x) const;
-	template <class Key> iterator       upper_bound(const Key& x);
-	template <class Key> const_iterator upper_bound(const Key& x) const;
-	template <class Key> pair<iterator, iterator>             equal_range(const Key& x);
-	template <class Key> pair<const_iterator, const_iterator> equal_range(const Key& x) const;
-#else
-	//  set operations:
-	iterator       find(const value_type& x);
-	const_iterator find(const value_type& x) const;
-	size_type count_one(const value_type& x) const;
-	size_type count_multi(const value_type& x) const;
-
-	iterator       lower_bound(const value_type& x);
-	const_iterator lower_bound(const value_type& x) const;
-	iterator       upper_bound(const value_type& x);
-	const_iterator upper_bound(const value_type& x) const;
-	pair<iterator, iterator>             equal_range(const value_type& x);
-	pair<const_iterator, const_iterator> equal_range(const value_type& x) const;
-#endif
-private:
-	Metrowerks::compressed_pair<allocator_type, size_type>   alloc_;
-	Metrowerks::compressed_pair<node_allocator_type, anchor> node_alloc_;
-	Metrowerks::compressed_pair<value_compare, node*>        comp_;
-
-	      allocator_type& alloc()        {return alloc_.first();}
-	const allocator_type& alloc() const  {return alloc_.first();}
-	      size_type&      sz()           {return alloc_.second();}
-	const size_type&      sz() const     {return alloc_.second();}
-
-	      node_allocator_type& node_alloc()       {return node_alloc_.first();}
-	const node_allocator_type& node_alloc() const {return node_alloc_.first();}
-	      anchor&              tail()             {return node_alloc_.second();}
-	const anchor&              tail()       const {return node_alloc_.second();}
-
-	      value_compare& comp()        {return comp_.first();}
-	const value_compare& comp() const  {return comp_.first();}
-	node*&               front()       {return comp_.second();}
-	node*                front() const {return comp_.second();}
-
-	node* root() const;
-	node*& root();
-	void destroy(node* p);
-	node* copy(const node* x);
-	node* insert_node_at(node* p, bool leftchild, bool is_leftmost, const value_type& x);
-#ifdef _TREE_DEBUG
-	bool ok() const;
-	int count_black(node_base* x) const;
-#endif
-};
-
-// Implementation
-
-template <class T, class Compare, class Allocator>
-__tree<T, Compare, Allocator>::__tree()
-	: alloc_(0)
-{
-	#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-		if ((size_t)&tail() & 1)
-			#ifndef _MSL_NO_EXCEPTIONS
-				throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-			#else
-				__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-			#endif	
-	#endif
-	front() = (node*)&tail();
-}
-
-template <class T, class Compare, class Allocator>
-__tree<T, Compare, Allocator>::__tree(const Compare& comp, const Allocator& a)
-	: alloc_(a, 0),
-#ifndef _MSL_NO_MEMBER_TEMPLATE
-	  node_alloc_(a),
-#endif
-	  comp_(comp)
-{
-	#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-		if ((size_t)&tail() & 1)
-			#ifndef _MSL_NO_EXCEPTIONS
-				throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-			#else
-				__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-			#endif	
-	#endif
-	front() = (node*)&tail();
-}
-
-#ifndef _MSL_NO_MEMBER_TEMPLATE
-	#ifndef _MSL_MUST_INLINE_MEMBER_TEMPLATE
-
-		template <class T, class Compare, class Allocator>
-		template <class InputIterator>
-		__tree<T, Compare, Allocator>::__tree(InputIterator first, InputIterator last, bool multi,
-			const Compare& comp, const Allocator& a)
-			: alloc_(a, 0),
-			  node_alloc_(a),
-			  comp_(comp)
-		{
-			#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-				if ((size_t)&tail() & 1)
-					#ifndef _MSL_NO_EXCEPTIONS
-						throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-					#else
-						__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-					#endif	
-			#endif
-			front() = (node*)&tail();
-			#ifndef _MSL_NO_EXCEPTIONS
-			try
-			{
-			#endif
-				if (multi)
-					insert_multi(first, last);
-				else
-					insert_one(first, last);
-			#ifndef _MSL_NO_EXCEPTIONS
-			}
-			catch (...)
-			{
-				if (root() != 0)
-					destroy(root());
-				throw;
-			}
-			#endif
-		}
-
-	#endif
-#else
-
-	template <class T, class Compare, class Allocator>
-	__tree<T, Compare, Allocator>::__tree(const_iterator first, const_iterator last,
-		bool multi, const Compare& comp, const Allocator& a)
-		: alloc_(a, 0),
-		  comp_(comp)
-	{
-		#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-			if ((size_t)&tail() & 1)
-				#ifndef _MSL_NO_EXCEPTIONS
-					throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-				#else
-					__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-				#endif	
-		#endif
-		front() = (node*)&tail();
-		#ifndef _MSL_NO_EXCEPTIONS
-		try
-		{
-		#endif
-			if (multi)
-				insert_multi(first, last);
-			else
-				insert_one(first, last);
-		#ifndef _MSL_NO_EXCEPTIONS
-		}
-		catch (...)
-		{
-			if (root() != 0)
-				destroy(root());
-			throw;
-		}
-		#endif
-	}
-
-	template <class T, class Compare, class Allocator>
-	__tree<T, Compare, Allocator>::__tree(const value_type* first, const value_type* last,
-		bool multi, const Compare& comp, const Allocator& a)
-		: alloc_(a, 0),
-		  comp_(comp)
-	{
-		#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-			if ((size_t)&tail() & 1)
-				#ifndef _MSL_NO_EXCEPTIONS
-					throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-				#else
-					__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-				#endif	
-		#endif
-		front() = (node*)&tail();
-		#ifndef _MSL_NO_EXCEPTIONS
-		try
-		{
-		#endif
-			if (multi)
-				insert_multi(first, last);
-			else
-				insert_one(first, last);
-		#ifndef _MSL_NO_EXCEPTIONS
-		}
-		catch (...)
-		{
-			if (root() != 0)
-				destroy(root());
-			throw;
-		}
-		#endif
-	}
-
-#endif
-
-template <class T, class Compare, class Allocator>
-__tree<T, Compare, Allocator>::__tree(const __tree& x)
-	: alloc_(x.alloc_),
-	  node_alloc_(x.node_alloc_),
-	  comp_(x.comp_)
-{
-	#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-		if ((size_t)&tail() & 1)
-			#ifndef _MSL_NO_EXCEPTIONS
-				throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-			#else
-				__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-			#endif	
-	#endif
-	if (x.root() != 0)
-	{
-		root() = copy(x.root());
-		root()->parent_ = (node_base*)&tail();
-		front() = (node*)leftmost(root());
-	}
-	else
-		front() = (node*)&tail();
-}
-
-template <class T, class Compare, class Allocator>
-inline
-__tree<T, Compare, Allocator>::~__tree()
-{
-	if (root() != 0)
-		destroy(root());
-}
-
-template <class T, class Compare, class Allocator>
-__tree<T, Compare, Allocator>&
-__tree<T, Compare, Allocator>::operator = (const __tree& x)
-{
-	if (this == &x)
-		return *this;
-	clear();
-	if (x.root() != 0)
-	{
-		root() = copy(x.root());
-		root()->parent_ = (node_base*)&tail();
-	}
-	sz() = x.sz();
-	comp() = x.comp();
-	if (root() != 0)
-		front() = (node*)leftmost(root());
-	else
-		front() = (node*)&tail();
-	return *this;
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::allocator_type
-__tree<T, Compare, Allocator>::get_allocator() const
-{
-	return alloc();
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::iterator
-__tree<T, Compare, Allocator>::begin()
-{
-	return front();
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::const_iterator
-__tree<T, Compare, Allocator>::begin() const
-{
-	return front();
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::iterator
-__tree<T, Compare, Allocator>::end()
-{
-	return (node*)&tail();
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::const_iterator
-__tree<T, Compare, Allocator>::end() const
-{
-	return (const node*)&tail();
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::reverse_iterator
-__tree<T, Compare, Allocator>::rbegin()
-{
-	return reverse_iterator(end());
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::const_reverse_iterator
-__tree<T, Compare, Allocator>::rbegin() const
-{
-	return const_reverse_iterator(end());
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::reverse_iterator
-__tree<T, Compare, Allocator>::rend()
-{
-	return reverse_iterator(begin());
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::const_reverse_iterator
-__tree<T, Compare, Allocator>::rend() const
-{
-	return const_reverse_iterator(begin());
-}
-
-template <class T, class Compare, class Allocator>
-inline
-bool
-__tree<T, Compare, Allocator>::empty() const
-{
-	return sz() == 0;
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::size_type
-__tree<T, Compare, Allocator>::size() const
-{
-	return sz();
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::size_type
-__tree<T, Compare, Allocator>::max_size() const
-{
-	return numeric_limits<size_type>::max();
-}
-
-#if !defined(_MSL_NO_MEMBER_TEMPLATE) && !defined(_MSL_MUST_INLINE_MEMBER_TEMPLATE)
-
-	// hh 990820
-	template <class T, class Compare, class Allocator>
-	template <class Key, class V>
-	T&
-	__tree<T, Compare, Allocator>::find_or_insert(const Key& key)
-	{
-		node* prev = 0;
-		node* p = (node*)&tail();
-		node* n = root();
-		bool leftchild = true;
-		bool is_leftmost = true;
-		while (n != 0)
-		{
-			p = n;
-			if (comp()(key, n->data_))
-			{
-				n = (node*)n->left_;
-				leftchild = true;
-			}
-			else
-			{
-				prev = p;
-				n = (node*)n->right_;
-				leftchild = false;
-				is_leftmost = false;
-			}
-		}
-		if (prev == 0 || comp()(prev->data_, key))
-			return insert_node_at(p, leftchild, is_leftmost, value_type(key, V()))->data_;
-		return prev->data_;
-	}
-
-#endif
-
-template <class T, class Compare, class Allocator>
-pair<typename __tree<T, Compare, Allocator>::iterator, bool>
-__tree<T, Compare, Allocator>::insert_one(const value_type& x)
-{
-	node* prev = 0;
-	node* p = (node*)&tail();
-	node* n = root();
-	bool leftchild = true;
-	bool is_leftmost = true;
-	while (n != 0)
-	{
-		p = n;
-		if (comp()(x, n->data_))
-		{
-			n = (node*)n->left_;
-			leftchild = true;
-		}
-		else
-		{
-			prev = p;
-			n = (node*)n->right_;
-			leftchild = false;
-			is_leftmost = false;
-		}
-	}
-	if (prev == 0 || comp()(prev->data_, x))
-	{
-		n = insert_node_at(p, leftchild, is_leftmost, x);
-		return pair<iterator, bool>(n, true);
-	}
-	return pair<iterator, bool>(prev, false);
-}
-
-template <class T, class Compare, class Allocator>
-typename __tree<T, Compare, Allocator>::iterator
-__tree<T, Compare, Allocator>::insert_multi(const value_type& x)
-{
-	node* p = (node*)&tail();
-	node* n = root();
-	bool leftchild = true;
-	bool is_leftmost = true;
-	while (n != 0)
-	{
-		p = n;
-		if (comp()(x, n->data_))
-		{
-			n = (node*)n->left_;
-			leftchild = true;
-		}
-		else
-		{
-			n = (node*)n->right_;
-			leftchild = false;
-			is_leftmost = false;
-		}
-	}
-	return insert_node_at(p, leftchild, is_leftmost, x);
-}
-
-template <class T, class Compare, class Allocator>
-typename __tree<T, Compare, Allocator>::iterator
-__tree<T, Compare, Allocator>::insert_one(iterator position, const value_type& x)
-{
-	if (position == end() || comp()(x, *position))  // hh 990820
-	{
-		iterator before = position;
-		if (before == begin() || comp()(*--before, x))
-		{
-			node* p1 = before.ptr_;
-			node* p2 = position.ptr_;
-			if (p2->left_ == 0)
-				return insert_node_at(p2, true, position == begin(), x);
-			return insert_node_at(p1, false, false, x);
-		}
-	}
-	else if (comp()(*position, x))
-	{
-		iterator after = position;
-		++after;
-		if (after == end() || comp()(x, *after))
-		{
-			node* p1 = position.ptr_;
-			node* p2 = after.ptr_;
-			if (p1->right_ == 0)
-				return insert_node_at(p1, false, false, x);
-			return insert_node_at(p2, true, false, x);
-		}
-	}
-	else // x == *position  hh 000506
-		return position;
-	return insert_one(x).first;
-}
-
-template <class T, class Compare, class Allocator>
-typename __tree<T, Compare, Allocator>::iterator
-__tree<T, Compare, Allocator>::insert_multi(iterator position, const value_type& x)
-{
-	node* p1;
-	node* p2;
-	bool first_node = false;
-	if (position == end() || !comp()(*position, x))
-	{
-		iterator before = position;
-		if (before != begin() && comp()(x, *--before))
-		{
-			before = position = upper_bound(x);
-			if (before != begin())
-				--before;
-		}
-		p1 = before.ptr_;
-		p2 = position.ptr_;
-		first_node = position == begin();
-	}
-	else // position != end && x > *position && !empty()
-	{
-		iterator after = position;
-		++after;
-		if (after != end() && comp()(*after, x))
-		{
-			after = position = lower_bound(x);
-			--position;
-		}
-		p1 = position.ptr_;
-		p2 = after.ptr_;
-	}
-	if (p2->left_ == 0)
-		return insert_node_at(p2, true, first_node, x);
-	return insert_node_at(p1, false, false, x);
-}
-
-#ifndef _MSL_NO_MEMBER_TEMPLATE
-	#ifndef _MSL_MUST_INLINE_MEMBER_TEMPLATE
-
-		template <class T, class Compare, class Allocator>
-		template <class InputIterator>
-		inline
-		void
-		__tree<T, Compare, Allocator>::insert_one(InputIterator first, InputIterator last)
-		{
-			for (; first != last; ++first)
-				insert_one(end(), *first);
-		}
-
-		template <class T, class Compare, class Allocator>
-		template <class InputIterator>
-		inline
-		void
-		__tree<T, Compare, Allocator>::insert_multi(InputIterator first, InputIterator last)
-		{
-			for (; first != last; ++first)
-				insert_multi(end(), *first);
-		}
-
-	#endif
-#else
-
-	template <class T, class Compare, class Allocator>
-	inline
-	void
-	__tree<T, Compare, Allocator>::insert_one(const_iterator first, const_iterator last)
-	{
-		for (; first != last; ++first)
-			insert_one(end(), *first);
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	void
-	__tree<T, Compare, Allocator>::insert_one(const value_type* first, const value_type* last)
-	{
-		for (; first != last; ++first)
-			insert_one(end(), *first);
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	void
-	__tree<T, Compare, Allocator>::insert_multi(const_iterator first, const_iterator last)
-	{
-		for (; first != last; ++first)
-			insert_multi(end(), *first);
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	void
-	__tree<T, Compare, Allocator>::insert_multi(const value_type* first, const value_type* last)
-	{
-		for (; first != last; ++first)
-			insert_multi(end(), *first);
-	}
-
-#endif
-
-template <class T, class Compare, class Allocator>
-typename __tree<T, Compare, Allocator>::node*
-__tree<T, Compare, Allocator>::insert_node_at(node* p, bool leftchild, bool is_leftmost,
-	const value_type& x)
-{
-	if (size() > max_size() - 1)
-		#ifndef _MSL_NO_EXCEPTIONS
-			throw length_error("tree::insert length error");
-		#else
-			__msl_error("tree::insert length error\n");
-		#endif
-	node* n = node_alloc().allocate(1);
-	#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-		if ((size_t)n & 1)
-		{
-			node_alloc().deallocate(n, 1);
-			#ifndef _MSL_NO_EXCEPTIONS
-				throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-			#else
-				__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-			#endif
-		}
-	#endif
-	#ifndef _MSL_NO_EXCEPTIONS
-	try
-	{
-	#endif
-		alloc().construct(&n->data_, x);
-	#ifndef _MSL_NO_EXCEPTIONS
-	}
-	catch (...)
-	{
-		node_alloc().deallocate(n, 1);
-		throw;
-	}
-	#endif
-	n->left_ = n->right_ = 0;
-	n->parent_ = p;
-	if (leftchild)
-		p->left_ = n;
-	else
-		p->right_ = n;
-	++sz();
-	balance_insert(n, root());
-	if (is_leftmost)
-		front() = n;
-	return n;
-}
-
-template <class T, class Compare, class Allocator>
-void
-__tree<T, Compare, Allocator>::erase(iterator position)
-{
-	node* z = position.ptr_;
-	if (position == begin())
-		front() = (++position).ptr_;
-	balance_erase(z, root());
-	alloc().destroy(&z->data_);
-	node_alloc().deallocate(z, 1);
-	--sz();
-}
-
-#if !defined(_MSL_NO_MEMBER_TEMPLATE) && !defined(_MSL_MUST_INLINE_MEMBER_TEMPLATE)
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::erase_one(const Key& x)
-	{
-		iterator i = find(x);
-		if (i == end())
-			return 0;
-		erase(i);
-		return 1;
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::erase_multi(const Key& x)
-	{
-		pair<iterator, iterator> i = equal_range(x);
-		size_type result = (size_type)_STD::distance(i.first, i.second);
-		erase(i.first, i.second);
-		return result;
-	}
-
-#else
-
-	template <class T, class Compare, class Allocator>
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::erase_one(const value_type& x)
-	{
-		iterator i = find(x);
-		if (i == end())
-			return 0;
-		erase(i);
-		return 1;
-	}
-
-	template <class T, class Compare, class Allocator>
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::erase_multi(const value_type& x)
-	{
-		pair<iterator, iterator> i = equal_range(x);
-		size_type result = (size_type)_STD::distance(i.first, i.second);
-		erase(i.first, i.second);
-		return result;
-	}
-
-#endif
-
-template <class T, class Compare, class Allocator>
-inline
-void
-__tree<T, Compare, Allocator>::erase(iterator first, iterator last)
-{
-	while (first != last)
-		erase(first++);
-}
-
-template <class T, class Compare, class Allocator>
-void
-__tree<T, Compare, Allocator>::swap(__tree& x)
-{
-	if (this != &x)
-	{
-		Metrowerks::swap(alloc_, x.alloc_);
-		Metrowerks::swap(node_alloc_, x.node_alloc_);
-		Metrowerks::swap(comp_, x.comp_);
-		if (root() != 0)
-			root()->parent_ = (node*)&tail();
-		else
-			front() = (node*)&tail();  // hh 990720
-		if (x.root() != 0)
-			x.root()->parent_ = (node*)&x.tail();
-		else
-			x.front() = (node*)&x.tail();
-	}
-}
-
-template <class T, class Compare, class Allocator>
-void
-__tree<T, Compare, Allocator>::clear()
-{
-	if (root() != 0)
-	{
-		destroy(root());
-		sz() = 0;
-		root() = 0;
-		front() = (node*)&tail();
-	}
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::value_compare
-__tree<T, Compare, Allocator>::value_comp() const
-{
-	return comp();
-}
-
-#if !defined(_MSL_NO_MEMBER_TEMPLATE) && !defined(_MSL_MUST_INLINE_MEMBER_TEMPLATE)
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	typename __tree<T, Compare, Allocator>::iterator
-	__tree<T, Compare, Allocator>::find(const Key& x)
-	{
-		node* i = root();
-		node* j = (node*)&tail();
-		while (i != 0)
-		{
-			if (!comp()(i->data_, x))
-			{
-				j = i;
-				i = (node*)i->left_;
-			}
-			else
-				i = (node*)i->right_;
-		}
-		if (j == (node*)&tail() || comp()(x, j->data_))
-			return end();
-		return j;
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	inline
-	typename __tree<T, Compare, Allocator>::const_iterator
-	__tree<T, Compare, Allocator>::find(const Key& x) const
-	{
-		return const_cast<__tree&>(*this).find(x);
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	inline
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::count_one(const Key& x) const
-	{
-		return size_type(!(find(x) == end()));
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	inline
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::count_multi(const Key& x) const
-	{
-		pair<const_iterator, const_iterator> i = equal_range(x);
-		return (size_type)_STD::distance(i.first, i.second);
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	typename __tree<T, Compare, Allocator>::iterator
-	__tree<T, Compare, Allocator>::lower_bound(const Key& x)
-	{
-		node* i = root();
-		node* j = (node*)&tail();
-		while (i != 0)
-		{
-			if (!comp()(i->data_, x))
-			{
-				j = i;
-				i = (node*)i->left_;
-			}
-			else
-				i = (node*)i->right_;
-		}
-		return j;
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	inline
-	typename __tree<T, Compare, Allocator>::const_iterator
-	__tree<T, Compare, Allocator>::lower_bound(const Key& x) const
-	{
-		return const_cast<__tree&>(*this).lower_bound(x);
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	typename __tree<T, Compare, Allocator>::iterator
-	__tree<T, Compare, Allocator>::upper_bound(const Key& x)
-	{
-		node* i = root();
-		node* j = (node*)&tail();
-		while (i != 0)
-		{
-			if (comp()(x, i->data_))
-			{
-				j = i;
-				i = (node*)i->left_;
-			}
-			else
-				i = (node*)i->right_;
-		}
-		return j;
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	inline
-	typename __tree<T, Compare, Allocator>::const_iterator
-	__tree<T, Compare, Allocator>::upper_bound(const Key& x) const
-	{
-		return const_cast<__tree&>(*this).upper_bound(x);
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	inline
-	pair<typename __tree<T, Compare, Allocator>::const_iterator, typename __tree<T, Compare, Allocator>::const_iterator>
-	__tree<T, Compare, Allocator>::equal_range(const Key& x) const
-	{
-		return make_pair(lower_bound(x), upper_bound(x));
-	}
-
-	template <class T, class Compare, class Allocator>
-	template <class Key>
-	inline
-	pair<typename __tree<T, Compare, Allocator>::iterator, typename __tree<T, Compare, Allocator>::iterator>
-	__tree<T, Compare, Allocator>::equal_range(const Key& x)
-	{
-		return make_pair(lower_bound(x), upper_bound(x));
-	}
-
-#else
-
-	template <class T, class Compare, class Allocator>
-	typename __tree<T, Compare, Allocator>::iterator
-	__tree<T, Compare, Allocator>::find(const value_type& x)
-	{
-		node* i = root();
-		node* j = (node*)&tail();
-		while (i != 0)
-		{
-			if (!comp()(i->data_, x))
-			{
-				j = i;
-				i = (node*)i->left_;
-			}
-			else
-				i = (node*)i->right_;
-		}
-		if (j == (node*)&tail() || comp()(x, j->data_))
-			return end();
-		return j;
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	typename __tree<T, Compare, Allocator>::const_iterator
-	__tree<T, Compare, Allocator>::find(const value_type& x) const
-	{
-		return const_cast<__tree&>(*this).find(x);
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::count_one(const value_type& x) const
-	{
-		return size_type(!(find(x) == end()));
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	typename __tree<T, Compare, Allocator>::size_type
-	__tree<T, Compare, Allocator>::count_multi(const value_type& x) const
-	{
-		pair<const_iterator, const_iterator> i = equal_range(x);
-		return (size_type)_STD::distance(i.first, i.second);
-	}
-
-	template <class T, class Compare, class Allocator>
-	typename __tree<T, Compare, Allocator>::iterator
-	__tree<T, Compare, Allocator>::lower_bound(const value_type& x)
-	{
-		node* i = root();
-		node* j = (node*)&tail();
-		while (i != 0)
-		{
-			if (!comp()(i->data_, x))
-			{
-				j = i;
-				i = (node*)i->left_;
-			}
-			else
-				i = (node*)i->right_;
-		}
-		return j;
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	typename __tree<T, Compare, Allocator>::const_iterator
-	__tree<T, Compare, Allocator>::lower_bound(const value_type& x) const
-	{
-		return const_cast<__tree&>(*this).lower_bound(x);
-	}
-
-	template <class T, class Compare, class Allocator>
-	typename __tree<T, Compare, Allocator>::iterator
-	__tree<T, Compare, Allocator>::upper_bound(const value_type& x)
-	{
-		node* i = root();
-		node* j = (node*)&tail();
-		while (i != 0)
-		{
-			if (comp()(x, i->data_))
-			{
-				j = i;
-				i = (node*)i->left_;
-			}
-			else
-				i = (node*)i->right_;
-		}
-		return j;
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	typename __tree<T, Compare, Allocator>::const_iterator
-	__tree<T, Compare, Allocator>::upper_bound(const value_type& x) const
-	{
-		return const_cast<__tree&>(*this).upper_bound(x);
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	pair<__tree<T, Compare, Allocator>::const_iterator, __tree<T, Compare, Allocator>::const_iterator>
-	__tree<T, Compare, Allocator>::equal_range(const value_type& x) const
-	{
-		return make_pair(lower_bound(x), upper_bound(x));
-	}
-
-	template <class T, class Compare, class Allocator>
-	inline
-	pair<__tree<T, Compare, Allocator>::iterator, __tree<T, Compare, Allocator>::iterator>
-	__tree<T, Compare, Allocator>::equal_range(const value_type& x)
-	{
-		return make_pair(lower_bound(x), upper_bound(x));
-	}
-
-#endif
-
-template <class T, class Compare, class Allocator>
-void
-__tree<T, Compare, Allocator>::destroy(node* p)
-{
-	if (p->left_ != 0)
-		destroy((node*)(p->left_));
-	if (p->right_ != 0)
-		destroy((node*)(p->right_));
-	alloc().destroy(&p->data_);
-	node_alloc().deallocate(p, 1);
-}
-
-template <class T, class Compare, class Allocator>
-typename __tree<T, Compare, Allocator>::node*
-__tree<T, Compare, Allocator>::copy(const node* x)
-{
-	node* result = node_alloc().allocate(1);
-	#if defined(_TREE_DEBUG) && !defined(_Inhibit_Optimize_RB_bit)
-		if ((size_t)result & 1)
-		{
-			node_alloc().deallocate(result, 1);
-			#ifndef _MSL_NO_EXCEPTIONS
-				throw invalid_argument("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment");
-			#else
-				__msl_error("__pointer_plus_bit optimization failed in tree. Pointer has odd byte alignment\n");
-			#endif
-		}
-	#endif
-	result->left_ = result->right_ = 0;
-	#ifndef _MSL_NO_EXCEPTIONS
-	try
-	{
-	#endif
-		if (x->left_ != 0)
-		{
-			result->left_ = copy((node*)(x->left_));
-			result->left_->parent_ = result;
-		}
-		if (x->right_ != 0)
-		{
-			result->right_ = copy((node*)(x->right_));
-			result->right_->parent_ = result;
-		}
-		alloc().construct(&result->data_, x->data_);
-		result->set_color(x->color());
-	#ifndef _MSL_NO_EXCEPTIONS
-	}
-	catch (...)
-	{
-		if (result->left_ != 0)
-			destroy((node*)(result->left_));
-		if (result->right_ != 0)
-			destroy((node*)(result->right_));
-		node_alloc().deallocate(result, 1);
-		throw;
-	}
-	#endif
-	return result;
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::node*&
-__tree<T, Compare, Allocator>::root()
-{
-	return (node*&)tail().left_;
-}
-
-template <class T, class Compare, class Allocator>
-inline
-typename __tree<T, Compare, Allocator>::node*
-__tree<T, Compare, Allocator>::root() const
-{
-	return (node*)tail().left_;
-}
-
-#ifdef _TREE_DEBUG
-
-template <class T, class Compare, class Allocator>
-bool
-__tree<T, Compare, Allocator>::ok() const
-{
-	if (root() != 0)
-		assert(root()->color() == black);
-	if (root() != 0)
-		count_black(root());
-	assert(_STD::distance(begin(), end()) == size());
-	return true;
-}
-
-template <class T, class Compare, class Allocator>
-int
-__tree<T, Compare, Allocator>::count_black(node_base* x) const
-{
-	int cleft;
-	int cright;
-	if (x->left_ == 0)
-		cleft = 1;
-	else
-		cleft = count_black(x->left_);
-	if (x->right_ == 0)
-		cright = 1;
-	else
-		cright = count_black(x->right_);
-	assert(cleft == cright);
-	if (x->color() == black)
-		++cleft;
-	return cleft;
-}
-
-#endif
-
-#ifndef _MSL_NO_CPP_NAMESPACE
-	} // namespace std
-#endif
-
-#ifdef _MSL_FORCE_ENUMS_ALWAYS_INT
-	#pragma enumsalwaysint reset
-#endif
-
-#ifdef _MSL_FORCE_ENABLE_BOOL_SUPPORT
-	#pragma bool reset
-#endif
-
-#pragma options align=reset
-
-#endif // _TREE
-
-// hh 971220 fixed MOD_INCLUDE
-// hh 971226 added alignment wrapper
-// hh 980105 changed pointer & reference to const versions in const_iterator base class
-// hh 980105 Added qualified name to iterator
-// hh 980111 <stdexcept> commented out.  Not needed
-// hh 980902 #ifdef'd out exception code when ndef MSIPL_EXCEPT
-// hh 981130 Rewrote.
-// hh 990720 Put debugging code under #ifdef _TREE_DEBUG
-// hh 990720 Fixed bug in swap when trees are empty
-// hh 990720 Made iterator comparison functions global friends
-// hh 990820 Modified insert_one(i, x) and insert_multi(i, x) so that you would get
-//           constant time performance if the correct insertion spot is before or after i.
-// hh 990820 Optimized methods operating with keys only.
-// hh 990820 Optimized operator []
-// hh 990826 To reduce dependence on T()
-// hh 990924 Added casts in const/iterator increment/decrement operators to comply with
-//           stricter compiler.
-// hh 991003 Changed find to find the first element in the tree.
-// hh 991003 Changed the const versions of find, lower_bound and upper_bound to be implemented
-//           in terms of the non-const versions.
-// hh 000129 Changed file name from tree.h to tree to avoid conflict with Java file name.
-// hh 000506 Eliminated compare from insert_multi and insert_one
-// hh 010125 Removed dependence on string
-// hh 010301 Protected min and max from macro abuse.
-// hh 010402 Removed 68K CMF support
-// hh 010404 Substituted compressed_pair for _EmptyMemberOpt
-// hh 010507 Implemented "insert closest" in insert_multi

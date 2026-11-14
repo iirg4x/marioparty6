@@ -1,51 +1,40 @@
-/* Metrowerks Standard Library
- * Copyright © 1995-2001 Metrowerks Corporation.  All rights reserved.
- *
- * $Date: 2001/07/21 18:43:37 $
- * $Revision: 1.17.4.1 $
- */
- 
-#ifndef _MSL_STRING_H
-#define _MSL_STRING_H
-
-#if __MACH__
-	#error You must have the /usr/include access path before the MSL access path
-#else
-
-#include <cstring>
-
-#if defined(__cplusplus) && defined(_MSL_USING_NAMESPACE)
-	using std::size_t;
-	using std::memchr;
-	using std::memcmp;
-	using std::memcpy;
-	using std::memmove;
-	using std::memset;
-	using std::strcat;
-	using std::strchr;
-	using std::strcmp;
-	using std::strcoll;
-	using std::strcpy;
-	using std::strcspn;
-	using std::strerror;
-	using std::strlen;
-	using std::strncat;
-	using std::strncmp;
-	using std::strncpy;
-	using std::strpbrk;
-	using std::strrchr;
-	using std::strspn;
-	using std::strstr;
-	using std::strtok;
-	using std::strxfrm;
+#ifndef MP6_C_STRING_H
+#define MP6_C_STRING_H
+#include "stddef.h"
+/* Standard byte-buffer and zero-terminated string operations. */
+#ifdef __cplusplus
+extern "C" {
 #endif
-
-#endif /* __MACH__ */
-
-#endif /* _MSL_STRING_H */
-
-/* Change record:
- * hh  971206 Created.
- * hh  991112 Fixed using bug.
- * JWW 001208 Added case for targeting Mach-O
- */
+void *memcpy(void *, const void *, size_t);
+void *memmove(void *, const void *, size_t);
+void *memset(void *, int, size_t);
+int memcmp(const void *, const void *, size_t);
+void *memchr(const void *, int, size_t);
+char *strcpy(char *, const char *);
+char *strncpy(char *, const char *, size_t);
+char *strcat(char *, const char *);
+char *strncat(char *, const char *, size_t);
+int strcmp(const char *, const char *);
+int strncmp(const char *, const char *, size_t);
+char *strchr(const char *, int);
+char *strrchr(const char *, int);
+size_t strcspn(const char *, const char *);
+size_t strspn(const char *, const char *);
+char *strpbrk(const char *, const char *);
+char *strstr(const char *, const char *);
+char *strtok(char *, const char *);
+size_t strlen(const char *);
+int strcoll(const char *, const char *);
+size_t strxfrm(char *, const char *, size_t);
+char *strerror(int);
+#ifdef __cplusplus
+}
+namespace std {
+using ::memcpy; using ::memmove; using ::memset; using ::memcmp; using ::memchr;
+using ::strcpy; using ::strncpy; using ::strcat; using ::strncat;
+using ::strcmp; using ::strncmp; using ::strchr; using ::strrchr;
+using ::strcspn; using ::strspn; using ::strpbrk; using ::strstr;
+using ::strtok; using ::strlen; using ::strcoll; using ::strxfrm; using ::strerror;
+}
+#endif
+#endif

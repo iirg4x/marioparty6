@@ -1,5 +1,6 @@
 #ifndef _MSL_COMMON_CRITICAL_REGIONS_H
 #define _MSL_COMMON_CRITICAL_REGIONS_H
+#include "Include/critical_regions.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,8 +21,6 @@ enum critical_regions {
 
 void __init_critical_regions(void);
 void __kill_critical_regions(void);
-void __begin_critical_region(int region);
-void __end_critical_region(int region);
 
 #ifdef __cplusplus
 }

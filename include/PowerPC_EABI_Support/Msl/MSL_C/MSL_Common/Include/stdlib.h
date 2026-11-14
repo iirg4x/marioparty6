@@ -1,78 +1,50 @@
-/* Metrowerks Standard Library
- * Copyright © 1995-2001 Metrowerks Corporation.  All rights reserved.
- *
- * $Date: 2001/07/21 18:43:35 $
- * $Revision: 1.18.4.1 $
- */
- 
-#ifndef _MSL_STDLIB_H
-#define _MSL_STDLIB_H
-
-#if __MACH__
-	#error You must have the /usr/include access path before the MSL access path
-#else
-
-#include <cstdlib>
-
-#if defined(__cplusplus) && defined(_MSL_USING_NAMESPACE)
-	using std::size_t;
-	using std::abort;
-	using std::atexit;
-	using std::exit;
-	using std::getenv;
-	using std::system;
-	using std::malloc;
-	using std::calloc;
-	using std::realloc;
-	using std::free;
-	using std::atol;
-#ifndef _No_Floating_Point
-	using std::atof;
-	using std::strtod;
+#ifndef MP6_C_STDLIB_H
+#define MP6_C_STDLIB_H
+#include "stddef.h"
+#include "div_t.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/alloc.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/arith.h"
+/* Standard allocation, conversion, ordering, and process interfaces. */
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE 1
+#define RAND_MAX 32767
+#define MB_CUR_MAX 2
+#ifdef __cplusplus
+extern "C" {
 #endif
-	using std::atoi;
-	using std::mblen;
-	using std::strtol;
-	using std::strtoul;
-#ifdef __MSL_LONGLONG_SUPPORT__
-	using std::strtoll;
-	using std::strtoull;
-#endif
-#ifndef __NO_WIDE_CHAR
-	using std::mbstowcs;
-	using std::mbtowc;
-	using std::wctomb;
-	using std::wcstombs;
-#endif
-	using std::bsearch;
-	using std::qsort;
-	using std::div_t;
-	using std::ldiv_t;
-	using std::abs;
-	using std::div;
-	using std::labs;
-#ifdef __MSL_LONGLONG_SUPPORT__
-	using std::llabs;
-	using std::lldiv_t;
-	using std::lldiv;
-#endif
-	using std::ldiv;
-	using std::srand;
-	using std::rand;
-#if __VEC__
-	using std::vec_calloc;
-	using std::vec_free;
-	using std::vec_malloc;
-	using std::vec_realloc;
+double atof(const char *);
+int atoi(const char *);
+long atol(const char *);
+double strtod(const char *, char **);
+long strtol(const char *, char **, int);
+unsigned long strtoul(const char *, char **, int);
+int rand(void);
+void srand(unsigned int);
+void *calloc(size_t, size_t);
+void *realloc(void *, size_t);
+void abort(void);
+void exit(int);
+int atexit(void (*)(void));
+char *getenv(const char *);
+int system(const char *);
+void *bsearch(const void *, const void *, size_t, size_t, int (*)(const void *, const void *));
+void qsort(void *, size_t, size_t, int (*)(const void *, const void *));
+int abs(int);
+long labs(long);
+ldiv_t ldiv(long, long);
+int mblen(const char *, size_t);
+int mbtowc(wchar_t *, const char *, size_t);
+int wctomb(char *, wchar_t);
+size_t mbstowcs(wchar_t *, const char *, size_t);
+size_t wcstombs(char *, const wchar_t *, size_t);
+#ifdef __cplusplus
+}
+namespace std {
+using ::atof; using ::atoi; using ::atol; using ::strtod; using ::strtol; using ::strtoul;
+using ::rand; using ::srand; using ::malloc; using ::calloc; using ::realloc; using ::free;
+using ::abort; using ::exit; using ::atexit; using ::getenv; using ::system;
+using ::bsearch; using ::qsort; using ::abs; using ::labs; using ::div; using ::ldiv;
+using ::mblen; using ::mbtowc; using ::wctomb; using ::mbstowcs; using ::wcstombs;
+}
 #endif
 #endif
-
-#endif /* __MACH__ */
-
-#endif /* _MSL_STDLIB_H */
-
-/* Change record:
- * hh  971206 Created.
- * hh  991112 Fixed using bug
- * JWW 001208 Added case for targeting Mach-O
- */

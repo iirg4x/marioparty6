@@ -446,7 +446,7 @@ config.libs = [
                 "MSL_C.PPCEABI.bare.H/printf.c",
                 mw_version="GC/1.3.2",
                 shift_jis=False,
-                # The vendor source includes the CodeWarrior MSL headers by name,
+                # printf.c includes the MSL C headers by name,
                 # so their roots come before the project's include/.
                 cflags=[
                     *cflags_runtime[: cflags_runtime.index("-i include")],
