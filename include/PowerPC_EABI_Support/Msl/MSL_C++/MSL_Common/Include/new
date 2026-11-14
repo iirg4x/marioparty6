@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_NEW
-#define MP6_RECONSTRUCTED_NEW
+#ifndef MP6_LIBRARY_NEW
+#define MP6_LIBRARY_NEW
 #include <stddef.h>
 
 namespace std {

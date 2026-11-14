@@ -32,7 +32,7 @@ if sys.platform == "cygwin":
 
 # The selected runtime provider's bytes, checked by the build.
 RUNTIME_PROVIDER = "Runtime.PPCEABI.H/runtime.c"
-RUNTIME_PROVIDER_SHA256 = "2d99b9bf4bc04aacaf65e783c3b2cee3929fedba1c55d69823b92a52b1e662f1"
+RUNTIME_PROVIDER_SHA256 = "4b4807e8be388656f9e9f931aacdb5d9a56e88f20024195da69fc097dcd4e1dd"
 
 
 class Object:

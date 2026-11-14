@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_MAP
-#define MP6_RECONSTRUCTED_MAP
+#ifndef MP6_LIBRARY_MAP
+#define MP6_LIBRARY_MAP
 #include <tree>
 
 namespace std {

@@ -32,21 +32,10 @@ extern unsigned char __upper_map[];
 /* Classification bit for uppercase letters. */
 #define __upper_case   0x80
 
-/* Combine the individual bits for the public character classes. */
 /* Mask accepts either lowercase or uppercase alphabetic entries. */
 #define __letter       (__lower_case | __upper_case)
-/* Mask combines letters with decimal digits. */
-#define __alphanumeric (__letter | __digit)
-/* Mask includes visible non-space characters. */
-#define __graphic      (__alphanumeric | __punctuation)
-/* Mask adds space to the visible character classes. */
-#define __printable    (__graphic | __space_char)
 /* Mask accepts space and print-position motion entries. */
 #define __whitespace   (__motion_char | __space_char)
-/* Mask combines motion entries with other control characters. */
-#define __control      (__motion_char | __control_char)
-/* Convert an input byte to a nonnegative table index. */
-#define __zero_fill(c) ((int)(unsigned char)(c))
 
 /* Test for an alphabetic character or decimal digit. */
 int isalnum(int);

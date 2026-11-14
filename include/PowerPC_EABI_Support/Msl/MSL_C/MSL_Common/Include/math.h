@@ -22,7 +22,7 @@ inline float logf(float input) { return log(input); }
 inline float powf(float base, float exponent) { return pow(base, exponent); }
 inline float ceilf(float input) { return ceil(input); }
 inline float floorf(float input) { return floor(input); }
-/* The single-precision result is rounded after the absolute-value operation. */
+/* Round the absolute value to the precision of the result. */
 inline float fabsf(float input) { return fabs(input); }
 #ifdef __cplusplus
 } }

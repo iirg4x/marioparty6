@@ -1,155 +1,25 @@
-#ifndef MP6_RECONSTRUCTED_LIST
-#define MP6_RECONSTRUCTED_LIST
+#ifndef MP6_LIBRARY_LIST
+#define MP6_LIBRARY_LIST
 
 #include <memory>
 #include <iterator>
 #include <new>
-
-// These private template names are present in the game's container symbols.
-#ifndef MP6_RECONSTRUCTED_CONTAINER_STORAGE
-#define MP6_RECONSTRUCTED_CONTAINER_STORAGE
-namespace Metrowerks {
-// Empty count tag publishes an allocation extent known at template instantiation.
-template <class T, T Value>
-struct number {
-    operator T() const { return Value; }
-};
-namespace details {
-// Stores the first value followed by the second when the first has instance state.
-template <class First, class Second, int Empty>
-class compressed_pair_imp {
-    // First stored value when it cannot share an empty base.
-    First first_;
-    // Second value follows the separately stored first value.
-    Second second_;
-public:
-    // Initialize both stored values.
-    compressed_pair_imp() : first_(), second_() {}
-    // Copy the first value without initializing scalar container state.
-    explicit compressed_pair_imp(const First& a) : first_(a) {}
-    // Copy both supplied values.
-    compressed_pair_imp(const First& a, const Second& b) : first_(a), second_(b) {}
-    // Expose the separately stored allocation or ordering object for updates.
-    First& first() { return first_; }
-    // Read the allocation or ordering object without changing the pair.
-    const First& first() const { return first_; }
-    // Expose the adjoining count, root or pointer state for container updates.
-    Second& second() { return second_; }
-    // Read the adjoining container state while keeping both pair components unchanged.
-    const Second& second() const { return second_; }
-};
-// Shares storage with an empty allocator base.
-template <class First, class Second>
-class compressed_pair_imp<First, Second, 1> : private First {
-    // State adjoining the empty allocator base.
-    Second second_;
-public:
-    // Value-initialize the state beside the default empty allocator.
-    compressed_pair_imp() : First(), second_() {}
-    // Container constructors initialize their own count or root state.
-    explicit compressed_pair_imp(const First& a) : First(a) {}
-    // Build the empty base from the allocator and copy the associated state.
-    compressed_pair_imp(const First& a, const Second& b) : First(a), second_(b) {}
-    // Expose the empty allocator base for allocation operations.
-    First& first() { return *this; }
-    // Read the empty allocator base without modifying it.
-    const First& first() const { return *this; }
-    // Expose the state stored beside the empty allocator.
-    Second& second() { return second_; }
-    // Read the state adjoining the empty allocator base.
-    const Second& second() const { return second_; }
-};
-// Stores value-initialized container state beside an empty allocator.
-template <class T, class Second>
-class compressed_pair_imp<std::allocator<T>, Second, 1> :
-    private std::allocator<T> {
-    typedef std::allocator<T> First;
-    // Value-initialized state adjoining the scalar allocator.
-    Second second_;
-public:
-    // Default-initialize the allocator base and the scalar-allocation state.
-    compressed_pair_imp() : First(), second_() {}
-    // Copy the allocator and initialize its associated state.
-    explicit compressed_pair_imp(const First& a) : First(a), second_() {}
-    // Preserve the supplied scalar allocator and its container state.
-    compressed_pair_imp(const First& a, const Second& b) : First(a), second_(b) {}
-    // Return the scalar allocator base for storage management.
-    First& first() { return *this; }
-    // Expose the scalar allocator through a read-only pair.
-    const First& first() const { return *this; }
-    // Return mutable state associated with the scalar allocator.
-    Second& second() { return second_; }
-    // Read container state from the scalar-allocator specialization.
-    const Second& second() const { return second_; }
-};
-// An allocator reference occupies a pointer word rather than an empty base.
-template <class First, class Second>
-class compressed_pair_imp<First&, Second, 0> {
-    // Allocator reference retained as a pointer-sized field.
-    First& first_;
-    // Container state paired with a referenced allocator.
-    Second second_;
-public:
-    // Keep an allocator reference beside a copy of the supplied state.
-    compressed_pair_imp(First& a, const Second& b) : first_(a), second_(b) {}
-    // Expose the referenced allocator for storage operations.
-    First& first() { return first_; }
-    // Read the allocator reference without changing its binding.
-    const First& first() const { return first_; }
-    // Expose the container state retained beside the allocator reference.
-    Second& second() { return second_; }
-    // Read state from the allocator-reference pair.
-    const Second& second() const { return second_; }
-};
-}
-// Pair wrapper adds no fields to the base holding an allocator and its container state.
-template <class First, class Second>
-class compressed_pair : public details::compressed_pair_imp<First, Second, 1> {
-    typedef details::compressed_pair_imp<First, Second, 1> base;
-public:
-    // Initialize the allocator and state.
-    compressed_pair() : base() {}
-    // Retain an allocator or ordering operation before initializing its state.
-    explicit compressed_pair(const First& a) : base(a) {}
-    // Initialize from an allocator and a state value.
-    compressed_pair(const First& a, const Second& b) : base(a, b) {}
-};
-template <class First, class Second>
-// Reference pair adds no fields to its base holding an allocator reference and state.
-class compressed_pair<First&, Second> : public details::compressed_pair_imp<First&, Second, 0> {
-    typedef details::compressed_pair_imp<First&, Second, 0> base;
-public:
-    // Forward the allocator reference and state into the reference-storage base.
-    compressed_pair(First& a, const Second& b) : base(a, b) {}
-};
-// Allocation guard nests the allocator, element count and pointer in compressed pairs.
-template <class T, class Allocator, class Count>
-class alloc_ptr {
-    // Allocator, allocation count and pointer retained until ownership commits.
-    compressed_pair<Allocator, compressed_pair<Count, T*> > allocation_state;
-public:
-    // Retain newly allocated storage until value construction commits it.
-    alloc_ptr(T* pointer, Allocator a, Count count = Count()) : allocation_state(a,
-        compressed_pair<Count, T*>(count, pointer)) {}
-    // Return any storage whose ownership has not been transferred.
-    ~alloc_ptr() {
-        if (get() != 0) allocation_state.first().deallocate(get(),
-            allocation_state.second().first());
-    }
-    // Read the allocation without transferring its ownership.
-    T* get() const { return allocation_state.second().second(); }
-    T* operator->() const { return get(); }
-    // Transfer responsibility for releasing the storage.
-    T* release() {
-        T* result = get();
-        allocation_state.second().second() = 0;
-        return result;
-    }
-};
-}
-#endif
+#include <functional>
 
 namespace std {
+
+// Empty iterator trait supplies mutable element access types.
+template <class T, int IsConst>
+struct list_access_types {
+    typedef T* pointer;
+    typedef T& reference;
+};
+// Read-only traversal preserves the element type while adding const access.
+template <class T>
+struct list_access_types<T, 1> {
+    typedef const T* pointer;
+    typedef const T& reference;
+};
 
 // Ring owner stores a live-node count followed by a node allocator and embedded sentinel.
 template <class T, class Allocator>
@@ -183,15 +53,22 @@ public:
         typedef bidirectional_iterator_tag iterator_category;
         typedef T value_type;
         typedef long difference_type;
-        typedef T* pointer;
-        typedef T& reference;
+        typedef typename list_access_types<T, IsConst>::pointer pointer;
+        typedef typename list_access_types<T, IsConst>::reference reference;
         // Node link designated independently of element constness.
-        node_base* position;
+        typename list_access_types<node_base, IsConst>::pointer position;
         // Construct an iterator to a ring link.
-        generic_iterator(node_base* p = 0) : position(p) {}
+        generic_iterator(typename list_access_types<node_base, IsConst>::pointer p = 0) :
+            position(p) {}
         // Copy the position without changing the node chain.
         generic_iterator(const generic_iterator& other) : position(other.position) {}
-        reference operator*() const { return static_cast<node*>(position)->value; }
+        // Copy another traversal position when its link constness permits it.
+        template <int OtherConst>
+        generic_iterator(const generic_iterator<OtherConst>& other) : position(other.position) {}
+        reference operator*() const {
+            typedef typename list_access_types<node, IsConst>::pointer node_pointer;
+            return static_cast<node_pointer>(position)->value;
+        }
         pointer operator->() const { return &operator*(); }
         generic_iterator& operator++() {
             position = position->next;
@@ -328,11 +205,94 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last) {
 
 // List implementation inherits ring ownership without adding storage.
 template <class T, class Allocator>
-class __list_imp : public __list_deleter<T, Allocator> {};
+class __list_imp : public __list_deleter<T, Allocator> {
+public:
+    typedef typename __list_deleter<T, Allocator>::iterator iterator;
+    template <class Predicate>
+    void remove_if(Predicate predicate);
+    void remove(const T& value) { remove_if(bind2nd(equal_to<T>(), value)); }
+};
+
+template <class T, class Allocator>
+template <class Predicate>
+void __list_imp<T, Allocator>::remove_if(Predicate predicate) {
+    iterator last = this->end();
+    iterator first = this->begin();
+    while (first != last) {
+        if (predicate(*first)) {
+            iterator after = first;
+            ++after;
+            for (; after != last; ++after)
+                if (!predicate(*after)) break;
+            first = this->erase(first, after);
+            if (first == last) break;
+        }
+        ++first;
+    }
+}
 
 // Public list inherits its node-ring storage and adds no fields of its own.
 template <class T, class Allocator = allocator<T> >
 class list : public __list_imp<T, Allocator> {};
+
+// Pointer list shares a const-void node ring and adds no storage to its owner.
+template <class T, class Allocator>
+class list<T*, Allocator> : public __list_imp<const void*,
+    typename Allocator::template rebind<const void*>::other> {
+    typedef __list_imp<const void*,
+        typename Allocator::template rebind<const void*>::other> base;
+public:
+    typedef T* value_type;
+    typedef Allocator allocator_type;
+    typedef typename base::size_type size_type;
+    typedef typename base::difference_type difference_type;
+    typedef T*& reference;
+    typedef T* const& const_reference;
+    // Typed traversal inherits the qualified shared iterator without adding storage.
+    template <int IsConst>
+    class generic_iterator : public base::template generic_iterator<IsConst> {
+        typedef typename base::template generic_iterator<IsConst> iterator_base;
+    public:
+        typedef bidirectional_iterator_tag iterator_category;
+        typedef T* value_type;
+        typedef long difference_type;
+        typedef typename list_access_types<T*, IsConst>::pointer pointer;
+        typedef typename list_access_types<T*, IsConst>::reference reference;
+        // Wrap the stored link with the requested element qualification.
+        explicit generic_iterator(const iterator_base& p) : iterator_base(p) {}
+        // Copy a typed position through its link representation.
+        generic_iterator(const generic_iterator& p) : iterator_base(p) {}
+        // Const traversal preserves the stored node and qualifies its element access.
+        template <int OtherConst>
+        generic_iterator(const generic_iterator<OtherConst>& p) : iterator_base(p) {}
+        reference operator*() const { return (reference)iterator_base::operator*(); }
+        pointer operator->() const { return &operator*(); }
+        generic_iterator& operator++() {
+            iterator_base::operator++();
+            return *this;
+        }
+        generic_iterator operator++(int) {
+            generic_iterator old(*this);
+            ++*this;
+            return old;
+        }
+        generic_iterator& operator--() {
+            iterator_base::operator--();
+            return *this;
+        }
+    };
+    typedef generic_iterator<0> iterator;
+    typedef generic_iterator<1> const_iterator;
+    iterator begin() { return iterator(base::begin()); }
+    iterator end() { return iterator(base::end()); }
+    const_iterator begin() const { return const_iterator(base::begin()); }
+    const_iterator end() const { return const_iterator(base::end()); }
+    reference front() { return (reference)base::front(); }
+    reference back() { return (reference)base::back(); }
+    void push_back(const_reference value) { base::push_back((const void* const&)value); }
+    void push_front(const_reference value) { base::push_front((const void* const&)value); }
+    void remove(const_reference value) { base::remove((const void* const&)value); }
+};
 
 }
 #endif

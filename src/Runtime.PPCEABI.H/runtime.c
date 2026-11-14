@@ -28,18 +28,19 @@ extern "C" {
 /* Register carrying the storage base for scalar register transfers. */
 #define save_restore_reg r11
 
-asm void __div2u(void);
-asm void __div2i(void);
-asm void __mod2u(void);
-asm void __mod2i(void);
-asm void __shl2i(void);
-asm void __shr2u(void);
-asm void __shr2i(void);
-asm void __cvt_dbl_usll(void);
+asm unsigned long long __div2u(unsigned long long dividend, unsigned long long divisor);
+asm long long __div2i(long long dividend, long long divisor);
+asm unsigned long long __mod2u(unsigned long long dividend, unsigned long long divisor);
+asm long long __mod2i(long long dividend, long long divisor);
+asm long long __shl2i(long long value, int shift);
+asm unsigned long long __shr2u(unsigned long long value, int shift);
+asm long long __shr2i(long long value, int shift);
+asm long long __cvt_dbl_usll(double value);
 
-asm void __cvt_sll_dbl(void);
-asm void __cvt_ull_dbl(void);
-asm void __cvt_ull_flt(void);
+asm float __cvt_sll_flt(long long value);
+asm double __cvt_sll_dbl(long long value);
+asm double __cvt_ull_dbl(unsigned long long value);
+asm float __cvt_ull_flt(unsigned long long value);
 
 void _savev20(void);
 void _savev21(void);
@@ -439,7 +440,7 @@ entry _restv31
 #pragma altivec_model off
 
 /* Divide an unsigned two-word integer; the C expression calls this assembly helper. */
-asm void __div2u(void) {
+asm unsigned long long __div2u(unsigned long long dividend, unsigned long long divisor) {
 	nofralloc
 	cmpwi   cr0,r3,0
 	cntlzw  r0,r3
@@ -512,7 +513,7 @@ lab9:
 }
 
 /* Divide a signed two-word integer; the C expression calls this assembly helper. */
-asm void __div2i(void) {
+asm long long __div2i(long long dividend, long long divisor) {
 	nofralloc
 	stwu    r1,-16(r1)
 	rlwinm. r9,r3,0,0,0
@@ -610,7 +611,7 @@ func_end:
 }
 
 /* Compute an unsigned two-word remainder; the C expression calls this assembly helper. */
-asm void __mod2u(void) {
+asm unsigned long long __mod2u(unsigned long long dividend, unsigned long long divisor) {
 	nofralloc
 	cmpwi   cr0,r3,0
 	cntlzw  r0,r3
@@ -681,7 +682,7 @@ lab9:
 }
 
 /* Compute a signed two-word remainder; the C expression calls this assembly helper. */
-asm void __mod2i(void) {
+asm long long __mod2i(long long dividend, long long divisor) {
 	nofralloc
 
 	cmpwi   cr7,r3,0
@@ -766,7 +767,7 @@ no_adjust:
 }
 
 /* Shift a two-word integer left; the C shift calls this assembly helper. */
-asm void __shl2i(void) {
+asm long long __shl2i(long long value, int shift) {
 	nofralloc
 	subfic  r8,r5,32
 	subic   r9,r5,32
@@ -780,7 +781,7 @@ asm void __shl2i(void) {
 }
 
 /* Shift an unsigned two-word integer right; the C shift calls this assembly helper. */
-asm void __shr2u(void) {
+asm unsigned long long __shr2u(unsigned long long value, int shift) {
 	nofralloc
 	subfic  r8,r5,32
 	subic   r9,r5,32
@@ -795,7 +796,7 @@ asm void __shr2u(void) {
 
 /* Shift a signed two-word integer right with sign extension; the C shift calls this assembly */
 /* helper. */
-asm void __shr2i(void) {
+asm long long __shr2i(long long value, int shift) {
 	nofralloc
 	subfic  r8, r5, 0x20
 	addic.  r9, r5, -0x20
@@ -811,7 +812,7 @@ around:
 }
 
 /* Convert a signed two-word integer to double; the C cast calls this assembly helper. */
-asm void __cvt_sll_dbl(void) {
+asm double __cvt_sll_dbl(long long value) {
 	nofralloc
 	stwu     r1, -16(r1)
 	rlwinm.  r5, r3, 0, 0, 0
@@ -864,7 +865,7 @@ zero:
 }
 
 /* Convert an unsigned two-word integer to double; the C cast calls this assembly helper. */
-asm void __cvt_ull_dbl(void) {
+asm double __cvt_ull_dbl(unsigned long long value) {
 	nofralloc
 	stwu     r1, -16(r1)
 	or.      r7, r3, r4
@@ -911,62 +912,62 @@ zero:
 }
 
 /* Convert a signed two-word integer to float; the C cast calls this assembly helper. */
-asm void __cvt_sll_flt(void)
+asm float __cvt_sll_flt(long long value)
 {
 	nofralloc
-    stwu r1, -0x10(r1)
-    rlwinm. r5, r3, 0, 0, 0
-    beq lbl_803626D0
-    subfic r4, r4, 0
-    subfze r3, r3
-lbl_803626D0:
-    or. r7, r3, r4
-    li r6, 0
-    beq lbl_80362758
-    cntlzw r7, r3
-    cntlzw r8, r4
-    rlwinm r9, r7, 0x1a, 0, 4
-    srawi r9, r9, 0x1f
-    and r9, r9, r8
-    add r7, r7, r9
-    subfic r8, r7, 0x20
-    addic r9, r7, -32
-    slw r3, r3, r7
-    srw r10, r4, r8
-    or r3, r3, r10
-    slw r10, r4, r9
-    or r3, r3, r10
-    slw r4, r4, r7
-    subf r6, r7, r6
-    clrlwi r7, r4, 0x15
-    cmpwi r7, 0x400
-    addi r6, r6, 0x43e
-    blt lbl_80362740
-    bgt lbl_80362734
-    rlwinm. r7, r4, 0, 0x14, 0x14
-    beq lbl_80362740
-lbl_80362734:
-    addic r4, r4, 0x800
-    addze r3, r3
-    addze r6, r6
-lbl_80362740:
-    rotlwi r4, r4, 0x15
-    rlwimi r4, r3, 0x15, 0, 0xa
-    rlwinm r3, r3, 0x15, 0xc, 0x1f
-    slwi r6, r6, 0x14
-    or r3, r6, r3
-    or r3, r5, r3
-lbl_80362758:
-    stw r3, 8(r1)
-    stw r4, 0xc(r1)
-    lfd f1, 8(r1)
-    frsp f1, f1
-    addi r1, r1, 0x10
-    blr
+	stwu     r1, -0x10(r1)
+	rlwinm. r5, r3, 0, 0, 0
+	beq      magnitude
+	subfic   r4, r4, 0
+	subfze   r3, r3
+magnitude:
+	or. r7, r3, r4
+	li       r6, 0
+	beq      zero
+	cntlzw   r7, r3
+	cntlzw   r8, r4
+	rlwinm   r9, r7, 0x1a, 0, 4
+	srawi    r9, r9, 0x1f
+	and      r9, r9, r8
+	add      r7, r7, r9
+	subfic   r8, r7, 0x20
+	addic    r9, r7, -32
+	slw      r3, r3, r7
+	srw      r10, r4, r8
+	or       r3, r3, r10
+	slw      r10, r4, r9
+	or       r3, r3, r10
+	slw      r4, r4, r7
+	subf     r6, r7, r6
+	rlwinm   r7, r4, 0, 0x15, 0x1f
+	cmpwi    r7, 0x400
+	addi     r6, r6, 0x43e
+	blt      noround
+	bgt      round
+	rlwinm. r7, r4, 0, 0x14, 0x14
+	beq      noround
+round:
+	addic    r4, r4, 0x800
+	addze    r3, r3
+	addze    r6, r6
+noround:
+	rlwinm   r4, r4, 0x15, 0, 0x1f
+	rlwimi   r4, r3, 0x15, 0, 0xa
+	rlwinm   r3, r3, 0x15, 0xc, 0x1f
+	rlwinm   r6, r6, 0x14, 0, 0xb
+	or       r3, r6, r3
+	or       r3, r5, r3
+zero:
+	stw      r3, 8(r1)
+	stw      r4, 0xc(r1)
+	lfd      f1, 8(r1)
+	frsp     f1, f1
+	addi     r1, r1, 0x10
+	blr
 }
 
 /* Convert an unsigned two-word integer to float; the C cast calls this assembly helper. */
-asm void __cvt_ull_flt(void) {
+asm float __cvt_ull_flt(unsigned long long value) {
 	nofralloc
 	stwu     r1, -16(r1)
 	or.      r7, r3, r4
@@ -1013,8 +1014,8 @@ zero:
 	blr
 }
 
-/* Convert double to an unsigned two-word integer; the C cast calls this assembly helper. */
-asm void __cvt_dbl_usll(void)
+/* Convert double to a signed two-word integer; the C cast calls this assembly helper. */
+asm long long __cvt_dbl_usll(double value)
 {
 	nofralloc
 	stwu    r1,-16(r1)

@@ -3,8 +3,6 @@
 #include "stddef.h"
 #include "stdarg.h"
 #include "file_struc.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/file_io.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/direct_io.h"
 #include "eof.h"
 #include "wchar_t.h"
 /* __StringWrite consumes a destination pointer, extent and current count. */
@@ -16,6 +14,13 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* Compare stream mode text without case, stopping after the supplied byte count. */
+int __msl_strnicmp(const char* str1, const char* str2, int n);
+int fflush(FILE* file);
+int fclose(FILE* file);
+/* Write complete elements to the stream's internal buffer. */
+size_t __fwrite(const void* buffer, size_t size, size_t count, FILE* stream);
+size_t fwrite(const void* buffer, size_t size, size_t count, FILE* stream);
 #define stdin (&__files[0])
 #define stdout (&__files[1])
 #define stderr (&__files[2])

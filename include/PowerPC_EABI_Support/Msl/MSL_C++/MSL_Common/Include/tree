@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_TREE
-#define MP6_RECONSTRUCTED_TREE
+#ifndef MP6_LIBRARY_TREE
+#define MP6_LIBRARY_TREE
 
 #include <list>
 #include <utility>

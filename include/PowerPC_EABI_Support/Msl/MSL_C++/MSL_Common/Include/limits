@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_LIMITS
-#define MP6_RECONSTRUCTED_LIMITS
+#ifndef MP6_LIBRARY_LIMITS
+#define MP6_LIBRARY_LIMITS
 #include <cfloat>
 #include <cmath>
 namespace std {

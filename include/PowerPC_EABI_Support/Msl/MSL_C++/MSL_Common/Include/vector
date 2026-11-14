@@ -1,13 +1,11 @@
-#ifndef MP6_RECONSTRUCTED_VECTOR
-#define MP6_RECONSTRUCTED_VECTOR
+#ifndef MP6_LIBRARY_VECTOR
+#define MP6_LIBRARY_VECTOR
 
 #include <memory>
 #include <algorithm>
 #include <iterator>
-#include <stdexcept>
 #include <cstdio>
 #include <stdlib.h>
-#include <string.h>
 
 namespace std {
 
@@ -25,24 +23,24 @@ struct vector_element_representation { enum { plain = 0 };
     typedef T type;
 };
 // Scalar representations retain their width while sharing the storage operations.
-#define MP6_SCALAR_REPRESENTATION(T, U) \
+#define VECTOR_SCALAR_REPRESENTATION(T, U) \
     template <> struct vector_element_representation<T> { \
         enum { plain = 1 }; \
         typedef U type; \
     };
-MP6_SCALAR_REPRESENTATION(bool, unsigned char)
-MP6_SCALAR_REPRESENTATION(char, char)
-MP6_SCALAR_REPRESENTATION(signed char, char)
-MP6_SCALAR_REPRESENTATION(unsigned char, char)
-MP6_SCALAR_REPRESENTATION(short, unsigned short)
-MP6_SCALAR_REPRESENTATION(unsigned short, unsigned short)
-MP6_SCALAR_REPRESENTATION(int, unsigned long)
-MP6_SCALAR_REPRESENTATION(unsigned int, unsigned long)
-MP6_SCALAR_REPRESENTATION(long, unsigned long)
-MP6_SCALAR_REPRESENTATION(unsigned long, unsigned long)
-MP6_SCALAR_REPRESENTATION(float, unsigned long)
-MP6_SCALAR_REPRESENTATION(double, unsigned long long)
-#undef MP6_SCALAR_REPRESENTATION
+VECTOR_SCALAR_REPRESENTATION(bool, unsigned char)
+VECTOR_SCALAR_REPRESENTATION(char, char)
+VECTOR_SCALAR_REPRESENTATION(signed char, char)
+VECTOR_SCALAR_REPRESENTATION(unsigned char, char)
+VECTOR_SCALAR_REPRESENTATION(short, unsigned short)
+VECTOR_SCALAR_REPRESENTATION(unsigned short, unsigned short)
+VECTOR_SCALAR_REPRESENTATION(int, unsigned long)
+VECTOR_SCALAR_REPRESENTATION(unsigned int, unsigned long)
+VECTOR_SCALAR_REPRESENTATION(long, unsigned long)
+VECTOR_SCALAR_REPRESENTATION(unsigned long, unsigned long)
+VECTOR_SCALAR_REPRESENTATION(float, unsigned long)
+VECTOR_SCALAR_REPRESENTATION(double, unsigned long long)
+#undef VECTOR_SCALAR_REPRESENTATION
 // Empty pointer trait selects the machine's unsigned pointer-width storage representation.
 template <class T>
 struct vector_element_representation<T*> {
@@ -52,9 +50,6 @@ struct vector_element_representation<T*> {
     typedef unsigned long type;
 };
 
-// Empty category tag distinguishes iterator constructors from the integral count/value form.
-template <int Integral>
-struct vector_input_category {};
 // Empty trait identifies iterator arguments instead of integral count/value arguments.
 template <class T>
 struct vector_input_kind {
@@ -63,18 +58,19 @@ struct vector_input_kind {
     };
 };
 // Define empty selectors that dispatch integral constructor arguments as count/value pairs.
-#define MP6_VECTOR_INTEGRAL(T) template <> struct vector_input_kind<T> { enum { integral = 1 }; };
-MP6_VECTOR_INTEGRAL(bool)
-MP6_VECTOR_INTEGRAL(char)
-MP6_VECTOR_INTEGRAL(signed char)
-MP6_VECTOR_INTEGRAL(unsigned char)
-MP6_VECTOR_INTEGRAL(short)
-MP6_VECTOR_INTEGRAL(unsigned short)
-MP6_VECTOR_INTEGRAL(int)
-MP6_VECTOR_INTEGRAL(unsigned int)
-MP6_VECTOR_INTEGRAL(long)
-MP6_VECTOR_INTEGRAL(unsigned long)
-#undef MP6_VECTOR_INTEGRAL
+#define VECTOR_INTEGRAL_ARGUMENT(T) \
+    template <> struct vector_input_kind<T> { enum { integral = 1 }; };
+VECTOR_INTEGRAL_ARGUMENT(bool)
+VECTOR_INTEGRAL_ARGUMENT(char)
+VECTOR_INTEGRAL_ARGUMENT(signed char)
+VECTOR_INTEGRAL_ARGUMENT(unsigned char)
+VECTOR_INTEGRAL_ARGUMENT(short)
+VECTOR_INTEGRAL_ARGUMENT(unsigned short)
+VECTOR_INTEGRAL_ARGUMENT(int)
+VECTOR_INTEGRAL_ARGUMENT(unsigned int)
+VECTOR_INTEGRAL_ARGUMENT(long)
+VECTOR_INTEGRAL_ARGUMENT(unsigned long)
+#undef VECTOR_INTEGRAL_ARGUMENT
 
 // Empty type-comparison trait selects representation-preserving range conversion.
 template <class First, class Second>
@@ -91,48 +87,6 @@ struct vector_same_type<T, T> {
     };
 };
 
-// Keeps an allocator alongside the reserved element count without allocator storage.
-template <class T, class Allocator>
-class vector_allocation_storage : private Allocator {
-    // Element slots reserved in the allocator's current allocation.
-    unsigned long capacity_;
-public:
-    // Starts with no reserved elements and the supplied allocation domain.
-    explicit vector_allocation_storage(const Allocator& a, unsigned long count) : Allocator(a),
-        capacity_(count) {}
-    // Uses the default allocation domain for an explicit reserved count.
-    explicit vector_allocation_storage(unsigned long count) : Allocator(), capacity_(count) {}
-    // Accesses the allocation domain.
-    Allocator& first() { return *this; }
-    // Read the empty allocator base without changing it.
-    const Allocator& first() const { return *this; }
-    // Accesses the reserved element count.
-    unsigned long& second() { return capacity_; }
-    // Read the capacity retained beside the vector allocator.
-    const unsigned long& second() const { return capacity_; }
-    void swap(vector_allocation_storage& other) { std::swap(capacity_, other.capacity_); }
-};
-
-// Allocation-pair adapter adds no fields to its allocator-and-capacity storage base.
-template <class T, class Allocator>
-class vector_allocation_count
-    : public vector_allocation_storage<T, Allocator> {
-    typedef vector_allocation_storage<T, Allocator> base;
-public:
-    // Constructs the pair from its allocation domain and reserved count.
-    explicit vector_allocation_count(const Allocator& a, unsigned long count = 0) : base(a,
-        count) {}
-    // Initializes a reserved count with the default allocator.
-    explicit vector_allocation_count(unsigned long count) : base(count) {}
-    void swap(vector_allocation_count& other) { base::swap(other); }
-};
-
-template <class T, class Allocator>
-inline void swap(vector_allocation_count<T, Allocator>& first, vector_allocation_count<T,
-    Allocator>& second) {
-    first.swap(second);
-}
-
 template <class T, class Allocator>
 class __vector_deleter;
 template <class T, class Allocator>
@@ -145,7 +99,7 @@ class __vector_deleter {
     friend void swap<T, Allocator>(__vector_deleter&, __vector_deleter&);
 protected:
     // Allocator and capacity retained while object lifetimes are managed.
-    vector_allocation_count<T, Allocator> allocation_count;
+    Metrowerks::compressed_pair<Allocator, unsigned long> allocation_count;
     // Constructed objects that must be destroyed before storage is released.
     unsigned long size_;
     // Allocation containing the live object sequence.
@@ -181,7 +135,7 @@ template <class T, class Allocator>
 class __vector_pod {
 protected:
     // Allocator paired with the reserved scalar element count.
-    vector_allocation_count<T, Allocator> allocation_count;
+    Metrowerks::compressed_pair<Allocator, unsigned long> allocation_count;
     // Scalar elements in the live prefix of the allocation.
     unsigned long size_;
     // Contiguous scalar storage used by representation-sharing vectors.
@@ -799,7 +753,7 @@ inline void __vector_deleter<T, Allocator>::swap(__vector_deleter& other) {
 template <class T, class Allocator>
 inline void swap(__vector_deleter<T, Allocator>& first, __vector_deleter<T, Allocator>& second) {
     if (&first != &second) {
-        std::swap(first.allocation_count, second.allocation_count);
+        swap(first.allocation_count, second.allocation_count);
         std::swap(first.data_, second.data_);
         std::swap(first.size_, second.size_);
     }

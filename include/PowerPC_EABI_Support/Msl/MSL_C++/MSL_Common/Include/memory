@@ -1,29 +1,31 @@
-#ifndef MP6_RECONSTRUCTED_MEMORY
-#define MP6_RECONSTRUCTED_MEMORY
+#ifndef MP6_LIBRARY_MEMORY
+#define MP6_LIBRARY_MEMORY
 
 #include <stddef.h>
 #include <new>
 #include <iterator>
 #include <limits>
 #include <utility>
+#include <algorithm>
 
 namespace std {
 
 // The utility layer reports library errors in this exception-free build.
 void __msl_error(const char* message);
 
-// Store a value with a stateless allocator base.
+// Store an extent with a stateless allocator base.
 template <class Empty, class Value>
-class _EmptyMemberOpt : private Empty {
-    // Value held alongside the allocator base.
-    Value stored_value_;
+class _EmptyMemberOpt : public Empty {
 public:
-    // Starts with a default allocator and value.
-    _EmptyMemberOpt() : Empty(), stored_value_() {}
-    // Copies the allocator and value-initializes the adjoining value.
-    explicit _EmptyMemberOpt(const Empty& empty) : Empty(empty), stored_value_() {}
-    // Copies the allocator and the value kept beside it.
-    _EmptyMemberOpt(const Empty& empty, const Value& value) : Empty(empty), stored_value_(value) {}
+    // Extent held alongside the allocator base.
+    Value extent_;
+public:
+    // Starts with a default allocator and extent.
+    _EmptyMemberOpt() : Empty(), extent_() {}
+    // Copies the allocator and value-initializes the adjoining extent.
+    explicit _EmptyMemberOpt(const Empty& empty) : Empty(empty), extent_() {}
+    // Copies the allocator and the extent kept beside it.
+    _EmptyMemberOpt(const Empty& empty, const Value& value) : Empty(empty), extent_(value) {}
 };
 
 // Stateless allocator has no fields and manages separately allocated element storage.
@@ -268,4 +270,166 @@ public:
 };
 
 }
+// These private template names are present in the game's container symbols.
+namespace Metrowerks {
+// Empty count tag publishes an allocation extent known at template instantiation.
+template <class T, T Value>
+struct number {
+    operator T() const { return Value; }
+};
+namespace details {
+// Declares the pair-storage variants selected by allocator representation.
+template <class First, class Second, int Empty>
+class compressed_pair_imp;
+// Shares storage with an empty allocator base.
+template <class First, class Second>
+class compressed_pair_imp<First, Second, 1> : private First {
+    // State adjoining the empty allocator base.
+    Second second_;
+public:
+    // Value-initialize the state beside the default empty allocator.
+    compressed_pair_imp() : First(), second_() {}
+    // Container constructors initialize their own count or root state.
+    explicit compressed_pair_imp(const First& a) : First(a) {}
+    // Build the empty base from the allocator and copy the associated state.
+    compressed_pair_imp(const First& a, const Second& b) : First(a), second_(b) {}
+    // Expose the empty allocator base for allocation operations.
+    First& first() { return *this; }
+    // Read the empty allocator base without modifying it.
+    const First& first() const { return *this; }
+    // Expose the state stored beside the empty allocator.
+    Second& second() { return second_; }
+    // Read the state adjoining the empty allocator base.
+    const Second& second() const { return second_; }
+};
+// Stores value-initialized container state beside an empty allocator.
+template <class T, class Second>
+class compressed_pair_imp<std::allocator<T>, Second, 1> :
+    private std::allocator<T> {
+    typedef std::allocator<T> First;
+    // Value-initialized state adjoining the scalar allocator.
+    Second second_;
+public:
+    // Default-initialize the allocator base and the scalar-allocation state.
+    compressed_pair_imp() : First(), second_() {}
+    // Copy the allocator and initialize its associated state.
+    explicit compressed_pair_imp(const First& a) : First(a), second_() {}
+    // Preserve the supplied scalar allocator and its container state.
+    compressed_pair_imp(const First& a, const Second& b) : First(a), second_(b) {}
+    // Return the scalar allocator base for storage management.
+    First& first() { return *this; }
+    // Expose the scalar allocator through a read-only pair.
+    const First& first() const { return *this; }
+    // Return mutable state associated with the scalar allocator.
+    Second& second() { return second_; }
+    // Read container state from the scalar-allocator specialization.
+    const Second& second() const { return second_; }
+};
+// Capacity pair stores an unsigned slot count beside its empty allocator base.
+template <class T>
+class compressed_pair_imp<std::allocator<T>, unsigned long, 1> : private std::allocator<T> {
+    typedef std::allocator<T> First;
+    // Reserved element slots owned by the adjoining allocation domain.
+    unsigned long capacity_;
+public:
+    // Retain an allocation domain and its current reserved count.
+    compressed_pair_imp(const First& a, unsigned long count) : First(a), capacity_(count) {}
+    // Associate a reserved count with the default allocator.
+    explicit compressed_pair_imp(unsigned long count) : First(), capacity_(count) {}
+    // Select the allocator used for the paired element storage.
+    First& first() { return *this; }
+    // Observe the capacity pair's allocation domain.
+    const First& first() const { return *this; }
+    // Update the number of slots owned by the allocator.
+    unsigned long& second() { return capacity_; }
+    // Read the slot extent without modifying the capacity pair.
+    const unsigned long& second() const { return capacity_; }
+    // Exchange reserved counts between stateless allocators.
+    void swap(compressed_pair_imp& other) { std::swap(capacity_, other.capacity_); }
+};
+// An allocator reference occupies a pointer word rather than an empty base.
+template <class First, class Second>
+class compressed_pair_imp<First&, Second, 0> {
+    // Allocator reference retained as a pointer-sized field.
+    First& first_;
+    // Container state paired with a referenced allocator.
+    Second second_;
+public:
+    // Keep an allocator reference beside a copy of the supplied state.
+    compressed_pair_imp(First& a, const Second& b) : first_(a), second_(b) {}
+    // Expose the referenced allocator for storage operations.
+    First& first() { return first_; }
+    // Read the allocator reference without changing its binding.
+    const First& first() const { return first_; }
+    // Expose the container state retained beside the allocator reference.
+    Second& second() { return second_; }
+    // Read state from the allocator-reference pair.
+    const Second& second() const { return second_; }
+};
+}
+// Pair wrapper adds no fields to the base holding an allocator and its container state.
+template <class First, class Second>
+class compressed_pair : public details::compressed_pair_imp<First, Second, 1> {
+    typedef details::compressed_pair_imp<First, Second, 1> base;
+public:
+    // Initialize the allocator and state.
+    compressed_pair() : base() {}
+    // Retain an allocator or ordering operation before initializing its state.
+    explicit compressed_pair(const First& a) : base(a) {}
+    // Initialize from an allocator and a state value.
+    compressed_pair(const First& a, const Second& b) : base(a, b) {}
+};
+// Capacity wrapper adds no fields to its allocator-and-count base.
+template <class T>
+class compressed_pair<std::allocator<T>, unsigned long>
+    : public details::compressed_pair_imp<std::allocator<T>, unsigned long, 1> {
+    typedef std::allocator<T> First;
+    typedef details::compressed_pair_imp<First, unsigned long, 1> base;
+public:
+    // Start with the requested allocation domain and slot extent.
+    explicit compressed_pair(const First& a, unsigned long count = 0) : base(a, count) {}
+    // Start with a default allocator and an explicit reserved extent.
+    explicit compressed_pair(unsigned long count) : base(count) {}
+    // Swap the reserved extents through the storage base.
+    void swap(compressed_pair& other) { base::swap(other); }
+};
+template <class First, class Second>
+// Reference pair adds no fields to its base holding an allocator reference and state.
+class compressed_pair<First&, Second> : public details::compressed_pair_imp<First&, Second, 0> {
+    typedef details::compressed_pair_imp<First&, Second, 0> base;
+public:
+    // Forward the allocator reference and state into the reference-storage base.
+    compressed_pair(First& a, const Second& b) : base(a, b) {}
+};
+// Exchange the state of two allocator-and-extent pairs.
+template <class First, class Second>
+inline void swap(compressed_pair<First, Second>& a, compressed_pair<First, Second>& b) {
+    a.swap(b);
+}
+// Allocation guard nests the allocator, element count and pointer in compressed pairs.
+template <class T, class Allocator, class Count>
+class alloc_ptr {
+    // Allocator, allocation count and pointer retained until ownership commits.
+    compressed_pair<Allocator, compressed_pair<Count, T*> > allocation_state;
+public:
+    // Retain newly allocated storage until value construction commits it.
+    alloc_ptr(T* pointer, Allocator a, Count count = Count()) : allocation_state(a,
+        compressed_pair<Count, T*>(count, pointer)) {}
+    // Return any storage whose ownership has not been transferred.
+    ~alloc_ptr() {
+        if (get() != 0) allocation_state.first().deallocate(get(),
+            allocation_state.second().first());
+    }
+    // Read the allocation without transferring its ownership.
+    T* get() const { return allocation_state.second().second(); }
+    T* operator->() const { return get(); }
+    // Transfer responsibility for releasing the storage.
+    T* release() {
+        T* result = get();
+        allocation_state.second().second() = 0;
+        return result;
+    }
+};
+}
+
 #endif

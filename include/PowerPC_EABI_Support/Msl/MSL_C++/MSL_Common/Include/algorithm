@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_ALGORITHM
-#define MP6_RECONSTRUCTED_ALGORITHM
+#ifndef MP6_LIBRARY_ALGORITHM
+#define MP6_LIBRARY_ALGORITHM
 
 #include <iterator>
 #include <functional>

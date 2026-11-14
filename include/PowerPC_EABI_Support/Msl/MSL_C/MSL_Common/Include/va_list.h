@@ -1,7 +1,7 @@
 #ifndef MP6_C_VA_LIST_H
 #define MP6_C_VA_LIST_H
 /* EABI variadic traversal tracks argument registers and stack storage. */
-typedef struct mp6_argument_cursor {
+typedef struct argument_cursor {
     // Index of the next saved integer argument register.
     unsigned char integer_register;
     // Index of the next saved floating-point argument register.

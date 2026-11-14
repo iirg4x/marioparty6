@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_SET
-#define MP6_RECONSTRUCTED_SET
+#ifndef MP6_LIBRARY_SET
+#define MP6_LIBRARY_SET
 #include <tree>
 
 namespace std {

@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_UTILITY
-#define MP6_RECONSTRUCTED_UTILITY
+#ifndef MP6_LIBRARY_UTILITY
+#define MP6_LIBRARY_UTILITY
 #include <msl_utility>
 
 namespace std {

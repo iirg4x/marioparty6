@@ -1,12 +1,17 @@
-#ifndef MP6_RECONSTRUCTED_DEQUE
-#define MP6_RECONSTRUCTED_DEQUE
+#ifndef MP6_LIBRARY_DEQUE
+#define MP6_LIBRARY_DEQUE
 #include <cdeque>
 #include <limits>
 
 namespace std {
-// Type-only block-extent declaration supplies no instance storage.
+
+// Empty extent trait divides a 0x200-byte block into element slots.
 template <class T>
-struct deque_block_extent;
+struct deque_block_extent {
+    enum {
+        value = 0x200 / sizeof(T)
+    };
+};
 // Empty bool specialization provides the initial 0x200-element block extent.
 template <>
 struct deque_block_extent<bool> {
@@ -108,7 +113,7 @@ public:
     };
 private:
     // Element allocator paired with the number of slots per block.
-    Metrowerks::ring_extent_storage<Allocator, size_type> block_storage;
+    _EmptyMemberOpt<Allocator, size_type> block_storage;
     // Circular sequence of block pointers, including a trailing null sentinel.
     buffer_ring buffers;
     // Absolute index of the first live element in the block sequence.
@@ -183,11 +188,7 @@ private:
             first -= block_storage.extent_;
         }
     }
-    // Copy-construct each input element into the block storage from output on.
-    template <class Input>
-    void construct_range(Input source, Input last, T* output) {
-        for (; source != last; ++source, ++output) alloc().construct(output, *source);
-    }
+
 };
 
 // Destroy the stored elements and release every allocated block.
@@ -352,5 +353,345 @@ deque<T, A>::pop_front() {
 }
 template <class T, class A>
 const typename deque<T, A>::size_type deque<T, A>::default_bufsize_s;
+// Pointer elements share blocks of const-void pointers.
+typedef const void* deque_pointer;
+// Pointer sequence retains the allocator, block extent, ring, first index and count.
+template <class Allocator>
+class deque<deque_pointer, Allocator> {
+public:
+    typedef deque_pointer value_type;
+    typedef Allocator allocator_type;
+    typedef unsigned long size_type;
+    typedef long difference_type;
+    typedef deque_pointer& reference;
+    typedef const deque_pointer& const_reference;
+    typedef typename Allocator::template rebind<deque_pointer*>::other ring_allocator;
+    typedef Metrowerks::cdeque<deque_pointer*, ring_allocator> buffer_ring;
+    // Number of pointer elements fitting in the initial block allocation.
+    static const size_type default_bufsize_s = deque_block_extent<deque_pointer>::value;
+    // Mutable position stores its ring iterator, current pointer, block end and index.
+    class iterator {
+    public:
+        typedef random_access_iterator_tag iterator_category;
+        typedef deque_pointer value_type;
+        typedef long difference_type;
+        typedef deque_pointer* pointer;
+        typedef deque_pointer& reference;
+        // Ring position identifying the allocation containing the current slot.
+        typename buffer_ring::iterator buffer;
+        // Address of the pointer slot yielded by mutable dereference.
+        deque_pointer* current;
+        // First address beyond the mutable position's current block.
+        deque_pointer* buffer_end;
+        // Element offset measured from the beginning of the allocated blocks.
+        size_type absolute;
+        iterator() : buffer(), current(0), buffer_end(0), absolute(0) {}
+        iterator(const typename buffer_ring::iterator& b, deque_pointer* p, deque_pointer* end,
+            size_type at)
+            : buffer(b), current(p), buffer_end(end), absolute(at) {}
+        reference operator*() const { return *current; }
+        pointer operator->() const { return current; }
+        iterator& operator++() {
+            ++current;
+            ++absolute;
+            if (current == buffer_end) {
+                size_type length = buffer_end - *buffer;
+                ++buffer;
+                current = *buffer;
+                buffer_end = current + length;
+            }
+            return *this;
+        }
+        iterator operator++(int) {
+            iterator old(*this);
+            ++*this;
+            return old;
+        }
+        bool operator==(const iterator& p) const { return current == p.current; }
+        bool operator!=(const iterator& p) const { return current != p.current; }
+        difference_type operator-(const iterator& p) const { return absolute - p.absolute; }
+    };
+    // Constant position keeps the same four traversal components with read-only access.
+    class const_iterator {
+    public:
+        typedef random_access_iterator_tag iterator_category;
+        typedef deque_pointer value_type;
+        typedef long difference_type;
+        typedef const deque_pointer* pointer;
+        typedef const deque_pointer& reference;
+        // Read-only ring position selecting the current block.
+        typename buffer_ring::const_iterator buffer;
+        // Address of the slot exposed by read-only dereference.
+        const deque_pointer* current;
+        // Limit at which constant traversal advances to another allocation.
+        const deque_pointer* buffer_end;
+        // Absolute offset retained while traversing the pointer sequence as const.
+        size_type absolute;
+        const_iterator(const typename buffer_ring::const_iterator& b, const deque_pointer* p,
+            const deque_pointer* end,
+            size_type at)
+            : buffer(b), current(p), buffer_end(end), absolute(at) {}
+        reference operator*() const { return *current; }
+        const_iterator& operator++() {
+            ++absolute;
+            if (++current == buffer_end) {
+                size_type length = buffer_end - *buffer;
+                ++buffer;
+                const deque_pointer* block_begin = *buffer;
+                current = block_begin;
+                buffer_end = block_begin + length;
+            }
+            return *this;
+        }
+        friend bool operator!=(const const_iterator& first, const const_iterator& last) {
+            return first.current != last.current;
+        }
+    };
+private:
+    // Allocator base and the number of pointer slots in each allocated block.
+    _EmptyMemberOpt<Allocator, size_type> block_storage;
+    // Circular table of element-block addresses, including its trailing empty slot.
+    buffer_ring buffers;
+    // Offset of the first live pointer within the block sequence.
+    size_type first;
+    // Total number of live pointers in the sequence.
+    size_type count;
+    // Access the element allocator retained beside the block length.
+    Allocator& alloc() { return block_storage; }
+public:
+    explicit deque(const Allocator& a = Allocator());
+    deque(const deque& other);
+    ~deque() { tear_down(); }
+    // End pointer-element lifetimes across the supplied block interval.
+    void destroy(iterator first, iterator last);
+    // Form a mutable traversal position at an absolute slot index.
+    iterator make_iterator(size_type at);
+    // Form a read-only traversal position at an absolute slot index.
+    const_iterator make_iterator(size_type at) const;
+    iterator begin() { return make_iterator(first); }
+    const_iterator begin() const { return make_iterator(first); }
+    iterator end() { return make_iterator(first + count); }
+    const_iterator end() const { return make_iterator(first + count); }
+    bool empty() const { return count == 0; }
+    size_type size() const { return count; }
+    size_type max_size() const { return alloc_limit(); }
+    size_type capacity() const { return block_storage.extent_ * (buffers.size() - 1); }
+    reference operator[](size_type at) {
+        at += first;
+        return buffers[at / block_storage.extent_][at % block_storage.extent_];
+    }
+    const_reference operator[](size_type at) const {
+        at += first;
+        return buffers[at / block_storage.extent_][at % block_storage.extent_];
+    }
+    reference front() {
+        return buffers[first / block_storage.extent_][first % block_storage.extent_];
+    }
+    const_reference front() const {
+        return buffers[first / block_storage.extent_][first % block_storage.extent_];
+    }
+    reference back() { return (*this)[count - 1]; }
+    const_reference back() const { return (*this)[count - 1]; }
+    void push_back(const deque_pointer& value);
+    void pop_front() {
+        ++first;
+        if (--count == 0) {
+            size_type discarded = buffers.size() - 2;
+            while (discarded) {
+                buffers.pop_back();
+                deque_pointer*& storage = buffers.back();
+                alloc().deallocate(storage, block_storage.extent_);
+                storage = 0;
+                --discarded;
+            }
+            first = block_storage.extent_ / 2;
+        }
+    }
+    void pop_back() {
+        alloc().destroy(&back());
+        --count;
+    }
+    void clear() {
+        count = 0;
+    }
+    // Release element blocks before the ring owner releases its own allocation.
+    void tear_down();
+    // Allocate trailing element blocks, expanding the address ring when necessary.
+    void grow_buf_back(size_type offset, size_type requested);
+private:
+    // Obtain the maximum element count supported by the rebound allocator.
+    size_type alloc_limit() const { return Allocator().max_size(); }
+    // Reserve the initial address ring and install its empty trailing slot.
+    void init_buf() {
+        buffers.reserve(2);
+        buffers.resize(1, 0);
+    }
+    // Release whole blocks preceding the live range and reduce its absolute origin.
+    void invalidate_iterators() {
+        while (first >= block_storage.extent_ * 3 / 2) {
+            alloc().deallocate(buffers.front(), block_storage.extent_);
+            buffers.pop_front();
+            first -= block_storage.extent_;
+        }
+    }
+
+};
+
+template <class A>
+void
+deque<deque_pointer, A>::tear_down() {
+    if (buffers.size()) {
+        typename buffer_ring::iterator last = --buffers.end();
+        for (typename buffer_ring::iterator i = buffers.begin(); i != last; ++i)
+            alloc().deallocate(*i, block_storage.extent_);
+    }
+}
+template <class A>
+deque<deque_pointer, A>::deque(const A& a)
+    : block_storage(a, default_bufsize_s),
+        buffers(typename A::template rebind<deque_pointer*>::other(a)),
+        first(0), count(0) {}
+template <class A>
+deque<deque_pointer, A>::deque(const deque& other)
+    : block_storage(other.block_storage, default_bufsize_s),
+        buffers(typename A::template rebind<deque_pointer*>::other(block_storage)), first(0),
+            count(other.count) {
+    if (count) {
+        init_buf();
+        if (block_storage.extent_ < count) block_storage.extent_ = count;
+        deque_pointer* storage = block_storage.allocate(block_storage.extent_);
+        buffers.front() = storage;
+        buffers.push_back(0);
+        first = (block_storage.extent_ - count) / 2;
+        std::copy(other.begin(), other.end(), storage + first);
+    }
+}
+template <class A>
+void
+deque<deque_pointer, A>::destroy(iterator first, iterator last) {
+    if (first != last) {
+        size_type remaining = last - first;
+        size_type offset = first.absolute;
+        size_type block = offset / block_storage.extent_;
+        offset %= block_storage.extent_;
+        size_type limit = std::min(block_storage.extent_, offset + remaining);
+        typename buffer_ring::iterator b = buffers.begin() + block;
+        deque_pointer* storage = *b;
+        std::__destroy(storage + offset, storage + limit);
+        remaining -= limit - offset;
+        if (remaining) {
+            ++b;
+            while (remaining >= block_storage.extent_) {
+                storage = *b;
+                std::__destroy(storage, storage + block_storage.extent_);
+                ++b;
+                remaining -= block_storage.extent_;
+            }
+            if (remaining) {
+                storage = *b;
+                std::__destroy(storage, storage + remaining);
+            }
+        }
+    }
+}
+template <class A>
+typename deque<deque_pointer, A>::iterator
+deque<deque_pointer, A>::make_iterator(size_type at) {
+    typename buffer_ring::iterator b = buffers.begin();
+    deque_pointer* start;
+    deque_pointer* current;
+    if (at < block_storage.extent_) {
+        if (!buffers.empty()) start = *b;
+        else start = 0;
+        current = start + at;
+    }
+    else {
+        b += at / block_storage.extent_;
+        start = *b;
+        current = start + at % block_storage.extent_;
+    }
+    return iterator(b, current, start + block_storage.extent_, at);
+}
+template <class A>
+typename deque<deque_pointer, A>::const_iterator
+deque<deque_pointer, A>::make_iterator(size_type at) const {
+    typename buffer_ring::const_iterator b = buffers.begin();
+    const deque_pointer* start;
+    const deque_pointer* current;
+    if (at < block_storage.extent_) {
+        if (!buffers.empty()) start = *b;
+        else start = 0;
+        current = start + at;
+    }
+    else {
+        b += at / block_storage.extent_;
+        start = *b;
+        current = start + at % block_storage.extent_;
+    }
+    return const_iterator(b, current, start + block_storage.extent_, at);
+}
+template <class A>
+void
+deque<deque_pointer, A>::grow_buf_back(size_type offset, size_type requested) {
+    bool replaced = false;
+    buffer_ring old_buffers;
+    // Stored and never read; the unoptimized objects keep the store.
+    size_type added = 0;
+    size_type remaining = requested;
+    remaining -= offset;
+    do {
+        deque_pointer* storage = block_storage.allocate(block_storage.extent_);
+        if (!replaced && buffers.size() == buffers.capacity()) {
+            buffers.swap(old_buffers);
+            replaced = true;
+            buffers.reserve(old_buffers.capacity() * 2);
+            buffers.assign(old_buffers.begin(), old_buffers.end());
+        }
+        buffers.back() = storage;
+        buffers.push_back(0);
+        ++added;
+        if (remaining <= block_storage.extent_) break;
+        remaining -= block_storage.extent_;
+    } while (true);
+}
+template <class A>
+void
+deque<deque_pointer, A>::push_back(const deque_pointer& value) {
+    if (count > max_size() - 1) __msl_error("deque::push_back length error\n");
+    if (buffers.empty()) init_buf();
+    {
+        if (first + count == capacity()) grow_buf_back(0, 1);
+        size_type at = first + count;
+        if (at < block_storage.extent_) buffers.front()[at] = value;
+        else
+            buffers[at / block_storage.extent_][at % block_storage.extent_] = value;
+        ++count;
+    }
+    invalidate_iterators();
+}
+template <class A>
+const typename deque<deque_pointer, A>::size_type
+deque<deque_pointer, A>::default_bufsize_s;
+// Typed pointer sequence views shared pointer blocks without adding data members.
+template <class T, class Allocator>
+class deque<T*, Allocator> : public deque<const void*,
+    typename Allocator::template rebind<const void*>::other> {
+    typedef deque<const void*, typename Allocator::template rebind<const void*>::other> base;
+public:
+    typedef T* value_type;
+    typedef Allocator allocator_type;
+    typedef typename base::size_type size_type;
+    typedef typename base::difference_type difference_type;
+    typedef T*& reference;
+    typedef T* const& const_reference;
+    explicit deque(const Allocator& a = Allocator()) :
+        base(typename Allocator::template rebind<const void*>::other(a)) {}
+    reference front() { return (reference)base::front(); }
+    const_reference front() const { return (const_reference)base::front(); }
+    reference back() { return (reference)base::back(); }
+    const_reference back() const { return (const_reference)base::back(); }
+    void push_back(const_reference value) { base::push_back((const void* const&)value); }
+};
+
 }
 #endif

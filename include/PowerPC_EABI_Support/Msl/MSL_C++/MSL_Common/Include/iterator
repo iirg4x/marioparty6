@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_ITERATOR
-#define MP6_RECONSTRUCTED_ITERATOR
+#ifndef MP6_LIBRARY_ITERATOR
+#define MP6_LIBRARY_ITERATOR
 #include <stddef.h>
 
 namespace std {
@@ -72,12 +72,12 @@ struct __implicit_convert {
     reference operator()(const Input& position) const { return *position; }
 };
 
-// Representation adapter stores an input iterator followed by a conversion object.
+// Representation adapter stores its input position followed by an unaccessed converter.
 template <class Converter>
 class __convert_iterator {
     // Input position advanced before representation conversion.
     typename Converter::argument_type input_position;
-    // Stateless operation that converts a dereferenced storage representation.
+    // Unaccessed converter occupies the second word of iterators passed by value.
     Converter conversion;
 public:
     typedef typename iterator_traits<typename Converter::argument_type>::iterator_category
