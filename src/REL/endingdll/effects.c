@@ -117,7 +117,6 @@ extern HuVecF lbl_1_rodata_2B8;
 extern EndingScenePositions lbl_1_rodata_2CC;
 
 extern HuVecF lbl_1_rodata_288;
-extern s16 lbl_1_rodata_390[5];
 
 extern s16 lbl_1_data_10E;
 extern s16 lbl_1_data_38;

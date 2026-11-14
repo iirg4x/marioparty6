@@ -88,10 +88,10 @@ void fn_1_2168(ActorSequence *owner)
     }
 }
 
-std::vector<void *> *fn_1_2264(ActorSequence *manager)
+std::vector<unsigned long> *fn_1_2264(ActorSequence *manager)
 {
-    std::vector<void *>::iterator current = manager->objects.begin();
-    std::vector<void *>::iterator last = manager->objects.end();
+    std::vector<unsigned long>::iterator current = manager->objects.begin();
+    std::vector<unsigned long>::iterator last = manager->objects.end();
     while (current != last) {
         if (fn_1_5E24(*current) == 0) {
             manager->objects.erase(current);
@@ -186,9 +186,9 @@ BOOL SequenceActor::fn_1_2768()
 
 int fn_1_27BC(COL_NARROW_PARAM *request, COL_NARROW_PARAM *other)
 {
-    std::vector<void *> *array;
-    void **current;
-    void **end;
+    std::vector<unsigned long> *array;
+    unsigned long *current;
+    unsigned long *end;
     SequenceActor *selected;
     SequenceActor *candidate;
 

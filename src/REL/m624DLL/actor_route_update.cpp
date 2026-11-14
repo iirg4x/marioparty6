@@ -25,7 +25,6 @@ typedef struct RoutePoint {
 } RoutePoint;
 }
 
-u8 fn_1_911C(PlayerRunner *owner);
 extern "C" {
 extern "C" RoutePoint lbl_1_data_D0[11] = {
     { { -699.26f, 298.29f, -248.6f }, cmToWorld(310.0f), { 1, 1, 2, 2, 3 } },
@@ -178,15 +177,11 @@ void fn_1_158C(ComControl *owner, Vec *position,
     }
 }
 
-class SequenceActor;
-Vec *fn_1_22F0(SequenceActor *, Vec *);
-std::vector<void *> *fn_1_2264(ActorSequence *);
-
 u8 fn_1_174C(ComControl *owner, Vec *result, f32 maximumDistance)
 {
-    std::vector<void *> *array;
-    void * * begin;
-    void * * current;
+    std::vector<unsigned long> *array;
+    unsigned long *begin;
+    unsigned long *current;
     void * candidate;
     Vec candidatePosition;
     Vec difference;

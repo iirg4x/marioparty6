@@ -164,7 +164,6 @@ extern u32 lbl_1_data_2AC[3][16];
 extern u32 lbl_1_data_36C[3];
 extern u8 lbl_1_data_378[768];
 
-#define BSS_ARRAY32(offset) ((s32 *)((u8 *)&lbl_1_bss_0 + (offset)))
 #define TIMER (lbl_1_bss_0.timer)
 #define TICK (lbl_1_bss_0.sequenceFrame)
 #define READ_MODEL(resource)                                                                       \

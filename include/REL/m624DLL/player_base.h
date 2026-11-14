@@ -54,4 +54,16 @@ void fn_1_63F8();
 void fn_1_6468();
 Player *fn_1_65B0(s32 key);
 
+void fn_1_60B8(void);
+void fn_1_6214(void);
+s32 fn_1_65A0(void);
+void fn_1_6B74(Player *owner, u32 motionFile);
+void fn_1_6CD8(Player *owner, s32 motionIndex, u8 shift);
+void fn_1_6F68(Player *owner, s32 mode);
+
+static inline void setMode(Player *player, Player::Mode next)
+{
+    player->mode = next;
+}
+
 #endif

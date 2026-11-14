@@ -13,6 +13,11 @@
  *
  *
  *
+ *
+ *
+ *
+ *
+ *
  */
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
@@ -52,10 +57,6 @@ extern "C" {
 
 #include "REL/m624DLL/range.h"
 int fn_1_9484(COL_NARROW_PARAM *, COL_NARROW_PARAM *);
-
-static inline void setMode(Player *player, Player::Mode next) {
-    player->mode = next;
-}
 
 static inline void setRunnerState(PlayerRunner *runner, void (PlayerRunner::*next)()) {
     setMode(runner, static_cast<Player::Mode>(next));
@@ -118,7 +119,7 @@ s32 fn_1_79F4(void) {
     node = startNode;
     end = &lbl_1_bss_9C;
     count = 0;
-    while ((Node *)node != end) {
+    while (node != end) {
         status = node->group;
         if (status < 2) {
             checkNode = node;
@@ -180,10 +181,9 @@ void PlayerRunner::fn_1_7D2C() {
     }
 }
 extern void fn_1_8584(PlayerRunner *owner);
-void fn_1_6F68(Player *owner, s32 mode);
+
 extern s32 lbl_1_bss_A4;
-void fn_1_6CD8(Player *owner, s32 motionIndex, u8 shift);
-void fn_1_6B74(Player *owner, u32 motionFile);
+
 void fn_1_7DAC(PlayerRunner *owner) {
     Point3d position;
     f32 minimumZ;

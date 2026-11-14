@@ -1,8 +1,8 @@
 /* Runs Odd Card Out startup constructors and its module initialization hook. */
+#include "REL/m602Dll.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Called by module startup to run static initializers and initialize Odd Card Out. */
 int _prolog(void)

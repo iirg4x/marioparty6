@@ -1,6 +1,10 @@
 #ifndef M640DLL_H
 #define M640DLL_H
 
+#include "dolphin/types.h"
+
+void ObjectSetup(void);
+
 void fn_1_F0(s16 mode, s16 frame);
 void fn_1_114(s16 mode, s16 frame);
 void fn_1_13C(s16 mode, s16 frame);

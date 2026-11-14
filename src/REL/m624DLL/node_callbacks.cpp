@@ -148,13 +148,13 @@ HandleListObject::~HandleListObject()
     lbl_1_bss_84->release(registryId);
 }
 
-void *fn_1_5E1C(HandleListObject *object) {
-    return (void *)object->registryId;
+unsigned long fn_1_5E1C(HandleListObject *object) {
+    return object->registryId;
 }
 
-void *fn_1_5E24(void *handle)
+void *fn_1_5E24(unsigned long handle)
 {
-    return lbl_1_bss_84->lookup((unsigned long)handle);
+    return lbl_1_bss_84->lookup(handle);
 }
 
 ListRoot<HandleListObject> lbl_1_bss_7C;

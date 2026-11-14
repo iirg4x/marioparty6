@@ -103,6 +103,15 @@
  *
  *
  *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  */
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
@@ -195,18 +204,9 @@ extern "C" { extern GW_PLAYER_CONF lbl_80265728[]; }
 
 void fn_1_6A9C(Player *object);
 
-static inline void setMode(Player *player, Player::Mode next)
-{
-    player->mode = next;
-}
-
 void fn_1_6B3C(Player *object);
 
-void fn_1_6B74(Player *owner, u32 dataNum);
-
 void fn_1_6BEC(Player *owner, s32 motion, f32 startFrame, f32 endFrame, u8 shift);
-
-void fn_1_6CD8(Player *owner, s32 motion, u8 shift);
 
 u32 fn_1_6DCC(Player *self);
 
@@ -235,8 +235,6 @@ inline void Player::setMotion(s32 motion, f32 startFrame, f32 endFrame, u8 shift
 }
 
 void fn_1_6EF4(Player *owner, u8 enabled);
-
-void fn_1_6F68(Player *task, s32 mode);
 
 void fn_1_6214()
 {

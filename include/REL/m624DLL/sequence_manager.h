@@ -8,11 +8,15 @@
 struct ActorSequence : MinigameSingleton<ActorSequence> {
     s32 spawnedCount;
     std::vector<Point3d> points;
-    std::vector<void *> objects;
+    std::vector<unsigned long> objects;
     ActorSequence();
     ~ActorSequence();
 };
 
 extern "C" void fn_1_2168(ActorSequence *owner);
+
+class SequenceActor;
+Vec *fn_1_22F0(SequenceActor *owner, Vec *position);
+std::vector<unsigned long> *fn_1_2264(ActorSequence *manager);
 
 #endif

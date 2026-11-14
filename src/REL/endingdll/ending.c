@@ -30,10 +30,6 @@ typedef struct EndingLightVectors {
     HuVecF vector[2];
 } EndingLightVectors;
 
-typedef struct EndingParticleCounts {
-    s16 count[5];
-} EndingParticleCounts;
-
 typedef struct EndingMotionWork {
     s16 state; /* 0 is inactive; 1 is moving for the particle and entrance work. */
     float time; /* Callback time in frames; negative values can encode a delayed start or hidden
@@ -99,8 +95,6 @@ extern ANIMDATA *lbl_1_bss_1E30[3];
 
 extern EndingLightVectors lbl_1_rodata_A0;
 extern GXColor lbl_1_rodata_B8;
-
-extern EndingParticleCounts lbl_1_rodata_390;
 
 extern u32 lbl_1_data_128[3];
 

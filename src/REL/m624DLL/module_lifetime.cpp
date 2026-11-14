@@ -25,11 +25,6 @@ extern "C" {
 #include "game/wipe.h"
 
 }
-extern void fn_1_60B8(void);
-
-extern void fn_1_6214(void);
-
-s32 fn_1_65A0();
 
 u8 fn_1_3A08(SequenceOwner *);
 

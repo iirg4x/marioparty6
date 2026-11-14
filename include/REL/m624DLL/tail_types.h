@@ -33,7 +33,7 @@ void fn_1_CD78(M624PadControl *, MGPLAYER *);
 void fn_1_CF60(Range<float> *self, f32 value);
 
 struct HandleListObject;
-void *fn_1_5E1C(HandleListObject *);
-void *fn_1_5E24(void *handle);
+unsigned long fn_1_5E1C(HandleListObject *);
+void *fn_1_5E24(unsigned long handle);
 
 #endif

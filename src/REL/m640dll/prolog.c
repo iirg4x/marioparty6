@@ -1,8 +1,9 @@
 /* Runs module constructors and starts the M640 sequence; the epilog runs module destructors. */
+#include "REL/m640dll.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Runs module constructors, initializes the object manager, and starts the M640 sequence. */
 int _prolog(void)

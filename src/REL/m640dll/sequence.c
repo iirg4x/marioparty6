@@ -1,11 +1,11 @@
 /* Registers the M640 sequence modes and dispatches their intro, gameplay, and result callbacks. */
 #include "REL/m640/m640.h"
+#include "REL/m640dll.h"
 #include "msm_stream.h"
 
 
 
 
-void ObjectSetup(void);
 void fn_1_F0(s16 mode, s16 frame);
 void fn_1_114(s16 mode, s16 frame);
 void fn_1_13C(s16 mode, s16 frame);

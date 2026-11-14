@@ -1,8 +1,9 @@
 /* Runs the minigame REL constructor and destructor callbacks. */
+#include "REL/m637dll.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Runs the REL constructors before initializing the minigame sequence. */
 int _prolog(void)
