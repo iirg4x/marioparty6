@@ -1,6 +1,6 @@
 /* Creates the course models and advances the opening camera and animation sequence. */
-#include "dolphin/math.h"
-#include "REL/m609dll/state.h"
+#include <math.h>
+#include "REL/m609dll/course.h"
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/gamework.h"
@@ -10,72 +10,14 @@
 #include "game/data.h"
 #include "game/memory.h"
 
-typedef struct M609SequencePlayerSlots {
-    u8 beforePlayerSlots[106];
-    s8 playerSlots[246];
-} M609SequencePlayerSlots;
-
-extern void fn_1_11B80(void);
-extern void fn_1_52B8(void);
-extern void fn_1_6974(void);
-extern void fn_1_2DF4(void);
-extern void fn_1_8EE4(void);
-extern void fn_1_2780(void);
-extern void fn_1_46F8(s16, s16, void *);
-extern s32 fn_1_118BC(void);
-extern s32 fn_1_30D8(f32 *value, f32 step, f32 start, f32 end);
-extern f32 fn_1_31F8(f32 value);
-extern void fn_1_670(void);
-extern void fn_1_4F98(void);
-extern void fn_1_7150(M609Model *record);
-extern s32 fn_1_89E0(f32 startZ);
-extern void fn_1_7E10(void);
-extern void fn_1_8670(void);
-extern void fn_1_8C54(void);
-extern double sin(double);
-extern double cos(double);
-extern double sqrt(double);
-extern void fn_1_3FF0(M609Player *player, s16 mode);
-extern s32 fn_1_126F0(M609Player *player, s16 advanceAfterChase);
-
-extern double atan2(double, double);
-
-typedef struct M609CollisionEdge {
-    f32 startX;
-    f32 endX;
-    f32 startZ;
-    f32 endZ;
-} M609CollisionEdge;
-
-typedef struct M609Placement {
-    s16 status;
-    s16 pathIndex;
-    Vec position;
-    Vec movementValues;
-    Vec positionStep;
-    Vec movementSelectors;
-    Vec bounds;
-    s16 record;
-    s16 linkedRecord;
-} M609Placement;
-
 #include "game/charman.h"
 #include "game/audio.h"
 #include "game/gamemes.h"
 #include "datadir_enum.h"
-void fn_1_3C0(void);
-void fn_1_11E2C(void);
-void fn_1_1661C(void);
-void fn_1_10FC(void);
 void fn_1_E4D4(void);
 void fn_1_F8A8(void);
 void fn_1_FDE0(void);
 s32 fn_1_101AC(void);
-int fn_1_C9A8(COL_NARROW_PARAM *, COL_NARROW_PARAM *);
-void fn_1_CA6C(MGACTOR *,int);
-void fn_1_5618(s16,s16);
-void fn_1_4C68(s16,s16);
-void fn_1_45EC(s32,s32);
 
 /* Loads the day or night course models and actors from sequence initialization callback
  * fn_1_118. */
@@ -627,7 +569,7 @@ void fn_1_F8A8(void) {
         if (recordIndex == 144) {
             lbl_1_bss_8BC[recordIndex].model =
                 fn_80025A04(fn_80008DD0(
-                ((s32 *)&lbl_1_bss_6D88)[148 / sizeof(s32)],
+                lbl_1_bss_6D88[37],
                 0x10000000,
                 2));
         } else {
@@ -642,22 +584,22 @@ void fn_1_F8A8(void) {
         fn_80026B8C(
             lbl_1_bss_8BC[recordIndex].model, 7);
         lbl_1_bss_8BC[recordIndex].position.x =
-            (0.0f);
+            0.0f;
         lbl_1_bss_8BC[recordIndex].position.y =
-            (-10000.0f);
+            -10000.0f;
         lbl_1_bss_8BC[recordIndex].position.z =
-            (0.0f);
-        lbl_1_bss_8BC[recordIndex].rotation.x = (0.0f);
+            0.0f;
+        lbl_1_bss_8BC[recordIndex].rotation.x = 0.0f;
         lbl_1_bss_8BC[recordIndex].rotation.y =
-            (0.0f);
-        lbl_1_bss_8BC[recordIndex].rotation.z = (0.0f);
+            0.0f;
+        lbl_1_bss_8BC[recordIndex].rotation.z = 0.0f;
         lbl_1_bss_8BC[recordIndex].linkedRecord = -1;
         if (lbl_1_bss_30.night == 1) {
             fn_800268B0(
                               lbl_1_bss_8BC[recordIndex].model,
-                              (1.5f),
-                              (1.5f),
-                              (1.5f));
+                              1.5f,
+                              1.5f,
+                              1.5f);
             if (recordIndex == 144) {
                 lbl_1_bss_0[0] = fn_80030458(
                     lbl_1_bss_8BC[recordIndex].model,
@@ -671,30 +613,30 @@ void fn_1_F8A8(void) {
                 ((1 << 30) | (1 << 0)));
             fn_8002D86C(
                 lbl_1_bss_8BC[recordIndex].model,
-                (1.0f));
+                1.0f);
             fn_8002D414(
                 lbl_1_bss_8BC[recordIndex].model,
-                              fn_1_31F8((100.0f)));
-            lbl_1_bss_30.raftOffset.x = (0.0f);
-            lbl_1_bss_30.raftOffset.y = (50.0f);
-            lbl_1_bss_30.raftOffset.z = (0.0f);
+                              fn_1_31F8(100.0f));
+            lbl_1_bss_30.raftOffset.x = 0.0f;
+            lbl_1_bss_30.raftOffset.y = 50.0f;
+            lbl_1_bss_30.raftOffset.z = 0.0f;
         }
     }
 
     lbl_1_bss_8BC[153].model =
         fn_80025A04(fn_80008DD0(
-            ((s32 *)&lbl_1_bss_6D88)[152 / sizeof(s32)],
+            lbl_1_bss_6D88[38],
             0x10000000,
             2));
     fn_800269E8(lbl_1_bss_8BC[153].model, 1);
     fn_80026B64(lbl_1_bss_8BC[153].model, 1);
     fn_80026B8C(lbl_1_bss_8BC[153].model, 7);
-    lbl_1_bss_8BC[153].position.x = (0.0f);
-    lbl_1_bss_8BC[153].position.y = (-10000.0f);
-    lbl_1_bss_8BC[153].position.z = (0.0f);
-    lbl_1_bss_8BC[153].rotation.x = (0.0f);
-    lbl_1_bss_8BC[153].rotation.y = (0.0f);
-    lbl_1_bss_8BC[153].rotation.z = (0.0f);
+    lbl_1_bss_8BC[153].position.x = 0.0f;
+    lbl_1_bss_8BC[153].position.y = -10000.0f;
+    lbl_1_bss_8BC[153].position.z = 0.0f;
+    lbl_1_bss_8BC[153].rotation.x = 0.0f;
+    lbl_1_bss_8BC[153].rotation.y = 0.0f;
+    lbl_1_bss_8BC[153].rotation.z = 0.0f;
     lbl_1_bss_8BC[153].linkedRecord = -1;
     lbl_1_bss_0[1] = fn_80030458(
         lbl_1_bss_8BC[153].model,
@@ -704,16 +646,15 @@ void fn_1_F8A8(void) {
     fn_800269E8(lbl_1_bss_8BC[153].model,
                       ((1 << 30) | (1 << 0)));
     fn_8002D86C(lbl_1_bss_8BC[153].model,
-                       (1.0f));
+                       1.0f);
     fn_8002D414(lbl_1_bss_8BC[153].model,
-                      (0.0f));
+                      0.0f);
 }
 
 /* Creates the two five-model drifting-obstacle pools during setup;
  * fn_1_D1CC calls this after loading resources. */
 void fn_1_FDE0(void) {
     s16 modelIndex;
-    s16 unusedModelIndex;
     modelIndex = 17;
     while (modelIndex <= 21)
     {
@@ -723,20 +664,14 @@ void fn_1_FDE0(void) {
         fn_800269E8(lbl_1_bss_8BC[modelIndex].model, 1U);
         fn_80026B64(lbl_1_bss_8BC[modelIndex].model, 1U);
         fn_80026B8C(lbl_1_bss_8BC[modelIndex].model, 5);
-        fn_8002D86C(lbl_1_bss_8BC[modelIndex].model, (0.0f));
-        fn_8002D414(lbl_1_bss_8BC[modelIndex].model, (0.0f));
-        (lbl_1_bss_8BC[modelIndex].position.x) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].position.y) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].position.z) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].rotation.x) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].rotation.y) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].rotation.z) =
-            (f32) (0.0f);
+        fn_8002D86C(lbl_1_bss_8BC[modelIndex].model, 0.0f);
+        fn_8002D414(lbl_1_bss_8BC[modelIndex].model, 0.0f);
+        lbl_1_bss_8BC[modelIndex].position.x = 0.0f;
+        lbl_1_bss_8BC[modelIndex].position.y = 0.0f;
+        lbl_1_bss_8BC[modelIndex].position.z = 0.0f;
+        lbl_1_bss_8BC[modelIndex].rotation.x = 0.0f;
+        lbl_1_bss_8BC[modelIndex].rotation.y = 0.0f;
+        lbl_1_bss_8BC[modelIndex].rotation.z = 0.0f;
         modelIndex += 1;
     }
     modelIndex = 22;
@@ -748,20 +683,14 @@ void fn_1_FDE0(void) {
         fn_800269E8(lbl_1_bss_8BC[modelIndex].model, 1U);
         fn_80026B64(lbl_1_bss_8BC[modelIndex].model, 1U);
         fn_80026B8C(lbl_1_bss_8BC[modelIndex].model, 5);
-        fn_8002D86C(lbl_1_bss_8BC[modelIndex].model, (0.0f));
-        fn_8002D414(lbl_1_bss_8BC[modelIndex].model, (0.0f));
-        (lbl_1_bss_8BC[modelIndex].position.x) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].position.y) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].position.z) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].rotation.x) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].rotation.y) =
-            (f32) (0.0f);
-        (lbl_1_bss_8BC[modelIndex].rotation.z) =
-            (f32) (0.0f);
+        fn_8002D86C(lbl_1_bss_8BC[modelIndex].model, 0.0f);
+        fn_8002D414(lbl_1_bss_8BC[modelIndex].model, 0.0f);
+        lbl_1_bss_8BC[modelIndex].position.x = 0.0f;
+        lbl_1_bss_8BC[modelIndex].position.y = 0.0f;
+        lbl_1_bss_8BC[modelIndex].position.z = 0.0f;
+        lbl_1_bss_8BC[modelIndex].rotation.x = 0.0f;
+        lbl_1_bss_8BC[modelIndex].rotation.y = 0.0f;
+        lbl_1_bss_8BC[modelIndex].rotation.z = 0.0f;
         modelIndex += 1;
     }
 }

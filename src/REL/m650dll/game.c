@@ -1,75 +1,7 @@
 /* Implements player setup, movement, throwing, scoring, and game updates. */
 #include <math.h>
 #include "REL/m650/m650.h"
-
-/* Resource numbers are identified by the model or motion slot that uses them. */
-#define M650_DATA_PLAYER_AUX_MODEL 7143428
-#define M650_DATA_PLAYER_JOINT_MODEL 7143441
-#define M650_DATA_PLAYER_EXTRA_MODEL 7143440
-#define M650_DATA_PLAYER_EFFECT_MODEL 7143435
-#define M650_DATA_PLAYER_JOINT_RESOURCE_0 7143442
-#define M650_DATA_PLAYER_JOINT_RESOURCE_1 7143443
-#define M650_DATA_PLAYER_JOINT_RESOURCE_2 7143444
-#define M650_DATA_PLAYER_JOINT_RESOURCE_3 7143445
-#define M650_DATA_DAY_COURSE_SHADOW_MODEL 7143424
-#define M650_DATA_NIGHT_COURSE_SHADOW_MODEL 7143430
-#define M650_DATA_DAY_COURSE_BACKGROUND_MODEL 7143425
-#define M650_DATA_NIGHT_COURSE_BACKGROUND_MODEL 7143431
-#define M650_DATA_DAY_PLAYER_SHADOW_MODEL 7143429
-#define M650_DATA_NIGHT_PLAYER_SHADOW_MODEL 7143434
-#define M650_DATA_DAY_PLAYER_EFFECT_A 7143436
-#define M650_DATA_NIGHT_PLAYER_EFFECT_A 7143437
-#define M650_DATA_DAY_PLAYER_EFFECT_B 7143438
-#define M650_DATA_NIGHT_PLAYER_EFFECT_B 7143439
-#define M650_DATA_PLAYER_JOINT_MOTION_0 9306277
-#define M650_DATA_PLAYER_JOINT_MOTION_1 9633814
-#define M650_DATA_PLAYER_JOINT_MOTION_2 9306278
-#define M650_DATA_PLAYER_JOINT_MOTION_3 9633792
-#define M650_DATA_PLAYER_JOINT_MOTION_4 9633798
-
-void fn_1_14FC(void);
-void fn_1_1830(void);
-void fn_1_1AE4(void);
-void fn_1_2010(s16 player);
-void fn_1_21CC(OMOBJ *obj);
-void fn_1_22A8(s16 player, s16 motion);
-void fn_1_2320(s16 player, s16 motion);
-void fn_1_23C4(s16 player, s16 motion, float blend);
-void fn_1_2464(s16 player);
-void fn_1_2558(void);
-void fn_1_25B0(void);
-void fn_1_26D0(void);
-void fn_1_273C(s16 player);
-void fn_1_289C(s16 player);
-s16 fn_1_2CAC(s16 player);
-void fn_1_2F1C(s16 player);
-/* Called each frame in states 2 and 3 to move the thrown bone, resolve impacts, and apply
- * gravity. */
-void fn_1_33F8(s16 player);
-/* During state 4, guides the player toward the thrown bone and handles the finish or contact. */
-void fn_1_3F28(s16 player);
-/* During state 5, rebounds the runner along the reflected direction, then starts the spin penalty
- * or stops for results. */
-void fn_1_4430(s16 player);
-void fn_1_473C(s16 player);
-void fn_1_48C0(s16 player);
-void fn_1_49C8(s16 player);
-void fn_1_4BD4(s16 player);
-s16 fn_1_4D58(s16 frame);
-/* Before non-Decathlon play, loads the record and creates the shared elapsed-time display. */
-void fn_1_5258(void);
-void fn_1_5308(void);
-/* Called by finish detection outside Decathlon to stop the shared elapsed-time display. */
-void fn_1_5354(void);
-/* Before Decathlon play, creates and positions an elapsed-time display for each player. */
-void fn_1_5394(void);
-void fn_1_54D4(void);
-void fn_1_5544(s16 player);
-void fn_1_5600(s16 unusedPlayer, f32 value, f32 *out0, f32 *out1);
-s16 fn_1_5728(void);
-void fn_1_5A24(s16 player);
-/* While pad 0 camera adjustment is enabled, adjusts all camera poses and prints camera 0. */
-void fn_1_5E40(void);
+#include "humath.h"
 
 extern GXColor lbl_1_data_40[2];
 extern Point3d lbl_1_data_28;
@@ -89,23 +21,23 @@ Point3d lbl_1_data_28 = { -2000.0f, 10000.0f, -400.0f };
 Point3d lbl_1_data_34 = { -0.4f, -0.8f, -0.8f };
 GXColor lbl_1_data_40[2] = { {128,128,128,128}, {144,144,144,144} };
 s32 lbl_1_data_48[4] = {
-    M650_DATA_PLAYER_JOINT_RESOURCE_0, M650_DATA_PLAYER_JOINT_RESOURCE_1,
-    M650_DATA_PLAYER_JOINT_RESOURCE_2, M650_DATA_PLAYER_JOINT_RESOURCE_3
+    DATANUM(0x6d0000, 18), DATANUM(0x6d0000, 19),
+    DATANUM(0x6d0000, 20), DATANUM(0x6d0000, 21)
 };
 M650Motion lbl_1_data_58[5] = {
-    { M650_DATA_PLAYER_JOINT_MOTION_0, ((1 << 30) | (1 << 0)) },
-    { M650_DATA_PLAYER_JOINT_MOTION_1, ((1 << 30) | (1 << 0)) },
-    { M650_DATA_PLAYER_JOINT_MOTION_2, 0U },
-    { M650_DATA_PLAYER_JOINT_MOTION_3, ((1 << 30) | (1 << 0)) },
-    { M650_DATA_PLAYER_JOINT_MOTION_4, 0U },
+    { DATANUM(0x8e0000, 165), ((1 << 30) | (1 << 0)) },
+    { DATANUM(0x930000, 22), ((1 << 30) | (1 << 0)) },
+    { DATANUM(0x8e0000, 166), 0U },
+    { DATANUM(0x930000, 0), ((1 << 30) | (1 << 0)) },
+    { DATANUM(0x930000, 6), 0U },
 };
-s32 lbl_1_data_80[2] = { M650_DATA_DAY_COURSE_SHADOW_MODEL, M650_DATA_NIGHT_COURSE_SHADOW_MODEL };
+s32 lbl_1_data_80[2] = { DATANUM(0x6d0000, 0), DATANUM(0x6d0000, 6) };
 s32 lbl_1_data_88[2] = {
-    M650_DATA_DAY_COURSE_BACKGROUND_MODEL, M650_DATA_NIGHT_COURSE_BACKGROUND_MODEL
+    DATANUM(0x6d0000, 1), DATANUM(0x6d0000, 7)
 };
-s32 lbl_1_data_90[2] = { M650_DATA_DAY_PLAYER_SHADOW_MODEL, M650_DATA_NIGHT_PLAYER_SHADOW_MODEL };
-s32 lbl_1_data_98[2] = { M650_DATA_DAY_PLAYER_EFFECT_A, M650_DATA_NIGHT_PLAYER_EFFECT_A };
-s32 lbl_1_data_A0[2] = { M650_DATA_DAY_PLAYER_EFFECT_B, M650_DATA_NIGHT_PLAYER_EFFECT_B };
+s32 lbl_1_data_90[2] = { DATANUM(0x6d0000, 5), DATANUM(0x6d0000, 10) };
+s32 lbl_1_data_98[2] = { DATANUM(0x6d0000, 12), DATANUM(0x6d0000, 13) };
+s32 lbl_1_data_A0[2] = { DATANUM(0x6d0000, 14), DATANUM(0x6d0000, 15) };
 u8 lbl_1_data_A8[168] = {
     63, 12, 204, 205, 63, 128, 0, 0, 63, 25, 153, 154, 63, 12, 204, 205,
     63, 128, 0, 0, 63, 0, 0, 0, 63, 64, 0, 0, 63, 128, 0, 0,
@@ -245,12 +177,12 @@ void fn_1_1AE4(void)
             playerWork->computerDifficulty = lbl_80265728[playerNo].comDif;
         }
         modelID = fn_80025A04(
-            fn_80008DD0(M650_DATA_PLAYER_AUX_MODEL, 0x10000000, 2));
+            fn_80008DD0(DATANUM(0x6D0000, 4), 0x10000000, 2));
         fn_80026B64(modelID, lbl_1_data_150[playerNo]);
         fn_800269E8(modelID, 1U);
         playerWork->model1E = modelID;
         modelID = fn_80025A04(
-            fn_80008DD0(M650_DATA_PLAYER_JOINT_MODEL, 0x10000000, 2));
+            fn_80008DD0(DATANUM(0x6D0000, 17), 0x10000000, 2));
         fn_80026B64(modelID, lbl_1_data_150[playerNo]);
         motionIndex = 0;
         while (motionIndex < 4) {
@@ -277,7 +209,7 @@ void fn_1_1AE4(void)
         fn_8005C2C8(playerWork->charNo, playerWork->motionIDs[0], 0.0f, 0.0f,
                            lbl_1_data_58->flags);
         modelID = fn_80025A04(
-            fn_80008DD0(M650_DATA_PLAYER_EXTRA_MODEL, 0x10000000, 2));
+            fn_80008DD0(DATANUM(0x6D0000, 16), 0x10000000, 2));
         fn_80026B64(modelID, lbl_1_data_150[playerNo]);
         fn_800269E8(modelID, 1U);
         playerWork->model52 = modelID;
@@ -302,7 +234,7 @@ void fn_1_1AE4(void)
         fn_800269E8(modelID, 1U);
         playerWork->model7C = modelID;
         modelID = fn_80025A04(
-            fn_80008DD0(M650_DATA_PLAYER_EFFECT_MODEL, 0x10000000, 2));
+            fn_80008DD0(DATANUM(0x6D0000, 11), 0x10000000, 2));
         fn_8002D86C(modelID, 0.0f);
         fn_80026B64(modelID, lbl_1_data_150[playerNo]);
         fn_800269E8(modelID, 1U);
@@ -578,11 +510,11 @@ s16 fn_1_2CAC(s16 player)
         return 0;
     }
     projectedSideDistance =
-        (f32) (800.0 * sin((3.141592653589793 * (f64) playerWork->turnAngle) / 180.0));
+        (f32) (800.0 * sin((M_PI * (f64) playerWork->turnAngle) / 180.0));
     /* The forward projection is retained from the original logic but does not affect this
      * decision. */
     projectedForwardDistance =
-        (f32) (800.0 * cos((3.141592653589793 * (f64) playerWork->turnAngle) / 180.0));
+        (f32) (800.0 * cos((M_PI * (f64) playerWork->turnAngle) / 180.0));
     if (((playerPosition.x + projectedSideDistance) >= 1150.0f) ||
         ((playerPosition.x + projectedSideDistance) <= -1150.0f)) {
         blockedByBoundary = 1;
@@ -629,7 +561,8 @@ void fn_1_2F1C(s16 playerIndex)
     Point3d bodyRotation;
     Point3d boneHookPosition;
     HuVecF offset;
-    s32 sounds[4] = { M650_EFFECT_2028, M650_EFFECT_2029, M650_EFFECT_2030, M650_EFFECT_2031 };
+    s32 sounds[4] = { MSM_SE_MG650_BONE_THROW_P1, MSM_SE_MG650_BONE_THROW_P2,
+                      MSM_SE_MG650_BONE_THROW_P3, MSM_SE_MG650_BONE_THROW_P4 };
     f32 throwElevation;
     f32 launchSpeed;
     f32 motionTime;
@@ -677,13 +610,13 @@ void fn_1_2F1C(s16 playerIndex)
             fn_80026808(playerWork->model52, 0.0f, 45.0f, 0.0f);
             fn_1_5600(playerIndex, boneHookPosition.y + offset.y, &launchSpeed, &throwElevation);
             playerWork->boneVelocity.x =
-                (launchSpeed * cos((3.141592653589793 * throwElevation) / 180.0)) *
-                sin((3.141592653589793 * playerWork->turnAngle) / 180.0);
+                (launchSpeed * cos((M_PI * throwElevation) / 180.0)) *
+                sin((M_PI * playerWork->turnAngle) / 180.0);
             playerWork->boneVelocity.y =
-                (f32) ((f64) launchSpeed * sin((3.141592653589793 * (f64) throwElevation) / 180.0));
+                (f32) ((f64) launchSpeed * sin((M_PI * (f64) throwElevation) / 180.0));
             playerWork->boneVelocity.z =
-                (launchSpeed * cos((3.141592653589793 * throwElevation) / 180.0)) *
-                cos((3.141592653589793 * playerWork->turnAngle) / 180.0);
+                (launchSpeed * cos((M_PI * throwElevation) / 180.0)) *
+                cos((M_PI * playerWork->turnAngle) / 180.0);
             fn_800269E8(playerWork->model1E, 1U);
         }
     }
@@ -699,10 +632,11 @@ void fn_1_33F8(s16 player)
     HuVecF horizontal;
     HuVecF reflection;
     HuVecF normal;
-    s32 hitSounds[4] = { M650_EFFECT_2032, M650_EFFECT_2033, M650_EFFECT_2034, M650_EFFECT_2035 };
-    s32 groundSounds[4] = {
-        M650_EFFECT_2036, M650_EFFECT_2037, M650_EFFECT_2038, M650_EFFECT_2039
-    };
+    s32 hitSounds[4] = { MSM_SE_MG650_BONE_WALL_HIT_P1, MSM_SE_MG650_BONE_WALL_HIT_P2,
+                         MSM_SE_MG650_BONE_WALL_HIT_P3, MSM_SE_MG650_BONE_WALL_HIT_P4 };
+    s32 groundSounds[4] = { MSM_SE_MG650_BONE_GROUND_BOUNCE_P1, MSM_SE_MG650_BONE_GROUND_BOUNCE_P2,
+                            MSM_SE_MG650_BONE_GROUND_BOUNCE_P3,
+                            MSM_SE_MG650_BONE_GROUND_BOUNCE_P4 };
     float speed;
     float distanceSquared;
     float radiusSquared;
@@ -740,7 +674,7 @@ void fn_1_33F8(s16 player)
                     fn_1_22A8(player, 1);
                     /* The player number is evaluated here but does not affect the landing sound. */
                     (void)(int)player;
-            HuAudFXPlayPan(M650_EFFECT_1001, 32);
+                    HuAudFXPlayPan(MSM_SE_GUIDE_EVENT_NPC_TALK, 32);
                 } else {
                     work->state = 9;
                 }
@@ -815,7 +749,8 @@ void fn_1_3F28(s16 player)
     HuVecF itemPos;
     HuVecF rot;
     HuVecF delta;
-    s32 sounds[4] = { M650_EFFECT_2040, M650_EFFECT_2041, M650_EFFECT_2042, M650_EFFECT_2043 };
+    s32 sounds[4] = { MSM_SE_MG650_RUNNER_WALL_HIT_P1, MSM_SE_MG650_RUNNER_WALL_HIT_P2,
+                      MSM_SE_MG650_RUNNER_WALL_HIT_P3, MSM_SE_MG650_RUNNER_WALL_HIT_P4 };
     float angle;
     float distance;
 
@@ -838,7 +773,7 @@ void fn_1_3F28(s16 player)
         /* Straight movement forces yaw to zero even when the bone is behind the runner. */
         angle = 0.0f;
     } else {
-        angle = 180.0 * (atan2(work->direction.x, work->direction.z) / 3.141592653589793);
+        angle = 180.0 * (atan2(work->direction.x, work->direction.z) / M_PI);
     }
     if (rot.y < angle) {
         rot.y += 2.0f;
@@ -1127,7 +1062,7 @@ void fn_1_5308(void)
 {
     if (fn_8006A124(196610) == 0) {
         MgTimerModeOnSet(lbl_1_bss_0.timer, 0);
-        HuAudFXPlay(13);
+        HuAudFXPlay(MSM_SE_CMN_TIMER_START);
     }
 }
 
@@ -1175,7 +1110,7 @@ void fn_1_54D4(void)
             MgTimerModeOnSet(lbl_1_bss_28[playerIndex].timer, MGTIMER_OFFTYPE_FLASH);
             playerIndex += 1;
         }
-        HuAudFXPlay(13);
+        HuAudFXPlay(MSM_SE_CMN_TIMER_START);
     }
 }
 
@@ -1200,11 +1135,11 @@ void fn_1_5600(s16 playerIndex, f32 hookHeight, f32 *launchSpeed, f32 *throwElev
     f32 height;
 
     height = 5.444444768958626 - hookHeight / 100.0f;
-    *throwElevation = (f32) (180.0 * (atan2(height, 8.3f) / 3.141592653589793));
+    *throwElevation = (f32) (180.0 * (atan2(height, 8.3f) / M_PI));
     if (*throwElevation < 90.0f) {
         *launchSpeed =
             (f32) (8.3f /
-                   (0.33333334f * cos((3.141592653589793 * (f64) *throwElevation) / 180.0)));
+                   (0.33333334f * cos((M_PI * (f64) *throwElevation) / 180.0)));
         return;
     }
     *launchSpeed = 0.0f;

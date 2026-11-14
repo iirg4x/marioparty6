@@ -1,6 +1,6 @@
 /* Builds the captured-water textures and their Daft Rafts render passes. */
 #include "datadir_enum.h"
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
 #include "dolphin/types.h"
@@ -8,6 +8,7 @@
 #include "game/hu3d.h"
 #include "game/memory.h"
 #include "game/sprite.h"
+#include "game/sprput.h"
 #include <string.h>
 
 typedef struct M609TextureResources {
@@ -31,9 +32,6 @@ M609TextureResources lbl_1_bss_6E68;
 
 f32 lbl_1_data_858[2][3] = {{0.05f,0.0f,0.0f},{0.0f,0.05f,0.0f}};
 void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
-extern void HuSprTexLoad(ANIMDATA *anim, s16 bitmapNo, s16 texMapId,
-                         GXTexWrapMode wrapS, GXTexWrapMode wrapT,
-                         GXTexFilter filter);
 
 extern s16 lbl_802C0278;
 
@@ -84,8 +82,8 @@ void fn_1_1681C(M609TextureInput *textureInput) {
     fn_800360D8(lbl_1_bss_6E68.frameBufferA, 320, 240,
                 GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 1, GX_TEXMAP0);
     C_MTXLightPerspective(perspectiveMatrix, camera->fov, camera->aspect,
-                          (0.5f), (-0.5f),
-                          (0.5f), (0.5f));
+                          0.5f, -0.5f,
+                          0.5f, 0.5f);
     PSMTXInverse(lbl_802613F4, inverseCameraMatrix);
     PSMTXConcat(inverseCameraMatrix, textureInput->matrix, compositeMatrix);
     PSMTXConcat(perspectiveMatrix, lbl_802613F4, textureMatrix);
@@ -126,8 +124,8 @@ void fn_1_16A38(M609TextureInput *textureInput) {
     fn_800360D8(lbl_1_bss_6E68.frameBufferB, 640, 480,
                 GX_TF_RGBA8, GX_CLAMP, GX_CLAMP, 1, GX_TEXMAP0);
     C_MTXLightPerspective(perspectiveMatrix, camera->fov, camera->aspect,
-                          (0.5f), (-0.5f),
-                          (0.5f), (0.5f));
+                          0.5f, -0.5f,
+                          0.5f, 0.5f);
     PSMTXInverse(lbl_802613F4, inverseCameraMatrix);
     PSMTXConcat(inverseCameraMatrix, textureInput->matrix, compositeMatrix);
     PSMTXConcat(perspectiveMatrix, lbl_802613F4, textureMatrix);
@@ -190,15 +188,15 @@ void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
                    GX_LO_NOOP);
 
     C_MTXLightPerspective(perspectiveMatrix, camera->fov, camera->aspect,
-                          (0.5f), (-0.5f),
-                          (0.5f), (0.5f));
+                          0.5f, -0.5f,
+                          0.5f, 0.5f);
     PSMTXInverse(lbl_802613F4, inverseCameraMatrix);
     PSMTXConcat(inverseCameraMatrix, drawObj->matrix, transformMatrix);
     PSMTXConcat(perspectiveMatrix, lbl_802613F4, textureMatrix);
     PSMTXConcat(textureMatrix, transformMatrix, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX0, GX_MTX3x4);
 
-    attributeAnimation = (HU3D_ATTR_ANIM *)drawObj->object->mesh.attribute[
+    attributeAnimation = drawObj->object->mesh.attribute[
         material->attr[0]].animWorkP;
     PSMTXTrans(textureMatrix, attributeAnimation->trans3D.x,
                attributeAnimation->trans3D.y, attributeAnimation->trans3D.z);
@@ -253,7 +251,7 @@ void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
     GXSetNumIndStages(1);
 
     if (specialObject) {
-        attributeAnimation = (HU3D_ATTR_ANIM *)drawObj->object->mesh.attribute[
+        attributeAnimation = drawObj->object->mesh.attribute[
             material->attr[0]].animWorkP;
         PSMTXTrans(textureMatrix, attributeAnimation->trans3D.x,
                    attributeAnimation->trans3D.y, attributeAnimation->trans3D.z);
@@ -279,7 +277,7 @@ void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
 
     GXSetNumChans(1);
     lightMask = fn_80029E8C(drawObj->model, lbl_802613F4,
-                          lbl_80261424, (0.0f));
+                          lbl_80261424, 0.0f);
     GXSetChanCtrl(GX_COLOR0, GX_FALSE, GX_SRC_REG, GX_SRC_REG,
                   GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
     GXSetChanCtrl(GX_ALPHA0, GX_TRUE, GX_SRC_REG, GX_SRC_VTX,

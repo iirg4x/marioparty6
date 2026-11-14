@@ -1,8 +1,9 @@
 /* Supplies the module loader's constructor and scene-start entry points. */
+#include "REL/m608dll.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Called by the module loader on entry; runs constructors before scene setup. */
 int _prolog(void)

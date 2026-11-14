@@ -15,7 +15,7 @@ typedef struct FILTERInfo {
 
 typedef struct DSPvoice {
   _PB* pb;
-  void* patchData;
+  u16* patchData;
   void* itdBuffer;
   struct DSPvoice* next;
   struct DSPvoice* prev;

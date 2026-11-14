@@ -1,14 +1,7 @@
 /* Collision checks, obstacle reactions, and obstacle drawing for Throw Me a Bone. */
 #include <math.h>
 #include "REL/m650/m650.h"
-
-void fn_1_62E0(void);
-void fn_1_6478(HU3D_MODEL *model, Mtx *mtx);
-s16 fn_1_69B0(s16 player);
-s16 fn_1_6D88(s16 player, HuVecF *position);
-s16 fn_1_6EE4(HuVecF *firstPosition, HuVecF *secondPosition, float radius);
-void fn_1_6F54(void);
-s16 fn_1_7000(s16 player, HuVecF *position, float angle, s16 obstacleIndex);
+#include "humath.h"
 
 extern GXColor lbl_1_data_40[2];
 extern Point3d lbl_1_data_28;
@@ -233,9 +226,12 @@ s16 fn_1_69B0(s16 playerNo)
     HuVecF playerPosition;
     HuVecF reflectedDirection;
     HuVecF collisionNormal;
-    s32 wallSounds[4] = { M650_EFFECT_2040, M650_EFFECT_2041, M650_EFFECT_2042, M650_EFFECT_2043 };
-    s32 treeSounds[4] = { M650_EFFECT_2044, M650_EFFECT_2045, M650_EFFECT_2046, M650_EFFECT_2047 };
-    s32 rockSounds[4] = { M650_EFFECT_2048, M650_EFFECT_2049, M650_EFFECT_2050, M650_EFFECT_2051 };
+    s32 wallSounds[4] = { MSM_SE_MG650_RUNNER_WALL_HIT_P1, MSM_SE_MG650_RUNNER_WALL_HIT_P2,
+                          MSM_SE_MG650_RUNNER_WALL_HIT_P3, MSM_SE_MG650_RUNNER_WALL_HIT_P4 };
+    s32 treeSounds[4] = { MSM_SE_MG650_RUNNER_TREE_HIT_P1, MSM_SE_MG650_RUNNER_TREE_HIT_P2,
+                          MSM_SE_MG650_RUNNER_TREE_HIT_P3, MSM_SE_MG650_RUNNER_TREE_HIT_P4 };
+    s32 rockSounds[4] = { MSM_SE_MG650_RUNNER_ROCK_HIT_P1, MSM_SE_MG650_RUNNER_ROCK_HIT_P2,
+                          MSM_SE_MG650_RUNNER_ROCK_HIT_P3, MSM_SE_MG650_RUNNER_ROCK_HIT_P4 };
     int obstacleIndex;
     s16 obstacleEffectModel;
 
@@ -360,9 +356,9 @@ s16 fn_1_7000(s16 playerNo, HuVecF *throwStart, float angleDegrees, s16 obstacle
     if (obstacleIndex >= 32) {
         return 0;
     }
-    throwDirection.x = 800.0 * sin((3.141592653589793 * angleDegrees) / 180.0);
+    throwDirection.x = 800.0 * sin((M_PI * angleDegrees) / 180.0);
     throwDirection.y = 0.0f;
-    throwDirection.z = 800.0 * cos((3.141592653589793 * angleDegrees) / 180.0);
+    throwDirection.z = 800.0 * cos((M_PI * angleDegrees) / 180.0);
     obstacleDelta.x = lbl_1_data_248[obstacleIndex].pos.x - throwStart->x;
     obstacleDelta.y = 0.0f;
     obstacleDelta.z = lbl_1_data_248[obstacleIndex].pos.z - throwStart->z;

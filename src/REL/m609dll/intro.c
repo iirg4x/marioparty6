@@ -1,5 +1,5 @@
 /* Advances the finish, winner, and closing scenes after course play ends. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m609dll/state.h"
 #include "game/hu3d.h"
 #include "game/object.h"
@@ -12,61 +12,8 @@
 #include "game/data.h"
 #include "game/memory.h"
 
-typedef struct M609SequencePlayerSlots {
-    u8 beforePlayerSlots[106];
-    s8 playerSlots[246];
-} M609SequencePlayerSlots;
-
-extern void fn_1_11B80(void);
-extern void fn_1_52B8(void);
-extern void fn_1_6974(void);
-extern void fn_1_2DF4(void);
-extern void fn_1_8EE4(void);
-extern void fn_1_2780(void);
-extern void fn_1_46F8(s16, s16, void *);
-extern s32 fn_1_118BC(void);
-extern s32 fn_1_30D8(f32 *value, f32 step, f32 start, f32 end);
-extern f32 fn_1_31F8(f32 value);
-extern void fn_1_670(void);
-extern void fn_1_4F98(void);
-extern void fn_1_7150(M609Model *record);
-extern s32 fn_1_89E0(f32 startZ);
-extern void fn_1_7E10(void);
-extern void fn_1_8670(void);
-extern void fn_1_8C54(void);
-extern double sin(double);
-extern double cos(double);
-extern double sqrt(double);
-extern void fn_1_3FF0(M609Player *player, s16 mode);
-extern s32 fn_1_126F0(M609Player *player, s16 advanceAfterChase);
-
-extern double atan2(double, double);
-
-typedef struct M609CollisionEdge {
-    f32 startX;
-    f32 endX;
-    f32 startZ;
-    f32 endZ;
-} M609CollisionEdge;
-
-typedef struct M609Placement {
-    s16 status;
-    s16 pathIndex;
-    Vec position;
-    Vec movementValues;
-    Vec positionStep;
-    Vec movementSelectors;
-    Vec bounds;
-    s16 record;
-    s16 linkedRecord;
-} M609Placement;
-
-void fn_1_5618(s16,s16);
-void fn_1_45EC(s32,s32);
 s32 fn_1_111A8(void);
 s32 fn_1_11658(void);
-s32 fn_1_118BC(void);
-void fn_1_11B80(void);
 s32 fn_1_1115C(void);
 s32 fn_1_1183C(void);
 int fn_1_1188C(void);
@@ -119,7 +66,7 @@ s32 fn_1_111A8(void) {
             if (lbl_1_bss_30.setupFlag == 0 &&
                 lbl_1_bss_30.night == 0) {
                 fn_8002D86C(lbl_1_bss_8BC[7].model,
-                                   (1.0f));
+                                   1.0f);
             }
             lbl_1_bss_30.waitTimer = 0;
             lbl_1_bss_30.modeStep++;
@@ -128,21 +75,21 @@ s32 fn_1_111A8(void) {
     case 2:
         fn_1_118BC();
         if (lbl_1_bss_30.setupFlag == 0) {
-            motionStep = (60.0f);
+            motionStep = 60.0f;
             motionFrames += fn_1_30D8(&lbl_80266A4C.x, motionStep,
-                                      (257.0f), (0.0f));
+                                      257.0f, 0.0f);
             motionFrames += fn_1_30D8(&lbl_80266A4C.y, motionStep,
-                                      (350.0f), (251.0f));
+                                      350.0f, 251.0f);
             motionFrames += fn_1_30D8(&lbl_80266A4C.z, motionStep,
-                                      (274.0f), (274.0f));
+                                      274.0f, 274.0f);
             motionFrames += fn_1_30D8(&lbl_80266A40.x, motionStep,
-                                      (-42.0f), (-26.0f));
+                                      -42.0f, -26.0f);
             motionFrames += fn_1_30D8(&lbl_80266A40.y, motionStep,
-                                      (30.0f), (0.0f));
+                                      30.0f, 0.0f);
             motionFrames += fn_1_30D8(&lbl_80266A40.z, motionStep,
-                                      (0.0f), (0.0f));
+                                      0.0f, 0.0f);
             motionFrames += fn_1_30D8(&lbl_802C028C, motionStep,
-                                      (1587.0f), (960.0f));
+                                      1587.0f, 960.0f);
         } else if (lbl_1_bss_30.setupFlag == 1) {
             motionFrames = 1;
             if (lbl_1_bss_30.waitTimer++ > 120) {
@@ -163,7 +110,7 @@ s32 fn_1_111A8(void) {
     }
 
     if (lbl_1_bss_30.night == 0 &&
-        fn_8002D4E0(lbl_1_bss_8BC[7].model) >= (118.9f)) {
+        fn_8002D4E0(lbl_1_bss_8BC[7].model) >= 118.9f) {
         fn_800269E8(lbl_1_bss_8BC[7].model, 1);
     }
     fn_1_670();
@@ -186,8 +133,8 @@ s32 fn_1_11658(void) {
                 if (lbl_1_bss_24C[playerNo].mode > 0) {
                     lbl_1_bss_70C[playerNo].shiftState = 1;
                     lbl_1_bss_70C[playerNo].shiftMotion = 2;
-                    lbl_1_bss_70C[playerNo].shiftStart = (0.0f);
-                    lbl_1_bss_70C[playerNo].blendDuration = (5.0f);
+                    lbl_1_bss_70C[playerNo].shiftStart = 0.0f;
+                    lbl_1_bss_70C[playerNo].blendDuration = 5.0f;
                     lbl_1_bss_70C[playerNo].shiftFlags = 0;
                     lbl_1_bss_70C[playerNo].attributesToReset = ((1 << 30) | (1 << 0));
                 }
@@ -200,7 +147,7 @@ s32 fn_1_11658(void) {
     }
 
     if (lbl_1_bss_30.night == 0 &&
-        fn_8002D4E0(lbl_1_bss_8BC[7].model) >= (118.9f)) {
+        fn_8002D4E0(lbl_1_bss_8BC[7].model) >= 118.9f) {
         fn_800269E8(lbl_1_bss_8BC[7].model, 1);
     }
 
@@ -276,10 +223,9 @@ s32 fn_1_118BC(void) {
         }
         break;
     case 2:
-        /* index is the participant count. winners begins at byte 107, so byte 106 + index
-         * selects the last announced winner, winners[index - 1]. */
+        /* index is the participant count; inspect the last announced winner. */
         if (lbl_1_bss_24C[
-                ((s8 *)&lbl_1_bss_30)[lbl_1_bss_30.index + 106]].state >= 6) {
+                lbl_1_bss_30.winners[lbl_1_bss_30.index - 1]].state >= 6) {
             lbl_1_bss_30.sequenceStep++;
             lbl_1_bss_30.index = 0;
         }
@@ -301,7 +247,7 @@ void fn_1_11B80(void) {
 
     switch (lbl_1_bss_30.sequenceState) {
     case 0:
-        lbl_1_bss_8BC[50].movementValues.z = (0.0f);
+        lbl_1_bss_8BC[50].movementValues.z = 0.0f;
         lbl_1_bss_8BC[11].stateOrTimer = 1;
         lbl_1_bss_8BC[12].stateOrTimer = 11;
         lbl_1_bss_8BC[13].stateOrTimer = 21;
@@ -315,8 +261,8 @@ void fn_1_11B80(void) {
         /* fall through */
     case 1:
         if (lbl_1_bss_30.setupFlag == 0) {
-            if ((lbl_1_bss_8BC[50].movementValues.z -= (0.05f)) <= (-12.0f)) {
-                lbl_1_bss_8BC[50].movementValues.z = (-12.0f);
+            if ((lbl_1_bss_8BC[50].movementValues.z -= 0.05f) <= -12.0f) {
+                lbl_1_bss_8BC[50].movementValues.z = -12.0f;
             }
             lbl_1_bss_8BC[50].position.z += lbl_1_bss_8BC[50].movementValues.z;
             lbl_1_bss_6B6C.target.z = lbl_1_bss_8BC[50].position.z;
@@ -324,8 +270,8 @@ void fn_1_11B80(void) {
                 if (lbl_1_bss_8BC[modelNo].stateOrTimer-- == 0) {
                     fn_80026A44(lbl_1_bss_8BC[modelNo].model, 1);
                     fn_800269E8(lbl_1_bss_8BC[modelNo].model, ((1 << 30) | (1 << 0)));
-                    fn_8002D414(lbl_1_bss_8BC[modelNo].model, (0.0f));
-                    fn_8002D86C(lbl_1_bss_8BC[modelNo].model, (1.0f));
+                    fn_8002D414(lbl_1_bss_8BC[modelNo].model, 0.0f);
+                    fn_8002D86C(lbl_1_bss_8BC[modelNo].model, 1.0f);
                 }
                 lbl_1_bss_8BC[modelNo].position = lbl_1_bss_8BC[50].position;
             }

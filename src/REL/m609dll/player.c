@@ -1,5 +1,5 @@
 /* Updates player movement, route selection, rankings, and completion phases. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m609dll/state.h"
 #include "game/mg/actman.h"
 #include "game/charman.h"
@@ -95,13 +95,13 @@ void fn_1_11E2C(void) {
 
     for (playerNo = 0, participantCount = 0; playerNo < 4; playerNo++) {
         lbl_1_bss_24C[playerNo].chaseSpeed =
-            (10.0f);
+            10.0f;
         lbl_1_bss_24C[playerNo].chaseRadius =
-            (10.1f);
+            10.1f;
         lbl_1_bss_24C[playerNo].routeSpeed =
-            (10.0f);
+            10.0f;
         lbl_1_bss_24C[playerNo].routeRadius =
-            (10.1f);
+            10.1f;
         lbl_1_bss_24C[playerNo].wait = 0;
         lbl_1_bss_24C[playerNo].waitTimer = 0;
         lbl_1_bss_24C[playerNo].period = 0;
@@ -254,22 +254,20 @@ s16 fn_1_12830(M609Player *action) {
         }
         break;
     case 1:
-        if (action->collisionMesh < 0) {
-            goto chasePlayer;
+        if (action->collisionMesh >= 0) {
+            fn_8007E888(lbl_1_bss_4.players[action->playerNo]);
+            action->chaseUpdateCount = 0;
+            action->routeStep = 0;
+            complete = 1;
+        } else {
+            fn_8007E8B4(
+                lbl_1_bss_4.players[action->playerNo],
+                &action->chasePosition,
+                action->routeSpeed,
+                action->routeRadius);
+            action->computerButtonsHeld |= 0x100;
+            action->chaseUpdateCount++;
         }
-        fn_8007E888(lbl_1_bss_4.players[action->playerNo]);
-        action->chaseUpdateCount = 0;
-        action->routeStep = 0;
-        complete = 1;
-        break;
-    chasePlayer:
-        fn_8007E8B4(
-            lbl_1_bss_4.players[action->playerNo],
-            &action->chasePosition,
-            action->routeSpeed,
-            action->routeRadius);
-        action->computerButtonsHeld |= 0x100;
-        action->chaseUpdateCount++;
         break;
     }
 
@@ -368,7 +366,7 @@ void fn_1_12CDC(M609Player *player)
         player->candidateSegments[0] = 47;
         break;
     case 47:
-        if (player->position.x < (0.0f)) {
+        if (player->position.x < 0.0f) {
             player->candidateSegments[0] = 52;
             player->candidateSegments[1] = 51;
         } else {
@@ -405,7 +403,7 @@ void fn_1_12CDC(M609Player *player)
         player->candidateSegments[0] = 53;
         break;
     case 79:
-        if (player->position.x < (0.0f)) {
+        if (player->position.x < 0.0f) {
             player->candidateSegments[0] = 63;
             player->candidateSegments[1] = 66;
             player->candidateSegments[2] = 67;
@@ -482,50 +480,50 @@ void fn_1_12FFC(M609Player *update) {
 
     for (; frame < frameLimit; frame++) {
         start.z += lbl_1_bss_30.scroll;
-        if (start.z >= (100.0f)) {
+        if (start.z >= 100.0f) {
             segmentState = 2;
         }
 
         if (gates.x) {
-            if ((segmentState >= 2) && (projectedMovementValues.x < (0.5f)) &&
-                (projectedMovementValues.x > (-0.5f))) {
-                projectedMovementValues.y = (0.0f);
-                projectedMovementValues.x = (0.0f);
+            if ((segmentState >= 2) && (projectedMovementValues.x < 0.5f) &&
+                (projectedMovementValues.x > -0.5f)) {
+                projectedMovementValues.y = 0.0f;
+                projectedMovementValues.x = 0.0f;
             }
             projectedMovementValues.x += projectedMovementValues.y;
             start.x += projectedMovementValues.x;
             switch (phase) {
             case 0:
                 if (start.x < motionReferenceOrPlayerDelta.x) {
-                    projectedMovementValues.y *= (-1.0f);
+                    projectedMovementValues.y *= -1.0f;
                     phase++;
                 }
                 break;
             case 1:
                 if (start.x > motionReferenceOrPlayerDelta.x) {
-                    projectedMovementValues.y *= (-1.0f);
+                    projectedMovementValues.y *= -1.0f;
                     phase = 0;
                 }
                 break;
             }
         } else if (gates.z) {
             if (segmentState >= 2) {
-                projectedMovementValues.y = (0.0f);
-                projectedMovementValues.z = (0.0f);
+                projectedMovementValues.y = 0.0f;
+                projectedMovementValues.z = 0.0f;
             }
             projectedMovementValues.z += projectedMovementValues.y;
             motionReferenceOrPlayerDelta.y += projectedMovementValues.z;
             start.z += projectedMovementValues.z;
             switch (phase) {
             case 0:
-                if (motionReferenceOrPlayerDelta.y < (0.0f)) {
-                    projectedMovementValues.y *= (-1.0f);
+                if (motionReferenceOrPlayerDelta.y < 0.0f) {
+                    projectedMovementValues.y *= -1.0f;
                     phase++;
                 }
                 break;
             case 1:
-                if (motionReferenceOrPlayerDelta.y > (0.0f)) {
-                    projectedMovementValues.y *= (-1.0f);
+                if (motionReferenceOrPlayerDelta.y > 0.0f) {
+                    projectedMovementValues.y *= -1.0f;
                     phase = 0;
                 }
                 break;
@@ -538,7 +536,7 @@ void fn_1_12FFC(M609Player *update) {
     motionReferenceOrPlayerDelta.z = start.z - update->position.z;
     /* Store the horizontal distance to the projected segment origin;
      * this field is not read by this module. */
-    update->distance118 =
+    update->horizontalOriginDistance =
         sqrt((double) ((motionReferenceOrPlayerDelta.x * motionReferenceOrPlayerDelta.x) +
                        (motionReferenceOrPlayerDelta.z * motionReferenceOrPlayerDelta.z)));
 }
@@ -641,17 +639,17 @@ s32 fn_1_13B88(M609Player *player, s16 option, s16 group) {
     result = 0;
     switch (player->segmentModel) {
     case 51:
-        if (player->target.x < (0.0f)) {
+        if (player->target.x < 0.0f) {
             result = 1;
         }
         break;
     case 52:
-        if (player->target.x > (0.0f)) {
+        if (player->target.x > 0.0f) {
             result = 1;
         }
         break;
     case 79:
-        if (player->position.x < (0.0f)) {
+        if (player->position.x < 0.0f) {
             if (player->targetSegment == 70 ||
                 player->targetSegment == 74 ||
                 player->targetSegment == 71 ||
@@ -673,12 +671,12 @@ s32 fn_1_13B88(M609Player *player, s16 option, s16 group) {
     case 58:
         lateralDifference[0] =
             lbl_1_bss_8BC[player->segmentModel].position.x - player->position.x;
-        if (lateralDifference[0] < (0.0f)) {
+        if (lateralDifference[0] < 0.0f) {
             if (option == 2 || option == 3) {
                 result = 1;
             }
         }
-        if (lateralDifference[0] > (0.0f)) {
+        if (lateralDifference[0] > 0.0f) {
             if (option == 0 || option == 1) {
                 result = 1;
             }
@@ -762,7 +760,7 @@ s16 fn_1_13D58(M609Player *player, s16 allowCurrent)
                             if (!fn_1_137B0(player)) {
                                 if (!fn_1_13AA8(player, sample) &&
                                     (s16)fn_1_13B88(player, sample, group) == 0) {
-                                    player->chasePosition = *(Vec *)&player->target.x;
+                                    player->chasePosition = player->target;
                                     player->sample = sample;
                                     player->sampleGroup = group;
                                     player->period += player->increment;
@@ -1218,64 +1216,64 @@ s16 fn_1_1507C(M609Player *record)
 
 /* Chooses a route arrival offset when the player's next travel target is prepared. */
 void fn_1_159D4(M609Player *record) {
-    record->arrivalOffsetX = (0.0f);
-    record->arrivalOffsetZ = (0.0f);
+    record->arrivalOffsetX = 0.0f;
+    record->arrivalOffsetZ = 0.0f;
 
     if (record->targetSegment != 50) {
         switch (record->segmentModel) {
     case 51:
-        record->arrivalOffsetX = (200.0f);
+        record->arrivalOffsetX = 200.0f;
         break;
     case 52:
-        record->arrivalOffsetX = (-200.0f);
+        record->arrivalOffsetX = -200.0f;
         break;
     case 60:
     case 61:
     case 64:
     case 65:
         record->arrivalOffsetX = record->position.x;
-        if (record->arrivalOffsetX > (200.0f)) {
-            record->arrivalOffsetX = (200.0f);
-        } else if (record->arrivalOffsetX < (-200.0f)) {
-            record->arrivalOffsetX = (-200.0f);
+        if (record->arrivalOffsetX > 200.0f) {
+            record->arrivalOffsetX = 200.0f;
+        } else if (record->arrivalOffsetX < -200.0f) {
+            record->arrivalOffsetX = -200.0f;
         }
-        record->arrivalOffsetZ = (150.0f);
+        record->arrivalOffsetZ = 150.0f;
         break;
     case 78:
-        if (record->position.x < (125.0f)) {
-            record->arrivalOffsetX = (-200.0f);
-            record->arrivalOffsetZ = (50.0f);
+        if (record->position.x < 125.0f) {
+            record->arrivalOffsetX = -200.0f;
+            record->arrivalOffsetZ = 50.0f;
         } else {
-            record->arrivalOffsetX = (200.0f);
-            record->arrivalOffsetZ = (0.0f);
+            record->arrivalOffsetX = 200.0f;
+            record->arrivalOffsetZ = 0.0f;
         }
         break;
     case 49:
-        if (record->position.x < (0.0f)) {
-            record->arrivalOffsetX = (-200.0f);
+        if (record->position.x < 0.0f) {
+            record->arrivalOffsetX = -200.0f;
         } else {
-            record->arrivalOffsetX = (200.0f);
+            record->arrivalOffsetX = 200.0f;
         }
         break;
     case 77:
-        record->arrivalOffsetZ = (100.0f);
+        record->arrivalOffsetZ = 100.0f;
         break;
     case 57:
-        if (record->position.x < (0.0f)) {
-            record->arrivalOffsetX = (-200.0f);
+        if (record->position.x < 0.0f) {
+            record->arrivalOffsetX = -200.0f;
         } else {
-            record->arrivalOffsetX = (200.0f);
+            record->arrivalOffsetX = 200.0f;
         }
         break;
         }
     } else {
         record->arrivalOffsetX = record->position.x;
-        if (record->arrivalOffsetX > (380.0f)) {
-            record->arrivalOffsetX = (380.0f);
-        } else if (record->arrivalOffsetX < (-380.0f)) {
-            record->arrivalOffsetX = (-380.0f);
+        if (record->arrivalOffsetX > 380.0f) {
+            record->arrivalOffsetX = 380.0f;
+        } else if (record->arrivalOffsetX < -380.0f) {
+            record->arrivalOffsetX = -380.0f;
         }
-        record->arrivalOffsetZ = (150.0f);
+        record->arrivalOffsetZ = 150.0f;
     }
 }
 
@@ -1303,7 +1301,7 @@ void fn_1_15C24(M609Player *record) {
         record->target.x =
             record->origin.x +
             record->arrivalOffsetX;
-        record->target.y = (50.0f);
+        record->target.y = 50.0f;
         record->target.z =
             record->origin.z +
             record->arrivalOffsetZ;
@@ -1315,8 +1313,8 @@ void fn_1_15C24(M609Player *record) {
         distanceSquared = difference.x * difference.x +
             difference.z * difference.z;
         distance = (f32)sqrt((f64)distanceSquared);
-        record->range = (380.0f);
-        if (record->target.z > (-1000.0f) &&
+        record->range = 380.0f;
+        if (record->target.z > -1000.0f &&
             distance < record->range) {
             record->phaseStep = 0;
             record->secondLegRequired = 0;
@@ -1340,7 +1338,7 @@ void fn_1_15C24(M609Player *record) {
         record->target.x =
             record->origin.x +
             record->arrivalOffsetX;
-        record->target.y = (50.0f);
+        record->target.y = 50.0f;
         record->target.z =
             record->origin.z +
             record->arrivalOffsetZ;
@@ -1352,9 +1350,9 @@ void fn_1_15C24(M609Player *record) {
         distanceSquared = difference.x * difference.x +
             difference.z * difference.z;
         distance = (f32)sqrt((f64)distanceSquared);
-        record->range = (400.0f);
+        record->range = 400.0f;
 
-        if (record->target.z > (-800.0f) &&
+        if (record->target.z > -800.0f &&
             distance < record->range) {
             record->phaseStep = 0;
             record->secondLegRequired = 0;

@@ -23,35 +23,6 @@
 #ifndef M650_H
 #define M650_H
 
-/* Sound effect resources used by Throw Me a Bone. */
-enum M650EffectId {
-    M650_EFFECT_1001 = 1001,
-    M650_EFFECT_2028 = 2028,
-    M650_EFFECT_2029 = 2029,
-    M650_EFFECT_2030 = 2030,
-    M650_EFFECT_2031 = 2031,
-    M650_EFFECT_2032 = 2032,
-    M650_EFFECT_2033 = 2033,
-    M650_EFFECT_2034 = 2034,
-    M650_EFFECT_2035 = 2035,
-    M650_EFFECT_2036 = 2036,
-    M650_EFFECT_2037 = 2037,
-    M650_EFFECT_2038 = 2038,
-    M650_EFFECT_2039 = 2039,
-    M650_EFFECT_2040 = 2040,
-    M650_EFFECT_2041 = 2041,
-    M650_EFFECT_2042 = 2042,
-    M650_EFFECT_2043 = 2043,
-    M650_EFFECT_2044 = 2044,
-    M650_EFFECT_2045 = 2045,
-    M650_EFFECT_2046 = 2046,
-    M650_EFFECT_2047 = 2047,
-    M650_EFFECT_2048 = 2048,
-    M650_EFFECT_2049 = 2049,
-    M650_EFFECT_2050 = 2050,
-    M650_EFFECT_2051 = 2051
-};
-
 /* Shared state used by the Throw Me a Bone sequence and callbacks. */
 typedef struct M650Scene {
     MGTIMER *timer; /* Shared elapsed-time display used outside Decathlon. */
@@ -163,7 +134,7 @@ void fn_1_F90(OMOBJ *object);
 void fn_1_6F54(void);
 s16 fn_1_4D58(s16 frame);
 
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_304(s16, s16);
 void fn_1_3AC(s16, s16);
 void fn_1_3B0(s16, s16);

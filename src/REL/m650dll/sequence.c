@@ -2,23 +2,6 @@
 #include "REL/m650/m650.h"
 #include "msm_stream.h"
 
-void fn_1_A0(void);
-void fn_1_F0(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_168(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_188(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_1C8(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_200(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_304(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_3AC(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_3B0(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_3B4(s16 sequenceMode, s16 sequenceFrame);
-void fn_1_3B8(void);
-void fn_1_484(void);
-void fn_1_550(void);
-void fn_1_8EC(void);
-void fn_1_F90(OMOBJ *callbackObject);
-void fn_1_1228(void);
-
 extern GXColor lbl_1_data_40[2];
 extern Point3d lbl_1_data_28;
 extern Point3d lbl_1_data_34;
@@ -43,7 +26,7 @@ OMOBJMAN *lbl_1_bss_1C;
 M650Scene lbl_1_bss_0;
 
 /* Called by the REL startup hook to create the object manager and start the minigame sequence. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_1C = fn_8003A8BC(256, 8192);
     fn_80069F1C(lbl_1_bss_1C);
@@ -197,7 +180,7 @@ void fn_1_550(void)
             lbl_1_bss_0.state++;
             fn_1_3B8();
         } else if (lbl_1_bss_0.frame == 30) {
-            HuAudFXPlay(M650_EFFECT_1001);
+            HuAudFXPlay(MSM_SE_GUIDE_EVENT_NPC_TALK);
         }
         break;
     case 2:
@@ -336,10 +319,10 @@ void fn_1_8EC(void)
         if (lbl_1_bss_0.frame == 110) {
             lbl_1_bss_0.winnerAnimationState = 1;
             if (lbl_1_bss_0.night != 0) {
-                HuAudFXPlayPan(M650_EFFECT_2036, 96);
+                HuAudFXPlayPan(MSM_SE_MG650_BONE_GROUND_BOUNCE_P1, 96);
                 return;
             }
-            HuAudFXPlayPan(M650_EFFECT_2036, 48);
+            HuAudFXPlayPan(MSM_SE_MG650_BONE_GROUND_BOUNCE_P1, 48);
         }
         break;
     }
@@ -363,7 +346,8 @@ void fn_1_F90(OMOBJ *object)
         modelPosition.z += winnerWork->boneVelocity.z;
         if (modelPosition.y <= 0.5f) {
             /* The landing sound pans with the bouncing bone's horizontal position. */
-            HuAudFXPlayPan(M650_EFFECT_2036, (s16) (64.0f + (modelPosition.x / 50.0f)));
+            HuAudFXPlayPan(MSM_SE_MG650_BONE_GROUND_BOUNCE_P1,
+                           (s16) (64.0f + (modelPosition.x / 50.0f)));
             winnerWork->boneVelocity.x *= 0.5;
             winnerWork->boneVelocity.y *= -0.5;
             winnerWork->boneVelocity.z *= 0.5;
@@ -371,9 +355,9 @@ void fn_1_F90(OMOBJ *object)
             if (winnerWork->boneVelocity.y < 1.0f) {
                 lbl_1_bss_0.winnerAnimationState += 1;
                 if (lbl_1_bss_0.night == 0) {
-                    HuAudFXPlayPan(M650_EFFECT_1001, 96);
+                    HuAudFXPlayPan(MSM_SE_GUIDE_EVENT_NPC_TALK, 96);
                 } else {
-                    HuAudFXPlayPan(M650_EFFECT_1001, 32);
+                    HuAudFXPlayPan(MSM_SE_GUIDE_EVENT_NPC_TALK, 32);
                 }
             }
         }

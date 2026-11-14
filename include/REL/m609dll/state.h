@@ -6,6 +6,27 @@
 #include "dolphin/mtx.h"
 #include "dolphin/gx/GXStruct.h"
 
+/* XZ endpoints used when pushing a player out of a moving segment's bounds. */
+typedef struct M609CollisionEdge {
+    f32 startX; /* First endpoint X, in world units. */
+    f32 endX; /* Second endpoint X, in world units. */
+    f32 startZ; /* First endpoint Z, in world units. */
+    f32 endZ; /* Second endpoint Z, in world units. */
+} M609CollisionEdge;
+
+/* Course segment transform, motion limits, and model links used during setup. */
+typedef struct M609Placement {
+    s16 status; /* Segment slot; -1 retires the segment. */
+    s16 pathIndex; /* Path group used by the player route table. */
+    Vec position; /* Initial world position. */
+    Vec movementValues; /* Initial per-axis movement values. */
+    Vec positionStep; /* X is the turning reference; Y starts the integrated Z displacement. */
+    Vec movementSelectors; /* Values selecting lateral and longitudinal movement paths. */
+    Vec bounds; /* Extents used for contacts with the course. */
+    s16 record; /* Course model array index. */
+    s16 linkedRecord; /* Associated collision model index, or -1. */
+} M609Placement;
+
 typedef struct M609PadInput {
     s32 buttons;
     s32 buttonsDown;
@@ -41,7 +62,7 @@ typedef struct M609Player {
     Vec velocity;
     f32 spinSpeed;
     f32 turnYaw; /* Opening turn increment or lineup starting yaw. */
-    f32 value5C;
+    f32 unk5C; /* No code names this field. */
     Vec savedPosition;
     s8 direction;
     s8 phase;
@@ -65,52 +86,52 @@ typedef struct M609Player {
     f32 arrivalOffsetZ;
     s16 routeState;
     s16 actionState;
-    s16 stateA0;
+    s16 unkA0; /* No code names this field. */
     s16 timer;
     s16 chaseState;
-    u8 stateA6[2];
+    u8 unkA6[2]; /* No code names this field. */
     s32 computerButtonsHeld;
     s32 computerButtonsDown;
     s32 computerStickX;
     s32 computerStickY;
     f32 range;
     s16 movementState;
-    u8 stateBE[2];
+    u8 unkBE[2]; /* No code names this field. */
     Vec routePosition;
     f32 chaseSpeed;
     f32 chaseRadius;
     s16 routeStep;
     s16 routePhase;
     s16 chaseUpdateCount;
-    u8 stateDA[2];
+    u8 unkDA[2]; /* No code names this field. */
     Vec chasePosition;
     f32 routeSpeed;
     f32 routeRadius;
     s16 segmentModel;
     s16 candidateSegments[4];
-    u8 stateFA[2];
+    u8 unkFA[2]; /* No code names this field. */
     Vec origin;
     Vec target;
     s16 targetSegment;
     s16 movementSegment;
-    f32 distance118;
+    f32 horizontalOriginDistance;
     s16 sample;
     s16 sampleGroup;
     s16 rank;
-    u8 state122[2];
+    u8 unk122[2]; /* No code names this field. */
     s16 wait;
     s16 waitTimer;
     s16 increment;
     s16 period;
     s16 probability;
-    u8 state12E[2];
+    u8 unk12E[2]; /* No code names this field. */
 } M609Player;
 
 typedef struct M609Motion {
     s16 motionIds[11];
     s16 mode;
     s16 previousMode;
-    u8 state1A[2];
+    u8 unk1A[2]; /* No code names this field. */
     f32 speed;
     f32 previousSpeed;
     f32 time;
@@ -172,9 +193,9 @@ typedef struct M609Model {
 } M609Model;
 
 typedef struct M609Control {
-    u8 state00[8];
+    u8 unk00[8]; /* No code names this field. */
     s16 step;
-    u8 state0A[2];
+    u8 unk0A[2]; /* No code names this field. */
     s16 modeStep;
     s16 sequenceStep;
     s16 waitTimer;
@@ -185,12 +206,12 @@ typedef struct M609Control {
     s8 setupFlag;
     s8 participantCount;
     s8 winners[4];
-    u8 state6F[1];
+    u8 unk6F[1]; /* No code names this field. */
     Vec winnerPositions[4][4];
     s16 slotOccupied[8];
     f32 levels[8];
     s16 night;
-    u8 state162[2];
+    u8 unk162[2]; /* No code names this field. */
     Vec raftOffset; /* Setup initializes all axes; auxiliary placement and route checks use Y. */
     f32 scroll;
     f32 pushSpeed;
@@ -202,11 +223,11 @@ typedef struct M609Control {
     s8 update;
     s8 landed;
     s8 resultFlag;
-    u8 state18F[1];
+    u8 unk18F[1]; /* No code names this field. */
     s16 skippedSegmentModel;
     s16 models[4][4]; /* Contact-effect records indexed by redirected route variant and player. */
     s8 sequenceState;
-    u8 state1B3[5];
+    u8 unk1B3[5]; /* No code names this field. */
     s32 musicHandle;
     s32 musicId;
     s32 jingleHandle;
@@ -245,9 +266,9 @@ typedef struct M609ShadowState {
     f32 horizontalAngle;
     f32 state14;
     Vec target;
-    f32 state24[3];
+    f32 unk24[3]; /* No code names this field. */
     Vec cameraUp;
-    f32 state3C[3];
+    f32 unk3C[3]; /* No code names this field. */
     f32 orbitDistance;
     f32 shadowTransparency;
 } M609ShadowState;
@@ -260,10 +281,10 @@ typedef struct M609ParticleState {
 
 typedef struct M609CameraRecord {
     s32 cameraIndex;
-    u8 state04[12];
+    u8 unk04[12]; /* No code names this field. */
     Vec rotation;
     Vec target;
-    u8 state28[12];
+    u8 unk28[12]; /* No code names this field. */
     /* Indices 0/1: orbit distance/aspect; 2 through 5: viewport x/y/width/height. */
     f32 projectionAndViewport[6];
     f32 fieldOfView;
@@ -271,7 +292,7 @@ typedef struct M609CameraRecord {
 
 typedef struct M609CameraBank {
     M609CameraRecord cameras[4];
-    u8 state140[8];
+    u8 unk140[8]; /* No code names this field. */
 } M609CameraBank;
 
 extern s16 lbl_1_bss_0[2];
@@ -289,5 +310,37 @@ extern struct Process_s *lbl_1_bss_6D7C;
 extern u32 lbl_1_bss_6D88[40];
 extern Vec *lbl_1_bss_6E28[10];
 extern s16 lbl_1_bss_6E50[12];
+
+void fn_1_670(void);
+void fn_1_2780(void);
+void fn_1_2DF4(void);
+s32 fn_1_30D8(f32 *value, f32 step, f32 start, f32 end);
+void fn_1_45EC(s16 streamSlot, s16 fadeFrames);
+void fn_1_4F98(void);
+void fn_1_52B8(void);
+void fn_1_5618(s16 soundSlot, s16 fadeSpeed);
+void fn_1_6974(void);
+void fn_1_8EE4(void);
+void fn_1_11B80(void);
+s32 fn_1_118BC(void);
+void fn_1_4C68(s16 soundSlot, s16 volume);
+s32 fn_1_4EB0(void);
+s32 fn_1_1115C(void);
+s32 fn_1_111A8(void);
+s32 fn_1_11658(void);
+s32 fn_1_1183C(void);
+int fn_1_1188C(void);
+s32 fn_1_D1CC(void);
+s32 fn_1_E424(void);
+s32 fn_1_E474(void);
+void fn_1_11E2C(void);
+void fn_1_125C4(void);
+void fn_1_3C0(void);
+void fn_1_10FC(void);
+f32 fn_1_31F8(f32 modulusOrResult);
+void fn_1_3FF0(M609Player *player, s16 panMode);
+void fn_1_1661C(void);
+
+void fn_1_46F8(s16 voiceSlot, s16 mode, Vec *position);
 
 #endif

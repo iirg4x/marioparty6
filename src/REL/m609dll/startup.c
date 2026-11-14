@@ -11,36 +11,20 @@
 #include "game/mg/actman.h"
 #include "game/process.h"
 #include "game/memory.h"
+#include "msm_se.h"
 #include "msm_stream.h"
 #include "game/frand.h"
 #include "game/sprite.h"
 #include "game/printfunc.h"
 #include "game/mg/timer.h"
-
-#define M609_MOTION_SHIFT_FLAGS_MASK 0x40000001
+#include "humath.h"
 
 HU3D_MOTIONID fn_8005B0B8(s16 charNo, unsigned int dataNum);
-
-typedef struct M609PlayerVectorTable { Vec vectors[4]; } M609PlayerVectorTable;
-typedef struct M609MotionData { u32 motionDataNumbers[11]; } M609MotionData;
-typedef struct M609CameraMasks { s16 cameraBits[4]; } M609CameraMasks;
-/* Rows store camera target, rotation, orbit distance, aspect ratio, viewport,
- * and field of view. */
-typedef struct M609CameraPresetTable { f32 cameraValues[4][13]; } M609CameraPresetTable;
 
 void fn_1_1E80(s16 cameraIndex);
 void fn_1_1EB4(void);
 void fn_1_234C(void);
-void fn_1_D1CC(void);
 void fn_1_43F4(void);
-s32 fn_1_E424(void);
-s32 fn_1_E474(void);
-s32 fn_1_4EB0(void);
-s32 fn_1_1115C(void);
-s32 fn_1_111A8(void);
-s32 fn_1_11658(void);
-s32 fn_1_1183C(void);
-s32 fn_1_1188C(void);
 void ObjectSetup(void);
 void fn_1_118(s16 mode, s16 frameNo);
 void fn_1_25C(s16 mode, s16 frameNo);
@@ -53,88 +37,39 @@ void fn_1_364(s16 mode, s16 frameNo);
 void fn_1_390(s16 mode, s16 frameNo);
 void fn_1_3BC(void);
 void fn_1_3C0(void);
-void fn_1_670(void);
 void fn_1_C30(void);
 void fn_1_10FC(void);
 void fn_1_120C(void);
 void fn_1_19D0(s16 cameraIndex);
 
-typedef struct ParticleColor {
-    u8 red;
-    u8 green;
-    u8 blue;
-    u8 alpha;
-} ParticleColor;
-
-typedef struct ParticleEntry {
-    s16 framesRemaining; /* Particle update calls before this entry expires. */
-    u8 paddingBeforeVelocity[6]; /* Preserves the particle record layout. */
-    struct M609Vector3 {
-        f32 x;
-        f32 y;
-        f32 z;
-    } velocity; /* Per-update world-space movement. */
-    u8 paddingBeforeScale[24]; /* Preserves the particle record layout. */
-    f32 scale; /* Rendered particle scale; zero marks an inactive entry. */
-    u8 paddingBeforeZRotation[4]; /* Preserves the particle record layout. */
-    f32 zRotation; /* Billboard Z rotation in radians, advanced by motionParameters[4]. */
-    struct M609Vector3 position; /* Current world-space particle position. */
-    ParticleColor color; /* Current RGBA color. */
-} ParticleEntry;
-
-typedef struct ParticleContext {
-    u8 paddingBeforeActiveEntryIndex[2]; /* Preserves the particle context layout. */
-    s16 activeEntryIndex; /* Index most recently assigned by the spawn helper. */
-    u8 paddingBeforeParameters[24]; /* Preserves the particle context layout. */
-    void *parameters; /* Per-entry color and motion settings. */
-    u8 beforeEntryCount[16];
-    s16 entryCount; /* Number of particle entries available to the callback. */
-    u8 paddingBeforeUnusedCounter[2]; /* Preserves the particle context layout. */
-    void *unusedCounterStorage; /* Unused view of the engine particle draw counter storage. */
-    u8 paddingBeforeEntries[16]; /* Preserves the particle context layout. */
-    ParticleEntry *entries; /* Particle records updated by the callback. */
-} ParticleContext;
-
 typedef struct ParticleConfiguration {
     s32 reservedValue;
-    ParticleColor color; /* Starting RGBA color. */
+    GXColor color; /* Starting RGBA color. */
     u8 targetColor[4]; /* Target RGB channels; the fourth byte is initialized but not read here. */
     /* Velocity scales, gravity, Z-rotation step, scale delta/decay, alpha step, and RGB rate. */
     f32 motionParameters[9];
 } ParticleConfiguration;
 
-/* World position used to choose horizontal stereo pan and depth-dependent volume. */
-typedef struct M609VoicePanPosition { f32 x; f32 y; f32 z; } M609VoicePanPosition;
-
 extern int fontcolor;
 
 void fn_1_35D8(void);
-void fn_1_3860(struct M609Vector3 *spawnPosition);
-s16 fn_1_3A48(s16 effectIndex, struct M609Vector3 position,
-              struct M609Vector3 velocity, f32 scale,
+void fn_1_3860(Vec *spawnPosition);
+s16 fn_1_3A48(s16 effectIndex, Vec position,
+              Vec velocity, f32 scale,
               s16 framesRemaining,
               ParticleConfiguration *configuration);
 void fn_1_3BCC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_234C(void);
-void fn_1_46F8(s16 voiceSlot, s16 mode, M609VoicePanPosition *position);
 void fn_1_3FF0(M609Player *player, s16 panMode);
-void fn_1_2780(void);
-void fn_1_2DF4(void);
 void fn_1_32E4(MGTIMER *timer);
 void fn_1_3310(MGTIMER *timer);
 void fn_1_3338(MGTIMER *timer);
 void fn_1_3370(s16 padNo, s16 playerNo);
-void fn_1_43F4(void);
 void fn_1_4538(void);
 void fn_1_459C(void);
 void fn_1_4698(s16 selection);
-void fn_1_1E80(s16 cameraIndex);
-void fn_1_1EB4(void);
 void fn_1_20E0(void);
 void fn_1_245C(void);
-s32 fn_1_30D8(f32 *currentValue, f32 step, f32 startValue, f32 endValue);
 f32 fn_1_31F8(f32 modulusOrResult);
-void fn_1_45EC(s16 streamSlot, s16 fadeFrames);
 MGTIMER *fn_1_3270(int type, int duration, int end, float x, float y);
 
 typedef void (*VoidFunc)(void);
@@ -179,17 +114,17 @@ void ObjectSetup(void) {
  * scene. */
 void fn_1_118(s16 mode, s16 frameNo) {
     s16 nightFlag;
-    memset(((u8 *)&lbl_1_bss_6C34), 0, 328);
-    memset(((u8 *)&lbl_1_bss_6BF8), 0, 60);
-    memset(lbl_1_bss_6BBC, 0, 60);
-    memset(((u8 *)&lbl_1_bss_6B6C), 0, 80);
-    memset(((u8 *)&lbl_1_bss_6B64), 0, 8);
-    memset(((u8 *)lbl_1_bss_8BC), 0, 25256);
-    memset(((u8 *)lbl_1_bss_70C), 0, 432);
-    memset(lbl_1_bss_24C, 0, 1216);
-    memset(&lbl_1_bss_30, 0, 540);
-    memset(((u8 *)&lbl_1_bss_4), 0, 44);
-    memset(lbl_1_bss_0, 0, 4);
+    memset(&lbl_1_bss_6C34, 0, sizeof(lbl_1_bss_6C34));
+    memset(&lbl_1_bss_6BF8, 0, sizeof(lbl_1_bss_6BF8));
+    memset(lbl_1_bss_6BBC, 0, sizeof(lbl_1_bss_6BBC));
+    memset(&lbl_1_bss_6B6C, 0, sizeof(lbl_1_bss_6B6C));
+    memset(&lbl_1_bss_6B64, 0, sizeof(lbl_1_bss_6B64));
+    memset(lbl_1_bss_8BC, 0, sizeof(lbl_1_bss_8BC));
+    memset(lbl_1_bss_70C, 0, sizeof(lbl_1_bss_70C));
+    memset(lbl_1_bss_24C, 0, sizeof(lbl_1_bss_24C));
+    memset(&lbl_1_bss_30, 0, sizeof(lbl_1_bss_30));
+    memset(&lbl_1_bss_4, 0, sizeof(lbl_1_bss_4));
+    memset(lbl_1_bss_0, 0, sizeof(lbl_1_bss_0));
 
     nightFlag = lbl_802C0278;
     lbl_1_bss_30.night = nightFlag;
@@ -248,12 +183,12 @@ void fn_1_3BC(void)
 
 /* Called during player setup to copy game settings and starting positions for four players. */
 void fn_1_3C0(void) {
-    M609PlayerVectorTable initialPositions = { { { -210.0f, 1370.0f, -1940.0f },
-                                                 { -70.0f, 1360.0f, -1940.0f },
-                                                 { 70.0f, 1360.0f, -1940.0f },
-                                                 { 210.0f, 1370.0f, -1940.0f } } };
-    M609PlayerVectorTable initialOrientations = {
-        { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } }
+    Vec initialPositions[4] = { { -210.0f, 1370.0f, -1940.0f },
+                                { -70.0f, 1360.0f, -1940.0f },
+                                { 70.0f, 1360.0f, -1940.0f },
+                                { 210.0f, 1370.0f, -1940.0f } };
+    Vec initialOrientations[4] = {
+        { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }
     };
     s16 playerNo;
 
@@ -264,8 +199,8 @@ void fn_1_3C0(void) {
         lbl_1_bss_24C[playerNo].groupNo = lbl_80265728[playerNo].grpNo;
         lbl_1_bss_24C[playerNo].participantType = lbl_80265728[playerNo].type;
         lbl_1_bss_24C[playerNo].difficulty = lbl_80265728[playerNo].comDif;
-        lbl_1_bss_24C[playerNo].position = initialPositions.vectors[playerNo];
-        lbl_1_bss_24C[playerNo].rotation = initialOrientations.vectors[playerNo];
+        lbl_1_bss_24C[playerNo].position = initialPositions[playerNo];
+        lbl_1_bss_24C[playerNo].rotation = initialOrientations[playerNo];
         lbl_1_bss_24C[playerNo].mode = 0;
     }
 }
@@ -421,12 +356,12 @@ void fn_1_C30(void) {
 
 /* Called during character setup to load the shared motion set for each player. */
 void fn_1_10FC(void) {
-    M609MotionData motionData = { { DATANUM(0x930000, 0), DATANUM(0x930000, 2),
-                                    DATANUM(0x930000, 6), DATANUM(0x930000, 20),
-                                    DATANUM(0x930000, 22), DATANUM(0x8e0000, 28),
-                                    DATANUM(0x930000, 24), DATANUM(0x8e0000, 33),
-                                    DATANUM(0x930000, 34), DATANUM(0x930000, 50),
-                                    DATANUM(0x930000, 79) } };
+    u32 motionData[11] = { DATANUM(0x930000, 0), DATANUM(0x930000, 2),
+                           DATANUM(0x930000, 6), DATANUM(0x930000, 20),
+                           DATANUM(0x930000, 22), DATANUM(0x8e0000, 28),
+                           DATANUM(0x930000, 24), DATANUM(0x8e0000, 33),
+                           DATANUM(0x930000, 34), DATANUM(0x930000, 50),
+                           DATANUM(0x930000, 79) };
     s16 playerNo;
     s16 motionIndex;
 
@@ -434,7 +369,7 @@ void fn_1_10FC(void) {
         for (motionIndex = 0; motionIndex < 11; motionIndex++) {
             lbl_1_bss_70C[playerNo].motionIds[motionIndex] = fn_8005B0B8(
                 (s16)lbl_1_bss_24C[playerNo].characterNo,
-                motionData.motionDataNumbers[motionIndex]);
+                motionData[motionIndex]);
         }
     }
 }
@@ -506,7 +441,7 @@ void fn_1_120C(void)
                 lbl_1_bss_8BC[playerNo].model);
             /* The motion tag or loop bit prevents this state advance; otherwise compare playback
              * time with the blend duration minus one. */
-            if ((lbl_1_bss_70C[playerNo].shiftFlags & M609_MOTION_SHIFT_FLAGS_MASK) == 0 &&
+            if ((lbl_1_bss_70C[playerNo].shiftFlags & 0x40000001) == 0 &&
                 lbl_1_bss_70C[playerNo].shiftTime >=
                     lbl_1_bss_70C[playerNo].blendDuration - 1.0f) {
                 lbl_1_bss_70C[playerNo].shiftState = 3;
@@ -543,56 +478,56 @@ void fn_1_120C(void)
 /* Creates a camera during scene setup and loads its target, rotation, orbit distance,
  * and lens settings. */
 void fn_1_19D0(s16 cameraIndex) {
-    M609CameraPresetTable presets = { { { 0.0f, 1454.0f, -1850.0f, -44.0f, 0.0f, 0.0f, 812.0f,
-                                          1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 32.2f },
-                                        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
-                                          0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
-                                        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
-                                          0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
-                                        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
-                                          0.0f, 0.0f, 640.0f, 480.0f, 45.0f } } };
-    M609CameraMasks cameraMasks = {{1, 2, 4, 8}};
+    f32 presets[4][13] = { { 0.0f, 1454.0f, -1850.0f, -44.0f, 0.0f, 0.0f, 812.0f,
+                             1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 32.2f },
+                           { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
+                             0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
+                           { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
+                             0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
+                           { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
+                             0.0f, 0.0f, 640.0f, 480.0f, 45.0f } };
+    s16 cameraMasks[4] = {1, 2, 4, 8};
 
     lbl_1_bss_6C34.cameras[cameraIndex].cameraIndex = cameraIndex;
-    lbl_1_bss_6C34.cameras[cameraIndex].target.x = presets.cameraValues[cameraIndex][0];
-    lbl_1_bss_6C34.cameras[cameraIndex].target.y = presets.cameraValues[cameraIndex][1];
-    lbl_1_bss_6C34.cameras[cameraIndex].target.z = presets.cameraValues[cameraIndex][2];
-    lbl_1_bss_6C34.cameras[cameraIndex].rotation.x = presets.cameraValues[cameraIndex][3];
-    lbl_1_bss_6C34.cameras[cameraIndex].rotation.y = presets.cameraValues[cameraIndex][4];
-    lbl_1_bss_6C34.cameras[cameraIndex].rotation.z = presets.cameraValues[cameraIndex][5];
+    lbl_1_bss_6C34.cameras[cameraIndex].target.x = presets[cameraIndex][0];
+    lbl_1_bss_6C34.cameras[cameraIndex].target.y = presets[cameraIndex][1];
+    lbl_1_bss_6C34.cameras[cameraIndex].target.z = presets[cameraIndex][2];
+    lbl_1_bss_6C34.cameras[cameraIndex].rotation.x = presets[cameraIndex][3];
+    lbl_1_bss_6C34.cameras[cameraIndex].rotation.y = presets[cameraIndex][4];
+    lbl_1_bss_6C34.cameras[cameraIndex].rotation.z = presets[cameraIndex][5];
     lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[0] =
-        presets.cameraValues[cameraIndex][6];
+        presets[cameraIndex][6];
     lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[1] =
-        presets.cameraValues[cameraIndex][7];
+        presets[cameraIndex][7];
     lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[2] =
-        presets.cameraValues[cameraIndex][8];
+        presets[cameraIndex][8];
     lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[3] =
-        presets.cameraValues[cameraIndex][9];
+        presets[cameraIndex][9];
     lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[4] =
-        presets.cameraValues[cameraIndex][10];
+        presets[cameraIndex][10];
     lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[5] =
-        presets.cameraValues[cameraIndex][11];
-    lbl_1_bss_6C34.cameras[cameraIndex].fieldOfView = presets.cameraValues[cameraIndex][12];
+        presets[cameraIndex][11];
+    lbl_1_bss_6C34.cameras[cameraIndex].fieldOfView = presets[cameraIndex][12];
 
-    Hu3DCameraCreate(cameraMasks.cameraBits[cameraIndex]);
-    Hu3DCameraViewportSet(cameraMasks.cameraBits[cameraIndex],
+    Hu3DCameraCreate(cameraMasks[cameraIndex]);
+    Hu3DCameraViewportSet(cameraMasks[cameraIndex],
                           lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[2],
                           lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[3],
                           lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[4],
                           lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[5],
-                          (0.0f),
+                          0.0f,
                           1.0f);
-    Hu3DCameraPerspectiveSet(cameraMasks.cameraBits[cameraIndex],
+    Hu3DCameraPerspectiveSet(cameraMasks[cameraIndex],
                              lbl_1_bss_6C34.cameras[cameraIndex].fieldOfView,
-                             (20.0f), (20000.0f),
+                             20.0f, 20000.0f,
                              lbl_1_bss_6C34.cameras[cameraIndex].projectionAndViewport[1]);
-    lbl_80266A4C.x = presets.cameraValues[cameraIndex][0];
-    lbl_80266A4C.y = presets.cameraValues[cameraIndex][1];
-    lbl_80266A4C.z = presets.cameraValues[cameraIndex][2];
-    lbl_80266A40.x = presets.cameraValues[cameraIndex][3];
-    lbl_80266A40.y = presets.cameraValues[cameraIndex][4];
-    lbl_80266A40.z = presets.cameraValues[cameraIndex][5];
-    lbl_802C028C = presets.cameraValues[cameraIndex][6];
+    lbl_80266A4C.x = presets[cameraIndex][0];
+    lbl_80266A4C.y = presets[cameraIndex][1];
+    lbl_80266A4C.z = presets[cameraIndex][2];
+    lbl_80266A40.x = presets[cameraIndex][3];
+    lbl_80266A40.y = presets[cameraIndex][4];
+    lbl_80266A40.z = presets[cameraIndex][5];
+    lbl_802C028C = presets[cameraIndex][6];
     fn_1_1E80(cameraIndex);
 }
 
@@ -610,16 +545,16 @@ void fn_1_1E80(s16 cameraIndex) {
 /* Called during scene setup to create the minigame's directional light and set its color. */
 void fn_1_1EB4(void) {
     fn_800285BC();
-    lbl_1_bss_6BF8.position.x = (0.0f);
-    lbl_1_bss_6BF8.position.y = (0.0f);
-    lbl_1_bss_6BF8.position.z = (0.0f);
-    lbl_1_bss_6BF8.aim.x = (0.0f);
-    lbl_1_bss_6BF8.aim.y = (0.0f);
-    lbl_1_bss_6BF8.aim.z = (0.0f);
-    lbl_1_bss_6BF8.orientation.x = (-100.0f);
-    lbl_1_bss_6BF8.orientation.y = (0.0f);
-    lbl_1_bss_6BF8.orientation.z = (0.0f);
-    lbl_1_bss_6BF8.range = (1000.0f);
+    lbl_1_bss_6BF8.position.x = 0.0f;
+    lbl_1_bss_6BF8.position.y = 0.0f;
+    lbl_1_bss_6BF8.position.z = 0.0f;
+    lbl_1_bss_6BF8.aim.x = 0.0f;
+    lbl_1_bss_6BF8.aim.y = 0.0f;
+    lbl_1_bss_6BF8.aim.z = 0.0f;
+    lbl_1_bss_6BF8.orientation.x = -100.0f;
+    lbl_1_bss_6BF8.orientation.y = 0.0f;
+    lbl_1_bss_6BF8.orientation.z = 0.0f;
+    lbl_1_bss_6BF8.range = 1000.0f;
 
     if (lbl_1_bss_30.night == 0) {
         lbl_1_bss_6BF8.color.r = 255;
@@ -648,22 +583,22 @@ void fn_1_20E0(void) {
     lbl_1_bss_6BF8.position.x =
         lbl_1_bss_6BF8.aim.x +
         lbl_1_bss_6BF8.range *
-            (cos((3.141592653589793) * lbl_1_bss_6BF8.orientation.x /
-                 (180.0)) *
-             sin((3.141592653589793) * lbl_1_bss_6BF8.orientation.y /
-                 (180.0)));
+            (cos(M_PI * lbl_1_bss_6BF8.orientation.x /
+                 180.0) *
+             sin(M_PI * lbl_1_bss_6BF8.orientation.y /
+                 180.0));
     lbl_1_bss_6BF8.position.y =
         lbl_1_bss_6BF8.aim.y +
         lbl_1_bss_6BF8.range *
-            -sin((3.141592653589793) * lbl_1_bss_6BF8.orientation.x /
-                 (180.0));
+            -sin(M_PI * lbl_1_bss_6BF8.orientation.x /
+                 180.0);
     lbl_1_bss_6BF8.position.z =
         lbl_1_bss_6BF8.aim.z +
         lbl_1_bss_6BF8.range *
-            (cos((3.141592653589793) * lbl_1_bss_6BF8.orientation.x /
-                 (180.0)) *
-             cos((3.141592653589793) * lbl_1_bss_6BF8.orientation.y /
-                 (180.0)));
+            (cos(M_PI * lbl_1_bss_6BF8.orientation.x /
+                 180.0) *
+             cos(M_PI * lbl_1_bss_6BF8.orientation.y /
+                 180.0));
     PSVECSubtract(&lbl_1_bss_6BF8.aim, &lbl_1_bss_6BF8.position,
                   &lbl_1_bss_6BF8.direction);
     PSVECNormalize(&lbl_1_bss_6BF8.direction, &lbl_1_bss_6BF8.direction);
@@ -676,18 +611,18 @@ void fn_1_20E0(void) {
 
 /* Called during scene setup to initialize the board shadow camera and transparency. */
 void fn_1_234C(void) {
-    Hu3DShadowCreate((5.0f), (19500.0f),
-                     (22500.0f));
+    Hu3DShadowCreate(5.0f, 19500.0f,
+                     22500.0f);
     Hu3DShadowSizeSet(480);
-    lbl_1_bss_6B6C.verticalAngle = (-90.0f);
-    lbl_1_bss_6B6C.horizontalAngle = (0.0f);
+    lbl_1_bss_6B6C.verticalAngle = -90.0f;
+    lbl_1_bss_6B6C.horizontalAngle = 0.0f;
     /* This setup value is stored but is not read by this module. */
-    lbl_1_bss_6B6C.state14 = (0.0f);
-    lbl_1_bss_6B6C.target.x = (0.0f);
-    lbl_1_bss_6B6C.target.y = (-100.0f);
-    lbl_1_bss_6B6C.target.z = (-1940.0f);
-    lbl_1_bss_6B6C.shadowTransparency = (0.5f);
-    lbl_1_bss_6B6C.orbitDistance = (21500.0f);
+    lbl_1_bss_6B6C.state14 = 0.0f;
+    lbl_1_bss_6B6C.target.x = 0.0f;
+    lbl_1_bss_6B6C.target.y = -100.0f;
+    lbl_1_bss_6B6C.target.z = -1940.0f;
+    lbl_1_bss_6B6C.shadowTransparency = 0.5f;
+    lbl_1_bss_6B6C.orbitDistance = 21500.0f;
     fn_1_245C();
 }
 
@@ -696,24 +631,24 @@ void fn_1_245C(void)
 {
     lbl_1_bss_6B6C.cameraPosition.x = (f32)((f64)lbl_1_bss_6B6C.target.x +
         ((f64)lbl_1_bss_6B6C.orbitDistance *
-         (cos(((3.141592653589793) * (f64)lbl_1_bss_6B6C.verticalAngle) / (180.0)) *
-          sin(((3.141592653589793) * (f64)lbl_1_bss_6B6C.horizontalAngle) / (180.0)))));
+         (cos((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0))));
     lbl_1_bss_6B6C.cameraPosition.y = (f32)((f64)lbl_1_bss_6B6C.target.y +
         ((f64)lbl_1_bss_6B6C.orbitDistance *
-         -sin(((3.141592653589793) * (f64)lbl_1_bss_6B6C.verticalAngle) / (180.0))));
+         -sin((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0)));
     lbl_1_bss_6B6C.cameraPosition.z = (f32)((f64)lbl_1_bss_6B6C.target.z +
         ((f64)lbl_1_bss_6B6C.orbitDistance *
-         (cos(((3.141592653589793) * (f64)lbl_1_bss_6B6C.verticalAngle) / (180.0)) *
-          cos(((3.141592653589793) * (f64)lbl_1_bss_6B6C.horizontalAngle) / (180.0)))));
+         (cos((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0))));
 
     lbl_1_bss_6B6C.cameraUp.x = (f32)(
-        sin(((3.141592653589793) * (f64)lbl_1_bss_6B6C.verticalAngle) / (180.0)) *
-        sin(((3.141592653589793) * (f64)lbl_1_bss_6B6C.horizontalAngle) / (180.0)));
+        sin((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0));
     lbl_1_bss_6B6C.cameraUp.y = (f32)cos(
-        ((3.141592653589793) * (f64)lbl_1_bss_6B6C.verticalAngle) / (180.0));
+        (M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0);
     lbl_1_bss_6B6C.cameraUp.z = (f32)(
-        sin(((3.141592653589793) * (f64)lbl_1_bss_6B6C.verticalAngle) / (180.0)) *
-        cos(((3.141592653589793) * (f64)lbl_1_bss_6B6C.horizontalAngle) / (180.0)));
+        sin((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0));
 
     Hu3DShadowTPLvlSet(lbl_1_bss_6B6C.shadowTransparency);
     Hu3DShadowPosSet(&lbl_1_bss_6B6C.cameraPosition, &lbl_1_bss_6B6C.cameraUp,
@@ -804,13 +739,13 @@ s32 fn_1_30D8(f32 *currentValue, f32 step, f32 startOrClampValue, f32 endValue)
         frames = (s32)((endValue - *currentValue) / incrementOrClampValue);
     }
     frames++;
-    if (startOrClampValue - endValue > (0.0f)) {
+    if (startOrClampValue - endValue > 0.0f) {
         startClampValue = startOrClampValue - endValue;
     } else {
         startClampValue = startOrClampValue - (-1.0f) * endValue;
     }
     incrementOrClampValue = startClampValue;
-    if (startOrClampValue - *currentValue > (0.0f)) {
+    if (startOrClampValue - *currentValue > 0.0f) {
         currentClampValue = startOrClampValue - *currentValue;
     } else {
         currentClampValue = startOrClampValue - (-1.0f) * *currentValue;
@@ -858,33 +793,42 @@ void fn_1_3338(MGTIMER *timer) {
 /* Applies debug stick movement to a player position and prints the resulting coordinates. */
 void fn_1_3370(s16 padNo, s16 playerNo) {
     if (lbl_802BFFFC[padNo] > 10) {
-        lbl_1_bss_24C[playerNo].position.x += (10.0f);
+        lbl_1_bss_24C[playerNo].position.x += 10.0f;
     }
     if (lbl_802BFFFC[padNo] < -10) {
-        lbl_1_bss_24C[playerNo].position.x -= (10.0f);
+        lbl_1_bss_24C[playerNo].position.x -= 10.0f;
     }
     if (lbl_802BFFF8[padNo] > 10) {
-        lbl_1_bss_24C[playerNo].position.z -= (10.0f);
+        lbl_1_bss_24C[playerNo].position.z -= 10.0f;
     }
     if (lbl_802BFFF8[padNo] < -10) {
-        lbl_1_bss_24C[playerNo].position.z += (10.0f);
+        lbl_1_bss_24C[playerNo].position.z += 10.0f;
     }
     /* These overlapping substick checks can apply both vertical adjustments near center. */
     if (lbl_802BFFF0[padNo] < 10) {
-        lbl_1_bss_24C[playerNo].position.y -= (10.0f);
+        lbl_1_bss_24C[playerNo].position.y -= 10.0f;
     }
     if (lbl_802BFFF0[padNo] > -10) {
-        lbl_1_bss_24C[playerNo].position.y += (10.0f);
+        lbl_1_bss_24C[playerNo].position.y += 10.0f;
     }
 
-    print8(25, 86, (1.5f), "OBJ X:%.1f Y:%.1f Z:%.1f",
+    print8(25, 86, 1.5f, "OBJ X:%.1f Y:%.1f Z:%.1f",
            lbl_1_bss_24C[playerNo].position.x,
            lbl_1_bss_24C[playerNo].position.y,
            lbl_1_bss_24C[playerNo].position.z);
 }
 
-s16 lbl_1_data_42[11] = {1629, 1630, 1631, 1632, 1633, 1634,
-    1635, 1636, 1637, 0, 0};
+s16 lbl_1_data_42[11] = { MSM_SE_MG609_OPENING_DROP_START,
+                          MSM_SE_MG609_OPENING_DROP_FALL,
+                          MSM_SE_MG609_OPENING_LAND,
+                          MSM_SE_MG609_PLAYER_FALL_OFF,
+                          MSM_SE_MG609_HAZARD_HIT_DAY,
+                          MSM_SE_MG609_HAZARD_HIT_NIGHT,
+                          MSM_SE_MG609_RESULT_PLATFORM_MOVE,
+                          MSM_SE_MG609_WATER_FLOW_LOOP,
+                          MSM_SE_MG609_OPENING_AMBIENCE,
+                          0,
+                          0 };
 
 /* Unused particle setup helper: allocates a thousand-entry pool and attaches its update
  * callback. */
@@ -930,18 +874,18 @@ void fn_1_35D8(void) {
 
 /* Unused spawn helper: attempts twelve overlapping particles at the supplied position,
  * all with the same upward velocity. */
-void fn_1_3860(struct M609Vector3 *spawnPosition) {
+void fn_1_3860(Vec *spawnPosition) {
     ParticleConfiguration configuration;
-    struct M609Vector3 velocity;
-    struct M609Vector3 landingPosition;
+    Vec velocity;
+    Vec landingPosition;
     s16 particleAttempt;
     f32 scale;
 
     configuration.reservedValue = 0;
-    configuration.color.red = -1;
-    configuration.color.green = -1;
-    configuration.color.blue = -1;
-    configuration.color.alpha = -1;
+    configuration.color.r = -1;
+    configuration.color.g = -1;
+    configuration.color.b = -1;
+    configuration.color.a = -1;
     configuration.targetColor[0] = 0;
     configuration.targetColor[1] = 0;
     configuration.targetColor[2] = 0;
@@ -971,33 +915,33 @@ void fn_1_3860(struct M609Vector3 *spawnPosition) {
 }
 
 /* Called by fn_1_3860 to initialize one inactive landing-dust entry. */
-s16 fn_1_3A48(s16 effectIndex, struct M609Vector3 position,
-              struct M609Vector3 velocity, f32 scale,
+s16 fn_1_3A48(s16 effectIndex, Vec position,
+              Vec velocity, f32 scale,
               s16 framesRemaining,
               ParticleConfiguration *configuration) {
     HU3D_MODEL *modelData;
     s16 spawnedParticleIndex;
-    ParticleContext *context;
+    HU3D_PARTICLE *context;
     ParticleConfiguration *configurations;
     s16 particleIndex;
-    ParticleEntry *entry;
+    HU3D_PARTICLE_DATA *entry;
 
     spawnedParticleIndex = -1;
     modelData = &lbl_802C01C8[lbl_1_bss_6B64.modelIds[effectIndex]];
     context = modelData->hookData;
-    configurations = context->parameters;
+    configurations = context->work;
     particleIndex = 0;
-    entry = context->entries;
+    entry = context->data;
 
-    for (; particleIndex < context->entryCount; particleIndex++, entry++) {
+    for (; particleIndex < context->maxCnt; particleIndex++, entry++) {
         if (entry->scale == 0.0f) {
             configurations[particleIndex] = *configuration;
-            entry->position = position;
-            entry->velocity = velocity;
+            entry->pos = position;
+            entry->vel = velocity;
             entry->color = configurations[particleIndex].color;
             entry->scale = scale;
-            entry->framesRemaining = framesRemaining;
-            context->activeEntryIndex = particleIndex;
+            entry->time = framesRemaining;
+            context->emitCnt = particleIndex;
             spawnedParticleIndex = particleIndex;
             break;
         }
@@ -1008,72 +952,72 @@ s16 fn_1_3A48(s16 effectIndex, struct M609Vector3 position,
 
 /* Particle callback: advances dust motion, fades its colors, and retires expired entries. */
 void fn_1_3BCC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix) {
-    ParticleConfiguration *parameters = ((ParticleContext *)particle)->parameters;
-    ParticleEntry *entry = ((ParticleContext *)particle)->entries;
+    ParticleConfiguration *parameters = particle->work;
+    HU3D_PARTICLE_DATA *entry = particle->data;
     s16 entryNo = 0;
 
-    while (entryNo < ((ParticleContext *)particle)->entryCount) {
+    while (entryNo < particle->maxCnt) {
         if (entry->scale > 0.0f) {
             s16 channelValue;
 
-            entry->velocity.x *= parameters[entryNo].motionParameters[0];
-            entry->velocity.y *= parameters[entryNo].motionParameters[1];
-            entry->velocity.z *= parameters[entryNo].motionParameters[2];
-            PSVECAdd((Point3d *)&entry->velocity, (Point3d *)&entry->position,
-                     (Point3d *)&entry->position);
-            entry->velocity.y += parameters[entryNo].motionParameters[3];
-            entry->zRotation += parameters[entryNo].motionParameters[4];
+            entry->vel.x *= parameters[entryNo].motionParameters[0];
+            entry->vel.y *= parameters[entryNo].motionParameters[1];
+            entry->vel.z *= parameters[entryNo].motionParameters[2];
+            PSVECAdd(&entry->vel, &entry->pos,
+                     &entry->pos);
+            entry->vel.y += parameters[entryNo].motionParameters[3];
+            entry->zRot += parameters[entryNo].motionParameters[4];
 
-            channelValue = (s16)((f32)entry->color.red +
+            channelValue = (s16)((f32)entry->color.r +
                                   (parameters[entryNo].motionParameters[8] *
                                    (f32)(parameters[entryNo].targetColor[0] -
-                                        parameters[entryNo].color.red)));
+                                        parameters[entryNo].color.r)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
                 channelValue = 255;
             }
-            entry->color.red = (u8)channelValue;
+            entry->color.r = (u8)channelValue;
 
-            channelValue = (s16)((f32)entry->color.green +
+            channelValue = (s16)((f32)entry->color.g +
                                   (parameters[entryNo].motionParameters[8] *
                                    (f32)(parameters[entryNo].targetColor[1] -
-                                        parameters[entryNo].color.green)));
+                                        parameters[entryNo].color.g)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
                 channelValue = 255;
             }
-            entry->color.green = (u8)channelValue;
+            entry->color.g = (u8)channelValue;
 
-            channelValue = (s16)((f32)entry->color.blue +
+            channelValue = (s16)((f32)entry->color.b +
                                   (parameters[entryNo].motionParameters[8] *
                                    (f32)(parameters[entryNo].targetColor[2] -
-                                        parameters[entryNo].color.blue)));
+                                        parameters[entryNo].color.b)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
                 channelValue = 255;
             }
-            entry->color.blue = (u8)channelValue;
+            entry->color.b = (u8)channelValue;
 
-            channelValue = (s16)((f32)entry->color.alpha +
+            channelValue = (s16)((f32)entry->color.a +
                                   parameters[entryNo].motionParameters[7]);
             if (channelValue < 0) {
                 entry->scale = 0.0f;
             }
-            entry->color.alpha = (u8)channelValue;
+            entry->color.a = (u8)channelValue;
 
             parameters[entryNo].motionParameters[5] *=
                 parameters[entryNo].motionParameters[6];
             entry->scale += parameters[entryNo].motionParameters[5];
-            if (--entry->framesRemaining <= 0) {
+            if (--entry->time <= 0) {
                 entry->scale = 0.0f;
             }
             /* Store the whole particle pool for each active entry,
              * including entries already stored above. */
-            DCStoreRangeNoSync(((ParticleContext *)particle)->entries,
-                                ((ParticleContext *)particle)->entryCount * 72);
+            DCStoreRangeNoSync(particle->data,
+                                particle->maxCnt * sizeof(*particle->data));
         }
         entryNo++;
         entry++;
@@ -1148,22 +1092,22 @@ void fn_1_3FF0(M609Player *player, s16 panMode) {
 void fn_1_43F4(void) {
     s16 voiceSlot;
 
-    (lbl_1_bss_30.musicHandle) = -1;
-    (lbl_1_bss_30.jingleHandle) = -1;
-    (lbl_1_bss_30.musicId) = MSM_STREAM_FRANTIC;
-    (lbl_1_bss_30.jingleId) = -1;
-    (lbl_1_bss_30.panXLow) = 32;
-    (lbl_1_bss_30.panXHigh) = 96;
-    (lbl_1_bss_30.positionXLow) = (f32) (-600.0f);
-    (lbl_1_bss_30.positionXHigh) = (f32) (600.0f);
-    (lbl_1_bss_30.volumeZLow) = 96;
-    (lbl_1_bss_30.volumeZHigh) = 110;
-    (lbl_1_bss_30.positionZLow) = (f32) (-800.0f);
-    (lbl_1_bss_30.positionZHigh) = (f32) (100.0f);
+    lbl_1_bss_30.musicHandle = -1;
+    lbl_1_bss_30.jingleHandle = -1;
+    lbl_1_bss_30.musicId = MSM_STREAM_FRANTIC;
+    lbl_1_bss_30.jingleId = -1;
+    lbl_1_bss_30.panXLow = 32;
+    lbl_1_bss_30.panXHigh = 96;
+    lbl_1_bss_30.positionXLow = -600.0f;
+    lbl_1_bss_30.positionXHigh = 600.0f;
+    lbl_1_bss_30.volumeZLow = 96;
+    lbl_1_bss_30.volumeZHigh = 110;
+    lbl_1_bss_30.positionZLow = -800.0f;
+    lbl_1_bss_30.positionZHigh = 100.0f;
     voiceSlot = 0;
     while (voiceSlot < 9) {
-        (lbl_1_bss_30.soundSlotStates[voiceSlot]) = -1;
-        (lbl_1_bss_30.soundHandles[voiceSlot]) = -1;
+        lbl_1_bss_30.soundSlotStates[voiceSlot] = -1;
+        lbl_1_bss_30.soundHandles[voiceSlot] = -1;
         voiceSlot += 1;
     }
 }
@@ -1217,7 +1161,7 @@ void fn_1_4698(s16 selection) {
 /* Plays the selected course sound effect. Mode 0 maps X/Z to pan/volume; mode 1 maps X
  * with midpoint volume, and mode 2 maps Z with midpoint pan. Modes 3 through 5 use fixed
  * values; slot 7 is not replayed while its slot is enabled. */
-void fn_1_46F8(s16 voiceSlot, s16 panMode, M609VoicePanPosition *position) {
+void fn_1_46F8(s16 voiceSlot, s16 panMode, Vec *position) {
     f32 xPanScale;
     f32 volumeScale;
     f32 scaledOffset;

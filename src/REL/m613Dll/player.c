@@ -35,7 +35,6 @@ M613PlayerState lbl_1_bss_11C[4];
 s32 lbl_1_bss_10C[4];
 s32 lbl_1_bss_FC[4];
 s16 lbl_1_bss_F8;
-extern void fn_1_F2A4(void);
 
 void fn_1_3C80(s16 playerIndex, s16 mode);
 void fn_1_3EB0(s16 playerIndex);
@@ -44,8 +43,6 @@ void fn_1_3FFC(f32 angle_x, f32 angle_y, f32 angle_z,
 void fn_1_40BC(Point3d *position, Point3d *firstTarget, Point3d *unusedThirdTarget,
                Point3d *secondTarget, Point3d *result);
 void fn_1_4208(void);
-s32 fn_1_4D38(s16 frame);
-void fn_1_5038(s16 mode, s16 frameNo);
 void fn_1_5058(void);
 void fn_1_5178(void);
 s32 fn_1_96E8(Point3d *movingPosition, Point3d *displacement, f32 radius);
@@ -297,7 +294,7 @@ void fn_1_4208(void) {
 }
 
 /* Advances the opening player states and pans their sounds during the intro sequence. */
-s32 fn_1_4D38(s16 frame) {
+u8 fn_1_4D38(s16 frame) {
     s16 playerIndex;
     s16 initialState;
 
@@ -360,7 +357,7 @@ s32 fn_1_4D38(s16 frame) {
     return 0;
 }
 
-void fn_1_5038(s16 mode, s16 frameNo) {
+void fn_1_5038(void) {
     fn_1_5178();
 }
 
@@ -1130,169 +1127,165 @@ void fn_1_9C7C(s16 playerIndex) {
 
     switch (lbl_1_bss_11C[playerIndex].sequenceState) {
     case 1:
-        if (lbl_1_bss_11C[playerIndex].motionTransitionTimer != 0) {
-            goto m613TickDown;
-        }
-        break;
-    case 0:
-    default:
-        goto m613TickDownEnd;
-    }
-    {
-        lbl_1_bss_11C[playerIndex].drawingActive = 0;
-        if ((lbl_1_bss_11C[playerIndex].stickX != 0) || (lbl_1_bss_11C[playerIndex].stickY != 0)) {
-            transitionStatus = 0;
-            referenceDirection.x = 1.0f;
-            referenceDirection.y = referenceDirection.z = 0.0f;
-
-            fn_1_3FFC(0.0f, lbl_1_bss_11C[playerIndex].rotation.y, 0.0f, referenceDirection,
-                      &referenceDirection);
-            inputDirection.x = (f32)lbl_1_bss_11C[playerIndex].stickX;
-            inputDirection.y = 0.0f;
-            inputDirection.z = (f32)(lbl_1_bss_11C[playerIndex].stickY * -1);
-            fn_1_10C5C(&inputDirection, &inputDirection);
-            inputAlignment = (referenceDirection.z * inputDirection.z) +
-                             ((referenceDirection.x * inputDirection.x) +
-                              (referenceDirection.y * inputDirection.y));
-            if (inputAlignment < -0.1) {
-                lbl_1_bss_11C[playerIndex].rotationOffset.y = -2.0f;
-                transitionStatus = 1;
-            } else if (inputAlignment > 0.1) {
-                lbl_1_bss_11C[playerIndex].rotationOffset.y = 2.0f;
-                transitionStatus = 1;
-            } else {
-                referenceDirection.x = referenceDirection.y = 0.0f;
-                referenceDirection.z = 1.0f;
+        if (lbl_1_bss_11C[playerIndex].motionTransitionTimer == 0) {
+            lbl_1_bss_11C[playerIndex].drawingActive = 0;
+            if ((lbl_1_bss_11C[playerIndex].stickX != 0) ||
+                (lbl_1_bss_11C[playerIndex].stickY != 0)) {
+                transitionStatus = 0;
+                referenceDirection.x = 1.0f;
+                referenceDirection.y = referenceDirection.z = 0.0f;
 
                 fn_1_3FFC(0.0f, lbl_1_bss_11C[playerIndex].rotation.y, 0.0f, referenceDirection,
-                          &referenceDirection);
+                    &referenceDirection);
+                inputDirection.x = (f32)lbl_1_bss_11C[playerIndex].stickX;
+                inputDirection.y = 0.0f;
+                inputDirection.z = (f32)(lbl_1_bss_11C[playerIndex].stickY * -1);
+                fn_1_10C5C(&inputDirection, &inputDirection);
                 inputAlignment = (referenceDirection.z * inputDirection.z) +
                                  ((referenceDirection.x * inputDirection.x) +
                                   (referenceDirection.y * inputDirection.y));
-                if (inputAlignment < 0.0f) {
+                if (inputAlignment < -0.1) {
                     lbl_1_bss_11C[playerIndex].rotationOffset.y = -2.0f;
                     transitionStatus = 1;
-                }
-            }
-            if (transitionStatus != 0) {
-                if (((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) == 0) &&
-                    ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) != 0)) {
-                    if (lbl_1_bss_11C[playerIndex].motionState != 3) {
-                        fn_1_3C80(playerIndex, 3);
-                        lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
-                    }
-                    fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
-                                       ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
-                    fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 2)));
+                } else if (inputAlignment > 0.1) {
+                    lbl_1_bss_11C[playerIndex].rotationOffset.y = 2.0f;
+                    transitionStatus = 1;
                 } else {
-                    if (lbl_1_bss_11C[playerIndex].motionState != 2) {
-                        fn_1_3C80(playerIndex, 2);
+                    referenceDirection.x = referenceDirection.y = 0.0f;
+                    referenceDirection.z = 1.0f;
+
+                    fn_1_3FFC(0.0f, lbl_1_bss_11C[playerIndex].rotation.y, 0.0f, referenceDirection,
+                        &referenceDirection);
+                    inputAlignment = (referenceDirection.z * inputDirection.z) +
+                                     ((referenceDirection.x * inputDirection.x) +
+                                      (referenceDirection.y * inputDirection.y));
+                    if (inputAlignment < 0.0f) {
+                        lbl_1_bss_11C[playerIndex].rotationOffset.y = -2.0f;
+                        transitionStatus = 1;
+                    }
+                }
+                if (transitionStatus != 0) {
+                    if (((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) == 0) &&
+                        ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) != 0)) {
+                        if (lbl_1_bss_11C[playerIndex].motionState != 3) {
+                            fn_1_3C80(playerIndex, 3);
+                            lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
+                        }
+                        fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
+                            ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
+                        fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 2)));
+                    } else {
+                        if (lbl_1_bss_11C[playerIndex].motionState != 2) {
+                            fn_1_3C80(playerIndex, 2);
+                            lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
+                        }
+                        fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
+                            ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
+                        fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 1)));
+                    }
+                }
+                if ((transitionStatus == 0) &&
+                    ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) == 0) &&
+                    ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) == 0)) {
+                    if (lbl_1_bss_11C[playerIndex].motionState != 1) {
+                        fn_1_3C80(playerIndex, 1);
                         lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
                     }
                     fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
-                                       ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
+                        ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
                     fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 1)));
                 }
-            }
-            if ((transitionStatus == 0) &&
-                ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) == 0) &&
-                ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) == 0)) {
+            } else if (((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) == 0) &&
+                       ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) == 0)) {
                 if (lbl_1_bss_11C[playerIndex].motionState != 1) {
                     fn_1_3C80(playerIndex, 1);
                     lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
                 }
                 fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
-                                   ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
+                    ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
                 fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 1)));
             }
-        } else if (((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) == 0) &&
-                   ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) == 0)) {
-            if (lbl_1_bss_11C[playerIndex].motionState != 1) {
-                fn_1_3C80(playerIndex, 1);
-                lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
-            }
-            fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
-                               ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
-            fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 1)));
-        }
-        if ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) != 0) {
-            lbl_1_bss_11C[playerIndex].displacement.x = lbl_1_bss_11C[playerIndex].displacement.y =
-                0.0f;
-            lbl_1_bss_11C[playerIndex].displacement.z = 2.5f;
-
-            fn_1_3FFC(lbl_1_bss_11C[playerIndex].rotation.x, lbl_1_bss_11C[playerIndex].rotation.y,
-                      lbl_1_bss_11C[playerIndex].rotation.z,
-                      lbl_1_bss_11C[playerIndex].displacement,
-                      &lbl_1_bss_11C[playerIndex].displacement);
-            if (lbl_1_bss_11C[playerIndex].motionState != 2) {
-                fn_1_3C80(playerIndex, 2);
-                lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
-            }
-            fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
-                               ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 2)));
-            fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 0)));
-            lbl_1_bss_11C[playerIndex].drawingActive = 1;
-            if ((s32) lbl_1_bss_FC[playerIndex] < 0) {
-                if (playerIndex == 0) {
-                    lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P1);
-                }
-                if (playerIndex == 1) {
-                    lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P2);
-                }
-                if (playerIndex == 2) {
-                    lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P3);
-                }
-                if (playerIndex == 3) {
-                    lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P4);
-                }
-            }
-        } else {
-            if ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) != 0) {
+            if ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_A) != 0) {
                 lbl_1_bss_11C[playerIndex].displacement.x =
                     lbl_1_bss_11C[playerIndex].displacement.y = 0.0f;
-                lbl_1_bss_11C[playerIndex].displacement.z = -2.5f;
+                lbl_1_bss_11C[playerIndex].displacement.z = 2.5f;
 
-                fn_1_3FFC(
-                    lbl_1_bss_11C[playerIndex].rotation.x, lbl_1_bss_11C[playerIndex].rotation.y,
-                    lbl_1_bss_11C[playerIndex].rotation.z, lbl_1_bss_11C[playerIndex].displacement,
+                fn_1_3FFC(lbl_1_bss_11C[playerIndex].rotation.x,
+                    lbl_1_bss_11C[playerIndex].rotation.y,
+                    lbl_1_bss_11C[playerIndex].rotation.z,
+                    lbl_1_bss_11C[playerIndex].displacement,
                     &lbl_1_bss_11C[playerIndex].displacement);
-                if (lbl_1_bss_11C[playerIndex].motionState != 3) {
-                    fn_1_3C80(playerIndex, 3);
+                if (lbl_1_bss_11C[playerIndex].motionState != 2) {
+                    fn_1_3C80(playerIndex, 2);
                     lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
                 }
                 fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
-                                   ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
-                fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 2)));
+                    ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 2)));
+                fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 0)));
+                lbl_1_bss_11C[playerIndex].drawingActive = 1;
+                if ((s32) lbl_1_bss_FC[playerIndex] < 0) {
+                    if (playerIndex == 0) {
+                        lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P1);
+                    }
+                    if (playerIndex == 1) {
+                        lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P2);
+                    }
+                    if (playerIndex == 2) {
+                        lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P3);
+                    }
+                    if (playerIndex == 3) {
+                        lbl_1_bss_FC[playerIndex] = HuAudFXPlay(MSM_SE_MG613_DRAW_LOOP_P4);
+                    }
+                }
+            } else {
+                if ((s32) (lbl_1_bss_11C[playerIndex].buttons & PAD_BUTTON_B) != 0) {
+                    lbl_1_bss_11C[playerIndex].displacement.x =
+                        lbl_1_bss_11C[playerIndex].displacement.y = 0.0f;
+                    lbl_1_bss_11C[playerIndex].displacement.z = -2.5f;
+
+                    fn_1_3FFC(
+                        lbl_1_bss_11C[playerIndex].rotation.x,
+                        lbl_1_bss_11C[playerIndex].rotation.y,
+                        lbl_1_bss_11C[playerIndex].rotation.z,
+                        lbl_1_bss_11C[playerIndex].displacement,
+                        &lbl_1_bss_11C[playerIndex].displacement);
+                    if (lbl_1_bss_11C[playerIndex].motionState != 3) {
+                        fn_1_3C80(playerIndex, 3);
+                        lbl_1_bss_11C[playerIndex].motionTransitionTimer = 10;
+                    }
+                    fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
+                        ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
+                    fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 2)));
+                    if ((s32) lbl_1_bss_FC[playerIndex] > 0) {
+                        HuAudFXStop(lbl_1_bss_FC[playerIndex]);
+                    }
+                    lbl_1_bss_FC[playerIndex] = -1;
+                    return;
+                }
                 if ((s32) lbl_1_bss_FC[playerIndex] > 0) {
                     HuAudFXStop(lbl_1_bss_FC[playerIndex]);
                 }
                 lbl_1_bss_FC[playerIndex] = -1;
-                return;
             }
-            if ((s32) lbl_1_bss_FC[playerIndex] > 0) {
-                HuAudFXStop(lbl_1_bss_FC[playerIndex]);
+        } else {
+            lbl_1_bss_11C[playerIndex].motionTransitionTimer -= 1;
+            if (lbl_1_bss_11C[playerIndex].motionTransitionTimer <= 0) {
+                lbl_1_bss_11C[playerIndex].motionTransitionTimer = 0;
             }
-            lbl_1_bss_FC[playerIndex] = -1;
+            fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
+                ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
+            fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 1)));
+            lbl_1_bss_11C[playerIndex].drawingActive = 0;
         }
+        break;
+    case 0:
+    default:
+        break;
     }
-    goto m613TickDownEnd;
-m613TickDown:
-    {
-        lbl_1_bss_11C[playerIndex].motionTransitionTimer -= 1;
-        if (lbl_1_bss_11C[playerIndex].motionTransitionTimer <= 0) {
-            lbl_1_bss_11C[playerIndex].motionTransitionTimer = 0;
-        }
-        fn_80026A44(lbl_1_bss_11C[playerIndex].modelPart0,
-                           ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)));
-        fn_800269E8(lbl_1_bss_11C[playerIndex].modelPart0, ((1 << 30) | (1 << 1)));
-        lbl_1_bss_11C[playerIndex].drawingActive = 0;
-    }
-m613TickDownEnd:
-    ;
 }
 
 /* Updates player models during the intro, play, and results. Drawing emits marks except in
-* sequence states five and six; applied movement and input are cleared each update. */
+ * sequence states five and six; applied movement and input are cleared each update. */
 void fn_1_B4A8(void) {
     Point3d corners[4];
     Point3d effectTarget;

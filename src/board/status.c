@@ -8,7 +8,6 @@
 #include "game/board/pause.h"
 #include "game/board/masu.h"
 #include "game/board/guide.h"
-#include "game/board/guide_object.h"
 
 #include "game/disp.h"
 #include "game/flag.h"

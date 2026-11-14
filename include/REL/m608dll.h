@@ -23,6 +23,13 @@
 #ifndef M608_SCENE_CONSUMED_CONTEXT_H
 #define M608_SCENE_CONSUMED_CONTEXT_H
 
+/* The record-prompt callback uses the first three object work slots. */
+typedef struct M608RecordPromptWork {
+    f32 scale;
+    u32 growing;
+    u32 elapsedFrames;
+} M608RecordPromptWork;
+
 /* Stores the sampled course path; the remaining bytes are not read by this module. */
 typedef struct M608PathSamples { Point3d points[660]; u8 unusedBytes[7920]; } M608PathSamples;
 typedef struct M608SceneConsumedContext {
@@ -34,13 +41,11 @@ typedef struct M608SceneConsumedContext {
     HU3D_MOTIONID cameraMotions[10]; /* Loaded camera motions. */
     HU3D_MODELID cameraModels[10]; /* Camera models that play the motions. */
     HU3D_MODELID activeCameraMotion; /* Camera model currently driving the view. */
-    /* Bytes between the camera model and process pointer; not read here. */
-    u8 unusedCameraBytes[2];
+    u8 unk3A[2]; /* No code names this field. */
     OMOBJ *cameraObject; /* Process that updates camera playback and position. */
     f32 cameraTime; /* Elapsed camera-motion time in frames. */
     f32 cameraMaxTime; /* Duration of the active camera motion in frames. */
-    /* Bytes before the scene model list; not read here. */
-    u8 unusedSceneBytes[2];
+    u8 unk48[2]; /* No code names this field. */
 
     HU3D_MODELID sceneModels[5]; /* Background models selected for day or night. */
     HU3D_MODELID playerModelsA[4]; /* Primary rider models used during the course. */
@@ -50,8 +55,7 @@ typedef struct M608SceneConsumedContext {
     HU3D_MOTIONID mainMotion; /* Motion assigned to the main course model. */
     /* Hook positions read from player model variant B. */
     Point3d playerBoardHookPositions[4];
-    /* Bytes between model-hook position arrays; not read here. */
-    u8 unusedPlayerModelBytes[48];
+    u8 unkA0[48]; /* No code names this field. */
     /* Attachment positions read from player model variants B and C. */
     Point3d playerAttachmentPositions[4];
 
@@ -65,8 +69,7 @@ typedef struct M608SceneConsumedContext {
     HU3D_MODELID courseModels[16];
     /* Joint motions used by the course props. */
     HU3D_MOTIONID courseMotions[9];
-    /* Bytes before the two timed course models; not read here. */
-    u8 unusedTimingModelBytes[6];
+    u8 unk1A2[6]; /* No code names this field. */
     /* Models whose motion callbacks advance the run. */
     HU3D_MODELID timingModels[2];
     s32 timingSubstate; /* Turn-animation step advanced by a motion callback. */
@@ -125,7 +128,7 @@ struct _struct_lbl_1_bss_3DF0_0x18 {
     ANIMDATA *recordSpriteAnimation; /* Record emblem animation, used by panel 4. */
     s16 recordSpriteGroup; /* Group containing the record emblem. */
     s16 recordSpriteId; /* Record emblem member within its sprite group. */
-    u8 unusedBytes[8]; /* Bytes not read by this module. */
+    u8 unk10[8]; /* No code names this field. */
 };
 
 /* Position, dimensions, and colors used to build a score panel. */
@@ -138,7 +141,7 @@ struct _struct_lbl_1_data_44C_0x14 {
     u8 boxGreen; /* Score-box green color channel. */
     u8 boxBlue; /* Score-box blue color channel. */
     u8 boxUnusedByte; /* Stored but not passed to the score-box color setter. */
-    u8 unusedColorBytes[4]; /* Stored between box and digit colors; not read here. */
+    u8 unkC[4]; /* No code names this field. */
     u8 digitRed; /* Score-digit red color channel. */
     u8 digitGreen; /* Score-digit green color channel. */
     u8 digitBlue; /* Score-digit blue color channel. */
