@@ -3,7 +3,7 @@
 #include "REL/m608dll.h"
 
 /* Team-mode flag used to conditionally hide the shared record panel. */
-#define M608_TEAM_MODE_FLAG 0x30002U
+
 
 s32 lbl_1_data_410[15] = {
     DATANUM(0x9b0000, 0),  DATANUM(0x9b0000, 1),  DATANUM(0x9b0000, 2),
@@ -109,7 +109,7 @@ void fn_1_6604(void)
         MgScoreDispOff(lbl_1_bss_3DF0[playerIndex].scoreDisplay);
         playerIndex += 1;
     }
-    if (fn_8006A124(M608_TEAM_MODE_FLAG) != 0) {
+    if (fn_8006A124(0x30002U) != 0) {
         MgScoreBoxDispSet(lbl_1_bss_3DF0[4].scoreBoxId, 0);
         MgScoreDispOff(lbl_1_bss_3DF0[4].scoreDisplay);
         HuSprAttrSet(lbl_1_bss_3DF0[4].recordSpriteGroup, 0, HUSPR_ATTR_DISPOFF);
@@ -122,7 +122,7 @@ void fn_1_66C0(OMOBJ *recordObject)
     f32 recordScale;
     u32 elapsedFrames;
 
-    recordScale = ((float *) recordObject->work)[0];
+    recordScale = ((M608RecordPromptWork *) recordObject->work)->scale;
     elapsedFrames = recordObject->work[2];
     if ((s32) elapsedFrames >= 150) {
         if ((u32) recordObject->work[1] != 0) {
@@ -149,6 +149,6 @@ void fn_1_66C0(OMOBJ *recordObject)
             }
         }
     }
-    ((float *) recordObject->work)[0] = recordScale;
+    ((M608RecordPromptWork *) recordObject->work)->scale = recordScale;
     recordObject->work[2] = elapsedFrames + 1;
 }

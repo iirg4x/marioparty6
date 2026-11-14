@@ -5,7 +5,6 @@
 #include "game/board/main.h"
 #include "game/board/audio.h"
 #include "game/board/guide.h"
-#include "game/board/guide_object.h"
 #include "game/board/pause.h"
 
 #include "game/armem.h"

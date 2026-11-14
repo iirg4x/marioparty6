@@ -416,12 +416,12 @@ typedef struct M606PlayerWork {
 } M606PlayerWork;
 
 typedef struct M606SpriteEntry {
-    u8 unknown00[2]; /* No code names this field. */
+    u8 unk00[2]; /* No code names this field. */
     s16 animationIndex;
 } M606SpriteEntry;
 
 typedef struct M606SpriteAnimationEntry {
-    u8 unknown00[8]; /* No code names this field. */
+    u8 unk00[8]; /* No code names this field. */
     ANIMDATA *animation;
 } M606SpriteAnimationEntry;
 
@@ -819,9 +819,9 @@ void fn_1_35B8(OMOBJ *obj)
     s32 motionIndex;
     M606MotionEntry *motion;
     /* These initialized locals are never read; their purpose is unknown. */
-    float unknownD0;
-    s32 unknownCC;
-    s32 unknownC8;
+    float unusedFloatZero;
+    s32 unusedIntZero1;
+    s32 unusedIntZero2;
     s32 playerIndexSnapshot;
     float differenceX;
     float differenceZ;
@@ -833,11 +833,11 @@ void fn_1_35B8(OMOBJ *obj)
 
     work = obj->data;
     player = lbl_1_bss_A0EC[work->playerIndex];
-    unknownD0 = 0.0f;
+    unusedFloatZero = 0.0f;
     stickX = 0;
     stickY = 0;
-    unknownCC = 0;
-    unknownC8 = 0;
+    unusedIntZero1 = 0;
+    unusedIntZero2 = 0;
     playerIndexSnapshot = work->playerIndex;
     lbl_1_bss_A0E8 = fn_80071A8C();
     lbl_1_bss_0 = fn_80071DE4();

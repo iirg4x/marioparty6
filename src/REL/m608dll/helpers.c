@@ -28,9 +28,8 @@ void fn_1_5DA4(Point3d position)
     lbl_1_bss_3E80.shadowTarget.x = position.x;
     lbl_1_bss_3E80.shadowTarget.y = -100.0f;
     lbl_1_bss_3E80.shadowTarget.z = position.z;
-    Hu3DShadowPosSet((Point3d *) &lbl_1_bss_3E80.shadowCenter.x,
-                     &lbl_1_bss_3E80.shadowUpDirection,
-                     (Point3d *) &lbl_1_bss_3E80.shadowTarget.x);
+    Hu3DShadowPosSet(&lbl_1_bss_3E80.shadowCenter, &lbl_1_bss_3E80.shadowUpDirection,
+                     &lbl_1_bss_3E80.shadowTarget);
 }
 
 /* Called by the intro and rider-state callbacks in sequence.c to switch camera motions. */

@@ -1,4 +1,5 @@
 /* Creates the game camera and switches it to the result view. */
+#include "REL/m613Dll/types.h"
 #include <math.h>
 #include "game/hu3d.h"
 
