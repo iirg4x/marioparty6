@@ -47,14 +47,14 @@ typedef struct M632State {
     s32 frame; /* Frame counter for the current sequence phase. */
     s16 cameraModels[5]; /* Camera models for the intro and round endings. */
     s16 cameraMotions[5]; /* Camera motions selected for each sequence scene. */
-    s16 motions020[2];
+    s16 unusedSlots[2]; /* Initialized to -1 during camera setup; never read. */
     s16 playerModels[4];
     s16 modelId;
     s16 sceneModels[3];
     s16 attachmentModels[3];
-    u8 unknown03A[2];
+    u8 unk3A[2]; /* No code names this field. */
     s16 collisionModel;
-    u8 unknown03E[22];
+    u8 unk3E[22]; /* No code names this field. */
     MGACTOR *collisionActors[10]; /* Arena actors checked during collision and map updates. */
     s32 collisionCount; /* Number of active arena collision actors. */
     s16 linkedModels[10]; /* Models linked to the arena scene. */
@@ -74,7 +74,7 @@ typedef struct M632State {
     s32 patternIndex; /* Selected arena layout, index 0 through 3. */
     Point3d positions[4]; /* Starting positions assigned during the intro. */
     f32 targetTiltX; /* Target tilt.x derived from the player's stick input. */
-    u8 unknown1D4[4];
+    u8 unk1D4[4]; /* No code names this field. */
     f32 targetTiltZ; /* Target tilt.z derived from the player's stick input. */
     Point3d tilt; /* Current arena tilt in degrees; X/Z approach their targets each update. */
     MGTIMER *timer;
@@ -113,7 +113,7 @@ extern unsigned int lbl_1_data_158[16];
 /* Group-1 CPU risk thresholds indexed by difficulty. */
 extern s32 lbl_1_data_198[4];
 /* Cell patterns used to build each arena layout's obstacle map. */
-extern u8 *lbl_1_data_2A8[4];
+extern s8 *lbl_1_data_2A8[4];
 extern M632State lbl_1_bss_0;
 s32 fn_1_A0(s32 streamHandle, s32 streamId);
 void fn_1_104(s32 streamHandle);

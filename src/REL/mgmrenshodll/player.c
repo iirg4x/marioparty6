@@ -1,5 +1,5 @@
 /* Player animation data and per-frame movement for Endurance Alley. */
-#include "dolphin/math.h"
+#include <math.h>
 
 #include "game/object.h"
 
@@ -50,6 +50,7 @@
 #include "game/board/tutorial.h"
 
 #include "game/mgdata.h"
+#include "humath.h"
 
 typedef struct MGRenshoPlayerState {
     s16 player_index; /* Player slot whose object owns this state. */
@@ -63,7 +64,7 @@ typedef struct MGRenshoPlayerState {
                          * unset. */
     Vec position; /* Character position in world units. */
     Vec rotation; /* Character rotation in degrees. */
-    u8 reservedPositionBytes[4]; /* Cleared with the state block and unused in this file. */
+    u8 unk_2C[4]; /* No code names this field. */
     f32 landingStateA; /* Cleared when the fall begins and again on landing; other use is not
                         * established. */
     f32 vertical_velocity; /* Vertical movement per frame. */
@@ -71,7 +72,7 @@ typedef struct MGRenshoPlayerState {
                         * established. */
     s16 jump_frame; /* Current frame of the scripted jump arc. */
     s16 jump_frames; /* Number of frames in the scripted jump arc. */
-    u8 reservedJumpBytes[8]; /* Cleared with the state block and unused in this file. */
+    u8 unk_40[8]; /* No code names this field. */
     f32 remaining_distance; /* Distance left to move along the course, in world units. */
 } MGRenshoPlayerState;
 
@@ -88,11 +89,11 @@ typedef struct MGRenshoDifficultyRow {
     s16 computer_difficulty_by_round[10]; /* CPU difficulty for each play-count tier. */
 } MGRenshoDifficultyRow;
 
-#define MGR_RENSHO_PLAYER_OBJECT_PRIORITY 4352
-#define MGR_RENSHO_PLAYER_STATE_SIZE 76
-#define MGR_RENSHO_JUMP_EFFECT 593
-#define MGR_RENSHO_TRANSITION_EFFECT 574
-#define MGR_RENSHO_FALL_EFFECT 579
+
+
+
+
+
 
 extern OMOBJMAN *lbl_1_bss_158;
 
@@ -108,59 +109,9 @@ extern s16 MgModeScore[4];
 
 s16 fn_1_AD78(s16 player);
 
-f32 fn_1_4A2C(void);
-
-f32 fn_1_4ADC(void);
-
-void fn_1_102C(Vec *);
-
-void fn_1_4F0C(f32);
-
-s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
-
 extern u8 MgModePlayNum;
 
-void fn_1_7D08(u16 responseActive);
-
-void fn_1_8B1C(s16 advancePhaseTimers);
-
 extern s32 lbl_1_data_518;
-
-extern void fn_1_E9C(void);
-
-extern void fn_1_EEBC(void);
-
-void fn_1_7D94(s16 pathIndex, s16 segmentFrames);
-
-void fn_1_106C(s16 selectedCamera);
-
-s16 fn_1_4E58(void);
-
-void fn_1_4E24(void);
-
-void fn_1_4D58(void);
-
-void fn_1_4C4C(void);
-
-void fn_1_4C70(void);
-
-void fn_1_4C84(void);
-
-void fn_1_4CA8(void);
-
-void fn_1_4D24(void);
-
-void fn_1_4CF0(void);
-
-void fn_1_4CBC(void);
-
-void fn_1_4D8C(void);
-
-void fn_1_7E34(void);
-
-void fn_1_7E5C(void);
-
-s16 fn_1_4E00(void);
 
 void fn_1_A34C(s16 player);
 
@@ -259,12 +210,12 @@ void fn_1_94A8(void)
     player = 0;
     while (player < 4) {
         object =
-            fn_8003AB38(lbl_1_bss_158, MGR_RENSHO_PLAYER_OBJECT_PRIORITY, 1U, 10, -1, fn_1_AE08);
+            fn_8003AB38(lbl_1_bss_158, 4352, 1U, 10, -1, fn_1_AE08);
         lbl_1_bss_140[player] = object;
         object->stat |= (1 << 8);
         object->work[0] = object->work[1] = object->work[2] = object->work[3] = 0;
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, MGR_RENSHO_PLAYER_STATE_SIZE, 0x10000000);
-        memset(object->data, 0, MGR_RENSHO_PLAYER_STATE_SIZE);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MGRenshoPlayerState), 0x10000000);
+        memset(object->data, 0, sizeof(MGRenshoPlayerState));
         playerData = object->data;
         playerData->player_index = player;
         playerData->character_no = lbl_80265728[player].charNo;
@@ -318,7 +269,7 @@ void fn_1_9978(void) {
     MGRenshoPlayerState *playerData;
 
     object = lbl_1_bss_140[lbl_1_data_360];
-    playerData = (MGRenshoPlayerState *)object->data;
+    playerData = object->data;
     playerData->motion_state = 0;
     fn_8005C47C(playerData->character_no, 1);
 
@@ -329,7 +280,7 @@ void fn_1_9978(void) {
     playerData->rotation.y = 180.0f;
     fn_80026838(*object->mdlId, &playerData->rotation);
 
-    playerData = (MGRenshoPlayerState *)lbl_1_bss_140[lbl_1_data_360]->data;
+    playerData = lbl_1_bss_140[lbl_1_data_360]->data;
     fn_8005C47C(playerData->character_no, 1);
 }
 
@@ -546,7 +497,7 @@ void fn_1_A34C(s16 player)
     s16 wait;
     f32 remainingDepth;
 
-    animation = (MGRenshoPlayerState *)lbl_1_bss_140[player]->data;
+    animation = lbl_1_bss_140[player]->data;
     if ((MgModePlayNum == 4) || (MgModePlayNum == 16) ||
         (MgModePlayNum == 24) || (MgModePlayNum == 32) ||
         (MgModePlayNum == 34) || (MgModePlayNum == 73) ||
@@ -828,43 +779,10 @@ s16 fn_1_AD78(s16 player)
 /* Called by the object manager each frame to update the active player's movement and animation. */
 void fn_1_AE08(OMOBJ *playerObject) {
     s32 playerIndex;
-    MGRenshoPlayerState *unusedPlayerStateA;
     Point3d cameraDirection;
     s16 motionReady;
-    s16 unusedLocalA;
-    s16 unusedLocalB;
-    s16 unusedLocalC;
-    s16 unusedLocalD;
-    s16 unusedLocalE;
-    s16 unusedLocalF;
-    s16 unusedLocalG;
-    s16 unusedLocalH;
-    s16 unusedLocalI;
-    s16 unusedLocalJ;
-    s16 unusedLocalK;
-    s16 unusedLocalL;
-    s16 unusedLocalM;
-    s16 unusedLocalN;
-    s16 unusedLocalO;
-    s16 unusedLocalP;
     f32 movementOrHeading;
-    MGRenshoPlayerState *unusedPlayerStateB;
-    MGRenshoPlayerState *unusedPlayerStateC;
-    MGRenshoPlayerState *unusedPlayerStateD;
-    MGRenshoPlayerState *unusedPlayerStateE;
-    MGRenshoPlayerState *unusedPlayerStateF;
-    MGRenshoPlayerState *unusedPlayerStateG;
-    MGRenshoPlayerState *unusedPlayerStateH;
-    MGRenshoPlayerState *unusedPlayerStateI;
-    MGRenshoPlayerState *unusedPlayerStateJ;
-    MGRenshoPlayerState *unusedPlayerStateK;
-    MGRenshoPlayerState *unusedPlayerStateL;
-    MGRenshoPlayerState *unusedPlayerStateM;
-    MGRenshoPlayerState *unusedPlayerStateN;
-    MGRenshoPlayerState *unusedPlayerStateO;
-    MGRenshoPlayerState *unusedPlayerStateP;
     MGRenshoPlayerState *playerState;
-    MGRenshoPlayerState *unusedPlayerStateQ;
 
     playerState = playerObject->data;
     if (playerState->player_index == lbl_1_data_360) {
@@ -919,7 +837,7 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 break;
             case 4:
                 fn_1_927C(playerObject, 4);
-                fn_800591C8(playerState->character_no, MGR_RENSHO_JUMP_EFFECT, 0);
+                fn_800591C8(playerState->character_no, MSM_SE_CHARVOICE_SELECT_START_CALL, 0);
                 playerState->motion_state = 5;
                 playerState->jump_frame = 0;
                 playerState->jump_frames = (s16) (playerState->remaining_distance / lbl_1_data_364);
@@ -944,7 +862,7 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 }
                 playerState->jump_frame += 1;
                 playerState->position.y = (f32) sin(
-                    (3.141592653589793 * (f64) ((180.0f / (f32) playerState->jump_frames) *
+                    (M_PI * (f64) ((180.0f / (f32) playerState->jump_frames) *
                                                 (f32) playerState->jump_frame)) /
                     180.0);
                 playerState->position.y *= 400.0f;
@@ -1023,7 +941,7 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 PSVECScale(&cameraDirection, &cameraDirection, -1.0f);
                 movementOrHeading =
                     (f32) (180.0 * (atan2((f64) cameraDirection.x, (f64) cameraDirection.z) /
-                                    3.141592653589793));
+                                    M_PI));
                 playerState->rotation.y -= 10.0f;
                 if (playerState->rotation.y <= movementOrHeading) {
                     playerState->rotation.y = movementOrHeading;
@@ -1044,7 +962,7 @@ void fn_1_AE08(OMOBJ *playerObject) {
             case 13:
                 fn_1_927C(playerObject, 7);
                 playerState->motion_state = 14;
-                CharFXPlay(playerState->character_no, MGR_RENSHO_TRANSITION_EFFECT);
+                CharFXPlay(playerState->character_no, MSM_SE_CHARVOICE_WIN_SHOUT);
                 break;
             case 14:
                 if (fn_8005C284(playerState->character_no) < 0) {
@@ -1061,7 +979,7 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 PSVECScale(&cameraDirection, &cameraDirection, -1.0f);
                 movementOrHeading =
                     (f32) (180.0 * (atan2((f64) cameraDirection.x, (f64) cameraDirection.z) /
-                                    3.141592653589793));
+                                    M_PI));
                 playerState->rotation.y -= 10.0f;
                 if (playerState->rotation.y <= movementOrHeading) {
                     playerState->rotation.y = movementOrHeading;
@@ -1070,7 +988,7 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 break;
             case 17:
                 if (playerState->current_motion != 8) {
-                    fn_800591C8(playerState->character_no, MGR_RENSHO_FALL_EFFECT, 0);
+                    fn_800591C8(playerState->character_no, MSM_SE_CHARVOICE_HAPPY_CHEER, 0);
                 }
                 fn_1_927C(playerObject, 8);
                 if (fn_8005C284(playerState->character_no) < 0) {
@@ -1335,7 +1253,7 @@ void fn_1_D964(void)
 
     if ((MgModeWorkInt[0] != 0) && (MgModePlayNum >= MgGameNo)) {
         fn_1_AC3C(fn_1_A00C());
-        CharFXPlay(fn_1_A01C(fn_1_A00C()), MGR_RENSHO_FALL_EFFECT);
+        CharFXPlay(fn_1_A01C(fn_1_A00C()), MSM_SE_CHARVOICE_HAPPY_CHEER);
         fn_1_7D94(4, 40);
         fn_1_106C(3);
         wait = 1;

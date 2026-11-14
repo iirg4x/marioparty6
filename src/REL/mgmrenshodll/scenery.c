@@ -1,23 +1,19 @@
 /* Creates and animates Endurance Alley's sign and course scenery models. */
 #include "REL/mgmrenshodll/module_types.h"
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/object.h"
 #include "game/audio.h"
 #include "game/frand.h"
 #include "msm_se.h"
+#include "humath.h"
 
 extern OMOBJMAN *lbl_1_bss_158;
 
 void fn_1_7E84(OMOBJ *sceneryObject);
 void fn_1_8480(Vec *output, const Vec *sample0, const Vec *sample1, const Vec *sample2,
                const Vec *sample3, f32 duration, f32 frame);
-extern f32 fn_1_4A2C(void);
-extern f32 fn_1_4C3C(void);
-extern f32 fn_1_4ADC(void);
 extern u8 MgModePlayNum;
 void fn_1_8B58(OMOBJ *arenaObject);
-extern f32 InterpolateBMLine(f32 *samples, f32 *sampleTimes, f32 frame);
-extern void fn_1_4EB0(void);
 
 Vec lbl_1_data_298[5] = {
     {0.0f, 100.0f, -150.0f},
@@ -132,14 +128,14 @@ void fn_1_7E84(OMOBJ *sceneryObject)
     Vec followingPath;
     f32 depthOffset;
 
-    fn_800267CC(sceneryObject->mdlId[0], (Point3d *)&position);
+    fn_800267CC(sceneryObject->mdlId[0], &position);
     previousPath = lbl_1_bss_12C;
     nextPath = lbl_1_data_298[sceneryObject->work[2]];
     currentPath = previousPath;
     followingPath = nextPath;
     fn_1_8480(&position, &currentPath, &previousPath, &nextPath, &followingPath,
               (f32)sceneryObject->work[3], (f32)lbl_1_bss_138);
-    fn_80026790(sceneryObject->mdlId[0], (Point3d *)&position);
+    fn_80026790(sceneryObject->mdlId[0], &position);
     lbl_1_bss_138++;
     if (lbl_1_bss_138 >= sceneryObject->work[3]) {
         lbl_1_bss_138 = 1;
@@ -151,7 +147,7 @@ void fn_1_7E84(OMOBJ *sceneryObject)
         depthOffset -= fn_1_4ADC();
         depthOffset *= -1.0f;
         position.z += depthOffset;
-        fn_80026790(sceneryObject->mdlId[0], (Point3d *)&position);
+        fn_80026790(sceneryObject->mdlId[0], &position);
         lbl_1_bss_128++;
         if (lbl_1_bss_128 > 120) {
             lbl_1_bss_128 = 120;
@@ -173,7 +169,7 @@ void fn_1_7E84(OMOBJ *sceneryObject)
                  (38.0f == fn_8002D4E0(sceneryObject->mdlId[0])) ||
                  (54.0f == fn_8002D4E0(sceneryObject->mdlId[0])) ||
                  (70.0f == fn_8002D4E0(sceneryObject->mdlId[0])))) {
-                HuAudFXPlay(940);
+                HuAudFXPlay(MSM_SE_GUIDE_NIGHT_CHEER);
             }
         } else if (fn_8002D3EC(sceneryObject->mdlId[0]) < 0) {
             fn_800269E8(sceneryObject->mdlId[0], ((1 << 30) | (1 << 1)));
@@ -224,7 +220,7 @@ void fn_1_8480(
     sampleTimes[3] = 2.0f * duration;
     /* Apply quarter-sine easing to the sample time before interpolating the position. */
     frame = (f32)((f64)duration *
-        sin((3.141592653589793 *
+        sin((M_PI *
             (f64)(90.0f * (frame / duration))) /
             180.0));
 
@@ -397,7 +393,7 @@ void fn_1_8B58(OMOBJ *arenaObject)
                             fn_8002CCC0(arenaObject->mdlId[index + 3],
                                                arenaObject->mtnId[(index * 2) + 7], 0.0f,
                                                8.0f, ((1 << 30) | (1 << 0)));
-                            HuAudFXPlay(1001);
+                            HuAudFXPlay(MSM_SE_GUIDE_EVENT_NPC_TALK);
                         }
                     } else if (lbl_1_bss_11C[index] < 100) {
                         position.x += 100.0f;

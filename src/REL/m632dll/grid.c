@@ -43,7 +43,7 @@ void fn_1_4D48(void)
     int spreadX;
     int spreadZ;
     int cellIndex;
-    u8 *patternData;
+    s8 *patternData;
     int found; /* Set when a collision actor occupies the current cell. */
 
     patternData = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
@@ -59,7 +59,7 @@ void fn_1_4D48(void)
     while (cellIndex < 64) {
         cellX = cellIndex % 8;
         cellZ = cellIndex / 8;
-        if (((s8) patternData[0] >= 2) && ((s8) patternData[0] <= 3)) {
+        if ((patternData[0] >= 2) && (patternData[0] <= 3)) {
             lbl_1_bss_0.gridB[cellIndex] += 255;
         } else {
             found = 0;

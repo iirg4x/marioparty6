@@ -59,16 +59,6 @@ s32 fn_1_7660(s32 (*callback)(void *), void *data);
 void fn_1_76C8(M638Job **job);
 s32 fn_1_6790(void *data);
 
-/* Scene lighting positions and the day/night lighting choice. */
-typedef struct M638LightingView {
-    u8 unknown000[1704]; /* Scene fields not used by the lighting callbacks. */
-    Point3d lightPosition; /* Position of the scene's directional light. */
-    Point3d lightTarget; /* Point the scene light aims toward. */
-    u8 unknown6C0[44]; /* Scene fields not used by the lighting callbacks. */
-    s16 alternateLight; /* Nonzero selects the alternate course lighting. */
-} M638LightingView;
-void fn_1_13B4(M638LightingView *scene);
-void fn_1_1470(M638LightingView *scene);
 void fn_1_5528(M638ScaleWork *work, s32 camera);
 void fn_1_56B4(M638ScaleWork *work);
 
@@ -79,22 +69,9 @@ typedef struct M638CameraWork {
 void fn_1_16AC(M638CameraWork *work);
 /* Model handles cached while the scene and course props are created. */
 typedef struct M638ModelCacheView {
-    u8 unknown000[1810]; /* Scene state preceding the shared model cache. */
+    u8 unk00[1810]; /* Scene state preceding the shared model cache. */
     s16 models[74]; /* Model handles cached for the scene and course props. */
 } M638ModelCacheView;
-
-/* Camera and status-sprite state used while the two team views move. */
-typedef struct M638SceneCameraView {
-    u8 unknown000[524]; /* Scene camera state preceding team 0's view model. */
-    s16 team0Model; /* Team 0 camera-view model handle. */
-    u8 unknown20E[834]; /* Scene camera state between the team view models. */
-    s16 team1Model; /* Team 1 camera-view model handle. */
-    u8 unknown552[310]; /* Scene camera state preceding split animation data. */
-    M638CameraWork camera; /* Shared camera split transition state. */
-    u8 unknown690[280]; /* Scene state preceding the status sprites. */
-    s16 sprite0; /* First status sprite handle. */
-    s16 sprite1; /* Second status sprite handle. */
-} M638SceneCameraView;
 
 /* One course prop's position, model, animation state, and travel flag. */
 typedef struct M638Prop {
@@ -114,9 +91,9 @@ typedef struct M638PropGroups {
 } M638PropGroups;
 /* Course lighting choice and cached course model handles. */
 typedef struct M638ScenePropsView {
-    u8 unknown000[1772]; /* Scene state preceding lighting and model handles. */
+    u8 unk00[1772]; /* Scene state preceding lighting and model handles. */
     s16 alternateLight; /* Nonzero selects the alternate course lighting. */
-    u8 unknown6EE[36]; /* Scene state between lighting and model handles. */
+    u8 unk6EE[36]; /* Scene state between lighting and model handles. */
     s16 models[74]; /* Cached scene and course prop model handles. */
 } M638ScenePropsView;
 
@@ -138,7 +115,7 @@ typedef struct M638PlayerView {
     s16 group; /* Player team number. */
     s16 member; /* Player position within its team. */
     s16 padNo; /* Controller assigned to this player. */
-    u8 unknown4A[4]; /* Player state not interpreted by this module. */
+    u8 unk4A[4]; /* No code names this field. */
     s16 isCom; /* Nonzero when this player is computer-controlled. */
     s16 difficulty; /* Computer difficulty level. */
     s16 attachedModel; /* Model attached to the player's character. */
@@ -151,38 +128,33 @@ typedef struct M638PlayerView {
 
 /* Bounce effect, split transition, and team finish presentation state. */
 typedef struct M638BounceView {
-    u8 unknown000[32]; /* Effect state preceding its frame counter. */
+    u8 unk00[32]; /* Effect state preceding its frame counter. */
     s32 count; /* Frames elapsed in the bounce effect. */
-    u8 unknown024[6]; /* Effect state preceding its two model handles. */
+    u8 unk24[6]; /* Effect state preceding its two model handles. */
     s16 modelA; /* First model used by the bounce effect. */
     s16 modelB; /* Second model used by the bounce effect. */
 } M638BounceView;
 typedef struct M638SceneSplitView {
-    u8 unknown000[1672]; /* Scene state preceding the split transition. */
+    u8 unk00[1672]; /* Scene state preceding the split transition. */
     M638CameraWork camera; /* Progress and horizontal position of the split. */
-    u8 unknown690[106]; /* Scene state preceding the selected screen side. */
+    u8 unk690[106]; /* No code names this field. */
     s16 side; /* Team side being brought to the full-screen view. */
 } M638SceneSplitView;
 typedef struct M638TeamFinishView {
-    u8 unknown000[8]; /* Team finish state preceding the output value. */
+    u8 unk00[8]; /* Team finish state preceding the output value. */
     f32 output; /* Current output passed to the finish presentation. */
-    u8 unknown00C[20]; /* Team finish state preceding the source value. */
+    u8 unk0C[20]; /* No code names this field. */
     f32 source; /* Starting value blended into the finish presentation. */
-    u8 unknown024[488]; /* Team finish state preceding the finish model. */
+    u8 unk24[488]; /* Team finish state preceding the finish model. */
     s16 model; /* Winning team's finish model handle. */
-    u8 unknown20E[242]; /* Team finish model state preceding blend values. */
+    u8 unk20E[242]; /* No code names this field. */
     f32 blend; /* Current visual blend for the team's finish presentation. */
     f32 base; /* Blend value used as the finish transition's starting point. */
     f32 elapsed; /* Frames elapsed in the finish transition. */
     s32 state; /* Finish callback phase. */
-    u8 unknown310[40]; /* Team finish state preceding the team variant. */
+    u8 unk310[40]; /* No code names this field. */
     s16 variant; /* Team index used to select finish sounds and assets. */
 } M638TeamFinishView;
-
-typedef struct M638SceneChoicesView {
-    u8 unknown000[1788]; /* Scene state preceding course choice values. */
-    s16 choices[11]; /* Selected course event choices. */
-} M638SceneChoicesView;
 
 /* Team actor pose, visual blend, and motion state. */
 typedef struct M638TeamActorView {
@@ -204,7 +176,7 @@ typedef struct M638CourseView {
     M638Prop pair[2][2]; /* Paired props queued for the two team courses. */
     s32 pairIndex[2]; /* Next prop slot for each team course. */
     M638PropGroups props; /* Small, middle, and night course props. */
-    u8 unknown1C8[4]; /* Course state preceding the current segment. */
+    u8 unk1C8[4]; /* No code names this field. */
     s16 current; /* Index of the current course segment. */
     s16 alternateModel; /* Model handle for the alternate course appearance. */
     s16 model; /* Current course model handle. */
@@ -216,11 +188,11 @@ typedef struct M638CourseView {
     s16 nightModels[5]; /* Night course model handles. */
 } M638CourseView;
 typedef struct M638SceneCourseView {
-    u8 unknown000[1728]; /* Scene state preceding course event timing. */
+    u8 unk00[1728]; /* Scene state preceding course event timing. */
     f32 eventTimes[10]; /* Course motion times for the event hooks. */
     f32 endTime; /* Course motion time at the end of the segment. */
     s16 alternateLight; /* Nonzero selects alternate course lighting. */
-    u8 unknown6EE[14]; /* Scene course state preceding selected choices. */
+    u8 unk6EE[14]; /* Scene course state preceding selected choices. */
     s16 choices[11]; /* Selected course event choices. */
     s16 models[74]; /* Cached model handles for the course scene. */
 } M638SceneCourseView;
@@ -230,7 +202,7 @@ struct M638TeamView {
     M638PlayerView *players[2]; /* Two players assigned to this team. */
     M638TeamActorView actor; /* Team character pose and animation state. */
     M638CourseView course; /* Course segment and prop state for this team. */
-    u8 unknown2B8[4]; /* Team state preceding the scale transition. */
+    u8 unk2B8[4]; /* No code names this field. */
     M638ScaleWork scale; /* Model and progress for the team's scale effect. */
     M638Prop props[3]; /* Course props currently queued for this team. */
     f32 blend; /* Current visual blend for the team presentation. */
@@ -246,12 +218,12 @@ struct M638TeamView {
     f32 cameraBlend; /* Smoothed portion of blend used to move this team's camera. */
     f32 unusedFloat; /* Cleared to 0.0 during team setup. */
     s16 sprites[5]; /* Button and status sprites for the team view. */
-    u8 unknown32E[2]; /* Team state preceding the sound identifiers. */
+    u8 unk32E[2]; /* No code names this field. */
     s32 buttonIndicatorFrames; /* Frames elapsed since the active button indicator last switched. */
     s32 buttonIndicatorIndex; /* Alternates between the two indicator sprites for the selected
                                * button. */
     s16 variant; /* Team index used for team-specific behavior. */
-    u8 unknown33A[2]; /* Team state preceding its sound identifiers. */
+    u8 unk33A[2]; /* No code names this field. */
     s32 sound0; /* First sound identifier used by this team. */
     s32 sound1; /* Second sound identifier used by this team. */
 };
@@ -264,8 +236,8 @@ typedef struct M638SceneView {
     s32 record; /* Stored record time in timer frames. */
     s32 time; /* Current match time in timer frames. */
     s32 newRecord; /* Nonzero when the match establishes a new record. */
-    Point3d vector0; /* Scene transition vector used by the camera. */
-    Point3d vector1; /* Destination vector used by the camera transition. */
+    Point3d lightPosition; /* Set by fn_1_1CD4; light position in fn_1_13B4/fn_1_1470. */
+    Point3d lightTarget; /* Set by fn_1_1CD4; light target in fn_1_13B4/fn_1_1470. */
     f32 eventTimes[10]; /* Course motion times for the event hooks. */
     f32 endTime; /* Course motion time at the end of play. */
     s16 alternateLight; /* Nonzero selects alternate course lighting. */
@@ -302,6 +274,8 @@ void fn_1_D84(s16 mode, s16 frameNo);
 void fn_1_11EC(s16 mode, s16 frameNo);
 void fn_1_11F0(s16 mode, s16 frameNo);
 void fn_1_1294(void);
+void fn_1_13B4(M638SceneView *scene);
+void fn_1_1470(M638SceneView *scene);
 void fn_1_165C(M638CameraWork *camera);
 void fn_1_1988(OMOBJ *obj);
 void fn_1_19C0(OMOBJ *obj);
@@ -317,9 +291,9 @@ void fn_1_3804(M638SceneView *sceneData);
 void fn_1_386C(M638CourseView *course, s32 camera);
 void fn_1_4948(M638CourseView *course);
 void fn_1_4B4C(M638CourseView *course);
-void fn_1_4D68(M638SceneChoicesView *scene);
+void fn_1_4D68(M638SceneView *scene);
 void fn_1_4E48(M638SceneView *scene);
-void fn_1_5378(M638SceneCameraView *scene);
+void fn_1_5378(M638SceneView *scene);
 void fn_1_5814(M638PropGroups *data, s32 camera);
 void fn_1_5D0C(M638PropGroups *group, f32 time);
 s32 fn_1_6098(void *data);
@@ -381,17 +355,6 @@ extern char lbl_1_data_175[9];
 extern char lbl_1_data_17E[9];
 extern char lbl_1_data_187[9];
 extern char *lbl_1_data_190[40];
-extern char lbl_1_data_230[5];
-extern char lbl_1_data_235[9];
-extern char lbl_1_data_23E[9];
-extern char lbl_1_data_247[9];
-extern char lbl_1_data_250[9];
-extern char lbl_1_data_259[9];
-extern char lbl_1_data_262[9];
-extern char lbl_1_data_26B[9];
-extern char lbl_1_data_274[9];
-extern char lbl_1_data_27D[9];
-extern char lbl_1_data_286[10];
 extern char *lbl_1_data_290[40];
 extern struct _struct_lbl_1_data_330_0x8 lbl_1_data_330[10];
 extern f32 lbl_1_data_380[10];

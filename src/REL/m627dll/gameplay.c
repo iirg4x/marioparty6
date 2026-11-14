@@ -20,15 +20,16 @@
 #include "datadir_enum.h"
 #include "msm_se.h"
 #include <string.h>
+#include "humath.h"
 
-#define MSM_SE_M627_ACTOR_START 1807
-#define MSM_SE_M627_ENTRY_FIRST_SCREEN 1808
-#define MSM_SE_M627_ENTRY_SECOND_SCREEN 1809
-#define MSM_SE_M627_LANDING_FIRST_SCREEN 1810
-#define MSM_SE_M627_BOUNDARY_HIT 1812
-#define MSM_SE_M627_TURN_FIRST_SCREEN 1813
-#define MSM_SE_M627_LANDING_SECOND_SCREEN 1816
-#define MSM_SE_M627_TURN_SECOND_SCREEN 1818
+
+
+
+
+
+
+
+
 
 extern OMOBJMAN *lbl_1_bss_0;
 
@@ -1392,10 +1393,10 @@ void fn_1_32A4(s16 cameraGroup, M627Entry *work)
     }
 
     if (cameraGroup == 0) {
-        fn_1_430(1, &work->position, MSM_SE_M627_ENTRY_FIRST_SCREEN);
+        fn_1_430(1, &work->position, MSM_SE_MG627_ENTRY_FIRST_SCREEN);
         return;
     }
-    fn_1_430(2, &work->position, MSM_SE_M627_ENTRY_SECOND_SCREEN);
+    fn_1_430(2, &work->position, MSM_SE_MG627_ENTRY_SECOND_SCREEN);
 }
 
 /* Updates a grounded player's action and push animation from the per-player mode callback. */
@@ -1485,7 +1486,7 @@ int fn_1_17188__12CallbackBaseFv(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
 /* Player-object creation callback; builds the character actor and accessory before its entrance. */
 void fn_1_39A8(OMOBJ *object)
 {
-    M627PlayerWork *work = ((M627PlayerWork *)(object->data));
+    M627PlayerWork *work = object->data;
     MGACTOR_PARAM actorParameters = {0};
     s32 playerCameraBit;
     s32 groupNumber;
@@ -1648,10 +1649,10 @@ void *fn_1_40CC(M627PlayerWork *state)
     f32 distanceSquared;
 
     searchPoint.x = (f32)(80.0 *
-                         sin((3.141592653589793 * (f64)rotation) / 180.0));
+                         sin((M_PI * (f64)rotation) / 180.0));
     searchPoint.y = 0.0f;
     searchPoint.z = (f32)(80.0 *
-                         cos((3.141592653589793 * (f64)rotation) / 180.0));
+                         cos((M_PI * (f64)rotation) / 180.0));
     searchPoint.x += center->x;
     searchPoint.y += center->y;
     searchPoint.z += center->z;
@@ -2392,7 +2393,7 @@ void fn_1_6F60(OMOBJ *object)
         {
             s16 soundPan = pan;
 
-        HuAudFXPlayVolPan(MSM_SE_M627_ACTOR_START, 127, soundPan);
+        HuAudFXPlayVolPan(MSM_SE_MG627_BALL_ENTRANCE, 127, soundPan);
         }
         fn_1_140(object, fn_1_7020);
         return;
@@ -2437,7 +2438,7 @@ void fn_1_7020(OMOBJ *object)
                 cameraOnePan = (s16)(32.0f +
                                      (32.0f * (projectedCameraOne.x - 16.0f)) / 300.0f);
             }
-            cameraOneSoundHandle = HuAudFXPlayVolPan(MSM_SE_M627_LANDING_FIRST_SCREEN, 127,
+            cameraOneSoundHandle = HuAudFXPlayVolPan(MSM_SE_MG627_LANDING_FIRST_SCREEN, 127,
                                                      cameraOnePan);
             state->soundHandle = cameraOneSoundHandle;
         } else {
@@ -2450,7 +2451,7 @@ void fn_1_7020(OMOBJ *object)
                 cameraTwoPan = (s16)(64.0f +
                                      (32.0f * (projectedCameraTwo.x - 324.0f)) / 300.0f);
             }
-            cameraTwoSoundHandle = HuAudFXPlayVolPan(MSM_SE_M627_LANDING_SECOND_SCREEN, 127,
+            cameraTwoSoundHandle = HuAudFXPlayVolPan(MSM_SE_MG627_LANDING_SECOND_SCREEN, 127,
                                                      cameraTwoPan);
             state->soundHandle = cameraTwoSoundHandle;
         }
@@ -2663,7 +2664,7 @@ s16 fn_1_7B98(Point3d *start, Point3d *direction, f32 radius,
     }
 
     radiusAlongSlope = (f32)((f64)radius /
-                             cos((3.141592653589793 * (f64)lbl_1_data_DE0.angle) /
+                             cos((M_PI * (f64)lbl_1_data_DE0.angle) /
                                  180.0));
     adjustedOriginRadius = lbl_1_data_DE0.originRadius - radiusAlongSlope;
     adjustedLowerCenterRadius = lbl_1_data_DE0.lowerCenterRadius - radiusAlongSlope;
@@ -2705,10 +2706,10 @@ s16 fn_1_7B98(Point3d *start, Point3d *direction, f32 radius,
     if (PSVECSquareMag(contactNormal) > 0.01f) {
         PSVECNormalize(contactNormal, contactNormal);
         PSVECScale(contactNormal, contactNormal,
-                   (f32)-cos((3.141592653589793 * (f64)lbl_1_data_DE0.angle) /
+                   (f32)-cos((M_PI * (f64)lbl_1_data_DE0.angle) /
                              180.0));
         contactNormal->y =
-            (f32)sin((3.141592653589793 * (f64)lbl_1_data_DE0.angle) /
+            (f32)sin((M_PI * (f64)lbl_1_data_DE0.angle) /
                      180.0);
         PSVECNormalize(contactNormal, contactNormal);
     } else {
@@ -2904,9 +2905,9 @@ void fn_1_8B40(OMOBJ *object)
         if (state->soundActive != 0) {
           if (state->soundMode != 0) {
             if (state->cameraGroup == 0) {
-                fn_1_430(1, &position, MSM_SE_M627_TURN_FIRST_SCREEN);
+                fn_1_430(1, &position, MSM_SE_MG627_TURN_FIRST_SCREEN);
             } else {
-                fn_1_430(2, &position, MSM_SE_M627_TURN_SECOND_SCREEN);
+                fn_1_430(2, &position, MSM_SE_MG627_TURN_SECOND_SCREEN);
             }
           }
             state->soundActive = 0;
@@ -2945,9 +2946,9 @@ void fn_1_8B40(OMOBJ *object)
     if (didCollide != 0 && PSVECMag(&state->velocity) > 1.5f &&
         PSVECMag(&nextDirection) > 1.5f) {
         previousAngle = (f32)(180.0 *
-            (atan2((f64)state->velocity.x, (f64)state->velocity.z) / 3.141592653589793));
+            (atan2((f64)state->velocity.x, (f64)state->velocity.z) / M_PI));
         angleDelta = (f32)(180.0 *
-            (atan2((f64)nextDirection.x, (f64)nextDirection.z) / 3.141592653589793));
+            (atan2((f64)nextDirection.x, (f64)nextDirection.z) / M_PI));
         angleDelta -= previousAngle;
         while (angleDelta >= 180.0f) {
             angleDelta -= 360.0f;
@@ -2963,9 +2964,9 @@ void fn_1_8B40(OMOBJ *object)
     if (playTurnSound != 0) {
         if (state->soundMode != 0) {
             if (state->cameraGroup == 0) {
-                fn_1_430(1, &position, MSM_SE_M627_TURN_FIRST_SCREEN);
+                fn_1_430(1, &position, MSM_SE_MG627_TURN_FIRST_SCREEN);
             } else {
-                fn_1_430(2, &position, MSM_SE_M627_TURN_SECOND_SCREEN);
+                fn_1_430(2, &position, MSM_SE_MG627_TURN_SECOND_SCREEN);
             }
         }
         state->soundActive = 0;
@@ -2983,10 +2984,10 @@ void fn_1_8B40(OMOBJ *object)
             if (state->soundMode != 0) {
                 if (state->cameraGroup == 0) {
                     state->soundHandle = fn_1_430(1, &position,
-                                                  MSM_SE_M627_LANDING_FIRST_SCREEN);
+                                                  MSM_SE_MG627_LANDING_FIRST_SCREEN);
                 } else {
                     state->soundHandle = fn_1_430(2, &position,
-                                                  MSM_SE_M627_LANDING_SECOND_SCREEN);
+                                                  MSM_SE_MG627_LANDING_SECOND_SCREEN);
                 }
             }
             state->soundActive = 1;
@@ -2994,9 +2995,9 @@ void fn_1_8B40(OMOBJ *object)
     } else if (state->soundActive != 0) {
       if (state->soundMode != 0) {
         if (state->cameraGroup == 0) {
-            fn_1_430(1, &position, MSM_SE_M627_TURN_FIRST_SCREEN);
+            fn_1_430(1, &position, MSM_SE_MG627_TURN_FIRST_SCREEN);
         } else {
-            fn_1_430(2, &position, MSM_SE_M627_TURN_SECOND_SCREEN);
+            fn_1_430(2, &position, MSM_SE_MG627_TURN_SECOND_SCREEN);
         }
       }
         state->soundActive = 0;
@@ -3079,9 +3080,9 @@ void fn_1_9A2C(OMOBJ *object)
         if (state->soundActive != 0) {
             if (state->soundMode != 0) {
                 if (state->cameraGroup == 0) {
-                    fn_1_430(1, &contactPosition, MSM_SE_M627_TURN_FIRST_SCREEN);
+                    fn_1_430(1, &contactPosition, MSM_SE_MG627_TURN_FIRST_SCREEN);
                 } else {
-                    fn_1_430(2, &contactPosition, MSM_SE_M627_TURN_SECOND_SCREEN);
+                    fn_1_430(2, &contactPosition, MSM_SE_MG627_TURN_SECOND_SCREEN);
                 }
             }
             state->soundActive = 0;
@@ -3134,10 +3135,10 @@ void fn_1_9A2C(OMOBJ *object)
             if (nextSpeed > 1.5f) {
                 previousAngle = (f32)(180.0 *
                     (atan2((f64)state->velocity.x, (f64)state->velocity.z) /
-                     3.141592653589793));
+                     M_PI));
                 angleDelta = (f32)(180.0 *
                     (atan2((f64)nextVelocity.x, (f64)nextVelocity.z) /
-                     3.141592653589793));
+                     M_PI));
                 angleDelta -= previousAngle;
                 while (angleDelta >= 180.0f) {
                     angleDelta -= 360.0f;
@@ -3155,23 +3156,23 @@ void fn_1_9A2C(OMOBJ *object)
     }
     if (playTurnSound != 0 && state->soundMode != 0) {
         if (state->cameraGroup == 0) {
-            fn_1_430(1, &contactPosition, MSM_SE_M627_TURN_FIRST_SCREEN);
+            fn_1_430(1, &contactPosition, MSM_SE_MG627_TURN_FIRST_SCREEN);
         } else {
-            fn_1_430(2, &contactPosition, MSM_SE_M627_TURN_SECOND_SCREEN);
+            fn_1_430(2, &contactPosition, MSM_SE_MG627_TURN_SECOND_SCREEN);
         }
     }
 
     if (lastContactType == 2) {
         if (state->boundarySoundPlayed == 0 && lbl_1_bss_10 == state->cameraGroup) {
-            HuAudFXPlayVolPan(MSM_SE_M627_BOUNDARY_HIT, 127, 64);
+            HuAudFXPlayVolPan(MSM_SE_MG627_BOUNDARY_HIT, 127, 64);
             state->boundarySoundPlayed = 1;
         }
         if (state->soundActive != 0) {
             if (state->soundMode != 0) {
                 if (state->cameraGroup == 0) {
-                    fn_1_430(1, &contactPosition, MSM_SE_M627_TURN_FIRST_SCREEN);
+                    fn_1_430(1, &contactPosition, MSM_SE_MG627_TURN_FIRST_SCREEN);
                 } else {
-                    fn_1_430(2, &contactPosition, MSM_SE_M627_TURN_SECOND_SCREEN);
+                    fn_1_430(2, &contactPosition, MSM_SE_MG627_TURN_SECOND_SCREEN);
                 }
             }
             state->soundActive = 0;
@@ -3194,10 +3195,10 @@ void fn_1_9A2C(OMOBJ *object)
                 if (state->soundMode != 0) {
                     if (state->cameraGroup == 0) {
                         state->soundHandle = fn_1_430(
-                            1, &contactPosition, MSM_SE_M627_LANDING_FIRST_SCREEN);
+                            1, &contactPosition, MSM_SE_MG627_LANDING_FIRST_SCREEN);
                     } else {
                         state->soundHandle = fn_1_430(
-                            2, &contactPosition, MSM_SE_M627_LANDING_SECOND_SCREEN);
+                            2, &contactPosition, MSM_SE_MG627_LANDING_SECOND_SCREEN);
                     }
                 }
                 state->soundActive = 1;
@@ -3205,10 +3206,10 @@ void fn_1_9A2C(OMOBJ *object)
         } else if (state->soundActive != 0) {
             if (state->soundMode != 0) {
                 if (state->cameraGroup == 0) {
-                    fn_1_430(1, &contactPosition, MSM_SE_M627_TURN_FIRST_SCREEN);
+                    fn_1_430(1, &contactPosition, MSM_SE_MG627_TURN_FIRST_SCREEN);
                 } else {
                     /* This second-screen cue still uses camera 1 for projection and panning. */
-                    fn_1_430(1, &contactPosition, MSM_SE_M627_TURN_SECOND_SCREEN);
+                    fn_1_430(1, &contactPosition, MSM_SE_MG627_TURN_SECOND_SCREEN);
                 }
             }
             state->soundActive = 0;

@@ -6,6 +6,7 @@
 #include "datadir_enum.h"
 #include "game/mgdata.h"
 #include "game/thpmain.h"
+#include "dolphin/gx.h"
 
 HU3D_MODELID lbl_1_bss_A4; /* Preview model whose hook draws the still or movie with the frame. */
 HUSPR_GROUPID lbl_1_bss_A2; /* Group holding the current minigame movie sprite. */
@@ -192,10 +193,10 @@ void fn_1_898(HU3D_MODEL *previewModel, Mtx *modelMatrix)
     GXSetCullMode(GX_CULL_NONE);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
-    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP, GX_AF_SPOT);
     GXSetNumChans(0);
-    GXLoadPosMtxImm(*modelMatrix, 0);
+    GXLoadPosMtxImm(*modelMatrix, GX_PNMTX0);
     if (HuTHPStartCheck() != 0) {
         fn_800360D8(lbl_1_bss_94, 284, 256, 4, GX_CLAMP, GX_CLAMP, GX_TRUE,
                     GX_TEXMAP0);

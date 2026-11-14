@@ -20,18 +20,12 @@
 #include "REL/optionDll/main.h"
 #include "REL/optionDll/records.h"
 #include "REL/optionDll/sound_test.h"
+#include "REL/optionDll/option.h"
 #include "humath.h"
 
 #define OPTION_MODEL_END ((u32)-1)
 
 typedef void (*VoidFunc)(void);
-
-typedef struct OptionAudioEntry {
-    s8 type; /* Zero selects streamed music, one selects sound effects, and -1 ends a list. */
-    s32 marker; /* -1 for audio rows; zero for the terminating row. */
-    s32 message; /* Message displayed for this sound test entry. */
-    s32 audioId; /* Stream or sound effect identifier. */
-} OptionAudioEntry;
 
 typedef struct OptionModelEntry {
     u32 dataNum;
@@ -43,7 +37,7 @@ typedef struct OptionModelEntry {
     u32 attr1;
     u32 attr2;
     s16 cameraBit;
-    u16 unk_32;
+    u16 unk36; /* No code names this field. */
 } OptionModelEntry;
 
 typedef struct OptionAnimPair {
@@ -64,7 +58,7 @@ typedef struct OptionPrizeEntry {
     u32 name;
     u32 description;
     s16 id;
-    s16 unkE;
+    s16 unkE; /* No code names this field. */
 } OptionPrizeEntry;
 
 typedef struct OptionRecordDisplayEntry {
@@ -196,15 +190,6 @@ extern s16 lbl_1_bss_6A2[];
 extern s16 lbl_1_bss_6A0;
 extern ANIMDATA *lbl_1_bss_BF8[];
 extern s16 lbl_1_bss_BF0[4];
-
-void fn_1_EA6C(void);
-void fn_1_E6F8(void);
-void fn_1_F1D8(void);
-void fn_1_F394(void);
-void fn_1_F0B0(void);
-void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-float fn_1_F684(s16 groupId, s16 memberNo);
 
 /* The settings list calls this when the player previews a sound entry. */
 void fn_1_E688(OptionAudioEntry *entry)

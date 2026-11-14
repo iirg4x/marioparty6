@@ -180,22 +180,22 @@ typedef struct M606MotionPattern {
 
 typedef struct M606SpriteState {
     s32 entry;
-    u8 unknown04[0x10]; /* No code names this field. */
+    u8 unk04[0x10]; /* No code names this field. */
 } M606SpriteState;
 
 typedef struct M606TimerSlot {
     MGTIMER *timer;
-    u8 unknown04[8]; /* No code names this field. */
+    u8 unk04[8]; /* No code names this field. */
 } M606TimerSlot;
 
 typedef struct M606AngleState {
     f32 value;
-    u8 unknown04[4]; /* No code names this field. */
+    u8 unk04[4]; /* No code names this field. */
 } M606AngleState;
 
 typedef struct CallbackStorage {
     void (*callback)(MGPLAYER *);
-    u8 unknown04[0x64]; /* No code names this field. */
+    u8 unk04[0x64]; /* No code names this field. */
 } CallbackStorage;
 
 struct M606SoundRequest {

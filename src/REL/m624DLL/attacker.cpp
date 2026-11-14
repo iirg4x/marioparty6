@@ -1,5 +1,5 @@
-/* Spacing preserves the assertion's source line.
- */
+/* Retail fixes the next assert's line; the earlier lines are unknown: 1 line is left blank. */
+
 #include "REL/framework/random.h"
 // The attackers: each one waits a random time, shakes, jumps and lands back on its start point,
 // and the map reacts to each landing (man_map.cpp).

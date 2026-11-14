@@ -3,10 +3,7 @@
 #include "game/object.h"
 #include "game/mg/seqman.h"
 #include "game/charman.h"
-/* The sequence controller keeps timer handles without accessing their internal state. */
-typedef struct MgTimer_s MGTIMER;
-MGTIMER *MgTimerCreate(int type);
-int MgTimerValueGet(MGTIMER *timer);
+#include "game/mg/timer.h"
 
 typedef struct M629Impulse {
     s32 animationStep; /* Zero is free, one is queued; later steps animate and apply the impact. */
@@ -22,7 +19,7 @@ typedef struct M629Player {
     s32 charNo; /* Character ID from the player's game configuration. */
     s32 padNo; /* Controller port, or -1 when this actor is CPU-controlled. */
     s32 difficulty; /* CPU difficulty index, from zero through three. */
-    u8 unusedPlayerBytes[4]; /* Four bytes not accessed by these callbacks. */
+    u8 unk_18[4]; /* No code names this field. */
     s32 idleFrames; /* Consecutive frames without a tap from the solo player. */
     s32 itemActive; /* Nonzero while the detached item toss is updated; zero before the toss or
                     * after the item is hidden. */
@@ -120,23 +117,14 @@ void fn_1_5A08(s16 mode, s16 frameNo);
 #include "game/mg/actman.h"
 #include "string.h"
 #include "math.h"
+#include "humath.h"
 
 /* Stream played when Pop Star's start banner sounds. */
-#define M629_BGM_STREAM_ID MSM_STREAM_UPBEAT
 /* Rollover bound for the piston animation frame counter. */
 #define M629_FRAME_COUNTER_LIMIT 4026531840U
 /* Motion-table bits select the solo actor and the three opponents. */
 #define M629_MOTION_SOLO_MASK 0x01
 #define M629_MOTION_TEAM_MASK 0x02
-/* Effects queued by taps, piston impacts, side completion, and the opening demonstration. */
-#define M629_SE_SOLO_IMPACT 1824
-#define M629_SE_SOLO_TAP 1825
-#define M629_SE_SIDE_COMPLETE 1826
-#define M629_SE_DAY_COMPLETE 1827
-#define M629_SE_NIGHT_COMPLETE 1828
-#define M629_SE_TEAM_IMPACT 1829
-#define M629_SE_DAY_INTRO 1830
-#define M629_SE_NIGHT_INTRO 1831
 
 /* Character model resource table; these callbacks do not read it. */
 u32 lbl_1_data_0[14] = {
@@ -731,10 +719,10 @@ void fn_1_1F90(OMOBJ *obj)
         /* Apply the same Z wobble to both side displays; its amplitude is zero below
          * one-quarter progress and ramps to two degrees at three-quarters progress. */
         fn_80026808(obj->mdlId[i + 19], 0.0f, 0.0f,
-            sin(3.141592653589793 * lbl_1_data_160[i] / 180.0)
+            sin(M_PI * lbl_1_data_160[i] / 180.0)
                 * (ratio < 0.25f ? 0.0f : ratio < 0.75f ? 2.0f * ((ratio - 0.25f) / 0.5f) : 2.0f));
         fn_80026808(obj->mdlId[i + 21], 0.0f, 0.0f,
-            sin(3.141592653589793 * lbl_1_data_160[i] / 180.0)
+            sin(M_PI * lbl_1_data_160[i] / 180.0)
                 * (ratio < 0.25f ? 0.0f : ratio < 0.75f ? 2.0f * ((ratio - 0.25f) / 0.5f) : 2.0f));
     }
     lbl_1_data_C8 += lbl_1_data_C8 < 65535;
@@ -791,10 +779,10 @@ void fn_1_336C(OMOBJ *obj)
         playerWork[i] = lbl_1_bss_5E4[i]->data;
     }
     for (i = 0; i < 8; i++) {
-        s32 sound[8] = {
-            M629_SE_SOLO_IMPACT, M629_SE_SOLO_TAP, M629_SE_SIDE_COMPLETE, M629_SE_DAY_COMPLETE,
-            M629_SE_NIGHT_COMPLETE, M629_SE_TEAM_IMPACT, M629_SE_DAY_INTRO, M629_SE_NIGHT_INTRO
-        };
+        s32 sound[8] = { MSM_SE_MG629_SOLO_IMPACT,    MSM_SE_MG629_SOLO_TAP,
+                         MSM_SE_MG629_SIDE_COMPLETE,  MSM_SE_MG629_DAY_COMPLETE,
+                         MSM_SE_MG629_NIGHT_COMPLETE, MSM_SE_MG629_TEAM_IMPACT,
+                         MSM_SE_MG629_DAY_INTRO,      MSM_SE_MG629_NIGHT_INTRO };
 
         if (lbl_1_bss_5FC[i].count > 3) {
             lbl_1_bss_5FC[i].count = 3;
@@ -829,7 +817,7 @@ void fn_1_336C(OMOBJ *obj)
     case 3:
         /* Begin the music once the start banner has played its sound cue. */
         if (lbl_1_data_B4 == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
-            lbl_1_data_B4 = HuAudBGMPlay(M629_BGM_STREAM_ID);
+            lbl_1_data_B4 = HuAudBGMPlay(MSM_STREAM_UPBEAT);
         }
         break;
     case 5:

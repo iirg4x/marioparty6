@@ -1,6 +1,6 @@
 /* Builds and animates the Endurance Alley course scenery and event effects. */
 #include "REL/mgmrenshodll/module_types.h"
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -43,24 +43,21 @@
 #include "game/board/audio.h"
 #include "game/board/masu.h"
 #include "game/board/player.h"
-#define MSM_SE_RENSHO_1254 1254
-#define MSM_SE_RENSHO_1255 1255
-#define MSM_SE_RENSHO_1256 1256
-#define MSM_SE_RENSHO_1258 1258
-#define MSM_SE_RENSHO_1259 1259
-#define MSM_SE_RENSHO_1260 1260
-#define MSM_SE_RENSHO_1257 1257
+
+
+
+
+
+
+
 /* Course scenery loops both its main and shape tracks; event props pause every motion layer. */
 #define HU3D_MOTATTR_RENSHO_LOOP (((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)))
 #define HU3D_MOTATTR_RENSHO_PAUSE                                                                  \
     (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 7)) |                    \
      ((1 << 30) | (1 << 10)))
 
-s16 fn_1_A00C(void);
-s16 fn_1_A05C(s16);
 extern u8 MgModePlayNum;
 f32 fn_1_4ADC(void);
-s16 fn_1_A00C();
 extern OMOBJMAN *lbl_1_bss_158;
 void fn_1_4F1C(OMOBJ *object);
 void fn_1_3C14(void);
@@ -634,25 +631,25 @@ void fn_1_4CA8(void) {
 /* Called by the turn-end script at race 61 to start section eleven's event. */
 void fn_1_4CBC(void) {
     lbl_1_bss_CE[10] = 1;
-    HuAudFXPlay(MSM_SE_RENSHO_1254);
+    HuAudFXPlay(MSM_SE_MGM04_COURSE_EVENT_MIDDLE);
 }
 
 /* Called by the turn-end script at race 74 to start section fifteen's event. */
 void fn_1_4CF0(void) {
     lbl_1_bss_CE[14] = 1;
-    HuAudFXPlay(MSM_SE_RENSHO_1255);
+    HuAudFXPlay(MSM_SE_MGM04_COURSE_EVENT_LATE);
 }
 
 /* Called by the turn-end script at race 69 to start section thirteen's event. */
 void fn_1_4D24(void) {
     lbl_1_bss_CE[12] = 1;
-    HuAudFXPlay(MSM_SE_RENSHO_1255);
+    HuAudFXPlay(MSM_SE_MGM04_COURSE_EVENT_LATE);
 }
 
 /* Called by the turn-end script at race 82 to start section seventeen's event. */
 void fn_1_4D58(void) {
     lbl_1_bss_CE[16] = 1;
-    HuAudFXPlay(MSM_SE_RENSHO_1258);
+    HuAudFXPlay(MSM_SE_MGM04_COURSE_EVENT_NEAR_END);
 }
 
 /* Called by the turn-end script at race 90 to start section nineteen's countdown. */
@@ -680,7 +677,7 @@ s16 fn_1_4E00(void) {
 /* Called during the final race sequence to start the last course event. */
 void fn_1_4E24(void) {
     lbl_1_bss_CE[22] = 1;
-    HuAudFXPlay(MSM_SE_RENSHO_1259);
+    HuAudFXPlay(MSM_SE_MGM04_COURSE_FINALE_EVENT);
 }
 
 /* Turn-end and completion scripts poll for the absence of event flag 1;
@@ -700,7 +697,7 @@ s16 fn_1_4E58(void) {
  * play its cue, and rumble a human player. */
 void fn_1_4EB0(void) {
     lbl_1_bss_CE[15] = 1;
-    HuAudFXPlay(MSM_SE_RENSHO_1256);
+    HuAudFXPlay(MSM_SE_MGM04_HOPPING_SCENERY_EVENT);
     if (fn_1_A05C(fn_1_A00C()) == 0) {
         fn_8006A030(fn_1_A00C(), 20, 4, 4);
     }
@@ -733,7 +730,7 @@ void fn_1_4F1C(OMOBJ *object) {
             {
                 if (lbl_1_bss_C8 == 0)
                 {
-                    HuAudFXPlay(MSM_SE_RENSHO_1260);
+                    HuAudFXPlay(MSM_SE_MGM04_COURSE_FINISH_IMPACT);
                     playerNo = fn_1_A00C();
                     if (fn_1_A05C(playerNo) == 0)
                     {
@@ -769,7 +766,7 @@ void fn_1_4F1C(OMOBJ *object) {
             {
                 if (lbl_1_bss_C8 == 0)
                 {
-                    HuAudFXPlay(MSM_SE_RENSHO_1260);
+                    HuAudFXPlay(MSM_SE_MGM04_COURSE_FINISH_IMPACT);
                     playerNo = fn_1_A00C();
                     if (fn_1_A05C(playerNo) == 0)
                     {
@@ -944,7 +941,7 @@ void fn_1_4F1C(OMOBJ *object) {
                 {
                     if (lbl_1_bss_CC == 0)
                     {
-                        HuAudFXPlay(MSM_SE_RENSHO_1257);
+                        HuAudFXPlay(MSM_SE_MGM04_COURSE_COUNTDOWN_EVENT);
                     }
                     lbl_1_bss_CC = - 1;
                     fn_80026A44(object->mdlId[18], HU3D_MOTATTR_RENSHO_PAUSE);

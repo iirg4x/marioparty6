@@ -16,6 +16,7 @@
 #include "msm_stream.h"
 #include <math.h>
 #include "REL/optionDll/sound_test.h"
+#include "REL/optionDll/option.h"
 #include "humath.h"
 
 /* The title-message list ends with an empty zero entry. */
@@ -28,20 +29,6 @@
 #define OPTION_AUDIO_END (-1)
 
 typedef void (*VoidFunc)(void);
-
-typedef struct OptionAudioEntry {
-    s8 type; /* Zero selects streamed music, one selects sound effects, and -1 ends a list. */
-    s32 marker; /* -1 for audio rows; zero for the terminating row. */
-    s32 message; /* Message displayed for this sound test entry. */
-    s32 audioId; /* Stream or sound effect identifier. */
-} OptionAudioEntry;
-
-typedef struct OptionMessageEntry {
-    s8 type; /* Zero selects streamed music; -1 terminates the list. */
-    s32 marker; /* -1 for audio rows; zero for the terminating row. */
-    s32 message; /* Message displayed for this sound test entry. */
-    s32 audioId; /* Stream or sound effect identifier. */
-} OptionMessageEntry;
 
 typedef struct OptionAnimPair {
     s16 firstTextureAnimation; /* First texture animation slot attached to the model. */
@@ -96,7 +83,7 @@ typedef struct OptionWork {
 } OptionWork;
 
 OptionAudioEntry lbl_1_data_510[8] = {
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 28), 0},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 28), MSM_STREAM_HERE_WE_GO},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 29), MSM_STREAM_PARTY_MUSIC},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 30), MSM_STREAM_SETTING_UP},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 31), MSM_STREAM_TIME_TO_PLAY},
@@ -110,7 +97,7 @@ OptionAudioEntry lbl_1_data_590[14] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 36), MSM_STREAM_BRIGHTON_S_EXPLANATION},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 51), MSM_STREAM_TWILA_S_EXPLANATION},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 35), MSM_STREAM_BOARD_PARTY},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 54), 33},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 54), MSM_STREAM_FIVE_TURNS_LEFT},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 37), MSM_STREAM_STAR_SPACE},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 52), MSM_STREAM_GETTING_A_STAR},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 56), MSM_STREAM_WINNER},
@@ -119,7 +106,7 @@ OptionAudioEntry lbl_1_data_590[14] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 59), MSM_STREAM_WINNING_TOGETHER},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 44), MSM_STREAM_ROUND_OF_MIRACLES},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 53), MSM_STREAM_BOO_ATTACK},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 55), 34},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 55), MSM_STREAM_PARTY_S_OVER},
     {OPTION_AUDIO_END, 0, 0, 0},
 };
 
@@ -133,8 +120,8 @@ OptionAudioEntry lbl_1_data_670[13] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 41), MSM_STREAM_SNOWFLAKE_LAKE},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 48), MSM_STREAM_SNOWY_NIGHT},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 42), MSM_STREAM_CASTAWAY_BAY},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 49), 22},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 43), 23},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 49), MSM_STREAM_NIGHT_ON_THE_BAY},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 43), MSM_STREAM_CLOCKWORK_CASTLE},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 50), MSM_STREAM_NIGHT_AT_THE_CASTLE},
     {OPTION_AUDIO_END, 0, 0, 0},
 };
@@ -142,7 +129,7 @@ OptionAudioEntry lbl_1_data_670[13] = {
 OptionAudioEntry lbl_1_data_740[7] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 60), MSM_STREAM_THIRSTY_GULCH},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 61), MSM_STREAM_ASTRO_AVENUE},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 62), 47},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 62), MSM_STREAM_INFERNAL_TOWER},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 63), MSM_STREAM_WAY_TO_GO},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 64), MSM_STREAM_TOO_BAD},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 65), MSM_STREAM_SPECIAL_GIFT},
@@ -158,7 +145,7 @@ OptionAudioEntry lbl_1_data_7B0[14] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 71), MSM_STREAM_EXCELLENT},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 72), MSM_STREAM_BREAK_TIME},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 73), MSM_STREAM_LONG_ROAD},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 74), 56},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 74), MSM_STREAM_REALLY_LONG_ROAD},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 75), MSM_STREAM_ALMOST_ENDLESS_ROAD},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 76), MSM_STREAM_UP_HIGH},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 77), MSM_STREAM_PUSHING_THE_LIMIT},
@@ -169,7 +156,7 @@ OptionAudioEntry lbl_1_data_7B0[14] = {
 OptionAudioEntry lbl_1_data_890[14] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 79), MSM_STREAM_WARMING_UP},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 80), MSM_STREAM_FRANTIC},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 81), 73},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 81), MSM_STREAM_JAZZY},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 82), MSM_STREAM_DOOM_AND_GLOOM},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 83), MSM_STREAM_TENACIOUS},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 84), MSM_STREAM_BLISSFUL},
@@ -204,36 +191,36 @@ OptionAudioEntry lbl_1_data_A20[8] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 98), MSM_STREAM_MAZE_MANUFACTORY},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 106), MSM_STREAM_BLOCK_STAR_FIRST},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 107), MSM_STREAM_BLOCK_STAR_SECOND},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 108), 42},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 108), MSM_STREAM_BLOCK_STAR_THIRD},
     {OPTION_AUDIO_END, 0, 0, 0},
 };
 
 OptionAudioEntry lbl_1_data_AA0[12] = {
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 109), 95},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 110), 96},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 111), 97},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 123), 93},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 112), 99},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 113), 100},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 114), 101},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 115), 102},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 116), 103},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 117), 104},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 118), 105},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 109), MSM_STREAM_SPEAK_UP_THEME},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 110), MSM_STREAM_QUIZ_SONG},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 111), MSM_STREAM_BOWSER_QUIZ},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 123), MSM_STREAM_QUIZ_MASTER},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 112), MSM_STREAM_WELL_DONE},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 113), MSM_STREAM_QUESTION_MUSIC_FIRST},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 114), MSM_STREAM_QUESTION_MUSIC_SECOND},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 115), MSM_STREAM_QUESTION_MUSIC_THIRD},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 116), MSM_STREAM_QUESTION_MUSIC_FOURTH},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 117), MSM_STREAM_QUESTION_MUSIC_FIFTH},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 118), MSM_STREAM_FUN_TIMES},
     {OPTION_AUDIO_END, 0, 0, 0},
 };
 
 OptionAudioEntry lbl_1_data_B60[5] = {
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 120), 107},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 121), 108},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 122), 109},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 119), 106},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 120), MSM_STREAM_MEADOW_ROAD},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 121), MSM_STREAM_DARK_PATH},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 122), MSM_STREAM_MAGMA_FLOW},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 119), MSM_STREAM_OLD_SCHOOL},
     {OPTION_AUDIO_END, 0, 0, 0},
 };
 
 OptionAudioEntry lbl_1_data_BB0[5] = {
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 124), 92},
-    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 125), 94},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 124), MSM_STREAM_STAR_GATHERING},
+    {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 125), MSM_STREAM_MIRACLE_BOOK},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 126), MSM_STREAM_WHOOP_IT_UP},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 127), MSM_STREAM_MARIO_PARTY_SIX},
     {OPTION_AUDIO_END, 0, 0, 0},
@@ -557,7 +544,7 @@ extern s16 lbl_1_bss_5D4;
 extern s16 lbl_1_bss_6A2[];
 extern s16 lbl_1_bss_6A0;
 extern s16 lbl_1_bss_AE0[7][2];
-extern OptionMessageEntry *lbl_1_bss_AFC;
+extern OptionAudioEntry *lbl_1_bss_AFC;
 extern float lbl_1_rodata_10;
 extern float lbl_1_rodata_14;
 extern float lbl_1_rodata_18;
@@ -682,9 +669,6 @@ extern float lbl_1_rodata_258[];
 extern float lbl_1_rodata_1C4;
 extern double lbl_1_rodata_168;
 
-float fn_1_F684(s16 groupId, s16 memberNo);
-void fn_1_E688(OptionAudioEntry *entry);
-
 extern OptionAudioEntry *lbl_1_bss_B78[30];
 extern u32 lbl_1_bss_B00[30];
 
@@ -692,7 +676,7 @@ extern u32 lbl_1_bss_B00[30];
  * entries. */
 #define COUNT_GROUP_ENTRIES(entry, count)            \
     do {                                             \
-        (entry) = (OptionAudioEntry *)lbl_1_bss_AFC; \
+        (entry) = lbl_1_bss_AFC; \
         (count) = 0;                                 \
         while ((entry)->type != -1) {                \
             (count)++;                               \
@@ -835,7 +819,7 @@ void fn_1_C484(void)
     }
 
     previousGroup = currentGroup = 0;
-    lbl_1_bss_AFC = (OptionMessageEntry *)lbl_1_bss_B78[currentGroup];
+    lbl_1_bss_AFC = lbl_1_bss_B78[currentGroup];
     COUNT_GROUP_ENTRIES(entry, itemCount);
     OSReport("%d\n", itemCount);
     HuSprAttrSet(lbl_1_bss_5D4, 2, 4);
@@ -897,7 +881,7 @@ void fn_1_C484(void)
             if (currentGroup >= enabledGroupCount) {
                 currentGroup = 0;
             }
-            lbl_1_bss_AFC = (OptionMessageEntry *)lbl_1_bss_B78[currentGroup];
+            lbl_1_bss_AFC = lbl_1_bss_B78[currentGroup];
             HuSprAttrSet(lbl_1_bss_5D4, 7, 4);
             for (frame = 1; frame <= 5; frame++) {
                 progress = 1.0 - (float)frame / 5.0f;
@@ -1045,8 +1029,7 @@ void fn_1_C484(void)
 
         /* A confirms the highlighted audio entry; B starts the return transition. */
         if (lbl_802C0008[0] & 0x100) {
-            fn_1_E688((OptionAudioEntry *)((u8 *)lbl_1_bss_AFC +
-            ((selectedCell + (listOffset * 2)) * 16)));
+            fn_1_E688(&lbl_1_bss_AFC[selectedCell + (listOffset * 2)]);
         }
         if ((lbl_802C0008[0] & 0x200) == 0) {
             HuPrcVSleep();
@@ -1093,7 +1076,7 @@ void fn_1_C484(void)
 /* Called by the sound test menu to refresh 14 display cells, blanking cells beyond the list. */
 void fn_1_E538(s16 page)
 {
-    OptionMessageEntry *messageEntry = lbl_1_bss_AFC;
+    OptionAudioEntry *messageEntry = lbl_1_bss_AFC;
     s16 entryCount;
     s16 rowCount;
     s16 row;
