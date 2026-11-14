@@ -1,8 +1,9 @@
 /* Entry points for loading and unloading the M632 minigame. */
+#include "REL/m632dll.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Module-load entry point: runs registered constructors, then initializes the M632 scene. */
 int _prolog(void)

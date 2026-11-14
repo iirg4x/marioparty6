@@ -6,12 +6,8 @@
 #include "datadir_enum.h"
 #include "msm_stream.h"
 #include "msm_se.h"
-
-#define MSM_STREAM_REALLY_LONG_ROAD 56
-#define GW_MGNO_BASE 601
-#define MSM_SE_RENSHO_PREVIEW_ENTER 1212
-#define MSM_SE_RENSHO_PREVIEW_HOLD 1213
-#define MSM_SE_RENSHO_PREVIEW_EXIT 1214
+#include "humath.h"
+#include "dolphin/mtx.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -30,48 +26,13 @@ s32 lbl_1_data_518 = -1;
 s32 lbl_1_data_51C = -1;
 
 extern s16 MgModeSubMode;
-extern void fn_1_E9C(void);
-extern void fn_1_EEBC(void);
-extern HU3D_MODELID fn_1_0(s32 minigameIndex, s32 stillIndex, Vec *position);
 void fn_1_E908(void);
-extern void fn_1_2A4(s16 count, u8 *minigameOrder);
-extern void fn_1_9B9C(void);
-extern void fn_1_43C(void);
-extern void fn_1_4F8(void);
-extern void fn_1_5E0(s16 minigameIndex, s16 stillIndex);
-extern void fn_1_6F4(void);
 extern int MgModeWorkInt[16];
 extern u8 MgModePlayNum;
-void fn_1_106C(s16 selectedCamera);
-void fn_1_94A8(void);
-void fn_1_9D2C(void);
-void fn_1_14B8(void);
-void fn_1_2F9C(void);
-void fn_1_78FC(void);
-void fn_1_8600(void);
-void fn_1_9978(void);
 void fn_1_E80C(void);
-void fn_1_9A70(void);
-extern void fn_1_824(void);
-extern void fn_1_1028(void);
-extern void fn_1_15CC(void);
-extern void fn_1_7F0(void);
 extern void fn_1_DDB8(void);
-extern void fn_1_16D0(void);
-extern void fn_1_A0CC(void);
-extern void fn_1_17DC(void);
-extern void fn_1_A348(void);
-extern void fn_1_1938(void);
 extern void fn_1_EAD8(void);
-extern s16 fn_1_1A78(void);
-extern void fn_1_9E20(void);
-extern void fn_1_2038(void);
-extern void fn_1_D5A0(void);
-extern void fn_1_221C(void);
-extern void fn_1_D964(void);
-extern s16 fn_1_2A00(void);
 extern void fn_1_F54C(void);
-void fn_1_EEBC(void);
 
 /* Called by _prolog during overlay startup; creates the manager and round process. */
 void fn_1_DC60(void)
@@ -140,7 +101,7 @@ void fn_1_DDB8(void)
         while (MgDataTbl[i].ovl != 65535) {
             work = i + 601;
             if ((fn_8003CC40(work) != 0) &&
-                ((MgDataTbl[i].type == 0) || (MgDataTbl[i].type == 1))) {
+                ((MgDataTbl[i].type == MG_TYPE_4P) || (MgDataTbl[i].type == MG_TYPE_1VS3))) {
                 work = 1;
                 if ((MgDataTbl[i].flag & MG_FLAG_MIC) != 0) {
                     work = 0;
@@ -164,7 +125,7 @@ void fn_1_DDB8(void)
         i = 0;
         while (MgDataTbl[i].ovl != 65535) {
             work = i + 601;
-            if ((fn_8003CC40(work) != 0) && (MgDataTbl[i].type == 6)) {
+            if ((fn_8003CC40(work) != 0) && (MgDataTbl[i].type == MG_TYPE_KETTOU)) {
                 work = 1;
                 if ((MgDataTbl[i].flag & MG_FLAG_MIC) != 0) {
                     work = 0;
@@ -188,7 +149,7 @@ void fn_1_DDB8(void)
         i = 0;
         while ((MgDataTbl[i].ovl != 65535) && (count > 0)) {
             work = i + 601;
-            if ((fn_8003CC40(work) != 0) && (MgDataTbl[i].type == 6)) {
+            if ((fn_8003CC40(work) != 0) && (MgDataTbl[i].type == MG_TYPE_KETTOU)) {
                 work = 1;
                 if ((MgDataTbl[i].flag & MG_FLAG_MIC) != 0) {
                     work = 0;
@@ -421,8 +382,8 @@ void fn_1_EAD8(void) {
     fn_80026790(lbl_1_bss_152, &position);
 
     PSVECSubtract(&Hu3DCamera[0].pos, &Hu3DCamera[0].target, &position);
-    pitchOrScale = (f32)(atan2(-position.y, position.z) / 3.141592653589793 * 180.0);
-    position.y = (f32)(atan2(position.x, position.z) / 3.141592653589793 * 180.0);
+    pitchOrScale = (f32)(atan2(-position.y, position.z) / M_PI * 180.0);
+    position.y = (f32)(atan2(position.x, position.z) / M_PI * 180.0);
     position.x = pitchOrScale;
     position.z = 0.0f;
     fn_80026838(lbl_1_bss_152, &position);
@@ -432,7 +393,7 @@ void fn_1_EAD8(void) {
     HuPrcVSleep();
     fn_1_43C();
     HuPrcVSleep();
-    HuAudFXPlay(1212);
+    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
 
     while (pitchOrScale < 0.18f) {
         fn_800268B0(lbl_1_bss_152, pitchOrScale, pitchOrScale, pitchOrScale);
@@ -445,7 +406,7 @@ void fn_1_EAD8(void) {
     fn_800268B0(lbl_1_bss_152, 0.18f,
                       0.18f, 0.18f);
     HuPrcVSleep();
-    lbl_1_data_51C = HuAudFXPlay(1213);
+    lbl_1_data_51C = HuAudFXPlay(MSM_SE_MGM00_PREVIEW_HOLD_LOOP);
 
     frame = 1;
     /* stop is read without initialization; the 25-step limit applies only if this loop is
@@ -466,7 +427,7 @@ void fn_1_EAD8(void) {
         HuAudFXStop(lbl_1_data_51C);
     }
     lbl_1_data_51C = -1;
-    HuAudFXPlay(1214);
+    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_EXIT);
     if (frandmod(2) != 0) {
         lbl_1_bss_154 = 1;
     } else {
@@ -505,14 +466,14 @@ void fn_1_EEBC(void)
     s16 result;
 
     history = omOvlHisGet(0);
-    switch (*(s16 *)&MgModeSubMode) {
+    switch (MgModeSubMode) {
     case 0:
         fn_1_DDB8();
         break;
     case 1:
         fn_1_106C(0);
         fn_1_16D0();
-        *(s16 *)&MgModeSubMode = 2;
+        MgModeSubMode = 2;
         break;
     case 2:
         fn_1_106C(1);
@@ -522,15 +483,15 @@ void fn_1_EEBC(void)
         fn_1_17DC();
         fn_1_A348();
         HuPrcSleep(10);
-        *(s16 *)&MgModeSubMode = 3;
+        MgModeSubMode = 3;
         break;
     case 3:
         fn_1_1938();
-        *(s16 *)&MgModeSubMode = 4;
+        MgModeSubMode = 4;
         break;
     case 4:
         fn_1_EAD8();
-        *(s16 *)&MgModeSubMode = 5;
+        MgModeSubMode = 5;
         HuPrcSleep(25);
         break;
     case 5:
@@ -541,16 +502,16 @@ void fn_1_EEBC(void)
             fn_1_EE24();
         }
         if (result > 0) {
-            *(s16 *)&MgModeSubMode = 7;
+            MgModeSubMode = 7;
         } else {
-            *(s16 *)&MgModeSubMode = 6;
+            MgModeSubMode = 6;
         }
         break;
     case 6: {
         u32 unlockNo;
 
-        *(s16 *)&MgModeSubMode = 8;
-        omOvlHisChg(0, history->ovl, *(s16 *)&MgModeSubMode, history->stat);
+        MgModeSubMode = 8;
+        omOvlHisChg(0, history->ovl, MgModeSubMode, history->stat);
         fn_1_7F0();
         HuAudSStreamAllFadeOut(1000);
         WipeCreate(2, 0, 60);
@@ -568,7 +529,7 @@ void fn_1_EEBC(void)
         }
         fn_1_EA94();
         fn_1_824();
-        omOvlCallEx(4, 1, 0, 0);
+        omOvlCallEx(DLL_instdll, 1, 0, 0);
         while (1) {
             HuPrcVSleep();
         }
@@ -576,8 +537,8 @@ void fn_1_EEBC(void)
     case 7: {
         u32 unlockNo;
 
-        *(s16 *)&MgModeSubMode = 8;
-        omOvlHisChg(0, history->ovl, *(s16 *)&MgModeSubMode, history->stat);
+        MgModeSubMode = 8;
+        omOvlHisChg(0, history->ovl, MgModeSubMode, history->stat);
         fn_1_7F0();
         HuAudSStreamAllFadeOut(1000);
         WipeCreate(2, 0, 60);
@@ -595,7 +556,7 @@ void fn_1_EEBC(void)
         }
         fn_1_EA94();
         fn_1_824();
-        omOvlCallEx(4, 1, 0, 0);
+        omOvlCallEx(DLL_instdll, 1, 0, 0);
         while (1) {
             HuPrcVSleep();
         }
@@ -604,36 +565,36 @@ void fn_1_EEBC(void)
         fn_1_D2BC();
         fn_1_1E9C();
         fn_1_D3A8();
-        *(s16 *)&MgModeSubMode = 9;
+        MgModeSubMode = 9;
         if (MgModeWorkInt[0] == 0) {
-            *(s16 *)&MgModeSubMode = 11;
+            MgModeSubMode = 11;
         }
         break;
     case 9:
         fn_1_D5A0();
         fn_1_2038();
         if (MgModePlayNum >= MgGameNo) {
-            *(s16 *)&MgModeSubMode = 11;
+            MgModeSubMode = 11;
         } else {
-            *(s16 *)&MgModeSubMode = 10;
+            MgModeSubMode = 10;
         }
         break;
     case 10:
-        *(s16 *)&MgModeSubMode = 3;
+        MgModeSubMode = 3;
         break;
     case 11:
         fn_1_221C();
-        *(s16 *)&MgModeSubMode = 12;
+        MgModeSubMode = 12;
         HuPrcVSleep();
         break;
     case 12:
         fn_1_D964();
-        *(s16 *)&MgModeSubMode = 13;
+        MgModeSubMode = 13;
         HuPrcVSleep();
         break;
     case 13:
         fn_1_9B9C();
-        *(s16 *)&MgModeSubMode = -1;
+        MgModeSubMode = -1;
         result = fn_1_2A00();
         HuAudSStreamAllFadeOut(1000);
         fn_1_F54C();
@@ -707,10 +668,10 @@ void fn_1_F750(f32 angle_x, f32 angle_y, f32 angle_z,
     Mtx x_rotation;
     Mtx y_rotation;
 
-    PSMTXRotRad(x_rotation, 'x', 0.017453292f * angle_x);
-    PSMTXRotRad(y_rotation, 'y', 0.017453292f * angle_y);
+    PSMTXRotRad(x_rotation, 'x', MTXDegToRad(angle_x));
+    PSMTXRotRad(y_rotation, 'y', MTXDegToRad(angle_y));
     PSMTXConcat(y_rotation, x_rotation, x_rotation);
-    PSMTXRotRad(y_rotation, 'z', 0.017453292f * angle_z);
+    PSMTXRotRad(y_rotation, 'z', MTXDegToRad(angle_z));
     PSMTXConcat(y_rotation, x_rotation, x_rotation);
     PSMTXMultVecSR(x_rotation, source, destination);
 }

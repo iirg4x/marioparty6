@@ -1,5 +1,5 @@
 /* Shows the instructions, choices and results for the minigame streak mode. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/object.h"
 #include "game/window.h"
 #include "game/audio.h"
@@ -7,6 +7,7 @@
 #include "game/mgdata.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
+#include "REL/mgmrenshodll/module_types.h"
 
 typedef struct {
     HUWINID windowId;
@@ -29,43 +30,38 @@ u32 lbl_1_data_30[10] = {
     MESSNUM(MESS_MGM_DECATHLON, 50), MESSNUM(MESS_MGM_DECATHLON, 51),
     MESSNUM(MESS_MGM_DECATHLON, 52), MESSNUM(MESS_MGM_DECATHLON, 53)
 };
-u8 lbl_1_data_58[3] = {0, 0, 0};
+char lbl_1_data_58[3] = {0, 0, 0};
 u32 lbl_1_data_5C[14] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 MGRenshoSoundCue lbl_1_data_94[25] = {
-    {MESSNUM(MESS_MGM_RENSHOU, 0), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 0), 2, 944},
+    {MESSNUM(MESS_MGM_RENSHOU, 0), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 0), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_RENSHOU, 0), 3, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 1), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 2), 1, 944},
-    {MESSNUM(MESS_MGM_RENSHOU, 3), 1, 944},
+    {MESSNUM(MESS_MGM_RENSHOU, 1), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 2), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_RENSHOU, 3), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_RENSHOU, 4), 1, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 5), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 6), 1, 944},
-    {MESSNUM(MESS_MGM_RENSHOU, 7), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 8), 1, 944},
+    {MESSNUM(MESS_MGM_RENSHOU, 5), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 6), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_RENSHOU, 7), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 8), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_RENSHOU, 8), 2, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 9), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 9), 2, 944},
-    {MESSNUM(MESS_MGM_RENSHOU, 10), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 9), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 9), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_RENSHOU, 10), 1, MSM_SE_GUIDE_NIGHT_INTRO},
     {MESSNUM(MESS_MGM_RENSHOU, 10), 2, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 11), 1, 943},
-    {MESSNUM(MESS_MGM_RENSHOU, 12), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 13), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 14), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 15), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 17), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 18), 1, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 18), 2, 942},
-    {MESSNUM(MESS_MGM_RENSHOU, 19), 1, 944},
+    {MESSNUM(MESS_MGM_RENSHOU, 11), 1, MSM_SE_GUIDE_NIGHT_APOLOGY},
+    {MESSNUM(MESS_MGM_RENSHOU, 12), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 13), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 14), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 15), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 17), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 18), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 18), 2, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_RENSHOU, 19), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
 };
 s16 lbl_1_data_1C0 = 64;
 
 extern int MgModeWorkInt[16];
-s16 fn_1_A05C(s16 player);
-s16 fn_1_A094(s16 player);
-s16 fn_1_A00C(void);
-s16 fn_1_A01C(s16 player);
-void fn_1_7D7C(void);
 void fn_1_2B7C(HUWINID windowId, u32 key, s16 variant);
 
 /* Points an insertion slot at an empty local string for the choice and result pages.
@@ -88,12 +84,12 @@ void fn_1_12A8(s16 windowId)
 
 /* Clamps the streak count to 0 through 99, then writes one or two digit glyphs into the
  * shared result-message buffer. */
-u8 *fn_1_1340(s16 value)
+char *fn_1_1340(s16 value)
 {
     s16 digit;
     s16 quotient;
     s16 outputIndex;
-    u8 *digitMessage;
+    char *digitMessage;
 
     if (value < 0) {
         value = 0;
@@ -106,11 +102,11 @@ u8 *fn_1_1340(s16 value)
     quotient = value % 10;
     outputIndex = 0;
     if (quotient > 0) {
-        digitMessage = (u8 *)HuWinMesPtrGet(lbl_1_data_30[quotient]);
+        digitMessage = HuWinMesPtrGet(lbl_1_data_30[quotient]);
         lbl_1_data_58[outputIndex] = *digitMessage;
         outputIndex++;
     }
-    digitMessage = (u8 *)HuWinMesPtrGet(lbl_1_data_30[digit]);
+    digitMessage = HuWinMesPtrGet(lbl_1_data_30[digit]);
     lbl_1_data_58[outputIndex] = *digitMessage;
     outputIndex++;
     lbl_1_data_58[outputIndex] = 0;
@@ -138,8 +134,6 @@ void fn_1_15CC(void) {
     HuWinExKill(lbl_1_bss_B8.windowId);
     HuWinAllKill();
 }
-
-s16 fn_1_A05C(s16 player);
 
 /* Restricts window input to the controller ports assigned to human players. */
 void fn_1_15FC(void) {

@@ -54,7 +54,7 @@ unsigned int lbl_1_data_158[16] = {
 
 s32 lbl_1_data_198[4] = { 128, 80, 40, 32 };
 
-static u8 lbl_1_data_1A8[64] = {
+static s8 lbl_1_data_1A8[64] = {
     0,
     0,
     0,
@@ -121,7 +121,7 @@ static u8 lbl_1_data_1A8[64] = {
     0,
 };
 
-static u8 lbl_1_data_1E8[64] = {
+static s8 lbl_1_data_1E8[64] = {
     0,
     0,
     0,
@@ -188,7 +188,7 @@ static u8 lbl_1_data_1E8[64] = {
     0,
 };
 
-static u8 lbl_1_data_228[64] = {
+static s8 lbl_1_data_228[64] = {
     0,
     0,
     0,
@@ -255,7 +255,7 @@ static u8 lbl_1_data_228[64] = {
     0,
 };
 
-static u8 lbl_1_data_268[64] = {
+static s8 lbl_1_data_268[64] = {
     0,
     0,
     0,
@@ -322,7 +322,7 @@ static u8 lbl_1_data_268[64] = {
     0,
 };
 
-u8 *lbl_1_data_2A8[4] = { lbl_1_data_1A8, lbl_1_data_1E8, lbl_1_data_228, lbl_1_data_268 };
+s8 *lbl_1_data_2A8[4] = { lbl_1_data_1A8, lbl_1_data_1E8, lbl_1_data_228, lbl_1_data_268 };
 
 static char lbl_1_data_2B8[21] = "632hakoniwaB-BaHOOK1";
 
@@ -515,7 +515,7 @@ void ObjectSetup(void)
     }
     index = 0;
     while (index < 2) {
-        lbl_1_bss_0.motions020[index] = -1;
+        lbl_1_bss_0.unusedSlots[index] = -1;
         index += 1;
     }
     fn_800284C8(lbl_1_bss_0.cameraModels[0], 1U);
@@ -586,7 +586,7 @@ void ObjectSetup(void)
     fn_800269E8(lbl_1_bss_0.attachmentModels[2], (1 << 0));
     lbl_1_bss_0.hookModelId =
         fn_80025A04(fn_80008DD0(DATANUM(0x5b0000, 19), 0x10000000, 2));
-    patternData = (s8 *) lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
+    patternData = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
     {
         char *collisionHookNames[8] = { lbl_1_data_2B8, lbl_1_data_2CD, lbl_1_data_2E2,
                                         lbl_1_data_2F7, lbl_1_data_30C, lbl_1_data_321,
@@ -629,7 +629,7 @@ void ObjectSetup(void)
             index += 1;
     }
     fn_800804E8(&lbl_1_bss_0.collisionModel, mapCount, 30);
-    collisionPatternData = (s8 *) lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
+    collisionPatternData = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
     lbl_1_bss_0.collisionCount = 0;
     collisionActorParam.height = 50.0f;
     collisionActorParam.radius = 55.0f;
@@ -710,7 +710,7 @@ void ObjectSetup(void)
         playerActorParam.param += 1;
         index += 1;
     }
-    positionPatternData = (s8 *) lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
+    positionPatternData = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
     index = 0;
     while (index < 64) {
         if ((positionPatternData[0] >= 4) && (positionPatternData[0] <= 6)) {

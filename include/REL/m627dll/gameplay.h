@@ -71,7 +71,7 @@ typedef struct M627MapWork {
     s16 blockClearModel; /* Hidden source for per-camera block-clearing effect models. */
     OMOBJ *modelsObject; /* Object that owns the map and collision model IDs. */
     s16 timer; /* Frames elapsed during the post-round map cleanup. */
-    u8 unusedBytes[6]; /* Allocated work bytes with no reads in this module. */
+    u8 unk16[6]; /* No code names this field. */
     s16 boundaryCount; /* Number of playfield boundary lines. */
     M627BoundaryLine *boundaries; /* Playfield edge segments used by actor collision. */
 } M627MapWork;
@@ -96,7 +96,7 @@ typedef struct M627ActorWork {
 typedef struct M627CameraState {
     Vec cameraPosition[2]; /* World-space camera positions for the opening and split views. */
     Vec cameraTarget[2]; /* World-space look-at points for those views. */
-    s32 unusedCameraWord; /* Allocated state word with no reads in this module. */
+    s32 unk30; /* The game's code never reads this field. */
     s32 elapsedFrames; /* Frames elapsed in the active camera transition. */
     s16 startingColumn; /* Next slot in the five-sample camera trend history. */
     f32 rowValue[2]; /* Tracked Z reference: the first group-0 player's Z for row 0 and the midpoint

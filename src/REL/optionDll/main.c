@@ -27,6 +27,7 @@
 #include "REL/optionDll/main.h"
 #include "REL/optionDll/records.h"
 #include "REL/optionDll/sound_test.h"
+#include "REL/optionDll/option.h"
 #include "humath.h"
 
 #define OPTION_MOTION_BLEND_START 0.0f
@@ -36,8 +37,6 @@
 #define OPTION_PRIZE_MESSAGE_NONE 4294967295U
 
 typedef void (*VoidFunc)(void);
-
-typedef struct OptionMessageEntry OptionMessageEntry;
 
 typedef struct OptionAnimPair {
     s16 firstTextureAnimation; /* Animation slot for the first named texture. */
@@ -193,7 +192,7 @@ u8 lbl_1_bss_B78[120];
 
 u32 lbl_1_bss_B00[30];
 
-OptionMessageEntry *lbl_1_bss_AFC;
+OptionAudioEntry *lbl_1_bss_AFC;
 
 s16 lbl_1_bss_AE0[7][2];
 
@@ -242,15 +241,6 @@ extern char lbl_1_data_479[];
 extern char lbl_1_data_450[];
 extern char lbl_1_data_462[];
 extern char lbl_1_data_46A[];
-
-void fn_1_EA6C(void);
-void fn_1_E6F8(void);
-void fn_1_F1D8(void);
-void fn_1_F394(void);
-void fn_1_F0B0(void);
-void fn_1_F410(s16 modelId, s16 firstAnimation, s16 firstBank, s16 secondAnimation, s16 secondBank);
-BOOL fn_1_F544(s16 modelId, s16 firstAnimation, s16 firstBank, s16 secondAnimation, s16 secondBank);
-float fn_1_F684(s16 groupId, s16 memberNo);
 
 /* Runs the overlay constructors, then enters the Option Mode setup routine. */
 int _prolog(void) {

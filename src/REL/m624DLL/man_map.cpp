@@ -1,6 +1,6 @@
-/* Spacing preserves the assertion's source line.
- */
-/* Preserve the assertion's source line. */
+/* Retail fixes the next assert's line; the earlier lines are unknown: 2 lines are left blank. */
+
+
 // The map: the gear and star models on their stand, their light and shadow, and the motion that
 // the attackers' landings drive (attacker.cpp).
 #undef NDEBUG

@@ -1,5 +1,5 @@
 /* Sets up and selects the camera animations for this minigame mode. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/object.h"
 #include "game/data.h"
 #include "game/memory.h"

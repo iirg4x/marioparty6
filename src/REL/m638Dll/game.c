@@ -102,40 +102,18 @@ char *lbl_1_data_190[40] = {
     lbl_1_data_16C, lbl_1_data_175, lbl_1_data_17E, lbl_1_data_187,
 };
 
-/* Model-hook names for course events; this byte string marks unused event slots. */
-char lbl_1_data_230[5] = { 130, 200, 130, 181, 0 };
-
-char lbl_1_data_235[9] = "fa_sdb00";
-
-char lbl_1_data_23E[9] = "fb_sdb00";
-
-char lbl_1_data_247[9] = "fb_sdb01";
-
-char lbl_1_data_250[9] = "fc_sdb00";
-
-char lbl_1_data_259[9] = "fc_sdb01";
-
-char lbl_1_data_262[9] = "fc_sdb02";
-
-char lbl_1_data_26B[9] = "fd_sdb00";
-
-char lbl_1_data_274[9] = "fd_sdb01";
-
-char lbl_1_data_27D[9] = "fe_sdb01";
-
-char lbl_1_data_286[10] = "fe_sdb00";
-
+/* Model-hook names for course events; "なし" marks unused event slots. */
 char *lbl_1_data_290[40] = {
-    lbl_1_data_230, lbl_1_data_230, lbl_1_data_230, lbl_1_data_230,
-    lbl_1_data_230, lbl_1_data_230, lbl_1_data_230, lbl_1_data_235,
-    lbl_1_data_230, lbl_1_data_230, lbl_1_data_23E, lbl_1_data_230,
-    lbl_1_data_230, lbl_1_data_247, lbl_1_data_230, lbl_1_data_230,
-    lbl_1_data_230, lbl_1_data_230, lbl_1_data_250, lbl_1_data_230,
-    lbl_1_data_259, lbl_1_data_230, lbl_1_data_262, lbl_1_data_230,
-    lbl_1_data_26B, lbl_1_data_230, lbl_1_data_230, lbl_1_data_230,
-    lbl_1_data_230, lbl_1_data_230, lbl_1_data_274, lbl_1_data_230,
-    lbl_1_data_27D, lbl_1_data_230, lbl_1_data_230, lbl_1_data_230,
-    lbl_1_data_286, lbl_1_data_230, lbl_1_data_230, lbl_1_data_230,
+    "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5",
+    "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "fa_sdb00",
+    "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "fb_sdb00", "\x82\xC8\x82\xB5",
+    "\x82\xC8\x82\xB5", "fb_sdb01", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5",
+    "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "fc_sdb00", "\x82\xC8\x82\xB5",
+    "fc_sdb01", "\x82\xC8\x82\xB5", "fc_sdb02", "\x82\xC8\x82\xB5",
+    "fd_sdb00", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5",
+    "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "fd_sdb01", "\x82\xC8\x82\xB5",
+    "fe_sdb01", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5",
+    "fe_sdb00", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5", "\x82\xC8\x82\xB5",
 };
 
 /* Per-stop course time and prop rotation settings, in motion frames and degrees. */
@@ -243,8 +221,8 @@ void ObjectSetup(void)
     fn_1_1CD4(scene);
     fn_1_1294();
     fn_1_165C(&scene->camera);
-    fn_1_13B4((M638LightingView *)scene);
-    fn_1_1470((M638LightingView *)scene);
+    fn_1_13B4(scene);
+    fn_1_1470(scene);
     fn_80070788(&lbl_1_data_0);
 }
 
@@ -667,20 +645,20 @@ void fn_1_1294(void)
 }
 
 /* Build the directional light used by both gameplay cameras. */
-void fn_1_13B4(M638LightingView *scene)
+void fn_1_13B4(M638SceneView *scene)
 {
     Point3d lightDirection;
     s16 lightId;
 
-    PSVECSubtract(&scene->lightTarget, &scene->lightPosition, &lightDirection);
+    PSVECSubtract(&scene->vector1, &scene->vector0, &lightDirection);
     PSVECNormalize(&lightDirection, &lightDirection);
     if (scene->alternateLight != 0) {
         lightId =
-            Hu3DGLightCreate(scene->lightPosition.x, scene->lightPosition.y, scene->lightPosition.z,
+            Hu3DGLightCreate(scene->vector0.x, scene->vector0.y, scene->vector0.z,
                              lightDirection.x, lightDirection.y, lightDirection.z, 95U, 95U, 127U);
     } else {
-        lightId = Hu3DGLightCreate(scene->lightPosition.x, scene->lightPosition.y,
-                                   scene->lightPosition.z, lightDirection.x, lightDirection.y,
+        lightId = Hu3DGLightCreate(scene->vector0.x, scene->vector0.y,
+                                   scene->vector0.z, lightDirection.x, lightDirection.y,
                                    lightDirection.z, 207U, 207U, 207U);
     }
     Hu3DGLightInfinitytSet(lightId);
@@ -689,7 +667,7 @@ void fn_1_13B4(M638LightingView *scene)
 const Point3d lbl_1_rodata_68 = { 0.0f, 1.0f, 0.0f };
 
 /* Position the shared shadow volume and set its lighting for both cameras. */
-void fn_1_1470(M638LightingView *scene)
+void fn_1_1470(M638SceneView *scene)
 {
     Point3d shadowSide;
     Point3d shadowDirection;
@@ -698,10 +676,10 @@ void fn_1_1470(M638LightingView *scene)
     Point3d shadowUp;
 
     shadowUp = lbl_1_rodata_68;
-    shadowPosition.x = scene->lightPosition.x;
-    shadowPosition.y = 0.3f * scene->lightPosition.y;
-    shadowPosition.z = 0.3f * scene->lightPosition.z;
-    PSVECSubtract(&shadowPosition, &scene->lightTarget, &shadowDirection);
+    shadowPosition.x = scene->vector0.x;
+    shadowPosition.y = 0.3f * scene->vector0.y;
+    shadowPosition.z = 0.3f * scene->vector0.z;
+    PSVECSubtract(&shadowPosition, &scene->vector1, &shadowDirection);
     PSVECNormalize(&shadowDirection, &shadowDirection);
     PSVECCrossProduct(&shadowUp, &shadowDirection, &shadowRight);
     PSVECNormalize(&shadowRight, &shadowRight);
@@ -709,7 +687,7 @@ void fn_1_1470(M638LightingView *scene)
     PSVECNormalize(&shadowSide, &shadowSide);
     fn_8002A3B0(100.0f, 20.0f, 40000.0f, (s16) (lbl_1_rodata_10[0] | lbl_1_rodata_10[1]));
     fn_8002A7D8(0.5f, (s16) (lbl_1_rodata_10[0] | lbl_1_rodata_10[1]));
-    fn_8002A674(&shadowPosition, &shadowSide, &scene->lightTarget,
+    fn_8002A674(&shadowPosition, &shadowSide, &scene->vector1,
                           (s16) (lbl_1_rodata_10[0] | lbl_1_rodata_10[1]));
     if (scene->alternateLight != 0) {
         fn_8002AA3C(15U, 15U, 95U, (s16) (lbl_1_rodata_10[0] | lbl_1_rodata_10[1]));
@@ -774,7 +752,7 @@ void fn_1_19C0(OMOBJ *obj)
     fn_1_2288(&scene->teams[1]);
     fn_1_4B4C(&scene->teams[0].course);
     fn_1_4B4C(&scene->teams[1].course);
-    fn_1_5378((M638SceneCameraView *)scene);
+    fn_1_5378(scene);
     camera = 0;
     Hu3DCameraViewportSet(lbl_1_rodata_10[camera], 0.0f, 0.0f,
         16.0f + scene->camera.splitX, 480.0f, 0.0f, 1.0f);
@@ -834,7 +812,7 @@ void fn_1_1CD4(M638SceneView *scene)
     scene->vector1.x = 0.0f;
     scene->vector1.y = 0.0f;
     scene->vector1.z = 1.0f;
-    fn_1_4D68((M638SceneChoicesView *)scene);
+    fn_1_4D68(scene);
 }
 
 /* Create each team's character, course actor, and scale-effect models. */
@@ -1467,7 +1445,7 @@ void fn_1_386C(M638CourseView *course, s32 camera)
         fn_80026808(model, 0.0f, 0.0f, 0.0f);
         fn_80026A44(model, 1U);
         fn_80026B64(model, (u16) lbl_1_rodata_10[camera]);
-        if (strcmp(lbl_1_data_290[i], lbl_1_data_230) != 0) {
+        if (strcmp(lbl_1_data_290[i], "\x82\xC8\x82\xB5") != 0) {
             if (j < 10) {
                 variant = scene->choices[j];
                 if (scene->models[variant + 25] < 0) {
@@ -1582,7 +1560,7 @@ void fn_1_4948(M638CourseView *course)
     eventCount = 1;
     for (i = 0; i < 40; i++) {
         fn_8002741C(course->segments[i / 2], lbl_1_data_190[i], course->connectors[i]);
-        if (strcmp(lbl_1_data_290[i], lbl_1_data_230) != 0) {
+        if (strcmp(lbl_1_data_290[i], "\x82\xC8\x82\xB5") != 0) {
             fn_8002741C(course->segments[i / 2], lbl_1_data_290[i],
                              course->events[eventCount - 1]);
             if (eventCount < 10) {
@@ -1639,7 +1617,7 @@ void fn_1_4B4C(M638CourseView *course)
 }
 
 /* Called by fn_1_1CD4 during scene initialization to build the event-choice sequence. */
-void fn_1_4D68(M638SceneChoicesView *scene)
+void fn_1_4D68(M638SceneView *scene)
 {
     int i;
     int repeat;
@@ -1751,11 +1729,11 @@ void fn_1_4E48(M638SceneView *scene)
 }
 
 /* Called by fn_1_19C0 each scene update to move status sprites with the course-view motion. */
-void fn_1_5378(M638SceneCameraView *scene)
+void fn_1_5378(M638SceneView *scene)
 {
     f32 viewProgress;
     f32 y;
-    viewProgress = (fn_8002D4E0(scene->team0Model) - 120.0f) / 435.0f;
+    viewProgress = (fn_8002D4E0(scene->teams[0].course.model) - 120.0f) / 435.0f;
     if (viewProgress < 0.0f) {
         viewProgress = 0.0f;
     }
@@ -1763,8 +1741,8 @@ void fn_1_5378(M638SceneCameraView *scene)
         viewProgress = 1.0f;
     }
     y = 400.0f * (1.0f - viewProgress) + 120.0f * viewProgress;
-    espPosSet(scene->sprite0, 276.0f, y);
-    viewProgress = (fn_8002D4E0(scene->team1Model) - 120.0f) / 435.0f;
+    espPosSet(scene->sprites[1], 276.0f, y);
+    viewProgress = (fn_8002D4E0(scene->teams[1].course.model) - 120.0f) / 435.0f;
     if (viewProgress < 0.0f) {
         viewProgress = 0.0f;
     }
@@ -1772,7 +1750,7 @@ void fn_1_5378(M638SceneCameraView *scene)
         viewProgress = 1.0f;
     }
     y = 400.0f * (1.0f - viewProgress) + 120.0f * viewProgress;
-    espPosSet(scene->sprite1, 300.0f, y);
+    espPosSet(scene->sprites[2], 300.0f, y);
 }
 
 /* Called by fn_1_1E58 for each team to create its response-scale effect model. */

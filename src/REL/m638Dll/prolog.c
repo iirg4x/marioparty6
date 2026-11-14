@@ -1,8 +1,9 @@
 /* Start the Gondola Glide scene after module initialization and run module destructors on exit. */
+#include "REL/m638Dll.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Invoke registered constructors, then start the minigame scene. */
 int _prolog(void)

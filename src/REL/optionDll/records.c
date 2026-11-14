@@ -17,6 +17,7 @@
 #include "REL/optionDll/main.h"
 #include "REL/optionDll/records.h"
 #include "REL/optionDll/sound_test.h"
+#include "REL/optionDll/option.h"
 #include "game/mic.h"
 #include "humath.h"
 
@@ -92,14 +93,6 @@ extern char lbl_1_bss_A08[216];
 /* Each visible row uses a 30-byte segment of the shared formatting buffer. */
 #define OPTION_RECORD_TEXT(row) (((char (*)[30])lbl_1_bss_A08)[row])
 
-void fn_1_EA6C(void);
-void fn_1_E6F8(void);
-void fn_1_F1D8(void);
-void fn_1_F394(void);
-void fn_1_F0B0(void);
-void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
-float fn_1_F684(s16 groupId, s16 memberNo);
 int sprintf(char *buffer, const char *format, int value);
 
 /* Called by the Option Mode menu to show board and character record totals. */
