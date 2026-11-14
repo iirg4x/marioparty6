@@ -1,18 +1,20 @@
-// Camera-relative sound: per-camera pan ranges, the distance-to-volume curve and the sound-effect calls that use
-// them. Shared by the minigames that link it (the same 0x23DC bytes just before heap.cpp in 19 of the 21 C++
-// minigames).
+// Camera-relative sound: per-camera pan ranges, the distance-to-volume curve and the
+// sound-effect calls that use them. Shared by the minigames that link it (the same 0x23DC
+// bytes just before heap.cpp in 19 of the 21 C++ minigames).
 //
-// The file name is not recovered: the code has no assert or $Id string. The language is inferred: the two
-// comparisons return int, as m639's one caller that tests a result reads it (cmpwi), and C is the only language in
-// which that one declaration also gives the definitions' bytes. As C, math.h's sqrtf statics are named as
-// player_table_1vs1.cpp's (m624, m652, m654 and m655 keep only the first copy) and not as the C++ game files'
-// (m622, m648, m672 and m681 keep this file's own). The function and data names are descriptive, not recovered.
+// The file name is unknown: the code has no assert or $Id string. C is indicated by the two
+// comparisons returning int, as m639's one caller that tests a result reads it (cmpwi). Only C
+// produces the definitions' bytes with that declaration. As C, math.h's sqrtf statics are named
+// as player_table_1vs1.cpp's (m624, m652, m654 and m655 keep only the first copy), rather than
+// as the C++ game files' (m622, m648, m672 and m681 keep this file's own). The function and data
+// names are descriptive; their original spelling is unknown.
 #include "math.h"
 #include "dolphin/mtx.h"
 #include "game/hu3d.h"
 #include "game/charman.h"
 
-// The sound calls as this file uses them; game/audio.h declares three of them with other parameter types.
+// The sound calls as this file uses them; game/audio.h declares three of them with other
+// parameter types.
 int HuAudFXPlay(int seId);
 void HuAudFXStop(int seNo);
 int HuAudFXPlayPan(int effectId, s16 pan);
@@ -65,8 +67,8 @@ f32 soundProject(Vec *sourcePoint, Vec *result, HU3D_CAMERA *camera,
     f32 depth;
     f32 width;
 
-    C_MTXLookAt(lookAtMatrix, (Point3d *)&camera->pos, &camera->up,
-                (Point3d *)&camera->target);
+    C_MTXLookAt(lookAtMatrix, &camera->pos, &camera->up,
+                &camera->target);
     PSMTXMultVec(lookAtMatrix, sourcePoint, &transformed);
 
     tangent = tan(MTXDegToRad(camera->fov / 2.0f));
@@ -203,8 +205,9 @@ void soundPlayAtDelayed(s16 cameraMask, s32 effectId, Point3d *targetPoint, u16 
 }
 
 // soundPlayAtWithVolume's s16 volume path. These two duplicates of soundVolumeAtDistance and
-// soundVolumeAndPanAt are open debt: the natural forms tried (calling soundVolumeAndPanAt with an s32 volume, or
-// assigning soundVolumeAtDistance's result to an s16) do not compile to its bytes.
+// soundVolumeAndPanAt are open debt: the natural forms tried (calling soundVolumeAndPanAt
+// with an s32 volume, or assigning soundVolumeAtDistance's result to an s16) do not compile
+// to its bytes.
 static inline s16 soundVolumeForPlay(f32 value)
 {
     SoundVolumeCurve *curveParameters = &soundVolumeCurve;

@@ -1,5 +1,3 @@
-// misc_diff_deg.cpp's code without its $Id string: this module links its own copy of the file,
-// an older revision, among its game files.
 #include "REL/framework/misc_diff_deg.h"
 
 // Supplies degree-angle comparisons, including limitedDegreeDifference, with the shortest turn.

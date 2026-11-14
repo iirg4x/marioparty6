@@ -1,50 +1,60 @@
-#include "REL/m652DLL/tail_types.h"
+extern "C" {
+#include "game/hu3d.h"
+}
+extern "C" {
+#include "game/mg/actman.h"
+}
 #include "REL/m652DLL/camera_arc_motion.h"
 extern "C" {
 #include "math.h"
 }
 #include "humath.h"
 
-extern "C" void fn_80027CD0(s32 cameraBit, Vec *position, Vec *up, Vec *target);
-extern "C" void fn_80080520(void *player, s32 padX, s32 padY,
-                                s32 buttonState, s32 buttons);
-
-CameraArcMotion::CameraArcMotion(u16 cameraBit, f32 angle)
+/* Initializes pad control for the camera mask and angle. */
+PlayerPadControl::PlayerPadControl(u16 cameraBit, f32 angle)
     : cameraBit((u16)cameraBit), angle(-3.1415927f, 3.1415927f, angle),
-      horizontalMotion(0.0f), forwardMotion(0.0f), flags_primary(0), flags_secondary(0) {}
+      horizontalMotion(0.0f), forwardMotion(0.0f), primaryFlags(0), secondaryFlags(0) {}
 
-CameraArcMotion::~CameraArcMotion() {}
+/* Releases the object through its member and base destructors. */
+PlayerPadControl::~PlayerPadControl() {}
 
-void fn_1_ABA8(CameraArcMotion *control, f32 value)
+/* Resets the control angle, movement components and both pad flag words. */
+void fn_1_ABA8(PlayerPadControl *control, f32 value)
 {
     control->angle.set(value);
     control->horizontalMotion = 0.0f;
     control->forwardMotion = 0.0f;
-    control->flags_primary = 0;
-    control->flags_secondary = 0;
+    control->primaryFlags = 0;
+    control->secondaryFlags = 0;
 }
 
-void CameraArcMotion::AddSecondaryFlags(u32 flags) {
-    flags_secondary |= flags;
+/* Adds bits to the secondary pad flag word. */
+void PlayerPadControl::AddSecondaryFlags(u32 flags) {
+    secondaryFlags |= flags;
 }
 
-void CameraArcMotion::AddPrimaryFlags(u32 flags) {
-    flags_primary |= flags;
+/* Adds bits to the primary pad flag word. */
+void PlayerPadControl::AddPrimaryFlags(u32 flags) {
+    primaryFlags |= flags;
 }
 
-void CameraArcMotion::SetPrimaryFlag200() {
-    flags_primary |= 0x200;
+/* Sets bit 0x200 in the primary pad flag word. */
+void PlayerPadControl::SetPrimaryFlag200() {
+    primaryFlags |= 0x200;
 }
 
-void CameraArcMotion::fn_1_AC40() {
-    flags_primary |= 0x100;
+/* Sets bit 0x100 in the primary pad flag word. */
+void PlayerPadControl::fn_1_AC40() {
+    primaryFlags |= 0x100;
 }
 
-void CameraArcMotion::fn_1_AC50() {
-    flags_secondary |= 0x100;
+/* Sets bit 0x100 in the secondary pad flag word. */
+void PlayerPadControl::fn_1_AC50() {
+    secondaryFlags |= 0x100;
 }
 
-void CameraArcMotion::fn_1_AC60(const Vec *movement, f32 amount)
+/* Transforms movement into camera-relative pad motion and updates the control angle. */
+void PlayerPadControl::fn_1_AC60(const Vec *movement, f32 amount)
 {
     Point3d cameraMovement = {0.0f, 0.0f, 0.0f};
     Point3d cameraPosition;
@@ -85,7 +95,8 @@ void CameraArcMotion::fn_1_AC60(const Vec *movement, f32 amount)
     forwardMotion = -radius * cos(this->angle.get());
 }
 
-void CameraArcMotion::fn_1_AE90(void *player)
+/* Clamps normalized movement to pad coordinates and submits both pad flag words. */
+void PlayerPadControl::fn_1_AE90(MGPLAYER *player)
 {
     f32 normalizedHorizontal;
     f32 horizontal;
@@ -115,13 +126,14 @@ void CameraArcMotion::fn_1_AE90(void *player)
     padY = (s32)(56.0f * normalizedVertical);
 
     fn_80080520(player, padX, padY,
-                   flags_primary, flags_secondary | flags_primary);
+                   primaryFlags, secondaryFlags | primaryFlags);
     fn_1_B02C();
 }
 
-void CameraArcMotion::fn_1_B02C() {
+/* Decays both movement components and clears both pad flag words. */
+void PlayerPadControl::fn_1_B02C() {
     horizontalMotion *= 0.9;
     forwardMotion *= 0.9;
-    flags_primary = 0;
-    flags_secondary = 0;
+    primaryFlags = 0;
+    secondaryFlags = 0;
 }

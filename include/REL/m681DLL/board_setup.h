@@ -2,11 +2,21 @@
 #define M681_BOARD_SETUP_H
 #include "REL/framework/singleton.h"
 struct ModelPair;
-class Owner47C { public: ModelPair *value; Owner47C() : value(0) {} ~Owner47C(); };
+class ModelPairOwner {
+public:
+    ModelPair *value;
+    // Starts with no owned model pair.
+    ModelPairOwner() : value(0) {}
+    ~ModelPairOwner();
+};
 class BoardController : public MinigameSingleton<BoardController> {
 public:
-    Owner47C child;
+    ModelPairOwner child;
     BoardController();
     ~BoardController();
 };
+void fn_1_EEC(BoardController *);
+void fn_1_F30(BoardController *);
+void fn_1_1014(BoardController *);
+void fn_1_10D8(BoardController *);
 #endif

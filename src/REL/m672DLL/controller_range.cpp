@@ -22,15 +22,17 @@ extern "C" {
 
 #include "REL/framework/range.h"
 
-#include "REL/m672DLL/controllers_bf64.h"
+#include "REL/m672DLL/controllers.h"
 #include "humath.h"
+// Initialize the direction range and clear the accumulated input.
 VirtualPad::VirtualPad(u16 cameraType,float initial)
  : type((u32)cameraType), bounds(-3.1415927f,3.1415927f,initial)
 {
  horizontal=0.0f; vertical=0.0f; buttonsDown=0; buttons=0;
 }
+// Destroy the direction range.
 VirtualPad::~VirtualPad() {}
-
+// Set the direction value and clear the accumulated input.
 void VirtualPad::fn_1_12AB8(f32 value)
 {
     bounds.set(value);
@@ -39,29 +41,29 @@ void VirtualPad::fn_1_12AB8(f32 value)
     buttonsDown = 0;
     buttons = 0;
 }
-
+// Accumulate held button flags.
 void VirtualPad::fn_1_12B20(u32 flags) {
     buttons |= flags;
 }
-
+// Accumulate newly pressed button flags.
 void VirtualPad::fn_1_12B30(u32 flags) {
     buttonsDown |= flags;
 }
-
+// Accumulate button flag 0x200 for this frame.
 void VirtualPad::fn_1_12B40() {
     buttonsDown |= 0x200;
 }
-
+// Accumulate button flag 0x100 for this frame.
 void VirtualPad::fn_1_12B50() {
     buttonsDown |= 0x100;
 }
-
+// Accumulate held button flag 0x100.
 void VirtualPad::fn_1_12B60() {
     buttons |= 0x100;
 }
 
 extern "C" const Point3d lbl_1_rodata_774 = {0.0f, 0.0f, 0.0f};
-
+// Accumulate movement relative to the camera direction.
 void VirtualPad::fn_1_12B70(const Vec *movement, f32 amount)
 {
     Point3d cameraMovement = lbl_1_rodata_774;
@@ -102,7 +104,7 @@ void VirtualPad::fn_1_12B70(const Vec *movement, f32 amount)
     horizontal = radius * sin(bounds.get());
     vertical = -radius * cos(bounds.get());
 }
-
+// Clamp the accumulated axes, submit player input, and decay the axes.
 void VirtualPad::fn_1_12DA0(MGPLAYER *player) {
     float normalizedHorizontal;
     float horizontal;
@@ -135,8 +137,7 @@ void VirtualPad::fn_1_12DA0(MGPLAYER *player) {
                    buttons | buttonsDown);
     fn_1_12F3C();
 }
-
-
+// Decay both axes and clear the button flags.
 void VirtualPad::fn_1_12F3C() {
     horizontal *= 0.9;
     vertical *= 0.9;

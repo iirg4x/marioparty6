@@ -61,8 +61,6 @@ extern "C" {
 #include "datadir_enum.h"
 #include "REL/m622DLL/texture_capture_owner.h"
 
-typedef s16 HUSPR_GROUPID;
-
 extern "C" {
 
 }
@@ -71,15 +69,11 @@ extern "C" { void *lbl_1_bss_F8; }
 
 extern "C" { void *lbl_1_bss_FC; }
 
-extern "C" { void __msl_assertion_failed(const char *, const char *, int); }
-
 void captureFirstTexture(s16 layerNo);
 
 void captureSecondTexture(s16 layerNo);
 
 void fn_1_989C(HU3D_MODEL *, Mtx *);
-
-extern "C" { void fn_8002C2AC(s16); }
 
 /* Initializes the capture model, two texture buffers and their drawing hooks. */
 TextureCaptureOwner::TextureCaptureOwner()
@@ -100,22 +94,26 @@ TextureCaptureOwner::TextureCaptureOwner()
     fn_8002C2AC(1);
 }
 
+/* Copies the full framebuffer to the first I4 texture buffer. */
 void captureFirstTexture(s16 layerNo) {
     GXSetTexCopySrc(0U, 0U, 0x280U, 0x1E0U);
     GXSetTexCopyDst(0x280U, 0x1E0U, GX_TF_I4, 0U);
     GXCopyTex(lbl_1_bss_F8, 1U);
 }
 
+/* Copies the full framebuffer to the second I4 texture buffer. */
 void captureSecondTexture(s16 layerNo) {
     GXSetTexCopySrc(0U, 0U, 0x280U, 0x1E0U);
     GXSetTexCopyDst(0x280U, 0x1E0U, GX_TF_I4, 0U);
     GXCopyTex(lbl_1_bss_FC, 1U);
 }
 
+/* Releases the object through its member and base destructors. */
 TextureCaptureOwner::~TextureCaptureOwner()
 {
 }
 
+/* Clears the requested flag. */
 void TextureCaptureOwner::flagEnabled(int bit)
 {
     flags &= ~(1U << bit);
@@ -123,14 +121,14 @@ void TextureCaptureOwner::flagEnabled(int bit)
 
 extern void fn_1_98D4(TextureCaptureOwner *, Mtx);
 
-extern "C" void fn_80027D8C(int cameraBit, f32 *fov, f32 *nearPlane, f32 *farPlane);
-
 void fn_1_9C30(void *);
 
+/* Returns without changing state. */
 void TextureCaptureOwner::update()
 {
 }
 
+/* Draws the texture capture owner stored in the model hook data. */
 void fn_1_989C(HU3D_MODEL *model, Mtx *viewMatrix)
 {
     fn_1_98D4(static_cast<TextureCaptureOwner *>(model->hookData), *viewMatrix);
@@ -139,6 +137,7 @@ void fn_1_989C(HU3D_MODEL *model, Mtx *viewMatrix)
 const GXColor lbl_1_rodata_328 = {0, 32, 0, 0};
 const GXColor lbl_1_rodata_32C = {192, 255, 192, 0};
 
+/* Configures projective texture blending and draws the captured textures on the stage quads. */
 void fn_1_98D4(TextureCaptureOwner *owner, Mtx viewMatrix)
 {
     Mtx projectionMatrix;
@@ -161,13 +160,11 @@ void fn_1_98D4(TextureCaptureOwner *owner, Mtx viewMatrix)
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0,
                       GX_FALSE, GX_PTIDENTITY);
 
-    {
-        GXColor color0 = lbl_1_rodata_328;
-        GXColor color1 = lbl_1_rodata_32C;
+    GXColor color0 = lbl_1_rodata_328;
+    GXColor color1 = lbl_1_rodata_32C;
 
-        GXSetTevKColor(GX_KCOLOR0, color0);
-        GXSetTevKColor(GX_KCOLOR1, color1);
-    }
+    GXSetTevKColor(GX_KCOLOR0, color0);
+    GXSetTevKColor(GX_KCOLOR1, color1);
     GXSetNumTevStages(2);
     GXSetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_K0);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
@@ -203,6 +200,7 @@ const GXVtxAttrFmtList lbl_1_rodata_34C[] = {
     {GX_VA_NULL, GX_POS_XY, GX_U8, 0}
 };
 
+/* Draws four textured quads at the lane positions. */
 void fn_1_9C30(void *owner)
 {
     s32 i;

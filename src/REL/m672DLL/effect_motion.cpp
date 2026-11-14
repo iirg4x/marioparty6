@@ -1,3 +1,5 @@
+#include "REL/framework/frame_time.h"
+#include <new>
 #include <vector>
 #include "REL/m672DLL/particle_groups.h"
 #include "REL/m672DLL/member_callback.h"
@@ -10,31 +12,18 @@ extern "C" {
 #include "REL/framework/event_hm.h"
 #include "REL/framework/event_callback_inline.h"
 #include "humath.h"
-void *operator new(unsigned long);
 #include "REL/framework/game_object.h"
 #include "REL/framework/model.h"
-void operator delete(void *);
 
 #include "REL/framework/linknode.h"
 #include "REL/m672DLL/collision_object.h"
 #include "math.h"
-void operator delete(void *);
 
-template<class Receiver>
-void fn_1_8980(EventHandlerManager *, const CallbackBinding<Receiver> &, int);
+#include "REL/m672DLL/member_handler.h"
 
 typedef std::mem_fun1_t<void, Spinner, EventMessage *> SpinnerMemberFunction;
-static inline SpinnerMemberFunction SpinnerMember(void (Spinner::*fn)(EventMessage *)) {
-    return SpinnerMemberFunction(fn);
-}
-static inline CallbackBinding<Spinner> BindSpinner(const SpinnerMemberFunction &fn,
-                                               Spinner *object) {
-    return CallbackBinding<Spinner>(fn, object);
-}
-extern "C" {
-}
-template<class Time> Time secondsToFrames(Time);
-Spinner::Spinner(s32 setupMode, WorldPosition position, ANIMDATA *, s32, s32, ANIMDATA *, s32,
+// Initializes motion/output state, positions the output, and registers two event callbacks.
+Spinner::Spinner(s32 setupMode, EffectVector position, ANIMDATA *, s32, s32, ANIMDATA *, s32,
                  ANIMDATA *texture, s32 count, s32 layer, s32 itemIndex)
     : OwnedModel(setupMode), GameObject(2), motion(150.0f),
       progress(0.0f), velocity(0.5f), mode(0), angle(0.0f), angleDelta(0.0f),
@@ -44,21 +33,23 @@ Spinner::Spinner(s32 setupMode, WorldPosition position, ANIMDATA *, s32, s32, AN
       output(new CollidingParticles(texture, count, layer, position)),
       firstCallback(0), secondCallback(1)
 {
-    motion.setPosition(position.value);
+    motion.setPosition(position);
     motion.active = 1;
     motion.state = 1;
     output->setPosition(fn_1_88D0(itemIndex));
     setShadow();
     setLayer(3);
     setPosition(&motion.position.value);
-    fn_1_8980<Spinner>(&firstCallback,
-        BindSpinner(SpinnerMember(&Spinner::fn_1_8814), this), 3);
-    fn_1_8980<Spinner>(&secondCallback,
-        BindSpinner(SpinnerMember(&Spinner::fn_1_8820), this), 4);
+    registerMemberHandler<Spinner>(&firstCallback,
+        bindMember(std::mem_fun(&Spinner::fn_1_8814), this), 3);
+    registerMemberHandler<Spinner>(&secondCallback,
+        bindMember(std::mem_fun(&Spinner::fn_1_8820), this), 4);
 }
 
+// Performs no additional work when the spinner is destroyed.
 Spinner::~Spinner() {}
 
+// Advances startup movement or active spin and updates output angles and capped velocity.
 void Spinner::update()
 {
     float direction;
@@ -114,34 +105,31 @@ void Spinner::update()
     }
 }
 
+// Enables the spinner update path.
 void Spinner::fn_1_8814(EventMessage *) {
     active = 1;
 }
 
-extern "C" void fn_1_3350(CollidingParticles *);
+// Starts the associated colliding-particle output.
 void Spinner::fn_1_8820(EventMessage *) { fn_1_3350(output.get()); }
 
+// Adds a fixed vector to source and returns the resulting offset.
 Vec Spinner::fn_1_885C(Vec *source) {
     Vec offset = {0.0f, 100.0f, 50.0f};
     PSVECAdd(source, &offset, &offset);
     return offset;
 }
 
-WorldPosition Spinner::fn_1_88D0(s32 index)
+// Returns the indexed world position from the five-entry position table.
+EffectVector Spinner::fn_1_88D0(s32 index)
 {
-    WorldPosition table[5] = {
-        {{{0.0f, 209.99998f, 80.0f}}},
-        {{{0.0f, 200.0f, 100.0f}}},
-        {{{0.0f, 180.0f, 100.0f}}},
-        {{{-40.0f, 200.0f, 80.0f}}},
-        {{{0.0f, 200.0f, 130.0f}}},
+    EffectVector table[5] = {
+        {{0.0f, 209.99998f, 80.0f}},
+        {{0.0f, 200.0f, 100.0f}},
+        {{0.0f, 180.0f, 100.0f}},
+        {{-40.0f, 200.0f, 80.0f}},
+        {{0.0f, 200.0f, 130.0f}},
     };
 
     return table[index];
-}
-
-template<class Receiver>
-void fn_1_8980(EventHandlerManager *owner, const CallbackBinding<Receiver> &payload, int key)
-{
-    owner->addHandler(new MemberCallbackRecord<Receiver>(payload), key);
 }

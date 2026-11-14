@@ -1,12 +1,15 @@
-#include "REL/m652DLL/map_singleton.h"
 #include "REL/framework/singleton.h"
 #include "REL/m652DLL/player_functions.h"
 #include "REL/m652DLL/player_work.h"
-#include "REL/m652DLL/tail_types.h"
-void fn_1_ABA8(CameraArcMotion *object, float value);
+extern "C" {
+#include "game/mg/actman.h"
+}
+#include "REL/m652DLL/camera_arc_motion.h"
+#include "REL/m652DLL/man_map.h"
+#include "REL/framework/random.h"
 #include "REL/framework/frame_time.h"
 #include "REL/framework/world_units.h"
-class MapManager;
+#include "REL/framework/sphere.h"
 #include <vector>
 #include <cmath>
 #include "dolphin/types.h"
@@ -15,13 +18,8 @@ extern "C" {
 #include "dolphin.h"
 #include "humath.h"
 #include "game/hu3d.h"
-#include "game/mg/actman.h"
 #include "game/mg/timer.h"
 }
-
-#include "REL/m652DLL/camera_arc_motion.h"
-
-float RandomFloat(float minimum, float maximum);
 
 using std::cos;
 
@@ -35,7 +33,6 @@ struct DifficultyParameter {
     s32 stepLimit;
 };
 
-/* What drives a racer; the classes' names are reconstructed. */
 #include "REL/m652DLL/racer_control.h"
 extern "C" {
 
@@ -48,27 +45,30 @@ const DifficultyParameter lbl_1_rodata_10[] = {
 };
 
 }
-float RandomFloat();
-float RandomFloat(float maximum);
 
 void fn_1_48C(ComputerControl *owner);
 void fn_1_990(ComputerControl *work, const HuVecF *position, HuVecF *delta);
 s32 fn_1_CBC(ComputerControl *work, const HuVecF *target, float amount);
 
+/* Releases the object through its member and base destructors. */
 inline RacerControl::~RacerControl() {}
 
+/* Releases the object through its member and base destructors. */
 HumanControl::~HumanControl() {}
 
+/* Initializes the computer player's difficulty, route, timers and pad control. */
 ComputerControl::ComputerControl(Racer *racer)
-    : RacerControl(racer), index(racer->difficulty()),
-      unknown0C(-1), currentStep(0), nextStep(0),
-      rotation(1.4f), collisionTimer(0), timer(0), moving(1), steps(2),
+    : RacerControl(racer), difficulty(racer->difficulty()),
+      resetCount(-1), currentStep(0), nextStep(0),
+      stepDistanceFactor(1.4f), collisionTimer(0), timer(0), moving(1), steps(2),
       padControl((u16)this->racer->playerMask, 3.1415927f)
 {
 }
 
+/* Releases the object through its member and base destructors. */
 ComputerControl::~ComputerControl() {}
 
+/* Resets pad control and timers, then selects or advances the route for this difficulty. */
 void ComputerControl::reset()
 {
     const s32 *maximum;
@@ -87,7 +87,7 @@ void ComputerControl::reset()
     fn_1_48C(this);
     steps.clear();
 
-    if (index >= 3) {
+    if (difficulty >= 3) {
         for (entryIndex = 0; entryIndex < 2; entryIndex++) {
             const RouteStep *entry = &lbl_1_data_0[entryIndex];
             if (currentStep <= entry->firstPoint && RandomFloat() < 0.6) {
@@ -95,75 +95,64 @@ void ComputerControl::reset()
             }
         }
     } else {
-        maximum = &lbl_1_rodata_10[index].stepLimit;
-        if (++unknown0C >= *maximum) {
-            index = index + 1;
+        maximum = &lbl_1_rodata_10[difficulty].stepLimit;
+        if (++resetCount >= *maximum) {
+            difficulty = difficulty + 1;
         }
     }
 }
 
+/* Chooses a random movement timer from the current difficulty parameters. */
 void fn_1_48C(ComputerControl *owner)
 {
     s32 convertedValue;
 
-    convertedValue = (s32)RandomFloat(secondsToFrames(lbl_1_rodata_10[owner->index].value));
+    convertedValue = (s32)RandomFloat(secondsToFrames(lbl_1_rodata_10[owner->difficulty].value));
     owner->timer = convertedValue;
 }
 
-static inline void RandomFrames4EC(ComputerControl *object, const f32 *angle)
+/* Chooses a random collision timer from the supplied duration in seconds. */
+static inline void chooseCollisionFrames(ComputerControl *object, const f32 *angle)
 {
     s32 frames;
     frames = (s32)RandomFloat(secondsToFrames(*angle));
     object->collisionTimer = frames;
 }
 
-static inline void timer48C(ComputerControl *object)
-{
-    s32 frames;
-    frames = (s32)RandomFloat(secondsToFrames(lbl_1_rodata_10[object->index].value));
-    object->timer = frames;
-}
-
-static inline f32 Dot4EC(const Point3d *a, const Point3d *b)
-{
-    return PSVECDotProduct(a, b);
-}
-
-static inline f32 Magnitude4EC(const Point3d *value)
-{
-    return PSVECMag(value);
-}
-
-static inline void Frames4EC(ComputerControl *object, f64 value)
+/* Sets the collision timer from a duration in seconds. */
+static inline void setCollisionSeconds(ComputerControl *object, f64 value)
 {
     s32 frames = (s32)secondsToFrames(value);
     object->collisionTimer = frames;
 }
 
-static inline void InitialStep4EC(ComputerControl *object, bool *reset)
+/* Reports whether the route is on its initial nonzero step. */
+static inline void isInitialRouteStep(ComputerControl *object, bool *reset)
 {
     *reset = object->currentStep != 0 && object->nextStep == 0;
 }
 
 /* The unit direction's dot product with the collision normal. */
-static inline f32 NormalizedDot4EC(Point3d *normal, const Point3d *collisionNormal)
+static inline f32 normalizedCollisionDot(Point3d *normal, const Point3d *collisionNormal)
 {
     PSVECNormalize(normal, normal);
-    return Dot4EC(normal, collisionNormal);
+    return PSVECDotProduct(normal, collisionNormal);
 }
 
-static inline void Collision4EC(Point3d *normal, Point3d *collisionNormal, f32 radians, bool *hit)
+/* Tests the collision normal against the angle and normalized movement direction. */
+static inline void testMovementCollision(Point3d *normal, Point3d *collisionNormal, f32 radians, bool *hit)
 {
-    *hit = collisionNormal->y < cos(radians) && NormalizedDot4EC(normal, collisionNormal) < 0.0f;
+    *hit = collisionNormal->y < cos(radians) && normalizedCollisionDot(normal, collisionNormal) < 0.0f;
 }
 
 /* Counts a timer down; true on the tick that reaches zero. */
-static inline bool Tick4EC(s32 *counter)
+static inline bool tickPositiveCounter(s32 *counter)
 {
     return *counter > 0 && --*counter == 0;
 }
 
-static inline void SetMoving4EC(ComputerControl *object, u32 moving)
+/* Stores whether the computer player is moving. */
+static inline void setMoving(ComputerControl *object, u32 moving)
 {
     object->moving = moving;
 }
@@ -180,7 +169,7 @@ void ComputerControl::update()
     MGACTOR *actor;
     bool hit;
     bool reset;
-    Tick4EC(&this->timer);
+    tickPositiveCounter(&this->timer);
     if (this->timer <= 0) {
         owner = racer->player;
         actor = owner->actor;
@@ -204,22 +193,22 @@ void ComputerControl::update()
         }
         moving = fn_1_6FAC(racer);
         if (moving != 0) {
-            if (Tick4EC(&collisionTimer)) padControl.fn_1_AC40();
+            if (tickPositiveCounter(&collisionTimer)) padControl.fn_1_AC40();
             if (collisionTimer <= 0 && fn_80086D54(actor, &collisionNormal) != 0) {
-                threshold = &lbl_1_rodata_10[index].collisionAngle;
-                angle = &lbl_1_rodata_10[index].collisionDelay;
+                threshold = &lbl_1_rodata_10[difficulty].collisionAngle;
+                angle = &lbl_1_rodata_10[difficulty].collisionDelay;
                 Point3d normal = {0.0f, 0.0f, 0.0f};
                 normal.x = direction.x;
                 normal.z = direction.z;
                 radians = M_PI * *threshold / 180.0;
-                Collision4EC(&normal, &collisionNormal, radians, &hit);
-                InitialStep4EC(this, &reset);
-                if (hit != 0) RandomFrames4EC(this, angle);
+                testMovementCollision(&normal, &collisionNormal, radians, &hit);
+                isInitialRouteStep(this, &reset);
+                if (hit != 0) chooseCollisionFrames(this, angle);
                 if (reset != 0) collisionTimer = 1;
                 if (targetMatches != 0) {
-                    Frames4EC(this, 0.2);
+                    setCollisionSeconds(this, 0.2);
                 }
-                if (index >= 2 && fn_1_7020(racer) != 0) {
+                if (difficulty >= 2 && fn_1_7020(racer) != 0) {
                     collisionTimer = 0;
                     padControl.fn_1_AC40();
                 }
@@ -231,12 +220,12 @@ void ComputerControl::update()
                     steps.erase(target);
                 }
             }
-            if (this->moving == 0) timer48C(this);
+            if (this->moving == 0) fn_1_48C(this);
         } else {
             padControl.fn_1_AC50();
         }
-        SetMoving4EC(this, moving);
-        if (Magnitude4EC(&direction) > 0.0f) {
+        setMoving(this, moving);
+        if (vectorMagnitude(&direction) > 0.0f) {
             PSVECAdd(&direction, &position, &position);
             fn_1_CBC(this, &position, 1.0f);
         }
@@ -244,29 +233,13 @@ void ComputerControl::update()
     }
 }
 
-extern "C" {
-
-// Route initialization state.
-signed char lbl_1_bss_10[0x8];
-}
-template<> MapManager *MinigameSingleton<MapManager>::self = 0;
-extern "C" {
-
-HuVecF lbl_1_data_20[2] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
-
-}
-unsigned char fn_1_5190(MapManager *owner, int currentStep, int nextStep, Vec *position);
-
-static inline double StepDistance990(double rotation)
+/* Scales the route distance factor by one hundred. */
+static inline double routeStepDistance(double stepDistanceFactor)
 {
-    return 100.0 * rotation;
+    return 100.0 * stepDistanceFactor;
 }
 
-static inline float Magnitude990(const HuVecF *value)
-{
-    return PSVECMag(value);
-}
-
+/* Selects a route target and computes the direction toward it, advancing completed steps. */
 void fn_1_990(ComputerControl *work, const HuVecF *position, HuVecF *delta)
 {
     HuVecF target;
@@ -277,26 +250,21 @@ void fn_1_990(ComputerControl *work, const HuVecF *position, HuVecF *delta)
     unsigned int waypointIndex;
     float speed;
 
-    if (lbl_1_bss_10[0] == 0) {
-        lbl_1_data_20[0].x = 0.0f;
-        lbl_1_data_20[0].y = 362.0f;
-        lbl_1_data_20[0].z = -2700.0f;
-        lbl_1_data_20[1].x = 0.0f;
-        lbl_1_data_20[1].y = 280.0f;
-        lbl_1_data_20[1].z = -5100.0f;
-        lbl_1_bss_10[0] = 1;
-    }
+    static HuVecF fallbackTargets[2] = {
+        {cmToWorld(0.0f), cmToWorld(362.0f), cmToWorld(-2700.0f)},
+        {cmToWorld(0.0f), cmToWorld(280.0f), cmToWorld(-5100.0f)}
+    };
 
-    waypointX = &lbl_1_rodata_10[work->index].minimumRotation;
-    waypointY = &lbl_1_rodata_10[work->index].maximumRotation;
+    waypointX = &lbl_1_rodata_10[work->difficulty].minimumRotation;
+    waypointY = &lbl_1_rodata_10[work->difficulty].maximumRotation;
     if ((double)RandomFloat((float)secondsToFrames(0.4)) <
         1.0) {
-        work->rotation = RandomFloat(*waypointX, *waypointY);
+        work->stepDistanceFactor = RandomFloat(*waypointX, *waypointY);
     }
 
     hasTarget = fn_1_5190(&MinigameSingleton<MapManager>::getChecked(), work->currentStep,
                           work->nextStep, &target);
-    speed = (float)StepDistance990(hasTarget != 0 ? work->rotation : 3.5);
+    speed = (float)routeStepDistance(hasTarget != 0 ? work->stepDistanceFactor : 3.5);
 
     if (hasTarget == 0) {
         int selector = work->currentStep;
@@ -307,28 +275,31 @@ void fn_1_990(ComputerControl *work, const HuVecF *position, HuVecF *delta)
         } else {
             waypointIndex = (unsigned int)selector;
         }
-        fallbackTarget = lbl_1_data_20 + waypointIndex;
+        fallbackTarget = fallbackTargets + waypointIndex;
         target.x = fallbackTarget->x;
         target.y = fallbackTarget->y;
         target.z = fallbackTarget->z;
     }
 
     PSVECSubtract(&target, position, delta);
-    {
-        HuVecF difference = {0.0f, 0.0f, 0.0f};
-        difference.x = delta->x;
-        difference.z = delta->z;
-        if (Magnitude990(&difference) < speed) {
-            if (hasTarget != 0) {
-                work->nextStep++;
-            } else {
-                work->currentStep++;
-                work->nextStep = 0;
-            }
+    HuVecF difference = {0.0f, 0.0f, 0.0f};
+    difference.x = delta->x;
+    difference.z = delta->z;
+    if (vectorMagnitude(&difference) < speed) {
+        if (hasTarget != 0) {
+            work->nextStep++;
+        } else {
+            work->currentStep++;
+            work->nextStep = 0;
         }
     }
 }
 
+/* Nothing in the module refers to this four-byte object, aligned to four.
+ * Its type is not shown. */
+int lbl_1_bss_14;
+
+/* Moves pad control toward the target with a clamped movement amount. */
 s32 fn_1_CBC(ComputerControl *work, const HuVecF *target, float amount)
 {
     float clampedAmount;
@@ -364,5 +335,7 @@ s32 fn_1_CBC(ComputerControl *work, const HuVecF *target, float amount)
     return 0;
 }
 
+/* Returns without changing state. */
 void RacerControl::reset() {}
+/* Returns without changing state. */
 void HumanControl::update() {}

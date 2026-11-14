@@ -5,28 +5,30 @@ class Player;
 
 class PlayerControl {
 public:
-    PlayerControl(Player *owner) : work(owner) {}
+    // Binds the owning player.
+    PlayerControl(Player *owner) : owner(owner) {}
     virtual ~PlayerControl();
     virtual void enter();
     virtual void update() = 0;
-    Player *work;
+    Player *owner;
 };
 
 class HumanControl : public PlayerControl {
 public:
+    // Binds the human controller to its player.
     HumanControl(Player *owner) : PlayerControl(owner) {}
     virtual ~HumanControl();
     virtual void update();
 };
 
 struct ComputerControl;
-typedef void (ComputerControl::*Callback29C)();
+typedef void (ComputerControl::*StateCallback)();
 struct ComputerControl : PlayerControl {
-    Callback29C callback;
+    StateCallback callback;
     unsigned int weightIndex;
     Vec position;
-    PadControl cameraControl;
-    ComputerControl(void *);
+    PadControl pad;
+    ComputerControl(Player *);
     virtual ~ComputerControl();
     void fn_1_170();
     virtual void enter();

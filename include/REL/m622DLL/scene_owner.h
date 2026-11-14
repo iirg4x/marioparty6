@@ -6,7 +6,7 @@
 #include "REL/framework/singleton.h"
 #include "REL/m622DLL/scene_models.h"
 
-class SceneOwnerB9C : public RequestObject, public MinigameSingleton<SceneOwnerB9C> {
+class SceneOwner : public RequestObject, public MinigameSingleton<SceneOwner> {
 public:
     OwnedModel model0, model1, model2, model3, model4, model5;
     OwnedModel model6, model7, model8, model9, model10, model11;
@@ -21,11 +21,11 @@ public:
         s32 selectedAction[50];
     } phases[4];
     f32 pathPosition;
-    s32 unknown368;
+    s32 unusedValue;
     u8 soundActive;
 
-    SceneOwnerB9C();
-    virtual ~SceneOwnerB9C();
+    SceneOwner();
+    virtual ~SceneOwner();
     virtual void flagEnabled(int bit);
     virtual void update();
     void fn_1_E00();

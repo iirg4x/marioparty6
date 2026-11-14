@@ -30,6 +30,7 @@ public:
     FourModelOwner *model3;
 
     ModelEntry(const OwnedModel &, const Vec *, s32);
+    /* Destroys the owned models and unlinks the list node. */
     ~ModelEntry() {}
     void fn_1_1CF4();
     bool fn_1_1F5C();
@@ -48,6 +49,7 @@ struct ModelPairOwner : ListNode<ModelPairOwner> {
     OwnedModel secondModel;
 
     ModelPairOwner(const OwnedModel &, const OwnedModel &, const Vec *, u32);
+    /* Destroys the owned models and unlinks the list node. */
     ~ModelPairOwner() {}
     void fn_1_2618();
 };
@@ -65,6 +67,7 @@ struct ModelCameraPlacement : ListNode<ModelCameraPlacement> {
     OwnedModel model;
 
     ModelCameraPlacement(const OwnedModel &, const Vec *, s32);
+    /* Destroys the owned models and unlinks the list node. */
     ~ModelCameraPlacement() {}
     void fn_1_2C18();
     void fn_1_2E08();
@@ -83,6 +86,7 @@ struct ModelPulseOwner : ListNode<ModelPulseOwner> {
     OwnedModel model;
 
     ModelPulseOwner(const OwnedModel &, const Vec *, s32);
+    /* Destroys the owned models and unlinks the list node. */
     ~ModelPulseOwner() {}
     void fn_1_3490();
     void fn_1_3678();
@@ -99,11 +103,12 @@ struct FourModelOwner : ListNode<FourModelOwner> {
     Vec frameData;
     f32 scale;
     s32 state;
-    u32 unknown34;
+    u32 unusedValue;
     OwnedModel model0, model1, model2, model3;
 
     FourModelOwner(const OwnedModel &, const OwnedModel &, const OwnedModel &, const OwnedModel &,
                    const Vec *, s32);
+    /* Destroys the owned models and unlinks the list node. */
     ~FourModelOwner() {}
     void fn_1_3C90();
     void fn_1_3FE0();
@@ -123,15 +128,14 @@ struct MovingPair : ListNode<MovingPair> {
     OwnedModel backModel;
 
     MovingPair(const OwnedModel &, const OwnedModel &, const Vec *, s32);
+    /* Destroys the owned models and unlinks the list node. */
     ~MovingPair() {}
     void fn_1_46CC(void);
     void fn_1_49CC();
     void fn_1_4A70();
 };
 
-extern "C" {
 ModelEntry *fn_1_1DB8(s32 ownerId);
 s32 fn_1_1E68(s32 ownerId);
-}
 
 #endif

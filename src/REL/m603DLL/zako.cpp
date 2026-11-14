@@ -3,7 +3,7 @@
 #include "REL/m603DLL/model_motion.h"
 #include "REL/framework/frame_time_inline.h"
 #include "REL/m603DLL/zako.h"
-#include "REL/m603DLL/random.h"
+#include "REL/framework/random.h"
 #include "datadir_enum.h"
 
 extern "C" {
@@ -45,8 +45,8 @@ DrawModelPool::DrawModelPool()
 {
     s32 outerIndex;
     s32 innerIndex;
-    s32 nightOuterIndex;
-    s32 nightInnerIndex;
+    s32 dayOuterIndex;
+    s32 dayInnerIndex;
     s16 modelId;
     modelId = this->model;
     fn_800269E8(modelId, 1);
@@ -62,15 +62,16 @@ DrawModelPool::DrawModelPool()
     }
 
     if (GWMgNightFGet() == 0) {
-        for (nightOuterIndex = 0; nightOuterIndex < 4; nightOuterIndex++) {
-            for (nightInnerIndex = 0; nightInnerIndex < 2; nightInnerIndex++) {
-                new MotionModel(nightOuterIndex * 2 + nightInnerIndex,
-                                   nightOuterIndex);
+        for (dayOuterIndex = 0; dayOuterIndex < 4; dayOuterIndex++) {
+            for (dayInnerIndex = 0; dayInnerIndex < 2; dayInnerIndex++) {
+                new MotionModel(dayOuterIndex * 2 + dayInnerIndex,
+                                   dayOuterIndex);
             }
         }
     }
 }
 
+/* Load a motion, append its handle and return it. */
 HU3D_MOTIONID DrawModelPool::fn_1_8EA0(unsigned int dataNum)
 {
     HU3D_MOTIONID motionId = fn_80030458(model, fn_80008DD0(dataNum, 0x10000000, 2));
@@ -78,15 +79,12 @@ HU3D_MOTIONID DrawModelPool::fn_1_8EA0(unsigned int dataNum)
     return motionId;
 }
 
+/* Release the shared model and motion-handle vector. */
 DrawModelPool::~DrawModelPool()
 {
 }
 
-void fn_1_98AC();
-void fn_1_995C();
-void fn_1_D698();
-void fn_1_9794();
-
+/* Occasionally change target motions, then update targets and auxiliary models. */
 void DrawModelPool::update()
 {
     if ((s32)(RandomUnsigned() & 0x3FUL) < 3) {
@@ -96,6 +94,7 @@ void DrawModelPool::update()
     fn_1_D698();
 }
 
+/* Clear the request bit and delete the target lists for request four. */
 void DrawModelPool::flagEnabled(int bit)
 {
     flags &= ~(1UL << bit);

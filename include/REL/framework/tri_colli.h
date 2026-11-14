@@ -46,9 +46,9 @@ typedef std::set<Vector3 *> VertexSet;
 // The octree's triangle traversal with the sphere contact tests a sweep runs on each triangle.
 struct CollisionTriangle : OctreeTriangleIterator {
     CollisionTriangle(Octree *tree, OctreeDebugNode *node) : OctreeTriangleIterator(tree, node) {}
-    Vector3 *pointA() const { return (Vector3 *)a; }
-    Vector3 *pointB() const { return (Vector3 *)b; }
-    Vector3 *pointC() const { return (Vector3 *)c; }
+    Vector3 *pointA() const { return a[0]; }
+    Vector3 *pointB() const { return a[1]; }
+    Vector3 *pointC() const { return a[2]; }
     bool intersectFace(const Plane *plane, float radius, const Vector3 *origin,
                        const Vector3 *direction, PlaneList *results) const;
     void intersectVertices(float radius, const Vector3 *point, PlaneList *results,

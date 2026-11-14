@@ -1,24 +1,19 @@
+#include "REL/framework/world_units.h"
 #include "REL/framework/frame_time.h"
 #include <cmath>
 #include "dolphin/types.h"
 extern "C" {
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
-#include "REL/m681DLL.h"
+
 }
 #include "REL/m681DLL/texture_node.h"
-#include "REL/framework/world_units.h"
+#include "REL/m681DLL/game_constants.h"
 
-extern "C" {
-extern void fn_1_BDC(void *sequence,
-                     unsigned long count,
-                     const signed char *value);
+extern "C" signed char lbl_1_data_0 = -1;
 
-signed char lbl_1_data_0 = -1;
-
-extern const unsigned char lbl_1_data_4[];
-
-TextureNode0::TextureNode0(const Vec *initialPosition, f32 initialScale)
+// Allocates the small depth texture and initializes the floor-circle renderer.
+FloorCircle::FloorCircle(const Vec *initialPosition, f32 initialScale)
     : RenderObject(1), position(*initialPosition), scale(initialScale), vertexCount(0x20),
       textureBuffer(GXGetTexBufferSize(4, 4, GX_TF_Z24X8, GX_FALSE, GX_FALSE), lbl_1_data_0)
 {
@@ -28,12 +23,8 @@ TextureNode0::TextureNode0(const Vec *initialPosition, f32 initialScale)
     GXInitTexObjLOD(&textureObject, GX_NEAR, GX_NEAR,
                     0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
 }
-}
 
 extern "C" {
-typedef struct TevColorStorage {
-    GXColor value;
-} TevColorStorage;
 
 extern const GXVtxDescList lbl_1_rodata_14[] = {
     {GX_VA_POS, GX_DIRECT},
@@ -48,7 +39,8 @@ extern const GXVtxAttrFmtList lbl_1_rodata_2C[] = {
 };
 }
 
-static inline void configureTevStage488(GXTevStageID stage,
+// Configures a texture-combiner stage with the supplied color and alpha inputs.
+static inline void configureTevStage(GXTevStageID stage,
                                        GXTexCoordID coordinate,
                                        GXTexMapID map,
                                        GXChannelID channel,
@@ -67,16 +59,18 @@ static inline void configureTevStage488(GXTevStageID stage,
                     GX_FALSE, GX_TEVPREV);
 }
 
-extern "C" {
-TextureNode0::~TextureNode0()
+// Releases the circle texture buffer and render-object bases.
+FloorCircle::~FloorCircle()
 {
 }
 
-void TextureNode0::update()
+// Performs no update; the circle is drawn by its model hook.
+void FloorCircle::update()
 {
 }
 
-void TextureNode0::draw(Mtx *matrix)
+// Builds the circle transform and draws its two components.
+void FloorCircle::draw(Mtx *matrix)
 {
     Mtx transform;
     f32 scale;
@@ -106,7 +100,8 @@ void TextureNode0::draw(Mtx *matrix)
     }
 }
 
-void TextureNode0::fn_1_4E8()
+// Draws the textured circular fan.
+void FloorCircle::fn_1_4E8()
 {
     s32 vertexCount;
     s32 vertex;
@@ -120,10 +115,10 @@ void TextureNode0::fn_1_4E8()
                       GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
     GXSetZTexture(GX_ZT_REPLACE, GX_TF_Z24X8, 0);
     GXSetNumTevStages(2);
-    configureTevStage488(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL,
+    configureTevStage(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL,
                          GX_COLOR0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO,
                          GX_CC_C0, GX_CA_KONST);
-    configureTevStage488(GX_TEVSTAGE1, GX_TEXCOORD0, GX_TEXMAP0,
+    configureTevStage(GX_TEVSTAGE1, GX_TEXCOORD0, GX_TEXMAP0,
                          GX_COLOR_NULL, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO,
                          GX_CC_CPREV, GX_CA_APREV);
     GXSetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
@@ -132,8 +127,8 @@ void TextureNode0::fn_1_4E8()
     GXClearVtxDesc();
     GXSetVtxDescv(lbl_1_rodata_14);
     GXSetVtxAttrFmtv(GX_VTXFMT0, lbl_1_rodata_2C);
-    TevColorStorage color = {{0, 0, 0, 0}};
-    GXSetTevColor(GX_TEVREG0, color.value);
+    GXColor color = {0, 0, 0, 0};
+    GXSetTevColor(GX_TEVREG0, color);
 
     vertexCount = this->vertexCount;
     GXBegin(GX_TRIANGLEFAN, GX_VTXFMT0, (u16)(vertexCount + 2));
@@ -174,7 +169,8 @@ extern const GXVtxAttrFmtList lbl_1_rodata_A0[] = {
     {GX_VA_NULL, GX_POS_XY, GX_U8, 0},
 };
 
-void TextureNode0::fn_1_944()
+// Draws the untextured outer ring.
+void FloorCircle::fn_1_944()
 {
     s32 segmentCount;
     s32 segment;
@@ -184,11 +180,8 @@ void TextureNode0::fn_1_944()
 
     GXSetNumTexGens(0);
     GXSetNumTevStages(1);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 0, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 0, GX_TEVPREV);
+    configureTevStage(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0,
+        GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC, GX_CA_RASA);
     GXSetZMode(1, GX_ALWAYS, 0);
     GXSetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
@@ -211,61 +204,4 @@ void TextureNode0::fn_1_944()
         GXWGFifo.f32 = (f32)((1.3 * (f64)sine) - 0.1);
         GXWGFifo.u16 = 0x2040;
     }
-}
-}
-
-class ReleasedModel : public Model {
-public:
-    ~ReleasedModel() { Replace(-1); }
-};
-
-class OwnedReleasedModel : public ReleasedModel {
-public:
-    ~OwnedReleasedModel() {}
-};
-
-class ModelHolder {
-public:
-    OwnedReleasedModel *value;
-    ~ModelHolder() { delete value; }
-};
-
-struct ModelResourceOwner2EC {
-    unsigned long header[2];
-    const unsigned char *vtable;
-    unsigned long state[7];
-    std::vector<signed char> textureBuffer;
-};
-
-extern "C" { extern const unsigned char lbl_1_data_4[]; }
-
-extern "C" { void fn_1_14BCC(void *object, short releaseMode); }
-
-extern "C" {
-typedef struct Position {
-    Vec position;
-    unsigned char unk_0C[12]; /* No code names this field. */
-    Vec offset;
-} Position;
-
-extern s32 lbl_1_data_F18;
-
-extern float lbl_1_bss_1BC;
-
-extern s8 lbl_1_data_2758;
-
-s32 fn_1_367CC(s32 *player);
-}
-
-extern "C" {
-extern s32 fn_1_2140(s32 value);
-
-extern s32 lbl_1_bss_50;
-
-extern f32 lbl_1_bss_54;
-}
-
-extern "C" {
-s32 lbl_1_bss_0 = minutesToFrames(60L);
-f32 lbl_1_bss_4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

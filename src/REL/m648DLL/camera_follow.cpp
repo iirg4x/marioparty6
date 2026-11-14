@@ -5,43 +5,27 @@ extern "C" {
 #include "dolphin/mtx.h"
 #include "game/memory.h"
 #include "REL/framework/model.h"
-#include "REL/m648DLL/motion_lists.h"
 extern "C" {
 #include "game/audio.h"
 }
 #include <math.h>
 extern "C" {
-void Hu3DBGColorSet(u8 r, u8 g, u8 b);
-void fn_800262D0(s16 modelId);
-void Hu3DCameraCreate(int cameraBit);
-void fn_80027CD0(int cameraBit, Vec *pos, Vec *up, Vec *target);
-s16 fn_800283F4(s32 motionId, s32 flags);
-void fn_800284C8(s16 cameraModelId, s32 flags);
-s16 fn_8002C4C0(void *motionData);
-BOOL fn_8002D75C(s16 modelId);
+#include "game/hu3d.h"
+}
+#include "REL/m648DLL/player.h"
+extern "C" {
 #include "game/data.h"
 #include "REL/framework/assertion.h"
 }
 #include "REL/m648DLL/camera_view.h"
 #include "REL/framework/list_object.h"
-void fn_1_BC84();
+#include "REL/m648DLL.h"
 
 #include "REL/m648DLL/camera_manager.h"
 
 typedef void (CameraManager::*CameraManagerCallback)();
 
-extern "C" {
-extern s32 lbl_1_bss_40;
-extern s32 lbl_1_bss_48;
-extern s32 fn_1_8024(s32);
-extern double fn_1_4B4C(double);
-
-extern s32 lbl_1_bss_278;
-
-extern s32 lbl_1_bss_27C;
-extern s32 lbl_1_bss_280;
-}
-
+/* Reads camera 1 position and its normalized viewing direction. */
 void fn_1_8740(Vec *position, Vec *direction) {
     Vec up;
     Vec target;
@@ -51,6 +35,7 @@ void fn_1_8740(Vec *position, Vec *direction) {
     PSVECNormalize(direction, direction);
 }
 
+/* Creates camera 1 with a black background. */
 CameraManager::CameraManager()
     : callback(&CameraManager::fn_1_8ACC), target(0), modelId(-1), listenerActive(0)
 {
@@ -58,6 +43,7 @@ CameraManager::CameraManager()
     Hu3DBGColorSet(0, 0, 0);
 }
 
+/* Removes the active audio listener. */
 CameraManager::~CameraManager() {
     if (listenerActive != 0) HuAudFXListnerKill();
 }
@@ -75,6 +61,7 @@ void CameraManager::fn_1_89D4()
     }
 }
 
+/* Waits for the camera delay, then restores the camera callback and clears flag 0. */
 void CameraManager::fn_1_8A68()
 {
     if (--timer < 0) {
@@ -84,32 +71,11 @@ void CameraManager::fn_1_8A68()
     }
 }
 
+/* Applies the stored camera frame to camera 1. */
 void CameraManager::fn_1_8ACC() { cameraApplyToHud(&view, 1); }
 
+/* Applies the stored camera frame to camera 1. */
 void CameraManager::fn_1_8AFC() { cameraApplyToHud(&view, 1); }
-
-extern "C" {
-void Hu3DBGColorSet(u8 r, u8 g, u8 b);
-void fn_800262D0(s16 modelId);
-void Hu3DCameraCreate(int cameraBit);
-void fn_80027CD0(int cameraBit, Vec *pos, Vec *up, Vec *target);
-s16 fn_800283F4(s32 motionId, s32 flags);
-void fn_800284C8(s16 cameraModelId, s32 flags);
-s16 fn_8002C4C0(void *motionData);
-BOOL fn_8002D75C(s16 modelId);
-}
-
-struct CameraTransforms {
-    CameraPose targetTransform;
-    CameraPose currentTransform;
-    CameraFrame targetFrame;
-};
-
-struct CameraTarget {
-    s32 unknownFirst;
-    s32 unknownSecond;
-    Vec position;
-};
 
 /* Initialized bytes of unknown meaning; the camera vectors follow at 0x21C. */
 extern "C" const u8 lbl_1_rodata_200[0x1C] = {
@@ -120,24 +86,27 @@ const Vec lbl_1_rodata_21C = { 0.0f, 300.0f, 600.0f };
 
 const Vec lbl_1_rodata_228 = { 0.0f, 200.0f, 0.0f };
 
+/* Waits ninety frames, then eases camera 1 toward the selected player. */
 void CameraManager::fn_1_8B2C() {
-    CameraTransforms temporary;
+    CameraFrame targetFrame;
+    CameraPose currentTransform;
+    CameraPose targetTransform;
 
     if ((float)(++motionFrame) < 90.0f) {
         return;
     }
 
-    Vec *targetPosition = &reinterpret_cast<CameraTarget *>(target)->position;
-    PSVECAdd(targetPosition, &lbl_1_rodata_21C, &temporary.targetFrame.position);
-    PSVECAdd(targetPosition, &lbl_1_rodata_228, &temporary.targetFrame.target);
-    temporary.targetFrame.up.x = 0.0f;
-    temporary.targetFrame.up.y = 1.0f;
-    temporary.targetFrame.up.z = 0.0f;
-    get_camera_pose_from_frame(&view, &temporary.currentTransform);
-    get_camera_pose_from_frame(&temporary.targetFrame, &temporary.targetTransform);
+    Vec *targetPosition = &target->position;
+    PSVECAdd(targetPosition, &lbl_1_rodata_21C, &targetFrame.position);
+    PSVECAdd(targetPosition, &lbl_1_rodata_228, &targetFrame.target);
+    targetFrame.up.x = 0.0f;
+    targetFrame.up.y = 1.0f;
+    targetFrame.up.z = 0.0f;
+    get_camera_pose_from_frame(&view, &currentTransform);
+    get_camera_pose_from_frame(&targetFrame, &targetTransform);
     interpolate_camera_poses(&view,
-        &temporary.currentTransform,
-        &temporary.targetTransform, 0.05f);
+        &currentTransform,
+        &targetTransform, 0.05f);
     cameraApplyToHud(&view, 1);
 }
 
@@ -149,7 +118,8 @@ extern const CallbackState lbl_1_data_F0;
 
 extern const CallbackState lbl_1_data_3B4;
 
-void CameraManager::fn_1_8C40(Node *target)
+/* Selects the tracked player and starts the camera follow delay. */
+void CameraManager::fn_1_8C40(CPlayer *target)
 {
     CallbackState callback;
 
@@ -157,11 +127,6 @@ void CameraManager::fn_1_8C40(Node *target)
     this->target = target;
     callback = &CameraManager::fn_1_8B2C;
     this->callback = callback;
-}
-
-static inline void fn_1_17D0(CameraManager *owner, s32 request)
-{
-    owner->flags &= ~(1UL << request);
 }
 
 /* Selects the audio listener update behavior for the requested camera mode. */
@@ -191,20 +156,20 @@ void CameraManager::flagEnabled(int mode)
     }
     case 1:
         fn_1_8F6C();
-        fn_1_17D0(this, mode);
+        flags &= ~(1UL << mode);
         return;
     case 2: {
         void (CameraManager::*callback)();
         callback = &CameraManager::fn_1_8AFC;
         this->callback = callback;
-        fn_1_17D0(this, mode);
+        flags &= ~(1UL << mode);
         return;
     }
     case 3:
-        fn_1_17D0(this, mode);
+        flags &= ~(1UL << mode);
         return;
     case 4:
-        fn_1_17D0(this, mode);
+        flags &= ~(1UL << mode);
     }
 }
 
@@ -217,23 +182,21 @@ void CameraManager::update()
     if (this->listenerActive) {
         Vec listenerPosition;
         Vec heading;
-        Vec cameraTarget;
-        Vec cameraUp;
 
-        fn_80027CD0(1, &listenerPosition, &cameraUp, &cameraTarget);
-        PSVECSubtract(&cameraTarget, &listenerPosition, &heading);
-        PSVECNormalize(&heading, &heading);
+        fn_1_8740(&listenerPosition, &heading);
         HuAudFXListnerUpdate(&listenerPosition, &heading);
     }
 }
 
+/* Loads the camera motion and attaches it to camera 1. */
 void CameraManager::fn_1_8F04()
 {
-    s16 motionId = fn_8002C4C0(fn_80008DD0(0x6B0004, 0x10000000, 2));
+    const s16 motionId = fn_8002C4C0(fn_80008DD0(0x6B0004, 0x10000000, 2));
     modelId = fn_800283F4(motionId, 1);
     fn_800284C8(modelId, 1);
 }
 
+/* Kills the camera motion model and clears its ID. */
 void CameraManager::fn_1_8F6C() {
     fn_800262D0(modelId);
     modelId = -1;

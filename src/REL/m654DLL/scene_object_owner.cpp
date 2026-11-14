@@ -1,74 +1,41 @@
+#include <new>
 #include "REL/framework/frame_time.h"
 #include "REL/framework/sound.h"
 #include "REL/framework/world_units.h"
+#include "REL/framework/minigame_core.h"
+#include "REL/framework/event_manager.h"
 #include "REL/m654DLL/camera_node_owner.h"
 #include "REL/framework/timer.h"
-#include "REL/m654DLL/scene_owner.h"
 #include "REL/framework/list_object.h"
-#include "math.h"
 #include "REL/m654DLL/model_animation_owner.h"
+#include "REL/m654DLL/scene_owner.h"
 #include "REL/framework/thread.h"
+#include "REL/framework/random.h"
+#include "REL/framework/event.h"
 extern "C" {
-#include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
 #include "game/audio.h"
-#include "game/charman.h"
-#include "game/gamemes.h"
-#include "game/hsfex.h"
-#include "game/data.h"
-#include "game/gamework.h"
-#include "game/memory.h"
-#include "game/mg/seqman.h"
-#include "game/mg/timer.h"
-#include "game/mg/score.h"
-#include "game/pad.h"
-#include "game/frand.h"
-#include "game/sprite.h"
 #include "game/wipe.h"
 #include "game/mg/actman.h"
-#include "game/board/object.h"
-#include "game/board/tutorial.h"
-#include "datadir_enum.h"
-#include "REL/m654DLL/pad_control.h"
-#include "REL/m654DLL.h"
-
 }
-#include "dolphin/types.h"
-inline int secondsToFrames(int seconds) { return 60 * seconds; }
-void RandomSeed(unsigned long);
-void process_event_queue();
-void updateGameObjects();
-void *operator new(unsigned long);
-/* Scales the argument by 60 before forwarding it to the sequence helper. */
-extern "C" {
+#include "REL/m654DLL.h"
 
 extern int lbl_1_bss_1C;
 
-}
-
-/* Initializes timing values and the startup sequence state. */
-extern "C" {
-extern int lbl_1_bss_10;
-extern int lbl_1_bss_14;
-extern int lbl_1_bss_18;
-extern float lbl_1_bss_20;
-
-}
-
-
-extern "C" {
-/* Initializes the callback table and attached registry/timer storage. */
-}
+// Creates the scene thread with a 0x8000-byte stack and its event/timer owner.
 SceneObjectOwner::SceneObjectOwner() : ThreadEntry(0x8000), childOwner(new OwnedSceneChild) {}
 
+// Deletes the owned event manager and timer.
 SceneChildOwner::~SceneChildOwner()
 {
     delete child;
 }
 
+// Releases the scene child owner and scene base objects.
 SceneObjectOwner::~SceneObjectOwner() {}
 
+// Seeds randomness and creates the camera, scene models and players.
 void SceneObjectOwner::setupObjects(OMOBJMAN *)
 {
     RandomSeed(OSGetTick());
@@ -77,6 +44,7 @@ void SceneObjectOwner::setupObjects(OMOBJMAN *)
     fn_1_3274();
     soundSetCameraLayout(0);
 }
+// Resumes the scene thread and updates queued events, requests, objects and actors.
 void SceneObjectOwner::updateGame()
 {
     resume(0);
@@ -85,12 +53,13 @@ void SceneObjectOwner::updateGame()
     updateGameObjects();
     fn_800856A8();
 }
+// Sequences the entrance, timed round, finish walk, results and exit request.
 void SceneObjectOwner::run(void *argument)
 {
     int bgmHandle;
     int frame;
-    int manager = reinterpret_cast<int>(childOwner.child);
-    int view = manager + 0x34;
+    OwnedSceneChild *manager = childOwner.child;
+    TimerOwner *timer = &manager->timerOwner;
 
     MinigameCore::wipeIn();
     while (WipeCheckIn() != 0) {
@@ -120,13 +89,13 @@ void SceneObjectOwner::run(void *argument)
     }
     postRequest(3);
     fn_1_3494();
-    reinterpret_cast<TimerOwner *>(view)->setPosition(288.0f, 416.0f);
-    reinterpret_cast<TimerOwner *>(view)->setParameters(lbl_1_bss_1C, 0, 0);
-    reinterpret_cast<TimerOwner *>(view)->setMode(1);
-    while ((unsigned char)fn_1_10DC() == 0) {
+    timer->setPosition(288.0f, 416.0f);
+    timer->setParameters(lbl_1_bss_1C, 0, 0);
+    timer->setMode(1);
+    while (fn_1_10DC() == 0) {
         suspend(0);
     }
-    reinterpret_cast<TimerOwner *>(view)->start();
+    timer->start();
     postRequest(4);
     fn_1_35F8();
     MinigameCore::showFinish();
@@ -149,6 +118,7 @@ void SceneObjectOwner::run(void *argument)
         suspend(reinterpret_cast<void *>(-1));
     }
 }
+// Reports whether a player has won or the round timer has expired.
 unsigned char SceneObjectOwner::fn_1_10DC()
 {
     OwnedSceneChild *manager;
@@ -158,26 +128,12 @@ unsigned char SceneObjectOwner::fn_1_10DC()
     manager = childOwner.child;
     return manager->timerOwner.isDone();
 }
+// Deletes the framework request objects.
 void SceneObjectOwner::finishGame()
 {
     deleteRequestObjects();
 }
-extern "C" {
-int lbl_1_bss_10 = secondsToFrames(2);
-int lbl_1_bss_14 = secondsToFrames(3.5);
-int lbl_1_bss_18 = secondsToFrames(3.5);
+#include "REL/framework/phase_durations.h"
+// One-minute time limit and gravity in world units per frame squared.
 int lbl_1_bss_1C = minutesToFrames(1L);
 float lbl_1_bss_20 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
-}
-
-void* operator new(unsigned long);
-
-// Same-game framework time conversion.
-
-// Active game-object registry.
-template<> GameObjectManager *MinigameSingleton<GameObjectManager>::self = 0;
-
-// Current scene and camera.
-class ModelAnimationOwner;
-template<> ModelAnimationOwner *MinigameSingleton<ModelAnimationOwner>::self = 0;
-template<> CameraManager *MinigameSingleton<CameraManager>::self = 0;

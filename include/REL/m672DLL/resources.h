@@ -16,18 +16,25 @@ class Resources;
 class Resources : public MinigameSingleton<Resources>, public EventListener {
 public:
     short lightId;
+    // Return the shared light identifier.
     operator short() { return lightId; }
     std::vector<ANIMDATA *> animations;
-    std::vector<Model *> models;
+    std::vector<OwnedModel *> models;
     ANIMDATA *animation(unsigned long index);
     Resources();
     virtual ~Resources();
     virtual void receive(const EventPacket *);
 };
-
+// Return the animation at the supplied index.
 inline ANIMDATA *Resources::animation(unsigned long index)
 {
     return animations.at(index);
 }
+
+extern "C" void fn_1_6E04(Resources *);
+void fn_1_71BC(void *);
+void fn_1_7230(Resources *);
+void fn_1_7404(void *);
+void fn_1_7408(void *);
 
 #endif

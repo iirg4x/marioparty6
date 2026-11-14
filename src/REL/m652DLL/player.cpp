@@ -1,4 +1,6 @@
-#include "REL/m652DLL/map_singleton.h"
+#include "REL/framework/event.h"
+#include "REL/m652DLL/man_map.h"
+#include "REL/framework/random.h"
 #include "REL/framework/sound.h"
 #include "REL/framework/player_table_1vs1.h"
 #include "REL/framework/singleton.h"
@@ -11,15 +13,16 @@
 #include "dolphin/types.h"
 extern "C" {
 #include "humath.h"
+#include "REL/framework/assertion.h"
 #include "game/charman.h"
 }
 #include "REL/m652DLL/player_work.h"
 #include <memory>
-#include "REL/m652DLL/tail_types.h"
-#include "game/hsfex.h"
 extern "C" {
 #include "game/mg/actman.h"
 }
+#include "REL/m652DLL/camera_arc_motion.h"
+#include "game/hsfex.h"
 #include "REL/m652DLL/model_child.h"
 #include "REL/framework/chara_motion.h"
 #include "REL/framework/p_info.h"
@@ -32,8 +35,6 @@ extern "C" {
 }
 #include "REL/m652DLL/racer_control.h"
 #include "datanum/charmot.h"
-#include "REL/m652DLL/player_state.h"
-void sendEvent(int, unsigned long, float);
 
 // The racer's four character motions, in the order the constructor creates them on its
 // model (createCharacterMotions).
@@ -45,16 +46,12 @@ extern const unsigned int lbl_1_rodata_320[4] = {0x930022, 0x93003F, 0x930006, 0
 
 struct Racer;
 
-#include "REL/m652DLL/player_algorithms.h"
+#include <algorithm>
 
 extern "C" {
 
-int lbl_1_bss_88 = minutesToFrames(5L);
-int lbl_1_bss_8C = secondsToFrames<long>(30);
-float lbl_1_bss_90 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
-int lbl_1_bss_94 = secondsToFrames<long>(2);
-int lbl_1_bss_98 = Frames07EF8(3.5f);
-int lbl_1_bss_9C = Frames07EF8(3.5f);
+#include "REL/m652DLL/game_constants.h"
+#include "REL/framework/phase_duration_statics.h"
 static const int entry_num = 2;
 std::vector<Racer *> sm_players;
 int lbl_1_bss_B8;
@@ -62,20 +59,16 @@ int lbl_1_bss_B8;
 
 extern "C" {
 int fn_1_56A8(int value);
-void fn_1_56D0(void);
-void fn_1_596C(void);
-void fn_1_59BC(void);
-void fn_1_5A0C(void);
 s32 fn_1_5A5C(void);
 }
 
-long RandomInteger(long limit);
-
+/* Returns a random integer below the supplied limit. */
 int fn_1_56A8(int value)
 {
     return RandomInteger(value);
 }
 
+/* Builds the two-player table, shuffles the player order and creates both racers. */
 void fn_1_56D0(void)
 {
     static Point3d startingPosition = {cmToWorld(0.0f), cmToWorld(405.0f), cmToWorld(100.0f)};
@@ -87,33 +80,40 @@ void fn_1_56D0(void)
     int index;
     for (insertionIndex = 0; insertionIndex < 2; ++insertionIndex)
         indices.push_back(insertionIndex);
-    ShuffleRange56D0(indices.begin(), indices.end());
+    std::random_shuffle(
+        indices.begin(),
+        indices.end(),
+        fn_1_56A8
+    );
     sm_players.clear();
     for (index = 0; index < 2; ++index) {
         int &selectedIndex = indices.at(index);
         s32 *player = players + selectedIndex;
-        Racer *object = new Racer(*player, selectedIndex, &startingPosition);
+        Racer *object = new Racer(
+            *player, selectedIndex,
+            &startingPosition
+        );
         sm_players.push_back(object);
     }
     fn_8005DDEC(2);
     lbl_1_bss_B8 = 0;
 }
-
+/* Starts both racers' initial control callbacks. */
 void fn_1_596C(void)
 {
     Racer::fn_1_5B3C(&Racer::fn_1_6134);
 }
-
+/* Sets the finished-play flag on both racers. */
 void fn_1_59BC(void)
 {
     Racer::fn_1_5B3C(&Racer::fn_1_68B4);
 }
-
+/* Starts both racers' result motions. */
 void fn_1_5A0C(void)
 {
     Racer::fn_1_5B3C(&Racer::fn_1_6C30);
 }
-
+/* Reports whether both racers have the idle callback. */
 s32 fn_1_5A5C(void)
 {
     s32 index;
@@ -122,7 +122,7 @@ s32 fn_1_5A5C(void)
     index = 0;
     while (index < 2) {
         player = sm_players[index];
-        ItemUpdate5B3C expected = &Racer::fn_1_5B28;
+        RacerCallback expected = &Racer::fn_1_5B28;
         if (player->callback != expected) {
             return 0;
         }
@@ -131,16 +131,16 @@ s32 fn_1_5A5C(void)
     return 1;
 }
 
+/* Returns without changing state. */
 void Racer::fn_1_5B28() {}
 
+/* Returns the number of racers that have won. */
 int Racer::fn_1_5B2C() { return lbl_1_bss_B8; }
-
 // Runs one update on both racers.
-void Racer::fn_1_5B3C(ItemUpdate5B3C update)
+void Racer::fn_1_5B3C(RacerCallback update)
 {
     int index;
     Racer *item;
-
     assert(sm_players.size() == entry_num);
     index = 0;
     while (index < 2) {
@@ -150,6 +150,7 @@ void Racer::fn_1_5B3C(ItemUpdate5B3C update)
     }
 }
 
+/* Creates the player actor, character motions, registered spheres, controller and item. */
 Racer::Racer(int character, int index, Point3d *position)
     : PlayerInfo(character), MotionOwner(characterNo()), GameObject(1),
       callback(&Racer::fn_1_5B28), index(index), playerMask((unsigned short)(1U << index)),
@@ -158,8 +159,8 @@ Racer::Racer(int character, int index, Point3d *position)
       child(isComputer() ? (RacerControl *)new ComputerControl(this) : new HumanControl(this))
 {
     MGACTOR_PARAM actorParam = {0};
-    float firstProperty;
-    float secondProperty;
+    float firstRadius;
+    float secondRadius;
     short modelId;
     actorParam.height = height();
     actorParam.radius = 42.0f;
@@ -176,23 +177,23 @@ Racer::Racer(int character, int index, Point3d *position)
     motion.x = 0.0f;
     motion.y = 0.0f;
     motion.z = 0.0f;
-    firstProperty = 350.0f;
-    firstRegistered.radius = firstProperty;
-    secondProperty = 150.0f;
-    secondRegistered.radius = secondProperty;
+    firstRadius = 350.0f;
+    firstRegistered.radius = firstRadius;
+    secondRadius = 150.0f;
+    secondRegistered.radius = secondRadius;
     firstRegistered = *position;
     secondRegistered = *position;
     fn_80086CA8(player->actor, rotation);
     fn_1_7094(this);
-    {
-        void(Racer::* callback)() = & Racer::fn_1_5B28;
-        this->callback = callback;
-    }
+    void(Racer::* callback)() = & Racer::fn_1_5B28;
+    this->callback = callback;
     new PlayerItem(this, index);
 }
 
+/* Releases the object through its member and base destructors. */
 Racer::~Racer() {}
 
+/* Runs the current callback, updates the shadow and synchronizes the actor position. */
 void Racer::update()
 {
     (this->*callback)();
@@ -200,6 +201,7 @@ void Racer::update()
     fn_1_6CE8(this);
 }
 
+/* Enables the player, resets its controller and starts the play callback. */
 void Racer::fn_1_6134()
 {
     fn_80087168(player, 1);
@@ -209,6 +211,7 @@ void Racer::fn_1_6134()
     callback = nextCallback;
 }
 
+/* Updates player control and checks for falls, collisions and a completed finish. */
 void Racer::fn_1_61C0()
 {
     if (flags.attributeEnabled != 0) {
@@ -227,12 +230,9 @@ void Racer::fn_1_61C0()
 extern "C" {
 class MapManager;
 
-extern void __msl_assertion_failed(const char *, const char *, int);
-
 }
-void fn_1_524C(MapManager *, int);
-void shiftCharacterMotion(MotionOwner *, unsigned int, float, float, unsigned long);
 
+/* Starts the falling callback when the player is below height minus 200. */
 unsigned char Racer::fn_1_6258()
 {
     if (position.y < -200.0f) {
@@ -242,6 +242,7 @@ unsigned char Racer::fn_1_6258()
     return 0;
 }
 
+/* Returns the actor collision code, or zero if no collision is reported. */
 unsigned int Racer::fn_1_62AC()
 {
     u32 code = 0;
@@ -249,6 +250,7 @@ unsigned int Racer::fn_1_62AC()
     return 0;
 }
 
+/* Shows the selected course model when collision bit 0x4 is set. */
 void Racer::fn_1_6300()
 {
     if (this->flags.collision4 == 0) {
@@ -266,6 +268,7 @@ void Racer::fn_1_6300()
     }
 }
 
+/* Records a winner and starts the finish callback when collision bit 0x2 is set. */
 unsigned char Racer::fn_1_63E8()
 {
     u32 collisionCode = 0;
@@ -294,6 +297,7 @@ unsigned char Racer::fn_1_63E8()
     return 1;
 }
 
+/* Stops horizontal motion, changes the actor state and starts the falling motion. */
 void Racer::fn_1_64F0()
 {
     int mode;
@@ -314,13 +318,12 @@ void Racer::fn_1_64F0()
     this->callback = values;
 }
 
-void sendEvent(int, unsigned long, float);
-
+/* Applies falling gravity and sends the player event after passing height minus 2000. */
 void Racer::fn_1_65FC()
 {
     void (Racer::*nextCallback)();
 
-    motion.y -= lbl_1_bss_90;
+    motion.y -= gravity;
     if (this->position.y > -2000.0f) {
         return;
     }
@@ -334,6 +337,7 @@ void Racer::fn_1_65FC()
     this->callback = nextCallback;
 }
 
+/* Checks collisions and falls while waiting to restart player control. */
 void Racer::fn_1_66F4()
 {
     if (fn_1_6FAC(this) != 0) {
@@ -344,19 +348,16 @@ void Racer::fn_1_66F4()
         fn_1_6134();
         return;
     }
-    if (position.y < -200.0f) {
-        fn_1_64F0();
-    }
+    fn_1_6258();
 }
 
-template<class T> T fn_1_77B0(T value);
-void sendEvent(int channel, unsigned long value, float delay);
-
+/* Enables the player and sets the finished-play flag. */
 void Racer::fn_1_68B4() {
     fn_80087158(player, 1);
     flags.attributeEnabled = 1;
 }
 
+/* Changes the actor motion state and starts the finish approach callback. */
 void Racer::fn_1_68F8()
 {
     void (Racer::*values)();
@@ -366,17 +367,19 @@ void Racer::fn_1_68F8()
     callback = values;
 }
 
+/* Moves toward the finish target and sends the camera event on arrival. */
 void Racer::fn_1_6978()
 {
     HuVecF target = {0.0f, 0.0f, 0.0f};
     target.y = 405.0f;
     target.z = -5050.0f;
-    if (fn_8007E8B4(player, &target, (float)fn_1_77B0(200.0), 30.0f) != 0) {
+    if (fn_8007E8B4(player, &target, (float)framesToSeconds(200.0), 30.0f) != 0) {
         sendEvent(index + 1, 2, 0.0f);
         fn_1_6A38();
     }
 }
 
+/* Enables the player and starts the camera-facing callback. */
 void Racer::fn_1_6A38()
 {
     void (Racer::*copy)();
@@ -385,12 +388,7 @@ void Racer::fn_1_6A38()
     callback = copy;
 }
 
-extern "C" {
-
-typedef void (Racer::*PointSet)();
-
-}
-
+/* Rotates the player toward the camera target and waits for the turn to complete. */
 void Racer::fn_1_6AA4()
 {
     Vec *actorPosition;
@@ -417,13 +415,12 @@ void Racer::fn_1_6AA4()
     absoluteDifference = __fabsf(difference);
     error = absoluteDifference;
     if (error < 1.0) {
-        PointSet defaults = &Racer::fn_1_5B28;
+        RacerCallback defaults = &Racer::fn_1_5B28;
         callback = defaults;
     }
 }
 
-void shiftCharacterMotion(MotionOwner *, unsigned int, float, float, unsigned long);
-
+/* Selects the winner or loser character motion and starts the idle callback. */
 void Racer::fn_1_6C30()
 {
     unsigned int motion;
@@ -440,6 +437,7 @@ static const Vec rotationOrigin = {0.0f, 0.0f, 0.0f};
 
 }
 
+/* Synchronizes the player actor and model position while applying movement limits. */
 void fn_1_6CE8(Racer *object)
 {
     float clampedX;
@@ -493,15 +491,14 @@ void fn_1_6CE8(Racer *object)
     }
     object->firstRegistered.center.z = clampedZ;
     object->secondRegistered = object->position;
-    {
-        float verticalSpeed = object->secondRegistered.radius;
-        object->secondRegistered.center.y += verticalSpeed;
-    }
+    float verticalSpeed = object->secondRegistered.radius;
+    object->secondRegistered.center.y += verticalSpeed;
     soundPanCharacterVoice(object->playerMask, (short)object->characterNo(),
               &object->position);
 }
 
-inline u8 fn_1_6FAC(Racer *self) {
+/* Tests actor collision bits 0x407F unless the player state disables collisions. */
+u8 fn_1_6FAC(Racer *self) {
     u32 colCode;
 
     if (self->flags.stateFlag) {
@@ -512,6 +509,7 @@ inline u8 fn_1_6FAC(Racer *self) {
     return (u8) ((colCode & 0x407F) != 0);
 }
 
+/* Tests actor collision bits 0xBF80 unless the player state disables collisions. */
 u8 fn_1_7020(Racer *playerState) {
     u32 collisionCode;
 
@@ -523,39 +521,34 @@ u8 fn_1_7020(Racer *playerState) {
     return (u8) ((collisionCode & 0xBF80) != 0);
 }
 
-float RandomFloat(float angle);
-
-extern "C" {
-
-typedef HuVecF Vector7124;
-
-}
-
+/* Enables the player model's shadow state. */
 void fn_1_7094(Racer *actor)
 {
     short shadowModelId = (short)actor->player->actor->mdlId;
     fn_80026E44(shadowModelId);
 }
 
+/* Resets the player model's shadow state. */
 void fn_1_70DC(Racer *actor)
 {
     short shadowModelId = (short)actor->player->actor->mdlId;
     fn_80026EF0(shadowModelId);
 }
 
+/* Samples three nearby ground rays to decide the player model's shadow state. */
 void fn_1_7124(Racer *actor)
 {
     MGACTOR_COLMAP_POLY polygon;
-    Vector7124 point;
-    Vector7124 groundPoint;
+    HuVecF point;
+    HuVecF groundPoint;
     short shadowModelId;
     short hitModelId;
     short resetModelId;
     float radius;
     float baseAngle;
     float angle;
-    Vector7124 *pointPointer;
-    Vector7124 *sourcePointer;
+    HuVecF *pointPointer;
+    HuVecF *sourcePointer;
     int index;
 
     if (fn_1_6FAC(actor) != 0) {
@@ -596,6 +589,7 @@ void fn_1_7124(Racer *actor)
     fn_80026EF0(resetModelId);
 }
 
+/* Enables or disables the character effect and its associated flag. */
 void fn_1_7370(Racer *self, unsigned char enabled) {
     int character = self->characterNo();
     if (enabled) {
@@ -606,17 +600,11 @@ void fn_1_7370(Racer *self, unsigned char enabled) {
     fn_8005DFC0(character, enabled);
 }
 
-void shiftCharacterMotion(MotionOwner *, unsigned int, float, float, unsigned long);
-extern "C" {
-
-typedef void (Racer::*CallbackWords)();
-
-}
-
+/* Resets rotation, starts the character motion and installs the idle callback. */
 void fn_1_73E4(Racer *work)
 {
     int character;
-    CallbackWords copy;
+    RacerCallback copy;
 
     work->rotation = 0.0f;
     shiftCharacterMotion(&static_cast<MotionOwner &>(*work), CHARMOT_HSF_c000m1_376,
@@ -629,8 +617,10 @@ void fn_1_73E4(Racer *work)
     work->callback = copy;
 }
 
+/* Returns without changing state. */
 void Racer::fn_1_74B0() {}
 
+/* Places the player relative to its character hook and the supplied item position. */
 void fn_1_74B4(Racer *work, const Vec *offset)
 {
     int character = (short)work->player->actor->mdlId;
@@ -646,6 +636,7 @@ void fn_1_74B4(Racer *work, const Vec *offset)
     PSVECAdd(offset, positionForAddition, &work->position);
 }
 
+/* Resets actor position and motion state before restarting collision checks. */
 void fn_1_754C(Racer *work)
 {
     void (Racer::*values)();
@@ -655,8 +646,4 @@ void fn_1_754C(Racer *work)
     fn_80086CC4(work->player->actor, 0.0f);
     values = &Racer::fn_1_66F4;
     work->callback = values;
-}
-
-template<class T> T fn_1_77B0(T value) {
-    return 0.016666666666666666 * value;
 }

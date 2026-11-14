@@ -3,12 +3,13 @@
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/thread.h"
 #include "REL/framework/timer.h"
+/* Run the photography game and coordinate its request objects. */
 class MinigameThreadOwner : public MinigameCore, public ThreadEntry {
 public:
     TimerOwner timer;
     int frame;
     unsigned char unknown360[5]; /* No code names this field. */
-    bool nightMode;
+    bool dayMode;
     MinigameThreadOwner();
     virtual void setupObjects(OMOBJMAN *);
     virtual void updateGame();

@@ -4,6 +4,7 @@ extern "C" {
 }
 #include "REL/m622DLL/model_setup_owner.h"
 
+/* Creates the two stage models and configures their layers and attributes. */
 ModelSetupOwner::ModelSetupOwner() : model(DATANUM(0x510000, 0)), hookModel(DATANUM(0x510000, 2))
 {
     s16 currentModel;
@@ -19,20 +20,20 @@ ModelSetupOwner::ModelSetupOwner() : model(DATANUM(0x510000, 0)), hookModel(DATA
     fn_80026A44(currentModel, (1 << 0));
 }
 
+/* Returns without changing state. */
 void ModelSetupOwner::update()
 {
 }
 
-typedef ModelSetupOwner ModelAttributeOwner;
-
-/* Clears the owner model attributes and restores the stored motion time. */
+/* Clears the owner model attributes and sets the hook model motion time to zero.
+ * Both model ids are read through `this` cast to its own class, as in fn_1_65F8. */
 void ModelSetupOwner::fn_1_658C()
 {
-    s16 modelId = (s16)((ModelAttributeOwner *)this)->model.modelId;
+    s16 modelId = (s16)((ModelSetupOwner *)this)->model.modelId;
 
     fn_80026A44(modelId, 0x40000002);
-    s16 motionId = (s16)((ModelAttributeOwner *)this)->hookModel.modelId;
-    fn_8002D414(motionId, 0.0f);
+    s16 hookModelId = (s16)((ModelSetupOwner *)this)->hookModel.modelId;
+    fn_8002D414(hookModelId, 0.0f);
 }
 
 /* Enables the model attributes configured for this owner. */
@@ -40,10 +41,11 @@ void ModelSetupOwner::fn_1_65F8()
 {
     s16 modelId;
 
-    modelId = (s16)((ModelAttributeOwner *)this)->model.modelId;
+    modelId = (s16)((ModelSetupOwner *)this)->model.modelId;
     fn_800269E8(modelId, 0x40000002);
 }
 
+/* Clears the requested flag; the listed requests have no further action. */
 void ModelSetupOwner::flagEnabled(int request)
 {
     flags &= ~(1U << request);
@@ -57,6 +59,7 @@ void ModelSetupOwner::flagEnabled(int request)
     }
 }
 
+/* Releases the object through its member and base destructors. */
 ModelSetupOwner::~ModelSetupOwner()
 {
 }

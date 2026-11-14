@@ -4,14 +4,10 @@
 #include "REL/framework/model.h"
 #include "REL/framework/singleton.h"
 
-typedef Model ReleasedModel;
-
-typedef OwnedModel ReleasedModel2E74;
-
 struct ModelPair : MinigameSingleton<ModelPair> {
     ModelPair();
-    ReleasedModel2E74 firstModel;
-    ReleasedModel2E74 secondModel;
+    OwnedModel firstModel;
+    OwnedModel secondModel;
     ~ModelPair();
 };
 

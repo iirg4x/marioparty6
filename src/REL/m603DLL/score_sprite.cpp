@@ -16,6 +16,7 @@ extern "C" const ScorePosition lbl_1_rodata_310[4] = {
     {66.0f, 206.0f}, {511.0f, 206.0f}, {66.0f, 408.0f}, {511.0f, 408.0f}
 };
 
+/* Initialize inactive score entries. */
 ScoreDisplay::ScoreDisplay()
 {
     s32 index;
@@ -28,6 +29,7 @@ ScoreDisplay::ScoreDisplay()
     }
 }
 
+/* Create and position a character score box and its number display. */
 void ScoreDisplay::fn_1_8268(s32 index, s32 character)
 {
     PlayerScoreEntry *entry = &entries[index];
@@ -49,16 +51,19 @@ void ScoreDisplay::fn_1_8268(s32 index, s32 character)
     active = 1;
 }
 
+/* Add a value to one player score. */
 void ScoreDisplay::fn_1_83CC(int index, int value)
 {
     entries[index].value += value;
 }
 
+/* Read one player score. */
 unsigned int ScoreDisplay::fn_1_83E4(unsigned int index)
 {
     return entries[index].value;
 }
 
+/* Arrange the four scores along the bottom of the screen. */
 void ScoreDisplay::fn_1_83F4()
 {
     s32 index;
@@ -71,7 +76,8 @@ void ScoreDisplay::fn_1_83F4()
     }
 }
 
-void fn_1_84E4(void *, PlayerScoreEntry *entry)
+/* Show a score entry at full opacity with its current value. */
+void ScoreDisplay::fn_1_84E4(PlayerScoreEntry *entry)
 {
     MgScoreBoxDispSet(entry->boxId, 1);
     MgScoreBoxTPLvlSet(entry->boxId, 1.0f);
@@ -80,6 +86,7 @@ void fn_1_84E4(void *, PlayerScoreEntry *entry)
     MgScoreTPLvlSet(entry->score, 1.0f);
 }
 
+/* Play the pending score sound and refresh active score entries. */
 void ScoreDisplay::update()
 {
     int index;
@@ -90,15 +97,12 @@ void ScoreDisplay::update()
     if (active != 0) {
         for (index = 0; index < 4; index++) {
             PlayerScoreEntry *entry = &entries[index];
-            MgScoreBoxDispSet(entry->boxId, 1);
-            MgScoreBoxTPLvlSet(entry->boxId, 1.0f);
-            MgScoreValueSet(entry->score, entry->value);
-            MgScoreDispOn(entry->score);
-            MgScoreTPLvlSet(entry->score, 1.0f);
+            fn_1_84E4(entry);
         }
     }
 }
 
+/* Clear the requested flag bit. */
 void ScoreDisplay::flagEnabled(int request)
 {
     flags &= ~(1UL << request);
@@ -118,6 +122,7 @@ extern "C" const ScorePosition lbl_1_rodata_36C[4] = {
     {49.0f, 208.0f}, {528.0f, 208.0f}, {49.0f, 410.0f}, {528.0f, 410.0f}
 };
 
+/* Create the four photo sprite groups and their shared frame animation. */
 SpriteFade::SpriteFade(const s32 *animationIds)
 {
     ANIMDATA *animations[4];
@@ -150,6 +155,7 @@ SpriteFade::SpriteFade(const s32 *animationIds)
     }
 }
 
+/* Release the four photo sprite groups. */
 SpriteFade::~SpriteFade()
 {
     FadeSpriteGroup *sprite;
@@ -160,6 +166,7 @@ SpriteFade::~SpriteFade()
     }
 }
 
+/* Hold or advance the photo opacity transition. */
 void SpriteFade::update()
 {
     if (transitionState != 0) {
@@ -169,12 +176,14 @@ void SpriteFade::update()
     advance();
 }
 
+/* Leave the held photo sprites unchanged. */
 void SpriteFade::hold() {}
 
+/* Fade photos in, or fade them out and delete the effect. */
 void SpriteFade::advance()
 {
     s32 group;
-    s16 *sprite;
+    FadeSpriteGroup *sprite;
     s32 member;
     if (reverse == 0) {
         level += 0.033333335f;
@@ -187,14 +196,15 @@ void SpriteFade::advance()
         }
     }
     for (group = 0; group < 4; group++) {
-        sprite = &groups[group].groupId;
+        sprite = &groups[group];
         for (member = 0; member < 2; member++) {
-            HuSprTPLvlSet(sprite[0], (s16)member, level);
-            HuSprAttrReset(sprite[0], (s16)member, 4);
+            HuSprTPLvlSet(sprite->groupId, (s16)member, level);
+            HuSprAttrReset(sprite->groupId, (s16)member, 4);
         }
     }
 }
 
+/* Clear the request flag and reverse the fade for request three. */
 void SpriteFade::flagEnabled(int request)
 {
     flags &= ~(1UL << request);
@@ -203,5 +213,3 @@ void SpriteFade::flagEnabled(int request)
     case 3: reverse = 1; break;
     }
 }
-
-ScoreDisplay::~ScoreDisplay() {}

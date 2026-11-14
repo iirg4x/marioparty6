@@ -3,17 +3,15 @@
 
 #include "dolphin/types.h"
 
-#include "REL/m681DLL/owner_182c.h"
-
-typedef struct M681C0State {
+typedef struct StandSoundState {
     u8 flag;
-    u8 stateBytes[7];
-} M681C0State;
+    u8 stateBytes[7]; // Trailing bytes of unknown purpose.
+} StandSoundState;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-extern M681C0State lbl_1_bss_C0;
+extern StandSoundState lbl_1_bss_C0;
 #ifdef __cplusplus
 }
 #endif

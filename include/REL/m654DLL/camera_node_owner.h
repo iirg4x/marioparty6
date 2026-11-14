@@ -17,7 +17,8 @@ struct CameraManager : RequestObject, MinigameSingleton<CameraManager>, CameraFr
     CameraPose targetPose;
     int duration;
     int elapsed;
-    CameraSetup finalCamera;
+    CameraSetup debugCamera;
+    // Invokes the current camera state.
     void run() { (this->*callback)(); }
     void fn_1_1948();
     void fn_1_1A38();

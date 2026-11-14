@@ -1,4 +1,4 @@
-#include "REL/m672DLL/random.h"
+#include "REL/framework/random.h"
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/thread.h"
 #include "dolphin/types.h"
@@ -16,26 +16,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Unknown initialized bytes between the camera constants. */
-extern const unsigned char lbl_1_rodata_438[0x2C] = {
-    0x40, 0x4E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x44, 0xBB, 0x80, 0x00,
-    0x44, 0xBB, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x3F, 0x80, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-};
+#include "REL/m672DLL/member_handler.h"
 
-#include "REL/m672DLL/camera_owner_a348.h"
+/* No code in this module reads these constants; their values suggest three vectors. */
+extern const double lbl_1_rodata_438 = 60.0;
+extern const Vec lbl_1_rodata_440 = {0.0f, 1500.0f, 1500.0f};
+extern const Vec lbl_1_rodata_44C = {0.0f, 0.0f, 0.0f};
+extern const Vec lbl_1_rodata_458 = {0.0f, 1.0f, 0.0f};
 
-inline const Vec &CameraVector::getValue() const { ASSERT(this != 0); return value; }
-
-extern "C" {
-
-}
-
-template<class Receiver> void fn_1_AAE4(EventHandlerManager *, const CameraCallbackPayload &, int);
-
+#include "REL/m672DLL/camera_owner.h"
+// Return the vector after checking that the receiver exists.
+inline const Vec &EffectVector::getValue() const { ASSERT(this != 0); return value; }
+// Create the camera and initialize its frame and event callback.
 CameraOwner::CameraOwner()
     : GameObject(4), model(DATANUM(0x830000, 3)), callbackState(1)
 {
@@ -68,11 +60,11 @@ CameraOwner::CameraOwner()
     this->cameraCopy = this->camera;
     this->fade = 0.0f;
 
-    fn_1_AAE4<CameraOwner>(&this->callbackState,
-             BindCamera(CameraMember(&CameraOwner::fn_1_A924), this), 0);
+    registerMemberHandler<CameraOwner>(&this->callbackState,
+             bindMember(std::mem_fun(&CameraOwner::fn_1_A924), this), 0);
     this->setUpdate(&CameraOwner::fn_1_A6E4);
 }
-
+// Run the selected camera update and apply the frame to the HUD camera.
 void CameraOwner::update()
 {
     if (updateCallback) {
@@ -80,17 +72,17 @@ void CameraOwner::update()
     }
     cameraApplyToHud(&camera.frame, 1);
 }
-
+// Leave the camera frame unchanged while idle.
 void CameraOwner::fn_1_A6E4() {}
-
+// Apply a fading random offset to the saved camera position and target.
 void CameraOwner::fn_1_A6E8()
 {
     double xOffset;
     double zOffset;
     float blendFactor;
     Vec movement;
-    Vec *targets = &camera.frame.position;
-    Vec *results = &cameraCopy.frame.position;
+    CameraWork *targets = &camera;
+    CameraWork *results = &cameraCopy;
 
     zOffset = 100.0f * RandomFloat(-0.5f, 0.5f);
     xOffset = 100.0f * RandomFloat(-0.5f, 0.5f);
@@ -99,39 +91,34 @@ void CameraOwner::fn_1_A6E8()
     movement.z = zOffset;
     blendFactor = fade;
     PSVECScale(&movement, &movement, blendFactor);
-    PSVECAdd(&movement, &results[0], &targets[3]);
-    PSVECAdd(&movement, &results[2], &targets[4]);
+    PSVECAdd(&movement, &results->frame.position, &targets->cameraPosition.value);
+    PSVECAdd(&movement, &results->frame.target, &targets->cameraTarget.value);
     fn_1_A978(0.5f);
-    fade = (float)((double)fade - 0.03333333333333333);
+    fade = fade - 0.03333333333333333;
     if (!(fade > 0.1f)) {
         camera = cameraCopy;
         setUpdate(&CameraOwner::fn_1_A6E4);
     }
 }
-
+// Start the fading camera shake.
 void CameraOwner::fn_1_A924(EventMessage *)
 {
     fade = 1.0f;
     setUpdate(&CameraOwner::fn_1_A6E8);
 }
-
+// Move the frame position and target toward their stored destinations.
 void CameraOwner::fn_1_A978(float amount)
 {
-    Vec *first = &camera.frame.position;
-    Vec *firstValue = first;
-    Vec *second = first + 2;
+    CameraWork *first = &camera;
+    Vec *firstValue = &first->frame.position;
+    Vec *second = &first->frame.target;
 
-    firstValue->x += amount * (first[3].x - firstValue->x);
-    firstValue->y += amount * (first[3].y - firstValue->y);
-    firstValue->z += amount * (first[3].z - firstValue->z);
-    second->x += amount * (first[4].x - second->x);
-    second->y += amount * (first[4].y - second->y);
-    second->z += amount * (first[4].z - second->z);
+    firstValue->x += amount * (first->cameraPosition.value.x - firstValue->x);
+    firstValue->y += amount * (first->cameraPosition.value.y - firstValue->y);
+    firstValue->z += amount * (first->cameraPosition.value.z - firstValue->z);
+    second->x += amount * (first->cameraTarget.value.x - second->x);
+    second->y += amount * (first->cameraTarget.value.y - second->y);
+    second->z += amount * (first->cameraTarget.value.z - second->z);
 }
-
+// Destroy the owned camera model and callback manager.
 CameraOwner::~CameraOwner() {}
-
-template<class Receiver>
-void fn_1_AAE4(EventHandlerManager *owner, const CameraCallbackPayload &payload, int key) {
-    owner->addHandler(new MemberCallbackRecord<Receiver>(payload), key);
-}

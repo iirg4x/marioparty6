@@ -1,9 +1,11 @@
-#include "REL/m672DLL/random.h"
+#include "REL/m672DLL/gravity.h"
+#include <new>
+#include "REL/framework/random.h"
 #include "REL/m672DLL/particle_game_object.h"
 
-void operator delete(void *);
 void fn_1_FDB8(HU3D_MODEL *, HU3D_PARTICLE *, Mtx);
 
+// Creates the particle model, positions it, sets initial render values, and enables particle data.
 ParticleGameObject::ParticleGameObject(ANIMDATA *animation, Vec *position)
     : GameObject(3), model(fn_1_FDB8, animation, 64)
 {
@@ -16,8 +18,10 @@ ParticleGameObject::ParticleGameObject(ANIMDATA *animation, Vec *position)
     fn_8003269C(particleId, 0);
 }
 
+// Performs no additional work when the particle game object is destroyed.
 ParticleGameObject::~ParticleGameObject() {}
 
+// Deletes the object when its model particle count reaches zero.
 void ParticleGameObject::update()
 {
     HU3D_PARTICLE *particle = model.GetParticle();
@@ -27,17 +31,17 @@ void ParticleGameObject::update()
 extern "C" {
 const GXColor lbl_1_rodata_66C = {250, 250, 230, 128};
 
-
-
 }
 
-static inline void fn_1_2794(HU3D_PARTICLE_DATA *entry)
+// Chooses a particle position in the horizontal spread above the origin.
+static inline void RandomizeParticlePosition(HU3D_PARTICLE_DATA *entry)
 {
     entry->pos.x = 100.0f * RandomFloat(-2.5f, 2.5f);
     entry->pos.y = 100.0f * RandomFloat(0.0f, 0.5f);
     entry->pos.z = 100.0f * RandomFloat(0.0f, 0.5f);
 }
 
+// Initializes newly created particles, advances active entries, fades alpha, and updates dataCnt.
 void fn_1_FDB8(HU3D_MODEL *unused, HU3D_PARTICLE *system, Mtx)
 {
     HU3D_PARTICLE_DATA *limit;
@@ -55,7 +59,7 @@ void fn_1_FDB8(HU3D_MODEL *unused, HU3D_PARTICLE *system, Mtx)
             entry->vel.x = (f32)(10.0 * cos(angle));
             entry->vel.y = 0.33333334f;
             entry->vel.z = (f32)(10.0 * sin(angle));
-            fn_1_2794(entry);
+            RandomizeParticlePosition(entry);
             entry->color = lbl_1_rodata_66C;
             entry->time = 0;
             entry->parManId = (s16)((RandomUnsigned() & 3) + 1);
@@ -93,11 +97,3 @@ void fn_1_FDB8(HU3D_MODEL *unused, HU3D_PARTICLE *system, Mtx)
     }
     system->dataCnt = activeIndex;
 }
-
-extern "C" { extern float lbl_1_data_3D0; }
-
-
-extern "C" { float lbl_1_data_600 = 980.665f; }
-
-
-extern "C" { float lbl_1_bss_60 = (1.0 / 60.0) * ((1.0 / 60.0) * lbl_1_data_600); }

@@ -1,7 +1,109 @@
 // Triangle collision state and the oriented-triangle tests used by ray queries.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 99 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include "REL/framework/tri_colli.h"
+#include "REL/framework/vector_math.h"
 extern "C" {
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 }
 
 static const char rcsid[] = "$Id: tri_colli.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
@@ -10,12 +112,6 @@ static bool closestPointOnSegment(const Vector3 &first, const Vector3 &second, c
                                   Vector3 *closest);
 static double closestPointOnLine(const Vector3 &first, const Vector3 &second, const Vector3 &point,
                                  Vector3 *closest);
-
-// The dot product of two vectors given by pointer.
-static inline float vectorDot(const Vector3 *first, const Vector3 *second)
-{
-    return first->dot(*second);
-}
 
 // The dot product in double precision, for the edge fraction below.
 static inline double vectorDotDouble(const Vector3 *first, const Vector3 *second)
@@ -136,7 +232,8 @@ bool TriangleCollision::castNode(OctreeDebugNode *node)
             Vector3 intersection;
             const Vec &scaled = scalePoint(intersection, rayDirection, distance);
             PSVECAdd(&rayOrigin, &scaled, &intersection);
-            if (point_in_oriented_triangle(triangles.pointA(), triangles.pointB(), triangles.pointC(),
+            if (point_in_oriented_triangle(triangles.pointA(), triangles.pointB(),
+                                           triangles.pointC(),
                                            &intersection, &plane.normal)) {
                 found = true;
                 maximumDistance = distance;
@@ -258,8 +355,8 @@ void CollisionTriangle::intersectVertices(float radius, const Vector3 *point, Pl
                                           VertexSet *visited) const
 {
     for (int index = 0; index < 3; ++index) {
-        // The iterator's corner pointers stand together, so an index reaches each of them.
-        Vector3 *visitedVertex = (Vector3 *)(&a)[index];
+        // The iterator stores its three corner pointers in the indexed array.
+        Vector3 *visitedVertex = a[index];
         if (visited->find(visitedVertex) == visited->end()) {
             visited->insert(visitedVertex);
             Vector3 displacement;
@@ -286,8 +383,8 @@ void CollisionTriangle::intersectEdges(float radius, const Vector3 *point, Plane
         int nextIndex = index == 2 ? 0 : index + 1;
         Vector3 closest;
         Vector3 displacement;
-        const Vector3 &first = *(const Vector3 *)(&a)[index];
-        const Vector3 &second = *(const Vector3 *)(&a)[nextIndex];
+        const Vector3 &first = *a[index];
+        const Vector3 &second = *a[nextIndex];
         if (closestPointOnSegment(first, second, *point, &closest)) {
             PSVECSubtract(point, &closest, &displacement);
             float distance = displacement.length();
@@ -320,11 +417,10 @@ static double closestPointOnLine(const Vector3 &first, const Vector3 &second, co
 {
     Vector3 edge;
     PSVECSubtract(&second, &first, &edge);
-    double squaredLength = vectorDotDouble(&edge, &edge);
-    squaredLength != 0.0 ? (void)0
-        : __msl_assertion_failed("denom != 0", "tri_colli.cpp", 421);
+    double denom = vectorDotDouble(&edge, &edge);
+    assert(denom != 0);
     double fraction = (vectorDotDouble(&point, &edge) - vectorDotDouble(&first, &edge))
-        / squaredLength;
+        / denom;
     PSVECScale(&edge, &edge, (float)fraction);
     PSVECAdd(&first, &edge, closest);
     return fraction;

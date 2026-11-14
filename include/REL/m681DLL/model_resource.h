@@ -9,4 +9,7 @@ struct ModelResource : OwnedModel {
     ~ModelResource();
 };
 
+void fn_1_5168(Model *object);
+
+extern "C" f32 (*fn_1_524C(ModelResource *, Mtx))[4];
 #endif

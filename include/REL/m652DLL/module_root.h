@@ -8,11 +8,17 @@
 template <class Resource> class OwnedResource {
 public:
     Resource *value;
+    /* Leaves the owned pointer uninitialized. */
     OwnedResource() {}
+    /* Takes ownership of the initial pointer. */
     OwnedResource(Resource *initial) : value(initial) {}
+    /* Deletes the owned resource. */
     ~OwnedResource() { delete value; }
+    /* Returns the owned pointer. */
     operator Resource *() const { return value; }
+    /* Returns the owned resource for member access. */
     Resource *operator->() const { return value; }
+    /* Deletes the previous resource when the replacement differs. */
     void reset(Resource *replacement)
     {
         if (value != replacement) {
@@ -22,12 +28,12 @@ public:
     }
 };
 
-class ResultView;
+class GameResults;
 
 class ModuleRoot : public MinigameCore, public ThreadEntry,
                             public EventListener {
 public:
-    OwnedResource<ResultView> result;
+    OwnedResource<GameResults> result;
     ModuleRoot();
     virtual ~ModuleRoot();
     virtual void setupObjects(OMOBJMAN *);

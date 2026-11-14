@@ -21,7 +21,7 @@ public:
     Callback callback;
     s32 count;
     s32 frameCount;
-    u32 unknown28;
+    u32 unk28; /* No code names this field. */
     s32 controller;
     s32 character;
     s32 padIndex;
@@ -61,8 +61,11 @@ public:
     void fn_1_7FEC();
 };
 
-extern "C" {
+void fn_1_67F8(void);
+void fn_1_6FB0(void);
+void fn_1_7054(void);
+u8 fn_1_7138(void);
+
 void fn_1_7460(CallbackObject *object, s32 motionIndex, u8 queued);
-}
 
 #endif

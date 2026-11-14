@@ -1,46 +1,36 @@
 #include "REL/m654DLL/sprite_draw.h"
 #include "REL/m654DLL/parameter_interpolation.h"
-#include "dolphin/os.h"
 
-extern "C" {
-#include <math.h>
-}
-#include "REL/framework/model.h"
-
+// Stores the animation and derives the sprite half-size from its bitmap.
 SpriteParameters::SpriteParameters(ANIMDATA *image) {
- halfWidth = (float)((double)image->bmp->sizeX / 2.0);
- halfHeight = (float)((double)image->bmp->sizeY / 2.0);
- animation = image;
+    halfWidth = (float)((double)image->bmp->sizeX / 2.0);
+    halfHeight = (float)((double)image->bmp->sizeY / 2.0);
+    animation = image;
 }
 
+// Copies the animation first, followed by geometry, scale and opacity.
 SpriteParameters &SpriteParameters::operator=(const SpriteParameters &source) {
- animation = source.animation;
- halfWidth = source.halfWidth;
- halfHeight = source.halfHeight;
- x = source.x;
- y = source.y;
- scaleX = source.scaleX;
- scaleY = source.scaleY;
- return *this;
+    animation = source.animation;
+    halfWidth = source.halfWidth;
+    halfHeight = source.halfHeight;
+    x = source.x;
+    y = source.y;
+    scale = source.scale;
+    opacity = source.opacity;
+    return *this;
 }
-
-#include <stddef.h>
-
-extern "C" {
 
 const GXVtxDescList lbl_1_rodata_360[3] = {
     {GX_VA_POS, GX_DIRECT}, {GX_VA_TEX0, GX_DIRECT}, {GX_VA_NULL, GX_NONE}
 };
 const GXVtxAttrFmtList lbl_1_rodata_378[3] = {
-    {GX_VA_POS, GX_POS_XY, GX_F32, 0}, {GX_VA_TEX0, GX_TEX_ST, GX_F32, 0}, {GX_VA_NULL, GX_POS_XY, GX_U8, 0}
+    {GX_VA_POS, GX_POS_XY, GX_F32, 0},
+    {GX_VA_TEX0, GX_TEX_ST, GX_F32, 0},
+    {GX_VA_NULL, (GXCompCnt)0, (GXCompType)0, 0}
 };
-const GXColor lbl_1_rodata_3A8 = {0, 0, 0, 0};
-const float lbl_1_rodata_3AC = 0.0f;
-const float lbl_1_rodata_3B0 = 255.0f;
-const float lbl_1_rodata_3B4 = 1.0f;
-}
 
-void fn_1_81B4(void)
+// Configures the GX vertex format, texture stage and blending for score sprites.
+void fn_1_81B4()
 {
     float matrix[3][4];
     float (*matrixPointer)[4];
@@ -68,43 +58,36 @@ void fn_1_81B4(void)
     GXSetVtxAttrFmtv(GX_VTXFMT0, lbl_1_rodata_378);
 }
 
+// Draws one uniformly scaled sprite with its opacity multiplied by the shared fade.
 void fn_1_8314(SpriteParameters *sprite)
 {
-    if (sprite->scaleY <= lbl_1_rodata_3AC) {
+    if (sprite->opacity <= 0.0f) {
         return;
     }
 
     HuSprTexLoad(sprite->animation, 0, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
 
-    GXColor color = lbl_1_rodata_3A8;
+    GXColor color = {0, 0, 0, 0};
     color.a = (unsigned char)((double)lbl_1_bss_A8.getValue()
-                              * (double)(lbl_1_rodata_3B0 * sprite->scaleY));
+                              * (double)(255.0f * sprite->opacity));
     GXSetTevColor(GX_TEVREG0, color);
 
-    float halfWidth = sprite->halfWidth * sprite->scaleX;
-    float halfHeight = sprite->halfHeight * sprite->scaleX;
+    float halfWidth = sprite->halfWidth * sprite->scale;
+    float halfHeight = sprite->halfHeight * sprite->scale;
     float left = sprite->x - halfWidth;
     float right = sprite->x + halfWidth;
     float bottom = sprite->y - halfHeight;
     float top = sprite->y + halfHeight;
 
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-    GXWGFifo.f32 = left;
-    GXWGFifo.f32 = bottom;
-    GXWGFifo.f32 = lbl_1_rodata_3AC;
-    GXWGFifo.f32 = lbl_1_rodata_3AC;
-    GXWGFifo.f32 = right;
-    GXWGFifo.f32 = bottom;
-    GXWGFifo.f32 = lbl_1_rodata_3B4;
-    GXWGFifo.f32 = lbl_1_rodata_3AC;
-    GXWGFifo.f32 = right;
-    GXWGFifo.f32 = top;
-    GXWGFifo.f32 = lbl_1_rodata_3B4;
-    GXWGFifo.f32 = lbl_1_rodata_3B4;
-    GXWGFifo.f32 = left;
-    GXWGFifo.f32 = top;
-    GXWGFifo.f32 = lbl_1_rodata_3AC;
-    GXWGFifo.f32 = lbl_1_rodata_3B4;
+    GXPosition2f32(left, bottom);
+    GXTexCoord2f32(0.0f, 0.0f);
+    GXPosition2f32(right, bottom);
+    GXTexCoord2f32(1.0f, 0.0f);
+    GXPosition2f32(right, top);
+    GXTexCoord2f32(1.0f, 1.0f);
+    GXPosition2f32(left, top);
+    GXTexCoord2f32(0.0f, 1.0f);
 }
 
-ParameterInterpolation lbl_1_bss_A8(lbl_1_rodata_3AC, 0);
+ParameterInterpolation lbl_1_bss_A8(0.0f, 0);

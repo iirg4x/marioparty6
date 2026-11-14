@@ -8,6 +8,7 @@ extern "C" {
 #include "game/hu3d.h"
 }
 
+/* Own a player model, input state and photography callbacks. */
 struct PlayerModelOwner : ListNode<PlayerModelOwner> {
     enum { NUMBEROF_MOTION = 4 };
     Vec position;
@@ -20,15 +21,15 @@ struct PlayerModelOwner : ListNode<PlayerModelOwner> {
     s32 currentMotion;
     s32 difficulty;
     f32 angle;
-    s32 unknown3C;
-    s32 unknown40;
+    s32 unk3C; /* No code names this field. */
+    s32 unk40; /* No code names this field. */
     s32 callbackCount;
     OwnedModel firstModel;
     OwnedModel secondModel;
-    u8 flag4C;
+    u8 flag;
     u8 selected;
     u8 ready;
-    u8 unknown4F;
+    u8 unk4F; /* No code names this field. */
     s32 recordedPlayerValue;
     s32 timer54;
     s32 motionChangeTimer;
@@ -52,5 +53,16 @@ struct PlayerModelOwner : ListNode<PlayerModelOwner> {
 };
 void fn_1_59C8(void);
 void fn_1_6258(void);
+
+void fn_1_794C(void);
+void fn_1_6690(void);
+void fn_1_66F4(void);
+bool fn_1_62DC(void);
+void fn_1_67A0(void);
+void fn_1_6884(void);
+void fn_1_6614(void);
+bool fn_1_6594(void);
+
+void fn_1_6ADC(PlayerModelOwner *);
 
 #endif

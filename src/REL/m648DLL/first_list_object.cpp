@@ -1,3 +1,4 @@
+#include "REL/framework/random.h"
 #include "REL/m648DLL/particle_entry.h"
 #include "REL/framework/frame_time_inline.h"
 #include "REL/framework/sound.h"
@@ -23,22 +24,26 @@ extern "C" {
 
 #include "REL/m648DLL/managers.h"
 
+/* Initializes the object through its member and base constructors. */
 FirstListObject::FirstListObject() {}
 
 void fn_1_618();
 void fn_1_728();
 void fn_1_5B4();
 
+/* Deletes all flying objects. */
 FirstListObject::~FirstListObject()
 {
     fn_1_618();
 }
 
+/* Updates the flying object list. */
 void FirstListObject::update()
 {
     fn_1_728();
 }
 
+/* Clears the requested flag and starts all flying objects for request 2. */
 void FirstListObject::flagEnabled(int bit)
 {
     flags &= ~(1UL << bit);
@@ -74,6 +79,7 @@ extern "C" {
 
 #include "REL/m648DLL/flying_object.h"
 
+/* Links the model pair and initializes its position, motion and callback. */
 FlyingObject::FlyingObject(Vec *position)
     : modelA(DATANUM(0x6b0000, 5)), modelB(DATANUM(0x6b0000, 6))
 {
@@ -99,6 +105,7 @@ FlyingObject::FlyingObject(Vec *position)
     this->fn_1_8B4();
 }
 
+/* Releases the object through its member and base destructors. */
 FlyingObject::~FlyingObject() {}
 
 /* Puts every object back at its start. */
@@ -127,6 +134,7 @@ void fn_1_728()
     lbl_1_bss_18.visit(fn_1_7A4);
 }
 
+/* Clears the first model display attribute. */
 void FlyingObject::fn_1_758()
 {
     s16 currentModel;
@@ -135,8 +143,7 @@ void FlyingObject::fn_1_758()
     fn_80026A44(currentModel, (1 << 0));
 }
 
-float RandomFloat();
-
+/* Runs the flying object callback, updates its models and advances its timer. */
 void fn_1_7A4(FlyingObject *object)
 {
     (object->*object->callback)();
@@ -144,6 +151,7 @@ void fn_1_7A4(FlyingObject *object)
     object->timer++;
 }
 
+/* Wraps the rotation angle and applies both model transforms and transparency. */
 void FlyingObject::fn_1_7F0()
 {
     f64 angle;
@@ -162,6 +170,7 @@ void FlyingObject::fn_1_7F0()
     modelB.setPosition(&resetPosition);
 }
 
+/* Restores the starting position and resets the flying object animation state. */
 inline void FlyingObject::fn_1_8B4()
 {
     s16 currentModel;
@@ -223,6 +232,7 @@ void fn_1_AB8(FlyingObject *object)
     object->callback = callback;
 }
 
+/* Increases the fade value to one and marks the animation complete. */
 void FlyingObject::fn_1_BA8()
 {
     if ((fade += 0.13333334f) > 1.0f) {
@@ -231,6 +241,7 @@ void FlyingObject::fn_1_BA8()
     }
 }
 
+/* Applies gravity and movement, then changes the callback at the camera depth limit. */
 void FlyingObject::fn_1_BF0()
 {
     this->movement.y = (f32)((f64)this->movement.y - 0.27240694444444447);
@@ -254,6 +265,7 @@ void FlyingObject::fn_1_BF0()
     }
 }
 
+/* Sets the first model display attribute. */
 void FlyingObject::fn_1_E00()
 {
     s16 currentModel;
@@ -262,6 +274,7 @@ void FlyingObject::fn_1_E00()
     fn_800269E8(currentModel, (1 << 0));
 }
 
+/* Moves and bounces the object while its animation timer runs. */
 void FlyingObject::fn_1_E4C()
 {
     movement.y -= 0.27240694444444447;

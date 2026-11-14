@@ -1,3 +1,4 @@
+#include "REL/framework/random.h"
 #include "REL/m648DLL/multi_model_owner.h"
 #include "REL/framework/frame_time_inline.h"
 extern "C" {
@@ -104,20 +105,24 @@ extern "C" {
 
 #include "REL/framework/model.h"
 #include "REL/m648DLL/animation_object.h"
+/* Initializes the object through its member and base constructors. */
 AnimationUpdateOwner::AnimationUpdateOwner() {}
 
 void fn_1_4B3C(void);
 
+/* Deletes all motion-hook model groups. */
 AnimationUpdateOwner::~AnimationUpdateOwner() { fn_1_4B3C(); }
 
 void fn_1_4D00(void);
 
+/* Updates the motion-hook model groups. */
 void AnimationUpdateOwner::update()
 {
     fn_1_4D00();
 }
 
 void fn_1_4ABC(void);
+/* Clears the request flag and starts each model group for request 2. */
 void AnimationUpdateOwner::flagEnabled(int bit)
 {
     flags &= ~(1UL << bit);
@@ -148,6 +153,7 @@ void fn_1_4454(s16 modelId, u8 showModel)
     fn_80026F9C(modelId);
 }
 
+/* Sets the indexed model position along the row at depth minus four hundred. */
 void fn_1_44E0(Vec *position, s32 index)
 {
     position->x = (f32)(index * 0x104 - 0x186);
@@ -192,10 +198,12 @@ MotionHookModels::MotionHookModels(s32 sequence, s32 mode)
     fn_1_52D8();
 }
 
+/* Releases the object through its member and base destructors. */
 MotionHookModels::~MotionHookModels() {}
 
 void fn_1_50C0(MotionHookModels *);
 
+/* Starts the selected-item animation for each model group. */
 void fn_1_4ABC()
 {
     MotionHookModels *node = lbl_1_bss_C0.front();
@@ -205,6 +213,7 @@ void fn_1_4ABC()
     }
 }
 
+/* Reports whether the stored attribute state equals the requested sequence type. */
 u8 MotionHookModels::fn_1_4B20(s32 sequenceType) {
     if (attributeState == sequenceType) {
         return 1;
@@ -212,6 +221,7 @@ u8 MotionHookModels::fn_1_4B20(s32 sequenceType) {
     return 0;
 }
 
+/* Deletes every motion-hook model group. */
 void fn_1_4B3C(void)
 {
     while (!lbl_1_bss_C0.empty()) {
@@ -221,11 +231,13 @@ void fn_1_4B3C(void)
 
 void fn_1_4D30(MotionHookModels *);
 
+/* Updates each motion-hook model group. */
 void fn_1_4D00()
 {
     lbl_1_bss_C0.visit(fn_1_4D30);
 }
 
+/* Runs the group callback, applies its transform and advances its callback count. */
 void fn_1_4D30(MotionHookModels *object)
 {
     (object->*object->callback)();
@@ -233,6 +245,7 @@ void fn_1_4D30(MotionHookModels *object)
     object->callbackCount++;
 }
 
+/* Applies the group position and zero rotation to the hook model. */
 void MotionHookModels::fn_1_4D7C() {
     Vec rotation;
 
@@ -243,8 +256,7 @@ void MotionHookModels::fn_1_4D7C() {
     hookModel.setPosition(&position);
 }
 
-unsigned long RandomUnsigned();
-
+/* Returns the model ID for the selected item slot. */
 s16 MotionHookModels::fn_1_4DEC(s32 selection) const
 {
     s16 modelId = itemModel0;
@@ -261,6 +273,7 @@ s16 MotionHookModels::fn_1_4DEC(s32 selection) const
 
 extern "C" { char lbl_1_data_11E[14] = "itemhook_R"; }
 
+/* Replaces the item hooked to the animated model and records the selection. */
 void fn_1_4EB8(MotionHookModels *owner, s32 selection)
 {
     if (owner->attributeState >= 0) {
@@ -298,10 +311,12 @@ void MotionHookModels::fn_1_52D8()
     callback = position;
 }
 
+/* Returns without changing state. */
 void MotionHookModels::fn_1_5388()
 {
 }
 
+/* Resets the hook motion attributes and time, then selects its completion callback. */
 inline void MotionHookModels::fn_1_538C()
 {
     s16 currentModel;
@@ -316,6 +331,7 @@ inline void MotionHookModels::fn_1_538C()
     this->callback = callback;
 }
 
+/* Marks the group complete when the hook motion ends. */
 void MotionHookModels::fn_1_543C()
 {
     s16 modelId = (s16)hookModel.modelId;
@@ -323,6 +339,7 @@ void MotionHookModels::fn_1_543C()
         complete = 1;
 }
 
+/* Restarts the hook motion and chooses a new item selection. */
 void MotionHookModels::fn_1_548C()
 {
     s16 currentModel;
@@ -341,6 +358,7 @@ void MotionHookModels::fn_1_548C()
     callback = next;
 }
 
+/* Chooses a new hooked item and restarts the motion when restart is enabled. */
 void MotionHookModels::fn_1_5548()
 {
     if (fn_8002D75C(this->hookModel) != 0 && this->shouldRestart != 0)
@@ -350,6 +368,7 @@ void MotionHookModels::fn_1_5548()
     }
 }
 
+/* Sets the hook motion to its end and selects the following callback. */
 void MotionHookModels::fn_1_5800()
 {
     s16 currentModel;
@@ -360,12 +379,11 @@ void MotionHookModels::fn_1_5800()
     fn_800269E8(currentModel, ((1 << 30) | (1 << 2)));
     fn_8002D414(currentModel, fn_8002D530(currentModel));
 
-    {
-        Callback next = &MotionHookModels::fn_1_58B4;
-        callback = next;
-    }
+    Callback next = &MotionHookModels::fn_1_58B4;
+    callback = next;
 }
 
+/* Returns without changing state. */
 void MotionHookModels::fn_1_58B4()
 {
 }

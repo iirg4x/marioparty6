@@ -1,7 +1,61 @@
 // Loads framework archive resources and resolves their public names.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 51 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static const char rcsid[] = "$Id: hu_archive.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $";
 
 #include "REL/framework/hu_archive.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 
 // Reads a minigame archive into the model heap, then binds its tables during construction.
 HuArchive::HuArchive(int dataNumber)
@@ -38,11 +92,10 @@ int HuArchive::GetPublicNum() const
 }
 
 // Called for indexed access and by FindPublic; the assertion accepts index equal to the count.
-void *HuArchive::GetPublic(int index) const
+void *HuArchive::GetPublic(int idx) const
 {
-    (index >= 0 && index <= GetPublicNum()) ? (void)0 :
-        __msl_assertion_failed("idx >=0 && idx <= GetPublicNum()", "hu_archive.cpp", 97);
-    return resources + publicEntries[index].resourceOffset;
+    assert(idx >=0 && idx <= GetPublicNum());
+    return resources + publicEntries[idx].resourceOffset;
 }
 
 // Called during construction to bind the image's tables and relocate resources; mode is ignored.

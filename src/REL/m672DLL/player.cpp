@@ -1,7 +1,8 @@
 #include "REL/framework/sound.h"
+#include "REL/framework/sphere.h"
 #include "REL/framework/minigame_core.h"
-#include "REL/m672DLL/event.h"
-#include "REL/m672DLL/random.h"
+#include "REL/framework/event.h"
+#include "REL/framework/random.h"
 extern "C" {
 #include <math.h>
 #include "game/audio.h"
@@ -33,16 +34,20 @@ extern "C" {
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "REL/m672DLL/resources.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/event_callback_inline.h"
 #include "REL/framework/phase_durations.h"
 #include <new>
-extern "C" float lbl_1_data_480 = 980.665f;
+#include "REL/m672DLL/gravity.h"
 
 extern "C" {
 #include "dolphin.h"
 #include "game/animdata.h"
 }
 
+#include "REL/m672DLL/member_handler.h"
+
+// Interpolates from start toward end along the shortest wrapped degree difference.
 f32 fn_1_BD40(f32 start, f32 end, f32 t)
 {
     f32 delta;
@@ -61,37 +66,15 @@ f32 fn_1_BD40(f32 start, f32 end, f32 t)
     return result;
 }
 
+// Converts the direction's x/z atan2 result from radians to degrees.
 f32 fn_1_BE44(const Vec *direction)
 {
     return (180.0 * atan2(direction->x, direction->z)) / M_PI;
 }
 
-extern "C" {
-EventHandlerManager *fn_1_198E0(EventHandlerManager *, int);
-PlayerController *fn_1_C90(PlayerController *, Player *, int);
-PlayerController *fn_1_7C8(PlayerController *, Player *);
-}
-void fn_1_8E0C(s16 *, u8);
 void fn_1_EA98(Player *, u32, u8);
-template<class Receiver> void fn_1_EF74(EventHandlerManager *, const PlayerCallbackBinding &, int);
-extern "C" {
-GroundSprite *fn_1_8CC8(GroundSprite *, ANIMDATA *, const Vec *);
-void __msl_assertion_failed(const char *, const char *, int);
 
-extern const unsigned char lbl_1_data_588[];
-extern PlayerHandler lbl_1_data_484, lbl_1_data_490, lbl_1_data_49C;
-extern PlayerHandler lbl_1_data_4A8, lbl_1_data_4F8;
-}
-static inline PlayerMemberFunction PlayerMember(PlayerHandler value)
-{
-    return PlayerMemberFunction(value);
-}
-
-static inline PlayerCallbackBinding BindPlayer(const PlayerMemberFunction &member, Player *owner)
-{
-    return PlayerCallbackBinding(member, owner);
-}
-
+// Creates a computer or pad controller according to the selected player's type.
 PlayerController *fn_1_BE9C(Player *owner, int playerNo)
 {
     if (lbl_80265728[playerNo].type != 0) {
@@ -101,20 +84,25 @@ PlayerController *fn_1_BE9C(Player *owner, int playerNo)
     return new PadController(owner);
 }
 
-Player::Player(int playerNo, const WorldPosition *position)
+// Initializes player callbacks/controllers, actor/model state, effects, and the floor position.
+Player::Player(int playerNo, const EffectVector *position)
     : GameObject(1), playerNo(playerNo), controller(0), active(0),
-      unknown54(0), movementElapsed(0.0f), sequence(0), effect(0),
+      finished(0), movementElapsed(0.0f), ringParticles(0), groundSprite(0),
       model(new ModelMotion(DATANUM(0x830000, 9))), origin(*position), callbacks(0),
-      currentMotionIndex(-1), firstList(), secondList()
+      currentMotionIndex(-1), motionIds(), materialColors()
 {
 
     MGACTOR_PARAM actorParam;
-    WorldPosition floorPosition;
+    EffectVector floorPosition;
     Resources *resources;
-    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_EB5C), this), 0);
-    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_EBF4), this), 2);
-    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_EC80), this), 3);
-    fn_1_EF74<Player>(&this->callbacks, BindPlayer(PlayerMember(&Player::fn_1_ED84), this), 4);
+    registerMemberHandler<Player>(&this->callbacks,
+        bindMember(std::mem_fun(&Player::fn_1_EB5C), this), 0);
+    registerMemberHandler<Player>(&this->callbacks,
+        bindMember(std::mem_fun(&Player::fn_1_EBF4), this), 2);
+    registerMemberHandler<Player>(&this->callbacks,
+        bindMember(std::mem_fun(&Player::fn_1_EC80), this), 3);
+    registerMemberHandler<Player>(&this->callbacks,
+        bindMember(std::mem_fun(&Player::fn_1_ED84), this), 4);
     this->controller.reset(fn_1_BE9C(this, playerNo));
     actorParam.height = 150.0f;
     actorParam.radius = 60.000004f;
@@ -164,20 +152,20 @@ Player::Player(int playerNo, const WorldPosition *position)
     fn_80086E3C(this->player);
     fn_1_EA98(this, 0, 1);
     fn_1_D8CC();
-    this->modelScale = 0.0f;
-    this->model->setPosition(&this->origin.value.value);
-    this->model->setRotationY(this->modelScale);
+    this->modelYaw = 0.0f;
+    this->model->setPosition(&this->origin.value);
+    this->model->setRotationY(this->modelYaw);
     this->model->setLayer(5);
     this->model->setAttribute(((1 << 30) | (1 << 1)));
     fn_8002741C(this->model->id(), "itemhook_char", this->modelId);
     resources = &Resources::getChecked();
-    this->effect.reset(new GroundSprite(resources->animation(1), &this->origin.value.value));
-    this->effect->setAlpha(0.0f);
-    this->effect->setRadius(200.0f);
-    fn_1_8E0C((s16 *)(void *)this->effect.get(), 1);
+    this->groundSprite.reset(new GroundSprite(resources->animation(1), &this->origin.value));
+    this->groundSprite->setAlpha(0.0f);
+    this->groundSprite->setRadius(200.0f);
+    fn_1_8E0C(this->groundSprite.get(), 1);
     floorPosition = this->origin;
-    floorPosition.value.value.y = 0.0f;
-    this->sequence.reset(new RingParticles(resources->animation(3),
+    floorPosition.value.y = 0.0f;
+    this->ringParticles.reset(new RingParticles(resources->animation(3),
                                            resources->animation(0), 10, 2,
                                            floorPosition));
     this->soundFrame = 0;
@@ -191,62 +179,20 @@ extern const Point3d lbl_1_rodata_598[4];
 
 }
 
-extern void fn_1_EA98(Player *, u32, u8);
-extern "C" {
-extern std::vector<CollisionShape *> lbl_1_bss_C;
-
-}
-
-static inline CollisionShape *&CollisionShapeAt(unsigned long index)
-{
-    return lbl_1_bss_C.at(index);
-}
+// Returns the collision object's state field.
 static inline s32 CollisionState(CollisionObject *object) { return object->state; }
+// Returns the collision object's active field.
 static inline u8 CollisionActive(CollisionObject *object) { return object->active; }
+// Returns the collision object's radius field.
 static inline f32 CollisionRadius(CollisionObject *object) { return object->radius; }
-static inline f32 SeparationLength(Point3d *value) { return PSVECMag(value); }
-static inline void SetPoint(Point3d *position, double x, double y, double z)
-{
-    position->x = x;
-    position->y = y;
-    position->z = z;
-}
 
+// Returns the target point selected by the player's index.
 static inline const Point3d *PlayerTarget(Player *work)
 {
     return &lbl_1_rodata_598[work->playerNo];
 }
-static inline f32 DirectionLength(Point3d *vector)
-{
-    return PSVECMag(vector);
-}
 
-extern "C" {
-/* Position and offset vectors separated by an unknown interval. */
-typedef struct Position {
-    HuVecF position;
-    unsigned char unk_0C[12]; /* No code names this field. */
-    HuVecF offset;
-} Position;
-
-extern s32 lbl_1_data_F18;
-extern float lbl_1_bss_1BC;
-extern s8 lbl_1_bss_218, lbl_1_bss_219, lbl_1_data_2758;
-s32 fn_1_367CC(s32 *player);
-
-extern void fn_1_48BC(RingParticles *);
-extern void fn_1_48C8(RingParticles *);
-
-float lbl_1_bss_5C = 0.016666666666666666 * (0.016666666666666666 * lbl_1_data_480);
-
-}
-
-static inline s16 MotionModelId(ModelMotion *model) { return (s16)model->modelId; }
-static inline ModelMotion *PlayerMotionModel(Player *work) { return work->model.pointer; }
-static inline void SetGroundAlpha(GroundSprite *effect, f32 opacity)
-{
-    effect->alpha = opacity;
-}
+// Applies the player's position and rotation to the actor and model.
 static inline void PlaceAtPosition(Player *work)
 {
     fn_80086AA8(work->player->actor, &work->position.value);
@@ -255,16 +201,12 @@ static inline void PlaceAtPosition(Player *work)
     fn_80026808(work->modelId, 0.0f, 180.0f, 0.0f);
 }
 
-extern void fn_1_EA98(Player *work, u32 mode, u8 state);
-extern "C" {
-
-}
-
-void fn_1_758(PlayerController *);
+// Releases the actor through the game actor cleanup routine.
 Player::~Player()
 {
     fn_80080F38(player->actor);
 }
+// Copies actor position into the player, updates the controller, and runs the frame callback.
 void Player::update()
 {
     fn_80086BC8(player->actor, &position.value);
@@ -275,6 +217,7 @@ void Player::update()
     }
 }
 
+// Clamps the player z position to -200 and updates actor/model position when needed.
 void Player::fn_1_CEC0()
 {
     if (!(position.value.z < -200.0f)) {
@@ -284,34 +227,36 @@ void Player::fn_1_CEC0()
     }
 }
 
+// Separates the player from active state-1 collision objects that overlap its radius.
 void fn_1_CF2C(Player *work)
 {
-    VectorValue adjustedPosition;
+    EffectVector adjustedPosition;
     f32 distance;
     f32 minimumDistance;
-    s32 objectCount = lbl_1_bss_C.size();
+    s32 objectCount = collisionShapes.size();
     s32 index;
 
     adjustedPosition = work->position;
     adjustedPosition.value.y += 50.0f;
     for (index = 0; index < objectCount; ++index) {
-        CollisionObject *object = (CollisionObject *)CollisionShapeAt(index);
+        CollisionObject *object = (CollisionObject *)collisionShapes.at(index);
         s32 state = CollisionState(object);
         if (CollisionActive(object) != 0 && state == 1) {
             EffectVector otherPosition = object->position;
-            VectorValue fullCorrection;
-            VectorValue correction;
+            EffectVector fullCorrection;
+            EffectVector correction;
             Point3d separation;
             PSVECSubtract(&adjustedPosition.value, &otherPosition.value, &separation);
-            distance = SeparationLength(&separation);
+            distance = vectorMagnitude(&separation);
             minimumDistance = 60.000004f + CollisionRadius(object);
             if (!(distance >= minimumDistance)) {
                 correction.setScaled(&separation,
                                      (minimumDistance - distance) / distance);
+                // The full correction is still passed through the scale operation.
                 fullCorrection.setScaled(&correction.value, 1.0f);
                 PSVECAdd(&fullCorrection.value, &adjustedPosition.value,
                          &adjustedPosition.value);
-                SetPoint(&work->position.value, adjustedPosition.value.x,
+                work->position.set( adjustedPosition.value.x,
                                work->position.value.y, adjustedPosition.value.z);
                 fn_80086B04(work->player->actor, &work->position.value);
             }
@@ -319,6 +264,7 @@ void fn_1_CF2C(Player *work)
     }
 }
 
+// Activates the player once it reaches z <= -2880 and selects the entrance update.
 void Player::fn_1_D120()
 {
     if (position.value.z > -2880.0f) {
@@ -334,22 +280,23 @@ void Player::fn_1_D120()
                     180.0f, 0.0f);
     fn_80026FCC(modelId);
     sendEvent(1, 2, 0.0f);
-    {
-        PlayerUpdate movement;
-        movement = &Player::fn_1_D21C;
-        frameUpdate = movement;
-    }
+
+    setUpdate(&Player::fn_1_D21C);
 }
 extern "C" {
 const Point3d lbl_1_rodata_58C = {-1200.0f,549.0f,-1540.0f};
-const Point3d lbl_1_rodata_598[4] = {{-950.0f,549.0f,-1390.0f},{-900.0f,549.0f,-1465.0f},{-850.0f,549.0f,-1615.0f},{-800.0f,549.0f,-1690.0f}};
+const Point3d lbl_1_rodata_598[4] =
+    {{-950.0f,549.0f,-1390.0f},{-900.0f,549.0f,-1465.0f},
+     {-850.0f,549.0f,-1615.0f},{-800.0f,549.0f,-1690.0f}};
 }
 
+// Drives the player entrance phases, fade values, path movement, and final rotation.
 void Player::fn_1_D21C()
 {
+    // All four player-indexed rotation targets use the same 22.5 degree value.
     static const f32 lbl_1_rodata_5C8[4] = {22.5f,22.5f,22.5f,22.5f};
     Point3d direction;
-    PlayerUpdate movement;
+
     f32 fadeOut;
     f32 fadeIn;
     f32 magnitude;
@@ -374,7 +321,7 @@ void Player::fn_1_D21C()
         ++phase;
     case 1:
         PSVECSubtract(PlayerTarget(this), &position.value, &direction);
-        magnitude = DirectionLength(&direction);
+        magnitude = vectorMagnitude(&direction);
         if (magnitude > 0.0f) PSVECNormalize(&direction, &direction);
         rotation = fn_1_BE44(&direction);
         fn_80026808(modelId, 0.0f, rotation, 0.0f);
@@ -402,12 +349,12 @@ void Player::fn_1_D21C()
         rotation = lbl_1_rodata_5C8[playerNo];
         fn_80026808(modelId, 0.0f, rotation, 0.0f);
         fn_1_EA98(this, 0, 1);
-        movement = &Player::fn_1_DBF4;
-        frameUpdate = movement;
+        setUpdate(&Player::fn_1_DBF4);
         ++phase;
         break;
     }
 }
+// Saves each model material's first three color bytes into materialColors.
 void Player::fn_1_D8CC()
 {
     HU3D_MODEL *model = &lbl_802C01C8[modelId];
@@ -418,12 +365,13 @@ void Player::fn_1_D8CC()
     for (; materialIndex < materialCount; materialIndex++, material++) {
         VectorElement color;
 
-        color.byte0 = material->color[0];
-        color.byte1 = material->color[1];
-        color.byte2 = material->color[2];
-        secondList.push_back(color);
+        color.red = material->color[0];
+        color.green = material->color[1];
+        color.blue = material->color[2];
+        materialColors.push_back(color);
     }
 }
+// Restores saved material colors and sets all model ambient channels to one.
 void Player::fn_1_D97C()
 {
     HU3D_MODEL *model = &lbl_802C01C8[modelId];
@@ -432,16 +380,17 @@ void Player::fn_1_D97C()
     s32 materialIndex = 0;
 
     for (; materialIndex < materialCount; materialIndex++, material++) {
-        VectorElement color = secondList.at(materialIndex);
-        material->color[0] = color.byte0;
-        material->color[1] = color.byte1;
-        material->color[2] = color.byte2;
+        VectorElement color = materialColors.at(materialIndex);
+        material->color[0] = color.red;
+        material->color[1] = color.green;
+        material->color[2] = color.blue;
     }
 
     model->ambR = 1.0f;
     model->ambG = 1.0f;
     model->ambB = 1.0f;
 }
+// Scales saved material colors by RGB inputs and writes the same values to ambient channels.
 void Player::fn_1_DA64(f32 redScale, f32 greenScale, f32 blueScale)
 {
     HU3D_MODEL *model;
@@ -455,31 +404,34 @@ void Player::fn_1_DA64(f32 redScale, f32 greenScale, f32 blueScale)
     materialIndex = 0;
 
     for (; materialIndex < materialCount; materialIndex++, material++) {
-        VectorElement color = secondList.at(materialIndex);
-        material->color[0] = (u8)(color.byte0 * redScale);
-        material->color[1] = (u8)(color.byte1 * greenScale);
-        material->color[2] = (u8)(color.byte2 * blueScale);
+        VectorElement color = materialColors.at(materialIndex);
+        material->color[0] = (u8)(color.red * redScale);
+        material->color[1] = (u8)(color.green * greenScale);
+        material->color[2] = (u8)(color.blue * blueScale);
     }
 
     model->ambR = redScale;
     model->ambG = greenScale;
     model->ambB = blueScale;
 }
-void Player::fn_1_DBF4() { unknown54 = 1; }
+// Marks the player finished.
+void Player::fn_1_DBF4() { finished = 1; }
+// Empty player update callback.
 void Player::fn_1_DC00() {}
+// Advances the entrance state machine, model/groundSprite opacity, and sound timing.
 void Player::fn_1_DC04()
 {
-    VectorValue movement;
+    EffectVector movement;
     f32 opacity;
     f32 fadeIn;
-    s16 volume;
-    s16 risingVolume;
+    s16 pitch;
+    s16 risingPitch;
 
     switch (state) {
     case 0:
         if (elapsed < delay) break;
-        PlayerMotionModel(this)->resetAttribute(((1 << 30) | (1 << 1)));
-        fn_1_48BC(sequence.get());
+        model.get()->resetAttribute(((1 << 30) | (1 << 1)));
+        fn_1_48BC(ringParticles.get());
         elapsed = 0.0f;
         ++state;
     case 1:
@@ -492,11 +444,11 @@ void Player::fn_1_DC04()
         elapsed = 0.0f;
         ++state;
     case 3:
-        fn_80027508(MotionModelId(PlayerMotionModel(this)));
+        fn_80027508(model.get()->id());
         rotation = 180.0f;
-        position.value.x = origin.value.value.x;
-        position.value.y = origin.value.value.y;
-        position.value.z = origin.value.value.z;
+        position.value.x = origin.value.x;
+        position.value.y = origin.value.y;
+        position.value.z = origin.value.z;
         position.value.y += 278.7f;
         PlaceAtPosition(this);
         fn_80026E44(modelId);
@@ -504,7 +456,7 @@ void Player::fn_1_DC04()
         ++state;
     case 4:
         movement = velocity;
-        velocity.value.y += 5.0f * -lbl_1_bss_5C;
+        velocity.value.y += 5.0f * -gravityPerFrame;
         movement.value.y = 0.5f * (movement.value.y + velocity.value.y);
         PSVECAdd(&movement.value, &position.value, &position.value);
         PlaceAtPosition(this);
@@ -516,12 +468,12 @@ void Player::fn_1_DC04()
         fn_80086CA8(player->actor, rotation);
         fn_80026808(modelId, 0.0f, 180.0f, 0.0f);
         fn_8005DFC0(charNo, 1);
-        fn_1_48C8(sequence.get());
+        fn_1_48C8(ringParticles.get());
         ++state;
     case 5:
-        if (fn_8002D75C(MotionModelId(PlayerMotionModel(this)))) {
-            fn_800269E8(MotionModelId(PlayerMotionModel(this)), 1);
-            effect.reset();
+        if (fn_8002D75C(model.get()->id())) {
+            fn_800269E8(model.get()->id(), 1);
+            groundSprite.reset();
             ++state;
         }
         break;
@@ -529,11 +481,11 @@ void Player::fn_1_DC04()
     if (state >= 3) {
         if (elapsed < 0.5f) {
             opacity = 0.4f * (1.0f - elapsed / 0.5f);
-            SetGroundAlpha(effect.get(), opacity);
+            groundSprite->setAlpha(opacity);
         }
     } else if (state == 1) {
         fadeIn = (f64)0.4f * elapsed;
-        SetGroundAlpha(effect.get(), fadeIn);
+        groundSprite->setAlpha(fadeIn);
     }
     if (state > 0) {
         if (soundFrame == 0)
@@ -541,12 +493,12 @@ void Player::fn_1_DC04()
         if (soundFrame == 121)
             soundPlayAt(1, 0x8A6, &position.value);
         if (soundFrame < 140) {
-            volume = 8191.0f * (1.0f - 0.5f * ((f32)soundFrame / 140.0f));
-            soundSetPitch(soundHandle, volume);
+            pitch = 8191.0f * (1.0f - 0.5f * ((f32)soundFrame / 140.0f));
+            soundSetPitch(soundHandle, pitch);
         }
         if (soundFrame > 150) {
-            risingVolume = 8191.0f * (0.5f * ((f32)(soundFrame - 150) / 87.0f));
-            soundSetPitch(soundHandle, risingVolume);
+            risingPitch = 8191.0f * (0.5f * ((f32)(soundFrame - 150) / 87.0f));
+            soundSetPitch(soundHandle, risingPitch);
         }
         if (soundFrame > 236 && soundHandle != -1) {
             HuAudFXStop(soundHandle);
@@ -554,8 +506,9 @@ void Player::fn_1_DC04()
         }
         ++soundFrame;
     }
-    elapsed += 0.016666666666666666;
+    elapsed += (1.0 / 60.0);
 }
+// Resolves collisions, checks entrance activation, and clamps the player position.
 void Player::fn_1_E29C()
 {
     fn_1_CF2C(this);
@@ -563,48 +516,47 @@ void Player::fn_1_E29C()
     fn_1_CEC0();
 }
 
+// Applies vertical motion and a z offset, then marks the player finished after two seconds.
 void Player::fn_1_E5EC()
 {
     f32 movement = velocity.value.y;
 
-    velocity.value.y += -lbl_1_bss_5C;
+    velocity.value.y += -gravityPerFrame;
     movement = 0.5f * (movement + velocity.value.y);
     position.value.z += 30.0;
     position.value.y += movement;
     fn_80026790(modelId, &position.value);
     fn_80086B04(player->actor, &position.value);
 
-    movementElapsed += 0.016666666666666666;
+    movementElapsed += (1.0 / 60.0);
     if (!(movementElapsed < 2.0f)) {
         fn_800269E8(modelId, 1);
-        {
-            PlayerUpdate values;
-            values = &Player::fn_1_DBF4;
-            frameUpdate = values;
-        }
+
+        setUpdate(&Player::fn_1_DBF4);
     }
 }
+// Searches active state-2 collision objects and starts the hit response on overlap.
 void Player::fn_1_E718()
 {
-    VectorValue adjustedPosition;
+    EffectVector adjustedPosition;
     EffectVector objectPosition;
     Point3d separation;
     f32 distance;
     f32 minimumDistance;
     s32 found = 0;
-    s32 objectCount = lbl_1_bss_C.size();
+    s32 objectCount = collisionShapes.size();
     s32 index;
 
     adjustedPosition = position;
     adjustedPosition.value.y += 50.0f;
     for (index = 0; index < objectCount; ++index) {
-        CollisionObject *object = (CollisionObject *)lbl_1_bss_C.at(index);
+        CollisionObject *object = (CollisionObject *)collisionShapes.at(index);
         s32 state = CollisionState(object);
 
         if (CollisionActive(object) != 0 && state == 2) {
             objectPosition = object->position;
             PSVECSubtract(&adjustedPosition.value, &objectPosition.value, &separation);
-            distance = SeparationLength(&separation);
+            distance = vectorMagnitude(&separation);
             minimumDistance = 60.000004f + CollisionRadius(object);
             if (distance >= minimumDistance) {
                 continue;
@@ -617,19 +569,18 @@ void Player::fn_1_E718()
     if ((u8)found != 0) {
         CharFXPlay(charNo, 0x240);
         fn_1_EA98(this, 6, 1);
-        SetPoint(&velocity.value, 0.0,
-                       200.0f * lbl_1_bss_5C, 0.0);
+        velocity.set( 0.0,
+                       200.0f * gravityPerFrame, 0.0);
         sendEvent(1, 3, 0.0f);
         fn_8006A030((s16)playerNo, 0x2D, 7, 3);
-        {
-            PlayerUpdate callbackValues = &Player::fn_1_E5EC;
-            frameUpdate = callbackValues;
-        }
+        setUpdate(&Player::fn_1_E5EC);
     }
 }
+// Empty player callback used after the winner motion.
 void Player::fn_1_E95C() {}
+// Clears and repopulates the player's motion list, then prepares character motions.
 void Player::fn_1_E960() {
-    firstList.clear();
+    motionIds.clear();
     fn_1_EA24(DATANUM(0x930000, 0));
     fn_1_EA24(DATANUM(0x930000, 1));
     fn_1_EA24(DATANUM(0x930000, 2));
@@ -641,19 +592,20 @@ void Player::fn_1_E960() {
     fn_1_EA24(DATANUM(0x930000, 40));
     fn_8005B4BC(charNo);
 }
-extern "C" s16 fn_8005B0B8(s16, unsigned int);
+// Resolves one character motion and appends its model id to motionIds.
 void Player::fn_1_EA24(s32 dataNum)
 {
     s16 motionId = fn_8005B0B8(charNo, (u32)dataNum);
-    firstList.push_back(motionId);
+    motionIds.push_back(motionId);
 }
 
+// Shifts the model to a new indexed motion when motionId differs from the current index.
 void fn_1_EA98(Player *object, u32 motionId, u8 loop)
 {
     s16 motion;
 
     if (object->currentMotionIndex != motionId) {
-        motion = object->firstList.at(motionId);
+        motion = object->motionIds.at(motionId);
         fn_800269E8(object->modelId, ((1 << 30) | (1 << 1)));
         fn_8005C2C8(object->charNo, motion,
                            0.0f, 8.0f, loop != 0 ? ((1 << 30) | (1 << 0)) : 0);
@@ -661,72 +613,43 @@ void fn_1_EA98(Player *object, u32 motionId, u8 loop)
         object->currentMotionIndex = motionId;
     }
 }
+// Resets entrance state/timing, chooses a random delay, and selects the entrance update.
 void Player::fn_1_EB5C(EventMessage *)
 {
-    PlayerUpdate initialValues;
+
     state = 0;
     elapsed = 0.0f;
     delay = RandomFloat(0.0f, 1.0f);
-    initialValues = &Player::fn_1_DC04;
-    frameUpdate = initialValues;
+    setUpdate(&Player::fn_1_DC04);
 }
+// Enables player input, resets the controller, and selects the collision update.
 void Player::fn_1_EBF4(EventMessage *)
 {
-    PlayerUpdate values;
+
     fn_80087168(player, 1);
     controller->reset();
-    values = &Player::fn_1_E29C;
-    frameUpdate = values;
+    setUpdate(&Player::fn_1_E29C);
 }
+// Stops actor motion and, when inactive, starts motion 4 and the collision search.
 void Player::fn_1_EC80(EventMessage *)
 {
-    PlayerUpdate values;
+
     fn_80086E3C(player);
     if (active == 0) {
-        short motion;
+        // The index is reset immediately before fn_1_EA98's subsequent motion comparison.
         currentMotionIndex = 0xFFFFFFFF;
-        if (currentMotionIndex != 4) {
-            motion = firstList.at(4);
-            fn_800269E8(modelId, ((1 << 30) | (1 << 1)));
-            fn_8005C2C8(charNo, motion, 0.0f,
-                               8.0f, ((1 << 30) | (1 << 0)));
-            fn_8005C390(charNo, 1.0f);
-            currentMotionIndex = 4;
-        }
-        values = &Player::fn_1_E718;
-        frameUpdate = values;
+        fn_1_EA98(this, 4, 1);
+        setUpdate(&Player::fn_1_E718);
     }
 }
+// Stops actor motion and, when active, plays motion 7, records the winner, and idles.
 void Player::fn_1_ED84(EventMessage *)
 {
-    PlayerUpdate values;
+
     fn_80086E3C(player);
     if (active != 0) {
-        if (currentMotionIndex != 7) {
-            short motion = firstList.at(7);
-            fn_800269E8(modelId, ((1 << 30) | (1 << 1)));
-            fn_8005C2C8(charNo, motion, 0.0f,
-                               8.0f, 0);
-            fn_8005C390(charNo, 1.0f);
-            currentMotionIndex = 7;
-        }
+        fn_1_EA98(this, 7, 0);
         MinigameCore::addWinner(playerNo);
-        values = &Player::fn_1_E95C;
-        frameUpdate = values;
+        setUpdate(&Player::fn_1_E95C);
     }
-}
-
-template<class Receiver>
-struct PlayerCallbackRecord : EventCallback {
-    PlayerMemberFunction method;
-    Receiver *receiver;
-    explicit PlayerCallbackRecord(const PlayerCallbackBinding &payload)
-        : EventCallback(), method(payload.function), receiver(payload.receiver) {}
-    virtual ~PlayerCallbackRecord() {}
-    virtual void receive(EventMessage *message) { method(receiver, message); }
-};
-template<class Receiver>
-void fn_1_EF74(EventHandlerManager *owner, const PlayerCallbackBinding &payload, int key)
-{
-    owner->addHandler(new PlayerCallbackRecord<Receiver>(payload), key);
 }

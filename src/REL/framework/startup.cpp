@@ -7,8 +7,6 @@ extern "C" {
 extern Procedure _ctors[];
 extern Procedure _dtors[];
 void ObjectSetup(void);
-void _prolog(void);
-void _epilog(void);
 }
 
 static void invokeProcedures(Procedure *procedures);

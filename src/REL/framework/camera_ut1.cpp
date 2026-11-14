@@ -7,8 +7,6 @@ extern "C" {
 
 #include "REL/framework/camera_frame.h"
 
-void cameraInverseLookAt(const CameraFrame *, Mtx);
-
 // interpolate_camera_poses calls this to apply a pose's orientation and eye to a camera frame.
 void set_camera_frame_from_pose(CameraFrame *frame, const CameraPose *pose)
 {

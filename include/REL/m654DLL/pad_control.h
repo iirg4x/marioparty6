@@ -11,12 +11,13 @@ class PadControl {
 public:
     PadControl(unsigned short, float);
     ~PadControl();
+    void fn_1_C630(float factor);
     u16 cameraBit;
     Range<float> range;
-    f32 angle_primary;
-    f32 angle_secondary;
-    u32 flags_primary;
-    u32 flags_secondary;
+    f32 stickX;
+    f32 stickY;
+    u32 pressedButtons;
+    u32 heldButtons;
 
     void fn_1_C698(u32 flags);
     void fn_1_C6A8(u32 flags);
@@ -27,7 +28,5 @@ public:
     void fn_1_C918(MgPlayer_s *player);
     void fn_1_CAB4();
 };
-
-void fn_1_C630(PadControl *, float);
 
 #endif

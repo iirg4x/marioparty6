@@ -11,17 +11,14 @@ extern "C" {
 }
 struct Racer;
 class RacerControl;
-typedef void (Racer::*ItemUpdate5B3C)();
+typedef void (Racer::*RacerCallback)();
 struct MotionFlags {
+    /* Clears the four used player state flags. */
     MotionFlags() : stateFlag(0), attributeEnabled(0), hasWon(0), collision4(0) {}
     unsigned char stateFlag : 1;
     unsigned char attributeEnabled : 1;
     unsigned char hasWon : 1; /* Set when this player is registered as a winner. */
     unsigned char collision4 : 1;
-    unsigned char unknown_3 : 1;
-    unsigned char unknown_2 : 1;
-    unsigned char unknown_1 : 1;
-    unsigned char unknown_0 : 1;
 };
 
 struct Racer : PlayerInfo, MotionOwner, GameObject {
@@ -43,7 +40,7 @@ struct Racer : PlayerInfo, MotionOwner, GameObject {
     void fn_1_6AA4();
     void fn_1_6C30();
     static int fn_1_5B2C();
-    static void fn_1_5B3C(ItemUpdate5B3C update);
+    static void fn_1_5B3C(RacerCallback update);
     Racer(int character, int index, Point3d *position);
     virtual ~Racer();
     virtual void update();
