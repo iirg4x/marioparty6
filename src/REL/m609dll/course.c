@@ -1,6 +1,6 @@
 /* Daft Rafts course motion, player contacts, effects, and selection results. */
-#include "dolphin/math.h"
-#include "REL/m609dll/state.h"
+#include <math.h>
+#include "REL/m609dll/course.h"
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/gamework.h"
@@ -11,50 +11,19 @@
 #include "game/data.h"
 #include "game/memory.h"
 
-/* Participant and lineup-placement state carried by the sequence. */
-typedef struct M609SequencePlayerSlots {
-    u8 sequenceState[106]; /* State preceding the participant and placement data. */
-    s8 participantPlacementState[246]; /* Participant count, winners, and lineup state bytes. */
-} M609SequencePlayerSlots;
-
 /* Local offset and model index of an auxiliary model attached to a segment. */
 typedef struct M609CourseAnchor {
     Vec position; /* Offset from the linked collision model, in world units. */
     s16 modelIndex; /* Index into the course model array. */
     s16 state; /* Secondary entry value; every entry initializes it to zero. */
 } M609CourseAnchor;
-extern double sin(double);
-extern double cos(double);
-extern double sqrt(double);
-
-extern double atan2(double, double);
-
-/* XZ endpoints used when pushing a player out of a moving segment's bounds. */
-typedef struct M609CollisionEdge {
-    f32 startX; /* First endpoint X, in world units. */
-    f32 endX; /* Second endpoint X, in world units. */
-    f32 startZ; /* First endpoint Z, in world units. */
-    f32 endZ; /* Second endpoint Z, in world units. */
-} M609CollisionEdge;
-
-/* Course segment transform, motion limits, and model links used during setup. */
-typedef struct M609Placement {
-    s16 status; /* Segment slot; -1 retires the segment. */
-    s16 pathIndex; /* Path group used by the player route table. */
-    Vec position; /* Initial world position. */
-    Vec movementValues; /* Initial per-axis movement values. */
-    Vec positionStep; /* X is the turning reference; Y starts the integrated Z displacement. */
-    Vec movementSelectors; /* Values selecting lateral and longitudinal movement paths. */
-    Vec bounds; /* Extents used for contacts with the course. */
-    s16 record; /* Course model array index. */
-    s16 linkedRecord; /* Associated collision model index, or -1. */
-} M609Placement;
 
 #include "game/audio.h"
 #include "game/gamemes.h"
 #include "game/pad.h"
 #include "game/wipe.h"
 #include "datadir_enum.h"
+#include "humath.h"
 /* Player index and mode carried by an actor request. */
 typedef struct M609LinkRequest {
     s32 opaqueState; /* Additional request state. */
@@ -72,35 +41,13 @@ typedef struct M609CharacterAction {
 s16 lbl_1_bss_6D84;
 /* Selection-phase control and shadow initialization has run when nonzero. */
 static long lbl_1_bss_6D80;
-void fn_1_11B80(void);
-void fn_1_2DF4(void);
-void fn_1_2780(void);
-void fn_1_46F8(s16,s16,void *);
-s32 fn_1_118BC(void);
-s32 fn_1_30D8(f32 *,f32,f32,f32);
-f32 fn_1_31F8(f32);
-void fn_1_670(void);
-void fn_1_3FF0(M609Player *,s16);
 s32 fn_1_126F0(M609Player *,s16);
-s32 fn_1_125C4(void);
-int fn_1_C9A8(COL_NARROW_PARAM *contact, COL_NARROW_PARAM *otherContact);
-void fn_1_CA6C(MGACTOR *actor, int hookParameter);
-void fn_1_52B8(void);
-void fn_1_6974(void);
-void fn_1_7150(M609Model *segment);
-void fn_1_7E10(void);
-void fn_1_8670(void);
-s32 fn_1_89E0(f32 startZ);
-void fn_1_8C54(void);
-void fn_1_8EE4(void);
-void fn_1_5618(s16 soundSlot, s16 fadeSpeed);
 void fn_1_4DC8(s16 soundSlot);
 void fn_1_4E90(void);
 s32 fn_1_4EB0(void);
 void fn_1_4B48(s16 soundSlot, s16 pan);
 void fn_1_4BD8(s16 soundSlot, s16 pitch);
 void fn_1_4C68(s16 soundSlot, s16 volume);
-void fn_1_4F98(void);
 void fn_1_4FC0(void);
 void fn_1_52B4(MGPLAYER *player);
 
@@ -258,7 +205,7 @@ void fn_1_4FC0(void) {
     } else {
         playerOrCollisionModelIndex = lbl_1_bss_24C[undecidedPlayer].collisionMesh + 32;
         if (eliminatedCount == 3 &&
-            lbl_1_bss_24C[undecidedPlayer].position.z <= (150.0f)) {
+            lbl_1_bss_24C[undecidedPlayer].position.z <= 150.0f) {
             lbl_1_bss_30.resultFlag = 1;
         }
     }
@@ -670,7 +617,7 @@ void fn_1_6974(void) {
                 if (lbl_1_bss_30.scroll) {
                     fn_1_30D8(
                         &lbl_1_bss_8BC[modelIndex].rotation.x,
-                        (10.0f),
+                        10.0f,
                         lbl_1_data_C8[motionFrameOrSampleIndex],
                         lbl_1_data_C8[motionFrameOrSampleIndex + 1]);
                     lbl_1_bss_8BC[lbl_1_bss_8BC[modelIndex].linkedRecord].collisionRotation =
@@ -678,11 +625,11 @@ void fn_1_6974(void) {
                 }
                 } else {
                     lbl_1_bss_8BC[modelIndex].rotation.x =
-                        (0.0f);
+                        0.0f;
                     lbl_1_bss_8BC[modelIndex].rotation.y =
-                        (0.0f);
+                        0.0f;
                     lbl_1_bss_8BC[modelIndex].rotation.z =
-                        (0.0f);
+                        0.0f;
                 }
             }
 
@@ -692,10 +639,10 @@ void fn_1_6974(void) {
                 lbl_1_bss_8BC[modelIndex].linkedRecord == 71 ||
                 lbl_1_bss_8BC[modelIndex].linkedRecord == 74 ||
                 lbl_1_bss_8BC[modelIndex].linkedRecord == 75) {
-                lbl_1_bss_8BC[modelIndex].position.x = (0.0f);
+                lbl_1_bss_8BC[modelIndex].position.x = 0.0f;
             }
         } else {
-            lbl_1_bss_8BC[modelIndex].position.y = (-10000.0f);
+            lbl_1_bss_8BC[modelIndex].position.y = -10000.0f;
         }
     }
 
@@ -814,7 +761,7 @@ void fn_1_7150(M609Model *segment) {
                         fn_1_89E0(segment->bounds.z +
                             (segment->position.z + segment->bounds.z));
                     } else {
-                        fn_1_89E0((50.0f) +
+                        fn_1_89E0(50.0f +
                             (segment->position.z + segment->bounds.z));
                     }
                     }
@@ -825,14 +772,14 @@ void fn_1_7150(M609Model *segment) {
                     if (segment->recordIndex >= 60 &&
                         segment->recordIndex <= 67) {
                         segment->rotation.x =
-                            (6.0f) *
-                            ((segment->position.z - (100.0f)) /
+                            6.0f *
+                            ((segment->position.z - 100.0f) /
                              lbl_1_bss_30.scroll);
                     } else if (segment->recordIndex >= 68 &&
                                segment->recordIndex <= 75) {
                         segment->rotation.x =
-                            (-6.0f) *
-                            ((segment->position.z - (100.0f)) /
+                            -6.0f *
+                            ((segment->position.z - 100.0f) /
                              lbl_1_bss_30.scroll);
                     }
                     if (lbl_1_data_FC[segment->status] != -1) {
@@ -1054,44 +1001,44 @@ void fn_1_7E10(void) {
                     attachment->movementValues.z;
                 attachment->rotation = sourceRotation;
                 if (attachment->rotation.x) {
-                    attachment->jointPositionOrDriftOffset.x = (0.0f);
+                    attachment->jointPositionOrDriftOffset.x = 0.0f;
                     attachment->stateOrTimer++;
                 }
                 break;
             case 1:
                 attachment->movementValues.z = (f32)(
                     attachment->movementValues.z +
-                    (0.2) * sourceRotation.x);
+                    0.2 * sourceRotation.x);
                 attachment->position.x = sourcePosition.x +
                     attachment->movementValues.x;
                 attachment->position.y = sourcePosition.y +
                     attachment->movementValues.z *
-                    sin(((3.141592653589793) * -sourceRotation.x) /
-                        (180.0));
+                    sin((M_PI * -sourceRotation.x) /
+                        180.0);
                 attachment->position.z = sourcePosition.z +
                     attachment->movementValues.z *
-                    cos(((3.141592653589793) * -sourceRotation.x) /
-                        (180.0));
-                attachment->position.y += ((50.0) +
+                    cos((M_PI * -sourceRotation.x) /
+                        180.0);
+                attachment->position.y += (50.0 +
                     lbl_1_bss_30.raftOffset.y) *
-                    cos(((3.141592653589793) * sourceRotation.x) /
-                        (180.0));
-                attachment->position.z += ((50.0) +
+                    cos((M_PI * sourceRotation.x) /
+                        180.0);
+                attachment->position.z += (50.0 +
                     lbl_1_bss_30.raftOffset.y) *
-                    sin(((3.141592653589793) * sourceRotation.x) /
-                        (180.0));
+                    sin((M_PI * sourceRotation.x) /
+                        180.0);
                 if (lbl_1_bss_30.night == 0) {
                     attachment->rotation = sourceRotation;
                 } else {
                     /* This auxiliary record uses jointPositionOrDriftOffset.x for forward drift,
                      * increased by one world unit per update. */
-                    attachment->jointPositionOrDriftOffset.x += (1.0f);
+                    attachment->jointPositionOrDriftOffset.x += 1.0f;
                 }
                 switch (attachment->linkedRecord) {
                 case 32:
                 case 33:
-                    releaseZOrDistance = sourcePosition.z + (260.0) *
-                        cos(((3.141592653589793) * sourceRotation.x) / (180.0));
+                    releaseZOrDistance = sourcePosition.z + 260.0 *
+                        cos((M_PI * sourceRotation.x) / 180.0);
                     if (releaseZOrDistance < attachment->position.z) {
                         attachment->stateOrTimer++;
                     }
@@ -1099,20 +1046,20 @@ void fn_1_7E10(void) {
                 case 44:
                     separation.x = sourcePosition.x - attachment->position.x;
                     separation.y = sourcePosition.y - attachment->position.y +
-                        (50.0f);
-                    separation.z = sourcePosition.z - (200.0f) -
+                        50.0f;
+                    separation.z = sourcePosition.z - 200.0f -
                         attachment->position.z;
                     distanceSquared = separation.z * separation.z +
                         (separation.x * separation.x +
                         separation.y * separation.y);
                     releaseZOrDistance = sqrt(distanceSquared);
-                    if (releaseZOrDistance > (420.0f)) {
+                    if (releaseZOrDistance > 420.0f) {
                         attachment->stateOrTimer++;
                     }
                     break;
                 case 45:
-                    releaseZOrDistance = sourcePosition.z + (250.0) *
-                        cos(((3.141592653589793) * sourceRotation.x) / (180.0));
+                    releaseZOrDistance = sourcePosition.z + 250.0 *
+                        cos((M_PI * sourceRotation.x) / 180.0);
                     if (releaseZOrDistance < attachment->position.z) {
                         attachment->stateOrTimer++;
                     }
@@ -1120,8 +1067,8 @@ void fn_1_7E10(void) {
                 case 37:
                 case 38:
                 case 39:
-                    releaseZOrDistance = sourcePosition.z + (170.0) *
-                        cos(((3.141592653589793) * sourceRotation.x) / (180.0));
+                    releaseZOrDistance = sourcePosition.z + 170.0 *
+                        cos((M_PI * sourceRotation.x) / 180.0);
                     if (releaseZOrDistance < attachment->position.z) {
                         attachment->stateOrTimer++;
                     }
@@ -1131,8 +1078,8 @@ void fn_1_7E10(void) {
                 attachment->position.z += attachment->jointPositionOrDriftOffset.x;
                 break;
             case 2:
-                attachment->position.y -= (20.0f);
-                if (attachment->position.y < (-1000.0f)) {
+                attachment->position.y -= 20.0f;
+                if (attachment->position.y < -1000.0f) {
                     fn_800269E8(attachment->model, (1 << 0));
                 }
                 break;
@@ -1141,12 +1088,12 @@ void fn_1_7E10(void) {
             switch (attachment->movementPhase) {
             case 1:
                 attachment->status = 0;
-                attachment->positionStep.x = (10.0f);
+                attachment->positionStep.x = 10.0f;
                 (attachment->movementPhase)++;
                 break;
             case 2:
                 if (attachment->status % 2 != 0) {
-                    attachment->positionStep.x *= (-0.9f);
+                    attachment->positionStep.x *= -0.9f;
                 }
                 attachment->position.x += attachment->positionStep.x;
                 if ((attachment->status)++ >= 50) {
@@ -1163,11 +1110,11 @@ void fn_1_7E10(void) {
         fn_800269E8(lbl_1_bss_8BC[50].model,
                          ((1 << 30) | (1 << 0)));
         fn_8002D86C(lbl_1_bss_8BC[50].model,
-                           (1.0f));
+                           1.0f);
         Hu3DModelObjPosGet(lbl_1_bss_8BC[50].model,
                            "nokotachi", &sourcePosition);
         lbl_1_bss_8BC[153].position = sourcePosition;
-        lbl_1_bss_8BC[153].rotation.y = (180.0f);
+        lbl_1_bss_8BC[153].rotation.y = 180.0f;
         lbl_1_bss_8BC[9].position =
             lbl_1_bss_8BC[50].position;
     }
@@ -1184,10 +1131,10 @@ void fn_1_8670(void) {
         if (lbl_1_bss_8BC[effectModelIndex].linkedRecord != -1 &&
             lbl_1_bss_8BC[effectModelIndex].stateOrTimer == 1) {
             if (fn_8002D4E0(lbl_1_bss_8BC[effectModelIndex].model) >=
-                (22.9f)) {
+                22.9f) {
                 fn_800269E8(lbl_1_bss_8BC[effectModelIndex].model, (1 << 0));
                 fn_8002D86C(lbl_1_bss_8BC[effectModelIndex].model,
-                                   (0.0f));
+                                   0.0f);
                 lbl_1_bss_8BC[effectModelIndex].stateOrTimer = 0;
                 lbl_1_bss_8BC[effectModelIndex].linkedRecord = -1;
             } else {
@@ -1208,20 +1155,20 @@ void fn_1_8670(void) {
         case 1:
             fn_80026A44(lbl_1_bss_8BC[effectModelIndex].model, (1 << 0));
             fn_8002D86C(lbl_1_bss_8BC[effectModelIndex].model,
-                               (1.0f));
+                               1.0f);
             lbl_1_bss_8BC[effectModelIndex].position.x =
                 lbl_1_bss_24C[playerNo].position.x;
-            lbl_1_bss_8BC[effectModelIndex].position.y = (0.0f);
+            lbl_1_bss_8BC[effectModelIndex].position.y = 0.0f;
             lbl_1_bss_8BC[effectModelIndex].position.z =
                 lbl_1_bss_24C[playerNo].position.z;
             lbl_1_bss_8BC[effectModelIndex].stateOrTimer++;
             break;
         case 2:
             if (fn_8002D4E0(lbl_1_bss_8BC[effectModelIndex].model) >=
-                (38.9f)) {
+                38.9f) {
                 fn_800269E8(lbl_1_bss_8BC[effectModelIndex].model, (1 << 0));
                 fn_8002D86C(lbl_1_bss_8BC[effectModelIndex].model,
-                                   (0.0f));
+                                   0.0f);
                 lbl_1_bss_8BC[effectModelIndex].stateOrTimer = 0;
             }
             break;
@@ -1260,16 +1207,16 @@ s32 fn_1_89E0(f32 spawnZOrScrollSteps) {
             lbl_1_bss_8BC[obstacleIndex].position.x =
                 (f32)randomValue;
             lbl_1_bss_8BC[obstacleIndex].position.y =
-                heightOffset / (10.0f);
+                heightOffset / 10.0f;
             lbl_1_bss_8BC[obstacleIndex].position.z =
                 spawnZOrScrollSteps;
             lbl_1_bss_8BC[obstacleIndex].rotation.y =
-                (0.0f);
+                0.0f;
             randomValue = frandmod(3) + 1;
             lbl_1_bss_8BC[obstacleIndex].movementValues.y =
                 (f32)randomValue;
             /* Lead the spin by the number of scroll updates before reaching the front. */
-            spawnZOrScrollSteps -= (100.0f);
+            spawnZOrScrollSteps -= 100.0f;
             spawnZOrScrollSteps /= lbl_1_bss_30.scroll;
             lbl_1_bss_8BC[obstacleIndex].rotation.y =
                 spawnZOrScrollSteps *
@@ -1299,25 +1246,25 @@ void fn_1_8C54(void) {
                 lbl_1_bss_8BC[obstacleIndex].rotation.y +=
                     lbl_1_bss_8BC[obstacleIndex].movementValues.y;
                 if (lbl_1_bss_8BC[obstacleIndex].position.z >=
-                    (100.0f)) {
+                    100.0f) {
                     fn_8002D86C(lbl_1_bss_8BC[obstacleIndex].model,
-                                       (1.0f));
+                                       1.0f);
                     fn_8002D414(lbl_1_bss_8BC[obstacleIndex].model,
-                                      (0.0f));
+                                      0.0f);
                     lbl_1_bss_8BC[obstacleIndex].rotation.y =
-                        (0.0f);
+                        0.0f;
                     (lbl_1_bss_8BC[obstacleIndex].stateOrTimer)++;
                 }
                 break;
             case 1:
                 if (fn_8002D4E0(lbl_1_bss_8BC[obstacleIndex].model) >
-                    (118.9f)) {
+                    118.9f) {
                     fn_800269E8(lbl_1_bss_8BC[obstacleIndex].model,
                                      (1 << 0));
                     fn_8002D86C(lbl_1_bss_8BC[obstacleIndex].model,
-                                       (0.0f));
+                                       0.0f);
                     fn_8002D414(lbl_1_bss_8BC[obstacleIndex].model,
-                                      (0.0f));
+                                      0.0f);
                     lbl_1_bss_8BC[obstacleIndex].status = 0;
                     lbl_1_bss_8BC[obstacleIndex].stateOrTimer = 0;
                 }
@@ -1418,9 +1365,9 @@ void fn_1_8EE4(void)
                         cameraAngleOrEdgeLengthSquared =
                             180.0 *
                             (atan2(cameraDeltaOrBoundaryPoint.x, cameraDeltaOrBoundaryPoint.z) /
-                             3.141592653589793);
+                             M_PI);
                         directionAngleOrProjectionNumerator =
-                            180.0 * (atan2(delta.x, delta.z) / 3.141592653589793);
+                            180.0 * (atan2(delta.x, delta.z) / M_PI);
                         if ((cameraAngleOrEdgeLengthSquared > 90.0f &&
                              directionAngleOrProjectionNumerator < -90.0f) ||
                             (cameraAngleOrEdgeLengthSquared < -90.0f &&
@@ -1454,9 +1401,9 @@ void fn_1_8EE4(void)
                             xOffsetOrAngle = xOffsetOrAngle >= 0.0f ? 1 : -1;
                             cameraAngleOrEdgeLengthSquared += 6.0f * xOffsetOrAngle;
                             delta.x =
-                                sin((3.141592653589793 * cameraAngleOrEdgeLengthSquared) / 180.0);
+                                sin((M_PI * cameraAngleOrEdgeLengthSquared) / 180.0);
                             delta.z =
-                                cos((3.141592653589793 * cameraAngleOrEdgeLengthSquared) / 180.0);
+                                cos((M_PI * cameraAngleOrEdgeLengthSquared) / 180.0);
                         }
                         if (lbl_1_bss_30.night == 0) {
                             distanceOrScale = sqrt(delta.x * delta.x + delta.z * delta.z);
@@ -1759,11 +1706,11 @@ void fn_1_8EE4(void)
                                                        &cameraUpOrBoundaryVector);
                                         normalAngle = 180.0 * (atan2(cameraUpOrBoundaryVector.x,
                                                                      cameraUpOrBoundaryVector.z) /
-                                                               3.141592653589793);
+                                                               M_PI);
                                         edgeAngle =
                                             180.0 * (atan2(normals[edgeIndexOrContactGate].x,
                                                            normals[edgeIndexOrContactGate].z) /
-                                                     3.141592653589793);
+                                                     M_PI);
                                         if (edgeAngle == 180.0f && normalAngle < 0.0f) {
                                             edgeAngle = -180.0f;
                                         }
@@ -1794,11 +1741,11 @@ void fn_1_8EE4(void)
                                         movementAngle =
                                             180.0 * (atan2(cameraTargetOrContactVector.x,
                                                            cameraTargetOrContactVector.z) /
-                                                     3.141592653589793);
+                                                     M_PI);
                                         edgeAngle =
                                             180.0 * (atan2(normals[edgeIndexOrContactGate].x,
                                                            normals[edgeIndexOrContactGate].z) /
-                                                     3.141592653589793);
+                                                     M_PI);
                                         if (edgeAngle == 180.0f && movementAngle < 0.0f) {
                                             edgeAngle = -180.0f;
                                         }
@@ -1909,12 +1856,12 @@ void fn_1_8EE4(void)
             cameraDeltaOrBoundaryPoint.y =
                 lbl_1_bss_8BC[modelIndex].jointPositionOrDriftOffset.y +
                 lbl_1_bss_8BC[modelIndex].bounds.z *
-                    sin((3.141592653589793 * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
+                    sin((M_PI * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
                         180.0);
             cameraDeltaOrBoundaryPoint.z =
                 lbl_1_bss_8BC[modelIndex].jointPositionOrDriftOffset.z -
                 lbl_1_bss_8BC[modelIndex].bounds.z *
-                    cos((3.141592653589793 * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
+                    cos((M_PI * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
                         180.0);
             for (playerOrSegmentIndex = 0; playerOrSegmentIndex < 4; playerOrSegmentIndex++) {
                 player = &lbl_1_bss_24C[playerOrSegmentIndex];
@@ -1954,12 +1901,12 @@ void fn_1_8EE4(void)
             cameraDeltaOrBoundaryPoint.y =
                 lbl_1_bss_8BC[modelIndex].jointPositionOrDriftOffset.y +
                 zOffsetOrAngle *
-                    sin((3.141592653589793 * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
+                    sin((M_PI * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
                         180.0);
             cameraDeltaOrBoundaryPoint.z =
                 lbl_1_bss_8BC[modelIndex].jointPositionOrDriftOffset.z -
                 zOffsetOrAngle *
-                    cos((3.141592653589793 * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
+                    cos((M_PI * lbl_1_bss_8BC[modelIndex].collisionRotation.x) /
                         180.0);
             for (playerOrSegmentIndex = 0; playerOrSegmentIndex < 4; playerOrSegmentIndex++) {
                 player = &lbl_1_bss_24C[playerOrSegmentIndex];

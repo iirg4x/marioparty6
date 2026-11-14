@@ -434,7 +434,7 @@ s32 fn_1_2434(HSF_BITMAP *bitmap, s16 x0, s16 y0, s16 x1, s16 y1,
 s32 fn_1_3578(HSF_BITMAP *bitmap, s16 x, s16 y, s16 pixelFormat) {
     s32 width = bitmap->sizeX;
     s32 height = bitmap->sizeY;
-    u8 *pixels = (u8 *)bitmap->data;
+    u8 *pixels = bitmap->data;
     s32 tileIndex;
     s32 pixelIndex;
     if ((x >= 0) && (x < width) && (y >= 0) && (y < height)) {

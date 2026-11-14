@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+unsigned char* __memrchr(unsigned char* s, int c, size_t n);
+
 void __copy_longs_rev_unaligned(void* dst, const void* src, size_t n);
 void __copy_longs_unaligned(void* dst, const void* src, size_t n);
 void __copy_longs_rev_aligned(void* dst, const void* src, size_t n);

@@ -6,7 +6,7 @@
 #include "game/board/branch.h"
 #include "game/board/audio.h"
 #include "game/board/guide.h"
-#include "game/board/guide_object.h"
+#include "game/board/object.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
 #include "game/board/player.h"

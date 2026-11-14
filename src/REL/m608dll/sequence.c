@@ -1,19 +1,7 @@
 /* Runs the player, camera, course animation and results sequences. */
 #include "REL/m608dll.h"
 #include "math.h"
-
-/* Checked while the results sequence handles team mode. */
-#define M608_TEAM_MODE_FLAG 0x30002U
-
-/* Effect IDs are named for the gameplay transition where this file plays them. */
-#define M608_JUMP_START_FX 1628
-#define M608_JUMP_PROGRESS_FX 1623
-#define M608_PATH_SAMPLE_FX 1626
-#define M608_DIRECTION_SUCCESS_FX 1625
-#define M608_RUN_END_FX 1627
-#define M608_CONTROL_START_FX 1624
-/* Gates the post-results record prompt and 10-coin winner bonus. */
-#define M608_RECORD_PROMPT_FLAG 0x1000FU
+#include "humath.h"
 
 /* Sequence callbacks used to start the run, update riders, and show results. */
 MGSEQ_PARAM lbl_1_data_0 = {
@@ -319,11 +307,11 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
             }
             omSetRot(lbl_1_bss_3E80.playerObjects[activeRiderIndex], 0.0f, 0.0f, 0.0f);
             fn_80026A44(lbl_1_bss_3E80.mainModel, ((1 << 30) | (1 << 1)));
-            HuAudFXPlay(M608_JUMP_START_FX);
+            HuAudFXPlay(MSM_SE_MG608_JUMP_START);
             OSReport("*** jump start\012");
         }
         if ((s32) lbl_1_bss_3E80.frame == 19) {
-            lbl_1_bss_3E80.jumpSoundHandle = HuAudFXPlay(M608_JUMP_PROGRESS_FX);
+            lbl_1_bss_3E80.jumpSoundHandle = HuAudFXPlay(MSM_SE_MG608_JUMP_WHOOSH);
             HuAudFXPitchSet(lbl_1_bss_3E80.jumpSoundHandle, 0);
         }
         Hu3DModelObjPosGet(lbl_1_bss_3E80.mainModel, lbl_1_data_12C, &mainModelPosition);
@@ -393,7 +381,7 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
                         scorePitch = 8191;
                     }
                     {
-                        int effectHandle = HuAudFXPlay(M608_PATH_SAMPLE_FX);
+                        int effectHandle = HuAudFXPlay(MSM_SE_MG608_PATH_SCORE_STEP);
                         HuAudFXPitchSet(effectHandle, (s16) scorePitch);
                     }
                 }
@@ -406,7 +394,7 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
                 (f32) (lbl_1_bss_3E80.riderTurnStartAngle - 90.0f);
             lbl_1_bss_3E80.riderTurnAngle = (f32) lbl_1_bss_3E80.riderTurnStartAngle;
             lbl_1_bss_3E80.riderTurnFrame = 0;
-            HuAudFXPlay(M608_DIRECTION_SUCCESS_FX);
+            HuAudFXPlay(MSM_SE_MG608_RIDER_TURN);
         }
         fn_1_42B8();
         lbl_1_bss_3E80.frame++;
@@ -418,8 +406,8 @@ void fn_1_580(s16 sequenceMode, s16 frameNo)
             fn_80027508(lbl_1_bss_3E80.secondaryModels[activeRiderIndex]);
             fn_1_6958(-1);
             fn_8006A030((s16) activeRiderIndex, 30, 7, 3);
-            HuAudFXPlay(M608_RUN_END_FX);
-            lbl_1_bss_3E80.jumpSoundHandle = HuAudFXPlay(M608_JUMP_PROGRESS_FX);
+            HuAudFXPlay(MSM_SE_MG608_FINAL_JUMP_START);
+            lbl_1_bss_3E80.jumpSoundHandle = HuAudFXPlay(MSM_SE_MG608_JUMP_WHOOSH);
             HuAudFXPitchSet(lbl_1_bss_3E80.jumpSoundHandle, 4096);
         }
         if (activeRiderIndex == 3) {
@@ -582,7 +570,7 @@ void fn_1_1DD8(s16 sequenceMode, s16 frameNo)
     resultsPlayerIndex = lbl_1_bss_3E80.activePlayer;
     characterModelId = lbl_1_bss_3E80.characterModels[resultsPlayerIndex];
     characterNumber = lbl_1_bss_3E80.characterNos[resultsPlayerIndex];
-    if ((frameNo == 0) && (fn_8006A124(M608_TEAM_MODE_FLAG) != 0)) {
+    if ((frameNo == 0) && (fn_8006A124(0x30002U) != 0)) {
         playerIndex = 0;
         while (playerIndex < 4) {
             score = lbl_1_bss_3E80.scores[playerIndex] * 90;
@@ -630,7 +618,7 @@ void fn_1_1DD8(s16 sequenceMode, s16 frameNo)
                 fn_8002741C(lbl_1_bss_3E80.playerModelsC[playerIndex],
                                  lbl_1_data_64C[playerIndex],
                                  lbl_1_bss_3E80.characterModels[playerIndex]);
-                if (fn_8006A124(M608_RECORD_PROMPT_FLAG) == 0) {
+                if (fn_8006A124(0x1000FU) == 0) {
                     lbl_80265750[playerIndex].mgCoinBonus = 10;
                 }
             } else {
@@ -643,13 +631,13 @@ void fn_1_1DD8(s16 sequenceMode, s16 frameNo)
             fn_800269E8(lbl_1_bss_3E80.characterModels[playerIndex], ((1 << 30) | (1 << 0)));
             playerIndex += 1;
         }
-        if ((fn_8006A124(M608_RECORD_PROMPT_FLAG) == 0) &&
+        if ((fn_8006A124(0x1000FU) == 0) &&
             ((s32) lbl_1_bss_3E80.recordBeaten != 0)) {
             recordPromptObject =
                 fn_8003AB38(lbl_1_bss_3E80.objectManager, 16, 0U, 0U, -1, fn_1_66C0);
-            ((float *) recordPromptObject->work)[0] = 1.0f;
-            recordPromptObject->work[1] = 1;
-            recordPromptObject->work[2] = 0;
+            ((M608RecordPromptWork *) recordPromptObject->work)->scale = 1.0f;
+            ((M608RecordPromptWork *) recordPromptObject->work)->growing = 1;
+            ((M608RecordPromptWork *) recordPromptObject->work)->elapsedFrames = 0;
         }
         Hu3DModelObjPosGet(lbl_1_bss_3E80.playerModelsB[1], lbl_1_data_1D1, &resultsPosition);
         fn_1_5DA4(resultsPosition);
@@ -661,7 +649,7 @@ void fn_1_1DD8(s16 sequenceMode, s16 frameNo)
             playerIndex += 1;
         }
         if (((s32) lbl_1_bss_3E80.recordBeaten == 0) ||
-            (fn_8006A124(M608_RECORD_PROMPT_FLAG) != 0)) {
+            (fn_8006A124(0x1000FU) != 0)) {
             fn_80071A9C();
         }
     }
@@ -744,9 +732,9 @@ void fn_1_2540(OMOBJ *cameraObject)
     lbl_80266A40.x =
         (f32) (180.0 * (atan2(-cameraOffset.y, (f64) sqrtf((cameraOffset.x * cameraOffset.x) +
                                                            (cameraOffset.z * cameraOffset.z))) /
-                        3.141592653589793));
+                        M_PI));
     lbl_80266A40.y =
-        (f32) (180.0 * (atan2((f64) cameraOffset.x, (f64) cameraOffset.z) / 3.141592653589793));
+        (f32) (180.0 * (atan2((f64) cameraOffset.x, (f64) cameraOffset.z) / M_PI));
     lbl_80266A40.z = 0.0f;
     lbl_802C028C = sqrtf((cameraOffset.z * cameraOffset.z) +
                   ((cameraOffset.x * cameraOffset.x) + (cameraOffset.y * cameraOffset.y)));
@@ -755,62 +743,62 @@ void fn_1_2540(OMOBJ *cameraObject)
     rollDegrees = lbl_80266A40.z;
     cameraPositionNew.x =
         (f32) ((f64) lbl_80266A4C.x +
-               ((f64) lbl_802C028C * (sin((3.141592653589793 * (f64) yawDegrees) / 180.0) *
-                               (cos((3.141592653589793 * (f64) pitchDegrees) / 180.0)))));
+               ((f64) lbl_802C028C * (sin((M_PI * (f64) yawDegrees) / 180.0) *
+                               (cos((M_PI * (f64) pitchDegrees) / 180.0)))));
     cameraPositionNew.y =
         (f32) ((f64) lbl_80266A4C.y +
-               ((f64) lbl_802C028C * -sin((3.141592653589793 * (f64) pitchDegrees) / 180.0)));
+               ((f64) lbl_802C028C * -sin((M_PI * (f64) pitchDegrees) / 180.0)));
     cameraPositionNew.z =
         (f32) ((f64) lbl_80266A4C.z +
-               ((f64) lbl_802C028C * (cos((3.141592653589793 * (f64) yawDegrees) / 180.0) *
-                               (cos((3.141592653589793 * (f64) pitchDegrees) / 180.0)))));
+               ((f64) lbl_802C028C * (cos((M_PI * (f64) yawDegrees) / 180.0) *
+                               (cos((M_PI * (f64) pitchDegrees) / 180.0)))));
     cameraTargetNew.x = lbl_80266A4C.x;
     cameraTargetNew.y = lbl_80266A4C.y;
     cameraTargetNew.z = lbl_80266A4C.z;
-    cameraUpBase.x = (f32) (sin((3.141592653589793 * (f64) yawDegrees) / 180.0) *
-                            (sin((3.141592653589793 * (f64) pitchDegrees) / 180.0)));
-    cameraUpBase.y = (f32) cos((3.141592653589793 * (f64) pitchDegrees) / 180.0);
-    cameraUpBase.z = (f32) (cos((3.141592653589793 * (f64) yawDegrees) / 180.0) *
-                            (sin((3.141592653589793 * (f64) pitchDegrees) / 180.0)));
+    cameraUpBase.x = (f32) (sin((M_PI * (f64) yawDegrees) / 180.0) *
+                            (sin((M_PI * (f64) pitchDegrees) / 180.0)));
+    cameraUpBase.y = (f32) cos((M_PI * (f64) pitchDegrees) / 180.0);
+    cameraUpBase.z = (f32) (cos((M_PI * (f64) yawDegrees) / 180.0) *
+                            (sin((M_PI * (f64) pitchDegrees) / 180.0)));
     PSVECSubtract(&cameraPositionNew, &cameraTargetNew, &cameraForward);
     PSVECNormalize(&cameraForward, &cameraForward);
     cameraUpNew.x =
         (f32) (((f64) cameraUpBase.x * ((f64) (cameraForward.x * cameraForward.x) +
                                         ((f64) (1.0f - (cameraForward.x * cameraForward.x)) *
-                                         cos((3.141592653589793 * (f64) rollDegrees) / 180.0)))) +
+                                         cos((M_PI * (f64) rollDegrees) / 180.0)))) +
                ((f64) cameraUpBase.y *
                 (((f64) (cameraForward.x * cameraForward.y) *
-                  (1.0 - cos((3.141592653589793 * (f64) rollDegrees) / 180.0))) -
-                 ((f64) cameraForward.z * sin((3.141592653589793 * (f64) rollDegrees) / 180.0)))) +
+                  (1.0 - cos((M_PI * (f64) rollDegrees) / 180.0))) -
+                 ((f64) cameraForward.z * sin((M_PI * (f64) rollDegrees) / 180.0)))) +
                ((f64) cameraUpBase.z *
                 (((f64) (cameraForward.x * cameraForward.z) *
-                  (1.0 - cos((3.141592653589793 * (f64) rollDegrees) / 180.0))) +
-                 ((f64) cameraForward.y * sin((3.141592653589793 * (f64) rollDegrees) / 180.0)))));
+                  (1.0 - cos((M_PI * (f64) rollDegrees) / 180.0))) +
+                 ((f64) cameraForward.y * sin((M_PI * (f64) rollDegrees) / 180.0)))));
     cameraUpNew.y =
         (f32) (((f64) cameraUpBase.y * ((f64) (cameraForward.y * cameraForward.y) +
                                         ((f64) (1.0f - (cameraForward.y * cameraForward.y)) *
-                                         cos((3.141592653589793 * (f64) rollDegrees) / 180.0)))) +
+                                         cos((M_PI * (f64) rollDegrees) / 180.0)))) +
                ((f64) cameraUpBase.x *
                 (((f64) (cameraForward.x * cameraForward.y) *
-                  (1.0 - cos((3.141592653589793 * (f64) rollDegrees) / 180.0))) +
-                 ((f64) cameraForward.z * sin((3.141592653589793 * (f64) rollDegrees) / 180.0)))) +
+                  (1.0 - cos((M_PI * (f64) rollDegrees) / 180.0))) +
+                 ((f64) cameraForward.z * sin((M_PI * (f64) rollDegrees) / 180.0)))) +
                ((f64) cameraUpBase.z *
                 (((f64) (cameraForward.y * cameraForward.z) *
-                  (1.0 - cos((3.141592653589793 * (f64) rollDegrees) / 180.0))) -
-                 ((f64) cameraForward.x * sin((3.141592653589793 * (f64) rollDegrees) / 180.0)))));
+                  (1.0 - cos((M_PI * (f64) rollDegrees) / 180.0))) -
+                 ((f64) cameraForward.x * sin((M_PI * (f64) rollDegrees) / 180.0)))));
     cameraUpNew.z =
         (f32) (((f64) cameraUpBase.z * ((f64) (cameraForward.z * cameraForward.z) +
                                         ((f64) (1.0f - (cameraForward.z * cameraForward.z)) *
-                                         cos((3.141592653589793 * (f64) rollDegrees) / 180.0)))) +
+                                         cos((M_PI * (f64) rollDegrees) / 180.0)))) +
                (((f64) cameraUpBase.x *
                  (((f64) (cameraForward.x * cameraForward.z) *
-                   (1.0 - cos((3.141592653589793 * (f64) rollDegrees) / 180.0))) -
-                  ((f64) cameraForward.y * sin((3.141592653589793 * (f64) rollDegrees) / 180.0)))) +
+                   (1.0 - cos((M_PI * (f64) rollDegrees) / 180.0))) -
+                  ((f64) cameraForward.y * sin((M_PI * (f64) rollDegrees) / 180.0)))) +
                 ((f64) cameraUpBase.y *
                  (((f64) (cameraForward.y * cameraForward.z) *
-                   (1.0 - cos((3.141592653589793 * (f64) rollDegrees) / 180.0))) +
+                   (1.0 - cos((M_PI * (f64) rollDegrees) / 180.0))) +
                   ((f64) cameraForward.x *
-                   sin((3.141592653589793 * (f64) rollDegrees) / 180.0))))));
+                   sin((M_PI * (f64) rollDegrees) / 180.0))))));
     PSVECNormalize(&cameraUpNew, &cameraUpNew);
     Hu3DCameraPosSet(1, cameraPositionNew.x, cameraPositionNew.y, cameraPositionNew.z,
                      cameraUpNew.x, cameraUpNew.y, cameraUpNew.z, cameraTargetNew.x,
@@ -840,7 +828,7 @@ void fn_1_2FD8(s16 timingModelId, s16 motionId, BOOL timingCallbackF)
             OSReport("now timing(%d)\012", lbl_1_bss_3E80.frame);
             lbl_1_bss_3E80.state = 6;
             lbl_1_bss_3E80.frame = 0;
-            HuAudFXPlay(M608_CONTROL_START_FX);
+            HuAudFXPlay(MSM_SE_MG608_JUMP_TIMING_STOP);
             HuAudFXStop(lbl_1_bss_3E80.jumpSoundHandle);
             lbl_1_bss_3E80.timingSubstate++;
             return;
