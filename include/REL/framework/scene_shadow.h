@@ -2,6 +2,7 @@
 #define SCENE_SHADOW_H
 
 #include <vector>
+#include "REL/framework/category_sphere.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/camera_frame.h"
 
@@ -34,8 +35,6 @@ typedef std::vector<int> ShadowCategories;
 // Spheres a shadow camera must keep in view.
 typedef std::vector<Sphere *> ShadowSpheres;
 
-// Appends the registered spheres of one scene category.
-void collectCategorySpheres(ShadowSpheres *, long);
 // Fits a camera around the spheres and returns its final eye-to-target distance.
 float fitCameraToSpheres(CameraFrame *, CameraPerspective *, ShadowSpheres *);
 // Points shadow camera `mask` along `direction` at `target`, with the given width, depth and field

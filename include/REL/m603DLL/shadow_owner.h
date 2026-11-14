@@ -6,12 +6,17 @@
 extern "C" {
 #include "game/hu3d.h"
 }
+/* Own the stage models and their four camera-specific copies. */
 class ShadowModelOwner : public RequestObject,
                              public MinigameSingleton<ShadowModelOwner> {
 public:
- virtual ~ShadowModelOwner(); virtual void flagEnabled(int); virtual void update();
- OwnedModel firstModel,shadowModel,animatedModel; s16 cameraModels[4]; s16 motion;
- ShadowModelOwner(bool);
- void fn_1_5914(int modelIndex);
+    virtual ~ShadowModelOwner();
+    virtual void flagEnabled(int);
+    virtual void update();
+    OwnedModel firstModel, shadowModel, animatedModel;
+    s16 cameraModels[4];
+    s16 motion;
+    ShadowModelOwner(bool);
+    void fn_1_5914(int modelIndex);
 };
 #endif

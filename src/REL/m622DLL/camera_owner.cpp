@@ -7,7 +7,7 @@ extern "C" {
 #include "game/data.h"
 #include "game/memory.h"
 #include "game/hsfex.h"
-int HuAudFXPlayVolPan(int seId, s16 vol, s16 pan);
+#include "game/audio.h"
 }
 
 #include "REL/m622DLL/camera_owner.h"
@@ -22,8 +22,7 @@ extern const Vec lbl_1_rodata_1BC = {0.0f, 900.0f, 700.0f};
 extern const Vec lbl_1_rodata_1C8 = {0.0f, 200.0f, 0.0f};
 }
 
-void operator delete(void *);
-
+/* Creates camera 1 with a black background and the initial camera pose. */
 CameraOwner::CameraOwner() : callback(&CameraOwner::fn_1_5974), target(0), motionModelId(-1)
 {
     Hu3DCameraCreate(1);
@@ -31,10 +30,12 @@ CameraOwner::CameraOwner() : callback(&CameraOwner::fn_1_5974), target(0), motio
     set_camera_frame_from_pose(&setup.frame, &lbl_1_rodata_1A0);
 }
 
+/* Releases the object through its member and base destructors. */
 CameraOwner::~CameraOwner()
 {
 }
 
+/* Reads the animated camera and switches to the fixed frame when its motion ends. */
 void CameraOwner::fn_1_58DC()
 {
     if (motionModelId != -1) {
@@ -47,41 +48,42 @@ void CameraOwner::fn_1_58DC()
     }
 }
 
+/* Returns without changing state. */
 void fn_1_5970() {}
 
+/* Applies the stored camera frame to camera 1. */
 void CameraOwner::fn_1_5974()
 {
     cameraApplyToHud(&frame, 1);
 }
 
+/* Applies the stored camera frame to camera 1. */
 void CameraOwner::fn_1_59A4()
 {
     cameraApplyToHud(&frame, 1);
 }
 
-struct CameraInterpolationTemps {
-    CameraPose targetTransform;
-    CameraPose currentTransform;
-    CameraFrame targetFrame;
-};
-
+/* After 90 frames, interpolates the camera toward offsets from the followed player. */
 void CameraOwner::fn_1_59D4()
 {
-    CameraInterpolationTemps temporary;
+    CameraFrame targetFrame;
+    CameraPose currentTransform;
+    CameraPose targetTransform;
     if ((float)(++frameCount) < 90.0f)
         return;
     Vec *targetPosition = &target->position;
-    PSVECAdd(targetPosition, &lbl_1_rodata_1BC, &temporary.targetFrame.position);
-    PSVECAdd(targetPosition, &lbl_1_rodata_1C8, &temporary.targetFrame.target);
-    temporary.targetFrame.up.x = 0.0f;
-    temporary.targetFrame.up.y = 1.0f;
-    temporary.targetFrame.up.z = 0.0f;
-    get_camera_pose_from_frame(&frame, &temporary.currentTransform);
-    get_camera_pose_from_frame(&temporary.targetFrame, &temporary.targetTransform);
-    interpolate_camera_poses(&frame, &temporary.currentTransform, &temporary.targetTransform, 0.05f);
+    PSVECAdd(targetPosition, &lbl_1_rodata_1BC, &targetFrame.position);
+    PSVECAdd(targetPosition, &lbl_1_rodata_1C8, &targetFrame.target);
+    targetFrame.up.x = 0.0f;
+    targetFrame.up.y = 1.0f;
+    targetFrame.up.z = 0.0f;
+    get_camera_pose_from_frame(&frame, &currentTransform);
+    get_camera_pose_from_frame(&targetFrame, &targetTransform);
+    interpolate_camera_poses(&frame, &currentTransform, &targetTransform, 0.05f);
     cameraApplyToHud(&frame, 1);
 }
 
+/* Sets the followed player and starts the delayed camera interpolation. */
 void CameraOwner::fn_1_5AE8(CallbackObject *value)
 {
     Callback next;
@@ -91,6 +93,7 @@ void CameraOwner::fn_1_5AE8(CallbackObject *value)
     callback = next;
 }
 
+/* Starts or releases the camera motion and selects the requested camera callback. */
 void CameraOwner::flagEnabled(int mode)
 {
     switch (mode) {
@@ -120,6 +123,7 @@ void CameraOwner::flagEnabled(int mode)
     }
 }
 
+/* Runs the current camera callback and passes the frame to the debug hook. */
 void CameraOwner::update()
 {
     if (callback)
@@ -136,12 +140,14 @@ void fn_1_5CD0(CameraOwner *owner)
     fn_800284C8(owner->motionModelId, 1);
 }
 
+/* Releases the camera motion model and clears its handle. */
 void CameraOwner::fn_1_5D38()
 {
     fn_800262D0(motionModelId);
     motionModelId = -1;
 }
 
+/* Projects a world position into a sound pan value clamped to 0 through 127. */
 s16 fn_1_5D70(Vec *pos)
 {
     Vec screenPos;
@@ -161,6 +167,7 @@ s16 fn_1_5D70(Vec *pos)
     return (s16)pan;
 }
 
+/* Converts distance from camera 1 into a volume clamped to 0x60 through 0x7F. */
 s16 fn_1_5E10(Vec *position)
 {
     Vec cameraPosition;
@@ -189,6 +196,7 @@ s16 fn_1_5E10(Vec *position)
     return clampedResult;
 }
 
+/* Sets a sound effect volume from depth and its pan from projected screen position. */
 void fn_1_6094(Vec *position, s32 soundId)
 {
     Vec screenPosition;

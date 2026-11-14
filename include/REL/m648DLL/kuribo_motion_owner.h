@@ -23,6 +23,7 @@ public:
     virtual void update();
     HU3D_MOTIONID addMotion(unsigned int dataNum);
     void fn_1_61D4(Vec *position, s32 objectIndex);
+    /* Returns the owned model ID. */
     HU3D_MODELID model_id() const { return model.modelId; }
 };
 

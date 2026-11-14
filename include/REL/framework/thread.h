@@ -6,6 +6,8 @@ extern "C" {
 #include "dolphin/os.h"
 }
 
+void emptyThreadHook();
+
 // Signature for a thread hook that takes no argument and returns no result.
 typedef void (*ThreadProcedure)();
 

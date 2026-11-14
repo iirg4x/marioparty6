@@ -1,21 +1,16 @@
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/sound.h"
 #include "REL/framework/phase_durations.h"
-#include "REL/m622DLL/random.h"
+#include "REL/framework/random.h"
 #include "dolphin/types.h"
 #include "REL/m622DLL/scene_owner.h"
 #include "REL/m622DLL/model_setup_owner.h"
 extern "C" {
-int HuAudFXPlay(int seId);
+#include "game/audio.h"
 #include "game/hu3d.h"
 #include "game/charman.h"
 #include "game/data.h"
 }
-
-
-extern "C" void fn_1_264(void *object);
-
-extern "C" void *fn_1_6C(void *object, s16 destroy);
 
 struct ActionTable {
     s32 values[50];
@@ -29,17 +24,12 @@ extern const ActionTable lbl_1_rodata_30 = {{
 }};
 }
 
-
-
-
-
-
 extern "C" { extern s16 lbl_1_bss_B0; }
 
 extern "C" { extern s16 lbl_1_bss_B2; }
 
 /* Initializes the scene models and builds a shuffled action table for each phase. */
-SceneOwnerB9C::SceneOwnerB9C()
+SceneOwner::SceneOwner()
     : model0(DATANUM(0x510000, 4)),
       model1(DATANUM(0x510000, 5)),
       model2(DATANUM(0x510000, 6)),
@@ -60,7 +50,7 @@ SceneOwnerB9C::SceneOwnerB9C()
     completedSegments = 0;
     segmentPosition = 0.0f;
     sceneIndex = 0;
-    unknown368 = 0;
+    unusedValue = 0;
     soundActive = 0;
 
     model0.setAttribute(1);
@@ -121,28 +111,9 @@ SceneOwnerB9C::SceneOwnerB9C()
     }
 }
 
-
-
-void operator delete(void *);
-
-
 extern "C" { extern f32 lbl_1_bss_AC; }
 
 extern "C" { extern s32 lbl_1_bss_B4; }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 void fn_1_1CC4(void);
 
@@ -156,7 +127,8 @@ void fn_1_469C(void);
 
 void fn_1_3C60(void);
 
-SceneOwnerB9C::~SceneOwnerB9C()
+/* Deletes every spawned group of scrolling stage objects. */
+SceneOwner::~SceneOwner()
 {
     ModelEntry::fn_1_1BD8();
     ModelPairOwner::fn_1_24D8();
@@ -167,7 +139,7 @@ SceneOwnerB9C::~SceneOwnerB9C()
 }
 
 /* Builds the next scene group and attaches its selected model set. */
-void SceneOwnerB9C::fn_1_E00()
+void SceneOwner::fn_1_E00()
 {
     if (updateCount < 4) {
         s32 phase = updateCount;
@@ -216,7 +188,7 @@ void SceneOwnerB9C::fn_1_E00()
 }
 
 /* Advances the scene phases and moves its model group along the stage path. */
-void SceneOwnerB9C::fn_1_1058()
+void SceneOwner::fn_1_1058()
 {
 
     if (phaseStarted == 0) {
@@ -255,7 +227,8 @@ void SceneOwnerB9C::fn_1_1058()
                     pathPosition, 0.0f, 0.0f);
 }
 
-void SceneOwnerB9C::update()
+/* Advances the scrolling stage, updates its models and controls the scrolling sound. */
+void SceneOwner::update()
 {
     lbl_1_bss_B4 = (lbl_1_bss_B4 + 1) & 3;
     fn_1_1058();
@@ -279,7 +252,8 @@ void SceneOwnerB9C::update()
     fn_1_3C60();
 }
 
-void SceneOwnerB9C::flagEnabled(int request)
+/* Clears the requested flag; the listed requests have no further action. */
+void SceneOwner::flagEnabled(int request)
 {
     flags &= ~(1U << request);
     switch (request) {
@@ -292,6 +266,7 @@ void SceneOwnerB9C::flagEnabled(int request)
     }
 }
 
+/* Sets model visibility and transparency from its horizontal position and taken state. */
 void fn_1_1978(s16 modelId, const Vec *position, u8 mode)
 {
     f32 value = position->x;
@@ -316,6 +291,7 @@ void fn_1_1978(s16 modelId, const Vec *position, u8 mode)
 
 extern "C" ListRoot<ModelEntry> lbl_1_bss_40;
 
+/* Links a stage entry, positions its model and selects its scrolling callback. */
 ModelEntry::ModelEntry(const OwnedModel &modelData,
                            const Vec *position, s32 requestId)
     : active(0),
@@ -336,6 +312,7 @@ ModelEntry::ModelEntry(const OwnedModel &modelData,
     this->initialData = initialData;
 }
 
+/* Deletes every object in this class list. */
 void ModelEntry::fn_1_1BD8()
 {
     while (!lbl_1_bss_40.empty()) {
@@ -344,13 +321,14 @@ void ModelEntry::fn_1_1BD8()
 }
 
 void fn_1_2330(ModelEntry *);
+/* Visits every object in the class list with its update callback. */
 void fn_1_1CC4()
 {
     lbl_1_bss_40.visit(fn_1_2330);
 }
 
-
 extern "C" { extern f32 lbl_1_bss_AC;  extern s32 lbl_1_bss_B4; }
+/* Scrolls the stage entry and deletes it past the right edge on its lane turn. */
 void ModelEntry::fn_1_1CF4()
 {
     frameData.x += lbl_1_bss_AC;
@@ -376,6 +354,7 @@ ModelEntry *fn_1_1DB8(s32 ownerId)
     return 0;
 }
 
+/* Returns the object kind in reach in the requested lane, or a negative result if unavailable. */
 s32 fn_1_1E68(s32 requestId)
 {
     ModelEntry *current = lbl_1_bss_40.front();
@@ -395,12 +374,13 @@ s32 fn_1_1E68(s32 requestId)
     return -1;
 }
 
+/* Returns whether the stage is scrolling. */
 bool ModelEntry::fn_1_1F5C()
 {
     return lbl_1_bss_AC > 0.0f;
 }
 
-
+/* Hooks an entry model to the character while the entry is in grabbing range. */
 s32 ModelEntry::fn_1_1F84(s16 characterModelId, s16 itemId)
 {
     static const Vec initialModelData = {0.0f, -10.0f, 0.0f};
@@ -422,6 +402,7 @@ s32 ModelEntry::fn_1_1F84(s16 characterModelId, s16 itemId)
     return 0;
 }
 
+/* Starts the attached object reaction and returns its object kind. */
 s32 ModelEntry::fn_1_20C0()
 {
     if (model0 != 0) { model0->fn_1_2E08(); return 0; }
@@ -437,6 +418,7 @@ s32 ModelEntry::fn_1_20C0()
     return 4;
 }
 
+/* Fades the grabbed model, then releases its character hook. */
 void ModelEntry::fn_1_217C()
 {
     char *hookObject;
@@ -457,16 +439,19 @@ void ModelEntry::fn_1_217C()
     fn_80026CBC(model, transparency);
 }
 
+/* Deletes this stage entry. */
 void ModelEntry::fn_1_22C0()
 {
     delete this;
 }
 
+/* Runs the object stored member callback. */
 void fn_1_2330(ModelEntry *self)
 {
     (self->*self->initialData)();
 }
 
+/* Stores the four attached scrolling object pointers. */
 void ModelEntry::fn_1_2368(ModelCameraPlacement *cameraPlacement,
                                ModelPulseOwner *pulse, MovingPair *movingPair,
                                FourModelOwner *fourModels)
@@ -477,9 +462,9 @@ void ModelEntry::fn_1_2368(ModelCameraPlacement *cameraPlacement,
     model3 = fourModels;
 }
 
-
 extern "C" ListRoot<ModelPairOwner> lbl_1_bss_54;
 
+/* Links and positions the pair of stage models and configures their attributes. */
 ModelPairOwner::ModelPairOwner(const OwnedModel &firstSource,
                          const OwnedModel &secondSource, const Vec *position,
                          u32 requestId)
@@ -504,6 +489,7 @@ ModelPairOwner::ModelPairOwner(const OwnedModel &firstSource,
     secondModel.setPosition(&vector);
 }
 
+/* Deletes every object in this class list. */
 void ModelPairOwner::fn_1_24D8()
 {
     while (!lbl_1_bss_54.empty()) {
@@ -512,6 +498,7 @@ void ModelPairOwner::fn_1_24D8()
 }
 
 void fn_1_2774(ModelPairOwner *);
+/* Visits every object in the class list with its update callback. */
 void fn_1_25E8()
 {
     lbl_1_bss_54.visit(fn_1_2774);
@@ -523,6 +510,7 @@ extern s32 lbl_1_bss_B4;
 
 }
 
+/* Scrolls both models, controls the second model visibility and deletes an offscreen pair. */
 void ModelPairOwner::fn_1_2618()
 {
     vector.x += lbl_1_bss_AC;
@@ -539,15 +527,15 @@ void ModelPairOwner::fn_1_2618()
     }
 }
 
+/* Updates the scrolling model pair. */
 void fn_1_2774(ModelPairOwner *self)
 {
     self->fn_1_2618();
 }
 
-
-
 extern "C" ListRoot<ModelCameraPlacement> lbl_1_bss_68;
 
+/* Links a scrolling model, sets its scale and selects its scrolling callback. */
 ModelCameraPlacement::ModelCameraPlacement(const OwnedModel &modelData,
     const Vec *cameraValues, s32 mode)
     : active(0),
@@ -567,6 +555,7 @@ ModelCameraPlacement::ModelCameraPlacement(const OwnedModel &modelData,
     this->initialValues = initialValues;
 }
 
+/* Deletes every object in this class list. */
 void ModelCameraPlacement::fn_1_2AFC()
 {
     while (!lbl_1_bss_68.empty()) {
@@ -575,11 +564,13 @@ void ModelCameraPlacement::fn_1_2AFC()
 }
 
 void fn_1_3120(ModelCameraPlacement *);
+/* Visits every object in the class list with its update callback. */
 void fn_1_2BE8()
 {
     lbl_1_bss_68.visit(fn_1_3120);
 }
 
+/* Scrolls and vertically offsets the model, updates visibility and deletes it offscreen. */
 void ModelCameraPlacement::fn_1_2C18()
 {
     Vec position;
@@ -595,6 +586,7 @@ void ModelCameraPlacement::fn_1_2C18()
     }
 }
 
+/* Marks the model taken and starts its scale and height animation. */
 void ModelCameraPlacement::fn_1_2E08()
 {
     s16 modelIdForCalls = model;
@@ -605,6 +597,7 @@ void ModelCameraPlacement::fn_1_2E08()
     this->initialValues = initialValues;
 }
 
+/* Raises the model scale and height toward their limits while continuing to scroll. */
 void ModelCameraPlacement::fn_1_2EAC()
 {
     if ((modelScale += 0.1f) > 1.0f) {
@@ -617,16 +610,17 @@ void ModelCameraPlacement::fn_1_2EAC()
     fn_1_2C18();
 }
 
+/* Runs the object stored member callback. */
 void fn_1_3120(ModelCameraPlacement *self)
 {
     (self->*self->initialValues)();
 }
 
-
 extern "C" {  }
 
 extern "C" ListRoot<ModelPulseOwner> lbl_1_bss_7C;
 
+/* Links a scrolling model, applies its scale and selects its update callback. */
 ModelPulseOwner::ModelPulseOwner(const OwnedModel &modelData,
     const Vec *position, s32 requestId)
     : initialized(0),
@@ -646,6 +640,7 @@ ModelPulseOwner::ModelPulseOwner(const OwnedModel &modelData,
     this->callback = callback;
 }
 
+/* Deletes every object in this class list. */
 void ModelPulseOwner::fn_1_3374()
 {
     while (!lbl_1_bss_7C.empty()) {
@@ -654,11 +649,13 @@ void ModelPulseOwner::fn_1_3374()
 }
 
 void fn_1_38F4(ModelPulseOwner *);
+/* Visits every object in the class list with its update callback. */
 void fn_1_3460()
 {
     lbl_1_bss_7C.visit(fn_1_38F4);
 }
 
+/* Scrolls and places the model, updates visibility and deletes it offscreen. */
 void ModelPulseOwner::fn_1_3490()
 {
     Vec position;
@@ -674,6 +671,7 @@ void ModelPulseOwner::fn_1_3490()
     }
 }
 
+/* Marks the model taken and selects its scale animation. */
 void ModelPulseOwner::fn_1_3678()
 {
     initialized = 1;
@@ -681,6 +679,7 @@ void ModelPulseOwner::fn_1_3678()
     this->callback = callback;
 }
 
+/* Increases the model scale toward one while continuing to scroll. */
 void ModelPulseOwner::fn_1_36C4()
 {
     if ((scale += 0.1f) > 1.0f) {
@@ -690,14 +689,15 @@ void ModelPulseOwner::fn_1_36C4()
     fn_1_3490();
 }
 
+/* Runs the object stored member callback. */
 void fn_1_38F4(ModelPulseOwner *self)
 {
     (self->*self->callback)();
 }
 
-
 extern "C" ListRoot<FourModelOwner> lbl_1_bss_A4;
 
+/* Links the four models and configures their placement, scale and callback. */
 FourModelOwner::FourModelOwner(
     const OwnedModel &firstModelData,
     const OwnedModel &secondModelData,
@@ -714,7 +714,6 @@ FourModelOwner::FourModelOwner(
       model2(thirdModelData),
       model3(fourthModelData)
 {
-    Vec initialData;
     FourModelOwner::Callback callback;
     s16 modelIdCopy;
 
@@ -735,16 +734,19 @@ FourModelOwner::FourModelOwner(
     this->callback = callback;
 }
 
+/* Deletes every object in this class list. */
 void FourModelOwner::fn_1_3B08()
 {
     while (!lbl_1_bss_A4.empty()) { delete lbl_1_bss_A4.back(); }
 }
 void fn_1_4398(FourModelOwner *);
+/* Visits every object in the class list with its update callback. */
 void fn_1_3C60()
 {
     lbl_1_bss_A4.visit(fn_1_4398);
 }
 
+/* Scrolls the model group, updates its visible models and deletes it offscreen. */
 void FourModelOwner::fn_1_3C90()
 {
     Vec position;
@@ -767,6 +769,7 @@ void FourModelOwner::fn_1_3C90()
     }
 }
 
+/* Starts the first model motion and selects the taken-object animation. */
 void FourModelOwner::fn_1_3FE0()
 {
     s16 currentModel;
@@ -783,6 +786,7 @@ void FourModelOwner::fn_1_3FE0()
 
 extern "C" char lbl_1_data_BC[12];
 
+/* Advances the taken-object scale and motion sequence while scrolling. */
 void FourModelOwner::fn_1_40A0()
 {
     s16 attributeModelIdForCalls;
@@ -791,7 +795,7 @@ void FourModelOwner::fn_1_40A0()
     case 0:
         if ((scale += 0.1f) > 1.0f) {
             scale = 1.0f;
-            unknown34 = 0;
+            unusedValue = 0;
             fn_8002C95C(model0, lbl_1_bss_B2);
             attributeModelIdForCalls = model3;
             fn_80026A44(attributeModelIdForCalls, ((1 << 30) | (1 << 1)));
@@ -828,6 +832,7 @@ void FourModelOwner::fn_1_40A0()
     }
 }
 
+/* Runs the object stored member callback. */
 void fn_1_4398(FourModelOwner *self)
 {
     (self->*self->callback)();
@@ -841,6 +846,7 @@ extern "C" ListRoot<MovingPair> lbl_1_bss_90;
 
 void fn_1_4D70(MovingPair *);
 
+/* Links two scrolling models and configures their attributes and motion time. */
 MovingPair::MovingPair(
     const OwnedModel &frontModelData,
     const OwnedModel &backModelData,
@@ -852,7 +858,6 @@ MovingPair::MovingPair(
       frontModel(frontModelData),
       backModel(backModelData)
 {
-    Vec initialData;
     s16 modelIdForCalls;
     MovingPair::Callback callback;
 
@@ -870,8 +875,7 @@ MovingPair::MovingPair(
     this->callback = callback;
 }
 
-
-
+/* Deletes every object in this class list. */
 void MovingPair::fn_1_458C()
 {
     while (!lbl_1_bss_90.empty()) {
@@ -879,11 +883,13 @@ void MovingPair::fn_1_458C()
     }
 }
 
+/* Visits every object in the class list with its update callback. */
 void fn_1_469C()
 {
     lbl_1_bss_90.visit(fn_1_4D70);
 }
 
+/* Scrolls and places both models, updates visibility and deletes the pair offscreen. */
 void MovingPair::fn_1_46CC()
 {
     Vec position;
@@ -905,6 +911,7 @@ void MovingPair::fn_1_46CC()
     }
 }
 
+/* Marks the pair taken, changes its model attributes and selects its alternate update. */
 void MovingPair::fn_1_49CC()
 {
     s16 modelIdForCalls = frontModel;
@@ -915,6 +922,7 @@ void MovingPair::fn_1_49CC()
     callback = initialValues;
 }
 
+/* Scrolls and places both models, updates visibility and deletes the pair offscreen. */
 void MovingPair::fn_1_4A70()
 {
     Vec position;
@@ -936,8 +944,7 @@ void MovingPair::fn_1_4A70()
     }
 }
 
-
-
+/* Runs the object stored member callback. */
 void fn_1_4D70(MovingPair *self)
 {
     (self->*self->callback)();

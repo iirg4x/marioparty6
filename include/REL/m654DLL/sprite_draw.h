@@ -4,9 +4,9 @@
 #include "REL/m654DLL/sprite_parameters.h"
 #include "dolphin/gx.h"
 void fn_1_8314(SpriteParameters *entry);
-extern "C" {
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS,
+void fn_1_81B4();
+// The engine sprite header leaves this declaration commented out.
+extern "C" void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS,
                   GXTexWrapMode wrapT, GXTexFilter filter);
-}
 
 #endif

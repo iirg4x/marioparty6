@@ -1,4 +1,5 @@
 #include "math.h"
+#include "REL/m603DLL/camera_owner.h"
 #include "REL/framework/list_object.h"
 #include "REL/m603DLL/player_position.h"
 extern "C" {
@@ -9,51 +10,62 @@ extern "C" {
 #include "game/memory.h"
 #include "game/audio.h"
 #include <stdio.h>
-f32 lbl_1_bss_40[4]; s32 lbl_1_bss_50; extern u16 lbl_802C0008[];
+f32 lbl_1_bss_40[4];
+s32 lbl_1_bss_50;
 }
-void debugEventHook(void*, int);
-void operator delete(void*);
+#include "REL/framework/debug.h"
+#include "game/pad.h"
 #include "REL/m603DLL/camera_group.h"
-struct SetupValuesBBC { Vec points[4]; };
 extern "C" {
-const s32 lbl_1_rodata_60[4]={1,2,4,8};
-const SetupValuesBBC lbl_1_rodata_70={{{0,0,0},{361.0f,0,0},{0,240.0f,0},{361.0f,240.0f,0}}};
-const Vec lbl_1_rodata_A0={0,2800.0f,3000.0f}; const Vec lbl_1_rodata_AC={0,1.0f,0}; const Vec lbl_1_rodata_B8={0,0,200.0f};
+const s32 viewportCameraBits[4]={1,2,4,8};
 }
-CameraOwnerBBC::CameraOwnerBBC() : transitionRequested(0), callback(&CameraOwnerBBC::fn_1_1944), selectedCamera(-1)
+/* Initialize four player camera frames and their volume factors. */
+CameraOwner::CameraOwner()
+    : transitionRequested(0), callback(&CameraOwner::followActiveCamerasAtStart), selectedCamera(-1)
 {
- s32 index; s32 resetIndex;
-    struct SetupValuesBBC setupValues = lbl_1_rodata_70;
+    s32 index;
+    s32 resetIndex;
+    Vec setupValues[4] = {
+        {0, 0, 0}, {361.0f, 0, 0},
+        {0, 240.0f, 0}, {361.0f, 240.0f, 0}
+    };
+    static const Vec initialPosition={0,2800.0f,3000.0f};
+    static const Vec initialUp={0,1.0f,0};
+    static const Vec initialTarget={0,0,200.0f};
     for (index = 0; index < 4; index++) {
-        CameraGroupBBC *group = &this->cameras[index];
+        CameraViewport *group = &this->cameras[index];
 
-        group->position.x = lbl_1_rodata_A0.x;
-        group->position.y = lbl_1_rodata_A0.y;
-        group->position.z = lbl_1_rodata_A0.z;
-        group->up.x = lbl_1_rodata_AC.x;
-        group->up.y = lbl_1_rodata_AC.y;
-        group->up.z = lbl_1_rodata_AC.z;
-        group->target.x = lbl_1_rodata_B8.x;
-        group->target.y = lbl_1_rodata_B8.y;
-        group->target.z = lbl_1_rodata_B8.z;
+        group->position.x = initialPosition.x;
+        group->position.y = initialPosition.y;
+        group->position.z = initialPosition.z;
+        group->up.x = initialUp.x;
+        group->up.y = initialUp.y;
+        group->up.z = initialUp.z;
+        group->target.x = initialTarget.x;
+        group->target.y = initialTarget.y;
+        group->target.z = initialTarget.z;
         group->active = 0;
         group->marked = 0;
+        /* The frame counter is reset on each of the four passes. */
         this->elapsedFrames = 0;
     }
     for (resetIndex = 0; resetIndex < 4; resetIndex++) {
         lbl_1_bss_40[resetIndex] = 1.0f;
     }
 }
-void CameraOwnerBBC::fn_1_F30(int playerIndex)
+
+/* Mark a player camera for the additional target offset. */
+void CameraOwner::fn_1_F30(int playerIndex)
 {
-    CameraGroupBBC *player = &cameras[playerIndex];
+    CameraViewport *player = &cameras[playerIndex];
     player->marked = 1;
 }
 
-void CameraOwnerBBC::fn_1_F58(s32 cameraIndex, f32 left, f32 top,
+/* Clamp a viewport and create, update or destroy its camera. */
+void CameraOwner::fn_1_F58(s32 cameraIndex, f32 left, f32 top,
                f32 width, f32 height)
 {
-    CameraGroupBBC *viewport =
+    CameraViewport *viewport =
         &cameras[cameraIndex];
 
     if (left < 0.0f) left = 0.0f;
@@ -70,30 +82,31 @@ void CameraOwnerBBC::fn_1_F58(s32 cameraIndex, f32 left, f32 top,
     viewport->height = height;
     if (0.0f != width && 0.0f != height) {
         if (viewport->active == 0) {
-            Hu3DCameraCreate(lbl_1_rodata_60[cameraIndex]);
+            Hu3DCameraCreate(viewportCameraBits[cameraIndex]);
             viewport->active = 1;
             printf("Create %d\n", cameraIndex);
         }
     } else if (viewport->active == 1) {
-        Hu3DCameraKill(lbl_1_rodata_60[cameraIndex]);
+        Hu3DCameraKill(viewportCameraBits[cameraIndex]);
         viewport->active = 0;
     }
     if (viewport->active != 0) {
-        Hu3DCameraPerspectiveSet(lbl_1_rodata_60[cameraIndex],
+        Hu3DCameraPerspectiveSet(viewportCameraBits[cameraIndex],
                                 45.0f, 100.0f, 5000.0f, 1.35375f);
         left = 17.0 + 0.84 * left;
         top = 39.0 + 0.84 * top;
         width *= 0.84;
         height *= 0.84;
-        Hu3DCameraViewportSet(lbl_1_rodata_60[cameraIndex],
+        Hu3DCameraViewportSet(viewportCameraBits[cameraIndex],
                              left, top, width, height, 0.0f, 1.0f);
-        Hu3DCameraScissorSet(lbl_1_rodata_60[cameraIndex],
+        Hu3DCameraScissorSet(viewportCameraBits[cameraIndex],
                             (u32)left, (u32)top,
                             (u32)width, (u32)height);
     }
 }
 
-void CameraOwnerBBC::fn_1_12EC(f32 insetX, f32 insetY)
+/* Place four camera viewports around the supplied screen split. */
+void CameraOwner::fn_1_12EC(f32 insetX, f32 insetY)
 {
     f32 left;
     f32 top;
@@ -127,13 +140,10 @@ void CameraOwnerBBC::fn_1_12EC(f32 insetX, f32 insetY)
     fn_1_F58(3, left, top, right, bottom);
 }
 
-void fn_1_14DC(
-    CameraOwnerBBC *owner,
-    s32 playerIndex,
-    Vec *position,
-    Vec *direction)
+/* Ease the supplied target and position toward a player camera frame. */
+void CameraOwner::fn_1_14DC(s32 playerIndex, Vec *position, Vec *direction)
 {
-    CameraGroupBBC *player = &owner->cameras[playerIndex];
+    CameraViewport *player = &this->cameras[playerIndex];
 
     PSVECSubtract(position, &player->target, position);
     PSVECScale(position, position, 0.1f);
@@ -143,7 +153,8 @@ void fn_1_14DC(
     PSVECAdd(direction, &player->position, direction);
 }
 
-void fn_1_15A4(void *owner, int playerIndex, Vec *position, Vec *direction)
+/* Copy the queried player position and direction to the outputs. */
+void CameraOwner::fn_1_15A4(int playerIndex, Vec *position, Vec *direction)
 {
     Vec sourcePosition;
     Vec sourceDirection;
@@ -157,18 +168,21 @@ void fn_1_15A4(void *owner, int playerIndex, Vec *position, Vec *direction)
     direction->z = sourceDirection.z;
 }
 
-void fn_1_161C(void *owner, int playerIndex)
+/* Query two player vectors and discard both results. */
+void CameraOwner::fn_1_161C(int playerIndex)
 {
     Vec position;
     Vec direction;
 
+    /* Both queried vectors are discarded. */
     fn_1_6A14(playerIndex, &position, &direction);
 }
 
-void fn_1_164C(CameraOwnerBBC *records)
+/* Follow players with each active camera and apply marked-camera offsets. */
+void CameraOwner::followActiveCameras()
 {
     s32 playerIndex;
-    CameraGroupBBC *player;
+    CameraViewport *player;
     Vec difference;
     Vec direction;
     Vec position;
@@ -176,7 +190,7 @@ void fn_1_164C(CameraOwnerBBC *records)
     f32 distance;
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        player = &records->cameras[playerIndex];
+        player = &this->cameras[playerIndex];
         if (player->active == 1) {
             fn_1_6918(playerIndex, &position, &direction);
             player->target.x = position.x;
@@ -197,16 +211,17 @@ void fn_1_164C(CameraOwnerBBC *records)
                 player->position.y += 50.0f * difference.y / distance;
                 player->position.z += 50.0f * difference.z / distance;
             }
-            cameraApplyToHud(player, lbl_1_rodata_60[playerIndex]);
+            cameraApplyToHud(player, viewportCameraBits[playerIndex]);
         }
     }
 }
 
-void CameraOwnerBBC::fn_1_1944()
+/* Follow players with the initially selected camera callback. */
+void CameraOwner::followActiveCamerasAtStart()
 {
     s32 playerIndex;
     s32 queryPlayer;
-    CameraGroupBBC *player;
+    CameraViewport *player;
     Vec *positionVector;
     Vec *directionVector;
     Vec difference;
@@ -240,16 +255,17 @@ void CameraOwnerBBC::fn_1_1944()
                 player->position.y += 50.0f * difference.y / distance;
                 player->position.z += 50.0f * difference.z / distance;
             }
-            cameraApplyToHud(player, lbl_1_rodata_60[playerIndex]);
+            cameraApplyToHud(player, viewportCameraBits[playerIndex]);
         }
     }
 }
 
-void CameraOwnerBBC::fn_1_1C48()
+/* Follow players after the camera callback request. */
+void CameraOwner::followActiveCamerasOnRequest()
 {
     s32 playerIndex;
     s32 queryPlayer;
-    CameraGroupBBC *player;
+    CameraViewport *player;
     Vec *positionVector;
     Vec *directionVector;
     Vec difference;
@@ -283,31 +299,35 @@ void CameraOwnerBBC::fn_1_1C48()
                 player->position.y += 50.0f * difference.y / distance;
                 player->position.z += 50.0f * difference.z / distance;
             }
-            cameraApplyToHud(player, lbl_1_rodata_60[playerIndex]);
+            cameraApplyToHud(player, viewportCameraBits[playerIndex]);
         }
     }
 }
-void CameraOwnerBBC::fn_1_1F4C()
+/* Apply a fixed position and target to camera zero. */
+void CameraOwner::fn_1_1F4C()
 {
- CameraGroupBBC *frame=&cameras[0];
- frame->position.x=0.0f;frame->position.y=550.0f;frame->position.z=250.0f;frame->target.x=0.0f;frame->target.y=120.0f;frame->target.z=-350.0f;
- cameraApplyToHud(frame,lbl_1_rodata_60[0]);
+ CameraViewport *frame=&cameras[0];
+ frame->position.x=0.0f;frame->position.y=550.0f;frame->position.z=250.0f;
+ frame->target.x=0.0f;frame->target.y=120.0f;frame->target.z=-350.0f;
+ cameraApplyToHud(frame,viewportCameraBits[0]);
 }
 
-void fn_1_1FF0(CameraOwnerBBC *object)
+/* Update the menu camera and select player following on button 0x800. */
+void CameraOwner::fn_1_1FF0()
 {
-    debugEventHook(&object->menuState, 0);
+    debugEventHook(&this->menuState, 0);
     if ((lbl_802C0008[0] & 0x800) != 0) {
-        CameraOwnerBBC::Callback values = &CameraOwnerBBC::fn_1_1C48;
-        object->callback = values;
+        CameraOwner::Callback values = &CameraOwner::followActiveCamerasOnRequest;
+        this->callback = values;
     }
-    cameraApplyToHud(&object->menuState, 1);
+    cameraApplyToHud(&this->menuState, 1);
 }
 
-void CameraOwnerBBC::fn_1_2080()
+/* Release the transition model and follow players when the transition is requested. */
+void CameraOwner::fn_1_2080()
 {
     s32 index;
-    CameraGroupBBC *camera;
+    CameraViewport *camera;
 
     if (transitionRequested != 0) {
         fn_800262D0(modelId);
@@ -319,14 +339,15 @@ void CameraOwnerBBC::fn_1_2080()
         camera = &cameras[index];
         if (camera->active == 1) {
             Vec *targetSlot;
-            CameraGroupBBC *activeCamera;
+            CameraViewport *activeCamera;
             s32 playerIndex;
             Vec difference;
             Vec position;
             Vec target;
             f32 length;
 
-            activeCamera = camera, targetSlot = &camera->target;
+            activeCamera = camera;
+            targetSlot = &camera->target;
             playerIndex = index;
             fn_1_6918(playerIndex, &target, &position);
             *targetSlot = target;
@@ -342,40 +363,37 @@ void CameraOwnerBBC::fn_1_2080()
                 camera->position.y += 50.0f * difference.y / length;
                 camera->position.z += 50.0f * difference.z / length;
             }
-    cameraApplyToHud(camera, lbl_1_rodata_60[index]);
+    cameraApplyToHud(camera, viewportCameraBits[index]);
         }
         index++;
         }
     }
 }
 
-void CameraOwnerBBC::fn_1_251C()
+/* Wait for the transition motion, then copy camera zero into all player frames. */
+void CameraOwner::fn_1_251C()
 {
-    Point3d cameraPosition;
-    Point3d cameraRotation;
-    Point3d cameraTarget;
+    Vec cameraPosition;
+    Vec cameraRotation;
+    Vec cameraTarget;
     s32 index;
-    CameraGroupBBC *camera;
+    CameraViewport *camera;
 
     if ((f32)this->elapsedFrames > 60.0f) {
         if ((f32)this->elapsedFrames > 120.0f) {
             this->flags &= ~1;
-            {
-                CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_2080;
-                this->callback = callback;
-            }
+            CameraOwner::Callback callback = &CameraOwner::fn_1_2080;
+            this->callback = callback;
         }
         if (fn_8002D75C(this->modelId) != 0) {
             fn_800262D0(this->modelId);
             this->elapsedFrames = 0;
-            {
-                CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_2080;
-                this->callback = callback;
-            }
-            index = 0;
-            while (index < 4) {
+            CameraOwner::Callback callback = &CameraOwner::fn_1_2080;
+            this->callback = callback;
+            for (index = 0; index < 4; index++) {
                 camera = &cameras[index];
-                fn_80027CD0(lbl_1_rodata_60[0], &cameraPosition,
+                /* All four viewports receive camera zero's frame. */
+                fn_80027CD0(viewportCameraBits[0], &cameraPosition,
                                  &cameraRotation, &cameraTarget);
                 camera->position.x = cameraPosition.x;
                 camera->position.y = cameraPosition.y;
@@ -386,17 +404,17 @@ void CameraOwnerBBC::fn_1_251C()
                 camera->target.x = cameraTarget.x;
                 camera->target.y = cameraTarget.y;
                 camera->target.z = cameraTarget.z;
-                index++;
             }
         }
     }
     this->elapsedFrames++;
 }
 
-void fn_1_26F8(CameraOwnerBBC *object)
+/* Expand camera zero to the screen and disable the other active cameras. */
+void CameraOwner::fn_1_26F8()
 {
     s32 index;
-    CameraGroupBBC *camera;
+    CameraViewport *camera;
 
     Hu3DCameraPerspectiveSet(1, 45.0f, 100.0f,
                              5000.0f, 1.2f);
@@ -405,36 +423,37 @@ void fn_1_26F8(CameraOwnerBBC *object)
                           0.0f, 1.0f);
     Hu3DCameraScissorSet(1, 0, 0, 0x280, 0x1E0);
     for (index = 1; index < 4; index++) {
-        camera = &object->cameras[index];
+        camera = &this->cameras[index];
         if (camera->active == 1) {
-            Hu3DCameraKill(lbl_1_rodata_60[index]);
+            Hu3DCameraKill(viewportCameraBits[index]);
             camera->active = 0;
         }
     }
 }
 
-void CameraOwnerBBC::flagEnabled(int mode)
+/* Select camera callbacks and configure the requested camera transition. */
+void CameraOwner::flagEnabled(int mode)
 {
     lbl_1_bss_50 = mode;
     switch (mode) {
     case 0: {
         this->elapsedFrames = 0;
-        CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_251C;
+        CameraOwner::Callback callback = &CameraOwner::fn_1_251C;
         this->callback = callback;
-        CameraGroupBBC *camera = &this->cameras[0];
+        CameraViewport *camera = &this->cameras[0];
         Hu3DCameraCreate(1);
         s16 motion = fn_8002C4C0(fn_80008DD0(0x3E0007, 0x10000000,
                                                         2));
         this->modelId = fn_800283F4(motion, 1);
         fn_800284C8(this->modelId, 1);
-        fn_1_26F8(this);
+        fn_1_26F8();
         break;
     }
     case 1:
         this->flags &= ~(1UL << mode);
         break;
     case 2: {
-        CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_1C48;
+        CameraOwner::Callback callback = &CameraOwner::followActiveCamerasOnRequest;
         this->callback = callback;
         this->flags &= ~(1UL << mode);
         break;
@@ -443,8 +462,8 @@ void CameraOwnerBBC::flagEnabled(int mode)
         this->flags &= ~(1UL << mode);
         break;
     case 4: {
-        fn_1_26F8(this);
-        CameraOwnerBBC::Callback callback = &CameraOwnerBBC::fn_1_1F4C;
+        fn_1_26F8();
+        CameraOwner::Callback callback = &CameraOwner::fn_1_1F4C;
         this->callback = callback;
         this->flags &= ~(1UL << mode);
         break;
@@ -453,19 +472,24 @@ void CameraOwnerBBC::flagEnabled(int mode)
         break;
     }
 }
-void CameraOwnerBBC::update(){if(callback){(this->*callback)();}}
-s16 fn_1_2BFC(HuVecF *position, s32 playerIndex)
+/* Invoke the selected camera callback when one is present. */
+void CameraOwner::update()
 {
-    HuVecF screenPosition;
-    CameraOwnerBBC *configuration;
+    if (callback) {
+        (this->*callback)();
+    }
+}
+/* Project a sound into its selected viewport and clamp the stereo panning value. */
+s16 getSoundPanning(Vec *position, s32 playerIndex)
+{
+    Vec screenPosition;
+    CameraOwner *configuration;
     s32 cameraIndex;
     f32 normalizedX;
     f32 panningValue;
-    s32 panningValueInteger;
-    s32 clampedPanning;
     s32 panning;
 
-    configuration = (&CameraOwnerBBC::getChecked());
+    configuration = &CameraOwner::getChecked();
     cameraIndex = playerIndex;
     if (lbl_1_bss_50 == 1) {
         cameraIndex = 0;
@@ -474,7 +498,7 @@ s16 fn_1_2BFC(HuVecF *position, s32 playerIndex)
         cameraIndex = configuration->selectedCamera;
     }
 
-    Hu3D3Dto2D(position, (s16)lbl_1_rodata_60[cameraIndex], &screenPosition);
+    Hu3D3Dto2D(position, (s16)viewportCameraBits[cameraIndex], &screenPosition);
     normalizedX = screenPosition.x / 576.0f;
     panningValue = configuration->cameras[cameraIndex].left +
                    normalizedX * configuration->cameras[cameraIndex].width;
@@ -489,10 +513,11 @@ s16 fn_1_2BFC(HuVecF *position, s32 playerIndex)
     return (s16)panning;
 }
 
-static inline void setSoundPanning(HuVecF *position, s32 soundHandle, s32 playerIndex)
+/* Project a sound into its selected viewport and apply stereo panning. */
+static inline void setSoundPanning(Vec *position, s32 soundHandle, s32 playerIndex)
 {
-    HuVecF screenPosition;
-    CameraOwnerBBC *configuration;
+    Vec screenPosition;
+    CameraOwner *configuration;
     s32 cameraIndex;
     f32 normalizedX;
     f32 panningValue;
@@ -500,7 +525,7 @@ static inline void setSoundPanning(HuVecF *position, s32 soundHandle, s32 player
     s32 panning;
     s16 panningOutput;
 
-    configuration = (&CameraOwnerBBC::getChecked());
+    configuration = &CameraOwner::getChecked();
     cameraIndex = playerIndex;
     if (lbl_1_bss_50 == 1) {
         cameraIndex = 0;
@@ -509,7 +534,7 @@ static inline void setSoundPanning(HuVecF *position, s32 soundHandle, s32 player
         cameraIndex = configuration->selectedCamera;
     }
 
-    Hu3D3Dto2D(position, (s16)lbl_1_rodata_60[cameraIndex], &screenPosition);
+    Hu3D3Dto2D(position, (s16)viewportCameraBits[cameraIndex], &screenPosition);
     normalizedX = screenPosition.x / 576.0f;
     panningValue = normalizedX * configuration->cameras[cameraIndex].width +
                    configuration->cameras[cameraIndex].left;
@@ -526,14 +551,16 @@ static inline void setSoundPanning(HuVecF *position, s32 soundHandle, s32 player
     HuAudFXPanning(soundHandle, panningOutput);
 }
 
-s32 fn_1_2DB4(HuVecF *position, s32 soundEffect, s32 playerIndex)
+/* Play a sound effect and pan it in the selected camera viewport. */
+s32 fn_1_2DB4(Vec *position, s32 soundEffect, s32 playerIndex)
 {
     s32 soundHandle = HuAudFXPlay(soundEffect);
     setSoundPanning(position, soundHandle, playerIndex);
     return soundHandle;
 }
 
-s32 fn_1_2F58(HuVecF *position, s32 soundEffect, s32 playerIndex)
+/* Play and pan a sound effect only during request two. */
+s32 fn_1_2F58(Vec *position, s32 soundEffect, s32 playerIndex)
 {
     s32 soundHandle;
 
@@ -545,11 +572,12 @@ s32 fn_1_2F58(HuVecF *position, s32 soundEffect, s32 playerIndex)
     return soundHandle;
 }
 
-void fn_1_310C(HuVecF *position, s32 soundHandle,
+/* Set a sound effect's projected panning, bounded pitch and player volume. */
+void setSoundPositionPitchAndVolume(Vec *position, s32 soundHandle,
                            s32 playerIndex, f32 pitchInput)
 {
-    HuVecF screenPosition;
-    CameraOwnerBBC *configuration;
+    Vec screenPosition;
+    CameraOwner *configuration;
     s32 pitch;
     s32 cameraIndex;
     s32 clampedPanning;
@@ -567,7 +595,7 @@ void fn_1_310C(HuVecF *position, s32 soundHandle,
         pitch = -0x2000;
     }
 
-    configuration = (&CameraOwnerBBC::getChecked());
+    configuration = &CameraOwner::getChecked();
     cameraIndex = playerIndex;
     if (lbl_1_bss_50 == 1) {
         cameraIndex = 0;
@@ -576,7 +604,7 @@ void fn_1_310C(HuVecF *position, s32 soundHandle,
         cameraIndex = configuration->selectedCamera;
     }
 
-    Hu3D3Dto2D(position, (s16)lbl_1_rodata_60[cameraIndex], &screenPosition);
+    Hu3D3Dto2D(position, (s16)viewportCameraBits[cameraIndex], &screenPosition);
     normalizedX = screenPosition.x / 576.0f;
     panningValue = configuration->cameras[cameraIndex].left +
                    normalizedX * configuration->cameras[cameraIndex].width;
@@ -596,15 +624,16 @@ void fn_1_310C(HuVecF *position, s32 soundHandle,
     HuAudFXVolSet(soundHandle, 112.0f * lbl_1_bss_40[playerIndex]);
 }
 
-s32 fn_1_3340(HuVecF *position, s32 cameraIndex, u8 widescreen)
+/* Test the projected horizontal position against a camera visibility interval. */
+s32 fn_1_3340(Vec *position, s32 cameraIndex, u8 widescreen)
 {
-    HuVecF screenPosition;
+    Vec screenPosition;
     f32 width;
     f32 height;
     f32 normalizedX;
     s32 visible;
 
-    Hu3D3Dto2D(position, (s16)lbl_1_rodata_60[cameraIndex], &screenPosition);
+    Hu3D3Dto2D(position, (s16)viewportCameraBits[cameraIndex], &screenPosition);
     width = 640.0f;
     if (widescreen != 0) {
         width *= 0.9602649f;
@@ -620,12 +649,9 @@ s32 fn_1_3340(HuVecF *position, s32 cameraIndex, u8 widescreen)
 }
 
 /* Prints the projected horizontal position selected for the camera. */
-void fn_1_3448(HuVecF *position, s32 index) {
-    HuVecF projected;
+void fn_1_3448(Vec *position, s32 index) {
+    Vec projected;
 
-    Hu3D3Dto2D(position, (s16)lbl_1_rodata_60[index], &projected);
+    Hu3D3Dto2D(position, (s16)viewportCameraBits[index], &projected);
     printf("center %f\n", projected.x);
 }
-
-CameraOwnerBBC::~CameraOwnerBBC(){}
-

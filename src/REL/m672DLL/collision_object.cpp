@@ -8,11 +8,10 @@
 
 #include "REL/m672DLL/collision_object.h"
 
-extern "C" {
-std::vector<CollisionShape *> lbl_1_bss_C;
-}
+std::vector<CollisionShape *> collisionShapes;
 
+// Stores the radius and registers this object in the module-wide collision-shape list.
 CollisionObject::CollisionObject(float radius) : radius(radius)
 {
-    lbl_1_bss_C.push_back(this);
+    collisionShapes.push_back(this);
 }

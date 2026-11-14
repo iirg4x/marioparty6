@@ -9,13 +9,15 @@ public:
     float from;
     float to;
 
-    ParameterInterpolation(float initial = 0.0f, int frames = 0) { fn_1_75F8(initial, frames); }
-    void fn_1_75F8(float end, int frames);
-    void fn_1_763C(float start, float end, int frames);
-    float fn_1_7670();
+    // Initializes the current value and interpolation duration.
+    ParameterInterpolation(float initial = 0.0f, int frames = 0) { set(initial, frames); }
+    void set(float end, int frames);
+    void set(float start, float end, int frames);
+    float update();
+    // Returns the current interpolated value.
     float getValue() const { return value; }
 };
 
-extern "C" ParameterInterpolation lbl_1_bss_A8;
+extern ParameterInterpolation lbl_1_bss_A8;
 
 #endif

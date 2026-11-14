@@ -1,4 +1,5 @@
-#include "REL/m672DLL/random.h"
+#include <math.h>
+#include "REL/framework/random.h"
 /* The particle effects drawn around the board: one rising burst, one ring that carries collision
  * spheres, and one spinning ring of two textures. */
 extern "C" {
@@ -11,30 +12,53 @@ extern "C" {
 #include <vector>
 #include "REL/m672DLL/collision_object.h"
 #include "REL/m672DLL/particle_groups.h"
+#include "game/sprput.h"
 #include "humath.h"
 #include "REL/framework/frame_time.h"
 
-extern "C" {
-double sin(double);
-double cos(double);
-int HuSprTexLoad(ANIMDATA *, int, int, int, int, int);
-void fn_1_3350(CollidingParticles *work);
-void fn_1_3568(CollidingParticles *work);
-void fn_1_3810(RingParticles *state);
-void fn_1_3928(RingParticles *state, RingParticle *vector, int index);
-void fn_1_48BC(RingParticles *ring);
-void fn_1_48C8(RingParticles *ring);
-}
-
 inline unsigned char isZero(EffectVector direction);
 
+// Configures the common particle culling, alpha, texture coordinates, and vertex format.
+static inline void SetParticleVertexState()
+{
+    GXSetCullMode(GX_CULL_BACK);
+    GXSetColorUpdate(GX_TRUE);
+    GXSetAlphaUpdate(GX_TRUE);
+    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
+    GXSetZCompLoc(GX_TRUE);
+    GXSetNumTexGens(1);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE,
+                  GX_PTIDENTITY);
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+}
+
+// Draws a textured quad centered on the current position matrix.
+static inline void DrawParticleQuad(f32 halfWidth, f32 halfHeight)
+{
+    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+    GXPosition3f32(-halfWidth, halfHeight, 0.0f);
+    GXTexCoord2f32(1.0f, 0.0f);
+    GXPosition3f32(halfWidth, halfHeight, 0.0f);
+    GXTexCoord2f32(0.0f, 0.0f);
+    GXPosition3f32(halfWidth, -halfHeight, 0.0f);
+    GXTexCoord2f32(0.0f, 1.0f);
+    GXPosition3f32(-halfWidth, -halfHeight, 0.0f);
+    GXTexCoord2f32(1.0f, 1.0f);
+}
+
+// Initializes the common render object, texture, position, and particle count.
 ParticleGroup::ParticleGroup(ANIMDATA *value, int count, const EffectVector &point)
     : RenderObject(3), texture(value), position(point), particleCount(count)
 {
 }
 
-RisingParticles::RisingParticles(ANIMDATA *value, int count, int layer, WorldPosition point)
-    : ParticleGroup(value, count, point.value), stopWhenExpired(0)
+// Initializes rising-particle timing, layer, and one state record per particle.
+RisingParticles::RisingParticles(ANIMDATA *value, int count, int layer, EffectVector point)
+    : ParticleGroup(value, count, point), stopWhenExpired(0)
 {
     RisingParticle item;
     setLayer((short)layer);
@@ -52,11 +76,15 @@ RisingParticles::RisingParticles(ANIMDATA *value, int count, int layer, WorldPos
     }
 }
 
+// Performs no additional work when the rising-particle object is destroyed.
 RisingParticles::~RisingParticles() {}
 
+// Resets one rising particle's position, direction, size, alpha, and state values.
 void RisingParticles::initParticle(RisingParticle *particle)
 {
-    particle->position.set(EffectPoint(RandomFloat(-5.0f, 5.0f), RandomFloat(-5.0f, 5.0f), RandomFloat(5.0f, 5.0f)));
+    // The z position samples equal RandomFloat bounds, so it is fixed at 5.0f.
+    particle->position.set(EffectPoint(RandomFloat(-5.0f, 5.0f), RandomFloat(-5.0f, 5.0f),
+        RandomFloat(5.0f, 5.0f)));
     particle->direction.value.x = 0.0f;
     particle->direction.value.y = 0.5f;
     particle->direction.value.z = 0.0f;
@@ -69,6 +97,7 @@ void RisingParticles::initParticle(RisingParticle *particle)
     particle->state = 0;
 }
 
+// Advances countdowns, fade-in, movement, scale decay, and optional expiration.
 void RisingParticles::update()
 {
     int index;
@@ -116,6 +145,7 @@ void RisingParticles::update()
     }
 }
 
+// Configures textured blending and draws each active rising-particle quad.
 void RisingParticles::draw(Mtx *camera)
 {
     Mtx spriteScale;
@@ -133,7 +163,7 @@ void RisingParticles::draw(Mtx *camera)
     GXSetNumChans(1);
     GXSetChanCtrl(GX_COLOR0A0, GX_DISABLE, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL,
                   GX_DF_NONE, GX_AF_NONE);
-    HuSprTexLoad(texture, 0, 0, 1, 1, 1);
+    HuSprTexLoad(texture, 0, 0, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     GXSetNumTevStages(1);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
     GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_C0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
@@ -142,25 +172,14 @@ void RisingParticles::draw(Mtx *camera)
     GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_A0, GX_CA_TEXA, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_DIVIDE_2, GX_FALSE,
                     GX_TEVPREV);
-    GXSetCullMode(GX_CULL_BACK);
-    GXSetColorUpdate(GX_TRUE);
-    GXSetAlphaUpdate(GX_TRUE);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
-    GXSetZCompLoc(GX_TRUE);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE,
-                  GX_PTIDENTITY);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    SetParticleVertexState();
     GXSetZMode(GX_TRUE, GX_LESS, GX_FALSE);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
 
     PSMTXTrans(parentTransform, position.value.x, position.value.y, position.value.z);
     for (index = 0; index < particleCount; index++) {
-        RisingParticle sprite = static_cast<const std::vector<RisingParticle> &>(particles).at(index);
+        RisingParticle sprite = static_cast<const std::vector<RisingParticle>
+            &>(particles).at(index);
         if (sprite.active != 0) {
             GXColor color = {255, 78, 17, 0};
             color.a = (u8)sprite.alpha;
@@ -178,21 +197,14 @@ void RisingParticles::draw(Mtx *camera)
 
             halfWidth = sprite.width / 2.0f;
             halfHeight = sprite.height / 2.0f;
-            GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-            GXPosition3f32(-halfWidth, halfHeight, 0.0f);
-            GXTexCoord2f32(1.0f, 0.0f);
-            GXPosition3f32(halfWidth, halfHeight, 0.0f);
-            GXTexCoord2f32(0.0f, 0.0f);
-            GXPosition3f32(halfWidth, -halfHeight, 0.0f);
-            GXTexCoord2f32(0.0f, 1.0f);
-            GXPosition3f32(-halfWidth, -halfHeight, 0.0f);
-            GXTexCoord2f32(1.0f, 1.0f);
+            DrawParticleQuad(halfWidth, halfHeight);
         }
     }
 }
 
-CollidingParticles::CollidingParticles(ANIMDATA *value, int count, int layer, WorldPosition point)
-    : ParticleGroup(value, count, point.value), emitAngle(0.0f), angle(0.0f), started(0), stopped(0)
+// Initializes colliding particles and creates/registers one target per particle.
+CollidingParticles::CollidingParticles(ANIMDATA *value, int count, int layer, EffectVector point)
+    : ParticleGroup(value, count, point), emitAngle(0.0f), angle(0.0f), started(0), stopped(0)
 {
     CollidingParticle item;
     int i;
@@ -207,17 +219,20 @@ CollidingParticles::CollidingParticles(ANIMDATA *value, int count, int layer, Wo
         particles.push_back(item);
         targets.push_back(new CollisionObject(100.0f));
         CollisionObject *target = targets.at(i);
-        target->setPosition(point.value);
+        target->setPosition(point);
         target->radius = 0.0f;
         target->state = 2;
     }
 }
 
+// The destructor body does not delete the target pointers.
 CollidingParticles::~CollidingParticles() {}
 
+// Resets one colliding particle's position, velocity, size, rotation, and state.
 void CollidingParticles::initParticle(CollidingParticle *particle)
 {
-    particle->position.set(100.0f * RandomFloat(-0.3f, 0.3f), 100.0f * RandomFloat(-0.3f, 0.3f), 0.0f);
+    particle->position.set(100.0f * RandomFloat(-0.3f, 0.3f), 100.0f * RandomFloat(-0.3f, 0.3f),
+        0.0f);
     particle->velocity.set(0.0f, 0.0f, 0.0f);
     particle->velocity.value.z = 1.0f;
     particle->velocity.value.y = 0.01f;
@@ -231,6 +246,7 @@ void CollidingParticles::initParticle(CollidingParticle *particle)
     particle->state = 0;
 }
 
+// Advances active colliding particles and updates their registered target positions/radii.
 void CollidingParticles::update()
 {
     int index;
@@ -257,10 +273,7 @@ void CollidingParticles::update()
             break;
         case 1 :
             particle->alpha += 10.0f;
-            if (particle->alpha < 255.0f)
-            {
-            }
-            else
+            if (!(particle->alpha < 255.0f))
             {
                 particle->alpha = 255.0f;
                 particle->state = 2;
@@ -287,6 +300,7 @@ void CollidingParticles::update()
                 PSMTXMultVec(rotation, &particle->position.value, &transformed.value);
                 PSVECAdd(&transformed.value, &position.value, &transformed.value);
                 target->setPosition(transformed);
+                // Active targets use two successive /2 corrections; reset uses one below.
                 targetScale = particle->width * particle->rotation / 2.0f / 2.0f;
                 target->radius = targetScale;
                 particle->rotation += particle->rotationStep;
@@ -308,6 +322,7 @@ void CollidingParticles::update()
                         else
                         {
                             initParticle(particle);
+                            // Reset target radius uses one /2 correction after initParticle.
                             resetScale = particle->width * particle->rotation / 2.0f;
                             target->radius = resetScale;
                         }
@@ -319,6 +334,7 @@ void CollidingParticles::update()
     }
 }
 
+// Configures textured blending and draws each active colliding-particle quad.
 void CollidingParticles::draw(Mtx *camera)
 {
     Mtx scale;
@@ -337,7 +353,7 @@ void CollidingParticles::draw(Mtx *camera)
     GXSetNumChans(1);
     GXSetChanCtrl(GX_COLOR0A0, GX_DISABLE, GX_SRC_VTX, GX_SRC_VTX,
                  GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
-    HuSprTexLoad(texture, 0, 0, 1, 1, 1);
+    HuSprTexLoad(texture, 0, 0, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     GXSetNumTevStages(1);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
     GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_C0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
@@ -346,24 +362,13 @@ void CollidingParticles::draw(Mtx *camera)
     GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_A0, GX_CA_TEXA, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
                     GX_FALSE, GX_TEVPREV);
-    GXSetCullMode(GX_CULL_BACK);
-    GXSetColorUpdate(GX_TRUE);
-    GXSetAlphaUpdate(GX_TRUE);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
-    GXSetZCompLoc(GX_TRUE);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
-                     GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    SetParticleVertexState();
     GXSetZMode(GX_TRUE, GX_LESS, GX_FALSE);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
 
     for (index = 0; index < particleCount; ++index) {
-        CollidingParticle particle = static_cast<const std::vector<CollidingParticle> &>(particles).at(index);
+        CollidingParticle particle = static_cast<const std::vector<CollidingParticle>
+            &>(particles).at(index);
         if (particle.active != 0) {
             GXColor color = {255, 78, 17, 0};
             color.a = (unsigned char)particle.alpha;
@@ -387,19 +392,12 @@ void CollidingParticles::draw(Mtx *camera)
 
             halfWidth = particle.width / 2.0f;
             halfHeight = particle.height / 2.0f;
-            GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-            GXPosition3f32(-halfWidth, halfHeight, 0.0f);
-            GXTexCoord2f32(1.0f, 0.0f);
-            GXPosition3f32(halfWidth, halfHeight, 0.0f);
-            GXTexCoord2f32(0.0f, 0.0f);
-            GXPosition3f32(halfWidth, -halfHeight, 0.0f);
-            GXTexCoord2f32(0.0f, 1.0f);
-            GXPosition3f32(-halfWidth, -halfHeight, 0.0f);
-            GXTexCoord2f32(1.0f, 1.0f);
+            DrawParticleQuad(halfWidth, halfHeight);
         }
     }
 }
 
+// Starts all particle targets and reinitializes a temporary copy of each particle.
 void fn_1_3350(CollidingParticles *work)
 {
     int index;
@@ -407,8 +405,10 @@ void fn_1_3350(CollidingParticles *work)
     work->started = 1;
     for (index = 0; index < work->particleCount; ++index) {
         CollisionObject *item;
+        // Initialize a local copy; the stored particle is left unchanged.
         CollidingParticle parameters = work->particles.at(index);
 
+        // The initialized copy is discarded; the vector element is not replaced.
         work->initParticle(&parameters);
 
         item = work->targets.at(index);
@@ -416,6 +416,7 @@ void fn_1_3350(CollidingParticles *work)
     }
 }
 
+// Marks the effect stopped and deactivates each collision target.
 void fn_1_3568(CollidingParticles *work)
 {
     int index;
@@ -428,15 +429,19 @@ void fn_1_3568(CollidingParticles *work)
     }
 }
 
-RingParticles::RingParticles(ANIMDATA *first, ANIMDATA *second, int count, int layer, WorldPosition point)
-    : ParticleGroup(first, count, point.value), secondTexture(second)
+// Initializes the two textures, common particle state, and ring particle records.
+RingParticles::RingParticles(ANIMDATA *first, ANIMDATA *second, int count, int layer,
+    EffectVector point)
+    : ParticleGroup(first, count, point), secondTexture(second)
 {
     setLayer((short)layer);
     fn_1_3810(this);
 }
 
+// Performs no additional work when the ring-particle object is destroyed.
 RingParticles::~RingParticles() {}
 
+// Sets ring animation state and appends one initialized item per particle slot.
 void fn_1_3810(RingParticles *state)
 {
     RingParticle vector;
@@ -459,6 +464,7 @@ void fn_1_3810(RingParticles *state)
     }
 }
 
+// Fills one ring item with dimensions, orbit/bob angles, steps, and radii.
 void fn_1_3928(RingParticles *state, RingParticle *vector, int index)
 {
     vector->position.x = 0.0f;
@@ -470,7 +476,7 @@ void fn_1_3928(RingParticles *state, RingParticle *vector, int index)
     vector->orbitAngle = (360.0f / state->particleCount) * index;
     vector->bobAngle = RandomFloat(0.0f, 359.9f);
     vector->orbitStep = 18.0f;
-    vector->bobStep = (float)(0.016666666666666666 *
+    vector->bobStep = (float)((1.0 / 60.0) *
                         RandomFloat(360.0f, 720.0f) *
                         2.0);
     vector->orbitRadius = 100.0f *
@@ -478,6 +484,7 @@ void fn_1_3928(RingParticles *state, RingParticle *vector, int index)
     vector->spin = RandomFloat(0.0f, 359.9f);
 }
 
+// Updates ring fading, rotation, pulse scale, and each item's orbit/bob position.
 void RingParticles::update()
 {
     float targetAlpha;
@@ -530,6 +537,7 @@ void RingParticles::update()
     }
 }
 
+// Configures ring and particle textures, then draws the active ring and items.
 void RingParticles::draw(Mtx *camera)
 {
     Mtx scale;
@@ -549,8 +557,8 @@ void RingParticles::draw(Mtx *camera)
         GXSetNumChans(1);
         GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_VTX, GX_SRC_VTX,
                       GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
-        HuSprTexLoad(this->texture, 0, 0, 1, 1, 1);
-        HuSprTexLoad(this->secondTexture, 0, 1, 1, 1, 1);
+        HuSprTexLoad(this->texture, 0, 0, GX_REPEAT, GX_REPEAT, GX_LINEAR);
+        HuSprTexLoad(this->secondTexture, 0, 1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
         GXSetNumTevStages(1);
         GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
         GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_C0);
@@ -559,25 +567,14 @@ void RingParticles::draw(Mtx *camera)
         GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_A0, GX_CA_TEXA, GX_CA_ZERO);
         GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_DIVIDE_2,
                        GX_FALSE, GX_TEVPREV);
-        GXSetCullMode(GX_CULL_BACK);
-        GXSetColorUpdate(GX_TRUE);
-        GXSetAlphaUpdate(GX_TRUE);
-        GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
-        GXSetZCompLoc(GX_TRUE);
-        GXSetNumTexGens(1);
-        GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
-                         GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
-        GXClearVtxDesc();
-        GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-        GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+        SetParticleVertexState();
         GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
         GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
         GXColor ringColor = {255, 255, 255, 0};
         ringColor.a = this->alpha;
         GXSetTevColor(GX_TEVREG0, ringColor);
-        PSMTXTrans(translation, this->position.value.x, this->position.value.y, this->position.value.z);
+        PSMTXTrans(translation, this->position.value.x, this->position.value.y,
+            this->position.value.z);
         PSMTXScale(scale, this->ringScale, 1.0f, this->ringScale);
         PSMTXRotRad(rotation, 'y', MTXDegToRad(this->ringAngle));
         PSMTXConcat(*camera, translation, transform);
@@ -601,7 +598,8 @@ void RingParticles::draw(Mtx *camera)
         particleColor.a = this->alpha;
         GXSetTevColor(GX_TEVREG0, particleColor);
         for (particleIndex = 0; particleIndex < this->particleCount; ++particleIndex) {
-            RingParticle particle = static_cast<const std::vector<RingParticle> &>(items).at(particleIndex);
+            RingParticle particle = static_cast<const std::vector<RingParticle>
+                &>(items).at(particleIndex);
             PSVECAdd(&particle.position, &this->position.value, &position);
             PSMTXTrans(translation, position.x, position.y, position.z);
             PSMTXScale(scale, particle.scale, particle.scale, 1.0f);
@@ -614,29 +612,24 @@ void RingParticles::draw(Mtx *camera)
             GXLoadPosMtxImm(transform, GX_PNMTX0);
             particleHalfWidth = particle.width / 2.0f;
             particleHalfHeight = particle.height / 2.0f;
-            GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-            GXPosition3f32(-particleHalfWidth, particleHalfHeight, 0.0f);
-            GXTexCoord2f32(1.0f, 0.0f);
-            GXPosition3f32(particleHalfWidth, particleHalfHeight, 0.0f);
-            GXTexCoord2f32(0.0f, 0.0f);
-            GXPosition3f32(particleHalfWidth, -particleHalfHeight, 0.0f);
-            GXTexCoord2f32(0.0f, 1.0f);
-            GXPosition3f32(-particleHalfWidth, -particleHalfHeight, 0.0f);
-            GXTexCoord2f32(1.0f, 1.0f);
+            DrawParticleQuad(particleHalfWidth, particleHalfHeight);
         }
     }
 }
 
+// Marks the ring effect active.
 void fn_1_48BC(RingParticles *ring)
 {
     ring->active = 1;
 }
 
+// Marks the ring effect for fading out.
 void fn_1_48C8(RingParticles *ring)
 {
     ring->fadingOut = 1;
 }
 
+// Returns one when all three components of the vector are zero, otherwise zero.
 inline unsigned char isZero(EffectVector direction)
 {
     unsigned char isZero;

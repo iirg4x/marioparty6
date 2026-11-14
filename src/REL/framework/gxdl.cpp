@@ -1,11 +1,33 @@
 // Records reusable GX display lists in a shared backing buffer.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 20 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <algorithm>
 #include <cstdio>
 
 extern "C" {
 #include "dolphin/gx.h"
 #include "dolphin/os.h"
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 }
 
 #include "REL/framework/gxdl.h"
@@ -59,7 +81,7 @@ void DisplayListCache::end()
 {
     unsigned long size_of_used = GXEndDisplayList();
     // GX returns zero on buffer overflow; a zero-size result triggers the assertion.
-    size_of_used != 0 ? (void)0 : __msl_assertion_failed("size_of_used != 0", "gxdl.cpp", 84);
+    assert(size_of_used != 0);
     DisplayList& list = lists.back().second;
     list.second = size_of_used;
     next += size_of_used;

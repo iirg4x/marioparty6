@@ -1,10 +1,31 @@
 // Cooperative worker threads that exchange arguments with their C++ minigame callers.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 19 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static const char rcsid[] = "$Id: subthread.cpp,v 1.6 2004/02/17 09:22:00 hanamasu Exp $";
 
 #include "REL/framework/thread.h"
 
 extern "C" {
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/hu_archive.h"
 }
 
@@ -53,10 +74,10 @@ void *ThreadEntry::resume(void *incomingArgument)
 // After the owner resumes it, returns the new argument supplied by that owner.
 void *ThreadEntry::suspend(void *outgoingArgument)
 {
-    OSGetCurrentThread() == m_th ? (void)0 :
-        __msl_assertion_failed("::OSGetCurrentThread() == m_th", "subthread.cpp", 77);
-    !OSIsThreadTerminated(m_th) ? (void)0 :
-        __msl_assertion_failed("!::OSIsThreadTerminated(m_th)", "subthread.cpp", 80);
+    assert(::OSGetCurrentThread() == m_th);
+
+    // A terminated worker cannot hand control back by suspending.
+    assert(!::OSIsThreadTerminated(m_th));
     exchangedArgument = outgoingArgument;
     OSSignalSemaphore(handoffSemaphore);
     OSSuspendThread(m_th);

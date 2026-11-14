@@ -1,10 +1,50 @@
 // Owns native minigame threads and checks the stack space they use.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 38 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static const char rcsid[] = "$Id: thread.cpp,v 1.6 2004/02/17 09:22:00 hanamasu Exp $";
 
 #include "REL/framework/thread.h"
 
 extern "C" {
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 }
 
 void initializeThreadStack(unsigned long *storage, unsigned long count);
@@ -43,19 +83,23 @@ CThread::CThread(void *(*entryFunction)(void *), void *entryArgument, void *stac
 
 // Called by either constructor to prepare the stack and create the suspended OS thread.
 void CThread::initialize(void *(*entryFunction)(void *), void *entryArgument,
-                              unsigned long *stackStorage, unsigned long stackWords,
-                              OSPriority schedulingPriority, unsigned short threadFlags) {
-    (schedulingPriority >= 0 && schedulingPriority <= 31) ? (void)0 :
-        __msl_assertion_failed("priority >= OS_PRIORITY_MIN && priority <= OS_PRIORITY_MAX",
-                               "thread.cpp", 88);
+                         unsigned long *stackStorage, unsigned long stackWords,
+                         OSPriority priority, unsigned short threadFlags) {
+    assert(priority >= OS_PRIORITY_MIN && priority <= OS_PRIORITY_MAX);
+
+    // Mark the guard words and check them before passing the stack to the OS.
     initializeThreadStack(stackStorage, stackWords);
     checkThreadStack(stackStorage, 0);
+
+    // OSCreateThread takes the high end of the stack and its extent in bytes.
+    // stackWords excludes any trailing bytes discarded by either constructor.
     bool threadCreated = OSCreateThread(&thread, entryFunction, entryArgument,
                                         stackStorage + stackWords,
-                                        stackWords * sizeof(unsigned long), schedulingPriority,
+                                        stackWords * sizeof(unsigned long), priority,
                                         threadFlags);
+
     if (!threadCreated) {
-        OSPanic("thread.cpp", 102, "OSCreateThread() failed.");
+        OSPanic(__FILE__, __LINE__, "OSCreateThread() failed.");
     }
 }
 
@@ -74,12 +118,19 @@ CThread::~CThread() {
     delete[] storage;
 }
 
+/* Retail fixes the next panic's line; the earlier lines are unknown: 6 lines are left blank. */
+
+
+
+
+
+
 // Called after the owner resumes a worker and it suspends or finishes; returns untouched stack
 // bytes.
 unsigned long CThread::stackUsage() {
     unsigned long *stackStart = thread.stackEnd;
     if (checkThreadStack(stackStart, 1)) {
-        OSPanic("thread.cpp", 133, "stack overflow\n");
+        OSPanic(__FILE__, __LINE__, "stack overflow\n");
     }
     unsigned long *stackWord = stackStart;
     unsigned long *stackEnd = reinterpret_cast<unsigned long *>(thread.stackBase);

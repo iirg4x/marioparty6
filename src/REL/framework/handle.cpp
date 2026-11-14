@@ -1,10 +1,40 @@
 // Registers object pointers with reusable handles and keeps free and allocated slot lists.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 28 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static const char rcsid[] = "$Id: handle.cpp,v 1.6 2004/02/17 09:22:00 hanamasu Exp $";
 
 #include "REL/framework/handle.h"
 
 extern "C" {
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 }
 
 void *operator new[](unsigned long);
@@ -17,8 +47,7 @@ union Handle {
     unsigned long encodedValue; // Packed handle returned to the caller; zero means no handle.
     struct {
         unsigned long index : 20; // Slot number; slot zero is reserved for the free-list sentinel.
-        unsigned long generation : 12; // Reuse counter, wrapping after 4096 acquisitions of this
-                                       // slot.
+        unsigned long generation : 12; // Reuse counter, wrapping after 4096 acquisitions.
     } fields; // The slot and generation used to validate a packed handle.
 };
 
@@ -32,17 +61,17 @@ struct HandleEntry {
 };
 
 // Creates empty handle lists when the allocator is constructed, before objects register.
-HandleAllocator::HandleAllocator(unsigned long slotLimit)
+HandleAllocator::HandleAllocator(unsigned long n)
 {
     // Only the upper limit is checked; list setup assumes a limit of at least two.
-    slotLimit <= MAXCOUNT ? (void)0 : __msl_assertion_failed("n <= MAXCOUNT", "handle.cpp", 67);
-    capacity = slotLimit;
-    entries = new HandleEntry[slotLimit + 1];
+    assert(n <= MAXCOUNT);
+    capacity = n;
+    entries = new HandleEntry[n + 1];
     // The first and last entries are list sentinels rather than usable handle slots.
-    allocated = &entries[slotLimit];
+    allocated = &entries[n];
     allocated->next = allocated;
     allocated->previous = allocated;
-    for (unsigned long index = 1; index < slotLimit; ++index) {
+    for (unsigned long index = 1; index < n; ++index) {
         entries[index].next = &entries[index] + 1;
         entries[index].previous = &entries[index] - 1;
         entries[index].object = 0;
@@ -50,9 +79,9 @@ HandleAllocator::HandleAllocator(unsigned long slotLimit)
         entries[index].handle.fields.generation = 0;
     }
     entries[1].previous = entries;
-    entries[slotLimit - 1].next = entries;
+    entries[n - 1].next = entries;
     entries->next = &entries[1];
-    entries->previous = &entries[slotLimit] - 1;
+    entries->previous = &entries[n] - 1;
 }
 
 // Frees the slot array on destruction; registered objects are not destroyed here.

@@ -93,18 +93,9 @@ extern "C" {
 #include <math.h>
 }
 
-extern "C" { extern void __msl_assertion_failed(const char *expression, const char *file, int line); }
-
-extern void *lbl_1_bss_24;
-
-extern char lbl_1_data_588[];
-
-extern char lbl_1_data_592[];
-
-extern "C" { extern const u8 lbl_1_data_5C[]; }
-
 const HuVec2f lbl_1_rodata_408[4] = { { 61.0f, 63.0f }, { 515.0f, 63.0f }, { 61.0f, 418.0f }, { 515.0f, 418.0f } };
 
+/* Stores the timer settings and creates the timer immediately when enabled is zero. */
 TimerManager::TimerManager(s32 value, u8 enabled) {
     parameter = value;
     display = 0;
@@ -112,10 +103,12 @@ TimerManager::TimerManager(s32 value, u8 enabled) {
     if (active == 0) fn_1_D268();
 }
 
+/* Kills the timer when its display has been created. */
 TimerManager::~TimerManager() {
     if (display != 0) MgTimerKill(timer);
 }
 
+/* Creates the selected timer mode, positions it and enables its record display. */
 void TimerManager::fn_1_D268() {
     if (active != 0) {
         timer = MgTimerCreate(2);
@@ -130,27 +123,21 @@ void TimerManager::fn_1_D268() {
     display = 1;
 }
 
-void TimerManager::fn_1_D330() {
+/* Creates the timer display when its active flag is set. */
+void TimerManager::fn_1_D330()
+{
     if (active != 0) {
-        if (active != 0) {
-            timer = MgTimerCreate(2);
-            MgTimerParamSet(timer, 0, 0x1518, parameter);
-            MgTimerPosSet(timer, 292.0f, 58.0f);
-        } else {
-            timer = MgTimerCreate(1);
-            MgTimerParamSet(timer, 0, 0x4650, parameter);
-            MgTimerPosSet(timer, 292.0f, 70.0f);
-        }
-        MgTimerRecordDispOn(timer);
-        display = 1;
+        fn_1_D268();
     }
 }
 
+/* Turns on timer mode zero. */
 void TimerManager::fn_1_D404()
 {
     MgTimerModeOnSet(timer, 0);
 }
 
+/* Stops the timer and sets its mode to on when it has not already stopped. */
 void TimerManager::fn_1_D438() {
     if (timer->stopF == FALSE) {
         timer->stopF = TRUE;
@@ -158,6 +145,7 @@ void TimerManager::fn_1_D438() {
     }
 }
 
+/* Reports completion only when the timer display exists and is done. */
 s32 TimerManager::fn_1_D464()
 {
     s32 result = FALSE;
@@ -167,25 +155,13 @@ s32 TimerManager::fn_1_D464()
     return result;
 }
 
-struct TimerModeObject {
-    u8 unknown00[0x14]; /* No code names this field. */
-    s32 mode;
-};
-
-struct TimerWork {
-    u8 unknown00[0x0C]; /* No code names this field. */
-    u32 flags;
-    MGTIMER *timer;
-    s32 parameter;
-    u8 display;
-    u8 type;
-};
-
+/* Reads and discards the timer value. */
 void TimerManager::fn_1_D4BC()
 {
     MgTimerValueGet(timer);
 }
 
+/* Clears the requested flag and creates, starts or stops the timer for its mode. */
 void TimerManager::flagEnabled(int mode)
 {
     flags = flags & ~(1UL << mode);
@@ -194,43 +170,23 @@ void TimerManager::flagEnabled(int mode)
     case 0:
         break;
     case 1:
-        if (active != 0) {
-            if (active != 0) {
-                timer = MgTimerCreate(2);
-                MgTimerParamSet(timer, 0, 0x1518, parameter);
-                MgTimerPosSet(timer, 292.0f, 58.0f);
-            } else {
-                timer = MgTimerCreate(1);
-                MgTimerParamSet(timer, 0, 0x4650, parameter);
-                MgTimerPosSet(timer, 292.0f, 70.0f);
-            }
-            MgTimerRecordDispOn(timer);
-            display = 1;
-        }
+        fn_1_D330();
         break;
     case 2:
-        MgTimerModeOnSet(timer, 0);
+        fn_1_D404();
         break;
     case 3:
-        if (timer->stopF == 0) {
-            timer->stopF = 1;
-            timer->mode = 1;
-        }
+        fn_1_D438();
         break;
     case 4:
         break;
     }
 }
 
+/* Starts with score display updates disabled. */
 ScoreManager::ScoreManager() { enabled = 0; }
 
-/* Native C++ callback and singleton-lifetime recovery.
- * Class names are reconstructed. These are consumed interface views, not
- * claims about complete original class layouts; none is allocated here.
- * The callback descriptor at +4 is a real pointer-to-member, not a C callback
- * or a manually encoded compiler helper. Unknown word +0 is not padding.
- * Fragment selectors choose entire functions, not compiler behavior or TUs. */
-
+/* Creates and positions the selected player score box and digits. */
 void ScoreManager::fn_1_D77C(s32 playerNo, s32 characterNo)
 {
     ScoreCounterSlot *slot = &slots[playerNo];
@@ -252,12 +208,13 @@ void ScoreManager::fn_1_D77C(s32 playerNo, s32 characterNo)
     MgScoreBoxPosSet(slot->groupId, slot->posX, slot->posY);
 }
 
-/* Recipient symbol bindings for a retained source (copy of m603DLL fn_1_84E4). */
+/* Stores the score value for the selected player slot. */
 void ScoreManager::fn_1_D8D8(int index, int value)
 {
     slots[index].scoreValue = value;
 }
 
+/* Shows one score box and its current score at full opacity. */
 void ScoreManager::fn_1_D8E8(ScoreCounterSlot *slot) {
     MgScoreBoxDispSet(slot->groupId, 1);
     MgScoreBoxTPLvlSet(slot->groupId, 1.0f);
@@ -266,43 +223,18 @@ void ScoreManager::fn_1_D8E8(ScoreCounterSlot *slot) {
     MgScoreTPLvlSet(slot->score, 1.0f);
 }
 
-struct M648ScoreEntry {
-    HUSPR_GROUPID boxId;
-    s16 unk02;
-    MGSCORE *score;
-    s32 unk08;
-    s32 unk0C;
-    s32 value;
-    s32 unk14;
-    s32 unk18;
-};
-
-struct M648ScoreWork {
-    s32 unk00;
-    s32 unk04;
-    s32 unk08;
-    s32 unk0C;
-    u8 enabled;
-    u8 unk11;
-    u8 unk12;
-    u8 unk13;
-    M648ScoreEntry entries[4];
-};
-
+/* Shows all four score entries when score display updates are enabled. */
 void ScoreManager::update()
 {
     if (enabled != 0) {
         for (s32 index = 0; index < 4; index++) {
             ScoreCounterSlot *entry = &slots[index];
-            MgScoreBoxDispSet(entry->groupId, 1);
-            MgScoreBoxTPLvlSet(entry->groupId, 1.0f);
-            MgScoreValueSet(entry->score, entry->scoreValue);
-            MgScoreDispOn(entry->score);
-            MgScoreTPLvlSet(entry->score, 1.0f);
+            fn_1_D8E8(entry);
         }
     }
 }
 
+/* Clears the requested flag and enables score display updates for request 2. */
 void ScoreManager::flagEnabled(int request)
 {
     flags &= ~(1UL << request);
@@ -318,4 +250,5 @@ void ScoreManager::flagEnabled(int request)
     }
 }
 
+/* Releases the object through its member and base destructors. */
 ScoreManager::~ScoreManager() {}

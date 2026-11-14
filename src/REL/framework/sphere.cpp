@@ -4,6 +4,7 @@ static const char rcsid[] = "$Id: sphere.cpp,v 1.8.2.1 2004/06/04 03:56:51 shohy
 #include <dolphin/math.h>
 #include <dolphin/mtx.h>
 #include "REL/framework/sphere.h"
+#include "REL/framework/square.h"
 
 // Wraps a displacement passed to the sphere center correction helpers.
 struct Vector3 {
@@ -13,12 +14,6 @@ struct Vector3 {
     Point3d *getVector() { return &vector; }
     operator Point3d *() { return getVector(); }
 };
-
-inline f32 vectorMagnitude(Point3d *vector) { return PSVECMag(vector); }
-inline f32 vectorDot(Point3d *first, Point3d *second) {
-    return PSVECDotProduct(first, second);
-}
-inline f32 square(const f32 &value) { return value * value; }
 
 // Used for minigame sphere collision checks; touching boundaries do not count as overlap.
 bool spheresOverlap(Sphere *first, Sphere *second)

@@ -20,14 +20,14 @@ struct Spinner : OwnedModel, GameObject {
     unsigned int remainingFrames;
     unsigned int duration;
     std::auto_ptr<CollidingParticles> output;
-    Spinner(s32 setupMode, WorldPosition position, ANIMDATA *, s32, s32, ANIMDATA *, s32,
+    Spinner(s32 setupMode, EffectVector position, ANIMDATA *, s32, s32, ANIMDATA *, s32,
             ANIMDATA *texture, s32 count, s32 layer, s32 itemIndex);
     virtual void update();
     virtual ~Spinner();
     void fn_1_8814(EventMessage *);
     void fn_1_8820(EventMessage *);
     Vec fn_1_885C(Vec *source);
-    WorldPosition fn_1_88D0(s32 index);
+    EffectVector fn_1_88D0(s32 index);
     EventHandlerManager firstCallback;
     EventHandlerManager secondCallback;
 };

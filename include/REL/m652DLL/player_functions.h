@@ -12,4 +12,10 @@ void fn_1_7370(Racer *, unsigned char);
 void fn_1_74B4(Racer *, const Vec *);
 void fn_1_754C(Racer *);
 void fn_1_73E4(Racer *);
+extern "C" {
+void fn_1_56D0(void);
+void fn_1_596C(void);
+void fn_1_59BC(void);
+void fn_1_5A0C(void);
+}
 #endif

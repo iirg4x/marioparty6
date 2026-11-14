@@ -21,4 +21,7 @@ public:
     virtual void update();
 };
 
+unsigned char fn_1_5190(MapManager *work, int modelIndex, int itemIndex, Vec *position);
+void fn_1_524C(MapManager *work, int modelIndex);
+
 #endif

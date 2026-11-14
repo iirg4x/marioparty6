@@ -11,25 +11,26 @@
 extern "C" {
 #include "game/sprite.h"
 }
-struct Monitor;
-
-typedef void (Monitor::*CallbackData329C)();
 
 class Monitor : public MinigameSingleton<Monitor>, public GameObject, public ModelMotion, public EventListener {
 public:
-    CallbackData329C callback;
+    typedef void (Monitor::*Callback)();
+    Callback callback;
     f32 max_frames;
     s32 textureScale;
     u32 delay;
     std::vector<ANIMDATA *> animations;
     s32 remaining;
     s32 duration;
-    s32 firstTexture;
-    s32 secondTexture;
+    s32 firstChoice;
+    s32 secondChoice;
     u32 updateCount;
     u8 active;
+    // Reports whether the countdown has reached zero.
     bool expired() const { return remaining <= 0; }
-    bool finished() const { return (firstTexture != 0 && secondTexture != 0) && expired(); }
+    // Reports whether both choices are set and the countdown has expired.
+    bool finished() const { return (firstChoice != 0 && secondChoice != 0) && expired(); }
+    // Returns the remaining countdown frames.
     s32 remainingFrames() const { return remaining; }
     Monitor();
     virtual ~Monitor();
@@ -37,7 +38,7 @@ public:
     virtual void receive(const EventPacket *);
     void fn_1_3C24();
     void fn_1_3C28();
-    s32 fn_1_3BAC();
+    s32 choicesExpired();
     void fn_1_3EAC();
 };
 #endif

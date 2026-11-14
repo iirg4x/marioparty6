@@ -1,11 +1,9 @@
+#include <new>
 #include "REL/m672DLL/hanging_cage.h"
 #include <vector>
 #include "REL/m672DLL/animated_owner.h"
-#include "REL/m672DLL/event_lifetime.h"
+#include "REL/framework/event_manager.h"
 #include "REL/m672DLL/singleton_callback_owner.h"
-/* Current callback owner, published during construction and cleared on destruction. */
-template <> SingletonCallbackOwner *MinigameSingleton<SingletonCallbackOwner>::self = 0;
-/* The animations and models the whole minigame shares, loaded once at its start. */
 extern "C" {
 #include "dolphin/types.h"
 #include "game/data.h"
@@ -17,16 +15,16 @@ extern "C" {
 #include <algorithm>
 #include <functional>
 #include "REL/m672DLL/resources.h"
-#include "REL/m672DLL/ac4c_owner.h"
+#include "REL/m672DLL/scene_sequence.h"
+#include "REL/m672DLL/scene_effect.h"
 #include "REL/m672DLL/player.h"
 #include "REL/m672DLL/spinner.h"
-void *operator new(unsigned long);
 
 extern "C" {
 ANIMDATA *fn_1_672C(u32 dataNumber);
-void fn_1_749C(std::vector<Model *> *models);
 }
 
+// Loads and locks the animation identified by dataNumber.
 ANIMDATA *fn_1_672C(u32 dataNumber)
 {
     ANIMDATA *animation;
@@ -36,43 +34,40 @@ ANIMDATA *fn_1_672C(u32 dataNumber)
     return animation;
 }
 
+// Loads four shared animations and registers resource event channels 0 and 2.
 Resources::Resources()
 {
-    animations.push_back(fn_1_672C(DATANUM(0x830000, 14)));
-    animations.push_back(fn_1_672C(DATANUM(0x830000, 15)));
-    animations.push_back(fn_1_672C(DATANUM(0x830000, 16)));
-    animations.push_back(fn_1_672C(DATANUM(0x830000, 17)));
+    animations.push_back(fn_1_672C(DATANUM(0x830000, 0xE)));
+    animations.push_back(fn_1_672C(DATANUM(0x830000, 0xF)));
+    animations.push_back(fn_1_672C(DATANUM(0x830000, 0x10)));
+    animations.push_back(fn_1_672C(DATANUM(0x830000, 0x11)));
     registerChannel(0);
     registerChannel(2);
 }
 
+// Releases shared animations and removes model entries through fn_1_749C.
 Resources::~Resources()
 {
     std::for_each(animations.begin(), animations.end(), std::ptr_fun(HuSprAnimKill));
     fn_1_749C(&models);
 }
 
-typedef Model Model6E04;
-extern "C" Model6E04 *fn_1_1E740(Model6E04 *, unsigned int);
-extern "C" void fn_800804E8(short *, short, int);
-
 extern "C" char lbl_1_data_166[0xE];
-
-extern "C" void fn_1_6E04(Resources *object);
 
 const Vec lbl_1_rodata_1E0 = { 0.0f, 4500.0f, 2000.0f };
 
 const Vec lbl_1_rodata_1EC = { 0.0f, 0.0f, -1400.0f };
 
+// Creates shared light/model/shadow objects, configures lighting, and creates four cages.
 void fn_1_6E04(Resources *object)
 {
-    Model6E04 *lightAnimation;
-    Model6E04 *animation;
-    Model6E04 *shadowAnimation;
+    OwnedModel *lightAnimation;
+    OwnedModel *animation;
+    OwnedModel *shadowAnimation;
 
-    lightAnimation = new OwnedModel(DATANUM(0x830000, 1));
-    animation = new OwnedModel(DATANUM(0x830000, 0));
-    shadowAnimation = new OwnedModel(DATANUM(0x830000, 2));
+    lightAnimation = new OwnedModel(DATANUM(0x830000, 0x1));
+    animation = new OwnedModel(DATANUM(0x830000, 0x0));
+    shadowAnimation = new OwnedModel(DATANUM(0x830000, 0x2));
     lightAnimation->setLightsDynamic(false);
     lightAnimation->setLayer(1);
     animation->setAttribute(1);
@@ -91,7 +86,9 @@ void fn_1_6E04(Resources *object)
     short modelIds[1];
     int index;
     GXColor shadowColor = {255, 255, 255, 255};
-    static const WorldPosition lbl_1_rodata_1FC[4] = { {{{ -700.0f, 2400.0f, -2600.0f }}}, {{{ 700.0f, 2400.0f, -2600.0f }}}, {{{ -800.0f, 2450.0f, -500.0f }}}, {{{ 800.0f, 2450.0f, -500.0f }}} };
+    static const EffectVector lbl_1_rodata_1FC[4] = { {{ -700.0f, 2400.0f, -2600.0f }}, {{
+        700.0f, 2400.0f, -2600.0f }}, {{ -800.0f, 2450.0f, -500.0f }}, {{ 800.0f, 2450.0f,
+        -500.0f }} };
     PSVECSubtract(&lightTarget, &lightOrigin, &lightDirection);
     PSVECNormalize(&lightDirection, &lightDirection);
     fn_8002A3B0(20.0f, 1000.0f, 10000.0f, 1);
@@ -105,25 +102,24 @@ void fn_1_6E04(Resources *object)
     fn_8002A7D8(0.3f, 1);
     modelIds[0] = *animation;
     fn_800804E8(modelIds, 1, 0x28);
-    {
-        Point3d lightOffset;
-        lightOffset.x = 0.0f;
-        lightOffset.y = 0.0f;
-        lightOffset.z = 0.0f;
-        new AC4COwner(DATANUM(0x830000, 12), &lightOffset.x);
-    }
+    Point3d lightOffset;
+    lightOffset.x = 0.0f;
+    lightOffset.y = 0.0f;
+    lightOffset.z = 0.0f;
+    new SceneEffect(DATANUM(0x830000, 0xC), &lightOffset);
     for (index = 0; index < 4; ++index) {
-        new HangingCage(DATANUM(0x830000, 10), &lbl_1_rodata_1FC[index]);
+        new HangingCage(DATANUM(0x830000, 0xA), &lbl_1_rodata_1FC[index]);
     }
 }
 
 char lbl_1_data_166[0xE] = "inf_light1";
 
-extern "C" const WorldPosition lbl_1_rodata_248[4] = {
-    {{{-450.0f, 0.0f, -300.0f}}}, {{{-150.0f, 0.0f, -300.0f}}},
-    {{{150.0f, 0.0f, -300.0f}}}, {{{450.0f, 0.0f, -300.0f}}}
+extern "C" const EffectVector lbl_1_rodata_248[4] = {
+    {{-450.0f, 0.0f, -300.0f}}, {{-150.0f, 0.0f, -300.0f}},
+    {{150.0f, 0.0f, -300.0f}}, {{450.0f, 0.0f, -300.0f}}
 };
 
+// Creates one Player object at each of the four stored world positions.
 void fn_1_71BC(void *state)
 {
     int entry;
@@ -132,39 +128,42 @@ void fn_1_71BC(void *state)
     }
 }
 
-void fn_1_7230(void *manager)
+// Creates the animated owner and five spinner objects from shared animations.
+void fn_1_7230(Resources *manager)
 {
 
-    f32 initialPosition[3] = {850.0f, 558.0f, -1540.0f};
+    EffectVector initialPosition = {{850.0f, 558.0f, -1540.0f}};
     s32 index;
 
-    new AnimatedOwner(0x830012, (VecValue *)initialPosition, -45.0f);
+    new AnimatedOwner(DATANUM(0x830000, 0x12), &initialPosition, -45.0f);
 
-    {
-        WorldPosition entryPositions[5] = {
-            {{{-400.0f, 0.0f, -2000.0f}}},
-            {{{400.0f, 0.0f, -2000.0f}}},
-            {{{0.0f, 0.0f, -1350.0f}}},
-            {{{-400.0f, 0.0f, -700.0f}}},
-            {{{400.0f, 0.0f, -700.0f}}}
-        };
+    EffectVector entryPositions[5] = {
+        {{-400.0f, 0.0f, -2000.0f}},
+        {{400.0f, 0.0f, -2000.0f}},
+        {{0.0f, 0.0f, -1350.0f}},
+        {{-400.0f, 0.0f, -700.0f}},
+        {{400.0f, 0.0f, -700.0f}}
+    };
 
-        static const s32 lbl_1_rodata_2C0[5] = { 0x830004, 0x830005, 0x830006, 0x830007, 0x830008 };
+    static const s32 lbl_1_rodata_2C0[5] = { DATANUM(0x830000, 0x04), DATANUM(0x830000, 0x05),
+        DATANUM(0x830000, 0x06), DATANUM(0x830000, 0x07), DATANUM(0x830000, 0x08) };
 
-        for (index = 0; index < 5; ++index) {
-            new Spinner(lbl_1_rodata_2C0[index], entryPositions[index],
-                        ((Resources *)manager)->animations[0], 0xF, 4,
-                        ((Resources *)manager)->animations[1], 4,
-                        ((Resources *)manager)->animations[0], 0x50, 4, index);
-        }
+    for (index = 0; index < 5; ++index) {
+        new Spinner(lbl_1_rodata_2C0[index], entryPositions[index],
+                    manager->animations[0], 0xF, 4,
+                    manager->animations[1], 4,
+                    manager->animations[0], 0x50, 4, index);
     }
 }
 
+// Empty resource callback.
 void fn_1_7404(void *) {}
+// Empty resource callback.
 void fn_1_7408(void *) {}
 void fn_1_7484(void *, const EventPacket *);
 void fn_1_7488(void *, const EventPacket *);
 
+// Dispatches resource events on channel 0 or channel 2.
 void Resources::receive(const EventPacket *event)
 {
     switch (event->channel) {
@@ -176,10 +175,13 @@ void Resources::receive(const EventPacket *event)
     }
 }
 
+// Empty channel-0 event handler.
 void fn_1_7484(void *, const EventPacket *) {}
 
+// Both event-type switch arms are empty and produce no state changes.
 void fn_1_7488(void *unused, const EventPacket *event)
 {
+    // Both event-type arms leave the resources unchanged.
     switch (event->type) {
     case 0:
         break;

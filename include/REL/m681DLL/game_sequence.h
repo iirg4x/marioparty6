@@ -7,7 +7,7 @@
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/event_packet.h"
 
-struct EffectLayer;
+struct GameManagers;
 
 class GameSequenceController : public MinigameCore, public ThreadEntry,
                            public EventListener {
@@ -20,12 +20,9 @@ public:
     virtual void receive(const EventPacket *);
     virtual void run(void *);
     u8 eventReceived;
-    std::auto_ptr<EffectLayer> ownedObject;
+    std::auto_ptr<GameManagers> ownedObject;
 };
 
-extern "C" {
-}
 u8 fn_1_1744(GameSequenceController *);
-extern "C" {
-}
+
 #endif

@@ -3,21 +3,22 @@
 
 #include "game/animdata.h"
 
-// One image of a score display: half size, place, scale and the animation it draws.
+// One score-display image: half size, position, uniform scale, opacity and animation.
 struct SpriteParameters {
     float halfWidth;
     float halfHeight;
     float x;
     float y;
-    float scaleX;
-    float scaleY;
+    float scale;
+    float opacity;
     ANIMDATA *animation;
 
     SpriteParameters(ANIMDATA *image);
+    // Copies the sprite geometry, scale, opacity and animation.
     SpriteParameters(const SpriteParameters &source)
         : halfWidth(source.halfWidth), halfHeight(source.halfHeight),
           x(source.x), y(source.y),
-          scaleX(source.scaleX), scaleY(source.scaleY),
+          scale(source.scale), opacity(source.opacity),
           animation(source.animation)
     {
     }

@@ -15,7 +15,7 @@ extern "C" {
 #include "game/wipe.h"
 }
 
-void emptyThreadHook();
+#include "REL/framework/thread.h"
 
 // Constructed before the game's own setup; begin with no message delay or winners.
 MinigameCore::MinigameCore() : messageFrames(0)

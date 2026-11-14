@@ -1,56 +1,47 @@
-#ifndef REL_M672DLL_CAMERA_OWNER_A348_H
-#define REL_M672DLL_CAMERA_OWNER_A348_H
+#ifndef REL_M672DLL_CAMERA_OWNER_H
+#define REL_M672DLL_CAMERA_OWNER_H
 #include "dolphin/os.h"
 #include "dolphin/mtx.h"
-#include "REL/m672DLL/event.h"
+#include "REL/m672DLL/collision_object.h"
+#include "REL/framework/event.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/event_hm.h"
 #include "REL/framework/model.h"
 #include "REL/framework/camera_frame.h"
 
-class CameraVector {
-public:
-    Vec value;
-    const Vec &getValue() const;
-};
-
 typedef class CameraWork {
 public:
     CameraFrame frame;
-    CameraVector cameraPosition;
-    CameraVector cameraTarget;
-    Vec unknown3C;
-    u32 unknown48;
+    EffectVector cameraPosition;
+    EffectVector cameraTarget;
+    // The game never reads this member.
+    Vec unk3C;
+    // The game never reads this member.
+    u32 unk48;
     s8 enabled;
-
+    // Copy the position coordinates.
     void setPosition(const Vec &value) {
         frame.position.x = value.x; frame.position.y = value.y; frame.position.z = value.z;
     }
+    // Copy the camera target coordinates.
     void setTarget(const Vec &value) {
         frame.target.x = value.x; frame.target.y = value.y; frame.target.z = value.z;
     }
-    void setPosition(const CameraVector &target) {
+    // Copy the position coordinates.
+    void setPosition(const EffectVector &target) {
         setPosition(target.getValue());
     }
-    void setTarget(const CameraVector &target) {
+    // Copy the camera target coordinates.
+    void setTarget(const EffectVector &target) {
         setTarget(target.getValue());
     }
 } CameraWork;
 
 class CameraOwner;
-typedef void (CameraOwner::*CameraCallbackA348)();
+typedef void (CameraOwner::*CameraUpdate)();
 #include "REL/m672DLL/member_callback.h"
 typedef std::mem_fun1_t<void, CameraOwner, EventMessage *> CameraMemberFunction;
 typedef CallbackBinding<CameraOwner> CameraCallbackPayload;
-
-static inline CameraMemberFunction CameraMember(void (CameraOwner::*fn)(EventMessage *)) {
-    return CameraMemberFunction(fn);
-}
-static inline CameraCallbackPayload BindCamera(const CameraMemberFunction &fn,
-                                         CameraOwner *owner) {
-    return CameraCallbackPayload(fn, owner);
-}
-
 typedef class CameraOwner : public GameObject {
 public:
     OwnedModel model;
@@ -58,8 +49,9 @@ public:
     CameraWork cameraCopy;
     f32 fade;
     EventHandlerManager callbackState;
-    CameraCallbackA348 updateCallback;
-    void setUpdate(CameraCallbackA348 callback) { updateCallback = callback; }
+    CameraUpdate updateCallback;
+    // Select the update callback.
+    void setUpdate(CameraUpdate callback) { updateCallback = callback; }
     CameraOwner();
     virtual ~CameraOwner();
     virtual void update();

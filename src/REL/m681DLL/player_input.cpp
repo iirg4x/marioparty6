@@ -1,3 +1,7 @@
+#include "REL/m681DLL/game_controller.h"
+#include "REL/framework/world_units.h"
+#include "REL/framework/random.h"
+#include "REL/framework/event.h"
 #include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
 #include "REL/framework/event_packet.h"
@@ -5,15 +9,15 @@
 
 #include "REL/m681DLL/player_input.h"
 #include "REL/m681DLL/player_object.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
+#include "REL/m681DLL/game_constants.h"
 
-u32 RandomUnsigned();
 extern "C" {
-#include "REL/m681DLL.h"
-#include "REL/framework/world_units.h"
-void __msl_assertion_failed(const char *, const char *, int);
+
 extern u32 lbl_1_bss_70;
 }
 
+// Initializes the event-driven input counters.
 ModeBase::ModeBase() : EventListener()
 {
     registerChannel(0);
@@ -21,9 +25,11 @@ ModeBase::ModeBase() : EventListener()
     duration = 0.0f;
 }
 
+// Releases the input listener base.
 ModeBase::~ModeBase() {}
 
-s32 fn_1_2700(s32 value, s32 mask, s32 fallback)
+// Converts a masked direction bit to a choice, retaining the fallback otherwise.
+s32 choiceForDirection(s32 value, s32 mask, s32 fallback)
 {
     s32 selected = value & mask;
     switch (selected) {
@@ -35,6 +41,7 @@ s32 fn_1_2700(s32 value, s32 mask, s32 fallback)
     }
 }
 
+// Updates the random answer counter or elapsed input count.
 void ModeBase::receive(const EventPacket *config)
 {
     switch (config->type) {
@@ -47,9 +54,12 @@ void ModeBase::receive(const EventPacket *config)
     }
 }
 
+// Initializes the human input controller.
 ModeToggle::ModeToggle() : ModeBase() { active = 0; }
+// Releases the human input controller base.
 ModeToggle::~ModeToggle() {}
 
+// Converts buttons and stick directions into the two player choices.
 void ModeToggle::update(PlayerObject *work)
 {
     s32 currentButtons;
@@ -71,6 +81,7 @@ void ModeToggle::update(PlayerObject *work)
     actionButtons = work->subStickDirections();
     lbl_1_bss_70 = work->modes.values[0];
     previousSelection = work->modes.values[0];
+    // Applies the same direction mask again after reading both sticks.
     currentCode = currentButtons & 0xD;
     switch (currentCode) {
     case 8:
@@ -137,6 +148,7 @@ void ModeToggle::update(PlayerObject *work)
     work->modes.values[1] = action;
 }
 
+// Sets the computer input threshold from its difficulty.
 ModeObject::ModeObject(s32 mode) : ModeBase()
 {
     this->mode = mode;
@@ -150,8 +162,10 @@ ModeObject::ModeObject(s32 mode) : ModeBase()
     }
 }
 
+// Releases the computer input controller base.
 ModeObject::~ModeObject() {}
 
+// Selects target or alternative choices according to the computer timing threshold.
 void ModeObject::update(PlayerObject *result)
 {
     s32 *primaryPair;
@@ -163,19 +177,11 @@ void ModeObject::update(PlayerObject *result)
         result->modes.values[1] = primaryPair[1];
         return;
     }
-    if (result->progress >= secondsToFrames(result->velocity)) {
+    if (result->inputFrames >= secondsToFrames(result->inputDelay)) {
         secondaryPair = &MinigameSingleton<M681GameState>::getChecked().textureChoices.values[0];
         result->modes.values[0] = secondaryPair[0];
         result->modes.values[1] = secondaryPair[1];
     }
-}
-
-extern "C" {
-}
-
-extern "C" {
-s32 lbl_1_bss_68 = minutesToFrames(60L);
-f32 lbl_1_bss_6C = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }
 
 extern "C" {

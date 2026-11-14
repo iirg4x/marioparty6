@@ -11,21 +11,18 @@ extern "C" {
 #include "REL/framework/list.h"
 #include "REL/m622DLL/callback_object.h"
 #include "REL/framework/phase_durations.h"
-#include "REL/m622DLL/random.h"
+#include "REL/framework/random.h"
 #include "REL/framework/list_object.h"
 #include "REL/m622DLL/scene_models.h"
 #include "REL/m622DLL/score_display_owner.h"
-
 // The contestants.
-extern ListRoot<CallbackObject> lbl_1_bss_E8;
-
+extern "C" { extern ListRoot<CallbackObject> lbl_1_bss_E8; }
 extern "C" {
 extern u8 lbl_1_bss_D8;
 extern u8 lbl_1_bss_D9;
 }
 void fn_1_72E8(CallbackObject *);
 void fn_1_8238(CallbackObject *owner);
-
 static const Vec lbl_1_rodata_260[4] = {
     {210.0f, 0.0f, -655.0f},
     {210.0f, 0.0f, -375.0f},
@@ -33,6 +30,7 @@ static const Vec lbl_1_rodata_260[4] = {
     {210.0f, 0.0f, 205.0f},
 };
 
+/* Offsets the selected lane position to the player entry position. */
 void fn_1_6748(Vec *result, s32 index)
 {
     f64 x;
@@ -48,7 +46,8 @@ void fn_1_6748(Vec *result, s32 index)
     result->z = z;
 }
 
-static inline void fn_1_6748_for_689C(Vec *result, s32 index)
+/* Offsets the selected lane position to the player entry position. */
+static inline void setPlayerEntryPosition(Vec *result, s32 index)
 {
     f64 z;
     f64 y;
@@ -63,6 +62,7 @@ static inline void fn_1_6748_for_689C(Vec *result, s32 index)
     result->z = z;
 }
 
+/* Deletes every player in the player list. */
 void fn_1_67F8()
 {
     while (!lbl_1_bss_E8.empty()) {
@@ -106,19 +106,19 @@ CallbackObject::CallbackObject(s32 playerNo)
     fn_80026B64(currentModel, 1);
     fn_1_8D74(&ScoreDisplayOwner::getChecked(), controller, character);
     fn_1_8FC8(&ScoreDisplayOwner::getChecked(), controller, 0);
-    fn_1_6748_for_689C(&position, controller);
+    setPlayerEntryPosition(&position, controller);
     fn_1_8238(this);
     fn_1_7460(this, 0, 0);
-    {
-        Callback next = &CallbackObject::fn_1_7088;
-        callback = next;
-    }
+    Callback next = &CallbackObject::fn_1_7088;
+    callback = next;
 }
 
+/* Releases the object through its member and base destructors. */
 CallbackObject::~CallbackObject()
 {
 }
 
+/* Loads a character motion, appends its handle and returns it. */
 s16 CallbackObject::fn_1_6F34(u32 dataNum)
 {
     s16 motionId = fn_8005B0B8(character, dataNum);
@@ -126,6 +126,7 @@ s16 CallbackObject::fn_1_6F34(u32 dataNum)
     return motionId;
 }
 
+/* Resets coin sound flags, updates every player and rotates the first player to the back. */
 void fn_1_6FB0()
 {
     lbl_1_bss_D8 = 0;
@@ -138,15 +139,18 @@ void fn_1_6FB0()
     }
 }
 
+/* Returns without changing state. */
 void fn_1_7054()
 {
 }
 
+/* Selects looping character motion 0. */
 void CallbackObject::fn_1_7058()
 {
     fn_1_7460(this, 0, 0);
 }
 
+/* Moves the player toward the lane and selects the arrival callback on reaching it. */
 void CallbackObject::fn_1_7088()
 {
     position.x += 11.666667f;
@@ -158,8 +162,11 @@ void CallbackObject::fn_1_7088()
     fn_1_7460(this, 2, 0);
 }
 
-s32 fn_1_7138(void)
+/* Selects each player result motion, transfers earned coins and reports whether all earned none. */
+u8 fn_1_7138(void)
 {
+    /* This array receives one ID per player and is never read.
+       The four-player loop writes past its two slots. */
     s16 characterIds[2];
     Node *listEnd;
     s32 playerIndex;
@@ -168,7 +175,7 @@ s32 fn_1_7138(void)
     CallbackObject *firstEntry;
     CallbackObject *entry;
     CallbackObject *nextEntry;
-    s32 allWaiting;
+    u8 allWaiting;
     s32 index;
 
     listHead = static_cast<CallbackObject *>(lbl_1_bss_E8.link0);
@@ -194,28 +201,33 @@ s32 fn_1_7138(void)
     return allWaiting;
 }
 
+/* Selects the callback that plays character motion 6. */
 void CallbackObject::fn_1_7200()
 {
     Callback value = &CallbackObject::fn_1_7244;
     callback = value;
 }
 
+/* Selects nonlooping character motion 6. */
 void CallbackObject::fn_1_7244()
 {
     fn_1_7460(this, 6, 1);
 }
 
+/* Selects the callback that plays character motion 7. */
 void CallbackObject::fn_1_7274()
 {
     Callback value = &CallbackObject::fn_1_72B8;
     callback = value;
 }
 
+/* Selects nonlooping character motion 7. */
 void CallbackObject::fn_1_72B8()
 {
     fn_1_7460(this, 7, 1);
 }
 
+/* Runs the player callback, updates vibration and model placement, and counts the frame. */
 void fn_1_72E8(CallbackObject *object)
 {
     (object->*object->callback)();
@@ -224,6 +236,7 @@ void fn_1_72E8(CallbackObject *object)
     object->count++;
 }
 
+/* Applies the player rotation and world position to its model. */
 void CallbackObject::fn_1_733C()
 {
     Vec rotation = {0.0f, 0.0f, 0.0f};
@@ -232,6 +245,7 @@ void CallbackObject::fn_1_733C()
     model.setPosition(&position);
 }
 
+/* Advances vibration countdowns and issues vibration for a connected controller. */
 void CallbackObject::fn_1_73A4() {
     s32 vibrationType;
 
@@ -253,7 +267,8 @@ void CallbackObject::fn_1_73A4() {
     }
 }
 
-static inline void fn_1_770C_for_callbacks(CallbackObject *owner)
+/* Waits for the character motion to finish, then switches to motion 5. */
+static inline void updateCompletedCharacterMotion(CallbackObject *owner)
 {
     s16 modelIdCopy;
     s16 motionId;
@@ -276,66 +291,13 @@ static inline void fn_1_770C_for_callbacks(CallbackObject *owner)
     }
 }
 
-/* Restores the saved motion and counter values after the owner reaches its limit. */
-
-static inline void fn_1_7460_for_7B78(CallbackObject *owner,
-                                     s32 motionId, u32 shiftFlags)
-{
-    s16 modelId;
-    s16 selectedMotion;
-
-    modelId = owner->model;
-    selectedMotion = owner->m_mot_id.at(motionId);
-    if (owner->state != motionId) {
-        fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
-        fn_8005C2C8((s16)owner->character, selectedMotion,
-                           0.0f, 8.0f, shiftFlags);
-        owner->state = motionId;
-    }
-}
-
+/* Copies the player coin count to its score display. */
 static inline void applyCounterEvent(CallbackObject *owner)
 {
     fn_1_8FC8(&ScoreDisplayOwner::getChecked(), owner->controller, owner->mgCoin);
 }
 
-static inline void fn_1_7460_for_7960(CallbackObject *owner, s32 motionId,
-                             u32 shiftFlags)
-{
-    s16 modelId;
-    s16 selectedMotion;
-
-    modelId = owner->model;
-    selectedMotion = owner->m_mot_id.at(motionId);
-    if (owner->state != motionId) {
-        fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
-        fn_8005C2C8((s16)owner->character, selectedMotion,
-                           0.0f, 8.0f, shiftFlags);
-        owner->state = motionId;
-    }
-}
-
-/* Advances the frame count and restores the configured values after the threshold. */
-
-typedef CallbackObject MotionTransitionOwner;
-
-static inline void fn_1_7460(MotionTransitionOwner *owner,
-                            s32 motionId)
-{
-    s16 modelId;
-    s16 selectedMotion;
-
-    modelId = owner->model;
-    selectedMotion = owner->m_mot_id.at(motionId);
-    if (owner->state != motionId) {
-        fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
-        fn_8005C2C8((s16)owner->character, selectedMotion,
-                           0.0f, 8.0f,
-                           ((1 << 30) | (1 << 0)));
-        owner->state = motionId;
-    }
-}
-
+/* Changes the character motion when its index differs, choosing looping from the queued flag. */
 void fn_1_7460(CallbackObject *owner, s32 motionId,
                              u8 queued)
 {
@@ -353,31 +315,34 @@ void fn_1_7460(CallbackObject *owner, s32 motionId,
     }
 }
 
+/* Turns the arriving player toward the stage and enters the play callback on request 2. */
 void CallbackObject::fn_1_7520()
 {
-    MotionTransitionOwner::Callback callback;
+    CallbackObject::Callback callback;
 
     this->rotationY -= 3.0f;
     if (this->rotationY < 0.0f) {
         this->rotationY = 0.0f;
-        fn_1_7460(this, 0);
+        fn_1_7460(this, 0, 0);
     } else {
-        fn_1_7460(this, 1);
+        fn_1_7460(this, 1, 0);
     }
 
     if (currentRequest() == 2) {
         this->rotationY = 0.0f;
-        callback = &MotionTransitionOwner::fn_1_7FEC;
+        callback = &CallbackObject::fn_1_7FEC;
         this->callback = callback;
     }
 }
 
+/* Reports whether the player controller has button 0x0100 pressed. */
 bool fn_1_76D0(const CallbackObject *object)
 {
     u32 buttons = lbl_802C0008[object->padIndex];
     return (buttons & 0x0100U) != 0;
 }
 
+/* Waits for the character motion to finish, then switches to motion 5. */
 void CallbackObject::fn_1_770C()
 {
     s16 motionId;
@@ -403,10 +368,11 @@ void CallbackObject::fn_1_770C()
     }
 }
 
+/* Advances the reaction motion and returns to play after 102 frames. */
 void CallbackObject::fn_1_77F4()
 {
     eventStep++;
-    fn_1_770C_for_callbacks(this);
+    updateCompletedCharacterMotion(this);
     if ((f32)eventStep >
         102.0f) {
         CallbackObject::Callback callback =
@@ -416,6 +382,7 @@ void CallbackObject::fn_1_77F4()
     }
 }
 
+/* Waits for scrolling before starting the reaction and returns to play after 162 frames. */
 void CallbackObject::fn_1_7960()
 {
     eventStep++;
@@ -424,11 +391,11 @@ void CallbackObject::fn_1_7960()
             pulsedVibrationFrames = 30;
             active = 1;
             motionEnded = 0;
-            fn_1_7460_for_7960(this, 4, 0);
+            fn_1_7460(this, 4, 1);
         }
         return;
     }
-    fn_1_770C_for_callbacks(this);
+    updateCompletedCharacterMotion(this);
     if ((f32)eventStep > 162.0f) {
         CallbackObject::Callback callback =
             &CallbackObject::fn_1_7FEC;
@@ -437,6 +404,7 @@ void CallbackObject::fn_1_7960()
     }
 }
 
+/* Handles the grabbed object, awards coins or starts a reaction, and times out the grab. */
 void CallbackObject::fn_1_7B78()
 {
     s32 requestType;
@@ -446,7 +414,7 @@ void CallbackObject::fn_1_7B78()
         frameCount = 0;
         fn_1_8238(this);
         requestList = 0;
-        fn_1_7460_for_7B78(this, 0, ((1 << 30) | (1 << 0)));
+        fn_1_7460(this, 0, 0);
         Callback next = &CallbackObject::fn_1_7F60;
         callback = next;
         return;
@@ -477,7 +445,7 @@ void CallbackObject::fn_1_7B78()
         continuousVibrationFrames = 0x1E;
         eventStep = 0;
         motionEnded = 0;
-                    fn_1_7460_for_7B78(this, 4, 0);
+                    fn_1_7460(this, 4, 1);
         Callback next = &CallbackObject::fn_1_77F4;
         callback = next;
         return;
@@ -495,6 +463,7 @@ void CallbackObject::fn_1_7B78()
         }
 }
 
+/* Waits ten frames before returning to the play callback. */
 void CallbackObject::fn_1_7F60()
 {
     if ((f32)(frameCount++) > 9.0f) {
@@ -504,6 +473,7 @@ void CallbackObject::fn_1_7F60()
     }
 }
 
+/* Checks player or computer input and starts a grab during request 2. */
 void CallbackObject::fn_1_7FEC()
 {
     if (currentRequest() != 2) {
@@ -528,6 +498,7 @@ void CallbackObject::fn_1_7FEC()
     fn_1_7460(this, 0, 0);
 }
 
+/* Accepts the four computer difficulty values without changing player state. */
 void fn_1_8238(CallbackObject *owner)
 {
     switch (owner->mode) {
@@ -539,6 +510,7 @@ void fn_1_8238(CallbackObject *owner)
     }
 }
 
+/* Uses lane availability, randomness and computer difficulty to decide when to grab. */
 bool CallbackObject::fn_1_8250()
 {
     s32 listIndex = fn_1_1E68(controller);

@@ -1,4 +1,53 @@
 /* Owns minigame event channels and delivers immediate or scheduled packets to their receivers. */
+/* Retail fixes the next assert's line; the earlier lines are unknown: 48 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <map>
 #include <set>
 #include <queue>
@@ -7,7 +56,8 @@
 #include <cstdio>
 
 extern "C" {
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 }
 
 #include "REL/framework/event_callback_inline.h"
@@ -19,7 +69,9 @@ static const char rcsid[] = "$Id: event.cpp,v 1.22 2004/09/09 12:24:38 saf Exp $
 /* Queued packet copy with its requested delivery time on the broadcaster's event clock. */
 struct EventEntry : EventPacket {
     float scheduled_time; /* Delivery time in seconds, compared with the last processed tick. */
+    /* Copy a packet with the time at which its delivery is due. */
     EventEntry(const EventPacket& packet, float time) : EventPacket(packet), scheduled_time(time) {}
+    /* Preserve the delivery time when the queue copies an entry. */
     EventEntry(const EventEntry& other)
         : EventPacket(other), scheduled_time(other.scheduled_time) {}
     /* Queue assignments copy the packet words and scheduled time together. */
@@ -57,6 +109,7 @@ struct CEventBroadcaster : std::map<int, EventReceivers> {
 };
 void dispatch_event(CEventBroadcaster *, const EventPacket&);
 
+/* Return the owner published by the current event manager. */
 inline CEventBroadcaster *current_event_owner() { return active_event_owner; }
 
 /* EventManager construction creates the active owner with an empty map, queue, and clock. */
@@ -177,9 +230,9 @@ EventListener::~EventListener()
 /* Register this receiver on a channel after the shared event owner has been created. */
 void EventListener::registerChannel(int channel)
 {
-    CEventBroadcaster *owner = current_event_owner();
-    owner != 0 ? (void)0 : __msl_assertion_failed("p != NULL", "event.cpp", 234);
-    owner->registerListener(channel, (unsigned long)this);
+    CEventBroadcaster *p = current_event_owner();
+    assert(p != NULL);
+    p->registerListener(channel, (unsigned long)this);
 }
 
 /* Construct an event with a channel, value and context, then apply the requested delay. */

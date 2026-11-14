@@ -1,3 +1,5 @@
+#include "REL/m603DLL/ufo.h"
+#include "REL/m603DLL/draw_node.h"
 #include "REL/framework/frame_time_inline.h"
 #include "REL/framework/list_object.h"
 #include "REL/m603DLL/flow.h"
@@ -13,39 +15,42 @@
 #include "dolphin/os.h"
 #include "REL/framework/thread.h"
 
-#include "REL/m603DLL/random.h"
+#include "REL/framework/random.h"
 #include "msm_stream.h"
 
+/* Create the game thread and its timer. */
 MinigameThreadOwner::MinigameThreadOwner() : ThreadEntry(0x8000),timer(0) {}
+/* Destroy the timer and game-thread bases. */
 MinigameThreadOwner::~MinigameThreadOwner() {}
 
 extern "C" {
+#include "game/audio.h"
 #include "game/wipe.h"
 #include "game/gamework.h"
 }
 
-void fn_1_794C(void);
-
+/* Create the stage, cameras, targets, score display and four players. */
 void MinigameThreadOwner::setupObjects(OMOBJMAN *)
 {
     s32 playerIndex;
 
     RandomSeed(OSGetTick());
-    nightMode = !GWMgNightFGet();
+    dayMode = !GWMgNightFGet();
 
-    new ShadowModelOwner(nightMode);
-    new CameraOwnerBBC();
+    new ShadowModelOwner(dayMode);
+    new CameraOwner();
     new DrawModelPool();
     new ScoreDisplay();
-    if (nightMode == 0) {
+    if (dayMode == 0) {
         new CameraModelPool();
     }
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        new PlayerModelOwner(playerIndex, nightMode);
+        new PlayerModelOwner(playerIndex, dayMode);
     }
     fn_1_794C();
     new DrawListOwner();
 }
+/* Resume the game thread, update request objects and advance the players. */
 void MinigameThreadOwner::updateGame()
 {
     this->resume(0);
@@ -53,24 +58,7 @@ void MinigameThreadOwner::updateGame()
     fn_1_6258();
 }
 
-void fn_1_9C58(void);
-void fn_1_6690(void);
-void fn_1_66F4(void);
-void fn_1_9BF4(void);
-void fn_1_BB5C(void);
-extern "C" {
-}
-bool fn_1_62DC(void);
-void fn_1_67A0(void);
-void fn_1_6884(void);
-void fn_1_6614(void);
-extern "C" {
-void HuAudFadeOut(int);
-int HuAudJinglePlay(int);
-int HuAudBGMPlay(int);
-void HuAudSStreamFadeOut(int, int);
-}
-
+/* Run the opening, timed photography round, results and exit request. */
 void MinigameThreadOwner::run(void *)
 {
     int musicHandle;
@@ -110,6 +98,7 @@ void MinigameThreadOwner::run(void *)
     }
 }
 
+/* Show the finish message and wait for it to close. */
 void MinigameThreadOwner::fn_1_60C()
 {
     MinigameCore::showFinish();
@@ -118,71 +107,63 @@ void MinigameThreadOwner::fn_1_60C()
     }
 }
 
+/* Reset target state and run the camera and sprite transition. */
 void MinigameThreadOwner::fn_1_654()
 {
     int openingFrames;
     int secondFrames;
     int thirdFrames;
     int closingFrames;
-    CameraOwnerBBC *openingState;
-    SpriteFade *closingState;
+    CameraOwner *cameraOwner;
+    SpriteFade *spriteFade;
 
     fn_1_9C58();
-    openingFrames = 0;
-    while (openingFrames < 0x3C) {
+    for (openingFrames = 0; openingFrames < 0x3C; openingFrames++) {
         suspend(0);
-        openingFrames++;
     }
     WipeCreate(2, 6, 0x3C);
-    secondFrames = 0;
-    while (secondFrames < 0x3C) {
+    for (secondFrames = 0; secondFrames < 0x3C; secondFrames++) {
         suspend(0);
-        secondFrames++;
     }
-    openingState = (&CameraOwnerBBC::getChecked());
-    openingState->transitionRequested = 1;
+    cameraOwner = &CameraOwner::getChecked();
+    cameraOwner->transitionRequested = 1;
     fn_1_6690();
     WipeCreate(1, 6, 0x3C);
-    thirdFrames = 0;
-    while (thirdFrames < 0x3C) {
+    for (thirdFrames = 0; thirdFrames < 0x3C; thirdFrames++) {
         suspend(0);
-        thirdFrames++;
     }
-    closingState = (&SpriteFade::getChecked());
-    closingState->transitionState = 0;
-    closingFrames = 0;
-    while (closingFrames < 0x3C) {
+    spriteFade = &SpriteFade::getChecked();
+    spriteFade->transitionState = 0;
+    for (closingFrames = 0; closingFrames < 0x3C; closingFrames++) {
         suspend(0);
-        closingFrames++;
     }
 }
 
+/* Prepare the results, reveal the scores and select the result jingle. */
 void MinigameThreadOwner::fn_1_7C4()
 {
     int frame;
     int wipeFrames;
     int closingFrames;
-    bool musicState;
-    s16 jingle;
+    bool allScoresZero;
+    int jingle;
 
     fn_1_66F4();
     fn_1_9BF4();
-    if (nightMode == 0) {
+    if (dayMode == 0) {
         fn_1_BB5C();
     }
-    frame = 0;
-    while ((float)frame < 120.0f) {
+    for (frame = 0; (float)frame < 120.0f; frame++) {
         suspend(0);
-        frame++;
     }
     WipeCreate(2, 6, 0x3C);
     for (wipeFrames = 0; wipeFrames < 0x3C; wipeFrames++) {
         suspend(0);
     }
     HuAudFadeOut(0x96);
-    musicState = fn_1_62DC();
+    allScoresZero = fn_1_62DC();
     fn_1_67A0();
-    (&ScoreDisplay::getChecked())->fn_1_83F4();
+    ScoreDisplay::getChecked().fn_1_83F4();
     DrawListOwner::getChecked().fn_1_3714();
     postRequest(4);
     WipeCreate(1, 6, 0x3C);
@@ -190,19 +171,18 @@ void MinigameThreadOwner::fn_1_7C4()
         suspend(0);
     }
     fn_1_6884();
-    if (musicState != 0) {
+    if (allScoresZero != 0) {
         jingle = MSM_STREAM_BAD_NEWS;
     } else {
         jingle = MSM_STREAM_WINNING;
     }
     HuAudJinglePlay(jingle);
-    if (musicState != 0) {
+    if (allScoresZero != 0) {
         fn_1_6614();
     }
 }
 
-unsigned char fn_1_6594();
-
+/* Advance the frame count and finish when the timer or all players are done. */
 bool MinigameThreadOwner::fn_1_99C()
 {
     bool done;
@@ -214,8 +194,10 @@ bool MinigameThreadOwner::fn_1_99C()
     return done;
 }
 
+/* Leave game state unchanged. */
 void MinigameThreadOwner::fn_1_A08() {}
 
+/* Delete all players and request objects. */
 void MinigameThreadOwner::finishGame()
 {
     fn_1_59C8();

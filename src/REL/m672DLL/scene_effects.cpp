@@ -1,11 +1,12 @@
+#include <new>
 #include "REL/m672DLL/resources.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/sound.h"
 #include "REL/m672DLL/particle_game_object.h"
-#include "REL/m672DLL/ac4c_owner.h"
+#include "REL/m672DLL/scene_effect.h"
 #include "REL/framework/event_callback_inline.h"
 #include "REL/framework/camera_frame.h"
-class Resources;
-#include "REL/m672DLL/random.h"
+#include "REL/framework/random.h"
 #include "dolphin/types.h"
 
 extern "C" {
@@ -47,7 +48,7 @@ extern "C" {
 #include "game/data.h"
 }
 
-#include "REL/m672DLL/position_bf64.h"
+#include "REL/m672DLL/collision_object.h"
 
 extern "C" {
 #include "game/flag.h"
@@ -65,154 +66,88 @@ extern "C" {
 #include "game/window.h"
 }
 
-void *operator new(unsigned long);
-
-void operator delete(void *);
-
 #include "REL/m672DLL/hanging_cage.h"
 #include "REL/m672DLL/particle_groups.h"
 
-template<class Receiver> void fn_1_BBD8(EventHandlerManager *, const AC4CPayload &, int);
+#include "REL/m672DLL/member_handler.h"
 
-static inline AC4CMemberFunction AC4COwnerMember(AC4CCallback fn) {
-    return AC4CMemberFunction(fn);
-}
-
-static inline AC4CPayload BindAC4COwner(const AC4CMemberFunction &fn, AC4COwner *owner) {
-    return AC4CPayload(fn, owner);
-}
-
-AC4COwner::AC4COwner(int firstMode, const float *position)
+// Initializes the model state, position, child callbacks, and idle update callback.
+SceneEffect::SceneEffect(int firstMode, Vec *position)
     : GameObject(4), OwnedModel((unsigned int)firstMode), state(0), nextState(0),
       time(0.0f), active(0), child(0)
 {
     setLayer(1);
-    setPosition((Vec *)position);
+    setPosition(position);
     setAttribute(((1 << 30) | (1 << 1)));
-    fn_1_BBD8<AC4COwner>(&child,
-             BindAC4COwner(AC4COwnerMember(&AC4COwner::fn_1_AF34), this), 1);
-    fn_1_BBD8<AC4COwner>(&child,
-             BindAC4COwner(AC4COwnerMember(&AC4COwner::fn_1_AF78), this), 3);
-    setUpdate(&AC4COwner::fn_1_B050);
+    registerMemberHandler<SceneEffect>(&child,
+             bindMember(std::mem_fun(&SceneEffect::fn_1_AF34), this), 1);
+    registerMemberHandler<SceneEffect>(&child,
+             bindMember(std::mem_fun(&SceneEffect::fn_1_AF78), this), 3);
+    setUpdate(&SceneEffect::fn_1_B050);
 }
 
-AC4COwner::~AC4COwner() {}
+// Performs no additional work when the scene effect is destroyed.
+SceneEffect::~SceneEffect() {}
 
-void AC4COwner::update()
+// Invokes the currently selected scene effect update callback, when present.
+void SceneEffect::update()
 {
     if (updateCallback) {
         (this->*updateCallback)();
     }
 }
 
-extern "C" {
-typedef struct {
-    Vec value;
-} MotionVector;
-
-void AC4COwner::fn_1_AF34(EventMessage *)
+// Selects the timed scene effect update callback.
+void SceneEffect::fn_1_AF34(EventMessage *)
 {
-    {
-        AC4CUpdate value = &AC4COwner::fn_1_B054;
-        this->updateCallback = value;
-    }
-}
+    setUpdate(&SceneEffect::fn_1_B054);
 }
 
-extern "C" {
-const MotionVector lbl_1_rodata_4A4 = {{0.0f, 0.0f, -2900.0f}};
+extern "C" const EffectVector lbl_1_rodata_4A4 = {{0.0f, 0.0f, -2900.0f}};
 
-void AC4COwner::fn_1_AF78(EventMessage *)
+// Adjusts model motion, plays the associated sound, and selects the particle update callback.
+void SceneEffect::fn_1_AF78(EventMessage *)
 {
-    MotionVector position;
-    AC4CUpdate movement;
-    HU3D_MODELID motionModelId;
-    s16 *modelIdAddress = (s16 *)this;
-    s16 *modelIdSlot;
-    s16 modelId;
+    EffectVector position;
 
-    if (modelIdAddress != 0) {
-        modelIdAddress += 8;
-    }
-    modelIdSlot = modelIdAddress;
-    motionModelId = (s16)(*modelIdSlot);
-    modelId = motionModelId;
-    fn_8002D730(modelId, 0.0f,
-                          118.0f);
+    fn_8002D730(*this, 0.0f, 118.0f);
     position = lbl_1_rodata_4A4;
     soundPlayAt(1, 0x8A8, &position.value);
-    movement = &AC4COwner::fn_1_B140;
-    this->updateCallback = movement;
-}
+    setUpdate(&SceneEffect::fn_1_B140);
 }
 
-extern "C" {
-/* Position and offset vectors separated by an unknown interval. */
-typedef struct Position {
-    HuVecF position;
-    unsigned char unk_0C[12]; /* No code names this field. */
-    HuVecF offset;
-} Position;
-
-extern s32 lbl_1_data_F18;
-
-extern float lbl_1_bss_1BC;
-
-extern unsigned char lbl_1_bss_218;
-
-extern unsigned char lbl_1_bss_219;
-
-extern s8 lbl_1_data_2758;
-
-s32 fn_1_367CC(s32 *player);
-
-void AC4COwner::fn_1_B050()
+// Empty scene effect update callback used as an idle state.
+void SceneEffect::fn_1_B050()
 {
 }
-}
 
-void AC4COwner::fn_1_B054()
+// Advances elapsed time, changes model attributes after two seconds, and returns to idle.
+void SceneEffect::fn_1_B054()
 {
-    s16 *modelIdAddress;
-    s16 *modelIdSlot;
-    s16 modelId;
-    s16 motionModelId;
-
-    this->time += 0.016666666666666666;
+    this->time += (1.0 / 60.0);
     if (this->time < 2.0f) {
         return;
     }
 
     resetAttribute(((1 << 30) | (1 << 1)));
-    modelIdAddress = (s16 *)this;
-    if (modelIdAddress != 0) {
-        modelIdAddress += 8;
-    }
-    modelIdSlot = modelIdAddress;
-    modelId = (s16)(*modelIdSlot);
-    motionModelId = modelId;
-    fn_8002D730(motionModelId, 0.0f,
-                          59.0f);
-    {
-        AC4CUpdate callback;
-        callback = &AC4COwner::fn_1_B050;
-        this->updateCallback = callback;
-    }
+    fn_8002D730(*this, 0.0f, 59.0f);
+
+    setUpdate(&SceneEffect::fn_1_B050);
 }
 extern "C" {
-extern void __msl_assertion_failed(const char *expression, const char *file, int line);
 
 const s32 lbl_1_rodata_4C8[3] = {40, 53, 58};
 
-const MotionVector lbl_1_rodata_4D4 = {{0.0f, 0.0f, -2900.0f}};
+// This motion vector has the same components as lbl_1_rodata_4A4 above.
+const EffectVector lbl_1_rodata_4D4 = {{0.0f, 0.0f, -2900.0f}};
 }
 
-void AC4COwner::fn_1_B140()
+// Advances the state counter, spawns particle effects at thresholds, and stops after three states.
+void SceneEffect::fn_1_B140()
 {
-    MotionVector movement;
+    EffectVector movement;
     Resources *resourceRoot;
-    MotionVector position;
-    AC4CUpdate callback;
+    EffectVector position;
 
     this->state += 1;
     if (this->state >= lbl_1_rodata_4C8[this->nextState]) {
@@ -230,19 +165,19 @@ void AC4COwner::fn_1_B140()
 
         this->nextState += 1;
         if (this->nextState >= 3) {
-            callback = &AC4COwner::fn_1_B050;
-            this->updateCallback = callback;
+            setUpdate(&SceneEffect::fn_1_B050);
         }
     }
 }
-HangingCage::HangingCage(s32 type, const WorldPosition *position)
+// Creates the cage model and rising-particle child, then chooses an allowed starting angle.
+HangingCage::HangingCage(s32 type, const EffectVector *position)
     : GameObject(0), position(*position), motion(new OwnedModel(type)), secondModel(0), child(0),
       angle(0.0f), rotation(0.0f), frame(0), fade(0.0f)
 {
     f32 angle;
 
     motion->setLayer(4);
-    motion->setPosition((Vec *)position);
+    motion->setPosition(const_cast<Vec *>(&position->value));
     motion->setAttribute(((1 << 30) | (1 << 1)));
     Resources &resources = Resources::getChecked();
     child.reset(new RisingParticles(resources.animation(0), 0x1E, 5, *position));
@@ -261,42 +196,13 @@ HangingCage::HangingCage(s32 type, const WorldPosition *position)
     }
 }
 
-extern "C" unsigned char lbl_1_bss_218, lbl_1_bss_219;
-
-inline
-void OwnedModel::apply_defaults()
-{
-    if(lbl_1_bss_218) setAttribute((1 << 14));
-    if(lbl_1_bss_219) {
-        setAttribute(((1 << 30) | (1 << 6)));
-        setAttribute(((1 << 30) | (1 << 0)));
-    }
-}
-
-/* The standalone variant-to-mask helper is retained at fn_1_336F0.
- * Its inline return is visible in the character construction path. */
-static inline int model_variant_mask(int variant)
-{
-    int mask=0;
-    switch(variant) {
-    case 0: mask=(1 << 0); break;
-    case 1: mask=(1 << 1); break;
-    case 2: mask=(1 << 2); break;
-    case 3: mask=(1 << 3); break;
-    }
-    return mask;
-}
-
-static inline float SinRadians(float radians)
-{
-    return (float)sin(radians);
-}
-
+// Performs no additional work when the hanging cage is destroyed.
 HangingCage::~HangingCage() {}
 
+// Updates chain rotations/fade and moves the rising-particle child from the combined transforms.
 void HangingCage::update()
 {
-    WorldPosition origin;
+    EffectVector origin;
     Mtx firstMatrix;
     Mtx secondMatrix;
     Mtx translation;
@@ -304,7 +210,7 @@ void HangingCage::update()
     HSF_OBJECT *secondChain;
 
     ++this->frame;
-    this->fade = (float)(1.0 - (0.016666666666666666 * (0.027f * (float)this->frame)));
+    this->fade = (float)(1.0 - ((1.0 / 60.0) * (0.027f * (float)this->frame)));
     if (this->fade < 0.0f) {
         this->fade = 0.0f;
     }
@@ -313,7 +219,7 @@ void HangingCage::update()
     if (this->angle > 360.0f) {
         this->angle -= 360.0f;
     }
-    firstChain->mesh.base.rot.z = this->fade * (6.0f * SinRadians(MTXDegToRad(this->angle)));
+    firstChain->mesh.base.rot.z = this->fade * (6.0f * sinf(MTXDegToRad(this->angle)));
     secondChain = motion->getObject("ori_top01");
     if ((this->angle >= 45.0f && this->angle < 135.0f) ||
         (this->angle > 225.0f && this->angle <= 315.0f)) {
@@ -321,11 +227,11 @@ void HangingCage::update()
         if (this->rotation > 360.0f) {
             this->rotation -= 360.0f;
         }
-        secondChain->mesh.base.rot.z = this->fade * (3.0f * SinRadians(MTXDegToRad(this->rotation)));
+        secondChain->mesh.base.rot.z = this->fade * (3.0f * sinf(MTXDegToRad(this->rotation)));
     }
-    origin.value.value.x = 0.0f;
-    origin.value.value.y = 0.0f;
-    origin.value.value.z = 0.0f;
+    origin.value.x = 0.0f;
+    origin.value.y = 0.0f;
+    origin.value.z = 0.0f;
     PSMTXRotRad(firstMatrix, 'z', MTXDegToRad(firstChain->mesh.base.rot.z));
     PSMTXTrans(translation, 0.0f, -1794.0f, 0.0f);
     PSMTXConcat(firstMatrix, translation, firstMatrix);
@@ -333,12 +239,7 @@ void HangingCage::update()
     PSMTXTrans(translation, 0.0f, -130.0f, 0.0f);
     PSMTXConcat(secondMatrix, translation, secondMatrix);
     PSMTXConcat(firstMatrix, secondMatrix, firstMatrix);
-    PSMTXMultVec(firstMatrix, &origin.value.value, &origin.value.value);
-    PSVECAdd(&origin.value.value, &this->position.value.value, &origin.value.value);
+    PSMTXMultVec(firstMatrix, &origin.value, &origin.value);
+    PSVECAdd(&origin.value, &this->position.value, &origin.value);
     child->setPosition(origin);
-}
-
-template<class Receiver>
-void fn_1_BBD8(EventHandlerManager *owner, const AC4CPayload &payload, int key) {
-    owner->addHandler(new MemberCallbackRecord<Receiver>(payload), key);
 }

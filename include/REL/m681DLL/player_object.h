@@ -7,8 +7,8 @@
 extern "C" {
 #include "game/charman.h"
 }
-#include "REL/m681DLL/character_motion.h"
-#include "REL/m681DLL/transition.h"
+#include "REL/framework/chara_motion.h"
+#include "REL/framework/frame_interpolator.h"
 #include "REL/framework/model.h"
 #include "REL/m681DLL/model_resource.h"
 #include "REL/framework/game_object.h"
@@ -17,33 +17,33 @@ extern "C" {
 
 struct ModePair { s32 values[2]; };
 struct ModeBase;
-struct Accessory533C;
+
 struct PlayerObject : GameObject, PlayerConfigSelection, EventListener {
     PlayerObject(s32 player, const Vec *initialState);
     virtual ~PlayerObject();
     virtual void update();
     virtual void receive(const EventPacket *event);
     typedef void (PlayerObject::*Callback)();
-    std::auto_ptr<ModeBase> resourceNode;
-    std::auto_ptr<ModelResource> resource;
+    std::auto_ptr<ModeBase> input;
+    std::auto_ptr<ModelResource> pipeModel;
     ModePair modes;
     Vec state;
     Vec rotation;
-    Transition firstAngle;
-    Transition secondAngle;
-    f32 fullAngle;
+    FrameInterpolator<float> firstMotionTime;
+    FrameInterpolator<float> secondMotionTime;
+    f32 maximumMotionTime;
     std::auto_ptr<OwnedModel> firstItem;
     std::auto_ptr<OwnedModel> secondItem;
     u8 unknown8C[4]; /* No code names this field. */
     u32 elapsed;
     u32 fallFrames;
-    f32 progress;
-    f32 velocity;
+    f32 inputFrames;
+    f32 inputDelay;
     // Seconds an eliminated player waits below the stage; each later elimination waits longer.
     f32 landingDelay;
     // Frames spent below the stage, counted against landingDelay.
     f32 landingFrames;
-    f32 animationScale;
+    f32 animationTime;
     f32 unkAC; /* The game's code never reads this field. */
     f32 unkB0; /* The game's code never reads this field. */
     u8 unknownB4[4]; /* No code names this field. */
@@ -71,4 +71,5 @@ struct PlayerObject : GameObject, PlayerConfigSelection, EventListener {
     void showChoices();
 };
 
+void setCharacterMotionOverlay(MotionOwner *character, s16 modelId, unsigned int dataNum);
 #endif

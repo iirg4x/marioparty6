@@ -1,3 +1,4 @@
+#include "REL/framework/random.h"
 /* The kuribo: the manager that loads their model and motions, and the walkers it places on the model's objects. */
 #include <cmath>
 extern "C" {
@@ -30,14 +31,13 @@ static const int NUMBEROF_PMOTION = 3;
    waits below). Its three phase durations open this file's .bss (0xC8), ahead of the walkers'
    shadow circle and their list head; the head's destructor ends the file, after the static
    initialiser. */
-u32 RandomUnsigned();
-float RandomFloat();
 
 /* Removes the walkers when their manager shuts down. */
 
 extern "C" { void fn_1_653C(); }
 /* Creates the kuribo manager and the kuribo on its model's sixteen objects. */
-KuriboMotionOwner::KuriboMotionOwner() : model(DATANUM(0x6b0000, 9)), motion(DATANUM(0x6b0000, 13))
+KuriboMotionOwner::KuriboMotionOwner()
+    : model(DATANUM(0x6b0000, 9)), motion(DATANUM(0x6b0000, 13))
 {
     static char *objectNames[16] = {
         "kuri01", "kuri02", "kuri03", "kuri04", "kuri05", "kuri06", "kuri07", "kuri08",
@@ -74,6 +74,7 @@ KuriboMotionOwner::KuriboMotionOwner() : model(DATANUM(0x6b0000, 9)), motion(DAT
     }
 }
 
+/* Loads a motion, appends its ID and returns it. */
 HU3D_MOTIONID KuriboMotionOwner::addMotion(unsigned int dataNum)
 {
     HU3D_MOTIONID motionId = fn_80030458((model_id()), fn_80008DD0(dataNum, 0x10000000, 2));
@@ -81,6 +82,7 @@ HU3D_MOTIONID KuriboMotionOwner::addMotion(unsigned int dataNum)
     return motionId;
 }
 
+/* Deletes all Kuribo objects. */
 KuriboMotionOwner::~KuriboMotionOwner()
 {
     fn_1_653C();
@@ -88,6 +90,7 @@ KuriboMotionOwner::~KuriboMotionOwner()
 
 extern "C" { void fn_1_6630(void); }
 
+/* Updates the Kuribo object list. */
 void KuriboMotionOwner::update()
 {
     fn_1_6630();
@@ -103,6 +106,7 @@ void KuriboMotionOwner::fn_1_61D4(Vec *position, s32 objectIndex)
     Hu3DModelObjPosGet((s16)motion, objectNames[objectIndex], position);
 }
 
+/* Clears the requested flag. */
 void KuriboMotionOwner::flagEnabled(int request)
 {
     flags &= ~(1UL << request);
@@ -120,6 +124,7 @@ extern "C" { ListRoot<Kuribo> lbl_1_bss_26C; }
 
 extern "C" { void fn_1_7C38(HU3D_MODEL *model, Mtx *matrix); }
 
+/* Links a Kuribo model, sets its hook data and selects its initial callback. */
 Kuribo::Kuribo(const OwnedModel &member, s32 objectIndex) : model(member)
 {
     s16 currentModel;
@@ -146,11 +151,13 @@ Kuribo::Kuribo(const OwnedModel &member, s32 objectIndex) : model(member)
     this->callback = callbackData;
 }
 
+/* Kills the Kuribo hook model. */
 Kuribo::~Kuribo()
 {
     fn_800262D0(hookIndex);
 }
 
+/* Deletes every Kuribo object. */
 void fn_1_653C()
 {
     while (!lbl_1_bss_26C.empty())
@@ -162,11 +169,13 @@ void fn_1_6660(Kuribo *object);
 void fn_1_66AC(Kuribo *object);
 }
 
+/* Visits each Kuribo object for its frame update. */
 void fn_1_6630()
 {
     lbl_1_bss_26C.visit(fn_1_6660);
 }
 
+/* Runs the Kuribo callback, applies its transform and advances its update count. */
 void fn_1_6660(Kuribo *object)
 {
     (object->*object->callback)();
@@ -174,6 +183,7 @@ void fn_1_6660(Kuribo *object)
     object->updateCount++;
 }
 
+/* Places the Kuribo at its animated hook position and turns it toward the center. */
 void fn_1_66AC(Kuribo *object)
 {
     KuriboMotionOwner::getChecked().fn_1_61D4(&object->position, object->objectIndex);
@@ -187,6 +197,7 @@ void fn_1_66AC(Kuribo *object)
     object->model.setPosition(&object->position);
 }
 
+/* Changes the selected motion and its loop attributes when the motion index changes. */
 void Kuribo::fn_1_67D4(s32 motionId, u8 queued)
 {
     KuriboMotionOwner &manager = KuriboMotionOwner::getChecked();
@@ -199,6 +210,7 @@ void Kuribo::fn_1_67D4(s32 motionId, u8 queued)
     }
 }
 
+/* Chooses the next Kuribo callback from the current request and random motion state. */
 void Kuribo::fn_1_68D4()
 {
     Callback completionCallback;
@@ -235,12 +247,14 @@ void Kuribo::fn_1_68D4()
     }
 }
 
+/* Waits for the timer before selecting the next Kuribo state. */
 void Kuribo::fn_1_6D5C()
 {
     if ((timer -= 1) >= 0) return;
     fn_1_68D4();
 }
 
+/* Waits for both the timer and motion to finish before selecting the next state. */
 void Kuribo::fn_1_71F8()
 {
     if ((timer -= 1) >= 0) return;
@@ -248,12 +262,14 @@ void Kuribo::fn_1_71F8()
     fn_1_68D4();
 }
 
+/* Waits for the timer before selecting the next Kuribo state. */
 void Kuribo::fn_1_76B0()
 {
     if ((timer -= 1) >= 0) return;
     fn_1_68D4();
 }
 
+/* Starts Kuribo motion 2 without looping. */
 void Kuribo::fn_1_7B4C()
 {
     fn_1_67D4(2, 0);
@@ -264,6 +280,7 @@ void fn_1_7CB0(Kuribo *kuribo, f32 matrix[3][4]);
 void fn_1_7C80(void *first, f32 matrix[3][4]);
 }
 
+/* Loads the render state and draws the Kuribo stored in the model hook data. */
 void fn_1_7C38(HU3D_MODEL *model, Mtx *matrix)
 {
     fn_8002472C();
@@ -271,11 +288,13 @@ void fn_1_7C38(HU3D_MODEL *model, Mtx *matrix)
     fn_1_7C80(hookData, *matrix);
 }
 
+/* Draws the Kuribo supplied through the model hook pointer. */
 void fn_1_7C80(void *first, f32 matrix[3][4])
 {
     fn_1_7CB0((Kuribo *)first, matrix);
 }
 
+/* Draws a fading circular fan beneath the Kuribo. */
 void fn_1_7CB0(Kuribo *kuribo, f32 matrix[3][4])
 {
     s32 index;
@@ -285,20 +304,20 @@ void fn_1_7CB0(Kuribo *kuribo, f32 matrix[3][4])
 
     GXLoadPosMtxImm(matrix, GX_PNMTX0);
     GXSetNumTevStages(1);
-    GXSetChanCtrl((GXChannelID)4, (GXBool)0, (GXColorSrc)1, (GXColorSrc)1, GX_LIGHT_NULL, (GXDiffuseFn)0, (GXAttnFn)2);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXSetNumChans(1);
     GXSetNumTexGens(0);
-    GXSetTevOrder((GXTevStageID)0, (GXTexCoordID)0xFF, (GXTexMapID)0xFF, (GXChannelID)4);
-    GXSetTevOp((GXTevStageID)0, (GXTevMode)4);
-    GXSetCullMode((GXCullMode)0);
-    GXSetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)0);
-    GXSetZMode((GXBool)1, (GXCompare)3, (GXBool)0);
-    GXSetVtxAttrFmt((GXVtxFmt)0, (GXAttr)9, (GXCompCnt)1, (GXCompType)4, 0);
-    GXSetVtxAttrFmt((GXVtxFmt)0, (GXAttr)11, (GXCompCnt)1, (GXCompType)5, 0);
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+    GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+    GXSetCullMode(GX_CULL_NONE);
+    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
+    GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
     GXClearVtxDesc();
-    GXSetVtxDesc((GXAttr)9, (GXAttrType)1);
-    GXSetVtxDesc((GXAttr)11, (GXAttrType)1);
-    GXBegin((GXPrimitive)0xA0, (GXVtxFmt)0, 0x22);
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+    GXBegin(GX_TRIANGLEFAN, GX_VTXFMT0, 0x22);
 
     baseZ = kuribo->position.z;
     baseY = 1.0f + kuribo->position.y;

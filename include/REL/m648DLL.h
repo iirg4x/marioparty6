@@ -1,7 +1,11 @@
 #ifndef M648DLL_H
 #define M648DLL_H
 
-void fn_1_8F6C(void *owner);
+#include "dolphin/mtx.h"
+
+typedef struct Hu3DModel_s HU3D_MODEL;
+typedef struct Hu3DParticle_s HU3D_PARTICLE;
+
 extern "C" void fn_1_B934(void);
 void fn_1_97C0(HU3D_MODEL *model, HU3D_PARTICLE *owner, Mtx matrix);
 void fn_1_B7C4();

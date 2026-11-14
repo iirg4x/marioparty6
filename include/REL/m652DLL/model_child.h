@@ -22,13 +22,15 @@ public:
     int durationFrames;
     void fn_1_2660();
     void fn_1_2664();
-    void fn_1_248C();
     void fn_1_2C78();
     void fn_1_2CF8();
     void fn_1_2DB8();
     typedef void (PlayerItem::*Callback)();
+    /* Stores the item countdown in frames. */
     void setDurationFrames(int frames) { durationFrames = frames; }
+    /* Selects the next item callback. */
     void set_callback(Callback next) { callback = next; }
+    /* Decrements a positive item countdown and reports its expiration. */
     bool update_countdown()
     {
         bool expired = false;
@@ -36,6 +38,5 @@ public:
         return expired;
     }
 };
-
 
 #endif

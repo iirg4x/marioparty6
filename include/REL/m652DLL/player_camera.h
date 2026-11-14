@@ -17,8 +17,8 @@ public:
     virtual void receive(const EventPacket *event);
     void fn_1_4118(); void fn_1_3E2C(); void fn_1_4458(); void fn_1_414C();
     Action action;
-    int count;
-    unsigned short modelId;
+    int playerIndex;
+    unsigned short cameraMask;
     CameraPose position;
     int frame;
     CameraSetup state;

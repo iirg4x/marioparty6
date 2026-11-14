@@ -1,3 +1,5 @@
+#include "REL/m681DLL/game_controller.h"
+#include "REL/framework/world_units.h"
 #include "REL/framework/debug.h"
 #include "REL/framework/frame_time.h"
 extern "C" {
@@ -6,11 +8,7 @@ extern "C" {
 #include "game/hu3d.h"
 }
 #include "REL/m681DLL/vector_state.h"
-
-void copyDebugCameraFrame(CameraFrame *, const CameraFrame *);
-void set_camera_frame_from_pose(CameraFrame *, const CameraPose *);
-void interpolate_camera_poses(CameraFrame *, const CameraPose *, const CameraPose *, float);
-void cameraApplyToHud(CameraFrame *, s32);
+#include "REL/m681DLL/game_constants.h"
 
 extern "C" const CameraPose lbl_1_rodata_350[6] = {
     {{-376.891f, 440.0f, 357.261f}, {-0.12025834f, 0.0f, -0.0f, 0.99274266f}},
@@ -21,13 +19,14 @@ extern "C" const CameraPose lbl_1_rodata_350[6] = {
     {{0.0f, 725.449f, 1221.631f}, {-0.12026043f, 0.0f, -0.0f, 0.9927424f}}
 };
 
-VectorStateComposite::VectorStateComposite() : GameObject(3), EventListener(), debugCamera()
+// Initializes the camera and copies its starting pose to the debug camera.
+GameCamera::GameCamera() : GameObject(3), EventListener(), debugCamera()
 {
     Callback initialCallback;
 
     frameCount = 0;
     registerChannel(0);
-    initialCallback = &VectorStateComposite::fn_1_7C28;
+    initialCallback = &GameCamera::fn_1_7C28;
     callback = initialCallback;
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, 45.0f, 1.0f, 8000.0f, 1.2f);
@@ -37,44 +36,43 @@ VectorStateComposite::VectorStateComposite() : GameObject(3), EventListener(), d
 }
 
 #include "REL/m681DLL/global_state.h"
-extern "C" {
-#include "REL/m681DLL.h"
-#include "REL/framework/world_units.h"
-}
 
-VectorStateComposite::~VectorStateComposite()
+// Releases the camera controller bases.
+GameCamera::~GameCamera()
 {
 }
 
-void VectorStateComposite::update()
+// Runs the camera callback and applies the resulting frame.
+void GameCamera::update()
 {
     (this->*callback)();
     cameraApplyToHud(&frame, 1);
     debugResetHook(&debugCamera.frame, 0, 1);
 }
 
-void VectorStateComposite::fn_1_7C28()
+// Leaves the camera pose unchanged.
+void GameCamera::fn_1_7C28()
 {
 }
 
+// Performs no operation.
 void fn_1_7C2C(void)
 {
 }
 
+// Performs no operation.
 void fn_1_7C30(void)
 {
 }
 
-extern "C" {
-
-}
-
-static inline double minimum7C34(double first, double second)
+// Returns the smaller value.
+static inline double minimumValue(double first, double second)
 {
     return first < second ? first : second;
 }
 
-void VectorStateComposite::fn_1_7C34()
+// Moves the camera toward the selected player over one second.
+void GameCamera::fn_1_7C34()
 {
     float progress;
     s32 poseIndex;
@@ -84,9 +82,9 @@ void VectorStateComposite::fn_1_7C34()
 
     manager = &MinigameSingleton<M681GameState>::getChecked();
 
-    if ((u8)manager->poseActive() != 0) {
-        poseIndex = manager->negativeState;
-        progress = minimum7C34(0.016666666666666666 * (double)frameCount, 1.0);
+    if ((u8)manager->hasWinner() != 0) {
+        poseIndex = manager->winnerPlayer;
+        progress = minimumValue(0.016666666666666666 * (double)frameCount, 1.0);
         firstPose = &lbl_1_rodata_350[5];
         secondPose = &lbl_1_rodata_350[poseIndex];
         interpolate_camera_poses(&frame, firstPose, secondPose, (float)progress);
@@ -94,34 +92,20 @@ void VectorStateComposite::fn_1_7C34()
     }
 }
 
+// Performs no operation.
 void fn_1_7DBC(void) {}
 
-void VectorStateComposite::receive(const EventPacket *settings)
+// Selects camera interpolation on the winner-camera event.
+void GameCamera::receive(const EventPacket *settings)
 {
     switch (settings->type) {
     case 11: {
-        VectorStateComposite::Callback callback =
-            &VectorStateComposite::fn_1_7C34;
+        GameCamera::Callback callback =
+            &GameCamera::fn_1_7C34;
         this->callback = callback;
         break;
     }
     default:
         break;
     }
-}
-extern "C" {
-extern s32 lbl_1_bss_B0;
-extern f32 lbl_1_bss_B4;
-}
-
-extern "C" {
-
-}
-
-extern "C" {
-}
-
-extern "C" {
-s32 lbl_1_bss_B0 = minutesToFrames(60L);
-f32 lbl_1_bss_B4 = 0.016666666666666666 * (0.016666666666666666 * cmToWorld(980.665f));
 }

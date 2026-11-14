@@ -1,12 +1,29 @@
 // Adapts the minigame timer API to the owning framework object's lifecycle and controls.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 14 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static const char rcsid[] = "$Id: timer.cpp,v 1.14.2.2 2004/05/17 02:46:28 shohyama Exp $";
 
+#include <stddef.h>
 #include "dolphin/math.h"
 #include "REL/framework/timer.h"
 
 extern "C" {
 #include "game/flag.h"
-#include "REL/framework/assertion.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/hu_archive.h"
 }
 
@@ -16,9 +33,9 @@ TimerOwner::TimerOwner(int displayType) {
     case 0: m_tm = MgTimerCreate(MGTIMER_TYPE_NORMAL); break;
     case 1: m_tm = MgTimerCreate(MGTIMER_TYPE_RECORD); break;
     case 2: m_tm = MgTimerCreate(MGTIMER_TYPE_SCORE); break;
-    default: __msl_assertion_failed("false", "timer.cpp", 36); break;
+    default: assert(false); break;
     }
-    m_tm ? (void)0 : __msl_assertion_failed("m_tm != NULL", "timer.cpp", 38);
+    assert(m_tm != NULL);
 }
 
 // Minigame object destruction releases the timer process and its display resources.
@@ -43,13 +60,23 @@ void TimerOwner::getPosition(float *screenX, float *screenY) {
     MgTimerPosGet(m_tm, screenX, screenY);
 }
 
+/* Retail fixes the next assert's line; the earlier lines are unknown: 9 lines are left blank. */
+
+
+
+
+
+
+
+
+
 // Minigame control starts the timer and selects its end behavior.
 void TimerOwner::setMode(int endBehavior) {
     switch (endBehavior) {
     case 0: MgTimerModeOnSet(m_tm, 0); break;
     case 1: MgTimerModeOnSet(m_tm, 1); break;
     case 2: MgTimerModeOnSet(m_tm, 2); break;
-    default: __msl_assertion_failed("false", "timer.cpp", 79); break;
+    default: assert(false); break;
     }
 }
 

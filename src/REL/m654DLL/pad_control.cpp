@@ -6,44 +6,52 @@ extern "C" {
 #include "game/mg/actman.h"
 }
 #include "humath.h"
-#include "REL/framework/range.h"
 
+// Initializes camera-relative steering with no stick movement or buttons.
 PadControl::PadControl(unsigned short type, float value)
-    : cameraBit((unsigned int)type), range(-3.1415927f, 3.1415927f, value),
-      angle_primary(0.0f), angle_secondary(0.0f), flags_primary(0), flags_secondary(0)
+    : cameraBit((unsigned int)type), range(-(float)M_PI, (float)M_PI, value),
+      stickX(0.0f), stickY(0.0f), pressedButtons(0), heldButtons(0)
 {}
 
+// Releases the pad control object.
 PadControl::~PadControl() {}
 
-void fn_1_C630(PadControl *object, float factor)
+// Resets the steering angle, stick movement and button flags.
+void PadControl::fn_1_C630(float factor)
 {
-    object->range.set(factor);
-    object->angle_primary = 0.0f;
-    object->angle_secondary = 0.0f;
-    object->flags_primary = 0;
-    object->flags_secondary = 0;
+    range.set(factor);
+    stickX = 0.0f;
+    stickY = 0.0f;
+    pressedButtons = 0;
+    heldButtons = 0;
 }
 
+// Adds held button flags.
 void PadControl::fn_1_C698(u32 flags) {
-    flags_secondary |= flags;
+    heldButtons |= flags;
 }
 
+// Adds newly pressed button flags.
 void PadControl::fn_1_C6A8(u32 flags) {
-    flags_primary |= flags;
+    pressedButtons |= flags;
 }
 
+// Presses button 0x200.
 void PadControl::fn_1_C6B8() {
-    flags_primary |= 0x200;
+    pressedButtons |= 0x200;
 }
 
+// Presses button 0x100.
 void PadControl::fn_1_C6C8() {
-    flags_primary |= 0x100;
+    pressedButtons |= 0x100;
 }
 
+// Holds button 0x100.
 void PadControl::fn_1_C6D8() {
-    flags_secondary |= 0x100;
+    heldButtons |= 0x100;
 }
 
+// Transforms movement into camera space and steers the simulated stick toward it.
 void PadControl::fn_1_C6E8(const Vec *movement, f32 amount)
 {
     Vec cameraMovement = {0.0f, 0.0f, 0.0f};
@@ -81,10 +89,11 @@ void PadControl::fn_1_C6E8(const Vec *movement, f32 amount)
         adjustedAmount = amount;
     }
     range.step(angle, adjustedAmount);
-    angle_primary = radius * sin(range.get());
-    angle_secondary = -radius * cos(range.get());
+    stickX = radius * sin(range.get());
+    stickY = -radius * cos(range.get());
 }
 
+// Clamps and quantizes the stick, submits actor input and damps the remaining movement.
 void PadControl::fn_1_C918(MGPLAYER *player)
 {
     float normalizedHorizontal;
@@ -94,7 +103,7 @@ void PadControl::fn_1_C918(MGPLAYER *player)
     int padX;
     int padY;
 
-    horizontal = angle_primary / 10.0f;
+    horizontal = stickX / 10.0f;
     if (horizontal < -1.0f) {
         normalizedHorizontal = -1.0f;
     } else if (horizontal > 1.0f) {
@@ -104,7 +113,7 @@ void PadControl::fn_1_C918(MGPLAYER *player)
     }
     padX = (int)(56.0f * normalizedHorizontal);
 
-    vertical = angle_secondary / 10.0f;
+    vertical = stickY / 10.0f;
     if (vertical < -1.0f) {
         normalizedVertical = -1.0f;
     } else if (vertical > 1.0f) {
@@ -115,13 +124,14 @@ void PadControl::fn_1_C918(MGPLAYER *player)
     padY = (int)(56.0f * normalizedVertical);
 
     fn_80080520(player, padX, padY,
-                   flags_primary, flags_secondary | flags_primary);
+                   pressedButtons, heldButtons | pressedButtons);
     fn_1_CAB4();
 }
 
+// Damps stick movement and clears the button flags.
 void PadControl::fn_1_CAB4() {
-    angle_primary *= 0.9;
-    angle_secondary *= 0.9;
-    flags_primary = 0;
-    flags_secondary = 0;
+    stickX *= 0.9;
+    stickY *= 0.9;
+    pressedButtons = 0;
+    heldButtons = 0;
 }

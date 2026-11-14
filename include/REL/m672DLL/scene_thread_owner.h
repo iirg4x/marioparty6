@@ -4,17 +4,17 @@
 #include "REL/framework/thread.h"
 #include "REL/framework/timer.h"
 #include <memory>
-struct SceneChild672;
+struct SceneChild;
 
-struct SceneOwner672 : MinigameCore, ThreadEntry {
-    SceneOwner672();
+struct SceneOwner : MinigameCore, ThreadEntry {
+    SceneOwner();
     virtual void run(void *);
-    virtual ~SceneOwner672();
+    virtual ~SceneOwner();
     virtual void setupObjects(OMOBJMAN *);
     virtual void updateGame();
     virtual void finishGame();
-    std::auto_ptr<TimerOwner> sequence;
-    std::auto_ptr<SceneChild672> child;
+    std::auto_ptr<TimerOwner> hudTimer;
+    std::auto_ptr<SceneChild> child;
 };
 
 #endif

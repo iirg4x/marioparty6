@@ -4,6 +4,8 @@
 
 #include <dolphin/mtx.h>
 
+#include "REL/framework/vector_math.h"
+
 // A sphere in the caller's coordinate system; the camera fit leaves out a nonpositive radius.
 struct Sphere {
     Point3d center; // Center position in the caller's coordinate units.

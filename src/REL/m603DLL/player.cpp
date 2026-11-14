@@ -26,7 +26,7 @@ extern "C" {
 #include "game/mg/timer.h"
 }
 #include "REL/framework/linknode.h"
-#include "REL/m603DLL/random.h"
+#include "REL/framework/random.h"
 #include "REL/m603DLL/sprite_fade.h"
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/model.h"
@@ -42,49 +42,49 @@ extern "C" {
 
 // Every player's model owner; and the sole highest scorer once the scores are ranked (zero while
 // the top scores are tied or before the ranking).
-extern "C" ListRoot<PlayerModelOwner> lbl_1_bss_AC;
 extern "C" {
-extern PlayerModelOwner *lbl_1_bss_9C;
+PlayerModelOwner *lbl_1_bss_9C;
+ListRoot<PlayerModelOwner> lbl_1_bss_AC;
 }
-void fn_1_6ADC(PlayerModelOwner *);
-extern s32 fn_1_C4E8(s32 playerIndex, u8 markEntries, s32 currentValue);
 
-struct CharacterIndexOrder {
-    int values[4];
-};
-
-typedef PlayerModelOwner::Callback MotionCallback5A6C;
-extern "C" {
-extern s32 lbl_1_data_F18;
-extern float lbl_1_bss_1BC;
-extern s8 lbl_1_bss_218;
-extern s8 lbl_1_bss_219;
-extern s8 lbl_1_data_2758;
-s32 fn_1_367CC(s32 *player);
-}
-void fn_1_5994(Vec *vector) {
+/* Set the supplied position to (0, 0, -250). */
+void fn_1_5994(Vec *vector)
+{
     vector->x = 0.0f;
     vector->y = 0.0f;
     vector->z = -250.0f;
 }
-void fn_1_59C8() {
+/* Delete all player model owners. */
+void fn_1_59C8()
+{
     while (!lbl_1_bss_AC.empty()) {
         delete lbl_1_bss_AC.back();
     }
 }
+/* Create the player models and load their four character motions. */
 PlayerModelOwner::PlayerModelOwner(s32 playerIndex, bool alternate)
-    : active(1), playerIndex(playerIndex), characterId(lbl_80265728[playerIndex].charNo),
+    : active(1),
+      playerIndex(playerIndex),
+      characterId(lbl_80265728[playerIndex].charNo),
       controllerId(lbl_80265728[playerIndex].type != 0 ? -1 : lbl_80265728[playerIndex].padNo),
-      difficulty(lbl_80265728[playerIndex].comDif), callbackCount(1),
+      difficulty(lbl_80265728[playerIndex].comDif),
+      callbackCount(1),
       firstModel(lbl_80265728[playerIndex].charNo, 0),
       secondModel(alternate ? DATANUM(0x3e0000, 8) : DATANUM(0x3e0000, 9)),
-      flag4C(0), selected(0), ready(0), recordedPlayerValue(0), timer54(0x3C),
-      motionChangeTimer(0), randomMotion(0.0f), alternate(alternate)
+      flag(0),
+      selected(0),
+      ready(0),
+      recordedPlayerValue(0),
+      timer54(0x3C),
+      motionChangeTimer(0),
+      randomMotion(0.0f),
+      alternate(alternate)
 {
     s16 modelId;
-    Vec rotation, modelPosition;
-    MotionCallback5A6C callback;
-    s32 i;
+    Vec rotation;
+    Vec modelPosition;
+    PlayerModelOwner::Callback callback;
+
     insert4(&lbl_1_bss_AC);
     this->currentMotion = - 1;
     this->m_mot_id.clear();
@@ -103,9 +103,9 @@ PlayerModelOwner::PlayerModelOwner(s32 playerIndex, bool alternate)
     fn_800269E8(modelId, ((1 << 30) | (1 << 7)));
     fn_800269E8(modelId, ((1 << 30) | (1 << 4)));
     fn_800269E8(modelId, (1 << 14));
-    this->position.x = 0.0f;
-    this->position.y = 0.0f;
-    this->position.z = -250.0f;
+    // This initial position is overwritten below after the angle is cleared.
+    fn_1_5994(&this->position);
+
     this->angle = 0.0f;
     this->position.x = 0.0f;
     this->position.y = 0.0f;
@@ -144,13 +144,13 @@ PlayerModelOwner::PlayerModelOwner(s32 playerIndex, bool alternate)
     this->callback = callback;
 }
 
+/* Finish the player model lifetime. */
 PlayerModelOwner::~PlayerModelOwner()
 {
 }
 
-extern "C" {
-
 /* Appends the created motion and returns its handle to the caller. */
+/* Load a character motion and append its identifier to the motion list. */
 HU3D_MOTIONID PlayerModelOwner::fn_1_61DC(unsigned int dataNum)
 {
     HU3D_MOTIONID motionId = fn_8005B0B8(this->characterId, dataNum);
@@ -158,9 +158,8 @@ HU3D_MOTIONID PlayerModelOwner::fn_1_61DC(unsigned int dataNum)
     return motionId;
 }
 
-}
-
 /* Updates all callbacks, then moves the first character to the list's opposite end. */
+/* Visit the player list and rotate its first entry to the back. */
 void fn_1_6258()
 {
     lbl_1_bss_AC.visit(fn_1_6ADC);
@@ -171,6 +170,7 @@ void fn_1_6258()
     }
 }
 
+/* Rank the scores, mark tied winners and report an all-zero tie. */
 bool fn_1_62DC()
 {
     PlayerModelOwner *entries[4];
@@ -187,7 +187,8 @@ bool fn_1_62DC()
     int markIndex;
 
     lbl_1_bss_9C = 0;
-    CharacterIndexOrder order = { { 0, 1, 2, 3 } };
+    int order[4] = { 0, 1, 2, 3 };
+    /* This initialized result is never read. */
     int result = 0;
     index = 0;
     for (; node != end; node = node->next()) {
@@ -203,10 +204,10 @@ bool fn_1_62DC()
                 secondValue = scores[sortIndex + 1];
                 scores[sortIndex] = secondValue;
                 scores[sortIndex + 1] = firstValue;
-                firstValue = order.values[sortIndex];
-                secondValue = order.values[sortIndex + 1];
-                order.values[sortIndex] = secondValue;
-                order.values[sortIndex + 1] = firstValue;
+                firstValue = order[sortIndex];
+                secondValue = order[sortIndex + 1];
+                order[sortIndex] = secondValue;
+                order[sortIndex + 1] = firstValue;
             }
         }
     }
@@ -220,30 +221,17 @@ bool fn_1_62DC()
         return true;
     }
     if (tiedCount == 1) {
-        lbl_1_bss_9C = entries[order.values[0]];
+        lbl_1_bss_9C = entries[order[0]];
     }
     for (markIndex = 0; markIndex < tiedCount; markIndex++) {
-        entries[order.values[markIndex]]->selected = 1;
-        MinigameCore::addWinner(entries[order.values[markIndex]]->playerIndex);
+        entries[order[markIndex]]->selected = 1;
+        MinigameCore::addWinner(entries[order[markIndex]]->playerIndex);
     }
     return false;
 }
 
-struct CallbackSingleton {
-    CallbackSingleton();
-    ~CallbackSingleton();
-};
-
-struct CallbackBase : CallbackSingleton {
-    CallbackBase();
-    virtual ~CallbackBase();
-    virtual void begin();
-    virtual int step() = 0;
-    virtual void fn_1_17104();
-    virtual int fn_1_17188();
-};
-
-int CallbackBase::fn_1_17188()
+/* Returns 1; nothing in this module calls it. The result type is not shown. */
+int fn_1_658C()
 {
     return 1;
 }
@@ -260,9 +248,10 @@ bool fn_1_6594()
     return count == 4;
 }
 
-/* Collects the character identifiers in a local table during the list walk. */
+/* Collect the character identifiers into a local table whose result is discarded. */
 void fn_1_6614()
 {
+    /* The character identifiers stored below are never read. */
     short characters[4];
     PlayerModelOwner *node = lbl_1_bss_AC.front();
     Node *end = lbl_1_bss_AC.end_node();
@@ -272,8 +261,7 @@ void fn_1_6614()
     }
 }
 
-/* Clears the active flag of every player model owner in the list. */
-
+/* Clear the active flag of every player model owner in the list. */
 void fn_1_6690()
 {
     PlayerModelOwner *node = lbl_1_bss_AC.front();
@@ -283,6 +271,7 @@ void fn_1_6690()
     }
 }
 
+/* Create one score display for each player. */
 void fn_1_66F4(void)
 {
     Node *sentinel;
@@ -300,6 +289,7 @@ void fn_1_66F4(void)
     }
 }
 
+/* Clear both player models and select their lineup callback. */
 void fn_1_67A0(void)
 {
     Node *sentinel;
@@ -326,6 +316,7 @@ void fn_1_67A0(void)
     }
 }
 
+/* Select the winner lineup callback for every player. */
 void fn_1_6884(void)
 {
     PlayerModelOwner *node = lbl_1_bss_AC.front();
@@ -336,7 +327,8 @@ void fn_1_6884(void)
     }
 }
 
-void fn_1_6918(s32 modelId, Vec *position, Vec *direction)
+/* Compute the selected player camera vectors from the player angle. */
+void fn_1_6918(s32 playerIndex, Vec *position, Vec *direction)
 {
     Node *sentinel;
     PlayerModelOwner *first = static_cast<PlayerModelOwner *>(lbl_1_bss_AC.link0);
@@ -344,7 +336,7 @@ void fn_1_6918(s32 modelId, Vec *position, Vec *direction)
     PlayerModelOwner *node = middle;
     sentinel = &lbl_1_bss_AC;
     for (; node != sentinel; ) {
-        if (node->playerIndex == modelId) {
+        if (node->playerIndex == playerIndex) {
             direction->x = 0.0f;
             direction->y = 120.0f;
             direction->z = 0.0f;
@@ -358,6 +350,7 @@ void fn_1_6918(s32 modelId, Vec *position, Vec *direction)
     }
 }
 
+/* Write the fixed distant camera vectors for the selected player. */
 void fn_1_6A14(s32 modelId, Vec *position, Vec *direction)
 {
     Node *sentinel;
@@ -383,14 +376,14 @@ void fn_1_6A14(s32 modelId, Vec *position, Vec *direction)
     }
 }
 
+/* Leave this player unchanged during the list visit. */
 void fn_1_6ADC(PlayerModelOwner *owner)
 {
     (owner->*owner->callback)();
     owner->callbackCount++;
 }
 
-extern "C" {
-
+/* Change the character motion when the requested motion differs. */
 void PlayerModelOwner::fn_1_6B20(s32 motionId, u8 queued)
 {
     s16 modelId;
@@ -406,67 +399,61 @@ void PlayerModelOwner::fn_1_6B20(s32 motionId, u8 queued)
     }
 }
 
-}
-
+/* Choose the idle motion or enter the active player callback. */
 void PlayerModelOwner::fn_1_6BE0()
 {
+    /* The first-model ID is evaluated and then discarded. */
     s16 modelId = firstModel;
 
     if (active == 0) {
         firstModel.setAttribute(1);
         secondModel.setAttribute(1);
-        {
-            Callback transformState = &PlayerModelOwner::fn_1_72CC;
-            this->callback = transformState;
-        }
+        Callback transformState = &PlayerModelOwner::fn_1_72CC;
+        this->callback = transformState;
         fn_1_6B20(0, 0);
         return;
     }
     fn_1_6B20(1, 0);
 }
 
+/* Enter the active player callback when ready and select motion zero. */
 void PlayerModelOwner::fn_1_6D64()
 {
     if (this->active == 0) {
         this->firstModel.setAttribute(1);
         this->secondModel.setAttribute(1);
-        {
-            PlayerModelOwner::Callback transformState = &PlayerModelOwner::fn_1_72CC;
-            this->callback = transformState;
-        }
+        PlayerModelOwner::Callback transformState = &PlayerModelOwner::fn_1_72CC;
+        this->callback = transformState;
     }
     fn_1_6B20(0, 0);
 }
 
-extern "C" {
-
+/* Position both models in the player lineup and clear their rotation. */
 void PlayerModelOwner::fn_1_6E64()
 {
     this->position.x = (f32)(this->playerIndex * 0xB4 - 0x10E);
     this->position.y = 0.0f;
     this->position.z = -400.0f;
     this->firstModel.setPosition(&this->position);
-    {
-        Vec origin = { 0.0f, 0.0f, 0.0f };
-        this->firstModel.setRotation(&origin);
-        {
-            Vec secondPosition;
-            secondPosition.x = this->position.x;
-            secondPosition.y = this->position.y;
-            secondPosition.z = this->position.z;
-            secondPosition.z += 150.0f;
-            this->secondModel.setPosition(&secondPosition);
-            this->secondModel.setRotation(&origin);
-        }
-    }
+    Vec origin = { 0.0f, 0.0f, 0.0f };
+    this->firstModel.setRotation(&origin);
+    Vec secondPosition;
+    secondPosition.x = this->position.x;
+    secondPosition.y = this->position.y;
+    secondPosition.z = this->position.z;
+    secondPosition.z += 150.0f;
+    this->secondModel.setPosition(&secondPosition);
+    this->secondModel.setRotation(&origin);
 }
 
+/* Place the player in the lineup with motion zero. */
 void PlayerModelOwner::fn_1_6F60()
 {
     fn_1_6E64();
     fn_1_6B20(0, 0);
 }
 
+/* Place the player in the lineup with the winner or loser motion. */
 void PlayerModelOwner::fn_1_70D8()
 {
     fn_1_6E64();
@@ -477,10 +464,7 @@ void PlayerModelOwner::fn_1_70D8()
     }
 }
 
-}
-
-extern "C" {
-
+/* Process player input and clamp the camera angle to plus or minus 23 degrees. */
 void PlayerModelOwner::fn_1_72CC()
 {
     fn_1_75A8();
@@ -492,10 +476,7 @@ void PlayerModelOwner::fn_1_72CC()
     }
 }
 
-}
-
-extern "C" {
-
+/* Generate CPU camera motion and shutter input from difficulty and visible targets. */
 f32 PlayerModelOwner::fn_1_734C(bool *buttonPressed)
 {
     s32 playerValue;
@@ -505,14 +486,11 @@ f32 PlayerModelOwner::fn_1_734C(bool *buttonPressed)
         this->motionChangeTimer = (RandomUnsigned() & 0x3F) + 8;
         this->randomMotion = (f32)(2.0 * (RandomFloat() - 0.5));
     }
-    {
-        if (std::fabs(this->randomMotion) < 0.3) {
-            motionOffset = 0.0f;
-        } else {
-            motionOffset = this->randomMotion;
-        }
+    if (std::fabs(this->randomMotion) < 0.3) {
+        motionOffset = 0.0f;
+    } else {
+        motionOffset = this->randomMotion;
     }
-
     playerValue = fn_1_9D34(this->playerIndex, 0);
     if (GWMgNightFGet() != 0) {
         playerValue += fn_1_C4E8(this->playerIndex, 0, playerValue);
@@ -539,8 +517,7 @@ f32 PlayerModelOwner::fn_1_734C(bool *buttonPressed)
     return motionOffset;
 }
 
-}
-
+/* Read the player shutter button and horizontal stick input. */
 float fn_1_7544(PlayerModelOwner *player, bool *buttonPressed)
 {
     u32 buttons = lbl_802C0010[player->controllerId];
@@ -551,15 +528,13 @@ float fn_1_7544(PlayerModelOwner *player, bool *buttonPressed)
     return lbl_8024C7D8[player->controllerId];
 }
 
-extern "C" {
-
+/* Set the player ready flag. */
 void PlayerModelOwner::fn_1_759C()
 {
     ready = 1;
 }
 
-}
-
+/* Handle shutter input, play its sound and update the camera angle. */
 void PlayerModelOwner::fn_1_75A8()
 {
     static const s32 triggerSoundIds[4] = {
@@ -578,9 +553,12 @@ void PlayerModelOwner::fn_1_75A8()
     s32 playerValue;
 
     inputMode = currentRequest();
+    // The zero test is redundant with the following non-two test.
     if (inputMode == 0 || inputMode != 2 || this->ready == 1U) {
         return;
     }
+    // Both input paths overwrite this initial motion value.
+    /* Both input branches replace this initial motion value. */
     motion = 0.0f;
     buttonPressed = false;
     if (this->controllerId < 0) {
@@ -610,6 +588,7 @@ void PlayerModelOwner::fn_1_75A8()
     this->angle += 2.0f * motion;
 }
 
+/* Create the four-photo fade using the player character identifiers. */
 void fn_1_794C()
 {
     long characters[4];
@@ -620,9 +599,4 @@ void fn_1_794C()
         characters[index++] = node->characterId;
     }
     new SpriteFade(characters);
-}
-
-extern "C" {
-    PlayerModelOwner *lbl_1_bss_9C;
-    ListRoot<PlayerModelOwner> lbl_1_bss_AC;
 }

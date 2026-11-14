@@ -5,9 +5,10 @@
 extern "C" {
 #include "game/hu3d.h"
 }
-class DrawNode;
+struct DrawNode;
 void fn_1_9B88(int request);
 extern "C" int fn_1_9D34(int playerIndex, unsigned char markEntries);
+/* Animate and score one camera-specific photography target. */
 struct DrawNode : ListNode<DrawNode> {
     typedef void (DrawNode::*Callback)();
     Callback callback;
@@ -29,11 +30,6 @@ struct DrawNode : ListNode<DrawNode> {
     HU3D_MODELID hookModel;
     s32 colorIndex;
     u8 fired, effectGate;
-    s16 model_a() const { return secondModel.modelId; }
-    s16 model_b() const { return firstModel.modelId; }
-    s16 primary_model() const { return firstModel.modelId; }
-    s16 secondary_model() const { return secondModel.modelId; }
-    s16 model_id() const { return secondModel.modelId; }
     inline void fn_1_A060(s32,u8);
     void fn_1_A160(s32);
     void fn_1_A238();
@@ -47,5 +43,14 @@ struct DrawNode : ListNode<DrawNode> {
     void fn_1_AAA4(Mtx);
     void fn_1_B0C0(Mtx);
 };
+
+void fn_1_98AC(void);
+void fn_1_995C(void);
+void fn_1_9794(void);
+void fn_1_9C58(void);
+void fn_1_9BF4(void);
+
+void fn_1_A9EC(HU3D_MODEL *, Mtx *);
+void fn_1_9E90(DrawNode *);
 
 #endif
