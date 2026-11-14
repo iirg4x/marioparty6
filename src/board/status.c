@@ -8,17 +8,17 @@
 #include "game/board/pause.h"
 #include "game/board/masu.h"
 #include "game/board/guide.h"
+#include "game/board/guide_object.h"
 
 #include "game/disp.h"
 #include "game/flag.h"
 #include "game/process.h"
 
 #include <string.h>
-
-extern int mbCapColorGet(int capsuleNo);
-extern int mbSingleMgUnlockNumGet(void);
-extern int mbSingleStepGet(void);
-extern int mbLanguageGet(void);
+#include "game/board/single.h"
+#include "game/board/capsule.h"
+#include "game/board/telop.h"
+#include "humath.h"
 
 #define STATUS_SPRNO_BACK 0
 #define STATUS_SPRNO_BORDER 1
@@ -351,7 +351,7 @@ static BOOL StatusUpdate(void)
                             statusCapsuleOfsTbl[status->layoutNo].y);
                 HuSprDispOn(status->gid, STATUS_SPRNO_CAPSULE+j);
                 if(status->capsuleFocus == j) {
-                    scale = 1+fabs(cos(3.141592653589793*(status->capsuleTime++ * 8.0f)/180.0));
+                    scale = 1+fabs(cos(M_PI*(status->capsuleTime++ * 8.0f)/180.0));
                     HuSprScaleSet(status->gid, STATUS_SPRNO_CAPSULE+j, scale, scale);
                 } else {
                     // Each visible unfocused slot resets the pulse frame shared by this panel.
@@ -483,11 +483,11 @@ static void StatusPosUpdate(STATUSWORK *status)
             break;
 
         case STATUS_MOVE_SIN:
-            weight = sin(3.141592653589793*(time*90.0f)/180.0);
+            weight = sin(M_PI*(time*90.0f)/180.0);
             break;
 
         case STATUS_MOVE_REVCOS:
-            weight = 1-cos(3.141592653589793*(time*90.0f)/180.0);
+            weight = 1-cos(M_PI*(time*90.0f)/180.0);
             break;
     }
     pos.x = status->posBegin.x+(weight*(status->posEnd.x-status->posBegin.x));
@@ -544,7 +544,7 @@ void mbStatusNoMoveSet(int statusNo, HuVecF *posBegin, HuVecF *posEnd, int type,
 }
 
 // Returns the shown position for a panel slot, using the current team layout.
-void mbStatusPosOnGet(int statusNo, HuVecF *pos)
+void mbStatusPosOnGet(int statusNo, HuVec2f *pos)
 {
     if(!GWTeamFGet()) {
         pos->x = statusPosOn[statusNo].x;
@@ -556,7 +556,7 @@ void mbStatusPosOnGet(int statusNo, HuVecF *pos)
 }
 
 // Returns the hidden off-screen position for a panel slot, using the current team layout.
-void mbStatusPosOffGet(int statusNo, HuVecF *pos)
+void mbStatusPosOffGet(int statusNo, HuVec2f *pos)
 {
     if(!GWTeamFGet()) {
         pos->x = statusPosOff[statusNo].x;
@@ -612,8 +612,8 @@ static void StatusDispSet(int playerNo, int statusNo, BOOL dispF)
         if(status->dispF) {
             return;
         }
-        mbStatusPosOffGet(statusNo, (HuVecF *)&posBegin);
-        mbStatusPosOnGet(statusNo, (HuVecF *)&posEnd);
+        mbStatusPosOffGet(statusNo, &posBegin);
+        mbStatusPosOnGet(statusNo, &posEnd);
         mbStatusMoveSet(playerNo, (HuVecF *)&posBegin, (HuVecF *)&posEnd, STATUS_MOVE_SIN, 16);
         status->dispF = TRUE;
         status->moveF = TRUE;
@@ -670,11 +670,11 @@ void mbStatusDispRestoreForce(void)
         status->dispF = statusDispBackup[i].dispF;
         status->no = statusDispBackup[i].no;
         if(status->dispF) {
-            mbStatusPosOffGet(status->no, (HuVecF *)&status->posBegin);
-            mbStatusPosOnGet(status->no, (HuVecF *)&status->posEnd);
+            mbStatusPosOffGet(status->no, &status->posBegin);
+            mbStatusPosOnGet(status->no, &status->posEnd);
         } else {
-            mbStatusPosOnGet(status->no, (HuVecF *)&status->posBegin);
-            mbStatusPosOffGet(status->no, (HuVecF *)&status->posEnd);
+            mbStatusPosOnGet(status->no, &status->posBegin);
+            mbStatusPosOffGet(status->no, &status->posEnd);
         }
         HuSprGrpPosSet(status->gid, status->posEnd.x, status->posEnd.y);
     }
@@ -722,11 +722,11 @@ void mbStatusDispForceSet(int playerNo, BOOL dispF)
     }
     status->dispF = dispF;
     if(dispF) {
-        mbStatusPosOffGet(status->no, (HuVecF *)&status->posBegin);
-        mbStatusPosOnGet(status->no, (HuVecF *)&status->posEnd);
+        mbStatusPosOffGet(status->no, &status->posBegin);
+        mbStatusPosOnGet(status->no, &status->posEnd);
     } else {
-        mbStatusPosOnGet(status->no, (HuVecF *)&status->posBegin);
-        mbStatusPosOffGet(status->no, (HuVecF *)&status->posEnd);
+        mbStatusPosOnGet(status->no, &status->posBegin);
+        mbStatusPosOffGet(status->no, &status->posEnd);
     }
     HuSprGrpPosSet(status->gid, status->posEnd.x, status->posEnd.y);
     status->time = status->timeMax = 0;

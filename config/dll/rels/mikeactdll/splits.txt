@@ -5,3 +5,74 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/mikeactdll/module.c:
+	.text       start:0x00000000 end:0x00000300
+	.rodata     start:0x00000000 end:0x00000010
+
+REL/mikeactdll/microphone_init.c:
+	.text       start:0x00000300 end:0x00002FB4
+	.rodata     start:0x00000010 end:0x000000C0
+	.data       start:0x00000000 end:0x00000108
+	.bss        start:0x00000000 end:0x00000070
+
+REL/mikeactdll/sound.c:
+	.text       start:0x00002FB4 end:0x000031C8
+	.rodata     start:0x000000C0 end:0x000000D0
+
+REL/mikeactdll/camera.c:
+	.text       start:0x000031C8 end:0x000040A0
+	.rodata     start:0x000000D0 end:0x00000140
+	.data       start:0x00000108 end:0x00000128
+	.bss        start:0x00000070 end:0x000000B8
+
+REL/mikeactdll/angle.c:
+	.text       start:0x000040A0 end:0x0000C2C0
+	.rodata     start:0x00000140 end:0x00000228
+	.data       start:0x00000128 end:0x00000478
+	.bss        start:0x000000B8 end:0x000000D8
+
+REL/mikeactdll/particle_effect.c:
+	.text       start:0x0000C2C0 end:0x0000D950
+	.rodata     start:0x00000228 end:0x00000278
+	.bss        start:0x000000D8 end:0x000000E8
+
+REL/mikeactdll/model_hook_setup.c:
+	.text       start:0x0000D950 end:0x0000E308
+	.rodata     start:0x00000278 end:0x000002C8
+	.data       start:0x00000478 end:0x000004E8
+	.bss        start:0x000000E8 end:0x000000F8
+
+REL/mikeactdll/interface.c:
+	.text       start:0x0000E308 end:0x000101C0
+	.rodata     start:0x000002C8 end:0x00000368
+	.data       start:0x000004E8 end:0x00000958
+	.bss        start:0x000000F8 end:0x000001A8
+
+REL/mikeactdll/stage_collision.c:
+	.text       start:0x000101C0 end:0x000120E0
+	.rodata     start:0x00000368 end:0x000003D0
+	.data       start:0x00000958 end:0x00000C68
+	.bss        start:0x000001A8 end:0x000033C0
+
+REL/mikeactdll/ground_collision.c:
+	.text       start:0x000120E0 end:0x00015B9C
+	.rodata     start:0x000003D0 end:0x000004D8
+	.data       start:0x00000C68 end:0x00001100
+	.bss        start:0x000033C0 end:0x00003400
+
+REL/mikeactdll/stage_setup.c:
+	.text       start:0x00015B9C end:0x0001CDEC
+	.rodata     start:0x000004D8 end:0x000006D0
+	.data       start:0x00001100 end:0x00001A68
+	.bss        start:0x00003400 end:0x000037C0
+
+REL/mikeactdll/sequence.c:
+	.text       start:0x0001CDEC end:0x00021C54
+	.rodata     start:0x000006D0 end:0x000007B0
+	.data       start:0x00001A68 end:0x00001F72
+	.bss        start:0x000037C0 end:0x0000380C
+
+REL/mikeactdll/runtime.c:
+	.text       start:0x00021C54 end:0x00022698
+	.rodata     start:0x000007B0 end:0x000007C8

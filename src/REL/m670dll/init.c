@@ -123,6 +123,7 @@ void ObjectSetup(void)
     lightId = Hu3DGLightCreate(lightPos.x, lightPos.y, lightPos.z,
         lightDir.x, lightDir.y, lightDir.z, 255, 255, 255);
     Hu3DGLightInfinitytSet(lightId);
+    /* The static-light call uses light 0, regardless of the ID returned above. */
     Hu3DGLightStaticSet(0, 1);
     shadowPos.x = 0.0f;
     shadowPos.y = 10000.0f;
@@ -152,10 +153,10 @@ void ObjectSetup(void)
         char *positionNames[24] = {"D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08",
             "D09", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "D17", "D18",
             "D19", "D20", "D21", "D22", "D23", "D24"};
-    for (i = 0; i < 24; i++) {
-        Hu3DModelObjPosGet(lbl_1_bss_10.positionModel, positionNames[i],
-                           &lbl_1_bss_10.pillarPos[i]);
-    }
+        for (i = 0; i < 24; i++) {
+            Hu3DModelObjPosGet(lbl_1_bss_10.positionModel, positionNames[i],
+                               &lbl_1_bss_10.pillarPos[i]);
+        }
     }
     pattern = lbl_1_data_250[lbl_1_bss_10.pattern];
     for (i = 0; i < 24; i++) {
@@ -184,63 +185,63 @@ void ObjectSetup(void)
     }
     fn_800804E8(lbl_1_bss_10.collisionModels, lbl_1_bss_10.collisionCount, 50);
     {
-    char *spawnNames[3] = {"P01", "P02", "P03"};
-    param.height = 150.0f;
-    param.radius = 60.0f;
-    param.param = 0;
-    param.type = 0;
-    param.attr = 0;
-    param.narrowHook = NULL;
-    param.correctHook = fn_1_2384;
-    away = 0;
-    for (i = 0; i < 4; i++) {
-        lbl_1_bss_10.characterNo[i] = lbl_80265728[i].charNo;
-        lbl_1_bss_10.padNo[i] = lbl_80265728[i].padNo;
-        lbl_1_bss_10.playerState[i] = 0;
-        param.correctHookParam = i;
-        lbl_1_bss_10.players[i] = player = fn_80080728(
-            i, &param, 4, 1,
-            ~((1 << 2) | (1 << 3) | (1 << 4)),
-            lbl_1_data_110);
-        fn_8007ED60(player);
-        if (lbl_80265728[i].grpNo == 0) {
-            lbl_1_bss_10.group[i] = 0;
-            lbl_1_bss_10.soloPlayer = i;
-            lbl_1_bss_10.soloPad = lbl_1_bss_10.padNo[i];
-            lbl_1_bss_10.soloCharacter = lbl_80265728[i].charNo;
-            Hu3DModelObjPosGet(lbl_1_bss_10.models[2], "P00", &playerPos);
-            fn_8008697C(player, &playerPos);
-            fn_80026790(lbl_1_bss_10.players[i]->actor->mdlId, &playerPos);
-            fn_80086E3C(player);
-            lbl_1_bss_10.playerObjects[i] =
-                fn_8003AB38(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_2690);
-            fn_80026B8C(lbl_1_bss_10.players[i]->actor->mdlId, 2);
-        } else {
-            lbl_1_bss_10.group[i] = 1;
-            Hu3DModelObjPosGet(lbl_1_bss_10.positionModel, spawnNames[away], &playerPos);
-            playerPos.y = -1500.0f;
-            fn_8008697C(player, &playerPos);
-            lbl_1_bss_10.playerObjects[i] =
-                fn_8003AB38(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_28E8);
-            fn_80026B8C(lbl_1_bss_10.players[i]->actor->mdlId, 5);
-            away++;
+        char *spawnNames[3] = {"P01", "P02", "P03"};
+        param.height = 150.0f;
+        param.radius = 60.0f;
+        param.param = 0;
+        param.type = 0;
+        param.attr = 0;
+        param.narrowHook = NULL;
+        param.correctHook = fn_1_2384;
+        away = 0;
+        for (i = 0; i < 4; i++) {
+            lbl_1_bss_10.characterNo[i] = lbl_80265728[i].charNo;
+            lbl_1_bss_10.padNo[i] = lbl_80265728[i].padNo;
+            lbl_1_bss_10.playerState[i] = 0;
+            param.correctHookParam = i;
+            lbl_1_bss_10.players[i] = player = fn_80080728(
+                i, &param, 4, 1,
+                ~((1 << 2) | (1 << 3) | (1 << 4)),
+                lbl_1_data_110);
+            fn_8007ED60(player);
+            if (lbl_80265728[i].grpNo == 0) {
+                lbl_1_bss_10.group[i] = 0;
+                lbl_1_bss_10.soloPlayer = i;
+                lbl_1_bss_10.soloPad = lbl_1_bss_10.padNo[i];
+                lbl_1_bss_10.soloCharacter = lbl_80265728[i].charNo;
+                Hu3DModelObjPosGet(lbl_1_bss_10.models[2], "P00", &playerPos);
+                fn_8008697C(player, &playerPos);
+                fn_80026790(lbl_1_bss_10.players[i]->actor->mdlId, &playerPos);
+                fn_80086E3C(player);
+                lbl_1_bss_10.playerObjects[i] =
+                    fn_8003AB38(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_2690);
+                fn_80026B8C(lbl_1_bss_10.players[i]->actor->mdlId, 2);
+            } else {
+                lbl_1_bss_10.group[i] = 1;
+                Hu3DModelObjPosGet(lbl_1_bss_10.positionModel, spawnNames[away], &playerPos);
+                playerPos.y = -1500.0f;
+                fn_8008697C(player, &playerPos);
+                lbl_1_bss_10.playerObjects[i] =
+                    fn_8003AB38(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_28E8);
+                fn_80026B8C(lbl_1_bss_10.players[i]->actor->mdlId, 5);
+                away++;
+            }
+            obj = lbl_1_bss_10.playerObjects[i];
+            obj->work[0] = i;
+            obj->work[1] = (u32)player;
+            fn_80026E44(lbl_1_bss_10.players[i]->actor->mdlId);
+            fn_80087158(lbl_1_bss_10.players[i], (1 << 0));
+            param.param++;
         }
-        obj = lbl_1_bss_10.playerObjects[i];
-        obj->work[0] = i;
-        obj->work[1] = (u32)player;
-        fn_80026E44(lbl_1_bss_10.players[i]->actor->mdlId);
-        fn_80087158(lbl_1_bss_10.players[i], (1 << 0));
-        param.param++;
-    }
-    fn_8005DDEC(5);
-    lbl_1_bss_10.timer = MgTimerCreate(0);
-    fn_8002C2AC(5);
-    HuMCInit(0);
-    /* The selection-window helper maps this y sentinel to 40 pixels from the top. */
-    HuMCSelWinCreate(HUWIN_POS_CENTER, M670_MCSELWIN_POS_TOP);
-    lbl_1_bss_10.micContext = HuMCContextCreate("/mic/ctx/m670_words");
-    fn_1_3B30();
-    lbl_1_bss_10.music = -1;
-    fn_80070788(&lbl_1_data_0);
+        fn_8005DDEC(5);
+        lbl_1_bss_10.timer = MgTimerCreate(0);
+        fn_8002C2AC(5);
+        HuMCInit(0);
+        /* The selection-window helper maps this y sentinel to 40 pixels from the top. */
+        HuMCSelWinCreate(HUWIN_POS_CENTER, M670_MCSELWIN_POS_TOP);
+        lbl_1_bss_10.micContext = HuMCContextCreate("/mic/ctx/m670_words");
+        fn_1_3B30();
+        lbl_1_bss_10.music = -1;
+        fn_80070788(&lbl_1_data_0);
     }
 }

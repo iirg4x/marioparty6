@@ -15,7 +15,7 @@ typedef struct M643SequenceWork_s {
 typedef struct M643InputPrefix_s {
     s32 held, pressed, released, step; /* Held state, input edges, and this frame's aim step. */
     u8 repeatFrames, pressCooldownFrames; /* Delays before repeat and accepting another press. */
-    u8 unusedBytes[2]; /* Not accessed by the aiming callbacks. */
+    u8 unk12[2]; /* No code names this field. */
 } M643InputPrefix;
 
 /* A reusable cannon shot, its particles, and its curved or deflected flight. */
@@ -78,15 +78,15 @@ typedef struct M643TeamScenePrefix_s {
     f32 pitchRadians; /* Smoothed vertical cannon angle. */
     s32 shotCount; /* Number of reusable projectile slots (two). */
     M643ShotPrefix **shots; /* Projectile work records owned by this cannon. */
-    u8 unusedShotTail[4]; /* Not accessed by the cannon callbacks. */
+    u8 unk60[4]; /* No code names this field. */
     s32 phaseFrames; /* Intro, reload, result, or computer-aim frame counter. */
     M643InputPrefix aimInput[2]; /* Left and right stick direction state. */
     s32 cooldownFrames; /* Firing cooldown, clamped to zero. */
     s16 operatorMotion; /* Current character motion index; -1 before its first motion. */
-    u8 unusedMotionTail[2]; /* Not accessed by the cannon callbacks. */
+    u8 unk96[2]; /* No code names this field. */
     f32 bobDegrees; /* Vertical bobbing phase, wrapped at 360 degrees. */
     HU3D_MODELID operatorFollowModel; /* Auxiliary model positioned with the operator. */
-    u8 unusedModelTail[4]; /* Not accessed by the cannon callbacks. */
+    u8 unk9E[4]; /* No code names this field. */
     s16 unusedSetupValue; /* Set to one at setup; no cannon callback reads it. */
     s16 computerTargetPlatform; /* Computer aim target; zero requests a new target after firing. */
     s16 observedRunnerPlatform; /* Runner platform recorded when the computer aim target was
@@ -129,13 +129,13 @@ typedef struct M643CameraEffectWork_s {
     HuVecF endTangent; /* Downward Hermite approach tangent at its end. */
     f32 elapsedSeconds; /* Elapsed approach time. */
     f32 durationSeconds; /* Total approach time, based on distance and movement speed. */
-    u8 unusedCurveTail[8]; /* Not accessed by the rescue callbacks. */
+    u8 unk54[8]; /* No code names this field. */
     HuVecF rotationRadians; /* Travel orientation, eased toward zero near the runner. */
 } M643CameraEffectWork;
 
 /* Result-view timing shared by the callbacks that switch to the winning team's camera. */
 typedef struct M643ViewSequenceWork_s {
-    u8 unusedBytes[4]; /* Not accessed by the result-view callbacks. */
+    u8 unk00[4]; /* No code names this field. */
     s32 phaseFrames; /* Outgoing-wipe wait and winner-camera fade-in frame counter. */
 } M643ViewSequenceWork;
 

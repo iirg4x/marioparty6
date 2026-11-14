@@ -208,23 +208,18 @@ void fn_1_1160(void);
 void fn_1_1228(void);
 int fn_1_1364(int playerNo, s16 spaceId);
 int fn_1_1398(int playerNo, s16 spaceId);
-s32 fn_1_1280(s32 playerNo, s16 spaceId);
-int fn_1_1444(void);
+int fn_1_1280(int playerNo, s16 spaceId);
+int fn_1_1444(s16 id, u32 mAttr, s16 *linkTbl, BOOL endF);
 void fn_1_AD0(OMOBJ *obj);
-void fn_1_124C(void);
-void fn_1_127C(void);
+void fn_1_124C(int playerNo);
+void fn_1_127C(int playerNo);
 void fn_1_C92C(void);
 void fn_1_D2E4(s32 model, Mtx matrix);
-void fn_1_E004(s32 enable);
+void fn_1_E004(BOOL enable);
 void fn_1_E104(void);
 void fn_1_E224(void);
 #define W06DataNumGet(fileNo) \
     ((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(fileNo))
-
-static inline void W06BackgroundLoopSet(s16 modelId)
-{
-    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
-}
 
 /* Sets up Clockwork Castle's models, spaces, camera and callbacks when board setup enters it. */
 void fn_1_F4(void)
@@ -248,11 +243,11 @@ void fn_1_F4(void)
     mbMasuInit(W06DataNumGet(0));
     lbl_1_bss_4B4 = mbObjCreate(W06DataNumGet(1), NULL, 0);
     mbObjPosSet(lbl_1_bss_4B4, 0.0f, 0.0f, 0.0f);
-    W06BackgroundLoopSet(lbl_1_bss_4B4);
+    boardModelLoop(lbl_1_bss_4B4);
     mbObjCullRadiusSet(lbl_1_bss_4B4, -1.0f);
     mbObjMotionSpeedSet(lbl_1_bss_4B4, 1.0f);
     mbObjMotionTimeSet(lbl_1_bss_4B4, 0.0f);
-    W06BackgroundLoopSet(lbl_1_bss_4B4);
+    boardModelLoop(lbl_1_bss_4B4);
     mbCameraNearFarSet(100.0f, 30000.0f);
     mbev_ShopInit(W06DataNumGet(2));
     mbev_NextTimeSet(fn_1_B584);
@@ -309,16 +304,16 @@ void fn_1_F4(void)
     fn_800097F4(0x110000);
     mbev_MasuMoveStartSet(fn_1_1364);
     mbev_MasuMoveEndSet(fn_1_1398);
-    mbev_MasuHatenaSet((MASUEVENTHOOK)fn_1_1280);
-    mbev_MasuLinkTblHookSet((MASUPATHCHECKHOOK)fn_1_1444);
+    mbev_MasuHatenaSet(fn_1_1280);
+    mbev_MasuLinkTblHookSet(fn_1_1444);
     lbl_1_bss_0 = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_AD0);
     mbOpeningViewSet(&lbl_1_data_16C, &lbl_1_data_178, lbl_1_data_184);
     mbMapCameraSet(NULL, &lbl_1_data_194, lbl_1_data_1A0);
-    mbPlayerTurnInitHookSet((void (*)(int))fn_1_124C);
-    mbPlayerTurnCloseHookSet((void (*)(int))fn_1_127C);
+    mbPlayerTurnInitHookSet(fn_1_124C);
+    mbPlayerTurnCloseHookSet(fn_1_127C);
     fn_1_C92C();
     drawModelId = fn_800260F4((HU3D_MODEL_HOOK)fn_1_D2E4);
-    mbMapHookSet((void (*)(BOOL))fn_1_E004);
+    mbMapHookSet(fn_1_E004);
     mbBranchComStarHookSet((MBBRANCHCOMSTARHOOK)fn_1_E3EC);
     mbOpeningInstHookSet(fn_1_E104);
     mbOpeningStarInstHookSet(fn_1_E224);
@@ -516,13 +511,12 @@ void fn_1_BD4(void)
         Hu3DFogSet(lbl_1_bss_2C, lbl_1_bss_28, 200, 200, 200);
     }
 }
-s32 mbSNpcCreate(u32 *, s32);
 
 /* Sets board lighting, creates the roaming NPC and initializes fog during light setup. */
 void fn_1_1160(void) {
     Hu3DBGColorSet(255, 255, 255);
     fn_80029850(mbObjModelIDGet(lbl_1_bss_4B4), 1);
-    mbSNpcCreate(lbl_80265B70.boardWork, 0x00001000);
+    mbSNpcCreate((MBSNPCSAVEWORK *)lbl_80265B70.boardWork, 0x00001000);
     lbl_1_bss_2C = 12000.0f;
     lbl_1_bss_28 = 100000.0f;
     lbl_1_bss_24 = 10.0f;
@@ -539,14 +533,14 @@ void fn_1_1248(void)
 }
 
 /* Looks up the NPC's marked space but discards its ID, then resets NPC motion at turn start. */
-void fn_1_124C(void) {
+void fn_1_124C(int playerNo) {
     s16 npcSpaceId;
 
     npcSpaceId = mbMasuFind_MAttrIdGet(-1, 0x00000100);
     mbSNpcMotReset();
 }
 
-void fn_1_127C(void)
+void fn_1_127C(int playerNo)
 {
 }
 
@@ -557,7 +551,7 @@ void fn_1_64D0(int, s16);                        /* static */
 void fn_1_7100(int, s16);                        /* static */
 
 /* Dispatches space-attribute events for the player from the board's special-space hook. */
-s32 fn_1_1280(s32 playerNo, s16 spaceId) {
+int fn_1_1280(int playerNo, s16 spaceId) {
     s32 spaceAttributes;
 
     spaceAttributes = mbMasuMAttrGet(spaceId);
@@ -616,7 +610,7 @@ int fn_1_1398(int playerNo, s16 spaceId)
     return 0;
 }
 
-int fn_1_1444(void)
+int fn_1_1444(s16 id, u32 mAttr, s16 *linkTbl, BOOL endF)
 {
     return -1;
 }
@@ -3306,7 +3300,6 @@ void fn_1_A968(void) {
 }
 
 void fn_1_B820(void);
-void mbGuideKill(OMOBJ *obj);
 
 typedef struct W06CameraRotations {
     Point3d start;
@@ -3317,13 +3310,7 @@ extern s8 lbl_1_data_7A4[];
 extern Point3d lbl_1_data_75C[2];
 extern W06CameraRotations lbl_1_data_774[2];
 
-MBMODELID mbGuideModelGet(OMOBJ *obj);
 OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF, BOOL altMtxF, BOOL layerF);
-void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo);
-void mbGuideFadeIn(OMOBJ *obj);
-void mbGuideMotionShiftSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
-BOOL mbGuideMotionCheck(OMOBJ *obj);
-void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
 
 /* Presents the day or night change, including the board feature and star guide messages. */
 
@@ -3750,9 +3737,6 @@ void fn_1_B820(void)
     state[1] = 1;
     HuPrcEnd();
 }
-
-extern OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float scale,
-                            u32 attr);
 
 typedef struct C1CCStack {
     s16 guideIds[2];
@@ -4226,7 +4210,7 @@ typedef struct {
 } W06MapSpriteWork;
 
 /* Adds the star and special entrance markers while the board map is being drawn. */
-void fn_1_E004(s32 enable)
+void fn_1_E004(BOOL enable)
 {
     s32 entryIndex;
     s16 masuId;

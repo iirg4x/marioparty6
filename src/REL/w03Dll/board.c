@@ -5,6 +5,7 @@
 #include "game/audio.h"
 #include "msm_se.h"
 #include "game/board/main.h"
+#include "game/board/guide.h"
 #include "game/board/branch.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
@@ -109,13 +110,6 @@ typedef struct W03StarAward_s {
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 extern BOOL mbSaveNewF;
-OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF, BOOL altMtxF, BOOL layerF);
-int mbGuideModelGet(OMOBJ *obj);
-void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo);
-void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
-void mbGuideMotionShiftSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
-void mbGuideEnd(OMOBJ *obj, BOOL endF);
-void mbGuideKill(OMOBJ *obj);
 int sprintf();
 
 void ObjectSetup(void);
@@ -130,8 +124,8 @@ int fn_1_1CD4(int playerNo, s16 spaceId);
 int fn_1_1D5C(s16 spaceId, u32 attributes, s16 *links, BOOL end);
 void fn_1_1D64(void);
 void fn_1_1F20(void);
-s32 fn_1_2490(void);
-void fn_1_24C4(void);
+u16 fn_1_2490(int playerNo);
+void fn_1_24C4(int playerNo);
 void fn_1_2718(int playerNo, s16 landingSpace);
 void fn_1_5900(int playerNo, s16 landingSpace);
 void fn_1_8154(s32 reverse);
@@ -160,11 +154,6 @@ void fn_1_126C0(void);
 static inline BOOL boardIsDay(void)
 {
     return 0 == lbl_80265B70.curTime;
-}
-
-static inline void boardModelLoop(s16 modelId)
-{
-    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 }
 
 HuVecF lbl_1_data_0[100] = {
@@ -839,8 +828,8 @@ void fn_1_1F20(void)
             FALSE, FALSE, &dicePosition, 0);
         lbl_1_bss_4 = 50.0f * (0.3f +
             0.7f * (1.5258789e-05f * (f32)(u16)frand()));
-        mbDicePadBtnHookSet(-1, (u16 (*)(int))fn_1_2490);
-        mbDiceMotHookSet(-1, (void (*)(int))fn_1_24C4);
+        mbDicePadBtnHookSet(-1, fn_1_2490);
+        mbDiceMotHookSet(-1, fn_1_24C4);
         while (!mbDiceKillCheck(-1)) {
             HuPrcVSleep();
         }
@@ -870,7 +859,7 @@ void fn_1_1F20(void)
 }
 
 /* Returns a dice input after the time-change event's randomized countdown expires. */
-s32 fn_1_2490(void) {
+u16 fn_1_2490(int playerNo) {
     if (--lbl_1_bss_4 == 0) {
         return 256;
     }
@@ -878,7 +867,7 @@ s32 fn_1_2490(void) {
 }
 
 /* Bounces the guide and triggers the dice hit effect when the dice-motion hook runs. */
-void fn_1_24C4(void) {
+void fn_1_24C4(int playerNo) {
     HuVecF dicePosition;
     f32 frameCount;
     f32 time;
@@ -3902,14 +3891,14 @@ void fn_1_E7A8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     if (system->initF == 0) {
         particle = system->data;
-        for (particleIndex = 0; particleIndex < system->num;
-             particleIndex++, particle++) {
+        for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
             colorIndex = mbRandMod(6);
             particle->time = 1;
             particle->activeF = 50.0f *
                 (0.4f + 1.5258789e-05f * (f32)(u16)frand());
             particle->animBank = (s16)((s32)(16.0f *
                 (1.5258789e-05f * (f32)(u16)frand())) & 0xF);
+
             angle = 360.0f *
                 (3.0517578e-05f * (f32)(u16)frand() - 1.0f);
             direction.x = 4.0f + mbSinDeg(angle);
@@ -3921,6 +3910,7 @@ void fn_1_E7A8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
                 100.0f *
                 (0.5f * (0.5f +
                     0.5f * (1.5258789e-05f * (f32)(u16)frand()))));
+
             VECScale(&direction, &particle->vel,
                 2.0f * (1.5f *
                     (0.7f + 0.3f *
@@ -3930,6 +3920,7 @@ void fn_1_E7A8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
             particle->color.a = 255;
             particle->scale = 20.0f + 10.0f *
                 (1.5258789e-05f * (f32)(u16)frand());
+
             particle->color.r = lbl_1_data_850[colorIndex].x;
             particle->color.g = lbl_1_data_850[colorIndex].y;
             particle->color.b = lbl_1_data_850[colorIndex].z;
@@ -3938,8 +3929,7 @@ void fn_1_E7A8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     }
 
     particle = system->data;
-    for (particleIndex = 0; particleIndex < system->num;
-         particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
         if (particle->time != 0) {
             VECAdd(&particle->pos, &particle->vel, &particle->pos);
             particle->vel.y -= 0.392f;
@@ -3969,14 +3959,14 @@ void fn_1_ECC8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     if (system->initF == 0) {
         particle = system->data;
-        for (particleIndex = 0; particleIndex < system->num;
-             particleIndex++, particle++) {
+        for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
             colorIndex = mbRandMod(6);
             particle->time = 1;
             particle->activeF = 50.0f *
                 (0.4f + 1.5258789e-05f * (f32)(u16)frand());
             particle->animBank = (s16)((s32)(16.0f *
                 (1.5258789e-05f * (f32)(u16)frand())) & 0xF);
+
             angle = 360.0f *
                 (3.0517578e-05f * (f32)(u16)frand() - 1.0f);
             direction.x = mbSinDeg(angle) - 4.0f;
@@ -3988,6 +3978,7 @@ void fn_1_ECC8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
                 100.0f *
                 (0.5f * (0.5f +
                     0.5f * (1.5258789e-05f * (f32)(u16)frand()))));
+
             VECScale(&direction, &particle->vel,
                 2.0f * (1.5f *
                     (0.7f + 0.3f *
@@ -3997,6 +3988,7 @@ void fn_1_ECC8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
             particle->color.a = 255;
             particle->scale = 20.0f + 10.0f *
                 (1.5258789e-05f * (f32)(u16)frand());
+
             particle->color.r = lbl_1_data_8B0[colorIndex].x;
             particle->color.g = lbl_1_data_8B0[colorIndex].y;
             particle->color.b = lbl_1_data_8B0[colorIndex].z;
@@ -4005,8 +3997,7 @@ void fn_1_ECC8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     }
 
     particle = system->data;
-    for (particleIndex = 0; particleIndex < system->num;
-         particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
         if (particle->time != 0) {
             VECAdd(&particle->pos, &particle->vel, &particle->pos);
             particle->vel.y -= 0.392f;
@@ -4039,14 +4030,14 @@ void fn_1_F1E8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     if (system->initF == 0) {
         particle = system->data;
-        for (particleIndex = 0; particleIndex < system->num;
-             particleIndex++, particle++) {
+        for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
             colorIndex = mbRandMod(6);
             particle->time = 1;
             particle->activeF = 50.0f *
                 (0.4f + 1.5258789e-05f * (f32)(u16)frand());
             particle->animBank = (s16)((s32)(16.0f *
                 (1.5258789e-05f * (f32)(u16)frand())) & 0xF);
+
             angle = 360.0f *
                 (3.0517578e-05f * (f32)(u16)frand() - 1.0f);
             elevation = 180.0f *
@@ -4058,6 +4049,7 @@ void fn_1_F1E8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
                 100.0f *
                 (0.5f * (0.5f +
                     0.5f * (1.5258789e-05f * (f32)(u16)frand()))));
+
             VECScale(&direction, &particle->vel,
                 2.0f * (1.5f *
                     (0.7f + 0.3f *
@@ -4074,8 +4066,7 @@ void fn_1_F1E8(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     }
 
     particle = system->data;
-    for (particleIndex = 0; particleIndex < system->num;
-         particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
         if (particle->time != 0) {
             VECAdd(&particle->pos, &particle->vel, &particle->pos);
             particle->vel.y -= 0.588f;
@@ -4101,12 +4092,12 @@ void fn_1_F704(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     if (system->initF == 0) {
         particle = system->data;
-        for (particleIndex = 0; particleIndex < system->num;
-             particleIndex++, particle++) {
+        for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
             particle->time = 1;
             particle->activeF = 50.0f *
                 (0.4f + 0.3f *
                     (1.5258789e-05f * (f32)(u16)frand()));
+
             angle = 360.0f *
                 (3.0517578e-05f * (f32)(u16)frand() - 1.0f);
             direction.x = mbSinDeg(angle);
@@ -4123,6 +4114,7 @@ void fn_1_F704(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
                 100.0f *
                 (0.5f * (0.5f +
                     0.5f * (1.5258789e-05f * (f32)(u16)frand()))));
+
             VECScale(&direction, &particle->vel,
                 2.0f * (1.5f *
                     (0.7f + 0.3f *
@@ -4144,8 +4136,7 @@ void fn_1_F704(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     }
 
     particle = system->data;
-    for (particleIndex = 0; particleIndex < system->num;
-         particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
         if (particle->time != 0) {
             VECAdd(&particle->pos, &particle->vel, &particle->pos);
             particle->vel.y += 0.392f;
@@ -4185,12 +4176,12 @@ void fn_1_FCB4(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
     fn_80023398(modelId, "fook", modelMatrix);
     Hu3DMtxRotGet(modelMatrix, &rotation);
     particle = system->data;
-    for (particleIndex = 0; particleIndex < system->num;
-         particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
         if (particle->time == 0) {
             particle->activeF = (s16)(50.0f *
                 (0.45f + 0.45f *
                  (1.5258789e-05f * (f32)(u16)frand())));
+
             angle = 360.0f * frandf();
             radius = 100.0f *
                      (0.5f * frandf());
@@ -4245,8 +4236,7 @@ void fn_1_100CC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     if (system->mode == 0) {
         particle = system->data;
-        for (particleIndex = 0; particleIndex < system->num;
-             particleIndex++, particle++) {
+        for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
             if (lbl_1_bss_8 == 0) {
                 particle->activeF = 0;
             } else {
@@ -4254,6 +4244,7 @@ void fn_1_100CC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
                     (0.1f + 0.3f *
                      (1.5258789e-05f * (f32)(u16)frand())));
             }
+
             angle = 360.0f * frandf();
             radius = 100.0f * (0.5f * frandf());
             particle->pos.x = radius * mbCosDeg(angle);
@@ -4275,8 +4266,7 @@ void fn_1_100CC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     activeCount = 0;
     particle = system->data;
-    for (particleIndex = 0; particleIndex < system->num;
-         particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
         if (particle->activeF != 0) {
             particle->pos.x += 0.016666668f * particle->vel.x;
             particle->pos.y += 0.016666668f * particle->vel.y;
@@ -4320,11 +4310,11 @@ void fn_1_104FC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     if (system->mode == 0) {
         particle = system->data;
-        for (particleIndex = 0; particleIndex < system->num;
-             particleIndex++, particle++) {
+        for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
             particle->activeF = (s16)(50.0f *
                 (0.3f + 0.4f *
                  (1.5258789e-05f * (f32)(u16)frand())));
+
             angle = 360.0f * frandf();
             elevation = 45.0f * frandf();
             radius = 100.0f * (0.5f * frandf());
@@ -4344,8 +4334,7 @@ void fn_1_104FC(HU3D_MODEL *model, MBPARTICLE *system, Mtx matrix)
 
     activeCount = 0;
     particle = system->data;
-    for (particleIndex = 0; particleIndex < system->num;
-         particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < system->num; particleIndex++, particle++) {
         if (particle->activeF != 0) {
             particle->pos.x += 0.016666668f * particle->vel.x;
             particle->pos.y += 0.016666668f * particle->vel.y;

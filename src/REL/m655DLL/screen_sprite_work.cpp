@@ -7,7 +7,6 @@
 #include <memory>
 #include "REL/framework/frame_time.h"
 #include "REL/m655DLL/screen_sprite_singleton.h"
-float RandomFloat(float minimum, float maximum);
 #include "humath.h"
 /* Screen distortion and particles drifting across it. */
 extern "C" {
@@ -235,7 +234,7 @@ void fn_1_10F4(ScreenSpriteWork *work)
     GXSetTevColor(GX_TEVREG0, tevColor);
     GXSetNumChans(0);
     GXLoadTexObj(&work->texture, GX_TEXMAP0);
-    HuSprTexLoad((ANIMDATA *)work->spriteTexture, 0, 1, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+    HuSprTexLoad(work->spriteTexture, 0, 1, GX_CLAMP, GX_CLAMP, GX_LINEAR);
     GXSetCullMode(GX_CULL_NONE);
     GXSetColorUpdate(GX_TRUE);
     GXSetAlphaUpdate(GX_FALSE);

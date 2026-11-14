@@ -23,7 +23,7 @@
 
 #include "REL/m653DLL/allocation.h"
 
-#include "REL/m653DLL/random.h"
+#include "REL/framework/random.h"
 
 #include "REL/framework/model.h"
 
@@ -326,7 +326,7 @@ void fn_1_8640(M653GameController *owner)
         if (updated == 0) {
             break;
         }
-        owner->ThreadEntry::suspend((void *)(0));
+        owner->ThreadEntry::suspend(0);
     }
 }
 

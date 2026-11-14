@@ -3,7 +3,10 @@
 
 #include "game/board/object_data.h"
 
+typedef struct MBSNPCSAVEWORK MBSNPCSAVEWORK;
+
 void mbSNpcInit(void);
+void mbSNpcCreate(MBSNPCSAVEWORK *saveWork, u32 excludedMasuAttr);
 void mbSNpcDispSet(BOOL dispF);
 int mbSNpcMasuGet(void);
 void mbSNpcMotWinSet(void);

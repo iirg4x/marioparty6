@@ -20,6 +20,8 @@ void mbDiceFadeSet(int playerNo);
 void mbDicePadBtnHookSet(int playerNo, u16 (*hook)(int));
 int mbDiceResultGet(int playerNo);
 BOOL mbDiceKillCheck(int playerNo);
+/* No parameter list: opening.c calls this with no argument, w10Dll/board.c with one. */
+BOOL mbDiceKillCheckAll();
 void mbDiceObjHit(int playerNo);
 OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos);
 OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,

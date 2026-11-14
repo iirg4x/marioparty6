@@ -1,5 +1,8 @@
 /* Burnstile stage callbacks, team results, camera wipes, and rotor hazards. */
 #include <math.h>
+#include "REL/m668DLL/math.h"
+#include "REL/m668DLL/geometry.h"
+#include "REL/m668DLL/callbacks.h"
 #include "REL/m668DLL/player.h"
 #include "humath.h"
 #include "game/frand.h"
@@ -10,6 +13,7 @@
 #include "datadir_enum.h"
 #include "game/memory.h"
 #include "game/sprite.h"
+#include "game/sprput.h"
 #include "game/charman.h"
 #include "game/audio.h"
 #include "REL/m668DLL/rotor.h"
@@ -24,10 +28,6 @@
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
 #include "string.h"
-
-#define M668_SE_ROTOR_LOOP 2190
-#define M668_SE_ROTOR_HIT 2188
-#define M668_SE_STAGE_START 2189
 
 extern const HuVecF lbl_1_rodata_88;
 extern const HuVecF lbl_1_rodata_94;
@@ -92,29 +92,10 @@ extern void fn_1_27D0(s16);
 extern void fn_1_2FA0(s16);
 extern void fn_1_3CB8(OMOBJ *);
 extern void fn_1_3CE4(s16);
-extern f32 fn_1_16B4(f32, f32);
-extern void fn_1_2A4(HuVecF *, f32, f32, f32);
-extern f32 fn_1_4DC(HuVecF *, const HuVecF *);
-extern f32 fn_1_404(const HuVecF *, const HuVecF *);
-extern f32 fn_1_220(f32);
-extern void fn_1_434(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_46C(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_4A4(HuVecF *, const HuVecF *, const HuVecF *);
-extern void fn_1_6BC(HuVecF *, const HuVecF *, f32);
 
 extern M668StageWork *lbl_1_bss_20;
 extern HuVecF lbl_1_bss_340[64];
 extern HuVecF lbl_1_bss_40[64];
-extern void fn_1_23B4(s16);
-extern void fn_1_27D0(s16);
-extern void fn_1_2FA0(s16);
-extern void fn_1_3CB8(OMOBJ *);
-extern void fn_1_3CE4(s16);
-
-static inline f32 M668Atan2f(f32 y, f32 x)
-{
-    return (f32)atan2((f64)y, (f64)x);
-}
 
 extern const MGACTOR_PARAM lbl_1_rodata_198;
 extern HuVecF lbl_1_data_64[4];
@@ -167,9 +148,6 @@ extern M668StageWork *lbl_1_bss_20;
 extern s32 lbl_1_bss_8;
 extern s32 lbl_1_bss_C;
 extern s32 lbl_1_bss_24;
-typedef struct M668CameraPair { HuVecF points[2]; } M668CameraPair;
-extern const M668CameraPair lbl_1_rodata_2A0, lbl_1_rodata_2B8;
-extern const HuVecF lbl_1_rodata_2D0;
 void fn_1_7014(OMOBJ *);
 void fn_1_70A0(OMOBJ *);
 void fn_1_7240(OMOBJ *);
@@ -187,30 +165,15 @@ extern ANIMDATA *lbl_1_bss_3C;
 extern void *lbl_1_bss_644;
 extern s32 lbl_1_bss_14;
 extern const GXColor lbl_1_rodata_13C;
-extern void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
-                         GXTexWrapMode wrapS, GXTexWrapMode wrapT,
-                         GXTexFilter filter);
 
 extern s32 lbl_1_bss_C, lbl_1_bss_24, lbl_1_bss_18[2];
 extern M668PlayerWork *lbl_1_bss_2C[4];
 extern M668RotorWork *lbl_1_bss_28[];
 extern const HuVecF lbl_1_rodata_1E0, lbl_1_rodata_1EC;
-extern void fn_1_6C24(OMOBJ *);
 extern void fn_1_6778(OMOBJ *);
 extern void fn_1_664C(OMOBJ *);
 
 extern void fn_1_7508(OMOBJ *);
-
-typedef struct { f32 value[4]; } M668FloatTable4;
-typedef struct { s32 value[4]; } M668IntTable4;
-extern const M668FloatTable4 lbl_1_rodata_208,lbl_1_rodata_234,lbl_1_rodata_244;
-extern const M668IntTable4 lbl_1_rodata_218;
-extern const HuVecF lbl_1_rodata_228,lbl_1_rodata_254,lbl_1_rodata_260;
-typedef struct M668VecBound_s {
-    HuVecF xyz;
-    f32 margin;
-} M668VecBound;
-extern s32 fn_1_1844(const M668VecBound *, const M668VecBound *);
 
 extern const HuVecF lbl_1_rodata_2E0, lbl_1_rodata_2EC, lbl_1_rodata_2F8;
 extern M668PlayerWork *lbl_1_bss_2C[4];
@@ -315,7 +278,7 @@ void fn_1_1A48(OMOBJ *obj)
         objIndex++;
     }
     fn_8005DDEC(7);
-    HuAudFXPlay(M668_SE_STAGE_START);
+    HuAudFXPlay(MSM_SE_MG668_START_ANNOUNCE);
     fn_1_218(obj, fn_1_1FC4);
 }
 
@@ -445,16 +408,16 @@ void fn_1_23B4(s16 layerNo)
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0U);
     PSMTXIdentity(position);
-    GXLoadPosMtxImm(position, 0U);
+    GXLoadPosMtxImm(position, GX_PNMTX0);
     GXSetNumChans(1U);
-    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXSetCullMode(GX_CULL_NONE);
     GXSetColorUpdate(1U);
     GXSetAlphaUpdate(1U);
     GXSetAlphaCompare(GX_ALWAYS, 255U, GX_AOP_OR, GX_ALWAYS, 255U);
     GXSetZMode(0U, GX_LESS, 0U);
     GXSetNumChans(1U);
-    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_VTX, 0U, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
@@ -501,9 +464,9 @@ void fn_1_27D0(s16 layerNo)
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0U);
     PSMTXIdentity(position);
-    GXLoadPosMtxImm(position, 0U);
+    GXLoadPosMtxImm(position, GX_PNMTX0);
     GXSetNumChans(1U);
-    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXSetCullMode(GX_CULL_NONE);
     GXSetColorUpdate(1U);
     GXSetAlphaUpdate(0U);
@@ -537,7 +500,7 @@ void fn_1_27D0(s16 layerNo)
     GXPosition3f32(0.0f, 0.06666667f, 0.0f);
     GXTexCoord2f32(0.0f, 1.0f);
     GXSetNumChans(1U);
-    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
@@ -582,9 +545,9 @@ void fn_1_2FA0(s16 layerNo)
         GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0U);
         PSMTXIdentity(position);
-        GXLoadPosMtxImm(position, 0U);
+        GXLoadPosMtxImm(position, GX_PNMTX0);
         GXSetNumChans(1U);
-        GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
+        GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
         GXSetCullMode(GX_CULL_NONE);
         GXSetColorUpdate(1U);
         GXSetAlphaUpdate(0U);
@@ -778,9 +741,9 @@ void fn_1_3CE4(s16 layerNo)
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0U);
     PSMTXIdentity(positionMatrix);
-    GXLoadPosMtxImm(positionMatrix, 0U);
+    GXLoadPosMtxImm(positionMatrix, GX_PNMTX0);
     GXSetNumChans(1U);
-    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, 0U, GX_DF_NONE, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0, 0U, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
     GXSetCullMode(GX_CULL_NONE);
     GXSetColorUpdate(1U);
     GXSetAlphaUpdate(0U);
@@ -892,7 +855,7 @@ void fn_1_468C(M668PlayerWork *work, f32 desired, f32 blend, f32 speed)
     f32 cross;
 
     work->player->actor->rotY = wrap_degrees(work->player->actor->rotY);
-    current = (f32)(3.141592653589793 * (f64)(work->player->actor->rotY / 180.0f));
+    current = (f32)(M_PI * (f64)(work->player->actor->rotY / 180.0f));
     fn_1_2A4(&desiredDir, (f32)sin((f64)desired), 0.0f, (f32)cos((f64)desired));
     fn_1_2A4(&currentDir, (f32)sin((f64)current), 0.0f, (f32)cos((f64)current));
     difference = fn_1_220(fn_1_404(&desiredDir, &currentDir));
@@ -909,7 +872,7 @@ void fn_1_468C(M668PlayerWork *work, f32 desired, f32 blend, f32 speed)
     while (angle < -6.283185307179586) {
         angle += 6.283185307179586;
     }
-    work->player->actor->rotY = (f32)((f64)(180.0f * angle) / 3.141592653589793);
+    work->player->actor->rotY = (f32)((f64)(180.0f * angle) / M_PI);
     fn_1_2A4(&work->player->actor->push, 0.0f, 0.0f, speed);
 }
 
@@ -1080,9 +1043,9 @@ void fn_1_4EE8(OMOBJ *obj)
             fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], 0.0f,
                                4.0f, 0U);
             fn_80026808((s16) playerWork->player->actor->mdlId, 0.0f,
-                            (f32) ((f64) (180.0f * M668Atan2f(playerWork->position[2].x,
+                            (f32) ((f64) (180.0f * atan2f(playerWork->position[2].x,
                                                                 playerWork->position[2].z)) /
-                                   3.141592653589793),
+                                   M_PI),
                             0.0f);
             if ((fn_1_18B4(playerWork->partnerNo)->state != 1) && (lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
@@ -1092,46 +1055,27 @@ void fn_1_4EE8(OMOBJ *obj)
             soundPan = 64.0f * (screenPosition.x / 576.0f);
             soundPan = soundPan < 0.0f ? 0.0f : (soundPan > 64.0f ? 64.0f : soundPan);
             soundPan += 32.0f;
-            HuAudFXPlayPan(M668_SE_ROTOR_HIT, (s16) soundPan);
-            CharFXPlayPan(playerWork->charNo, 576, (s16) soundPan);
+            HuAudFXPlayPan(MSM_SE_MG668_PLAYER_KNOCK_OFF, (s16) soundPan);
+            CharFXPlayPan(playerWork->charNo, MSM_SE_CHARVOICE_HIT_YELP, (s16) soundPan);
             fn_1_218(obj, fn_1_664C);
             return;
         }
     }
 }
 
-const M668FloatTable4 lbl_1_rodata_208 = {{7.0f,5.0f,3.0f,1.0f}};
-const M668IntTable4 lbl_1_rodata_218 = {{19,21,23,25}};
-const HuVecF lbl_1_rodata_228 = {0.0f,0.0f,0.0f};
-const M668FloatTable4 lbl_1_rodata_234 = {{300.0f,270.0f,250.0f,220.0f}};
-const M668FloatTable4 lbl_1_rodata_244 = {{80.0f,64.0f,32.0f,0.0f}};
-const HuVecF lbl_1_rodata_254 = {0.0f,-1.0f,0.0f};
-const HuVecF lbl_1_rodata_260 = {0.0f,1.0f,0.0f};
-
 /* Computer-player callback selected by fn_1_4C64 at sequence phase 5; steers around rotors and
  * handles contact, jumps, and falls. */
 void fn_1_54CC(OMOBJ *obj)
 {
-    M668FloatTable4 floatTableCopy;
+    M668PlayerWork *playerWork = obj->data;
+    s16 difficulty = lbl_80265728[playerWork->playerNo].comDif;
+    /* This difficulty table is copied here, but its values are unused by this callback. */
+    f32 floatTableCopy[4] = {7.0f, 5.0f, 3.0f, 1.0f};
     Point3d partnerDirection;
     Point3d teamCenterDirection;
     Point3d teamCenterOffset;
     Point3d teamSideAxis;
     Point3d avoidanceDirection;
-    M668IntTable4 lookaheadFramesByDifficulty;
-    Point3d originPosition;
-    Point3d rotorDirection;
-    Point3d nextRotorDirection;
-    Point3d actorPosition;
-    Point3d radialDirection;
-    M668FloatTable4 jumpHeightByDifficulty;
-    M668FloatTable4 jumpRollThresholdByDifficulty;
-    Point3d downwardAxis;
-    Point3d upwardAxis;
-    Point3d modelPosition;
-    Point3d originVector;
-    Point3d centerDirection;
-    Point3d screenPosition;
     int collisionMesh;
     f32 partnerDistance;
     f32 teamCenterDistance;
@@ -1139,16 +1083,10 @@ void fn_1_54CC(OMOBJ *obj)
     f32 rotorApproachRate;
     M668RotorWork *rotorWork;
     M668RotorWork *hitRotor;
-    M668PlayerWork *playerWork;
     f32 angularStep;
     f32 soundPan;
-    s16 difficulty;
     s32 rotorIndex;
 
-    playerWork = obj->data;
-    difficulty = lbl_80265728[playerWork->playerNo].comDif;
-    /* This difficulty table is copied here, but its values are unused by this callback. */
-    floatTableCopy = lbl_1_rodata_208;
     if (lbl_1_bss_20->state == 0) {
         if (lbl_1_bss_C != 0) {
             fn_1_218(obj, fn_1_6C24);
@@ -1170,7 +1108,7 @@ void fn_1_54CC(OMOBJ *obj)
                          playerWork->position);
                 fn_1_4DC(&teamCenterDirection, &teamCenterDirection);
                 fn_1_46C(&partnerDirection, &partnerDirection, &teamCenterDirection);
-                fn_1_468C(playerWork, M668Atan2f(partnerDirection.x, partnerDirection.z),
+                fn_1_468C(playerWork, atan2f(partnerDirection.x, partnerDirection.z),
                           0.1f, 7.0f);
             } else {
                 fn_1_2A4(&teamSideAxis, 0.0f, (f32) playerWork->sign, 0.0f);
@@ -1182,7 +1120,7 @@ void fn_1_54CC(OMOBJ *obj)
                          -(200.0f - teamCenterDistance) / 7.0f);
                 fn_1_46C(&avoidanceDirection, &avoidanceDirection, &teamCenterOffset);
                 fn_1_4DC(&avoidanceDirection, &avoidanceDirection);
-                fn_1_468C(playerWork, M668Atan2f(avoidanceDirection.x, avoidanceDirection.z),
+                fn_1_468C(playerWork, atan2f(avoidanceDirection.x, avoidanceDirection.z),
                           0.1f, 7.0f);
             }
         }
@@ -1190,43 +1128,49 @@ void fn_1_54CC(OMOBJ *obj)
             playerWork->transitionFlag = 0;
             rotorIndex = 0;
             while (rotorIndex < 1) {
-                lookaheadFramesByDifficulty = lbl_1_rodata_218;
+                s32 lookaheadFramesByDifficulty[4] = {19, 21, 23, 25};
                 rotorWork = fn_1_18CC(rotorIndex);
                 rotorAngleStep = (f32) (0.017453292519943295 *
                                         (f64) (rotorWork->speed * rotorWork->speedScale));
-                angularStep = rotorAngleStep * (f32) lookaheadFramesByDifficulty.value[difficulty];
-                originPosition = lbl_1_rodata_228;
-                fn_1_2A4(&rotorDirection, (f32) sin(rotorWork->angle), 0.0f,
-                         (f32) cos(rotorWork->angle));
-                fn_1_2A4(&nextRotorDirection, (f32) sin(rotorWork->angle + angularStep), 0.0f,
-                         (f32) cos(rotorWork->angle + angularStep));
-                fn_80086BC8(playerWork->player->actor, &actorPosition);
-                /* Compare the radial direction with this rotor now and after one difficulty-scaled
-                 * step. */
-                if (!(actorPosition.y > 150.0f) &&
-                    (actorPosition.y = 0.0f,
-                     fn_1_4A4(&radialDirection, &actorPosition, &originPosition),
-                     fn_1_4DC(&radialDirection, &radialDirection),
-                     rotorApproachRate =
-                         rotorWork->speed * ((rotorDirection.x * radialDirection.z) -
-                                             (rotorDirection.z * radialDirection.x)),
-                     (rotorApproachRate < 0.0f)) &&
-                    (fn_1_404(&rotorDirection, &radialDirection) > 0.0f) &&
-                    (fn_1_404(&rotorDirection, &radialDirection) >=
-                     fn_1_404(&rotorDirection, &nextRotorDirection))) {
-                    playerWork->transitionFlag = 1;
-                } else {
-                    rotorIndex += 1;
-                    continue;
+                angularStep = rotorAngleStep * (f32) lookaheadFramesByDifficulty[difficulty];
+                {
+                    Point3d originPosition = {0.0f, 0.0f, 0.0f};
+                    Point3d rotorDirection;
+                    Point3d nextRotorDirection;
+                    Point3d actorPosition;
+                    Point3d radialDirection;
+                    fn_1_2A4(&rotorDirection, (f32) sin(rotorWork->angle), 0.0f,
+                             (f32) cos(rotorWork->angle));
+                    fn_1_2A4(&nextRotorDirection, (f32) sin(rotorWork->angle + angularStep), 0.0f,
+                             (f32) cos(rotorWork->angle + angularStep));
+                    fn_80086BC8(playerWork->player->actor, &actorPosition);
+                    /* Compare the radial direction with this rotor now and after one
+                     * difficulty-scaled step. */
+                    if (!(actorPosition.y > 150.0f) &&
+                        (actorPosition.y = 0.0f,
+                         fn_1_4A4(&radialDirection, &actorPosition, &originPosition),
+                         fn_1_4DC(&radialDirection, &radialDirection),
+                         rotorApproachRate =
+                             rotorWork->speed * ((rotorDirection.x * radialDirection.z) -
+                                                 (rotorDirection.z * radialDirection.x)),
+                         (rotorApproachRate < 0.0f)) &&
+                        (fn_1_404(&rotorDirection, &radialDirection) > 0.0f) &&
+                        (fn_1_404(&rotorDirection, &radialDirection) >=
+                         fn_1_404(&rotorDirection, &nextRotorDirection))) {
+                        playerWork->transitionFlag = 1;
+                    } else {
+                        rotorIndex += 1;
+                        continue;
+                    }
+                    break;
                 }
-                break;
             }
             if (playerWork->transitionFlag != 0) {
-                jumpHeightByDifficulty = lbl_1_rodata_234;
-                jumpRollThresholdByDifficulty = lbl_1_rodata_244;
+                f32 jumpHeightByDifficulty[4] = {300.0f, 270.0f, 250.0f, 220.0f};
+                f32 jumpRollThresholdByDifficulty[4] = {80.0f, 64.0f, 32.0f, 0.0f};
                 /* Difficulty sets the random threshold for jumping before predicted rotor
                  * contact. */
-                if ((100.0f * frandf()) >= jumpRollThresholdByDifficulty.value[difficulty]) {
+                if ((100.0f * frandf()) >= jumpRollThresholdByDifficulty[difficulty]) {
                     fn_80086CC4(
                         playerWork->player->actor,
                         playerWork->player->actor->gravity
@@ -1236,7 +1180,7 @@ void fn_1_54CC(OMOBJ *obj)
                                         sqrtf(
                                             1.0f +
                                             (8.0f * ((100.0f *
-                                                        jumpHeightByDifficulty.value[difficulty]) /
+                                                        jumpHeightByDifficulty[difficulty]) /
                                                        playerWork->player->actor->gravity)))) /
                                        2.0f)
                             : 0.0f);
@@ -1255,8 +1199,12 @@ void fn_1_54CC(OMOBJ *obj)
             return;
         }
         if (playerWork->state == 2) {
-            downwardAxis = lbl_1_rodata_254;
-            upwardAxis = lbl_1_rodata_260;
+            Point3d downwardAxis = {0.0f, -1.0f, 0.0f};
+            Point3d upwardAxis = {0.0f, 1.0f, 0.0f};
+            Point3d modelPosition;
+            Point3d originVector;
+            Point3d centerDirection;
+            Point3d screenPosition;
             fn_1_2A4(&originVector, 0.0f, 0.0f, 0.0f);
             fn_80086BC8(playerWork->player->actor, &modelPosition);
             fn_1_4A4(&centerDirection, &modelPosition, &originVector);
@@ -1280,9 +1228,9 @@ void fn_1_54CC(OMOBJ *obj)
             fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], 0.0f,
                                4.0f, 0U);
             fn_80026808((s16) playerWork->player->actor->mdlId, 0.0f,
-                            (f32) ((f64) (180.0f * M668Atan2f(playerWork->position[2].x,
+                            (f32) ((f64) (180.0f * atan2f(playerWork->position[2].x,
                                                                 playerWork->position[2].z)) /
-                                   3.141592653589793),
+                                   M_PI),
                             0.0f);
             if ((fn_1_18B4(playerWork->partnerNo)->state != 1) &&
                 (lbl_1_bss_24 == -1)) {
@@ -1294,8 +1242,8 @@ void fn_1_54CC(OMOBJ *obj)
                            ? 0.0f
                            : (soundPan > 64.0f ? 64.0f : soundPan);
             soundPan += 32.0f;
-            HuAudFXPlayPan(M668_SE_ROTOR_HIT, (s16) soundPan);
-            CharFXPlayPan(playerWork->charNo, 576, (s16) soundPan);
+            HuAudFXPlayPan(MSM_SE_MG668_PLAYER_KNOCK_OFF, (s16) soundPan);
+            CharFXPlayPan(playerWork->charNo, MSM_SE_CHARVOICE_HIT_YELP, (s16) soundPan);
             fn_1_218(obj, fn_1_664C);
             return;
         }
@@ -1498,21 +1446,17 @@ void fn_1_7014(OMOBJ *obj)
     }
 }
 
-const M668CameraPair lbl_1_rodata_2A0 = {{{-550.0f,200.0f,950.0f},{550.0f,200.0f,950.0f}}};
-const M668CameraPair lbl_1_rodata_2B8 = {{{-550.0f,200.0f,0.0f},{550.0f,200.0f,0.0f}}};
-const HuVecF lbl_1_rodata_2D0 = {0.0f,1.0f,0.0f};
-
 /* On its 61st active update, frames the winning team and requests the second wipe. */
 void fn_1_70A0(OMOBJ *obj)
 {
     M668CameraWork *work = obj->data;
     if (lbl_1_bss_20->state == 0) {
         if (work->timer++ >= 60) {
-            M668CameraPair position = lbl_1_rodata_2A0;
-            M668CameraPair target = lbl_1_rodata_2B8;
-            HuVecF up = lbl_1_rodata_2D0;
+            HuVecF position[2] = {{-550.0f, 200.0f, 950.0f}, {550.0f, 200.0f, 950.0f}};
+            HuVecF target[2] = {{-550.0f, 200.0f, 0.0f}, {550.0f, 200.0f, 0.0f}};
+            HuVecF up = {0.0f, 1.0f, 0.0f};
             Hu3DCameraPerspectiveSet(1, 40.0f, 20.0f, 15000.0f, 1.2f);
-            Hu3DCameraPosSetV(1, &position.points[lbl_1_bss_24], &up, &target.points[lbl_1_bss_24]);
+            Hu3DCameraPosSetV(1, &position[lbl_1_bss_24], &up, &target[lbl_1_bss_24]);
             WipeCreate(1, 5, 60);
             work->timer = 0;
             lbl_1_bss_C = 1;
@@ -1564,10 +1508,10 @@ void fn_1_72CC(OMOBJ *obj)
         }
 
         fn_80026808(work->model, 0.0f,
-                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        (f32)((f64)(180.0f * work->angle) / M_PI),
                         0.0f);
         fn_80026808(work->shadowModel, 0.0f,
-                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        (f32)((f64)(180.0f * work->angle) / M_PI),
                         0.0f);
         fn_80026E44(work->shadowModel);
         fn_1_218(obj, fn_1_7508);
@@ -1579,7 +1523,7 @@ void fn_1_7508(OMOBJ *obj)
 {
     M668RotorWork *work = obj->data;
     if (lbl_1_bss_20->state == 0 && fn_80071A8C() == 2) {
-        work->sound = HuAudFXPlay(M668_SE_ROTOR_LOOP);
+        work->sound = HuAudFXPlay(MSM_SE_MG668_ROTOR_LOOP);
         HuAudFXPitchSet(work->sound, 2000);
         fn_1_218(obj, fn_1_758C);
         return;
@@ -1621,10 +1565,10 @@ void fn_1_758C(OMOBJ *obj)
     work->history[0] = work->angle;
     work->angle += delta;
     fn_80026808(work->model, 0.0f,
-                    (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                    (f32)((f64)(180.0f * work->angle) / M_PI),
                     0.0f);
     fn_80026808(work->shadowModel, 0.0f,
-                    (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                    (f32)((f64)(180.0f * work->angle) / M_PI),
                     0.0f);
 
     up = lbl_1_rodata_2E0;
@@ -1674,10 +1618,10 @@ void fn_1_758C(OMOBJ *obj)
         work->history[0] = work->angle;
         work->angle = 0.0f;
         fn_80026808(work->model, 0.0f,
-                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        (f32)((f64)(180.0f * work->angle) / M_PI),
                         0.0f);
         fn_80026808(work->shadowModel, 0.0f,
-                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        (f32)((f64)(180.0f * work->angle) / M_PI),
                         0.0f);
         HuAudFXStop(work->sound);
         fn_1_218(obj, fn_1_7B30);
@@ -1696,7 +1640,7 @@ void fn_1_7B30(OMOBJ *obj)
         }
         work->history[0] = work->angle;
         if (fn_80071A8C() == 5) {
-            work->sound = HuAudFXPlay(M668_SE_ROTOR_LOOP);
+            work->sound = HuAudFXPlay(MSM_SE_MG668_ROTOR_LOOP);
             fn_1_218(obj, fn_1_7BE8);
             return;
         }
@@ -1760,10 +1704,10 @@ void fn_1_7BE8(OMOBJ *obj)
         work->history[0] = work->angle;
         work->angle = (f32)(work->angle + delta);
         fn_80026808(work->model, 0.0f,
-                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        (f32)((f64)(180.0f * work->angle) / M_PI),
                         0.0f);
         fn_80026808(work->shadowModel, 0.0f,
-                        (f32)((f64)(180.0f * work->angle) / 3.141592653589793),
+                        (f32)((f64)(180.0f * work->angle) / M_PI),
                         0.0f);
 
         up = lbl_1_rodata_30C;

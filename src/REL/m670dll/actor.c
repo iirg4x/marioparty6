@@ -32,7 +32,9 @@ void fn_1_2460(int playerNo, int state)
     MGPLAYER *player;
     OMOBJ *obj;
     player = lbl_1_bss_10.players[playerNo];
+    /* This object pointer is assigned but never read in this function. */
     obj = lbl_1_bss_10.playerObjects[playerNo];
+    /* States 1 and 5 make the same motion call with the same arguments. */
     switch (state) {
     case 1:
         fn_8005C2C8(lbl_1_bss_10.characterNo[playerNo], player->omObj->mtnId[0],

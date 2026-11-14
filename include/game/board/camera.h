@@ -125,10 +125,14 @@ void mbCameraFocusObjSet(MBMODELID modelId);
 void mbCameraFocusObjAdd(MBMODELID modelId);
 void mbCameraFocusMasuSet(int masuId);
 void mbCameraFocusMasuAdd(int masuId);
-void mbCameraMovePos(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime);
-void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime);
-void mbCameraMoveObj(MBMODELID modelId, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime);
-void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime);
+void mbCameraMovePos(HuVecF *pos, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov, s16 maxTime);
+void mbCameraMovePlayer(s16 playerNo, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov, s16 maxTime);
+void mbCameraMoveObj(MBMODELID modelId, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov, s16 maxTime);
+void mbCameraMoveMasu(s16 masuId, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov, s16 maxTime);
 BOOL mbCameraMoveCheck(void);
 void mbCameraMoveWait(void);
 void mbCameraMoveStop(void);
@@ -141,6 +145,6 @@ void mbCameraPlayerViewGet(int viewNo, MBVIEW *viewP);
 int mbCameraPlayerViewNoGet(void);
 float mbCameraPlayerViewZoomGet(int viewNo);
 float mbCameraPlayerViewRotXGet(int viewNo);
-void mbCameraMultiFocusSet(int arg0, int arg1, double arg2, int arg3);
+void mbCameraMultiFocusSet(int, int, double, int);
 
 #endif

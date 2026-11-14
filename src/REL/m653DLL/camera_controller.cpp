@@ -1,3 +1,4 @@
+#include "REL/framework/vector_math.h"
 #include "REL/framework/debug.h"
 #include "dolphin/types.h"
 
@@ -5,7 +6,7 @@
 
 #include "REL/m653DLL/allocation.h"
 
-#include "REL/m653DLL/random.h"
+#include "REL/framework/random.h"
 
 #include "REL/m653DLL/camera_controller.h"
 
@@ -53,14 +54,6 @@ CameraController653::CameraController653() : GameObject(0x8000), shake(0.0f)
     setCallback(&CameraController653::fn_1_334);
 }
 
-// Sets a vector from three coordinates.
-static inline void setVector(Vec *vector, f64 x, f64 y, f64 z)
-{
-    vector->x = x;
-    vector->y = y;
-    vector->z = z;
-}
-
 /* Copies the object's transform parameters and applies a random offset while its effect is active. */
 void CameraController653::update()
 {
@@ -72,7 +65,7 @@ void CameraController653::update()
         shakeExtent = shake.update();
         if (shakeExtent > 0.0f) {
             lbl_1_bss_0 = frame;
-            setVector(&offset, RandomFloat(-shakeExtent, shakeExtent),
+            vectorSet(&offset, RandomFloat(-shakeExtent, shakeExtent),
                       RandomFloat(-shakeExtent, shakeExtent),
                       RandomFloat(-shakeExtent, shakeExtent));
             cameraTranslateByLocalOffset(&lbl_1_bss_0, &offset);

@@ -1,0 +1,4 @@
+#ifndef MIKEACTDLL_MIC_SELECTION_CONTEXT_H
+#define MIKEACTDLL_MIC_SELECTION_CONTEXT_H
+#include "game/mic.h"
+#endif

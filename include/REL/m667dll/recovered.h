@@ -8,24 +8,29 @@
 #include "game/mg/actman.h"
 #include "game/sprite.h"
 
+enum M667SceneObject {
+    M667_SCENE_CAMERA,
+    M667_SCENE_COLLISION,
+    M667_SCENE_PLAYERS,
+    M667_SCENE_ENTRIES,
+    M667_SCENE_MAP,
+    M667_SCENE_SINGLE_RESULT,
+    M667_SCENE_MULTIPLAYER_RESULT,
+    M667_SCENE_OBJECT_COUNT
+};
+
 /* State views shared by Talkie Walkie's scene, player, map, and effect callbacks. */
 typedef struct M667SceneView {
     s16 modeTimer; /* Frame counter used by the current scene mode. */
     s16 mode; /* Current scene-sequence mode. */
     s16 modePhase; /* Step within the current scene-sequence mode. */
     s16 outcome; /* 1: hit, 2: lost contact, 3: timeout, 4: escaped. */
-    OMOBJ *cameraObject;
-    OMOBJ *collisionObject;
-    OMOBJ *playerObject;
-    OMOBJ *entryObject;
-    OMOBJ *mapObject;
-    OMOBJ *singlePlayerResultObject;
-    OMOBJ *multiplayerResultObject;
-    u8 reservedBeforeGroups[4]; /* Reserved bytes between scene objects and group state. */
+    OMOBJ *objects[7];
+    u8 unk24[4]; /* No code names this field. */
     s32 groups[4]; /* Assigned group for each of the four players. */
     s32 majorityGroup; /* Group containing the larger player team. */
     struct M667PlayerView *entries[3]; /* Players recorded for the ending sequence. */
-    u8 reservedBeforeEntryCount[8]; /* Reserved bytes between entry pointers and entry state. */
+    u8 unk48[8]; /* No code names this field. */
     s16 entryCount; /* Number of recorded ending-sequence players, up to three. */
     /* Count of initialized majority-team AI players; scales a stored move interval that
      * their AI callback does not read. */
@@ -41,13 +46,14 @@ typedef struct M667SceneView {
 
 typedef struct M667CameraView {
     s16 mode;
-    u8 reservedAfterMode[2]; /* Reserved bytes between the mode and camera timer. */
+    u8 unk02[2]; /* No code names this field. */
     s16 timer; /* Cleared on camera mode or motion changes; no camera callback reads or advances
                 * this word. */
-    u8 reservedBeforeMotionIndex[10]; /* Reserved bytes between the timer and motion index. */
+    u8 unk06[10]; /* No code names this field. */
     s32 motionIndex;
     HuVecF position;
     HuVecF target;
+    u8 unk2C[0x38]; /* No code names this field. */
 } M667CameraView;
 
 /* Each active tile slot holds its grid cell, model, and saved material colors. */
@@ -55,7 +61,7 @@ typedef struct M667MapSlot {
     s32 enabled;
     s16 x;
     s16 z;
-    u8 reservedBeforeModel[2]; /* Reserved bytes between the grid cell and model handle. */
+    u8 unk08[2]; /* No code names this field. */
     HU3D_MODELID model;
     void *data;
 } M667MapSlot;
@@ -66,16 +72,16 @@ typedef struct M667MapModel {
     s16 elapsedFrames;
     s16 index;
     s16 durationFrames;
-    u8 reservedAfterFrame[12]; /* Reserved bytes after the moving model's path duration. */
+    u8 unk08[12]; /* No code names this field. */
 } M667MapModel;
 
 typedef struct M667MapView {
-    u8 reservedBeforeGroupCounts[2]; /* Reserved bytes before the group counts. */
+    u8 unk00[2]; /* No code names this field. */
     s8 groupCount[4];
     struct M667PlayerView *players[4][4];
     struct M667PlayerView *currentPlayer;
     M667MapSlot slots[4];
-    u8 reservedAfterSlots[4]; /* Reserved bytes between map slots and model records. */
+    u8 unk8C[4]; /* No code names this field. */
     M667MapModel records[2];
     s16 modelIds[4];
     s32 modelCount;
@@ -102,12 +108,11 @@ typedef struct M667Entry {
     HuVecF direction;
     MGACTOR *actor;
     M667QuadraticView curve;
-    u8 reservedAfterCurve[4]; /* Reserved bytes at the end of each entry actor's state. */
+    u8 unk40[4]; /* No code names this field. */
 } M667Entry;
 
 typedef struct M667Entries {
-    u8 reservedBeforeWord[2]; /* Unused leading bytes before the initialized word and entry
-                                     * array. */
+    u8 unk00[2]; /* No code names this field. */
     s16 reservedWord; /* Word initialized to zero before the entry array. */
     M667Entry entries[12];
 } M667Entries;
@@ -116,23 +121,21 @@ typedef struct M667Entries {
 typedef struct M667ModelEffectView {
     u16 flags;
     s16 age;
-    u8 reservedAfterAge[2]; /* Reserved bytes between effect age and model handle. */
+    u8 unk04[2]; /* No code names this field. */
     s16 model;
     s16 stopped; /* Trails stop on the floor contact after their third bounce,
                   * or below Y -500 while descending. */
     s16 pointCount; /* Number of sampled positions and colors in a line strip. */
-    union {
-        s16 bounceCount; /* Floor reflections completed by a trail. */
-        s16 childCount; /* Trails created by a particle controller. */
-    } counts;
-    u8 reservedBeforeAlpha[6]; /* Reserved bytes between child count and trail opacity. */
+    s16 counts; /* Floor reflections for a trail, children for a particle controller. */
+    u8 unk0E[6]; /* No code names this field. */
     f32 alpha; /* Trail opacity, reduced on each update. */
-    u8 reservedAfterAlpha[12]; /* Reserved bytes between trail opacity and world position. */
+    u8 unk18[12]; /* No code names this field. */
     HuVecF position;
     HuVecF velocity; /* Trail displacement applied on each update. */
-    u8 reservedAfterVelocity[4]; /* Reserved bytes between velocity and the trail point list. */
+    u8 unk3C[4]; /* No code names this field. */
     struct M667ParticlePointView *points; /* Newest point first, followed by older points. */
     struct M667ModelEffectView **children; /* Trails emitted by a particle controller. */
+    u8 unk48[8]; /* No code names this field. */
 } M667ModelEffectView;
 
 /* Each effect registry entry pairs a pool with its draw and update callbacks. */
@@ -143,7 +146,7 @@ typedef struct M667RegistryEntryView {
 } M667RegistryEntryView;
 
 typedef struct M667RegistryView {
-    u8 reservedBeforeEntries[4]; /* Reserved bytes before the effect registry entries. */
+    u8 unk00[4]; /* No code names this field. */
     M667RegistryEntryView entries[8];
     s32 count; /* Number allocated from the final pool during registry setup. */
     s32 model; /* Model handle whose draw hook processes the registered effects. */
@@ -164,8 +167,7 @@ typedef struct M667PoolNode {
 typedef struct M667Pool {
     M667PoolNode *active; /* Head of the items allocated from this pool. */
     M667PoolNode *free; /* Head of the items available for reuse. */
-    u8 reservedAfterLists[8]; /* Pool initialization clears these bytes; list operations leave
-                               * them unchanged. */
+    u8 unk08[8]; /* No code names this field. */
 } M667Pool;
 
 /* Each track key supplies a frame number and one value for each animated channel. */
@@ -196,7 +198,7 @@ typedef struct M667AIView {
     u32 chance;
     s32 directionWeights[3];
     s32 attackWeights[3];
-    s32 unusedValues[5]; /* Additional integer table entries not read by the AI callbacks. */
+    s32 unk20[5]; /* No code names this field. */
 } M667AIView;
 
 typedef struct M667PlayerView {
@@ -214,28 +216,28 @@ typedef struct M667PlayerView {
     s16 charNo;
     s8 group;
     s8 slot;
-    u8 reservedBeforePosition[4]; /* Reserved bytes between player identity and position. */
+    u8 unk1C[4]; /* No code names this field. */
     HuVecF position;
     s32 motion;
     f32 rotationStartY;
     f32 rotationCurrentY;
     f32 rotationTargetY;
-    u8 reservedBeforeStartPosition[8]; /* Reserved bytes between rotation state and map path. */
+    u8 unk3C[8]; /* No code names this field. */
     /* Map movement stores its previous and next world positions here. */
     HuVecF startPos;
     HuVecF targetPos;
-    u8 reservedBeforeVelocity[12]; /* Reserved bytes between map path and velocity. */
+    u8 unk5C[12]; /* No code names this field. */
     HuVecF velocity;
-    u8 reservedBeforeMapCoordinates[8]; /* Reserved bytes between velocity and map coordinates. */
+    u8 unk74[8]; /* No code names this field. */
     s16 mapX;
     s16 mapZ;
     s16 mapSlotIndex;
     /* Entry handle used while carrying an entry actor; -1 means none is held. */
     s16 entryId;
     char *itemHook;
-    u8 reservedBeforeDifficulty[2]; /* Reserved bytes between item hook and AI difficulty. */
+    u8 unk88[2]; /* No code names this field. */
     s16 difficulty;
-    u8 reservedBeforeAiIntervals[2]; /* Reserved bytes between difficulty and AI timing. */
+    u8 unk8C[2]; /* No code names this field. */
     s16 aiMoveInterval;
     s16 aiActionInterval;
     s16 aiIntervalVariance;
@@ -253,19 +255,28 @@ extern M667MapView *lbl_1_bss_18;
 extern M667SceneView *lbl_1_bss_2C;
 extern MGSEQ_PARAM lbl_1_data_0;
 extern s32 lbl_1_data_28;
-extern void *lbl_1_data_AB8[7];
-extern void *lbl_1_data_AD4[7];
+extern M667ModelDescription *lbl_1_data_AB8[7];
+extern M667ModelDescription *lbl_1_data_AD4[7];
 
 void fn_1_19C(void);
+void fn_1_1C0(s16 mode, s16 frameNo);
+void fn_1_1F4(s16 mode, s16 frameNo);
+void fn_1_1F8(s16 mode, s16 frameNo);
+void fn_1_254(s16 mode, s16 frameNo);
+void fn_1_280(s16 mode, s16 frameNo);
+void fn_1_2F0(s16 mode, s16 frameNo);
+void fn_1_31C(s16 mode, s16 frameNo);
+void fn_1_320(s16 mode, s16 frameNo);
+void fn_1_324(s16 mode, s16 frameNo);
 void fn_1_66AC(M667ModelEffectView *item, s32 event);
 void fn_1_5C0(M667SceneView *work);
-u16 *fn_1_2098(u32 index, HuVecF *position);
+M667ModelEffectView *fn_1_2098(u32 index, HuVecF *position);
 void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback);
 void fn_1_D6C(s32 index, HuVecF *position);
 void fn_1_1554(s32 index);
 void fn_1_1258(s32 index);
 s8 *fn_1_895C(s32 model);
-void fn_1_16B8(s32 index, void *color);
+void fn_1_16B8(s32 index, GXColor *color);
 void fn_1_1628(s32 index);
 void fn_1_1810(s32 index, s32 x, s32 z);
 s32 fn_1_1AD4(s32 index, s32 x, s32 z);
@@ -290,17 +301,26 @@ f32 fn_1_80AC(HuVecF *start, HuVecF *end);
 s32 fn_1_8544(HuVecF *source, HuVecF *destination);
 void fn_1_8254(M667QuadraticView *out, HuVecF *start, HuVecF *peak, HuVecF *end);
 f32 fn_1_84E8(M667QuadraticView *curve, f32 x);
-void fn_1_7664(void *work);
+struct M667ParticleDescription;
+void fn_1_7664(struct M667ParticleDescription *work);
 void fn_1_77D0(M667ParticleAnimEntry *entries);
-void fn_1_7350(void *description, s32 *models, s32 *motions);
+void fn_1_7350(M667ModelDescription *description, s32 *models, s32 *motions);
 void fn_1_7424(OMOBJ *object, M667ModelDescription *description);
-OMOBJ *fn_1_7868(void *description);
+OMOBJ *fn_1_7868(M667ModelDescription *description);
 void fn_1_7AC8(void *item);
 void *fn_1_7B10(u8 *buffer, s32 bytes, s32 itemBytes);
 void *fn_1_7BA8(M667Pool *pool);
 void fn_1_7C1C(M667Pool *pool, void *item);
-void *fn_1_7C8C(void *pool);
+void *fn_1_7C8C(M667Pool *pool);
 void *fn_1_7CC8(void *pool, void *item);
 s16 fn_1_8FC4(void);
+M667ModelDescription *fn_1_8F58(s32 descriptionIndex);
+void fn_1_78F8(OMOBJ *object);
+f32 fn_1_7F48(HuVecF *direction);
+f32 fn_1_7FA0(f32 start, f32 end, f32 blend);
+void fn_1_8AE4(s32 model, const s8 *colors, f32 redScale, f32 greenScale, f32 blueScale);
+void fn_1_8C30(s32 modelId, char *objectName, s32 targetModelId);
+void fn_1_8CBC(HuVecF *worldPos, s32 soundId);
+s32 fn_1_8E5C(s32 soundId);
 
 #endif

@@ -3,12 +3,16 @@
 #include "game/board/window.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
+#include "game/board/capevent.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
 #include "game/board/model.h"
 #include "game/board/pause.h"
 #include "game/board/player.h"
 #include "game/board/status.h"
+#include "game/board/single.h"
+#include "game/board/telop.h"
+#include "game/board/wipe.h"
 
 #include "game/charman.h"
 #include "game/data.h"
@@ -27,20 +31,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
-extern s8 mbPadStkXGet(int padNo);
-extern int mbSingleOppCharGet(void);
-extern int mbSingleTeamCharGet(void);
-extern void mbDirClose(void);
-extern void mbev_CapPlayerMotShiftSet(int modelId, int motionNo, int attr, BOOL waitF);
-extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
-    HuVecF *result);
-extern void mbev_CapEffColorSet(GXColor *color, int colorNo);
-extern s32 mbBGRead(s32 dataNum);
-extern void mbBGReadWait(s32 statId);
-extern void mbOvlCall(OMOVL ovl);
-extern void mbWipeCreate(s16 mode, s16 type, s16 time);
-extern void mbWipeSpecialWait(void);
+#include "humath.h"
 
 typedef struct MgListWork_s {
     unsigned killF : 1;
@@ -264,7 +255,7 @@ static int mgCallTypeFileTbl[4] = {
     DATANUM(0x50000, MGCALL_BOARD_FILE_TYPE),
 };
 
-static u32 guideMotFileTbl[2][16] = {
+static int guideMotFileTbl[2][16] = {
     { DATANUM(0x110000, MGCALL_GUIDE_DAY_MOTION_1),
         DATANUM(0x110000, MGCALL_GUIDE_DAY_MOTION_2),
         DATANUM(0x110000, MGCALL_GUIDE_DAY_MOTION_3),
@@ -373,12 +364,12 @@ s32 mbev_MgCall(void)
     if (!lbl_80265B70.curTime) {
         workP->guideMdlId = mbObjCreate(
             DATANUM(0x110000, MGCALL_GUIDE_DAY_MODEL),
-            (int *)guideMotFileTbl[0], 0);
+            guideMotFileTbl[0], 0);
         workP->guideItemMdlId = -1;
     } else {
         workP->guideMdlId = mbObjCreate(
             DATANUM(0x110000, MGCALL_GUIDE_NIGHT_MODEL),
-            (int *)guideMotFileTbl[1], 0);
+            guideMotFileTbl[1], 0);
         workP->guideItemMdlId = mbObjCreate(
             DATANUM(0x110000, MGCALL_GUIDE_NIGHT_ITEM_MODEL), 0, 0);
         mbObjHookSet(workP->guideMdlId, lbl_8024BA18, workP->guideItemMdlId);
@@ -402,15 +393,15 @@ s32 mbev_MgCall(void)
     mbCameraMoveWait();
     mbCameraFocusObjSet(-1);
     mbWipeFadeIn();
-    mbAudFXPlay(1111);
+    mbAudFXPlay(MSM_SE_BRD00_MINIGAME_CALL_START);
     if (!GWTeamFGet()) {
         for (i = 0; i < 4; i++) {
-            mbStatusPosOnGet(i, (HuVecF *)&statusPos);
+            mbStatusPosOnGet(i, &statusPos);
             mbStatusMoveSet(i, (HuVecF *)&statusPos, (HuVecF *)&statusPos4PBase[i], TRUE, 15);
         }
     } else {
         for (i = 0; i < 2; i++) {
-            mbStatusPosOnGet(i, (HuVecF *)&statusPos);
+            mbStatusPosOnGet(i, &statusPos);
             mbStatusNoMoveSet(i, (HuVecF *)&statusPos, (HuVecF *)&statusPosKettouBase[i], TRUE, 15);
         }
     }
@@ -423,15 +414,15 @@ s32 mbev_MgCall(void)
         DATANUM(0x50000, MGCALL_BOARD_FILE_VERSUS)), 90, 0);
     espPosSet(workP->sprId[2], 288.0f, 240.0f);
     espScaleSet(workP->sprId[2], 0.5f, 0.5f);
-    mbAudFXPlay(1112);
+    mbAudFXPlay(MSM_SE_BRD00_VERSUS_BANNER_SLIDE);
     for (i = 1; i <= 30; i++) {
         weight = i / 30.0f;
-        scaleX = (0.5f * sin((3.141592653589793 * (90.0f * weight)) / 180.0))
-            + (1.5f * sin((3.141592653589793 * (180.0f * weight)) / 180.0));
-        scaleY = (0.5f * sin((3.141592653589793 * (90.0f * weight)) / 180.0))
-            + (1.5f * fabs(sin((3.141592653589793 * (360.0f * weight)) / 180.0)));
+        scaleX = (0.5f * sin((M_PI * (90.0f * weight)) / 180.0))
+            + (1.5f * sin((M_PI * (180.0f * weight)) / 180.0));
+        scaleY = (0.5f * sin((M_PI * (90.0f * weight)) / 180.0))
+            + (1.5f * fabs(sin((M_PI * (360.0f * weight)) / 180.0)));
         espPosSet(workP->sprId[2], 288.0f - (32.0f * (1.0f - weight)),
-            240.0f + (64.0f * sin((3.141592653589793 * (180.0f * weight)) / 180.0)));
+            240.0f + (64.0f * sin((M_PI * (180.0f * weight)) / 180.0)));
         espScaleSet(workP->sprId[2], scaleX, scaleY);
         espZRotSet(workP->sprId[2], 360.0f * -weight);
         HuPrcVSleep();
@@ -444,26 +435,26 @@ s32 mbev_MgCall(void)
     for (i = 0; i < 30u; i++) {
         weight = i / 30.0f;
         espPosSet(workP->sprId[0], 288.0f,
-            88.0f - (120.0f * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+            88.0f - (120.0f * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         HuPrcVSleep();
     }
     if (workP->type == MG_TYPE_4P && mbRandMod(100) < 10 && mbPlayerMaxCoinGet() >= 10) {
         battleF = TRUE;
         for (i = 1; i <= 12u; i++) {
             weight = i / 12.0f;
-            scale = 0.5f * cos((3.141592653589793 * (90.0f * weight)) / 180.0);
+            scale = 0.5f * cos((M_PI * (90.0f * weight)) / 180.0);
             espScaleSet(workP->sprId[2], scale, scale);
             HuPrcVSleep();
         }
         mbAudFXDelaySet(10);
-        mbAudGuidePlay(948);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_CHEER);
         mbev_CapPlayerMotShiftSet(workP->guideMdlId, 7, 0, TRUE);
         mbObjMotionShiftSet(workP->guideMdlId, 8, 0.0f, 8.0f, FALSE);
         result = MgCallBattleExec(workP);
     } else {
         for (i = 1; i <= 12u; i++) {
             weight = i / 12.0f;
-            scale = 0.1f + (0.4f * cos((3.141592653589793 * (90.0f * weight)) / 180.0));
+            scale = 0.1f + (0.4f * cos((M_PI * (90.0f * weight)) / 180.0));
             espScaleSet(workP->sprId[2], scale, scale);
             HuPrcVSleep();
         }
@@ -482,16 +473,16 @@ s32 mbev_MgCall(void)
             }
             mbStatusMoveSet(i, NULL, (HuVecF *)&statusPos, TRUE, 15);
         }
-        mbAudFXPlay(1113);
+        mbAudFXPlay(MSM_SE_BRD00_VERSUS_EFFECT_BURST);
         MgCallVsEffCreate();
         MgCallVsEffPosSet(288.0f, 240.0f);
         for (i = 1; i <= 30u; i++) {
             weight = i / 30.0f;
-            scale = 0.1f + (3.0f * sin((3.141592653589793 * (90.0f * weight)) / 180.0));
+            scale = 0.1f + (3.0f * sin((M_PI * (90.0f * weight)) / 180.0));
             espScaleSet(workP->sprId[2], scale, scale);
             espTPLvlSet(workP->sprId[2], 1.0f - weight);
             espZRotSet(workP->sprId[2],
-                360.0f * sin((3.141592653589793 * (90.0f * weight)) / 180.0));
+                360.0f * sin((M_PI * (90.0f * weight)) / 180.0));
             HuPrcVSleep();
         }
         espDispOff(workP->sprId[2]);
@@ -567,7 +558,7 @@ static int SetupTeam(int *colorIn)
         }
     }
     if (colorChange) {
-        mbAudFXPlay(1131);
+        mbAudFXPlay(MSM_SE_BRD00_TEAM_COLOR_CHANGE);
         for (i = 0; i <= 60u; i++) {
             for (j = 0; j < playerNum; j++) {
                 if (origColor[j] != colorTbl[j]) {
@@ -895,7 +886,7 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
         type = MG_TYPE_1VS3;
         workP->sprId[1] = espEntry(
             mbBoardDataNumGet(DATANUM(0x50000, MGCALL_BOARD_FILE_TYPE)), 95, 5);
-        mbAudFXPlay(1115);
+        mbAudFXPlay(MSM_SE_BRD00_MINIGAME_TYPE_DROP);
         posY = 88.0f;
         velY = 6.0f;
         zRot = 0.0f;
@@ -907,10 +898,10 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
             }
             espPosSet(workP->sprId[1], 288.0f,
                 88.0f - (120.0f
-                    * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+                    * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
             if (weight >= 0.6f) {
                 if (!soundF) {
-                    mbAudFXPlay(1116);
+                    mbAudFXPlay(MSM_SE_BRD00_MINIGAME_TYPE_LAND);
                     soundF = TRUE;
                 }
                 if (zRot > -40.0f) {
@@ -1030,14 +1021,14 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
             }
             espPosSet(workP->sprId[6], 288.0f, mgListObj[mgCallFocus]->trans.y);
             espDispOn(workP->sprId[6]);
-            mbAudFXPlay(1009);
+            mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_TICK);
         }
         HuPrcVSleep();
     }
     mgCallFocus = focusNo;
     espPosSet(workP->sprId[6], 288.0f, mgListObj[mgCallFocus]->trans.y);
     MgRouletteFocus(mgListObj[mgCallFocus]);
-    mbAudFXPlay(1134);
+    mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_STOP);
     if (GWPartyGet() == FALSE
         && !mbSingleMgUnlockGet(mgTbl[mgCallFocus] + 601)
         && !fn_8003CC40(mgTbl[mgCallFocus] + 601)) {
@@ -1056,14 +1047,14 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
             weight = i / 60.0f;
             if (weight <= 0.25f) {
                 zRot = -90.0f
-                    * sin((3.141592653589793 * (90.0f * (4.0f * weight))) / 180.0);
+                    * sin((M_PI * (90.0f * (4.0f * weight))) / 180.0);
             } else if (weight < 0.75) {
                 zRot = -90.0f;
             } else {
                 zRot = -90.0f
-                    * cos((3.141592653589793 * (90.0f * (4.0f * (weight - 0.75f)))) / 180.0);
+                    * cos((M_PI * (90.0f * (4.0f * (weight - 0.75f)))) / 180.0);
             }
-            mbev_CapVecChase((float)sin((3.141592653589793 * (90.0f * weight)) / 180.0),
+            mbev_CapVecChase((float)sin((M_PI * (90.0f * weight)) / 180.0),
                 &pos, &guidePos, &movePos);
             mbObjPosSetV(workP->guideMdlId, &movePos);
             mbObjRotSet(workP->guideMdlId, 0.0f, zRot, 0.0f);
@@ -1542,7 +1533,7 @@ static void MgRouletteOMExec(OMOBJ *obj)
             work->mode = 1;
         } else {
             weight = (float)work->time++ / work->maxTime;
-            time = sin((3.141592653589793 * (90.0f * weight)) / 180.0);
+            time = sin((M_PI * (90.0f * weight)) / 180.0);
             if ((work->no & 1) == 0) {
                 obj->trans.x = -160.0f + (448.0f * time);
             } else {
@@ -1574,7 +1565,7 @@ static void MgRouletteOMExec(OMOBJ *obj)
             weight = (float)work->time++ / work->maxTime;
             obj->scale.x = obj->scale.y =
                 (0.2f
-                    * sin((3.141592653589793 * (720.0f * (1.0f - weight))) / 180.0))
+                    * sin((M_PI * (720.0f * (1.0f - weight))) / 180.0))
                 + 1.0f;
         }
         break;
@@ -1583,7 +1574,7 @@ static void MgRouletteOMExec(OMOBJ *obj)
             weight = (float)work->time++ / work->maxTime;
             obj->trans.y = obj->rot.y + (weight * (96.0f - obj->rot.y));
             obj->scale.x = obj->scale.y =
-                (0.5f * cos((3.141592653589793 * (90.0f * weight)) / 180.0)) + 0.5f;
+                (0.5f * cos((M_PI * (90.0f * weight)) / 180.0)) + 0.5f;
         }
         break;
     }
@@ -1693,11 +1684,11 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     while (mbMusCheck(0)) {
         HuPrcVSleep();
     }
-    mbMusPlay(0, 25, 127, 0);
+    mbMusPlay(0, MSM_STREAM_STORY_LOSE, 127, 0);
     workP->type = MG_TYPE_BATTLE;
     workP->sprId[1] = espEntry(
         mbBoardDataNumGet(DATANUM(0x50000, MGCALL_BOARD_FILE_TYPE)), 95, 3);
-    mbAudFXPlay(1115);
+    mbAudFXPlay(MSM_SE_BRD00_MINIGAME_TYPE_DROP);
     posY = 88.0f;
     velY = 6.0f;
     zRot = 0.0f;
@@ -1708,10 +1699,10 @@ static int MgCallBattleExec(MGCALLWORK *workP)
             weight = 1.0f;
         }
         espPosSet(workP->sprId[1], 288.0f,
-            88.0f - (120.0f * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+            88.0f - (120.0f * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         if (weight >= 0.6f) {
             if (!soundF) {
-                mbAudFXPlay(1116);
+                mbAudFXPlay(MSM_SE_BRD00_MINIGAME_TYPE_LAND);
                 soundF = TRUE;
             }
             if (zRot > -40.0f) {
@@ -1733,12 +1724,12 @@ static int MgCallBattleExec(MGCALLWORK *workP)
             mbStatusColorSet(i, STATUS_COLOR_BLUE);
         }
         for (i = 0; i < 4; i++) {
-            mbStatusPosOnGet(i, &statusPos);
+            mbStatusPosOnGet(i, (HuVec2f *)&statusPos);
             mbStatusMoveSet(i, NULL, &statusPos, STATUS_MOVE_SIN, 12);
         }
     } else {
         for (i = 0; i < 4 / 2; i++) {
-            mbStatusPosOnGet(i, &statusPos);
+            mbStatusPosOnGet(i, (HuVec2f *)&statusPos);
             mbStatusNoMoveSet(i, NULL, &statusPos, STATUS_MOVE_SIN, 12);
         }
     }
@@ -1748,8 +1739,8 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     HuPrcSleep(12);
     mbObjMotionShiftSet(workP->guideMdlId, 2, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(950);
-    mbAudFXPlay(0);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO);
+    mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
     mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_INTRO),
         mbGuideSpeakerNoGet());
     mbWinTopWait();
@@ -1766,7 +1757,7 @@ static int MgCallBattleExec(MGCALLWORK *workP)
         espPosSet(workP->sprId[7], statusPos.x, statusPos.y);
         espPosSet(workP->sprId[8], statusPos.x + 16.0f, statusPos.y);
         espPosSet(workP->sprId[1], 288.0f,
-            88.0f - (120.0f * sin((3.141592653589793 * (90.0f * weight)) / 180.0)));
+            88.0f - (120.0f * sin((M_PI * (90.0f * weight)) / 180.0)));
         HuPrcVSleep();
     }
     fastFocusF = frand() < 0.1f;
@@ -1792,17 +1783,17 @@ static int MgCallBattleExec(MGCALLWORK *workP)
             } else {
                 nextTime = nextMaxTime;
             }
-            mbAudFXPlay(1009);
+            mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_TICK);
         }
         espBankSet(workP->sprId[8], coinType);
         HuPrcVSleep();
     }
     coinType = battleCoin;
     espBankSet(workP->sprId[8], coinType);
-    mbAudFXPlay(1134);
+    mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_STOP);
     for (i = 0; i < 90; i++) {
         weight = i / 90.0f;
-        scale = (0.2f * sin((3.141592653589793 * (1080.0f * (1.0f - weight))) / 180.0)) + 1.0f;
+        scale = (0.2f * sin((M_PI * (1080.0f * (1.0f - weight))) / 180.0)) + 1.0f;
         espScaleSet(workP->sprId[8], scale, scale);
         espPosSet(workP->sprId[8], statusPos.x + (16.0f * scale), statusPos.y);
         HuPrcVSleep();
@@ -1838,7 +1829,7 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     mbCoinAddAllExec(-battleCoinTbl[coinType], -battleCoinTbl[coinType],
         -battleCoinTbl[coinType], -battleCoinTbl[coinType]);
     for (i = 1; i < 12u; i++) {
-        scale = cos((3.141592653589793 * (90.0f * (i / 12.0f))) / 180.0);
+        scale = cos((M_PI * (90.0f * (i / 12.0f))) / 180.0);
         espScaleSet(workP->sprId[7], scale, scale);
         espScaleSet(workP->sprId[8], scale, scale);
         espPosSet(workP->sprId[8], statusPos.x + (16.0f * scale), statusPos.y);
@@ -1847,11 +1838,11 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     espDispOff(workP->sprId[7]);
     espDispOff(workP->sprId[8]);
     if (coinHighF) {
-        mbAudGuidePlay(949);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
         mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_COIN_HIGH),
             mbGuideSpeakerNoGet());
     } else {
-        mbAudGuidePlay(954);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_DISAPPOINTED);
         mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_COIN_LOW),
             mbGuideSpeakerNoGet());
     }
@@ -1872,16 +1863,16 @@ static int MgCallBattleExec(MGCALLWORK *workP)
             guideWeight = i / 45.0f;
             if (guideWeight <= 0.25f) {
                 guideRot = -90.0f
-                    * sin((3.141592653589793 * (90.0f * (4.0f * guideWeight))) / 180.0);
+                    * sin((M_PI * (90.0f * (4.0f * guideWeight))) / 180.0);
             } else if (guideWeight < 0.75) {
                 guideRot = -90.0f;
             } else {
                 guideRot = -90.0f
-                    * cos((3.141592653589793 * (90.0f * (4.0f * (guideWeight - 0.75f))))
+                    * cos((M_PI * (90.0f * (4.0f * (guideWeight - 0.75f))))
                         / 180.0);
             }
             mbev_CapVecChase(
-                (float)sin((3.141592653589793 * (90.0f * guideWeight)) / 180.0), &pos,
+                (float)sin((M_PI * (90.0f * guideWeight)) / 180.0), &pos,
                 &guidePos, &movePos);
             mbObjPosSetV(workP->guideMdlId, &movePos);
             mbObjRotSet(workP->guideMdlId, 0.0f, guideRot, 0.0f);
@@ -1890,7 +1881,7 @@ static int MgCallBattleExec(MGCALLWORK *workP)
         mbObjMotionShiftSet(workP->guideMdlId, 2, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
     }
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_RESULT),
         mbGuideSpeakerNoGet());
     mbWinTopWait();
@@ -2037,7 +2028,7 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
     }
     for (j = 1; j <= 30u; j++) {
         weight = j / 30.0f;
-        weight = 480.0f * cos((3.141592653589793 * (90.0f * weight)) / 180.0);
+        weight = 480.0f * cos((M_PI * (90.0f * weight)) / 180.0);
         for (i = 0; i < listNum; i++) {
             battlePos.x = mgBattlePosTbl[listNum][i].x;
             battlePos.y = mgBattlePosTbl[listNum][i].y + weight;
@@ -2096,7 +2087,7 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
             }
             if (battlePlayer->cursorPos != battlePlayer->cursorPosPrev) {
                 moveWeight = (float)(++battlePlayer->time) / battlePlayer->maxTime;
-                time = sin((3.141592653589793 * (90.0f * moveWeight)) / 180.0);
+                time = sin((M_PI * (90.0f * moveWeight)) / 180.0);
                 posX = mgBattleCursorOfsTbl[i].x
                     + (mgBattlePosTbl[listNum][battlePlayer->cursorPosPrev].x
                         + (time
@@ -2141,13 +2132,13 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
                 }
                 if (btn & PAD_BUTTON_LEFT) {
                     if (battlePlayer->cursorPos > 0) {
-                        mbAudFXPlay(0);
+                        mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                         battlePlayer->cursorPos--;
                     }
                 }
                 if (btn & PAD_BUTTON_RIGHT) {
                     if (battlePlayer->cursorPos < listNum - 1) {
-                        mbAudFXPlay(0);
+                        mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                         battlePlayer->cursorPos++;
                     }
                 }
@@ -2157,7 +2148,7 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
                     playerDoneNum++;
                     espDispOff(battlePlayer->cursorSprId);
                     espDispOff(battlePlayer->charSprId);
-                    mbAudFXPlay(1);
+                    mbAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
                 }
             }
             if (battlePlayer->comBtnTime) {
@@ -2199,8 +2190,8 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
     }
     for (j = 1; j <= 60u; j++) {
         weight = j / 60.0f;
-        time = cos((3.141592653589793 * (90.0f * weight)) / 180.0);
-        scaleX = cos((3.141592653589793 * (720.0f * weight)) / 180.0);
+        time = cos((M_PI * (90.0f * weight)) / 180.0);
+        scaleX = cos((M_PI * (720.0f * weight)) / 180.0);
         for (i = 0; i < listNum; i++) {
             if (i != result) {
                 espScaleSet(workP->battleSprId[i],
@@ -2219,7 +2210,7 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
     }
     for (j = 1; j <= 30u; j++) {
         weight = j / 30.0f;
-        time = sin((3.141592653589793 * (90.0f * weight)) / 180.0);
+        time = sin((M_PI * (90.0f * weight)) / 180.0);
         i = result;
         pos.x = mgBattlePosTbl[listNum][i].x
             + (time
@@ -2355,7 +2346,7 @@ void mbev_MgCallKettou(void)
         weight = i / 30.0f;
         espPosSet(sprId, 288.0f,
             88.0f - (120.0f
-                * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         HuPrcVSleep();
     }
     fn_8006A1C4(65541);
@@ -2381,7 +2372,7 @@ void mbev_MgCallDonkey(void)
         weight = i / 30.0f;
         espPosSet(sprId, 288.0f,
             88.0f - (120.0f
-                * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         HuPrcVSleep();
     }
     fn_8006A1C4(65542);
@@ -2406,7 +2397,7 @@ void mbev_MgCallKoopa(void)
         weight = i / 30.0f;
         espPosSet(sprId, 288.0f,
             88.0f - (120.0f
-                * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         HuPrcVSleep();
     }
     fn_8006A1C4(65539);
@@ -2582,7 +2573,7 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
             espPosSet(sprId, 288.0f,
                 88.0f
                     - (120.0f
-                        * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+                        * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
             HuPrcVSleep();
         }
         result = MgRouletteExec(singleType->type, workP);
@@ -2599,11 +2590,6 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
         espKill(sprId);
     }
     HuPrcSleep(-1);
-}
-
-static inline BOOL MgCallTimeFGet(void)
-{
-    return !lbl_80265B70.curTime;
 }
 
 static void MgCallCallMg(int type, int no)
@@ -2638,7 +2624,7 @@ static void MgCallCallMg(int type, int no)
     mbAudFXStopAll(1000);
     mbBGReadWait(readStat);
     mbWipeSpecialWait();
-    mgNightF = MgCallTimeFGet() ? FALSE : TRUE;
+    mgNightF = MBTimeDayGet() ? FALSE : TRUE;
     lbl_802C0278 = mgNightF;
     mbOvlCall(4);
 }
@@ -2681,7 +2667,7 @@ void mbev_MgCallTutorial(void)
     workP = &work;
     cameraP = mbCameraGet();
     mbWipeDissolveFadeIn();
-    mbAudFXPlay(0);
+    mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
     mbWinCreate(MBWIN_TYPE_GUIDE, MGCALL_TUTORIAL_MESSAGE_BEGIN, -1);
     mbWinTopWait();
     mbWinCreate(MBWIN_TYPE_GUIDE, MGCALL_TUTORIAL_MESSAGE_ENDTURN, -1);
@@ -2700,7 +2686,7 @@ void mbev_MgCallTutorial(void)
         mgStatusPos2Vs2[i].y += lbl_802C4BE8;
     }
     for (i = 0; i < 4; i++) {
-        mbStatusPosOnGet(i, &pos);
+        mbStatusPosOnGet(i, (HuVec2f *)&pos);
         mbStatusMoveSet(i, &pos, (HuVecF *)&mgStatusPos4P[i],
             STATUS_MOVE_SIN, 15);
     }
@@ -2719,7 +2705,7 @@ void mbev_MgCallTutorial(void)
     espPosSet(workP->sprId[2], 288.0f, lbl_802C4BEC);
     for (i = 0; i < 30u; i++) {
         weight = i / 30.0f;
-        scale = 1.5 + sin((3.141592653589793 * (360.0f * weight)) / 180.0);
+        scale = 1.5 + sin((M_PI * (360.0f * weight)) / 180.0);
         if (weight < 0.2f) {
             scale *= weight / 0.2f;
         }
@@ -2757,13 +2743,13 @@ void mbev_MgCallTutorial(void)
         weight = i / 30.0f;
         espPosSet(workP->sprId[0], 288.0f,
             88.0f - (120.0f
-                * sin((3.141592653589793 * (90.0f * (1.0f - weight))) / 180.0)));
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         HuPrcVSleep();
     }
     for (i = 0; i < 60u; i++) {
         weight = i / 60.0f;
         scale = 1.5
-            + (lbl_802C4BF0 * sin((3.141592653589793
+            + (lbl_802C4BF0 * sin((M_PI
                 * (weight * (720.0f + (720.0f * weight)))) / 180.0));
         espScaleSet(workP->sprId[2], scale, scale);
         HuPrcVSleep();
@@ -2792,16 +2778,16 @@ void mbev_MgCallTutorial(void)
     mbObjMtxSet(workP->sprId[3], &explodeMtx);
     espKill(workP->sprId[2]);
     workP->sprId[2] = -1;
-    mbAudFXPlay(1113);
+    mbAudFXPlay(MSM_SE_BRD00_VERSUS_EFFECT_BURST);
     for (i = 0; i < 30u; i++) {
         weight = i / 30.0f;
         scale = ((1.0f + (lbl_802C4BFC * weight))
-            + (0.5 * sin((3.141592653589793 * (lbl_802C4BB4 * (weight * 360.0f))) / 180.0)))
+            + (0.5 * sin((M_PI * (lbl_802C4BB4 * (weight * 360.0f))) / 180.0)))
             * lbl_802C4AE8;
         mbObjScaleSet(workP->sprId[3], scale, scale, scale);
         if (i >= 25) {
             mbObjAlphaSet(workP->sprId[3],
-                (int)(lbl_802C4C00 * cos((3.141592653589793
+                (int)(lbl_802C4C00 * cos((M_PI
                     * (90.0f * ((i - 25) / lbl_802C4BFC))) / 180.0)));
         }
         HuPrcVSleep();
@@ -2886,7 +2872,7 @@ static void MgCallVsEffOMExec(OMOBJ *obj)
                 work->scaleX * scale, work->scaleY * scale);
             espZRotSet(work->sprId, work->zRot);
             espTPLvlSet(work->sprId,
-                cos((3.141592653589793 * (90.0f * weight)) / 180.0));
+                cos((M_PI * (90.0f * weight)) / 180.0));
             if (weight >= 1.0f) {
                 work->activeF = FALSE;
                 espDispOff(work->sprId);
@@ -2917,8 +2903,8 @@ static void MgCallVsEffPosSet(float x, float y)
             work->zRotStep = 3.0f * (frandf() - 0.5f);
             work->pos.x = x;
             work->pos.y = y;
-            work->vel.x = speed * sin((3.141592653589793 * angle) / 180.0);
-            work->vel.y = speed * cos((3.141592653589793 * angle) / 180.0);
+            work->vel.x = speed * sin((M_PI * angle) / 180.0);
+            work->vel.y = speed * cos((M_PI * angle) / 180.0);
             work->scaleX = 1.0f + frandf();
             work->scaleY = 1.0f + frandf();
             work->zRot = frandf();
@@ -2994,7 +2980,7 @@ int mbMgCallVsEffCreate(void)
     return 60;
 }
 
-BOOL mbMgCallSingleOnCheck(void)
+BOOL mbMgCallSingleOnCheck(u16 ovl)
 {
     return TRUE;
 }

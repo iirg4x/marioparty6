@@ -2,15 +2,12 @@
 #include <math.h>
 #include "humath.h"
 #include "REL/m669DLL/vector.h"
+#include "REL/m669DLL/collision.h"
 
 /* Row-major matrix. */
 typedef struct M669MatrixElements { float elements[16]; } M669MatrixElements;
-typedef struct M669Sphere { HuVecF center; float radius; } M669Sphere;
 typedef struct M669Segment { HuVecF start, delta; } M669Segment; /* End is start plus delta. */
 typedef struct M669Capsule { M669Segment segment; float radius; } M669Capsule;
-/* Vertices are start, start plus edge1, and start plus edge2. */
-typedef struct M669Triangle { HuVecF start, edge1, edge2; } M669Triangle;
-typedef struct M669Bounds { HuVecF min, max; } M669Bounds; /* Minimum and maximum on each axis. */
 
 /* Multiplies two four-by-four matrices through a temporary, allowing the output to alias either
  * input. */
@@ -63,7 +60,6 @@ void fn_1_2338(M669Sphere *out, f32 x, f32 y, f32 z, f32 radius)
     out->radius = radius;
 }
 
-
 /* Builds axis-aligned bounds around both capsule endpoints, expanded by the capsule radius. */
 void fn_1_234C(M669Bounds *out, M669Capsule *capsule)
 {
@@ -78,7 +74,6 @@ void fn_1_234C(M669Bounds *out, M669Capsule *capsule)
     out->max.z = capsule->radius + (points[0].z >= points[1].z ? points[0].z : points[1].z);
 }
 
-
 /* Builds axis-aligned bounds around a sphere for collision broad-phase tests. */
 void fn_1_2504(M669Bounds *out, M669Sphere *sphere)
 {
@@ -91,13 +86,6 @@ void fn_1_2504(M669Bounds *out, M669Sphere *sphere)
     out->max.y += sphere->radius;
     out->max.z += sphere->radius;
 }
-
-f32 fn_1_2E54(Point3d *queryPoint, M669Triangle *triangle, f32 *barycentricSOut,
-              f32 *barycentricTOut);
-
-f32 fn_1_3824();
-
-
 
 /* Builds axis-aligned bounds around the three triangle vertices. */
 void fn_1_2598(M669Bounds *out, M669Triangle *triangle)
@@ -188,30 +176,10 @@ s32 fn_1_286C(M669Sphere *firstSphere, HuVecF *firstVelocity, M669Sphere *second
 /* Returns squared center separation minus the sum of the squared radii, clamped to zero. */
 float fn_1_2C24(M669Sphere *firstSphere, M669Sphere *secondSphere)
 {
-    HuVecF centerOffset;
-    float gapSquared;
-    M669VecSubtract(&centerOffset, &firstSphere->center, &secondSphere->center);
-    gapSquared = M669VecLengthSquared(&centerOffset);
-    gapSquared -=
-        firstSphere->radius * firstSphere->radius + secondSphere->radius * secondSphere->radius;
-    if (gapSquared < 0.0f) gapSquared = 0.0f;
-    return gapSquared;
+    return M669SphereDistanceTerm(firstSphere, secondSphere);
 }
-
-float M669SphereDistanceTerm(M669Sphere *firstSphere, M669Sphere *secondSphere);
 
 /* Computes the clamped sphere term used by the square-root distance wrapper. */
-static inline float M669SphereDistanceTerm(M669Sphere *firstSphere, M669Sphere *secondSphere)
-{
-    HuVecF centerOffset;
-    float gapSquared;
-    M669VecSubtract(&centerOffset, &firstSphere->center, &secondSphere->center);
-    gapSquared = M669VecLengthSquared(&centerOffset);
-    gapSquared -=
-        firstSphere->radius * firstSphere->radius + secondSphere->radius * secondSphere->radius;
-    if (gapSquared < 0.0f) gapSquared = 0.0f;
-    return gapSquared;
-}
 
 /* Takes the square root of the clamped sphere term for collision-distance queries. */
 float fn_1_2CC8(M669Sphere *sphereA, M669Sphere *sphereB)
@@ -742,8 +710,9 @@ f32 fn_1_3824(M669Segment *firstSegment, M669Segment *secondSegment, f32 *parame
 float fn_1_4420(HuVecF *queryPoint, M669Triangle *triangle, float *barycentricSOut,
                 float *barycentricTOut)
 {
-    f32 fn_1_3824();
-    return sqrtf(fn_1_3824(queryPoint, triangle, barycentricSOut, barycentricTOut));
+    /* This wrapper passes the point and triangle storage as two segments. */
+    return sqrtf(fn_1_3824((M669Segment *)queryPoint, (M669Segment *)triangle, barycentricSOut,
+                           barycentricTOut));
 }
 
 /* Returns squared distance from a point to the nearest position on a finite segment. */
@@ -769,35 +738,10 @@ float fn_1_454C(HuVecF *queryPoint, M669Segment *lineSegment)
     return M669VecLengthSquared(&pointOffset);
 }
 
-float fn_1_4510_inlined(HuVecF *queryPoint, M669Segment *lineSegment);
-
-/* Computes the clamped point-to-segment squared distance for the distance wrappers. */
-static inline float fn_1_4510_inlined(HuVecF *queryPoint, M669Segment *lineSegment)
-{
-    HuVecF pointOffset, projectedOffset;
-    float segmentParameter, segmentLengthSquared;
-    M669VecSubtract(&pointOffset, queryPoint, &lineSegment->start);
-    segmentParameter = M669VecDot(&pointOffset, &lineSegment->delta);
-    if (segmentParameter <= 0.0f) {
-        segmentParameter = 0.0f;
-    } else {
-        segmentLengthSquared = M669VecLengthSquared(&lineSegment->delta);
-        if (segmentParameter >= segmentLengthSquared) {
-            segmentParameter = 1.0f;
-            M669VecSubtract(&pointOffset, &pointOffset, &lineSegment->delta);
-        } else {
-            segmentParameter /= segmentLengthSquared;
-            M669VecScale(&projectedOffset, &lineSegment->delta, segmentParameter);
-            M669VecSubtract(&pointOffset, &pointOffset, &projectedOffset);
-        }
-    }
-    return M669VecLengthSquared(&pointOffset);
-}
-
 /* Returns point-to-segment distance by taking the square root of its squared-distance helper. */
 float fn_1_4644(HuVecF *queryPoint, M669Segment *lineSegment)
 {
-    return sqrtf(fn_1_4510_inlined(queryPoint, lineSegment));
+    return sqrtf(fn_1_454C(queryPoint, lineSegment));
 }
 
 /* Returns the clamped squared point-to-segment term after subtracting the sphere radius squared. */
@@ -812,24 +756,10 @@ float fn_1_4828(M669Sphere *movingSphere, M669Segment *lineSegment)
     return gapSquared;
 }
 
-float fn_1_47EC_inlined(M669Sphere *movingSphere, M669Segment *lineSegment);
-
-/* Computes the clamped sphere-to-segment term for its square-root wrapper. */
-static inline float fn_1_47EC_inlined(M669Sphere *movingSphere, M669Segment *lineSegment)
-{
-    float gapSquared;
-    gapSquared = fn_1_4510_inlined(&movingSphere->center, lineSegment);
-    gapSquared -= movingSphere->radius * movingSphere->radius;
-    if (gapSquared < 0.0f) {
-        gapSquared = 0.0f;
-    }
-    return gapSquared;
-}
-
 /* Returns the square root of the clamped sphere-to-segment term. */
 double fn_1_4984(M669Sphere *movingSphere, M669Segment *lineSegment)
 {
-    return sqrtf(fn_1_47EC_inlined(movingSphere, lineSegment));
+    return sqrtf(fn_1_4828(movingSphere, lineSegment));
 }
 
 /* Returns the segment-distance term after subtracting both sphere and capsule squared radii,
@@ -846,23 +776,8 @@ float fn_1_4BC8(M669Sphere *movingSphere, M669Capsule *lineCapsule)
     return gapSquared;
 }
 
-float fn_1_4B8C_inlined(M669Sphere *movingSphere, M669Capsule *lineCapsule);
-
-/* Computes the clamped sphere-to-capsule term for its square-root wrapper. */
-static inline float fn_1_4B8C_inlined(M669Sphere *movingSphere, M669Capsule *lineCapsule)
-{
-    float gapSquared;
-    gapSquared = fn_1_4510_inlined(&movingSphere->center, &lineCapsule->segment);
-    gapSquared -=
-        movingSphere->radius * movingSphere->radius + lineCapsule->radius * lineCapsule->radius;
-    if (gapSquared < 0.0f) {
-        gapSquared = 0.0f;
-    }
-    return gapSquared;
-}
-
 /* Returns the square root of the clamped sphere-to-capsule term. */
 double fn_1_4D34(M669Sphere *movingSphere, M669Capsule *lineCapsule)
 {
-    return sqrtf(fn_1_4B8C_inlined(movingSphere, lineCapsule));
+    return sqrtf(fn_1_4BC8(movingSphere, lineCapsule));
 }

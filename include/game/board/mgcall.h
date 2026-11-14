@@ -3,6 +3,7 @@
 
 #include "dolphin/types.h"
 
+BOOL mbMgCallSingleOnCheck(u16 ovl);
 void mbMgCallInit(void);
 void mbMgCallDataClose(void);
 s32 mbev_MgCall(void);

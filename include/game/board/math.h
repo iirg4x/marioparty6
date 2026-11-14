@@ -7,7 +7,9 @@
 
 void mbMathInit(void);
 void mbMathClose(void);
+void mbObjCullInit(s16 modelId);
 void mbMtxRot(Mtx mtx, float x, float y, float z);
+void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle);
 void mbPos3Dto2D(HuVecF *worldPos, HuVecF *screenPos);
 void mbPos2Dto3D(HuVecF *screenPos, HuVecF *worldPos);
 void mbNormPosto2D(HuVecF *normPos, HuVecF *screenPos);
@@ -37,10 +39,6 @@ static inline float BoardSinDeg(float deg) {
 
 static inline float BoardCosDeg(float deg) {
     return mbCosDeg(deg);
-}
-
-static inline void *ModelHeapAlloc(s32 size, u32 allocationNo) {
-    return HuMemDirectMallocNum(2, size, allocationNo);
 }
 
 static inline void MBBoardVecCopy(register const HuVecF *src, register HuVecF *dst)

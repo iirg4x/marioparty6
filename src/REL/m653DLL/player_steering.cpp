@@ -6,7 +6,7 @@
 #include "REL/m653DLL/car.h"
 #include "REL/framework/vector3.h"
 #include "REL/m653DLL/boundary_plane.h"
-#include "REL/m653DLL/random.h"
+#include "REL/framework/random.h"
 #include "REL/m653DLL.h"
 
 f32 fn_1_2300(const Vec *source, Vec *destination)

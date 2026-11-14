@@ -1,4 +1,6 @@
 #include "REL/m655DLL/game_constants.h"
+#include "REL/m655DLL/interpolation.h"
+#include "REL/m655DLL/heiho.h"
 #include "REL/framework/frame_durations.h"
 #include "REL/m655DLL/screen_sprite_api.h"
 #include "REL/m655DLL/rope_api.h"
@@ -43,10 +45,8 @@ extern "C" const unsigned int lbl_1_rodata_458[9] = {0x00930000, 0x00930001, 0x0
                                                      0x00930022, 0x00930006, 0x00930028};
 /* Invoke the attached interface, then update the actor's motion state. */
 /* Starting positions, written by the unit's static initialiser from the course constants. */
-/* The two players start at different horizontal positions.
- * Their heights and depths are shared.
- * The three destination positions use the same height.
- * Destination depths are closer to the camera.
+/* The two players start at different horizontal positions; their heights and depths are shared.
+ * The three destination positions share a height; their depths are closer to the camera.
  * Coordinates below are expressed in world units.
  */
 extern "C" {
@@ -227,8 +227,6 @@ s32 fn_1_7EF4(PlayerList *list) {
 
 u8 characterMotionEnded(s32 *);
 
-void sendEvent(int channel, unsigned long value, float delay);
-
 void fn_1_A7D4(PlayerWork *object);
 
 inline PlayerInputInterface::PlayerInputInterface(PlayerWork *object) {
@@ -272,31 +270,16 @@ static inline void shiftPlayerMotion(PlayerWork *work, int motion, u32 attribute
                          attributes);
 }
 
-static inline f64 interpolateValue(f32 start, f32 end, f64 weight) {
-    return (1.0 - weight) * start + weight * end;
-}
-
-static inline f32 interpolateHeight(f32 start, f64 end, f64 weight) {
-    return (f32)((1.0 - weight) * start + weight * end);
-}
-
 /* The initial rise uses the first fifth of the curve.
  * The remaining four fifths bring the height to its maximum.
  */
 
 static inline f64 evaluateHeightCurve(f32 blend) {
     if ((f64)blend < 0.2) {
-        return interpolateValue(0.0, 0.5, (f64)blend / 0.2);
+        return interpolateValue<f64>(0.0, 0.5, (f64)blend / 0.2);
     } else {
-        return interpolateValue(0.5, 1.0, ((f64)blend - 0.2) / 0.8);
+        return interpolateValue<f64>(0.5, 1.0, ((f64)blend - 0.2) / 0.8);
     }
-}
-extern "C" {
-char *fn_8005C0F0(s16 character, s16 item, s16 variant);
-}
-
-static inline f32 angleFromDirection(f32 y, f32 x) {
-    return (f32)atan2((f64)y, (f64)x);
 }
 
 static inline void translateFor(Mtx matrix, f32 x, f32 y, f32 z) {
@@ -406,7 +389,7 @@ void fn_1_8684(PlayerWork *self) {
     curveInput = blend;
     heightCurve = (f32)evaluateHeightCurve(curveInput);
     transition = (f32)((1.0 - cos(M_PI * (f64)(2.0f * heightCurve))) / 2.0);
-    f32 target = interpolateHeight(self->scale, 839.99994f, transition);
+    f32 target = interpolateValue<f32>(self->scale, 839.99994f, transition);
     self->secondRegisteredValue.setRadius(
         weightedHeight(self->secondRegisteredValue.getRadius(), target));
     fn_1_884(&MinigameSingleton<ScreenSpriteWork>::getChecked(), transition);
@@ -570,7 +553,7 @@ void PlayerWork::fn_1_9554(void) {
         targetPosition.value.z = (f32)framesToSeconds(1600.0);
         fn_1_A004(this, &movement);
         PSVECAdd(&targetPosition.value, &movement, &movement);
-        fn_1_B8E0((Rope *)fn_1_B140(resourceNumber), &movement, &targetPosition.value, 1.0f);
+        fn_1_B8E0(fn_1_B140(resourceNumber), &movement, &targetPosition.value, 1.0f);
         next = isCurrentPlayer2 ? &PlayerWork::fn_1_988C : &PlayerWork::fn_1_9B40;
         state = next;
     }
@@ -697,12 +680,12 @@ void fn_1_A070(PlayerWork *work, u8 mode, f32 amount) {
     Vector3 direction;
     f32 angle;
     f32 rotationAmount;
-    GameObject *model2;
+    Rope *model2;
     model2 = fn_1_B140(work->resourceNumber);
-    if ((u8)fn_1_B8E0((Rope *)model2, fn_1_A004(work, &modelPosition), &targetPosition, amount) &&
+    if ((u8)fn_1_B8E0(model2, fn_1_A004(work, &modelPosition), &targetPosition, amount) &&
         !mode) {
         PSVECSubtract(&targetPosition, &modelPosition, &direction);
-        angle = (f32)(180.0 * ((f64)angleFromDirection(direction.z, direction.y) / M_PI));
+        angle = (f32)(180.0 * ((f64)atan2f(direction.z, direction.y) / M_PI));
         rotationAmount = (f32)(0.2 * work->rotation.distanceTo(angle));
         work->rotation.add(rotationAmount);
         PSVECAdd(&direction, &work->position.center, &work->position.center);

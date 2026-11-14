@@ -1,8 +1,8 @@
 /* Runs module constructors at startup and destructors during shutdown. */
+#include "REL/w10Dll/w10.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Runs module constructors and initializes W10 when its REL is loaded. */
 int _prolog(void) {

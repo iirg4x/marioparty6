@@ -1,13 +1,10 @@
 /* Burnstile rotor collision half-space tests and a general segment-plane test. */
 #include <math.h>
-#include "humath.h"
+#include "REL/m668DLL/math.h"
+#include "REL/m668DLL/geometry.h"
 #include "REL/m668DLL/player.h"
 #include "dolphin/types.h"
 
-typedef struct M668VecBound_s {
-    HuVecF xyz; /* Bound center or normal vector, in world coordinates. */
-    f32 margin; /* Plane offset or bound radius used by the projection tests. */
-} M668VecBound;
 typedef char M668VecBound_size_check[(sizeof(M668VecBound) == 16) ? 1 : -1];
 
 typedef struct M668SegmentBound_s {
@@ -15,8 +12,6 @@ typedef struct M668SegmentBound_s {
     f32 margin; /* Allowed distance from the segment to a tested plane. */
 } M668SegmentBound;
 typedef char M668SegmentBound_size_check[(sizeof(M668SegmentBound) == 28) ? 1 : -1];
-
-extern f32 fn_1_404(const HuVecF *a, const HuVecF *b);
 
 extern inline f32 m668_fabs32(f32 value)
 {
@@ -41,7 +36,6 @@ s32 fn_1_16FC(const M668VecBound *plane, const M668SegmentBound *segment)
     }
     return intersects;
 }
-
 
 /* Tests a bound position against a plane normal, allowing the sum of both margins. */
 s32 fn_1_1844(const M668VecBound *a, const M668VecBound *b)

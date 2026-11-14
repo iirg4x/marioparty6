@@ -1,0 +1,4 @@
+#ifndef MIKEACTDLL_PARTICLE_EFFECT_H
+#define MIKEACTDLL_PARTICLE_EFFECT_H
+void fn_1_C2C0(void);
+#endif

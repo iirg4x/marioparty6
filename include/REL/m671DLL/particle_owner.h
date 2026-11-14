@@ -30,4 +30,8 @@ struct AttributeOwner : RenderObject {
 };
 void fn_1_41B4(AttributeOwner *owner, u8 reset);
 
+void fn_1_3E7C(ParticleOwner *, const Vec *);
+void fn_1_3EC0(ParticleOwner *, const Vec *);
+void fn_1_4078(ParticleOwner *);
+
 #endif

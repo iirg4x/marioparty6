@@ -384,8 +384,6 @@ extern HuVecF lbl_1_data_504;
 
 extern float lbl_1_data_510;
 
-void mbev_ShopExInit(int dataNum, void (*hook)(int modelId, int shopNo));
-
 /* Runs the station's paid capsule launches toward eligible board spaces. */
 
 typedef struct CapsuleShot {
@@ -424,12 +422,6 @@ extern HuVecF lbl_1_data_CB4;
 extern HuVecF lbl_1_data_CC0;
 
 extern HuVecF lbl_1_data_CCC;
-
-BOOL mbev_CapPlayerCheck(int capsulePlayer, int playerNo);
-
-float mbev_CapAngleWrap(float current, float target);
-
-void mbev_CapVecRotGet(HuVecF *direction, HuVecF *rotation);
 
 int sprintf();
 
@@ -877,12 +869,6 @@ typedef struct StarDisplayWork {
 
 /* Animates the board station's capsule exchange, particles, and coin rewards. */
 
-typedef struct CapsuleList {
-    s8 id;
-    s8 cost[3];
-    s8 weight[12];
-} CapsuleList;
-
 typedef struct StationWork {
     u8 boardState[4584];
     int stationModel;
@@ -901,8 +887,6 @@ extern HuVecF lbl_1_data_B14;
 extern char *lbl_1_data_B34[2];
 
 extern float lbl_1_data_B3C[2];
-
-int mbCapListCopy(CapsuleList *list);
 
 typedef struct textSpriteParticle {
     s16 maxAlpha;
@@ -1180,7 +1164,7 @@ void fn_1_3CC8(void);
 
 void fn_1_4494(void);
 
-s32 fn_1_39F4(s32 player, s16 spaceId);
+int fn_1_39F4(int player, s16 spaceId);
 
 void fn_1_A554(s32 playerNo);
 
@@ -1227,7 +1211,7 @@ void fn_1_AA04(s32 index);
 s32 fn_1_176E4(HuVecF *position, HuVecF *velocity, float activityValue,
     float rotationSpeed, float animationSpeed, GXColor *color);
 
-void fn_1_3B44(s32 mapView);
+void fn_1_3B44(BOOL mapView);
 
 void fn_1_10954(void);
 
@@ -1245,7 +1229,7 @@ void fn_1_8C9C(int playerNo, int spaceId);
 
 void fn_1_7A4C(s32 playerNo, s32 destinationSpace);
 
-s32 fn_1_387C(s32 playerNo, s16 spaceId);
+int fn_1_387C(int playerNo, s16 spaceId);
 
 void fn_1_45A4(void);
 
@@ -1293,11 +1277,11 @@ void fn_1_3878(void);
 
 s32 fn_1_39E4(void);
 
-s32 fn_1_39EC(void);
+int fn_1_39EC(int playerNo, s16 id);
 
-s32 fn_1_3AF4(void);
+int fn_1_3AF4(s16 id, u32 mAttr, s16 *linkTbl, BOOL endF);
 
-void fn_1_3AFC(void);
+void fn_1_3AFC(int playerNo);
 
 void fn_1_1BD8(OMOBJ *object);
 
@@ -1768,12 +1752,12 @@ void fn_1_F4(void) {
     fn_1_1735C();
     mbBranchMAttrSet(0x502);
     fn_800097F4(BoardResourceGet(DATANUM(0xd90000, 0)));
-    mbev_MasuMoveStartSet((MASUEVENTHOOK) fn_1_39EC);
-    mbev_MasuMoveEndSet((MASUEVENTHOOK) fn_1_39F4);
-    mbev_MasuHatenaSet((MASUEVENTHOOK) fn_1_387C);
-    mbev_MasuLinkTblHookSet((MASUPATHCHECKHOOK) fn_1_3AF4);
-    mbPlayerTurnInitHookSet((void (*)(int)) fn_1_3AFC);
-    mbMapHookSet((void (*)(BOOL)) fn_1_3B44);
+    mbev_MasuMoveStartSet(fn_1_39EC);
+    mbev_MasuMoveEndSet(fn_1_39F4);
+    mbev_MasuHatenaSet(fn_1_387C);
+    mbev_MasuLinkTblHookSet(fn_1_3AF4);
+    mbPlayerTurnInitHookSet(fn_1_3AFC);
+    mbMapHookSet(fn_1_3B44);
     mbOpeningInstHookSet(fn_1_30F4);
     mbOpeningStarInstHookSet(NULL);
     mbStarMoveHookSet(fn_1_15794);
@@ -2284,7 +2268,7 @@ void fn_1_3878(void) {
 }
 
 /* Dispatches a player's space event, returning handled even when no event is marked. */
-s32 fn_1_387C(s32 playerNo, s16 spaceId) {
+int fn_1_387C(int playerNo, s16 spaceId) {
     if (mbMasuMAttrGet(spaceId) & 0x40) {
         fn_1_6CA0();
         fn_1_6CFC(0);
@@ -2318,10 +2302,10 @@ s32 fn_1_387C(s32 playerNo, s16 spaceId) {
 
 s32 fn_1_39E4(void) { return 0; }
 
-s32 fn_1_39EC(void) { return 0; }
+int fn_1_39EC(int playerNo, s16 id) { return 0; }
 
 /* Runs after a player finishes moving, restarting the animation for the space's active event. */
-s32 fn_1_39F4(s32 player, s16 spaceId) {
+int fn_1_39F4(int player, s16 spaceId) {
     BoardModels *work;
     u32 modelNo;
 
@@ -2339,10 +2323,10 @@ s32 fn_1_39F4(s32 player, s16 spaceId) {
     return 0;
 }
 
-s32 fn_1_3AF4(void) { return 0; }
+int fn_1_3AF4(s16 id, u32 mAttr, s16 *linkTbl, BOOL endF) { return 0; }
 
 /* At turn start, reveals the model on the drone hooks and enables the steam emitters. */
-void fn_1_3AFC(void) {
+void fn_1_3AFC(int playerNo) {
     BoardModels *work;
 
     work = lbl_1_bss_8;
@@ -2351,7 +2335,7 @@ void fn_1_3AFC(void) {
 }
 
 /* Switches event models to map sprites while the map view is open. */
-void fn_1_3B44(s32 mapView) {
+void fn_1_3B44(BOOL mapView) {
     s32 spaceId;
     BoardModels *work;
     EventMapMarker *marker;
@@ -4892,7 +4876,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
     GXColor *secondTintCapture;
     HuVecF *secondVelocityCapture;
     HuVecF *secondPositionCapture;
-    CapsuleList *list;
+    CAPSULE_LIST *list;
     StationWork *work;
     int index;
     int step;
@@ -7593,7 +7577,7 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
 
     fn_80026B64(modelId, (1 << 0));
     model = &lbl_802C01C8[modelId];
-    hook = ModelHeapAlloc(sizeof(EventSpriteHook), model->mallocNo);
+    hook = ModelHeapMallocNum(sizeof(EventSpriteHook), model->mallocNo);
     model->hookData = hook;
     hook->animation = animation;
     hook->particleCount = capacity;
@@ -7608,7 +7592,7 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
     hook->textureFrame = hook->textureIndex = 0;
     hook->tileCoordinates = NULL;
     hook->corners = NULL;
-    particle = ModelHeapAlloc(sizeof(EventSpriteParticle) * capacity, model->mallocNo);
+    particle = ModelHeapMallocNum(sizeof(EventSpriteParticle) * capacity, model->mallocNo);
     hook->particles = particle;
     memset(particle, 0, sizeof(EventSpriteParticle) * capacity);
     for (index = 0; index < capacity; index++, particle++) {
@@ -7622,11 +7606,11 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
         particle->color.r = particle->color.g = particle->color.b = particle->color.a = 255;
         particle->timer = 0;
     }
-    hook->positions = vertex = ModelHeapAlloc((sizeof(HuVecF) * capacity) * 4, model->mallocNo);
+    hook->positions = vertex = ModelHeapMallocNum((sizeof(HuVecF) * capacity) * 4, model->mallocNo);
     for (index = 0; index < capacity * 4; index++, vertex++) {
         vertex->x = vertex->y = vertex->z = 0.0f;
     }
-    coordinate = ModelHeapAlloc(sizeof(float) * (capacity * 8), model->mallocNo);
+    coordinate = ModelHeapMallocNum(sizeof(float) * (capacity * 8), model->mallocNo);
     hook->textureCoordinates = coordinate;
     for (index = 0; index < capacity; index++) {
         coordinate->x = 0.0f;
@@ -7642,7 +7626,7 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
         coordinate->y = 1.0f;
         coordinate++;
     }
-    displayList = buffer = ModelHeapAlloc(65536, model->mallocNo);
+    displayList = buffer = ModelHeapMallocNum(65536, model->mallocNo);
     DCFlushRange(buffer, 65536);
     GXBeginDisplayList(displayList, 65536);
     GXBegin(GX_QUADS, GX_VTXFMT0, capacity * 4);
@@ -7661,7 +7645,7 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
         GXTexCoord1x16(index * 4 + 3);
     }
     hook->displayListSize = GXEndDisplayList();
-    hook->displayList = ModelHeapAlloc(hook->displayListSize, model->mallocNo);
+    hook->displayList = ModelHeapMallocNum(hook->displayListSize, model->mallocNo);
     memcpy(hook->displayList, buffer, hook->displayListSize);
     DCFlushRange(hook->displayList, hook->displayListSize);
     HuMemDirectFree(buffer);

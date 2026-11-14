@@ -6,6 +6,7 @@
 #include "dolphin/types.h"
 
 #include "dolphin/mtx.h"
+#include "REL/framework/vector_math.h"
 
 #include "math.h"
 
@@ -146,8 +147,6 @@ CallbackReceiver::~CallbackReceiver()
     fn_80028CB8(lightId, light);
 }
 
-void fn_1_57C4(AnimationOwner *);
-
 void fn_1_930C(CallbackReceiver *owner)
 {
     int index;
@@ -171,7 +170,7 @@ void CallbackReceiver::update()
     }
 }
 
-inline void CallbackReceiver::setMotion(u32 value, u32 flags)
+inline void CallbackReceiver::changeMotion(u32 value, u32 flags)
 {
     if (motion != value) {
         shiftMotion(value, 8.0f, 0.0f, flags);
@@ -227,10 +226,6 @@ void fn_1_94D0(CallbackReceiver *camera, f32 angle)
     camera->lowerModel.get()->setPosition(&targetPosition.value);
 }
 
-void fn_1_5754(AnimationOwner *, const Vec *);
-
-extern void fn_1_5824(AnimationOwner *camera, const Vec *position);
-
 void fn_1_963C(CallbackReceiver *camera, const Vec *position)
 {
     Mtx rotation;
@@ -277,7 +272,7 @@ void CallbackReceiver::fn_1_9784()
     {
         if (fn_8002D75C(*static_cast<const Model *>(this)) == 0)
         {
-            setMotion(DATANUM(0x820000, 19), ((1 << 30) | (1 << 0)));
+            changeMotion(DATANUM(0x820000, 19), ((1 << 30) | (1 << 0)));
         }
     }
     if (! (this->timer < 0.5f))
@@ -296,7 +291,7 @@ void CallbackReceiver::fn_1_9784()
             {
                 this->timer = 0.0f;
                 soundPlayAt(1, 0x89C, &position);
-                setMotion(DATANUM(0x820000, 14), 0);
+                changeMotion(DATANUM(0x820000, 14), 0);
                 soundPlayAt(1, 0x3CE, &this->position.value);
                 setState(&CallbackReceiver::fn_1_9C7C);
             }
@@ -310,8 +305,6 @@ Vec fn_1_9BFC(const CallbackReceiver *owner)
     Hu3DModelObjPosGet(*static_cast<const Model *>(owner), "itemhook_R", &modelPosition);
     return modelPosition;
 }
-
-void fn_1_58E4(AnimationOwner *, const Vec *);
 
 static inline Vec getTransitionPosition(AnimationOwner *entry)
 {
@@ -333,11 +326,6 @@ static inline Vec &scaleVector(Vec *value, f32 scale)
 {
     PSVECScale(value, value, scale);
     return *value;
-}
-
-static inline f32 vectorLength(const Vec *value)
-{
-    return PSVECMag(value);
 }
 
 static inline Vec calculateLaunchVelocity(const Vec *positionSource,
@@ -394,7 +382,7 @@ void CallbackReceiver::fn_1_9C7C()
         PSMTXRotRad(matrix, 'Y', 0.7853982f);
         PSMTXMultVec(matrix, &position, &position);
         Vec velocity = calculateLaunchVelocity(&position, &entryPosition, 33.333332f);
-        speed = vectorLength(& velocity);
+        speed = vectorMagnitude(& velocity);
         fn_1_58E4(static_cast<AnimationOwner *>(this->objects[this->index]), & velocity);
         setDescentSpeed(static_cast<AnimationOwner *>(this->objects[this->index]), speed);
         this->entryFlags[this->index] = 1;
@@ -402,7 +390,7 @@ void CallbackReceiver::fn_1_9C7C()
     if (! (this->timer < 1.5f))
     {
         this->timer = 0.0f;
-        setMotion(DATANUM(0x820000, 12), ((1 << 30) | (1 << 0)));
+        changeMotion(DATANUM(0x820000, 12), ((1 << 30) | (1 << 0)));
         this->index++;
         if (this->index == 3)
         {
@@ -440,7 +428,7 @@ void CallbackReceiver::fn_1_A2E0(EventMessage *)
 
     this->state = 1;
     if (this->motion == DATANUM(0x820000, 12)) {
-        setMotion(DATANUM(0x820000, 12), ((1 << 30) | (1 << 0)));
+        changeMotion(DATANUM(0x820000, 12), ((1 << 30) | (1 << 0)));
         setState(&CallbackReceiver::fn_1_94C0);
     }
 }
@@ -452,13 +440,13 @@ void CallbackReceiver::fn_1_A3A4(EventMessage *input)
 
     state = static_cast<u8 *>(input->context);
     if (*state == 1) {
-        setMotion(DATANUM(0x820000, 18), 0);
+        changeMotion(DATANUM(0x820000, 18), 0);
         soundPlayAt(1, 0x3CF, &this->position.value);
         soundPlayAtDelayed(1, 0x3C9, &this->position.value, 0x41);
         soundPlayAtDelayed(1, 0x3C9, &this->position.value, 0x5A);
         soundPlayAtDelayed(1, 0x3CC, &this->position.value, 0x78);
     } else {
-        setMotion(DATANUM(0x820000, 17), 0);
+        changeMotion(DATANUM(0x820000, 17), 0);
         soundPlayAtDelayed(1, 0x3CB, &this->position.value, 0x1E);
         soundPlayAtDelayed(1, 0x3CD, &this->position.value, 0x6E);
     }
@@ -470,7 +458,7 @@ void CallbackReceiver::fn_1_A530(EventMessage *)
 
     if (this->motion == DATANUM(0x820000, 12)) {
         soundPlayAtDelayed(1, 0x3CB, &this->position.value, 0x26);
-        setMotion(DATANUM(0x820000, 13), 0);
+        changeMotion(DATANUM(0x820000, 13), 0);
         this->previousState = this->currentState;
         setState(&CallbackReceiver::fn_1_A614);
     }
@@ -485,7 +473,7 @@ void CallbackReceiver::fn_1_A614()
     if (fn_8002D75C(*static_cast<Model *>(this)) == 0) {
         return;
     }
-    setMotion(DATANUM(0x820000, 12), ((1 << 30) | (1 << 0)));
+    changeMotion(DATANUM(0x820000, 12), ((1 << 30) | (1 << 0)));
     playerStatus = &PositionTable::getChecked();
     allPlayersReady = 1;
     for (index = 0; index < 4; ++index) {
@@ -504,8 +492,6 @@ void CallbackReceiver::fn_1_A614()
     }
 }
 
-extern void fn_1_5F6C(AnimationOwner *, f32);
-
 void CallbackReceiver::fn_1_A794()
 {
     f32 interpolation;
@@ -515,13 +501,13 @@ void CallbackReceiver::fn_1_A794()
     if ((f32) this->frameCount == 90.0f)
     {
         fn_1_96E0(this, & this->position.value);
-        setMotion(DATANUM(0x820000, 15), 0);
+        changeMotion(DATANUM(0x820000, 15), 0);
     }
     if (this->motion == DATANUM(0x820000, 15))
     {
         if (fn_8002D75C(*static_cast<const Model *>(this)) == 0)
         {
-            setMotion(DATANUM(0x820000, 19), ((1 << 30) | (1 << 0)));
+            changeMotion(DATANUM(0x820000, 19), ((1 << 30) | (1 << 0)));
         }
     }
     if ((f32) this->frameCount == 120.0f)
@@ -573,11 +559,11 @@ void CallbackReceiver::fn_1_AE78()
                 this->timer = 0.0f;
                 soundPlayAt(1, 0x3D1, &this->position.value);
                 soundPlayAtDelayed(1, 0x3C9, &this->position.value, 0x14);
-                setMotion(DATANUM(0x820000, 16), 0);
+                changeMotion(DATANUM(0x820000, 16), 0);
                 setState(&CallbackReceiver::fn_1_B09C);
             } else {
                 fn_1_96E0(this, &this->position.value);
-                setMotion(DATANUM(0x820000, 15), 0);
+                changeMotion(DATANUM(0x820000, 15), 0);
                 this->timer = 0.0f;
                 setState(&CallbackReceiver::fn_1_9784);
             }
@@ -594,7 +580,7 @@ void CallbackReceiver::fn_1_B09C()
     }
     this->timer = 0.0f;
     fn_1_96E0(this, &this->position.value);
-    setMotion(DATANUM(0x820000, 15), 0);
+    changeMotion(DATANUM(0x820000, 15), 0);
     setState(&CallbackReceiver::fn_1_9784);
 }
 

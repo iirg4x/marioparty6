@@ -1,6 +1,9 @@
 /* Word Herd player groups, herd movement, stage actors and microphone response handling. */
 #include "game/charman.h"
 #include "REL/m669DLL/vector.h"
+#include "REL/m669DLL/collision.h"
+#include "REL/m669DLL/startup.h"
+#include "REL/m669DLL/game.h"
 #include "game/mic.h"
 #include "datadir_enum.h"
 #include "messdir_enum.h"
@@ -325,11 +328,7 @@ void fn_1_5000(s16 *groupOutput)
     }
 }
 
-extern void *fn_1_1A8(s32 priority, u32 bytes, void (*update)(OMOBJ *));
-
 extern int lbl_1_data_28[2][6];
-
-extern void fn_1_248(OMOBJ *object, OMOBJ_FUNC callback);
 
 extern void fn_1_5554(OMOBJ *object);
 
@@ -626,19 +625,6 @@ void fn_1_59F4(OMOBJ *object)
 }
 
 void fn_1_12C58(OMOBJ *obj);
-typedef struct M669Bounds {
-    HuVecF min;
-    HuVecF max;
-} M669Bounds;
-
-typedef struct M669Sphere {
-    HuVecF center;
-    f32 radius;
-} M669Sphere;
-
-extern f32 fn_1_2C24(M669Sphere *first, M669Sphere *second);
-extern void fn_1_2504(M669Bounds *bounds, M669Sphere *sphere);
-extern s32 fn_1_27FC(M669Bounds *first, M669Bounds *second);
 
 void fn_1_5C14(OMOBJ *object);
 
@@ -682,11 +668,6 @@ void fn_1_5C74(OMOBJ *object)
 
 extern void fn_1_5E58(OMOBJ *);
 
-static inline M669ActorWork *M669ActorWorkGet(s32 index)
-{
-    return lbl_1_bss_3C[index];
-}
-
 /* Starts the camera move when every herd actor is ready or the readiness counter exceeds 600. */
 void fn_1_5D34(OMOBJ *object)
 {
@@ -694,7 +675,7 @@ void fn_1_5D34(OMOBJ *object)
     s32 ready = 1;
     s32 index;
     for (index = 0; index < 36; index++) {
-        if (M669ActorWorkGet(index)->ready == 0) {
+        if (fn_1_4F98(index)->ready == 0) {
             ready = 0;
             break;
         }
@@ -762,25 +743,6 @@ void fn_1_5FA8(OMOBJ *object)
     fn_1_248(object, fn_1_60A0);
 }
 
-static inline M669ActorWork *M669ParticleGet(s32 index)
-{
-    return lbl_1_bss_3C[index];
-}
-
-/* Computes the clamped sphere-distance term used by the herd collision helpers. */
-static inline f32 fn_1_2CC8(const M669Sphere *first, const M669Sphere *second)
-{
-    HuVecF offset;
-    f32 distanceSquared;
-
-    M669VecSubtract(&offset, &first->center, &second->center);
-    distanceSquared = M669VecLengthSquared(&offset);
-    distanceSquared -= first->radius * first->radius +
-        second->radius * second->radius;
-    if (distanceSquared < 0.0f) distanceSquared = 0.0f;
-    return sqrtf(distanceSquared);
-}
-
 /* Each herd-controller update accumulates movement, resolves overlaps and constrains the herd
  * area. */
 void fn_1_60A0(OMOBJ *object)
@@ -795,7 +757,7 @@ void fn_1_60A0(OMOBJ *object)
     memset(response, 0, sizeof (response));
     for (i = 0; i < 36; i++)
     {
-        M669ActorWork * particle = M669ParticleGet(i);
+        M669ActorWork * particle = fn_1_4F98(i);
 
         M669VecAdd(& particle->velocity, & particle->velocity, & particle->frameVelocity);
         M669VecAdd(& particle->velocity, & particle->velocity, & particle->dampedVelocity);
@@ -817,7 +779,7 @@ void fn_1_60A0(OMOBJ *object)
     fn_1_31C(& work->position, 0.0f, 0.0f, 0.0f);
     for (i = 0; i < 36; i++)
     {
-        M669ActorWork * particle = M669ParticleGet(i);
+        M669ActorWork * particle = fn_1_4F98(i);
         HuVecF direction;
         if (particle->action != 2 && particle->action != 3)
         {
@@ -856,7 +818,7 @@ void fn_1_60A0(OMOBJ *object)
     }
     for (k = 0; k < 36; k++)
     {
-        M669ActorWork * particle = M669ParticleGet(k);
+        M669ActorWork * particle = fn_1_4F98(k);
         M669Sphere sphere;
         M669Bounds particleBounds;
         if (particle->action == 3)
@@ -887,7 +849,7 @@ void fn_1_60A0(OMOBJ *object)
         }
         for (j = 0; j < 36; j++)
         {
-            M669ActorWork * b = M669ParticleGet(j);
+            M669ActorWork * b = fn_1_4F98(j);
             M669Sphere sphereB;
             M669Bounds boundsB;
             HuVecF away;
@@ -921,7 +883,7 @@ void fn_1_60A0(OMOBJ *object)
     }
     for (k = 0; k < 36; k++)
     {
-        M669ActorWork * a = M669ParticleGet(k);
+        M669ActorWork * a = fn_1_4F98(k);
         M669Sphere sphereA;
         M669Bounds boundsA;
         sphereA.center = a->position;
@@ -958,13 +920,13 @@ void fn_1_60A0(OMOBJ *object)
     }
     for (i = 0; i < 36; i++)
     {
-        M669ActorWork * particle = M669ParticleGet(i);
+        M669ActorWork * particle = fn_1_4F98(i);
         M669VecAdd(& particle->frameDisplacement, & particle->frameDisplacement, & response[i]);
 
     }
     for (i = 0; i < 36; i++)
     {
-        M669ActorWork * particle = M669ParticleGet(i);
+        M669ActorWork * particle = fn_1_4F98(i);
 
         M669VecAdd(& particle->position, & particle->position, & particle->frameDisplacement);
         if (particle->position.y <= 0.0f)
@@ -976,7 +938,7 @@ void fn_1_60A0(OMOBJ *object)
     }
     for (i = 0; i < 36; i++)
     {
-        M669ActorWork * particle = M669ParticleGet(i);
+        M669ActorWork * particle = fn_1_4F98(i);
         HuVecF to;
         M669VecSubtract(& to, & zero, & particle->position);
         if (particle->action != 2 && particle->position.y > 120.0f &&
@@ -991,7 +953,7 @@ void fn_1_60A0(OMOBJ *object)
         area.radius = 800.0f;
         for (i = 0; i < 36; i++)
         {
-            M669ActorWork * particle = M669ParticleGet(i);
+            M669ActorWork * particle = fn_1_4F98(i);
             HuVecF direction;
             M669Sphere sphere;
             f32 distance;
@@ -1012,7 +974,7 @@ void fn_1_60A0(OMOBJ *object)
         }
         for (i = 0; i < 36; i++)
         {
-            M669ActorWork * particle = M669ParticleGet(i);
+            M669ActorWork * particle = fn_1_4F98(i);
             HuVecF direction;
             M669Sphere sphere;
             f32 distance;
@@ -1033,7 +995,7 @@ void fn_1_60A0(OMOBJ *object)
         }
         for (i = 0; i < 36; i++)
         {
-            M669ActorWork * particle = M669ParticleGet(i);
+            M669ActorWork * particle = fn_1_4F98(i);
             particle->frameVelocity.x = particle->frameVelocity.y = particle->frameVelocity.z =
                 0.0f;
             fn_80026790(particle->model, & particle->position);
@@ -1122,21 +1084,16 @@ void fn_1_6F90(M669ImpactWork *work, s16 motion, float blend, u32 attr)
     }
 }
 
-typedef struct M669Triangle { HuVecF start, edge1, edge2; } M669Triangle;
+/* Applies the shared impact sweep and records the player's first hit. */
 
-extern f32 fn_1_2E54(Point3d *, M669Triangle *, f32 *, f32 *);
-
-/* Detects players within the actor's impact sweep and marks each contacted target. */
 void fn_1_7018(M669ImpactWork *object)
 {
+    M669PlayerAreaWork *hitCount;
     M669Triangle triangle;
     M669Sphere probe;
     f32 angle;
-    M669ActorWork *targetEntry;
     M669ActorWork *target;
-    f32 collisionDistance;
     s32 index;
-    M669PlayerAreaWork *hitCount;
 
     if (object->header.player->mode == 3) {
         fn_80086BC8(object->header.player->actor, &triangle.start);
@@ -1152,8 +1109,7 @@ void fn_1_7018(M669ImpactWork *object)
             (f32)(200.0 * cos(angle - (M_PI * 40.0 / 180.0))));
 
         for (index = 0; index < 36; index++) {
-            targetEntry = lbl_1_bss_3C[index];
-            target = targetEntry;
+            target = fn_1_4F98(index);
             if (target->action != 2 && target->action != 3) {
                 probe.center = target->position;
                 probe.center.y += 40.0f;
@@ -1162,10 +1118,8 @@ void fn_1_7018(M669ImpactWork *object)
                     probe.radius * probe.radius) {
                     target->action = 1;
                     target->frameVelocity.y = 30.0f;
-                    target->dampedVelocity.x = (f32)(0.5 *
-                        (15.0 * sin(angle)));
-                    target->dampedVelocity.z = (f32)(0.5 *
-                        (15.0 * cos(angle)));
+                    target->dampedVelocity.x = (f32)(0.5 * (15.0 * sin(angle)));
+                    target->dampedVelocity.z = (f32)(0.5 * (15.0 * cos(angle)));
                     fn_8006A030(object->header.playerIndex, 12, 7, 3);
                 }
             }
@@ -1276,21 +1230,9 @@ void fn_1_78D8(OMOBJ *object);
 void fn_1_77AC(OMOBJ *object) {
     M669ImpactWork *playerWork;
     playerWork = object->data;
-    if (playerWork->motion != 0x11) {
-        playerWork->motion = 0x11;
-        fn_8005C2C8(playerWork->header.character,
-                           playerWork->header.player
-                               ->omObj->mtnId[playerWork->motion],
-                           0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_6F90(playerWork, 0x11, 4.0f, ((1 << 30) | (1 << 0)));
     if (fn_80071A8C() == 5) {
-        if (playerWork->motion != 0) {
-            playerWork->motion = 0;
-            fn_8005C2C8(playerWork->header.character,
-                               playerWork->header.player
-                                   ->omObj->mtnId[playerWork->motion],
-                               0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-        }
+        fn_1_6F90(playerWork, 0, 4.0f, ((1 << 30) | (1 << 0)));
         playerWork->velocity.x = 0.0f;
         playerWork->velocity.y = 0.0f;
         playerWork->velocity.z = 0.0f;
@@ -1306,6 +1248,8 @@ void fn_1_7D0C(OMOBJ *object);
 void fn_1_8354(OMOBJ *object);
 
 /* Selects human or computer control during play and switches to the finish callback in mode six. */
+
+/* Dispatches the player entry and prepares a human-controlled player. */
 void fn_1_78D8(OMOBJ *object) {
     M669ImpactWork *playerWork;
 
@@ -1324,65 +1268,6 @@ void fn_1_78D8(OMOBJ *object) {
 }
 
 void fn_1_80A0(OMOBJ *object);
-
-static inline M669ActorWork *M669ImpactTargetGet(s32 index)
-{
-    return lbl_1_bss_3C[index];
-}
-
-/* During player updates, applies impact velocity to nearby herd actors and counts each attack
- * once. */
-static inline void M669ImpactCheck(M669ImpactWork *work, OMOBJ *object)
-{
-    M669Triangle triangle;
-    M669Sphere probe;
-    f32 angle;
-    M669ActorWork *targetEntry;
-    M669ActorWork *target;
-    s32 index;
-    M669PlayerAreaWork *hitCount;
-
-    if (work->header.player->mode == 3) {
-        fn_80086BC8(work->header.player->actor, &triangle.start);
-        fn_80086CB0(work->header.player->actor, &angle);
-        angle = (f32)(M_PI * (angle / 180.0f));
-        fn_1_31C(&triangle.edge1,
-            (f32)(200.0 * sin((M_PI * 40.0 / 180.0) + angle)),
-            0.0f,
-            (f32)(200.0 * cos((M_PI * 40.0 / 180.0) + angle)));
-        fn_1_31C(&triangle.edge2,
-            (f32)(200.0 * sin(angle - (M_PI * 40.0 / 180.0))),
-            0.0f,
-            (f32)(200.0 * cos(angle - (M_PI * 40.0 / 180.0))));
-
-        for (index = 0; index < 36; index++) {
-            target = M669ImpactTargetGet(index);
-            if (target->action != 2 && target->action != 3) {
-                probe.center = target->position;
-                probe.center.y += 40.0f;
-                probe.radius = 40.0f;
-                if (fn_1_2E54(&probe.center, &triangle, 0, 0) <=
-                    probe.radius * probe.radius) {
-                    target->action = 1;
-                    target->frameVelocity.y = 30.0f;
-                    target->dampedVelocity.x = (f32)(0.5 *
-                        (15.0 * sin(angle)));
-                    target->dampedVelocity.z = (f32)(0.5 *
-                        (15.0 * cos(angle)));
-                    fn_8006A030(work->header.playerIndex, 12, 7, 3);
-                }
-            }
-        }
-        if (work->hitCounted != 0) {
-            return;
-        }
-        work->hitCounted = 1;
-        hitCount = lbl_1_bss_38;
-        hitCount->hitCount++;
-    } else {
-        work->hitCounted = 0;
-    }
-}
 
 /* Checks nearby actors against the player's impact range and counts the hit. */
 void fn_1_7980(OMOBJ *object)
@@ -1405,7 +1290,7 @@ void fn_1_7980(OMOBJ *object)
     work->velocity.x = 0.0f;
     work->velocity.y = 0.0f;
     work->velocity.z = 0.0f;
-    M669ImpactCheck(work, object);
+    fn_1_7018(work);
 }
 
 extern s32 fn_1_13BA0(M669ImpactWork *);
@@ -1498,13 +1383,7 @@ void fn_1_80A0(OMOBJ *object) {
         return;
     }
     playerWork->header.timer = 0x12C;
-    if (playerWork->motion != 0x10) {
-        playerWork->motion = 0x10;
-        fn_8005C2C8(playerWork->header.character,
-                           playerWork->header.player
-                               ->omObj->mtnId[playerWork->motion],
-                           0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_6F90(playerWork, 0x10, 4.0f, ((1 << 30) | (1 << 0)));
     fn_1_248(object, fn_1_8168);
 }
 
@@ -1526,20 +1405,11 @@ void fn_1_8168(OMOBJ *object)
         fn_8002D3C4(work->header.player->actor->mdlId)) {
         work->motion = -1;
     }
-    if (work->motion != 16) {
-        work->motion = 16;
-        fn_8005C2C8(work->header.character, work->header.player->omObj->mtnId[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_6F90(work, 16, 4.0f, ((1 << 30) | (1 << 0)));
     work->header.timer--;
     if (work->header.timer <= 0) {
         work->header.state = 0;
-        if (work->motion != 0) {
-            work->motion = 0;
-            fn_8005C2C8(work->header.character,
-                               work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f,
-                               ((1 << 30) | (1 << 0)));
-        }
+        fn_1_6F90(work, 0, 4.0f, ((1 << 30) | (1 << 0)));
         fn_1_248(object, fn_1_78D8);
         return;
     }
@@ -1556,11 +1426,7 @@ void fn_1_8354(OMOBJ *object)
     work->velocity.y = 0.0f;
     work->velocity.z = 0.0f;
     fn_80086CCC(work->header.player->actor, &work->velocity);
-    if (work->motion != 0) {
-        work->motion = 0;
-        fn_8005C2C8(work->header.character,
-            work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_6F90(work, 0, 4.0f, ((1 << 30) | (1 << 0)));
     if (fn_80071A8C() == 7) {
         fn_1_248(object, fn_1_843C);
         return;
@@ -1580,12 +1446,7 @@ void fn_1_843C(OMOBJ *object)
     f32 cross;
     f32 adjustedAngle;
 
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8005C2C8(work->header.character,
-            work->header.player->omObj->mtnId[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_6F90(work, 1, 4.0f, ((1 << 30) | (1 << 0)));
     currentAngle = (f32)(M_PI *
         (work->header.player->actor->rotY / 180.0f));
     fn_1_31C(&targetDirection, (f32)sin(0.0),
@@ -1610,12 +1471,7 @@ void fn_1_843C(OMOBJ *object)
     work->header.player->actor->rotY = (f32)((f64)(180.0f * adjustedAngle) /
         M_PI);
     if (fabsf(adjustedAngle - currentAngle) <= 0.01f) {
-        if (work->motion != 0) {
-            work->motion = 0;
-            fn_8005C2C8(work->header.character,
-                work->header.player->omObj->mtnId[work->motion],
-                0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-        }
+        fn_1_6F90(work, 0, 4.0f, ((1 << 30) | (1 << 0)));
         lbl_1_bss_A++;
         fn_1_248(object, fn_1_8790);
         return;
@@ -1628,21 +1484,9 @@ void fn_1_8790(OMOBJ *object) {
     playerWork = object->data;
     if (fn_80071A8C() == 8) {
         if (lbl_1_data_168 == playerWork->header.groupIndex) {
-            if (playerWork->motion != 0xE) {
-                playerWork->motion = 0xE;
-                fn_8005C2C8(playerWork->header.character,
-                                   playerWork->header.player
-                                       ->omObj->mtnId[playerWork->motion],
-                                   0.0f, 4.0f, 0);
-            }
+            fn_1_6F90(playerWork, 0xE, 4.0f, 0);
         } else {
-            if (playerWork->motion != 0xF) {
-                playerWork->motion = 0xF;
-                fn_8005C2C8(playerWork->header.character,
-                                   playerWork->header.player
-                                       ->omObj->mtnId[playerWork->motion],
-                                   0.0f, 4.0f, 0);
-            }
+            fn_1_6F90(playerWork, 0xF, 4.0f, 0);
         }
         fn_1_248(object, 0);
         return;
@@ -1702,22 +1546,23 @@ void fn_1_88A0(void)
 }
 
 /* Pins the model position and updates it when its tracked motion reaches the end. */
+
 void fn_1_8A70(M669ActorWork *work)
 {
-    HuVecF position = work->position;
+    HuVecF position;
 
+    position = work->position;
     position.y = 0.01f;
     fn_80026790(work->positionModel, &position);
     if (work->motionComplete != 0) {
         if (fabsf(fn_8002D4E0(work->motionModel) -
-            fn_8002D530(work->motionModel)) <= 0.01f) {
+                fn_8002D530(work->motionModel)) <= 0.01f) {
             work->motionComplete = 0;
             fn_800269E8(work->motionModel, (1 << 0));
         }
     }
 }
 
-/* Places the actor's model above its stored position and starts its default motion. */
 void fn_1_8B78(M669ActorWork *work)
 {
     HuVecF position = work->position;
@@ -1790,7 +1635,8 @@ void fn_1_8ED8(M669ActorWork *work, s16 motion) {
     }
 }
 
-/* Turns the actor toward the requested heading at the supplied angular rate. */
+/* Wraps an angle and applies it to the actor model. */
+
 f32 fn_1_8F3C(M669ActorWork *work, f64 heading, f32 rate)
 {
     HuVecF targetDirection;
@@ -1935,11 +1781,7 @@ void fn_1_9144(OMOBJ *object) {
     work->timer = 0;
     work->motionSpeed = (f32)(1.0f + frandf());
     fn_8002D86C(work->model, work->motionSpeed / 3.0f);
-    if (work->motion != 2)
-    {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 2);
     fn_1_248(object, fn_1_9614);
 }
 
@@ -1949,20 +1791,6 @@ extern void fn_1_9D24(OMOBJ *);
 
 /* During the herd motion sequence, positions the ground model and hides a finished effect
  * motion. */
-static inline void M669MotionSequenceStep(M669ActorWork *work)
-{
-    HuVecF position = work->position;
-
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-}
 
 /* During the herd motion sequence, turns toward a radian heading by a fraction of the angular
  * gap. */
@@ -2002,33 +1830,17 @@ static inline f32 M669MotionSequenceTurn(M669ActorWork *work, f64 heading, f32 r
 void fn_1_9614(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(
-            fn_8002D4E0(work->motionModel) -
-            fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     work->timer++;
     if (work->timer == 30) {
         fn_8002D86C(work->model, 1.5f);
-        if (work->motion != 3) {
-            work->motion = 3;
-            fn_8002C95C(work->model, work->motionIds[work->motion]);
-        }
+        fn_1_8ED8(work, 3);
         fn_80026A44(work->model, ((1 << 30) | (1 << 0)));
         return;
     }
     if (work->timer >= 45) {
-        if (work->motion != 2) {
-            work->motion = 2;
-            fn_8002C95C(work->model, work->motionIds[work->motion]);
-        }
+        fn_1_8ED8(work, 2);
         work->motionSpeed = 8.0f;
         fn_8002D86C(work->model,
             work->motionSpeed / 3.0f);
@@ -2053,7 +1865,7 @@ void fn_1_9864(OMOBJ *object)
     f32 turnDirection;
     f32 nextAngle;
 
-    M669MotionSequenceStep(work);
+    fn_1_8A70(work);
     M669VecSubtract(&position, &lbl_1_rodata_150[work->actorIndex % 36],
         &work->position);
     travelDistance = fn_1_554(&position, &position);
@@ -2066,10 +1878,7 @@ void fn_1_9864(OMOBJ *object)
     work->frameVelocity.z += work->motionSpeed * cos(work->angle);
     work->timer++;
     if (travelDistance <= 21.0f || work->timer > 300) {
-        if (work->motion != 1) {
-            work->motion = 1;
-            fn_8002C95C(work->model, work->motionIds[work->motion]);
-        }
+        fn_1_8ED8(work, 1);
         fn_8002D86C(work->model, 1.0f);
         work->collisionWeight = 0.1f;
         work->motionSpeed = 1.0f;
@@ -2085,83 +1894,9 @@ extern void fn_1_A3D8(OMOBJ *);
 extern void fn_1_A7E4(OMOBJ *);
 
 /* Positions the stage actor and clears its completed motion state. */
-static inline void M669StageRotationStep(M669ActorWork *work)
-{
-    HuVecF position = work->position;
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-            fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-}
-
-/* Unused sequence helper that positions the ground model and hides a finished effect motion. */
-static inline void M669SequencePositionUpdate(M669ActorWork *work)
-{
-    HuVecF position = work->position;
-    f64 absoluteTimeDifference;
-    f32 motionTimeDifference;
-
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        absoluteTimeDifference = fabs(
-            fn_8002D4E0(work->motionModel) -
-            fn_8002D530(work->motionModel));
-        motionTimeDifference = (f32)absoluteTimeDifference;
-        if (motionTimeDifference <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-}
-
-/* Unused helper that writes the vector from the second point to the first and returns its squared
- * length. */
-static inline f32 M669DirectionDifferenceSquared(HuVecF *direction, const HuVecF *from,
-    const HuVecF *to)
-{
-    M669VecSubtract(direction, from, to);
-    return M669VecLengthSquared(direction);
-}
 
 /* During the actor rotation callback, turns toward the requested radian heading at the supplied
  * rate. */
-static inline f32 M669StageRotationTurnByRate(M669ActorWork *work, f64 targetAngle,
-    f32 rate)
-{
-    HuVecF targetDirection;
-    HuVecF currentDirection;
-    Mtx motionRotation;
-    f32 angularDifference;
-    f32 cross;
-    f32 angle;
-
-    fn_1_31C(&targetDirection, (f32)sin(targetAngle), 0.0f,
-        (f32)cos(targetAngle));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f,
-        (f32)cos(work->angle));
-    angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
-    cross = targetDirection.x * currentDirection.z -
-        targetDirection.z * currentDirection.x;
-    angle = work->angle;
-    angle += cross >= 0.0f ? angularDifference / rate : -(angularDifference / rate);
-    while (angle > (2.0 * M_PI)) {
-        angle = (f32)((f64)angle - (2.0 * M_PI));
-    }
-    while (angle < (-2.0 * M_PI)) {
-        angle += (2.0 * M_PI);
-    }
-    work->angle = angle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
-    return angularDifference;
-}
 
 /* During the actor return callback, turns through one tenth of the remaining angular gap. */
 static inline f32 M669StageRotationTurnFixedRate(M669ActorWork *work,
@@ -2213,11 +1948,6 @@ static inline void M669SequenceActorEffectInit(M669ActorWork *source)
     effect->time = 0;
 }
 
-static inline M669HerdWork *M669SequenceStateGet(void)
-{
-    return lbl_1_bss_CC;
-}
-
 /* Turns the moving actor toward the selected motion point and advances it. */
 void fn_1_9D24(OMOBJ *object)
 {
@@ -2226,31 +1956,27 @@ void fn_1_9D24(OMOBJ *object)
     f32 distance;
     f32 targetAngle;
 
-    M669StageRotationStep(work);
+    fn_1_8A70(work);
     M669VecSubtract(&direction, &lbl_1_rodata_150[work->actorIndex % 36],
         &work->position);
     distance = fn_1_554(&direction, &direction);
     if (distance < 1.0f) {
         work->ready = 1;
-        M669StageRotationTurnByRate(work,
+        M669MotionSequenceTurn(work,
             3.1415927f, 20.0f);
     } else {
         work->ready = 0;
-        M669StageRotationTurnByRate(work,
+        M669MotionSequenceTurn(work,
                                     atan2f(direction.x, direction.z), 2.0f);
         work->frameVelocity.x = (f32)((f64)work->frameVelocity.x +
             (0.5 * ((f64)distance * sin((f64)work->angle))));
         work->frameVelocity.z = (f32)((f64)work->frameVelocity.z +
             (0.5 * ((f64)distance * cos((f64)work->angle))));
     }
-    if (M669SequenceStateGet()->sequence == 3) {
+    if (fn_1_4F88()->sequence == 3) {
         work->timer = 0;
         fn_8002D86C(work->model, 1.0f);
-        if (work->motion != 3) {
-            work->motion = 3;
-            fn_8002C95C(work->model,
-                work->motionIds[work->motion]);
-        }
+        fn_1_8ED8(work, 3);
         fn_80026A44(work->model, ((1 << 30) | (1 << 0)));
         M669SequenceActorEffectInit(work);
         fn_1_248(object, fn_1_A3D8);
@@ -2270,7 +1996,7 @@ void fn_1_A3D8(OMOBJ *object)
     s32 index;
 
     minimumDistance = 3.4028235e38f;
-    M669StageRotationStep(work);
+    fn_1_8A70(work);
     for (index = 0; index < 3; index++) {
         fn_80086BC8(fn_1_4FC0(index)->header.player->actor, &playerPosition);
         M669VecSubtract(&candidateDirection, &playerPosition, &work->position);
@@ -2297,11 +2023,8 @@ void fn_1_A7E4(OMOBJ *object)
     f32 angle;
     f32 moveRadius;
 
-    M669StageRotationStep(work);
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8A70(work);
+    fn_1_8ED8(work, 2);
     fn_800269E8(work->model, ((1 << 30) | (1 << 0)));
     work->collisionWeight = 1.0f;
     work->frameCount = 90;
@@ -2350,18 +2073,9 @@ extern void fn_1_E648(OMOBJ *);
 void fn_1_AAAC(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
     M669PlayerSetupWork *stageWork;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -2418,34 +2132,14 @@ extern void fn_1_AF60(OMOBJ *);
 void fn_1_AD6C(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF setupPosition = work->position;
-    HuVecF motionPosition;
 
-    setupPosition.y = 0.01f;
-    fn_80026790(work->positionModel, &setupPosition);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
     }
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
-    motionPosition = work->position;
-    motionPosition.y += 50.0f;
-    fn_80026790(work->motionModel, &motionPosition);
-    fn_8002C95C(work->motionModel, work->motionDataId);
-    fn_80026A44(work->motionModel, (1 << 0));
-    fn_8002D414(work->motionModel, 0.0f);
-    fn_8002D86C(work->motionModel, 1.0f);
-    work->motionComplete = 1;
+    fn_1_8ED8(work, 2);
+    fn_1_8B78(work);
     fn_1_248(object, fn_1_AF60);
 }
 
@@ -2455,10 +2149,7 @@ void fn_1_AF60(OMOBJ *object)
     M669ActorWork *work = object->data;
 
     fn_1_8A70(work);
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 2);
     work->angle += (M_PI / 6.0);
     fn_80026808(work->model, 0.0f,
         (f32)((f64)(180.0f * work->angle) / M_PI),
@@ -2481,24 +2172,13 @@ extern void fn_1_B3D0(OMOBJ *);
 void fn_1_B1C0(OMOBJ *object)
 {
     HuVecF screenPosition;
-    HuVecF position;
     f32 screenPan;
     f32 clampedPan;
     f32 upperPan;
     M669ActorWork *work;
 
     work = object->data;
-    position = work->position;
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     Hu3D3Dto2D(&work->position, 1, &screenPosition);
     screenPan = 64.0f * (screenPosition.x / 576.0f);
     if (screenPan < 0.0f) {
@@ -2522,55 +2202,8 @@ extern void fn_1_B960(OMOBJ *);
 
 /* During herd movement, positions the ground model and hides the effect model when its motion
  * ends. */
-static inline void fn_1_8A70_for_B3D0(M669ActorWork *work)
-{
-    HuVecF position = work->position;
-
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-}
 
 /* During herd movement, adjusts the model heading toward the requested radian angle. */
-static inline f32 M669MovingStageTurn(M669ActorWork *work,
-    f64 heading, f32 rate)
-{
-    HuVecF targetDirection;
-    HuVecF currentDirection;
-    f32 angularDifference;
-    f32 cross;
-    f32 adjustedAngle;
-
-    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f,
-        (f32)cos(heading));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle),
-        0.0f, (f32)cos(work->angle));
-
-    angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
-    cross = targetDirection.x * currentDirection.z -
-        targetDirection.z * currentDirection.x;
-    adjustedAngle = work->angle;
-    adjustedAngle += cross >= 0.0f ?
-        angularDifference / rate : -(angularDifference / rate);
-    while (adjustedAngle > (2.0 * M_PI)) {
-        adjustedAngle = (f32)((f64)adjustedAngle - (2.0 * M_PI));
-    }
-    while (adjustedAngle < (-2.0 * M_PI)) {
-        adjustedAngle += (2.0 * M_PI);
-    }
-    work->angle = adjustedAngle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) /
-            M_PI),
-        0.0f);
-    return angularDifference;
-}
 
 /* Turns the stage actor back toward its route after it moves outside it. */
 void fn_1_B3D0(OMOBJ *object)
@@ -2584,16 +2217,12 @@ void fn_1_B3D0(OMOBJ *object)
     HuVecF collisionDirection;
     f32 distance;
     f32 cross;
-    fn_1_8A70_for_B3D0(work);
+    fn_1_8A70(work);
     if (work->position.y > 0.0f)
     {
         return;
     }
-    if (work->motion != 2)
-    {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 2);
     fn_8002D86C(work->model, work->motionSpeed / 3.0f);
     M669VecSubtract(& direction, & routePosition, & work->position);
     distance = fn_1_554(& direction, & direction);
@@ -2617,7 +2246,7 @@ void fn_1_B3D0(OMOBJ *object)
         fn_1_248(object, fn_1_B960);
         return;
     }
-    M669MovingStageTurn(work, atan2f(collisionDirection.x, collisionDirection.z), 10.0f);
+    M669MotionSequenceTurn(work, atan2f(collisionDirection.x, collisionDirection.z), 10.0f);
     work->frameVelocity.x += (f64) work->motionSpeed * sin(work->angle);
     work->frameVelocity.z += (f64) work->motionSpeed * cos(work->angle);
     if (distance > 1200.0f)
@@ -2635,11 +2264,11 @@ void fn_1_B960(OMOBJ *object)
     HuVecF direction;
     HuVecF projectedDirection;
     f32 targetDistance;
-    fn_1_8A70_for_B3D0(work);
+    fn_1_8A70(work);
     M669VecSubtract(& direction, & referencePosition, & work->position);
     targetDistance = fn_1_554(& direction, & direction);
     M669VecScale(& projectedDirection, & direction, -1.0f);
-    M669MovingStageTurn(work, atan2f(projectedDirection.x, projectedDirection.z), 10.0f);
+    M669MotionSequenceTurn(work, atan2f(projectedDirection.x, projectedDirection.z), 10.0f);
     work->frameVelocity.x += (f64) work->motionSpeed * sin(work->angle);
     work->frameVelocity.z += (f64) work->motionSpeed * cos(work->angle);
     if (targetDistance > 1200.0f)
@@ -2656,18 +2285,9 @@ void fn_1_B960(OMOBJ *object)
 void fn_1_BD8C(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
     M669PlayerSetupWork *stageWork;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -2702,10 +2322,7 @@ void fn_1_BD8C(OMOBJ *object)
             fn_1_248(object, fn_1_D010);
             return;
     default:
-        if (work->motion != 1) {
-            work->motion = 1;
-            fn_8002C95C(work->model, work->motionIds[work->motion]);
-        }
+        fn_1_8ED8(work, 1);
         work->frameCount = (s32)(60.0f * frandf());
         work->timer = 0;
         fn_8002D86C(work->model, 1.0f);
@@ -2719,18 +2336,9 @@ void fn_1_BD8C(OMOBJ *object)
 void fn_1_C040(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
     M669PlayerSetupWork *stageWork;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -2779,18 +2387,9 @@ extern void fn_1_C59C(OMOBJ *);
 void fn_1_C2A8(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
     M669PlayerSetupWork *stageWork;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -2825,10 +2424,7 @@ void fn_1_C2A8(OMOBJ *object)
             fn_1_248(object, fn_1_D010);
             return;
     default:
-        if (work->motion != 2) {
-            work->motion = 2;
-            fn_8002C95C(work->model, work->motionIds[work->motion]);
-        }
+        fn_1_8ED8(work, 2);
         work->frameCount = (s32)(60.0f *
             (2.0f * frandf()));
         work->timer = 0;
@@ -2844,20 +2440,6 @@ void fn_1_C2A8(OMOBJ *object)
 extern void fn_1_CBB4(OMOBJ *);
 
 /* During random herd movement, updates the ground model and hides a completed effect motion. */
-static inline void M669RandomStageStep(M669ActorWork *work)
-{
-    HuVecF position = work->position;
-
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-            fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-}
 
 /* During the random turn callback, turns through one twentieth of the gap to the stored heading. */
 static inline f32 M669TurningStageAngle(M669ActorWork *work)
@@ -2898,18 +2480,9 @@ static inline f32 M669TurningStageAngle(M669ActorWork *work)
 void fn_1_C59C(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
     M669PlayerSetupWork *stageWork;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -2964,7 +2537,7 @@ void fn_1_C844(OMOBJ *object)
     f32 motionEnd;
     M669PlayerSetupWork *stageWork;
 
-    M669RandomStageStep(work);
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -2999,10 +2572,7 @@ void fn_1_C844(OMOBJ *object)
         fn_1_248(object, fn_1_D010);
         return;
     default:
-        if (work->motion != 0) {
-            work->motion = 0;
-            fn_8002C95C(work->model, work->motionIds[work->motion]);
-        }
+        fn_1_8ED8(work, 0);
         if ((u32)fn_80071B58() > 1320U) {
             M669VecSubtract(&direction, &origin, &work->position);
         } else {
@@ -3024,7 +2594,7 @@ void fn_1_CBB4(OMOBJ *object)
     f32 angleDifference;
     M669PlayerSetupWork *stageWork;
     work = object->data;
-    M669RandomStageStep(work);
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -3071,20 +2641,6 @@ void fn_1_CBB4(OMOBJ *object)
 extern void fn_1_D2EC(OMOBJ *);
 
 /* Places the position model at ground height and clears a finished motion. */
-static inline void fn_1_D010UpdateModel(M669ActorWork *work)
-{
-    HuVecF position = work->position;
-
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-}
 
 /* Aims the stage model at the seeded position and starts its randomized motion. */
 void fn_1_D010(OMOBJ *object)
@@ -3093,7 +2649,7 @@ void fn_1_D010(OMOBJ *object)
     HuVecF targetPosition = { 0.0f, 0.0f, 0.0f };
     HuVecF direction;
 
-    fn_1_D010UpdateModel(work);
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -3106,10 +2662,7 @@ void fn_1_D010(OMOBJ *object)
         fn_1_248(object, fn_1_E648);
         return;
     }
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 2);
     M669VecSubtract(&direction, &targetPosition, &work->position);
     fn_1_554(&direction, &direction);
     work->motionTime = (f32)(atan2f(direction.x, direction.z) +
@@ -3124,20 +2677,6 @@ void fn_1_D010(OMOBJ *object)
 }
 
 /* During targeted herd movement, updates the ground model and hides a completed effect motion. */
-static inline void M669MovingStageStep(M669ActorWork *work)
-{
-    HuVecF position = work->position;
-
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-}
 
 /* During targeted herd movement, turns toward the requested radian heading at the supplied rate. */
 static inline f32 M669MovingStageSteer(M669ActorWork *work, f64 heading, f32 rate)
@@ -3151,8 +2690,8 @@ static inline f32 M669MovingStageSteer(M669ActorWork *work, f64 heading, f32 rat
 
     fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f,
         (f32)cos(heading));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle),
-        0.0f, (f32)cos(work->angle));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f,
+        (f32)cos(work->angle));
     angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     cross = targetDirection.x * currentDirection.z -
         targetDirection.z * currentDirection.x;
@@ -3171,27 +2710,13 @@ static inline f32 M669MovingStageSteer(M669ActorWork *work, f64 heading, f32 rat
     return angularDifference;
 }
 
-/* Unused helper that reports whether the actor action is one or two. */
-static inline s32 M669StageTargetActionReady(OMOBJ *object, M669ActorWork *work)
-{
-    if (work->action == 2) {
-
-        return 1;
-    }
-    if (work->action == 1) {
-
-        return 1;
-    }
-    return 0;
-}
-
 /* Turns the stage model toward the nearest player's position relative to the target. */
 void fn_1_D2EC(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
     HuVecF direction = { 0.0f, 0.0f, 0.0f };
 
-    M669MovingStageStep(work);
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -3248,17 +2773,8 @@ void fn_1_D2EC(OMOBJ *object)
 void fn_1_D830(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -3271,10 +2787,7 @@ void fn_1_D830(OMOBJ *object)
         fn_1_248(object, fn_1_E648);
         return;
     }
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 2);
     work->frameCount = 60;
     work->timer = 0;
     work->motionSpeed = 2.0f *
@@ -3288,17 +2801,8 @@ void fn_1_D830(OMOBJ *object)
 void fn_1_DA54(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -3311,10 +2815,7 @@ void fn_1_DA54(OMOBJ *object)
         fn_1_248(object, fn_1_E648);
         return;
     }
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 2);
     work->frameCount = 60;
     work->timer = 0;
     work->motionSpeed = 2.0f *
@@ -3325,20 +2826,10 @@ void fn_1_DA54(OMOBJ *object)
 }
 
 /* Positions the model, then starts the next motion stage after its wait ends. */
-void fn_1_DC78(OMOBJ *object)
-{
-    M669ActorWork *work = object->data;
-    HuVecF position = work->position;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+/* Selects the actor action, or starts its timed run with the supplied heading. */
+static inline void M669ActorRunStart(OMOBJ *object, M669ActorWork *work, f32 motionTime)
+{
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -3351,60 +2842,34 @@ void fn_1_DC78(OMOBJ *object)
         fn_1_248(object, fn_1_E648);
         return;
     }
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 2);
     work->frameCount = 60;
     work->timer = 0;
     work->motionSpeed = 2.0f *
         (2.0f + 4.0f * frandf());
-    work->motionTime = -1.5707964f;
+    work->motionTime = motionTime;
     fn_8002D86C(work->model, work->motionSpeed / 3.0f);
     fn_1_248(object, fn_1_E0C0);
+}
+
+void fn_1_DC78(OMOBJ *object)
+{
+    M669ActorWork *work = object->data;
+
+    fn_1_8A70(work);
+    M669ActorRunStart(object, work, -1.5707964f);
 }
 
 /* Positions the model, then starts the next motion stage after its wait ends. */
 void fn_1_DE9C(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
-    if (work->action == 2) {
-        fn_1_248(object, fn_1_B1C0);
-        return;
-    }
-    if (work->action == 1) {
-        fn_1_248(object, fn_1_AD6C);
-        return;
-    }
-    if (fn_80071A8C() == 8) {
-        fn_1_248(object, fn_1_E648);
-        return;
-    }
-    if (work->motion != 2) {
-        work->motion = 2;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
-    work->frameCount = 60;
-    work->timer = 0;
-    work->motionSpeed = 2.0f *
-        (2.0f + 4.0f * frandf());
-    work->motionTime = 1.5707964f;
-    fn_8002D86C(work->model, work->motionSpeed / 3.0f);
-    fn_1_248(object, fn_1_E0C0);
+    fn_1_8A70(work);
+    M669ActorRunStart(object, work, 1.5707964f);
 }
 
-void fn_1_E968(u16 *response);
+void fn_1_E968(MCResponse_s *response);
 
 void fn_1_E9C4(M669PlayerSetupWork *work, s16 motion, float blend, u32 attr);
 
@@ -3426,7 +2891,7 @@ void fn_1_E0C0(OMOBJ *object)
     fn_80026790(work->positionModel, &position);
     if (work->motionComplete != 0) {
         if (fabsf(fn_8002D4E0(work->motionModel) -
-            fn_8002D530(work->motionModel)) <= 0.01f) {
+                fn_8002D530(work->motionModel)) <= 0.01f) {
             work->motionComplete = 0;
             fn_800269E8(work->motionModel, (1 << 0));
         }
@@ -3481,17 +2946,8 @@ void fn_1_E0C0(OMOBJ *object)
 void fn_1_E474(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
-    HuVecF position = work->position;
 
-    position.y = 0.01f;
-    fn_80026790(work->positionModel, &position);
-    if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                  fn_8002D530(work->motionModel)) <= 0.01f) {
-            work->motionComplete = 0;
-            fn_800269E8(work->motionModel, (1 << 0));
-        }
-    }
+    fn_1_8A70(work);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -3504,10 +2960,7 @@ void fn_1_E474(OMOBJ *object)
         fn_1_248(object, fn_1_E648);
         return;
     }
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 1);
     work->frameCount = 60;
     work->timer = 0;
     fn_8002D86C(work->model, 1.0f);
@@ -3531,15 +2984,12 @@ void fn_1_E648(OMOBJ *object)
     fn_80026790(work->positionModel, &position);
     if (work->motionComplete != 0) {
         if (fabsf(fn_8002D4E0(work->motionModel) -
-            fn_8002D530(work->motionModel)) <= 0.01f) {
+                fn_8002D530(work->motionModel)) <= 0.01f) {
             work->motionComplete = 0;
             fn_800269E8(work->motionModel, (1 << 0));
         }
     }
-    if (work->motion != 0) {
-        work->motion = 0;
-        fn_8002C95C(work->model, work->motionIds[work->motion]);
-    }
+    fn_1_8ED8(work, 0);
     fn_8002D86C(work->model, 1.0f);
     fn_1_31C(&initialDirection, (f32)sin(0.0),
         0.0f, (f32)cos(0.0));
@@ -3567,33 +3017,18 @@ void fn_1_E648(OMOBJ *object)
         0.0f);
 }
 
-typedef struct M669MicrophoneCandidate {
-    u16 score;
-    s16 count;
-    s16 *result;
-} M669MicrophoneCandidate;
-
-typedef struct M669MicrophoneResponse {
-    s16 status;
-    u16 score;
-    s16 count;
-    s16 *result;
-    s32 word;
-    M669MicrophoneCandidate candidates[10];
-} M669MicrophoneResponse;
-
 /* Microphone listener: rejects failed or empty responses and saves the word only above the score
  * threshold. */
-void fn_1_E968(u16 *response) {
-    if ((((M669MicrophoneResponse *)response)->status != 0) ||
-        (((M669MicrophoneResponse *)response)->count == 0)) {
+void fn_1_E968(MCResponse_s *response) {
+    if ((response->status != 0) ||
+        (response->count == 0)) {
         return;
     }
-    if (((M669MicrophoneResponse *)response)->score < 0xBB8U) {
+    if (response->score < 0xBB8U) {
         lbl_1_data_17E = M669_NO_WORD;
         return;
     }
-    lbl_1_data_17E = (u16)*((M669MicrophoneResponse *)response)->result;
+    lbl_1_data_17E = (u16)*response->result;
 }
 
 /* Changes the microphone player motion only when a different motion index is requested. */
@@ -3637,12 +3072,7 @@ void fn_1_EA4C(OMOBJ *object)
             fn_80086B04(work->header.player->actor, &position);
             work->header.state = -1;
             work->motion = -1;
-            if (work->motion != 0) {
-                work->motion = 0;
-                fn_8005C2C8(work->header.character,
-                                   work->header.player->omObj->mtnId[work->motion], 0.0f, 0.0f,
-                                   ((1 << 30) | (1 << 0)));
-            }
+            fn_1_E9C4(work, 0, 0.0f, ((1 << 30) | (1 << 0)));
             work->header.timer = 0;
             fn_1_248(object, fn_1_EC3C);
         }
@@ -3668,12 +3098,7 @@ void fn_1_EC3C(OMOBJ *object)
     if (work->header.timer == 20) {
         s32 eventCount;
 
-        if (work->motion != 12) {
-            work->motion = 12;
-            fn_8005C2C8(work->header.character,
-                               work->header.player->omObj->mtnId[work->motion],
-                               0.0f, 4.0f, 0);
-        }
+        fn_1_E9C4(work, 12, 4.0f, 0);
         countWorkA = lbl_1_bss_CC;
         countWorkB = lbl_1_bss_CC;
         eventCount = countWorkB->radialCounts[0] + countWorkA->radialCounts[1];
@@ -3749,13 +3174,8 @@ void fn_1_EF10(OMOBJ *object) {
 
 void fn_1_1097C(OMOBJ *object);
 
-static inline M669HerdWork *M669StatusGet(void)
-{
-    return lbl_1_bss_CC;
-}
-
 /* For a human microphone command, chooses a herd-count sound and pans it from the herd center. */
-static inline void fn_1_88A0_for_EFB0(void)
+static inline void M669HerdCountSoundPlay(void)
 {
     f32 limitedPan;
     f32 clampedPan;
@@ -3819,81 +3239,47 @@ void fn_1_EFB0(OMOBJ *object)
     if (lbl_1_data_17E == 0)
     {
         work->header.state = 0;
-        if (work->motion != 13)
-        {
-            work->motion = 13;
-            fn_8005C2C8(work->header.character,
-                               work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f, 0U);
-        }
-        fn_1_88A0_for_EFB0();
+        fn_1_E9C4(work, 13, 4.0f, 0U);
+        M669HerdCountSoundPlay();
     }
     else
     {
         if (lbl_1_data_17E == 1)
         {
             work->header.state = 1;
-            if (work->motion != 13)
-            {
-                work->motion = 13;
-                fn_8005C2C8(work->header.character,
-                                   work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f, 0U);
-            }
-            fn_1_88A0_for_EFB0();
+            fn_1_E9C4(work, 13, 4.0f, 0U);
+            M669HerdCountSoundPlay();
         }
         else
         {
             if (lbl_1_data_17E == 2)
             {
                 work->header.state = 3;
-                if (work->motion != 13)
-                {
-                    work->motion = 13;
-                    fn_8005C2C8(work->header.character,
-                                       work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f,
-                                       0U);
-                }
-                fn_1_88A0_for_EFB0();
+                fn_1_E9C4(work, 13, 4.0f, 0U);
+                M669HerdCountSoundPlay();
             }
             else
             {
                 if (lbl_1_data_17E == 3)
                 {
                     work->header.state = 2;
-                    if (work->motion != 13)
-                    {
-                        work->motion = 13;
-                        fn_8005C2C8(work->header.character,
-                                           work->header.player->omObj->mtnId[work->motion], 0.0f,
-                                           4.0f, 0U);
-                    }
-                    fn_1_88A0_for_EFB0();
+                    fn_1_E9C4(work, 13, 4.0f, 0U);
+                    M669HerdCountSoundPlay();
                 }
                 else
                 {
                     if (lbl_1_data_17E == 4)
                     {
                         work->header.state = 5;
-                        if (work->motion != 13)
-                        {
-                            work->motion = 13;
-                            fn_8005C2C8(work->header.character,
-                                               work->header.player->omObj->mtnId[work->motion],
-                                               0.0f, 4.0f, 0U);
-                        }
-                        fn_1_88A0_for_EFB0();
+                        fn_1_E9C4(work, 13, 4.0f, 0U);
+                        M669HerdCountSoundPlay();
                     }
                     else
                     {
                         if (lbl_1_data_17E == 5)
                         {
                             work->header.state = 6;
-                            if (work->motion != 13)
-                            {
-                                work->motion = 13;
-                                fn_8005C2C8(work->header.character,
-                                                   work->header.player->omObj->mtnId[work->motion],
-                                                   0.0f, 4.0f, 0U);
-                            }
+                            fn_1_E9C4(work, 13, 4.0f, 0U);
                         }
                     }
                 }
@@ -3917,11 +3303,11 @@ static inline void M669SequenceSound(void)
     HuVecF position;
     s32 eventCount;
 
-    eventCount = M669StatusGet()->radialCounts[0] + M669StatusGet()->radialCounts[1];
+    eventCount = fn_1_4F88()->radialCounts[0] + fn_1_4F88()->radialCounts[1];
     if (eventCount == 0) {
         return;
     }
-    position = M669StatusGet()->position;
+    position = fn_1_4F88()->position;
     Hu3D3Dto2D(&position, 1, &screenPosition);
     rawPan = 64.0f * (screenPosition.x / 576.0f);
     rawPan = rawPan < 0.0f ? 0.0f :
@@ -3949,17 +3335,8 @@ static inline void M669SequenceSound(void)
 static inline void M669SequenceStart(M669PlayerSetupWork *work, s16 sequence)
 {
     work->header.state = sequence;
-    if (work->motion != 13) {
-        work->motion = 13;
-        fn_8005C2C8(work->header.character, work->header.player->omObj->mtnId[work->motion],
-                           0.0f, 4.0f, 0U);
-    }
+    fn_1_E9C4(work, 13, 4.0f, 0U);
     M669SequenceSound();
-}
-
-static inline M669HerdWork *M669SteeringWorkGet(void)
-{
-    return lbl_1_bss_CC;
 }
 
 static inline M669PlayerAreaWork *M669PlayerListGet(void)
@@ -4001,32 +3378,27 @@ void fn_1_FAFC(OMOBJ *object)
         }
         if (M669PlayerListGet()->hitCount > 0 && M669PlayerListGet()->hitCount % 10 == 0) {
             work->header.state = 6;
-            if (work->motion != 13)
-            {
-                work->motion = 13;
-                fn_8005C2C8(work->header.character,
-                                   work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f, 0U);
-            }
+            fn_1_E9C4(work, 13, 4.0f, 0U);
         } else {
-            if (M669SteeringWorkGet()->radialCounts[0] +
-                    M669SteeringWorkGet()->radialCounts[1] <= 10 &&
+            if (fn_1_4F88()->radialCounts[0] +
+                    fn_1_4F88()->radialCounts[1] <= 10 &&
                 (fn_1_2C24(&eventCenter, &playerPoints[0]) <= 0.0f ||
                  fn_1_2C24(&eventCenter, &playerPoints[1]) <= 0.0f ||
                  fn_1_2C24(&eventCenter, &playerPoints[2]) <= 0.0f)) {
                 M669SequenceStart(work, 5);
             } else {
                 firstDirectionMax =
-                    M669StatusGet()->zSideCounts[0] > M669StatusGet()->zSideCounts[1]
-                        ? M669StatusGet()->zSideCounts[0]
-                        : M669StatusGet()->zSideCounts[1];
+                    fn_1_4F88()->zSideCounts[0] > fn_1_4F88()->zSideCounts[1]
+                        ? fn_1_4F88()->zSideCounts[0]
+                        : fn_1_4F88()->zSideCounts[1];
                 secondDirectionMax =
-                    M669StatusGet()->xSideCounts[0] > M669StatusGet()->xSideCounts[1]
-                        ? M669StatusGet()->xSideCounts[0]
-                        : M669StatusGet()->xSideCounts[1];
+                    fn_1_4F88()->xSideCounts[0] > fn_1_4F88()->xSideCounts[1]
+                        ? fn_1_4F88()->xSideCounts[0]
+                        : fn_1_4F88()->xSideCounts[1];
                 if (firstDirectionMax > secondDirectionMax)
                 {
-                    if (M669StatusGet()->zSideCounts[0] >
-                        M669StatusGet()->zSideCounts[1]) {
+                    if (fn_1_4F88()->zSideCounts[0] >
+                        fn_1_4F88()->zSideCounts[1]) {
                         M669SequenceStart(work, 1);
                     } else {
                         M669SequenceStart(work, 0);
@@ -4034,8 +3406,8 @@ void fn_1_FAFC(OMOBJ *object)
                 }
                 else
                 {
-                    if (M669StatusGet()->xSideCounts[0] >
-                        M669StatusGet()->xSideCounts[1]) {
+                    if (fn_1_4F88()->xSideCounts[0] >
+                        fn_1_4F88()->xSideCounts[1]) {
                         M669SequenceStart(work, 3);
                     } else {
                         M669SequenceStart(work, 2);
@@ -4067,12 +3439,7 @@ void fn_1_1097C(OMOBJ *object)
     }
     work->header.timer--;
     if (work->header.timer <= 0) {
-        if (work->motion != 0) {
-            work->motion = 0;
-            fn_8005C2C8(work->header.character,
-                               work->header.player->omObj->mtnId[work->motion], 0.0f, 10.0f,
-                               ((1 << 30) | (1 << 0)));
-        }
+        fn_1_E9C4(work, 0, 10.0f, ((1 << 30) | (1 << 0)));
         work->header.state = -1;
         lbl_1_data_17E = M669_NO_WORD;
         fn_1_248(object, fn_1_EF10);
@@ -4095,23 +3462,11 @@ void fn_1_10AB8(OMOBJ *object)
     M669PlayerSetupWork *work = object->data;
 
     work->header.state = -1;
-    if (work->motion != 0) {
-        work->motion = 0;
-        fn_8005C2C8(work->header.character, work->header.player->omObj->mtnId[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_E9C4(work, 0, 4.0f, ((1 << 30) | (1 << 0)));
     if (fn_80071A8C() == 8) {
         if (lbl_1_data_168 == work->header.groupIndex) {
-            if (work->motion != 14) {
-                work->motion = 14;
-                fn_8005C2C8(work->header.character,
-                                   work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f, 0);
-            }
-        } else if (work->motion != 15) {
-            work->motion = 15;
-            fn_8005C2C8(work->header.character,
-                               work->header.player->omObj->mtnId[work->motion], 0.0f, 4.0f, 0);
-        }
+            fn_1_E9C4(work, 14, 4.0f, 0);
+        } else fn_1_E9C4(work, 15, 4.0f, 0);
         fn_1_248(object, 0);
         return;
     }
@@ -4128,7 +3483,6 @@ typedef struct M669SequenceWaitWork {
     s16 actorIndex;
     s32 framesRemaining;
 } M669SequenceWaitWork;
-
 
 /* Creates three auxiliary actors during setup and shuffles the order in which they will start. */
 void fn_1_10C24(OMOBJ *object)
@@ -4413,11 +3767,7 @@ void fn_1_113EC(OMOBJ *object)
     fn_80026808(work->model, 0.0f,
         (f32)(180.0f * rotationAngle / M_PI),
         0.0f);
-    if (work->motion != 5) {
-        work->motion = 5;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, 4.0f, 0);
-    }
+    fn_1_10E64(work, 5, 4.0f, 0);
     work->frameCount = 0;
     Hu3D3Dto2D(&work->position, 1, &screenPosition);
     screenPan = 64.0f * (screenPosition.x / 576.0f);
@@ -4483,11 +3833,7 @@ void fn_1_117D0(OMOBJ *object)
     f32 directionX;
     f32 directionZ;
 
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_10E64(work, 1, 4.0f, ((1 << 30) | (1 << 0)));
     M669VecSubtract(&direction, &work->position, &targetPosition);
     direction.y = 0.0f;
     fn_1_554(&direction, &direction);
@@ -4499,11 +3845,7 @@ void fn_1_117D0(OMOBJ *object)
         M669VecScale(&direction, &direction, 5.0f);
         fn_1_31C(&work->velocity, direction.x, 20.0f, direction.z);
         work->frameCount = 0;
-        if (work->motion != 4) {
-            work->motion = 4;
-            fn_8002CCC0(work->model, work->motionIds[work->motion],
-                0.0f, 4.0f, 0);
-        }
+        fn_1_10E64(work, 4, 4.0f, 0);
         fn_1_248(object, fn_1_11C04);
         return;
     }
@@ -4538,7 +3880,7 @@ void fn_1_11C64(OMOBJ *object)
 
 /* During the second auxiliary exit, turns the model through one twentieth of the remaining angular
  * gap. */
-static inline f32 fn_1_10EE4_for_11D04(M669MotionWork *work,
+static inline f32 M669MotionTurnTwentieth(M669MotionWork *work,
     f32 targetAngle, f32 frames)
 {
     HuVecF rotation;
@@ -4588,29 +3930,21 @@ void fn_1_11D04(OMOBJ *object)
     f32 directionX;
     f32 directionZ;
 
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_10E64(work, 1, 4.0f, ((1 << 30) | (1 << 0)));
     M669VecSubtract(&direction, &work->position, &targetPosition);
     direction.y = 0.0f;
     fn_1_554(&direction, &direction);
     directionZ = direction.z;
     directionX = direction.x;
     targetAngle = (f32)atan2(directionX, directionZ);
-    angleDifference = fn_1_10EE4_for_11D04(work, targetAngle,
+    angleDifference = M669MotionTurnTwentieth(work, targetAngle,
         20.0f);
     if (angleDifference < 0.01f) {
         M669VecScale(&direction, &direction, 10.0f);
         fn_1_31C(&work->velocity, direction.x, 10.0f,
             direction.z);
         work->frameCount = 0;
-        if (work->motion != 4) {
-            work->motion = 4;
-            fn_8002CCC0(work->model, work->motionIds[work->motion],
-                0.0f, 4.0f, 0);
-        }
+        fn_1_10E64(work, 4, 4.0f, 0);
         fn_1_248(object, fn_1_12138);
         return;
     }
@@ -4656,11 +3990,7 @@ void fn_1_12238(OMOBJ *object)
     f32 directionX;
     f32 directionZ;
 
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_10E64(work, 1, 4.0f, ((1 << 30) | (1 << 0)));
     M669VecSubtract(&direction, &startPosition, &work->position);
     fn_1_4AC(&targetDirection, &direction, &offset);
     directionZ = targetDirection.z;
@@ -4673,11 +4003,7 @@ void fn_1_12238(OMOBJ *object)
         fn_1_31C(&work->velocity, targetDirection.x,
             3.0f, targetDirection.z);
         work->frameCount = 0;
-        if (work->motion != 4) {
-            work->motion = 4;
-            fn_8002CCC0(work->model, work->motionIds[work->motion],
-                0.0f, 4.0f, 0);
-        }
+        fn_1_10E64(work, 4, 4.0f, 0);
         fn_1_248(object, fn_1_1268C);
         return;
     }
@@ -4713,49 +4039,6 @@ void fn_1_126EC(OMOBJ *obj)
     }
 }
 
-static f32 M669MotionAngleAdjust_inlined(M669MotionWork *work, f32 targetAngle, f32 frames);
-
-/* During the final auxiliary exit, adjusts the model toward a radian heading and returns its
- * angular step. */
-static inline f32 M669MotionAngleAdjust_inlined(M669MotionWork *work, f32 targetAngle,
-    f32 frames)
-{
-    HuVecF rotation;
-    HuVecF targetDirection;
-    HuVecF currentDirection;
-    f32 initialAngle;
-    f32 adjustedAngle;
-    f32 angleDifference;
-    f32 crossY;
-
-    fn_80026874(work->model, &rotation);
-    initialAngle = (f32)(M_PI *
-        (rotation.y / 180.0f));
-    fn_1_31C(&targetDirection, (f32)sin(targetAngle),
-        0.0f, (f32)cos(targetAngle));
-    fn_1_31C(&currentDirection, (f32)sin(initialAngle),
-        0.0f, (f32)cos(initialAngle));
-
-    angleDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
-    crossY = targetDirection.x * currentDirection.z -
-        targetDirection.z * currentDirection.x;
-    adjustedAngle = initialAngle;
-    if (crossY >= 0.0f) {
-        adjustedAngle += angleDifference / frames;
-    } else if (crossY < 0.0f) {
-        adjustedAngle -= angleDifference / frames;
-    }
-    while (adjustedAngle > (2.0 * M_PI)) {
-        adjustedAngle -= (2.0 * M_PI);
-    }
-    while (adjustedAngle < (-2.0 * M_PI)) {
-        adjustedAngle += (2.0 * M_PI);
-    }
-    rotation.y = (f32)(180.0f * adjustedAngle / M_PI);
-    fn_80026838(work->model, &rotation);
-    return fabsf(adjustedAngle - initialAngle);
-}
-
 /* Turns the auxiliary actor outward and prepares a horizontal exit at five units per update. */
 void fn_1_127A0(OMOBJ *object)
 {
@@ -4767,18 +4050,14 @@ void fn_1_127A0(OMOBJ *object)
     f32 directionX;
     f32 directionZ;
 
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_10E64(work, 1, 4.0f, ((1 << 30) | (1 << 0)));
     M669VecSubtract(&direction, &work->position, &targetPosition);
     direction.y = 0.0f;
     fn_1_554(&direction, &direction);
     directionZ = direction.z;
     directionX = direction.x;
     targetAngle = (f32)atan2(directionX, directionZ);
-    angleDifference = M669MotionAngleAdjust_inlined(work, targetAngle, 20.0f);
+    angleDifference = M669MotionAngleAdjust(work, targetAngle, 20.0f);
     if (angleDifference < 0.01f) {
         M669VecScale(&direction, &direction, 5.0f);
         fn_1_31C(&work->velocity, direction.x, 0.0f, direction.z);
@@ -4793,11 +4072,7 @@ void fn_1_12B8C(OMOBJ *object)
 {
     M669MotionWork *work = object->data;
 
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-    }
+    fn_1_10E64(work, 1, 4.0f, ((1 << 30) | (1 << 0)));
     M669VecAdd(&work->position, &work->position, &work->velocity);
     fn_80026790(work->model, &work->position);
     if (work->frameCount++ > 120) {
@@ -4834,11 +4109,7 @@ void fn_1_12CA8(OMOBJ *obj)
     f32 angleDifference;
     f32 crossY;
 
-    if (work->motion != 1) {
-        work->motion = 1;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, 4.0f, 0);
-    }
+    fn_1_10E64(work, 1, 4.0f, 0);
     fn_80026874(work->model, &rotation);
     initialAngle = (f32)(M_PI * (rotation.y / 180.0f));
     fn_1_31C(&fixedDirection, (f32)sin(0.0),
@@ -4863,11 +4134,7 @@ void fn_1_12CA8(OMOBJ *obj)
     rotation.y = (f32)(180.0f * adjustedAngle / M_PI);
     fn_80026838(work->model, &rotation);
     if (fabsf(adjustedAngle - initialAngle) <= 0.01f) {
-        if (work->motion != 0) {
-            work->motion = 0;
-            fn_8002CCC0(work->model, work->motionIds[work->motion],
-                0.0f, 4.0f, 0);
-        }
+        fn_1_10E64(work, 0, 4.0f, 0);
         fn_1_248(obj, fn_1_12FD0);
         return;
     }
@@ -4880,16 +4147,8 @@ void fn_1_12FD0(OMOBJ *object)
 
     if (fn_80071A8C() == 8) {
         if (lbl_1_data_168 == 0) {
-            if (work->motion != 2) {
-                work->motion = 2;
-                fn_8002CCC0(work->model, work->motionIds[work->motion],
-                    0.0f, 4.0f, 0);
-            }
-        } else if (work->motion != 3) {
-            work->motion = 3;
-            fn_8002CCC0(work->model, work->motionIds[work->motion],
-                0.0f, 4.0f, 0);
-        }
+            fn_1_10E64(work, 2, 4.0f, 0);
+        } else fn_1_10E64(work, 3, 4.0f, 0);
         fn_1_248(object, 0);
         return;
     }
@@ -4970,9 +4229,6 @@ void fn_1_1316C(OMOBJ *object)
         return;
     }
 }
-
-extern s32 fn_1_286C(M669Sphere *, HuVecF *, M669Sphere *, HuVecF *, f32, f32 *,
-                     HuVecF *);
 
 extern void fn_1_137A0(OMOBJ *);
 
@@ -5154,7 +4410,7 @@ s32 fn_1_13BA0(M669ImpactWork *object)
     f32 difficultyChance[4] = { 6.25f, 25.0f, 56.25f, 100.0f };
     HuVecF center = { 0.0f, 0.0f, 0.0f };
     s16 difficulty = (s16)lbl_80265728[object->header.playerIndex].comDif;
-    M669HerdWork *work = M669SteeringWorkGet();
+    M669HerdWork *work = fn_1_4F88();
     M669PlayerAreaWork *players = M669PlayerListGet();
     HuVecF playerPosition;
     s32 i;
@@ -5175,7 +4431,7 @@ s32 fn_1_13BA0(M669ImpactWork *object)
         M669VecSubtract(&facing, &playerPosition, &center);
         fn_1_554(&facing, &facing);
         for (i = 0; i < 36; i++) {
-            M669ActorWork *particle = M669ParticleGet(i);
+            M669ActorWork *particle = fn_1_4F98(i);
             HuVecF direction;
             f32 distance;
             f32 dot;
@@ -5236,7 +4492,7 @@ s32 fn_1_13BA0(M669ImpactWork *object)
         f32 nearestDistance = 3.4028235e38f;
 
         for (i = 0; i < 36; i++) {
-            M669ActorWork *particle = M669ParticleGet(i);
+            M669ActorWork *particle = fn_1_4F98(i);
             HuVecF direction;
             M669Sphere sphere;
             f32 squaredDistance;
@@ -5335,7 +4591,7 @@ s32 fn_1_13BA0(M669ImpactWork *object)
         M669ActorWork *nearest = NULL;
 
         for (i = 0; i < 36; i++) {
-            M669ActorWork *particle = M669ParticleGet(i);
+            M669ActorWork *particle = fn_1_4F98(i);
             HuVecF direction;
             f32 squaredDistance;
 

@@ -120,6 +120,11 @@ typedef struct MbParMan_s {
     HU3D_PARMAN parMan;
 } MBPARMAN;
 
+static inline MBPARTICLE *StarObjEffDataGet(HU3D_MODELID modelId)
+{
+    return lbl_802C01C8[modelId].hookData;
+}
+
 void mbEffInit(void);
 void mbEffClose(void);
 void mbEffFadeOutSet(s16 maxTime);

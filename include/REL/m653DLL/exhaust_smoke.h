@@ -5,8 +5,7 @@ extern "C" {
 #include "game/hu3d.h"
 }
 
-u32 RandomUnsigned();
-float RandomFloat(float);
+#include "REL/framework/random.h"
 
 extern "C" {
 extern float lbl_1_bss_C0;

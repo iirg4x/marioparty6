@@ -1,6 +1,8 @@
 /* Word Herd startup, sequence hooks, vector helpers and matrix transforms. */
 #include <math.h>
 #include "REL/m669DLL/vector.h"
+#include "REL/m669DLL/startup.h"
+#include "REL/m669DLL/game.h"
 #include "game/matrix_angle.h"
 
 #include "dolphin/gx.h"
@@ -124,11 +126,6 @@ void ObjectSetup(void) {
     fn_8000DAC0(fn_1_F0, 100U, 12288U, 0, lbl_1_bss_0);
 }
 
-extern OMOBJMAN *lbl_1_bss_4;
-
-
-
-
 /* Starts the sequence controller, then updates minigame actors once per scheduler pass. */
 void fn_1_F0(void)
 {
@@ -139,10 +136,6 @@ void fn_1_F0(void)
     }
 }
 
-extern void *fn_1_1A8(s32 priority, u32 bytes, void (*update)(OMOBJ *));
-
-void fn_1_50D8(OMOBJ *object);
-
 /* Initialization hook: prepares microphone and pad-answer input, schedules stage setup and
  * advances. The microphone initialization status is ignored. */
 void fn_1_114(s16 mode, s16 frameNo)
@@ -152,18 +145,6 @@ void fn_1_114(s16 mode, s16 frameNo)
     fn_1_1A8(100, 8, fn_1_50D8);
     fn_80071A9C();
 }
-
-extern s32 lbl_1_data_F18;
-
-extern float lbl_1_bss_1BC;
-
-extern s8 lbl_1_bss_218;
-
-extern s8 lbl_1_bss_219;
-
-extern s8 lbl_1_data_2758;
-
-s32 fn_1_367CC(s32 *player);
 
 /* Fade-in sequence hook; performs no additional work. */
 void fn_1_16C(s16 mode, s16 frameNo)
@@ -227,19 +208,11 @@ void fn_1_248(OMOBJ *object, OMOBJ_FUNC callback)
     object->objFunc = callback;
 }
 
-void fn_1_164C(HuVecF *dst, Mtx mtx, const HuVecF *src);
-
-u32 fn_1_1684(Mtx dst, Mtx src);
-
 /* Returns a random value between the supplied bounds using the shared game random stream. */
 f32 fn_1_250(f32 min, f32 max)
 {
     return ((max - min) * frandf()) + min;
 }
-
-double acos(double x);
-
-float fn_1_220(float x);
 
 /* Returns acos inside the open interval (-1, 1), with the other branches returning zero or pi. */
 float fn_1_298(float x)
@@ -284,7 +257,6 @@ void fn_1_4AC(HuVecF *dst, const HuVecF *a, const HuVecF *b)
 {
     PSVECCrossProduct(a, b, dst);
 }
-
 
 /* Adds two vectors into the supplied destination. */
 void M669VecAdd(HuVecF *dst, const HuVecF *a, const HuVecF *b)
@@ -421,10 +393,6 @@ s32 fn_1_EF8(HuVecF *out, Mtx matrix)
     return 0;
 }
 
-double sin(double);
-
-double cos(double);
-
 /* Writes a Y-axis rotation from a radian angle into the upper three-by-three matrix entries. */
 void fn_1_1584(Mtx out, double angle)
 {
@@ -441,7 +409,6 @@ void fn_1_1584(Mtx out, double angle)
     out[2][1] = 0.0f;
     out[2][2] = cosine;
 }
-
 
 /* Scales the upper three-by-three matrix entries and leaves translation unchanged. */
 void fn_1_165C(Mtx dst, Mtx src, float scale)
@@ -466,8 +433,6 @@ u32 fn_1_16FC(Mtx dst, Mtx src)
 {
     return PSMTXInverse(src, dst);
 }
-
-typedef Vec HuVecF;
 
 typedef struct {
     float x, y, z, w;

@@ -18,6 +18,7 @@
 #include "humath.h"
 #include "datadir_enum.h"
 #include "game/board/guide.h"
+#include "game/board/guide_object.h"
 #include "game/board/masu.h"
 #include "game/board/opening.h"
 #include "msm_grp.h"

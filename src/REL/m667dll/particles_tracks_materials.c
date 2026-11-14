@@ -1,11 +1,29 @@
 /* Talkie Walkie particle, model, track, material, and spatial helpers. */
-#include "dolphin/math.h"
+#include <math.h>
+#include "dolphin/types.h"
+#include "dolphin/gx.h"
+#include "dolphin/gx/GXVert.h"
 #include "REL/m667dll/recovered.h"
 #include "dolphin/mtx.h"
+#include "game/charman.h"
+#include "game/data.h"
+#include "game/flag.h"
+#include "game/frand.h"
 #include "game/gamework.h"
+#include "game/gamemes.h"
 #include "game/hu3d.h"
+#include "game/main.h"
 #include "game/memory.h"
+#include "game/mg/actman.h"
+#include "game/mg/seqman.h"
+#include "game/mic.h"
+#include "game/object.h"
+#include "game/pad.h"
+#include "game/sprite.h"
+#include "game/wipe.h"
+#include "humath.h"
 #include "msm.h"
+#include "string.h"
 
 void Hu3DMtxTransGet(Mtx src, HuVecF *dst);
 void Hu3DMtxRotGet(Mtx src, HuVecF *dst);
@@ -20,7 +38,7 @@ typedef struct M667ParticleConfigView {
     HuVecF initialVelocity;            /* Initial displacement per particle update. */
     f32 velocityMultiplier[3];         /* Per-frame X, Y, and Z velocity multipliers. */
     f32 velocityYDelta;                /* Per-frame change to vertical velocity. */
-    u8 reservedBytes[4];               /* Reserved bytes between velocity and scale settings. */
+    u8 unk28[4]; /* No code names this field. */
     f32 scaleRate;                     /* Per-frame change to base scale. */
     f32 alphaRate;                     /* Per-frame change to alpha. */
     f32 colorInterpolation;            /* Blend fraction from startingColor to targetColor. */
@@ -39,7 +57,7 @@ void fn_1_6C88(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     s16 slotIndex;
     const M667ParticleConfigView *config;
 
-    config = (const M667ParticleConfigView *)particle->work;
+    config = particle->work;
     /* A zero system count clears every slot's scale before any live-particle updates. */
     if (particle->count == 0) {
         data = particle->data;
@@ -101,25 +119,6 @@ void fn_1_6C88(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     DCStoreRangeNoSync(particle->data, particle->maxCnt * sizeof(*particle->data));
 }
 
-#include "dolphin/types.h"
-#include "dolphin/gx.h"
-#include "dolphin/gx/GXVert.h"
-#include "game/charman.h"
-#include "game/data.h"
-#include "game/flag.h"
-#include "game/frand.h"
-#include "game/gamemes.h"
-#include "game/main.h"
-#include "game/mg/actman.h"
-#include "game/mg/seqman.h"
-#include "game/mic.h"
-#include "game/object.h"
-#include "game/pad.h"
-#include "game/sprite.h"
-#include "game/wipe.h"
-#include "humath.h"
-#include "string.h"
-
 /* Particle emission requests fill a free slot from the last emission index, wrapping once.
  * Return the chosen slot index, or -1 if the model or a free slot is unavailable. */
 s16 fn_1_7104(OMOBJ *poolItem, s16 cameraMask,
@@ -140,8 +139,8 @@ s16 fn_1_7104(OMOBJ *poolItem, s16 cameraMask,
     }
 
     model = &lbl_802C01C8[modelIndex];
-    particle = (HU3D_PARTICLE *) model->hookData;
-    configWork = (M667ParticleConfigView *) particle->work;
+    particle = model->hookData;
+    configWork = particle->work;
     particleData = particle->data + particle->emitCnt;
     for (slot = particle->emitCnt; slot < particle->maxCnt; slot++, particleData++) {
         if (!particleData->scale) {
@@ -184,7 +183,7 @@ s16 fn_1_7104(OMOBJ *poolItem, s16 cameraMask,
 }
 
 /* Descriptor-object creation counts model and motion slots before allocating the object. */
-void fn_1_7350(void *description, s32 *modelSlotCount, s32 *motionSlotCount)
+void fn_1_7350(M667ModelDescription *description, s32 *modelSlotCount, s32 *motionSlotCount)
 {
     M667ModelDescription *entry;
     s32 modelCount;
@@ -195,7 +194,7 @@ void fn_1_7350(void *description, s32 *modelSlotCount, s32 *motionSlotCount)
     modelCount = 0;
     motionCount = 0;
     for (index = 0;; index++) {
-        entry = &((M667ModelDescription *)description)[index];
+        entry = &description[index];
         descriptorScratch = 0;
         if (entry->kind == 8) {
             break;
@@ -298,8 +297,6 @@ void fn_1_7424(OMOBJ *object, M667ModelDescription *description)
     }
 }
 
-void fn_1_6C88(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-
 /* Each particle-system descriptor records its resource, creation settings, and loaded handles. */
 typedef struct M667ParticleDescription {
     u32 flags; /* Readiness bits used to skip animation and work-buffer setup. */
@@ -308,11 +305,11 @@ typedef struct M667ParticleDescription {
     s32 blendMode; /* Blend mode passed to the particle renderer. */
     s32 modelId; /* Created particle-system model handle. */
     ANIMDATA *animation; /* Loaded animation used by the particle-system model. */
-    u8 reservedAfterAnimation[4]; /* Reserved bytes after the loaded animation pointer. */
+    u8 unk_18[4]; /* No code names this field. */
 } M667ParticleDescription;
 
 /* The particle-list initializer builds a system and per-slot settings for each descriptor. */
-void fn_1_7664(void *work)
+void fn_1_7664(M667ParticleDescription *work)
 {
     s32 unusedWord = 0;
     void *resource;
@@ -328,7 +325,7 @@ void fn_1_7664(void *work)
 
     index = 0;
     while (1) {
-        description = &((M667ParticleDescription *)work)[index];
+        description = &work[index];
         resource = 0;
         if (description->resourceId < 0) {
             break;
@@ -384,9 +381,8 @@ void fn_1_77D0(M667ParticleAnimEntry *entries)
 }
 
 /* Scene setup counts descriptor slots, allocates the model object, then loads its resources. */
-OMOBJ *fn_1_7868(void *description)
+OMOBJ *fn_1_7868(M667ModelDescription *description)
 {
-    extern void fn_1_7350(void *description, s32 *models, s32 *motions);
     extern void fn_1_7424(OMOBJ *object, M667ModelDescription *description);
     s32 modelCount;
     s32 motionCount;
@@ -434,9 +430,9 @@ void *fn_1_79CC(void *work)
     return work;
 }
 
-/* This work item carries a sprite animation and a reserved leading word. */
+/* This work item carries a sprite animation after an unknown leading interval. */
 typedef struct M667AnimView {
-    u8 reservedWord[4];                /* Reserved word before the sprite animation pointer. */
+    u8 unk00[4]; /* No code names this field. */
     ANIMDATA *animation;               /* Sprite animation released with this work item. */
 } M667AnimView;
 
@@ -508,7 +504,7 @@ void *fn_1_7B10(u8 *buffer, s32 bytes, s32 itemBytes)
 void *fn_1_7BA8(M667Pool *pool)
 {
     M667PoolNode *node;
-    u8 *item;
+    M667PoolNode *item;
 
     if (!pool->free) {
         return NULL;
@@ -522,8 +518,8 @@ void *fn_1_7BA8(M667Pool *pool)
     node->prev = NULL;
     node->next = pool->active;
     pool->active = node;
-    item = (u8 *)node;
-    item += sizeof(M667PoolNode);
+    item = node;
+    item++;
     return item;
 }
 
@@ -531,12 +527,12 @@ void *fn_1_7BA8(M667Pool *pool)
 void fn_1_7C1C(M667Pool *pool, void *item)
 {
     extern void fn_1_7AC8(void *item);
-    u8 *buffer;
+    M667PoolNode *buffer;
     M667PoolNode *node;
 
     buffer = item;
-    buffer -= sizeof(M667PoolNode);
-    node = (M667PoolNode *)buffer;
+    buffer--;
+    node = buffer;
     /* Neighbor links are patched, but the pool's active head is left unchanged; the returned
      * node also keeps its previous prev pointer when it joins the free list. */
     fn_1_7AC8(node);
@@ -549,33 +545,33 @@ void fn_1_7C1C(M667Pool *pool, void *item)
 
 /* Effect selection, update, drawing, and cleanup begin active-list traversal here.
  * Return the first payload, or null when the list is empty. */
-void *fn_1_7C8C(void *pool)
+void *fn_1_7C8C(M667Pool *pool)
 {
     M667PoolNode *node;
-    u8 *data;
+    M667PoolNode *data;
 
-    node = ((M667Pool *)pool)->active;
-    data = (u8 *)node;
+    node = pool->active;
+    data = node;
     if (data == NULL) {
         return NULL;
     }
-    return data + sizeof(M667PoolNode);
+    return data + 1;
 }
 
 /* Effect selection, update, drawing, and cleanup advance to the next active payload here. */
 void *fn_1_7CC8(void *pool, void *item)
 {
     M667PoolNode *node;
-    u8 *data;
+    M667PoolNode *data;
 
     data = item;
-    data -= sizeof(M667PoolNode);
-    node = (M667PoolNode *)data;
-    data = (u8 *)node->next;
+    data--;
+    node = data;
+    data = node->next;
     if (data == NULL) {
         return NULL;
     }
-    return data + sizeof(M667PoolNode);
+    return data + 1;
 }
 
 /* Track completion queries return true only after the end frame of every occupied slot. */
@@ -654,13 +650,10 @@ void fn_1_7EF0(Point3d *start, Point3d *end, Point3d *out, f32 blend)
     out->z = start->z + (blend * (end->z - start->z));
 }
 
-extern f64 atan2(f64 y, f64 x);
-extern f64 fmod(f64 x, f64 y);
-
 /* Map and player movement convert an XZ direction to a yaw angle in degrees. */
 f32 fn_1_7F48(HuVecF *direction)
 {
-    return (180.0 * atan2(direction->x, direction->z)) / 3.141592653589793;
+    return (180.0 * atan2(direction->x, direction->z)) / M_PI;
 }
 
 /* Player rotation updates blend between wrapped yaw angles.
@@ -686,8 +679,6 @@ f32 fn_1_7FA0(f32 start, f32 end, f32 blend)
     return startAngle + delta * blend;
 }
 
-extern f32 fn_1_8E8C(f32 value);
-
 /* Entry throw setup finds the horizontal distance to a unit quadratic's vertex.
  * The vertex height is calculated too, but only the horizontal distance is returned. */
 f32 fn_1_80AC(HuVecF *start, HuVecF *end)
@@ -701,7 +692,7 @@ f32 fn_1_80AC(HuVecF *start, HuVecF *end)
     PSVECSubtract(end, start, &delta);
     originDistance = 0.0f;
     originHeight = 0.0f;
-    endDistance = fn_1_8E8C(delta.x * delta.x + delta.z * delta.z);
+    endDistance = sqrtf(delta.x * delta.x + delta.z * delta.z);
     endHeight = end->y - start->y;
     linearCoefficient = (originHeight +
                          (originDistance * (-quadraticCoefficient * originDistance) +
@@ -716,8 +707,6 @@ f32 fn_1_80AC(HuVecF *start, HuVecF *end)
                                            4.0f));
     return peakDistance;
 }
-
-extern f32 fn_1_8E8C(f32 value);
 
 /* Entry throw setup fits negated vertical offsets against horizontal distance through the origin,
  * middle, and end points; entry movement subtracts the curve value from the starting height. */
@@ -737,9 +726,9 @@ void fn_1_8254(M667QuadraticView *out, HuVecF *origin, HuVecF *middle, HuVecF *e
     PSVECSubtract(end, origin, &endDelta);
     originDistance = 0.0f;
     originHeight = 0.0f;
-    middleDistance = fn_1_8E8C(middleDelta.x * middleDelta.x + middleDelta.z * middleDelta.z);
+    middleDistance = sqrtf(middleDelta.x * middleDelta.x + middleDelta.z * middleDelta.z);
     middleHeight = middleDelta.y;
-    endDistance = fn_1_8E8C(endDelta.x * endDelta.x + endDelta.z * endDelta.z);
+    endDistance = sqrtf(endDelta.x * endDelta.x + endDelta.z * endDelta.z);
     endHeight = endDelta.y;
     /* Eliminate the constant term between adjacent points, then solve the two remaining terms. */
     originSquaredDistance = originDistance * originDistance;
@@ -786,8 +775,6 @@ f32 fn_1_84E8(M667QuadraticView *curve, f32 distance)
            (distance * (quadraticCoefficient * distance) + linearCoefficient * distance);
 }
 
-#include "REL/m667dll/sqrtf.h"
-
 /* Entry, player, and trail movement normalize a direction, using a random XZ fallback below
  * a squared length of 0.000001.
  * The frandmod(1) test always selects an initial Y component of -0.01 before normalization. */
@@ -796,13 +783,13 @@ s32 fn_1_8544(Point3d *source, Point3d *destination) {
     f32 fallbackY;
     s32 usedSourceVector;
 
-    if (PSVECSquareMag(source) < (1e-06)) {
-        destination->x = 0.01f * ((f32) (u32) frandmod(20) - (10.0f));
-        destination->z = 0.01f * ((f32) (u32) frandmod(20) - (10.0f));
+    if (PSVECSquareMag(source) < 1e-06) {
+        destination->x = 0.01f * ((f32) (u32) frandmod(20) - 10.0f);
+        destination->z = 0.01f * ((f32) (u32) frandmod(20) - 10.0f);
         if (frandmod(1) != 0U) {
             fallbackY = 0.01f;
         } else {
-            fallbackY = (-0.01f);
+            fallbackY = -0.01f;
         }
         destination->y = fallbackY;
         PSVECNormalize(destination, destination);
@@ -858,10 +845,10 @@ void fn_1_869C(Mtx output, s32 cameraMask)
     flat.y = 0.0f;
     /* For a nearly vertical view, use the camera's up vector as horizontal facing and
      * the negative view direction to choose the up-axis sign. */
-    if (PSVECSquareMag(&flat) < (0.001)) {
+    if (PSVECSquareMag(&flat) < 0.001) {
         flat = direction;
         direction = up;
-        PSVECScale(&flat, &up, (-1.0f));
+        PSVECScale(&flat, &up, -1.0f);
     }
     direction.y = 0.0f;
     fn_1_8544(&direction, &direction);
@@ -915,11 +902,13 @@ s8 *fn_1_895C(s32 model)
 }
 
 /* Material-color restoration copies saved RGB bytes back into the supplied model. */
+/* Iterates the saved RGB channels with the caller's channel conversion. */
+
 void fn_1_8A34(s32 model, s8 *colors)
 {
     s16 unusedWord = 0;
     HU3D_MODEL *modelData;
-    s8 *readColor;
+    const s8 *readColor;
     s16 materialIndex;
     HSF_MATERIAL *material;
 
@@ -951,11 +940,11 @@ void fn_1_8AE4(s32 model, const s8 *colors, f32 redScale, f32 greenScale, f32 bl
     for (materialIndex = 0, material = modelData->hsf->material;
          materialIndex < modelData->hsf->materialNum; materialIndex++, material++) {
         material->color[0] = *savedColor * redScale;
-        ++savedColor;
+        savedColor++;
         material->color[1] = *savedColor * greenScale;
-        ++savedColor;
+        savedColor++;
         material->color[2] = *savedColor * blueScale;
-        ++savedColor;
+        savedColor++;
     }
 }
 

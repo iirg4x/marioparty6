@@ -93,6 +93,7 @@ void fn_1_3BDC(void)
                             choice = 1;
                         }
                     } else {
+                        /* All four difficulty arms use the same 90 percent threshold here. */
                         switch (lbl_80265728[cpu->playerNo].comDif) {
                         case 0: choice = randomValue < 90 ? 1 : 0; break;
                         case 1: choice = randomValue < 90 ? 1 : 0; break;
@@ -120,6 +121,8 @@ void fn_1_3BDC(void)
                             }
                             pattern++;
                         }
+                        /* The search reads four positions regardless of the number filled above;
+                         * count is reused as the nearest index and remains -1 if none is closer. */
                         minimum = 99999.0f;
                         count = -1;
                         for (j = 0; j < 4; j++) {

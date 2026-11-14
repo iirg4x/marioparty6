@@ -2,6 +2,8 @@
 #include "humath.h"
 #include "math.h"
 #include <string.h>
+#include "game/matrix_angle.h"
+#include "REL/framework/vector_math.h"
 
 /* Converts cosine to an angle; out-of-range values map to zero or pi. */
 float fn_1_214(float cosine)
@@ -97,12 +99,6 @@ static inline f32 Magnitude(const Vec *vec)
     return sqrtf(vec->z * vec->z + (vec->x * vec->x + vec->y * vec->y));
 }
 
-/* Returns the dot product used to project the reference direction onto the travel direction. */
-static inline f32 Dot(const Vec *a, const Vec *b)
-{
-    return PSVECDotProduct(a, b);
-}
-
 /* Scales basis vectors while building projectile and rescue travel orientation. */
 static inline void Scale(Vec *dst, const Vec *src, f32 scale)
 {
@@ -130,7 +126,7 @@ s32 fn_1_77C(Mtx matrix, const Vec *start, const Vec *end, const Vec *direction)
     if (0.0f != length) {
         Scale(&edge, &edge, 1.0f / length);
     }
-    Scale(&transverse, &edge, Dot(direction, &edge));
+    Scale(&transverse, &edge, vectorDot(direction, &edge));
     PSVECSubtract(direction, &transverse, &transverse);
     length = Magnitude(&transverse);
     if (1e-06f > length) {
@@ -170,24 +166,6 @@ s32 fn_1_77C(Mtx matrix, const Vec *start, const Vec *end, const Vec *direction)
     return 1;
 }
 
-/* Keeps angle extraction defined when rounding moves sine outside its range. */
-static inline f32 ClampedAsin(f32 value)
-{
-    if (value >= 1.0f) return (1.5707964f);
-    if (value <= (-1.0f)) return (-1.5707964f);
-    return asinf(value);
-}
-
-/* Angle extraction returns +/-pi/2 when X is zero, including +pi/2 for the pair (0, 0). */
-static inline f32 GuardedAtan2(f32 y, f32 x)
-{
-    if (0.0f == x) {
-        if (y >= 0.0f) return (1.5707964f);
-        return (-1.5707964f);
-    }
-    return atan2f(y, x);
-}
-
 /* Flying-shot and rescue-approach callbacks extract model rotation angles in radians
  * from the travel-orientation matrix. */
 s32 fn_1_E74(Vec *angles, Mtx matrix)
@@ -199,25 +177,27 @@ s32 fn_1_E74(Vec *angles, Mtx matrix)
 
     xLength = sqrtf(matrix[2][0] * matrix[2][0] +
                        (matrix[0][0] * matrix[0][0] + matrix[1][0] * matrix[1][0]));
-    if (xLength < 1e-08f) goto fail;
-    yLength = sqrtf(matrix[2][1] * matrix[2][1] +
-                       (matrix[0][1] * matrix[0][1] + matrix[1][1] * matrix[1][1]));
-    if (yLength < 1e-08f) goto fail;
-    zLength = sqrtf(matrix[2][2] * matrix[2][2] +
-                       (matrix[0][2] * matrix[0][2] + matrix[1][2] * matrix[1][2]));
-    if (zLength < 1e-08f) goto fail;
-    angles->y = -ClampedAsin(-matrix[2][0] / xLength);
-    cosine = (f32)cos((f64)angles->y);
-    if (cosine > 1e-08f) {
-        angles->x = -GuardedAtan2(matrix[2][1] / yLength, matrix[2][2] / zLength);
-        angles->z = -GuardedAtan2(matrix[1][0], matrix[0][0]);
-    } else {
-        /* When the cosine of the Y angle is near zero, force the Z angle to pi. */
-        angles->x = -GuardedAtan2(matrix[0][1], matrix[1][1]);
-        angles->z = 3.1415927f;
+    if (!(xLength < 1e-08f)) {
+        yLength = sqrtf(matrix[2][1] * matrix[2][1] +
+                           (matrix[0][1] * matrix[0][1] + matrix[1][1] * matrix[1][1]));
+        if (!(yLength < 1e-08f)) {
+            zLength = sqrtf(matrix[2][2] * matrix[2][2] +
+                               (matrix[0][2] * matrix[0][2] + matrix[1][2] * matrix[1][2]));
+            if (!(zLength < 1e-08f)) {
+                angles->y = -ClampedAsin(-matrix[2][0] / xLength);
+                cosine = (f32)cos((f64)angles->y);
+                if (cosine > 1e-08f) {
+                    angles->x = -GuardedAtan2(matrix[2][1] / yLength, matrix[2][2] / zLength);
+                    angles->z = -GuardedAtan2(matrix[1][0], matrix[0][0]);
+                } else {
+                    /* When the cosine of the Y angle is near zero, force the Z angle to pi. */
+                    angles->x = -GuardedAtan2(matrix[0][1], matrix[1][1]);
+                    angles->z = 3.1415927f;
+                }
+                return 1;
+            }
+        }
     }
-    return 1;
-fail:
     /* A near-zero matrix column yields zero angles and a failure result. */
     angles->x = 0.0f;
     angles->y = 0.0f;

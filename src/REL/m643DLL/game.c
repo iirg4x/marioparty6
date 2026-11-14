@@ -18,6 +18,7 @@
 #include "game/flag.h"
 #include "game/pad.h"
 #include "game/gamemes.h"
+#include "humath.h"
 
 
 
@@ -140,19 +141,10 @@ void *fn_1_1678(s16 teamIndex);
 M643ViewControlWork *fn_1_1694(s16 teamIndex);
 void fn_1_16B0(s32 out[4]);
 void fn_1_17A0(OMOBJ *object);
-void fn_1_1EB0(OMOBJ *object);
 void fn_1_1F10(OMOBJ *object);
 void fn_1_1F98(OMOBJ *object);
-void fn_1_2058(OMOBJ *object);
-void fn_1_2168(OMOBJ *object);
-void fn_1_21AC(OMOBJ *object);
-void fn_1_2300(OMOBJ *object);
-void fn_1_2354(OMOBJ *object);
-void fn_1_23C4(OMOBJ *object);
-void fn_1_26F4(OMOBJ *object);
 s32 fn_1_2708(M643PlatformWork *work, s16 platform);
 void fn_1_2838(OMOBJ *object);
-void fn_1_2A98(OMOBJ *object);
 void fn_1_2D90(OMOBJ *object);
 void fn_1_2E38(OMOBJ *object);
 void fn_1_2EF4(OMOBJ *object);
@@ -170,12 +162,8 @@ BOOL fn_1_4664(M643PlayerPrefix *work);
 void fn_1_4880(M643PlayerPrefix *work);
 BOOL fn_1_49B8(M643PlayerPrefix *work);
 void fn_1_4AEC(OMOBJ *object);
-void fn_1_4D8C(OMOBJ *object);
-void fn_1_4EF8(OMOBJ *object);
-void fn_1_5298(OMOBJ *object);
 void fn_1_5438(OMOBJ *object);
 void fn_1_58DC(OMOBJ *object);
-void fn_1_5D94(OMOBJ *object);
 void fn_1_6450(OMOBJ *object);
 void fn_1_64B4(OMOBJ *object);
 void fn_1_6674(OMOBJ *object);
@@ -189,30 +177,12 @@ void fn_1_7028(M643TeamScenePrefix *work);
 void fn_1_72E0(M643TeamScenePrefix *work);
 void fn_1_7554(M643TeamScenePrefix *work);
 void fn_1_7D1C(HU3D_MODEL *model, Mtx mtx);
-void fn_1_83C8(OMOBJ *object);
-void fn_1_8C70(OMOBJ *object);
 void fn_1_8CD4(OMOBJ *object);
 void fn_1_8F94(OMOBJ *object);
-void fn_1_90A8(OMOBJ *object);
-void fn_1_96A4(OMOBJ *object);
 void fn_1_98E4(OMOBJ *object);
-void fn_1_9A48(OMOBJ *object);
-void fn_1_9AF4(OMOBJ *object);
-void fn_1_9C74(OMOBJ *object);
 void fn_1_9D7C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
 void fn_1_9F60(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx);
-void fn_1_A138(OMOBJ *object);
-void fn_1_A444(OMOBJ *object);
-void fn_1_A6F0(OMOBJ *object);
 void fn_1_AFF8(OMOBJ *object);
-void fn_1_B130(OMOBJ *object);
-void fn_1_B21C(OMOBJ *object);
-void fn_1_B408(OMOBJ *object);
-void fn_1_B7F0(OMOBJ *object);
-void fn_1_B95C(OMOBJ *object);
-void fn_1_BC10(OMOBJ *object);
-BOOL fn_1_BCB0(M643PlayerPrefix *work);
-s32 fn_1_C5B0(M643TeamScenePrefix *work);
 
 /* Camera layouts, computer difficulty settings, and scene positions. */
 const s32 lbl_1_rodata_60[2] = {1, 2};
@@ -596,7 +566,7 @@ void fn_1_1F10(OMOBJ *object)
     M643SequenceWork *work = object->data;
 
     if (work->introSoundHandle == -1 && fn_80071A8C() == 2) {
-        work->introSoundHandle = HuAudFXPlay(1959);
+        work->introSoundHandle = HuAudFXPlay(MSM_SE_MG643_INTRO_JINGLE);
     }
     work->phaseFrames++;
     if (work->phaseFrames >= 290) {
@@ -1162,8 +1132,9 @@ BOOL fn_1_4664(M643PlayerPrefix *work)
         pan = screen.x / 576.0f;
         pan *= 127.0f;
         pan = pan < 0.0f ? 0.0f : (pan > 127.0f ? 127.0f : pan);
-        HuAudFXPlayPan(work->identity.teamIndex == 0 ? 1957 : 1958,
-                       (s16)pan);
+        HuAudFXPlayPan(work->identity.teamIndex == 0 ? MSM_SE_MG643_RUNNER_FALL_TEAM_A
+                                                     : MSM_SE_MG643_RUNNER_FALL_TEAM_B,
+                       (s16) pan);
         work->fallSoundPlayed = 1;
     }
     if (work->position.y < (-1000.0f)) {
@@ -1273,21 +1244,7 @@ void fn_1_4AEC(OMOBJ *object)
 void fn_1_4D8C(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
-    f32 scale;
-    HuVecF shadowPos;
-    fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = 100.0f;
-    fn_80086B04(work->player->actor, &work->position);
-    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
-    shadowPos = work->position;
-    shadowPos.y = 200.0f;
-    fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
-        fn_80026A44(work->shadowModel, (1 << 0));
-    } else {
-        fn_800269E8(work->shadowModel, (1 << 0));
-    }
+    fn_1_4880(work);
     if (fn_80071A8C() == 2) {
         work->phaseFrames = 0;
         fn_1_20C(object, fn_1_4EF8);
@@ -1340,21 +1297,7 @@ void fn_1_4EF8(OMOBJ *object)
 void fn_1_5298(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
-    f32 scale;
-    HuVecF shadowPos;
-    fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = 100.0f;
-    fn_80086B04(work->player->actor, &work->position);
-    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
-    shadowPos = work->position;
-    shadowPos.y = 200.0f;
-    fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
-        fn_80026A44(work->shadowModel, (1 << 0));
-    } else {
-        fn_800269E8(work->shadowModel, (1 << 0));
-    }
+    fn_1_4880(work);
     if (fn_80071A8C() == 5) {
         if (lbl_80265728[work->identity.playerIndex].type != 0) {
             fn_1_20C(object, fn_1_58DC);
@@ -1483,7 +1426,7 @@ void fn_1_64B4(OMOBJ *object)
     work->rescueSpinRadians += 0.08726646259971647;
     fn_80026790(work->player->actor->mdlId, &work->position);
     fn_80026808(work->player->actor->mdlId,
-        0.0f, 180.0f * work->rescueSpinRadians / 3.141592653589793,
+        0.0f, 180.0f * work->rescueSpinRadians / M_PI,
         0.0f);
     if (work->respawnPending == 0) {
         if (fn_80071A8C() == 6) {
@@ -1537,27 +1480,13 @@ void fn_1_6674(OMOBJ *object)
 void fn_1_6750(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
-    f32 scale;
     HuVecF destination = lbl_1_data_B8;
-    HuVecF shadowPos;
     destination.z = 100.0f;
     if (lbl_1_bss_148 != -1 && lbl_1_bss_148 != work->identity.teamIndex) {
         fn_1_20C(object, NULL);
         return;
     }
-    fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = 100.0f;
-    fn_80086B04(work->player->actor, &work->position);
-    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
-    shadowPos = work->position;
-    shadowPos.y = 200.0f;
-    fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
-        fn_80026A44(work->shadowModel, (1 << 0));
-    } else {
-        fn_800269E8(work->shadowModel, (1 << 0));
-    }
+    fn_1_4880(work);
     if (lbl_1_bss_148 == work->identity.teamIndex) {
         fn_8007E8B4(work->player, &destination, 7.0f, 10.0f);
     }
@@ -1573,21 +1502,7 @@ void fn_1_6750(OMOBJ *object)
 void fn_1_696C(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
-    f32 scale;
-    HuVecF shadowPos;
-    fn_80086BC8(work->player->actor, &work->position);
-    work->position.z = 100.0f;
-    fn_80086B04(work->player->actor, &work->position);
-    scale = 1.0f - (work->position.y - 200.0f) / 800.0f;
-    shadowPos = work->position;
-    shadowPos.y = 200.0f;
-    fn_80026790(work->shadowModel, &shadowPos);
-    fn_800268B0(work->shadowModel, scale, 1.0f, scale);
-    if (shadowPos.x < (-1910.0f) || shadowPos.x > 1900.0f) {
-        fn_80026A44(work->shadowModel, (1 << 0));
-    } else {
-        fn_800269E8(work->shadowModel, (1 << 0));
-    }
+    fn_1_4880(work);
     if (work->phaseFrames++ >= 60 || fn_80071A8C() == 8) {
         if (lbl_1_bss_148 == work->identity.teamIndex) {
             work->position = lbl_1_data_B8;
@@ -1763,8 +1678,8 @@ void fn_1_72E0(M643TeamScenePrefix *work)
             pan *= 127.0f;
             pan = pan < 0.0f ? 0.0f :
                 (pan > 127.0f ? 127.0f : pan);
-            if (work->identity.teamIndex == 0) soundId = 1951;
-            else soundId = 1952;
+            if (work->identity.teamIndex == 0) soundId = MSM_SE_MG643_CANNON_FIRE_TEAM_A;
+            else soundId = MSM_SE_MG643_CANNON_FIRE_TEAM_B;
             HuAudFXPlayPan(soundId, (s16)pan);
             break;
         }
@@ -1817,21 +1732,21 @@ void fn_1_7554(M643TeamScenePrefix *work)
     while (current > 6.283185307179586) current -= 6.283185307179586;
     while (current < (-6.283185307179586)) current += 6.283185307179586;
     work->pitchRadians = current;
-    fn_80026808(work->barrelModel, 180.0f * work->pitchRadians / 3.141592653589793,
-        180.0 + 180.0f * work->yawRadians / 3.141592653589793, 0.0f);
+    fn_80026808(work->barrelModel, 180.0f * work->pitchRadians / M_PI,
+        180.0 + 180.0f * work->yawRadians / M_PI, 0.0f);
     fn_80026808(work->baseModel, 0.0f,
-        180.0 + 180.0f * work->yawRadians / 3.141592653589793, 0.0f);
+        180.0 + 180.0f * work->yawRadians / M_PI, 0.0f);
     fn_1_298(&playerPosition, work->cannonPosition.x, work->cannonPosition.y - 100.0f,
              work->cannonPosition.z);
-    playerPosition.x += 200.0 * -cos(3.141592653589793 + work->yawRadians);
-    playerPosition.z += 200.0 * sin(3.141592653589793 + work->yawRadians);
+    playerPosition.x += 200.0 * -cos(M_PI + work->yawRadians);
+    playerPosition.z += 200.0 * sin(M_PI + work->yawRadians);
     fn_80026790(work->operatorObject->mdlId[0], &playerPosition);
     fn_80026790(work->operatorFollowModel, &playerPosition);
     fn_1_298(&shadowPosition, work->cannonPosition.x, work->cannonPosition.y - 120.0f,
         work->cannonPosition.z - 100.0f);
     fn_80026790(work->operatorObject->mdlId[1], &shadowPosition);
     fn_80026808(work->operatorObject->mdlId[1], 0.0f,
-        135.0 + 180.0f * work->yawRadians / 3.141592653589793, 0.0f);
+        135.0 + 180.0f * work->yawRadians / M_PI, 0.0f);
     Hu3DModelObjPosGet(work->baseModel, "643houdaibace-643EFF3Null", &hookPosition);
     fn_80026790(work->reloadEffectModel, &hookPosition);
     if (work->operatorMotion == 8 && fn_8002D4E0(work->operatorObject->mdlId[0]) ==
@@ -2146,8 +2061,8 @@ void fn_1_90A8(OMOBJ *object)
         pan *= 127.0f;
         pan = pan < 0.0f ? 0.0f :
             (pan > 127.0f ? 127.0f : pan);
-        if (work->identity.teamIndex == 0) soundId = 1955;
-        else soundId = 1956;
+        if (work->identity.teamIndex == 0) soundId = MSM_SE_MG643_AIM_MOVE_TEAM_A;
+        else soundId = MSM_SE_MG643_AIM_MOVE_TEAM_B;
         HuAudFXPlayPan(soundId, (s16)pan);
     }
     fn_1_7554(work);
@@ -2186,8 +2101,8 @@ void fn_1_96A4(OMOBJ *object)
         pan *= 127.0f;
         pan = pan < 0.0f ? 0.0f :
             (pan > 127.0f ? 127.0f : pan);
-        if (work->identity.teamIndex == 0) soundId = 1955;
-        else soundId = 1956;
+        if (work->identity.teamIndex == 0) soundId = MSM_SE_MG643_AIM_MOVE_TEAM_A;
+        else soundId = MSM_SE_MG643_AIM_MOVE_TEAM_B;
         HuAudFXPlayPan(soundId, (s16)pan);
     }
     work->cooldownFrames--;
@@ -2421,7 +2336,7 @@ void fn_1_A444(OMOBJ *object)
 {
     M643ShotPrefix *work = object->data;
     HuVecF referenceDirection = lbl_1_rodata_410;
-    HuVecF unusedUp = lbl_1_rodata_41C;
+    HuVecF upDirection = lbl_1_rodata_41C;
     f32 distance, dot;
     if (work->inUse == 1) {
         HuVecF start = work->cannon->muzzlePosition;
@@ -2442,8 +2357,8 @@ void fn_1_A444(OMOBJ *object)
         fn_80026790(work->projectileModel, &work->position);
         fn_80026A44(work->projectileModel, (1 << 0));
         fn_80026808(work->projectileModel,
-            180.0f * work->cannon->pitchRadians / 3.141592653589793,
-            180.0f * work->cannon->yawRadians / 3.141592653589793,
+            180.0f * work->cannon->pitchRadians / M_PI,
+            180.0f * work->cannon->yawRadians / M_PI,
             0.0f);
         work->durationSeconds = distance / work->speed / 60.0f;
         work->launchDistance = distance;
@@ -2490,9 +2405,9 @@ void fn_1_A6F0(OMOBJ *object)
         fn_1_E74(&work->rotationRadians, matrix);
     }
     fn_80026808(work->projectileModel,
-        180.0f * work->rotationRadians.x / 3.141592653589793,
-        180.0f * work->rotationRadians.y / 3.141592653589793,
-        180.0f * work->rotationRadians.z / 3.141592653589793);
+        180.0f * work->rotationRadians.x / M_PI,
+        180.0f * work->rotationRadians.y / M_PI,
+        180.0f * work->rotationRadians.z / M_PI);
     {
         s32 emitted = 0;
         HU3D_PARTICLE *particle = lbl_802C01C8[work->trailParticles].hookData;
@@ -2542,7 +2457,9 @@ void fn_1_A6F0(OMOBJ *object)
             pan *= 127.0f;
             pan = pan < 0.0f ? 0.0f :
                 (pan > 127.0f ? 127.0f : pan);
-            HuAudFXPlayPan(work->teamIndex == 0 ? 1960 : 1961, (s16)pan);
+            HuAudFXPlayPan(work->teamIndex == 0 ? MSM_SE_MG643_SHOT_DEFLECT_TEAM_A
+                                                : MSM_SE_MG643_SHOT_DEFLECT_TEAM_B,
+                           (s16) pan);
         }
         fn_1_20C(object, fn_1_AFF8);
         return;
@@ -2559,7 +2476,9 @@ void fn_1_A6F0(OMOBJ *object)
             pan *= 127.0f;
             pan = pan < 0.0f ? 0.0f :
                 (pan > 127.0f ? 127.0f : pan);
-            HuAudFXPlayPan(work->teamIndex == 0 ? 1953 : 1954, (s16)pan);
+            HuAudFXPlayPan(work->teamIndex == 0 ? MSM_SE_MG643_PLATFORM_APPEAR_TEAM_A
+                                                : MSM_SE_MG643_PLATFORM_APPEAR_TEAM_B,
+                           (s16) pan);
         }
         fn_800269E8(work->projectileModel, (1 << 0));
         work->inUse = 0;
@@ -2578,9 +2497,9 @@ void fn_1_AFF8(OMOBJ *object)
     fn_1_460(&work->rotationRadians, &work->rotationRadians, &work->spinVelocity);
     fn_80026790(work->projectileModel, &work->position);
     fn_80026808(work->projectileModel,
-        180.0f * work->rotationRadians.x / 3.141592653589793,
-        180.0f * work->rotationRadians.y / 3.141592653589793,
-        180.0f * work->rotationRadians.z / 3.141592653589793);
+        180.0f * work->rotationRadians.x / M_PI,
+        180.0f * work->rotationRadians.y / M_PI,
+        180.0f * work->rotationRadians.z / M_PI);
     if (work->position.y < (-1000.0f)) {
         fn_800269E8(work->projectileModel, (1 << 0));
         work->inUse = 0;
@@ -2677,20 +2596,20 @@ void fn_1_B408(OMOBJ *object)
         fn_1_77C(matrix, &previousPosition, &position, &up);
         fn_1_E74(&work->rotationRadians, matrix);
         fn_80026808(work->model,
-            (180.0f * work->rotationRadians.x) / 3.141592653589793,
-            (180.0f * work->rotationRadians.y) / 3.141592653589793,
-            (180.0f * work->rotationRadians.z) / 3.141592653589793);
+            (180.0f * work->rotationRadians.x) / M_PI,
+            (180.0f * work->rotationRadians.y) / M_PI,
+            (180.0f * work->rotationRadians.z) / M_PI);
     } else {
         work->rotationRadians.x += -work->rotationRadians.x / 10.0f;
         work->rotationRadians.y += -work->rotationRadians.y / 10.0f;
         work->rotationRadians.z += -work->rotationRadians.z / 10.0f;
         fn_80026808(work->model,
-            (180.0f * work->rotationRadians.x) / 3.141592653589793,
-            (180.0f * work->rotationRadians.y) / 3.141592653589793,
-            (180.0f * work->rotationRadians.z) / 3.141592653589793);
+            (180.0f * work->rotationRadians.x) / M_PI,
+            (180.0f * work->rotationRadians.y) / M_PI,
+            (180.0f * work->rotationRadians.z) / M_PI);
     }
     if (work->elapsedSeconds >= work->durationSeconds) {
-        HuVecF unusedVector = {0.0f, 0.0f, 0.0f};
+        HuVecF zeroVector = {0.0f, 0.0f, 0.0f};
         fn_1_20C(object, fn_1_B7F0);
         return;
     }

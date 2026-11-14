@@ -22,6 +22,7 @@
 #include "msm_se.h"
 #include "messdir_enum.h"
 #include "game/board/dice.h"
+#include "game/board/star.h"
 #include "humath.h"
 
 typedef struct EvCapWork {
@@ -145,7 +146,6 @@ static HuVecF hanachanPlayerOfs[14] = {
 };
 
 extern OMOBJMAN *mbObjMan;
-void mbev_StarMasu(int playerNo, int masuId);
 #define CAPMOVE_EFFECT_MIN_SCALE 0.2f
 
 static void ev_CapEffKinokoCreate(CAPWORK *work);

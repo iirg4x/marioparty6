@@ -1,7 +1,8 @@
 /* Burnstile vector helpers for player movement and rotor tests, plus general matrix helpers. */
 #include "math.h"
-#include "humath.h"
+#include "REL/m668DLL/math.h"
 #include <string.h>
+#include "game/matrix_angle.h"
 #include "dolphin/mtx/GeoTypes.h"
 #include "game/frand.h"
 
@@ -148,28 +149,6 @@ s32 fn_1_788(Mtx matrix, const Vec *start, const Vec *end, const Vec *direction)
     return 1;
 }
 
-/* Helpers for extracting Euler angles from a matrix's column basis. */
-
-/* Keeps matrix roundoff within asin's domain while extracting the Y angle. */
-static inline f32 M668ClampedAsin(f32 value)
-{
-    /* Keep out-of-range matrix values at the nearest quarter-turn endpoint. */
-    if (value >= 1.0f) return (1.5707964f);
-    if (value <= (-1.0f)) return (-1.5707964f);
-    return asinf(value);
-}
-
-/* Used by matrix angle extraction; returns a quarter-turn when x is zero. */
-static inline f32 M668GuardedAtan2(f32 y, f32 x)
-{
-    /* With x zero, return +pi/2 for y >= 0 (including zero), otherwise -pi/2. */
-    if (0.0f == x) {
-        if (y >= 0.0f) return (1.5707964f);
-        return (-1.5707964f);
-    }
-    return atan2f(y, x);
-}
-
 /* Extracts XYZ angles from a rotation matrix; clears the result if a column is degenerate. */
 s32 fn_1_E80(Vec *angles, Mtx matrix)
 {
@@ -180,33 +159,32 @@ s32 fn_1_E80(Vec *angles, Mtx matrix)
 
     xLength = sqrtf(matrix[2][0] * matrix[2][0] +
                        (matrix[0][0] * matrix[0][0] + matrix[1][0] * matrix[1][0]));
-    if (xLength < 0.00000001f) goto fail;
-    yLength = sqrtf(matrix[2][1] * matrix[2][1] +
-                       (matrix[0][1] * matrix[0][1] + matrix[1][1] * matrix[1][1]));
-    if (yLength < 0.00000001f) goto fail;
-    zLength = sqrtf(matrix[2][2] * matrix[2][2] +
-                       (matrix[0][2] * matrix[0][2] + matrix[1][2] * matrix[1][2]));
-    if (zLength < 0.00000001f) goto fail;
-    angles->y = -M668ClampedAsin(-matrix[2][0] / xLength);
-    cosine = (f32)cos((f64)angles->y);
-    if (cosine > 0.00000001f) {
-        angles->x = -M668GuardedAtan2(matrix[2][1] / yLength, matrix[2][2] / zLength);
-        angles->z = -M668GuardedAtan2(matrix[1][0], matrix[0][0]);
-    } else {
-        /* Near a vertical Y angle, use the alternate extraction and set Z to pi. */
-        angles->x = -M668GuardedAtan2(matrix[0][1], matrix[1][1]);
-        angles->z = 3.1415927f;
+    if (!(xLength < 0.00000001f)) {
+        yLength = sqrtf(matrix[2][1] * matrix[2][1] +
+                           (matrix[0][1] * matrix[0][1] + matrix[1][1] * matrix[1][1]));
+        if (!(yLength < 0.00000001f)) {
+            zLength = sqrtf(matrix[2][2] * matrix[2][2] +
+                               (matrix[0][2] * matrix[0][2] + matrix[1][2] * matrix[1][2]));
+            if (!(zLength < 0.00000001f)) {
+                angles->y = -ClampedAsin(-matrix[2][0] / xLength);
+                cosine = (f32)cos((f64)angles->y);
+                if (cosine > 0.00000001f) {
+                    angles->x = -GuardedAtan2(matrix[2][1] / yLength, matrix[2][2] / zLength);
+                    angles->z = -GuardedAtan2(matrix[1][0], matrix[0][0]);
+                } else {
+                    /* Near a vertical Y angle, use the alternate extraction and set Z to pi. */
+                    angles->x = -GuardedAtan2(matrix[0][1], matrix[1][1]);
+                    angles->z = 3.1415927f;
+                }
+                return 1;
+            }
+        }
     }
-    return 1;
-fail:
     angles->x = 0.0f;
     angles->y = 0.0f;
     angles->z = 0.0f;
     return 0;
 }
-
-double sin(double);
-double cos(double);
 
 /* Writes the 3x3 Y-axis rotation basis for an angle in radians; leaves translation untouched. */
 void fn_1_150C(Mtx out, double angle)

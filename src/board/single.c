@@ -1,10 +1,15 @@
 /* Sets up the single-player board mode, its events, effects, and records. */
 #include "dolphin/math.h"
+#include "humath.h"
 #include "datadir_enum.h"
 #include "game/board/masu.h"
 #include "game/board/main.h"
+#include "game/board/guide.h"
+#include "game/board/math.h"
 #include "game/board/audio.h"
 #include "game/board/coin.h"
+#include "game/board/capsule.h"
+#include "game/board/wipe.h"
 #include "game/board/camera.h"
 #include "game/board/effect.h"
 #include "game/board/pause.h"
@@ -19,6 +24,7 @@
 #include "game/esprite.h"
 #include "game/hu3d.h"
 #include "game/mgdata.h"
+#include "game/mic.h"
 #include "game/sprite.h"
 #include "game/wipe.h"
 #include "datanum/charmot.h"
@@ -27,6 +33,7 @@
 #include "messnum/mg_name.h"
 
 #include <string.h>
+#include "game/board/mgcall.h"
 
 #define SINGLE_DATA_EFFECT_SLOT0 0xa0000
 #define SINGLE_DATA_EFFECT_SLOT1 DATANUM(0x50000, 99)
@@ -37,39 +44,7 @@
 #define SINGLE_MESS_LAST5_RULES MESSNUM(MESS_BOARD_SINGLE, 45)
 #define SINGLE_PRIZE_FLAG_WORD_MASK ((1 << 5) - 1)
 
-extern void mbExitReq(void);
-extern int mbCapObjCreate(int capsuleNo, BOOL flag);
-extern void mbCapObjKill(int objId);
-extern OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF,
-    BOOL altMtxF, BOOL layerF);
-extern void mbGuideEnd(OMOBJ *obj, BOOL endF);
-extern void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo);
-extern void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
-extern void mbGuideMotionShiftSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
-extern void mbGuideMotionStop(OMOBJ *obj);
-extern int mbGuideSpeakerNoGet(void);
-extern void mbev_MgCallSingle(int mgType);
-extern void HuMCListenerKill(void);
-extern void HuMCClose(void);
-extern void HuMCContextKill(s16 context);
-extern s32 HuMCMicGet(void);
-extern s32 HuMCProbe(s32 channel);
-extern s32 HuMCInit(s16 mountResult);
-extern s16 HuMCContextCreate(char *path);
 extern void mbSingleSaveFlush(int value);
-extern int mbCoinAddExec(int playerNo, int coinNum);
-extern void mbWipeFadeOut(void);
-extern void mbWipeFadeIn(void);
-extern void mbWipeWhiteFadeInTime(int time);
-extern BOOL mbWipeSpecialStatGet(void);
-extern void mbWipeSpecialCreate(int state, int type, int time);
-extern void mbWipeSpecialFadeInCreate(int type, int time);
-extern void mbWipeSpecialFadeOutCreate(int type, int time);
-extern void mbWipeSpecialWait(void);
-extern void mbWipeFadeOutTime(int time);
-extern void mbWipeWhiteFadeOutTime(int time);
-extern void mbWipeSpecialKill(void);
-extern BOOL mbMgCallSingleOnCheck(u16 ovl);
 extern BOOL mbSaveNewF;
 
 typedef struct SingleSaveWork_s {
@@ -95,13 +70,6 @@ typedef struct SingleSaveWork_s {
     u8 masuTypeCount[13];
 } SINGLE_SAVE_WORK;
 
-typedef struct SingleMicResponse_s {
-    s16 status;
-    u16 score;
-    s16 resultCount;
-    s16 *result;
-} SINGLE_MIC_RESPONSE;
-
 typedef struct SingleEffData_s {
     int active;
     BOOL modelVisible; /* Whether the board-space particle model is shown. */
@@ -113,9 +81,7 @@ typedef struct SingleEffData_s {
     HU3D_MODELID childModelId[2];
     HuVecF pos;
     HuVecF targetPos;
-    float rotationX; /* Particle-space rotation in degrees. */
-    float rotationY; /* Particle-space rotation in degrees. */
-    float rotationZ; /* Particle-space rotation in degrees. */
+    HuVecF rotation; /* Particle-space rotation in degrees. */
     HuVecF scale;
     float rotationSpeed; /* Degrees added to the Y rotation each object update. */
     float bobScale; /* Multiplier for the board-space particle's vertical bob. */
@@ -174,7 +140,7 @@ static void SingleMgRecordPrizeInit(void);
 static void SingleMgRecordPrizeSet(void);
 static void SingleMicCreate(void);
 static void SingleMicListenerCreate(void);
-static void SingleMicListener(u16 *response);
+static void SingleMicListener(MCResponse_s *response);
 static void SingleEffInit(void);
 static void SingleEffOMExec(OMOBJ *obj);
 static void SingleEffMgMasuHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx);
@@ -196,14 +162,6 @@ static void ev_SingleMgEnd(int playerNo);
 static void ev_SingleKoopaMgEnd(int playerNo);
 static void ev_SingleMKoopaMgEnd(int playerNo);
 static void ev_SingleKoopaMgSkip(MBMODELID modelId);
-
-extern void HuMCListenerCreate(
-    s16 context, void (*callback)(u16 *response), u8 property);
-extern float mbSinDeg(float angle);
-extern float mbCosDeg(float angle);
-extern void mbMtxRot(Mtx mtx, float x, float y, float z);
-extern void mbPos3Dto2D(HuVecF *src, HuVecF *dst);
-extern void mbPos2Dto3D(HuVecF *src, HuVecF *dst);
 
 void mbSingleMgUnlockInit(void);
 void mbSinglePrizeFlagReset(int flag);
@@ -527,12 +485,6 @@ static inline HU3D_MODELID SingleParticleCreate(int animNo, s16 maxCount,
     return modelId;
 }
 
-/* Returns the particle data attached to one of this board's effect models. */
-static inline MBPARTICLE *SingleParticleDataGet(HU3D_MODELID modelId)
-{
-    return (MBPARTICLE *)lbl_802C01C8[modelId].hookData;
-}
-
 /* Called during board setup to create the reusable space and minigame effects. */
 static void SingleEffInit(void)
 {
@@ -545,14 +497,14 @@ static void SingleEffInit(void)
         work->modelId = SingleParticleCreate(0, 1, SingleEffMgMasuHook);
         mbParticleAttrSet(work->modelId, MB_PARTICLE_ATTR_3D);
         fn_800269E8(work->modelId, (1 << 0) | (1 << 21));
-        particle = SingleParticleDataGet(work->modelId);
+        particle = StarObjEffDataGet(work->modelId);
         particle->hookData = work;
 
         work->childModelId[0] = SingleParticleCreate(1, 20, SingleEffMgHook);
         mbParticleAttrSet(work->childModelId[0], MB_PARTICLE_ATTR_UPAUSE);
         fn_800269E8(work->childModelId[0], (1 << 0));
         mbParticleBlendModeSet((int)work->childModelId[0], MB_PARTICLE_BLEND_ADDCOL);
-        particle = SingleParticleDataGet(work->childModelId[0]);
+        particle = StarObjEffDataGet(work->childModelId[0]);
         particle->hookData = work;
 
         work->childModelId[1] = SingleParticleCreate(1, 100, SingleEffMgExplodeHook);
@@ -597,7 +549,7 @@ static s16 SingleEffCreate(HuVecF *pos, int masuType)
     work->particleVisible = TRUE;
     work->masuType = masuType;
     work->pos = *pos;
-    work->rotationX = work->rotationY = work->rotationZ = 0.0f;
+    work->rotation.x = work->rotation.y = work->rotation.z = 0.0f;
     work->scale.x = work->scale.y = work->scale.z = 1.0f;
     work->spaceAlpha = 1.0f;
     work->particleBrightness = 0.0f;
@@ -605,7 +557,7 @@ static s16 SingleEffCreate(HuVecF *pos, int masuType)
     work->particlesRepeat = TRUE;
     fn_80026A44(work->modelId, (1 << 0));
     fn_80026A44(work->childModelId[0], (1 << 0));
-    particle = SingleParticleDataGet(work->childModelId[0]);
+    particle = StarObjEffDataGet(work->childModelId[0]);
     particle->mode = 0;
     fn_80026B64(work->modelId, 1);
     fn_80026B8C(work->modelId, 5);
@@ -659,7 +611,7 @@ static void SingleEffMgMasuHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx
     mtxScaleCat(transform, work->scale.x, work->scale.y, work->scale.z);
     mtxTransCat(transform, work->pos.x, work->pos.y, work->pos.z);
     PSMTXConcat(mtx, transform, mtx);
-    data->rot = *(HuVecF *)&work->rotationX;
+    data->rot = work->rotation;
     data->animNo = masuPatNo[work->masuType];
     data->color.a = (u8)(255.0f * work->spaceAlpha);
     particle->tevColor[0].r = particle->tevColor[0].g =
@@ -1202,7 +1154,7 @@ static void SingleEffOMExec(OMOBJ *obj)
         break;
     }
 
-    work->rotationY += work->rotationSpeed;
+    work->rotation.y += work->rotationSpeed;
 }
 
 /* Begins the ending burst after the minigame or prize space effect completes. */
@@ -1213,7 +1165,7 @@ static void SingleEffMgStop(s16 effNo, int type)
 
     work = &singleEffData[effNo - 1];
     work->state = 4;
-    work->rotationY = 0.0f;
+    work->rotation.y = 0.0f;
     work->rotationSpeed = 0.0f;
     work->timer = 0;
     work->timerMax = 30;
@@ -1226,10 +1178,10 @@ static void SingleEffMgStop(s16 effNo, int type)
         fn_80026B8C(work->childModelId[i], 7);
     }
     if (type == 0) {
-        mbAudFXPlay(1544);
+        mbAudFXPlay(MSM_SE_SBRD_MINIGAME_STOP_SUCCESS);
         fn_8006A030(lbl_80265B70.turnPlayerNo, 20, 7, 3);
     } else {
-        mbAudFXPlay(1546);
+        mbAudFXPlay(MSM_SE_SBRD_MINIGAME_STOP_FAIL);
         fn_8006A030(lbl_80265B70.turnPlayerNo, 20, 20, 0);
     }
 }
@@ -1314,10 +1266,10 @@ static void ev_SingleMg(int playerNo, s16 masuId)
     effect->timer = 0;
     effect->timerMax = 60;
     if (masuType == 7) {
-        mgRareSeNo = mbAudFXPlay(1095);
-        mbAudFXPlay(1096);
+        mgRareSeNo = mbAudFXPlay(MSM_SE_BRD00_STAR_GET_RISE_LOOP);
+        mbAudFXPlay(MSM_SE_BRD00_STAR_GET_JINGLE);
     } else {
-        seNo = mbAudFXPlay(1542);
+        seNo = mbAudFXPlay(MSM_SE_SBRD_PRIZE_EFFECT_LOOP);
     }
     {
         SINGLE_EFF_DATA *waitEffect;
@@ -1380,7 +1332,7 @@ static void ev_SingleMgEnd(int playerNo)
     SINGLE_EFF_DATA *initialEffect;
 
     mgNo = lbl_80265B70.mgNo;
-    seNo = mbAudFXPlay(1542);
+    seNo = mbAudFXPlay(MSM_SE_SBRD_PRIZE_EFFECT_LOOP);
     mbAudFXVolSet(seNo, 0);
     if (!mbWipeSpecialStatGet()) {
         mbWipeFadeOut();
@@ -1438,7 +1390,7 @@ static void ev_SingleMgEnd(int playerNo)
                 fn_80026B8C(effect->childModelId[i], 7);
             }
         }
-        mbAudFXPlay(1543);
+        mbAudFXPlay(MSM_SE_SBRD_PRIZE_EFFECT_BURST);
         HuPrcSleep(60);
 
         if (fn_8003CC40(mgNo + 601)
@@ -1470,7 +1422,7 @@ static void ev_SingleMgEnd(int playerNo)
             mbCoinAddExec(playerNo, prizeCoin + prizeBonus);
         }
         mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f, 0);
-        mbPlayerWinLoseVoicePlay(playerNo, 7, 573 + 6);
+        mbPlayerWinLoseVoicePlay(playerNo, 7, MSM_SE_CHARVOICE_HAPPY_CHEER);
         if (!unlocked) {
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 0), -1);
             mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
@@ -1494,7 +1446,7 @@ static void ev_SingleMgEnd(int playerNo)
             effect->targetPos = effect->pos;
             effect->timer = 0;
             effect->timerMax = 90;
-            effect->seId = mbAudFXPlay(1545);
+            effect->seId = mbAudFXPlay(MSM_SE_SBRD_EFFECT_APPROACH);
             HuPrcSleep(90);
             mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 8.0f,
                 0);
@@ -1619,19 +1571,19 @@ static void ev_SingleRareMg(int playerNo, s16 effNo)
                 if (mgRareSeNo >= 0) {
                     mbAudFXStop(mgRareSeNo);
                 }
-                mbAudFXPlay(1097);
+                mbAudFXPlay(MSM_SE_BRD00_STAR_GET_FINISH);
             }
             HuPrcVSleep();
         } while (!mbPlayerMotionEndCheck(playerNo));
         mbPlayerMotIdleSet(playerNo);
         fn_8006A030(playerNo, 20, 7, 3);
-        streamNo = mbMusJinglePlay(39);
+        streamNo = mbMusJinglePlay(MSM_STREAM_GETTING_A_STAR);
         mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f,
             0);
-        mbPlayerWinLoseVoicePlay(playerNo, 7, 573);
+        mbPlayerWinLoseVoicePlay(playerNo, 7, MSM_SE_CHARVOICE_STAR_WIN_CHEER);
         mbCameraRotGet(&cameraRot);
         cameraRot.x -= 15.0f;
-        mbCameraMovePlayer(playerNo, &cameraRot, (HuVecF *)&cameraOfs,
+        mbCameraMovePlayer(playerNo, &cameraRot, &cameraOfs,
             1600.0f, -1.0f, 102);
         mbCameraMoveWait();
         zoom = mbCameraZoomGet();
@@ -1639,7 +1591,7 @@ static void ev_SingleRareMg(int playerNo, s16 effNo)
         for (frame = 0; (u32)frame < 30; frame++) {
             phase = (float)frame / 30.0f;
             rate = (float)(0.5
-                * (1.0 + sin(3.141592653589793
+                * (1.0 + sin(M_PI
                     * (720.0f * phase) / 180.0)));
             cameraZoom = zoom + (-500.0f * rate);
             mbCameraZoomSet(cameraZoom);
@@ -1743,15 +1695,6 @@ static inline int SingleMgUnlockListGet(u8 *list)
     return listNum;
 }
 
-/* Returns the positive magnitude used for the capsule sprite brightness. */
-static inline float SingleAbsFloat(register float value)
-{
-    asm {
-        fabs value, value
-    }
-    return value;
-}
-
 /* Runs the Koopa space conversation, capsule gift, and possible minigame choice. */
 static void ev_SingleKoopaMg(int playerNo, s16 masuId)
 {
@@ -1829,12 +1772,12 @@ int choice;
     for (frame = 0; (u32)frame <= 180; frame++) {
         angle = (float)frame / 180.0f;
         if (frame == 30) {
-            mbAudFXPlay(1107);
+            mbAudFXPlay(MSM_SE_BRD00_BANNER_SWOOSH_IN);
         }
         if (frame == 18 || frame == 90 || frame == 162) {
             fn_8006A030(playerNo, 20, 7, 3);
         }
-        espTPLvlSet(spriteId[0], SingleAbsFloat(mbSinDeg(450.0f * angle)));
+        espTPLvlSet(spriteId[0], FloatAbs(mbSinDeg(450.0f * angle)));
         HuPrcVSleep();
     }
 
@@ -1860,9 +1803,9 @@ int choice;
     HuPrcSleep(30);
 
     mbCameraMoveMasu(masuStart, &cameraRot, &cameraPos, 1600.0f, -1.0f, 60);
-    mbMusPlay(MB_MUS_CHAN_BG, 27, MSM_VOL_MAX, 0);
+    mbMusPlay(MB_MUS_CHAN_BG, MSM_STREAM_STORY_RANK, MSM_VOL_MAX, 0);
     mbAudFXDelaySet(30);
-    mbAudFXPlay(971);
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
     mbObjMotionShiftSet(modelId, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbCameraMoveWait();
     winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 2), 13);
@@ -1871,7 +1814,7 @@ int choice;
     winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 3), 13);
     mbWinWait(winId);
     mbAudFXDelaySet(30);
-    mbAudFXPlay(973);
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
     mbObjMotionShiftSet(modelId, 5, 0.0f, 8.0f, 0);
     while (!mbObjMotionEndCheck(modelId)) {
         HuPrcVSleep();
@@ -1890,7 +1833,7 @@ int choice;
     for (frame = 1; (u32)frame < 60; frame++) {
         angle = (float)frame / 60.0f;
         if ((u32)frame == 27) {
-            mbAudFXPlay(1117);
+            mbAudFXPlay(MSM_SE_BRD00_BONUS_ROULETTE_APPEAR);
         }
         scale = mbSinDeg(90.0f * angle);
         espPosSet(spriteId[1], 288.0f,
@@ -1919,7 +1862,7 @@ int choice;
     }
     espDispOff(spriteId[1]);
     mbAudFXDelaySet(30);
-    mbAudFXPlay(971);
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
     mbObjMotionShiftSet(modelId, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
 
     if (capsuleMode == 0) {
@@ -1932,7 +1875,7 @@ int choice;
             MESSNUM(MESS_BOARD_SINGLE, 39) + choice, 0);
         mbWinWait(winId);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(973);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
         mbObjMotionShiftSet(modelId, 5, 0.0f, 8.0f, 0);
         while (!mbObjMotionEndCheck(modelId)) {
             HuPrcVSleep();
@@ -1977,11 +1920,11 @@ int choice;
         fn_80026B64(particleData.ids[1], 2);
         fn_80026B8C(particleData.ids[1], 7);
         fn_800269E8(particleData.ids[1], (1 << 0));
-        mbAudFXPlay(1063);
+        mbAudFXPlay(MSM_SE_BRD00_KOOPA_MAGIC_BURST);
 
         for (frame = 0; frame < 3; frame++) {
             fn_80026A44(particleData.ids[0], (1 << 0));
-            mbAudFXPlay(1547);
+            mbAudFXPlay(MSM_SE_SBRD_KOOPA_EFFECT_POP);
             HuPrcSleep(12);
             mbObjPosSetV(capsuleObj, &capsulePos);
             mbObjScaleSet(capsuleObj, 1.0f, 1.0f, 1.0f);
@@ -2015,7 +1958,7 @@ int choice;
         }
         mbObjDispSet(capsuleObj, FALSE);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(971);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
         mbObjMotionShiftSet(modelId, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         HuPrcSleep(60);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 6), 13);
@@ -2032,7 +1975,7 @@ int choice;
         mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
         mbWinWait(winId);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(973);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
         mbObjMotionShiftSet(modelId, 5, 0.0f, 8.0f, 0);
         if (mbPlayerCoinGet(playerNo) == 0) {
             if (SingleMgUnlockListGet(NULL)) {
@@ -2102,16 +2045,6 @@ static void ev_SingleKoopaMgSkip(MBMODELID modelId)
     mbMusBoardPlay();
 }
 
-static inline s16 SingleMgCoinGet(int playerNo)
-{
-    return lbl_80265750[playerNo].mgCoin;
-}
-
-static inline s16 SingleMgCoinBonusGet(int playerNo)
-{
-    return lbl_80265750[playerNo].mgCoinBonus;
-}
-
 /* Reports whether the effect slot is in a nonzero animation state. */
 static inline BOOL SingleEffBusyCheck(s16 effNo)
 {
@@ -2143,7 +2076,7 @@ static inline void SingleEffPrizeStart(s16 effNo)
         fn_80026B64(work->childModelId[i], 2);
         fn_80026B8C(work->childModelId[i], 7);
     }
-    mbAudFXPlay(1543);
+    mbAudFXPlay(MSM_SE_SBRD_PRIZE_EFFECT_BURST);
 }
 
 /* Adds a minigame to pending unlocks and sets its single-player unlock flag. */
@@ -2220,15 +2153,15 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     mbPlayerPosSet(playerNo, startPos.x, startPos.y, startPos.z + 300.0f);
     mbPlayerMotionSet(playerNo, 1, ((1 << 30) | (1 << 0)));
     mbPlayerRotYSet(playerNo, 180.0f);
-    mbCameraMoveMasu(masuStart, NULL, (HuVecF *)&cameraOffset, 1600.0f, -1.0f, -1);
+    mbCameraMoveMasu(masuStart, NULL, &cameraOffset, 1600.0f, -1.0f, -1);
     mbCameraMoveWait();
-    mbMusPlay(MB_MUS_CHAN_BG, 28, MSM_VOL_MAX, 0);
+    mbMusPlay(MB_MUS_CHAN_BG, MSM_STREAM_STORY_OPENING, MSM_VOL_MAX, 0);
 
-    if (SingleMgCoinBonusGet(playerNo) + SingleMgCoinGet(playerNo) > 0) {
+    if (GWMgCoinBonusGet(playerNo) + GWMgCoinGet(playerNo) > 0) {
         resultMode = 0;
     } else {
         for (i = 1; i < 4; i++) {
-            if (SingleMgCoinBonusGet(i) + SingleMgCoinGet(i) > 0) {
+            if (GWMgCoinBonusGet(i) + GWMgCoinGet(i) > 0) {
                 break;
             }
         }
@@ -2239,14 +2172,14 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     case 0: {
         mbSingleCall(10, MgDataTbl[mgNo].type);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(972);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_LAUGH);
         mbObjMotionSet(guideModel, 6, ((1 << 30) | (1 << 0)));
         mbWipeFadeIn();
         mbPauseDisableSet(FALSE);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 14), 13);
         mbWinWait(winId);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(972);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_LAUGH);
         mbObjMotionShiftSet(guideModel, 6, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
         if (!(unlocked = SingleMgUnlockedCheck(mgNo + 601))) {
@@ -2257,7 +2190,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
             mbWinWait(winId);
         }
         mbAudFXDelaySet(30);
-        mbAudFXPlay(973);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
         mbObjMotionShiftSet(guideModel, 5, 0.0f, 8.0f,
             0);
         while (!mbObjMotionEndCheck(guideModel)) {
@@ -2274,9 +2207,9 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         fn_80026790(particleCapsule[0], &effectPos);
         fn_80026B64(particleCapsule[0], 2);
         fn_80026B8C(particleCapsule[0], 7);
-        mbAudFXPlay(1547);
+        mbAudFXPlay(MSM_SE_SBRD_KOOPA_EFFECT_POP);
         HuPrcSleep(12);
-        mbAudFXPlay(1063);
+        mbAudFXPlay(MSM_SE_BRD00_KOOPA_MAGIC_BURST);
         effects[0] = SingleEffCreate(&effectPos, miniKoopaMgType);
         HuPrcSleep(30);
         SingleEffPrizeStart(effects[0]);
@@ -2294,11 +2227,11 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         if (!(MgDataTbl[mgNo].flag & MG_FLAG_COIN)) {
             mbCoinAddExec(playerNo, 10);
         } else {
-            mbCoinAddExec(playerNo, SingleMgCoinGet(playerNo) + SingleMgCoinBonusGet(playerNo));
+            mbCoinAddExec(playerNo, GWMgCoinGet(playerNo) + GWMgCoinBonusGet(playerNo));
         }
         mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f,
             0);
-        mbPlayerWinLoseVoicePlay(playerNo, 7, 579);
+        mbPlayerWinLoseVoicePlay(playerNo, 7, MSM_SE_CHARVOICE_HAPPY_CHEER);
         if (!unlocked) {
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 0), -1);
             mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
@@ -2316,7 +2249,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
         mbAudFXDelaySet(30);
-        mbAudFXPlay(971);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
         mbObjMotionShiftSet(guideModel, 3, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
         HuPrcSleep(30);
@@ -2324,7 +2257,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     }
     case 1:
         mbAudFXDelaySet(30);
-        mbAudFXPlay(971);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
         mbObjMotionSet(guideModel, 3, ((1 << 30) | (1 << 0)));
         mbWipeFadeIn();
         mbPauseDisableSet(FALSE);
@@ -2355,19 +2288,19 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                     fn_80026B8C(particleCapsule[i], 7);
                     effectPos.x += 150.0f;
                 }
-                mbAudFXPlay(1547);
+                mbAudFXPlay(MSM_SE_SBRD_KOOPA_EFFECT_POP);
                 HuPrcSleep(12);
                 for (i = 0; i < effectCount; i++) {
                     SingleEffUnk04Set(effects[i], TRUE);
                 }
-                seNo = mbAudFXPlay(1542);
+                seNo = mbAudFXPlay(MSM_SE_SBRD_PRIZE_EFFECT_LOOP);
                 HuPrcSleep(12);
                 mbObjAttrReset(guideModel, ((1 << 30) | (1 << 0)));
                 while (!mbObjMotionEndCheck(guideModel)) {
                     HuPrcVSleep();
                 }
                 mbAudFXDelaySet(30);
-                mbAudFXPlay(973);
+                mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
                 mbObjMotionShiftSet(guideModel, 5, 0.0f, 8.0f,
                     0);
                 HuPrcVSleep();
@@ -2375,9 +2308,9 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                     || !mbObjMotionEndCheck(guideModel)) {
                     HuPrcVSleep();
                 }
-                mbAudFXPlay(1063);
+                mbAudFXPlay(MSM_SE_BRD00_KOOPA_MAGIC_BURST);
                 mbAudFXStop(seNo);
-                mbAudFXPlay(1548);
+                mbAudFXPlay(MSM_SE_SBRD_KOOPA_MINIGAME_END_IMPACT);
                 fn_8006A030(playerNo, 20, 20, 0);
                 particleCount = 0;
                 for (i = 0; i < effectCount; i++) {
@@ -2406,7 +2339,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 mbPlayerMotionShiftSet(playerNo, 8, 0.0f, 8.0f,
                     0);
                 mbAudFXDelaySet(30);
-                mbAudFXPlay(971);
+                mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
                 mbObjMotionShiftSet(guideModel, 3, 0.0f, 8.0f,
                     ((1 << 30) | (1 << 0)));
             }
@@ -2434,7 +2367,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 fn_80026B8C(particleCapsule[i], 7);
                 effectPos.x += 150.0f;
             }
-            mbAudFXPlay(1547);
+            mbAudFXPlay(MSM_SE_SBRD_KOOPA_EFFECT_POP);
             for (i = 0; i < effectCount; i++) {
                 mbPlayerCapsuleRemove(playerNo, 0);
             }
@@ -2448,7 +2381,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 HuPrcVSleep();
             }
             mbAudFXDelaySet(30);
-            mbAudFXPlay(973);
+            mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
             mbObjMotionShiftSet(guideModel, 5, 0.0f, 8.0f,
                 0);
             HuPrcVSleep();
@@ -2456,8 +2389,8 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 || !mbObjMotionEndCheck(guideModel)) {
                 HuPrcVSleep();
             }
-            mbAudFXPlay(1063);
-            mbAudFXPlay(1548);
+            mbAudFXPlay(MSM_SE_BRD00_KOOPA_MAGIC_BURST);
+            mbAudFXPlay(MSM_SE_SBRD_KOOPA_MINIGAME_END_IMPACT);
             fn_8006A030(playerNo, 20, 20, 0);
             particleCount = 0;
             for (i = 0; i < effectCount; i++) {
@@ -2478,7 +2411,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
             mbPlayerMotionShiftSet(playerNo, 8, 0.0f, 8.0f,
                 0);
             mbAudFXDelaySet(30);
-            mbAudFXPlay(971);
+            mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
             mbObjMotionShiftSet(guideModel, 3, 0.0f, 8.0f,
                 ((1 << 30) | (1 << 0)));
             break;
@@ -2486,7 +2419,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 18), 13);
             mbWinWait(winId);
             mbAudFXDelaySet(30);
-            mbAudFXPlay(973);
+            mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
             mbObjMotionShiftSet(guideModel, 5, 0.0f, 8.0f,
                 0);
             while (!mbObjMotionEndCheck(guideModel)) {
@@ -2494,7 +2427,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
             }
             mbWipeWhiteFadeOutTime(1);
             {
-                mbAudFXPlay(1063);
+                mbAudFXPlay(MSM_SE_BRD00_KOOPA_MAGIC_BURST);
                 mbWipeWhiteFadeInTime(90);
             }
             fn_8006A030(playerNo, 20, 20, 0);
@@ -2502,7 +2435,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 0);
             mbCoinAddProcExec(playerNo, -mbPlayerCoinGet(playerNo), -1, TRUE);
             mbAudFXDelaySet(30);
-            mbAudFXPlay(971);
+            mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
             mbObjMotionShiftSet(guideModel, 3, 0.0f, 8.0f,
                 ((1 << 30) | (1 << 0)));
             HuPrcSleep(30);
@@ -2517,7 +2450,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         break;
     case 2:
         mbAudFXDelaySet(30);
-        mbAudFXPlay(971);
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK);
         mbObjMotionSet(guideModel, 3, ((1 << 30) | (1 << 0)));
         mbWipeFadeIn();
         mbPauseDisableSet(FALSE);
@@ -2561,10 +2494,10 @@ static inline int SingleMKoopaSePlay(int seId)
     int i;
     int j;
     static int seLoseTbl[][3] = {
-        { 675, 627, 603 },
-        { 676, 628, 604 },
-        { 677, 629, 605 },
-        { 681, 633, 609 },
+        { MSM_SE_CHARVOICE_MINIKOOPAR_HAPPY_CHEER, MSM_SE_CHARVOICE_MINIKOOPAG_HAPPY_CHEER, MSM_SE_CHARVOICE_MINIKOOPAB_HAPPY_CHEER },
+        { MSM_SE_CHARVOICE_MINIKOOPAR_HAPPY_LAUGH, MSM_SE_CHARVOICE_MINIKOOPAG_HAPPY_LAUGH, MSM_SE_CHARVOICE_MINIKOOPAB_HAPPY_LAUGH },
+        { MSM_SE_CHARVOICE_MINIKOOPAR_EXCITED_SHOUT, MSM_SE_CHARVOICE_MINIKOOPAG_EXCITED_SHOUT, MSM_SE_CHARVOICE_MINIKOOPAB_EXCITED_SHOUT },
+        { MSM_SE_CHARVOICE_MINIKOOPAR_SAD_MOAN, MSM_SE_CHARVOICE_MINIKOOPAG_SAD_MOAN, MSM_SE_CHARVOICE_MINIKOOPAB_SAD_MOAN },
         { -1, -1, -1 },
     };
 
@@ -2645,19 +2578,19 @@ opponentPlayerNo = miniKoopaType + 1;
     mbPlayerPosGet(playerNo, &playerPos);
     mbPlayerPosGet(opponentPlayerNo, &opponentPos);
     PSVECSubtract(&opponentPos, &playerPos, &delta);
-    angle = (float)(180.0 * (atan2(delta.x, delta.z) / 3.141592653589793));
+    angle = (float)(180.0 * (atan2(delta.x, delta.z) / M_PI));
     mbPlayerRotYSet(playerNo, angle);
     mbPlayerRotYSet(opponentPlayerNo, 180.0f + angle);
 
     mbCameraMoveMasu(masuId, NULL, &viewOfs750, 1600.0f, -1.0f,
         -1);
     mbCameraMoveWait();
-    mbMusPlay(MB_MUS_CHAN_BG, 26, MSM_VOL_MAX, 0);
+    mbMusPlay(MB_MUS_CHAN_BG, MSM_STREAM_STORY_WIN, MSM_VOL_MAX, 0);
     mbWipeSpecialFadeOutCreate(8, 30);
     mbWipeSpecialWait();
 
     winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 22), characterNo);
-    SingleMKoopaSePlay(677);
+    SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_EXCITED_SHOUT);
     mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
     mbWinWait(winId);
 
@@ -2668,7 +2601,7 @@ opponentPlayerNo = miniKoopaType + 1;
             mbWinWait(winId);
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 24),
                 characterNo);
-            SingleMKoopaSePlay(677);
+            SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_EXCITED_SHOUT);
             mbWinWait(winId);
             returnMode = 0;
         } else {
@@ -2677,7 +2610,7 @@ opponentPlayerNo = miniKoopaType + 1;
             mbWinWait(winId);
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 26),
                 characterNo);
-            SingleMKoopaSePlay(677);
+            SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_EXCITED_SHOUT);
             mbWinWait(winId);
             returnMode = 1;
         }
@@ -2687,7 +2620,7 @@ opponentPlayerNo = miniKoopaType + 1;
         mbWinWait(winId);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 26),
             characterNo);
-        SingleMKoopaSePlay(677);
+        SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_EXCITED_SHOUT);
         mbWinWait(winId);
         returnMode = 2;
     } else {
@@ -2696,7 +2629,7 @@ opponentPlayerNo = miniKoopaType + 1;
         mbWinWait(winId);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 24),
             characterNo);
-        SingleMKoopaSePlay(677);
+        SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_EXCITED_SHOUT);
         mbWinWait(winId);
         returnMode = 3;
     }
@@ -2711,7 +2644,7 @@ opponentPlayerNo = miniKoopaType + 1;
         opponentMotion), 1);
 
     winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 29), characterNo);
-    SingleMKoopaSePlay(675);
+    SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_HAPPY_CHEER);
     mbWinWait(winId);
     fn_8006A1C4(65541);
     mbev_MgCallSingle(6);
@@ -2770,15 +2703,15 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
         masuPos.z - 70.0f);
     mbPlayerPosSet(opponentPlayerNo, masuPos.x - 70.0f, masuPos.y,
         masuPos.z + 70.0f);
-    mbMusPlay(MB_MUS_CHAN_BG, 26, MSM_VOL_MAX, 0);
+    mbMusPlay(MB_MUS_CHAN_BG, MSM_STREAM_STORY_WIN, MSM_VOL_MAX, 0);
 
-    if (SingleMgCoinBonusGet(playerNo) + SingleMgCoinGet(playerNo) > 0) {
+    if (GWMgCoinBonusGet(playerNo) + GWMgCoinGet(playerNo) > 0) {
         mbSingleCall(10, 6);
         mbPlayerMotionSet(opponentPlayerNo, 6, ((1 << 30) | (1 << 0)));
         mbWipeFadeIn();
         mbPauseDisableSet(FALSE);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 31), characterNo);
-        SingleMKoopaSePlay(681);
+        SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_SAD_MOAN);
         mbWinWait(winId);
 
         switch (returnMode) {
@@ -2797,7 +2730,7 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
                 fn_80026B8C(particleId, 7);
                 HuPrcSleep(12);
                 effNo = SingleEffCreate(&effectPos, masuTypeNo);
-                seNo = mbAudFXPlay(1542);
+                seNo = mbAudFXPlay(MSM_SE_SBRD_PRIZE_EFFECT_LOOP);
                 HuPrcSleep(30);
                 mbAudFXStop(seNo);
                 SingleEffPrizeStart(effNo);
@@ -2814,7 +2747,7 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
                 mbCoinAddExec(playerNo, 10);
                 mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f,
                     0);
-                mbPlayerWinLoseVoicePlay(playerNo, 7, 579);
+                mbPlayerWinLoseVoicePlay(playerNo, 7, MSM_SE_CHARVOICE_HAPPY_CHEER);
                 if (!unlocked) {
                     winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 0), -1);
                     mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
@@ -2834,7 +2767,7 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
             mbWinWait(winId);
             mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f,
                 0);
-            mbPlayerWinLoseVoicePlay(playerNo, 7, 579);
+            mbPlayerWinLoseVoicePlay(playerNo, 7, MSM_SE_CHARVOICE_HAPPY_CHEER);
             mbCoinAddProcExec(playerNo, 10, TRUE, TRUE);
             break;
         }
@@ -2845,7 +2778,7 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
         HuPrcSleep(30);
         mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
-    } else if (SingleMgCoinBonusGet(1) + SingleMgCoinGet(1) > 0) {
+    } else if (GWMgCoinBonusGet(1) + GWMgCoinGet(1) > 0) {
         mbPlayerMotionSet(playerNo, 6, ((1 << 30) | (1 << 0)));
         mbPlayerMotionSet(opponentPlayerNo, 7, 0);
         mbWipeFadeIn();
@@ -2875,7 +2808,7 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
         mbPlayerPosGet(playerNo, &playerPos);
         mbPlayerPosGet(opponentPlayerNo, &opponentPos);
         PSVECSubtract(&opponentPos, &playerPos, &delta);
-        angle = (float)(180.0 * (atan2(delta.x, delta.z) / 3.141592653589793));
+        angle = (float)(180.0 * (atan2(delta.x, delta.z) / M_PI));
         mbPlayerRotYSet(playerNo, angle);
         mbPlayerRotYSet(opponentPlayerNo, 180.0f + angle);
         mbWipeFadeIn();
@@ -2889,12 +2822,12 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
     mbPlayerPosGet(playerNo, &playerPos);
     mbPlayerPosGet(opponentPlayerNo, &opponentPos);
     PSVECSubtract(&opponentPos, &playerPos, &delta);
-    angle = (float)(180.0 * (atan2(delta.x, delta.z) / 3.141592653589793));
+    angle = (float)(180.0 * (atan2(delta.x, delta.z) / M_PI));
     mbPlayerRotateStart(playerNo, (s16)angle, 15);
     mbPlayerRotateStart(opponentPlayerNo, (s16)(180.0f + angle), 15);
     HuPrcSleep(30);
     winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 32), characterNo);
-    SingleMKoopaSePlay(676);
+    SingleMKoopaSePlay(MSM_SE_CHARVOICE_MINIKOOPAR_HAPPY_LAUGH);
     mbWinWait(winId);
 
 cleanup:
@@ -3158,15 +3091,15 @@ int mbSingleCall(int mode, int arg)
 }
 
 /* Microphone callback that stores a valid spoken dice result for the current turn. */
-static void SingleMicListener(u16 *response)
+static void SingleMicListener(MCResponse_s *response)
 {
     SINGLE_SAVE_WORK *saveWork = &singleSaveWork;
 
-    if (((SINGLE_MIC_RESPONSE *)response)->status != 0
-        || ((SINGLE_MIC_RESPONSE *)response)->resultCount == 0) {
+    if (response->status != 0
+        || response->count == 0) {
         saveWork->micResult = -1;
     } else {
-        saveWork->micResult = (s8)*((SINGLE_MIC_RESPONSE *)response)->result;
+        saveWork->micResult = (s8)*response->result;
         if (saveWork->micResult > 5) {
             saveWork->micResult = -1;
         }

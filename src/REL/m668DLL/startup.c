@@ -1,5 +1,6 @@
 /* Burnstile REL startup, sequence callbacks, and object work setup. */
 #include <math.h>
+#include "REL/m668DLL/callbacks.h"
 #include "game/mg/actman.h"
 #include "game/charman.h"
 #include "game/mg/seqman.h"
@@ -59,7 +60,6 @@ void fn_1_F4(void)
 }
 
 extern void *lbl_1_bss_0;
-void fn_1_1A48(OMOBJ *obj);
 void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
 /* Sequence initialization callback creates the stage object and requests the next phase. */
 void fn_1_118(s16 mode, s16 frameNo)
@@ -76,7 +76,6 @@ void fn_1_168(s16 mode, s16 frameNo) {}
 void fn_1_16C(s16 mode, s16 frameNo) {}
 void fn_1_170(s16 mode, s16 frameNo) {}
 void fn_1_174(s16 mode, s16 frameNo) {}
-
 
 /* Creates an object and zeroed callback work storage; null results are unchecked. */
 void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback)

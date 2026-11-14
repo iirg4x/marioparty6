@@ -1,6 +1,8 @@
 #ifndef MDBANKDLL_H
 #define MDBANKDLL_H
 
+void ObjectSetup(void);
+
 void fn_1_0(HUWINID winId, u32 mess, s16 index);
 void fn_1_9A8(s16 winNo);
 void fn_1_A18(s16 winNo);
