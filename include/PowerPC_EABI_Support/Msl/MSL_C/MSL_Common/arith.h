@@ -1,9 +1,6 @@
 #ifndef MP6_PROJECT_ARITH_H
 #define MP6_PROJECT_ARITH_H
-typedef struct {
-    int quot;
-    int rem;
-} div_t;
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/div_t.h"
 #ifdef __cplusplus
 extern "C" {
 #endif

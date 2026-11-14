@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_MSL_UTILITY
-#define MP6_RECONSTRUCTED_MSL_UTILITY
+#ifndef MP6_LIBRARY_MSL_UTILITY
+#define MP6_LIBRARY_MSL_UTILITY
 #include <stdio.h>
 #include <stdlib.h>
 namespace std {

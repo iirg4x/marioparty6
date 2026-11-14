@@ -668,7 +668,7 @@ static char* float2str(long double number, char *workspace, FormatSpec format_sp
     decform decimal_request;
     char* cursor;
     char* scan_cursor;
-    int steps, digits, sign_value;
+    int exponent, count, digits, sign_value;
     int integer_digits, fraction_digits;
 
     if (format_spec.precision > 509) {
@@ -788,17 +788,17 @@ static char* float2str(long double number, char *workspace, FormatSpec format_sp
                 fn_800F3DB8(&decimal_value, format_spec.precision + 1);
             }
 
-            steps = decimal_value.exp;
+            exponent = decimal_value.exp;
             sign_value = '+';
 
-            if (steps < 0) {
-                steps = -steps;
+            if (exponent < 0) {
+                exponent = -exponent;
                 sign_value = '-';
             }
 
-            for (digits = 0; steps || digits < 2; ++digits) {
-                *--cursor = steps % 10 + '0';
-                steps /= 10;
+            for (digits = 0; exponent || digits < 2; ++digits) {
+                *--cursor = exponent % 10 + '0';
+                exponent /= 10;
             }
 
             *--cursor = sign_value;
@@ -809,13 +809,13 @@ static char* float2str(long double number, char *workspace, FormatSpec format_sp
             }
 
             if (decimal_value.sig.length < format_spec.precision + 1) {
-                for (steps = format_spec.precision + 1 - decimal_value.sig.length + 1; --steps;) {
+                for (count = format_spec.precision + 1 - decimal_value.sig.length + 1; --count;) {
                     *--cursor = '0';
                 }
             }
 
-            for (steps = decimal_value.sig.length,
-                scan_cursor = (char*)decimal_value.sig.text + decimal_value.sig.length; --steps;) {
+            for (count = decimal_value.sig.length,
+                scan_cursor = (char*)decimal_value.sig.text + decimal_value.sig.length; --count;) {
                 *--cursor = *--scan_cursor;
             }
 
@@ -1251,34 +1251,34 @@ int vprintf(const char* format_string, va_list arguments)
 }
 
 /* Format a bounded string and terminate the portion within its capacity. */
-int vsnprintf(char* text_cursor, size_t capacity, const char* format_string, va_list arguments)
+int vsnprintf(char* destination, size_t capacity, const char* format_string, va_list arguments)
 {
     int result;
     __OutStrCtrl target;
-    target.CharStr      = text_cursor;
+    target.CharStr      = destination;
     target.MaxCharCount = capacity;
     target.CharsWritten = 0;
 
     result = __pformatter(&__StringWrite, &target, format_string, arguments);
 
-    if (text_cursor) {
-        text_cursor[(result < capacity) ? result : capacity - 1] = '\0';
+    if (destination) {
+        destination[(result < capacity) ? result : capacity - 1] = '\0';
     }
 
     return result;
 }
 
 /* Format an argument list with the unbounded destination convention. */
-int vsprintf(char *text_cursor, const char *format_string, va_list arguments) {
-    return vsnprintf(text_cursor, 0xFFFFFFFF /* The destination length is unrestricted. */,
+int vsprintf(char *destination, const char *format_string, va_list arguments) {
+    return vsnprintf(destination, 0xFFFFFFFF /* The destination length is unrestricted. */,
         format_string, arguments);
 }
 
 /* Format variadic arguments with the unbounded destination convention. */
-int sprintf(char* text_cursor, const char* format_string, ...)
+int sprintf(char* destination, const char* format_string, ...)
 {
     va_list arguments;
     va_start(arguments, format_string);
-    return vsnprintf(text_cursor, 0xFFFFFFFF /* No bound is imposed on the formatted output. */,
+    return vsnprintf(destination, 0xFFFFFFFF /* No bound is imposed on the formatted output. */,
         format_string, arguments);
 }

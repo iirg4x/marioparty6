@@ -1,5 +1,4 @@
 #ifndef MP6_C_CSTDDEF_H
 #define MP6_C_CSTDDEF_H
-/* C++ access to the C standard interface. */
 #include "stddef.h"
 #endif

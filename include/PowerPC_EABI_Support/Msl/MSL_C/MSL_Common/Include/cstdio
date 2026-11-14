@@ -1,5 +1,4 @@
 #ifndef MP6_C_CSTDIO_H
 #define MP6_C_CSTDIO_H
-/* C++ access to the C standard interface. */
 #include "stdio.h"
 #endif

@@ -1,4 +1,0 @@
-#ifndef MP6_RECONSTRUCTED_STDEXCEPT
-#define MP6_RECONSTRUCTED_STDEXCEPT
-// Containers report their errors through std::__msl_error in this build.
-#endif

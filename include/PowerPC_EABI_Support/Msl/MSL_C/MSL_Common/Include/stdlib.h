@@ -2,8 +2,6 @@
 #define MP6_C_STDLIB_H
 #include "stddef.h"
 #include "div_t.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/alloc.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/arith.h"
 /* Standard allocation, conversion, ordering, and process interfaces. */
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
@@ -12,6 +10,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+void free(void *);
+void *malloc(size_t);
+div_t div(int, int);
 double atof(const char *);
 int atoi(const char *);
 long atol(const char *);

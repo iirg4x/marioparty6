@@ -1,6 +1,5 @@
 #ifndef MP6_PROJECT_FLOAT_H
 #define MP6_PROJECT_FLOAT_H
-/* Expose the shared public interface. */
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #include "Include/float.h"
 #include "PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include/math_ppc.h"

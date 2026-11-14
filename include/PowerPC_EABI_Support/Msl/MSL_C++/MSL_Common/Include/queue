@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_QUEUE
-#define MP6_RECONSTRUCTED_QUEUE
+#ifndef MP6_LIBRARY_QUEUE
+#define MP6_LIBRARY_QUEUE
 #include <deque>
 #include <vector>
 #include <functional>

@@ -11,6 +11,14 @@ typedef struct PTMF {
 	} f_data;
 } PTMF;
 
+/* Virtual call entry stores the target address followed by its object adjustment. */
+typedef struct {
+    // Function address loaded into the count register for dispatch.
+    void* target;
+    // Additional adjustment applied before entering the virtual target.
+    long this_delta;
+} member_call_entry;
+
 /* The null descriptor has no adjustment or target. */
 const PTMF __ptmf_null = { 0, 0, 0 };
 
@@ -72,8 +80,8 @@ asm void __ptmf_call(...)
     blt- dispatch_target
     lwzx r12, r3, r12
     add r12, r12, r11
-    lwz r0, 0x4(r12)
-    lwz r12, 0x0(r12)
+    lwz r0, member_call_entry.this_delta(r12)
+    lwz r12, member_call_entry.target(r12)
     add r3, r3, r0
 dispatch_target:
     mtctr r12
@@ -93,8 +101,8 @@ asm void __ptmf_call4(...)
     blt- dispatch_target
     lwzx r12, r4, r12
     add r12, r12, r11
-    lwz r0, 0x4(r12)
-    lwz r12, 0x0(r12)
+    lwz r0, member_call_entry.this_delta(r12)
+    lwz r12, member_call_entry.target(r12)
     add r4, r4, r0
 dispatch_target:
     mtctr r12
@@ -111,10 +119,10 @@ asm void __ptmf_scall(...)
 		lwz     r12, PTMF.f_data(r12)
 		add     r3, r3, r0
 		cmpwi   r11, 0
-		blt-    cr0, loc_0x20
+		blt-    cr0, dispatch_target
 		lwzx    r12, r3, r12
 		lwzx    r12, r12, r11
-	loc_0x20:
+	dispatch_target:
 		mtctr   r12
 		bctr
 }
@@ -129,10 +137,10 @@ asm void __ptmf_scall4(...)
 		lwz     r12, PTMF.f_data(r12)
 		add     r4, r4, r0
 		cmpwi   r11, 0
-		blt-    cr0, loc_0x20
+		blt-    cr0, dispatch_target
 		lwzx    r12, r4, r12
 		lwzx    r12, r12, r11
-	loc_0x20:
+	dispatch_target:
 		mtctr   r12
 		bctr
 }

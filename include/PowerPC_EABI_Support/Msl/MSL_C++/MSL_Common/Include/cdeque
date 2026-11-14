@@ -1,5 +1,5 @@
-#ifndef MP6_RECONSTRUCTED_CDEQUE
-#define MP6_RECONSTRUCTED_CDEQUE
+#ifndef MP6_LIBRARY_CDEQUE
+#define MP6_LIBRARY_CDEQUE
 #include <memory>
 #include <algorithm>
 #include <limits>
@@ -19,25 +19,6 @@ struct ring_pointer_element<T*> {
         value = true
     };
 };
-// Keep the allocation extent beside its stateless allocator.
-template <class Allocator, class Size>
-class ring_extent_storage : public Allocator {
-public:
-    // Number of element slots retained by this allocator.
-    Size extent_;
-    // Start with an allocator and no reserved elements.
-    explicit ring_extent_storage(const Allocator& a) : Allocator(a), extent_(0) {}
-    // Retain the supplied allocator and the number of allocated element slots.
-    ring_extent_storage(const Allocator& a, const Size& extent) : Allocator(a), extent_(extent) {}
-    // Access the allocator used to obtain and release ring slots.
-    Allocator& allocator() { return *this; }
-    // Read the allocation domain through a const extent record.
-    const Allocator& allocator() const { return *this; }
-    // Expose the slot count for updates after allocation.
-    Size& extent() { return extent_; }
-    // Read the reserved slot count through a const storage record.
-    const Size& extent() const { return extent_; }
-};
 // A circular allocation with an extent, element count, first index and storage pointer.
 template <class T, class Allocator = std::allocator<T> >
 class cdeque {
@@ -49,7 +30,7 @@ public:
     typedef const T& const_reference;
 private:
     // Element allocator and the extent of its single circular allocation.
-    ring_extent_storage<Allocator, size_type> allocation_extent;
+    std::_EmptyMemberOpt<Allocator, size_type> allocation_extent;
     // Live elements in logical sequence order.
     size_type size_;
     // Physical slot corresponding to logical element zero.
@@ -137,7 +118,9 @@ public:
         tear_down();
     }
     // Release the retained circular allocation.
-    void tear_down() { if (storage_) alloc().deallocate(storage_, allocation_extent.extent_); }
+    void tear_down() {
+        if (storage_) allocation_extent.deallocate(storage_, allocation_extent.extent_);
+    }
     size_type size() const { return size_; }
     size_type capacity() const { return allocation_extent.extent_; }
     bool empty() const { return size_ == 0; }
@@ -447,5 +430,80 @@ inline void
 cdeque<bool*, Allocator>::push_back(bool* const& value) {
     base::push_back((const void* const&)value);
 }
+// Pointer-block ring uses the shared allocation and carries no additional fields.
+template <class T, class Allocator>
+class cdeque<T**, Allocator> : public cdeque<const void*,
+    typename Allocator::template rebind<const void*>::other> {
+    typedef cdeque<const void*, typename Allocator::template rebind<const void*>::other> base;
+public:
+    typedef base::size_type size_type;
+    // Mutable block traversal inherits the shared ring position and adds no fields.
+    class iterator : public base::iterator {
+    public:
+        typedef T** value_type;
+        typedef T*** pointer;
+        typedef T**& reference;
+        iterator() : base::iterator() {}
+        iterator(const base::iterator& p) : base::iterator(p) {}
+        reference operator*() const { return (reference)base::iterator::operator*(); }
+        iterator& operator++() {
+            base::iterator::operator++();
+            return *this;
+        }
+        iterator& operator--() {
+            base::iterator::operator--();
+            return *this;
+        }
+        iterator& operator+=(long n) {
+            base::iterator::operator+=(n);
+            return *this;
+        }
+        iterator operator+(long n) const { return iterator(*this) += n; }
+    };
+    // Constant block traversal uses the read-only base position without additional members.
+    class const_iterator : public base::const_iterator {
+    public:
+        typedef T** value_type;
+        typedef T** const* pointer;
+        typedef T** const& reference;
+        const_iterator(const base::const_iterator& p) : base::const_iterator(p) {}
+        reference operator*() const { return (reference)base::const_iterator::operator*(); }
+        const_iterator& operator++() {
+            base::const_iterator::operator++();
+            return *this;
+        }
+        const_iterator& operator+=(long n) {
+            base::const_iterator::operator+=(n);
+            return *this;
+        }
+    };
+    cdeque(const Allocator& a = Allocator()) :
+        base(typename Allocator::template rebind<const void*>::other(a)) {}
+    size_type size() const { return base::size(); }
+    size_type capacity() const { return base::capacity(); }
+    bool empty() const { return base::empty(); }
+    void reserve(size_type n) { base::reserve(n); }
+    iterator begin() { return iterator(base::begin()); }
+    const_iterator begin() const { return const_iterator(base::begin()); }
+    iterator end() { return iterator(base::end()); }
+    template <class Input>
+    void assign(Input first, Input last) {
+        typedef std::__convert_iterator<std::__implicit_convert<T***, Input> > converted_iterator;
+        base::assign(converted_iterator(first), converted_iterator(last));
+    }
+    T**& operator[](size_type n) { return (T**&)base::operator[](n); }
+    T** const& operator[](size_type n) const { return (T** const&)base::operator[](n); }
+    T**& front() { return (T**&)base::front(); }
+    T**& back() { return (T**&)base::back(); }
+    void push_back(T** const& value);
+    void resize(size_type n, T** value = 0) { base::resize(n, value); }
+    void swap(cdeque& other) { base::swap(other); }
+};
+template <class T, class Allocator>
+inline void
+cdeque<T**, Allocator>::push_back(T** const& value) {
+    base::push_back((const void* const&)value);
+}
+
 }
 #endif

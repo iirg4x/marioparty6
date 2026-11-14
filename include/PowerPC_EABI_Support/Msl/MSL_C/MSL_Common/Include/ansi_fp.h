@@ -3,14 +3,14 @@
 
 #include "float.h"
 
-/* Maximum digit-byte extent of the decimal significand record. */
+/* Maximum number of significant digit bytes requested by decimal conversion. */
 #define SIGDIGLEN 36
 
 /* Decimal result stores sign bytes, a short exponent and an embedded significand record. */
 typedef struct decimal {
 	// Sign flag retained in the decimal conversion result.
 	char sign;
-	// Byte with no identified meaning in the shared conversion record.
+	// Unread byte at offset 1; the short exponent begins at offset 2.
 	char unk1;
 	// Decimal exponent used to place the significand digits.
 	short exp;
@@ -20,7 +20,7 @@ typedef struct decimal {
 		unsigned char length;
 		/* Decimal digits consumed by formatting. */
 		unsigned char text[36];
-		/* Trailing byte whose meaning has not been identified. */
+		/* Unread byte at offset 41; the decimal result occupies 42 bytes. */
 		unsigned char unk41;
 	} sig;
 } decimal;
@@ -29,7 +29,7 @@ typedef struct decimal {
 typedef struct decform {
 	// Output-style selector passed to decimal conversion.
 	char style;
-	// Unidentified byte retained between the style and requested digit count.
+	// Unread byte at offset 1; the requested digit count follows at offset 2.
 	char unk1;
 	// Requested count of decimal digits.
 	short digits;
