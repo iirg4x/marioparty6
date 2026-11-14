@@ -56,39 +56,17 @@ typedef struct {
     s16 eventStatus;
     s16 delayCounter;
     u8 unk_1C[40]; /* No code names this field. */
-} M666Bss98Work;
+} M666MicrophonePlayer;
 
-extern M666Bss98Work lbl_1_bss_98;
+extern M666MicrophonePlayer lbl_1_bss_98;
 
 typedef struct {
     s16 modelId;
-    union {
-        struct {
-            s16 slotIndices[8];
-            s16 activeCount;
-            s16 unknown14;
-        } movingGroup;
-        struct {
-            s16 slotIndices[8];
-            s16 activeCount;
-            s16 unknown14;
-        } obstacleGroup;
-        struct {
-            s16 obstacleIndices[8];
-            s16 obstacleCount;
-            s16 unknown14;
-        } obstacleQueue;
-        struct {
-            s16 entryValues[10];
-        } entryRow;
-        struct {
-            s16 obstacleIndices[8];
-            s16 obstacleCount;
-            s16 state;
-        } motionEvent;
-    } data;
-} M666Bss580Entry;
+    s16 obstacleIndices[8];
+    s16 obstacleCount;
+    s16 state;
+} M666ObstacleQueue;
 
-extern M666Bss580Entry lbl_1_bss_580[6];
+extern M666ObstacleQueue lbl_1_bss_580[6];
 
 #endif

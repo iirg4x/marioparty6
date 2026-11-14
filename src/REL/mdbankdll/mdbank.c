@@ -22,13 +22,21 @@ typedef struct MdbankAnimSet {
     s16 state[4];
 } MDBANK_ANIM_SET;
 
-typedef union MdbankItem {
-    s16 value[16];
-    struct {
-        s16 value[12];
-        s32 nameMessage;
-        s32 message;
-    } choice;
+typedef struct MdbankItem {
+    s16 unlockRequirement;
+    s16 action;
+    s16 itemNo;
+    s16 price;
+    s16 anim;
+    s16 ownedAnim;
+    s16 overlayAnim;
+    s16 animBank;
+    s16 ownedAnimBank;
+    s16 overlayAnimBank;
+    s16 owned;
+    s16 unk16; /* No code reads this field. */
+    s32 nameMessage;
+    s32 message;
 } MDBANK_ITEM;
 
 enum MdbankItemMessage {
@@ -64,16 +72,16 @@ typedef void (*MDBANK_VOID_FUNC)(void);
 
 typedef struct MdbankMoveWork {
     s16 active;
-    s16 unk_02;
+    s16 unk_02; /* No code reads this field. */
     float time;
     float duration;
     HuVecF start;
     HuVecF control;
     HuVecF end;
     float unk30;
-    float unk34;
-    float unk38;
-    float unk3C;
+    float unk34; /* No code reads this field. */
+    float unk38; /* No code reads this field. */
+    float unk3C; /* No code reads this field. */
 } MDBANK_MOVE_WORK;
 
 typedef struct MdbankEventRecord {
@@ -86,7 +94,7 @@ typedef struct MdbankEventRecord {
     float rotation;
     float value34;
     float value38;
-    float value3C;
+    float unk3C; /* No code reads this field. */
 } MDBANK_EVENT_RECORD;
 
 typedef struct MdbankPostCallbackWork {
@@ -180,7 +188,63 @@ s32 lbl_1_data_4[12] = { DATANUM(0x940000, 3), DATANUM(0x940000, 4), DATANUM(0x9
 s16 lbl_1_data_34[4] = { 2, 4, 4, 1 };
 MDBANK_SPRITE_CONFIG lbl_1_data_3C[11] = { { 0, 0, 2, 10, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 0, 1, 3, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 0, 5, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 1, 5, 0, 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 2, 5, 0, 3, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 3, 5, 0, 1, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 0, 4, 20, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 1, 4, 21, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 2, 4, 22, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 3, 4, 23, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 3, 0, 11, 0, 0, 288.0f, 240.0f, 10.0f, 10.0f, 0.0f } };
 s32 lbl_1_data_19C[36] = { DATANUM(0x940000, 28), DATANUM(0x940000, 30), DATANUM(0x940000, 29), DATANUM(0x940000, 54), DATANUM(0x940000, 31), DATANUM(0x940000, 32), DATANUM(0x940000, 33), DATANUM(0x940000, 34), DATANUM(0x940000, 35), DATANUM(0x940000, 36), DATANUM(0x940000, 41), DATANUM(0x940000, 42), DATANUM(0x940000, 43), DATANUM(0x940000, 44), DATANUM(0x940000, 45), DATANUM(0x940000, 46), DATANUM(0x940000, 47), DATANUM(0x940000, 48), DATANUM(0x940000, 49), DATANUM(0x940000, 50), DATANUM(0x940000, 51), DATANUM(0x940000, 37), DATANUM(0x940000, 38), DATANUM(0x940000, 39), DATANUM(0x940000, 40), DATANUM(0x940000, 53), DATANUM(0x940000, 52), DATANUM(0x940000, 59), DATANUM(0x940000, 60), DATANUM(0x940000, 61), DATANUM(0x940000, 62), DATANUM(0x940000, 55), DATANUM(0x940000, 63), DATANUM(0x940000, 56), DATANUM(0x940000, 57), DATANUM(0x940000, 58) };
-MDBANK_ITEM lbl_1_data_22C[55] = { { { 0, 1, 1, 10, 4, -1, -1, -1, -1, -1, 0, 0, 7, 0, 7, 55 } }, { { 0, 0, 2, 30, 5, 5, -1, 0, 1, -1, 0, 0, 7, 1, 7, 57 } }, { { 0, 0, 3, 30, 6, -1, -1, -1, -1, -1, 0, 0, 7, 2, 7, 58 } }, { { 0, 0, 4, 30, 7, -1, -1, -1, -1, -1, 0, 0, 7, 3, 7, 59 } }, { { 0, 0, 51, 100, 33, -1, -1, -1, -1, -1, 0, 0, 7, 50, 7, 111 } }, { { 0, 0, 52, 50, 34, -1, -1, -1, -1, -1, 0, 0, 7, 51, 7, 112 } }, { { 0, 0, 6, 50, 9, -1, -1, -1, -1, -1, 0, 0, 7, 5, 7, 62 } }, { { 0, 0, 7, 50, 21, -1, -1, -1, -1, -1, 0, 0, 7, 6, 7, 63 } }, { { 2, 0, 8, 50, 22, -1, -1, -1, -1, -1, 0, 0, 7, 7, 7, 64 } }, { { 0, 3, 9, 30, 23, -1, -1, -1, -1, -1, 0, 0, 7, 8, 7, 66 } }, { { 1, 0, 11, 10, 10, -1, 27, -1, -1, 1, 0, 0, 7, 10, 7, 70 } }, { { 1, 0, 12, 10, 10, -1, 27, -1, -1, 2, 0, 0, 7, 11, 7, 72 } }, { { 1, 0, 13, 10, 10, -1, 27, -1, -1, 3, 0, 0, 7, 12, 7, 73 } }, { { 1, 0, 14, 10, 10, -1, 27, -1, -1, 4, 0, 0, 7, 13, 7, 74 } }, { { 1, 0, 15, 10, 10, -1, 28, -1, -1, 0, 0, 0, 7, 14, 7, 75 } }, { { 1, 0, 16, 20, 10, -1, 28, -1, -1, 1, 0, 0, 7, 15, 7, 76 } }, { { 1, 0, 17, 20, 10, -1, 28, -1, -1, 2, 0, 0, 7, 16, 7, 77 } }, { { 1, 0, 18, 20, 10, -1, 28, -1, -1, 3, 0, 0, 7, 17, 7, 78 } }, { { 1, 0, 19, 20, 10, -1, 28, -1, -1, 4, 0, 0, 7, 18, 7, 79 } }, { { 1, 0, 20, 20, 10, -1, 29, -1, -1, 0, 0, 0, 7, 19, 7, 80 } }, { { 1, 0, 21, 30, 10, -1, 29, -1, -1, 1, 0, 0, 7, 20, 7, 81 } }, { { 1, 0, 22, 30, 10, -1, 29, -1, -1, 2, 0, 0, 7, 21, 7, 82 } }, { { 1, 0, 23, 30, 10, -1, 29, -1, -1, 3, 0, 0, 7, 22, 7, 83 } }, { { 1, 0, 24, 30, 10, -1, 29, -1, -1, 4, 0, 0, 7, 23, 7, 84 } }, { { 1, 0, 25, 30, 10, -1, 30, -1, -1, 0, 0, 0, 7, 24, 7, 85 } }, { { 1, 0, 26, 40, 10, -1, 30, -1, -1, 1, 0, 0, 7, 25, 7, 86 } }, { { 1, 0, 27, 40, 10, -1, 30, -1, -1, 2, 0, 0, 7, 26, 7, 87 } }, { { 1, 0, 28, 40, 10, -1, 30, -1, -1, 3, 0, 0, 7, 27, 7, 88 } }, { { 1, 0, 29, 40, 10, -1, 30, -1, -1, 4, 0, 0, 7, 28, 7, 89 } }, { { 0, 0, 30, 10, 25, -1, -1, -1, -1, -1, 0, 0, 7, 29, 7, 90 } }, { { 0, 0, 31, 30, 11, -1, -1, -1, -1, -1, 0, 0, 7, 30, 7, 91 } }, { { 0, 0, 32, 30, 11, -1, -1, -1, -1, -1, 0, 0, 7, 31, 7, 92 } }, { { 0, 0, 33, 30, 11, -1, -1, -1, -1, -1, 0, 0, 7, 32, 7, 93 } }, { { 0, 0, 34, 30, 11, -1, -1, -1, -1, -1, 0, 0, 7, 33, 7, 94 } }, { { 0, 0, 35, 30, 11, -1, -1, -1, -1, -1, 0, 0, 7, 34, 7, 95 } }, { { 0, 0, 36, 10, 12, -1, -1, -1, -1, -1, 0, 0, 7, 35, 7, 96 } }, { { 0, 0, 37, 10, 13, -1, -1, -1, -1, -1, 0, 0, 7, 36, 7, 97 } }, { { 0, 0, 38, 10, 14, -1, -1, -1, -1, -1, 0, 0, 7, 37, 7, 98 } }, { { 0, 0, 39, 10, 15, -1, -1, -1, -1, -1, 0, 0, 7, 38, 7, 99 } }, { { 0, 0, 40, 10, 16, -1, -1, -1, -1, -1, 0, 0, 7, 39, 7, 100 } }, { { 0, 0, 41, 10, 17, -1, -1, -1, -1, -1, 0, 0, 7, 40, 7, 101 } }, { { 0, 0, 42, 10, 18, -1, -1, -1, -1, -1, 0, 0, 7, 41, 7, 102 } }, { { 0, 0, 43, 10, 19, -1, -1, -1, -1, -1, 0, 0, 7, 42, 7, 103 } }, { { 0, 0, 44, 10, 20, -1, -1, -1, -1, -1, 0, 0, 7, 43, 7, 104 } }, { { 0, 0, 45, 10, 26, -1, -1, -1, -1, -1, 0, 0, 7, 44, 7, 105 } }, { { 0, 0, 46, 10, 3, -1, -1, -1, -1, -1, 0, 0, 7, 45, 7, 106 } }, { { 0, 0, 47, 10, 3, -1, -1, -1, -1, -1, 0, 0, 7, 46, 7, 107 } }, { { 0, 0, 48, 10, 3, -1, -1, -1, -1, -1, 0, 0, 7, 47, 7, 110 } }, { { 0, 0, 49, 10, 3, -1, -1, -1, -1, -1, 0, 0, 7, 48, 7, 116 } }, { { 0, 0, 50, 10, 3, -1, -1, -1, -1, -1, 0, 0, 7, 49, 7, 109 } }, { { 0, 0, 54, 10, 3, -1, -1, -1, -1, -1, 0, 0, 7, 53, 7, 108 } }, { { 0, 0, 55, 10, 3, -1, -1, -1, -1, -1, 0, 0, 7, 54, 7, 115 } }, { { 0, 0, 10, 10, 24, -1, -1, -1, -1, -1, 0, 0, 7, 9, 7, 69 } }, { { 3, 0, 53, 10, 24, -1, -1, -1, -1, -1, 0, 0, 7, 52, 7, 113 } }, { { 0, 2, 5, 100, 8, -1, -1, -1, -1, -1, 0, 0, 7, 4, 7, 60 } } };
+MDBANK_ITEM lbl_1_data_22C[55] = {
+    { 0, 1, 1, 10, 4, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 0), MESSNUM(MESS_SBANK_ITEM, 55) },
+    { 0, 0, 2, 30, 5, 5, -1, 0, 1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 1), MESSNUM(MESS_SBANK_ITEM, 57) },
+    { 0, 0, 3, 30, 6, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 2), MESSNUM(MESS_SBANK_ITEM, 58) },
+    { 0, 0, 4, 30, 7, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 3), MESSNUM(MESS_SBANK_ITEM, 59) },
+    { 0, 0, 51, 100, 33, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 50), MESSNUM(MESS_SBANK_ITEM, 111) },
+    { 0, 0, 52, 50, 34, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 51), MESSNUM(MESS_SBANK_ITEM, 112) },
+    { 0, 0, 6, 50, 9, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 5), MESSNUM(MESS_SBANK_ITEM, 62) },
+    { 0, 0, 7, 50, 21, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 6), MESSNUM(MESS_SBANK_ITEM, 63) },
+    { 2, 0, 8, 50, 22, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 7), MESSNUM(MESS_SBANK_ITEM, 64) },
+    { 0, 3, 9, 30, 23, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 8), MESSNUM(MESS_SBANK_ITEM, 66) },
+    { 1, 0, 11, 10, 10, -1, 27, -1, -1, 1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 10), MESSNUM(MESS_SBANK_ITEM, 70) },
+    { 1, 0, 12, 10, 10, -1, 27, -1, -1, 2, 0, 0, MESSNUM(MESS_SBANK_ITEM, 11), MESSNUM(MESS_SBANK_ITEM, 72) },
+    { 1, 0, 13, 10, 10, -1, 27, -1, -1, 3, 0, 0, MESSNUM(MESS_SBANK_ITEM, 12), MESSNUM(MESS_SBANK_ITEM, 73) },
+    { 1, 0, 14, 10, 10, -1, 27, -1, -1, 4, 0, 0, MESSNUM(MESS_SBANK_ITEM, 13), MESSNUM(MESS_SBANK_ITEM, 74) },
+    { 1, 0, 15, 10, 10, -1, 28, -1, -1, 0, 0, 0, MESSNUM(MESS_SBANK_ITEM, 14), MESSNUM(MESS_SBANK_ITEM, 75) },
+    { 1, 0, 16, 20, 10, -1, 28, -1, -1, 1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 15), MESSNUM(MESS_SBANK_ITEM, 76) },
+    { 1, 0, 17, 20, 10, -1, 28, -1, -1, 2, 0, 0, MESSNUM(MESS_SBANK_ITEM, 16), MESSNUM(MESS_SBANK_ITEM, 77) },
+    { 1, 0, 18, 20, 10, -1, 28, -1, -1, 3, 0, 0, MESSNUM(MESS_SBANK_ITEM, 17), MESSNUM(MESS_SBANK_ITEM, 78) },
+    { 1, 0, 19, 20, 10, -1, 28, -1, -1, 4, 0, 0, MESSNUM(MESS_SBANK_ITEM, 18), MESSNUM(MESS_SBANK_ITEM, 79) },
+    { 1, 0, 20, 20, 10, -1, 29, -1, -1, 0, 0, 0, MESSNUM(MESS_SBANK_ITEM, 19), MESSNUM(MESS_SBANK_ITEM, 80) },
+    { 1, 0, 21, 30, 10, -1, 29, -1, -1, 1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 20), MESSNUM(MESS_SBANK_ITEM, 81) },
+    { 1, 0, 22, 30, 10, -1, 29, -1, -1, 2, 0, 0, MESSNUM(MESS_SBANK_ITEM, 21), MESSNUM(MESS_SBANK_ITEM, 82) },
+    { 1, 0, 23, 30, 10, -1, 29, -1, -1, 3, 0, 0, MESSNUM(MESS_SBANK_ITEM, 22), MESSNUM(MESS_SBANK_ITEM, 83) },
+    { 1, 0, 24, 30, 10, -1, 29, -1, -1, 4, 0, 0, MESSNUM(MESS_SBANK_ITEM, 23), MESSNUM(MESS_SBANK_ITEM, 84) },
+    { 1, 0, 25, 30, 10, -1, 30, -1, -1, 0, 0, 0, MESSNUM(MESS_SBANK_ITEM, 24), MESSNUM(MESS_SBANK_ITEM, 85) },
+    { 1, 0, 26, 40, 10, -1, 30, -1, -1, 1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 25), MESSNUM(MESS_SBANK_ITEM, 86) },
+    { 1, 0, 27, 40, 10, -1, 30, -1, -1, 2, 0, 0, MESSNUM(MESS_SBANK_ITEM, 26), MESSNUM(MESS_SBANK_ITEM, 87) },
+    { 1, 0, 28, 40, 10, -1, 30, -1, -1, 3, 0, 0, MESSNUM(MESS_SBANK_ITEM, 27), MESSNUM(MESS_SBANK_ITEM, 88) },
+    { 1, 0, 29, 40, 10, -1, 30, -1, -1, 4, 0, 0, MESSNUM(MESS_SBANK_ITEM, 28), MESSNUM(MESS_SBANK_ITEM, 89) },
+    { 0, 0, 30, 10, 25, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 29), MESSNUM(MESS_SBANK_ITEM, 90) },
+    { 0, 0, 31, 30, 11, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 30), MESSNUM(MESS_SBANK_ITEM, 91) },
+    { 0, 0, 32, 30, 11, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 31), MESSNUM(MESS_SBANK_ITEM, 92) },
+    { 0, 0, 33, 30, 11, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 32), MESSNUM(MESS_SBANK_ITEM, 93) },
+    { 0, 0, 34, 30, 11, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 33), MESSNUM(MESS_SBANK_ITEM, 94) },
+    { 0, 0, 35, 30, 11, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 34), MESSNUM(MESS_SBANK_ITEM, 95) },
+    { 0, 0, 36, 10, 12, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 35), MESSNUM(MESS_SBANK_ITEM, 96) },
+    { 0, 0, 37, 10, 13, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 36), MESSNUM(MESS_SBANK_ITEM, 97) },
+    { 0, 0, 38, 10, 14, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 37), MESSNUM(MESS_SBANK_ITEM, 98) },
+    { 0, 0, 39, 10, 15, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 38), MESSNUM(MESS_SBANK_ITEM, 99) },
+    { 0, 0, 40, 10, 16, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 39), MESSNUM(MESS_SBANK_ITEM, 100) },
+    { 0, 0, 41, 10, 17, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 40), MESSNUM(MESS_SBANK_ITEM, 101) },
+    { 0, 0, 42, 10, 18, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 41), MESSNUM(MESS_SBANK_ITEM, 102) },
+    { 0, 0, 43, 10, 19, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 42), MESSNUM(MESS_SBANK_ITEM, 103) },
+    { 0, 0, 44, 10, 20, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 43), MESSNUM(MESS_SBANK_ITEM, 104) },
+    { 0, 0, 45, 10, 26, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 44), MESSNUM(MESS_SBANK_ITEM, 105) },
+    { 0, 0, 46, 10, 3, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 45), MESSNUM(MESS_SBANK_ITEM, 106) },
+    { 0, 0, 47, 10, 3, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 46), MESSNUM(MESS_SBANK_ITEM, 107) },
+    { 0, 0, 48, 10, 3, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 47), MESSNUM(MESS_SBANK_ITEM, 110) },
+    { 0, 0, 49, 10, 3, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 48), MESSNUM(MESS_SBANK_ITEM, 116) },
+    { 0, 0, 50, 10, 3, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 49), MESSNUM(MESS_SBANK_ITEM, 109) },
+    { 0, 0, 54, 10, 3, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 53), MESSNUM(MESS_SBANK_ITEM, 108) },
+    { 0, 0, 55, 10, 3, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 54), MESSNUM(MESS_SBANK_ITEM, 115) },
+    { 0, 0, 10, 10, 24, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 9), MESSNUM(MESS_SBANK_ITEM, 69) },
+    { 3, 0, 53, 10, 24, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 52), MESSNUM(MESS_SBANK_ITEM, 113) },
+    { 0, 2, 5, 100, 8, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 4), MESSNUM(MESS_SBANK_ITEM, 60) },
+};
 u32 lbl_1_data_90C = 0xFFFFFFFF;
 
 extern u8 lbl_802BFFE0[4];
@@ -292,7 +356,6 @@ void fn_1_8284(void);
 void fn_1_8340(void);
 void fn_1_83CC(void);
 void fn_1_86C0(void);
-void ObjectSetup(void);
 int _prolog(void);
 void _epilog(void);
 void fn_1_92A4(void);
@@ -308,6 +371,7 @@ s32 fn_1_EEB8(s16 index);
 s32 fn_1_F7C0(s16 index);
 void fn_1_1050C(s16 index);
 
+/* Plays the guide sound selected by a message callback, using its requested pan when supplied. */
 void fn_1_0(HUWINID winId, u32 mess, s16 index)
 {
     s32 messages[2] = { MESSNUM(MESS_SBANK_MAIN_MENU, 0), -1 };
@@ -365,6 +429,7 @@ char lbl_1_data_9C5[11] = "hatena01";
 HuVecF lbl_1_data_9D0 = { 0.0f, 280.0f, 800.0f };
 char lbl_1_data_9DC[12] = "bank_star04";
 
+/* Loads the saved balance and item flags, and selects the initial shop page and cursor. */
 void fn_1_1AC(void)
 {
     s16 i;
@@ -383,13 +448,14 @@ void fn_1_1AC(void)
         lbl_1_bss_1930[3] = 1;
     }
     for (i = 0; i < 55; i++) {
-        lbl_1_data_22C[i].value[10] = 0;
-        if (fn_8003D2F0(lbl_1_data_22C[i].value[2])) {
-            lbl_1_data_22C[i].value[10] = 1;
+        lbl_1_data_22C[i].owned = 0;
+        if (fn_8003D2F0(lbl_1_data_22C[i].itemNo)) {
+            lbl_1_data_22C[i].owned = 1;
         }
     }
 }
 
+/* Clamps and saves the balance, writes owned item flags, and checks the bank unlock. */
 void fn_1_308(void)
 {
     s16 i;
@@ -402,8 +468,8 @@ void fn_1_308(void)
     }
     lbl_80265E30.bankStar = lbl_1_bss_1930[0];
     for (i = 0; i < 55; i++) {
-        if (lbl_1_data_22C[i].value[10] == 1) {
-            fn_8003D27C(lbl_1_data_22C[i].value[2]);
+        if (lbl_1_data_22C[i].owned == 1) {
+            fn_8003D27C(lbl_1_data_22C[i].itemNo);
         }
     }
     if (fn_8003D2F0(6)) {
@@ -411,6 +477,7 @@ void fn_1_308(void)
     }
 }
 
+/* Moves the camera center, rotation and zoom toward their targets using the given weight. */
 void fn_1_3FC(MDBANK_CAMERA_WORK *camera, float weight)
 {
     fn_1_111F8(&camera->center, &camera->centerTarget, weight);
@@ -418,6 +485,7 @@ void fn_1_3FC(MDBANK_CAMERA_WORK *camera, float weight)
     camera->zoom = fn_1_111B0(camera->zoom, camera->zoomTarget, weight);
 }
 
+/* Runs the camera callback when one is installed. */
 void fn_1_46C(OMOBJ *obj, MDBANK_CAMERA_WORK *camera)
 {
     if (camera->callback) {
@@ -425,13 +493,12 @@ void fn_1_46C(OMOBJ *obj, MDBANK_CAMERA_WORK *camera)
     }
 }
 
+/* Updates camera work and copies its center, rotation and zoom to the engine camera. */
 void fn_1_4B8(OMOBJ *obj)
 {
     MDBANK_CAMERA_WORK *camera = &lbl_1_bss_1998;
 
-    if (camera->callback) {
-        camera->callback(obj, camera);
-    }
+    fn_1_46C(obj, camera);
     lbl_80266A4C.x = camera->center.x;
     lbl_80266A4C.y = camera->center.y;
     lbl_80266A4C.z = camera->center.z;
@@ -442,6 +509,7 @@ void fn_1_4B8(OMOBJ *obj)
     fn_8003D4FC(obj);
 }
 
+/* Creates the bank camera and its object, with the supplied update callback. */
 void fn_1_588(MDBANK_CAMERA_CALLBACK callback)
 {
     MDBANK_CAMERA_WORK *camera = &lbl_1_bss_1998;
@@ -468,6 +536,7 @@ void fn_1_588(MDBANK_CAMERA_CALLBACK callback)
     camera->obj = fn_8003AB38(lbl_1_bss_0, 256, 0, 0, -1, fn_1_4B8);
 }
 
+/* Destroys the bank camera and deletes its work object. */
 void fn_1_724(void)
 {
     MDBANK_CAMERA_WORK *camera = &lbl_1_bss_1998;
@@ -479,6 +548,7 @@ void fn_1_724(void)
     camera->obj = NULL;
 }
 
+/* Creates the two static directional lights. */
 void fn_1_780(void)
 {
     HuVecF pos[2] = {
@@ -501,14 +571,14 @@ void fn_1_780(void)
     Hu3DGLightStaticSet(lbl_1_bss_1994[1], TRUE);
 }
 
-inline void fn_1_780(void);
-
+/* Destroys the two bank lights. */
 void fn_1_8B4(void)
 {
     Hu3DGLightKill(lbl_1_bss_1994[0]);
     Hu3DGLightKill(lbl_1_bss_1994[1]);
 }
 
+/* Creates and positions the bank shadow. */
 void fn_1_8F0(void)
 {
     Vec shadowPos = { 0.0f, 3000.0f, 600.0f };
@@ -520,12 +590,12 @@ void fn_1_8F0(void)
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
 }
 
-inline void fn_1_8F0(void);
-
+/* Returns without changing window state. */
 void fn_1_9A4(void)
 {
 }
 
+/* Shows window zero directly, or opens the frame of another window. */
 void fn_1_9A8(s16 winNo)
 {
     if (winNo == 0) {
@@ -535,8 +605,7 @@ void fn_1_9A8(s16 winNo)
     }
 }
 
-inline void fn_1_9A8(s16 winNo);
-
+/* Hides window zero directly, or closes the frame of another window. */
 void fn_1_A18(s16 winNo)
 {
     if (winNo == 0) {
@@ -546,15 +615,13 @@ void fn_1_A18(s16 winNo)
     }
 }
 
-inline void fn_1_A18(s16 winNo);
-
+/* Waits for the specified window to finish its message. */
 void fn_1_A88(s16 winNo)
 {
     HuWinMesWait(lbl_1_bss_198C[winNo]);
 }
 
-inline void fn_1_A88(s16 winNo);
-
+/* Reads a window choice with the requested cancel behavior. */
 s16 fn_1_AC4(s16 winNo, s16 mode)
 {
     s16 choice = 0;
@@ -571,8 +638,7 @@ s16 fn_1_AC4(s16 winNo, s16 mode)
     return choice;
 }
 
-inline s16 fn_1_AC4(s16 winNo, s16 mode);
-
+/* Sets a centered message and its display speed, clearing a different tracked message. */
 void fn_1_B98(s16 winNo, u32 messNum, s16 speed)
 {
     HuWinAttrSet(lbl_1_bss_198C[winNo], HUWIN_ATTR_ALIGN_CENTER);
@@ -583,8 +649,7 @@ void fn_1_B98(s16 winNo, u32 messNum, s16 speed)
     }
 }
 
-inline void fn_1_B98(s16 winNo, u32 messNum, s16 speed);
-
+/* Clears the window and inserts a message at the requested insertion slot. */
 void fn_1_C54(s16 winNo, u32 messNum, s16 insertMesNo)
 {
     HuWinAttrSet(lbl_1_bss_198C[winNo], HUWIN_ATTR_ALIGN_CENTER);
@@ -592,6 +657,7 @@ void fn_1_C54(s16 winNo, u32 messNum, s16 insertMesNo)
     HuWinInsertMesSet(lbl_1_bss_198C[winNo], messNum, insertMesNo);
 }
 
+/* Creates the four message windows and installs their guide sound callback. */
 void fn_1_CE4(void)
 {
     s16 i;
@@ -619,6 +685,7 @@ void fn_1_CE4(void)
     }
 }
 
+/* Destroys the four message windows and the window system state. */
 void fn_1_F0C(void)
 {
     s16 i;
@@ -629,6 +696,7 @@ void fn_1_F0C(void)
     HuWinAllKill();
 }
 
+/* Switches the active message window and clears the cached message identifiers. */
 void fn_1_F68(s16 winNo)
 {
     if (lbl_1_data_932[0] != -1 && lbl_1_data_932[0] != winNo) {
@@ -643,6 +711,7 @@ void fn_1_F68(s16 winNo)
     }
 }
 
+/* Closes the active message window and clears its cached identifiers. */
 void fn_1_10E4(void)
 {
     if (lbl_1_data_932[0] != -1) {
@@ -653,6 +722,7 @@ void fn_1_10E4(void)
     lbl_1_data_938[1] = -1;
 }
 
+/* Waits for the active window message, if a window is selected. */
 void fn_1_11A0(void)
 {
     if (lbl_1_data_932[0] != -1) {
@@ -660,6 +730,7 @@ void fn_1_11A0(void)
     }
 }
 
+/* Reads a choice from the active window, or returns zero when no window is selected. */
 s16 fn_1_1200(s16 mode)
 {
     if (lbl_1_data_932[0] != -1) {
@@ -668,6 +739,7 @@ s16 fn_1_1200(s16 mode)
     return 0;
 }
 
+/* Selects a window and displays a message when it differs from the cached message. */
 void fn_1_12F8(s16 winNo, s32 messNum, s16 speed)
 {
     fn_1_F68(winNo);
@@ -678,6 +750,7 @@ void fn_1_12F8(s16 winNo, s32 messNum, s16 speed)
     }
 }
 
+/* Selects a window and updates its inserted message when the identifier changes. */
 void fn_1_1540(s16 winNo, s32 messNum, s16 insertMesNo)
 {
     fn_1_F68(winNo);
@@ -688,6 +761,7 @@ void fn_1_1540(s16 winNo, s32 messNum, s16 insertMesNo)
     }
 }
 
+/* Shows the auxiliary guide window and updates its message when necessary. */
 void fn_1_1764(s32 messNum)
 {
     if (lbl_1_data_932[1] == -1) {
@@ -701,6 +775,7 @@ void fn_1_1764(s32 messNum)
     }
 }
 
+/* Closes the auxiliary guide window and clears its cached message. */
 void fn_1_18E8(void)
 {
     if (lbl_1_data_932[1] != -1) {
@@ -710,6 +785,7 @@ void fn_1_18E8(void)
     lbl_1_data_938[2] = -1;
 }
 
+/* Loads the bank sprites, builds their groups and applies the sprite configuration table. */
 void fn_1_1994(void)
 {
     MDBANK_SPRITE_CONFIG *config = lbl_1_data_3C;
@@ -736,10 +812,12 @@ void fn_1_1994(void)
     HuSprExecLayerCameraSet(65, 1, 4);
 }
 
+/* Returns without changing sprite state. */
 void fn_1_1BD0(void)
 {
 }
 
+/* Returns the left guide to its first motion after the gesture timer expires. */
 void fn_1_1BD4(OMOBJ *obj)
 {
     if (obj->work[3]++ > 45) {
@@ -750,6 +828,7 @@ void fn_1_1BD4(OMOBJ *obj)
     }
 }
 
+/* Starts the left guide gesture and installs its timed return callback. */
 void fn_1_1C64(void)
 {
     OMOBJ *obj = lbl_1_bss_C;
@@ -760,6 +839,7 @@ void fn_1_1C64(void)
     obj->objFunc = fn_1_1BD4;
 }
 
+/* Returns the right guide to its first motion after the gesture timer expires. */
 void fn_1_1CD8(OMOBJ *obj)
 {
     if (obj->work[3]++ > 45) {
@@ -770,6 +850,7 @@ void fn_1_1CD8(OMOBJ *obj)
     }
 }
 
+/* Starts the right guide gesture and installs its timed return callback. */
 void fn_1_1D68(void)
 {
     OMOBJ *obj = lbl_1_bss_10;
@@ -780,6 +861,7 @@ void fn_1_1D68(void)
     obj->objFunc = fn_1_1CD8;
 }
 
+/* Moves the left guide along its stored curve while turning it fifteen degrees. */
 void fn_1_1DDC(OMOBJ *obj)
 {
     MDBANK_MOVE_WORK *work = &lbl_1_bss_175C;
@@ -796,6 +878,7 @@ void fn_1_1DDC(OMOBJ *obj)
     }
 }
 
+/* Sets the left guide departure curve and starts its sixty-frame movement. */
 void fn_1_1EE8(void)
 {
     OMOBJ *obj = lbl_1_bss_C;
@@ -809,6 +892,7 @@ void fn_1_1EE8(void)
     obj->objFunc = fn_1_1DDC;
 }
 
+/* Creates the left guide model, loads three motions and sets its initial pose. */
 void fn_1_1FD8(OMOBJ *obj)
 {
     s16 i;
@@ -838,6 +922,7 @@ void fn_1_1FD8(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Destroys the left guide motions and model, then deletes its object. */
 void fn_1_21E4(OMOBJ *obj)
 {
     s16 i;
@@ -852,6 +937,7 @@ void fn_1_21E4(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Moves the right guide along its stored curve while turning it minus fifteen degrees. */
 void fn_1_226C(OMOBJ *obj)
 {
     HuVecF pos;
@@ -871,6 +957,7 @@ void fn_1_226C(OMOBJ *obj)
     }
 }
 
+/* Sets the right guide departure curve and starts its sixty-frame movement. */
 void fn_1_2378(void)
 {
     OMOBJ *obj = lbl_1_bss_10;
@@ -887,8 +974,7 @@ void fn_1_2378(void)
     obj->objFunc = fn_1_226C;
 }
 
-inline void fn_1_2378(void);
-
+/* Creates the right guide and attached model, loads motions and sets its initial pose. */
 void fn_1_2468(OMOBJ *obj)
 {
     s16 i;
@@ -920,6 +1006,7 @@ void fn_1_2468(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Detaches and destroys the right guide models and motions, then deletes its object. */
 void fn_1_26B0(OMOBJ *obj)
 {
     s16 i;
@@ -936,6 +1023,7 @@ void fn_1_26B0(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Fades sprite group zero out over ten frames and disables its object callback. */
 void fn_1_2750(OMOBJ *obj)
 {
     float opacity;
@@ -949,6 +1037,7 @@ void fn_1_2750(OMOBJ *obj)
     }
 }
 
+/* Positions and shows sprite group zero on the initial bank visit. */
 void fn_1_281C(void)
 {
     if (lbl_1_bss_2C == 0) {
@@ -958,8 +1047,7 @@ void fn_1_281C(void)
     }
 }
 
-inline void fn_1_281C(void);
-
+/* Starts the sprite group zero fade callback. */
 void fn_1_2888(void)
 {
     OMOBJ *obj = lbl_1_bss_4;
@@ -967,6 +1055,7 @@ void fn_1_2888(void)
     obj->objFunc = fn_1_2750;
 }
 
+/* Creates the two background models and sets up sprite group zero. */
 void fn_1_28B4(OMOBJ *obj)
 {
     omSetStatBit(obj, (1 << 8));
@@ -986,6 +1075,7 @@ void fn_1_28B4(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Destroys the first background model and deletes its object. */
 void fn_1_2A50(OMOBJ *obj)
 {
     if (obj) {
@@ -995,6 +1085,7 @@ void fn_1_2A50(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Rotates the background model slightly around its Z axis each update. */
 void fn_1_2AA4(OMOBJ *obj)
 {
     HuVecF rot;
@@ -1007,6 +1098,7 @@ void fn_1_2AA4(OMOBJ *obj)
     fn_80026838(obj->mdlId[0], &rot);
 }
 
+/* Creates the rotating background model and attaches its two sprite animations. */
 void fn_1_2B34(OMOBJ *obj)
 {
     omSetStatBit(obj, (1 << 8));
@@ -1023,6 +1115,7 @@ void fn_1_2B34(OMOBJ *obj)
     obj->objFunc = fn_1_2AA4;
 }
 
+/* Destroys the rotating background sprite animations, model and object. */
 void fn_1_2C54(OMOBJ *obj)
 {
     if (obj) {
@@ -1036,6 +1129,7 @@ void fn_1_2C54(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Places a cursor sprite at the projected world position plus a screen offset. */
 void fn_1_2CD8(s16 index, HuVecF *worldPos, float offsetX, float offsetY)
 {
     HuVecF screenPos = { 0.0f, 0.0f, 0.0f };
@@ -1047,11 +1141,13 @@ void fn_1_2CD8(s16 index, HuVecF *worldPos, float offsetX, float offsetY)
         screenPos.x + offsetX, screenPos.y + offsetY);
 }
 
+/* Resets the specified cursor sprite scale to two. */
 void fn_1_2D70(s16 index)
 {
     lbl_1_bss_1700[index] = 2.0f;
 }
 
+/* Positions, enlarges and shows a cursor sprite when it first becomes active. */
 void fn_1_2D98(s16 index, HuVecF *worldPos, float offsetX, float offsetY)
 {
     OMOBJ *obj = lbl_1_bss_14;
@@ -1067,6 +1163,7 @@ void fn_1_2D98(s16 index, HuVecF *worldPos, float offsetX, float offsetY)
     }
 }
 
+/* Clears the cursor state and hides the specified cursor sprite. */
 void fn_1_2EFC(s16 index)
 {
     OMOBJ *obj = lbl_1_bss_14;
@@ -1076,8 +1173,7 @@ void fn_1_2EFC(s16 index)
     HuSprAttrSet(lbl_1_bss_194E[1], index, HUSPR_ATTR_DISPOFF);
 }
 
-inline void fn_1_2EFC(s16 index);
-
+/* Smooths all four cursor sprite scales back toward one. */
 void fn_1_2F80(void)
 {
     s16 i;
@@ -1090,6 +1186,7 @@ void fn_1_2F80(void)
     }
 }
 
+/* Clears and hides all four cursor sprites. */
 void fn_1_304C(void)
 {
     s16 i;
@@ -1100,6 +1197,7 @@ void fn_1_304C(void)
     }
 }
 
+/* Stores the cursor model target at a fixed offset from the supplied position. */
 void fn_1_3100(HuVecF *pos)
 {
     lbl_1_bss_1710.x = pos->x - 50.0f;
@@ -1107,8 +1205,7 @@ void fn_1_3100(HuVecF *pos)
     lbl_1_bss_1710.z = 50.0f + pos->z;
 }
 
-inline void fn_1_3100(HuVecF *pos);
-
+/* Places and shows the cursor model, and updates its target position. */
 void fn_1_3164(HuVecF *pos)
 {
     OMOBJ *obj = lbl_1_bss_14;
@@ -1122,6 +1219,7 @@ void fn_1_3164(HuVecF *pos)
     fn_80026A44(obj->mdlId[0], (1 << 0));
 }
 
+/* Hides the cursor model. */
 void fn_1_3280(void)
 {
     OMOBJ *obj = lbl_1_bss_14;
@@ -1129,10 +1227,10 @@ void fn_1_3280(void)
     fn_800269E8(obj->mdlId[0], (1 << 0));
 }
 
+/* Smooths the cursor model transform, updates cursor scales and animates the bank models. */
 void fn_1_32C0(OMOBJ *obj)
 {
     HuVecF transform;
-    s16 i;
 
     fn_800267CC(obj->mdlId[0], &transform);
     fn_1_111F8(&transform, &lbl_1_bss_1710, 3.0f);
@@ -1144,19 +1242,13 @@ void fn_1_32C0(OMOBJ *obj)
     transform.x = transform.y = transform.z =
         fn_1_111B0(transform.x, 0.3f, 3.0f);
     fn_800268E0(obj->mdlId[0], &transform);
-    for (i = 0; i < 4; i++) {
-        lbl_1_bss_1700[i] = fn_1_111B0(lbl_1_bss_1700[i], 1.0f,
-            5.0f);
-        HuSprScaleSet(lbl_1_bss_194E[1], i, lbl_1_bss_1700[i],
-            lbl_1_bss_1700[i]);
-    }
+    fn_1_2F80();
     fn_1_3640();
 }
 
+/* Creates the cursor model, hides its sprites and installs the cursor update callback. */
 void fn_1_3468(OMOBJ *obj)
 {
-    OMOBJ *displayObj;
-    s16 i;
 
     omSetStatBit(obj, (1 << 8));
     obj->mdlId[0] = fn_80025A04(fn_80008DD0((DATANUM(0x940000, 8)), 0x10000000, 2));
@@ -1165,20 +1257,12 @@ void fn_1_3468(OMOBJ *obj)
     fn_8002CCC0(obj->mdlId[0], obj->mtnId[0], 0.0f,
         0.0f, ((1 << 30) | (1 << 0)));
     fn_800269E8(obj->mdlId[0], (1 << 0));
-    displayObj = lbl_1_bss_14;
-    fn_800269E8(displayObj->mdlId[0], (1 << 0));
-    for (i = 0; i < 4; i++) {
-        s16 index = i;
-        OMOBJ *workObj = lbl_1_bss_14;
-
-        workObj->work[index] = 0;
-        lbl_1_data_964[index] = 0;
-        HuSprAttrSet(lbl_1_bss_194E[1], index, HUSPR_ATTR_DISPOFF);
-        lbl_1_data_964[i] = 0;
-    }
+    fn_1_3280();
+    fn_1_304C();
     obj->objFunc = fn_1_32C0;
 }
 
+/* Destroys the cursor model and deletes its object. */
 void fn_1_35E0(OMOBJ *obj)
 {
     if (obj) {
@@ -1189,6 +1273,7 @@ void fn_1_35E0(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Applies independent vertical oscillation to the first twenty bank models. */
 void fn_1_3640(void)
 {
     OMOBJ *obj = lbl_1_bss_20;
@@ -1211,6 +1296,7 @@ void fn_1_3640(void)
     }
 }
 
+/* Schedules moving bank models and updates their paths, balance changes and particle bursts. */
 void fn_1_3788(OMOBJ *obj)
 {
     MDBANK_EVENT_RECORD *event;
@@ -1309,18 +1395,19 @@ void fn_1_3788(OMOBJ *obj)
             event->active = 0;
             fn_800269E8(obj->mdlId[slot], (1 << 0));
 
-            --lbl_1_data_22C[lbl_1_data_972].value[3];
-            if (lbl_1_data_22C[lbl_1_data_972].value[3] < 0) {
-                lbl_1_data_22C[lbl_1_data_972].value[3] = 0;
+            --lbl_1_data_22C[lbl_1_data_972].price;
+            if (lbl_1_data_22C[lbl_1_data_972].price < 0) {
+                lbl_1_data_22C[lbl_1_data_972].price = 0;
             }
         }
     }
 
-    if (lbl_1_data_22C[lbl_1_data_972].value[3] <= 0) {
+    if (lbl_1_data_22C[lbl_1_data_972].price <= 0) {
         obj->objFunc = NULL;
     }
 }
 
+/* Sets the bank event state and duration and installs the event update callback. */
 void fn_1_3DBC(s16 state, s16 time)
 {
     OMOBJ *obj = lbl_1_bss_20;
@@ -1335,6 +1422,7 @@ void fn_1_3DBC(s16 state, s16 time)
     obj->objFunc = fn_1_3788;
 }
 
+/* Creates eighty bank models and scatters the first twenty around the bank position. */
 void fn_1_3E30(OMOBJ *obj)
 {
     s16 i;
@@ -1370,6 +1458,7 @@ void fn_1_3E30(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Destroys model slots zero through forty-nine and deletes the bank model object. */
 void fn_1_4184(OMOBJ *obj)
 {
     s16 i;
@@ -1384,6 +1473,7 @@ void fn_1_4184(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Displays three price digits, hiding leading zeroes. */
 void fn_1_420C(HUSPR_GROUPID groupId, s32 memberNo, s16 value)
 {
     s16 bank;
@@ -1402,6 +1492,7 @@ void fn_1_420C(HUSPR_GROUPID groupId, s32 memberNo, s16 value)
     HuSprBankSet(groupId, memberNo + 2, bank);
 }
 
+/* Aligns the item display models and projects its price digits onto the screen. */
 void fn_1_4360(MDBANK_ANIM_SET *set, MDBANK_ITEM *item)
 {
     Mtx matrix;
@@ -1411,9 +1502,9 @@ void fn_1_4360(MDBANK_ANIM_SET *set, MDBANK_ITEM *item)
     char *names[3][3] = { { lbl_1_data_976, lbl_1_data_97E, lbl_1_data_985 }, { lbl_1_data_98B, lbl_1_data_98B, lbl_1_data_994 }, { lbl_1_data_97E, lbl_1_data_97E, lbl_1_data_97E } };
     s16 i;
 
-    if (item->value[3] >= 100) {
+    if (item->price >= 100) {
         digitSet = 0;
-    } else if (item->value[3] >= 10) {
+    } else if (item->price >= 10) {
         digitSet = 1;
     } else {
         digitSet = 2;
@@ -1453,24 +1544,7 @@ void fn_1_4360(MDBANK_ANIM_SET *set, MDBANK_ITEM *item)
             HuSprPosSet(set->spriteGroup, i, screenPos.x, screenPos.y);
             HuSprAttrReset(set->spriteGroup, i, HUSPR_ATTR_DISPOFF);
         }
-        {
-            s16 value = item->value[3];
-            HUSPR_GROUPID group = set->spriteGroup;
-            s16 bank;
-
-            bank = value / 100;
-            HuSprBankSet(group, 0, bank);
-            if (bank == 0) {
-                HuSprAttrSet(group, 0, HUSPR_ATTR_DISPOFF);
-            }
-            bank = (value - (bank * 100)) / 10;
-            HuSprBankSet(group, 1, bank);
-            if (bank == 0 && value / 100 == 0) {
-                HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
-            }
-            bank = value % 10;
-            HuSprBankSet(group, 2, bank);
-        }
+    fn_1_420C(set->spriteGroup, 0, item->price);
         fn_80026874(set->model[1], &modelPos);
         for (i = 0; i < 3; i++) {
             if (modelPos.y >= 90.0f
@@ -1481,6 +1555,7 @@ void fn_1_4360(MDBANK_ANIM_SET *set, MDBANK_ITEM *item)
     }
 }
 
+/* Resets the rotation of all ten displayed items. */
 void fn_1_4730(void)
 {
     s16 i;
@@ -1491,6 +1566,7 @@ void fn_1_4730(void)
     }
 }
 
+/* Turns the selected item and resets every other displayed item rotation. */
 s32 fn_1_47AC(s16 index)
 {
     s16 i;
@@ -1510,6 +1586,7 @@ s32 fn_1_47AC(s16 index)
     }
 }
 
+/* Moves and enlarges the selected item into the purchase display. */
 void fn_1_48CC(s16 index)
 {
     MDBANK_ANIM_SET *set;
@@ -1549,6 +1626,7 @@ void fn_1_48CC(s16 index)
         1.0f);
 }
 
+/* Selects an item for the delayed display rotation. */
 void fn_1_4C64(s16 index)
 {
     OMOBJ *obj = lbl_1_bss_18;
@@ -1558,6 +1636,7 @@ void fn_1_4C64(s16 index)
     obj->work[2] = index;
 }
 
+/* Stops the delayed item rotation and turns the selected item back to zero. */
 void fn_1_4C9C(void)
 {
     s16 i;
@@ -1583,6 +1662,7 @@ void fn_1_4C9C(void)
         0.0f);
 }
 
+/* Returns the selected item from the purchase display to its grid position. */
 void fn_1_4DFC(s16 index)
 {
     MDBANK_ANIM_SET *set;
@@ -1628,6 +1708,7 @@ void fn_1_4DFC(s16 index)
     HuSprGrpDrawNoSet(set->spriteGroup, 64);
 }
 
+/* Shrinks and hides displayed items except the specified item. */
 void fn_1_520C(s16 skipIndex)
 {
     MDBANK_ANIM_SET *set = lbl_1_bss_179C;
@@ -1657,6 +1738,7 @@ void fn_1_520C(s16 skipIndex)
     }
 }
 
+/* Restores displayed items except the specified item with a scale and rotation animation. */
 void fn_1_53AC(s16 skipIndex)
 {
     MDBANK_ANIM_SET *set = lbl_1_bss_179C;
@@ -1685,6 +1767,7 @@ void fn_1_53AC(s16 skipIndex)
     }
 }
 
+/* Updates the ten displayed items from the current page, ownership and animation records. */
 void fn_1_5550(void)
 {
     s16 itemIndex = 0;
@@ -1701,14 +1784,14 @@ void fn_1_5550(void)
         fn_80030D50(set->anim[0], lbl_1_bss_18A0[31]);
         fn_80030D50(set->anim[1], lbl_1_bss_18A0[31]);
         fn_80030D50(set->anim[2], lbl_1_bss_18A0[31]);
-        fn_80030D50(set->anim[3], lbl_1_bss_18A0[item->value[4]]);
-        if (item->value[7] != -1) {
-            Hu3DAnimBankSet(set->anim[3], item->value[7]);
+        fn_80030D50(set->anim[3], lbl_1_bss_18A0[item->anim]);
+        if (item->animBank != -1) {
+            Hu3DAnimBankSet(set->anim[3], item->animBank);
         }
-        if (item->value[6] != -1) {
-            fn_80030D50(set->anim[4], lbl_1_bss_18A0[item->value[6]]);
-            if (item->value[9] != -1) {
-                Hu3DAnimBankSet(set->anim[4], item->value[9]);
+        if (item->overlayAnim != -1) {
+            fn_80030D50(set->anim[4], lbl_1_bss_18A0[item->overlayAnim]);
+            if (item->overlayAnimBank != -1) {
+                Hu3DAnimBankSet(set->anim[4], item->overlayAnimBank);
             }
         } else {
             fn_80030D50(set->anim[4], lbl_1_bss_18A0[0]);
@@ -1719,19 +1802,19 @@ void fn_1_5550(void)
         } else {
             fn_1_11880(set->spriteGroup, HUSPR_ATTR_DISPOFF);
         }
-        if (item->value[10] != 0) {
-            if (item->value[5] != -1) {
-                fn_80030D50(set->anim[0], lbl_1_bss_18A0[item->value[5]]);
+        if (item->owned != 0) {
+            if (item->ownedAnim != -1) {
+                fn_80030D50(set->anim[0], lbl_1_bss_18A0[item->ownedAnim]);
             } else {
-                fn_80030D50(set->anim[0], lbl_1_bss_18A0[item->value[4]]);
+                fn_80030D50(set->anim[0], lbl_1_bss_18A0[item->anim]);
             }
-            if (item->value[8] != -1) {
-                Hu3DAnimBankSet(set->anim[0], item->value[8]);
+            if (item->ownedAnimBank != -1) {
+                Hu3DAnimBankSet(set->anim[0], item->ownedAnimBank);
             }
-            if (item->value[6] != -1) {
-                fn_80030D50(set->anim[1], lbl_1_bss_18A0[item->value[6]]);
-                if (item->value[9] != -1) {
-                    Hu3DAnimBankSet(set->anim[1], item->value[9]);
+            if (item->overlayAnim != -1) {
+                fn_80030D50(set->anim[1], lbl_1_bss_18A0[item->overlayAnim]);
+                if (item->overlayAnimBank != -1) {
+                    Hu3DAnimBankSet(set->anim[1], item->overlayAnimBank);
                 }
             } else {
                 fn_80030D50(set->anim[1], lbl_1_bss_18A0[0]);
@@ -1745,6 +1828,7 @@ void fn_1_5550(void)
     }
 }
 
+/* Hides both models and the price sprite group for every displayed item. */
 void fn_1_5834(void)
 {
     OMOBJ *obj = lbl_1_bss_18;
@@ -1758,6 +1842,7 @@ void fn_1_5834(void)
     }
 }
 
+/* Turns the selected item after its delay and refreshes the displayed item records. */
 void fn_1_58B8(OMOBJ *obj)
 {
     MDBANK_ANIM_SET *set;
@@ -1776,6 +1861,7 @@ void fn_1_58B8(OMOBJ *obj)
     fn_1_5550();
 }
 
+/* Scales and turns all items into view, then installs their normal display callback. */
 void fn_1_5988(OMOBJ *obj)
 {
     MDBANK_ANIM_SET *set = lbl_1_bss_179C;
@@ -1816,6 +1902,7 @@ void fn_1_5988(OMOBJ *obj)
     obj->objFunc = fn_1_58B8;
 }
 
+/* Resets item animations and starts either the full or immediate appearance sequence. */
 void fn_1_5C1C(s16 mode)
 {
     OMOBJ *obj = lbl_1_bss_18;
@@ -1842,12 +1929,10 @@ void fn_1_5C1C(s16 mode)
     obj->objFunc = fn_1_5988;
 }
 
-inline void fn_1_5C1C(s16 mode);
-
+/* Creates the ten item displays, their sprite animations and price sprite groups. */
 void fn_1_5D64(OMOBJ *obj)
 {
     MDBANK_ANIM_SET *set = lbl_1_bss_179C;
-    MDBANK_ANIM_SET *cleanupSet;
     char *name[6] = {
         lbl_1_data_99C,
         lbl_1_data_9A4,
@@ -1856,10 +1941,8 @@ void fn_1_5D64(OMOBJ *obj)
         lbl_1_data_9BD,
         lbl_1_data_9C5
     };
-    OMOBJ *manager;
     s16 i;
     s16 j;
-    s16 cleanupIndex;
 
     for (i = 0; i < 36; i++) {
         lbl_1_bss_18A0[i] = HuSprAnimRead(fn_80008DD0(
@@ -1903,16 +1986,11 @@ void fn_1_5D64(OMOBJ *obj)
         fn_1_11880(set->spriteGroup, HUSPR_ATTR_DISPOFF);
     }
 
-    manager = lbl_1_bss_18;
-    cleanupSet = lbl_1_bss_179C;
-    for (cleanupIndex = 0; cleanupIndex < 10; cleanupIndex++, cleanupSet++) {
-        fn_800269E8(cleanupSet->model[0], (1 << 0));
-        fn_800269E8(cleanupSet->model[1], (1 << 0));
-        fn_1_11880(cleanupSet->spriteGroup, HUSPR_ATTR_DISPOFF);
-    }
+    fn_1_5834();
     obj->objFunc = NULL;
 }
 
+/* Destroys each item display animation and model, then deletes its object. */
 void fn_1_61A8(OMOBJ *obj)
 {
     s16 i;
@@ -1931,6 +2009,7 @@ void fn_1_61A8(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Positions and displays a centered balance of up to four digits, hiding leading zeroes. */
 void fn_1_6290(HUSPR_GROUPID groupId, s16 baseIndex, s16 value)
 {
     s16 i;
@@ -1987,6 +2066,7 @@ void fn_1_6290(HUSPR_GROUPID groupId, s16 baseIndex, s16 value)
     HuSprBankSet(groupId, baseIndex + 3, ones);
 }
 
+/* Hides bank model slots one through four. */
 void fn_1_6600(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -1997,11 +2077,13 @@ void fn_1_6600(void)
     }
 }
 
+/* Returns without changing the bank object. */
 void fn_1_6668(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
 }
 
+/* Selects the bank balance animation and shows up to twenty bank models. */
 void fn_1_6684(void)
 {
     OMOBJ *obj = lbl_1_bss_20;
@@ -2027,8 +2109,7 @@ void fn_1_6684(void)
     }
 }
 
-inline void fn_1_6684(void);
-
+/* Animates the balance model vertically and updates its projected digit display. */
 void fn_1_6810(OMOBJ *obj)
 {
     HuVecF modelPos;
@@ -2059,8 +2140,7 @@ void fn_1_6810(OMOBJ *obj)
     }
 }
 
-inline void fn_1_6810(OMOBJ *obj);
-
+/* Enables the balance display update on the bank object. */
 void fn_1_6B0C(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2068,11 +2148,13 @@ void fn_1_6B0C(void)
     obj->work[2] = 1;
 }
 
+/* Hides the balance sprite group. */
 void fn_1_6B34(void)
 {
     fn_1_11880(lbl_1_bss_194E[2], HUSPR_ATTR_DISPOFF);
 }
 
+/* Starts the bank shape motion playing forward at speed two. */
 void fn_1_6B64(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2082,6 +2164,7 @@ void fn_1_6B64(void)
     model->motShapeWork.speed = 2.0f;
 }
 
+/* Starts the bank shape motion from its end, playing backward at speed two. */
 void fn_1_6BDC(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2093,6 +2176,7 @@ void fn_1_6BDC(void)
         fn_8002CFE4(obj->mdlId[0]));
 }
 
+/* Sets the bank arrival curve and places the bank models and particle effects at its start. */
 void fn_1_6C6C(void)
 {
     HuVecF pos = { 0.0f, 280.0f, 800.0f };
@@ -2134,6 +2218,7 @@ void fn_1_6C6C(void)
     }
 }
 
+/* Moves the bank models and particle effects along the active arrival curve. */
 void fn_1_6F00(void)
 {
     HuVecF pos = { 0.0f, 375.0f, -100.0f };
@@ -2162,8 +2247,7 @@ void fn_1_6F00(void)
     }
 }
 
-inline void fn_1_6F00(void);
-
+/* Updates the bank arrival and, when enabled, the balance display. */
 void fn_1_70E4(OMOBJ *obj)
 {
 
@@ -2174,12 +2258,11 @@ void fn_1_70E4(OMOBJ *obj)
     }
 }
 
+/* Creates the bank and balance models, sets their starting pose and closes the bank shape. */
 void fn_1_7594(OMOBJ *obj)
 {
     u32 modelData[5] = { DATANUM(0x940000, 10), DATANUM(0x940000, 14), DATANUM(0x940000, 14), DATANUM(0x940000, 14), DATANUM(0x940000, 14) };
     s16 i;
-    OMOBJ *shapeObj;
-    HU3D_MODEL *shapeModel;
     OMOBJ *spriteOwner;
 
     omSetStatBit(obj, (1 << 8));
@@ -2221,16 +2304,12 @@ void fn_1_7594(OMOBJ *obj)
 
     spriteOwner = lbl_1_bss_1C;
     fn_1_11880(lbl_1_bss_194E[2], HUSPR_ATTR_DISPOFF);
-    shapeObj = lbl_1_bss_1C;
-    shapeModel = &lbl_802C01C8[shapeObj->mdlId[0]];
-    fn_8002CEB0(shapeObj->mdlId[0], shapeObj->mtnId[0]);
-    shapeModel->motShapeWork.speed = -2.0f;
-    fn_8002CF98(shapeObj->mdlId[0],
-        fn_8002CFE4(shapeObj->mdlId[0]));
+    fn_1_6BDC();
     fn_8002CF98(obj->mdlId[0], 0.0f);
     obj->objFunc = fn_1_70E4;
 }
 
+/* Destroys bank model and motion slots zero through five, then deletes the object. */
 void fn_1_7990(OMOBJ *obj)
 {
     s16 i;
@@ -2245,6 +2324,7 @@ void fn_1_7990(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Sets the paired model callback state and the corresponding particle state. */
 void fn_1_7A20(s16 state)
 {
     OMOBJ *obj = lbl_1_bss_24[0];
@@ -2257,6 +2337,7 @@ void fn_1_7A20(s16 state)
     }
 }
 
+/* Updates six paired model effects and their timed visibility and opacity. */
 void fn_1_7A84(OMOBJ *obj)
 {
     MDBANK_POST_CALLBACK_WORK *work;
@@ -2318,9 +2399,9 @@ void fn_1_7A84(OMOBJ *obj)
     }
 }
 
+/* Creates the six paired model effects and initializes their staggered timers. */
 void fn_1_7F2C(OMOBJ *obj)
 {
-    OMOBJ *callbackObj;
     s16 i;
 
     omSetStatBit(obj, (1 << 8));
@@ -2351,35 +2432,24 @@ void fn_1_7F2C(OMOBJ *obj)
             0.0f, 0.0f, ((1 << 30) | (1 << 0)));
         fn_800269E8(obj->mdlId[i], (1 << 0));
     }
-    callbackObj = lbl_1_bss_24[0];
-    callbackObj->work[0] = 1;
-    fn_1_13764(0);
+    fn_1_7A20(1);
     obj->objFunc = fn_1_7A84;
 }
 
+/* Returns without changing bank resources. */
 void fn_1_8280(void)
 {
 }
 
+/* Destroys the bank windows, lights and camera. */
 void fn_1_8284(void)
 {
-    MDBANK_CAMERA_WORK *camera;
-    s16 i;
-
-    for (i = 0; i < 4; i++) {
-        HuWinExKill(lbl_1_bss_198C[i]);
-    }
-    HuWinAllKill();
-    Hu3DGLightKill(lbl_1_bss_1994[0]);
-    Hu3DGLightKill(lbl_1_bss_1994[1]);
-    camera = &lbl_1_bss_1998;
-    Hu3DCameraKill(1);
-    if (camera->obj) {
-        omDelObjEx(lbl_1_bss_0, camera->obj);
-    }
-    camera->obj = NULL;
+    fn_1_F0C();
+    fn_1_8B4();
+    fn_1_724();
 }
 
+/* Hides message windows, shows the save sprite and waits five frames. */
 void fn_1_8340(void)
 {
     s16 i;
@@ -2391,10 +2461,10 @@ void fn_1_8340(void)
     HuPrcSleep(5);
 }
 
+/* Runs the bank menu, saves its state, releases resources and selects the next overlay. */
 void fn_1_83CC(void)
 {
     s16 result = fn_1_EA98(0, 0);
-    s16 i;
 
     HuAudSStreamFadeOut(lbl_1_bss_1988, 1000);
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 60);
@@ -2402,21 +2472,7 @@ void fn_1_83CC(void)
         HuPrcVSleep();
     }
     HuAudFadeOut(1000);
-    if (lbl_1_bss_1930[0] < 0) {
-        lbl_1_bss_1930[0] = 0;
-    }
-    if (lbl_1_bss_1930[0] > 9999) {
-        lbl_1_bss_1930[0] = 9999;
-    }
-    lbl_80265E30.bankStar = lbl_1_bss_1930[0];
-    for (i = 0; i < 55; i++) {
-        if (lbl_1_data_22C[i].value[10] == 1) {
-            fn_8003D27C(lbl_1_data_22C[i].value[2]);
-        }
-    }
-    if (fn_8003D2F0(6)) {
-        fn_8003CCAC(677);
-    }
+    fn_1_308();
     if (result == 0) {
         s16 j;
 
@@ -2428,23 +2484,7 @@ void fn_1_83CC(void)
         HuPrcSleep(5);
         SLSaveModeExec(0);
     }
-    {
-        MDBANK_CAMERA_WORK *camera;
-        s16 j;
-
-        for (j = 0; j < 4; j++) {
-            HuWinExKill(lbl_1_bss_198C[j]);
-        }
-        HuWinAllKill();
-        Hu3DGLightKill(lbl_1_bss_1994[0]);
-        Hu3DGLightKill(lbl_1_bss_1994[1]);
-        camera = &lbl_1_bss_1998;
-        Hu3DCameraKill(1);
-        if (camera->obj) {
-            omDelObjEx(lbl_1_bss_0, camera->obj);
-        }
-        camera->obj = NULL;
-    }
+    fn_1_8284();
     switch (result) {
         case 0:
             fn_8003A5E4(1, TRUE);
@@ -2470,115 +2510,24 @@ void fn_1_83CC(void)
     }
 }
 
+/* Creates the bank scene resources, objects and menu process. */
 void fn_1_86C0(void)
 {
-    MDBANK_CAMERA_WORK *camera;
-    MDBANK_SPRITE_CONFIG *config;
-    s16 i;
-    s16 flagIndex;
-    s16 windowIndex;
 
     lbl_1_bss_0 = fn_8003A8BC(0x1B, 0x2000);
     fn_80069F1C(lbl_1_bss_0);
 
-    camera = &lbl_1_bss_1998;
-    Hu3DCameraCreate(1);
-    Hu3DCameraPerspectiveSet(1, 30.0f, 10.0f,
-        10000.0f, 1.2f);
-    Hu3DCameraViewportSet(1, 0.0f, 0.0f,
-        640.0f, 480.0f, 0.0f,
-        1.0f);
-
-    memset(camera, 0, sizeof(*camera));
-    camera->callback = fn_1_9380;
-    camera->center.x = 0.0f;
-    camera->center.y = 65.0f;
-    camera->center.z = -800.0f;
-    camera->rot.x = -7.25f;
-    camera->rot.y = 0.0f;
-    camera->rot.z = 0.0f;
-    if (lbl_1_bss_2C == 0) {
-        camera->zoom = 2650.0f;
-    } else {
-        camera->zoom = 2150.0f;
-    }
-    camera->obj = fn_8003AB38(lbl_1_bss_0, 0x100, 0, 0, -1,
-        fn_1_4B8);
+    fn_1_588(fn_1_9380);
 
     fn_1_780();
 
-    HuWinInit(1);
-    lbl_1_bss_198C[0] = HuWinExCreateFrame(
-        16.0f, 337.0f, 0x220, 0x2A, -1, 0);
-    HuWinDispOff(lbl_1_bss_198C[0]);
-    HuWinBGTPLvlSet(lbl_1_bss_198C[0], 0.0f);
-    lbl_1_bss_198C[1] = HuWinExCreateFrame(
-        16.0f, 372.0f, 0x220, 0x44, -1, 5);
-    HuWinDispOff(lbl_1_bss_198C[1]);
-    HuWinBGTPLvlSet(lbl_1_bss_198C[1], 0.9f);
-    lbl_1_bss_198C[2] = HuWinExCreateFrame(
-        16.0f, 372.0f, 0x220, 0x44, -1, 3);
-    HuWinDispOff(lbl_1_bss_198C[2]);
-    HuWinBGTPLvlSet(lbl_1_bss_198C[2], 0.9f);
-    lbl_1_bss_198C[3] = HuWinExCreateFrame(
-        16.0f, 372.0f, 0x220, 0x44, -1, 4);
-    HuWinDispOff(lbl_1_bss_198C[3]);
-    HuWinBGTPLvlSet(lbl_1_bss_198C[3], 0.9f);
-
-    for (windowIndex = 0; windowIndex < 4; windowIndex++) {
-        winData[lbl_1_bss_198C[windowIndex]].padMask = 1;
-        HuWinCallbackSet(lbl_1_bss_198C[windowIndex], (HUWIN_CALLBACK)fn_1_0);
-    }
+    fn_1_CE4();
 
     fn_1_8F0();
 
-    config = lbl_1_data_3C;
-    for (i = 0; i < 12; i++) {
-        lbl_1_bss_1958[i] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_4[i], 0x10000000, 2));
-    }
-    for (i = 0; i < 4; i++) {
-        lbl_1_bss_194E[i] = HuSprGrpCreate(lbl_1_data_34[i]);
-    }
-    for (i = 0; i < 11; i++, config++) {
-        lbl_1_bss_1938[i] = HuSprCreate(
-            lbl_1_bss_1958[config->anim],
-            (s16)(config->priority + 6000), config->bank);
-        HuSprGrpMemberSet(lbl_1_bss_194E[config->group],
-            config->member, lbl_1_bss_1938[i]);
-        HuSprPosSet(lbl_1_bss_194E[config->group], config->member,
-            config->x, config->y);
-        HuSprScaleSet(lbl_1_bss_194E[config->group], config->member,
-            config->scaleX, config->scaleY);
-        HuSprZRotSet(lbl_1_bss_194E[config->group], config->member,
-            config->rotation);
-    }
-    for (i = 0; i < 4; i++) {
-        fn_1_11880(lbl_1_bss_194E[i], HUSPR_ATTR_DISPOFF);
-    }
-    HuSprExecLayerCameraSet(0x40, 1, 2);
-    HuSprExecLayerCameraSet(0x41, 1, 4);
+    fn_1_1994();
 
-    lbl_1_bss_1930[0] = (s16)fn_8003D248();
-    lbl_1_bss_1930[1] = 0;
-    if (lbl_1_bss_2C == 0) {
-        lbl_1_bss_1930[2] = 0;
-        lbl_1_bss_1930[3] = 0;
-    } else if (lbl_1_bss_30 == 1) {
-        lbl_1_bss_1930[2] = 0;
-        lbl_1_bss_1930[3] = 0;
-    } else {
-        lbl_1_bss_1930[1] = 9;
-        lbl_1_bss_1930[2] = 4;
-        lbl_1_bss_1930[3] = 1;
-    }
-
-    for (flagIndex = 0; flagIndex < 55; flagIndex++) {
-        lbl_1_data_22C[flagIndex].value[10] = 0;
-        if (fn_8003D2F0(lbl_1_data_22C[flagIndex].value[2])) {
-            lbl_1_data_22C[flagIndex].value[10] = 1;
-        }
-    }
+    fn_1_1AC();
 
     fn_1_12EA8();
     lbl_1_bss_C = fn_8003AB38(lbl_1_bss_0, 0x1000, 0x10, 0x10,
@@ -2603,6 +2552,7 @@ void fn_1_86C0(void)
         lbl_1_bss_0);
 }
 
+/* Reads the overlay entry state and initializes the Star Bank. */
 void ObjectSetup(void)
 {
     OSReport("\n-----===== MARIO PARTY 6 :: STAR BANK =====-----\n\n");
@@ -2611,6 +2561,7 @@ void ObjectSetup(void)
     fn_1_86C0();
 }
 
+/* Runs the module constructors and initializes the Star Bank. */
 int _prolog(void)
 {
     extern void ObjectSetup(void);
@@ -2625,6 +2576,7 @@ int _prolog(void)
     return 0;
 }
 
+/* Runs the module destructors. */
 void _epilog(void)
 {
     const MDBANK_VOID_FUNC *dtor = _dtors;
@@ -2635,6 +2587,7 @@ void _epilog(void)
     }
 }
 
+/* Selects the looping bank sound from the balance, or stops it for a low balance. */
 void fn_1_92A4(void)
 {
     if (lbl_1_bss_1930[0] > 80) {
@@ -2650,8 +2603,7 @@ void fn_1_92A4(void)
     }
 }
 
-inline void fn_1_92A4(void);
-
+/* Sets the bank camera target pose and smooths the camera toward it. */
 void fn_1_9380(OMOBJ *obj, MDBANK_CAMERA_WORK *camera)
 {
     camera->centerTarget.x = 0.0f;
@@ -2661,42 +2613,18 @@ void fn_1_9380(OMOBJ *obj, MDBANK_CAMERA_WORK *camera)
     camera->rotTarget.y = 0.0f;
     camera->rotTarget.z = 0.0f;
     camera->zoomTarget = 2150.0f;
-    fn_1_111F8(&camera->center, &camera->centerTarget, 15.0f);
-    fn_1_111F8(&camera->rot, &camera->rotTarget, 15.0f);
-    camera->zoom = fn_1_111B0(camera->zoom, camera->zoomTarget,
-        15.0f);
+    fn_1_3FC(camera, 15.0f);
 }
 
+/* Starts the bank arrival, item display, music and opening wipe. */
 s32 fn_1_9464(void)
 {
-    OMOBJ *obj;
-    s16 i;
 
     HuPrcSleep(5);
-    obj = lbl_1_bss_20;
-    if (lbl_1_bss_1930[0] > 80) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[10]);
-    } else if (lbl_1_bss_1930[0] > 60) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[9]);
-    } else if (lbl_1_bss_1930[0] > 40) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[8]);
-    } else if (lbl_1_bss_1930[0] > 20) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[7]);
-    } else {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[6]);
-    }
-    for (i = 0; i < 20; i++) {
-        if (i <= lbl_1_bss_1930[0] - 1) {
-            fn_80026A44(obj->mdlId[i], (1 << 0));
-        } else {
-            fn_800269E8(obj->mdlId[i], (1 << 0));
-        }
-    }
+    fn_1_6684();
     fn_1_6C6C();
     if (lbl_1_bss_2C == 1) {
-        OMOBJ *shapeObj = lbl_1_bss_1C;
-
-        shapeObj->work[2] = 1;
+        fn_1_6B0C();
         fn_1_5C1C(1);
     }
     lbl_1_bss_1988 = HuAudSStreamPlay(MSM_STREAM_STAR_GATHERING);
@@ -2709,9 +2637,9 @@ s32 fn_1_9464(void)
     return 1;
 }
 
+/* Shows the opening guide messages and starts the title sprite fade. */
 s32 fn_1_981C(void)
 {
-    OMOBJ *obj;
 
     fn_1_1C64();
     fn_1_1D68();
@@ -2720,11 +2648,11 @@ s32 fn_1_981C(void)
     fn_1_1C64();
     fn_1_12F8(3, MESSNUM(MESS_SBANK_MAIN_MENU, 1), 1);
     fn_1_11A0();
-    obj = lbl_1_bss_4;
-    obj->objFunc = fn_1_2750;
+    fn_1_2888();
     return 1;
 }
 
+/* Shows the shop introduction and starts the guide departures and item appearance. */
 s32 fn_1_9DE8(void)
 {
     fn_1_12F8(2, MESSNUM(MESS_SBANK_MAIN_MENU, 2), 1);
@@ -2744,6 +2672,7 @@ s32 fn_1_9DE8(void)
     return 1;
 }
 
+/* Shows the shop exit question and returns the selected choice. */
 s16 fn_1_A438(void)
 {
     fn_1_1D68();
@@ -2751,6 +2680,7 @@ s16 fn_1_A438(void)
     return fn_1_1200(2);
 }
 
+/* Runs the bank payment animation for the selected item and waits for it to finish. */
 void fn_1_A750(s16 index)
 {
     HuAudFXPlay(MSM_SE_BANK_DEPOSIT_START);
@@ -2759,7 +2689,7 @@ void fn_1_A750(s16 index)
     fn_1_7A20(0);
     HuAudFXPlay(MSM_SE_BANK_DEPOSIT_DROP);
     fn_1_6668();
-    fn_1_3DBC(index, lbl_1_data_22C[index].value[3]);
+    fn_1_3DBC(index, lbl_1_data_22C[index].price);
     do {
         HuPrcVSleep();
     } while (lbl_1_bss_20->objFunc != NULL);
@@ -2771,6 +2701,7 @@ void fn_1_A750(s16 index)
     HuAudFXPlay(MSM_SE_BANK_DEPOSIT_DONE);
 }
 
+/* Handles shop navigation, item purchases, owned item actions and exit selection. */
 s16 fn_1_AA08(void)
 {
     s16 result = 0;
@@ -2802,11 +2733,11 @@ s16 fn_1_AA08(void)
             if (index >= 55) {
                 index -= 55;
             }
-            if (lbl_1_data_22C[index].value[10] == 0) {
-                fn_1_1540(2, lbl_1_data_22C[index].choice.nameMessage, 0);
+            if (lbl_1_data_22C[index].owned == 0) {
+                fn_1_1540(2, lbl_1_data_22C[index].nameMessage, 0);
                 fn_1_12F8(2, MESSNUM(MESS_SBANK_MAIN_MENU, 4), 0);
             } else {
-                fn_1_1540(2, lbl_1_data_22C[index].choice.nameMessage, 0);
+                fn_1_1540(2, lbl_1_data_22C[index].nameMessage, 0);
                 fn_1_12F8(2, MESSNUM(MESS_SBANK_MAIN_MENU, 4), 0);
             }
             time++;
@@ -2907,11 +2838,11 @@ s16 fn_1_AA08(void)
         if (index >= 55) {
             index -= 55;
         }
-        if (lbl_1_data_22C[index].value[10] == 0) {
+        if (lbl_1_data_22C[index].owned == 0) {
             fn_1_4C64(lbl_1_bss_1930[2] + lbl_1_bss_1930[3] * 5);
-            if (lbl_1_bss_1930[0] >= lbl_1_data_22C[index].value[3]) {
+            if (lbl_1_bss_1930[0] >= lbl_1_data_22C[index].price) {
                 fn_1_1C64();
-                sprintf(text, "%d", lbl_1_data_22C[index].value[3]);
+                sprintf(text, "%d", lbl_1_data_22C[index].price);
                 fn_1_1540(3, (s32)text, 0);
                 fn_1_12F8(3, MESSNUM(MESS_SBANK_MAIN_MENU, 5), 1);
                 if (fn_1_1200(2) == 0) {
@@ -2927,10 +2858,10 @@ s16 fn_1_AA08(void)
                             &effectPos);
                         fn_1_13598(&effectPos);
                         HuPrcSleep(30);
-                        lbl_1_data_22C[index].value[10] = 1;
+                        lbl_1_data_22C[index].owned = 1;
                         HuPrcSleep(30);
                         fn_1_1C64();
-                        fn_1_1540(3, lbl_1_data_22C[index].choice.nameMessage, 0);
+                        fn_1_1540(3, lbl_1_data_22C[index].nameMessage, 0);
                         fn_1_12F8(3, MESSNUM(MESS_SBANK_MAIN_MENU, 8), 1);
                         fn_1_11A0();
                         fn_1_1050C(index);
@@ -2950,7 +2881,7 @@ s16 fn_1_AA08(void)
             result = fn_1_F7C0(index);
             if (result == 1) {
                 fn_1_1D68();
-                fn_1_12F8(2, lbl_1_data_22C[index].choice.message, 1);
+                fn_1_12F8(2, lbl_1_data_22C[index].message, 1);
                 fn_1_11A0();
             } else if (result) {
                 return result;
@@ -2963,72 +2894,24 @@ s16 fn_1_AA08(void)
 
 s32 lbl_1_data_A20[2] = { DATANUM(0x940000, 73), DATANUM(0x940000, 74) };
 
+/* Starts the bank scene and introductory messages, then maps the shop result to an exit route. */
 short fn_1_EA98(s32 unused0, s32 unused1)
 {
-    OMOBJ *manager;
-    OMOBJ *obj;
-    MDBANK_ANIM_SET *set;
     s16 result = 0;
-    OMOBJ *shapeObj;
-    s16 i;
-    s16 j;
 
     HuPrcSleep(5);
 
-    manager = lbl_1_bss_20;
-    if (lbl_1_bss_1930[0] > 80) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[10]);
-    } else if (lbl_1_bss_1930[0] > 60) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[9]);
-    } else if (lbl_1_bss_1930[0] > 40) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[8]);
-    } else if (lbl_1_bss_1930[0] > 20) {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[7]);
-    } else {
-        fn_80030D50(lbl_1_bss_200, lbl_1_bss_1958[6]);
-    }
-    for (i = 0; i < 20; i++) {
-        if (i <= lbl_1_bss_1930[0] - 1) {
-            fn_80026A44(manager->mdlId[i], (1 << 0));
-        } else {
-            fn_800269E8(manager->mdlId[i], (1 << 0));
-        }
-    }
+    fn_1_6684();
     fn_1_6C6C();
 
     if (lbl_1_bss_2C == 1) {
-        shapeObj = lbl_1_bss_1C;
-        shapeObj->work[2] = 1;
-        obj = lbl_1_bss_18;
-        set = lbl_1_bss_179C;
-        for (j = 0; j < 10; j++, set++) {
-            fn_80030D50(set->anim[0], lbl_1_bss_18A0[31]);
-            fn_80030D50(set->anim[1], lbl_1_bss_18A0[31]);
-            fn_80030D50(set->anim[2], lbl_1_bss_18A0[31]);
-            fn_80030D50(set->anim[3], lbl_1_bss_18A0[31]);
-            fn_80030D50(set->anim[4], lbl_1_bss_18A0[31]);
-            fn_80030D50(set->anim[5], lbl_1_bss_18A0[31]);
-            fn_800268B0(set->model[0], 0.0f,
-                0.0f, 0.0f);
-        }
-        obj->work[0] = 0;
-        obj->work[1] = 1;
-        obj->objFunc = fn_1_5988;
+        fn_1_6B0C();
+        fn_1_5C1C(1);
     }
 
     lbl_1_bss_1988 = HuAudSStreamPlay(MSM_STREAM_STAR_GATHERING);
     HuAudFXPlay(MSM_SE_BANK_DEPOSIT_DONE);
-    if (lbl_1_bss_1930[0] > 80) {
-        lbl_1_data_0 = HuAudFXPlay(MSM_SE_BANK_BALANCE_LOOP_4);
-    } else if (lbl_1_bss_1930[0] > 60) {
-        lbl_1_data_0 = HuAudFXPlay(MSM_SE_BANK_BALANCE_LOOP_3);
-    } else if (lbl_1_bss_1930[0] > 40) {
-        lbl_1_data_0 = HuAudFXPlay(MSM_SE_BANK_BALANCE_LOOP_2);
-    } else if (lbl_1_bss_1930[0] > 20) {
-        lbl_1_data_0 = HuAudFXPlay(MSM_SE_BANK_BALANCE_LOOP_1);
-    } else {
-        HuAudFXStop(lbl_1_data_0);
-    }
+    fn_1_92A4();
 
     WipeCreate(1, 0, 0x3C);
     while (WipeCheck() != 0) {
@@ -3051,13 +2934,14 @@ short fn_1_EA98(s32 unused0, s32 unused1)
     }
 }
 
+/* Checks the selected item unlock requirement and shows the corresponding failure message. */
 s32 fn_1_EEB8(s16 index)
 {
-    if (lbl_1_data_22C[index].value[0] == 0) {
+    if (lbl_1_data_22C[index].unlockRequirement == 0) {
         return 1;
     }
-    if (lbl_1_data_22C[index].value[0] == 1) {
-        if (lbl_1_data_22C[0].value[10] == 0) {
+    if (lbl_1_data_22C[index].unlockRequirement == 1) {
+        if (lbl_1_data_22C[0].owned == 0) {
             fn_1_1C64();
             fn_1_12F8(3, MDBANK_ITEM_MESSAGE_INITIAL_UNLOCK_REQUIRED, 1);
             fn_1_11A0();
@@ -3065,7 +2949,7 @@ s32 fn_1_EEB8(s16 index)
         }
         return 1;
     }
-    if (lbl_1_data_22C[index].value[0] == 2) {
+    if (lbl_1_data_22C[index].unlockRequirement == 2) {
         if (fn_8003CC40(678) == 0) {
             fn_1_1C64();
             fn_1_12F8(3, MDBANK_ITEM_MESSAGE_M678_UNLOCK_REQUIRED, 1);
@@ -3074,7 +2958,7 @@ s32 fn_1_EEB8(s16 index)
         }
         return 1;
     }
-    if (lbl_1_data_22C[index].value[0] == 3) {
+    if (lbl_1_data_22C[index].unlockRequirement == 3) {
         if (fn_8003CC40(679) == 0) {
             fn_1_1C64();
             fn_1_12F8(3, MDBANK_ITEM_MESSAGE_M679_UNLOCK_REQUIRED, 1);
@@ -3086,25 +2970,26 @@ s32 fn_1_EEB8(s16 index)
     return 1;
 }
 
+/* Handles the owned item action, including overlay choices and the bank option toggle. */
 s32 fn_1_F7C0(s16 index)
 {
-    if (lbl_1_data_22C[index].value[1] == 1) {
+    if (lbl_1_data_22C[index].action == 1) {
         fn_1_1D68();
-        fn_1_12F8(2, lbl_1_data_22C[index].choice.message, 1);
+        fn_1_12F8(2, lbl_1_data_22C[index].message, 1);
         if (fn_1_1200(2) == 0) {
             return 10;
         }
         return 0;
     }
-    if (lbl_1_data_22C[index].value[1] == 2) {
+    if (lbl_1_data_22C[index].action == 2) {
         fn_1_1D68();
-        fn_1_12F8(2, lbl_1_data_22C[index].choice.message, 1);
+        fn_1_12F8(2, lbl_1_data_22C[index].message, 1);
         if (fn_1_1200(2) == 0) {
             return 20;
         }
         return 0;
     }
-    if (lbl_1_data_22C[index].value[1] == 3) {
+    if (lbl_1_data_22C[index].action == 3) {
         if (fn_8003D2F0(60) == 0) {
             fn_1_1D68();
             fn_1_12F8(2, MDBANK_ITEM_MESSAGE_BANK_FLAG_ENABLE_CONFIRM, 1);
@@ -3123,23 +3008,24 @@ s32 fn_1_F7C0(s16 index)
     return 1;
 }
 
+/* Shows the purchase notice selected by the item action. */
 void fn_1_1050C(s16 index)
 {
-    if (lbl_1_data_22C[index].value[1] == 1) {
+    if (lbl_1_data_22C[index].action == 1) {
         fn_1_1D68();
         fn_1_12F8(2, MDBANK_ITEM_MESSAGE_STATE_ONE_NOTICE, 1);
         fn_1_11A0();
-    } else if (lbl_1_data_22C[index].value[1] == 2) {
+    } else if (lbl_1_data_22C[index].action == 2) {
         fn_1_1D68();
         fn_1_12F8(2, MDBANK_ITEM_MESSAGE_STATE_TWO_NOTICE, 1);
         fn_1_11A0();
-    } else if (lbl_1_data_22C[index].value[1] == 3) {
+    } else if (lbl_1_data_22C[index].action == 3) {
         fn_1_1D68();
         fn_1_12F8(2, MDBANK_ITEM_MESSAGE_STATE_THREE_NOTICE, 1);
         fn_1_11A0();
     } else {
         fn_1_1D68();
-        fn_1_12F8(2, lbl_1_data_22C[index].choice.message, 1);
+        fn_1_12F8(2, lbl_1_data_22C[index].message, 1);
         fn_1_11A0();
     }
 }

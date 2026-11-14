@@ -9,6 +9,7 @@
 #include "game/audio.h"
 #include "game/gamemes.h"
 #include "game/object.h"
+#include "msm_stream.h"
 
 HUPROCESS *lbl_1_bss_0; /* Object-manager process used by the minigame's scene objects. */
 
@@ -39,7 +40,7 @@ void _epilog(void)
     }
 }
 
-#define MSM_STREAM_M667_TALKIE_WALKIE 73
+
 
 /* Scene setup creates object-manager work records with this helper. */
 void *fn_1_A0(s32 priority, u32 bytes, void (*update)(OMOBJ *))
@@ -96,7 +97,7 @@ void fn_1_1F8(s16 mode, s16 frameNo)
 {
     if (lbl_1_data_28 == -1 &&
         (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
-        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_M667_TALKIE_WALKIE);
+        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_JAZZY);
     }
 }
 

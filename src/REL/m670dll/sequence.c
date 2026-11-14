@@ -10,35 +10,27 @@
 #include "game/wipe.h"
 #include "messdir_enum.h"
 
-
-
-typedef struct M670MicResponse_s {
-    s16 status; /* Recognition status; nonzero responses are ignored. */
-    u16 confidence; /* Recognition confidence compared with the game's 3000 threshold. */
-    s16 count; /* Number of recognized values in this response. */
-    s16 unk_06; /* Not read by this callback. */
-    s16 *values; /* Recognized word indexes supplied by the microphone system. */
-} M670MICRESPONSE;
 /* The callback writes "a" to entry 1, but no code reads this string table. */
 char *lbl_1_data_28[8] = {0};
 
 static int lbl_1_bss_8;
 static int lbl_1_bss_4;
+/* Reset during round initialization; no code reads this value. */
 static int lbl_1_bss_0;
 /* HuMCListenerCreate calls this per response; nonzero status or empty responses return. At
  * confidence
  * >= 3000 it maps the first value only in solo state 1 (unknown values leave selectedWord
  * unchanged), but still starts the call motion and cue. */
-void fn_1_A0(u16 *micResponse)
+void fn_1_A0(MCResponse_s *micResponse)
 {
-    if (((M670MICRESPONSE *) micResponse)->status != 0 ||
-        ((M670MICRESPONSE *) micResponse)->count == 0) {
+    if (micResponse->status != 0 ||
+        micResponse->count == 0) {
         return;
     }
-    if (((M670MICRESPONSE *)micResponse)->confidence >= 3000) {
+    if (micResponse->score >= 3000) {
         lbl_1_data_28[1] = "a";
         if (lbl_1_bss_10.playerState[lbl_1_bss_10.soloPlayer] == 1) {
-            switch (*((M670MICRESPONSE *)micResponse)->values) {
+            switch (*micResponse->result) {
             case 0: lbl_1_bss_10.selectedWord = 0; break;
             case 1: lbl_1_bss_10.selectedWord = 1; break;
             case 2: lbl_1_bss_10.selectedWord = 2; break;
@@ -199,6 +191,7 @@ void fn_1_5AC(s16 mode, s16 frameNo)
             for (i = 0; i < 4; i++) {
                 fn_80087158(lbl_1_bss_10.players[i], (1 << 0));
             }
+            /* The enclosing condition already requires lbl_1_bss_4 to be zero. */
             if (lbl_1_bss_4 == 0 && lbl_80265728[lbl_1_bss_10.soloPlayer].type != 1) {
                 HuMCListenerKill();
             }

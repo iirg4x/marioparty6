@@ -1,19 +1,30 @@
 /* Board capsule events with special character scenes and player effects. */
 #define _MATH_H
 #include "dolphin/math.h"
+#include "humath.h"
 #include "dolphin/pad.h"
 #include "datadir_enum.h"
 #include "datanum/charmot.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
+#include "game/board/capevent.h"
 #include "game/board/capsule.h"
 #include "game/board/comchoice.h"
 #include "game/board/coin.h"
+#include "game/board/dice.h"
 #include "game/board/main.h"
+#include "game/board/math.h"
 #include "game/board/masu.h"
+#include "game/board/mgcall.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
+#include "game/board/status.h"
+#include "game/board/pause.h"
+#include "game/board/telop.h"
+#include "game/board/scroll.h"
+#include "game/board/star.h"
 #include "game/board/window.h"
+#include "game/board/wipe.h"
 #include "game/charman.h"
 #include "game/esprite.h"
 #include "game/flag.h"
@@ -23,20 +34,12 @@
 #include "game/pad.h"
 #include "game/process.h"
 #include "messdir_enum.h"
-
-/* Returns the magnitude used by Koopa's sine-driven dice pulse. */
-static inline float CapSpecialAbsFloat(register float value)
-{
-    asm {
-        fabs value, value
-    }
-    return value;
-}
+#include "msm_se.h"
 
 #define CAPSPECIAL_MASU_ATTR_TERESA_LINK (1 << 13)
 #define CAPSPECIAL_CAPSULE_LIGHT 31
 #define CAPSPECIAL_FADE_OBJ_PRIORITY (-32768)
-#define CAPSPECIAL_DICE_TABLE_END 255
+#define CAPSPECIAL_DICE_TABLE_END (-1)
 #define CAPSPECIAL_TERESA_COIN_EFFECT_ARG 65535
 #define CAPSPECIAL_MIRACLE_VIBRATION_FRAMES 300
 #define CAPSPECIAL_MIRACLE_SPR_PULSE 32
@@ -116,9 +119,6 @@ static inline float CapSpecialAbsFloat(register float value)
 #define CAPSPECIAL_MESS_TERESA_FAILURE MESSNUM(MESS_TERESA_MASU, 16)
 #define CAPSPECIAL_MESS_TERESA_MASH_HELP MESSNUM(MESS_TERESA_MASU, 17)
 
-#define CAPSPECIAL_SE_TERESA_MESSAGE 925
-#define CAPSPECIAL_SE_TERESA_FAILURE 926
-
 typedef int (*TERESA_STEAL_HOOK)(int);
 typedef int (*TERESA_STEAL_BEGIN_HOOK)(int, int);
 
@@ -139,11 +139,11 @@ typedef struct EvCapWork {
 
 typedef struct CapWorkFlag {
     u8 _flag00 : 1;
-    u8 _flag01 : 1;
-    u8 _flag02 : 1;
-    u8 _flag03 : 1;
-    u8 _flag04 : 1;
-    u8 _flag05 : 1;
+    u8 kettouStopF : 1;
+    u8 kettouMinigameReturnF : 1;
+    u8 donkeyMinigameReturnF : 1;
+    u8 koopaMinigameReturnF : 1;
+    u8 koopaNoCoinF : 1;
     u8 _flag06 : 1;
     u8 _flag07 : 1;
     u8 _flag08 : 1;
@@ -178,15 +178,15 @@ typedef struct CapWork {
     int capsuleNo; /* Capsule being run. */
     int masuId; /* Space where the capsule event started. */
     int masuIdNext; /* Next space tracked by capsule movement. */
-    int _unk14; /* Shared work slot whose meaning is not established in this file. */
-    int _unk18; /* Shared work slot whose meaning is not established in this file. */
-    int _unk1C; /* Shared work slot whose meaning is not established in this file. */
+    int moveF; /* Whether this event was called during movement. */
+    int stopF; /* Whether this event was called when movement stopped. */
+    int trapF; /* Whether this event is a trap. */
     EVCAPWORK objWork;
     CAPWORKFLAG flags;
     int eventData[6]; /* Per-event object IDs, counts, or callback results. */
-    u8 _unkB84[40]; /* Shared work bytes whose use is not established in this file. */
+    u8 sharedWorkBytesA[40]; /* Shared work bytes whose use is not established in this file. */
     OMOBJ *guideObj; /* Guide character object used by capsule scenes. */
-    u8 _unkBB0[28]; /* Shared work bytes whose use is not established in this file. */
+    u8 sharedWorkBytesB[28]; /* Shared work bytes whose use is not established in this file. */
     int processNo; /* Process ID for the running capsule event. */
     OMOBJ *explodeObj; /* Explosion effect object, when the event uses one. */
     OMOBJ *boostObj; /* Boost effect object, when the event uses one. */
@@ -230,7 +230,7 @@ static HuVecF teresaCameraRot = { -30.0f, 0.0f, 0.0f };
 static HuVecF teresaCameraOfs = { 0.0f, 100.0f, 0.0f };
 static HuVecF teresaLightPos = { 0.0f, 0.0f, 0.0f };
 static HuVecF teresaLightDir = { 0.0f, 1.0f, -1.0f };
-static u32 MiracleGuideMotTbl[2][16] = {
+static int MiracleGuideMotTbl[2][16] = {
     { CAPSPECIAL_DATA_MIRACLE_GUIDE_SET0_MODEL,
         CAPSPECIAL_DATA_MIRACLE_GUIDE_SET0_MOTION1,
         CAPSPECIAL_DATA_MIRACLE_GUIDE_SET0_MOTION2,
@@ -309,7 +309,7 @@ static u32 kettouPlayerMotTbl[4] = {
     DATANUM(0x8e0000, 120), /* duel character motion resource pair */
     DATANUM(0x930000, 75), /* duel character motion resource pair */
 };
-static u32 donkeyMotTbl[12] = {
+static int donkeyMotTbl[12] = {
     DATANUM(0xe0000, 15), /* Donkey model motion resource */
     DATANUM(0xe0000, 17), /* Donkey model motion resource */
     DATANUM(0xe0000, 18), /* Donkey model motion resource */
@@ -326,7 +326,7 @@ static u32 donkeyMotTbl[12] = {
 static int donkeyDiceResultTbl[5] = { 5, 10, 20, 30, -1 };
 static int donkeyRouletteBankTbl[10] = { 0, 1, 0, 1, 0, 1, 0, 1, 0, 2 };
 static char capTreeFook[12] = "tree_fook";
-static u32 koopaMotTbl[7] = {
+static int koopaMotTbl[7] = {
     DATANUM(0xe0000, 1), /* Koopa model motion resource */
     DATANUM(0xe0000, 5), /* Koopa model motion resource */
     DATANUM(0xe0000, 3), /* Koopa model motion resource */
@@ -357,11 +357,11 @@ static int miracleBackFile = CAPSPECIAL_DATA_MIRACLE_TRADE_BACK;
 /* minigame archive resource identifier pair */
 static u32 donkeyMgFile[2] = { DATANUM(0x50000, 140), DATANUM(0x50000, 140) };
 /* dice value table terminator sentinel */
-static u8 donkeyDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 };
+static s8 donkeyDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 };
 /* minigame archive resource identifier pair */
 static u32 koopaMgFile[2] = { DATANUM(0x50000, 141), DATANUM(0x50000, 141) };
 /* dice value table terminator sentinel */
-static u8 koopaDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 };
+static s8 koopaDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 };
 static int kettouMotId[12];
 typedef struct {
     s16 playerNo1;
@@ -379,104 +379,9 @@ static TERESA_STEAL_HOOK teresaStealHook;
 static OMOBJ *miracleSprObj;
 static int diceHitTimer;
 
-extern void mbDiceObjHit(int playerNo);
-extern int mbDiceExec(int playerNo, int diceType, s8 *valueTbl,
-    int tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
-extern BOOL mbDiceKillCheck(int playerNo);
-extern void mbDiceHitHookSet(int playerNo, void (*hook)(int result));
-extern OMOBJ *mbev_CapEffGlowCreate(void);
-extern int mbev_CapEffGlowAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
-    int time, float scale, float gravity, float rotStep, GXColor *color);
-extern int mbev_CapEffGlowKinokoTimeSet(OMOBJ *obj, int index,
-    int unk08, int unk0A);
-extern void mbev_CapEffColorSet(GXColor *color, int colorNo);
-extern OMOBJ *mbev_CapEffCoinCreate(void);
-extern OMOBJ *mbev_CapEffExplodeCreate(void);
-extern void mbev_CapEffCoinGlowSet(OMOBJ *obj, OMOBJ *glowObj);
-extern void mbWipeFadeOut(void);
-extern void mbWipeFadeIn(void);
-extern void mbev_MgCallDonkey(void);
-extern void mbev_MgCallKoopa(void);
-extern void mbev_MgCallKettou(void);
-extern int mbMgRouletteNumGet(int type);
-extern int mbCoinAddExec(int playerNo, int coinNum);
-extern s16 mbCoinDispCapsuleCreate(HuVecF *pos, int coinNum);
-extern float mbAngleWrap(float angle);
-extern s16 mbev_CapSprCreate(EVCAPWORK *work, unsigned int dataNum,
-    s16 prio, s16 bank);
-extern void mbev_CapObjMotionSet(int modelId, int time, int motNo,
-    int nextMotNo, u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr);
-extern s16 mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF,
-    BOOL waitF);
-extern void mbDiceFadeSet(int playerNo);
-extern void mbDicePadBtnHookSet(int playerNo, u16 (*hook)(int playerNo));
-extern void mbDiceMotHookSet(int playerNo, void (*hook)(int playerNo));
-extern int mbDiceResultGet(int playerNo);
-extern int mbev_CapPlayerSquishSet(int *out, int masuId);
-extern int mbev_CapPlayerSquishVoiceSet(int *out, int masuId, BOOL voiceF);
-extern void mbev_CapPlayerStunSet(int *playerNo, int playerNum, BOOL type);
-extern void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *pos);
-extern void mbev_CapVibrate(int type);
 extern OMOBJ *mbGuideCreateIn(void);
 extern MBMODELID mbGuideModelGet(OMOBJ *obj);
 extern void mbGuideKill(OMOBJ *obj);
-extern void mbev_CapObjClose(EVCAPWORK *work, int objId);
-extern void mbev_CapPlayerRotate(int playerNo, float angle);
-extern OMOBJ *mbev_CapCoinManCreate(void);
-extern OMOBJ *mbev_CapStarManCreate(void);
-extern void mbWipeSpecialFadeInCreate(int type, int time);
-extern void mbWipeSpecialFadeOutCreate(int type, int time);
-extern void mbev_CapDuelStatusDispSet(int leftPlayer, int rightPlayer,
-    BOOL waitF);
-extern int mbev_CapPlayerOrderGet(int *order, int playerNo1, int playerNo2,
-    int type);
-extern void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF);
-extern int mbStarDispPlayerCreate(int playerNo, int num);
-extern BOOL mbStarDispCheck(int starObj);
-extern int mbev_CapObjCreate(EVCAPWORK *work, int dataNum, int *motFile,
-    BOOL linkF, int delay, BOOL closeDir);
-extern void mbev_CapWait(CAPWORK *work);
-extern void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId,
-    HuVecF *pos);
-extern void mbev_CapPlayerPosSet(EVCAPWORK *work, int playerNo, int masuId,
-    HuVecF *pos);
-extern void mbev_CapPlayerMotShiftSet(int modelId, int motionNo, u32 attr,
-    BOOL shiftF);
-extern float mbev_CapAngleLerp(float a, float b, float t);
-extern BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
-extern int mbev_CapPlayerComSelKettouGet(int playerNo, int type,
-    int *playerList, int playerNum);
-extern s16 mbev_CapPlayerMotionCreate(EVCAPWORK *work, int playerNo,
-    int dataNum);
-extern void mbev_CapPlayerMotShiftWait(int playerNo, int motionNo, u32 attr,
-    BOOL waitF);
-extern int mbev_CapEffCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
-    float scale, float gravity, int time, int arg);
-extern BOOL mbev_CapEffCoinMaxYSet(OMOBJ *obj, int coinNo, float maxY);
-extern int mbev_CapEffCoinNumGet(OMOBJ *obj);
-extern void mbev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum,
-    BOOL highF);
-extern int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
-    int targetPlayerNo, BOOL highF);
-extern int mbev_CapCoinManNumGet(OMOBJ *obj);
-extern int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
-    int playerNo, BOOL highF);
-extern int mbev_CapStarManNumGet(OMOBJ *obj);
-extern void mbWipeDissolveFadeIn(void);
-extern void mbStatusMoveTo(int playerNo, HuVecF *posBegin, HuVecF *posEnd);
-extern void mbStatusPosOnGet(int statusNo, HuVecF *pos);
-extern void mbStatusPosOffGet(int statusNo, HuVecF *pos);
-extern void mbStatusDispSet(int playerNo, BOOL dispF);
-extern void mbStatusDispForceSet(int playerNo, BOOL dispF);
-extern void mbWipeDissolveFadeOutTime(int time);
-extern int mbStarObjCreate(void);
-extern void mbStarObjPosSetV(int objNo, const HuVecF *pos);
-extern void mbStarObjRotSet(int objNo, float x, float y, float z);
-extern void mbStarObjScaleSet(int objNo, float x, float y, float z);
-extern void mbStarObjDispSet(int objNo, BOOL dispF);
-extern void mbStarObjDispSetAll(BOOL dispF);
-extern void mbStarObjKill(int objNo);
-extern void mbStarGetExec(int playerNo);
 
 static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
 static void ev_CapTeresaFadeOMExec(OMOBJ *obj);
@@ -515,7 +420,6 @@ static int ev_CapDonkeyStart(CAPWORK *work);
 static void ev_CapDonkeyCoin(CAPWORK *work);
 static void ev_CapDonkeyReturn(CAPWORK *work);
 static void ev_CapDonkeyOMExec(OMOBJ *obj);
-extern void mbev_CapEffDustCloudAdd(OMOBJ *obj, HuVecF *pos);
 void mbev_CapTeresaFadeCreate(int objectId);
 void mbev_CapTeresaFadeKill(int objectId);
 void mbev_CapTeresaFadeSet(float alpha);
@@ -620,11 +524,11 @@ void mbev_CapTeresa(void)
     mbObjScaleSet(objectId, 2.0f, 2.0f, 2.0f);
     mbObjPosSetV(objectId, &objectPos);
     mbObjRotSet(objectId, 0.0f,
-        (float)(180.0 + (180.0 * (atan2(direction.x, direction.z) / 3.141592653589793))),
+        (float)(180.0 + (180.0 * (atan2(direction.x, direction.z) / M_PI))),
         0.0f);
     mbev_CapTeresaFadeCreate(objectId);
     mbPlayerRotSet(playerNo, 0.0f,
-        (float)(180.0 * (atan2(direction.x, direction.z) / 3.141592653589793)), 0.0f);
+        (float)(180.0 * (atan2(direction.x, direction.z) / M_PI)), 0.0f);
     for (i = 0; i < 4; i++) {
         if (i != playerNo) {
             mbPlayerDispSet(i, FALSE);
@@ -632,19 +536,19 @@ void mbev_CapTeresa(void)
     }
     cameraRot = teresaCameraRot;
     cameraRot.y = (float)(180.0
-        + (180.0 * (atan2(direction.x, direction.z) / 3.141592653589793)));
+        + (180.0 * (atan2(direction.x, direction.z) / M_PI)));
     mbCameraMovePlayer(playerNo, &cameraRot, &teresaCameraOfs, 1500.0f,
         -1.0f, -1);
     mbCameraMoveWait();
-    mbMusBoardFadeOut(0, 0, 1000, 1000, 32, FALSE);
+    mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_BOO_ATTACK, FALSE);
     mbWipeDissolveFadeIn();
 
     if (!lbl_80265B70.curTime) {
-        mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+        mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_UNAVAILABLE, 10);
         mbWinTopWait();
     } else if (mbPlayerCoinGet(playerNo) < 5) {
-        mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+        mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_INSUFFICIENT_COIN, 10);
         mbWinTopWait();
     } else {
@@ -680,20 +584,20 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
 
         if (coinTargetNum <= 0 && starTargetNum <= 0
             && mbPlayerCoinGet(playerNo) < 40 && starEnabledNum >= 1) {
-            mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+            mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
             mbWinCreate(2, CAPSPECIAL_MESS_TERESA_INSUFFICIENT_COIN, 10);
             mbWinTopWait();
         } else if (coinTargetNum <= 0 && starTargetNum <= 0) {
-            mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+            mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
             mbWinCreate(2, CAPSPECIAL_MESS_TERESA_NO_TARGET, 10);
             mbWinTopWait();
         } else {
             if (teresaStealMesId == -1) {
-                mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                 mbWinCreate(2, CAPSPECIAL_MESS_TERESA_INTRO, 10);
                 mbWinTopWait();
             } else {
-                mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                 mbWinCreate(2, CAPSPECIAL_MESS_TERESA_CUSTOM_INTRO, 10);
                 mbWinTopWait();
             }
@@ -843,7 +747,7 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                 } else {
                     mbCoinAddExec(playerNo, -40);
                 }
-                mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                 mbWinCreate(2, CAPSPECIAL_MESS_TERESA_PAYMENT, 10);
                 mbWinTopWait();
 
@@ -1030,7 +934,7 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                             mbMasuPosGet(targetMasu,
                                 &cameraRot);
                             cameraRot.y += 100.0
-                                + (20.0 * sin((3.141592653589793
+                                + (20.0 * sin((M_PI
                                     * (1440.0f * weight)) / 180.0));
                             mbObjPosSetV(objectId, &cameraRot);
                             mbev_CapTeresaFadeSet(alpha);
@@ -1041,7 +945,7 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                                     alpha--;
                                 }
                             }
-                            alpha += 2.5 * sin((3.141592653589793
+                            alpha += 2.5 * sin((M_PI
                                 * (360.0f * weight)) / 180.0);
                             if (alpha < 64 && (i & 7) == 0) {
                                 alpha++;
@@ -1123,13 +1027,13 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                             weight = 65.0f
                                 * (0.8f + (0.3f * MBCapsuleEffRandF()));
                             coinVel.x = (float)(weight
-                                * (sin((3.141592653589793 * launchAngle) / 180.0)
-                                * cos((3.141592653589793 * launchElevation) / 180.0)));
+                                * (sin((M_PI * launchAngle) / 180.0)
+                                * cos((M_PI * launchElevation) / 180.0)));
                             coinVel.z = (float)(weight
-                                * (cos((3.141592653589793 * launchAngle) / 180.0)
-                                * cos((3.141592653589793 * launchElevation) / 180.0)));
+                                * (cos((M_PI * launchAngle) / 180.0)
+                                * cos((M_PI * launchElevation) / 180.0)));
                             coinVel.y = (float)(weight
-                                * sin((3.141592653589793 * launchElevation) / 180.0));
+                                * sin((M_PI * launchElevation) / 180.0));
                             coinEffect =
                                 mbev_CapEffCoinAdd(work->coinObj, &coinPos, &coinVel, 0.75f, 4.9f,
                                                    30, CAPSPECIAL_TERESA_COIN_EFFECT_ARG);
@@ -1138,10 +1042,10 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                                     coinEffect, cameraRot.y + 300.0f);
                             }
                             mbPlayerCoinAdd(targetPlayer, -1);
-                            mbAudFXPlay(14);
+                            mbAudFXPlay(MSM_SE_CMN_COIN_LOSE);
                             HuPrcVSleep();
                         }
-                        mbAudFXPlay(15);
+                        mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
                         while (mbev_CapEffCoinNumGet(work->coinObj) > 0) {
                             HuPrcVSleep();
                         }
@@ -1207,7 +1111,7 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                         fn_8006A030(targetPlayer, 20, 20, 0);
                         for (i = 0; (float)i <= 60.0f; i++) {
                             weight = (float)i / 60.0f;
-                            weight = (float)sin((3.141592653589793
+                            weight = (float)sin((M_PI
                                 * (90.0f * weight)) / 180.0);
                             mbMasuPosGet(targetMasu,
                                 &cameraRot);
@@ -1227,7 +1131,7 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                         }
                         for (i = 0; (float)i <= 60.0f; i++) {
                             weight = (float)i / 60.0f;
-                            weight = (float)sin((3.141592653589793
+                            weight = (float)sin((M_PI
                                 * (90.0f * weight)) / 180.0);
                             mbMasuPosGet(targetMasu,
                                 &cameraRot);
@@ -1273,14 +1177,14 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                 mbObjPosSetV(objectId, &objectPos);
                 mbObjRotSet(objectId, 0.0f,
                     (float)(180.0 + (180.0
-                        * (atan2(direction.x, direction.z) / 3.141592653589793))),
+                        * (atan2(direction.x, direction.z) / M_PI))),
                     0.0f);
                 mbev_CapTeresaFadeSet(0.0f);
                 mbev_PlayerColMasu(
                     playerNo, lbl_80265750[playerNo].masuId, TRUE);
                 mbPlayerRotSet(playerNo, 0.0f,
                     (float)(180.0
-                        * (atan2(direction.x, direction.z) / 3.141592653589793)),
+                        * (atan2(direction.x, direction.z) / M_PI)),
                     0.0f);
                 for (i = 0; i < 4; i++) {
                     mbPlayerDispSet(i, TRUE);
@@ -1290,7 +1194,7 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                 }
                 cameraRot = teresaCameraRot;
                 cameraRot.y = (float)(180.0 + (180.0
-                    * (atan2(direction.x, direction.z) / 3.141592653589793)));
+                    * (atan2(direction.x, direction.z) / M_PI)));
                 mbCameraMovePlayer(playerNo, &cameraRot, &teresaCameraOfs,
                     1500.0f, -1.0f, -1);
                 mbCameraMoveWait();
@@ -1312,24 +1216,24 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
 
                 switch (stealType) {
                     case 0:
-                        mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                        mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_COIN_RESULT, 10);
                         mbWinTopWait();
                         mbPlayerRotateStart(playerNo,
                             (s16)(180.0 + (180.0
-                                * (atan2(direction.x, direction.z) / 3.141592653589793))),
+                                * (atan2(direction.x, direction.z) / M_PI))),
                             15);
                         while (!mbPlayerRotateCheck(playerNo)) {
                             HuPrcVSleep();
                         }
                         mbev_CapCoinAdd(
                             work->coinObj, playerNo, coinNum, TRUE);
-                        mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                        mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_SUCCESS, 10);
                         mbWinTopWait();
                         break;
                     case 1:
-                        mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                        mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_STAR_RESULT, 10);
                         mbWinTopWait();
                         mbMusFadeOutSpeed(1, 1000);
@@ -1338,7 +1242,7 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                         }
                         mbPlayerRotateStart(playerNo,
                             (s16)(180.0 + (180.0
-                                * (atan2(direction.x, direction.z) / 3.141592653589793))),
+                                * (atan2(direction.x, direction.z) / M_PI))),
                             15);
                         while (!mbPlayerRotateCheck(playerNo)) {
                             HuPrcVSleep();
@@ -1348,22 +1252,22 @@ for (i = 0, starEnabledNum = 0; i < 4; i++) {
                             ((1 << 30) | (1 << 0)));
                         mbMusBoardPlay();
                         musicChanged = TRUE;
-                        mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                        mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_SUCCESS, 10);
                         mbWinTopWait();
                         break;
                     case 2:
-                        mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                        mbAudFXPlay(MSM_SE_GUIDE_TERESA_TALK);
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_CUSTOM_RESULT, 10);
                         mbWinTopWait();
                         break;
                     default:
-                        mbAudFXPlay(CAPSPECIAL_SE_TERESA_FAILURE);
+                        mbAudFXPlay(MSM_SE_GUIDE_TERESA_FAILURE);
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_FAILURE, 10);
                         mbWinTopWait();
                         mbPlayerRotateStart(playerNo,
                             (s16)(180.0 + (180.0
-                                * (atan2(direction.x, direction.z) / 3.141592653589793))),
+                                * (atan2(direction.x, direction.z) / M_PI))),
                             15);
                         while (!mbPlayerRotateCheck(playerNo)) {
                             HuPrcVSleep();
@@ -1620,12 +1524,12 @@ void mbev_CapMiracle(void)
     mbev_CapPlayerRotate(playerNo, 0.0f);
     /* event model resource identifier */
     guideIds[0] = mbev_CapObjCreate(&work->objWork, DATANUM(0x110000, 0),
-        (int *)MiracleGuideMotTbl[0], FALSE, 5, FALSE);
+        MiracleGuideMotTbl[0], FALSE, 5, FALSE);
     mbObjMotionSet(guideIds[0], 3, 0);
     mbObjDispSet(guideIds[0], FALSE);
     /* event model resource identifier */
     guideIds[1] = mbev_CapObjCreate(&work->objWork, DATANUM(0x110000, 27),
-        (int *)MiracleGuideMotTbl[1], FALSE, 5, FALSE);
+        MiracleGuideMotTbl[1], FALSE, 5, FALSE);
     mbObjHookSet(guideIds[1], miracleItemHookName,
         /* event model resource identifier */
         mbev_CapObjCreate(&work->objWork, DATANUM(0x110000, 53), NULL,
@@ -1682,7 +1586,7 @@ void mbev_CapMiracle(void)
     cameraOfs.x = 0.0f;
     cameraOfs.y = 150.0f;
     cameraOfs.z = 0.0f;
-    firstCameraRot.x = *((const float *)&lbl_802C4374);
+    firstCameraRot.x = lbl_802C4374;
     firstCameraRot.y = firstCameraRot.z = 0.0f;
     mbCameraMoveMasu(nextMasu, &firstCameraRot, &cameraOfs, 1500.0f, -1.0f,
         -1);
@@ -1766,7 +1670,7 @@ static void ev_CapMiracleMasu(CAPWORK *work)
     mbCameraMoveMasu(masuId, NULL, &posTemp, -1.0f, -1.0f, 60);
     mbPlayerMotionShiftSet(playerNo, playerMot[0], 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
-    sound[0] = mbAudFXPlay(1091); /* event sound-effect resource */
+    sound[0] = mbAudFXPlay(MSM_SE_BRD00_MIRACLE_SPACE_CHARGE); /* event sound-effect resource */
     {
         HuVecF pos;
         HuVecF vel;
@@ -1801,7 +1705,7 @@ static void ev_CapMiracleMasu(CAPWORK *work)
             HuPrcVSleep();
         }
     }
-    sound[1] = mbAudFXPlay(1092); /* event sound-effect resource */
+    sound[1] = mbAudFXPlay(MSM_SE_BRD00_MIRACLE_SPACE_RISE); /* event sound-effect resource */
     for (i = 1; (float)i <= 120.0f; i++) {
         t = (float)i / 120.0f;
         for (j = 0; j < 2; j++) {
@@ -1815,13 +1719,13 @@ static void ev_CapMiracleMasu(CAPWORK *work)
             guideRot[j].z = 0.0f;
             guidePos[j].x = (float)(masuPos.x
                 + (1.5 * (100.0f
-                    * sin(3.141592653589793 * (180.0f + guideRot[j].y) / 180.0f))));
+                    * sin(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
             guidePos[j].z = (float)(masuPos.z
                 + (1.5 * (100.0f
-                    * cos(3.141592653589793 * (180.0f + guideRot[j].y) / 180.0f))));
+                    * cos(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
             guidePos[j].y = (float)(masuPos.y + 100.0f
                 + (6.0 * (100.0f
-                    * cos(3.141592653589793 * (90.0f * t) / 180.0f))));
+                    * cos(M_PI * (90.0f * t) / 180.0f))));
             mbObjPosSetV(guide[j], &guidePos[j]);
             mbObjRotSetV(guide[j], &guideRot[j]);
             mbObjDispSet(guide[j], TRUE);
@@ -1916,7 +1820,7 @@ static void ev_CapMiracleMasu(CAPWORK *work)
         for (i = 1; (float)i <= 45.0f; i++) {
             t = (float)i / 45.0f;
             playerPos.y = masuPos.y + (100.0f
-                * sin(3.141592653589793 * (90.0f * t) / 180.0f));
+                * sin(M_PI * (90.0f * t) / 180.0f));
             mbPlayerPosSetV(playerNo, &playerPos);
             for (j = 0; j < 2; j++) {
                 posTemp.x = playerPos.x
@@ -1946,16 +1850,16 @@ static void ev_CapMiracleMasu(CAPWORK *work)
             HuPrcVSleep();
         }
     }
-    sound[2] = mbAudFXPlay(1093); /* event sound-effect resource */
-    sound[3] = mbAudFXPlay(1022); /* event sound-effect resource */
+    sound[2] = mbAudFXPlay(MSM_SE_BRD00_GUIDE_FLY_IN_LOOP); /* event sound-effect resource */
+    sound[3] = mbAudFXPlay(MSM_SE_BRD00_MIRACLE_SPACE_FLASH); /* event sound-effect resource */
     for (i = 1; (float)i <= 120.0f; i++) {
         t = (float)i / 120.0f;
         playerPos.y = (float)(masuPos.y + 100.0f
             + (6.0 * (100.0f
-                * sin(3.141592653589793 * (90.0f * t) / 180.0f))));
+                * sin(M_PI * (90.0f * t) / 180.0f))));
         mbPlayerPosSetV(playerNo, &playerPos);
         mbPlayerRotSet(playerNo, 0.0f,
-            720.0 * sin(3.141592653589793 * (90.0f * t) / 180.0f), 0.0f);
+            720.0 * sin(M_PI * (90.0f * t) / 180.0f), 0.0f);
         {
             HuVecF pos;
             HuVecF vel;
@@ -1966,7 +1870,7 @@ static void ev_CapMiracleMasu(CAPWORK *work)
             for (j = 0; j < 2; j++) {
                 guideRot[j].x = 0.0f;
                 guideRot[j].y = 720.0 * sin(
-                    3.141592653589793 * (90.0f * (t * t)) / 180.0f);
+                    M_PI * (90.0f * (t * t)) / 180.0f);
                 if (j & 1) {
                     guideRot[j].y += 90.0f;
                 } else {
@@ -1975,13 +1879,13 @@ static void ev_CapMiracleMasu(CAPWORK *work)
                 guideRot[j].z = 0.0f;
                 guidePos[j].x = (float)(masuPos.x
                     + (1.5 * (100.0f
-                        * sin(3.141592653589793 * (180.0f + guideRot[j].y) / 180.0f))));
+                        * sin(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
                 guidePos[j].z = (float)(masuPos.z
                     + (1.5 * (100.0f
-                        * cos(3.141592653589793 * (180.0f + guideRot[j].y) / 180.0f))));
+                        * cos(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
                 guidePos[j].y = (float)(masuPos.y + 100.0f
                     + (6.0 * (100.0f
-                        * sin(3.141592653589793 * (90.0f * (t * t)) / 180.0f))));
+                        * sin(M_PI * (90.0f * (t * t)) / 180.0f))));
                 mbObjPosSetV(guide[j], &guidePos[j]);
                 mbObjRotSetV(guide[j], &guideRot[j]);
                 for (k = 0; k < 3; k++) {
@@ -2154,11 +2058,11 @@ static void ev_CapMiracleRun(CAPWORK *work)
     mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_ROUND_OF_MIRACLES, FALSE);
     mbWipeDissolveFadeIn();
     mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(950); /* event guide voice resource */
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO); /* event guide voice resource */
     /* miracle scene message resource */
     mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 0)), mbGuideSpeakerNoGet());
     mbWinTopWait();
-    mbAudGuidePlay(952); /* event guide voice resource */
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN); /* event guide voice resource */
     /* miracle scene message resource */
     mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 1)), mbGuideSpeakerNoGet());
     mbWinTopWait();
@@ -2172,7 +2076,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
     Hu3DMotionNoMotReset(mbObjModelIDGet(guide), capspecialMotionNode, (1 << 7));
     Hu3DMotionNoMotReset(mbObjModelIDGet(guide), capspecialMotionNode, (1 << 8));
     mbAudFXDelaySet(30);
-    mbAudFXPlay(1017); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_GUIDE_MAGIC_GESTURE); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(guide, 4, 0, TRUE);
     mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     (void)mbev_CapPlayerOrderGet(order, -1, playerNo, TRUE);
@@ -2189,21 +2093,21 @@ static void ev_CapMiracleRun(CAPWORK *work)
     diceNo = ev_CapMiracleDiceExec(playerNo, leftObj, 3,
         playerCount, motTimes);
     playerNo1 = playerList[diceNo];
-    mbAudFXPlay(1136); /* event sound-effect resource */
-    mbStatusPosOffGet(0, (HuVecF *)&statusOff);
-    mbStatusPosOnGet(0, (HuVecF *)&statusOn);
+    mbAudFXPlay(MSM_SE_BRD00_MIRACLE_FIRST_PLAYER_PICK); /* event sound-effect resource */
+    mbStatusPosOffGet(0, &statusOff);
+    mbStatusPosOnGet(0, &statusOn);
     mbStatusDispForceSet(playerNo1, TRUE);
     mbStatusMoveTo(playerNo1, (HuVecF *)&statusOff, (HuVecF *)&statusOn);
     ev_CapMiracleWindowFadeOut(leftObj, targetObj, 60,
         FALSE);
     HuPrcSleep(60);
     mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-    mbAudGuidePlay(952); /* event guide voice resource */
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN); /* event guide voice resource */
     /* miracle scene message resource */
     mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 2)), mbGuideSpeakerNoGet());
     mbWinTopWait();
     mbAudFXDelaySet(30);
-    mbAudFXPlay(1017); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_GUIDE_MAGIC_GESTURE); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(guide, 4, 0, TRUE);
     mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     (void)mbev_CapPlayerOrderGet(order, playerNo1, playerNo, TRUE);
@@ -2231,17 +2135,18 @@ static void ev_CapMiracleRun(CAPWORK *work)
     diceNo = ev_CapMiracleDiceExec(playerNo, leftObj, 3,
         playerCount, motTimes);
     playerNo2 = playerList[diceNo];
-    mbAudFXPlay(1137); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_MIRACLE_SECOND_PLAYER_PICK); /* event sound-effect resource */
     if ((int)lbl_80265B70.tagF != FALSE
         && mbev_CapPlayerCheck(playerNo1, playerNo2)) {
         HuPrcSleep(60);
         mbObjMotionShiftSet(guide, 6, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
-        mbAudGuidePlay(951); /* event guide voice resource */
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY); /* event guide voice resource */
             /* miracle scene message resource */
         mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 5)), mbGuideSpeakerNoGet());
         mbWinTopWait();
-        mbPlayerWinLoseVoicePlay(playerNo, 13, 585); /* player loss voice resource */
+        mbPlayerWinLoseVoicePlay(playerNo, 13,
+                                 MSM_SE_CHARVOICE_SAD_MOAN); /* player loss voice resource */
         mbev_CapPlayerMotShiftWait(playerNo, 13, 0,
             TRUE);
         mbev_CapPlayerMotShiftWait(playerNo, 1, ((1 << 30) | (1 << 0)),
@@ -2253,21 +2158,21 @@ static void ev_CapMiracleRun(CAPWORK *work)
         }
         ev_CapMiracleTradeHideSet();
     } else {
-        mbStatusPosOffGet(1, (HuVecF *)&statusOff);
-        mbStatusPosOnGet(1, (HuVecF *)&statusOn);
+        mbStatusPosOffGet(1, &statusOff);
+        mbStatusPosOnGet(1, &statusOn);
         mbStatusDispForceSet(playerNo2, TRUE);
         mbStatusMoveTo(playerNo2, (HuVecF *)&statusOff, (HuVecF *)&statusOn);
         ev_CapMiracleWindowFadeOut(leftObj, targetObj, 60,
             FALSE);
         HuPrcSleep(60);
-        mbAudGuidePlay(952); /* event guide voice resource */
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN); /* event guide voice resource */
         mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
             /* miracle scene message resource */
         mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 3)), mbGuideSpeakerNoGet());
         mbWinTopWait();
         mbAudFXDelaySet(30);
-        mbAudFXPlay(1017); /* event sound-effect resource */
+        mbAudFXPlay(MSM_SE_BRD00_GUIDE_MAGIC_GESTURE); /* event sound-effect resource */
         mbev_CapPlayerMotShiftSet(guide, 4, 0, TRUE);
         mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
@@ -2322,7 +2227,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
     mbWipeSpecialFadeOutCreate(3, 60);
     switch (tradeNo) {
         case 0:
-            mbAudGuidePlay(949); /* event guide voice resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY); /* event guide voice resource */
                     /* miracle scene message resource */
             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)),
                         mbGuideSpeakerNoGet());
@@ -2332,7 +2237,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
             mbWinTopWait();
             if (mbPlayerCoinGet(playerNo1) <= 0) {
-                mbAudGuidePlay(951); /* event guide voice resource */
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
@@ -2347,7 +2252,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             }
             break;
         case 1:
-            mbAudGuidePlay(949); /* event guide voice resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY); /* event guide voice resource */
                     /* miracle scene message resource */
             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)),
                         mbGuideSpeakerNoGet());
@@ -2358,7 +2263,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             mbWinTopWait();
             if (mbPlayerCoinGet(playerNo1) <= 0
                 && mbPlayerCoinGet(playerNo2) <= 0) {
-                mbAudGuidePlay(951); /* event guide voice resource */
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 /* miracle scene insert resource */
@@ -2373,7 +2278,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             }
             break;
         case 2:
-            mbAudGuidePlay(949); /* event guide voice resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY); /* event guide voice resource */
                     /* miracle scene message resource */
             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)),
                         mbGuideSpeakerNoGet());
@@ -2383,7 +2288,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
             mbWinTopWait();
             if (mbPlayerStarGet(playerNo1) <= 0) {
-                mbAudGuidePlay(951); /* event guide voice resource */
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
@@ -2398,7 +2303,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             }
             break;
         case 3:
-            mbAudGuidePlay(949); /* event guide voice resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY); /* event guide voice resource */
                     /* miracle scene message resource */
             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)),
                         mbGuideSpeakerNoGet());
@@ -2408,7 +2313,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
             mbWinTopWait();
             if (mbPlayerStarGet(playerNo1) <= 0) {
-                mbAudGuidePlay(951); /* event guide voice resource */
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
@@ -2423,7 +2328,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             }
             break;
         case 4:
-            mbAudGuidePlay(949); /* event guide voice resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY); /* event guide voice resource */
                     /* miracle scene message resource */
             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)),
                         mbGuideSpeakerNoGet());
@@ -2434,7 +2339,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             mbWinTopWait();
             if (mbPlayerStarGet(playerNo1) <= 0
                 && mbPlayerStarGet(playerNo2) <= 0) {
-                mbAudGuidePlay(951); /* event guide voice resource */
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 /* miracle scene insert resource */
@@ -2449,7 +2354,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
             }
             break;
         case 5:
-            mbAudGuidePlay(949); /* event guide voice resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY); /* event guide voice resource */
                     /* miracle scene message resource */
             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)),
                         mbGuideSpeakerNoGet());
@@ -2462,7 +2367,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
                 && mbPlayerCoinGet(playerNo2) <= 0
                 && mbPlayerStarGet(playerNo1) <= 0
                 && mbPlayerStarGet(playerNo2) <= 0) {
-                mbAudGuidePlay(951); /* event guide voice resource */
+                mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 /* miracle scene insert resource */
@@ -2496,25 +2401,25 @@ static void ev_CapMiracleRun(CAPWORK *work)
         for (i = 0; i < 2; i++) {
             if (oldStar[i] < mbPlayerStarGet(players[i])) {
                 /* player win voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 7, 573);
+                mbPlayerWinLoseVoicePlay(players[i], 7, MSM_SE_CHARVOICE_STAR_WIN_CHEER);
                 mbPlayerMotionShiftSet(players[i], 7, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
             } else if (oldStar[i] > mbPlayerStarGet(players[i])) {
                 /* player loss voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 8, 585);
+                mbPlayerWinLoseVoicePlay(players[i], 8, MSM_SE_CHARVOICE_SAD_MOAN);
                 mbPlayerMotionShiftSet(players[i], 8, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
             } else if (oldCoin[i] < mbPlayerCoinGet(players[i])) {
                 /* player win voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 12, 579);
+                mbPlayerWinLoseVoicePlay(players[i], 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
                 mbPlayerMotionShiftSet(players[i], 12, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
             } else if (oldCoin[i] > mbPlayerCoinGet(players[i])) {
                 /* player loss voice resource */
-                mbPlayerWinLoseVoicePlay(players[i], 13, 585);
+                mbPlayerWinLoseVoicePlay(players[i], 13, MSM_SE_CHARVOICE_SAD_MOAN);
                 mbPlayerMotionShiftSet(players[i], 13, 0.0f, 8.0f,
                     0);
                 motionF[i] = TRUE;
@@ -2540,7 +2445,7 @@ static void ev_CapMiracleRun(CAPWORK *work)
         }
         mbObjMotionShiftSet(guide, 5, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
-        mbAudGuidePlay(952); /* event guide voice resource */
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN); /* event guide voice resource */
             /* miracle scene message resource */
         mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 10)), mbGuideSpeakerNoGet());
         mbWinTopWait();
@@ -2624,7 +2529,7 @@ static void ev_CapMiracleCoinTrade(CAPWORK *work, int playerNo1,
         HuPrcSleep(coinDelay);
     } while (coinNum1 > 0 || coinNum2 > 0
         || mbev_CapCoinManNumGet(work->coinManObj) > 0);
-    mbAudFXPlay(15);
+    mbAudFXPlay(MSM_SE_CMN_COUNT_FINISH);
 }
 
 static void ev_CapMiracleStarTrade(CAPWORK *work, int playerNo1, int playerNo2,
@@ -2905,12 +2810,12 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
                 time = (float)++work->focusNo / 30.0f;
                 if (time < 1.0f) {
                     scale = 1.0 + 5.0 * cos(
-                        (3.141592653589793 * (90.0f * time)) / 180.0);
+                        (M_PI * (90.0f * time)) / 180.0);
                     espScaleSet((s16)work->sprId, scale, scale);
                     espTPLvlSet((s16)work->sprId, time);
                     espZRotSet((s16)work->sprId, 0.0f);
                     scale = time + 0.5 * sin(
-                        (3.141592653589793 * (180.0f * time)) / 180.0);
+                        (M_PI * (180.0f * time)) / 180.0);
                     espScaleSet((s16)work->backSprId, scale, scale);
                     angle = 90.0f * time;
                     radius = 300.0f * (1.0f - time);
@@ -2918,9 +2823,9 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
                         angle2 = angle + 60.0f * (float)j;
                         angle3 = angle2 + angle;
                         pos.x = work->pos.x + radius * sin(
-                            (3.141592653589793 * angle3) / 180.0);
+                            (M_PI * angle3) / 180.0);
                         pos.y = work->pos.y + radius * cos(
-                            (3.141592653589793 * angle3) / 180.0);
+                            (M_PI * angle3) / 180.0);
                         espPosSet((s16)work->sprIdTbl[j], pos.x, pos.y);
                         espScaleSet((s16)work->sprId, scale, scale);
                         espTPLvlSet((s16)work->sprIdTbl[j], 0.25f * time);
@@ -2928,7 +2833,7 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
                             (1.0f - time) * angle2);
                     }
                 } else {
-                    mbAudFXPlay(1138); /* event sound-effect resource */
+                    mbAudFXPlay(MSM_SE_BRD00_MIRACLE_ICON_LAND); /* event sound-effect resource */
                     scale = 1.0f;
                     espTPLvlSet((s16)work->sprId, 1.0f);
                     espZRotSet((s16)work->sprId, 0.0f);
@@ -2954,15 +2859,15 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
             case 1:
                 time = (float)++work->focusNo / 18.0f;
                 scale = 1.0 + 10.0 * sin(
-                    (3.141592653589793 * (90.0f * time)) / 180.0);
+                    (M_PI * (90.0f * time)) / 180.0);
                 if (time < 1.0f) {
                     {
                         espPosSet((s16)work->sprIdTbl[0],
                             work->pos.x, work->pos.y);
                         espScaleSet((s16)work->sprIdTbl[0], scale, scale);
                         espTPLvlSet((s16)work->sprIdTbl[0],
-                            cos((3.141592653589793 * (90.0f * time)) / 180.0)
-                                * cos((3.141592653589793 * (90.0f * time)) / 180.0)
+                            cos((M_PI * (90.0f * time)) / 180.0)
+                                * cos((M_PI * (90.0f * time)) / 180.0)
                                 * 0.5);
                         espZRotSet((s16)work->sprIdTbl[0], 0.0f);
                     }
@@ -2971,8 +2876,8 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
                             work->pos.x, work->pos.y);
                         espScaleSet((s16)work->sprIdTbl[1], scale, scale);
                         espTPLvlSet((s16)work->sprIdTbl[1],
-                            cos((3.141592653589793 * (90.0f * time)) / 180.0)
-                                * cos((3.141592653589793 * (90.0f * time)) / 180.0)
+                            cos((M_PI * (90.0f * time)) / 180.0)
+                                * cos((M_PI * (90.0f * time)) / 180.0)
                                 * 0.5);
                         espZRotSet((s16)work->sprIdTbl[1], 0.0f);
                     }
@@ -3004,17 +2909,17 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
                     work->focusNo = (int)((float)work->focusNo - 240.0f);
                 }
                 scale = 1.0 + 0.5 * fabs(sin(
-                    (3.141592653589793 * (1440.0f * time)) / 180.0));
+                    (M_PI * (1440.0f * time)) / 180.0));
                 if (time < 1.0f && !work->hideF) {
                     espScaleSet((s16)work->sprIdTbl[0], scale, scale);
                     espTPLvlSet((s16)work->sprIdTbl[0],
                         0.25 + 0.25 * fabs(sin(
-                            (3.141592653589793 * (1440.0f * time)) / 180.0)));
+                            (M_PI * (1440.0f * time)) / 180.0)));
                     espZRotSet((s16)work->sprIdTbl[0], 0.0f);
                     espScaleSet((s16)work->sprIdTbl[1], scale, scale);
                     espTPLvlSet((s16)work->sprIdTbl[1],
                         0.25 + 0.25 * fabs(sin(
-                            (3.141592653589793 * (1440.0f * time)) / 180.0)));
+                            (M_PI * (1440.0f * time)) / 180.0)));
                     espZRotSet((s16)work->sprIdTbl[0], 0.0f);
                 } else {
                     scale = 1.0f;
@@ -3029,7 +2934,7 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
 
             case CAPSPECIAL_MIRACLE_SPR_HIDE:
                 time = (float)++work->focusNo / 30.0f;
-                scale = cos((3.141592653589793 * (90.0f * time)) / 180.0);
+                scale = cos((M_PI * (90.0f * time)) / 180.0);
                 if (time < 1.0f) {
                     espPosSet((s16)work->sprId, work->pos.x,
                         work->pos.y - 280.0f * time);
@@ -3168,7 +3073,7 @@ void mbev_CapKettou(void)
     mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
     work->eventData[0] = guideModel;
     work->guideObj = guideObj;
-    if (!work->flags._flag02) {
+    if (!work->flags.kettouMinigameReturnF) {
         if (ev_CapKettouStart(work)) {
         {
         int winner = mgResultData.playerNo1;
@@ -3240,7 +3145,7 @@ void mbev_CapKettou(void)
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 12)), guideSpeaker);
             mbWinTopWait();
             mbAudFXDelaySet(30);
-            mbAudGuidePlay(950); /* guide voice resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO); /* guide voice resource */
             mbObjMotionShiftSet(guideModel, kettouMotId[5],
                 0.0f, 8.0f, 0);
             mbev_MgCallKettou();
@@ -3262,9 +3167,6 @@ void mbev_CapKettouKill(void)
 /* Runs the Kettou capsule battle scene and returns its selected result. */
 static int ev_CapKettouStart(CAPWORK *work)
 {
-    extern void mbStatusDispForceSetAll(BOOL dispF);
-    extern void mbev_Scroll(int playerNo, BOOL mapF);
-    extern void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
     extern void mbGuideEnd(OMOBJ *obj, BOOL endF);
     extern const float lbl_802C4434;
     HuVecF masuPos;
@@ -3309,7 +3211,7 @@ static int ev_CapKettouStart(CAPWORK *work)
 
     mbPlayerPosGet(playerNo, &masuPos);
     modelId = work->eventData[0];
-    if (work->flags._flag01) {
+    if (work->flags.kettouStopF) {
         resumeF = TRUE;
     } else {
         int playerMot[4];
@@ -3344,7 +3246,7 @@ static int ev_CapKettouStart(CAPWORK *work)
                 mbPlayerPosGet(i, &cameraOfs);
                 PSVECSubtract(&avgPos, &cameraOfs, &direction);
                 mbPlayerRotateStart(i,
-                    (s16)((atan2(direction.x, direction.z) / 3.141592653589793)
+                    (s16)((atan2(direction.x, direction.z) / M_PI)
                         * 180.0), 15);
             }
         }
@@ -3410,7 +3312,7 @@ static int ev_CapKettouStart(CAPWORK *work)
     initCoinNumF = FALSE;
     mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_STORY_LOSE, FALSE);
     mbWipeSpecialFadeOutCreate(2, 60);
-    mbAudGuidePlay(950); /* event guide-voice resource */
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_INTRO); /* event guide-voice resource */
     /* duel scene message resource */
     mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 0)), mbGuideSpeakerNoGet());
     mbWinTopWait();
@@ -3563,7 +3465,7 @@ repeatTarget:
                 failureF = TRUE;
             }
         }
-        mbAudGuidePlay(951);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY);
         if (failureF) {
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 21)),
                 mbGuideSpeakerNoGet());
@@ -3582,10 +3484,8 @@ repeatTarget:
     }
 
     {
-        extern void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
         extern void mbev_CapDuelStatusOnSet(int playerNo1, int playerNo2,
             BOOL waitF);
-        extern s8 mbPadStkYGet(int padNo);
 
         int coinDir;
         int coinDelay;
@@ -3637,7 +3537,7 @@ repeatTarget:
                 espBankSet((s16)sprite[2], 1);
                 for (counter = 0; counter <= 12.0f; counter++) {
                     t = (float)counter / 12.0f;
-                    scaleY = sin(3.141592653589793*(t * 90.0f)/180.0);
+                    scaleY = sin(M_PI*(t * 90.0f)/180.0);
                     espScaleSet((s16)sprite0, 1, scaleY);
                     espScaleSet((s16)sprite1, 1, scaleY);
                     for (i = 0; i < 3; i++) {
@@ -3678,7 +3578,7 @@ repeatTarget:
                     }
                 }
                 if (padBtn & PAD_BUTTON_A) {
-                    mbAudFXPlay(2);
+                    mbAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                     break;
                 } else if (padBtn & PAD_BUTTON_B) {
                     if (!initCoinNumF) {
@@ -3686,7 +3586,7 @@ repeatTarget:
                     }
                     for (counter = 0; counter <= 12.0f; counter++) {
                         t = (float)counter / 12.0f;
-                        scaleY = cos(3.141592653589793*(t * 90.0f)/180.0);
+                        scaleY = cos(M_PI*(t * 90.0f)/180.0);
                         espScaleSet((s16)sprite0, 1, scaleY);
                         espScaleSet((s16)sprite1, 1, scaleY);
                         for (i = 0; i < 3; i++) {
@@ -3735,7 +3635,7 @@ repeatTarget:
                         prevCoinDir = coinDir = coinDelay = 0;
                     }
                     if (prevCoin != amount) {
-                        mbAudFXPlay(0);
+                        mbAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                         if (amount >= 100) {
                             espBankSet((s16)sprite[1], 9);
                         } else {
@@ -3754,7 +3654,7 @@ repeatTarget:
             if (initCoinNumF) {
                 for (counter = 0; counter <= 12.0f; counter++) {
                     t = (float)counter / 12.0f;
-                    scaleY = cos(3.141592653589793*(t * 90.0f)/180.0);
+                    scaleY = cos(M_PI*(t * 90.0f)/180.0);
                     espScaleSet((s16)sprite0, 1, scaleY);
                     espScaleSet((s16)sprite1, 1, scaleY);
                     for (i = 0; i < 3; i++) {
@@ -3806,7 +3706,7 @@ repeatTarget:
         mbev_CapDuelStatusOnSet(playerNo, targetPlayer, TRUE);
         if (resourceType == 0) {
             coinTakeNum = amount;
-            mbAudGuidePlay(952);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
             sprintf(message, capspecialMesFormat, amount);
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 6)), mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet((u32)message, 0);
@@ -3816,7 +3716,7 @@ repeatTarget:
             }
             add[playerNo] = -amount;
             add[targetPlayer] = -amount;
-            mbCoinAddAllProcExecV(add, (BOOL *)add, FALSE);
+            mbCoinAddAllProcExecV(add, add, FALSE);
             sprintf(message, capspecialMesFormat, amount + coinTakeNum);
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 9)), mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet((u32)message, 0);
@@ -3826,7 +3726,7 @@ repeatTarget:
             mgResultData.playerNo2 = targetPlayer;
             mgResultData.coinNum = (s16)(amount + coinTakeNum);
         } else if (choiceStar != 0) {
-            mbAudGuidePlay(952);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 7)), mbGuideSpeakerNoGet());
             mbWinTopWait();
             mbPlayerStarAdd(playerNo, -1);
@@ -3846,7 +3746,7 @@ repeatTarget:
             mgResultData.playerNo2 = targetPlayer;
             mgResultData.starNum = 2;
         } else {
-            mbAudGuidePlay(952);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 8)), mbGuideSpeakerNoGet());
             mbWinTopWait();
             mbCoinAddExec(playerNo, -amount);
@@ -3877,7 +3777,6 @@ repeatTarget:
 /* Restores player and board state after the Kettou capsule battle scene. */
 static void ev_CapKettouReturn(CAPWORK *work)
 {
-    extern void mbStatusDispForceSetAll(BOOL dispF);
     extern void mbGuideEnd(OMOBJ *obj, BOOL motionF);
     extern const float lbl_802C4434;
     BOOL dissolveF = FALSE;
@@ -3976,8 +3875,8 @@ winner_done:
         guidePlayer = winner;
     }
 
-    if (work->flags._flag02) {
-        mbMusPlay(0, 26, 127, 0);
+    if (work->flags.kettouMinigameReturnF) {
+        mbMusPlay(0, MSM_STREAM_STORY_WIN, 127, 0);
     }
     mbWipeFadeIn();
     mbPauseDisableSet(FALSE);
@@ -3991,17 +3890,17 @@ winner_done:
         }
         if (mgResultData.coinNum > 0
             && mgResultData.starNum > 0) {
-            mbAudGuidePlay(952);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 15)),
                 mbGuideSpeakerNoGet()); /* duel scene message resource */
             mbWinTopInsertMesSet(mbPlayerNameMesGet(winner), 0);
         } else if (mgResultData.starNum > 0) {
-            mbAudGuidePlay(952);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 14)),
                 mbGuideSpeakerNoGet()); /* duel scene message resource */
             mbWinTopInsertMesSet(mbPlayerNameMesGet(winner), 0);
         } else {
-            mbAudGuidePlay(952);
+            mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 13)),
                 mbGuideSpeakerNoGet()); /* duel scene message resource */
             mbWinTopInsertMesSet(mbPlayerNameMesGet(winner), 0);
@@ -4017,7 +3916,7 @@ winner_done:
             state.coinDisp[0] = mbCoinDispCapsuleCreate(
                 &state.coinPos, mgResultData.coinNum);
             mbCoinAddExec(winner, mgResultData.coinNum);
-            mbPlayerWinLoseVoicePlay(winner, 12, 579);
+            mbPlayerWinLoseVoicePlay(winner, 12, MSM_SE_CHARVOICE_HAPPY_CHEER);
             mbPlayerMotionShiftSet(winner, 12, 0.0f, 8.0f, 0);
             mbPlayerMotionShiftSet(otherPlayer, 13, 0.0f, 8.0f, 0);
             do {
@@ -4043,7 +3942,7 @@ winner_done:
             mbPlayerStarAdd(winner, mgResultData.starNum);
             state.starObj[0] = mbStarDispPlayerCreate(
                 winner, mgResultData.starNum);
-            mbPlayerWinLoseVoicePlay(winner, 7, 573);
+            mbPlayerWinLoseVoicePlay(winner, 7, MSM_SE_CHARVOICE_STAR_WIN_CHEER);
             mbPlayerMotionShiftSet(winner, 7, 0.0f, 8.0f, 0);
             starMotion = mbev_CapPlayerMotionCreate(
                 &work->objWork, otherPlayer, DATANUM(0x930000, 40));
@@ -4079,7 +3978,7 @@ winner_done:
             mbWipeDissolveFadeIn();
         }
     } else {
-        mbAudGuidePlay(951);
+        mbAudGuidePlay(MSM_SE_GUIDE_DAY_APOLOGY);
         if (mgResultData.coinNum > 0
             && mgResultData.starNum > 0) {
             mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 18)),
@@ -4116,7 +4015,7 @@ winner_done:
                 mgResultData.playerNo2,
                 mgResultData.coinNum / 2);
         }
-        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+        mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
         mbev_CapPlayerMotShiftWait(playerNo, 13, 0, TRUE);
         mbev_CapPlayerMotShiftWait(playerNo, 1,
             ((1 << 30) | (1 << 0)), TRUE);
@@ -4124,7 +4023,7 @@ winner_done:
 
     mbev_CapPlayerMotShiftSet(guideModel, kettouMotId[2],
         ((1 << 30) | (1 << 0)), TRUE);
-    mbAudGuidePlay(952);
+    mbAudGuidePlay(MSM_SE_GUIDE_DAY_EXPLAIN);
     mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 19)),
         mbGuideSpeakerNoGet()); /* duel scene message resource */
     if (dissolveF) {
@@ -4167,7 +4066,7 @@ void mbev_CapDonkey(void)
 
     /* event model resource identifier */
     obj1 = mbev_CapObjCreate(&work->objWork, DATANUM(0xe0000, 14),
-        (int *)donkeyMotTbl, FALSE, 5, FALSE);
+        donkeyMotTbl, FALSE, 5, FALSE);
     mbObjDispSet(obj1, FALSE);
     /* event model resource identifier */
     obj2 = mbev_CapObjCreate(&work->objWork, DATANUM(0xe0000, 33),
@@ -4184,7 +4083,7 @@ void mbev_CapDonkey(void)
     work->eventData[1] = obj2;
     work->eventData[2] = obj3;
 
-    if (!work->flags._flag03) {
+    if (!work->flags.donkeyMinigameReturnF) {
         if (ev_CapDonkeyStart(work)) {
             if ((mbPlayerAllComCheck() && !GWMgComDispGet())
                 || mbMgRouletteNumGet(7) <= 0) {
@@ -4245,8 +4144,8 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     float phase;
     float step;
 
-    mbMusBoardFadeOut(0, 0, 1000, 1000, 29, FALSE);
-    mbAudFXPlay(1108); /* event sound-effect resource */
+    mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_STORY_NEXT, FALSE);
+    mbAudFXPlay(MSM_SE_BRD00_DONKEY_EVENT_START); /* event sound-effect resource */
     mbev_CapObjPosSet(&work->objWork, obj2, masuId, NULL);
     mbObjDispSet(obj2, TRUE);
     mbObjMotionTimeSet(obj2, 0.0f);
@@ -4259,7 +4158,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     mbCameraMoveObj(obj3, NULL, &capsuleCameraOfs, 1500.0f, -1.0f,
         60);
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbAudFXPlay(1109); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_DONKEY_EVENT_DROP); /* event sound-effect resource */
     fn_8006A030(playerNo, 20, 7, 3);
     do {
         time = mbObjMotionTimeGet(obj2) / mbObjMotionMaxTimeGet(obj2);
@@ -4281,7 +4180,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     mbMasuPosGet(masuId, &masuPos);
     PSVECSubtract(&pos, &masuPos, &direction);
     mbev_CapPlayerPosSet(&work->objWork, playerNo, masuId, &direction);
-    mbAudFXPlay(1110); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_DONKEY_EVENT_PLACE); /* event sound-effect resource */
 
     omObj = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, ev_CapDonkeyOMExec);
     omObj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPWORK), 0x10000000);
@@ -4298,7 +4197,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         fn_80023398(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] - 80.0f * time;
         pos.y = mtx[1][3] + 100.0
-            * sin((3.141592653589793 * (180.0f * time)) / 180.0) * 1.5;
+            * sin((M_PI * (180.0f * time)) / 180.0) * 1.5;
         pos.z = mtx[2][3] + 80.0f * time;
         mbPlayerPosSetV(playerNo, &pos);
         playerRot.y = mbev_CapAngleLerp(135.0f, playerRot.y,
@@ -4330,22 +4229,22 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 0), -1); /* Donkey scene message resource */
     mbWinTopWait();
-    mbAudFXPlay(936); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_DONKEY_ANNOUNCE); /* event sound-effect resource */
     mbObjMotionShiftSet(obj1, 10, 0.0f, 8.0f, 0);
     HuPrcSleep(30);
-    mbAudFXPlay(1117); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_BONUS_ROULETTE_APPEAR); /* event sound-effect resource */
     {
         int sprNo;
         sprNo = mbev_CapSprCreate(&work->objWork,
             mbBoardDataNumGet(donkeyMgFile[mode]), 100, (s16)(mode ^ 1));
         for (i = 1; i < 60.0f; i++) {
             time = (float)i / 60.0f;
-            value = sin((3.141592653589793 * (90.0f * time)) / 180.0);
+            value = sin((M_PI * (90.0f * time)) / 180.0);
             espPosSet(sprNo,
                 288.0f + 50.0f * cos(
-                    (3.141592653589793 * (90.0f * time)) / 180.0),
+                    (M_PI * (90.0f * time)) / 180.0),
                 240.0f - 250.0f * sin(
-                    (3.141592653589793 * (180.0f * time)) / 180.0));
+                    (M_PI * (180.0f * time)) / 180.0));
             espScaleSet(sprNo, value, value);
             espZRotSet(sprNo, 3.0f * (360.0f * -time));
             HuPrcVSleep();
@@ -4353,7 +4252,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         for (i = 1; i < 60.0f; i++) {
             time = (float)i / 60.0f;
             value = 1.0f + 0.2f * sin(
-                (3.141592653589793 * (720.0f * time)) / 180.0);
+                (M_PI * (720.0f * time)) / 180.0);
             espPosSet(sprNo, 288.0f, 240.0f);
             espScaleSet(sprNo, value, value);
             espZRotSet(sprNo, 0.0f);
@@ -4362,11 +4261,11 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         for (i = 1; i < 18.0f; i++) {
             time = (float)i / 18.0f;
             value = 1.0f + 5.0f * sin(
-                (3.141592653589793 * (90.0f * time)) / 180.0);
+                (M_PI * (90.0f * time)) / 180.0);
             espPosSet(sprNo, 288.0f, 240.0f);
             espScaleSet(sprNo, value, value);
             espTPLvlSet(sprNo, 1.0f
-                - sin((3.141592653589793 * (90.0f * time)) / 180.0));
+                - sin((M_PI * (90.0f * time)) / 180.0));
             HuPrcVSleep();
         }
         espDispOff(sprNo);
@@ -4398,7 +4297,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
                 diceNo = mbRandMod(4);
             }
         }
-        diceNo = mbDiceExec(playerNo, 11, (s8 *)donkeyDiceTbl,
+        diceNo = mbDiceExec(playerNo, 11, donkeyDiceTbl,
             diceNo, TRUE, TRUE, NULL, 0);
         if (donkeyDiceResultTbl[diceNo] >= 0) {
             sprintf(message, capspecialMesFormat, donkeyDiceResultTbl[diceNo]);
@@ -4406,7 +4305,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
             mbWinTopInsertMesSet((u32)message, 0);
             mbWinTopWait();
             mbDiceFadeSet(playerNo);
-            mbAudFXPlay(935); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_GUIDE_DONKEY_TALK); /* event sound-effect resource */
             mbev_CapPlayerMotShiftSet(obj1, 10, 0, TRUE);
             mbPlayerPosGet(playerNo, &direction);
             for (i = 0; i < donkeyDiceResultTbl[diceNo]; i++) {
@@ -4438,13 +4337,13 @@ static int ev_CapDonkeyStart(CAPWORK *work)
             mbWinTopWait();
             mbMusPauseFadeOut(0, TRUE, -1);
             mbDiceFadeSet(playerNo);
-            mbAudFXPlay(935); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_GUIDE_DONKEY_TALK); /* event sound-effect resource */
             mbev_CapObjMotionSet(obj1, 30, 10, 1,
                 0, ((1 << 30) | (1 << 0)), TRUE, TRUE);
             mbStarGetExec(playerNo);
             mbCameraMoveObj(obj3, &cameraRot, &capsuleCameraOfs,
                 1500.0f, -1.0f, 60);
-            mbMusPlay(0, 29, 127, 0);
+            mbMusPlay(0, MSM_STREAM_STORY_NEXT, 127, 0);
         }
         mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
@@ -4455,7 +4354,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     mbWinTopWait();
     mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 6), -1); /* Donkey scene message resource */
     mbWinTopWait();
-    mbAudFXPlay(936); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_DONKEY_ANNOUNCE); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(obj1, 8, 0, TRUE);
     /* event sprite resource identifier */
     spr[0] = mbev_CapSprCreate(&work->objWork, DATANUM(0xe0000, 34), 100, 0);
@@ -4469,8 +4368,8 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     espBankSet(spr[1], 0);
     for (i = 0; i <= 30.0f; i++) {
         time = (float)i / 30.0f;
-        value = sin((3.141592653589793 * (90.0f * time)) / 180.0)
-            + sin((3.141592653589793 * (180.0f * time)) / 180.0);
+        value = sin((M_PI * (90.0f * time)) / 180.0)
+            + sin((M_PI * (180.0f * time)) / 180.0);
         for (j = 0; j < 2; j++) {
             espScaleSet(spr[j], value, value);
         }
@@ -4492,7 +4391,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         }
         espBankSet(spr[1], (s16)donkeyRouletteBankTbl[bank]);
         if (bank != prevBank) {
-            mbAudFXPlay(1009); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_TICK); /* event sound-effect resource */
         }
         prevBank = bank;
         HuPrcVSleep();
@@ -4511,16 +4410,16 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         }
         espBankSet(spr[1], (s16)donkeyRouletteBankTbl[bank]);
         if (bank != prevBank) {
-            mbAudFXPlay(1009); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_TICK); /* event sound-effect resource */
         }
         prevBank = bank;
         HuPrcVSleep();
     }
-    mbAudFXPlay(1134); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_ROULETTE_CURSOR_STOP); /* event sound-effect resource */
     for (i = 0; i <= 60; i++) {
         time = (float)i / 60.0f;
         time = 1.0f + 0.5f * sin(
-            (3.141592653589793 * (720.0f * time)) / 180.0);
+            (M_PI * (720.0f * time)) / 180.0);
         espScaleSet(spr[1], time, time);
         espPosSet(spr[1], 288.0f + 16.0f * time, 240.0f);
         HuPrcVSleep();
@@ -4528,11 +4427,11 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     for (i = 0; i <= 30.0f; i++) {
         time = (float)i / 30.0f;
         value = 1.0f + 7.0f * sin(
-            (3.141592653589793 * (90.0f * time)) / 180.0);
+            (M_PI * (90.0f * time)) / 180.0);
         for (j = 0; j < 2; j++) {
             espScaleSet(spr[j], value, value);
             espTPLvlSet(spr[j], 1.0f
-                - sin((3.141592653589793 * (90.0f * time)) / 180.0));
+                - sin((M_PI * (90.0f * time)) / 180.0));
         }
         espPosSet(spr[1], 288.0f + 16.0f * value, 240.0f);
         HuPrcVSleep();
@@ -4623,8 +4522,8 @@ static void ev_CapDonkeyCoin(CAPWORK *work)
     mbCameraEyeSetV(&pos);
     mbCameraMoveObj(obj3, NULL, &capsuleCameraOfs, 1500.0f, -1.0f, 1);
     mbCameraMoveWait();
-    if (work->flags._flag03) {
-        mbMusPlay(0, 30, 127, 0);
+    if (work->flags.donkeyMinigameReturnF) {
+        mbMusPlay(0, MSM_STREAM_STORY_LAST, 127, 0);
     }
     mbWipeFadeIn();
     mbPauseDisableSet(FALSE);
@@ -4670,14 +4569,16 @@ static void ev_CapDonkeyCoin(CAPWORK *work)
         s16 coinBonus = lbl_80265750[i].mgCoinBonus;
         coinVals[i] = mgResultData.coinNum * coinBonus;
     }
-    mbCoinAddAllProcExecV(coinVals, (BOOL *)coinVals, FALSE);
+    mbCoinAddAllProcExecV(coinVals, coinVals, FALSE);
     {
         s16 ownBonus = lbl_80265750[playerNo].mgCoinBonus;
         if (ownBonus > 0) {
-            mbPlayerWinLoseVoicePlay(playerNo, 12, 579); /* win/lose voice resource */
+            mbPlayerWinLoseVoicePlay(playerNo, 12,
+                                     MSM_SE_CHARVOICE_HAPPY_CHEER); /* win/lose voice resource */
             mbev_CapPlayerMotShiftWait(playerNo, 12, 0, TRUE);
         } else {
-            mbPlayerWinLoseVoicePlay(playerNo, 13, 585); /* win/lose voice resource */
+            mbPlayerWinLoseVoicePlay(playerNo, 13,
+                                     MSM_SE_CHARVOICE_SAD_MOAN); /* win/lose voice resource */
             mbev_CapPlayerMotShiftWait(playerNo, 13, 0, TRUE);
         }
     }
@@ -4705,26 +4606,26 @@ static void ev_CapDonkeyReturn(CAPWORK *work)
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
-    mbAudFXPlay(936); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_DONKEY_ANNOUNCE); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(obj1, CAPSPECIAL_DONKEY_RETURN_MOTION, 0, TRUE);
     mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 10), -1); /* Donkey scene message resource */
     mbWinTopWait();
     mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f, 0);
     HuPrcSleep(20);
     mbev_CapObjPosSet(&work->objWork, obj1, -1, NULL);
-    mbAudFXPlay(1135); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_DONKEY_FAREWELL); /* event sound-effect resource */
     mbObjMotionShiftSet(obj1, 4, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
 
     for (i = 1; i <= 30.0f; i++) {
         ratio = (float)i / 30.0f;
         scale = 1.0f - 0.7f * sin(
-            (3.141592653589793 * (90.0f * ratio)) / 180.0);
+            (M_PI * (90.0f * ratio)) / 180.0);
         fn_80023398(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] + 80.0f;
         pos.y = mtx[1][3]
-            + 100.0 * sin((3.141592653589793 * (90.0f * ratio)) / 180.0)
+            + 100.0 * sin((M_PI * (90.0f * ratio)) / 180.0)
             + 2.5 * (100.0
-                * sin((3.141592653589793 * (180.0f * ratio)) / 180.0));
+                * sin((M_PI * (180.0f * ratio)) / 180.0));
         pos.z = mtx[2][3] - 80.0f;
         mbObjPosSetV(obj1, &pos);
         mbObjScaleSet(obj1, scale, scale, scale);
@@ -4756,7 +4657,7 @@ static void ev_CapDonkeyReturn(CAPWORK *work)
         HuPrcVSleep();
     }
     mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
-    mbAudFXPlay(1142); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_DONKEY_EXIT_REWIND); /* event sound-effect resource */
     mbObjMotionSpeedSet(obj2, -1.0f);
     do {
         ratio = mbObjMotionTimeGet(obj2) / mbObjMotionMaxTimeGet(obj2);
@@ -4823,7 +4724,7 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
         fn_80023398(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] + 80.0f + 100.0f;
         pos.y = mtx[1][3] + 100.0f * cos(
-            (3.141592653589793 * (90.0f * time)) / 180.0) * 10.0f;
+            (M_PI * (90.0f * time)) / 180.0) * 10.0f;
         pos.z = mtx[2][3] - 80.0f - 100.0f;
         mbObjPosSetV(obj1, &pos);
         if (time >= 1.0f) {
@@ -4842,17 +4743,17 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
             nextTime = 1.0f;
         }
         scaleA = 1.0f + 0.33f
-            * sin((3.141592653589793 * (180.0f * nextTime)) / 180.0);
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
         scaleB = 1.0f - 0.33f
-            * sin((3.141592653589793 * (180.0f * nextTime)) / 180.0);
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
         mbObjScaleSet(obj2, scaleA, scaleB, scaleA);
         fn_80023398(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] + 80.0f + 100.0f * cos(
-            (3.141592653589793 * (90.0f * time)) / 180.0);
+            (M_PI * (90.0f * time)) / 180.0);
         pos.y = mtx[1][3] + 100.0f
-            * sin((3.141592653589793 * (180.0f * time)) / 180.0) * 2.0f;
+            * sin((M_PI * (180.0f * time)) / 180.0) * 2.0f;
         pos.z = mtx[2][3] - 80.0f - 100.0f * cos(
-            (3.141592653589793 * (90.0f * time)) / 180.0);
+            (M_PI * (90.0f * time)) / 180.0);
         mbObjPosSetV(obj1, &pos);
         if (obj->work[1] == CAPSPECIAL_DONKEY_MOTION_SHIFT_FRAME) {
             mbObjMotionShiftSet(obj1, 3, 0.0f, 8.0f,
@@ -4870,9 +4771,9 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
             nextTime = 1.0f;
         }
         scaleA = 1.0f + 0.1f
-            * sin((3.141592653589793 * (180.0f * nextTime)) / 180.0);
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
         scaleB = 1.0f - 0.1f
-            * sin((3.141592653589793 * (180.0f * nextTime)) / 180.0);
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
         mbObjScaleSet(obj2, scaleA, scaleB, scaleA);
         fn_80023398(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] + 80.0f;
@@ -4913,12 +4814,12 @@ void mbev_CapKoopa(void)
     HuPrcVSleep();
     /* event model resource identifier */
     objId = mbev_CapObjCreate(&work->objWork, DATANUM(0xe0000, 0),
-        (int *)koopaMotTbl, FALSE, 5, FALSE);
+        koopaMotTbl, FALSE, 5, FALSE);
     mbObjDispSet(objId, FALSE);
     mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
     work->eventData[0] = objId;
 
-    if (!work->flags._flag04) {
+    if (!work->flags.koopaMinigameReturnF) {
         if (ev_CapKoopaStart(work)) {
             if ((mbPlayerAllComCheck() && !GWMgComDispGet())
                 || mbMgRouletteNumGet(4) <= 0) {
@@ -4998,17 +4899,17 @@ static int ev_CapKoopaStart(CAPWORK *work)
     mbCameraPlayerViewSet(playerNo, 0);
     mbEffFadeCreate(30, 160);
     work->flags._flag06 = TRUE;
-    mbMusPlay(0, 27, 127, 0);
+    mbMusPlay(0, MSM_STREAM_STORY_RANK, 127, 0);
     espDispOn((s16)spr);
     for (i = 0; i < 360; i += 2) {
         if (i == 60) {
-            mbAudFXPlay(1107); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_BRD00_BANNER_SWOOSH_IN); /* event sound-effect resource */
         }
         if (i == 90 || i == 270 || i == 450) {
             fn_8006A030(playerNo, 20, 7, 3);
         }
-        espTPLvlSet((s16)spr, CapSpecialAbsFloat((float)sin(
-            (3.141592653589793 * mbAngleWrap((float)i)) / 180.0)));
+        espTPLvlSet((s16)spr, FloatAbs((float)sin(
+            (M_PI * mbAngleWrap((float)i)) / 180.0)));
         HuPrcVSleep();
     }
     espDispOff((s16)spr);
@@ -5022,7 +4923,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
         t = (mbObjMotionTimeGet(objId) - 30.0f) / 30.0f;
         mbMasuPosGet(masuId, &masuPos);
         masuPos.y += 100.0
-            * cos((3.141592653589793 * (90.0f * t)) / 180.0) * 6.0;
+            * cos((M_PI * (90.0f * t)) / 180.0) * 6.0;
         mbObjPosSetV(objId, &masuPos);
         HuPrcVSleep();
     }
@@ -5035,7 +4936,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
         mbev_CapEffDustHeavyAdd(work->explodeObj, dustPosP);
     }
     mbev_CapObjPosSet(&work->objWork, objId, masuId, NULL);
-    mbAudFXPlay(1119); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_KOOPA_APPEAR); /* event sound-effect resource */
     mbev_CapVibrate(1);
     squishCount = mbev_CapPlayerSquishSet(ids, masuId);
     work->eventData[1] = squishCount;
@@ -5057,7 +4958,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
     }
     fn_800097F4(DATANUM(0xe0000, 0)); /* event archive resource identifier */
     mbAudFXDelaySet(30);
-    mbAudFXPlay(971); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(objId, 3, 0, TRUE);
     mbObjMotionShiftSet(objId, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 0), 13); /* Koopa scene message resource */
@@ -5068,23 +4969,23 @@ static int ev_CapKoopaStart(CAPWORK *work)
         mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 1), 13); /* Koopa scene message resource */
         mbWinTopWait();
         mbev_CapPlayerMotShiftSet(objId, 1, ((1 << 30) | (1 << 0)), TRUE);
-        work->flags._flag05 = TRUE;
+        work->flags.koopaNoCoinF = TRUE;
         return 0;
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(973); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 5, 0.0f, 8.0f, 0);
     HuPrcSleep(30);
-    mbAudFXPlay(1117); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_BONUS_ROULETTE_APPEAR); /* event sound-effect resource */
     rouletteSpr = mbev_CapSprCreate(&work->objWork,
         mbBoardDataNumGet(koopaMgFile[mode]), 100, (s16)(mode ^ 1));
     for (i = 1; (float)i < 60.0f; i++) {
         t = (float)i / 60.0f;
-        scale = (float)sin((3.141592653589793 * (90.0f * t)) / 180.0);
+        scale = (float)sin((M_PI * (90.0f * t)) / 180.0);
         espPosSet((s16)rouletteSpr, 288.0f,
             (float)(240.0
-                - 250.0 * sin((3.141592653589793 * (180.0f * t)) / 180.0)
-                + 50.0 * cos((3.141592653589793 * (180.0f * t)) / 180.0)));
+                - 250.0 * sin((M_PI * (180.0f * t)) / 180.0)
+                + 50.0 * cos((M_PI * (180.0f * t)) / 180.0)));
         espScaleSet((s16)rouletteSpr, scale, scale);
         espZRotSet((s16)rouletteSpr, 3.0f * (360.0f * t));
         HuPrcVSleep();
@@ -5092,7 +4993,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
     for (i = 1; (float)i < 60.0f; i++) {
         t = (float)i / 60.0f;
         scale = (float)(1.0
-            + 0.2f * sin((3.141592653589793 * (720.0f * t)) / 180.0));
+            + 0.2f * sin((M_PI * (720.0f * t)) / 180.0));
         espPosSet((s16)rouletteSpr, 288.0f, 240.0f);
         espScaleSet((s16)rouletteSpr, scale, scale);
         espZRotSet((s16)rouletteSpr, 0.0f);
@@ -5101,11 +5002,11 @@ static int ev_CapKoopaStart(CAPWORK *work)
     for (i = 1; (float)i < 18.0f; i++) {
         t = (float)i / 18.0f;
         scale = (float)(1.0
-            + 5.0 * sin((3.141592653589793 * (90.0f * t)) / 180.0));
+            + 5.0 * sin((M_PI * (90.0f * t)) / 180.0));
         espPosSet((s16)rouletteSpr, 288.0f, 240.0f);
         espScaleSet((s16)rouletteSpr, scale, scale);
         espTPLvlSet((s16)rouletteSpr,
-            (float)(1.0 - sin((3.141592653589793 * (90.0f * t)) / 180.0)));
+            (float)(1.0 - sin((M_PI * (90.0f * t)) / 180.0)));
         HuPrcVSleep();
     }
     espDispOff((s16)rouletteSpr);
@@ -5113,7 +5014,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
         int boardNo;
 
         mbAudFXDelaySet(30);
-        mbAudFXPlay(971); /* event sound-effect resource */
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK); /* event sound-effect resource */
         mbObjMotionShiftSet(objId, 3, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
         mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 2), 13); /* Koopa scene message resource */
@@ -5134,7 +5035,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
         } else {
             diceNo = mbRandMod(4);
         }
-        mbDiceExec(-1, 12, (s8 *)koopaDiceTbl, diceNo,
+        mbDiceExec(-1, 12, koopaDiceTbl, diceNo,
             FALSE, FALSE, &cameraPos, 2);
         mbDicePadBtnHookSet(-1,
             (u16 (*)(int))ev_CapKoopaDicePadBtnHook);
@@ -5151,7 +5052,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
             mbWinTopWait();
             mbDiceFadeSet(-1);
             mbAudFXDelaySet(30);
-            mbAudFXPlay(973); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE); /* event sound-effect resource */
             mbev_CapPlayerMotShiftSet(objId, 5, 0, TRUE);
             if ((value = koopaDiceResultTbl[diceNo])
                 > mbPlayerCoinGet(playerNo)) {
@@ -5165,7 +5066,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
             mbDiceFadeSet(-1);
             if (mbPlayerStarGet(playerNo) > 0) {
                 mbAudFXDelaySet(30);
-                mbAudFXPlay(973); /* event sound-effect resource */
+                mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE); /* event sound-effect resource */
                 mbev_CapPlayerMotShiftSet(objId, 5, 0, TRUE);
                 HuPrcSleep(12);
                 starObj = mbStarDispPlayerCreate(playerNo, -1);
@@ -5177,7 +5078,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
                     ((1 << 30) | (1 << 0)), TRUE);
             } else {
                 mbAudFXDelaySet(30);
-                mbAudFXPlay(973); /* event sound-effect resource */
+                mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE); /* event sound-effect resource */
                 mbObjMotionShiftSet(objId, 6, 0.0f, 8.0f,
                     ((1 << 30) | (1 << 0)));
                 mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 6), 13); /* Koopa scene message resource */
@@ -5190,14 +5091,14 @@ static int ev_CapKoopaStart(CAPWORK *work)
     }
 
     mbAudFXDelaySet(30);
-    mbAudFXPlay(971); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 3, 0.0f, 8.0f,
         ((1 << 30) | (1 << 0)));
     mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 7), 13); /* Koopa scene message resource */
     mbWinTopWait();
     selector = mbRandMod(3);
     mbAudFXDelaySet(30);
-    mbAudFXPlay(973); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 5, 0.0f, 8.0f, 0);
     if (!GWTeamFGet()) {
         mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 8), 13); /* Koopa scene message resource */
@@ -5227,8 +5128,6 @@ static int ev_CapKoopaStart(CAPWORK *work)
 /* Presents and applies the coin result during Koopa's capsule scene. */
 static int ev_CapKoopaCoin(CAPWORK *work)
 {
-    extern void mbStatusDispForceSetAll(BOOL dispF);
-    extern void mbPauseDisableSet(BOOL disableF);
     HuVecF masuPos;
     int add[4];
     int ids[4];
@@ -5261,8 +5160,8 @@ static int ev_CapKoopaCoin(CAPWORK *work)
     mbCameraEyeSetV(&masuPos);
     mbCameraPlayerViewSetFast(playerNo, 0);
     mbCameraMoveWait();
-    if (work->flags._flag04) {
-        mbMusPlay(0, 27, 127, 0);
+    if (work->flags.koopaMinigameReturnF) {
+        mbMusPlay(0, MSM_STREAM_STORY_RANK, 127, 0);
     }
     mbWipeFadeIn();
     mbPauseDisableSet(FALSE);
@@ -5325,7 +5224,7 @@ static int ev_CapKoopaCoin(CAPWORK *work)
         }
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(971); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     if (!GWTeamFGet()) {
         mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 14), 13); /* Koopa scene message resource */
@@ -5335,12 +5234,12 @@ static int ev_CapKoopaCoin(CAPWORK *work)
     mbWinTopInsertMesSet(koopaLoseMesTbl2[resultType], 0);
     mbWinTopWait();
     mbAudFXDelaySet(30);
-    mbAudFXPlay(973); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(objId, 5, 0, TRUE);
-    mbAudFXPlay(1063); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_KOOPA_MAGIC_BURST); /* event sound-effect resource */
     if (loseCount == 0) {
         HuPrcSleep(30);
-        mbAudFXPlay(972); /* event sound-effect resource */
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_LAUGH); /* event sound-effect resource */
         mbObjMotionShiftSet(objId, 6, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
         if (!GWTeamFGet()) {
@@ -5351,7 +5250,7 @@ static int ev_CapKoopaCoin(CAPWORK *work)
         mbWinTopWait();
     } else if (hasResource) {
         HuPrcSleep(30);
-        mbAudFXPlay(972); /* event sound-effect resource */
+        mbAudFXPlay(MSM_SE_GUIDE_KOOPA_LAUGH); /* event sound-effect resource */
         mbObjMotionShiftSet(objId, 6, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
         if (resultType == 2) {
@@ -5371,7 +5270,7 @@ static int ev_CapKoopaCoin(CAPWORK *work)
                     add[i] = 0;
                 }
             }
-            mbCoinAddAllProcExecV(add, (BOOL *)add, FALSE);
+            mbCoinAddAllProcExecV(add, add, FALSE);
             break;
         case 1:
             for (i = 0; i < 4; i++) {
@@ -5382,7 +5281,7 @@ static int ev_CapKoopaCoin(CAPWORK *work)
                     add[i] = 0;
                 }
             }
-            mbCoinAddAllProcExecV(add, (BOOL *)add, FALSE);
+            mbCoinAddAllProcExecV(add, add, FALSE);
             break;
         default:
             for (i = 0; i < 4; i++) {
@@ -5467,7 +5366,7 @@ static int ev_CapKoopaReturn(CAPWORK *work)
         ids[i] = work->eventData[i + 2]; /* Player IDs saved by the squish step. */
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(971); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_TALK); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(objId, 3, 0, TRUE);
     mbObjMotionShiftSet(objId, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 20), 13); /* Koopa scene message resource */
@@ -5477,7 +5376,7 @@ static int ev_CapKoopaReturn(CAPWORK *work)
         HuPrcVSleep();
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(974); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_FAREWELL); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 2, 0.0f, 8.0f, 0);
     while (mbObjMotionShiftIDGet(objId) != -1
         || mbObjMotionTimeGet(objId) <= 25.0f) {
@@ -5487,7 +5386,7 @@ static int ev_CapKoopaReturn(CAPWORK *work)
     for (i = 1; i <= 24.0f; i++) {
         time = (float)i / 24.0f;
         mbMasuPosGet(masuId, &masuPos);
-        masuPos.y += sin((3.141592653589793 * (90.0f * time)) / 180.0)
+        masuPos.y += sin((M_PI * (90.0f * time)) / 180.0)
             * 100.0f * 6.0f;
         mbObjPosSetV(objId, &masuPos);
         HuPrcVSleep();
@@ -5500,7 +5399,7 @@ static int ev_CapKoopaReturn(CAPWORK *work)
         mbPlayerMotionShiftSet(ids[i], 1, 0.0f, 8.0f,
             ((1 << 30) | (1 << 0)));
     }
-    if (work->flags._flag05) {
+    if (work->flags.koopaNoCoinF) {
         mbCoinAddProcExec(playerNo, 10, 1, FALSE);
     }
     return 0;

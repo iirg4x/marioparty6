@@ -7,6 +7,7 @@
 #include "game/board/dice.h"
 #include "game/board/effect.h"
 #include "game/board/main.h"
+#include "game/board/guide.h"
 #include "game/board/object.h"
 #include "game/board/pause.h"
 #include "game/board/player.h"
@@ -273,7 +274,6 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
     int value, int color, BOOL followF);
 OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     BOOL flagF, int color);
-int mbGuideSpeakerNoGet(void);
 
 void mbDiceKill(int playerNo);
 int mbDiceMaxGet(int diceType);

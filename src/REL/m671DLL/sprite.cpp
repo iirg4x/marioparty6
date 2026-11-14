@@ -14,7 +14,12 @@ extern "C" {
 
 struct Sprite : RenderObject {
     ANIMDATA *animation;
-    f32 transformValues[6]; // The game never reads these values.
+    f32 unknown_18; /* Initialized to 0.0f by the constructor. */
+    f32 unknown_1C; /* Initialized to 0.0f by the constructor. */
+    f32 unknown_20; /* Initialized to 0.0f by the constructor. */
+    f32 unknown_24; /* Initialized to 0.0f by the constructor. */
+    f32 unknown_28; /* Initialized to 0.0f by the constructor. */
+    f32 unknown_2C; /* Initialized to 0.0f by the constructor. */
     u8 unknown_030[4]; /* No code names this field. */
     f32 textureS[4];
     f32 textureT[4];
@@ -31,12 +36,12 @@ Sprite::Sprite(ANIMDATA *animation) : RenderObject(3)
 {
     this->animation = animation;
     setLayer(3);
-    transformValues[0] = 0.0f;
-    transformValues[1] = 0.0f;
-    transformValues[2] = 0.0f;
-    transformValues[3] = 0.0f;
-    transformValues[4] = 0.0f;
-    transformValues[5] = 0.0f;
+    unknown_18 = 0.0f;
+    unknown_1C = 0.0f;
+    unknown_20 = 0.0f;
+    unknown_24 = 0.0f;
+    unknown_28 = 0.0f;
+    unknown_2C = 0.0f;
     textureS[0] = 0.0f;
     textureT[0] = 0.0f;
     textureS[1] = 0.0f;

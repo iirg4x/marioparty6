@@ -234,6 +234,7 @@ void fn_1_3098(OMOBJ *obj)
     }
     case 5:
     {
+        /* This frame value is loaded but never read. */
         float frame = obj->work[0];
         s8 *pattern = lbl_1_data_250[lbl_1_bss_10.pattern];
         float height = lbl_1_bss_480;
@@ -261,6 +262,7 @@ void fn_1_3098(OMOBJ *obj)
             for (i = 0; i < 24; pattern++, i++) {
                 if (*pattern != lbl_1_bss_10.selectedWord) {
                     int oldTime;
+                    /* This integer counter is compared and incremented using float constants. */
                     if (lbl_1_bss_418[i] > 0.0f) {
                         lbl_1_bss_3B8[i] -= 4.0f * lbl_1_bss_10.speedLevel * lbl_1_bss_418[i];
                         fn_1_22F0(i, lbl_1_bss_3B8[i]);

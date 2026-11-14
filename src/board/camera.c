@@ -1,4 +1,6 @@
 // Controls the board camera, its view transitions, focus targets, and listener orientation.
+#include "game/board/masu.h"
+#include "game/board/object.h"
 #include "dolphin/math.h"
 
 #include "game/board/main.h"
@@ -12,6 +14,8 @@
 #include "game/process.h"
 
 #include "humath.h"
+#include "game/board/player.h"
+#include "game/board/math.h"
 
 #define FLAG_BOARD_CAMERAMOT 65562
 
@@ -33,18 +37,6 @@ typedef struct listenerParamEntry_s {
     int no; // Board number selecting this listener configuration.
     LISTENERPARAM param; // Listener distances and speed for this board.
 } LISTENERPARAMENTRY;
-
-BOOL mbPauseEnableCheck(void);
-void mbObjPosGet(MBMODELID modelId, HuVecF *pos);
-void mbMasuPosGet(s16 masuId, HuVecF *pos);
-void mbPlayerPosGet(s16 playerNo, HuVecF *pos);
-MBMODELID mbPlayerObjIDGet(int playerNo);
-float mbAngleLerp(float a, float b, float t);
-
-static inline int BoardNoGet(void)
-{
-    return lbl_80265B70.boardNo;
-}
 
 static void CameraOMExec(OMOBJ *obj);
 static void Camera0LayerHook(s16 layerNo);
@@ -132,7 +124,7 @@ void mbCameraInit(void)
                          cameraP->viewportH);
     cameraP->center.x = cameraP->center.y = cameraP->center.z = 0;
     for(i = 0; i < MBNO_MAX; i++) {
-        if(listenerParamTbl[i].no == BoardNoGet()) {
+        if(listenerParamTbl[i].no == MBBoardNoGet()) {
             break;
         }
     }
@@ -332,12 +324,12 @@ static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center)
     if(cameraP->focusNum < 2) {
         return -1;
     }
-    rot2.x = sin(3.141592653589793*rot->y/180.0)*sin(3.141592653589793*rot->x/180.0);
-    rot2.y = cos(3.141592653589793*rot->x/180.0);
-    rot2.z = cos(3.141592653589793*rot->y/180.0)*sin(3.141592653589793*rot->x/180.0);
-    rot1.x = -sin(3.141592653589793*rot->y/180.0)*cos(3.141592653589793*rot->x/180.0);
-    rot1.y = sin(3.141592653589793*rot->x/180.0);
-    rot1.z = -cos(3.141592653589793*rot->y/180.0)*cos(3.141592653589793*rot->x/180.0);
+    rot2.x = sin(M_PI*rot->y/180.0)*sin(M_PI*rot->x/180.0);
+    rot2.y = cos(M_PI*rot->x/180.0);
+    rot2.z = cos(M_PI*rot->y/180.0)*sin(M_PI*rot->x/180.0);
+    rot1.x = -sin(M_PI*rot->y/180.0)*cos(M_PI*rot->x/180.0);
+    rot1.y = sin(M_PI*rot->x/180.0);
+    rot1.z = -cos(M_PI*rot->y/180.0)*cos(M_PI*rot->x/180.0);
     VECCrossProduct(&rot2, &rot1, &dir[0]);
     VECNormalize(&dir[0], &dir[0]);
     VECCrossProduct(&dir[0], &rot1, &dir[1]);
@@ -367,7 +359,7 @@ static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center)
                 len /= cameraP->aspect;
             }
             zoom =
-                len/(sin(3.141592653589793*(fov*0.5f)/180.0)/cos(3.141592653589793*(fov*0.5f)
+                len/(sin(M_PI*(fov*0.5f)/180.0)/cos(M_PI*(fov*0.5f)
                 /180.0));
             zoom += -weight;
             if(zoom > zoomMax) {
@@ -399,17 +391,17 @@ static void CameraMotionSet(MBCAMERA *cameraP)
             weight = t;
             break;
         case MB_CAMERA_CURVE_SIN:
-            weight = sin(3.141592653589793*(90.0f * t)/180.0);
+            weight = sin(M_PI*(90.0f * t)/180.0);
             break;
         case MB_CAMERA_CURVE_SIN2:
-            weight = sin(3.141592653589793*(90.0f * t)/180.0);
+            weight = sin(M_PI*(90.0f * t)/180.0);
             weight = weight * weight;
             break;
         case MB_CAMERA_CURVE_COS:
-            weight = 1.0 - cos(3.141592653589793*(90.0f * t)/180.0);
+            weight = 1.0 - cos(M_PI*(90.0f * t)/180.0);
             break;
         case MB_CAMERA_CURVE_COS2:
-            weight = 1.0 - cos(3.141592653589793*(90.0f * t)/180.0);
+            weight = 1.0 - cos(M_PI*(90.0f * t)/180.0);
             weight = weight * weight;
             break;
     }
@@ -434,17 +426,17 @@ static void CameraMotionSet(MBCAMERA *cameraP)
 static void CameraLookAt(MBCAMERA *cameraP)
 {
     cameraP->eye.x =
-        (sin(3.141592653589793*cameraP->rot.y/180.0)*cos(3.141592653589793*cameraP->rot.x/180.0)
+        (sin(M_PI*cameraP->rot.y/180.0)*cos(M_PI*cameraP->rot.x/180.0)
         *cameraP->zoom)+cameraP->center.x;
-    cameraP->eye.y = (-sin(3.141592653589793*cameraP->rot.x/180.0)*cameraP->zoom)+cameraP->center.y;
+    cameraP->eye.y = (-sin(M_PI*cameraP->rot.x/180.0)*cameraP->zoom)+cameraP->center.y;
     cameraP->eye.z =
-        (cos(3.141592653589793*cameraP->rot.y/180.0)*cos(3.141592653589793*cameraP->rot.x/180.0)
+        (cos(M_PI*cameraP->rot.y/180.0)*cos(M_PI*cameraP->rot.x/180.0)
         *cameraP->zoom)+cameraP->center.z;
     cameraP->up.x =
-        sin(3.141592653589793*cameraP->rot.y/180.0)*sin(3.141592653589793*cameraP->rot.x/180.0);
-    cameraP->up.y = cos(3.141592653589793*cameraP->rot.x/180.0);
+        sin(M_PI*cameraP->rot.y/180.0)*sin(M_PI*cameraP->rot.x/180.0);
+    cameraP->up.y = cos(M_PI*cameraP->rot.x/180.0);
     cameraP->up.z =
-        cos(3.141592653589793*cameraP->rot.y/180.0)*sin(3.141592653589793*cameraP->rot.x/180.0);
+        cos(M_PI*cameraP->rot.y/180.0)*sin(M_PI*cameraP->rot.x/180.0);
     if(cameraP->quake) {
         cameraP->eye.x += (frandf()-0.5f)*cameraP->quakePower;
         cameraP->eye.y += (frandf()-0.5f)*cameraP->quakePower;
@@ -751,11 +743,11 @@ BOOL mbCameraCullCheck(HuVecF *pos, float radius)
     MTXLookAt(lookAt, &cameraP->eye, &cameraP->up, &cameraP->center);
     PSMTXMultVec(lookAt, pos, &viewPos);
     tanHalfFov =
-        sin(3.141592653589793*(cameraP->fov*0.5f)/180.0)/cos(3.141592653589793*(cameraP->fov*0.5f)
+        sin(M_PI*(cameraP->fov*0.5f)/180.0)/cos(M_PI*(cameraP->fov*0.5f)
         /180.0);
     boundX = 1.2f*(tanHalfFov*-viewPos.z);
     boundY = tanHalfFov*-viewPos.z;
-    r = radius/cos(3.141592653589793*(cameraP->fov*0.5f)/180.0);
+    r = radius/cos(M_PI*(cameraP->fov*0.5f)/180.0);
     if(fabs(viewPos.x)-r < boundX) {
         if(fabs(viewPos.y)-r < boundY) {
             if((viewPos.z-radius) <= 0.0f) {
@@ -932,7 +924,8 @@ static void CameraMoveApply(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom
 
 // Builds a linear camera transition from the current view to supplied values, retaining current
 // values for NULL or negative inputs and clamping duration to at least one frame.
-static inline void CameraMoveApplyI(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+static inline void CameraMoveApplyI(HuVecF *pos, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov,
                                     s16 maxTime)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -977,7 +970,8 @@ static inline void CameraMoveApplyI(HuVecF *pos, HuVecF *rot, HuVecF *offset, fl
 
 // Animates the camera toward a world-space position and optional rotation, offset, zoom, and field
 // of view; used by board events for fixed shots.
-void mbCameraMovePos(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
+void mbCameraMovePos(HuVecF *pos, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov, s16 maxTime)
 {
     HuVecF ofs;
     if(!offset) {
@@ -993,7 +987,8 @@ void mbCameraMovePos(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float
 
 // Animates toward a player's position, using a 100-unit Y offset by default; player -1 keeps the
 // current center and uses the supplied view values.
-void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+void mbCameraMovePlayer(s16 playerNo, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov,
                         s16 maxTime)
 {
     HuVecF pos;
@@ -1015,7 +1010,8 @@ void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset, float zoom, f
 
 // Animates toward a model's stored base position; model -1 keeps the current center, and a NULL
 // offset defaults to zero.
-void mbCameraMoveObj(MBMODELID modelId, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+void mbCameraMoveObj(MBMODELID modelId, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov,
                      s16 maxTime)
 {
     HuVecF pos;
@@ -1035,7 +1031,8 @@ void mbCameraMoveObj(MBMODELID modelId, HuVecF *rot, HuVecF *offset, float zoom,
 }
 
 // Animates the camera to a board space, or continues with supplied view values when masuId is -1.
-void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
+void mbCameraMoveMasu(s16 masuId, const HuVecF *rot,
+    const HuVecF *offset, float zoom, float fov, s16 maxTime)
 {
     HuVecF pos;
     HuVecF ofs;

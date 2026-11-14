@@ -4,6 +4,7 @@
 #include "game/object.h"
 #include "game/board/effect.h"
 #include "game/board/main.h"
+#include "game/board/guide.h"
 #include "game/board/math.h"
 #include "game/memory.h"
 #include "game/flag.h"
@@ -79,8 +80,6 @@ typedef struct W05ColorEffectWork_s {
     ANIMDATA *animation; /* Sprite animation data retained for the particle model. */
 } W05_COLOR_EFFECT_WORK;
 
-int mbGuideSpeakerNoGet(void);
-
 extern u32 mbCapEffNum;
 extern s16 *mbCapEffData;
 
@@ -119,12 +118,6 @@ typedef struct W05TeresaSceneWork_s {
     u8 spaceState[16];
     s32 defaultMotionModel; /* Model used when neither event space matches. */
 } W05_TERESA_SCENE_WORK;
-
-typedef struct W05TwinParticleWork_s {
-    s32 modelId[2];
-    s32 activeCount[2];
-    ANIMDATA *animation;
-} W05_TWIN_PARTICLE_WORK;
 
 typedef struct W05SurfaceVertex_s {
     HuVecF phase; /* Independent wave phases in degrees for each axis. */
@@ -373,10 +366,6 @@ static inline int W05SetupDataNumGet(int dataNum) {
     return dataNum;
 }
 
-static inline void *W05BoardAlloc(int size) {
-    return HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
-}
-
 static inline void W05ModelPauseOn(MBMODELID modelId) {
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 1)));
 }
@@ -492,7 +481,7 @@ void fn_1_F4(void) {
     if (mbSaveNewF) {
         *lbl_1_bss_4 = 0;
     }
-    board = lbl_1_bss_8 = W05BoardAlloc(sizeof(W05_BOARD_WORK));
+    board = lbl_1_bss_8 = OpeningAlloc(sizeof(W05_BOARD_WORK));
     memset(board, 0, sizeof(W05_BOARD_WORK));
     board->lightId = -1;
     board->lightMoving = 0;
@@ -5875,7 +5864,7 @@ void fn_1_1698C(void) {
         }
     }
     board->displayListSize = GXEndDisplayList();
-    board->displayList = ModelHeapAlloc(board->displayListSize, model->mallocNo);
+    board->displayList = ModelHeapMallocNum(board->displayListSize, model->mallocNo);
     memcpy(board->displayList, displayList, board->displayListSize);
     DCFlushRange(board->displayList, board->displayListSize);
     HuMemDirectFree(displayList);
@@ -6351,22 +6340,22 @@ void fn_1_197F8(void) {
 
 /* Returns the number of particles left in the two hook effect models. */
 s32 fn_1_1980C(void) {
-    void *state = lbl_1_bss_C;
-    s32 *values;
+    OMOBJ *state = lbl_1_bss_C;
+    W05_TWIN_EFFECT_WORK *work;
 
     if (lbl_1_bss_C == NULL) {
         return 0;
     }
 
-    values = (s32 *) ((void **) state)[23];
-    return values[2] + values[3];
+    work = state->data;
+    return work->activeCount[0] + work->activeCount[1];
 }
 
 /* Starts a particle in the selected hook effect model for its frame-update task. Reads the
  * task's data before the null check, so the task must already exist. */
 void fn_1_19864(HuVecF *position, HuVecF *velocity, f32 scale,
                f32 rotation, f32 gravity, GXColor *color, s32 duration, s32 additive) {
-    W05_TWIN_PARTICLE_WORK *work;
+    W05_TWIN_EFFECT_WORK *work;
     OMOBJ *object;
     HU3D_MODEL *model;
     MBPARTICLE *particle;

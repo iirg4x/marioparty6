@@ -3,6 +3,7 @@
 
 #include "game/hu3d.h"
 
+void mbev_StarMasu(int playerNo, int masuId);
 void mbStarInit(void);
 void mbStarClose(void);
 void mbStarFlagInit(void);

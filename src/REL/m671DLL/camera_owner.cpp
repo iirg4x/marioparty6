@@ -18,7 +18,7 @@
 
 // The game never reads this value.
 extern const double lbl_1_rodata_3C0 = 60.0;
-// The game never reads this value.
+// The game never reads these values.
 extern const Vec lbl_1_rodata_3C8[3] = {
     {0.0f, 1500.0f, 1500.0f},
     {0.0f, 0.0f, 0.0f},

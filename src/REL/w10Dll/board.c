@@ -1,5 +1,7 @@
 /* Implements the W10 board setup and its board tutorial scenes. */
 #include "REL/w10Dll/module_context.h"
+#include "REL/w10Dll/w10.h"
+#include "game/board/guide.h"
 #include "game/board/camera.h"
 #include "game/board/player.h"
 #include "game/board/mgcall.h"
@@ -30,10 +32,7 @@ extern void fn_1_490(void);
 extern void fn_1_494(void);
 extern MBMODELID lbl_1_bss_10;
 
-
-
 void fn_1_4BC(void);
-
 
 extern void fn_1_2CB8(void);
 extern void fn_1_554(void);
@@ -43,7 +42,6 @@ extern void fn_1_1924(void);
 extern void fn_1_2484(void);
 extern void fn_1_2B34(void);
 
-
 extern void fn_1_306C(float x, float y, float z);
 extern void fn_1_30EC(void);
 
@@ -52,8 +50,6 @@ extern void fn_1_30EC(void);
 
 extern void fn_1_30EC(void);
 
-
-extern void mbGuideFadeIn(OMOBJ *obj);
 extern void fn_1_306C(float x, float y, float z);
 
 extern u8 lbl_1_data_58[9];
@@ -68,14 +64,10 @@ extern u8 lbl_1_data_82[4];
 extern u8 lbl_1_data_86[4];
 extern u8 lbl_1_data_8A[4];
 extern HuVec2f lbl_1_data_8[10];
-extern void mbGuideMotionShiftSet(OMOBJ *guide, s16 motion, BOOL shift);
-extern BOOL mbGuideMotionCheck(OMOBJ *guide);
-
 
 typedef struct W10SPRPAIR_s {
     s16 spriteIds[2]; /* Banner ID at 0, label ID at 1; -1 means that sprite is unused. */
 } W10SPRPAIR;
-
 
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -103,12 +95,9 @@ typedef struct W10SPRPAIR_s {
 
 typedef u16 (*W10DICEPADHOOK)(int playerNo);
 
-extern BOOL mbDiceKillCheckAll(int playerCount);
 extern u16 fn_1_2EA8(int playerNo);
 extern int lbl_1_bss_0[4];
 extern int lbl_1_data_9C[4];
-
-extern int mbGuideModelGet(OMOBJ *obj);
 
 extern HuVecF lbl_1_data_AC;
 

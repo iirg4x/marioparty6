@@ -5,15 +5,30 @@
 
 #include "dolphin/math.h"
 #include "game/board/main.h"
+#include "game/board/guide.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/audio.h"
+#include "game/board/branch.h"
+#include "game/board/camera.h"
+#include "game/board/capsule.h"
+#include "game/board/capselect.h"
+#include "game/board/coin.h"
+#include "game/board/comchoice.h"
+#include "game/board/dice.h"
 #include "game/board/effect.h"
+#include "game/board/math.h"
 #include "game/board/player.h"
+#include "game/board/snpc.h"
+#include "game/board/star.h"
+#include "game/board/telop.h"
+#include "game/board/window.h"
+#include "game/board/wipe.h"
 
 #include "game/data.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
+#include "game/process.h"
 #include "game/sprite.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
@@ -23,15 +38,6 @@
 extern inline float fabsf(float value)
 {
     return __fabsf(value);
-}
-
-// Returns an absolute value for the NPC movement and direction updates that call it.
-static inline float SNpcAbsFloat(register float value)
-{
-    asm {
-        fabs value, value
-    }
-    return value;
 }
 
 #define SNPC_MAGIC 'SNPC'
@@ -45,7 +51,7 @@ static inline float SNpcAbsFloat(register float value)
 #define SNPC_MIN_SCORE_SENTINEL 10000000
 #define SNPC_CANDIDATE_SCORE_MAX 1000000
 
-typedef struct MBSNPCSAVEWORK {
+struct MBSNPCSAVEWORK {
     // Selects nighttime Bowser when set; daytime uses Donkey Kong.
     u8 isKoopa : 1;
     // Reserved bits in the saved NPC flags.
@@ -55,7 +61,7 @@ typedef struct MBSNPCSAVEWORK {
     // Failed extra-die rolls since the last successful roll, capped at three;
     // early turns can suppress the selected effect.
     u8 effectMissCount;
-} MBSNPCSAVEWORK;
+};
 
 typedef struct SNPCMOTDATA {
     // Motion asset loaded into the NPC model's motion slot.
@@ -335,12 +341,12 @@ static u32 snpcMagic;
 
 static int snpcMesSpeakerTbl[2] = { 6, 13 };
 static int playerStarMotNoTbl[2] = { 7, 8 };
-static int snpcStarStrmTbl[2] = { 30, 28 };
-static int playerStarSeTbl[2] = { 573, 585 };
+static int snpcStarStrmTbl[2] = { MSM_STREAM_STORY_LAST, MSM_STREAM_STORY_OPENING };
+static int playerStarSeTbl[2] = { MSM_SE_CHARVOICE_STAR_WIN_CHEER, MSM_SE_CHARVOICE_SAD_MOAN };
 static int snpcStarMesSpeakerTbl[2] = { 6, 13 };
-static int snpcMoveStrmTbl[2] = { 30, 28 };
+static int snpcMoveStrmTbl[2] = { MSM_STREAM_STORY_LAST, MSM_STREAM_STORY_OPENING };
 static int playerStarChgMotNoTbl[2] = { 7, 8 };
-static int playerStarChgSeTbl[2] = { 573, 585 };
+static int playerStarChgSeTbl[2] = { MSM_SE_CHARVOICE_STAR_WIN_CHEER, MSM_SE_CHARVOICE_SAD_MOAN };
 static float snpcRotSpeedTbl[2] = { 1.3f, 1.8f };
 static float snpcPosFixSpeedTbl[2] = { 1.3f, 1.8f };
 static int snpcMoveNumColor[2] = { 1, 2 };
@@ -349,9 +355,6 @@ static int snpcDiceMotTimeTbl[2] = { 25, 25 };
 enum {
     SNPC_MASU_TYPE_DONKEY = 7,
     SNPC_MASU_TYPE_KOOPA = 10,
-    SNPC_MASU_SE_DONKEY = 1527,
-    SNPC_MASU_SE_KOOPA = 1528,
-    SNPC_MASU_RESET_SE = 1529,
 };
 
 enum {
@@ -427,102 +430,21 @@ static OMOBJ *SNpcDiceExec(int diceValue, int diceNum);
 static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
     u32 mAttr, s16 *pathTbl, float chance);
 
-extern void *fn_80213818(s32 size, u32 num);
-extern void *fn_802137C0(s32 size);
-extern void mbMtxRot(Mtx mtx, float x, float y, float z);
-extern float mbAngleLerp(float from, float to, float weight);
-extern BOOL mbBranchAttrCheck(int masuId);
-extern s16 mbCapMasuDispTypeGet(s16 masuId);
-extern float fn_8002D5D4(HU3D_MODELID modelId);
-extern void fn_8002D678(HU3D_MODELID modelId, float start,
-    float end);
-extern void HuPrcVSleep(void);
-extern float mbCameraZoomGet(void);
-extern void mbCameraZoomSet(float zoom);
 extern int mbSNpcMasuStarNextGet(int masuId, int type, int *eligibleTypeTbl,
     u32 attr);
-extern void mbDiceObjHit(int playerNo);
-extern void mbPlayerMoveHookSet(int playerNo, void (*hook)(int playerNo));
-extern void mbWipeSpecialFadeInCreate(int type, int time);
-extern void mbWipeSpecialFadeOutCreate(int type, int time);
-extern void mbDiceSNpcNumKill(OMOBJ *obj);
-extern void mbDiceSNpcNumDispSet(OMOBJ *obj, BOOL dispF);
-extern void mbDiceSNpcNumSet(OMOBJ *obj, int value);
-extern OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos);
-extern void mbDiceSNpcNumPosSet(OMOBJ *obj, HuVecF *pos);
-extern int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
-    int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
-extern void mbDicePadBtnHookSet(int playerNo,
-    u16 (*hook)(int playerNo));
-extern void mbDiceMotHookSet(int playerNo, void (*hook)(int playerNo));
-extern BOOL mbDiceKillCheck(int playerNo);
-extern void mbCameraFocusObjSet(MBMODELID modelId);
-extern void mbCameraOffsetSet(float offsetX, float offsetY, float offsetZ);
-extern void mbCameraMoveOnSet(BOOL moveOn);
-extern void mbCapMasuDispSet(BOOL dispF);
-extern void mbTelopCreate(int playerNo, int mess, int time);
-extern void mbMoveNumDispSet(int playerNo, BOOL dispF);
-extern void mbPlayerMotionEndWait(int playerNo);
-extern void mbPlayerMotIdleSet(int playerNo);
-extern void mbPlayerPosGet(int playerNo, HuVecF *pos);
-extern void mbPlayerPosSetV(int playerNo, const HuVecF *pos);
-extern void mbPlayerRotGet(int playerNo, HuVecF *rot);
-extern void mbPlayerRotSet(int playerNo, float rotX, float rotY, float rotZ);
-extern void mbPlayerMotionSet(int playerNo, int motNo, u32 attr);
-extern int mbPlayerCoinGet(int playerNo);
-extern int mbPlayerStarGet(int playerNo);
-extern void mbPlayerStarAdd(int playerNo, int starNum);
-extern void mbPlayerWinLoseVoicePlay(int playerNo, int motNo, int seId);
-extern int mbPlayerTeamFindPlayer(int teamNo, int memberNo);
-extern int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF,
-    BOOL fastF);
-extern int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF,
-    BOOL fastF);
-extern void mbCameraShakeSet(int time, float strength);
-extern void mbStarAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF);
-extern void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF);
-extern int mbStarAddProcExec(int playerNo, int starNum, BOOL dispF,
-    BOOL fastF);
-extern int mbMusJinglePlay(s16 id);
-extern void mbMusJingleWait(int streamNo);
-extern void mbMusPauseFadeOut(int chan, BOOL pauseF, int speed);
-extern BOOL mbMusBoardFadeOut(int chan, int nextChan, int speed,
-    int fadeSpeed, int streamNo, BOOL waitF);
-extern int mbWinCreate(int type, u32 mess, int speakerNo);
-extern int mbWinCreateChoice(int type, u32 mess, int speakerNo, int choiceNo);
-extern int mbWinChoiceGet(s16 winNo);
-extern void mbWinPause(s16 winNo);
-extern void mbWinKill(s16 winNo);
-extern void mbWinPlayerDisable(s16 winNo, int playerNo);
-extern void mbWinWait(s16 winNo);
-extern int mbGuideSpeakerNoGet(void);
-extern void mbComChoiceUpSet(void);
-extern int mbCameraStackPush(void);
-extern void mbCameraStackPop(int maxTime);
-extern void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset,
-    float zoom, float fov, s16 maxTime);
-extern void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset,
-    float zoom, float fov, s16 maxTime);
-extern void mbCameraMoveWait(void);
-extern float mbCameraPlayerViewZoomGet(int viewNo);
-extern void mbWipeDissolveFadeIn(void);
-extern void mbWipeDissolveFadeOut(void);
-extern float mbSinDeg(float deg);
-extern float mbAngleWrap2(float angle, float startAngle);
 extern const HuVecF lbl_8021AA28;
 extern const HuVecF lbl_8021AA64;
 extern BOOL mbSaveNewF;
-extern void mbStarMasuFuncSet(void (*func)(void));
 
 static int snpcSeTbl[8][2] = {
     { 0, 0 },
-    { 935, 971 },
-    { 937, 972 },
-    { 1135, 974 },
-    { 933, 969 },
-    { 934, 970 },
-    { 993, 993 },
-    { 995, 1119 },
+    { MSM_SE_GUIDE_DONKEY_TALK, MSM_SE_GUIDE_KOOPA_TALK },
+    { MSM_SE_GUIDE_DONKEY_LAUGH, MSM_SE_GUIDE_KOOPA_LAUGH },
+    { MSM_SE_BRD00_DONKEY_FAREWELL, MSM_SE_GUIDE_KOOPA_FAREWELL },
+    { MSM_SE_GUIDE_DONKEY_STEP, MSM_SE_GUIDE_KOOPA_STEP },
+    { MSM_SE_GUIDE_DONKEY_STOMP, MSM_SE_GUIDE_KOOPA_STOMP },
+    { MSM_SE_GUIDE_JUMP_LAUNCH, MSM_SE_GUIDE_JUMP_LAUNCH },
+    { MSM_SE_GUIDE_DONKEY_APPEAR, MSM_SE_BRD00_KOOPA_APPEAR },
 };
 
 static SNPCMOTNEXTDATA snpcDonkeyNextMotTbl[11] = {
@@ -855,17 +777,17 @@ void mbSNpcStarExec(int playerNo, int masuId)
     PSVECSubtract(&npcPos, &playerPos, &npcPos);
     PSVECNormalize(&npcPos, &npcPos);
     SNpcTargetAngleSet((float)(180.0
-        * (atan2(-npcPos.x, -npcPos.z) / 3.141592653589793)));
+        * (atan2(-npcPos.x, -npcPos.z) / M_PI)));
     loopMax = 7;
     PSVECScale(&npcPos, &npcPos, -100.0f / (float)loopMax);
 
     mbPlayerPosGet(playerNo, &playerPos);
     mbPlayerRotGet(playerNo, &playerRot);
     playerRot.z = mbAngleWrap2((float)(180.0
-        * (atan2(-npcPos.x, -npcPos.z) / 3.141592653589793)), playerRot.y);
+        * (atan2(-npcPos.x, -npcPos.z) / M_PI)), playerRot.y);
     mbPlayerMotionSet(playerNo, 9, 0);
     for (i = 0; i < loopMax; i++) {
-        angle = (float)sin((3.141592653589793
+        angle = (float)sin((M_PI
             * (90.0f * (float)(i + 1) / (float)loopMax))
             / 180.0);
         mbPlayerRotSet(playerNo, 0.0f,
@@ -889,7 +811,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         SNpcSePlay(2, 0);
         SNpcObjMotShiftSet(9);
         mbWinWait((s16)winNo);
-        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+        mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
         mbPlayerMotionShiftSet(playerNo, 13, 0.0f,
             8.0f, 0);
         mbPlayerMotionEndWait(playerNo);
@@ -920,7 +842,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
                 0.0f, 8.0f, 0);
             SNpcSePlay(1, 0);
             SNpcObjMotShiftSet(8);
-            jingleNo = mbMusJinglePlay(39);
+            jingleNo = mbMusJinglePlay(MSM_STREAM_GETTING_A_STAR);
             SNpcObjMotEndWait();
             mbPlayerMotionEndWait(playerNo);
             HuPrcSleep(60);
@@ -980,7 +902,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         loopMax = 30;
         for (i = 0; i < loopMax; i++) {
             angle = (float)i / (float)loopMax;
-            angle = (float)sin((3.141592653589793
+            angle = (float)sin((M_PI
                 * (80.0f * angle)) / 180.0);
             SNpcObjPosSet(playerPos.x,
                 playerPos.y + 100.0f * (8.0f * angle),
@@ -1012,7 +934,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         loopMax = 30;
         for (i = 0; i < loopMax; i++) {
             angle = (float)(loopMax - i - 1) / (float)loopMax;
-            angle = (float)sin((3.141592653589793
+            angle = (float)sin((M_PI
                 * (80.0f * angle)) / 180.0);
             SNpcObjPosSet(playerPos.x,
                 playerPos.y + 100.0f * (8.0f * angle),
@@ -1139,7 +1061,7 @@ static BOOL SNpcMoveExec(void)
     if (isKoopa) {
         roll = 0.4f + 0.6f * frandf();
     } else {
-        roll = 0.20000000298023224 + 0.6 * frandf();
+        roll = 0.2f + 0.6 * frandf();
         if (diceNum > 1) {
             roll = 0.4f + 0.5f * frandf();
         }
@@ -1252,7 +1174,7 @@ static BOOL SNpcMoveExec(void)
                     motionAttr = 0;
                     seNo = -1;
 
-                    seNo = 579;
+                    seNo = MSM_SE_CHARVOICE_HAPPY_CHEER;
                     for (i = 0; otherPlayerTbl[i] >= 0; i++) {
                         if (seNo >= 0) {
                             mbPlayerWinLoseVoicePlay(otherPlayerTbl[i], 12, seNo);
@@ -1268,7 +1190,7 @@ static BOOL SNpcMoveExec(void)
                         motionAttr = 0;
                         seNo = -1;
 
-                        seNo = 579;
+                        seNo = MSM_SE_CHARVOICE_HAPPY_CHEER;
                         for (i = 0; prizePlayerTbl[i] >= 0; i++) {
                             if (seNo >= 0) {
                                 mbPlayerWinLoseVoicePlay(prizePlayerTbl[i], 12,
@@ -1286,7 +1208,7 @@ static BOOL SNpcMoveExec(void)
                     motionAttr = 0;
                     seNo = -1;
 
-                    seNo = 585;
+                    seNo = MSM_SE_CHARVOICE_SAD_MOAN;
                     for (i = 0; otherPlayerTbl[i] >= 0; i++) {
                         if (seNo >= 0) {
                             mbPlayerWinLoseVoicePlay(otherPlayerTbl[i], 13, seNo);
@@ -1302,7 +1224,7 @@ static BOOL SNpcMoveExec(void)
                         motionAttr = 0;
                         seNo = -1;
 
-                        seNo = 585;
+                        seNo = MSM_SE_CHARVOICE_SAD_MOAN;
                         for (i = 0; prizePlayerTbl[i] >= 0; i++) {
                             if (seNo >= 0) {
                                 mbPlayerWinLoseVoicePlay(prizePlayerTbl[i], 13,
@@ -1399,7 +1321,7 @@ static BOOL SNpcMoveExec(void)
                     for (j = 0; prizePlayerTbl[j] >= 0; j++) {
                         mbCoinAddDispExec(prizePlayerTbl[j], -20, FALSE, TRUE);
                     }
-                    jingleNo = mbMusJinglePlay(39);
+                    jingleNo = mbMusJinglePlay(MSM_STREAM_GETTING_A_STAR);
                     StarChangeExec(prizePlayerTbl, 0, 1);
                     mbMusJingleWait(jingleNo);
                 } else if (prizeCount != 0) {
@@ -1412,7 +1334,7 @@ static BOOL SNpcMoveExec(void)
                         motionAttr = 0;
                         seNo = -1;
 
-                        seNo = 579;
+                        seNo = MSM_SE_CHARVOICE_HAPPY_CHEER;
                         for (i = 0; otherPlayerTbl[i] >= 0; i++) {
                             if (seNo >= 0) {
                                 mbPlayerWinLoseVoicePlay(otherPlayerTbl[i], 12,
@@ -1469,7 +1391,7 @@ static BOOL SNpcMoveExec(void)
                             motionAttr = 0;
                             seNo = -1;
 
-                            seNo = 585;
+                            seNo = MSM_SE_CHARVOICE_SAD_MOAN;
                             for (i = 0; otherPlayerTbl[i] >= 0; i++) {
                                 if (seNo >= 0) {
                                     mbPlayerWinLoseVoicePlay(otherPlayerTbl[i], 13,
@@ -1508,7 +1430,7 @@ static BOOL SNpcMoveExec(void)
                     motionAttr = 0;
                     seNo = -1;
 
-                    seNo = 585;
+                    seNo = MSM_SE_CHARVOICE_SAD_MOAN;
                     for (i = 0; otherPlayerTbl[i] >= 0; i++) {
                         if (seNo >= 0) {
                             mbPlayerWinLoseVoicePlay(otherPlayerTbl[i], 13, seNo);
@@ -1665,7 +1587,7 @@ static void SNpcMoveOMExec(OMOBJ *obj)
         }
         work->maxTime = (s16)(time / 16.666666f);
         obj->rot.z = (float)(180.0
-            * (atan2(move.x, move.z) / 3.141592653589793));
+            * (atan2(move.x, move.z) / M_PI));
         if (snpcWork->jumpMoveF != 0) {
             work->mode = 1;
             SNpcObjMotShiftSet(3);
@@ -1712,7 +1634,7 @@ static void SNpcMoveOMExec(OMOBJ *obj)
             /* fall through */
         case 2:
             pos.y += 100.0 * (4.0 * sin(
-                (3.141592653589793 * (180.0f * time))
+                (M_PI * (180.0f * time))
                     / 180.0));
             SNpcObjPosSetV(&pos);
             if (work->time >= work->maxTime) {
@@ -1809,7 +1731,7 @@ static void SNpcRotateUpdate(OMOBJ *obj)
     }
     time = (float)work->time++ / (float)work->maxTime;
     weight = (float)(0.5 + (0.5
-        * sin((3.141592653589793 * (2.7e+02f
+        * sin((M_PI * (2.7e+02f
             + (180.0f * time))) / 180.0)));
     angle = obj->rot.y + (weight * obj->scale.y);
     SNpcObjRotSet(obj->rot.x, angle, obj->rot.z);
@@ -1886,7 +1808,7 @@ static void SNpcPosFixUpdate(OMOBJ *obj)
             SNpcObjRotGet(&obj->rot);
             work->targetAngle = 0.0f;
             obj->scale.y = mbAngleWrap2(work->targetAngle, obj->rot.y);
-            time = 0.0055555557f * SNpcAbsFloat(obj->scale.y);
+            time = 0.0055555557f * FloatAbs(obj->scale.y);
             work->maxTime = (s16)(15.0f
                 * (0.7f + (time
                     * snpcPosFixSpeedTbl[snpcSaveWork->isKoopa])));
@@ -1900,7 +1822,7 @@ static void SNpcPosFixUpdate(OMOBJ *obj)
     } else {
         time = (float)work->time++ / (float)work->maxTime;
         weight = (float)(0.5 + (0.5
-            * sin((3.141592653589793 * (2.7e+02f
+            * sin((M_PI * (2.7e+02f
                 + (180.0f * time))) / 180.0)));
         angle = obj->rot.y + (weight * obj->scale.y);
         SNpcObjRotSet(obj->rot.x, angle, obj->rot.z);
@@ -2009,7 +1931,7 @@ static OMOBJ *SNpcDiceExec(int diceValue, int diceNum)
         valueTbl[i]--;
     }
     mbDiceProcExec(-1, snpcDiceTypeTbl[diceNum - 1][isKoopa],
-        (s8 *)NULL, valueTbl, FALSE, FALSE, &pos,
+        NULL, valueTbl, FALSE, FALSE, &pos,
         snpcMoveNumColor[isKoopa]);
     mbDicePadBtnHookSet(-1, SNpcDiceBtnHook);
     mbDiceMotHookSet(-1, SNpcDiceMotHook);
@@ -2054,8 +1976,8 @@ const SNPCMASUTBL lbl_802C3334 = {{
     SNPC_MASU_TYPE_KOOPA,
 }};
 const SNPCMASUTBL lbl_802C333C = {{
-    SNPC_MASU_SE_DONKEY,
-    SNPC_MASU_SE_KOOPA,
+    MSM_SE_BRD06_DONKEY_SPACE_EVENT,
+    MSM_SE_BRD06_KOOPA_SPACE_EVENT,
 }};
 
 // Replaces the space type and removes its capsule; setF also plays the change sound and refreshes
@@ -2082,7 +2004,7 @@ static void SNpcMasuReset(BOOL setF)
 {
     mbMasuTypeSet(snpcSaveWork->masuId, snpcWork->savedMasuType);
     if (setF) {
-        mbAudFXPlay((s16)SNPC_MASU_RESET_SE);
+        mbAudFXPlay((s16)MSM_SE_BRD06_SPACE_RESET);
         SNpcObjMasuSet(snpcSaveWork->masuId);
     }
     snpcSaveWork->masuId = 0;
@@ -2144,24 +2066,6 @@ const float lbl_802C334C[1] = { 14.0f };
 const float lbl_802C3350[1] = { 7.0f };
 const float lbl_802C3354[1] = { 30.0f };
 
-// Copies NPC and effect vectors, reading all components before writing to the destination.
-static inline void SNpcVecCopy(register const HuVecF *src, register HuVecF *dst)
-{
-    register __vec2x32float__ xy;
-    register float z;
-    asm {
-        psq_l xy, 0(src), 0, 0
-        lfs z, 8(src)
-        psq_st xy, 0(dst), 0, 0
-        stfs z, 8(dst)
-    }
-}
-
-static inline MBPARTICLE *SNpcParticleGet(HU3D_MODELID modelId)
-{
-    return lbl_802C01C8[modelId].hookData;
-}
-
 // Runs Bowser's fire-breath sequence, updating its particle streams from the character's item-hook
 // matrix.
 static void SNpcKoopaFireExec(void)
@@ -2180,7 +2084,7 @@ static void SNpcKoopaFireExec(void)
     int i;
 
     SNpcObjMotShiftSet(10);
-    mbAudFXPlay(973);
+    mbAudFXPlay(MSM_SE_GUIDE_KOOPA_ANNOUNCE);
     fire3Id = mbParticleCreate(HuSprAnimRead(fn_80008634(
         mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), 0x10000000)), 88);
     fire3CopyId = mbParticleCreate(HuSprAnimRead(fn_80008634(
@@ -2189,8 +2093,8 @@ static void SNpcKoopaFireExec(void)
     mbParticleHookSet(fire3CopyId, SNpcKoopaFire2Hook);
     fn_80026B8C(fire3Id, 5);
     fn_80026B8C(fire3CopyId, 5);
-    fire3P = SNpcParticleGet(fire3Id);
-    copyP = SNpcParticleGet(fire3CopyId);
+    fire3P = StarObjEffDataGet(fire3Id);
+    copyP = StarObjEffDataGet(fire3CopyId);
     copyP->hookData = fire3P;
     copyP->mode = 0;
     fireId = mbParticleCreate(HuSprAnimRead(fn_80008634(
@@ -2201,8 +2105,8 @@ static void SNpcKoopaFireExec(void)
     mbParticleHookSet(fireCopyId, SNpcKoopaFire2Hook);
     fn_80026B8C(fireId, 5);
     fn_80026B8C(fireCopyId, 5);
-    fireP = SNpcParticleGet(fireId);
-    copyP = SNpcParticleGet(fireCopyId);
+    fireP = StarObjEffDataGet(fireId);
+    copyP = StarObjEffDataGet(fireCopyId);
     copyP->hookData = fireP;
     copyP->mode = 0;
     mode = 0;
@@ -2233,14 +2137,14 @@ static void SNpcKoopaFireExec(void)
         offset.z = (-25.0f);
         PSMTXMultVec(mtx, &offset, &offset);
         PSVECAdd(&fireP->vel, &offset, &fireP->vel);
-        SNpcVecCopy(&fireP->vel, &fire3P->vel);
+        MBBoardVecCopy(&fireP->vel, &fire3P->vel);
         offset.x = 0.2f;
         offset.y = 1.0f;
         offset.z = 0.0f;
-        PSMTXMultVec(mtx, &offset, (HuVecF *)fireP->work);
-        SNpcVecCopy((HuVecF *)fireP->work, (HuVecF *)fire3P->work);
+        PSMTXMultVec(mtx, &offset, &fireP->fireDirection);
+        MBBoardVecCopy(&fireP->fireDirection, &fire3P->fireDirection);
         value = (float)mode / 256.0f;
-        PSVECScale((HuVecF *)fireP->work, &offset,
+        PSVECScale(&fireP->fireDirection, &offset,
             100.0f * (4.0f * value));
         PSVECAdd(&fireP->vel, &offset, &fireP->vel);
         HuPrcVSleep();
@@ -2294,10 +2198,10 @@ static void SNpcKoopaFireHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                 continue;
             }
             if (data->time == 0) {
-                SNpcVecCopy((HuVecF *)particleP->work, &data->vel);
+                MBBoardVecCopy(&particleP->fireDirection, &data->vel);
                 axis = &axisZ;
-                if (SNpcAbsFloat(data->vel.z) >= SNpcAbsFloat(data->vel.y)) {
-                    if (SNpcAbsFloat(data->vel.z) >= SNpcAbsFloat(data->vel.x)) {
+                if (FloatAbs(data->vel.z) >= FloatAbs(data->vel.y)) {
+                    if (FloatAbs(data->vel.z) >= FloatAbs(data->vel.x)) {
                         axis = &axisX;
                     }
                 }
@@ -2308,7 +2212,7 @@ static void SNpcKoopaFireHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                 PSMTXMultVec(rotMtx, &axisCross, &data->accel);
 
                 data->time = data->activeF = 30;
-                SNpcVecCopy(&particleP->vel, &data->pos);
+                MBBoardVecCopy(&particleP->vel, &data->pos);
 
                 speed = frandf() * 0.3f * 100.0f;
                 PSVECScale(&data->vel, &axisCross, speed);
@@ -2466,10 +2370,10 @@ static void SNpcKoopaFire3Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                 continue;
             }
             if (data->time == 0) {
-                SNpcVecCopy((HuVecF *)particleP->work, &data->vel);
+                MBBoardVecCopy(&particleP->fireDirection, &data->vel);
                 axis = &axisZ;
-                if (SNpcAbsFloat(data->vel.z) >= SNpcAbsFloat(data->vel.y)) {
-                    if (SNpcAbsFloat(data->vel.z) >= SNpcAbsFloat(data->vel.x)) {
+                if (FloatAbs(data->vel.z) >= FloatAbs(data->vel.y)) {
+                    if (FloatAbs(data->vel.z) >= FloatAbs(data->vel.x)) {
                         axis = &axisX;
                     }
                 }
@@ -2479,7 +2383,7 @@ static void SNpcKoopaFire3Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                 PSMTXMultVec(rotMtx, &axisCross, &data->accel);
                 modeScale = (float)particleP->mode / 256.0f;
                 data->time = data->activeF = 10;
-                SNpcVecCopy(&particleP->vel, &data->pos);
+                MBBoardVecCopy(&particleP->vel, &data->pos);
 
                 speed = frandf() * 0.3f * 100.0f;
                 PSVECScale(&data->vel, &axisCross, speed * modeScale);
@@ -2652,7 +2556,7 @@ static void SNpcPlayerMoveFunc(int playerNo)
         }
         playerRot.x = playerRot.z = 0.0f;
         playerRot.y = (float)(180.0
-            * (atan2(moveDir.x, moveDir.z) / 3.141592653589793));
+            * (atan2(moveDir.x, moveDir.z) / M_PI));
         mbPlayerRotSetV(playerNo, &playerRot);
         setAngle = TRUE;
         break;
@@ -2662,7 +2566,7 @@ static void SNpcPlayerMoveFunc(int playerNo)
     // setAngle is not consulted.
     PSVECSubtract(&obj->rot, &obj->trans, &playerRot);
     rotY = (float)(9e+01 - (180.0
-        * (atan2(playerRot.z, playerRot.x) / 3.141592653589793)));
+        * (atan2(playerRot.z, playerRot.x) / M_PI)));
     mbPlayerRotYSet(playerNo, rotY);
     obj->scale.x = obj->trans.x;
     obj->scale.y = obj->trans.y;
@@ -2738,7 +2642,7 @@ static void SNpcPlayerMoveObjExec(OMOBJ *obj)
     }
     mbPlayerPosSet(work->playerNo, obj->trans.x,
         obj->trans.y + 100.0 * (2.0
-            * sin((3.141592653589793 * (180.0f * time))
+            * sin((M_PI * (180.0f * time))
                 / 180.0)), obj->trans.z);
     if (work->time == work->maxTime - 5) {
         mbPlayerMotionShiftSet(work->playerNo, 5, lbl_802C332C[0],
@@ -2848,13 +2752,13 @@ static void SNpcObjPosSet(float x, float y, float z)
 // to the model.
 static void SNpcObjPosSetV(const HuVecF *pos)
 {
-    SNpcVecCopy(pos, &snpcWork->pos);
+    MBBoardVecCopy(pos, &snpcWork->pos);
     mbObjPosSetV(snpcWork->objId[0], &snpcWork->pos);
 }
 
 static void SNpcObjPosGet(HuVecF *pos)
 {
-    SNpcVecCopy(&snpcWork->pos, pos);
+    MBBoardVecCopy(&snpcWork->pos, pos);
 }
 
 // Stores and applies the roaming NPC model's rotation during turns and space transitions.
@@ -2869,13 +2773,13 @@ static void SNpcObjRotSet(float x, float y, float z)
 // Position-fix setup restores the stored NPC rotation and applies it to the model.
 static void SNpcObjRotSetV(const HuVecF *rot)
 {
-    SNpcVecCopy(rot, &snpcWork->rot);
+    MBBoardVecCopy(rot, &snpcWork->rot);
     mbObjRotSetV(snpcWork->objId[0], &snpcWork->rot);
 }
 
 static void SNpcObjRotGet(HuVecF *rot)
 {
-    SNpcVecCopy(&snpcWork->rot, rot);
+    MBBoardVecCopy(&snpcWork->rot, rot);
 }
 
 // Selects an NPC motion and applies its speed, loop setting, and optional frame range.
@@ -3009,7 +2913,7 @@ u8 *mbMasuChanceCreate(int masuId, int chance, int branchChance)
     int linkNo;
     int linkNum;
     int linkTblNum;
-    u32 *pathMem;
+    void *pathMem;
     int pathCapacity;
     int i;
     MASU *masu;
@@ -3021,7 +2925,7 @@ u8 *mbMasuChanceCreate(int masuId, int chance, int branchChance)
     masuState = fn_802137C0(SNPC_CHANCE_TBL_SIZE);
     pathMem = HuMemDirectMallocNum(0,
         maxPaths * sizeof(*pathTbl), 0x10000000);
-    pathTbl = (SNPCCHANCEPATH *)pathMem;
+    pathTbl = pathMem;
     masuNum = mbMasuNumGet();
     for (i = 1; i < masuNum; i++) {
         masuState[i] = (s8)(mbMasuDispCheck((s16)i) | SNpcChanceBranchMask(i));
@@ -3658,7 +3562,7 @@ static void SNpcStarCreate(int type, BOOL lowerStarF, HuVecF *pos)
     if (lowerStarF) {
         ((SNPCSTAREFFWORK *)(&(snpcWork->starObj->work[0])))->lowerStarF = TRUE;
     }
-    SNpcVecCopy(pos, &obj->trans);
+    MBBoardVecCopy(pos, &obj->trans);
 
     obj->mdlId[0] = mbObjCreate(mbBoardDataNumGet(starMdlTbl[type]),
         NULL, TRUE);
@@ -3705,9 +3609,9 @@ static void SNpcStarObjExec(OMOBJ *obj)
         obj->rot.z = 0.0f;
         mbObjDispSet(obj->mdlId[0], TRUE);
         if (!work->isKoopa) {
-            work->soundId = mbAudFXPlay(1095);
+            work->soundId = mbAudFXPlay(MSM_SE_BRD00_STAR_GET_RISE_LOOP);
         } else {
-            work->soundId = mbAudFXPlay(1118);
+            work->soundId = mbAudFXPlay(MSM_SE_BRD00_STAR_GROW);
         }
     }
     work->time++;
@@ -3742,9 +3646,9 @@ static void SNpcStarObjExec(OMOBJ *obj)
                 work->soundId = -1;
             }
             if (!work->isKoopa) {
-                mbAudFXPlay(1097);
+                mbAudFXPlay(MSM_SE_BRD00_STAR_GET_FINISH);
             } else {
-                mbAudFXPlay(1097);
+                mbAudFXPlay(MSM_SE_BRD00_STAR_GET_FINISH);
             }
         }
         break;
@@ -4142,7 +4046,7 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
         model->hookData = work;
     }
     work->magic = MBOBJ_FADE_WORK_MAGIC;
-    SNpcVecCopy(pos, &work->pos);
+    MBBoardVecCopy(pos, &work->pos);
     work->alpha = 1.0f;
     work->color.r = work->color.g = work->color.b = 255;
     fn_80027884(hu3DModelId, FadeMatHook);
@@ -4246,8 +4150,8 @@ void mbObjFadeTexRotSet(MBMODELID modelId, HuVecF *pos, HuVecF *rot)
     hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &lbl_802C01C8[hu3DModelId];
     work = model->hookData;
-    SNpcVecCopy(pos, &work->pos);
-    SNpcVecCopy(rot, &work->rot);
+    MBBoardVecCopy(pos, &work->pos);
+    MBBoardVecCopy(rot, &work->rot);
 }
 
 // Guide setup calls this to choose the fade texture tint and its vertical texture scaling.

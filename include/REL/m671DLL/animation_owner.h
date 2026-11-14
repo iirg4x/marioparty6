@@ -44,4 +44,11 @@ struct AnimationOwner : GameObject, OwnedModel {
     void setCallback(void (AnimationOwner::*callback)()) { this->callback = callback; }
 };
 
+void fn_1_5754(AnimationOwner *, const Vec *);
+void fn_1_57C4(AnimationOwner *);
+void fn_1_5824(AnimationOwner *, const Vec *);
+void fn_1_58E4(AnimationOwner *, const Vec *);
+void fn_1_5F00(AnimationOwner *, const Vec *);
+void fn_1_5F6C(AnimationOwner *, float);
+
 #endif

@@ -1,15 +1,13 @@
 #ifndef _BOARD_OBJECT_H
 #define _BOARD_OBJECT_H
 
-#include "game/board/object_data.h"
+#include "game/board/model.h"
 
 int mbObjDataNumGet(int dataNum);
 void mbObjInit(void);
 void mbObjClose(void);
 
-MBMODELID mbObjCreate(int dataNum, const int *motDataNum, BOOL linkF);
 MBMODELID mbObjCharCreate(int charNo, int dataNum, const int *motDataNum, BOOL linkF);
-void mbObjKill(MBMODELID modelId);
 
 void mbObjDirSet(int dataDirDay, int dataDirNight);
 MBOBJMODEL *mbObjGet(MBMODELID modelId);
@@ -22,15 +20,12 @@ void mbObjLayerSet(MBMODELID modelId, u8 layer);
 void mbObjLayerSetAll(u8 layer);
 HU3D_MODELID mbObjModelIDGet(MBMODELID modelId);
 
-void mbObjPosGet(MBMODELID modelId, HuVecF *pos);
-void mbObjPosSetV(MBMODELID modelId, const HuVecF *pos);
 void mbObjPosSet(MBMODELID modelId, float x, float y, float z);
 void mbObjOffsetGet(MBMODELID modelId, HuVecF *offset);
 void mbObjOffsetSetV(MBMODELID modelId, const HuVecF *offset);
 void mbObjOffsetSet(MBMODELID modelId, float x, float y, float z);
 void mbObjRotGet(MBMODELID modelId, HuVecF *rot);
 void mbObjRotSetV(MBMODELID modelId, const HuVecF *rot);
-void mbObjRotSet(MBMODELID modelId, float x, float y, float z);
 float mbObjRotYGet(MBMODELID modelId);
 void mbObjRotYSet(MBMODELID modelId, float rotY);
 void mbObjScaleGet(MBMODELID modelId, HuVecF *scale);
@@ -40,6 +35,12 @@ void mbObjMtxGet(MBMODELID modelId, Mtx *mtx);
 void mbObjMtxSet(MBMODELID modelId, Mtx *mtx);
 
 void mbObjAttrSet(MBMODELID modelId, u32 attr);
+
+static inline void boardModelLoop(s16 modelId)
+{
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
+}
+
 void mbObjAttrReset(MBMODELID modelId, u32 attr);
 void mbObjAmbSet(MBMODELID modelId, float r, float g, float b);
 void mbObjAmbSetAll(float r, float g, float b);
@@ -56,15 +57,12 @@ int mbObjSePlay(MBMODELID modelId, s16 seId);
 
 void mbObjMotionVoiceOnSet(MBMODELID modelId, int motNo, BOOL voiceOnF);
 int mbObjMotionGet(MBMODELID modelId);
-void mbObjMotionSet(MBMODELID modelId, int motNo, u32 attr);
 int mbObjMotionIDCurGet(MBMODELID modelId);
 int mbObjMotionIDGet(MBMODELID modelId, int motNo);
-void mbObjMotionShiftSet(MBMODELID modelId, int motNo, float start, float end, u32 attr);
 int mbObjMotionShiftIDGet(MBMODELID modelId);
 void mbObjMotionNoCreate(MBMODELID modelId, int dataNum, int motNo);
 int mbObjMotionCreate(MBMODELID modelId, int dataNum);
 void mbObjMotionKill(MBMODELID modelId, int motNo);
-float mbObjMotionTimeGet(MBMODELID modelId);
 void mbObjMotionTimeSet(MBMODELID modelId, float time);
 float mbObjMotionMaxTimeGet(MBMODELID modelId);
 float mbObjMotionSpeedGet(MBMODELID modelId);

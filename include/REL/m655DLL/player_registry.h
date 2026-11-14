@@ -6,6 +6,8 @@
 struct PlayerWork;
 typedef std::vector<PlayerWork *> PlayerRegistry;
 typedef void (*ComparePlayers)(PlayerWork *, PlayerWork *);
+void fn_1_7BF8(void);
+void fn_1_79E8(void);
 s32 fn_1_7CA8(void);
 s32 fn_1_7AC4(void);
 template <class Players> void fn_1_A8AC(Players *players,

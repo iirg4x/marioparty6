@@ -13,6 +13,7 @@ extern "C" {
 }
 
 #include "REL/framework/camera_frame.h"
+#include "REL/framework/range.h"
 #include "REL/framework/category_sphere.h"
 #include <vector>
 
@@ -171,11 +172,6 @@ void CameraWork::fn_1_6D2C()
     cameraApplyToHud(&static_cast<CameraFrame &>(*this), 1);
 }
 
-static inline f64 minimumValue(f64 first, f64 second)
-{
-    return first < second ? first : second;
-}
-
 void CameraWork::fn_1_6D5C(void)
 {
     CameraPose previousPose;
@@ -187,7 +183,7 @@ void CameraWork::fn_1_6D5C(void)
     cameraTiltToAngle(&static_cast<CameraFrame &>(*this), -60.0f);
     fn_1_7220();
     get_camera_pose_from_frame(&static_cast<CameraFrame &>(*this), &currentPose);
-    normalizedProgress = minimumValue(1.0,
+    normalizedProgress = rangeMinimum(1.0,
         (f64)this->stateCounter / secondsToFrames(1.0));
     interpolate_camera_poses(&static_cast<CameraFrame &>(*this), &previousPose, &currentPose, (f32)(0.1 * normalizedProgress));
     cameraApplyToHud(&static_cast<CameraFrame &>(*this), 1);
@@ -288,7 +284,7 @@ u8 CameraWork::fn_1_6FB4()
     if ((u8)changed != 0) {
         stateCounter = 0;
     }
-    progress = minimumValue(1.0, (f64)stateCounter /
+    progress = rangeMinimum(1.0, (f64)stateCounter /
                          secondsToFrames(2.5));
     interpolate_camera_poses(&static_cast<CameraFrame &>(*this), &previousPose, &currentPose, (f32)(0.1 * progress));
     cameraApplyToHud(&static_cast<CameraFrame &>(*this), 1);

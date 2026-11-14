@@ -1,4 +1,5 @@
 #include "REL/m655DLL/game_constants.h"
+#include "REL/m655DLL/interpolation.h"
 #include "REL/m655DLL/rope_api.h"
 #include "REL/m655DLL/goal.h"
 #include "REL/m655DLL/player_entry.h"
@@ -17,7 +18,7 @@
 #include "math.h"
 #include "REL/framework/singleton.h"
 #include "humath.h"
-#include "REL/m655DLL/square.h"
+#include "REL/framework/square.h"
 #include "REL/m655DLL/effect_vector_inline.h"
 #include "REL/framework/world_units.h"
 #include "REL/m655DLL/heiho.h"
@@ -147,16 +148,6 @@ void SequenceEventObject::fn_1_4318()
     }
 }
 
-static inline f32 maximumValue(f32 first, f32 second)
-{
-    return first > second ? first : second;
-}
-
-static inline f32 interpolateValue(f32 start, f32 end, f64 weight)
-{
-    return (f32)((1.0 - weight) * start + weight * end);
-}
-
 /* One flag byte and seven unknown zero-initialized bytes at .bss 0x68. */
 
 // The target uses the shorter path around the circle.
@@ -166,7 +157,7 @@ void fn_1_4538(SequenceEventObject *object)
 {
     EffectVector leftOffset;
     EffectVector rightOffset;
-    GameObject *model;
+    Rope *model;
     EffectVector *offsetAddress;
     EffectVector *scaledOffset;
 
@@ -177,7 +168,7 @@ void fn_1_4538(SequenceEventObject *object)
     scaledOffset = offsetAddress;
     PSVECScale(scaledOffset, scaledOffset, 0.5f);
     model = fn_1_B140(object->index);
-    fn_1_B8E0((Rope *)model, &leftOffset, &rightOffset, 1.0f);
+    fn_1_B8E0(model, &leftOffset, &rightOffset, 1.0f);
 }
 
 TargetEffect::TargetEffect()
@@ -193,6 +184,15 @@ TargetEffect::TargetEffect()
     f32 endScale;
 
 /* Retain assertion source location.
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  *
  *
  *
@@ -249,7 +249,7 @@ void TargetEffect::update()
     this->setPosition(&this->startPosition);
     minimumHeight = this->lowerHeight();
     RaisedPosition lowerPosition(this->startPosition.x,
-        maximumValue(this->startPosition.y + minimumHeight,
+        rangeMaximum(this->startPosition.y + minimumHeight,
                     minimumHeight + cmToWorld(-400.0f)),
         this->startPosition.z);
     this->firstRegisteredValue = lowerPosition;
@@ -269,8 +269,8 @@ void TargetEffect::fn_1_4A28(void)
     f64 weight = square(square(square(parameter)));
     f64 targetX;
     f64 targetZ;
-    targetZ = interpolateValue(currentPosition.z, effectPosition.z, weight);
-    targetX = interpolateValue(currentPosition.x, effectPosition.x, weight);
+    targetZ = interpolateValue<f32>(currentPosition.z, effectPosition.z, weight);
+    targetX = interpolateValue<f32>(currentPosition.x, effectPosition.x, weight);
     EffectVector offset;
     bool enteredLowerRegion;
 

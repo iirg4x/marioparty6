@@ -1,5 +1,5 @@
 #include "REL/m653DLL/exhaust_smoke.h"
-#include "REL/m653DLL/random.h"
+#include "REL/framework/random.h"
 #include "REL/m653DLL/particle_effects.h"
 extern "C" {
 #include "dolphin/types.h"

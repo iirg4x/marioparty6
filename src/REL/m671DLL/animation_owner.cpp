@@ -15,6 +15,7 @@ extern "C" {
 
 #include "REL/m671DLL/animation_owner.h"
 #include "REL/framework/sound.h"
+#include "REL/framework/sphere.h"
 
 extern "C" {
 #include "game/charman.h"
@@ -39,6 +40,7 @@ extern "C" {
 #include "REL/m671DLL/callback_receiver.h"
 
 #include "humath.h"
+#include "REL/framework/vector_math.h"
 
 #include "REL/m671DLL/math_callback.h"
 
@@ -65,8 +67,8 @@ void fn_1_49C0(Quaternion *result, const Vec *sourceDirection, const Vec *target
     double magnitude;
     double inverseMagnitude;
 
-    PSVECNormalize((Vec *)sourceDirection, &normalizedSource);
-    PSVECNormalize((Vec *)targetDirection, &normalizedTarget);
+    PSVECNormalize(sourceDirection, &normalizedSource);
+    PSVECNormalize(targetDirection, &normalizedTarget);
     dot = PSVECDotProduct(&normalizedSource, &normalizedTarget);
     magnitude = dot;
     inverseMagnitude = sqrt(2.0 + 2.0 * magnitude);
@@ -76,11 +78,6 @@ void fn_1_49C0(Quaternion *result, const Vec *sourceDirection, const Vec *target
     result->x = (f32)((double)crossProduct.x * inverseMagnitude);
     result->y = (f32)((double)crossProduct.y * inverseMagnitude);
     result->z = (f32)((double)crossProduct.z * inverseMagnitude);
-}
-
-static inline float vectorDot(const Vec *first, const Vec *second)
-{
-    return PSVECDotProduct(first, second);
 }
 
 static inline void vectorScaleTo(const Vec *source, Vec *target,
@@ -132,8 +129,6 @@ void fn_1_4E08(AnimationOwner *positionOwner,
     fn_8001A7CC(drawObject, material);
     fn_8001CDF0(drawObject->model, 0U, material->hiliteScale);
 }
-
-void fn_1_57C4(AnimationOwner *owner);
 
 void fn_1_4DC8(HU3D_DRAW_OBJ *, HSF_MATERIAL *);
 
@@ -289,22 +284,6 @@ void fn_1_58E4(AnimationOwner *owner, const Vec *position)
     owner->setCallback(&AnimationOwner::fn_1_6158);
 }
 
-void fn_1_5F00(AnimationOwner *owner, const Vec *position);
-
-void fn_1_3EC0(ParticleOwner *, const Vec *);
-
-static inline void vectorSet(Vec *vector, double x, double y, double z)
-{
-    vector->x = x;
-    vector->y = y;
-    vector->z = z;
-}
-
-static inline float vectorLength(const Vec *vector)
-{
-    return PSVECMag(vector);
-}
-
 static inline void vectorScale(Vec *vector, float scale)
 {
     PSVECScale(vector, vector, scale);
@@ -354,7 +333,7 @@ void fn_1_5950(AnimationOwner *owner)
     }
     static float limit = 500.0f;
     vectorSet(&initialPosition.value, owner->position.value.x, 0.0f, owner->position.value.z);
-    velocityMagnitude = vectorLength(&owner->position.value);
+    velocityMagnitude = vectorMagnitude(&owner->position.value);
     if (!(owner->position.value.y > 100.0f)) {
         if (owner->complete == 0) {
             actorPosition = owner->position;
@@ -396,7 +375,7 @@ void fn_1_5950(AnimationOwner *owner)
             vectorScaleTo(&reflectedVelocity.value, &owner->previousPosition.value, owner->descentSpeed);
             if (owner->descentSpeed != 0.0f) {
                 effectTarget = owner->position;
-                effectMagnitude = lbl_1_data_1A0 + vectorLength(&effectTarget.value);
+                effectMagnitude = lbl_1_data_1A0 + vectorMagnitude(&effectTarget.value);
                 PSVECNormalize(&effectTarget.value, &effectTarget.value);
                 inversePosition = effectTarget;
                 PSVECScale(&effectTarget.value, &effectTarget.value, effectMagnitude);
@@ -449,8 +428,6 @@ void AnimationOwner::fn_1_600C()
     }
 }
 
-void fn_1_3E7C(ParticleOwner *sequence, const Vec *position);
-
 void fn_1_5950(AnimationOwner *owner);
 
 extern void fn_1_6604(AnimationOwner *owner, const Vec *position, const Vec *target);
@@ -493,8 +470,6 @@ void AnimationOwner::fn_1_634C(EventMessage *)
 {
     DebugCallback(&AnimationOwner::fn_1_65C0);
 }
-
-void fn_1_4078(ParticleOwner *);
 
 void AnimationOwner::fn_1_6350()
 {

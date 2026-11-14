@@ -5,6 +5,8 @@ extern "C" {
 #include "REL/m655DLL/screen_sprite_work.h"
 #include "REL/m655DLL/module.h"
 #include "REL/m655DLL/player_registry.h"
+#include "REL/m655DLL/heiho.h"
+#include "REL/m655DLL/rope_api.h"
 #include "REL/framework/frame_time.h"
 #include "REL/framework/sound.h"
 #include "msm_stream.h"
@@ -23,7 +25,6 @@ extern "C" {
 void RandomSeed(unsigned long seed);
 void process_event_queue();
 void updateGameObjects();
-void sendEvent(int channel, unsigned long value, float delay);
 #include "REL/m655DLL/target_effect.h"
 
 extern "C" {
@@ -40,12 +41,7 @@ BoardView::BoardView() : ThreadEntry(0x8000), nested(new EffectLayer)
 
 BoardView::~BoardView() {}
 
-void fn_1_7BF8(void);
-void fn_1_79E8(void);
-
 void fn_1_2990(BoardView *);
-void fn_1_ADE4(void);
-void fn_1_39C4(void);
 
 void BoardView::setupObjects(OMOBJMAN *)
 {

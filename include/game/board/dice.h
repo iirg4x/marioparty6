@@ -20,6 +20,7 @@ void mbDiceFadeSet(int playerNo);
 void mbDicePadBtnHookSet(int playerNo, u16 (*hook)(int));
 int mbDiceResultGet(int playerNo);
 BOOL mbDiceKillCheck(int playerNo);
+BOOL mbDiceKillCheckAll();
 void mbDiceObjHit(int playerNo);
 OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos);
 OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,

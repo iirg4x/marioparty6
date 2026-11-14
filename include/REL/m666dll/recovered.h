@@ -3,11 +3,11 @@
 #define REL_M666DLL_RECOVERED_H
 
 #include "game/mg/actman.h"
+#include "game/mic.h"
 #include "REL/m666dll/tables.h"
 
-typedef struct M666MicrophoneResponse M666MicrophoneResponse;
 void ObjectSetup(void);
-void fn_1_324(M666MicrophoneResponse *response);
+void fn_1_324(MCResponse_s *response);
 void fn_1_4AC(void);
 
 extern u16 lbl_1_bss_2;

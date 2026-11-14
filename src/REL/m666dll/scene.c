@@ -6,6 +6,7 @@
 #include "dolphin/types.h"
 
 #include "REL/m666dll/state.h"
+#include "REL/m666dll/scene.h"
 
 #include "game/main.h"
 
@@ -80,15 +81,7 @@ typedef struct {
     MGACTOR *secondaryActor;
     s16 modelId;
     s16 alternateModelId;
-    union {
-        struct {
-            s16 startMotionId;
-            s16 fallMotionId;
-            s16 loopMotionId;
-            s16 alternateMotionId;
-        } obstacleMotions;
-        s16 jointMotionIds[4];
-    } motion;
+    s16 jointMotionIds[4];
     s16 secondaryModelId;
     s16 slotIndex;
     s16 state;
@@ -113,21 +106,10 @@ typedef struct {
     u8 unk06[2]; /* No code names this field. */
     M666SequenceParticle particles[8];
     s16 state;
-    union {
-        s16 status;
-        s16 laneIndex;
-    };
-    union {
-        u8 stateData[8];
-        struct {
-            s16 timer;
-            f32 movement;
-        };
-    };
-    union {
-        f32 initialAlpha;
-        f32 alpha;
-    };
+    s16 laneIndex;
+    s16 timer;
+    f32 movement;
+    f32 alpha;
 } M666SequenceItemView;
 
 typedef M666SequenceItemView M666SequenceLane;
@@ -145,26 +127,8 @@ f32 lbl_1_bss_E14[9];
 M666InitialState lbl_1_bss_DF0;
 M666MotionWork lbl_1_bss_D84[3];
 M666MovingObstacle lbl_1_bss_604[6][8];
-M666Bss580Entry lbl_1_bss_580[6];
+M666ObstacleQueue lbl_1_bss_580[6];
 M666SequenceGroupView lbl_1_bss_148[3];
-
-void fn_1_17C8(s16 motionIndex, f32 blend, u32 flags);
-
-void fn_1_7E9C(void);
-
-s16 fn_1_1080(void);
-
-void fn_1_143C(void);
-
-void fn_1_1004(s16 motionIndex, f32 blend);
-
-void fn_1_1680(void);
-
-void fn_1_8164(void);
-
-void fn_1_F8C(void);
-
-void fn_1_80E0(void);
 
 void fn_1_9D4(void);
 
@@ -181,8 +145,6 @@ void fn_1_4A40(void);
 void fn_1_4F24(void);
 
 void fn_1_81E4(void);
-
-void fn_1_A1CC(void);
 
 void fn_1_B55C(void);
 
@@ -248,16 +210,8 @@ typedef struct {
 
 typedef struct {
     Point3d position;
-    union {
-        f32 rotation;
-        f32 rotationY;
-    };
-    /* Game code never reads these final four bytes. */
-    union {
-        u32 trailingData;
-        f32 unobserved10;
-        u32 unknown10;
-    };
+    f32 rotation;
+    u32 unk10; /* No code names this field. */
 } M666DataTransform;
 
 typedef M666DataTransform M666ModelTransform;
@@ -268,7 +222,7 @@ typedef struct {
 } M666JointMotionResource;
 
 extern M666SoundWork lbl_1_bss_DC[9];
-extern M666Bss98Work lbl_1_bss_98;
+extern M666MicrophonePlayer lbl_1_bss_98;
 
 Vec lbl_1_data_70 = {-2000.0f, 10000.0f, -400.0f};
 
@@ -528,7 +482,7 @@ void fn_1_B54(void) {
                             0.0f);
         }
         lbl_1_bss_580[modelIndex].modelId = modelId;
-            lbl_1_bss_580[modelIndex].data.obstacleQueue.obstacleCount = 8;
+            lbl_1_bss_580[modelIndex].obstacleCount = 8;
         fn_8002D86C(modelId, 0.0f);
     }
 
@@ -564,29 +518,9 @@ extern const VoidFunc _dtors[];
 
 extern MGSEQ_PARAM lbl_1_data_0;
 
-extern void fn_1_8BC(void);
-
 extern char lbl_1_data_28[20];
 
 extern s16 lbl_1_bss_0;
-
-void fn_1_3C9C(void);
-
-s16 fn_1_D7DC(void);
-
-extern void fn_1_92C(void);
-
-typedef struct M666RecognizedWordIndex {
-    s16 firstWordIndex;
-} M666RecognizedWordIndex;
-
-struct M666MicrophoneResponse {
-    s16 status;
-    u16 recognitionScore;
-    s16 wordCount;
-    M666RecognizedWordIndex *recognizedWords;
-    s32 word;
-};
 
 extern const char lbl_1_data_3C[];
 
@@ -594,24 +528,13 @@ typedef struct {
     s16 effectIds[14];
 } M666EffectTable;
 
-void fn_1_9ED8(void);
-
-void fn_1_B30C(void);
-
-void fn_1_7CA0(void);
-
-void fn_1_7D24(void);
-
 /* Called by fn_1_78C for the microphone-player victory; sets its winner and awards 10 coins
  * outside practice mode. */
 void fn_1_F8C(void) {
     s32 playerIndex;
 
     fn_80071C18(lbl_1_bss_98.charNo, -1, -1, -1);
-    playerIndex = lbl_1_bss_98.playerIndex;
-    if (fn_8006A124(65551) == 0) {
-        lbl_80265750[playerIndex].mgCoinBonus = 10;
-    }
+    GWMgCoinBonusSet(lbl_1_bss_98.playerIndex, 10);
 }
 
 /* Applies the opening-character motion selected by motionIndex with the caller's blend
@@ -758,10 +681,7 @@ void fn_1_1680(void) {
             fn_8005C2C8(player->charNo, player->omObj->mtnId[0],
                                0.0f, 8.0f, 0);
         }
-        playerNumber = lbl_1_bss_8[playerIndex].playerNumber;
-        if (fn_8006A124(65551) == 0) {
-            lbl_80265750[playerNumber].mgCoinBonus = 10;
-        }
+        GWMgCoinBonusSet(lbl_1_bss_8[playerIndex].playerNumber, 10);
     }
 }
 
@@ -777,9 +697,7 @@ void fn_1_17C8(s16 motionIndex, f32 blend, u32 flags) {
     }
 }
 
-typedef COL_NARROW_PARAM M666CollisionEvent;
-
-extern void fn_1_4378(M666CollisionEvent *playerParam, M666CollisionEvent *objectParam);
+extern void fn_1_4378(COL_NARROW_PARAM *playerParam, COL_NARROW_PARAM *objectParam);
 
 /* Applies a selected rumble pattern to active players when an event requests feedback. */
 void fn_1_1858(s16 vibrationMode) {
@@ -818,6 +736,7 @@ void fn_1_194C(s16 excludedPlayer) {
     actorParam.radius = 40.0f;
     actorParam.type = 0;
     actorParam.attr = 0;
+    /* This void callback is passed through the engine's int-returning hook type. */
     actorParam.narrowHook = (COL_NARROW_HOOK)fn_1_4378;
     actorParam.correctHookParam = 0;
     actorParam.correctHook = NULL;
@@ -827,8 +746,8 @@ void fn_1_194C(s16 excludedPlayer) {
             continue;
         }
 
-        lbl_1_bss_8[playerCount].unknownFlag10 = 0;
-        lbl_1_bss_8[playerCount].unknownFlag08 = 0;
+        lbl_1_bss_8[playerCount].obstacleCollision = 0;
+        lbl_1_bss_8[playerCount].wallContact = 0;
         lbl_1_bss_8[playerCount].playerNumber = playerIndex;
         actorParam.param = playerCount;
         charNo = lbl_80265728[playerIndex].charNo;
@@ -994,10 +913,6 @@ void fn_1_2388(s16 playerIndex, s16 choiceIndex) {
 }
 
 /* Sets the selected player's temporary avoidance angle and input timer. */
-static inline void m666SetAvoidanceInput(s16 playerIndex, s16 direction) {
-    fn_1_2388(playerIndex, direction);
-}
-
 /* Chooses CPU steering around nearby obstacles and lanes; fn_1_3C9C calls it for active players. */
 void fn_1_2458(s16 playerIndex) {
     Point3d objectPosition;
@@ -1071,9 +986,9 @@ void fn_1_2458(s16 playerIndex) {
     if (sqrtf((playerPosition.x * playerPosition.x) +
               (playerPosition.z * playerPosition.z)) > 510.0f) {
         outsideSteeringRadius = 1;
-        player->unknownFlag80 = 1;
+        player->outsideSteeringRadius = 1;
     } else {
-        player->unknownFlag80 = 0;
+        player->outsideSteeringRadius = 0;
     }
 
     closestDistance = 1000.0f;
@@ -1083,27 +998,22 @@ void fn_1_2458(s16 playerIndex) {
             if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 6) {
                 fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId,
                                 &objectPosition);
-                goto check_object_distance;
-            }
-            if (lbl_1_bss_604[groupIndex][obstacleIndex].actor) {
+            } else if (lbl_1_bss_604[groupIndex][obstacleIndex].actor) {
                 fn_80086BC8(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
                               &objectPosition);
-                goto check_object_distance;
-            }
-            if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 3) {
+            } else if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 3) {
                 fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].modelId,
                                 &objectPosition);
-                goto check_object_distance;
-            }
-            if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 2) {
+            } else if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 2) {
                 Hu3DModelObjPosGet(lbl_1_bss_580[groupIndex].modelId,
                                    lbl_1_data_7F2, &objectPosition);
-check_object_distance:
+            } else {
+                continue;
+            }
                 distance = sqrtf(PSVECSquareDistance(&objectPosition, &playerPosition));
             if (distance >= avoidanceRanges[player->comDifficulty]) {
                 continue;
-            }
-            if (distance < closestDistance) {
+            } else if (distance < closestDistance) {
                 closestDistance = distance;
                 nearestObjectPosition.x = objectPosition.x;
                 nearestObjectPosition.y = objectPosition.y;
@@ -1112,7 +1022,6 @@ check_object_distance:
                 closestObstacle = obstacleIndex;
                 }
             nearbyObstacleFound = 1;
-            }
         }
     }
 
@@ -1173,21 +1082,21 @@ check_object_distance:
                 player->targetAngle += 5.0f;
             }
         } else if (directions[0] == 0) {
-            m666SetAvoidanceInput(playerIndex, 0);
+            fn_1_2388(playerIndex, 0);
         } else if (directions[1] == 0) {
-            m666SetAvoidanceInput(playerIndex, 1);
+            fn_1_2388(playerIndex, 1);
         } else if (directions[2] == 0) {
-            m666SetAvoidanceInput(playerIndex, 2);
+            fn_1_2388(playerIndex, 2);
         } else if (directions[3] == 0) {
-            m666SetAvoidanceInput(playerIndex, 3);
+            fn_1_2388(playerIndex, 3);
         } else if (directions[0] != -1) {
-            m666SetAvoidanceInput(playerIndex, 0);
+            fn_1_2388(playerIndex, 0);
         } else if (directions[1] != -1) {
-            m666SetAvoidanceInput(playerIndex, 1);
+            fn_1_2388(playerIndex, 1);
         } else if (directions[2] != -1) {
-            m666SetAvoidanceInput(playerIndex, 2);
+            fn_1_2388(playerIndex, 2);
         } else if (directions[3] != -1) {
-            m666SetAvoidanceInput(playerIndex, 3);
+            fn_1_2388(playerIndex, 3);
         }
     } else if (nearbyObstacleFound != 0) {
         if (player->targetAngle == -500.0f) {
@@ -1225,7 +1134,7 @@ check_object_distance:
      * the wall-avoidance branches below can still read them. */
     if ((playerActor->colGroundAttr & 0x80) != 0 &&
         playerActor->colNorm.y == 0.0f && player->targetAngle != -500.0f) {
-        player->unknownFlag08 = 1;
+        player->wallContact = 1;
         player->suppressAngleSmoothing = 1;
         if (outsideSteeringRadius == 0) {
             if (playerActor->colNorm.x > 0.0f) {
@@ -1319,10 +1228,8 @@ check_object_distance:
         player->wanderFrames = frandmod(15) + 10;
         player->wanderAngle = frandmod(360);
     }
-    player->unknownFlag10 = 0;
+    player->obstacleCollision = 0;
 }
-
-
 
 /* Updates all three players' movement and collision state each frame from the sequence
  * callbacks. */
@@ -1400,40 +1307,6 @@ void fn_1_3C9C(void) {
 
 /* Removes an active player from play and starts the requested reaction when fn_1_4378 reports
  * contact. */
-static inline void setPlayerMotionState(s16 playerIndex, s16 motionState) {
-    Point3d position;
-    MGACTOR *playerActor;
-    MGPLAYER *activePlayer;
-
-    activePlayer = lbl_1_bss_8[playerIndex].player;
-    playerActor = activePlayer->actor;
-    if ((lbl_1_bss_8[playerIndex].motionSelection == 0) && (fn_80071A8C() == 5)) {
-        fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 20, 0);
-        fn_80087158(activePlayer, 1U);
-        lbl_1_bss_8[playerIndex].motionSelection = motionState;
-        fn_80086E3C(activePlayer);
-        fn_800805CC(playerActor, 2U);
-        fn_80086CBC(playerActor, 0.0f);
-        fn_8005C2C8(activePlayer->charNo, activePlayer->omObj->mtnId[14],
-                           0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-        if (motionState == 1) {
-            fn_80026A44(lbl_1_bss_8[playerIndex].modelId, 1U);
-            fn_80086BC8(playerActor, &position);
-            fn_80026790(lbl_1_bss_8[playerIndex].modelId, &position);
-            fn_8002D30C(lbl_1_bss_8[playerIndex].modelId, 0, 2.0f);
-            fn_80026AE4(lbl_1_bss_8[playerIndex].modelId, 0,
-                                    M666_CLUSTER_MOTION_CLEAR_MASK);
-            fn_80026808(lbl_1_bss_8[playerIndex].modelId, 0.0f,
-                            (f32) (180.0 * (atan2((f64) position.x, (f64) position.z) /
-                                          M_PI)), 0.0f);
-            position.x = 2000.0f;
-            position.z = 2000.0f;
-            fn_80086B04(playerActor, &position);
-            fn_80026790((s16) playerActor->mdlId, &position);
-        }
-    }
-}
-
 /* Starts a player's collision reaction; fn_1_1CBC calls this for a lane, marker, or obstacle
  * hit. */
 void fn_1_40F8(s16 playerIndex, s16 action) {
@@ -1473,8 +1346,8 @@ void fn_1_40F8(s16 playerIndex, s16 action) {
 
 /* Handles player collision callbacks for secondary obstacles, other players, and obstacles,
  * updating reactions and target angles. */
-void fn_1_4378(M666CollisionEvent *playerEvent,
-               M666CollisionEvent *targetEvent) {
+void fn_1_4378(COL_NARROW_PARAM *playerEvent,
+               COL_NARROW_PARAM *targetEvent) {
     Point3d playerPosition;
     Point3d targetPosition;
     Point3d separation;
@@ -1491,25 +1364,25 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
     player = lbl_1_bss_8[playerIndex].player;
     if (playerEvent->paramB < 4) {
         if ((targetEvent->paramB >= 52) && (targetEvent->paramB < 100)) {
-            if (lbl_1_bss_8[(s16) playerIndex].motionSelection == 0) {
-                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
-                              &playerPosition);
-                actorIndex = targetEvent->paramB - 52;
-                fn_80086BC8(
-                    lbl_1_bss_604[actorIndex / 8][actorIndex % 8].secondaryActor,
-                    &targetPosition);
-                setPlayerMotionState((s16) playerIndex, 3);
-                separation.x = playerPosition.x - targetPosition.x;
-                separation.y = 0.0f;
-                separation.z = playerPosition.z - targetPosition.z;
-                heading = (f32) (180.0 *
-                          (atan2((f64) separation.z, (f64) separation.x) /
-                           M_PI));
-                fn_80086CA8(lbl_1_bss_8[(s16) playerIndex].player->actor,
-                               360.0f - heading);
-                lbl_1_bss_8[(s16) playerIndex].pushAngle = heading;
-                goto clearFlags;
+            if (lbl_1_bss_8[(s16) playerIndex].motionSelection != 0) {
+                return;
             }
+            fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
+                          &playerPosition);
+            actorIndex = targetEvent->paramB - 52;
+            fn_80086BC8(
+                lbl_1_bss_604[actorIndex / 8][actorIndex % 8].secondaryActor,
+                &targetPosition);
+            fn_1_40F8((s16) playerIndex, 3);
+            separation.x = playerPosition.x - targetPosition.x;
+            separation.y = 0.0f;
+            separation.z = playerPosition.z - targetPosition.z;
+            heading = (f32) (180.0 *
+                      (atan2((f64) separation.z, (f64) separation.x) /
+                       M_PI));
+            fn_80086CA8(lbl_1_bss_8[(s16) playerIndex].player->actor,
+                           360.0f - heading);
+            lbl_1_bss_8[(s16) playerIndex].pushAngle = heading;
         } else {
             if (targetEvent->paramB < 4) {
                 targetPlayerIndex = (s16) targetEvent->paramB;
@@ -1557,17 +1430,14 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
                     (M_PI *
                      (f64) (lbl_1_bss_8[(s16) playerIndex].targetAngle -
                             45.0f)) / 180.0);
-                lbl_1_bss_8[(s16) playerIndex].unknownFlag10 = 1;
+                lbl_1_bss_8[(s16) playerIndex].obstacleCollision = 1;
                 if (PSVECDotProduct(&separation, &angleDirection) > 0.0f) {
                     lbl_1_bss_8[(s16) playerIndex].targetAngle += 30.0f;
                 }
             }
-            goto clearFlags;
         }
-    } else {
-clearFlags:
-        lbl_1_bss_8[(s16) playerIndex].unknownFlag08 = 0;
     }
+    lbl_1_bss_8[(s16) playerIndex].wallContact = 0;
 }
 
 void fn_1_194C(s16 playerIndex);
@@ -1622,7 +1492,7 @@ void fn_1_5654(s16 eventStatus);
 
 /* Returns a random minigame event code after its difficulty-scaled delay expires. */
 u16 fn_1_4C60(void) {
-    M666Bss98Work *state = &lbl_1_bss_98;
+    M666MicrophonePlayer *state = &lbl_1_bss_98;
     s16 delayChoices[4] = {180, 120, 60, 30};
     if (state->delayCounter != 0) {
         state->delayCounter -= 1;
@@ -1638,7 +1508,7 @@ void fn_1_4D20(void) {
     s16 eventSentinel;
     u16 eventCode;
     f32 maximumMotionTime;
-    M666Bss98Work *work;
+    M666MicrophonePlayer *work;
 
     work = &lbl_1_bss_98;
     eventCode = 0;
@@ -1761,6 +1631,7 @@ void fn_1_5264(s16 perimeterIndex) {
 }
 
 /* Starts the selected perimeter model's joint motion 1 and sets motion state 2. */
+/* Starts the perimeter model arrival motion. */
 void fn_1_52EC(s16 perimeterIndex) {
     M666MotionWork *motionEntry;
 
@@ -1826,7 +1697,6 @@ s16 fn_1_535C(s16 eventCode) {
 }
 
 typedef M666PerimeterWork M666PerimeterMotionWork;
-
 
 s16 fn_1_CB8C(s16 slotIndex, s16 perimeterIndex);
 
@@ -2007,14 +1877,6 @@ void fn_1_6030(s32 perimeterIndex) {
     M666PerimeterMotionState *perimeter;
     Vec position;
     s16 targetDirection;
-    M666PerimeterMotionState *positiveXArrival;
-    M666PerimeterMotionState *positiveZArrival;
-    M666PerimeterMotionState *negativeXArrival;
-    M666PerimeterMotionState *negativeZArrival;
-    M666PerimeterMotionState *reverseNegativeXArrival;
-    M666PerimeterMotionState *reverseNegativeZArrival;
-    M666PerimeterMotionState *reversePositiveXArrival;
-    M666PerimeterMotionState *reversePositiveZArrival;
 
     perimeter = &lbl_1_bss_D84[perimeterIndex];
     targetDirection = lbl_1_data_728[perimeter->targetIndex].direction;
@@ -2034,13 +1896,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.x >= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
-                    positiveXArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(positiveXArrival->modelId,
-                                       positiveXArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    positiveXArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.x >= 600.0f) {
                 position.x = 600.0f;
@@ -2059,13 +1915,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.z >= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
-                    positiveZArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(positiveZArrival->modelId,
-                                       positiveZArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    positiveZArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.z >= 600.0f) {
                 position.z = 600.0f;
@@ -2084,13 +1934,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.x <= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
-                    negativeXArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(negativeXArrival->modelId,
-                                       negativeXArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    negativeXArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.x <= -600.0f) {
                 position.x = -600.0f;
@@ -2109,13 +1953,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.z <= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
-                    negativeZArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(negativeZArrival->modelId,
-                                       negativeZArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    negativeZArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.z <= -600.0f) {
                 position.z = -600.0f;
@@ -2137,13 +1975,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.x <= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
-                    reverseNegativeXArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(reverseNegativeXArrival->modelId,
-                                       reverseNegativeXArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    reverseNegativeXArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.x <= -600.0f) {
                 position.x = -600.0f;
@@ -2162,13 +1994,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.z <= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
-                    reverseNegativeZArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(reverseNegativeZArrival->modelId,
-                                       reverseNegativeZArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    reverseNegativeZArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.z <= -600.0f) {
                 position.z = -600.0f;
@@ -2187,13 +2013,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.x >= lbl_1_data_728[perimeter->targetIndex].position.x) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
-                    reversePositiveXArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(reversePositiveXArrival->modelId,
-                                       reversePositiveXArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    reversePositiveXArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.x >= 600.0f) {
                 position.x = 600.0f;
@@ -2212,13 +2032,7 @@ void fn_1_6030(s32 perimeterIndex) {
             if (perimeter->direction == targetDirection) {
                 if (position.z >= lbl_1_data_728[perimeter->targetIndex].position.z) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
-                    reversePositiveZArrival =
-                        &lbl_1_bss_D84[(s16) perimeterIndex];
-                    fn_8002CCC0(reversePositiveZArrival->modelId,
-                                       reversePositiveZArrival->jointMotionIds[1],
-                                       0.0f, 8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    reversePositiveZArrival->motionState = 2;
+                    fn_1_52EC((s16) perimeterIndex);
                 }
             } else if (position.z >= 600.0f) {
                 position.z = 600.0f;
@@ -2244,10 +2058,6 @@ void fn_1_6030(s32 perimeterIndex) {
 void fn_1_6D70(s16 perimeterIndex) {
     Vec position;
     M666PerimeterMotionWork *perimeter;
-    M666PerimeterMotionWork *northboundPerimeter;
-    M666PerimeterMotionWork *eastboundPerimeter;
-    M666PerimeterMotionWork *southboundPerimeter;
-    M666PerimeterMotionWork *westboundPerimeter;
 
     perimeter = &lbl_1_bss_D84[perimeterIndex];
     fn_800267CC(perimeter->modelId, &position);
@@ -2259,12 +2069,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             position.z -= 2.5f;
             if (position.z <= lbl_1_data_728[0].position.z) {
                 position.z = lbl_1_data_728[0].position.z;
-                northboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                fn_8002CCC0(northboundPerimeter->modelId,
-                                   northboundPerimeter->jointMotionIds[4],
-                                   0.0f, 8.0f, 0U);
-                northboundPerimeter->motionState = 3;
-                lbl_1_bss_DC[northboundPerimeter->targetIndex].state = 2;
+                fn_1_5264(perimeterIndex);
             }
         } else if ((perimeter->rotation >= 0.0f) &&
                    (perimeter->rotation <= 180.0f)) {
@@ -2278,12 +2083,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             position.x += 2.5f;
             if (position.x >= lbl_1_data_728[3].position.x) {
                 position.x = lbl_1_data_728[3].position.x;
-                eastboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                fn_8002CCC0(eastboundPerimeter->modelId,
-                                   eastboundPerimeter->jointMotionIds[4],
-                                   0.0f, 8.0f, 0U);
-                eastboundPerimeter->motionState = 3;
-                lbl_1_bss_DC[eastboundPerimeter->targetIndex].state = 2;
+                fn_1_5264(perimeterIndex);
             }
         } else if ((perimeter->rotation <= 90.0f) &&
                    (perimeter->rotation >= -90.0f)) {
@@ -2299,12 +2099,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             position.z += 2.5f;
             if (position.z >= lbl_1_data_728[4].position.z) {
                 position.z = lbl_1_data_728[4].position.z;
-                southboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                fn_8002CCC0(southboundPerimeter->modelId,
-                                   southboundPerimeter->jointMotionIds[4],
-                                   0.0f, 8.0f, 0U);
-                southboundPerimeter->motionState = 3;
-                lbl_1_bss_DC[southboundPerimeter->targetIndex].state = 2;
+                fn_1_5264(perimeterIndex);
             }
         } else if ((perimeter->rotation >= 0.0f) &&
                    (perimeter->rotation <= 180.0f)) {
@@ -2319,12 +2114,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             position.x -= 2.5f;
             if (position.x <= lbl_1_data_728[7].position.x) {
                 position.x = lbl_1_data_728[7].position.x;
-                westboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                fn_8002CCC0(westboundPerimeter->modelId,
-                                   westboundPerimeter->jointMotionIds[4],
-                                   0.0f, 8.0f, 0U);
-                westboundPerimeter->motionState = 3;
-                lbl_1_bss_DC[westboundPerimeter->targetIndex].state = 2;
+                fn_1_5264(perimeterIndex);
             }
         } else if ((perimeter->rotation <= 90.0f) &&
                    (perimeter->rotation >= -90.0f)) {
@@ -2350,10 +2140,6 @@ void fn_1_6D70(s16 perimeterIndex) {
 void fn_1_7348(s16 perimeterIndex) {
     Vec position;
     M666PerimeterMotionWork *perimeter;
-    M666PerimeterMotionWork *zeroRotationPerimeter;
-    M666PerimeterMotionWork *negativeQuarterTurnPerimeter;
-    M666PerimeterMotionWork *halfTurnPerimeter;
-    M666PerimeterMotionWork *quarterTurnPerimeter;
 
     perimeter = &lbl_1_bss_D84[perimeterIndex];
     fn_800267CC(perimeter->modelId, &position);
@@ -2362,11 +2148,7 @@ void fn_1_7348(s16 perimeterIndex) {
     case 1:
     case 2:
         if (perimeter->rotation == 0.0f) {
-            zeroRotationPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            fn_8002CCC0(zeroRotationPerimeter->modelId,
-                               zeroRotationPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-            zeroRotationPerimeter->motionState = 0;
+            fn_1_51F4(perimeterIndex);
         } else if ((perimeter->rotation >= 0.0f) &&
                    (perimeter->rotation <= 180.0f)) {
             perimeter->rotation -= 5.0f;
@@ -2376,11 +2158,7 @@ void fn_1_7348(s16 perimeterIndex) {
         break;
     case 3:
         if (perimeter->rotation == -90.0f) {
-            negativeQuarterTurnPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            fn_8002CCC0(negativeQuarterTurnPerimeter->modelId,
-                               negativeQuarterTurnPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-            negativeQuarterTurnPerimeter->motionState = 0;
+            fn_1_51F4(perimeterIndex);
         } else if ((perimeter->rotation <= 90.0f) &&
                    (perimeter->rotation >= -90.0f)) {
             perimeter->rotation -= 5.0f;
@@ -2392,11 +2170,7 @@ void fn_1_7348(s16 perimeterIndex) {
     case 5:
     case 6:
         if (perimeter->rotation == 180.0f) {
-            halfTurnPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            fn_8002CCC0(halfTurnPerimeter->modelId,
-                               halfTurnPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-            halfTurnPerimeter->motionState = 0;
+            fn_1_51F4(perimeterIndex);
         } else if ((perimeter->rotation >= 0.0f) &&
                    (perimeter->rotation <= 180.0f)) {
             perimeter->rotation += 5.0f;
@@ -2407,11 +2181,7 @@ void fn_1_7348(s16 perimeterIndex) {
     case 7:
     case 8:
         if (perimeter->rotation == 90.0f) {
-            quarterTurnPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            fn_8002CCC0(quarterTurnPerimeter->modelId,
-                               quarterTurnPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-            quarterTurnPerimeter->motionState = 0;
+            fn_1_51F4(perimeterIndex);
         } else if ((perimeter->rotation <= 90.0f) &&
                    (perimeter->rotation >= -90.0f)) {
             perimeter->rotation += 5.0f;
@@ -2435,11 +2205,7 @@ void fn_1_7348(s16 perimeterIndex) {
 
 typedef M666PerimeterWork M666PerimeterMotion;
 
-
-
-
 void fn_1_CBE8(s16 eventParameter);
-
 
 /* Updates the three perimeter models, their motion states, and their screen-space sprites. */
 void fn_1_77B0(void) {
@@ -2641,16 +2407,7 @@ void fn_1_7E9C(void) {
 
 /* Starts perimeter joint motion 3 for the microphone-player result in fn_1_78C state 2. */
 void fn_1_80E0(void) {
-    s32 perimeterIndex;
-
-    perimeterIndex = 0;
-    while (perimeterIndex < 3) {
-        fn_8002CCC0(
-            lbl_1_bss_D84[perimeterIndex].modelId,
-            lbl_1_bss_D84[perimeterIndex].jointMotionIds[3],
-            0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        perimeterIndex += 1;
-    }
+    fn_1_7CA0();
 }
 
 /* Starts perimeter joint motion 6 for the three-player result in fn_1_78C state 2. */
@@ -2700,15 +2457,15 @@ void fn_1_81E4(void) {
                                  lbl_1_data_660[motionIndex].fileId,
                                   0x10000000, 2));
                 lbl_1_bss_604[groupIndex][entryIndex]
-                    .motion.jointMotionIds[motionIndex] = jointMotionId;
+                    .jointMotionIds[motionIndex] = jointMotionId;
             }
 
             fn_8002C95C(
-                modelId, lbl_1_bss_604[groupIndex][entryIndex].motion.jointMotionIds[1]);
+                modelId, lbl_1_bss_604[groupIndex][entryIndex].jointMotionIds[1]);
             fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
             lbl_1_bss_604[groupIndex][entryIndex].slotIndex = entryIndex;
             lbl_1_bss_604[groupIndex][entryIndex].state = 0;
-            lbl_1_bss_580[groupIndex].data.entryRow.entryValues[entryIndex] = entryIndex;
+            lbl_1_bss_580[groupIndex].obstacleIndices[entryIndex] = entryIndex;
 
             modelId = fn_80025A04(
          fn_80008DD0(DATANUM(0x7d0000, 45), 0x10000000, 2));
@@ -2825,25 +2582,25 @@ void fn_1_8964(s16 groupIndex, s16 entryIndex) {
 /* Appends an obstacle index to its group queue, places it at the final start transform, shows it,
  * and starts its loop motion. */
 void fn_1_8A14(s16 groupIndex, s16 obstacleIndex) {
-    M666Bss580Entry *group;
+    M666ObstacleQueue *group;
     M666MovingObstacle *obstacle;
 
     group = &lbl_1_bss_580[groupIndex];
     obstacle = &lbl_1_bss_604[groupIndex][obstacleIndex];
-    group->data.obstacleQueue.obstacleIndices[group->data.obstacleQueue.obstacleCount] =
+    group->obstacleIndices[group->obstacleCount] =
         obstacleIndex;
     lbl_1_bss_604[groupIndex][obstacleIndex].slotIndex =
-        group->data.obstacleQueue.obstacleCount;
-    group->data.obstacleQueue.obstacleCount++;
+        group->obstacleCount;
+    group->obstacleCount++;
     fn_80026790(obstacle->modelId,
                      &lbl_1_data_2A0[groupIndex * 8 + 7].position);
     fn_80026808(obstacle->modelId, 0.0f,
-                    lbl_1_data_2A0[groupIndex * 8 + 7].rotationY,
+                    lbl_1_data_2A0[groupIndex * 8 + 7].rotation,
                     0.0f);
     fn_80026A44(obstacle->modelId, 1);
     obstacle->state = 1;
     fn_8002CCC0(obstacle->modelId,
-                       obstacle->motion.obstacleMotions.loopMotionId,
+                       obstacle->jointMotionIds[2],
                         0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     fn_8002D86C(obstacle->modelId, 1.0f);
 }
@@ -2858,71 +2615,8 @@ f32 lbl_1_data_810[8] = {
 };
 
 /* Adds collision to a landed obstacle when fn_1_9260 advances it into the resting state. */
-static inline void m666CreateObstacleActor(s16 groupIndex, s16 obstacleIndex) {
-    MGACTOR_PARAM actorParam;
-    Point3d modelPosition;
-
-    if ((u32)lbl_1_bss_604[groupIndex][obstacleIndex].actor == 0U) {
-        fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].modelId,
-                        &modelPosition);
-        actorParam.height = 100.0f;
-        actorParam.radius = 50.0f;
-        actorParam.param = obstacleIndex + ((groupIndex << 3) + 4);
-        actorParam.type = 1;
-        actorParam.attr = 0;
-        actorParam.narrowHook = (COL_NARROW_HOOK)fn_1_4378;
-        actorParam.correctHook = NULL;
-        lbl_1_bss_604[groupIndex][obstacleIndex].actor =
-            fn_80080B04(&actorParam,
-                          lbl_1_bss_604[groupIndex][obstacleIndex].modelId);
-        fn_80086AA8(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
-                      &modelPosition);
-        if (groupIndex >= 3) {
-            fn_80086CA8(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
-                           180.0f);
-            lbl_1_bss_604[groupIndex][obstacleIndex].actorRotation =
-                180.0f;
-        }
-    }
-}
-
 /* Starts the secondary model animation and removes the primary collision actor after
  * fn_1_9260's delay, with rumble and sound. */
-static inline void m666ResetObstacle(s32 groupIndex, s32 obstacleIndex) {
-    Point3d modelPosition;
-    M666MovingObstacle *entry;
-    s32 playerIndex;
-
-    entry = &lbl_1_bss_604[groupIndex][obstacleIndex];
-    fn_800269E8(entry->alternateModelId, 1);
-    fn_80026A44(entry->modelId, 1);
-    fn_800267CC(entry->modelId, &modelPosition);
-    entry->state = 6;
-    entry->timer = 0;
-    fn_80026790(entry->secondaryModelId, &modelPosition);
-    fn_80026A44(entry->secondaryModelId, 1);
-    fn_800269E8(entry->modelId, 1);
-    fn_8002D86C(entry->secondaryModelId, 1.0f);
-    fn_8002D414(entry->secondaryModelId, 0.0f);
-    if (lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].actor) {
-        fn_80080F38(lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].actor);
-        lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].actor = NULL;
-    }
-
-    for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-        if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-            fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
-                      20, 4, 4);
-        }
-    }
-
-    if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-        fn_8006A030(lbl_1_bss_98.playerIndex, 20, 4, 4);
-    }
-    HuAudFXPlayPan(MSM_SE_MG666_OBSTACLE_RESET, 64.0 -
-        32.0 * sin((M_PI * (f64)modelPosition.x) /
-                               180.0));
-}
 
 void fn_1_9260(void);
 
@@ -3094,15 +2788,15 @@ void fn_1_901C(s32 groupIndex, s32 entryIndex) {
 
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-            fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 4, 4);
+            fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
+                      20, 4, 4);
         }
     }
 
-    if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-        fn_8006A030(lbl_1_bss_98.playerIndex, 20, 4, 4);
-    }
-    HuAudFXPlayPan(MSM_SE_MG666_OBSTACLE_RESET, (s16)(64.0 -
-        32.0 * sin((M_PI * (f64)modelPosition.x) / 180.0)));
+    fn_1_1198(0);
+    HuAudFXPlayPan(MSM_SE_MG666_OBSTACLE_RESET, 64.0 -
+        32.0 * sin((M_PI * (f64)modelPosition.x) /
+                               180.0));
 }
 
 /* Advances all moving obstacles through their states, updating models, actors, effects,
@@ -3130,7 +2824,7 @@ void fn_1_9260(void) {
                                   5.0f : -5.0f;
                 } else {
                     fn_8002CCC0(obstacle->modelId,
-                                        obstacle->motion.obstacleMotions.startMotionId,
+                                        obstacle->jointMotionIds[0],
                                        0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
                     obstacle->state = 0;
@@ -3144,10 +2838,10 @@ void fn_1_9260(void) {
                 obstacle->verticalStep -= 1.0f;
                 if (position.y <= 0.0f) {
                     fn_8002CCC0(obstacle->modelId,
-                                        obstacle->motion.obstacleMotions.fallMotionId,
+                                        obstacle->jointMotionIds[1],
                                        0.0f, 8.0f,
                                        ((1 << 30) | (1 << 0)));
-                    m666CreateObstacleActor(groupIndex, obstacleIndex);
+                    fn_1_854C(groupIndex, obstacleIndex);
                     position.y = 0.0f;
                     obstacle->state = 4;
                     if (fn_80071A8C() == 5) {
@@ -3168,7 +2862,7 @@ void fn_1_9260(void) {
                     fn_800269E8(obstacle->modelId, 1U);
                     fn_80026A44(obstacle->alternateModelId, 1U);
                     fn_8002C95C(obstacle->alternateModelId,
-                                   obstacle->motion.obstacleMotions.alternateMotionId);
+                                   obstacle->jointMotionIds[3]);
                     fn_80086CB0(obstacle->actor, &angle);
                     fn_80026808(obstacle->alternateModelId,
                                     0.0f, angle, 0.0f);
@@ -3181,7 +2875,7 @@ void fn_1_9260(void) {
                 break;
             case 5:
                 if (obstacle->timer++ >= 60) {
-                    m666ResetObstacle(groupIndex, obstacleIndex);
+                    fn_1_901C(groupIndex, obstacleIndex);
                 }
                 break;
             case 6:
@@ -3189,29 +2883,7 @@ void fn_1_9260(void) {
                 if (fn_8002D4E0(obstacle->secondaryModelId) >=
                     fn_8002D530(obstacle->secondaryModelId)) {
 
-                    M666Bss580Entry *group =
-                        &lbl_1_bss_580[(s16)groupIndex];
-                    M666MovingObstacle *slotObstacle =
-                        &lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex];
-
-                    group->data.obstacleGroup.slotIndices[
-                        group->data.obstacleGroup.activeCount] = (s16)obstacleIndex;
-                    lbl_1_bss_604[(s16)groupIndex]
-                        [(s16)obstacleIndex].slotIndex =
-                        group->data.obstacleGroup.activeCount;
-                    group->data.obstacleGroup.activeCount += 1;
-                    fn_80026790(slotObstacle->modelId,
-                                     &lbl_1_data_2A0[(s16)groupIndex * 8 + 7].position);
-                    fn_80026808(slotObstacle->modelId, 0.0f,
-                                    lbl_1_data_2A0[(s16)groupIndex * 8 + 7].rotation,
-                                    0.0f);
-                    fn_80026A44(slotObstacle->modelId, 1U);
-                    slotObstacle->state = 1;
-                    fn_8002CCC0(slotObstacle->modelId,
-                                        slotObstacle->motion.obstacleMotions.loopMotionId, 0.0f,
-                                       8.0f,
-                                       ((1 << 30) | (1 << 0)));
-                    fn_8002D86C(slotObstacle->modelId, 1.0f);
+                    fn_1_8A14(groupIndex, obstacleIndex);
                     /* Stop this entire update after recycling one obstacle; later entries and the
                      * final average are skipped this frame. */
                     return;
@@ -3249,17 +2921,20 @@ void fn_1_9260(void) {
 
 /* Attaches the queued obstacle to the group model's bomb hook, resets its transform, restarts the
  * group motion, and plays the hook sound. */
+/* Hooks the selected bomb model when the group event begins. */
 void fn_1_9D3C(s16 groupIndex) {
-    M666MovingObstacle *obstacleEntry;
+    void *model;
 
-    if (lbl_1_bss_580[groupIndex].data.motionEvent.state == 0) {
-        lbl_1_bss_580[groupIndex].data.motionEvent.state = 1;
-        obstacleEntry = &lbl_1_bss_604[groupIndex]
-            [lbl_1_bss_580[groupIndex].data.motionEvent.obstacleIndices[0]];
+    if (lbl_1_bss_580[groupIndex].state == 0) {
+        lbl_1_bss_580[groupIndex].state = 1;
+        model = &lbl_1_bss_604[groupIndex]
+                              [lbl_1_bss_580[groupIndex].obstacleIndices[0]];
         fn_8002741C(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
-                         obstacleEntry->modelId);
-        fn_80026760(obstacleEntry->modelId, 0.0f, 0.0f, 0.0f);
-        fn_80026808(obstacleEntry->modelId, 0.0f, 0.0f, 0.0f);
+                        ((M666MovingObstacle *)model)->modelId);
+        fn_80026760(((M666MovingObstacle *)model)->modelId,
+                        0.0f, 0.0f, 0.0f);
+        fn_80026808(((M666MovingObstacle *)model)->modelId,
+                        0.0f, 0.0f, 0.0f);
         fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
         fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
         fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));
@@ -3291,17 +2966,17 @@ void fn_1_9F3C(void) {
     f32 maximumMotionTime;
     s32 eventIndex;
     s32 queueIndex;
-    M666Bss580Entry *motionEvent;
+    M666ObstacleQueue *motionEvent;
     M666MovingObstacle *obstacle;
 
     for (eventIndex = 0; eventIndex < 6; eventIndex++) {
         motionEvent = &lbl_1_bss_580[eventIndex];
-        switch (motionEvent->data.motionEvent.state) {
+        switch (motionEvent->state) {
         case 1:
             maximumMotionTime = fn_8002D530(motionEvent->modelId);
             if (fn_8002D4E0(motionEvent->modelId) >= maximumMotionTime) {
                 obstacle =
-                    &lbl_1_bss_604[eventIndex][motionEvent->data.motionEvent.obstacleIndices[0]];
+                    &lbl_1_bss_604[eventIndex][motionEvent->obstacleIndices[0]];
                 Hu3DModelObjPosGet(motionEvent->modelId, lbl_1_data_7F2, &modelPosition);
                 fn_80027508(motionEvent->modelId);
                 fn_80026790(obstacle->modelId, &modelPosition);
@@ -3312,38 +2987,38 @@ void fn_1_9F3C(void) {
                  fn_800269E8(motionEvent->modelId, ((1 << 30) | (1 << 2)));
                 obstacle->state = 3;
                 obstacle->verticalStep = 8.0f;
-                motionEvent->data.motionEvent.state = 2;
+                motionEvent->state = 2;
             }
             break;
         case 2:
             if (fn_8002D4E0(motionEvent->modelId) < 10.0f) {
-                motionEvent->data.motionEvent.state = 3;
-                if (motionEvent->data.motionEvent.obstacleCount > 1) {
+                motionEvent->state = 3;
+                if (motionEvent->obstacleCount > 1) {
                     for (queueIndex = 0;
-                         queueIndex < motionEvent->data.motionEvent.obstacleCount - 1;
+                         queueIndex < motionEvent->obstacleCount - 1;
                          queueIndex++) {
-                        motionEvent->data.motionEvent.obstacleIndices[queueIndex] =
-                            motionEvent->data.motionEvent.obstacleIndices[queueIndex + 1];
+                        motionEvent->obstacleIndices[queueIndex] =
+                            motionEvent->obstacleIndices[queueIndex + 1];
                         obstacle = &lbl_1_bss_604[eventIndex]
-                            [motionEvent->data.motionEvent.obstacleIndices[queueIndex]];
+                            [motionEvent->obstacleIndices[queueIndex]];
                         obstacle->state = 1;
                         obstacle->slotIndex -= 1;
                         fn_8002CCC0(obstacle->modelId,
-                                           obstacle->motion.obstacleMotions.loopMotionId, 0.0f,
+                                           obstacle->jointMotionIds[2], 0.0f,
                                            8.0f, ((1 << 30) | (1 << 0)));
                     }
-                    motionEvent->data.motionEvent.obstacleCount -= 1;
+                    motionEvent->obstacleCount -= 1;
                 } else {
-                    motionEvent->data.motionEvent.obstacleIndices[0] = -1;
-                    motionEvent->data.motionEvent.obstacleCount = 0;
+                    motionEvent->obstacleIndices[0] = -1;
+                    motionEvent->obstacleCount = 0;
                 }
             }
             break;
         case 3:
-            if (motionEvent->data.motionEvent.obstacleCount != 0) {
-                if (lbl_1_bss_604[eventIndex][motionEvent->data.motionEvent.obstacleIndices[0]]
+            if (motionEvent->obstacleCount != 0) {
+                if (lbl_1_bss_604[eventIndex][motionEvent->obstacleIndices[0]]
                         .state == 0) {
-                    motionEvent->data.motionEvent.state = 0;
+                    motionEvent->state = 0;
                 }
             }
             break;
@@ -3376,8 +3051,8 @@ void fn_1_A1CC(void) {
                               0.5f, 0.5f);
             fn_80026E44(modelId);
             lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId = modelId;
-            lbl_1_bss_148[groupIndex].items[itemIndex].status = itemIndex;
-            lbl_1_bss_148[groupIndex].items[itemIndex].initialAlpha = 1.0f;
+            lbl_1_bss_148[groupIndex].items[itemIndex].laneIndex = itemIndex;
+            lbl_1_bss_148[groupIndex].items[itemIndex].alpha = 1.0f;
 
             for (modelIndex = 0; modelIndex < 8; modelIndex++) {
                 modelId = fn_80025A04(
@@ -3395,43 +3070,7 @@ void fn_1_A1CC(void) {
 /* Activates the first unused lane particle at a randomized side offset with scale and opacity set
  * to one. */
 void fn_1_A430(s16 groupIndex, s16 itemIndex) {
-    Point3d position;
-    f32 groupOffset;
-    s32 modelIndex;
-
-    for (modelIndex = 0; modelIndex < 8; modelIndex++) {
-        if (lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].active != 0) {
-            continue;
-        }
-
-        fn_800267CC(lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId,
-                        &position);
-        if (groupIndex == 0) {
-            groupOffset = 200.0f;
-        } else {
-            groupOffset = -200.0f;
-        }
-        position.x += groupOffset;
-        position.x += -30.0f + (f32)frandmod(60);
-        position.y += -30.0f + (f32)frandmod(60);
-        position.z += -30.0f + (f32)frandmod(60);
-        fn_80026790(
-            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
-            &position);
-        fn_80026A44(
-            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
-            1);
-        fn_80026CBC(
-            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
-            1.0f);
-        fn_800268B0(
-            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId,
-            1.0f, 1.0f, 1.0f);
-        lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].active = 1;
-        lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].alpha = 1.0f;
-        lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].scale = 1.0f;
-        return;
-    }
+    m666ActivateLaneModel(groupIndex, itemIndex);
 }
 
 /* Advances the 3-by-3 lane models through their movement states and updates fading particles. */
@@ -3600,46 +3239,33 @@ void fn_1_B30C(void) {
 /* Starts the first lane with queue position zero when it is ready, with rumble and sound. */
 void fn_1_B370(s16 groupIndex) {
     s32 markerIndex;
-    s32 playerIndex;
 
     for (markerIndex = 0; markerIndex < 3; markerIndex++) {
-        if (lbl_1_bss_148[groupIndex].items[markerIndex].status == 0) {
+        if (lbl_1_bss_148[groupIndex].items[markerIndex].laneIndex == 0) {
             break;
         }
     }
     if (markerIndex != 3 &&
         lbl_1_bss_148[groupIndex].items[markerIndex].state == 1) {
-        lbl_1_bss_148[groupIndex].items[markerIndex].status = 2;
+        lbl_1_bss_148[groupIndex].items[markerIndex].laneIndex = 2;
         lbl_1_bss_148[groupIndex].items[markerIndex].state = 3;
-        for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-            if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 7, 3);
-            }
-        }
-        if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-            fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
-        }
+        fn_1_1858(1);
+        fn_1_1198(1);
         HuAudFXPlay(MSM_SE_MG666_LANE_ACTIVATION);
     }
 }
 
 /* Unused entry point: initializes only local values and leaves game state unchanged. */
 void fn_1_B4F4(s16 firstIndex, s16 secondIndex) {
-    s32 localValue[2];
-    s32 zeroValueB;
-    s32 zeroValueA;
-    s32 count;
-    s32 combinedIndex;
-    f32 initialFloatA;
-    f32 initialFloatB;
+    MGACTOR_PARAM actorParam;
 
-    initialFloatB = 100.0f;
-    initialFloatA = 50.0f;
-    combinedIndex = secondIndex + ((firstIndex * 3) + 100);
-    count = 3;
-    zeroValueB = 0;
-    zeroValueA = 0;
-    localValue[1] = 0;
+    actorParam.height = 100.0f;
+    actorParam.radius = 50.0f;
+    actorParam.param = secondIndex + ((firstIndex * 3) + 100);
+    actorParam.type = 3;
+    actorParam.attr = 0;
+    actorParam.narrowHook = NULL;
+    actorParam.correctHook = NULL;
 }
 
 void fn_1_B558(void) {
@@ -3722,7 +3348,6 @@ void fn_1_B854(void) {
     s32 fallingModelIndex;
     s32 otherGroup;
     s32 entryIndex;
-    s32 vibrationIndex;
     s32 openingIndex;
     s32 pointIndex;
     f32 distanceSquared;
@@ -3768,15 +3393,8 @@ void fn_1_B854(void) {
                     fn_80026A44(actorWork->modelIds[1], 1);
                     fn_8002D414(actorWork->modelIds[1], 0.0f);
                     fn_8002D86C(actorWork->modelIds[1], 1.0f);
-                    for (vibrationIndex = 0; vibrationIndex < 3; vibrationIndex++) {
-                        if (lbl_1_bss_8[vibrationIndex].motionSelection == 0) {
-                            fn_8006A030(lbl_1_bss_8[vibrationIndex].playerNumber,
-                                      20, 7, 3);
-                        }
-                    }
-                    if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-                        fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
-                    }
+                    fn_1_1858(1);
+                    fn_1_1198(1);
                     actorWork->impactState = 1;
                 }
                 modelPosition.y = 0.0f;
@@ -3889,27 +3507,15 @@ void fn_1_C630(void) {
                            { 0.0f, 1000.0f, 300.0f },
                            { 300.0f, 1000.0f, 300.0f } };
     Vec modelPosition;
-    M666PerimeterMotionWork *perimeterMotion;
     s32 spawnIndex;
     s32 candidateIndex;
     s16 chosenPoint;
-    s32 spriteIndex;
-    s32 perimeterIndex;
 
     if (lbl_1_bss_E3C[0].state != 0) {
         return;
     }
 
-    for (perimeterIndex = 0; perimeterIndex < 3; perimeterIndex++) {
-        perimeterMotion = &lbl_1_bss_D84[perimeterIndex];
-        perimeterMotion->motionState = 5;
-        fn_8002CCC0(perimeterMotion->modelId,
-                           perimeterMotion->jointMotionIds[5],
-                           0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        for (spriteIndex = 0; spriteIndex < 10; spriteIndex++) {
-            HuSprAttrSet(perimeterMotion->spriteGroupId, (s16)spriteIndex, 4);
-        }
-    }
+    fn_1_79B4();
 
     lbl_1_bss_E3C[0].state = 1;
     lbl_1_bss_E3C[0].countdown = 60;
@@ -3969,54 +3575,11 @@ void fn_1_C630(void) {
 }
 
 /* Activates the next marker and rumbles active players when fn_1_CBE8 reaches a marker slot. */
-static inline void activateSequenceMarker(s16 groupIndex) {
-    s32 markerIndex;
-    s32 playerIndex;
-
-    for (markerIndex = 0; markerIndex < 3; markerIndex++) {
-        if (lbl_1_bss_148[groupIndex].items[markerIndex].status == 0) {
-            break;
-        }
-    }
-    if (markerIndex != 3 &&
-        lbl_1_bss_148[groupIndex].items[markerIndex].state == 1) {
-        lbl_1_bss_148[groupIndex].items[markerIndex].status = 2;
-        lbl_1_bss_148[groupIndex].items[markerIndex].state = 3;
-        for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-            if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 7, 3);
-            }
-        }
-        if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-            fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
-        }
-        HuAudFXPlay(MSM_SE_MG666_LANE_ACTIVATION);
-    }
-}
-
 /* Attaches the queued obstacle model to its group's bomb hook when fn_1_CBE8 reaches a bomb
  * target point. */
-static inline void hookBombModel(s16 groupIndex) {
-    void *model;
-
-    if (lbl_1_bss_580[groupIndex].data.motionEvent.state == 0) {
-        lbl_1_bss_580[groupIndex].data.motionEvent.state = 1;
-        model = &lbl_1_bss_604[groupIndex]
-                              [lbl_1_bss_580[groupIndex].data.motionEvent.obstacleIndices[0]];
-        fn_8002741C(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
-                        ((M666MovingObstacle *)model)->modelId);
-        fn_80026760(((M666MovingObstacle *)model)->modelId,
-                        0.0f, 0.0f, 0.0f);
-        fn_80026808(((M666MovingObstacle *)model)->modelId,
-                        0.0f, 0.0f, 0.0f);
-        fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
-        fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
-        fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));
-        HuAudFXPlay(MSM_SE_MG666_BOMB_HOOK);
-    }
-}
 
 /* Advances the nine event-marker rotations and stops each sound after its marker settles. */
+/* Advances the nine falling-event model rotations and their sounds. */
 void fn_1_CA2C(void) {
     Point3d modelRotation;
     s32 eventIndex;
@@ -4057,31 +3620,31 @@ s16 fn_1_CB8C(s16 slotIndex, s16 perimeterIndex) {
 void fn_1_CBE8(s16 targetPointIndex) {
     switch (targetPointIndex) {
     case 0:
-        hookBombModel(0);
+        fn_1_9D3C(0);
         break;
     case 1:
-        hookBombModel(1);
+        fn_1_9D3C(1);
         break;
     case 2:
-        hookBombModel(2);
+        fn_1_9D3C(2);
         break;
     case 3:
-        activateSequenceMarker(0);
+        fn_1_B370(0);
         break;
     case 4:
-        hookBombModel(3);
+        fn_1_9D3C(3);
         break;
     case 5:
-        hookBombModel(4);
+        fn_1_9D3C(4);
         break;
     case 6:
-        hookBombModel(5);
+        fn_1_9D3C(5);
         break;
     case 7:
-        activateSequenceMarker(1);
+        fn_1_B370(1);
         break;
     case 8:
-        activateSequenceMarker(2);
+        fn_1_B370(2);
         break;
     }
 }
@@ -4091,31 +3654,13 @@ void fn_1_D620(OMOBJ *obj);
 /* Runs each frame after fn_1_D794 registers it, advancing the minigame scene and target-marker
  * rotations. */
 void fn_1_D620(OMOBJ *obj) {
-    Point3d modelRotation;
-    s32 eventIndex;
 
     fn_1_A798();
     fn_1_9260();
     fn_1_9F3C();
     fn_1_77B0();
     fn_1_B854();
-    eventIndex = 0;
-    while (eventIndex < 9) {
-        fn_80026874(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
-        if (lbl_1_bss_DC[eventIndex].state == 1) {
-            modelRotation.y += 5.0f;
-        } else if (0.0f != modelRotation.y) {
-            modelRotation.y += 5.0f;
-        } else if ((s32) lbl_1_bss_DC[eventIndex].soundHandle != -1) {
-            HuAudFXStop(lbl_1_bss_DC[eventIndex].soundHandle);
-            lbl_1_bss_DC[eventIndex].soundHandle = -1;
-        }
-        while (modelRotation.y >= 360.0f) {
-            modelRotation.y -= 360.0f;
-        }
-        fn_80026838(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
-        eventIndex += 1;
-    }
+    fn_1_CA2C();
 }
 
 /* Registers the per-frame scene update callback with the minigame object manager. */

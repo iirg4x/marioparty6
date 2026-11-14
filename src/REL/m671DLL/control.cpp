@@ -225,8 +225,6 @@ static inline f32 segmentFactor(PositionTable *tables, s32 index)
     return tables->thirdPositions[index];
 }
 
-/* Debug check: empty in the release build; its original text is not in the binary. */
-
 static inline Vec *segmentOffsetVector(PositionRecord *offset)
 {
     ASSERT(FALSE);

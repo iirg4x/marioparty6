@@ -6,6 +6,14 @@
 #define MBCapsuleEffRandF() \
     (mbRandMod(1 << 28) * (1.0f / (1 << 28)))
 
+typedef struct CapsuleList_s {
+    s8 id; // Capsule type, or -1 at the end of a distribution list.
+    s8 cost[3]; // Price alternatives used by purchase and sale rank rules.
+    s8 weight[12]; // Four rank weights each for early rewards, late rewards, and shops.
+} CAPSULE_LIST;
+
+int mbCapShopListGet(int playerNo, CAPSULE_LIST *list);
+int mbCapListCopy(CAPSULE_LIST *list);
 void mbCapInit(void);
 void mbCapThrowHookSet(void (*hook)(BOOL startF));
 int mbCapUse(int playerNo, int capsuleNo);

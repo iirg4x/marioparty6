@@ -1,6 +1,7 @@
 #include "REL/m671DLL/animation_owner.h"
 #include "REL/framework/model.h"
 #include "REL/framework/sound.h"
+#include "REL/framework/vector_math.h"
 /* Collision shapes: every shape built registers itself in one module-wide list, and each frame the
  * list and the players are pushed apart. */
 #include <vector>
@@ -15,7 +16,7 @@ extern "C" {
 #include "REL/framework/event_manager.h"
 #include "REL/m671DLL/collision.h"
 
-std::vector<CollisionShape *> lbl_1_bss_C;
+std::vector<CollisionObject *> lbl_1_bss_C;
 
 s32 fn_1_0(CollisionObject *first, CollisionObject *second)
 {
@@ -81,7 +82,7 @@ void fn_1_148(void)
     s32 firstIndex;
 
     for (firstIndex = 0; firstIndex < count; firstIndex++) {
-        CollisionObject *first = (CollisionObject *)lbl_1_bss_C.at(firstIndex);
+        CollisionObject *first = lbl_1_bss_C.at(firstIndex);
         s32 secondIndex;
         firstRelation = first->getRelation();
         if (first->isActive() == 0) {
@@ -100,7 +101,7 @@ void fn_1_148(void)
             if (firstIndex == secondIndex) {
                 continue;
             }
-            second = (CollisionObject *)lbl_1_bss_C.at(secondIndex);
+            second = lbl_1_bss_C.at(secondIndex);
             secondRelation = second->getRelation();
             if (secondRelation != 1) {
                 continue;
@@ -119,26 +120,18 @@ void fn_1_148(void)
     }
 }
 
-static inline f32 VectorDot(Vec *normal, Vec *point)
-{
-    return PSVECDotProduct(normal, point);
-}
-
 void fn_1_360(Vec *normal, Vec *point)
 {
     float scale;
     Vec scaledNormal;
 
-    scale = -2.0f * VectorDot(normal, point);
+    scale = -2.0f * vectorDot(normal, point);
     PSVECScale(normal, &scaledNormal, scale);
     PSVECAdd(point, &scaledNormal, &scaledNormal);
     point->x = scaledNormal.x;
     point->y = scaledNormal.y;
     point->z = scaledNormal.z;
 }
-
-extern void fn_1_5754(AnimationOwner *, const Vec *);
-extern void fn_1_5F00(AnimationOwner *, const Vec *);
 
 static inline Vec ObjectPosition(AnimationOwner *object)
 {
@@ -163,11 +156,6 @@ static inline u8 ObjectFlag(AnimationOwner *object)
 static inline bool ObjectActive(AnimationOwner *object)
 {
     return ObjectState(object) == (u8)1;
-}
-
-static inline f32 VectorLength(Vec *vector)
-{
-    return PSVECMag(vector);
 }
 
 void fn_1_40C(void)
@@ -216,7 +204,7 @@ void fn_1_40C(void)
                 f32 distance;
                 secondVelocity.y = 0.0f;
                 PSVECSubtract(&firstPosition, &secondPosition, &difference);
-                distance = VectorLength(&difference);
+                distance = vectorMagnitude(&difference);
                 if (distance >= 200.0f) {
                     continue;
                 }

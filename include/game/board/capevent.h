@@ -3,17 +3,17 @@
 
 #include "game/object.h"
 
-struct EvCapWork;
-struct CapWork;
-void *mbev_CapMalloc(struct EvCapWork *work, int size);
+typedef struct EvCapWork EVCAPWORK;
+typedef struct CapWork CAPWORK;
+void *mbev_CapMalloc(EVCAPWORK *work, int size);
 void mbev_CapBezierGetV(float t, float *a, float *b, float *c, float *out);
 void mbev_CapBezierNormGetV(float t, float *a, float *b, float *c, float *out);
-void mbev_CapWait(struct CapWork *work);
-int mbev_CapObjCreate(struct EvCapWork *work, int dataNum, int *motFile,
+void mbev_CapWait(CAPWORK *work);
+int mbev_CapObjCreate(EVCAPWORK *work, int dataNum, int *motFile,
     BOOL linkF, int delay, BOOL closeDir);
-void mbev_CapObjPosSet(struct EvCapWork *work, int objId, int masuId, HuVecF *pos);
-void mbev_CapPlayerPosSet(struct EvCapWork *work, int playerNo, int masuId, HuVecF *pos);
-s16 mbev_CapPlayerMotionCreate(struct EvCapWork *work, int playerNo, int dataNum);
+void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId, HuVecF *pos);
+void mbev_CapPlayerPosSet(EVCAPWORK *work, int playerNo, int masuId, HuVecF *pos);
+s16 mbev_CapPlayerMotionCreate(EVCAPWORK *work, int playerNo, int dataNum);
 OMOBJ *mbev_CapEffSnowCreate(void);
 OMOBJ *mbev_CapEffCapLoseCreate(void);
 int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time);
@@ -28,6 +28,7 @@ void mbev_CapPlayerMotionSet(int playerNo, int time, int motNo, int nextMotNo,
     u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr);
 
 void mbev_CapEffCoinGlowSet(OMOBJ *obj, OMOBJ *glowObj);
+int mbev_CapPlayerSquishSet(int *playerNo, int masuId);
 int mbev_CapPlayerSquishVoiceSet(int *out, int masuId, BOOL voiceF);
 OMOBJ *mbev_CapCoinManCreate(void);
 OMOBJ *mbev_CapStarManCreate(void);
@@ -60,9 +61,9 @@ void mbev_CapPlayerRotate(int playerNo, float angle);
 void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target, HuVecF *out);
 void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot);
 void mbev_CapVibrate(int type);
-s16 mbev_CapSprCreate(struct EvCapWork *work, unsigned int dataNum,
+s16 mbev_CapSprCreate(EVCAPWORK *work, unsigned int dataNum,
     s16 prio, s16 bank);
-void mbev_CapObjClose(struct EvCapWork *work, int objId);
+void mbev_CapObjClose(EVCAPWORK *work, int objId);
 void mbev_CapDuelStatusDispSet(int leftPlayer, int rightPlayer, BOOL waitF);
 int mbev_CapPlayerOrderGet(int *order, int excludePlayer, int priorityPlayer,
     BOOL orderF);

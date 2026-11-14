@@ -4,6 +4,7 @@
 #include "REL/m653DLL/motion_work.h"
 #include "REL/m653DLL/boundary_plane.h"
 #include "REL/m653DLL/absolute.h"
+#include "REL/framework/square.h"
 #include "REL/m653DLL/translate_matrix.h"
 
 extern "C" {
@@ -124,11 +125,6 @@ static inline void setNodePosition(CollisionSphere *node, const Vec *position)
 }
 
 static const f64 frameTime = 1.0 / 60.0;
-
-static inline f64 square(const f64 &value)
-{
-    return value * value;
-}
 
 void fn_1_3EE0(M653MotionWork *work)
 {

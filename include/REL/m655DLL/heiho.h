@@ -1,9 +1,12 @@
 #ifndef REL_M655DLL_HEIHO_H
 #define REL_M655DLL_HEIHO_H
+#include "dolphin/mtx.h"
 #include "REL/m655DLL/player_list.h"
+void fn_1_39C4(void);
 void sendEvent(int channel, unsigned long value, float delay);
 
 struct Goal;
+struct TargetEffect;
 
 struct SequenceEventObject;
 

@@ -18,7 +18,7 @@ extern "C" {
 }
 #include "REL/m653DLL/moving_object.h"
 #include "REL/m653DLL/allocation.h"
-#include "REL/m653DLL/random.h"
+#include "REL/framework/random.h"
 #include "datadir_enum.h"
 #include "dolphin/gx.h"
 #include "REL/framework/event.h"

@@ -128,9 +128,9 @@ void IconRenderer::draw(Mtx *projection) {
     PSMTXConcat(*projection, world, world);
     GXLoadPosMtxImm(world, GX_PNMTX0);
     GXSetNumChans(0);
-    HuSprTexLoad((ANIMDATA *)this->primaryAnimation, 0, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
-    HuSprTexLoad((ANIMDATA *)this->secondaryAnimation, 0, 1, GX_CLAMP, GX_CLAMP, GX_LINEAR);
-    HuSprTexLoad((ANIMDATA *)this->idleAnimation, 0, 2, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+    HuSprTexLoad(this->primaryAnimation, 0, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+    HuSprTexLoad(this->secondaryAnimation, 0, 1, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+    HuSprTexLoad(this->idleAnimation, 0, 2, GX_CLAMP, GX_CLAMP, GX_LINEAR);
 
     const f32 &firstWidth = (f32)this->primaryAnimation->bmp->sizeX;
     const f32 &firstHeight = (f32)this->primaryAnimation->bmp->sizeY;

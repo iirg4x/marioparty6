@@ -5,6 +5,7 @@
 #include <vector>
 #include <list>
 #include "dolphin/gx.h"
+#include "game/animdata.h"
 #include "REL/framework/frame_interpolator.h"
 #include "REL/framework/game_object2.h"
 float RandomFloat(float minimum, float maximum);
@@ -28,7 +29,7 @@ struct ScreenSpriteWork : MinigameSingleton<ScreenSpriteWork>, RenderObject {
     f32 traveledDistance;
     Vec position;
     std::list<ScreenParticle> motions;
-    void *spriteTexture;
+    ANIMDATA *spriteTexture;
 
     ScreenSpriteWork();
     ~ScreenSpriteWork();

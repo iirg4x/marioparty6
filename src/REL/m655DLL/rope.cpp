@@ -75,7 +75,7 @@ void fn_1_ADE4(void) {
         new Rope(index, &top, &start->position, length, starts[index].dataNumber);
     }
 }
-GameObject *fn_1_B140(s32 id) {
+Rope *fn_1_B140(s32 id) {
 
 /* Retain assertion source location.
  *
@@ -93,7 +93,8 @@ GameObject *fn_1_B140(s32 id) {
     collectGameObjects(id + 7, &result);
     int n = result.size();
     assert(n == 1);
-    return result[0];
+    // Rope registers in category mode + 7; the manager collects base pointers.
+    return static_cast<Rope *>(result[0]);
 }
 
 void fn_1_C148(HU3D_MODEL *self, Mtx *matrix);
@@ -302,7 +303,7 @@ const GXVtxAttrFmtList lbl_1_rodata_624[3] = {
 void fn_1_C208(Rope *rope, Mtx matrix) {
     GXLoadPosMtxImm(matrix, GX_PNMTX0);
     GXSetNumChans(0);
-    HuSprTexLoad((ANIMDATA *)rope->animation, 0, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+    HuSprTexLoad(rope->animation, 0, 0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
     GXSetNumTexGens(1);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
     GXSetCullMode(GX_CULL_BACK);

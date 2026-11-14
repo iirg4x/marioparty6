@@ -14,7 +14,7 @@
 
 #include "REL/m653DLL/allocation.h"
 
-#include "REL/m653DLL/random.h"
+#include "REL/framework/random.h"
 
 #include "REL/m653DLL/absolute.h"
 

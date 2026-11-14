@@ -28,6 +28,7 @@ BOOL mbExitCheck(void);
 void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(void));
 void mbev_NextTimeSet(void (*nextTimeHook)(void));
 void mbev_ShopInit(int dataNum);
+void mbev_ShopExInit(int dataNum, void (*hook)(int modelId, int shopNo));
 void mbev_ShopBackCreate(int dataNum, int motDataNum, int motNo, BOOL linkF);
 void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo,
     BOOL linkF, char *hookName);
