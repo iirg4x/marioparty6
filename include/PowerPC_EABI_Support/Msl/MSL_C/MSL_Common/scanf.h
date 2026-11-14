@@ -1,8 +1,8 @@
 #ifndef _MSL_COMMON_SCANF_H
 #define _MSL_COMMON_SCANF_H
 
-#include "stddef.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/ansi_files.h"
+#include "Include/stdio.h"
+#include "ansi_files.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,12 +11,6 @@ extern "C" {
 enum __ReadProcActions { __GetAChar, __UngetAChar, __TestForError };
 
 enum __WReadProcActions { __GetAwChar, __UngetAwChar, __TestForwcsError };
-
-typedef struct {
-	char* CharStr;
-	size_t MaxCharCount;
-	size_t CharsWritten;
-} __OutStrCtrl;
 
 typedef struct {
 	char* NextChar;

@@ -30,9 +30,9 @@ if sys.platform == "cygwin":
         f"\n(Current path: {sys.executable})"
     )
 
-# The vendor's runtime.c: the DOL and every REL compile it, and no assembly replaces it
+# The selected runtime provider's bytes, checked by the build.
 RUNTIME_PROVIDER = "Runtime.PPCEABI.H/runtime.c"
-RUNTIME_PROVIDER_SHA256 = "d0d46f2d133c41691586626ec9b51c347f94facff89ffe86c4508c77b89fadbd"
+RUNTIME_PROVIDER_SHA256 = "2d99b9bf4bc04aacaf65e783c3b2cee3929fedba1c55d69823b92a52b1e662f1"
 
 
 class Object:

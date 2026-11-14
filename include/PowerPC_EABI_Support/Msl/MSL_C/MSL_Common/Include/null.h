@@ -1,23 +1,7 @@
-/* Metrowerks Standard Library
- * Copyright © 1995-2001 Metrowerks Corporation.  All rights reserved.
- *
- * $Date: 2001/04/02 17:57:12 $
- * $Revision: 1.11 $
- */
- 
-#ifndef _MSL_NULL_H
-#define _MSL_NULL_H 
- 
+#ifndef MP6_C_NULL_H
+#define MP6_C_NULL_H
+/* The null pointer constant is also usable by C++98 callers. */
 #ifndef NULL
-
-#include <ansi_parms.h>                 /*- mm 970905 -*/
-
-#define NULL	0L
-
-#endif /* ndef NULL */
-
-#endif /* _MSL_NULL_H */
-
-/* Change record:
- * mm  970905 added include of ansi_parms.h to avoid need for prefix file
- */
+#define NULL 0
+#endif
+#endif
