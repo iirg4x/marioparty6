@@ -119,13 +119,6 @@ void fn_1_5A08(s16 mode, s16 frameNo);
 #include "math.h"
 #include "humath.h"
 
-/* Stream played when Pop Star's start banner sounds. */
-/* Rollover bound for the piston animation frame counter. */
-#define M629_FRAME_COUNTER_LIMIT 4026531840U
-/* Motion-table bits select the solo actor and the three opponents. */
-#define M629_MOTION_SOLO_MASK 0x01
-#define M629_MOTION_TEAM_MASK 0x02
-
 /* Character model resource table; these callbacks do not read it. */
 u32 lbl_1_data_0[14] = {
     DATANUM(0x900000, 0), DATANUM(0x380000, 0),
@@ -146,12 +139,12 @@ int lbl_1_data_38[10] = {
 };
 /* Player actor selection mask for each motion entry. */
 u8 lbl_1_data_60[10] = {
-    M629_MOTION_SOLO_MASK | M629_MOTION_TEAM_MASK,
-    M629_MOTION_TEAM_MASK, M629_MOTION_TEAM_MASK, M629_MOTION_TEAM_MASK,
-    M629_MOTION_TEAM_MASK, M629_MOTION_TEAM_MASK,
-    M629_MOTION_SOLO_MASK, M629_MOTION_SOLO_MASK,
-    M629_MOTION_SOLO_MASK | M629_MOTION_TEAM_MASK,
-    M629_MOTION_SOLO_MASK | M629_MOTION_TEAM_MASK
+    0x01 | 0x02,
+    0x02, 0x02, 0x02,
+    0x02, 0x02,
+    0x01, 0x01,
+    0x01 | 0x02,
+    0x01 | 0x02
 };
 /* Inverted Hu3D loop selector: zero enables the motion loop attribute. */
 u8 lbl_1_data_6A[10] = { 0, 1, 1, 1, 1, 1, 0, 1, 1, 1 };
@@ -613,7 +606,7 @@ void fn_1_1F90(OMOBJ *obj)
     lbl_1_bss_5DC = fn_80071A8C();
     lbl_1_bss_0 = fn_80071DE4();
     lbl_1_data_B0++;
-    lbl_1_data_B0 %= M629_FRAME_COUNTER_LIMIT;
+    lbl_1_data_B0 %= 0xF0000000U;
     lbl_1_bss_C += lbl_1_bss_C < 65535;
     for (i = 0; i < (lbl_1_bss_10 ? 1 : 2); i++) {
         model = &lbl_802C01C8[obj->mdlId[i + 28]];
@@ -947,7 +940,7 @@ void fn_1_3C8C(OMOBJ *obj)
     obj->mdlId[0] = fn_80057068(playerState->charNo, 2);
     for (i = 0; i < 10; i++) {
         if (lbl_1_data_60[i] &
-            (playerState->index == 0 ? M629_MOTION_SOLO_MASK : M629_MOTION_TEAM_MASK)) {
+            (playerState->index == 0 ? 0x01 : 0x02)) {
             obj->mtnId[i] = fn_8005B0B8(playerState->charNo, lbl_1_data_38[i]);
         }
     }

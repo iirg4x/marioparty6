@@ -18,7 +18,6 @@ struct ParticleAnimationOwner : RequestObject, MinigameSingleton<ParticleAnimati
     virtual void update();
     ANIMDATA *animations[2];
 };
-typedef ParticleAnimationOwner AnimationManager8FA4;
 struct TimerManager : RequestObject, MinigameSingleton<TimerManager> {
     MGTIMER *timer;
     s32 parameter;

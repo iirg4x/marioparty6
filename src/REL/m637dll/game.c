@@ -5,9 +5,6 @@
 #include "msm_stream.h"
 #include "humath.h"
 
-#define M637_ESP_SCORE_FRONT DATANUM(0x9b0000, 30)
-#define M637_ESP_SCORE_BACK DATANUM(0x9b0000, 31)
-
 u32 lbl_1_data_28[9] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1),
     DATANUM(0x930000, 2), DATANUM(0x8e0000, 106),
@@ -1320,14 +1317,14 @@ void fn_1_5C98(s32 displayMode)
                 (32.0f * (f32) pointMarkerIndex) + (lbl_1_bss_B8[teamIndex].positionX - 32.0f);
             if (displayMode == 0) {
                 lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex] =
-                    espEntry(M637_ESP_SCORE_FRONT, 0, 0);
+                    espEntry(DATANUM(0x9b0000, 30), 0, 0);
                 espDrawNoSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex], 0);
                 espPriSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex], 1);
                 espPosSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex],
                           pointMarkerX, lbl_1_bss_B8[teamIndex].positionY);
                 espTPLvlSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex], 0.5f);
                 lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex] =
-                    espEntry(M637_ESP_SCORE_BACK, 0, 0);
+                    espEntry(DATANUM(0x9b0000, 31), 0, 0);
                 espDrawNoSet(lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex], 0);
                 espPriSet(lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex], 1);
                 espPosSet(lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex],
