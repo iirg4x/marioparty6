@@ -95,8 +95,6 @@ void fn_1_36E4(s16 value) {
 
 extern s16 lbl_1_bss_31BA[0x100];
 
-extern f32 lbl_802C028C;
-
 void fn_1_36F4(OMOBJ *obj)
 {
     Point3d cameraPosition;

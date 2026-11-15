@@ -191,10 +191,6 @@ typedef struct M601PlayerInitWork {
 
 
 /* The initialized interval contains one float and 0x2C unidentified bytes. */
-typedef struct M601UnknownRodata43C {
-    float value00; /* the game's code never reads this field */
-    u8 unknown04[0x2C]; /* No code names this field. */
-} M601UnknownRodata43C;
 
 /* BSS intervals with unidentified bytes. */
 typedef struct M601UnknownBss4 {
@@ -1245,7 +1241,6 @@ void fn_1_5658(OMOBJ *obj) {
     s32 otherPlayer;
     s32 playerIndex;
     s32 resultPlayer;
-    M601SoundEntry *soundEntry;
 
     lbl_1_bss_154 = fn_80071A8C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
@@ -1976,8 +1971,6 @@ void fn_1_9F6C(OMOBJ *obj)
 }
 
 extern s16 lbl_1_bss_14C;
-
-extern OMOBJMAN *lbl_1_bss_150;
 
 /* Sets up the minigame sequence, camera, shadow view, and initial object state. */
 /* Reconstruction of removed debug code. */

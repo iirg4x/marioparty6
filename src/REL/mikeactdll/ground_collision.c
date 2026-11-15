@@ -113,7 +113,7 @@ extern Point3d lbl_1_data_F80;
 
 extern ANIMDATA *lbl_1_bss_33F8;
 
-typedef struct MikeActRiseActorWork_s {
+typedef struct {
     MGACTOR *actor;
     s16 state;
     u8 unknown_06[2]; /* No code names this field. */

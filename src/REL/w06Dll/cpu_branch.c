@@ -10,8 +10,6 @@
 #include "messdir_enum.h"
 #include "game/board/snpc.h"
 
-#define W06_BRANCH_NEAREST_STEP_INITIAL_VALUE 10000
-
 // The branch chooser calls this when a computer needs a route toward the star.
 // It favors the closest route by day and the farthest route by night.
 s32 fn_1_E3EC(s32 playerNo, s32 linkCount, const s16 *spaceIds)
@@ -31,7 +29,7 @@ s32 fn_1_E3EC(s32 playerNo, s32 linkCount, const s16 *spaceIds)
     }
 
     if (lbl_80265B70.curTime == FALSE) {
-        minimumStep = W06_BRANCH_NEAREST_STEP_INITIAL_VALUE;
+        minimumStep = 10000;
         minimumIndex = -1;
         for (index = 0; index < linkCount; index++) {
             if (minimumStep > stepsToNpc[index]) {

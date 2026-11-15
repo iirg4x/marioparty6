@@ -11,7 +11,6 @@
 #include "game/mic.h"
 #include "game/window.h"
 #include "datadir_enum.h"
-#define M670_MCSELWIN_POS_TOP -10002.0f
 extern MGSEQ_PARAM lbl_1_data_0;
 
 M670WORK lbl_1_bss_10;
@@ -238,7 +237,7 @@ void ObjectSetup(void)
         fn_8002C2AC(5);
         HuMCInit(0);
         /* The selection-window helper maps this y sentinel to 40 pixels from the top. */
-        HuMCSelWinCreate(HUWIN_POS_CENTER, M670_MCSELWIN_POS_TOP);
+        HuMCSelWinCreate(HUWIN_POS_CENTER, -10002.0f);
         lbl_1_bss_10.micContext = HuMCContextCreate("/mic/ctx/m670_words");
         fn_1_3B30();
         lbl_1_bss_10.music = -1;

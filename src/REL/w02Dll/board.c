@@ -51,82 +51,6 @@
 #include <types.h>
 #include "game/board/star.h"
 
-
-
-#define W02_RANDOM_FRACTION_SCALE 3.7252903e-09f
-
-#define W02_STAR_SPACE_GROUP_SHIFT 18U
-
-
-
-
-#define W02_WIPE_READY_FLAG_OFFSET 4988
-#define W02_WIPE_ACTIVE_FLAG_OFFSET 4992
-#define W02_ROTATION_ACTIVE_FLAG_OFFSET 12
-#define W02_ROUTE_SPACE_ATTR_6_FLAG (1 << 6)
-#define W02_ROUTE_SPACE_ATTR_7_FLAG (1 << 7)
-#define W02_ROUTE_SPACE_ATTR_8_FLAG (1 << 8)
-#define W02_ROUTE_SPACE_ATTR_9_FLAG (1 << 9)
-#define W02_ROUTE_SPACE_ATTR_10_FLAG (1 << 10)
-
-
-
-
-
-#define W02_EVENT_PROCESS_STATE_OFFSET 4508
-#define W02_PATH_PARTICLE_ALPHA_MAX 255
-
-
-
-
-
-
-
-#define W02_PLAYER_EVENT_ATTR_11_FLAG (1 << 11)
-#define W02_MATERIAL_ATTR_4_FLAG (1 << 4)
-#define W02_ROUTE_ENTRY_DATA_OFFSET 4512
-#define W02_ROUTE_ENTRY_COUNT_OFFSET 4548
-#define W02_ROUTE_ENTRY_SIZE 12
-#define W02_STATION_LINK_ATTR_FLAG (1 << 13)
-
-
-
-
-
-
-
-
-
-
-#define W02_PLAYER_MANAGER_ALLOCATION_OFFSET 4632
-#define W02_PLAYER_MANAGER_COUNT_OFFSET 4628
-#define W02_PLAYER_FLIGHT_PLAYER_OFFSET 4676
-#define W02_PLAYER_FLIGHT_STATE_OFFSET 4680
-#define W02_PLAYER_FLIGHT_TARGET_OFFSET 4684
-#define W02_COIN_MODEL_LIST_OFFSET 4720
-#define W02_COIN_MODEL_COUNT_OFFSET 4716
-#define W02_COIN_SPRITE_MODEL_OFFSET 4764
-#define W02_COIN_SPRITE_IMAGE_OFFSET 4756
-#define W02_COIN_SPRITE_STATE_OFFSET 4752
-#define W02_COIN_EFFECT_RECORDS_OFFSET 4732
-#define W02_COIN_EFFECT_ACTIVE_OFFSET 24
-#define W02_COIN_EFFECT_OBJECT_OFFSET 4728
-
-
-
-
-
-
-
-
-#define W02_BOARD_EVENT_STATE_OFFSET 14
-#define W02_HOOK_UV_INITIALIZED_FLAG (1 << 4)
-#define W02_MODEL_HOOK_DATA_OFFSET 288
-#define W02_SPRITE_HOOK_TILE_COORDINATES_OFFSET 80
-#define W02_SPRITE_HOOK_CORNERS_OFFSET 84
-#define W02_SPRITE_HOOK_ANIMATION_OFFSET 56
-#define W02_SPRITE_OBJECT_DATA_OFFSET 92
-
 /* Initializes the mechanical board's models and registers its board event hooks. */
 
 typedef struct ModelEntry {
@@ -206,37 +130,6 @@ typedef struct SpriteParticle {
     GXColor color;
     int timer;
 } SpriteParticle;
-
-typedef struct SpriteObject {
-    int modelId;
-    int state;
-    int timer;
-    ANIMDATA *animation;
-} SpriteObject;
-
-typedef struct SpriteHook {
-    s16 textureFrame;
-    s16 textureIndex;
-    u8 renderingData[28];
-    s8 index;
-    u8 animationData;
-    u8 flags;
-    u8 hookFlags[3];
-    s16 particleCount;
-    u32 frameCounter;
-    u32 lastUpdate;
-    u32 duration;
-    u32 displayListSize;
-    ANIMDATA *animation;
-    SpriteParticle *particles;
-    HuVecF *positions;
-    HuVec2f *textureCoordinates;
-    void *displayList;
-    u32 callbackAddress;
-    HuVec2f *tileCoordinates;
-    void *corners;
-    u32 linkedModelAddress;
-} SpriteHook;
 
 typedef struct PathSpaces {
     int boardModelId;
@@ -617,10 +510,6 @@ typedef struct BoardModels {
     u8 laterEventState[144];
     BOOL mapView;
 } BoardModels;
-
-typedef struct BoardConfiguration {
-    u8 configuration;
-} BoardConfiguration;
 
 extern HuVecF lbl_1_data_888[5];
 
@@ -1098,8 +987,6 @@ typedef struct ThrowPathWork {
     throwpathsThrowPath *paths;
 } ThrowPathWork;
 
-extern HUPROCESS *mbObjMan;
-
 extern void (*lbl_1_data_874[5])(void);
 
 extern HuVecF lbl_1_data_BA8;
@@ -1450,7 +1337,7 @@ static inline s32 EmitSpriteParticle(HuVecF *position, HuVecF *velocity, float a
     particle->rotationSpeed = rotationSpeed;
     particle->activityValue = activityValue;
     particle->color = *color;
-    particle->rotation = 360.0f * (W02_RANDOM_FRACTION_SCALE * mbRandMod(0x10000000));
+    particle->rotation = 360.0f * (3.7252903e-09f * mbRandMod(0x10000000));
     particle->timer = 0;
     particle->frame = 0;
     particle->animationTime = 0.0f;
@@ -1839,17 +1726,17 @@ void fn_1_1BD8(OMOBJ *object) {
                     position.y = motionMatrix[1][3];
                     position.z = motionMatrix[2][3];
                     velocity.x = 100.0f * (0.01f + 0.05f * (-0.5f +
-                        W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                        3.7252903e-09f * (float) mbRandMod(0x10000000)));
                     velocity.y = 100.0f * (0.2f + 0.2f *
-                        (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                        (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                     velocity.z = 100.0f * (0.01f + 0.05f * (-0.5f +
-                        W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
-                    brightness = W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000);
+                        3.7252903e-09f * (float) mbRandMod(0x10000000)));
+                    brightness = 3.7252903e-09f * (float) mbRandMod(0x10000000);
                     color.r = 192.0f + 32.0f * brightness;
                     color.g = 192.0f + 32.0f * brightness;
                     color.b = 192.0f + 32.0f * brightness;
                     color.a = 127.0f + 63.0f *
-                        (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+                        (3.7252903e-09f * (float) mbRandMod(0x10000000));
                     pistonColor = color;
                     pistonColorPtr = &pistonColor;
                     pistonVelocity = velocity;
@@ -1857,11 +1744,11 @@ void fn_1_1BD8(OMOBJ *object) {
                     pistonPosition = position;
                     pistonPositionPtr = &pistonPosition;
                     fn_1_176E4(pistonPositionPtr, pistonVelocityPtr,
-                               100.0f * (1.0f + 0.5f * (W02_RANDOM_FRACTION_SCALE *
+                               100.0f * (1.0f + 0.5f * (3.7252903e-09f *
                                                         (float) mbRandMod(0x10000000))),
-                               -0.5f + W02_RANDOM_FRACTION_SCALE *
+                               -0.5f + 3.7252903e-09f *
                                            (float) mbRandMod(0x10000000),
-                               0.33f + 0.66f * (W02_RANDOM_FRACTION_SCALE *
+                               0.33f + 0.66f * (3.7252903e-09f *
                                                 (float) mbRandMod(0x10000000)),
                                pistonColorPtr);
                 }
@@ -1878,51 +1765,51 @@ void fn_1_1BD8(OMOBJ *object) {
                     switch (index) {
                     case 0:
                         velocity.x = lbl_1_data_554[index].x * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.y = lbl_1_data_554[index].y * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.z = lbl_1_data_554[index].z * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         break;
                     case 1:
                         velocity.x = lbl_1_data_554[index].x * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.y = lbl_1_data_554[index].y * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.z = lbl_1_data_554[index].z * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         break;
                     case 2:
                         velocity.x = lbl_1_data_554[index].x * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.y = lbl_1_data_554[index].y * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.z = lbl_1_data_554[index].z * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         /* This emitter also calculates the next case, replacing this velocity. */
                     case 3:
                         velocity.x = lbl_1_data_554[index].x * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.y = lbl_1_data_554[index].y * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         velocity.z = lbl_1_data_554[index].z * (0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                         break;
                     }
                     if (lbl_80265B70.curTime) {
                         velocity.x *= 0.5f + 0.1f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000));
                         velocity.y *= 0.5f + 0.1f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000));
                         velocity.z *= 0.5f + 0.1f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000));
                     }
-                    brightness = W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000);
+                    brightness = 3.7252903e-09f * (float) mbRandMod(0x10000000);
                     color.r = 192.0f + 32.0f * brightness;
                     color.g = 192.0f + 32.0f * brightness;
                     color.b = 192.0f + 32.0f * brightness;
                     color.a = 127.0f + 63.0f *
-                        (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+                        (3.7252903e-09f * (float) mbRandMod(0x10000000));
                     emitterColor = color;
                     emitterColorPtr = &emitterColor;
                     emitterVelocity = velocity;
@@ -1930,28 +1817,28 @@ void fn_1_1BD8(OMOBJ *object) {
                     emitterPosition = position;
                     emitterPositionPtr = &emitterPosition;
                     fn_1_176E4(emitterPositionPtr, emitterVelocityPtr,
-                               100.0f * (1.0f + 0.5f * (W02_RANDOM_FRACTION_SCALE *
+                               100.0f * (1.0f + 0.5f * (3.7252903e-09f *
                                                         (float) mbRandMod(0x10000000))),
-                               0.5f * (-0.5f + W02_RANDOM_FRACTION_SCALE *
+                               0.5f * (-0.5f + 3.7252903e-09f *
                                                    (float) mbRandMod(0x10000000)),
-                               0.33f + 0.66f * (W02_RANDOM_FRACTION_SCALE *
+                               0.33f + 0.66f * (3.7252903e-09f *
                                                 (float) mbRandMod(0x10000000)),
                                emitterColorPtr);
                 }
                 if (--work->burstFrames[index] <= 0) {
                     if (!lbl_80265B70.curTime) {
                         work->emissionDelays[index] = 60.0f * (1.0f + 0.5f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                     } else {
                         work->emissionDelays[index] = 60.0f * (2.0f +
-                            W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+                            3.7252903e-09f * (float) mbRandMod(0x10000000));
                     }
                     if (!lbl_80265B70.curTime) {
                         work->burstFrames[index] = 60.0f * (0.5f + 0.2f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                     } else {
                         work->burstFrames[index] = 60.0f * (0.2f + 0.1f *
-                            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                     }
                 }
             }
@@ -1966,7 +1853,7 @@ void fn_1_1BD8(OMOBJ *object) {
             work->orbitAngles[index] -= 360.0f;
         }
         work->bobAngles[index] += 3.0f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000));
         position.x = lbl_1_data_594.x + work->orbitRadii[index] *
             sin((M_PI * work->orbitAngles[index]) / 180.0);
         position.z = lbl_1_data_594.z + work->orbitRadii[index] *
@@ -2813,8 +2700,8 @@ void fn_1_4FB0(void) {
     finished = 0;
     eventStarted = 0;
     fn_1_7814();
-    playerCount = fn_1_786C(players, W02_ROUTE_SPACE_ATTR_6_FLAG);
-    destinationSpace = mbMasuMAttrFindLink(path->spaceIds[0], W02_ROUTE_SPACE_ATTR_8_FLAG);
+    playerCount = fn_1_786C(players, (1 << 6));
+    destinationSpace = mbMasuMAttrFindLink(path->spaceIds[0], (1 << 8));
     mbMasuNextDispSet(0);
     work->coinRewardCount += mbRandMod(3) + 4;
     sound = mbAudFXPlay(MSM_SE_BRD02_ROUTE_BOARD_TRAVEL);
@@ -2930,7 +2817,7 @@ void fn_1_544C(void) {
     finished = 0;
     eventStarted = 0;
     fn_1_7814();
-    playerCount = fn_1_786C(players, W02_ROUTE_SPACE_ATTR_7_FLAG);
+    playerCount = fn_1_786C(players, (1 << 7));
     mbMasuLinkParentGet(path->spaceIds[0], parentSpaces);
     destinationSpace = parentSpaces[0];
     mbMasuNextDispSet(0);
@@ -3047,8 +2934,8 @@ void fn_1_58E8(void) {
     finished = 0;
     eventStarted = 0;
     fn_1_7814();
-    playerCount = fn_1_786C(players, W02_ROUTE_SPACE_ATTR_9_FLAG);
-    destinationSpace = mbMasuMAttrFindLink(path->spaceIds[0], W02_ROUTE_SPACE_ATTR_10_FLAG);
+    playerCount = fn_1_786C(players, (1 << 9));
+    destinationSpace = mbMasuMAttrFindLink(path->spaceIds[0], (1 << 10));
     mbMasuNextDispSet(0);
     sound = mbAudFXPlay(MSM_SE_BRD02_ROUTE_BOARD_TRAVEL);
     mbObjMotionSpeedSet(path->boardModelId, 2.72f);
@@ -3166,7 +3053,7 @@ void fn_1_5D6C(void) {
     finished = 0;
     cameraMoved = 0;
     fn_1_7814();
-    playerCount = fn_1_786C(players, W02_ROUTE_SPACE_ATTR_8_FLAG);
+    playerCount = fn_1_786C(players, (1 << 8));
     for (index = 0; index < playerCount; index++) {
         participants[index] = players[index];
     }
@@ -3223,10 +3110,10 @@ void fn_1_5D6C(void) {
         playerNo = participants[participantIndex];
         coinCounts[participantIndex]++;
         frame = 60.0f * (0.2f + 0.1f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
         mbPlayerPosGet(playerNo, &position);
         position.x += 0.5f * (100.0f * (-0.5f +
-            W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            3.7252903e-09f * (float) mbRandMod(0x10000000)));
         position.y = 50.0f + anchor.y;
         position.z = path->markerStart.z - 15.000001f * (float) frame;
         velocity.x = velocity.y = 0.0f;
@@ -3297,8 +3184,8 @@ void fn_1_6378(void) {
     eventStarted = 0;
     particlesEmitted = 0;
     fn_1_7814();
-    playerCount = fn_1_786C(players, W02_ROUTE_SPACE_ATTR_10_FLAG);
-    destinationSpace = mbMasuMAttrFindLink(path->spaceIds[0], W02_ROUTE_SPACE_ATTR_8_FLAG);
+    playerCount = fn_1_786C(players, (1 << 10));
+    destinationSpace = mbMasuMAttrFindLink(path->spaceIds[0], (1 << 8));
     mbMasuPosGet(path->spaceIds[1], &nextSpace);
     mbMasuPosGet(path->spaceIds[0], &firstSpace);
     PSVECSubtract(&firstSpace, &nextSpace, &step);
@@ -3352,23 +3239,23 @@ void fn_1_6378(void) {
             players[index] = -1;
             for (particleIndex = 0; particleIndex < 32; particleIndex++) {
                 spawn.x = position.x + 100.0f * (0.5f * (-0.5f +
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 spawn.y = position.y + 100.0f * (0.5f * (-0.5f +
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 spawn.z = position.z + 100.0f * (0.5f * (-0.5f +
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 velocity.x = 100.0f * (0.1f * (-0.5f +
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
-                velocity.y = 100.0f * (0.1f * -(W02_RANDOM_FRACTION_SCALE *
+                    3.7252903e-09f * (float) mbRandMod(0x10000000)));
+                velocity.y = 100.0f * (0.1f * -(3.7252903e-09f *
                     (float) mbRandMod(0x10000000)));
                 velocity.z = 100.0f * (0.1f * (-0.5f +
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
-                brightness = W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000);
+                    3.7252903e-09f * (float) mbRandMod(0x10000000)));
+                brightness = 3.7252903e-09f * (float) mbRandMod(0x10000000);
                 color.r = 192.0f + 32.0f * brightness;
                 color.g = 192.0f + 32.0f * brightness;
                 color.b = 192.0f + 32.0f * brightness;
                 color.a = 127.0f + 63.0f *
-                    (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+                    (3.7252903e-09f * (float) mbRandMod(0x10000000));
                 particleColor = color;
                 colorPtr = &particleColor;
                 particleVelocity = velocity;
@@ -3376,11 +3263,11 @@ void fn_1_6378(void) {
                 particlePosition = spawn;
                 positionPtr = &particlePosition;
                 fn_1_176E4(positionPtr, velocityPtr,
-                           100.0f * (1.0f + 0.5f * (W02_RANDOM_FRACTION_SCALE *
+                           100.0f * (1.0f + 0.5f * (3.7252903e-09f *
                                                     (float) mbRandMod(0x10000000))),
-                           0.5f * (-0.5f + W02_RANDOM_FRACTION_SCALE *
+                           0.5f * (-0.5f + 3.7252903e-09f *
                                                (float) mbRandMod(0x10000000)),
-                           0.33f + 0.66f * (W02_RANDOM_FRACTION_SCALE *
+                           0.33f + 0.66f * (3.7252903e-09f *
                                             (float) mbRandMod(0x10000000)),
                            colorPtr);
                 /* The flag is set for each emitted particle; completion does not read it. */
@@ -3617,7 +3504,7 @@ void fn_1_7418(OMOBJ *object) {
             if (mbCapMasuDispTypeGet(group->spaceIds[particleIndex]) == 1) {
                 particle->alpha = 0;
             } else {
-                particle->alpha = W02_PATH_PARTICLE_ALPHA_MAX;
+                particle->alpha = 255;
             }
         }
     }
@@ -4025,12 +3912,12 @@ void fn_1_87D0(HuVecF *start, HuVecF *velocity, s32 playerNo, s32 duration) {
     effect->duration = duration;
     effect->playerNo = playerNo;
     effect->spinSpeed = 10.0f *
-        (-0.5f + W02_RANDOM_FRACTION_SCALE * (f32) (u32) mbRandMod(0x10000000));
+        (-0.5f + 3.7252903e-09f * (f32) (u32) mbRandMod(0x10000000));
     effect->position = *start;
     effect->velocity = *velocity;
     effect->rotation.x = effect->rotation.z = 0.0f;
     effect->rotation.y = 360.0f *
-        (W02_RANDOM_FRACTION_SCALE * (f32) (u32) mbRandMod(0x10000000));
+        (3.7252903e-09f * (f32) (u32) mbRandMod(0x10000000));
     /* This initial target is replaced with the player's position when the coin starts its chase. */
     mbPlayerPosGet(playerNo, &effect->end);
     mbCoinObjPosSetV((s16) effect->objectId, &effect->position);
@@ -4142,7 +4029,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
             if (lbl_80265750[playerNo].comDif < 2) {
                 currentStarDistance = mbMasuFind_TypeStepGet(spaceId, 7);
                 if (currentStarDistance > 10 &&
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000) > 0.3f) {
+                    3.7252903e-09f * (float) mbRandMod(0x10000000) > 0.3f) {
                     mbComChoiceUpSet();
                 } else {
                     mbComChoiceDownSet();
@@ -4511,7 +4398,7 @@ void fn_1_A554(s32 playerNo) {
     } else {
         mbObjAlphaSet(modelObject, 192);
     }
-    mbPlayerAttrSet(playerNo, W02_PLAYER_EVENT_ATTR_11_FLAG);
+    mbPlayerAttrSet(playerNo, (1 << 11));
     for (objectIndex = 0; objectIndex < modelData->materialNum; objectIndex++, material++) {
         material->litColor[0] = 255;
         material->litColor[1] = 255;
@@ -4522,7 +4409,7 @@ void fn_1_A554(s32 playerNo) {
         material->shadowColor[0] = 255;
         material->shadowColor[1] = 255;
         material->shadowColor[2] = 255;
-        material->flags |= W02_MATERIAL_ATTR_4_FLAG;
+        material->flags |= (1 << 4);
         material->flags &= ~0x1202;
     }
 }
@@ -4893,8 +4780,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
     work = lbl_1_bss_8;
     list = NULL;
     playerSpace = lbl_80265750[playerNo].masuId;
-    stationSpace = mbMasuAttrFindLink((s16) playerSpace, W02_STATION_LINK_ATTR_FLAG);
-    exitSpace = mbMasuAttrFindLink(stationSpace, W02_STATION_LINK_ATTR_FLAG);
+    stationSpace = mbMasuAttrFindLink((s16) playerSpace, (1 << 13));
+    exitSpace = mbMasuAttrFindLink(stationSpace, (1 << 13));
     mbMasuPosGet((s16) playerSpace, &playerStart);
     mbMasuPosGet((s16) stationSpace, &stationPosition);
     if (exitSpace != -1) {
@@ -5301,23 +5188,23 @@ s32 fn_1_D4D0(HuVecF *start, HuVecF *end) {
     entry->flightStage = 0;
     entry->age = 0;
     entry->travelFrames = 60.0f * (0.4f +
-        0.3f * (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+        0.3f * (3.7252903e-09f * (float) mbRandMod(0x10000000)));
     entry->jumpHeight = 100.0f * (1.2f +
-        0.6f * (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+        0.6f * (3.7252903e-09f * (float) mbRandMod(0x10000000)));
     entry->rotationSpeed = 20.0f * (-0.5f +
-        W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+        3.7252903e-09f * (float) mbRandMod(0x10000000));
     entry->start = *start;
     entry->end = *end;
     entry->rotation.x = 0.0f;
     entry->rotation.y = 360.0f *
-        (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+        (3.7252903e-09f * (float) mbRandMod(0x10000000));
     entry->rotation.z = 0.0f;
     entry->bend.x = entry->start.x + 0.5f * (entry->end.x - entry->start.x) +
         0.5f * (100.0f * (-0.5f +
-            W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            3.7252903e-09f * (float) mbRandMod(0x10000000)));
     entry->bend.z = entry->start.z + 0.5f * (entry->end.z - entry->start.z) +
         0.5f * (100.0f * (-0.5f +
-            W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            3.7252903e-09f * (float) mbRandMod(0x10000000)));
     entry->bend.y = entry->start.y;
     positionModel = entry->modelId;
     mbObjPosSetV(positionModel, &entry->start);
@@ -5382,9 +5269,9 @@ void fn_1_D8EC(OMOBJ *object) {
                 } else {
                     entry->age = 0;
                     entry->travelFrames = 60.0f * (0.4f +
-                        0.3f * (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                        0.3f * (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                     entry->jumpHeight = 100.0f * (1.2f +
-                        0.6f * (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                        0.6f * (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                     entry->flightStage++;
                     mbAudFXPlay(MSM_SE_CMN_COIN_BOUNCE);
                 }
@@ -6008,17 +5895,17 @@ void fn_1_100A8(s32 playerNo, s32 emissionState, s32 targetPlayer) {
     if (emissionState > 0 && (frame & 7) == 0) {
         if (targetPlayer == -1) {
             position.x = 60.0f * (100.0f * (-0.5f +
-                W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                3.7252903e-09f * (float) mbRandMod(0x10000000)));
             position.y = 500.0f;
             position.z = -5000.0f + 60.0f * (100.0f *
-                (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                (3.7252903e-09f * (float) mbRandMod(0x10000000)));
             fn_1_10AC0(&position, 0);
         } else {
             mbPlayerPosGet(targetPlayer, &position);
             position.x += 10.0f * (100.0f * (-0.5f +
-                W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                3.7252903e-09f * (float) mbRandMod(0x10000000)));
             position.z += 10.0f * (100.0f * (-0.5f +
-                W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                3.7252903e-09f * (float) mbRandMod(0x10000000)));
             fn_1_10AC0(&position, 1);
         }
     }
@@ -6026,28 +5913,28 @@ void fn_1_100A8(s32 playerNo, s32 emissionState, s32 targetPlayer) {
         for (index = 0; index < 2; index++) {
             if (targetPlayer == -1) {
                 position.x = 60.0f * (100.0f * (-0.5f +
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 position.y = 500.0f;
                 position.z = -5000.0f + 60.0f * (100.0f *
-                    (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 fn_1_120B4(&position, 0);
             } else {
                 mbPlayerPosGet(targetPlayer, &position);
                 position.x += 15.0f * (100.0f * (-0.5f +
-                    W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 position.y += 5.0f * (100.0f *
-                    (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 position.z += 5.0f * (100.0f *
-                    (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+                    (3.7252903e-09f * (float) mbRandMod(0x10000000)));
                 fn_1_120B4(&position, 1);
             }
         }
     } else if (emissionState <= 0 && (float) emissionState > -60.0f && (frame & 3) == 0) {
         position.x = 60.0f * (100.0f * (-0.5f +
-            W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            3.7252903e-09f * (float) mbRandMod(0x10000000)));
         position.y = 500.0f;
         position.z = -5000.0f + 60.0f * (100.0f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
         fn_1_120B4(&position, 0);
     }
     work->emissionFrame++;
@@ -6125,7 +6012,7 @@ s32 fn_1_10AC0(HuVecF *position, s32 shortFlight) {
     }
     fn_1_10D20(effect, position, 1.0f, 0.75f);
     effect->spinRateScale = 0.5f + 0.5f *
-        (W02_RANDOM_FRACTION_SCALE * (f32) (u32) mbRandMod(0x10000000));
+        (3.7252903e-09f * (f32) (u32) mbRandMod(0x10000000));
     if (shortFlight) {
         effect->remainingFrames = 20;
     }
@@ -6135,9 +6022,9 @@ s32 fn_1_10AC0(HuVecF *position, s32 shortFlight) {
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     effect->state = index;
     effect->rotation.x = 180.0f *
-        (W02_RANDOM_FRACTION_SCALE * (f32) (u32) mbRandMod(0x10000000));
+        (3.7252903e-09f * (f32) (u32) mbRandMod(0x10000000));
     effect->rotation.y = 180.0f *
-        (W02_RANDOM_FRACTION_SCALE * (f32) (u32) mbRandMod(0x10000000));
+        (3.7252903e-09f * (f32) (u32) mbRandMod(0x10000000));
     effect->rotation.z = 0.0f;
     mbObjPosSetV(effect->objectId, &effect->start);
     mbObjRotSetV(effect->objectId, &effect->rotation);
@@ -6172,20 +6059,20 @@ void fn_1_10D20(EventFlyingEffect *effect, HuVecF *position, float scale, float 
     distance = PSVECMag(&displacement);
     PSVECScale(&displacement, &displacement, spread);
     effect->control.x = displacement.x + 0.2f *
-        (distance * (-0.5f + W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+        (distance * (-0.5f + 3.7252903e-09f * (float) mbRandMod(0x10000000)));
     effect->control.y = displacement.y + 0.2f *
-        (distance * (-0.5f + W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+        (distance * (-0.5f + 3.7252903e-09f * (float) mbRandMod(0x10000000)));
     effect->control.z = displacement.z + 0.2f *
-        (distance * (-0.5f + W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+        (distance * (-0.5f + 3.7252903e-09f * (float) mbRandMod(0x10000000)));
     PSVECAdd(&effect->control, &effect->start, &effect->control);
     PSVECSubtract(&effect->end, &effect->start, &displacement);
     effect->spinAngle = 360.0f *
-        (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+        (3.7252903e-09f * (float) mbRandMod(0x10000000));
     effect->spinSpeedSlope = 10.0f + 5.0f *
-        (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+        (3.7252903e-09f * (float) mbRandMod(0x10000000));
     effect->startDrift = PSVECMag(&displacement);
     effect->spiralRadius = 0.15f * effect->startDrift + 100.0f *
-        (1.0f + W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+        (1.0f + 3.7252903e-09f * (float) mbRandMod(0x10000000));
     effect->spinRateScale = 1.0f;
     /* Replace a nonpositive speed scale with 0.01 and keep the resulting trip at least one frame
      * long. */
@@ -6492,22 +6379,22 @@ void fn_1_120B4(HuVecF *position, s32 shortFlight) {
     }
     if (effectIndex < 256) {
         fn_1_10D20(flight, position,
-            1.0f + W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000), 0.75f);
+            1.0f + 3.7252903e-09f * (float) mbRandMod(0x10000000), 0.75f);
         flight->state = effectIndex;
         flight->spiralRadius *= 1.0f + 0.2f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000));
         flight->mode = 1;
         if (shortFlight) {
             flight->remainingFrames = 20;
         }
         flight->active = TRUE;
         particle->value = 100.0f * (1.0f + 0.5f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
         particle->position = *position;
         particle->type = 3 * ((frand() & 0x7FFF) % 3);
         particle->color.a = 0;
         particle->maxAlpha = 64.0f + 64.0f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000));
         particle->alphaStep = 8;
         PSVECSubtract(&work->origin, position, &direction);
         horizontalLength = sqrtf(direction.x * direction.x + direction.z * direction.z);
@@ -6570,15 +6457,15 @@ s32 fn_1_126AC(HuVecF *position, s32 shortFlight) {
     }
     fn_1_10D20(effect, position, 1.0f, 0.5f);
     effect->spinRateScale =
-        0.5f + 0.5f * (W02_RANDOM_FRACTION_SCALE * mbRandMod(0x10000000));
+        0.5f + 0.5f * (3.7252903e-09f * mbRandMod(0x10000000));
     if (shortFlight) {
         effect->remainingFrames = 15;
     }
     mbCoinObjDispSet(effect->objectId, TRUE);
     effect->active = TRUE;
     effect->state = index;
-    effect->rotation.x = 180.0f * (W02_RANDOM_FRACTION_SCALE * mbRandMod(0x10000000));
-    effect->rotation.y = 180.0f * (W02_RANDOM_FRACTION_SCALE * mbRandMod(0x10000000));
+    effect->rotation.x = 180.0f * (3.7252903e-09f * mbRandMod(0x10000000));
+    effect->rotation.y = 180.0f * (3.7252903e-09f * mbRandMod(0x10000000));
     effect->rotation.z = 0.0f;
     mbCoinObjPosSetV(effect->objectId, &effect->start);
     mbCoinObjRotSetV(effect->objectId, &effect->rotation);
@@ -6673,7 +6560,7 @@ OMOBJ *fn_1_12AC8(s32 playerNo, HuVecF *eventPosition) {
     work->timer = 0;
     work->returnFrames = 0;
     work->moveDistance = 100.0f * (0.3f + 0.2f *
-        (W02_RANDOM_FRACTION_SCALE * mbRandMod(0x10000000)));
+        (3.7252903e-09f * mbRandMod(0x10000000)));
     mbPlayerPosGet(playerNo, &work->start);
     PSVECSubtract(eventPosition, &work->start, &direction);
     direction.y = 0.0f;
@@ -6707,7 +6594,7 @@ void fn_1_12CB8(OMOBJ *object) {
     switch (move->state) {
     case 0:
         move->timer += 1.0f + 2.0f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000));
         progress = fabs(BoardSinDeg(move->timer));
         position.x = move->start.x + progress * (move->destination.x - move->start.x);
         position.y = move->start.y + progress * (move->destination.y - move->start.y);
@@ -6721,7 +6608,7 @@ void fn_1_12CB8(OMOBJ *object) {
         break;
     case 1:
         move->timer += 1.0f + 2.0f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000));
         progress = fabs(BoardSinDeg(move->timer));
         position.x = move->start.x + progress * (move->destination.x - move->start.x);
         position.y = move->start.y + progress * (move->destination.y - move->start.y);
@@ -6741,7 +6628,7 @@ void fn_1_12CB8(OMOBJ *object) {
         break;
     case 2:
         move->timer += 1.0f + 2.0f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000));
         progress = fabs(BoardSinDeg(move->timer));
         position.x = move->start.x + progress * (move->destination.x - move->start.x);
         position.y = move->start.y + progress * (move->destination.y - move->start.y);
@@ -6894,8 +6781,8 @@ void fn_1_13708(int playerNo, int spaceId) {
     work->shotIndex = work->shotCount = 0;
     costs = lbl_1_data_C64[lbl_80265750[playerNo].rank];
     originalSpace = spaceId;
-    nextSpace = mbMasuAttrFindLink(originalSpace, W02_STATION_LINK_ATTR_FLAG);
-    exitSpace = mbMasuAttrFindLink(nextSpace, W02_STATION_LINK_ATTR_FLAG);
+    nextSpace = mbMasuAttrFindLink(originalSpace, (1 << 13));
+    exitSpace = mbMasuAttrFindLink(nextSpace, (1 << 13));
     mbMasuPosGet(originalSpace, &playerStart);
     mbMasuPosGet(nextSpace, &stationPosition);
     if ((readStatus = mbBGRead(0x100000)) != -1) {
@@ -7350,12 +7237,12 @@ void fn_1_150F0(OMOBJ *object) {
     progress = (float) ++object->work[2] / 30.0f;
     mbev_CapVecChase(progress, &path->trailStart, &path->trailEnd, &position);
     velocity.x = velocity.y = velocity.z = 0.0f;
-    brightness = 63.0f * (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+    brightness = 63.0f * (3.7252903e-09f * (float) mbRandMod(0x10000000));
     color.r = 192.0f + brightness;
     color.g = 192.0f + brightness;
     color.b = 192.0f + brightness;
     color.a = 192.0f + 63.0f *
-        (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+        (3.7252903e-09f * (float) mbRandMod(0x10000000));
     particleColor = color;
     colorPtr = &particleColor;
     particleVelocity = velocity;
@@ -7364,10 +7251,10 @@ void fn_1_150F0(OMOBJ *object) {
     positionPtr = &particlePosition;
     fn_1_176E4(positionPtr, velocityPtr,
         100.0f * (1.0f + 0.5f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000))),
-        -0.5f + W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000),
+            (3.7252903e-09f * (float) mbRandMod(0x10000000))),
+        -0.5f + 3.7252903e-09f * (float) mbRandMod(0x10000000),
         0.33f + 0.66f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)), colorPtr);
+            (3.7252903e-09f * (float) mbRandMod(0x10000000)), colorPtr);
     if (progress >= 1.0f || work->throwStopped) {
         object->work[0]++;
         object->work[3] = 1;
@@ -7560,7 +7447,7 @@ s32 fn_1_15DE4(s32 spaceId) {
     {
         return - 1;
     }
-    return (groupAttributes >> W02_STAR_SPACE_GROUP_SHIFT) & 7;
+    return (groupAttributes >> 18U) & 7;
 }
 
 /* Creates an initially inactive quad sprite pool and its indexed display list. */
@@ -7839,8 +7726,8 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
                     }
                 }
             }
-            hook->flags &= ~W02_HOOK_UV_INITIALIZED_FLAG;
-        } else if (!(hook->flags & W02_HOOK_UV_INITIALIZED_FLAG)) {
+            hook->flags &= ~(1 << 4);
+        } else if (!(hook->flags & (1 << 4))) {
             for (particleIndex = 0; particleIndex < hook->particleCount;
                  particleIndex++, particle++) {
                 for (cornerIndex = 0; cornerIndex < 4; cornerIndex++, texture++) {
@@ -7848,7 +7735,7 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
                     texture->y = 4.0f * lbl_1_data_D74[cornerIndex].y;
                 }
             }
-            hook->flags |= W02_HOOK_UV_INITIALIZED_FLAG;
+            hook->flags |= (1 << 4);
         }
         DCFlushRangeNoSync(hook->positions, hook->particleCount * sizeof(HuVecF) * 4);
         DCFlushRangeNoSync(hook->textureCoordinates, hook->particleCount * sizeof(HuVec2f) * 4);
@@ -8089,7 +7976,7 @@ s32 fn_1_176E4(HuVecF *position, HuVecF *velocity, float activityValue,
     particle->rotationSpeed = rotationSpeed;
     particle->activityValue = activityValue;
     particle->color = *color;
-    particle->rotation = 360.0f * (W02_RANDOM_FRACTION_SCALE * mbRandMod(0x10000000));
+    particle->rotation = 360.0f * (3.7252903e-09f * mbRandMod(0x10000000));
     particle->timer = 0;
     particle->frame = 0;
     particle->animationTime = 0.0f;
@@ -8122,21 +8009,21 @@ void fn_1_17894(HuVecF *origin, HuVecF *angles, s32 count) {
         angle = (360.0f / (float) count) * (float) particleIndex;
         sine = mbSinDeg(angle);
         velocity.x = 0.075f * (100.0f * sine) * (0.9f + 0.1f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
         velocity.y = 0.0f;
         cosine = mbCosDeg(angle);
         velocity.z = 0.075f * (100.0f * cosine) * (0.9f + 0.1f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000)));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000)));
         PSMTXMultVec(matrix, &velocity, &velocity);
-        brightness = 63.0f * (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+        brightness = 63.0f * (3.7252903e-09f * (float) mbRandMod(0x10000000));
         color.r = (u8) (192 + brightness);
         color.g = (u8) (192 + brightness);
         color.b = (u8) (192 + brightness);
         color.a = 192.0f + 63.0f *
-            (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            (3.7252903e-09f * (float) mbRandMod(0x10000000));
         particleColor = color;
         rotationSpeed = 10.0f * (-0.5f +
-            W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(0x10000000));
+            3.7252903e-09f * (float) mbRandMod(0x10000000));
         particleVelocity = velocity;
         particlePosition = position;
         EmitSpriteParticle(&particlePosition, &particleVelocity, 200.0f,

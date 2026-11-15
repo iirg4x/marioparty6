@@ -61,19 +61,19 @@ void *lbl_1_bss_8;
 u8 *lbl_1_bss_4;
 OMOBJ *lbl_1_bss_0;
 
-typedef struct W05EffectWork_s {
+typedef struct {
     s32 modelId; /* Board particle model that receives the effect. */
     s32 count; /* Number of particles still active in this shared effect. */
     void *animation; /* Sprite animation data retained for the particle model. */
 } W05_EFFECT_WORK;
 
-typedef struct W05EffectOwner_s {
+typedef struct {
     s32 modelId; /* Board particle model that owns the active particles. */
     s32 activeCount; /* Number of particles still active in this shared effect. */
     void *animation; /* Sprite animation data retained for the particle model. */
 } W05_EFFECT_OWNER;
 
-typedef struct W05ColorEffectWork_s {
+typedef struct {
     s32 modelId; /* Board particle model used for colored particles. */
     s32 activeCount; /* Particles that have not finished fading. */
     s32 state; /* Cleared during setup; otherwise unused by this module. */
@@ -90,7 +90,7 @@ extern s16 *mbCapEffData;
         } \
     } while (0)
 
-typedef struct W05TwinEffectWork_s {
+typedef struct {
     s32 modelId[2];
     s32 activeCount[2];
     ANIMDATA *animation;
@@ -98,7 +98,7 @@ typedef struct W05TwinEffectWork_s {
 
 extern BOOL mbSaveNewF;
 
-typedef struct W05ArrivalWork_s {
+typedef struct {
     u8 objectState[132];
     s32 eventRequested;
     s32 arrivalModel;
@@ -106,12 +106,12 @@ typedef struct W05ArrivalWork_s {
     s32 movingModel;
 } W05_ARRIVAL_WORK;
 
-typedef struct W05ParticleWork_s {
+typedef struct {
     s32 modelId; /* Board particle model advanced by the task callback. */
     s32 activeCount; /* Particles currently visible or moving. */
 } W05_PARTICLE_WORK;
 
-typedef struct W05TeresaSceneWork_s {
+typedef struct {
     u8 modelState[32];
     s32 motionModels[2]; /* Animated models selected by the two event spaces. */
     s32 spaces[2]; /* Spaces whose model motion accompanies Boo's entrance. */
@@ -119,14 +119,14 @@ typedef struct W05TeresaSceneWork_s {
     s32 defaultMotionModel; /* Model used when neither event space matches. */
 } W05_TERESA_SCENE_WORK;
 
-typedef struct W05SurfaceVertex_s {
+typedef struct {
     HuVecF phase; /* Independent wave phases in degrees for each axis. */
     HuVecF amplitude; /* Sine amplitudes; the y baseline is position.y minus amplitude.y. */
     HuVecF phaseStep; /* Added to the phases when the surface animation advances. */
     HuVecF position; /* Original model vertex coordinates. */
 } W05_SURFACE_VERTEX;
 
-typedef struct W05DrawWork_s {
+typedef struct {
     u8 sceneState[80];
     s32 modelId;
     s32 surfaceHookModel;

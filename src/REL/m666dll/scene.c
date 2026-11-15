@@ -67,15 +67,6 @@
 #include "REL/m666dll/tables.h"
 #include "humath.h"
 
-#define M666_CLUSTER_MOTION_CLEAR_MASK ((s32)((3U << 30) | (1U << 0)))
-#define M666_TRANSFORM_TRAILING_DATA_TWO (2 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_THREE (3 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_FIVE (5 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_SIX (6 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_SEVEN (7 << 16)
-#define M666_FLOAT_30_BIT_PATTERN 0x41F00000
-#define M666_FLOAT_28_BIT_PATTERN 0x41E00000
-
 typedef struct {
     MGACTOR *actor;
     MGACTOR *secondaryActor;
@@ -214,8 +205,6 @@ typedef struct {
     u32 unk10; /* No code names this field. */
 } M666DataTransform;
 
-typedef M666DataTransform M666ModelTransform;
-
 typedef struct {
     u32 fileId;
     u32 flags;
@@ -296,46 +285,46 @@ M666DataTransform lbl_1_data_2A0[48] = {
     {{-300.0f, 60.0f, -2920.0f}, 0.0f, 65536},
     {{-300.0f, 60.0f, -3140.0f}, 0.0f, 65536},
     {{-300.0f, 60.0f, -3360.0f}, 0.0f, 65536},
-    {{0.0f, 60.0f, -1820.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2040.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2260.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2480.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2700.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2920.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -3140.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -3360.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{300.0f, 60.0f, -1820.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2040.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2260.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2480.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2700.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2920.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -3140.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -3360.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, 1820.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2040.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2260.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2480.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2700.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2920.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 3140.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 3360.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{0.0f, 60.0f, 1820.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2040.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2260.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2480.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2700.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2920.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 3140.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 3360.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{-300.0f, 60.0f, 1820.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2040.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2260.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2480.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2700.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2920.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 3140.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 3360.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN}
+    {{0.0f, 60.0f, -1820.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2040.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2260.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2480.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2700.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2920.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -3140.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -3360.0f}, 0.0f, (2 << 16)},
+    {{300.0f, 60.0f, -1820.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2040.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2260.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2480.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2700.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2920.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -3140.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -3360.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, 1820.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2040.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2260.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2480.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2700.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2920.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 3140.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 3360.0f}, 180.0f, (5 << 16)},
+    {{0.0f, 60.0f, 1820.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2040.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2260.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2480.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2700.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2920.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 3140.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 3360.0f}, 180.0f, (6 << 16)},
+    {{-300.0f, 60.0f, 1820.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2040.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2260.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2480.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2700.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2920.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 3140.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 3360.0f}, 180.0f, (7 << 16)}
 };
 M666JointMotionResource lbl_1_data_660[4] = {
     {DATANUM(0x7d0000, 35), ((1 << 30) | (1 << 0))},
@@ -455,7 +444,6 @@ void fn_1_B54(void) {
     s16 lightId;
     s16 modelId;
     s16 collisionModelId;
-    s32 playerIndex;
     s32 modelIndex;
 
     lightId = fn_800286D0(&lbl_1_data_70, &lbl_1_data_7C,
@@ -512,18 +500,6 @@ void fn_1_B54(void) {
 
 typedef void (*VoidFunc)(void);
 
-extern const VoidFunc _ctors[];
-
-extern const VoidFunc _dtors[];
-
-extern MGSEQ_PARAM lbl_1_data_0;
-
-extern char lbl_1_data_28[20];
-
-extern s16 lbl_1_bss_0;
-
-extern const char lbl_1_data_3C[];
-
 typedef struct {
     s16 effectIds[14];
 } M666EffectTable;
@@ -531,7 +507,6 @@ typedef struct {
 /* Called by fn_1_78C for the microphone-player victory; sets its winner and awards 10 coins
  * outside practice mode. */
 void fn_1_F8C(void) {
-    s32 playerIndex;
 
     fn_80071C18(lbl_1_bss_98.charNo, -1, -1, -1);
     GWMgCoinBonusSet(lbl_1_bss_98.playerIndex, 10);
@@ -667,7 +642,6 @@ void fn_1_15F0(void) {
  * and award 10 coins outside practice mode. */
 void fn_1_1680(void) {
     s32 playerIndex;
-    s32 playerNumber;
     MGPLAYER *player;
 
     fn_80071C18(lbl_1_bss_8[0].charNo, lbl_1_bss_8[1].charNo,
@@ -793,8 +767,6 @@ void fn_1_1CBC(s16 playerIndex) {
     MGACTOR *playerActor;
     M666SequenceItemView *obstacleSequence;
     f32 heading;
-    f32 xDistance;
-    f32 zDistance;
     s32 xZone;
     s32 zZone;
     s32 groupIndex;
@@ -923,8 +895,6 @@ void fn_1_2458(s16 playerIndex) {
     f32 distance;
     f32 desiredAngle;
     f32 currentAngle;
-    s32 inputX;
-    s32 inputZ;
     s32 groupIndex;
     s32 obstacleIndex;
     s32 closestGroup;
@@ -937,7 +907,6 @@ void fn_1_2458(s16 playerIndex) {
     s16 directions[4];
     s16 directionThresholds[4] = {90, 50, 10, 0};
     f32 avoidanceRanges[4] = {250.0f, 300.0f, 350.0f, 400.0f};
-    M666PlayerRecord *currentPlayer;
     MGPLAYER *gamePlayer;
     MGACTOR *playerActor;
 
@@ -1331,7 +1300,7 @@ void fn_1_40F8(s16 playerIndex, s16 action) {
             fn_80026790(lbl_1_bss_8[playerIndex].modelId, &actorPosition);
             fn_8002D30C(lbl_1_bss_8[playerIndex].modelId, 0, 2.0f);
             fn_80026AE4(lbl_1_bss_8[playerIndex].modelId, 0,
-                                    M666_CLUSTER_MOTION_CLEAR_MASK);
+                                    ((s32)((3U << 30) | (1U << 0))));
             fn_80026808(lbl_1_bss_8[playerIndex].modelId, 0.0f,
                             (f32) (180.0 * (atan2((f64) actorPosition.x, (f64) actorPosition.z) /
                                             M_PI)),
@@ -1553,8 +1522,6 @@ void fn_1_4D20(void) {
         }
         lbl_1_bss_2 = 0;
     }}
-
-typedef M666PerimeterWork M666SetupWorkView;
 
 /* Loads ten sprite animations and creates three perimeter models, each with seven joint motions
  * and a sprite group. */
@@ -1784,7 +1751,6 @@ void fn_1_5A78(void) {
     Vec otherPerimeterPosition;
     s32 perimeterIndex;
     s32 otherPerimeterIndex;
-    s16 workType;
 
     for (perimeterIndex = 0; perimeterIndex < 3; perimeterIndex++) {
         fn_800267CC(lbl_1_bss_D84[perimeterIndex].modelId, &perimeterPosition);
@@ -2491,8 +2457,6 @@ void fn_1_88B4(s16 groupIndex, s16 entryIndex);
 
 void fn_1_8964(s16 groupIndex, s16 entryIndex);
 
-typedef M666DataTransform M666StartPosition;
-
 void fn_1_8A14(s16 groupIndex, s16 obstacleIndex);
 
 void fn_1_901C(s32 groupIndex, s32 entryIndex);
@@ -2606,8 +2570,6 @@ void fn_1_8A14(s16 groupIndex, s16 obstacleIndex) {
 }
 
 void fn_1_8B88(s32 groupIndex, s32 entryIndex);
-
-typedef M666DataTransform M666ObstacleSpawnPoint;
 
 f32 lbl_1_data_810[8] = {
     820.0f, 1040.0f, 1260.0f, 1480.0f,
@@ -2806,7 +2768,6 @@ void fn_1_9260(void) {
     Point3d position;
     s32 groupIndex;
     s32 obstacleIndex;
-    s32 playerIndex;
     f32 angle;
 
     lbl_1_bss_E90 = 0;
@@ -3348,14 +3309,10 @@ void fn_1_B854(void) {
     s32 fallingModelIndex;
     s32 otherGroup;
     s32 entryIndex;
-    s32 openingIndex;
-    s32 pointIndex;
-    f32 distanceSquared;
     f32 impactVerticalStep;
     f32 magnitude;
     f32 absoluteVerticalStep;
     M666ActorWork *actorWork;
-    M666PerimeterMotion *perimeterMotion;
 
     mode = fn_80071A8C();
     for (fallingModelIndex = 0; fallingModelIndex < 3; fallingModelIndex++) {

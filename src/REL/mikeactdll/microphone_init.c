@@ -158,8 +158,6 @@ void fn_1_320(void)
     }
 }
 
-s32 fn_1_3024(Point3d *position);
-
 extern u16 lbl_1_bss_38;
 
 extern u16 lbl_1_bss_3A;

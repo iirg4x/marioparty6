@@ -1,7 +1,7 @@
-#include <vector>
 #ifndef REL_M672DLL_RESOURCES_H
 #define REL_M672DLL_RESOURCES_H
 
+#include <vector>
 #include "REL/framework/event_packet.h"
 #include <math.h>
 #include "REL/framework/model.h"

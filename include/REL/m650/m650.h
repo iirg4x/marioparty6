@@ -1,4 +1,6 @@
 /* Shared Throw Me a Bone state and data declarations. */
+#ifndef M650_H
+#define M650_H
 #include "game/main.h"
 #include "game/object.h"
 #include "game/audio.h"
@@ -20,8 +22,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#ifndef M650_H
-#define M650_H
 
 /* Shared state used by the Throw Me a Bone sequence and callbacks. */
 typedef struct M650Scene {

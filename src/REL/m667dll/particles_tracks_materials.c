@@ -44,10 +44,6 @@ typedef struct M667ParticleConfigView {
     f32 colorInterpolation;            /* Blend fraction from startingColor to targetColor. */
 } M667ParticleConfigView;
 
-#define PARTICLE_SCALE_ALTERNATE_FLAG (1U << 0)
-#define PARTICLE_DESCRIPTOR_ANIMATION_READY_FLAG (1U << 0)
-#define PARTICLE_DESCRIPTOR_WORK_READY_FLAG (1U << 1)
-
 extern f32 fn_1_7EE0(f32, f32, f32);
 
 /* The particle draw hook advances live slots' motion, color, and scale before rendering. */
@@ -97,7 +93,7 @@ void fn_1_6C88(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             }
 
             if (data->scale) {
-                if ((config[slotIndex].flags & PARTICLE_SCALE_ALTERNATE_FLAG) != 0) {
+                if ((config[slotIndex].flags & (1U << 0)) != 0) {
                 f64 scaleFactor;
                     if (((data->time + slotIndex) & 1) != 0) {
                         scaleFactor = 1.0;
@@ -332,13 +328,13 @@ void fn_1_7664(M667ParticleDescription *work)
         }
         /* Readiness flags skip assignments to local creation values; later creation still uses
          * those locals without loading a saved alternative. */
-        if ((description->flags & PARTICLE_DESCRIPTOR_ANIMATION_READY_FLAG) == 0) {
+        if ((description->flags & (1U << 0)) == 0) {
             resource = fn_80008DD0(description->resourceId, 0x10000000, 2);
             animation = (description->animation = HuSprAnimRead(resource));
             count = description->count;
             blendMode = description->blendMode;
         }
-        if ((description->flags & PARTICLE_DESCRIPTOR_WORK_READY_FLAG) == 0) {
+        if ((description->flags & (1U << 1)) == 0) {
             parameters = HuMemDirectMallocNum(HEAP_HEAP, count * 56, 0x10000000);
             memset(parameters, 0, count * 56);
         }

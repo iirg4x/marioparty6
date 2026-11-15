@@ -221,7 +221,6 @@ Vec fn_1_5F04(LensFlare *, SpritePositionCopy worldPosition, Mtx cameraTransform
     HU3D_CAMERA *camera;
     Vec cameraPosition;
     Vec projectedPosition;
-    f64 sine;
     f32 verticalScale;
     f32 horizontalScale;
 

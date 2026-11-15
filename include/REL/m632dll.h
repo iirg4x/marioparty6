@@ -99,7 +99,6 @@ typedef struct M632GridCandidate {
 
 /* Sorting and floating-point support routines used by the minigame. */
 void fn_1_6574(void *, size_t, size_t, int (*)(const void *, const void *));
-u32 fn_1_7364(f64);
 
 extern MGSEQ_PARAM lbl_1_data_0;
 /* Character model hook names followed during the opening sequence. */

@@ -12,11 +12,6 @@
 #include "humath.h"
 
 
-
-
-
-#define M621_AVAILABLE_COLLISION_MASK 0xFFFFFFFEU
-
 struct M621Effect_s {
     s16 active; /* Nonzero while the linked effect model is playing. */
     HU3D_MODELID model; /* Linked model instance for this effect. */
@@ -82,7 +77,8 @@ char *lbl_1_data_258[21] = {
     "621sambo-samboitiQ", "621sambo-samboitiR", "621sambo-samboitiS",
     "621sambo-samboitiT", "621sambo-samboitiU", "621sambo-samboitiV"
 };
-u32 lbl_1_data_2AC = M621_AVAILABLE_COLLISION_MASK;
+/* Available collision bits; bit 0 is excluded. */
+u32 lbl_1_data_2AC = 0xFFFFFFFEU;
 
 unsigned int lbl_1_data_2B0[17] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1),

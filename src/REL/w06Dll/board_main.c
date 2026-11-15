@@ -51,44 +51,6 @@
 #include "game/board/math.h"
 #include "humath.h"
 
-#define W06_MASU_ATTR_BIT_0_MASK 0x00000001
-#define W06_MASU_ATTR_BIT_1_MASK 0x00000002
-#define W06_MASU_ATTR_BIT_2_MASK 0x00000004
-#define W06_MASU_ATTR_BIT_3_MASK 0x00000008
-#define W06_MASU_ATTR_BIT_4_MASK 0x00000010
-#define W06_MASU_ATTR_BIT_5_MASK 0x00000020
-#define W06_MASU_ATTR_MASK_00110001 0x00110001
-#define W06_MASU_ATTR_MASK_00110004 0x00110004
-#define W06_MASU_ATTR_MASK_00110007 0x00110007
-#define W06_MASU_ATTR_MASK_00110011 0x00110011
-#define W06_MASU_ATTR_MASK_0011000C 0x0011000C
-#define W06_MASU_ATTR_MASK_00110014 0x00110014
-#define W06_MASU_ATTR_MASK_00110016 0x00110016
-#define W06_MASU_ATTR_MASK_0011000D 0x0011000D
-#define W06_MASU_ATTR_MASK_0011001C 0x0011001C
-#define W06_MASU_ATTR_MASK_0011001F 0x0011001F
-#define W06_MASU_ATTR_MASK_00110022 0x00110022
-#define W06_MASU_ATTR_MASK_0011002B 0x0011002B
-#define W06_MASU_ATTR_MASK_00110026 0x00110026
-#define W06_MASU_ATTR_MASK_0011002E 0x0011002E
-#define W06_MASU_ATTR_MASK_00110030 0x00110030
-#define W06_MASU_ATTR_MASK_00110027 0x00110027
-#define W06_MASU_ATTR_MASK_00E1002A 0x00E1002A
-#define W06_MASU_ATTR_ALL_MASK 0xFFFFFFFF
-#define W06_MASU_ATTR_BIT_31_MASK 0x80000000
-#define W06_MASU_ATTR_BIT_30_MASK 0x40000000
-#define W06_MASU_ATTR_BIT_29_MASK 0x20000000
-#define W06_MASU_ATTR_BIT_28_MASK 0x10000000
-#define W06_MASU_ATTR_BIT_27_MASK 0x08000000
-#define W06_MASU_ATTR_BIT_26_MASK 0x04000000
-#define W06_MASU_ATTR_BIT_25_MASK 0x02000000
-#define W06_MASU_ATTR_BIT_24_MASK 0x01000000
-#define W06_MASU_ATTR_BIT_23_MASK 0x00800000
-#define W06_MASU_ATTR_BIT_22_MASK 0x00400000
-#define W06_MASU_ATTR_BIT_21_MASK 0x00200000
-#define W06_MASU_ATTR_BIT_20_MASK 0x00100000
-#define W06_BRANCH_MATTR_BIT_16_MASK (1 << 16)
-
 OMOBJ *lbl_1_data_0[2] = {NULL, NULL};
 s32 lbl_1_data_8 = -1;
 Point3d lbl_1_data_C[6] = {
@@ -106,27 +68,27 @@ Point3d lbl_1_data_54[4] = {
     {4160.0f, 706.0f, -116.0f}
 };
 u32 lbl_1_data_84[40] = {
-    W06_MASU_ATTR_BIT_0_MASK, W06_MASU_ATTR_BIT_1_MASK, W06_MASU_ATTR_BIT_2_MASK,
-    W06_MASU_ATTR_BIT_3_MASK, W06_MASU_ATTR_BIT_4_MASK, W06_MASU_ATTR_BIT_5_MASK,
-    W06_MASU_ATTR_MASK_00110001, W06_MASU_ATTR_MASK_00110004,
-    W06_MASU_ATTR_MASK_00110007, W06_MASU_ATTR_MASK_00110011,
-    W06_MASU_ATTR_MASK_0011000C, W06_MASU_ATTR_MASK_00110014,
-    W06_MASU_ATTR_MASK_00110016, W06_MASU_ATTR_MASK_0011000D,
-    W06_MASU_ATTR_ALL_MASK, 0,
-    0, 0, 0, 0, 0, 0, W06_MASU_ATTR_MASK_0011001C, W06_MASU_ATTR_MASK_0011001F,
-    W06_MASU_ATTR_MASK_00110022, W06_MASU_ATTR_MASK_0011002B,
-    W06_MASU_ATTR_MASK_00110026, W06_MASU_ATTR_MASK_0011002E,
-    W06_MASU_ATTR_MASK_00110030, W06_MASU_ATTR_MASK_00110027,
-    W06_MASU_ATTR_ALL_MASK, 0,
-    0, 0, 0, 0, 0, 0, W06_MASU_ATTR_MASK_00E1002A, W06_MASU_ATTR_ALL_MASK
+    0x00000001, 0x00000002, 0x00000004,
+    0x00000008, 0x00000010, 0x00000020,
+    0x00110001, 0x00110004,
+    0x00110007, 0x00110011,
+    0x0011000C, 0x00110014,
+    0x00110016, 0x0011000D,
+    0xFFFFFFFF, 0,
+    0, 0, 0, 0, 0, 0, 0x0011001C, 0x0011001F,
+    0x00110022, 0x0011002B,
+    0x00110026, 0x0011002E,
+    0x00110030, 0x00110027,
+    0xFFFFFFFF, 0,
+    0, 0, 0, 0, 0, 0, 0x00E1002A, 0xFFFFFFFF
 };
 int lbl_1_data_124[4] = {DATANUM(0xe10000, 44), -1, DATANUM(0xe20000, 42), -1};
 int lbl_1_data_134[2] = {DATANUM(0xe20000, 44), -1};
 u32 lbl_1_data_13C[12] = {
-    W06_MASU_ATTR_BIT_31_MASK, W06_MASU_ATTR_BIT_30_MASK, W06_MASU_ATTR_BIT_29_MASK,
-    W06_MASU_ATTR_BIT_28_MASK, W06_MASU_ATTR_BIT_27_MASK, W06_MASU_ATTR_BIT_26_MASK,
-    W06_MASU_ATTR_BIT_25_MASK, W06_MASU_ATTR_BIT_24_MASK, W06_MASU_ATTR_BIT_23_MASK,
-    W06_MASU_ATTR_BIT_22_MASK, W06_MASU_ATTR_BIT_21_MASK, W06_MASU_ATTR_BIT_20_MASK
+    0x80000000, 0x40000000, 0x20000000,
+    0x10000000, 0x08000000, 0x04000000,
+    0x02000000, 0x01000000, 0x00800000,
+    0x00400000, 0x00200000, 0x00100000
 };
 Point3d lbl_1_data_16C = {-29.0f, 0.0f, 0.0f};
 Point3d lbl_1_data_178 = {0.0f, 139.7f, 205.4f};
@@ -218,8 +180,6 @@ void fn_1_D2E4(s32 model, Mtx matrix);
 void fn_1_E004(BOOL enable);
 void fn_1_E104(void);
 void fn_1_E224(void);
-#define W06DataNumGet(fileNo) \
-    ((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(fileNo))
 
 /* Sets up Clockwork Castle's models, spaces, camera and callbacks when board setup enters it. */
 void fn_1_F4(void)
@@ -240,8 +200,8 @@ void fn_1_F4(void)
         lbl_1_bss_4B0->state[0] = 0;
         lbl_1_bss_4B0->state[1] = 0;
     }
-    mbMasuInit(W06DataNumGet(0));
-    lbl_1_bss_4B4 = mbObjCreate(W06DataNumGet(1), NULL, 0);
+    mbMasuInit(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(0)));
+    lbl_1_bss_4B4 = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(1)), NULL, 0);
     mbObjPosSet(lbl_1_bss_4B4, 0.0f, 0.0f, 0.0f);
     boardModelLoop(lbl_1_bss_4B4);
     mbObjCullRadiusSet(lbl_1_bss_4B4, -1.0f);
@@ -249,31 +209,36 @@ void fn_1_F4(void)
     mbObjMotionTimeSet(lbl_1_bss_4B4, 0.0f);
     boardModelLoop(lbl_1_bss_4B4);
     mbCameraNearFarSet(100.0f, 30000.0f);
-    mbev_ShopInit(W06DataNumGet(2));
+    mbev_ShopInit(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(2)));
     mbev_NextTimeSet(fn_1_B584);
     for (objectIndex = 0; objectIndex < 2; objectIndex++) {
         lbl_1_bss_404.cleanupObjectIds[objectIndex] = objectId =
-            mbObjCreate(W06DataNumGet(DATANUM(0xe10000, 4) + objectIndex), NULL, 0);
+            mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(DATANUM(0xe10000,
+                4) + objectIndex)), NULL, 0);
         mbObjMotionTimeSet(objectId, 0.0f);
         mbObjMotionSpeedSet(objectId, 1.0f);
         mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
     }
     if (lbl_80265B70.curTime == 0) {
         lbl_1_bss_404.cleanupObjectIds[2] = objectId =
-            mbObjCreate(W06DataNumGet(43), lbl_1_data_124, 1);
+            mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(43)),
+                lbl_1_data_124, 1);
     } else {
         lbl_1_bss_404.cleanupObjectIds[2] = objectId =
-            mbObjCreate(W06DataNumGet(43), lbl_1_data_134, 1);
+            mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(43)),
+                lbl_1_data_134, 1);
     }
     mbObjHookSet((s16)lbl_1_bss_404.cleanupObjectIds[0], "hook00",
         (s16)lbl_1_bss_404.cleanupObjectIds[2]);
     mbObjMotionSet((s16)lbl_1_bss_404.cleanupObjectIds[2], 1, ((1 << 30) | (1 << 0)));
     if (lbl_80265B70.curTime == 0) {
         lbl_1_bss_404.cleanupObjectIds[3] = objectId =
-            mbObjCreate(W06DataNumGet(43), lbl_1_data_124, 1);
+            mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(43)),
+                lbl_1_data_124, 1);
     } else {
         lbl_1_bss_404.cleanupObjectIds[3] = objectId =
-            mbObjCreate(W06DataNumGet(43), lbl_1_data_134, 1);
+            mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(43)),
+                lbl_1_data_134, 1);
     }
     mbObjHookSet((s16)lbl_1_bss_404.cleanupObjectIds[1], "hook01",
         (s16)lbl_1_bss_404.cleanupObjectIds[3]);
@@ -286,7 +251,7 @@ void fn_1_F4(void)
     fn_1_9474();
     for (objectIndex = 0; objectIndex < 4; objectIndex++) {
         lbl_1_bss_404.modelObjectIds[objectIndex] = objectId =
-            mbObjCreate(W06DataNumGet(40), NULL, 1);
+            mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(40)), NULL, 1);
         mbObjPosSetV(objectId, &lbl_1_data_54[objectIndex]);
         mbObjScaleSet(objectId, 0.75f, 0.75f, 0.75f);
         mbObjMotionTimeSet(objectId, 0.0f);
@@ -295,12 +260,12 @@ void fn_1_F4(void)
     }
     fn_1_AA48();
     mbBranchMAttrSet(0x00002000);
-    mbBranchMAttrSet(W06_BRANCH_MATTR_BIT_16_MASK);
+    mbBranchMAttrSet((1 << 16));
     mbBranchMAttrSet(0x0000003F);
-    mbScrollInit(W06DataNumGet(45));
+    mbScrollInit(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(45)));
     mbLightFuncSet(fn_1_1160, fn_1_1228);
-    mbCapThrowColCreate(W06DataNumGet(46));
-    fn_800097F4(W06DataNumGet(0));
+    mbCapThrowColCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(46)));
+    fn_800097F4(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(0)));
     fn_800097F4(0x110000);
     mbev_MasuMoveStartSet(fn_1_1364);
     mbev_MasuMoveEndSet(fn_1_1398);
@@ -388,8 +353,6 @@ void fn_1_AD0(OMOBJ *obj)
 
 extern Point3d lbl_1_bss_68;
 extern s32 lbl_1_bss_64;
-
-extern char lbl_1_data_7F8[12];
 
 extern s32 lbl_1_bss_30[6];
 extern s32 lbl_1_bss_48[6];
@@ -2959,9 +2922,6 @@ int lbl_1_data_384[2] = {DATANUM(0xe10000, 7), -1};
 int lbl_1_data_38C[6] = {DATANUM(0xe20000, 7), -1, DATANUM(0xe10000, 9), -1,
                          DATANUM(0xe20000, 9), -1};
 
-#define W06ObjectDataGet(fileNo) \
-    ((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (fileNo))
-
 /* Creates the space objects for the current time and hides the saved inactive branch. */
 void fn_1_9474(void)
 {
@@ -2977,10 +2937,11 @@ void fn_1_9474(void)
         for (column = 0; column < 3; column++) {
             if (lbl_80265B70.curTime == 0) {
                 if (spaceIndex < 6) {
-                    objectId = mbObjCreate(W06ObjectDataGet(8), NULL, 1);
+                    objectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (8)),
+                        NULL, 1);
                     lbl_1_bss_2E4[row][column].objectId = objectId;
                     lbl_1_bss_2E4[row][column].reactionObjectId =
-                        mbObjCreate(W06ObjectDataGet(9), NULL, 1);
+                        mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (9)), NULL, 1);
                     mbObjDispSet((s16)lbl_1_bss_2E4[row][column].reactionObjectId, 0);
                     mbObjMotionTimeSet((s16)lbl_1_bss_2E4[row][column].reactionObjectId,
                         0.0f);
@@ -2988,7 +2949,8 @@ void fn_1_9474(void)
                         0.0f);
                     lbl_1_bss_2E4[row][column].usesReactionObject = 1;
                 } else {
-                    objectId = mbObjCreate(W06ObjectDataGet(6), lbl_1_data_384, 1);
+                    objectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (6)),
+                        lbl_1_data_384, 1);
                     lbl_1_bss_2E4[row][column].objectId = objectId;
                     lbl_1_bss_2E4[row][column].reactionObjectId = -1;
                     mbObjMotionTimeSet(objectId, 0.0f);
@@ -2997,7 +2959,8 @@ void fn_1_9474(void)
                     lbl_1_bss_2E4[row][column].usesReactionObject = 0;
                 }
             } else if (spaceIndex < 6) {
-                objectId = mbObjCreate(W06ObjectDataGet(6), lbl_1_data_38C, 1);
+                objectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (6)),
+                    lbl_1_data_38C, 1);
                 lbl_1_bss_2E4[row][column].objectId = objectId;
                 lbl_1_bss_2E4[row][column].reactionObjectId = -1;
                 mbObjMotionTimeSet(objectId, 0.0f);
@@ -3005,10 +2968,11 @@ void fn_1_9474(void)
                 mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
                 lbl_1_bss_2E4[row][column].usesReactionObject = 0;
             } else {
-                objectId = mbObjCreate(W06ObjectDataGet(8), NULL, 1);
+                objectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (8)),
+                    NULL, 1);
                 lbl_1_bss_2E4[row][column].objectId = objectId;
                 lbl_1_bss_2E4[row][column].reactionObjectId =
-                    mbObjCreate(W06ObjectDataGet(9), NULL, 1);
+                    mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (9)), NULL, 1);
                 mbObjDispSet((s16)lbl_1_bss_2E4[row][column].reactionObjectId, 0);
                 mbObjMotionTimeSet((s16)lbl_1_bss_2E4[row][column].reactionObjectId,
                     0.0f);
@@ -3339,13 +3303,6 @@ W06CameraRotations lbl_1_data_774[2] = { { { -50.0f, 20.0f, 0.0f }, { -30.0f, 0.
                                          { { -50.0f, -20.0f, 0.0f }, { -30.0f, 0.0f, 0.0f } } };
 s8 lbl_1_data_7A4[4] = {12, 6, 7, -1};
 
-#define W06ObjectDataGet(fileNo) \
-    ((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (fileNo))
-
-void fn_1_AA48(void);
-void fn_1_B464(void);
-void fn_1_B584(void);
-void fn_1_B820(void);
 /* Attaches the board decoration models to both roots during board setup. */
 void fn_1_AA48(void)
 {
@@ -3355,11 +3312,11 @@ void fn_1_AA48(void)
     s32 nextHook;
 
     nextHook = 0;
-    rootObjectId = mbObjCreate(W06ObjectDataGet(21), NULL, 0);
+    rootObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (21)), NULL, 0);
     lbl_1_bss_2AC.firstRootId = rootObjectId;
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(10), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (10)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[0] = hookObjectId;
         mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, 0.0f);
@@ -3370,7 +3327,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(11), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (11)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[1] = hookObjectId;
         mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, 0.0f);
@@ -3381,7 +3338,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(12), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (12)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[2] = hookObjectId;
         mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, 0.0f);
@@ -3392,7 +3349,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(13), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (13)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[3] = hookObjectId;
         for (attachment = 0; attachment < 5; attachment++) {
             mbObjHookSet(rootObjectId, lbl_1_data_578[nextHook++], hookObjectId);
@@ -3400,7 +3357,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(14), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (14)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[4] = hookObjectId;
         mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, 0.0f);
@@ -3411,7 +3368,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(15), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (15)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[5] = hookObjectId;
         for (attachment = 0; attachment < 2; attachment++) {
             mbObjHookSet(rootObjectId, lbl_1_data_578[nextHook++], hookObjectId);
@@ -3419,7 +3376,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(16), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (16)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[6] = hookObjectId;
         mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, 0.0f);
@@ -3430,7 +3387,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(17), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (17)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[7] = hookObjectId;
         for (attachment = 0; attachment < 4; attachment++) {
             mbObjHookSet(rootObjectId, lbl_1_data_578[nextHook++], hookObjectId);
@@ -3438,7 +3395,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(18), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (18)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[8] = hookObjectId;
         for (attachment = 0; attachment < 6; attachment++) {
             mbObjHookSet(rootObjectId, lbl_1_data_578[nextHook++], hookObjectId);
@@ -3446,7 +3403,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(19), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (19)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[9] = hookObjectId;
         mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, 0.0f);
@@ -3457,7 +3414,7 @@ void fn_1_AA48(void)
     }
 
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(20), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (20)), NULL, 0);
         lbl_1_bss_2AC.attachedIds[10] = hookObjectId;
         mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionShapeSet(hookObjectId, 0, 0x40000040);
@@ -3470,10 +3427,10 @@ void fn_1_AA48(void)
         }
     }
 
-    rootObjectId = mbObjCreate(W06ObjectDataGet(22), NULL, 0);
+    rootObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (22)), NULL, 0);
     lbl_1_bss_2AC.secondRootId = rootObjectId;
     {
-        hookObjectId = mbObjCreate(W06ObjectDataGet(3), NULL, 0);
+        hookObjectId = mbObjCreate(((MBTimeDayGet() != 0 ? 0xe10000 : 0xe20000) | (3)), NULL, 0);
         lbl_1_bss_404.objectIds[0] = hookObjectId;
         mbObjAttrReset(hookObjectId, ((1 << 30) | (1 << 0)));
         if (lbl_80265B70.curTime == 0) {

@@ -3,21 +3,6 @@
 #include "REL/m608dll.h"
 
 /* Opaque camera preset words are kept as named constants; only the height is interpreted here. */
-#define M608_INITIAL_CAMERA_HEIGHT 1000.0f
-#define M608_PRESET_HEADER_BITS 0x07080000
-#define M608_PRESET_ALTERNATE_HEADER_BITS 0x02580000
-#define M608_PRESET_FLOAT_HALF_BITS 0x3F000000
-#define M608_PRESET_FLOAT_ONE_BITS 0x3F800000
-#define M608_PRESET_FLOAT_180_BITS 0x43340000
-#define M608_PRESET_FLOAT_NEGATIVE_0_3_BITS 0xBE99999AU
-#define M608_PRESET_FLOAT_NEGATIVE_0_03_BITS 0xBCF5C28FU
-#define M608_PRESET_FLOAT_100_BITS 0x42C80000
-#define M608_PRESET_FLOAT_30_BITS 0x41F00000
-#define M608_PRESET_SHARED_DATA_BITS 0x0002FFFF
-#define M608_PRESET_WORD_ALL_BITS 0xFFFFFFFFU
-#define M608_PRESET_UPPER_HALF_BITS 0xFFFF0000U
-#define M608_PRESET_LOWER_HALF_BITS 0x0000FFFF
-#define M608_PRESET_WORD_ZERO 0
 
 /* Called by the intro and run callbacks in sequence.c to follow the current course hook. */
 void fn_1_5DA4(Point3d position)
@@ -54,41 +39,41 @@ void fn_1_5E6C(s32 cameraIndex)
 }
 
 /* These words are stored preset data; their meanings are not established by this module. */
-M608Unknown80 lbl_1_data_320 = { { M608_PRESET_HEADER_BITS, M608_PRESET_FLOAT_HALF_BITS },
-                                 M608_INITIAL_CAMERA_HEIGHT,
-                                 { M608_PRESET_FLOAT_180_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_FLOAT_NEGATIVE_0_3_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_FLOAT_ONE_BITS, M608_PRESET_FLOAT_ONE_BITS,
-                                   M608_PRESET_FLOAT_100_BITS, M608_PRESET_FLOAT_ONE_BITS,
-                                   M608_PRESET_SHARED_DATA_BITS, M608_PRESET_WORD_ALL_BITS,
-                                   M608_PRESET_UPPER_HALF_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_LOWER_HALF_BITS, M608_PRESET_WORD_ALL_BITS,
-                                   M608_PRESET_UPPER_HALF_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_WORD_ZERO } };
+M608Unknown80 lbl_1_data_320 = { { 0x07080000, 0x3F000000 },
+                                 1000.0f,
+                                 { 0x43340000, 0,
+                                   0xBE99999AU, 0,
+                                   0x3F800000, 0x3F800000,
+                                   0x42C80000, 0x3F800000,
+                                   0x0002FFFF, 0xFFFFFFFFU,
+                                   0xFFFF0000U, 0,
+                                   0x0000FFFF, 0xFFFFFFFFU,
+                                   0xFFFF0000U, 0,
+                                   0 } };
 
-M608Unknown80 lbl_1_data_370 = { { M608_PRESET_HEADER_BITS, M608_PRESET_FLOAT_ONE_BITS },
-                                 M608_INITIAL_CAMERA_HEIGHT,
-                                 { M608_PRESET_FLOAT_180_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_FLOAT_NEGATIVE_0_3_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_FLOAT_ONE_BITS, M608_PRESET_FLOAT_ONE_BITS,
-                                   M608_PRESET_FLOAT_100_BITS, M608_PRESET_FLOAT_ONE_BITS,
-                                   M608_PRESET_SHARED_DATA_BITS, M608_PRESET_WORD_ALL_BITS,
-                                   M608_PRESET_UPPER_HALF_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_LOWER_HALF_BITS, M608_PRESET_WORD_ALL_BITS,
-                                   M608_PRESET_UPPER_HALF_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_WORD_ZERO } };
+M608Unknown80 lbl_1_data_370 = { { 0x07080000, 0x3F800000 },
+                                 1000.0f,
+                                 { 0x43340000, 0,
+                                   0xBE99999AU, 0,
+                                   0x3F800000, 0x3F800000,
+                                   0x42C80000, 0x3F800000,
+                                   0x0002FFFF, 0xFFFFFFFFU,
+                                   0xFFFF0000U, 0,
+                                   0x0000FFFF, 0xFFFFFFFFU,
+                                   0xFFFF0000U, 0,
+                                   0 } };
 
-M608Unknown80 lbl_1_data_3C0 = { { M608_PRESET_ALTERNATE_HEADER_BITS, M608_PRESET_FLOAT_ONE_BITS },
-                                 M608_INITIAL_CAMERA_HEIGHT,
-                                 { M608_PRESET_FLOAT_180_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_FLOAT_NEGATIVE_0_03_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_FLOAT_ONE_BITS, M608_PRESET_FLOAT_ONE_BITS,
-                                   M608_PRESET_FLOAT_30_BITS, M608_PRESET_FLOAT_ONE_BITS,
-                                   M608_PRESET_SHARED_DATA_BITS, M608_PRESET_WORD_ALL_BITS,
-                                   M608_PRESET_UPPER_HALF_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_LOWER_HALF_BITS, M608_PRESET_WORD_ALL_BITS,
-                                   M608_PRESET_UPPER_HALF_BITS, M608_PRESET_WORD_ZERO,
-                                   M608_PRESET_WORD_ZERO } };
+M608Unknown80 lbl_1_data_3C0 = { { 0x02580000, 0x3F800000 },
+                                 1000.0f,
+                                 { 0x43340000, 0,
+                                   0xBCF5C28FU, 0,
+                                   0x3F800000, 0x3F800000,
+                                   0x41F00000, 0x3F800000,
+                                   0x0002FFFF, 0xFFFFFFFFU,
+                                   0xFFFF0000U, 0,
+                                   0x0000FFFF, 0xFFFFFFFFU,
+                                   0xFFFF0000U, 0,
+                                   0 } };
 
 /* Polled by the intro and rider-state callbacks in sequence.c to detect camera-motion end. */
 BOOL fn_1_5F64(void)

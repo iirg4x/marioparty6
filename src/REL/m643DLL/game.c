@@ -72,7 +72,7 @@ void fn_1_B130(OMOBJ *object);
 BOOL fn_1_BCB0(M643PlayerPrefix *work);
 void fn_1_5D94(OMOBJ *object);
 
-typedef struct M643TeamTemplate_s {
+typedef struct {
     s32 group[4]; /* Player index assigned to each configured group; -1 means empty. */
 } M643TeamTemplate;
 extern const M643TeamTemplate lbl_1_rodata_180;

@@ -768,10 +768,6 @@ void fn_1_4BD4(CameraHookOwner *work, Mtx input)
     Mtx translated;
     Vec translation = work->position;
     s32 colorIndex;
-    u8 red0, green0, blue0;
-    u8 red1, green1, blue1;
-    u8 red2, green2, blue2;
-    u8 red3, green3, blue3;
 
     PSMTXTrans(translated, translation.x, translation.y,
                translation.z);

@@ -3,7 +3,7 @@
 
 #include "humath.h"
 
-typedef struct M668VecBound_s {
+typedef struct {
     HuVecF xyz; /* Bound center or normal vector, in world coordinates. */
     f32 margin; /* Plane offset or bound radius used by the projection tests. */
 } M668VecBound;

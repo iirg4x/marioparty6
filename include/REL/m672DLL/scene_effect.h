@@ -11,8 +11,6 @@ struct SceneEffect;
 typedef void (SceneEffect::*SceneEffectHandler)(EventMessage *);
 
 #include "REL/m672DLL/member_callback.h"
-typedef std::mem_fun1_t<void, SceneEffect, EventMessage *> SceneEffectMemberFunction;
-typedef CallbackBinding<SceneEffect> SceneEffectBinding;
 
 typedef void (SceneEffect::*SceneEffectUpdate)();
 struct SceneEffect : GameObject, OwnedModel {

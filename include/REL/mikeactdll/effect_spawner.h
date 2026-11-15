@@ -4,14 +4,14 @@
 #include "dolphin/types.h"
 #include "game/hu3d.h"
 
-typedef struct MikeActEffectParticle_s {
+typedef struct {
     s16 modelId;
     s16 active;
     f32 scale;
     f32 transparency;
 } MikeActEffectParticle;
 
-typedef struct MikeActEffectSpawner_s {
+typedef struct {
     s16 modelId;
     f32 riseSpeed;
     s16 state;

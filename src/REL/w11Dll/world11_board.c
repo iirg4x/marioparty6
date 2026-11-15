@@ -29,9 +29,6 @@
 #include "game/esprite.h"
 #include "messdir_enum.h"
 
-#define TUTORIAL_FALL_SPACE_FLAG (1 << 0)
-#define TUTORIAL_NET_SPACE_FLAG (1 << 1)
-
 void mbObjDirSet(int dataDirDay, int dataDirNight);
 void mbObjPosSet(MBMODELID modelId, float x, float y, float z);
 void mbObjCullRadiusSet(MBMODELID modelId, float radius);
@@ -136,7 +133,8 @@ void fn_1_588(void)
 /* The movement-end hook starts the fall on marked spaces and returns zero for every space. */
 int fn_1_58C(int playerNo, s16 spaceId)
 {
-    if ((mbMasuMAttrGet(spaceId) & TUTORIAL_FALL_SPACE_FLAG) != 0) {
+    /* Space flag bit 0 marks the fall space. */
+    if ((mbMasuMAttrGet(spaceId) & (1 << 0)) != 0) {
         fn_1_5DC(playerNo, spaceId);
     }
     return 0;
@@ -185,7 +183,8 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
     mbWipeDissolveFadeOut();
     mbStatusDispForceSetAll(FALSE);
     mbStatusMasuDispSet(FALSE);
-    mbCameraFocusMasuSet(mbMasuFind_MAttrIdGet(-1, TUTORIAL_NET_SPACE_FLAG));
+    /* Space flag bit 1 marks the net space. */
+    mbCameraFocusMasuSet(mbMasuFind_MAttrIdGet(-1, (1 << 1)));
     mbCameraMoveOnSet(FALSE);
     mbCameraOffsetSet(0.0f, 50.0f, 0.0f);
     mbCameraRotSet(-35.0f, 0.0f, 0.0f);
@@ -216,9 +215,9 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
     }
 }
 
-s16 lbl_1_bss_4; /* Tutorial scenery model, including the scene's HSF lights. */
-s16 lbl_1_bss_2; /* Scene model whose paused motion resumes before the player falls. */
-s16 lbl_1_bss_0; /* Animated net model; net_hook supplies the player's attachment position. */
+MBMODELID lbl_1_bss_4; /* Tutorial scenery model, including the scene's HSF lights. */
+MBMODELID lbl_1_bss_2; /* Scene model whose paused motion resumes before the player falls. */
+MBMODELID lbl_1_bss_0; /* Animated net model; net_hook supplies the player's attachment position. */
 
 s8 lbl_1_data_15[7] = { 1, 12, 21, 7, 4, 15, -1 };
 extern void fn_1_984(void);

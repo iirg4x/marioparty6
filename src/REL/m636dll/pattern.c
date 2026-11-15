@@ -2,35 +2,6 @@
 #include <math.h>
 #include "REL/m636dll.h"
 
-
-#define PIXEL_PICTURE_ROW_BYTES 16
-#define PIXEL_PICTURE_PIXEL_BYTES 256
-#define PIXEL_CELL_MODEL_SET_BYTES 32
-#define PIXEL_PLAYER_SIDE_OFFSET 104
-#define PIXEL_PLAYER_RECORD_OFFSET 120
-#define PIXEL_LANDING_COUNTER_OFFSET 136
-#define PIXEL_TIMER_OFFSET 68
-#define PIXEL_TEAM_PIXELS_OFFSET 530
-#define PIXEL_RIGHT_TEAM_PIXELS_OFFSET 546
-#define PIXEL_FLOOR_PANEL_MODELS_OFFSET 408
-#define PIXEL_RIGHT_FLOOR_MODELS_OFFSET 440
-#define PIXEL_PANEL_OFF_MOTION_OFFSET 400
-#define PIXEL_PANEL_ON_MOTION_OFFSET 402
-#define PIXEL_PANEL_TURN_ON_MOTION_OFFSET 404
-#define PIXEL_PANEL_TURN_OFF_MOTION_OFFSET 406
-#define PIXEL_FLOOR_DRAW_HOOK_OFFSET 528
-#define PIXEL_SELECTED_PICTURE_OFFSET 504
-#define PIXEL_ROUND_CELL_CHOICES_OFFSET 508
-#define PIXEL_PICTURE_CELL_MODELS_OFFSET 286
-#define PIXEL_PICTURE_INTRO_MODELS_OFFSET 274
-#define PIXEL_REFERENCE_MODEL_OFFSET 270
-#define PIXEL_REFERENCE_CELL_MODELS_OFFSET 578
-#define PIXEL_TARGET_PIXELS_OFFSET 562
-
-
-
-
-
 /* Alternating initial floor pixels; the final array element is zero. */
 u8 lbl_1_data_140[16] = {0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1};
 
@@ -275,14 +246,14 @@ void fn_1_3834(s32 pictureIndex, s32 cellIndex)
 
     pixelColumn = (cellIndex % 4) * 4;
     pixelRow = (cellIndex / 4) * 4;
-    picturePixels = lbl_1_data_378 + pictureIndex * PIXEL_PICTURE_PIXEL_BYTES;
-    sourceRow = picturePixels + pixelRow * PIXEL_PICTURE_ROW_BYTES + pixelColumn;
+    picturePixels = lbl_1_data_378 + pictureIndex * 256;
+    sourceRow = picturePixels + pixelRow * 16 + pixelColumn;
     OSReport("***********\n");
     OSReport("pic:%d, pat:%d (%d, %d)\n", pictureIndex, cellIndex, pixelColumn, pixelRow);
     /* Picture rows contain sixteen pixels; the floor target rows contain four. */
     for (rowIndex = 0; rowIndex < 4; rowIndex++) {
         memcpy(&lbl_1_bss_0.targetPixels[rowIndex * 4], sourceRow, 4);
-        sourceRow += PIXEL_PICTURE_ROW_BYTES;
+        sourceRow += 16;
     }
     for (rowIndex = 0; rowIndex < 4; rowIndex++) {
         OSReport("%02X %02X %02X %02X\n",

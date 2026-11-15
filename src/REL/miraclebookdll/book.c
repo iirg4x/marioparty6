@@ -36,19 +36,13 @@
 #include "REL/miraclebookdll/book.h"
 #include "humath.h"
 
-typedef void (*VoidFunc)(void);
-
-typedef struct UnkMiracleBookHook_s {
+typedef struct  {
     f32 textureMatrix[2][3];
     GXColor color;
     f32 textureOffsetY;
     f32 textureOffsetSpeed;
     f32 effectFramesRemaining;
 } UNK_MIRACLEBOOK_HOOK;
-
-extern const VoidFunc _ctors[];
-
-extern const VoidFunc _dtors[];
 
 s32 lbl_1_data_0[20] = {
     4, 4, 7, 1, 5, 1, 4, 1, 2, 4,
@@ -1133,10 +1127,6 @@ void fn_1_3418(void)
 void fn_1_34C4(void)
 {
     OMOBJ *obj;
-    HuVecF center;
-    HuVecF rot;
-    HuVecF *centerP;
-    HuVecF *rotP;
 
     obj = fn_8003AB38(lbl_1_bss_74, 32730, 0, 0, -1, fn_8003DAA4);
     obj->work[0] = 2;

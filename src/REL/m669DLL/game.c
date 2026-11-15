@@ -68,9 +68,6 @@
 #include "game/board/player.h"
 #include <string.h>
 
-/* All bits set in the recognition slot means that no word is pending. */
-#define M669_NO_WORD ((u16)-1)
-
 extern HUPROCESS *lbl_1_bss_0;
 
 const HuVecF lbl_1_rodata_90[16] = {
@@ -179,7 +176,8 @@ s16 lbl_1_data_168 = -1;
 
 char lbl_1_data_16A[20] = "/mic/ctx/m669_words";
 
-u16 lbl_1_data_17E = M669_NO_WORD;
+/* All bits set in the recognition slot means that no word is pending. */
+u16 lbl_1_data_17E = ((u16)-1);
 
 typedef struct M669PlayerWorkHeader {
     s16 playerIndex; /* Index in GwPlayerConf. */
@@ -1858,12 +1856,7 @@ void fn_1_9864(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
     HuVecF position;
-    HuVecF facingDirection;
-    HuVecF travelDirection;
     f32 travelDistance;
-    f32 turnAmount;
-    f32 turnDirection;
-    f32 nextAngle;
 
     fn_1_8A70(work);
     M669VecSubtract(&position, &lbl_1_rodata_150[work->actorIndex % 36],
@@ -1954,7 +1947,6 @@ void fn_1_9D24(OMOBJ *object)
     M669ActorWork *work = object->data;
     HuVecF direction;
     f32 distance;
-    f32 targetAngle;
 
     fn_1_8A70(work);
     M669VecSubtract(&direction, &lbl_1_rodata_150[work->actorIndex % 36],
@@ -2533,8 +2525,6 @@ void fn_1_C844(OMOBJ *object)
     M669ActorWork *work = object->data;
     HuVecF origin = { 0.0f, 0.0f, 0.0f };
     HuVecF direction;
-    HuVecF position;
-    f32 motionEnd;
     M669PlayerSetupWork *stageWork;
 
     fn_1_8A70(work);
@@ -3025,7 +3015,7 @@ void fn_1_E968(MCResponse_s *response) {
         return;
     }
     if (response->score < 0xBB8U) {
-        lbl_1_data_17E = M669_NO_WORD;
+        lbl_1_data_17E = ((u16)-1);
         return;
     }
     lbl_1_data_17E = (u16)*response->result;
@@ -3288,7 +3278,7 @@ void fn_1_EFB0(OMOBJ *object)
     }
     if (work->header.state != - 1)
     {
-        lbl_1_data_17E = M669_NO_WORD;
+        lbl_1_data_17E = ((u16)-1);
         work->header.timer = 60;
         fn_1_248(object, fn_1_1097C);
         return;
@@ -3441,7 +3431,7 @@ void fn_1_1097C(OMOBJ *object)
     if (work->header.timer <= 0) {
         fn_1_E9C4(work, 0, 10.0f, ((1 << 30) | (1 << 0)));
         work->header.state = -1;
-        lbl_1_data_17E = M669_NO_WORD;
+        lbl_1_data_17E = ((u16)-1);
         fn_1_248(object, fn_1_EF10);
         return;
     }
@@ -4455,7 +4445,6 @@ s32 fn_1_13BA0(M669ImpactWork *object)
             f32 push = 7.0f;
             f32 distance;
             f32 facingAngle;
-            f32 angle;
 
             M669VecSubtract(&obstacleDirection, &bestParticle->position, &playerPosition);
             distance = fn_1_554(&obstacleDirection, &obstacleDirection);

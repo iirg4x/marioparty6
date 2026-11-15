@@ -7,7 +7,6 @@
 #include "game/mg/seqman.h"
 #include "REL/m601Dll.h"
 
-extern HUPROCESS *lbl_1_bss_150;
 extern OMOBJ *lbl_1_bss_168;
 extern OMOBJ *lbl_1_bss_16C[5];
 extern OMOBJ *lbl_1_bss_180;

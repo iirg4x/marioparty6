@@ -272,7 +272,7 @@ f32 fn_1_483C(MikeActPlayerRecord *actorOwner, HuVecF *position)
     return (f32)(180.0 * (atan2((f64)offset.x, (f64)offset.z) / M_PI));
 }
 
-typedef struct MikeActActorDirectionContext_s {
+typedef struct {
     MGPLAYER *player;
     u8 unknown_04[0x10]; /* No code names this field. */
     f32 angle;
@@ -1332,7 +1332,6 @@ void fn_1_AD6C(MGPLAYER *player)
 void fn_1_B244(MGPLAYER *player)
 {
     MikeActPlayerRecord *playerRecord;
-    s16 elapsed;
 
     switch (player->subMode) {
     case 0:
@@ -1392,7 +1391,6 @@ void fn_1_B754(MGPLAYER *player)
 void fn_1_BCF4(MGPLAYER *player)
 {
     MikeActPlayerRecord *record = lbl_1_bss_C4[player->playerNo];
-    MikeActPlayerRecord *actorRecord;
 
     switch (player->subMode) {
     case 0:

@@ -3,14 +3,6 @@
 #include "REL/m636dll.h"
 #include "humath.h"
 
-
-
-#define PIXEL_CPU_PAUSE 0
-#define PIXEL_CPU_CHOOSE 1
-#define PIXEL_CPU_JUMP 2
-#define PIXEL_CPU_GROUND_POUND 3
-#define PIXEL_CPU_MOVE 4
-
 /* CPU input updates use this when choosing a random target during the play sequence. */
 s32 fn_1_3D28(s32 playerIndex)
 {
@@ -131,7 +123,7 @@ void fn_1_40E0(s32 playerIndex)
     gridPosition.y = 0.0f;
     gridPosition.z += offsetZ;
     switch (lbl_1_bss_0.cpuMode[playerIndex]) {
-    case PIXEL_CPU_CHOOSE: {
+    case 1: {
         s32 chosenCell;
         {
             s32 choiceRoll = frandmod(100);
@@ -139,7 +131,7 @@ void fn_1_40E0(s32 playerIndex)
                 chosenCell = fn_1_3D80(playerIndex);
             } else if (choiceRoll < 15) {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_PAUSE;
+                    0;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] =
                     frandmod(120) + 60;
                 break;
@@ -148,11 +140,11 @@ void fn_1_40E0(s32 playerIndex)
             }
         }
         lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
-        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuMode[playerIndex] = 4;
         lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
-    case PIXEL_CPU_MOVE: {
+    case 4: {
         s32 targetCell;
         f32 distance;
         targetCell = lbl_1_bss_0.targetCell[playerIndex];
@@ -169,12 +161,12 @@ void fn_1_40E0(s32 playerIndex)
                 pressedButtons = PAD_BUTTON_A;
                 heldButtons = PAD_BUTTON_A;
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_JUMP;
+                    2;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump\n");
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_CHOOSE;
+                    1;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
@@ -197,7 +189,7 @@ void fn_1_40E0(s32 playerIndex)
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }
@@ -206,20 +198,20 @@ void fn_1_40E0(s32 playerIndex)
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             180) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     }
-    case PIXEL_CPU_PAUSE:
+    case 0:
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])--;
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <= 0) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
-    case PIXEL_CPU_JUMP:
+    case 2:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
         } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
@@ -229,7 +221,7 @@ void fn_1_40E0(s32 playerIndex)
                 heldButtons = PAD_BUTTON_A;
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_GROUND_POUND;
+                    3;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop\n");
                 break;
@@ -237,11 +229,11 @@ void fn_1_40E0(s32 playerIndex)
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
-    case PIXEL_CPU_GROUND_POUND:
+    case 3:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             OSReport("to search\n");
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
@@ -282,13 +274,13 @@ void fn_1_48FC(s32 playerIndex)
     gridPosition.y = 0.0f;
     gridPosition.z += offsetZ;
     switch (lbl_1_bss_0.cpuMode[playerIndex]) {
-    case PIXEL_CPU_CHOOSE: {
+    case 1: {
         s32 chosenCell;
         {
             s32 choiceRoll = frandmod(100);
             if (choiceRoll < 5) {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_PAUSE;
+                    0;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] =
                     frandmod(120) + 60;
                 break;
@@ -299,11 +291,11 @@ void fn_1_48FC(s32 playerIndex)
             }
         }
         lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
-        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuMode[playerIndex] = 4;
         lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
-    case PIXEL_CPU_MOVE: {
+    case 4: {
         s32 targetCell;
         f32 distance;
         targetCell = lbl_1_bss_0.targetCell[playerIndex];
@@ -319,12 +311,12 @@ void fn_1_48FC(s32 playerIndex)
                     lbl_1_bss_0.targetCell[playerIndex]) == 0) {
                 pressedButtons = PAD_BUTTON_A;
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_JUMP;
+                    2;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump\n");
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_CHOOSE;
+                    1;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
@@ -347,7 +339,7 @@ void fn_1_48FC(s32 playerIndex)
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }
@@ -356,20 +348,20 @@ void fn_1_48FC(s32 playerIndex)
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             180) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     }
-    case PIXEL_CPU_PAUSE:
+    case 0:
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])--;
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <= 0) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
-    case PIXEL_CPU_JUMP:
+    case 2:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
         } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
@@ -379,7 +371,7 @@ void fn_1_48FC(s32 playerIndex)
                 heldButtons = PAD_BUTTON_A;
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_GROUND_POUND;
+                    3;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop\n");
                 break;
@@ -387,11 +379,11 @@ void fn_1_48FC(s32 playerIndex)
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
-    case PIXEL_CPU_GROUND_POUND:
+    case 3:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             OSReport("to search\n");
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
@@ -432,14 +424,14 @@ void fn_1_50A8(s32 playerIndex)
     gridPosition.y = 0.0f;
     gridPosition.z += offsetZ;
     switch (lbl_1_bss_0.cpuMode[playerIndex]) {
-    case PIXEL_CPU_CHOOSE: {
+    case 1: {
         s32 chosenCell = fn_1_3D80(playerIndex);
         lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
-        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuMode[playerIndex] = 4;
         lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
-    case PIXEL_CPU_MOVE: {
+    case 4: {
         s32 targetCell;
         f32 distance;
         targetCell = lbl_1_bss_0.targetCell[playerIndex];
@@ -457,12 +449,12 @@ void fn_1_50A8(s32 playerIndex)
                     lbl_1_bss_0.targetCell[playerIndex]) == 0) {
                 pressedButtons = PAD_BUTTON_A;
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_JUMP;
+                    2;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump\n");
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_CHOOSE;
+                    1;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
@@ -485,7 +477,7 @@ void fn_1_50A8(s32 playerIndex)
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }
@@ -494,20 +486,20 @@ void fn_1_50A8(s32 playerIndex)
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             180) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
     }
-    case PIXEL_CPU_PAUSE:
+    case 0:
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])--;
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] <= 0) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         }
         break;
-    case PIXEL_CPU_JUMP:
+    case 2:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
         } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
@@ -517,7 +509,7 @@ void fn_1_50A8(s32 playerIndex)
                 heldButtons = PAD_BUTTON_A;
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_GROUND_POUND;
+                    3;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop\n");
                 break;
@@ -525,11 +517,11 @@ void fn_1_50A8(s32 playerIndex)
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
-    case PIXEL_CPU_GROUND_POUND:
+    case 3:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             OSReport("to search\n");
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
@@ -558,7 +550,7 @@ void fn_1_582C(s32 playerIndex)
     pressedButtons = 0;
     heldButtons = 0;
     switch (lbl_1_bss_0.cpuMode[playerIndex]) {
-    case PIXEL_CPU_JUMP:
+    case 2:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] < 15) {
             heldButtons = PAD_BUTTON_A;
         } else if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 16) {
@@ -568,7 +560,7 @@ void fn_1_582C(s32 playerIndex)
                 heldButtons = PAD_BUTTON_A;
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_GROUND_POUND;
+                    3;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to hipdrop(%d)\n", playerIndex);
                 break;
@@ -576,16 +568,16 @@ void fn_1_582C(s32 playerIndex)
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
-    case PIXEL_CPU_GROUND_POUND:
+    case 3:
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >= 10) {
             pressedButtons = PAD_BUTTON_A;
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             OSReport("to search(%d)\n", playerIndex);
         }
         (lbl_1_bss_0.cpuFrameCounter[playerIndex])++;
         break;
-    case PIXEL_CPU_CHOOSE: {
+    case 1: {
         s32 chosenCell;
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] == 0) {
             chosenCell = fn_1_3D28(playerIndex);
@@ -595,11 +587,11 @@ void fn_1_582C(s32 playerIndex)
             chosenCell = fn_1_3E30(playerIndex);
         }
         lbl_1_bss_0.targetCell[playerIndex] = chosenCell;
-        lbl_1_bss_0.cpuMode[playerIndex] = PIXEL_CPU_MOVE;
+        lbl_1_bss_0.cpuMode[playerIndex] = 4;
         lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
         break;
     }
-    case PIXEL_CPU_MOVE: {
+    case 4: {
         s32 targetCell;
         f32 distance;
         targetCell = lbl_1_bss_0.targetCell[playerIndex];
@@ -625,12 +617,12 @@ void fn_1_582C(s32 playerIndex)
                     lbl_1_bss_0.targetCell[playerIndex]) == 0) {
                 pressedButtons = PAD_BUTTON_A;
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_JUMP;
+                    2;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
                 OSReport("to jump(%d)\n", playerIndex);
             } else {
                 lbl_1_bss_0.cpuMode[playerIndex] =
-                    PIXEL_CPU_CHOOSE;
+                    1;
                 lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             }
         } else {
@@ -652,7 +644,7 @@ void fn_1_582C(s32 playerIndex)
         if (lbl_1_bss_0.cpuFrameCounter[playerIndex] >=
             120) {
             lbl_1_bss_0.cpuMode[playerIndex] =
-                PIXEL_CPU_CHOOSE;
+                1;
             lbl_1_bss_0.cpuFrameCounter[playerIndex] = 0;
             break;
         }

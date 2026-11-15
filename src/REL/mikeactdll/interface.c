@@ -216,7 +216,7 @@ extern s16 lbl_1_bss_11C;
 
 extern OMOBJ *lbl_1_bss_120;
 
-typedef struct MikeActLetterState_s {
+typedef struct {
     s16 state;
     u8 unknown_02[6]; /* No code names this field. */
     s16 timer;
@@ -460,7 +460,7 @@ void fn_1_F5BC(void) {
     fn_1_1E78();
 }
 
-typedef struct MikeActMessageTable_s {
+typedef struct {
     u32 messages[9];
 } MikeActMessageTable;
 

@@ -70,7 +70,7 @@
 M612Scene lbl_1_bss_4AC;
 static s32 lbl_1_bss_49C[4];
 static s32 lbl_1_bss_48C[4];
-s16 lbl_1_bss_44C[4][8];
+HU3D_MOTIONID lbl_1_bss_44C[4][8];
 static s32 lbl_1_bss_43C[4];
 static s32 lbl_1_bss_42C[4];
 static s32 lbl_1_bss_41C[4];

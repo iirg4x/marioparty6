@@ -114,10 +114,6 @@ typedef void (*Callback)(void);
 
 typedef void (CameraManager::*CallbackState)();
 
-extern const CallbackState lbl_1_data_F0;
-
-extern const CallbackState lbl_1_data_3B4;
-
 /* Selects the tracked player and starts the camera follow delay. */
 void CameraManager::fn_1_8C40(CPlayer *target)
 {
