@@ -179,46 +179,46 @@ static u32 ControlWindow(
     return 1;
 }
 
-static u32 InitWindow(TosBaseBlock *baseBlock)
+static u32 InitWindow(TosBaseBlock *_This)
 {
-    Window *block = (Window *)baseBlock;
-    TosContext *context = baseBlock->context;
+    Window *This = (Window *)_This;
+    TosContext *context = _This->context;
     u16 frameLength;
     u16 windowLength;
     s32 i;
 
-    frameLength = (u16)_tosGetProfileU32(block, 1, 110);
-    block->frameLength = frameLength;
-    windowLength = block->windowLength = (u16)_tosGetProfileU32(block, 2, 330);
-    block->overlapLength = (windowLength - frameLength) / 2;
+    frameLength = (u16)_tosGetProfileU32(This, 1, 110);
+    This->frameLength = frameLength;
+    windowLength = This->windowLength = (u16)_tosGetProfileU32(This, 2, 330);
+    This->overlapLength = (windowLength - frameLength) / 2;
 
     if (frameLength > windowLength || windowLength > frameLength * 3) {
         return 1;
     }
 
-    block->base.input->inputSize = frameLength * sizeof(s16);
-    block->base.output->outputSize = windowLength * sizeof(f32);
-    block->frameCount = 3;
-    block->history = heap_Calloc(
-        context->heap, block->frameLength * 3, sizeof(f32));
-    block->window = heap_Calloc(context->heap, windowLength, sizeof(f32));
-    if (block->history == NULL || block->window == NULL) {
-        _tosErrorLog(block, 2);
+    This->base.input->inputSize = frameLength * sizeof(s16);
+    This->base.output->outputSize = windowLength * sizeof(f32);
+    This->frameCount = 3;
+    This->history = heap_Calloc(
+        context->heap, This->frameLength * 3, sizeof(f32));
+    This->window = heap_Calloc(context->heap, windowLength, sizeof(f32));
+    if (This->history == NULL || This->window == NULL) {
+        _tosErrorLog(This, 2);
         return 1;
     }
 
-    block->historyWrite = block->history;
-    block->historyEnd = block->history + frameLength * 3;
+    This->historyWrite = This->history;
+    This->historyEnd = This->history + frameLength * 3;
     for (i = 0; i < windowLength; i++) {
-        block->window[i] =
+        This->window[i] =
             0.54f -
             0.46f * cosf((6.283185308 * (f32)i) / (f32)(windowLength - 1));
     }
 
-    block->previousSample = 0.0f;
-    block->firstFrame = 1;
-    block->flushed = 1;
-    block->flushPending = 0;
+    This->previousSample = 0.0f;
+    This->firstFrame = 1;
+    This->flushed = 1;
+    This->flushPending = 0;
     return 0;
 }
 

@@ -430,13 +430,13 @@ bool salInitDspCtrl(u8 numVoices, u8 numStudios, u32 defaultStudioDPL2) {
               return FALSE;
             }
 
-            if (!(dspStudio[i].main[0] = (void*)SAL_MALLOC(15360))) {
+            if (!(dspStudio[i].main[0] = (void*)SAL_MALLOC(0x3c00))) {
               return FALSE;
             }
 
-            memset(dspStudio[i].main[0], 0, 15360);
+            memset(dspStudio[i].main[0], 0, 0x3c00);
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
-            DCFlushRangeNoSync(dspStudio[i].main[0], 15360);
+            DCFlushRangeNoSync(dspStudio[i].main[0], 0x3c00);
 #endif
             dspStudio[i].main[1] = dspStudio[i].main[0] + 480;
             dspStudio[i].auxA[0] = dspStudio[i].main[1] + 480;
@@ -503,9 +503,9 @@ bool salExitDspCtrl() {
 }
 
 void salActivateStudio(u8 studio, u32 isMaster, SND_STUDIO_TYPE type) {
-  memset(dspStudio[studio].main[0], 0, 15360);
+  memset(dspStudio[studio].main[0], 0, 0x3c00);
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
-  DCFlushRangeNoSync(dspStudio[studio].main[0], 15360);
+  DCFlushRangeNoSync(dspStudio[studio].main[0], 0x3c00);
 #endif
   memset(dspStudio[studio].spb, 0, sizeof(_SPB));
   dspStudio[studio].hostDPopSum.l = dspStudio[studio].hostDPopSum.r =
@@ -614,7 +614,7 @@ static void sal_update_hostplayinfo(DSPvoice* dsp_vptr) {
     pitch = dsp_vptr->playInfo.pitch << 5;
 
   } else {
-    pitch = 2097152;
+    pitch = 0x200000;
   }
 
   old_lo = dsp_vptr->playInfo.posLo;
@@ -659,24 +659,24 @@ static void HandleDepopVoice(DSPstudioinfo* stp, DSPvoice* dsp_vptr) {
   AddDpop(&stp->hostDPopSum.l, pb->dpop.aL);
   AddDpop(&stp->hostDPopSum.r, pb->dpop.aR);
 
-  if ((pb->mixerCtrl & 4) != 0) {
+  if ((pb->mixerCtrl & 0x04) != 0) {
     AddDpop(&stp->hostDPopSum.s, pb->dpop.aS);
   }
 
-  if ((pb->mixerCtrl & 1) != 0) {
+  if ((pb->mixerCtrl & 0x01) != 0) {
     AddDpop(&stp->hostDPopSum.lA, pb->dpop.aAuxAL);
     AddDpop(&stp->hostDPopSum.rA, pb->dpop.aAuxAR);
 
-    if ((pb->mixerCtrl & 20) != 0) {
+    if ((pb->mixerCtrl & 0x14) != 0) {
       AddDpop(&stp->hostDPopSum.sA, pb->dpop.aAuxAS);
     }
   }
 
-  if ((pb->mixerCtrl & 18) != 0) {
+  if ((pb->mixerCtrl & 0x12) != 0) {
     AddDpop(&stp->hostDPopSum.lB, pb->dpop.aAuxBL);
     AddDpop(&stp->hostDPopSum.rB, pb->dpop.aAuxBR);
 
-    if ((pb->mixerCtrl & 4) != 0) {
+    if ((pb->mixerCtrl & 0x04) != 0) {
       AddDpop(&stp->hostDPopSum.sB, pb->dpop.aAuxBS);
     }
   }

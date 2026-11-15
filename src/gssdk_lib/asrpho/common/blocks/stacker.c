@@ -69,41 +69,41 @@ default:
 return 1;
 }
 
-static u32 InitStacker(TosBaseBlock *baseBlock)
+static u32 InitStacker(TosBaseBlock *_This)
 {
-Stacker *block = (Stacker *)baseBlock;
-TosContext *context = baseBlock->context;
+Stacker *This = (Stacker *)_This;
+TosContext *context = _This->context;
 u16 i;
 
-block->numberInputs = _tosGetProfileU32(block, 3, 2);
-block->elementSizes = heap_Calloc(
-    context->heap, block->numberInputs, sizeof(u16));
-block->enabled = heap_Calloc(
-    context->heap, block->numberInputs, sizeof(u8));
-if (block->elementSizes == NULL || block->enabled == NULL) {
-    _tosErrorLog(block, 2);
+This->numberInputs = _tosGetProfileU32(This, 3, 2);
+This->elementSizes = heap_Calloc(
+    context->heap, This->numberInputs, sizeof(u16));
+This->enabled = heap_Calloc(
+    context->heap, This->numberInputs, sizeof(u8));
+if (This->elementSizes == NULL || This->enabled == NULL) {
+    _tosErrorLog(This, 2);
     return 1;
 }
 
-for (i = 0; i < block->numberInputs; i++) {
+for (i = 0; i < This->numberInputs; i++) {
     switch (i) {
     case 0:
-        block->elementSizes[0] = _tosGetProfileU32(block, 1, 152);
+        This->elementSizes[0] = _tosGetProfileU32(This, 1, 152);
         break;
     case 1:
-        block->elementSizes[1] = _tosGetProfileU32(block, 2, 20);
+        This->elementSizes[1] = _tosGetProfileU32(This, 2, 20);
         break;
     default:
-        _tosErrorLog(block, 200);
+        _tosErrorLog(This, 200);
         return 1;
     }
-    block->enabled[i] = 1;
+    This->enabled[i] = 1;
 }
 
-for (i = 0; i < block->numberInputs; i++) {
-    block->base.input[i].inputSize = block->elementSizes[i];
-    block->base.output->outputSize =
-        block->base.output->outputSize + block->base.input[i].inputSize;
+for (i = 0; i < This->numberInputs; i++) {
+    This->base.input[i].inputSize = This->elementSizes[i];
+    This->base.output->outputSize =
+        This->base.output->outputSize + This->base.input[i].inputSize;
 }
 return 0;
 }

@@ -33,7 +33,7 @@ typedef struct STREAM_INFO {
   u8 lastPSFromBuffer;
 #endif
   SND_STREAM_UPDATE_CALLBACK updateFunction;
-  s16* buffer;
+  void* buffer;
   u32 size;
   u32 bytes;
   u32 last;

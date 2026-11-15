@@ -71,7 +71,7 @@ typedef struct RecognitionContext {
     void *heap;
     u32 reservedState;
     /* Points to the V2 context data pointer used to fill the local dictionaryContext table. */
-    void *dictionarySource;
+    void **dictionarySource;
     u32 reservedPassSetup;
     void *firstPassData;
     u32 reservedDictionaryState;
@@ -346,7 +346,7 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
     memset(secondPass, 0, sizeof(SecondPassContext));
     context->secondPass = secondPass;
     FillContextV2VirtualTable(&dictionaryContext);
-    dictionaryContext.data = *(void **)context->dictionarySource;
+    dictionaryContext.data = *context->dictionarySource;
     contextWordCount = dictionaryContext.getNbrWord(&dictionaryContext);
     wordProperties = dictionaryContext.getWordProperties(&dictionaryContext);
     wordOffsets = dictionaryContext.getWordOffsets(&dictionaryContext);

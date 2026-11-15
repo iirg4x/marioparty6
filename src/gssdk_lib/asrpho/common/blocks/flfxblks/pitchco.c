@@ -453,17 +453,23 @@ static void ProcessPitchCombiner(
 
     if (inputs[0] != NULL) {
         f32 *output;
+        f32 *spectrum;
+        f32 *pitch;
+        u8 *voicing;
 
         // Skip the spectrum's leading value and take the maximum of its configured bands.
+        spectrum = inputs[2];
         PushPitchHistory(&block->normEnergy,
-            MaxFloatInArray((f32 *)inputs[2] + 1, block->bandCount));
+            MaxFloatInArray(spectrum + 1, block->bandCount));
 
-        *block->logPitch.write++ = logf_check(*(f32 *)inputs[0]);
+        pitch = inputs[0];
+        *block->logPitch.write++ = logf_check(*pitch);
         if (block->logPitch.write == block->logPitch.end) {
             block->logPitch.write = block->logPitch.samples;
         }
 
-        *block->voicing.write = *(u8 *)inputs[1];
+        voicing = inputs[1];
+        *block->voicing.write = *voicing;
         block->queuedFrameCount++;
         StatusProcessing(block);
 
@@ -575,108 +581,108 @@ static u32 ControlPitchCombiner(
 
 // Allocates histories and sets window coefficients during speech graph initialization.
 // The graph invokes this through the initializer registered by ConstructPitchCombiner.
-static u32 InitPitchCombiner(TosBaseBlock *baseBlock)
+static u32 InitPitchCombiner(TosBaseBlock *_This)
 {
-    PitchCombiner *block = (PitchCombiner *)baseBlock;
-    TosContext *context = baseBlock->context;
+    PitchCombiner *This = (PitchCombiner *)_This;
+    TosContext *context = _This->context;
     u32 bandCount;
 
-    bandCount = _tosGetProfileU32(block, PITCH_COMBINER_BAND_COUNT_PROFILE, 21);
-    block->bandCount = (u16)bandCount;
-    block->lastMeanPitch = 0.0f;
-    block->outputFeatureCount = 5;
-    block->base.input[0].inputSize = sizeof(f32);
-    block->base.input[1].inputSize = sizeof(u8);
-    block->base.input[2].inputSize =
+    bandCount = _tosGetProfileU32(This, PITCH_COMBINER_BAND_COUNT_PROFILE, 21);
+    This->bandCount = (u16)bandCount;
+    This->lastMeanPitch = 0.0f;
+    This->outputFeatureCount = 5;
+    This->base.input[0].inputSize = sizeof(f32);
+    This->base.input[1].inputSize = sizeof(u8);
+    This->base.input[2].inputSize =
         ((u16)bandCount + 1) * sizeof(f32);
-    block->base.output->outputSize =
-        block->outputFeatureCount * sizeof(f32);
+    This->base.output->outputSize =
+        This->outputFeatureCount * sizeof(f32);
 
-    block->pitchWindowLength = 7;
-    block->normEnergyWindowLength = 5;
-    block->delayLength =
-        block->pitchWindowLength > block->normEnergyWindowLength
-            ? block->pitchWindowLength
-            : block->normEnergyWindowLength;
+    This->pitchWindowLength = 7;
+    This->normEnergyWindowLength = 5;
+    This->delayLength =
+        This->pitchWindowLength > This->normEnergyWindowLength
+            ? This->pitchWindowLength
+            : This->normEnergyWindowLength;
 
-    block->normEnergy.samples =
-        heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->logPitch.samples =
-        heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->voicing.samples =
-        heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->pitchSlope.samples =
-        heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->meanPitch.samples =
-        heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->normEnergySlope.samples =
-        heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->pitchCoefficients =
-        heap_Calloc(context->heap, block->pitchWindowLength, sizeof(f32));
-    block->normEnergyCoefficients = heap_Calloc(
-        context->heap, block->normEnergyWindowLength, sizeof(f32));
+    This->normEnergy.samples =
+        heap_Calloc(context->heap, This->delayLength, sizeof(f32));
+    This->logPitch.samples =
+        heap_Calloc(context->heap, This->delayLength, sizeof(f32));
+    This->voicing.samples =
+        heap_Calloc(context->heap, This->delayLength, sizeof(f32));
+    This->pitchSlope.samples =
+        heap_Calloc(context->heap, This->delayLength, sizeof(f32));
+    This->meanPitch.samples =
+        heap_Calloc(context->heap, This->delayLength, sizeof(f32));
+    This->normEnergySlope.samples =
+        heap_Calloc(context->heap, This->delayLength, sizeof(f32));
+    This->pitchCoefficients =
+        heap_Calloc(context->heap, This->pitchWindowLength, sizeof(f32));
+    This->normEnergyCoefficients = heap_Calloc(
+        context->heap, This->normEnergyWindowLength, sizeof(f32));
 
-    if (block->normEnergy.samples == NULL ||
-        block->logPitch.samples == NULL ||
-        block->voicing.samples == NULL ||
-        block->pitchSlope.samples == NULL ||
-        block->meanPitch.samples == NULL ||
-        block->normEnergySlope.samples == NULL ||
-        block->pitchCoefficients == NULL ||
-        block->normEnergyCoefficients == NULL) {
-        _tosErrorLog(block, 2);
+    if (This->normEnergy.samples == NULL ||
+        This->logPitch.samples == NULL ||
+        This->voicing.samples == NULL ||
+        This->pitchSlope.samples == NULL ||
+        This->meanPitch.samples == NULL ||
+        This->normEnergySlope.samples == NULL ||
+        This->pitchCoefficients == NULL ||
+        This->normEnergyCoefficients == NULL) {
+        _tosErrorLog(This, 2);
         return 1;
     }
 
-    ResetPitchHistory(&block->voicing, block->delayLength);
-    ResetPitchHistory(&block->normEnergy, block->delayLength);
-    ResetPitchHistory(&block->logPitch, block->delayLength);
-    ResetPitchHistory(&block->meanPitch, block->delayLength);
-    ResetPitchHistory(&block->pitchSlope, block->delayLength);
-    ResetPitchHistory(&block->normEnergySlope, block->delayLength);
+    ResetPitchHistory(&This->voicing, This->delayLength);
+    ResetPitchHistory(&This->normEnergy, This->delayLength);
+    ResetPitchHistory(&This->logPitch, This->delayLength);
+    ResetPitchHistory(&This->meanPitch, This->delayLength);
+    ResetPitchHistory(&This->pitchSlope, This->delayLength);
+    ResetPitchHistory(&This->normEnergySlope, This->delayLength);
 
-    block->meanPitch.write =
-        block->meanPitch.samples + block->pitchWindowLength / 2;
-    block->pitchSlope.write =
-        block->pitchSlope.samples + block->pitchWindowLength / 2;
-    block->normEnergySlope.write =
-        block->normEnergySlope.samples + block->normEnergyWindowLength / 2;
-    block->logPitchFilter = block->logPitch.output;
-    block->normEnergyFilter = block->normEnergy.output;
-    block->pitchDelta = 0.0f;
+    This->meanPitch.write =
+        This->meanPitch.samples + This->pitchWindowLength / 2;
+    This->pitchSlope.write =
+        This->pitchSlope.samples + This->pitchWindowLength / 2;
+    This->normEnergySlope.write =
+        This->normEnergySlope.samples + This->normEnergyWindowLength / 2;
+    This->logPitchFilter = This->logPitch.output;
+    This->normEnergyFilter = This->normEnergy.output;
+    This->pitchDelta = 0.0f;
 
-    block->pitchCoefficients[0] = -3.0f;
-    block->pitchCoefficients[1] = -2.0f;
-    block->pitchCoefficients[2] = -1.0f;
-    block->pitchCoefficients[3] = 0.0f;
-    block->pitchCoefficients[4] = 1.0f;
-    block->pitchCoefficients[5] = 2.0f;
-    block->pitchCoefficients[6] = 3.0f;
-    block->pitchCoefficientDivisor = 28;
+    This->pitchCoefficients[0] = -3.0f;
+    This->pitchCoefficients[1] = -2.0f;
+    This->pitchCoefficients[2] = -1.0f;
+    This->pitchCoefficients[3] = 0.0f;
+    This->pitchCoefficients[4] = 1.0f;
+    This->pitchCoefficients[5] = 2.0f;
+    This->pitchCoefficients[6] = 3.0f;
+    This->pitchCoefficientDivisor = 28;
 
-    block->normEnergyCoefficients[0] = -2.0f;
-    block->normEnergyCoefficients[1] = -1.0f;
-    block->normEnergyCoefficients[2] = 0.0f;
-    block->normEnergyCoefficients[3] = 1.0f;
-    block->normEnergyCoefficients[4] = 2.0f;
-    block->normEnergyCoefficientDivisor = 10;
+    This->normEnergyCoefficients[0] = -2.0f;
+    This->normEnergyCoefficients[1] = -1.0f;
+    This->normEnergyCoefficients[2] = 0.0f;
+    This->normEnergyCoefficients[3] = 1.0f;
+    This->normEnergyCoefficients[4] = 2.0f;
+    This->normEnergyCoefficientDivisor = 10;
 
-    block->voicedFrameCount = 0;
-    block->voiced = 0;
-    block->previousVoiced = 0;
-    block->queuedFrameCount = 0;
-    block->beginVoiced = 0;
-    block->endVoiced = 0;
-    block->initializeNormEnergy = 1;
-    block->flushing = 0;
-    block->flushPitch = 1;
-    block->flushNormEnergy = 1;
-    block->pitchFilterReady = 0;
+    This->voicedFrameCount = 0;
+    This->voiced = 0;
+    This->previousVoiced = 0;
+    This->queuedFrameCount = 0;
+    This->beginVoiced = 0;
+    This->endVoiced = 0;
+    This->initializeNormEnergy = 1;
+    This->flushing = 0;
+    This->flushPitch = 1;
+    This->flushNormEnergy = 1;
+    This->pitchFilterReady = 0;
 
-    block->voicedOutput =
-        _tosGetProfileFloat(block, PITCH_COMBINER_VOICED_OUTPUT_PROFILE, 0.0f);
-    block->unvoicedOutput =
-        _tosGetProfileFloat(block, PITCH_COMBINER_UNVOICED_OUTPUT_PROFILE, 100000.0f);
+    This->voicedOutput =
+        _tosGetProfileFloat(This, PITCH_COMBINER_VOICED_OUTPUT_PROFILE, 0.0f);
+    This->unvoicedOutput =
+        _tosGetProfileFloat(This, PITCH_COMBINER_UNVOICED_OUTPUT_PROFILE, 100000.0f);
     return 0;
 }
 

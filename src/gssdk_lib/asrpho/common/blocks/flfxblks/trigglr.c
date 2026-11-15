@@ -11,6 +11,11 @@ extern u8 qQueueControl(
 extern u8 tosBaseBlockStartInputQueues(TosBaseBlock *block, u32 reader);
 extern u8 tosBaseBlockDisableInputQueues(TosBaseBlock *block);
 
+typedef struct TriggerLRSession {
+    u32 histogramValid;
+    SlidingHistoSessionData histogram;
+} TriggerLRSession;
+
 static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs);
 static void ProcessTriggerLR(
     TosBaseBlock *baseBlock, void **inputs, s32 inputCount);
@@ -56,7 +61,7 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
     f32 onsetMetric;
     f32 activity;
     f32 noiseThreshold;
-    f32 *featureValues = (f32 *)inputs[1];
+    f32 *featureValues = inputs[1];
 
     noiseThreshold = featureValues[3] + block->noiseFloorOffsetLog;
     onsetMetric = *(f32 *)inputs[2];
@@ -301,7 +306,7 @@ static void ProcessTriggerLR(
 
     block->frameCount++;
     if ((s32)block->processMode == 0) {
-        signal = (s16 *)inputs[0];
+        signal = inputs[0];
         if (Voicing_AddSignal(block, signal)) {
             return;
         }
@@ -371,7 +376,7 @@ static u32 ControlTriggerLR(
     TriggerLRControlData *controlData;
     u32 *sessionOffset;
     u32 sessionSize;
-    u8 *sessionBuffer;
+    TriggerLRSession *sessionBuffer;
     u32 queueControlFailed;
     f32 sensitivityScale;
     f32 voicingThreshold;
@@ -417,7 +422,7 @@ static u32 ControlTriggerLR(
         break;
 
     case 103:
-        controlData = (TriggerLRControlData *)argument;
+        controlData = argument;
         block->resetStartsInputQueues = controlData->resetStartsInputQueues;
         block->holdInputQueuesAfterTrigger = controlData->holdInputQueuesAfterTrigger;
         block->sensitivity = controlData->sensitivity;
@@ -462,16 +467,16 @@ static u32 ControlTriggerLR(
 
     case 105:
         sessionOffset = (u32 *)argumentSize;
-        sessionBuffer = (u8 *)argument;
+        sessionBuffer = argument;
         if (sessionBuffer != NULL) {
-            sessionBuffer += *sessionOffset;
+            sessionBuffer = (TriggerLRSession *)((u8 *)sessionBuffer + *sessionOffset);
             SlidingHisto_Clear(block);
             Voicing_Reset(block);
             // A session stores histogram validity first, followed by its rolling history.
             block->histogramValid = 0;
-            block->histogramValid = *(u32 *)sessionBuffer;
+            block->histogramValid = sessionBuffer->histogramValid;
             SlidingHisto_PutSession(
-                block, (SlidingHistoSessionData *)(sessionBuffer + 4));
+                block, &sessionBuffer->histogram);
             if ((s32)block->histogramValid != 0) {
                 block->histogramLowerQuantile =
                     SlidingHisto_LowerQuantile(block, block->histogramQuantile);
@@ -487,12 +492,12 @@ static u32 ControlTriggerLR(
 
     case 106:
         sessionOffset = (u32 *)argumentSize;
-        sessionBuffer = (u8 *)argument;
+        sessionBuffer = argument;
         if (sessionBuffer != NULL) {
-            sessionBuffer += *sessionOffset;
-            *(u32 *)sessionBuffer = block->histogramValid;
+            sessionBuffer = (TriggerLRSession *)((u8 *)sessionBuffer + *sessionOffset);
+            sessionBuffer->histogramValid = block->histogramValid;
             SlidingHisto_GetSession(
-                block, (SlidingHistoSessionData *)(sessionBuffer + 4));
+                block, &sessionBuffer->histogram);
         }
         sessionSize = SlidingHisto_sizeof_SessionData(block) + 4;
             *sessionOffset += sessionSize;
@@ -519,94 +524,94 @@ static u32 ControlTriggerLR(
 
 // Loads the speech profile and allocates histogram and voicing history for a new block.
 // tosBaseBlockConstruct invokes this initialization callback.
-static u32 InitTriggerLR(TosBaseBlock *baseBlock)
+static u32 InitTriggerLR(TosBaseBlock *_This)
 {
-    TriggerLR *block = (TriggerLR *)baseBlock;
+    TriggerLR *This = (TriggerLR *)_This;
     u32 initializationFailed = 0;
-    TosContext *context = block->base.context;
+    TosContext *context = This->base.context;
     f32 sensitivityScale;
     f32 noiseOffset;
     f32 voicingThreshold;
     f32 histogramOffset;
 
-    block->base.input[2].inputSize = sizeof(f32);
-    block->base.input[3].inputSize = sizeof(f32);
-    block->base.input[1].inputSize = 24;
+    This->base.input[2].inputSize = sizeof(f32);
+    This->base.input[3].inputSize = sizeof(f32);
+    This->base.input[1].inputSize = 24;
 
-    block->minimumSpeechFrames = _tosGetProfileU32(block, 1, 6);
-    block->minimumSpeechMilliseconds = block->minimumSpeechFrames * 10;
-    block->consecutiveEnergeticLimit = _tosGetProfileU32(block, 2, 3);
-    block->silenceFrameLimit = _tosGetProfileU32(block, 3, 15);
-    block->triggerLookbackLimit = _tosGetProfileU32(block, 4, 45);
-    block->energyFloorDbHundredths =
-        (s32)_tosGetProfileU32(block, 5, -7200);
-    block->triggerEventMode = _tosGetProfileU32(block, 31, 0);
-    block->energyFloorLog =
+    This->minimumSpeechFrames = _tosGetProfileU32(This, 1, 6);
+    This->minimumSpeechMilliseconds = This->minimumSpeechFrames * 10;
+    This->consecutiveEnergeticLimit = _tosGetProfileU32(This, 2, 3);
+    This->silenceFrameLimit = _tosGetProfileU32(This, 3, 15);
+    This->triggerLookbackLimit = _tosGetProfileU32(This, 4, 45);
+    This->energyFloorDbHundredths =
+        (s32)_tosGetProfileU32(This, 5, -7200);
+    This->triggerEventMode = _tosGetProfileU32(This, 31, 0);
+    This->energyFloorLog =
         27.37f +
-        (f32)block->energyFloorDbHundredths / 4.3429446f / 100.0f;
-    block->activityThresholdLog =
-        logf_check(_tosGetProfileFloat(block, 8, 1.0f));
-    block->onsetThresholdLog =
-        logf_check(_tosGetProfileFloat(block, 9, 5.0f));
-    block->peakActivityThresholdLog =
-        logf_check(_tosGetProfileFloat(block, 10, 100.0f));
-    noiseOffset = (f32)abs((s32)_tosGetProfileU32(block, 6, 17));
+        (f32)This->energyFloorDbHundredths / 4.3429446f / 100.0f;
+    This->activityThresholdLog =
+        logf_check(_tosGetProfileFloat(This, 8, 1.0f));
+    This->onsetThresholdLog =
+        logf_check(_tosGetProfileFloat(This, 9, 5.0f));
+    This->peakActivityThresholdLog =
+        logf_check(_tosGetProfileFloat(This, 10, 100.0f));
+    noiseOffset = (f32)abs((s32)_tosGetProfileU32(This, 6, 17));
     noiseOffset *= 0.23025851f;
-    block->noiseFloorOffsetLog = noiseOffset;
-    block->sensitivityMinimum = _tosGetProfileU32(block, 18, 0);
-    block->sensitivityMaximum = _tosGetProfileU32(block, 19, 100);
-    block->histogramOffsetMinimum =
-        (s32)_tosGetProfileU32(block, 20, 5);
-    block->histogramOffsetMaximum =
-        (s32)_tosGetProfileU32(block, 21, 25);
-    block->voicingThresholdMinimum =
-        _tosGetProfileFloat(block, 22, 0.75f);
-    block->voicingThresholdMaximum =
-        _tosGetProfileFloat(block, 23, 0.65f);
-    block->sensitivity = _tosGetProfileU32(block, 7, 50);
+    This->noiseFloorOffsetLog = noiseOffset;
+    This->sensitivityMinimum = _tosGetProfileU32(This, 18, 0);
+    This->sensitivityMaximum = _tosGetProfileU32(This, 19, 100);
+    This->histogramOffsetMinimum =
+        (s32)_tosGetProfileU32(This, 20, 5);
+    This->histogramOffsetMaximum =
+        (s32)_tosGetProfileU32(This, 21, 25);
+    This->voicingThresholdMinimum =
+        _tosGetProfileFloat(This, 22, 0.75f);
+    This->voicingThresholdMaximum =
+        _tosGetProfileFloat(This, 23, 0.65f);
+    This->sensitivity = _tosGetProfileU32(This, 7, 50);
 
     sensitivityScale =
-        (f32)(block->sensitivity - block->sensitivityMinimum) /
-        (f32)(block->sensitivityMaximum - block->sensitivityMinimum);
-    histogramOffset = (f32)block->histogramOffsetMinimum;
+        (f32)(This->sensitivity - This->sensitivityMinimum) /
+        (f32)(This->sensitivityMaximum - This->sensitivityMinimum);
+    histogramOffset = (f32)This->histogramOffsetMinimum;
     histogramOffset += sensitivityScale *
-        (f32)(block->histogramOffsetMaximum - block->histogramOffsetMinimum);
+        (f32)(This->histogramOffsetMaximum - This->histogramOffsetMinimum);
     histogramOffset *= 0.23025851f;
-    voicingThreshold = block->voicingThresholdMinimum;
+    voicingThreshold = This->voicingThresholdMinimum;
     voicingThreshold += sensitivityScale *
-        (block->voicingThresholdMaximum - block->voicingThresholdMinimum);
-    block->histogramThresholdOffsetLog = histogramOffset;
-    block->voicingDecisionThreshold = logf_check(voicingThreshold);
-    block->histogramQuantile =
-        _tosGetProfileFloat(block, 15, 0.5f);
-    block->histogramUpdateFrames = _tosGetProfileU32(block, 16, 100);
-    block->histogramValid = 0;
+        (This->voicingThresholdMaximum - This->voicingThresholdMinimum);
+    This->histogramThresholdOffsetLog = histogramOffset;
+    This->voicingDecisionThreshold = logf_check(voicingThreshold);
+    This->histogramQuantile =
+        _tosGetProfileFloat(This, 15, 0.5f);
+    This->histogramUpdateFrames = _tosGetProfileU32(This, 16, 100);
+    This->histogramValid = 0;
 
-    if ((s32)SlidingHisto_Init(block) != 0) {
+    if ((s32)SlidingHisto_Init(This) != 0) {
         initializationFailed = 1;
     } else {
-        block->voicingDecisionHistory =
+        This->voicingDecisionHistory =
             heap_Calloc(context->heap, 3, sizeof(f32));
-        if (block->voicingDecisionHistory == NULL) {
-            _tosErrorLog(block, 2);
+        if (This->voicingDecisionHistory == NULL) {
+            _tosErrorLog(This, 2);
             initializationFailed = 1;
         } else {
-            block->voicingDecisionHistoryWrite =
-                block->voicingDecisionHistory;
-            block->voicingDecisionHistoryEnd =
-                block->voicingDecisionHistory + 3;
+            This->voicingDecisionHistoryWrite =
+                This->voicingDecisionHistory;
+            This->voicingDecisionHistoryEnd =
+                This->voicingDecisionHistory + 3;
 
-            if (InitVoicing(block)) {
+            if (InitVoicing(This)) {
                 initializationFailed = 1;
             } else {
-                block->base.input[0].inputSize =
-                    (u16)(block->subsamplerInputCount * sizeof(s16));
-                block->resetStartsInputQueues = 1;
-                block->holdInputQueuesAfterTrigger = 1;
-                block->endSilenceFrames =
-                    _tosGetProfileU32(block, 17, 50);
-                block->endSilenceMilliseconds =
-                    block->endSilenceFrames * 10;
+                This->base.input[0].inputSize =
+                    (u16)(This->subsamplerInputCount * sizeof(s16));
+                This->resetStartsInputQueues = 1;
+                This->holdInputQueuesAfterTrigger = 1;
+                This->endSilenceFrames =
+                    _tosGetProfileU32(This, 17, 50);
+                This->endSilenceMilliseconds =
+                    This->endSilenceFrames * 10;
             }
         }
     }

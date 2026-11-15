@@ -71,9 +71,9 @@ static u32 ControlDCTLift(
     return 1;
 }
 
-static u32 InitDCTLift(TosBaseBlock *baseBlock)
+static u32 InitDCTLift(TosBaseBlock *_This)
 {
-    DCTLift *block = (DCTLift *)baseBlock;
+    DCTLift *This = (DCTLift *)_This;
     u32 outputCount;
     s32 liftPeriod;
     f32 *coefficient;
@@ -82,29 +82,29 @@ static u32 InitDCTLift(TosBaseBlock *baseBlock)
     u32 inputSpan;
     f32 lift;
 
-    outputCount = (u16)_tosGetProfileU32(block, 2, 13);
-    block->outputCount = outputCount;
-    liftPeriod = (s16)_tosGetProfileU32(block, 3, 16);
-    block->inputEnd = (u16)_tosGetProfileU32(block, 1, 21);
-    block->inputStart = (u16)_tosGetProfileU32(block, 4, 0);
+    outputCount = (u16)_tosGetProfileU32(This, 2, 13);
+    This->outputCount = outputCount;
+    liftPeriod = (s16)_tosGetProfileU32(This, 3, 16);
+    This->inputEnd = (u16)_tosGetProfileU32(This, 1, 21);
+    This->inputStart = (u16)_tosGetProfileU32(This, 4, 0);
 
-    inputSpan = block->inputEnd - block->inputStart;
-    block->base.input->inputSize =
-        (block->inputEnd + 1) * sizeof(f32);
-    block->base.output->outputSize =
+    inputSpan = This->inputEnd - This->inputStart;
+    This->base.input->inputSize =
+        (This->inputEnd + 1) * sizeof(f32);
+    This->base.output->outputSize =
         (outputCount + 1) * sizeof(f32);
 
-    block->scale = 2.0 / (f32)inputSpan;
-    block->coefficients = heap_Alloc(
-        block->base.context->heap,
+    This->scale = 2.0 / (f32)inputSpan;
+    This->coefficients = heap_Alloc(
+        This->base.context->heap,
         outputCount * inputSpan * sizeof(f32));
 
-    coefficient = block->coefficients;
+    coefficient = This->coefficients;
     for (i = 0; i < outputCount; i++) {
-        lift = 1.0f + 6.0f * sinf(3.141592653589793 * (f32)i / (f32)liftPeriod);
+        lift = 1.0f + 6.0f * sinf(M_PI * (f32)i / (f32)liftPeriod);
         for (j = 0; j < inputSpan; j++) {
             *coefficient++ =
-                lift * cosf(3.141592653589793 * ((f32)j + 0.5) * (f32)i / (f32)inputSpan);
+                lift * cosf(M_PI * ((f32)j + 0.5) * (f32)i / (f32)inputSpan);
         }
     }
     return 0;

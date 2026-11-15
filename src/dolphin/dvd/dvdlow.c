@@ -44,7 +44,7 @@ static DVDBuffer Prev;
 static DVDBuffer Curr;
 
 // prototypes
-static void Read(void* address, u32 length, u32 offset, DVDLowCallback callback);
+static void Read(void* addr, u32 length, u32 offset, DVDLowCallback callback);
 static void SetBreakAlarm(OSTime timeout);
 
 void __DVDInitWA(void) {
@@ -201,7 +201,7 @@ static void SetTimeoutAlarm(OSTime timeout) {
 	OSSetAlarm(&AlarmForTimeout, timeout, AlarmHandlerForTimeout);
 }
 
-static void Read(void* address, u32 length, u32 offset, DVDLowCallback callback) {
+static void Read(void* addr, u32 length, u32 offset, DVDLowCallback callback) {
 	Callback = callback;
 	StopAtNextInt = FALSE;
 	LastCommandWasRead = TRUE;
@@ -210,7 +210,7 @@ static void Read(void* address, u32 length, u32 offset, DVDLowCallback callback)
 	__DIRegs[2] = 0xa8000000;
 	__DIRegs[3] = offset / 4;
 	__DIRegs[4] = length;
-	__DIRegs[5] = (u32)address;
+	__DIRegs[5] = (u32)addr;
 	__DIRegs[6] = length;
 	LastLength = length;
 	__DIRegs[7] = 3;
@@ -251,15 +251,15 @@ static void DoJustRead(void* addr, u32 length, u32 offset, DVDLowCallback callba
 }
 
 static void SeekTwiceBeforeRead(void* addr, u32 length, u32 offset, DVDLowCallback callback) {
-	u32 newOffset;
+	u32 offsetToSeek;
 	if ((offset & ~0x7FFF) == 0) {
-		newOffset = 0;
+		offsetToSeek = 0;
 	} else {
-        newOffset = (offset & ~0x7FFF) + WorkAroundSeekLocation;
+        offsetToSeek = (offset & ~0x7FFF) + WorkAroundSeekLocation;
 	}
 
 	CommandList[0].command = 2;
-	CommandList[0].offset = newOffset;
+	CommandList[0].offset = offsetToSeek;
 	CommandList[0].callback = callback;
 	CommandList[1].command = 1;
 	CommandList[1].address = addr;
@@ -268,7 +268,7 @@ static void SeekTwiceBeforeRead(void* addr, u32 length, u32 offset, DVDLowCallba
 	CommandList[1].callback = callback;
 	CommandList[2].command = -1;
 	NextCommandNumber = 0;
-	DVDLowSeek(newOffset, callback);
+	DVDLowSeek(offsetToSeek, callback);
 }
 
 static void WaitBeforeRead(void* addr, u32 length, u32 offset, DVDLowCallback callback, OSTime wait) {

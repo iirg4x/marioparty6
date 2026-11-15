@@ -232,24 +232,24 @@ u8 OSGetLanguage(void)
     return language;
 }
 
-u16 OSGetWirelessID(s32 channel)
+u16 OSGetWirelessID(s32 chan)
 {
     OSSramEx *sram;
     u16 id;
 
     sram = __OSLockSramEx();
-    id = sram->wirelessPadID[channel];
+    id = sram->wirelessPadID[chan];
     __OSUnlockSramEx(FALSE);
     return id;
 }
 
-void OSSetWirelessID(s32 channel, u16 id)
+void OSSetWirelessID(s32 chan, u16 id)
 {
     OSSramEx *sram;
 
     sram = __OSLockSramEx();
-    if (sram->wirelessPadID[channel] != id) {
-        sram->wirelessPadID[channel] = id;
+    if (sram->wirelessPadID[chan] != id) {
+        sram->wirelessPadID[chan] = id;
         __OSUnlockSramEx(TRUE);
         return;
     }

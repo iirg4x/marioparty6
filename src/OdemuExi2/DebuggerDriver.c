@@ -71,7 +71,7 @@ static BOOL DBGEXIImm(void* data, s32 byte_size, u32 write)
 
 	DBGEXISync();
 	if (!write) {
-		u8* dataPtr = (u8*)data;
+		u8* dataPtr = data;
 		readVal     = __EXIRegs[14];
 		for (i = 0; i < byte_size; ++i) {
 			*dataPtr++ = readVal >> ((3 - i) << 3);
@@ -91,7 +91,7 @@ static BOOL DBGReadMailbox(void* param1)
 	}
 
 	local_c = 0x60000000;
-	error |= !DBGEXIImm((u8*)&local_c, 2, 1);
+	error |= !DBGEXIImm(&local_c, 2, 1);
 	error |= !DBGEXISync();
 	error |= !DBGEXIImm(param1, sizeof(param1), 0);
 	error |= !DBGEXISync();
@@ -110,7 +110,7 @@ static BOOL DBGWriteMailbox(u32 param_1)
 	}
 
 	value = (param_1 & 0x1fffffff) | 0xc0000000;
-	error |= !DBGEXIImm((u8*)&value, sizeof(value), 1);
+	error |= !DBGEXIImm(&value, sizeof(value), 1);
 	error |= !DBGEXISync();
 	error |= !DBGEXIDeselect();
 
@@ -120,7 +120,7 @@ static BOOL DBGWriteMailbox(u32 param_1)
 static BOOL DBGRead(u32 param1, u32* data, s32 byte_size)
 {
 	BOOL error   = FALSE;
-	u32* dataPtr = (u32*)data;
+	u32* dataPtr = data;
 	u32 writeValue;
 	u32 readValue;
 
@@ -129,11 +129,11 @@ static BOOL DBGRead(u32 param1, u32* data, s32 byte_size)
 	}
 
 	writeValue = (u32)(param1 << 8) & 0x1fffc00 | 0x20000000;
-	error |= !DBGEXIImm((u8*)&writeValue, sizeof(writeValue), 1);
+	error |= !DBGEXIImm(&writeValue, sizeof(writeValue), 1);
 	error |= !DBGEXISync();
 
 	while (byte_size != 0) {
-		error |= !DBGEXIImm((u8*)&readValue, sizeof(readValue), 0);
+		error |= !DBGEXIImm(&readValue, sizeof(readValue), 0);
 		error |= !DBGEXISync();
 
 		*dataPtr++ = readValue;
@@ -160,13 +160,13 @@ static BOOL DBGWrite(u32 param1, const u32* data, s32 byte_size)
 	}
 
 	value = (param1 & 0x1fffc) << 8 | 0xa0000000;
-	error = !DBGEXIImm((u8*)&value, sizeof(value), 1);
+	error = !DBGEXIImm(&value, sizeof(value), 1);
 	error |= !DBGEXISync();
 
 	while (byte_size != 0) {
 		nextWord = *dataPtr++;
 
-		error |= !DBGEXIImm((u8*)&nextWord, sizeof(nextWord), 1);
+		error |= !DBGEXIImm(&nextWord, sizeof(nextWord), 1);
 		error |= !DBGEXISync();
 
 		byte_size -= 4;
@@ -189,7 +189,7 @@ static BOOL DBGReadStatus(void* param_1)
 	}
 
 	value = 0x40000000;
-	error |= !DBGEXIImm((u8*)&value, 2, 1);
+	error |= !DBGEXIImm(&value, 2, 1);
 	error |= !DBGEXISync();
 	error |= !DBGEXIImm(param_1, sizeof(param_1), 0);
 	error |= !DBGEXISync();

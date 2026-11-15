@@ -2,7 +2,6 @@
 #include "dolphin/vi.h"
 #include "dolphin/hw_regs.h"
 
-#pragma dont_inline on
 static u32 SamplingRate;
 
 typedef struct XY {
@@ -53,4 +52,3 @@ void SISetSamplingRate(u32 msec) {
 }
 
 void SIRefreshSamplingRate() { SISetSamplingRate(SamplingRate); }
-#pragma dont_inline reset

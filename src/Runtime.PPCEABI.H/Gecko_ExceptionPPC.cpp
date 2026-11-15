@@ -183,8 +183,8 @@ static void ExPPC_FindExceptionRecord(char* returnAddress, MWExceptionInfo* info
 	info->currentFunction = fragment->codeStart + tableEntry->functionoffset;
         info->exceptionRecord =
             ETI_GetDirectStore(tableEntry->eti_field)
-                ? (ExceptionTableSmall *) (&tableEntry->exceptionoffset)
-                : (ExceptionTableSmall *) (fragment->dataStart + tableEntry->exceptionoffset);
+                ? &tableEntry->exception.table
+                : (ExceptionTableSmall *) (fragment->dataStart + tableEntry->exception.offset);
 
         returnOffset -= tableEntry->functionoffset;
 
@@ -201,7 +201,7 @@ static void ExPPC_FindExceptionRecord(char* returnAddress, MWExceptionInfo* info
 			}
 		}
 	} else {
-		ExceptionTableSmall* smallTable = (ExceptionTableSmall*)info->exceptionRecord;
+		ExceptionTableSmall* smallTable = info->exceptionRecord;
 		ExceptionRangeSmall* range;
 
 		for (range = smallTable->ranges; range->start != 0; range++) {
@@ -216,14 +216,11 @@ static void ExPPC_FindExceptionRecord(char* returnAddress, MWExceptionInfo* info
 // Called by ExPPC_NextAction when a frame saves R31; reads that value for frame-pointer recovery.
 static inline s32 ExPPC_PopR31(char* stackPointer, MWExceptionInfo* info)
 {
-	f64* floatingPointSaveArea;
 	s32* generalPurposeSaveArea;
-	int savedGeneralPurposeRegisters, savedFloatingPointRegisters;
+	int savedFloatingPointRegisters;
 
 	savedFloatingPointRegisters = ET_GetSavedFPRs(info->exceptionRecord->et_field);
-	floatingPointSaveArea       = (f64*)(stackPointer - savedFloatingPointRegisters * 8);
-	savedGeneralPurposeRegisters = ET_GetSavedGPRs(info->exceptionRecord->et_field);
-	generalPurposeSaveArea       = (s32*)floatingPointSaveArea;
+	generalPurposeSaveArea = (s32*)(stackPointer - savedFloatingPointRegisters * sizeof(f64));
 
 	return generalPurposeSaveArea[-1];
 }
@@ -352,7 +349,7 @@ static char* ExPPC_PopStackFrame(ThrowContext* context, MWExceptionInfo* info)
 
 	if (ET_HasElfVector(info->exceptionRecord->et_field)) {
 		vectorSaveArea = (GeckoFPRContext*)(callersStackPointer - savedFloatingPointRegisters * 16);
-		floatingPointSaveArea = (f64*)vectorSaveArea;
+		floatingPointSaveArea = &vectorSaveArea->doubleValue;
 	} else {
 		floatingPointSaveArea = (f64*)(callersStackPointer - savedFloatingPointRegisters * 8);
 	}
@@ -586,12 +583,12 @@ static void ExPPC_UnwindStack(ThrowContext* context, MWExceptionInfo* info, void
 			info->actionPointer += sizeof(ex_deletepointercond);
 			break;
 		case EXACTION_CATCHBLOCK:
-			if (stopAction == (void*)info->actionPointer)
+			if (stopAction == info->actionPointer)
 				return;
 			info->actionPointer += sizeof(ex_catchblock);
 			break;
 		case EXACTION_CATCHBLOCK_32:
-			if (stopAction == (void*)info->actionPointer)
+			if (stopAction == info->actionPointer)
 				return;
 			info->actionPointer += sizeof(ex_catchblock_32);
 			break;
@@ -614,7 +611,7 @@ static void ExPPC_UnwindStack(ThrowContext* context, MWExceptionInfo* info, void
 			info->actionPointer += sizeof(ex_activecatchblock);
 		} break;
 		case EXACTION_SPECIFICATION:
-			if (stopAction == (void*)info->actionPointer)
+			if (stopAction == info->actionPointer)
 				return;
                         info->actionPointer +=
                             sizeof(ex_specification) +
@@ -654,7 +651,7 @@ extern void __unexpected(CatchInfo* catchInfo)
 	try {
 		unexpected();
 	} catch (...) {
-            if (ExPPC_IsInSpecification((char *) ((CatchInfo *) &__exception_magic)->typeinfo,
+            if (ExPPC_IsInSpecification(((CatchInfo *) &__exception_magic)->typeinfo,
                                         specification)) {
                 throw;
             }
@@ -841,7 +838,7 @@ static void ExPPC_ThrowHandler(ThrowContext* context)
                     (CatchInfo *) (iter.framePointer +
                                    ((ex_activecatchblock *) iter.exceptionInfo.actionPointer)
                                        ->cinfo_ref);
-                context->exceptionType = (char*)catchInfo->typeinfo;
+                context->exceptionType = catchInfo->typeinfo;
 		context->objectLocation  = catchInfo->location;
 		context->destructor      = 0;
 		context->catchInfo = catchInfo;

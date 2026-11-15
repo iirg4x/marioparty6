@@ -183,65 +183,65 @@ static u32 ControlFFTMod(
 }
 
 // Called when the audio graph starts this block. Reads its profile and sizes its queues.
-static u32 InitFFTMod(TosBaseBlock *baseBlock)
+static u32 InitFFTMod(TosBaseBlock *_This)
 {
-    FFTMod *block = (FFTMod *)baseBlock;
+    FFTMod *This = (FFTMod *)_This;
     u16 fftLength;
-    TosContext *context = baseBlock->context;
+    TosContext *context = _This->context;
     s32 sampleRate;
     f32 scale;
     f32 frequency;
 
-    sampleRate = (s16)_tosGetProfileU32(block, 3, 5500);
-    fftLength = (u16)_tosGetProfileU32(block, 4, 512);
-    block->fftLength = fftLength;
-    block->inputLength = (u16)_tosGetProfileU32(block, 6, 512);
-    if (block->inputLength > (u32)fftLength) {
+    sampleRate = (s16)_tosGetProfileU32(This, 3, 5500);
+    fftLength = (u16)_tosGetProfileU32(This, 4, 512);
+    This->fftLength = fftLength;
+    This->inputLength = (u16)_tosGetProfileU32(This, 6, 512);
+    if (This->inputLength > (u32)fftLength) {
         return 1;
     }
 
-    if ((u32)fftLength > block->inputLength) {
-        block->padInput = 1;
-        block->paddingBytes =
-            ((u32)fftLength - block->inputLength) * sizeof(f32);
-        block->buffer =
+    if ((u32)fftLength > This->inputLength) {
+        This->padInput = 1;
+        This->paddingBytes =
+            ((u32)fftLength - This->inputLength) * sizeof(f32);
+        This->buffer =
             heap_Alloc(context->heap, (u32)fftLength * sizeof(f32));
     }
 
-    block->base.input->inputSize = block->inputLength * sizeof(f32);
-    if (block->powerSpectrum == 0) {
-        block->base.output->outputSize =
+    This->base.input->inputSize = This->inputLength * sizeof(f32);
+    if (This->powerSpectrum == 0) {
+        This->base.output->outputSize =
             ((u32)fftLength / 2 + 1) * sizeof(f32);
     } else {
-        block->base.output->outputSize = sizeof(f32);
-        block->base.output[1].outputSize =
+        This->base.output->outputSize = sizeof(f32);
+        This->base.output[1].outputSize =
             ((u32)fftLength / 2 + 1) * sizeof(f32);
     }
 
-    frequency = _tosGetProfileFloat(block, 1, 300.0f);
-    frequency = (f32)block->fftLength * frequency;
+    frequency = _tosGetProfileFloat(This, 1, 300.0f);
+    frequency = (f32)This->fftLength * frequency;
     scale = 2.0f * (f32)sampleRate;
-    block->firstPowerBin = (u32)floorf(frequency / scale);
-    block->firstPowerBin = block->firstPowerBin > 0 ? block->firstPowerBin : 0;
-    block->firstPowerBin =
-        block->firstPowerBin < block->fftLength / 2 - 1
-            ? block->firstPowerBin
-            : block->fftLength / 2 - 2;
+    This->firstPowerBin = (u32)floorf(frequency / scale);
+    This->firstPowerBin = This->firstPowerBin > 0 ? This->firstPowerBin : 0;
+    This->firstPowerBin =
+        This->firstPowerBin < This->fftLength / 2 - 1
+            ? This->firstPowerBin
+            : This->fftLength / 2 - 2;
 
-    frequency = _tosGetProfileFloat(block, 2, 4500.0f);
-    block->lastPowerBin =
+    frequency = _tosGetProfileFloat(This, 2, 4500.0f);
+    This->lastPowerBin =
         (u32)floorf(
-            0.9999f + (block->fftLength * frequency) / scale);
-    block->lastPowerBin = block->lastPowerBin > 0 ? block->lastPowerBin : 0;
-    block->lastPowerBin =
-        block->lastPowerBin < block->fftLength / 2 - 1
-            ? block->lastPowerBin
-            : block->fftLength / 2 - 2;
-    block->lastPowerBin = block->lastPowerBin > block->firstPowerBin
-        ? block->lastPowerBin
-        : block->firstPowerBin;
+            0.9999f + (This->fftLength * frequency) / scale);
+    This->lastPowerBin = This->lastPowerBin > 0 ? This->lastPowerBin : 0;
+    This->lastPowerBin =
+        This->lastPowerBin < This->fftLength / 2 - 1
+            ? This->lastPowerBin
+            : This->fftLength / 2 - 2;
+    This->lastPowerBin = This->lastPowerBin > This->firstPowerBin
+        ? This->lastPowerBin
+        : This->firstPowerBin;
 
-    block->powerFloor = _tosGetProfileFloat(block, 5, 0.0f);
+    This->powerFloor = _tosGetProfileFloat(This, 5, 0.0f);
     return 0;
 }
 

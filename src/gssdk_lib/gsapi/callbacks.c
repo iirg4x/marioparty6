@@ -160,154 +160,155 @@ static inline u32 AlignResultStorage(u32 size)
 * or a first-entry score below the minimum, then reports the selected action or a no-result
 * notification. Rejected results restart when stopRequested is zero; empty results restart only
 * with mode bit 1, as do successful results. */
-s32 asrspi_cbResult(const struct GSResult *recognitionResult, u32 engineStateAddress)
+s32 asrspi_cbResult(const struct GSResult *pAsrspiResult, u32 u32UserData)
 {
-    GSResultEngine *engine = (GSResultEngine *)engineStateAddress;
-    u32 selectedAction = 0;
-    GSResultExtraCopy *detailCopy = NULL;
-    s32 parameterStatus;
-    s32 minimumScore;
-    int allocationSize;
-    u16 entryIndex;
-    u16 pathIndex;
-    u8 *storageCursor;
+    s32 Error;
+    GSResultEngine *pEngine = (GSResultEngine *)u32UserData;
+    u32 Action = 0;
+    u32 ConfidenceThreshold;
+    GSResultExtraCopy *pDetailedResults = NULL;
+    GSResultDetailCopy *pDetailedWords;
+    u16 i;
+    u16 j;
+    int AllocSize;
+    u32 *pWordIdList;
 
-    engine->callbackActive = TRUE;
-    if (recognitionResult == NULL) {
+    pEngine->callbackActive = TRUE;
+    if (pAsrspiResult == NULL) {
         if (gGSAPI.notify != NULL) {
-            gGSAPI.notify(engine, 0, 0, 0);
+            gGSAPI.notify(pEngine, 0, 0, 0);
         }
-        if (engine->mode & (1 << 1)) {
-            RestartEngine(engine);
+        if (pEngine->mode & (1 << 1)) {
+            RestartEngine(pEngine);
         }
-        engine->callbackActive = FALSE;
+        pEngine->callbackActive = FALSE;
         return 0;
     }
-    if (recognitionResult->count == 0) {
+    if (pAsrspiResult->count == 0) {
         if (gGSAPI.notify != NULL) {
-            gGSAPI.notify(engine, 0, 0, 0);
+            gGSAPI.notify(pEngine, 0, 0, 0);
         }
-        if (engine->mode & (1 << 1)) {
-            RestartEngine(engine);
+        if (pEngine->mode & (1 << 1)) {
+            RestartEngine(pEngine);
         }
-        engine->callbackActive = FALSE;
+        pEngine->callbackActive = FALSE;
         return 0;
     }
-    if (engine->resultContext == NULL) {
-        engine->callbackActive = FALSE;
+    if (pEngine->resultContext == NULL) {
+        pEngine->callbackActive = FALSE;
         return 0;
     }
 
-    parameterStatus = ContextGetParam(engine->resultContext, 9, (u32 *)&minimumScore);
-    allocationSize = AlignResultStorage(sizeof(GSResultCopy) * recognitionResult->count);
-    for (entryIndex = 0; entryIndex < recognitionResult->count;
-         entryIndex++) {
-        allocationSize +=
-            recognitionResult->entries[entryIndex].itemCount * sizeof(u32);
+    Error = ContextGetParam(pEngine->resultContext, 9, &ConfidenceThreshold);
+    AllocSize = AlignResultStorage(sizeof(GSResultCopy) * pAsrspiResult->count);
+    for (i = 0; i < pAsrspiResult->count;
+         i++) {
+        AllocSize +=
+            pAsrspiResult->entries[i].itemCount * sizeof(u32);
     }
-    engine->copiedResults = heap_Alloc(gGSAPI.heap, allocationSize);
-    if (engine->copiedResults == NULL) {
-        engine->callbackActive = FALSE;
+    pEngine->copiedResults = heap_Alloc(gGSAPI.heap, AllocSize);
+    if (pEngine->copiedResults == NULL) {
+        pEngine->callbackActive = FALSE;
         return 0;
     }
 
-    entryIndex = 0;
-    storageCursor = (u8 *)((u8 *)engine->copiedResults +
-                      AlignResultStorage(sizeof(GSResultCopy) * recognitionResult->count));
-    for (; entryIndex < recognitionResult->count; entryIndex++) {
-        engine->copiedResults[entryIndex].status = recognitionResult->status;
-        engine->copiedResults[entryIndex].itemCount =
-            (u16)recognitionResult->entries[entryIndex].itemCount;
-        engine->copiedResults[entryIndex].score =
-            (u16)recognitionResult->entries[entryIndex].score;
-        engine->copiedResults[entryIndex].keys = (u32 *)storageCursor;
-        engine->copiedResults[entryIndex].details = NULL;
-        engine->copiedResults[entryIndex].nextResult =
-            (entryIndex == recognitionResult->count - 1) ? NULL :
-            &engine->copiedResults[entryIndex] + 1;
-        storageCursor += engine->copiedResults[entryIndex].itemCount * sizeof(u32);
-        for (pathIndex = 0;
-             pathIndex < engine->copiedResults[entryIndex].itemCount;
-             pathIndex++) {
-            engine->copiedResults[entryIndex].keys[pathIndex] =
-                recognitionResult->entries[entryIndex].items[pathIndex].word->key;
+    i = 0;
+    pWordIdList = (u32 *)((u8 *)pEngine->copiedResults +
+                      AlignResultStorage(sizeof(GSResultCopy) * pAsrspiResult->count));
+    for (; i < pAsrspiResult->count; i++) {
+        pEngine->copiedResults[i].status = pAsrspiResult->status;
+        pEngine->copiedResults[i].itemCount =
+            (u16)pAsrspiResult->entries[i].itemCount;
+        pEngine->copiedResults[i].score =
+            (u16)pAsrspiResult->entries[i].score;
+        pEngine->copiedResults[i].keys = pWordIdList;
+        pEngine->copiedResults[i].details = NULL;
+        pEngine->copiedResults[i].nextResult =
+            (i == pAsrspiResult->count - 1) ? NULL :
+            &pEngine->copiedResults[i] + 1;
+        pWordIdList += pEngine->copiedResults[i].itemCount;
+        for (j = 0;
+             j < pEngine->copiedResults[i].itemCount;
+             j++) {
+            pEngine->copiedResults[i].keys[j] =
+                pAsrspiResult->entries[i].items[j].word->key;
         }
     }
 
     if (gGSAPI.resultDetails != 0) {
-        entryIndex = 0;
-        allocationSize = AlignResultStorage(sizeof(GSResultExtraCopy) * recognitionResult->count);
-        for (; entryIndex < recognitionResult->count;
-             entryIndex++) {
-            allocationSize +=
+        i = 0;
+        AllocSize = AlignResultStorage(sizeof(GSResultExtraCopy) * pAsrspiResult->count);
+        for (; i < pAsrspiResult->count;
+             i++) {
+            AllocSize +=
                 AlignResultStorage(sizeof(GSResultDetailCopy) *
-                recognitionResult->entries[entryIndex].itemCount);
+                pAsrspiResult->entries[i].itemCount);
         }
-        if ((detailCopy = heap_Alloc(gGSAPI.heap, allocationSize)) == NULL) {
+        if ((pDetailedResults = heap_Alloc(gGSAPI.heap, AllocSize)) == NULL) {
             /* The callback returns here with the candidate copy still allocated. */
-            engine->callbackActive = FALSE;
+            pEngine->callbackActive = FALSE;
             return 0;
         }
 
-        entryIndex = 0;
-        storageCursor = (u8 *)((u8 *)detailCopy +
-            AlignResultStorage(sizeof(GSResultExtraCopy) * recognitionResult->count));
-        for (; entryIndex < recognitionResult->count; entryIndex++) {
-            engine->copiedResults[entryIndex].details = &detailCopy[entryIndex];
-            pathIndex = 0;
-            detailCopy[entryIndex].metadataA =
-                recognitionResult->entries[entryIndex].detailMetadataA;
-            detailCopy[entryIndex].metadataB =
-                recognitionResult->entries[entryIndex].detailMetadataB;
-            detailCopy[entryIndex].itemCount =
-                (u16) recognitionResult->entries[entryIndex].itemCount;
-            detailCopy[entryIndex].details = (GSResultDetailCopy *)storageCursor;
-            for (; pathIndex < detailCopy[entryIndex].itemCount;
-                 pathIndex++) {
-                ((GSResultDetailCopy *)storageCursor)[pathIndex].pathValueA =
-                    recognitionResult->entries[entryIndex].items[pathIndex].pathValueA;
-                ((GSResultDetailCopy *)storageCursor)[pathIndex].pathValueB =
-                    recognitionResult->entries[entryIndex].items[pathIndex].pathValueB;
-                ((GSResultDetailCopy *)storageCursor)[pathIndex].leadingValue =
-                    recognitionResult->entries[entryIndex].items[pathIndex].word->leadingValue;
-                ((GSResultDetailCopy *)storageCursor)[pathIndex].key =
-                    recognitionResult->entries[entryIndex].items[pathIndex].word->key;
+        i = 0;
+        pDetailedWords = (GSResultDetailCopy *)((u8 *)pDetailedResults +
+            AlignResultStorage(sizeof(GSResultExtraCopy) * pAsrspiResult->count));
+        for (; i < pAsrspiResult->count; i++) {
+            pEngine->copiedResults[i].details = &pDetailedResults[i];
+            j = 0;
+            pDetailedResults[i].metadataA =
+                pAsrspiResult->entries[i].detailMetadataA;
+            pDetailedResults[i].metadataB =
+                pAsrspiResult->entries[i].detailMetadataB;
+            pDetailedResults[i].itemCount =
+                (u16) pAsrspiResult->entries[i].itemCount;
+            pDetailedResults[i].details = pDetailedWords;
+            for (; j < pDetailedResults[i].itemCount;
+                 j++) {
+                pDetailedWords[j].pathValueA =
+                    pAsrspiResult->entries[i].items[j].pathValueA;
+                pDetailedWords[j].pathValueB =
+                    pAsrspiResult->entries[i].items[j].pathValueB;
+                pDetailedWords[j].leadingValue =
+                    pAsrspiResult->entries[i].items[j].word->leadingValue;
+                pDetailedWords[j].key =
+                    pAsrspiResult->entries[i].items[j].word->key;
             }
-            storageCursor += detailCopy[entryIndex].itemCount * sizeof(GSResultDetailCopy);
+            pDetailedWords += pDetailedResults[i].itemCount;
         }
     }
 
-    if (parameterStatus != 0) {
-        minimumScore = gGSAPI.resultThreshold;
+    if (Error != 0) {
+        ConfidenceThreshold = gGSAPI.resultThreshold;
     }
-    if (recognitionResult->status != 0 || recognitionResult->entries[0].score < minimumScore) {
+    if (pAsrspiResult->status != 0 || pAsrspiResult->entries[0].score < (s32)ConfidenceThreshold) {
         if (gGSAPI.notify != NULL) {
-            gGSAPI.notify(engine, 0, (u32)engine->copiedResults, minimumScore);
+            gGSAPI.notify(pEngine, 0, (u32)pEngine->copiedResults, ConfidenceThreshold);
         }
-        if (detailCopy != NULL) {
-            heap_Free(gGSAPI.heap, detailCopy);
+        if (pDetailedResults != NULL) {
+            heap_Free(gGSAPI.heap, pDetailedResults);
         }
-        heap_Free(gGSAPI.heap, engine->copiedResults);
-        if (engine->stopRequested == 0) {
-            RestartEngine(engine);
+        heap_Free(gGSAPI.heap, pEngine->copiedResults);
+        if (pEngine->stopRequested == 0) {
+            RestartEngine(pEngine);
         }
-        engine->callbackActive = FALSE;
+        pEngine->callbackActive = FALSE;
         return 0;
     }
 
     /* ContextGetAction initializes the output to zero; its status is ignored and zero is reported
      * when no action mapping supplies a value. */
-    ContextGetAction(engine->resultContext, recognitionResult, &selectedAction);
-    gGSAPI.resultCallback(engine, selectedAction, (u32)engine->copiedResults,
-                          engine->callbackValue);
-    if (detailCopy != NULL) {
-        heap_Free(gGSAPI.heap, detailCopy);
+    ContextGetAction(pEngine->resultContext, pAsrspiResult, &Action);
+    gGSAPI.resultCallback(pEngine, Action, (u32)pEngine->copiedResults,
+                          pEngine->callbackValue);
+    if (pDetailedResults != NULL) {
+        heap_Free(gGSAPI.heap, pDetailedResults);
     }
-    heap_Free(gGSAPI.heap, engine->copiedResults);
-    if (engine->mode & (1 << 1)) {
-        RestartEngine(engine);
+    heap_Free(gGSAPI.heap, pEngine->copiedResults);
+    if (pEngine->mode & (1 << 1)) {
+        RestartEngine(pEngine);
     }
-    engine->callbackActive = FALSE;
+    pEngine->callbackActive = FALSE;
     return 0;
 }
 

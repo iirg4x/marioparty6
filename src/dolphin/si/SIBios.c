@@ -503,7 +503,6 @@ BOOL SIGetResponse(s32 chan, void *data)
 
 static void AlarmHandler(OSAlarm *alarm, OSContext *context)
 {
-#pragma unused(context)
     s32 chan;
     SIPacket *packet;
 

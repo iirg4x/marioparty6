@@ -1,6 +1,7 @@
 #include <dolphin/PPCArch.h>
 #include <dolphin/hw_regs.h>
 #include <dolphin/os.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 #include <dolphin/os/OSPriv.h>

@@ -414,15 +414,15 @@ u32 seqStartPlay(PAGE* norm, PAGE* drum, MIDISETUP* midiSetup, u32* song, SND_PL
   }
 
   arr = (ARR*)song;
-  if (arr->info & 2147483648U) {
+  if (arr->info & 0x80000000) {
     nseq->trackSectionTab = ARR_GET(arr, arr->tsTab);
   } else {
     nseq->trackSectionTab = NULL;
   }
 
-  bpm = arr->info & 268435455;
+  bpm = arr->info & 0x0FFFFFFF;
 
-  if (!(arr->info & 1073741824)) {
+  if (!(arr->info & 0x40000000)) {
     bpm <<= 10;
   }
 
@@ -516,7 +516,7 @@ static void HandleMasterTrack(u8 secIndex) {
         break;
       }
 
-      if ((cseq->arrbase->info & 1073741824) != 0) {
+      if ((cseq->arrbase->info & 0x40000000) != 0) {
         synthSetBpm((section->bpm = section->mTrack.addr->bpm) >> 10, curSeqId, secIndex);
       } else {
         synthSetBpm(section->mTrack.addr->bpm, curSeqId, secIndex);
@@ -871,7 +871,7 @@ static u8* GetStreamValue(u8* stream, u16* deltaTime, s16* deltaData) {
     return NULL;
   }
 
-  if ((b1 & 128) != 0) {
+  if ((b1 & 0x80) != 0) {
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
     *deltaTime = (((u16)b1 & 127) << 8) | b2;
 #else
@@ -885,12 +885,12 @@ static u8* GetStreamValue(u8* stream, u16* deltaTime, s16* deltaData) {
 
   b1 = stream[0];
   b2 = stream[1];
-  if ((b1 & 128) != 0) {
+  if ((b1 & 0x80) != 0) {
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
-    v = (((u16)b1 & 127) << 8) | b2;
-    v |= (v & 16384) << 1;
+    v = (((u16)b1 & 0x7f) << 8) | b2;
+    v |= (v & 0x4000) << 1;
 #else
-    v = ((b1 & 127) << 8) | b2;
+    v = ((b1 & 0x7f) << 8) | b2;
     v <<= 1;
     v >>= 1;
 #endif
@@ -1008,7 +1008,7 @@ static SEQ_EVENT* GenerateNextTrackEvent(u8 trackId) {
     ev->info.trackAddr = (TENTRY*)pattern->addr;
     pattern->lTime = patternTime;
 
-    if ((pattern->addr->key & 128) != 0) {
+    if ((pattern->addr->key & 0x80) != 0) {
       pattern->addr = (NOTE_DATA*)((u8*)pattern->addr + 4);
       goto use_pattern_time;
     }
@@ -1126,19 +1126,19 @@ static SEQ_EVENT* HandleEvent(SEQ_EVENT* event, u8 secIndex, bool* loopFlag) {
     velocity = pe->velocity;
     midi = pa->midi;
 
-    if ((key & 128) != 0) {
+    if ((key & 0x80) != 0) {
       switch (velocity) {
       case 0:
-        DoPrgChange(cseq, key & 127, midi);
+        DoPrgChange(cseq, key & 0x7f, midi);
         break;
       case 1:
-        inpSetMidiCtrl(130 /* TODO SND_MIDICTRL_? */, midi, curSeqId, key & 127);
+        inpSetMidiCtrl(130 /* TODO SND_MIDICTRL_? */, midi, curSeqId, key & 0x7f);
         break;
       default:
-        if ((velocity & 128) != 128) {
+        if ((velocity & 0x80) != 0x80) {
           break;
         }
-        switch (velocity & 127) {
+        switch (velocity & 0x7f) {
         case 104:
           if (cseq->syncActive) {
             seqCrossFade(&cseq->syncCrossInfo, cseq->syncSeqIdPtr, TRUE);
@@ -1146,10 +1146,10 @@ static SEQ_EVENT* HandleEvent(SEQ_EVENT* event, u8 secIndex, bool* loopFlag) {
           }
           break;
         case 105:
-          seqMIDIPriority[curSeqId][midi] = key & 127;
+          seqMIDIPriority[curSeqId][midi] = key & 0x7f;
           break;
         case 106:
-          seqMIDIPriority[curSeqId][midi] = (key & 127) + 128;
+          seqMIDIPriority[curSeqId][midi] = (key & 0x7f) + 128;
           break;
         case 121:
           inpResetMidiCtrl(midi, curSeqId, FALSE);
@@ -1158,14 +1158,14 @@ static SEQ_EVENT* HandleEvent(SEQ_EVENT* event, u8 secIndex, bool* loopFlag) {
           KeyOffNotes();
           break;
         default:
-          inpSetMidiCtrl(velocity & 127, midi, curSeqId, key & 127);
+          inpSetMidiCtrl(velocity & 0x7f, midi, curSeqId, key & 0x7f);
           break;
         }
       }
       break;
     }
 
-    if ((cseq->trackMute[event->trackId / 32] & (1 << (event->trackId & 31))) != 0) {
+    if ((cseq->trackMute[event->trackId / 32] & (1 << (event->trackId & 0x1f))) != 0) {
       if ((macId = cseq->prgState[midi].macId) != 65535) {
         key += pa->patternInfo->transpose;
         key = CLAMP(key, 0, 127);
@@ -1307,7 +1307,7 @@ void seqHandle(u32 deltaTime) {
 
       for (i = 0; i < 2; ++i) {
         x = cseq->section[0].time[i].low + cseq->section[0].tickDelta[i].low;
-        cseq->section[0].time[i].low = x & 65535;
+        cseq->section[0].time[i].low = x & 0xffff;
         x >>= 16;
         cseq->section[0].time[i].high += x + cseq->section[0].tickDelta[i].high;
       }
@@ -1324,7 +1324,7 @@ void seqHandle(u32 deltaTime) {
       for (i = 0; i < 16; ++i) {
         for (j = 0; j < 2; ++j) {
           x = cseq->section[i].time[j].low + cseq->section[i].tickDelta[j].low;
-          cseq->section[i].time[j].low = x & 65535;
+          cseq->section[i].time[j].low = x & 0xffff;
           x >>= 16;
           cseq->section[i].time[j].high += x + cseq->section[i].tickDelta[j].high;
         }

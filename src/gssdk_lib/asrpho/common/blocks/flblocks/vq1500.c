@@ -30,12 +30,12 @@ extern void heap_Free(void *heap, void *ptr);
 static void FreeCodeBooks(TosContext *context, Vq1500 *block);
 static void FreeVq1500(Vq1500 *block);
 
-static u32 InitVq1500Process(TosBaseBlock *baseBlock)
+static u32 InitVq1500Process(TosBaseBlock *_This)
 {
-    baseBlock->input->inputSize =
-        _tosGetProfileU32(baseBlock, 1, VQ_DEFAULT_INPUT_ELEMENTS) * sizeof(f32);
-    baseBlock->output->outputSize =
-        (u8)_tosGetProfileU32(baseBlock, 2, 4);
+    _This->input->inputSize =
+        _tosGetProfileU32(_This, 1, VQ_DEFAULT_INPUT_ELEMENTS) * sizeof(f32);
+    _This->output->outputSize =
+        (u8)_tosGetProfileU32(_This, 2, 4);
     return 0;
 }
 

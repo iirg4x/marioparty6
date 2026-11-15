@@ -306,9 +306,9 @@ GXFifoObj* GXInit(void* base, u32 size)
     }
 
     {
-        u32 cpReg = 0;
+        reg = 0;
 
-        GX_SET_CP_REG(3, cpReg);
+        GX_SET_CP_REG(3, reg);
 
         SET_REG_FIELD(0, gx->perfSel, 4, 4, 0);
         GX_WRITE_U8(0x8);
@@ -331,8 +331,8 @@ GXFifoObj* GXInit(void* base, u32 size)
 void __GXInitGX(void)
 {
     GXRenderModeObj* rmode;
-    GXTexObj texObj;
-    f32 identityMtx[3][4];
+    GXTexObj tex_obj;
+    f32 identity_mtx[3][4];
     GXColor clear = {64, 64, 64, 255};
     GXColor black = {0, 0, 0, 0};
     GXColor white = {255, 255, 255, 255};
@@ -388,24 +388,24 @@ void __GXInitGX(void)
     GXEnableTexOffsets(GX_TEXCOORD6, GX_FALSE, GX_FALSE);
     GXEnableTexOffsets(GX_TEXCOORD7, GX_FALSE, GX_FALSE);
 
-    identityMtx[0][0] = 1.0f;
-    identityMtx[0][1] = 0.0f;
-    identityMtx[0][2] = 0.0f;
-    identityMtx[0][3] = 0.0f;
-    identityMtx[1][0] = 0.0f;
-    identityMtx[1][1] = 1.0f;
-    identityMtx[1][2] = 0.0f;
-    identityMtx[1][3] = 0.0f;
-    identityMtx[2][0] = 0.0f;
-    identityMtx[2][1] = 0.0f;
-    identityMtx[2][2] = 1.0f;
-    identityMtx[2][3] = 0.0f;
+    identity_mtx[0][0] = 1.0f;
+    identity_mtx[0][1] = 0.0f;
+    identity_mtx[0][2] = 0.0f;
+    identity_mtx[0][3] = 0.0f;
+    identity_mtx[1][0] = 0.0f;
+    identity_mtx[1][1] = 1.0f;
+    identity_mtx[1][2] = 0.0f;
+    identity_mtx[1][3] = 0.0f;
+    identity_mtx[2][0] = 0.0f;
+    identity_mtx[2][1] = 0.0f;
+    identity_mtx[2][2] = 1.0f;
+    identity_mtx[2][3] = 0.0f;
 
-    GXLoadPosMtxImm(identityMtx, GX_PNMTX0);
-    GXLoadNrmMtxImm(identityMtx, GX_PNMTX0);
+    GXLoadPosMtxImm(identity_mtx, GX_PNMTX0);
+    GXLoadNrmMtxImm(identity_mtx, GX_PNMTX0);
     GXSetCurrentMtx(GX_PNMTX0);
-    GXLoadTexMtxImm(identityMtx, GX_IDENTITY, GX_MTX3x4);
-    GXLoadTexMtxImm(identityMtx, GX_PTIDENTITY, GX_MTX3x4);
+    GXLoadTexMtxImm(identity_mtx, GX_IDENTITY, GX_MTX3x4);
+    GXLoadTexMtxImm(identity_mtx, GX_PTIDENTITY, GX_MTX3x4);
     GXSetViewport(0.0f, 0.0f, rmode->fbWidth, rmode->xfbHeight, 0.0f, 1.0f);
     GXSetProjectionv(GXDefaultProjData);
     GXSetCoPlanar(GX_DISABLE);
@@ -426,15 +426,15 @@ void __GXInitGX(void)
     GXSetTexRegionCallback((GXTexRegionCallback)__GXDefaultTexRegionCallback);
     GXSetTlutRegionCallback(__GXDefaultTlutRegionCallback);
 
-    GXInitTexObj(&texObj, DefaultTexData, 4, 4, GX_TF_IA8, GX_CLAMP, GX_CLAMP, GX_FALSE);
-    GXLoadTexObj(&texObj, GX_TEXMAP0);
-    GXLoadTexObj(&texObj, GX_TEXMAP1);
-    GXLoadTexObj(&texObj, GX_TEXMAP2);
-    GXLoadTexObj(&texObj, GX_TEXMAP3);
-    GXLoadTexObj(&texObj, GX_TEXMAP4);
-    GXLoadTexObj(&texObj, GX_TEXMAP5);
-    GXLoadTexObj(&texObj, GX_TEXMAP6);
-    GXLoadTexObj(&texObj, GX_TEXMAP7);
+    GXInitTexObj(&tex_obj, DefaultTexData, 4, 4, GX_TF_IA8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP0);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP1);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP2);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP3);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP4);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP5);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP6);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP7);
 
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
     GXSetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR0A0);

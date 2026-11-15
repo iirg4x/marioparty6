@@ -106,31 +106,31 @@ default:
 return 1;
 }
 
-static u32 InitDelayBlock(TosBaseBlock *baseBlock)
+static u32 InitDelayBlock(TosBaseBlock *_This)
 {
-DelayBlock *block = (DelayBlock *)baseBlock;
+DelayBlock *This = (DelayBlock *)_This;
 TosContext *context;
 
-context = baseBlock->context;
+context = _This->context;
 
-block->delayCount = _tosGetProfileU32(block, 1, 1);
-block->elementSize = _tosGetProfileU32(block, 2, 4);
-block->bufferSize = block->delayCount * block->elementSize;
-block->buffer = heap_Calloc(
-    context->heap, block->delayCount, block->elementSize);
-if (block->buffer == NULL) {
-    _tosErrorLog(block, 2);
+This->delayCount = _tosGetProfileU32(This, 1, 1);
+This->elementSize = _tosGetProfileU32(This, 2, 4);
+This->bufferSize = This->delayCount * This->elementSize;
+This->buffer = heap_Calloc(
+    context->heap, This->delayCount, This->elementSize);
+if (This->buffer == NULL) {
+    _tosErrorLog(This, 2);
     return 1;
 }
-block->readPtr = block->buffer;
-block->writePtr = block->buffer;
-block->bufferEnd = block->buffer + block->bufferSize;
-block->base.input->inputSize = block->elementSize;
-block->base.output->outputSize = block->elementSize;
-block->priming = 1;
-block->filledFrames = 0;
-block->flushActive = 0;
-block->flushRemaining = 0;
+This->readPtr = This->buffer;
+This->writePtr = This->buffer;
+This->bufferEnd = This->buffer + This->bufferSize;
+This->base.input->inputSize = This->elementSize;
+This->base.output->outputSize = This->elementSize;
+This->priming = 1;
+This->filledFrames = 0;
+This->flushActive = 0;
+This->flushRemaining = 0;
 return 0;
 }
 

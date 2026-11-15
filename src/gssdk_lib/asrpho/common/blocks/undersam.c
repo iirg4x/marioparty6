@@ -57,26 +57,26 @@ return 1;
 /* Loads the input frame length and rate settings, derives the input samples per output sample,
  * rejects a frame length not divisible by that count, and sets the input/output queue byte
  * sizes. */
-static u32 InitUndersampler(TosBaseBlock *baseBlock)
+static u32 InitUndersampler(TosBaseBlock *_This)
 {
 u16 inputSamples;
-Undersampler *block = (Undersampler *)baseBlock;
+Undersampler *This = (Undersampler *)_This;
 u16 inputRate;
 u8 samplesPerOutput;
 u16 outputSamples;
 
-inputSamples = (u16)_tosGetProfileU32(block, 1, 110);
-block->inputSamples = inputSamples;
-inputRate = (u16)_tosGetProfileU32(block, 2, 11000);
-block->samplesPerOutput = inputRate / (u16)_tosGetProfileU32(block, 3, 2000);
-samplesPerOutput = block->samplesPerOutput;
+inputSamples = (u16)_tosGetProfileU32(This, 1, 110);
+This->inputSamples = inputSamples;
+inputRate = (u16)_tosGetProfileU32(This, 2, 11000);
+This->samplesPerOutput = inputRate / (u16)_tosGetProfileU32(This, 3, 2000);
+samplesPerOutput = This->samplesPerOutput;
 if (inputSamples % samplesPerOutput != 0) {
-    _tosErrorLog(block, 100);
+    _tosErrorLog(This, 100);
     return 1;
 }
 outputSamples = inputSamples / samplesPerOutput;
-block->base.input->inputSize = inputSamples * sizeof(s16);
-block->base.output->outputSize = outputSamples * sizeof(s32);
+This->base.input->inputSize = inputSamples * sizeof(s16);
+This->base.output->outputSize = outputSamples * sizeof(s32);
 return 0;
 }
 

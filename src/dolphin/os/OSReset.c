@@ -14,33 +14,33 @@ static u32 bootThisDol;
 
 void OSRegisterResetFunction(OSResetFunctionInfo* info)
 {
-    OSResetFunctionInfo* prev;
-    OSResetFunctionInfo* next;
+    OSResetFunctionInfo* __prev;
+    OSResetFunctionInfo* __next;
 
-    for (next = ResetFunctionQueue.head;
-         next != NULL && next->priority <= info->priority;
-         next = next->next) {
+    for (__next = ResetFunctionQueue.head;
+         __next != NULL && __next->priority <= info->priority;
+         __next = __next->next) {
     }
 
-    if (next == NULL) {
-        prev = ResetFunctionQueue.tail;
-        if (prev == NULL) {
+    if (__next == NULL) {
+        __prev = ResetFunctionQueue.tail;
+        if (__prev == NULL) {
             ResetFunctionQueue.head = info;
         } else {
-            prev->next = info;
+            __prev->next = info;
         }
-        info->prev = prev;
+        info->prev = __prev;
         info->next = NULL;
         ResetFunctionQueue.tail = info;
     } else {
-        info->next = next;
-        prev = next->prev;
-        next->prev = info;
-        info->prev = prev;
-        if (prev == NULL) {
+        info->next = __next;
+        __prev = __next->prev;
+        __next->prev = info;
+        info->prev = __prev;
+        if (__prev == NULL) {
             ResetFunctionQueue.head = info;
         } else {
-            prev->next = info;
+            __prev->next = info;
         }
     }
 }
@@ -48,21 +48,21 @@ void OSRegisterResetFunction(OSResetFunctionInfo* info)
 BOOL __OSCallResetFunctions(BOOL final)
 {
     OSResetFunctionInfo* info;
-    BOOL error;
+    BOOL err;
     u32 priority;
 
     priority = 0;
-    error = FALSE;
+    err = FALSE;
     for (info = ResetFunctionQueue.head; info != NULL; info = info->next) {
-        if (error && priority != info->priority) {
+        if (err && priority != info->priority) {
             break;
         }
-        error |= !info->func(final);
+        err |= !info->func(final);
         priority = info->priority;
     }
 
-    error |= !__OSSyncSram();
-    if (error) {
+    err |= !__OSSyncSram();
+    if (err) {
         return FALSE;
     }
     return TRUE;
@@ -136,13 +136,13 @@ void __OSDoHotReset(u32 resetCode)
     Reset(resetCode * 8);
 }
 
-void __OSShutdownDevices(BOOL doRecalibration)
+void __OSShutdownDevices(BOOL doRecal)
 {
     int rc;
     BOOL disableRecalibration;
 
     __OSStopAudioSystem();
-    if (!doRecalibration) {
+    if (!doRecal) {
         disableRecalibration = __PADDisableRecalibration(TRUE);
     }
 
@@ -155,7 +155,7 @@ void __OSShutdownDevices(BOOL doRecalibration)
     rc = __OSCallResetFunctions(TRUE);
     ASSERTLINE(408, rc);
     LCDisable();
-    if (!doRecalibration) {
+    if (!doRecal) {
         __PADDisableRecalibration(disableRecalibration);
     }
     KillThreads();

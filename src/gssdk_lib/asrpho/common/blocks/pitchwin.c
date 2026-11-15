@@ -107,7 +107,7 @@ static void CreateWindow(f32 *windowCoefficients, u16 sampleRate, u16 windowLeng
     u16 coefficientCount = windowLength;
     u16 midpointIndex;
     u16 samplesPerSecond = sampleRate;
-    f32 angularFrequency = (2.0 * 3.141592653589793) / ((f32)coefficientCount / samplesPerSecond);
+    f32 angularFrequency = (2.0 * M_PI) / ((f32)coefficientCount / samplesPerSecond);
     f32 samplePeriod = 1.0f / samplesPerSecond;
     f32 sampleTime;
 
@@ -126,10 +126,10 @@ static void CreateWindow(f32 *windowCoefficients, u16 sampleRate, u16 windowLeng
 }
 
 // During block initialization, read the rec1600 profile and prepare the analysis window.
-static u32 InitPitchWindow(TosBaseBlock *baseBlock)
+static u32 InitPitchWindow(TosBaseBlock *_This)
 {
-    PitchWindow *block = (PitchWindow *)baseBlock;
-    TosContext *context = baseBlock->context;
+    PitchWindow *This = (PitchWindow *)_This;
+    TosContext *context = _This->context;
     u16 sampleRate;
     f32 windowDuration;
     u16 inputFrameLength;
@@ -137,37 +137,37 @@ static u32 InitPitchWindow(TosBaseBlock *baseBlock)
     s16 windowLength;
 
     // Profile keys 1-4 select output rate, duration, input frame size, and input rate.
-    sampleRate = (u16)_tosGetProfileU32(block, 1, 2200);
-    windowDuration = _tosGetProfileFloat(block, 2, 0.04f);
-    inputFrameLength = (u16)_tosGetProfileU32(block, 3, 110);
-    inputSampleRate = (u16)_tosGetProfileU32(block, 4, 11000);
+    sampleRate = (u16)_tosGetProfileU32(This, 1, 2200);
+    windowDuration = _tosGetProfileFloat(This, 2, 0.04f);
+    inputFrameLength = (u16)_tosGetProfileU32(This, 3, 110);
+    inputSampleRate = (u16)_tosGetProfileU32(This, 4, 11000);
 
-    windowLength = block->windowLength = sampleRate * windowDuration + 0.5;
+    windowLength = This->windowLength = sampleRate * windowDuration + 0.5;
     // Require the configured input window to contain a whole number of input frames.
     if ((u32)(0.5 + windowDuration * inputSampleRate) % inputFrameLength != 0) {
-        _tosErrorLog(block, 100);
+        _tosErrorLog(This, 100);
         return 1;
     }
 
-    block->frameCount = (u32)(0.5 + windowDuration * inputSampleRate) / inputFrameLength;
-    block->frameLength = (u16)windowLength / block->frameCount;
-    block->base.input->inputSize = block->frameLength * sizeof(s32);
-    block->base.output->outputSize = (u16)windowLength * sizeof(f32);
+    This->frameCount = (u32)(0.5 + windowDuration * inputSampleRate) / inputFrameLength;
+    This->frameLength = (u16)windowLength / This->frameCount;
+    This->base.input->inputSize = This->frameLength * sizeof(s32);
+    This->base.output->outputSize = (u16)windowLength * sizeof(f32);
 
-    block->windowCoefficients =
+    This->windowCoefficients =
         heap_Calloc(context->heap, (u16)windowLength, sizeof(f32));
-    block->historySamples =
+    This->historySamples =
         heap_Calloc(context->heap, (u16)windowLength, sizeof(s32));
-    if (block->windowCoefficients == NULL || block->historySamples == NULL) {
-        _tosErrorLog(block, 2);
+    if (This->windowCoefficients == NULL || This->historySamples == NULL) {
+        _tosErrorLog(This, 2);
         return 1;
     }
 
-    CreateWindow(block->windowCoefficients, sampleRate, windowLength);
-    block->historyRead = block->historySamples;
-    block->historyWrite =
-        block->historySamples + (block->frameCount - 1) * block->frameLength;
-    block->historyEnd = block->historySamples + block->windowLength;
+    CreateWindow(This->windowCoefficients, sampleRate, windowLength);
+    This->historyRead = This->historySamples;
+    This->historyWrite =
+        This->historySamples + (This->frameCount - 1) * This->frameLength;
+    This->historyEnd = This->historySamples + This->windowLength;
     return 0;
 }
 
