@@ -95,8 +95,8 @@ static volatile u16 regs[59];
 static volatile u64 shdwChanged;
 static VITiming* CurrTiming;
 static u32 CurrTvMode;
-static u32 NextBufAddr;
-static u32 CurrBufAddr;
+static void* NextBufAddr;
+static void* CurrBufAddr;
 static volatile u16 shdwRegs[59];
 
 #define MARK_CHANGED(index) (changed |= 1LL << (63 - (index)))
@@ -300,7 +300,6 @@ VITiming* __VISetExtraTiming(VITiming* t) {
     return old;
 }
 
-#pragma dont_inline on
 static VITiming* getTiming(VITVMode mode) {
     switch (mode) {
     case VI_TVMODE_NTSC_INT:        return &timing[0];
@@ -325,7 +324,6 @@ static VITiming* getTiming(VITVMode mode) {
         return NULL;
     }
 }
-#pragma dont_inline reset
 
 void __VIInit(VITVMode mode) {
     VITiming* tm;
@@ -940,7 +938,7 @@ void VIFlush(void) {
     }
 
     flushFlag = 1;
-    NextBufAddr = HorVer.bufAddr;
+    NextBufAddr = (void*)HorVer.bufAddr;
     OSRestoreInterrupts(enabled);
 }
 
@@ -958,11 +956,11 @@ void VISetNextFrameBuffer(void* fb) {
 }
 
 void* VIGetNextFrameBuffer(void) {
-    return *(void**)(&NextBufAddr);
+    return NextBufAddr;
 }
 
 void* VIGetCurrentFrameBuffer(void) {
-    return *(void**)(&CurrBufAddr);
+    return CurrBufAddr;
 }
 
 void VISetNextRightFrameBuffer(void* fb) {
@@ -1258,7 +1256,6 @@ void __VISetLatchMode(u32 mode) {
     __VIRegs[1] = reg;
 }
 
-#pragma dont_inline on
 int __VIGetLatch0Position(s16* px, s16* py) {
     u32 hcount;
     u32 vcount;
@@ -1275,9 +1272,7 @@ int __VIGetLatch0Position(s16* px, s16* py) {
     *px = *py = -1;
     return 0;
 }
-#pragma dont_inline reset
 
-#pragma dont_inline on
 int __VIGetLatch1Position(s16* px, s16* py) {
     u32 hcount;
     u32 vcount;
@@ -1294,7 +1289,6 @@ int __VIGetLatch1Position(s16* px, s16* py) {
     *px = *py = -1;
     return 0;
 }
-#pragma dont_inline reset
 
 int __VIGetLatchPosition(u32 port, s16* px, s16* py) {
     if (port == 0) {

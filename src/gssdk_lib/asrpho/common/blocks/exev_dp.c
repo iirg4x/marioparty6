@@ -168,14 +168,13 @@ return 0;
 }
 
 /* TOS calls this initializer to bind the input port and apply profile key 15's element size. */
-static u32 InitExtraEventDP(TosBaseBlock *tosBlock)
+static u32 InitExtraEventDP(ExtraEventDP *This)
 {
-ExtraEventDP *eventBlock = (ExtraEventDP *)tosBlock;
 u32 inputElementSize;
 
-eventBlock->input = tosBlock->input;
-inputElementSize = (u16)_tosGetProfileU32(tosBlock, 15, 4);
-eventBlock->input->inputSize = inputElementSize;
+This->input = This->base.input;
+inputElementSize = (u16)_tosGetProfileU32(&This->base, 15, 4);
+This->input->inputSize = inputElementSize;
 return 0;
 }
 

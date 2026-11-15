@@ -43,7 +43,7 @@ static void DEMOLoadFont(enum _GXTexMapID texMap, enum _GXTexMtx texMtx, DMTexFl
 
     width = 64;
     height = 0x1800 / width;
-    GXInitTexObj(&fontTexObj, (void *)DEMOFontBitmap, width, (u16)height, 0, 0, 0, 0);
+    GXInitTexObj(&fontTexObj, DEMOFontBitmap, width, (u16)height, 0, 0, 0, 0);
     if (texFlt == 0) {
         GXInitTexObjLOD(&fontTexObj, 0, 0, 0.0f, 0.0f, 0.0f, 0, 0, 0);
         fontShift = 0;
@@ -59,14 +59,14 @@ static void DEMOSetupScrnSpc(long width, long height, float depth)
 {
     float pMtx[4][4];
     float mMtx[3][4];
-    float offset;
+    float top;
 
     if (DEMOGetRenderModeObj()->field_rendering != 0 && VIGetNextField() == 0) {
-        offset = -0.667f;
+        top = -0.667f;
     } else {
-        offset = 0.0f;
+        top = 0.0f;
     }
-    MTXOrtho(pMtx, offset, height, 0.0f, width, 0.0f, -depth);
+    MTXOrtho(pMtx, top, height, 0.0f, width, 0.0f, -depth);
     GXSetProjection(pMtx, 1);
     MTXIdentity(mMtx);
     GXLoadPosMtxImm(mMtx, 0);

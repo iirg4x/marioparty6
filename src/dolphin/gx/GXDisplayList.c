@@ -23,7 +23,7 @@ void GXBeginDisplayList(void *list, u32 size)
     if (gx->dlSaveContext != 0) {
         memcpy(&__savedGXdata, gx, sizeof(__savedGXdata));
     }
-    DisplayListFifo.base = (u8 *)list;
+    DisplayListFifo.base = list;
     DisplayListFifo.top = (u8 *)list + size - 4;
     DisplayListFifo.size = size;
     DisplayListFifo.count = 0;

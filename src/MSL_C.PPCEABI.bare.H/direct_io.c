@@ -1,4 +1,5 @@
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/direct_io.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/mem_funcs.h"
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/ansi_files.h"
 
 size_t fwrite(const void* ptr, size_t memb_size, size_t num_memb, FILE* file) {
@@ -59,7 +60,7 @@ size_t __fwrite(const void* ptr, size_t memb_size, size_t num_memb, FILE* file) 
             if (num_bytes > bytes_to_go)
                 num_bytes = bytes_to_go;
             if (file->file_mode.buffer_mode == _IOLBF && num_bytes)
-                if ((newline = (unsigned char*)__memrchr(write_ptr, '\n', num_bytes)) != NULL)
+                if ((newline = __memrchr(write_ptr, '\n', num_bytes)) != NULL)
                     num_bytes = newline + 1 - write_ptr;
 
             if (num_bytes) {

@@ -13,7 +13,7 @@ typedef int (*_compare_function)(const void *, const void *);
                                                                                \
         unsigned long tmp;                                                     \
                                                                                \
-        for (p = (char *)src - 1, q = (char *)dst - 1, n++; --n;) {            \
+        for (p = src - 1, q = dst - 1, n++; --n;) {                            \
             tmp = *++q;                                                        \
             *q = *++p;                                                         \
             *p = tmp;                                                          \

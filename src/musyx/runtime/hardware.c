@@ -7,6 +7,7 @@
 #include "musyx/snd.h"
 #include "musyx/stream.h"
 #include "musyx/synth.h"
+#include "humath.h"
 
 #define HW_CHANGED_BREAK 32
 #define HW_ADSR_LEVEL_MAX 32767
@@ -180,6 +181,7 @@ void hwInitSamplePlayback(u32 v, u16 smpID, void* newsmp, u32 set_defadsr, u32 p
                           u32 callbackUserValue, u32 setSRC, u8 itdMode) {
   unsigned char i;  // r30
   unsigned long bf; // r29
+  SAMPLE_INFO* sample = newsmp;
   bf = 0;
   for (i = 0; i <= salTimeOffset; ++i) {
     bf |= dspVoice[v].changed[i] & HW_CHANGED_BREAK;
@@ -191,7 +193,7 @@ void hwInitSamplePlayback(u32 v, u16 smpID, void* newsmp, u32 set_defadsr, u32 p
   dspVoice[v].mesgCallBackUserValue = callbackUserValue;
   dspVoice[v].flags = 0;
   dspVoice[v].smp_id = smpID;
-  dspVoice[v].smp_info = *(SAMPLE_INFO*)newsmp;
+  dspVoice[v].smp_info = *sample;
 
   if (set_defadsr != 0) {
     dspVoice[v].adsr.mode = 0;
@@ -224,7 +226,7 @@ void hwBreak(s32 vid) {
 
 void hwSetADSR(u32 v, void* _adsr, u8 mode) {
   u32 sl;                              // r29
-  ADSR_INFO* adsr = (ADSR_INFO*)_adsr; // r30
+  ADSR_INFO* adsr = _adsr; // r30
 
   switch (mode) {
   case 0: {
@@ -322,7 +324,7 @@ void hwLowPassFrqToCoef(u32 frq, u16* _a0, u16* _b1) {
   float c;  // f30
   float b1; // f31
 
-  c = 2.0f - sndCos(((float)(2 * 3.141592653589793) * frq) / 32000.0f);
+  c = 2.0f - sndCos(((float)(2 * M_PI) * frq) / 32000.0f);
   b1 = c > 1.0f ? (sndSqrt((c * c) - 1.0f) - c) : -1.0f;
   b1 = CLAMP(b1, -1.0f, 1.0f);
   *_a0 = 32768.0f * (1.0f + b1);
@@ -496,17 +498,18 @@ u32 hwGetPos(u32 v) {
 void hwFlushStream(void* base, u32 offset, u32 bytes, u8 hwStreamHandle, void (*callback)(size_t),
                    u32 user) {
   size_t aram; // r28
-  size_t mram; // r29
+  u8* mram; // r29
   size_t len;
   aram = aramGetStreamBufferAddress(hwStreamHandle, &len);
   bytes += (offset & 31);
   offset &= ~31;
   bytes = (bytes + 31) & ~31;
-  mram = (u32)base + offset;
+  mram = base;
+  mram += offset;
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
-  DCStoreRange((void*)mram, bytes);
+  DCStoreRange(mram, bytes);
 #endif
-  aramUploadData((void*)mram, aram + offset, bytes, 1, callback, user);
+  aramUploadData(mram, aram + offset, bytes, 1, callback, user);
 }
 
 void hwPrepareStreamBuffer() {}
@@ -550,10 +553,12 @@ void hwSaveSample(void* header, void* data
 #endif
 ) {
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
-  u32 len = ((u32*)*((u32*)header))[1] & HW_SAMPLE_LENGTH_MASK;
-  u8 type = ((u32*)*((u32*)header))[1] >> HW_SAMPLE_TYPE_SHIFT;
+  SAMPLE_HEADER** sampleHeader = header;
+  void** sampleData = data;
+  u32 len = (*sampleHeader)->length & HW_SAMPLE_LENGTH_MASK;
+  u8 type = (*sampleHeader)->length >> HW_SAMPLE_TYPE_SHIFT;
   len = convert_length(len, type);
-  *((u32*)data) = (u32)aramStoreData((void*)*((u32*)data), len
+  *sampleData = aramStoreData(*sampleData, len
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
                                      ,
                                      aramInfo
@@ -572,13 +577,14 @@ void hwRemoveSample(void* header, void* data
                     ARAMInfo* aramInfo
 #endif
 ) {
+  SAMPLE_HEADER* sampleHeader = header;
 #if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
-  u32 len = (((u32*)header))[1] & HW_SAMPLE_LENGTH_MASK;
-  u8 type = (((u32*)header))[1] >> HW_SAMPLE_TYPE_SHIFT;
+  u32 len = sampleHeader->length & HW_SAMPLE_LENGTH_MASK;
+  u8 type = sampleHeader->length >> HW_SAMPLE_TYPE_SHIFT;
   len = convert_length(len, type);
 #else
-  u8 type = (((u32*)header))[1] >> HW_SAMPLE_TYPE_SHIFT;
-  u32 len = convert_length((((u32*)header))[1] & HW_SAMPLE_LENGTH_MASK, type);
+  u8 type = sampleHeader->length >> HW_SAMPLE_TYPE_SHIFT;
+  u32 len = convert_length(sampleHeader->length & HW_SAMPLE_LENGTH_MASK, type);
 #endif
   aramRemoveData(data, len
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)

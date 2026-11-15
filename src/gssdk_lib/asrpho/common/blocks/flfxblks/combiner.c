@@ -20,31 +20,31 @@ extern u8 qCheckInputQueues(TosQueuePort *input, u32 count);
 
 // Sets frame sizes from profile key 2 and allocates the eight-frame history
 // when the TOS graph initializes the combiner.
-static u32 CombinerInit(TosBaseBlock *baseBlock)
+static u32 CombinerInit(TosBaseBlock *_This)
 {
-    Combiner *block = (Combiner *)baseBlock;
-    TosContext *context = baseBlock->context;
+    Combiner *This = (Combiner *)_This;
+    TosContext *context = _This->context;
     f32 *frameStorage;
     s32 historySlot;
 
     // Profile key 2 selects the number of speech bands; 12 is the default.
-    block->bandCount = _tosGetProfileU32(block, 2, 12);
-    block->frameVectorLength = block->bandCount * 3 + 3;
-    block->baseBlock.input->inputSize =
-        (block->bandCount + 2) * sizeof(f32);
-    block->baseBlock.output->outputSize =
-        (block->frameVectorLength - 1) * sizeof(f32);
-    block->historyStorage = heap_Calloc(
-        context->heap, block->frameVectorLength * 8, sizeof(f32));
-    if (block->historyStorage == NULL) {
+    This->bandCount = _tosGetProfileU32(This, 2, 12);
+    This->frameVectorLength = This->bandCount * 3 + 3;
+    This->baseBlock.input->inputSize =
+        (This->bandCount + 2) * sizeof(f32);
+    This->baseBlock.output->outputSize =
+        (This->frameVectorLength - 1) * sizeof(f32);
+    This->historyStorage = heap_Calloc(
+        context->heap, This->frameVectorLength * 8, sizeof(f32));
+    if (This->historyStorage == NULL) {
         return 2;
     }
 
-    for (historySlot = 0, frameStorage = block->historyStorage; historySlot < 8;
-         historySlot++, frameStorage += block->frameVectorLength) {
-        block->frameHistory[historySlot] = frameStorage;
+    for (historySlot = 0, frameStorage = This->historyStorage; historySlot < 8;
+         historySlot++, frameStorage += This->frameVectorLength) {
+        This->frameHistory[historySlot] = frameStorage;
     }
-    block->writeFrameIndex = 0;
+    This->writeFrameIndex = 0;
     return 0;
 }
 

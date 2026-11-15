@@ -1,12 +1,11 @@
 #include <dolphin/PPCArch.h>
 #include <dolphin/__ppc_eabi_init.h>
+#include <dolphin/os/OSCache.h>
+#include <dolphin/os.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-void __OSPSInit();
-void __OSFPRInit();
-void __OSCacheInit();
 
 asm void __init_hardware(void)
 {
@@ -47,6 +46,8 @@ loop:
     // clang-format on
 }
 
+static void __init_cpp(void);
+
 void __init_user()
 {
     __init_cpp();
@@ -56,7 +57,7 @@ typedef void (*voidfunctionptr)(void); // pointer to function returning void
 __declspec(section ".init") extern voidfunctionptr _ctors[];
 __declspec(section ".init") extern voidfunctionptr _dtors[];
 
-void __init_cpp(void)
+static void __init_cpp(void)
 {
     voidfunctionptr *constructor;
 

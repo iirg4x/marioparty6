@@ -1,8 +1,8 @@
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/mem_funcs.h"
 
-#define cps               ((unsigned char*)src)
+#define cps               ((const unsigned char*)src)
 #define cpd               ((unsigned char*)dst)
-#define lps               ((unsigned long*)src)
+#define lps               ((const unsigned long*)src)
 #define lpd               ((unsigned long*)dst)
 #define deref_auto_inc(p) *++(p)
 
@@ -12,8 +12,10 @@ void __copy_longs_aligned(void* dst, const void* src, size_t n)
 
 	i = (-(unsigned long)dst) & 3;
 
-	cps = ((unsigned char*)src) - 1;
-	cpd = ((unsigned char*)dst) - 1;
+	cps = src;
+	cps--;
+	cpd = dst;
+	cpd--;
 
 	if (i) {
 		n -= i;
@@ -63,8 +65,10 @@ void __copy_longs_rev_aligned(void* dst, const void* src, size_t n)
 {
 	unsigned long i;
 
-	cps = ((unsigned char*)src) + n;
-	cpd = ((unsigned char*)dst) + n;
+	cps = src;
+	cpd = dst;
+	cps += n;
+	cpd += n;
 
 	i = ((unsigned long)cpd) & 3;
 
@@ -114,8 +118,10 @@ void __copy_longs_unaligned(void* dst, const void* src, size_t n)
 
 	i = (-(unsigned long)dst) & 3;
 
-	cps = ((unsigned char*)src) - 1;
-	cpd = ((unsigned char*)dst) - 1;
+	cps = src;
+	cps--;
+	cpd = dst;
+	cpd--;
 
 	if (i) {
 		n -= i;
@@ -171,8 +177,10 @@ void __copy_longs_rev_unaligned(void* dst, const void* src, size_t n)
 	unsigned long i, v1, v2;
 	unsigned int src_offset, left_shift, right_shift;
 
-	cps = ((unsigned char*)src) + n;
-	cpd = ((unsigned char*)dst) + n;
+	cps = src;
+	cpd = dst;
+	cps += n;
+	cpd += n;
 
 	i = ((unsigned long)cpd) & 3;
 

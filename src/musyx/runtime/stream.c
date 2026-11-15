@@ -1,4 +1,4 @@
-#include "dolphin/math.h"
+#include <math.h>
 
 #include "musyx/musyx.h"
 
@@ -44,6 +44,7 @@ void streamHandle() {
   STREAM_INFO* si;
   float f;
   SND_VOICEID v;
+  s16* pcm;
 
   if (streamCallCnt != 0) {
     --streamCallCnt;
@@ -54,7 +55,7 @@ void streamHandle() {
   for (i = 0; i < synthInfo.voiceNum; ++i, ++si) {
     switch (si->state) {
     case 1:
-      newsmp.info = si->frq | 1073741824;
+      newsmp.info = si->frq | 0x40000000;
       newsmp.addr = hwGetStreamPlayBuffer(si->hwStreamHandle);
       newsmp.offset = 0;
       newsmp.length = si->size;
@@ -111,7 +112,8 @@ void streamHandle() {
         if (si->last < cpos) {
           switch (si->type) {
           case 0: {
-            len = si->updateFunction(si->buffer + si->last, cpos - si->last, NULL, 0, si->user);
+            pcm = si->buffer;
+            len = si->updateFunction(pcm + si->last, cpos - si->last, NULL, 0, si->user);
             if (len != 0 && si->state == 2) {
               cpos = (si->last + len) % si->size;
               if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
@@ -129,7 +131,8 @@ void streamHandle() {
           } break;
           case 1: {
             u32 off = (si->last / 14) * 8;
-            if ((len = si->updateFunction((void*)((size_t)si->buffer + off), cpos - si->last, NULL,
+            u8* buffer = si->buffer;
+            if ((len = si->updateFunction(buffer + off, cpos - si->last, NULL,
                                           0, si->user)) != 0 &&
                 si->state == 2) {
               cpos = (si->last + len) % si->size;
@@ -149,7 +152,8 @@ void streamHandle() {
         } else if (cpos == 0) {
           switch (si->type) {
           case 0:
-            if ((len = si->updateFunction(si->buffer + si->last, si->size - si->last, NULL, 0,
+            pcm = si->buffer;
+            if ((len = si->updateFunction(pcm + si->last, si->size - si->last, NULL, 0,
                                           si->user)) &&
                 si->state == 2) {
               cpos = (si->last + len) % si->size;
@@ -167,7 +171,8 @@ void streamHandle() {
             break;
           case 1: {
             u32 off = ((si->last / 14) * 8);
-            if ((len = si->updateFunction((void*)((size_t)si->buffer + off), si->size - si->last,
+            u8* buffer = si->buffer;
+            if ((len = si->updateFunction(buffer + off, si->size - si->last,
                                           NULL, 0, si->user)) &&
                 si->state == 2) {
               cpos = (si->last + len) % si->size;
@@ -187,7 +192,8 @@ void streamHandle() {
         } else {
           switch (si->type) {
           case 0:
-            if ((len = si->updateFunction(si->buffer + si->last, si->size - si->last, si->buffer,
+            pcm = si->buffer;
+            if ((len = si->updateFunction(pcm + si->last, si->size - si->last, si->buffer,
                                           cpos, si->user)) &&
                 si->state == 2) {
               cpos = (si->last + len) % si->size;
@@ -211,7 +217,8 @@ void streamHandle() {
             break;
           case 1: {
             u32 off = (si->last / 14) * 8;
-            if ((len = si->updateFunction((void*)((size_t)si->buffer + off), si->size - si->last,
+            u8* buffer = si->buffer;
+            if ((len = si->updateFunction(buffer + off, si->size - si->last,
                                           si->buffer, cpos, si->user)) &&
                 si->state == 2) {
               cpos = (si->last + len) % si->size;
@@ -417,7 +424,7 @@ SND_STREAMID sndStreamAllocEx(u8 prio, void* buffer, u32 samples, u32 frq, u8 vo
     streamInfo[i].stid = stid;
     streamInfo[i].flags = flags;
     bytes = sndStreamAllocLength(samples, flags);
-    streamInfo[i].buffer = (s16*)buffer;
+    streamInfo[i].buffer = buffer;
     streamInfo[i].size = samples;
     streamInfo[i].bytes = bytes;
     streamInfo[i].updateFunction = updateFunction;

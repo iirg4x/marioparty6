@@ -39,54 +39,53 @@ static f32 StationarityRange(f32 *cursor, f32 *end)
     return maximum - minimum;
 }
 
-static void ProcessStationarity(
-    TosBaseBlock *baseBlock, void **input, s32 inputCount)
+static void ProcessStationarity(TosBaseBlock *_This, void *pInputs)
 {
-    Stationarity *block = (Stationarity *)baseBlock;
+    Stationarity *This = (Stationarity *)_This;
     f32 sample;
     f32 incoming = 0.0f;
     f32 delayed;
     f32 *cursor;
     f32 *output;
 
-    if (input[0] != NULL) {
-        sample = *(f32 *)input[0];
-        incoming = *(f32 *)input[1];
-        if (block->queued == 0) {
-            cursor = block->history;
-            while (cursor < block->historyEnd) {
+    if (((void **)pInputs)[0] != NULL) {
+        sample = *(f32 *)((void **)pInputs)[0];
+        incoming = *(f32 *)((void **)pInputs)[1];
+        if (This->queued == 0) {
+            cursor = This->history;
+            while (cursor < This->historyEnd) {
                 *cursor = sample;
                 cursor++;
             }
-            block->historyWrite = block->history;
+            This->historyWrite = This->history;
         } else {
-            *block->historyWrite++ = sample;
-            if (block->historyWrite == block->historyEnd) {
-                block->historyWrite = block->history;
+            *This->historyWrite++ = sample;
+            if (This->historyWrite == This->historyEnd) {
+                This->historyWrite = This->history;
             }
         }
-        block->queued++;
-    } else if (block->drain == 0) {
+        This->queued++;
+    } else if (This->drain == 0) {
         return;
     }
 
-    delayed = *block->delayedWrite;
-    *block->delayedWrite++ = incoming;
-    if (block->delayedWrite == block->delayedEnd) {
-        block->delayedWrite = block->delayed;
+    delayed = *This->delayedWrite;
+    *This->delayedWrite++ = incoming;
+    if (This->delayedWrite == This->delayedEnd) {
+        This->delayedWrite = This->delayed;
     }
-    if (block->drain != 0 && block->queued == 0) {
-        block->drain = 0;
+    if (This->drain != 0 && This->queued == 0) {
+        This->drain = 0;
     }
-    if (block->queued <= block->span && block->drain == 0) {
+    if (This->queued <= This->span && This->drain == 0) {
         return;
     }
 
-    output = qEnQueueOne(block->base.output->queue);
-    block->queued--;
+    output = qEnQueueOne(This->base.output->queue);
+    This->queued--;
     if (delayed > 0.0f) {
-        if (!(StationarityRange(block->history, block->historyEnd) <
-        block->threshold)) {
+        if (!(StationarityRange(This->history, This->historyEnd) <
+        This->threshold)) {
             delayed *= 0.1f;
         }
     }
@@ -114,29 +113,30 @@ static u32 ControlStationarity(
     return 1;
 }
 
-static u32 InitStationarity(Stationarity *block)
+static u32 InitStationarity(TosBaseBlock *_This)
 {
-    TosContext *context = block->base.context;
+    Stationarity *This = (Stationarity *)_This;
+    TosContext *context = This->base.context;
     u32 i;
 
-    block->base.input[0].inputSize = 24;
-    block->base.input[1].inputSize = sizeof(f32);
-    block->base.output->outputSize = sizeof(f32);
-    block->span = (u8)_tosGetProfileU32(block, 1, 2);
-    block->threshold = _tosGetProfileFloat(block, 2, 2.0f);
-    block->history = heap_Calloc(
-    context->heap, block->span * 2 + 1, sizeof(f32));
-    block->delayed = heap_Calloc(context->heap, block->span, sizeof(f32));
-    if (block->history == NULL || block->delayed == NULL) {
-        return _tosErrorLog(block, 2);
+    This->base.input[0].inputSize = 24;
+    This->base.input[1].inputSize = sizeof(f32);
+    This->base.output->outputSize = sizeof(f32);
+    This->span = (u8)_tosGetProfileU32(This, 1, 2);
+    This->threshold = _tosGetProfileFloat(This, 2, 2.0f);
+    This->history = heap_Calloc(
+    context->heap, This->span * 2 + 1, sizeof(f32));
+    This->delayed = heap_Calloc(context->heap, This->span, sizeof(f32));
+    if (This->history == NULL || This->delayed == NULL) {
+        return _tosErrorLog(This, 2);
     }
-    for (i = 0; i < block->span * 2 + 1; i++) {
-        block->history[i] = 0.0f;
+    for (i = 0; i < This->span * 2 + 1; i++) {
+        This->history[i] = 0.0f;
     }
-    block->historyEnd = block->history + block->span * 2 + 1;
-    block->historyWrite = block->history;
-    block->delayedEnd = block->delayed + block->span;
-    block->delayedWrite = block->delayed;
+    This->historyEnd = This->history + This->span * 2 + 1;
+    This->historyWrite = This->history;
+    This->delayedEnd = This->delayed + This->span;
+    This->delayedWrite = This->delayed;
     return 0;
 }
 

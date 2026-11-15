@@ -30,8 +30,8 @@ static void cbForPrepareStreamSync(s32 result, DVDCommandBlock* block);
 // Finds the file string table through the boot info. Its first entry counts the entries, and the
 // names follow the last entry.
 void __DVDFSInit() {
-	BootInfo = (OSBootInfo*)OSPhysicalToCached(0);
-	FstStart = (FSTEntry*)BootInfo->FSTLocation;
+	BootInfo = OSPhysicalToCached(0);
+	FstStart = BootInfo->FSTLocation;
 
 	if (FstStart) {
 		MaxEntryNum = FstStart[0].nextEntryOrLength;

@@ -22,10 +22,9 @@ typedef struct Median {
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 
-static void ProcessMedian(
-    TosBaseBlock *baseBlock, void **input, s32 inputCount)
+static void ProcessMedian(TosBaseBlock *_This, void *pInputs, int NbrInputs)
 {
-    Median *block = (Median *)baseBlock;
+    Median *This = (Median *)_This;
     MedianNode *node;
     MedianNode *cursor;
     f32 sample;
@@ -33,46 +32,46 @@ static void ProcessMedian(
     u32 i;
     u32 halfCount;
 
-    if (*input != NULL) {
-        node = &block->nodes[block->ringIndex];
-        sample = *(f32 *)*input;
+    if (*(void **)pInputs != NULL) {
+        node = &This->nodes[This->ringIndex];
+        sample = *(f32 *)*(void **)pInputs;
 
-        if (block->count == block->capacity) {
+        if (This->count == This->capacity) {
             if (node->higher != NULL) {
                 node->higher->lower = node->lower;
             } else {
-                block->maximum = node->lower;
+                This->maximum = node->lower;
             }
 
             if (node->lower != NULL) {
                 node->lower->higher = node->higher;
             } else {
-                block->minimum = node->higher;
+                This->minimum = node->higher;
             }
 
-            block->count--;
+            This->count--;
 
-            if (node == block->median) {
+            if (node == This->median) {
                 if (node->higher != NULL) {
-                    block->median = node->higher;
+                    This->median = node->higher;
                 } else if (node->lower != NULL) {
-                    block->median = node->lower;
+                    This->median = node->lower;
                 } else {
-                    block->median = NULL;
+                    This->median = NULL;
                 }
             }
         }
 
         node->value = sample;
 
-        if (block->count == 0) {
-            block->median = node;
-            block->maximum = node;
-            block->minimum = node;
+        if (This->count == 0) {
+            This->median = node;
+            This->maximum = node;
+            This->minimum = node;
             node->lower = NULL;
             node->higher = NULL;
-        } else if (sample < block->median->value) {
-            cursor = block->median->lower;
+        } else if (sample < This->median->value) {
+            cursor = This->median->lower;
             while (cursor != NULL && sample < cursor->value) {
                 cursor = cursor->lower;
             }
@@ -83,13 +82,13 @@ static void ProcessMedian(
                 node->lower = cursor;
                 node->higher->lower = node;
             } else {
-                node->higher = block->minimum;
+                node->higher = This->minimum;
                 node->lower = NULL;
-                block->minimum->lower = node;
-                block->minimum = node;
+                This->minimum->lower = node;
+                This->minimum = node;
             }
         } else {
-            cursor = block->median->higher;
+            cursor = This->median->higher;
             while (cursor != NULL && sample >= cursor->value) {
                 cursor = cursor->higher;
             }
@@ -101,26 +100,26 @@ static void ProcessMedian(
                 node->lower->higher = node;
             } else {
                 node->higher = NULL;
-                node->lower = block->maximum;
-                block->maximum->higher = node;
-                block->maximum = node;
+                node->lower = This->maximum;
+                This->maximum->higher = node;
+                This->maximum = node;
             }
         }
 
-        if (++block->ringIndex == block->capacity) {
-            block->ringIndex = 0;
+        if (++This->ringIndex == This->capacity) {
+            This->ringIndex = 0;
         }
 
-        block->count++;
-        block->median = block->minimum;
-        halfCount = block->count >> 1;
+        This->count++;
+        This->median = This->minimum;
+        halfCount = This->count >> 1;
         for (i = 0; i < halfCount; i++) {
-            block->median = block->median->higher;
+            This->median = This->median->higher;
         }
 
-        output = qEnQueueOne(block->base.output->queue);
+        output = qEnQueueOne(This->base.output->queue);
         if (output != NULL) {
-            *output = block->median->value;
+            *output = This->median->value;
         }
     }
 }
@@ -144,37 +143,37 @@ static u32 ControlMedian(
     return 1;
 }
 
-u32 InitMedian(TosBaseBlock *baseBlock)
+u32 InitMedian(TosBaseBlock *_This)
 {
-    Median *block = (Median *)baseBlock;
+    Median *This = (Median *)_This;
     u32 result = 0;
 
-    block->capacity = 0;
-    block->count = 0;
-    block->ringIndex = 0;
-    block->nodes = NULL;
-    block->minimum = NULL;
-    block->maximum = NULL;
-    block->median = NULL;
+    This->capacity = 0;
+    This->count = 0;
+    This->ringIndex = 0;
+    This->nodes = NULL;
+    This->minimum = NULL;
+    This->maximum = NULL;
+    This->median = NULL;
 
-    block->base.input->inputSize = 24;
-    block->base.output->outputSize = sizeof(f32);
+    This->base.input->inputSize = 24;
+    This->base.output->outputSize = sizeof(f32);
 
-    block->capacity = _tosGetProfileU32(block, 1, 1);
-    if ((block->capacity & 1) == 0) {
-        _tosErrorLog(block, 200);
+    This->capacity = _tosGetProfileU32(This, 1, 1);
+    if ((This->capacity & 1) == 0) {
+        _tosErrorLog(This, 200);
         result = 1;
     } else {
-        block->nodes = heap_Calloc(
-            block->base.context->heap,
-            block->capacity,
+        This->nodes = heap_Calloc(
+            This->base.context->heap,
+            This->capacity,
             sizeof(MedianNode));
 
-        block->median = NULL;
-        block->maximum = NULL;
-        block->minimum = NULL;
-        block->ringIndex = 0;
-        block->count = 0;
+        This->median = NULL;
+        This->maximum = NULL;
+        This->minimum = NULL;
+        This->ringIndex = 0;
+        This->count = 0;
     }
 
     return result;

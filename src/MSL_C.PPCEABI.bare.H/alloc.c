@@ -1,22 +1,31 @@
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/alloc.h"
 
+#include <stddef.h>
 #include <string.h>
+
+struct Block;
+
+typedef struct SubBlock {
+    unsigned long size;
+    struct Block* block;
+    struct SubBlock* prev;
+    struct SubBlock* next;
+} SubBlock;
 
 typedef struct Block {
     struct Block* prev;
     struct Block* next;
     unsigned long max_size;
     unsigned long size;
+    SubBlock first;
 } Block;
 
-typedef struct SubBlock {
-    unsigned long size;
-    Block* block;
-    struct SubBlock* prev;
-    struct SubBlock* next;
-} SubBlock;
+struct FixBlock;
 
-struct FixSubBlock;
+typedef struct FixSubBlock {
+    struct FixBlock* block;
+    struct FixSubBlock* next;
+} FixSubBlock;
 
 typedef struct FixBlock {
     struct FixBlock* prev;
@@ -24,12 +33,8 @@ typedef struct FixBlock {
     unsigned long client_size;
     struct FixSubBlock* start;
     unsigned long allocated;
+    FixSubBlock first;
 } FixBlock;
-
-typedef struct FixSubBlock {
-    FixBlock* block;
-    struct FixSubBlock* next;
-} FixSubBlock;
 
 typedef struct FixStart {
     FixBlock* tail;
@@ -41,11 +46,9 @@ typedef struct MemPoolObject {
     FixStart fixed[6];
 } MemPoolObject;
 
-typedef struct MemPool {
-    void* reserved[14];
-} MemPool;
+typedef MemPoolObject MemPool;
 
-static int initialized;
+static unsigned char initialized;
 static const unsigned long fixedPoolSizes[] = {4, 12, 20, 36, 52, 68};
 
 #define BLOCK_SIZE_MASK 4294967288U
@@ -53,10 +56,9 @@ static const unsigned long fixedPoolSizes[] = {4, 12, 20, 36, 52, 68};
 #define SYSTEM_BLOCK_MIN_SIZE 65536
 #define FIXED_POOL_PAYLOAD_SIZE 4076
 #define FIXED_POOL_MAX_BLOCKS 256
-#define FIXED_POOL_HEADER_SIZE 20
+#define FIXED_POOL_HEADER_SIZE offsetof(FixBlock, first)
 #define MAX_ALLOCATION_SIZE 4294967247U
 
-#define initializedFlag (*(unsigned char*)&initialized)
 #define SubBlock_size(block) ((block)->size & BLOCK_SIZE_MASK)
 #define SubBlock_block(subBlock) \
     ((Block*)((unsigned long)((subBlock)->block) & ~1))
@@ -64,8 +66,8 @@ static const unsigned long fixedPoolSizes[] = {4, 12, 20, 36, 52, 68};
 #define Block_start(block) \
     (*(SubBlock**)((char*)(block) + Block_size(block) - sizeof(unsigned long)))
 #define SubBlock_is_free(block) (!((block)->size & 2))
-#define SubBlock_from_pointer(ptr) ((SubBlock*)((char*)(ptr) - 8))
-#define FixSubBlock_from_pointer(ptr) ((FixSubBlock*)((char*)(ptr) - 4))
+#define SubBlock_from_pointer(ptr) ((SubBlock*)((char*)(ptr) - offsetof(SubBlock, prev)))
+#define FixSubBlock_from_pointer(ptr) ((FixSubBlock*)((char*)(ptr) - offsetof(FixSubBlock, next)))
 #define classify(ptr) \
     (*(unsigned long*)((char*)(ptr) - sizeof(unsigned long)) & 1)
 #define allocation_size(ptr) \
@@ -73,7 +75,7 @@ static const unsigned long fixedPoolSizes[] = {4, 12, 20, 36, 52, 68};
          ? FixSubBlock_from_pointer(ptr)->block->client_size \
          : SubBlock_size(SubBlock_from_pointer(ptr)) - 8)
 #define Block_empty(block) \
-    (first = (SubBlock*)((char*)(block) + 16)), \
+    (first = &(block)->first), \
         SubBlock_is_free(first) \
             && SubBlock_size(first) == Block_size(block) - 24
 
@@ -126,8 +128,11 @@ static void SubBlock_construct(
         block->size |= 4;
     }
     if (allocated) {
+        SubBlock* next;
+
         block->size |= 2;
-        *(unsigned long*)((char*)block + size) |= 4;
+        next = (SubBlock*)((char*)block + size);
+        next->size |= 4;
     } else {
         *(unsigned long*)((char*)block + size - sizeof(unsigned long)) = size;
     }
@@ -162,11 +167,13 @@ static void Block_unlink(Block* block, SubBlock* subBlock)
 {
     unsigned long size;
     SubBlock** start;
+    SubBlock* next;
 
     size = subBlock->size;
     subBlock->size = size | 2;
     size &= ~7;
-    *(unsigned long*)((char*)subBlock + size) |= 4;
+    next = (SubBlock*)((char*)subBlock + size);
+    next->size |= 4;
 
     start = &Block_start(block);
     if (*start == subBlock) {
@@ -221,10 +228,12 @@ static void Block_link(Block* block, SubBlock* subBlock)
 {
     unsigned long size;
     SubBlock** start;
+    SubBlock* next;
 
     size = SubBlock_size(subBlock);
     subBlock->size &= ~2;
-    *(unsigned long*)((char*)subBlock + size) &= ~4;
+    next = (SubBlock*)((char*)subBlock + size);
+    next->size &= ~4;
     *(unsigned long*)((char*)subBlock + size - sizeof(unsigned long)) = size;
 
     start = &Block_start(block);
@@ -250,6 +259,7 @@ static void Block_link(Block* block, SubBlock* subBlock)
 static void SubBlock_merge_next(SubBlock* block, SubBlock** start)
 {
     SubBlock* next;
+    SubBlock* end;
     unsigned long size;
 
     next = (SubBlock*)((char*)block + SubBlock_size(block));
@@ -260,10 +270,11 @@ static void SubBlock_merge_next(SubBlock* block, SubBlock** start)
     size = SubBlock_size(block) + SubBlock_size(next);
     SubBlock_set_size(block, size);
 
+    end = (SubBlock*)((char*)block + size);
     if (SubBlock_is_free(block)) {
-        *(unsigned long*)((char*)block + size) &= ~4;
+        end->size &= ~4;
     } else {
-        *(unsigned long*)((char*)block + size) |= 4;
+        end->size |= 4;
     }
 
     if (*start == next) {
@@ -283,7 +294,7 @@ static void Block_construct(Block* block, unsigned long size)
 
     block->size = size | 3;
     *(unsigned long*)((char*)block + size - 8) = block->size;
-    subBlock = (SubBlock*)((char*)block + 16);
+    subBlock = &block->first;
     SubBlock_construct(subBlock, size - 24, block, 0, 0);
     block->max_size = size - 24;
     Block_start(block) = 0;
@@ -378,7 +389,7 @@ static void* allocate_from_var_pools(
     subBlock = Block_subBlock(block, size);
 
 allocated:
-    return (char*)subBlock + 8;
+    return &subBlock->prev;
 }
 
 static void* soft_allocate_from_var_pools(
@@ -417,7 +428,7 @@ static void* soft_allocate_from_var_pools(
     return 0;
 
 allocated:
-    return (char*)subBlock + 8;
+    return &subBlock->prev;
 }
 
 static void deallocate_from_var_pools(MemPoolObject* pool, void* ptr)
@@ -446,6 +457,7 @@ static void FixBlock_construct(
     unsigned long i = 0;
     char* cursor;
     char* nextCursor;
+    FixSubBlock* entry;
 
     block->prev = previous;
     block->next = next;
@@ -458,12 +470,14 @@ static void FixBlock_construct(
     cursor = (char*)first;
     for (; i < count - 1; i++) {
         nextCursor = cursor + entrySize;
-        ((FixSubBlock*)cursor)->block = block;
-        ((FixSubBlock*)cursor)->next = (FixSubBlock*)nextCursor;
+        entry = (FixSubBlock*)cursor;
+        entry->block = block;
+        entry->next = (FixSubBlock*)nextCursor;
         cursor = nextCursor;
     }
-    ((FixSubBlock*)cursor)->block = block;
-    ((FixSubBlock*)cursor)->next = 0;
+    entry = (FixSubBlock*)cursor;
+    entry->block = block;
+    entry->next = 0;
     block->start = first;
     block->allocated = 0;
 }
@@ -482,7 +496,7 @@ static void* allocate_from_fixed_pools(
     fixed = &pool->fixed[poolIndex];
     if (fixed->head == 0 || fixed->head->start == 0) {
         unsigned long count;
-        void* memory;
+        FixBlock* memory;
         unsigned long maximumCount;
         unsigned long maximumFreeSize;
         unsigned long memorySize;
@@ -524,7 +538,7 @@ static void* allocate_from_fixed_pools(
 
         FixBlock_construct(
             memory, fixed->tail, fixed->head, poolIndex,
-            (FixSubBlock*)((char*)memory + FIXED_POOL_HEADER_SIZE), memorySize - FIXED_POOL_HEADER_SIZE);
+            &memory->first, memorySize - FIXED_POOL_HEADER_SIZE);
         fixed->head = memory;
     }
 
@@ -538,7 +552,7 @@ static void* allocate_from_fixed_pools(
             fixed->head = fixed->head->next;
             fixed->tail = fixed->tail->next;
         }
-        return (char*)entry + 4;
+        return &entry->next;
     }
 }
 
@@ -606,9 +620,9 @@ static MemPool* get_malloc_pool(void)
 {
     static MemPool pool;
 
-    if (!initializedFlag) {
+    if (!initialized) {
         initialize_pool(&pool);
-        initializedFlag = 1;
+        initialized = 1;
     }
     return &pool;
 }
@@ -625,7 +639,7 @@ static void* pool_allocate(MemPool* pool, unsigned long size)
         return 0;
     }
 
-    object = (MemPoolObject*)pool;
+    object = pool;
     if (size <= 68) {
         result = allocate_from_fixed_pools(object, size);
     } else {
@@ -643,7 +657,7 @@ static void pool_free(MemPool* pool, void* ptr)
         return;
     }
 
-    object = (MemPoolObject*)pool;
+    object = pool;
     size = allocation_size(ptr);
     if (size <= 68) {
         deallocate_from_fixed_pools(object, ptr, size);

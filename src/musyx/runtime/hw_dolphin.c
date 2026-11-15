@@ -17,7 +17,7 @@ static volatile OSTick salLastTick = 0;
 static volatile u32 salLogicActive = 0;
 static volatile u32 salLogicIsWaiting = 0;
 static volatile u32 salDspIsDone = 0;
-void *salAIBufferBase = NULL;
+u8 *salAIBufferBase = NULL;
 static u8 salAIBufferIndex = 0;
 static SND_SOME_CALLBACK userCallback = NULL;
 
@@ -102,7 +102,7 @@ void *salAiGetDest(void)
     u8 index;
 
     index = (salAIBufferIndex + 2) % 4;
-    return (void *)((u8 *)salAIBufferBase + index * DMA_BUFFER_LEN);
+    return salAIBufferBase + index * DMA_BUFFER_LEN;
 }
 
 u32 salInitDsp(u32 flags)
@@ -112,8 +112,8 @@ u32 salInitDsp(u32 flags)
     dsp_task.iram_mmem_addr = (u16 *)dspSlave;
     dsp_task.iram_length = dspSlaveLength;
     dsp_task.iram_addr = 0;
-    dsp_task.dram_mmem_addr = (u16 *)dram_image;
-    dsp_task.dram_length = 8192;
+    dsp_task.dram_mmem_addr = dram_image;
+    dsp_task.dram_length = 0x2000;
     dsp_task.dram_addr = 0;
     dsp_task.dsp_init_vector = 16;
     dsp_task.dsp_resume_vector = 48;
@@ -145,8 +145,8 @@ void salStartDsp(u16 *cmdList)
 {
     salDspIsDone = FALSE;
     PPCSync();
-    MUSY_ASSERT(((u32)cmdList & 31) == 0);
-    DSPSendMailToDSP(dspCmdFirstSize | 3133014016U);
+    MUSY_ASSERT(((u32)cmdList & 0x1F) == 0);
+    DSPSendMailToDSP(dspCmdFirstSize | 0xBABE0000);
     while (DSPCheckMailToDSP()) {
     }
     DSPSendMailToDSP((u32)cmdList);

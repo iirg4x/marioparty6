@@ -183,31 +183,31 @@ typedef struct _SPB {
   // total size: 0x36
   u16 dpopLHi;     // offset 0x0, size 0x2
   u16 dpopLLo;     // offset 0x2, size 0x2
-  u16 dpopLDelta;  // offset 0x4, size 0x2
+  s16 dpopLDelta;  // offset 0x4, size 0x2
   u16 dpopRHi;     // offset 0x6, size 0x2
   u16 dpopRLo;     // offset 0x8, size 0x2
-  u16 dpopRDelta;  // offset 0xA, size 0x2
+  s16 dpopRDelta;  // offset 0xA, size 0x2
   u16 dpopSHi;     // offset 0xC, size 0x2
   u16 dpopSLo;     // offset 0xE, size 0x2
-  u16 dpopSDelta;  // offset 0x10, size 0x2
+  s16 dpopSDelta;  // offset 0x10, size 0x2
   u16 dpopALHi;    // offset 0x12, size 0x2
   u16 dpopALLo;    // offset 0x14, size 0x2
-  u16 dpopALDelta; // offset 0x16, size 0x2
+  s16 dpopALDelta; // offset 0x16, size 0x2
   u16 dpopARHi;    // offset 0x18, size 0x2
   u16 dpopARLo;    // offset 0x1A, size 0x2
-  u16 dpopARDelta; // offset 0x1C, size 0x2
+  s16 dpopARDelta; // offset 0x1C, size 0x2
   u16 dpopASHi;    // offset 0x1E, size 0x2
   u16 dpopASLo;    // offset 0x20, size 0x2
-  u16 dpopASDelta; // offset 0x22, size 0x2
+  s16 dpopASDelta; // offset 0x22, size 0x2
   u16 dpopBLHi;    // offset 0x24, size 0x2
   u16 dpopBLLo;    // offset 0x26, size 0x2
-  u16 dpopBLDelta; // offset 0x28, size 0x2
+  s16 dpopBLDelta; // offset 0x28, size 0x2
   u16 dpopBRHi;    // offset 0x2A, size 0x2
   u16 dpopBRLo;    // offset 0x2C, size 0x2
-  u16 dpopBRDelta; // offset 0x2E, size 0x2
+  s16 dpopBRDelta; // offset 0x2E, size 0x2
   u16 dpopBSHi;    // offset 0x30, size 0x2
   u16 dpopBSLo;    // offset 0x32, size 0x2
-  u16 dpopBSDelta; // offset 0x34, size 0x2
+  s16 dpopBSDelta; // offset 0x34, size 0x2
 } _SPB;
 
 extern u16 voicePrioSortRootListRoot;

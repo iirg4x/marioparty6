@@ -224,7 +224,7 @@ s32 MICMountAsync(s32 chan, s16* buffer, s32 size, MICCallback detachCallback,
     cb->attach_callback = attachCallback;
     cb->mount_callback = NULL;
     cb->set_callback = NULL;
-    cb->buff_ring_base = (u8*)(((u32)buffer + 31) & ~31);
+    cb->buff_ring_base = OSRoundUpPtr(buffer, 32);
     cb->buff_size = size - ((u32)cb->buff_ring_base - (u32)buffer);
     cb->buff_ring_cur = 0;
 

@@ -199,7 +199,7 @@ static BOOL IsNewApploader(AppLoaderStruct* header) {
   return strncmp(header->date, "2004/02/01", 10) > 0 ? TRUE : FALSE;
 }
 
-void __OSBootDolSimple(u32 dolOffset, u32 restartCode, void* regionStart, void* regionEnd,
+void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* regionEnd,
                        BOOL argsUseDefault, s32 argc, char** argv) {
   OSExecParams* params;
   void* dolEntry;
@@ -238,11 +238,11 @@ void __OSBootDolSimple(u32 dolOffset, u32 restartCode, void* regionStart, void* 
 
   header = LoadApploader();
   if (IsNewApploader(header)) {
-    if (dolOffset == 0xFFFFFFFF) {
-      dolOffset = GetApploaderPosition() + 0x20 + header->size;
+    if (doloffset == 0xFFFFFFFF) {
+      doloffset = GetApploaderPosition() + 0x20 + header->size;
     }
 
-    params->bootDol = dolOffset;
+    params->bootDol = doloffset;
     dolEntry = LoadDol(params, (AppLoaderCallback)header->entry);
     StartDol(params, dolEntry);
   } else {
@@ -259,7 +259,7 @@ void __OSBootDolSimple(u32 dolOffset, u32 restartCode, void* regionStart, void* 
   }
 }
 
-void __OSBootDol(u32 dolOffset, u32 restartCode, const char** argv) {
+void __OSBootDol(u32 doloffset, u32 restartCode, const char** argv) {
   char doloffInString[20];
   s32 argvlen;
   char** argvToPass;
@@ -268,7 +268,7 @@ void __OSBootDol(u32 dolOffset, u32 restartCode, const char** argv) {
   void* saveEnd;
 
   OSGetSaveRegion(&saveStart, &saveEnd);
-  sprintf(doloffInString, "%d", dolOffset);
+  sprintf(doloffInString, "%d", doloffset);
   argvlen = 0;
 
   if (argv != NULL) {

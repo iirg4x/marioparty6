@@ -225,11 +225,11 @@ Found:
 }
 
 static BOOL Link(OSModuleInfo* newModule, void* bss, BOOL fixed) {
-    u32 i;
-    OSSectionInfo* si;
+    u32 sectionIndex;
+    OSSectionInfo* sectionInfo;
     OSModuleHeader* moduleHeader;
     OSModuleInfo* moduleInfo;
-    OSImportInfo* imp;
+    OSImportInfo* importInfo;
 
     ASSERTLINE(282, newModule->version <= OS_MODULE_VERSION);
 
@@ -255,21 +255,22 @@ static BOOL Link(OSModuleInfo* newModule, void* bss, BOOL fixed) {
         moduleHeader->fixSize += (u32)moduleHeader;
     }
 
-    for (i = 1; i < newModule->numSections; i++) {
-        si = &OSGetSectionInfo(newModule)[i];
-        if (si->offset != 0) {
-            si->offset += (u32)moduleHeader;
-        } else if (si->size != 0) {
+    for (sectionIndex = 1; sectionIndex < newModule->numSections; sectionIndex++) {
+        sectionInfo = &OSGetSectionInfo(newModule)[sectionIndex];
+        if (sectionInfo->offset != 0) {
+            sectionInfo->offset += (u32)moduleHeader;
+        } else if (sectionInfo->size != 0) {
             ASSERTLINE(326, moduleHeader->bssSection == 0);
-            moduleHeader->bssSection = (u8)i;
-            si->offset = (u32)bss;
+            moduleHeader->bssSection = (u8)sectionIndex;
+            sectionInfo->offset = (u32)bss;
         }
     }
 
-    for (imp = (OSImportInfo*)moduleHeader->impOffset;
-         imp < (OSImportInfo*)(moduleHeader->impOffset + moduleHeader->impSize); imp++)
+    for (importInfo = (OSImportInfo*)moduleHeader->impOffset;
+         importInfo < (OSImportInfo*)(moduleHeader->impOffset + moduleHeader->impSize);
+         importInfo++)
     {
-        imp->offset += (u32)moduleHeader;
+        importInfo->offset += (u32)moduleHeader;
     }
 
     if (moduleHeader->prologSection != SHN_UNDEF) {
@@ -301,11 +302,12 @@ static BOOL Link(OSModuleInfo* newModule, void* bss, BOOL fixed) {
     }
 
     if (fixed) {
-        for (imp = (OSImportInfo*)moduleHeader->impOffset;
-             imp < (OSImportInfo*)(moduleHeader->impOffset + moduleHeader->impSize); imp++)
+        for (importInfo = (OSImportInfo*)moduleHeader->impOffset;
+             importInfo < (OSImportInfo*)(moduleHeader->impOffset + moduleHeader->impSize);
+             importInfo++)
         {
-            if (imp->id == 0 || imp->id == newModule->id) {
-                moduleHeader->impSize = (u32)((u8*)imp - (u8*)moduleHeader->impOffset);
+            if (importInfo->id == 0 || importInfo->id == newModule->id) {
+                moduleHeader->impSize = (u32)importInfo - moduleHeader->impOffset;
                 break;
             }
         }
@@ -503,7 +505,7 @@ OSModuleInfo* OSSearchModule(void* ptr, u32* section, u32* offset) {
 
     moduleInfo = __OSModuleInfoList.head;
     while (moduleInfo != 0) {
-        sectionInfo = (OSSectionInfo*)moduleInfo->sectionInfoOffset;
+        sectionInfo = OSGetSectionInfo(moduleInfo);
         for (i = 0; i < moduleInfo->numSections; i++) {
             if (sectionInfo->size != 0) {
                 baseSection = sectionInfo->offset & 0xFFFFFFFE;

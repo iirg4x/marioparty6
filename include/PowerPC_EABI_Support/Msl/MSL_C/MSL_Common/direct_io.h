@@ -9,8 +9,6 @@ extern "C" {
 
 size_t __fwrite(const void* buffer, size_t size, size_t count, FILE* stream);
 size_t fwrite(const void* buffer, size_t size, size_t count, FILE* stream);
-/* Locate the final matching byte within a bounded memory range. */
-unsigned char* __memrchr(unsigned char* buffer, int value, size_t count);
 
 #ifdef __cplusplus
 }
