@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct DelayBlock {
 TosBaseBlock base;
@@ -23,9 +24,8 @@ extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 
 static void ProcessDelayBlock(
-    TosBaseBlock *baseBlock, void **input, s32 inputCount)
+    DelayBlock *block, void **input, s32 inputCount)
 {
-DelayBlock *block = (DelayBlock *)baseBlock;
 void *source = *input;
 void *destination;
 
@@ -77,9 +77,8 @@ static void FillDelayBlock(DelayBlock *block, u8 value)
 }
 
 static u32 ControlDelayBlock(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    DelayBlock *block, u32 command, void *argument, u32 argumentSize)
 {
-DelayBlock *block = (DelayBlock *)baseBlock;
 
 switch ((u8)command) {
 case 101:
@@ -106,12 +105,12 @@ default:
 return 1;
 }
 
-static u32 InitDelayBlock(TosBaseBlock *baseBlock)
+static u32 InitDelayBlock(void *baseBlock)
 {
-DelayBlock *block = (DelayBlock *)baseBlock;
+DelayBlock *block = baseBlock;
 TosContext *context;
 
-context = baseBlock->context;
+context = block->base.context;
 
 block->delayCount = _tosGetProfileU32(block, 1, 1);
 block->elementSize = _tosGetProfileU32(block, 2, 4);

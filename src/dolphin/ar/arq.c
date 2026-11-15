@@ -116,7 +116,7 @@ void ARQInit(void) {
 void ARQPostRequest(ARQRequest* request, u32 owner, u32 type, u32 priority, u32 source, u32 dest,
 										u32 length, ARQCallback callback) {
 
-	BOOL enabled;
+	BOOL level;
 
 	request->next = NULL;
 	request->owner = owner;
@@ -131,7 +131,7 @@ void ARQPostRequest(ARQRequest* request, u32 owner, u32 type, u32 priority, u32 
 		request->callback = (ARQCallback)&__ARQCallbackHack;
 	}
 
-	enabled = OSDisableInterrupts();
+	level = OSDisableInterrupts();
 
 	switch (priority) {
 	case ARQ_PRIORITY_LOW:
@@ -166,7 +166,7 @@ void ARQPostRequest(ARQRequest* request, u32 owner, u32 type, u32 priority, u32 
 		}
 	}
 
-	OSRestoreInterrupts(enabled);
+	OSRestoreInterrupts(level);
 }
 
 u32 ARQGetChunkSize(void) { return __ARQChunkSize; }

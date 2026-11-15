@@ -1,6 +1,7 @@
 #include "types.h"
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct Stationarity {
     TosBaseBlock base;
@@ -40,9 +41,8 @@ static f32 StationarityRange(f32 *cursor, f32 *end)
 }
 
 static void ProcessStationarity(
-    TosBaseBlock *baseBlock, void **input, s32 inputCount)
+    Stationarity *block, f32 **input, s32 inputCount)
 {
-    Stationarity *block = (Stationarity *)baseBlock;
     f32 sample;
     f32 incoming = 0.0f;
     f32 delayed;
@@ -50,8 +50,8 @@ static void ProcessStationarity(
     f32 *output;
 
     if (input[0] != NULL) {
-        sample = *(f32 *)input[0];
-        incoming = *(f32 *)input[1];
+        sample = *input[0];
+        incoming = *input[1];
         if (block->queued == 0) {
             cursor = block->history;
             while (cursor < block->historyEnd) {

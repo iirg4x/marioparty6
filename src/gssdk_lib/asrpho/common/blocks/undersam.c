@@ -2,6 +2,7 @@
 #include "types.h"
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 #define UNDERSAMPLER_DESTRUCT_COMMAND 255
 
@@ -14,9 +15,9 @@ u8 reserved; /* Unused byte retained in the block layout. */
 
 /* Sums each input group into one output value during the TOS process pass. */
 static void ProcessUndersampler(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+    void *baseBlock, void **inputs, s32 inputCount)
 {
-Undersampler *block = (Undersampler *)baseBlock;
+Undersampler *block = baseBlock;
 s16 *inputSamples = inputs[0];
 u8 samplesPerOutput = block->samplesPerOutput;
 s32 *outputSamples;
@@ -26,7 +27,7 @@ s16 *inputEnd;
 s32 sum;
 
 if (inputSamples != NULL) {
-    outputSamples = qEnQueueOne(baseBlock->output->queue);
+    outputSamples = qEnQueueOne(block->base.output->queue);
     inputEnd = inputSamples + block->inputSamples;
     sampleCursor = inputSamples;
     while (sampleCursor < inputEnd) {
@@ -57,10 +58,10 @@ return 1;
 /* Loads the input frame length and rate settings, derives the input samples per output sample,
  * rejects a frame length not divisible by that count, and sets the input/output queue byte
  * sizes. */
-static u32 InitUndersampler(TosBaseBlock *baseBlock)
+static u32 InitUndersampler(void *baseBlock)
 {
 u16 inputSamples;
-Undersampler *block = (Undersampler *)baseBlock;
+Undersampler *block = baseBlock;
 u16 inputRate;
 u8 samplesPerOutput;
 u16 outputSamples;

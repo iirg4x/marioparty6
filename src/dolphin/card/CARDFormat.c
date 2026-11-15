@@ -36,10 +36,10 @@ static void FormatCallback(s32 chan, s32 result)
         }
     }
     else {
-        card->currentDir = (CARDDir *)((u8 *)card->workArea + (1 + 0) * CARD_SYSTEM_BLOCK_SIZE);
-        memcpy(card->currentDir, (u8 *)card->workArea + (1 + 1) * CARD_SYSTEM_BLOCK_SIZE, CARD_SYSTEM_BLOCK_SIZE);
-        card->currentFat = (u16 *)((u8 *)card->workArea + (3 + 0) * CARD_SYSTEM_BLOCK_SIZE);
-        memcpy(card->currentFat, (u8 *)card->workArea + (3 + 1) * CARD_SYSTEM_BLOCK_SIZE, CARD_SYSTEM_BLOCK_SIZE);
+        card->currentDir = (CARDDir *)((u8 *)card->workArea + CARD_SYSTEM_BLOCK_SIZE);
+        memcpy(card->currentDir, (u8 *)card->workArea + 2 * CARD_SYSTEM_BLOCK_SIZE, CARD_SYSTEM_BLOCK_SIZE);
+        card->currentFat = (u16 *)((u8 *)card->workArea + 3 * CARD_SYSTEM_BLOCK_SIZE);
+        memcpy(card->currentFat, (u8 *)card->workArea + 4 * CARD_SYSTEM_BLOCK_SIZE, CARD_SYSTEM_BLOCK_SIZE);
     }
 
 error:
@@ -68,7 +68,7 @@ s32 __CARDFormatRegionAsync(s32 chan, u16 encode, CARDCallback callback)
         return result;
     }
 
-    id = (CARDID *)card->workArea;
+    id = card->workArea;
     memset(id, 0xff, CARD_SYSTEM_BLOCK_SIZE);
     viDTVStatus = __VIRegs[55];
 

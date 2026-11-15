@@ -614,7 +614,7 @@ void CARDInit(void) {
         OSInitThreadQueue(&card->threadQueue);
         OSCreateAlarm(&card->alarm);
     }
-    __CARDSetDiskID((void*)OSPhysicalToCached(0));
+    __CARDSetDiskID(OSPhysicalToCached(0));
 
     OSRegisterResetFunction(&ResetFunctionInfo);
 }
@@ -636,9 +636,9 @@ u16 __CARDSetFontEncode(u16 encode) {
     return prev;
 }
 
-void __CARDSetDiskID(const DVDDiskID* id) {
-    __CARDBlock[0].diskID = id ? id : &__CARDDiskNone;
-    __CARDBlock[1].diskID = id ? id : &__CARDDiskNone;
+void __CARDSetDiskID(const DVDDiskID* diskID) {
+    __CARDBlock[0].diskID = diskID ? diskID : &__CARDDiskNone;
+    __CARDBlock[1].diskID = diskID ? diskID : &__CARDDiskNone;
 }
 
 const DVDDiskID* CARDGetDiskID(s32 chan) {
@@ -659,7 +659,7 @@ s32 CARDSetDiskID(s32 chan, const DVDDiskID* diskID) {
         return CARD_RESULT_BUSY;
     }
 
-    card->diskID = diskID != 0 ? diskID : (const DVDDiskID*)OSPhysicalToCached(0);
+    card->diskID = diskID != 0 ? diskID : OSPhysicalToCached(0);
     OSRestoreInterrupts(enabled);
     return 0;
 }
@@ -798,14 +798,14 @@ s32 CARDGetSectorSize(s32 chan, u32* size) {
 }
 
 s32 __CARDSync(s32 chan) {
-    CARDControl* block;
+    CARDControl* card;
     s32 result;
     s32 enabled;
 
-    block = &__CARDBlock[chan];
+    card = &__CARDBlock[chan];
     enabled = OSDisableInterrupts();
     while ((result = CARDGetResultCode(chan)) == CARD_RESULT_BUSY) {
-        OSSleepThread(&block->threadQueue);
+        OSSleepThread(&card->threadQueue);
     }
 
     OSRestoreInterrupts(enabled);

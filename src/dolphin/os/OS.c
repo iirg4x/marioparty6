@@ -13,15 +13,10 @@
 
 // external functions
 extern void EnableMetroTRKInterrupts(void);
-extern void __OSInitMemoryProtection(void);
 extern void __OSInitSystemCall(void);
 extern void __OSModuleInit(void);
-extern void __OSInterruptInit(void);
 extern void __OSResetSWInterruptHandler(__OSInterrupt interrupt, OSContext* context);
-extern void __OSContextInit(void);
-extern void __OSCacheInit(void);
 extern void __OSInitAudioSystem(void);
-extern BOOL __DBIsExceptionMarked(__OSException exception);
 
 #define DB_EXCEPTIONRET_OFFSET 0xC
 #define DB_EXCEPTIONDEST_OFFSET 0x8
@@ -75,7 +70,6 @@ __declspec(weak) BOOL __OSIsGcam;
 
 // prototypes
 static void OSExceptionInit(void);
-__OSExceptionHandler __OSSetExceptionHandler(__OSException exception, __OSExceptionHandler handler);
 
 // dummy entry points to the OS Exception vector
 void __OSEVStart(void);
@@ -197,20 +191,20 @@ static void ClearArena(void) {
         return;
     }
 
-    if (*(u32*)&__OSRebootParams.regionStart == 0) {
+    if (__OSRebootParams.regionStart == NULL) {
         memset(OSGetArenaLo(), 0, (u32)OSGetArenaHi() - (u32)OSGetArenaLo());
         return;
     }
 
     ASSERTLINE(683, __OSRebootParams.regionEnd != NULL);
 
-    if ((u32)OSGetArenaLo() < *(u32*)&__OSRebootParams.regionStart) {
-        if ((u32)OSGetArenaHi() <= *(u32*)&__OSRebootParams.regionStart) {
+    if ((u32)OSGetArenaLo() < (u32)__OSRebootParams.regionStart) {
+        if ((u32)OSGetArenaHi() <= (u32)__OSRebootParams.regionStart) {
             memset(OSGetArenaLo(), 0, (u32)OSGetArenaHi() - (u32)OSGetArenaLo());
             return;
         }
 
-        memset(OSGetArenaLo(), 0, *(u32*)&__OSRebootParams.regionStart - (u32)OSGetArenaLo());
+        memset(OSGetArenaLo(), 0, (u32)__OSRebootParams.regionStart - (u32)OSGetArenaLo());
 
         if ((u32)OSGetArenaHi() > (u32)__OSRebootParams.regionEnd) {
             memset(__OSRebootParams.regionEnd, 0, (u32)OSGetArenaHi() - (u32)__OSRebootParams.regionEnd);
@@ -231,7 +225,7 @@ static void InquiryCallback(s32, DVDCommandBlock* block) {
 
 void OSInit(void) {
     u32 consoleType;
-    void* bi2StartAddr;
+    BI2Debug* bi2StartAddr;
 
     if (AreWeInitialized == FALSE) {
         AreWeInitialized = TRUE;
@@ -249,14 +243,14 @@ void OSInit(void) {
         PPCDisableSpeculation();
         PPCSetFpNonIEEEMode();
 
-        BootInfo = (OSBootInfo*)OSPhysicalToCached(0);
+        BootInfo = OSPhysicalToCached(0);
         BI2DebugFlag = 0;
         __DVDLongFileNameFlag = 0;
 
         bi2StartAddr = (void*)(*(u32*)OSPhysicalToCached(0xF4));
         if (bi2StartAddr) {
-            BI2DebugFlag = (void*)((char*)bi2StartAddr + 0xC);
-            __PADSpec = ((u32*)bi2StartAddr)[9];
+            BI2DebugFlag = &bi2StartAddr->debugFlag;
+            __PADSpec = bi2StartAddr->padSpec;
             *(u8*)OSPhysicalToCached(0x30E8) = *BI2DebugFlag;
             *(u8*)OSPhysicalToCached(0x30E9) = __PADSpec;
         } else if (BootInfo->arenaHi) {
@@ -268,8 +262,8 @@ void OSInit(void) {
         __DVDLongFileNameFlag = 1;
 
         OSSetArenaLo((!BootInfo->arenaLo) ? &__ArenaLo : BootInfo->arenaLo);
-        if ((!BootInfo->arenaLo) && (BI2DebugFlag) && (*(u32*)BI2DebugFlag < 2)) {
-            OSSetArenaLo((void*)(((u32)(char*)&_stack_addr + 0x1F) & 0xFFFFFFE0));
+        if ((!BootInfo->arenaLo) && (BI2DebugFlag) && (*BI2DebugFlag < 2)) {
+            OSSetArenaLo(OSRoundUpPtr(_stack_addr, 32));
         }
         OSSetArenaHi((!BootInfo->arenaHi) ? &__ArenaHi : BootInfo->arenaHi);
 
@@ -386,7 +380,7 @@ char * __OSExceptionNames[17] = {
 
 static void OSExceptionInit(void) {
     __OSException exception;
-    void* destAddr;
+    u32* destAddr;
 
     // These two vars help us change the exception number embedded
     // in the exception handler code.
@@ -406,11 +400,11 @@ static void OSExceptionInit(void) {
     handlerSize = (u32)((u8*)__OSEVEnd - (u8*)__OSEVStart);
 
     // Install the DB integrator, only if we are the first OSInit to be run
-    destAddr = (void*)OSPhysicalToCached(OS_DBJUMPPOINT_ADDR);
-    if (*(u32*)destAddr == 0) // Lomem should be zero cleared only once by BS2
+    destAddr = OSPhysicalToCached(OS_DBJUMPPOINT_ADDR);
+    if (*destAddr == 0) // Lomem should be zero cleared only once by BS2
     {
         DBPrintf("Installing OSDBIntegrator\n");
-        memcpy(destAddr, (void*)__OSDBINTSTART, (u32)__OSDBINTEND - (u32)__OSDBINTSTART);
+        memcpy(destAddr, __OSDBINTSTART, (u32)__OSDBINTEND - (u32)__OSDBINTSTART);
         DCFlushRangeNoSync(destAddr, (u32)__OSDBINTEND - (u32)__OSDBINTSTART);
         __sync();
         ICInvalidateRange(destAddr, (u32)__OSDBINTEND - (u32)__OSDBINTSTART);
@@ -431,7 +425,7 @@ static void OSExceptionInit(void) {
         // Modify opcodes at __DBVECTOR if necessary
         if (__DBIsExceptionMarked(exception)) {
             DBPrintf(">>> OSINIT: exception %d vectored to debugger\n", exception);
-            memcpy((void*)__DBVECTOR, (void*)__OSDBINTEND, (u32)__OSDBJUMPEND - (u32)__OSDBINTEND);
+            memcpy(__DBVECTOR, __OSDBINTEND, (u32)__OSDBJUMPEND - (u32)__OSDBINTEND);
         } else {
             // make sure the opcodes are still nop
             u32* ops = (u32*)__DBVECTOR;
@@ -443,14 +437,14 @@ static void OSExceptionInit(void) {
         }
 
         // Install the modified handler.
-        destAddr = (void*)OSPhysicalToCached(__OSExceptionLocations[(u32)exception]);
+        destAddr = OSPhysicalToCached(__OSExceptionLocations[(u32)exception]);
         memcpy(destAddr, handlerStart, handlerSize);
         DCFlushRangeNoSync(destAddr, handlerSize);
         __sync();
         ICInvalidateRange(destAddr, handlerSize);
     }
     // initialize pointer to exception table
-    OSExceptionTable = (void*)OSPhysicalToCached(OS_EXCEPTIONTABLE_ADDR);
+    OSExceptionTable = OSPhysicalToCached(OS_EXCEPTIONTABLE_ADDR);
 
     // install default exception handlers
     for (exception = 0; exception < __OS_EXCEPTION_MAX; exception++) {

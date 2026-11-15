@@ -221,7 +221,10 @@ typedef struct ExceptionTableLarge {
 typedef struct ExceptionTableIndex {
 	u32 functionoffset;
 	u32 eti_field;
-	u32 exceptionoffset;
+	union {
+		u32 offset;
+		ExceptionTableSmall table;
+	} exception;
 } ExceptionTableIndex;
 
 #define ETI_MakeField(direct, fsize) ((((s32)(direct)) << 31) | ((fsize)&0x7fffffff))

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct Window {
     TosBaseBlock base;
@@ -153,9 +154,8 @@ static void ProcessWindow(
 }
 
 static u32 ControlWindow(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    Window *block, u32 command, void *argument, u32 argumentSize)
 {
-    Window *block = (Window *)baseBlock;
 
     switch ((u8)command) {
     case 1:
@@ -179,10 +179,9 @@ static u32 ControlWindow(
     return 1;
 }
 
-static u32 InitWindow(TosBaseBlock *baseBlock)
+static u32 InitWindow(Window *block)
 {
-    Window *block = (Window *)baseBlock;
-    TosContext *context = baseBlock->context;
+    TosContext *context = block->base.context;
     u16 frameLength;
     u16 windowLength;
     s32 i;
@@ -225,6 +224,7 @@ static u32 InitWindow(TosBaseBlock *baseBlock)
 void *ConstructWindow(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, ProcessWindow, InitWindow, ControlWindow,
+        context, blockIndex, 1, 1, ProcessWindow, (TosInitFunction)InitWindow,
+            (TosControlFunction)ControlWindow,
         sizeof(Window));
 }

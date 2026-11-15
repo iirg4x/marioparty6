@@ -36,13 +36,13 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
             __DSP_curr_task->state = DSP_TASK_STATE_RUN;
 
             if (__DSP_curr_task->init_cb) {
-                (*(__DSP_curr_task->init_cb))((void *)(__DSP_curr_task));
+                (*(__DSP_curr_task->init_cb))(__DSP_curr_task);
             }
             break;
         case 0xDCD10001:
             __DSP_curr_task->state = DSP_TASK_STATE_RUN;
             if (__DSP_curr_task->res_cb) {
-                (*(__DSP_curr_task->res_cb))((void *)(__DSP_curr_task));
+                (*(__DSP_curr_task->res_cb))(__DSP_curr_task);
             }
             break;
         case 0xDCD10002:
@@ -56,7 +56,7 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
                     __DSP_rude_task_pending = FALSE;
 
                     if (__DSP_curr_task->res_cb) {
-                        (*(__DSP_curr_task->res_cb))((void *)(__DSP_curr_task));
+                        (*(__DSP_curr_task->res_cb))(__DSP_curr_task);
                     }
 
                     break;
@@ -86,7 +86,7 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
                         ;
 
                     if (__DSP_curr_task->res_cb) {
-                        (*(__DSP_curr_task->res_cb))((void *)(__DSP_curr_task));
+                        (*(__DSP_curr_task->res_cb))(__DSP_curr_task);
                     }
                 }
                 else {
@@ -114,7 +114,7 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
             if (__DSP_rude_task_pending) {
 
                 if (__DSP_curr_task->done_cb) {
-                    (*(__DSP_curr_task->done_cb))((void *)(__DSP_curr_task));
+                    (*(__DSP_curr_task->done_cb))(__DSP_curr_task);
                 }
 
                 DSPSendMailToDSP(0xCDD10001);
@@ -137,7 +137,7 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
                 if (__DSP_curr_task == __DSP_first_task) {
 
                     if (__DSP_curr_task->done_cb) {
-                        (*(__DSP_curr_task->done_cb))((void *)(__DSP_curr_task));
+                        (*(__DSP_curr_task->done_cb))(__DSP_curr_task);
                     }
 
                     DSPSendMailToDSP(0xCDD10002);
@@ -151,7 +151,7 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
                 else {
 
                     if (__DSP_curr_task->done_cb) {
-                        (*(__DSP_curr_task->done_cb))((void *)(__DSP_curr_task));
+                        (*(__DSP_curr_task->done_cb))(__DSP_curr_task);
                     }
 
                     DSPSendMailToDSP(0xCDD10001);
@@ -167,7 +167,7 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
             }
             else {
                 if (__DSP_curr_task->done_cb) {
-                    (*(__DSP_curr_task->done_cb))((void *)(__DSP_curr_task));
+                    (*(__DSP_curr_task->done_cb))(__DSP_curr_task);
                 }
                 DSPSendMailToDSP(0xCDD10001);
                 while (DSPCheckMailToDSP())
@@ -184,7 +184,7 @@ void __DSPHandler(__OSInterrupt, OSContext *context)
         case 0xDCD10004:
 
             if (__DSP_curr_task->req_cb) {
-                (*(__DSP_curr_task->req_cb))((void *)(__DSP_curr_task));
+                (*(__DSP_curr_task->req_cb))(__DSP_curr_task);
             }
             break;
         default:

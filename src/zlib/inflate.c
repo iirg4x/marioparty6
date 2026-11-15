@@ -98,8 +98,7 @@ int stream_size;
     z->opaque = (voidpf)0;
   }
   if (z->zfree == Z_NULL) z->zfree = zcfree;
-  if ((z->state = (struct internal_state FAR *)
-       ZALLOC(z,1,sizeof(struct internal_state))) == Z_NULL)
+  if ((z->state = ZALLOC(z,1,sizeof(struct internal_state))) == Z_NULL)
     return Z_MEM_ERROR;
   z->state->blocks = Z_NULL;
 

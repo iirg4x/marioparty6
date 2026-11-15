@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 #define M_PI 3.141592653589793
 
@@ -29,9 +30,8 @@ extern f32 cosf(f32 value);
 
 // Add each input frame to history, then enqueue the current windowed analysis window.
 static void ProcessPitchWindow(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputPortCount)
+    PitchWindow *block, void **inputs, s32 inputPortCount)
 {
-    PitchWindow *block = (PitchWindow *)baseBlock;
     s32 *inputSamples = inputs[0];
     f32 *windowWeight;
     f32 *outputSamples;
@@ -75,10 +75,9 @@ static inline void FillPitchHistory(PitchWindow *block, s32 value)
 
 // Handle the block reset command and TOS destruction command.
 static u32 ControlPitchWindow(
-    TosBaseBlock *baseBlock, u32 command, void *controlArgument,
+    PitchWindow *block, u32 command, void *controlArgument,
     u32 controlArgumentSize)
 {
-    PitchWindow *block = (PitchWindow *)baseBlock;
 
     switch ((u8)command) {
     case PITCH_WINDOW_RESET_COMMAND:
@@ -107,7 +106,7 @@ static void CreateWindow(f32 *windowCoefficients, u16 sampleRate, u16 windowLeng
     u16 coefficientCount = windowLength;
     u16 midpointIndex;
     u16 samplesPerSecond = sampleRate;
-    f32 angularFrequency = (2.0 * 3.141592653589793) / ((f32)coefficientCount / samplesPerSecond);
+    f32 angularFrequency = (2.0 * M_PI) / ((f32)coefficientCount / samplesPerSecond);
     f32 samplePeriod = 1.0f / samplesPerSecond;
     f32 sampleTime;
 
@@ -126,10 +125,10 @@ static void CreateWindow(f32 *windowCoefficients, u16 sampleRate, u16 windowLeng
 }
 
 // During block initialization, read the rec1600 profile and prepare the analysis window.
-static u32 InitPitchWindow(TosBaseBlock *baseBlock)
+static u32 InitPitchWindow(void *baseBlock)
 {
-    PitchWindow *block = (PitchWindow *)baseBlock;
-    TosContext *context = baseBlock->context;
+    PitchWindow *block = baseBlock;
+    TosContext *context = block->base.context;
     u16 sampleRate;
     f32 windowDuration;
     u16 inputFrameLength;
@@ -175,6 +174,7 @@ static u32 InitPitchWindow(TosBaseBlock *baseBlock)
 void *ConstructPitchWindow(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, ProcessPitchWindow, InitPitchWindow,
-        ControlPitchWindow, sizeof(PitchWindow));
+        context, blockIndex, 1, 1, (TosProcessFunction)ProcessPitchWindow,
+            (TosInitFunction)InitPitchWindow,
+        (TosControlFunction)ControlPitchWindow, sizeof(PitchWindow));
 }

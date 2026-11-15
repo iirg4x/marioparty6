@@ -14,37 +14,38 @@ SECTION_INIT void* memset(void* dst, int val, size_t n) {
 SECTION_INIT void __fill_mem(void* dst, int val, size_t n) {
     unsigned long v = (unsigned char)val;
     unsigned long i;
+    unsigned char* bytes = dst;
 
-    ((unsigned char*)dst) = ((unsigned char*)dst) - 1;
+    --bytes;
 
     if (n >= 32) {
-        i = (~(unsigned long)dst) & 3;
+        i = (~(unsigned long)bytes) & 3;
 
         if (i) {
             n -= i;
 
             do {
-                *++(((unsigned char*)dst)) = v;
+                *++bytes = v;
             } while (--i);
         }
 
         if (v)
             v |= v << 24 | v << 16 | v << 8;
 
-        ((unsigned long*)dst) = ((unsigned long*)(((unsigned char*)dst) + 1)) - 1;
+        (unsigned long*)bytes = (unsigned long*)(bytes + 1) - 1;
 
         i = n >> 5;
 
         if (i) {
             do {
-                *++((unsigned long*)dst) = v;
-                *++((unsigned long*)dst) = v;
-                *++((unsigned long*)dst) = v;
-                *++((unsigned long*)dst) = v;
-                *++((unsigned long*)dst) = v;
-                *++((unsigned long*)dst) = v;
-                *++((unsigned long*)dst) = v;
-                *++((unsigned long*)dst) = v;
+                *++((unsigned long*)bytes) = v;
+                *++((unsigned long*)bytes) = v;
+                *++((unsigned long*)bytes) = v;
+                *++((unsigned long*)bytes) = v;
+                *++((unsigned long*)bytes) = v;
+                *++((unsigned long*)bytes) = v;
+                *++((unsigned long*)bytes) = v;
+                *++((unsigned long*)bytes) = v;
             } while (--i);
         }
 
@@ -52,18 +53,18 @@ SECTION_INIT void __fill_mem(void* dst, int val, size_t n) {
 
         if (i) {
             do {
-                *++((unsigned long*)dst) = v;
+                *++((unsigned long*)bytes) = v;
             } while (--i);
         }
 
-        ((unsigned char*)dst) = ((unsigned char*)(((unsigned long*)dst) + 1)) - 1;
+        bytes = (unsigned char*)((unsigned long*)bytes + 1) - 1;
 
         n &= 3;
     }
 
     if (n)
         do {
-            *++((unsigned char*)dst) = v;
+            *++bytes = v;
         } while (--n);
 
     return;
@@ -74,14 +75,18 @@ SECTION_INIT void* memcpy(void* dst, const void* src, size_t n) {
     unsigned char* d;
 
     if ((unsigned long)src >= (unsigned long)dst) {
-        s = (const unsigned char*)src - 1;
-        d = (unsigned char*)dst - 1;
+        s = src;
+        d = dst;
+        --s;
+        --d;
         n++;
         while (--n != 0)
             *++d = *++s;
     } else {
-        s = (const unsigned char*)src + n;
-        d = (unsigned char*)dst + n;
+        s = src;
+        d = dst;
+        s += n;
+        d += n;
         n++;
         while (--n != 0)
             *--d = *--s;

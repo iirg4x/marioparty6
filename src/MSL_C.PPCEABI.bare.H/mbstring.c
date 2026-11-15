@@ -40,12 +40,12 @@ size_t wcstombs(char* s, const wchar_t* pwcs, size_t n) {
     int chars_written = 0;
     int result;
     char temp[3];
-    wchar_t* source;
+    const wchar_t* source;
 
     if (!s || !pwcs)
         return (0);
 
-    source = (wchar_t*)pwcs;
+    source = pwcs;
     while (chars_written <= n) {
         if (!*source) {
             *(s + chars_written) = '\0';

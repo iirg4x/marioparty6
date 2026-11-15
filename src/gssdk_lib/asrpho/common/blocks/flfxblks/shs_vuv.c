@@ -1,4 +1,5 @@
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct SHS_VUV {
     TosBaseBlock base;

@@ -447,23 +447,28 @@ static u8 FlushPitchCombiner(PitchCombiner *block)
 // Consumes one pitch, voicing, and spectrum frame and emits ready features.
 // tosRun invokes this for input frames and empty-input ticks; inputCount is unused.
 static void ProcessPitchCombiner(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+    PitchCombiner *block, void **inputs, s32 inputCount)
 {
-    PitchCombiner *block = (PitchCombiner *)baseBlock;
 
     if (inputs[0] != NULL) {
         f32 *output;
+        f32 *spectrum;
+        f32 *pitch;
+        u8 *voicing;
 
         // Skip the spectrum's leading value and take the maximum of its configured bands.
+        spectrum = inputs[2];
         PushPitchHistory(&block->normEnergy,
-            MaxFloatInArray((f32 *)inputs[2] + 1, block->bandCount));
+            MaxFloatInArray(spectrum + 1, block->bandCount));
 
-        *block->logPitch.write++ = logf_check(*(f32 *)inputs[0]);
+        pitch = inputs[0];
+        *block->logPitch.write++ = logf_check(*pitch);
         if (block->logPitch.write == block->logPitch.end) {
             block->logPitch.write = block->logPitch.samples;
         }
 
-        *block->voicing.write = *(u8 *)inputs[1];
+        voicing = inputs[1];
+        *block->voicing.write = *voicing;
         block->queuedFrameCount++;
         StatusProcessing(block);
 
@@ -545,9 +550,8 @@ static void PitchCombinerReset(PitchCombiner *block)
 // Handles reset, flush, and destruction through the speech graph's control callback.
 // Only the command's low byte is used; the argument pointer and size are ignored.
 static u32 ControlPitchCombiner(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    PitchCombiner *block, u32 command, void *argument, u32 argumentSize)
 {
-    PitchCombiner *block = (PitchCombiner *)baseBlock;
 
     switch ((u8)command) {
     case PITCH_COMBINER_RESET_COMMAND:
@@ -575,10 +579,9 @@ static u32 ControlPitchCombiner(
 
 // Allocates histories and sets window coefficients during speech graph initialization.
 // The graph invokes this through the initializer registered by ConstructPitchCombiner.
-static u32 InitPitchCombiner(TosBaseBlock *baseBlock)
+static u32 InitPitchCombiner(PitchCombiner *block)
 {
-    PitchCombiner *block = (PitchCombiner *)baseBlock;
-    TosContext *context = baseBlock->context;
+    TosContext *context = block->base.context;
     u32 bandCount;
 
     bandCount = _tosGetProfileU32(block, PITCH_COMBINER_BAND_COUNT_PROFILE, 21);
@@ -686,6 +689,7 @@ void *ConstructPitchCombiner(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 3, 1,
-        ProcessPitchCombiner, InitPitchCombiner, ControlPitchCombiner,
+        (TosProcessFunction)ProcessPitchCombiner, (TosInitFunction)InitPitchCombiner,
+            (TosControlFunction)ControlPitchCombiner,
         sizeof(PitchCombiner));
 }

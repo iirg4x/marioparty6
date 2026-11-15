@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "gssdk/triggerlr.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
@@ -11,11 +12,16 @@ extern u8 qQueueControl(
 extern u8 tosBaseBlockStartInputQueues(TosBaseBlock *block, u32 reader);
 extern u8 tosBaseBlockDisableInputQueues(TosBaseBlock *block);
 
+typedef struct TriggerLRSession {
+    u32 histogramValid;
+    SlidingHistoSessionData histogram;
+} TriggerLRSession;
+
 static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs);
 static void ProcessTriggerLR(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount);
+    TriggerLR *block, void **inputs, s32 inputCount);
 static u32 ControlTriggerLR(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize);
+    TosBaseBlock *baseBlock, u32 command, void *argument, u32 *sessionOffset);
 static u32 InitTriggerLR(TosBaseBlock *baseBlock);
 
 // Returns the middle of three voicing scores while TriggerLR checks a speech candidate.
@@ -56,12 +62,15 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
     f32 onsetMetric;
     f32 activity;
     f32 noiseThreshold;
-    f32 *featureValues = (f32 *)inputs[1];
+    f32 *featureValues = inputs[1];
+    f32 *inputValue;
 
     noiseThreshold = featureValues[3] + block->noiseFloorOffsetLog;
-    onsetMetric = *(f32 *)inputs[2];
+    inputValue = inputs[2];
+    onsetMetric = *inputValue;
     activity = featureValues[0];
-    peakMetric = *(f32 *)inputs[3];
+    inputValue = inputs[3];
+    peakMetric = *inputValue;
     histogramThreshold = noiseThreshold > block->energyFloorLog ?
         noiseThreshold : block->energyFloorLog;
     if ((s32)block->histogramValid == 0) {
@@ -289,9 +298,8 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
 // Processes each scheduled audio frame, raising trigger events and updating input queues.
 // TinyOS calls this through the process callback installed by ConstructTriggerLR.
 static void ProcessTriggerLR(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+    TriggerLR *block, void **inputs, s32 inputCount)
 {
-    TriggerLR *block = (TriggerLR *)baseBlock;
     s16 *signal;
 
     (void)inputCount;
@@ -301,7 +309,7 @@ static void ProcessTriggerLR(
 
     block->frameCount++;
     if ((s32)block->processMode == 0) {
-        signal = (s16 *)inputs[0];
+        signal = inputs[0];
         if (Voicing_AddSignal(block, signal)) {
             return;
         }
@@ -332,13 +340,13 @@ static void ProcessTriggerLR(
 
         if ((s32)block->triggerEventMode != 0) {
             if (_tosControl(
-                    baseBlock, 203, block->triggerLookbackFrames,
+                    &block->base, 203, block->triggerLookbackFrames,
                     block->frameCount)) {
                 goto done;
             }
         } else {
             if (_tosControl(
-                    baseBlock, 200, block->triggerLookbackFrames,
+                    &block->base, 200, block->triggerLookbackFrames,
                     block->frameCount)) {
                 goto done;
             }
@@ -347,13 +355,13 @@ static void ProcessTriggerLR(
         if ((s32)block->holdInputQueuesAfterTrigger != 0) {
             block->processMode = 1;
         } else {
-            tosBaseBlockDisableInputQueues(baseBlock);
+            tosBaseBlockDisableInputQueues(&block->base);
         }
     } else if ((s32)block->processMode == 1 &&
         (s32)block->speechActive != 0 &&
         block->silenceFrames > block->endSilenceFrames) {
         block->speechActive = 0;
-        if (_tosControl(baseBlock, 201, block->frameCount, 0)) {
+        if (_tosControl(&block->base, 201, block->frameCount, 0)) {
             return;
         }
         block->processMode = 2;
@@ -365,13 +373,12 @@ done:
 // Applies reset, configuration, session, and destruction commands to the speech trigger.
 // TinyOS invokes this callback when the block receives a control command.
 static u32 ControlTriggerLR(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    TosBaseBlock *baseBlock, u32 command, void *argument, u32 *sessionOffset)
 {
     TriggerLR *block = (TriggerLR *)baseBlock;
     TriggerLRControlData *controlData;
-    u32 *sessionOffset;
     u32 sessionSize;
-    u8 *sessionBuffer;
+    TriggerLRSession *sessionBuffer;
     u32 queueControlFailed;
     f32 sensitivityScale;
     f32 voicingThreshold;
@@ -417,7 +424,7 @@ static u32 ControlTriggerLR(
         break;
 
     case 103:
-        controlData = (TriggerLRControlData *)argument;
+        controlData = argument;
         block->resetStartsInputQueues = controlData->resetStartsInputQueues;
         block->holdInputQueuesAfterTrigger = controlData->holdInputQueuesAfterTrigger;
         block->sensitivity = controlData->sensitivity;
@@ -461,17 +468,16 @@ static u32 ControlTriggerLR(
         break;
 
     case 105:
-        sessionOffset = (u32 *)argumentSize;
-        sessionBuffer = (u8 *)argument;
+        sessionBuffer = argument;
         if (sessionBuffer != NULL) {
-            sessionBuffer += *sessionOffset;
+            sessionBuffer = (TriggerLRSession *)((u8 *)sessionBuffer + *sessionOffset);
             SlidingHisto_Clear(block);
             Voicing_Reset(block);
             // A session stores histogram validity first, followed by its rolling history.
             block->histogramValid = 0;
-            block->histogramValid = *(u32 *)sessionBuffer;
+            block->histogramValid = sessionBuffer->histogramValid;
             SlidingHisto_PutSession(
-                block, (SlidingHistoSessionData *)(sessionBuffer + 4));
+                block, &sessionBuffer->histogram);
             if ((s32)block->histogramValid != 0) {
                 block->histogramLowerQuantile =
                     SlidingHisto_LowerQuantile(block, block->histogramQuantile);
@@ -486,13 +492,12 @@ static u32 ControlTriggerLR(
         break;
 
     case 106:
-        sessionOffset = (u32 *)argumentSize;
-        sessionBuffer = (u8 *)argument;
+        sessionBuffer = argument;
         if (sessionBuffer != NULL) {
-            sessionBuffer += *sessionOffset;
-            *(u32 *)sessionBuffer = block->histogramValid;
+            sessionBuffer = (TriggerLRSession *)((u8 *)sessionBuffer + *sessionOffset);
+            sessionBuffer->histogramValid = block->histogramValid;
             SlidingHisto_GetSession(
-                block, (SlidingHistoSessionData *)(sessionBuffer + 4));
+                block, &sessionBuffer->histogram);
         }
         sessionSize = SlidingHisto_sizeof_SessionData(block) + 4;
             *sessionOffset += sessionSize;
@@ -618,6 +623,6 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
 TosBaseBlock *ConstructTriggerLR(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 4, 0, ProcessTriggerLR, InitTriggerLR,
-        ControlTriggerLR, sizeof(TriggerLR));
+        context, blockIndex, 4, 0, (TosProcessFunction)ProcessTriggerLR, InitTriggerLR,
+        (TosControlFunction)ControlTriggerLR, sizeof(TriggerLR));
 }

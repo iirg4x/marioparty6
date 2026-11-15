@@ -7,6 +7,7 @@
 #include "gssdk/fft.h"
 #include "gssdk/mqueue.h"
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct FFTMod {
     TosBaseBlock base; // TinyOS block state and audio queue ports.
@@ -157,7 +158,7 @@ static void ProcessFFTMod(
 // Answers power-level queries only in power mode (logging an error otherwise) and frees padding
 // storage and the block on shutdown.
 static u32 ControlFFTMod(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    TosBaseBlock *baseBlock, u32 command, s16 **argument, u32 argumentSize)
 {
     FFTMod *block = (FFTMod *)baseBlock;
     TosContext *context = block->base.context;
@@ -168,7 +169,7 @@ static u32 ControlFFTMod(
             _tosErrorLog(block, 102);
             return 1;
         }
-        *(s16 **)argument = &block->powerLevel;
+        *argument = &block->powerLevel;
         break;
     case 255:
         if (block->padInput != 0) {
@@ -183,11 +184,10 @@ static u32 ControlFFTMod(
 }
 
 // Called when the audio graph starts this block. Reads its profile and sizes its queues.
-static u32 InitFFTMod(TosBaseBlock *baseBlock)
+static u32 InitFFTMod(FFTMod *block)
 {
-    FFTMod *block = (FFTMod *)baseBlock;
     u16 fftLength;
-    TosContext *context = baseBlock->context;
+    TosContext *context = block->base.context;
     s32 sampleRate;
     f32 scale;
     f32 frequency;
@@ -261,7 +261,8 @@ void *ConstructFFTMod(TosContext *context, u8 blockIndex)
         (u8)_tosGetProfileU32(&profileBlock, 7, 1);
     block = (FFTMod *)tosBaseBlockConstruct(
         context, blockIndex, 1, powerSpectrum != 0 ? 2 : 1,
-        ProcessFFTMod, InitFFTMod, ControlFFTMod, sizeof(FFTMod));
+        ProcessFFTMod, (TosInitFunction)InitFFTMod,
+        (TosControlFunction)ControlFFTMod, sizeof(FFTMod));
     block->powerSpectrum = powerSpectrum;
     return block;
 }

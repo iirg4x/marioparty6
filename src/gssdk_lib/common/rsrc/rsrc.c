@@ -29,6 +29,7 @@ static inline BOOL IsError(u32 result)
 u32 InitRsrcFunction(SafeHandle handle, void **resource)
 {
     u32 result = 0;
+    Resource *closeResource;
 
     if (safeh_HandlesEqual(handle, g_lhNullHandle)) {
         *resource = (void *)&g_NullResource;
@@ -41,7 +42,8 @@ u32 InitRsrcFunction(SafeHandle handle, void **resource)
             return result;
         }
         *resource = handle.address;
-        if (*resource == NULL || ((Resource *)*resource)->type != RSRC_TYPE) {
+        closeResource = *resource;
+        if (*resource == NULL || closeResource->type != RSRC_TYPE) {
             return RSRC_INVALID_RESOURCE;
         }
     }

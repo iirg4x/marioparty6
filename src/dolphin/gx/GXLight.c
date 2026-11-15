@@ -195,7 +195,7 @@ void GXInitLightColor(GXLightObj* lt_obj, GXColor color)
 {
     GXLightObjInt* obj = (GXLightObjInt*)lt_obj;
 
-    *(u32*)&obj->color = *(u32*)&color;
+    obj->color = *(u32*)&color;
 }
 
 static inline void PushLight(const register GXLightObjInt* lt_obj, register void* dest)

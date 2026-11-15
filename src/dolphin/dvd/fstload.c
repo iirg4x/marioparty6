@@ -37,17 +37,17 @@ void __fstLoad() {
 	OSBootInfo* bootInfo;
 	DVDDiskID* id;
 	u8 idTmpBuf[sizeof(DVDDiskID) + 31];
-	static DVDCommandBlock block;
+	static DVDCommandBlock state;
 	void* arenaHi;
 
 	arenaHi = OSGetArenaHi();
-	bootInfo = (OSBootInfo*)OSPhysicalToCached(0);
+	bootInfo = OSPhysicalToCached(0);
 
-	idTmp = (DVDDiskID*)(OSRoundUp32B(idTmpBuf));
-	bb2 = (DVDBB2*)(OSRoundUp32B(bb2Buf));
+	idTmp = OSRoundUpPtr(idTmpBuf, 32);
+	bb2 = OSRoundUpPtr(bb2Buf, 32);
 
 	DVDReset();
-	DVDReadDiskID(&block, idTmp, cb);
+	DVDReadDiskID(&state, idTmp, cb);
 	while (DVDGetDriveStatus() != 0);
 
 	bootInfo->FSTLocation = bb2->FSTAddress;

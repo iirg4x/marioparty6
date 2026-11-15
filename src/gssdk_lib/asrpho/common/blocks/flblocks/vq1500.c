@@ -4,6 +4,7 @@
 
 #include "gssdk/langdata.h"
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 #define VQ_DEFAULT_INPUT_ELEMENTS 38
 
@@ -140,9 +141,8 @@ static void IdleVq1500Process(
 }
 
 static void Vq1500Process(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+    Vq1500 *block, void **inputs, s32 inputCount)
 {
-    Vq1500 *block = (Vq1500 *)baseBlock;
     u8 *output;
     VqCodeBook *codeBook;
     f32 *input;
@@ -162,16 +162,15 @@ static void Vq1500Process(
 }
 
 static u32 ControlVq1500Process(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    Vq1500 *block, u32 command, void *argument, u32 argumentSize)
 {
-    Vq1500 *block = (Vq1500 *)baseBlock;
 
     switch ((u8)command) {
     case 1:
         if ((u8)LoadCodeBooks(block, argument) != 0) {
             block->base.process = IdleVq1500Process;
         } else {
-            block->base.process = Vq1500Process;
+            block->base.process = (TosProcessFunction)Vq1500Process;
         }
         break;
     case 255:
@@ -201,5 +200,5 @@ void *ConstructVq(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, IdleVq1500Process, InitVq1500Process,
-        ControlVq1500Process, sizeof(Vq1500));
+        (TosControlFunction)ControlVq1500Process, sizeof(Vq1500));
 }

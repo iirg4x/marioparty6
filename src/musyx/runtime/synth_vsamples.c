@@ -105,7 +105,7 @@ void vsSampleEndNotify(u32 pubID) {
   }
 }
 
-void vsUpdateBuffer(struct VS_BUFFER* sb, unsigned long cpos) {
+static void vsUpdateBuffer(struct VS_BUFFER* sb, unsigned long cpos) {
   u32 len; // r29
   u32 off; // r27
 

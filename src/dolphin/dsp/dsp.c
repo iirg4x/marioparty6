@@ -36,29 +36,29 @@ void DSPSendMailToDSP(u32 mail) {
 }
 
 void DSPInit(void) {
-  u32 oldInt;
-  u16 reg;
+  u32 old;
+  u16 tmp;
   __DSP_debug_printf("DSPInit(): Build Date: %s %s\n", "Apr  5 2004", "04:15:32");
 
   if (__DSP_init_flag == 1) {
     return;
   }
   OSRegisterVersion(__DSPVersion);
-  oldInt = OSDisableInterrupts();
+  old = OSDisableInterrupts();
   __OSSetInterruptHandler(7, __DSPHandler);
   __OSUnmaskInterrupts(0x1000000);
-  reg = __DSPRegs[5];
-  reg = (reg & ~0xA8) | 0x800;
-  __DSPRegs[5] = reg;
-  reg = __DSPRegs[5];
-  reg = reg & ~0xAC;
-  __DSPRegs[5] = reg;
+  tmp = __DSPRegs[5];
+  tmp = (tmp & ~0xA8) | 0x800;
+  __DSPRegs[5] = tmp;
+  tmp = __DSPRegs[5];
+  tmp = tmp & ~0xAC;
+  __DSPRegs[5] = tmp;
   __DSP_tmp_task = 0;
   __DSP_curr_task = 0;
   __DSP_last_task = 0;
   __DSP_first_task = 0;
   __DSP_init_flag = 1;
-  OSRestoreInterrupts(oldInt);
+  OSRestoreInterrupts(old);
 }
 
 void DSPReset(void) {
@@ -83,12 +83,12 @@ void DSPHalt(void) {
 u32 DSPGetDMAStatus(void) { return __DSPRegs[5] & 0x200; }
 
 DSPTaskInfo* DSPAddTask(DSPTaskInfo* task) {
-  u32 oldInt;
-  oldInt = OSDisableInterrupts();
+  u32 old;
+  old = OSDisableInterrupts();
   __DSP_insert_task(task);
   task->state = 0;
   task->flags = 1;
-  OSRestoreInterrupts(oldInt);
+  OSRestoreInterrupts(old);
   if (task == __DSP_first_task) {
     __DSP_boot_task(task);
   }

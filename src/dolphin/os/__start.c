@@ -233,7 +233,6 @@ __declspec(section ".init") static asm void __init_registers(void)
     blr
 }
 
-#pragma scheduling off
 __declspec(section ".init") static void __init_data(void) {
     __rom_copy_info* dci;
     __bss_init_info* bii;

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct Stacker {
 TosBaseBlock base;
@@ -16,9 +17,8 @@ extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 
 static void ProcessStacker(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+    Stacker *block, void **inputs, s32 inputCount)
 {
-Stacker *block = (Stacker *)baseBlock;
 u16 i;
 u8 *output;
 
@@ -41,9 +41,8 @@ for (i = 0; i < inputCount; i++) {
 }
 
 static u32 ControlStacker(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    Stacker *block, u32 command, void *argument, u32 argumentSize)
 {
-Stacker *block = (Stacker *)baseBlock;
 
 switch ((u8)command) {
 case 100:
@@ -69,10 +68,9 @@ default:
 return 1;
 }
 
-static u32 InitStacker(TosBaseBlock *baseBlock)
+static u32 InitStacker(Stacker *block)
 {
-Stacker *block = (Stacker *)baseBlock;
-TosContext *context = baseBlock->context;
+TosContext *context = block->base.context;
 u16 i;
 
 block->numberInputs = _tosGetProfileU32(block, 3, 2);
@@ -111,6 +109,6 @@ return 0;
 void *ConstructStacker(TosContext *context, u8 blockIndex)
 {
 return tosBaseBlockConstruct(
-    context, blockIndex, 2, 1, ProcessStacker, InitStacker,
-    ControlStacker, sizeof(Stacker));
+    context, blockIndex, 2, 1, (TosProcessFunction)ProcessStacker, (TosInitFunction)InitStacker,
+    (TosControlFunction)ControlStacker, sizeof(Stacker));
 }

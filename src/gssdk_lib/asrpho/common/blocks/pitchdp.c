@@ -1,6 +1,7 @@
 #include "types.h"
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct PitchDPCell {
     f32 observation;

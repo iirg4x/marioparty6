@@ -4,8 +4,6 @@
 #include <dolphin/mic.h>
 #include <dolphin/os.h>
 
-#pragma force_active on
-
 #define M2S_CHANNEL_COUNT 2
 #define M2S_BUFFER_SAMPLES 128
 #define M2S_CALIBRATION_SAMPLES 44
@@ -453,5 +451,3 @@ static void __M2SCalibration(s16* buffer, s32 samples) {
         __M2STmpPtr = history_index;
     }
 }
-
-#pragma force_active reset

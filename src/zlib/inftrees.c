@@ -301,9 +301,9 @@ z_streamp z;            /* for messages */
   uInt hn = 0;          /* hufts used in space */
   uIntf *v;             /* work area for huft_build */
 
-  if ((v = (uIntf*)ZALLOC(z, 19, sizeof(uInt))) == Z_NULL)
+  if ((v = ZALLOC(z, 19, sizeof(uInt))) == Z_NULL)
     return Z_MEM_ERROR;
-  r = huft_build(c, 19, 19, (uIntf*)Z_NULL, (uIntf*)Z_NULL,
+  r = huft_build(c, 19, 19, Z_NULL, Z_NULL,
                  tb, bb, hp, &hn, v);
   if (r == Z_DATA_ERROR)
     z->msg = (char*)"oversubscribed dynamic bit lengths tree";
@@ -333,7 +333,7 @@ z_streamp z;            /* for messages */
   uIntf *v;             /* work area for huft_build */
 
   /* allocate work area */
-  if ((v = (uIntf*)ZALLOC(z, 288, sizeof(uInt))) == Z_NULL)
+  if ((v = ZALLOC(z, 288, sizeof(uInt))) == Z_NULL)
     return Z_MEM_ERROR;
 
   /* build literal/length tree */
@@ -412,9 +412,9 @@ z_streamp z;             /* for memory allocation */
     uIntf *v;           /* work area for huft_build */
 
     /* allocate memory */
-    if ((c = (uIntf*)ZALLOC(z, 288, sizeof(uInt))) == Z_NULL)
+    if ((c = ZALLOC(z, 288, sizeof(uInt))) == Z_NULL)
       return Z_MEM_ERROR;
-    if ((v = (uIntf*)ZALLOC(z, 288, sizeof(uInt))) == Z_NULL)
+    if ((v = ZALLOC(z, 288, sizeof(uInt))) == Z_NULL)
     {
       ZFREE(z, c);
       return Z_MEM_ERROR;

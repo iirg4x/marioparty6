@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "gssdk/triggerlr.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);

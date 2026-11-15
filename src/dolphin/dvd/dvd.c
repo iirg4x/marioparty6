@@ -113,7 +113,7 @@ void DVDInit(void) {
         __DVDInitWA();
 
         MotorState = 0;
-        bootInfo = (void*)OSPhysicalToCached(0);
+        bootInfo = OSPhysicalToCached(0);
         IDShouldBe = &bootInfo->DVDDiskID;
 
         __OSSetInterruptHandler(0x15, __DVDInterruptHandler);
@@ -1770,7 +1770,7 @@ static void cbForCancelAllSync(s32 result, DVDCommandBlock* block) {
 }
 
 DVDDiskID* DVDGetCurrentDiskID(void) {
-    return (void*)OSPhysicalToCached(0);
+    return OSPhysicalToCached(0);
 }
 
 BOOL DVDCheckDisk(void) {

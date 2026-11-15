@@ -2,6 +2,7 @@
 #include "types.h"
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 #define EXTRA_EVENT_SCORE_INFINITY 2147483647
 #define EXTRA_EVENT_MAX_SCORE (EXTRA_EVENT_SCORE_INFINITY - 2048)
@@ -26,6 +27,13 @@ u32 transitionCount; /* Number of transition chains. */
 s32 transitionScore; /* Cost added when a chain advances from its first state. */
 s32 initialScore; /* Starting cost assigned to the first state. */
 } ExtraEventContextInfo;
+
+/* The control command selects the score, context, or callback payload. */
+typedef union ExtraEventControlData {
+    s32 score;
+    ExtraEventContextInfo contextInfo;
+    ExtraEventCallbacks callbacks;
+} ExtraEventControlData;
 
 typedef struct ExtraEventState {
 s32 score; /* Accumulated signed cost for this state. */
@@ -154,9 +162,8 @@ if (stateTable[0].score < terminalState->score) {
 
 /* TOS calls this process callback; only a non-null first input advances frame scoring. */
 static u32 ProcessExtraEventDP(
-TosBaseBlock *tosBlock, void **inputs, s32 inputCount)
+ExtraEventDP *eventBlock, void **inputs, s32 inputCount)
 {
-ExtraEventDP *eventBlock = (ExtraEventDP *)tosBlock;
 
 if (inputs[0] != NULL) {
     eventBlock->frameCount++;
@@ -168,28 +175,26 @@ return 0;
 }
 
 /* TOS calls this initializer to bind the input port and apply profile key 15's element size. */
-static u32 InitExtraEventDP(TosBaseBlock *tosBlock)
+static u32 InitExtraEventDP(ExtraEventDP *eventBlock)
 {
-ExtraEventDP *eventBlock = (ExtraEventDP *)tosBlock;
 u32 inputElementSize;
 
-eventBlock->input = tosBlock->input;
-inputElementSize = (u16)_tosGetProfileU32(tosBlock, 15, 4);
+eventBlock->input = eventBlock->base.input;
+inputElementSize = (u16)_tosGetProfileU32(&eventBlock->base, 15, 4);
 eventBlock->input->inputSize = inputElementSize;
 return 0;
 }
 
 /* TOS calls this control callback for score queries, startup, configuration, and shutdown. */
 static u32 ControlExtraEventDP(
-ExtraEventDP *eventBlock, u32 command, void *commandData, u32 commandDataSize)
+ExtraEventDP *eventBlock, u32 command, ExtraEventControlData *commandData, u32 commandDataSize)
 {
 TosContext *ownerContext;
-TosBaseBlock *tosBlock = (TosBaseBlock *)eventBlock;
 
 switch ((u8)command) {
 case 1:
     if (commandData != NULL) {
-        *(s32 *)commandData = eventBlock->bestScore + eventBlock->accumulatedScore;
+        commandData->score = eventBlock->bestScore + eventBlock->accumulatedScore;
     } else {
         return 1;
     }
@@ -206,19 +211,19 @@ case 7:
     break;
 case 8:
     {
-    TosContext *stateHeapContext = tosBlock->context;
+    TosContext *stateHeapContext = eventBlock->base.context;
     if (eventBlock->states != NULL) {
         heap_Free(stateHeapContext->heap, eventBlock->states);
         eventBlock->states = NULL;
     }
 
-    ownerContext = tosBlock->context;
-    eventBlock->transitionCount = ((ExtraEventContextInfo *)commandData)->transitionCount;
-    eventBlock->transitionScore = ((ExtraEventContextInfo *)commandData)->transitionScore;
-    eventBlock->initialScore = ((ExtraEventContextInfo *)commandData)->initialScore;
-    eventBlock->stateCount = ((ExtraEventContextInfo *)commandData)->stateCount;
-    eventBlock->stateIds = ((ExtraEventContextInfo *)commandData)->stateIds;
-    eventBlock->transitionBounds = ((ExtraEventContextInfo *)commandData)->transitionBounds;
+    ownerContext = eventBlock->base.context;
+    eventBlock->transitionCount = commandData->contextInfo.transitionCount;
+    eventBlock->transitionScore = commandData->contextInfo.transitionScore;
+    eventBlock->initialScore = commandData->contextInfo.initialScore;
+    eventBlock->stateCount = commandData->contextInfo.stateCount;
+    eventBlock->stateIds = commandData->contextInfo.stateIds;
+    eventBlock->transitionBounds = commandData->contextInfo.transitionBounds;
     eventBlock->scoreCache = eventBlock->getScoreCache(eventBlock->callbackContext);
     eventBlock->states = heap_Alloc(
         ownerContext->heap, eventBlock->stateCount * sizeof(ExtraEventState));
@@ -228,14 +233,14 @@ case 8:
     break;
     }
 case 6:
-    eventBlock->readStateScore = ((ExtraEventCallbacks *)commandData)->readStateScore;
-    eventBlock->getScoreCache = ((ExtraEventCallbacks *)commandData)->getScoreCache;
-    eventBlock->readFrameScore = ((ExtraEventCallbacks *)commandData)->readFrameScore;
-    eventBlock->callbackContext = ((ExtraEventCallbacks *)commandData)->callbackContext;
+    eventBlock->readStateScore = commandData->callbacks.readStateScore;
+    eventBlock->getScoreCache = commandData->callbacks.getScoreCache;
+    eventBlock->readFrameScore = commandData->callbacks.readFrameScore;
+    eventBlock->callbackContext = commandData->callbacks.callbackContext;
     break;
 case 255:
     {
-    ownerContext = tosBlock->context;
+    ownerContext = eventBlock->base.context;
     if (eventBlock->states != NULL) {
         heap_Free(ownerContext->heap, eventBlock->states);
         eventBlock->states = NULL;

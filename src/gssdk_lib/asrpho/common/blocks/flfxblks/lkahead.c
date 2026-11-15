@@ -20,9 +20,8 @@ extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 
 static void ProcessLookAhead(
-    TosBaseBlock *baseBlock, void **input, s32 inputCount)
+    LookAhead *block, void **input, s32 inputCount)
 {
-LookAhead *block = (LookAhead *)baseBlock;
 f32 *sample = input[0];
 u8 *output;
 
@@ -52,9 +51,8 @@ if (sample != NULL) {
 }
 
 static u32 ControlLookAhead(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    LookAhead *block, u32 command, void *argument, u32 argumentSize)
 {
-LookAhead *block = (LookAhead *)baseBlock;
 
 switch ((u8)command) {
 case 1:
@@ -70,10 +68,10 @@ default:
 return 1;
 }
 
-static u32 InitLookAhead(TosBaseBlock *baseBlock)
+static u32 InitLookAhead(void *baseBlock)
 {
-LookAhead *block = (LookAhead *)baseBlock;
-TosContext *context = baseBlock->context;
+LookAhead *block = baseBlock;
+TosContext *context = block->base.context;
 
 block->lookAhead = (u16)_tosGetProfileU32(block, 1, 0);
 block->historyLength = (u16)_tosGetProfileU32(block, 2, 15);

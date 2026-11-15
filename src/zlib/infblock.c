@@ -81,7 +81,7 @@ uLongf *c;
   s->bitb = 0;
   s->read = s->write = s->window;
   if (s->checkfn != Z_NULL)
-    z->adler = s->check = (*s->checkfn)(0L, (const Bytef *)Z_NULL, 0);
+    z->adler = s->check = (*s->checkfn)(0L, Z_NULL, 0);
   Tracev((stderr, "inflate:   blocks reset\n"));
 }
 
@@ -102,7 +102,7 @@ uInt w;
     ZFREE(z, s);
     return Z_NULL;
   }
-  if ((s->window = (Bytef *)ZALLOC(z, 1, w)) == Z_NULL)
+  if ((s->window = ZALLOC(z, 1, w)) == Z_NULL)
   {
     ZFREE(z, s->hufts);
     ZFREE(z, s);
@@ -226,7 +226,7 @@ int r;
       }
 #endif
       t = 258 + (t & 0x1f) + ((t >> 5) & 0x1f);
-      if ((s->sub.trees.blens = (uIntf*)ZALLOC(z, t, sizeof(uInt))) == Z_NULL)
+      if ((s->sub.trees.blens = ZALLOC(z, t, sizeof(uInt))) == Z_NULL)
       {
         r = Z_MEM_ERROR;
         LEAVE

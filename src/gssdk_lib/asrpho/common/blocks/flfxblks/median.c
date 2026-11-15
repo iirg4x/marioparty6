@@ -1,6 +1,7 @@
 #include "types.h"
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct MedianNode {
     struct MedianNode *higher;
@@ -23,9 +24,8 @@ extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 
 static void ProcessMedian(
-    TosBaseBlock *baseBlock, void **input, s32 inputCount)
+    Median *block, f32 **input, s32 inputCount)
 {
-    Median *block = (Median *)baseBlock;
     MedianNode *node;
     MedianNode *cursor;
     f32 sample;
@@ -35,7 +35,7 @@ static void ProcessMedian(
 
     if (*input != NULL) {
         node = &block->nodes[block->ringIndex];
-        sample = *(f32 *)*input;
+        sample = **input;
 
         if (block->count == block->capacity) {
             if (node->higher != NULL) {
@@ -126,9 +126,8 @@ static void ProcessMedian(
 }
 
 static u32 ControlMedian(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    Median *block, u32 command, void *argument, u32 argumentSize)
 {
-    Median *block = (Median *)baseBlock;
 
     switch ((u8)command) {
     case 255:
@@ -144,9 +143,9 @@ static u32 ControlMedian(
     return 1;
 }
 
-u32 InitMedian(TosBaseBlock *baseBlock)
+u32 InitMedian(void *baseBlock)
 {
-    Median *block = (Median *)baseBlock;
+    Median *block = baseBlock;
     u32 result = 0;
 
     block->capacity = 0;

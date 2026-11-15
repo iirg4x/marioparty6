@@ -6,6 +6,7 @@ extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 extern f32 expf(f32 value);
 extern f32 logf_check(f32 value);
+extern u32 _tosErrorLog(void *block, u32 error);
 
 s32 Voicing_AddSignal(TriggerLR *block, s16 *input)
 {

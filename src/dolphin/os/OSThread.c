@@ -68,7 +68,7 @@
         (queue)->head = __next;                       \
     } while(0);
 
-extern u8 _stack_end[];
+extern u32 _stack_end[];
 extern u8 _stack_addr[];
 
 static OSThreadQueue RunQueue[32];
@@ -142,9 +142,9 @@ void __OSThreadInit(void) {
     __OSFPUContext = &thread->context;
     OSClearContext(&thread->context);
     OSSetCurrentContext(&thread->context);
-    thread->stackBase = (u8*)&_stack_addr;
-    thread->stackEnd = (u32*)&_stack_end;
-    *(u32*)thread->stackEnd = OS_THREAD_STACK_MAGIC;
+    thread->stackBase = _stack_addr;
+    thread->stackEnd = _stack_end;
+    *thread->stackEnd = OS_THREAD_STACK_MAGIC;
     OSSetCurrentThread(thread);
     OSClearStack(0);
     RunQueueBits = 0;
@@ -432,7 +432,7 @@ BOOL OSCreateThread(OSThread* thread, void* (*func)(void*), void* param, void* s
 #ifdef DEBUG
     OSInitMutexQueue(&thread->queueMutex);
 #else
-    OSInitThreadQueue((OSThreadQueue*)&thread->queueMutex);
+    thread->queueMutex.head = thread->queueMutex.tail = NULL;
 #endif
     sp = (u32)stack;
     sp &= ~7;

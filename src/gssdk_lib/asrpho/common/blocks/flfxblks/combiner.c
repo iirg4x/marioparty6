@@ -20,10 +20,9 @@ extern u8 qCheckInputQueues(TosQueuePort *input, u32 count);
 
 // Sets frame sizes from profile key 2 and allocates the eight-frame history
 // when the TOS graph initializes the combiner.
-static u32 CombinerInit(TosBaseBlock *baseBlock)
+static u32 CombinerInit(Combiner *block)
 {
-    Combiner *block = (Combiner *)baseBlock;
-    TosContext *context = baseBlock->context;
+    TosContext *context = block->baseBlock.context;
     f32 *frameStorage;
     s32 historySlot;
 
@@ -51,12 +50,11 @@ static u32 CombinerInit(TosBaseBlock *baseBlock)
 // Process an input frame into the history and queue an aligned feature vector after warm-up.
 // The TOS scheduler calls this on each graph pass, including input-free flush passes.
 static void CombinerProcess(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputPortCount)
+    Combiner *block, void **inputs, s32 inputPortCount)
 {
-    Combiner *block = (Combiner *)baseBlock;
     f32 *outputFrame = NULL;
     f32 *inputFrame = inputs[0];
-    TosQueue *outputQueue = baseBlock->output->queue;
+    TosQueue *outputQueue = block->baseBlock.output->queue;
     s32 bandIndex;
     f32 *currentHistoryFrame;
     f32 *oneFrameBack;
@@ -159,9 +157,8 @@ static void CombinerProcess(
 
 // Handles flush, reset, and destruction commands sent by the TOS graph.
 static u32 CombinerControl(
-    TosBaseBlock *baseBlock, u32 command, void *controlArgument, u32 controlArgumentSize)
+    Combiner *block, u32 command, void *controlArgument, u32 controlArgumentSize)
 {
-    Combiner *block = (Combiner *)baseBlock;
 
     switch ((u8)command) {
     case 2:
@@ -198,6 +195,7 @@ static u32 CombinerControl(
 void *ConstructCombiner(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, CombinerProcess, CombinerInit,
-        CombinerControl, sizeof(Combiner));
+        context, blockIndex, 1, 1, (TosProcessFunction)CombinerProcess,
+            (TosInitFunction)CombinerInit,
+        (TosControlFunction)CombinerControl, sizeof(Combiner));
 }
