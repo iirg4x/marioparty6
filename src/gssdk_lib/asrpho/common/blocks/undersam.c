@@ -3,8 +3,6 @@
 
 #include "gssdk/tos.h"
 
-#define UNDERSAMPLER_DESTRUCT_COMMAND 255
-
 typedef struct Undersampler {
 TosBaseBlock base;
 u16 inputSamples; /* Input samples processed in one frame. */
@@ -40,13 +38,12 @@ if (inputSamples != NULL) {
 }
 }
 
-/* Calls the base-block destructor when the low byte of the TOS control command is 255. */
-static u32 ControlUndersampler(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Calls the base-block destructor when the control ID is 255. */
+static u32 ControlUndersampler(TosBaseBlock *_This, unsigned char ControlId)
 {
-switch ((u8)command) {
-case UNDERSAMPLER_DESTRUCT_COMMAND:
-    tosBaseBlockDestruct(baseBlock);
+switch (ControlId) {
+case 255:
+    tosBaseBlockDestruct(_This);
     break;
 default:
     return 0;

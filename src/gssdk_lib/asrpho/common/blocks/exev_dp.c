@@ -179,67 +179,66 @@ return 0;
 }
 
 /* TOS calls this control callback for score queries, startup, configuration, and shutdown. */
-static u32 ControlExtraEventDP(
-ExtraEventDP *eventBlock, u32 command, void *commandData, u32 commandDataSize)
+static u32 ControlExtraEventDP(ExtraEventDP *This, unsigned char ControlId, unsigned long CParam)
 {
 TosContext *ownerContext;
-TosBaseBlock *tosBlock = (TosBaseBlock *)eventBlock;
+TosBaseBlock *tosBlock = (TosBaseBlock *)This;
 
-switch ((u8)command) {
+switch (ControlId) {
 case 1:
-    if (commandData != NULL) {
-        *(s32 *)commandData = eventBlock->bestScore + eventBlock->accumulatedScore;
+    if (CParam != 0) {
+        *(s32 *)CParam = This->bestScore + This->accumulatedScore;
     } else {
         return 1;
     }
     break;
 case 2:
-    InitViterbi(eventBlock);
-    eventBlock->base.process = (TosProcessFunction)ProcessExtraEventDP;
+    InitViterbi(This);
+    This->base.process = (TosProcessFunction)ProcessExtraEventDP;
     break;
 case 3:
-    /* This command is accepted without changing the extra-event scorer. */
+    /* This control ID is accepted without changing the extra-event scorer. */
     break;
 case 7:
-    /* This command is accepted without changing the extra-event scorer. */
+    /* This control ID is accepted without changing the extra-event scorer. */
     break;
 case 8:
     {
     TosContext *stateHeapContext = tosBlock->context;
-    if (eventBlock->states != NULL) {
-        heap_Free(stateHeapContext->heap, eventBlock->states);
-        eventBlock->states = NULL;
+    if (This->states != NULL) {
+        heap_Free(stateHeapContext->heap, This->states);
+        This->states = NULL;
     }
 
     ownerContext = tosBlock->context;
-    eventBlock->transitionCount = ((ExtraEventContextInfo *)commandData)->transitionCount;
-    eventBlock->transitionScore = ((ExtraEventContextInfo *)commandData)->transitionScore;
-    eventBlock->initialScore = ((ExtraEventContextInfo *)commandData)->initialScore;
-    eventBlock->stateCount = ((ExtraEventContextInfo *)commandData)->stateCount;
-    eventBlock->stateIds = ((ExtraEventContextInfo *)commandData)->stateIds;
-    eventBlock->transitionBounds = ((ExtraEventContextInfo *)commandData)->transitionBounds;
-    eventBlock->scoreCache = eventBlock->getScoreCache(eventBlock->callbackContext);
-    eventBlock->states = heap_Alloc(
-        ownerContext->heap, eventBlock->stateCount * sizeof(ExtraEventState));
-    if (eventBlock->states == NULL) {
-        _tosErrorLog(eventBlock, 1);
+    This->transitionCount = ((ExtraEventContextInfo *)CParam)->transitionCount;
+    This->transitionScore = ((ExtraEventContextInfo *)CParam)->transitionScore;
+    This->initialScore = ((ExtraEventContextInfo *)CParam)->initialScore;
+    This->stateCount = ((ExtraEventContextInfo *)CParam)->stateCount;
+    This->stateIds = ((ExtraEventContextInfo *)CParam)->stateIds;
+    This->transitionBounds = ((ExtraEventContextInfo *)CParam)->transitionBounds;
+    This->scoreCache = This->getScoreCache(This->callbackContext);
+    This->states = heap_Alloc(
+        ownerContext->heap, This->stateCount * sizeof(ExtraEventState));
+    if (This->states == NULL) {
+        _tosErrorLog(This, 1);
     }
     break;
     }
 case 6:
-    eventBlock->readStateScore = ((ExtraEventCallbacks *)commandData)->readStateScore;
-    eventBlock->getScoreCache = ((ExtraEventCallbacks *)commandData)->getScoreCache;
-    eventBlock->readFrameScore = ((ExtraEventCallbacks *)commandData)->readFrameScore;
-    eventBlock->callbackContext = ((ExtraEventCallbacks *)commandData)->callbackContext;
+    This->readStateScore = ((ExtraEventCallbacks *)CParam)->readStateScore;
+    This->getScoreCache = ((ExtraEventCallbacks *)CParam)->getScoreCache;
+    This->readFrameScore = ((ExtraEventCallbacks *)CParam)->readFrameScore;
+    This->callbackContext = ((ExtraEventCallbacks *)CParam)->callbackContext;
     break;
 case 255:
     {
     ownerContext = tosBlock->context;
-    if (eventBlock->states != NULL) {
-        heap_Free(ownerContext->heap, eventBlock->states);
-        eventBlock->states = NULL;
+    if (This->states != NULL) {
+        heap_Free(ownerContext->heap, This->states);
+        This->states = NULL;
     }
-    tosBaseBlockDestruct(eventBlock);
+    tosBaseBlockDestruct(This);
     break;
     }
 default:
