@@ -6,16 +6,131 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m634DLL/act_player.cpp:
+	.text       start:0x00000000 end:0x00004BE0
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x000000D0
+	.data       start:0x00000000 end:0x000002B0
+	.bss        start:0x00000000 end:0x00000028
+
+REL/m634DLL/collision_shape.cpp:
+	.text       start:0x00004BE0 end:0x000065E4
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x000000D0 end:0x000000E0
+	.data       start:0x000002B0 end:0x00000358
+	.bss        start:0x00000028 end:0x00000040
+
+REL/m634DLL/choice_control.cpp:
+	.text       start:0x000065E4 end:0x00008780
+	.rodata     start:0x000000E0 end:0x00000178
+	.data       start:0x00000358 end:0x00000478
+
+REL/m634DLL/texture_controller.cpp:
+	.text       start:0x00008780 end:0x00009C24
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000178 end:0x000001D8
+	.data       start:0x00000478 end:0x00000540
+	.bss        start:0x00000040 end:0x00000048
+
+REL/m634DLL/motion_effect.cpp:
+	.text       start:0x00009C24 end:0x0000B90C
+	.rodata     start:0x000001D8 end:0x00000270
+	.data       start:0x00000540 end:0x00000610
+
+REL/m634DLL/sprite_animation.cpp:
+	.text       start:0x0000B90C end:0x0000B958
+
+REL/m634DLL/game_manager.cpp:
+	.text       start:0x0000B958 end:0x0000C68C
+	.rodata     start:0x00000270 end:0x00000420
+	.data       start:0x00000610 end:0x00000710
+	.bss        start:0x00000048 end:0x00000050
+
+REL/m634DLL/player_setup.cpp:
+	.text       start:0x0000C68C end:0x0000C7F0
+
+REL/m634DLL/scene_callback.cpp:
+	.text       start:0x0000C7F0 end:0x0000CA30
+
+REL/m634DLL/scene_event.cpp:
+	.text       start:0x0000CA30 end:0x0000CCA8
+
+REL/m634DLL/motion_event.cpp:
+	.text       start:0x0000CCA8 end:0x0000CF58
+	.rodata     start:0x00000420 end:0x00000438
+
+REL/m634DLL/model_cleanup.cpp:
+	.text       start:0x0000CF58 end:0x0000CFF4
+
+REL/m634DLL/scene_object.cpp:
+	.text       start:0x0000CFF4 end:0x0000DD40
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000438 end:0x00000468
+	.data       start:0x00000710 end:0x00000758
+	.bss        start:0x00000050 end:0x00000060
+
+REL/m634DLL/scene.cpp:
+	.text       start:0x0000DD40 end:0x000100C0
+	.rodata     start:0x00000468 end:0x00000780
+	.data       start:0x00000758 end:0x000007D8
+
+REL/m634DLL/character_motion.cpp:
+	.text       start:0x000100C0 end:0x000108A4
+	.rodata     start:0x00000780 end:0x000007A0
+	.data       start:0x000007D8 end:0x00000800
+	.bss        start:0x00000060 end:0x00000068
+
+REL/m634DLL/scene_setup.cpp:
+	.text       start:0x000108A4 end:0x0001097C
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x000007A0 end:0x000007C0
+	.bss        start:0x00000068 end:0x00000078
+
+REL/m634DLL/camera.cpp:
+	.text       start:0x0001097C end:0x0001143C
+	.rodata     start:0x000007C0 end:0x00000858
+	.data       start:0x00000800 end:0x00000860
+
+REL/m634DLL/object_work.cpp:
+	.text       start:0x0001143C end:0x00011730
+	.rodata     start:0x00000858 end:0x00000870
+	.data       start:0x00000860 end:0x00000888
+
+REL/m634DLL/sound_sequence.cpp:
+	.text       start:0x00011730 end:0x000133E8
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x00000870 end:0x00000940
+	.data       start:0x00000888 end:0x00000940
+	.bss        start:0x00000078 end:0x00000080
+
+REL/framework/sound.c:
+	.text       start:0x000133E8 end:0x000157C4
+	.rodata     start:0x00000940 end:0x00000978
+	.data       start:0x00000940 end:0x00000A10
+
 REL/framework/heap.cpp:
 	.text       start:0x000157C4 end:0x00015944
 	.rodata     start:0x00000978 end:0x000009B0
 	.data       start:0x00000A10 end:0x00000A30
 	.bss        start:0x00000080 end:0x00000088
 
+REL/m634DLL/global_destructor_chain.cpp:
+	.text       start:0x00015944 end:0x000159CC
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x00000088 end:0x00000090
+
+REL/m634DLL/ptmf.c:
+	.text       start:0x000159CC end:0x00015B14
+	.rodata     start:0x000009B0 end:0x000009C0
+
 REL/framework/new.cpp:
 	.text       start:0x00015B14 end:0x00015CDC
 	.rodata     start:0x000009C0 end:0x000009F8
 	.data       start:0x00000A30 end:0x00000A58
+
+REL/m634DLL/pad_control.cpp:
+	.text       start:0x00015CDC end:0x00016798
+	.rodata     start:0x000009F8 end:0x00000A50
 
 REL/framework/camera.cpp:
 	.text       start:0x00016798 end:0x00016FA4
@@ -47,6 +162,13 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000BD8 end:0x00000C18
 	.data       start:0x00000BC0 end:0x00000C48
 
+REL/framework/memory_manager.cpp:
+	.text       start:0x0001FFD4 end:0x000200B8
+
+REL/framework/free.cpp:
+	.text       start:0x000200B8 end:0x0002037C
+	.data       start:0x00000C48 end:0x00000C68
+
 REL/framework/linknode.cpp:
 	.text       start:0x0002037C end:0x00020D58
 	.rodata     start:0x00000C18 end:0x00000C58
@@ -73,6 +195,10 @@ REL/framework/random.cpp:
 	.ctors      start:0x0000001C end:0x00000020
 	.rodata     start:0x00000D28 end:0x00000D68
 	.bss        start:0x000000B0 end:0x00000A78
+
+REL/m634DLL/runtime.c:
+	.text       start:0x00023EF4 end:0x00024938
+	.rodata     start:0x00000D68 end:0x00000D80
 
 REL/framework/startup.cpp:
 	.text       start:0x00024938 end:0x000249DC
