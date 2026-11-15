@@ -54,16 +54,14 @@
 #include "datanum/charmot.h"
 #include "humath.h"
 
-typedef void (*VoidFunc)(void);
-typedef void (*MBHook)(void);
-typedef struct W03SavedState_s {
+typedef struct {
     u8 nightEventCount;
     u8 otherState;
     u16 displayValue;
     u8 wheelRotations[3];
     u8 starPrice;
 } W03SAVEDSTATE;
-typedef struct W03Objects_s {
+typedef struct {
     int initialModels[6];
     int totalSprite;
     int payoutSymbolSprites[4];
@@ -81,7 +79,7 @@ typedef struct W03Objects_s {
     int largeDisplaySprites[2];
     int largeDisplayDigits[3];
 } W03OBJECTS;
-typedef struct W03CoinEffect_s {
+typedef struct {
     s32 modelId;
     HuVecF position;
     HuVecF rotation;
@@ -90,12 +88,11 @@ typedef struct W03CoinEffect_s {
     u8 otherState[2];
     s32 work[6];
 } W03COINEFFECT;
-typedef struct W03Orbit_s {
+typedef struct {
     HuVecF position;
     f32 angle;
 } W03ORBIT;
-#define boardDataNum(fileNo) DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(fileNo))
-typedef struct W03StarAward_s {
+typedef struct {
     int objectId;
     HuVecF position;
     HuVecF rotation;
@@ -107,8 +104,6 @@ typedef struct W03StarAward_s {
     int soundHandle;
 } W03STARAWARD;
 
-extern const VoidFunc _ctors[];
-extern const VoidFunc _dtors[];
 extern BOOL mbSaveNewF;
 int sprintf();
 
@@ -372,40 +367,58 @@ void fn_1_F4(void)
             lbl_1_bss_4D0->wheelRotations[index] = 0;
         }
     }
-    mbMasuInit(boardDataNum(0));
-    lbl_1_bss_5C4 = mbObjCreate(boardDataNum(1), NULL, FALSE);
+    mbMasuInit(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(0)));
+    lbl_1_bss_5C4 = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(1)), NULL, FALSE);
     mbObjPosSet(lbl_1_bss_5C4, 0.0f, 0.0f, 0.0f);
     boardModelLoop(lbl_1_bss_5C4);
     mbObjCullRadiusSet(lbl_1_bss_5C4, -1.0f);
     mbObjMotionSpeedSet(lbl_1_bss_5C4, 1.0f);
     mbObjMotionTimeSet(lbl_1_bss_5C4, 0.0f);
     boardModelLoop(lbl_1_bss_5C4);
-    mbev_ShopInit(boardDataNum(2));
+    mbev_ShopInit(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(2)));
     mbev_NextTimeSet(fn_1_1D64);
-    mbScrollInit(boardDataNum(36));
+    mbScrollInit(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(36)));
     mbLightFuncSet(fn_1_1BB8, fn_1_1C2C);
-    lbl_1_bss_4D4.initialModels[0] = objectId = mbObjCreate(boardDataNum(3), NULL, FALSE);
+    lbl_1_bss_4D4.initialModels[0] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(3)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
     mbObjPosSetV(objectId, &lbl_1_data_4C8);
     mbObjRotSet(objectId, 0.0f, 45.0f, 0.0f);
-    lbl_1_bss_4D4.initialModels[1] = objectId = mbObjCreate(boardDataNum(4), NULL, FALSE);
+    lbl_1_bss_4D4.initialModels[1] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(4)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
-    lbl_1_bss_4D4.initialModels[2] = objectId = mbObjCreate(boardDataNum(5), NULL, FALSE);
-    lbl_1_bss_4D4.initialModels[3] = objectId = mbObjCreate(boardDataNum(6), NULL, FALSE);
+    lbl_1_bss_4D4.initialModels[2] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(5)), NULL, FALSE);
+    lbl_1_bss_4D4.initialModels[3] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(6)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
-    lbl_1_bss_4D4.initialModels[4] = objectId = mbObjCreate(boardDataNum(7), NULL, FALSE);
-    lbl_1_bss_4D4.initialModels[5] = objectId = mbObjCreate(boardDataNum(8), NULL, FALSE);
+    lbl_1_bss_4D4.initialModels[4] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(7)), NULL, FALSE);
+    lbl_1_bss_4D4.initialModels[5] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(8)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
     mbObjDispSet(objectId, FALSE);
-    lbl_1_bss_4D4.lateModel = objectId = mbObjCreate(boardDataNum(23), NULL, FALSE);
+    lbl_1_bss_4D4.lateModel = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(23)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
     for (index = 0; index < 6; index++) {
         if (index == 0) {
             lbl_1_bss_4D4.carouselModels[index] = objectId =
-                mbObjCreate(boardDataNum(24), NULL, FALSE);
+                mbObjCreate(
+                    DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+                        FILENUM(24)), NULL, FALSE);
         } else {
             lbl_1_bss_4D4.carouselModels[index] = objectId =
-                mbObjCreate(boardDataNum(24), NULL, TRUE);
+                mbObjCreate(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(24)), NULL, TRUE);
         }
         mbObjMotionSpeedSet(objectId, 0.0f);
         mbObjDispSet(objectId, FALSE);
@@ -413,29 +426,43 @@ void fn_1_F4(void)
     for (index = 0; index < 4; index++) {
         if (index == 0) {
             lbl_1_bss_4D4.lotteryModels[index] = objectId =
-                mbObjCreate(boardDataNum(25), NULL, FALSE);
+                mbObjCreate(
+                    DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+                        FILENUM(25)), NULL, FALSE);
         } else {
             lbl_1_bss_4D4.lotteryModels[index] = objectId =
-                mbObjCreate(boardDataNum(25), NULL, TRUE);
+                mbObjCreate(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(25)), NULL, TRUE);
         }
         mbObjMotionSpeedSet(objectId, 0.0f);
         mbObjPosSetV(objectId, &lbl_1_data_4D4[index]);
         mbObjScaleSet(objectId, 0.15f, 0.15f, 0.15f);
     }
-    lbl_1_bss_4D4.finalModels[0] = objectId = mbObjCreate(boardDataNum(26), NULL, FALSE);
+    lbl_1_bss_4D4.finalModels[0] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(26)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
-    lbl_1_bss_4D4.finalModels[1] = objectId = mbObjCreate(boardDataNum(27), NULL, FALSE);
+    lbl_1_bss_4D4.finalModels[1] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(27)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
-    lbl_1_bss_4D4.finalModels[2] = objectId = mbObjCreate(boardDataNum(28), NULL, FALSE);
+    lbl_1_bss_4D4.finalModels[2] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(28)), NULL, FALSE);
     mbObjDispSet(objectId, TRUE);
     mbObjMotionSpeedSet(objectId, 0.0f);
     mbObjMotionTimeSet(objectId, 0.0f);
-    lbl_1_bss_4D4.finalModels[3] = objectId = mbObjCreate(boardDataNum(29), NULL, FALSE);
+    lbl_1_bss_4D4.finalModels[3] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(29)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
-    lbl_1_bss_4D4.finalModels[4] = objectId = mbObjCreate(boardDataNum(30), NULL, FALSE);
+    lbl_1_bss_4D4.finalModels[4] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(30)), NULL, FALSE);
     mbObjMotionSpeedSet(objectId, 0.0f);
     mbObjDispSet(objectId, FALSE);
-    lbl_1_bss_4D4.finalModels[5] = objectId = mbObjCreate(boardDataNum(31), NULL, FALSE);
+    lbl_1_bss_4D4.finalModels[5] = objectId = mbObjCreate(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(31)), NULL, FALSE);
     mbObjDispSet(objectId, TRUE);
     if (boardIsDay()) {
         lbl_1_bss_4D4.motionModel = objectId =
@@ -460,23 +487,31 @@ void fn_1_F4(void)
                 fn_80008DD0(lbl_1_data_52C[index], 0x10000000, 2));
         }
     }
-    lbl_1_bss_4D4.largeDisplaySprites[0] = objectId = espEntry(boardDataNum(33), 120, 0);
+    lbl_1_bss_4D4.largeDisplaySprites[0] = objectId = espEntry(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(33)), 120, 0);
     espDrawNoSet(objectId, 32);
     espPosSet(objectId, 288.0f, 224.0f);
     espTPLvlSet(objectId, 0.8f);
     espDispOff(objectId);
-    lbl_1_bss_4D4.largeDisplaySprites[1] = objectId = espEntry(boardDataNum(35), 110, 0);
+    lbl_1_bss_4D4.largeDisplaySprites[1] = objectId = espEntry(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(35)), 110, 0);
     espDrawNoSet(objectId, 32);
     espPosSet(objectId, 248.0f, 222.0f);
     espDispOff(objectId);
     for (index = 0; index < 3; index++) {
-        lbl_1_bss_4D4.largeDisplayDigits[index] = objectId = espEntry(boardDataNum(34), 100, 0);
+        lbl_1_bss_4D4.largeDisplayDigits[index] = objectId = espEntry(
+            DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+                FILENUM(34)), 100, 0);
         espDrawNoSet(objectId, 32);
         espPosSet(objectId, lbl_1_data_59C[index], 224.0f);
         espBankSet(objectId, lbl_1_data_5A8[index]);
         espDispOff(objectId);
     }
-    lbl_1_bss_4D4.totalSprite = objectId = espEntry(boardDataNum(33), 120, 0);
+    lbl_1_bss_4D4.totalSprite = objectId = espEntry(
+        DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+            FILENUM(33)), 120, 0);
     espDrawNoSet(objectId, 32);
     espPosSet(objectId, 85.0f, 335.0f);
     espTPLvlSet(objectId, 0.8f);
@@ -484,7 +519,9 @@ void fn_1_F4(void)
     for (index = 0; index < 4; index++) {
         digitIndex = lbl_1_data_5CC[index];
         lbl_1_bss_4D4.payoutSymbolSprites[index] = objectId =
-            espEntry(boardDataNum(0xdb0000 + 19 + digitIndex), 110, 0);
+            espEntry(
+                DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000),
+                    FILENUM(0xdb0000 + 19 + digitIndex)), 110, 0);
         espDrawNoSet(objectId, 32);
         espPosSet(objectId, lbl_1_data_57C[0], lbl_1_data_58C[index]);
         espDispOff(objectId);
@@ -492,7 +529,7 @@ void fn_1_F4(void)
     for (index = 0; index < 4; index++) {
         for (digitIndex = 0; digitIndex < 3; digitIndex++) {
             lbl_1_bss_4D4.payoutDigits[index][digitIndex] = objectId =
-                espEntry(boardDataNum(34), 100, 0);
+                espEntry(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(34)), 100, 0);
             espBankSet(objectId, lbl_1_data_5A8[digitIndex]);
             espDrawNoSet(objectId, 32);
             espPosSet(objectId, lbl_1_data_57C[digitIndex + 1], lbl_1_data_58C[index]);
@@ -531,8 +568,8 @@ void fn_1_F4(void)
         wheelPart->mesh.base.rot.x = 45.0f * lbl_1_bss_4D0->wheelRotations[index];
     }
     fn_1_DE88(lbl_1_bss_4D0->displayValue);
-    mbCapThrowColCreate(boardDataNum(37));
-    fn_800097F4(boardDataNum(0));
+    mbCapThrowColCreate(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(37)));
+    fn_800097F4(DATANUM((boardIsDay() ? 0xdb0000 : 0xdc0000), FILENUM(0)));
     mbev_MasuMoveStartSet(fn_1_1CCC);
     mbev_MasuMoveEndSet(fn_1_1CD4);
     mbev_MasuHatenaSet(fn_1_1C30);
@@ -1758,7 +1795,6 @@ void fn_1_5900(int playerNo, s16 landingSpace)
     int starIndex;
     float yaw;
     float turnStep;
-    float initialYaw;
     float rotationStep;
     float scaleStep;
     float angleStart;

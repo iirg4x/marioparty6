@@ -36,23 +36,6 @@ void fn_1_7204(int player);
 #include "game/hu3d.h"
 #include "humath.h"
 
-/* Audio IDs and data numbers used for Stage Fright's sounds, models, and motions. */
-
-#define M630_DATA_STAGE_MODEL_FIRST DATANUM(0x590000, 0)
-#define M630_DATA_STAGE_MODEL DATANUM(0x590000, 2)
-#define M630_DATA_STAGE_SHADOW_MODEL DATANUM(0x590000, 3)
-#define M630_DATA_MOVING_ROW_MODEL_FIRST DATANUM(0x590000, 4)
-#define M630_DATA_ROW_COMPANION_MODEL DATANUM(0x590000, 7)
-#define M630_DATA_SPINNER_MODEL_FIRST DATANUM(0x590000, 8)
-#define M630_DATA_MOVING_OBJECT_FIRST DATANUM(0x590000, 11)
-#define M630_DATA_SCENE_PROP_FIRST DATANUM(0x590000, 15)
-#define M630_DATA_SCENE_MOTION_MODEL DATANUM(0x590000, 20)
-#define M630_DATA_SCENE_MOTION DATANUM(0x590000, 21)
-#define M630_DATA_DECORATION_MODEL DATANUM(0x590000, 22)
-#define M630_DATA_DECORATION_BASE_MOTION DATANUM(0x590000, 23)
-#define M630_DATA_DECORATION_ALTERNATE_MOTION DATANUM(0x590000, 25)
-#define M630_DATA_OBJECT_COMPANION_MODEL DATANUM(0x590000, 26)
-
 /* Motion resource indices and course position tables used by setup and result movement. */
 u32 lbl_1_data_28[9] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1),
@@ -267,8 +250,7 @@ void fn_1_B50(void)
                         pos.z += 65.2f;
                         /* The computed hit position is unused; the companion remains at the row
                          * slot. */
-                        fn_80026790(lbl_1_bss_1D4[i].secondaryModel[j],
-                                         &lbl_1_bss_1D4[i].pos[j]);
+                        fn_80026790(lbl_1_bss_1D4[i].secondaryModel[j], &lbl_1_bss_1D4[i].pos[j]);
                         fn_80026A44(lbl_1_bss_1D4[i].secondaryModel[j], 1);
                         fn_8002D86C(lbl_1_bss_1D4[i].secondaryModel[j], 1.0f);
                         fn_8002D414(lbl_1_bss_1D4[i].secondaryModel[j], 0.0f);
@@ -286,8 +268,7 @@ void fn_1_B50(void)
                 if (lbl_1_bss_1D4[i].transparency[j] < 0.0f) {
                     lbl_1_bss_1D4[i].transparency[j] = 0.0f;
                     fn_800269E8(lbl_1_bss_1D4[i].model[j], 1);
-                    fn_800268B0(lbl_1_bss_1D4[i].model[j], 1.8000001f, 1.8000001f,
-                                      1.8000001f);
+                    fn_800268B0(lbl_1_bss_1D4[i].model[j], 1.8000001f, 1.8000001f, 1.8000001f);
                     lbl_1_bss_1D4[i].itemState[j] = 0;
                 }
             }
@@ -376,21 +357,14 @@ int fn_1_1670(void)
     if (lbl_1_bss_824 > 0 && finished == 3) {
         if (++lbl_1_bss_828.resultState >= 15) {
             if (lbl_1_bss_824 == 1) {
-                fn_8005C2C8(lbl_1_bss_754[1].charNo, lbl_1_bss_754[1].motionId[4], 0.0f,
-                                   8.0f, 0);
-                fn_8005C2C8(lbl_1_bss_754[2].charNo, lbl_1_bss_754[2].motionId[4], 0.0f,
-                                   8.0f, 0);
-                fn_8005C2C8(lbl_1_bss_754[3].charNo, lbl_1_bss_754[3].motionId[4], 0.0f,
-                                   8.0f, 0);
+                fn_8005C2C8(lbl_1_bss_754[1].charNo, lbl_1_bss_754[1].motionId[4], 0.0f, 8.0f, 0);
+                fn_8005C2C8(lbl_1_bss_754[2].charNo, lbl_1_bss_754[2].motionId[4], 0.0f, 8.0f, 0);
+                fn_8005C2C8(lbl_1_bss_754[3].charNo, lbl_1_bss_754[3].motionId[4], 0.0f, 8.0f, 0);
             } else {
-                fn_8005C2C8(lbl_1_bss_754[0].charNo, lbl_1_bss_754[0].motionId[4], 0.0f,
-                                   8.0f, 0);
-                fn_8005C2C8(lbl_1_bss_754[1].charNo, lbl_1_bss_754[1].motionId[5], 0.0f,
-                                   8.0f, 0);
-                fn_8005C2C8(lbl_1_bss_754[2].charNo, lbl_1_bss_754[2].motionId[5], 0.0f,
-                                   8.0f, 0);
-                fn_8005C2C8(lbl_1_bss_754[3].charNo, lbl_1_bss_754[3].motionId[5], 0.0f,
-                                   8.0f, 0);
+                fn_8005C2C8(lbl_1_bss_754[0].charNo, lbl_1_bss_754[0].motionId[4], 0.0f, 8.0f, 0);
+                fn_8005C2C8(lbl_1_bss_754[1].charNo, lbl_1_bss_754[1].motionId[5], 0.0f, 8.0f, 0);
+                fn_8005C2C8(lbl_1_bss_754[2].charNo, lbl_1_bss_754[2].motionId[5], 0.0f, 8.0f, 0);
+                fn_8005C2C8(lbl_1_bss_754[3].charNo, lbl_1_bss_754[3].motionId[5], 0.0f, 8.0f, 0);
             }
             result = 1;
             fn_80071B30();
@@ -562,27 +536,28 @@ void fn_1_25E0(void)
     };
 
     for (i = 0; i < 2; i++) {
-        model = fn_80025A04(
-            fn_80008DD0(M630_DATA_STAGE_MODEL_FIRST + i, 0x10000000, 2));
+        /* Stage model first. */
+        model = fn_80025A04( fn_80008DD0(DATANUM(0x590000, 0) + i, 0x10000000, 2));
         fn_80026B64(model, 1);
         fn_80026760(model, 0.0f, 0.0f, 0.0f);
         fn_80026808(model, 0.0f, 0.0f, 0.0f);
         fn_80026FFC(model);
         fn_80026B8C(model, 0);
     }
-    model = fn_80025A04(fn_80008DD0(M630_DATA_STAGE_MODEL, 0x10000000, 2));
+    /* Stage model. */
+    model = fn_80025A04(fn_80008DD0(DATANUM(0x590000, 2), 0x10000000, 2));
     fn_80026B64(model, 1);
     fn_80026760(model, 0.0f, 0.0f, 0.0f);
     fn_80026808(model, 0.0f, 0.0f, 0.0f);
-    model = fn_80025A04(
-        fn_80008DD0(M630_DATA_STAGE_SHADOW_MODEL, 0x10000000, 2));
+    /* Stage shadow model. */
+    model = fn_80025A04( fn_80008DD0(DATANUM(0x590000, 3), 0x10000000, 2));
     fn_80026B64(model, 1);
     fn_80026760(model, 0.0f, 0.0f, 0.0f);
     fn_80026808(model, 0.0f, 0.0f, 0.0f);
+    /* m630 data scene prop first. */
     fn_80026FFC(model);
     for (i = 0; i < 5; i++) {
-        model = fn_80025A04(
-            fn_80008DD0(M630_DATA_SCENE_PROP_FIRST + i, 0x10000000, 2));
+        model = fn_80025A04( fn_80008DD0(DATANUM(0x590000, 15) + i, 0x10000000, 2));
         fn_80026B64(model, 1);
         fn_80026760(model, 0.0f, 0.0f, 0.0f);
         fn_80026808(model, 0.0f, 0.0f, 0.0f);
@@ -591,29 +566,31 @@ void fn_1_25E0(void)
         }
     }
     for (i = 0; i < 3; i++) {
-        lbl_1_bss_6FC[i].model = fn_80025A04(
-            fn_80008DD0(M630_DATA_MOVING_ROW_MODEL_FIRST + i, 0x10000000, 2));
+        /* Moving row model first. */
+        lbl_1_bss_6FC[i].model = fn_80025A04( fn_80008DD0(DATANUM(0x590000, 4) + i, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_6FC[i].model, 1);
         lbl_1_bss_6FC[i].pos = lbl_1_bss_754[i + 1].pos;
         fn_80026790(lbl_1_bss_6FC[i].model, &lbl_1_bss_6FC[i].pos);
         fn_80026808(lbl_1_bss_6FC[i].model, 0.0f, 0.0f, 0.0f);
         lbl_1_bss_6FC[i].direction = 1;
-        lbl_1_bss_6FC[i].secondaryModel = fn_80025A04(
-            fn_80008DD0(M630_DATA_ROW_COMPANION_MODEL, 0x10000000, 2));
+        lbl_1_bss_6FC[i].secondaryModel =
+            /* Row companion model. */
+            fn_80025A04( fn_80008DD0(DATANUM(0x590000, 7), 0x10000000, 2));
         fn_80026B64(lbl_1_bss_6FC[i].secondaryModel, 1);
         fn_80026760(lbl_1_bss_6FC[i].secondaryModel, lbl_1_bss_6FC[i].pos.x, 0.0f,
                         lbl_1_bss_6FC[i].pos.z);
         fn_80026808(lbl_1_bss_6FC[i].secondaryModel, 0.0f, 0.0f, 0.0f);
         fn_80026B8C(lbl_1_bss_6FC[i].secondaryModel, 2);
-        lbl_1_bss_6E4[i].model = fn_80025A04(
-            fn_80008DD0(M630_DATA_SPINNER_MODEL_FIRST + i, 0x10000000, 2));
+        /* Spinner model first. */
+        lbl_1_bss_6E4[i].model = fn_80025A04( fn_80008DD0(DATANUM(0x590000, 8) + i, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_6E4[i].model, 1);
         fn_80026790(lbl_1_bss_6E4[i].model, &rotatingPos[i]);
         lbl_1_bss_6E4[i].rotation = 0.0f;
+        /* m630 data moving object first. */
         fn_80026808(lbl_1_bss_6E4[i].model, lbl_1_bss_6E4[i].rotation, 0.0f, 0.0f);
         for (j = 0; j < 15; j++) {
-            lbl_1_bss_1D4[i].model[j] = fn_80025A04(fn_80008DD0(
-                frandmod(4) + M630_DATA_MOVING_OBJECT_FIRST, 0x10000000, 2));
+            lbl_1_bss_1D4[i].model[j] =
+                fn_80025A04(fn_80008DD0( frandmod(4) + DATANUM(0x590000, 11), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_1D4[i].model[j], 1);
             lbl_1_bss_1D4[i].pos[j] = lbl_1_bss_754[i + 1].pos;
             lbl_1_bss_1D4[i].pos[j].y += 70.0f;
@@ -626,8 +603,9 @@ void fn_1_25E0(void)
             lbl_1_bss_1D4[i].itemState[j] = 0;
             fn_80026E44(lbl_1_bss_1D4[i].model[j]);
             fn_800268B0(lbl_1_bss_1D4[i].model[j], 1.8000001f, 1.8000001f, 1.8000001f);
-            lbl_1_bss_1D4[i].secondaryModel[j] = fn_80025A04(
-                fn_80008DD0(M630_DATA_OBJECT_COMPANION_MODEL, 0x10000000, 2));
+            lbl_1_bss_1D4[i].secondaryModel[j] =
+                /* Object companion model. */
+                fn_80025A04( fn_80008DD0(DATANUM(0x590000, 26), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_1D4[i].secondaryModel[j], 1);
             pos = lbl_1_bss_754[i + 1].pos;
             pos.y += 70.0f;
@@ -643,8 +621,8 @@ void fn_1_25E0(void)
         lbl_1_bss_1D4[i].currentIndex = 0;
     }
     for (i = 0; i < 2; i++) {
-        model = fn_80025A04(
-            fn_80008DD0(M630_DATA_SCENE_MOTION_MODEL, 0x10000000, 2));
+        /* Scene motion model. */
+        model = fn_80025A04( fn_80008DD0(DATANUM(0x590000, 20), 0x10000000, 2));
         fn_80026B64(model, 1);
         if (i == 0) {
             fn_80026760(model, 759.0895f, -172.928f, -1294.64f);
@@ -652,26 +630,26 @@ void fn_1_25E0(void)
         } else {
             fn_80026760(model, -743.932f, -172.928f, -697.841f);
             fn_80026808(model, 0.0f, -183.92f, 0.0f);
+        /* m630 data scene motion. */
         }
         fn_800269E8(model, ((1 << 30) | (1 << 0)));
-        motion = fn_80030458(
-            model, fn_80008DD0(M630_DATA_SCENE_MOTION, 0x10000000, 2));
+        motion = fn_80030458( model, fn_80008DD0(DATANUM(0x590000, 21), 0x10000000, 2));
         fn_8002C95C(model, motion);
         fn_80026E44(model);
     }
     for (i = 0; i < 10; i++) {
-        lbl_1_bss_28[i].model = fn_80025A04(
-            fn_80008DD0(M630_DATA_DECORATION_MODEL, 0x10000000, 2));
+        /* Decoration model. */
+        lbl_1_bss_28[i].model = fn_80025A04( fn_80008DD0(DATANUM(0x590000, 22), 0x10000000, 2));
         fn_80026B64(lbl_1_bss_28[i].model, 1);
         fn_80026790(lbl_1_bss_28[i].model, &motionPos[i]);
         fn_80026808(lbl_1_bss_28[i].model, 0.0f, motionRot[i], 0.0f);
+        /* m630 data decoration base motion. */
         fn_800269E8(lbl_1_bss_28[i].model, ((1 << 30) | (1 << 0)));
-        lbl_1_bss_28[i].motionA = fn_80030458(
-            lbl_1_bss_28[i].model,
-            fn_80008DD0(M630_DATA_DECORATION_BASE_MOTION, 0x10000000, 2));
-        lbl_1_bss_28[i].motionB = fn_80030458(
-            lbl_1_bss_28[i].model,
-            fn_80008DD0(M630_DATA_DECORATION_ALTERNATE_MOTION, 0x10000000, 2));
+        lbl_1_bss_28[i].motionA =
+            /* m630 data decoration alternate motion. */
+            fn_80030458( lbl_1_bss_28[i].model, fn_80008DD0(DATANUM(0x590000, 23), 0x10000000, 2));
+        lbl_1_bss_28[i].motionB =
+            fn_80030458( lbl_1_bss_28[i].model, fn_80008DD0(DATANUM(0x590000, 25), 0x10000000, 2));
         fn_8002C95C(lbl_1_bss_28[i].model, lbl_1_bss_28[i].motionA);
         motionLength = Hu3DMotionMotionMaxTimeGet(lbl_1_bss_28[i].motionA);
         fn_8002D414(lbl_1_bss_28[i].model, (float) (u32) frandmod((s32) motionLength));
@@ -893,8 +871,7 @@ void fn_1_43E8(int player)
             lbl_1_bss_1D4[row].currentIndex = 0;
         }
         lbl_1_bss_1D4[row].phaseState = 1;
-        fn_8005C2C8(lbl_1_bss_754[player].charNo, lbl_1_bss_754[player].motionId[7], 0.0f,
-                           8.0f, 0);
+        fn_8005C2C8(lbl_1_bss_754[player].charNo, lbl_1_bss_754[player].motionId[7], 0.0f, 8.0f, 0);
         fn_8002D86C(lbl_1_bss_754[player].charNo, 2.0f);
     }
     for (i = 0; i < 15; i++) {
@@ -1473,15 +1450,13 @@ void fn_1_75C8(void)
         switch (lbl_1_bss_28[i].motionState) {
         case 0:
             if ((u32)frandmod(120) == 0U) {
-                fn_8002CCC0(lbl_1_bss_28[i].model,
-                    lbl_1_bss_28[i].motionB, 0.0f, 8.0f, 0);
+                fn_8002CCC0(lbl_1_bss_28[i].model, lbl_1_bss_28[i].motionB, 0.0f, 8.0f, 0);
                 lbl_1_bss_28[i].motionState = 1;
             }
             break;
         case 1:
             if (fn_8002D3EC(lbl_1_bss_28[i].model) == -1) {
-                fn_8002CCC0(lbl_1_bss_28[i].model,
-                    lbl_1_bss_28[i].motionA, 0.0f, 8.0f, 0);
+                fn_8002CCC0(lbl_1_bss_28[i].model, lbl_1_bss_28[i].motionA, 0.0f, 8.0f, 0);
                 lbl_1_bss_28[i].motionState = 0;
             }
             break;

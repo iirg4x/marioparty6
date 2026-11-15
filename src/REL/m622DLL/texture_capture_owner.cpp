@@ -61,10 +61,6 @@ extern "C" {
 #include "datadir_enum.h"
 #include "REL/m622DLL/texture_capture_owner.h"
 
-extern "C" {
-
-}
-
 extern "C" { void *lbl_1_bss_F8; }
 
 extern "C" { void *lbl_1_bss_FC; }

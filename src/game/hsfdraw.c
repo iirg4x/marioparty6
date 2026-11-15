@@ -2939,7 +2939,7 @@ static void MDObjMesh(HSF_DATA *hsf, HSF_OBJECT *objPtr)
 }
 
 /* Allocates and initializes per-object runtime data during display-list or hook setup. */
-HSF_CONSTDATA *fn_800215B4(HSF_OBJECT *object, u32 no)
+HSF_CONSTDATA *fn_800215B4(HSF_OBJECT *const object, u32 no)
 {
     HSF_CONSTDATA *constDataP;
 
@@ -3880,6 +3880,5 @@ void fn_800248C4(HU3D_MODELID modelId, char *objName, HU3D_OBJ_HOOK hook)
     }
     if(i == hsf->objectNum) {
         OSReport("Error: Not Found ObjectName(%s)\n", objName);
-        (void)i;
     }
 }

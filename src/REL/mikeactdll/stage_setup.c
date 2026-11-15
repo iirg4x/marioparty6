@@ -323,7 +323,7 @@ void fn_1_186D0(HU3D_MODEL *model, HU3D_PARTICLE *manager, Mtx matrix);
 
 void fn_1_18C54(void);
 
-typedef struct MikeActEffectModel_s {
+typedef struct {
     s16 modelId;
 } MikeActEffectModel;
 
@@ -376,7 +376,7 @@ void fn_1_16910(HuVecF *position)
 
 extern s32 lbl_1_bss_375C[25];
 
-typedef struct MikeActScenePair_s {
+typedef struct {
     MikeActStateRecord *stateRecord;
     s16 primaryModelId;
     s16 secondaryModelId;
@@ -742,7 +742,6 @@ void fn_1_17B5C(void)
     MGACTOR *actor;
     s16 lastModelId;
     s16 modelId;
-    s16 linkedModelId;
     s32 playerIndex;
     s32 actorIndex;
     f32 previousX;
@@ -980,7 +979,6 @@ void fn_1_18C54(void)
     s32 frameCount;
     s32 motionFrame;
     s32 targetLane;
-    s32 selectedAxis;
     s32 randomSide;
 
     fn_80086BC8(lbl_1_bss_C4[0]->player->actor, &playerPosition);

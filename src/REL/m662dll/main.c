@@ -486,7 +486,7 @@ s16 fn_1_4270(s16, s16, Vec, Vec, f32, s16, M662ParticleParameters *);
 /* Called after camera setup and during scene updates; copies the camera masks locally without
  * changing scene state. */
 void fn_1_1DC8(s16 cameraIndex) {
-    struct Values {
+    struct {
         u16 cameraOneMask;
         u16 cameraTwoMask;
         u16 cameraThreeMask;
@@ -1369,7 +1369,7 @@ void fn_1_5008(s16 soundSlot, s16 spatialMode, HuVecF *position)
 s16 lbl_1_data_F6[5] = { MSM_SE_MG662_INTRO, MSM_SE_MG662_PATH_MOVE, MSM_SE_MG662_TREE_MOTION,
                          MSM_SE_MG662_ENDING_BEAT, 0 };
 
-u16 lbl_1_bss_C60;
+s16 lbl_1_bss_C60;
 s16 lbl_1_bss_C58[4];
 HUPROCESS *lbl_1_bss_C50[2];
 M662CameraState lbl_1_bss_B08;

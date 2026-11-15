@@ -119,13 +119,6 @@ void fn_1_5A08(s16 mode, s16 frameNo);
 #include "math.h"
 #include "humath.h"
 
-/* Stream played when Pop Star's start banner sounds. */
-/* Rollover bound for the piston animation frame counter. */
-#define M629_FRAME_COUNTER_LIMIT 4026531840U
-/* Motion-table bits select the solo actor and the three opponents. */
-#define M629_MOTION_SOLO_MASK 0x01
-#define M629_MOTION_TEAM_MASK 0x02
-
 /* Character model resource table; these callbacks do not read it. */
 u32 lbl_1_data_0[14] = {
     DATANUM(0x900000, 0), DATANUM(0x380000, 0),
@@ -143,15 +136,18 @@ int lbl_1_data_38[10] = {
     DATANUM(0x930000, 10), DATANUM(0x930000, 9),
     DATANUM(0x8e0000, 68), DATANUM(0x8e0000, 69),
     DATANUM(0x930000, 39), DATANUM(0x930000, 40)
+/* m629 motion team mask. */
+/* m629 motion solo mask. */
 };
 /* Player actor selection mask for each motion entry. */
+/* Motion bits: 0x01 selects the solo actor; 0x02 selects the team. */
 u8 lbl_1_data_60[10] = {
-    M629_MOTION_SOLO_MASK | M629_MOTION_TEAM_MASK,
-    M629_MOTION_TEAM_MASK, M629_MOTION_TEAM_MASK, M629_MOTION_TEAM_MASK,
-    M629_MOTION_TEAM_MASK, M629_MOTION_TEAM_MASK,
-    M629_MOTION_SOLO_MASK, M629_MOTION_SOLO_MASK,
-    M629_MOTION_SOLO_MASK | M629_MOTION_TEAM_MASK,
-    M629_MOTION_SOLO_MASK | M629_MOTION_TEAM_MASK
+    0x01 | 0x02,
+    0x02, 0x02, 0x02,
+    0x02, 0x02,
+    0x01, 0x01,
+    0x01 | 0x02,
+    0x01 | 0x02
 };
 /* Inverted Hu3D loop selector: zero enables the motion loop attribute. */
 u8 lbl_1_data_6A[10] = { 0, 1, 1, 1, 1, 1, 0, 1, 1, 1 };
@@ -613,7 +609,9 @@ void fn_1_1F90(OMOBJ *obj)
     lbl_1_bss_5DC = fn_80071A8C();
     lbl_1_bss_0 = fn_80071DE4();
     lbl_1_data_B0++;
-    lbl_1_data_B0 %= M629_FRAME_COUNTER_LIMIT;
+    /* Rollover bound for the piston animation frame counter. */
+    /* m629 frame counter limit. */
+    lbl_1_data_B0 %= 0xF0000000U;
     lbl_1_bss_C += lbl_1_bss_C < 65535;
     for (i = 0; i < (lbl_1_bss_10 ? 1 : 2); i++) {
         model = &lbl_802C01C8[obj->mdlId[i + 28]];
@@ -947,7 +945,7 @@ void fn_1_3C8C(OMOBJ *obj)
     obj->mdlId[0] = fn_80057068(playerState->charNo, 2);
     for (i = 0; i < 10; i++) {
         if (lbl_1_data_60[i] &
-            (playerState->index == 0 ? M629_MOTION_SOLO_MASK : M629_MOTION_TEAM_MASK)) {
+            (playerState->index == 0 ? 0x01 : 0x02)) {
             obj->mtnId[i] = fn_8005B0B8(playerState->charNo, lbl_1_data_38[i]);
         }
     }
@@ -962,10 +960,9 @@ void fn_1_3C8C(OMOBJ *obj)
     fn_80026E44(obj->mdlId[0]);
     if (playerState->index == 0) {
         modelIndex = 1;
-        obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0((DATANUM(0x580000, 7)), 0x10000000, 2));
+        obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0(DATANUM(0x580000, 7), 0x10000000, 2));
         fn_80026B8C(obj->mdlId[modelIndex], 3);
-        fn_8002741C(obj->mdlId[0],
-            fn_8005C0F0(playerState->charNo, 2, 0), obj->mdlId[modelIndex]);
+        fn_8002741C(obj->mdlId[0], fn_8005C0F0(playerState->charNo, 2, 0), obj->mdlId[modelIndex]);
         fn_80026E44(obj->mdlId[modelIndex]);
     }
     if (!lbl_1_bss_10 && playerState->charNo == 6) {
@@ -1003,8 +1000,7 @@ void fn_1_4290(HU3D_MODEL *model, Mtx *matrix)
     for (i = 0; i < 16; i++) {
         if (lbl_1_bss_69C[0][i].animationStep >= 2
             && lbl_1_bss_69C[0][i].animationStep <= 30) {
-            PSMTXConcat(*matrix,
-                lbl_1_bss_30[lbl_1_bss_69C[0][i].animationStep - 2], transform);
+            PSMTXConcat(*matrix, lbl_1_bss_30[lbl_1_bss_69C[0][i].animationStep - 2], transform);
             fn_800247C4(lbl_1_bss_5E0->mdlId[14],
                 "m629_pistonhoos-air", transform);
         }
@@ -1078,7 +1074,7 @@ void fn_1_444C(OMOBJ *obj)
     fn_800269E8(obj->mdlId[modelIndex], ((1 << 30) | (1 << 0)));
     if (!lbl_1_bss_10) {
         modelIndex = 31;
-        obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0((DATANUM(0x580000, 31)), 0x10000000, 2));
+        obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0(DATANUM(0x580000, 31), 0x10000000, 2));
         fn_80026B8C(obj->mdlId[modelIndex], 2);
         fn_800269E8(obj->mdlId[modelIndex], ((1 << 30) | (1 << 0)));
     }
@@ -1092,8 +1088,7 @@ void fn_1_444C(OMOBJ *obj)
     for (i = 0; i < 8; i++) {
         modelIndex = i + 3;
         if (i == 0) {
-            obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0((DATANUM(0x580000, 12)), 0x10000000,
-                2));
+            obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0(DATANUM(0x580000, 12), 0x10000000, 2));
         } else {
             obj->mdlId[modelIndex] = fn_80025D4C(obj->mdlId[3]);
         }
@@ -1129,8 +1124,8 @@ void fn_1_444C(OMOBJ *obj)
               DATANUM(0x580000, 19), DATANUM(0x580000, 20) }
         };
         modelIndex = i + 14;
-        obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0(modelData[lbl_1_bss_10][i], 0x10000000,
-            2));
+        obj->mdlId[modelIndex] =
+            fn_80025A04(fn_80008DD0(modelData[lbl_1_bss_10][i], 0x10000000, 2));
         fn_800269E8(obj->mdlId[modelIndex], ((1 << 30) | (1 << 1)));
         fn_80026B8C(obj->mdlId[modelIndex], 2);
     }
@@ -1146,8 +1141,8 @@ void fn_1_444C(OMOBJ *obj)
         modelIndex = i + 19;
         /* Both scenes use the same side-display resources, 21 for the solo side and
          * 22 for the team side. */
-        obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0((lbl_1_bss_10
-            ? modelData[i] : modelData[i]), 0x10000000, 2));
+        obj->mdlId[modelIndex] =
+            fn_80025A04(fn_80008DD0((lbl_1_bss_10 ? modelData[i] : modelData[i]), 0x10000000, 2));
         fn_800269E8(obj->mdlId[modelIndex], ((1 << 30) | (1 << 1)));
         fn_80026B8C(obj->mdlId[modelIndex], 2);
         fn_80026760(obj->mdlId[modelIndex], position[i][0], position[i][1], position[i][2]);
@@ -1176,8 +1171,8 @@ void fn_1_444C(OMOBJ *obj)
             { DATANUM(0x580000, 27), DATANUM(0x580000, 28) }
         };
         modelIndex = i + 25;
-        obj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0(modelData[lbl_1_bss_10][i], 0x10000000,
-            2));
+        obj->mdlId[modelIndex] =
+            fn_80025A04(fn_80008DD0(modelData[lbl_1_bss_10][i], 0x10000000, 2));
         fn_800269E8(obj->mdlId[modelIndex], ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
         fn_80026B8C(obj->mdlId[modelIndex], 2);
     }
@@ -1287,8 +1282,7 @@ void fn_1_58BC(s16 mode, s16 frameNo)
 
     lbl_1_bss_5E0 = fn_8003AB38(lbl_1_bss_5D8, 101, 36, 0, 1, fn_1_444C);
     for (i = 0; i < 4; i++) {
-        obj = lbl_1_bss_5E4[i] = fn_8003AB38(lbl_1_bss_5D8,
-            100, 2, 10, 0, fn_1_3C8C);
+        obj = lbl_1_bss_5E4[i] = fn_8003AB38(lbl_1_bss_5D8, 100, 2, 10, 0, fn_1_3C8C);
         obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M629Player), 0x10000000);
         obj->work[0] = i;
     }

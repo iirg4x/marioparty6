@@ -12,8 +12,6 @@
 struct AnimatedOwner;
 typedef void (AnimatedOwner::*AnimatedOwnerHandler)(EventMessage *);
 #include "REL/m672DLL/member_callback.h"
-typedef std::mem_fun1_t<void, AnimatedOwner, EventMessage *> StateMemberMethod;
-typedef CallbackBinding<AnimatedOwner> StateCallbackBinding;
 
 #include "REL/framework/singleton.h"
 typedef MinigameSingleton<AnimatedOwner> AnimatedOwnerSingleton;

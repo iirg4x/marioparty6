@@ -29,9 +29,6 @@
 #include "game/esprite.h"
 #include "messdir_enum.h"
 
-#define TUTORIAL_FALL_SPACE_FLAG (1 << 0)
-#define TUTORIAL_NET_SPACE_FLAG (1 << 1)
-
 void mbObjDirSet(int dataDirDay, int dataDirNight);
 void mbObjPosSet(MBMODELID modelId, float x, float y, float z);
 void mbObjCullRadiusSet(MBMODELID modelId, float radius);
@@ -134,9 +131,11 @@ void fn_1_588(void)
 }
 
 /* The movement-end hook starts the fall on marked spaces and returns zero for every space. */
+/* tutorial fall space flag. */
 int fn_1_58C(int playerNo, s16 spaceId)
 {
-    if ((mbMasuMAttrGet(spaceId) & TUTORIAL_FALL_SPACE_FLAG) != 0) {
+    /* Space flag bit 0 marks the fall space. */
+    if ((mbMasuMAttrGet(spaceId) & (1 << 0)) != 0) {
         fn_1_5DC(playerNo, spaceId);
     }
     return 0;
@@ -182,10 +181,12 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
         HuPrcVSleep();
     }
     mbTutorialCall(23);
+    /* tutorial net space flag. */
     mbWipeDissolveFadeOut();
     mbStatusDispForceSetAll(FALSE);
     mbStatusMasuDispSet(FALSE);
-    mbCameraFocusMasuSet(mbMasuFind_MAttrIdGet(-1, TUTORIAL_NET_SPACE_FLAG));
+    /* Space flag bit 1 marks the net space. */
+    mbCameraFocusMasuSet(mbMasuFind_MAttrIdGet(-1, (1 << 1)));
     mbCameraMoveOnSet(FALSE);
     mbCameraOffsetSet(0.0f, 50.0f, 0.0f);
     mbCameraRotSet(-35.0f, 0.0f, 0.0f);
@@ -216,9 +217,9 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
     }
 }
 
-s16 lbl_1_bss_4; /* Tutorial scenery model, including the scene's HSF lights. */
-s16 lbl_1_bss_2; /* Scene model whose paused motion resumes before the player falls. */
-s16 lbl_1_bss_0; /* Animated net model; net_hook supplies the player's attachment position. */
+MBMODELID lbl_1_bss_4; /* Tutorial scenery model, including the scene's HSF lights. */
+MBMODELID lbl_1_bss_2; /* Scene model whose paused motion resumes before the player falls. */
+MBMODELID lbl_1_bss_0; /* Animated net model; net_hook supplies the player's attachment position. */
 
 s8 lbl_1_data_15[7] = { 1, 12, 21, 7, 4, 15, -1 };
 extern void fn_1_984(void);
@@ -266,22 +267,16 @@ void fn_1_984(void)
     mbTutorialCallWait(8);
     mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 76));
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 77), DATANUM(0xb0000, 12),
-             DATANUM(0x50000, 132), 0);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 78), DATANUM(0xb0000, 13),
-             DATANUM(0x50000, 132), 1);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 79), DATANUM(0xb0000, 7), DATANUM(0x50000, 132),
-             2);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 80), DATANUM(0xb0000, 10),
-             DATANUM(0x50000, 132), 3);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 77), DATANUM(0xb0000, 12), DATANUM(0x50000, 132), 0);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 78), DATANUM(0xb0000, 13), DATANUM(0x50000, 132), 1);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 79), DATANUM(0xb0000, 7), DATANUM(0x50000, 132), 2);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 80), DATANUM(0xb0000, 10), DATANUM(0x50000, 132), 3);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 86));
     mbCameraMovePlayer(lbl_80265B70.turnPlayerNo, NULL, NULL, 1600.0f, -1.0f, 12);
     mbCameraMoveWait();
     mbTutorialTurnCall(5);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 87), DATANUM(0xb0000, 11),
-             DATANUM(0x50000, 132), 4);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 81), DATANUM(0xb0000, 6), DATANUM(0x50000, 142),
-             0);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 87), DATANUM(0xb0000, 11), DATANUM(0x50000, 132), 4);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 81), DATANUM(0xb0000, 6), DATANUM(0x50000, 142), 0);
     mbTutorialCallWait(9);
     mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
     mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 84), DATANUM(0xb0000, 2));
@@ -312,8 +307,7 @@ void fn_1_C00(s32 message, s32 illustrationData, s32 iconData, s32 iconBank)
     espBankSet(iconSprite, iconBank);
     for (animationFrame = 0; animationFrame < 18U; animationFrame++) {
         animationScale = animationFrame / 18.0f;
-        espPosSet(iconSprite, 288.0f,
-            -32.0f + 176.0f * mbSinDeg(90.0f * animationScale));
+        espPosSet(iconSprite, 288.0f, -32.0f + 176.0f * mbSinDeg(90.0f * animationScale));
         mbTutorialVSleep();
     }
     mbTutorialWinKeyWait(windowId);

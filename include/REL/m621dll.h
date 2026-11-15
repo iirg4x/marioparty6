@@ -13,7 +13,7 @@ typedef struct M621Target_s M621Target;
 typedef struct M621Effect_s M621Effect;
 typedef struct M621Environment_s M621Environment;
 
-typedef struct M621TargetPart_s {
+typedef struct {
     s16 state; /* 0: removed, 1: rising, 2: standing, 3: knocked away, 4: delayed removal, 5:
                 * removal countdown. */
     s16 timer; /* Updates remaining or elapsed for the current segment state. */

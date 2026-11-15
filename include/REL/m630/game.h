@@ -75,7 +75,6 @@ typedef struct M630Bss744 {
     unsigned char unusedBytes[8]; /* Unread bytes retained in the record. */
 } M630Bss744;
 
-extern HUPROCESS *lbl_1_bss_0;
 extern int lbl_1_bss_8;
 extern int lbl_1_bss_C[3];
 extern int lbl_1_bss_170;

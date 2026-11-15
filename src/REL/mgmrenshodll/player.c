@@ -125,8 +125,6 @@ extern s32 lbl_1_data_50C;
 
 extern s32 lbl_1_data_510;
 
-extern s32 lbl_1_data_514;
-
 u32 lbl_1_data_338[10] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1),
     DATANUM(0x930000, 2), DATANUM(0x930000, 3),
@@ -778,7 +776,6 @@ s16 fn_1_AD78(s16 player)
 
 /* Called by the object manager each frame to update the active player's movement and animation. */
 void fn_1_AE08(OMOBJ *playerObject) {
-    s32 playerIndex;
     Point3d cameraDirection;
     s16 motionReady;
     f32 movementOrHeading;

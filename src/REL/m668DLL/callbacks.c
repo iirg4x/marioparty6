@@ -1,6 +1,7 @@
 /* Burnstile stage callbacks, team results, camera wipes, and rotor hazards. */
 #include <math.h>
 #include "REL/m668DLL/math.h"
+#include "REL/m668DLL/data.h"
 #include "REL/m668DLL/geometry.h"
 #include "REL/m668DLL/callbacks.h"
 #include "REL/m668DLL/player.h"
@@ -67,13 +68,13 @@ extern const GXColor lbl_1_rodata_E0;
 extern void *lbl_1_bss_640;
 extern void *lbl_1_bss_644;
 
-typedef struct M668EffectModel_s {
+typedef struct {
     HU3D_MODELID model;
     HU3D_MOTIONID motion;
 } M668EffectModel;
 
 /* Models, actor links, effects, and collision models used by the stage. */
-typedef struct M668SceneWork_s {
+typedef struct {
     HU3D_MODELID sceneModel[2];
     HU3D_MODELID sceneLink[2];
     HU3D_MODELID actorModel[2];
@@ -111,7 +112,6 @@ extern void fn_1_6778(OMOBJ *obj);
 extern void fn_1_6924(OMOBJ *obj);
 
 extern s32 lbl_1_bss_C;
-extern Point3d lbl_1_data_94[2];
 extern void fn_1_6C24(OMOBJ *);
 
 /* Returns the magnitude used to keep the wave overlay vertical offset nonpositive. */
@@ -121,7 +121,7 @@ static inline f32 M668Abs(f32 x)
 }
 
 /* Player state used while characters wait for the result sequence. */
-typedef struct M668PlayerFinishWork_s {
+typedef struct {
     s16 playerNo;
     s16 partnerNo;
     s16 charNo;

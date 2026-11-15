@@ -9,7 +9,7 @@
 #include "game/charman.h"
 #include "game/mg/timer.h"
 
-typedef struct M670Cpu_s {
+typedef struct {
     int playerNo; /* Player slot controlled by this CPU. */
     MGPLAYER *player; /* Actor and controller state for that player. */
     unsigned int state; /* Current CPU decision or movement state. */
@@ -21,7 +21,7 @@ typedef struct M670Cpu_s {
                           * otherwise the flag is cleared without a pad update. */
 } M670CPU;
 
-typedef struct M670Work_s {
+typedef struct {
     OMOBJMAN *objman; /* Object manager for the playfield and player callbacks. */
     int unk04; /* The game's code never reads this field. */
     int unk08; /* The game's code never reads this field. */

@@ -22,55 +22,10 @@
 #include "REL/m612dll.h"
 #include "msm_stream.h"
 
-/* Memory Lane model and motion resources, named by their use in this scene. */
-#define M612_DATA_DAY_TILE DATANUM(0x470000, 0)
-#define M612_DATA_DAY_CURSOR DATANUM(0x470000, 1)
-#define M612_DATA_DAY_BOARD_0 DATANUM(0x470000, 2)
-#define M612_DATA_DAY_BOARD_1 DATANUM(0x470000, 3)
-#define M612_DATA_DAY_BOARD_2 DATANUM(0x470000, 4)
-#define M612_DATA_DAY_BOARD_3 DATANUM(0x470000, 5)
-#define M612_DATA_DAY_BOARD_4 DATANUM(0x470000, 6)
-#define M612_DATA_DAY_BOARD_5 DATANUM(0x470000, 7)
-#define M612_DATA_DAY_BOARD_6 DATANUM(0x470000, 8)
-#define M612_DATA_NIGHT_TILE DATANUM(0x470000, 9)
-#define M612_DATA_NIGHT_CURSOR DATANUM(0x470000, 10)
-#define M612_DATA_NIGHT_BOARD_0 DATANUM(0x470000, 11)
-#define M612_DATA_NIGHT_BOARD_1 DATANUM(0x470000, 12)
-#define M612_DATA_NIGHT_BOARD_2 DATANUM(0x470000, 13)
-#define M612_DATA_NIGHT_BOARD_3 DATANUM(0x470000, 14)
-#define M612_DATA_NIGHT_BOARD_4 DATANUM(0x470000, 15)
-#define M612_DATA_NIGHT_BOARD_5 DATANUM(0x470000, 16)
-#define M612_DATA_NIGHT_BOARD_6 DATANUM(0x470000, 17)
-#define M612_DATA_NIGHT_BOARD_7 DATANUM(0x470000, 18)
-#define M612_DATA_NIGHT_BOARD_8 DATANUM(0x470000, 19)
-#define M612_DATA_NIGHT_BOARD_9 DATANUM(0x470000, 20)
-#define M612_DATA_MARKER_MODEL DATANUM(0x470000, 21)
-#define M612_DATA_MARKER_MOTION DATANUM(0x470000, 22)
-#define M612_DATA_RESULT_MODEL DATANUM(0x470000, 23)
-#define M612_DATA_RESULT_MOTION_0 DATANUM(0x470000, 24)
-#define M612_DATA_RESULT_MOTION_1 DATANUM(0x470000, 25)
-#define M612_DATA_RESULT_MOTION_2 DATANUM(0x470000, 26)
-
-/* Character motions used by the idle, movement, result, and tile actions. */
-#define M612_CHAR_MOTION_IDLE DATANUM(0x930000, 0)
-#define M612_CHAR_MOTION_MOVE DATANUM(0x930000, 1)
-#define M612_CHAR_MOTION_RESULT DATANUM(0x930000, 6)
-#define M612_CHAR_MOTION_RESULT_ALT DATANUM(0x930000, 7)
-#define M612_CHAR_MOTION_STEP DATANUM(0x930000, 15)
-#define M612_CHAR_MOTION_FALL DATANUM(0x930000, 34)
-#define M612_CHAR_MOTION_RISE DATANUM(0x930000, 63)
-#define M612_CHAR_MOTION_EXTRA DATANUM(0x930000, 23)
-
-
-
-
-
-
-
 M612Scene lbl_1_bss_4AC;
 static s32 lbl_1_bss_49C[4];
 static s32 lbl_1_bss_48C[4];
-s16 lbl_1_bss_44C[4][8];
+HU3D_MOTIONID lbl_1_bss_44C[4][8];
 static s32 lbl_1_bss_43C[4];
 static s32 lbl_1_bss_42C[4];
 static s32 lbl_1_bss_41C[4];
@@ -122,12 +77,20 @@ static s32 lbl_1_bss_0;
 static s32 lbl_1_data_0[4] = { 45, 30, 30, 15 };
 static s32 lbl_1_data_10[4] = { 45, 30, 15, 15 };
 static s32 lbl_1_data_20[4] = { 1, 1, 2, 0 };
+/* m612 char motion result. */
+/* m612 char motion move. */
+/* m612 char motion idle. */
 static s32 lbl_1_data_30[4] = { 1, 2, 2, 0 };
+/* m612 char motion fall. */
+/* m612 char motion step. */
+/* m612 char motion result alt. */
 static s32 lbl_1_data_40[4] = { 0, 0, 0, 0 };
+/* m612 char motion extra. */
+/* m612 char motion rise. */
 static unsigned int lbl_1_data_50[9] = {
-    M612_CHAR_MOTION_IDLE,       M612_CHAR_MOTION_MOVE,  M612_CHAR_MOTION_RESULT,
-    M612_CHAR_MOTION_RESULT_ALT, M612_CHAR_MOTION_STEP,  M612_CHAR_MOTION_FALL,
-    M612_CHAR_MOTION_RISE,       M612_CHAR_MOTION_EXTRA, 0
+    DATANUM(0x930000, 0),       DATANUM(0x930000, 1),  DATANUM(0x930000, 6),
+    DATANUM(0x930000, 7), DATANUM(0x930000, 15),  DATANUM(0x930000, 34),
+    DATANUM(0x930000, 63),       DATANUM(0x930000, 23), 0
 };
 static s32 lbl_1_data_74[4] = { 1, 2, 4, 8 };
 GXColor lbl_1_data_84[2] = { { 255, 255, 255, 0 }, { 208, 208, 208, 0 } };
@@ -186,13 +149,15 @@ void ObjectSetup(void)
     fn_80061D04(1);
     playerIndex = 0;
     while (playerIndex < 4) {
+        /* m612 data marker model. */
         lbl_1_bss_36C[playerIndex] = 0;
         if (playerIndex == 0) {
-            lbl_1_bss_39C[playerIndex] = (s32) fn_80025A04(
-                fn_80008DD0(M612_DATA_MARKER_MODEL, 0x10000000, 2));
+            lbl_1_bss_39C[playerIndex] =
+                /* m612 data marker motion. */
+                (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 21), 0x10000000, 2));
             lbl_1_bss_38C[playerIndex] = (s32) fn_80030458(
                 (s16) *lbl_1_bss_39C,
-                fn_80008DD0(M612_DATA_MARKER_MOTION, 0x10000000, 2));
+                fn_80008DD0(DATANUM(0x470000, 22), 0x10000000, 2));
         } else {
             /* Later players pass the first player's marker model ID to Hu3DModelLink. */
             lbl_1_bss_39C[playerIndex] = (s32) fn_80025D4C((s16) *lbl_1_bss_39C);
@@ -206,19 +171,19 @@ void ObjectSetup(void)
         fn_8002C95C((s16) lbl_1_bss_39C[playerIndex], (s16) *lbl_1_bss_38C);
         fn_80026B64((s16) lbl_1_bss_39C[playerIndex], (u16) lbl_1_data_74[playerIndex]);
         fn_800269E8((s16) lbl_1_bss_39C[playerIndex], 1U);
+        /* m612 data result model. */
         playerIndex += 1;
     }
-    lbl_1_bss_300 = (s32) fn_80025A04(
-        fn_80008DD0(M612_DATA_RESULT_MODEL, 0x10000000, 2));
+    /* m612 data result motion 0. */
+    lbl_1_bss_300 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 23), 0x10000000, 2));
     lbl_1_bss_2FC =
-        (s32) fn_80030458((s16) lbl_1_bss_300, fn_80008DD0(M612_DATA_RESULT_MOTION_0,
-                                                                        0x10000000, 2));
+        /* m612 data result motion 1. */
+        (s32) fn_80030458((s16) lbl_1_bss_300, fn_80008DD0(DATANUM(0x470000, 24), 0x10000000, 2));
     lbl_1_bss_2F8 =
-        (s32) fn_80030458((s16) lbl_1_bss_300, fn_80008DD0(M612_DATA_RESULT_MOTION_1,
-                                                                        0x10000000, 2));
+        /* m612 data result motion 2. */
+        (s32) fn_80030458((s16) lbl_1_bss_300, fn_80008DD0(DATANUM(0x470000, 25), 0x10000000, 2));
     lbl_1_bss_2F4 =
-        (s32) fn_80030458((s16) lbl_1_bss_300, fn_80008DD0(M612_DATA_RESULT_MOTION_2,
-                                                                        0x10000000, 2));
+        (s32) fn_80030458((s16) lbl_1_bss_300, fn_80008DD0(DATANUM(0x470000, 26), 0x10000000, 2));
     {
         HuVecF resultLightPos = { 0.0f, 1000.0f, 5000.0f };
         HuVecF resultLightDir = { 0.0f, 0.0f, -1.0f };
@@ -241,53 +206,53 @@ void ObjectSetup(void)
 
 /* Called during scene setup to load the day or night board models. */
 void fn_1_8F0(void)
+/* m612 data day board 0. */
 {
     if (lbl_1_bss_10 == 0) {
-        lbl_1_bss_44 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_BOARD_0, 0x10000000, 2));
-        lbl_1_bss_40 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_BOARD_1, 0x10000000, 2));
-        lbl_1_bss_3C = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_BOARD_6, 0x10000000, 2));
-        lbl_1_bss_38 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_BOARD_2, 0x10000000, 2));
-        lbl_1_bss_34 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_BOARD_3, 0x10000000, 2));
-        lbl_1_bss_30 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_BOARD_4, 0x10000000, 2));
-        lbl_1_bss_2C = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_BOARD_5, 0x10000000, 2));
+        /* m612 data day board 1. */
+        lbl_1_bss_44 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 2), 0x10000000, 2));
+        /* m612 data day board 6. */
+        lbl_1_bss_40 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 3), 0x10000000, 2));
+        /* m612 data day board 2. */
+        lbl_1_bss_3C = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 8), 0x10000000, 2));
+        /* m612 data day board 3. */
+        lbl_1_bss_38 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 4), 0x10000000, 2));
+        /* m612 data day board 4. */
+        lbl_1_bss_34 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 5), 0x10000000, 2));
+        /* m612 data day board 5. */
+        lbl_1_bss_30 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 6), 0x10000000, 2));
+        lbl_1_bss_2C = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 7), 0x10000000, 2));
         lbl_1_bss_28 = -1;
         lbl_1_bss_20 = -1;
+        /* m612 data night board 0. */
         lbl_1_bss_24 = -1;
     } else {
-        lbl_1_bss_44 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_0, 0x10000000, 2));
-        lbl_1_bss_40 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_1, 0x10000000, 2));
-        lbl_1_bss_3C = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_6, 0x10000000, 2));
-        lbl_1_bss_38 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_2, 0x10000000, 2));
-        lbl_1_bss_34 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_3, 0x10000000, 2));
-        lbl_1_bss_30 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_4, 0x10000000, 2));
-        lbl_1_bss_2C = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_5, 0x10000000, 2));
-        lbl_1_bss_20 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_7, 0x10000000, 2));
+        /* m612 data night board 1. */
+        lbl_1_bss_44 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 11), 0x10000000, 2));
+        /* m612 data night board 6. */
+        lbl_1_bss_40 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 12), 0x10000000, 2));
+        /* m612 data night board 2. */
+        lbl_1_bss_3C = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 17), 0x10000000, 2));
+        /* m612 data night board 3. */
+        lbl_1_bss_38 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 13), 0x10000000, 2));
+        /* m612 data night board 4. */
+        lbl_1_bss_34 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 14), 0x10000000, 2));
+        /* m612 data night board 5. */
+        lbl_1_bss_30 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 15), 0x10000000, 2));
+        /* m612 data night board 7. */
+        lbl_1_bss_2C = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 16), 0x10000000, 2));
+        lbl_1_bss_20 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 18), 0x10000000, 2));
         fn_80026B8C((s16) lbl_1_bss_20, 7);
+        /* m612 data night board 8. */
         fn_800269E8((s16) lbl_1_bss_20, ((1 << 30) | (1 << 0)));
         fn_80026B64((s16) lbl_1_bss_20, 15U);
-        lbl_1_bss_28 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_8, 0x10000000, 2));
+        lbl_1_bss_28 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 19), 0x10000000, 2));
         fn_80026B8C((s16) lbl_1_bss_28, 7);
         fn_800269E8((s16) lbl_1_bss_28, ((1 << 30) | (1 << 0)));
+        /* m612 data night board 9. */
         fn_80026B64((s16) lbl_1_bss_28, 15U);
         fn_800269E8((s16) lbl_1_bss_28, 1U);
-        lbl_1_bss_24 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_BOARD_9, 0x10000000, 2));
+        lbl_1_bss_24 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 20), 0x10000000, 2));
         fn_80026B8C((s16) lbl_1_bss_24, 7);
         fn_800269E8((s16) lbl_1_bss_24, ((1 << 30) | (1 << 0)));
         fn_80026B64((s16) lbl_1_bss_24, 15U);
@@ -322,12 +287,14 @@ void fn_1_F0C(void)
     s32 row;
     s32 column;
 
+    /* m612 data day tile. */
     if (lbl_1_bss_10 == 0) {
         lbl_1_bss_4AC.tiles[0][0] =
-            fn_80025A04(fn_80008DD0(M612_DATA_DAY_TILE, 0x10000000, 2));
+            /* m612 data night tile. */
+            fn_80025A04(fn_80008DD0(DATANUM(0x470000, 0), 0x10000000, 2));
     } else {
         lbl_1_bss_4AC.tiles[0][0] =
-            fn_80025A04(fn_80008DD0(M612_DATA_NIGHT_TILE, 0x10000000, 2));
+            fn_80025A04(fn_80008DD0(DATANUM(0x470000, 9), 0x10000000, 2));
     }
     for (player = 0; player < 4; player++) {
         for (row = 0; row < 7; row++) {
@@ -336,8 +303,7 @@ void fn_1_F0C(void)
                     lbl_1_bss_4AC.tiles[player][column + row * 7] =
                         fn_80025D4C(lbl_1_bss_4AC.tiles[0][0]);
                 }
-                fn_800269E8(lbl_1_bss_4AC.tiles[player][column + row * 7],
-                    ((1 << 30) | (1 << 1)));
+                fn_800269E8(lbl_1_bss_4AC.tiles[player][column + row * 7], ((1 << 30) | (1 << 1)));
                 fn_80026760(lbl_1_bss_4AC.tiles[player][column + row * 7],
                                 (float) (column * 200 - 600), 0.0f, (float) (row * 200 - 1400));
                 fn_80026B64(lbl_1_bss_4AC.tiles[player][column + row * 7],
@@ -355,13 +321,13 @@ void fn_1_F0C(void)
     lbl_1_bss_4AC.borders[1] = fn_80025D4C(lbl_1_bss_4AC.tiles[0][0]);
     fn_80026760(lbl_1_bss_4AC.borders[1], 0.0f, 0.0f, -1600.0f);
     fn_80026B8C(lbl_1_bss_4AC.borders[1], 5);
+    /* m612 data day cursor. */
     fn_80026A44(lbl_1_bss_4AC.borders[1], ((1 << 30) | (1 << 1)));
     if (lbl_1_bss_10 == 0) {
-        *lbl_1_bss_2C0 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_DAY_CURSOR, 0x10000000, 2));
+        /* m612 data night cursor. */
+        *lbl_1_bss_2C0 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 1), 0x10000000, 2));
     } else {
-        *lbl_1_bss_2C0 = (s32) fn_80025A04(
-            fn_80008DD0(M612_DATA_NIGHT_CURSOR, 0x10000000, 2));
+        *lbl_1_bss_2C0 = (s32) fn_80025A04( fn_80008DD0(DATANUM(0x470000, 10), 0x10000000, 2));
     }
     for (player = 0; player < 4; player++) {
         if (player != 0) {
@@ -502,8 +468,7 @@ void fn_1_16D4(s16 mode, s16 frameNo)
             }
             for (row = 0; row < 7; row++) {
                 for (column = 0; column < 7; column++) {
-                    fn_800269E8(lbl_1_bss_4AC.tiles[0][column + (row * 7)],
-                                     ((1 << 30) | (1 << 1)));
+                    fn_800269E8(lbl_1_bss_4AC.tiles[0][column + (row * 7)], ((1 << 30) | (1 << 1)));
                     fn_8002D414(lbl_1_bss_4AC.tiles[0][column + (row * 7)], 0.0f);
                 }
             }
@@ -516,8 +481,8 @@ void fn_1_16D4(s16 mode, s16 frameNo)
                 fn_80026A44((s16) lbl_1_bss_28, 1U);
                 fn_80026A44((s16) lbl_1_bss_24, 1U);
             }
-            lbl_1_bss_4AC.players = fn_8003AB38(lbl_1_bss_4AC.manager, 32730, 1U, 0U, -1,
-                fn_1_2C94);
+            lbl_1_bss_4AC.players =
+                fn_8003AB38(lbl_1_bss_4AC.manager, 32730, 1U, 0U, -1, fn_1_2C94);
             lbl_1_bss_4AC.state = 6;
             return;
         case 6:
@@ -1056,8 +1021,7 @@ void fn_1_2CEC(s32 player)
     case 4:
         if (lbl_1_bss_30C[player] > 40) {
             fn_8006A030((s16) player, 20, 7, 3);
-            fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][5], 0.0f, 10.0f,
-                               0U);
+            fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][5], 0.0f, 10.0f, 0U);
             lbl_1_bss_42C[player] = 5;
         }
         lbl_1_bss_30C[player]++;
@@ -1134,8 +1098,7 @@ void fn_1_2CEC(s32 player)
             }
             fn_80026790((s16) lbl_1_bss_48C[player], &bouncePos);
         } else {
-            fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][0], 0.0f, 10.0f,
-                               0U);
+            fn_8005C2C8((s16) lbl_1_bss_49C[player], lbl_1_bss_44C[player][0], 0.0f, 10.0f, 0U);
             lbl_1_bss_42C[player] = 1;
         }
         break;
@@ -1700,8 +1663,7 @@ void fn_1_5924(OMOBJ *obj)
                 break;
             }
             if ((column >= 0) && (column < 7) && (row >= 0) && (row < 7)) {
-                fn_80026A44(lbl_1_bss_4AC.tiles[0][column + (row * 7)],
-                    ((1 << 30) | (1 << 1)));
+                fn_80026A44(lbl_1_bss_4AC.tiles[0][column + (row * 7)], ((1 << 30) | (1 << 1)));
                 *lbl_1_bss_3BC = (column << 4) | (row & 0xF);
             }
             lbl_1_bss_2F0 += 1;
@@ -1816,8 +1778,7 @@ void fn_1_5F58(s32 player)
             break;
         }
         if ((column >= 0) && (column < 7) && (row >= 0) && (row < 7)) {
-            fn_80026A44(lbl_1_bss_4AC.tiles[player][column + row * 7],
-                ((1 << 30) | (1 << 1)));
+            fn_80026A44(lbl_1_bss_4AC.tiles[player][column + row * 7], ((1 << 30) | (1 << 1)));
         }
         routeIndex += 1;
     }

@@ -11,7 +11,6 @@
 #include "game/mic.h"
 #include "game/window.h"
 #include "datadir_enum.h"
-#define M670_MCSELWIN_POS_TOP -10002.0f
 extern MGSEQ_PARAM lbl_1_data_0;
 
 M670WORK lbl_1_bss_10;
@@ -167,8 +166,8 @@ void ObjectSetup(void)
         fn_80027080(model, "dai");
         fn_80026B8C(model, 5);
         for (j = 0; j < 4; j++) {
-            lbl_1_bss_10.pillarMotion[i][j] = fn_80030458(
-                model, fn_80008DD0(lbl_1_data_90[type][j], 0x10000000, 2));
+            lbl_1_bss_10.pillarMotion[i][j] =
+                fn_80030458( model, fn_80008DD0(lbl_1_data_90[type][j], 0x10000000, 2));
         }
         lbl_1_bss_10.collisionModel[i] = lbl_1_bss_10.collisionModels[lbl_1_bss_10.collisionCount] =
             fn_80025A04(fn_80008DD0(DATANUM(0x810000, 9), 0x10000000, 2));
@@ -199,10 +198,8 @@ void ObjectSetup(void)
             lbl_1_bss_10.padNo[i] = lbl_80265728[i].padNo;
             lbl_1_bss_10.playerState[i] = 0;
             param.correctHookParam = i;
-            lbl_1_bss_10.players[i] = player = fn_80080728(
-                i, &param, 4, 1,
-                ~((1 << 2) | (1 << 3) | (1 << 4)),
-                lbl_1_data_110);
+            lbl_1_bss_10.players[i] = player =
+                fn_80080728( i, &param, 4, 1, ~((1 << 2) | (1 << 3) | (1 << 4)), lbl_1_data_110);
             fn_8007ED60(player);
             if (lbl_80265728[i].grpNo == 0) {
                 lbl_1_bss_10.group[i] = 0;
@@ -235,10 +232,11 @@ void ObjectSetup(void)
         }
         fn_8005DDEC(5);
         lbl_1_bss_10.timer = MgTimerCreate(0);
+        /* m670 mcselwin pos top. */
         fn_8002C2AC(5);
         HuMCInit(0);
         /* The selection-window helper maps this y sentinel to 40 pixels from the top. */
-        HuMCSelWinCreate(HUWIN_POS_CENTER, M670_MCSELWIN_POS_TOP);
+        HuMCSelWinCreate(HUWIN_POS_CENTER, -10002.0f);
         lbl_1_bss_10.micContext = HuMCContextCreate("/mic/ctx/m670_words");
         fn_1_3B30();
         lbl_1_bss_10.music = -1;

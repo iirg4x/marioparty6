@@ -1681,7 +1681,6 @@ void fn_1_42D4(OMOBJ *object)
     M627Entry *entry;
     Point3d position;
     Point3d projectedPosition;
-    f32 panValue;
 
     if (state->player->mode == 3) {
         if (state->blockClearState == 0) {
@@ -2179,7 +2178,6 @@ void fn_1_5E9C(OMOBJ *object)
     Point3d entryPosition;
     Point3d actorPosition;
     Point3d offset;
-    f32 distance;
 
     state = object->data;
     if (state->waitFrames > 0) {
@@ -2736,10 +2734,8 @@ s16 fn_1_8098(s32 cameraGroup, Point3d *start, Point3d *direction,
     f32 faceRadius;
     f32 circleRadius;
     f32 intersectionDistance;
-    f32 projectedLength;
     f32 expandedRadius;
     f32 expandedRadiusSquared;
-    f32 root;
     f32 time;
     s16 faceIndex;
     u16 categoryMask;
@@ -2854,7 +2850,6 @@ void fn_1_8B40(OMOBJ *object)
     f32 accelerationNormal;
     f32 previousAngle;
     f32 angleDelta;
-    s16 playerIndex;
     s16 i;
     s16 didCollide = 0;
     s16 playTurnSound = 0;

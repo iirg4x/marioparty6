@@ -84,7 +84,3 @@ void M604ScoreOwner::fn_1_14E14(s32 index, s32 x, s32 y) {
     }
     scoreDisplays[index] = display;
 }
-
-extern "C" {
-
-}

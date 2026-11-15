@@ -420,7 +420,7 @@ void fn_1_5A8(s16 mode, s16 frameNo)
  * actors. */
 void fn_1_173C(s16 mode, s16 frameNo)
 {
-    lbl_1_bss_0.stream = fn_1_A0(lbl_1_bss_0.stream, M632_PLAY_MODE_BGM_STREAM_ID);
+    lbl_1_bss_0.stream = fn_1_A0(lbl_1_bss_0.stream, 73);
     fn_800856A8();
 }
 
@@ -803,8 +803,7 @@ void fn_1_2E04(s16 mode, s16 frameNo)
             while (index < 4) {
                 if (lbl_1_bss_0.group[index] == 0) {
                     player = lbl_1_bss_0.players[index];
-                    fn_8005C2C8(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f,
-                                       6.0f, 0U);
+                    fn_8005C2C8(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f, 6.0f, 0U);
                 }
                 index += 1;
             }
@@ -813,8 +812,7 @@ void fn_1_2E04(s16 mode, s16 frameNo)
             while (index < 4) {
                 if (lbl_1_bss_0.group[index] == 1 && lbl_1_bss_0.playerState[index] == 0) {
                     player = lbl_1_bss_0.players[index];
-                    fn_8005C2C8(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f,
-                                       6.0f, 0U);
+                    fn_8005C2C8(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f, 6.0f, 0U);
                 }
                 index += 1;
             }

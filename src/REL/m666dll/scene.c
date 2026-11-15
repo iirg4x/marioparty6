@@ -67,15 +67,6 @@
 #include "REL/m666dll/tables.h"
 #include "humath.h"
 
-#define M666_CLUSTER_MOTION_CLEAR_MASK ((s32)((3U << 30) | (1U << 0)))
-#define M666_TRANSFORM_TRAILING_DATA_TWO (2 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_THREE (3 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_FIVE (5 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_SIX (6 << 16)
-#define M666_TRANSFORM_TRAILING_DATA_SEVEN (7 << 16)
-#define M666_FLOAT_30_BIT_PATTERN 0x41F00000
-#define M666_FLOAT_28_BIT_PATTERN 0x41E00000
-
 typedef struct {
     MGACTOR *actor;
     MGACTOR *secondaryActor;
@@ -214,8 +205,6 @@ typedef struct {
     u32 unk10; /* No code names this field. */
 } M666DataTransform;
 
-typedef M666DataTransform M666ModelTransform;
-
 typedef struct {
     u32 fileId;
     u32 flags;
@@ -293,49 +282,54 @@ M666DataTransform lbl_1_data_2A0[48] = {
     {{-300.0f, 60.0f, -2260.0f}, 0.0f, 65536},
     {{-300.0f, 60.0f, -2480.0f}, 0.0f, 65536},
     {{-300.0f, 60.0f, -2700.0f}, 0.0f, 65536},
+    /* m666 transform trailing data two. */
     {{-300.0f, 60.0f, -2920.0f}, 0.0f, 65536},
     {{-300.0f, 60.0f, -3140.0f}, 0.0f, 65536},
     {{-300.0f, 60.0f, -3360.0f}, 0.0f, 65536},
-    {{0.0f, 60.0f, -1820.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2040.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2260.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2480.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2700.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -2920.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -3140.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{0.0f, 60.0f, -3360.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_TWO},
-    {{300.0f, 60.0f, -1820.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2040.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2260.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2480.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2700.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -2920.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -3140.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, -3360.0f}, 0.0f, M666_TRANSFORM_TRAILING_DATA_THREE},
-    {{300.0f, 60.0f, 1820.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2040.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2260.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2480.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2700.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 2920.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 3140.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{300.0f, 60.0f, 3360.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_FIVE},
-    {{0.0f, 60.0f, 1820.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2040.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2260.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2480.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2700.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 2920.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 3140.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{0.0f, 60.0f, 3360.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SIX},
-    {{-300.0f, 60.0f, 1820.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2040.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2260.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2480.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2700.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 2920.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 3140.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN},
-    {{-300.0f, 60.0f, 3360.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN}
+    {{0.0f, 60.0f, -1820.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2040.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2260.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2480.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -2700.0f}, 0.0f, (2 << 16)},
+    /* m666 transform trailing data three. */
+    {{0.0f, 60.0f, -2920.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -3140.0f}, 0.0f, (2 << 16)},
+    {{0.0f, 60.0f, -3360.0f}, 0.0f, (2 << 16)},
+    {{300.0f, 60.0f, -1820.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2040.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2260.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2480.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -2700.0f}, 0.0f, (3 << 16)},
+    /* m666 transform trailing data five. */
+    {{300.0f, 60.0f, -2920.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -3140.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, -3360.0f}, 0.0f, (3 << 16)},
+    {{300.0f, 60.0f, 1820.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2040.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2260.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2480.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 2700.0f}, 180.0f, (5 << 16)},
+    /* m666 transform trailing data six. */
+    {{300.0f, 60.0f, 2920.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 3140.0f}, 180.0f, (5 << 16)},
+    {{300.0f, 60.0f, 3360.0f}, 180.0f, (5 << 16)},
+    {{0.0f, 60.0f, 1820.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2040.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2260.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2480.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 2700.0f}, 180.0f, (6 << 16)},
+    /* m666 transform trailing data seven. */
+    {{0.0f, 60.0f, 2920.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 3140.0f}, 180.0f, (6 << 16)},
+    {{0.0f, 60.0f, 3360.0f}, 180.0f, (6 << 16)},
+    {{-300.0f, 60.0f, 1820.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2040.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2260.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2480.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2700.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 2920.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 3140.0f}, 180.0f, (7 << 16)},
+    {{-300.0f, 60.0f, 3360.0f}, 180.0f, (7 << 16)}
 };
 M666JointMotionResource lbl_1_data_660[4] = {
     {DATANUM(0x7d0000, 35), ((1 << 30) | (1 << 0))},
@@ -455,31 +449,25 @@ void fn_1_B54(void) {
     s16 lightId;
     s16 modelId;
     s16 collisionModelId;
-    s32 playerIndex;
     s32 modelIndex;
 
-    lightId = fn_800286D0(&lbl_1_data_70, &lbl_1_data_7C,
-                                &lbl_1_data_88[lbl_1_bss_DF0.night]);
+    lightId = fn_800286D0(&lbl_1_data_70, &lbl_1_data_7C, &lbl_1_data_88[lbl_1_bss_DF0.night]);
     Hu3DGLightStaticSet(lightId, 1);
     Hu3DGLightInfinitytSet(lightId);
     Hu3DShadowCreate(30.0f, 20.0f, 20000.0f);
     Hu3DShadowPosSet(&shadowPosition, &shadowUpVector, &shadowTargetPosition);
 
-    modelId = fn_80025A04(fn_80008DD0(
-        lbl_1_data_90[lbl_1_bss_DF0.night], 0x10000000, 2));
+    modelId = fn_80025A04(fn_80008DD0( lbl_1_data_90[lbl_1_bss_DF0.night], 0x10000000, 2));
     lbl_1_bss_DF0.shadowModelId = modelId;
     fn_80026FFC(modelId);
-    modelId = fn_80025A04(fn_80008DD0(
-        lbl_1_data_98[lbl_1_bss_DF0.night], 0x10000000, 2));
+    modelId = fn_80025A04(fn_80008DD0( lbl_1_data_98[lbl_1_bss_DF0.night], 0x10000000, 2));
     lbl_1_bss_DF0.modelId = modelId;
 
     for (modelIndex = 0; modelIndex < 6; modelIndex++) {
-        modelId = fn_80025A04(fn_80008DD0(
-            lbl_1_data_A0[lbl_1_bss_DF0.night], 0x10000000, 2));
+        modelId = fn_80025A04(fn_80008DD0( lbl_1_data_A0[lbl_1_bss_DF0.night], 0x10000000, 2));
         fn_80026790(modelId, &shadowPositions[modelIndex]);
         if (modelIndex >= 3) {
-            fn_80026808(modelId, 0.0f, 180.0f,
-                            0.0f);
+            fn_80026808(modelId, 0.0f, 180.0f, 0.0f);
         }
         lbl_1_bss_580[modelIndex].modelId = modelId;
             lbl_1_bss_580[modelIndex].obstacleCount = 8;
@@ -504,25 +492,10 @@ void fn_1_B54(void) {
                    (f64)lbl_1_data_728[modelIndex].position.x) / M_PI);
     }
 
-    modelId = collisionModelId = fn_80025A04(fn_80008DD0(
-        DATANUM(0x7d0000, 25), 0x10000000, 2));
+    modelId = collisionModelId = fn_80025A04(fn_80008DD0( DATANUM(0x7d0000, 25), 0x10000000, 2));
     fn_800269E8(modelId, 1);
     fn_800804E8(&collisionModelId, 1, 40);
 }
-
-typedef void (*VoidFunc)(void);
-
-extern const VoidFunc _ctors[];
-
-extern const VoidFunc _dtors[];
-
-extern MGSEQ_PARAM lbl_1_data_0;
-
-extern char lbl_1_data_28[20];
-
-extern s16 lbl_1_bss_0;
-
-extern const char lbl_1_data_3C[];
 
 typedef struct {
     s16 effectIds[14];
@@ -531,8 +504,6 @@ typedef struct {
 /* Called by fn_1_78C for the microphone-player victory; sets its winner and awards 10 coins
  * outside practice mode. */
 void fn_1_F8C(void) {
-    s32 playerIndex;
-
     fn_80071C18(lbl_1_bss_98.charNo, -1, -1, -1);
     GWMgCoinBonusSet(lbl_1_bss_98.playerIndex, 10);
 }
@@ -667,19 +638,15 @@ void fn_1_15F0(void) {
  * and award 10 coins outside practice mode. */
 void fn_1_1680(void) {
     s32 playerIndex;
-    s32 playerNumber;
     MGPLAYER *player;
 
-    fn_80071C18(lbl_1_bss_8[0].charNo, lbl_1_bss_8[1].charNo,
-                   lbl_1_bss_8[2].charNo, -1);
+    fn_80071C18(lbl_1_bss_8[0].charNo, lbl_1_bss_8[1].charNo, lbl_1_bss_8[2].charNo, -1);
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         player = lbl_1_bss_8[playerIndex].player;
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-            fn_8005C2C8(player->charNo, player->omObj->mtnId[5],
-                               0.0f, 8.0f, 0);
+            fn_8005C2C8(player->charNo, player->omObj->mtnId[5], 0.0f, 8.0f, 0);
         } else {
-            fn_8005C2C8(player->charNo, player->omObj->mtnId[0],
-                               0.0f, 8.0f, 0);
+            fn_8005C2C8(player->charNo, player->omObj->mtnId[0], 0.0f, 8.0f, 0);
         }
         GWMgCoinBonusSet(lbl_1_bss_8[playerIndex].playerNumber, 10);
     }
@@ -692,8 +659,7 @@ void fn_1_17C8(s16 motionIndex, f32 blend, u32 flags) {
 
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         player = lbl_1_bss_8[playerIndex].player;
-        fn_8005C2C8(player->charNo, player->omObj->mtnId[motionIndex],
-                           0.0f, blend, flags);
+        fn_8005C2C8(player->charNo, player->omObj->mtnId[motionIndex], 0.0f, blend, flags);
     }
 }
 
@@ -707,16 +673,13 @@ void fn_1_1858(s16 vibrationMode) {
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
             switch (vibrationMode) {
             case 0:
-                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
-                          20, 4, 4);
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 4, 4);
                 break;
             case 1:
-                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
-                          20, 7, 3);
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 7, 3);
                 break;
             case 2:
-                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
-                          20, 20, 0);
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 20, 0);
                 break;
             }
         }
@@ -759,19 +722,17 @@ void fn_1_194C(s16 excludedPlayer) {
             lbl_1_bss_8[playerCount].comDifficulty = -1;
         }
 
-        lbl_1_bss_8[playerCount].player = fn_80080728(
-            playerIndex, &actorParam, 4, 1, 1, lbl_1_data_6B0);
+        lbl_1_bss_8[playerCount].player =
+            fn_80080728( playerIndex, &actorParam, 4, 1, 1, lbl_1_data_6B0);
         lbl_1_bss_8[playerCount].player->actor->pos.x = lbl_1_data_15C[playerCount].x;
         lbl_1_bss_8[playerCount].player->actor->pos.y = lbl_1_data_15C[playerCount].y;
         lbl_1_bss_8[playerCount].player->actor->pos.z = lbl_1_data_15C[playerCount].z;
         lbl_1_bss_8[playerCount].player->actor->rotY = lbl_1_data_180[playerCount];
         fn_80026E44((s16)lbl_1_bss_8[playerCount].player->actor->mdlId);
 
-        modelId = fn_80025A04(fn_80008DD0(
-            lbl_1_data_6F0[charNo], 0x10000000, 2));
+        modelId = fn_80025A04(fn_80008DD0( lbl_1_data_6F0[charNo], 0x10000000, 2));
         fn_800269E8(modelId, 1);
-        fn_800268B0(modelId, 1.0f, 0.0f,
-                          1.0f);
+        fn_800268B0(modelId, 1.0f, 0.0f, 1.0f);
         lbl_1_bss_8[playerCount].modelId = modelId;
         lbl_1_bss_8[playerCount].targetAngle = -500.0f;
         playerCount++;
@@ -793,8 +754,6 @@ void fn_1_1CBC(s16 playerIndex) {
     MGACTOR *playerActor;
     M666SequenceItemView *obstacleSequence;
     f32 heading;
-    f32 xDistance;
-    f32 zDistance;
     s32 xZone;
     s32 zZone;
     s32 groupIndex;
@@ -832,8 +791,7 @@ void fn_1_1CBC(s16 playerIndex) {
                     } else {
                         objectPosition.x -= 100.0f;
                     }
-                    if (sqrtf(PSVECSquareDistance(&objectPosition,
-                                                  &playerPosition)) <
+                    if (sqrtf(PSVECSquareDistance(&objectPosition, &playerPosition)) <
                         140.0f) {
                         fn_1_40F8(playerIndex, 4);
                         separation.x = playerPosition.x - objectPosition.x;
@@ -875,20 +833,16 @@ void fn_1_1CBC(s16 playerIndex) {
                     fn_800267CC(lbl_1_bss_604[groupIndex][itemIndex].secondaryModelId,
                                     &objectPosition);
                     objectPosition.y = 0.0f;
-                    if (sqrtf(PSVECSquareDistance(&objectPosition,
-                                                  &playerPosition)) <
+                    if (sqrtf(PSVECSquareDistance(&objectPosition, &playerPosition)) <
                         120.0f) {
                         fn_1_40F8(playerIndex, 3);
                         separation.x = playerPosition.x - objectPosition.x;
                         separation.y = 0.0f;
                         separation.z = playerPosition.z - objectPosition.z;
                         heading = (f32)(180.0 *
-                                  (atan2((f64) separation.z,
-                                         (f64) separation.x) /
+                                  (atan2((f64) separation.z, (f64) separation.x) /
                                    M_PI));
-                        fn_80086CA8(
-                            lbl_1_bss_8[playerIndex].player->actor,
-                            360.0f - heading);
+                        fn_80086CA8( lbl_1_bss_8[playerIndex].player->actor, 360.0f - heading);
                         lbl_1_bss_8[playerIndex].pushAngle =
                             heading;
                     }
@@ -923,8 +877,6 @@ void fn_1_2458(s16 playerIndex) {
     f32 distance;
     f32 desiredAngle;
     f32 currentAngle;
-    s32 inputX;
-    s32 inputZ;
     s32 groupIndex;
     s32 obstacleIndex;
     s32 closestGroup;
@@ -937,7 +889,6 @@ void fn_1_2458(s16 playerIndex) {
     s16 directions[4];
     s16 directionThresholds[4] = {90, 50, 10, 0};
     f32 avoidanceRanges[4] = {250.0f, 300.0f, 350.0f, 400.0f};
-    M666PlayerRecord *currentPlayer;
     MGPLAYER *gamePlayer;
     MGACTOR *playerActor;
 
@@ -999,11 +950,9 @@ void fn_1_2458(s16 playerIndex) {
                 fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId,
                                 &objectPosition);
             } else if (lbl_1_bss_604[groupIndex][obstacleIndex].actor) {
-                fn_80086BC8(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
-                              &objectPosition);
+                fn_80086BC8(lbl_1_bss_604[groupIndex][obstacleIndex].actor, &objectPosition);
             } else if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 3) {
-                fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].modelId,
-                                &objectPosition);
+                fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].modelId, &objectPosition);
             } else if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 2) {
                 Hu3DModelObjPosGet(lbl_1_bss_580[groupIndex].modelId,
                                    lbl_1_data_7F2, &objectPosition);
@@ -1286,18 +1235,14 @@ void fn_1_3C9C(void) {
             fn_80086C8C(actor, &direction);
             fn_800267CC((s16)actor->mdlId, &position);
             direction.x = (f32)(40.0 *
-                cos((lbl_1_bss_8[playerIndex].pushAngle * M_PI) /
-                    180.0));
+                cos((lbl_1_bss_8[playerIndex].pushAngle * M_PI) / 180.0));
             direction.z = (f32)(40.0 *
-                sin((lbl_1_bss_8[playerIndex].pushAngle * M_PI) /
-                    180.0));
+                sin((lbl_1_bss_8[playerIndex].pushAngle * M_PI) / 180.0));
             position.x += direction.x;
             position.y += direction.y;
             position.z += direction.z;
             fn_80026790((s16)actor->mdlId, &position);
-            fn_80026808((s16)actor->mdlId, 0.0f,
-                            lbl_1_bss_8[playerIndex].pushAngle,
-                            0.0f);
+            fn_80026808((s16)actor->mdlId, 0.0f, lbl_1_bss_8[playerIndex].pushAngle, 0.0f);
              lbl_1_bss_8[playerIndex].verticalPushDecay += 2.0f;
             break;
         }
@@ -1323,15 +1268,14 @@ void fn_1_40F8(s16 playerIndex, s16 action) {
         fn_80086E3C(player);
         fn_800805CC(playerActor, 2U);
         fn_80086CBC(playerActor, 0.0f);
-        fn_8005C2C8(player->charNo, player->omObj->mtnId[14], 0.0f, 0.0f,
-            ((1 << 30) | (1 << 0)));
+        fn_8005C2C8(player->charNo, player->omObj->mtnId[14], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
         if (action == 1) {
             fn_80026A44(lbl_1_bss_8[playerIndex].modelId, 1U);
             fn_80086BC8(playerActor, &actorPosition);
+            /* m666 cluster motion clear mask. */
             fn_80026790(lbl_1_bss_8[playerIndex].modelId, &actorPosition);
             fn_8002D30C(lbl_1_bss_8[playerIndex].modelId, 0, 2.0f);
-            fn_80026AE4(lbl_1_bss_8[playerIndex].modelId, 0,
-                                    M666_CLUSTER_MOTION_CLEAR_MASK);
+            fn_80026AE4(lbl_1_bss_8[playerIndex].modelId, 0, 0xC0000001);
             fn_80026808(lbl_1_bss_8[playerIndex].modelId, 0.0f,
                             (f32) (180.0 * (atan2((f64) actorPosition.x, (f64) actorPosition.z) /
                                             M_PI)),
@@ -1346,8 +1290,7 @@ void fn_1_40F8(s16 playerIndex, s16 action) {
 
 /* Handles player collision callbacks for secondary obstacles, other players, and obstacles,
  * updating reactions and target angles. */
-void fn_1_4378(COL_NARROW_PARAM *playerEvent,
-               COL_NARROW_PARAM *targetEvent) {
+void fn_1_4378(COL_NARROW_PARAM *playerEvent, COL_NARROW_PARAM *targetEvent) {
     Point3d playerPosition;
     Point3d targetPosition;
     Point3d separation;
@@ -1367,8 +1310,7 @@ void fn_1_4378(COL_NARROW_PARAM *playerEvent,
             if (lbl_1_bss_8[(s16) playerIndex].motionSelection != 0) {
                 return;
             }
-            fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
-                          &playerPosition);
+            fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor, &playerPosition);
             actorIndex = targetEvent->paramB - 52;
             fn_80086BC8(
                 lbl_1_bss_604[actorIndex / 8][actorIndex % 8].secondaryActor,
@@ -1380,17 +1322,14 @@ void fn_1_4378(COL_NARROW_PARAM *playerEvent,
             heading = (f32) (180.0 *
                       (atan2((f64) separation.z, (f64) separation.x) /
                        M_PI));
-            fn_80086CA8(lbl_1_bss_8[(s16) playerIndex].player->actor,
-                           360.0f - heading);
+            fn_80086CA8(lbl_1_bss_8[(s16) playerIndex].player->actor, 360.0f - heading);
             lbl_1_bss_8[(s16) playerIndex].pushAngle = heading;
         } else {
             if (targetEvent->paramB < 4) {
                 targetPlayerIndex = (s16) targetEvent->paramB;
                 if (lbl_1_bss_8[(s16) playerIndex].targetAngle != -500.0f) {
-                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
-                              &playerPosition);
-                fn_80086BC8(lbl_1_bss_8[targetPlayerIndex].player->actor,
-                              &targetPosition);
+                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor, &playerPosition);
+                fn_80086BC8(lbl_1_bss_8[targetPlayerIndex].player->actor, &targetPosition);
                 separation.x = targetPosition.x - playerPosition.x;
                 separation.y = 0.0f;
                 separation.z = targetPosition.z - playerPosition.z;
@@ -1412,12 +1351,9 @@ void fn_1_4378(COL_NARROW_PARAM *playerEvent,
                 }
             } else if ((targetEvent->paramB >= 4) &&
                        (targetEvent->paramB < 52)) {
-                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
-                              &playerPosition);
+                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor, &playerPosition);
                 actorIndex = targetEvent->paramB - 4;
-                fn_80086BC8(
-                    lbl_1_bss_604[actorIndex / 8][actorIndex % 8].actor,
-                    &targetPosition);
+                fn_80086BC8( lbl_1_bss_604[actorIndex / 8][actorIndex % 8].actor, &targetPosition);
                 separation.x = targetPosition.x - playerPosition.x;
                 separation.y = 0.0f;
                 separation.z = targetPosition.z - playerPosition.z;
@@ -1554,8 +1490,6 @@ void fn_1_4D20(void) {
         lbl_1_bss_2 = 0;
     }}
 
-typedef M666PerimeterWork M666SetupWorkView;
-
 /* Loads ten sprite animations and creates three perimeter models, each with seven joint motions
  * and a sprite group. */
 void fn_1_4F24(void) {
@@ -1573,21 +1507,19 @@ void fn_1_4F24(void) {
     s16 jointMotionId;
 
     for (modelIndex = 0; modelIndex < 10; modelIndex++) {
-        spriteAnimations[modelIndex] = HuSprAnimRead(
-            fn_80008DD0(spriteFileIds[modelIndex], 0x10000000, 2));
+        spriteAnimations[modelIndex] =
+            HuSprAnimRead( fn_80008DD0(spriteFileIds[modelIndex], 0x10000000, 2));
     }
 
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-        modelId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7d0000, 26), 0x10000000, 2));
+        modelId = fn_80025A04( fn_80008DD0(DATANUM(0x7d0000, 26), 0x10000000, 2));
         fn_80026790(modelId, &lbl_1_data_1A8[modelIndex]);
         fn_80026E44(modelId);
-        fn_80026808(modelId, 0.0f, lbl_1_data_1CC[modelIndex],
-                        0.0f);
+        fn_80026808(modelId, 0.0f, lbl_1_data_1CC[modelIndex], 0.0f);
 
         for (loopIndex = 0; loopIndex < 7; loopIndex++) {
-            jointMotionId = fn_80030458(modelId, fn_80008DD0(
-                lbl_1_data_1D8[loopIndex].fileId, 0x10000000, 2));
+            jointMotionId =
+                fn_80030458(modelId, fn_80008DD0( lbl_1_data_1D8[loopIndex].fileId, 0x10000000, 2));
             lbl_1_bss_D84[modelIndex].jointMotionIds[loopIndex] = jointMotionId;
         }
 
@@ -1623,9 +1555,7 @@ void fn_1_5264(s16 perimeterIndex) {
     M666MotionWork *perimeterWork;
 
     perimeterWork = &lbl_1_bss_D84[perimeterIndex];
-    fn_8002CCC0(perimeterWork->modelId,
-                       perimeterWork->jointMotionIds[4], 0.0f,
-                       8.0f, 0);
+    fn_8002CCC0(perimeterWork->modelId, perimeterWork->jointMotionIds[4], 0.0f, 8.0f, 0);
     perimeterWork->motionState = 3;
     lbl_1_bss_DC[perimeterWork->targetIndex].state = 2;
 }
@@ -1667,8 +1597,7 @@ s16 fn_1_535C(s16 eventCode) {
             continue;
         }
 
-        fn_800267CC(lbl_1_bss_D84[candidateModelIndex].modelId,
-                        &modelPosition);
+        fn_800267CC(lbl_1_bss_D84[candidateModelIndex].modelId, &modelPosition);
         relativeAngle = 180.0 *
             (atan2((f64)modelPosition.z, (f64)modelPosition.x) / M_PI);
         perimeterWork->facingAngle = relativeAngle - 45.0f;
@@ -1784,14 +1713,12 @@ void fn_1_5A78(void) {
     Vec otherPerimeterPosition;
     s32 perimeterIndex;
     s32 otherPerimeterIndex;
-    s16 workType;
 
     for (perimeterIndex = 0; perimeterIndex < 3; perimeterIndex++) {
         fn_800267CC(lbl_1_bss_D84[perimeterIndex].modelId, &perimeterPosition);
         for (otherPerimeterIndex = 0; otherPerimeterIndex < 3; otherPerimeterIndex++) {
             if (perimeterIndex != otherPerimeterIndex) {
-                fn_800267CC(lbl_1_bss_D84[otherPerimeterIndex].modelId,
-                                &otherPerimeterPosition);
+                fn_800267CC(lbl_1_bss_D84[otherPerimeterIndex].modelId, &otherPerimeterPosition);
                 if (!(sqrtf(PSVECSquareDistance(&perimeterPosition,
                                                &otherPerimeterPosition)) > 100.0f) &&
                     lbl_1_bss_D84[otherPerimeterIndex].motionState != 3) {
@@ -2050,8 +1977,7 @@ void fn_1_6030(s32 perimeterIndex) {
     }
 
     fn_80026790(perimeter->modelId, &position);
-    fn_80026808(perimeter->modelId, 0.0f, perimeter->rotation,
-                    0.0f);
+    fn_80026808(perimeter->modelId, 0.0f, perimeter->rotation, 0.0f);
 }
 
 /* Moves a perimeter model toward its target point; fn_1_77B0 calls this in motion state 2. */
@@ -2199,8 +2125,7 @@ void fn_1_7348(s16 perimeterIndex) {
     }
 
     fn_80026790(perimeter->modelId, &position);
-    fn_80026808(perimeter->modelId, 0.0f,
-                    perimeter->rotation, 0.0f);
+    fn_80026808(perimeter->modelId, 0.0f, perimeter->rotation, 0.0f);
 }
 
 typedef M666PerimeterWork M666PerimeterMotion;
@@ -2255,8 +2180,7 @@ void fn_1_77B0(void) {
 
         fn_800267CC(perimeterMotion->modelId, &modelPosition);
         Hu3D3Dto2D(&modelPosition, 1, &screenPosition);
-        HuSprGrpPosSet(perimeterMotion->spriteGroupId, screenPosition.x,
-                       screenPosition.y - 50.0f);
+        HuSprGrpPosSet(perimeterMotion->spriteGroupId, screenPosition.x, screenPosition.y - 50.0f);
     }
     fn_1_5A78();
 }
@@ -2399,8 +2323,7 @@ void fn_1_7E9C(void) {
         while (perimeterWork->rotation <= -180.0f) {
             perimeterWork->rotation += 360.0f;
         }
-        fn_80026808(perimeterWork->modelId, 0.0f,
-                        perimeterWork->rotation, 0.0f);
+        fn_80026808(perimeterWork->modelId, 0.0f, perimeterWork->rotation, 0.0f);
         perimeterIndex += 1;
     }
 }
@@ -2436,39 +2359,31 @@ void fn_1_81E4(void) {
     for (groupIndex = 0; groupIndex < 6; groupIndex++) {
         for (entryIndex = 0; entryIndex < 8; entryIndex++) {
             if (groupIndex == 0 && entryIndex == 0) {
-                baseModelId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7d0000, 34), 0x10000000, 2));
+                baseModelId = fn_80025A04( fn_80008DD0(DATANUM(0x7d0000, 34), 0x10000000, 2));
                 modelId = baseModelId;
             } else {
                 modelId = fn_80025D4C(baseModelId);
             }
 
-            fn_80026790(
-                modelId, &lbl_1_data_2A0[entryIndex + groupIndex * 8].position);
-            fn_80026808(modelId, 0.0f,
-                            lbl_1_data_2A0[entryIndex + groupIndex * 8].rotation,
-                            0.0f);
+            fn_80026790( modelId, &lbl_1_data_2A0[entryIndex + groupIndex * 8].position);
+            fn_80026808(modelId, 0.0f, lbl_1_data_2A0[entryIndex + groupIndex * 8].rotation, 0.0f);
             lbl_1_bss_604[groupIndex][entryIndex].modelId = modelId;
             fn_80026E44(modelId);
 
             for (motionIndex = 0; motionIndex < 4; motionIndex++) {
                 jointMotionId = fn_80030458(
-                    modelId, fn_80008DD0(
-                                 lbl_1_data_660[motionIndex].fileId,
-                                  0x10000000, 2));
+                    modelId, fn_80008DD0( lbl_1_data_660[motionIndex].fileId, 0x10000000, 2));
                 lbl_1_bss_604[groupIndex][entryIndex]
                     .jointMotionIds[motionIndex] = jointMotionId;
             }
 
-            fn_8002C95C(
-                modelId, lbl_1_bss_604[groupIndex][entryIndex].jointMotionIds[1]);
+            fn_8002C95C( modelId, lbl_1_bss_604[groupIndex][entryIndex].jointMotionIds[1]);
             fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
             lbl_1_bss_604[groupIndex][entryIndex].slotIndex = entryIndex;
             lbl_1_bss_604[groupIndex][entryIndex].state = 0;
             lbl_1_bss_580[groupIndex].obstacleIndices[entryIndex] = entryIndex;
 
-            modelId = fn_80025A04(
-         fn_80008DD0(DATANUM(0x7d0000, 45), 0x10000000, 2));
+            modelId = fn_80025A04( fn_80008DD0(DATANUM(0x7d0000, 45), 0x10000000, 2));
             fn_8002D86C(modelId, 0.0f);
             fn_800269E8(modelId, 1);
             lbl_1_bss_604[groupIndex][entryIndex].secondaryModelId = modelId;
@@ -2490,8 +2405,6 @@ void fn_1_8720(s16 groupIndex, s16 obstacleIndex);
 void fn_1_88B4(s16 groupIndex, s16 entryIndex);
 
 void fn_1_8964(s16 groupIndex, s16 entryIndex);
-
-typedef M666DataTransform M666StartPosition;
 
 void fn_1_8A14(s16 groupIndex, s16 obstacleIndex);
 
@@ -2543,8 +2456,7 @@ void fn_1_8720(s16 groupIndex, s16 obstacleIndex) {
     Point3d modelPosition;
 
     if ((u32)lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor == 0U) {
-        fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId,
-                        &modelPosition);
+        fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId, &modelPosition);
         actorParam.height = 200.0f;
         actorParam.radius = 100.0f;
         actorParam.param = obstacleIndex + ((groupIndex << 3) + 52);
@@ -2554,12 +2466,9 @@ void fn_1_8720(s16 groupIndex, s16 obstacleIndex) {
         actorParam.correctHook = NULL;
 
         lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor =
-            fn_80080B04(&actorParam,
-                          lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId);
-        fn_80086AA8(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor,
-                      &modelPosition);
-        fn_80086CBC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor,
-                          0.0f);
+            fn_80080B04(&actorParam, lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId);
+        fn_80086AA8(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor, &modelPosition);
+        fn_80086CBC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor, 0.0f);
     }
 }
 
@@ -2592,11 +2501,8 @@ void fn_1_8A14(s16 groupIndex, s16 obstacleIndex) {
     lbl_1_bss_604[groupIndex][obstacleIndex].slotIndex =
         group->obstacleCount;
     group->obstacleCount++;
-    fn_80026790(obstacle->modelId,
-                     &lbl_1_data_2A0[groupIndex * 8 + 7].position);
-    fn_80026808(obstacle->modelId, 0.0f,
-                    lbl_1_data_2A0[groupIndex * 8 + 7].rotation,
-                    0.0f);
+    fn_80026790(obstacle->modelId, &lbl_1_data_2A0[groupIndex * 8 + 7].position);
+    fn_80026808(obstacle->modelId, 0.0f, lbl_1_data_2A0[groupIndex * 8 + 7].rotation, 0.0f);
     fn_80026A44(obstacle->modelId, 1);
     obstacle->state = 1;
     fn_8002CCC0(obstacle->modelId,
@@ -2606,8 +2512,6 @@ void fn_1_8A14(s16 groupIndex, s16 obstacleIndex) {
 }
 
 void fn_1_8B88(s32 groupIndex, s32 entryIndex);
-
-typedef M666DataTransform M666ObstacleSpawnPoint;
 
 f32 lbl_1_data_810[8] = {
     820.0f, 1040.0f, 1260.0f, 1480.0f,
@@ -2632,8 +2536,7 @@ static inline void m666ActivateLaneModel(s16 groupIndex, s16 itemIndex) {
             continue;
         }
 
-        fn_800267CC(lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId,
-                        &position);
+        fn_800267CC(lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId, &position);
         position.x += groupIndex == 0 ? 200.0f : -200.0f;
         position.x += -30.0f + (f32)frandmod(60);
         position.y += -30.0f + (f32)frandmod(60);
@@ -2642,10 +2545,7 @@ static inline void m666ActivateLaneModel(s16 groupIndex, s16 itemIndex) {
             lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex]
                 .modelId,
             &position);
-        fn_80026A44(
-            lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex]
-                .modelId,
-            1);
+        fn_80026A44( lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex] .modelId, 1);
         fn_80026CBC(
             lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex]
                 .modelId,
@@ -2700,8 +2600,7 @@ void fn_1_8B88(s32 groupIndex, s32 entryIndex) {
                 playerHolder = lbl_1_bss_8[playerIndex].player;
                 playerActor = playerHolder->actor;
                 fn_80086BC8(playerActor, &targetPosition);
-                distanceSquared = PSVECSquareDistance(&actorPosition,
-                                                       &targetPosition);
+                distanceSquared = PSVECSquareDistance(&actorPosition, &targetPosition);
                 candidateDistance = sqrtf(distanceSquared);
                 if (nearestDistance >= candidateDistance) {
                     nearestDistance = candidateDistance;
@@ -2788,15 +2687,13 @@ void fn_1_901C(s32 groupIndex, s32 entryIndex) {
 
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-            fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
-                      20, 4, 4);
+            fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 4, 4);
         }
     }
 
     fn_1_1198(0);
     HuAudFXPlayPan(MSM_SE_MG666_OBSTACLE_RESET, 64.0 -
-        32.0 * sin((M_PI * (f64)modelPosition.x) /
-                               180.0));
+        32.0 * sin((M_PI * (f64)modelPosition.x) / 180.0));
 }
 
 /* Advances all moving obstacles through their states, updating models, actors, effects,
@@ -2806,7 +2703,6 @@ void fn_1_9260(void) {
     Point3d position;
     s32 groupIndex;
     s32 obstacleIndex;
-    s32 playerIndex;
     f32 angle;
 
     lbl_1_bss_E90 = 0;
@@ -2861,15 +2757,12 @@ void fn_1_9260(void) {
                     fn_80026790(obstacle->alternateModelId, &position);
                     fn_800269E8(obstacle->modelId, 1U);
                     fn_80026A44(obstacle->alternateModelId, 1U);
-                    fn_8002C95C(obstacle->alternateModelId,
-                                   obstacle->jointMotionIds[3]);
+                    fn_8002C95C(obstacle->alternateModelId, obstacle->jointMotionIds[3]);
                     fn_80086CB0(obstacle->actor, &angle);
-                    fn_80026808(obstacle->alternateModelId,
-                                    0.0f, angle, 0.0f);
+                    fn_80026808(obstacle->alternateModelId, 0.0f, angle, 0.0f);
                     HuAudFXPlayPan(MSM_SE_GUIDE_OBJECT_CATCH,
                                    64.0 - 32.0 *
-                                   sin((M_PI * (f64)position.x) /
-                                       180.0));
+                                   sin((M_PI * (f64)position.x) / 180.0));
                     obstacle->timer = 0;
                 }
                 break;
@@ -2931,10 +2824,8 @@ void fn_1_9D3C(s16 groupIndex) {
                               [lbl_1_bss_580[groupIndex].obstacleIndices[0]];
         fn_8002741C(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
                         ((M666MovingObstacle *)model)->modelId);
-        fn_80026760(((M666MovingObstacle *)model)->modelId,
-                        0.0f, 0.0f, 0.0f);
-        fn_80026808(((M666MovingObstacle *)model)->modelId,
-                        0.0f, 0.0f, 0.0f);
+        fn_80026760(((M666MovingObstacle *)model)->modelId, 0.0f, 0.0f, 0.0f);
+        fn_80026808(((M666MovingObstacle *)model)->modelId, 0.0f, 0.0f, 0.0f);
         fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
         fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
         fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));
@@ -2981,8 +2872,7 @@ void fn_1_9F3C(void) {
                 fn_80027508(motionEvent->modelId);
                 fn_80026790(obstacle->modelId, &modelPosition);
                 if (eventIndex >= 3) {
-                    fn_80026808(obstacle->modelId, 0.0f,
-                                    180.0f, 0.0f);
+                    fn_80026808(obstacle->modelId, 0.0f, 180.0f, 0.0f);
                 }
                  fn_800269E8(motionEvent->modelId, ((1 << 30) | (1 << 2)));
                 obstacle->state = 3;
@@ -3037,26 +2927,22 @@ void fn_1_A1CC(void) {
     for (groupIndex = 0; groupIndex < 3; groupIndex++) {
         for (itemIndex = 0; itemIndex < 3; itemIndex++) {
             if (groupIndex == 0 && itemIndex == 0) {
-                baseModelId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7d0000, 43), 0x10000000, 2));
+                baseModelId = fn_80025A04( fn_80008DD0(DATANUM(0x7d0000, 43), 0x10000000, 2));
                 modelId = baseModelId;
             } else {
                 modelId = fn_80025D4C(baseModelId);
             }
 
             fn_80026790(modelId, &lbl_1_data_210[itemIndex + groupIndex * 3].position);
-            fn_80026808(modelId, 0.0f,
-                            lbl_1_data_27C[itemIndex + groupIndex * 3], 0.0f);
-            fn_800268B0(modelId, 0.5f,
-                              0.5f, 0.5f);
+            fn_80026808(modelId, 0.0f, lbl_1_data_27C[itemIndex + groupIndex * 3], 0.0f);
+            fn_800268B0(modelId, 0.5f, 0.5f, 0.5f);
             fn_80026E44(modelId);
             lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId = modelId;
             lbl_1_bss_148[groupIndex].items[itemIndex].laneIndex = itemIndex;
             lbl_1_bss_148[groupIndex].items[itemIndex].alpha = 1.0f;
 
             for (modelIndex = 0; modelIndex < 8; modelIndex++) {
-                modelId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7d0000, 44), 0x10000000, 2));
+                modelId = fn_80025A04( fn_80008DD0(DATANUM(0x7d0000, 44), 0x10000000, 2));
                 fn_800269E8(modelId, 1);
                 lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].modelId = modelId;
                 lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex].active = 0;
@@ -3143,9 +3029,7 @@ void fn_1_A798(void) {
                 break;
             }
 
-            fn_80026790(
-                lbl_1_bss_148[groupIndex].items[laneIndex].rootModelId,
-                &position);
+            fn_80026790( lbl_1_bss_148[groupIndex].items[laneIndex].rootModelId, &position);
             if (lane->state == 3 || lane->state == 4) {
                 if (fn_80071A8C() >= 6U) {
                     lane->alpha -= 0.02f;
@@ -3279,8 +3163,7 @@ void fn_1_B55C(void) {
 
     for (fallingModelIndex = 0; fallingModelIndex < 3; fallingModelIndex++) {
         if (fallingModelIndex == 0) {
-            baseModel = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7d0000, 41), 0x10000000, 2));
+            baseModel = fn_80025A04( fn_80008DD0(DATANUM(0x7d0000, 41), 0x10000000, 2));
             model = baseModel;
         } else {
             model = fn_80025D4C(baseModel);
@@ -3289,8 +3172,7 @@ void fn_1_B55C(void) {
         fn_800269E8(model, 1);
         lbl_1_bss_E3C[fallingModelIndex].modelIds[0] = model;
 
-        model = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7d0000, 42), 0x10000000, 2));
+        model = fn_80025A04( fn_80008DD0(DATANUM(0x7d0000, 42), 0x10000000, 2));
         fn_800269E8(model, 1);
         fn_8002D86C(model, 0.0f);
         lbl_1_bss_E3C[fallingModelIndex].modelIds[1] = model;
@@ -3348,14 +3230,10 @@ void fn_1_B854(void) {
     s32 fallingModelIndex;
     s32 otherGroup;
     s32 entryIndex;
-    s32 openingIndex;
-    s32 pointIndex;
-    f32 distanceSquared;
     f32 impactVerticalStep;
     f32 magnitude;
     f32 absoluteVerticalStep;
     M666ActorWork *actorWork;
-    M666PerimeterMotion *perimeterMotion;
 
     mode = fn_80071A8C();
     for (fallingModelIndex = 0; fallingModelIndex < 3; fallingModelIndex++) {
@@ -3483,8 +3361,7 @@ void fn_1_B854(void) {
                 }
             }
             if (lbl_1_bss_E3C[fallingModelIndex].actor) {
-                fn_80086B04(lbl_1_bss_E3C[fallingModelIndex].actor,
-                                 &modelPosition);
+                fn_80086B04(lbl_1_bss_E3C[fallingModelIndex].actor, &modelPosition);
             }
             break;
         default:
@@ -3558,8 +3435,7 @@ void fn_1_C630(void) {
         }
 
         fn_80026790(lbl_1_bss_E3C[spawnIndex].modelIds[0], &modelPosition);
-        fn_80026760(lbl_1_bss_E3C[spawnIndex].modelIds[1], modelPosition.x,
-                        0.0f, modelPosition.z);
+        fn_80026760(lbl_1_bss_E3C[spawnIndex].modelIds[1], modelPosition.x, 0.0f, modelPosition.z);
         lbl_1_bss_E3C[spawnIndex].opacity = 1.0f;
         lbl_1_bss_E3C[spawnIndex].motionState = 0;
     }

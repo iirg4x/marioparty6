@@ -17,7 +17,7 @@ public:
     s32 completedSegments;
     f32 segmentPosition;
     s32 sceneIndex;
-    struct ScenePhase {
+    struct {
         s32 selectedAction[50];
     } phases[4];
     f32 pathPosition;

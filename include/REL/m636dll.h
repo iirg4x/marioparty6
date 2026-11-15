@@ -50,7 +50,6 @@ void fn_1_151C(s16 mode, s16 frameNo);
 void fn_1_1C74(s16 mode, s16 frameNo);
 void fn_1_1F58(s16 mode, s16 frameNo);
 void fn_1_1F78(s16 mode, s16 frameNo);
-void ObjectSetup(void);
 void fn_1_21E4(OMOBJ *obj);
 void fn_1_2F10(MGACTOR *actor, int playerSlot);
 void fn_1_31BC(void);
@@ -81,15 +80,6 @@ void fn_1_6478(void);
 void fn_1_6790(BOOL visible);
 void fn_1_67F4(void);
 
-/* Byte spans used by the sequence, camera and CPU state. */
-#define PIXEL_SEQUENCE_STATE_BYTES 16
-#define PIXEL_CAMERA_TIMER_STATE_BYTES 52
-#define PIXEL_CPU_STATE_BYTES 52
-#define PIXEL_STEERING_SCORES_BYTES 60
-#define PIXEL_PATTERN_STATE_BYTES 88
-#define PIXEL_PLAYER_RECORDS_OFFSET 120
-#define PIXEL_TIMER_RECORD_OFFSET 68
-
 /* State shared by the scene, round sequence and CPU player routines. */
 typedef struct M636WorkingData {
     HUPROCESS *process;
@@ -109,7 +99,7 @@ typedef struct M636WorkingData {
     MGPLAYER *players[4]; /* Player records owned by the actor manager. */
     s32 landingCounter[4];
     s32 cpuActive;
-    s32 cpuMode[4];
+    s32 cpuMode[4]; /* 0 pause, 1 choose, 2 jump, 3 ground pound, 4 move. */
     s32 cpuFrameCounter[4];
     s32 targetCell[4]; /* CPU target panel, 0-15; -1 means no panel selected. */
     Point3d cpuStickDirection[4];
@@ -163,12 +153,5 @@ extern u32 lbl_1_data_2A0[3];
 extern u32 lbl_1_data_2AC[3][16];
 extern u32 lbl_1_data_36C[3];
 extern u8 lbl_1_data_378[768];
-
-#define TIMER (lbl_1_bss_0.timer)
-#define TICK (lbl_1_bss_0.sequenceFrame)
-#define READ_MODEL(resource)                                                                       \
-    fn_80025A04(fn_80008DD0((resource), 0x10000000, 2))
-#define READ_MOTION(model, resource)                                                               \
-    fn_80030458((model), fn_80008DD0((resource), 0x10000000, 2))
 
 #endif
