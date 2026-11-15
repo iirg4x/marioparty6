@@ -299,7 +299,6 @@ static void ProcessTriggerLR(
     TriggerLR *block = (TriggerLR *)baseBlock;
     s16 *signal;
 
-    (void)inputCount;
     if (inputs[0] == NULL) {
         return;
     }

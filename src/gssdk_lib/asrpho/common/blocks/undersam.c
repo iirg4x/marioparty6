@@ -41,12 +41,11 @@ if (inputSamples != NULL) {
 }
 
 /* Calls the base-block destructor when the low byte of the TOS control command is 255. */
-static u32 ControlUndersampler(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+static u32 ControlUndersampler(TosBaseBlock *_This, unsigned char ControlId)
 {
-switch ((u8)command) {
+switch ((u8)ControlId) {
 case UNDERSAMPLER_DESTRUCT_COMMAND:
-    tosBaseBlockDestruct(baseBlock);
+    tosBaseBlockDestruct(_This);
     break;
 default:
     return 0;
