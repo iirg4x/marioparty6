@@ -1,6 +1,5 @@
 /* Board capsule events with special character scenes and player effects. */
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 #include "humath.h"
 #include "dolphin/pad.h"
 #include "datadir_enum.h"

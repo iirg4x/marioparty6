@@ -1,6 +1,5 @@
 // Builds player status panels and the single-player counter of spaces remaining to the goal.
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 
 #include "game/board/status.h"
 #include "game/board/player.h"

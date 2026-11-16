@@ -1,15 +1,9 @@
 // Provides collision detection and response for minigame models and bodies.
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 #include "game/mg/colman.h"
 #include "game/hu3d.h"
 #include "game/frand.h"
 #include "humath.h"
-
-extern inline float fabsf(float x)
-{
-    return fabs(x);
-}
 
 #define COL_MAT_ATTR_MASK 0x3F0000 // Material bits encoding the surface response.
 

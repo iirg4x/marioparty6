@@ -1,5 +1,4 @@
 // Board music and sound-effect playback helpers.
-#define _MATH_H
 
 #include "game/hsfex.h"
 #include "game/board/audio.h"

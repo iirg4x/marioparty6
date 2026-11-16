@@ -19,8 +19,7 @@
 #define MUSY_VERSION MUSY_VERSION_CHECK(2, 0, 1)
 #endif
 
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 #include <stddef.h>
 
 #ifdef __cplusplus

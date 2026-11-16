@@ -1,6 +1,4 @@
 /* Runs the shared board mode lifecycle, turn loop, and day/night transitions. */
-#define _DOLPHIN_MATH
-#define _MATH_H
 
 #include "game/board/main.h"
 #include "game/board/audio.h"

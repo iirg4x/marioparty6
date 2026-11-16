@@ -1,4 +1,4 @@
-#define _MATH_H
+#include "math.h"
 
 #include "musyx/musyx.h"
 

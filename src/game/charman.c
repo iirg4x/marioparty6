@@ -1,6 +1,5 @@
 // Character model, motion, voice, lighting, and particle effects used throughout gameplay.
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 
 #include "game/charman.h"
 #include "game/process.h"

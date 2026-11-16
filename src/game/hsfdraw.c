@@ -1,6 +1,5 @@
 /* Draws HSF model objects and configures the GX state needed for their faces. */
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 
 #include "game/hu3d.h"
 
@@ -12,8 +11,6 @@
 
 #include "humath.h"
 #include "string.h"
-
-static inline float acosf(float x) { return (float)acos((double)x); }
 
 #define DRAW_OBJ_MAX 512
 
