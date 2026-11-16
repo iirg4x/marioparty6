@@ -1,6 +1,5 @@
 /* Board-side math helpers for transforms, camera projection, and motion curves. */
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 #include <stddef.h>
 
 #include "game/board/camera.h"

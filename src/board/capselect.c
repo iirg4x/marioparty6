@@ -1,5 +1,4 @@
 /* Board capsule selection, capsule acquisition, and capsule-space displays. */
-#define _MATH_H
 #include "game/board/main.h"
 
 #include "game/board/audio.h"
@@ -24,7 +23,7 @@
 #include "game/pad.h"
 #include "game/wipe.h"
 
-#include "dolphin/math.h"
+#include "math.h"
 #include "messdir_enum.h"
 #include "string.h"
 

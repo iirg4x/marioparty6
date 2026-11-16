@@ -1,5 +1,4 @@
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 
 #include "game/board/gate.h"
 #include "game/board/model.h"

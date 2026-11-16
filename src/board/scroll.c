@@ -1,6 +1,5 @@
 // Board scroll and map screens, including their map markers and path display.
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 #include "game/board/main.h"
 
 #include "game/board/audio.h"

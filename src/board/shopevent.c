@@ -1,8 +1,6 @@
 /* Board shop events display capsule offers and let a player buy or replace one. */
-/* Use the Dolphin math declarations for the shop's movement and menu animations. */
-#define _MATH_H
 #include "game/board/capevent.h"
-#include "dolphin/math.h"
+#include "math.h"
 
 #include "game/board/main.h"
 #include "game/board/audio.h"

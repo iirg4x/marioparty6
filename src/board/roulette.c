@@ -1,6 +1,5 @@
 // Board player-selection roulette used by capsule effects.
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 
 #include "game/board/roulette.h"
 #include "game/board/audio.h"
@@ -14,7 +13,6 @@
 #include "game/frand.h"
 
 #include "humath.h"
-#include "math.h"
 
 static s8 rouletteAngleNo = -1;
 static HUSPR_GROUPID rouletteSprGrpId = HUSPR_GRP_NONE;

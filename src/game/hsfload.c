@@ -241,7 +241,7 @@ static void MaterialLoad(void)
             rgba[i].b = loadedMaterial->litColor[2];
             rgba[i].a = 255;
             for(j=0; j<loadedMaterial->attrNum; j++) {
-                // Attribute symbol entries are written back unchanged here.
+                // Stores each attribute back unchanged.
                 loadedMaterial->attr[j] = loadedMaterial->attr[j];
             }
         }
@@ -496,7 +496,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
     } resolvedReference;
 
     resolvedReference.parent = parent;
-    // Write the existing object type back unchanged before resolving its links.
+    // Stores the object type back unchanged.
     object->type = object->type;
     switch(object->type) {
         case 2:
@@ -887,7 +887,7 @@ static void PartLoad(void)
             partNew->num = partFile[i].num;
             partNew->vertex = &data[(u32)partFile[i].vertex];
             for(j=0; j<partNew->num; j++) {
-                // This pass leaves the packed vertex-index entries unchanged.
+                // Stores each vertex index back unchanged.
                 partNew->vertex[j] = partNew->vertex[j];
             }
         }
@@ -1045,7 +1045,7 @@ static void PaletteLoad(void)
             paletteNew->data = data;
             paletteNew->palSize = paletteFile->palSize;
             for(j=0; j<paletteFile->palSize; j++) {
-                // This pass leaves the packed palette entries unchanged.
+                // Stores each palette entry back unchanged.
                 data[j] = data[j];
             }
         }
