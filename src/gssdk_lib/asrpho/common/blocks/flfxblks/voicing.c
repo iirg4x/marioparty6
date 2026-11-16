@@ -1,29 +1,30 @@
 #include "gssdk/triggerlr.h"
 
-#include <math.h>
-
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 extern f32 expf(f32 value);
+extern f32 floorf(f32 value);
+extern f32 ceilf(f32 value);
 extern f32 logf_check(f32 value);
+extern u32 _tosErrorLog(void *block, u32 error);
 
-s32 Voicing_AddSignal(TriggerLR *block, s16 *input)
+s32 Voicing_AddSignal(TriggerLR *This, s16 *pSamples)
 {
-    s16 *output = block->subsamplerOutput;
-    s16 *outputEnd = output + block->frameLength;
     s32 result = 0;
+    s16 *output = This->subsamplerOutput;
+    s16 *outputEnd = output + This->frameLength;
 
-    if (Subsampler_Process(block, input) != 0) {
+    if (Subsampler_Process(This, pSamples) != 0) {
         result = 1;
     } else {
         while (output < outputEnd) {
             s16 sample = *output;
 
-            *block->signalWrite++ = sample;
-            *block->energyWrite++ = sample * sample;
-            if (block->signalWrite >= block->signalEnd) {
-                block->signalWrite = block->signalHistory;
-                block->energyWrite = block->energyHistory;
+            *This->signalWrite++ = sample;
+            *This->energyWrite++ = sample * sample;
+            if (This->signalWrite >= This->signalEnd) {
+                This->signalWrite = This->signalHistory;
+                This->energyWrite = This->energyHistory;
             }
             output++;
         }
@@ -31,96 +32,109 @@ s32 Voicing_AddSignal(TriggerLR *block, s16 *input)
     return result;
 }
 
-void Voicing_MaintainNoiseEner(TriggerLR *block)
+void Voicing_MaintainNoiseEner(TriggerLR *This)
 {
-    u32 *energy = block->energyWrite - 1;
+    u32 *energy;
+    u32 *energyHistory;
     f32 energySum = 0.0f;
     u32 i;
 
-    if (energy < block->energyHistory) {
-        energy += block->historyLength;
+    if ((energy = This->energyWrite - 1) <
+        (energyHistory = This->energyHistory)) {
+        energy += This->historyLength;
     }
-    for (i = 0; i < block->frameLength; i++) {
+    for (i = 0; i < This->frameLength; i++) {
         energySum += *energy--;
-        if (energy < block->energyHistory) {
-            energy += block->historyLength;
+        if (energy < energyHistory) {
+            energy += This->historyLength;
         }
     }
 
-    *block->noiseEnergyWrite++ = logf_check(energySum);
-    if (block->noiseEnergyWrite >= block->noiseEnergyEnd) {
-        block->noiseEnergyWrite = block->noiseEnergyHistory;
+    *This->noiseEnergyWrite++ = logf_check(energySum);
+    if (This->noiseEnergyWrite >= This->noiseEnergyEnd) {
+        This->noiseEnergyWrite = This->noiseEnergyHistory;
     }
-    if (block->noiseEnergyCount < block->noiseEnergyCapacity) {
-        block->noiseEnergyCount++;
+    if (This->noiseEnergyCount < This->noiseEnergyCapacity) {
+        This->noiseEnergyCount++;
     }
 }
 
-f32 Voicing_GetMaxVoicing(TriggerLR *block)
+f32 Voicing_GetMaxVoicing(TriggerLR *This)
 {
     f32 *noiseEnergy;
-    f32 noiseMean = 0.0f;
+    f32 noiseMean;
     f32 noiseLog;
     f32 currentEnergy;
+    f32 logPower1;
     f32 laggedEnergy;
-    f32 maximumCorrelation = 0.0f;
-    f32 maximumVoicing = 0.0f;
-    u32 bestLag = 0;
+    f32 maximumCorrelation;
+    f32 maximumVoicing;
+    u32 bestLag;
     u32 lag;
     u32 i;
 
-    for (noiseEnergy = block->noiseEnergyHistory;
-         noiseEnergy < block->noiseEnergyHistory + block->noiseEnergyCount;
+    maximumVoicing = 0.0f;
+    noiseMean = maximumVoicing;
+
+    for (noiseEnergy = This->noiseEnergyHistory;
+         noiseEnergy < This->noiseEnergyHistory + This->noiseEnergyCount;
          noiseEnergy++) {
         noiseMean += expf(*noiseEnergy);
     }
-    if (block->noiseEnergyCount != 0) {
-        noiseMean /= block->noiseEnergyCount;
+    if (This->noiseEnergyCount != 0) {
+        noiseMean /= This->noiseEnergyCount;
     }
     noiseLog = logf_check(noiseMean);
 
     {
-        u32 *energy = block->energyWrite - 1;
+        u32 *energy;
+        u32 *energyHistory;
         f32 energySum = 0.0f;
 
-        if (energy < block->energyHistory) {
-            energy += block->historyLength;
+        if ((energy = This->energyWrite - 1) <
+            (energyHistory = This->energyHistory)) {
+            energy += This->historyLength;
         }
-        for (i = 0; i < block->frameLength; i++) {
+        for (i = 0; i < This->frameLength; i++) {
             energySum += *energy--;
-            if (energy < block->energyHistory) {
-                energy += block->historyLength;
+            if (energy < energyHistory) {
+                energy += This->historyLength;
             }
         }
-        currentEnergy = logf_check(energySum);
+        logPower1 = logf_check(energySum);
+        currentEnergy = logPower1;
     }
 
-    if (currentEnergy >= noiseLog + block->voicingThreshold &&
-        currentEnergy >= block->minimumLogEnergy) {
-        for (lag = block->minimumLag; lag <= block->maximumLag; lag++) {
+    if (!(logPower1 < noiseLog + This->voicingThreshold ||
+          logPower1 < This->minimumLogEnergy)) {
+        maximumCorrelation = 0.0f;
+        bestLag = 0;
+        for (lag = This->minimumLag; lag <= This->maximumLag; lag++) {
             f32 correlation = 0.0f;
             u32 phase;
 
             for (phase = 0; phase < 4; phase++) {
-                s16 *first = block->signalWrite - 1 - phase;
-                s16 *second = block->signalWrite - 1 - phase - lag;
+                s16 *firstRaw = This->signalWrite - 1 - phase;
+                s16 *first = firstRaw;
+                s16 *second;
 
-                if (first < block->signalHistory) {
-                    first += block->historyLength;
+                if (firstRaw < This->signalHistory) {
+                    first += This->historyLength;
                 }
-                if (second < block->signalHistory) {
-                    second += block->historyLength;
+                second = firstRaw - lag;
+                if (second < This->signalHistory) {
+                    second += This->historyLength;
                 }
 
-                for (i = phase; i < block->frameLength; i += 4) {
+                for (i = phase; i < This->frameLength; i += 4) {
                     correlation += (f32)(*first * *second);
                     first -= 4;
-                    if (first < block->signalHistory) {
-                        first += block->historyLength;
+                    if (first < This->signalHistory) {
+                        first += This->historyLength;
                     }
                     second -= 4;
-                    if (second < block->signalHistory) {
-                        second += block->historyLength;
+                    if (second < This->signalHistory) {
+                        second += This->historyLength;
                     }
                 }
                 if (correlation < 0.0f) {
@@ -135,129 +149,145 @@ f32 Voicing_GetMaxVoicing(TriggerLR *block)
         }
 
         {
-            u32 *energy = block->energyWrite - 1 - bestLag;
+            u32 *energy;
+            u32 *energyHistory;
             f32 energySum = 0.0f;
 
-            if (energy < block->energyHistory) {
-                energy += block->historyLength;
+            if ((energy = This->energyWrite - 1 - bestLag) <
+                (energyHistory = This->energyHistory)) {
+                energy += This->historyLength;
             }
-            for (i = 0; i < block->frameLength; i++) {
+            for (i = 0; i < This->frameLength; i++) {
                 energySum += *energy--;
-                if (energy < block->energyHistory) {
-                    energy += block->historyLength;
+                if (energy < energyHistory) {
+                    energy += This->historyLength;
                 }
             }
             laggedEnergy = logf_check(energySum);
         }
 
-        if (laggedEnergy >= noiseLog + block->voicingThreshold &&
-            laggedEnergy >= block->minimumLogEnergy) {
+        if (!(laggedEnergy < noiseLog + This->voicingThreshold ||
+              laggedEnergy < This->minimumLogEnergy)) {
             f32 laggedSignalEnergy =
-                0.5f * logf_check(expf(laggedEnergy) - noiseMean);
-            f32 currentSignalEnergy =
-                0.5f * logf_check(expf(currentEnergy) - noiseMean);
+                logf_check(expf(laggedEnergy) - noiseMean) / 2.0f;
+            currentEnergy =
+                logf_check(expf(currentEnergy) - noiseMean) / 2.0f;
 
             maximumVoicing = logf_check(maximumCorrelation) -
-                             currentSignalEnergy - laggedSignalEnergy;
+                             currentEnergy - laggedSignalEnergy;
         }
     }
     return maximumVoicing;
 }
 
-void Voicing_Reset(TriggerLR *block)
+void Voicing_Reset(TriggerLR *This)
 {
-    block->signalWrite = block->signalHistory;
-    while (block->signalWrite < block->signalEnd) {
-        *block->signalWrite++ = 0;
+    This->signalWrite = This->signalHistory;
+    while (This->signalWrite < This->signalEnd) {
+        *This->signalWrite = 0;
+        This->signalWrite++;
     }
-    block->signalWrite = block->signalHistory;
+    This->signalWrite = This->signalHistory;
 
-    block->energyWrite = block->energyHistory;
-    while (block->energyWrite < block->energyEnd) {
-        *block->energyWrite++ = 0;
+    This->energyWrite = This->energyHistory;
+    while (This->energyWrite < This->energyEnd) {
+        *This->energyWrite = 0;
+        This->energyWrite++;
     }
-    block->energyWrite = block->energyHistory;
+    This->energyWrite = This->energyHistory;
 
-    block->noiseEnergyWrite = block->noiseEnergyHistory;
-    block->noiseEnergyCount = 0;
-    Subsampler_Reset(block);
+    This->noiseEnergyWrite = This->noiseEnergyHistory;
+    This->noiseEnergyCount = 0;
+    Subsampler_Reset(This);
 }
 
-s32 InitVoicing(TriggerLR *block)
+s32 InitVoicing(TriggerLR *This)
 {
-    TosContext *context = block->base.context;
+    TosContext *context = This->base.context;
     f32 minimumPeriod;
     f32 maximumPeriod;
     f32 frameDuration;
     f32 sampleRate;
     f32 minimumLogEnergy;
+    f32 voicingThreshold;
+    f32 minimumPeriodSamples;
+    f32 maximumPeriodSamples;
+    f32 frameSamples;
     u32 result = 0;
 
-    block->frameLength = block->maximumLag = block->minimumLag = 0;
-    block->signalEnd = block->signalWrite = block->signalHistory = NULL;
-    block->energyEnd = block->energyWrite = block->energyHistory = NULL;
-    block->noiseEnergyEnd = block->noiseEnergyHistory =
-        block->noiseEnergyWrite = NULL;
-    block->noiseEnergyCapacity = block->noiseEnergyCount = 0;
+    This->frameLength = 0;
+    This->maximumLag = 0;
+    This->minimumLag = 0;
+    This->signalEnd = NULL;
+    This->signalWrite = NULL;
+    This->signalHistory = NULL;
+    This->energyEnd = NULL;
+    This->energyWrite = NULL;
+    This->energyHistory = NULL;
+    This->noiseEnergyEnd = NULL;
+    This->noiseEnergyHistory = NULL;
+    This->noiseEnergyWrite = NULL;
+    This->noiseEnergyCapacity = 0;
+    This->noiseEnergyCount = 0;
 
-    minimumPeriod = _tosGetProfileFloat(block, 24, 0.005f);
-    maximumPeriod = _tosGetProfileFloat(block, 25, 0.014f);
-    frameDuration = _tosGetProfileFloat(block, 26, 0.01f);
-    sampleRate = _tosGetProfileFloat(block, 27, 11000.0f);
-    minimumLogEnergy = _tosGetProfileFloat(block, 29, -1000.0f);
+    minimumPeriod = _tosGetProfileFloat(This, 24, 0.005f);
+    maximumPeriod = _tosGetProfileFloat(This, 25, 0.014f);
+    frameDuration = _tosGetProfileFloat(This, 26, 0.01f);
+    sampleRate = _tosGetProfileFloat(This, 27, 11000.0f);
+    minimumLogEnergy = _tosGetProfileFloat(This, 29, -1000.0f);
 
-    block->minimumLogEnergy = minimumLogEnergy;
-    block->voicingThreshold =
-        _tosGetProfileFloat(block, 28, 6.0f) * 0.23025851f;
-    block->minimumLag =
-        (u32)floorf(minimumPeriod * sampleRate * 0.5f);
-    block->maximumLag =
-        (u32)ceilf(maximumPeriod * sampleRate * 0.5f);
-    block->frameLength =
-        (u32)ceilf(frameDuration * sampleRate * 0.5f);
-    block->historyLength = block->maximumLag + block->frameLength;
+    voicingThreshold = _tosGetProfileFloat(This, 28, 6.0f);
+    voicingThreshold *= 0.23025851f;
+    This->minimumLogEnergy = minimumLogEnergy;
+    This->voicingThreshold = voicingThreshold;
+    minimumPeriodSamples = minimumPeriod * sampleRate;
+    This->minimumLag =
+        (u32)floorf(minimumPeriodSamples / 2.0f);
+    maximumPeriodSamples = maximumPeriod * sampleRate;
+    This->maximumLag = (u32)ceilf(maximumPeriodSamples / 2.0f);
+    frameSamples = frameDuration * sampleRate;
+    This->frameLength = (u32)ceilf(frameSamples / 2.0f);
+    This->historyLength = This->maximumLag + This->frameLength;
 
-    block->signalHistory =
-        heap_Calloc(context->heap, block->historyLength, sizeof(s16));
-    block->signalWrite = block->signalHistory;
-    block->signalEnd = block->signalHistory + block->historyLength;
+    This->signalWrite = This->signalHistory =
+        heap_Calloc(context->heap, This->historyLength, sizeof(s16));
+    This->signalEnd = This->signalHistory + This->historyLength;
 
-    block->energyHistory =
-        heap_Calloc(context->heap, block->historyLength, sizeof(u32));
-    block->energyWrite = block->energyHistory;
-    block->energyEnd = block->energyHistory + block->historyLength;
+    This->energyWrite = This->energyHistory =
+        heap_Calloc(context->heap, This->historyLength, sizeof(u32));
+    This->energyEnd = This->energyHistory + This->historyLength;
 
-    block->noiseEnergyCapacity = 16;
-    block->noiseEnergyHistory = heap_Calloc(
-        context->heap, block->noiseEnergyCapacity, sizeof(f32));
-    block->noiseEnergyEnd =
-        block->noiseEnergyHistory + block->noiseEnergyCapacity;
+    This->noiseEnergyCapacity = 16;
+    This->noiseEnergyHistory = heap_Calloc(
+        context->heap, This->noiseEnergyCapacity, sizeof(f32));
+    This->noiseEnergyEnd =
+        This->noiseEnergyHistory + This->noiseEnergyCapacity;
 
-    if (block->signalHistory == NULL || block->energyHistory == NULL ||
-        block->noiseEnergyHistory == NULL) {
-        _tosErrorLog(block, 2);
+    if (This->signalHistory == NULL || This->energyHistory == NULL ||
+        This->noiseEnergyHistory == NULL) {
+        _tosErrorLog(This, 2);
         result = 1;
     } else {
-        Voicing_Reset(block);
-        if (Subsampler_Init(block) != 0) {
+        Voicing_Reset(This);
+        if (Subsampler_Init(This) != 0) {
             result = 1;
         }
     }
     return result;
 }
 
-void Voicing_Free(TriggerLR *block)
+void Voicing_Free(TriggerLR *This)
 {
-    TosContext *context = block->base.context;
+    TosContext *context = This->base.context;
 
-    if (block->signalHistory != NULL) {
-        heap_Free(context->heap, block->signalHistory);
+    if (This->signalHistory != NULL) {
+        heap_Free(context->heap, This->signalHistory);
     }
-    if (block->energyHistory != NULL) {
-        heap_Free(context->heap, block->energyHistory);
+    if (This->energyHistory != NULL) {
+        heap_Free(context->heap, This->energyHistory);
     }
-    if (block->noiseEnergyHistory != NULL) {
-        heap_Free(context->heap, block->noiseEnergyHistory);
+    if (This->noiseEnergyHistory != NULL) {
+        heap_Free(context->heap, This->noiseEnergyHistory);
     }
-    Subsampler_Free(block);
+    Subsampler_Free(This);
 }

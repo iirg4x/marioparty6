@@ -1,6 +1,7 @@
 #include "types.h"
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct PitchDPCell {
     f32 observation;
@@ -511,6 +512,6 @@ static u32 InitPitchDP(TosBaseBlock *baseBlock)
 void *ConstructPitchDP(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, ProcessPitchDP, InitPitchDP,
-        ControlPitchDP, sizeof(PitchDP));
+        context, blockIndex, 1, 1, (TosProcessFunction)ProcessPitchDP, (TosInitFunction)InitPitchDP,
+        (TosControlFunction)ControlPitchDP, sizeof(PitchDP));
 }

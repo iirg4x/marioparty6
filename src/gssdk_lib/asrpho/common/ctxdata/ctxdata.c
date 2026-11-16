@@ -28,135 +28,118 @@ typedef struct ContextData {
 
 typedef void (*ContextV2Function)(void);
 
-BOOL _contextCheckDataType(ContextData *context)
+static BOOL _contextCheckDataType(ContextData *pCtx)
 {
-    return context->data->dataType == 6;
+    return pCtx->data->dataType == 6;
 }
 
-u32 _contextGetSize(ContextData *context)
+static u32 _contextGetSize(ContextData *pCtx)
 {
-    return context->data->size;
+    return pCtx->data->size;
 }
 
-void *_contextGetLanguageVersionInfo(ContextData *context)
+static void *_contextGetLanguageVersionInfo(ContextData *pCtx)
 {
-    return context->data->languageVersionInfo;
+    return pCtx->data->languageVersionInfo;
 }
 
-u32 _contextGetTS(ContextData *context)
+static u32 _contextGetTS(ContextData *pCtx)
 {
-    return context->data->ts;
+    return pCtx->data->ts;
 }
 
-u32 _contextGetAccuracy(ContextData *context)
+static u32 _contextGetAccuracy(ContextData *pCtx)
 {
-    return context->data->accuracy;
+    return pCtx->data->accuracy;
 }
 
-u32 _contextGetRejection(ContextData *context)
+static u32 _contextGetRejection(ContextData *pCtx)
 {
-    return context->data->rejection;
+    return pCtx->data->rejection;
 }
 
-u32 _contextGetGarbage(ContextData *context)
+static u32 _contextGetGarbage(ContextData *pCtx)
 {
-    return context->data->garbage;
+    return pCtx->data->garbage;
 }
 
-u32 _contextGetNbrItem(ContextData *context)
+static u32 _contextGetNbrItem(ContextData *pCtx)
 {
-    return context->data->nbrItem;
+    return pCtx->data->nbrItem;
 }
 
-u32 _contextGetNbrWord(ContextData *context)
+static u32 _contextGetNbrWord(ContextData *pCtx)
 {
-    return context->data->nbrWord;
+    return pCtx->data->nbrWord;
 }
 
-u32 _contextGetNbrPron(ContextData *context)
+static u32 _contextGetNbrPron(ContextData *pCtx)
 {
-    return context->data->nbrPron;
+    return pCtx->data->nbrPron;
 }
 
-u32 _contextGetNbrFollower(ContextData *context)
+static u32 _contextGetNbrFollower(ContextData *pCtx)
 {
-    return context->data->nbrFollower;
+    return pCtx->data->nbrFollower;
 }
 
-u32 _contextGetNbrStartWord(ContextData *context)
+static u32 _contextGetNbrStartWord(ContextData *pCtx)
 {
-    return context->data->nbrStartWord;
+    return pCtx->data->nbrStartWord;
 }
 
-u32 _contextGetNbrStopWord(ContextData *context)
+static u32 _contextGetNbrStopWord(ContextData *pCtx)
 {
-    return context->data->nbrStopWord;
+    return pCtx->data->nbrStopWord;
 }
 
-u32 _contextGetGarbageWordID(ContextData *context)
+static u32 _contextGetGarbageWordID(ContextData *pCtx)
 {
-    return context->data->garbageWordID;
+    return pCtx->data->garbageWordID;
 }
 
-u8 _contextIsSpellingContext(ContextData *context)
+static u8 _contextIsSpellingContext(ContextData *pCtx)
 {
-    return context->data->contextType == 1;
+    return pCtx->data->contextType == 1;
 }
 
-u8 _contextIsIsoWordContext(ContextData *context)
+static u8 _contextIsIsoWordContext(ContextData *pCtx)
 {
-    return context->data->contextType == 2;
+    return pCtx->data->contextType == 2;
 }
 
-u16 *_contextGetpLex(ContextData *context)
+static u16 *_contextGetpLex(ContextData *pCtx)
 {
-    return context->data->lex;
+    return pCtx->data->lex;
 }
 
-u16 *_contextGetpBeginOfWords(ContextData *context)
+static u16 *_contextGetpBeginOfWords(ContextData *pCtx)
 {
-    ContextDataV2 *data = context->data;
+    ContextDataV2 *data = pCtx->data;
     u32 count = data->nbrItem + data->nbrPron;
-    u8 *words;
 
     count += count & 1;
-    words = (u8 *)data + count * sizeof(u16);
-    return (u16 *)(words + offsetof(ContextDataV2, lex));
+    return _contextGetpLex(pCtx) + count;
 }
 
-void *_contextGetpWordProp(ContextData *context)
+static void *_contextGetpWordProp(ContextData *pCtx)
 {
-    ContextDataV2 *data = context->data;
-    u32 lexCount = data->nbrItem + data->nbrPron;
-    u32 wordPropCount;
-    u8 *wordProp;
-
-    lexCount += lexCount & 1;
-    wordPropCount = data->nbrPron + data->nbrWord;
-    wordProp = (u8 *)data + lexCount * sizeof(u16);
-    wordProp += offsetof(ContextDataV2, lex);
-    return wordProp + (wordPropCount + 2) * sizeof(u32);
+    ContextDataV2 *data = pCtx->data;
+    char *wordProp = (char *)_contextGetpBeginOfWords(pCtx);
+    wordProp += ((data->nbrPron + 2) + data->nbrWord) * sizeof(u32);
+    return wordProp;
 }
 
-void *_contextGetpSyntax(ContextData *context)
+static void *_contextGetpSyntax(ContextData *pCtx)
 {
-    ContextDataV2 *data = context->data;
-    u32 lexCount = data->nbrItem + data->nbrPron;
-    u32 wordPropCount;
-    u32 syntaxCount;
-    u8 *syntax;
+    ContextDataV2 *data = pCtx->data;
+    u32 syntaxCount = data->nbrWord;
 
-    lexCount += lexCount & 1;
-    wordPropCount = data->nbrPron + data->nbrWord;
-    syntaxCount = data->nbrWord;
     syntaxCount += syntaxCount & 1;
-    syntax = (u8 *)data + lexCount * sizeof(u16);
-    syntax += offsetof(ContextDataV2, lex);
-    syntax += (wordPropCount + 2) * sizeof(u32);
-    return syntax + syntaxCount * sizeof(u16);
+    return (u16 *)_contextGetpWordProp(pCtx) + syntaxCount;
 }
 
-const ContextV2Function _ContextV2VirtualTable[] = {
+static const ContextV2Function _ContextV2VirtualTable[] = {
     NULL,
     (ContextV2Function)_contextCheckDataType,
     (ContextV2Function)_contextGetSize,
@@ -180,7 +163,7 @@ const ContextV2Function _ContextV2VirtualTable[] = {
     (ContextV2Function)_contextIsIsoWordContext,
 };
 
-void FillContextV2VirtualTable(ContextV2Function *table)
+void FillContextV2VirtualTable(ContextV2Function *pCtx)
 {
-    memcpy(table, _ContextV2VirtualTable, sizeof(_ContextV2VirtualTable));
+    memcpy(pCtx, _ContextV2VirtualTable, sizeof(_ContextV2VirtualTable));
 }

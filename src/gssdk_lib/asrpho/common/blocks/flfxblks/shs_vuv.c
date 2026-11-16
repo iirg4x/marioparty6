@@ -1,4 +1,5 @@
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
 
 typedef struct SHS_VUV {
     TosBaseBlock base;
@@ -441,6 +442,6 @@ static u32 InitSHS_VUV(TosBaseBlock *baseBlock)
 void *ConstructSHS_VUV(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 2, 2, ProcessSHS_VUV, InitSHS_VUV,
-        ControlSHS_VUV, sizeof(SHS_VUV));
+        context, blockIndex, 2, 2, (TosProcessFunction)ProcessSHS_VUV, (TosInitFunction)InitSHS_VUV,
+        (TosControlFunction)ControlSHS_VUV, sizeof(SHS_VUV));
 }
