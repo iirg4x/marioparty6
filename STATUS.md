@@ -2,14 +2,14 @@
 
 The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-16 02:29 UTC.
+Updated 2026-11-16 12:30 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 92.39% | 97.56% |
-| Main DOL | 91.35% | 99.35% |
+| Entire project | 92.53% | 97.70% |
+| Main DOL | 92.18% | 99.71% |
 | REL modules | 92.61% | 96.43% |
 
 ## REL modules
@@ -30,9 +30,9 @@ Partial (7):
 
 ## Main DOL
 
-**5438 of 5914** functions are recovered as matching source; 476 remain:
+**5496 of 5914** functions are recovered as matching source; 418 remain:
 
-- `gssdk_lib/asrpho`: 446
+- `gssdk_lib/asrpho`: 388
 - `gssdk_lib/gsapi`: 30
 
 ## Verification
