@@ -1,6 +1,5 @@
 /* Soft-reset handling and disc-error screens, serviced alongside the game loop. */
-/* This file uses no math functions from the transitive dolphin.h includes. */
-#define _MATH_H
+#include "math.h"
 
 #include "dolphin.h"
 #include "game/flag.h"

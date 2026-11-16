@@ -1,6 +1,5 @@
 /* Board capsule traps that move, stun, or transform players. */
-#define _MATH_H
-#include "dolphin/math.h"
+#include "math.h"
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/flag.h"

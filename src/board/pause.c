@@ -1,6 +1,5 @@
 /* Board pause menu, its single-player minigame list, and pause-state controls. */
-#define _MATH_H
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h"
+#include "math.h"
 
 #include "game/board/pause.h"
 #include "game/board/main.h"

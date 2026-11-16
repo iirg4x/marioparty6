@@ -1,7 +1,5 @@
-/* Block math.h's extern inline sqrtf: its weak _half/_three statics would
- * prepend 16 bytes to .sdata2 that the original branch.o does not have. */
-#define _MATH_H
-#include "dolphin/math.h"
+/* Board branch functions. */
+#include "math.h"
 
 #include "game/board/branch.h"
 #include "game/board/audio.h"

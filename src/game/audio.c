@@ -1,5 +1,5 @@
 // Initializes and controls the game's music, sound effects, and streamed audio.
-#define _MATH_H
+#include "math.h"
 #include "game/audio.h"
 #include "game/memory.h"
 #include "game/armem.h"

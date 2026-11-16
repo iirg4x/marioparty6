@@ -1,5 +1,5 @@
 /* Runs the minigame from setup through play, results, and exit. */
-#define _MATH_H
+#include "math.h"
 
 #include "game/mg/seqman.h"
 #include "game/charman.h"

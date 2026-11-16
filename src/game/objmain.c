@@ -1,5 +1,5 @@
 // Coordinates overlay transitions and the per-frame game object manager.
-#define _MATH_H
+#include "math.h"
 #include "game/object.h"
 #include "game/objdll.h"
 #include "game/sprite.h"
