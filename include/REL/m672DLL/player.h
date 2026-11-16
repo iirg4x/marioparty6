@@ -23,8 +23,6 @@ typedef void (Player::*PlayerUpdate)();
 #include <new>
 #include "REL/framework/model_motion.h"
 
-typedef std::mem_fun1_t<void, Player, EventMessage *> PlayerMemberFunction;
-typedef CallbackBinding<Player> PlayerCallbackBinding;
 /* One material colour. */
 struct VectorElement {
     u8 red;

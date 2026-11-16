@@ -20,17 +20,6 @@
 #include "math.h"
 #include "string.h"
 
-/* The selector has thirteen pages with ten visible rows per page. */
-#define SM_PAGE_MAX 13
-#define SM_PAGE_SIZE 10
-/* Character choice cycles through the first eleven playable characters. */
-#define SM_CHAR_MAX 11
-
-#define SM_KEY_UP (1 << 0)
-#define SM_KEY_DOWN (1 << 1)
-#define SM_KEY_LEFT (1 << 2)
-#define SM_KEY_RIGHT (1 << 3)
-
 extern OMOVL GameMesOvlPrev;
 
 typedef void (*VoidFunc)(void);
@@ -38,7 +27,7 @@ extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
 /* Each list row is enabled or disabled and carries its label and overlay ID. */
-typedef struct sm_entry {
+typedef struct {
     u16 on;
     char *name;
     OMOVL ovl;
@@ -59,10 +48,13 @@ static char *smCharNameTbl[14] = {
     "MinikoopaR",
     "MinikoopaG",
     "MinikoopaB",
+/* sm page size. */
+/* sm page max. */
 };
 
 /* Rows shown by the selector; disabled rows remain visible but cannot be selected. */
-static SMEntry smPageData[SM_PAGE_MAX * SM_PAGE_SIZE] = {
+/* Thirteen pages, each with ten rows. */
+static SMEntry smPageData[13 * 10] = {
     { TRUE, "601:PIKATTO HIPDROP", 6 },
     { TRUE, "602:HAYAOSI MACHIGAI SAGASI", 7 },
     { TRUE, "603:NICE SHOT!", 8 },
@@ -208,7 +200,7 @@ static char *smDvdMusTbl[] = { "sound/mu_016a.dvd", "sound/mu_047a.dvd",
 /* The menu stores its current page and cursor; each page remembers its previous cursor row. */
 /* Current page index; -1 is a temporary sentinel while SMInit chooses the first page. */
 static s16 smPage;
-static s16 smCursorNoPrev[SM_PAGE_MAX];
+static s16 smCursorNoPrev[13];
 /* Objects owned by the selector and its four-view character preview. */
 static OMOBJ *smMainObj;
 static OMOBJ *smOutViewObj;
@@ -218,6 +210,7 @@ static s16 smCursorNo;
 /* Last selected row recorded when the selector exits. */
 static s16 smChar1Prev = -1;
 static u16 smPadBtnDown;
+/* Direction bits: 0 up, 1 down, 2 left, 3 right. */
 static u16 smPadDStk;
 static u16 smPadDStkDown;
 static u16 smPadBtnDownAll[4];
@@ -285,10 +278,12 @@ void ObjectSetup(void)
 
     OSReport("ObjectSetup:%08x\n", ObjectSetup);
     OSReport("\n\n\n******* SMObjectSetup *********\n");
+    /* sm char max. */
     OSReport(funcId);
     objman = fn_8003A8BC(50, 8192);
     for (i = 0; i < 4; i++) {
-        if (lbl_80265728[i].charNo >= SM_CHAR_MAX) {
+        /* Character selection uses the first eleven characters. */
+        if (lbl_80265728[i].charNo >= 11) {
             break;
         }
     }
@@ -344,19 +339,23 @@ static void SMBtnRead(void)
 {
     int i;
     smPadDStk = smPadDStkDown = smPadBtnDown = 0;
+    /* sm key left. */
     for (i = 0; i < 4; i++) {
         smPadDStkAll[i] = smPadDStkDownAll[i] = smPadBtnDownAll[i] = 0;
         if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_LEFT) {
-            smPadDStkAll[i] |= SM_KEY_LEFT;
+            /* sm key right. */
+            smPadDStkAll[i] |= (1 << 2);
         }
         if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_RIGHT) {
-            smPadDStkAll[i] |= SM_KEY_RIGHT;
+            /* sm key up. */
+            smPadDStkAll[i] |= (1 << 3);
         }
         if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_UP) {
-            smPadDStkAll[i] |= SM_KEY_UP;
+            /* sm key down. */
+            smPadDStkAll[i] |= (1 << 0);
         }
         if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_DOWN) {
-            smPadDStkAll[i] |= SM_KEY_DOWN;
+            smPadDStkAll[i] |= (1 << 1);
         }
         smPadBtnDownAll[i] |= lbl_802C0008[i];
         smPadDStkDownAll[i] = (smPadDStkAll[i] ^ smPadDStkAllPrev[i]) & smPadDStkAll[i];
@@ -374,9 +373,9 @@ static void SMPagePrint(void)
     int i;
     SMEntry *entry;
     fontcolor = FONT_COLOR_YELLOW;
-    print8(200, 160, 2.5f, "PAGE:%d/%d", smPage + 1, SM_PAGE_MAX);
-    for (i = 0; i < SM_PAGE_SIZE; i++) {
-        entry = &smPageData[(smPage * SM_PAGE_SIZE) + i];
+    print8(200, 160, 2.5f, "PAGE:%d/%d", smPage + 1, 13);
+    for (i = 0; i < 10; i++) {
+        entry = &smPageData[(smPage * 10) + i];
         if (entry->on == TRUE) {
             if (i == smCursorNo) {
                 fontcolor = FONT_COLOR_CYAN;
@@ -404,14 +403,14 @@ static void SMPageNoAdd(s16 num)
     pagePrev = page;
     do {
         page += num;
-        if (page >= SM_PAGE_MAX) {
+        if (page >= 13) {
             page = 0;
         }
         else if (page < 0) {
-            page = SM_PAGE_MAX - 1;
+            page = 13 - 1;
         }
-        for (i = 0; i < SM_PAGE_SIZE; i++) {
-            if (smPageData[(page * SM_PAGE_SIZE) + i].on == TRUE) {
+        for (i = 0; i < 10; i++) {
+            if (smPageData[(page * 10) + i].on == TRUE) {
                 on = TRUE;
                 break;
             }
@@ -436,13 +435,13 @@ static void SMCursorNoAdd(s16 num)
     pos = smCursorNo;
     do {
         pos += num;
-        if (pos >= SM_PAGE_SIZE) {
+        if (pos >= 10) {
             pos = 0;
         }
         else if (pos < 0) {
-            pos = SM_PAGE_SIZE - 1;
+            pos = 10 - 1;
         }
-    } while (!smPageData[(smPage * SM_PAGE_SIZE) + pos].on);
+    } while (!smPageData[(smPage * 10) + pos].on);
     smCursorNo = pos;
     (void)pos;
 }
@@ -464,13 +463,13 @@ static void SMInit(OMOBJ *obj)
         }
     }
     smPage = -1;
-    for (i = 0; i < SM_PAGE_MAX; i++) {
-        for (j = 0; j < SM_PAGE_SIZE; j++) {
-            if (smPageData[(i * SM_PAGE_SIZE) + j].on == TRUE) {
+    for (i = 0; i < 13; i++) {
+        for (j = 0; j < 10; j++) {
+            if (smPageData[(i * 10) + j].on == TRUE) {
                 break;
             }
         }
-        if (j == SM_PAGE_SIZE) {
+        if (j == 10) {
             smCursorNoPrev[i] = -1;
         }
         else {
@@ -479,10 +478,10 @@ static void SMInit(OMOBJ *obj)
     }
     SMPageNoAdd(1);
     if (GameMesOvlPrev != -1) {
-        for (i = 0; i < SM_PAGE_MAX * SM_PAGE_SIZE; i++) {
+        for (i = 0; i < 13 * 10; i++) {
             if (GameMesOvlPrev == smPageData[i].ovl && smPageData[i].on == TRUE) {
-                smPage = i / SM_PAGE_SIZE;
-                smCursorNo = i % SM_PAGE_SIZE;
+                smPage = i / 10;
+                smCursorNo = i % 10;
                 smCursorNoPrev[smPage] = smCursorNo;
                 break;
             }
@@ -497,24 +496,24 @@ static void SMMain(OMOBJ *obj)
 {
     SMBtnRead();
     SMPagePrint();
-    if (smPadDStkDown & SM_KEY_UP) {
+    if (smPadDStkDown & (1 << 0)) {
         SMCursorNoAdd(-1);
-        SMGroupSet((smPage * SM_PAGE_SIZE) + smCursorNo);
+        SMGroupSet((smPage * 10) + smCursorNo);
         return;
     }
-    if (smPadDStkDown & SM_KEY_DOWN) {
+    if (smPadDStkDown & (1 << 1)) {
         SMCursorNoAdd(1);
-        SMGroupSet((smPage * SM_PAGE_SIZE) + smCursorNo);
+        SMGroupSet((smPage * 10) + smCursorNo);
         return;
     }
-    if (smPadDStkDown & SM_KEY_LEFT) {
+    if (smPadDStkDown & (1 << 2)) {
         SMPageNoAdd(-1);
-        SMGroupSet((smPage * SM_PAGE_SIZE) + smCursorNo);
+        SMGroupSet((smPage * 10) + smCursorNo);
         return;
     }
-    if (smPadDStkDown & SM_KEY_RIGHT) {
+    if (smPadDStkDown & (1 << 3)) {
         SMPageNoAdd(1);
-        SMGroupSet((smPage * SM_PAGE_SIZE) + smCursorNo);
+        SMGroupSet((smPage * 10) + smCursorNo);
         return;
     }
     if ((smPadBtnDown & PAD_BUTTON_A) || (smPadBtnDown & PAD_BUTTON_START)) {
@@ -546,7 +545,7 @@ static void SMGroupSet(int pos)
         if (MgDataTbl[i].ovl == ovl) {
             break;
         }
-        if (MgDataTbl[i].ovl == (u16)-1) {
+        if (MgDataTbl[i].ovl == 0xFFFF) {
             for (i = 0; i < 4; i++) {
                 smPlayerConf[i].grpNo = i;
             }
@@ -588,12 +587,12 @@ static void SMGroupSet(int pos)
 }
 
 /* Character preview models and per-player selection state. */
-static HU3D_MODELID smCharMdlId[SM_CHAR_MAX];
+static HU3D_MODELID smCharMdlId[11];
 /* TRUE once that player has confirmed their character. */
 static s16 smCharSelEndF[4];
 /* Nonzero for a character already taken by a human, reserved for Wario, or assigned to a COM
  * slot. */
-static s16 smCharOnF[SM_CHAR_MAX];
+static s16 smCharOnF[11];
 
 static int smCharFileTbl[14] = {
     DATANUM(0xcc0000, 0),
@@ -635,7 +634,7 @@ static s16 SMCharNoAdd(s16 playerNo, s16 num)
 {
     int i;
     s16 charNo;
-    for (i = 0; i < SM_CHAR_MAX; i++) {
+    for (i = 0; i < 11; i++) {
         smCharOnF[i] = FALSE;
     }
     for (i = 0; i < 4; i++) {
@@ -651,9 +650,9 @@ static s16 SMCharNoAdd(s16 playerNo, s16 num)
     do {
         charNo += num;
         if (charNo < 0) {
-            charNo = SM_CHAR_MAX - 1;
+            charNo = 11 - 1;
         }
-        if (charNo >= SM_CHAR_MAX) {
+        if (charNo >= 11) {
             charNo = 0;
         }
     } while (smCharOnF[charNo] != 0);
@@ -664,7 +663,7 @@ static s16 SMCharNoAdd(s16 playerNo, s16 num)
 static void SMCharMdlKill(void)
 {
     int i;
-    for (i = 0; i < SM_CHAR_MAX; i++) {
+    for (i = 0; i < 11; i++) {
         fn_800262D0(smCharMdlId[i]);
     }
 }
@@ -676,11 +675,11 @@ static void SMCharComSet(void)
     int i;
     int j;
     int num;
-    int charNo[SM_CHAR_MAX];
+    int charNo[11];
     smCharOnF[4] = TRUE;
     for (i = 0; i < 4; i++) {
         num = 0;
-        for (j = 0; j < SM_CHAR_MAX; j++) {
+        for (j = 0; j < 11; j++) {
             if (smCharOnF[j]) {
                 continue;
             }
@@ -698,13 +697,13 @@ static void SMCharComSet(void)
 static void SMCharSelInit(OMOBJ *obj)
 {
     int i;
-    for (i = 0; i < SM_CHAR_MAX; i++) {
+    for (i = 0; i < 11; i++) {
         void *data = fn_80008DD0(smCharFileTbl[i], 0x10000000, 2);
         smCharMdlId[i] = fn_80025A04(data);
         fn_80026760(smCharMdlId[i], 0.0f, 0.0f, 0.0f);
         fn_800269E8(smCharMdlId[i], ((1 << 30) | (1 << 0)));
-        fn_8002C95C(smCharMdlId[i], fn_80030458(smCharMdlId[i], fn_80008DD0(smCharMotFileTbl[i],
-            0x10000000, 2)));
+        fn_8002C95C(smCharMdlId[i],
+            fn_80030458(smCharMdlId[i], fn_80008DD0(smCharMotFileTbl[i], 0x10000000, 2)));
     }
     for (i = 0; i < 4; i++) {
         smCharSelEndF[i] = FALSE;
@@ -727,7 +726,7 @@ static void SMCharSelMain(OMOBJ *obj)
     s16 manDoneNum;
     s16 manNum;
 
-    for (i = 0; i < SM_CHAR_MAX; i++) {
+    for (i = 0; i < 11; i++) {
         fn_800269E8(smCharMdlId[i], (1 << 0));
     }
     for (i = 0; i < 4; i++) {
@@ -779,10 +778,10 @@ static void SMCharSelMain(OMOBJ *obj)
         if (!smCharSelEndF[i]) {
             /* Input uses this slot's configured pad, but the changed character is stored at the
              * pad-number index. */
-            if (smPadDStkDownAll[port] & SM_KEY_LEFT) {
+            if (smPadDStkDownAll[port] & (1 << 2)) {
                 smPlayerConf[port].charNo = SMCharNoAdd(i, -1);
             }
-            if (smPadDStkDownAll[port] & SM_KEY_RIGHT) {
+            if (smPadDStkDownAll[port] & (1 << 3)) {
                 smPlayerConf[port].charNo = SMCharNoAdd(i, 1);
             }
             if (smPadBtnDownAll[port] & PAD_BUTTON_A) {
@@ -849,7 +848,7 @@ static void SMExit(OMOBJ *obj)
     }
     while (fn_80055FB4())
         ;
-    mg = MgNoGet(smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl);
+    mg = MgNoGet(smPageData[(smPage * 10) + smCursorNo].ovl);
     lbl_80265B70.mgNo = mg;
     OSReport("mgNo=%d\n", mg);
     fn_8006A268(65550);
@@ -862,12 +861,12 @@ static void SMExit(OMOBJ *obj)
         lbl_802C0278 = 0;
     }
     if (mg == -1) {
-        omOvlCallEx(smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl, TRUE, 0, 0);
+        omOvlCallEx(smPageData[(smPage * 10) + smCursorNo].ovl, TRUE, 0, 0);
     }
     else {
         omOvlCallEx(DLL_instdll, TRUE, 0, 0);
     }
-    GameMesOvlPrev = smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl;
+    GameMesOvlPrev = smPageData[(smPage * 10) + smCursorNo].ovl;
     smChar1Prev = smCursorNo;
 }
 
@@ -972,21 +971,21 @@ static void SMPlayerConfMain(OMOBJ *obj)
     SMPlayerConfPrint();
     SMBtnRead();
     if (!smPlayerConfEditF) {
-        if (smPadDStkDown & SM_KEY_LEFT) {
+        if (smPadDStkDown & (1 << 2)) {
             offset = ((smPlayerConfNo & 0x1) - 1) & 0x1;
             smPlayerConfNo = (smPlayerConfNo & 0xFFFE) + offset;
         }
         else {
-            if (smPadDStkDown & SM_KEY_RIGHT) {
+            if (smPadDStkDown & (1 << 3)) {
                 offset = ((smPlayerConfNo & 0x1) + 1) & 0x1;
                 smPlayerConfNo = (smPlayerConfNo & 0xFFFE) + offset;
             }
-            else if (smPadDStkDown & SM_KEY_DOWN) {
+            else if (smPadDStkDown & (1 << 1)) {
                 if ((smPlayerConfNo += 2) >= 4) {
                     smPlayerConfNo -= 4;
                 }
             }
-            else if (smPadDStkDown & SM_KEY_UP) {
+            else if (smPadDStkDown & (1 << 0)) {
                 if ((smPlayerConfNo -= 2) < 0) {
                     smPlayerConfNo += 4;
                 }
@@ -1011,17 +1010,17 @@ static void SMPlayerConfMain(OMOBJ *obj)
             }
         }
     }
-    else if (smPadDStkDown & SM_KEY_UP) {
+    else if (smPadDStkDown & (1 << 0)) {
         if (--smPlayerConfChoiceNo < 0) {
             smPlayerConfChoiceNo = 3;
         }
     }
-    else if (smPadDStkDown & SM_KEY_DOWN) {
+    else if (smPadDStkDown & (1 << 1)) {
         if (++smPlayerConfChoiceNo > 3) {
             smPlayerConfChoiceNo = 0;
         }
     }
-    else if (smPadDStkDown & SM_KEY_LEFT) {
+    else if (smPadDStkDown & (1 << 2)) {
         switch (smPlayerConfChoiceNo) {
             case 0:
                 smPlayerConf[smPlayerConfNo].type ^= 1;
@@ -1046,7 +1045,7 @@ static void SMPlayerConfMain(OMOBJ *obj)
                 break;
         };
     }
-    else if (smPadDStkDown & SM_KEY_RIGHT) {
+    else if (smPadDStkDown & (1 << 3)) {
         switch (smPlayerConfChoiceNo) {
             case 0:
                 smPlayerConf[smPlayerConfNo].type ^= 1;
@@ -1116,20 +1115,20 @@ static void SMSound3DExec(OMOBJ *obj)
     MSM_SE *se;
 
     SMBtnRead();
-    if (smPadDStkDown & SM_KEY_UP) {
+    if (smPadDStkDown & (1 << 0)) {
         smSound3DNo--;
         if (smSound3DNo < 0) {
             smSound3DNo = 7;
         }
     }
-    if (smPadDStkDown & SM_KEY_DOWN) {
+    if (smPadDStkDown & (1 << 1)) {
         smSound3DNo++;
         if (smSound3DNo >= 8) {
             smSound3DNo = 0;
         }
     }
-    if (smPadDStkDown & (SM_KEY_LEFT | SM_KEY_RIGHT)) {
-        if (smPadDStkDown & SM_KEY_RIGHT) {
+    if (smPadDStkDown & ((1 << 2) | (1 << 3))) {
+        if (smPadDStkDown & (1 << 3)) {
             speed = 10;
         }
         else {
@@ -1181,7 +1180,7 @@ static void SMSound3DExec(OMOBJ *obj)
                 break;
 
             case 7:
-                musicOffF = (musicOffF) ? FALSE : TRUE;
+                musicOffF = musicOffF ? FALSE : TRUE;
                 if (musicOffF) {
                     msmMusSetMasterVolume(0);
                 }
@@ -1239,37 +1238,66 @@ static void SMSound3DExec(OMOBJ *obj)
     SMSound3DPrint();
 }
 
-#define DO_HILITE(pos)                                                                             \
-    do {                                                                                           \
-        if (smSound3DNo == pos) {                                                                  \
-            fontcolor = FONT_COLOR_GREEN;                                                          \
-        } else {                                                                                   \
-            fontcolor = FONT_COLOR_DARK_GREEN;                                                     \
-        }                                                                                          \
-    } while (0)
-
 /* Draws the eight 3D sound settings and highlights the setting currently selected for editing. */
 static void SMSound3DPrint(void)
 {
     char *onOffStr[] = { " ON", "OFF" };
     fontcolor = FONT_COLOR_YELLOW;
     print8(200, 64, 2.0f, "3DSound Config.");
-    DO_HILITE(0);
-    print8(140, 96, 2.0f, "Max Distance   %5.1f", Snd3DDistOffset);
-    DO_HILITE(1);
-    print8(140, 112, 2.0f, "Sound Speed    %5.1f", Snd3DSpeedOffset);
-    DO_HILITE(2);
-    print8(140, 128, 2.0f, "Start Distance %5.1f", Snd3DStartDisOffset);
-    DO_HILITE(3);
-    print8(140, 144, 2.0f, "Front Distance %5.1f", Snd3DFrontSurDisOffset);
-    DO_HILITE(4);
-    print8(140, 160, 2.0f, "Back Distance  %5.1f", Snd3DBackSurDisOffset);
-    DO_HILITE(5);
-    print8(140, 176, 2.0f, "emiComp DataNo  %04d", smEmiCompDataNo);
-    DO_HILITE(6);
-    print8(140, 192, 2.0f, "emiComp VAL      %3d", smEmiCompVal);
-    DO_HILITE(7);
-    print8(140, 208, 2.0f, "Music            %s", onOffStr[(musicOffF) ? 1 : 0]);
-}
 
-#undef DO_HILITE
+    if (smSound3DNo == 0) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 96, 2.0f, "Max Distance   %5.1f", Snd3DDistOffset);
+
+    if (smSound3DNo == 1) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 112, 2.0f, "Sound Speed    %5.1f", Snd3DSpeedOffset);
+
+    if (smSound3DNo == 2) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 128, 2.0f, "Start Distance %5.1f", Snd3DStartDisOffset);
+
+    if (smSound3DNo == 3) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 144, 2.0f, "Front Distance %5.1f", Snd3DFrontSurDisOffset);
+
+    if (smSound3DNo == 4) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 160, 2.0f, "Back Distance  %5.1f", Snd3DBackSurDisOffset);
+
+    if (smSound3DNo == 5) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 176, 2.0f, "emiComp DataNo  %04d", smEmiCompDataNo);
+
+    if (smSound3DNo == 6) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 192, 2.0f, "emiComp VAL      %3d", smEmiCompVal);
+
+    if (smSound3DNo == 7) {
+        fontcolor = FONT_COLOR_GREEN;
+    } else {
+        fontcolor = FONT_COLOR_DARK_GREEN;
+    }
+    print8(140, 208, 2.0f, "Music            %s", onOffStr[musicOffF ? 1 : 0]);
+}

@@ -68,9 +68,6 @@
 #include "game/board/player.h"
 #include <string.h>
 
-/* All bits set in the recognition slot means that no word is pending. */
-#define M669_NO_WORD ((u16)-1)
-
 extern HUPROCESS *lbl_1_bss_0;
 
 const HuVecF lbl_1_rodata_90[16] = {
@@ -177,9 +174,12 @@ HuVecF lbl_1_data_15C = { 0.0f, 264.77008f, 121.68128f };
 
 s16 lbl_1_data_168 = -1;
 
+// Microphone word context path.
 char lbl_1_data_16A[20] = "/mic/ctx/m669_words";
 
-u16 lbl_1_data_17E = M669_NO_WORD;
+/* All bits set in the recognition slot means that no word is pending. */
+/* m669 no word. */
+u16 lbl_1_data_17E = 0xFFFF;
 
 typedef struct M669PlayerWorkHeader {
     s16 playerIndex; /* Index in GwPlayerConf. */
@@ -370,11 +370,8 @@ void fn_1_50D8(OMOBJ *object)
     fn_1_5000(playerGroups);
 
     Hu3DCameraCreate(1);
-    Hu3DCameraPerspectiveSet(1, 30.0f, 20.0f,
-        15000.0f, 1.2f);
-    Hu3DCameraViewportSet(1, 0.0f, 0.0f,
-        640.0f, 480.0f, 0.0f,
-        1.0f);
+    Hu3DCameraPerspectiveSet(1, 30.0f, 20.0f, 15000.0f, 1.2f);
+    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     {
     M669VecBlock shadowPosition = {{-100.0f, 4500.0f, -1500.0f}};
     M669VecBlock shadowUpDirection = {{0.0f, 1.0f, 0.5f}};
@@ -604,9 +601,8 @@ void fn_1_59F4(OMOBJ *object)
         } else {
             nightIndex = 1;
         }
-        work->scene->mdlId[modelIndex] = fn_80025A04(
-            fn_80008DD0(lbl_1_data_28[nightIndex][modelIndex],
-                (s32)0x10000000, 2));
+        work->scene->mdlId[modelIndex] =
+            fn_80025A04( fn_80008DD0(lbl_1_data_28[nightIndex][modelIndex], (s32)0x10000000, 2));
     }
     fn_80029850(work->scene->mdlId[0], 1);
     fn_80026B8C(work->scene->mdlId[0], 3);
@@ -1060,8 +1056,7 @@ void fn_1_6D38(OMOBJ *object)
             f32 distance;
 
             fn_80086BC8(target->header.player->actor, &playerPosition);
-            M669VecSubtract(&areaDirection, &playerPosition,
-                &lbl_1_rodata_90[areaIndex]);
+            M669VecSubtract(&areaDirection, &playerPosition, &lbl_1_rodata_90[areaIndex]);
             distance = M669VecLengthSquared(&areaDirection);
 
             if (distance < nearestDistance) {
@@ -1449,10 +1444,8 @@ void fn_1_843C(OMOBJ *object)
     fn_1_6F90(work, 1, 4.0f, ((1 << 30) | (1 << 0)));
     currentAngle = (f32)(M_PI *
         (work->header.player->actor->rotY / 180.0f));
-    fn_1_31C(&targetDirection, (f32)sin(0.0),
-        0.0f, (f32)cos(0.0));
-    fn_1_31C(&currentDirection, (f32)sin(currentAngle),
-        0.0f, (f32)cos(currentAngle));
+    fn_1_31C(&targetDirection, (f32)sin(0.0), 0.0f, (f32)cos(0.0));
+    fn_1_31C(&currentDirection, (f32)sin(currentAngle), 0.0f, (f32)cos(currentAngle));
     angleDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     cross = targetDirection.x * currentDirection.z -
         targetDirection.z * currentDirection.x;
@@ -1555,8 +1548,7 @@ void fn_1_8A70(M669ActorWork *work)
     position.y = 0.01f;
     fn_80026790(work->positionModel, &position);
     if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                fn_8002D530(work->motionModel)) <= 0.01f) {
+        if (fabsf(fn_8002D4E0(work->motionModel) - fn_8002D530(work->motionModel)) <= 0.01f) {
             work->motionComplete = 0;
             fn_800269E8(work->motionModel, (1 << 0));
         }
@@ -1591,9 +1583,7 @@ void fn_1_8C24(HU3D_MODEL *, HU3D_PARTICLE *particleP, Mtx)
                 180.0));
         work->scale = 100.0f * verticalWave;
         work->color.a = 255;
-        verticalWave = (f32)sin((M_PI * (f64)(
-            0.3f + 15.0f * (f32)(work->time + 1))) /
-            180.0);
+        verticalWave = (f32)sin((M_PI * (f64)( 0.3f + 15.0f * (f32)(work->time + 1))) / 180.0);
     } else {
         verticalWave = (f32)sin((M_PI * (f64)135.3f / 180.0));
     }
@@ -1630,8 +1620,7 @@ void fn_1_8E44(M669ActorWork *source)
 void fn_1_8ED8(M669ActorWork *work, s16 motion) {
     if (work->motion != motion) {
         work->motion = motion;
-        fn_8002C95C(work->model,
-            work->motionIds[work->motion]);
+        fn_8002C95C(work->model, work->motionIds[work->motion]);
     }
 }
 
@@ -1645,10 +1634,8 @@ f32 fn_1_8F3C(M669ActorWork *work, f64 heading, f32 rate)
     f32 cross;
     f32 adjustedAngle;
     f32 angleDelta;
-    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f,
-        (f32)cos(heading));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f,
-        (f32)cos(work->angle));
+    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f, (f32)cos(heading));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
     angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     cross = targetDirection.x * currentDirection.z -
         targetDirection.z * currentDirection.x;
@@ -1666,9 +1653,7 @@ f32 fn_1_8F3C(M669ActorWork *work, f64 heading, f32 rate)
         adjustedAngle += (2.0 * M_PI);
     }
     work->angle = adjustedAngle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
     return angularDifference;
 }
 
@@ -1703,15 +1688,12 @@ void fn_1_9144(OMOBJ *object) {
         while (motionIndex < 4)
         {
             work->motionIds[motionIndex] =
-                fn_80030458(work->model, fn_80008DD0(lbl_1_data_58[motionIndex],
-                                                                  0x10000000, 2));
+                fn_80030458(work->model, fn_80008DD0(lbl_1_data_58[motionIndex], 0x10000000, 2));
             motionIndex += 1;
         }
-        work->motionModel = fn_80025A04(
-            fn_80008DD0(DATANUM(0x800000, 14), 0x10000000, 2));
+        work->motionModel = fn_80025A04( fn_80008DD0(DATANUM(0x800000, 14), 0x10000000, 2));
         work->motionDataId =
-            fn_80030458(work->motionModel, fn_80008DD0(DATANUM(0x800000, 15),
-                                                                    0x10000000, 2));
+            fn_80030458(work->motionModel, fn_80008DD0(DATANUM(0x800000, 15), 0x10000000, 2));
     }
     else
     {
@@ -1743,13 +1725,11 @@ void fn_1_9144(OMOBJ *object) {
              (f32) ((f64) radius * cos(angle)));
     fn_80026790(work->model, &work->position);
     work->angle = (f32)(2.0 * (M_PI * frandf()));
-    fn_80026808(work->model, 0.0f, (f32) ((f64) (180.0f * work->angle) / M_PI),
-                    0.0f);
+    fn_80026808(work->model, 0.0f, (f32) ((f64) (180.0f * work->angle) / M_PI), 0.0f);
     fn_1_31C(&work->gravity, 0.0f, -2.5f, 0.0f);
     if (work->actorIndex == 0)
     {
-        work->positionModel = fn_80025A04(
-            fn_80008DD0(DATANUM(0x800000, 12), 0x10000000, 2));
+        work->positionModel = fn_80025A04( fn_80008DD0(DATANUM(0x800000, 12), 0x10000000, 2));
     }
     else
     {
@@ -1802,10 +1782,8 @@ static inline f32 M669MotionSequenceTurn(M669ActorWork *work, f64 heading, f32 r
     f32 cross;
     f32 adjustedAngle;
 
-    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f,
-        (f32)cos(heading));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f,
-        (f32)cos(work->angle));
+    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f, (f32)cos(heading));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
 
     angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     cross = targetDirection.x * currentDirection.z -
@@ -1820,9 +1798,7 @@ static inline f32 M669MotionSequenceTurn(M669ActorWork *work, f64 heading, f32 r
         adjustedAngle += (2.0 * M_PI);
     }
     work->angle = adjustedAngle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
     return angularDifference;
 }
 
@@ -1842,8 +1818,7 @@ void fn_1_9614(OMOBJ *object)
     if (work->timer >= 45) {
         fn_1_8ED8(work, 2);
         work->motionSpeed = 8.0f;
-        fn_8002D86C(work->model,
-            work->motionSpeed / 3.0f);
+        fn_8002D86C(work->model, work->motionSpeed / 3.0f);
         fn_800269E8(work->model, ((1 << 30) | (1 << 0)));
         work->timer = 0;
         fn_1_248(object, fn_1_9864);
@@ -1858,16 +1833,10 @@ void fn_1_9864(OMOBJ *object)
 {
     M669ActorWork *work = object->data;
     HuVecF position;
-    HuVecF facingDirection;
-    HuVecF travelDirection;
     f32 travelDistance;
-    f32 turnAmount;
-    f32 turnDirection;
-    f32 nextAngle;
 
     fn_1_8A70(work);
-    M669VecSubtract(&position, &lbl_1_rodata_150[work->actorIndex % 36],
-        &work->position);
+    M669VecSubtract(&position, &lbl_1_rodata_150[work->actorIndex % 36], &work->position);
     travelDistance = fn_1_554(&position, &position);
     M669MotionSequenceTurn(work, atan2f(position.x, position.z), 5.0f);
     if (travelDistance < work->motionSpeed) {
@@ -1899,8 +1868,7 @@ extern void fn_1_A7E4(OMOBJ *);
  * rate. */
 
 /* During the actor return callback, turns through one tenth of the remaining angular gap. */
-static inline f32 M669StageRotationTurnFixedRate(M669ActorWork *work,
-    f64 targetAngle)
+static inline f32 M669StageRotationTurnFixedRate(M669ActorWork *work, f64 targetAngle)
 {
     HuVecF targetDirection;
     HuVecF currentDirection;
@@ -1909,10 +1877,8 @@ static inline f32 M669StageRotationTurnFixedRate(M669ActorWork *work,
     f32 cross;
     f32 angle;
 
-    fn_1_31C(&targetDirection, (f32)sin(targetAngle), 0.0f,
-        (f32)cos(targetAngle));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f,
-        (f32)cos(work->angle));
+    fn_1_31C(&targetDirection, (f32)sin(targetAngle), 0.0f, (f32)cos(targetAngle));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
     angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     cross = targetDirection.x * currentDirection.z -
         targetDirection.z * currentDirection.x;
@@ -1927,25 +1893,8 @@ static inline f32 M669StageRotationTurnFixedRate(M669ActorWork *work,
         angle += (2.0 * M_PI);
     }
     work->angle = angle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
     return angularDifference;
-}
-
-/* Starts the actor sequence effect 50 units above the actor when its sequence requests it. */
-static inline void M669SequenceActorEffectInit(M669ActorWork *source)
-{
-    f32 verticalOffset = 50.0f;
-    HU3D_PARTICLE *hookData = lbl_802C01C8[source->particleModel].hookData;
-    HU3D_PARTICLE_DATA *effect = hookData->data;
-
-    effect->time = 0;
-    effect->scale = 1.0f;
-    effect->accel.x = source->position.x;
-    effect->accel.y = source->position.y + verticalOffset;
-    effect->accel.z = source->position.z;
-    effect->time = 0;
 }
 
 /* Turns the moving actor toward the selected motion point and advances it. */
@@ -1954,20 +1903,16 @@ void fn_1_9D24(OMOBJ *object)
     M669ActorWork *work = object->data;
     HuVecF direction;
     f32 distance;
-    f32 targetAngle;
 
     fn_1_8A70(work);
-    M669VecSubtract(&direction, &lbl_1_rodata_150[work->actorIndex % 36],
-        &work->position);
+    M669VecSubtract(&direction, &lbl_1_rodata_150[work->actorIndex % 36], &work->position);
     distance = fn_1_554(&direction, &direction);
     if (distance < 1.0f) {
         work->ready = 1;
-        M669MotionSequenceTurn(work,
-            3.1415927f, 20.0f);
+        M669MotionSequenceTurn(work, 3.1415927f, 20.0f);
     } else {
         work->ready = 0;
-        M669MotionSequenceTurn(work,
-                                    atan2f(direction.x, direction.z), 2.0f);
+        M669MotionSequenceTurn(work, atan2f(direction.x, direction.z), 2.0f);
         work->frameVelocity.x = (f32)((f64)work->frameVelocity.x +
             (0.5 * ((f64)distance * sin((f64)work->angle))));
         work->frameVelocity.z = (f32)((f64)work->frameVelocity.z +
@@ -1978,7 +1923,7 @@ void fn_1_9D24(OMOBJ *object)
         fn_8002D86C(work->model, 1.0f);
         fn_1_8ED8(work, 3);
         fn_80026A44(work->model, ((1 << 30) | (1 << 0)));
-        M669SequenceActorEffectInit(work);
+        fn_1_8E44(work);
         fn_1_248(object, fn_1_A3D8);
         return;
     }
@@ -2006,8 +1951,7 @@ void fn_1_A3D8(OMOBJ *object)
             nearestDirection = candidateDirection;
         }
     }
-    M669StageRotationTurnFixedRate(work, atan2f(nearestDirection.x,
-        nearestDirection.z));
+    M669StageRotationTurnFixedRate(work, atan2f(nearestDirection.x, nearestDirection.z));
     work->timer++;
     if (work->timer >= 20) {
         fn_1_248(object, fn_1_A7E4);
@@ -2033,11 +1977,9 @@ void fn_1_A7E4(OMOBJ *object)
         (1.0f + 3.0f * frandf());
     angle = (f32)(2.0 * (M_PI * frandf()));
     moveRadius = 800.0f * frandf();
-    fn_1_31C(&direction, (f32)(moveRadius * sin(angle)),
-        0.0f, (f32)(moveRadius * cos(angle)));
+    fn_1_31C(&direction, (f32)(moveRadius * sin(angle)), 0.0f, (f32)(moveRadius * cos(angle)));
     work->motionTime = atan2f(direction.x, direction.z);
-    fn_8002D86C(work->model,
-        work->motionSpeed / 3.0f);
+    fn_8002D86C(work->model, work->motionSpeed / 3.0f);
     fn_1_248(object, fn_1_E0C0);
 }
 
@@ -2151,9 +2093,7 @@ void fn_1_AF60(OMOBJ *object)
     fn_1_8A70(work);
     fn_1_8ED8(work, 2);
     work->angle += (M_PI / 6.0);
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
     if (work->action == 2) {
         fn_1_248(object, fn_1_B1C0);
         return;
@@ -2430,8 +2370,7 @@ void fn_1_C2A8(OMOBJ *object)
         work->timer = 0;
         work->motionSpeed = 2.0f +
             3.0f * frandf();
-        fn_8002D86C(work->model,
-            work->motionSpeed / 3.0f);
+        fn_8002D86C(work->model, work->motionSpeed / 3.0f);
         fn_1_248(object, fn_1_C59C);
         return;
     }
@@ -2451,10 +2390,8 @@ static inline f32 M669TurningStageAngle(M669ActorWork *work)
     f32 cross;
     f32 adjustedAngle;
 
-    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f,
-        (f32)cos(heading));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f,
-        (f32)cos(work->angle));
+    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f, (f32)cos(heading));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
 
     angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     cross = targetDirection.x * currentDirection.z -
@@ -2470,9 +2407,7 @@ static inline f32 M669TurningStageAngle(M669ActorWork *work)
         adjustedAngle += (2.0 * M_PI);
     }
     work->angle = adjustedAngle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
     return angularDifference;
 }
 
@@ -2533,8 +2468,6 @@ void fn_1_C844(OMOBJ *object)
     M669ActorWork *work = object->data;
     HuVecF origin = { 0.0f, 0.0f, 0.0f };
     HuVecF direction;
-    HuVecF position;
-    f32 motionEnd;
     M669PlayerSetupWork *stageWork;
 
     fn_1_8A70(work);
@@ -2671,8 +2604,7 @@ void fn_1_D010(OMOBJ *object)
     work->timer = 0;
     work->motionSpeed = 2.0f *
         (2.0f + 4.0f * frandf());
-    fn_8002D86C(work->model,
-        work->motionSpeed / 3.0f);
+    fn_8002D86C(work->model, work->motionSpeed / 3.0f);
     fn_1_248(object, fn_1_D2EC);
 }
 
@@ -2688,10 +2620,8 @@ static inline f32 M669MovingStageSteer(M669ActorWork *work, f64 heading, f32 rat
     f32 cross;
     f32 angle;
 
-    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f,
-        (f32)cos(heading));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f,
-        (f32)cos(work->angle));
+    fn_1_31C(&targetDirection, (f32)sin(heading), 0.0f, (f32)cos(heading));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
     angularDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     cross = targetDirection.x * currentDirection.z -
         targetDirection.z * currentDirection.x;
@@ -2704,9 +2634,7 @@ static inline f32 M669MovingStageSteer(M669ActorWork *work, f64 heading, f32 rat
         angle += (2.0 * M_PI);
     }
     work->angle = angle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
     return angularDifference;
 }
 
@@ -2890,8 +2818,7 @@ void fn_1_E0C0(OMOBJ *object)
     position.y = 0.01f;
     fn_80026790(work->positionModel, &position);
     if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                fn_8002D530(work->motionModel)) <= 0.01f) {
+        if (fabsf(fn_8002D4E0(work->motionModel) - fn_8002D530(work->motionModel)) <= 0.01f) {
             work->motionComplete = 0;
             fn_800269E8(work->motionModel, (1 << 0));
         }
@@ -2909,10 +2836,8 @@ void fn_1_E0C0(OMOBJ *object)
         return;
     }
     facingAngle = work->motionTime;
-    fn_1_31C(&initialDirection, (f32)sin(facingAngle),
-        0.0f, (f32)cos(facingAngle));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle),
-        0.0f, (f32)cos(work->angle));
+    fn_1_31C(&initialDirection, (f32)sin(facingAngle), 0.0f, (f32)cos(facingAngle));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
     angularDifference = fn_1_298(M669VecDot(&initialDirection, &currentDirection));
     cross = initialDirection.x * currentDirection.z -
         initialDirection.z * currentDirection.x;
@@ -2930,9 +2855,7 @@ void fn_1_E0C0(OMOBJ *object)
         angle += (2.0 * M_PI);
     }
     work->angle = angle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
     work->frameVelocity.x += (f64)work->motionSpeed * sin(work->angle);
     work->frameVelocity.z += (f64)work->motionSpeed * cos(work->angle);
     work->timer++;
@@ -2983,18 +2906,15 @@ void fn_1_E648(OMOBJ *object)
     position.y = 0.01f;
     fn_80026790(work->positionModel, &position);
     if (work->motionComplete != 0) {
-        if (fabsf(fn_8002D4E0(work->motionModel) -
-                fn_8002D530(work->motionModel)) <= 0.01f) {
+        if (fabsf(fn_8002D4E0(work->motionModel) - fn_8002D530(work->motionModel)) <= 0.01f) {
             work->motionComplete = 0;
             fn_800269E8(work->motionModel, (1 << 0));
         }
     }
     fn_1_8ED8(work, 0);
     fn_8002D86C(work->model, 1.0f);
-    fn_1_31C(&initialDirection, (f32)sin(0.0),
-        0.0f, (f32)cos(0.0));
-    fn_1_31C(&currentDirection, (f32)sin(work->angle),
-        0.0f, (f32)cos(work->angle));
+    fn_1_31C(&initialDirection, (f32)sin(0.0), 0.0f, (f32)cos(0.0));
+    fn_1_31C(&currentDirection, (f32)sin(work->angle), 0.0f, (f32)cos(work->angle));
     angularDifference = fn_1_298(M669VecDot(&initialDirection, &currentDirection));
     cross = initialDirection.x * currentDirection.z -
         initialDirection.z * currentDirection.x;
@@ -3012,9 +2932,7 @@ void fn_1_E648(OMOBJ *object)
         angle += (2.0 * M_PI);
     }
     work->angle = angle;
-    fn_80026808(work->model, 0.0f,
-        (f32)((f64)(180.0f * work->angle) / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)((f64)(180.0f * work->angle) / M_PI), 0.0f);
 }
 
 /* Microphone listener: rejects failed or empty responses and saves the word only above the score
@@ -3025,7 +2943,7 @@ void fn_1_E968(MCResponse_s *response) {
         return;
     }
     if (response->score < 0xBB8U) {
-        lbl_1_data_17E = M669_NO_WORD;
+        lbl_1_data_17E = 0xFFFF;
         return;
     }
     lbl_1_data_17E = (u16)*response->result;
@@ -3288,7 +3206,7 @@ void fn_1_EFB0(OMOBJ *object)
     }
     if (work->header.state != - 1)
     {
-        lbl_1_data_17E = M669_NO_WORD;
+        lbl_1_data_17E = 0xFFFF;
         work->header.timer = 60;
         fn_1_248(object, fn_1_1097C);
         return;
@@ -3441,7 +3359,7 @@ void fn_1_1097C(OMOBJ *object)
     if (work->header.timer <= 0) {
         fn_1_E9C4(work, 0, 10.0f, ((1 << 30) | (1 << 0)));
         work->header.state = -1;
-        lbl_1_data_17E = M669_NO_WORD;
+        lbl_1_data_17E = 0xFFFF;
         fn_1_248(object, fn_1_EF10);
         return;
     }
@@ -3549,8 +3467,7 @@ void fn_1_10E64(M669MotionWork *work, s16 motion, float blend, u32 attr)
 {
     if (work->motion != motion) {
         work->motion = motion;
-        fn_8002CCC0(work->model, work->motionIds[work->motion],
-            0.0f, blend, attr);
+        fn_8002CCC0(work->model, work->motionIds[work->motion], 0.0f, blend, attr);
     }
 }
 
@@ -3569,10 +3486,8 @@ f32 fn_1_10EE4(M669MotionWork *work, f32 targetAngle, f32 frames)
     fn_80026874(work->model, &rotation);
     initialAngle = (f32)(M_PI *
         (rotation.y / 180.0f));
-    fn_1_31C(&targetDirection, (f32)sin(targetAngle),
-        0.0f, (f32)cos(targetAngle));
-    fn_1_31C(&currentDirection, (f32)sin(initialAngle),
-        0.0f, (f32)cos(initialAngle));
+    fn_1_31C(&targetDirection, (f32)sin(targetAngle), 0.0f, (f32)cos(targetAngle));
+    fn_1_31C(&currentDirection, (f32)sin(initialAngle), 0.0f, (f32)cos(initialAngle));
     angleDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     crossY = targetDirection.x * currentDirection.z -
         targetDirection.z * currentDirection.x;
@@ -3627,8 +3542,7 @@ void fn_1_116C0(OMOBJ *object);
 
 /* During auxiliary-actor turns, adjusts the model toward a radian heading and returns its angular
  * step. */
-static inline f32 M669MotionAngleAdjust(M669MotionWork *work, f32 targetAngle,
-    f32 frames)
+static inline f32 M669MotionAngleAdjust(M669MotionWork *work, f32 targetAngle, f32 frames)
 {
     HuVecF rotation;
     HuVecF targetDirection;
@@ -3641,10 +3555,8 @@ static inline f32 M669MotionAngleAdjust(M669MotionWork *work, f32 targetAngle,
     fn_80026874(work->model, &rotation);
     initialAngle = (f32)(M_PI *
         (rotation.y / 180.0f));
-    fn_1_31C(&targetDirection, (f32)sin(targetAngle),
-        0.0f, (f32)cos(targetAngle));
-    fn_1_31C(&currentDirection, (f32)sin(initialAngle),
-        0.0f, (f32)cos(initialAngle));
+    fn_1_31C(&targetDirection, (f32)sin(targetAngle), 0.0f, (f32)cos(targetAngle));
+    fn_1_31C(&currentDirection, (f32)sin(initialAngle), 0.0f, (f32)cos(initialAngle));
     angleDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     crossY = targetDirection.x * currentDirection.z -
         targetDirection.z * currentDirection.x;
@@ -3676,8 +3588,8 @@ void fn_1_11134(OMOBJ *object)
     work->model =
         fn_80025A04(fn_80008DD0(DATANUM(0x800000, 0), 0x10000000, 2));
     for (motionIndex = 0; motionIndex < 6; motionIndex++) {
-        work->motionIds[motionIndex] = fn_80030458(work->model,
-            fn_80008DD0(lbl_1_data_68[motionIndex], 0x10000000, 2));
+        work->motionIds[motionIndex] =
+            fn_80030458(work->model, fn_80008DD0(lbl_1_data_68[motionIndex], 0x10000000, 2));
     }
     work->motion = 0;
     fn_8002C95C(work->model, work->motionIds[work->motion]);
@@ -3696,9 +3608,7 @@ void fn_1_11134(OMOBJ *object)
         directionX = direction.x;
         targetAngle = (f32)atan2(directionX, directionZ);
         rotationAngle = targetAngle;
-        fn_80026808(work->model, 0.0f,
-            (f32)(180.0f * rotationAngle / M_PI),
-            0.0f);
+        fn_80026808(work->model, 0.0f, (f32)(180.0f * rotationAngle / M_PI), 0.0f);
         if (work->state == 0) {
             fn_80026E44(work->model);
         }
@@ -3764,9 +3674,7 @@ void fn_1_113EC(OMOBJ *object)
     directionX = nearestDirection.x;
     angle = (f32)atan2(directionX, directionZ);
     rotationAngle = angle;
-    fn_80026808(work->model, 0.0f,
-        (f32)(180.0f * rotationAngle / M_PI),
-        0.0f);
+    fn_80026808(work->model, 0.0f, (f32)(180.0f * rotationAngle / M_PI), 0.0f);
     fn_1_10E64(work, 5, 4.0f, 0);
     work->frameCount = 0;
     Hu3D3Dto2D(&work->position, 1, &screenPosition);
@@ -3880,8 +3788,7 @@ void fn_1_11C64(OMOBJ *object)
 
 /* During the second auxiliary exit, turns the model through one twentieth of the remaining angular
  * gap. */
-static inline f32 M669MotionTurnTwentieth(M669MotionWork *work,
-    f32 targetAngle, f32 frames)
+static inline f32 M669MotionTurnTwentieth(M669MotionWork *work, f32 targetAngle, f32 frames)
 {
     HuVecF rotation;
     HuVecF targetDirection;
@@ -3894,10 +3801,8 @@ static inline f32 M669MotionTurnTwentieth(M669MotionWork *work,
     fn_80026874(work->model, &rotation);
     initialAngle = (f32)(M_PI *
         (rotation.y / 180.0f));
-    fn_1_31C(&targetDirection, (f32)sin(targetAngle),
-        0.0f, (f32)cos(targetAngle));
-    fn_1_31C(&currentDirection, (f32)sin(initialAngle),
-        0.0f, (f32)cos(initialAngle));
+    fn_1_31C(&targetDirection, (f32)sin(targetAngle), 0.0f, (f32)cos(targetAngle));
+    fn_1_31C(&currentDirection, (f32)sin(initialAngle), 0.0f, (f32)cos(initialAngle));
 
     angleDifference = fn_1_298(M669VecDot(&targetDirection, &currentDirection));
     crossY = targetDirection.x * currentDirection.z -
@@ -3937,12 +3842,10 @@ void fn_1_11D04(OMOBJ *object)
     directionZ = direction.z;
     directionX = direction.x;
     targetAngle = (f32)atan2(directionX, directionZ);
-    angleDifference = M669MotionTurnTwentieth(work, targetAngle,
-        20.0f);
+    angleDifference = M669MotionTurnTwentieth(work, targetAngle, 20.0f);
     if (angleDifference < 0.01f) {
         M669VecScale(&direction, &direction, 10.0f);
-        fn_1_31C(&work->velocity, direction.x, 10.0f,
-            direction.z);
+        fn_1_31C(&work->velocity, direction.x, 10.0f, direction.z);
         work->frameCount = 0;
         fn_1_10E64(work, 4, 4.0f, 0);
         fn_1_248(object, fn_1_12138);
@@ -4000,8 +3903,7 @@ void fn_1_12238(OMOBJ *object)
     if (angleDifference < 0.01f) {
         fn_1_554(&targetDirection, &targetDirection);
         M669VecScale(&targetDirection, &targetDirection, 4.0f);
-        fn_1_31C(&work->velocity, targetDirection.x,
-            3.0f, targetDirection.z);
+        fn_1_31C(&work->velocity, targetDirection.x, 3.0f, targetDirection.z);
         work->frameCount = 0;
         fn_1_10E64(work, 4, 4.0f, 0);
         fn_1_248(object, fn_1_1268C);
@@ -4112,10 +4014,8 @@ void fn_1_12CA8(OMOBJ *obj)
     fn_1_10E64(work, 1, 4.0f, 0);
     fn_80026874(work->model, &rotation);
     initialAngle = (f32)(M_PI * (rotation.y / 180.0f));
-    fn_1_31C(&fixedDirection, (f32)sin(0.0),
-        0.0f, (f32)cos(0.0));
-    fn_1_31C(&currentDirection, (f32)sin(initialAngle),
-        0.0f, (f32)cos(initialAngle));
+    fn_1_31C(&fixedDirection, (f32)sin(0.0), 0.0f, (f32)cos(0.0));
+    fn_1_31C(&currentDirection, (f32)sin(initialAngle), 0.0f, (f32)cos(initialAngle));
     angleDifference = fn_1_298(M669VecDot(&fixedDirection, &currentDirection));
     crossY = fixedDirection.x * currentDirection.z -
         fixedDirection.z * currentDirection.x;
@@ -4216,10 +4116,8 @@ void fn_1_1316C(OMOBJ *object)
         work->frameVelocity = velocity;
         M669VecScale(&work->frameVelocity, &work->frameVelocity, 40.0f);
 
-        fn_1_31C(&work->velocity, 0.0f,
-            0.0f, 0.0f);
-        fn_1_31C(&work->frameDisplacement, 0.0f,
-            0.0f, 0.0f);
+        fn_1_31C(&work->velocity, 0.0f, 0.0f, 0.0f);
+        fn_1_31C(&work->frameDisplacement, 0.0f, 0.0f, 0.0f);
         fn_80026A44(work->model, (1 << 0));
         fn_80026790(work->model, &work->position);
         work->hitPlayer = 0;
@@ -4338,8 +4236,7 @@ void fn_1_137A0(OMOBJ *object)
 }
 
 /* Turns the player away from nearby rivals when they overlap its movement space. */
-void fn_1_1384C(M669ImpactWork *object, f32 targetAngle, f32 turnRate,
-    f32 pushMagnitude)
+void fn_1_1384C(M669ImpactWork *object, f32 targetAngle, f32 turnRate, f32 pushMagnitude)
 {
     HuVecF targetDirection;
     HuVecF currentDirection;
@@ -4357,8 +4254,7 @@ void fn_1_1384C(M669ImpactWork *object, f32 targetAngle, f32 turnRate,
     if (object->header.player->mode != 3) {
         currentAngle = (f32)(M_PI *
             (object->header.player->actor->rotY / 180.0f));
-        fn_1_31C(&targetDirection, (f32)sin(targetAngle),
-            0.0f, (f32)cos(targetAngle));
+        fn_1_31C(&targetDirection, (f32)sin(targetAngle), 0.0f, (f32)cos(targetAngle));
         fn_80086BC8(object->header.player->actor, &self.center);
         self.radius = 80.0f;
         for (index = 0; index < 3; index++) {
@@ -4370,16 +4266,13 @@ void fn_1_1384C(M669ImpactWork *object, f32 targetAngle, f32 turnRate,
                 if (fn_1_2C24(&self, &other) <= 0.0f) {
                     M669VecSubtract(&awayDirection, &self.center, &other.center);
                     fn_1_554(&awayDirection, &awayDirection);
-                    M669VecAdd(&targetDirection, &targetDirection,
-                        &awayDirection);
+                    M669VecAdd(&targetDirection, &targetDirection, &awayDirection);
                     fn_1_554(&targetDirection, &targetDirection);
                 }
             }
         }
-        fn_1_31C(&currentDirection, (f32)sin(currentAngle),
-            0.0f, (f32)cos(currentAngle));
-        angleDifference = fn_1_298(
-            M669VecDot(&targetDirection, &currentDirection));
+        fn_1_31C(&currentDirection, (f32)sin(currentAngle), 0.0f, (f32)cos(currentAngle));
+        angleDifference = fn_1_298( M669VecDot(&targetDirection, &currentDirection));
         cross = targetDirection.x * currentDirection.z -
             targetDirection.z * currentDirection.x;
         adjustedAngle = currentAngle;
@@ -4396,8 +4289,7 @@ void fn_1_1384C(M669ImpactWork *object, f32 targetAngle, f32 turnRate,
         }
         object->header.player->actor->rotY = (f32)((f64)(180.0f * adjustedAngle) /
             M_PI);
-        fn_1_31C(&object->header.player->actor->push, 0.0f,
-            0.0f, pushMagnitude);
+        fn_1_31C(&object->header.player->actor->push, 0.0f, 0.0f, pushMagnitude);
     }
 }
 
@@ -4455,7 +4347,6 @@ s32 fn_1_13BA0(M669ImpactWork *object)
             f32 push = 7.0f;
             f32 distance;
             f32 facingAngle;
-            f32 angle;
 
             M669VecSubtract(&obstacleDirection, &bestParticle->position, &playerPosition);
             distance = fn_1_554(&obstacleDirection, &obstacleDirection);

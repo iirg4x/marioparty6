@@ -37,7 +37,7 @@
 
 #include <stdlib.h>
 
-typedef struct MikeActEffectController_s {
+typedef struct {
     s16 positionIndexA;
     s16 positionIndexB;
     s16 hookedModels[4];

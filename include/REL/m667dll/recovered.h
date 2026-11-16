@@ -8,7 +8,7 @@
 #include "game/mg/actman.h"
 #include "game/sprite.h"
 
-enum M667SceneObject {
+enum  {
     M667_SCENE_CAMERA,
     M667_SCENE_COLLISION,
     M667_SCENE_PLAYERS,

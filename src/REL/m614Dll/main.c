@@ -575,7 +575,6 @@ void fn_1_11AC(OMOBJ *obj)
                 if (work->movementMode == 1 || work->movementMode == 3)
                 {
                     f32 targetDistance;
-                    double result2;
                     value = (f32)(180.0 * (atan2((f64)(work->targetX - work->positionX), (f64)(work->targetZ - work->positionZ)) / M_PI) - (f64) work->headingYaw);
                     value = value < - 180.0f || value >= 180.0f ? value - (s32)((value < 0.0f ? value - 180.0f : value + 180.0f) / 360.0f) * 360 : value;
                     targetDistance = fn_1_0(work->targetX - work->positionX, work->targetZ - work->positionZ);
@@ -1177,15 +1176,9 @@ void fn_1_55A0(OMOBJ *obj)
     M614PlayerCallbackWork * playerWork[4];
     s32 player;
     s32 camera;
-    s32 stage;
     s32 model;
-    s32 sprite;
-    s32 spritePair;
-    s32 frame;
-    s32 itemId;
     s32 x;
     s32 y;
-    s32 spriteId;
     s32 left;
     s32 top;
     f32 curveOutput;
@@ -1200,7 +1193,6 @@ void fn_1_55A0(OMOBJ *obj)
     f32 firstProgress;
     f32 dx;
     f32 dz;
-    u32 resource;
     f32 x1;
     for (player = 0; player < 4; player++)
     {
@@ -1345,11 +1337,6 @@ void fn_1_656C(OMOBJ *obj)
     s32 otherCount;
     s32 otherIndex;
     s32 firstWinner;
-    s32 secondWinner;
-    s32 thirdWinner;
-    s32 fourthWinner;
-    s32 x;
-    s32 y;
     f32 centerX;
     f32 centerZ;
     f32 rotation;
@@ -1690,7 +1677,6 @@ void fn_1_8180(OMOBJ *obj)
     s32 index;
     s32 orderIndex = 0;
     s32 modelIndex;
-    s32 hookModel;
     work = obj->data;
     memset(work, 0, 0x200);
     for (index = 0; index < 4; index++)
@@ -2320,16 +2306,13 @@ f32 lbl_1_data_120[3] = {-2.0f, -1.0f, 0.0f};
 void fn_1_ABF4(void *model, Mtx *matrix)
 {
     Mtx matrices[2];
-    f32 delta;
     f32 angle;
     f32 x;
     f32 y;
-    f32 z;
     f32 screenX;
     f32 screenY;
     f32 length;
     s32 frame;
-    s32 axis;
     s32 baseColor;
     s32 red;
     s32 green;

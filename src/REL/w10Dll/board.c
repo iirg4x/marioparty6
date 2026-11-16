@@ -65,7 +65,7 @@ extern u8 lbl_1_data_86[4];
 extern u8 lbl_1_data_8A[4];
 extern HuVec2f lbl_1_data_8[10];
 
-typedef struct W10SPRPAIR_s {
+typedef struct {
     s16 spriteIds[2]; /* Banner ID at 0, label ID at 1; -1 means that sprite is unused. */
 } W10SPRPAIR;
 
@@ -92,8 +92,6 @@ typedef struct W10SPRPAIR_s {
 #include "datadir_enum.h"
 #include "messdir_enum.h"
 #include "msm_se.h"
-
-typedef u16 (*W10DICEPADHOOK)(int playerNo);
 
 extern u16 fn_1_2EA8(int playerNo);
 extern int lbl_1_bss_0[4];

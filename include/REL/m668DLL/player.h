@@ -6,7 +6,7 @@
 #include "game/charman.h"
 
 /* Per-player state shared by the Burnstile object callbacks. */
-typedef struct M668PlayerWork_s {
+typedef struct {
     s16 playerNo; /* Player configuration index, 0 through 3. */
     s16 partnerNo; /* Other player assigned to this player's team. */
     s16 charNo; /* Character ID copied from the player configuration. */

@@ -1,4 +1,5 @@
 /* Microphone selection, activity startup, player awards, and pause handling. */
+#include "REL/mikeactdll/position.h"
 #include "REL/mikeactdll/microphone_init.h"
 #include "REL/mikeactdll/sound.h"
 #include "REL/mikeactdll/module.h"
@@ -158,8 +159,6 @@ void fn_1_320(void)
     }
 }
 
-s32 fn_1_3024(Point3d *position);
-
 extern u16 lbl_1_bss_38;
 
 extern u16 lbl_1_bss_3A;
@@ -188,8 +187,6 @@ void fn_1_598(void) {
 extern u16 lbl_1_bss_66;
 
 extern u16 lbl_1_bss_68;
-
-extern Point3d lbl_1_data_2E0[4];
 
 void fn_1_634(void)
 {

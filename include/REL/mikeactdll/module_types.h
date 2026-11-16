@@ -27,13 +27,13 @@
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
-typedef struct MikeActSpriteGroups_s {
+typedef struct {
     HUSPR_GROUPID scene;
     HUSPR_GROUPID progress;
     HUSPR_GROUPID letters;
 } MikeActSpriteGroups;
 
-typedef struct MikeActWorldContext_s {
+typedef struct {
     MGACTOR *actor;
     struct MikeActPlayerRecord_s *owner;
     Point3d position;
@@ -81,7 +81,7 @@ void fn_1_4D6C(MikeActPlayerRecord *record, s32 enabled);
 void fn_1_45B0(MikeActPlayerRecord *record, s32 flags);
 s32 fn_1_5C0C(MikeActPlayerRecord *record, s16 requestedState);
 
-typedef struct MikeActStateRecord_s {
+typedef struct {
     s16 kind;
     s16 flags;
     s16 model_id;
@@ -97,7 +97,7 @@ typedef struct MikeActStateRecord_s {
 } MikeActStateRecord;
 
 /* Shared layout: fn_1_16718 and stage setup read offsets 0, 8, 0x18 and 0x1C. */
-typedef struct MikeActArenaObject_s {
+typedef struct {
     MGACTOR *actor;
     s16 modelId;
     u8 unknown_06[2]; /* No code names this field. */
@@ -211,7 +211,7 @@ void fn_1_2390(void);
 
 void fn_1_17C4(MCResponse_s *update);
 
-typedef struct MikeActMotionEntry_s {
+typedef struct {
     u16 motionIndex;
     u16 overlayIndex;
     f32 speed;
@@ -229,8 +229,6 @@ extern OM_CAMERA_VIEW lbl_1_data_94;
 extern s16 lbl_1_bss_E;
 
 void fn_1_1BF4(void);
-
-s32 fn_1_367CC(s32 *player);
 
 void fn_1_1B40(s16 playerNo, MCResponseCallback callback);
 

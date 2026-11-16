@@ -168,7 +168,7 @@ return 0;
 }
 
 /* TOS calls this initializer to bind the input port and apply profile key 15's element size. */
-static u32 InitExtraEventDP(ExtraEventDP *This)
+static unsigned char InitExtraEventDP(ExtraEventDP *This)
 {
 u32 inputElementSize;
 
@@ -179,7 +179,10 @@ return 0;
 }
 
 /* TOS calls this control callback for score queries, startup, configuration, and shutdown. */
-static u32 ControlExtraEventDP(ExtraEventDP *This, unsigned char ControlId, unsigned long CParam)
+static unsigned char ControlExtraEventDP(
+    ExtraEventDP *This,
+    unsigned char ControlId,
+    unsigned long CParam)
 {
 TosContext *ownerContext;
 TosBaseBlock *tosBlock = (TosBaseBlock *)This;

@@ -30,7 +30,6 @@ extern "C" {
 
 extern const unsigned long lbl_1_rodata_3C8[];
 extern const EffectVector lbl_1_rodata_3DC, lbl_1_rodata_3E8, lbl_1_rodata_3F8;
-extern const GXColor defaultLightColor;
 }
 
 extern "C" {
@@ -38,7 +37,7 @@ const unsigned long lbl_1_rodata_3C8[5] = {DATANUM(0x830000, 0x13), DATANUM(0x83
     DATANUM(0x830000, 0x15), DATANUM(0x830000, 0x19), DATANUM(0x830000, 0x1A)};
 const EffectVector lbl_1_rodata_3DC = {{0.0f, 0.0f, 100.0f}};
 const EffectVector lbl_1_rodata_3E8 = {{0.0f, 1.0f, -1.0f}};
-const GXColor defaultLightColor = {200, 200, 200, 255};
+extern const GXColor defaultLightColor = {200, 200, 200, 255};
 const EffectVector lbl_1_rodata_3F8 = {{0.7f, 0.7f, 0.7f}};
 }
 

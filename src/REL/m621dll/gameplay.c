@@ -11,12 +11,6 @@
 #include "game/gamemes.h"
 #include "humath.h"
 
-
-
-
-
-#define M621_AVAILABLE_COLLISION_MASK 0xFFFFFFFEU
-
 struct M621Effect_s {
     s16 active; /* Nonzero while the linked effect model is playing. */
     HU3D_MODELID model; /* Linked model instance for this effect. */
@@ -79,10 +73,12 @@ char *lbl_1_data_258[21] = {
     "621sambo-samboitiG", "621sambo-samboitiI", "621sambo-samboitiJ",
     "621sambo-samboitiK", "621sambo-samboitiL", "621sambo-samboitiM",
     "621sambo-samboitiN", "621sambo-samboitiO", "621sambo-samboitiP",
+    /* m621 available collision mask. */
     "621sambo-samboitiQ", "621sambo-samboitiR", "621sambo-samboitiS",
     "621sambo-samboitiT", "621sambo-samboitiU", "621sambo-samboitiV"
 };
-u32 lbl_1_data_2AC = M621_AVAILABLE_COLLISION_MASK;
+/* Available collision bits; bit 0 is excluded. */
+u32 lbl_1_data_2AC = 0xFFFFFFFEU;
 
 unsigned int lbl_1_data_2B0[17] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1),
@@ -311,8 +307,8 @@ void fn_1_D28(OMOBJ *obj)
     environment->modelObj = fn_8003AB38(lbl_1_bss_0, 32730, 5, 2, -1, NULL);
     for (modelIndex = 0; modelIndex < 5; modelIndex++) {
         if (lbl_1_data_3C[fn_1_5340()][modelIndex] != -1) {
-            environment->modelObj->mdlId[modelIndex] = fn_80025A04(fn_80008DD0(
-                lbl_1_data_3C[fn_1_5340()][modelIndex], 0x10000000, 2));
+            environment->modelObj->mdlId[modelIndex] =
+                fn_80025A04(fn_80008DD0( lbl_1_data_3C[fn_1_5340()][modelIndex], 0x10000000, 2));
         } else {
             /* An absent scene asset uses model ID 0; the loop-attribute pass below still applies to
              * that ID. */
@@ -323,8 +319,7 @@ void fn_1_D28(OMOBJ *obj)
         if (lbl_1_data_64[fn_1_5340()][modelIndex] != -1) {
             environment->modelObj->mtnId[modelIndex] =
                 fn_80030458(environment->modelObj->mdlId[modelIndex],
-                                fn_80008DD0(lbl_1_data_64[fn_1_5340()][modelIndex],
-                                                     0x10000000, 2));
+                                fn_80008DD0(lbl_1_data_64[fn_1_5340()][modelIndex], 0x10000000, 2));
             fn_8002C95C(environment->modelObj->mdlId[modelIndex],
                           environment->modelObj->mtnId[modelIndex]);
         } else {
@@ -341,15 +336,13 @@ void fn_1_D28(OMOBJ *obj)
     fn_800870D4(&attr, 1);
     attr.yDeviate = 0.0f;
     fn_800870A4(&attr, 1);
-    environment->hookModel = fn_80025A04(fn_80008DD0(DATANUM(0x500000, 20),
-        0x10000000, 2));
+    environment->hookModel = fn_80025A04(fn_80008DD0(DATANUM(0x500000, 20), 0x10000000, 2));
     fn_800269E8(environment->hookModel, ((1 << 30) | (1 << 0)));
     fn_800268B0(environment->hookModel, 0.6f, 0.6f, 0.6f);
-    environment->hookMotion = fn_80030458(environment->hookModel,
-        fn_80008DD0(DATANUM(0x500000, 36), 0x10000000, 2));
+    environment->hookMotion =
+        fn_80030458(environment->hookModel, fn_80008DD0(DATANUM(0x500000, 36), 0x10000000, 2));
     fn_8002C95C(environment->hookModel, environment->hookMotion);
-    environment->model = fn_80025A04(fn_80008DD0(DATANUM(0x500000, 19),
-        0x10000000, 2));
+    environment->model = fn_80025A04(fn_80008DD0(DATANUM(0x500000, 19), 0x10000000, 2));
     fn_800269E8(environment->model, ((1 << 30) | (1 << 0)));
     fn_8002741C(environment->model, "jango_mot", environment->hookModel);
     fn_1_140(obj, NULL);
@@ -459,8 +452,7 @@ void fn_1_13EC(OMOBJ *obj)
     player->vibrationDelay = 0;
     fn_8007E818(player->player);
     fn_80026E44(player->player->actor->mdlId);
-    model = fn_80025A04(fn_80008DD0(
-        lbl_1_data_8C[player->playerNo], 0x10000000, 2));
+    model = fn_80025A04(fn_80008DD0( lbl_1_data_8C[player->playerNo], 0x10000000, 2));
     hsf = fn_80026BF4(model, lbl_1_data_334[player->playerNo]);
     pos.x = hsf->mesh.base.pos.x;
     pos.y = hsf->mesh.base.pos.y;
@@ -860,13 +852,13 @@ void fn_1_27A0(void)
 {
     s32 targetSlot;
 
-    lbl_1_bss_3E = fn_80025A04(fn_80008DD0((DATANUM(0x500000, 12)), 0x10000000, 2));
-    lbl_1_bss_3C = fn_80025A04(fn_80008DD0((DATANUM(0x500000, 13)), 0x10000000, 2));
-    lbl_1_bss_3A = fn_80025A04(fn_80008DD0((DATANUM(0x500000, 14)), 0x10000000, 2));
+    lbl_1_bss_3E = fn_80025A04(fn_80008DD0(DATANUM(0x500000, 12), 0x10000000, 2));
+    lbl_1_bss_3C = fn_80025A04(fn_80008DD0(DATANUM(0x500000, 13), 0x10000000, 2));
+    lbl_1_bss_3A = fn_80025A04(fn_80008DD0(DATANUM(0x500000, 14), 0x10000000, 2));
     lbl_1_bss_38 = fn_80025A04(fn_80008DD0((lbl_1_data_74[fn_1_5340()][0]), 0x10000000, 2));
     lbl_1_bss_36 = fn_80025A04(fn_80008DD0((lbl_1_data_74[fn_1_5340()][1]), 0x10000000, 2));
-    lbl_1_bss_34 = fn_80030458(lbl_1_bss_36, fn_80008DD0((lbl_1_data_74[fn_1_5340()][2]),
-        0x10000000, 2));
+    lbl_1_bss_34 =
+        fn_80030458(lbl_1_bss_36, fn_80008DD0((lbl_1_data_74[fn_1_5340()][2]), 0x10000000, 2));
     fn_800269E8(lbl_1_bss_3E, (1 << 0));
     fn_800269E8(lbl_1_bss_3C, (1 << 0));
     fn_800269E8(lbl_1_bss_38, (1 << 0));
@@ -1707,11 +1699,11 @@ void fn_1_5054(OMOBJ *obj)
     M621Effect *effectPool = obj->data;
 
     for (effectIndex = 0; effectIndex < 4; effectIndex++) {
-        lbl_1_bss_2C[effectIndex] = fn_80025A04(fn_80008DD0(lbl_1_data_9C[effectIndex][0],
-            0x10000000, 2));
+        lbl_1_bss_2C[effectIndex] =
+            fn_80025A04(fn_80008DD0(lbl_1_data_9C[effectIndex][0], 0x10000000, 2));
         lbl_1_bss_24[effectIndex] =
-            fn_80030458(lbl_1_bss_2C[effectIndex], fn_80008DD0(lbl_1_data_9C[effectIndex][1],
-                0x10000000, 2));
+            fn_80030458(lbl_1_bss_2C[effectIndex],
+                fn_80008DD0(lbl_1_data_9C[effectIndex][1], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_2C[effectIndex], (1 << 0));
     }
     memset(effectPool, 0, 21 * sizeof(M621Effect));

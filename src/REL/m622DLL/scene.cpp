@@ -338,7 +338,6 @@ void ModelEntry::fn_1_1CF4()
     }
 }
 
-extern "C" {  }
 ModelEntry *fn_1_1DB8(s32 ownerId)
 {
     ModelEntry *current = lbl_1_bss_40.front();
@@ -615,8 +614,6 @@ void fn_1_3120(ModelCameraPlacement *self)
 {
     (self->*self->initialValues)();
 }
-
-extern "C" {  }
 
 extern "C" ListRoot<ModelPulseOwner> lbl_1_bss_7C;
 

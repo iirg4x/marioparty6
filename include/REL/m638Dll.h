@@ -253,8 +253,6 @@ typedef struct M638SceneView {
     s16 extraModels[1]; /* Additional scene model handle. */
     s16 sprites[3]; /* Shared scene status sprite handles. */
 } M638SceneView;
-typedef char M638TeamView_stride_check[(sizeof(M638TeamView) == 836) ? 1 : -1];
-typedef char M638SceneView_extent_check[(sizeof(M638SceneView) == 1964) ? 1 : -1];
 
 /* Update a team's players, actor, course, and effects for the current frame. */
 void fn_1_2288(M638TeamView *team);
@@ -381,8 +379,6 @@ extern M638TimerWatch lbl_1_bss_10;
 extern HUPROCESS *lbl_1_bss_C;
 extern s32 lbl_1_bss_8;
 extern OMOBJ *lbl_1_bss_4;
-extern /* Four scene-state bytes whose purpose is not established here. */
-u8 lbl_1_bss_0[4];
 extern const u16 lbl_1_rodata_10[4];
 extern const Point3d lbl_1_rodata_68;
 

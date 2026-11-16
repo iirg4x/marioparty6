@@ -2,20 +2,6 @@
 #include "REL/m650/m650.h"
 #include "msm_stream.h"
 
-extern GXColor lbl_1_data_40[2];
-extern Point3d lbl_1_data_28;
-extern Point3d lbl_1_data_34;
-extern s16 lbl_1_bss_4AC[4];
-extern s16 lbl_1_bss_4B4;
-extern s16 lbl_1_bss_4B6;
-extern s32 lbl_1_bss_2A8;
-extern s32 lbl_1_data_48[4];
-extern s32 lbl_1_data_80[2];
-extern s32 lbl_1_data_88[2];
-extern s32 lbl_1_data_90[2];
-extern s32 lbl_1_data_98[2];
-extern s32 lbl_1_data_A0[2];
-
 MGSEQ_PARAM lbl_1_data_0 = {
     300, 1, fn_1_F0, fn_1_168, fn_1_188, fn_1_1C8, fn_1_200, fn_1_304, fn_1_3AC, fn_1_3B0, fn_1_3B4,
 };

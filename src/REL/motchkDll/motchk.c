@@ -38,10 +38,10 @@ void _epilog(void) {
     }
 }
 
-#define MOTION_MAX 216
-
 /* Selection order in this table is the motion number shown by the preview. */
-static char *MotNameTbl[MOTION_MAX] = {
+/* The motion viewer lists 216 motions. */
+/* motion max. */
+static char *MotNameTbl[216] = {
     "c000m1_300", "c000m1_301", "c000m1_302", "c000m1_303",
     "c000m1_304", "c000m1_305", "c000m1_306", "c000m1_307",
     "c000m1_308", "c000m1_309", "c000m1_310", "c000m1_311",
@@ -183,14 +183,14 @@ void MotChkMain(void)
     while(1) {
         if(lbl_802C0000[PAD_CHAN0] & PAD_BUTTON_A) {
             CharMotNo++;
-            if(CharMotNo >= MOTION_MAX) {
+            if(CharMotNo >= 216) {
                 CharMotNo = 0;
             }
             LoadCharMotion(CharNo, CharMotNo, CharMdlNo);
         } else if(lbl_802C0000[PAD_CHAN0] & PAD_BUTTON_B) {
             CharMotNo--;
             if(CharMotNo < 0) {
-                CharMotNo = MOTION_MAX-1;
+                CharMotNo = 216 - 1;
             }
             LoadCharMotion(CharNo, CharMotNo, CharMdlNo);
         } else if(lbl_802C0008[PAD_CHAN0] & PAD_TRIGGER_Z) {
@@ -253,9 +253,6 @@ unsigned int CharDirTbl[10+1] = {
     0xcf0000, 0xa80000, 0x2a0000
 };
 
-#define CHAR_FILE(filename) MARIO_HSF_##filename
-#define CHAR_DATANUM(charNo, file) (CharDirTbl[charNo]|FILENUM(file))
-
 static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lagFlag);
 
 /* Called at preview startup or character change to load four models and their selected and idle
@@ -263,34 +260,39 @@ static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL la
 static void CreateChar(s16 characterId, s16 motionIndex, s16 modelVariant)
 {
     s16 modelIndex;
-    CharMdlId[0] = fn_80025A04(fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m0)),
+    /* Character data combines its directory with the file number. */
+    CharMdlId[0] = fn_80025A04(fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m0),
         0x10000000, 2));
-    CharMdlId[1] = fn_80025A04(fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m1)),
+    CharMdlId[1] = fn_80025A04(fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1),
         0x10000000, 2));
-    CharMdlId[2] = fn_80025A04(fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m2)),
+    CharMdlId[2] = fn_80025A04(fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m2),
         0x10000000, 2));
-    CharMdlId[3] = fn_80025A04(fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m3)),
+    CharMdlId[3] = fn_80025A04(fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m3),
         0x10000000, 2));
-    CharMotId[0] = fn_80030458(CharMdlId[0], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
-    CharMotId[1] = fn_80030458(CharMdlId[1], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
-    CharMotId[2] = fn_80030458(CharMdlId[2], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
-    CharMotId[3] = fn_80030458(CharMdlId[3], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
+    CharMotId[0] = fn_80030458(CharMdlId[0],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
+    CharMotId[1] = fn_80030458(CharMdlId[1],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
+    CharMotId[2] = fn_80030458(CharMdlId[2],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
+    CharMotId[3] = fn_80030458(CharMdlId[3],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
     CharMotIdleId[0] =
-        fn_80030458(CharMdlId[0], fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300)),
-            0x10000000, 2));
+        fn_80030458(CharMdlId[0],
+            fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300), 0x10000000, 2));
     CharMotIdleId[1] =
-        fn_80030458(CharMdlId[1], fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300)),
-            0x10000000, 2));
+        fn_80030458(CharMdlId[1],
+            fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300), 0x10000000, 2));
     CharMotIdleId[2] =
-        fn_80030458(CharMdlId[2], fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300)),
-            0x10000000, 2));
+        fn_80030458(CharMdlId[2],
+            fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300), 0x10000000, 2));
     CharMotIdleId[3] =
-        fn_80030458(CharMdlId[3], fn_80008DD0((CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300)),
-            0x10000000, 2));
+        fn_80030458(CharMdlId[3],
+            fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300), 0x10000000, 2));
     fn_8002C95C(CharMdlId[0], CharMotId[0]);
     fn_8002C95C(CharMdlId[1], CharMotId[1]);
     fn_8002C95C(CharMdlId[2], CharMotId[2]);
@@ -315,7 +317,7 @@ static void CreateChar(s16 characterId, s16 motionIndex, s16 modelVariant)
  * - without lag, then clears it each HUD pass. */
 static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lagFlag)
 {
-    TimingHookMode = (lagFlag) ? 1 : 2;
+    TimingHookMode = lagFlag ? 1 : 2;
 }
 
 /* Called by MotChkMain's A/B controls to change motion on all models and show the chosen
@@ -330,14 +332,18 @@ static void LoadCharMotion(s16 characterId, s16 motionIndex, s16 modelVariant)
     for(modelIndex=0; modelIndex<4; modelIndex++) {
         fn_8002C624(CharMotId[modelIndex]);
     }
-    CharMotId[0] = fn_80030458(CharMdlId[0], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
-    CharMotId[1] = fn_80030458(CharMdlId[1], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
-    CharMotId[2] = fn_80030458(CharMdlId[2], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
-    CharMotId[3] = fn_80030458(CharMdlId[3], fn_80008DD0((CHAR_DATANUM(characterId,
-        MARIO_HSF_c000m1_300 + motionIndex)), 0x10000000, 2));
+    CharMotId[0] = fn_80030458(CharMdlId[0],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
+    CharMotId[1] = fn_80030458(CharMdlId[1],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
+    CharMotId[2] = fn_80030458(CharMdlId[2],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
+    CharMotId[3] = fn_80030458(CharMdlId[3],
+        fn_80008DD0(CharDirTbl[characterId] | FILENUM(MARIO_HSF_c000m1_300 + motionIndex),
+        0x10000000, 2));
     fn_8002C95C(CharMdlId[0], CharMotId[0]);
     fn_8002C95C(CharMdlId[1], CharMotId[1]);
     fn_8002C95C(CharMdlId[2], CharMotId[2]);

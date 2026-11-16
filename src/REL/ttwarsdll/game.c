@@ -12,7 +12,7 @@
 #include "game/gamework.h"
 #include "datadir_enum.h"
 
-typedef struct TTWarsRecord_s {
+typedef struct {
     f32 tileX; // Board-space X coordinate, in model units.
     f32 tileY; // Board-space Y coordinate, in model units.
     f32 tileZ; // Board-space Z coordinate, in model units.
@@ -28,8 +28,6 @@ s32 fn_1_2F70(s32 column, s32 row);
 s32 fn_1_2E80(s32 column, s32 row);
 void fn_1_25E0(OMOBJ *obj);
 void fn_1_24A8(OMOBJ *obj);
-extern f32 lbl_802C028C;
-extern Vec lbl_80266A4C;
 void fn_1_30FC(void);
 void fn_1_31E8(void);
 void fn_1_47F8(void);
@@ -50,7 +48,7 @@ void fn_1_5BC(OMOBJ *obj);
 void fn_1_3704(void);
 void fn_1_D88(void);
 
-typedef struct TTWarsObjectData_s {
+typedef struct {
     s32 playerIndex; // Player whose score increases when this piece falls through.
     s32 registrySlot; // Slot in lbl_1_bss_1464 for this piece.
     s32 state; // Piece states: waiting, falling, blocked, or leaving.

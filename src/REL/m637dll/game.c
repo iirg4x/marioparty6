@@ -5,9 +5,6 @@
 #include "msm_stream.h"
 #include "humath.h"
 
-#define M637_ESP_SCORE_FRONT DATANUM(0x9b0000, 30)
-#define M637_ESP_SCORE_BACK DATANUM(0x9b0000, 31)
-
 u32 lbl_1_data_28[9] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1),
     DATANUM(0x930000, 2), DATANUM(0x8e0000, 106),
@@ -235,8 +232,7 @@ void fn_1_E4C(void)
                            8.0f, 0U);
         return;
     }
-    fn_8005C2C8(lbl_80265728[lbl_1_bss_290[0]].charNo, lbl_1_bss_2A0->motion[8], 0.0f, 8.0f,
-                       0U);
+    fn_8005C2C8(lbl_80265728[lbl_1_bss_290[0]].charNo, lbl_1_bss_2A0->motion[8], 0.0f, 8.0f, 0U);
     fn_8005C2C8(lbl_80265728[lbl_1_bss_290[1]].charNo, lbl_1_bss_2A0[1].motion[8], 0.0f,
                        8.0f, 0U);
     fn_8005C2C8(lbl_80265728[lbl_1_bss_290[2]].charNo, lbl_1_bss_2A0[2].motion[8], 0.0f,
@@ -483,8 +479,7 @@ void fn_1_1CF0(void)
             teamPositionX = 400.0f;
             teamRotationY = -40.0f;
         }
-        teamModel = fn_80025A04(
-            fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
+        teamModel = fn_80025A04( fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
         fn_80026B64(teamModel, 1U);
         fn_80026760(teamModel, teamPositionX, -200.0f, 0.0f);
         fn_80026808(teamModel, 0.0f, teamRotationY, 0.0f);
@@ -492,8 +487,8 @@ void fn_1_1CF0(void)
         slotIndex = 0;
         while (slotIndex < 2) {
             modelDataNumber = slotIndex == 0 ? 21 : 23;
-            lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0] = fn_80025A04(
-                fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
+            lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0] =
+                fn_80025A04( fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
             fn_80026B64(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0], 1U);
             fn_80026760(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0], teamPositionX,
                             -200.0f, 0.0f);
@@ -502,8 +497,8 @@ void fn_1_1CF0(void)
             fn_80026B8C(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0], 3);
             fn_80026FFC(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0]);
             modelDataNumber = slotIndex == 0 ? 20 : 22;
-            lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][1] = fn_80025A04(
-                fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
+            lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][1] =
+                fn_80025A04( fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
             fn_80026B64(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][1], 1U);
             fn_80026760(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][1], teamPositionX,
                             -200.0f, 0.0f);
@@ -514,12 +509,10 @@ void fn_1_1CF0(void)
             if (((s32) lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex] == 0) ||
                 ((s32) lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex] >= 5)) {
                 lbl_1_bss_1D0[teamIndex].visibleReelModel[slotIndex] = 0;
-                fn_800269E8(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][1],
-                                 (1 << 0));
+                fn_800269E8(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][1], (1 << 0));
             } else {
                 lbl_1_bss_1D0[teamIndex].visibleReelModel[slotIndex] = 1;
-                fn_800269E8(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0],
-                                 (1 << 0));
+                fn_800269E8(lbl_1_bss_1D0[teamIndex].reelModels[slotIndex][0], (1 << 0));
             }
             lbl_1_bss_1D0[teamIndex].modelAngle[slotIndex] =
                 -60.0f * (f32) lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex];
@@ -551,8 +544,8 @@ void fn_1_1CF0(void)
         fn_800269E8(lbl_1_bss_1D0[teamIndex].spinEffectModel, ((1 << 30) | (1 << 0)));
         fn_8002D86C(lbl_1_bss_1D0[teamIndex].spinEffectModel, 0.0f);
         modelDataNumber = teamIndex == 0 ? 7 : 8;
-        lbl_1_bss_1D0[teamIndex].teamAnimationModel = fn_80025A04(
-            fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
+        lbl_1_bss_1D0[teamIndex].teamAnimationModel =
+            fn_80025A04( fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_1D0[teamIndex].teamAnimationModel, 1U);
         fn_80026760(lbl_1_bss_1D0[teamIndex].teamAnimationModel, teamPositionX, -200.0f, 0.0f);
         fn_80026808(lbl_1_bss_1D0[teamIndex].teamAnimationModel, 0.0f, teamRotationY, 0.0f);
@@ -577,8 +570,8 @@ void fn_1_1CF0(void)
             } else {
                 modelDataNumber = slotIndex == 0 ? 14 : 15;
             }
-            lbl_1_bss_1D0[teamIndex].reelAnimationModels[slotIndex] = fn_80025A04(
-                fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
+            lbl_1_bss_1D0[teamIndex].reelAnimationModels[slotIndex] =
+                fn_80025A04( fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
             fn_80026B64(lbl_1_bss_1D0[teamIndex].reelAnimationModels[slotIndex], 1U);
             fn_80026760(lbl_1_bss_1D0[teamIndex].reelAnimationModels[slotIndex], teamPositionX,
                             -200.0f, 0.0f);
@@ -604,8 +597,8 @@ void fn_1_1CF0(void)
         slotIndex = 0;
         while (slotIndex < 2) {
             modelDataNumber = slotIndex == 0 ? 58 : 60;
-            lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex] = fn_80025A04(
-                fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
+            lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex] =
+                fn_80025A04( fn_80008DD0(modelDataNumber + 0x600000, 0x10000000, 2));
             fn_80026B64(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex], 1U);
             fn_80026760(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex], teamPositionX,
                             -200.0f, 0.0f);
@@ -620,15 +613,13 @@ void fn_1_1CF0(void)
                           lbl_1_bss_1D0[teamIndex].matchIndicatorMotions[slotIndex]);
             fn_800269E8(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex],
                              ((1 << 30) | (1 << 0)));
-            fn_800269E8(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex],
-                             (1 << 0));
+            fn_800269E8(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex], (1 << 0));
             slotIndex += 1;
         }
-        lbl_1_bss_1D0[teamIndex].teamMatchEffectModel = fn_80025A04(
-            fn_80008DD0(DATANUM(0x600000, 62), 0x10000000, 2));
+        lbl_1_bss_1D0[teamIndex].teamMatchEffectModel =
+            fn_80025A04( fn_80008DD0(DATANUM(0x600000, 62), 0x10000000, 2));
         fn_80026B64(lbl_1_bss_1D0[teamIndex].teamMatchEffectModel, 1U);
-        fn_80026760(lbl_1_bss_1D0[teamIndex].teamMatchEffectModel, teamPositionX, -200.0f,
-                        0.0f);
+        fn_80026760(lbl_1_bss_1D0[teamIndex].teamMatchEffectModel, teamPositionX, -200.0f, 0.0f);
         fn_80026808(lbl_1_bss_1D0[teamIndex].teamMatchEffectModel, 0.0f, teamRotationY, 0.0f);
         fn_80026B8C(lbl_1_bss_1D0[teamIndex].teamMatchEffectModel, 3);
         lbl_1_bss_1D0[teamIndex].teamMatchEffectMotion = fn_80030458(
@@ -679,8 +670,7 @@ void fn_1_2D7C(void)
             }
             symbolModelBase = symbolDataBase;
             lbl_1_bss_118[targetDisplayIndex].symbolModels[symbolIndex][0] =
-                fn_80025A04(fn_80008DD0(symbolModelBase + 0x600000 + symbolIndex,
-                                                     0x10000000, 2));
+                fn_80025A04(fn_80008DD0(symbolModelBase + 0x600000 + symbolIndex, 0x10000000, 2));
             fn_80026B64(lbl_1_bss_118[targetDisplayIndex].symbolModels[symbolIndex][0], 1U);
             fn_80026790(lbl_1_bss_118[targetDisplayIndex].symbolModels[symbolIndex][0],
                              &reelSymbolPosition);
@@ -698,8 +688,7 @@ void fn_1_2D7C(void)
             }
             symbolModelBase = symbolOverlayDataBase;
             lbl_1_bss_118[targetDisplayIndex].symbolModels[symbolIndex][1] =
-                fn_80025A04(fn_80008DD0(symbolModelBase + 0x600000 + symbolIndex,
-                                                     0x10000000, 2));
+                fn_80025A04(fn_80008DD0(symbolModelBase + 0x600000 + symbolIndex, 0x10000000, 2));
             fn_80026B64(lbl_1_bss_118[targetDisplayIndex].symbolModels[symbolIndex][1], 1U);
             fn_80026790(lbl_1_bss_118[targetDisplayIndex].symbolModels[symbolIndex][1],
                              &reelSymbolPosition);
@@ -732,8 +721,7 @@ void fn_1_2D7C(void)
     fn_80026790(lbl_1_bss_10A, &reelSymbolPosition);
     fn_80026808(lbl_1_bss_10A, 0.0f, 0.0f, 0.0f);
     fn_80026B8C(lbl_1_bss_10A, 3);
-    lbl_1_bss_108 = fn_80030458(
-        lbl_1_bss_10A, fn_80008DD0(DATANUM(0x600000, 65), 0x10000000, 2));
+    lbl_1_bss_108 = fn_80030458( lbl_1_bss_10A, fn_80008DD0(DATANUM(0x600000, 65), 0x10000000, 2));
     fn_8002C95C(lbl_1_bss_10A, lbl_1_bss_108);
     fn_800269E8(lbl_1_bss_10A, ((1 << 30) | (1 << 0)));
     fn_800269E8(lbl_1_bss_10A, (1 << 0));
@@ -987,8 +975,7 @@ s32 fn_1_36E8(s32 acceptPlayerInput)
                 if (((s32) lbl_1_bss_1D0[teamIndex].alignmentState[slotIndex] != 0) &&
                     (lbl_1_bss_118[slotIndex].targetSymbol ==
                      (s32) lbl_1_bss_1D0[teamIndex].reelSymbol[slotIndex])) {
-                    fn_80026A44(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex],
-                                       (1 << 0));
+                    fn_80026A44(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex], (1 << 0));
                     if ((s32) lbl_1_bss_1D0[teamIndex].alignmentState[slotIndex] == 1) {
                         if (teamIndex == 0) {
                             HuAudFXPlay(MSM_SE_MG637_REEL_ALIGN_TEAM_0);
@@ -998,8 +985,7 @@ s32 fn_1_36E8(s32 acceptPlayerInput)
                         lbl_1_bss_1D0[teamIndex].alignmentState[slotIndex] = 2;
                     }
                 } else {
-                    fn_800269E8(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex],
-                                     (1 << 0));
+                    fn_800269E8(lbl_1_bss_1D0[teamIndex].matchIndicatorModels[slotIndex], (1 << 0));
                 }
                 slotIndex += 1;
             }
@@ -1317,17 +1303,19 @@ void fn_1_5C98(s32 displayMode)
         pointMarkerIndex = 0;
         while (pointMarkerIndex < 3) {
             pointMarkerX =
+                /* m637 esp score front. */
                 (32.0f * (f32) pointMarkerIndex) + (lbl_1_bss_B8[teamIndex].positionX - 32.0f);
             if (displayMode == 0) {
                 lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex] =
-                    espEntry(M637_ESP_SCORE_FRONT, 0, 0);
+                    espEntry(DATANUM(0x9b0000, 30), 0, 0);
                 espDrawNoSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex], 0);
                 espPriSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex], 1);
                 espPosSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex],
+                          /* m637 esp score back. */
                           pointMarkerX, lbl_1_bss_B8[teamIndex].positionY);
                 espTPLvlSet(lbl_1_bss_B8[teamIndex].unearnedPointSprites[pointMarkerIndex], 0.5f);
                 lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex] =
-                    espEntry(M637_ESP_SCORE_BACK, 0, 0);
+                    espEntry(DATANUM(0x9b0000, 31), 0, 0);
                 espDrawNoSet(lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex], 0);
                 espPriSet(lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex], 1);
                 espPosSet(lbl_1_bss_B8[teamIndex].earnedPointSprites[pointMarkerIndex],

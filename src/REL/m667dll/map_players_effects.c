@@ -396,8 +396,7 @@ void fn_1_7F4(void)
     model = lbl_1_bss_2C->objects[M667_SCENE_MULTIPLAYER_RESULT]->mdlId[2];
     fn_800269E8(model, ((1 << 30) | (1 << 0)));
     fn_1_1C1C(3);
-    fn_800269E8(lbl_1_bss_18->currentPlayer->player->actor->mdlId,
-        (1 << 0));
+    fn_800269E8(lbl_1_bss_18->currentPlayer->player->actor->mdlId, (1 << 0));
     for (index = 0; index < 3; index++) {
         player = lbl_1_bss_2C->entries[index];
         model = lbl_1_bss_2C->objects[M667_SCENE_PLAYERS]->mdlId[player->index];
@@ -491,10 +490,6 @@ void fn_1_D6C(s32 index, HuVecF *position)
 #define M667_AI_ROUTE_GRID_FLAG (1 << 0)
 #define M667_AI_ROUTE_ENTRY_FLAG (1 << 1)
 #define M667_AI_STAY_FLAG (1 << 4)
-#define M667_AI_Z_NEGATIVE_FLAG (1 << 0)
-#define M667_AI_Z_POSITIVE_FLAG (1 << 1)
-#define M667_AI_X_NEGATIVE_FLAG (1 << 2)
-#define M667_AI_X_POSITIVE_FLAG (1 << 3)
 
 extern void fn_1_2878(s16 index);
 /* The trail effect uses this bounds check before reflecting a particle back into the board. */
@@ -617,9 +612,7 @@ void fn_1_1338(s32 index)
                 &lbl_1_data_230[dataIndex][1],
                 &direction);
             angle = fn_1_7F48(&direction);
-            fn_80026808(record->model, 0.0f,
-                            180.0f + angle,
-                            0.0f);
+            fn_80026808(record->model, 0.0f, 180.0f + angle, 0.0f);
         }
         record->elapsedFrames += 1;
         t = (f32)record->elapsedFrames / (f32)record->durationFrames;
@@ -627,10 +620,7 @@ void fn_1_1338(s32 index)
             t = 1.0f;
         }
         /* This call passes the float before the pointer without a declaration in scope. */
-        fn_1_7EF0(
-            &lbl_1_data_230[dataIndex][0],
-            &lbl_1_data_230[dataIndex][1],
-            t, &position);
+        fn_1_7EF0( &lbl_1_data_230[dataIndex][0], &lbl_1_data_230[dataIndex][1], t, &position);
         fn_80026790(record->model, &position);
         if (t >= 1.0f) {
             record->index = (record->index + 1) % 2;
@@ -846,8 +836,7 @@ void fn_1_1DE0(M667PlayerView *work, s32 motion, f32 blend, u32 attr)
 {
     if (work->motion != motion) {
         work->motion = motion;
-        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[motion],
-                          0.0f, blend, attr);
+        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[motion], 0.0f, blend, attr);
     }
 }
 
@@ -975,7 +964,6 @@ M667Entry *fn_1_2230(s16 index)
     if (lbl_1_bss_8 == NULL) return NULL;
     return &lbl_1_bss_8->entries[index];
 }
-
 
 /* Entry placement reserves an inactive entry owned by this player and moves only its model
  * to the origin; its actor and stored launch position are unchanged. */
@@ -1528,15 +1516,13 @@ void fn_1_378C(OMOBJ *object)
     LightSetupView *work;
 
     work = object->data;
-    work->lightId = fn_800286D0(&lbl_1_data_3D4, &lbl_1_data_3E0,
-        &lbl_1_data_3EC.color);
+    work->lightId = fn_800286D0(&lbl_1_data_3D4, &lbl_1_data_3E0, &lbl_1_data_3EC.color);
     Hu3DGLightInfinitytSet(work->lightId);
     {
         HuVecF lightPosition = {100.0f, 8000.0f, 0.0f};
         HuVecF shadowUp = {0.0f, 1.0f, 0.0f};
         HuVecF shadowTarget = {0.0f, 0.0f, 0.0f};
-        fn_8002A3B0(15.0f, 10.0f,
-            10000.0f, 1);
+        fn_8002A3B0(15.0f, 10.0f, 10000.0f, 1);
         fn_8002AA3C(16, 16, 16, 1);
         fn_8002A674(&lightPosition, &shadowUp, &shadowTarget, 1);
         fn_8002A7D8(0.3f, 1);
@@ -1564,10 +1550,8 @@ void fn_1_38E4(OMOBJ *object)
     work = object->data;
     cameraMask = 1;
     Hu3DCameraCreate(cameraMask);
-    Hu3DCameraPerspectiveSet(cameraMask, 45.0f, 20.0f,
-        15000.0f, 1.2f);
-    Hu3DCameraViewportSet(cameraMask, 0.0f, 0.0f,
-        640.0f, 480.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(cameraMask, 45.0f, 20.0f, 15000.0f, 1.2f);
+    Hu3DCameraViewportSet(cameraMask, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     work->motionIndex = -1;
     work->timer = 0;
     fn_1_140(object, fn_1_39D4);
@@ -1595,8 +1579,7 @@ void fn_1_39D4(OMOBJ *object)
         work->target = target;
         work->position = position;
         Hu3DCameraPosSetV(1, &position, &up, &target);
-        if (fn_8002D75C(
-                lbl_1_bss_2C->objects[M667_SCENE_CAMERA]->mdlId[work->motionIndex])) {
+        if (fn_8002D75C( lbl_1_bss_2C->objects[M667_SCENE_CAMERA]->mdlId[work->motionIndex])) {
             work->mode = 0;
         }
         break;
@@ -1813,10 +1796,8 @@ void fn_1_42CC(OMOBJ *object)
         case 0:
             fn_8007EEBC(work->player, 12);
             fn_800805CC(work->player->actor, (1 << 4));
-            fn_1_D6C(work->index / 2 + 4,
-                     &work->startPos);
-            fn_1_D6C(work->index / 2 + 6,
-                     &work->targetPos);
+            fn_1_D6C(work->index / 2 + 4, &work->startPos);
+            fn_1_D6C(work->index / 2 + 6, &work->targetPos);
             work->player->actor->gravity = 0.0f;
             work->targetPos.y = 0.0f;
             fn_80086AA8(work->player->actor, &work->startPos);
@@ -1848,8 +1829,7 @@ void fn_1_42CC(OMOBJ *object)
             work->actionStep += 1;
             return;
         case 2:
-            if (fn_8007E8B4(work->player, &work->targetPos,
-                                 10.0f, 5.0f) != 0) {
+            if (fn_8007E8B4(work->player, &work->targetPos, 10.0f, 5.0f) != 0) {
                 fn_80086AA8(work->player->actor, &work->targetPos);
                 fn_8007EEBC(work->player, 0);
                 fn_1_1DE0(work, 0, 4.0f, ((1 << 30) | (1 << 0)));
@@ -2101,8 +2081,7 @@ void fn_1_4E6C(OMOBJ *object)
             fn_1_1E5C(work, 9);
             return;
         }
-        if (fn_8007E8B4(work->player, &work->targetPos,
-                             10.0f, 0.0f) == 0) {
+        if (fn_8007E8B4(work->player, &work->targetPos, 10.0f, 0.0f) == 0) {
             return;
         }
         if (180.0f != work->rotationCurrentY) {
@@ -2272,23 +2251,27 @@ void fn_1_5580(OMOBJ *object)
             break;
         case 1:
             routeCriteria = M667_AI_ROUTE_GRID_FLAG | M667_AI_ROUTE_ENTRY_FLAG;
+            /* m667 ai z negative flag. */
             break;
         }
 
-        routeMask = M667_AI_Z_NEGATIVE_FLAG;
+        routeMask = (1 << 0);
+        /* m667 ai x negative flag. */
         if (routeCriteria & M667_AI_ROUTE_GRID_FLAG) {
             routeMask = M667_AI_STAY_FLAG;
             if (player->mapX > 0) {
-                routeMask |= M667_AI_X_NEGATIVE_FLAG;
+                /* m667 ai x positive flag. */
+                routeMask |= (1 << 2);
             }
             if (player->mapX < 3) {
-                routeMask |= M667_AI_X_POSITIVE_FLAG;
+                /* m667 ai z positive flag. */
+                routeMask |= (1 << 3);
             }
             if (player->mapZ < 7) {
-                routeMask |= M667_AI_Z_POSITIVE_FLAG;
+                routeMask |= (1 << 1);
             }
             if (player->mapZ >= 0) {
-                routeMask |= M667_AI_Z_NEGATIVE_FLAG;
+                routeMask |= (1 << 0);
             }
         }
         if (routeCriteria & M667_AI_ROUTE_ENTRY_FLAG) {
@@ -2302,37 +2285,37 @@ void fn_1_5580(OMOBJ *object)
                     }
                     if (routeChoice == 0) {
                         if (entry->x == player->mapX - 1) {
-                            routeMask &= ~M667_AI_X_NEGATIVE_FLAG;
+                            routeMask &= ~(1 << 2);
                         }
                         if (entry->x == player->mapX + 1) {
-                            routeMask &= ~M667_AI_X_POSITIVE_FLAG;
+                            routeMask &= ~(1 << 3);
                         }
                         if (entry->z == player->mapZ - 1) {
-                            routeMask &= ~M667_AI_Z_NEGATIVE_FLAG;
+                            routeMask &= ~(1 << 0);
                         }
                         if (entry->z == player->mapZ + 1) {
-                            routeMask &= ~M667_AI_Z_POSITIVE_FLAG;
+                            routeMask &= ~(1 << 1);
                         }
                     } else {
                         if (entry->x == player->mapX - 1) {
-                            routeMask |= M667_AI_X_NEGATIVE_FLAG;
+                            routeMask |= (1 << 2);
                         }
                         if (entry->x == player->mapX + 1) {
-                            routeMask |= M667_AI_X_POSITIVE_FLAG;
+                            routeMask |= (1 << 3);
                         }
                         if (entry->z == player->mapZ - 1) {
-                            routeMask |= M667_AI_Z_NEGATIVE_FLAG;
+                            routeMask |= (1 << 0);
                         }
                         if (entry->z == player->mapZ + 1) {
-                            routeMask |= M667_AI_Z_POSITIVE_FLAG;
+                            routeMask |= (1 << 1);
                         }
                     }
                 }
                 routeIndex += 1;
             }
-            if (((routeMask & M667_AI_Z_NEGATIVE_FLAG) != 0) &&
+            if (((routeMask & (1 << 0)) != 0) &&
                 (frandmod(100) < player->ai->chance)) {
-                routeMask = M667_AI_Z_NEGATIVE_FLAG;
+                routeMask = (1 << 0);
             }
         }
 
@@ -2645,9 +2628,7 @@ void fn_1_6064(M667ModelEffectView *effect, s32 event)
     switch (event) {
     case 0:
         effect->children =
-            HuMemDirectMallocNum(
-                HEAP_HEAP, capacity * sizeof(*effect->children),
-                0x10000000);
+            HuMemDirectMallocNum( HEAP_HEAP, capacity * sizeof(*effect->children), 0x10000000);
         break;
     case 2:
         effect->counts = 0;
@@ -2703,8 +2684,7 @@ void fn_1_61A8(M667ModelEffectView *item, s32 event)
     case 0:
         item->model = 0;
         item->pointCount = 3;
-        item->points = HuMemDirectMallocNum(
-            HEAP_HEAP, item->pointCount * 16, 0x10000000);
+        item->points = HuMemDirectMallocNum( HEAP_HEAP, item->pointCount * 16, 0x10000000);
         break;
 
     case 2:
@@ -2714,8 +2694,7 @@ void fn_1_61A8(M667ModelEffectView *item, s32 event)
             20.0f + (f32) (u32) frandmod(25);
         item->velocity.z =
             -50.0f + (f32) (u32) frandmod(100);
-        fn_1_8544(&item->velocity,
-            &item->velocity);
+        fn_1_8544(&item->velocity, &item->velocity);
         scale = 25.0f;
         item->velocity.x *= scale;
         item->velocity.y *= scale;
@@ -2734,14 +2713,10 @@ void fn_1_61A8(M667ModelEffectView *item, s32 event)
         break;
 
     case 3:
-        memmove(item->points + 2,
-            item->points + 1,
-            (item->pointCount - 2) * 16);
+        memmove(item->points + 2, item->points + 1, (item->pointCount - 2) * 16);
         item->points[1] =
             item->points[0];
-        PSVECAdd(&item->points[0].position,
-            &item->velocity,
-            &item->points[0].position);
+        PSVECAdd(&item->points[0].position, &item->velocity, &item->points[0].position);
 
         item->velocity.y -= 0.49f;
         item->alpha -= 7.0f;
@@ -2801,8 +2776,7 @@ void fn_1_66AC(M667ModelEffectView *item, s32 event)
         break;
     case 2:
         if (item->model >= 0) {
-            fn_80026790(item->model,
-                            &item->position);
+            fn_80026790(item->model, &item->position);
             fn_80026A44(item->model, 1);
             fn_8002D414(item->model, 0.0f);
             fn_8002D86C(item->model, 1.0f);
@@ -2825,7 +2799,6 @@ void fn_1_66AC(M667ModelEffectView *item, s32 event)
         break;
     }
 }
-
 
 /* Talkie Walkie model callbacks, entry setup, and small game-state helpers. */
 

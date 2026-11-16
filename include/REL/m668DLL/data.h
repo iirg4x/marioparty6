@@ -10,4 +10,5 @@ typedef struct M668SequenceDataRecord {
     u8 unk28[20]; /* No code names this field. */
 } M668SequenceDataRecord;
 extern M668SequenceDataRecord lbl_1_data_0;
+extern HuVecF lbl_1_data_94[2];
 #endif

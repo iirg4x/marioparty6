@@ -24,22 +24,6 @@
 #include "math.h"
 #include <stddef.h>
 
-#define M632_PLAY_MODE_BGM_STREAM_ID 73 /* Background music stream started by the sequence callback
-                                         * when allowed. */
-
-#define fn_1_7364 __cvt_fp2unsigned
-#define fn_1_75B8 __div2u
-#define fn_1_76A4 __div2i
-#define fn_1_77DC __mod2u
-#define fn_1_78C0 __mod2i
-#define fn_1_79CC __shl2i
-#define fn_1_79F0 __shr2u
-#define fn_1_7A14 __shr2i
-#define fn_1_7A3C __cvt_sll_dbl
-#define fn_1_7AEC __cvt_ull_dbl
-#define fn_1_7B88 __cvt_sll_flt
-#define fn_1_7C3C __cvt_ull_flt
-#define fn_1_7CDC __cvt_dbl_usll
 /* State shared by the sequence callbacks and arena logic. */
 typedef struct M632State {
     HUPROCESS *objectManager;
@@ -99,7 +83,6 @@ typedef struct M632GridCandidate {
 
 /* Sorting and floating-point support routines used by the minigame. */
 void fn_1_6574(void *, size_t, size_t, int (*)(const void *, const void *));
-u32 fn_1_7364(f64);
 
 extern MGSEQ_PARAM lbl_1_data_0;
 /* Character model hook names followed during the opening sequence. */
@@ -107,7 +90,6 @@ extern char *lbl_1_data_108[4];
 /* Collision model data numbers for the four arena layouts. */
 extern unsigned int lbl_1_data_118[4];
 /* Four 3D points at Y=1200. */
-extern Point3d lbl_1_data_128[4];
 /* Character animation data numbers loaded during player setup. */
 extern unsigned int lbl_1_data_158[16];
 /* Group-1 CPU risk thresholds indexed by difficulty. */

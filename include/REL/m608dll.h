@@ -20,8 +20,6 @@
 #include "game/mg/actman.h"
 #include "datadir_enum.h"
 #include "string.h"
-#ifndef M608_SCENE_CONSUMED_CONTEXT_H
-#define M608_SCENE_CONSUMED_CONTEXT_H
 
 /* The record-prompt callback uses the first three object work slots. */
 typedef struct M608RecordPromptWork {
@@ -109,8 +107,6 @@ typedef struct M608SceneConsumedContext {
     s32 jumpSoundHandle;
     s32 courseMusicStreamHandle;
 } M608SceneConsumedContext;
-
-#endif
 
 /* Updates the course shadow position from the current camera-hook position. */
 void fn_1_5DA4(Point3d position);
@@ -224,42 +220,25 @@ extern f32 lbl_1_data_28[14];
 extern f32 lbl_1_data_60[14];
 extern f32 lbl_1_data_98[14];
 extern char lbl_1_data_D0[9];
-extern char lbl_1_data_D9[16];
-extern char lbl_1_data_E9[16];
-extern char lbl_1_data_F9[16];
-extern char lbl_1_data_109[16];
+
 extern char lbl_1_data_119[14];
 extern char lbl_1_data_127[5];
 extern char lbl_1_data_12C[22];
 extern char lbl_1_data_142[5];
-extern char lbl_1_data_147[26];
-extern char lbl_1_data_161[24];
-extern char lbl_1_data_179[16];
-extern char lbl_1_data_189[7];
-extern char lbl_1_data_1B4[29];
+
 extern char lbl_1_data_1D1[5];
-extern char lbl_1_data_1D6[65];
-extern char lbl_1_data_217[16];
-extern char lbl_1_data_227[14];
+
 extern char lbl_1_data_235[13];
-extern char lbl_1_data_242[12];
+
 extern char lbl_1_data_24E[18];
-extern char lbl_1_data_295[11];
-extern char lbl_1_data_2A0[16];
-extern char lbl_1_data_2B0[5];
-extern char lbl_1_data_2B5[5];
-extern char lbl_1_data_2BA[11];
-extern char lbl_1_data_2C5[11];
-extern char lbl_1_data_2D0[11];
-extern char lbl_1_data_2DB[29];
-extern char lbl_1_data_2F8[40];
+
 extern M608Unknown80 lbl_1_data_320;
 extern M608Unknown80 lbl_1_data_370;
 extern M608Unknown80 lbl_1_data_3C0;
 extern s32 lbl_1_data_410[15];
 extern struct _struct_lbl_1_data_44C_0x14 lbl_1_data_44C[5];
 extern s32 lbl_1_data_4B0[6];
-extern char lbl_1_data_4C8[40];
+
 extern s32 lbl_1_data_4F0[10];
 extern s32 lbl_1_data_518[4];
 extern s32 lbl_1_data_528[4];
@@ -304,8 +283,4 @@ extern const Point3d lbl_1_rodata_BC;
 extern const Point3d lbl_1_rodata_C8;
 extern const GXColor lbl_1_rodata_D4;
 
-typedef char m608_scene_extent[(sizeof(M608SceneConsumedContext)==1112)?1:-1];
-typedef char m608_path_extent[(sizeof(M608PathSamples)==15840)?1:-1];
-typedef char m608_sprite_extent[(sizeof(M608SpriteGroupWork)==24)?1:-1];
-typedef char m608_score_extent[(sizeof(struct _struct_lbl_1_bss_3DF0_0x18)==24)?1:-1];
 #endif

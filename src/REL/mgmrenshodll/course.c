@@ -44,18 +44,6 @@
 #include "game/board/masu.h"
 #include "game/board/player.h"
 
-
-
-
-
-
-
-/* Course scenery loops both its main and shape tracks; event props pause every motion layer. */
-#define HU3D_MOTATTR_RENSHO_LOOP (((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)))
-#define HU3D_MOTATTR_RENSHO_PAUSE                                                                  \
-    (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 7)) |                    \
-     ((1 << 30) | (1 << 10)))
-
 extern u8 MgModePlayNum;
 f32 fn_1_4ADC(void);
 extern OMOBJMAN *lbl_1_bss_158;
@@ -113,13 +101,12 @@ char lbl_1_data_287[] = "f-grid369";
 void fn_1_2C88(s16 modelIndex, f32 initialDepth, s32 useShadowMap)
 {
     lbl_1_bss_FC->mdlId[modelIndex] =
-        fn_80025A04(fn_80008DD0(lbl_1_data_1C8[modelIndex],
-                                             0x10000000, 2));
+        fn_80025A04(fn_80008DD0(lbl_1_data_1C8[modelIndex], 0x10000000, 2));
     fn_80026B64(lbl_1_bss_FC->mdlId[modelIndex], 1U);
+    /* Loops both motion tracks. */
     fn_80026B8C(lbl_1_bss_FC->mdlId[modelIndex], 2);
-    fn_80026760(lbl_1_bss_FC->mdlId[modelIndex], 0.0f,
-                    0.0f, initialDepth);
-    fn_800269E8(lbl_1_bss_FC->mdlId[modelIndex], HU3D_MOTATTR_RENSHO_LOOP);
+    fn_80026760(lbl_1_bss_FC->mdlId[modelIndex], 0.0f, 0.0f, initialDepth);
+    fn_800269E8(lbl_1_bss_FC->mdlId[modelIndex], ((1 << 30) | (1 << 0) | (1 << 6)));
     if (useShadowMap != 0) {
         if (modelIndex == 3) {
             fn_80027080(lbl_1_bss_FC->mdlId[modelIndex], lbl_1_data_224);
@@ -231,9 +218,10 @@ void fn_1_2F9C(void)
         fn_1_2C88(5, 0.0f, 1);
         fn_1_2C88(6, 0.0f, 1);
         fn_1_2C88(7, -2650.0f, 1);
-        fn_800269E8(object->mdlId[6], HU3D_MOTATTR_RENSHO_PAUSE);
+        /* Pauses every motion layer. */
+        fn_800269E8(object->mdlId[6], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
         fn_8002D414(object->mdlId[6], 0.0f);
-        fn_800269E8(object->mdlId[7], HU3D_MOTATTR_RENSHO_PAUSE);
+        fn_800269E8(object->mdlId[7], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
         fn_8002D414(object->mdlId[7], 0.0f);
         if (MgModePlayNum > 44) {
             fn_1_2C88(8, -30000.0f, 1);
@@ -318,8 +306,7 @@ void fn_1_2F9C(void)
         lbl_1_bss_CE[21] = 2;
         fn_1_2C88(22, 0.0f, 0);
         fn_80026B8C(object->mdlId[22], 4);
-        fn_80026760(object->mdlId[22], 0.0f,
-                        100.0f, 0.0f);
+        fn_80026760(object->mdlId[22], 0.0f, 100.0f, 0.0f);
     }
     fn_1_3C14();
 }
@@ -340,201 +327,154 @@ void fn_1_3C14(void)
     if (MgModePlayNum != 0) {
         if (MgModePlayNum <= 10) {
             if (object->mdlId[1] >= 0) {
-                fn_80026760(object->mdlId[1], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[1], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[2] >= 0) {
-                fn_80026760(object->mdlId[2], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[2], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 20) {
             if (object->mdlId[1] >= 0) {
-                fn_80026760(object->mdlId[1], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[1], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[2] >= 0) {
-                fn_80026760(object->mdlId[2], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[2], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[3] >= 0) {
-                fn_80026760(object->mdlId[3], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[3], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 30) {
             if (object->mdlId[2] >= 0) {
-                fn_80026760(object->mdlId[2], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[2], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[3] >= 0) {
-                fn_80026760(object->mdlId[3], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[3], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[4] >= 0) {
-                fn_80026760(object->mdlId[4], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[4], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 40) {
             if (object->mdlId[3] >= 0) {
-                fn_80026760(object->mdlId[3], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[3], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[4] >= 0) {
-                fn_80026760(object->mdlId[4], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[4], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[5] >= 0) {
-                fn_80026760(object->mdlId[5], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[5], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 50) {
             if (object->mdlId[4] >= 0) {
-                fn_80026760(object->mdlId[4], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[4], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[5] >= 0) {
-                fn_80026760(object->mdlId[5], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[5], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[6] >= 0) {
-                fn_80026760(object->mdlId[6], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[6], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[7] >= 0) {
-                fn_80026760(object->mdlId[7], 0.0f, 0.0f,
-                                -2650.0f + positionOffset);
+                fn_80026760(object->mdlId[7], 0.0f, 0.0f, -2650.0f + positionOffset);
             }
             if (object->mdlId[8] >= 0) {
-                fn_80026760(object->mdlId[8], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[8], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
             if (object->mdlId[9] >= 0) {
-                fn_80026760(object->mdlId[9], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[9], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 60) {
             if (object->mdlId[5] >= 0) {
-                fn_80026760(object->mdlId[5], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[5], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[8] >= 0) {
-                fn_80026760(object->mdlId[8], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[8], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[9] >= 0) {
-                fn_80026760(object->mdlId[9], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[9], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[10] >= 0) {
-                fn_80026760(object->mdlId[10], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[10], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
             if (object->mdlId[11] >= 0) {
-                fn_80026760(object->mdlId[11], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[11], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
             if (object->mdlId[12] >= 0) {
-                fn_80026760(object->mdlId[12], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[12], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 70) {
             if (object->mdlId[8] >= 0) {
-                fn_80026760(object->mdlId[8], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[8], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[9] >= 0) {
-                fn_80026760(object->mdlId[9], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[9], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[10] >= 0) {
-                fn_80026760(object->mdlId[10], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[10], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[11] >= 0) {
-                fn_80026760(object->mdlId[11], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[11], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[12] >= 0) {
-                fn_80026760(object->mdlId[12], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[12], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[13] >= 0) {
-                fn_80026760(object->mdlId[13], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[13], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
             if (object->mdlId[14] >= 0) {
-                fn_80026760(object->mdlId[14], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[14], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
             if (object->mdlId[15] >= 0) {
-                fn_80026760(object->mdlId[15], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[15], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 80) {
             if (object->mdlId[10] >= 0) {
-                fn_80026760(object->mdlId[10], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[10], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[11] >= 0) {
-                fn_80026760(object->mdlId[11], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[11], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[12] >= 0) {
-                fn_80026760(object->mdlId[12], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[12], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[13] >= 0) {
-                fn_80026760(object->mdlId[13], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[13], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[14] >= 0) {
-                fn_80026760(object->mdlId[14], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[14], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[15] >= 0) {
-                fn_80026760(object->mdlId[15], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[15], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[16] >= 0) {
-                fn_80026760(object->mdlId[16], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[16], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 90) {
             if (object->mdlId[13] >= 0) {
-                fn_80026760(object->mdlId[13], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[13], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[14] >= 0) {
-                fn_80026760(object->mdlId[14], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[14], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[15] >= 0) {
-                fn_80026760(object->mdlId[15], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[15], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[16] >= 0) {
-                fn_80026760(object->mdlId[16], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[16], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[17] >= 0) {
-                fn_80026760(object->mdlId[17], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[17], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
             if (object->mdlId[18] >= 0) {
-                fn_80026760(object->mdlId[18], 0.0f, 0.0f,
-                                -30000.0f + positionOffset);
+                fn_80026760(object->mdlId[18], 0.0f, 0.0f, -30000.0f + positionOffset);
             }
         } else if (MgModePlayNum <= 100) {
             if (object->mdlId[16] >= 0) {
-                fn_80026760(object->mdlId[16], 0.0f, 0.0f,
-                                30000.0f + positionOffset);
+                fn_80026760(object->mdlId[16], 0.0f, 0.0f, 30000.0f + positionOffset);
             }
             if (object->mdlId[17] >= 0) {
-                fn_80026760(object->mdlId[17], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[17], 0.0f, 0.0f, positionOffset);
             }
             if (object->mdlId[18] >= 0) {
-                fn_80026760(object->mdlId[18], 0.0f, 0.0f,
-                                positionOffset);
+                fn_80026760(object->mdlId[18], 0.0f, 0.0f, positionOffset);
             }
         }
     }
@@ -719,7 +659,8 @@ void fn_1_4F1C(OMOBJ *object) {
         {
             if ((lbl_802C01C8[object->mdlId[6]].motWork.speed + fn_8002D4E0(object->mdlId[6])) >=
                 fn_8002D530(object->mdlId[6])) {
-                fn_800269E8(object->mdlId[6], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[6],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[6], 0.0f);
             }
         }
@@ -738,7 +679,8 @@ void fn_1_4F1C(OMOBJ *object) {
                     }
                 }
                 lbl_1_bss_C8 = 0;
-                fn_80026A44(object->mdlId[6], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[6],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 lbl_1_bss_CE[6] = 2;
                 lbl_1_bss_CA -= 1;
                 if (lbl_1_bss_CA <= 0)
@@ -751,11 +693,12 @@ void fn_1_4F1C(OMOBJ *object) {
     }
     if (object->mdlId[7] >= 0)
     {
-        if (! (lbl_1_bss_CE[7]))
+        if (! lbl_1_bss_CE[7])
         {
             if ((fn_8002D4E0(object->mdlId[7]) + lbl_802C01C8[object->mdlId[7]].motWork.speed) >=
                 fn_8002D530(object->mdlId[7])) {
-                fn_800269E8(object->mdlId[7], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[7],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[7], 0.0f);
             }
         }
@@ -774,7 +717,8 @@ void fn_1_4F1C(OMOBJ *object) {
                     }
                 }
                 lbl_1_bss_C8 = 0;
-                fn_80026A44(object->mdlId[7], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[7],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 lbl_1_bss_CE[7] = 2;
                 lbl_1_bss_CA -= 1;
                 if (lbl_1_bss_CA <= 0)
@@ -789,25 +733,28 @@ void fn_1_4F1C(OMOBJ *object) {
     {
         if (lbl_1_bss_CE[10] == 0)
         {
-            fn_800269E8(object->mdlId[10], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[10], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             fn_8002D414(object->mdlId[10], 0.0f);
         }
         else
         {
             if (lbl_1_bss_CE[10] == 1)
             {
-                fn_80026A44(object->mdlId[10], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[10],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 if ((fn_8002D4E0(object->mdlId[10]) +
                      lbl_802C01C8[object->mdlId[10]].motWork.speed) >=
                     fn_8002D530(object->mdlId[10])) {
                     lbl_1_bss_CE[10] = 2;
-                    fn_800269E8(object->mdlId[10], HU3D_MOTATTR_RENSHO_PAUSE);
+                    fn_800269E8(object->mdlId[10],
+                        (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                     fn_8002D414(object->mdlId[10], fn_8002D530(object->mdlId[10]));
                 }
             }
             else
             {
-                fn_800269E8(object->mdlId[10], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[10],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[10], fn_8002D530(object->mdlId[10]));
             }
         }
@@ -816,19 +763,21 @@ void fn_1_4F1C(OMOBJ *object) {
     {
         if (lbl_1_bss_CE[12] == 0)
         {
-            fn_800269E8(object->mdlId[12], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[12], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             fn_8002D414(object->mdlId[12], 0.0f);
         }
         else
         {
             if (lbl_1_bss_CE[12] == 1)
             {
-                fn_80026A44(object->mdlId[12], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[12],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 if ((fn_8002D4E0(object->mdlId[12]) +
                      lbl_802C01C8[object->mdlId[12]].motWork.speed) >=
                     fn_8002D530(object->mdlId[12])) {
                     lbl_1_bss_CE[12] = 2;
-                    fn_800269E8(object->mdlId[12], HU3D_MOTATTR_RENSHO_PAUSE);
+                    fn_800269E8(object->mdlId[12],
+                        (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                     fn_8002D414(object->mdlId[12], fn_8002D530(object->mdlId[12]));
                     playerNo = fn_1_A00C();
                     if (fn_1_A05C(playerNo) == 0)
@@ -839,7 +788,8 @@ void fn_1_4F1C(OMOBJ *object) {
             }
             else
             {
-                fn_800269E8(object->mdlId[12], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[12],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[12], fn_8002D530(object->mdlId[12]));
                 fn_80026FFC(lbl_1_bss_FC->mdlId[12]);
             }
@@ -849,19 +799,21 @@ void fn_1_4F1C(OMOBJ *object) {
     {
         if (lbl_1_bss_CE[14] == 0)
         {
-            fn_800269E8(object->mdlId[14], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[14], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             fn_8002D414(object->mdlId[14], 0.0f);
         }
         else
         {
             if (lbl_1_bss_CE[14] == 1)
             {
-                fn_80026A44(object->mdlId[14], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[14],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 if ((fn_8002D4E0(object->mdlId[14]) +
                      lbl_802C01C8[object->mdlId[14]].motWork.speed) >=
                     fn_8002D530(object->mdlId[14])) {
                     lbl_1_bss_CE[14] = 2;
-                    fn_800269E8(object->mdlId[14], HU3D_MOTATTR_RENSHO_PAUSE);
+                    fn_800269E8(object->mdlId[14],
+                        (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                     fn_8002D414(object->mdlId[14], fn_8002D530(object->mdlId[14]));
                     playerNo = fn_1_A00C();
                     if (fn_1_A05C(playerNo) == 0)
@@ -872,7 +824,8 @@ void fn_1_4F1C(OMOBJ *object) {
             }
             else
             {
-                fn_800269E8(object->mdlId[14], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[14],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[14], fn_8002D530(object->mdlId[14]));
                 fn_80026FFC(lbl_1_bss_FC->mdlId[14]);
             }
@@ -882,18 +835,19 @@ void fn_1_4F1C(OMOBJ *object) {
     {
         if (lbl_1_bss_CE[15] == 0)
         {
-            fn_800269E8(object->mdlId[15], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[15], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             fn_8002D414(object->mdlId[15], 0.0f);
         }
         else
         {
             lbl_1_bss_CE[15] = 2;
-            fn_80026A44(object->mdlId[15], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_80026A44(object->mdlId[15], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             if ((fn_8002D4E0(object->mdlId[15]) +
                  lbl_802C01C8[object->mdlId[15]].motWork.speed) >=
                 fn_8002D530(object->mdlId[15])) {
                 lbl_1_bss_CE[15] = 0;
-                fn_800269E8(object->mdlId[15], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[15],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[15], 0.0f);
             }
         }
@@ -902,25 +856,28 @@ void fn_1_4F1C(OMOBJ *object) {
     {
         if (lbl_1_bss_CE[16] == 0)
         {
-            fn_800269E8(object->mdlId[16], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[16], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             fn_8002D414(object->mdlId[16], 0.0f);
         }
         else
         {
             if (lbl_1_bss_CE[16] == 1)
             {
-                fn_80026A44(object->mdlId[16], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[16],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 if ((fn_8002D4E0(object->mdlId[16]) +
                      lbl_802C01C8[object->mdlId[16]].motWork.speed) >=
                     fn_8002D530(object->mdlId[16])) {
                     lbl_1_bss_CE[16] = 2;
-                    fn_800269E8(object->mdlId[16], HU3D_MOTATTR_RENSHO_PAUSE);
+                    fn_800269E8(object->mdlId[16],
+                        (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                     fn_8002D414(object->mdlId[16], fn_8002D530(object->mdlId[16]));
                 }
             }
             else
             {
-                fn_800269E8(object->mdlId[16], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[16],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[16], fn_8002D530(object->mdlId[16]));
             }
         }
@@ -929,7 +886,7 @@ void fn_1_4F1C(OMOBJ *object) {
     {
         if (lbl_1_bss_CE[18] == 0)
         {
-            fn_800269E8(object->mdlId[18], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[18], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             fn_8002D414(object->mdlId[18], 0.0f);
         }
         else
@@ -944,14 +901,15 @@ void fn_1_4F1C(OMOBJ *object) {
                         HuAudFXPlay(MSM_SE_MGM04_COURSE_COUNTDOWN_EVENT);
                     }
                     lbl_1_bss_CC = - 1;
-                    fn_80026A44(object->mdlId[18], HU3D_MOTATTR_RENSHO_PAUSE);
+                    fn_80026A44(object->mdlId[18],
+                        (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                     if ((fn_8002D4E0(object->mdlId[18]) +
                          lbl_802C01C8[object->mdlId[18]].motWork.speed) >=
                         fn_8002D530(object->mdlId[18])) {
                         lbl_1_bss_CE[18] = 2;
-                        fn_800269E8(object->mdlId[18], HU3D_MOTATTR_RENSHO_PAUSE);
-                        fn_8002D414(object->mdlId[18],
-                                          fn_8002D530(object->mdlId[18]));
+                        fn_800269E8(object->mdlId[18],
+                            (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
+                        fn_8002D414(object->mdlId[18], fn_8002D530(object->mdlId[18]));
                         fn_1_4DB0();
                     }
                     frameOrCourseProgress = fn_8002D4E0(object->mdlId[18]);
@@ -967,7 +925,8 @@ void fn_1_4F1C(OMOBJ *object) {
             }
             else
             {
-                fn_800269E8(object->mdlId[18], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_800269E8(object->mdlId[18],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 fn_8002D414(object->mdlId[18], fn_8002D530(object->mdlId[18]));
             }
         }
@@ -1009,7 +968,7 @@ void fn_1_4F1C(OMOBJ *object) {
         if (lbl_1_bss_CE[22] == 0)
         {
             fn_800269E8(object->mdlId[22], 1U);
-            fn_800269E8(object->mdlId[22], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[22], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
             fn_8002D414(object->mdlId[22], 0.0f);
         }
         else
@@ -1017,7 +976,8 @@ void fn_1_4F1C(OMOBJ *object) {
             if (lbl_1_bss_CE[22] == 1)
             {
                 fn_80026A44(object->mdlId[22], 1U);
-                fn_80026A44(object->mdlId[22], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[22],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 if ((fn_8002D4E0(object->mdlId[22]) +
                      lbl_802C01C8[object->mdlId[22]].motWork.speed) >= 280.0f) {
                     lbl_1_bss_CE[22] = 2;
@@ -1035,7 +995,8 @@ void fn_1_4F1C(OMOBJ *object) {
             else
             {
                 fn_80026A44(object->mdlId[22], 1U);
-                fn_80026A44(object->mdlId[22], HU3D_MOTATTR_RENSHO_PAUSE);
+                fn_80026A44(object->mdlId[22],
+                    (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
                 if ((fn_8002D4E0(object->mdlId[22]) +
                      lbl_802C01C8[object->mdlId[22]].motWork.speed) >=
                     fn_8002D530(object->mdlId[22])) {
@@ -1048,7 +1009,7 @@ void fn_1_4F1C(OMOBJ *object) {
     {
         if ((fn_8002D4E0(object->mdlId[0]) + lbl_802C01C8[object->mdlId[0]].motWork.speed) >=
             fn_8002D530(object->mdlId[0])) {
-            fn_800269E8(object->mdlId[0], HU3D_MOTATTR_RENSHO_PAUSE);
+            fn_800269E8(object->mdlId[0], (1 << 30) | (1 << 1) | (1 << 4) | (1 << 7) | (1 << 10));
         }
     }
     if (MgModePlayNum <= 10U)

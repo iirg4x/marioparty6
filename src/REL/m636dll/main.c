@@ -4,52 +4,6 @@
 
 /* Player action mask with punch and kick cleared. */
 
-
-#define PIXEL_MUSIC_HANDLE_OFFSET 628
-#define PIXEL_EXTRA_SCENE_MODEL_OFFSET 632
-#define PIXEL_EXTRA_SCENE_MOTION_OFFSET 634
-
-
-
-
-#define PIXEL_ACTOR_INITIAL_FLAGS 0
-
-#define PIXEL_STAGE_RESOURCE DATANUM(0x5f0000, 0)
-#define PIXEL_COLLISION_RESOURCE DATANUM(0x5f0000, 1)
-#define PIXEL_REFERENCE_RESOURCE DATANUM(0x5f0000, 3)
-#define PIXEL_REFERENCE_CELL_0_RESOURCE DATANUM(0x5f0000, 5)
-#define PIXEL_REFERENCE_CELL_1_RESOURCE DATANUM(0x5f0000, 6)
-#define PIXEL_REFERENCE_CELL_2_RESOURCE DATANUM(0x5f0000, 7)
-#define PIXEL_REFERENCE_CELL_3_RESOURCE DATANUM(0x5f0000, 8)
-#define PIXEL_REFERENCE_CELL_4_RESOURCE DATANUM(0x5f0000, 9)
-#define PIXEL_REFERENCE_CELL_5_RESOURCE DATANUM(0x5f0000, 10)
-#define PIXEL_REFERENCE_CELL_6_RESOURCE DATANUM(0x5f0000, 11)
-#define PIXEL_REFERENCE_CELL_7_RESOURCE DATANUM(0x5f0000, 12)
-#define PIXEL_REFERENCE_CELL_8_RESOURCE DATANUM(0x5f0000, 13)
-#define PIXEL_REFERENCE_CELL_9_RESOURCE DATANUM(0x5f0000, 14)
-#define PIXEL_REFERENCE_CELL_10_RESOURCE DATANUM(0x5f0000, 15)
-#define PIXEL_REFERENCE_CELL_11_RESOURCE DATANUM(0x5f0000, 16)
-#define PIXEL_REFERENCE_CELL_12_RESOURCE DATANUM(0x5f0000, 17)
-#define PIXEL_REFERENCE_CELL_13_RESOURCE DATANUM(0x5f0000, 18)
-#define PIXEL_REFERENCE_CELL_14_RESOURCE DATANUM(0x5f0000, 19)
-#define PIXEL_REFERENCE_CELL_15_RESOURCE DATANUM(0x5f0000, 20)
-#define PIXEL_SCENE_RESOURCE DATANUM(0x5f0000, 21)
-#define PIXEL_ROUND_INDICATOR_RESOURCE DATANUM(0x5f0000, 34)
-#define PIXEL_ROUND_IDLE_RESOURCE DATANUM(0x5f0000, 35)
-#define PIXEL_ROUND_RESET_RESOURCE DATANUM(0x5f0000, 36)
-#define PIXEL_ROUND_LEFT_RESULT_RESOURCE DATANUM(0x5f0000, 37)
-#define PIXEL_ROUND_RIGHT_RESULT_RESOURCE DATANUM(0x5f0000, 38)
-#define PIXEL_FINISH_MODEL_RESOURCE DATANUM(0x5f0000, 39)
-#define PIXEL_FINISH_INITIAL_MOTION_RESOURCE DATANUM(0x5f0000, 40)
-#define PIXEL_FINISH_END_MOTION_RESOURCE DATANUM(0x5f0000, 41)
-#define PIXEL_PANEL_MODEL_RESOURCE DATANUM(0x5f0000, 50)
-#define PIXEL_PANEL_OFF_RESOURCE DATANUM(0x5f0000, 51)
-#define PIXEL_PANEL_ON_RESOURCE DATANUM(0x5f0000, 52)
-#define PIXEL_PANEL_TURN_ON_RESOURCE DATANUM(0x5f0000, 53)
-#define PIXEL_PANEL_TURN_OFF_RESOURCE DATANUM(0x5f0000, 54)
-#define PIXEL_EXTRA_SCENE_MODEL_RESOURCE DATANUM(0x5f0000, 55)
-#define PIXEL_EXTRA_SCENE_MOTION_RESOURCE DATANUM(0x5f0000, 56)
-
 /* Player movement, result and ground-pound motions; the final zero terminates the list. */
 unsigned int lbl_1_data_E0[11] = {
     CHARMOT_HSF_c000m1_300, CHARMOT_HSF_c000m1_301, CHARMOT_HSF_c000m1_302, CHARMOT_HSF_c000m1_303,
@@ -73,15 +27,12 @@ void fn_1_1F98(void) {
     Hu3DCameraPerspectiveSet((1 << 0), 45.0f, 20.0f, 15000.0f, 1.2f);
     Hu3DCameraViewportSet((1 << 0), 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     lbl_1_bss_0.cameraObject =
-        fn_8003AB38(lbl_1_bss_0.process, 32730,
-                   0U, 0U, -1, fn_1_6360);
+        fn_8003AB38(lbl_1_bss_0.process, 32730, 0U, 0U, -1, fn_1_6360);
     lbl_1_bss_0.cameraModel = -1;
     lightId =
-        Hu3DGLightCreate(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, -1.0f,
-                         255U, 255U, 255U);
+        Hu3DGLightCreate(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, -1.0f, 255U, 255U, 255U);
     lbl_1_bss_0.timer = MgTimerCreate(0);
-    fn_8003AB38(lbl_1_bss_0.process, 10,
-               10U, 0U, -1, fn_1_21E4);
+    fn_8003AB38(lbl_1_bss_0.process, 10, 10U, 0U, -1, fn_1_21E4);
     fn_80070788(&lbl_1_data_0);
 }
 
@@ -103,8 +54,8 @@ void fn_1_21E4(OMOBJ *setupObject)
     s16 collisionModel;
 
     for (setupIndex = 0; setupIndex < 2; setupIndex++) {
-        lbl_1_bss_0.cameraMotions[setupIndex] = fn_8002C4C0(
-            fn_80008DD0(lbl_1_data_280[setupIndex], 0x10000000, 2));
+        lbl_1_bss_0.cameraMotions[setupIndex] =
+            fn_8002C4C0( fn_80008DD0(lbl_1_data_280[setupIndex], 0x10000000, 2));
     }
     {
     Point3d lightPos = {0.0f, 500.0f, 0.0f};
@@ -126,61 +77,105 @@ void fn_1_21E4(OMOBJ *setupObject)
     shadowTarget.z = -0.1f;
     Hu3DShadowCreate(8.5f, 5000.0f, 13000.0f);
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
+    /* pixel round indicator resource. */
     fn_1_6478();
     fn_1_6790(1);
 
-    lbl_1_bss_0.roundIndicatorModel = READ_MODEL(PIXEL_ROUND_INDICATOR_RESOURCE);
+    /* pixel round idle resource. */
+    lbl_1_bss_0.roundIndicatorModel =
+        fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 34), 0x10000000, 2));
+    /* pixel round reset resource. */
     lbl_1_bss_0.roundIndicatorMotions[0] =
-        READ_MOTION(lbl_1_bss_0.roundIndicatorModel, PIXEL_ROUND_IDLE_RESOURCE);
+        fn_80030458(lbl_1_bss_0.roundIndicatorModel,
+            fn_80008DD0(DATANUM(0x5f0000, 35), 0x10000000, 2));
+    /* pixel round left result resource. */
     lbl_1_bss_0.roundIndicatorMotions[1] =
-        READ_MOTION(lbl_1_bss_0.roundIndicatorModel, PIXEL_ROUND_RESET_RESOURCE);
+        fn_80030458(lbl_1_bss_0.roundIndicatorModel,
+            fn_80008DD0(DATANUM(0x5f0000, 36), 0x10000000, 2));
+    /* pixel round right result resource. */
     lbl_1_bss_0.roundIndicatorMotions[2] =
-        READ_MOTION(lbl_1_bss_0.roundIndicatorModel, PIXEL_ROUND_LEFT_RESULT_RESOURCE);
+        /* pixel stage resource. */
+        fn_80030458(lbl_1_bss_0.roundIndicatorModel,
+            fn_80008DD0(DATANUM(0x5f0000, 37), 0x10000000, 2));
+    /* pixel collision resource. */
     lbl_1_bss_0.roundIndicatorMotions[3] =
-        READ_MOTION(lbl_1_bss_0.roundIndicatorModel, PIXEL_ROUND_RIGHT_RESULT_RESOURCE);
-    setupObject->mdlId[0] = READ_MODEL(PIXEL_STAGE_RESOURCE);
-    setupObject->mdlId[1] = collisionModel = READ_MODEL(PIXEL_COLLISION_RESOURCE);
+        fn_80030458(lbl_1_bss_0.roundIndicatorModel,
+            fn_80008DD0(DATANUM(0x5f0000, 38), 0x10000000, 2));
+    /* pixel scene resource. */
+    setupObject->mdlId[0] = fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 0), 0x10000000, 2));
+    setupObject->mdlId[1] = collisionModel =
+        fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 1), 0x10000000, 2));
     fn_800269E8(setupObject->mdlId[1], (1 << 0));
-    lbl_1_bss_0.model = READ_MODEL(PIXEL_SCENE_RESOURCE);
+    lbl_1_bss_0.model = fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 21), 0x10000000, 2));
     for (setupIndex = 0; setupIndex < 3; setupIndex++) {
-        lbl_1_bss_0.motion[setupIndex] = READ_MOTION(lbl_1_bss_0.model, lbl_1_data_36C[setupIndex]);
+        lbl_1_bss_0.motion[setupIndex] =
+            fn_80030458(lbl_1_bss_0.model, fn_80008DD0(lbl_1_data_36C[setupIndex], 0x10000000, 2));
+    /* pixel reference resource. */
     }
     fn_8002C95C(lbl_1_bss_0.model, lbl_1_bss_0.motion[0]);
     fn_800269E8(lbl_1_bss_0.model, ((1 << 30) | (1 << 0)));
-    lbl_1_bss_0.referenceModel = READ_MODEL(PIXEL_REFERENCE_RESOURCE);
+    /* pixel reference cell 1 resource. */
+    /* pixel reference cell 0 resource. */
+    lbl_1_bss_0.referenceModel = fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 3), 0x10000000, 2));
+    /* pixel reference cell 3 resource. */
+    /* pixel reference cell 2 resource. */
     {
+    /* pixel reference cell 5 resource. */
+    /* pixel reference cell 4 resource. */
     u32 referenceCellResources[16] = {
-        PIXEL_REFERENCE_CELL_0_RESOURCE, PIXEL_REFERENCE_CELL_1_RESOURCE,
-        PIXEL_REFERENCE_CELL_2_RESOURCE, PIXEL_REFERENCE_CELL_3_RESOURCE,
-        PIXEL_REFERENCE_CELL_4_RESOURCE, PIXEL_REFERENCE_CELL_5_RESOURCE,
-        PIXEL_REFERENCE_CELL_6_RESOURCE, PIXEL_REFERENCE_CELL_7_RESOURCE,
-        PIXEL_REFERENCE_CELL_8_RESOURCE, PIXEL_REFERENCE_CELL_9_RESOURCE,
-        PIXEL_REFERENCE_CELL_10_RESOURCE, PIXEL_REFERENCE_CELL_11_RESOURCE,
-        PIXEL_REFERENCE_CELL_12_RESOURCE, PIXEL_REFERENCE_CELL_13_RESOURCE,
-        PIXEL_REFERENCE_CELL_14_RESOURCE, PIXEL_REFERENCE_CELL_15_RESOURCE
+        /* pixel reference cell 7 resource. */
+        /* pixel reference cell 6 resource. */
+        DATANUM(0x5f0000, 5), DATANUM(0x5f0000, 6),
+        /* pixel reference cell 9 resource. */
+        /* pixel reference cell 8 resource. */
+        DATANUM(0x5f0000, 7), DATANUM(0x5f0000, 8),
+        /* pixel reference cell 11 resource. */
+        /* pixel reference cell 10 resource. */
+        DATANUM(0x5f0000, 9), DATANUM(0x5f0000, 10),
+        /* pixel reference cell 13 resource. */
+        /* pixel reference cell 12 resource. */
+        DATANUM(0x5f0000, 11), DATANUM(0x5f0000, 12),
+        /* pixel reference cell 15 resource. */
+        /* pixel reference cell 14 resource. */
+        DATANUM(0x5f0000, 13), DATANUM(0x5f0000, 14),
+        DATANUM(0x5f0000, 15), DATANUM(0x5f0000, 16),
+        DATANUM(0x5f0000, 17), DATANUM(0x5f0000, 18),
+        DATANUM(0x5f0000, 19), DATANUM(0x5f0000, 20)
     };
     for (setupIndex = 0; setupIndex < 16; setupIndex++) {
         lbl_1_bss_0.referenceCellModels[setupIndex] =
-            READ_MODEL(referenceCellResources[setupIndex]);
+            fn_80025A04(fn_80008DD0(referenceCellResources[setupIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_0.referenceCellModels[setupIndex], (1 << 0));
+    /* pixel finish initial motion resource. */
     }
-    lbl_1_bss_0.finishModel = READ_MODEL(PIXEL_FINISH_MODEL_RESOURCE);
+    /* Finish model resource. */
+    lbl_1_bss_0.finishModel = fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 39), 0x10000000, 2));
+    /* pixel finish end motion resource. */
     lbl_1_bss_0.finishMotions[0] =
-        READ_MOTION(lbl_1_bss_0.finishModel, PIXEL_FINISH_INITIAL_MOTION_RESOURCE);
+        fn_80030458(lbl_1_bss_0.finishModel, fn_80008DD0(DATANUM(0x5f0000, 40), 0x10000000, 2));
     lbl_1_bss_0.finishMotions[1] =
-        READ_MOTION(lbl_1_bss_0.finishModel, PIXEL_FINISH_END_MOTION_RESOURCE);
+        fn_80030458(lbl_1_bss_0.finishModel, fn_80008DD0(DATANUM(0x5f0000, 41), 0x10000000, 2));
     fn_800269E8(lbl_1_bss_0.finishModel, ((1 << 30) | (1 << 0)));
+    /* pixel extra scene motion resource. */
     fn_8002C95C(lbl_1_bss_0.finishModel, lbl_1_bss_0.finishMotions[0]);
-    lbl_1_bss_0.extraSceneModel = READ_MODEL(PIXEL_EXTRA_SCENE_MODEL_RESOURCE);
+    /* Extra scene model resource. */
+    lbl_1_bss_0.extraSceneModel = fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 55), 0x10000000, 2));
+    /* pixel panel off resource. */
     lbl_1_bss_0.extraSceneMotion =
-        READ_MOTION(lbl_1_bss_0.extraSceneModel, PIXEL_EXTRA_SCENE_MOTION_RESOURCE);
-    lbl_1_bss_0.panelBaseModel = READ_MODEL(PIXEL_PANEL_MODEL_RESOURCE);
-    lbl_1_bss_0.panelMotions[0] = READ_MOTION(lbl_1_bss_0.panelBaseModel, PIXEL_PANEL_OFF_RESOURCE);
-    lbl_1_bss_0.panelMotions[1] = READ_MOTION(lbl_1_bss_0.panelBaseModel, PIXEL_PANEL_ON_RESOURCE);
+        /* pixel panel on resource. */
+        fn_80030458(lbl_1_bss_0.extraSceneModel, fn_80008DD0(DATANUM(0x5f0000, 56), 0x10000000, 2));
+    /* Panel model resource. */
+    lbl_1_bss_0.panelBaseModel = fn_80025A04(fn_80008DD0(DATANUM(0x5f0000, 50), 0x10000000, 2));
+    /* pixel panel turn on resource. */
+    lbl_1_bss_0.panelMotions[0] =
+        fn_80030458(lbl_1_bss_0.panelBaseModel, fn_80008DD0(DATANUM(0x5f0000, 51), 0x10000000, 2));
+    lbl_1_bss_0.panelMotions[1] =
+        fn_80030458(lbl_1_bss_0.panelBaseModel, fn_80008DD0(DATANUM(0x5f0000, 52), 0x10000000, 2));
+    /* pixel panel turn off resource. */
     lbl_1_bss_0.panelMotions[2] =
-        READ_MOTION(lbl_1_bss_0.panelBaseModel, PIXEL_PANEL_TURN_ON_RESOURCE);
+        fn_80030458(lbl_1_bss_0.panelBaseModel, fn_80008DD0(DATANUM(0x5f0000, 53), 0x10000000, 2));
     lbl_1_bss_0.panelMotions[3] =
-        READ_MOTION(lbl_1_bss_0.panelBaseModel, PIXEL_PANEL_TURN_OFF_RESOURCE);
+        fn_80030458(lbl_1_bss_0.panelBaseModel, fn_80008DD0(DATANUM(0x5f0000, 54), 0x10000000, 2));
     fn_80027080(lbl_1_bss_0.panelBaseModel, "636dot-StagePCPanel");
     boardY = 0.0f;
     /* The two 4-by-4 floors are separated along X and share linked panel geometry. */
@@ -203,15 +198,18 @@ void fn_1_21E4(OMOBJ *setupObject)
         }
     }
     for (setupIndex = 0; setupIndex < 3; setupIndex++) {
-        lbl_1_bss_0.pictureIntroModels[setupIndex] = READ_MODEL(lbl_1_data_288[setupIndex]);
-        lbl_1_bss_0.pictureResultModels[setupIndex] = READ_MODEL(lbl_1_data_294[setupIndex]);
-        lbl_1_bss_0.pictureFinishModels[setupIndex] = READ_MODEL(lbl_1_data_2A0[setupIndex]);
+        lbl_1_bss_0.pictureIntroModels[setupIndex] =
+            fn_80025A04(fn_80008DD0(lbl_1_data_288[setupIndex], 0x10000000, 2));
+        lbl_1_bss_0.pictureResultModels[setupIndex] =
+            fn_80025A04(fn_80008DD0(lbl_1_data_294[setupIndex], 0x10000000, 2));
+        lbl_1_bss_0.pictureFinishModels[setupIndex] =
+            fn_80025A04(fn_80008DD0(lbl_1_data_2A0[setupIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_0.pictureIntroModels[setupIndex], (1 << 0));
         fn_800269E8(lbl_1_bss_0.pictureResultModels[setupIndex], (1 << 0));
         fn_800269E8(lbl_1_bss_0.pictureFinishModels[setupIndex], (1 << 0));
         for (cell = 0; cell < 16; cell++) {
             lbl_1_bss_0.pictureCellModels[setupIndex][cell] =
-                READ_MODEL(lbl_1_data_2AC[setupIndex][cell]);
+                fn_80025A04(fn_80008DD0((lbl_1_data_2AC[setupIndex][cell]), 0x10000000, 2));
             fn_800269E8(lbl_1_bss_0.pictureCellModels[setupIndex][cell], (1 << 0));
         }
     }
@@ -219,10 +217,11 @@ void fn_1_21E4(OMOBJ *setupObject)
     {
     s32 teamPlayerCounts[2] = {0, 0};
     actorParam.height = 150.0f;
+    /* pixel actor initial flags. */
     actorParam.radius = 50.0f;
     actorParam.param = 0;
     actorParam.type = 0;
-    actorParam.attr = PIXEL_ACTOR_INITIAL_FLAGS;
+    actorParam.attr = 0;
     actorParam.narrowHook = NULL;
     actorParam.correctHook = fn_1_2F10;
     for (setupIndex = 0; setupIndex < 4; setupIndex++) {
@@ -234,8 +233,8 @@ void fn_1_21E4(OMOBJ *setupObject)
         OSReport("player %d -> pad %d, group %d\n", setupIndex, lbl_1_bss_0.padNo[setupIndex],
                  lbl_1_bss_0.teamSide[setupIndex]);
         /* Player creation replaces the landing motion in the shared motion list. */
-        lbl_1_bss_0.players[setupIndex] = fn_80080728(
-            (s16) setupIndex, &actorParam, 8, (1 << 0), 0xFFFFFFF3, lbl_1_data_E0);
+        lbl_1_bss_0.players[setupIndex] =
+            fn_80080728( (s16) setupIndex, &actorParam, 8, (1 << 0), 0xFFFFFFF3, lbl_1_data_E0);
         fn_8007ED60(lbl_1_bss_0.players[setupIndex]);
         actorParam.param++;
         lbl_1_bss_0.players[setupIndex]->actor->pos.x =

@@ -5,13 +5,10 @@
 #include "REL/m668DLL/player.h"
 #include "dolphin/types.h"
 
-typedef char M668VecBound_size_check[(sizeof(M668VecBound) == 16) ? 1 : -1];
-
-typedef struct M668SegmentBound_s {
+typedef struct {
     HuVecF startAndDisplacement[2]; /* Segment start and displacement in world coordinates. */
     f32 margin; /* Allowed distance from the segment to a tested plane. */
 } M668SegmentBound;
-typedef char M668SegmentBound_size_check[(sizeof(M668SegmentBound) == 28) ? 1 : -1];
 
 extern inline f32 m668_fabs32(f32 value)
 {

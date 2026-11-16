@@ -3,7 +3,7 @@
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "game/hu3d.h"
-typedef struct MikeActModelEffect_s {
+typedef struct {
     s16 model_id;
     u8 unk02[2]; /* No code names this field. */
     HuVecF position;
@@ -15,7 +15,7 @@ typedef struct MikeActModelEffect_s {
     u8 unk2A[2]; /* No code names this field. */
 } MikeActModelEffect;
 
-typedef struct MikeActVisibilityTarget_s {
+typedef struct {
     s16 state;
     s16 positionIndex;
     s16 playerIndex;

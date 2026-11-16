@@ -2,35 +2,6 @@
 #include <math.h>
 #include "REL/m636dll.h"
 
-
-#define PIXEL_PICTURE_ROW_BYTES 16
-#define PIXEL_PICTURE_PIXEL_BYTES 256
-#define PIXEL_CELL_MODEL_SET_BYTES 32
-#define PIXEL_PLAYER_SIDE_OFFSET 104
-#define PIXEL_PLAYER_RECORD_OFFSET 120
-#define PIXEL_LANDING_COUNTER_OFFSET 136
-#define PIXEL_TIMER_OFFSET 68
-#define PIXEL_TEAM_PIXELS_OFFSET 530
-#define PIXEL_RIGHT_TEAM_PIXELS_OFFSET 546
-#define PIXEL_FLOOR_PANEL_MODELS_OFFSET 408
-#define PIXEL_RIGHT_FLOOR_MODELS_OFFSET 440
-#define PIXEL_PANEL_OFF_MOTION_OFFSET 400
-#define PIXEL_PANEL_ON_MOTION_OFFSET 402
-#define PIXEL_PANEL_TURN_ON_MOTION_OFFSET 404
-#define PIXEL_PANEL_TURN_OFF_MOTION_OFFSET 406
-#define PIXEL_FLOOR_DRAW_HOOK_OFFSET 528
-#define PIXEL_SELECTED_PICTURE_OFFSET 504
-#define PIXEL_ROUND_CELL_CHOICES_OFFSET 508
-#define PIXEL_PICTURE_CELL_MODELS_OFFSET 286
-#define PIXEL_PICTURE_INTRO_MODELS_OFFSET 274
-#define PIXEL_REFERENCE_MODEL_OFFSET 270
-#define PIXEL_REFERENCE_CELL_MODELS_OFFSET 578
-#define PIXEL_TARGET_PIXELS_OFFSET 562
-
-
-
-
-
 /* Alternating initial floor pixels; the final array element is zero. */
 u8 lbl_1_data_140[16] = {0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1};
 
@@ -168,36 +139,24 @@ void fn_1_3460(s32 pictureIndex, s32 cellIndex)
     s16 modelId;
 
     modelId = lbl_1_bss_0.pictureCellModels[pictureIndex][cellIndex];
-    fn_800269E8(
-        lbl_1_bss_0.pictureIntroModels[pictureIndex],
-        (1 << 0));
+    fn_800269E8( lbl_1_bss_0.pictureIntroModels[pictureIndex], (1 << 0));
     otherCell = 0;
     while (otherCell < 16) {
-        fn_800269E8(lbl_1_bss_0.pictureCellModels[pictureIndex][otherCell],
-                         (1 << 0));
+        fn_800269E8(lbl_1_bss_0.pictureCellModels[pictureIndex][otherCell], (1 << 0));
         otherCell++;
     }
     fn_80026A44(modelId, (1 << 0));
     fn_8002D414(modelId, 0.0f);
 
-    fn_800269E8(lbl_1_bss_0.referenceModel,
-                     (1 << 0));
+    fn_800269E8(lbl_1_bss_0.referenceModel, (1 << 0));
     otherCell = 0;
     while (otherCell < 16) {
-        fn_800269E8(
-            lbl_1_bss_0.referenceCellModels[otherCell],
-            (1 << 0));
+        fn_800269E8( lbl_1_bss_0.referenceCellModels[otherCell], (1 << 0));
         otherCell++;
     }
-    fn_8002D414(
-        lbl_1_bss_0.referenceCellModels[cellIndex],
-        0.0f);
-    fn_80026A44(
-        lbl_1_bss_0.referenceCellModels[cellIndex],
-        (1 << 0));
-    fn_80026A44(
-        lbl_1_bss_0.referenceCellModels[cellIndex],
-        ((1 << 30) | (1 << 2)));
+    fn_8002D414( lbl_1_bss_0.referenceCellModels[cellIndex], 0.0f);
+    fn_80026A44( lbl_1_bss_0.referenceCellModels[cellIndex], (1 << 0));
+    fn_80026A44( lbl_1_bss_0.referenceCellModels[cellIndex], ((1 << 30) | (1 << 2)));
     HuAudFXPlay(MSM_SE_MG636_CELL_FLIP);
 }
 
@@ -225,8 +184,7 @@ void fn_1_364C(s32 pictureIndex, s32 cellIndex)
     lastFrame = Hu3DMotionMotionMaxTimeGet(fn_8002D3C4(modelId));
     otherCell = 0;
     while (otherCell < 16) {
-        fn_800269E8(lbl_1_bss_0.pictureCellModels[pictureIndex][otherCell],
-                         (1 << 0));
+        fn_800269E8(lbl_1_bss_0.pictureCellModels[pictureIndex][otherCell], (1 << 0));
         otherCell++;
     }
     fn_80026A44(modelId, (1 << 0));
@@ -236,9 +194,7 @@ void fn_1_364C(s32 pictureIndex, s32 cellIndex)
 
     otherCell = 0;
     while (otherCell < 16) {
-        fn_800269E8(
-            lbl_1_bss_0.referenceCellModels[otherCell],
-            (1 << 0));
+        fn_800269E8( lbl_1_bss_0.referenceCellModels[otherCell], (1 << 0));
         otherCell++;
     }
     modelId = lbl_1_bss_0.referenceCellModels[cellIndex];
@@ -273,16 +229,18 @@ void fn_1_3834(s32 pictureIndex, s32 cellIndex)
     u8 *sourceRow;
     s32 rowIndex;
 
+    /* A picture occupies 256 pixel bytes. */
+    /* A picture row occupies 16 bytes. */
     pixelColumn = (cellIndex % 4) * 4;
     pixelRow = (cellIndex / 4) * 4;
-    picturePixels = lbl_1_data_378 + pictureIndex * PIXEL_PICTURE_PIXEL_BYTES;
-    sourceRow = picturePixels + pixelRow * PIXEL_PICTURE_ROW_BYTES + pixelColumn;
+    picturePixels = lbl_1_data_378 + pictureIndex * 256;
+    sourceRow = picturePixels + pixelRow * 16 + pixelColumn;
     OSReport("***********\n");
     OSReport("pic:%d, pat:%d (%d, %d)\n", pictureIndex, cellIndex, pixelColumn, pixelRow);
     /* Picture rows contain sixteen pixels; the floor target rows contain four. */
     for (rowIndex = 0; rowIndex < 4; rowIndex++) {
         memcpy(&lbl_1_bss_0.targetPixels[rowIndex * 4], sourceRow, 4);
-        sourceRow += PIXEL_PICTURE_ROW_BYTES;
+        sourceRow += 16;
     }
     for (rowIndex = 0; rowIndex < 4; rowIndex++) {
         OSReport("%02X %02X %02X %02X\n",
@@ -379,12 +337,10 @@ void fn_1_3BA0(void)
             if (fn_8002D75C(modelId) == 1) {
                 if ((s16)fn_8002D3C4(modelId)
                     == lbl_1_bss_0.panelMotions[2]) {
-                    fn_8002C95C(modelId,
-                                  lbl_1_bss_0.panelMotions[1]);
+                    fn_8002C95C(modelId, lbl_1_bss_0.panelMotions[1]);
                 } else if ((s16)fn_8002D3C4(modelId)
                            == lbl_1_bss_0.panelMotions[3]) {
-                    fn_8002C95C(modelId,
-                                  lbl_1_bss_0.panelMotions[0]);
+                    fn_8002C95C(modelId, lbl_1_bss_0.panelMotions[0]);
                 }
             }
             cellIndex += 1;

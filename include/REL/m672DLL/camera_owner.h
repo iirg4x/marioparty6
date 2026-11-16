@@ -40,8 +40,6 @@ public:
 class CameraOwner;
 typedef void (CameraOwner::*CameraUpdate)();
 #include "REL/m672DLL/member_callback.h"
-typedef std::mem_fun1_t<void, CameraOwner, EventMessage *> CameraMemberFunction;
-typedef CallbackBinding<CameraOwner> CameraCallbackPayload;
 typedef class CameraOwner : public GameObject {
 public:
     OwnedModel model;

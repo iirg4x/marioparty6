@@ -3,6 +3,8 @@
 #define REL_M662DLL_GAME_H
 
 #include "dolphin/types.h"
+
+extern s16 lbl_1_bss_C60;
 #include "game/hu3d.h"
 #include "game/mg/seqman.h"
 #include "game/mg/timer.h"

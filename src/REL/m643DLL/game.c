@@ -20,8 +20,6 @@
 #include "game/gamemes.h"
 #include "humath.h"
 
-
-
 extern M643ViewControlWork *lbl_1_bss_154[2];
 extern M643PlayerPrefix *lbl_1_bss_174[2];
 extern s16 lbl_1_bss_148;
@@ -60,8 +58,6 @@ void fn_1_5438(OMOBJ *object);
 extern s32 lbl_1_bss_C[2][39];
 
 #define M643_AIM_LINE_COLOR_BIT_PATTERN 0xDEFB
-#define M643_PLATFORM_LINE_COLOR_BIT_PATTERN 0xD800
-#define M643_SHOT_PATH_COLOR_BIT_PATTERN 0x07E0
 extern const u32 lbl_1_rodata_110[2];
 extern unsigned int lbl_1_data_60[10];
 void fn_1_4D8C(OMOBJ *object);
@@ -72,7 +68,7 @@ void fn_1_B130(OMOBJ *object);
 BOOL fn_1_BCB0(M643PlayerPrefix *work);
 void fn_1_5D94(OMOBJ *object);
 
-typedef struct M643TeamTemplate_s {
+typedef struct {
     s32 group[4]; /* Player index assigned to each configured group; -1 means empty. */
 } M643TeamTemplate;
 extern const M643TeamTemplate lbl_1_rodata_180;
@@ -688,9 +684,8 @@ void fn_1_23C4(OMOBJ *object)
     isNight = nightMode == 0 ? 0 : 1;
     work->mapObject = fn_8003AB38(lbl_1_bss_0, 32730, 5, 0, -1, NULL);
     for (index = 0; index < 5; index++) {
-        work->mapObject->mdlId[index] = fn_80025A04(
-            fn_80008DD0(lbl_1_data_28[isNight][index], 0x10000000,
-                2));
+        work->mapObject->mdlId[index] =
+            fn_80025A04( fn_80008DD0(lbl_1_data_28[isNight][index], 0x10000000, 2));
     }
     fn_80026B8C(work->mapObject->mdlId[1], 1);
     fn_80026B8C(work->mapObject->mdlId[2], 1);
@@ -755,8 +750,8 @@ void fn_1_2838(OMOBJ *object)
     isNight = nightMode == 0 ? 0 : 1;
     for (platformIndex = 0; platformIndex < 39; platformIndex++) {
         HuVecF position = lbl_1_data_C4[lbl_1_bss_8][platformIndex];
-        work->raisedModels[platformIndex] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x660000, 12), 0x10000000, 2));
+        work->raisedModels[platformIndex] =
+            fn_80025A04( fn_80008DD0(DATANUM(0x660000, 12), 0x10000000, 2));
         fn_80026790(work->raisedModels[platformIndex], &position);
         fn_80026B64(work->raisedModels[platformIndex], lbl_1_rodata_60[work->teamIndex]);
         fn_80026B8C(work->raisedModels[platformIndex], 6);
@@ -765,9 +760,8 @@ void fn_1_2838(OMOBJ *object)
     }
     for (platformIndex = 0; platformIndex < 39; platformIndex++) {
         HuVecF position = lbl_1_data_C4[lbl_1_bss_8][platformIndex];
-        work->loweredModels[platformIndex] = fn_80025A04(
-            fn_80008DD0(lbl_1_data_50[isNight][work->teamIndex], 0x10000000,
-                2));
+        work->loweredModels[platformIndex] =
+            fn_80025A04( fn_80008DD0(lbl_1_data_50[isNight][work->teamIndex], 0x10000000, 2));
         fn_80026790(work->loweredModels[platformIndex], &position);
         fn_80026B64(work->loweredModels[platformIndex], lbl_1_rodata_60[work->teamIndex]);
         fn_80026B8C(work->loweredModels[platformIndex], 2);
@@ -873,8 +867,7 @@ void fn_1_2FBC(OMOBJ *object)
 {
     M643ViewSequenceWork *work = object->data;
     f32 distance, angle, zoom, tangent;
-    Hu3DCameraPerspectiveSet(lbl_1_rodata_60[lbl_1_bss_148], 30.0f, 100.0f, 15000.0f,
-                             1.2f);
+    Hu3DCameraPerspectiveSet(lbl_1_rodata_60[lbl_1_bss_148], 30.0f, 100.0f, 15000.0f, 1.2f);
     Hu3DCameraViewportSet(lbl_1_rodata_60[lbl_1_bss_148], 0.0f, 0.0f, 640.0f, 480.0f,
                           0.0f, 1.0f);
     Hu3DCameraScissorSet(lbl_1_rodata_60[lbl_1_bss_148], 0, 0, 640, 480);
@@ -1276,8 +1269,7 @@ void fn_1_4EF8(OMOBJ *object)
     if (work->phaseFrames == 180) {
         if (work->player->actor->gravity) {
             velocity = work->player->actor->gravity +
-                ((-1.0f + sqrtf(1.0f + 8.0f *
-                (30000.0f / work->player->actor->gravity))) /
+                ((-1.0f + sqrtf(1.0f + 8.0f * (30000.0f / work->player->actor->gravity))) /
                 2.0f) * work->player->actor->gravity;
         } else {
             velocity = 0.0f;
@@ -1388,15 +1380,13 @@ void fn_1_5D94(OMOBJ *object)
         fn_1_20C(object, fn_1_6750);
         return;
     }
-    if (!fn_8007E8B4(work->player, &lbl_1_data_B8,
-            7.0f, 10.0f)) {
+    if (!fn_8007E8B4(work->player, &lbl_1_data_B8, 7.0f, 10.0f)) {
         if (fn_80086CE8(work->player->actor, &mesh)) {
             jumping = fn_80087148(work->player, (1 << 4)) ? TRUE : FALSE;
             if (!jumping) {
                 if (work->player->actor->gravity) {
                     velocity = work->player->actor->gravity +
-                        ((-1.0f + sqrtf(1.0f + 8.0f *
-                        (30000.0f / work->player->actor->gravity))) /
+                        ((-1.0f + sqrtf(1.0f + 8.0f * (30000.0f / work->player->actor->gravity))) /
                         2.0f) * work->player->actor->gravity;
                 } else {
                     velocity = 0.0f;
@@ -1425,9 +1415,7 @@ void fn_1_64B4(OMOBJ *object)
     M643PlayerPrefix *work = object->data;
     work->rescueSpinRadians += 0.08726646259971647;
     fn_80026790(work->player->actor->mdlId, &work->position);
-    fn_80026808(work->player->actor->mdlId,
-        0.0f, 180.0f * work->rescueSpinRadians / M_PI,
-        0.0f);
+    fn_80026808(work->player->actor->mdlId, 0.0f, 180.0f * work->rescueSpinRadians / M_PI, 0.0f);
     if (work->respawnPending == 0) {
         if (fn_80071A8C() == 6) {
             fn_8007E818(work->player);
@@ -1448,8 +1436,7 @@ void fn_1_64B4(OMOBJ *object)
         fn_80086F00(work->player, &work->position);
         fn_8007E818(work->player);
         work->player->actor->rotY = 90.0f;
-        fn_80026808(work->player->actor->mdlId,
-            0.0f, 90.0f, 0.0f);
+        fn_80026808(work->player->actor->mdlId, 0.0f, 90.0f, 0.0f);
         fn_1_20C(object, fn_1_6674);
         return;
     }
@@ -1527,11 +1514,9 @@ void fn_1_6B98(OMOBJ *object)
     fn_80086B04(work->player->actor, &work->position);
     if (fn_80071A8C() == 8) {
         if (lbl_1_bss_148 == work->identity.teamIndex) {
-            fn_8005C2C8(work->identity.characterId, work->player->omObj->mtnId[5],
-                0.0f, 4.0f, 0);
+            fn_8005C2C8(work->identity.characterId, work->player->omObj->mtnId[5], 0.0f, 4.0f, 0);
         } else {
-            fn_8005C2C8(work->identity.characterId, work->player->omObj->mtnId[6],
-                0.0f, 4.0f, 0);
+            fn_8005C2C8(work->identity.characterId, work->player->omObj->mtnId[6], 0.0f, 4.0f, 0);
         }
         fn_1_20C(object, NULL);
         return;
@@ -1734,8 +1719,7 @@ void fn_1_7554(M643TeamScenePrefix *work)
     work->pitchRadians = current;
     fn_80026808(work->barrelModel, 180.0f * work->pitchRadians / M_PI,
         180.0 + 180.0f * work->yawRadians / M_PI, 0.0f);
-    fn_80026808(work->baseModel, 0.0f,
-        180.0 + 180.0f * work->yawRadians / M_PI, 0.0f);
+    fn_80026808(work->baseModel, 0.0f, 180.0 + 180.0f * work->yawRadians / M_PI, 0.0f);
     fn_1_298(&playerPosition, work->cannonPosition.x, work->cannonPosition.y - 100.0f,
              work->cannonPosition.z);
     playerPosition.x += 200.0 * -cos(M_PI + work->yawRadians);
@@ -1798,8 +1782,7 @@ void fn_1_7D1C(HU3D_MODEL *model, Mtx mtx)
         distance = fn_1_4D0(&tangent, &tangent);
         forwardDot = fn_1_3F8(&tangent, &up);
         fn_1_6B0(&tangent, &tangent, 3.0f * distance * forwardDot);
-        fn_1_298(&endTangent, 0.0f, 0.0f,
-            3.0f * -distance * (1.0f - forwardDot));
+        fn_1_298(&endTangent, 0.0f, 0.0f, 3.0f * -distance * (1.0f - forwardDot));
         GXBegin(GX_LINES, GX_VTXFMT0, 280);
         GXPosition3f32(start.x, start.y, start.z);
         GXWGFifo.u16 = M643_AIM_LINE_COLOR_BIT_PATTERN;
@@ -1807,12 +1790,13 @@ void fn_1_7D1C(HU3D_MODEL *model, Mtx mtx)
         GXWGFifo.u16 = M643_AIM_LINE_COLOR_BIT_PATTERN;
         for (sampleIndex = 0; sampleIndex < 39; sampleIndex++) {
             HuVecF platform = lbl_1_data_C4[lbl_1_bss_8][sampleIndex];
+            /* m643 platform line color bit pattern. */
             HuVecF offset = platform;
             offset.z += 300.0f;
             GXPosition3f32(platform.x, platform.y, platform.z);
-            GXWGFifo.u16 = M643_PLATFORM_LINE_COLOR_BIT_PATTERN;
+            GXWGFifo.u16 = 0xD800;
             GXPosition3f32(offset.x, offset.y, offset.z);
-            GXWGFifo.u16 = M643_PLATFORM_LINE_COLOR_BIT_PATTERN;
+            GXWGFifo.u16 = 0xD800;
         }
         position = curveStart;
         for (sampleIndex = 0; sampleIndex < 100; sampleIndex++) {
@@ -1828,12 +1812,13 @@ void fn_1_7D1C(HU3D_MODEL *model, Mtx mtx)
             fn_1_6B0(&weightedVector, &tangent,
                      progress + (progressCubed - 2.0f * progressSquared));
             fn_1_460(&position, &position, &weightedVector);
+            /* m643 shot path color bit pattern. */
             fn_1_6B0(&weightedVector, &endTangent, progressCubed - progressSquared);
             fn_1_460(&position, &position, &weightedVector);
             GXPosition3f32(previous.x, previous.y, previous.z);
-            GXWGFifo.u16 = M643_SHOT_PATH_COLOR_BIT_PATTERN;
+            GXWGFifo.u16 = 0x07E0;
             GXPosition3f32(position.x, position.y, position.z);
-            GXWGFifo.u16 = M643_SHOT_PATH_COLOR_BIT_PATTERN;
+            GXWGFifo.u16 = 0x07E0;
         }
     }
     GXEnd();
@@ -1861,17 +1846,15 @@ void fn_1_83C8(OMOBJ *object)
     work->observedRunnerPlatform = 0;
     work->reactionFrames = 60;
     work->unusedSetupValue = 1;
-    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPos, &cameraUp,
-                     &cameraTarget);
+    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPos, &cameraUp, &cameraTarget);
     work->cannonPosition.x = 500.0f + cameraPos.x;
     work->cannonPosition.y = cameraPos.y - 200.0f;
     work->cannonPosition.z = 500.0f;
-    work->aimMarkerModel = fn_80025A04(
-        fn_80008DD0(lbl_1_data_94[work->identity.teamIndex], 0x10000000, 2));
+    work->aimMarkerModel =
+        fn_80025A04( fn_80008DD0(lbl_1_data_94[work->identity.teamIndex], 0x10000000, 2));
     work->aimMarkerMotion =
         fn_80030458(work->aimMarkerModel,
-            fn_80008DD0(lbl_1_data_9C[work->identity.teamIndex],
-                                                             0x10000000, 2));
+            fn_80008DD0(lbl_1_data_9C[work->identity.teamIndex], 0x10000000, 2));
     fn_8002C95C(work->aimMarkerModel, work->aimMarkerMotion);
     fn_800269E8(work->aimMarkerModel, ((1 << 30) | (1 << 0)));
     /* The opening target uses course zero and a fixed Z of zero; gameplay later uses the selected
@@ -1893,8 +1876,8 @@ void fn_1_83C8(OMOBJ *object)
     fn_80026B64(work->barrelModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->barrelModel, 7);
     for (i = 0; i < 3; i++)
-        work->cannonMotions[i] = fn_80030458(
-            work->barrelModel, fn_80008DD0(lbl_1_data_88[i], 0x10000000, 2));
+        work->cannonMotions[i] =
+            fn_80030458( work->barrelModel, fn_80008DD0(lbl_1_data_88[i], 0x10000000, 2));
     fn_8002C95C(work->barrelModel, work->cannonMotions[0]);
     /* A zero mask leaves the barrel's existing model attributes unchanged. */
     fn_800269E8(work->barrelModel, 0);
@@ -1909,8 +1892,7 @@ void fn_1_83C8(OMOBJ *object)
     fn_80026B8C(work->muzzleEffectModel, 7);
     fn_800269E8(work->muzzleEffectModel, (1 << 0));
     work->muzzleEffectMotion =
-        fn_80030458(work->muzzleEffectModel,
-                        fn_80008DD0(DATANUM(0x660000, 38), 0x10000000, 2));
+        fn_80030458(work->muzzleEffectModel, fn_80008DD0(DATANUM(0x660000, 38), 0x10000000, 2));
     fn_8002C95C(work->muzzleEffectModel, work->muzzleEffectMotion);
     work->loadedShotModel =
         fn_80025A04(fn_80008DD0(DATANUM(0x660000, 7), 0x10000000, 2));
@@ -1956,8 +1938,7 @@ void fn_1_83C8(OMOBJ *object)
     fn_80026B64(work->reloadEffectModel, lbl_1_rodata_60[work->identity.teamIndex]);
     fn_80026B8C(work->reloadEffectModel, 7);
     work->reloadEffectMotion =
-        fn_80030458(work->reloadEffectModel,
-                        fn_80008DD0(DATANUM(0x660000, 43), 0x10000000, 2));
+        fn_80030458(work->reloadEffectModel, fn_80008DD0(DATANUM(0x660000, 43), 0x10000000, 2));
     fn_8002C95C(work->reloadEffectModel, work->reloadEffectMotion);
     fn_800269E8(work->reloadEffectModel, (1 << 0));
     fn_8002D86C(work->reloadEffectModel, 1.3333334f);
@@ -2279,8 +2260,8 @@ void fn_1_A138(OMOBJ *object)
     fn_80026B64(work->projectileModel, lbl_1_rodata_60[work->teamIndex]);
     fn_80026B8C(work->projectileModel, 6);
     fn_800269E8(work->projectileModel, (1 << 0));
-    work->trailParticles = fn_8003216C(
-        HuSprAnimRead(fn_80008634(DATANUM(0x210000, 2), 0x10000000)), 96);
+    work->trailParticles =
+        fn_8003216C( HuSprAnimRead(fn_80008634(DATANUM(0x210000, 2), 0x10000000)), 96);
     fn_80026B64(work->trailParticles, lbl_1_rodata_60[work->teamIndex]);
     fn_80026B8C(work->trailParticles, 7);
     {
@@ -2296,8 +2277,8 @@ void fn_1_A138(OMOBJ *object)
             data->scale = 0.0f;
         }
     }
-    work->impactParticles = fn_8003216C(
-        HuSprAnimRead(fn_80008634(DATANUM(0x210000, 0), 0x10000000)), 8);
+    work->impactParticles =
+        fn_8003216C( HuSprAnimRead(fn_80008634(DATANUM(0x210000, 0), 0x10000000)), 8);
     {
         HU3D_PARTICLE *particle = lbl_802C01C8[work->impactParticles].hookData;
         HU3D_PARTICLE_DATA *data;
@@ -2314,14 +2295,12 @@ void fn_1_A138(OMOBJ *object)
             data->scale = 0.0f;
         }
     }
-    work->arrivalEffectModel = fn_80025A04(
-        fn_80008DD0(DATANUM(0x660000, 39), 0x10000000, 2));
+    work->arrivalEffectModel = fn_80025A04( fn_80008DD0(DATANUM(0x660000, 39), 0x10000000, 2));
     fn_80026B64(work->arrivalEffectModel, lbl_1_rodata_60[work->teamIndex]);
     fn_80026B8C(work->arrivalEffectModel, 7);
     fn_800269E8(work->arrivalEffectModel, (1 << 0));
     work->arrivalEffectMotion =
-        fn_80030458(work->arrivalEffectModel,
-            fn_80008DD0(DATANUM(0x660000, 40), 0x10000000, 2));
+        fn_80030458(work->arrivalEffectModel, fn_80008DD0(DATANUM(0x660000, 40), 0x10000000, 2));
     fn_8002C95C(work->arrivalEffectModel, work->arrivalEffectMotion);
     fn_1_20C(object, fn_1_A444);
 }
@@ -2352,8 +2331,7 @@ void fn_1_A444(OMOBJ *object)
         fn_1_4D0(&work->startTangent, &work->startTangent);
         dot = fn_1_3F8(&work->startTangent, &referenceDirection);
         fn_1_6B0(&work->startTangent, &work->startTangent, 3.0f * distance * dot);
-        fn_1_298(&work->endTangent, 0.0f, 0.0f,
-            3.0f * -distance * (1.0f - dot));
+        fn_1_298(&work->endTangent, 0.0f, 0.0f, 3.0f * -distance * (1.0f - dot));
         fn_80026790(work->projectileModel, &work->position);
         fn_80026A44(work->projectileModel, (1 << 0));
         fn_80026808(work->projectileModel,
@@ -2513,11 +2491,9 @@ void fn_1_B130(OMOBJ *object)
 {
     M643CameraEffectWork *work = object->data;
     work->rescueRequested = 0;
-    work->model = fn_80025A04(
-        fn_80008DD0(DATANUM(0x660000, 35), 0x10000000, 2));
+    work->model = fn_80025A04( fn_80008DD0(DATANUM(0x660000, 35), 0x10000000, 2));
     work->motion =
-        fn_80030458(work->model,
-            fn_80008DD0(DATANUM(0x660000, 36), 0x10000000, 2));
+        fn_80030458(work->model, fn_80008DD0(DATANUM(0x660000, 36), 0x10000000, 2));
     fn_80026B64(work->model, (u16)lbl_1_rodata_60[work->teamIndex]);
     fn_80026B8C(work->model, 6);
     fn_800269E8(work->model, (1 << 0));
@@ -2705,8 +2681,7 @@ BOOL fn_1_BCB0(M643PlayerPrefix *work)
         fn_8007E818(work->player);
         fn_80086CC4(work->player->actor, work->player->actor->gravity ?
             work->player->actor->gravity +
-                ((-1.0f + sqrtf(1.0f + 8.0f *
-                (30000.0f / work->player->actor->gravity))) /
+                ((-1.0f + sqrtf(1.0f + 8.0f * (30000.0f / work->player->actor->gravity))) /
                 2.0f) * work->player->actor->gravity : 0.0f);
         return TRUE;
     }
@@ -2727,8 +2702,7 @@ BOOL fn_1_BCB0(M643PlayerPrefix *work)
                 fn_8007E818(work->player);
         fn_80086CC4(work->player->actor, work->player->actor->gravity ?
             work->player->actor->gravity +
-                        ((-1.0f + sqrtf(1.0f + 8.0f *
-                        (30000.0f / work->player->actor->gravity))) /
+                        ((-1.0f + sqrtf(1.0f + 8.0f * (30000.0f / work->player->actor->gravity))) /
                         2.0f) * work->player->actor->gravity : 0.0f);
             }
         } else {
@@ -2766,8 +2740,7 @@ s32 fn_1_C5B0(M643TeamScenePrefix *work)
     s32 fireRequested = 0;
     HuVecF cameraUp, cameraTarget, cameraPos;
     s16 minPlatform, maxPlatform;
-    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPos, &cameraUp,
-                     &cameraTarget);
+    fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPos, &cameraUp, &cameraTarget);
     for (maxPlatform = 0; maxPlatform < 38; maxPlatform++) {
         if (lbl_1_data_C4[lbl_1_bss_8][maxPlatform].x > 300.0f + cameraPos.x) break;
     }

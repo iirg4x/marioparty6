@@ -21,7 +21,6 @@ extern "C" {
 
 #include "REL/m672DLL/member_handler.h"
 
-typedef std::mem_fun1_t<void, Spinner, EventMessage *> SpinnerMemberFunction;
 // Initializes motion/output state, positions the output, and registers two event callbacks.
 Spinner::Spinner(s32 setupMode, EffectVector position, ANIMDATA *, s32, s32, ANIMDATA *, s32,
                  ANIMDATA *texture, s32 count, s32 layer, s32 itemIndex)

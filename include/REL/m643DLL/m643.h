@@ -5,21 +5,21 @@
 #include "game/charman.h"
 
 /* Introduction timing and audio used by the minigame sequence callbacks. */
-typedef struct M643SequenceWork_s {
+typedef struct {
     s32 phaseFrames; /* Frames elapsed in the introduction. */
     s16 musicHandle; /* Background stream handle; -1 until music starts. */
     s32 introSoundHandle; /* Opening sound handle; -1 when absent or faded out. */
 } M643SequenceWork;
 
 /* One horizontal aiming direction's edge detection and key-repeat timers. */
-typedef struct M643InputPrefix_s {
+typedef struct {
     s32 held, pressed, released, step; /* Held state, input edges, and this frame's aim step. */
     u8 repeatFrames, pressCooldownFrames; /* Delays before repeat and accepting another press. */
     u8 unk12[2]; /* No code names this field. */
 } M643InputPrefix;
 
 /* A reusable cannon shot, its particles, and its curved or deflected flight. */
-typedef struct M643ShotPrefix_s {
+typedef struct {
     struct M643TeamScenePrefix_s *cannon; /* Cannon whose muzzle and aim are copied at launch. */
     s16 slotIndex, teamIndex; /* Shot slot (0 or 1) and owning team (0 or 1). */
     HU3D_MODELID arrivalEffectModel; /* Animated effect shown when a new platform appears. */
@@ -38,20 +38,20 @@ typedef struct M643ShotPrefix_s {
 } M643ShotPrefix;
 
 /* Work data used by the map scene's object and model list. */
-typedef struct M643MapSceneWork_s {
+typedef struct {
     OMOBJ *mapObject; /* Environment models, including the hidden finish-area collision map. */
     HU3D_MODELID collisionModels[39]; /* Hidden platform models used by actor collision. */
 } M643MapSceneWork;
 
 /* Visible lowered platforms and the raised platforms revealed by one team's shots. */
-typedef struct M643PlatformWork_s {
+typedef struct {
     s16 teamIndex; /* Team whose camera, collision mask, and revealed flags are used. */
     HU3D_MODELID raisedModels[39]; /* Revealed platform models, initially hidden. */
     HU3D_MODELID loweredModels[39]; /* Day or night platform models visible before a hit. */
 } M643PlatformWork;
 
 /* Fields shared by the runner and shooter player state records. */
-typedef struct M643PlayerIdentityPrefix_s {
+typedef struct {
     s16 playerIndex, characterId, teamIndex; /* Configured player, character, and team (0 or 1). */
 } M643PlayerIdentityPrefix;
 
@@ -96,7 +96,7 @@ typedef struct M643TeamScenePrefix_s {
 } M643TeamScenePrefix;
 
 /* Runner control, last touched platform, fall recovery, and computer jumping state. */
-typedef struct M643PlayerPrefix_s {
+typedef struct {
     M643PlayerIdentityPrefix identity;
     MGPLAYER *player; /* Runner's actor, input, and character animation state. */
     u16 respawnPending; /* One while despawned; cleared when the rescue releases the runner. */
@@ -134,13 +134,13 @@ typedef struct M643CameraEffectWork_s {
 } M643CameraEffectWork;
 
 /* Result-view timing shared by the callbacks that switch to the winning team's camera. */
-typedef struct M643ViewSequenceWork_s {
+typedef struct {
     u8 unk00[4]; /* No code names this field. */
     s32 phaseFrames; /* Outgoing-wipe wait and winner-camera fade-in frame counter. */
 } M643ViewSequenceWork;
 
 /* Work data for the per-team view controller. */
-typedef struct M643ViewControlWork_s {
+typedef struct {
     s16 teamIndex; /* Team whose runner and camera are followed. */
     f32 cameraDepth; /* Camera's world Z position, computed from view distance and field of view. */
     s32 phaseFrames; /* Intro tracking and split-screen transition frame counter. */

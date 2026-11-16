@@ -2,14 +2,14 @@
 #define REL_MIKEACTDLL_STAGE_TYPES_H
 #include "REL/mikeactdll/module_types.h"
 
-typedef struct MikeActSceneLayoutEntry_s {
+typedef struct {
     s32 layoutId;
     s32 horizontalIndex;
     s32 depthIndex;
     s32 rotationIndex;
 } MikeActSceneLayoutEntry;
 
-typedef struct MikeActSceneEffectRow_s {
+typedef struct {
     s16 state;
     s16 flags;
     u8 unknown_04[4]; /* No code names this field. */

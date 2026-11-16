@@ -6,10 +6,6 @@
 extern GXColor lbl_1_data_40[2];
 extern Point3d lbl_1_data_28;
 extern Point3d lbl_1_data_34;
-extern s16 lbl_1_bss_4AC[4];
-extern s16 lbl_1_bss_4B4;
-extern s16 lbl_1_bss_4B6;
-extern s32 lbl_1_bss_2A8;
 extern s32 lbl_1_data_48[4];
 extern s32 lbl_1_data_80[2];
 extern s32 lbl_1_data_88[2];
