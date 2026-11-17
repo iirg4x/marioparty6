@@ -654,10 +654,11 @@ deque<deque_pointer, A>::grow_buf_back(size_type offset, size_type requested) {
         remaining -= block_storage.extent_;
     } while (true);
 }
+// Appends a pointer element, growing the block map when the last block is full.
 template <class A>
 void
 deque<deque_pointer, A>::push_back(const deque_pointer& value) {
-    if (count > max_size() - 1) __msl_error("deque::push_back length error\n");
+    if (count > max_size() - 1) __msl_error("deque::insert length error\n");
     if (buffers.empty()) init_buf();
     {
         if (first + count == capacity()) grow_buf_back(0, 1);

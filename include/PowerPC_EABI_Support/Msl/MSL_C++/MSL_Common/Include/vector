@@ -23,24 +23,66 @@ struct vector_element_representation { enum { plain = 0 };
     typedef T type;
 };
 // Scalar representations retain their width while sharing the storage operations.
-#define VECTOR_SCALAR_REPRESENTATION(T, U) \
-    template <> struct vector_element_representation<T> { \
-        enum { plain = 1 }; \
-        typedef U type; \
-    };
-VECTOR_SCALAR_REPRESENTATION(bool, unsigned char)
-VECTOR_SCALAR_REPRESENTATION(char, char)
-VECTOR_SCALAR_REPRESENTATION(signed char, char)
-VECTOR_SCALAR_REPRESENTATION(unsigned char, char)
-VECTOR_SCALAR_REPRESENTATION(short, unsigned short)
-VECTOR_SCALAR_REPRESENTATION(unsigned short, unsigned short)
-VECTOR_SCALAR_REPRESENTATION(int, unsigned long)
-VECTOR_SCALAR_REPRESENTATION(unsigned int, unsigned long)
-VECTOR_SCALAR_REPRESENTATION(long, unsigned long)
-VECTOR_SCALAR_REPRESENTATION(unsigned long, unsigned long)
-VECTOR_SCALAR_REPRESENTATION(float, unsigned long)
-VECTOR_SCALAR_REPRESENTATION(double, unsigned long long)
-#undef VECTOR_SCALAR_REPRESENTATION
+template <>
+struct vector_element_representation<bool> {
+    enum { plain = 1 };
+    typedef unsigned char type;
+};
+template <>
+struct vector_element_representation<char> {
+    enum { plain = 1 };
+    typedef char type;
+};
+template <>
+struct vector_element_representation<signed char> {
+    enum { plain = 1 };
+    typedef char type;
+};
+template <>
+struct vector_element_representation<unsigned char> {
+    enum { plain = 1 };
+    typedef char type;
+};
+template <>
+struct vector_element_representation<short> {
+    enum { plain = 1 };
+    typedef unsigned short type;
+};
+template <>
+struct vector_element_representation<unsigned short> {
+    enum { plain = 1 };
+    typedef unsigned short type;
+};
+template <>
+struct vector_element_representation<int> {
+    enum { plain = 1 };
+    typedef unsigned long type;
+};
+template <>
+struct vector_element_representation<unsigned int> {
+    enum { plain = 1 };
+    typedef unsigned long type;
+};
+template <>
+struct vector_element_representation<long> {
+    enum { plain = 1 };
+    typedef unsigned long type;
+};
+template <>
+struct vector_element_representation<unsigned long> {
+    enum { plain = 1 };
+    typedef unsigned long type;
+};
+template <>
+struct vector_element_representation<float> {
+    enum { plain = 1 };
+    typedef unsigned long type;
+};
+template <>
+struct vector_element_representation<double> {
+    enum { plain = 1 };
+    typedef unsigned long long type;
+};
 // Empty pointer trait selects the machine's unsigned pointer-width storage representation.
 template <class T>
 struct vector_element_representation<T*> {
@@ -58,19 +100,46 @@ struct vector_input_kind {
     };
 };
 // Define empty selectors that dispatch integral constructor arguments as count/value pairs.
-#define VECTOR_INTEGRAL_ARGUMENT(T) \
-    template <> struct vector_input_kind<T> { enum { integral = 1 }; };
-VECTOR_INTEGRAL_ARGUMENT(bool)
-VECTOR_INTEGRAL_ARGUMENT(char)
-VECTOR_INTEGRAL_ARGUMENT(signed char)
-VECTOR_INTEGRAL_ARGUMENT(unsigned char)
-VECTOR_INTEGRAL_ARGUMENT(short)
-VECTOR_INTEGRAL_ARGUMENT(unsigned short)
-VECTOR_INTEGRAL_ARGUMENT(int)
-VECTOR_INTEGRAL_ARGUMENT(unsigned int)
-VECTOR_INTEGRAL_ARGUMENT(long)
-VECTOR_INTEGRAL_ARGUMENT(unsigned long)
-#undef VECTOR_INTEGRAL_ARGUMENT
+template <>
+struct vector_input_kind<bool> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<char> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<signed char> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<unsigned char> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<short> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<unsigned short> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<int> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<unsigned int> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<long> {
+    enum { integral = 1 };
+};
+template <>
+struct vector_input_kind<unsigned long> {
+    enum { integral = 1 };
+};
 
 // Empty type-comparison trait selects representation-preserving range conversion.
 template <class First, class Second>
@@ -157,6 +226,8 @@ public:
     __vector_pod() : allocation_count(0UL), size_(0), data_(0) {}
     // Creates empty scalar storage in a supplied allocation domain.
     explicit __vector_pod(const Allocator& a) : allocation_count(a), size_(0), data_(0) {}
+    // Copies the allocation domain and builds an independent const-pointer range.
+    __vector_pod(const __vector_pod& other);
     // Creates and value-initializes a count-only scalar allocation.
     explicit __vector_pod(unsigned long count) : allocation_count(Allocator(), 0), size_(0),
         data_(0) {
@@ -190,6 +261,8 @@ public:
     T& at(unsigned long index);
     const T& at(unsigned long index) const;
     void reserve(unsigned long count);
+    // Replaces scalar elements, retaining storage whenever its capacity is sufficient.
+    void assign(unsigned long count, const T& value);
     void insert(T* position, unsigned long count, const T& value);
     // Create the initial scalar sequence from a count and repeated value.
     void init(unsigned long count, const T& value);
@@ -208,11 +281,9 @@ public:
             size_ = count;
         }
     }
-    // Forwards multipass scalar construction through its contiguous initializer.
+    // Establishes the scalar extent before allocating a multipass input range.
     template <class ForwardIterator>
-    void init(ForwardIterator first, ForwardIterator last, forward_iterator_tag) {
-        init(first, last);
-    }
+    void init(ForwardIterator first, ForwardIterator last, forward_iterator_tag);
     void push_back(const T& value) { insert(end(), 1, value); }
     // Inserts repeated values, moving existing scalar elements by assignment.
     template <class InputIterator>
@@ -231,6 +302,22 @@ public:
     void do_insert(T* position, ForwardIterator first, ForwardIterator last, forward_iterator_tag);
     T* erase(T* position);
 };
+
+// Allocate storage for the forward range and copy its values.
+template <class T, class Allocator>
+template <class ForwardIterator>
+void __vector_pod<T, Allocator>::init(ForwardIterator first, ForwardIterator last,
+    forward_iterator_tag) {
+    size_ = capacity_ref() = std::distance(first, last);
+    if (size_ > max_size()) {
+        fprintf(stderr, "vector length error\n");
+        abort();
+    }
+    if (size_ != 0) {
+        storage_ref() = allocator_ref().allocate(size_);
+        std::copy(first, last, storage_ref());
+    }
+}
 
 template <class T, class Allocator>
 T* __vector_pod<T, Allocator>::erase(T* position) {
@@ -383,16 +470,15 @@ public:
     template <class ForwardIterator>
     void init(ForwardIterator first, ForwardIterator last, forward_iterator_tag);
     // End all element lifetimes while leaving the allocation available for reuse.
-    using base::clear;
-        void resize(size_type count);
+    void clear() { base::clear(); }
+    // Resizes to count elements, value-initializing any new ones.
+    void resize(size_type count);
     void resize(size_type count, const T& value) {
         if (count < size()) erase(begin() + count, end());
         else if (count > size()) this->insert(end(), count - size(), value);
     }
-    void assign(size_type count, const T& value) {
-        clear();
-        insert(begin(), count, value);
-    }
+    // Reuse live objects before constructing or destroying the remaining count.
+    void assign(size_type count, const T& value);
 
 };
 
@@ -429,9 +515,7 @@ public:
     __vector_imp(size_type count, const T& value) : base(count,
         reinterpret_cast<const storage_type&>(value)) {}
     // Copies scalar elements into an independent allocation.
-    __vector_imp(const __vector_imp& other) : base(allocator<storage_type>(other.get_allocator())) {
-        base::init(other.begin(), other.end());
-    }
+    __vector_imp(const __vector_imp& other) : base(other) {}
     // Releases the scalar-storage owner.
     ~__vector_imp() {}
     __vector_imp& operator=(const __vector_imp& other) {
@@ -559,8 +643,12 @@ public:
     const_reference at(size_type index) const {
         return reinterpret_cast<const_reference>(base::at(index));
     }
-    reference front() { return *begin(); }
-    const_reference front() const { return *begin(); }
+    // Returns the first element.
+    reference front() { return reinterpret_cast<reference>(*this->storage_ref()); }
+    // Returns the first element, read-only.
+    const_reference front() const {
+        return reinterpret_cast<const_reference>(*this->storage_ref());
+    }
     reference back() { return reinterpret_cast<reference>(base::back()); }
     const_reference back() const { return reinterpret_cast<const_reference>(base::back()); }
     void push_back(const T& value) {
@@ -591,9 +679,9 @@ public:
         if (count < size()) erase(begin() + count, end());
         else if (count > size()) this->insert(end(), count - size(), value);
     }
+    // Replaces the contents with count copies of value.
     void assign(size_type count, const T& value) {
-        clear();
-        insert(begin(), count, value);
+        base::assign(count, reinterpret_cast<const storage_type&>(value));
     }
     void swap(__vector_imp& other) {
         std::swap(this->storage_ref(), other.storage_ref());
@@ -679,6 +767,34 @@ public:
     }
     ~vector() {}
 };
+
+// Repeated scalar assignment replaces the allocation only when the reserved extent is exceeded.
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::assign(unsigned long count, const T& value) {
+    if (count > capacity()) {
+        if (count > max_size()) {
+            fprintf(stderr, "vector length error\n");
+            abort();
+        }
+        clear();
+        if (storage_ref()) {
+            allocator_ref().deallocate(storage_ref(), capacity_ref());
+            storage_ref() = 0;
+            capacity_ref() = 0;
+        }
+        storage_ref() = allocator_ref().allocate(count);
+        capacity_ref() = count;
+    }
+    std::fill_n(storage_ref(), count, value);
+    size_ = count;
+}
+
+// The scalar copy owner delegates element creation to the multipass range initializer.
+template <class T, class Allocator>
+__vector_pod<T, Allocator>::__vector_pod(const __vector_pod& other)
+    : allocation_count(other.allocator_ref()), size_(0), data_(0) {
+    init(other.begin(), other.end(), forward_iterator_tag());
+}
 
 // Initializes object storage from a forward range.
 template <class T, class Allocator>
@@ -971,6 +1087,50 @@ void __vector_deleter<T, Allocator>::clear() {
     T* last = first + size_;
     while (last > first) allocator_ref().destroy(--last);
     size_ = 0;
+}
+
+// Object assignment retains the allocation when the replacement sequence fits.
+template <class T, class Allocator>
+void __vector_imp<T, Allocator, false>::assign(size_type count, const T& value) {
+    if (count <= capacity()) {
+        size_type common = std::min(count, this->size_);
+        iterator out = begin();
+        iterator last = out + common;
+        for (; out < last; ++out) *out = value;
+        if (count < this->size_) {
+            last = end();
+            for (; out < last; ++out) out->~T();
+            this->size_ = count;
+        } else if (this->size_ < count) {
+            count -= this->size_;
+            while (count != 0) {
+                this->allocator_ref().construct(out, value);
+                --count;
+                ++out;
+                ++this->size_;
+            }
+        }
+    } else {
+        if (count > max_size()) {
+            fprintf(stderr, "vector length error\n");
+            abort();
+        }
+        clear();
+        if (this->storage_ref()) {
+            this->allocator_ref().deallocate(this->storage_ref(), this->capacity_ref());
+            this->storage_ref() = 0;
+            this->capacity_ref() = 0;
+        }
+        this->storage_ref() = this->allocator_ref().allocate(count);
+        this->capacity_ref() = count;
+        iterator out = begin();
+        while (count != 0) {
+            this->allocator_ref().construct(out, value);
+            --count;
+            ++out;
+            ++this->size_;
+        }
+    }
 }
 
 // Destroy the elements and release the retained allocation.

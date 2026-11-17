@@ -8,6 +8,27 @@
 
 namespace std {
 
+// Empty argument trait distinguishes ranges from repeated-value insertion.
+template <class T>
+struct list_input_kind {
+    enum { integral = 0 };
+};
+// Empty integral selector marks a count/value argument pair.
+struct list_integral_kind {
+    enum { integral = 1 };
+};
+// Integral arguments designate a count and a value rather than iterator positions.
+template <> struct list_input_kind<bool> : list_integral_kind {};
+template <> struct list_input_kind<char> : list_integral_kind {};
+template <> struct list_input_kind<signed char> : list_integral_kind {};
+template <> struct list_input_kind<unsigned char> : list_integral_kind {};
+template <> struct list_input_kind<short> : list_integral_kind {};
+template <> struct list_input_kind<unsigned short> : list_integral_kind {};
+template <> struct list_input_kind<int> : list_integral_kind {};
+template <> struct list_input_kind<unsigned int> : list_integral_kind {};
+template <> struct list_input_kind<long> : list_integral_kind {};
+template <> struct list_input_kind<unsigned long> : list_integral_kind {};
+
 // Empty iterator trait supplies mutable element access types.
 template <class T, int IsConst>
 struct list_access_types {
@@ -60,11 +81,8 @@ public:
         // Construct an iterator to a ring link.
         generic_iterator(typename list_access_types<node_base, IsConst>::pointer p = 0) :
             position(p) {}
-        // Copy the position without changing the node chain.
-        generic_iterator(const generic_iterator& other) : position(other.position) {}
-        // Copy another traversal position when its link constness permits it.
-        template <int OtherConst>
-        generic_iterator(const generic_iterator<OtherConst>& other) : position(other.position) {}
+        // Copy a mutable position, qualifying its link for read-only traversal.
+        generic_iterator(const generic_iterator<0>& other) : position(other.position) {}
         reference operator*() const {
             typedef typename list_access_types<node, IsConst>::pointer node_pointer;
             return static_cast<node_pointer>(position)->value;
@@ -97,8 +115,8 @@ public:
 protected:
     // End the value lifetime before releasing its separately allocated node.
     static void destroy_value(T* value) { value->~T(); }
-    // Live value nodes, excluding the embedded ring sentinel.
-    size_type count_;
+    // The element allocator and the count of live value nodes (the ring sentinel excluded).
+    Metrowerks::compressed_pair<allocator_type, size_type> allocation_count_;
     // Node allocator sharing storage with the embedded circular sentinel.
     Metrowerks::compressed_pair<node_allocator, node_base> storage_;
 
@@ -110,20 +128,30 @@ protected:
         new_node->next = following;
     }
 
+    // Detach the inclusive node interval while preserving the surrounding ring.
+    static void unlink_nodes(node_base* first, node_base* last) {
+        first->previous->next = last->next;
+        last->next->previous = first->previous;
+    }
+
     // Update the live-node total after links are inserted or removed.
-    size_type& count() { return count_; }
+    size_type& count() { return allocation_count_.second(); }
     // Observe the number of value nodes without exposing a mutable count.
-    const size_type& count() const { return count_; }
+    const size_type& count() const { return allocation_count_.second(); }
     // Locate the link representing the end of the sequence.
     node_base* end_node() { return &storage_.second(); }
     // Locate the end link through a const list.
     const node_base* end_node() const { return &storage_.second(); }
+    // Obtain the element allocator independently of its rebound node allocator.
+    allocator_type& allocator_ref() { return allocation_count_.first(); }
     // Obtain the allocator for node storage.
     node_allocator& node_alloc() { return storage_.first(); }
 
 public:
     // Initialize an empty ring.
     __list_deleter();
+    // Start an empty ring using the supplied element allocator.
+    explicit __list_deleter(const allocator_type& alloc);
     // Release every live element.
     ~__list_deleter() { erase(begin(), end()); }
     iterator begin() { return iterator(end_node()->next); }
@@ -132,7 +160,8 @@ public:
     const_iterator end() const { return const_iterator(const_cast<node_base*>(end_node())); }
     bool empty() const { return count() == 0; }
     size_type size() const { return count(); }
-    reference front() { return *begin(); }
+    // Returns the first element.
+    reference front() { return static_cast<node*>(end_node()->next)->value; }
     reference back() {
         iterator p = end();
         return *--p;
@@ -140,6 +169,8 @@ public:
     void clear() { erase(begin(), end()); }
 
     iterator insert(iterator where, const_reference element);
+    // Transfer all nodes from the other ring before the insertion position.
+    void splice(iterator where, __list_deleter& other);
     iterator erase(iterator where);
     iterator erase(iterator first, iterator last);
     void push_back(const_reference value) { insert(end(), value); }
@@ -165,11 +196,20 @@ __list_deleter<T, Allocator>::insert(iterator where, const_reference element) {
 
 // Initialize a zero count and connect both sentinel links back to the sentinel.
 template <class T, class Allocator>
-__list_deleter<T, Allocator>::__list_deleter() : count_(0) {
+__list_deleter<T, Allocator>::__list_deleter() : allocation_count_(0UL) {
     node_base& ring = storage_.second();
     ring.previous = ring.next = &ring;
 }
 
+// Initialize an empty ring using the supplied allocator.
+template <class T, class Allocator>
+__list_deleter<T, Allocator>::__list_deleter(const allocator_type& alloc)
+    : allocation_count_(alloc, 0), storage_(node_allocator(alloc)) {
+    node_base& ring = storage_.second();
+    ring.previous = ring.next = &ring;
+}
+
+// Unlinks and destroys the node at where, returning the iterator after it.
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator where) {
@@ -177,27 +217,24 @@ __list_deleter<T, Allocator>::erase(iterator where) {
     ++where;
     victim->previous->next = victim->next;
     victim->next->previous = victim->previous;
-    delete victim;
+    allocator_type().destroy(&victim->value);
+    node_alloc().deallocate(victim, 1);
     --count();
     return where;
 }
 
+// Unlinks and destroys the nodes in [first, last), returning last.
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator first, iterator last) {
     if (first == last)
         return last;
-    node_base* head;
-    node_base* tail;
-    tail = last.position->previous;
-    head = first.position;
-    head->previous->next = tail->next;
-    tail->next->previous = head->previous;
+    unlink_nodes(first.position, last.position->previous);
     while (first != last) {
         destroy_value(&*first);
         node* victim = static_cast<node*>(first.position);
         ++first;
-        ::operator delete(victim);
+        node_alloc().deallocate(victim, 1);
         --count();
     }
     return last;
@@ -206,12 +243,87 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last) {
 // List implementation inherits ring ownership without adding storage.
 template <class T, class Allocator>
 class __list_imp : public __list_deleter<T, Allocator> {
+    typedef __list_deleter<T, Allocator> base;
+    // Empty selectors choose between count/value and iterator-range insertion.
+    template <int Integral> struct chooser {};
+    // Build a detached range before committing its nodes to this ring.
+    template <class Input>
+    void choose_insert(typename base::iterator where, Input first, Input last, chooser<0>);
+    // Select the range constructor without treating integral counts as iterators.
+    template <class Input>
+    void choose_init(Input first, Input last, chooser<0>) { init(first, last); }
+    // Integral arguments initialize a count of copies of the converted value.
+    template <class Integer>
+    void choose_init(Integer count, Integer value, chooser<1>) {
+        insert(this->end(), static_cast<typename base::size_type>(count), T(value));
+    }
+    // Initialize an empty ring by appending each input value.
+    template <class Input>
+    void init(Input first, Input last);
+    // Repeated integral arguments select the count/value overload.
+    template <class Integer>
+    void choose_insert(typename base::iterator where, Integer count, Integer value, chooser<1>) {
+        insert(where, static_cast<typename base::size_type>(count), T(value));
+    }
 public:
     typedef typename __list_deleter<T, Allocator>::iterator iterator;
+    typedef typename base::allocator_type allocator_type;
+    // Construct an empty list with the default allocator.
+    __list_imp() : base() {}
+    // Initialize with the supplied allocator, dispatching ranges or count/value pairs.
+    template <class Input>
+    __list_imp(Input first, Input last, const allocator_type& alloc) : base(alloc) {
+        choose_init(first, last, chooser<list_input_kind<Input>::integral>());
+    }
+    using base::insert;
+    // Insert the requested number of copies before the insertion position.
+    void insert(iterator where, typename base::size_type count, const T& value) {
+        while (count--) base::insert(where, value);
+    }
+    // Dispatch iterator ranges and integral count/value pairs to their insertion overloads.
+    template <class Input>
+    void insert(iterator where, Input first, Input last) {
+        choose_insert(where, first, last, chooser<list_input_kind<Input>::integral>());
+    }
+    // Transfer the other list through the ring owner.
+    void splice(iterator where, base& other) { base::splice(where, other); }
     template <class Predicate>
     void remove_if(Predicate predicate);
     void remove(const T& value) { remove_if(bind2nd(equal_to<T>(), value)); }
 };
+
+// Append each input value to initialize the list.
+template <class T, class Allocator>
+template <class Input>
+void __list_imp<T, Allocator>::init(Input first, Input last) {
+    for (; first != last; ++first)
+        this->push_back(*first);
+}
+
+// Construct the input range in a temporary list, then transfer its nodes.
+template <class T, class Allocator>
+template <class Input>
+void __list_imp<T, Allocator>::choose_insert(iterator where, Input first, Input last, chooser<0>) {
+    __list_imp temporary(first, last, this->allocator_ref());
+    splice(where, temporary);
+}
+
+// Move the other ring into this ring and transfer its node count.
+template <class T, class Allocator>
+void __list_deleter<T, Allocator>::splice(iterator where, __list_deleter& other) {
+    if (other.empty()) return;
+    node_base* sentinel = other.end_node();
+    node_base* head = sentinel->next;
+    node_base* tail = sentinel->previous;
+    sentinel->previous = sentinel->next = sentinel;
+    node_base* following = where.position;
+    following->previous->next = head;
+    head->previous = following->previous;
+    following->previous = tail;
+    tail->next = following;
+    this->count() += other.count();
+    other.count() = 0;
+}
 
 template <class T, class Allocator>
 template <class Predicate>
@@ -259,12 +371,9 @@ public:
         typedef typename list_access_types<T*, IsConst>::pointer pointer;
         typedef typename list_access_types<T*, IsConst>::reference reference;
         // Wrap the stored link with the requested element qualification.
-        explicit generic_iterator(const iterator_base& p) : iterator_base(p) {}
-        // Copy a typed position through its link representation.
-        generic_iterator(const generic_iterator& p) : iterator_base(p) {}
-        // Const traversal preserves the stored node and qualifies its element access.
-        template <int OtherConst>
-        generic_iterator(const generic_iterator<OtherConst>& p) : iterator_base(p) {}
+        generic_iterator(iterator_base p) : iterator_base(p) {}
+        // Preserve the mutable traversal position while qualifying element access.
+        generic_iterator(const generic_iterator<0>& p) : iterator_base(p) {}
         reference operator*() const { return (reference)iterator_base::operator*(); }
         pointer operator->() const { return &operator*(); }
         generic_iterator& operator++() {
@@ -283,15 +392,20 @@ public:
     };
     typedef generic_iterator<0> iterator;
     typedef generic_iterator<1> const_iterator;
-    iterator begin() { return iterator(base::begin()); }
-    iterator end() { return iterator(base::end()); }
-    const_iterator begin() const { return const_iterator(base::begin()); }
-    const_iterator end() const { return const_iterator(base::end()); }
+    // Returns an iterator to the first element.
+    iterator begin() { return base::begin(); }
+    // Returns an iterator past the last element.
+    iterator end() { return base::end(); }
+    // Returns a read-only iterator to the first element.
+    const_iterator begin() const { return base::begin(); }
+    // Returns a read-only iterator past the last element.
+    const_iterator end() const { return base::end(); }
     reference front() { return (reference)base::front(); }
     reference back() { return (reference)base::back(); }
     void push_back(const_reference value) { base::push_back((const void* const&)value); }
     void push_front(const_reference value) { base::push_front((const void* const&)value); }
-    void remove(const_reference value) { base::remove((const void* const&)value); }
+    // Removes every element equal to value.
+    void remove(const_reference value) { base::remove(value); }
 };
 
 }
