@@ -417,9 +417,12 @@ public:
         compressed_pair<Count, T*>(count, pointer)) {}
     // Return any storage whose ownership has not been transferred.
     ~alloc_ptr() {
-        if (get() != 0) allocation_state.first().deallocate(get(),
-            allocation_state.second().first());
+        if (get() != 0) allocation_state.first().deallocate(get(), capacity());
     }
+    // Extent of the allocation, as the allocator expects it.
+    unsigned long capacity() const { return count(); }
+    // Element count recorded with the allocation.
+    const Count& count() const { return allocation_state.second().first(); }
     // Read the allocation without transferring its ownership.
     T* get() const { return allocation_state.second().second(); }
     T* operator->() const { return get(); }

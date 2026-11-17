@@ -14,12 +14,8 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* Compare stream mode text without case, stopping after the supplied byte count. */
-int __msl_strnicmp(const char* str1, const char* str2, int n);
 int fflush(FILE* file);
 int fclose(FILE* file);
-/* Write complete elements to the stream's internal buffer. */
-size_t __fwrite(const void* buffer, size_t size, size_t count, FILE* stream);
 size_t fwrite(const void* buffer, size_t size, size_t count, FILE* stream);
 #define stdin (&__files[0])
 #define stdout (&__files[1])

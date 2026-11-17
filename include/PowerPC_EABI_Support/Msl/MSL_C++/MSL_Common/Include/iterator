@@ -59,7 +59,7 @@ struct __reinterpret_convert {
     typedef Result result_type;
     typedef typename iterator_traits<Result>::value_type reference;
     typename iterator_traits<Result>::value_type operator()(Input position) const {
-        return *reinterpret_cast<Result>(&*position);
+        return *reinterpret_cast<const typename iterator_traits<Result>::value_type*>(&*position);
     }
 };
 
