@@ -228,7 +228,7 @@ typedef struct TRKState_PPC {
 	u32 DSISR;           // 0x94
 	BOOL stopped;        // 0x98
 	BOOL inputActivated; // 0x9c
-	u8* inputPendingPtr; // 0xA0
+	volatile u8* inputPendingPtr; // 0xA0
 } TRKState_PPC;
 
 typedef struct ProcessorRestoreFlags_PPC {
