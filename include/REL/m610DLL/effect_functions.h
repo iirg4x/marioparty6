@@ -1,0 +1,6 @@
+#ifndef REL_M610DLL_EFFECT_FUNCTIONS_H
+#define REL_M610DLL_EFFECT_FUNCTIONS_H
+
+void fn_1_1E54(void);
+
+#endif

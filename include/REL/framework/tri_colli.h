@@ -74,6 +74,8 @@ struct TriangleCollision {
     float maximumDistance;
     Octree *collisionTree;
 
+    // m605 and m623 read these two fields through the accessors; a direct field read
+    // compiles differently there.
     u16 getTriangleMetadata() const { return triangleMetadata; }
 
     float getMaximumDistance() const { return maximumDistance; }

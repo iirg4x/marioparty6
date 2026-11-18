@@ -87,4 +87,7 @@ struct OctreeTriangleIterator {
     const Vec *thirdVertex() const { return a[2]; }
 };
 
+// Destroys the octree; its owned members release their data.
+inline Octree::~Octree() {}
+
 #endif
