@@ -10,9 +10,6 @@
 
 #include "REL/framework/phase_duration_statics.h"
 
-template <class Time> inline Time secondsToFrames(Time seconds)
-{
-    return 60 * seconds;
-}
+#include "REL/framework/seconds_to_frames_inline.h"
 
 #endif

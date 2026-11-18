@@ -25,19 +25,7 @@ template <class T> inline T cameraMax(T first, T second)
 
 #include "REL/framework/sphere.h"
 
-// Display size, fitting margins, and field of view used when a camera is fitted.
-struct CameraPerspective {
-    s32 width;        // Display width in pixels.
-    s32 height;       // Display height in pixels.
-    s32 marginLeft;   // Pixels kept clear at the left edge.
-    s32 marginRight;  // Pixels kept clear at the right edge.
-    s32 marginTop;    // Pixels kept clear at the top edge.
-    s32 marginBottom; // Pixels kept clear at the bottom edge.
-    f32 fovRadians;   // Vertical field of view in radians.
-    CameraPerspective();
-    void apply(s32 cameraBit);
-    void read(s32 cameraBit);
-};
+#include "REL/framework/camera_perspective.h"
 
 // Working state of one fit: the spheres in camera axes and the view extents measured from them.
 struct CameraFitter {
@@ -56,7 +44,7 @@ struct CameraFitter {
     f32 bottom;                // Bottom view extent.
     f32 fitWidth;              // Fitted view width.
     f32 fitHeight;             // Fitted view height.
-
+    // Constructs the camera fitting helper.
     CameraFitter() {}
     ~CameraFitter() {}
 
@@ -223,7 +211,7 @@ void CameraPerspective::apply(s32 cameraBit)
     f32 fov;
 
     fn_80027D8C(cameraBit, &fov, &nearPlane, &farPlane);
-    Hu3DCameraPerspectiveSet(cameraBit, 57.29578f * fovRadians,
+    Hu3DCameraPerspectiveSet(cameraBit, MTXRadToDeg(fovRadians),
                              nearPlane, farPlane, width / height);
 }
 
@@ -233,5 +221,5 @@ void CameraPerspective::read(s32 cameraBit)
     f32 unusedPlane;
 
     fn_80027D8C(cameraBit, &fovRadians, &unusedPlane, &unusedPlane);
-    fovRadians = 0.017453292f * fovRadians;
+    fovRadians = MTXDegToRad(fovRadians);
 }

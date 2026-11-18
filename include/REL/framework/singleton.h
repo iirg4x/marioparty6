@@ -2,11 +2,11 @@
 // callbacks and result helpers reach through it.
 //
 // The asserts sit on lines 38 (self != 0) and 50 (self == 0), so the checked accessor comes before
-// the constructor. The class and function names are descriptive.
+// the constructor.
 #ifndef REL_FRAMEWORK_SINGLETON_H
 #define REL_FRAMEWORK_SINGLETON_H
 
-// The build defines NDEBUG for every object; these asserts are compiled in.
+// The build defines NDEBUG for every object; the original kept these asserts.
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 

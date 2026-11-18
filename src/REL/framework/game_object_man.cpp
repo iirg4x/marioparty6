@@ -28,7 +28,8 @@ void GameObjectManager::add(GameObject *object)
 {
     GroupMap::iterator position = groups.find(object->getCategory());
     if (position == groups.end()) {
-        position = groups.insert(GroupMap::value_type(object->getCategory(), new GameObjectGroup())).first;
+        position = groups.insert(
+            GroupMap::value_type(object->getCategory(), new GameObjectGroup())).first;
     }
     GameObjectGroup *group = (*position).second;
     object->insert4(group);

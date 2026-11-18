@@ -608,7 +608,7 @@ clear__Q23std97__tree<P15OctreeDebugNode,Q23std24less<P15OctreeDebugNode>,Q23std
 insert_one__Q23std97__tree<P15OctreeDebugNode,Q23std24less<P15OctreeDebugNode>,Q23std29allocator<P15OctreeDebugNode>>FRCP15OctreeDebugNode = .text:0x000212E8; // type:function size:0x13C
 __ct__Q23std97__tree<P15OctreeDebugNode,Q23std24less<P15OctreeDebugNode>,Q23std29allocator<P15OctreeDebugNode>>FRCQ23std24less<P15OctreeDebugNode>RCQ23std29allocator<P15OctreeDebugNode> = .text:0x00021424; // type:function size:0x40
 insert_node_at__Q23std97__tree<P15OctreeDebugNode,Q23std24less<P15OctreeDebugNode>,Q23std29allocator<P15OctreeDebugNode>>FPQ33std97__tree<P15OctreeDebugNode,Q23std24less<P15OctreeDebugNode>,Q23std29allocator<P15OctreeDebugNode>>4nodebbRCP15OctreeDebugNode = .text:0x00021464; // type:function size:0x14C
-__ct__6OctreeFP13OctreeArchive = .text:0x000215B0; // type:function size:0x164
+__ct__6OctreeFP7Archive = .text:0x000215B0; // type:function size:0x164
 __dt__28OctreeOwned<13OctreeNodeSet>Fv = .text:0x00021714; // type:function size:0x54
 __dt__Q23std22auto_ptr<10OwnedModel>Fv = .text:0x00021768; // type:function size:0x54
 __dt__28OctreeOwned<13OctreeArchive>Fv = .text:0x000217BC; // type:function size:0x7C
@@ -824,7 +824,7 @@ __dt__7CThreadFv = .text:0x0002680C; // type:function size:0x118
 stackUsage__7CThreadFv = .text:0x00026924; // type:function size:0xA0
 checkThreadStack__FPUli = .text:0x000269C4; // type:function size:0x74
 initializeThreadStack__FPUlUl = .text:0x00026A38; // type:function size:0x4C
-setCollisionTree__17TriangleCollisionFP13CollisionTree = .text:0x00026A84; // type:function size:0x8
+__ct__17TriangleCollisionFP6Octree = .text:0x00026A84; // type:function size:0x8
 point_in_oriented_triangle__FPC7Vector3PC7Vector3PC7Vector3PC7Vector3PC7Vector3 = .text:0x00026A8C; // type:function size:0x1B4
 ray_point_in_triangle__FPC17CollisionTrianglePC7Vector3PC7Vector3f = .text:0x00026C40; // type:function size:0x1F8
 castRay__17TriangleCollisionFPC7Vector3PC7Vector3 = .text:0x00026E38; // type:function size:0xD0

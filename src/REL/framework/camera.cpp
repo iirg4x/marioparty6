@@ -26,8 +26,8 @@ void cameraRotateAroundRightAndWorldYAxis(CameraFrame *camera, float rightAxisAn
     Mtx rotation;
 
     cameraExtractBasis(camera, &right, &up, &lookAtZAxis);
-    PSMTXRotAxisRad(axisRotation, &right, 0.017453292f * rightAxisAngle);
-    PSMTXRotRad(yRotation, 'Y', 0.017453292f * worldYAxisAngle);
+    MTXRotAxisDeg(axisRotation, &right, rightAxisAngle);
+    MTXRotDeg(yRotation, 'Y', worldYAxisAngle);
     PSMTXConcat(axisRotation, yRotation, rotation);
     PSMTXMultVecSR(rotation, &lookAtZAxis, &lookAtZAxis);
     PSMTXMultVecSR(rotation, &up, &camera->up);
@@ -44,7 +44,7 @@ void cameraTiltToAngle(CameraFrame *camera, float tiltDegrees)
     Mtx rotation;
 
     cameraExtractBasis(camera, &right, &up, &lookAtZAxis);
-    tiltDegrees = 0.017453292f * tiltDegrees;
+    tiltDegrees = MTXDegToRad(tiltDegrees);
     float lookAtZAxisXLengthSquared = lookAtZAxis.x * lookAtZAxis.x;
     float lookAtZAxisZLengthSquared = lookAtZAxis.z * lookAtZAxis.z;
     tiltDegrees -= atan2(-lookAtZAxis.y,
@@ -62,7 +62,7 @@ void cameraRollAroundViewAxis(CameraFrame *camera, float rollDegrees)
     Vec axis;
     Mtx rotation;
     PSVECSubtract(&camera->target, &camera->position, &axis);
-    PSMTXRotAxisRad(rotation, &axis, 0.017453292f * rollDegrees);
+    MTXRotAxisDeg(rotation, &axis, rollDegrees);
     PSMTXMultVec(rotation, &camera->up, &camera->up);
 }
 
@@ -139,7 +139,7 @@ void cameraSetDefaultFrame(CameraFrame *camera)
 // Tracks an object's position and movement for camera-follow behavior.
 struct CameraPositionState {
     Vec position;                  // Last tracked world position.
-    unsigned char reserved[12];    // Unused bytes retained in the tracking state.
+    u8 unkC[12]; /* No code names this field. */
     Vec accumulatedOffset;          // Accumulated movement added during camera tracking updates.
 };
 

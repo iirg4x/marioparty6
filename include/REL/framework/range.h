@@ -1,7 +1,5 @@
 // A value kept between two bounds: a value outside them is wrapped back in by the period
 // (maximum - minimum), the way an angle is.
-//
-// The class and member names are descriptive.
 #ifndef REL_FRAMEWORK_RANGE_H
 #define REL_FRAMEWORK_RANGE_H
 
@@ -22,26 +20,31 @@ public:
     Range(Value from, Value to, Value initial);
 };
 
+// Wraps the supplied value into the range and stores it.
 template<class Value> void Range<Value>::set(Value value)
 {
     current = wrap(value);
 }
 
+// Adds the change and wraps the result into the range.
 template<class Value> void Range<Value>::add(Value change)
 {
     current = wrap(current + change);
 }
 
+// Returns the wrapped distance from the current value to the supplied value.
 template<class Value> Value Range<Value>::distanceTo(Value value)
 {
     return distance(current, value);
 }
 
+// Moves by a fraction of the wrapped distance to the target.
 template<class Value> Value Range<Value>::step(Value target, double rate)
 {
     return current = wrap(current + rate * distanceTo(target));
 }
 
+// Wraps a value crossing either bound by the range period.
 template<class Value> Value Range<Value>::wrap(Value value)
 {
     if (value < minimum) {
@@ -53,10 +56,13 @@ template<class Value> Value Range<Value>::wrap(Value value)
     return value;
 }
 
+// Returns the smaller of two values.
 template<class Value> inline Value rangeMinimum(Value a, Value b) { return a < b ? a : b; }
 
+// Returns the larger of two values.
 template<class Value> inline Value rangeMaximum(Value a, Value b) { return a > b ? a : b; }
 
+// Orders the bounds, computes the period and wraps the initial value.
 template<class Value> Range<Value>::Range(Value a, Value b, Value initial)
 {
     minimum = rangeMinimum(a, b);
@@ -65,6 +71,7 @@ template<class Value> Range<Value>::Range(Value a, Value b, Value initial)
     current = wrap(initial);
 }
 
+// Returns the shorter signed distance between two wrapped values.
 template<class Value> Value Range<Value>::distance(Value first, Value second)
 {
     Value difference;
@@ -83,6 +90,7 @@ template<class Value> Value Range<Value>::distance(Value first, Value second)
         : (period - magnitude) * (Value)(difference < 0.0f ? 1 : -1);
 }
 
+// Returns the current wrapped value.
 template<class Value> Value Range<Value>::get() { return current; }
 
 #endif

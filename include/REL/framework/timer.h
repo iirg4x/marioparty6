@@ -1,5 +1,4 @@
-// The minigame framework object's HUD timer (timer.cpp). The member is named by the constructor's
-// assertion, "m_tm != NULL"; the class and method names are descriptive.
+// Controls the minigame framework object's HUD timer.
 #ifndef REL_FRAMEWORK_TIMER_H
 #define REL_FRAMEWORK_TIMER_H
 

@@ -1,18 +1,18 @@
 #ifndef REL_FRAMEWORK_LIST_OBJECT_H
 #define REL_FRAMEWORK_LIST_OBJECT_H
 
-// Objects that take requests: each one goes on one list when it is built, a request sets its bit in every object, and
-// each object clears the bit when it has handled it. The names are descriptive: retail has no symbol or string for
-// them. The class and file names are m648's, the member names those most modules gave; the file name sorts where
-// retail links the object, between linknode.cpp and minigame_core.cpp.
+// Objects join one request list during construction. A request sets its bit in every object;
+// each object clears the bit after handling it.
 #include "REL/framework/list.h"
 
 struct RequestObject : ListNode<RequestObject> {
     RequestObject();
     virtual ~RequestObject() {}
     virtual void flagEnabled(int bit) = 0;
+    // Provides the default empty update for request objects.
     virtual void update() {}
     int flags; // One bit for each pending request.
+    // Returns the next link as a request object.
     RequestObject *next() { return static_cast<RequestObject *>(link0); }
 };
 

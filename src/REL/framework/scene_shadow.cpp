@@ -92,7 +92,9 @@ SceneShadow::SceneShadow(short mask, const Vec *lightDirection, float fieldOfVie
 // Release the camera lists before unregistering this shadow scene node.
 SceneShadow::~SceneShadow() {}
 
+// Enables category sphere collection for shadow camera bounds.
 void SceneShadow::enableCategorySpheres() { collectCategories = true; }
+// Disables category sphere collection for shadow camera bounds.
 void SceneShadow::disableCategorySpheres() { collectCategories = false; }
 
 // Select the full or half-size shadow image for all of this object's cameras.

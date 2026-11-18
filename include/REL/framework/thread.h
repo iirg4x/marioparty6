@@ -38,6 +38,7 @@ struct CThread {
     // Beyond the guard, this estimates unused space only if debug stack filling was enabled.
     unsigned long stackUsage();
     operator OSThread *() { return &thread; }
+    // Returns the priority of the currently executing OS thread.
     static OSPriority currentPriority() {
         return OSGetThreadPriority(OSGetCurrentThread());
     }
@@ -47,6 +48,7 @@ struct CThread {
 struct ThreadSemaphore {
     // Available signals and waiting threads; a zero count makes a wait block.
     OSSemaphore semaphore;
+    // Initializes the semaphore with the supplied count.
     ThreadSemaphore(int initialCount) { OSInitSemaphore(&semaphore, initialCount); }
     operator OSSemaphore *() { return &semaphore; }
 };

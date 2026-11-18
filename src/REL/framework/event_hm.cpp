@@ -5,11 +5,14 @@
 
 static const char rcsid[] = "$Id: event_hm.cpp,v 1.21 2004/09/09 12:24:38 saf Exp $";
 
+// Groups registered callbacks by event type.
 struct HandlerMap : std::multimap<int, EventCallback *> {
+    // Constructs an empty handler map.
     HandlerMap() {}
     ~HandlerMap() {}
 };
 
+// Deletes the owned handler map.
 inline HandlerMapOwner::~HandlerMapOwner() { delete map; }
 
 /* Create the callback map and register its channel after the event manager is active. */

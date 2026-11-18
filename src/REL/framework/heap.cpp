@@ -1,6 +1,5 @@
 /* Reserves model-heap storage for the minigame framework's C++ memory manager. */
-/* Retail fixes the next assert's line; the earlier lines are unknown: 4 lines are left blank. */
-
+/* Retail fixes the next assert's line; the earlier lines are unknown: 3 lines are left blank. */
 
 
 
@@ -36,6 +35,7 @@ inline void fillHeapBuffer(Value *destination, Value *destinationEnd, const Valu
 /* initializeMemoryManager reserves and fills its model-heap backing storage here. */
 void *allocateHeapMemory(s32 byteCount)
 {
+    // Uses allocation tag 0x10000000 for the framework's backing buffer.
     u32 *buf = (u32 *)HuMemDirectMallocNum(2, byteCount, 0x10000000);
     /* Exhaustion reports the assertion and aborts before the fill can run. */
     assert(buf != NULL);

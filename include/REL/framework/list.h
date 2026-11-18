@@ -1,10 +1,7 @@
 #ifndef REL_FRAMEWORK_LIST_H
 #define REL_FRAMEWORK_LIST_H
 
-// Typed circular lists built on Node. Retail keeps one copy of the node base's destructor per element class, and one
-// copy of the head's destructor and of each visit per list, at the end of the files that use them, where GC/1.3.2
-// puts template instances: both are class templates on the element type. The template and member names are
-// descriptive; retail carries no symbol for them.
+// Typed circular lists built on Node, with traversal helpers for their element type.
 #include "REL/framework/linknode.h"
 
 // The node base of a list element.
@@ -16,6 +13,7 @@ template <class T> struct ListNode : Node {
     static void visitNodes(T *current, Node *end, void (*visitor)(T *));
 };
 
+// Calls the visitor on each node until the end node is reached.
 template <class T> void ListNode<T>::visitNodes(T *current, Node *end, void (*visitor)(T *))
 {
     while (current != end) {
@@ -30,26 +28,30 @@ template <class T> struct ListRoot : Node {
     ~ListRoot() {}
     Node *first_node() { return link0; }
     Node *last_node() { return link4; }
+    // Returns the head used as the end marker.
     Node *end_node() { return this; }
+    // Returns the first node as a pointer to the element type.
     T *front() { return static_cast<T *>(first_node()); }
+    // Returns the last node as a pointer to the element type.
     T *back() { return static_cast<T *>(last_node()); }
+    // Tests whether both links point to the list head.
     bool empty() const { return link0 == this && link0 == link4; }
 
-    // GC/1.3.2 emits one list's members at the end of a file in the reverse of this order (m624 node_callbacks.cpp:
-    // visit, visitMoved, the head's destructor), and the walks of two lists after both visits, the later list's
-    // first (m603 draw_dispatch.cpp), which a static member gives and a function template does not.
+    // Traversal can either visit the list directly or move each visited node through a local head.
 
-    // Calls visitor on each node once, in order, while the visitor may add nodes to the list or remove them.
+    // Calls visitor on each node once, in order, allowing nodes to be added or removed.
     void visitMoved(void (*visitor)(T *));
     // Calls visitor on each node in order.
     void visit(void (*visitor)(T *));
 };
 
+// Calls the visitor on each node in list order.
 template <class T> void ListRoot<T>::visit(void (*visitor)(T *))
 {
     ListNode<T>::visitNodes(front(), end_node(), visitor);
 }
 
+// Moves each original node back from a pending list before visiting it.
 template <class T> void ListRoot<T>::visitMoved(void (*visitor)(T *))
 {
     if (!empty()) {

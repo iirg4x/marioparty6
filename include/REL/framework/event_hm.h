@@ -9,10 +9,13 @@ struct HandlerMap;
 /* Deletes the map and its nodes when the owning manager is destroyed. */
 struct HandlerMapOwner {
     HandlerMap *map; // Owned map; the manager deletes its callbacks separately.
+    // Takes ownership of the supplied handler map.
     HandlerMapOwner(HandlerMap *handlerMap) : map(handlerMap) {}
     ~HandlerMapOwner();
     HandlerMap *get() const { return map; }
+    // Returns the owned handler map for member access.
     HandlerMap *operator->() const { return get(); }
+    // Returns a reference to the owned handler map.
     HandlerMap& operator*() const { return *map; }
 };
 

@@ -12,6 +12,7 @@ struct Vector3 {
     Point3d vector;
 
     Point3d *getVector() { return &vector; }
+    // Returns a pointer to the wrapped center correction.
     operator Point3d *() { return getVector(); }
 };
 

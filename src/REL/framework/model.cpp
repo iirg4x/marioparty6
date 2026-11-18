@@ -44,6 +44,7 @@ OwnedModel::OwnedModel(unsigned int resource)
 // Reads a data resource and replaces the owned model with one made from it.
 void OwnedModel::load(unsigned int resource)
 {
+    // Loads the model resource using allocation tag 0x10000000.
     Replace(fn_80025A04(fn_80008DD0(resource, 0x10000000, 2)));
     apply_defaults();
 }
@@ -169,27 +170,26 @@ void Model::setUniformScale(float scale)
 {
     fn_800268B0(modelId, scale, scale, scale);
 }
-
+// Sets the model transparency level.
 void Model::setTransparency(float level)
 {
     fn_80026CBC(modelId, level);
 }
-
+// Assigns the model to a drawing layer.
 void Model::setLayer(short layer)
 {
     fn_80026B8C(modelId, layer);
 }
-
+// Selects the cameras that draw the model.
 void Model::setCamera(unsigned short cameraBit)
 {
     fn_80026B64(modelId, cameraBit);
 }
-
+// Tests whether the model is in view for the selected camera.
 bool Model::isInView(unsigned short cameraBit)
 {
     return fn_8002803C(modelId, cameraBit);
 }
-
 // Sets one of the model's named lights.
 void Model::setLight(char *name, Vec *position, Vec *direction, GXColor *color)
 {
@@ -197,28 +197,28 @@ void Model::setLight(char *name, Vec *position, Vec *direction, GXColor *color)
     assert(id >= 0);
     fn_800297D4((short)id, position, direction, color);
 }
-
+// Selects dynamic or static lighting for the model.
 int Model::setLightsDynamic(bool dynamic) {
     return fn_80029850(modelId, !dynamic);
 }
-
+// Sets the model ambient red, green and blue components.
 void Model::setAmbient(Vec *color) {
     HU3D_MODEL *model = &lbl_802C01C8[modelId];
     model->ambR = color->x;
     model->ambG = color->y;
     model->ambB = color->z;
 }
-
+// Stores the data passed to the model drawing hook.
 void Model::setHookData(void *data) {
     lbl_802C01C8[modelId].hookData = data;
 }
-
+// Returns the first row of the model matrix.
 float *Model::getMatrix() {
     return lbl_802C01C8[modelId].mtx[0];
 }
-
+// Returns a reference to the model matrix.
 inline Mtx &Model::matrix() { return lbl_802C01C8[modelId].mtx; }
-
+// Copies the supplied matrix into the model matrix.
 void Model::copy_matrix(Mtx source) {
     Mtx &destination = matrix();
     PSMTXCopy(source, destination);
@@ -231,11 +231,13 @@ HsfObject_s *Model::getObject(char *name) {
     return p;
 }
 
+// Enables the model shadow.
 void Model::setShadow()
 {
     fn_80026E44(modelId);
 }
 
+// Sets the shadow attribute of the named model object.
 void Model::setObjectShadow(char *name)
 {
     HSF_OBJECT *object = getObject(name);
@@ -243,6 +245,7 @@ void Model::setObjectShadow(char *name)
     constant->attr |= (1 << 10);
 }
 
+// Clears the shadow attribute of the named model object.
 void Model::resetObjectShadow(char *name)
 {
     HSF_OBJECT *object = getObject(name);
@@ -250,26 +253,31 @@ void Model::resetObjectShadow(char *name)
     constant->attr &= ~(1 << 10);
 }
 
+// Disables the model shadow.
 void Model::resetShadow()
 {
     fn_80026EF0(modelId);
 }
 
+// Enables shadow mapping for the model.
 void Model::setShadowMap()
 {
     fn_80026FFC(modelId);
 }
 
+// Enables shadow mapping for the named model object.
 void Model::setShadowMapObject(char *name)
 {
     fn_80027080(modelId, name);
 }
 
+// Disables shadow mapping for the model.
 void Model::resetShadowMap()
 {
     fn_8002736C(modelId);
 }
 
+// Clears the shadow-map attribute of the named model object.
 void Model::resetObjectShadowMap(char *name)
 {
     HSF_OBJECT *object = getObject(name);
@@ -277,12 +285,14 @@ void Model::resetObjectShadowMap(char *name)
     constant->attr &= ~(1 << 3);
 }
 
+// Sets the hidden flag on the named model object.
 void Model::hideObject(char *name)
 {
     HSF_OBJECT *object = getObject(name);
     object->flags |= (1 << 10);
 }
 
+// Clears the hidden flag on the named model object.
 void Model::showObject(char *name)
 {
     HSF_OBJECT *object = getObject(name);
@@ -300,6 +310,7 @@ void Model::hideObjectTree(char *name)
     base->scale.z = 0.0f;
 }
 
+// Shows an object and everything under it: its own scale returns to one.
 void Model::showObjectTree(char *name)
 {
     HSF_OBJECT *object = getObject(name);
@@ -310,17 +321,20 @@ void Model::showObjectTree(char *name)
     base->scale.z = 1.0f;
 }
 
+// Writes the named object world position into the supplied vector.
 Vec &Model::getObjectPosition(char *name, Vec *position)
 {
     Hu3DModelObjPosGet((short)modelId, name, position);
     return *position;
 }
 
+// Sets the current motion time.
 void Model::setMotionTime(float time)
 {
     fn_8002D414(modelId, time);
 }
 
+// Sets the overlay motion time.
 void Model::setOverlayMotionTime(float time)
 {
     fn_8002CB64(modelId, time);
@@ -338,27 +352,32 @@ float Model::getMotionTime()
     return time;
 }
 
+// Returns the overlay motion time.
 float Model::getOverlayMotionTime()
 {
     return fn_8002CB0C((short)modelId);
 }
 
+// Returns the current motion duration.
 float Model::getMotionMaxTime()
 {
     return fn_8002D530((short)modelId);
 }
 
+// Returns the overlay motion duration.
 float Model::getOverlayMotionMaxTime()
 {
     return fn_8002CB24((short)modelId);
 }
 
+// Sets the playback speed of the current and overlay motions.
 void Model::setMotionSpeed(float speed)
 {
     fn_8002D86C(modelId, speed);
     fn_8002D894(modelId, speed);
 }
 
+// Tests whether the current motion has ended outside a motion blend.
 bool Model::isMotionEnd()
 {
     bool done = false;
@@ -368,21 +387,25 @@ bool Model::isMotionEnd()
     return done;
 }
 
+// Updates the model motion.
 void Model::updateMotion()
 {
     fn_80030644(modelId);
 }
 
+// Removes the overlay motion.
 void Model::clearOverlayMotion()
 {
     fn_8002CAF0(modelId);
 }
 
+// Sets attributes on the named model object.
 void Model::setObjectAttribute(char *name, unsigned long attributes)
 {
     fn_8002D8BC(modelId, name, attributes);
 }
 
+// Attaches another model to the named object.
 void Model::setHook(char *name, short hookModel)
 {
     fn_8002741C(modelId, name, hookModel);
@@ -396,11 +419,13 @@ void Model::placeModelAtObject(char *name, short other)
     fn_80026760(other, position.x, position.y, position.z);
 }
 
+// Enables the first default attribute for subsequently created models.
 void enableDefaultAttributeA()
 {
     defaultAttributeA = 1;
 }
 
+// Enables the second group of default attributes for new models.
 void enableDefaultAttributesB()
 {
     defaultAttributesB = 1;

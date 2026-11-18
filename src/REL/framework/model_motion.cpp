@@ -5,10 +5,7 @@
 // from it, and motion() finds the Hu3D motion registered for a data number. The setters
 // wrap the Hu3D motion calls with that lookup.
 //
-// The file's name and line 94 are printed by motion's assert; the text above that line is not
-// known, so these comments stand in for it. Function and member names are descriptive.
-//
-// The build defines NDEBUG for every object; this assert is compiled in.
+// The build defines NDEBUG for every object; the original kept this assert.
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include <algorithm>
@@ -22,11 +19,13 @@ extern "C" {
 // The model is made from dataNum; no motion is set yet.
 ModelMotion::ModelMotion(unsigned int dataNum) : OwnedModel(dataNum), currentDataNum(-1) {}
 
+// Destroys the motion list with the model.
 ModelMotion::~ModelMotion() {}
 
 // Reads the motion data and registers it as a motion of this model.
 void ModelMotion::addMotion(unsigned long dataNum)
 {
+    // Loads the motion resource using allocation tag 0x10000000.
     void *data = fn_80008DD0(dataNum, 0x10000000, 2);
     const short motion = fn_80030458(*this, data);
     motions.push_back(std::make_pair(dataNum, motion));
@@ -54,6 +53,7 @@ void ModelMotion::setMotion(int dataNum)
 void ModelMotion::shiftMotion(int dataNum, float length, float start, unsigned long attr)
 {
     if (dataNum != currentDataNum || fn_8002D75C(*this)) {
+        // Enables attribute bits 0x40000002 before blending motions.
         setAttribute(0x40000002);
         fn_8002CCC0(*this, motion(dataNum), start, length, attr);
         currentDataNum = dataNum;

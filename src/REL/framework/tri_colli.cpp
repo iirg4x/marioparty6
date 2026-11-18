@@ -1,5 +1,6 @@
 // Triangle collision state and the oriented-triangle tests used by ray queries.
-/* Retail fixes the next assert's line; the earlier lines are unknown: 99 lines are left blank. */
+/* Retail fixes the next assert's line; the earlier lines are unknown: 100 lines are left blank. */
+
 
 
 
@@ -121,10 +122,9 @@ static inline double vectorDotDouble(const Vector3 *first, const Vector3 *second
 }
 
 // Stores the tree that ray queries will visit.
-TriangleCollision *TriangleCollision::setCollisionTree(CollisionTree *tree)
+TriangleCollision::TriangleCollision(Octree *tree)
 {
     collisionTree = tree;
-    return this;
 }
 
 // How far the turn from one corner direction to the next leans along the triangle's normal.
@@ -220,7 +220,7 @@ bool TriangleCollision::castRay(const Vector3 *start, const Vector3 *end)
 bool TriangleCollision::castNode(OctreeDebugNode *node)
 {
     bool found = false;
-    CollisionTree *tree = collisionTree;
+    Octree *tree = collisionTree;
     CollisionTriangle triangles(tree, node);
 
     while (triangles.next()) {

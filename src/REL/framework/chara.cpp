@@ -4,17 +4,14 @@ static const char rcsid[] = "$Id: chara.cpp,v 1.21 2004/09/09 12:24:38 saf Exp $
 #include "REL/framework/chara.h"
 #include "REL/framework/particle.h"
 
-// These attributes are applied to a character model during construction.
-#define CHARACTER_MODEL_INITIAL_FLAG 0x40000001
-#define CHARACTER_MODEL_SECONDARY_FLAG 0x40000040
-#define CHARACTER_MODEL_ID_OFFSET 20
-
 // Runs when a game creates a Character; initializes its model and selects default motion 0.
 Character::Character(unsigned int characterNo, unsigned int modelNo)
     : MotionOwner(characterNo), OwnedModel(characterNo, modelNo)
 {
-    Model::setAttribute(CHARACTER_MODEL_INITIAL_FLAG);
-    Model::setAttribute(CHARACTER_MODEL_SECONDARY_FLAG);
+    // Enables attribute bits 0x40000001 on the character model.
+    Model::setAttribute(0x40000001);
+    // Also enables attribute bits 0x40000040.
+    Model::setAttribute(0x40000040);
     Model::setShadow();
     createCharacterMotion(this, 0);
     selectCharacterMotion(this, 0);

@@ -185,7 +185,7 @@ HU3D_MOTIONID getCharacterMotion(MotionOwner *character, unsigned int dataNum)
 }
 
 // MotionOwner destruction invokes the bound character cleanup for every stored motion handle.
-// Retail places this after the strong functions, with the instantiated vector members.
+// Applies the supplied cleanup operation to each motion record in the range.
 template <class Function>
 void applyMotionCleanup(MotionRecord *first, MotionRecord *last, Function cleanup)
 {

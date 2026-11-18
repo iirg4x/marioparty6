@@ -9,8 +9,7 @@ struct NodeLinks {
     Node *link4;
 };
 
-/* Two-link circular node. Class and method names describe the observed
- * operations; the original C++ identifiers are not preserved in retail. */
+/* A circular node with links in both directions, supporting insertion, removal and sorting. */
 struct Node : NodeLinks {
     Node();
     ~Node();

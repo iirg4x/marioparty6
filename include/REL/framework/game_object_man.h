@@ -11,6 +11,7 @@
 // The list head of one category. Objects link in through their own node, so the head holds no
 // object and doubles as the end position of the list.
 struct GameObjectGroup : Node {
+    // Constructs an empty object group.
     GameObjectGroup() {}
     // The manager empties a group before deleting it; the node destructor does the rest.
     ~GameObjectGroup() {}

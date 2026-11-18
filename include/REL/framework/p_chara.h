@@ -1,5 +1,4 @@
-// A player's configuration slot together with the character model it selects (framework
-// p_chara.cpp). The file and class names are descriptive: no symbol or string names them.
+// A player's configuration slot together with the character model it selects.
 #ifndef REL_FRAMEWORK_P_CHARA_H
 #define REL_FRAMEWORK_P_CHARA_H
 

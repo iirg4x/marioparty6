@@ -1,7 +1,7 @@
-// The memory manager's chain of available blocks: freeing, finding and setting up blocks. Retail names
-// this file in its one assert, on line 22; the text of the lines before it is not recovered and the
-// function names are descriptive. NDEBUG is undefined because the build defines it for every object
-// while retail kept this assert.
+// Maintains the memory manager's chain of available blocks.
+// Released blocks merge with available neighbours in either direction.
+// Allocation requests are rounded to the block alignment before searching the chain.
+// The build defines NDEBUG for every object; the original kept this assert.
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/heap.h"

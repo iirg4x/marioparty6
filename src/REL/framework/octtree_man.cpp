@@ -9,21 +9,21 @@ extern "C" {
 
 // The Octree constructor reads scalar counts from resources that must exist in the archive.
 template <class Value>
-inline Value octreeArchiveValue(OctreeArchive *archive, const char *resourceName)
+inline Value octreeArchiveValue(Archive *archive, const char *resourceName)
 {
-    return *(Value *)archive->find(resourceName);
+    return *(Value *)archive->Get(resourceName);
 }
 
 // When an octree is created, bind its geometry tables and initialize its archived nodes.
-Octree::Octree(OctreeArchive *archiveResource) : archive(archiveResource)
+Octree::Octree(Archive *archiveResource) : archive(archiveResource)
 {
-    OctreeArchive *geometryArchive = getArchive();
-    triangles = (OctreeTriangle *)geometryArchive->find("TriangleTable");
+    Archive *geometryArchive = getArchive();
+    triangles = (OctreeTriangle *)geometryArchive->Get("TriangleTable");
     triangleCount = octreeArchiveValue<long>(geometryArchive, "TriangleCount");
-    vertices = (Vector3 *)geometryArchive->find("VertexTable");
+    vertices = (Vector3 *)geometryArchive->Get("VertexTable");
     vertexCount = octreeArchiveValue<long>(geometryArchive, "VertexCount");
-    nodes = (OctreeDebugNode *)geometryArchive->find("OctTable");
-    triangleIndices = (unsigned short *)geometryArchive->find("TriIdxTable");
+    nodes = (OctreeDebugNode *)geometryArchive->Get("OctTable");
+    triangleIndices = (unsigned short *)geometryArchive->Get("TriIdxTable");
     // Replace child indices with pointers in the archive's node table itself.
     initializeOctreeNodes(nodes, octreeArchiveValue<long>(geometryArchive, "OctCount"));
     printf("vtx:%d tri:%d\n", vertexCount, triangleCount);

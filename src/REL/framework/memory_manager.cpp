@@ -1,9 +1,9 @@
-// The memory manager behind the framework's C++ new and delete: setting up the manager and splitting a
-// block for an allocation. free.cpp, linked right after this file, holds the rest. The file and function
-// names are descriptive, not recovered: retail names only free.cpp.
+// Manages the framework's C++ allocation buffer.
+// Allocation marks a selected block as occupied and splits off any usable remainder.
+// Initialization places the manager before its block storage.
 #include "REL/framework/heap.h"
 
-// Takes an available block for byteCount bytes, splitting off the rest when it can hold another block.
+// Takes an available block for byteCount bytes, splitting off any usable remainder.
 void *MemoryManager::allocateBlock(HeapNode *node, unsigned long byteCount)
 {
     if (node == 0) return 0;

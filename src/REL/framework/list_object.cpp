@@ -1,4 +1,4 @@
-// The list of request objects and the requests sent to all of them. Retail has no $Id string for this file.
+// Maintains the request-object list and sends requests to its members.
 #include "REL/framework/list_object.h"
 
 ListRoot<RequestObject> requestObjects;
@@ -30,6 +30,7 @@ bool requestsCleared()
     return true;
 }
 
+// Updates each object in the request list in list order.
 void updateRequestObjects()
 {
     RequestObject *object = requestObjects.front();
@@ -39,6 +40,7 @@ void updateRequestObjects()
     }
 }
 
+// Deletes request objects from the back until the list is empty.
 void deleteRequestObjects()
 {
     while (!requestObjects.empty()) {
@@ -46,6 +48,7 @@ void deleteRequestObjects()
     }
 }
 
+// Returns the most recently stored request.
 long currentRequest()
 {
     return lastRequest;

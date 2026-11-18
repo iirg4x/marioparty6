@@ -31,8 +31,8 @@ extern const char *characterMotionNames[];
 void createCharacterMotion(MotionOwner *character, unsigned int dataNum);
 void createCharacterMotions(MotionOwner *character, const unsigned int *dataNums, s32 count);
 void selectCharacterMotion(MotionOwner *character, unsigned int dataNum);
-void shiftCharacterMotion(MotionOwner *character, unsigned int dataNum, float blendFrames, float startFrame,
-                          u32 attributes);
+void shiftCharacterMotion(MotionOwner *character, unsigned int dataNum, float blendFrames,
+                          float startFrame, u32 attributes);
 void setMotionOwnerTime(MotionOwner *character, float timeFrames);
 float getMotionOwnerTransitionTime(s32 *characterNo);
 float getMotionOwnerMaximumTime(s32 *characterNo);

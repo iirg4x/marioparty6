@@ -1,6 +1,4 @@
-// A model with its motions, each registered once by the data number it is read from and
-// then played by that number (framework model_motion.cpp). The names are descriptive: no
-// symbol names them.
+// A model with motions registered by their data numbers and played through those bindings.
 #ifndef REL_FRAMEWORK_MODEL_MOTION_H
 #define REL_FRAMEWORK_MODEL_MOTION_H
 

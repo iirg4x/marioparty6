@@ -1,13 +1,5 @@
-// Camera-relative sound: per-camera pan ranges, the distance-to-volume curve and the
-// sound-effect calls that use them. Shared by the minigames that link it (the same 0x23DC
-// bytes just before heap.cpp in 19 of the 21 C++ minigames).
-//
-// The file name is unknown: the code has no assert or $Id string. C is indicated by the two
-// comparisons returning int, as m639's one caller that tests a result reads it (cmpwi). Only C
-// produces the definitions' bytes with that declaration. As C, math.h's sqrtf statics are named
-// as player_table_1vs1.cpp's (m624, m652, m654 and m655 keep only the first copy), rather than
-// as the C++ game files' (m622, m648, m672 and m681 keep this file's own). The function and data
-// names are descriptive; their original spelling is unknown.
+// Camera-relative sound uses per-camera pan ranges and a distance-to-volume curve.
+// Playback helpers apply those controls to immediate and delayed sound effects.
 #include "math.h"
 #include "dolphin/mtx.h"
 #include "game/hu3d.h"
@@ -40,6 +32,7 @@ CameraSoundParam soundCameraParams[16] = {{0x20, 0x60, 1.2f}};
 // Volume 110 at 100 units or nearer, falling to 32 at 20000 units.
 SoundVolumeCurve soundVolumeCurve = {32, 110, 20000.0f, 100.0f};
 
+// Returns the first selected camera, or camera zero when none is selected.
 HU3D_CAMERA *soundCamera(short mask)
 {
     HU3D_CAMERA *camera = Hu3DCamera;
@@ -49,6 +42,7 @@ HU3D_CAMERA *soundCamera(short mask)
     return Hu3DCamera;
 }
 
+// Returns the first selected camera sound parameters, or those of camera zero.
 CameraSoundParam *soundCameraParam(short mask)
 {
     CameraSoundParam *param = soundCameraParams;
@@ -58,6 +52,7 @@ CameraSoundParam *soundCameraParam(short mask)
     return soundCameraParams;
 }
 
+// Projects the point into camera sound coordinates and returns the vector magnitude.
 f32 soundProject(Vec *sourcePoint, Vec *result, HU3D_CAMERA *camera,
                          CameraSoundParam *param)
 {
@@ -82,6 +77,7 @@ f32 soundProject(Vec *sourcePoint, Vec *result, HU3D_CAMERA *camera,
     return PSVECMag(&transformed);
 }
 
+// Clamps distance to the volume curve and applies its squared falloff.
 s32 soundVolumeAtDistance(f32 value)
 {
     SoundVolumeCurve *curveParameters = &soundVolumeCurve;
@@ -95,13 +91,14 @@ s32 soundVolumeAtDistance(f32 value)
     }
 
     curve = (f32)(1.0 - (f64)((value - curveParameters->nearDistance) /
-                                                (curveParameters->farDistance - curveParameters->nearDistance)));
+                              (curveParameters->farDistance - curveParameters->nearDistance)));
     curve *= curve;
     result = (s32)((f32)curveParameters->farVolume +
                        curve * (f32)(curveParameters->nearVolume - curveParameters->farVolume));
     return result;
 }
 
+// Maps a horizontal fraction to the camera pan range and clamps it.
 s16 soundPanFromPosition(f32 *fraction, CameraSoundParam *bounds)
 {
     s32 midpoint = (bounds->maximum + bounds->minimum) / 2;
@@ -111,16 +108,19 @@ s16 soundPanFromPosition(f32 *fraction, CameraSoundParam *bounds)
                  value > bounds->maximum ? bounds->maximum : value);
 }
 
+// Starts a sound effect and returns its playback handle.
 int soundPlay(int soundId)
 {
     return HuAudFXPlay(soundId);
 }
 
+// Stops the sound effect with the supplied playback handle.
 void soundStop(int soundNo)
 {
     HuAudFXStop(soundNo);
 }
 
+// Sets the volume levels and distances used for distance attenuation.
 void soundSetVolumeCurve(int farVolume, int nearVolume, float farDistance, float nearDistance)
 {
     SoundVolumeCurve *param = &soundVolumeCurve;
@@ -130,6 +130,7 @@ void soundSetVolumeCurve(int farVolume, int nearVolume, float farDistance, float
     param->farDistance = farDistance;
 }
 
+// Sets the pan range and horizontal scale for the first selected camera.
 void soundSetCameraPan(short mask, int minimum, int maximum, float horizontalScale)
 {
     CameraSoundParam *param = soundCameraParams;
@@ -143,6 +144,7 @@ void soundSetCameraPan(short mask, int minimum, int maximum, float horizontalSca
         }
 }
 
+// Configures camera pan ranges and projection scales for the selected layout.
 void soundSetCameraLayout(s32 mode)
 {
     switch (mode) {
@@ -169,6 +171,7 @@ void soundSetCameraLayout(s32 mode)
     }
 }
 
+// Computes volume from the target distance to the selected camera.
 s32 soundVolumeAt(s16 cameraMask, Point3d *target)
 {
     HU3D_CAMERA *camera = soundCamera(cameraMask);
@@ -177,6 +180,7 @@ s32 soundVolumeAt(s16 cameraMask, Point3d *target)
     return soundVolumeAtDistance(PSVECMag(&difference));
 }
 
+// Computes pan from the target projection in the selected camera.
 s16 soundPanAt(s16 cameraMask, Vec *targetPoint)
 {
     CameraSoundParam *param = soundCameraParam(cameraMask);
@@ -185,6 +189,7 @@ s16 soundPanAt(s16 cameraMask, Vec *targetPoint)
     return soundPanFromPosition(&projected.x, param);
 }
 
+// Computes the target volume and pan for the selected camera.
 void soundVolumeAndPanAt(s16 cameraMask, Vec *targetPoint, s32 *volume, s32 *pan)
 {
     CameraSoundParam *param = soundCameraParam(cameraMask);
@@ -194,20 +199,20 @@ void soundVolumeAndPanAt(s16 cameraMask, Vec *targetPoint, s32 *volume, s32 *pan
     *pan = soundPanFromPosition(&projected.x, param);
 }
 
+// Starts a sound effect with pan computed from the target position.
 int soundPlayAt(s16 cameraMask, s32 effectId, Point3d *targetPoint)
 {
     return HuAudFXPlayPan(effectId, soundPanAt(cameraMask, targetPoint));
 }
 
+// Schedules a delayed sound effect with pan computed from the target position.
 void soundPlayAtDelayed(s16 cameraMask, s32 effectId, Point3d *targetPoint, u16 delay)
 {
     HuAudFXPlayDelayPan(effectId, soundPanAt(cameraMask, targetPoint), delay);
 }
 
-// soundPlayAtWithVolume's s16 volume path. These two duplicates of soundVolumeAtDistance and
-// soundVolumeAndPanAt are open debt: the natural forms tried (calling soundVolumeAndPanAt
-// with an s32 volume, or assigning soundVolumeAtDistance's result to an s16) do not compile
-// to its bytes.
+// Computes the same volume as soundVolumeAtDistance, but stores it in an s16 for
+// soundPlayAtWithVolume.
 static inline s16 soundVolumeForPlay(f32 value)
 {
     SoundVolumeCurve *curveParameters = &soundVolumeCurve;
@@ -223,7 +228,9 @@ static inline s16 soundVolumeForPlay(f32 value)
     return result;
 }
 
-static inline void soundVolumeAndPanForPlay(s16 cameraMask, Point3d *targetPoint, s16 *volume, s32 *pan)
+// Computes a short volume and an integer pan for positional playback.
+static inline void soundVolumeAndPanForPlay(s16 cameraMask, Point3d *targetPoint,
+                                            s16 *volume, s32 *pan)
 {
     CameraSoundParam *param = soundCameraParam(cameraMask);
     Vec projected;
@@ -232,14 +239,16 @@ static inline void soundVolumeAndPanForPlay(s16 cameraMask, Point3d *targetPoint
     *pan = soundPanFromPosition(&projected.x, param);
 }
 
-void soundPlayAtWithVolume(s16 cameraMask, s32 soundId, Point3d *targetPoint)
+// Starts a sound effect using the volume and pan computed from the target position.
+int soundPlayAtWithVolume(s16 cameraMask, s32 soundId, Point3d *targetPoint)
 {
     s16 volume;
     s32 pan;
     soundVolumeAndPanForPlay(cameraMask, targetPoint, &volume, &pan);
-    HuAudFXPlayVolPan(soundId, volume, pan);
+    return HuAudFXPlayVolPan(soundId, volume, pan);
 }
 
+// Updates a playing sound pan from the target position and returns the pan.
 s16 soundPanTo(s16 cameraMask, s32 soundId, Point3d *targetPoint)
 {
     int pan = soundPanAt(cameraMask, targetPoint);
@@ -247,11 +256,13 @@ s16 soundPanTo(s16 cameraMask, s32 soundId, Point3d *targetPoint)
     return pan;
 }
 
+// Updates character voice pan from the target position.
 void soundPanCharacterVoice(s16 cameraMask, s16 characterId, Point3d *targetPoint)
 {
     fn_80060F14(characterId, soundPanAt(cameraMask, targetPoint));
 }
 
+// Sets a playing sound volume from camera distance and reports success.
 int soundSetVolumeAt(s16 cameraMask, s32 handle, const Vec *position)
 {
     HU3D_CAMERA *camera = soundCamera(cameraMask);
@@ -262,6 +273,7 @@ int soundSetVolumeAt(s16 cameraMask, s32 handle, const Vec *position)
     return HuAudFXVolSet(handle, volume) == 0;
 }
 
+// Sets character voice volume from camera distance.
 void soundSetCharacterVoiceVolumeAt(s16 cameraMask, s16 voiceIndex, const Vec *position)
 {
     HU3D_CAMERA *camera = soundCamera(cameraMask);
@@ -272,6 +284,7 @@ void soundSetCharacterVoiceVolumeAt(s16 cameraMask, s16 voiceIndex, const Vec *p
     fn_80060F40(voiceIndex, volume);
 }
 
+// Sets a playing sound pitch and reports success.
 int soundSetPitch(int handle, short pitch)
 {
     return HuAudFXPitchSet(handle, pitch) == 0;

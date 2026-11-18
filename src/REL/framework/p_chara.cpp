@@ -5,9 +5,11 @@ extern "C" {
 #include "game/gamework.h"
 }
 
+// Creates the character selected in the player configuration using the given mode.
 PlayerConfigSelection::PlayerConfigSelection(s32 playerNo, s32 mode)
     : PlayerInfo(playerNo), Character(lbl_80265728[playerNo].charNo, mode)
 {
 }
 
+// Destroys the player character and its configuration view.
 PlayerConfigSelection::~PlayerConfigSelection() {}

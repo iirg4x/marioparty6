@@ -1,7 +1,7 @@
-// The player table of a one-versus-one minigame: the first player found in each of the two groups, or -1.
-// The file name and the assert text are retail's (player_table_1vs1.cpp, line 32); the function name is
-// descriptive, not recovered, and the original text of the lines before the assert is unknown. NDEBUG is
-// undefined because the build defines it for every object while retail kept this assert.
+// Builds the player table for a one-versus-one minigame.
+// Each table entry starts at -1 and receives the first player found in that group.
+// The two entries represent groups zero and one.
+// The build defines NDEBUG for every object; the original kept this assert.
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 

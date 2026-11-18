@@ -34,7 +34,7 @@ void *operator new(unsigned long byteCount) {
 }
 // Array new delegates to scalar new; scalar delete releases storage through the existing manager.
 void *operator new[](unsigned long byteCount) { return ::operator new(byteCount); }
-void operator delete(void *allocation) {
+void operator delete(void *allocation) { // Returns storage to the memory manager.
     assert(g_memman != NULL);
     g_memman->release(allocation);
 }

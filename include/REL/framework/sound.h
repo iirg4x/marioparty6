@@ -1,4 +1,4 @@
-// Camera-relative sound shared by the minigames (sound.c). The names are descriptive, not recovered.
+// Camera-relative sound controls shared by the minigames.
 #ifndef REL_FRAMEWORK_SOUND_H
 #define REL_FRAMEWORK_SOUND_H
 
@@ -34,7 +34,7 @@ s16 soundPanAt(s16 cameraMask, Vec *targetPoint);
 void soundVolumeAndPanAt(s16 cameraMask, Vec *targetPoint, s32 *volume, s32 *pan);
 int soundPlayAt(s16 cameraMask, s32 effectId, Point3d *targetPoint);
 void soundPlayAtDelayed(s16 cameraMask, s32 effectId, Point3d *targetPoint, u16 delay);
-void soundPlayAtWithVolume(s16 cameraMask, s32 soundId, Point3d *targetPoint);
+int soundPlayAtWithVolume(s16 cameraMask, s32 soundId, Point3d *targetPoint);
 s16 soundPanTo(s16 cameraMask, s32 soundId, Point3d *targetPoint);
 void soundPanCharacterVoice(s16 cameraMask, s16 characterId, Point3d *targetPoint);
 int soundSetVolumeAt(s16 cameraMask, s32 handle, const Vec *position);

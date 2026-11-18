@@ -6,9 +6,6 @@ extern "C" {
 #include "game/hu3d.h"
 }
 
-#define OCTREE_PALETTE_ENTRY_BYTES 4
-#define OCTREE_OUTLINE_VERTEX_COUNT 4
-
 // A game's first enableDebug call creates the drawing hook and an empty leaf selection.
 // Later calls preserve that hook and any leaves already queued for drawing.
 void Octree::enableDebug()
@@ -16,7 +13,7 @@ void Octree::enableDebug()
     if (renderer.get() == NULL) {
         renderer.reset(new OwnedModel(render));
         renderer->setHookData(this);
-        selected = new OctreeNodeSet;
+        selected.reset(new OctreeNodeSet);
     }
 }
 
@@ -24,8 +21,10 @@ void Octree::enableDebug()
 // Requests made before enableDebug are ignored; a null leaf is stored but draws nothing.
 void Octree::select(OctreeDebugNode *node)
 {
-    OctreeNodeSet *selectedNodes = selected;
-    if (selectedNodes) selectedNodes->insert(node);
+    OctreeNodeSet *selectedNodes = selected.get();
+    if (selectedNodes) {
+        selectedNodes->insert(node);
+    }
 }
 
 // A game can submit a position instead of looking up its containing leaf itself.
@@ -48,11 +47,11 @@ void Octree::render(Hu3DModel_s *hookModel, Mtx *transform)
     };
     static const GXColor material = {255, 255, 255, 0};
     static const GXColor ambient = {192, 192, 192, 0};
-    GXLoadPosMtxImm(*transform, 0);
+    GXLoadPosMtxImm(*transform, GX_PNMTX0);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_CLR0, GX_INDEX8);
-    GXSetArray(GX_VA_CLR0, (void *)octreeDebugColors, OCTREE_PALETTE_ENTRY_BYTES);
+    GXSetArray(GX_VA_CLR0, (void *)octreeDebugColors, sizeof(GXColor));
     GXSetNumChans(1);
     GXSetChanAmbColor(GX_COLOR0, ambient);
     GXSetChanMatColor(GX_COLOR0, material);
@@ -88,7 +87,7 @@ void Octree::drawNode(OctreeDebugNode *node)
         while (triangleIterator.next()) {
             unsigned short paletteIndex = triangleIterator.color;
             // Reverse the last two vertices, then repeat the first to close the outline.
-            GXBegin(GX_LINESTRIP, GX_VTXFMT0, OCTREE_OUTLINE_VERTEX_COUNT);
+            GXBegin(GX_LINESTRIP, GX_VTXFMT0, 4);
             octreeVertex(triangleIterator.firstVertex(), paletteIndex);
             octreeVertex(triangleIterator.thirdVertex(), paletteIndex);
             octreeVertex(triangleIterator.secondVertex(), paletteIndex);

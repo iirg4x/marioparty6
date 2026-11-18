@@ -26,12 +26,12 @@ inline void fillArchiveRange(Iterator first, Iterator last, const Value& value)
 
 // Four-byte format field copied from the loaded archive header.
 struct ArchiveFormat {
-    unsigned char bytes[4]; // Format bytes retained without interpretation here.
+    unsigned char bytes[4]; // Archive format bytes.
 };
 
 // Additional header information retained when an archive image is loaded.
 struct ArchiveMetadata {
-    unsigned long words[2]; // Two words copied without interpretation here.
+    unsigned long words[2]; // Header metadata words.
 };
 
 // Describes the consecutive resource and directory sections of an archive image.

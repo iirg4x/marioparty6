@@ -26,6 +26,7 @@ class Model {
 public:
     short modelId; // Index in Hu3DData, or -1 when no model is owned.
 
+    // Releases the model handle.
     inline ~Model() { Replace(-1); }
     operator short() const { return modelId; }
     short Replace(short replacement);
@@ -91,9 +92,11 @@ struct OwnedModel : Model {
     void apply_defaults();
     void load(unsigned int resource);
     short id() const { return modelId; }
+    // Stores a newly created handle and applies the default attributes.
     void created(short value) { modelId = value; apply_defaults(); }
 };
 
+// Destroys the owned model through its model base.
 inline OwnedModel::~OwnedModel() {}
 
 // Set the attributes every model created afterwards receives (model.cpp's two flags).

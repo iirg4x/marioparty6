@@ -2,7 +2,6 @@
 #ifndef REL_FRAMEWORK_TRI_COLLI_H
 #define REL_FRAMEWORK_TRI_COLLI_H
 
-// The order of <vector> and <set> is retail's: it sets the order of their members in the weak tail.
 #include <algorithm>
 #include <vector>
 #include <set>
@@ -16,24 +15,26 @@ extern "C" {
 #include "REL/framework/vector3.h"
 #include "REL/framework/plane.h"
 
-// The octree as collision queries reach it.
-struct CollisionTree : Octree {
-    // The root of the search; a loaded tree always has one.
-    OctreeDebugNode *root() const {
-        ASSERT(nodes != 0);
-        return nodes;
-    }
-    // Finds the leaf containing a position, or null outside the root's box.
-    OctreeDebugNode *find(const Vector3 position) {
-        OctreeDebugNode *node = root();
-        return findOctreeLeaf(node, position.x, position.y, position.z);
-    }
-};
+// The root of the search; a loaded tree always has one.
+inline OctreeDebugNode *Octree::root() const
+{
+    ASSERT(nodes != 0);
+    return nodes;
+}
+
+// Finds the leaf containing a position, or null outside the root's box.
+inline OctreeDebugNode *Octree::find(const Vector3 position)
+{
+    OctreeDebugNode *node = root();
+    return findOctreeLeaf(node, position.x, position.y, position.z);
+}
 
 // A contact plane with the metadata of the triangle that produced it.
 struct PlaneRecord : Plane {
     u16 metadata;
+    // Constructs a contact record without assigning its plane or metadata.
     PlaneRecord() {}
+    // Stores the contact plane and its triangle metadata.
     PlaneRecord(const Plane &plane, u16 value)
         : Plane(plane), metadata(value) {}
 };
@@ -45,9 +46,13 @@ typedef std::set<Vector3 *> VertexSet;
 
 // The octree's triangle traversal with the sphere contact tests a sweep runs on each triangle.
 struct CollisionTriangle : OctreeTriangleIterator {
+    // Starts collision traversal at the supplied octree node.
     CollisionTriangle(Octree *tree, OctreeDebugNode *node) : OctreeTriangleIterator(tree, node) {}
+    // Returns the first triangle vertex.
     Vector3 *pointA() const { return a[0]; }
+    // Returns the second triangle vertex.
     Vector3 *pointB() const { return a[1]; }
+    // Returns the third triangle vertex.
     Vector3 *pointC() const { return a[2]; }
     bool intersectFace(const Plane *plane, float radius, const Vector3 *origin,
                        const Vector3 *direction, PlaneList *results) const;
@@ -67,9 +72,13 @@ struct TriangleCollision {
     Vector3 rayOrigin;
     Vector3 rayDirection;
     float maximumDistance;
-    CollisionTree *collisionTree;
+    Octree *collisionTree;
 
-    TriangleCollision *setCollisionTree(CollisionTree *tree);
+    u16 getTriangleMetadata() const { return triangleMetadata; }
+
+    float getMaximumDistance() const { return maximumDistance; }
+
+    TriangleCollision(Octree *tree);
     bool castRay(const Vector3 *start, const Vector3 *end);
     bool castNode(OctreeDebugNode *node);
     bool intersectSegment(Vector3 *point, const Vector3 *start, const Vector3 *end);
