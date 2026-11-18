@@ -2,7 +2,7 @@
 
 The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-16 18:38 UTC.
+Updated 2026-11-18 04:25 UTC.
 
 ## Progress
 
