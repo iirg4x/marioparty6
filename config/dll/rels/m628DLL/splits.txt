@@ -6,16 +6,113 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m628DLL/act_player.cpp:
+	.text       start:0x00000000 end:0x00004548
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x000000C0
+	.data       start:0x00000000 end:0x000001E0
+	.bss        start:0x00000000 end:0x00000028
+
+REL/m628DLL/sphere_overlap.cpp:
+	.text       start:0x00004548 end:0x00004640
+
+REL/m628DLL/shape_overlap.cpp:
+	.text       start:0x00004640 end:0x00004EF0
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x000000C0 end:0x000000C8
+	.data       start:0x000001E0 end:0x00000200
+	.bss        start:0x00000028 end:0x00000040
+
+REL/m628DLL/player_controllers.cpp:
+	.text       start:0x00004EF0 end:0x00006B24
+	.rodata     start:0x000000C8 end:0x00000158
+	.data       start:0x00000200 end:0x000002D0
+
+REL/m628DLL/effects.cpp:
+	.text       start:0x00006B24 end:0x0000FE08
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000158 end:0x000002A8
+	.data       start:0x000002D0 end:0x00000678
+	.bss        start:0x00000040 end:0x00000048
+
+REL/m628DLL/round_resources.cpp:
+	.text       start:0x0000FE08 end:0x00011748
+	.rodata     start:0x000002A8 end:0x00000338
+	.data       start:0x00000678 end:0x000006E8
+	.bss        start:0x00000048 end:0x00000050
+
+REL/m628DLL/scene_thread.cpp:
+	.text       start:0x00011748 end:0x00011FC8
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000338 end:0x00000358
+	.data       start:0x000006E8 end:0x00000730
+	.bss        start:0x00000050 end:0x00000060
+
+REL/m628DLL/object_tracker.cpp:
+	.text       start:0x00011FC8 end:0x000128C4
+	.rodata     start:0x00000358 end:0x00000368
+	.data       start:0x00000730 end:0x000007B0
+
+REL/m628DLL/board_positions_light.cpp:
+	.text       start:0x000128C4 end:0x00013428
+	.rodata     start:0x00000368 end:0x000003A0
+	.data       start:0x000007B0 end:0x00000848
+
+REL/m628DLL/module_entry.cpp:
+	.text       start:0x00013428 end:0x00013500
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x000003A0 end:0x000003B8
+	.bss        start:0x00000060 end:0x00000070
+
+REL/m628DLL/camera_setup.cpp:
+	.text       start:0x00013500 end:0x00013D6C
+	.rodata     start:0x000003B8 end:0x000003D8
+	.data       start:0x00000848 end:0x000008B0
+
+REL/m628DLL/scene_model.cpp:
+	.text       start:0x00013D6C end:0x00014388
+	.rodata     start:0x000003D8 end:0x000003E8
+	.data       start:0x000008B0 end:0x000008E0
+
+REL/m628DLL/actor.cpp:
+	.text       start:0x00014388 end:0x00015A60
+	.rodata     start:0x000003E8 end:0x00000468
+	.data       start:0x000008E0 end:0x00000970
+
+REL/m628DLL/scene_includes.cpp:
+	.text       start:0x00015A60 end:0x00015AE0
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x00000468 end:0x00000478
+	.bss        start:0x00000070 end:0x00000080
+
+REL/framework/sound.c:
+	.text       start:0x00015AE0 end:0x00017EBC
+	.rodata     start:0x00000478 end:0x000004B0
+	.data       start:0x00000970 end:0x00000A40
+
 REL/framework/heap.cpp:
 	.text       start:0x00017EBC end:0x0001803C
 	.rodata     start:0x000004B0 end:0x000004E8
 	.data       start:0x00000A40 end:0x00000A60
 	.bss        start:0x00000080 end:0x00000088
 
+REL/m628DLL/global_destructor_chain.c:
+	.text       start:0x0001803C end:0x000180C4
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x00000088 end:0x00000090
+
+REL/m628DLL/ptmf.c:
+	.text       start:0x000180C4 end:0x0001820C
+	.rodata     start:0x000004E8 end:0x000004F8
+
 REL/framework/new.cpp:
 	.text       start:0x0001820C end:0x000183D4
 	.rodata     start:0x000004F8 end:0x00000530
 	.data       start:0x00000A60 end:0x00000A88
+
+REL/m628DLL/pad_control.cpp:
+	.text       start:0x000183D4 end:0x00018E90
+	.rodata     start:0x00000530 end:0x00000588
 
 REL/framework/camera.cpp:
 	.text       start:0x00018E90 end:0x0001969C
@@ -56,6 +153,13 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000788 end:0x000007C8
 	.data       start:0x000018F8 end:0x00001980
 
+REL/framework/memory_manager.cpp:
+	.text       start:0x00023800 end:0x000238E4
+
+REL/framework/free.cpp:
+	.text       start:0x000238E4 end:0x00023BA8
+	.data       start:0x00001980 end:0x000019A0
+
 REL/framework/linknode.cpp:
 	.text       start:0x00023BA8 end:0x00024584
 	.rodata     start:0x000007C8 end:0x00000808
@@ -77,11 +181,23 @@ REL/framework/mt19937.cpp:
 	.text       start:0x00026590 end:0x00027590
 	.rodata     start:0x00000868 end:0x000008D8
 
+REL/framework/p_chara.cpp:
+	.text       start:0x00027590 end:0x00027650
+
+REL/framework/p_info.cpp:
+	.text       start:0x00027650 end:0x0002856C
+	.rodata     start:0x000008D8 end:0x000008F0
+	.data       start:0x000019F8 end:0x00001A80
+
 REL/framework/random.cpp:
 	.text       start:0x0002856C end:0x000286FC
 	.ctors      start:0x0000001C end:0x00000020
 	.rodata     start:0x000008F0 end:0x00000930
 	.bss        start:0x000000B0 end:0x00000A78
+
+REL/m628DLL/runtime.c:
+	.text       start:0x000286FC end:0x00029140
+	.rodata     start:0x00000930 end:0x00000948
 
 REL/framework/startup.cpp:
 	.text       start:0x00029140 end:0x000291E4
