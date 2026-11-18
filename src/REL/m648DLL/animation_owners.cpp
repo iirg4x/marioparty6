@@ -11,6 +11,7 @@ extern "C" {
 #include "datadir_enum.h"
 #include "REL/m648DLL/animation_owners.h"
 
+extern "C" {
 #include "game/object.h"
 
 #include "game/mg/seqman.h"
@@ -22,6 +23,7 @@ extern "C" {
 #include "include/game/audio.h"
 
 #include "include/game/gamemes.h"
+}
 
 #include "REL/framework/model.h"
 

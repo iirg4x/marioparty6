@@ -40,9 +40,7 @@ extern "C" {
 #include "REL/framework/assertion.h"
 }
 
-extern "C" {
 #include "REL/m648DLL/camera_view.h"
-}
 
 extern "C" {
 #include <math.h>
@@ -95,6 +93,7 @@ extern "C" {
 
 void fn_1_9CA4(ColorParticles *);
 
+extern "C" {
 #include "game/main.h"
 
 #include "game/object.h"
@@ -126,6 +125,7 @@ void fn_1_9CA4(ColorParticles *);
 #include "game/board/object.h"
 
 #include "game/board/tutorial.h"
+}
 
 #include "datadir_enum.h"
 
@@ -141,8 +141,7 @@ ParticleAnimationOwner::ParticleAnimationOwner() {
     s32 directionIndex;
     for (animationIndex = 0; animationIndex < 2; ++animationIndex) {
         animations[animationIndex] =
-            HuSprAnimRead(fn_80008DD0(animationDataNumbers8FA4[animationIndex],
-                                              0x10000000, 2));
+            HuSprAnimDataRead(animationDataNumbers8FA4[animationIndex]);
         HuSprAnimLock(animations[animationIndex]);
     }
 
