@@ -37,5 +37,6 @@ void setMotionOwnerTime(MotionOwner *character, float timeFrames);
 float getMotionOwnerTransitionTime(s32 *characterNo);
 float getMotionOwnerMaximumTime(s32 *characterNo);
 bool characterMotionShiftInactive(s32 *characterNo);
+u8 characterMotionEnded(s32 *characterNo);
 
 #endif
