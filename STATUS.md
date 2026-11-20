@@ -2,26 +2,25 @@
 
 The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-19 16:35 UTC.
+Updated 2026-11-20 19:39 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 94.77% | 98.19% |
+| Entire project | 95.64% | 98.51% |
 | Main DOL | 91.35% | 99.35% |
-| REL modules | 95.50% | 97.46% |
+| REL modules | 96.54% | 97.97% |
 
 ## REL modules
 
-**124 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
+**125 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
 
-Partial (4):
+Partial (3):
 
 | Module | Code | Data |
 | --- | ---: | ---: |
 | Cash Flow (`m623DLL`) | 51.09% | 61.83% |
-| Treasure Trawlers (`m611DLL`) | 40.00% | 46.46% |
 | Dark 'n Crispy (`m673DLL`) | 39.81% | 50.02% |
 | Seer Terror (`m677DLL`) | 31.85% | 42.10% |
 
