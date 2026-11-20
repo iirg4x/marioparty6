@@ -25,7 +25,7 @@ ScoreDisplay::ScoreDisplay()
     soundPending = 0;
     for (index = 0; index < 4; index++) {
         entry = &entries[index];
-        entry->initializedFloat = 0.0f;
+        entry->unk08 = 0.0f;
     }
 }
 
@@ -133,10 +133,9 @@ SpriteFade::SpriteFade(const s32 *animationIds)
     transitionState = 1;
     initializedValue = 0;
     level = 0.0f;
-    baseAnimation = HuSprAnimRead(fn_80008DD0(DATANUM(0x3e0000, 37), 0x10000000, 2));
+    baseAnimation = HuSprAnimDataRead(DATANUM(0x3e0000, 37));
     for (index = 0; index < 4; index++) {
-        animations[index] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_340[animationIds[index]], 0x10000000, 2));
+        animations[index] = HuSprAnimDataRead(lbl_1_data_340[animationIds[index]]);
     }
     for (index2 = 0; index2 < 4; index2++) {
         FadeSpriteGroup *group = &groups[index2];

@@ -8,15 +8,7 @@ extern "C" {
 #include "game/mg/score.h"
 }
 
-/* Store one character score and its display position. */
-struct PlayerScoreEntry {
-    HUSPR_GROUPID boxId;
-    MGSCORE *score;
-    f32 initializedFloat; // The game's code never reads this field.
-    s32 character;
-    s32 value;
-    f32 x, y;
-};
+#include "REL/framework/player_score_entry.h"
 
 /* Own and update the four score displays. */
 class ScoreDisplay : public RequestObject, public MinigameSingleton<ScoreDisplay> {
