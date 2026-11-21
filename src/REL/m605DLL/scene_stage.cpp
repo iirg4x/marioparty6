@@ -1,6 +1,5 @@
-#include "REL/m605DLL/model_position_engine.h"
-#include "game/hu3d_query.h"
 extern "C" {
+#include "game/hu3d.h"
 #include "game/audio.h"
 }
 #include "REL/framework/sound.h"
@@ -288,12 +287,6 @@ void SceneStage::fn_1_4AE8()
     }
 }
 
-// Reads the model identifier through its conversion operator.
-static inline s32 modelIdOf(const Model &model)
-{
-    return model;
-}
-
 // Creates particle effects at model hooks for the initial scene step.
 void SceneStage::flagEnabled(int step)
 {
@@ -301,7 +294,6 @@ void SceneStage::flagEnabled(int step)
     char hookName[16];
     Vec position;
     AnimationOwner *animations = &AnimationOwner::getChecked();
-    Model *model;
     Sphere *hook;
     Vec *hookPosition;
 
@@ -310,8 +302,7 @@ void SceneStage::flagEnabled(int step)
         for (index = 0; index < 4; index++) {
             sprintf(hookName, "Hook%d", index + 1);
             Hu3DModelObjPosGet(taimatu, hookName, &position);
-            model = fn_1_690(animations);
-            fn_80026760(modelIdOf(*model), position.x, position.y, position.z);
+            fn_80026760(ParticleModelId(fn_1_690(animations)), position.x, position.y, position.z);
             hook = &hooks[index];
             hookPosition = &hook->center;
             *hookPosition = position;

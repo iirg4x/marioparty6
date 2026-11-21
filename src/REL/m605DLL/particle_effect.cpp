@@ -7,7 +7,7 @@
 #include "REL/m605DLL/particle_effect_object.h"
 #include "game/hu3d.h"
 
-/* Resets an orange particle with random position, rotation and fade rate. */
+// Resets an orange particle with random position, rotation and fade rate.
 s32 fn_1_B42C(HU3D_PARTICLE_DATA *particle)
 {
     particle->vel.x = 0.0f;
@@ -29,7 +29,7 @@ s32 fn_1_B42C(HU3D_PARTICLE_DATA *particle)
 
 void fn_1_B800(HU3D_MODEL *, HU3D_PARTICLE *, Mtx);
 
-/* Creates the orange particle effect and initializes every particle. */
+// Creates the orange particle effect and initializes every particle.
 OrangeParticles::OrangeParticles(ANIMDATA *animation)
     : GameObject(0x10), Particle(fn_1_B800, animation, 32)
 {
@@ -50,25 +50,25 @@ OrangeParticles::OrangeParticles(ANIMDATA *animation)
     }
 }
 
-/* Releases the particle effect and its base objects. */
+// Releases the particle effect and its base objects.
 OrangeParticles::~OrangeParticles()
 {
 }
 
-/* Leaves particle simulation to the model callback. */
+// Leaves particle simulation to the model callback.
 void OrangeParticles::update()
 {
 }
 
-/* Dispatches the particle simulation using the model work pointer. */
+// Dispatches the particle simulation using the model work pointer.
 void fn_1_B800(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
 {
-    /* The stored Particle part is passed to the hook without adjusting the pointer. */
+    // The stored Particle part is passed to the hook without adjusting the pointer.
     OrangeParticles *effect = static_cast<OrangeParticles *>(particle->work);
     effect->fn_1_B850(model, particle, mtx);
 }
 
-/* Restarts, fades and lifts the orange particles while reducing their scale. */
+// Restarts, fades and lifts the orange particles while reducing their scale.
 void OrangeParticles::fn_1_B850(HU3D_MODEL *, HU3D_PARTICLE *particles, Mtx)
 {
     float previousVelocity;
@@ -105,14 +105,14 @@ void OrangeParticles::fn_1_B850(HU3D_MODEL *, HU3D_PARTICLE *particles, Mtx)
         case 0:
             fn_1_B42C(updateEntry);
             updateEntry->time++;
-            /* fallthrough */
+            // fallthrough
         case 1:
             updateEntry->color.a += updateEntry->parManId;
             if (updateEntry->color.a < 0xE6U)
                 break;
             updateEntry->color.a = 0xFFU;
             updateEntry->time++;
-            /* fallthrough */
+            // fallthrough
         case 2:
             updateEntry->color.a -= updateEntry->parManId;
             if (updateEntry->color.a <= 0xFU)

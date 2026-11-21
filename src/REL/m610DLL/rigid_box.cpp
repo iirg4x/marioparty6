@@ -1,6 +1,7 @@
 /* Integrates eight constrained corners and computes their contact and model transforms. */
 #include "humath.h"
 #include "REL/framework/frame_time.h"
+#include "REL/framework/debug_geometry.h"
 #include "REL/framework/sound.h"
 #include <cmath>
 #include "REL/m610DLL/rigid_box.h"
@@ -389,6 +390,12 @@ void RigidBox::fn_1_89A8()
         this->corners[index].fn_1_12750();
         index += 1;
     }
+}
+
+// Submits the constraint endpoints to the debug cylinder hook.
+inline void Segment::draw(u32 color, float width) const
+{
+    fn_1_1C32C(firstPoint(), lastPoint(), width, color);
 }
 
 /* Draw the box's constraints. */

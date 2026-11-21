@@ -6,11 +6,102 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m623DLL/scene_entry.cpp:
+	.text       start:0x00000000 end:0x000000FC
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x00000028
+	.bss        start:0x00000000 end:0x00000018
+
+REL/m623DLL/scene_setup.cpp:
+	.text       start:0x000000FC end:0x00001FA8
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x00000028 end:0x00000088
+	.data       start:0x00000000 end:0x00000070
+	.bss        start:0x00000018 end:0x00000090
+
+REL/m623DLL/scene_models.cpp:
+	.text       start:0x00001FA8 end:0x00003FF8
+	.rodata     start:0x00000088 end:0x00000190
+	.data       start:0x00000070 end:0x00000100
+	.bss        start:0x00000090 end:0x00000480
+
+REL/m623DLL/particle_effects.cpp:
+	.text       start:0x00003FF8 end:0x00005ADC
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000190 end:0x00000280
+	.data       start:0x00000100 end:0x00000138
+	.bss        start:0x00000480 end:0x000004C8
+
+REL/m623DLL/particle_update.cpp:
+	.text       start:0x00005ADC end:0x00006488
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x00000280 end:0x000002C8
+	.data       start:0x00000138 end:0x00000150
+	.bss        start:0x000004C8 end:0x000004D0
+
+REL/m623DLL/item_effects.cpp:
+	.text       start:0x00006488 end:0x000084B4
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x000002C8 end:0x00000378
+	.data       start:0x00000150 end:0x00000568
+	.bss        start:0x000004D0 end:0x00000668
+
+REL/m623DLL/score.cpp:
+	.text       start:0x000084B4 end:0x00008BD4
+	.rodata     start:0x00000378 end:0x000003A8
+	.data       start:0x00000568 end:0x000005A0
+
+REL/m623DLL/player_state.cpp:
+	.text       start:0x00008BD4 end:0x0000A07C
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x000003A8 end:0x00000450
+	.data       start:0x000005A0 end:0x000005B0
+	.bss        start:0x00000668 end:0x00000678
+
+REL/m623DLL/target_input.cpp:
+	.text       start:0x0000A07C end:0x0000AF70
+	.rodata     start:0x00000450 end:0x000004C0
+
+REL/m623DLL/scene_camera.cpp:
+	.text       start:0x0000AF70 end:0x0000CC44
+	.rodata     start:0x000004C0 end:0x00000550
+	.data       start:0x000005B0 end:0x00000648
+	.bss        start:0x00000678 end:0x00000688
+
+REL/m623DLL/player_body.cpp:
+	.text       start:0x0000CC44 end:0x0000D534
+	.rodata     start:0x00000550 end:0x000005A0
+	.data       start:0x00000648 end:0x00000670
+
+REL/m623DLL/circle_draw.cpp:
+	.text       start:0x0000D534 end:0x0000E5DC
+	.rodata     start:0x000005A0 end:0x000005E0
+	.data       start:0x00000670 end:0x000006B0
+	.bss        start:0x00000688 end:0x00000798
+
+REL/m623DLL/player_table_1vs3.cpp:
+	.text       start:0x0000E5DC end:0x0000E724
+	.data       start:0x000006B0 end:0x000006E0
+
+REL/framework/sound.c:
+	.text       start:0x0000E724 end:0x00010B00
+	.rodata     start:0x000005E0 end:0x00000618
+	.data       start:0x000006E0 end:0x000007B0
+
 REL/framework/heap.cpp:
 	.text       start:0x00010B00 end:0x00010C80
 	.rodata     start:0x00000618 end:0x00000650
 	.data       start:0x000007B0 end:0x000007D0
 	.bss        start:0x00000798 end:0x000007A0
+
+REL/m623DLL/global_destructor_chain.c:
+	.text       start:0x00010C80 end:0x00010D08
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x000007A0 end:0x000007A8
+
+REL/m623DLL/ptmf.c:
+	.text       start:0x00010D08 end:0x00010E50
+	.rodata     start:0x00000650 end:0x00000660
 
 REL/framework/new.cpp:
 	.text       start:0x00010E50 end:0x00011018
@@ -30,6 +121,12 @@ REL/framework/camera_ut1.cpp:
 	.text       start:0x00013780 end:0x00013B04
 	.rodata     start:0x00000768 end:0x000007B0
 
+REL/framework/category_sphere.cpp:
+	.text       start:0x00013B04 end:0x00014040
+	.rodata     start:0x000007B0 end:0x000007B8
+	.data       start:0x00000850 end:0x00000888
+	.bss        start:0x000007A8 end:0x000007B0
+
 REL/framework/chara.cpp:
 	.text       start:0x00014040 end:0x000141D4
 	.rodata     start:0x000007B8 end:0x000007F0
@@ -38,6 +135,11 @@ REL/framework/chara_motion.cpp:
 	.text       start:0x000141D4 end:0x00015174
 	.rodata     start:0x000007F0 end:0x00000830
 	.data       start:0x00000888 end:0x00001590
+
+REL/framework/debug_geometry.cpp:
+	.text       start:0x00015174 end:0x00019724
+	.rodata     start:0x00000830 end:0x00000858
+	.data       start:0x00001590 end:0x00001638
 
 REL/framework/debug.cpp:
 	.text       start:0x00019724 end:0x0001996C
@@ -69,9 +171,21 @@ REL/framework/hu_archive.cpp:
 	.rodata     start:0x000009C8 end:0x00000A08
 	.data       start:0x00001848 end:0x00001890
 
+REL/framework/memory_manager.cpp:
+	.text       start:0x00022E64 end:0x00022F48
+
+REL/framework/free.cpp:
+	.text       start:0x00022F48 end:0x0002320C
+	.data       start:0x00001890 end:0x000018B0
+
 REL/framework/linknode.cpp:
 	.text       start:0x0002320C end:0x00023BE8
 	.rodata     start:0x00000A08 end:0x00000A48
+
+REL/framework/list_object.cpp:
+	.text       start:0x00023BE8 end:0x00023F04
+	.ctors      start:0x00000018 end:0x0000001C
+	.bss        start:0x000007B8 end:0x000007D0
 
 REL/framework/minigame_core.cpp:
 	.text       start:0x00023F04 end:0x00024A80
@@ -100,7 +214,7 @@ REL/framework/mt19937.cpp:
 
 REL/framework/octtree.cpp:
 	.text       start:0x00027488 end:0x0002778C
-	.rodata     start:0x00000BD8 end:0x00000C10
+	.rodata     start:0x00000BD8 end:0x00000C20
 	.data       start:0x00001908 end:0x00001920
 
 REL/framework/octtree_debug.cpp:
@@ -121,11 +235,23 @@ REL/framework/plane.cpp:
 	.text       start:0x00028E58 end:0x00028F38
 	.rodata     start:0x00000D20 end:0x00000D58
 
+REL/framework/p_chara.cpp:
+	.text       start:0x00028F38 end:0x00028FF8
+
+REL/framework/p_info.cpp:
+	.text       start:0x00028FF8 end:0x0002A468
+	.rodata     start:0x00000D58 end:0x00000D70
+	.data       start:0x000019D0 end:0x00001A58
+
 REL/framework/random.cpp:
 	.text       start:0x0002A468 end:0x0002A5F8
 	.ctors      start:0x00000020 end:0x00000024
 	.rodata     start:0x00000D70 end:0x00000DB0
 	.bss        start:0x000007E8 end:0x000011B0
+
+REL/m623DLL/runtime.c:
+	.text       start:0x0002A5F8 end:0x0002B03C
+	.rodata     start:0x00000DB0 end:0x00000DC8
 
 REL/framework/scene_shadow.cpp:
 	.text       start:0x0002B03C end:0x0002CE74
