@@ -70,10 +70,8 @@ PlayerPiece::PlayerPiece(OwnedModel *animation, OwnedModel *modelSource,
     remainingSteps = secondsToFrames<long>(3);
 }
 
-// Read here, after the constructor and in this order, these two definitions set where the module's
-// singleton pointers go and the order of its weak functions.
 #include "REL/framework/game_object_man.h"
-#include "REL/m610DLL/geometry_singleton.h"
+#include "REL/framework/debug_geometry.h"
 
 void fn_1_1E90(void);
 

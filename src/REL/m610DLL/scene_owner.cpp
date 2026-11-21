@@ -5,7 +5,7 @@
 #include "REL/framework/singleton.h"
 #include "dolphin/os.h"
 #include "REL/m610DLL/playing_piece.h"
-#include "REL/m610DLL/debug_geometry_calls.h"
+#include "REL/framework/debug_geometry.h"
 #include "dolphin/types.h"
 
 #include "dolphin/mtx.h"

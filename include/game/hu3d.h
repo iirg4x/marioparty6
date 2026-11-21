@@ -4,7 +4,7 @@
 #include "game/hsfformat.h"
 #include "game/memory.h"
 #include "game/data.h"
-#include "game/hu3d_query.h"
+
 //Max for model properties
 
 //Max for layer properties
@@ -48,14 +48,16 @@ typedef s16 HU3D_ANIMID;
 typedef s16 HU3D_TEXSCRID;
 
 //Forward declarations
-#include "game/hu3d_particle_hook.h"
+typedef struct Hu3DModel_s HU3D_MODEL;
 typedef struct Hu3DDrawObj_s HU3D_DRAW_OBJ;
+typedef struct Hu3DParticle_s HU3D_PARTICLE;
 
 //Function pointer declarations
 typedef void (*HU3D_LAYER_HOOK)(s16 layerNo);
 typedef void (*HU3D_MODEL_HOOK)(HU3D_MODEL *modelP, Mtx *mtx);
 typedef void (*HU3D_TIMING_HOOK)(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF);
 typedef void (*HU3D_MAT_HOOK)(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
+typedef void (*HU3D_PARTICLE_HOOK)(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx mtx);
 typedef void (*HU3D_OBJ_HOOK)(HSF_OBJECT *obj, HSF_TRANSFORM *transform, Mtx *prev, Mtx *curr);
 
 struct Hu3DDrawObj_s {
@@ -372,7 +374,7 @@ void mtxScaleCat(Mtx dst, float x, float y, float z);
 s16 HmfInverseMtxF3X3(Mtx dst, Mtx src);
 void SetDefLight(HuVecF *pos, HuVecF *dir, u8 colorR, u8 colorG, u8 colorB, u8 ambR, u8 ambG,
     u8 ambB, u8 matR, u8 matG, u8 matB);
-
+void Hu3DModelObjPosGet(HU3D_MODELID modelId, char *objName, HuVecF *pos);
 void fn_80023398(HU3D_MODELID modelId, char *objName, Mtx mtx);
 HSF_OBJECT *fn_800243B0(HSF_DATA *hsf, u32 mallocNo);
 HSF_ATTRIBUTE *Hu3DAttrDuplicate(HSF_DATA *hsf, u32 mallocNo);
@@ -502,7 +504,7 @@ void fn_800295A0(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX, float 
 void Hu3DGLightStaticSet(HU3D_LIGHTID lightId, BOOL staticF);
 void fn_800296E0(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, BOOL staticF);
 s16 fn_80029758(HU3D_LIGHTID LLightId, Vec *pos, Vec *dir, GXColor *color);
-
+s16 fn_800297D4(HU3D_LIGHTID gLightId, Vec *pos, Vec *dir, GXColor *color);
 s32 fn_80029850(HU3D_MODELID modelId, s16 staticF);
 HU3D_LIGHTID fn_80029D24(HU3D_MODELID modelId, char *objName);
 u8 fn_80029E00(HU3D_MODELID modelId, HU3D_LIGHTID lightId);

@@ -5,8 +5,6 @@
 #include <map>
 #include "REL/m610DLL/collision_node.h"
 
-#include "REL/m610DLL/debug_geometry_calls.h"
-
 #include "REL/framework/p_info.h"
 
 #include "REL/m610DLL/position_state.h"
@@ -47,11 +45,7 @@ struct Segment
     {
         return &end->position;
     }
-    /* Submit the constraint endpoints to the debug cylinder hook. */
-    void draw(u32 color, float width) const
-    {
-        fn_1_1C32C(firstPoint(), lastPoint(), width, color);
-    }
+    void draw(u32 color, float width) const;
 };
 
 #include "REL/framework/parameter_interpolation.h"

@@ -2,9 +2,9 @@
 #define REL_M605DLL_PARTICLE_EFFECT_OBJECT_H
 
 #include "REL/framework/game_object.h"
-#include "REL/framework/particle_class.h"
+#include "REL/framework/particle.h"
 
-/* Creates orange particles at the stage model's hooks. */
+// Creates orange particles at the stage model's hooks.
 class OrangeParticles : public GameObject, public Particle {
 public:
     OrangeParticles(ANIMDATA *animation);
