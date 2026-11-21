@@ -152,7 +152,7 @@ REL/framework/chara_motion.cpp:
 	.rodata     start:0x000008F8 end:0x00000938
 	.data       start:0x00000670 end:0x00001378
 
-REL/m610DLL/debug_geometry.cpp:
+REL/framework/debug_geometry.cpp:
 	.text       start:0x0001A300 end:0x0001E8B0
 	.rodata     start:0x00000938 end:0x00000960
 	.data       start:0x00001378 end:0x00001420
