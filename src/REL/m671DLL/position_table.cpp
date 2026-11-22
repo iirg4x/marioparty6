@@ -14,7 +14,11 @@ void collectGameObjects(int category, std::vector<GameObject *> *list);
 
 #include "REL/m671DLL/position_table.h"
 
-PositionTable::PositionTable() : GameObject(3), MinigameSingleton<PositionTable>() { fn_1_84BC(this); }
+// Initializes the table with the animation objects' position records.
+PositionTable::PositionTable() : GameObject(3), MinigameSingleton<PositionTable>()
+{
+    fn_1_84BC(this);
+}
 PositionTable::~PositionTable() {}
 
 void PositionTable::fn_1_83DC()
@@ -32,12 +36,23 @@ void PositionTable::fn_1_83DC()
     }
 }
 
+// Copies both position records from an animation object.
+static inline void copyAnimationPositions(PositionTable *owner, AnimationOwner *object, int index)
+{
+    MotionPosition secondPosition;
+    MotionPosition firstPosition;
+
+    firstPosition = object->position;
+    owner->firstPositions[index].value = firstPosition.value;
+    secondPosition = object->previousPosition;
+    owner->secondPositions[index].value = secondPosition.value;
+}
+
+// Builds the animation position table and clears the active count.
 void fn_1_84BC(PositionTable *owner)
 {
     std::vector<GameObject *> objects;
     int index;
-    MotionPosition firstPosition;
-    MotionPosition secondPosition;
 
     collectGameObjects(1, &objects);
     owner->count = objects.size();
@@ -45,10 +60,7 @@ void fn_1_84BC(PositionTable *owner)
     for (index = 0; index < owner->count; ++index) {
         AnimationOwner *object = (AnimationOwner *)objects[index];
 
-        firstPosition = object->position;
-        owner->firstPositions[index].value = firstPosition.value;
-        secondPosition = object->previousPosition;
-        owner->secondPositions[index].value = secondPosition.value;
+        copyAnimationPositions(owner, object, index);
     }
 }
 
@@ -73,13 +85,11 @@ void fn_1_8644(PositionTable *owner)
     }
 }
 
-/* Copies the active objects' position records into the table for this mode. */
+// Refreshes animation positions and descent speeds and counts active animation objects.
 void fn_1_8724(PositionTable *owner)
 {
     std::vector<GameObject *> objects;
     int index;
-    MotionPosition firstPosition;
-    MotionPosition secondPosition;
     float thirdPosition;
 
     collectGameObjects(1, &objects);
@@ -88,10 +98,7 @@ void fn_1_8724(PositionTable *owner)
     for (index = 0; index < owner->count; ++index) {
         AnimationOwner *object = (AnimationOwner *)objects[index];
 
-        firstPosition = object->position;
-        owner->firstPositions[index].value = firstPosition.value;
-        secondPosition = object->previousPosition;
-        owner->secondPositions[index].value = secondPosition.value;
+        copyAnimationPositions(owner, object, index);
         thirdPosition = object->descentSpeed;
         owner->thirdPositions[index] = thirdPosition;
         if (object->isActive() != 0) {

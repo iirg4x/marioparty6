@@ -44,11 +44,11 @@ struct CallbackReceiver : GameObject, ModelMotion, MinigameSingleton<CallbackRec
     void fn_1_9784();
     void fn_1_9C7C();
     void fn_1_A794();
-    void fn_1_A230(EventMessage *);
-    void fn_1_A28C(EventMessage *);
-    void fn_1_A3A4(EventMessage *);
-    void fn_1_A2E0(EventMessage *);
-    void fn_1_A530(EventMessage *);
+    void fn_1_A230(const EventPacket &);
+    void fn_1_A28C(const EventPacket &);
+    void fn_1_A3A4(const EventPacket &);
+    void fn_1_A2E0(const EventPacket &);
+    void fn_1_A530(const EventPacket &);
     void changeMotion(u32 value, u32 flags);
     void setState(void (CallbackReceiver::*next)()) { currentState = next; }
     Vec getMotionHeight() { return velocity; }

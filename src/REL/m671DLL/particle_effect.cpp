@@ -17,6 +17,7 @@
 #include "REL/m671DLL/particle_game_object.h"
 #include "REL/m671DLL/resources.h"
 #include "REL/m671DLL/particle_owner.h"
+#include "REL/m671DLL/sprite_vertex_format.h"
 
 #include <math.h>
 
@@ -99,7 +100,12 @@ void fn_1_2D78(HU3D_MODEL *, HU3D_PARTICLE *owner, Mtx value)
     static_cast<TimedParticleEffect *>(callback)->draw(value);
 }
 
-const GXColor lbl_1_rodata_F8[4] = { {0xD2, 0xDC, 0xF0, 0}, {0xB4, 0xBE, 0xDC, 0}, {0xA0, 0xB4, 0xC8, 0}, {0x78, 0x82, 0xA0, 0} };
+const GXColor lbl_1_rodata_F8[4] = {
+    {0xD2, 0xDC, 0xF0, 0},
+    {0xB4, 0xBE, 0xDC, 0},
+    {0xA0, 0xB4, 0xC8, 0},
+    {0x78, 0x82, 0xA0, 0},
+};
 
 void fn_1_2DBC(void *source, HU3D_PARTICLE_DATA *parameters)
 {
@@ -436,6 +442,7 @@ void AttributeOwner::update()
 {
 }
 
+// Draws a textured ground quad using the owner's position, scale, and opacity.
 void AttributeOwner::draw(Mtx *parentMatrix)
 {
     Mtx transform;
@@ -462,15 +469,12 @@ void AttributeOwner::draw(Mtx *parentMatrix)
     GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_A0, GX_CA_TEXA, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
     GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
+    GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
     GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
     GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP, GX_AF_SPOT);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP,
+                  GX_AF_SPOT);
+    setSpriteVertexFormat();
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition3f32(-125.0f, 0.0f, -125.0f);
     GXTexCoord2f32(0.0f, 0.0f);

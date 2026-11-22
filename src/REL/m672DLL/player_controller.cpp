@@ -20,7 +20,7 @@ void fn_1_758(PlayerController *state)
 {
     state->values.x = 0.0f;
     state->values.y = 0.0f;
-    state->values.magnitude = 0.0f;
+    state->values.unk08 = 0.0f;
     state->update(&state->values);
 }
 
@@ -82,9 +82,9 @@ void PadController::update(PadState *state)
     length = vectorMagnitude(&direction.value);
     state->x = direction.value.x;
     state->y = direction.value.y;
-    state->magnitude = length;
-    state->buttonsDown = lbl_802C0008[padIndex];
-    state->buttons = lbl_802C0010[padIndex];
+    state->unk08 = length;
+    state->unk0C = lbl_802C0008[padIndex];
+    state->unk10 = lbl_802C0010[padIndex];
 }
 
 // Initializes difficulty, timing, callback, destination, and the inherited controller state.
@@ -113,7 +113,7 @@ void ComController::update(PadState *state)
  source=player;
  currentPlayer=source->player;
  actionPlayer=currentPlayer;
- input.fn_1_12DA0(actionPlayer);
+ input.applyToPlayer(actionPlayer);
 }
 
 // Empty initial computer-controller callback.
@@ -156,7 +156,7 @@ void ComController::fn_1_EA4(PadState *)
     PSMTXRotRad(rotation, 'y', MTXDegToRad(angularOffset));
     PSMTXMultVec(rotation, &direction, &direction);
     PSVECScale(&direction, &direction, 0.45f * rotationScale);
-    input.fn_1_12B70(&direction, 0.1f);
+    input.updateMovement(&direction, 0.1f);
     elapsed += (1.0 / 60.0);
 }
 

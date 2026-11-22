@@ -1,5 +1,8 @@
+#include "REL/framework/event_callback_registration.h"
 #include "REL/m671DLL/game_constants.h"
-#include "REL/m671DLL/member_callback.h"
+#include <functional>
+#include "REL/framework/event_hm.h"
+#include "REL/framework/event_callback_adapter_inline.h"
 extern "C" {
 #include <math.h>
 #include "game/hu3d.h"
@@ -27,8 +30,6 @@ extern "C" {
 
 #include "REL/m671DLL/resources.h"
 
-#include "REL/framework/event_hm.h"
-
 #include "REL/m671DLL/particle_owner.h"
 
 #include "REL/m671DLL/motion_position.h"
@@ -41,8 +42,6 @@ extern "C" {
 
 #include "humath.h"
 #include "REL/framework/vector_math.h"
-
-#include "REL/m671DLL/math_callback.h"
 
 #include "REL/framework/event_callback_inline.h"
 #include <vector>
@@ -132,14 +131,9 @@ void fn_1_4E08(AnimationOwner *positionOwner,
 
 void fn_1_4DC8(HU3D_DRAW_OBJ *, HSF_MATERIAL *);
 
-template<class Payload>
-void fn_1_6964(EventHandlerManager *owner, const Payload &payload, int key)
-{
-    owner->addHandler(new MemberCallback<AnimationOwner>(payload), key);
-}
-
 AnimationOwner::AnimationOwner(int model, int mode)
-    : GameObject(1), OwnedModel((unsigned int)model), position(lbl_1_data_1A0), enabled(0), argument(mode), elapsedTime(0.0f),
+    : GameObject(1), OwnedModel((unsigned int)model), position(lbl_1_data_1A0),
+      enabled(0), argument(mode), elapsedTime(0.0f),
       transitionComplete(0), preserveSpeed(0), particle(0), attribute(0), callbacks(0)
 {
     const Model *modelIdPointer;
@@ -178,9 +172,9 @@ AnimationOwner::AnimationOwner(int model, int mode)
     this->rotation.w = 1.0f;
     this->complete = 0;
 
-    fn_1_6964(&this->callbacks, std::bind1st(
+    registerEventCallback(&this->callbacks, std::bind1st(
         std::mem_fun(&AnimationOwner::fn_1_62E8), this), 4);
-    fn_1_6964(&this->callbacks, std::bind1st(
+    registerEventCallback(&this->callbacks, std::bind1st(
         std::mem_fun(&AnimationOwner::fn_1_634C), this), 5);
 
     firstResourceCopy = new ParticleOwner;
@@ -343,7 +337,8 @@ void fn_1_5950(AnimationOwner *owner)
             if (effectPosition.value.x == 0.0f && effectPosition.value.z == 0.0f) {
                 CallbackReceiver &sourceOwner = MinigameSingleton<CallbackReceiver>::getChecked();
                 vectorCopy(&singletonPosition, getEffectPosition(&sourceOwner));
-                PSVECSubtract(&owner->position.value, &singletonPosition.value, &radialDirection.value);
+                PSVECSubtract(&owner->position.value, &singletonPosition.value,
+                              &radialDirection.value);
                 radialDirection.value.y = 0.0f;
                 PSVECNormalize(&radialDirection.value, &effectPosition.value);
             }
@@ -372,14 +367,16 @@ void fn_1_5950(AnimationOwner *owner)
             PSVECNormalize(&bounceNormal.value, &bounceNormal.value);
             PSVECScale(&bounceNormal.value, &bounceNormal.value, -1.0f);
             reflectVector(&bounceNormal.value, &reflectedVelocity.value);
-            vectorScaleTo(&reflectedVelocity.value, &owner->previousPosition.value, owner->descentSpeed);
+            vectorScaleTo(&reflectedVelocity.value, &owner->previousPosition.value,
+                          owner->descentSpeed);
             if (owner->descentSpeed != 0.0f) {
                 effectTarget = owner->position;
                 effectMagnitude = lbl_1_data_1A0 + vectorMagnitude(&effectTarget.value);
                 PSVECNormalize(&effectTarget.value, &effectTarget.value);
                 inversePosition = effectTarget;
                 PSVECScale(&effectTarget.value, &effectTarget.value, effectMagnitude);
-                vectorSet(&inversePosition.value, effectTarget.value.z, 0.0f, -effectTarget.value.x);
+                vectorSet(&inversePosition.value, effectTarget.value.z, 0.0f,
+                          -effectTarget.value.x);
                 fn_8005D864(1, &effectTarget.value, &inversePosition.value);
                 soundPlayAt(1, 0x89F, &effectTarget.value);
             }
@@ -459,14 +456,14 @@ void AnimationOwner::fn_1_6158()
 /* Debug hook: empty in the release build (the compiler still makes its argument). */
 static inline void DebugCallback(const AnimationOwner::Callback &) {}
 
-void AnimationOwner::fn_1_62E8(EventMessage *)
+void AnimationOwner::fn_1_62E8(const EventPacket &)
 {
     speedStep = descentSpeed / 300.0f;
     preserveSpeed = 1;
     setCallback(&AnimationOwner::fn_1_6350);
 }
 
-void AnimationOwner::fn_1_634C(EventMessage *)
+void AnimationOwner::fn_1_634C(const EventPacket &)
 {
     DebugCallback(&AnimationOwner::fn_1_65C0);
 }

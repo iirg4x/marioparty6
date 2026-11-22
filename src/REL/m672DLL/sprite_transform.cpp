@@ -24,7 +24,8 @@ extern "C" {
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/event_callback_inline.h"
 #include "REL/framework/frame_time.h"
-#include "REL/m672DLL/member_handler.h"
+#include "REL/m672DLL/member_callback.h"
+#include "REL/framework/event_callback_registration.h"
 
 extern "C" {
 
@@ -54,18 +55,18 @@ AnimatedOwner::AnimatedOwner(int resource, EffectVector *position, float scale)
     this->setPosition(&position->value);
     this->setRotationY(scale);
     this->setUniformScale(1.0f);
-    registerMemberHandler<AnimatedOwner>(&this->states,
-        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9DFC), this), 0);
-    registerMemberHandler<AnimatedOwner>(&this->states,
-        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9E00), this), 1);
-    registerMemberHandler<AnimatedOwner>(&this->states,
-        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9E04), this), 2);
-    registerMemberHandler<AnimatedOwner>(&this->states,
-        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9F38), this), 3);
-    registerMemberHandler<AnimatedOwner>(&this->states,
-        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9F7C), this), 4);
-    registerMemberHandler<AnimatedOwner>(&this->events,
-        bindMember(std::mem_fun(&AnimatedOwner::fn_1_9E08), this), 2);
+    registerEventCallback(&this->states,
+        std::bind1st(std::mem_fun(&AnimatedOwner::fn_1_9DFC), this), 0);
+    registerEventCallback(&this->states,
+        std::bind1st(std::mem_fun(&AnimatedOwner::fn_1_9E00), this), 1);
+    registerEventCallback(&this->states,
+        std::bind1st(std::mem_fun(&AnimatedOwner::fn_1_9E04), this), 2);
+    registerEventCallback(&this->states,
+        std::bind1st(std::mem_fun(&AnimatedOwner::fn_1_9F38), this), 3);
+    registerEventCallback(&this->states,
+        std::bind1st(std::mem_fun(&AnimatedOwner::fn_1_9F7C), this), 4);
+    registerEventCallback(&this->events,
+        std::bind1st(std::mem_fun(&AnimatedOwner::fn_1_9E08), this), 2);
     addMotions(lbl_1_rodata_3C8, 5);
     this->fn_1_9AFC(DATANUM(0x830000, 0x13), 1);
     this->setUpdate(&AnimatedOwner::fn_1_9B90);
@@ -169,22 +170,22 @@ void AnimatedOwner::fn_1_9DF8()
 }
 
 // Empty state callback for handler key 0.
-void AnimatedOwner::fn_1_9DFC(EventMessage *)
+void AnimatedOwner::fn_1_9DFC(const EventPacket &)
 {
 }
 
 // Empty state callback for handler key 1.
-void AnimatedOwner::fn_1_9E00(EventMessage *)
+void AnimatedOwner::fn_1_9E00(const EventPacket &)
 {
 }
 
 // Empty state callback for handler key 2.
-void AnimatedOwner::fn_1_9E04(EventMessage *)
+void AnimatedOwner::fn_1_9E04(const EventPacket &)
 {
 }
 
 // Shifts to motion 24, plays sounds, and returns to the motion-19 update path.
-void AnimatedOwner::fn_1_9E08(EventMessage *)
+void AnimatedOwner::fn_1_9E08(const EventPacket &)
 {
     HU3D_MODELID motionModelId = *this;
     if (!fn_8002D75C(motionModelId) &&
@@ -205,18 +206,18 @@ void AnimatedOwner::fn_1_9E08(EventMessage *)
 }
 
 // Selects the active-motion update callback.
-void AnimatedOwner::fn_1_9F38(EventMessage *)
+void AnimatedOwner::fn_1_9F38(const EventPacket &)
 {
     setUpdate(&AnimatedOwner::fn_1_9C94);
 }
 
 // Selects the result callback and plays the sound/motion sequence for result code 4 or other codes.
-void AnimatedOwner::fn_1_9F7C(EventMessage *message)
+void AnimatedOwner::fn_1_9F7C(const EventPacket &message)
 {
     s32 *resultCode;
 
     setUpdate(&AnimatedOwner::fn_1_9DF8);
-    resultCode = static_cast<s32 *>(message->context);
+    resultCode = static_cast<s32 *>(message.context);
     if (*resultCode == 4) {
         if (this->state != DATANUM(0x830000, 0x19)) {
             this->shiftMotion(DATANUM(0x830000, 0x19),

@@ -6,7 +6,9 @@
 #include "dolphin/os.h"
 #include "dolphin/mtx.h"
 #include "game/pad.h"
+extern "C" {
 #include "game/gamework.h"
+}
 #include <math.h>
 #include "REL/m671DLL/position_table.h"
 #include "REL/framework/vector3.h"
@@ -50,7 +52,7 @@ extern f32 fn_1_2748(ComputerControl *, s32);
 
 ComputerControl::ComputerControl(Player *player, int option) : Controller(player)
 {
-    this->option = option;
+    this->unk44 = option;
     this->movementParameters[0] = fn_1_2568(this, option);
     this->movementParameters[1] = fn_1_25E0(this, option);
     this->movementParameters[2] = fn_1_2658(this, option);
@@ -70,7 +72,7 @@ void ComputerControl::update(StickState *state)
     PositionTable *manager = &PositionTable::getChecked();
     Vec position;
     player->getPosition(position);
-    fn_1_11778(&angleWork, player->getPlayer());
+    angleWork.applyToPlayer(player->getPlayer());
     if (callback) {
         (this->*callback)(state);
     }
@@ -99,10 +101,11 @@ void ComputerControl::fn_1_1A30(StickState *state)
     motionScale = this->movementScale;
     PSVECScale(&this->movement, &this->movement,
                motionScale);
-    fn_1_11548(&this->angleWork, &this->movement, 0.15f);
+    this->angleWork.updateMovement(&this->movement, 0.15f);
 }
 
-extern float fn_1_27C0(const Vec *point, const Vec *lineStart, const Vec *lineEnd, Vec *nearestPoint);
+extern float fn_1_27C0(const Vec *point, const Vec *lineStart, const Vec *lineEnd,
+                      Vec *nearestPoint);
 
 Vec fn_1_2224(ComputerControl *, const Vec *, Vec *, f32, s32);
 
@@ -184,7 +187,8 @@ Vec fn_1_1BB8(ComputerControl *owner)
         return result;
     }
     if (useDistant == 1 && candidateCount == 1) {
-        result = fn_1_2224(owner, &currentPosition, &distantDirection, nearestDistance, nearestIndex);
+        result = fn_1_2224(owner, &currentPosition, &distantDirection, nearestDistance,
+                           nearestIndex);
         if (result.x != 0.0f || result.z != 0.0f) {
             PSVECNormalize(&result, &result);
         }

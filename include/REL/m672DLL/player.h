@@ -1,7 +1,6 @@
 #ifndef REL_M672DLL_PLAYER_H
 #define REL_M672DLL_PLAYER_H
 #include "REL/framework/model.h"
-#include "REL/m672DLL/member_callback.h"
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +16,7 @@ extern "C" {
 }
 
 struct Player;
-typedef void (Player::*PlayerHandler)(EventMessage *);
+typedef void (Player::*PlayerHandler)(const EventPacket &);
 typedef void (Player::*PlayerUpdate)();
 
 #include <new>
@@ -48,7 +47,7 @@ struct Player : GameObject {
     float elapsed;
     float delay;
     unsigned char active;
-    float fade;
+    float unk4C; /* The game's code never reads this field. */
     int phase;
     unsigned char finished;
     float movementElapsed;
@@ -63,10 +62,10 @@ struct Player : GameObject {
     PlayerUpdate frameUpdate;
     // Stores the player's frame-update callback.
     void setUpdate(PlayerUpdate method) { frameUpdate = method; }
-    void fn_1_EB5C(EventMessage *);
-    void fn_1_EBF4(EventMessage *);
-    void fn_1_EC80(EventMessage *);
-    void fn_1_ED84(EventMessage *);
+    void fn_1_EB5C(const EventPacket &);
+    void fn_1_EBF4(const EventPacket &);
+    void fn_1_EC80(const EventPacket &);
+    void fn_1_ED84(const EventPacket &);
     void fn_1_DC00();
     void fn_1_D21C();
     void fn_1_DBF4();

@@ -1,4 +1,7 @@
-#include "REL/m671DLL/member_callback.h"
+#include "REL/framework/event_callback_registration.h"
+#include <functional>
+#include "REL/framework/event_hm.h"
+#include "REL/framework/event_callback_adapter_inline.h"
 #include "dolphin/types.h"
 
 #include "REL/framework/model.h"
@@ -24,11 +27,6 @@ extern const Vec lbl_1_rodata_3C8[3] = {
     {0.0f, 0.0f, 0.0f},
     {0.0f, 1.0f, 0.0f}
 };
-
-template<class Payload> void fn_1_BC1C(EventHandlerManager *owner, const Payload &payload, int key)
-{
-    owner->addHandler(new MemberCallback<CameraOwner>(payload), key);
-}
 
 void fn_1_BAB0(CameraOwner *, f32);
 
@@ -66,11 +64,11 @@ CameraOwner::CameraOwner()
     camera->cameraTarget.value.y = source->target.y;
     camera->cameraTarget.value.z = source->target.z;
     camera->setTarget(camera->cameraTarget);
-    camera->enabled = 0;
+    camera->unk4C = 0;
     this->cameraCopy = this->camera;
     this->fade = 0.0f;
 
-    fn_1_BC1C(&this->callbackState,
+    registerEventCallback(&this->callbackState,
              std::bind1st(std::mem_fun(&CameraOwner::fn_1_BA5C), this), 0);
     this->setUpdate(&CameraOwner::fn_1_B81C);
 }
@@ -114,7 +112,7 @@ void CameraOwner::fn_1_B820()
     }
 }
 
-void CameraOwner::fn_1_BA5C(EventMessage *)
+void CameraOwner::fn_1_BA5C(const EventPacket &)
 {
     fade = 1.0f;
     setUpdate(&CameraOwner::fn_1_B820);

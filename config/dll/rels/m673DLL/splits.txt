@@ -6,16 +6,121 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/m673DLL/collision_shapes.cpp:
+	.text       start:0x00000000 end:0x00000B58
+	.ctors      start:0x00000000 end:0x00000004
+	.rodata     start:0x00000000 end:0x00000018
+	.data       start:0x00000000 end:0x00000070
+	.bss        start:0x00000000 end:0x00000020
+
+REL/m673DLL/vector_check.cpp:
+	.text       start:0x00000B58 end:0x00000BDC
+	.rodata     start:0x00000018 end:0x00000020
+
+REL/m673DLL/computer_direction.cpp:
+	.text       start:0x00000BDC end:0x00002728
+	.rodata     start:0x00000020 end:0x00000140
+	.data       start:0x00000070 end:0x000000D0
+	.bss        start:0x00000020 end:0x00000030
+
+REL/m673DLL/particle_emitter.cpp:
+	.text       start:0x00002728 end:0x00005894
+	.rodata     start:0x00000140 end:0x00000200
+	.data       start:0x000000D0 end:0x000001B8
+	.bss        start:0x00000030 end:0x00000038
+
+REL/m673DLL/animation_resources.cpp:
+	.text       start:0x00005894 end:0x00006800
+	.rodata     start:0x00000200 end:0x000002D8
+	.data       start:0x000001B8 end:0x00000218
+	.bss        start:0x00000038 end:0x00000040
+
+REL/m673DLL/scene_init.cpp:
+	.text       start:0x00006800 end:0x000075F0
+	.ctors      start:0x00000004 end:0x00000008
+	.rodata     start:0x000002D8 end:0x00000320
+	.data       start:0x00000218 end:0x00000260
+	.bss        start:0x00000040 end:0x00000058
+
+REL/m673DLL/position_table.cpp:
+	.text       start:0x000075F0 end:0x000084D4
+	.rodata     start:0x00000320 end:0x00000328
+	.data       start:0x00000260 end:0x000002C0
+
+REL/m673DLL/ground_sprite.cpp:
+	.text       start:0x000084D4 end:0x00008B80
+	.rodata     start:0x00000328 end:0x00000348
+	.data       start:0x000002C0 end:0x000002D0
+
+REL/m673DLL/moving_actor.cpp:
+	.text       start:0x00008B80 end:0x0000B850
+	.rodata     start:0x00000348 end:0x000004F8
+	.data       start:0x000002D0 end:0x000004C0
+	.bss        start:0x00000058 end:0x00000088
+
+REL/m673DLL/follow_effect.cpp:
+	.text       start:0x0000B850 end:0x0000BFC4
+	.rodata     start:0x000004F8 end:0x00000518
+	.data       start:0x000004C0 end:0x000004F0
+
+REL/m673DLL/module_setup.cpp:
+	.text       start:0x0000BFC4 end:0x0000C09C
+	.ctors      start:0x00000008 end:0x0000000C
+	.rodata     start:0x00000518 end:0x00000530
+	.bss        start:0x00000088 end:0x00000098
+
+REL/m673DLL/camera.cpp:
+	.text       start:0x0000C09C end:0x0000C9B8
+	.rodata     start:0x00000530 end:0x00000590
+	.data       start:0x000004F0 end:0x00000540
+
+REL/m673DLL/event_scene_objects.cpp:
+	.text       start:0x0000C9B8 end:0x0000EE2C
+	.rodata     start:0x00000590 end:0x000005F8
+	.data       start:0x00000540 end:0x00000778
+
+REL/m673DLL/player_actor.cpp:
+	.text       start:0x0000EE2C end:0x000113E0
+	.ctors      start:0x0000000C end:0x00000010
+	.rodata     start:0x000005F8 end:0x000006F8
+	.data       start:0x00000778 end:0x000008D8
+	.bss        start:0x00000098 end:0x000000A8
+
+REL/m673DLL/particle_effect.cpp:
+	.text       start:0x000113E0 end:0x0001189C
+	.ctors      start:0x00000010 end:0x00000014
+	.rodata     start:0x000006F8 end:0x00000738
+	.data       start:0x000008D8 end:0x000008F0
+	.bss        start:0x000000A8 end:0x000000B0
+
+REL/framework/sound.c:
+	.text       start:0x0001189C end:0x00013C78
+	.rodata     start:0x00000738 end:0x00000770
+	.data       start:0x000008F0 end:0x000009C0
+
 REL/framework/heap.cpp:
 	.text       start:0x00013C78 end:0x00013DF8
 	.rodata     start:0x00000770 end:0x000007A8
 	.data       start:0x000009C0 end:0x000009E0
 	.bss        start:0x000000B0 end:0x000000B8
 
+REL/m673DLL/global_destructor_chain.c:
+	.text       start:0x00013DF8 end:0x00013E80
+	.dtors      start:0x00000000 end:0x00000004
+	.bss        start:0x000000B8 end:0x000000C0
+
+REL/m673DLL/ptmf.c:
+	.text       start:0x00013E80 end:0x00013FC8
+	.rodata     start:0x000007A8 end:0x000007B8
+
 REL/framework/new.cpp:
 	.text       start:0x00013FC8 end:0x00014190
 	.rodata     start:0x000007B8 end:0x000007F0
 	.data       start:0x000009E0 end:0x00000A08
+
+REL/m673DLL/pad_control.cpp:
+	.text       start:0x00014190 end:0x00014C4C
+	.rodata     start:0x000007F0 end:0x00000848
 
 REL/framework/camera.cpp:
 	.text       start:0x00014C4C end:0x00015458
@@ -55,6 +160,13 @@ REL/framework/game_object_man.cpp:
 	.rodata     start:0x00000A70 end:0x00000AB0
 	.data       start:0x00000B70 end:0x00000BF8
 
+REL/framework/memory_manager.cpp:
+	.text       start:0x0001EA54 end:0x0001EB38
+
+REL/framework/free.cpp:
+	.text       start:0x0001EB38 end:0x0001EDFC
+	.data       start:0x00000BF8 end:0x00000C18
+
 REL/framework/linknode.cpp:
 	.text       start:0x0001EDFC end:0x0001F7D8
 	.rodata     start:0x00000AB0 end:0x00000AF0
@@ -72,6 +184,10 @@ REL/framework/model.cpp:
 	.data       start:0x00000C50 end:0x00000C70
 	.bss        start:0x000000D8 end:0x000000E0
 
+REL/framework/model_motion.cpp:
+	.text       start:0x000217E4 end:0x000225B8
+	.data       start:0x00000C70 end:0x00000CF0
+
 REL/framework/mt19937.cpp:
 	.text       start:0x000225B8 end:0x000235B8
 	.rodata     start:0x00000B50 end:0x00000BC0
@@ -85,6 +201,10 @@ REL/framework/random.cpp:
 	.ctors      start:0x00000018 end:0x0000001C
 	.rodata     start:0x00000BF8 end:0x00000C38
 	.bss        start:0x000000E0 end:0x00000AA8
+
+REL/m673DLL/runtime.c:
+	.text       start:0x00023A2C end:0x00024470
+	.rodata     start:0x00000C38 end:0x00000C50
 
 REL/framework/startup.cpp:
 	.text       start:0x00024470 end:0x00024514

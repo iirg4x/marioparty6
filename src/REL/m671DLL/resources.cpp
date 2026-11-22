@@ -16,11 +16,12 @@ extern "C" {
 #include "REL/m671DLL/callback_receiver.h"
 #include "REL/m671DLL/particle_game_object.h"
 
+// Loads and locks the sprite animation for the given data number.
 ANIMDATA *fn_1_6B8C(u32 dataNumber)
 {
     ANIMDATA *animation;
 
-    animation = HuSprAnimRead(fn_80008DD0(dataNumber, 0x10000000, 2));
+    animation = HuSprAnimDataRead(dataNumber);
     HuSprAnimLock(animation);
     return animation;
 }

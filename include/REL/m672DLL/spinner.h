@@ -24,8 +24,8 @@ struct Spinner : OwnedModel, GameObject {
             ANIMDATA *texture, s32 count, s32 layer, s32 itemIndex);
     virtual void update();
     virtual ~Spinner();
-    void fn_1_8814(EventMessage *);
-    void fn_1_8820(EventMessage *);
+    void fn_1_8814(const EventPacket &);
+    void fn_1_8820(const EventPacket &);
     Vec fn_1_885C(Vec *source);
     EffectVector fn_1_88D0(s32 index);
     EventHandlerManager firstCallback;

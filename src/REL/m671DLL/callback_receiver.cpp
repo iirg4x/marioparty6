@@ -1,5 +1,8 @@
+#include "REL/framework/event_callback_registration.h"
 #include "REL/m671DLL/game_constants.h"
-#include "REL/m671DLL/member_callback.h"
+#include <functional>
+#include "REL/framework/event_hm.h"
+#include "REL/framework/event_callback_adapter_inline.h"
 #include "REL/m671DLL/position_table.h"
 #include "REL/framework/event.h"
 #include "REL/framework/random.h"
@@ -15,8 +18,6 @@
 #include "REL/framework/game_object.h"
 
 #include "REL/framework/minigame_core.h"
-
-#include "REL/framework/event_hm.h"
 
 #include "game/hu3d.h"
 
@@ -36,8 +37,6 @@
 #include "REL/framework/game_object2.h"
 
 #include <vector>
-
-#include <functional>
 
 static const u32 lbl_1_rodata_298[8] = {
     DATANUM(0x820000, 12), DATANUM(0x820000, 13),
@@ -62,21 +61,15 @@ Vec fn_1_88B0(MotionPosition *owner, const Vec *target, float height)
     return position.value;
 }
 
-typedef std::binder1st<std::mem_fun1_t<void, CallbackReceiver, EventMessage *> > CallbackInit;
-
 void fn_1_942C(CallbackReceiver *object, u32 motion, u8 enabled);
 
 void fn_1_930C(CallbackReceiver *);
 
-template<class Payload> void fn_1_B200(EventHandlerManager *owner, const Payload &payload, s32 key)
-{
-    owner->addHandler(new MemberCallback<CallbackReceiver>(payload), key);
-}
-
 CallbackReceiver::CallbackReceiver(unsigned int type, Vec *position, Vec *target)
     : GameObject(4), ModelMotion(type), MinigameSingleton<CallbackReceiver>(),
       position(*position), target(*target),
-      lowerModel(new OwnedModel(DATANUM(0x820000, 8))), upperModel(new OwnedModel(DATANUM(0x820000, 8))),
+      lowerModel(new OwnedModel(DATANUM(0x820000, 8))),
+      upperModel(new OwnedModel(DATANUM(0x820000, 8))),
       active(0), motion(-1), state(0), callbacks(0)
 {
     s16 lightId;
@@ -111,15 +104,15 @@ CallbackReceiver::CallbackReceiver(unsigned int type, Vec *position, Vec *target
     frameCount = 0;
     fn_1_930C(this);
 
-    fn_1_B200(&callbacks, std::bind1st(
+    registerEventCallback(&callbacks, std::bind1st(
         std::mem_fun(&CallbackReceiver::fn_1_A230), this), 0);
-    fn_1_B200(&callbacks, std::bind1st(
+    registerEventCallback(&callbacks, std::bind1st(
         std::mem_fun(&CallbackReceiver::fn_1_A28C), this), 2);
-    fn_1_B200(&callbacks, std::bind1st(
+    registerEventCallback(&callbacks, std::bind1st(
         std::mem_fun(&CallbackReceiver::fn_1_A3A4), this), 7);
-    fn_1_B200(&callbacks, std::bind1st(
+    registerEventCallback(&callbacks, std::bind1st(
         std::mem_fun(&CallbackReceiver::fn_1_A2E0), this), 5);
-    fn_1_B200(&callbacks, std::bind1st(
+    registerEventCallback(&callbacks, std::bind1st(
         std::mem_fun(&CallbackReceiver::fn_1_A530), this), 8);
 
     {
@@ -248,11 +241,18 @@ void fn_1_96E0(CallbackReceiver *camera, const Vec *position)
     fn_1_5824(camera->objects[camera->index], &offset);
 }
 
+// Updates the vertical movement and height during the falling transition.
+static inline void updateFallingHeight(CallbackReceiver *owner, f32 blend)
+{
+    owner->velocity.y = (f32)(100.0 * ((double)0.3f * -sin(M_PI * (f64)(180.0f * blend) / 180.0)));
+    owner->position.value.y = 400.0f + owner->velocity.y;
+}
+
+// Updates the falling object's height and the positions of its two models.
 static inline void updateFallingPosition(CallbackReceiver *owner, f32 blend)
 {
     Vec sourcePosition = static_cast<AnimationOwner *>(owner->objects[owner->index])->getPosition();
-    owner->velocity.y = (f32)(100.0 * ((double)0.3f * -sin(M_PI * (f64)(180.0f * blend) / 180.0)));
-    owner->position.value.y = 400.0f + owner->velocity.y;
+    updateFallingHeight(owner, blend);
     sourcePosition.x = owner->position.value.x;
     sourcePosition.z = owner->position.value.z;
     fn_1_963C(owner, &sourcePosition);
@@ -357,8 +357,7 @@ void CallbackReceiver::fn_1_9C7C()
         ratio = (f32)((f64) this->timer / 0.2);
         AnimationOwner *entry = static_cast<AnimationOwner *>(this->objects[this->index]);
         Vec position = getTransitionPosition(entry);
-        this->velocity.y = (f32)(100.0 * ((double)0.3f * -sin(M_PI * (f64)(180.0f * ratio) / 180.0)));
-        this->position.value.y = 400.0f + this->velocity.y;
+        updateFallingHeight(this, ratio);
         position.x = this->position.value.x;
         position.z = this->position.value.z;
         fn_1_963C(this, &position);
@@ -408,7 +407,7 @@ void CallbackReceiver::fn_1_9C7C()
     }
 }
 
-void CallbackReceiver::fn_1_A230(EventMessage *)
+void CallbackReceiver::fn_1_A230(const EventPacket &)
 {
     this->frameCount = 0;
     this->timer = 0.0f;
@@ -417,13 +416,13 @@ void CallbackReceiver::fn_1_A230(EventMessage *)
     }
 }
 
-void CallbackReceiver::fn_1_A28C(EventMessage *)
+void CallbackReceiver::fn_1_A28C(const EventPacket &)
 {
     this->timer = 0.0f;
     setState(&CallbackReceiver::fn_1_9784);
 }
 
-void CallbackReceiver::fn_1_A2E0(EventMessage *)
+void CallbackReceiver::fn_1_A2E0(const EventPacket &)
 {
 
     this->state = 1;
@@ -434,11 +433,11 @@ void CallbackReceiver::fn_1_A2E0(EventMessage *)
 }
 
 /* Selects the victory motion and its dialogue based on the result state. */
-void CallbackReceiver::fn_1_A3A4(EventMessage *input)
+void CallbackReceiver::fn_1_A3A4(const EventPacket &input)
 {
     u8 *state;
 
-    state = static_cast<u8 *>(input->context);
+    state = static_cast<u8 *>(input.context);
     if (*state == 1) {
         changeMotion(DATANUM(0x820000, 18), 0);
         soundPlayAt(1, 0x3CF, &this->position.value);
@@ -453,7 +452,7 @@ void CallbackReceiver::fn_1_A3A4(EventMessage *input)
     setState(&CallbackReceiver::fn_1_94C0);
 }
 
-void CallbackReceiver::fn_1_A530(EventMessage *)
+void CallbackReceiver::fn_1_A530(const EventPacket &)
 {
 
     if (this->motion == DATANUM(0x820000, 12)) {
@@ -583,4 +582,3 @@ void CallbackReceiver::fn_1_B09C()
     changeMotion(DATANUM(0x820000, 15), 0);
     setState(&CallbackReceiver::fn_1_9784);
 }
-

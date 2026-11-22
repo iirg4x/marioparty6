@@ -29,7 +29,7 @@ ANIMDATA *fn_1_672C(u32 dataNumber)
 {
     ANIMDATA *animation;
 
-    animation = HuSprAnimRead(fn_80008DD0(dataNumber, 0x10000000, 2));
+    animation = HuSprAnimDataRead(dataNumber);
     HuSprAnimLock(animation);
     return animation;
 }

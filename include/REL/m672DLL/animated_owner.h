@@ -10,7 +10,7 @@
 #include "REL/framework/game_object.h"
 
 struct AnimatedOwner;
-typedef void (AnimatedOwner::*AnimatedOwnerHandler)(EventMessage *);
+typedef void (AnimatedOwner::*AnimatedOwnerHandler)(const EventPacket &);
 #include "REL/m672DLL/member_callback.h"
 
 #include "REL/framework/singleton.h"
@@ -33,15 +33,15 @@ struct AnimatedOwner : GameObject, ModelMotion, AnimatedOwnerSingleton {
     virtual ~AnimatedOwner();
     virtual void update();
     void fn_1_9AFC(unsigned int, unsigned char);
-    void fn_1_9F7C(EventMessage *);
-    void fn_1_9E08(EventMessage *);
+    void fn_1_9F7C(const EventPacket &);
+    void fn_1_9E08(const EventPacket &);
     void fn_1_9B90();
     void fn_1_9C94();
     void fn_1_9DF8();
-    void fn_1_9DFC(EventMessage *);
-    void fn_1_9E00(EventMessage *);
-    void fn_1_9E04(EventMessage *);
-    void fn_1_9F38(EventMessage *);
+    void fn_1_9DFC(const EventPacket &);
+    void fn_1_9E00(const EventPacket &);
+    void fn_1_9E04(const EventPacket &);
+    void fn_1_9F38(const EventPacket &);
 };
 #endif
 

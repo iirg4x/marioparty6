@@ -1,11 +1,8 @@
 #ifndef REL_M671DLL_CONTROL_H
 #define REL_M671DLL_CONTROL_H
+#include "REL/framework/stick_state.h"
 #include "REL/m671DLL/tail_types.h"
 struct Player;
-struct StickState {
-    f32 x, y, magnitude;
-    u32 pressedButtons, heldButtons;
-};
 class Controller {
 public:
     explicit Controller(Player *owner) : player(owner), angleWork(1, 0.0f) {}
@@ -15,7 +12,7 @@ public:
     StickState stick;
     u8 unknown18[4]; /* No code names this field. */
     Player *player;
-    AngleWork angleWork;
+    PadControl angleWork;
 };
 void fn_1_13C8(Controller *state);
 class HumanControl : public Controller {
@@ -30,7 +27,7 @@ public:
     ComputerControl(Player *player, int option);
     virtual ~ComputerControl();
     virtual void update(StickState *state);
-    s32 option;
+    s32 unk44; /* The game's code never reads this field. */
     f32 movementParameters[5];
     Vec movement;
     f32 movementScale;

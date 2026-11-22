@@ -12,13 +12,19 @@ extern "C" {
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
+extern "C" {
 #include "game/gamemes.h"
+}
 #include "game/hsfex.h"
 #include "game/data.h"
+extern "C" {
 #include "game/gamework.h"
+}
 #include "game/memory.h"
 #include "game/mg/seqman.h"
+extern "C" {
 #include "game/mg/timer.h"
+}
 #include "game/mg/score.h"
 #include "game/pad.h"
 #include "game/frand.h"
@@ -45,7 +51,8 @@ extern "C" {
 #include "game/animdata.h"
 }
 
-#include "REL/m672DLL/member_handler.h"
+#include "REL/m672DLL/member_callback.h"
+#include "REL/framework/event_callback_registration.h"
 
 // Interpolates from start toward end along the shortest wrapped degree difference.
 f32 fn_1_BD40(f32 start, f32 end, f32 t)
@@ -95,14 +102,14 @@ Player::Player(int playerNo, const EffectVector *position)
     MGACTOR_PARAM actorParam;
     EffectVector floorPosition;
     Resources *resources;
-    registerMemberHandler<Player>(&this->callbacks,
-        bindMember(std::mem_fun(&Player::fn_1_EB5C), this), 0);
-    registerMemberHandler<Player>(&this->callbacks,
-        bindMember(std::mem_fun(&Player::fn_1_EBF4), this), 2);
-    registerMemberHandler<Player>(&this->callbacks,
-        bindMember(std::mem_fun(&Player::fn_1_EC80), this), 3);
-    registerMemberHandler<Player>(&this->callbacks,
-        bindMember(std::mem_fun(&Player::fn_1_ED84), this), 4);
+    registerEventCallback(&this->callbacks,
+        std::bind1st(std::mem_fun(&Player::fn_1_EB5C), this), 0);
+    registerEventCallback(&this->callbacks,
+        std::bind1st(std::mem_fun(&Player::fn_1_EBF4), this), 2);
+    registerEventCallback(&this->callbacks,
+        std::bind1st(std::mem_fun(&Player::fn_1_EC80), this), 3);
+    registerEventCallback(&this->callbacks,
+        std::bind1st(std::mem_fun(&Player::fn_1_ED84), this), 4);
     this->controller.reset(fn_1_BE9C(this, playerNo));
     actorParam.height = 150.0f;
     actorParam.radius = 60.000004f;
@@ -271,7 +278,7 @@ void Player::fn_1_D120()
         return;
     }
 
-    fade = 0.0f;
+    unk4C = 0.0f;
     phase = 0;
     fn_80086E3C(player);
     fn_1_EA98(this, 2, 1);
@@ -371,12 +378,20 @@ void Player::fn_1_D8CC()
         materialColors.push_back(color);
     }
 }
+// Gets the model's material array and its length.
+static inline void getModelMaterials(HU3D_MODEL *model, HSF_MATERIAL *&material, s32 &count)
+{
+    material = model->hsf->material;
+    count = model->hsf->materialNum;
+}
+
 // Restores saved material colors and sets all model ambient channels to one.
 void Player::fn_1_D97C()
 {
     HU3D_MODEL *model = &lbl_802C01C8[modelId];
-    HSF_MATERIAL *material = model->hsf->material;
-    s32 materialCount = model->hsf->materialNum;
+    HSF_MATERIAL *material;
+    s32 materialCount;
+    getModelMaterials(model, material, materialCount);
     s32 materialIndex = 0;
 
     for (; materialIndex < materialCount; materialIndex++, material++) {
@@ -399,8 +414,7 @@ void Player::fn_1_DA64(f32 redScale, f32 greenScale, f32 blueScale)
     s32 materialIndex;
 
     model = &lbl_802C01C8[modelId];
-    material = model->hsf->material;
-    materialCount = model->hsf->materialNum;
+    getModelMaterials(model, material, materialCount);
     materialIndex = 0;
 
     for (; materialIndex < materialCount; materialIndex++, material++) {
@@ -614,7 +628,7 @@ void fn_1_EA98(Player *object, u32 motionId, u8 loop)
     }
 }
 // Resets entrance state/timing, chooses a random delay, and selects the entrance update.
-void Player::fn_1_EB5C(EventMessage *)
+void Player::fn_1_EB5C(const EventPacket &)
 {
 
     state = 0;
@@ -623,7 +637,7 @@ void Player::fn_1_EB5C(EventMessage *)
     setUpdate(&Player::fn_1_DC04);
 }
 // Enables player input, resets the controller, and selects the collision update.
-void Player::fn_1_EBF4(EventMessage *)
+void Player::fn_1_EBF4(const EventPacket &)
 {
 
     fn_80087168(player, 1);
@@ -631,7 +645,7 @@ void Player::fn_1_EBF4(EventMessage *)
     setUpdate(&Player::fn_1_E29C);
 }
 // Stops actor motion and, when inactive, starts motion 4 and the collision search.
-void Player::fn_1_EC80(EventMessage *)
+void Player::fn_1_EC80(const EventPacket &)
 {
 
     fn_80086E3C(player);
@@ -643,7 +657,7 @@ void Player::fn_1_EC80(EventMessage *)
     }
 }
 // Stops actor motion and, when active, plays motion 7, records the winner, and idles.
-void Player::fn_1_ED84(EventMessage *)
+void Player::fn_1_ED84(const EventPacket &)
 {
 
     fn_80086E3C(player);

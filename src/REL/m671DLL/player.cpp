@@ -1,4 +1,7 @@
-#include "REL/m671DLL/member_callback.h"
+#include "REL/framework/event_callback_registration.h"
+#include <functional>
+#include "REL/framework/event_hm.h"
+#include "REL/framework/event_callback_adapter_inline.h"
 #include "REL/m671DLL/position_table.h"
 #include "REL/framework/phase_durations.h"
 #include "REL/framework/sound.h"
@@ -47,12 +50,6 @@ Controller *fn_1_C4DC(Player *player, s32 playerIndex)
     return new HumanControl(player);
 }
 
-template <class Owner, class Payload>
-void addCallback(EventHandlerManager *owner, const Payload &payload, int key)
-{
-    owner->addHandler(new MemberCallback<Owner>(payload), key);
-}
-
 extern const unsigned long MotionResources[2] = {DATANUM(0x820000, 6), DATANUM(0x820000, 7)};
 
 struct PlayerPlacement {
@@ -65,19 +62,20 @@ struct PlayerPlacement {
 
 Player::Player(int playerNo)
     : GameObject(0), playerNo(playerNo), finished(0), controller(0), collision(60.0f),
-      motionEnabled(1), initializedByte(0), updateCount(0), callbacks(0), secondaryCallbacks(1),
+      motionEnabled(1), unk6C(0), updateCount(0), callbacks(0), secondaryCallbacks(1),
       motionResource(-1), motionIds(), effectMotion(-1)
 {
     MGACTOR_PARAM actorParam;
     PlayerPlacement *position;
 
-    addCallback<Player>(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_DF34), this), 1);
-    addCallback<Player>(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_DEF0), this), 0);
-    addCallback<Player>(&callbacks, std::bind1st(std::mem_fun(&Player::onStart), this), 3);
-    addCallback<Player>(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_E09C), this), 5);
-    addCallback<Player>(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_E174), this), 6);
-    addCallback<Player>(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_E268), this), 7);
-    addCallback<Player>(&secondaryCallbacks, std::bind1st(std::mem_fun(&Player::fn_1_E3D8), this), 0);
+    registerEventCallback(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_DF34), this), 1);
+    registerEventCallback(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_DEF0), this), 0);
+    registerEventCallback(&callbacks, std::bind1st(std::mem_fun(&Player::onStart), this), 3);
+    registerEventCallback(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_E09C), this), 5);
+    registerEventCallback(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_E174), this), 6);
+    registerEventCallback(&callbacks, std::bind1st(std::mem_fun(&Player::fn_1_E268), this), 7);
+    registerEventCallback(&secondaryCallbacks,
+        std::bind1st(std::mem_fun(&Player::fn_1_E3D8), this), 0);
     controller.reset(fn_1_C4DC(this, playerNo));
     actorParam.height = 150.0f;
     actorParam.radius = 60.000004f;
@@ -121,11 +119,11 @@ Player::Player(int playerNo)
         {450.0f, -116.0f, 500.0f, 244.0f, 3.0f},
     };
     position = &placements[this->playerNo];
-    effectHeight = position->height;
+    unk78 = position->height;
     effectAngle = position->angle;
     effectRadius = position->radius;
-    effectParameter3 = position->perPlayerEffectValue;
-    effectParameter4 = position->commonEffectValue;
+    unk84 = position->perPlayerEffectValue;
+    unk88 = position->commonEffectValue;
     effect = new ModelMotion(DATANUM(0x820000, 5));
     effect->setRotationY(90.0f + effectAngle);
     Vec effectPosition = {0.0f, 0.0f, 0.0f};
@@ -407,12 +405,12 @@ void Player::fn_1_DE4C(unsigned long motion, unsigned char enabled)
     }
 }
 
-void Player::fn_1_DEF0(EventMessage *)
+void Player::fn_1_DEF0(const EventPacket &)
 {
     setUpdate(&Player::fn_1_D3A4);
 }
 
-void Player::fn_1_DF34(EventMessage *)
+void Player::fn_1_DF34(const EventPacket &)
 {
     fn_8006A030((s16)playerNo, 0x2D, 4, 4);
     fn_1_DD88(2, 0);
@@ -420,13 +418,13 @@ void Player::fn_1_DF34(EventMessage *)
 }
 
 /* Sets the initial callback and resets the player control attribute. */
-void Player::onStart(EventMessage *)
+void Player::onStart(const EventPacket &)
 {
     setUpdate(&Player::fn_1_D434);
     fn_80087168(player, (1 << 0));
 }
 
-void Player::fn_1_E09C(EventMessage *)
+void Player::fn_1_E09C(const EventPacket &)
 {
     collision.active = 0;
     fn_8008697C(player, &collision.value);
@@ -436,7 +434,7 @@ void Player::fn_1_E09C(EventMessage *)
     }
 }
 
-void Player::fn_1_E174(EventMessage *)
+void Player::fn_1_E174(const EventPacket &)
 {
     if (motionEnabled) {
         setUpdate(&Player::fn_1_DA70);
@@ -445,7 +443,7 @@ void Player::fn_1_E174(EventMessage *)
 }
 
 /* Resets a departing player and selects its idle motion from the current state. */
-void Player::fn_1_E268(EventMessage *)
+void Player::fn_1_E268(const EventPacket &)
 {
     setUpdate(&Player::fn_1_DC6C);
     fn_80086E3C(player);
@@ -457,7 +455,7 @@ void Player::fn_1_E268(EventMessage *)
     }
 }
 
-void Player::fn_1_E3D8(EventMessage *)
+void Player::fn_1_E3D8(const EventPacket &)
 {
     ModelMotion *model;
     short completedMotionId;

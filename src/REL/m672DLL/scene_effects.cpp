@@ -36,15 +36,18 @@ extern "C" {
 
 #include "game/main.h"
 
+extern "C" {
 #include "game/object.h"
+}
 
+extern "C" {
 #include "game/gamework.h"
+}
 
 #include "game/wipe.h"
 
-#include "game/mg/timer.h"
-
 extern "C" {
+#include "game/mg/timer.h"
 #include "game/data.h"
 }
 
@@ -69,7 +72,8 @@ extern "C" {
 #include "REL/m672DLL/hanging_cage.h"
 #include "REL/m672DLL/particle_groups.h"
 
-#include "REL/m672DLL/member_handler.h"
+#include "REL/m672DLL/member_callback.h"
+#include "REL/framework/event_callback_registration.h"
 
 // Initializes the model state, position, child callbacks, and idle update callback.
 SceneEffect::SceneEffect(int firstMode, Vec *position)
@@ -79,10 +83,10 @@ SceneEffect::SceneEffect(int firstMode, Vec *position)
     setLayer(1);
     setPosition(position);
     setAttribute(((1 << 30) | (1 << 1)));
-    registerMemberHandler<SceneEffect>(&child,
-             bindMember(std::mem_fun(&SceneEffect::fn_1_AF34), this), 1);
-    registerMemberHandler<SceneEffect>(&child,
-             bindMember(std::mem_fun(&SceneEffect::fn_1_AF78), this), 3);
+    registerEventCallback(&child,
+             std::bind1st(std::mem_fun(&SceneEffect::fn_1_AF34), this), 1);
+    registerEventCallback(&child,
+             std::bind1st(std::mem_fun(&SceneEffect::fn_1_AF78), this), 3);
     setUpdate(&SceneEffect::fn_1_B050);
 }
 
@@ -98,7 +102,7 @@ void SceneEffect::update()
 }
 
 // Selects the timed scene effect update callback.
-void SceneEffect::fn_1_AF34(EventMessage *)
+void SceneEffect::fn_1_AF34(const EventPacket &)
 {
     setUpdate(&SceneEffect::fn_1_B054);
 }
@@ -106,7 +110,7 @@ void SceneEffect::fn_1_AF34(EventMessage *)
 extern "C" const EffectVector lbl_1_rodata_4A4 = {{0.0f, 0.0f, -2900.0f}};
 
 // Adjusts model motion, plays the associated sound, and selects the particle update callback.
-void SceneEffect::fn_1_AF78(EventMessage *)
+void SceneEffect::fn_1_AF78(const EventPacket &)
 {
     EffectVector position;
 

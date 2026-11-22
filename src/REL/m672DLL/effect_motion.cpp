@@ -19,7 +19,8 @@ extern "C" {
 #include "REL/m672DLL/collision_object.h"
 #include "math.h"
 
-#include "REL/m672DLL/member_handler.h"
+#include "REL/m672DLL/member_callback.h"
+#include "REL/framework/event_callback_registration.h"
 
 // Initializes motion/output state, positions the output, and registers two event callbacks.
 Spinner::Spinner(s32 setupMode, EffectVector position, ANIMDATA *, s32, s32, ANIMDATA *, s32,
@@ -39,10 +40,10 @@ Spinner::Spinner(s32 setupMode, EffectVector position, ANIMDATA *, s32, s32, ANI
     setShadow();
     setLayer(3);
     setPosition(&motion.position.value);
-    registerMemberHandler<Spinner>(&firstCallback,
-        bindMember(std::mem_fun(&Spinner::fn_1_8814), this), 3);
-    registerMemberHandler<Spinner>(&secondCallback,
-        bindMember(std::mem_fun(&Spinner::fn_1_8820), this), 4);
+    registerEventCallback(&firstCallback,
+        std::bind1st(std::mem_fun(&Spinner::fn_1_8814), this), 3);
+    registerEventCallback(&secondCallback,
+        std::bind1st(std::mem_fun(&Spinner::fn_1_8820), this), 4);
 }
 
 // Performs no additional work when the spinner is destroyed.
@@ -105,12 +106,12 @@ void Spinner::update()
 }
 
 // Enables the spinner update path.
-void Spinner::fn_1_8814(EventMessage *) {
+void Spinner::fn_1_8814(const EventPacket &) {
     active = 1;
 }
 
 // Starts the associated colliding-particle output.
-void Spinner::fn_1_8820(EventMessage *) { fn_1_3350(output.get()); }
+void Spinner::fn_1_8820(const EventPacket &) { fn_1_3350(output.get()); }
 
 // Adds a fixed vector to source and returns the resulting offset.
 Vec Spinner::fn_1_885C(Vec *source) {

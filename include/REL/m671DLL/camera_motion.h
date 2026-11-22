@@ -19,7 +19,7 @@ typedef struct CameraWork {
     CameraVector cameraTarget;
     u32 unknown_03C[3]; /* No code names this field. */
     u32 unknown48;
-    s8 enabled;
+    s8 unk4C; // Copied as part of CameraWork.
 
     void setPosition(const Vec &value) {
         frame.position.x = value.x;
@@ -40,7 +40,7 @@ typedef struct CameraWork {
 } CameraWork;
 struct CameraOwner;
 typedef void (CameraOwner::*CameraCallback)();
-typedef void (CameraOwner::*CameraEvent)(EventMessage *);
+typedef void (CameraOwner::*CameraEvent)(const EventPacket &);
 typedef struct CameraOwner : GameObject {
     CameraOwner();
     virtual ~CameraOwner();
@@ -52,7 +52,7 @@ typedef struct CameraOwner : GameObject {
     EventHandlerManager callbackState;
     CameraCallback updateCallback;
     void setUpdate(CameraCallback callback) { updateCallback = callback; }
-    void fn_1_BA5C(EventMessage *);
+    void fn_1_BA5C(const EventPacket &);
     void fn_1_B81C();
     void fn_1_B820();
 } CameraOwner;

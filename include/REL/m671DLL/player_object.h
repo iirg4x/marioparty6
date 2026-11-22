@@ -12,7 +12,7 @@
 #include "game/mg/actman.h"
 
 struct Player;
-typedef void (Player::*PlayerMethod)(EventMessage *);
+typedef void (Player::*PlayerMethod)(const EventPacket &);
 typedef void (Player::*PlayerUpdate)();
 
 /* What drives a player: the pad or the computer. */
@@ -42,13 +42,13 @@ struct Player : GameObject {
     void fn_1_DD14(unsigned long dataNum);
     void fn_1_DD88(unsigned long motion, unsigned char loop);
     void fn_1_DE4C(unsigned long motion, unsigned char enabled);
-    void fn_1_DEF0(EventMessage *);
-    void fn_1_DF34(EventMessage *);
-    void onStart(EventMessage *);
-    void fn_1_E09C(EventMessage *);
-    void fn_1_E174(EventMessage *);
-    void fn_1_E268(EventMessage *);
-    void fn_1_E3D8(EventMessage *);
+    void fn_1_DEF0(const EventPacket &);
+    void fn_1_DF34(const EventPacket &);
+    void onStart(const EventPacket &);
+    void fn_1_E09C(const EventPacket &);
+    void fn_1_E174(const EventPacket &);
+    void fn_1_E268(const EventPacket &);
+    void fn_1_E3D8(const EventPacket &);
 
     short modelId;
     short charNo;
@@ -62,14 +62,14 @@ struct Player : GameObject {
     unsigned char isActive() { return motionEnabled; }
     Vec movementVelocity;
     Vec unknown60;
-    unsigned char initializedByte; // The game never reads this value.
+    unsigned char unk6C; /* The game's code never reads this field. */
     ModelMotion *effect;
     int updateCount;
-    float effectHeight;
+    float unk78; /* The game's code never reads this field. */
     float effectAngle;
     float effectRadius;
-    float effectParameter3;
-    float effectParameter4;
+    float unk84; /* The game's code never reads this field. */
+    float unk88; /* The game's code never reads this field. */
     int soundId;
     EventHandlerManager callbacks;
     EventHandlerManager secondaryCallbacks;

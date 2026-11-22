@@ -8,7 +8,7 @@
 
 struct SceneEffect;
 
-typedef void (SceneEffect::*SceneEffectHandler)(EventMessage *);
+typedef void (SceneEffect::*SceneEffectHandler)(const EventPacket &);
 
 #include "REL/m672DLL/member_callback.h"
 
@@ -22,8 +22,8 @@ struct SceneEffect : GameObject, OwnedModel {
     SceneEffectUpdate updateCallback;
     // Select the update callback.
     void setUpdate(SceneEffectUpdate callback) { updateCallback = callback; }
-    void fn_1_AF34(EventMessage *);
-    void fn_1_AF78(EventMessage *);
+    void fn_1_AF34(const EventPacket &);
+    void fn_1_AF78(const EventPacket &);
     void fn_1_B050();
     void fn_1_B054();
     void fn_1_B140();

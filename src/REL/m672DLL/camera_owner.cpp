@@ -16,7 +16,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "REL/m672DLL/member_handler.h"
+#include "REL/m672DLL/member_callback.h"
+#include "REL/framework/event_callback_registration.h"
 
 /* No code in this module reads these constants; their values suggest three vectors. */
 extern const double lbl_1_rodata_438 = 60.0;
@@ -26,7 +27,7 @@ extern const Vec lbl_1_rodata_458 = {0.0f, 1.0f, 0.0f};
 
 #include "REL/m672DLL/camera_owner.h"
 // Return the vector after checking that the receiver exists.
-inline const Vec &EffectVector::getValue() const { ASSERT(this != 0); return value; }
+inline const Vec &CameraVector::getValue() const { ASSERT(this != 0); return value; }
 // Create the camera and initialize its frame and event callback.
 CameraOwner::CameraOwner()
     : GameObject(4), model(DATANUM(0x830000, 3)), callbackState(1)
@@ -60,8 +61,8 @@ CameraOwner::CameraOwner()
     this->cameraCopy = this->camera;
     this->fade = 0.0f;
 
-    registerMemberHandler<CameraOwner>(&this->callbackState,
-             bindMember(std::mem_fun(&CameraOwner::fn_1_A924), this), 0);
+    registerEventCallback(&this->callbackState,
+             std::bind1st(std::mem_fun(&CameraOwner::fn_1_A924), this), 0);
     this->setUpdate(&CameraOwner::fn_1_A6E4);
 }
 // Run the selected camera update and apply the frame to the HUD camera.
@@ -101,7 +102,7 @@ void CameraOwner::fn_1_A6E8()
     }
 }
 // Start the fading camera shake.
-void CameraOwner::fn_1_A924(EventMessage *)
+void CameraOwner::fn_1_A924(const EventPacket &)
 {
     fade = 1.0f;
     setUpdate(&CameraOwner::fn_1_A6E8);

@@ -31,8 +31,8 @@ struct AnimationOwner : GameObject, OwnedModel {
     std::auto_ptr<AttributeOwner> attribute;
     EventHandlerManager callbacks;
     void (AnimationOwner::*callback)();
-    void fn_1_62E8(EventMessage *);
-    void fn_1_634C(EventMessage *);
+    void fn_1_62E8(const EventPacket &);
+    void fn_1_634C(const EventPacket &);
     Vec getPosition() { return position.value; }
     void fn_1_6008();
     void fn_1_600C();

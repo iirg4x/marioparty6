@@ -2,11 +2,14 @@
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
 #include "game/animdata.h"
+extern "C" {
 #include "game/sprite.h"
+}
 
 #include <math.h>
 
 #include "REL/framework/game_object2.h"
+#include "REL/m671DLL/sprite_vertex_format.h"
 
 extern "C" {
 #include "game/sprput.h"
@@ -57,6 +60,7 @@ void Sprite::update()
     fn_1_C370(this);
 }
 
+// Draws a textured quad with additive blending.
 void Sprite::draw(Mtx *matrix)
 {
     GXLoadPosMtxImm(*matrix, GX_PNMTX0);
@@ -81,17 +85,12 @@ void Sprite::draw(Mtx *matrix)
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_4, GX_TRUE,
                     GX_TEVPREV);
     GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE,
-                      GX_PTIDENTITY);
+    GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     GXSetNumChans(1);
     GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE,
                   GX_AF_NONE);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    setSpriteVertexFormat();
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition3f32(-200.0f, 400.0f, 100.0f);
     GXTexCoord2f32(textureS[0], textureT[0]);

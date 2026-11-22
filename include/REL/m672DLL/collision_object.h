@@ -41,13 +41,13 @@ struct EffectPoint : EffectVector {
 class CollisionShape {
 public:
     EffectVector position;
-    int unidentifiedFirst; // Initialized to zero; its meaning is unknown.
-    int unidentifiedSecond; // Initialized to -1; its meaning is unknown.
-    int unk18; /* No code names this field. */
+    int unk_0C; /* The game's code never reads this field. */
+    int unk_10; /* The game's code never reads this field. */
+    int unk_14; /* No code names this field. */
     int state;
     unsigned char active;
     // Initialize the collision state and activation flag.
-    CollisionShape() : unidentifiedFirst(0), unidentifiedSecond(-1), state(-1), active(0) {}
+    CollisionShape() : unk_0C(0), unk_10(-1), state(-1), active(0) {}
     // Destroy the collision shape.
     virtual ~CollisionShape() {}
     // Return the collision position.
