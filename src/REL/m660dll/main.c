@@ -31,120 +31,36 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 #include "REL/m660dll/particles.h"
+#include "REL/particle_parameters.h"
+#include "REL/m660dll/effects.h"
 #include "dolphin/os.h"
 #include "datanum/charmot.h"
 #include <string.h>
+#include "REL/m660dll.h"
 
-#define M660_EFFECT_MEM_GROUP 0x10000000
 
-typedef struct M660DataNumbers {
-    u32 dataIds[4];
-} M660DataNumbers;
 
-typedef struct M660ParticleValues {
-    s16 effectValues[4];
-} M660ParticleValues;
-
-typedef struct M660ParticleHooks {
-    HU3D_PARTICLE_HOOK updateHooks[4];
-} M660ParticleHooks;
-
-typedef struct M660EffectConfig_42E0 {
-    s16 particleCount;
-    s16 alpha;
-    f32 opacityChange;
-    f32 horizontalRadius;
-    f32 spawnRadiusLimit;
-    f32 spawnHeight;
-    f32 baseParticleScale;
-    s16 alternateAlpha;
-    s16 unused1A;
-    f32 forwardDistance;
-    f32 sideDistance;
-    f32 alternateRadiusLimit;
-    f32 alternateParticleScale;
-} M660EffectConfig_42E0;
-
-typedef struct M660EffectConfigs_42E0 {
-    M660EffectConfig_42E0 effects[3];
-} M660EffectConfigs_42E0;
-
-typedef struct M660VectorValues_4F64 {
-    f32 yPositions[3];
-} M660VectorValues_4F64;
-
-typedef struct M660LayerValues_4F64 {
-    s32 renderLayers[3];
-} M660LayerValues_4F64;
-
-typedef struct ParticleVectorValues_55DC {
-    f32 variantValues[3];
-} ParticleVectorValues_55DC;
-
-typedef struct VoiceSoundIds_601C {
-    s32 soundIds[14];
-} VoiceSoundIds_601C;
 extern int printf();
-extern double sin(double);
-extern double cos(double);
+void MgTimerDispOff(MGTIMER *timer);
 void fn_1_1C1C(s16 cameraIndex);
 void fn_1_1C50(void);
 void fn_1_1E24(void);
 void fn_1_2090(void);
 void fn_1_21A0(void);
-void fn_1_24C4(void);
-void fn_1_2B34(void);
-s16 fn_1_2E80(f32 *value, f32 step, f32 start, f32 end);
-MGTIMER *fn_1_2FA0(int type,int duration,int end,float x,float y);
-void fn_1_3014(MGTIMER *timer);
-void fn_1_3040(MGTIMER *timer);
-void fn_1_3068(MGTIMER *timer);
 void fn_1_30A0(s16 controller, s16 minimum, s16 maximum);
 void fn_1_3338(s16 controllerIndex, s16 subjectIndex);
-s16 fn_1_3AA4(s16 modelIndex, s16 lightId);
 s32 fn_1_3BBC(HU3D_MODELID modelId, HU3D_LIGHTID lightId);
-f32 fn_1_3C54(f32 range);
-void fn_1_3CCC(void);
-void fn_1_4004(Vec *origin);
-void fn_1_42E0(M660Model *origin, s16 effectIndex);
-void fn_1_4B38(M660Model *origin);
-void fn_1_4F64(Vec *origin, s16 effectIndex);
-void fn_1_55DC(s16 objectIndex, s16 variant);
 s16 fn_1_57F8(s16 modelNumber, s16 ownerIndex, Vec position, Vec velocity,
-              f32 initialScale, s16 state, M660ParticleParameters *parameters);
+              f32 initialScale, s16 state, const ParticleParameters *parameters);
 void fn_1_59F8(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 void fn_1_5E70(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_601C(M660Player *player, s16 direction);
 void fn_1_64D0(void);
 void fn_1_6614(void);
-void fn_1_6678(void);
-void fn_1_66C8(s16 streamSlot, s16 fadeFrames);
 void fn_1_6774(s16 streamSelector);
-void fn_1_67D4(s16 slot, s16 mode, Vec *position);
-
-/* Module startup, sequence callbacks, player input, models and cameras. */
-
-typedef struct M660PlayerLookup { s16 playerByGroup[2]; } M660PlayerLookup;
-typedef struct M660PlayerPair { Vec playerVectors[2]; } M660PlayerPair;
-typedef struct M660CameraPresetTable { f32 cameraSettings[4][13]; } M660CameraPresetTable;
-typedef struct M660CameraIds { s16 cameraMasks[4]; } M660CameraIds;
 
 extern s16 lbl_802C0278;
 extern HuVecF lbl_80266A4C, lbl_80266A40;
-extern f32 lbl_802C028C;
 void fn_1_176C(s16 cameraIndex);
-void fn_1_1C1C(s16 cameraIndex);
-void fn_1_2090(void);
-void fn_1_A3E4(void);
-void fn_1_64D0(void);
-s32 fn_1_A9B0(void);
-s32 fn_1_A9F0(void);
-s32 fn_1_6F58(void);
-s32 fn_1_D29C(void);
-s32 fn_1_D2E8(void);
-s32 fn_1_D328(void);
-s32 fn_1_D57C(void);
-s32 fn_1_D5A4(void);
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -202,20 +118,20 @@ void fn_1_118(s16 mode, s16 frameNo)
 {
     s16 nightFlag;
 
-    memset(&lbl_1_bss_2530, 0, 328);
-    memset(&lbl_1_bss_24F4, 0, 60);
-    memset(&lbl_1_bss_24A4, 0, 80);
-    memset(&lbl_1_bss_2484, 0, 32);
-    memset(lbl_1_bss_60C, 0, 7800);
-    memset(lbl_1_bss_544, 0, 200);
-    memset(lbl_1_bss_2DC, 0, 616);
-    memset(&lbl_1_bss_1F4, 0, 232);
-    memset(&lbl_1_bss_1E8, 0, 12);
-    memset(lbl_1_bss_80, 0, 360);
-    memset(&lbl_1_bss_38, 0, 72);
-    memset(lbl_1_bss_0, 0, 56);
+    memset(&lbl_1_bss_2530, 0, sizeof(lbl_1_bss_2530));
+    memset(&lbl_1_bss_24F4, 0, sizeof(lbl_1_bss_24F4));
+    memset(&lbl_1_bss_24A4, 0, sizeof(lbl_1_bss_24A4));
+    memset(&lbl_1_bss_2484, 0, sizeof(lbl_1_bss_2484));
+    memset(lbl_1_bss_60C, 0, sizeof(lbl_1_bss_60C));
+    memset(lbl_1_bss_544, 0, sizeof(lbl_1_bss_544));
+    memset(lbl_1_bss_2DC, 0, sizeof(lbl_1_bss_2DC));
+    memset(&lbl_1_bss_1F4, 0, sizeof(lbl_1_bss_1F4));
+    memset(&lbl_1_bss_1E8, 0, sizeof(lbl_1_bss_1E8));
+    memset(lbl_1_bss_80, 0, sizeof(lbl_1_bss_80));
+    memset(&lbl_1_bss_38, 0, sizeof(lbl_1_bss_38));
+    memset(lbl_1_bss_0, 0, sizeof(lbl_1_bss_0));
     nightFlag = lbl_802C0278;
-    lbl_1_bss_1F4.night = nightFlag;
+    lbl_1_bss_1F4.unk70 = nightFlag;
     fn_1_176C(0);
     fn_1_2090();
     Hu3DBGColorSet(0, 0, 0);
@@ -224,46 +140,55 @@ void fn_1_118(s16 mode, s16 frameNo)
     fn_80071A9C();
 }
 
+/* Advances the sequence when the opening scene completes. */
 void fn_1_26C(s16 mode, s16 frameNo)
 {
     if (fn_1_A9B0() != 0) fn_80071A9C();
 }
 
+/* Continues opening-scene updates during the next sequence phase. */
 void fn_1_298(s16 mode, s16 frameNo)
 {
     if (fn_1_A9F0() != 0) fn_80071A9C();
 }
 
+/* Runs a gameplay tick and advances the sequence when the round ends. */
 void fn_1_2C4(s16 mode, s16 frameNo)
 {
     if (fn_1_6F58() != 0) fn_80071A9C();
 }
 
+/* Fades the stream and updates the result scene; fn_1_D29C always returns zero. */
 void fn_1_2F0(s16 mode, s16 frameNo)
 {
     if (fn_1_D29C() != 0) fn_80071A9C();
 }
 
+/* Updates the result scene and advances when its controller signals completion. */
 void fn_1_31C(s16 mode, s16 frameNo)
 {
     if (fn_1_D2E8() != 0) fn_80071A9C();
 }
 
+/* Starts the result motions once, then updates the scene; fn_1_D328 always returns zero. */
 void fn_1_348(s16 mode, s16 frameNo)
 {
     if (fn_1_D328() != 0) fn_80071A9C();
 }
 
+/* Updates the result scene and the stage; fn_1_D57C always returns zero. */
 void fn_1_374(s16 mode, s16 frameNo)
 {
     if (fn_1_D57C() != 0) fn_80071A9C();
 }
 
+/* Stops all audio; fn_1_D5A4 always returns zero. */
 void fn_1_3A0(s16 mode, s16 frameNo)
 {
     if (fn_1_D5A4() != 0) fn_80071A9C();
 }
 
+/* An empty function. */
 void fn_1_3CC(void)
 {
 }
@@ -271,37 +196,37 @@ void fn_1_3CC(void)
 /* Selects the first player in each team and initializes the two stage players. */
 void fn_1_3D0(void)
 {
-    M660PlayerLookup playerLookup = {{-1, -1}};
-    M660PlayerPair startingPositions = {{{-150.0f, 10.0f, 0.0f}, {150.0f, 10.0f, 0.0f}}};
-    M660PlayerPair startingRotations = {{{0.0f, 180.0f, 0.0f}, {0.0f, 180.0f, 0.0f}}};
+    s16 playerLookup[2] = {-1, -1};
+    Vec startingPositions[2] = {{-150.0f, 10.0f, 0.0f}, {150.0f, 10.0f, 0.0f}};
+    Vec startingRotations[2] = {{0.0f, 180.0f, 0.0f}, {0.0f, 180.0f, 0.0f}};
     s16 player = 0;
     s16 group = 0;
     for (; player < 4; player++) {
         group = lbl_80265728[player].grpNo;
 
         if ((group == 0 || group == 1) &&
-            playerLookup.playerByGroup[group] == -1) {
-            playerLookup.playerByGroup[group] = player;
+            playerLookup[group] == -1) {
+            playerLookup[group] = player;
         }
     }
 
     for (player = 0; player < 2; player++) {
         lbl_1_bss_2DC[player].selectedPlayer =
-            (s8)playerLookup.playerByGroup[player];
+            (s8)playerLookup[player];
         lbl_1_bss_2DC[player].playerIndex = (s8)player;
         lbl_1_bss_2DC[player].character =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].charNo;
+            (s8)lbl_80265728[playerLookup[player]].charNo;
         lbl_1_bss_2DC[player].pad =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].padNo;
-        lbl_1_bss_2DC[player].group =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].grpNo;
+            (s8)lbl_80265728[playerLookup[player]].padNo;
+        lbl_1_bss_2DC[player].unk18 =
+            (s8)lbl_80265728[playerLookup[player]].grpNo;
         lbl_1_bss_2DC[player].type =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].type;
+            (s8)lbl_80265728[playerLookup[player]].type;
         lbl_1_bss_2DC[player].difficulty =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].comDif;
+            (s8)lbl_80265728[playerLookup[player]].comDif;
         lbl_1_bss_2DC[player].position =
-            startingPositions.playerVectors[player];
-        lbl_1_bss_2DC[player].rotation = startingRotations.playerVectors[player];
+            startingPositions[player];
+        lbl_1_bss_2DC[player].rotation = startingRotations[player];
         lbl_1_bss_2DC[player].mode = -1;
     }
 }
@@ -315,57 +240,57 @@ void fn_1_71C(void)
 
     index = 0;
     for (; index < 2; index++) {
-        if ((&lbl_1_bss_2DC[index])->type != 0 ||
-            (&lbl_1_bss_2DC[index])->inputDisabled != 0) {
-            memset((&lbl_1_bss_2DC[index]), 0, 20);
+        if (lbl_1_bss_2DC[index].type != 0 ||
+            lbl_1_bss_2DC[index].inputDisabled != 0) {
+            memset(&lbl_1_bss_2DC[index].input, 0, sizeof(lbl_1_bss_2DC[index].input));
         } else {
-            (&lbl_1_bss_2DC[index])->input.buttons =
-                lbl_802C0010[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.pressedButtons =
-                lbl_802C0008[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.repeatedButtons =
-                lbl_802C0000[(&lbl_1_bss_2DC[index])->pad];
+            lbl_1_bss_2DC[index].input.unk00 =
+                lbl_802C0010[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk04 =
+                lbl_802C0008[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk08 =
+                lbl_802C0000[lbl_1_bss_2DC[index].pad];
             /* Only the nonpositive X branch applies the dead zone; positive X and Y pass
              * through. */
-            if (lbl_802BFFFC[(&lbl_1_bss_2DC[index])->pad] > 0) {
-                stickResult = lbl_802BFFFC[(&lbl_1_bss_2DC[index])->pad];
+            if (lbl_802BFFFC[lbl_1_bss_2DC[index].pad] > 0) {
+                stickResult = lbl_802BFFFC[lbl_1_bss_2DC[index].pad];
             } else {
-                if ((s8)lbl_802BFFFC[(&lbl_1_bss_2DC[index])->pad] * -1 < 10) {
+                if ((s8)lbl_802BFFFC[lbl_1_bss_2DC[index].pad] * -1 < 10) {
                     deadZoneValue = 0;
                 } else {
-                    deadZoneValue = lbl_802BFFFC[(&lbl_1_bss_2DC[index])->pad];
+                    deadZoneValue = lbl_802BFFFC[lbl_1_bss_2DC[index].pad];
                 }
                 stickResult = deadZoneValue;
             }
-            (&lbl_1_bss_2DC[index])->input.stickX = stickResult;
-            (&lbl_1_bss_2DC[index])->input.stickY =
-                (s8)lbl_802BFFF8[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.substickX =
-                (s8)lbl_802BFFF4[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.substickY =
-                (s8)lbl_802BFFF0[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.triggerL = lbl_802BFFEC[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.triggerR = lbl_802BFFE8[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.directionalPad =
-                lbl_802BFFE4[(&lbl_1_bss_2DC[index])->pad];
-            (&lbl_1_bss_2DC[index])->input.repeatedDirectionalPad =
-                lbl_802BFFE0[(&lbl_1_bss_2DC[index])->pad];
+            lbl_1_bss_2DC[index].input.unk0A = stickResult;
+            lbl_1_bss_2DC[index].input.unk0B =
+                (s8)lbl_802BFFF8[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk0C =
+                (s8)lbl_802BFFF4[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk0D =
+                (s8)lbl_802BFFF0[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk0E = lbl_802BFFEC[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk0F = lbl_802BFFE8[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk10 =
+                lbl_802BFFE4[lbl_1_bss_2DC[index].pad];
+            lbl_1_bss_2DC[index].input.unk11 =
+                lbl_802BFFE0[lbl_1_bss_2DC[index].pad];
         }
     }
 
     index = 0;
     for (; index < 4; index++) {
-        lbl_1_bss_1F4.samples[index].buttons = lbl_802C0010[index];
-        lbl_1_bss_1F4.samples[index].pressedButtons = lbl_802C0008[index];
-        lbl_1_bss_1F4.samples[index].repeatedButtons = lbl_802C0000[index];
-        lbl_1_bss_1F4.samples[index].stickX = (s8)lbl_802BFFFC[index];
-        lbl_1_bss_1F4.samples[index].stickY = (s8)lbl_802BFFF8[index];
-        lbl_1_bss_1F4.samples[index].substickX = (s8)lbl_802BFFF4[index];
-        lbl_1_bss_1F4.samples[index].substickY = (s8)lbl_802BFFF0[index];
-        lbl_1_bss_1F4.samples[index].triggerL = lbl_802BFFEC[index];
-        lbl_1_bss_1F4.samples[index].triggerR = lbl_802BFFE8[index];
-        lbl_1_bss_1F4.samples[index].directionalPad = lbl_802BFFE4[index];
-        lbl_1_bss_1F4.samples[index].repeatedDirectionalPad = lbl_802BFFE0[index];
+        lbl_1_bss_1F4.samples[index].unk00 = lbl_802C0010[index];
+        lbl_1_bss_1F4.samples[index].unk04 = lbl_802C0008[index];
+        lbl_1_bss_1F4.samples[index].unk08 = lbl_802C0000[index];
+        lbl_1_bss_1F4.samples[index].unk0A = (s8)lbl_802BFFFC[index];
+        lbl_1_bss_1F4.samples[index].unk0B = (s8)lbl_802BFFF8[index];
+        lbl_1_bss_1F4.samples[index].unk0C = (s8)lbl_802BFFF4[index];
+        lbl_1_bss_1F4.samples[index].unk0D = (s8)lbl_802BFFF0[index];
+        lbl_1_bss_1F4.samples[index].unk0E = lbl_802BFFEC[index];
+        lbl_1_bss_1F4.samples[index].unk0F = lbl_802BFFE8[index];
+        lbl_1_bss_1F4.samples[index].unk10 = lbl_802BFFE4[index];
+        lbl_1_bss_1F4.samples[index].unk11 = lbl_802BFFE0[index];
     }
 }
 
@@ -411,7 +336,7 @@ void fn_1_EB8(void)
         CHARMOT_HSF_c000m1_307,
         CHARMOT_HSF_c000m1_323,
         CHARMOT_HSF_c000m1_324,
-        DATANUM(0x930000, 34),
+        CHARMOT_HSF_c000m1_344,
     };
     s16 playerIndex;
     s16 motionIndex;
@@ -439,7 +364,7 @@ void fn_1_FA8(void)
             fn_8002C95C(lbl_1_bss_60C[playerIndex].modelId,
                 lbl_1_bss_544[playerIndex].motionIds[lbl_1_bss_544[playerIndex].mode]);
             lbl_1_bss_544[playerIndex].previousMode = lbl_1_bss_544[playerIndex].mode;
-            lbl_1_bss_544[playerIndex].maximumTime = fn_8002D530(
+            lbl_1_bss_544[playerIndex].unk24 = fn_8002D530(
                 lbl_1_bss_60C[playerIndex].modelId);
         }
         if (lbl_1_bss_544[playerIndex].speed != lbl_1_bss_544[playerIndex].previousSpeed) {
@@ -478,7 +403,7 @@ void fn_1_FA8(void)
                 lbl_1_bss_544[playerIndex].motionIds[lbl_1_bss_544[playerIndex].shiftMotion],
                 lbl_1_bss_544[playerIndex].shiftStart, lbl_1_bss_544[playerIndex].shiftEnd,
                 lbl_1_bss_544[playerIndex].shiftFlags);
-            lbl_1_bss_544[playerIndex].shiftMaximumTime = fn_8002D5D4(
+            lbl_1_bss_544[playerIndex].unk5C = fn_8002D5D4(
                 lbl_1_bss_60C[playerIndex].modelId);
             lbl_1_bss_544[playerIndex].shiftState = 2;
             break;
@@ -519,53 +444,55 @@ void fn_1_FA8(void)
 /* Applies a camera preset and creates its viewport and perspective during setup. */
 void fn_1_176C(s16 cameraIndex)
 {
-    M660CameraPresetTable presets = { { { 0.0f, 101.0f, 61.0f, -78.0f, 0.0f, 0.0f, 1039.1f, 1.33f,
-                                          0.0f, 0.0f, 640.0f, 480.0f, 50.209999f },
+    f32 presets[4][13] = { { 0.0f, 101.0f, 61.0f, -78.0f, 0.0f, 0.0f, 1039.1f, 1.33f,
+                                          0.0f, 0.0f, 640.0f, 480.0f, 50.21f },
                                         { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
                                           0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
                                         { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
                                           0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
                                         { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
-                                          0.0f, 0.0f, 640.0f, 480.0f, 45.0f } } };
-    M660CameraIds cameraIds = {{1, 2, 4, 8}};
+                                          0.0f, 0.0f, 640.0f, 480.0f, 45.0f } };
+    s16 cameraIds[4] = {1, 2, 4, 8};
 
-    lbl_1_bss_2530.records[cameraIndex].cameraIndex = cameraIndex;
-    lbl_1_bss_2530.records[cameraIndex].position.x = presets.cameraSettings[cameraIndex][0];
-    lbl_1_bss_2530.records[cameraIndex].position.y = presets.cameraSettings[cameraIndex][1];
-    lbl_1_bss_2530.records[cameraIndex].position.z = presets.cameraSettings[cameraIndex][2];
-    lbl_1_bss_2530.records[cameraIndex].rotation.x = presets.cameraSettings[cameraIndex][3];
-    lbl_1_bss_2530.records[cameraIndex].rotation.y = presets.cameraSettings[cameraIndex][4];
-    lbl_1_bss_2530.records[cameraIndex].rotation.z = presets.cameraSettings[cameraIndex][5];
-    lbl_1_bss_2530.records[cameraIndex].zoom = presets.cameraSettings[cameraIndex][6];
-    lbl_1_bss_2530.records[cameraIndex].viewport[0] = presets.cameraSettings[cameraIndex][7];
-    lbl_1_bss_2530.records[cameraIndex].viewport[1] = presets.cameraSettings[cameraIndex][8];
-    lbl_1_bss_2530.records[cameraIndex].viewport[2] = presets.cameraSettings[cameraIndex][9];
-    lbl_1_bss_2530.records[cameraIndex].viewport[3] = presets.cameraSettings[cameraIndex][10];
-    lbl_1_bss_2530.records[cameraIndex].viewport[4] = presets.cameraSettings[cameraIndex][11];
-    lbl_1_bss_2530.records[cameraIndex].viewport[5] = presets.cameraSettings[cameraIndex][12];
+    lbl_1_bss_2530.records[cameraIndex].unk00 = cameraIndex;
+    /* Copy the preset position and rotation into the selected record. */
+    lbl_1_bss_2530.records[cameraIndex].unk1C[0] = presets[cameraIndex][0];
+    lbl_1_bss_2530.records[cameraIndex].unk1C[1] = presets[cameraIndex][1];
+    lbl_1_bss_2530.records[cameraIndex].unk1C[2] = presets[cameraIndex][2];
+    lbl_1_bss_2530.records[cameraIndex].unk10[0] = presets[cameraIndex][3];
+    lbl_1_bss_2530.records[cameraIndex].unk10[1] = presets[cameraIndex][4];
+    lbl_1_bss_2530.records[cameraIndex].unk10[2] = presets[cameraIndex][5];
+    lbl_1_bss_2530.records[cameraIndex].unk34 = presets[cameraIndex][6];
+    lbl_1_bss_2530.records[cameraIndex].aspect = presets[cameraIndex][7];
+    lbl_1_bss_2530.records[cameraIndex].viewport[0] = presets[cameraIndex][8];
+    lbl_1_bss_2530.records[cameraIndex].viewport[1] = presets[cameraIndex][9];
+    lbl_1_bss_2530.records[cameraIndex].viewport[2] = presets[cameraIndex][10];
+    lbl_1_bss_2530.records[cameraIndex].viewport[3] = presets[cameraIndex][11];
+    lbl_1_bss_2530.records[cameraIndex].fieldOfView = presets[cameraIndex][12];
 
-    Hu3DCameraCreate(cameraIds.cameraMasks[cameraIndex]);
-    Hu3DCameraViewportSet(cameraIds.cameraMasks[cameraIndex],
+    Hu3DCameraCreate(cameraIds[cameraIndex]);
+    Hu3DCameraViewportSet(cameraIds[cameraIndex],
+                          lbl_1_bss_2530.records[cameraIndex].viewport[0],
                           lbl_1_bss_2530.records[cameraIndex].viewport[1],
                           lbl_1_bss_2530.records[cameraIndex].viewport[2],
                           lbl_1_bss_2530.records[cameraIndex].viewport[3],
-                          lbl_1_bss_2530.records[cameraIndex].viewport[4],
                           0.0f, 1.0f);
-    Hu3DCameraPerspectiveSet(cameraIds.cameraMasks[cameraIndex],
-                             lbl_1_bss_2530.records[cameraIndex].viewport[5],
+    Hu3DCameraPerspectiveSet(cameraIds[cameraIndex],
+                             lbl_1_bss_2530.records[cameraIndex].fieldOfView,
                              20.0f, 40000.0f,
-                             lbl_1_bss_2530.records[cameraIndex].viewport[0]);
-    lbl_80266A4C.x = presets.cameraSettings[cameraIndex][0];
-    lbl_80266A4C.y = presets.cameraSettings[cameraIndex][1];
-    lbl_80266A4C.z = presets.cameraSettings[cameraIndex][2];
-    lbl_80266A40.x = presets.cameraSettings[cameraIndex][3];
-    lbl_80266A40.y = presets.cameraSettings[cameraIndex][4];
-    lbl_80266A40.z = presets.cameraSettings[cameraIndex][5];
-    lbl_802C028C = presets.cameraSettings[cameraIndex][6];
+                             lbl_1_bss_2530.records[cameraIndex].aspect);
+    /* Apply the same preset's position, rotation and zoom to the live camera. */
+    lbl_80266A4C.x = presets[cameraIndex][0];
+    lbl_80266A4C.y = presets[cameraIndex][1];
+    lbl_80266A4C.z = presets[cameraIndex][2];
+    lbl_80266A40.x = presets[cameraIndex][3];
+    lbl_80266A40.y = presets[cameraIndex][4];
+    lbl_80266A40.z = presets[cameraIndex][5];
+    lbl_802C028C = presets[cameraIndex][6];
     fn_1_1C1C(cameraIndex);
 }
 
-u16 lbl_1_bss_2680[4];
+s16 lbl_1_bss_2680[4];
 M660ManagerState lbl_1_bss_2678;
 M660CameraState lbl_1_bss_2530;
 M660LightState lbl_1_bss_24F4;
@@ -574,15 +501,18 @@ M660ParticleModuleData lbl_1_bss_2484;
 M660Model lbl_1_bss_60C[75];
 M660Motion lbl_1_bss_544[2];
 M660Player lbl_1_bss_2DC[2];
-M660StageInput lbl_1_bss_1F4;
+/* Shared stage sequence, controller samples and audio state. */
+M660StageState lbl_1_bss_1F4;
 M660PlayerSlots lbl_1_bss_1E8;
 M660Slot lbl_1_bss_80[9];
 M660SceneLight lbl_1_bss_38;
-M660StageConnection lbl_1_bss_0[14];
+/* Edge directions indexed by stage model and edge. */
+s8 lbl_1_bss_0[14][4];
 
-void fn_1_1C1C(s16 cameraIndex) {
-    M660HalfwordQuartet values = {1, 2, 4, 8};
-
+/* Copies the four camera masks locally. */
+void fn_1_1C1C(s16 cameraIndex)
+{
+    s16 cameraMasks[4] = {1, 2, 4, 8};
 }
 
 /* Creates the directional stage light during scene initialization. */
@@ -605,8 +535,7 @@ void fn_1_1C50(void) {
     lbl_1_bss_24F4.color.b = 255;
     lbl_1_bss_24F4.color.a = 255;
 
-    PSVECSubtract(&lbl_1_bss_24F4.aim, &lbl_1_bss_24F4.position,
-                  &lbl_1_bss_24F4.direction);
+    HuSubVecF(&lbl_1_bss_24F4.direction, &lbl_1_bss_24F4.aim, &lbl_1_bss_24F4.position);
     lbl_1_bss_24F4.id = fn_800286D0(
         &lbl_1_bss_24F4.position, &lbl_1_bss_24F4.direction,
         &lbl_1_bss_24F4.color);
@@ -620,25 +549,24 @@ void fn_1_1E24(void) {
     lbl_1_bss_24F4.position.x =
         lbl_1_bss_24F4.aim.x +
         lbl_1_bss_24F4.range *
-            (cos(3.141592653589793 * lbl_1_bss_24F4.orientation.x /
+            (cos(M_PI * lbl_1_bss_24F4.orientation.x /
                  180.0) *
-             sin(3.141592653589793 * lbl_1_bss_24F4.orientation.y /
+             sin(M_PI * lbl_1_bss_24F4.orientation.y /
                  180.0));
     lbl_1_bss_24F4.position.y =
         lbl_1_bss_24F4.aim.y +
         lbl_1_bss_24F4.range *
-            -sin(3.141592653589793 * lbl_1_bss_24F4.orientation.x /
+            -sin(M_PI * lbl_1_bss_24F4.orientation.x /
                  180.0);
     lbl_1_bss_24F4.position.z =
         lbl_1_bss_24F4.aim.z +
         lbl_1_bss_24F4.range *
-            (cos(3.141592653589793 * lbl_1_bss_24F4.orientation.x /
+            (cos(M_PI * lbl_1_bss_24F4.orientation.x /
                  180.0) *
-             cos(3.141592653589793 * lbl_1_bss_24F4.orientation.y /
+             cos(M_PI * lbl_1_bss_24F4.orientation.y /
                  180.0));
-    PSVECSubtract(&lbl_1_bss_24F4.aim, &lbl_1_bss_24F4.position,
-                  &lbl_1_bss_24F4.direction);
-    PSVECNormalize(&lbl_1_bss_24F4.direction, &lbl_1_bss_24F4.direction);
+    HuSubVecF(&lbl_1_bss_24F4.direction, &lbl_1_bss_24F4.aim, &lbl_1_bss_24F4.position);
+    VECNormalize(&lbl_1_bss_24F4.direction, &lbl_1_bss_24F4.direction);
     Hu3DGLightPosSetV(lbl_1_bss_24F4.id, &lbl_1_bss_24F4.position,
                       &lbl_1_bss_24F4.direction);
     Hu3DGLightColorSet(lbl_1_bss_24F4.id, lbl_1_bss_24F4.color.r,
@@ -651,42 +579,42 @@ void fn_1_2090(void)
 {
     Hu3DShadowCreate(5.0f, 16000.0f, 21000.0f);
     Hu3DShadowSizeSet(480);
-    lbl_1_bss_24A4.azimuth = -90.0f;
-    lbl_1_bss_24A4.elevation = 0.0f;
-    lbl_1_bss_24A4.unknown14 = 0.0f;
+    lbl_1_bss_24A4.elevation = -90.0f;
+    lbl_1_bss_24A4.azimuth = 0.0f;
+    lbl_1_bss_24A4.unk14 = 0.0f;
     lbl_1_bss_24A4.target.x = 0.0f;
     lbl_1_bss_24A4.target.y = -100.0f;
     lbl_1_bss_24A4.target.z = 0.0f;
-    lbl_1_bss_24A4.shadowTransparency = 0.2f;
+    lbl_1_bss_24A4.shadowOpacity = 0.2f;
     lbl_1_bss_24A4.orbitDistance = 21000.0f;
     fn_1_21A0();
 }
 
-/* Recalculates the shadow camera vectors and applies them to camera zero. */
+/* Recalculates the shadow camera vectors and passes them to Hu3DShadowPosSet. */
 void fn_1_21A0(void)
 {
     lbl_1_bss_24A4.cameraPosition.x = (f32)((f64)lbl_1_bss_24A4.target.x +
         ((f64)lbl_1_bss_24A4.orbitDistance *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_24A4.azimuth) / 180.0) *
-          sin((3.141592653589793 * (f64)lbl_1_bss_24A4.elevation) / 180.0))));
+         (cos((M_PI * (f64)lbl_1_bss_24A4.elevation) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_24A4.azimuth) / 180.0))));
     lbl_1_bss_24A4.cameraPosition.y = (f32)((f64)lbl_1_bss_24A4.target.y +
         ((f64)lbl_1_bss_24A4.orbitDistance *
-         -sin((3.141592653589793 * (f64)lbl_1_bss_24A4.azimuth) / 180.0)));
+         -sin((M_PI * (f64)lbl_1_bss_24A4.elevation) / 180.0)));
     lbl_1_bss_24A4.cameraPosition.z = (f32)((f64)lbl_1_bss_24A4.target.z +
         ((f64)lbl_1_bss_24A4.orbitDistance *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_24A4.azimuth) / 180.0) *
-          cos((3.141592653589793 * (f64)lbl_1_bss_24A4.elevation) / 180.0))));
+         (cos((M_PI * (f64)lbl_1_bss_24A4.elevation) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_24A4.azimuth) / 180.0))));
 
     lbl_1_bss_24A4.cameraUp.x = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_24A4.azimuth) / 180.0) *
-        sin((3.141592653589793 * (f64)lbl_1_bss_24A4.elevation) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_24A4.elevation) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_24A4.azimuth) / 180.0));
     lbl_1_bss_24A4.cameraUp.y = (f32)cos(
-        (3.141592653589793 * (f64)lbl_1_bss_24A4.azimuth) / 180.0);
+        (M_PI * (f64)lbl_1_bss_24A4.elevation) / 180.0);
     lbl_1_bss_24A4.cameraUp.z = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_24A4.azimuth) / 180.0) *
-        cos((3.141592653589793 * (f64)lbl_1_bss_24A4.elevation) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_24A4.elevation) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_24A4.azimuth) / 180.0));
 
-    Hu3DShadowTPLvlSet(lbl_1_bss_24A4.shadowTransparency);
+    Hu3DShadowTPLvlSet(lbl_1_bss_24A4.shadowOpacity);
     Hu3DShadowPosSet(&lbl_1_bss_24A4.cameraPosition, &lbl_1_bss_24A4.cameraUp,
                      &lbl_1_bss_24A4.target);
 }
@@ -697,7 +625,6 @@ void fn_1_24C4(void)
 {
     Vec playerPosition;
     s16 playerIndex;
-    s32 modelIndex;
 
     fontcolor = 15;
     playerIndex = 0;
@@ -716,34 +643,7 @@ void fn_1_24C4(void)
         playerIndex++;
     }
 
-    modelIndex = 2;
-    while (modelIndex < 75) {
-        fn_80026760(lbl_1_bss_60C[modelIndex].modelId,
-            lbl_1_bss_60C[modelIndex].position.x,
-            lbl_1_bss_60C[modelIndex].position.y,
-            lbl_1_bss_60C[modelIndex].position.z);
-        fn_80026808(lbl_1_bss_60C[modelIndex].modelId,
-            lbl_1_bss_60C[modelIndex].rotation.x,
-            lbl_1_bss_60C[modelIndex].rotation.y,
-            lbl_1_bss_60C[modelIndex].rotation.z);
-        modelIndex++;
-    }
-
-    modelIndex = 0;
-    while (modelIndex <= 1) {
-        if (lbl_1_bss_2DC[modelIndex].state == 0 ||
-            lbl_1_bss_2DC[modelIndex].state == 2) {
-            fn_80026760(lbl_1_bss_60C[modelIndex].modelId,
-                lbl_1_bss_2DC[modelIndex].position.x,
-                lbl_1_bss_2DC[modelIndex].position.y,
-                lbl_1_bss_2DC[modelIndex].position.z);
-            fn_80026808(lbl_1_bss_60C[modelIndex].modelId,
-                lbl_1_bss_2DC[modelIndex].rotation.x,
-                lbl_1_bss_2DC[modelIndex].rotation.y,
-                lbl_1_bss_2DC[modelIndex].rotation.z);
-        }
-        modelIndex++;
-    }
+    fn_1_CDC();
 
     fn_1_FA8();
     fn_1_1C1C(0);
@@ -771,7 +671,7 @@ void fn_1_2B34(void) {
             lbl_1_bss_2DC[playerIndex].previousPosition.x = position.x;
             lbl_1_bss_2DC[playerIndex].previousPosition.y = position.y;
             lbl_1_bss_2DC[playerIndex].previousPosition.z = position.z;
-            lbl_1_bss_2DC[playerIndex].previousMesh = lbl_1_bss_2DC[playerIndex].storedMesh;
+            lbl_1_bss_2DC[playerIndex].unk5C = lbl_1_bss_2DC[playerIndex].storedMesh;
             lbl_1_bss_2DC[playerIndex].storedMesh = -1;
             if ((lbl_1_bss_2DC[playerIndex].previousPartner !=
                  lbl_1_bss_2DC[playerIndex].partnerIndex) ||
@@ -798,19 +698,20 @@ void fn_1_2B34(void) {
     }
 }
 
-/* Advances a value toward its endpoint and returns remaining frames, or zero at the end. */
-s16 fn_1_2E80(f32 *value, f32 step, f32 start, f32 end)
+/* Advances by one step of the requested count. Returns the truncated remaining-step
+ * estimate plus one, or zero when the endpoint test snaps the value to the end. */
+s16 fn_1_2E80(f32 *value, f32 stepCount, f32 start, f32 end)
 {
     f32 startDistance;
     f32 currentDistance;
-    s16 frames = 0;
-    f32 increment = (end - start) / step;
+    s16 estimate = 0;
+    f32 increment = (end - start) / stepCount;
 
     *value += increment;
     if (increment) {
-        frames = (s16)((end - *value) / increment);
+        estimate = (s16)((end - *value) / increment);
     }
-    frames++;
+    estimate++;
     if (start - end > 0.0f) {
         startDistance = start - end;
     } else {
@@ -825,9 +726,9 @@ s16 fn_1_2E80(f32 *value, f32 step, f32 start, f32 end)
     start = currentDistance;
     if (increment <= start) {
         *value = end;
-        frames = 0;
+        estimate = 0;
     }
-    return frames;
+    return estimate;
 }
 
 /* Creates and positions a timer, converting its duration and end time from seconds to frames. */
@@ -838,13 +739,14 @@ MGTIMER *fn_1_2FA0(int type,int duration,int end,float x,float y) {
     return timer;
 }
 
+/* Starts the timer. */
 void fn_1_3014(MGTIMER *timer) {
     MgTimerModeOnSet(timer, 1);
 }
 
-/* Calls the timer completion check and discards its result. */
-void fn_1_3040(MGTIMER *timer) {
-    MgTimerDoneCheck(timer);
+/* Returns the timer completion check used by the gameplay sequence. */
+s32 fn_1_3040(MGTIMER *timer) {
+    return MgTimerDoneCheck(timer);
 }
 
 /* Hides the timer display, then kills the timer and releases its resources. */
@@ -885,6 +787,7 @@ void fn_1_30A0(s16 controller, s16 minimum, s16 maximum)
                        lbl_1_bss_2DC[player].position.z,
                        lbl_1_bss_2DC[player].rotation.y);
             } else {
+                /* The original model dump passes an index absent from its format. */
                 printf("{{%.1ff,%.1ff,%.1ff},{0.0f,%.1ff,0.0f}},\n", player,
                        lbl_1_bss_60C[player].position.x,
                        lbl_1_bss_60C[player].position.y,
@@ -1061,48 +964,47 @@ f32 fn_1_3C54(f32 range)
 /* Loads particle resources and initializes the four particle effect models at setup. */
 void fn_1_3CCC(void)
 {
-    M660DataNumbers dataNumbers = { { DATANUM(0x770000, 36), DATANUM(0x770000, 37),
-                                      DATANUM(0x770000, 37), DATANUM(0x770000, 37) } };
-    M660ParticleValues maximumParticles = {{100, 500, 100, 1}};
-    M660ParticleValues layers = {{0, 6, 1, 5}};
-    M660ParticleValues cameras = {{1, 1, 1, 1}};
-    M660ParticleValues blendModes = {{1, 0, 0, 0}};
-    M660ParticleHooks hooks = {{fn_1_59F8, fn_1_59F8, fn_1_59F8, fn_1_5E70}};
+    u32 dataNumbers[4] = { DATANUM(0x770000, 36), DATANUM(0x770000, 37),
+                           DATANUM(0x770000, 37), DATANUM(0x770000, 37) };
+    s16 maximumParticles[4] = {100, 500, 100, 1};
+    s16 layers[4] = {0, 6, 1, 5};
+    s16 cameras[4] = {1, 1, 1, 1};
+    s16 blendModes[4] = {1, 0, 0, 0};
+    HU3D_PARTICLE_HOOK hooks[4] = {fn_1_59F8, fn_1_59F8, fn_1_59F8, fn_1_5E70};
     s16 effectIndex = 0;
 
     while (effectIndex < 4) {
         ANIMDATA *animation;
-        M660ParticleContext *context;
-        M660ParticleEntry *entry;
+        HU3D_PARTICLE *context;
+        HU3D_PARTICLE_DATA *entry;
         s16 particleIndex;
 
-        lbl_1_bss_2484.maximumCounts[effectIndex] =
-            maximumParticles.effectValues[effectIndex];
-        animation = HuSprAnimRead(fn_80008DD0(
-            dataNumbers.dataIds[effectIndex], M660_EFFECT_MEM_GROUP, 2));
+        lbl_1_bss_2484.unk08[effectIndex] =
+            maximumParticles[effectIndex];
+        animation = HuSprAnimDataRead(dataNumbers[effectIndex]);
         lbl_1_bss_2484.allocation[effectIndex] = HuMemDirectMallocNum(
-            HEAP_HEAP, maximumParticles.effectValues[effectIndex] * 60,
-            M660_EFFECT_MEM_GROUP);
+            HEAP_HEAP, maximumParticles[effectIndex] * sizeof(ParticleParameters),
+            0x10000000);
         lbl_1_bss_2484.modelIds[effectIndex] = fn_8003216C(
-            animation, maximumParticles.effectValues[effectIndex]);
+            animation, maximumParticles[effectIndex]);
         fn_80026B8C(lbl_1_bss_2484.modelIds[effectIndex],
-                          layers.effectValues[effectIndex]);
+                          layers[effectIndex]);
         fn_800326D0(lbl_1_bss_2484.modelIds[effectIndex],
-                            hooks.updateHooks[effectIndex]);
+                            hooks[effectIndex]);
         fn_80026B64(lbl_1_bss_2484.modelIds[effectIndex],
-                           cameras.effectValues[effectIndex]);
+                           cameras[effectIndex]);
         fn_8003269C(lbl_1_bss_2484.modelIds[effectIndex],
-                                  (u8)blendModes.effectValues[effectIndex]);
+                                  (u8)blendModes[effectIndex]);
 
         context = lbl_802C01C8[lbl_1_bss_2484.modelIds[effectIndex]].hookData;
-        context->lastEntry = 0;
-        context->parameters = lbl_1_bss_2484.allocation[effectIndex];
+        context->emitCnt = 0;
+        context->work = lbl_1_bss_2484.allocation[effectIndex];
         context->count = 0;
         particleIndex = 0;
-        entry = context->entries;
-        while (particleIndex < context->entryCount) {
-            entry->height = 0.0f;
-            entry->state = 0;
+        entry = context->data;
+        while (particleIndex < context->maxCnt) {
+            entry->scale = 0.0f;
+            entry->time = 0;
             particleIndex++;
             entry++;
         }
@@ -1115,55 +1017,34 @@ void fn_1_4004(Vec *origin)
 {
     Vec velocity;
     Vec position;
-    M660ParticleParameters parameters;
-    s32 randomLimit;
-    s32 randomHeightLimit;
-    f32 randomValue;
-    f32 heightRandom;
+    ParticleParameters parameters;
     f32 initialScale;
-    f32 centeredRandomValue;
-    f32 horizontalVelocity;
-    f32 baseHeight;
-    f32 verticalVelocity;
 
-    parameters.value00 = 0;
-    parameters.color.red = 255;
-    parameters.color.green = 255;
-    parameters.color.blue = 255;
-    parameters.color.alpha = 255;
-    parameters.finalColor[0] = 0;
-    parameters.finalColor[1] = 0;
-    parameters.finalColor[2] = 0;
-    parameters.finalColor[3] = 0;
-    parameters.motionValueDelta = 0.0f;
-    parameters.opacityChange = 0.01f;
-    parameters.colorChangeRate = 0.01f;
-    parameters.velocityYAcceleration = 0.0f;
+    parameters.unk00 = 0;
+    parameters.startColor.r = 255;
+    parameters.startColor.g = 255;
+    parameters.startColor.b = 255;
+    parameters.startColor.a = 255;
+    parameters.targetColor.r = 0;
+    parameters.targetColor.g = 0;
+    parameters.targetColor.b = 0;
+    parameters.targetColor.a = 0;
+    parameters.rotationIncrement = 0.0f;
+    parameters.alphaIncrement = 0.01f;
+    parameters.colorBlendStep = 0.01f;
+    parameters.verticalAcceleration = 0.0f;
 
     position.x = origin->x;
     position.y = origin->y;
     position.z = origin->z;
     initialScale = 30.0f;
-    parameters.height = -0.1f;
-    parameters.heightScale = 1.2f;
+    parameters.scaleIncrement = -0.1f;
+    parameters.scaleIncrementMultiplier = 1.2f;
     parameters.velocityScale[0] = 1.05f;
     parameters.velocityScale[1] = 0.95f;
     parameters.velocityScale[2] = 1.0f;
-    randomValue = 3.0f;
-    randomLimit = (s32)randomValue;
-    randomLimit = frandmod(randomLimit);
-    randomValue = (f32)randomLimit;
-    centeredRandomValue = randomValue;
-    horizontalVelocity = centeredRandomValue;
-    velocity.x = 0.4f *
-                 (horizontalVelocity - 1.0f);
-    heightRandom = 4.0f;
-    randomHeightLimit = (s32)heightRandom;
-    randomHeightLimit = frandmod(randomHeightLimit);
-    heightRandom = (f32)randomHeightLimit;
-    baseHeight = heightRandom;
-    verticalVelocity = baseHeight;
-    velocity.y = 3.0f + verticalVelocity;
+    velocity.x = 0.4f * (fn_1_3C54(3.0f) - 1.0f);
+    velocity.y = 3.0f + fn_1_3C54(4.0f);
     velocity.z = 0.0f;
 
     fn_1_57F8(0, -1, position, velocity, initialScale, 20, &parameters);
@@ -1173,12 +1054,12 @@ void fn_1_4004(Vec *origin)
 * is overwritten with zero, so origin 0 is always used while the draw still advances the RNG. */
 void fn_1_42E0(M660Model *origin, s16 effectIndex)
 {
-    M660EffectConfigs_42E0 configs = {{
+    M660ParticleEffectConfig configs[3] = {
     {3, 160, -8.0f, 0.0f, 80.0f, 450.0f, 190.0f, 128, 0, 30.0f, 140.0f, 20.0f, 100.0f},
     {3, 160, -5.0f, 20.0f, 120.0f, 450.0f, 400.0f, 128, 0, 70.0f, 280.0f, 30.0f, 200.0f},
     {5, 160, -4.0f, 40.0f, 220.0f, 600.0f, 600.0f, 128, 0, 70.0f, 500.0f, 40.0f, 200.0f}
-    }};
-    M660ParticleParameters parameters;
+    };
+    ParticleParameters parameters;
     Vec spawnOrigins[3];
     Vec velocity;
     Vec position;
@@ -1191,75 +1072,75 @@ void fn_1_42E0(M660Model *origin, s16 effectIndex)
     s16 lifetime;
 
     spawnOrigins[0].x = (f32)((f64)origin->position.x -
-         ((f64)configs.effects[effectIndex].horizontalRadius *
-         sin((3.141592653589793 * (origin->rotation.y - 90.0f)) / 180.0)));
+         ((f64)configs[effectIndex].horizontalRadius *
+         sin((M_PI * (origin->rotation.y - 90.0f)) / 180.0)));
     spawnOrigins[0].z = (f32)((f64)origin->position.z -
-         ((f64)configs.effects[effectIndex].horizontalRadius *
-         cos((3.141592653589793 * (origin->rotation.y - 90.0f)) / 180.0)));
+         ((f64)configs[effectIndex].horizontalRadius *
+         cos((M_PI * (origin->rotation.y - 90.0f)) / 180.0)));
     position.x = (f32)((f64)origin->position.x -
-         ((f64)configs.effects[effectIndex].forwardDistance *
-         sin((3.141592653589793 * (origin->rotation.y - 90.0f)) / 180.0)));
+         ((f64)configs[effectIndex].forwardDistance *
+         sin((M_PI * (origin->rotation.y - 90.0f)) / 180.0)));
     position.z = (f32)((f64)origin->position.z -
-         ((f64)configs.effects[effectIndex].forwardDistance *
-         cos((3.141592653589793 * (origin->rotation.y - 90.0f)) / 180.0)));
+         ((f64)configs[effectIndex].forwardDistance *
+         cos((M_PI * (origin->rotation.y - 90.0f)) / 180.0)));
     spawnOrigins[1].x = (f32)((f64)position.x +
-         ((f64)configs.effects[effectIndex].sideDistance *
-         sin((3.141592653589793 * origin->rotation.y) / 180.0)));
+         ((f64)configs[effectIndex].sideDistance *
+         sin((M_PI * origin->rotation.y) / 180.0)));
     spawnOrigins[1].z = (f32)((f64)position.z +
-         ((f64)configs.effects[effectIndex].sideDistance *
-         cos((3.141592653589793 * origin->rotation.y) / 180.0)));
+         ((f64)configs[effectIndex].sideDistance *
+         cos((M_PI * origin->rotation.y) / 180.0)));
     spawnOrigins[2].x = (f32)((f64)position.x -
-         ((f64)configs.effects[effectIndex].sideDistance *
-         sin((3.141592653589793 * origin->rotation.y) / 180.0)));
+         ((f64)configs[effectIndex].sideDistance *
+         sin((M_PI * origin->rotation.y) / 180.0)));
     spawnOrigins[2].z = (f32)((f64)position.z -
-         ((f64)configs.effects[effectIndex].sideDistance *
-         cos((3.141592653589793 * origin->rotation.y) / 180.0)));
+         ((f64)configs[effectIndex].sideDistance *
+         cos((M_PI * origin->rotation.y) / 180.0)));
     particleIndex = 0;
 
-     while (particleIndex < configs.effects[effectIndex].particleCount) {
+     while (particleIndex < configs[effectIndex].particleCount) {
         selectedOrigin = frandmod(100);
         selectedOrigin = 0;
         if (selectedOrigin == 0) {
-             alpha = configs.effects[effectIndex].alpha;
-             radius = configs.effects[effectIndex].spawnRadiusLimit;
-             particleScale = configs.effects[effectIndex].baseParticleScale;
+             alpha = configs[effectIndex].alpha;
+             radius = configs[effectIndex].spawnRadiusLimit;
+             particleScale = configs[effectIndex].baseParticleScale;
         } else {
-             alpha = configs.effects[effectIndex].alternateAlpha;
-             radius = configs.effects[effectIndex].alternateRadiusLimit;
-             particleScale = configs.effects[effectIndex].alternateParticleScale;
+             alpha = configs[effectIndex].alternateAlpha;
+             radius = configs[effectIndex].alternateRadiusLimit;
+             particleScale = configs[effectIndex].alternateParticleScale;
         }
 
         lifetime = 10000;
-        parameters.value00 = 0;
-        parameters.color.red = 255;
-        parameters.color.green = 159;
-        parameters.color.blue = 159;
-        parameters.color.alpha = (u8)alpha;
-        parameters.finalColor[0] = 255;
-        parameters.finalColor[1] = 159;
-        parameters.finalColor[2] = 159;
-        parameters.finalColor[3] = 0;
-        parameters.motionValueDelta = 0.0f;
-         parameters.opacityChange = configs.effects[effectIndex].opacityChange;
-        parameters.colorChangeRate = 0.01f;
-        parameters.velocityYAcceleration = 0.0f;
+        parameters.unk00 = 0;
+        parameters.startColor.r = 255;
+        parameters.startColor.g = 159;
+        parameters.startColor.b = 159;
+        parameters.startColor.a = (u8)alpha;
+        parameters.targetColor.r = 255;
+        parameters.targetColor.g = 159;
+        parameters.targetColor.b = 159;
+        parameters.targetColor.a = 0;
+        parameters.rotationIncrement = 0.0f;
+         parameters.alphaIncrement = configs[effectIndex].opacityChange;
+        parameters.colorBlendStep = 0.01f;
+        parameters.verticalAcceleration = 0.0f;
 
         angle = fn_1_3C54(360.0f);
         radius = fn_1_3C54(radius);
         position.x = (f32)((f64)spawnOrigins[selectedOrigin].x +
-            ((f64)radius * sin((3.141592653589793 * angle) / 180.0)));
-         position.y = configs.effects[effectIndex].spawnHeight;
+            ((f64)radius * sin((M_PI * angle) / 180.0)));
+         position.y = configs[effectIndex].spawnHeight;
         position.z = (f32)((f64)spawnOrigins[selectedOrigin].z +
-            ((f64)radius * cos((3.141592653589793 * angle) / 180.0)));
+            ((f64)radius * cos((M_PI * angle) / 180.0)));
         particleScale += fn_1_3C54(50.0f);
         if (effectIndex == 0) {
-            parameters.height = -8.0f;
+            parameters.scaleIncrement = -8.0f;
         } else if (effectIndex == 1) {
-            parameters.height = -14.0f;
+            parameters.scaleIncrement = -14.0f;
         } else if (effectIndex == 2) {
-            parameters.height = -14.0f;
+            parameters.scaleIncrement = -14.0f;
         }
-        parameters.heightScale = 1.0f;
+        parameters.scaleIncrementMultiplier = 1.0f;
         parameters.velocityScale[0] = 1.0f;
         parameters.velocityScale[1] = 1.0f;
         parameters.velocityScale[2] = 1.0f;
@@ -1277,7 +1158,7 @@ void fn_1_4B38(M660Model *origin)
     Vec velocity;
     Vec position;
     Vec sourcePosition;
-    M660ParticleParameters parameters;
+    ParticleParameters parameters;
     s16 effectIndex;
 
     sourcePosition = origin->attachment;
@@ -1288,66 +1169,36 @@ void fn_1_4B38(M660Model *origin)
         s16 lifetime = 10000;
         f32 angle;
         f32 radius;
-        f32 scaleRandom;
-        f32 trigAngle;
-        f32 trigRadius;
         f32 initialScale;
-        f32 randomAngle;
-        f32 centeredAngle;
-        f32 randomRadius;
-        f32 centeredRadius;
-        f32 randomScale;
-        f32 centeredScale;
-        s32 angleLimit;
-        s32 radiusLimit;
-        s32 scaleLimit;
 
-        parameters.value00 = 0;
-        parameters.color.red = 255;
-        parameters.color.green = 159;
-        parameters.color.blue = 159;
-        parameters.color.alpha = 128;
-        parameters.finalColor[0] = 255;
-        parameters.finalColor[1] = 159;
-        parameters.finalColor[2] = 159;
-        parameters.finalColor[3] = 0;
-        parameters.motionValueDelta = 0.0f;
-        parameters.opacityChange = -3.0f;
-        parameters.colorChangeRate = 0.01f;
-        parameters.velocityYAcceleration = 0.0f;
+        parameters.unk00 = 0;
+        parameters.startColor.r = 255;
+        parameters.startColor.g = 159;
+        parameters.startColor.b = 159;
+        parameters.startColor.a = 128;
+        parameters.targetColor.r = 255;
+        parameters.targetColor.g = 159;
+        parameters.targetColor.b = 159;
+        parameters.targetColor.a = 0;
+        parameters.rotationIncrement = 0.0f;
+        parameters.alphaIncrement = -3.0f;
+        parameters.colorBlendStep = 0.01f;
+        parameters.verticalAcceleration = 0.0f;
 
-        angle = 360.0f;
-        angleLimit = (s32)angle;
-        angleLimit = frandmod(angleLimit);
-        angle = (f32)angleLimit;
-        randomAngle = angle;
-        centeredAngle = randomAngle;
-        trigAngle = centeredAngle;
-        radius = 80.0f;
-        radiusLimit = (s32)radius;
-        radiusLimit = frandmod(radiusLimit);
-        radius = (f32)radiusLimit;
-        randomRadius = radius;
-        centeredRadius = randomRadius;
-        trigRadius = centeredRadius;
+        angle = fn_1_3C54(360.0f);
+        radius = fn_1_3C54(80.0f);
         position.x = (f32)((f64)sourcePosition.x +
-                            ((f64)trigRadius *
-                            sin((3.141592653589793 * (f64)trigAngle) /
+                            ((f64)radius *
+                            sin((M_PI * (f64)angle) /
                                 180.0)));
         position.y = (f32)((f64)sourcePosition.y +
-                            ((f64)trigRadius *
-                            cos((3.141592653589793 * (f64)trigAngle) /
+                            ((f64)radius *
+                            cos((M_PI * (f64)angle) /
                                 180.0)));
         position.z = 40.0f + sourcePosition.z;
-        scaleRandom = 50.0f;
-        scaleLimit = (s32)scaleRandom;
-        scaleLimit = frandmod(scaleLimit);
-        scaleRandom = (f32)scaleLimit;
-        randomScale = scaleRandom;
-        centeredScale = randomScale;
-        initialScale = 150.0f + centeredScale;
-        parameters.height = -2.0f;
-        parameters.heightScale = 1.0f;
+        initialScale = 150.0f + fn_1_3C54(50.0f);
+        parameters.scaleIncrement = -2.0f;
+        parameters.scaleIncrementMultiplier = 1.0f;
         parameters.velocityScale[0] = 1.0f;
         parameters.velocityScale[1] = 1.0f;
         parameters.velocityScale[2] = 1.0f;
@@ -1356,25 +1207,25 @@ void fn_1_4B38(M660Model *origin)
         velocity.z = 0.0f;
 
         fn_1_57F8(1, -1, position, velocity, initialScale, lifetime,
-                  (M660ParticleParameters *)&parameters);
+                  &parameters);
         effectIndex++;
     }
 }
 
-/* Sets origin Y to 200 and model 2 to layer 1, then emits 30 particles with randomized velocity,
-* alpha and fade rate; the first angle and radius draws are discarded but still advance the RNG. */
+/* Sets origin Y to 200 and model 2 to layer 1, then attempts 30 particle emissions.
+ * Randomizes velocity, alpha, and fade rate. The first angle and radius draws are unused. */
 void fn_1_4F64(Vec *origin, s16 effectIndex)
 {
-    M660ParticleParameters parameters;
+    ParticleParameters parameters;
     Vec velocity;
     Vec position;
-    M660VectorValues_4F64 verticalPositions = {{200.0f, 200.0f, 200.0f}};
-    M660LayerValues_4F64 layers = {{1, 1, 1}};
+    f32 verticalPositions[3] = {200.0f, 200.0f, 200.0f};
+    s32 effectLayers[3] = {1, 1, 1};
     s16 particleIndex;
 
-    origin->y = verticalPositions.yPositions[effectIndex];
+    origin->y = verticalPositions[effectIndex];
     fn_80026B8C(lbl_1_bss_2484.modelIds[2],
-                      (s16)layers.renderLayers[effectIndex]);
+                      (s16)effectLayers[effectIndex]);
 
     particleIndex = 0;
     while (particleIndex < 30) {
@@ -1383,38 +1234,38 @@ void fn_1_4F64(Vec *origin, s16 effectIndex)
         f32 radius;
         f32 initialScale;
 
-        parameters.value00 = 0;
-        parameters.color.red = 255;
-        parameters.color.green = 159;
-        parameters.color.blue = 159;
-        parameters.color.alpha = 128;
-        parameters.finalColor[0] = 255;
-        parameters.finalColor[1] = 159;
-        parameters.finalColor[2] = 159;
-        parameters.finalColor[3] = 0;
-        parameters.motionValueDelta = 0.0f;
-        parameters.opacityChange = -6.0f;
-        parameters.colorChangeRate = 0.01f;
-        parameters.velocityYAcceleration = 0.0f;
-        parameters.color.alpha = (u8)(frandmod(48) + 96);
+        parameters.unk00 = 0;
+        parameters.startColor.r = 255;
+        parameters.startColor.g = 159;
+        parameters.startColor.b = 159;
+        parameters.startColor.a = 128;
+        parameters.targetColor.r = 255;
+        parameters.targetColor.g = 159;
+        parameters.targetColor.b = 159;
+        parameters.targetColor.a = 0;
+        parameters.rotationIncrement = 0.0f;
+        parameters.alphaIncrement = -6.0f;
+        parameters.colorBlendStep = 0.01f;
+        parameters.verticalAcceleration = 0.0f;
+        parameters.startColor.a = (u8)(frandmod(48) + 96);
 
-        parameters.opacityChange = -(4.0f + fn_1_3C54(3.0f));
+        parameters.alphaIncrement = -(4.0f + fn_1_3C54(3.0f));
         angle = fn_1_3C54(360.0f);
         radius = fn_1_3C54(50.0f);
         position = *origin;
         initialScale = 10.0f + fn_1_3C54(10.0f);
-        parameters.height = 4.0f;
-        parameters.heightScale = 1.0f;
+        parameters.scaleIncrement = 4.0f;
+        parameters.scaleIncrementMultiplier = 1.0f;
         parameters.velocityScale[0] = 0.94f;
         parameters.velocityScale[1] = 0.94f;
         parameters.velocityScale[2] = 0.94f;
         angle = fn_1_3C54(360.0f);
-        velocity.x = (f32)(sin((3.141592653589793 * (f64)angle) /
+        velocity.x = (f32)(sin((M_PI * (f64)angle) /
                                 180.0) *
                            (f64)(fn_1_3C54(20.0f) - 10.0f));
         velocity.y = fn_1_3C54(20.0f) -
                      10.0f;
-        velocity.z = (f32)(cos((3.141592653589793 * (f64)angle) /
+        velocity.z = (f32)(cos((M_PI * (f64)angle) /
                                 180.0) *
                            (f64)(fn_1_3C54(20.0f) -
                                  10.0f));
@@ -1427,74 +1278,74 @@ void fn_1_4F64(Vec *origin, s16 effectIndex)
 /* Creates a particle that follows a stage object at one of three fixed heights. */
 void fn_1_55DC(s16 objectIndex, s16 variant)
 {
-    M660ParticleParameters parameters;
+    ParticleParameters parameters;
     Vec velocity;
     Vec position;
-    ParticleVectorValues_55DC positionValues = {{350.0f, 550.0f, 750.0f}};
-    ParticleVectorValues_55DC scaleValues = {{300.0f, 400.0f, 500.0f}};
+    f32 positionValues[3] = {350.0f, 550.0f, 750.0f};
+    f32 scaleValues[3] = {300.0f, 400.0f, 500.0f};
     s16 particleState = 1;
 
-    parameters.value00 = 0;
-    parameters.color.red = 255;
-    parameters.color.green = 159;
-    parameters.color.blue = 159;
-    parameters.color.alpha = 208;
-    parameters.finalColor[0] = 255;
-    parameters.finalColor[1] = 159;
-    parameters.finalColor[2] = 159;
-    parameters.finalColor[3] = 48;
-    parameters.motionValueDelta = 0.0f;
-    parameters.opacityChange = 0.0f;
-    parameters.colorChangeRate = 0.0f;
-    parameters.velocityYAcceleration = 0.0f;
+    parameters.unk00 = 0;
+    parameters.startColor.r = 255;
+    parameters.startColor.g = 159;
+    parameters.startColor.b = 159;
+    parameters.startColor.a = 208;
+    parameters.targetColor.r = 255;
+    parameters.targetColor.g = 159;
+    parameters.targetColor.b = 159;
+    parameters.targetColor.a = 48;
+    parameters.rotationIncrement = 0.0f;
+    parameters.alphaIncrement = 0.0f;
+    parameters.colorBlendStep = 0.0f;
+    parameters.verticalAcceleration = 0.0f;
 
     position = lbl_1_bss_60C[objectIndex].position;
-    position.y = positionValues.variantValues[variant];
+    position.y = positionValues[variant];
 
-    parameters.height = 0.0f;
-    parameters.heightScale = 0.0f;
+    parameters.scaleIncrement = 0.0f;
+    parameters.scaleIncrementMultiplier = 0.0f;
     parameters.velocityScale[0] = 1.0f;
     parameters.velocityScale[1] = 1.0f;
     parameters.velocityScale[2] = 1.0f;
     velocity.x = velocity.z = 0.0f;
-    velocity.y = positionValues.variantValues[variant];
-    fn_1_57F8(3, objectIndex, position, velocity, scaleValues.variantValues[variant],
-              particleState, (M660ParticleParameters *)&parameters);
+    velocity.y = positionValues[variant];
+    fn_1_57F8(3, objectIndex, position, velocity, scaleValues[variant],
+              particleState, &parameters);
 }
 
 /* Stores a particle in the first inactive entry and returns its index, or -1 if full. */
- s16 fn_1_57F8(s16 modelNumber, s16 ownerIndex, Vec position, Vec velocity,
-              f32 initialScale, s16 state, M660ParticleParameters *parameters) {
+s16 fn_1_57F8(s16 modelNumber, s16 ownerIndex, Vec position, Vec velocity,
+              f32 initialScale, s16 state, const ParticleParameters *parameters) {
     HU3D_MODEL *model;
     s16 result;
-    M660ParticleContext *context;
-    M660ParticleParameters *currentParameters;
+    HU3D_PARTICLE *context;
+    ParticleParameters *currentParameters;
     s16 entryIndex;
-    M660ParticleEntry *entry;
+    HU3D_PARTICLE_DATA *entry;
 
     result = -1;
     model = &lbl_802C01C8[lbl_1_bss_2484.modelIds[modelNumber]];
     context = model->hookData;
-    currentParameters = context->parameters;
+    currentParameters = context->work;
     entryIndex = 0;
-    entry = context->entries;
+    entry = context->data;
 
-    while (entryIndex < context->entryCount) {
-        if (entry->state <= 0) {
+    while (entryIndex < context->maxCnt) {
+        if (entry->time <= 0) {
             currentParameters[entryIndex] = *parameters;
-            currentParameters[entryIndex].values04[2] =
-                currentParameters[entryIndex].values04[1] =
-                    currentParameters[entryIndex].values04[0] = 0.0f;
+            currentParameters[entryIndex].playerMovementOffset.z =
+                currentParameters[entryIndex].playerMovementOffset.y =
+                    currentParameters[entryIndex].playerMovementOffset.x = 0.0f;
 
-            entry->position = position;
-            entry->velocity = velocity;
-            entry->origin = position;
-            entry->baseScale = entry->colorIndex = entry->speedDecay = 0.0f;
-            entry->color = currentParameters[entryIndex].color;
-            entry->height = initialScale;
-            entry->state = state;
-            entry->ownerIndex = ownerIndex;
-            context->lastEntry = entryIndex;
+            entry->pos = position;
+            entry->vel = velocity;
+            entry->accel = position;
+            entry->scaleBase = entry->colorIdx = entry->speedDecay = 0.0f;
+            entry->color = currentParameters[entryIndex].startColor;
+            entry->scale = initialScale;
+            entry->time = state;
+            entry->parManId = ownerIndex;
+            context->emitCnt = entryIndex;
             result = entryIndex;
             break;
         }
@@ -1504,83 +1355,81 @@ void fn_1_55DC(s16 objectIndex, s16 variant)
     return result;
 }
 
-/* Updates particle motion, color and height values each particle animation step. */
+/* Advances particle lifetime, position, velocity, rotation, RGBA and scale. */
 void fn_1_59F8(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
-    M660ParticleParameters *parameters =
-        ((M660ParticleContext *)particle)->parameters;
-    M660ParticleEntry *entry = ((M660ParticleContext *)particle)->entries;
+    ParticleParameters *parameters = particle->work;
+    HU3D_PARTICLE_DATA *entry = particle->data;
     s16 entryNo = 0;
 
-    while (entryNo < ((M660ParticleContext *)particle)->entryCount) {
-        if (entry->state-- > 0) {
+    while (entryNo < particle->maxCnt) {
+        if (entry->time-- > 0) {
             s16 channelValue;
 
-            entry->velocity.x *= parameters[entryNo].velocityScale[0];
-            entry->velocity.y *= parameters[entryNo].velocityScale[1];
-            entry->velocity.z *= parameters[entryNo].velocityScale[2];
-            PSVECAdd((Point3d *)&entry->velocity, (Point3d *)&entry->position,
-                     (Point3d *)&entry->position);
-            entry->velocity.y += parameters[entryNo].velocityYAcceleration;
-            entry->motionValue += parameters[entryNo].motionValueDelta;
+            entry->vel.x *= parameters[entryNo].velocityScale[0];
+            entry->vel.y *= parameters[entryNo].velocityScale[1];
+            entry->vel.z *= parameters[entryNo].velocityScale[2];
+            VECAdd(&entry->vel, &entry->pos, &entry->pos);
+            entry->vel.y += parameters[entryNo].verticalAcceleration;
+            entry->zRot += parameters[entryNo].rotationIncrement;
 
-            channelValue = (s16)((f32)entry->color.red +
-                                 (parameters[entryNo].colorChangeRate *
-                                  (f32)(parameters[entryNo].finalColor[0] -
-                                        parameters[entryNo].color.red)));
+            channelValue = (s16)((f32)entry->color.r +
+                                 (parameters[entryNo].colorBlendStep *
+                                  (f32)(parameters[entryNo].targetColor.r -
+                                        parameters[entryNo].startColor.r)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
                 channelValue = 255;
             }
-            entry->color.red = (u8)channelValue;
+            entry->color.r = (u8)channelValue;
 
-            channelValue = (s16)((f32)entry->color.green +
-                                 (parameters[entryNo].colorChangeRate *
-                                  (f32)(parameters[entryNo].finalColor[1] -
-                                        parameters[entryNo].color.green)));
+            channelValue = (s16)((f32)entry->color.g +
+                                 (parameters[entryNo].colorBlendStep *
+                                  (f32)(parameters[entryNo].targetColor.g -
+                                        parameters[entryNo].startColor.g)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
                 channelValue = 255;
             }
-            entry->color.green = (u8)channelValue;
+            entry->color.g = (u8)channelValue;
 
-            channelValue = (s16)((f32)entry->color.blue +
-                                 (parameters[entryNo].colorChangeRate *
-                                  (f32)(parameters[entryNo].finalColor[2] -
-                                        parameters[entryNo].color.blue)));
+            channelValue = (s16)((f32)entry->color.b +
+                                 (parameters[entryNo].colorBlendStep *
+                                  (f32)(parameters[entryNo].targetColor.b -
+                                        parameters[entryNo].startColor.b)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
                 channelValue = 255;
             }
-            entry->color.blue = (u8)channelValue;
+            entry->color.b = (u8)channelValue;
 
-            channelValue = (s16)((f32)entry->color.alpha +
-                                 parameters[entryNo].opacityChange);
+            channelValue = (s16)((f32)entry->color.a +
+                                 parameters[entryNo].alphaIncrement);
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
                 channelValue = 255;
             }
-            entry->color.alpha = (u8)channelValue;
+            entry->color.a = (u8)channelValue;
             if (channelValue <= 0) {
-                entry->state = 0;
-                entry->height = 0.0f;
+                entry->time = 0;
+                entry->scale = 0.0f;
             }
 
-            parameters[entryNo].height *= parameters[entryNo].heightScale;
-            entry->height += parameters[entryNo].height;
-            if (entry->height <= 0.0f) {
-                entry->height = 0.0f;
-                entry->state = 0;
+            parameters[entryNo].scaleIncrement *= parameters[entryNo].scaleIncrementMultiplier;
+            entry->scale += parameters[entryNo].scaleIncrement;
+            if (entry->scale <= 0.0f) {
+                entry->scale = 0.0f;
+                entry->time = 0;
             }
-            DCStoreRangeNoSync(((M660ParticleContext *)particle)->entries,
-                               ((M660ParticleContext *)particle)->entryCount * 72);
+            DCStoreRangeNoSync(particle->data,
+                               particle->maxCnt * sizeof(*particle->data));
         } else {
-            entry->height = 0.0f;
-            entry->state = -1;
+            entry->scale = 0.0f;
+            entry->time = -1;
         }
         entryNo++;
         entry++;
@@ -1591,7 +1440,7 @@ void fn_1_59F8(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
  * hides the particle on a tie. */
 void fn_1_5E70(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
-    M660ParticleParameters *parameters = particle->work;
+    ParticleParameters *parameters = particle->work;
     HU3D_PARTICLE_DATA *entry = particle->data;
     s16 index = 0;
 
@@ -1628,9 +1477,9 @@ void fn_1_5E70(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     }
 }
 
-/* Sets voice pan and volume, then plays the setup sound once. Modes 1 and 3-6 use fixed
-* volume; both callers use mode 6, which pans by X and forces maximum volume. */
-void fn_1_601C(M660Player *player, s16 direction)
+/* Sets voice pan and volume, then plays and clears a pending character hit voice.
+ * Both callers use mode 6, which pans by world X and uses maximum volume. */
+void fn_1_601C(M660Player *player, s16 spatialMode)
 {
     s16 pan;
     s16 volume;
@@ -1638,69 +1487,69 @@ void fn_1_601C(M660Player *player, s16 direction)
     f32 volumeScale;
     f32 positionDelta;
 
-    if (direction == 0 || direction == 1 || direction == 6) {
-        if (lbl_1_bss_1F4.rightEdge >= player->position.x &&
-            lbl_1_bss_1F4.leftEdge <= player->position.x) {
+    if (spatialMode == 0 || spatialMode == 1 || spatialMode == 6) {
+        if (lbl_1_bss_1F4.xMaximum >= player->position.x &&
+            lbl_1_bss_1F4.xMinimum <= player->position.x) {
             panScale =
-                (f32)(lbl_1_bss_1F4.maximumX - lbl_1_bss_1F4.minimumX) /
-                (lbl_1_bss_1F4.rightEdge - lbl_1_bss_1F4.leftEdge);
-            positionDelta = player->position.x - lbl_1_bss_1F4.leftEdge;
+                (f32)(lbl_1_bss_1F4.panMaximum - lbl_1_bss_1F4.panMinimum) /
+                (lbl_1_bss_1F4.xMaximum - lbl_1_bss_1F4.xMinimum);
+            positionDelta = player->position.x - lbl_1_bss_1F4.xMinimum;
             positionDelta *= panScale;
             pan = (s16)positionDelta;
-            pan += lbl_1_bss_1F4.minimumX;
-        } else if (lbl_1_bss_1F4.rightEdge < player->position.x) {
-            pan = lbl_1_bss_1F4.maximumX;
-        } else if (lbl_1_bss_1F4.leftEdge > player->position.x) {
-            pan = lbl_1_bss_1F4.minimumX;
+            pan += lbl_1_bss_1F4.panMinimum;
+        } else if (lbl_1_bss_1F4.xMaximum < player->position.x) {
+            pan = lbl_1_bss_1F4.panMaximum;
+        } else if (lbl_1_bss_1F4.xMinimum > player->position.x) {
+            pan = lbl_1_bss_1F4.panMinimum;
         }
     }
 
-    if (direction == 0 || direction == 2) {
-        if (lbl_1_bss_1F4.bottomEdge >= player->position.z &&
-            lbl_1_bss_1F4.topEdge <= player->position.z) {
+    if (spatialMode == 0 || spatialMode == 2) {
+        if (lbl_1_bss_1F4.zMaximum >= player->position.z &&
+            lbl_1_bss_1F4.zMinimum <= player->position.z) {
             volumeScale =
-                (f32)(lbl_1_bss_1F4.maximumY - lbl_1_bss_1F4.minimumY) /
-                (lbl_1_bss_1F4.bottomEdge - lbl_1_bss_1F4.topEdge);
-            positionDelta = player->position.z - lbl_1_bss_1F4.topEdge;
+                (f32)(lbl_1_bss_1F4.volumeMaximum - lbl_1_bss_1F4.volumeMinimum) /
+                (lbl_1_bss_1F4.zMaximum - lbl_1_bss_1F4.zMinimum);
+            positionDelta = player->position.z - lbl_1_bss_1F4.zMinimum;
             positionDelta *= volumeScale;
             volume = (s16)positionDelta;
-            volume += lbl_1_bss_1F4.minimumY;
-        } else if (lbl_1_bss_1F4.bottomEdge < player->position.z) {
-            volume = lbl_1_bss_1F4.maximumY;
-        } else if (lbl_1_bss_1F4.topEdge > player->position.z) {
-            volume = lbl_1_bss_1F4.minimumY;
+            volume += lbl_1_bss_1F4.volumeMinimum;
+        } else if (lbl_1_bss_1F4.zMaximum < player->position.z) {
+            volume = lbl_1_bss_1F4.volumeMaximum;
+        } else if (lbl_1_bss_1F4.zMinimum > player->position.z) {
+            volume = lbl_1_bss_1F4.volumeMinimum;
         }
     }
 
-    if (direction == 2 || direction == 3 || direction == 4 || direction == 5) {
-        pan = lbl_1_bss_1F4.minimumX +
-              (lbl_1_bss_1F4.maximumX - lbl_1_bss_1F4.minimumX) / 2;
+    if (spatialMode == 2 || spatialMode == 3 || spatialMode == 4 || spatialMode == 5) {
+        pan = lbl_1_bss_1F4.panMinimum +
+              (lbl_1_bss_1F4.panMaximum - lbl_1_bss_1F4.panMinimum) / 2;
     }
-    if (direction == 1 || direction == 3) {
-        volume = lbl_1_bss_1F4.minimumY +
-                 (lbl_1_bss_1F4.maximumY - lbl_1_bss_1F4.minimumY) / 2;
+    if (spatialMode == 1 || spatialMode == 3) {
+        volume = lbl_1_bss_1F4.volumeMinimum +
+                 (lbl_1_bss_1F4.volumeMaximum - lbl_1_bss_1F4.volumeMinimum) / 2;
     }
-    if (direction == 4) {
-        volume = lbl_1_bss_1F4.minimumY;
+    if (spatialMode == 4) {
+        volume = lbl_1_bss_1F4.volumeMinimum;
     }
-    if (direction == 5 || direction == 6) {
-        volume = lbl_1_bss_1F4.maximumY;
+    if (spatialMode == 5 || spatialMode == 6) {
+        volume = lbl_1_bss_1F4.volumeMaximum;
     }
 
     fn_80060F14(player->character, pan);
     fn_80060F40(player->character, volume);
-    if (player->setupState == 1) {
-        VoiceSoundIds_601C soundIds = {{573 + 3,
-            549 + 3, 693 + 3,
-            789 + 3, 741 + 3,
-            477 + 3, 765 + 3,
-            501 + 3, 717 + 3,
-            645 + 3, 525 + 3,
-            669 + 3, 621 + 3,
-            597 + 3}};
+    if (player->hitVoiceRequest == 1) {
+        s32 soundIds[14] = {MSM_SE_CHARVOICE_HIT_YELP,
+            MSM_SE_CHARVOICE_LUIGI_HIT_YELP, MSM_SE_CHARVOICE_PEACH_HIT_YELP,
+            MSM_SE_CHARVOICE_YOSHI_HIT_YELP, MSM_SE_CHARVOICE_WARIO_HIT_YELP,
+            MSM_SE_CHARVOICE_DAISY_HIT_YELP, MSM_SE_CHARVOICE_WALUIGI_HIT_YELP,
+            MSM_SE_CHARVOICE_KINOPIO_HIT_YELP, MSM_SE_CHARVOICE_TERESA_HIT_YELP,
+            MSM_SE_CHARVOICE_MINIKOOPA_HIT_YELP, MSM_SE_CHARVOICE_KINOPIKO_HIT_YELP,
+            MSM_SE_CHARVOICE_MINIKOOPAR_HIT_YELP, MSM_SE_CHARVOICE_MINIKOOPAG_HIT_YELP,
+            MSM_SE_CHARVOICE_MINIKOOPAB_HIT_YELP};
 
-        HuAudFXPlayVolPan(soundIds.soundIds[player->character], volume, pan);
-        player->setupState = -1;
+        HuAudFXPlayVolPan(soundIds[player->character], volume, pan);
+        player->hitVoiceRequest = -1;
     }
 }
 
@@ -1708,143 +1557,144 @@ void fn_1_601C(M660Player *player, s16 direction)
 void fn_1_64D0(void) {
     s16 soundSlot;
 
-    lbl_1_bss_1F4.firstStreamId = -1;
-    lbl_1_bss_1F4.secondStreamId = -1;
-    lbl_1_bss_1F4.backgroundTrackId = 85;
+    lbl_1_bss_1F4.backgroundStreamHandle = -1;
+    lbl_1_bss_1F4.jingleStreamHandle = -1;
+    lbl_1_bss_1F4.backgroundTrackId = MSM_STREAM_NIGHT_DUEL;
     lbl_1_bss_1F4.jingleId = -1;
-    lbl_1_bss_1F4.minimumX = 32;
-    lbl_1_bss_1F4.maximumX = 96;
-    lbl_1_bss_1F4.leftEdge = (f32) -800.0f;
-    lbl_1_bss_1F4.rightEdge = (f32) 800.0f;
-    lbl_1_bss_1F4.minimumY = 32;
-    lbl_1_bss_1F4.maximumY = 110;
-    lbl_1_bss_1F4.topEdge = (f32) -800.0f;
-    lbl_1_bss_1F4.bottomEdge = (f32) 800.0f;
+    lbl_1_bss_1F4.panMinimum = 32;
+    lbl_1_bss_1F4.panMaximum = 96;
+    lbl_1_bss_1F4.xMinimum = (f32) -800.0f;
+    lbl_1_bss_1F4.xMaximum = (f32) 800.0f;
+    lbl_1_bss_1F4.volumeMinimum = 32;
+    lbl_1_bss_1F4.volumeMaximum = 110;
+    lbl_1_bss_1F4.zMinimum = (f32) -800.0f;
+    lbl_1_bss_1F4.zMaximum = (f32) 800.0f;
     soundSlot = 0;
     while (soundSlot < 4) {
         lbl_1_bss_1F4.soundStatus[soundSlot] = -1;
-        lbl_1_bss_1F4.soundEffectId[soundSlot] = -1;
+        lbl_1_bss_1F4.soundEffectHandle[soundSlot] = -1;
         soundSlot += 1;
     }
 }
 
 /* Starts the queued jingle once the second stream channel becomes available. */
 void fn_1_6614(void) {
-    if (((s32) lbl_1_bss_1F4.jingleId != -1) && ((s32) lbl_1_bss_1F4.secondStreamId == -1)) {
-        lbl_1_bss_1F4.secondStreamId = HuAudJinglePlay((s16) lbl_1_bss_1F4.jingleId);
+    if (((s32) lbl_1_bss_1F4.jingleId != -1) &&
+        ((s32) lbl_1_bss_1F4.jingleStreamHandle == -1)) {
+        lbl_1_bss_1F4.jingleStreamHandle = HuAudJinglePlay((s16) lbl_1_bss_1F4.jingleId);
     }
 }
 
 /* Starts the selected background track when no first-channel stream is active. */
 void fn_1_6678(void) {
-    if ((s32) lbl_1_bss_1F4.firstStreamId == -1) {
-        lbl_1_bss_1F4.firstStreamId = HuAudBGMPlay((s16) lbl_1_bss_1F4.backgroundTrackId);
+    if ((s32) lbl_1_bss_1F4.backgroundStreamHandle == -1) {
+        lbl_1_bss_1F4.backgroundStreamHandle =
+            HuAudBGMPlay((s16) lbl_1_bss_1F4.backgroundTrackId);
     }
 }
 
 /* Fades the selected stream and clears its handle after requesting the fade. */
-void fn_1_66C8(s16 streamSlot, s16 fadeFrames) {
-    s16 streamId = streamSlot != 0
-                       ? lbl_1_bss_1F4.firstStreamId
-                       : lbl_1_bss_1F4.secondStreamId;
-    if (streamId != -1) {
-        HuAudSStreamFadeOut(streamId, fadeFrames);
+void fn_1_66C8(s16 streamSlot, s16 fadeSpeed) {
+    s16 streamHandle = streamSlot != 0
+                       ? lbl_1_bss_1F4.backgroundStreamHandle
+                       : lbl_1_bss_1F4.jingleStreamHandle;
+    if (streamHandle != -1) {
+        HuAudSStreamFadeOut(streamHandle, fadeSpeed);
         if (streamSlot != 0) {
-            lbl_1_bss_1F4.firstStreamId = -1;
+            lbl_1_bss_1F4.backgroundStreamHandle = -1;
             return;
         }
-        lbl_1_bss_1F4.secondStreamId = -1;
+        lbl_1_bss_1F4.jingleStreamHandle = -1;
     }
 }
 
 /* Stops the selected jingle or background stream immediately. */
 void fn_1_6774(s16 streamSelector)
 {
-    s16 streamId;
+    s16 streamHandle;
 
     if (streamSelector != 0) {
-        streamId = (s16)lbl_1_bss_1F4.firstStreamId;
+        streamHandle = (s16)lbl_1_bss_1F4.backgroundStreamHandle;
     } else {
-        streamId = (s16)lbl_1_bss_1F4.secondStreamId;
+        streamHandle = (s16)lbl_1_bss_1F4.jingleStreamHandle;
     }
 
-    HuAudSStreamStop(streamId);
+    HuAudSStreamStop(streamHandle);
 }
 
 /* Starts a stage sound with the selected pan and volume mode; every caller uses mode 5 and a NULL
 * position, centering pan and forcing maximum volume without reading the position. */
 void fn_1_67D4(s16 slot, s16 mode, Vec *position)
 {
-    /* This legacy call accepts full-width volume and pan arguments. */
-    int HuAudFXPlayVolPan();
-    s32 pan;
-    s32 volume;
+    s16 pan;
+    s16 volume;
     f32 positionDelta;
     f32 panScale;
     f32 volumeScale;
 
     if (mode <= 5) {
     if (mode == 0 || mode == 1) {
-        if (lbl_1_bss_1F4.rightEdge >= position->x &&
-            lbl_1_bss_1F4.leftEdge <= position->x) {
-            panScale = (f32)(lbl_1_bss_1F4.maximumX -
-                             lbl_1_bss_1F4.minimumX) /
-                       (lbl_1_bss_1F4.rightEdge -
-                        lbl_1_bss_1F4.leftEdge);
+        if (lbl_1_bss_1F4.xMaximum >= position->x &&
+            lbl_1_bss_1F4.xMinimum <= position->x) {
+            panScale = (f32)(lbl_1_bss_1F4.panMaximum -
+                             lbl_1_bss_1F4.panMinimum) /
+                       (lbl_1_bss_1F4.xMaximum -
+                        lbl_1_bss_1F4.xMinimum);
             positionDelta = position->x -
-                            lbl_1_bss_1F4.leftEdge;
+                            lbl_1_bss_1F4.xMinimum;
             positionDelta *= panScale;
-            pan = (s32)positionDelta;
-            pan += lbl_1_bss_1F4.minimumX;
-        } else if (lbl_1_bss_1F4.rightEdge < position->x) {
-            pan = lbl_1_bss_1F4.maximumX;
-        } else if (lbl_1_bss_1F4.leftEdge > position->x) {
-            pan = lbl_1_bss_1F4.minimumX;
+            pan = (s16)positionDelta;
+            pan += lbl_1_bss_1F4.panMinimum;
+        } else if (lbl_1_bss_1F4.xMaximum < position->x) {
+            pan = lbl_1_bss_1F4.panMaximum;
+        } else if (lbl_1_bss_1F4.xMinimum > position->x) {
+            pan = lbl_1_bss_1F4.panMinimum;
         }
     }
 
     if (mode == 0 || mode == 2) {
-        if (lbl_1_bss_1F4.bottomEdge >= position->z &&
-            lbl_1_bss_1F4.topEdge <= position->z) {
-            volumeScale = (f32)(lbl_1_bss_1F4.maximumY -
-                                lbl_1_bss_1F4.minimumY) /
-                          (lbl_1_bss_1F4.bottomEdge -
-                           lbl_1_bss_1F4.topEdge);
+        if (lbl_1_bss_1F4.zMaximum >= position->z &&
+            lbl_1_bss_1F4.zMinimum <= position->z) {
+            volumeScale = (f32)(lbl_1_bss_1F4.volumeMaximum -
+                                lbl_1_bss_1F4.volumeMinimum) /
+                          (lbl_1_bss_1F4.zMaximum -
+                           lbl_1_bss_1F4.zMinimum);
             positionDelta = position->z -
-                            lbl_1_bss_1F4.topEdge;
+                            lbl_1_bss_1F4.zMinimum;
             positionDelta *= volumeScale;
-            volume = (s32)positionDelta;
-            volume += lbl_1_bss_1F4.minimumY;
-        } else if (lbl_1_bss_1F4.bottomEdge < position->z) {
-            volume = lbl_1_bss_1F4.maximumY;
-        } else if (lbl_1_bss_1F4.topEdge > position->z) {
-            volume = lbl_1_bss_1F4.minimumY;
+            volume = (s16)positionDelta;
+            volume += lbl_1_bss_1F4.volumeMinimum;
+        } else if (lbl_1_bss_1F4.zMaximum < position->z) {
+            volume = lbl_1_bss_1F4.volumeMaximum;
+        } else if (lbl_1_bss_1F4.zMinimum > position->z) {
+            volume = lbl_1_bss_1F4.volumeMinimum;
         }
     }
 
     if (mode == 2 || mode == 3 || mode == 4 || mode == 5) {
-        pan = (s16)(lbl_1_bss_1F4.minimumX +
-                    (lbl_1_bss_1F4.maximumX -
-                     lbl_1_bss_1F4.minimumX) / 2);
+        pan = (s16)(lbl_1_bss_1F4.panMinimum +
+                    (lbl_1_bss_1F4.panMaximum -
+                     lbl_1_bss_1F4.panMinimum) / 2);
     }
 
     if (mode == 1 || mode == 3) {
-        volume = (s16)(lbl_1_bss_1F4.minimumY +
-                       (lbl_1_bss_1F4.maximumY -
-                        lbl_1_bss_1F4.minimumY) / 2);
+        volume = (s16)(lbl_1_bss_1F4.volumeMinimum +
+                       (lbl_1_bss_1F4.volumeMaximum -
+                        lbl_1_bss_1F4.volumeMinimum) / 2);
     }
 
     if (mode == 4) {
-        volume = lbl_1_bss_1F4.minimumY;
+        volume = lbl_1_bss_1F4.volumeMinimum;
     }
 
     if (mode == 5) {
-        volume = lbl_1_bss_1F4.maximumY;
+        volume = lbl_1_bss_1F4.volumeMaximum;
     }
     lbl_1_bss_1F4.soundStatus[slot] = 1;
-    lbl_1_bss_1F4.soundEffectId[slot] =
+    lbl_1_bss_1F4.soundEffectHandle[slot] =
         HuAudFXPlayVolPan(lbl_1_data_F6[slot], volume, pan);
     }
 }
 
-s16 lbl_1_data_F6[5] = {2111, 2112, 2113, 2114, 0};
+s16 lbl_1_data_F6[5] = { MSM_SE_MG660_STAGE_OPENING, MSM_SE_MG660_WAVE_APPEAR_FIRST,
+                         MSM_SE_MG660_WAVE_APPEAR_SECOND, MSM_SE_MG660_PLAYER_ACTION, 0 };

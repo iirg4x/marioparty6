@@ -25,7 +25,6 @@
 
 s32 fn_1_A7A4(void);
 static void fn_1_ADD8(M662Player *);
-extern s32 fn_1_2DA0(f32 *, f32, f32, f32);
 
 /* Finish-phase callback: requests the main music fade and keeps input, ending camera and scene
  * updates running. */
@@ -41,11 +40,11 @@ s32 fn_1_A430(void) {
 
 /* Pre-winner callback: updates input and scene transforms and reports when the ending camera
  * sequence is ready. */
-s16 fn_1_A474(void) {
-    s16 endingReady = 0;
+s32 fn_1_A474(void) {
+    s32 endingReady = 0;
 
     fn_1_984();
-    endingReady = fn_1_A7A4();
+    endingReady = (s16)fn_1_A7A4();
     fn_1_2670();
     return endingReady;
 }

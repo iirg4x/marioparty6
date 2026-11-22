@@ -15,26 +15,21 @@ typedef struct M660LightState {
     GXColor color;
 } M660LightState;
 
+/* Shadow camera transform and orbit settings. */
 typedef struct M660ShadowCamera {
     Vec cameraPosition;
-    f32 azimuth;
     f32 elevation;
-    f32 unknown14;
+    f32 azimuth;
+    f32 unk14; /* The game's code never reads this field. */
     Vec target;
-    u8 unknown24[12];
+    u8 unk24[12]; /* No code names this field. */
     Vec cameraUp;
-    u8 unknown3C[12];
+    u8 unk3C[12]; /* No code names this field. */
     f32 orbitDistance;
-    f32 shadowTransparency;
+    f32 shadowOpacity;
 } M660ShadowCamera;
 
 extern M660LightState lbl_1_bss_24F4;
 extern M660ShadowCamera lbl_1_bss_24A4;
-typedef struct M660HalfwordQuartet {
-    u16 first;
-    u16 second;
-    u16 third;
-    u16 fourth;
-} M660HalfwordQuartet;
 
 #endif

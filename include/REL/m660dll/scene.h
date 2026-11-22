@@ -7,41 +7,43 @@
 #include "game/object.h"
 extern s16 lbl_1_data_F6[5];
 
+/* Object manager state for the stage. */
 typedef struct M660ManagerState {
     OMOBJMAN *objects;
-    u32 unknown;
+    u32 unk04; /* No code names this field. */
 } M660ManagerState;
 extern M660ManagerState lbl_1_bss_2678;
 
 typedef struct M660PadInput {
-    u32 buttons;
-    u32 pressedButtons;
-    u16 repeatedButtons;
-    s8 stickX;
-    s8 stickY;
-    s8 substickX;
-    s8 substickY;
-    u8 triggerL;
-    u8 triggerR;
-    u8 directionalPad;
-    u8 repeatedDirectionalPad;
+    u32 unk00; /* The game's code never reads this field. */
+    u32 unk04; /* The game's code never reads this field. */
+    u16 unk08; /* The game's code never reads this field. */
+    s8 unk0A; /* The game's code never reads this field. */
+    s8 unk0B; /* The game's code never reads this field. */
+    s8 unk0C; /* The game's code never reads this field. */
+    s8 unk0D; /* The game's code never reads this field. */
+    u8 unk0E; /* The game's code never reads this field. */
+    u8 unk0F; /* The game's code never reads this field. */
+    u8 unk10; /* The game's code never reads this field. */
+    u8 unk11; /* The game's code never reads this field. */
     u8 alignmentPadding[2]; /* Aligns the end of the sampled input record. */
 } M660PadInput;
 
+/* Controller input, action and collision state for one player. */
 typedef struct M660Player {
     M660PadInput input;
     s8 selectedPlayer;
     s8 playerIndex;
     s8 character;
     s8 pad;
-    s8 group;
+    s8 unk18; /* The game's code never reads this field. */
     s8 type;
     s8 difficulty;
     s8 inputDisabled; /* Nonzero suppresses sampled input and sends zero pad input to the actor. */
     s8 mode;
     s32 actionState;
-    u8 unknown24[12];
-    s8 setupState;
+    u8 unk24[12]; /* No code names this field. */
+    s8 hitVoiceRequest;
     s8 collisionActive;
     u8 positionPadding[2]; /* Aligns the position vector that follows. */
     Vec position;
@@ -50,13 +52,13 @@ typedef struct M660Player {
     s8 state;
     u8 meshPadding; /* Aligns the stored mesh indices. */
     s16 storedMesh;
-    s16 previousMesh;
+    s16 unk5C; /* The game's code never reads this field. */
     s16 partnerIndex;
     s16 previousPartner;
     s16 collisionCount;
     Vec actionOrigin;
     s16 actionSlot;
-    s16 unknown72;
+    s16 unk72; /* No code names this field. */
     s32 buttonsWork;
     s32 pressedButtonsWork;
     s32 stickXWork;
@@ -66,7 +68,7 @@ typedef struct M660Player {
     s16 movementState;
     s16 routeState;
     s16 movementTimer;
-    s16 unknown8E;
+    s16 unk8E; /* No code names this field. */
     s16 movementCounter;
     s16 chaseState;
     Vec currentPosition;
@@ -74,7 +76,7 @@ typedef struct M660Player {
     f32 forwardSpeed;
     f32 arrivalRadius;
     Vec movementOrigin;
-    u8 unknownC0[4];
+    u8 unkC0[4]; /* No code names this field. */
     f32 angle;
     f32 steeringX;
     f32 steeringZ;
@@ -87,12 +89,12 @@ typedef struct M660Player {
     s16 oldContacts[2];
     s16 contactEdges[2];
     s16 oldContactEdges[2];
-    s16 unknownF6;
-    Vec contactNormals[2];
+    s16 unkF6; /* No code names this field. */
+    Vec unkF8[2]; /* The game's code never reads this field. */
     s16 selectedRoute;
     s16 selectedPath;
     s16 selectedPoint;
-    u8 unknown116[18];
+    u8 unk116[18]; /* No code names this field. */
     s16 waitTimer;
     s16 destinationPointIndex;
     s16 routeActive;
@@ -103,7 +105,7 @@ typedef struct M660Player {
 
 typedef struct M660Model {
     s16 modelId;
-    u8 unknown02[6]; /* Six bytes before the position vector; their role is unknown. */
+    u8 unk02[6]; /* No code names this field. */
     Vec position;
     Vec attachment;
     Vec rotation;
@@ -111,6 +113,7 @@ typedef struct M660Model {
     Vec normals[4];
 } M660Model;
 
+/* The record stride is 100 bytes. */
 typedef struct M660Motion {
     s16 motionIds[7];
     s16 mode;
@@ -119,7 +122,7 @@ typedef struct M660Motion {
     f32 previousSpeed;
     f32 time;
     f32 previousTime;
-    f32 maximumTime;
+    f32 unk24; /* The game's code never reads this field. */
     u32 attributes;
     u32 previousAttributes;
     u32 attributesToReset;
@@ -135,13 +138,13 @@ typedef struct M660Motion {
     f32 shiftStart;
     f32 shiftEnd;
     f32 shiftTime;
-    f32 shiftMaximumTime;
-    u8 padding60[4]; /* Four unobserved tail bytes preserve the 100-byte record stride;
-                     * their role is unknown. */
+    f32 unk5C; /* The game's code never reads this field. */
+    u8 unk60[4]; /* No code names this field. */
 } M660Motion;
 
-typedef struct M660StageInput {
-    u8 unknown00[8];
+/* Stage sequence, controller samples and effect state. */
+typedef struct M660StageState {
+    u8 unk00[8]; /* No code names this field. */
     s16 openingState;
     s16 openingTimer;
     s16 phase;
@@ -152,93 +155,97 @@ typedef struct M660StageInput {
     s16 losingPlayerIndex;
     M660PadInput samples[4];
     struct MgTimer_s *gameTimer;
-    u8 unknown6C[4];
-    s16 night;
+    u8 unk6C[4]; /* No code names this field. */
+    s16 unk70; /* The game's code never reads this field. */
     s16 selectedObject;
-    u8 unknown74[4];
+    u8 unk74[4]; /* No code names this field. */
     f32 angle;
     f32 interval;
     f32 speedRandomRange;
     s16 count;
     s16 historyCount;
-    s16 slotHistory[10];
+    s16 effectHistory[10];
     s16 selectedSlot;
     s16 effectIndex;
     s16 soundPlayed;
-    u8 streamIdsPadding[2]; /* Aligns the streamed-audio handles. */
-    s32 firstStreamId;
+    u8 streamHandlePadding[2]; /* Aligns the streamed-audio handles. */
+    s32 backgroundStreamHandle;
     s32 backgroundTrackId;
-    s32 secondStreamId;
+    s32 jingleStreamHandle;
     s32 jingleId;
-    s32 unknownB4;
-    s32 soundEffectId[4];
+    s32 unkB4; /* No code names this field. */
+    s32 soundEffectHandle[4];
     s16 soundStatus[4];
-    s16 minimumX;
-    s16 maximumX;
-    f32 leftEdge;
-    f32 rightEdge;
-    s16 minimumY;
-    s16 maximumY;
-    f32 topEdge;
-    f32 bottomEdge;
-} M660StageInput;
+    /* Stereo pan mapped from world X. */
+    s16 panMinimum;
+    s16 panMaximum;
+    f32 xMinimum;
+    f32 xMaximum;
+    /* Effect volume mapped from world Z. */
+    s16 volumeMinimum;
+    s16 volumeMaximum;
+    f32 zMinimum;
+    f32 zMaximum;
+} M660StageState;
 
+/* Stored camera presets and projection settings. */
 typedef struct M660CameraRecord {
-    s32 cameraIndex;
-    u8 unused04[12];
-    Vec rotation;
-    Vec position;
-    u8 unused28[12];
-    f32 zoom;
-    f32 viewport[6];
+    s32 unk00; /* The game's code never reads this field. */
+    u8 unk04[12]; /* No code names this field. */
+    f32 unk10[3]; /* The game's code never reads this field. */
+    f32 unk1C[3]; /* The game's code never reads this field. */
+    u8 unk28[12]; /* No code names this field. */
+    f32 unk34; /* The game's code never reads this field. */
+    f32 aspect;
+    f32 viewport[4];
+    f32 fieldOfView;
 } M660CameraRecord;
 
 extern M660Player lbl_1_bss_2DC[2];
 extern M660Model lbl_1_bss_60C[75];
 extern M660Motion lbl_1_bss_544[2];
-extern M660StageInput lbl_1_bss_1F4;
+extern M660StageState lbl_1_bss_1F4;
 typedef struct M660CameraState {
     M660CameraRecord records[4];
-    u8 unknown140[8];
+    u8 unk140[8]; /* No code names this field. */
 } M660CameraState;
 
 extern M660CameraState lbl_1_bss_2530;
+/* Movement and path state for one moving slot. */
 typedef struct M660Slot {
     s16 active;
-    s16 state;
+    s16 unk02; /* The game's code never reads this field. */
     s16 delay;
     s16 pathIndex;
     s16 effectIndex;
     s16 modelA;
     s16 modelB;
-    u8 unknown0E;
-    s8 playerIndex;
+    u8 unk0E; /* No code names this field. */
+    s8 unk0F; /* No code names this field. */
     Vec velocity;
     f32 travelSpeed;
-    f32 unused20;
+    f32 unk20; /* No code names this field. */
     f32 phase;
 } M660Slot;
 
 typedef struct M660SceneLight {
-    u8 unused00[4];
+    u8 unk00[4]; /* No code names this field. */
     s16 lightSlot;
     s16 modelId;
-    s16 unused08;
+    s16 unk08; /* The game's code never reads this field. */
     s16 lightId;
     Vec position;
-    u8 unused18[12];
-    f32 unused24;
-    f32 unused28;
-    f32 unused2C;
+    u8 unk18[12]; /* No code names this field. */
+    f32 unk24; /* The game's code never reads this field. */
+    f32 unk28; /* The game's code never reads this field. */
+    f32 unk2C; /* The game's code never reads this field. */
     Vec direction;
     GXColor color;
     f32 referenceDistance;
     f32 referenceBrightness;
 } M660SceneLight;
 
-typedef struct M660StageConnection { s8 directions[4]; } M660StageConnection;
-
 extern M660Slot lbl_1_bss_80[9];
 extern M660SceneLight lbl_1_bss_38;
-extern M660StageConnection lbl_1_bss_0[14];
+extern s8 lbl_1_bss_0[14][4];
 #endif

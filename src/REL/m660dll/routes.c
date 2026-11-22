@@ -1,11 +1,11 @@
 /* Builds the route grid and advances the stage's player movement. */
 #include "dolphin/math.h"
 #include "REL/m660dll/grid.h"
-#include "REL/m660dll/particles.h"
 #include "dolphin/types.h"
-#include "string.h"
+#include <string.h>
 #include "game/hu3d.h"
 #include "game/gamework.h"
+#include "game/frand.h"
 #include "game/flag.h"
 #include "game/wipe.h"
 #include "game/mg/seqman.h"
@@ -16,30 +16,16 @@
 #include "dolphin/mtx.h"
 #include "REL/m660dll/scene.h"
 
-typedef struct RouteModeList_131C8 {
-    s16 values[3];
-} RouteModeList_131C8;
 #include "REL/m660dll/routes.h"
-extern HuVecF lbl_80266A4C, lbl_80266A40;
-extern f32 lbl_802C028C;
+#include "REL/m660dll.h"
+#include "humath.h"
 extern int printf();
-f32 fn_1_3C54(f32 range);
-s16 fn_1_2E80(f32 *value, f32 step, f32 start, f32 end);
-void fn_1_4004(Vec *origin);
-void fn_1_3068(MGTIMER *timer);
-void fn_1_67D4(s16 slot, s16 mode, Vec *position);
-void fn_1_4B38(M660Model *origin);
-void fn_1_E6F4(void);
-void fn_1_11F50(void);
-s16 fn_1_12030(M660Player *player, s16 advanceState);
 s16 fn_1_1265C(M660Player *player);
 s16 fn_1_12CA8(M660Player *player);
 s16 fn_1_131C8(M660Player *player, s16 selectFarthest, s16 useAlternateMode);
 s16 fn_1_13810(M660Player *player, s16 useCenter);
 s16 fn_1_13B64(void);
 void fn_1_13C6C(M660Player *player);
-void fn_1_142F8(s16 group);
-void fn_1_15484(s16 selection);
 void fn_1_15548(void);
 
 /* Builds the board route grid and lane paths during fn_1_A3E4 stage setup. */
@@ -77,7 +63,7 @@ void fn_1_E6F4(void)
             lifetimes[(s16)group][0] + frandmod(lifetimes[(s16)group][1]);
         lbl_1_bss_2DC[index].routeLifetime *= 60;
     }
-    memset(&lbl_1_bss_3688, 0, 48);
+    memset(&lbl_1_bss_3688, 0, sizeof(lbl_1_bss_3688));
     lbl_1_bss_3688.minimum.x = -750.0f;
     lbl_1_bss_3688.minimum.y = 0.0f;
     lbl_1_bss_3688.minimum.z = -750.0f;
@@ -93,7 +79,7 @@ void fn_1_E6F4(void)
         lbl_1_bss_3688.minimum.z) / lbl_1_bss_3688.spacing.z) + 1;
     lbl_1_bss_3688.count = lbl_1_bss_3688.columns * lbl_1_bss_3688.rows;
     lbl_1_bss_3688.radius = lbl_1_bss_3688.spacing.x / 2;
-    memset(lbl_1_bss_2688, 0, lbl_1_bss_3688.count * 16);
+    memset(lbl_1_bss_2688, 0, lbl_1_bss_3688.count * sizeof(lbl_1_bss_2688[0]));
     index = 0;
     pointIndex = 0;
     while (index < lbl_1_bss_3688.rows) {
@@ -116,7 +102,7 @@ void fn_1_E6F4(void)
         index++;
     }
     fn_1_142F8(3);
-    memset(lbl_1_bss_36B8, 0, 2968);
+    memset(lbl_1_bss_36B8, 0, sizeof(lbl_1_bss_36B8));
     for (index = 0; index < 14; index++) {
         for (lane = 0; lane < 4; lane++) {
             lbl_1_bss_36B8[index].paths[lane].direction = -1;
@@ -601,10 +587,10 @@ void fn_1_E6F4(void)
                      pointIndex++) {
                     position = lbl_1_bss_36B8[index].paths[lane].points[pointIndex];
                     angle = lbl_1_bss_1F4.angle +
-                        180.0 * (atan2(position.x, position.z) / 3.141592653589793);
+                        180.0 * (atan2(position.x, position.z) / M_PI);
                     radius = sqrt(position.x * position.x + position.z * position.z);
-                    position.x = radius * sin((3.141592653589793 * angle) / 180.0);
-                    position.z = radius * cos((3.141592653589793 * angle) / 180.0);
+                    position.x = radius * sin((M_PI * angle) / 180.0);
+                    position.z = radius * cos((M_PI * angle) / 180.0);
                     lbl_1_bss_36B8[index].paths[lane].points[pointIndex] = position;
                     direction = lbl_1_bss_36B8[index].paths[lane].directions[pointIndex];
                     for (directionIndex = 0; directionIndex < 8; directionIndex++) {
@@ -685,7 +671,7 @@ s16 fn_1_12030(M660Player *player, s16 advanceState)
             delta.x = player->currentPosition.x - player->position.x;
             delta.z = player->currentPosition.z - player->position.z;
             angleDegrees =
-                (f32) (180.0 * ((f64) atan2((f64) delta.x, (f64) delta.z) / 3.141592653589793));
+                (f32) (180.0 * ((f64) atan2((f64) delta.x, (f64) delta.z) / M_PI));
             player->angle = angleDegrees;
             distanceSquared = (delta.x * delta.x) + (delta.z * delta.z);
             player->distance = (f32) sqrt((f64) distanceSquared);
@@ -721,14 +707,14 @@ s16 fn_1_12030(M660Player *player, s16 advanceState)
                 target.x =
                     (f32) ((f64) player->movementOrigin.x +
                            ((f64) player->distance *
-                            sin((3.141592653589793 * (f64) (player->angle + player->steeringX)) /
+                            sin((M_PI * (f64) (player->angle + player->steeringX)) /
                                 180.0)));
                 target.z =
                     (f32) ((f64) player->movementOrigin.z +
                            ((f64) player->distance *
-                            cos((3.141592653589793 * (f64) (player->angle + player->steeringX)) /
+                            cos((M_PI * (f64) (player->angle + player->steeringX)) /
                                 180.0)));
-                fn_8007E8B4(lbl_1_bss_1E8.players[player->playerIndex], (HuVecF *) &target,
+                fn_8007E8B4(lbl_1_bss_1E8.players[player->playerIndex], &target,
                                  player->forwardSpeed, player->arrivalRadius);
                 if (chaseResult == 0)
                 {
@@ -746,7 +732,7 @@ s16 fn_1_12030(M660Player *player, s16 advanceState)
             player->previousChasePosition = player->currentPosition;
             target = player->previousChasePosition;
             chaseResult =
-                fn_8007E8B4(lbl_1_bss_1E8.players[player->playerIndex], (HuVecF *) &target,
+                fn_8007E8B4(lbl_1_bss_1E8.players[player->playerIndex], &target,
                                  player->forwardSpeed, player->arrivalRadius);
             if (0 != chaseResult)
             {
@@ -853,10 +839,10 @@ s16 fn_1_1265C(M660Player *player)
     return result;
 }
 
-/* Debug hook disabled in release builds. */
+/* Empty debug hook. */
 static inline void DebugModel(M660Model *object) {}
 
-/* Debug hook disabled in release builds. */
+/* Empty debug hook. */
 static inline void DebugTimer(s16 timer) {}
 
 /* Advances a player across connected route lanes; called by fn_1_13C6C. */
@@ -1024,12 +1010,12 @@ s16 fn_1_131C8(M660Player *player, s16 selectFarthest, s16 useAlternateMode)
     s16 candidateCount;
     s16 routeMode;
     s16 found = 0;
-    u16 routeModes[3] = {45, 50, 53};
+    s16 routeModes[3] = {45, 50, 53};
     s16 index;
 
     bestDistance = selectFarthest != 0 ? -1.0f : 99999.0f;
     minimumDistance = 100.0f;
-    nearbyRadius = lbl_1_bss_60C[((s16 *)routeModes)[lbl_1_bss_1F4.effectIndex]].bounds.x;
+    nearbyRadius = lbl_1_bss_60C[routeModes[lbl_1_bss_1F4.effectIndex]].bounds.x;
     /* Alternate mode forces the nearest-point search even when selectFarthest was requested. */
     if (useAlternateMode != 0) {
         routeMode = 16;
@@ -1105,23 +1091,23 @@ s16 fn_1_13810(
 
             offset[0] = (f32)((f64)player->position.x -
                               ((f64)radius *
-                               sin((3.141592653589793 * angle) /
+                               sin((M_PI * angle) /
                                    180.0)));
             offset[2] = (f32)((f64)player->position.z -
                               ((f64)radius *
-                               cos((3.141592653589793 * angle) /
+                               cos((M_PI * angle) /
                                    180.0)));
             radius = (f32)sqrt((offset[0] * offset[0]) +
                                (offset[2] * offset[2]));
             if (radius > 200.0f) {
                 player->destination.x =
                     (f32)((f64)radius *
-                          sin((3.141592653589793 * angle) /
+                          sin((M_PI * angle) /
                               180.0));
                 player->destination.y = 0.0f;
                 player->destination.x =
                     (f32)((f64)radius *
-                          cos((3.141592653589793 * angle) /
+                          cos((M_PI * angle) /
                               180.0));
                 success = 1;
                 break;
@@ -1281,21 +1267,21 @@ void fn_1_142F8(s16 group)
             angle = lbl_1_data_100[slot->pathIndex].angles[0];
             radius = 50.0f + object->bounds.x;
             corners[0].x = lbl_1_data_100[slot->pathIndex].points[0].x +
-                radius * sin((3.141592653589793 * (90.0f + angle)) / 180.0);
+                radius * sin((M_PI * (90.0f + angle)) / 180.0);
             corners[0].z = lbl_1_data_100[slot->pathIndex].points[0].z +
-                radius * cos((3.141592653589793 * (90.0f + angle)) / 180.0);
+                radius * cos((M_PI * (90.0f + angle)) / 180.0);
             corners[1].x = lbl_1_data_100[slot->pathIndex].points[1].x +
-                radius * sin((3.141592653589793 * (90.0f + angle)) / 180.0);
+                radius * sin((M_PI * (90.0f + angle)) / 180.0);
             corners[1].z = lbl_1_data_100[slot->pathIndex].points[1].z +
-                radius * cos((3.141592653589793 * (90.0f + angle)) / 180.0);
+                radius * cos((M_PI * (90.0f + angle)) / 180.0);
             corners[2].x = lbl_1_data_100[slot->pathIndex].points[1].x +
-                radius * sin((3.141592653589793 * (angle - 90.0f)) / 180.0);
+                radius * sin((M_PI * (angle - 90.0f)) / 180.0);
             corners[2].z = lbl_1_data_100[slot->pathIndex].points[1].z +
-                radius * cos((3.141592653589793 * (angle - 90.0f)) / 180.0);
+                radius * cos((M_PI * (angle - 90.0f)) / 180.0);
             corners[3].x = lbl_1_data_100[slot->pathIndex].points[0].x +
-                radius * sin((3.141592653589793 * (angle - 90.0f)) / 180.0);
+                radius * sin((M_PI * (angle - 90.0f)) / 180.0);
             corners[3].z = lbl_1_data_100[slot->pathIndex].points[0].z +
-                radius * cos((3.141592653589793 * (angle - 90.0f)) / 180.0);
+                radius * cos((M_PI * (angle - 90.0f)) / 180.0);
         }
         for (edgeIndex = 0; edgeIndex < 4; edgeIndex++) {
             edges[edgeIndex].x = corners[edgeIndices[edgeIndex][0]].x -
@@ -1315,9 +1301,9 @@ void fn_1_142F8(s16 group)
             normals[edgeIndex].x = corners[opposite[edgeIndex]].x - projected.x;
             normals[edgeIndex].y = 0.0f;
             normals[edgeIndex].z = corners[opposite[edgeIndex]].z - projected.z;
-            PSVECNormalize(&normals[edgeIndex], &normals[edgeIndex]);
+            VECNormalize(&normals[edgeIndex], &normals[edgeIndex]);
             angles[edgeIndex] = 180.0 * (atan2(normals[edgeIndex].x,
-                normals[edgeIndex].z) / 3.141592653589793);
+                normals[edgeIndex].z) / M_PI);
         }
         maximum = corners[0];
         minimum = corners[0];
@@ -1355,8 +1341,8 @@ void fn_1_142F8(s16 group)
                     distanceSquared = difference.x * difference.x + difference.z * difference.z;
                     distance = sqrt(distanceSquared);
                     if (distance < lbl_1_bss_3688.radius) break;
-                    PSVECNormalize(&difference, &difference);
-                    direction = 180.0 * (atan2(difference.x, difference.z) / 3.141592653589793);
+                    VECNormalize(&difference, &difference);
+                    direction = 180.0 * (atan2(difference.x, difference.z) / M_PI);
                     if ((angles[edgeIndex] > 90.0f && direction < -90.0f) ||
                         (angles[edgeIndex] < -90.0f && direction > 90.0f)) {
                         angle = 0.0f > angles[edgeIndex] ?
@@ -1413,18 +1399,14 @@ void fn_1_15484(s16 selection)
     }
 }
 
-/* Prints nearby route-effect grid points; prints "nonhit" when none meet the distance test. */
+/* Prints nearby grid points with flag 0x10, or "nonhit" when none qualify. */
 void fn_1_15548(void)
 {
     M660Player *players = lbl_1_bss_2DC;
     s16 index = 0;
     s16 foundObject = 0;
     M660GridPoint *object;
-    struct {
-        f32 x;
-        f32 y;
-        f32 z;
-    } delta;
+    Vec delta;
     f32 distance;
 
     while (index < lbl_1_bss_3688.count) {

@@ -1,5 +1,4 @@
 /* Puzzle models, randomized layouts and round introduction. */
-#include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -25,10 +24,9 @@
 
 void fn_1_3C4(void), fn_1_808(void), fn_1_8C08(void), fn_1_90AC(void), fn_1_9910(void),
     fn_1_AC88(void);
-void fn_1_984(void), fn_1_5884(void), fn_1_2670(void), fn_1_4EAC(void);
+void fn_1_5884(void), fn_1_4EAC(void);
 s16 fn_1_9C1C(void);
 s32 fn_1_A170(void);
-int fn_1_2DA0(f32 *, f32, f32, f32);
 
 /* Optional model-value debug hook; no output in the release game. */
 static inline void DebugValue(s16 modelId) { }
@@ -50,8 +48,8 @@ int fn_1_8B34(void)
 
 /* Fade-in sequence callback: advances the introduction and scene updates, returning introduction
  * completion. */
-s16 fn_1_8B8C() {
-    s16 introductionFinished = 0;
+s32 fn_1_8B8C(void) {
+    s32 introductionFinished = 0;
     introductionFinished = (s16)fn_1_9C1C();
     fn_1_984();
     fn_1_5884();
@@ -60,8 +58,8 @@ s16 fn_1_8B8C() {
 }
 
 /* Start sequence callback: keeps the introduction and scene updating while returning zero. */
-s16 fn_1_8BCC() {
-    s16 phaseFinished = 0;
+s32 fn_1_8BCC(void) {
+    s32 phaseFinished = 0;
     fn_1_9C1C();
     fn_1_984();
     fn_1_5884();
@@ -213,8 +211,8 @@ void fn_1_90AC(void)
         DebugValue(lbl_1_bss_4B4[lbl_1_bss_D0[modelIndex].secondModel].modelId);
     }
 
-    /* Choose one of the first two patterns and one of the other three. */
     modelIndex = frandmod(2);
+    /* Choose one of the first two patterns and one of the other three. */
     lbl_1_bss_210.patterns[modelIndex] = frandmod(2);
     lbl_1_bss_210.patterns[modelIndex ^ 1] = frandmod(3) + 2;
     /* The third pattern must differ from both earlier choices. */
@@ -243,7 +241,7 @@ void fn_1_90AC(void)
             }
             if (((lbl_1_bss_210.patterns[patternIndex] == 0) && (assetIndex == 0)) ||
                 ((lbl_1_bss_210.patterns[patternIndex] == 1) && (assetIndex == 1))) {
-                /* Carry the changed column order into the following path steps. */
+                /* Shuffle the column order used by subsequent path steps. */
                 for (shufflePass = 0; shufflePass < 1000; shufflePass++) {
                     firstColumn = frandmod(4);
                     secondColumn = frandmod(4);

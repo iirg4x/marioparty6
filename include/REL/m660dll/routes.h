@@ -11,8 +11,9 @@ typedef struct M660RoutePath {
     Vec points[2];
 } M660RoutePath;
 
+/* Four paths available from a route model. */
 typedef struct M660Route {
-    s32 unobserved00;
+    s32 unk00; /* No code names this field. */
     M660RoutePath paths[4];
 } M660Route;
 

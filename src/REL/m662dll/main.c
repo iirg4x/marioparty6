@@ -27,10 +27,9 @@
 #include "game/printfunc.h"
 #include "msm_stream.h"
 
-extern s16 lbl_802C0278;
 extern void fn_1_1DC8(s16);
-extern void fn_1_1DFC(void), fn_1_223C(void), fn_1_8B34(void), fn_1_4D04(void);
-extern s32 fn_1_8B8C(void), fn_1_8BCC(void), fn_1_57C8(void), fn_1_A430(void);
+extern void fn_1_1DFC(void), fn_1_223C(void), fn_1_4D04(void);
+extern s32 fn_1_A430(void);
 extern s32 fn_1_A4B0(void), fn_1_A758(void), fn_1_A780(void);
 void fn_1_1918(s16);
 void ObjectSetup(void);
@@ -83,20 +82,17 @@ void ObjectSetup(void) {
 /* Initial sequence callback: clears scene state, builds the cameras and models, and prepares
  * audio. */
 void fn_1_130(s16 mode, s16 frameNo) {
-    s16 nightMode;
-
-    memset(&lbl_1_bss_B08, 0, 328);
-    memset(&lbl_1_bss_ACC, 0, 60);
-    memset(&lbl_1_bss_A7C, 0, 80);
-    memset(&lbl_1_bss_A74, 0, 8);
-    memset(&lbl_1_bss_4B4, 0, 1472);
-    memset(&lbl_1_bss_3F4, 0, 192);
-    memset(&lbl_1_bss_2F4, 0, 256);
-    memset(&lbl_1_bss_210, 0, 228);
-    memset(&lbl_1_bss_D0, 0, 320);
-    memset(&lbl_1_bss_0, 0, 208);
-    nightMode = lbl_802C0278;
-    lbl_1_bss_210.nightMode = nightMode;
+    memset(&lbl_1_bss_B08, 0, sizeof(lbl_1_bss_B08));
+    memset(&lbl_1_bss_ACC, 0, sizeof(lbl_1_bss_ACC));
+    memset(&lbl_1_bss_A7C, 0, sizeof(lbl_1_bss_A7C));
+    memset(&lbl_1_bss_A74, 0, sizeof(lbl_1_bss_A74));
+    memset(&lbl_1_bss_4B4, 0, sizeof(lbl_1_bss_4B4));
+    memset(&lbl_1_bss_3F4, 0, sizeof(lbl_1_bss_3F4));
+    memset(&lbl_1_bss_2F4, 0, sizeof(lbl_1_bss_2F4));
+    memset(&lbl_1_bss_210, 0, sizeof(lbl_1_bss_210));
+    memset(&lbl_1_bss_D0, 0, sizeof(lbl_1_bss_D0));
+    memset(&lbl_1_bss_0, 0, sizeof(lbl_1_bss_0));
+    lbl_1_bss_210.unk70 = GWMgNightFGet();
     fn_1_1918(0);
     fn_1_1DFC();
     fn_1_223C();
@@ -192,11 +188,11 @@ void fn_1_3C4(void)
             lbl_80265728[playerForGroup[playerIndex]].charNo;
         lbl_1_bss_2F4[playerIndex].padNo =
             lbl_80265728[playerForGroup[playerIndex]].padNo;
-        lbl_1_bss_2F4[playerIndex].groupNo =
+        lbl_1_bss_2F4[playerIndex].unk18 =
             lbl_80265728[playerForGroup[playerIndex]].grpNo;
         lbl_1_bss_2F4[playerIndex].playerType =
             lbl_80265728[playerForGroup[playerIndex]].type;
-        lbl_1_bss_2F4[playerIndex].comDifficulty =
+        lbl_1_bss_2F4[playerIndex].unk1A =
             lbl_80265728[playerForGroup[playerIndex]].comDif;
         lbl_1_bss_2F4[playerIndex].position = spawnPosition[playerIndex];
         lbl_1_bss_2F4[playerIndex].rotation = spawnRotation[playerIndex];
@@ -238,8 +234,8 @@ void fn_1_808(void)
     }
 }
 
-/* Before player updates, snapshots all pads and clears player input when either control flag is
- * set. */
+/* Updates the player input caches, clearing them for computer players or when input is disabled,
+ * then snapshots all four controller ports. */
 void fn_1_984(void)
 {
     s32 index = 0;
@@ -248,17 +244,18 @@ void fn_1_984(void)
     while (index < 2) {
         if ((lbl_1_bss_2F4[index].playerType != 0) ||
             (lbl_1_bss_2F4[index].controlState != 0)) {
-            memset(lbl_1_bss_2F4 + index, 0, 20);
+            memset(&lbl_1_bss_2F4[index].input, 0, sizeof(lbl_1_bss_2F4[index].input));
         } else {
             s32 stickValue;
 
-            lbl_1_bss_2F4[index].input.buttons = lbl_802C0010[lbl_1_bss_2F4[index].padNo];
+            lbl_1_bss_2F4[index].input.unk00 = lbl_802C0010[lbl_1_bss_2F4[index].padNo];
             lbl_1_bss_2F4[index].input.buttonsDown = lbl_802C0008[lbl_1_bss_2F4[index].padNo];
-            lbl_1_bss_2F4[index].input.buttonsRepeat = lbl_802C0000[lbl_1_bss_2F4[index].padNo];
+            lbl_1_bss_2F4[index].input.unk08 = lbl_802C0000[lbl_1_bss_2F4[index].padNo];
             if (lbl_802BFFFC[lbl_1_bss_2F4[index].padNo] > 0) {
                 adjustedStickValue = lbl_802BFFFC[
                     lbl_1_bss_2F4[index].padNo];
             } else {
+                /* Clamp stick X values from -9 through 0 to zero. */
                 if ((lbl_802BFFFC[lbl_1_bss_2F4[index].padNo] * -1) < 10) {
                     stickValue = 0;
                 } else {
@@ -267,35 +264,34 @@ void fn_1_984(void)
                 }
                 adjustedStickValue = stickValue;
             }
-            /* The dead zone affects only nonpositive horizontal stick input. */
             lbl_1_bss_2F4[index].input.stickX = adjustedStickValue;
-            lbl_1_bss_2F4[index].input.stickY =
+            lbl_1_bss_2F4[index].input.unk0B =
                 (s8)lbl_802BFFF8[lbl_1_bss_2F4[index].padNo];
-            lbl_1_bss_2F4[index].input.subStickX =
+            lbl_1_bss_2F4[index].input.unk0C =
                 (s8)lbl_802BFFF4[lbl_1_bss_2F4[index].padNo];
-            lbl_1_bss_2F4[index].input.subStickY =
+            lbl_1_bss_2F4[index].input.unk0D =
                 (s8)lbl_802BFFF0[lbl_1_bss_2F4[index].padNo];
-            lbl_1_bss_2F4[index].input.triggerL = lbl_802BFFEC[lbl_1_bss_2F4[index].padNo];
-            lbl_1_bss_2F4[index].input.triggerR = lbl_802BFFE8[lbl_1_bss_2F4[index].padNo];
-            lbl_1_bss_2F4[index].input.dpad = lbl_802BFFE4[lbl_1_bss_2F4[index].padNo];
-            lbl_1_bss_2F4[index].input.dpadRepeat = lbl_802BFFE0[lbl_1_bss_2F4[index].padNo];
+            lbl_1_bss_2F4[index].input.unk0E = lbl_802BFFEC[lbl_1_bss_2F4[index].padNo];
+            lbl_1_bss_2F4[index].input.unk0F = lbl_802BFFE8[lbl_1_bss_2F4[index].padNo];
+            lbl_1_bss_2F4[index].input.unk10 = lbl_802BFFE4[lbl_1_bss_2F4[index].padNo];
+            lbl_1_bss_2F4[index].input.unk11 = lbl_802BFFE0[lbl_1_bss_2F4[index].padNo];
         }
         index++;
     }
 
     index = 0;
     while (index < 4) {
-        lbl_1_bss_210.controllers[index].buttons = lbl_802C0010[index];
+        lbl_1_bss_210.controllers[index].unk00 = lbl_802C0010[index];
         lbl_1_bss_210.controllers[index].buttonsDown = lbl_802C0008[index];
-        lbl_1_bss_210.controllers[index].buttonsRepeat = lbl_802C0000[index];
+        lbl_1_bss_210.controllers[index].unk08 = lbl_802C0000[index];
         lbl_1_bss_210.controllers[index].stickX = (s8)lbl_802BFFFC[index];
-        lbl_1_bss_210.controllers[index].stickY = (s8)lbl_802BFFF8[index];
-        lbl_1_bss_210.controllers[index].subStickX = (s8)lbl_802BFFF4[index];
-        lbl_1_bss_210.controllers[index].subStickY = (s8)lbl_802BFFF0[index];
-        lbl_1_bss_210.controllers[index].triggerL = lbl_802BFFEC[index];
-        lbl_1_bss_210.controllers[index].triggerR = lbl_802BFFE8[index];
-        lbl_1_bss_210.controllers[index].dpad = lbl_802BFFE4[index];
-        lbl_1_bss_210.controllers[index].dpadRepeat = lbl_802BFFE0[index];
+        lbl_1_bss_210.controllers[index].unk0B = (s8)lbl_802BFFF8[index];
+        lbl_1_bss_210.controllers[index].unk0C = (s8)lbl_802BFFF4[index];
+        lbl_1_bss_210.controllers[index].unk0D = (s8)lbl_802BFFF0[index];
+        lbl_1_bss_210.controllers[index].unk0E = lbl_802BFFEC[index];
+        lbl_1_bss_210.controllers[index].unk0F = lbl_802BFFE8[index];
+        lbl_1_bss_210.controllers[index].unk10 = lbl_802BFFE4[index];
+        lbl_1_bss_210.controllers[index].unk11 = lbl_802BFFE0[index];
         index++;
     }
 }
@@ -342,7 +338,7 @@ void fn_1_10F0(void)
                 lbl_1_bss_4B4[playerIndex].modelId,
                 lbl_1_bss_3F4[playerIndex].motionIds[lbl_1_bss_3F4[playerIndex].requestedMotion]);
             lbl_1_bss_3F4[playerIndex].currentMotion = lbl_1_bss_3F4[playerIndex].requestedMotion;
-            lbl_1_bss_3F4[playerIndex].maximumTime = fn_8002D530(
+            lbl_1_bss_3F4[playerIndex].unk20 = fn_8002D530(
                 lbl_1_bss_4B4[playerIndex].modelId);
         }
         if (lbl_1_bss_3F4[playerIndex].requestedSpeed != lbl_1_bss_3F4[playerIndex].currentSpeed) {
@@ -382,15 +378,15 @@ void fn_1_10F0(void)
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame,
                 lbl_1_bss_3F4[playerIndex].blendDuration,
                 lbl_1_bss_3F4[playerIndex].shiftAttributes);
-            lbl_1_bss_3F4[playerIndex].shiftMaximumTime = fn_8002D5D4(
+            lbl_1_bss_3F4[playerIndex].unk58 = fn_8002D5D4(
                 lbl_1_bss_4B4[playerIndex].modelId);
             lbl_1_bss_3F4[playerIndex].shiftState = 2;
             break;
         case 2:
             lbl_1_bss_3F4[playerIndex].shiftTime = fn_8002D508(
                 lbl_1_bss_4B4[playerIndex].modelId);
-            /* A nonlooping shift finishes at blend duration minus one on the incoming playback
-             * clock, rather than at the incoming clip's maximum time. */
+            /* When the flags are clear, queue completion at blend duration minus one.
+             * The next update clears the shift and resumes the ordinary motion-time refresh. */
             if (((lbl_1_bss_3F4[playerIndex].shiftAttributes & ((1 << 30) | (1 << 0))) == 0) &&
                 (lbl_1_bss_3F4[playerIndex].shiftTime >=
                  lbl_1_bss_3F4[playerIndex].blendDuration - 1.0f)) {
@@ -427,42 +423,47 @@ void fn_1_10F0(void)
     }
 }
 
-/* Loads a camera preset during setup and writes its position, rotation and zoom to the shared
- * camera controls. */
+/* Copies the preset into the camera record and the live camera controls. Reads the stored viewport
+ * and perspective values when configuring the camera. */
 void fn_1_1918(s16 cameraIndex) {
     f32 presets[4][13] = {
-        { 0.0f, 1573.0f, -446.0f, -15.2f, 0.0f, 0.0f, 3317.7f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 17.55f },
-        { 0.0f, 293.0f, -326.0f, -15.2f, 0.0f, 0.0f, 3409.7f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 17.5f },
-        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
-        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f }
+        { 0.0f, 1573.0f, -446.0f, -15.2f, 0.0f, 0.0f, 3317.7f, 1.33f,
+          0.0f, 0.0f, 640.0f, 480.0f, 17.55f },
+        { 0.0f, 293.0f, -326.0f, -15.2f, 0.0f, 0.0f, 3409.7f, 1.33f,
+          0.0f, 0.0f, 640.0f, 480.0f, 17.5f },
+        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
+          0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
+        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f,
+          0.0f, 0.0f, 640.0f, 480.0f, 45.0f }
     };
     s16 cameraIds[4] = { 1, 2, 4, 8 };
-    lbl_1_bss_B08.cameras[cameraIndex].cameraIndex = cameraIndex;
-    lbl_1_bss_B08.cameras[cameraIndex].position.x = presets[cameraIndex][0];
-    lbl_1_bss_B08.cameras[cameraIndex].position.y = presets[cameraIndex][1];
-    lbl_1_bss_B08.cameras[cameraIndex].position.z = presets[cameraIndex][2];
-    lbl_1_bss_B08.cameras[cameraIndex].rotation.x = presets[cameraIndex][3];
-    lbl_1_bss_B08.cameras[cameraIndex].rotation.y = presets[cameraIndex][4];
-    lbl_1_bss_B08.cameras[cameraIndex].rotation.z = presets[cameraIndex][5];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[0] = presets[cameraIndex][6];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[1] = presets[cameraIndex][7];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[2] = presets[cameraIndex][8];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[3] = presets[cameraIndex][9];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[4] = presets[cameraIndex][10];
-    lbl_1_bss_B08.cameras[cameraIndex].viewport[5] = presets[cameraIndex][11];
+    lbl_1_bss_B08.cameras[cameraIndex].unk00 = cameraIndex;
+    /* Copy the preset's position, rotation and zoom into the record. */
+    lbl_1_bss_B08.cameras[cameraIndex].unk1C[0] = presets[cameraIndex][0];
+    lbl_1_bss_B08.cameras[cameraIndex].unk1C[1] = presets[cameraIndex][1];
+    lbl_1_bss_B08.cameras[cameraIndex].unk1C[2] = presets[cameraIndex][2];
+    lbl_1_bss_B08.cameras[cameraIndex].unk10[0] = presets[cameraIndex][3];
+    lbl_1_bss_B08.cameras[cameraIndex].unk10[1] = presets[cameraIndex][4];
+    lbl_1_bss_B08.cameras[cameraIndex].unk10[2] = presets[cameraIndex][5];
+    lbl_1_bss_B08.cameras[cameraIndex].unk34 = presets[cameraIndex][6];
+    lbl_1_bss_B08.cameras[cameraIndex].aspectRatio = presets[cameraIndex][7];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[0] = presets[cameraIndex][8];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[1] = presets[cameraIndex][9];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[2] = presets[cameraIndex][10];
+    lbl_1_bss_B08.cameras[cameraIndex].viewport[3] = presets[cameraIndex][11];
     lbl_1_bss_B08.cameras[cameraIndex].fieldOfView = presets[cameraIndex][12];
 
     Hu3DCameraCreate(cameraIds[cameraIndex]);
     Hu3DCameraViewportSet(cameraIds[cameraIndex],
+                          lbl_1_bss_B08.cameras[cameraIndex].viewport[0],
+                          lbl_1_bss_B08.cameras[cameraIndex].viewport[1],
                           lbl_1_bss_B08.cameras[cameraIndex].viewport[2],
                           lbl_1_bss_B08.cameras[cameraIndex].viewport[3],
-                          lbl_1_bss_B08.cameras[cameraIndex].viewport[4],
-                          lbl_1_bss_B08.cameras[cameraIndex].viewport[5],
                           0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(cameraIds[cameraIndex],
                              lbl_1_bss_B08.cameras[cameraIndex].fieldOfView,
                              20.0f, 40000.0f,
-                             lbl_1_bss_B08.cameras[cameraIndex].viewport[1]);
+                             lbl_1_bss_B08.cameras[cameraIndex].aspectRatio);
     lbl_80266A4C.x = presets[cameraIndex][0];
     lbl_80266A4C.y = presets[cameraIndex][1];
     lbl_80266A4C.z = presets[cameraIndex][2];
@@ -478,20 +479,14 @@ MGSEQ_PARAM lbl_1_data_0 = {
     0, 0, fn_1_130, fn_1_260, fn_1_28C, fn_1_2B8, fn_1_2E4, fn_1_310, fn_1_33C, fn_1_368, fn_1_394
 };
 
-void fn_1_1FD0(void), fn_1_234C(void), fn_1_10F0(void);
+void fn_1_1FD0(void), fn_1_234C(void);
 void fn_1_3258(s16, s16);
 void fn_1_4470(HU3D_MODEL *, HU3D_PARTICLE *, Mtx);
-s16 fn_1_4270(s16, s16, Vec, Vec, f32, s16, M662ParticleParameters *);
+s16 fn_1_4270(s16, s16, Vec, Vec, f32, s16, const ParticleParameters *);
 
-/* Called after camera setup and during scene updates; copies the camera masks locally without
- * changing scene state. */
+/* Copies the four camera masks locally during camera setup and scene updates. */
 void fn_1_1DC8(s16 cameraIndex) {
-    struct {
-        u16 cameraOneMask;
-        u16 cameraTwoMask;
-        u16 cameraThreeMask;
-        u16 cameraFourMask;
-    } cameraMasks = { 1, 2, 4, 8 };
+    s16 cameraMasks[4] = { 1, 2, 4, 8 };
 }
 
 /* Initializes the scene's white directional light and applies its starting angular settings. */
@@ -514,8 +509,7 @@ void fn_1_1DFC(void) {
     lbl_1_bss_ACC.color.b = 255;
     lbl_1_bss_ACC.color.a = 255;
 
-    PSVECSubtract(&lbl_1_bss_ACC.aim, &lbl_1_bss_ACC.position,
-                  &lbl_1_bss_ACC.direction);
+    HuSubVecF(&lbl_1_bss_ACC.direction, &lbl_1_bss_ACC.aim, &lbl_1_bss_ACC.position);
     lbl_1_bss_ACC.id = fn_800286D0(
         &lbl_1_bss_ACC.position, &lbl_1_bss_ACC.direction,
         &lbl_1_bss_ACC.color);
@@ -546,9 +540,8 @@ inline void fn_1_1FD0(void) {
                  180.0) *
              cos(M_PI * lbl_1_bss_ACC.orientation.y /
                  180.0));
-    PSVECSubtract(&lbl_1_bss_ACC.aim, &lbl_1_bss_ACC.position,
-                  &lbl_1_bss_ACC.direction);
-    PSVECNormalize(&lbl_1_bss_ACC.direction, &lbl_1_bss_ACC.direction);
+    HuSubVecF(&lbl_1_bss_ACC.direction, &lbl_1_bss_ACC.aim, &lbl_1_bss_ACC.position);
+    VECNormalize(&lbl_1_bss_ACC.direction, &lbl_1_bss_ACC.direction);
     Hu3DGLightPosSetV(lbl_1_bss_ACC.id, &lbl_1_bss_ACC.position,
                       &lbl_1_bss_ACC.direction);
     Hu3DGLightColorSet(lbl_1_bss_ACC.id, lbl_1_bss_ACC.color.r,
@@ -563,7 +556,7 @@ void fn_1_223C(void) {
     Hu3DShadowSizeSet(480);
     lbl_1_bss_A7C.angle[0] = -90.0f;
     lbl_1_bss_A7C.angle[1] = 0.0f;
-    lbl_1_bss_A7C.angle[2] = 0.0f;
+    lbl_1_bss_A7C.unk14 = 0.0f;
     lbl_1_bss_A7C.target.x = 0.0f;
     lbl_1_bss_A7C.target.y = -100.0f;
     lbl_1_bss_A7C.target.z = 0.0f;
@@ -605,38 +598,8 @@ inline void fn_1_234C(void)
 /* After game updates, applies model and character transforms, processes motion requests, and
  * refreshes lighting and shadows. */
 void fn_1_2670(void) {
-    s32 modelIndex;
-
     fontcolor = FONT_COLOR_WHITE;
-    modelIndex = 2;
-    while (modelIndex < 46) {
-        if ((modelIndex < 36) || (modelIndex > 39)) {
-            fn_80026760(lbl_1_bss_4B4[modelIndex].modelId,
-                            lbl_1_bss_4B4[modelIndex].position.x,
-                            lbl_1_bss_4B4[modelIndex].position.y,
-                            lbl_1_bss_4B4[modelIndex].position.z);
-            fn_80026808(lbl_1_bss_4B4[modelIndex].modelId,
-                            lbl_1_bss_4B4[modelIndex].rotation.x,
-                            lbl_1_bss_4B4[modelIndex].rotation.y,
-                            lbl_1_bss_4B4[modelIndex].rotation.z);
-        }
-        modelIndex++;
-    }
-
-    modelIndex = 0;
-    while (modelIndex <= 1) {
-        fn_80026760(
-            lbl_1_bss_4B4[modelIndex].modelId,
-            lbl_1_bss_2F4[modelIndex].position.x,
-            lbl_1_bss_2F4[modelIndex].position.y,
-            lbl_1_bss_2F4[modelIndex].position.z);
-        fn_80026808(
-            lbl_1_bss_4B4[modelIndex].modelId,
-            lbl_1_bss_2F4[modelIndex].rotation.x,
-            lbl_1_bss_2F4[modelIndex].rotation.y,
-            lbl_1_bss_2F4[modelIndex].rotation.z);
-        modelIndex++;
-    }
+    fn_1_F44();
 
     fn_1_10F0();
     fn_1_1DC8(0);
@@ -659,6 +622,7 @@ s32 fn_1_2DA0(f32 *currentValue, f32 durationFrames, f32 start, f32 end) {
         framesRemaining = (s32)((end - *currentValue) / increment);
     }
     framesRemaining++;
+    /* Use start minus each test value when positive, otherwise use their sum. */
     if (start - end > 0.0f) {
         endpointTestValue = start - end;
     } else {
@@ -670,8 +634,6 @@ s32 fn_1_2DA0(f32 *currentValue, f32 durationFrames, f32 start, f32 end) {
     } else {
         currentTestValue = start - -1.0f * *currentValue;
     }
-    /* The stopping values use a positive difference, otherwise a sum; the step variable and start
-     * argument are reused for this test. */
     start = currentTestValue;
     if (increment <= start) {
         *currentValue = end;
@@ -740,6 +702,7 @@ void fn_1_2FC0(s16 padPort, s16 lower, s16 upper)
                        lbl_1_bss_2F4[index].position.z,
                        lbl_1_bss_2F4[index].rotation.y);
             } else {
+                /* The debug call passes the model index as an extra argument. */
                 printf("{{%.1ff,%.1ff,%.1ff},{0.0f,%.1ff,0.0f}},\n", index,
                        lbl_1_bss_4B4[index].position.x,
                        lbl_1_bss_4B4[index].position.y,
@@ -913,8 +876,7 @@ s32 fn_1_3BDC(HU3D_MODELID modelId, HU3D_LIGHTID lightId) {
     return result;
 }
 
-/* Provides ambient-model placement with a floating-point integer below the truncated random
- * limit. */
+/* Draws a random integer below the truncated limit and returns it as a float. */
 f32 fn_1_3C74(f32 limit) {
     s32 randomValue = limit;
     randomValue = frandmod(randomValue);
@@ -940,11 +902,10 @@ void fn_1_3CEC(void)
         HU3D_PARTICLE_DATA *entry;
         s16 particleIndex;
 
-        lbl_1_bss_A74.maximumCount[effectIndex] = maximumCount[effectIndex];
-        animation = HuSprAnimRead(fn_80008DD0(
-            dataNumber[effectIndex], 0x10000000, 2));
+        lbl_1_bss_A74.unk02[effectIndex] = maximumCount[effectIndex];
+        animation = HuSprAnimDataRead(dataNumber[effectIndex]);
         lbl_1_bss_A74.allocation[effectIndex] = HuMemDirectMallocNum(
-            HEAP_HEAP, maximumCount[effectIndex] * 60, 0x10000000);
+            HEAP_HEAP, maximumCount[effectIndex] * sizeof(ParticleParameters), 0x10000000);
         lbl_1_bss_A74.modelId[effectIndex] = fn_8003216C(
             animation, maximumCount[effectIndex]);
         fn_80026B8C(lbl_1_bss_A74.modelId[effectIndex], layer[effectIndex]);
@@ -972,55 +933,34 @@ void fn_1_3F94(Vec *position)
 {
     Vec velocity;
     Vec inputPosition;
-    M662ParticleParameters parameters;
-    s32 randomLimit;
-    s32 randomHeightLimit;
-    f32 randomValue;
-    f32 heightRandom;
+    ParticleParameters parameters;
     f32 initialScale;
-    f32 centeredRandomValue;
-    f32 horizontalVelocity;
-    f32 baseHeight;
-    f32 verticalVelocity;
 
-    parameters.control = 0;
-    parameters.initialColor.r = 255;
-    parameters.initialColor.g = 255;
-    parameters.initialColor.b = 255;
-    parameters.initialColor.a = 255;
-    parameters.finalColor[0] = 0;
-    parameters.finalColor[1] = 0;
-    parameters.finalColor[2] = 0;
-    parameters.finalColor[3] = 0;
-    parameters.rotationStep = 0.0f;
-    parameters.alphaStep = 0.01f;
+    parameters.unk00 = 0;
+    parameters.startColor.r = 255;
+    parameters.startColor.g = 255;
+    parameters.startColor.b = 255;
+    parameters.startColor.a = 255;
+    parameters.targetColor.r = 0;
+    parameters.targetColor.g = 0;
+    parameters.targetColor.b = 0;
+    parameters.targetColor.a = 0;
+    parameters.rotationIncrement = 0.0f;
+    parameters.alphaIncrement = 0.01f;
     parameters.colorBlendStep = 0.01f;
-    parameters.gravity = 0.0f;
+    parameters.verticalAcceleration = 0.0f;
 
     inputPosition.x = position->x;
     inputPosition.y = position->y;
     inputPosition.z = position->z;
     initialScale = 30.0f;
-    parameters.scaleStep = -0.1f;
-    parameters.scaleStepMultiplier = 1.2f;
+    parameters.scaleIncrement = -0.1f;
+    parameters.scaleIncrementMultiplier = 1.2f;
     parameters.velocityScale[0] = 1.05f;
     parameters.velocityScale[1] = 0.95f;
     parameters.velocityScale[2] = 1.0f;
-    randomValue = 3.0f;
-    randomLimit = (s32)randomValue;
-    randomLimit = frandmod(randomLimit);
-    randomValue = (f32)randomLimit;
-    centeredRandomValue = randomValue;
-    horizontalVelocity = centeredRandomValue;
-    velocity.x = 0.4f *
-                 (horizontalVelocity - 1.0f);
-    heightRandom = 4.0f;
-    randomHeightLimit = (s32)heightRandom;
-    randomHeightLimit = frandmod(randomHeightLimit);
-    heightRandom = (f32)randomHeightLimit;
-    baseHeight = heightRandom;
-    verticalVelocity = baseHeight;
-    velocity.y = 3.0f + verticalVelocity;
+    velocity.x = 0.4f * (fn_1_3C74(3.0f) - 1.0f);
+    velocity.y = 3.0f + fn_1_3C74(4.0f);
     velocity.z = 0.0f;
 
     fn_1_4270(0, -1, inputPosition, velocity, initialScale, 20, &parameters);
@@ -1029,11 +969,11 @@ void fn_1_3F94(Vec *position)
 /* Particle emission helper: initializes the first inactive entry and returns its index, or -1 when
  * the pool is full. */
 s16 fn_1_4270(s16 effectIndex, s16 ownerIndex, Vec position, Vec velocity,
-              f32 initialScale, s16 lifetimeFrames, M662ParticleParameters *parameters) {
+              f32 initialScale, s16 lifetimeFrames, const ParticleParameters *parameters) {
     HU3D_MODEL *model;
     s16 result;
     HU3D_PARTICLE *context;
-    M662ParticleParameters *currentParameters;
+    ParticleParameters *currentParameters;
     s16 entryIndex;
     HU3D_PARTICLE_DATA *entry;
 
@@ -1047,17 +987,17 @@ s16 fn_1_4270(s16 effectIndex, s16 ownerIndex, Vec position, Vec velocity,
     while (entryIndex < context->maxCnt) {
         if (entry->time <= 0) {
             currentParameters[entryIndex] = *parameters;
-            currentParameters[entryIndex].resetValues[2] =
-                currentParameters[entryIndex].resetValues[1] =
-                    currentParameters[entryIndex].resetValues[0] = 0.0f;
+            currentParameters[entryIndex].playerMovementOffset.z =
+                currentParameters[entryIndex].playerMovementOffset.y =
+                    currentParameters[entryIndex].playerMovementOffset.x = 0.0f;
 
             entry->pos = position;
             entry->vel = velocity;
-            /* The renderer's acceleration vector receives the spawn position as well. */
+            /* Store the spawn position in the particle's acceleration vector. */
             entry->accel = position;
             entry->scaleBase = entry->colorIdx =
                 entry->speedDecay = 0.0f;
-            entry->color = currentParameters[entryIndex].initialColor;
+            entry->color = currentParameters[entryIndex].startColor;
             entry->scale = initialScale;
             entry->time = lifetimeFrames;
             entry->parManId = ownerIndex;
@@ -1075,7 +1015,7 @@ s16 fn_1_4270(s16 effectIndex, s16 ownerIndex, Vec position, Vec velocity,
  * rendered. */
 void fn_1_4470(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
-    M662ParticleParameters *parameters =
+    ParticleParameters *parameters =
         particle->work;
     HU3D_PARTICLE_DATA *entry = particle->data;
     s16 entryNo = 0;
@@ -1087,15 +1027,14 @@ void fn_1_4470(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             entry->vel.x *= parameters[entryNo].velocityScale[0];
             entry->vel.y *= parameters[entryNo].velocityScale[1];
             entry->vel.z *= parameters[entryNo].velocityScale[2];
-            PSVECAdd(&entry->vel, &entry->pos,
-                     &entry->pos);
-            entry->vel.y += parameters[entryNo].gravity;
-            entry->zRot += parameters[entryNo].rotationStep;
+            VECAdd(&entry->vel, &entry->pos, &entry->pos);
+            entry->vel.y += parameters[entryNo].verticalAcceleration;
+            entry->zRot += parameters[entryNo].rotationIncrement;
 
             channelValue = (s16)((f32)entry->color.r +
                                  (parameters[entryNo].colorBlendStep *
-                                  (f32)(parameters[entryNo].finalColor[0] -
-                                        parameters[entryNo].initialColor.r)));
+                                  (f32)(parameters[entryNo].targetColor.r -
+                                        parameters[entryNo].startColor.r)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
@@ -1105,8 +1044,8 @@ void fn_1_4470(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 
             channelValue = (s16)((f32)entry->color.g +
                                  (parameters[entryNo].colorBlendStep *
-                                  (f32)(parameters[entryNo].finalColor[1] -
-                                        parameters[entryNo].initialColor.g)));
+                                  (f32)(parameters[entryNo].targetColor.g -
+                                        parameters[entryNo].startColor.g)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
@@ -1116,8 +1055,8 @@ void fn_1_4470(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 
             channelValue = (s16)((f32)entry->color.b +
                                  (parameters[entryNo].colorBlendStep *
-                                  (f32)(parameters[entryNo].finalColor[2] -
-                                        parameters[entryNo].initialColor.b)));
+                                  (f32)(parameters[entryNo].targetColor.b -
+                                        parameters[entryNo].startColor.b)));
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
@@ -1126,7 +1065,7 @@ void fn_1_4470(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             entry->color.b = (u8)channelValue;
 
             channelValue = (s16)((f32)entry->color.a +
-                                 parameters[entryNo].alphaStep);
+                                 parameters[entryNo].alphaIncrement);
             if (channelValue < 0) {
                 channelValue = 0;
             } else if (channelValue > 255) {
@@ -1138,14 +1077,14 @@ void fn_1_4470(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 entry->scale = 0.0f;
             }
 
-            parameters[entryNo].scaleStep *= parameters[entryNo].scaleStepMultiplier;
-            entry->scale += parameters[entryNo].scaleStep;
+            parameters[entryNo].scaleIncrement *= parameters[entryNo].scaleIncrementMultiplier;
+            entry->scale += parameters[entryNo].scaleIncrement;
             if (entry->scale <= 0.0f) {
                 entry->scale = 0.0f;
                 entry->time = 0;
             }
             DCStoreRangeNoSync(particle->data,
-                               particle->maxCnt * 72);
+                               particle->maxCnt * sizeof(*particle->data));
         } else {
             entry->scale = 0.0f;
             entry->time = -1;
@@ -1218,7 +1157,7 @@ void fn_1_48E8(M662Player *player, s16 spatialMode)
     }
 
     fn_80060F14(player->characterNo, pan);
-    /* These two modes change pan while preserving the current voice volume. */
+    /* Update voice volume except in modes 5 and 6. */
     if ((spatialMode != 5) && (spatialMode != 6)) {
         fn_80060F40(player->characterNo, volume);
     }
@@ -1358,8 +1297,8 @@ void fn_1_5008(s16 soundSlot, s16 spatialMode, HuVecF *position)
             pan = lbl_1_bss_210.panCenter;
         }
 
-        /* Starting a cue replaces this slot's handle without stopping any earlier sound. */
         lbl_1_bss_210.soundState[soundSlot] = 1;
+        /* Replace the slot's handle without issuing a stop call. */
         lbl_1_bss_210.soundHandle[soundSlot] = HuAudFXPlayVolPan(
             lbl_1_data_F6[soundSlot], volume, pan);
     }

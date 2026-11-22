@@ -1,5 +1,4 @@
 /* Sets up stage models, collision layout, lighting and the opening sequence. */
-#include "REL/m660dll/camera_lighting.h"
 #include "dolphin/math.h"
 #include "game/data.h"
 #include "game/hu3d.h"
@@ -7,41 +6,16 @@
 #include "game/mg/actman.h"
 #include "game/charman.h"
 #include "game/gamework.h"
+#include "game/frand.h"
 #include "game/wipe.h"
 #include "game/mg/seqman.h"
 #include "REL/m660dll/scene.h"
+#include "REL/m660dll/stage_layouts.h"
 #include "REL/m660dll/player_slots.h"
 #include "datanum/charmot.h"
 #include <string.h>
-
-typedef struct ShadowPositionTable_AA2C {
-    Vec positions[16];
-} ShadowPositionTable_AA2C;
-
-typedef struct StageLayout_B050 {
-    Vec position;
-    Vec rotation;
-} StageLayout_B050;
-
-typedef struct StageLayouts_B050 {
-    StageLayout_B050 values[14];
-} StageLayouts_B050;
-
-typedef struct BoundsPresets_B050 {
-    Vec values[3];
-} BoundsPresets_B050;
-
-typedef struct BoundaryPlanes_B050 {
-    Vec values[4];
-} BoundaryPlanes_B050;
-
-typedef struct ModelScales_B9D4 {
-    Vec values[9];
-} ModelScales_B9D4;
-
-typedef struct ModelRadii_B9D4 {
-    f32 values[9];
-} ModelRadii_B9D4;
+#include "REL/m660dll.h"
+#include "humath.h"
 
 u32 lbl_1_data_480[36] = {
     DATANUM(0x770000, 0), DATANUM(0x770000, 1), DATANUM(0x770000, 2), DATANUM(0x770000, 3),
@@ -55,32 +29,11 @@ u32 lbl_1_data_480[36] = {
     DATANUM(0x770000, 32), DATANUM(0x770000, 33), DATANUM(0x770000, 34), DATANUM(0x770000, 35)
 };
 extern HuVecF lbl_80266A4C, lbl_80266A40;
-extern f32 lbl_802C028C;
-void fn_1_3D0(void);
-void fn_1_3CCC(void);
 void fn_1_AA2C(void);
 void fn_1_B050(void);
 void fn_1_B9D4(void);
-void fn_1_2B34(void);
-void fn_1_71C(void);
-void fn_1_24C4(void);
-void fn_1_EB8(void);
 void fn_1_C594(void);
 s32 fn_1_C754(void);
-void fn_1_E6F4(void);
-int fn_1_90A8(struct ColNarrowParam_s *first, struct ColNarrowParam_s *second);
-void fn_1_9128(struct MgActor_s *actor, int value);
-struct MgTimer_s *fn_1_2FA0(s32, s32, s32, f32, f32);
-s32 frandmod(s32 range);
-s16 fn_1_3AA4(s16 modelId, s16 lightId);
-f32 fn_1_3C54(f32 range);
-void fn_1_4004(HuVecF *origin);
-void fn_1_42E0(M660Model *origin, s16 effectIndex);
-void fn_1_6678(void);
-struct VoicePosition;
-void fn_1_67D4(s16 slot, s16 mode, struct VoicePosition *position);
-s16 fn_1_12030(M660Player *player, s16 advanceState);
-s16 fn_1_2E80(f32 *value, f32 step, f32 start, f32 end);
 
 /* Initializes the stage, players and shared model state before the sequence starts. */
 s32 fn_1_A3E4(void)
@@ -89,20 +42,20 @@ s32 fn_1_A3E4(void)
     MGACTOR_PARAM spawn;
 
     for (player = 0; player < 10; player++) {
-        lbl_1_bss_1F4.slotHistory[player] = -1;
+        lbl_1_bss_1F4.effectHistory[player] = -1;
     }
     lbl_1_bss_1F4.selectedSlot = -1;
     lbl_1_bss_1F4.interval = 300.0f;
     lbl_1_bss_1F4.speedRandomRange = 1.0f;
-    lbl_1_bss_0[0].directions[0] = -1;
-    lbl_1_bss_0[1].directions[1] = -1;
-    lbl_1_bss_0[2].directions[0] = -1;
-    lbl_1_bss_0[4].directions[2] = -1;
-    lbl_1_bss_0[6].directions[3] = -1;
-    lbl_1_bss_0[7].directions[0] = -1;
-    lbl_1_bss_0[8].directions[1] = -1;
-    lbl_1_bss_0[9].directions[2] = -1;
-    lbl_1_bss_0[12].directions[1] = -1;
+    lbl_1_bss_0[0][0] = -1;
+    lbl_1_bss_0[1][1] = -1;
+    lbl_1_bss_0[2][0] = -1;
+    lbl_1_bss_0[4][2] = -1;
+    lbl_1_bss_0[6][3] = -1;
+    lbl_1_bss_0[7][0] = -1;
+    lbl_1_bss_0[8][1] = -1;
+    lbl_1_bss_0[9][2] = -1;
+    lbl_1_bss_0[12][1] = -1;
 
     fn_1_3D0();
     fn_1_3CCC();
@@ -163,8 +116,8 @@ s32 fn_1_A3E4(void)
     fn_8005DDEC(2);
     fn_1_2B34();
     fn_1_EB8();
-    fn_8005E070(lbl_1_bss_2DC[0].character, DATANUM(0x930000, 34), 0);
-    fn_8005E070(lbl_1_bss_2DC[1].character, DATANUM(0x930000, 34), 0);
+    fn_8005E070(lbl_1_bss_2DC[0].character, CHARMOT_HSF_c000m1_344, 0);
+    fn_8005E070(lbl_1_bss_2DC[1].character, CHARMOT_HSF_c000m1_344, 0);
     fn_1_C594();
     fn_1_E6F4();
     lbl_1_bss_1F4.gameTimer =
@@ -173,9 +126,10 @@ s32 fn_1_A3E4(void)
 }
 
 /* Advances the opening scene each sequence tick and reports when it is complete. */
-s16 fn_1_A9B0() {
-    s16 result = 0;
-    result = fn_1_C754();
+s32 fn_1_A9B0(void)
+{
+    s32 result = 0;
+    result = (s16)fn_1_C754();
     fn_1_71C();
     fn_1_2B34();
     fn_1_24C4();
@@ -183,8 +137,9 @@ s16 fn_1_A9B0() {
 }
 
 /* Continues opening-scene updates; this callback always returns zero to hold the phase. */
-s16 fn_1_A9F0() {
-    s16 result = 0;
+s32 fn_1_A9F0(void)
+{
+    s32 result = 0;
     fn_1_C754();
     fn_1_71C();
     fn_1_2B34();
@@ -195,7 +150,7 @@ s16 fn_1_A9F0() {
 /* Called by fn_1_A3E4 to load stage models and apply their initial motion and shadow settings. */
 void fn_1_AA2C(void)
 {
-    ShadowPositionTable_AA2C shadowPositions = {{
+    Vec shadowPositions[16] = {
         {-650.0f, 0.0f, -650.0f},
         {-225.0f, 0.0f, -650.0f},
         {225.0f, 0.0f, -650.0f},
@@ -212,7 +167,7 @@ void fn_1_AA2C(void)
         {-225.0f, 0.0f, 650.0f},
         {225.0f, 0.0f, 650.0f},
         {650.0f, 0.0f, 650.0f}
-    }};
+    };
     s16 modelIndex;
     s16 fileIndex;
     s16 shadowPositionIndex;
@@ -234,7 +189,7 @@ void fn_1_AA2C(void)
         if (modelIndex == 3) {
             fn_80026FFC(lbl_1_bss_60C[modelIndex].modelId);
             lbl_1_bss_60C[modelIndex].attachment =
-                shadowPositions.positions[shadowPositionIndex];
+                shadowPositions[shadowPositionIndex];
         }
         fn_8002D414(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
         if (modelIndex == 18 || modelIndex == 19 || modelIndex == 21) {
@@ -286,13 +241,16 @@ void fn_1_AA2C(void)
     }
 }
 
-const BoundsPresets_B050 lbl_1_rodata_59C = {
-    { { 100.0f, 0.0f, 25.0f }, { 125.0f, 0.0f, 25.0f }, { 150.0f, 0.0f, 25.0f } }
-};
-const BoundaryPlanes_B050 lbl_1_rodata_5C0 = {
-    { { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }
-};
-const StageLayouts_B050 lbl_1_rodata_5F0 = {{
+/* Called by fn_1_A3E4 to randomize the stage turn and place its collision bounds. */
+void fn_1_B050(void)
+{
+    Vec boundsPresets[3] = {
+        { 100.0f, 0.0f, 25.0f }, { 125.0f, 0.0f, 25.0f }, { 150.0f, 0.0f, 25.0f }
+    };
+    Vec boundaryPlanes[4] = {
+        { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }
+    };
+    M660StageObjectLayout layouts[14] = {
     {{-625.0f, 0.0f, -350.0f}, {0.0f, 90.0f, 0.0f}},
     {{-625.0f, 0.0f, -150.0f}, {0.0f, 90.0f, 0.0f}},
     {{-125.0f, 0.0f, -750.0f}, {0.0f, 90.0f, 0.0f}},
@@ -307,14 +265,7 @@ const StageLayouts_B050 lbl_1_rodata_5F0 = {{
     {{-425.0f, 0.0f, 750.0f}, {0.0f, 90.0f, 0.0f}},
     {{375.0f, 0.0f, 750.0f}, {0.0f, 90.0f, 0.0f}},
     {{300.0f, 0.0f, 625.0f}, {0.0f, 0.0f, 0.0f}}
-}};
-
-/* Called by fn_1_A3E4 to randomize the stage turn and place its collision bounds. */
-void fn_1_B050(void)
-{
-    StageLayouts_B050 layouts;
-    BoundsPresets_B050 boundsPresets;
-    BoundaryPlanes_B050 boundaryPlanes;
+    };
     s16 modelIndex;
     s16 entryIndex;
     s16 layoutIndex;
@@ -325,18 +276,15 @@ void fn_1_B050(void)
     f32 angle;
     f32 distanceSquared;
 
-    boundsPresets = lbl_1_rodata_59C;
-    boundaryPlanes = lbl_1_rodata_5C0;
-    layouts = lbl_1_rodata_5F0;
     quarterTurns = frandmod(4);
     lbl_1_bss_1F4.angle = rotation = 90.0f * quarterTurns;
     for (modelIndex = 0; modelIndex < quarterTurns; modelIndex++) {
         for (entryIndex = 0; entryIndex < 14; entryIndex++) {
-            savedDirection = lbl_1_bss_0[entryIndex].directions[2];
-            lbl_1_bss_0[entryIndex].directions[2] = lbl_1_bss_0[entryIndex].directions[0];
-            lbl_1_bss_0[entryIndex].directions[0] = lbl_1_bss_0[entryIndex].directions[3];
-            lbl_1_bss_0[entryIndex].directions[3] = lbl_1_bss_0[entryIndex].directions[1];
-            lbl_1_bss_0[entryIndex].directions[1] = savedDirection;
+            savedDirection = lbl_1_bss_0[entryIndex][2];
+            lbl_1_bss_0[entryIndex][2] = lbl_1_bss_0[entryIndex][0];
+            lbl_1_bss_0[entryIndex][0] = lbl_1_bss_0[entryIndex][3];
+            lbl_1_bss_0[entryIndex][3] = lbl_1_bss_0[entryIndex][1];
+            lbl_1_bss_0[entryIndex][1] = savedDirection;
         }
     }
     modelIndex = 31;
@@ -352,52 +300,52 @@ void fn_1_B050(void)
         fn_8002D414(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
         fn_8002D86C(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
         fn_80026FFC(lbl_1_bss_60C[modelIndex].modelId);
-        lbl_1_bss_60C[modelIndex].position = layouts.values[layoutIndex].position;
-        lbl_1_bss_60C[modelIndex].rotation = layouts.values[layoutIndex].rotation;
-        lbl_1_bss_60C[modelIndex].bounds = boundsPresets.values[0];
-        lbl_1_bss_60C[modelIndex].normals[0] = boundaryPlanes.values[0];
-        lbl_1_bss_60C[modelIndex].normals[1] = boundaryPlanes.values[1];
-        lbl_1_bss_60C[modelIndex].normals[2] = boundaryPlanes.values[2];
-        lbl_1_bss_60C[modelIndex].normals[3] = boundaryPlanes.values[3];
+        lbl_1_bss_60C[modelIndex].position = layouts[layoutIndex].position;
+        lbl_1_bss_60C[modelIndex].rotation = layouts[layoutIndex].rotation;
+        lbl_1_bss_60C[modelIndex].bounds = boundsPresets[0];
+        lbl_1_bss_60C[modelIndex].normals[0] = boundaryPlanes[0];
+        lbl_1_bss_60C[modelIndex].normals[1] = boundaryPlanes[1];
+        lbl_1_bss_60C[modelIndex].normals[2] = boundaryPlanes[2];
+        lbl_1_bss_60C[modelIndex].normals[3] = boundaryPlanes[3];
         modelIndex++;
         layoutIndex++;
     }
     for (modelIndex = 31; modelIndex < 45; modelIndex++) {
         angle = 180.0 * (atan2(lbl_1_bss_60C[modelIndex].position.x,
-                             lbl_1_bss_60C[modelIndex].position.z) / 3.141592653589793);
+                             lbl_1_bss_60C[modelIndex].position.z) / M_PI);
         distanceSquared =
             (lbl_1_bss_60C[modelIndex].position.x * lbl_1_bss_60C[modelIndex].position.x) +
             (lbl_1_bss_60C[modelIndex].position.z * lbl_1_bss_60C[modelIndex].position.z);
         distance = sqrt(distanceSquared);
         lbl_1_bss_60C[modelIndex].position.x =
-            distance * sin((3.141592653589793 * (rotation + angle)) / 180.0);
+            distance * sin((M_PI * (rotation + angle)) / 180.0);
         lbl_1_bss_60C[modelIndex].position.z =
-            distance * cos((3.141592653589793 * (rotation + angle)) / 180.0);
+            distance * cos((M_PI * (rotation + angle)) / 180.0);
         if ((s16)rotation % 180 != 0) {
             lbl_1_bss_60C[modelIndex].rotation.y =
                 lbl_1_bss_60C[modelIndex].rotation.y >= 90.0f ? 0.0f : 90.0f;
         }
         lbl_1_bss_60C[modelIndex].bounds.x = lbl_1_bss_60C[modelIndex].rotation.y >= 89.0f ?
-            boundsPresets.values[0].z : boundsPresets.values[0].x;
+            boundsPresets[0].z : boundsPresets[0].x;
         lbl_1_bss_60C[modelIndex].bounds.z = lbl_1_bss_60C[modelIndex].rotation.y >= 89.0f ?
-            boundsPresets.values[0].x : boundsPresets.values[0].z;
+            boundsPresets[0].x : boundsPresets[0].z;
     }
 }
 
 /* Called by fn_1_A3E4 to load stage props and assign their scales, bounds, layers and shadows. */
 void fn_1_B9D4(void)
 {
-    ModelScales_B9D4 scales = { { { 0.300000012f, 0.300000012f, 0.300000012f },
-                                  { 0.300000012f, 0.300000012f, 0.300000012f },
-                                  { 0.300000012f, 0.300000012f, 0.300000012f },
-                                  { 0.300000012f, 0.300000012f, 0.300000012f },
-                                  { 0.300000012f, 0.300000012f, 0.300000012f },
-                                  { 0.600000024f, 0.600000024f, 0.600000024f },
-                                  { 0.600000024f, 0.600000024f, 0.600000024f },
-                                  { 0.600000024f, 0.600000024f, 0.600000024f },
-                                  { 1.0f, 1.0f, 1.0f } } };
-    ModelRadii_B9D4 radii = { { 150.0f, 150.0f, 150.0f, 150.0f, 150.0f, 280.0f, 280.0f, 280.0f,
-                                460.0f } };
+    Vec scales[9] = { { 0.3f, 0.3f, 0.3f },
+                                  { 0.3f, 0.3f, 0.3f },
+                                  { 0.3f, 0.3f, 0.3f },
+                                  { 0.3f, 0.3f, 0.3f },
+                                  { 0.3f, 0.3f, 0.3f },
+                                  { 0.6f, 0.6f, 0.6f },
+                                  { 0.6f, 0.6f, 0.6f },
+                                  { 0.6f, 0.6f, 0.6f },
+                                  { 1.0f, 1.0f, 1.0f } };
+    f32 radii[9] = { 150.0f, 150.0f, 150.0f, 150.0f, 150.0f, 280.0f, 280.0f, 280.0f,
+                                460.0f };
     s16 modelIndex;
     s16 entryIndex;
 
@@ -409,8 +357,8 @@ void fn_1_B9D4(void)
         fn_800269E8(lbl_1_bss_60C[modelIndex].modelId, (1 << 0));
         fn_80026B64(lbl_1_bss_60C[modelIndex].modelId, 1);
         fn_80026B8C(lbl_1_bss_60C[modelIndex].modelId, 0);
-        fn_800268B0(lbl_1_bss_60C[modelIndex].modelId, scales.values[entryIndex].x,
-            scales.values[entryIndex].y, scales.values[entryIndex].z);
+        fn_800268B0(lbl_1_bss_60C[modelIndex].modelId, scales[entryIndex].x,
+            scales[entryIndex].y, scales[entryIndex].z);
         fn_80026A44(lbl_1_bss_60C[modelIndex].modelId, ((1 << 30) | (1 << 0)));
         fn_8002D414(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
         fn_8002D86C(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
@@ -420,7 +368,7 @@ void fn_1_B9D4(void)
         lbl_1_bss_60C[modelIndex].rotation.x = 0.0f;
         lbl_1_bss_60C[modelIndex].rotation.y = 0.0f;
         lbl_1_bss_60C[modelIndex].rotation.z = 0.0f;
-        lbl_1_bss_60C[modelIndex].bounds.x = radii.values[entryIndex];
+        lbl_1_bss_60C[modelIndex].bounds.x = radii[entryIndex];
         lbl_1_bss_80[entryIndex].modelA = entryIndex + 54;
         lbl_1_bss_80[entryIndex].modelB = entryIndex + 63;
         modelIndex++;
@@ -434,8 +382,8 @@ void fn_1_B9D4(void)
         fn_800269E8(lbl_1_bss_60C[modelIndex].modelId, (1 << 0));
         fn_80026B64(lbl_1_bss_60C[modelIndex].modelId, 1);
         fn_80026B8C(lbl_1_bss_60C[modelIndex].modelId, 7);
-        fn_800268B0(lbl_1_bss_60C[modelIndex].modelId, scales.values[entryIndex].x,
-            scales.values[entryIndex].y, scales.values[entryIndex].z);
+        fn_800268B0(lbl_1_bss_60C[modelIndex].modelId, scales[entryIndex].x,
+            scales[entryIndex].y, scales[entryIndex].z);
         fn_80026A44(lbl_1_bss_60C[modelIndex].modelId, ((1 << 30) | (1 << 0)));
         fn_8002D414(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
         fn_8002D86C(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
@@ -456,15 +404,15 @@ void fn_1_B9D4(void)
         fn_800269E8(lbl_1_bss_60C[modelIndex].modelId, (1 << 0));
         fn_80026B64(lbl_1_bss_60C[modelIndex].modelId, 1);
         fn_80026B8C(lbl_1_bss_60C[modelIndex].modelId, 0);
-        fn_800268B0(lbl_1_bss_60C[modelIndex].modelId, scales.values[entryIndex].x,
-            1.0f, scales.values[entryIndex].z);
+        fn_800268B0(lbl_1_bss_60C[modelIndex].modelId, scales[entryIndex].x,
+            1.0f, scales[entryIndex].z);
         fn_80026A44(lbl_1_bss_60C[modelIndex].modelId, ((1 << 30) | (1 << 0)));
         fn_8002D414(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
         fn_8002D86C(lbl_1_bss_60C[modelIndex].modelId, 0.0f);
         fn_800269E8(lbl_1_bss_60C[modelIndex].modelId, (1 << 3));
         fn_80026E44(lbl_1_bss_60C[modelIndex].modelId);
         fn_80026F9C(lbl_1_bss_60C[modelIndex].modelId);
-        lbl_1_bss_60C[modelIndex].bounds.x = radii.values[entryIndex];
+        lbl_1_bss_60C[modelIndex].bounds.x = radii[entryIndex];
         lbl_1_bss_60C[modelIndex].position.x = 0.0f;
         lbl_1_bss_60C[modelIndex].position.y = -440.0f;
         lbl_1_bss_60C[modelIndex].position.z = 0.0f;
@@ -517,13 +465,13 @@ void fn_1_C594(void)
 
     light = &lbl_1_bss_38;
     light->modelId = lbl_1_bss_60C[3].modelId;
-    light->unused08 = 0;
+    light->unk08 = 0;
     light->position.x = 0.0f;
     light->position.y = 573.0f;
     light->position.z = 0.0f;
-    light->unused24 = -60.0f;
-    light->unused28 = 0.0f;
-    light->unused2C = 0.0f;
+    light->unk24 = -60.0f;
+    light->unk28 = 0.0f;
+    light->unk2C = 0.0f;
     light->direction.x = 0.0f;
     light->direction.y = -0.5f;
     light->direction.z = -0.5f;
@@ -554,7 +502,7 @@ void fn_1_C594(void)
 s32 fn_1_C754(void)
 {
     s32 result = 0;
-    s16 completed = 0;
+    s16 updateResult = 0;
     HuVecF origins[2] = {{-788.0f, 60.0f, -788.0f}, {788.0f, 60.0f, -788.0f}};
     M660Model *models[3];
     f32 movementStep;
@@ -629,9 +577,9 @@ s32 fn_1_C754(void)
         /* Both players are updated, but only player 1's completion result controls the
          * transition. */
         for (index = 0; index < 2; index++) {
-            completed = fn_1_12030(&lbl_1_bss_2DC[index], 0);
+            updateResult = fn_1_12030(&lbl_1_bss_2DC[index], 0);
         }
-        if ((s16)completed != 0) {
+        if ((s16)updateResult != 0) {
             for (index = 0; index < 2; index++) {
                 fn_8007E888(lbl_1_bss_1E8.players[index]);
                 lbl_1_bss_2DC[index].chaseState = 0;
@@ -650,10 +598,11 @@ s32 fn_1_C754(void)
         models[1]->position.z += movementStep;
         models[2]->position.z = models[1]->position.z + models[1]->position.z / 10.0f;
         fn_1_42E0(models[0], 0);
+        /* The interpolation step estimates sum to zero at completion. */
         step = 20.0f;
-        completed = fn_1_2E80(&lbl_1_bss_1E8.players[0]->actor->rotY, step, -90.0f, 0.0f);
-        completed += fn_1_2E80(&lbl_1_bss_1E8.players[1]->actor->rotY, step, 90.0f, 0.0f);
-        if ((s16)completed == 0) {
+        updateResult = fn_1_2E80(&lbl_1_bss_1E8.players[0]->actor->rotY, step, -90.0f, 0.0f);
+        updateResult += fn_1_2E80(&lbl_1_bss_1E8.players[1]->actor->rotY, step, 90.0f, 0.0f);
+        if ((s16)updateResult == 0) {
             if (lbl_1_bss_1F4.openingTimer == 0) {
                 lbl_1_bss_544[0].shiftState = 1;
                 lbl_1_bss_544[0].shiftMotion = 0;
@@ -671,14 +620,14 @@ s32 fn_1_C754(void)
             lbl_1_bss_1F4.openingTimer = 1;
         }
         step = 40.0f;
-        completed += fn_1_2E80(&lbl_80266A4C.x, step, 0.0f, 0.0f);
-        completed += fn_1_2E80(&lbl_80266A4C.y, step, 101.0f, 132.0f);
-        completed += fn_1_2E80(&lbl_80266A4C.z, step, 61.0f, 1.6f);
-        completed += fn_1_2E80(&lbl_80266A40.x, step, -78.0f, -89.9f);
-        completed += fn_1_2E80(&lbl_80266A40.y, step, 0.0f, 0.0f);
-        completed += fn_1_2E80(&lbl_80266A40.z, step, 0.0f, 0.0f);
-        completed += fn_1_2E80(&lbl_802C028C, step, 1039.1f, 2342.1f);
-        if ((s16)completed == 0) {
+        updateResult += fn_1_2E80(&lbl_80266A4C.x, step, 0.0f, 0.0f);
+        updateResult += fn_1_2E80(&lbl_80266A4C.y, step, 101.0f, 132.0f);
+        updateResult += fn_1_2E80(&lbl_80266A4C.z, step, 61.0f, 1.6f);
+        updateResult += fn_1_2E80(&lbl_80266A40.x, step, -78.0f, -89.9f);
+        updateResult += fn_1_2E80(&lbl_80266A40.y, step, 0.0f, 0.0f);
+        updateResult += fn_1_2E80(&lbl_80266A40.z, step, 0.0f, 0.0f);
+        updateResult += fn_1_2E80(&lbl_802C028C, step, 1039.1f, 2342.1f);
+        if ((s16)updateResult == 0) {
             lbl_1_bss_1F4.openingTimer = 0;
             lbl_1_bss_1F4.openingState++;
         }

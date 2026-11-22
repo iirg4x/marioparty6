@@ -1,6 +1,5 @@
 /* Advances the result sequence and positions the winner scene. */
 #include "REL/m660dll/particles.h"
-#include "dolphin/math.h"
 #include "game/hu3d.h"
 #include "game/gamework.h"
 #include "game/flag.h"
@@ -8,23 +7,11 @@
 #include "game/mg/seqman.h"
 #include "game/mg/timer.h"
 #include "REL/m660dll/scene.h"
+#include "REL/m660dll.h"
 
-void fn_1_66C8(s16 mode, s16 duration);
 s32 fn_1_D5C8(void);
-void fn_1_7008(void);
-void fn_1_2B34(void);
-void fn_1_915C(void);
-void fn_1_24C4(void);
-void fn_1_71C(void);
-void fn_1_6F38(void);
-s32 fn_1_601C(M660Player *player, s32 mode);
 extern HuVecF lbl_80266A4C, lbl_80266A40;
-extern f32 lbl_802C028C;
-void fn_1_4004(HuVecF *origin);
-void fn_1_3068(MGTIMER *timer);
 struct VoicePosition;
-void fn_1_67D4(s16 slot, s16 mode, struct VoicePosition *position);
-void fn_1_4B38(M660Model *origin);
 
 /* The result-sequence callback updates the scene and returns zero, so its caller holds the
  * phase. */
@@ -40,17 +27,17 @@ int fn_1_D29C(void) {
 }
 
 /* The result-sequence callback updates the scene and returns its phase controller's signal. */
-s16 fn_1_D2E8(void)
+s32 fn_1_D2E8(void)
 {
-    s16 result = 0;
-    result = fn_1_D5C8();
+    s32 result = 0;
+    result = (s16)fn_1_D5C8();
     fn_1_7008();
     fn_1_915C();
     fn_1_24C4();
     return result;
 }
 
-/* The result-sequence callback starts winner motions once, then updates the scene each tick. */
+/* Starts the result motions once, then updates the scene each tick. */
 s32 fn_1_D328(void) {
     s16 playerIndex;
 
@@ -101,7 +88,7 @@ s32 fn_1_D5A4(void)
     return 0;
 }
 
-/* Called by result-sequence callbacks to run phases; returns one once the winner scene is ready. */
+/* Advances the result scene and returns one in its final phase. */
 s32 fn_1_D5C8(void)
 {
     s32 result = 0;
@@ -185,8 +172,8 @@ s32 fn_1_D5C8(void)
                     }
                 }
             }
-            lbl_1_bss_2530.records[0].viewport[5] = 44.0f;
-            Hu3DCameraPerspectiveSet(1, lbl_1_bss_2530.records[0].viewport[5], 20.0f, 40000.0f,
+            lbl_1_bss_2530.records[0].fieldOfView = 44.0f;
+            Hu3DCameraPerspectiveSet(1, lbl_1_bss_2530.records[0].fieldOfView, 20.0f, 40000.0f,
                                      1.33f);
             lbl_80266A4C.x = 0.0f;
             lbl_80266A4C.y = 176.656f;
@@ -219,12 +206,12 @@ s32 fn_1_D5C8(void)
             } else if (lbl_1_bss_2DC[0].mode >= 0) {
                 lbl_1_bss_2DC[0].mode = lbl_1_bss_2DC[0].character;
                 firstWinner = lbl_1_bss_2DC[0].selectedPlayer;
-                if (fn_8006A124(65551) == 0) lbl_80265750[firstWinner].mgCoinBonus = 10;
+                GWMgCoinBonusSet(firstWinner, 10);
                 fn_80071C18(lbl_1_bss_2DC[0].mode, -1, -1, -1);
             } else if (lbl_1_bss_2DC[1].mode >= 0) {
                 lbl_1_bss_2DC[1].mode = lbl_1_bss_2DC[1].character;
                 secondWinner = lbl_1_bss_2DC[1].selectedPlayer;
-                if (fn_8006A124(65551) == 0) lbl_80265750[secondWinner].mgCoinBonus = 10;
+                GWMgCoinBonusSet(secondWinner, 10);
                 fn_80071C18(lbl_1_bss_2DC[1].mode, -1, -1, -1);
             }
             for (index = 72; index <= 74; index++) {

@@ -25,11 +25,9 @@
 #include "humath.h"
 
 extern s16 lbl_1_bss_C58[4];
-void fn_1_984(void), fn_1_AD68(void), fn_1_2670(void);
+void fn_1_AD68(void);
 void fn_1_5A5C(void), fn_1_7DE8(void), fn_1_5884(void), fn_1_887C(void);
 s32 fn_1_58B0(void), fn_1_8754(void);
-s16 fn_1_2DA0(f32 *, f32, f32, f32);
-void fn_1_2F34(void *), fn_1_2F88(void *);
 
 /* When a positional effect is updated, changes its pan only while its sound slot and handle are
  * active. */
@@ -83,7 +81,7 @@ void fn_1_57A8(void) {
 
 /* Main sequence callback: starts the four tree motions once, updates the round and returns its
  * completion state. */
-s16 fn_1_57C8(void) {
+s32 fn_1_57C8(void) {
     s32 result = 0;
     s16 modelIndex;
 
@@ -100,7 +98,7 @@ s16 fn_1_57C8(void) {
     fn_1_887C();
     fn_1_2670();
     result = fn_1_58B0();
-    return result;
+    return (s16)result;
 }
 
 /* Each scene update, refreshes input and computer choices before advancing players and puzzle
@@ -130,17 +128,13 @@ s32 fn_1_58B0(void)
             lbl_1_bss_2F4[1].result = 1;
             lbl_1_bss_210.winnerIndex = 1;
             groupOnePlayerNo = lbl_1_bss_2F4[1].playerNo;
-            if (fn_8006A124(65551) == FALSE) {
-                lbl_80265750[groupOnePlayerNo].mgCoinBonus = 10;
-            }
+            GWMgCoinBonusSet(groupOnePlayerNo, 10);
             fn_80071C18(lbl_1_bss_2F4[1].characterNo, -1, -1, -1);
         } else {
             lbl_1_bss_2F4[0].result = 1;
             lbl_1_bss_210.winnerIndex = 0;
             groupZeroPlayerNo = lbl_1_bss_2F4[0].playerNo;
-            if (fn_8006A124(65551) == FALSE) {
-                lbl_80265750[groupZeroPlayerNo].mgCoinBonus = 10;
-            }
+            GWMgCoinBonusSet(groupZeroPlayerNo, 10);
             fn_80071C18(lbl_1_bss_2F4[0].characterNo, -1, -1, -1);
         }
         done = 1;
@@ -153,7 +147,7 @@ s32 fn_1_58B0(void)
  * their climbs. */
 void fn_1_5A5C(void)
 {
-    s16 unfinishedMoves = 0;
+    s32 unfinishedMoves = 0;
     /* World-space choice and approach points for the four tree slots. */
     HuVecF slotPositions[4] = {
         { -400.0f, 0.0f, -250.0f },
@@ -212,7 +206,7 @@ void fn_1_5A5C(void)
             unfinishedMoves += fn_1_2DA0(&player->position.z, durationFrames,
                                          startPositions[playerIndex].z,
                                          slotPositions[player->slot].z);
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 player->state++;
             }
             break;
@@ -220,7 +214,7 @@ void fn_1_5A5C(void)
             durationFrames = 10.0f;
             unfinishedMoves =
                 fn_1_2DA0(&player->rotation.y, durationFrames, player->targetAngle, 180.0f);
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 lbl_1_bss_210.timerObject = fn_1_2EC0(0, 10, 0, 288.0f, 64.0f);
                 fn_1_2F34(lbl_1_bss_210.timerObject);
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
@@ -316,7 +310,7 @@ void fn_1_5A5C(void)
             }
             unfinishedMoves = fn_1_2DA0(&player->position.x, durationFrames, player->startX,
                                   slotPositions[player->slot].x);
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 player->position.x = slotPositions[player->slot].x;
                 player->sideways = 1;
                 player->state = 4;
@@ -327,7 +321,7 @@ void fn_1_5A5C(void)
             startingAngle = (player->targetAngle < 0.0f) ? -180.0f : 180.0f;
             unfinishedMoves =
                 fn_1_2DA0(&player->rotation.y, durationFrames, player->targetAngle, startingAngle);
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
                 lbl_1_bss_3F4[playerIndex].shiftMotion = 0;
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
@@ -351,7 +345,7 @@ void fn_1_5A5C(void)
             unfinishedMoves = fn_1_2DA0(&player->position.z, durationFrames,
                                         slotPositions[player->slot].z,
                                         frontPositions[player->slot].z);
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 player->targetAngle = player->rotation.y;
                 player->state++;
             }
@@ -398,7 +392,7 @@ void fn_1_5A5C(void)
             unfinishedMoves = 0;
             unfinishedMoves += fn_1_2DA0(&player->position.z, durationFrames,
                                    frontPositions[player->slot].z, -600.0f);
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
                 lbl_1_bss_3F4[playerIndex].shiftMotion = 2;
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
@@ -430,7 +424,7 @@ void fn_1_5A5C(void)
             } else {
                 unfinishedMoves++;
             }
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
                 lbl_1_bss_3F4[playerIndex].shiftMotion = 3;
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
@@ -457,7 +451,7 @@ void fn_1_5A5C(void)
         case 14:
             durationFrames = 15.0f;
             unfinishedMoves = fn_1_2DA0(&player->rotation.y, durationFrames, -180.0f, 0.0f);
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 if (player->counter++ >= 10) {
                     lbl_1_bss_3F4[playerIndex].shiftState = 1;
                     lbl_1_bss_3F4[playerIndex].shiftMotion = 0;
@@ -481,8 +475,8 @@ void fn_1_5A5C(void)
                 player->startY = player->position.y;
                 player->gravity = -1.0f;
                 player->velocityY = 24.0f;
-                /* Track the taller chosen tree with the shared camera. */
-            if (lbl_1_bss_210.scores[player->slot] >
+                /* Save the camera height for the player with the higher target score. */
+                if (lbl_1_bss_210.scores[player->slot] >
                     lbl_1_bss_210.scores[lbl_1_bss_2F4[playerIndex ^ 1].slot]) {
                     lbl_1_bss_210.centerY = lbl_80266A4C.y;
                 }
@@ -512,7 +506,7 @@ void fn_1_5A5C(void)
                 unfinishedMoves += fn_1_2DA0(&lbl_80266A4C.y, durationFrames, lbl_1_bss_210.centerY,
                                        player->startY + climbStepHeight);
             }
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
                 lbl_1_bss_3F4[playerIndex].shiftMotion = 3;
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
@@ -543,7 +537,7 @@ void fn_1_5A5C(void)
                 unfinishedMoves += fn_1_2DA0(&lbl_80266A4C.y, durationFrames, lbl_1_bss_210.centerY,
                                        player->startY + climbStepHeight);
             }
-            if (unfinishedMoves == 0) {
+            if ((s16)unfinishedMoves == 0) {
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
                 lbl_1_bss_3F4[playerIndex].shiftMotion = 3;
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
@@ -579,7 +573,7 @@ s16 fn_1_795C(M662Puzzle *puzzle)
 {
     s16 segmentFinished = 0;
     M662Model *carrier;
-    s16 unfinishedAxes = 0;
+    s32 unfinishedAxes = 0;
 
     carrier = &lbl_1_bss_4B4[puzzle->secondModel];
     if (puzzle->pathIndex != -1) {
@@ -591,7 +585,7 @@ s16 fn_1_795C(M662Puzzle *puzzle)
             carrier->position.z = (f32)(path->centerZ +
                 100.0 * cos((M_PI * (f64)puzzle->progress) / 180.0));
             unfinishedAxes = fn_1_2DA0(&puzzle->progress, path->duration, path->start, path->end);
-            if (unfinishedAxes == 0) {
+            if ((s16)unfinishedAxes == 0) {
                 segmentFinished = 1;
             }
             break;
@@ -602,7 +596,7 @@ s16 fn_1_795C(M662Puzzle *puzzle)
                                path->endX);
             unfinishedAxes += fn_1_2DA0(&carrier->position.z, path->duration, path->startZ,
                                 path->endZ);
-            if (unfinishedAxes == 0) {
+            if ((s16)unfinishedAxes == 0) {
                 segmentFinished = 1;
             }
             break;

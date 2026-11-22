@@ -27,6 +27,7 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 #include "REL/m617dll/shared.h"
+#include "REL/particle_parameters.h"
 #include "dolphin/mtx.h"
 #include "dolphin/types.h"
 #include "dolphin/gx.h"
@@ -915,27 +916,12 @@ f32 fn_1_3D68(f32 value)
 }
 
 
-/* Drifting particle parameters and animation state. */
-typedef struct M617ParticleParameters {
-    u32 unk00; /* The game's code never reads this field. */
-    Vec playerMovementOffset; /* Accumulated player movement after emission. */
-    GXColor startColor; /* Initial RGBA channels, each 0..255. */
-    GXColor targetColor; /* Target RGB for per-frame color changes. Alpha uses alphaIncrement. */
-    f32 velocityScale[3]; /* Per-frame X/Y/Z velocity multipliers. */
-    f32 verticalAcceleration; /* Added to vertical velocity each frame. */
-    f32 rotationIncrement; /* Added to billboard Z rotation each frame. */
-    f32 scaleIncrement; /* Added to particle scale each frame. */
-    f32 scaleIncrementMultiplier; /* Per-frame multiplier for scaleIncrement. */
-    f32 alphaIncrement; /* Added to alpha each frame. */
-    f32 colorProgress; /* Fraction of the start-to-target RGB difference added each frame. */
-} M617ParticleParameters;
-
 void fn_1_484C(HU3D_MODEL *model, HU3D_PARTICLE *context, Mtx matrix);
 
 void fn_1_3DE0(void);
 
 s16 fn_1_463C(s16 modelIndex, s16 playerIndex, Vec emissionPosition, Vec velocity,
-              f32 initialScale, s16 framesRemaining, const M617ParticleParameters *copyData);
+              f32 initialScale, s16 framesRemaining, const ParticleParameters *copyData);
 
 /* fn_1_93D0 calls this during scene setup to allocate the 500-entry drifting-particle effect. */
 void fn_1_3DE0(void)
@@ -957,7 +943,7 @@ void fn_1_3DE0(void)
         animation = HuSprAnimDataRead(dataNumbers[effectIndex]);
         lbl_1_bss_3708.allocation[effectIndex] =
             HuMemDirectMallocNum(HEAP_HEAP, maximumParticles[effectIndex] *
-                sizeof(M617ParticleParameters), 0x10000000);
+                sizeof(ParticleParameters), 0x10000000);
         lbl_1_bss_3708.modelIds[effectIndex] =
             fn_8003216C( animation, maximumParticles[effectIndex]);
         fn_80026B8C(lbl_1_bss_3708.modelIds[effectIndex], layers[effectIndex]);
@@ -983,7 +969,7 @@ s16 fn_1_4070(const Vec *position)
 {
     Vec offset;
     Vec positionValue;
-    M617ParticleParameters copyData;
+    ParticleParameters copyData;
     s32 randomLimit;
     s32 randomHeightLimit;
     f32 randomValue;
@@ -1004,7 +990,7 @@ s16 fn_1_4070(const Vec *position)
     copyData.targetColor.a = 0;
     copyData.rotationIncrement = 0.0f;
     copyData.alphaIncrement = 0.01f;
-    copyData.colorProgress = 0.01f;
+    copyData.colorBlendStep = 0.01f;
     copyData.verticalAcceleration = 0.0f;
     positionValue.x = position->x;
     positionValue.y = 10.0f + position->y;
@@ -1037,7 +1023,7 @@ s16 fn_1_4070(const Vec *position)
 /* The light update calls this to emit a drifting particle associated with a player. */
 s16 fn_1_435C(s16 playerIndex, const Vec *position)
 {
-    M617ParticleParameters copyData;
+    ParticleParameters copyData;
     Vec offset;
     Vec positionValue;
     f32 randomLimitX;
@@ -1061,7 +1047,7 @@ s16 fn_1_435C(s16 playerIndex, const Vec *position)
     copyData.targetColor.a = 0;
     copyData.rotationIncrement = 0.0f;
     copyData.alphaIncrement = 0.01f;
-    copyData.colorProgress = 0.01f;
+    copyData.colorBlendStep = 0.01f;
     copyData.verticalAcceleration = 0.0f;
     positionValue.x = position->x;
     positionValue.y = position->y;
@@ -1095,12 +1081,12 @@ s16 fn_1_435C(s16 playerIndex, const Vec *position)
 /* The two emitters call this to initialize a free entry; -1 means the effect is full. */
 s16 fn_1_463C(s16 modelIndex, s16 playerIndex, Vec emissionPosition,
               Vec velocity, f32 initialScale, s16 framesRemaining,
-              const M617ParticleParameters *copyData)
+              const ParticleParameters *copyData)
 {
     HU3D_MODEL *model;
     s16 result;
     HU3D_PARTICLE *context;
-    M617ParticleParameters *entryData;
+    ParticleParameters *entryData;
     s16 entryIndex;
     HU3D_PARTICLE_DATA *entry;
 
@@ -1141,7 +1127,7 @@ s16 fn_1_463C(s16 modelIndex, s16 playerIndex, Vec emissionPosition,
 /* The particle render hook advances active entries, follows player movement, and expires them. */
 void fn_1_484C(HU3D_MODEL *model, HU3D_PARTICLE *context, Mtx matrix)
 {
-    M617ParticleParameters *parameters;
+    ParticleParameters *parameters;
     HU3D_PARTICLE_DATA *entry;
     s16 entryIndex;
 
@@ -1189,7 +1175,7 @@ void fn_1_484C(HU3D_MODEL *model, HU3D_PARTICLE *context, Mtx matrix)
                 s16 channelValue;
 
                 channelValue = (s16)((f32)entry->color.r +
-                    parameters[entryIndex].colorProgress *
+                    parameters[entryIndex].colorBlendStep *
                     (f32)(parameters[entryIndex].targetColor.r -
                           parameters[entryIndex].startColor.r));
                 if (channelValue < 0) {
@@ -1200,7 +1186,7 @@ void fn_1_484C(HU3D_MODEL *model, HU3D_PARTICLE *context, Mtx matrix)
                 entry->color.r = (u8)channelValue;
 
                 channelValue = (s16)((f32)entry->color.g +
-                    parameters[entryIndex].colorProgress *
+                    parameters[entryIndex].colorBlendStep *
                     (f32)(parameters[entryIndex].targetColor.g -
                           parameters[entryIndex].startColor.g));
                 if (channelValue < 0) {
@@ -1211,7 +1197,7 @@ void fn_1_484C(HU3D_MODEL *model, HU3D_PARTICLE *context, Mtx matrix)
                 entry->color.g = (u8)channelValue;
 
                 channelValue = (s16)((f32)entry->color.b +
-                    parameters[entryIndex].colorProgress *
+                    parameters[entryIndex].colorBlendStep *
                     (f32)(parameters[entryIndex].targetColor.b -
                           parameters[entryIndex].startColor.b));
                 if (channelValue < 0) {

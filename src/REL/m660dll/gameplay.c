@@ -1,5 +1,5 @@
 /* Runs the stage's gameplay sequence, player actions, moving objects and collision updates. */
-#include "REL/m660dll/camera_lighting.h"
+#include "REL/m660dll/effects.h"
 #include "REL/m660dll/path_data.h"
 #include "dolphin/math.h"
 #include "game/hu3d.h"
@@ -12,62 +12,22 @@
 #include "game/frand.h"
 #include "REL/m660dll/scene.h"
 #include "REL/m660dll/player_slots.h"
+#include "REL/m660dll.h"
+#include "humath.h"
 
-typedef struct M660IndexRange_7940 {
-    s16 first;
-    s16 last;
-} M660IndexRange_7940;
-
-typedef struct M660Ranges_7940 {
-    M660IndexRange_7940 values[3];
-} M660Ranges_7940;
-
-typedef struct M660ThreeWords_7940 {
-    s32 values[3];
-} M660ThreeWords_7940;
-
-typedef struct M660ActionValues_71F0 {
-    f32 values[3];
-} M660ActionValues_71F0;
-
-typedef struct M660Origins { Vec values[2]; } M660Origins;
-extern const M660ActionValues_71F0 lbl_1_rodata_348;
-extern const M660ActionValues_71F0 lbl_1_rodata_354;
-extern const M660ActionValues_71F0 lbl_1_rodata_360;
-extern const M660ActionValues_71F0 lbl_1_rodata_36C;
-extern s16 lbl_1_bss_2680[];
-void fn_1_3014(MGTIMER *timer);
-s32 fn_1_3040(MGTIMER *timer);
-void fn_1_3068(MGTIMER *timer);
-void fn_1_7008(void);
-void fn_1_2B34(void);
-void fn_1_24C4(void);
 s32 fn_1_7080(void);
-void fn_1_71C(void);
-void fn_1_11F50(void);
 void fn_1_71F0(void);
 void fn_1_818C(void);
 void fn_1_9050(void);
-void fn_1_915C(void);
-void fn_1_4004(Vec *origin);
-f32 fn_1_3C54(f32 range);
 struct VoicePosition;
-void fn_1_67D4(s16 slot, s16 mode, struct VoicePosition *position);
-void fn_1_601C(M660Player *player, s16 mode);
-void fn_1_55DC(s16 modelIndex, s16 effectIndex);
-s16 fn_1_2E80(f32 *value, f32 step, f32 start, f32 end);
-void fn_1_4F64(Vec *direction, s16 playerIndex);
-void fn_1_42E0(M660Model *object, s16 effectIndex);
 s32 fn_1_7940(s16 effectIndex);
-void fn_1_15484(s16 effectIndex);
-void fn_1_142F8(s16 effectIndex);
 
 /* Updates the pan of an active stage sound when its effect handle is playing. */
 void fn_1_6BF8(s16 soundIndex, s16 pan)
 {
     if (lbl_1_bss_1F4.soundStatus[soundIndex] == 1 &&
-        HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectId[soundIndex]) == 2) {
-        HuAudFXPanning(lbl_1_bss_1F4.soundEffectId[soundIndex], pan);
+        HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectHandle[soundIndex]) == 2) {
+        HuAudFXPanning(lbl_1_bss_1F4.soundEffectHandle[soundIndex], pan);
     }
 }
 
@@ -75,8 +35,8 @@ void fn_1_6BF8(s16 soundIndex, s16 pan)
 void fn_1_6C88(s16 soundIndex, s16 pitch)
 {
     if (lbl_1_bss_1F4.soundStatus[soundIndex] == 1 &&
-        HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectId[soundIndex]) == 2) {
-        HuAudFXPitchSet(lbl_1_bss_1F4.soundEffectId[soundIndex], pitch);
+        HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectHandle[soundIndex]) == 2) {
+        HuAudFXPitchSet(lbl_1_bss_1F4.soundEffectHandle[soundIndex], pitch);
     }
 }
 
@@ -84,32 +44,34 @@ void fn_1_6C88(s16 soundIndex, s16 pitch)
 void fn_1_6D18(s16 soundIndex, s16 volume)
 {
     if (lbl_1_bss_1F4.soundStatus[soundIndex] == 1 &&
-        HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectId[soundIndex]) == 2) {
-        HuAudFXVolSet(lbl_1_bss_1F4.soundEffectId[soundIndex], volume);
+        HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectHandle[soundIndex]) == 2) {
+        HuAudFXVolSet(lbl_1_bss_1F4.soundEffectHandle[soundIndex], volume);
     }
 }
 
 /* When its effect is playing or paused, marks the slot unused, then stops the effect. */
 void fn_1_6DA8(s16 soundSlot) {
     if ((lbl_1_bss_1F4.soundStatus[soundSlot] == 1) &&
-        ((HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectId[soundSlot]) == 2) ||
-         (HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectId[soundSlot]) == 3))) {
+        ((HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectHandle[soundSlot]) == 2) ||
+         (HuAudFXStatusGet(lbl_1_bss_1F4.soundEffectHandle[soundSlot]) == 3))) {
         lbl_1_bss_1F4.soundStatus[soundSlot] = -1;
-        HuAudFXStop(lbl_1_bss_1F4.soundEffectId[soundSlot]);
+        HuAudFXStop(lbl_1_bss_1F4.soundEffectHandle[soundSlot]);
     }
 }
 
+/* Stops the sound in the specified stage audio slot. */
 void fn_1_6E70(s16 soundSlot)
 {
     fn_1_6DA8(soundSlot);
 }
 
+/* Stops all audio. */
 void fn_1_6F38(void) {
     HuAudAllStop();
 }
 
 /* Runs one gameplay tick, initializing player collision state on the first tick. */
-s16 fn_1_6F58(void)
+s32 fn_1_6F58(void)
 {
     s32 result = 0;
 
@@ -134,15 +96,15 @@ s16 fn_1_6F58(void)
  * from two fixed positions. */
 void fn_1_7008(void)
 {
-    M660Origins parameters = {{{-788.0f, 60.0f, -788.0f}, {788.0f, 60.0f, -788.0f}}};
+    Vec parameters[2] = {{-788.0f, 60.0f, -788.0f}, {788.0f, 60.0f, -788.0f}};
 
     fn_1_71C();
     fn_1_11F50();
     fn_1_71F0();
     fn_1_818C();
     fn_1_9050();
-    fn_1_4004(parameters.values);
-    fn_1_4004(&parameters.values[1]);
+    fn_1_4004(parameters);
+    fn_1_4004(&parameters[1]);
 }
 
 /* Checks for a winner or timer expiry and disables further player collisions. */
@@ -184,13 +146,13 @@ void fn_1_71F0(void)
 {
     Vec spawnPosition;
     Vec offsetPosition;
-    M660ActionValues_71F0 spawnDistance = {{20.0f, 150.0f, 300.0f}};
-    M660ActionValues_71F0 verticalOffsets = {{100.0f, 270.0f, 480.0f}};
-    M660ActionValues_71F0 movementSpeeds = {{60.0f, 120.0f, 200.0f}};
-    M660ActionValues_71F0 heights = {{230.0f, 230.0f, 330.0f}};
+    f32 spawnDistance[3] = {20.0f, 150.0f, 300.0f};
+    f32 horizontalOffsets[3] = {100.0f, 270.0f, 480.0f};
+    f32 effectValues[3] = {60.0f, 120.0f, 200.0f};
+    f32 heights[3] = {230.0f, 230.0f, 330.0f};
     s16 playerIndex;
     M660Model *target;
-    M660Slot *boundPlayer;
+    M660Slot *slot;
     f32 distance;
     f32 travel;
 
@@ -217,7 +179,7 @@ void fn_1_71F0(void)
             Vec *directionPointer;
 
             fn_1_67D4(3, 5, 0);
-            player->setupState = 1;
+            player->hitVoiceRequest = 1;
             lbl_1_bss_1F4.selectedSlot = player->actionSlot;
             fn_80086E3C(lbl_1_bss_1E8.players[playerIndex]);
             player->state = 0;
@@ -230,7 +192,7 @@ void fn_1_71F0(void)
             lbl_1_bss_544[playerIndex].attributesToReset = 0;
 
             target = &lbl_1_bss_60C[lbl_1_bss_1F4.selectedSlot + 45];
-            boundPlayer = &lbl_1_bss_80[lbl_1_bss_1F4.selectedSlot];
+            slot = &lbl_1_bss_80[lbl_1_bss_1F4.selectedSlot];
             offsetPosition.x = spawnPosition.x =
                 target->position.x - player->position.x;
             offsetPosition.z = spawnPosition.z =
@@ -238,28 +200,28 @@ void fn_1_71F0(void)
             distance = sqrt((f64)((spawnPosition.x * spawnPosition.x) +
                                   (spawnPosition.z * spawnPosition.z)));
             distance = distance == 0.0f ? 1.0f : distance;
-            travel = spawnDistance.values[boundPlayer->effectIndex] /
+            travel = spawnDistance[slot->effectIndex] /
                      distance;
             spawnPosition.x = target->position.x -
                               (spawnPosition.x * travel);
-            spawnPosition.y = heights.values[boundPlayer->effectIndex];
+            spawnPosition.y = heights[slot->effectIndex];
             spawnPosition.z = target->position.z -
                               (spawnPosition.z * travel);
             lbl_1_bss_60C[playerIndex].attachment = spawnPosition;
             player->actionOrigin = player->position;
 
-            travel = verticalOffsets.values[boundPlayer->effectIndex] /
+            travel = horizontalOffsets[slot->effectIndex] /
                           distance;
             offsetPosition.x = target->position.x -
                                (offsetPosition.x * travel);
-            offsetPosition.y = heights.values[boundPlayer->effectIndex];
+            offsetPosition.y = heights[slot->effectIndex];
             offsetPosition.z = target->position.z -
                                (offsetPosition.z * travel);
             direction = offsetPosition;
             directionPointer = &direction;
-            fn_1_4F64(directionPointer, boundPlayer->effectIndex);
+            fn_1_4F64(directionPointer, slot->effectIndex);
             fn_1_55DC((s16)(lbl_1_bss_1F4.selectedSlot + 45),
-                      boundPlayer->effectIndex);
+                      slot->effectIndex);
             fn_8006A030(player->selectedPlayer, 24, 20, 0);
             player->actionState++;
             break;
@@ -268,24 +230,23 @@ void fn_1_71F0(void)
             if (lbl_1_bss_1F4.phase >= 2) {
                 player->actionState++;
             } else {
-                s16 completed;
-                f32 movementSpeed;
+                s16 remainingStepEstimate;
+                f32 interpolationSteps;
                 target =
                     &lbl_1_bss_60C[lbl_1_bss_1F4.selectedSlot + 45];
-                boundPlayer =
+                slot =
                     &lbl_1_bss_80[lbl_1_bss_1F4.selectedSlot];
-                movementSpeed =
-                    movementSpeeds.values[boundPlayer->effectIndex];
-                /* The effect-specific value above is overwritten; the helper receives a fixed step
-                 * count of 30. */
-                movementSpeed = 30.0f;
-                completed = fn_1_2E80(&player->position.x, movementSpeed,
+                interpolationSteps =
+                    effectValues[slot->effectIndex];
+                /* Use 30 interpolation steps for every effect. */
+                interpolationSteps = 30.0f;
+                remainingStepEstimate = fn_1_2E80(&player->position.x, interpolationSteps,
                                       player->actionOrigin.x,
                                       lbl_1_bss_60C[playerIndex].attachment.x);
-                completed += fn_1_2E80(&player->position.y, movementSpeed,
+                remainingStepEstimate += fn_1_2E80(&player->position.y, interpolationSteps,
                                        player->actionOrigin.y,
                                        lbl_1_bss_60C[playerIndex].attachment.y);
-                completed += fn_1_2E80(&player->position.z, movementSpeed,
+                remainingStepEstimate += fn_1_2E80(&player->position.z, interpolationSteps,
                                        player->actionOrigin.z,
                                        lbl_1_bss_60C[playerIndex].attachment.z);
             }
@@ -297,35 +258,35 @@ void fn_1_71F0(void)
     }
 }
 
-/* Called by fn_1_818C when a new effect set starts; selects paths and initializes its objects. */
+/* Chooses paths and initializes the moving slots for a new effect set. */
 s32 fn_1_7940(s16 effectIndex)
 {
     Vec delta;
-    s16 usedSlots[5];
+    s16 usedPaths[5];
     s32 result = -1;
-    M660Ranges_7940 objectRanges = {{{0, 4}, {5, 7}, {8, 8}}};
-    M660Ranges_7940 slotRanges = {{{13, 0}, {8, 13}, {7, 21}}};
-    M660ThreeWords_7940 layers = {{1, 1, 1}};
+    M660MovingSlotRange movingSlotRanges[3] = {{0, 4}, {5, 7}, {8, 8}};
+    M660PathChoiceRange pathChoiceRanges[3] = {{13, 0}, {8, 13}, {7, 21}};
+    s32 effectLayers[3] = {1, 1, 1};
     s16 entryIndex;
-    s16 playerIndex;
+    s16 index;
     f32 extraAngle;
 
-    for (playerIndex = 0; playerIndex < 5; playerIndex++) {
-        usedSlots[playerIndex] = -1;
+    for (index = 0; index < 5; index++) {
+        usedPaths[index] = -1;
     }
 
-    for (playerIndex = 14; playerIndex <= 17; playerIndex++) {
-        fn_80026B8C(lbl_1_bss_60C[playerIndex].modelId,
-                          (s16)layers.values[effectIndex]);
+    for (index = 14; index <= 17; index++) {
+        fn_80026B8C(lbl_1_bss_60C[index].modelId,
+                          (s16)effectLayers[effectIndex]);
     }
 
     {
     f32 level;
-    playerIndex = objectRanges.values[effectIndex].first;
+    index = movingSlotRanges[effectIndex].firstSlotIndex;
     level = 0.0f;
     entryIndex = 0;
-    while (playerIndex <= objectRanges.values[effectIndex].last) {
-        M660Slot *slot = &lbl_1_bss_80[playerIndex];
+    while (index <= movingSlotRanges[effectIndex].lastSlotIndex) {
+        M660Slot *slot = &lbl_1_bss_80[index];
 
         if (slot->active == 0) {
             s16 choice;
@@ -337,19 +298,19 @@ s32 fn_1_7940(s16 effectIndex)
 
             choiceTry = 0;
             do {
-                choice = slotRanges.values[effectIndex].last +
-                         frandmod(slotRanges.values[effectIndex].first);
+                choice = pathChoiceRanges[effectIndex].firstPathIndex +
+                         frandmod(pathChoiceRanges[effectIndex].pathCount);
                 for (usedIndex = 0; usedIndex < 5; usedIndex++) {
-                    if (usedSlots[usedIndex] != -1 &&
-                        (choice == usedSlots[usedIndex] ||
-                         choice == usedSlots[usedIndex] + 1 ||
-                         choice == usedSlots[usedIndex] - 1)) {
+                    if (usedPaths[usedIndex] != -1 &&
+                        (choice == usedPaths[usedIndex] ||
+                         choice == usedPaths[usedIndex] + 1 ||
+                         choice == usedPaths[usedIndex] - 1)) {
                         usedIndex = 99;
                         break;
                     }
                 }
                 if (usedIndex != 99) {
-                    usedSlots[entryIndex] = choice;
+                    usedPaths[entryIndex] = choice;
                     break;
                 }
             } while (choiceTry++ <= 100);
@@ -362,23 +323,23 @@ s32 fn_1_7940(s16 effectIndex)
             travelSpeed /= lbl_1_bss_1F4.interval;
 
             slot->active = 1;
-            slot->state = 0;
+            slot->unk02 = 0;
             slot->delay = entryIndex == 0 ? 0 : frandmod(30);
             slot->pathIndex = choice;
             slot->effectIndex = effectIndex;
             slot->travelSpeed = travelSpeed +
                              fn_1_3C54(lbl_1_bss_1F4.speedRandomRange);
             slot->velocity.x = (f32)((f64)slot->travelSpeed *
-                                    sin((3.141592653589793 * extraAngle) / 180.0));
+                                    sin((M_PI * extraAngle) / 180.0));
             slot->velocity.z = (f32)((f64)slot->travelSpeed *
-                                    cos((3.141592653589793 * extraAngle) / 180.0));
+                                    cos((M_PI * extraAngle) / 180.0));
             slot->phase = fn_1_3C54(50.0f);
 
-            object = &lbl_1_bss_60C[playerIndex + 45];
+            object = &lbl_1_bss_60C[index + 45];
             object->position = lbl_1_data_100[choice].points[side];
             object->position.y = level;
             object->rotation.y = extraAngle;
-            fn_80026A44(lbl_1_bss_60C[playerIndex + 45].modelId, 1U);
+            fn_80026A44(lbl_1_bss_60C[index + 45].modelId, 1U);
 
             lbl_1_bss_60C[slot->modelA].position = object->position;
             lbl_1_bss_60C[slot->modelA].rotation = object->rotation;
@@ -388,7 +349,7 @@ s32 fn_1_7940(s16 effectIndex)
             lbl_1_bss_60C[slot->modelB].rotation = object->rotation;
             fn_80026A44(lbl_1_bss_60C[slot->modelB].modelId, 1U);
         }
-        playerIndex++;
+        index++;
         level += 1.0f;
         entryIndex++;
     }
@@ -400,15 +361,15 @@ s32 fn_1_7940(s16 effectIndex)
 /* Returns whether an active moving object is still inside the stage bounds. */
 s32 fn_1_8084(void)
 {
-    M660Slot *player;
+    M660Slot *slot;
     s32 found = 0;
     s16 index = 0;
     M660Model *object;
 
     while (index < 9) {
-        player = &lbl_1_bss_80[index];
+        slot = &lbl_1_bss_80[index];
         object = &lbl_1_bss_60C[index + 45];
-        if (player->active != 0 &&
+        if (slot->active != 0 &&
             object->position.x < 1000.0f + object->bounds.x &&
             object->position.x > -1000.0f - object->bounds.x &&
             object->position.z < 1000.0f + object->bounds.x &&
@@ -443,14 +404,14 @@ void fn_1_818C(void)
 
     if (lbl_1_bss_1F4.soundPlayed == 0) {
         s16 found = 0;
-        M660Slot *player;
+        M660Slot *scanSlot;
         s16 scanIndex = 0;
         M660Model *scanObject;
 
         while (scanIndex < 9) {
-            player = &lbl_1_bss_80[scanIndex];
+            scanSlot = &lbl_1_bss_80[scanIndex];
             scanObject = &lbl_1_bss_60C[scanIndex + 45];
-            if (player->active != 0 &&
+            if (scanSlot->active != 0 &&
                 scanObject->position.x < 1000.0f + scanObject->bounds.x &&
                 scanObject->position.x > -1000.0f - scanObject->bounds.x &&
                 scanObject->position.z < 1000.0f + scanObject->bounds.x &&
@@ -535,8 +496,8 @@ void fn_1_818C(void)
             for (;;) {
                 nextEffect = frandmod(3);
                 if (lbl_1_bss_1F4.historyCount >= 2) {
-                    if (lbl_1_bss_1F4.slotHistory[lbl_1_bss_1F4.historyCount - 1] != nextEffect ||
-                        lbl_1_bss_1F4.slotHistory[lbl_1_bss_1F4.historyCount - 2] != nextEffect)
+                    if (lbl_1_bss_1F4.effectHistory[lbl_1_bss_1F4.historyCount - 1] != nextEffect ||
+                        lbl_1_bss_1F4.effectHistory[lbl_1_bss_1F4.historyCount - 2] != nextEffect)
                         break;
                 } else if (nextEffect != 2) break;
                 if (phaseIndex++ > 100) break;
@@ -550,7 +511,7 @@ void fn_1_818C(void)
             fn_1_142F8(nextEffect);
             lbl_1_bss_1F4.effectIndex = nextEffect;
             lbl_1_bss_1F4.count = 240;
-            lbl_1_bss_1F4.slotHistory[lbl_1_bss_1F4.historyCount] = nextEffect;
+            lbl_1_bss_1F4.effectHistory[lbl_1_bss_1F4.historyCount] = nextEffect;
             if (++lbl_1_bss_1F4.historyCount >= 10) lbl_1_bss_1F4.historyCount = 0;
             lbl_1_bss_1F4.soundPlayed = 0;
         }
@@ -611,7 +572,7 @@ void fn_1_9050(void)
 }
 
 /* The scene collision system calls this narrow hook to pair players that contact each other. */
-s32 fn_1_90A8(COL_NARROW_PARAM *first,
+int fn_1_90A8(COL_NARROW_PARAM *first,
               COL_NARROW_PARAM *second)
 {
     switch (second->type) {
@@ -702,7 +663,7 @@ void fn_1_915C(void)
                         edgeIndex = 0;
                         collided = 0;
                         while (edgeIndex < 4) {
-                            if (lbl_1_bss_0[objectIndex - 31].directions[edgeIndex] != -1) {
+                            if (lbl_1_bss_0[objectIndex - 31][edgeIndex] != -1) {
                                 delta.x = sides[edgeIndex][0] - sides[edgeIndex][1];
                                 delta.z = sides[edgeIndex][2] - sides[edgeIndex][3];
                                 edgeSquared = delta.x * delta.x + delta.z * delta.z;
@@ -719,11 +680,11 @@ void fn_1_915C(void)
                                 if (delta.x == 0.0f && delta.z == 0.0f) {
                                     collisionAngle = 999.0f;
                                 } else {
-                                    PSVECNormalize(&delta, &normalized);
+                                    VECNormalize(&delta, &normalized);
                                     collisionAngle = 180.0 * (atan2(normalized.x, normalized.z) /
-                                                              3.141592653589793);
+                                                              M_PI);
                                     normalAngle = 180.0 * (atan2(object->normals[edgeIndex].x,
-                                        object->normals[edgeIndex].z) / 3.141592653589793);
+                                        object->normals[edgeIndex].z) / M_PI);
                                     if (normalAngle == 180.0f && collisionAngle < 0.0f)
                                         normalAngle = -180.0f;
                                     collisionAngle = collisionAngle - normalAngle > 0.0f
@@ -736,11 +697,11 @@ void fn_1_915C(void)
                                 if (movement.x == 0.0f && movement.z == 0.0f) {
                                     movementAngle = 999.0f;
                                 } else {
-                                    PSVECNormalize(&movement, &normalized);
+                                    VECNormalize(&movement, &normalized);
                                     movementAngle = 180.0 * (atan2(normalized.x, normalized.z) /
-                                                             3.141592653589793);
+                                                             M_PI);
                                     normalAngle = 180.0 * (atan2(object->normals[edgeIndex].x,
-                                        object->normals[edgeIndex].z) / 3.141592653589793);
+                                        object->normals[edgeIndex].z) / M_PI);
                                     if (normalAngle == 180.0f && movementAngle < 0.0f)
                                         normalAngle = -180.0f;
                                     movementAngle = movementAngle - normalAngle > 0.0f
@@ -752,9 +713,8 @@ void fn_1_915C(void)
                                     if (contactCount < 2) {
                                         player->contacts[contactCount] = objectIndex;
                                         player->contactEdges[contactCount] = edgeIndex;
-                                        /* The saved normal uses the contact ordinal, not the
-                                         * colliding edge index. */
-                                        player->contactNormals[contactCount] =
+                                        /* Index the copied normal by contact ordinal. */
+                                        player->unkF8[contactCount] =
                                             object->normals[contactCount];
                                         contactCount++;
                                     }
@@ -839,32 +799,32 @@ void fn_1_915C(void)
 }
 
 M660PathSegment lbl_1_data_100[28] = {
-    {{{-485.399994f, 0.0f, -1400.0f}, {-814.799988f, 0.0f, 1400.0f}}, {353.299988f, 173.300003f}},
-    {{{-383.899994f, 0.0f, -1400.0f}, {-216.300003f, 0.0f, 1400.0f}}, {3.4000001f, -176.600006f}},
-    {{{-214.600006f, 0.0f, -1400.0f}, {114.400002f, 0.0f, 1400.0f}}, {6.69999981f, -173.300003f}},
-    {{{-332.399994f, 0.0f, -1400.0f}, {1700.0f, 0.0f, 921.200012f}}, {41.2000008f, -138.800003f}},
-    {{{187.399994f, 0.0f, -1400.0f}, {1012.0f, 0.0f, 1400.0f}}, {16.3999996f, -163.600006f}},
-    {{{1700.0f, 0.0f, -1100.59998f}, {-1700.0f, 0.0f, -99.5999985f}}, {286.399994f, 106.400002f}},
-    {{{1214.90002f, 0.0f, -1400.0f}, {13.6999998f, 0.0f, 1400.0f}}, {336.799988f, 156.800003f}},
-    {{{1700.0f, 0.0f, -450.299988f}, {-1700.0f, 0.0f, -850.0f}}, {263.299988f, 83.3000031f}},
-    {{{1700.0f, 0.0f, -499.600006f}, {-1700.0f, 0.0f, 99.4000015f}}, {280.0f, 100.0f}},
-    {{{1700.0f, 0.0f, 501.5f}, {-1700.0f, 0.0f, -901.700012f}}, {247.600006f, 67.5999985f}},
-    {{{1700.0f, 0.0f, 449.700012f}, {-1700.0f, 0.0f, 50.0f}}, {263.299988f, 83.3000031f}},
-    {{{1700.0f, 0.0f, 353.600006f}, {-1700.0f, 0.0f, 1138.30005f}}, {283.0f, 103.0f}},
-    {{{1700.0f, 0.0f, 1263.30005f}, {-1700.0f, 0.0f, 44.0999985f}}, {250.300003f, 70.3000031f}},
-    {{{-826.400024f, 0.0f, -1500.0f}, {-473.799988f, 0.0f, 1500.0f}}, {6.69999981f, -173.300003f}},
-    {{{-743.099976f, 0.0f, -1500.0f}, {1800.0f, 0.0f, 1293.0f}}, {42.2999992f, -137.699997f}},
-    {{{301.399994f, 0.0f, -1500.0f}, {-401.700012f, 0.0f, 1500.0f}}, {346.799988f, 166.800003f}},
-    {{{410.100006f, 0.0f, -1500.0f}, {589.700012f, 0.0f, 1500.0f}}, {3.4000001f, -176.600006f}},
-    {{{1800.0f, 0.0f, -238.5f}, {-1800.0f, 0.0f, -661.799988f}}, {263.299988f, 83.3000031f}},
-    {{{1800.0f, 0.0f, 161.5f}, {-1800.0f, 0.0f, -261.799988f}}, {263.299988f, 83.3000031f}},
-    {{{1800.0f, 0.0f, 771.700012f}, {-1800.0f, 0.0f, -72.1999969f}}, {256.799988f, 76.8000031f}},
-    {{{949.799988f, 0.0f, 1500.0f}, {-1800.0f, 0.0f, -1480.69995f}}, {222.699997f, 42.7000008f}},
-    {{{-338.0f, 0.0f, -1600.0f}, {37.7999992f, 0.0f, 1600.0f}}, {6.69999981f, -173.300003f}},
-    {{{651.0f, 0.0f, -1600.0f}, {-1485.0f, 0.0f, 1600.0f}}, {326.299988f, 146.300003f}},
-    {{{350.200012f, 0.0f, -1600.0f}, {349.5f, 0.0f, 1600.0f}}, {360.0f, 180.0f}},
-    {{{1900.0f, 0.0f, -859.299988f}, {-1900.0f, 0.0f, 259.100006f}}, {286.399994f, 106.400002f}},
-    {{{1900.0f, 0.0f, 383.799988f}, {-1900.0f, 0.0f, -1184.0f}}, {247.600006f, 67.5999985f}},
-    {{{1900.0f, 0.0f, -34.9000015f}, {-1900.0f, 0.0f, 634.599976f}}, {280.0f, 100.0f}},
-    {{{1900.0f, 0.0f, 1290.30005f}, {-1900.0f, 0.0f, -1390.59998f}}, {234.800003f, 54.7999992f}}
+    {{{-485.4f, 0.0f, -1400.0f}, {-814.8f, 0.0f, 1400.0f}}, {353.3f, 173.3f}},
+    {{{-383.9f, 0.0f, -1400.0f}, {-216.3f, 0.0f, 1400.0f}}, {3.4f, -176.6f}},
+    {{{-214.6f, 0.0f, -1400.0f}, {114.4f, 0.0f, 1400.0f}}, {6.7f, -173.3f}},
+    {{{-332.4f, 0.0f, -1400.0f}, {1700.0f, 0.0f, 921.2f}}, {41.2f, -138.8f}},
+    {{{187.4f, 0.0f, -1400.0f}, {1012.0f, 0.0f, 1400.0f}}, {16.4f, -163.6f}},
+    {{{1700.0f, 0.0f, -1100.6f}, {-1700.0f, 0.0f, -99.6f}}, {286.4f, 106.4f}},
+    {{{1214.9f, 0.0f, -1400.0f}, {13.7f, 0.0f, 1400.0f}}, {336.8f, 156.8f}},
+    {{{1700.0f, 0.0f, -450.3f}, {-1700.0f, 0.0f, -850.0f}}, {263.3f, 83.3f}},
+    {{{1700.0f, 0.0f, -499.6f}, {-1700.0f, 0.0f, 99.4f}}, {280.0f, 100.0f}},
+    {{{1700.0f, 0.0f, 501.5f}, {-1700.0f, 0.0f, -901.7f}}, {247.6f, 67.6f}},
+    {{{1700.0f, 0.0f, 449.7f}, {-1700.0f, 0.0f, 50.0f}}, {263.3f, 83.3f}},
+    {{{1700.0f, 0.0f, 353.6f}, {-1700.0f, 0.0f, 1138.3f}}, {283.0f, 103.0f}},
+    {{{1700.0f, 0.0f, 1263.3f}, {-1700.0f, 0.0f, 44.1f}}, {250.3f, 70.3f}},
+    {{{-826.4f, 0.0f, -1500.0f}, {-473.8f, 0.0f, 1500.0f}}, {6.7f, -173.3f}},
+    {{{-743.1f, 0.0f, -1500.0f}, {1800.0f, 0.0f, 1293.0f}}, {42.3f, -137.7f}},
+    {{{301.4f, 0.0f, -1500.0f}, {-401.7f, 0.0f, 1500.0f}}, {346.8f, 166.8f}},
+    {{{410.1f, 0.0f, -1500.0f}, {589.7f, 0.0f, 1500.0f}}, {3.4f, -176.6f}},
+    {{{1800.0f, 0.0f, -238.5f}, {-1800.0f, 0.0f, -661.8f}}, {263.3f, 83.3f}},
+    {{{1800.0f, 0.0f, 161.5f}, {-1800.0f, 0.0f, -261.8f}}, {263.3f, 83.3f}},
+    {{{1800.0f, 0.0f, 771.7f}, {-1800.0f, 0.0f, -72.2f}}, {256.8f, 76.8f}},
+    {{{949.8f, 0.0f, 1500.0f}, {-1800.0f, 0.0f, -1480.7f}}, {222.7f, 42.7f}},
+    {{{-338.0f, 0.0f, -1600.0f}, {37.8f, 0.0f, 1600.0f}}, {6.7f, -173.3f}},
+    {{{651.0f, 0.0f, -1600.0f}, {-1485.0f, 0.0f, 1600.0f}}, {326.3f, 146.3f}},
+    {{{350.2f, 0.0f, -1600.0f}, {349.5f, 0.0f, 1600.0f}}, {360.0f, 180.0f}},
+    {{{1900.0f, 0.0f, -859.3f}, {-1900.0f, 0.0f, 259.1f}}, {286.4f, 106.4f}},
+    {{{1900.0f, 0.0f, 383.8f}, {-1900.0f, 0.0f, -1184.0f}}, {247.6f, 67.6f}},
+    {{{1900.0f, 0.0f, -34.9f}, {-1900.0f, 0.0f, 634.6f}}, {280.0f, 100.0f}},
+    {{{1900.0f, 0.0f, 1290.3f}, {-1900.0f, 0.0f, -1390.6f}}, {234.8f, 54.8f}}
 };
