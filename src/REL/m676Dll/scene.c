@@ -30,58 +30,17 @@
 #include "dolphin/mtx.h"
 #include "REL/m676Dll/particle_types.h"
 #include "dolphin/types.h"
-
-#define M676_COLLISION_MASK_PROP 19
-#define M676_COLLISION_MASK_PARTICLE 16
+#include "REL/m676Dll/score_types.h"
+#include "REL/m676Dll/camera_types.h"
+#include "humath.h"
 
 typedef struct M676SceneManagerWork {
-    /* These zeroed fields are not read by the scene manager callback. */
-    s32 reservedA;
-    s32 reservedB;
+    s32 unk_00; /* No code names this field. */
+    s32 unk_04; /* No code names this field. */
     /* Number of times the manager update callback has run. */
     s32 updateCount;
 } M676SceneManagerWork;
 
-s32 fn_1_1480(s32 resource);
-int fn_1_50A8(int resource);
-s32 fn_1_51B0(s32 model, s32 resource);
-
-extern void fn_1_1263C(s32 playerIndex, f32 *x, f32 *y);
-extern void fn_1_12514(s32 playerIndex, s32 amount);
-extern void fn_1_4754(s32 resource, Vec *position);
-extern void fn_1_5698(Vec *start, Vec *end, f32 factor, Vec *result);
-
-extern f32 fn_1_52C0(f32 start, f32 end, f32 speed);
-extern f32 fn_1_53DC(f32 start, f32 end);
-
-extern s32 fn_1_3DD0(Vec *position);
-
-extern s32 fn_1_13F54(void *registration);
-
-extern f32 fn_1_5490(Vec *start, Vec *end);
-extern u32 fn_80071A8C(void);
-
-extern int fn_1_1650(void);
-
-extern u32 fn_80071A8C(void);
-
-extern u32 fn_80071A8C(void);
-
-extern s32 fn_1_56F0(Vec *start, Vec *end, f32 delta, f32 step,
-    Vec *velocity);
-
-s32 fn_1_1498(void);
-
-extern s32 fn_1_13EC4(M676CollisionEntry *registration);
-
-extern int fn_1_15E0(void);
-extern s32 fn_1_49C8(s32 effect, Vec *position, s32 panEnabled, s32 volumeEnabled);
-extern void fn_1_10288(s32 type, s32 index, Vec *position,
-                      s32 requestValue);
-
-extern f32 fn_1_552C(Vec *first, Vec *second);
-void fn_1_8888(s32 playerIndex);
-void fn_1_88C0(HUPROCESS *process);
 void fn_1_89F0(void);
 void fn_1_89F4(OMOBJ *obj);
 void fn_1_8A04(OMOBJ *owner);
@@ -93,7 +52,7 @@ void fn_1_8F2C(OMOBJ *object, s32 motionIndex);
 void fn_1_9038(OMOBJ *object, s32 motionIndex);
 BOOL fn_1_915C(OMOBJ *object);
 BOOL fn_1_91C4(s32 propType, s32 propId, char *partName, Vec *position, Vec *rotation);
-void fn_1_9300(s32 objectAddress);
+void fn_1_9300(OMOBJ *object);
 void fn_1_9338(OMOBJ *object);
 void fn_1_93F4(OMOBJ *object);
 void fn_1_94A0(OMOBJ *object);
@@ -152,39 +111,29 @@ s32 fn_1_E4D4(M676PropWork *work);
 s32 fn_1_EAC8(M676PropWork *work);
 s32 fn_1_EC00(M676PropWork *work, f32 speed);
 s32 fn_1_ED6C(M676PropWork *work, f32 speed);
-s32 fn_1_F214(M676PropWork *work, f32 delta, f32 step,
-    s32 count, s32 angleMode);
+s32 fn_1_F214(M676PropWork *work, f32 delta, f32 step, s32 count, s32 angleMode);
 void fn_1_F548(OMOBJ *object);
 void fn_1_F678(OMOBJ *object);
 s32 fn_1_F7BC(void);
 s32 fn_1_F7CC(void);
-s32 fn_1_F7DC(Vec *value);
 s32 fn_1_F828(void);
 s32 fn_1_F8B4(void);
-s32 fn_1_F940(s32 index, Vec *resultValues);
-void fn_1_F9B0(s32 objectIndex, s32 result, s32 character);
-s32 fn_1_FA68(Vec *position, f32 angle);
-s32 fn_1_FBCC(s32 objectIndex);
-s32 fn_1_FC30(s32 index, Vec *resultValues);
 f32 fn_1_FCA0(void);
-f32 fn_1_FD64(void);
-s32 fn_1_FE28(s32 index);
 OMOBJ *fn_1_FF18(Vec *position, f32 heading, f32 angleLimit,
                   f32 maximumDistance, OMOBJ *excludedObject);
-void fn_1_10240(s32 index);
 
 Vec lbl_1_data_2D0[2] = {{0.0f, 0.0f, 0.0f}, {0.0f, 151.0f, 5200.0f}};
 Vec lbl_1_data_2E8 = {-1400.0f, 10.0f, 800.0f};
 Vec lbl_1_data_2F4 = {-1300.0f, 0.0f, 1500.0f};
 M676PropMotionParam lbl_1_data_300[9] = {
-    {4, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {9, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {10, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {5, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {6, 0.20000000298023224f, 0},
-    {7, 0.20000000298023224f, 0},
-    {8, 0.20000000298023224f, 0},
-    {11, 0.20000000298023224f, 0},
+    {4, 0.2f, ((1 << 30) | (1 << 0))},
+    {9, 0.2f, ((1 << 30) | (1 << 0))},
+    {10, 0.2f, ((1 << 30) | (1 << 0))},
+    {5, 0.2f, ((1 << 30) | (1 << 0))},
+    {6, 0.2f, 0},
+    {7, 0.2f, 0},
+    {8, 0.2f, 0},
+    {11, 0.2f, 0},
     {-2, 0.0f, 0}
 };
 M676PropParam lbl_1_data_36C[19] = {
@@ -337,7 +286,7 @@ void fn_1_8A58(HUPROCESS *process, M676PropParam *propParameters)
     }
 }
 
-/* Adds a newly created prop to the first available scene lookup slot. */
+/* Registers a prop in the first free slot of the 128-entry scene lookup table. */
 void fn_1_8D18(OMOBJ *object)
 {
     OMOBJ **objectSlot = lbl_1_bss_EA0;
@@ -351,7 +300,6 @@ void fn_1_8D18(OMOBJ *object)
         ++slotIndex;
         ++objectSlot;
     }
-    /* If all 128 lookup slots are occupied, this prop remains unregistered. */
 }
 
 /* Finds a registered prop by its configured type and per-group ID. */
@@ -385,14 +333,14 @@ void fn_1_8DF4(OMOBJ *object, s32 motionIndex, s32 updateShapeMotion)
     if (propState->actor.currentMotion != motionIndex && motionIndex < 8) {
         motionId = object->mtnId[motionIndex];
         propWork->timer = 0;
-        propState->actor.motionTime = 0;
+        propState->actor.unkA0 = 0;
         if (motionId == -1) {
             propState->motionActive = 0;
             return;
         }
         motionParameters = &propWork->param->motions[motionIndex];
         modelId = object->mdlId[0];
-        if (propState->actor.currentMotion < 0 || (0.0) == motionParameters->blend) {
+        if (propState->actor.currentMotion < 0 || 0.0 == motionParameters->blend) {
             if (updateShapeMotion) {
                 fn_8002CEB0((s16) modelId, (s16) motionId);
             }
@@ -402,8 +350,8 @@ void fn_1_8DF4(OMOBJ *object, s32 motionIndex, s32 updateShapeMotion)
             if (updateShapeMotion) {
                 fn_8002CEB0((s16) modelId, (s16) motionId);
             }
-            fn_8002CCC0((s16) modelId, (s16) motionId, (0.0f),
-                (60.0f) * motionParameters->blend, motionParameters->attr);
+            fn_8002CCC0((s16) modelId, (s16) motionId, 0.0f,
+                60.0f * motionParameters->blend, motionParameters->attr);
         }
         propState->actor.currentMotion = motionIndex;
     }
@@ -453,8 +401,7 @@ BOOL fn_1_91C4(s32 propType, s32 propId, char *partName, Vec *position, Vec *rot
         position->y = part->mesh.curr.pos.y;
         position->z = part->mesh.curr.pos.z;
         rotation->x = part->mesh.curr.rot.x;
-        /* Model-part yaw uses a quarter-turn offset from the scene transform. */
-        /* The scene's yaw is offset by 90 degrees from the model-part yaw. */
+        /* Add 90 degrees to the model-part yaw. */
         rotation->y = 90.0 + part->mesh.curr.rot.y;
         rotation->z = part->mesh.curr.rot.z;
     }
@@ -462,10 +409,10 @@ BOOL fn_1_91C4(s32 propType, s32 propId, char *partName, Vec *position, Vec *rot
 }
 
 /* Prop update hook: copies the actor transform to its model and advances motion state and timer. */
-void fn_1_9300(s32 objectAddress)
+void fn_1_9300(OMOBJ *object)
 {
-    fn_1_9338((OMOBJ *) objectAddress);
-    fn_1_93F4((OMOBJ *) objectAddress);
+    fn_1_9338(object);
+    fn_1_93F4(object);
 }
 
 /* Copies the prop's position and rotation to its model during its update. */
@@ -499,10 +446,10 @@ void fn_1_93F4(OMOBJ *object)
         }
         if (motionFinished) {
             propState->motionActive = 0;
-            propState->motionStatus = 0;
+            propState->unk114 = 0;
         }
     } else {
-        propState->motionStatus = 0;
+        propState->unk114 = 0;
     }
     propWork->timer++;
 }
@@ -625,10 +572,10 @@ void fn_1_9708(OMOBJ *object)
     propWork->bobPhase = bobPhase;
 
     wobbleRotationScale = (f32)(1.5 + (3.0 * (f64)propWork->wobbleAmount));
-    actorWork->state.actor.rotation.x = (f32)((f64)wobbleRotationScale * sin(
-        (3.141592653589793 * (f64)propWork->pitchPhase) / 180.0));
-    actorWork->state.actor.rotation.z = (f32)((f64)wobbleRotationScale * sin(
-        (3.141592653589793 * (f64)propWork->rollPhase) / 180.0));
+    actorWork->state.actor.rotation.x =
+        (f32)((f64)wobbleRotationScale * sin( (M_PI * (f64)propWork->pitchPhase) / 180.0));
+    actorWork->state.actor.rotation.z =
+        (f32)((f64)wobbleRotationScale * sin( (M_PI * (f64)propWork->rollPhase) / 180.0));
 
     wobbleRotationScale = (f32)(1.0 +
         (1.5 * (f64)propWork->wobbleAmount));
@@ -643,8 +590,7 @@ void fn_1_9708(OMOBJ *object)
     propWork->rollPhase = storedRollPhase;
 
     actorWork->state.actor.position.y = (f32)((f64)propWork->startPosition.y +
-        (25.0 * ((f64)propWork->wobbleAmount * sin(
-            (3.141592653589793 * (f64)propWork->bobPhase) / 180.0))));
+        (25.0 * ((f64)propWork->wobbleAmount * sin( (M_PI * (f64)propWork->bobPhase) / 180.0))));
 
     renderPropWork = object->data;
     renderActorWork = renderPropWork;
@@ -669,10 +615,10 @@ void fn_1_9708(OMOBJ *object)
         }
         if (motionShiftFinished != 0) {
             motionPropState->state.motionActive = 0;
-            motionPropState->state.motionStatus = 0;
+            motionPropState->state.unk114 = 0;
         }
     } else {
-        motionPropState->state.motionStatus = 0;
+        motionPropState->state.unk114 = 0;
     }
     motionPropWork->timer++;
 }
@@ -718,10 +664,8 @@ void fn_1_9C58(OMOBJ *object)
     s32 clearShiftedMotion;
     s32 motionModelId;
 
-    state->state.actor.rotation.x = (f32)(3.0 * sin(
-        (3.141592653589793 * (f64)work->pitchPhase) / 180.0));
-    state->state.actor.rotation.z = (f32)(3.0 * sin(
-        (3.141592653589793 * (f64)work->rollPhase) / 180.0));
+    state->state.actor.rotation.x = (f32)(3.0 * sin( (M_PI * (f64)work->pitchPhase) / 180.0));
+    state->state.actor.rotation.z = (f32)(3.0 * sin( (M_PI * (f64)work->rollPhase) / 180.0));
 
     angleX = (f32)(2.0 + work->pitchPhase);
     wrappedX = (f32)fmod((f64)angleX, 360.0);
@@ -757,10 +701,10 @@ void fn_1_9C58(OMOBJ *object)
 
             if (clearShiftedMotion != 0) {
                 motionState->state.motionActive = 0;
-                motionState->state.motionStatus = 0;
+                motionState->state.unk114 = 0;
             }
         } else {
-            motionState->state.motionStatus = 0;
+            motionState->state.unk114 = 0;
         }
         motionWork->timer++;
     }
@@ -810,14 +754,11 @@ void fn_1_A080(OMOBJ *object)
     }
 
     angle = fn_1_5490(&state->state.actor.position, &state->state.targetPosition);
-    state->state.actor.rotation.y = fn_1_52C0(state->state.actor.rotation.y, angle,
-        0.01f);
+    state->state.actor.rotation.y = fn_1_52C0(state->state.actor.rotation.y, angle, 0.01f);
     desiredVelocityX = (f32)(velocityScale *
-        sin((3.141592653589793 * (f64)state->state.actor.rotation.y) /
-            180.0));
+        sin((M_PI * (f64)state->state.actor.rotation.y) / 180.0));
     desiredVelocityZ = (f32)(velocityScale *
-        cos((3.141592653589793 * (f64)state->state.actor.rotation.y) /
-            180.0));
+        cos((M_PI * (f64)state->state.actor.rotation.y) / 180.0));
     state->state.actor.velocity.x = (f32)((f64)state->state.actor.velocity.x +
         0.1 * (f64)(desiredVelocityX - state->state.actor.velocity.x));
     state->state.actor.velocity.z = (f32)((f64)state->state.actor.velocity.z +
@@ -893,16 +834,13 @@ void fn_1_A624(OMOBJ *object)
     }
 
     angle = fn_1_5490(&state->state.actor.position, &state->state.targetPosition);
-    state->state.actor.rotation.y = fn_1_52C0(state->state.actor.rotation.y, angle,
-        0.02f);
+    state->state.actor.rotation.y = fn_1_52C0(state->state.actor.rotation.y, angle, 0.02f);
     desiredVelocityX = (f32)(speed *
-        sin((3.141592653589793 * (f64)state->state.actor.rotation.y) /
-            180.0));
+        sin((M_PI * (f64)state->state.actor.rotation.y) / 180.0));
     state->state.actor.velocity.x = (f32)((f64)state->state.actor.velocity.x +
         0.1 * (f64)(desiredVelocityX - state->state.actor.velocity.x));
     desiredVelocityZ = (f32)(speed *
-        cos((3.141592653589793 * (f64)state->state.actor.rotation.y) /
-            180.0));
+        cos((M_PI * (f64)state->state.actor.rotation.y) / 180.0));
     state->state.actor.velocity.z = (f32)((f64)state->state.actor.velocity.z +
         0.1 * (f64)(desiredVelocityZ - state->state.actor.velocity.z));
     PSVECAdd(&state->state.actor.position, &state->state.actor.velocity,
@@ -934,10 +872,10 @@ void fn_1_A624(OMOBJ *object)
             }
             if (clearShiftedMotion != 0) {
                 motionState->state.motionActive = 0;
-                motionState->state.motionStatus = 0;
+                motionState->state.unk114 = 0;
             }
         } else {
-            motionState->state.motionStatus = 0;
+            motionState->state.unk114 = 0;
         }
         motionWork->timer++;
     }
@@ -1078,10 +1016,10 @@ void fn_1_AF20(OMOBJ *object)
     if (motionState->state.motionActive != 0) {
         if (fn_1_915C(object)) {
             motionState->state.motionActive = 0;
-            motionState->state.motionStatus = 0;
+            motionState->state.unk114 = 0;
         }
     } else {
-        motionState->state.motionStatus = 0;
+        motionState->state.unk114 = 0;
     }
     motionWork->timer++;
 
@@ -1089,7 +1027,7 @@ void fn_1_AF20(OMOBJ *object)
     object->mdlId[1] = modelId;
     fn_80026B8C(modelId, 0);
     fn_800269E8(modelId, (1 << 14));
-    fn_80026790(modelId, (Vec *)&renderWork->state.actor.position);
+    fn_80026790(modelId, &renderWork->state.actor.position);
     fn_80026838(modelId, &renderWork->state.actor.rotation);
     object->objFunc = fn_1_B228;
 }
@@ -1154,7 +1092,7 @@ void fn_1_B2F4(OMOBJ *object)
 
     record = &state->state.actor.collision;
     record->header.flags = 1;
-    record->header.collisionMask = M676_COLLISION_MASK_PROP;
+    record->header.collisionMask = 19;
     record->header.type = 1;
     record->header.id = work->id;
     record->header.state = 0;
@@ -1169,9 +1107,9 @@ void fn_1_B2F4(OMOBJ *object)
     fn_1_13EC4(record);
 
     state->state.savedPosition = state->state.actor.position;
-    state->state.poseEnabled = 1;
-    state->state.poseHeight = 75.0f;
-    state->state.savedPositionPointer = &state->state.savedPosition;
+    state->state.unk150 = 1;
+    state->state.unk154 = 75.0f;
+    state->state.unk158 = &state->state.savedPosition;
     object->objFunc = fn_1_B4B4;
 }
 
@@ -1215,8 +1153,7 @@ void fn_1_B4B4(OMOBJ *object) {
                 if (++work->frame >= 60) {
                     work->phase = (u32) (work->phase + 1);
                     work->frame = 0;
-                    /* These phase fields become movement controls here; pitchPhase is cleared twice
-                     * and rollPhase is cleared before being set to 1. */
+                    /* Reset movement controls, including two writes to pitchPhase. */
                     work->wobbleAmount = 0.0f;
                     work->bobPhase = 1.0f;
                     work->pitchPhase = 0.0f;
@@ -1228,7 +1165,8 @@ void fn_1_B4B4(OMOBJ *object) {
                     work->targetX = (f32) state->state.actor.position.x;
                     state->state.actor.collision.shape.dynamic.movable = 0.0f;
                     state->state.actor.collision.shape.dynamic.radius = 70.0f;
-                    work->soundHandle = fn_1_49C8(2232, &state->state.actor.position, 1, 0);
+                    work->soundHandle =
+                        fn_1_49C8(MSM_SE_MG676_PROP_MOVE_LOOP, &state->state.actor.position, 1, 0);
                 case 4:
                     state->state.actor.position.x =
                         (f32) ((f64) state->state.actor.position.x +
@@ -1240,8 +1178,7 @@ void fn_1_B4B4(OMOBJ *object) {
                             fn_800269E8(*object->mdlId, (1 << 0));
                             fn_80026A44((s16) work->modelId, (1 << 0));
                         fn_80026A44((s16) work->modelId, ((1 << 30) | (1 << 1)));
-                        fn_80026790((s16) work->modelId,
-                                         (Point3d *) &state->state.actor.position);
+                        fn_80026790((s16) work->modelId, &state->state.actor.position);
                         if ((s32) work->soundHandle != -1) {
                             HuAudFXFadeOut(work->soundHandle, 100);
                             work->soundHandle = -1;
@@ -1312,7 +1249,7 @@ void fn_1_B4B4(OMOBJ *object) {
         if (++work->frame >= 30) {
             work->phase = (u32) (work->phase + 1);
             work->frame = 0;
-            state->state.poseEnabled = 0;
+            state->state.unk150 = 0;
         case 7:
             if ((s32) (work->frame & 2) == 0) {
                 fn_800269E8((s16) work->modelId, (1 << 0));
@@ -1359,8 +1296,8 @@ void fn_1_B4B4(OMOBJ *object) {
         work->unknown_1E0 = 0.0f;
         work->rollPhase = 0.0f;
     }
-    PSVECAdd((Point3d *) &state->state.actor.position, (Point3d *) &state->state.actor.velocity,
-             (Point3d *) &state->state.actor.position);
+    PSVECAdd(&state->state.actor.position, &state->state.actor.velocity,
+             &state->state.actor.position);
     /* Both movement components accumulate into X rotation; Z rotation is left unchanged here. */
     state->state.actor.rotation.x =
         (f32) ((f64) state->state.actor.rotation.x +
@@ -1435,7 +1372,7 @@ s32 fn_1_BE3C(M676CollisionEntry *first, M676CollisionEntry *second)
 apply_first_result:
             first->shape.dynamic.active = 1;
             first->contactId = secondState->state.actor.playerSlot;
-            fn_1_4754(2233, &firstWork->state.actor.position);
+            fn_1_4754(MSM_SE_MG676_PROP_BUMP, &firstWork->state.actor.position);
             goto done;
         }
         fallbackObject = first->header.callbackArgument;
@@ -1491,10 +1428,10 @@ void fn_1_BFA4(OMOBJ *object)
         }
         if (resetMotion != 0) {
             motionState->state.motionActive = 0;
-            motionState->state.motionStatus = 0;
+            motionState->state.unk114 = 0;
         }
     } else {
-        motionState->state.motionStatus = 0;
+        motionState->state.unk114 = 0;
     }
     motionWork->timer++;
 }
@@ -1634,8 +1571,7 @@ void fn_1_CB74(OMOBJ *object, s32 resourceId, s32 collisionType,
     M676PropWork *work = object->data;
     s32 recordCount = object->work[0];
     s32 allocationSize = recordCount * sizeof(M676ParticleRecord);
-    M676ParticleRecord *records = HuMemDirectMallocNum(
-        HEAP_HEAP, allocationSize, 0x10000000);
+    M676ParticleRecord *records = HuMemDirectMallocNum( HEAP_HEAP, allocationSize, 0x10000000);
     s32 index;
 
     memset(records, 0, allocationSize);
@@ -1648,11 +1584,11 @@ void fn_1_CB74(OMOBJ *object, s32 resourceId, s32 collisionType,
         fn_800269E8((s16)records->modelId, (1 << 14));
         fn_800269E8((s16)records->modelId, 1U);
         records->heightOffset = heightOffset;
-        records->storedValue = storedValue;
+        records->unk58 = storedValue;
         callback = &records->collision;
 
         callback->header.flags = 0;
-        callback->header.collisionMask = M676_COLLISION_MASK_PARTICLE;
+        callback->header.collisionMask = 16;
         callback->header.type = collisionType;
         callback->header.id = index;
         callback->header.state = 0;
@@ -1701,58 +1637,56 @@ void fn_1_CDC0(OMOBJ *object)
 /* Particle-object callback advances active records and updates each record's model every frame. */
 void fn_1_CE30(OMOBJ *owner)
 {
-    s32 values[5];
     M676ParticleRecord *record;
     M676PropWork *list;
     s32 recordCount;
-    s32 index;
     s32 recordIndex;
-    s32 left;
-    s32 right;
-    s32 value;
 
     list = owner->data;
     record = list->records;
     recordCount = owner->work[0];
     if (lbl_1_bss_5D4 == 0) {
-        s32 *indices = lbl_1_bss_480;
-
-        for (index = 0; index < 5; index++) {
-            values[index] = lbl_1_bss_494[index];
-            indices[index] = index;
-        }
-        for (index = 0; index < 5; index++) {
-            for (left = 0; left < 4; left++) {
-                for (right = left + 1; right < 5; right++) {
-                    if (values[left] < values[right]) {
-                        value = values[left];
-                        values[left] = values[right];
-                        values[right] = value;
-                        value = indices[left];
-                        indices[left] = indices[right];
-                        indices[right] = value;
-                    }
-                }
-            }
-        }
-        lbl_1_bss_5D4 = 1;
+        fn_1_C1B8();
     }
 
     for (recordIndex = 0; recordIndex < recordCount;
          recordIndex++, record++) {
         if (record->state != 0) {
             (*lbl_1_data_6D0[record->type])(record);
-            PSVECAdd(&record->position, &record->velocity,
-                     &record->position);
-            PSVECAdd(&record->rotation, &record->rotationVelocity,
-                     &record->rotation);
+            PSVECAdd(&record->position, &record->velocity, &record->position);
+            PSVECAdd(&record->rotation, &record->rotationVelocity, &record->rotation);
             fn_80026760((s16)record->modelId, record->position.x,
                             record->position.y + record->heightOffset,
                             record->position.z);
             fn_80026838((s16)record->modelId, &record->rotation);
-            fn_800268B0((s16)record->modelId, record->scale,
-                              record->scale, record->scale);
+            fn_800268B0((s16)record->modelId, record->scale, record->scale, record->scale);
         }
+    }
+}
+
+/* Moves a collected particle toward the player's projected score-box point. When the timer
+ * reaches 1.0 it adds one to the player's score, hides the particle, releases its lane slot
+ * when releaseLane is set, and clears its state. */
+static inline void UpdateParticleProjection(M676ParticleRecord *state, BOOL releaseLane)
+{
+    Point3d projected;
+    s32 playerIndex;
+
+    state->timer += 0.02;
+    playerIndex = state->playerIndex;
+    fn_1_1263C(playerIndex, &projected.x, &projected.y);
+    projected.z = 1200.0f;
+    projected.y -= 10.0;
+    Hu3D2Dto3D(&projected, 1, &state->projectedPosition);
+    fn_1_5698(&state->previousPosition, &state->projectedPosition,
+        state->timer, &state->position);
+    if (!(state->timer < 1.0)) {
+        fn_1_12514(state->playerIndex, 1);
+        fn_1_D724(state);
+        if (releaseLane) {
+            fn_1_D768(state);
+        }
+        state->state = 0;
     }
 }
 
@@ -1760,9 +1694,6 @@ void fn_1_CE30(OMOBJ *owner)
  * point. */
 void fn_1_D030(M676ParticleRecord *state)
 {
-    Point3d projected;
-    s32 playerIndex;
-
     switch (state->state) {
     case 1:
         fn_1_D63C(state);
@@ -1780,23 +1711,10 @@ void fn_1_D030(M676ParticleRecord *state)
         state->previousPosition = state->position;
         state->playerIndex = state->collision.contactId;
         state->collision.header.flags &= ~1u;
-        fn_1_4754(2235, &state->position);
+        fn_1_4754(MSM_SE_MG676_PICKUP_COLLECT, &state->position);
         return;
     case 3:
-        state->timer += 0.02;
-        playerIndex = state->playerIndex;
-        fn_1_1263C(playerIndex, &projected.x, &projected.y);
-        projected.z = 1200.0f;
-        projected.y -= 10.0;
-        Hu3D2Dto3D(&projected, 1, &state->projectedPosition);
-        fn_1_5698(&state->previousPosition, &state->projectedPosition,
-            state->timer, &state->position);
-        if (!(state->timer < 1.0)) {
-            fn_1_12514(state->playerIndex, 1);
-            fn_1_D724(state);
-            fn_1_D768(state);
-            state->state = 0;
-        }
+        UpdateParticleProjection(state, TRUE);
         break;
     }
 }
@@ -1838,9 +1756,6 @@ void fn_1_D1E4(M676ParticleRecord *state)
  * point on arrival. */
 void fn_1_D320(M676ParticleRecord *state)
 {
-    Point3d projected;
-    s32 playerIndex;
-
     switch (state->state) {
     case 1:
         fn_1_D63C(state);
@@ -1849,69 +1764,18 @@ void fn_1_D320(M676ParticleRecord *state)
         state->rotationVelocity.y = 10.0f;
         state->previousPosition = state->position;
         state->collision.header.flags &= ~1u;
-        fn_1_4754(2235, &state->position);
+        fn_1_4754(MSM_SE_MG676_PICKUP_COLLECT, &state->position);
         break;
     case 2:
-        state->timer += 0.02;
-        playerIndex = state->playerIndex;
-        fn_1_1263C(playerIndex, &projected.x, &projected.y);
-        projected.z = 1200.0f;
-        projected.y -= 10.0;
-        Hu3D2Dto3D(&projected, 1, &state->projectedPosition);
-        fn_1_5698(&state->previousPosition, &state->projectedPosition,
-            state->timer, &state->position);
-        if (!(state->timer < 1.0)) {
-            fn_1_12514(state->playerIndex, 1);
-            fn_1_D724(state);
-            state->state = 0;
-        }
+        UpdateParticleProjection(state, FALSE);
         break;
     }
 }
 
-/* Particle update waits for contact, then moves the record to the player's score box and awards a
- * point. */
+/* Runs the same collision and collection update as fn_1_D030. */
 void fn_1_D488(M676ParticleRecord *state)
 {
-    Point3d projected;
-    s32 playerIndex;
-
-    switch (state->state) {
-    case 1:
-        fn_1_D63C(state);
-        state->state++;
-        state->remainingEmissions = 10;
-        /* fall through */
-    case 2:
-        if (state->collision.shape.dynamic.active == 0) {
-            return;
-        }
-        state->state++;
-        state->timer = 0.0f;
-        state->velocity.y = 0.0f;
-        state->rotationVelocity.y = 10.0f;
-        state->previousPosition = state->position;
-        state->playerIndex = state->collision.contactId;
-        state->collision.header.flags &= ~1u;
-        fn_1_4754(2235, &state->position);
-        return;
-    case 3:
-        state->timer += 0.02;
-        playerIndex = state->playerIndex;
-        fn_1_1263C(playerIndex, &projected.x, &projected.y);
-        projected.z = 1200.0f;
-        projected.y -= 10.0;
-        Hu3D2Dto3D(&projected, 1, &state->projectedPosition);
-        fn_1_5698(&state->previousPosition, &state->projectedPosition,
-            state->timer, &state->position);
-        if (!(state->timer < 1.0)) {
-            fn_1_12514(state->playerIndex, 1);
-            fn_1_D724(state);
-            fn_1_D768(state);
-            state->state = 0;
-        }
-        break;
-    }
+    fn_1_D030(state);
 }
 
 /* Particle setup resets motion and collision state before the record becomes active. */
@@ -1956,9 +1820,9 @@ void fn_1_D794(OMOBJ *object)
     initialModel = object->mdlId[0];
     fn_1_8F2C(object, 0);
     animationWork->state.savedPosition = animationWork->state.actor.position;
-    animationWork->state.poseEnabled = 1;
-    animationWork->state.poseHeight = 65.0f;
-    animationWork->state.savedPositionPointer = &animationWork->state.savedPosition;
+    animationWork->state.unk150 = 1;
+    animationWork->state.unk154 = 65.0f;
+    animationWork->state.unk158 = &animationWork->state.savedPosition;
     object->objFunc = fn_1_D8E4;
 }
 
@@ -2035,10 +1899,10 @@ void fn_1_DA08(OMOBJ *object)
         }
         if (resetMotion != 0) {
             motionState->state.motionActive = 0;
-            motionState->state.motionStatus = 0;
+            motionState->state.unk114 = 0;
         }
     } else {
-        motionState->state.motionStatus = 0;
+        motionState->state.unk114 = 0;
     }
     motionWork->timer++;
 }
@@ -2091,8 +1955,7 @@ s32 fn_1_DB74(M676PropWork *work)
     {
         s32 angleMode = (work->state.controlTimer == 1) ? 1 : 0;
 
-        if (fn_1_F214(work, 1.0896277f, 500.0f, 6,
-                angleMode) == 0) {
+        if (fn_1_F214(work, 1.0896277f, 500.0f, 6, angleMode) == 0) {
             break;
         }
         if (++work->state.controlTimer < stepCount) {
@@ -2188,7 +2051,7 @@ s32 fn_1_E184(M676PropWork *sequence)
         }
         sequence->state.controlState++;
         sequence->state.controlTimer = 0;
-        fn_1_4754(935, &sequence->state.actor.position);
+        fn_1_4754(MSM_SE_GUIDE_DONKEY_TALK, &sequence->state.actor.position);
         /* fall through */
     default:
         done = 1;
@@ -2215,9 +2078,8 @@ s32 fn_1_E260(M676PropWork *work)
         if ((BOOL)(frand() & 1) != 0) {
             work->state.sequenceState++;
         }
-        /* The first call falls through this negation even if phase 2 was chosen; the stored phase
-         * controls later calls. */
     }
+    /* The initial call executes this case even when it stores phase 2 for later calls. */
     case 1:
         direction = -direction;
         /* fall through */
@@ -2227,9 +2089,7 @@ s32 fn_1_E260(M676PropWork *work)
 
         angleScale = (f32)work->state.sequenceTimer++ * direction;
         horizontalOffset = (f32)(100.0 *
-            (2.5 * sin(
-                (3.141592653589793 * (f64)angleScale) /
-                180.0)));
+            (2.5 * sin( (M_PI * (f64)angleScale) / 180.0)));
         work->state.targetPosition.x =
             lbl_1_data_768.x + horizontalOffset;
         fn_1_ED6C(work, 5.0f);
@@ -2278,8 +2138,7 @@ s32 fn_1_E4D4(M676PropWork *work)
         fn_1_6CC0(&work->state.actor, 0, 1.0f);
         /* fall through */
     case 1:
-        if (fn_1_EC00(work,
-                0.2f) == 0 || fn_80071A8C() != 5) {
+        if (fn_1_EC00(work, 0.2f) == 0 || fn_80071A8C() != 5) {
             break;
         }
         if (++work->state.sequenceTimer < 30) {
@@ -2330,16 +2189,13 @@ s32 fn_1_E4D4(M676PropWork *work)
                     (f32)((f64)shallowestDepth - 150.0);
                 /* Apply the same occupancy adjustment twice; the second check uses any depth
                  * change made by the first. */
-                fn_1_C4A4(&work->state.targetPosition,
-                    -150.0f, -150.0f);
-                fn_1_C4A4(&work->state.targetPosition,
-                    -150.0f, -150.0f);
+                fn_1_C4A4(&work->state.targetPosition, -150.0f, -150.0f);
+                fn_1_C4A4(&work->state.targetPosition, -150.0f, -150.0f);
             }
         }
         /* fall through */
     case 3:
-        if (fn_1_F214(work,
-                1.0896277f, 500.0f, 12, 1) == 0) {
+        if (fn_1_F214(work, 1.0896277f, 500.0f, 12, 1) == 0) {
             break;
         }
         work->state.sequenceState++;
@@ -2350,8 +2206,7 @@ s32 fn_1_E4D4(M676PropWork *work)
         if (fn_80071A8C() != 5) {
             fn_1_6CC0(&work->state.actor, 0, 1.0f);
             done = 1;
-        } else if (fn_1_EC00(work,
-                0.2f) != 0) {
+        } else if (fn_1_EC00(work, 0.2f) != 0) {
             shallowestDepth = fn_1_FCA0();
             if ((f64)(shallowestDepth - work->state.actor.position.z) > 350.0) {
                 work->state.sequenceState = 2;
@@ -2360,7 +2215,8 @@ s32 fn_1_E4D4(M676PropWork *work)
                 work->state.sequenceState++;
                 work->state.sequenceTimer = 0;
                 work->state.movementState = 0;
-                HuAudFXPlayVolPan(935, 88, fn_1_3DD0(&work->state.actor.position));
+                HuAudFXPlayVolPan(MSM_SE_GUIDE_DONKEY_TALK, 88,
+                                  fn_1_3DD0(&work->state.actor.position));
                 /* fall through */
             case 5:
                 fn_1_6CC0(&work->state.actor, 2, 1.0f);
@@ -2406,8 +2262,7 @@ s32 fn_1_EAC8(M676PropWork *work)
         work->state.targetPosition = lbl_1_data_790;
         /* fall through */
     case 2:
-        if (fn_1_F214(work, 1.0896277f,
-                      500.0f, 18, 1) == 0) {
+        if (fn_1_F214(work, 1.0896277f, 500.0f, 18, 1) == 0) {
             break;
         }
         work->state.sequenceState++;
@@ -2489,24 +2344,23 @@ s32 fn_1_ED6C(M676PropWork *work, f32 speed)
 
     targetAngle = (f32)(180.0 *
         (atan2((f64)deltaX, (f64)deltaZ) /
-         3.141592653589793));
+         M_PI));
     work->state.actor.rotation.y = fn_1_52C0(work->state.actor.rotation.y, targetAngle, 0.3f);
     if (distance < 50.0) {
         speed *= 0.5;
     }
     targetVelocityX = (f32)(speed *
-        sin((3.141592653589793 * targetAngle) / 180.0));
+        sin((M_PI * targetAngle) / 180.0));
     work->state.actor.velocity.x = (f32)(work->state.actor.velocity.x +
         (0.3 * (f64)(targetVelocityX - work->state.actor.velocity.x)));
     targetVelocityZ = (f32)(speed *
-        cos((3.141592653589793 * targetAngle) / 180.0));
+        cos((M_PI * targetAngle) / 180.0));
     work->state.actor.velocity.z = (f32)(work->state.actor.velocity.z +
         (0.3 * (f64)(targetVelocityZ - work->state.actor.velocity.z)));
-    work->state.footstepDistance = (f32)(work->state.footstepDistance + (f32)speed);
+    work->state.footstepDistance = (f32)(work->state.footstepDistance + speed);
     if (work->state.footstepDistance > 100.0) {
         work->state.footstepDistance = (f32)(work->state.footstepDistance - 100.0);
-        HuAudFXPlayVolPan(933, 88,
-            fn_1_3DD0(&work->state.actor.position));
+        HuAudFXPlayVolPan(MSM_SE_GUIDE_DONKEY_STEP, 88, fn_1_3DD0(&work->state.actor.position));
     }
     fn_1_6CC0(&work->state.actor, movingMotion, 1.0f);
     return 0;
@@ -2515,8 +2369,7 @@ s32 fn_1_ED6C(M676PropWork *work, f32 speed)
 /* With angleMode set, waits to face the target before seven preparation frames; otherwise turns
 * during preparation and flight. Applies gravity, snaps to the target on landing, emits dust,
 * and holds for count landing frames before reporting completion. */
-s32 fn_1_F214(M676PropWork *work, f32 delta, f32 step,
-    s32 count, s32 angleMode)
+s32 fn_1_F214(M676PropWork *work, f32 delta, f32 step, s32 count, s32 angleMode)
 {
     Vec effectPosition;
     s32 finished = 0;
@@ -2553,8 +2406,8 @@ s32 fn_1_F214(M676PropWork *work, f32 delta, f32 step,
         work->state.movementTimer =
             fn_1_56F0(&work->state.actor.position, &work->state.targetPosition, delta, step,
                       &work->state.actor.velocity);
-        work->state.jumpActive = 1;
-        fn_1_4754(993, &work->state.actor.position);
+        work->state.unk11C = 1;
+        fn_1_4754(MSM_SE_GUIDE_JUMP_LAUNCH, &work->state.actor.position);
         /* fall through */
     case 3:
         if (angleMode == 0) {
@@ -2570,7 +2423,7 @@ s32 fn_1_F214(M676PropWork *work, f32 delta, f32 step,
         }
         work->state.movementState++;
         work->state.movementTimer = 0;
-        work->state.jumpActive = 0;
+        work->state.unk11C = 0;
         work->state.actor.position = work->state.targetPosition;
         work->state.actor.velocity.x = 0.0f;
         work->state.actor.velocity.y = 0.0f;
@@ -2606,8 +2459,8 @@ void fn_1_F548(OMOBJ *object)
     }
 }
 
-/* Writes the model transform twice with yaw wrapping between writes, advances actor motion time,
- * clears completed motion, and advances the prop timer. */
+/* Writes the model transform, wraps the yaw, and writes the transform again. Also increments
+ * the actor and prop counters and clears completed motion state. */
 void fn_1_F678(OMOBJ *object)
 {
     M676PropWork *initialWork = object->data;
@@ -2623,7 +2476,6 @@ void fn_1_F678(OMOBJ *object)
     M676PropWork *motionState;
     s32 resetShift;
     s32 motionModelId;
-    s16 shiftedMotion;
 
     fn_1_86C4(&workForSetup->state.actor, initialModelId);
     transformWork = object->data;
@@ -2648,10 +2500,10 @@ void fn_1_F678(OMOBJ *object)
         }
         if (resetShift != 0) {
             motionState->state.motionActive = 0;
-            motionState->state.motionStatus = 0;
+            motionState->state.unk114 = 0;
         }
     } else {
-        motionState->state.motionStatus = 0;
+        motionState->state.unk114 = 0;
     }
     motionWork->timer++;
 }
@@ -2748,8 +2600,7 @@ void fn_1_F9B0(s32 objectIndex, s32 result, s32 character)
         s32 modelId;
 
         modelId = object->mdlId[0];
-        animationData = fn_80008DD0(character + DATANUM(0x9b0000, 0),
-            0x10000000, 2);
+        animationData = fn_80008DD0(character + DATANUM(0x9b0000, 0), 0x10000000, 2);
         animationId = fn_80030B2C(animationData, modelId, "kao");
         Hu3DAnimAttrSet(animationId, 1);
         state->state.actor.playerSlot = result;
@@ -2822,8 +2673,9 @@ s32 fn_1_FC30(s32 index, Vec *resultValues)
     return 1;
 }
 
-/* Returns the shallowest initialized prop depth, or slot zero's depth if none are initialized. */
-f32 fn_1_FCA0(void)
+/* Returns the largest (furthest) or smallest initialized prop depth along z, or slot zero's
+ * depth if no prop is initialized. */
+static inline f32 PropDepth(BOOL furthest)
 {
     f32 result = 0.0f;
     s32 activeCount = 0;
@@ -2841,7 +2693,7 @@ f32 fn_1_FCA0(void)
             if (activeCount == 0) {
                 result = sample;
             }
-            if (sample < result) {
+            if (furthest ? sample > result : sample < result) {
                 result = sample;
             }
             activeCount++;
@@ -2850,32 +2702,16 @@ f32 fn_1_FCA0(void)
     return result;
 }
 
+/* Returns the shallowest initialized prop depth, or slot zero's depth if none are initialized. */
+f32 fn_1_FCA0(void)
+{
+    return PropDepth(FALSE);
+}
+
 /* Returns the deepest initialized prop depth, or slot zero's depth if none are initialized. */
 f32 fn_1_FD64(void)
 {
-    f32 result = 0.0f;
-    s32 activeCount = 0;
-    s32 index;
-
-    for (index = 0; index < 5; index++) {
-        OMOBJ *object = lbl_1_bss_5D8[index];
-        M676PropWork *work = object->data;
-        f32 sample = work->state.actor.position.z;
-
-        if (index == 0) {
-            result = sample;
-        }
-        if (work->initialized != 0) {
-            if (activeCount == 0) {
-                result = sample;
-            }
-            if (sample > result) {
-                result = sample;
-            }
-            activeCount++;
-        }
-    }
-    return result;
+    return PropDepth(TRUE);
 }
 
 /* Selection prefers the ranked prop slot, then the first unselected slot; if none is free, it
@@ -2922,8 +2758,8 @@ s32 fn_1_FE28(s32 index)
     return count;
 }
 
-/* Finds the nearest unfinished prop within the heading limit and horizontal X/Z distance limit;
- * vertical separation is ignored. */
+/* Finds the nearest eligible unfinished prop within the heading and horizontal distance limits.
+ * The candidate scan skips excludedObject. */
 OMOBJ *fn_1_FF18(Vec *position, f32 heading, f32 angleLimit,
                   f32 maximumDistance, OMOBJ *excludedObject)
 {
@@ -2949,9 +2785,8 @@ OMOBJ *fn_1_FF18(Vec *position, f32 heading, f32 angleLimit,
                 if (angleLimit < 180.0) {
                     candidateMeasure = (f32)(180.0 *
                         (atan2((f64)deltaX, (f64)deltaZ) /
-                            3.141592653589793));
-                    wrappedAngle = (f32)fmod(
-                        (f64)(candidateMeasure - heading), 360.0);
+                            M_PI));
+                    wrappedAngle = (f32)fmod( (f64)(candidateMeasure - heading), 360.0);
                     candidateMeasure = wrappedAngle;
                     if (candidateMeasure < 0.0f) {
                         candidateMeasure += 360.0f;

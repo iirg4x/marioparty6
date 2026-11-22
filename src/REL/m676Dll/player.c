@@ -1,4 +1,6 @@
 /* Player characters, movement, animation and target selection. */
+#include "REL/m676Dll/effect_types.h"
+#include "REL/m676Dll/scene_types.h"
 #include "game/main.h"
 #include "game/object.h"
 #include "game/gamework.h"
@@ -34,45 +36,8 @@
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/arith.h"
 #include <math.h>
 #include "dolphin/types.h"
-
-#define M676_PLAYER_COLLISION_MASK 0x19
-#define M676_PLAYER_LANDING_SOUND_EFFECT 2231
-
-void fn_1_1588(s32 playerIndex, s32 playerSlot, s32 character);
-
-extern s32 fn_1_1498(void);
-extern s32 fn_1_150C(u32 player);
-extern s32 fn_1_3DD0(void *value);
-
-extern s32 fn_1_A70(f32 x, f32 y, f32 z, f32 radius);
-extern void fn_1_4F08(s32 effect, s32 handle, void *position, s32 mode,
-    s32 flags);
-
-extern s32 fn_1_FA68(Vec *position, f32 angle);
-extern s32 fn_1_FBCC(s32 index);
-
-extern s32 fn_1_FC30(s32 propIndex, Vec *position);
-extern s32 fn_1_F940(s32 propIndex, Vec *position);
-extern void fn_1_F9B0(s32 propIndex, s32 playerSlot, s32 character);
-extern void fn_1_10240(s32 propIndex);
-extern void fn_1_11A74(Vec *position, f32 radius, s32 count);
-extern void fn_1_15C0(s32 playerIndex);
-extern f32 fn_1_5490(Vec *start, Vec *end);
-extern f32 fn_1_552C(Vec *start, Vec *end);
-extern f32 fn_1_52C0(f32 start, f32 end, f32 amount);
-extern s32 fn_1_56F0(Vec *start, Vec *end, f32 gravity, f32 initialY,
-    Vec *velocity);
-extern f32 fn_1_53DC(f32 start, f32 end);
-extern void fn_1_4754(s32 resource, Vec *position);
-extern s32 fn_1_FE28(s32 preferredRank);
-
-extern s32 fn_1_13EC4(M676CollisionEntry *registration);
-
-extern u32 fn_80071A8C(void);
-extern s32 fn_1_1630(s32 playerIndex);
-extern s32 fn_1_1650(void);
-
-extern s32 fn_1_F7DC(Vec *values);
+#include "REL/m676Dll/camera_types.h"
+#include "humath.h"
 
 void fn_1_5A10(HUPROCESS *manager);
 void fn_1_5B2C(void);
@@ -98,8 +63,7 @@ void fn_1_6FD4(M676PlayerWork *work);
 void fn_1_704C(M676PlayerWork *work);
 void fn_1_767C(M676PlayerWork *work);
 s32 fn_1_78B8(M676CollisionEntry *firstOwner, M676CollisionEntry *secondOwner);
-s32 fn_1_7920(M676PlayerWork *work, const Vec *targetPosition,
-    f32 targetAngle, f32 speed);
+s32 fn_1_7920(M676PlayerWork *work, const Vec *targetPosition, f32 targetAngle, f32 speed);
 void fn_1_7EE8(M676PlayerWork *work);
 void fn_1_871C(void);
 s32 fn_1_8808(void);
@@ -168,12 +132,12 @@ void fn_1_5B50(OMOBJ *object) {
     lbl_1_bss_438 = 0;
 }
 
-/* Ticks registered players and updates the order used by the player formations. */
+/* Updates registered players' counters and recalculates their order. */
 void fn_1_5BA0(OMOBJ *object) {
     s32 playerSlot;
     M676PlayerWork *playerWork;
 
-    if ((s32) lbl_1_bss_438 == 0) {
+    if (lbl_1_bss_438 == 0) {
         lbl_1_bss_438 = 1;
     }
     playerSlot = 0;
@@ -255,8 +219,8 @@ void fn_1_5DC4(M676PlayerWork *state)
             state->actor.rotationYSource = lbl_1_data_1E0[player];
             state->actor.rotation.y =
                 state->actor.rotationYSource;
-            state->motionFrame = 0;
-            state->motionStatus = 0;
+            state->unk12C = 0;
+            state->unk130 = 0;
             state->motionScale = 1.0f;
             state->selectedPropIndex = -1;
             break;
@@ -290,7 +254,7 @@ void fn_1_5ED8(OMOBJ *object)
     state->character = character;
     playerSlot = work->actor.playerSlot = object->work[1];
     playerValue = object->work[2];
-    work->actor.workValue = work->actor.player = playerValue;
+    work->actor.unk4C = work->actor.player = playerValue;
     work->actor.active = 1;
     work->playerType = lbl_80265728[playerIndex].type;
     work->difficulty = lbl_80265728[playerIndex].comDif & 3;
@@ -304,8 +268,7 @@ void fn_1_5ED8(OMOBJ *object)
     fn_8005DDEC(4);
 
     for (motionIndex = 0; motionIndex < 8; motionIndex++) {
-        motionId = fn_8005B0B8((s16)character,
-            lbl_1_data_130[motionIndex]);
+        motionId = fn_8005B0B8((s16)character, lbl_1_data_130[motionIndex]);
         object->mtnId[motionIndex] = motionId;
     }
     fn_8005B4BC((s16)character);
@@ -318,7 +281,7 @@ void fn_1_5ED8(OMOBJ *object)
 
     callback = &work->actor.collision;
     callback->header.flags = 1;
-    callback->header.collisionMask = M676_PLAYER_COLLISION_MASK;
+    callback->header.collisionMask = 0x19;
     callback->header.type = 0;
     callback->header.id = playerIndex;
     callback->header.state = 0;
@@ -333,11 +296,11 @@ void fn_1_5ED8(OMOBJ *object)
     fn_1_13EC4(callback);
 
     work->positionCopy = work->actor.position;
-    work->motionReady = 1;
-    work->motionSpeed = 55.0f;
-    work->positionCopyPointer = &work->positionCopy;
+    work->unk150 = 1;
+    work->unk154 = 55.0f;
+    work->unk158 = &work->positionCopy;
     state->callbackState = 0;
-    state->callbackActive = 1;
+    state->unk1BC = 1;
     object->objFunc = fn_1_62B8;
 }
 
@@ -431,10 +394,10 @@ s32 fn_1_649C(M676PlayerWork *state)
             controllerIndex = lbl_80265728[input->playerIndex].padNo;
             x = lbl_8024C7D8[controllerIndex];
             y = -lbl_8024C7E8[controllerIndex];
-            state->actor.buttons = lbl_802C0010[controllerIndex];
+            state->actor.unk90 = lbl_802C0010[controllerIndex];
             state->actor.buttonsDown = lbl_802C0008[controllerIndex];
             state->actor.stickAngle =
-                180.0 * (atan2(x, y) / 3.141592653589793);
+                180.0 * (atan2(x, y) / M_PI);
             state->actor.stickMagnitude = sqrtf(x * x + y * y);
         }
         break;
@@ -531,7 +494,7 @@ s32 fn_1_6984(M676PlayerWork *state)
         }
         if (state->actor.active) {
             work = state;
-            work->callbackActive = 0;
+            work->unk1BC = 0;
             fn_80060F40(work->character, 127);
         }
         state->phase++;
@@ -556,7 +519,7 @@ void fn_1_6A9C(OMOBJ *object)
     M676PlayerWork *work = object->data;
     M676PlayerWork *state = work;
 
-    work->updateCount++;
+    work->unk1B8++;
     if (state->motionActive != 0) {
         if (fn_1_6F10(object) != 0) {
             state->motionActive = 0;
@@ -565,7 +528,7 @@ void fn_1_6A9C(OMOBJ *object)
     } else {
         state->motionTimer = 0;
     }
-    fn_80060F14((s16)work->character, (s16)fn_1_3DD0(&state->actor.position.x));
+    fn_80060F14((s16)work->character, (s16)fn_1_3DD0(&state->actor.position));
     fn_1_A70(state->actor.position.x, state->actor.position.y,
         state->actor.position.z - 50.0, 80.0f);
     fn_1_A70(state->actor.position.x, state->actor.position.y,
@@ -577,8 +540,8 @@ void fn_1_6B98(OMOBJ *object, s32 effect)
 {
     M676PlayerWork *work = object->data;
     M676PlayerWork *owner = work;
-    s32 handle = CharFXPlayPan((s16)work->character, (s16)effect,
-                               (s16)fn_1_3DD0(&owner->actor.position));
+    s32 handle =
+        CharFXPlayPan((s16)work->character, (s16)effect, (s16)fn_1_3DD0(&owner->actor.position));
 
     fn_1_4F08(effect, handle, &owner->actor.position, 1, 0);
 }
@@ -641,7 +604,7 @@ void fn_1_6D34(OMOBJ *object, s32 index)
             blend = 60.0f * lbl_1_data_150[index].blend;
         }
         state->actor.currentMotion = index;
-        state->actor.motionTime = 0;
+        state->actor.unkA0 = 0;
         motion = object->mtnId[lbl_1_data_150[index].motion];
         attr = lbl_1_data_150[index].attr;
         fn_80026A44(model, (1 << 30) | ((1 << 30) | (1 << 9)) |
@@ -698,7 +661,7 @@ void fn_1_6FD4(M676PlayerWork *work)
     }
 }
 
-/* Handles landing, bouncing, and settled states for the player's selected object. */
+/* Advances the player through boarding a selected prop, riding it, and dismounting. */
 void fn_1_704C(M676PlayerWork *work)
 {
     M676PlayerConfig *params = &work->config;
@@ -726,8 +689,7 @@ void fn_1_704C(M676PlayerWork *work)
         work->turnState = 1;
         fn_1_FC30(work->selectedPropIndex, &work->targetPosition);
         work->targetPosition.y = work->actor.position.y;
-        work->targetAngle = fn_1_5490(&work->actor.position,
-            &work->targetPosition);
+        work->targetAngle = fn_1_5490(&work->actor.position, &work->targetPosition);
         if (fn_1_552C(&work->actor.position, &work->targetPosition) <
             210.0) {
             work->landingState++;
@@ -738,19 +700,16 @@ void fn_1_704C(M676PlayerWork *work)
     case 1:
         targetPosition = work->targetPosition;
         targetPosition.z = (f32)((f64)targetPosition.z - 180.0);
-        if (fn_1_7920(work, &targetPosition,
-                0.0f, 1.0f) == 0) {
+        if (fn_1_7920(work, &targetPosition, 0.0f, 1.0f) == 0) {
             break;
         }
         work->turnState = 1;
         work->landingState++;
         work->landingTimer = 0;
-        work->targetAngle = fn_1_5490(&work->actor.position,
-            &work->targetPosition);
+        work->targetAngle = fn_1_5490(&work->actor.position, &work->targetPosition);
         /* fall through */
     case 2:
-        work->actor.rotation.y = fn_1_52C0(work->actor.rotation.y, work->targetAngle,
-            0.2f);
+        work->actor.rotation.y = fn_1_52C0(work->actor.rotation.y, work->targetAngle, 0.2f);
         if (fabs((double)fn_1_53DC(work->actor.rotation.y, work->targetAngle)) > 3.0) {
             break;
         }
@@ -770,7 +729,7 @@ void fn_1_704C(M676PlayerWork *work)
             targetPosition.y -= 20.0;
             targetPosition.z += 30.0;
             fn_1_11A74(&targetPosition, 50.0f, 20);
-            fn_1_4754(M676_PLAYER_LANDING_SOUND_EFFECT, &work->actor.position);
+            fn_1_4754(MSM_SE_MG676_PLAYER_LAND_IMPACT, &work->actor.position);
         }
         if (--work->landingTimer > 0) {
             break;
@@ -783,7 +742,7 @@ void fn_1_704C(M676PlayerWork *work)
         work->actor.velocity.z = 0.0f;
         fn_1_F9B0(work->selectedPropIndex, work->actor.playerSlot, object->character);
         fn_8006A030((s16)work->actor.playerSlot, 20, 20, 0);
-        work->motionReady = 0;
+        work->unk150 = 0;
         fn_800269E8((s16)object->modelId, 1U);
         fn_1_15C0(object->playerIndex);
         /* fall through */
@@ -801,7 +760,7 @@ void fn_1_704C(M676PlayerWork *work)
         targetPosition.y -= 20.0;
         targetPosition.z += 30.0;
         fn_1_11A74(&targetPosition, 50.0f, 10);
-        fn_1_4754(M676_PLAYER_LANDING_SOUND_EFFECT, &work->actor.position);
+        fn_1_4754(MSM_SE_MG676_PLAYER_LAND_IMPACT, &work->actor.position);
         /* fall through */
     }
     case 5:
@@ -810,7 +769,7 @@ void fn_1_704C(M676PlayerWork *work)
         }
         work->landingState++;
         work->landingTimer = 0;
-        work->motionReady = 1;
+        work->unk150 = 1;
         work->actor.collision.header.flags |= 1U;
         fn_80026A44((s16)object->modelId, 1U);
         fn_1_10240(work->selectedPropIndex);
@@ -904,10 +863,10 @@ void fn_1_767C(M676PlayerWork *work)
             movement = inputMagnitude * motion->movementScale;
             work->actor.velocity.x =
                 (f32) ((f64) movement *
-                       sin((3.141592653589793 * (f64) work->actor.stickAngle) / 180.0));
+                       sin((M_PI * (f64) work->actor.stickAngle) / 180.0));
             work->actor.velocity.z =
                 (f32) ((f64) movement *
-                       cos((3.141592653589793 * (f64) work->actor.stickAngle) / 180.0));
+                       cos((M_PI * (f64) work->actor.stickAngle) / 180.0));
             if (work->motionTimer == 0) {
                 work->actor.rotation.y =
                     fn_1_52C0(work->actor.rotation.y, work->actor.stickAngle, 0.5f);
@@ -961,8 +920,7 @@ s32 fn_1_78B8(M676CollisionEntry *firstOwner, M676CollisionEntry *secondOwner)
 
 /* Steers the player toward a position and final yaw, returning 1 on arrival; the final heading test
  * rejects only signed differences greater than +4 degrees. */
-s32 fn_1_7920(M676PlayerWork *work, const Vec *targetPosition,
-    f32 targetAngle, f32 speed)
+s32 fn_1_7920(M676PlayerWork *work, const Vec *targetPosition, f32 targetAngle, f32 speed)
 {
     M676PlayerConfig *params = &work->config;
     f32 nearSpeed;
@@ -1009,8 +967,7 @@ s32 fn_1_7920(M676PlayerWork *work, const Vec *targetPosition,
             (0.2 * (f64)deltaZ));
         work->actor.velocity.x *= 0.8;
         work->actor.velocity.z *= 0.8;
-        work->actor.rotation.y = fn_1_52C0(work->actor.rotation.y, targetAngle,
-            0.2f);
+        work->actor.rotation.y = fn_1_52C0(work->actor.rotation.y, targetAngle, 0.2f);
         if (distance > 30.0) {
             return 0;
         }
@@ -1031,16 +988,14 @@ s32 fn_1_7920(M676PlayerWork *work, const Vec *targetPosition,
     }
     if (work->motionActive == 0) {
         work->actor.requestedMotion = farMotion;
-        work->actor.requestedMotionSpeed = (f32)(nearSpeed * (f32)speed);
+        work->actor.requestedMotionSpeed = (f32)(nearSpeed * speed);
     }
     angle = (f32)(180.0 * (atan2((f64)deltaX, (f64)deltaZ) /
-        3.141592653589793));
+        M_PI));
     work->actor.rotation.y = fn_1_52C0(work->actor.rotation.y, angle, 0.3f);
-    movementSpeed = (f32)speed * params->movementScale;
-    desiredVelocityX = (f32)(movementSpeed * sin(
-        (3.141592653589793 * (f64)angle) / 180.0));
-    desiredVelocityZ = (f32)(movementSpeed * cos(
-        (3.141592653589793 * (f64)angle) / 180.0));
+    movementSpeed = speed * params->movementScale;
+    desiredVelocityX = (f32)(movementSpeed * sin( (M_PI * (f64)angle) / 180.0));
+    desiredVelocityZ = (f32)(movementSpeed * cos( (M_PI * (f64)angle) / 180.0));
     work->actor.velocity.x = (f32)((f64)work->actor.velocity.x +
         (0.3 * (f64)(desiredVelocityX - work->actor.velocity.x)));
     work->actor.velocity.z = (f32)((f64)work->actor.velocity.z +
@@ -1065,9 +1020,6 @@ void fn_1_7EE8(M676PlayerWork *work)
     f32 steeringMeasure;
     f64 initialTurnSpeed;
     f64 turnAngle;
-    f32 turnAngleFloat;
-    f32 targetX;
-    f32 targetZ;
     s32 turn;
     s32 finished;
     switch (work->aiState)
@@ -1124,9 +1076,9 @@ void fn_1_7EE8(M676PlayerWork *work)
         targetPosition = lbl_1_data_2C4;
         targetPosition.x =
             (f32) ((f64) targetPosition.x +
-                   (100.0 * (8.0 * sin((3.141592653589793 * (f64) work->heading) / 180.0))));
+                   (100.0 * (8.0 * sin((M_PI * (f64) work->heading) / 180.0))));
         targetPosition.z = (f32) ((f64) targetPosition.z +
-                                  (100.0 * cos((3.141592653589793 * (f64) work->heading) / 180.0)));
+                                  (100.0 * cos((M_PI * (f64) work->heading) / 180.0)));
         steeringMeasure = fn_1_552C(& work->actor.position, & targetPosition);
         if (steeringMeasure > 100.0)
         {
@@ -1218,16 +1170,16 @@ void fn_1_7EE8(M676PlayerWork *work)
 /* Clears per-frame controller input before fn_1_62B8 processes the player. */
 void fn_1_8690(M676ActorState *state) {
     state->buttonsDown = 0;
-    state->buttons = 0;
+    state->unk90 = 0;
     state->stickAngle = 0.0f;
     state->stickMagnitude = 0.0f;
 }
 
-/* Copies an actor's transform to its model and advances its motion frame. */
+/* Copies the actor's transform to its model and increments an actor counter. */
 void fn_1_86C4(M676ActorState *record, s32 model_id) {
     fn_80026790((s16)model_id, &record->position);
     fn_80026838((s16)model_id, &record->rotation);
-    record->motionTime += 1;
+    record->unkA0 += 1;
 }
 
 /* Selects a nearby available object for each player that has none assigned. */
@@ -1282,7 +1234,6 @@ s32 fn_1_8808(void)
 
 /* Requests controller rumble for the supplied player slot. */
 void fn_1_8888(s32 playerIndex) {
-    s32 unused;
     fn_8006A030((s16) playerIndex, 20, 20, 0);
 }
 

@@ -1,4 +1,6 @@
 /* Scene setup, phase callbacks and the minigame's tracking camera. */
+#include "REL/m676Dll/effect_types.h"
+#include "REL/m676Dll/scene_types.h"
 #include "math.h"
 #include "REL/m676Dll/camera_types.h"
 #include "game/gamework.h"
@@ -9,30 +11,18 @@
 #include "game/frand.h"
 #include "game/hu3d.h"
 #include "msm_stream.h"
-
-#define M676_SOUND_RESOURCE_ID_2230 2230
-#define M676_DATA_NUMBER_OFFSET 8847360
+#include "REL/m676Dll/score_types.h"
+#include "REL/m676Dll/collision_types.h"
+#include "REL/m676Dll/actor_types.h"
+#include "humath.h"
+#include "dolphin/mtx.h"
 
 typedef struct M676SequenceSettings {
     MGSEQ_PARAM sequence;
     s32 sequenceValues[3]; /* Trailing values stored after MGSEQ_PARAM. */
 } M676SequenceSettings;
 extern void fn_1_5E8(s16, s16);
-extern void fn_1_16A0(OMOBJMAN *);
-extern void fn_1_1768(OMOBJMAN *, Vec *, Vec *, GXColor *);
-extern void fn_1_18C8(void);
-extern void Hu3DBGColorSet(u8, u8, u8);
-extern void fn_1_1E50(OMOBJMAN *, u32, f32, f32, f32, f32, OM_CAMERA_VIEW *);
-extern s32 fn_1_1480(s32);
-extern void fn_1_2EF8(u32, void *);
 void fn_1_BA8(OMOBJ *, u32, s32);
-extern void fn_1_2AAC(void (*)(OMOBJ *, u32, s32));
-extern void fn_1_3A1C(OMOBJMAN *, M676AudioConfig *);
-extern void fn_1_11F34(OMOBJMAN *);
-extern void fn_1_126A4(OMOBJMAN *);
-extern void fn_1_5A10(OMOBJMAN *);
-extern void fn_1_88C0(OMOBJMAN *);
-extern void fn_1_1033C(OMOBJMAN *);
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[], _dtors[];
@@ -40,16 +30,8 @@ void ObjectSetup(void);
 s32 fn_1_A4C(s16 mode, s16 state);
 void fn_1_AD4(void);
 extern s32 fn_1_F7BC(void), fn_1_F828(void), fn_1_F8B4(void);
-extern s32 fn_1_125E4(s32);
 extern void fn_1_871C(void), fn_1_12590(void);
 extern void fn_1_89F0(void), fn_1_5B2C(void), fn_1_11FBC(void);
-extern void fn_1_28BC(s32, Vec *, Vec *, f32, f32);
-extern Vec *fn_1_2E90(void);
-extern void fn_1_2FB0(u32);
-extern f64 fn_1_34D4(M676CameraFitParams *, M676CameraFitSphere *, s32, Vec *);
-extern f32 fn_1_52C0(f32, f32, f32);
-extern void fn_1_5698(Vec *, Vec *, f32, Vec *);
-extern f32 fn_1_FD64(void);
 
 void fn_1_348(s16, s16);
 void fn_1_384(s16, s16);
@@ -61,7 +43,7 @@ void fn_1_8D0(s16, s16);
 void fn_1_9E8(s16, s16);
 void fn_1_A20(s16, s16);
 
-M676CameraPose lbl_1_data_0[2] = {
+OM_CAMERA_VIEW lbl_1_data_0[2] = {
     {{0.0f, -175.0f, 4800.0f}, {-43.0f, 0.0f, 0.0f}, 2345.0f},
     {{0.0f, -500.0f, 4800.0f}, {-43.0f, 0.0f, 0.0f}, 2500.0f}
 };
@@ -153,8 +135,7 @@ void ObjectSetup(void)
     fn_1_1768(lbl_1_bss_19C, &lbl_1_data_38, &lbl_1_data_44, &lbl_1_data_50.lightColor);
     fn_1_18C8();
     Hu3DBGColorSet(0, 0, 0);
-    fn_1_1E50(lbl_1_bss_19C, 1, 45.0f, 20.0f, 4000.0f,
-              2000.0f, lbl_1_data_0);
+    fn_1_1E50(lbl_1_bss_19C, 1, 45.0f, 20.0f, 4000.0f, 2000.0f, lbl_1_data_0);
     resource = fn_1_1480(0);
     fn_1_2EF8(1, fn_80008DD0(resource, 0x10000000, 2));
     fn_1_2AAC(fn_1_BA8);
@@ -183,7 +164,7 @@ void fn_1_384(s16 sequenceMode, s16 frameNo)
     }
     if (lbl_1_bss_190 == -1 && frameNo >= 18) {
         lbl_1_bss_190 = HuAudBGMPlay(MSM_STREAM_GAMING_WITH_DK);
-        lbl_1_bss_18C = HuAudFXPlay(M676_SOUND_RESOURCE_ID_2230);
+        lbl_1_bss_18C = HuAudFXPlay(MSM_SE_MG676_INTRO_AMBIENCE);
     }
     switch (lbl_1_bss_198) {
     case 0:
@@ -218,7 +199,7 @@ void fn_1_384(s16 sequenceMode, s16 frameNo)
     }
 }
 
-/* Sequence callback for this phase; the shared entry also clears the camera-fit spheres. */
+/* Resets the camera-fit sphere set through the common sequence entry. */
 void fn_1_5B0(short mode, short state)
 {
     if (fn_1_A4C(mode, state) != 0) {
@@ -302,8 +283,8 @@ void fn_1_7DC(s16 sequenceMode, s16 frameNo)
     }
 }
 
-/* Results callback: add eligible bonuses outside practice mode, then play an award jingle if anyone
- * scored or the file-select jingle otherwise. */
+/* Adds eligible bonuses outside practice mode and plays the winning jingle if anyone scored.
+ * Otherwise plays the bad-news jingle. */
 void fn_1_8D0(s16 sequenceMode, s16 frameNo)
 {
     s32 anyAward;
@@ -344,7 +325,7 @@ void fn_1_8D0(s16 sequenceMode, s16 frameNo)
     HuAudJinglePlay(MSM_STREAM_BAD_NEWS);
 }
 
-/* Sequence callback for this phase; the shared entry also clears the camera-fit spheres. */
+/* Resets the camera-fit sphere set through the common sequence entry. */
 void fn_1_9E8(short mode, short state)
 {
     if (fn_1_A4C(mode, state) != 0) {
@@ -352,8 +333,7 @@ void fn_1_9E8(short mode, short state)
     }
 }
 
-/* Final callback calls the empty prop and score shutdown stubs around player model cleanup; it
- * calls the score stub twice. */
+/* Calls prop shutdown and player model cleanup, then calls the score shutdown stub twice. */
 void fn_1_A20(s16 mode, s16 state)
 {
     fn_1_89F0();
@@ -384,8 +364,7 @@ void fn_1_AD4(void) {
 }
 
 /* Interpolates the center and zoom linearly and each rotation along the shorter turn. */
-void fn_1_AE8(M676CameraPose *start,
-    M676CameraPose *end, M676CameraPose *result, f32 factor)
+void fn_1_AE8(OM_CAMERA_VIEW *start, OM_CAMERA_VIEW *end, OM_CAMERA_VIEW *result, f32 factor)
 {
     fn_1_5698(&start->center, &end->center, factor, &result->center);
     result->rot.x = fn_1_52C0(start->rot.x, end->rot.x, factor);
@@ -399,8 +378,8 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
 {
     M676CameraWork *data = object->data;
     M676CameraRecord *record = &data->entries[index];
-    M676CameraPose *current = &record->currentPose;
-    M676CameraPose *target = &record->targetPose;
+    OM_CAMERA_VIEW *current = &record->currentPose;
+    OM_CAMERA_VIEW *target = &record->targetPose;
     f32 combined[3][4];
     f32 rotationX[3][4];
     f32 rotationY[3][4];
@@ -411,8 +390,7 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
         45.0f,
         576,
         480,
-        16,
-        40
+        { 16, 40 }
     };
     Vec result;
     Vec movement;
@@ -433,11 +411,8 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
         case 2:
             blend = (f32)(0.004166666666666667 *
                 (f64)(f32)record->timer);
-            blend = (f32)(0.5 + (-0.5 * cos((3.141592653589793 *
-                (180.0 * (f64)blend)) / 180.0)));
-            fn_1_AE8(
-                &lbl_1_data_0[1], target,
-                current, blend);
+            blend = (f32)(0.5 + (-0.5 * cos((M_PI * (180.0 * (f64)blend)) / 180.0)));
+            fn_1_AE8( &lbl_1_data_0[1], target, current, blend);
             if (record->timer == 210) {
                 lbl_1_bss_188 = 1;
             }
@@ -465,36 +440,29 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
                         break;
                         } else if (fn_1_FD64() < 4800.0) {
                             record->fade += 0.01 * (1.0 - record->fade);
-                            current->rot.x = fn_1_52C0(
-                                current->rot.x, -60.0f,
-                                0.1 * record->blend);
+                            current->rot.x =
+                                fn_1_52C0( current->rot.x, -60.0f, 0.1 * record->blend);
                         } else {
                             record->fade += 0.02 * -record->fade;
-                            current->rot.x = fn_1_52C0(
-                                current->rot.x, -43.0f,
-                                0.1 * record->blend);
+                            current->rot.x =
+                                fn_1_52C0( current->rot.x, -43.0f, 0.1 * record->blend);
                         }
                         record->angle = fmodf(0.5f + record->angle, 360.0f);
                         current->rot.y = record->fade *
-                            (45.0f * sin((3.141592653589793 *
-                                (f64)record->angle) / 180.0));
+                            (45.0f * sin((M_PI * (f64)record->angle) / 180.0));
                         constants.fov = 0.017453292f *
                             record->fov;
                         PSMTXRotRad(rotationX, 'x',
-                            0.017453292f * current->rot.x);
+                            MTXDegToRad(current->rot.x));
                         PSMTXRotRad(rotationY, 'y',
-                            0.017453292f * current->rot.y);
+                            MTXDegToRad(current->rot.y));
                         PSMTXRotRad(rotationZ, 'z',
-                            0.017453292f * current->rot.z);
+                            MTXDegToRad(current->rot.z));
                         PSMTXConcat(rotationY, rotationX, rotationX);
                         PSMTXConcat(rotationX, rotationZ, combined);
-                        PSMTXMultVecSR(combined, &constants.direction,
-                            &constants.direction);
-                        PSMTXMultVecSR(combined, &constants.up,
-                            &constants.up);
-                        delta = (f32)fn_1_34D4(&constants,
-                            lbl_1_bss_4,
-                            lbl_1_bss_144, &result);
+                        PSMTXMultVecSR(combined, &constants.direction, &constants.direction);
+                        PSMTXMultVecSR(combined, &constants.up, &constants.up);
+                        delta = (f32)fn_1_34D4(&constants, lbl_1_bss_4, lbl_1_bss_144, &result);
                         PSVECScale(&constants.direction, &movement, delta);
                         PSVECAdd(&result, &movement, &result);
                         current->center.x += record->blend *
@@ -512,11 +480,8 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
         break;
     case 6:
         blend = (f32)(0.016666666666666666 * (f64)(f32)record->timer);
-        blend = (f32)sin((3.141592653589793 *
-            (90.0 * (f64)blend)) / 180.0);
-        fn_1_AE8(target,
-            &lbl_1_data_0[1], current,
-            blend);
+        blend = (f32)sin((M_PI * (90.0 * (f64)blend)) / 180.0);
+        fn_1_AE8(target, &lbl_1_data_0[1], current, blend);
         if (++record->timer >= 60) {
             record->state++;
             record->timer = 0;
@@ -524,15 +489,16 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
         }
         break;
     }
-    fn_1_28BC(data->cameras, fn_1_2E90(), &current->center,
-        data->shadowFov, 1200.0f);
+    fn_1_28BC(data->cameras, fn_1_2E90(), &current->center, data->shadowFov, 1200.0f);
     fn_8002AAB4(0U, 0U, 64U);
     fn_8002A7D8(0.6f, (s16)slot);
 }
 
+/* Adds the m676 directory base to the resource index. */
 s32 fn_1_1480(s32 resource)
 {
-    return resource + M676_DATA_NUMBER_OFFSET;
+    /* m676 data number offset. */
+    return resource + 0x870000;
 }
 
 s32 fn_1_1488(void) {

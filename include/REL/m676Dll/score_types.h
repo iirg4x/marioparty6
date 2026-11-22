@@ -20,4 +20,8 @@ typedef struct M676ScoreWork {
     M676ScoreEntry entries[4];
 } M676ScoreWork;
 typedef Vec M676ScorePosition;
+void fn_1_11F34(HUPROCESS *process);
+void fn_1_12514(s32 playerIndex, s32 scoreChange);
+s32 fn_1_125E4(s32 playerIndex);
+void fn_1_1263C(s32 playerIndex, f32 *x, f32 *y);
 #endif

@@ -7,9 +7,6 @@
 #include "game/memory.h"
 #include <string.h>
 void fn_1_D634(OMOBJ *object);
-void fn_1_A1F4(void);
-
-void fn_1_D634(OMOBJ *object);
 
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -31,35 +28,14 @@ void fn_1_D634(OMOBJ *object);
 #include "msm_se.h"
 #include "msm_stream.h"
 
-#define BINGO_CHARACTER_RESULT_VOICE 579
-
 extern u8 MgModeWork[256];
 extern u16 lbl_802C0008[];
 extern u8 lbl_802BFFE0[];
-s16 fn_1_8FA8(s16 *scores);
-void fn_1_8BDC(s16 playerIndex, s16 requiredMarks, s16 *lineScores);
-s16 fn_1_901C(s16 *lineScores);
-
-void fn_1_AAC8(HuVecF *position);
 
 #include <math.h>
 
 extern s16 MgModeScore[4];
 extern int MgModeWorkInt[16];
-void fn_1_2DB4(void);
-void fn_1_2B10(void);
-void fn_1_9554(void);
-void fn_1_2C20(void);
-void fn_1_A2A4(void);
-void fn_1_108C(s16 pathIndex, s16 frames);
-void fn_1_10A64(s16 positionIndex, s16 frames);
-void fn_1_109FC(s16 enable);
-void fn_1_311C(s16 player);
-void fn_1_32CC(s16 player);
-void fn_1_70AC(s16 player);
-void fn_1_347C(void);
-void fn_1_54FC(s16 player);
-void fn_1_2114(void);
 
 extern u16 lbl_802C0008[4];
 extern u8 lbl_802BFFE0[4];
@@ -67,26 +43,6 @@ extern u8 lbl_802BFFE0[4];
 #include "game/process.h"
 
 extern s16 MgGameNo;
-
-void fn_1_10970(u16 enable);
-void fn_1_34B0(void);
-void fn_1_50B4(void);
-void fn_1_B498(void);
-void fn_1_BDB4(void);
-
-// The round controller calls this to check whether the player may advance.
-static inline s16 PlayerIsReady(s16 playerNo)
-{
-    MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
-
-    if ((playerData->state == -1) || (playerData->state == 0) ||
-        (playerData->state == 9) || (playerData->state == 12) ||
-        (playerData->state == 15) || (playerData->state == 18) ||
-        (playerData->state == 6)) {
-        return 1;
-    }
-    return 0;
-}
 
 u32 lbl_1_data_848[8] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 3), DATANUM(0x930000, 4),
@@ -129,9 +85,7 @@ void fn_1_BF3C(OMOBJ *object, s16 motionSettingIndex) {
         if (motionIndex != -1) {
             if (lbl_1_data_8B0[motionSettingIndex].duration <= 1.0f) {
                 fn_8005BE80(motionData->characterNo, object->mtnId[motionIndex]);
-                fn_80026A44(
-                    object->mdlId[0],
-                    fn_80026AB8(object->mdlId[0]) | (1 << 30));
+                fn_80026A44( object->mdlId[0], fn_80026AB8(object->mdlId[0]) | (1 << 30));
                 fn_8005C430(
                     motionData->characterNo,
                     lbl_1_data_8B0[motionSettingIndex].modelAttributes);
@@ -148,8 +102,7 @@ void fn_1_BF3C(OMOBJ *object, s16 motionSettingIndex) {
             } else {
                 fn_8002DC74(object->mtnId[motionIndex], 1U);
             }
-            fn_8005DFC0(motionData->characterNo,
-                                  lbl_1_data_8B0[motionSettingIndex].voiceFlag);
+            fn_8005DFC0(motionData->characterNo, lbl_1_data_8B0[motionSettingIndex].voiceFlag);
         }
         motionData->currentMotion = motionSettingIndex;
         // Record the immediate idle setting as setting one so the next idle update does not request
@@ -170,8 +123,7 @@ void fn_1_C168(void)
 
     player = 0;
     while (player < 4) {
-        playerObject = fn_8003AB38(lbl_1_bss_B00, 4352, 1, 8, -1,
-            fn_1_D634);
+        playerObject = fn_8003AB38(lbl_1_bss_B00, 4352, 1, 8, -1, fn_1_D634);
         lbl_1_bss_ACC[player] = playerObject;
         playerObject->stat |= 0x100;
         playerObject->work[0] = playerObject->work[1] =
@@ -189,8 +141,8 @@ void fn_1_C168(void)
         *playerObject->mdlId = fn_80057068(playerData->characterNo, 4);
         motionIndex = 0;
         while (motionIndex < 8) {
-            playerObject->mtnId[motionIndex] = fn_8005B0B8(
-                playerData->characterNo, lbl_1_data_848[motionIndex]);
+            playerObject->mtnId[motionIndex] =
+                fn_8005B0B8( playerData->characterNo, lbl_1_data_848[motionIndex]);
             motionIndex++;
         }
         fn_8005B4BC(playerData->characterNo);
@@ -207,8 +159,7 @@ void fn_1_C168(void)
         playerData->rotation.x = playerData->rotation.y =
             playerData->rotation.z = 0.0f;
         fn_80026838(*playerObject->mdlId, &playerData->rotation);
-        fn_8005DEB0(playerData->characterNo,
-            (s16)lbl_1_data_848[5], 0);
+        fn_8005DEB0(playerData->characterNo, (s16)lbl_1_data_848[5], 0);
         player++;
     }
     fn_8005DDEC(2);
@@ -217,7 +168,7 @@ void fn_1_C168(void)
 // Resets player characters to their starting positions before a new board round.
 void fn_1_C578(void) {
     s16 playerIndex = 0;
-    s16 motionSettingIndex;
+
     MgmbingoPlayerData *playerData;
     OMOBJ *object;
 
@@ -271,7 +222,6 @@ u16 fn_1_C8B8(s16 playerIndex, s16 targetCell) {
     s16 boardCell;
     s16 rowDifference;
     s16 eventIndex;
-    s16 eventFrame;
 
     buttons = 0;
     input = lbl_1_bss_ACC[playerIndex]->data;
@@ -423,7 +373,7 @@ s16 fn_1_CF74(s16 playerNo) {
     return playerData->padIndex;
 }
 
-// Sets every player's state to the ready position before a bingo turn.
+// Sets every player to the ready state before a bingo turn.
 void fn_1_CFA8(void) {
     s16 playerIndex;
     MgmbingoPlayerData *playerData;
@@ -524,7 +474,7 @@ void fn_1_D3D4(s16 playerNo) {
 }
 
 // Reports whether the player is in one of the states that may advance the round.
-s32 fn_1_D4A8(s16 playerNo) {
+s16 fn_1_D4A8(s16 playerNo) {
     MgmbingoPlayerData *playerData = lbl_1_bss_ACC[playerNo]->data;
 
     if ((playerData->state == -1) || (playerData->state == 0) ||
@@ -538,17 +488,16 @@ s32 fn_1_D4A8(s16 playerNo) {
 
 // Yields each frame until all four players have reached a state ready to continue.
 void fn_1_D538(void) {
-    s16 isReadyState;
+
     s16 shouldWait;
     s16 playerNo;
-    MgmbingoPlayerData *playerData;
 
     shouldWait = 1;
     while (shouldWait != 0) {
         shouldWait = 0;
         playerNo = 0;
         while (playerNo < 4) {
-            if (PlayerIsReady(playerNo) == 0) {
+            if (fn_1_D4A8(playerNo) == 0) {
                 shouldWait = 1;
             }
             playerNo++;
@@ -645,7 +594,7 @@ void fn_1_D634(OMOBJ *object) {
         break;
     case 13:
         fn_1_BF3C(object, 6);
-        fn_800591C8(work->characterNo, BINGO_CHARACTER_RESULT_VOICE, 0);
+        fn_800591C8(work->characterNo, MSM_SE_CHARVOICE_HAPPY_CHEER, 0);
         work->state = 14;
         break;
     case 14:
@@ -740,8 +689,7 @@ void fn_1_D634(OMOBJ *object) {
 }
 
 // Reads a sprite group's member position for the current board display.
-void fn_1_EE18(s16 spriteGroup, s16 memberIndex, f32 *positionX,
-               f32 *positionY) {
+void fn_1_EE18(s16 spriteGroup, s16 memberIndex, f32 *positionX, f32 *positionY) {
     HUSPRITE *sprite;
 
     sprite = &HuSprData[HuSprGrpData[spriteGroup].sprId[memberIndex]];
@@ -767,8 +715,8 @@ void fn_1_EE74(void) {
     spriteIndex = 0;
     while (spriteIndex < 8)
     {
-        lbl_1_bss_A84[spriteIndex] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_9D0[spriteIndex], 0x10000000, 2));
+        lbl_1_bss_A84[spriteIndex] =
+            HuSprAnimDataRead(lbl_1_data_9D0[spriteIndex]);
         spriteIndex += 1;
     }
     lbl_1_bss_A82 = HuSprGrpCreate(8);
@@ -817,16 +765,14 @@ restart_animation:
     HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
     playerIndex = 0;
     while (playerIndex < 5) {
-        HuSprScaleSet(lbl_1_bss_A82, playerIndex + 3,
-                      0.0f, 0.0f);
+        HuSprScaleSet(lbl_1_bss_A82, playerIndex + 3, 0.0f, 0.0f);
         playerIndex++;
     }
-    HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2,
-                  1.0f, 1.0f);
+    HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2, 1.0f, 1.0f);
     HuSprScaleSet(lbl_1_bss_A82, 2, 1.0f, 1.0f);
     HuSprScaleSet(lbl_1_bss_A82, 0, 1.0f, 1.0f);
     HuSprScaleSet(lbl_1_bss_A82, 1, 1.0f, 1.0f);
-    HuAudFXPlay(1212);
+    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
     scale = 0.0f;
     while (scale < 1.0f) {
         HuSprGrpScaleSet(lbl_1_bss_A82, scale, scale);
@@ -845,12 +791,9 @@ restart_animation:
             buttonDown = lbl_802C0008[controllerData->padIndex];
         }
         if (previousGameNo != MgGameNo) {
-            HuSprGrpScaleSet(lbl_1_bss_A82,
-                             1.0f, 1.0f);
-            HuSprScaleSet(lbl_1_bss_A82, previousGameNo + 2,
-                          0.0f, 0.0f);
-            HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2,
-                          1.0f, 1.0f);
+            HuSprGrpScaleSet(lbl_1_bss_A82, 1.0f, 1.0f);
+            HuSprScaleSet(lbl_1_bss_A82, previousGameNo + 2, 0.0f, 0.0f);
+            HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2, 1.0f, 1.0f);
             scale = 0.0f;
             while (scale < 1.0f) {
                 if (scale >= 1.0f) {
@@ -862,37 +805,33 @@ restart_animation:
                 if (((MgGameNo < previousGameNo) &&
                      ((previousGameNo < 5) || (MgGameNo > 1))) ||
                     ((previousGameNo == 1) && (MgGameNo > 2))) {
-                    HuSprScaleSet(lbl_1_bss_A82, 0,
-                                  transitionScale, transitionScale);
+                    HuSprScaleSet(lbl_1_bss_A82, 0, transitionScale, transitionScale);
                 } else {
-                    HuSprScaleSet(lbl_1_bss_A82, 1,
-                                  transitionScale, transitionScale);
+                    HuSprScaleSet(lbl_1_bss_A82, 1, transitionScale, transitionScale);
                 }
                 HuPrcVSleep();
                 scale += 0.1f;
             }
-            HuSprScaleSet(lbl_1_bss_A82, 0,
-                          1.0f, 1.0f);
-            HuSprScaleSet(lbl_1_bss_A82, 1,
-                          1.0f, 1.0f);
+            HuSprScaleSet(lbl_1_bss_A82, 0, 1.0f, 1.0f);
+            HuSprScaleSet(lbl_1_bss_A82, 1, 1.0f, 1.0f);
             HuPrcVSleep();
             previousGameNo = MgGameNo;
         } else if ((buttonDown & 0x100) != 0) {
-            HuAudFXPlay(1216);
+            HuAudFXPlay(MSM_SE_MGM00_CHOICE_CONFIRM);
             loopActive = 0;
             result = 0;
         } else if ((buttonDown & 0x200) != 0) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             loopActive = 0;
             result = 1;
         } else if ((dpadRepeat & 1) != 0) {
-            HuAudFXPlay(1211);
+            HuAudFXPlay(MSM_SE_MGM00_CURSOR_MOVE);
             MgGameNo--;
             if (MgGameNo < 1) {
                 MgGameNo = 5;
             }
         } else if ((dpadRepeat & 2) != 0) {
-            HuAudFXPlay(1211);
+            HuAudFXPlay(MSM_SE_MGM00_CURSOR_MOVE);
             MgGameNo++;
             if (MgGameNo > 5) {
                 MgGameNo = 1;
@@ -901,15 +840,14 @@ restart_animation:
         HuPrcVSleep();
     }
     BingoCloseLineCountHint();
-    HuAudFXPlay(1212);
+    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
     scale = 1.0f;
     while (scale > 0.0f) {
         scale -= 0.1f;
         if (scale <= 0.0f) {
             scale = 0.0f;
         }
-        HuSprGrpScaleSet(lbl_1_bss_A82,
-                         scale, scale);
+        HuSprGrpScaleSet(lbl_1_bss_A82, scale, scale);
         HuPrcVSleep();
     }
     HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
@@ -1044,10 +982,10 @@ void fn_1_FD14(void) {
     fn_1_BDB4();
     HuPrcSleep(60);
     fn_1_10A64(6, 30);
-    HuAudFXPlay(1266);
+    HuAudFXPlay(MSM_SE_MGM05_BINGO_COMPLETE_FANFARE);
     fn_1_B498();
     HuAudSStreamFadeOut(lbl_1_data_AC8, 200);
-    HuAudFXPlay(1262);
+    HuAudFXPlay(MSM_SE_MGM05_RESULT_FANFARE_END);
 
     player = 0;
     placementIndex = 0;
@@ -1069,8 +1007,7 @@ void fn_1_FD14(void) {
         }
         player++;
     }
-    GameMesCreate(4, 3, players[0], players[1],
-                  players[2], players[3]);
+    GameMesCreate(4, 3, players[0], players[1], players[2], players[3]);
     lbl_1_data_AD4 = HuAudJinglePlay(MSM_STREAM_EXCELLENT);
     fn_1_10970(1);
 

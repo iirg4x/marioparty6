@@ -6,7 +6,7 @@
 typedef struct M676ActorState {
     M676CollisionEntry collision;
     s32 playerSlot;
-    s32 workValue;
+    s32 unk4C; /* The game's code never reads this field. */
     s32 player;
     s32 active;
     Vec initialPosition;
@@ -15,11 +15,11 @@ typedef struct M676ActorState {
     Vec rotation;
     f32 rotationYSource;
     u32 buttonsDown;
-    u32 buttons;
+    u32 unk90; /* The game's code never reads this field. */
     f32 stickAngle;
     f32 stickMagnitude;
     s32 currentMotion;
-    s32 motionTime;
+    s32 unkA0; /* The game's code never reads this field. */
     s32 requestedMotion;
     f32 requestedMotionSpeed;
 } M676ActorState;
@@ -28,4 +28,6 @@ void fn_1_6CA4(M676ActorState *state);
 void fn_1_6CC0(M676ActorState *state, s32 status, f32 value);
 void fn_1_8690(M676ActorState *state);
 void fn_1_86C4(M676ActorState *record, s32 modelId);
+void fn_1_5A10(HUPROCESS *manager);
+void fn_1_8888(s32 playerIndex);
 #endif

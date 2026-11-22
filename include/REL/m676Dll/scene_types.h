@@ -42,5 +42,16 @@ typedef s32 (*M676SequenceStep)(M676PropWork *state);
 extern M676SequenceStep lbl_1_data_75C[];
 extern Vec lbl_1_data_768;
 extern Vec lbl_1_data_790;
-extern void (*lbl_1_data_6D0[])(M676ParticleRecord *record);
+extern void (*lbl_1_data_6D0[4])(M676ParticleRecord *record);
+
+void fn_1_88C0(HUPROCESS *process);
+s32 fn_1_F7DC(Vec *value);
+s32 fn_1_F940(s32 index, Vec *resultValues);
+void fn_1_F9B0(s32 objectIndex, s32 result, s32 character);
+s32 fn_1_FA68(Vec *position, f32 angle);
+s32 fn_1_FBCC(s32 objectIndex);
+s32 fn_1_FC30(s32 index, Vec *resultValues);
+f32 fn_1_FD64(void);
+s32 fn_1_FE28(s32 index);
+void fn_1_10240(s32 index);
 #endif

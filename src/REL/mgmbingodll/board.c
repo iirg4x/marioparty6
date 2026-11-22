@@ -25,22 +25,7 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 #include "msm_se.h"
-
-#define MGM_BINGO_SOUND_MARKER_ACTIVATION 1265
-#define MGM_BINGO_SOUND_CURSOR_CONFIRM 1268
-#define MGM_BINGO_SOUND_CURSOR_MOVE 1263
-#define MGM_BINGO_SOUND_RESULT_SPIN 1215
-
-#define BINGO_BOARD_WORK_BASE 101
-#define BINGO_CELL_NUMBER_MASK 0x7F
-#define BINGO_CELL_MARKED_FLAG (1 << 7)
-#define BINGO_CELL_REMOVED_PHASE 10000
-#define BINGO_STAR_FINISHED_DELAY 32767
-
-extern void fn_1_10CC(OMOBJ *object);
-
-s16 fn_1_CF30(s16 player);
-s16 fn_1_CF74(s16 player);
+#include "humath.h"
 
 void fn_1_5F58(OMOBJ *object);
 void fn_1_6FE4(void);
@@ -52,29 +37,16 @@ void fn_1_AAC8(HuVecF *position);
 
 void fn_1_79AC(OMOBJ *object);
 
-s16 fn_1_CF30(s16 player);
 void fn_1_799C(s16 enable);
 s32 fn_1_8838(s16 boardIndex, s16 lineIndex);
-s16 fn_1_CF30(s16 playerNo);
 
 extern u8 MgModeWork[256];
-u16 fn_1_C8B8(s16 playerIndex, s16 targetCell);
-void fn_1_799C(s16 enable);
-void fn_1_347C(void);
-void fn_1_108C(s16 pathIndex, s16 frames);
-void fn_1_30C8(void);
-void fn_1_3074(void);
-s16 fn_1_CF30(s16 playerNo);
 
 extern s16 MgModeScore[4];
-s16 fn_1_CEF0(s16 player);
 
 extern void fn_1_B524(OMOBJ *object);
 
 extern void fn_1_A704(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-
-void fn_1_12BE0(f32 angleX, f32 angleY, f32 angleZ,
-                const HuVecF *source, HuVecF *destination);
 
 s16 fn_1_7AD0(s16);
 extern int MgModeWorkInt[16];
@@ -135,11 +107,16 @@ char *lbl_1_data_51C[30] = {
 char *lbl_1_data_5A0 = "f-ha_top";
 
 Point3d lbl_1_data_5A4[5][5] = {
-    {{-100.0f, 100.0f, 2.0f}, {-50.0f, 100.0f, 2.0f}, {0.0f, 100.0f, 2.0f}, {50.0f, 100.0f, 2.0f}, {100.0f, 100.0f, 2.0f}},
-    {{-100.0f, 50.0f, 2.0f}, {-50.0f, 50.0f, 2.0f}, {0.0f, 50.0f, 2.0f}, {50.0f, 50.0f, 2.0f}, {100.0f, 50.0f, 2.0f}},
-    {{-100.0f, 0.0f, 2.0f}, {-50.0f, 0.0f, 2.0f}, {0.0f, 0.0f, 2.0f}, {50.0f, 0.0f, 2.0f}, {100.0f, 0.0f, 2.0f}},
-    {{-100.0f, -50.0f, 2.0f}, {-50.0f, -50.0f, 2.0f}, {0.0f, -50.0f, 2.0f}, {50.0f, -50.0f, 2.0f}, {100.0f, -50.0f, 2.0f}},
-    {{-100.0f, -100.0f, 2.0f}, {-50.0f, -100.0f, 2.0f}, {0.0f, -100.0f, 2.0f}, {50.0f, -100.0f, 2.0f}, {100.0f, -100.0f, 2.0f}}
+    {{-100.0f, 100.0f, 2.0f}, {-50.0f, 100.0f, 2.0f}, {0.0f, 100.0f, 2.0f}, {50.0f, 100.0f, 2.0f},
+        {100.0f, 100.0f, 2.0f}},
+    {{-100.0f, 50.0f, 2.0f}, {-50.0f, 50.0f, 2.0f}, {0.0f, 50.0f, 2.0f}, {50.0f, 50.0f, 2.0f},
+        {100.0f, 50.0f, 2.0f}},
+    {{-100.0f, 0.0f, 2.0f}, {-50.0f, 0.0f, 2.0f}, {0.0f, 0.0f, 2.0f}, {50.0f, 0.0f, 2.0f}, {100.0f,
+        0.0f, 2.0f}},
+    {{-100.0f, -50.0f, 2.0f}, {-50.0f, -50.0f, 2.0f}, {0.0f, -50.0f, 2.0f}, {50.0f, -50.0f, 2.0f},
+        {100.0f, -50.0f, 2.0f}},
+    {{-100.0f, -100.0f, 2.0f}, {-50.0f, -100.0f, 2.0f}, {0.0f, -100.0f, 2.0f}, {50.0f, -100.0f,
+        2.0f}, {100.0f, -100.0f, 2.0f}}
 };
 
 /* Called during mode setup to create the board models, arrange their pieces, and load the number
@@ -151,7 +128,6 @@ void fn_1_3B6C(void) {
     ANIMDATA *animation;
     s32 playerIndex;
     s32 modelIndex;
-    s16 modelLayer;
 
     playerIndex = 0;
     while (playerIndex < 4) {
@@ -165,9 +141,8 @@ void fn_1_3B6C(void) {
 
     playerIndex = 0;
     while (playerIndex < 71) {
-        object->mdlId[playerIndex] = fn_80025A04(
-            fn_80008DD0(lbl_1_data_2A8[playerIndex],
-                                 0x10000000, 2));
+        object->mdlId[playerIndex] =
+            fn_80025A04( fn_80008DD0(lbl_1_data_2A8[playerIndex], 0x10000000, 2));
         fn_80026B64(object->mdlId[playerIndex], 1);
         fn_80026B8C(object->mdlId[playerIndex], 1);
         modelIndex = 0;
@@ -200,20 +175,16 @@ void fn_1_3B6C(void) {
 
     playerIndex = 0;
     while (playerIndex < 4) {
-        fn_8002741C(object->mdlId[0], lbl_1_data_440[playerIndex],
-                         object->mdlId[playerIndex + 3]);
+        fn_8002741C(object->mdlId[0], lbl_1_data_440[playerIndex], object->mdlId[playerIndex + 3]);
         fn_800269E8(object->mdlId[playerIndex + 3], ((1 << 30) | (1 << 1)) |
                          ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 7)) |
                          ((1 << 30) | (1 << 10)));
         Hu3DModelObjPosGet(object->mdlId[0], lbl_1_data_400[playerIndex],
                            &lbl_1_bss_A3C[playerIndex]);
-        fn_80026790(object->mdlId[playerIndex + 11],
-                         &lbl_1_bss_A3C[playerIndex]);
-        fn_80026790(object->mdlId[playerIndex + 7],
-                         &lbl_1_bss_A3C[playerIndex]);
+        fn_80026790(object->mdlId[playerIndex + 11], &lbl_1_bss_A3C[playerIndex]);
+        fn_80026790(object->mdlId[playerIndex + 7], &lbl_1_bss_A3C[playerIndex]);
         for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-            fn_800269E8(
-                object->mdlId[(playerIndex * 2) + 15 + modelIndex], (1 << 0));
+            fn_800269E8( object->mdlId[(playerIndex * 2) + 15 + modelIndex], (1 << 0));
         }
         for (modelIndex = 0; modelIndex < 5; modelIndex++) {
             playerPosition.x = lbl_1_data_5A4[2][modelIndex].x +
@@ -222,11 +193,8 @@ void fn_1_3B6C(void) {
                                lbl_1_bss_A3C[playerIndex].y;
             playerPosition.z = 6.0f +
                                lbl_1_bss_A3C[playerIndex].z;
-            fn_80026790(
-                object->mdlId[(playerIndex * 12) + 23 + modelIndex],
-                &playerPosition);
-            fn_800269E8(
-                object->mdlId[(playerIndex * 12) + 23 + modelIndex], (1 << 0));
+            fn_80026790( object->mdlId[(playerIndex * 12) + 23 + modelIndex], &playerPosition);
+            fn_800269E8( object->mdlId[(playerIndex * 12) + 23 + modelIndex], (1 << 0));
             fn_800269E8(
                 object->mdlId[(playerIndex * 12) + 23 + modelIndex],
                 ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
@@ -239,11 +207,8 @@ void fn_1_3B6C(void) {
                                lbl_1_data_5A4[modelIndex][2].y;
             playerPosition.z = 6.0f +
                                lbl_1_bss_A3C[playerIndex].z;
-            fn_80026790(
-                object->mdlId[(playerIndex * 12) + 28 + modelIndex],
-                &playerPosition);
-            fn_800269E8(
-                object->mdlId[(playerIndex * 12) + 28 + modelIndex], (1 << 0));
+            fn_80026790( object->mdlId[(playerIndex * 12) + 28 + modelIndex], &playerPosition);
+            fn_800269E8( object->mdlId[(playerIndex * 12) + 28 + modelIndex], (1 << 0));
             fn_800269E8(
                 object->mdlId[(playerIndex * 12) + 28 + modelIndex],
                 ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
@@ -251,12 +216,9 @@ void fn_1_3B6C(void) {
         }
         playerPosition = lbl_1_bss_A3C[playerIndex];
         playerPosition.z += 6.0f;
-        fn_80026790(
-            object->mdlId[(playerIndex * 12) + 33], &playerPosition);
-        fn_80026790(
-            object->mdlId[(playerIndex * 12) + 34], &playerPosition);
-        fn_80026808(object->mdlId[(playerIndex * 12) + 34],
-                        0.0f, 0.0f, 270.0f);
+        fn_80026790( object->mdlId[(playerIndex * 12) + 33], &playerPosition);
+        fn_80026790( object->mdlId[(playerIndex * 12) + 34], &playerPosition);
+        fn_80026808(object->mdlId[(playerIndex * 12) + 34], 0.0f, 0.0f, 270.0f);
         fn_800269E8(object->mdlId[(playerIndex * 12) + 33], (1 << 0));
         fn_800269E8(object->mdlId[(playerIndex * 12) + 34], (1 << 0));
         fn_800269E8(
@@ -270,14 +232,11 @@ void fn_1_3B6C(void) {
         playerIndex++;
     }
 
-    animation = HuSprAnimRead(fn_80008DD0(
-        lbl_1_data_3C4[0], 0x10000000, 2));
+    animation = HuSprAnimDataRead(lbl_1_data_3C4[0]);
     animationId = fn_80030B2C(animation, object->mdlId[12], "ha_number01");
-    animation = HuSprAnimRead(fn_80008DD0(
-        lbl_1_data_3C4[1], 0x10000000, 2));
+    animation = HuSprAnimDataRead(lbl_1_data_3C4[1]);
     animationId = fn_80030B2C(animation, object->mdlId[13], "ha_number01");
-    animation = HuSprAnimRead(fn_80008DD0(
-        lbl_1_data_3C4[2], 0x10000000, 2));
+    animation = HuSprAnimDataRead(lbl_1_data_3C4[2]);
     animationId = fn_80030B2C(animation, object->mdlId[14], "ha_number01");
     fn_1_6FE4();
     fn_1_77F0(0, object->mdlId[3], "suuji_dummy");
@@ -320,11 +279,12 @@ void fn_1_4300(s16 eventNo) {
                         }
                     }
                 }
-                MgModeWork[BINGO_BOARD_WORK_BASE + randomBoardIndex * 25 + boardIndex] = cellIndex;
+                /* Store the selected cell in this board's 25-byte slice. */
+                MgModeWork[101 + randomBoardIndex * 25 + boardIndex] = cellIndex;
                 remainingCells--;
             }
-            // The center is a free space on every newly generated card.
-            MgModeWork[(randomBoardIndex * 25) + 113] |= BINGO_CELL_MARKED_FLAG;
+            // Set the marked flag on the free center cell.
+            MgModeWork[(randomBoardIndex * 25) + 113] |= (1 << 7);
             randomBoardIndex++;
         }
     }
@@ -339,10 +299,10 @@ void fn_1_4300(s16 eventNo) {
 
     for (boardIndex = 0; boardIndex < 4; boardIndex++) {
         for (cellIndex = 0; cellIndex < 30; cellIndex++) {
-            lbl_1_bss_850[boardIndex][cellIndex] = fn_80026BF4(
-                object->mdlId[boardIndex + 11], lbl_1_data_51C[cellIndex]);
-            lbl_1_bss_670[boardIndex][cellIndex] = fn_80026BF4(
-                object->mdlId[boardIndex + 7], lbl_1_data_51C[cellIndex]);
+            lbl_1_bss_850[boardIndex][cellIndex] =
+                fn_80026BF4( object->mdlId[boardIndex + 11], lbl_1_data_51C[cellIndex]);
+            lbl_1_bss_670[boardIndex][cellIndex] =
+                fn_80026BF4( object->mdlId[boardIndex + 7], lbl_1_data_51C[cellIndex]);
         }
     }
 
@@ -357,50 +317,51 @@ void fn_1_4300(s16 eventNo) {
             availableCells[cellIndex] = 1;
         }
         for (cellIndex = 0; cellIndex < 25; cellIndex++) {
-            availableCells[MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                           BINGO_CELL_NUMBER_MASK] = 0;
+            availableCells[MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                           0x7F] = 0;
             lbl_1_bss_850[boardIndex]
-                         [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                          BINGO_CELL_NUMBER_MASK]
+                         [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                          0x7F]
                              ->mesh.base.pos.x = lbl_1_data_5A4[cellIndex / 5][cellIndex % 5].x;
             lbl_1_bss_850[boardIndex]
-                         [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                          BINGO_CELL_NUMBER_MASK]
+                         [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                          0x7F]
                              ->mesh.base.pos.y = lbl_1_data_5A4[cellIndex / 5][cellIndex % 5].y;
             lbl_1_bss_850[boardIndex]
-                         [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                          BINGO_CELL_NUMBER_MASK]
+                         [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                          0x7F]
                              ->mesh.base.pos.z =
                 2.0f + lbl_1_data_5A4[cellIndex / 5][cellIndex % 5].z;
-            if ((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                 BINGO_CELL_MARKED_FLAG) != 0) {
+            if ((MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                 (1 << 7)) != 0) {
                 lbl_1_bss_850[boardIndex]
-                             [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                              BINGO_CELL_NUMBER_MASK]
+                             [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                              0x7F]
                                  ->mesh.base.pos.y = -1000.0f;
+                /* Mark the cell removed after hiding its model. */
                 lbl_1_bss_57E[boardIndex]
-                             [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                              BINGO_CELL_NUMBER_MASK] = BINGO_CELL_REMOVED_PHASE;
+                             [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                              0x7F] = 10000;
                 lbl_1_bss_39E[boardIndex]
-                             [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                              BINGO_CELL_NUMBER_MASK] = 0;
+                             [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                              0x7F] = 0;
             }
             lbl_1_bss_670[boardIndex]
-                         [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                          BINGO_CELL_NUMBER_MASK]
+                         [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                          0x7F]
                              ->mesh.base.pos.x = lbl_1_data_5A4[cellIndex / 5][cellIndex % 5].x;
             lbl_1_bss_670[boardIndex]
-                         [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                          BINGO_CELL_NUMBER_MASK]
+                         [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                          0x7F]
                              ->mesh.base.pos.y = lbl_1_data_5A4[cellIndex / 5][cellIndex % 5].y;
             lbl_1_bss_670[boardIndex]
-                         [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                          BINGO_CELL_NUMBER_MASK]
+                         [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                          0x7F]
                              ->mesh.base.pos.z = lbl_1_data_5A4[cellIndex / 5][cellIndex % 5].z;
             if (cellIndex == 12) {
                 lbl_1_bss_670[boardIndex]
-                             [MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                              BINGO_CELL_NUMBER_MASK]
+                             [MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                              0x7F]
                                  ->mesh.base.pos.y = -1000.0f;
             }
         }
@@ -408,7 +369,7 @@ void fn_1_4300(s16 eventNo) {
             if (availableCells[cellIndex] != 0) {
                 lbl_1_bss_850[boardIndex][cellIndex]->mesh.base.pos.y = -1000.0f;
                 lbl_1_bss_670[boardIndex][cellIndex]->mesh.base.pos.y = -1000.0f;
-                lbl_1_bss_57E[boardIndex][cellIndex] = BINGO_CELL_REMOVED_PHASE;
+                lbl_1_bss_57E[boardIndex][cellIndex] = 10000;
                 lbl_1_bss_39E[boardIndex][cellIndex] = 0;
             }
         }
@@ -417,16 +378,14 @@ void fn_1_4300(s16 eventNo) {
     for (boardIndex = 0; boardIndex < 4; boardIndex++) {
         for (cellIndex = 0; cellIndex < 12; cellIndex++) {
             if ((s16)fn_1_8838(boardIndex, cellIndex) != 0) {
-                fn_80026A44(
-                    object->mdlId[boardIndex * 12 + 23 + cellIndex], (1 << 0));
+                fn_80026A44( object->mdlId[boardIndex * 12 + 23 + cellIndex], (1 << 0));
                 fn_800269E8(
                     object->mdlId[boardIndex * 12 + 23 + cellIndex],
                 ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
                     ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                 fn_8002D414(
                     object->mdlId[boardIndex * 12 + 23 + cellIndex],
-                    fn_8002D530(
-                        object->mdlId[boardIndex * 12 + 23 + cellIndex]));
+                    fn_8002D530( object->mdlId[boardIndex * 12 + 23 + cellIndex]));
             }
         }
     }
@@ -477,8 +436,7 @@ void fn_1_4DF8(s16 playerIndex, s16 entryIndex, s16 pathIndex) {
         fn_80026A44(object->mdlId[modelIndex], ((1 << 30) | (1 << 1)) |
                            ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 7)) |
                            ((1 << 30) | (1 << 10)));
-        fn_8002D414(
-            object->mdlId[modelIndex], 0.0f);
+        fn_8002D414( object->mdlId[modelIndex], 0.0f);
         lbl_1_bss_A34[playerIndex] += 1;
     }
 }
@@ -523,13 +481,13 @@ void fn_1_50CC(void) {
 
 /* Called by selection and result handlers to place a marker at an entry's row and column. */
 void fn_1_50E4(s16 playerIndex, s16 entryIndex) {
-    MgModeWork[BINGO_BOARD_WORK_BASE + playerIndex * 25 + entryIndex] |= BINGO_CELL_MARKED_FLAG;
+    MgModeWork[101 + playerIndex * 25 + entryIndex] |= (1 << 7);
     fn_1_4DF8(playerIndex, entryIndex % 5, entryIndex / 5);
 }
 
 /* Used by board input and scoring to test whether an entry is marked for a player. */
 u8 fn_1_5358(s16 groupNo, s16 entryNo) {
-    return MgModeWork[BINGO_BOARD_WORK_BASE + groupNo * 25 + entryNo] & BINGO_CELL_MARKED_FLAG;
+    return MgModeWork[101 + groupNo * 25 + entryNo] & (1 << 7);
 }
 
 /* Returns the board position of an entry for the drawing and movement routines. */
@@ -557,9 +515,9 @@ void fn_1_54FC(s16 playerNo) {
         if (fn_1_5358(selectedPlayer, entryIndex) && (entryIndex != 12)) {
             for (boardIndex = 0; boardIndex < 25; boardIndex++) {
                 if ((playerNo != 0) &&
-                    (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex] ==
-                     (s32) (MgModeWork[BINGO_BOARD_WORK_BASE + selectedPlayer * 25 + entryIndex] &
-                            BINGO_CELL_NUMBER_MASK))) {
+                    (MgModeWork[101 + boardIndex] ==
+                     (s32) (MgModeWork[101 + selectedPlayer * 25 + entryIndex] &
+                            0x7F))) {
                     fn_1_50E4(0, boardIndex);
                     if (fn_1_CF30(0) == 0) {
                         fn_8006A030(0, 20, 4, 4);
@@ -567,8 +525,8 @@ void fn_1_54FC(s16 playerNo) {
                 }
                 if ((playerNo != 1) &&
                     (MgModeWork[126 + boardIndex] ==
-                     (s32) (MgModeWork[BINGO_BOARD_WORK_BASE + selectedPlayer * 25 + entryIndex] &
-                            BINGO_CELL_NUMBER_MASK))) {
+                     (s32) (MgModeWork[101 + selectedPlayer * 25 + entryIndex] &
+                            0x7F))) {
                     fn_1_50E4(1, boardIndex);
                     if (fn_1_CF30(1) == 0) {
                         fn_8006A030(1, 20, 4, 4);
@@ -576,8 +534,8 @@ void fn_1_54FC(s16 playerNo) {
                 }
                 if ((playerNo != 2) &&
                     (MgModeWork[151 + boardIndex] ==
-                     (s32) (MgModeWork[BINGO_BOARD_WORK_BASE + selectedPlayer * 25 + entryIndex] &
-                            BINGO_CELL_NUMBER_MASK))) {
+                     (s32) (MgModeWork[101 + selectedPlayer * 25 + entryIndex] &
+                            0x7F))) {
                     fn_1_50E4(2, boardIndex);
                     if (fn_1_CF30(2) == 0) {
                         fn_8006A030(2, 20, 4, 4);
@@ -585,8 +543,8 @@ void fn_1_54FC(s16 playerNo) {
                 }
                 if ((playerNo != 3) &&
                     (MgModeWork[176 + boardIndex] ==
-                     (s32) (MgModeWork[BINGO_BOARD_WORK_BASE + selectedPlayer * 25 + entryIndex] &
-                            BINGO_CELL_NUMBER_MASK))) {
+                     (s32) (MgModeWork[101 + selectedPlayer * 25 + entryIndex] &
+                            0x7F))) {
                     fn_1_50E4(3, boardIndex);
                     if (fn_1_CF30(3) == 0) {
                         fn_8006A030(3, 20, 4, 4);
@@ -626,21 +584,16 @@ void fn_1_5F58(OMOBJ *object) {
         for (boardIndex = 0; boardIndex < 4; boardIndex++) {
             for (cellIndex = 0; cellIndex < 12; cellIndex++) {
                 indexValue = boardIndex * 12 + 23 + cellIndex;
-                if ((fn_80026A90(
-                         object->mdlId[indexValue]) &
+                if ((fn_80026A90( object->mdlId[indexValue]) &
                      1U) != 0) {
                     if ((s16)fn_1_8838(boardIndex, cellIndex) != 0) {
-                        fn_80026A44(
-                            object->mdlId[indexValue],
-                            (1 << 0));
+                        fn_80026A44( object->mdlId[indexValue], (1 << 0));
                         fn_80026A44(
                             object->mdlId[indexValue],
                             ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
                                 ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
-                        fn_8002D414(
-                            object->mdlId[indexValue],
-                            0.0f);
-            HuAudFXPlay(MGM_BINGO_SOUND_MARKER_ACTIVATION);
+                        fn_8002D414( object->mdlId[indexValue], 0.0f);
+            HuAudFXPlay(MSM_SE_MGM05_CELL_MARK);
                         if (fn_1_CF30(boardIndex) == 0) {
                             fn_8006A030(boardIndex, 20, 20, 0);
                         }
@@ -649,17 +602,14 @@ void fn_1_5F58(OMOBJ *object) {
                     if ((lbl_802C01C8[object->mdlId[indexValue]].motWork.speed +
                          fn_8002D4E0(object->mdlId[indexValue])) >=
                         (motionMaxTime = fn_8002D530(object->mdlId[indexValue]))) {
-                        fn_80026A44(
-                            object->mdlId[indexValue],
-                            (1 << 0));
+                        fn_80026A44( object->mdlId[indexValue], (1 << 0));
                         fn_800269E8(
                             object->mdlId[indexValue],
                             ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
                                 ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                         fn_8002D414(
                             object->mdlId[indexValue],
-                         fn_8002D530(
-                                object->mdlId[indexValue]));
+                         fn_8002D530( object->mdlId[indexValue]));
                     }
                 }
             }
@@ -667,24 +617,24 @@ void fn_1_5F58(OMOBJ *object) {
 
         for (boardIndex = 0; boardIndex < 4; boardIndex++) {
             for (cellIndex = 0; cellIndex < 25; cellIndex++) {
-                if (((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                      BINGO_CELL_MARKED_FLAG) != 0) &&
+                if (((MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                      (1 << 7)) != 0) &&
                     (lbl_1_bss_48E[boardIndex][(
-                         MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                         BINGO_CELL_NUMBER_MASK)] <= 0)) {
+                         MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                         0x7F)] <= 0)) {
                     lbl_1_bss_48E[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)] = 20;
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)] = 20;
                 }
-                if (((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                      BINGO_CELL_MARKED_FLAG) == 0) &&
+                if (((MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                      (1 << 7)) == 0) &&
                     (lbl_1_bss_48E[boardIndex][(
-                         MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                         BINGO_CELL_NUMBER_MASK)] <= 0) &&
+                         MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                         0x7F)] <= 0) &&
                     (frandmod(1000) == 0)) {
                     lbl_1_bss_48E[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)] = 20;
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)] = 20;
                 }
             }
         }
@@ -708,106 +658,106 @@ void fn_1_5F58(OMOBJ *object) {
 
         for (boardIndex = 0; boardIndex < 4; boardIndex++) {
             for (cellIndex = 0; cellIndex < 25; cellIndex++) {
-                if ((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                     BINGO_CELL_MARKED_FLAG) != 0) {
+                if ((MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                     (1 << 7)) != 0) {
                     lbl_1_bss_39E[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)]--;
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)]--;
                     if (lbl_1_bss_39E[boardIndex][(
-                            MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                            BINGO_CELL_NUMBER_MASK)] <= 0) {
+                            MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                            0x7F)] <= 0) {
                         lbl_1_bss_39E[boardIndex][(
-                            MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                            BINGO_CELL_NUMBER_MASK)] = 0;
-                        lbl_1_bss_850[boardIndex][(MgModeWork[BINGO_BOARD_WORK_BASE +
+                            MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                            0x7F)] = 0;
+                        lbl_1_bss_850[boardIndex][(MgModeWork[101 +
                                                               boardIndex * 25 + cellIndex] &
-                                                   BINGO_CELL_NUMBER_MASK)]
+                                                   0x7F)]
                             ->mesh.base.pos.z = 50.0f;
                         lbl_1_bss_57E[boardIndex][(
-                            MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                            BINGO_CELL_NUMBER_MASK)] += 2;
+                            MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                            0x7F)] += 2;
                         if (lbl_1_bss_57E[boardIndex][(
-                                MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                BINGO_CELL_NUMBER_MASK)] >= 2500) {
-                            lbl_1_bss_850[boardIndex][(MgModeWork[BINGO_BOARD_WORK_BASE +
+                                MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                0x7F)] >= 2500) {
+                            lbl_1_bss_850[boardIndex][(MgModeWork[101 +
                                                                   boardIndex * 25 + cellIndex] &
-                                                       BINGO_CELL_NUMBER_MASK)]
+                                                       0x7F)]
                                 ->mesh.base.pos.y = -1000.0f;
-                            lbl_1_bss_850[boardIndex][(MgModeWork[BINGO_BOARD_WORK_BASE +
+                            lbl_1_bss_850[boardIndex][(MgModeWork[101 +
                                                                   boardIndex * 25 + cellIndex] &
-                                                       BINGO_CELL_NUMBER_MASK)]
+                                                       0x7F)]
                                 ->mesh.base.scale.x = 0.0f;
-                            lbl_1_bss_850[boardIndex][(MgModeWork[BINGO_BOARD_WORK_BASE +
+                            lbl_1_bss_850[boardIndex][(MgModeWork[101 +
                                                                   boardIndex * 25 + cellIndex] &
-                                                       BINGO_CELL_NUMBER_MASK)]
+                                                       0x7F)]
                                 ->mesh.base.scale.y = 0.0f;
-                            lbl_1_bss_850[boardIndex][(MgModeWork[BINGO_BOARD_WORK_BASE +
+                            lbl_1_bss_850[boardIndex][(MgModeWork[101 +
                                                                   boardIndex * 25 + cellIndex] &
-                                                       BINGO_CELL_NUMBER_MASK)]
+                                                       0x7F)]
                                 ->mesh.base.scale.z = 0.0f;
                             lbl_1_bss_57E[boardIndex][(
-                                MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                BINGO_CELL_NUMBER_MASK)] = 2500;
+                                MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                0x7F)] = 2500;
                         } else {
                             value = (f32) (1.5 *
-                                           sin((3.141592653589793 *
+                                           sin((M_PI *
                                                 (f64) (lbl_1_bss_57E[boardIndex][(
-                                                           MgModeWork[BINGO_BOARD_WORK_BASE +
+                                                           MgModeWork[101 +
                                                                       boardIndex * 25 + cellIndex] &
-                                                           BINGO_CELL_NUMBER_MASK)] %
+                                                           0x7F)] %
                                                        360)) /
                                                180.0));
-                            lbl_1_bss_850[boardIndex][(MgModeWork[BINGO_BOARD_WORK_BASE +
+                            lbl_1_bss_850[boardIndex][(MgModeWork[101 +
                                                                   boardIndex * 25 + cellIndex] &
-                                                       BINGO_CELL_NUMBER_MASK)]
+                                                       0x7F)]
                                 ->mesh.base.pos.x += value;
                             value = (f32) (1.7f *
-                                           sin((3.141592653589793 *
+                                           sin((M_PI *
                                                 (f64) (lbl_1_bss_57E[boardIndex][(
-                                                           MgModeWork[BINGO_BOARD_WORK_BASE +
+                                                           MgModeWork[101 +
                                                                       boardIndex * 25 + cellIndex] &
-                                                           BINGO_CELL_NUMBER_MASK)] %
+                                                           0x7F)] %
                                                        360)) /
                                                180.0));
                             if (value > 0.0f) {
                                 value *= -1.0f;
                             }
-                            lbl_1_bss_850[boardIndex][(MgModeWork[BINGO_BOARD_WORK_BASE +
+                            lbl_1_bss_850[boardIndex][(MgModeWork[101 +
                                                                   boardIndex * 25 + cellIndex] &
-                                                       BINGO_CELL_NUMBER_MASK)]
+                                                       0x7F)]
                                 ->mesh.base.pos.y += value;
                         }
                     }
                     lbl_1_bss_670[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)]
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)]
                                      ->mesh.base.scale.x = 1.0f;
                     lbl_1_bss_670[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)]
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)]
                                      ->mesh.base.scale.y = 1.0f;
                     lbl_1_bss_670[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)]
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)]
                                      ->mesh.base.scale.z = 1.0f;
                 } else {
                     lbl_1_bss_670[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)]
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)]
                                      ->mesh.base.scale.x = 0.0f;
                     lbl_1_bss_670[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)]
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)]
                                      ->mesh.base.scale.y = 0.0f;
                     lbl_1_bss_670[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)]
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)]
                                      ->mesh.base.scale.z = 0.0f;
                 }
                 indexValue =
                     lbl_1_bss_48E[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)] %
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)] %
                     10;
                 indexValue *= 2;
                 if (indexValue > 10) {
@@ -820,18 +770,18 @@ void fn_1_5F58(OMOBJ *object) {
                     }
                 }
                 lbl_1_bss_850[boardIndex]
-                             [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                               BINGO_CELL_NUMBER_MASK)]
+                             [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                               0x7F)]
                                  ->mesh.base.rot.z = indexValue;
                 lbl_1_bss_48E[boardIndex]
-                             [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                               BINGO_CELL_NUMBER_MASK)]--;
+                             [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                               0x7F)]--;
                 if (lbl_1_bss_48E[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)] <= 0) {
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)] <= 0) {
                     lbl_1_bss_48E[boardIndex]
-                                 [(MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + cellIndex] &
-                                   BINGO_CELL_NUMBER_MASK)] = 0;
+                                 [(MgModeWork[101 + boardIndex * 25 + cellIndex] &
+                                   0x7F)] = 0;
                 }
             }
         }
@@ -852,8 +802,7 @@ void fn_1_5F58(OMOBJ *object) {
 
 /* Called during board setup to create and configure the shared board model. */
 void fn_1_6FE4(void) {
-    lbl_1_bss_39C = fn_80025A04(fn_80008DD0(
-        DATANUM(0x9d0000, 49), 0x10000000, 2));
+    lbl_1_bss_39C = fn_80025A04(fn_80008DD0( DATANUM(0x9d0000, 49), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_39C, 1U);
     fn_80026B8C(lbl_1_bss_39C, 2);
     fn_800269E8(lbl_1_bss_39C, ((1 << 30) | (1 << 0)));
@@ -888,10 +837,10 @@ void fn_1_70AC(s16 playerIndex) {
         if ((buttons & PAD_BUTTON_A) &&
             !fn_1_5358(playerIndex, cursorCell)) {
             shouldContinue = 0;
-            HuAudFXPlay(MGM_BINGO_SOUND_CURSOR_CONFIRM);
+            HuAudFXPlay(MSM_SE_MGM05_CELL_PICK);
         } else if ((buttons & PAD_BUTTON_A) &&
                    fn_1_5358(playerIndex, cursorCell)) {
-            HuAudFXPlay(4);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_DENIED);
         } else if (buttons & PAD_TRIGGER_R) {
             fn_800269E8(lbl_1_bss_39C, (1 << 0));
             fn_1_347C();
@@ -953,7 +902,7 @@ void fn_1_70AC(s16 playerIndex) {
             }
             cursorCell = column + (row * 5);
             if (hasMoved != 0) {
-                HuAudFXPlay(MGM_BINGO_SOUND_CURSOR_MOVE);
+                HuAudFXPlay(MSM_SE_MGM05_CURSOR_MOVE);
             }
         }
     }
@@ -963,7 +912,7 @@ void fn_1_70AC(s16 playerIndex) {
         fn_8006A030(playerIndex, 20, 4, 4);
     }
     fn_1_799C(1);
-    MgModeWork[BINGO_BOARD_WORK_BASE + playerIndex * 25 + cursorCell] |= BINGO_CELL_MARKED_FLAG;
+    MgModeWork[101 + playerIndex * 25 + cursorCell] |= (1 << 7);
     fn_1_4DF8(playerIndex, cursorCell % 5, cursorCell / 5);
     HuPrcVSleep();
     fn_1_799C(0);
@@ -975,13 +924,10 @@ void fn_1_70AC(s16 playerIndex) {
 void fn_1_77F0(s16 playerIndex, s16 modelId, char *animationName) {
     s16 keyFrame;
 
-    lbl_1_bss_388[playerIndex] = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9d0000, 15), 0x10000000, 2));
-    lbl_1_bss_37E[playerIndex] = fn_80030B2C(
-        lbl_1_bss_388[playerIndex], modelId, animationName);
+    lbl_1_bss_388[playerIndex] = HuSprAnimDataRead(DATANUM(0x9d0000, 15));
+    lbl_1_bss_37E[playerIndex] = fn_80030B2C( lbl_1_bss_388[playerIndex], modelId, animationName);
     if (playerIndex == 0) {
-        lbl_1_bss_398 = fn_8003AB38(
-            lbl_1_bss_B00, 4096, 0, 0, -1, fn_1_79AC);
+        lbl_1_bss_398 = fn_8003AB38( lbl_1_bss_B00, 4096, 0, 0, -1, fn_1_79AC);
         lbl_1_bss_398->stat |= (1 << 8);
         lbl_1_bss_398->work[0] = lbl_1_bss_398->work[1] =
             lbl_1_bss_398->work[2] = lbl_1_bss_398->work[3] = 0;
@@ -989,7 +935,7 @@ void fn_1_77F0(s16 playerIndex, s16 modelId, char *animationName) {
     keyFrame = 0;
     while (keyFrame < 25) {
         lbl_1_bss_2B6[playerIndex].cells[keyFrame] =
-            MgModeWork[BINGO_BOARD_WORK_BASE + playerIndex * 25 + keyFrame];
+            MgModeWork[101 + playerIndex * 25 + keyFrame];
         keyFrame++;
     }
 }
@@ -1030,45 +976,45 @@ s16 fn_1_7AD0(s16 playerIndex) {
     completeLineCount = 0;
     lineIndex = 0;
     while (lineIndex < 5) {
-        if ((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 0] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 1] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 2] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 3] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 4] &
-             BINGO_CELL_MARKED_FLAG)) {
+        if ((MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 0] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 1] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 2] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 3] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 4] &
+             (1 << 7))) {
             completeLineCount++;
         }
-        if ((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 0] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 5] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 10] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 15] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 20] &
-             BINGO_CELL_MARKED_FLAG)) {
+        if ((MgModeWork[101 + boardIndex * 25 + lineIndex + 0] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 5] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 10] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 15] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 20] &
+             (1 << 7))) {
             completeLineCount++;
         }
         lineIndex++;
     }
 
-    if ((MgModeWork[boardIndex * 25 + BINGO_BOARD_WORK_BASE] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 107] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 113] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 119] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 125] & BINGO_CELL_MARKED_FLAG)) {
+    if ((MgModeWork[boardIndex * 25 + 101] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 107] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 113] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 119] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 125] & (1 << 7))) {
         completeLineCount++;
     }
-    if ((MgModeWork[boardIndex * 25 + 105] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 109] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 113] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 117] & BINGO_CELL_MARKED_FLAG) &&
-        (MgModeWork[boardIndex * 25 + 121] & BINGO_CELL_MARKED_FLAG)) {
+    if ((MgModeWork[boardIndex * 25 + 105] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 109] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 113] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 117] & (1 << 7)) &&
+        (MgModeWork[boardIndex * 25 + 121] & (1 << 7))) {
         completeLineCount++;
     }
     if (completeLineCount > 5) {
@@ -1088,34 +1034,34 @@ s16 fn_1_7E6C(s16 playerIndex) {
     completeLineCount = 0;
     lineIndex = 0;
     while (lineIndex < 5) {
-        if (lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 1] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 2] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 3] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 4] & BINGO_CELL_MARKED_FLAG) {
+        if (lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 1] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 2] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 3] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex * 5 + 4] & (1 << 7)) {
             completeLineCount++;
         }
-        if (lbl_1_bss_2B6[boardIndex].cells[lineIndex] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 5] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 10] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 15] & BINGO_CELL_MARKED_FLAG &&
-            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 20] & BINGO_CELL_MARKED_FLAG) {
+        if (lbl_1_bss_2B6[boardIndex].cells[lineIndex] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 5] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 10] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 15] & (1 << 7) &&
+            lbl_1_bss_2B6[boardIndex].cells[lineIndex + 20] & (1 << 7)) {
             completeLineCount++;
         }
         lineIndex++;
     }
-    if (lbl_1_bss_2B6[boardIndex].cells[0] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[6] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[12] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[18] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[24] & BINGO_CELL_MARKED_FLAG) {
+    if (lbl_1_bss_2B6[boardIndex].cells[0] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[6] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[12] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[18] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[24] & (1 << 7)) {
         completeLineCount++;
     }
-    if (lbl_1_bss_2B6[boardIndex].cells[4] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[8] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[12] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[16] & BINGO_CELL_MARKED_FLAG &&
-        lbl_1_bss_2B6[boardIndex].cells[20] & BINGO_CELL_MARKED_FLAG) {
+    if (lbl_1_bss_2B6[boardIndex].cells[4] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[8] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[12] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[16] & (1 << 7) &&
+        lbl_1_bss_2B6[boardIndex].cells[20] & (1 << 7)) {
         completeLineCount++;
     }
     if (completeLineCount > 5) {
@@ -1127,10 +1073,6 @@ s16 fn_1_7E6C(s16 playerIndex) {
 /* For reach messages, returns the most lines a single remaining mark could complete on the current
  * card. */
 s16 fn_1_8250(s16 playerIndex) {
-    typedef struct {
-        u8 otherModeWork[101]; /* Mode work bytes before the board records. */
-        u8 boardCellFlags[155]; /* 25 cell bytes for each of four boards. */
-    } MgmbingoWorkView;
     u8 lineMarks[25];
     s16 row;
     s16 candidate;
@@ -1144,8 +1086,8 @@ s16 fn_1_8250(s16 playerIndex) {
         markedCellCount = 0;
         for (column = 0; column < 5; column++)
         {
-            if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + row * 5 + column] &
-                BINGO_CELL_MARKED_FLAG) {
+            if (MgModeWork[101 + boardIndex * 25 + row * 5 + column] &
+                (1 << 7)) {
                 markedCellCount++;
             } else {
                 candidate = column;
@@ -1158,8 +1100,8 @@ s16 fn_1_8250(s16 playerIndex) {
         markedCellCount = 0;
         for (column = 0; column < 5; column++)
         {
-            if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + column * 5 + row] &
-                BINGO_CELL_MARKED_FLAG) {
+            if (MgModeWork[101 + boardIndex * 25 + column * 5 + row] &
+                (1 << 7)) {
                 markedCellCount++;
             } else {
                 candidate = column;
@@ -1173,8 +1115,8 @@ s16 fn_1_8250(s16 playerIndex) {
     markedCellCount = 0;
     for (row = 0; row < 5; row++)
     {
-        if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + row * 5 + row] &
-            BINGO_CELL_MARKED_FLAG) {
+        if (MgModeWork[101 + boardIndex * 25 + row * 5 + row] &
+            (1 << 7)) {
             markedCellCount++;
         } else {
             candidate = row;
@@ -1187,8 +1129,8 @@ s16 fn_1_8250(s16 playerIndex) {
     markedCellCount = 0;
     for (row = 0; row < 5; row++)
     {
-        if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + row * 5 + (4 - row)] &
-            BINGO_CELL_MARKED_FLAG) {
+        if (MgModeWork[101 + boardIndex * 25 + row * 5 + (4 - row)] &
+            (1 << 7)) {
             markedCellCount++;
         } else {
             candidate = row;
@@ -1230,7 +1172,7 @@ s16 fn_1_853C(s16 playerIndex) {
         completed = 0;
         for (column = 0; column < 5; column++)
         {
-            if (lbl_1_bss_2B6[boardIndex].cells[linePosition * 5 + column] & BINGO_CELL_MARKED_FLAG)
+            if (lbl_1_bss_2B6[boardIndex].cells[linePosition * 5 + column] & (1 << 7))
             {
                 completed++;
             }
@@ -1246,7 +1188,7 @@ s16 fn_1_853C(s16 playerIndex) {
         completed = 0;
         for (column = 0; column < 5; column++)
         {
-            if (lbl_1_bss_2B6[boardIndex].cells[linePosition + column * 5] & BINGO_CELL_MARKED_FLAG)
+            if (lbl_1_bss_2B6[boardIndex].cells[linePosition + column * 5] & (1 << 7))
             {
                 completed++;
             }
@@ -1264,7 +1206,7 @@ s16 fn_1_853C(s16 playerIndex) {
     for (linePosition = 0; linePosition < 5; linePosition++)
     {
         if (lbl_1_bss_2B6[boardIndex].cells[linePosition * 5 + linePosition] &
-            BINGO_CELL_MARKED_FLAG) {
+            (1 << 7)) {
             completed++;
         } else {
             candidate = linePosition;
@@ -1278,7 +1220,7 @@ s16 fn_1_853C(s16 playerIndex) {
     for (linePosition = 0; linePosition < 5; linePosition++)
     {
         if (lbl_1_bss_2B6[boardIndex].cells[(4 - linePosition) + linePosition * 5] &
-            BINGO_CELL_MARKED_FLAG) {
+            (1 << 7)) {
             completed++;
         } else {
             candidate = linePosition;
@@ -1310,46 +1252,46 @@ s32 fn_1_8838(s16 boardIndex, s16 lineIndex) {
 
     lineComplete = 0;
     if (lineIndex < 5) {
-        if ((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 0] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 5] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 10] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 15] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex + 20] &
-             BINGO_CELL_MARKED_FLAG)) {
+        if ((MgModeWork[101 + boardIndex * 25 + lineIndex + 0] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 5] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 10] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 15] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex + 20] &
+             (1 << 7))) {
             lineComplete = 1;
         }
     } else if (lineIndex < 10) {
         lineIndex = lineIndex - 5;
-        if ((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 0] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 1] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 2] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 3] &
-             BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + lineIndex * 5 + 4] &
-             BINGO_CELL_MARKED_FLAG)) {
+        if ((MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 0] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 1] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 2] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 3] &
+             (1 << 7)) &&
+            (MgModeWork[101 + boardIndex * 25 + lineIndex * 5 + 4] &
+             (1 << 7))) {
             lineComplete = 1;
         }
     } else if (lineIndex == 10) {
-        if ((MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[107 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[113 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[119 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[125 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG)) {
+        if ((MgModeWork[101 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[107 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[113 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[119 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[125 + boardIndex * 25] & (1 << 7))) {
             lineComplete = 1;
         }
     } else if (lineIndex == 11) {
-        if ((MgModeWork[105 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[109 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[113 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[117 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG) &&
-            (MgModeWork[121 + boardIndex * 25] & BINGO_CELL_MARKED_FLAG)) {
+        if ((MgModeWork[105 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[109 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[113 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[117 + boardIndex * 25] & (1 << 7)) &&
+            (MgModeWork[121 + boardIndex * 25] & (1 << 7))) {
             lineComplete = 1;
         }
     }
@@ -1358,10 +1300,6 @@ s32 fn_1_8838(s16 boardIndex, s16 lineIndex) {
 
 /* Scores each unmarked cell by how many lines through it contain exactly requiredMarks marks. */
 void fn_1_8BDC(s16 playerIndex, s16 requiredMarks, s16 *lineScores) {
-    typedef struct {
-        u8 otherModeWork[101]; /* Mode work bytes before the board records. */
-        u8 boardCellFlags[155]; /* 25 cell bytes for each of four boards. */
-    } MgmbingoWorkView;
     s16 boardIndex;
     s16 row;
     s16 column;
@@ -1374,8 +1312,8 @@ void fn_1_8BDC(s16 playerIndex, s16 requiredMarks, s16 *lineScores) {
         completedMarks = 0;
         memset(unmarked, 0, sizeof(unmarked));
         for (column = 0; column < 5; column++) {
-            if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + row * 5 + column] &
-                BINGO_CELL_MARKED_FLAG) {
+            if (MgModeWork[101 + boardIndex * 25 + row * 5 + column] &
+                (1 << 7)) {
                 completedMarks++;
             } else {
                 unmarked[column] = 1;
@@ -1392,8 +1330,8 @@ void fn_1_8BDC(s16 playerIndex, s16 requiredMarks, s16 *lineScores) {
         completedMarks = 0;
         memset(unmarked, 0, sizeof(unmarked));
         for (column = 0; column < 5; column++) {
-            if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + column * 5 + row] &
-                BINGO_CELL_MARKED_FLAG) {
+            if (MgModeWork[101 + boardIndex * 25 + column * 5 + row] &
+                (1 << 7)) {
                 completedMarks++;
             } else {
                 unmarked[column] = 1;
@@ -1411,8 +1349,8 @@ void fn_1_8BDC(s16 playerIndex, s16 requiredMarks, s16 *lineScores) {
     completedMarks = 0;
     memset(unmarked, 0, sizeof(unmarked));
     for (row = 0; row < 5; row++) {
-        if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + row * 5 + row] &
-            BINGO_CELL_MARKED_FLAG) {
+        if (MgModeWork[101 + boardIndex * 25 + row * 5 + row] &
+            (1 << 7)) {
             completedMarks++;
         } else {
             unmarked[row] = 1;
@@ -1429,8 +1367,8 @@ void fn_1_8BDC(s16 playerIndex, s16 requiredMarks, s16 *lineScores) {
     completedMarks = 0;
     memset(unmarked, 0, sizeof(unmarked));
     for (row = 0; row < 5; row++) {
-        if (MgModeWork[BINGO_BOARD_WORK_BASE + boardIndex * 25 + row * 5 + (4 - row)] &
-            BINGO_CELL_MARKED_FLAG) {
+        if (MgModeWork[101 + boardIndex * 25 + row * 5 + (4 - row)] &
+            (1 << 7)) {
             completedMarks++;
         } else {
             unmarked[row] = 1;
@@ -1507,8 +1445,7 @@ void fn_1_90F4(void) {
     }
 
     lbl_1_bss_288 = HuSprGrpCreate(lbl_1_bss_2B4 + 2);
-    lbl_1_bss_28C[0] = HuSprAnimRead(
-        fn_80008DD0(lbl_1_data_700[lbl_1_bss_2B4], 0x10000000, 2));
+    lbl_1_bss_28C[0] = HuSprAnimDataRead(lbl_1_data_700[lbl_1_bss_2B4]);
     lbl_1_bss_274[0] = HuSprCreate(lbl_1_bss_28C[0], 10, 0);
     HuSprGrpMemberSet(lbl_1_bss_288, 0, lbl_1_bss_274[0]);
     HuSprPosSet(lbl_1_bss_288, 0, 0.0f, 0.0f);
@@ -1518,11 +1455,10 @@ void fn_1_90F4(void) {
     playerSpriteCount = 0;
     while (player < 4) {
         if (lbl_1_data_83C[player] >= 0) {
-            lbl_1_bss_28C[playerSpriteCount + 2] = HuSprAnimRead(
-                fn_80008DD0(lbl_1_data_714[lbl_1_data_83C[player]],
-                                     0x10000000, 2));
-            lbl_1_bss_274[playerSpriteCount + 2] = HuSprCreate(
-                lbl_1_bss_28C[playerSpriteCount + 2], 9, 0);
+            lbl_1_bss_28C[playerSpriteCount + 2] =
+                HuSprAnimDataRead(lbl_1_data_714[lbl_1_data_83C[player]]);
+            lbl_1_bss_274[playerSpriteCount + 2] =
+                HuSprCreate( lbl_1_bss_28C[playerSpriteCount + 2], 9, 0);
             HuSprGrpMemberSet(lbl_1_bss_288, playerSpriteCount + 2,
                               lbl_1_bss_274[playerSpriteCount + 2]);
             HuSprPosSet(lbl_1_bss_288, playerSpriteCount + 2,
@@ -1533,8 +1469,7 @@ void fn_1_90F4(void) {
         player++;
     }
 
-    lbl_1_bss_28C[1] = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9d0000, 27), 0x10000000, 2));
+    lbl_1_bss_28C[1] = HuSprAnimDataRead(DATANUM(0x9d0000, 27));
     lbl_1_bss_274[1] = HuSprCreate(lbl_1_bss_28C[1], 8, 0);
     HuSprGrpMemberSet(lbl_1_bss_288, 1, lbl_1_bss_274[1]);
     HuSprData[lbl_1_bss_274[1]].data->pat->centerY = 48;
@@ -1555,15 +1490,14 @@ void fn_1_9554(void) {
 
     if ((lbl_1_bss_2B4 == 2) || (lbl_1_bss_2B4 == 3) ||
         (lbl_1_bss_2B4 == 4)) {
-        HuAudFXPlay(1212);
+        HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
         angle = 0.0f;
         while (angle < 1.0f) {
             HuSprGrpScaleSet(lbl_1_bss_288, angle, angle);
             HuPrcVSleep();
             angle += 0.1f;
         }
-        HuSprGrpScaleSet(lbl_1_bss_288, 1.0f,
-                         1.0f);
+        HuSprGrpScaleSet(lbl_1_bss_288, 1.0f, 1.0f);
         decelerationSum = 0.0f;
         angle = 18.0f;
         while (angle > 0.0f) {
@@ -1635,7 +1569,7 @@ void fn_1_9554(void) {
             }
         }
 
-        lbl_1_data_AD8 = HuAudFXPlay(MGM_BINGO_SOUND_RESULT_SPIN);
+        lbl_1_data_AD8 = HuAudFXPlay(MSM_SE_MGM00_TURN_ORDER_LOOP);
         turnIndex = 1;
         rotation = angle = 0.0f;
         while (turnIndex != 0) {
@@ -1664,7 +1598,7 @@ void fn_1_9554(void) {
         }
         lbl_1_data_AD8 = -1;
         HuPrcVSleep();
-        HuAudFXPlay(1214);
+        HuAudFXPlay(MSM_SE_MGM00_PREVIEW_EXIT);
     }
 
     if (lbl_1_bss_2B4 == 2) {
@@ -1773,12 +1707,12 @@ void fn_1_9554(void) {
     HuPrcVSleep();
 }
 
-/* On results with 2-4 players, plays the reveal sound, shrinks the result group, and hides it. */
+/* Shrinks and hides the tie-break sprite group when two to four players scored. */
 void fn_1_A2A4(void) {
     f32 groupScale;
 
     if ((lbl_1_bss_2B4 == 2) || (lbl_1_bss_2B4 == 3) || (lbl_1_bss_2B4 == 4)) {
-        HuAudFXPlay(1212);
+        HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
         groupScale = 1.0f;
         while (groupScale > 0.0f) {
             HuSprGrpScaleSet(lbl_1_bss_288, groupScale, groupScale);
@@ -1795,20 +1729,15 @@ void fn_1_A3A0(void) {
     ANIMDATA *animation;
     s16 particleIndex;
 
-    animation = HuSprAnimRead(fn_80008DD0(
-        DATANUM(0x9d0000, 14), 0x10000000, 2));
+    animation = HuSprAnimDataRead(DATANUM(0x9d0000, 14));
     for (particleIndex = 0; particleIndex < 20; particleIndex++) {
         HU3D_PARTICLE *particle;
         HU3D_PARTICLE_DATA *particleData;
         s16 dataIndex;
 
         lbl_1_bss_24C[particleIndex] = fn_8003216C(animation, 10);
-        fn_80026760(
-            lbl_1_bss_24C[particleIndex], 0.0f, 0.0f,
-            0.0f);
-        fn_800268B0(
-            lbl_1_bss_24C[particleIndex], 1.0f,
-            1.0f, 1.0f);
+        fn_80026760( lbl_1_bss_24C[particleIndex], 0.0f, 0.0f, 0.0f);
+        fn_800268B0( lbl_1_bss_24C[particleIndex], 1.0f, 1.0f, 1.0f);
         fn_80026B8C(lbl_1_bss_24C[particleIndex], 2);
         fn_80032620(lbl_1_bss_24C[particleIndex], 1.0f);
         fn_8003269C(lbl_1_bss_24C[particleIndex], 0);
@@ -1860,16 +1789,14 @@ void fn_1_A704(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix) {
                 particleData[particleIndex].accel.y = 0.0f;
                 verticalWave = (f32)(
                     (f64)particleData[particleIndex].colorIdx *
-                    sin((3.141592653589793 * (f64)particleData[particleIndex].time) /
-                        180.0));
+                    sin((M_PI * (f64)particleData[particleIndex].time) / 180.0));
                 if (verticalWave > 0.0f) {
                     verticalWave *= -1.0f;
                 }
                 particleData[particleIndex].pos.y += verticalWave;
                 verticalWave = (f32)(
                     (f64)particleData[particleIndex].speedDecay *
-                    sin((3.141592653589793 * (f64)particleData[particleIndex].parManId) /
-                        180.0));
+                    sin((M_PI * (f64)particleData[particleIndex].parManId) / 180.0));
                 particleData[particleIndex].pos.x += verticalWave;
                 particleData[particleIndex].time =
                     (particleData[particleIndex].time + 1) % 360;
@@ -1920,8 +1847,7 @@ void fn_1_AAC8(HuVecF *position) {
             acceleration.z = 1.0f;
             velocity = acceleration;
             velocityPointer = &velocity;
-            fn_1_12BE0(0.0f, angle, 0.0f,
-                       velocityPointer, &acceleration);
+            fn_1_12BE0(0.0f, angle, 0.0f, velocityPointer, &acceleration);
             particleDataArray[particleIndex].vel.x =
                 10.0f * acceleration.x;
             particleDataArray[particleIndex].vel.y = 0.0f;
@@ -1977,8 +1903,7 @@ void fn_1_AEE8(HuVecF *position) {
             acceleration.z = 1.0f;
             velocity = acceleration;
             velocityPointer = &velocity;
-            fn_1_12BE0(0.0f, angle, 0.0f,
-                       velocityPointer, &acceleration);
+            fn_1_12BE0(0.0f, angle, 0.0f, velocityPointer, &acceleration);
             particleDataArray[particleIndex].vel.x =
                 10.0f * acceleration.x;
             particleDataArray[particleIndex].vel.y = 0.0f;
@@ -2008,22 +1933,17 @@ void fn_1_B2F8(void) {
     lbl_1_bss_248 = object;
     object->stat |= (1 << 8);
     object->work[0] = object->work[1] = object->work[2] = object->work[3] = 0;
-    *object->mdlId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x9d0000, 9), 0x10000000, 2));
+    *object->mdlId = fn_80025A04( fn_80008DD0(DATANUM(0x9d0000, 9), 0x10000000, 2));
     fn_80026B64(*object->mdlId, 1);
     fn_80026B8C(*object->mdlId, 1);
     fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 0)));
     fn_800269E8(*object->mdlId, (1 << 0));
-    fn_800268B0(
-        *object->mdlId, 3.0f, 3.0f,
-        3.0f);
+    fn_800268B0( *object->mdlId, 3.0f, 3.0f, 3.0f);
     fn_8002D86C(*object->mdlId, 2.0f);
     modelIndex = 1;
     while (modelIndex < 13) {
         object->mdlId[modelIndex] = fn_80025D4C(*object->mdlId);
-        fn_800268B0(
-            object->mdlId[modelIndex], 3.0f,
-            3.0f, 3.0f);
+        fn_800268B0( object->mdlId[modelIndex], 3.0f, 3.0f, 3.0f);
         modelIndex++;
     }
 }
@@ -2064,7 +1984,7 @@ void fn_1_B524(OMOBJ *object) {
     index = 0;
     while (index < 13) {
         if (lbl_1_bss_F4[index] > 0) {
-            if (lbl_1_bss_F4[index] != BINGO_STAR_FINISHED_DELAY) {
+            if (lbl_1_bss_F4[index] != 32767) {
                 lbl_1_bss_F4[index]--;
             }
             fn_800269E8(object->mdlId[index], (1 << 0));
@@ -2095,10 +2015,8 @@ void fn_1_B524(OMOBJ *object) {
 
             rotationSource = lbl_1_bss_1AC[index];
             rotationSourcePointer = &rotationSource;
-            fn_1_12BE0(rotationX, rotationY, 0.0f,
-                       rotationSourcePointer, &lbl_1_bss_1AC[index]);
-            fn_80026808(object->mdlId[index],
-                            rotationX, rotationY, 0.0f);
+            fn_1_12BE0(rotationX, rotationY, 0.0f, rotationSourcePointer, &lbl_1_bss_1AC[index]);
+            fn_80026808(object->mdlId[index], rotationX, rotationY, 0.0f);
 
             lbl_1_bss_110[index].x =
                 (f32)(0.1 * (f64)lbl_1_bss_1AC[index].x);
@@ -2137,7 +2055,8 @@ void fn_1_B524(OMOBJ *object) {
             fn_80026790(object->mdlId[index], &position);
             if ((position.x < -600.0f) ||
                 (600.0f < position.x)) {
-                ((s16 *)lbl_1_bss_F4)[index] = BINGO_STAR_FINISHED_DELAY;
+                /* Mark this star finished when it passes the horizontal bounds. */
+                lbl_1_bss_F4[index] = 32767;
             }
         }
         index++;
@@ -2157,16 +2076,12 @@ void fn_1_BDB4(void) {
         fn_800269E8(lbl_1_bss_A30->mdlId[playerIndex + 11], (1 << 0));
         modelIndex = 0;
         while (modelIndex < 12) {
-            fn_800269E8(
-                lbl_1_bss_A30->mdlId[(playerIndex * 12 + 23) + modelIndex],
-                1);
+            fn_800269E8( lbl_1_bss_A30->mdlId[(playerIndex * 12 + 23) + modelIndex], 1);
             modelIndex++;
         }
         modelIndex = 0;
         while (modelIndex < 2) {
-            fn_800269E8(
-                lbl_1_bss_A30->mdlId[(playerIndex * 2 + 15) + modelIndex],
-                1);
+            fn_800269E8( lbl_1_bss_A30->mdlId[(playerIndex * 2 + 15) + modelIndex], 1);
             modelIndex++;
         }
         fn_800269E8(lbl_1_bss_A30->mdlId[playerIndex + 3], (1 << 0));

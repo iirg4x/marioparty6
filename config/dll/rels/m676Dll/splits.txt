@@ -18,13 +18,13 @@ REL/m676Dll/camera_audio.c:
 	.data       start:0x00000120 end:0x00000130
 	.bss        start:0x000001A0 end:0x00000438
 
-REL/m676Dll/text_05A10.c:
+REL/m676Dll/player.c:
 	.text       start:0x00005A10 end:0x000088C0
 	.rodata     start:0x000001B8 end:0x00000318
 	.data       start:0x00000130 end:0x000002D0
 	.bss        start:0x00000438 end:0x00000480
 
-REL/m676Dll/text_088C0.c:
+REL/m676Dll/scene.c:
 	.text       start:0x000088C0 end:0x00010288
 	.rodata     start:0x00000318 end:0x00000640
 	.data       start:0x000002D0 end:0x000007A0

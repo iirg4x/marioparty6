@@ -67,7 +67,7 @@ void ObjectSetup(void)
 }
 
 /* MgSeqCreate consumes the sequence parameter at offset zero. */
-typedef struct M642SequenceDataView_s {
+typedef struct  {
     MGSEQ_PARAM param;
 } M642SequenceDataView;
 void fn_1_1C0(s16 mode, s16 frameNo);
@@ -96,10 +96,6 @@ M642SequenceDataView lbl_1_data_0 = {{
 
 s32 lbl_1_data_28 = -1;
 
-extern void fn_1_5CC(void);
-extern s32 fn_1_64C(void);
-extern s32 fn_1_698(void);
-
 /* Creates the minigame sequence, then runs actor updates once per process wake. */
 void fn_1_19C(void)
 {
@@ -126,7 +122,7 @@ void fn_1_1F4(void)
 void fn_1_1F8(void)
 {
     if (lbl_1_data_28 == -1 &&
-        (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
+        GameMesFXPlayCheck(fn_80071DF4()) != 0) {
         lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_BLISSFUL);
     }
 }
@@ -164,10 +160,12 @@ void fn_1_314(void)
 {
 }
 
-void fn_1_318(void)
+/* Player mode 2 in the mode table lbl_1_data_3CC; does nothing. */
+void fn_1_318(MGPLAYER *playerP)
 {
 }
 
-void fn_1_31C(void)
+/* Player mode 1 in the mode table lbl_1_data_3CC; does nothing. */
+void fn_1_31C(MGPLAYER *playerP)
 {
 }

@@ -4,7 +4,6 @@
 #include "game/object.h"
 
 typedef struct M676CollisionEntry M676CollisionEntry;
-#define M676_COLLISION_OBJECT_COUNT 84
 typedef struct M676CollisionHeader {
     /* Registration flags, collision-category mask, and object category; state selects the shape. */
     u32 flags;
@@ -44,7 +43,8 @@ struct M676CollisionEntry {
         struct {
             /* Center and vertical/horizontal extents and radii in world units. */
             Vec center;
-            f32 lowerY, verticalSpan, innerRadiusX, innerRadiusZ, outerRadiusX, outerRadiusZ;
+            f32 lowerY, verticalSpan, innerRadiusX, innerRadiusZ;
+            HuVec2f outerRadius; /* X and Z radii of the outer ellipse. */
         } region;
         /* Center, horizontal radii in world units, and whether the test uses the inside or
          * outside. */
@@ -60,11 +60,14 @@ typedef union M676SceneRegistration {
     M676CollisionEntry entry;
 } M676SceneRegistration;
 typedef struct M676CollisionWork {
-    /* Cleared during setup; no module function reads these leading bytes. */
+    /* No code names these bytes. */
     u8 unk00, unk01, unk02, unk03, unk04, unk05;
     u8 unk06, unk07;
     /* Registered collision objects and objects tested against them. */
-    M676CollisionEntry *objects[M676_COLLISION_OBJECT_COUNT];
+    M676CollisionEntry *objects[84];
     M676CollisionEntry *targets[10];
 } M676CollisionWork;
+void fn_1_126A4(HUPROCESS *process);
+s32 fn_1_13EC4(M676CollisionEntry *registration);
+int fn_1_13F54(void *registration);
 #endif

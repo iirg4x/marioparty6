@@ -1,14 +1,12 @@
 /* Collision registration and contact resolution for scene objects. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m676Dll/collision_types.h"
 #include "game/memory.h"
 #include <string.h>
-
-#define M676_COLLISION_MANAGER_PRIORITY 18
-#define M676_COLLISION_WORK_SIZE 384
+#include "REL/m676Dll/camera_types.h"
+#include "humath.h"
 
 OMOBJ *lbl_1_bss_10B8;
-void fn_1_5698(Vec *start, Vec *end, f32 factor, Vec *result);
 
 s32 fn_1_1269C(void);
 void fn_1_126A4(HUPROCESS *process);
@@ -19,8 +17,7 @@ s32 fn_1_12E04(M676CollisionEntry *first, M676CollisionEntry *second);
 s32 fn_1_131B4(M676CollisionEntry *object, M676CollisionEntry *region);
 s32 fn_1_1378C(M676CollisionEntry *state, M676CollisionEntry *parameters);
 s32 fn_1_13A78(M676CollisionEntry *object, M676CollisionEntry *bounds);
-s32 fn_1_13C5C(s32 axis, M676CollisionEntry *object,
-    M676CollisionEntry *bounds, f32 factor);
+s32 fn_1_13C5C(s32 axis, M676CollisionEntry *object, M676CollisionEntry *bounds, f32 factor);
 s32 fn_1_13E3C(M676CollisionEntry *owner, M676CollisionEntry *limits);
 s32 fn_1_13EC4(M676CollisionEntry *registration);
 int fn_1_13F54(void *registration);
@@ -28,38 +25,16 @@ void fn_1_13FE4(s32 index);
 void *fn_1_14064(s32 index);
 void *fn_1_140F0(u32 type, s32 id);
 
-#define M676_FLOAT_EXPONENT_MASK 0x7F800000
-#define M676_FLOAT_FRACTION_MASK 0x007FFFFF
-
-/* Classifies a position component so the collision pass can reject invalid coordinates. */
-static inline s32 M676FloatClass(f32 value)
-{
-    switch (*(s32 *)&value & M676_FLOAT_EXPONENT_MASK) {
-    case M676_FLOAT_EXPONENT_MASK:
-        if ((*(s32 *)&value & M676_FLOAT_FRACTION_MASK) != 0) {
-            return 1;
-        }
-        return 2;
-    case 0:
-        if ((*(s32 *)&value & M676_FLOAT_FRACTION_MASK) != 0) {
-            return 5;
-        }
-        return 3;
-    default:
-        return 4;
-    }
-}
-
 /* Detects NaN or infinite coordinates before the owner update; contact callbacks have already
  * run. */
 static inline s32 M676CollisionPositionInvalid(Vec *position)
 {
-    return M676FloatClass(position->x) == 1 ||
-        M676FloatClass(position->x) == 2 ||
-        M676FloatClass(position->y) == 1 ||
-        M676FloatClass(position->y) == 2 ||
-        M676FloatClass(position->z) == 1 ||
-        M676FloatClass(position->z) == 2;
+    return isnan(position->x) ||
+        isinf(position->x) ||
+        isnan(position->y) ||
+        isinf(position->y) ||
+        isnan(position->z) ||
+        isinf(position->z);
 }
 
 s32 fn_1_1269C(void) { return 0; }
@@ -70,11 +45,11 @@ void fn_1_126A4(HUPROCESS *process)
     OMOBJ *object;
     void *data;
 
-    object = fn_8003AB38(process, M676_COLLISION_MANAGER_PRIORITY, 0, 0, -1, fn_1_12730);
+    object = fn_8003AB38(process, 18, 0, 0, -1, fn_1_12730);
     lbl_1_bss_10B8 = object;
-    data = HuMemDirectMallocNum(HEAP_HEAP, M676_COLLISION_WORK_SIZE, 0x10000000);
+    data = HuMemDirectMallocNum(HEAP_HEAP, 384, 0x10000000);
     object->data = data;
-    memset(data, 0, M676_COLLISION_WORK_SIZE);
+    memset(data, 0, 384);
 }
 
 void fn_1_1272C(void)
@@ -99,14 +74,14 @@ void fn_1_12740(OMOBJ *obj)
     s32 firstIndex;
     s32 secondIndex;
 
-    for (firstIndex = 0; firstIndex < M676_COLLISION_OBJECT_COUNT; firstIndex++) {
+    for (firstIndex = 0; firstIndex < 84; firstIndex++) {
         first = work->objects[firstIndex];
         if (first != NULL && first->header.state == 0) {
             first->shape.dynamic.active = 0;
         }
     }
 
-    for (firstIndex = 0; firstIndex < M676_COLLISION_OBJECT_COUNT; firstIndex++) {
+    for (firstIndex = 0; firstIndex < 84; firstIndex++) {
         first = work->objects[firstIndex];
         if (first == NULL) {
             continue;
@@ -115,7 +90,7 @@ void fn_1_12740(OMOBJ *obj)
         if ((firstHeader->flags & 1) == 0 || firstHeader->state != 0) {
             continue;
         }
-        for (secondIndex = firstIndex + 1; secondIndex < M676_COLLISION_OBJECT_COUNT;
+        for (secondIndex = firstIndex + 1; secondIndex < 84;
             secondIndex++) {
             second = work->objects[secondIndex];
             if (second == NULL) {
@@ -137,8 +112,7 @@ void fn_1_12740(OMOBJ *obj)
                 continue;
             }
             if (secondHeader->state == 0) {
-                fn_1_12E04(first,
-                    second);
+                fn_1_12E04(first, second);
             }
         }
         if ((firstHeader->flags & 2U) == 0) {
@@ -180,7 +154,7 @@ void fn_1_12740(OMOBJ *obj)
         }
     }
 
-    for (firstIndex = 0; firstIndex < M676_COLLISION_OBJECT_COUNT; firstIndex++) {
+    for (firstIndex = 0; firstIndex < 84; firstIndex++) {
         first = work->objects[firstIndex];
         if (first == NULL) {
             continue;
@@ -283,11 +257,11 @@ s32 fn_1_131B4(M676CollisionEntry *object, M676CollisionEntry *region)
     minimumY = center->y + region->shape.region.lowerY;
     maximumY = minimumY + region->shape.region.verticalSpan;
     innerXScale = region->shape.region.innerRadiusZ / region->shape.region.innerRadiusX;
-    outerXScale = region->shape.region.outerRadiusZ / region->shape.region.outerRadiusX;
+    outerXScale = region->shape.region.outerRadius.y / region->shape.region.outerRadius.x;
     innerTestRadius =
         innerXScale * (region->shape.region.innerRadiusX - object->shape.dynamic.radius);
     outerTestRadius =
-        outerXScale * (region->shape.region.outerRadiusX + object->shape.dynamic.radius);
+        outerXScale * (region->shape.region.outerRadius.x + object->shape.dynamic.radius);
 
     if (position->y < minimumY) {
         goto noCollision;
@@ -305,8 +279,7 @@ s32 fn_1_131B4(M676CollisionEntry *object, M676CollisionEntry *region)
     }
     outerScaledX = outerXScale * (position->x - center->x);
     secondDeltaZ = position->z - center->z;
-    outerDistance = sqrtf((outerScaledX * outerScaledX) +
-        (secondDeltaZ * secondDeltaZ));
+    outerDistance = sqrtf((outerScaledX * outerScaledX) + (secondDeltaZ * secondDeltaZ));
     outerGap = outerTestRadius - outerDistance;
     if (outerGap < 0.0f) {
         goto noCollision;
@@ -320,20 +293,18 @@ s32 fn_1_131B4(M676CollisionEntry *object, M676CollisionEntry *region)
             edgeX = region->shape.region.innerRadiusX - object->shape.dynamic.radius;
             edgeZ = region->shape.region.innerRadiusZ - object->shape.dynamic.radius;
             contactAngle = (f32)(180.0 *
-                (atan2((f64)innerScaledX, (f64)deltaZ) / 3.141592653589793));
+                (atan2((f64)innerScaledX, (f64)deltaZ) / M_PI));
         } else {
-            edgeX = region->shape.region.outerRadiusX + object->shape.dynamic.radius;
-            edgeZ = region->shape.region.outerRadiusZ + object->shape.dynamic.radius;
+            edgeX = region->shape.region.outerRadius.x + object->shape.dynamic.radius;
+            edgeZ = region->shape.region.outerRadius.y + object->shape.dynamic.radius;
             contactAngle = (f32)(180.0 *
                 (atan2((f64)outerScaledX, (f64)secondDeltaZ) /
-                    3.141592653589793));
+                    M_PI));
         }
         position->x = (f32)((f64)center->x +
-            ((f64)edgeX * sin((3.141592653589793 *
-                (f64)contactAngle) / 180.0)));
+            ((f64)edgeX * sin((M_PI * (f64)contactAngle) / 180.0)));
         position->z = (f32)((f64)center->z +
-            ((f64)edgeZ * cos((3.141592653589793 *
-                (f64)contactAngle) / 180.0)));
+            ((f64)edgeZ * cos((M_PI * (f64)contactAngle) / 180.0)));
     }
     if (object->shape.dynamic.callback != NULL) {
         object->shape.dynamic.callback(object, region);
@@ -361,11 +332,11 @@ s32 fn_1_1378C(M676CollisionEntry *state, M676CollisionEntry *parameters)
          distance > parameters->shape.ellipse.radiusZ) ||
         (parameters->shape.ellipse.direction == 0 &&
          distance < parameters->shape.ellipse.radiusZ)) {
-        angle = (f32)(180.0 * (atan2((f64)x, (f64)z) / 3.141592653589793));
+        angle = (f32)(180.0 * (atan2((f64)x, (f64)z) / M_PI));
         state->shape.dynamic.position->x = parameters->shape.ellipse.center.x +
-            parameters->shape.ellipse.radiusX * sin((3.141592653589793 * (f64)angle) / 180.0);
+            parameters->shape.ellipse.radiusX * sin((M_PI * (f64)angle) / 180.0);
         state->shape.dynamic.position->z = parameters->shape.ellipse.center.z +
-            parameters->shape.ellipse.radiusZ * cos((3.141592653589793 * (f64)angle) / 180.0);
+            parameters->shape.ellipse.radiusZ * cos((M_PI * (f64)angle) / 180.0);
         if (state->shape.dynamic.callback != NULL) {
             state->shape.dynamic.callback(state, parameters);
         }
@@ -377,16 +348,16 @@ s32 fn_1_1378C(M676CollisionEntry *state, M676CollisionEntry *parameters)
 /* Sweeps a dynamic object's radius against box faces during fn_1_12740's collision pass. */
 s32 fn_1_13A78(M676CollisionEntry *object, M676CollisionEntry *bounds)
 {
-    Vec *livePosition;
-    Vec *sampledPosition;
-    Vec *minimum;
-    Vec *maximum;
+    f32 *livePosition;
+    f32 *sampledPosition;
+    f32 *minimum;
+    f32 *maximum;
     s32 axis;
 
-    livePosition = object->shape.dynamic.position;
-    sampledPosition = &object->shape.dynamic.currentPosition;
-    minimum = &bounds->shape.bounds.minimum;
-    maximum = &bounds->shape.bounds.maximum;
+    livePosition = &object->shape.dynamic.position->x;
+    sampledPosition = &object->shape.dynamic.currentPosition.x;
+    minimum = &bounds->shape.bounds.minimum.x;
+    maximum = &bounds->shape.bounds.maximum.x;
     for (axis = 0; axis < 3; axis++) {
         f32 liveComponent;
         f32 sampledComponent;
@@ -395,18 +366,17 @@ s32 fn_1_13A78(M676CollisionEntry *object, M676CollisionEntry *bounds)
         f32 distance;
         f32 penetration;
 
-        liveComponent = ((f32 *)livePosition)[axis];
-        sampledComponent = ((f32 *)sampledPosition)[axis];
-        lower = ((f32 *)minimum)[axis];
-        upper = ((f32 *)maximum)[axis];
+        liveComponent = livePosition[axis];
+        sampledComponent = sampledPosition[axis];
+        lower = minimum[axis];
+        upper = maximum[axis];
         if (!((sampledComponent + object->shape.dynamic.radius) > lower) &&
             !((liveComponent + object->shape.dynamic.radius) <= lower)) {
             distance = liveComponent - sampledComponent;
             if (!(distance <= 0.0f)) {
                 penetration = lower - (sampledComponent + object->shape.dynamic.radius);
                 if (!(penetration < 0.0f) &&
-                    fn_1_13C5C(axis, object, bounds,
-                               penetration / distance) != 0) {
+                    fn_1_13C5C(axis, object, bounds, penetration / distance) != 0) {
                     return 1;
                 }
             }
@@ -417,8 +387,7 @@ s32 fn_1_13A78(M676CollisionEntry *object, M676CollisionEntry *bounds)
             if (!(distance <= 0.0f)) {
                 penetration = (sampledComponent - object->shape.dynamic.radius) - upper;
                 if (!(penetration < 0.0f) &&
-                    fn_1_13C5C(axis, object, bounds,
-                               penetration / distance) != 0) {
+                    fn_1_13C5C(axis, object, bounds, penetration / distance) != 0) {
                     return 1;
                 }
             }
@@ -429,8 +398,7 @@ s32 fn_1_13A78(M676CollisionEntry *object, M676CollisionEntry *bounds)
 
 /* Interpolates the swept position, rejects overlap outside the other bounds, then moves the object
  * and reverses the tested velocity component to 80%. */
-s32 fn_1_13C5C(s32 axis, M676CollisionEntry *object,
-    M676CollisionEntry *bounds, f32 factor)
+s32 fn_1_13C5C(s32 axis, M676CollisionEntry *object, M676CollisionEntry *bounds, f32 factor)
 {
     Vec position;
     Vec *minimum;
@@ -509,7 +477,7 @@ s32 fn_1_13EC4(M676CollisionEntry *registration)
         object = lbl_1_bss_10B8;
         work = object->data;
         entry = work->objects;
-        for (index = 0; index < M676_COLLISION_OBJECT_COUNT; index++, entry++) {
+        for (index = 0; index < 84; index++, entry++) {
             if (*entry == NULL) {
                 *entry = registration;
                 return index;
@@ -534,7 +502,7 @@ int fn_1_13F54(void *registration)
         for (index = 0; index < 10; index++, entry++) {
             if (*entry == NULL) {
                 *entry = registration;
-                return index + M676_COLLISION_OBJECT_COUNT;
+                return index + 84;
             }
         }
     }
@@ -550,10 +518,10 @@ void fn_1_13FE4(s32 index)
         M676CollisionWork *table = object->data;
 
         if (index >= 0) {
-            if (index < M676_COLLISION_OBJECT_COUNT) {
+            if (index < 84) {
                 table->objects[index] = NULL;
             }
-            index -= M676_COLLISION_OBJECT_COUNT;
+            index -= 84;
             if (index < 10) {
                 table->targets[index] = NULL;
             }
@@ -571,10 +539,10 @@ void *fn_1_14064(s32 index)
         if (index < 0) {
             return NULL;
         }
-        if (index < M676_COLLISION_OBJECT_COUNT) {
+        if (index < 84) {
             return table->objects[index];
         }
-        index -= M676_COLLISION_OBJECT_COUNT;
+        index -= 84;
         if (index < 10) {
             return table->targets[index];
         }

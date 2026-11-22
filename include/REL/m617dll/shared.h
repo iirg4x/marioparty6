@@ -14,45 +14,42 @@ typedef struct M617ScoreBoxEntry {
     s16 spriteId; /* Sprite ID, or score-box ID for the two character panels. */
     s16 groupId; /* Sprite group containing this marker. */
     s16 memberIndex; /* Member slot in that group. */
-    u8 unreadBeforePosition[6]; /* Not accessed by these display helpers. */
+    u8 unk06[6]; /* No code names this field. */
     M617Vector2 position; /* Screen position for a panel, or group-local marker position. */
     s16 width; /* Score-box width supplied at creation. */
     s16 height; /* Score-box height supplied at creation. */
-    f32 opacity; /* Stored opacity, initialized to zero here. */
+    f32 unk18; /* The game's code never reads this field. */
     u8 red;
     u8 green;
     u8 blue;
-    u8 alpha;
+    u8 unk1F; /* The game's code never reads this field. */
     f32 tpLevel; /* Initial opacity sent to the score-box controls. */
     s16 drawPriority; /* Sprite draw priority passed at creation. */
-    u8 unreadTail[2]; /* Not accessed by these display helpers. */
 } M617ScoreBoxEntry;
 
 typedef struct M617SpriteGroup {
     s16 groupId; /* Group ID for one player's ten progress-marker sprites. */
-    u8 unreadBeforePosition[2]; /* Not accessed by these display helpers. */
     M617Vector2 position; /* Position of the group on screen. */
-    f32 scaleX; /* Horizontal scale multiplier. */
-    f32 scaleY; /* Vertical scale multiplier. */
+    M617Vector2 scale; /* Horizontal and vertical scale multipliers. */
 } M617SpriteGroup;
 
 typedef struct M617PadSnapshot {
-    s32 buttons;
+    s32 unk00; /* The game's code never reads this field. */
     s32 buttonsDown;
-    u16 buttonsRepeat;
-    s8 stickX;
-    s8 stickY;
-    s8 subStickX;
-    s8 subStickY;
-    u8 triggerL;
-    u8 triggerR;
-    u8 dpad;
-    u8 dpadRepeat;
+    u16 unk08; /* The game's code never reads this field. */
+    s8 unk0A; /* The game's code never reads this field. */
+    s8 unk0B; /* The game's code never reads this field. */
+    s8 unk0C; /* The game's code never reads this field. */
+    s8 unk0D; /* The game's code never reads this field. */
+    u8 unk0E; /* The game's code never reads this field. */
+    u8 unk0F; /* The game's code never reads this field. */
+    u8 unk10; /* The game's code never reads this field. */
+    u8 unk11; /* The game's code never reads this field. */
 } M617PadSnapshot;
 
 typedef struct M617BoardSelection {
-    s16 nodeIndex;
-    s16 modelIndex;
+    s16 unk00; /* The game's code never reads this field. */
+    s16 unk02; /* The game's code never reads this field. */
 } M617BoardSelection;
 
 typedef struct M617BoxEdgeLinks {
@@ -71,7 +68,7 @@ typedef struct M617State {
     struct MgTimer_s *timer;
     s32 timerFrames;
     u8 unknown6C[2];
-    s16 nightFlag;
+    s16 unk6E; /* The game's code never reads this field. */
     s16 selection;
     f32 limit;
     s16 layout;
@@ -118,7 +115,7 @@ typedef struct M617PlayerStateData {
     s8 participantIndex;
     s8 character;
     s8 controllerPort;
-    s8 group;
+    s8 unk18; /* The game's code never reads this field. */
     s8 computerControlled;
     s8 difficulty;
     s8 motionState;
@@ -127,14 +124,14 @@ typedef struct M617PlayerStateData {
     u8 unknown24[4];
     s32 actionFrame;
     u8 unknown2C[4];
-    s8 characterMode;
+    s8 unk30; /* The game's code never reads this field. */
     Vec position;
     Vec target;
     Vec rotation;
     s8 transformState;
     u8 unknown59;
     s16 collisionMeshIndex;
-    s16 previousCollisionMeshIndex;
+    s16 unk5C; /* The game's code never reads this field. */
     s16 linkedPlayer;
     s16 previousLinkedPlayer;
     s16 orbitCounter;
@@ -155,8 +152,7 @@ typedef struct M617PlayerStateData {
     f32 lightHeight;
     s32 computerButtonsHeld;
     s32 computerButtonsDown;
-    s32 computerStickX;
-    s32 computerStickY;
+    s32 computerStick[2];
     s16 controlPhase;
     s16 selectionPhase;
     s16 actionPhase;
@@ -168,9 +164,7 @@ typedef struct M617PlayerStateData {
     s16 orbitFrame;
     s16 chasePhase;
     Vec targetPosition;
-    f32 targetStepX;
-    u8 unknown10C[4];
-    f32 targetStepZ;
+    Vec targetStep; /* Step along the ground plane, applied to the target's X and Z. */
     f32 chaseSpeed;
     f32 chaseRadius;
     s16 targetObstructed;
@@ -230,7 +224,7 @@ typedef struct M617ParticipantMotionState {
     f32 previousSpeed;
     f32 time;
     f32 previousTime;
-    f32 maximumTime;
+    f32 unk24; /* The game's code never reads this field. */
     u32 attributes;
     u32 previousAttributes;
     u32 attributesToReset;
@@ -246,13 +240,13 @@ typedef struct M617ParticipantMotionState {
     f32 shiftStart;
     f32 shiftEnd;
     f32 shiftTime;
-    f32 shiftMaximumTime;
+    f32 unk5C; /* The game's code never reads this field. */
     u8 unknown60[4];
 } M617ParticipantMotionState;
 
 typedef struct ParticleModuleData {
     s16 modelIds[1];
-    s16 maximumCounts[1];
+    s16 unk02[1]; /* The game's code never reads this field. */
     void *allocation[1];
 } ParticleModuleData;
 
@@ -267,19 +261,11 @@ typedef struct M617LightInitState {
 } M617LightInitState;
 
 typedef struct M617ShadowWork {
-    f32 positionX;
-    f32 positionY;
-    f32 positionZ;
-    f32 angleY;
-    f32 angleX;
-    f32 angleZ;
-    f32 originX;
-    f32 originY;
-    f32 originZ;
+    HuVecF position;
+    HuVecF rotation;
+    HuVecF origin;
     u8 unknown24[12];
-    f32 directionX;
-    f32 directionY;
-    f32 directionZ;
+    HuVecF direction;
     u8 unknown3C[12];
     f32 radius;
     f32 shadowOpacity;
@@ -312,11 +298,64 @@ extern M617ParticipantMotionState lbl_1_bss_DC0[2];
 extern M617BoxEdgeLinks lbl_1_bss_398[24];
 extern struct Process_s *lbl_1_bss_38E4;
 extern struct MgSeqParam_s lbl_1_data_0;
-extern u8 lbl_1_bss_379C[328];
+typedef struct M617CameraRecord {
+    s32 unk00; /* The game's code never reads this field. */
+    u8 beforeRotation[12];
+    Vec rotation;
+    Vec position;
+    u8 beforeViewport[12];
+    f32 viewSettings[6];
+    f32 fieldOfView;
+} M617CameraRecord;
+
+typedef struct M617CameraStorage {
+    M617CameraRecord cameras[4];
+    u8 unk140[8]; /* No code names this field. */
+} M617CameraStorage;
+
+extern M617CameraStorage lbl_1_bss_379C;
 extern M617LightInitState lbl_1_bss_3760;
 extern M617ShadowWork lbl_1_bss_3710;
 extern ParticleModuleData lbl_1_bss_3708;
 extern s16 lbl_1_data_F6[4];
 extern u32 lbl_1_data_118[51];
+void ObjectSetup(void);
+void fn_1_3E4(void);
+void fn_1_730(void);
+void fn_1_ECC(void);
+void fn_1_24D8(void);
+void fn_1_2B48(void);
+s32 fn_1_2E94(f32 *value, f32 duration, f32 start, f32 end);
+s16 fn_1_3BB8(HU3D_MODELID modelId, HU3D_LIGHTID lightId);
+s32 fn_1_3CD0(HU3D_MODELID modelId, HU3D_LIGHTID lightId);
+void fn_1_3DE0(void);
+void fn_1_4DB0(M617PlayerStateData *work, s16 voiceMode);
+void fn_1_535C(void);
+void fn_1_54B8(s16 slot, s16 mode, Vec *position);
+void fn_1_58DC(s16 slotIndex, s16 pan);
+void fn_1_596C(s16 slotIndex, s16 pitch);
+void fn_1_59FC(s16 slotIndex, s16 volume);
+void fn_1_5C1C(void);
+void fn_1_5DB4(void);
+void fn_1_7048(void);
+void fn_1_78C0(void);
+s32 fn_1_93D0(void);
+void fn_1_E1F0(void);
+void fn_1_16898(void);
+void fn_1_1817C(M617PlayerStateData *work);
+void fn_1_187C8(void);
+void fn_1_18BD4(void);
+
+struct ColNarrowParam_s;
+struct MgActor_s;
+struct MgTimer_s *fn_1_2FB4(int type, int duration, int end, f32 x, f32 y);
+void fn_1_3028(struct MgTimer_s *timer);
+void fn_1_307C(struct MgTimer_s *timer);
+s16 fn_1_4070(const Vec *position);
+s16 fn_1_435C(s16 playerIndex, const Vec *position);
+int fn_1_780C(struct ColNarrowParam_s *first, struct ColNarrowParam_s *second);
+void fn_1_788C(struct MgActor_s *task);
+
+BOOL fn_1_3054(struct MgTimer_s *timer);
 
 #endif

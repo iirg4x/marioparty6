@@ -2,9 +2,11 @@
 #define HuAudFXPlayVolPan M617UnusedHuAudFXPlayVolPanPrototype
 #define fn_80060F14 M617UnusedCharModelVoicePanSetPrototype
 #define fn_80060F40 M617UnusedCharModelVoiceVolSetPrototype
-#include <math.h>
 #include <string.h>
+#include <math.h>
 #include "game/main.h"
+#include "game/charman.h"
+#include "game/audio.h"
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "msm_stream.h"
@@ -34,21 +36,11 @@
 #undef fn_80060F14
 #undef fn_80060F40
 
+void fn_80060F14();
+void fn_80060F40();
 void fn_1_20A4(void);
 void fn_1_51B4(void);
 
-HU3D_MOTIONID fn_8005B0B8(s16 charNo, unsigned int dataNum);
-int HuAudJinglePlay(s16 streamId);
-int HuAudBGMPlay(s16 streamId);
-void HuAudSStreamFadeOut(int streamNo, s32 speed);
-void HuAudSStreamStop(int streamNo);
-void fn_80060F14();
-void fn_80060F40();
-
-typedef void (*VoidFunc)(void);
-extern const VoidFunc _ctors[];
-extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 void fn_1_118(s16 mode, s16 frameNo);
 void fn_1_280(s16 mode, s16 frameNo);
 void fn_1_2AC(s16 mode, s16 frameNo);
@@ -59,25 +51,14 @@ void fn_1_35C(s16 mode, s16 frameNo);
 void fn_1_388(s16 mode, s16 frameNo);
 void fn_1_3B4(s16 mode, s16 frameNo);
 
-typedef struct M617Vector3Pair {
-    /* Starting positions and facing rotations for the two participants. */
-    Vec vectors[2];
-} M617Vector3Pair;
-
-typedef struct M617PlayerLookup {
-    s16 playerByGroup[2]; /* First configured player for group 0 or 1; -1 if absent. */
-} M617PlayerLookup;
-
 void fn_1_1780(s16 playerIndex);
-void fn_1_93D0(void);
-void fn_1_51B4(void);
 
 /* MgSeq calls this start callback to clear minigame state and initialize the first scene. */
 void fn_1_118(s16 mode, s16 frameNo)
 {
     s16 nightFlag;
 
-    memset(lbl_1_bss_379C, 0, sizeof(lbl_1_bss_379C));
+    memset(&lbl_1_bss_379C, 0, sizeof(lbl_1_bss_379C));
     memset(&lbl_1_bss_3760, 0, sizeof(lbl_1_bss_3760));
     memset(&lbl_1_bss_3710, 0, sizeof(lbl_1_bss_3710));
     memset(&lbl_1_bss_3708, 0, sizeof(lbl_1_bss_3708));
@@ -91,7 +72,7 @@ void fn_1_118(s16 mode, s16 frameNo)
     memset(lbl_1_bss_370, 0, sizeof(lbl_1_bss_370));
     memset(lbl_1_bss_0, 0, sizeof(lbl_1_bss_0));
     nightFlag = lbl_802C0278;
-    lbl_1_bss_9C8.nightFlag = nightFlag;
+    lbl_1_bss_9C8.unk6E = nightFlag;
     fn_1_1780(0);
     fn_1_20A4();
     Hu3DBGColorSet(0, 0, 0);
@@ -106,7 +87,7 @@ void fn_1_280(s16 mode, s16 frameNo)
     if (fn_1_A3BC() != 0) fn_80071A9C();
 }
 
-/* MgSeq calls this phase callback each frame; advance after fn_1_A3FC reports completion. */
+/* MgSeq calls this phase callback each frame. fn_1_A3FC returns zero. */
 void fn_1_2AC(s16 mode, s16 frameNo)
 {
     if (fn_1_A3FC() != 0) fn_80071A9C();
@@ -155,36 +136,36 @@ void fn_1_3E0(void)
 /* Participant setup uses this to select the first player in each group and build both records. */
 void fn_1_3E4(void)
 {
-    M617PlayerLookup playerLookup = { { -1, -1 } };
-    M617Vector3Pair positions = { { {-730.0f, 10.0f, -730.0f}, {650.0f, 10.0f, 650.0f} } };
-    M617Vector3Pair startRotations = { { {0.0f, -135.0f, 0.0f}, {0.0f, 225.0f, 0.0f} } };
+    s16 playerLookup[2] = { -1, -1 };
+    Vec positions[2] = { {-730.0f, 10.0f, -730.0f}, {650.0f, 10.0f, 650.0f} };
+    Vec startRotations[2] = { {0.0f, -135.0f, 0.0f}, {0.0f, 225.0f, 0.0f} };
     s16 player = 0;
     s16 group = 0;
 
     for (; player < 4; player++) {
         group = lbl_80265728[player].grpNo;
 
-        if ((group == 0 || group == 1) && playerLookup.playerByGroup[group] == -1) {
-            playerLookup.playerByGroup[group] = player;
+        if ((group == 0 || group == 1) && playerLookup[group] == -1) {
+            playerLookup[group] = player;
         }
     }
 
     for (player = 0; player < 2; player++) {
         lbl_1_bss_AB0[player].playerIndex =
-            (s8)playerLookup.playerByGroup[player];
+            (s8)playerLookup[player];
         lbl_1_bss_AB0[player].participantIndex = (s8)player;
         lbl_1_bss_AB0[player].character =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].charNo;
+            (s8)lbl_80265728[playerLookup[player]].charNo;
         lbl_1_bss_AB0[player].controllerPort =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].padNo;
-        lbl_1_bss_AB0[player].group =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].grpNo;
+            (s8)lbl_80265728[playerLookup[player]].padNo;
+        lbl_1_bss_AB0[player].unk18 =
+            (s8)lbl_80265728[playerLookup[player]].grpNo;
         lbl_1_bss_AB0[player].computerControlled =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].type;
+            (s8)lbl_80265728[playerLookup[player]].type;
         lbl_1_bss_AB0[player].difficulty =
-            (s8)lbl_80265728[playerLookup.playerByGroup[player]].comDif;
-        lbl_1_bss_AB0[player].position = positions.vectors[player];
-        lbl_1_bss_AB0[player].rotation = startRotations.vectors[player];
+            (s8)lbl_80265728[playerLookup[player]].comDif;
+        lbl_1_bss_AB0[player].position = positions[player];
+        lbl_1_bss_AB0[player].rotation = startRotations[player];
         lbl_1_bss_AB0[player].resultState = -1;
     }
 }
@@ -204,11 +185,11 @@ void fn_1_730(void)
             lbl_1_bss_AB0[index].motionState != 0) {
             memset(&lbl_1_bss_AB0[index], 0, 20);
         } else {
-            lbl_1_bss_AB0[index].input.buttons =
+            lbl_1_bss_AB0[index].input.unk00 =
                 lbl_802C0010[lbl_1_bss_AB0[index].controllerPort];
             lbl_1_bss_AB0[index].input.buttonsDown =
                 lbl_802C0008[lbl_1_bss_AB0[index].controllerPort];
-            lbl_1_bss_AB0[index].input.buttonsRepeat =
+            lbl_1_bss_AB0[index].input.unk08 =
                 lbl_802C0000[lbl_1_bss_AB0[index].controllerPort];
 
             if (lbl_802BFFFC[lbl_1_bss_AB0[index].controllerPort] > 0) {
@@ -223,44 +204,43 @@ void fn_1_730(void)
                 }
                 stickResult = deadZoneValue;
             }
-            lbl_1_bss_AB0[index].input.stickX = stickResult;
-            lbl_1_bss_AB0[index].input.stickY =
+            lbl_1_bss_AB0[index].input.unk0A = stickResult;
+            lbl_1_bss_AB0[index].input.unk0B =
                 (s8)lbl_802BFFF8[lbl_1_bss_AB0[index].controllerPort];
-            lbl_1_bss_AB0[index].input.subStickX =
+            lbl_1_bss_AB0[index].input.unk0C =
                 (s8)lbl_802BFFF4[lbl_1_bss_AB0[index].controllerPort];
-            lbl_1_bss_AB0[index].input.subStickY =
+            lbl_1_bss_AB0[index].input.unk0D =
                 (s8)lbl_802BFFF0[lbl_1_bss_AB0[index].controllerPort];
-            lbl_1_bss_AB0[index].input.triggerL =
+            lbl_1_bss_AB0[index].input.unk0E =
                 lbl_802BFFEC[lbl_1_bss_AB0[index].controllerPort];
-            lbl_1_bss_AB0[index].input.triggerR =
+            lbl_1_bss_AB0[index].input.unk0F =
                 lbl_802BFFE8[lbl_1_bss_AB0[index].controllerPort];
-            lbl_1_bss_AB0[index].input.dpad =
+            lbl_1_bss_AB0[index].input.unk10 =
                 lbl_802BFFE4[lbl_1_bss_AB0[index].controllerPort];
-            lbl_1_bss_AB0[index].input.dpadRepeat =
+            lbl_1_bss_AB0[index].input.unk11 =
                 lbl_802BFFE0[lbl_1_bss_AB0[index].controllerPort];
         }
     }
 
     index = 0;
     for (; index < 4; index++) {
-        lbl_1_bss_9C8.padSnapshots[index].buttons = lbl_802C0010[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk00 = lbl_802C0010[index];
         lbl_1_bss_9C8.padSnapshots[index].buttonsDown = lbl_802C0008[index];
-        lbl_1_bss_9C8.padSnapshots[index].buttonsRepeat = lbl_802C0000[index];
-        lbl_1_bss_9C8.padSnapshots[index].stickX = (s8)lbl_802BFFFC[index];
-        lbl_1_bss_9C8.padSnapshots[index].stickY = (s8)lbl_802BFFF8[index];
-        lbl_1_bss_9C8.padSnapshots[index].subStickX = (s8)lbl_802BFFF4[index];
-        lbl_1_bss_9C8.padSnapshots[index].subStickY = (s8)lbl_802BFFF0[index];
-        lbl_1_bss_9C8.padSnapshots[index].triggerL = lbl_802BFFEC[index];
-        lbl_1_bss_9C8.padSnapshots[index].triggerR = lbl_802BFFE8[index];
-        lbl_1_bss_9C8.padSnapshots[index].dpad = lbl_802BFFE4[index];
-        lbl_1_bss_9C8.padSnapshots[index].dpadRepeat = lbl_802BFFE0[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk08 = lbl_802C0000[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk0A = (s8)lbl_802BFFFC[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk0B = (s8)lbl_802BFFF8[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk0C = (s8)lbl_802BFFF4[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk0D = (s8)lbl_802BFFF0[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk0E = lbl_802BFFEC[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk0F = lbl_802BFFE8[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk10 = lbl_802BFFE4[index];
+        lbl_1_bss_9C8.padSnapshots[index].unk11 = lbl_802BFFE0[index];
     }
 }
 
 /* Refreshes scene-model transforms after stored positions and rotations change. */
 void fn_1_CF0(void)
 {
-    s32 unusedIndex;
     s32 modelIndex;
 
     modelIndex = 2;
@@ -292,41 +272,25 @@ void fn_1_CF0(void)
     }
 }
 
-typedef struct M617MotionFiles {
-    u32 motionC000m1_300; /* Motion resource used by the corresponding motion slot. */
-    u32 motionC000m1_306; /* Motion resource used by the corresponding motion slot. */
-    u32 motionC000m1_307; /* Motion resource used by the corresponding motion slot. */
-    u32 motionC000m1_432; /* Motion resource used by the corresponding motion slot. */
-    u32 motionC000m1_433; /* Motion resource used by the corresponding motion slot. */
-    u32 motionC000m1_434; /* Motion resource used by the corresponding motion slot. */
-    u32 motionC000m1_612; /* Motion resource used by the corresponding motion slot. */
-} M617MotionFiles;
-
-const M617MotionFiles lbl_1_rodata_44 = {
-    DATANUM(0x930000, 0), DATANUM(0x930000, 6),
-    DATANUM(0x930000, 7), DATANUM(0x930000, 95),
-    DATANUM(0x930000, 96), DATANUM(0x930000, 97),
-    DATANUM(0x8e0000, 148)
-};
-
 /* Called by fn_1_93D0 during scene setup to load seven motions for each participant. */
 void fn_1_ECC(void)
 {
-    M617MotionFiles loadedFiles;
+    u32 loadedFiles[7] = {
+        DATANUM(0x930000, 0), DATANUM(0x930000, 6),
+        DATANUM(0x930000, 7), DATANUM(0x930000, 95),
+        DATANUM(0x930000, 96), DATANUM(0x930000, 97),
+        DATANUM(0x8e0000, 148)
+    };
     s16 playerIndex;
     s16 motionIndex;
 
-    loadedFiles = lbl_1_rodata_44;
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
         for (motionIndex = 0; motionIndex < 7; motionIndex++) {
-            lbl_1_bss_DC0[playerIndex].motionIds[motionIndex] = fn_8005B0B8(
-                lbl_1_bss_AB0[playerIndex].character,
-                ((u32 *)&loadedFiles)[motionIndex]);
+            lbl_1_bss_DC0[playerIndex].motionIds[motionIndex] =
+                fn_8005B0B8( lbl_1_bss_AB0[playerIndex].character, loadedFiles[motionIndex]);
         }
     }
 }
-
-#define motion (&lbl_1_bss_DC0[playerIndex])
 
 /* Called by fn_1_24D8 each scene update to apply participant animation changes and motion
  * shifts. */
@@ -335,160 +299,151 @@ void fn_1_FBC(void)
     s16 playerIndex = 0;
 
     while (playerIndex < 2) {
-        if (motion->mode != motion->previousMode) {
+        if (lbl_1_bss_DC0[playerIndex].mode != lbl_1_bss_DC0[playerIndex].previousMode) {
             fn_8002C95C(lbl_1_bss_E88[playerIndex].modelId,
-                motion->motionIds[motion->mode]);
-            motion->previousMode = motion->mode;
-            motion->maximumTime = fn_8002D530(
-                lbl_1_bss_E88[playerIndex].modelId);
+                lbl_1_bss_DC0[playerIndex].motionIds[lbl_1_bss_DC0[playerIndex].mode]);
+            lbl_1_bss_DC0[playerIndex].previousMode = lbl_1_bss_DC0[playerIndex].mode;
+            lbl_1_bss_DC0[playerIndex].unk24 =
+                fn_8002D530( lbl_1_bss_E88[playerIndex].modelId);
         }
-        if (motion->speed != motion->previousSpeed) {
-            fn_8002D86C(lbl_1_bss_E88[playerIndex].modelId,
-                motion->speed);
-            motion->previousSpeed = motion->speed;
+        if (lbl_1_bss_DC0[playerIndex].speed != lbl_1_bss_DC0[playerIndex].previousSpeed) {
+            fn_8002D86C(lbl_1_bss_E88[playerIndex].modelId, lbl_1_bss_DC0[playerIndex].speed);
+            lbl_1_bss_DC0[playerIndex].previousSpeed = lbl_1_bss_DC0[playerIndex].speed;
         }
-        if (motion->attributes != motion->previousAttributes) {
+        if (lbl_1_bss_DC0[playerIndex].attributes !=
+            lbl_1_bss_DC0[playerIndex].previousAttributes) {
             fn_800269E8(lbl_1_bss_E88[playerIndex].modelId,
-                motion->attributes);
-            motion->previousAttributes = motion->attributes;
+                lbl_1_bss_DC0[playerIndex].attributes);
+            lbl_1_bss_DC0[playerIndex].previousAttributes =
+                lbl_1_bss_DC0[playerIndex].attributes;
         }
-        if (motion->attributesToReset != 0) {
+        if (lbl_1_bss_DC0[playerIndex].attributesToReset != 0) {
             fn_80026A44(lbl_1_bss_E88[playerIndex].modelId,
-                motion->attributesToReset);
+                lbl_1_bss_DC0[playerIndex].attributesToReset);
             /* Keep the stored attribute mask in sync with the flags just cleared. */
-            motion->attributesToReset = ~motion->attributesToReset;
-            motion->previousAttributes = motion->attributes =
-                motion->attributes & motion->attributesToReset;
-            motion->attributesToReset = 0;
+            lbl_1_bss_DC0[playerIndex].attributesToReset =
+                ~lbl_1_bss_DC0[playerIndex].attributesToReset;
+            lbl_1_bss_DC0[playerIndex].previousAttributes =
+                lbl_1_bss_DC0[playerIndex].attributes =
+                lbl_1_bss_DC0[playerIndex].attributes &
+                    lbl_1_bss_DC0[playerIndex].attributesToReset;
+            lbl_1_bss_DC0[playerIndex].attributesToReset = 0;
         }
-        if (motion->time != motion->previousTime) {
-            fn_8002D414(lbl_1_bss_E88[playerIndex].modelId,
-                motion->time);
+        if (lbl_1_bss_DC0[playerIndex].time != lbl_1_bss_DC0[playerIndex].previousTime) {
+            fn_8002D414(lbl_1_bss_E88[playerIndex].modelId, lbl_1_bss_DC0[playerIndex].time);
         }
-        switch (motion->shiftState) {
+        switch (lbl_1_bss_DC0[playerIndex].shiftState) {
         case 0:
             break;
         case 1:
             fn_8002CCC0(lbl_1_bss_E88[playerIndex].modelId,
-                motion->motionIds[motion->shiftMotion], motion->shiftStart,
-                motion->shiftEnd, motion->shiftFlags);
-            motion->shiftMaximumTime = fn_8002D5D4(
-                lbl_1_bss_E88[playerIndex].modelId);
-            motion->shiftState = 2;
+                lbl_1_bss_DC0[playerIndex].motionIds[
+                    lbl_1_bss_DC0[playerIndex].shiftMotion],
+                        lbl_1_bss_DC0[playerIndex].shiftStart,
+                lbl_1_bss_DC0[playerIndex].shiftEnd, lbl_1_bss_DC0[playerIndex].shiftFlags);
+            lbl_1_bss_DC0[playerIndex].unk5C =
+                fn_8002D5D4( lbl_1_bss_E88[playerIndex].modelId);
+            lbl_1_bss_DC0[playerIndex].shiftState = 2;
             break;
         case 2:
-            motion->shiftTime = fn_8002D508(
-                lbl_1_bss_E88[playerIndex].modelId);
-            if ((motion->shiftFlags & ((1 << 30) | (1 << 0))) == 0 &&
-                motion->shiftTime >= motion->shiftEnd - 1.0f) {
-                motion->shiftState = 3;
+            lbl_1_bss_DC0[playerIndex].shiftTime =
+                fn_8002D508( lbl_1_bss_E88[playerIndex].modelId);
+            if ((lbl_1_bss_DC0[playerIndex].shiftFlags & ((1 << 30) | (1 << 0))) == 0 &&
+                lbl_1_bss_DC0[playerIndex].shiftTime >=
+                    lbl_1_bss_DC0[playerIndex].shiftEnd - 1.0f) {
+                lbl_1_bss_DC0[playerIndex].shiftState = 3;
             }
             break;
         case 3:
-            motion->shiftState = 0;
+            lbl_1_bss_DC0[playerIndex].shiftState = 0;
             break;
         }
-        motion->time = fn_8002D4E0(lbl_1_bss_E88[playerIndex].modelId);
-        motion->previousTime = motion->time;
-        motion->motionEnded = fn_8002D75C(
-            lbl_1_bss_E88[playerIndex].modelId);
-        if (motion->motionEnded != 0 && motion->resetRequested != 0) {
-            motion->motionEnded = 0;
-            motion->resetRequested = 0;
-            motion->mode = motion->resetMode;
-            motion->time = motion->transition;
-            motion->attributes = motion->resetAttributes;
-            motion->attributesToReset = motion->resetAttributesToClear;
+        lbl_1_bss_DC0[playerIndex].time = fn_8002D4E0(lbl_1_bss_E88[playerIndex].modelId);
+        lbl_1_bss_DC0[playerIndex].previousTime = lbl_1_bss_DC0[playerIndex].time;
+        lbl_1_bss_DC0[playerIndex].motionEnded =
+            fn_8002D75C( lbl_1_bss_E88[playerIndex].modelId);
+        if (lbl_1_bss_DC0[playerIndex].motionEnded != 0 &&
+            lbl_1_bss_DC0[playerIndex].resetRequested != 0) {
+            lbl_1_bss_DC0[playerIndex].motionEnded = 0;
+            lbl_1_bss_DC0[playerIndex].resetRequested = 0;
+            lbl_1_bss_DC0[playerIndex].mode = lbl_1_bss_DC0[playerIndex].resetMode;
+            lbl_1_bss_DC0[playerIndex].time = lbl_1_bss_DC0[playerIndex].transition;
+            lbl_1_bss_DC0[playerIndex].attributes =
+                lbl_1_bss_DC0[playerIndex].resetAttributes;
+            lbl_1_bss_DC0[playerIndex].attributesToReset =
+                lbl_1_bss_DC0[playerIndex].resetAttributesToClear;
         }
         playerIndex++;
     }
 }
 
-#undef motion
-
 /* Called by fn_1_118 to create the selected participant camera and initialize its look target. */
 void fn_1_1780(s16 playerIndex)
 {
-    typedef struct M617CameraPresetTable {
-        /* Position xyz, rotation xyz, zoom, aspect, viewSettings rectangle, and field of view. */
-        f32 settings[4][13];
-    } M617CameraPresetTable;
-    typedef struct M617CameraIds {
-        s16 masks[4]; /* Camera selection bits. */
-    } M617CameraIds;
-    typedef struct M617CameraRecord {
-        s32 cameraIndex; /* Camera preset index. */
-        u8 beforeRotation[12]; /* Unaccessed bytes before the rotation. */
-        Vec rotation; /* Euler angles in degrees. */
-        Vec position; /* Look-target position. */
-        u8 beforeViewport[12]; /* Unaccessed bytes before the view settings. */
-        f32 viewSettings[6]; /* Zoom, aspect ratio, viewport x/y/width/height. */
-        f32 fieldOfView; /* Vertical field of view in degrees. */
-    } M617CameraRecord;
-
-    extern Vec lbl_80266A4C;
-    extern Vec lbl_80266A40;
-    extern f32 lbl_802C028C;
     extern void fn_1_1C30(s16);
-    M617CameraPresetTable presets = { {
-        { -737.0f, 456.0f, 55.0f, -24.0f, 0.0f, 0.0f, 197.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 20.98f },
-        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
-        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f },
-        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f, 45.0f }
-    } };
-    M617CameraIds cameraIds = { { 1, 2, 4, 8 } };
+    f32 presets[4][13] = {
+        { -737.0f, 456.0f, 55.0f, -24.0f, 0.0f, 0.0f, 197.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f,
+            20.98f },
+        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f,
+            45.0f },
+        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f,
+            45.0f },
+        { 0.0f, 208.0f, 75.0f, -21.0f, 0.0f, 0.0f, 1415.0f, 1.33f, 0.0f, 0.0f, 640.0f, 480.0f,
+            45.0f }
+    };
+    s16 cameraIds[4] = { 1, 2, 4, 8 };
 
-    ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].cameraIndex = playerIndex;
-    ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].position.x = presets.settings[playerIndex][0];
-    ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].position.y = presets.settings[playerIndex][1];
-    ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].position.z = presets.settings[playerIndex][2];
-    ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].rotation.x = presets.settings[playerIndex][3];
-    ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].rotation.y = presets.settings[playerIndex][4];
-    ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].rotation.z = presets.settings[playerIndex][5];
-    ((M617CameraRecord *) lbl_1_bss_379C)[playerIndex].viewSettings[0] =
-        presets.settings[playerIndex][6];
-    ((M617CameraRecord *) lbl_1_bss_379C)[playerIndex].viewSettings[1] =
-        presets.settings[playerIndex][7];
-    ((M617CameraRecord *) lbl_1_bss_379C)[playerIndex].viewSettings[2] =
-        presets.settings[playerIndex][8];
-    ((M617CameraRecord *) lbl_1_bss_379C)[playerIndex].viewSettings[3] =
-        presets.settings[playerIndex][9];
-    ((M617CameraRecord *) lbl_1_bss_379C)[playerIndex].viewSettings[4] =
-        presets.settings[playerIndex][10];
-    ((M617CameraRecord *) lbl_1_bss_379C)[playerIndex].viewSettings[5] =
-        presets.settings[playerIndex][11];
-    ((M617CameraRecord *) lbl_1_bss_379C)[playerIndex].fieldOfView =
-        presets.settings[playerIndex][12];
-    Hu3DCameraCreate(cameraIds.masks[playerIndex]);
-    Hu3DCameraViewportSet(cameraIds.masks[playerIndex],
-                          ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].viewSettings[2],
-                          ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].viewSettings[3],
-                          ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].viewSettings[4],
-                          ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].viewSettings[5],
+    lbl_1_bss_379C.cameras[playerIndex].unk00 = playerIndex;
+    lbl_1_bss_379C.cameras[playerIndex].position.x = presets[playerIndex][0];
+    lbl_1_bss_379C.cameras[playerIndex].position.y = presets[playerIndex][1];
+    lbl_1_bss_379C.cameras[playerIndex].position.z = presets[playerIndex][2];
+    lbl_1_bss_379C.cameras[playerIndex].rotation.x = presets[playerIndex][3];
+    lbl_1_bss_379C.cameras[playerIndex].rotation.y = presets[playerIndex][4];
+    lbl_1_bss_379C.cameras[playerIndex].rotation.z = presets[playerIndex][5];
+    lbl_1_bss_379C.cameras[playerIndex].viewSettings[0] =
+        presets[playerIndex][6];
+    lbl_1_bss_379C.cameras[playerIndex].viewSettings[1] =
+        presets[playerIndex][7];
+    lbl_1_bss_379C.cameras[playerIndex].viewSettings[2] =
+        presets[playerIndex][8];
+    lbl_1_bss_379C.cameras[playerIndex].viewSettings[3] =
+        presets[playerIndex][9];
+    lbl_1_bss_379C.cameras[playerIndex].viewSettings[4] =
+        presets[playerIndex][10];
+    lbl_1_bss_379C.cameras[playerIndex].viewSettings[5] =
+        presets[playerIndex][11];
+    lbl_1_bss_379C.cameras[playerIndex].fieldOfView =
+        presets[playerIndex][12];
+    Hu3DCameraCreate(cameraIds[playerIndex]);
+    Hu3DCameraViewportSet(cameraIds[playerIndex],
+                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[2],
+                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[3],
+                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[4],
+                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[5],
                           0.0f, 1.0f);
-    Hu3DCameraPerspectiveSet(cameraIds.masks[playerIndex],
-                             ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].fieldOfView,
+    Hu3DCameraPerspectiveSet(cameraIds[playerIndex],
+                             lbl_1_bss_379C.cameras[playerIndex].fieldOfView,
                              20.0f, 40000.0f,
-                             ((M617CameraRecord *)lbl_1_bss_379C)[playerIndex].viewSettings[1]);
-    lbl_80266A4C.x = presets.settings[playerIndex][0];
-    lbl_80266A4C.y = presets.settings[playerIndex][1];
-    lbl_80266A4C.z = presets.settings[playerIndex][2];
-    lbl_80266A40.x = presets.settings[playerIndex][3];
-    lbl_80266A40.y = presets.settings[playerIndex][4];
-    lbl_80266A40.z = presets.settings[playerIndex][5];
-    lbl_802C028C = presets.settings[playerIndex][6];
+                             lbl_1_bss_379C.cameras[playerIndex].viewSettings[1]);
+    lbl_80266A4C.x = presets[playerIndex][0];
+    lbl_80266A4C.y = presets[playerIndex][1];
+    lbl_80266A4C.z = presets[playerIndex][2];
+    lbl_80266A40.x = presets[playerIndex][3];
+    lbl_80266A40.y = presets[playerIndex][4];
+    lbl_80266A40.z = presets[playerIndex][5];
+    lbl_802C028C = presets[playerIndex][6];
     fn_1_1C30(playerIndex);
 }
 
-MGSEQ_PARAM lbl_1_data_0 = {
+struct MgSeqParam_s lbl_1_data_0 = {
     0, 0, fn_1_118, fn_1_280, fn_1_2AC, fn_1_2D8, fn_1_304,
     fn_1_330, fn_1_35C, fn_1_388, fn_1_3B4
 };
 
 M617RouteGroup lbl_1_bss_38F0[24];
 u16 lbl_1_bss_38E8[4];
-HUPROCESS *lbl_1_bss_38E4;
-u8 lbl_1_bss_379C[328];
+struct Process_s *lbl_1_bss_38E4;
+M617CameraStorage lbl_1_bss_379C;
 M617LightInitState lbl_1_bss_3760;
 M617ShadowWork lbl_1_bss_3710;
 ParticleModuleData lbl_1_bss_3708;
@@ -502,25 +457,12 @@ M617BoxEdgeLinks lbl_1_bss_398[24];
 M617SpriteGroup lbl_1_bss_370[2];
 M617ScoreBoxEntry lbl_1_bss_0[22];
 
-#define _DOLPHIN_MATH
-
-extern f64 sin(f64 angle);
-
-extern f64 cos(f64 angle);
-
 extern void fn_1_1E38(void);
-
-typedef struct M617CameraMaskSet {
-    u16 firstCameraMask; /* Selects camera 0. */
-    u16 secondCameraMask; /* Selects camera 1. */
-    u16 thirdCameraMask; /* Selects camera 2. */
-    u16 fourthCameraMask; /* Selects camera 3. */
-} M617CameraMaskSet;
 
 /* Camera setup and scene updates call this; its local camera-mask table has no effect. */
 void fn_1_1C30(s16 cameraIndex)
 {
-    M617CameraMaskSet cameraMasks = { 1, 2, 4, 8 };
+    u16 cameraMasks[4] = { 1, 2, 4, 8 };
 }
 
 /* Lighting setup calls this to initialize the minigame light's position, direction, and color. */
@@ -545,12 +487,10 @@ void fn_1_1C64(void)
     lbl_1_bss_3760.color.b = 255;
     lbl_1_bss_3760.color.a = 255;
 
-    PSVECSubtract(&lbl_1_bss_3760.aim, &lbl_1_bss_3760.position,
-                  &lbl_1_bss_3760.direction);
+    PSVECSubtract(&lbl_1_bss_3760.aim, &lbl_1_bss_3760.position, &lbl_1_bss_3760.direction);
     /* The zero direction is changed to +Z by light creation, then replaced below. */
-    lbl_1_bss_3760.id = fn_800286D0(
-        &lbl_1_bss_3760.position, &lbl_1_bss_3760.direction,
-        &lbl_1_bss_3760.color);
+    lbl_1_bss_3760.id =
+        fn_800286D0( &lbl_1_bss_3760.position, &lbl_1_bss_3760.direction, &lbl_1_bss_3760.color);
     fn_1_1E38();
     Hu3DGLightStaticSet(lbl_1_bss_3760.id, 1);
     Hu3DGLightInfinitytSet(lbl_1_bss_3760.id);
@@ -562,27 +502,20 @@ void fn_1_1E38(void)
     lbl_1_bss_3760.position.x =
         lbl_1_bss_3760.aim.x +
         lbl_1_bss_3760.range *
-            (cos(3.141592653589793 * lbl_1_bss_3760.orientation.x /
-                 180.0) *
-             sin(3.141592653589793 * lbl_1_bss_3760.orientation.y /
-                 180.0));
+            (cos(M_PI * lbl_1_bss_3760.orientation.x / 180.0) *
+             sin(M_PI * lbl_1_bss_3760.orientation.y / 180.0));
     lbl_1_bss_3760.position.y =
         lbl_1_bss_3760.aim.y +
         lbl_1_bss_3760.range *
-            -sin(3.141592653589793 * lbl_1_bss_3760.orientation.x /
-                 180.0);
+            -sin(M_PI * lbl_1_bss_3760.orientation.x / 180.0);
     lbl_1_bss_3760.position.z =
         lbl_1_bss_3760.aim.z +
         lbl_1_bss_3760.range *
-            (cos(3.141592653589793 * lbl_1_bss_3760.orientation.x /
-                 180.0) *
-             cos(3.141592653589793 * lbl_1_bss_3760.orientation.y /
-                 180.0));
-    PSVECSubtract(&lbl_1_bss_3760.aim, &lbl_1_bss_3760.position,
-                  &lbl_1_bss_3760.direction);
+            (cos(M_PI * lbl_1_bss_3760.orientation.x / 180.0) *
+             cos(M_PI * lbl_1_bss_3760.orientation.y / 180.0));
+    PSVECSubtract(&lbl_1_bss_3760.aim, &lbl_1_bss_3760.position, &lbl_1_bss_3760.direction);
     PSVECNormalize(&lbl_1_bss_3760.direction, &lbl_1_bss_3760.direction);
-    Hu3DGLightPosSetV(lbl_1_bss_3760.id, &lbl_1_bss_3760.position,
-                      &lbl_1_bss_3760.direction);
+    Hu3DGLightPosSetV(lbl_1_bss_3760.id, &lbl_1_bss_3760.position, &lbl_1_bss_3760.direction);
     Hu3DGLightColorSet(lbl_1_bss_3760.id, lbl_1_bss_3760.color.r,
                        lbl_1_bss_3760.color.g, lbl_1_bss_3760.color.b,
                        lbl_1_bss_3760.color.a);
@@ -595,12 +528,12 @@ void fn_1_20A4(void)
 {
     Hu3DShadowCreate(5.0f, 16000.0f, 21000.0f);
     Hu3DShadowSizeSet(480);
-    lbl_1_bss_3710.angleY = -90.0f;
-    lbl_1_bss_3710.angleX = 0.0f;
-    lbl_1_bss_3710.angleZ = 0.0f;
-    lbl_1_bss_3710.originX = 0.0f;
-    lbl_1_bss_3710.originY = -100.0f;
-    lbl_1_bss_3710.originZ = 0.0f;
+    lbl_1_bss_3710.rotation.x = -90.0f;
+    lbl_1_bss_3710.rotation.y = 0.0f;
+    lbl_1_bss_3710.rotation.z = 0.0f;
+    lbl_1_bss_3710.origin.x = 0.0f;
+    lbl_1_bss_3710.origin.y = -100.0f;
+    lbl_1_bss_3710.origin.z = 0.0f;
     lbl_1_bss_3710.shadowOpacity = 0.5f;
     lbl_1_bss_3710.radius = 21000.0f;
     fn_1_21B4();
@@ -609,47 +542,35 @@ void fn_1_20A4(void)
 /* Called by fn_1_20A4 to compute the shadow camera position and direction from its angles. */
 void fn_1_21B4(void)
 {
-    lbl_1_bss_3710.positionX = (f32)((f64)lbl_1_bss_3710.originX +
+    lbl_1_bss_3710.position.x = (f32)((f64)lbl_1_bss_3710.origin.x +
         ((f64)lbl_1_bss_3710.radius *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-          sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0))));
-    lbl_1_bss_3710.positionY = (f32)((f64)lbl_1_bss_3710.originY +
+         (cos((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0))));
+    lbl_1_bss_3710.position.y = (f32)((f64)lbl_1_bss_3710.origin.y +
         ((f64)lbl_1_bss_3710.radius *
-         -sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0)));
-    lbl_1_bss_3710.positionZ = (f32)((f64)lbl_1_bss_3710.originZ +
+         -sin((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0)));
+    lbl_1_bss_3710.position.z = (f32)((f64)lbl_1_bss_3710.origin.z +
         ((f64)lbl_1_bss_3710.radius *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-          cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0))));
-    lbl_1_bss_3710.directionX = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-        sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0));
-    lbl_1_bss_3710.directionY = (f32)cos(
-        (3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0);
-    lbl_1_bss_3710.directionZ = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-        cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0));
+         (cos((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0))));
+    lbl_1_bss_3710.direction.x = (f32)(
+        sin((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0));
+    lbl_1_bss_3710.direction.y = (f32)cos( (M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0);
+    lbl_1_bss_3710.direction.z = (f32)(
+        sin((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0));
     Hu3DShadowTPLvlSet(lbl_1_bss_3710.shadowOpacity);
-    Hu3DShadowPosSet((HuVecF *)&lbl_1_bss_3710,
-        (HuVecF *)&lbl_1_bss_3710.directionX,
-        (HuVecF *)&lbl_1_bss_3710.originX);
+    Hu3DShadowPosSet(&lbl_1_bss_3710.position,
+        &lbl_1_bss_3710.direction,
+        &lbl_1_bss_3710.origin);
 }
-
-typedef M617ModelSetupRecord M617PlayerModel;
-
-void fn_1_FBC(void);
 
 /* Called by phase updates to sync participant models, animation, and shadow placement. */
 void fn_1_24D8(void)
 {
     Vec playerPosition;
     s16 playerIndex;
-    s32 modelIndex;
-    struct M617FourHalfwords {
-        u16 first;
-        u16 second;
-        u16 third;
-        u16 fourth;
-    };
 
     fontcolor = 15;
     playerIndex = 0;
@@ -657,9 +578,7 @@ void fn_1_24D8(void)
         playerPosition.x = lbl_1_bss_AB0[playerIndex].position.x;
         playerPosition.y = lbl_1_bss_AB0[playerIndex].position.y;
         playerPosition.z = lbl_1_bss_AB0[playerIndex].position.z;
-        fn_80086B04(
-            lbl_1_bss_9BC.players[playerIndex]->actor,
-            &playerPosition);
+        fn_80086B04( lbl_1_bss_9BC.players[playerIndex]->actor, &playerPosition);
         lbl_1_bss_9BC.players[playerIndex]->actor->rotY =
             lbl_1_bss_AB0[playerIndex].rotation.y;
         lbl_1_bss_E88[playerIndex].position = lbl_1_bss_AB0[playerIndex].position;
@@ -667,67 +586,14 @@ void fn_1_24D8(void)
         playerIndex++;
     }
 
-    modelIndex = 2;
-    while (modelIndex < 96) {
-        fn_80026760(lbl_1_bss_E88[modelIndex].modelId,
-            lbl_1_bss_E88[modelIndex].position.x,
-            lbl_1_bss_E88[modelIndex].position.y,
-            lbl_1_bss_E88[modelIndex].position.z);
-        fn_80026808(lbl_1_bss_E88[modelIndex].modelId,
-            lbl_1_bss_E88[modelIndex].rotation.x,
-            lbl_1_bss_E88[modelIndex].rotation.y,
-            lbl_1_bss_E88[modelIndex].rotation.z);
-        modelIndex++;
-    }
-
-    modelIndex = 0;
-    while (modelIndex <= 1) {
-        if (lbl_1_bss_AB0[modelIndex].transformState == 0 ||
-            lbl_1_bss_AB0[modelIndex].transformState == 2) {
-            fn_80026760(lbl_1_bss_E88[modelIndex].modelId,
-                lbl_1_bss_AB0[modelIndex].position.x,
-                lbl_1_bss_AB0[modelIndex].position.y,
-                lbl_1_bss_AB0[modelIndex].position.z);
-            fn_80026808(lbl_1_bss_E88[modelIndex].modelId,
-                lbl_1_bss_AB0[modelIndex].rotation.x,
-                lbl_1_bss_AB0[modelIndex].rotation.y,
-                lbl_1_bss_AB0[modelIndex].rotation.z);
-        }
-        modelIndex++;
-    }
+    fn_1_CF0();
 
     fn_1_FBC();
     fn_1_1C30(0);
-    lbl_1_bss_3710.positionX = (f32)((f64)lbl_1_bss_3710.originX +
-        ((f64)lbl_1_bss_3710.radius *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-          sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0))));
-    lbl_1_bss_3710.positionY = (f32)((f64)lbl_1_bss_3710.originY +
-        ((f64)lbl_1_bss_3710.radius *
-         -sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0)));
-    lbl_1_bss_3710.positionZ = (f32)((f64)lbl_1_bss_3710.originZ +
-        ((f64)lbl_1_bss_3710.radius *
-         (cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-          cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0))));
-    lbl_1_bss_3710.directionX = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-        sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0));
-    lbl_1_bss_3710.directionY = (f32)cos(
-        (3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0);
-    lbl_1_bss_3710.directionZ = (f32)(
-        sin((3.141592653589793 * (f64)lbl_1_bss_3710.angleY) / 180.0) *
-        cos((3.141592653589793 * (f64)lbl_1_bss_3710.angleX) / 180.0));
-    Hu3DShadowTPLvlSet(lbl_1_bss_3710.shadowOpacity);
-    Hu3DShadowPosSet((HuVecF *)&lbl_1_bss_3710,
-        (HuVecF *)&lbl_1_bss_3710.directionX,
-        (HuVecF *)&lbl_1_bss_3710.originX);
+    fn_1_21B4();
 }
 
 extern int printf();
-
-#define PLAYER_STATE(i) (lbl_1_bss_AB0[(i)])
-
-#define MODEL_STATE(i) (lbl_1_bss_E88[(i)])
 
 void fn_1_33C0(s16 controller, s16 selection);
 
@@ -743,8 +609,8 @@ void fn_1_2B48(void) {
                 fn_80080520(lbl_1_bss_9BC.players[playerIndex], 0, 0, 0, 0);
             } else if ((s8) lbl_1_bss_AB0[playerIndex].computerControlled != 0) {
                 fn_80080520(lbl_1_bss_9BC.players[playerIndex],
-                               lbl_1_bss_AB0[playerIndex].computerStickX,
-                               lbl_1_bss_AB0[playerIndex].computerStickY,
+                               lbl_1_bss_AB0[playerIndex].computerStick[0],
+                               lbl_1_bss_AB0[playerIndex].computerStick[1],
                                lbl_1_bss_AB0[playerIndex].computerButtonsDown,
                                lbl_1_bss_AB0[playerIndex].computerButtonsHeld);
             }
@@ -752,7 +618,7 @@ void fn_1_2B48(void) {
             lbl_1_bss_AB0[playerIndex].target.x = actorPosition.x;
             lbl_1_bss_AB0[playerIndex].target.y = actorPosition.y;
             lbl_1_bss_AB0[playerIndex].target.z = actorPosition.z;
-            lbl_1_bss_AB0[playerIndex].previousCollisionMeshIndex =
+            lbl_1_bss_AB0[playerIndex].unk5C =
                 lbl_1_bss_AB0[playerIndex].collisionMeshIndex;
             lbl_1_bss_AB0[playerIndex].collisionMeshIndex = -1;
             if ((lbl_1_bss_AB0[playerIndex].previousLinkedPlayer !=
@@ -807,7 +673,7 @@ s32 fn_1_2E94(f32 *value, f32 duration, f32 start, f32 end)
         valueDistance = start - (-1.0f * *value);
     }
     start = valueDistance;
-    /* The nonpositive branches above add the operands when testing the endpoint. */
+    /* Compare the two computed thresholds to decide whether to snap to the endpoint. */
     if (increment <= start) {
         *value = end;
         frameCount = 0;
@@ -829,11 +695,10 @@ void fn_1_3028(MGTIMER *timer)
     MgTimerModeOnSet(timer, 1);
 }
 
-/* Queries timer completion but discards the result; the game-phase caller still treats this
- * wrapper as returning a status. */
-void fn_1_3054(MGTIMER *timer)
+/* Return timer completion to the game-phase caller. */
+BOOL fn_1_3054(MGTIMER *timer)
 {
-    MgTimerDoneCheck(timer);
+    return MgTimerDoneCheck(timer);
 }
 
 /* Timer transitions and sequence cleanup call this to hide and destroy the timer. */
@@ -867,8 +732,7 @@ void fn_1_30B4(s16 controller, s16 minimum, s16 maximum)
     for (player = minimum; player <= maximum; player++) {
         fn_80026CBC(lbl_1_bss_E88[player].modelId, 1.0f);
     }
-    fn_80026CBC(lbl_1_bss_E88[lbl_1_bss_9C8.selection].modelId,
-                      0.5f);
+    fn_80026CBC(lbl_1_bss_E88[lbl_1_bss_9C8.selection].modelId, 0.5f);
     fn_1_33C0(controller, lbl_1_bss_9C8.selection);
 
     if ((lbl_802C0008[controller] & PAD_BUTTON_X) && (lbl_802C0008[controller] & PAD_BUTTON_Y)) {
@@ -893,96 +757,93 @@ void fn_1_30B4(s16 controller, s16 minimum, s16 maximum)
 /* fn_1_30B4 calls this to move or rotate the selected participant or scene model. */
 void fn_1_33C0(s16 padIndex, s16 selectedModelIndex)
 {
+    /* Indices 0 and 1 use the participant transform records. */
     if (selectedModelIndex >= 0 && selectedModelIndex <= 1) {
         if ((lbl_802C0000[padIndex] & PAD_BUTTON_X) != 0) {
             if (lbl_802BFFFC[padIndex] > 10) {
-                PLAYER_STATE(selectedModelIndex).position.x += 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.x += 5.0f;
             }
             if (lbl_802BFFFC[padIndex] < -10) {
-                PLAYER_STATE(selectedModelIndex).position.x -= 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.x -= 5.0f;
             }
             if (lbl_802BFFF8[padIndex] > 10) {
-                PLAYER_STATE(selectedModelIndex).position.z -= 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.z -= 5.0f;
             }
             if (lbl_802BFFF8[padIndex] < -10) {
-                PLAYER_STATE(selectedModelIndex).position.z += 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.z += 5.0f;
             }
         } else if ((lbl_802C0008[padIndex] & PAD_BUTTON_X) != 0) {
             if (lbl_802BFFFC[padIndex] > 10) {
-                PLAYER_STATE(selectedModelIndex).position.x += 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.x += 5.0f;
             }
             if (lbl_802BFFFC[padIndex] < -10) {
-                PLAYER_STATE(selectedModelIndex).position.x -= 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.x -= 5.0f;
             }
             if (lbl_802BFFF8[padIndex] > 10) {
-                PLAYER_STATE(selectedModelIndex).position.z -= 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.z -= 5.0f;
             }
             if (lbl_802BFFF8[padIndex] < -10) {
-                PLAYER_STATE(selectedModelIndex).position.z += 5.0f;
+                lbl_1_bss_AB0[selectedModelIndex].position.z += 5.0f;
             }
         }
         if ((lbl_802C0008[padIndex] & PAD_BUTTON_A) != 0) {
-            PLAYER_STATE(selectedModelIndex).rotation.y += 90.0f;
+            lbl_1_bss_AB0[selectedModelIndex].rotation.y += 90.0f;
         }
         if ((lbl_802C0008[padIndex] & PAD_BUTTON_B) != 0) {
-            PLAYER_STATE(selectedModelIndex).rotation.y -= 90.0f;
+            lbl_1_bss_AB0[selectedModelIndex].rotation.y -= 90.0f;
         }
         print8(25, 156, 1.5f,
             "OBJ W%d X:%.1f Y:%.1f Z:%.1f ROTY:%.1f",
             selectedModelIndex,
-            PLAYER_STATE(selectedModelIndex).position.x,
-            PLAYER_STATE(selectedModelIndex).position.y,
-            PLAYER_STATE(selectedModelIndex).position.z,
-            PLAYER_STATE(selectedModelIndex).rotation.y);
+            lbl_1_bss_AB0[selectedModelIndex].position.x,
+            lbl_1_bss_AB0[selectedModelIndex].position.y,
+            lbl_1_bss_AB0[selectedModelIndex].position.z,
+            lbl_1_bss_AB0[selectedModelIndex].rotation.y);
         return;
     }
 
+    /* Holding X moves the selected scene model along X and Z. */
     if ((lbl_802C0000[padIndex] & PAD_BUTTON_X) != 0) {
         if (lbl_802BFFFC[padIndex] > 10) {
-            MODEL_STATE(selectedModelIndex).position.x += 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.x += 5.0f;
         }
         if (lbl_802BFFFC[padIndex] < -10) {
-            MODEL_STATE(selectedModelIndex).position.x -= 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.x -= 5.0f;
         }
         if (lbl_802BFFF8[padIndex] > 10) {
-            MODEL_STATE(selectedModelIndex).position.z -= 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.z -= 5.0f;
         }
         if (lbl_802BFFF8[padIndex] < -10) {
-            MODEL_STATE(selectedModelIndex).position.z += 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.z += 5.0f;
         }
     } else if ((lbl_802C0008[padIndex] & PAD_BUTTON_X) != 0) {
         if (lbl_802BFFFC[padIndex] > 10) {
-            MODEL_STATE(selectedModelIndex).position.x += 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.x += 5.0f;
         }
         if (lbl_802BFFFC[padIndex] < -10) {
-            MODEL_STATE(selectedModelIndex).position.x -= 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.x -= 5.0f;
         }
         if (lbl_802BFFF8[padIndex] > 10) {
-            MODEL_STATE(selectedModelIndex).position.z -= 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.z -= 5.0f;
         }
         if (lbl_802BFFF8[padIndex] < -10) {
-            MODEL_STATE(selectedModelIndex).position.z += 5.0f;
+            lbl_1_bss_E88[selectedModelIndex].position.z += 5.0f;
         }
     }
     if ((lbl_802C0008[padIndex] & PAD_BUTTON_A) != 0) {
-        MODEL_STATE(selectedModelIndex).rotation.y += 90.0f;
+        lbl_1_bss_E88[selectedModelIndex].rotation.y += 90.0f;
     }
     if ((lbl_802C0008[padIndex] & PAD_BUTTON_B) != 0) {
-        MODEL_STATE(selectedModelIndex).rotation.y -= 90.0f;
+        lbl_1_bss_E88[selectedModelIndex].rotation.y -= 90.0f;
     }
     print8(25, 156, 1.5f,
         "    OBJ W%d X:%.1f Y:%.1f Z:%.1f ROTY:%.1f",
         selectedModelIndex,
-        MODEL_STATE(selectedModelIndex).position.x, MODEL_STATE(selectedModelIndex).position.y,
-        MODEL_STATE(selectedModelIndex).position.z,
-         MODEL_STATE(selectedModelIndex).rotation.y);
+        lbl_1_bss_E88[selectedModelIndex].position.x,
+            lbl_1_bss_E88[selectedModelIndex].position.y,
+        lbl_1_bss_E88[selectedModelIndex].position.z,
+         lbl_1_bss_E88[selectedModelIndex].rotation.y);
 }
-
-#undef PLAYER_STATE
-
-#undef MODEL_STATE
-
-s32 frandmod(s32 maximum);
 
 extern int printf(const char *format, s32 modelId, s32 lightId);
 
@@ -1053,26 +914,13 @@ f32 fn_1_3D68(f32 value)
     return value;
 }
 
+
 /* Drifting particle parameters and animation state. */
-
-typedef struct M617ParticleVector {
-    f32 x; /* X component in world coordinates. */
-    f32 y; /* Y component in world coordinates. */
-    f32 z; /* Z component in world coordinates. */
-} M617ParticleVector;
-
-typedef struct M617ParticleColor {
-    u8 red; /* Red channel, 0..255. */
-    u8 green; /* Green channel, 0..255. */
-    u8 blue; /* Blue channel, 0..255. */
-    u8 alpha; /* Alpha channel, 0..255. */
-} M617ParticleColor;
-
 typedef struct M617ParticleParameters {
-    u32 value00;
-    M617ParticleVector playerMovementOffset; /* Accumulated player movement after emission. */
-    M617ParticleColor startColor; /* Initial RGBA channels, each 0..255. */
-    M617ParticleColor targetColor; /* RGBA endpoint for the per-frame color changes. */
+    u32 unk00; /* The game's code never reads this field. */
+    Vec playerMovementOffset; /* Accumulated player movement after emission. */
+    GXColor startColor; /* Initial RGBA channels, each 0..255. */
+    GXColor targetColor; /* Target RGB for per-frame color changes. Alpha uses alphaIncrement. */
     f32 velocityScale[3]; /* Per-frame X/Y/Z velocity multipliers. */
     f32 verticalAcceleration; /* Added to vertical velocity each frame. */
     f32 rotationIncrement; /* Added to billboard Z rotation each frame. */
@@ -1082,106 +930,12 @@ typedef struct M617ParticleParameters {
     f32 colorProgress; /* Fraction of the start-to-target RGB difference added each frame. */
 } M617ParticleParameters;
 
-typedef struct M617ParticleEntry {
-    s16 framesRemaining; /* Lifetime in update frames; zero marks an inactive entry. */
-    s16 playerIndex; /* Participant to follow, or -1 for independent motion. */
-    u32 renderAttributesAndCamera; /* Engine particle attribute halfword and camera-mask
-                                    * halfword. */
-    M617ParticleVector velocity; /* Position change per frame. */
-    M617ParticleVector emissionPosition; /* World position supplied at emission. */
-    M617ParticleVector velocityOffset; /* Accumulated velocity for particles following a player. */
-    f32 scale; /* Billboard scale; nonpositive values make an entry available for reuse. */
-    f32 scaleY; /* Engine vertical particle scale. */
-    f32 rotationZ; /* Billboard rotation in degrees. */
-    M617ParticleVector position; /* Current world position. */
-    M617ParticleColor color; /* Current RGBA channels. */
-} M617ParticleEntry;
-
-typedef struct M617ParticleContext {
-    u8 dataCountBytes[2]; /* Engine particle-data count storage, not read here. */
-    s16 lastEntryIndex; /* Index most recently initialized by the emitter. */
-    u8 positionAndSpawnCenterBytes[24]; /* Engine position and spawn-center vectors. */
-    M617ParticleParameters *parameters; /* One parameter record per particle entry. */
-    u8 animationAndAttributeBytes[16]; /* Engine animation state, attributes, and unaccessed
-                                        * bytes. */
-    s16 entryCount; /* Maximum number of entries in the effect. */
-    u8 beforeFrameCounter[2]; /* Unaccessed bytes before the engine frame counter. */
-    void *frameCounterStorage; /* Engine frame-counter storage; initialized to zero here. */
-    u8 historyAndAnimationBytes[16]; /* Engine counters, display-list size, and animation
-                                      * pointer. */
-    M617ParticleEntry *entries; /* Engine particle entries updated by the render hook. */
-} M617ParticleContext;
-
-typedef struct M617CopyColor {
-    u8 red; /* Red channel, 0..255. */
-    u8 green; /* Green channel, 0..255. */
-    u8 blue; /* Blue channel, 0..255. */
-    u8 alpha; /* Alpha channel, 0..255. */
-} M617CopyColor;
-
-#define M617_PARTICLE_VELOCITY_X 0
-#define M617_PARTICLE_VELOCITY_Y 1
-#define M617_PARTICLE_VELOCITY_Z 2
-#define M617_PARTICLE_VERTICAL_ACCELERATION 3
-#define M617_PARTICLE_ROTATION_INCREMENT 4
-#define M617_PARTICLE_SCALE_INCREMENT 5
-#define M617_PARTICLE_SCALE_MULTIPLIER 6
-#define M617_PARTICLE_ALPHA_INCREMENT 7
-#define M617_PARTICLE_COLOR_PROGRESS 8
-
-typedef struct M617CopyData {
-    u32 value00;
-    f32 playerOffsetX; /* Accumulated player movement on X; cleared at emission. */
-    f32 playerOffsetY; /* Accumulated player movement on Y; cleared at emission. */
-    f32 playerOffsetZ; /* Accumulated player movement on Z; cleared at emission. */
-    M617CopyColor color; /* Initial RGBA channels, each 0..255. */
-    u8 targetColor[4]; /* Target RGBA channels. */
-    f32 animationParameters[9]; /* Velocity multipliers, acceleration, rotation, scale, and
-                                 * color. */
-} M617CopyData;
-
-typedef struct M617Vector3 {
-    f32 x; /* X component in world coordinates. */
-    f32 y; /* Y component in world coordinates. */
-    f32 z; /* Z component in world coordinates. */
-} M617Vector3;
-
-typedef struct M617CopyParticleEntry {
-    s16 framesRemaining; /* Lifetime in update frames. */
-    s16 playerIndex; /* Participant to follow, or -1 for independent motion. */
-    u32 renderAttributesAndCamera; /* Engine particle attribute halfword and camera-mask
-                                    * halfword. */
-    M617Vector3 velocity; /* Position change per frame. */
-    M617Vector3 emissionPosition; /* World position supplied at emission. */
-    f32 offsetX; /* Accumulated X velocity; cleared at emission. */
-    f32 offsetY; /* Accumulated Y velocity; cleared at emission. */
-    f32 offsetZ; /* Accumulated Z velocity; cleared at emission. */
-    f32 scale; /* Billboard scale; nonpositive values make the entry available for reuse. */
-    u32 scaleYBits; /* Engine vertical-scale storage, untouched by emission. */
-    u32 rotationZBits; /* Engine Z-rotation storage, untouched by emission. */
-    M617Vector3 position; /* Current world position. */
-    M617CopyColor color; /* Current RGBA channels. */
-} M617CopyParticleEntry;
-
-typedef struct M617CopyParticleContext {
-    u8 dataCountBytes[2]; /* Engine particle-data count storage, not read here. */
-    s16 lastEntryIndex; /* Index most recently initialized by the emitter. */
-    u8 positionAndSpawnCenterBytes[24]; /* Engine position and spawn-center vectors. */
-    M617CopyData *entryData; /* Per-entry animation parameters. */
-    u8 animationAndAttributeBytes[16]; /* Engine animation state, attributes, and unaccessed
-                                        * bytes. */
-    s16 entryCount; /* Maximum number of entries in the effect. */
-    u8 beforeEntries[22]; /* Engine counters, display-list size, animation pointer, and unaccessed
-                           * bytes. */
-    M617CopyParticleEntry *entries; /* Engine particle entries available for emission. */
-} M617CopyParticleContext;
-
-void fn_1_484C(HU3D_MODEL *model, M617ParticleContext *context, Mtx matrix);
+void fn_1_484C(HU3D_MODEL *model, HU3D_PARTICLE *context, Mtx matrix);
 
 void fn_1_3DE0(void);
 
-s16 fn_1_463C(s16 modelIndex, s16 playerIndex, M617Vector3 emissionPosition, M617Vector3 velocity,
-              f32 initialScale, s16 framesRemaining, const M617CopyData *copyData);
+s16 fn_1_463C(s16 modelIndex, s16 playerIndex, Vec emissionPosition, Vec velocity,
+              f32 initialScale, s16 framesRemaining, const M617ParticleParameters *copyData);
 
 /* fn_1_93D0 calls this during scene setup to allocate the 500-entry drifting-particle effect. */
 void fn_1_3DE0(void)
@@ -1195,43 +949,41 @@ void fn_1_3DE0(void)
 
     for (effectIndex = 0; effectIndex < 1; effectIndex++) {
         ANIMDATA *animation;
-        M617ParticleContext *context;
-        M617ParticleEntry *entry;
+        HU3D_PARTICLE *context;
+        HU3D_PARTICLE_DATA *entry;
         s16 particleIndex;
 
-        lbl_1_bss_3708.maximumCounts[effectIndex] = maximumParticles[effectIndex];
-        animation = HuSprAnimRead(fn_80008DD0(
-            dataNumbers[effectIndex], 0x10000000, 2));
-        lbl_1_bss_3708.allocation[effectIndex] = HuMemDirectMallocNum(
-            HEAP_HEAP, maximumParticles[effectIndex] * 60, 0x10000000);
-        lbl_1_bss_3708.modelIds[effectIndex] = fn_8003216C(
-            animation, maximumParticles[effectIndex]);
+        lbl_1_bss_3708.unk02[effectIndex] = maximumParticles[effectIndex];
+        animation = HuSprAnimDataRead(dataNumbers[effectIndex]);
+        lbl_1_bss_3708.allocation[effectIndex] =
+            HuMemDirectMallocNum(HEAP_HEAP, maximumParticles[effectIndex] *
+                sizeof(M617ParticleParameters), 0x10000000);
+        lbl_1_bss_3708.modelIds[effectIndex] =
+            fn_8003216C( animation, maximumParticles[effectIndex]);
         fn_80026B8C(lbl_1_bss_3708.modelIds[effectIndex], layers[effectIndex]);
-        fn_800326D0(lbl_1_bss_3708.modelIds[effectIndex],
-                            (HU3D_PARTICLE_HOOK)fn_1_484C);
+        fn_800326D0(lbl_1_bss_3708.modelIds[effectIndex], fn_1_484C);
         fn_80026B64(lbl_1_bss_3708.modelIds[effectIndex], cameras[effectIndex]);
-        fn_8003269C(lbl_1_bss_3708.modelIds[effectIndex],
-                                 (u8)blendModes[effectIndex]);
+        fn_8003269C(lbl_1_bss_3708.modelIds[effectIndex], (u8)blendModes[effectIndex]);
 
         context = lbl_802C01C8[lbl_1_bss_3708.modelIds[effectIndex]].hookData;
-        context->lastEntryIndex = 0;
-        context->parameters = lbl_1_bss_3708.allocation[effectIndex];
-        context->frameCounterStorage = 0;
+        context->emitCnt = 0;
+        context->work = lbl_1_bss_3708.allocation[effectIndex];
+        context->count = 0;
         particleIndex = 0;
-        entry = context->entries;
-        for (; particleIndex < context->entryCount; particleIndex++, entry++) {
+        entry = context->data;
+        for (; particleIndex < context->maxCnt; particleIndex++, entry++) {
             entry->scale = 0.0f;
-            entry->framesRemaining = 0;
+            entry->time = 0;
         }
     }
 }
 
 /* The light update calls this to emit a drifting particle at a light's object position. */
-s16 fn_1_4070(const M617Vector3 *position)
+s16 fn_1_4070(const Vec *position)
 {
-    M617Vector3 offset;
-    M617Vector3 positionValue;
-    M617CopyData copyData;
+    Vec offset;
+    Vec positionValue;
+    M617ParticleParameters copyData;
     s32 randomLimit;
     s32 randomHeightLimit;
     f32 randomValue;
@@ -1241,28 +993,28 @@ s16 fn_1_4070(const M617Vector3 *position)
     f32 horizontalVelocity;
     f32 baseHeight;
     f32 verticalVelocity;
-    copyData.value00 = 0;
-    copyData.color.red = 255;
-    copyData.color.green = 255;
-    copyData.color.blue = 255;
-    copyData.color.alpha = 255;
-    copyData.targetColor[0] = 0;
-    copyData.targetColor[1] = 0;
-    copyData.targetColor[2] = 0;
-    copyData.targetColor[3] = 0;
-    copyData.animationParameters[M617_PARTICLE_ROTATION_INCREMENT] = 0.0f;
-    copyData.animationParameters[M617_PARTICLE_ALPHA_INCREMENT] = 0.01f;
-    copyData.animationParameters[M617_PARTICLE_COLOR_PROGRESS] = 0.01f;
-    copyData.animationParameters[M617_PARTICLE_VERTICAL_ACCELERATION] = 0.0f;
+    copyData.unk00 = 0;
+    copyData.startColor.r = 255;
+    copyData.startColor.g = 255;
+    copyData.startColor.b = 255;
+    copyData.startColor.a = 255;
+    copyData.targetColor.r = 0;
+    copyData.targetColor.g = 0;
+    copyData.targetColor.b = 0;
+    copyData.targetColor.a = 0;
+    copyData.rotationIncrement = 0.0f;
+    copyData.alphaIncrement = 0.01f;
+    copyData.colorProgress = 0.01f;
+    copyData.verticalAcceleration = 0.0f;
     positionValue.x = position->x;
     positionValue.y = 10.0f + position->y;
     positionValue.z = position->z;
     initialScale = 28.0f;
-    copyData.animationParameters[M617_PARTICLE_SCALE_INCREMENT] = (-0.1f);
-    copyData.animationParameters[M617_PARTICLE_SCALE_MULTIPLIER] = 1.2f;
-    copyData.animationParameters[M617_PARTICLE_VELOCITY_X] = 1.05f;
-    copyData.animationParameters[M617_PARTICLE_VELOCITY_Y] = 0.95f;
-    copyData.animationParameters[M617_PARTICLE_VELOCITY_Z] = 1.0f;
+    copyData.scaleIncrement = -0.1f;
+    copyData.scaleIncrementMultiplier = 1.2f;
+    copyData.velocityScale[0] = 1.05f;
+    copyData.velocityScale[1] = 0.95f;
+    copyData.velocityScale[2] = 1.0f;
     randomValue = 3.0f;
     randomLimit = (s32) randomValue;
     randomLimit = frandmod(randomLimit);
@@ -1283,11 +1035,11 @@ s16 fn_1_4070(const M617Vector3 *position)
 }
 
 /* The light update calls this to emit a drifting particle associated with a player. */
-s16 fn_1_435C(s16 playerIndex, const M617Vector3 *position)
+s16 fn_1_435C(s16 playerIndex, const Vec *position)
 {
-    M617CopyData copyData;
-    M617Vector3 offset;
-    M617Vector3 positionValue;
+    M617ParticleParameters copyData;
+    Vec offset;
+    Vec positionValue;
     f32 randomLimitX;
     f32 randomLimitY;
     f32 initialScale;
@@ -1298,28 +1050,28 @@ s16 fn_1_435C(s16 playerIndex, const M617Vector3 *position)
     s32 randomValueX;
     s32 randomValueY;
 
-    copyData.value00 = 0;
-    copyData.color.red = 255;
-    copyData.color.green = 255;
-    copyData.color.blue = 255;
-    copyData.color.alpha = 255;
-    copyData.targetColor[0] = 0;
-    copyData.targetColor[1] = 0;
-    copyData.targetColor[2] = 0;
-    copyData.targetColor[3] = 0;
-    copyData.animationParameters[M617_PARTICLE_ROTATION_INCREMENT] = 0.0f;
-    copyData.animationParameters[M617_PARTICLE_ALPHA_INCREMENT] = 0.01f;
-    copyData.animationParameters[M617_PARTICLE_COLOR_PROGRESS] = 0.01f;
-    copyData.animationParameters[M617_PARTICLE_VERTICAL_ACCELERATION] = 0.0f;
+    copyData.unk00 = 0;
+    copyData.startColor.r = 255;
+    copyData.startColor.g = 255;
+    copyData.startColor.b = 255;
+    copyData.startColor.a = 255;
+    copyData.targetColor.r = 0;
+    copyData.targetColor.g = 0;
+    copyData.targetColor.b = 0;
+    copyData.targetColor.a = 0;
+    copyData.rotationIncrement = 0.0f;
+    copyData.alphaIncrement = 0.01f;
+    copyData.colorProgress = 0.01f;
+    copyData.verticalAcceleration = 0.0f;
     positionValue.x = position->x;
     positionValue.y = position->y;
     positionValue.z = position->z;
     initialScale = 30.0f;
-    copyData.animationParameters[M617_PARTICLE_SCALE_INCREMENT] = (-0.1f);
-    copyData.animationParameters[M617_PARTICLE_SCALE_MULTIPLIER] = 1.2f;
-    copyData.animationParameters[M617_PARTICLE_VELOCITY_X] = 1.05f;
-    copyData.animationParameters[M617_PARTICLE_VELOCITY_Y] = 0.95f;
-    copyData.animationParameters[M617_PARTICLE_VELOCITY_Z] = 1.0f;
+    copyData.scaleIncrement = -0.1f;
+    copyData.scaleIncrementMultiplier = 1.2f;
+    copyData.velocityScale[0] = 1.05f;
+    copyData.velocityScale[1] = 0.95f;
+    copyData.velocityScale[2] = 1.0f;
     randomLimitX = 3.0f;
     randomValueX = (s32)randomLimitX;
     randomValueX = frandmod(randomValueX);
@@ -1337,45 +1089,46 @@ s16 fn_1_435C(s16 playerIndex, const M617Vector3 *position)
     offset.y = 5.0f + randomCenteredY;
     offset.z = 0.0f;
 
-    return fn_1_463C(0, playerIndex, positionValue, offset, initialScale, 20,
-                     &copyData);
+    return fn_1_463C(0, playerIndex, positionValue, offset, initialScale, 20, &copyData);
 }
 
 /* The two emitters call this to initialize a free entry; -1 means the effect is full. */
-s16 fn_1_463C(s16 modelIndex, s16 playerIndex, M617Vector3 emissionPosition,
-              M617Vector3 velocity, f32 initialScale, s16 framesRemaining,
-              const M617CopyData *copyData)
+s16 fn_1_463C(s16 modelIndex, s16 playerIndex, Vec emissionPosition,
+              Vec velocity, f32 initialScale, s16 framesRemaining,
+              const M617ParticleParameters *copyData)
 {
     HU3D_MODEL *model;
     s16 result;
-    M617CopyParticleContext *context;
-    M617CopyData *entryData;
+    HU3D_PARTICLE *context;
+    M617ParticleParameters *entryData;
     s16 entryIndex;
-    M617CopyParticleEntry *entry;
+    HU3D_PARTICLE_DATA *entry;
 
     result = -1;
     model = &lbl_802C01C8[lbl_1_bss_3708.modelIds[modelIndex]];
     context = model->hookData;
-    entryData = context->entryData;
+    entryData = context->work;
     entryIndex = 0;
-    entry = context->entries;
+    entry = context->data;
 
-    while (entryIndex < context->entryCount) {
+    while (entryIndex < context->maxCnt) {
         if (entry->scale <= 0.0f) {
             entryData[entryIndex] = *copyData;
-            entryData[entryIndex].playerOffsetZ = entryData[entryIndex].playerOffsetY =
-                entryData[entryIndex].playerOffsetX = 0.0f;
+            entryData[entryIndex].playerMovementOffset.z =
+                entryData[entryIndex].playerMovementOffset.y =
+                entryData[entryIndex].playerMovementOffset.x = 0.0f;
 
-            entry->position = emissionPosition;
-            entry->velocity = velocity;
-            entry->emissionPosition = emissionPosition;
-            entry->offsetZ = entry->offsetY = entry->offsetX = 0.0f;
+            entry->pos = emissionPosition;
+            entry->vel = velocity;
+            /* Reuse accel to store the emission position. */
+            entry->accel = emissionPosition;
+            entry->effectDirection.z = entry->effectDirection.y = entry->effectDirection.x = 0.0f;
 
-            entry->color = entryData[entryIndex].color;
+            entry->color = entryData[entryIndex].startColor;
             entry->scale = initialScale;
-            entry->framesRemaining = framesRemaining;
-            entry->playerIndex = playerIndex;
-            context->lastEntryIndex = entryIndex;
+            entry->time = framesRemaining;
+            entry->parManId = playerIndex;
+            context->emitCnt = entryIndex;
             result = entryIndex;
             break;
         }
@@ -1386,117 +1139,112 @@ s16 fn_1_463C(s16 modelIndex, s16 playerIndex, M617Vector3 emissionPosition,
 }
 
 /* The particle render hook advances active entries, follows player movement, and expires them. */
-void fn_1_484C(HU3D_MODEL *model, M617ParticleContext *context, Mtx matrix)
+void fn_1_484C(HU3D_MODEL *model, HU3D_PARTICLE *context, Mtx matrix)
 {
     M617ParticleParameters *parameters;
-    M617ParticleEntry *entry;
+    HU3D_PARTICLE_DATA *entry;
     s16 entryIndex;
 
-    parameters = context->parameters;
-    entry = context->entries;
+    parameters = context->work;
+    entry = context->data;
     entryIndex = 0;
-    while (entryIndex < context->entryCount) {
-        if (entry->framesRemaining != 0) {
-            entry->velocity.x *= parameters[entryIndex].velocityScale[0];
-            entry->velocity.y *= parameters[entryIndex].velocityScale[1];
-            entry->velocity.z *= parameters[entryIndex].velocityScale[2];
+    while (entryIndex < context->maxCnt) {
+        if (entry->time != 0) {
+            entry->vel.x *= parameters[entryIndex].velocityScale[0];
+            entry->vel.y *= parameters[entryIndex].velocityScale[1];
+            entry->vel.z *= parameters[entryIndex].velocityScale[2];
 
-            if (entry->playerIndex < 0) {
-                PSVECAdd((Vec *)&entry->velocity, (Vec *)&entry->position,
-                         (Vec *)&entry->position);
+            if (entry->parManId < 0) {
+                PSVECAdd(&entry->vel, &entry->pos, &entry->pos);
             } else {
-                M617ParticleVector playerMovement;
+                Vec playerMovement;
 
-                if (entry->framesRemaining != 20) {
-                    f32 frameFraction = (f32)entry->framesRemaining / 20.0f;
+                if (entry->time != 20) {
+                    f32 frameFraction = (f32)entry->time / 20.0f;
 
                     playerMovement.x = frameFraction *
-                        lbl_1_bss_AB0[entry->playerIndex].movement.x;
+                        lbl_1_bss_AB0[entry->parManId].movement.x;
                     playerMovement.y = frameFraction *
-                        lbl_1_bss_AB0[entry->playerIndex].movement.y;
+                        lbl_1_bss_AB0[entry->parManId].movement.y;
                     playerMovement.z = frameFraction *
-                        lbl_1_bss_AB0[entry->playerIndex].movement.z;
+                        lbl_1_bss_AB0[entry->parManId].movement.z;
                 } else {
-                    /* The first frame ignores player movement; later frames use remaining life. */
+                    /* A remaining lifetime of 20 suppresses the player-movement contribution. */
                     playerMovement.x = playerMovement.y =
                         playerMovement.z = 0.0f;
                 }
-                PSVECAdd((Vec *)&parameters[entryIndex].playerMovementOffset,
-                         (Vec *)&playerMovement,
-                         (Vec *)&parameters[entryIndex].playerMovementOffset);
-                PSVECAdd((Vec *)&parameters[entryIndex].playerMovementOffset,
-                         (Vec *)&entry->emissionPosition, (Vec *)&entry->position);
-                PSVECAdd((Vec *)&entry->velocityOffset,
-                         (Vec *)&entry->velocity,
-                         (Vec *)&entry->velocityOffset);
-                PSVECAdd((Vec *)&entry->velocityOffset,
-                         (Vec *)&entry->position, (Vec *)&entry->position);
+                PSVECAdd(&parameters[entryIndex].playerMovementOffset,
+                         &playerMovement,
+                         &parameters[entryIndex].playerMovementOffset);
+                PSVECAdd(&parameters[entryIndex].playerMovementOffset,
+                         &entry->accel, &entry->pos);
+                PSVECAdd(&entry->effectDirection, &entry->vel, &entry->effectDirection);
+                PSVECAdd(&entry->effectDirection, &entry->pos, &entry->pos);
             }
 
-            entry->velocity.y += parameters[entryIndex].verticalAcceleration;
-            entry->rotationZ += parameters[entryIndex].rotationIncrement;
+            entry->vel.y += parameters[entryIndex].verticalAcceleration;
+            entry->zRot += parameters[entryIndex].rotationIncrement;
 
             {
                 s16 channelValue;
 
-                channelValue = (s16)((f32)entry->color.red +
+                channelValue = (s16)((f32)entry->color.r +
                     parameters[entryIndex].colorProgress *
-                    (f32)(parameters[entryIndex].targetColor.red -
-                          parameters[entryIndex].startColor.red));
+                    (f32)(parameters[entryIndex].targetColor.r -
+                          parameters[entryIndex].startColor.r));
                 if (channelValue < 0) {
                     channelValue = 0;
                 } else if (channelValue > 255) {
                     channelValue = 255;
                 }
-                entry->color.red = (u8)channelValue;
+                entry->color.r = (u8)channelValue;
 
-                channelValue = (s16)((f32)entry->color.green +
+                channelValue = (s16)((f32)entry->color.g +
                     parameters[entryIndex].colorProgress *
-                    (f32)(parameters[entryIndex].targetColor.green -
-                          parameters[entryIndex].startColor.green));
+                    (f32)(parameters[entryIndex].targetColor.g -
+                          parameters[entryIndex].startColor.g));
                 if (channelValue < 0) {
                     channelValue = 0;
                 } else if (channelValue > 255) {
                     channelValue = 255;
                 }
-                entry->color.green = (u8)channelValue;
+                entry->color.g = (u8)channelValue;
 
-                channelValue = (s16)((f32)entry->color.blue +
+                channelValue = (s16)((f32)entry->color.b +
                     parameters[entryIndex].colorProgress *
-                    (f32)(parameters[entryIndex].targetColor.blue -
-                          parameters[entryIndex].startColor.blue));
+                    (f32)(parameters[entryIndex].targetColor.b -
+                          parameters[entryIndex].startColor.b));
                 if (channelValue < 0) {
                     channelValue = 0;
                 } else if (channelValue > 255) {
                     channelValue = 255;
                 }
-                entry->color.blue = (u8)channelValue;
+                entry->color.b = (u8)channelValue;
 
-                channelValue = (s16)((f32)entry->color.alpha +
+                channelValue = (s16)((f32)entry->color.a +
                     parameters[entryIndex].alphaIncrement);
-                /* Negative alpha frees the particle scale, then still narrows into the byte. */
+                /* A negative alpha clears the scale before alpha is cast to u8. */
                 if (channelValue < 0) {
                     entry->scale = 0.0f;
                 }
-                entry->color.alpha = (u8)channelValue;
+                entry->color.a = (u8)channelValue;
             }
 
             parameters[entryIndex].scaleIncrement *=
                 parameters[entryIndex].scaleIncrementMultiplier;
             entry->scale += parameters[entryIndex].scaleIncrement;
-            if (--entry->framesRemaining < 1) {
+            if (--entry->time < 1) {
                 entry->scale = 0.0f;
-                entry->framesRemaining = 0;
+                entry->time = 0;
             }
             /* Each active entry flushes the entire particle array. */
-            DCStoreRangeNoSync(context->entries, context->entryCount * 72);
+            DCStoreRangeNoSync(context->data, context->maxCnt * sizeof(*context->data));
         }
         entryIndex++;
         entry++;
     }
 }
 
-/* Position-dependent character voice settings. */
 
 /* Player updates set voice pan and volume from position; voiceMode selects fixed components. */
 void fn_1_4DB0(M617PlayerStateData *work, s16 voiceMode)
@@ -1719,16 +1467,8 @@ void fn_1_54B8(s16 slot, s16 mode, Vec *position)
     }
 }
 
-void fn_1_58DC(s16 slotIndex, s16 pan);
-
-void fn_1_596C(s16 slotIndex, s16 pitch);
-
-void fn_1_59FC(s16 slotIndex, s16 volume);
-
 /* Sound effects selected for the participant audio slots. */
-#define M617_SOUND_SLOT_FIRST 1746
-#define M617_SOUND_SLOT_SECOND 1747
-#define M617_SOUND_SLOT_THIRD 1748
-s16 lbl_1_data_F6[4] = { M617_SOUND_SLOT_FIRST, M617_SOUND_SLOT_SECOND, M617_SOUND_SLOT_THIRD, 0 };
+s16 lbl_1_data_F6[4] = { MSM_SE_MG617_SCENE_TRANSITION, MSM_SE_MG617_PLAYER_ACTION_PRESS,
+                         MSM_SE_MG617_LIGHT_CLAIM, 0 };
 
 u8 lbl_1_data_FE[2] = { 0, 0 };

@@ -1,5 +1,5 @@
 /* Result-scene setup and sequence updates for Light Up My Night. */
-#include "dolphin/math.h"
+#include <math.h>
 
 #include "dolphin/gx.h"
 
@@ -47,15 +47,7 @@
 
 #include "game/hu3d.h"
 
-s32 fn_1_24D8();
-
 s32 fn_1_D6F8(void);
-
-s32 fn_1_4DB0(void *, s32);
-
-s32 fn_1_730();
-
-extern void fn_1_2B48();
 
 /* Entering the result sequence fades the music, blocks participant input, and synchronizes
  * their models and animations. */
@@ -120,47 +112,13 @@ s32 fn_1_D474(void) {
     return 0;
 }
 
-void fn_1_1817C(M617PlayerStateData *work);
-
-typedef struct M617E1ConstantBlock {
+typedef struct {
     Vec directions[8];
 } M617E1ConstantBlock;
 
-extern f64 fn_1_18688(f64 value);
-
-extern const M617E1ConstantBlock lbl_1_rodata_CE8;
-
-extern const u16 lbl_1_rodata_D48[4];
-
-extern const u16 lbl_1_rodata_D50[4];
-
-extern const u16 lbl_1_rodata_D58[4];
-
-extern const u16 lbl_1_rodata_D60[4];
-
-extern const u16 lbl_1_rodata_D68[4];
-
-extern const s32 lbl_1_rodata_D70[12];
-
-extern const s16 lbl_1_rodata_DA0[8];
-
-s32 fn_1_24D8(void);
-
-s16 fn_1_5C1C(void);
-
-typedef struct M617D6HeaderConstants {
+typedef struct {
     s32 word[9];
 } M617D6HeaderConstants;
-
-extern const M617D6HeaderConstants lbl_1_rodata_C88;
-
-extern f32 lbl_802C028C;
-
-extern void fn_1_307C(MGTIMER *timer);
-
-extern s32 fn_1_3CD0(s16 modelId, s16 lightId);
-
-extern s16 fn_1_3BB8(s16 modelId, s16 lightId);
 
 /* Refreshes participant and scene-model transforms, participant animations, and shadow
  * placement. */
@@ -267,21 +225,20 @@ s32 fn_1_D6F8(void)
             lbl_1_bss_0[21].tpLevel = 0.0f;
             MgScoreBoxTPLvlSet(lbl_1_bss_0[20].spriteId, lbl_1_bss_0[20].tpLevel);
             MgScoreBoxTPLvlSet(lbl_1_bss_0[21].spriteId, lbl_1_bss_0[21].tpLevel);
-            lbl_1_bss_370[0].scaleY =
-                lbl_1_bss_370[0].scaleX = 0.0f;
-            lbl_1_bss_370[1].scaleY =
-                lbl_1_bss_370[1].scaleX = 0.0f;
-            HuSprGrpScaleSet(lbl_1_bss_370[0].groupId, lbl_1_bss_370[0].scaleX,
-                             lbl_1_bss_370[0].scaleY);
-            HuSprGrpScaleSet(lbl_1_bss_370[1].groupId, lbl_1_bss_370[1].scaleX,
-                             lbl_1_bss_370[1].scaleY);
+            lbl_1_bss_370[0].scale.y =
+                lbl_1_bss_370[0].scale.x = 0.0f;
+            lbl_1_bss_370[1].scale.y =
+                lbl_1_bss_370[1].scale.x = 0.0f;
+            HuSprGrpScaleSet(lbl_1_bss_370[0].groupId, lbl_1_bss_370[0].scale.x,
+                             lbl_1_bss_370[0].scale.y);
+            HuSprGrpScaleSet(lbl_1_bss_370[1].groupId, lbl_1_bss_370[1].scale.x,
+                             lbl_1_bss_370[1].scale.y);
             for (modelIndex = 0; modelIndex <= 14; modelIndex++) {
                 light = &lbl_1_bss_458[modelIndex];
                 /* The light-removal sweep also visits slot 96, beyond the 96-entry model array. */
                 for (lightIndex = 0; lightIndex <= 96; lightIndex++) {
                     if (light->modelId != lbl_1_bss_E88[lightIndex].modelId) {
-                        fn_1_3CD0(lbl_1_bss_E88[lightIndex].modelId,
-                                  light->localLightPoolId);
+                        fn_1_3CD0(lbl_1_bss_E88[lightIndex].modelId, light->localLightPoolId);
                     }
                 }
             }
@@ -303,8 +260,7 @@ s32 fn_1_D6F8(void)
             fn_1_3BB8(lbl_1_bss_E88[5].modelId, light->localLightPoolId);
             fn_1_3BB8(lbl_1_bss_E88[8].modelId, light->localLightPoolId);
             fn_1_3BB8(lbl_1_bss_E88[9].modelId, light->localLightPoolId);
-            fn_80028F14(light->modelId, light->lightId,
-                              (Point3d *)&light->position.x, &light->direction);
+            fn_80028F14(light->modelId, light->lightId, &light->position, &light->direction);
             fn_80028C1C(light->modelId, light->lightId,
                                light->distance, light->intensity, GX_DA_STEEP);
             fn_80028E48(light->modelId, light->lightId,

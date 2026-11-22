@@ -27,18 +27,8 @@ void fn_1_854(s16 layerNo);
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
-extern void fn_1_10CC(OMOBJ *object);
 
 #include "game/hu3d.h"
-void fn_1_1214(
-    HU3D_CAMERA *camera,
-    HuVecF *cameraPosition,
-    HuVecF *cameraTarget,
-    const HuVecF *pathPosition,
-    const HuVecF *pathTarget,
-    f32 duration,
-    f32 frame);
-extern f32 InterpolateBMLine(f32 *samples, f32 *sampleTimes, f32 frame);
 
 // Sets up the movie quad and its sprite group for a selected game and time slot.
 HU3D_MODELID fn_1_0(s16 modeNo, s16 timeNo, Point3d *position) {
@@ -55,8 +45,7 @@ HU3D_MODELID fn_1_0(s16 modeNo, s16 timeNo, Point3d *position) {
         1.0f,
         1.0f,
         1.0f);
-    lbl_1_bss_9C = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9d0000, 42), 0x10000000, 2));
+    lbl_1_bss_9C = HuSprAnimDataRead(DATANUM(0x9d0000, 42));
     lbl_1_bss_A2 = HuSprGrpCreate(1);
 
     if (modeNo != -1) {
@@ -161,7 +150,7 @@ void fn_1_5E0(s16 modeNo, s16 timeNo) {
     HuSprAnimKill(previousAnim);
 }
 
-// Recreates the movie sprite after the movie playback process has stopped.
+// Waits for the movie to close, then recreates the sprite if game data is set.
 void fn_1_6F4(void) {
     HUSPRID movieSprite;
 
@@ -208,10 +197,12 @@ void fn_1_898(HU3D_MODEL *model, Mtx *matrix)
     GXSetCullMode(GX_CULL_NONE);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
-    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+                  GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+                  GX_DF_CLAMP, GX_AF_SPOT);
     GXSetNumChans(0);
-    GXLoadPosMtxImm(*matrix, 0);
+    GXLoadPosMtxImm(*matrix, GX_PNMTX0);
     if (HuTHPStartCheck() != 0) {
         fn_800360D8(lbl_1_bss_94, 284, 256, 4, GX_CLAMP, GX_CLAMP, GX_TRUE,
                     GX_TEXMAP0);

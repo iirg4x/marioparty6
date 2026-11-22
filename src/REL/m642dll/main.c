@@ -26,22 +26,8 @@
 #include "datadir_enum.h"
 #include "dolphin/types.h"
 #include "game/hu3d.h"
+#include "humath.h"
 
-#define M642_EFFECT_INACTIVE_MASK 0xFFFFFFFE
-#define M642_SCENE_PLAY_DONE 1
-#define M642_SCENE_RESULTS_DONE 2
-#define MSM_SE_CASHAPULT_LAUNCHER_LEFT 1942
-#define MSM_SE_CASHAPULT_LAUNCHER_RIGHT 1943
-#define MSM_SE_CASHAPULT_JUMP_LEFT 1944
-#define MSM_SE_CASHAPULT_JUMP_RIGHT 1945
-#define MSM_SE_CASHAPULT_FLIGHT_LEFT 1946
-#define MSM_SE_CASHAPULT_FLIGHT_RIGHT 1947
-#define MSM_SE_CASHAPULT_LAND_LEFT 1948
-#define MSM_SE_CASHAPULT_LAND_RIGHT 1949
-#define MSM_SE_CASHAPULT_INTRO 1950
-
-void fn_1_318(void);
-void fn_1_31C(void);
 M642SceneWork *lbl_1_bss_2C; /* Scene objects, score displays and round progression. */
 M642PlayerWork *lbl_1_bss_1C[4]; /* Character movement and CPU steering for each player. */
 M642GridWork *lbl_1_bss_18; /* Coin grids and the two launcher slots on each team. */
@@ -52,7 +38,7 @@ void *lbl_1_bss_8;
 /* Converts a direction in the XZ plane to its heading in degrees. */
 f32 fn_1_320(HuVecF *direction)
 {
-    return (180.0 * atan2(direction->x, direction->z)) / 3.141592653589793;
+    return (180.0 * atan2(direction->x, direction->z)) / M_PI;
 }
 
 /* Smoothly turns player movement toward a heading along the shorter route. */
@@ -118,13 +104,14 @@ s32 fn_1_594(M642PlayerWork *playerWork)
 /* Creates the Cashapult scene object and stores its scene work pointer. */
 void fn_1_5CC(void)
 {
-    lbl_1_bss_2C = fn_1_A0(100, 372, fn_1_31CC);
+    lbl_1_bss_2C = fn_1_A0(100, sizeof(M642SceneWork), fn_1_31CC);
 }
 
-/* Checks whether play has finished when scene work exists; the result is discarded. */
+/* Checks whether the scene state is 1 when scene work exists. */
 void fn_1_608(void)
 {
-    if (lbl_1_bss_2C != NULL && lbl_1_bss_2C->state == M642_SCENE_PLAY_DONE) {
+    if (lbl_1_bss_2C != NULL && lbl_1_bss_2C->state == 1) {
+        /* no code in the release build */
     }
 }
 
@@ -134,7 +121,7 @@ s32 fn_1_64C(void)
     if (lbl_1_bss_2C == NULL) {
         return 0;
     }
-    return lbl_1_bss_2C->state == M642_SCENE_PLAY_DONE;
+    return lbl_1_bss_2C->state == 1;
 }
 
 /* The sequence polls this during results to wait until each player has received the team coins. */
@@ -143,14 +130,15 @@ s32 fn_1_698(void)
     if (lbl_1_bss_2C == NULL) {
         return 0;
     }
-    return lbl_1_bss_2C->state == M642_SCENE_RESULTS_DONE;
+    /* m642 scene results done. */
+    return lbl_1_bss_2C->state == 2;
 }
 
-typedef struct M642ScoreSpriteConfig_s {
+typedef struct  {
     s32 assetIndex; /* Index into the scene's loaded sprite animations. */
     Vec position; /* Screen-space offset from the score group. */
 } M642ScoreSpriteConfig;
-typedef struct M642ScoreConfig_s {
+typedef struct  {
     Vec position; /* Screen-space origin for this team's score. */
     Vec digitOffset; /* Offset from the origin to the numeric score. */
     u8 red, green, blue; /* Score-box color channels. */
@@ -208,26 +196,17 @@ Vec lbl_1_data_350 = {0.0f, 0.0f, 2000.0f};
 Vec lbl_1_data_35C = {0.0f, 0.0f, 1500.0f};
 Vec lbl_1_data_368 = {0.0f, 1.0f, 0.0f};
 
-typedef struct M642TrackKeyView {
-    s32 frame; /* Animation frame; a negative frame ends the key list. */
-    f32 values[3]; /* Channel values sampled from this key. */
-} M642TrackKeyView;
-
-typedef struct M642TrackView {
-    s16 kind, count, end; /* Interpolation mode, channel count and final active frame. */
-    M642TrackKeyView *keys; /* Ordered keys followed by a negative-frame terminator. */
-} M642TrackView;
-
-typedef struct M642EffectRecord_s {
+typedef struct M642EffectRecord_s M642EffectRecord;
+struct M642EffectRecord_s {
     u16 flags; /* Bit zero marks an effect that receives updates. */
     s16 frame, type, camera; /* Animation age, pool category and rendering camera mask. */
     HU3D_MODELID model; /* Reusable model shown while the effect is active. */
     s16 phase; /* Reset on activation; not advanced by this effect callback. */
-    u8 unreadData[24]; /* Record bytes not accessed by the effect callbacks. */
+    u8 unk0C[24]; /* No code names this field. */
     void (*update)(struct M642EffectRecord_s *); /* Called once each active effect tick. */
     M642TrackView **tracks; /* Three track slots; this effect samples scale from slot two. */
     Vec position; /* World-space origin copied when the effect starts. */
-} M642EffectRecord;
+};
 
 M642TrackKeyView lbl_1_data_374[4] = {
     {0, {0.3f, 0.3f, 0.3f}},
@@ -238,13 +217,10 @@ M642TrackKeyView lbl_1_data_374[4] = {
 M642TrackView lbl_1_data_3B4 = {0, 3, 30, lbl_1_data_374};
 M642TrackView *lbl_1_data_3C0[3] = {NULL, NULL, &lbl_1_data_3B4};
 
-extern void fn_1_31C(void);
-extern void fn_1_318(void);
-
 MGPLAYER_MODE_FUNC lbl_1_data_3CC[18] = {
     NULL,
-    (MGPLAYER_MODE_FUNC)fn_1_31C,
-    (MGPLAYER_MODE_FUNC)fn_1_318
+    fn_1_31C,
+    fn_1_318
 };
 extern void fn_1_914(s32 player, s32 visible);
 
@@ -270,8 +246,7 @@ void fn_1_6E4(M642ScoreConfig *config)
     HuSprGrpPosSet(spriteGroup, config->position.x, config->position.y);
     for (spriteIndex = 0; spriteIndex < config->spriteCount; spriteIndex++) {
         assetIndex = config->sprites[spriteIndex].assetIndex;
-        sprite = HuSprCreate(lbl_1_bss_2C->spriteAssets[assetIndex].animation,
-                             10, 0);
+        sprite = HuSprCreate(lbl_1_bss_2C->spriteAssets[assetIndex].animation, 10, 0);
         HuSprGrpMemberSet(spriteGroup, spriteIndex, sprite);
         HuSprAttrSet(spriteGroup, spriteIndex, HUSPR_ATTR_DISPOFF);
         HuSprPosSet(spriteGroup, spriteIndex, config->sprites[spriteIndex].position.x,
@@ -381,9 +356,6 @@ void fn_1_D2C(void)
     lbl_1_bss_18->active = (lbl_1_bss_18->active + 1) % 2;
 }
 
-typedef struct M667Pool M667Pool;
-extern void *fn_1_86B0(M667Pool *pool);
-
 /* Allocates and initializes one cell in a team's grid pool during grid setup. */
 M642GridCell *fn_1_D6C(s32 team, M642GridCell *initial)
 {
@@ -399,15 +371,11 @@ M642GridCell *fn_1_D6C(s32 team, M642GridCell *initial)
     return cell;
 }
 
-typedef struct M667Pool M667Pool;
-extern void *fn_1_8794(void *pool);
-extern void *fn_1_87D0(void *pool, void *item);
-
 /* Called by the grid update to test a team's player against its collectible cells. */
 void fn_1_E48(s32 team, void *playerData)
 {
     M642GridWork *grid;
-    M667Pool *pool;
+    M642Pool *pool;
     M642GridCell *cell;
     M642PlayerWork *playerWork;
     MGACTOR *actor;
@@ -473,10 +441,9 @@ void fn_1_10BC(M642GridCell *cell)
     cell->rotation.y += 5.0f;
 }
 
-extern s32 fn_1_8F9C(Vec *position, s32 camera, float pan, float volume, s32 sound);
 extern void fn_1_9FC(s32 player, s32 value);
 
-/* Collects a cell during the grid update, plays its glow and sound, and adds one coin. */
+/* Marks a coin cell collected, triggers its effect and sound, hides it, and adds one coin. */
 void fn_1_1108(M642PlayerWork *player, M642GridCell *cell)
 {
     s32 camera;
@@ -485,7 +452,7 @@ void fn_1_1108(M642PlayerWork *player, M642GridCell *cell)
     cell->flags |= 4;
     camera = cell->owner == 0 ? 1 : 2;
     fn_8005D5A0(camera, &cell->position);
-    sound = 7;
+    sound = MSM_SE_CMN_COIN_GET;
     pan = 0.0f;
     volume = 640.0f;
     fn_1_8F9C(&cell->position, camera, pan, volume, sound);
@@ -500,18 +467,16 @@ extern M642GridCell *fn_1_D6C(s32 player, M642GridCell *initial);
 
 extern s32 fn_1_1ABC(s32 player, s32 row, s32 column);
 
-typedef struct M642Candidate_s {
+typedef struct  {
     M642GridCell *cell; /* Uncollected coin considered as a CPU target. */
     float distance; /* Horizontal world-space distance from the player. */
     s16 row; /* Grid row saved when this candidate is selected. */
     s16 column; /* Grid column saved when this candidate is selected. */
 } M642Candidate;
 
-extern void fn_1_8870(M642TrackView **tracks, s32 frame, s32 trackIndex, f32 *values);
-extern s32 fn_1_8814(M642TrackView **tracks, s32 frame);
 extern void fn_1_3190(M642EffectRecord *data);
 
-typedef struct M642EmptyCandidate_s {
+typedef struct  {
     float distance; /* World-space distance from the player to this grid position. */
     s32 priority; /* Nearby uncollected-coin count; lower counts sort first. */
     float x; /* World-space horizontal coordinate of the empty grid position. */
@@ -541,7 +506,7 @@ void fn_1_11E4(s32 team, s32 pattern)
                 initialCell.collect = fn_1_1108;
                 initialCell.update = fn_1_10BC;
                 initialCell.owner = team;
-                initialCell.height = 40.0f;
+                initialCell.unk0C = 40.0f;
                 initialCell.radius = 40.0f;
                 lbl_1_bss_18->grid[team][row][column] = fn_1_D6C(team, &initialCell);
                 columnWidth = 100.0f;
@@ -693,7 +658,7 @@ s32 fn_1_1ABC(s32 team, s32 row, s32 column)
     return coinCount;
 }
 
-/* Chooses a nearby empty grid position during CPU descent, preferring fewer nearby coins. */
+/* Chooses from up to two nearby candidates with the lowest coin counts. */
 BOOL fn_1_1BC8(s32 team, Vec *position, Vec *target)
 {
     extern s32 fn_1_1ABC(s32 team, s32 row, s32 column);
@@ -718,7 +683,8 @@ BOOL fn_1_1BC8(s32 team, Vec *position, Vec *target)
             } else if (cell->flags & 4) {
                 eligible = TRUE;
             }
-            /* An occupied cell leaves eligibility unchanged from the preceding column. */
+            /* A first cell with bit 4 clear leaves eligible uninitialized. A missing cell
+             * or one with bit 4 set makes it true for the remaining columns. */
             if (eligible) {
                 candidates[candidateCount].x = 50.0f + (-450.0f + 100.0f * column);
                 candidates[candidateCount].y = 5400.0f - 200.0f * row - 100.0f;
@@ -757,8 +723,6 @@ BOOL fn_1_1BC8(s32 team, Vec *position, Vec *target)
 }
 
 extern void fn_1_29BC(M642PlayerWork *work, s32 motion, float duration, u32 attr);
-extern s32 fn_1_8F9C(Vec *position, s32 camera, float min, float max, s32 sound);
-extern s32 fn_1_9008(Vec *position, float min, float max, s32 sound);
 
 /* Scene motion hook: processes the next script group when its timing flag is set, synchronizing
  * character motions, sounds, dust and rumble for the teams. */
@@ -809,7 +773,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_1_29BC(firstPlayers[teamIndex], 3, 5.0f, 0);
                     if (teamIndex == 0) {
                         work = firstPlayers[teamIndex];
-                        sound = 193;
+                        sound = MSM_SE_CHAR_JUMP_TAKEOFF;
                         fn_800591C8(work->player->charNo, sound, 0);
                     }
                 }
@@ -823,7 +787,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                         work = firstPlayers[teamIndex];
                         camera = work->player->camBit;
                         sound =
-                            camera == 1 ? MSM_SE_CASHAPULT_LAND_LEFT : MSM_SE_CASHAPULT_LAND_RIGHT;
+                            camera == 1 ? MSM_SE_MG642_LAND_LEFT : MSM_SE_MG642_LAND_RIGHT;
                         panMin = 0.0f;
                         panMax = 640.0f;
                         fn_1_9008(&position, panMin, panMax, sound);
@@ -835,7 +799,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_1_29BC(firstPlayers[teamIndex], 3, 5.0f, 0);
                     work = firstPlayers[teamIndex];
                     camera = work->player->camBit;
-                    sound = camera == 1 ? MSM_SE_CASHAPULT_JUMP_LEFT : MSM_SE_CASHAPULT_JUMP_RIGHT;
+                    sound = camera == 1 ? MSM_SE_MG642_JUMP_LEFT : MSM_SE_MG642_JUMP_RIGHT;
                     panMin = 0.0f;
                     panMax = 640.0f;
                     fn_80086BC8(work->player->actor, &position);
@@ -854,7 +818,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_8005F968(firstPlayers[teamIndex]->charNo, &position);
                     work = firstPlayers[teamIndex];
                     camera = work->player->camBit;
-                    sound = camera == 1 ? MSM_SE_CASHAPULT_LAND_LEFT : MSM_SE_CASHAPULT_LAND_RIGHT;
+                    sound = camera == 1 ? MSM_SE_MG642_LAND_LEFT : MSM_SE_MG642_LAND_RIGHT;
                     panMin = 0.0f;
                     panMax = 640.0f;
                     fn_1_8F9C(&position, camera, panMin, panMax, sound);
@@ -867,8 +831,8 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     if (teamIndex == 0) {
                         work = firstPlayers[teamIndex];
                         camera = work->player->camBit;
-                        sound = camera == 1 ? MSM_SE_CASHAPULT_LAUNCHER_LEFT
-                                            : MSM_SE_CASHAPULT_LAUNCHER_RIGHT;
+                        sound = camera == 1 ? MSM_SE_MG642_LAUNCHER_LEFT
+                                            : MSM_SE_MG642_LAUNCHER_RIGHT;
                         panMin = 0.0f;
                         panMax = 640.0f;
                         fn_80086BC8(firstPlayers[teamIndex]->player->actor, &position);
@@ -880,7 +844,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                 for (teamIndex = 0; teamIndex < 2; teamIndex++) {
                     fn_1_29BC(secondPlayers[teamIndex], 3, 5.0f, 0);
                     work = secondPlayers[teamIndex];
-                    sound = 193;
+                    sound = MSM_SE_CHAR_JUMP_TAKEOFF;
                     fn_800591C8(work->player->charNo, sound, 0);
                 }
                 break;
@@ -889,7 +853,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_1_29BC(secondPlayers[teamIndex], 3, 5.0f, 0);
                     work = secondPlayers[teamIndex];
                     camera = work->player->camBit;
-                    sound = camera == 1 ? MSM_SE_CASHAPULT_JUMP_LEFT : MSM_SE_CASHAPULT_JUMP_RIGHT;
+                    sound = camera == 1 ? MSM_SE_MG642_JUMP_LEFT : MSM_SE_MG642_JUMP_RIGHT;
                     panMin = 0.0f;
                     panMax = 640.0f;
                     fn_80086BC8(work->player->actor, &position);
@@ -908,7 +872,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_8005F968(secondPlayers[teamIndex]->charNo, &position);
                     work = secondPlayers[teamIndex];
                     camera = work->player->camBit;
-                    sound = camera == 1 ? MSM_SE_CASHAPULT_LAND_LEFT : MSM_SE_CASHAPULT_LAND_RIGHT;
+                    sound = camera == 1 ? MSM_SE_MG642_LAND_LEFT : MSM_SE_MG642_LAND_RIGHT;
                     panMin = 0.0f;
                     panMax = 640.0f;
                     fn_1_8F9C(&position, camera, panMin, panMax, sound);
@@ -920,7 +884,7 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                     fn_80086BC8(secondPlayers[teamIndex]->player->actor, &position);
                     fn_8005F968(secondPlayers[teamIndex]->charNo, &position);
                     work = secondPlayers[teamIndex];
-                    sound = 185;
+                    sound = MSM_SE_CHAR_JUMP_LAND;
                     fn_800591C8(work->player->charNo, sound, 0);
                 }
                 break;
@@ -930,8 +894,8 @@ void fn_1_1F98(HU3D_MODELID model, HU3D_MOTIONID motion, BOOL lagF)
                 for (teamIndex = 0; teamIndex < 2; teamIndex++) {
                     work = secondPlayers[teamIndex];
                     camera = work->player->camBit;
-                    sound = camera == 1 ? MSM_SE_CASHAPULT_LAUNCHER_LEFT
-                                        : MSM_SE_CASHAPULT_LAUNCHER_RIGHT;
+                    sound = camera == 1 ? MSM_SE_MG642_LAUNCHER_LEFT
+                                        : MSM_SE_MG642_LAUNCHER_RIGHT;
                     panMin = 0.0f;
                     panMax = 640.0f;
                     /* This scriptAction does not refresh the position sampled by earlier
@@ -963,8 +927,7 @@ void fn_1_29BC(M642PlayerWork *work, s32 motion, float duration, u32 attr)
 {
     if (work->motion != motion) {
         work->motion = motion;
-        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[motion],
-                           0.0f, duration, attr);
+        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[motion], 0.0f, duration, attr);
     }
 }
 
@@ -989,13 +952,13 @@ void fn_1_2AEC(M642PlayerWork *work, s32 nextState)
     work->state = work->nextState = nextState;
 }
 
-/* Promotes a player queued action to the current action between round phases. */
+/* Promotes the player's queued action to the current action between round phases. */
 void fn_1_2AFC(M642PlayerWork *state)
 {
     state->state = state->nextState;
 }
 
-typedef struct M642FlagState_s {
+typedef struct  {
     u16 flags; /* Mode bits queried by the state test and set by the camera delay. */
     s16 state; /* Camera-delay counter; zero suppresses flag-query results. */
 } M642FlagState;
@@ -1009,15 +972,7 @@ s32 fn_1_2B08(M642FlagState *state, s32 mask)
     return state->flags & mask;
 }
 
-typedef struct M642ParticleConfigView_s {
-    u32 flags; /* Particle behavior bits, including alternating-size animation. */
-    GXColor endColor, startColor; /* Target and initial RGB tints; emission uses the target tint. */
-    Vec velocity, decay; /* Initial world velocity and per-frame velocity multipliers. */
-    f32 gravity, scale, scaleDelta, alphaDelta, colorTime; /* Vertical acceleration, size setting,
-        * size change per frame, alpha change per frame and tint interpolation fraction. */
-} M642ParticleConfigView;
-
-M642ParticleConfigView lbl_1_data_450 = {
+M642ParticleConfig lbl_1_data_450 = {
     0,
     {255, 255, 255, 255},
     {255, 255, 255, 255},
@@ -1028,10 +983,6 @@ M642ParticleConfigView lbl_1_data_450 = {
 f32 lbl_1_data_488[2] = {2700.0f, 1500.0f};
 f32 lbl_1_data_490[2] = {2750.0f, 1450.0f};
 f32 lbl_1_data_498[2] = {1.0f, -1.0f};
-
-extern s32 fn_1_8A50(Vec *source, Vec *destination);
-extern s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, f32 x, f32 y, f32 z,
-                     f32 scale, M642ParticleConfigView *config);
 
 /* Grid height-crossing updates emit a twelve-particle burst around the supplied world point. */
 void fn_1_2B28(s32 team, f32 size, Vec *origin, f32 heightScale)
@@ -1073,13 +1024,13 @@ void fn_1_2B28(s32 team, f32 size, Vec *origin, f32 heightScale)
     particleRandom = 10.0f;
     for (index = 0; index < particleCount; index++)
     {
-        sine = (f32) sin(3.141592653589793 * (stepAngle * index) / 180.0);
-        cosine = (f32) cos(3.141592653589793 * (stepAngle * index) / 180.0);
+        sine = (f32) sin(M_PI * (stepAngle * index) / 180.0);
+        cosine = (f32) cos(M_PI * (stepAngle * index) / 180.0);
         speed = size * (speedRange + (f32)(u32) frandmod((u32) speedRandom));
         randomDirection.x = speed;
         randomDirection.y =
-            (f32) (((f64) speed / sin(3.141592653589793 * (90.0f - elevation) / 180.0)) *
-                   sin(3.141592653589793 * elevation / 180.0));
+            (f32) (((f64) speed / sin(M_PI * (90.0f - elevation) / 180.0)) *
+                   sin(M_PI * elevation / 180.0));
         randomDirection.z = 0.0f;
         fn_1_8A50(& randomDirection, & randomDirection);
         particleDirection.x = sine * randomDirection.x;
@@ -1105,8 +1056,6 @@ void fn_1_2B28(s32 team, f32 size, Vec *origin, f32 heightScale)
     }
 }
 
-typedef struct M667Pool M667Pool;
-
 /* Reserves and resets an inactive pooled effect record of the requested type. */
 M642EffectRecord *fn_1_302C(s32 type)
 {
@@ -1126,7 +1075,7 @@ M642EffectRecord *fn_1_302C(s32 type)
 /* Clears the effect's active bit when the effect animation finishes. */
 void fn_1_30D8(u16 *value)
 {
-    *value = *value & M642_EFFECT_INACTIVE_MASK;
+    *value = *value & 0xFFFFFFFE;
 }
 
 extern M642EffectRecord *fn_1_302C(s32 type);
@@ -1146,8 +1095,6 @@ M642EffectRecord *fn_1_30EC(s32 player, Vec *position)
     return NULL;
 }
 
-void fn_1_30D8(u16 *value);
-
 /* The effect update calls this after its track ends to release the record and hide its model. */
 void fn_1_3190(M642EffectRecord *data)
 {
@@ -1157,19 +1104,12 @@ void fn_1_3190(M642EffectRecord *data)
 
 void fn_1_33D4(OMOBJ *);
 void fn_1_42D0(OMOBJ *);
-void fn_1_47C(void *);                           /* static */
+void fn_1_47C(void *);
 void fn_1_4C60(OMOBJ *);
 void fn_1_4E5C(OMOBJ *);
 void fn_1_4EC4(OMOBJ *);
 void fn_1_51D4(OMOBJ *);
 void fn_1_7558(OMOBJ *);
-struct M642ResourceTableView_s;
-OMOBJ *fn_1_84D8(struct M642ResourceTableView_s *capacity);
-void *fn_1_8568(void *work);
-void *fn_1_859C(void *work);
-void *fn_1_91EC(s32 index);
-void *fn_1_9250(s32 index);
-void *fn_1_92B4(void);
 
 /* Runs as the scene manager's first callback to set up shared state and create board, round, grid
  * and player objects. */
@@ -1207,34 +1147,33 @@ void fn_1_31CC(OMOBJ *object) {
     fn_1_140(object, fn_1_33D4);
 }
 
-extern s32 fn_1_9120(s32 sound);
 extern void fn_1_2AEC(M642PlayerWork *work, s32 state);
 extern void fn_1_105C(void);
 extern void fn_1_37B4(OMOBJ *object);
-#define INTRO lbl_1_bss_2C
 /* Intro object callback: starts the scene, measures team view bounds, then hands off to play. */
 void fn_1_33D4(OMOBJ *object)
 {
     M642SceneWork *work = object->data;
     s32 playerIndex;
     Vec screenPosition, worldPosition;
+    /* Start and time the intro sound during sequence phase 2. */
     if (fn_80071A8C() == 2) {
         work->soundTimer++;
-        switch (INTRO->soundState) {
+        switch (lbl_1_bss_2C->soundState) {
         case 0:
-            INTRO->sound = fn_1_9120(MSM_SE_CASHAPULT_INTRO);
+            lbl_1_bss_2C->sound = fn_1_9120(MSM_SE_MG642_INTRO);
             work->soundState = 1;
             break;
         case 1:
             if (work->soundTimer >= 210) {
                 HuAudFXFadeOut(work->sound, 500);
                 work->soundState = 2;
-                INTRO->sound = -1;
+                lbl_1_bss_2C->sound = -1;
             }
             break;
         }
     }
-    switch (INTRO->phase) {
+    switch (lbl_1_bss_2C->phase) {
     case 0:
         if (fn_80071A8C() == 2) {
             fn_8002DB98(lbl_1_bss_2C->scene_objects[3]->mdlId[0], fn_1_1F98);
@@ -1245,13 +1184,13 @@ void fn_1_33D4(OMOBJ *object)
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 fn_1_2AEC(lbl_1_bss_1C[playerIndex], 1);
             }
-            INTRO->phase++;
+            lbl_1_bss_2C->phase++;
         }
         break;
     case 1:
         if (fn_8002D75C(lbl_1_bss_2C->scene_objects[3]->mdlId[0])) {
             fn_1_105C();
-            INTRO->phase++;
+            lbl_1_bss_2C->phase++;
         }
         break;
     case 2:
@@ -1451,7 +1390,7 @@ void fn_1_403C(OMOBJ *object)
             return;
         }
     }
-    lbl_1_bss_2C->state = M642_SCENE_PLAY_DONE;
+    lbl_1_bss_2C->state = 1;
     *timer = 0;
     fn_1_140(object, fn_1_40DC);
 }
@@ -1477,7 +1416,6 @@ void fn_1_40DC(OMOBJ *object)
 }
 
 extern s32 fn_1_A60(s32 team);
-extern void fn_1_7878(s32 playerNo, s16 mgCoin);
 
 /* Results callback: starts the jingle during a player's last motion, then awards each team's coins
  * once all players stop. */
@@ -1498,11 +1436,10 @@ void fn_1_4180(OMOBJ *object)
         teamCoins = fn_1_A60(team);
         fn_1_7878(lbl_1_bss_1C[playerIndex]->playerNo, teamCoins);
     }
-    lbl_1_bss_2C->state = M642_SCENE_RESULTS_DONE;
+    lbl_1_bss_2C->state = 2;
     fn_1_140(object, NULL);
 }
 
-s32 fn_1_BE8();                                 /* static */
 
 void fn_1_4BBC(OMOBJ *);
 
@@ -1513,10 +1450,8 @@ void fn_1_42D0(OMOBJ *object) {
     cameraWork = object->data;
     camera = 3;
     Hu3DCameraCreate(camera);
-    Hu3DCameraPerspectiveSet(camera, 45.0f, 20.0f,
-        30000.0f, 1.2f);
-    Hu3DCameraViewportSet(camera, 0.0f, 0.0f,
-        640.0f, 480.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(camera, 45.0f, 20.0f, 30000.0f, 1.2f);
+    Hu3DCameraViewportSet(camera, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     cameraWork->teams[0].target.x = lbl_1_data_32C.x;
     cameraWork->teams[0].target.y = lbl_1_data_32C.y;
     cameraWork->teams[0].target.z = lbl_1_data_32C.z;
@@ -1540,8 +1475,6 @@ void fn_1_4460(OMOBJ *object)
         state->flags = 2;
     }
 }
-
-void fn_1_89F8(Point3d *start, Point3d *end, f32 t, Point3d *out);
 
 /* Camera transition callback: interpolates both team views across 60 frames, then waits for
  * play. */
@@ -1570,16 +1503,14 @@ void fn_1_44A0(OMOBJ *object)
     Hu3DCameraPosSetV(1, &work->teams[0].position, &lbl_1_data_368, &work->teams[0].target);
     work->teams[1] = work->teams[0];
     Hu3DCameraPosSetV(2, &work->teams[1].position, &lbl_1_data_368, &work->teams[1].target);
-    Hu3DCameraViewportSet(1, firstLeft, 0.0f, 640.0f, 480.0f,
-                          0.0f, 1.0f);
+    Hu3DCameraViewportSet(1, firstLeft, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     if (firstScissorWidth > 2.0f) {
         Hu3DCameraScissorSet(1, 0, 0, (u32)firstScissorWidth - 2, 480);
     } else {
         Hu3DCameraScissorSet(1, 0, 0, 0, 480);
     }
     if (work->timer >= 1) {
-        Hu3DCameraViewportSet(2, secondLeft, 0.0f, secondViewportWidth, 480.0f,
-                              0.0f, 1.0f);
+        Hu3DCameraViewportSet(2, secondLeft, 0.0f, secondViewportWidth, 480.0f, 0.0f, 1.0f);
         if (firstScissorWidth > 2.0f) {
             Hu3DCameraScissorSet(2, (u32)firstScissorWidth + 2, 0,
                                   638 - (u32)firstScissorWidth, 480);
@@ -1608,7 +1539,7 @@ void fn_1_486C(OMOBJ *object)
     }
 }
 
-/* Tracks each team camera's height from its active player, or returns it to the default height. */
+/* Tracks the active player's height up to 4900, or resets the camera target height to 700. */
 void fn_1_48E4(OMOBJ *object)
 {
     M642RoundControl *work = object->data;
@@ -1633,8 +1564,6 @@ void fn_1_48E4(OMOBJ *object)
         }
     }
 }
-
-void fn_1_89F8(Point3d *start, Point3d *end, f32 t, Point3d *out);
 
 /* Moves both team cameras to their next positions over 60 updates, then advances the camera
  * state. */
@@ -1696,7 +1625,6 @@ void fn_1_4BBC(OMOBJ *object)
     }
 }
 
-extern s16 fn_1_7890(void);
 void fn_1_4E58(OMOBJ *object);
 
 /* Sets the arena light and team shadows during scene setup, using the selected color palette. */
@@ -1723,16 +1651,14 @@ void fn_1_4C60(OMOBJ *object)
     }
 
     /* The light API receives the low byte of each configured position coordinate. */
-    light = Hu3DGLightCreate((u8)lightX, (u8)lightY, (u8)lightZ,
-        -1.0f, -1.0f, -1.0f,
-        red, green, blue);
+    light =
+        Hu3DGLightCreate((u8)lightX, (u8)lightY, (u8)lightZ, -1.0f, -1.0f, -1.0f, red, green, blue);
     Hu3DGLightInfinitytSet(light);
     {
     HuVecF lightPosition = {-100.0f, 8000.0f, 0.0f};
     HuVecF shadowUp = {0.0f, 1.0f, 0.0f};
     HuVecF shadowTarget = {0.0f, 0.0f, 0.0f};
-    fn_8002A3B0(15.0f, 10.0f,
-        10000.0f, 3);
+    fn_8002A3B0(15.0f, 10.0f, 10000.0f, 3);
     fn_8002AA3C(16, 16, 16, 3);
     fn_8002A674(&lightPosition, &shadowUp, &shadowTarget, 3);
     fn_8002A7D8(0.3f, 3);
@@ -1757,11 +1683,6 @@ void fn_1_4E5C(OMOBJ *object)
     fn_1_914(1, 1);
     fn_1_140(object, fn_1_4EC0);
 }
-
-extern s32 lbl_1_data_F18;
-extern float lbl_1_bss_1BC;
-extern s8 lbl_1_bss_218, lbl_1_bss_219, lbl_1_data_2758;
-s32 fn_1_367CC(s32 *player);
 
 void fn_1_4EC0(OMOBJ *object)
 {
@@ -1916,7 +1837,6 @@ void fn_1_5564(OMOBJ *object)
     }
 }
 
-extern void fn_1_89F8(Point3d *start, Point3d *end, f32 t, Point3d *out);
 extern M642EffectRecord *fn_1_30EC(s32 team, Vec *position);
 /* Player launch callback: rises to height 2600 with sound and smoke, then queues free-flight
  * steering. */
@@ -1937,7 +1857,7 @@ void fn_1_577C(OMOBJ *object)
     }
     if (work->timer == 0 && work->sound == -1) {
         camera = work->player->camBit;
-        sound = camera == 1 ? MSM_SE_CASHAPULT_FLIGHT_LEFT : MSM_SE_CASHAPULT_FLIGHT_RIGHT;
+        sound = camera == 1 ? MSM_SE_MG642_FLIGHT_LEFT : MSM_SE_MG642_FLIGHT_RIGHT;
         panMin = 0.0f;
         panMax = 640.0f;
         work->sound = fn_1_8F9C(&position, camera, panMin, panMax, sound);
@@ -2048,9 +1968,6 @@ void fn_1_5A84(OMOBJ *object)
     }
 }
 
-extern s32 fn_1_8F9C(Vec *position, s32 camera, f32 min, f32 max, s32 sound);
-extern s16 fn_1_8E68(Vec *position, s32 camera, f32 min, f32 max);
-
 /* Player return callback: interpolates to the launcher over 60 frames with travel sound and
  * smoke. */
 void fn_1_5F5C(OMOBJ *object)
@@ -2072,7 +1989,7 @@ void fn_1_5F5C(OMOBJ *object)
     progress = (f32)work->timer / 60.0f;
     fn_1_89F8(&work->startingPosition, &work->targetPosition, progress, &position);
     camera = work->player->camBit;
-    sound = camera == 1 ? MSM_SE_CASHAPULT_FLIGHT_LEFT : MSM_SE_CASHAPULT_FLIGHT_RIGHT;
+    sound = camera == 1 ? MSM_SE_MG642_FLIGHT_LEFT : MSM_SE_MG642_FLIGHT_RIGHT;
     minPan = 0.0f;
     maxPan = 640.0f;
     if (work->timer == 0) {
@@ -2151,7 +2068,6 @@ void fn_1_645C(OMOBJ *object)
 }
 
 extern void fn_1_29BC(M642PlayerWork *work, s32 motion, float blend, u32 flags);
-extern s32 fn_1_8A50(Vec *source, Vec *result);
 
 /* Player results callback: prepares a route to the horizontal center and starts its looping
  * motion. */
@@ -2228,17 +2144,6 @@ void fn_1_68A0(OMOBJ *object)
         work->state = 0;
     }
 }
-
-void fn_1_5564(OMOBJ *object);
-void fn_1_577C(OMOBJ *object);
-void fn_1_5A84(OMOBJ *object);
-void fn_1_5F5C(OMOBJ *object);
-void fn_1_6268(OMOBJ *object);
-void fn_1_645C(OMOBJ *object);
-void fn_1_64B0(OMOBJ *object);
-void fn_1_65F0(OMOBJ *object);
-void fn_1_6788(OMOBJ *object);
-void fn_1_68A0(OMOBJ *object);
 
 /* Updates one player's Cashapult state and dispatches its active action on each player callback. */
 void fn_1_68F0(OMOBJ *object)
@@ -2352,8 +2257,8 @@ void fn_1_6A74(OMOBJ *object)
             work->nextStep.x = 1.0f;
             work->nextStep.z = 0.0f;
         }
-        /* The initial plan always enables the later steering reversal. */
         work->flags &= ~(1 << 11);
+        /* The initial plan always enables the later steering reversal. */
         work->flags |= (1 << 11);
         work->aiState = 1;
     }
@@ -2402,7 +2307,7 @@ void fn_1_6F6C(OMOBJ *object)
 
 extern BOOL fn_1_1BC8(s32 team, Vec *position, Vec *target);
 
-/* Chooses and times the next computer jump while its player is descending and ready to plan. */
+/* Chooses a new CPU steering target and timing while descending and ready to plan. */
 void fn_1_7018(OMOBJ *object)
 {
     M642PlayerWork *work = object->data;
@@ -2461,8 +2366,7 @@ void fn_1_7018(OMOBJ *object)
     halfGravity = work->gravity / 2;
     initialVelocity = work->velocity.y;
     verticalDistance = (f32)fabs(displacement.y);
-    rootTerm = sqrtf((initialVelocity * initialVelocity) -
-                             (4.0f * halfGravity * verticalDistance));
+    rootTerm = sqrtf((initialVelocity * initialVelocity) - (4.0f * halfGravity * verticalDistance));
     firstFlightTime = halfGravity * ((-initialVelocity - rootTerm) / 2);
     secondFlightTime = halfGravity * ((-initialVelocity + rootTerm) / 2);
     if (firstFlightTime > secondFlightTime) {
@@ -2531,8 +2435,6 @@ void fn_1_74B4(OMOBJ *object)
     }
 }
 
-typedef struct M667Pool M667Pool;
-
 extern void fn_1_1564(M642EffectRecord *data);
 extern void fn_1_7708(OMOBJ *object);
 
@@ -2562,8 +2464,6 @@ void fn_1_7558(OMOBJ *object)
     }
     fn_1_140(object, fn_1_7708);
 }
-
-typedef struct M667Pool M667Pool;
 
 /* Updates active Cashapult effects once per object-manager tick. */
 void fn_1_7708(OMOBJ *object)

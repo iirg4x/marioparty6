@@ -8,6 +8,7 @@
 #include "game/audio.h"
 #include "game/charman.h"
 #include "game/gamemes.h"
+#include "game/mg/actman.h"
 #include "game/hsfex.h"
 #include "game/data.h"
 #include "game/gamework.h"
@@ -32,45 +33,45 @@
 #include "string.h"
 #include "stdio.h"
 
-typedef struct M642ScoreRecord_s {
+typedef struct  {
     s32 box; /* Score box handle. */
     MGSCORE *display; /* Numeric score display. */
     s32 value, spriteGroup, spriteCount; /* Score value, indicator group and member count. */
-    u8 unreadData[48]; /* Remaining team record bytes are not read by Cashapult. */
+    u8 unk14[48]; /* No code names this field. */
 } M642ScoreRecord;
-typedef struct M642SpriteAsset_s {
-    u32 unreadWord; /* Asset record word not read by the Cashapult source. */
+typedef struct  {
+    s32 resourceId; /* Packed animation resource number; a negative value ends the list. */
     ANIMDATA *animation; /* Loaded sprite animation. */
 } M642SpriteAsset;
-typedef struct M642ParticleOwner_s {
+typedef struct  {
     u32 flags; /* Reuse and initialization state bits. */
     s32 resource, count, blendMode, model; /* Animation resource, particle capacity, blend mode and
                                             * model. */
     ANIMDATA *animation; /* Loaded particle animation. */
-    u8 unknown18[4]; /* No Cashapult code reads these bytes of the particle-owner record. */
+    u8 unknown18[4]; /* No code names this field. */
 } M642ParticleOwner;
-typedef struct M642SceneWork_s {
+typedef struct  {
     s16 timer, state, phase, round, scoreCount; /* Scene timing, sequence state and round
                                                  * counters. */
-    M642ScoreRecord players[4]; /* Two team's score displays and related record data. */
-    u8 alignmentPadding[4]; /* Aligns the following object pointers. */
+    M642ScoreRecord players[4]; /* Score display records, indexed by team. */
+    u8 unk11C[4]; /* No code names this field. */
     OMOBJ *scene_objects[8]; /* Scene, player, grid and effect objects. */
     M642ParticleOwner *owners; /* Particle settings for each team. */
     M642SpriteAsset *spriteAssets; /* Loaded score-indicator animations. */
     s32 playerGroups[4]; /* Team assignment for each player number. */
     s16 selection[2]; /* Selected grid row and column. */
-    s32 sound; /* Background stream handle, or -1 when inactive. */
-    s16 soundState, soundTimer; /* Background sound state and elapsed frames. */
+    s32 sound; /* Scene sound handle, or -1 when inactive. */
+    s16 soundState, soundTimer; /* Intro sound state and elapsed frames. */
     s32 active[2]; /* Per-team activity state used by player callbacks. */
-    u8 trailingData[8]; /* Scene record bytes not read by Cashapult. */
+    u8 unk16C[8]; /* No code names this field. */
 } M642SceneWork;
 
-typedef struct M642ObjectManagerState_s {
+typedef struct  {
     OMOBJMAN *manager; /* Actor manager used by this REL's object and process APIs. */
-    u32 reserved; /* Unread word following the manager pointer. */
+    u32 unk04; /* No code names this field. */
 } M642ObjectManagerState;
 
-typedef struct M642PlayerWork_s {
+typedef struct  {
     u16 flags; /* Player behavior flags used by the movement callbacks. */
     s16 computer; /* Nonzero when this player is controlled by the computer. */
     s8 state, nextState; /* Current movement state and the state queued for the next update. */
@@ -94,28 +95,61 @@ typedef struct M642GridCell_s M642GridCell;
 struct M642GridCell_s {
     u16 flags; /* Cell state flags checked by grid and player callbacks. */
     HU3D_MODELID model; /* Model displayed for this grid cell. */
-    u32 owner; /* Team or player ownership value associated with the cell. */
-    float radius, height; /* World-space collision dimensions for the cell. */
+    u32 owner; /* Team associated with the cell. */
+    float radius; /* World-space collision radius for the cell. */
+    float unk0C; /* The game's code never reads this field. */
     Vec position, rotation; /* Cell model's world position and rotation. */
     void (*update)(M642GridCell *); /* Per-frame callback for the cell's current state. */
     void (*collect)(M642PlayerWork *, M642GridCell *); /* Callback when a player reaches the
                                                         * cell. */
 };
-typedef struct M642PoolNode_s {
+typedef struct M642PoolNode_s M642PoolNode;
+struct M642PoolNode_s {
     struct M642PoolNode_s *prev, *next; /* Neighbor links in the active or free list. */
-} M642PoolNode;
-typedef struct M642CellPoolStorage_s {
+};
+typedef struct M642Pool {
+    M642PoolNode *active, *free; /* Heads of the used-item and available-item lists. */
+    u8 unknown08[8]; /* No code names this field. */
+} M642Pool;
+
+typedef struct M642TrackKeyView {
+    s32 frame; /* Animation frame; a negative value terminates the key list. */
+    f32 values[3]; /* Up to three values sampled from this key. */
+} M642TrackKeyView;
+
+typedef struct M642TrackView {
+    s16 kind; /* Interpolation mode used for this track. */
+    s16 count; /* Number of values sampled from each key. */
+    s16 end; /* Last frame at which the track is active. */
+    M642TrackKeyView *keys; /* Ordered animation keys, terminated by a negative frame. */
+} M642TrackView;
+
+typedef struct  {
+    u32 flags; /* Particle behavior flags, including alternating-size animation. */
+    GXColor endColor; /* Initial RGBA at emission and the target RGB for interpolation. */
+    GXColor startColor; /* Starting RGB for interpolation. Alpha is updated separately. */
+    Vec velocity, decay; /* Initial velocity and per-frame velocity multipliers. */
+    float gravity; /* Vertical velocity added each frame. */
+    float unk28; /* No code names this field. */
+    float scaleDelta; /* Per-frame change to the particle's base size. */
+    float alphaDelta; /* Per-frame change to particle transparency. */
+    float colorTime; /* Interpolation amount between the configured tint colors. */
+} M642ParticleConfig;
+
+struct M642ResourceTableView_s;
+
+typedef struct  {
     M642PoolNode *active, *free; /* Head nodes for used cells and available cells. */
-    u8 unknown08[8]; /* Header bytes whose purpose is not established by this source. */
+    u8 unknown08[8]; /* No code names this field. */
     struct {
         M642PoolNode links;
         M642GridCell cell;
     } nodes[64]; /* Fixed storage for the grid's pooled cell records. */
 } M642CellPoolStorage;
-typedef struct M642Bounds_s {
+typedef struct  {
     float min, max; /* World-space limits along one grid axis. */
 } M642Bounds;
-typedef struct M642GridWork_s {
+typedef struct  {
     u32 flags; /* Grid-wide state flags. */
     M642PlayerWork *players[2][2]; /* Up to two player work records for each team. */
     u8 count[2]; /* Number of registered players on each team. */
@@ -128,32 +162,21 @@ typedef struct M642GridWork_s {
     s32 cellModels, effectModels; /* Model slots consumed by cells and grid effects. */
 } M642GridWork;
 
-typedef struct M642TeamOwner_s {
+typedef struct  {
     Vec position, target; /* Camera position and look-at point for this team. */
     M642PlayerWork *active; /* Player currently active for this team's turn. */
 } M642TeamOwner;
-typedef struct M642RoundControl_s {
+typedef struct  {
     s16 mode, timer; /* Camera transition state and elapsed frames. */
-    u8 unknown04[12]; /* No Cashapult code reads these bytes before the team camera records. */
+    u8 unknown04[12]; /* No code names this field. */
     M642TeamOwner teams[2]; /* Active-player state for the two teams. */
 } M642RoundControl;
 
-struct M667Pool;
-typedef struct M642EffectWork_s {
-    u8 unknown00[4]; /* No Cashapult code reads these bytes before the effect-item pool buffer. */
+typedef struct  {
+    u8 unknown00[4]; /* No code names this field. */
     u8 poolStorage[4112]; /* Backing storage for pooled effect records. */
-    struct M667Pool *pool; /* Active/free lists built over poolStorage. */
+    M642Pool *pool; /* Active/free lists built over poolStorage. */
 } M642EffectWork;
-
-typedef struct M642WorkView_s {
-    u8 unidentifiedPrefix[24]; /* Bytes before the first large work region. */
-    u8 workBufferA[3600]; /* First fixed-size work region. */
-    u8 workBufferB[3600]; /* Second fixed-size work region. */
-    void *resourcePointer; /* Pointer stored after the two work regions. */
-    void *auxiliaryPointer; /* Adjacent pointer field. */
-    u8 unidentifiedTail[648]; /* Bytes before the final word. */
-    s32 finalWord; /* Final word in this otherwise unused work view. */
-} M642WorkView;
 
 extern M642SceneWork *lbl_1_bss_2C;
 extern M642GridWork *lbl_1_bss_18;
@@ -170,5 +193,32 @@ void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback);
 void *fn_1_8618(void *buffer, s32 bytes, s32 itemBytes);
 void fn_1_11E4(s32 index, s32 value);
 void fn_1_5080(OMOBJ *object);
+void fn_1_5CC(void);
+s32 fn_1_64C(void);
+s32 fn_1_698(void);
+void fn_1_318(MGPLAYER *playerP);
+void fn_1_31C(MGPLAYER *playerP);
+void fn_1_7878(s32 playerIndex, s16 minigameCoins);
+s16 fn_1_7890(void);
+void *fn_1_8568(void *work);
+M642SpriteAsset *fn_1_859C(M642SpriteAsset *assets);
+void *fn_1_8794(M642Pool *pool);
+void *fn_1_87D0(void *pool, void *item);
+void fn_1_89F8(Point3d *start, Point3d *end, f32 t, Point3d *out);
+s32 fn_1_8F9C(Vec *position, s32 camera, float nearPan, float farPan, s32 sound);
+s32 fn_1_9008(HuVecF *input, f32 lower, f32 upper, s32 soundEffect);
+s32 fn_1_9120(s32 soundId);
+void *fn_1_91EC(s32 index);
+void *fn_1_9250(s32 index);
+M642SpriteAsset *fn_1_92B4(void);
+
+void *fn_1_86B0(M642Pool *pool);
+s32 fn_1_8814(M642TrackView **tracks, s32 frame);
+void fn_1_8870(M642TrackView **tracks, s32 frame, s32 trackIndex, f32 *outValues);
+s32 fn_1_8A50(Point3d *source, Point3d *destination);
+s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, float x, float y, float z,
+              float scale, M642ParticleConfig *config);
+OMOBJ *fn_1_84D8(struct M642ResourceTableView_s *capacity);
+s16 fn_1_8E68(Vec *position, s32 camera, float nearPan, float farPan);
 
 #endif

@@ -9,7 +9,7 @@ typedef struct M676PlayerConfig {
     f32 unk00;
     f32 unk04;
     f32 movementScale;
-    f32 unknown_0C;
+    f32 unk0C; /* No code names this field. */
     f32 gravity;
     s32 idleMotion;
     s32 moveMotion;
@@ -18,7 +18,7 @@ typedef struct M676PlayerConfig {
     f32 runSpeed;
     s32 jumpMotion;
     s32 landingMotion;
-    s32 unknown_30;
+    s32 unk30; /* No code names this field. */
     s32 winMotion;
     s32 loseMotion;
 } M676PlayerConfig;
@@ -27,17 +27,18 @@ typedef struct M676PlayerWork {
     M676ActorState actor;
     s32 phase;
     s32 timer;
-    /* Cleared during setup and never read by this module. */
+    /* No code names these bytes. */
     u8 unkB4, unkB5, unkB6, unkB7;
     /* Desired horizontal heading in degrees and its world-space destination. */
     f32 targetAngle;
     Vec targetPosition;
-    /* Cleared during setup and never read by this module. */
+    /* No code names these bytes. */
     u8 unkC8, unkC9, unkCA, unkCB;
     /* Frames elapsed before this player signals arrival; the sequence uses a 30-frame threshold. */
     s32 arrivalTimer;
-    /* Cleared during setup and never read by this module. */
+    /* No code names these bytes. */
     u8 unkD0, unkD1, unkD2, unkD3, unkD4, unkD5;
+    /* No code names these bytes. */
     u8 unkD6, unkD7, unkD8, unkD9, unkDA, unkDB;
     u8 unkDC, unkDD, unkDE, unkDF;
     s32 frameCounter;
@@ -57,35 +58,35 @@ typedef struct M676PlayerWork {
     s32 motionActive;
     s32 motionTimer;
     s32 turnState;
-    /* Cleared during setup and never read by this module. */
+    /* No code names these bytes. */
     u8 unk11C, unk11D, unk11E, unk11F, unk120, unk121;
     u8 unk122, unk123;
     void *ownerLink;
     s32 cooldown;
-    s32 motionFrame;
-    s32 motionStatus;
+    s32 unk12C; /* The game's code never reads this field. */
+    s32 unk130; /* The game's code never reads this field. */
     f32 motionScale;
-    /* Cleared during setup and never read by this module. */
+    /* No code names these bytes. */
     u8 unk138, unk139, unk13A, unk13B;
     s32 landingState;
     s32 landingTimer;
     s32 selectedPropIndex;
     s32 order;
-    /* Cleared during setup and never read by this module. */
+    /* No code names these bytes. */
     u8 unk14C, unk14D, unk14E, unk14F;
-    s32 motionReady;
-    f32 motionSpeed;
-    Vec *positionCopyPointer;
+    s32 unk150; /* The game's code never reads this field. */
+    f32 unk154; /* The game's code never reads this field. */
+    Vec *unk158; /* The game's code never reads this field. */
     Vec positionCopy;
     M676PlayerConfig config;
     s32 playerIndex;
     s32 character;
     s32 modelId;
     s32 callbackState;
-    /* Cleared during setup and never read by this module. */
+    /* No code names these bytes. */
     u8 unk1B4, unk1B5, unk1B6, unk1B7;
-    s32 updateCount;
-    s32 callbackActive;
+    s32 unk1B8; /* The game's code never reads this field. */
+    s32 unk1BC; /* The game's code never reads this field. */
 } M676PlayerWork;
 
 extern M676PlayerWork *lbl_1_bss_43C[5];

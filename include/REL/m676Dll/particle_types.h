@@ -9,7 +9,7 @@ typedef struct M676ParticleRecord {
     s32 type;
     s32 state;
     f32 timer;
-    /* No module function reads these bytes; remainingEmissions begins at offset 0x10. */
+    /* No code names these bytes. */
     u8 unk0C, unk0D, unk0E, unk0F;
     /* Remaining type-1 emissions (other types only write it), model slot, player,
      * and lane-sector indices. */
@@ -22,10 +22,10 @@ typedef struct M676ParticleRecord {
     Vec rotation;
     Vec velocity;
     Vec rotationVelocity;
-    /* Uniform model scale, vertical offset, and effect-specific scalar. */
+    /* Uniform model scale and vertical offset. */
     f32 scale;
     f32 heightOffset;
-    f32 storedValue;
+    f32 unk58; /* The game's code never reads this field. */
     /* Prior and projected positions, followed by collision state. */
     Vec previousPosition;
     Vec projectedPosition;

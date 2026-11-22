@@ -1,5 +1,5 @@
 /* Scene particles, contact shadows and animated indirect texture effects. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/gx.h"
 #include "REL/m676Dll/effect_types.h"
 #include "game/data.h"
@@ -9,14 +9,13 @@
 #include <string.h>
 #include "REL/m676Dll/scene_types.h"
 #include "REL/m676Dll/particle_types.h"
+#include "REL/m676Dll/camera_types.h"
+#include "humath.h"
 
 OMOBJ **lbl_1_data_7A0[4] = {&lbl_1_bss_E98,&lbl_1_bss_E94,&lbl_1_bss_E98,&lbl_1_bss_E98};
 HUPROCESS *lbl_1_bss_10AC;
 OMOBJ *lbl_1_bss_10A8;
-s32 fn_1_1480(s32 index);
 
-void fn_1_10288(s32 type, s32 index, Vec *position, s32 requestValue);
-void fn_1_1033C(HUPROCESS *process);
 void fn_1_103F4(void);
 void fn_1_103F8(OMOBJ *obj);
 void fn_1_10408(OMOBJ *node);
@@ -40,7 +39,6 @@ void fn_1_11340(M676TextureWork *work, Mtx *matrix);
 void fn_1_113A0(M676TextureWork *texture, Mtx *matrix);
 void fn_1_11928(M676TextureWork *work);
 void fn_1_119B0(Vec *position, Vec *velocity);
-void fn_1_11A74(Vec *position, f32 radius, s32 count);
 void fn_1_11EA4(M676ShadowRecord *effect);
 
 /* Queues a scene effect request for the manager to consume during its update. */
@@ -72,7 +70,6 @@ void fn_1_10288(s32 type, s32 index, Vec *position, s32 requestValue)
 
 /* Creates the scene-effect object and its hooks when ObjectSetup initializes the board. */
 void fn_1_1033C(HUPROCESS *process) {
-    HUPROCESS *unusedProcess;
     OMOBJ *effectObject;
     void *effectWork;
     lbl_1_bss_10AC = process;
@@ -109,11 +106,10 @@ void fn_1_10430(OMOBJ *object)
     HU3D_PARTICLE *particle;
     s32 index;
 
-    animation = HuSprAnimRead(fn_80008DD0((s32)fn_1_1480(13), 0x10000000,
-                                                    2));
+    animation = HuSprAnimDataRead((s32)fn_1_1480(13));
     modelId = fn_8003216C(animation, 128);
     object->mdlId[0] = modelId;
-    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    particle = lbl_802C01C8[(s16)modelId].hookData;
     fn_800325B0(modelId, 255, 255, 255);
     fn_8003269C(modelId, 0);
     fn_800326D0(modelId, fn_1_10550);
@@ -150,8 +146,8 @@ void fn_1_10550(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 entry->time = -1;
                 entry->scale = 0.0f;
             } else {
-                PSVECAdd((Vec *)&entry->pos, (Vec *)&entry->accel,
-                    (Vec *)&entry->pos);
+                PSVECAdd(&entry->pos, &entry->accel,
+                    &entry->pos);
                 entry->accel.x *= 0.98;
                 entry->accel.y -= 0.05;
                 entry->accel.z *= 0.98;
@@ -182,8 +178,8 @@ void fn_1_10764(OMOBJ *owner)
     i = 0;
     angle = 0.0f;
     while (i < 10) {
-        hookData->xOffsets[i] = (f32)sin((3.141592653589793 * (f64)angle) / 180.0);
-        hookData->zOffsets[i] = (f32)cos((3.141592653589793 * (f64)angle) / 180.0);
+        hookData->xOffsets[i] = (f32)sin((M_PI * (f64)angle) / 180.0);
+        hookData->zOffsets[i] = (f32)cos((M_PI * (f64)angle) / 180.0);
         i++;
         angle += 36.0f;
     }
@@ -249,7 +245,7 @@ void fn_1_10B7C(OMOBJ *object)
     M676TextureWork *childWork;
     HU3D_MODELID hook;
 
-    work = (M676EffectWork *)object->data;
+    work = object->data;
     childWork = &work->texture;
     hook = fn_800260F4((HU3D_MODEL_HOOK)fn_1_10C5C);
     object->mdlId[2] = hook;
@@ -317,12 +313,10 @@ void fn_1_10D0C(OMOBJ *object, M676TextureWork *work)
     }
     textureSize = GXGetTexBufferSize(320, 240, 4, 0, 0);
     work->textureBuffer = HuMemDirectMallocNum(HEAP_HEAP, textureSize, 0x10000000);
-    work->textureData = HuSprAnimRead(
-        fn_80008DD0(fn_1_1480(14), 0x10000000, 2));
-    work->animationData = HuSprAnimRead(
-        fn_80008DD0(fn_1_1480(15), 0x10000000, 2));
-    work->scrollOffsetX = 0.0f;
-    work->scrollOffsetZ = 0.0f;
+    work->textureData = HuSprAnimDataRead(fn_1_1480(14));
+    work->animationData = HuSprAnimDataRead(fn_1_1480(15));
+    work->scrollOffset.x = 0.0f;
+    work->scrollOffset.y = 0.0f;
     PSMTXIdentity(work->textureMatrices[0]);
     PSMTXIdentity(work->textureMatrices[1]);
     PSMTXIdentity(work->textureMatrices[2]);
@@ -357,24 +351,24 @@ void fn_1_10EC4(M676TextureWork *work) {
     PSMTXScale(work->textureMatrices[0], farPlane, 1.0f, farPlane);
     PSMTXTransApply(work->textureMatrices[0], work->textureMatrices[0], cameraPosition.x, 0.0f,
                     cameraPosition.z);
-    work->scrollOffsetX = (f32) ((f64) work->scrollOffsetX - 2.857142857142857);
-    work->scrollOffsetZ = (f32) ((f64) work->scrollOffsetZ - 1.1764705882352942);
+    work->scrollOffset.x = (f32) ((f64) work->scrollOffset.x - 2.857142857142857);
+    work->scrollOffset.y = (f32) ((f64) work->scrollOffset.y - 1.1764705882352942);
     textureScale = farPlane / 1200.0f;
     PSMTXScale(work->textureMatrices[1], textureScale, textureScale, 1.0f);
     PSMTXTransApply(work->textureMatrices[1], work->textureMatrices[1],
-                    (f32) (((f64) cameraPosition.x - (0.5 * (f64) work->scrollOffsetX)) / 1200.0),
-                    (f32) (((f64) cameraPosition.z + (0.8 * (f64) work->scrollOffsetZ)) / 1200.0),
+                    (f32) (((f64) cameraPosition.x - (0.5 * (f64) work->scrollOffset.x)) / 1200.0),
+                    (f32) (((f64) cameraPosition.z + (0.8 * (f64) work->scrollOffset.y)) / 1200.0),
                     0.0f);
     PSMTXScale(work->textureMatrices[2], textureScale, textureScale, 1.0f);
     PSMTXTransApply(work->textureMatrices[2], work->textureMatrices[2],
-                    (cameraPosition.x + work->scrollOffsetX) / 1200.0f,
-                    (cameraPosition.z + work->scrollOffsetZ) / 1200.0f, 0.0f);
+                    (cameraPosition.x + work->scrollOffset.x) / 1200.0f,
+                    (cameraPosition.z + work->scrollOffset.y) / 1200.0f, 0.0f);
     PSMTXScale(work->textureMatrices[3], textureScale, textureScale, 1.0f);
     PSMTXTransApply(work->textureMatrices[3], work->textureMatrices[3], cameraPosition.x / 1200.0f,
                     cameraPosition.z / 1200.0f, 0.0f);
 }
 
-/* Copy the rendered 640-by-480 framebuffer into the effect's half-size RGB565 texture. */
+/* Copies a 640-by-480 EFB region into a 320-by-240 RGB565 texture. */
 void fn_1_11124(M676TextureWork *work)
 {
     GXSetTexCopySrc(0, 0, 640, 480);
@@ -425,10 +419,7 @@ void fn_1_112F0(s32 unusedValue, GXIndTexStageID stage, GXTexMapID map, GXTexCoo
 /* Called by the layer-2 model hook to refresh the effect texture from the framebuffer. */
 void fn_1_11340(M676TextureWork *work, Mtx *matrix)
 {
-    GXSetTexCopySrc(0, 0, 640, 480);
-    GXSetTexCopyDst(320, 240, GX_TF_RGB565, 1);
-    GXCopyTex(work->textureBuffer, 0);
-    GXPixModeSync();
+    fn_1_11124(work);
 }
 
 const f32 lbl_1_rodata_754[3][2][3] = { { { 0.01f, 0, 0 }, { 0, 0.01f, 0 } },
@@ -441,7 +432,7 @@ void fn_1_113A0(M676TextureWork *texture, Mtx *matrix)
 
     PSMTXConcat(*matrix, texture->textureMatrices[0],
         positionMatrix);
-    GXLoadPosMtxImm(positionMatrix, 0);
+    GXLoadPosMtxImm(positionMatrix, GX_PNMTX0);
     GXSetNumChans(1);
     GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_VTX, GX_SRC_VTX, 0,
         GX_DF_NONE, GX_AF_NONE);
@@ -465,9 +456,9 @@ void fn_1_113A0(M676TextureWork *texture, Mtx *matrix)
         GX_PTIDENTITY);
     GXSetTexCoordGen2(GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX2, 0,
         GX_PTIDENTITY);
-    GXSetIndTexMtx(GX_ITM_0, (f32 (*)[3])lbl_1_rodata_754[0], 0);
-    GXSetIndTexMtx(GX_ITM_1, (f32 (*)[3])lbl_1_rodata_754[1], 0);
-    GXSetIndTexMtx(GX_ITM_2, (f32 (*)[3])lbl_1_rodata_754[2], 0);
+    GXSetIndTexMtx(GX_ITM_0, lbl_1_rodata_754[0], 0);
+    GXSetIndTexMtx(GX_ITM_1, lbl_1_rodata_754[1], 0);
+    GXSetIndTexMtx(GX_ITM_2, lbl_1_rodata_754[2], 0);
     GXSetNumIndStages(2);
     GXSetIndTexOrder(GX_INDTEXSTAGE0, GX_TEXCOORD2, GX_TEXMAP1);
     GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
@@ -576,7 +567,7 @@ void fn_1_11928(M676TextureWork *work) {
     GXSetArray(GX_VA_POS, (void *)lbl_1_rodata_800, 6U);
     GXSetArray(GX_VA_CLR0, (void *)lbl_1_rodata_6E0, 2U);
     GXSetArray(GX_VA_TEX0, (void *)lbl_1_rodata_8C0, 4U);
-    GXCallDisplayList((void *)lbl_1_rodata_940, 96U);
+    GXCallDisplayList(lbl_1_rodata_940, 96U);
 }
 
 /* Adds a particle at position with the supplied initial velocity when a slot is free. */
@@ -602,7 +593,7 @@ void fn_1_119B0(Vec *position, Vec *velocity)
     }
 }
 
-/* Spawn count particles around a point, with randomized height, spread, and launch velocity. */
+/* Attempts count particle insertions with randomized height, spread, and launch velocity. */
 void fn_1_11A74(Vec *position, f32 radius, s32 count)
 {
     s32 particleIndex;
@@ -610,11 +601,6 @@ void fn_1_11A74(Vec *position, f32 radius, s32 count)
     for (particleIndex = 0; particleIndex < count; particleIndex++) {
         Vec particlePosition;
         Vec particleVelocity;
-        s32 slot;
-        OMOBJ *manager;
-        s16 modelId;
-        HU3D_PARTICLE *hookWork;
-        HU3D_PARTICLE_DATA *particle;
         f32 sine;
         f32 cosine;
         f32 angle;
@@ -622,9 +608,9 @@ void fn_1_11A74(Vec *position, f32 radius, s32 count)
         angle = (f32)((270.0 *
             (1.52587890625e-05 * (f64)(f32)(s32)(frand() & 0xFFFF))) -
             135.0);
-        sine = (f32)sin((3.141592653589793 * (f64)angle) /
+        sine = (f32)sin((M_PI * (f64)angle) /
             180.0);
-        cosine = (f32)cos((3.141592653589793 * (f64)angle) /
+        cosine = (f32)cos((M_PI * (f64)angle) /
             180.0);
 
         particlePosition.x = (f32)((f64)(position->x + (sine * radius)) +
@@ -646,18 +632,7 @@ void fn_1_11A74(Vec *position, f32 radius, s32 count)
             (2.0 * (3.0517578125e-05 *
                 (f64)(f32)((s32)(frand() & 0xFFFF) - 32768))));
 
-        manager = lbl_1_bss_10A8;
-        modelId = manager->mdlId[0];
-        hookWork = lbl_802C01C8[modelId].hookData;
-        particle = hookWork->data;
-        for (slot = 0; slot < hookWork->maxCnt; slot++, particle++) {
-            if (particle->time < 0) {
-                particle->time = 0;
-                particle->pos = particlePosition;
-                particle->accel = particleVelocity;
-                break;
-            }
-        }
+        fn_1_119B0(&particlePosition, &particleVelocity);
     }
 }
 

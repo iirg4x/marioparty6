@@ -1,5 +1,5 @@
 /* Player movement, light, collision, and audio updates for Light Up My Night. */
-#include "dolphin/math.h"
+#include <math.h>
 
 #include "dolphin/types.h"
 
@@ -10,6 +10,7 @@
 #include "dolphin/mtx.h"
 
 #include "string.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/printf.h"
 
 #include "game/main.h"
 
@@ -22,6 +23,7 @@
 #include "game/sprite.h"
 
 #include "REL/m617dll/shared.h"
+extern s16 lbl_1_bss_38E8;
 
 #include "game/object.h"
 
@@ -87,121 +89,6 @@
 
 #include "game/board/player.h"
 
-s32 frandmod(s32 maximum);
-
-extern int printf(const char *format, s32 modelId, s32 lightId);
-
-typedef struct M617ParticleVector {
-    f32 x;
-    f32 y;
-    f32 z;
-} M617ParticleVector;
-
-typedef struct M617ParticleColor {
-    u8 red;
-    u8 green;
-    u8 blue;
-    u8 alpha;
-} M617ParticleColor;
-
-typedef struct M617ParticleParameters {
-    u32 flags;
-    M617ParticleVector playerMovementOffset;
-    M617ParticleColor startColor;
-    M617ParticleColor targetColor;
-    f32 velocityScale[3];
-    f32 verticalAcceleration;
-    f32 rotationIncrement;
-    f32 scaleIncrement;
-    f32 scaleIncrementMultiplier;
-    f32 alphaIncrement;
-    f32 colorProgress;
-} M617ParticleParameters;
-
-typedef struct M617ParticleEntry {
-    s16 framesRemaining; /* Particle lifetime in updates. */
-    s16 playerIndex; /* Player associated with the particle. */
-    u32 unreadWord; /* Not accessed by this file. */
-    M617ParticleVector velocity;
-    M617ParticleVector emissionPosition;
-    M617ParticleVector velocityOffset;
-    f32 scale;
-    f32 scaleY;
-    f32 rotationZ;
-    M617ParticleVector position;
-    M617ParticleColor color;
-} M617ParticleEntry;
-
-typedef struct M617ParticleContext {
-    u8 unreadPrefix[2]; /* Not accessed by this file. */
-    s16 lastEntryIndex; /* Index most recently initialized by the emitter. */
-    u8 unreadBeforeParameters[24]; /* Not accessed by this file. */
-    M617ParticleParameters *parameters; /* Shared parameters for the particle entries. */
-    u8 unreadBeforeCount[16]; /* Not accessed by this file. */
-    s16 entryCount; /* Number of entries in the particle array. */
-    u8 unreadAfterCount[2]; /* Not accessed by this file. */
-    void *unreadPointer; /* Not accessed by this file. */
-    u8 unreadBeforeEntries[16]; /* Not accessed by this file. */
-    M617ParticleEntry *entries; /* Particle array passed to the update callback. */
-} M617ParticleContext;
-
-typedef struct M617CopyColor {
-    u8 red;
-    u8 green;
-    u8 blue;
-    u8 alpha;
-} M617CopyColor;
-
-typedef struct M617CopyData {
-    u32 value00;
-    f32 playerOffsetX;
-    f32 playerOffsetY;
-    f32 playerOffsetZ;
-    M617CopyColor color;
-    u8 targetColor[4];
-    f32 animationParameters[9];
-} M617CopyData;
-
-typedef struct M617Vector3 {
-    f32 x;
-    f32 y;
-    f32 z;
-} M617Vector3;
-
-typedef struct M617CopyParticleEntry {
-    s16 framesRemaining; /* Particle lifetime in updates. */
-    s16 playerIndex; /* Player associated with the particle. */
-    u32 unreadWord; /* Not accessed by this file. */
-    M617Vector3 velocity;
-    M617Vector3 emissionPosition;
-    f32 offsetX;
-    f32 offsetY;
-    f32 offsetZ;
-    f32 scale;
-    u32 scaleYBits;
-    u32 rotationZBits;
-    M617Vector3 position;
-    M617CopyColor color;
-} M617CopyParticleEntry;
-
-typedef struct M617CopyParticleContext {
-    u8 beforeState[2]; /* Not accessed by this file. */
-    s16 lastEntryIndex; /* Index most recently initialized by the emitter. */
-    u8 beforeEntryData[24]; /* Not accessed by this file. */
-    M617CopyData *entryData; /* Parameters copied when a particle is created. */
-    u8 beforeEntryCount[16]; /* Not accessed by this file. */
-    s16 entryCount; /* Number of entries in the particle array. */
-    u8 beforeEntries[22]; /* Not accessed by this file. */
-    M617CopyParticleEntry *entries; /* Destination particle array. */
-} M617CopyParticleContext;
-
-void fn_1_484C(HU3D_MODEL *model, M617ParticleContext *context, Mtx matrix);
-
-void fn_1_3DE0(void);
-
-s16 fn_1_463C(s16 modelIndex, s16 playerIndex, M617Vector3 emissionPosition, M617Vector3 velocity,
-              f32 initialScale, s16 framesRemaining, const M617CopyData *copyData);
-
 /* Update an active sound slot's pan. */
 void fn_1_58DC(s16 slotIndex, s16 pan)
 {
@@ -229,18 +116,6 @@ void fn_1_59FC(s16 slotIndex, s16 volume)
     }
 }
 
-void HuAudAllStop(void);
-
-void HuAudFXStop(int seNo);
-
-s32 HuAudFXStatusGet(int seNo);
-
-typedef struct M617CursorPoint {
-    f32 x;
-    u8 unreadBetweenCoordinates[4]; /* Not accessed by this file. */
-    f32 y;
-} M617CursorPoint;
-
 /* Stop a tracked sound slot when its handle is in a stoppable status. */
 void fn_1_5A8C(s16 slotIndex) {
     if ((lbl_1_bss_9C8.soundActive[slotIndex] == 1) &&
@@ -265,15 +140,9 @@ void fn_1_5C1C(void) {
     HuAudAllStop();
 }
 
-extern s16 lbl_1_bss_38E8;
-
 void fn_1_5DB4(void);
 
-void fn_1_2B48(void);
-
 void fn_1_78C0(void);
-
-s16 fn_1_24D8(void);
 
 s16 fn_1_5DE8(void);
 
@@ -288,21 +157,19 @@ int fn_1_5C3C(void)
 
         lbl_1_bss_0[20].tpLevel = 1.0f;
         lbl_1_bss_0[21].tpLevel = 1.0f;
-        MgScoreBoxTPLvlSet(lbl_1_bss_0[20].spriteId,
-                           lbl_1_bss_0[20].tpLevel);
-        MgScoreBoxTPLvlSet(lbl_1_bss_0[21].spriteId,
-                           lbl_1_bss_0[21].tpLevel);
+        MgScoreBoxTPLvlSet(lbl_1_bss_0[20].spriteId, lbl_1_bss_0[20].tpLevel);
+        MgScoreBoxTPLvlSet(lbl_1_bss_0[21].spriteId, lbl_1_bss_0[21].tpLevel);
 
-        lbl_1_bss_370[1].scaleY =
-            lbl_1_bss_370[1].scaleX =
-            lbl_1_bss_370[0].scaleY =
-            lbl_1_bss_370[0].scaleX = 1.0f;
+        lbl_1_bss_370[1].scale.y =
+            lbl_1_bss_370[1].scale.x =
+            lbl_1_bss_370[0].scale.y =
+            lbl_1_bss_370[0].scale.x = 1.0f;
         HuSprGrpScaleSet(lbl_1_bss_370[0].groupId,
-                         lbl_1_bss_370[0].scaleX,
-                         lbl_1_bss_370[0].scaleY);
+                         lbl_1_bss_370[0].scale.x,
+                         lbl_1_bss_370[0].scale.y);
         HuSprGrpScaleSet(lbl_1_bss_370[1].groupId,
-                         lbl_1_bss_370[1].scaleX,
-                         lbl_1_bss_370[1].scaleY);
+                         lbl_1_bss_370[1].scale.x,
+                         lbl_1_bss_370[1].scale.y);
 
         lbl_1_bss_38E8 = 1;
     }
@@ -315,17 +182,11 @@ int fn_1_5C3C(void)
     return result;
 }
 
-void fn_1_730(void);
-
-void fn_1_16898(void);
-
 void fn_1_5FC0(void);
 
 void fn_1_6DEC(void);
 
 void fn_1_7048(void);
-
-void fn_1_18BD4(void);
 
 /* Run the player, light, and model updates used by the minigame's frame callbacks. */
 void fn_1_5DB4(void)
@@ -337,12 +198,6 @@ void fn_1_5DB4(void)
     fn_1_7048();
     fn_1_18BD4();
 }
-
-void fn_1_3028(MGTIMER *timer);
-
-s32 fn_1_3054(MGTIMER *timer);
-
-void fn_1_307C(MGTIMER *timer);
 
 /* Check player results and the timer; fn_1_5C3C uses the return to advance the sequence. */
 s16 fn_1_5DE8(void)
@@ -387,26 +242,12 @@ s16 fn_1_5DE8(void)
     if ((result != 0) || (resultCue != 0)) {
         lbl_1_bss_AB0[0].motionState = 1;
         lbl_1_bss_AB0[1].motionState = 1;
-        fn_80071C18((s16)lbl_1_bss_AB0[0].resultState,
-                       (s16)lbl_1_bss_AB0[1].resultState, -1, -1);
+        fn_80071C18((s16)lbl_1_bss_AB0[0].resultState, (s16)lbl_1_bss_AB0[1].resultState, -1, -1);
         result = 1;
     }
 
     return result;
 }
-
-s16 fn_1_3BB8(s16, s16);
-
-s32 fn_1_3CD0(s16, s16);
-
-typedef struct M617VoiceWork {
-    u8 unreadBeforePosition[52]; /* Player state preceding the sound's source position. */
-    Point3d position; /* Position used for positional sound. */
-} M617VoiceWork;
-
-void fn_1_4DB0(M617VoiceWork *, s16);
-
-void fn_1_54B8(s16, s16, Vec *);
 
 /* Update player actions, light claims, and their motion phases from the frame callback. */
 void fn_1_5FC0(void) {
@@ -429,10 +270,9 @@ void fn_1_5FC0(void) {
     playerIndex = 0;
     while (playerIndex < 2) {
         player = &lbl_1_bss_AB0[playerIndex];
-        fn_1_4DB0((M617VoiceWork *)player, 0);
-        PSVECSubtract((Point3d *) &player->position.x, &player->target, &delta);
-        distance = (f32)sqrt((f64)
-            ((delta.x * delta.x) + (delta.z * delta.z)));
+        fn_1_4DB0(player, 0);
+        PSVECSubtract(&player->position, &player->target, &delta);
+        distance = (f32)sqrt((f64) ((delta.x * delta.x) + (delta.z * delta.z)));
         if (distance == 0.0f) {
             player->rangeIndex = 0;
         } else if (distance < 5.0f) {
@@ -446,8 +286,7 @@ void fn_1_5FC0(void) {
                 light = &lbl_1_bss_458[modelIndex];
                 delta.x = light->position.x - player->position.x;
                 delta.z = light->position.z - player->position.z;
-                distance = (f32)sqrt((f64)
-                    ((delta.x * delta.x) + (delta.z * delta.z)));
+                distance = (f32)sqrt((f64) ((delta.x * delta.x) + (delta.z * delta.z)));
                 if (distance > 200.0f) {
                     fn_1_3CD0(lbl_1_bss_E88[player->participantIndex].modelId,
                               light->localLightPoolId);
@@ -485,11 +324,10 @@ void fn_1_5FC0(void) {
                     model = &lbl_1_bss_E88[modelIndex];
                     delta.x = model->position.x - player->position.x;
                     delta.z = model->position.z - player->position.z;
-                    distance = (f32)sqrt((f64)
-                        ((delta.x * delta.x) + (delta.z * delta.z)));
+                    distance = (f32)sqrt((f64) ((delta.x * delta.x) + (delta.z * delta.z)));
                     if (distance < (40.0f + (50.0f + lbl_1_bss_9C8.limit))) {
                         targetAngle = (f32) (180.0 * (atan2((f64) delta.x, (f64) delta.z) /
-                                                      3.141592653589793));
+                                                      M_PI));
                         currentAngle = player->rotation.y;
                         if (((targetAngle > 90.0f) && (currentAngle < -90.0f)) ||
                             ((targetAngle < -90.0f) && (currentAngle > 90.0f))) {
@@ -512,8 +350,7 @@ void fn_1_5FC0(void) {
                                 claimedThisFrame = 1;
                                 claimedItem = itemIndex;
                                 player->progress += 1;
-                                fn_80026A44(lbl_1_bss_E88[playerIndex + 94].modelId,
-                                                  (1 << 0));
+                                fn_80026A44(lbl_1_bss_E88[playerIndex + 94].modelId, (1 << 0));
                                 fn_8002D414(lbl_1_bss_E88[playerIndex + 94].modelId, 0.0f);
                                 fn_8002D86C(lbl_1_bss_E88[playerIndex + 94].modelId, 1.0f);
                                 lbl_1_bss_E88[playerIndex + 94].position.x = model->position.x;
@@ -628,23 +465,13 @@ void fn_1_6DEC(void)
     }
 }
 
-typedef struct M617LightOffsets {
-    Vec values[4]; /* Particle origins for the four corner lights. */
-} M617LightOffsets;
-
-static const M617LightOffsets lightOffsetsSource = {
-    {{-788.0f, 60.0f, -788.0f}, {788.0f, 60.0f, -788.0f},
-     {-788.0f, 60.0f, 788.0f}, {788.0f, 60.0f, 788.0f}}
-};
-
-s16 fn_1_435C(s16 playerIndex, const Vec *position);
-
-s16 fn_1_4070(const Vec *position);
-
 /* Update stage lights and their attached models from the minigame frame callbacks. */
 void fn_1_7048(void)
 {
-    M617LightOffsets lightOffsets;
+    Vec lightOffsets[4] = {
+        {-788.0f, 60.0f, -788.0f}, {788.0f, 60.0f, -788.0f},
+        {-788.0f, 60.0f, 788.0f}, {788.0f, 60.0f, 788.0f}
+    };
     f32 movementSpeed;
     f32 lightOffsetScale;
     f32 adjustedHeight;
@@ -652,7 +479,6 @@ void fn_1_7048(void)
     s16 lightIndex;
     M617ModelSetupRecord *model;
 
-    lightOffsets = lightOffsetsSource;
     lightIndex = 0;
     while (lightIndex < 15) {
         if (lbl_1_bss_458[lightIndex].modelId != -1) {
@@ -686,15 +512,11 @@ void fn_1_7048(void)
                 }
                 light->position.x = (f32)((f64)player->position.x +
                     (f64)player->lightRadius *
-                    sin((3.141592653589793 *
-                         (f64)(player->rotation.y + player->lightAngle)) /
-                        180.0));
+                    sin((M_PI * (f64)(player->rotation.y + player->lightAngle)) / 180.0));
                 light->position.y = player->lightHeight;
                 light->position.z = (f32)((f64)player->position.z +
                     (f64)player->lightRadius *
-                    cos((3.141592653589793 *
-                         (f64)(player->rotation.y + player->lightAngle)) /
-                        180.0));
+                    cos((M_PI * (f64)(player->rotation.y + player->lightAngle)) / 180.0));
                 light->rotation.y = player->rotation.y;
                 light->distance = light->position.y;
                 lbl_1_bss_E88[lightIndex + 81].position.x =
@@ -705,12 +527,12 @@ void fn_1_7048(void)
                     light->position.z;
                 Hu3DModelObjPosGet(lbl_1_bss_E88[lightIndex].modelId,
                     "new_torch-sentan",
-                    (Point3d *)&light->objectPosition);
+                    &light->objectPosition);
                 player->snapshotPosition = player->previousPosition;
                 player->previousPosition = light->objectPosition;
-                PSVECSubtract((Vec *)&player->previousPosition,
-                    (Vec *)&player->snapshotPosition,
-                    (Vec *)&player->movement);
+                PSVECSubtract(&player->previousPosition,
+                    &player->snapshotPosition,
+                    &player->movement);
                 movementSpeed = light->intensity -
                     player->upperIntensityLimit[player->rangeIndex];
                 if (movementSpeed > 0.0f) {
@@ -768,7 +590,7 @@ void fn_1_7048(void)
                     light->referencePosition.z;
                 light->distance = light->position.y;
                 light->enabled = 1;
-                light->objectPosition = lightOffsets.values[lightIndex - 11];
+                light->objectPosition = lightOffsets[lightIndex - 11];
                 if (light->intensity > 0.42f || light->intensity < 0.38f) {
                     light->intensityStep *= -1.0f;
                 }
@@ -776,17 +598,15 @@ void fn_1_7048(void)
             if (light->enabled != 0) {
                 light->intensity += light->intensityStep;
                 if (lightIndex <= 1) {
-                    fn_1_435C(lightIndex, (Vec *)&light->objectPosition);
+                    fn_1_435C(lightIndex, &light->objectPosition);
                 } else {
                     if (light->frame++ >= 1) {
-                        fn_1_4070((Vec *)&light->objectPosition);
+                        fn_1_4070(&light->objectPosition);
                         light->frame = 0;
                     }
                 }
             }
-            fn_80028F14(light->modelId, light->lightId,
-                (Point3d *)&light->position,
-                (Point3d *)&light->direction);
+            fn_80028F14(light->modelId, light->lightId, &light->position, &light->direction);
             fn_80028C1C(light->modelId, light->lightId,
                 light->distance, light->intensity, GX_DA_STEEP);
         }
@@ -794,22 +614,7 @@ void fn_1_7048(void)
     }
 }
 
-typedef struct M617PlayerTask {
-    u8 firstParameterBytes[4]; /* First narrow-phase parameter, not read here. */
-    s32 playerIndex; /* Second narrow-phase parameter, set to the player slot. */
-    s32 collisionType; /* Narrow-phase category; zero identifies another player. */
-    u8 unreadCollisionData[104]; /* Not accessed by this file. */
-    u16 unreadTrailingValue; /* Not accessed by this file. */
-} M617PlayerTask;
-
-typedef struct M617PlayerIndexTask {
-    u8 actorHeader[12]; /* Actor fields before its game-owned parameter. */
-    s32 playerIndex; /* Actor parameter set to the player's slot during setup. */
-    u8 actorMotionData[100]; /* Actor fields between its parameter and collision mesh. */
-    u16 collisionMeshIndex; /* Actor collision mesh, copied after collision correction. */
-} M617PlayerIndexTask;
-
-typedef struct M617PlayerSetupParam {
+typedef struct {
     f32 height;
     f32 radius;
     s32 param;
@@ -821,34 +626,18 @@ typedef struct M617PlayerSetupParam {
     MGACTOR_CORRECT_HOOK correctionCallbacks[16];
 } M617PlayerSetupParam;
 
-typedef struct M617BoxEdgeFlags {
+typedef struct {
     s8 flags[2][4]; /* Per-layout edge settings; -1 disables an edge. */
 } M617BoxEdgeFlags;
 
-MGTIMER *fn_1_2FB4(int type, int duration, int end, f32 x, f32 y);
-
-void fn_1_3E4(void);
-
-void fn_1_A438(void);
-
-void fn_1_AA84(void);
-
-void fn_1_187C8(void);
-
-void fn_1_BA64();
-
-void fn_1_E1F0();
-
-void fn_1_ECC(void);
-
 /* Collision narrow-phase hook: link the players for type zero; all cases return zero. */
-s32 fn_1_780C(M617PlayerTask *first, M617PlayerTask *second)
+int fn_1_780C(COL_NARROW_PARAM *first, COL_NARROW_PARAM *second)
 {
-    switch (second->collisionType) {
+    switch (second->type) {
     case 0:
-        lbl_1_bss_AB0[first->playerIndex].linkedPlayer = (s16) second->playerIndex;
-        lbl_1_bss_AB0[second->playerIndex].linkedPlayer = (s16) first->playerIndex;
-        lbl_1_bss_AB0[first->playerIndex].orbitCounter++;
+        lbl_1_bss_AB0[first->paramB].linkedPlayer = (s16) second->paramB;
+        lbl_1_bss_AB0[second->paramB].linkedPlayer = (s16) first->paramB;
+        lbl_1_bss_AB0[first->paramB].orbitCounter++;
         break;
     case 1:
     case 2:
@@ -861,12 +650,12 @@ s32 fn_1_780C(M617PlayerTask *first, M617PlayerTask *second)
 }
 
 /* The actor correction hook copies this player's collision-mesh index into its work record. */
-void fn_1_788C(M617PlayerIndexTask *task)
+void fn_1_788C(MGACTOR *task)
 {
     s32 playerIndex;
 
-    playerIndex = task->playerIndex;
-    lbl_1_bss_AB0[playerIndex].collisionMeshIndex = (s16) task->collisionMeshIndex;
+    playerIndex = task->param;
+    lbl_1_bss_AB0[playerIndex].collisionMeshIndex = (s16) task->colMesh;
 }
 
 /* Resolve player overlap with other players, stage obstacles, and arena boundaries each frame. */
@@ -892,7 +681,6 @@ void fn_1_78C0(void)
     s16 edgeIndex;
     s16 collisionCount;
     s16 hit;
-    s16 obstacleFrames;
     M617PlayerStateData *player;
     M617ModelSetupRecord *model;
 
@@ -904,8 +692,8 @@ void fn_1_78C0(void)
             modelIndex = playerIndex ^ 1;
             separation.x = lbl_1_bss_AB0[modelIndex].position.x - player->position.x;
             separation.z = lbl_1_bss_AB0[modelIndex].position.z - player->position.z;
-            distance = (f32) sqrt(
-                (f64) (separation.x * separation.x + separation.z * separation.z));
+            distance =
+                (f32) sqrt( (f64) (separation.x * separation.x + separation.z * separation.z));
             minimumDistance = 105.0f;
             if (distance < minimumDistance) {
                 if (distance == 0.0f) distance = 1.0f;
@@ -925,8 +713,8 @@ void fn_1_78C0(void)
             model = &lbl_1_bss_E88[modelIndex];
             separation.x = player->position.x - model->position.x;
             separation.z = player->position.z - model->position.z;
-            distance = (f32) sqrt(
-                (f64) (separation.x * separation.x + separation.z * separation.z));
+            distance =
+                (f32) sqrt( (f64) (separation.x * separation.x + separation.z * separation.z));
             if (distance < minimumDistance) {
                 if (distance == 0.0f) distance = 1.0f;
                 pushScale = minimumDistance / distance;
@@ -940,11 +728,11 @@ void fn_1_78C0(void)
                                               : 0;
                 if (player->computerControlled != 0 && (s16)player->selectedModel != modelIndex) {
                     obstacleAngle = (f32) (180.0 * (atan2((f64) separation.x, (f64) separation.z) /
-                                                    3.141592653589793));
+                                                    M_PI));
                     separation.x = player->position.x - player->targetPosition.x;
                     separation.z = player->position.z - player->targetPosition.z;
                     playerAngle = (f32) (180.0 * (atan2((f64) separation.x, (f64) separation.z) /
-                                                  3.141592653589793));
+                                                  M_PI));
                     if ((obstacleAngle > 90.0f && playerAngle < -90.0f) ||
                         (obstacleAngle < -90.0f && playerAngle > 90.0f)) {
                         obstacleAngle =
@@ -1021,12 +809,12 @@ void fn_1_78C0(void)
                                 PSVECNormalize(&separation, &normalized);
                                 obstacleAngle =
                                     (f32) (180.0 * (atan2((f64) normalized.x, (f64) normalized.z) /
-                                                    3.141592653589793));
+                                                    M_PI));
                                 playerAngle =
                                     (f32) (180.0 *
                                            (atan2((f64) model->edgeDirections[edgeIndex].x,
                                                   (f64) model->edgeDirections[edgeIndex].z) /
-                                            3.141592653589793));
+                                            M_PI));
                                 if (playerAngle == 180.0f && obstacleAngle < 0.0f)
                                     playerAngle = -180.0f;
                                 obstacleAngle = obstacleAngle - playerAngle > 0.0f
@@ -1042,12 +830,12 @@ void fn_1_78C0(void)
                                 PSVECNormalize(&movement, &normalized);
                                 movementDifference =
                                     (f32) (180.0 * (atan2((f64) normalized.x, (f64) normalized.z) /
-                                                    3.141592653589793));
+                                                    M_PI));
                                 playerAngle =
                                     (f32) (180.0 *
                                            (atan2((f64) model->edgeDirections[edgeIndex].x,
                                                   (f64) model->edgeDirections[edgeIndex].z) /
-                                            3.141592653589793));
+                                            M_PI));
                                 if (playerAngle == 180.0f && movementDifference < 0.0f)
                                     playerAngle = -180.0f;
                                 movementDifference =
@@ -1108,8 +896,8 @@ void fn_1_78C0(void)
             separation.x = player->position.x - nearestPoint.x;
             separation.y = 0.0f;
             separation.z = player->position.z - nearestPoint.z;
-            minimumDistance = (f32) sqrt(
-                (f64) (separation.x * separation.x + separation.z * separation.z));
+            minimumDistance =
+                (f32) sqrt( (f64) (separation.x * separation.x + separation.z * separation.z));
             if (minimumDistance < 50.0f) {
                 pushScale = minimumDistance ? 50.0f / minimumDistance : 0.0f;
                 separation.x *= pushScale;
@@ -1123,8 +911,8 @@ void fn_1_78C0(void)
         for (edgeIndex = 0, hit = 0; edgeIndex < 2; edgeIndex++) {
             separation.x = player->position.x - edges[edgeIndex][0];
             separation.z = player->position.z - edges[edgeIndex][1];
-            distance = (f32) sqrt(
-                (f64) (separation.x * separation.x + separation.z * separation.z));
+            distance =
+                (f32) sqrt( (f64) (separation.x * separation.x + separation.z * separation.z));
             minimumDistance = 500.0f;
             if (distance < minimumDistance) {
                 hit = 1;

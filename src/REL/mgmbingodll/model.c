@@ -1,14 +1,12 @@
 /* Controls the board-side model's movement and animation during Treetop Bingo. */
 #include "REL/mgmbingodll/module_types.h"
 #include "msm_se.h"
+#include "game/hsfex.h"
+#include "humath.h"
 
 void fn_1_11138(Vec *result, const Vec *point0, const Vec *point1,
                const Vec *point2, const Vec *point3, f32 duration, f32 time);
 void fn_1_10B04(OMOBJ *obj);
-extern f32 InterpolateBMLine(f32 *samples, f32 *sampleTimes, f32 frame);
-
-extern void fn_1_E9C(void);
-extern void fn_1_1217C(void);
 
 extern void (*_ctors[])(void);
 typedef void (*VoidFunc)(void);
@@ -136,7 +134,7 @@ void fn_1_10B04(OMOBJ *object)
                      (fn_8002D4E0(object->mdlId[0]) == 38.0f) ||
                      (fn_8002D4E0(object->mdlId[0]) == 54.0f) ||
                      (fn_8002D4E0(object->mdlId[0]) == 70.0f))) {
-                    HuAudFXPlay(940);
+                    HuAudFXPlay(MSM_SE_GUIDE_NIGHT_CHEER);
                     return;
                 }
             } else if (fn_8002D3EC(object->mdlId[0]) < 0) {
@@ -205,7 +203,7 @@ void fn_1_11138(
     sampleTimes[3] = 2.0f * duration;
     // Ease the interpolation time toward the destination with a quarter sine wave.
     frame = (f32)((f64)duration *
-        sin((3.141592653589793 *
+        sin((M_PI *
             (f64)(90.0f * (frame / duration))) /
             180.0));
 
@@ -229,7 +227,7 @@ void fn_1_11138(
 // Initializes the board object manager and starts the Treetop Bingo control process.
 void fn_1_112B8(void) {
     lbl_1_bss_B00 = fn_8003A8BC(100, 8192);
-    *(s16 *)&MgModeSubMode = 0;
+    MgModeSubMode = 0;
     fn_1_E9C();
     fn_8000DAC0(fn_1_1217C, 100U, 12288U, 0, lbl_1_bss_B00);
 }
@@ -242,10 +240,7 @@ s32 _prolog(void) {
         (*constructor)();
         ++constructor;
     }
-    lbl_1_bss_B00 = fn_8003A8BC(100, 8192);
-    *(s16 *) &MgModeSubMode = 0;
-    fn_1_E9C();
-    fn_8000DAC0(fn_1_1217C, 100U, 12288U, 0, lbl_1_bss_B00);
+    fn_1_112B8();
     return 0;
 }
 

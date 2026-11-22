@@ -1,5 +1,5 @@
 /* Scene model loading, board geometry, lighting, and transition callbacks. */
-#include "dolphin/math.h"
+#include <math.h>
 
 #include "dolphin/types.h"
 
@@ -22,6 +22,7 @@
 #include "game/object.h"
 
 #include "datadir_enum.h"
+#include "humath.h"
 
 /* Model resources shared by the scene and its player attachments. */
 u32 lbl_1_data_118[51] = {
@@ -40,13 +41,7 @@ u32 lbl_1_data_118[51] = {
     DATANUM(0x4c0000, 48), DATANUM(0x4c0000, 49), DATANUM(0x4c0000, 50),
 };
 
-char lbl_1_data_1E4[] = "pattern %d rot%d\n";
-
-char lbl_1_data_1F6[] = "%d ";
-
-char lbl_1_data_1FA[] = "\n";
-
-typedef struct M617PlayerSetupParam {
+typedef struct {
     f32 height;
     f32 radius;
     s32 param;
@@ -58,35 +53,15 @@ typedef struct M617PlayerSetupParam {
     MGACTOR_CORRECT_HOOK correctionCallbacks[16];
 } M617PlayerSetupParam;
 
-s32 fn_1_780C(COL_NARROW_PARAM *first, COL_NARROW_PARAM *second);
-
-void fn_1_788C(MGACTOR *task);
-
-typedef struct M617BoxEdgeFlags {
+typedef struct {
     s8 flags[2][4];
 } M617BoxEdgeFlags;
-
-void fn_1_78C0(void);
-
-void fn_1_2B48(void);
-
-MGTIMER *fn_1_2FB4(int type, int duration, int end, f32 x, f32 y);
-
-void fn_1_3DE0(void);
-
-void fn_1_3E4(void);
 
 void fn_1_A438(void);
 
 void fn_1_AA84(void);
 
-void fn_1_187C8(void);
-
 void fn_1_BA64(void);
-
-void fn_1_E1F0();
-
-void fn_1_ECC(void);
 
 /* Called from the sequence setup to load scene models and configure both players. */
 s32 fn_1_93D0(void) {
@@ -231,7 +206,7 @@ s32 fn_1_93D0(void) {
     actorParam.radius = 50.0f;
     actorParam.type = 0;
     actorParam.attr = 0;
-    actorParam.narrowHook = (int (*)(COL_NARROW_PARAM *, COL_NARROW_PARAM *))fn_1_780C;
+    actorParam.narrowHook = fn_1_780C;
     actorParam.correctHookParam = 0;
     actorParam.correctHook = (void (*)(MGACTOR *, int))fn_1_788C;
     index = 0;
@@ -251,7 +226,7 @@ s32 fn_1_93D0(void) {
         fn_8002D414(lbl_1_bss_E88[index].modelId, 20.0f);
         fn_8005F77C((s16) lbl_1_bss_AB0[index].character, 0);
         lbl_1_bss_AB0[index].transformState = 1;
-        lbl_1_bss_AB0[index].characterMode = 1;
+        lbl_1_bss_AB0[index].unk30 = 1;
         lbl_1_bss_AB0[index].motionState = 1;
         lbl_1_bss_AB0[index].collisionModels[1] = lbl_1_bss_AB0[index].collisionModels[0] = -1;
         lbl_1_bss_AB0[index].collisionEdges[1] = lbl_1_bss_AB0[index].collisionEdges[0] = -1;
@@ -288,10 +263,6 @@ s32 fn_1_93D0(void) {
 
 s32 fn_1_CCB4(void);
 
-void fn_1_5DB4(void);
-
-void fn_1_24D8(void);
-
 /* MgSeq calls this phase callback each frame and advances when it returns nonzero. */
 s16 fn_1_A3BC() {
     s16 result = 0;
@@ -302,7 +273,7 @@ s16 fn_1_A3BC() {
     return result;
 }
 
-/* MgSeq calls this phase callback each frame; it ignores transition completion. */
+/* Updates the scene each frame and returns zero. */
 s16 fn_1_A3FC() {
     s16 result = 0;
     fn_1_CCB4();
@@ -312,44 +283,32 @@ s16 fn_1_A3FC() {
     return result;
 }
 
-/* Board model placement and local light setup. */
 
 typedef Vec M617ModelPosition;
-
-typedef struct M617ShadowPositionTable {
-    M617ModelPosition positions[16];
-} M617ShadowPositionTable;
-
-const f32 lbl_1_rodata_3A4[48] = {
-    -650.0f, 0.0f, -650.0f, -225.0f,
-    0.0f, -650.0f, 225.0f, 0.0f,
-    -650.0f, 650.0f, 0.0f, -650.0f,
-    -650.0f, 0.0f, -225.0f, -225.0f,
-    0.0f, -225.0f, 225.0f, 0.0f,
-    -225.0f, 650.0f, 0.0f, -225.0f,
-    -650.0f, 0.0f, 225.0f, -225.0f,
-    0.0f, 225.0f, 225.0f, 0.0f,
-    225.0f, 650.0f, 0.0f, 225.0f,
-    -650.0f, 0.0f, 650.0f, -225.0f,
-    0.0f, 650.0f, 225.0f, 0.0f,
-    650.0f, 650.0f, 0.0f, 650.0f
-};
 
 /* fn_1_93D0 calls this to load static board models and set their initial state. */
 void fn_1_A438(void)
 {
-    M617ShadowPositionTable shadowPositions;
+    M617ModelPosition shadowPositions[16] = {
+        {-650.0f, 0.0f, -650.0f}, {-225.0f, 0.0f, -650.0f},
+        {225.0f, 0.0f, -650.0f}, {650.0f, 0.0f, -650.0f},
+        {-650.0f, 0.0f, -225.0f}, {-225.0f, 0.0f, -225.0f},
+        {225.0f, 0.0f, -225.0f}, {650.0f, 0.0f, -225.0f},
+        {-650.0f, 0.0f, 225.0f}, {-225.0f, 0.0f, 225.0f},
+        {225.0f, 0.0f, 225.0f}, {650.0f, 0.0f, 225.0f},
+        {-650.0f, 0.0f, 650.0f}, {-225.0f, 0.0f, 650.0f},
+        {225.0f, 0.0f, 650.0f}, {650.0f, 0.0f, 650.0f}
+    };
     s16 modelIndex;
     s16 fileIndex;
     s16 shadowPositionIndex;
 
-    shadowPositions = *(M617ShadowPositionTable *)lbl_1_rodata_3A4;
     modelIndex = 3;
     fileIndex = 1;
     shadowPositionIndex = 0;
         while (modelIndex <= 36) {
-        lbl_1_bss_E88[modelIndex].modelId = fn_80025A04(fn_80008DD0(
-            lbl_1_data_118[fileIndex], 0x10000000, 2));
+        lbl_1_bss_E88[modelIndex].modelId =
+            fn_80025A04(fn_80008DD0( lbl_1_data_118[fileIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_E88[modelIndex].modelId, (1 << 0));
         fn_80026A44(lbl_1_bss_E88[modelIndex].modelId, (1 << 0));
         fn_80026B64(lbl_1_bss_E88[modelIndex].modelId, 1);
@@ -362,7 +321,7 @@ void fn_1_A438(void)
         if (modelIndex >= 3 && modelIndex <= 18) {
             fn_80026FFC(lbl_1_bss_E88[modelIndex].modelId);
             lbl_1_bss_E88[modelIndex].secondaryPosition =
-                shadowPositions.positions[shadowPositionIndex];
+                shadowPositions[shadowPositionIndex];
         }
         fn_8002D414(lbl_1_bss_E88[modelIndex].modelId, 0.0f);
         if (modelIndex == 29 || modelIndex == 30 || modelIndex == 32) {
@@ -392,8 +351,8 @@ void fn_1_A438(void)
         modelIndex = 37;
         fileIndex = 35;
         while (modelIndex <= 45) {
-            lbl_1_bss_E88[modelIndex].modelId = fn_80025A04(fn_80008DD0(
-                lbl_1_data_118[fileIndex], 0x10000000, 2));
+            lbl_1_bss_E88[modelIndex].modelId =
+                fn_80025A04(fn_80008DD0( lbl_1_data_118[fileIndex], 0x10000000, 2));
             fn_800269E8(lbl_1_bss_E88[modelIndex].modelId, (1 << 0));
             fn_80026B64(lbl_1_bss_E88[modelIndex].modelId, 1);
             fn_80026B8C(lbl_1_bss_E88[modelIndex].modelId, 0);
@@ -411,34 +370,6 @@ void fn_1_A438(void)
         }
     }
 }
-
-extern s32 lbl_1_rodata_46C;
-
-extern s32 lbl_1_rodata_4B4;
-
-extern s32 lbl_1_rodata_4D8;
-
-#define setupTableEntryAtIndex0 setupTables[0]
-
-#define setupTableEntryAtIndex2 setupTables[2]
-
-#define setupTableEntryAtIndex70 setupTables[70]
-
-#define setupTableEntryAtIndex74 setupTables[74]
-
-#define setupTableEntryAtIndex382 setupTables[382]
-
-#define setupTableEntryAtIndex386 setupTables[386]
-
-s16 fn_1_3BB8(s16, s16);
-
-void fn_1_7048(void);
-
-extern s32 lbl_1_rodata_B58;
-
-extern s32 lbl_1_rodata_B5C;
-
-extern s32 lbl_1_rodata_B8C;
 
 /* fn_1_93D0 calls this to load board pieces and place obstacles for the layout. */
 void fn_1_AA84(void)
@@ -695,7 +626,7 @@ void fn_1_AA84(void)
     quarterTurns = frandmod(4);
     rotation = 90.0f * (f32)quarterTurns;
     lbl_1_bss_9C8.rotation = rotation;
-    printf(lbl_1_data_1E4, layout, (s16)rotation);
+    printf("pattern %d rot%d\n", layout, (s16)rotation);
     for (outerIndex = 0; outerIndex < quarterTurns; outerIndex++) {
     for (innerIndex = 0; innerIndex < 24; innerIndex++) {
             savedLink = lbl_1_bss_398[innerIndex].links[layout][2];
@@ -720,11 +651,11 @@ void fn_1_AA84(void)
         } else {
             candidate = limits[outerIndex][layout * 2];
         }
-        lbl_1_bss_9C8.selected[outerIndex].nodeIndex = selectedNodes[outerIndex] = (s16)candidate;
+        lbl_1_bss_9C8.selected[outerIndex].unk00 = selectedNodes[outerIndex] = (s16)candidate;
     }
     for (outerIndex = 0; outerIndex < 9; outerIndex++)
-        printf(lbl_1_data_1F6, selectedNodes[outerIndex]);
-    printf(lbl_1_data_1FA);
+        printf("%d ", selectedNodes[outerIndex]);
+    printf("\n");
     for (outerIndex = 46, innerIndex = 0; outerIndex <= 54; outerIndex++, innerIndex++) {
         lbl_1_bss_E88[outerIndex].modelId =
             fn_80025A04(fn_80008DD0(lbl_1_data_118[44], 0x10000000, 2));
@@ -741,7 +672,7 @@ void fn_1_AA84(void)
         lbl_1_bss_E88[outerIndex].rotation.x = 0.0f;
         lbl_1_bss_E88[outerIndex].rotation.y = 0.0f;
         lbl_1_bss_E88[outerIndex].rotation.z = 0.0f;
-        lbl_1_bss_9C8.selected[innerIndex].modelIndex = outerIndex;
+        lbl_1_bss_9C8.selected[innerIndex].unk02 = outerIndex;
     }
     for (outerIndex = 55, boundIndex = 0; outerIndex <= 78; outerIndex++, boundIndex++) {
         lbl_1_bss_E88[outerIndex].modelId =
@@ -753,8 +684,7 @@ void fn_1_AA84(void)
         fn_8002D414(lbl_1_bss_E88[outerIndex].modelId, 0.0f);
         fn_8002D86C(lbl_1_bss_E88[outerIndex].modelId, 0.0f);
         lbl_1_bss_E88[outerIndex].position = obstacleBounds[boundIndex][layout * 2];
-        *(M617ModelPosition *) &lbl_1_bss_E88[outerIndex].rotation =
-            obstacleBounds[boundIndex][layout * 2 + 1];
+        lbl_1_bss_E88[outerIndex].rotation = obstacleBounds[boundIndex][layout * 2 + 1];
         lbl_1_bss_E88[outerIndex].dimensions = shapeParameters[0];
         lbl_1_bss_E88[outerIndex].edgeDirections[0] = edgeDirections[0];
         lbl_1_bss_E88[outerIndex].edgeDirections[1] = edgeDirections[1];
@@ -771,8 +701,7 @@ void fn_1_AA84(void)
         fn_8002D414(lbl_1_bss_E88[outerIndex].modelId, 0.0f);
         fn_8002D86C(lbl_1_bss_E88[outerIndex].modelId, 0.0f);
         lbl_1_bss_E88[outerIndex].position = obstacleBounds[boundIndex][layout * 2];
-        *(M617ModelPosition *) &lbl_1_bss_E88[outerIndex].rotation =
-            obstacleBounds[boundIndex][layout * 2 + 1];
+        lbl_1_bss_E88[outerIndex].rotation = obstacleBounds[boundIndex][layout * 2 + 1];
     }
     for (outerIndex = 55; outerIndex <= 80; outerIndex++) {
         if (lbl_1_bss_E88[outerIndex].position.x != 0.0f)
@@ -781,33 +710,21 @@ void fn_1_AA84(void)
     for (outerIndex = 46; outerIndex <= 80; outerIndex++) {
         angle = (f32) (180.0 * (atan2((f64) lbl_1_bss_E88[outerIndex].position.x,
                                       (f64) lbl_1_bss_E88[outerIndex].position.z) /
-                                3.141592653589793));
+                                M_PI));
         distanceSquared =
             lbl_1_bss_E88[outerIndex].position.x * lbl_1_bss_E88[outerIndex].position.x +
             lbl_1_bss_E88[outerIndex].position.z * lbl_1_bss_E88[outerIndex].position.z;
         radius = (f32)sqrt((f64)distanceSquared);
         lbl_1_bss_E88[outerIndex].position.x =
-            (f32) ((f64) radius * sin((3.141592653589793 * (f64) (rotation + angle)) / 180.0));
+            (f32) ((f64) radius * sin((M_PI * (f64) (rotation + angle)) / 180.0));
         lbl_1_bss_E88[outerIndex].position.z =
-            (f32) ((f64) radius * cos((3.141592653589793 * (f64) (rotation + angle)) / 180.0));
+            (f32) ((f64) radius * cos((M_PI * (f64) (rotation + angle)) / 180.0));
         if ((s16)rotation % 180 != 0) {
             lbl_1_bss_E88[outerIndex].rotation.y =
                 lbl_1_bss_E88[outerIndex].rotation.y >= 90.0f ? 0.0f : 90.0f;
         }
     }
 }
-
-#undef setupTableEntryAtIndex386
-
-#undef setupTableEntryAtIndex382
-
-#undef setupTableEntryAtIndex74
-
-#undef setupTableEntryAtIndex70
-
-#undef setupTableEntryAtIndex2
-
-#undef setupTableEntryAtIndex0
 
 /* fn_1_93D0 calls this to create local lights and assign them to nearby models. */
 void fn_1_BA64(void)
@@ -882,8 +799,7 @@ void fn_1_BA64(void)
             fn_800288B4(light->modelId, &light->position, &light->direction, &light->color);
         light->localLightPoolId = modelData->LLightId[light->lightId];
         fn_800296E0(light->modelId, light->lightId, 1);
-        fn_80028C1C(light->modelId, light->lightId, light->distance, light->intensity,
-                           GX_DA_STEEP);
+        fn_80028C1C(light->modelId, light->lightId, light->distance, light->intensity, GX_DA_STEEP);
         player->upperIntensityLimit[0] = 0.56f;
         player->lowerIntensityLimit[0] = 0.52f;
         player->upperIntensityLimit[1] = 0.56f;
@@ -936,8 +852,7 @@ void fn_1_BA64(void)
             fn_800288B4(light->modelId, &light->position, &light->direction, &light->color);
         light->localLightPoolId = modelData->LLightId[light->lightId];
         fn_800296E0(light->modelId, light->lightId, 1);
-        fn_80028C1C(light->modelId, light->lightId, light->distance, light->intensity,
-                           GX_DA_STEEP);
+        fn_80028C1C(light->modelId, light->lightId, light->distance, light->intensity, GX_DA_STEEP);
     }
     position.x = 0.0f;
     position.y = 100.0f;
@@ -967,8 +882,7 @@ void fn_1_BA64(void)
             fn_800288B4(light->modelId, &light->position, &light->direction, &light->color);
         light->localLightPoolId = modelData->LLightId[light->lightId];
         fn_800296E0(light->modelId, light->lightId, 1);
-        fn_80028C1C(light->modelId, light->lightId, light->distance, light->intensity,
-                           GX_DA_STEEP);
+        fn_80028C1C(light->modelId, light->lightId, light->distance, light->intensity, GX_DA_STEEP);
     }
     fn_1_7048();
     for (modelIndex = 3; modelIndex <= 18; modelIndex++) {
@@ -1030,13 +944,7 @@ void fn_1_BA64(void)
     }
 }
 
-void fn_1_535C(void);
-
-void fn_1_54B8(s16, s16, Vec *);
-
 s32 fn_1_16990(void *, s16);
-
-s32 fn_1_2E94(f32 *, f32, f32, f32);
 
 /* The sequence callbacks use this each frame; it returns nonzero when the intro ends. */
 s32 fn_1_CCB4(void)
@@ -1114,23 +1022,15 @@ s32 fn_1_CCB4(void)
         break;
     case 5:
         transitionDuration = 60.0f;
-        fn_1_2E94(&lbl_80266A4C.x, transitionDuration, -737.0f,
-            0.0f);
-        fn_1_2E94(&lbl_80266A4C.y, transitionDuration, 456.0f,
-            181.0f);
-        fn_1_2E94(&lbl_80266A4C.z, transitionDuration, 55.0f,
-            55.0f);
-        fn_1_2E94(&lbl_80266A40.x, transitionDuration, -24.0f,
-            -35.0f);
-        fn_1_2E94(&lbl_80266A40.y, transitionDuration, 0.0f,
-            0.0f);
-        fn_1_2E94(&lbl_80266A40.z, transitionDuration, 0.0f,
-            0.0f);
-        fn_1_2E94(&lbl_802C028C, transitionDuration, 197.0f,
-            4590.0f);
+        fn_1_2E94(&lbl_80266A4C.x, transitionDuration, -737.0f, 0.0f);
+        fn_1_2E94(&lbl_80266A4C.y, transitionDuration, 456.0f, 181.0f);
+        fn_1_2E94(&lbl_80266A4C.z, transitionDuration, 55.0f, 55.0f);
+        fn_1_2E94(&lbl_80266A40.x, transitionDuration, -24.0f, -35.0f);
+        fn_1_2E94(&lbl_80266A40.y, transitionDuration, 0.0f, 0.0f);
+        fn_1_2E94(&lbl_80266A40.z, transitionDuration, 0.0f, 0.0f);
+        fn_1_2E94(&lbl_802C028C, transitionDuration, 197.0f, 4590.0f);
         transitionDuration = 30.0f;
-        animationResult = fn_1_2E94(&players[0].rotation.y,
-            transitionDuration, -135.0f, 45.0f);
+        animationResult = fn_1_2E94(&players[0].rotation.y, transitionDuration, -135.0f, 45.0f);
         lbl_1_bss_9BC.players[0]->actor->rotY = players[0].rotation.y;
         if ((s16)animationResult == 0) {
             players[0].targetPosition.x = -650.0f;
@@ -1144,20 +1044,13 @@ s32 fn_1_CCB4(void)
         break;
     case 6:
         transitionDuration = 60.0f;
-        animationResult += fn_1_2E94(&lbl_80266A4C.x, transitionDuration,
-            -737.0f, 0.0f);
-        animationResult += fn_1_2E94(&lbl_80266A4C.y, transitionDuration,
-            456.0f, 181.0f);
-        animationResult += fn_1_2E94(&lbl_80266A4C.z, transitionDuration,
-            55.0f, 55.0f);
-        animationResult += fn_1_2E94(&lbl_80266A40.x, transitionDuration,
-            -24.0f, -35.0f);
-        animationResult += fn_1_2E94(&lbl_80266A40.y, transitionDuration,
-            0.0f, 0.0f);
-        animationResult += fn_1_2E94(&lbl_80266A40.z, transitionDuration,
-            0.0f, 0.0f);
-        animationResult += fn_1_2E94(&lbl_802C028C, transitionDuration,
-            197.0f, 4590.0f);
+        animationResult += fn_1_2E94(&lbl_80266A4C.x, transitionDuration, -737.0f, 0.0f);
+        animationResult += fn_1_2E94(&lbl_80266A4C.y, transitionDuration, 456.0f, 181.0f);
+        animationResult += fn_1_2E94(&lbl_80266A4C.z, transitionDuration, 55.0f, 55.0f);
+        animationResult += fn_1_2E94(&lbl_80266A40.x, transitionDuration, -24.0f, -35.0f);
+        animationResult += fn_1_2E94(&lbl_80266A40.y, transitionDuration, 0.0f, 0.0f);
+        animationResult += fn_1_2E94(&lbl_80266A40.z, transitionDuration, 0.0f, 0.0f);
+        animationResult += fn_1_2E94(&lbl_802C028C, transitionDuration, 197.0f, 4590.0f);
         if ((s16)animationResult == 0) {
             lbl_1_bss_9C8.transitionPhase++;
         }

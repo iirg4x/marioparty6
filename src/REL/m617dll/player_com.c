@@ -1,5 +1,5 @@
 /* Light Up My Night participant selection and movement routines. */
-#include "dolphin/math.h"
+#include <math.h>
 
 #include "game/main.h"
 
@@ -18,52 +18,17 @@
 #include "game/mg/actman.h"
 
 #include "game/frand.h"
+#include "humath.h"
 
 void fn_1_1817C(M617PlayerStateData *work);
 
-typedef struct M617E1ConstantBlock {
+typedef struct {
     Vec directions[8];
 } M617E1ConstantBlock;
 
-extern const M617E1ConstantBlock lbl_1_rodata_CE8;
-
-extern const u16 lbl_1_rodata_D48[4];
-
-extern const u16 lbl_1_rodata_D50[4];
-
-extern const u16 lbl_1_rodata_D58[4];
-
-extern const u16 lbl_1_rodata_D60[4];
-
-extern const u16 lbl_1_rodata_D68[4];
-
-extern const s32 lbl_1_rodata_D70[12];
-
-extern const s16 lbl_1_rodata_DA0[8];
-
-s32 fn_1_24D8(void);
-
-s16 fn_1_5C1C(void);
-
-s32 fn_1_D6B0(void);
-
-s32 fn_1_D6D4(void);
-
-typedef struct M617D6HeaderConstants {
+typedef struct {
     s32 word[9];
 } M617D6HeaderConstants;
-
-extern const M617D6HeaderConstants lbl_1_rodata_C88;
-
-extern f32 lbl_802C028C;
-
-extern void fn_1_307C(MGTIMER *timer);
-
-extern s32 fn_1_3CD0(s16 modelId, s16 lightId);
-
-extern s16 fn_1_3BB8(s16 modelId, s16 lightId);
-
-s32 fn_1_D6F8(void);
 
 /* Called by fn_1_93D0 during setup; initializes difficulty tuning and stage routes. */
 void fn_1_E1F0(void)
@@ -1522,12 +1487,12 @@ void fn_1_E1F0(void)
                     position =
                         lbl_1_bss_38F0[recordIndex].entries[entryIndex].positions[pointIndex];
                     angle = (f32)((f64)lbl_1_bss_9C8.rotation +
-                        180.0 * (atan2((f64)position.x, (f64)position.z) / 3.141592653589793));
+                        180.0 * (atan2((f64)position.x, (f64)position.z) / M_PI));
                     distance = (f32)sqrt((f64)(position.x * position.x + position.z * position.z));
                     position.x =
-                        (f32) ((f64) distance * sin((3.141592653589793 * (f64) angle) / 180.0));
+                        (f32) ((f64) distance * sin((M_PI * (f64) angle) / 180.0));
                     position.z =
-                        (f32) ((f64) distance * cos((3.141592653589793 * (f64) angle) / 180.0));
+                        (f32) ((f64) distance * cos((M_PI * (f64) angle) / 180.0));
                     lbl_1_bss_38F0[recordIndex].entries[entryIndex].positions[pointIndex] =
                         position;
                     facing = lbl_1_bss_38F0[recordIndex].entries[entryIndex].directions[pointIndex];
@@ -1574,8 +1539,8 @@ void fn_1_16898(void)
             /* Clear per-update values before processing this participant's control phase. */
             work->computerButtonsHeld = 0;
             work->computerButtonsDown = 0;
-            work->computerStickX = 0;
-            work->computerStickY = 0;
+            work->computerStick[0] = 0;
+            work->computerStick[1] = 0;
             switch (work->controlPhase) {
             case 0:
                 work->chaseRadius = 10.1f;
@@ -1590,8 +1555,6 @@ void fn_1_16898(void)
     }
 }
 
-#define MOTION_PLAYER(index) (lbl_1_bss_9BC.players[index])
-
 /* Called by fn_1_17538 to start, advance, or finish a participant's chase. */
 s16 fn_1_16990(M617PlayerStateData *participant, s16 advanceAfterChase)
 {
@@ -1603,13 +1566,13 @@ s16 fn_1_16990(M617PlayerStateData *participant, s16 advanceAfterChase)
     targetReached = 0;
     switch (participant->chasePhase) {
     case 0:
-        fn_8007E818(MOTION_PLAYER(participant->participantIndex));
+        fn_8007E818((lbl_1_bss_9BC.players[participant->participantIndex]));
         participant->chasePhase++;
         break;
     case 1:
         targetPosition = participant->targetPosition;
         targetReached = fn_8007E8B4(
-            MOTION_PLAYER(participant->participantIndex),
+            (lbl_1_bss_9BC.players[participant->participantIndex]),
             &targetPosition,
             participant->chaseSpeed,
             participant->chaseRadius);
@@ -1622,7 +1585,7 @@ s16 fn_1_16990(M617PlayerStateData *participant, s16 advanceAfterChase)
         }
         break;
     case 2:
-        fn_8007E888(MOTION_PLAYER(participant->participantIndex));
+        fn_8007E888((lbl_1_bss_9BC.players[participant->participantIndex]));
         participant->chasePhase = 0;
         chaseComplete = 1;
         break;
@@ -1746,8 +1709,6 @@ s32 fn_1_16CC0(M617PlayerStateData *work)
 }
 
 /* Called by fn_1_17538 to orbit the target position or nudge its X/Z coordinates while blocked. */
-/* The orbit test always compares participant 0's and participant 1's headings, regardless of
- * work. */
 s16 fn_1_16F88(M617PlayerStateData *work)
 {
     f32 angle;
@@ -1757,6 +1718,7 @@ s16 fn_1_16F88(M617PlayerStateData *work)
     s16 orbitResult;
 
     orbitResult = 0;
+    /* Compare the headings from participant slots 0 and 1. */
     angle = lbl_1_bss_AB0[0].rotation.y < 0.0f ?
         360.0f + lbl_1_bss_AB0[0].rotation.y :
         lbl_1_bss_AB0[0].rotation.y;
@@ -1784,18 +1746,16 @@ s16 fn_1_16F88(M617PlayerStateData *work)
         delta.x = work->targetPosition.x - work->orbitOrigin.x;
         delta.z = work->targetPosition.z - work->orbitOrigin.z;
         angle = (f32)(180.0 *
-            (atan2((f64)delta.x, (f64)delta.z) / 3.141592653589793));
+            (atan2((f64)delta.x, (f64)delta.z) / M_PI));
         distanceSquared =
             (delta.x * delta.x) + (delta.z * delta.z);
         radius = (f32)sqrt((f64)distanceSquared);
         angle += work->orbitAngleStep;
 
         work->targetPosition.x = (f32)((f64)work->orbitOrigin.x +
-            ((f64)radius * sin((3.141592653589793 * (f64)angle) /
-                               180.0)));
+            ((f64)radius * sin((M_PI * (f64)angle) / 180.0)));
         work->targetPosition.z = (f32)((f64)work->orbitOrigin.z +
-            ((f64)radius * cos((3.141592653589793 * (f64)angle) /
-                               180.0)));
+            ((f64)radius * cos((M_PI * (f64)angle) / 180.0)));
         orbitResult = 1;
         if (work->orbitCounter >= 1) {
             work->orbitDelay = 0;
@@ -1812,12 +1772,12 @@ s16 fn_1_16F88(M617PlayerStateData *work)
             work->targetPosition.z = work->position.z;
         }
     } else {
-        work->targetStepX = work->targetObstructed != 0 ?
-            (work->targetStepX += 1.0f) : 0.0f;
-        work->targetStepZ = work->targetObstructed != 0 ?
-            (work->targetStepZ += 1.0f) : 0.0f;
-        work->targetPosition.x += work->targetStepX;
-        work->targetPosition.z += work->targetStepZ;
+        work->targetStep.x = work->targetObstructed != 0 ?
+            (work->targetStep.x += 1.0f) : 0.0f;
+        work->targetStep.z = work->targetObstructed != 0 ?
+            (work->targetStep.z += 1.0f) : 0.0f;
+        work->targetPosition.x += work->targetStep.x;
+        work->targetPosition.z += work->targetStep.z;
     }
     return orbitResult;
 }
@@ -1838,9 +1798,7 @@ s16 fn_1_17538(M617PlayerStateData *work)
     s16 playerMotionResult;
     s16 routeIndex;
     s16 matchingAxisCount;
-    s16 matchedAxes;
     s16 candidateIndex;
-    s16 candidatePoint;
     s16 variantIndex;
     s16 selectionRoll;
     s16 orbitStatus;
@@ -1882,7 +1840,7 @@ s16 fn_1_17538(M617PlayerStateData *work)
         targetDistance = (f32)sqrt((f64)distanceSquared);
         targetAngle = (f32)(180.0 *
             (atan2((f64)difference.x, (f64)difference.z) /
-             3.141592653589793));
+             M_PI));
         currentAngle = work->rotation.y;
 
         if (((targetAngle > 90.0f) && (currentAngle < -90.0f)) ||
@@ -2031,12 +1989,6 @@ s16 fn_1_180E8(M617PlayerStateData *state)
     return actionComplete;
 }
 
-s16 fn_1_16AD0(M617PlayerStateData *work);
-
-s16 fn_1_17538(M617PlayerStateData *work);
-
-s32 frandmod(s32 limit);
-
 /* Used by fn_1_1817C to find the nearest available model inside the active range. */
 static inline s16 m617FindSelectionModel(M617PlayerStateData *work)
 {
@@ -2065,9 +2017,8 @@ static inline s16 m617FindSelectionModel(M617PlayerStateData *work)
                 difference.z =
                     lbl_1_bss_458[work->participantIndex].position.z -
                     model->position.z;
-                distance = (f32)sqrt(
-                    (difference.x * difference.x) +
-                    (difference.z * difference.z));
+                distance =
+                    (f32)sqrt( (difference.x * difference.x) + (difference.z * difference.z));
                 if (distance <= work->rangeLimits[work->rangeIndex] &&
                     closestDistance > distance) {
                     closestDistance = distance;
@@ -2142,5 +2093,3 @@ void fn_1_1817C(M617PlayerStateData *work)
         break;
     }
 }
-
-#include "dolphin/types.h"

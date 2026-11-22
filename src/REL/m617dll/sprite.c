@@ -1,5 +1,5 @@
 /* Player score-box and progress-marker sprite setup and display. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m617dll/shared.h"
 #include "game/data.h"
 #include "game/gamemes.h"
@@ -7,18 +7,11 @@
 #include "game/sprite.h"
 #include "datadir_enum.h"
 
-typedef struct M617PositionPair {
-    M617Vector2 playerPositions[2]; /* Screen positions for the two players' score displays. */
-} M617PositionPair;
-
-void HuSprAttrSet(s16 groupId, s16 memberNo, s32 attributes);
-void HuSprAttrReset(s16 groupId, s16 memberNo, s32 attributes);
-
 /* fn_1_93D0 calls this to create each player's score box and progress-marker sprites. */
 void fn_1_187C8(void)
 {
     ANIMDATA *progressAnimations[3];
-    M617PositionPair positions = { { { 120.0f, 58.0f }, { 455.0f, 58.0f } } };
+    M617Vector2 positions[2] = { { 120.0f, 58.0f }, { 455.0f, 58.0f } };
     s16 playerIndex;
     s16 markerIndex;
     M617ScoreBoxEntry *entry;
@@ -31,11 +24,11 @@ void fn_1_187C8(void)
         player = &lbl_1_bss_AB0[playerIndex];
         entry = &lbl_1_bss_0[playerIndex + 20];
 
-        entry->position = positions.playerPositions[playerIndex];
+        entry->position = positions[playerIndex];
         entry->width = 216;
         entry->height = 48;
-        entry->opacity = 0.0f;
-        entry->red = entry->green = entry->blue = entry->alpha = 64;
+        entry->unk18 = 0.0f;
+        entry->red = entry->green = entry->blue = entry->unk1F = 64;
         entry->tpLevel = 0.0f;
         entry->spriteId = MgScoreBoxCreateChar(
             entry->width, entry->height, player->character);
@@ -47,12 +40,12 @@ void fn_1_187C8(void)
         MgScoreBoxDispSet(entry->spriteId, 1);
 
         group = &lbl_1_bss_370[playerIndex];
-        group->position = positions.playerPositions[playerIndex];
-        group->scaleY = group->scaleX = 0.0f;
+        group->position = positions[playerIndex];
+        group->scale.y = group->scale.x = 0.0f;
         group->groupId = HuSprGrpCreate(10);
         HuSprGrpPosSet(group->groupId, group->position.x,
                        group->position.y);
-        HuSprGrpScaleSet(group->groupId, group->scaleX, group->scaleY);
+        HuSprGrpScaleSet(group->groupId, group->scale.x, group->scale.y);
 
         for (markerIndex = 0; markerIndex < 5; markerIndex++) {
             entry = &lbl_1_bss_0[markerIndex + playerIndex * 10];

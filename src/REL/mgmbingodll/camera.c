@@ -2,9 +2,6 @@
 #include "REL/mgmbingodll/module_types.h"
 #include "game/thpmain.h"
 
-void fn_1_898(HU3D_MODEL *modelP, Mtx *mtx);
-void fn_1_854(s16 layerNo);
-
 #include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -30,6 +27,7 @@ void fn_1_854(s16 layerNo);
 extern void fn_1_10CC(OMOBJ *object);
 
 #include "game/hu3d.h"
+#include "humath.h"
 void fn_1_1214(
     HU3D_CAMERA *camera,
     HuVecF *cameraPosition,
@@ -38,7 +36,6 @@ void fn_1_1214(
     const HuVecF *pathTarget,
     f32 duration,
     f32 frame);
-extern f32 InterpolateBMLine(f32 *samples, f32 *sampleTimes, f32 frame);
 
 /* Creates the camera used to view the bingo board when gameplay begins. */
 void fn_1_E9C(void) {
@@ -113,7 +110,7 @@ void fn_1_1214(
     sampleTimes[3] = 2.0f * duration;
     // A quarter sine wave slows the camera as it approaches the selected view.
     frame = (f32)((f64)duration *
-        sin((3.141592653589793 *
+        sin((M_PI *
             (f64)(90.0f * (frame / duration))) /
             180.0));
 

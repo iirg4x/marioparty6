@@ -1,5 +1,5 @@
 /* Four player score boxes and their animated score digits. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m676Dll/score_types.h"
 #include "datadir_enum.h"
 #include "game/gamework.h"
@@ -8,9 +8,9 @@
 #include "game/data.h"
 #include "game/memory.h"
 #include <string.h>
+#include "REL/m676Dll/camera_types.h"
 
 OMOBJ *lbl_1_bss_10B0;
-s32 fn_1_1480(s32 index);
 M676ScorePosition lbl_1_data_7B0[4] = {{76.0f,64.0f},{192.4f,64.0f},{383.6f,64.0f},{500.0f,64.0f}};
 
 void fn_1_11F34(HUPROCESS *process);
@@ -63,9 +63,9 @@ void fn_1_12024(OMOBJ *object)
     s32 spriteIndex;
 
     scoreBoxAnimation =
-        HuSprAnimRead(fn_80008DD0(fn_1_1480(12), 0x10000000, 2));
+        HuSprAnimDataRead(fn_1_1480(12));
     scoreAnimation =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x9b0000, 48), 0x10000000, 2));
+        HuSprAnimDataRead(DATANUM(0x9b0000, 48));
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         M676ScoreEntry *entry = &work->entries[playerIndex];
         s16 scoreBox = MgScoreBoxCreateChar(120, 48, lbl_80265728[playerIndex].charNo);

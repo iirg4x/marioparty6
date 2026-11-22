@@ -1,20 +1,17 @@
 /* Scene lighting, camera control, positional sound and movement math. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "REL/m676Dll/camera_types.h"
 #include "game/audio.h"
 #include "game/memory.h"
 #include "game/data.h"
 #include "game/hsfex.h"
 #include <string.h>
+#include "humath.h"
 
-#define FIT_MIN(a,b) ((a)<(b)?(a):(b))
-#define FIT_MAX(a,b) ((a)>(b)?(a):(b))
 typedef void (*CameraCallback)(OMOBJ *, u32, s32);
 Vec lbl_1_data_120 = {0, -1, 0};
 GXColor lbl_1_data_12C = {0, 0, 0, 0};
 
-/* Float math entry points share the ordinary double implementations. */
-extern inline float tanf(float x) { return (float)tan(x); }
 
 void fn_1_16A0(OMOBJMAN *manager);
 void fn_1_1760(void);
@@ -40,7 +37,6 @@ void fn_1_23E0(OMOBJ *object, u32 camera, s32 index);
 void fn_1_24D8(OMOBJ *object, u32 camera, s32 index);
 void fn_1_28BC(s32 camera, Vec *direction, Vec *target, float fov, float radius);
 int fn_1_2A68(unsigned int mask);
-void fn_1_2AAC(CameraCallback callback);
 void fn_1_2AD4(u32 cameras, float aspect);
 void fn_1_2B48(u32 cameras, float x, float y, float width, float height);
 void fn_1_2D10(u32 cameras, float x, float y, float width, float height);
@@ -52,8 +48,7 @@ void fn_1_2EC0(u8 red, u8 green, u8 blue);
 void fn_1_2EF8(u32 cameras, void *data);
 void fn_1_2FB0(u32 cameraMask);
 BOOL fn_1_3450(u32 cameras);
-double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres,
-    s32 count, Vec *out);
+double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 count, Vec *out);
 void fn_1_3A1C(HUPROCESS *process, M676AudioConfig *config);
 void fn_1_3AB8(OMOBJ *obj);
 void fn_1_3B20(OMOBJ *object);
@@ -82,7 +77,7 @@ float fn_1_52C0(float start, float end, float factor);
 f32 fn_1_53DC(f32 start, f32 end);
 float fn_1_5490(HuVecF *from, HuVecF *to);
 float fn_1_552C(Vec *first, Vec *second);
-void fn_1_5698(Point3d *start, Point3d *end, f32 factor, Point3d *out);
+void fn_1_5698(Vec *start, Vec *end, f32 factor, Vec *out);
 s32 fn_1_56F0(Vec *start, Vec *end, f32 gravity, f32 initialY, Vec *velocity);
 
 OMOBJ *lbl_1_bss_430;
@@ -138,15 +133,15 @@ void fn_1_1768(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 /* Light object's update callback: forwards each frame to its registered callback. */
 void fn_1_1870(OMOBJ *obj)
 {
-    M676LightWork *light = ((M676LightWork *)(lbl_1_bss_42C->data));
-    if (light->callback != (OMOBJ_FUNC)(void *)0) {
+    M676LightWork *light = lbl_1_bss_42C->data;
+    if (light->callback != NULL) {
         light->callback(obj);
     }
 }
 
 /* Light setup: creates the shared directional light from the stored work values. */
 void fn_1_18C8(void) {
-    M676LightWork *light = ((M676LightWork *)(lbl_1_bss_42C->data));
+    M676LightWork *light = lbl_1_bss_42C->data;
 
     light->lightId = fn_800286D0(&light->position, &light->direction, &light->color);
     Hu3DGLightInfinitytSet(light->lightId);
@@ -174,33 +169,35 @@ void fn_1_192C(s32 modelId, char *lightName) {
     }
 }
 
+/* Sets the shared light's update callback. */
 void fn_1_19E0(OMOBJ_FUNC callback) {
-    M676LightWork *light=((M676LightWork *)(lbl_1_bss_42C->data));
+    M676LightWork *light=lbl_1_bss_42C->data;
     light->callback=callback;
 }
 
 /* Updates the shared light's position and reapplies its stored direction. */
 void fn_1_1A08(HuVecF *position) {
-    M676LightWork *light=((M676LightWork *)(lbl_1_bss_42C->data));
+    M676LightWork *light=lbl_1_bss_42C->data;
     light->position=*position;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Updates the shared light's direction and reapplies its stored position. */
 void fn_1_1A70(HuVecF *direction) {
-    M676LightWork *light=((M676LightWork *)(lbl_1_bss_42C->data));
+    M676LightWork *light=lbl_1_bss_42C->data;
     light->direction=*direction;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
+/* Returns a pointer to the shared light's stored direction. */
 HuVecF *fn_1_1AD8() {
-    M676LightWork *light=((M676LightWork *)(lbl_1_bss_42C->data));
+    M676LightWork *light=lbl_1_bss_42C->data;
     return &light->direction;
 }
 
 /* Sets the stored shared-light color and the global light's RGBA color. */
 void fn_1_1B00(int red,int green,int blue,int alpha) {
-    M676LightWork *light=((M676LightWork *)(lbl_1_bss_42C->data));
+    M676LightWork *light=lbl_1_bss_42C->data;
     light->color.r=red;
     light->color.g=green;
     light->color.b=blue;
@@ -234,8 +231,8 @@ void fn_1_1B84(OMOBJMAN *manager, M676FogParam *parameters)
 /* Fog object's update callback: forwards each frame to its registered callback. */
 void fn_1_1C84(OMOBJ *obj)
 {
-    M676FogWork *fogWork = ((M676FogWork *)(lbl_1_bss_428->data));
-    if (fogWork->callback != (OMOBJ_FUNC)(void *)0) {
+    M676FogWork *fogWork = lbl_1_bss_428->data;
+    if (fogWork->callback != NULL) {
         fogWork->callback(obj);
     }
 }
@@ -275,7 +272,7 @@ void fn_1_1E10(f32 fogFactor)
 {
     M676FogWork *work;
     if (lbl_1_bss_428 != NULL) {
-        work = ((M676FogWork *)(lbl_1_bss_428->data));
+        work = lbl_1_bss_428->data;
         work->factor = fogFactor;
     }
 }
@@ -402,9 +399,9 @@ void fn_1_24D8(OMOBJ *object, u32 camera, s32 index)
     delta.x = entry->position.x - entry->target.x;
     delta.y = entry->position.y - entry->target.y;
     delta.z = entry->position.z - entry->target.z;
-    lbl_80266A58[index].x = 180.0 * (atan2(-delta.y,
-        sqrtf(delta.x * delta.x + delta.z * delta.z)) / 3.141592653589793);
-    lbl_80266A58[index].y = 180.0 * (atan2(delta.x, delta.z) / 3.141592653589793);
+    lbl_80266A58[index].x =
+        180.0 * (atan2(-delta.y, sqrtf(delta.x * delta.x + delta.z * delta.z)) / M_PI);
+    lbl_80266A58[index].y = 180.0 * (atan2(delta.x, delta.z) / M_PI);
     lbl_80266A58[index].z = 0.0f;
     lbl_80266BD8[index] = sqrtf(delta.z * delta.z + (delta.x * delta.x + delta.y * delta.y));
     entry->currentPose.center = lbl_80266B18[index];
@@ -421,7 +418,7 @@ void fn_1_28BC(s32 camera, Vec *direction, Vec *target, float fov, float radius)
     const Vec *up = lbl_1_rodata_138;
     float distance;
     float radians;
-    radians = 3.141592653589793 * (fov / 2.0f) / 180.0;
+    radians = M_PI * (fov / 2.0f) / 180.0;
     distance = radius / tanf(radians);
     PSVECNormalize(direction, &unit);
     PSVECScale(&unit, &position, distance);
@@ -430,7 +427,7 @@ void fn_1_28BC(s32 camera, Vec *direction, Vec *target, float fov, float radius)
         up++;
     }
     fn_8002A3B0(fov, distance - radius, distance + radius, camera);
-    fn_8002A674(&position, (Vec *)up, target, camera);
+    fn_8002A674(&position, up, target, camera);
     fn_8002A8CC(480, camera);
     fn_8002A7D8(0.4f, camera);
 }
@@ -450,8 +447,9 @@ int fn_1_2A68(unsigned int mask)
     return 0;
 }
 
+/* Sets the camera manager's update callback. */
 void fn_1_2AAC(CameraCallback callback) {
-    M676CameraWork *state=((M676CameraWork *)(lbl_1_bss_424->data));
+    M676CameraWork *state=lbl_1_bss_424->data;
     state->callback=callback;
 }
 
@@ -540,7 +538,7 @@ void fn_1_2E10(f32 fov)
 void fn_1_2E40(HuVecF *direction) {
     OMOBJ *object=lbl_1_bss_424;
     if(object != NULL) {
-        M676CameraWork *state=((M676CameraWork *)(object->data));
+        M676CameraWork *state=object->data;
         state->shadowDirection=*direction;
     }
 }
@@ -557,7 +555,7 @@ Vec *fn_1_2E90(void)
 void fn_1_2EC0(u8 red, u8 green, u8 blue)
 {
     OMOBJ *object = lbl_1_bss_424;
-    M676CameraWork *work = (M676CameraWork *)object->data;
+    M676CameraWork *work = object->data;
 
     work->shadowColor.r = red;
     work->shadowColor.g = green;
@@ -628,8 +626,7 @@ BOOL fn_1_3450(u32 cameras)
 
 /* Fits the camera, writes its position to out, and returns zoom; initializes from spheres[0]
  * even when count is zero. */
-double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres,
-    s32 count, Vec *out)
+double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 count, Vec *out)
 {
     Mtx view;
     Mtx inverse;
@@ -654,32 +651,34 @@ double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres,
         double aspect = (double)params->width / params->height;
         tangent = tan(params->fov / 2.0f);
         slopeX =
-            aspect * (tangent * ((double) (params->width - 2 * params->marginX) / params->width));
-        slopeY = tangent * ((double)(params->height - 2 * params->marginY) / params->height);
+            aspect * (tangent * ((double) (params->width - 2 * params->margin[0]) / params->width));
+        slopeY = tangent * ((double)(params->height - 2 * params->margin[1]) / params->height);
     }
     sphere = spheres;
     MTXMultVecSR(view, &sphere->center, &lower);
     upper = lower;
     nearZ = lower.z - sphere->radius;
     sphere++;
+    /* Find the nearest depth among the sphere surfaces. */
     for (i = 1; i < count; i++, sphere++) {
         Vec position;
         MTXMultVecSR(view, &sphere->center, &position);
-        nearZ = FIT_MIN(nearZ, position.z - sphere->radius);
+        nearZ = nearZ < position.z - sphere->radius ? nearZ : position.z - sphere->radius;
     }
+    /* Fit the horizontal and vertical bounds at that depth. */
     for (sphere = spheres, i = 0; i < count; i++, sphere++) {
         Vec position;
         MTXMultVecSR(view, &sphere->center, &position);
         extentX = sphere->radius + slopeX * (position.z - nearZ);
         extentY = sphere->radius + slopeY * (position.z - nearZ);
-        lower.x = FIT_MIN(lower.x, position.x - extentX);
-        lower.y = FIT_MIN(lower.y, position.y - extentY);
-        upper.x = FIT_MAX(upper.x, position.x + extentX);
-        upper.y = FIT_MAX(upper.y, position.y + extentY);
+        lower.x = lower.x < position.x - extentX ? lower.x : position.x - extentX;
+        lower.y = lower.y < position.y - extentY ? lower.y : position.y - extentY;
+        upper.x = upper.x > position.x + extentX ? upper.x : position.x + extentX;
+        upper.y = upper.y > position.y + extentY ? upper.y : position.y + extentY;
     }
     distanceX = ((upper.x - lower.x) / 2.0f) / slopeX;
     distanceY = ((upper.y - lower.y) / 2.0f) / slopeY;
-    distance = FIT_MAX(distanceX, distanceY);
+    distance = distanceX > distanceY ? distanceX : distanceY;
     if (distanceX > distanceY) {
         double height = (upper.x - lower.x) * (slopeY / slopeX);
         upper.y = lower.y + height;
@@ -714,7 +713,7 @@ void fn_1_3A1C(HUPROCESS *process, M676AudioConfig *config) {
 
 /* Audio object's update callback: refreshes tracked sounds and then calls its client. */
 void fn_1_3AB8(OMOBJ *obj) {
-    M676AudioWork *state = ((M676AudioWork *)(lbl_1_bss_420->data));
+    M676AudioWork *state = lbl_1_bss_420->data;
 
     fn_1_3B78(obj);
     if (state->callback != NULL) {
@@ -725,7 +724,7 @@ void fn_1_3AB8(OMOBJ *obj) {
 /* Audio setup: marks all 64 sound records as unused. */
 void fn_1_3B20(OMOBJ *object)
 {
-    M676AudioWork *state = ((M676AudioWork *)(lbl_1_bss_420->data));
+    M676AudioWork *state = lbl_1_bss_420->data;
     M676AudioRecord *record = state->records;
     int index;
 
@@ -939,13 +938,13 @@ void fn_1_4F08(int effect, int handle, Vec *position, int panEnabled, int volume
 void fn_1_4F54(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    M676AudioWork *state=((M676AudioWork *)(lbl_1_bss_420->data));
+    M676AudioWork *state=lbl_1_bss_420->data;
     M676AudioRecord *record=state->records;
     int index;
     for(index=0;index<64;index++,record++) {
         if(record->handle==-1) {
             record->handle=handle;
-            record->effect=effect;
+            record->unk04=effect;
             record->cameraMask=cameraMask;
             record->panEnabled=panEnabled;
             record->volumeEnabled=volumeEnabled;
@@ -1050,7 +1049,7 @@ f32 fn_1_53DC(f32 start, f32 end)
 float fn_1_5490(HuVecF *from, HuVecF *to) {
     float deltaX = to->x - from->x;
     float deltaZ = to->z - from->z;
-    return atan2(deltaX, deltaZ) / 3.141592653589793 * 180.0;
+    return atan2(deltaX, deltaZ) / M_PI * 180.0;
 }
 
 /* Player movement and prop selection use this to measure horizontal x/z separation. */
@@ -1063,7 +1062,7 @@ float fn_1_552C(Vec *first, Vec *second)
 }
 
 /* Movement and collision code use this to interpolate a point between two positions. */
-void fn_1_5698(Point3d *start, Point3d *end, f32 factor, Point3d *out)
+void fn_1_5698(Vec *start, Vec *end, f32 factor, Vec *out)
 {
     out->x = start->x + (factor * (end->x - start->x));
     out->y = start->y + (factor * (end->y - start->y));

@@ -16,8 +16,7 @@ typedef struct M676TextureWork {
     void *textureBuffer; /* RGB565 image buffer for the captured scene. */
     ANIMDATA *textureData, *animationData; /* Repeating textures used to distort the capture. */
     Mtx textureMatrices[4]; /* Camera and scrolling transforms for the four texture stages. */
-    f32 scrollOffsetX, scrollOffsetZ; /* Accumulating world-plane offsets used to scroll the
-                                       * effect. */
+    HuVec2f scrollOffset; /* Texture scroll offsets along world X and Z. */
 } M676TextureWork;
 typedef struct M676EffectWork {
     s32 enabled; /* Set after the texture hooks have been initialized. */
@@ -34,4 +33,8 @@ typedef struct M676ShadowWork {
 } M676ShadowWork;
 
 typedef M676PropWork M676SceneEffectWork;
+
+void fn_1_10288(s32 type, s32 index, Vec *position, s32 requestValue);
+void fn_1_1033C(HUPROCESS *process);
+void fn_1_11A74(Vec *position, f32 radius, s32 count);
 #endif

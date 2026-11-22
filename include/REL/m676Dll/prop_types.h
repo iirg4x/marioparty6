@@ -32,7 +32,7 @@ typedef struct M676PropState {
     M676ActorState actor;
     s32 controlState;
     s32 controlTimer;
-    /* Cleared with the prop record and never read by this module. */
+    /* No code names these bytes. */
     u8 unkB4, unkB5, unkB6, unkB7;
     /* Desired horizontal heading in degrees and its world-space destination. */
     f32 targetAngle;
@@ -42,7 +42,7 @@ typedef struct M676PropState {
     s32 unknown_D0;
     s32 movementState;
     s32 movementTimer;
-    /* Cleared with the prop record and never read by this module. */
+    /* No code names these bytes. */
     u8 unkDC, unkDD, unkDE, unkDF, unkE0, unkE1;
     u8 unkE2, unkE3, unkE4, unkE5, unkE6, unkE7;
     u8 unkE8, unkE9, unkEA, unkEB, unkEC, unkED;
@@ -53,10 +53,10 @@ typedef struct M676PropState {
     u8 unk106, unk107, unk108, unk109, unk10A, unk10B;
     u8 unk10C, unk10D, unk10E, unk10F;
     s32 motionActive;
-    s32 motionStatus;
+    s32 unk114; /* The game's code never reads this field. */
     s32 unknown_118;
-    s32 jumpActive;
-    /* Cleared with the prop record and never read by this module. */
+    s32 unk11C; /* The game's code never reads this field. */
+    /* No code names these bytes. */
     u8 unk120, unk121, unk122, unk123, unk124, unk125;
     u8 unk126, unk127, unk128, unk129, unk12A, unk12B;
     u8 unk12C, unk12D, unk12E, unk12F, unk130, unk131;
@@ -67,11 +67,11 @@ typedef struct M676PropState {
     u8 unk14A, unk14B;
     /* Accumulated requested movement for footstep sounds; reduced by 100 after each sound. */
     f32 footstepDistance;
-    s32 poseEnabled;
-    f32 poseHeight;
-    Vec *savedPositionPointer;
+    s32 unk150; /* The game's code never reads this field. */
+    f32 unk154; /* The game's code never reads this field. */
+    Vec *unk158; /* The game's code never reads this field. */
     Vec savedPosition;
-    /* Cleared with the prop record and never read by this module. */
+    /* No code names these bytes. */
     u8 unk168, unk169, unk16A, unk16B, unk16C, unk16D;
     u8 unk16E, unk16F, unk170, unk171, unk172, unk173;
     u8 unk174, unk175, unk176, unk177, unk178, unk179;
@@ -102,9 +102,9 @@ typedef struct M676PropWork {
     f32 wobbleAmount;
     f32 bobPhase;
     f32 pitchPhase;
-    f32 unknown_1E0;
+    f32 unknown_1E0; /* The game's code never reads this field. */
     f32 rollPhase;
-    /* Cleared with the prop record and never read by this module. */
+    /* No code names these bytes. */
     u8 unk1E8, unk1E9, unk1EA, unk1EB, unk1EC, unk1ED;
     u8 unk1EE, unk1EF, unk1F0, unk1F1, unk1F2, unk1F3;
     u8 unk1F4, unk1F5, unk1F6, unk1F7, unk1F8, unk1F9;

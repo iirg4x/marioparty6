@@ -7,31 +7,21 @@
 
 extern s16 fn_1_92D4(void);
 
+/* Sets the player's minigame coin count. */
 void fn_1_7878(s32 playerIndex, s16 minigameCoins)
 {
-    lbl_80265750[playerIndex].mgCoin = minigameCoins;
+    GWMgCoinSet(playerIndex, minigameCoins);
 }
 
-s16 fn_1_7890(void) { return lbl_802C0278; }
+/* Returns the minigame night flag. */
+s16 fn_1_7890(void) { return GWMgNightFGet(); }
 
-typedef struct M642ParticleConfig_s {
-    u32 flags; /* Particle behavior flags, including alternating-size animation. */
-    GXColor endColor, startColor; /* Starting and target particle tints. */
-    Vec velocity, decay; /* Initial velocity and per-frame velocity multipliers. */
-    float gravity; /* Vertical velocity added each frame. */
-    float scale; /* Base size configured for this particle. */
-    float scaleDelta; /* Per-frame change to the particle's base size. */
-    float alphaDelta; /* Per-frame change to particle transparency. */
-    float colorTime; /* Interpolation amount between the configured tint colors. */
-} M642ParticleConfig;
-
-typedef struct M642ResourceRow_s {
+typedef struct  {
     s32 dataNumber; /* Packed resource number, or a negative value for no resource. */
     s32 type; /* Resource kind understood by the scene loader. */
     s32 flags; /* Kind-specific model attributes or particle blend settings. */
     s16 count; /* Linked-model count or particle capacity, depending on type. */
-    s16 modelIndex; /* Existing model slot used by joint-motion rows; read then overwritten by
-                     * particle rows. */
+    s16 modelIndex; /* Existing model slot read by joint-motion and type-7 rows. */
 } M642ResourceRow;
 
 typedef struct M642ResourceTableView_s {
@@ -40,29 +30,6 @@ typedef struct M642ResourceTableView_s {
     s32 motionCount; /* Motion slots needed by the scene object. */
     M642ResourceRow rows[16]; /* Ordered resource entries, ending with type 8. */
 } M642ResourceTableView;
-
-typedef struct M642ParticleAnimEntry {
-    s32 resourceId; /* Packed animation resource number; a negative value ends the list. */
-    ANIMDATA *anim; /* Loaded animation data. */
-} M642ParticleAnimEntry;
-
-/* Pool header holding the active and free item lists. */
-typedef struct M642Pool {
-    M642PoolNode *active, *free; /* Heads of the used-item and available-item lists. */
-    u8 unknown08[8]; /* No Cashapult code reads these bytes of the pool header. */
-} M642Pool;
-
-typedef struct M642TrackKeyView {
-    s32 frame; /* Animation frame; a negative value terminates the key list. */
-    f32 values[3]; /* Up to three values sampled from this key. */
-} M642TrackKeyView;
-
-typedef struct M642TrackView {
-    s16 kind; /* Interpolation mode used for this track. */
-    s16 count; /* Number of values sampled from each key. */
-    s16 end; /* Last frame at which the track is active. */
-    M642TrackKeyView *keys; /* Ordered animation keys, terminated by a negative frame. */
-} M642TrackView;
 
 f32 fn_1_89E8(f32 startValue, f32 endValue, f32 fraction);
 
@@ -175,7 +142,7 @@ s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, float x, float y, float z, f
     return result;
 }
 
-/* Effect callbacks use this to wait until the emitted particles have all disappeared. */
+/* Tests for live particles from the current emission index onward. */
 s32 fn_1_7F68(M642ParticleOwner *owner)
 {
 
@@ -321,14 +288,14 @@ void fn_1_82D4(M642ParticleOwner *owners)
 }
 
 /* Called by fn_1_859C to load animations from the scene's resource list through its sentinel. */
-void fn_1_8440(M642ParticleAnimEntry *entries)
+void fn_1_8440(M642SpriteAsset *entries)
 {
     void *resourceData;
     ANIMDATA *anim;
     s32 index;
 
     u32 initialResourceMarker = 0;
-    M642ParticleAnimEntry *entry;
+    M642SpriteAsset *entry;
 
     index = 0;
     while (1) {
@@ -338,8 +305,8 @@ void fn_1_8440(M642ParticleAnimEntry *entries)
             break;
         }
         resourceData = fn_80008DD0(entry->resourceId, 0x10000000, 2);
-        anim = entry->anim = HuSprAnimRead(resourceData);
-        entry->anim = anim;
+        anim = entry->animation = HuSprAnimRead(resourceData);
+        entry->animation = anim;
         index += 1;
     }
 }
@@ -365,12 +332,12 @@ void *fn_1_8568(void *work)
     return work;
 }
 
-/* Called during effect setup to load the shared particle animation list. */
-void *fn_1_859C(void *work)
+/* Loads the shared sprite animations during effect setup. */
+M642SpriteAsset *fn_1_859C(M642SpriteAsset *assets)
 {
-    extern void fn_1_8440(M642ParticleAnimEntry *entries);
-    fn_1_8440(work);
-    return work;
+    extern void fn_1_8440(M642SpriteAsset *entries);
+    fn_1_8440(assets);
+    return assets;
 }
 
 /* Adjusts neighboring links to detach an item before its caller returns it to a pool. */
@@ -416,7 +383,7 @@ void *fn_1_8618(void *buffer, s32 bytes, s32 itemBytes)
 void *fn_1_86B0(M642Pool *pool)
 {
     M642PoolNode *node;
-    u8 *item;
+    M642PoolNode *item;
 
     if (!pool->free) {
         return NULL;
@@ -429,8 +396,8 @@ void *fn_1_86B0(M642Pool *pool)
     node->prev = NULL;
     node->next = pool->active;
     pool->active = node;
-    item = (u8 *)node;
-    item += sizeof(M642PoolNode);
+    item = node;
+    item++;
     return item;
 }
 
@@ -438,12 +405,12 @@ void *fn_1_86B0(M642Pool *pool)
 void fn_1_8724(M642Pool *pool, void *item)
 {
     extern void fn_1_85D0(void *item);
-    u8 *buffer;
+    M642PoolNode *buffer;
     M642PoolNode *node;
 
     buffer = item;
-    buffer -= sizeof(M642PoolNode);
-    node = (M642PoolNode *)buffer;
+    buffer--;
+    node = buffer;
     fn_1_85D0(node);
     if (pool->free) {
         pool->free->prev = node;
@@ -453,36 +420,36 @@ void fn_1_8724(M642Pool *pool, void *item)
 }
 
 /* Starts traversal at the first active item in a pool. */
-void *fn_1_8794(void *pool)
+void *fn_1_8794(M642Pool *pool)
 {
     M642PoolNode *node;
-    u8 *data;
+    M642PoolNode *data;
 
-    node = ((M642Pool *)pool)->active;
-    data = (u8 *)node;
+    node = pool->active;
+    data = node;
     if (data == NULL) {
         return NULL;
     }
-    return data + sizeof(M642PoolNode);
+    return data + 1;
 }
 
 /* Advances traversal to the next active item in a pool. */
 void *fn_1_87D0(void *pool, void *item)
 {
     M642PoolNode *node;
-    u8 *data;
+    M642PoolNode *data;
 
     data = item;
-    data -= sizeof(M642PoolNode);
-    node = (M642PoolNode *)data;
-    data = (u8 *)node->next;
+    data--;
+    node = data;
+    data = node->next;
     if (data == NULL) {
         return NULL;
     }
-    return data + sizeof(M642PoolNode);
+    return data + 1;
 }
 
-/* Effect animation callbacks use this to test whether all three tracks passed their end frames. */
+/* Returns true when every non-null track has passed its end frame. */
 s32 fn_1_8814(M642TrackView **tracks, s32 frame)
 {
     s32 i;
@@ -495,7 +462,7 @@ s32 fn_1_8814(M642TrackView **tracks, s32 frame)
     return 1;
 }
 
-/* Effect animation callbacks use this to interpolate each value in a track at the current frame. */
+/* Interpolates track values at the current frame when the track kind is zero. */
 void fn_1_8870(M642TrackView **tracks, s32 frame, s32 trackIndex, f32 *outValues)
 {
     M642TrackView *track;
@@ -933,14 +900,14 @@ void *fn_1_9250(s32 index)
     return lbl_1_data_155C[index];
 }
 
-M642ParticleAnimEntry lbl_1_data_1560[3] = {
+M642SpriteAsset lbl_1_data_1560[3] = {
     {DATANUM(0x9b0000, 28), NULL},
     {DATANUM(0x9b0000, 70), NULL},
     {-1, NULL},
 };
 
-/* Supplies the shared particle animation resource list during effect setup. */
-void *fn_1_92B4(void)
+/* Supplies the shared sprite animation resource list during effect setup. */
+M642SpriteAsset *fn_1_92B4(void)
 {
     return lbl_1_data_1560;
 }
@@ -1003,10 +970,11 @@ s32 lbl_1_data_1578[5][9][9] = {
     },
 };
 
-/* Returns the checkerboard pattern used for one Cashapult round. */
+/* Returns the indexed grid pattern for collectible coins. */
 void *fn_1_92C0(s32 index)
 {
     return lbl_1_data_1578[index];
 }
 
-s16 fn_1_92D4(void) { return lbl_802C0278; }
+/* Returns the minigame night flag. */
+s16 fn_1_92D4(void) { return GWMgNightFGet(); }

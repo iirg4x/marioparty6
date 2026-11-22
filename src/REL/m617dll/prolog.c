@@ -1,5 +1,5 @@
 /* Minigame REL startup, shutdown, and sequence setup. */
-#include "dolphin/math.h"
+#include <math.h>
 #include "game/object.h"
 #include "game/mg/seqman.h"
 #include "game/mg/actman.h"

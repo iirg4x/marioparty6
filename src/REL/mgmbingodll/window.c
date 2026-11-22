@@ -6,38 +6,8 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 
-#define MSM_SE_BINGO_NEW_COMPLETION 1267
-
-typedef struct {
-    u32 messages[5]; // Instruction message IDs for targets of one through five completed bingo
-                     // lines.
-} MessageList;
-
-s16 fn_1_CF30(s16 player);
-s16 fn_1_CF74(s16 player);
-
-typedef struct MgmbingoResultMessages {
-    u32 byPlayerCount[4]; // Result message IDs for one through four named players.
-} MgmbingoResultMessages;
 extern int MgModeWorkInt[16];
 extern s16 MgModeScore[4];
-s16 fn_1_8250(s16 playerIndex);
-s16 fn_1_853C(s16 playerIndex);
-s16 fn_1_7AD0(s16 playerIndex);
-s16 fn_1_7E6C(s16 playerIndex);
-s16 fn_1_CEF0(s16 player);
-
-s16 fn_1_CF30(s16 player);
-s16 fn_1_CF74(s16 player);
-s16 fn_1_CEF0(s16 player);
-
-s16 fn_1_CF30(s16 player);
-s16 fn_1_CF74(s16 player);
-
-s16 fn_1_CEF0(s16 player);
-
-s16 fn_1_CF30(s16 player);
-s16 fn_1_CF74(s16 player);
 
 s32 lbl_1_data_90[8] = {0, 1, 2, 3, 4, 5, 6, 7};
 
@@ -49,43 +19,43 @@ u32 lbl_1_data_B0[10] = {
     MESSNUM(MESS_MGM_DECATHLON, 52), MESSNUM(MESS_MGM_DECATHLON, 53)
 };
 
-u8 lbl_1_data_D8[3] = {0};
+char lbl_1_data_D8[3] = {0};
 
 u32 lbl_1_data_DC[14] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 
 MgmbingoMessageSound lbl_1_data_114[33] = {
-    {MESSNUM(MESS_MGM_BINGO, 0), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 0), 2, 0, 944},
+    {MESSNUM(MESS_MGM_BINGO, 0), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 0), 2, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_BINGO, 0), 3, 0, -1},
-    {MESSNUM(MESS_MGM_BINGO, 0), 4, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 1), 1, 0, 942},
+    {MESSNUM(MESS_MGM_BINGO, 0), 4, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 1), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
     {MESSNUM(MESS_MGM_BINGO, 2), 1, 0, -1},
-    {MESSNUM(MESS_MGM_BINGO, 3), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 3), 2, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 9), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 10), 1, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 11), 1, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 12), 1, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 13), 1, 0, 943},
-    {MESSNUM(MESS_MGM_BINGO, 14), 1, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 14), 2, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 15), 1, 0, 942},
+    {MESSNUM(MESS_MGM_BINGO, 3), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 3), 2, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 9), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 10), 1, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 11), 1, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 12), 1, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 13), 1, 0, MSM_SE_GUIDE_NIGHT_APOLOGY},
+    {MESSNUM(MESS_MGM_BINGO, 14), 1, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 14), 2, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 15), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
     {MESSNUM(MESS_MGM_BINGO, 16), 1, 0, -1},
-    {MESSNUM(MESS_MGM_BINGO, 17), 1, 0, 950},
+    {MESSNUM(MESS_MGM_BINGO, 17), 1, 0, MSM_SE_GUIDE_DAY_INTRO},
     {MESSNUM(MESS_MGM_BINGO, 18), 1, 0, -1},
-    {MESSNUM(MESS_MGM_BINGO, 19), 1, 0, 942},
+    {MESSNUM(MESS_MGM_BINGO, 19), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
     {MESSNUM(MESS_MGM_BINGO, 19), 2, 0, -1},
-    {MESSNUM(MESS_MGM_BINGO, 20), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 21), 1, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 22), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 23), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 24), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 25), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 26), 1, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 27), 1, 0, 942},
-    {MESSNUM(MESS_MGM_BINGO, 27), 2, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 28), 1, 0, 944},
-    {MESSNUM(MESS_MGM_BINGO, 28), 2, 0, 944},
+    {MESSNUM(MESS_MGM_BINGO, 20), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 21), 1, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 22), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 23), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 24), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 25), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 26), 1, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 27), 1, 0, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_BINGO, 27), 2, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 28), 1, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_BINGO, 28), 2, 0, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_BINGO, 29), 1, 0, -1}
 };
 
@@ -111,12 +81,12 @@ void fn_1_1510(s16 windowId) {
 }
 
 // Clamps the value to 0-99 and returns its digit text in the shared bingo message buffer.
-u8 *fn_1_15A8(s16 value)
+char *fn_1_15A8(s16 value)
 {
     s16 digit;
     s16 quotient;
     s16 outputIndex;
-    u8 *digitMessage;
+    char *digitMessage;
 
     if (value < 0) {
         value = 0;
@@ -129,11 +99,11 @@ u8 *fn_1_15A8(s16 value)
     quotient = value % 10;
     outputIndex = 0;
     if (quotient > 0) {
-        digitMessage = (u8 *)HuWinMesPtrGet(lbl_1_data_B0[quotient]);
+        digitMessage = HuWinMesPtrGet(lbl_1_data_B0[quotient]);
         lbl_1_data_D8[outputIndex] = *digitMessage;
         outputIndex++;
     }
-    digitMessage = (u8 *)HuWinMesPtrGet(lbl_1_data_B0[digit]);
+    digitMessage = HuWinMesPtrGet(lbl_1_data_B0[digit]);
     lbl_1_data_D8[outputIndex] = *digitMessage;
     outputIndex++;
     lbl_1_data_D8[outputIndex] = 0;
@@ -146,11 +116,11 @@ void fn_1_1720(void) {
     HuWinInit(0);
     lbl_1_bss_C8.frameWidth = 528.0f;
     lbl_1_bss_C8.frameHeight = 80.0f;
-    lbl_1_bss_C8.frameX = -10000.0f;
-    lbl_1_bss_C8.frameY = 14.0f + (440.0f - lbl_1_bss_C8.frameHeight);
+    lbl_1_bss_C8.framePosition.x = -10000.0f;
+    lbl_1_bss_C8.framePosition.y = 14.0f + (440.0f - lbl_1_bss_C8.frameHeight);
     lbl_1_bss_C8.frameWindow = HuWinExCreateFrame(
-        lbl_1_bss_C8.frameX,
-        lbl_1_bss_C8.frameY,
+        lbl_1_bss_C8.framePosition.x,
+        lbl_1_bss_C8.framePosition.y,
         (s16)lbl_1_bss_C8.frameWidth,
         (s16)lbl_1_bss_C8.frameHeight,
         -1,
@@ -159,11 +129,11 @@ void fn_1_1720(void) {
     HuWinAttrSet(lbl_1_bss_C8.frameWindow, HUWIN_ATTR_ALIGN_CENTER);
     lbl_1_bss_C8.textWidth = 448.0f;
     lbl_1_bss_C8.textHeight = 32.0f;
-    lbl_1_bss_C8.textX = -10000.0f;
-    lbl_1_bss_C8.textY = (440.0f - lbl_1_bss_C8.textHeight) - 26.0f;
+    lbl_1_bss_C8.textPosition.x = -10000.0f;
+    lbl_1_bss_C8.textPosition.y = (440.0f - lbl_1_bss_C8.textHeight) - 26.0f;
     lbl_1_bss_C8.textWindow = HuWinExCreate(
-        lbl_1_bss_C8.textX,
-        lbl_1_bss_C8.textY,
+        lbl_1_bss_C8.textPosition.x,
+        lbl_1_bss_C8.textPosition.y,
         (s16)lbl_1_bss_C8.textWidth,
         (s16)lbl_1_bss_C8.textHeight,
         -1);
@@ -209,8 +179,6 @@ void fn_1_1AE8(void) {
 
 // Opens the frame window and shows the first bingo instruction message.
 void fn_1_1B08(void) {
-    s16 padMask;
-    s16 player;
 
     HuWinExOpen(lbl_1_bss_C8.frameWindow);
     fn_1_109E4();
@@ -225,8 +193,6 @@ void fn_1_1B08(void) {
 
 // Shows the follow-up instruction message before returning to bingo play.
 void BingoShowFollowupInstructions(void) {
-    s16 padMask;
-    s16 player;
 
     HuWinExOpen(lbl_1_bss_C8.frameWindow);
     fn_1_109E4();
@@ -254,8 +220,6 @@ void BingoCloseLineCountHint(void) {
 // Shows the two-choice prompt and returns the choice made by the players.
 s16 BingoPromptTwoChoices(void) {
     s16 selection = 0;
-    s16 padMask;
-    s16 player;
 
     HuWinExOpen(lbl_1_bss_C8.frameWindow);
     HuWinComKeyReset();
@@ -271,21 +235,14 @@ s16 BingoPromptTwoChoices(void) {
 
 // Shows the current game's start instructions and the prompt to begin play.
 void fn_1_1ED8(void) {
-    MessageList messages = {{MESSNUM(MESS_MGM_BINGO, 4), MESSNUM(MESS_MGM_BINGO, 5),
-                             MESSNUM(MESS_MGM_BINGO, 6), MESSNUM(MESS_MGM_BINGO, 7),
-                             MESSNUM(MESS_MGM_BINGO, 8)}};
-    s16 firstPlayer;
-    s16 secondPlayer;
-    s16 firstPadMask;
-    s16 secondPadMask;
+    u32 messages[5] = {MESSNUM(MESS_MGM_BINGO, 4), MESSNUM(MESS_MGM_BINGO, 5),
+                       MESSNUM(MESS_MGM_BINGO, 6), MESSNUM(MESS_MGM_BINGO, 7),
+                       MESSNUM(MESS_MGM_BINGO, 8)};
 
     HuWinExOpen(lbl_1_bss_C8.frameWindow);
     HuWinComKeyReset();
     fn_1_19B0();
-    HuWinInsertMesSet(
-        lbl_1_bss_C8.frameWindow,
-        messages.messages[MgGameNo - 1],
-        (s16)lbl_1_data_90[0]);
+    HuWinInsertMesSet( lbl_1_bss_C8.frameWindow, messages[MgGameNo - 1], (s16)lbl_1_data_90[0]);
     HuWinMesSet(lbl_1_bss_C8.frameWindow, MESSNUM(MESS_MGM_BINGO, 3));
     HuWinMesWait(lbl_1_bss_C8.frameWindow);
     HuWinComKeyReset();
@@ -300,25 +257,17 @@ void fn_1_1ED8(void) {
 // Announces players newly able to reach the bingo-line target with one mark, then shows next-game
 // prompts.
 void fn_1_2114(void) {
-    MgmbingoResultMessages resultMessages = {{MESSNUM(MESS_MGM_BINGO, 22),
-                                               MESSNUM(MESS_MGM_BINGO, 23),
-                                               MESSNUM(MESS_MGM_BINGO, 24),
-                                               MESSNUM(MESS_MGM_BINGO, 25)}};
+    u32 resultMessages[4] = {MESSNUM(MESS_MGM_BINGO, 22),
+                             MESSNUM(MESS_MGM_BINGO, 23),
+                             MESSNUM(MESS_MGM_BINGO, 24),
+                             MESSNUM(MESS_MGM_BINGO, 25)};
     s16 newReachCharacters[4];
     s16 candidateCount;
     s16 newReachCount;
     s16 previousReachCount;
-    s16 playersMask;
-    s16 inputPlayer;
-    s16 resultMask;
+
     s16 player;
-    s16 resultPlayer;
-    s16 nextPlayer;
-    s16 waitPlayer;
-    s16 periodicPlayer;
-    s16 nextMask;
-    s16 waitMask;
-    s16 periodicMask;
+
     s16 resultTotal;
     HuWinExOpen(lbl_1_bss_C8.frameWindow);
     fn_1_109E4();
@@ -350,7 +299,7 @@ void fn_1_2114(void) {
     }
     if (newReachCount)
     {
-        HuAudFXPlay(MSM_SE_BINGO_NEW_COMPLETION);
+        HuAudFXPlay(MSM_SE_MGM05_NEW_REACH);
         HuWinComKeyReset();
         fn_1_19B0();
         if (previousReachCount != 0)
@@ -377,7 +326,7 @@ void fn_1_2114(void) {
             }
             player++;
         }
-        HuWinMesSet(lbl_1_bss_C8.frameWindow, resultMessages.byPlayerCount[newReachCount - 1]);
+        HuWinMesSet(lbl_1_bss_C8.frameWindow, resultMessages[newReachCount - 1]);
         HuWinMesWait(lbl_1_bss_C8.frameWindow);
         HuWinComKeyReset();
         fn_1_19B0();
@@ -480,8 +429,6 @@ s16 fn_1_26EC(void) {
 
 // Shows a short message in the frame window, then closes it after the player reads it.
 void fn_1_2B10(void) {
-    s16 padMask;
-    s16 player;
 
     HuWinExOpen(lbl_1_bss_C8.frameWindow);
     fn_1_109E4();
@@ -498,9 +445,8 @@ void fn_1_2B10(void) {
 void fn_1_2C20(void) {
     s16 messageIndex;
     s16 winningPlayer;
-    s16 padMask;
+
     s16 player;
-    s16 padPlayer;
 
     messageIndex = 0;
     player = 0;
@@ -527,12 +473,12 @@ void fn_1_2C20(void) {
     HuPrcSleep(8);
 }
 
-// Displays the sole positive scorer's result or the no-winner result.
+// Shows the scorer's result if exactly one player scored, or the general result otherwise.
 void fn_1_2DB4(void) {
     s16 messageIndex = 0;
     s16 positiveCount = 0;
     s16 player = 0;
-    s16 padPlayer;
+
     s16 winningPlayer;
 
     while (player < 4) {
@@ -560,7 +506,7 @@ void fn_1_2DB4(void) {
         HuWinMesSet(lbl_1_bss_C8.frameWindow, MESSNUM(MESS_MGM_BINGO, 12));
         HuWinMesWait(lbl_1_bss_C8.frameWindow);
     } else {
-        s16 padMask;
+
         HuWinComKeyReset();
         fn_1_19B0();
         HuWinMesSet(lbl_1_bss_C8.frameWindow, MESSNUM(MESS_MGM_BINGO, 13));
@@ -571,14 +517,14 @@ void fn_1_2DB4(void) {
     HuPrcSleep(8);
 }
 
-// Opens the text window and displays the standard short instruction message.
+// Opens the text window and displays system guide message 12.
 void fn_1_3074(void) {
     HuWinExOpen(lbl_1_bss_C8.textWindow);
     HuWinMesSet(lbl_1_bss_C8.textWindow, MESSNUM(MESS_SYS_GUIDE, 12));
     HuWinMesWait(lbl_1_bss_C8.textWindow);
 }
 
-// Opens the text window and displays the standard short instruction message.
+// Opens the text window and displays system guide message 13.
 void fn_1_30C8(void) {
     HuWinExOpen(lbl_1_bss_C8.textWindow);
     HuWinMesSet(lbl_1_bss_C8.textWindow, MESSNUM(MESS_SYS_GUIDE, 13));
@@ -587,8 +533,6 @@ void fn_1_30C8(void) {
 
 // Shows the selected player's marking instruction, with scripted A input for a computer player.
 void fn_1_311C(s16 player) {
-    s16 delayedPadMask;
-    s16 immediatePadMask;
 
     HuWinComKeyReset();
     if (fn_1_CF30(player) != 0) {
@@ -603,15 +547,11 @@ void fn_1_311C(s16 player) {
     HuWinComKeyReset();
     HuWinExClose(lbl_1_bss_C8.frameWindow);
     HuPrcSleep(8);
-    HuWinExOpen(lbl_1_bss_C8.textWindow);
-    HuWinMesSet(lbl_1_bss_C8.textWindow, MESSNUM(MESS_SYS_GUIDE, 12));
-    HuWinMesWait(lbl_1_bss_C8.textWindow);
+    fn_1_3074();
 }
 
 // Shows the selected player's extra-mark instruction, with scripted A input for a computer player.
 void fn_1_32CC(s16 player) {
-    s16 delayedPadMask;
-    s16 immediatePadMask;
 
     HuWinComKeyReset();
     if (fn_1_CF30(player) != 0) {
@@ -626,9 +566,7 @@ void fn_1_32CC(s16 player) {
     HuWinComKeyReset();
     HuWinExClose(lbl_1_bss_C8.frameWindow);
     HuPrcSleep(8);
-    HuWinExOpen(lbl_1_bss_C8.textWindow);
-    HuWinMesSet(lbl_1_bss_C8.textWindow, MESSNUM(MESS_SYS_GUIDE, 12));
-    HuWinMesWait(lbl_1_bss_C8.textWindow);
+    fn_1_3074();
 }
 
 // Closes the short instruction window after the message sequence is complete.
@@ -640,12 +578,7 @@ void fn_1_347C(void) {
 // Names players who reached the required bingo-line count and rumbles those controlled by humans.
 void fn_1_34B0(void) {
     s16 qualifyingCharacterIndex;
-    s16 playersMask;
-    s16 availableMask;
-    s16 vibrationMask;
-    s16 player;
-    s16 availablePlayer;
-    s16 vibrationPlayer;
+
     s16 gamePlayer;
     s16 qualifyingPlayerCount;
     s16 qualifyingCharacters[4];
@@ -710,8 +643,7 @@ void fn_1_34B0(void) {
 s16 fn_1_38E4(void)
 {
     s16 result;
-    s16 padMask;
-    s16 player;
+
     s16 choice;
 
     result = 0;
@@ -751,7 +683,7 @@ void fn_1_3A60(HUWINID winId, u32 messageId, s16 cueId) {
     }
 }
 
-// Limits character voice pan to the range centered on the bingo window.
+// Clamps the pan used for message-cue sounds to 32-96.
 void fn_1_3B3C(s16 pan) {
     if (pan < 32) {
         pan = 32;
