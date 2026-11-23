@@ -4,7 +4,6 @@
 #include "REL/framework/range.h"
 #include "dolphin/types.h"
 struct PlayerWork;
-typedef std::vector<PlayerWork *> PlayerRegistry;
 typedef void (*ComparePlayers)(PlayerWork *, PlayerWork *);
 void fn_1_7BF8(void);
 void fn_1_79E8(void);

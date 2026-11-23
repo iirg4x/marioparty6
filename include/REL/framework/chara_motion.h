@@ -38,5 +38,7 @@ float getMotionOwnerTransitionTime(s32 *characterNo);
 float getMotionOwnerMaximumTime(s32 *characterNo);
 bool characterMotionShiftInactive(s32 *characterNo);
 u8 characterMotionEnded(s32 *characterNo);
+void setCharacterMotionOverlay(MotionOwner *character, HU3D_MODELID modelId,
+                               unsigned int dataNum);
 
 #endif

@@ -4,7 +4,7 @@
 #include <vector>
 #include "REL/framework/game_object.h"
 #include "REL/framework/model.h"
-#include "REL/m655DLL/rope_point.h"
+#include "REL/framework/rope_point.h"
 extern "C" {
 #include "game/sprite.h"
 }

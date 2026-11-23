@@ -14,6 +14,7 @@ extern "C" {
 }
 #include "dolphin/mtx.h"
 #include "dolphin/gx.h"
+#include "REL/m655DLL/sprite_draw_state.h"
 extern "C" {
 #include "dolphin/os.h"
 }
@@ -235,17 +236,8 @@ void fn_1_10F4(ScreenSpriteWork *work)
     GXSetNumChans(0);
     GXLoadTexObj(&work->texture, GX_TEXMAP0);
     HuSprTexLoad(work->spriteTexture, 0, 1, GX_CLAMP, GX_CLAMP, GX_LINEAR);
-    GXSetCullMode(GX_CULL_NONE);
-    GXSetColorUpdate(GX_TRUE);
-    GXSetAlphaUpdate(GX_FALSE);
-    GXSetZCompLoc(GX_TRUE);
-    GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
-    GXSetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF);
-    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA,
-                   GX_LO_NOOP);
-    GXClearVtxDesc();
-    GXSetVtxDescv(spriteVertexDescriptors);
-    GXSetVtxAttrFmtv(GX_VTXFMT0, spriteVertexFormats);
+    setSpriteDrawState(GX_CULL_NONE, GX_TRUE, GX_FALSE, GX_ALWAYS, GX_FALSE,
+                       spriteVertexDescriptors, spriteVertexFormats);
 }
 
 void fn_1_125C(ScreenSpriteWork *work)

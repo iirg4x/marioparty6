@@ -1,5 +1,5 @@
 #include "REL/m655DLL/game_constants.h"
-#include "REL/m655DLL/interpolation.h"
+#include "REL/framework/interpolation.h"
 #include "REL/m655DLL/rope_api.h"
 #include "REL/m655DLL/goal.h"
 #include "REL/m655DLL/player_entry.h"
@@ -49,32 +49,36 @@ SequenceEventObject::SequenceEventObject(int index)
     addMotions(lbl_1_rodata_178, 3);
     setMotion(DATANUM(0x720000, 4));
     this->setAttribute(0x40000001);
-    fn_1_52B8(&this->channelZeroHandlers,
+    registerEventCallback(&this->channelZeroHandlers,
         sequenceBind(std::mem_fun(&SequenceEventObject::fn_1_3F54), this), 6);
-    fn_1_52B8(&this->indexedChannelHandlers,
+    registerEventCallback(&this->indexedChannelHandlers,
         sequenceBind(std::mem_fun(&SequenceEventObject::fn_1_3F40), this), 0);
-    fn_1_52B8(&this->indexedChannelHandlers,
+    registerEventCallback(&this->indexedChannelHandlers,
         sequenceBind(std::mem_fun(&SequenceEventObject::fn_1_3F68), this), 3);
-    fn_1_52B8(&this->indexedChannelHandlers,
+    registerEventCallback(&this->indexedChannelHandlers,
         sequenceBind(std::mem_fun(&SequenceEventObject::fn_1_3FBC), this), 4);
 }
 static inline void setSequenceState(SequenceEventObject *object, SequenceEventObject::State next)
 { object->state = next; }
 SequenceEventObject::~SequenceEventObject() {}
-void SequenceEventObject::fn_1_3F40(EventMessage *message)
+/* Indexed-channel event 0: clear flag7. */
+void SequenceEventObject::fn_1_3F40(const EventPacket &message)
 {
     this->flag7 = 0;
 }
-void SequenceEventObject::fn_1_3F54(EventMessage *message)
+/* Channel-0 event 6: set flag6. */
+void SequenceEventObject::fn_1_3F54(const EventPacket &message)
 {
     this->flag6 = 1;
 }
-void SequenceEventObject::fn_1_3F68(EventMessage *message)
+/* Event 3: set flag6 and queue event 4 on this object's indexed channel after 0.3 seconds. */
+void SequenceEventObject::fn_1_3F68(const EventPacket &message)
 {
     flag6 = 1;
     sendEvent(index + 1, 4, 0.3f);
 }
-void SequenceEventObject::fn_1_3FBC(EventMessage *message)
+/* Indexed-channel event 4: clear flag7 of the registered value. */
+void SequenceEventObject::fn_1_3FBC(const EventPacket &message)
 {
     registeredValue.clearFlag7();
 }
@@ -184,10 +188,6 @@ TargetEffect::TargetEffect()
     f32 endScale;
 
 /* Retain assertion source location.
- *
- *
- *
- *
  *
  *
  *

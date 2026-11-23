@@ -1,3 +1,8 @@
+/* Draws the selection icon at one of three world-space positions. */
+/* Retail fixes the next assert's line; the earlier lines are unknown: 3 lines are left blank. */
+
+
+
 #include "REL/m655DLL/game_constants.h"
 #undef NDEBUG
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
@@ -17,12 +22,11 @@ extern "C" {
 #include "REL/framework/world_units.h"
 #define numberof(a) (int)(sizeof(a) / sizeof((a)[0]))
 extern "C" {
-extern const GXColor iconTevColor;
 extern const GXVtxDescList lbl_1_rodata_28C[3];
-extern const GXVtxAttrFmtList spriteVertexFormats[];
 #include "game/sprput.h"
 }
 #include "REL/m655DLL/icon_renderer.h"
+#include "REL/m655DLL/sprite_draw_state.h"
 extern "C" {
 IconPosition icon_pos[3] = {
     {{cmToWorld(-250.0f), cmToWorld(550.0f), cmToWorld(-400.0f)}},
@@ -51,12 +55,8 @@ IconRenderer::IconRenderer(s32 primaryAnimation, s32 secondaryAnimation)
 }
 
 IconRenderer::~IconRenderer() {}
-// Select one of the initial screen positions.
+// Selects one of the three world-space positions.
 void IconRenderer::fn_1_59C4(int pos) {
-
-/* Retain assertion source location.
- *
- */
     assert((pos >= 0) && (pos < numberof(icon_pos)));
     initialVector.components[0] = icon_pos[pos].components[0];
     initialVector.components[1] = icon_pos[pos].components[1];
@@ -165,16 +165,8 @@ void IconRenderer::draw(Mtx *projection) {
     GXSetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
     GXSetTevAlphaIn(GX_TEVSTAGE2, GX_CA_ZERO, GX_CA_TEXA, GX_CA_A0, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
-    GXSetCullMode(GX_CULL_BACK);
-    GXSetColorUpdate(GX_TRUE);
-    GXSetAlphaUpdate(GX_FALSE);
-    GXSetZCompLoc(GX_FALSE);
-    GXSetZMode(GX_TRUE, GX_LESS, GX_TRUE);
-    GXSetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF);
-    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
-    GXClearVtxDesc();
-    GXSetVtxDescv(lbl_1_rodata_28C);
-    GXSetVtxAttrFmtv(GX_VTXFMT0, spriteVertexFormats);
+    setSpriteDrawState(GX_CULL_BACK, GX_FALSE, GX_TRUE, GX_LESS, GX_TRUE,
+                       lbl_1_rodata_28C, spriteVertexFormats);
 
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     left = -firstWidth;

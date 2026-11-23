@@ -773,7 +773,7 @@ template <class T, class Allocator>
 void __vector_pod<T, Allocator>::assign(unsigned long count, const T& value) {
     if (count > capacity()) {
         if (count > max_size()) {
-            fprintf(stderr, "vector length error\n");
+            fprintf(stderr, "vector::assign length error\n");
             abort();
         }
         clear();
@@ -1112,7 +1112,7 @@ void __vector_imp<T, Allocator, false>::assign(size_type count, const T& value) 
         }
     } else {
         if (count > max_size()) {
-            fprintf(stderr, "vector length error\n");
+            fprintf(stderr, "vector::assign length error\n");
             abort();
         }
         clear();

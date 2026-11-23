@@ -4,7 +4,7 @@
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/frame_time.h"
 #include "REL/framework/world_units.h"
-/* The ropes hung over the course: verlet points between two ends, drawn as a tube of triangle strips. */
+/* Course ropes use Verlet points between two ends and are drawn as a tube of triangle strips. */
 #include "dolphin/types.h"
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
@@ -14,7 +14,7 @@
 #include "datadir_enum.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/model.h"
-#include "REL/m655DLL/rope_point.h"
+#include "REL/framework/rope_point.h"
 #include "REL/m655DLL/rope_api.h"
 extern "C" {
 #include "game/hu3d.h"
@@ -34,6 +34,7 @@ inline Vec &operator+=(Vec &value, const Vec &other) {
     PSVECAdd(&other, &value, &value);
     return value;
 }
+// Sets the current and previous positions and clears displacement.
 void fn_1_ACC8(RopePoint *self, const Vec *value) {
     self->position.x = value->x;
     self->position.y = value->y;
@@ -41,17 +42,19 @@ void fn_1_ACC8(RopePoint *self, const Vec *value) {
     self->previousPosition.x = value->x;
     self->previousPosition.y = value->y;
     self->previousPosition.z = value->z;
-    self->unknown.x = 0.0f;
-    self->unknown.y = 0.0f;
-    self->unknown.z = 0.0f;
+    self->displacement.x = 0.0f;
+    self->displacement.y = 0.0f;
+    self->displacement.z = 0.0f;
 }
+// Applies gravity and displacement to the current position.
 void fn_1_AD2C(RopePoint *state) {
     state->position.y -= gravity;
-    PSVECAdd(&state->unknown, &state->position, &state->position);
+    PSVECAdd(&state->displacement, &state->position, &state->position);
 }
+// Recomputes and damps displacement, then saves the current position.
 void fn_1_AD7C(RopePoint *self) {
-    PSVECSubtract(&self->position, &self->previousPosition, &self->unknown);
-    PSVECScale(&self->unknown, &self->unknown, 0.99f);
+    PSVECSubtract(&self->position, &self->previousPosition, &self->displacement);
+    PSVECScale(&self->displacement, &self->displacement, 0.99f);
     self->previousPosition.x = self->position.x;
     self->previousPosition.y = self->position.y;
     self->previousPosition.z = self->position.z;
@@ -75,12 +78,9 @@ void fn_1_ADE4(void) {
         new Rope(index, &top, &start->position, length, starts[index].dataNumber);
     }
 }
+// Returns the only rope registered for the given ID.
 Rope *fn_1_B140(s32 id) {
-
 /* Retain assertion source location.
- *
- *
- *
  *
  *
  *

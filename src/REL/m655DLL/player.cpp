@@ -1,5 +1,5 @@
 #include "REL/m655DLL/game_constants.h"
-#include "REL/m655DLL/interpolation.h"
+#include "REL/framework/interpolation.h"
 #include "REL/m655DLL/heiho.h"
 #include "REL/framework/frame_durations.h"
 #include "REL/m655DLL/screen_sprite_api.h"
@@ -188,7 +188,7 @@ s32 fn_1_7CB8(void) {
     playerIndex = 0;
     while (playerIndex < 2) {
         player = sm_players[playerIndex];
-        if ((u8)player->flags.unknownFlag0 != 0) {
+        if ((u8)player->flags.actionStarted != 0) {
             candidates.push_back(player->mode);
         }
         ++playerIndex;
@@ -224,8 +224,6 @@ s32 fn_1_7EF4(PlayerList *list) {
     }
     return list->size();
 }
-
-u8 characterMotionEnded(s32 *);
 
 void fn_1_A7D4(PlayerWork *object);
 
@@ -425,8 +423,8 @@ void PlayerWork::fn_1_8C44() {
 
 void fn_1_8CA4(PlayerWork *object) {
 
-    if (!object->flags.unknownFlag0) {
-        object->flags.unknownFlag0 = 1;
+    if (!object->flags.actionStarted) {
+        object->flags.actionStarted = 1;
         shiftCharacterMotion(&static_cast<Character &>(*object), CHARMOT_HSF_c000m1_301,
                              (f32)secondsToFrames(0.1), 0.0f, ((1 << 30) | (1 << 0)));
         object->resource->fn_1_5ADC();
@@ -492,7 +490,7 @@ static inline void updateState(PlayerWork *object) {
 }
 
 void fn_1_937C(PlayerWork *object) {
-    if (object->flags.unknownFlag0) {
+    if (object->flags.actionStarted) {
         updateState(object);
     }
 }
@@ -524,7 +522,6 @@ void PlayerWork::fn_1_9554(void) {
     TargetPosition targetPosition;
     f32 lowerLimit;
     PlayerWork::State next;
-    u8 isCurrentPlayer;
     PSVECAdd(&this->offset, &position.center, &position.center);
     position.center.y -= gravity;
     this->offset.y -= gravity;
@@ -733,7 +730,7 @@ void fn_1_A71C(PlayerWork *actor) {
         shiftCharacterMotion(&static_cast<Character &>(*actor), CHARMOT_HSF_c000m1_306, 16.0f, 0.0f,
                              0);
     } else {
-        DebugValue(!actor->flags.unknownFlag0);
+        DebugValue(!actor->flags.actionStarted);
     }
     setPlayerState(actor, &PlayerWork::fn_1_8B64);
 }

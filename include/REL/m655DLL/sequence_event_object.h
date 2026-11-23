@@ -21,9 +21,9 @@ struct SequenceEventObject : GameObject, ModelMotion {
     void fn_1_4194();
     void fn_1_4218();
     void fn_1_4318();
-    void fn_1_3F40(EventMessage *);
-    void fn_1_3F54(EventMessage *);
-    void fn_1_3F68(EventMessage *);
-    void fn_1_3FBC(EventMessage *);
+    void fn_1_3F40(const EventPacket &);
+    void fn_1_3F54(const EventPacket &);
+    void fn_1_3F68(const EventPacket &);
+    void fn_1_3FBC(const EventPacket &);
 };
 #endif

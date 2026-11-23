@@ -120,12 +120,12 @@ protected:
     // Node allocator sharing storage with the embedded circular sentinel.
     Metrowerks::compressed_pair<node_allocator, node_base> storage_;
 
-    // Splice an initialized node into the circular chain.
-    static void link_before(node_base* following, node_base* new_node) {
-        following->previous->next = new_node;
-        new_node->previous = following->previous;
-        following->previous = new_node;
-        new_node->next = following;
+    // Link an inclusive node range before the insertion position.
+    static void insert_nodes(node_base* following, node_base* head, node_base* tail) {
+        following->previous->next = head;
+        head->previous = following->previous;
+        following->previous = tail;
+        tail->next = following;
     }
 
     // Detach the inclusive node interval while preserving the surrounding ring.
@@ -182,6 +182,7 @@ public:
     }
 };
 
+// Allocate a node for the value and link it before the given position.
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::insert(iterator where, const_reference element) {
@@ -189,7 +190,7 @@ __list_deleter<T, Allocator>::insert(iterator where, const_reference element) {
         1> > added(node_alloc().allocate(1), node_alloc());
     allocator_type().construct(&added->value, element);
     node* new_node = added.release();
-    link_before(where.position, new_node);
+    insert_nodes(where.position, new_node, new_node);
     ++count();
     return iterator(new_node);
 }
@@ -316,11 +317,7 @@ void __list_deleter<T, Allocator>::splice(iterator where, __list_deleter& other)
     node_base* head = sentinel->next;
     node_base* tail = sentinel->previous;
     sentinel->previous = sentinel->next = sentinel;
-    node_base* following = where.position;
-    following->previous->next = head;
-    head->previous = following->previous;
-    following->previous = tail;
-    tail->next = following;
+    insert_nodes(where.position, head, tail);
     this->count() += other.count();
     other.count() = 0;
 }

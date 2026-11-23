@@ -13,10 +13,10 @@
 #include "REL/m655DLL/icon_renderer.h"
 struct PlayerStartPosition { Vec value; };
 struct PlayerFlags {
-    u8 unknownFlag0 : 1;
+    u8 actionStarted : 1;
     u8 atLimit : 1;
     u8 unknown : 6;
-    PlayerFlags() : unknownFlag0(0), atLimit(0) {}
+    PlayerFlags() : actionStarted(0), atLimit(0) {}
 };
 
 struct PlayerWork : PlayerConfigSelection, GameObject, EventListener {
