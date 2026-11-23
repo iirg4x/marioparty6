@@ -2,25 +2,19 @@
 
 The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
 
-Updated 2026-11-22 21:57 UTC.
+Updated 2026-11-23 04:27 UTC.
 
 ## Progress
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 97.16% | 99.10% |
+| Entire project | 98.49% | 99.75% |
 | Main DOL | 91.35% | 99.35% |
-| REL modules | 98.39% | 98.94% |
+| REL modules | 100.00% | 100.00% |
 
 ## REL modules
 
-**127 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
-
-Partial (1):
-
-| Module | Code | Data |
-| --- | ---: | ---: |
-| Seer Terror (`m677DLL`) | 31.85% | 42.10% |
+**128 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
 
 ## Main DOL
 
