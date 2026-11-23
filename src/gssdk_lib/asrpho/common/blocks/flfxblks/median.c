@@ -1,140 +1,146 @@
+/* Sliding median filter for the recognition pipeline. */
+#include "gssdk/blocks.h"
+#include "gssdk/mqueue.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include "gssdk/tos.h"
 
-typedef struct MedianNode {
-    struct MedianNode *higher;
-    struct MedianNode *lower;
-    f32 value;
+/* A sample and its neighbors in ascending value order. */
+typedef struct _MEDIANLIST {
+    struct _MEDIANLIST *pNext; /* Next sample in ascending value order. */
+    struct _MEDIANLIST *pPrevious; /* Previous sample in ascending value order. */
+    f32 Value; /* Value held in this ring slot. */
 } MedianNode;
 
-typedef struct Median {
-    TosBaseBlock base;
-    u32 capacity;
-    u32 count;
-    u32 ringIndex;
-    MedianNode *nodes;
-    MedianNode *minimum;
-    MedianNode *maximum;
-    MedianNode *median;
+/* Ring of samples with links ordered by value. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    u32 Depth; /* Number of slots in the sample ring. */
+    u32 NrElements; /* Number of samples held in the ring. */
+    u32 IndexOldestElem; /* Ring slot overwritten on the next input. */
+    MedianNode *pMedianList; /* Ring allocation. */
+    MedianNode *pFirst; /* Lowest-valued sample. */
+    MedianNode *pLast; /* Highest-valued sample. */
+    MedianNode *pMedian; /* Median node in the sorted list. */
 } Median;
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-static void ProcessMedian(TosBaseBlock *_This, void *pInputs, int NbrInputs)
+/* Queues the median of the samples held in the ring. */
+static void ProcessMedian(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
     Median *This = (Median *)_This;
-    MedianNode *node;
-    MedianNode *cursor;
-    f32 sample;
-    f32 *output;
-    u32 i;
-    u32 halfCount;
+    MedianNode *pCurrElement;
+    MedianNode *pPointer;
+    f32 Input;
+    f32 *pOut;
+    u32 Index;
+    u32 StopIndex;
+    f32 *input = ((void **)pInputs)[0]; /* Frame log energy at the start of the VAD level packet. */
 
-    if (*(void **)pInputs != NULL) {
-        node = &This->nodes[This->ringIndex];
-        sample = *(f32 *)*(void **)pInputs;
+    if (input != NULL) {
+        pCurrElement = &This->pMedianList[This->IndexOldestElem];
+        Input = *input;
 
-        if (This->count == This->capacity) {
-            if (node->higher != NULL) {
-                node->higher->lower = node->lower;
+        if (This->NrElements == This->Depth) {
+            if (pCurrElement->pNext != NULL) {
+                pCurrElement->pNext->pPrevious = pCurrElement->pPrevious;
             } else {
-                This->maximum = node->lower;
+                This->pLast = pCurrElement->pPrevious;
             }
 
-            if (node->lower != NULL) {
-                node->lower->higher = node->higher;
+            if (pCurrElement->pPrevious != NULL) {
+                pCurrElement->pPrevious->pNext = pCurrElement->pNext;
             } else {
-                This->minimum = node->higher;
+                This->pFirst = pCurrElement->pNext;
             }
 
-            This->count--;
+            This->NrElements--;
 
-            if (node == This->median) {
-                if (node->higher != NULL) {
-                    This->median = node->higher;
-                } else if (node->lower != NULL) {
-                    This->median = node->lower;
+            if (pCurrElement == This->pMedian) {
+                if (pCurrElement->pNext != NULL) {
+                    This->pMedian = pCurrElement->pNext;
+                } else if (pCurrElement->pPrevious != NULL) {
+                    This->pMedian = pCurrElement->pPrevious;
                 } else {
-                    This->median = NULL;
+                    This->pMedian = NULL;
                 }
             }
         }
 
-        node->value = sample;
+        pCurrElement->Value = Input;
 
-        if (This->count == 0) {
-            This->median = node;
-            This->maximum = node;
-            This->minimum = node;
-            node->lower = NULL;
-            node->higher = NULL;
-        } else if (sample < This->median->value) {
-            cursor = This->median->lower;
-            while (cursor != NULL && sample < cursor->value) {
-                cursor = cursor->lower;
+        if (This->NrElements == 0) {
+            This->pMedian = pCurrElement;
+            This->pLast = pCurrElement;
+            This->pFirst = pCurrElement;
+            pCurrElement->pPrevious = NULL;
+            pCurrElement->pNext = NULL;
+        } else if (Input < This->pMedian->Value) {
+            pPointer = This->pMedian->pPrevious;
+            while (pPointer != NULL && Input < pPointer->Value) {
+                pPointer = pPointer->pPrevious;
             }
 
-            if (cursor != NULL) {
-                node->higher = cursor->higher;
-                cursor->higher = node;
-                node->lower = cursor;
-                node->higher->lower = node;
+            if (pPointer != NULL) {
+                pCurrElement->pNext = pPointer->pNext;
+                pPointer->pNext = pCurrElement;
+                pCurrElement->pPrevious = pPointer;
+                pCurrElement->pNext->pPrevious = pCurrElement;
             } else {
-                node->higher = This->minimum;
-                node->lower = NULL;
-                This->minimum->lower = node;
-                This->minimum = node;
+                pCurrElement->pNext = This->pFirst;
+                pCurrElement->pPrevious = NULL;
+                This->pFirst->pPrevious = pCurrElement;
+                This->pFirst = pCurrElement;
             }
         } else {
-            cursor = This->median->higher;
-            while (cursor != NULL && sample >= cursor->value) {
-                cursor = cursor->higher;
+            pPointer = This->pMedian->pNext;
+            while (pPointer != NULL && Input >= pPointer->Value) {
+                pPointer = pPointer->pNext;
             }
 
-            if (cursor != NULL) {
-                node->higher = cursor;
-                node->lower = cursor->lower;
-                cursor->lower = node;
-                node->lower->higher = node;
+            if (pPointer != NULL) {
+                pCurrElement->pNext = pPointer;
+                pCurrElement->pPrevious = pPointer->pPrevious;
+                pPointer->pPrevious = pCurrElement;
+                pCurrElement->pPrevious->pNext = pCurrElement;
             } else {
-                node->higher = NULL;
-                node->lower = This->maximum;
-                This->maximum->higher = node;
-                This->maximum = node;
+                pCurrElement->pNext = NULL;
+                pCurrElement->pPrevious = This->pLast;
+                This->pLast->pNext = pCurrElement;
+                This->pLast = pCurrElement;
             }
         }
 
-        if (++This->ringIndex == This->capacity) {
-            This->ringIndex = 0;
+        if (++This->IndexOldestElem == This->Depth) {
+            This->IndexOldestElem = 0;
         }
 
-        This->count++;
-        This->median = This->minimum;
-        halfCount = This->count >> 1;
-        for (i = 0; i < halfCount; i++) {
-            This->median = This->median->higher;
+        This->NrElements++;
+        This->pMedian = This->pFirst;
+        StopIndex = This->NrElements >> 1;
+        for (Index = 0; Index < StopIndex; Index++) {
+            This->pMedian = This->pMedian->pNext;
         }
 
-        output = qEnQueueOne(This->base.output->queue);
-        if (output != NULL) {
-            *output = This->median->value;
+        pOut = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+        if (pOut != NULL) {
+            *pOut = This->pMedian->Value;
         }
     }
 }
 
-static u32 ControlMedian(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Releases the sorted sample ring on the destruction command. */
+static u8 ControlMedian(
+    struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
 {
-    Median *block = (Median *)baseBlock;
+    Median *This = (Median *)_This;
 
-    switch ((u8)command) {
-    case 255:
-        if (block->nodes != NULL) {
-            heap_Free(block->base.context->heap, block->nodes);
+    switch (ControlId) {
+    case 0xFF:
+        if (This->pMedianList != NULL) {
+            heap_Free(This->BaseBlock.Object.pTos->hHeap, This->pMedianList);
         }
-        tosBaseBlockDestruct(block);
+        tosBaseBlockDestruct(&This->BaseBlock);
         break;
     default:
         return 0;
@@ -143,48 +149,57 @@ static u32 ControlMedian(
     return 1;
 }
 
-u32 InitMedian(TosBaseBlock *_This)
+/* Clears the sorted list when starting a new sample ring. */
+static void Median_Reset(Median *This)
 {
-    Median *This = (Median *)_This;
-    u32 result = 0;
-
-    This->capacity = 0;
-    This->count = 0;
-    This->ringIndex = 0;
-    This->nodes = NULL;
-    This->minimum = NULL;
-    This->maximum = NULL;
-    This->median = NULL;
-
-    This->base.input->inputSize = 24;
-    This->base.output->outputSize = sizeof(f32);
-
-    This->capacity = _tosGetProfileU32(This, 1, 1);
-    if ((This->capacity & 1) == 0) {
-        _tosErrorLog(This, 200);
-        result = 1;
-    } else {
-        This->nodes = heap_Calloc(
-            This->base.context->heap,
-            This->capacity,
-            sizeof(MedianNode));
-
-        This->median = NULL;
-        This->maximum = NULL;
-        This->minimum = NULL;
-        This->ringIndex = 0;
-        This->count = 0;
-    }
-
-    return result;
+    This->pMedian = NULL;
+    This->pLast = NULL;
+    This->pFirst = NULL;
+    This->IndexOldestElem = 0;
+    This->NrElements = 0;
 }
 
-void *ConstructMedian(TosContext *context, u8 blockIndex)
+/* Configures the median block and allocates an odd number of sample slots. */
+static u8 InitMedian(struct _BLOCK *_This)
+{
+    Median *This = (Median *)_This;
+    u8 bRetVal = 0;
+
+    This->Depth = 0;
+    This->NrElements = 0;
+    This->IndexOldestElem = 0;
+    This->pMedianList = NULL;
+    This->pFirst = NULL;
+    This->pLast = NULL;
+    This->pMedian = NULL;
+
+    This->BaseBlock.InputQueues->Size = 6 * sizeof(f32); /* Only the first float is read. */
+    This->BaseBlock.OutputQueues->Size = sizeof(f32);
+
+    This->Depth = _tosGetProfileU32(&This->BaseBlock.Object, 1, 1);
+    if ((This->Depth & 1) == 0) {
+        _tosErrorLog(&This->BaseBlock.Object, 0xC8);
+        bRetVal = 1;
+    } else {
+        This->pMedianList = heap_Calloc(
+            This->BaseBlock.Object.pTos->hHeap,
+            This->Depth,
+            sizeof(MedianNode));
+
+        Median_Reset(This);
+    }
+
+    return bRetVal;
+}
+
+/* Registers a median block with the speech graph. */
+struct _BLOCK *ConstructMedian(struct _TOS *pTos, u8 BlockID)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1,
-        (TosProcessFunction)ProcessMedian,
-        (TosInitFunction)InitMedian,
-        (TosControlFunction)ControlMedian,
+        pTos, BlockID, 1, 1,
+        ProcessMedian,
+        /* The dispatcher reads only the low byte of the returned word. */
+        InitMedian,
+        ControlMedian,
         sizeof(Median));
 }

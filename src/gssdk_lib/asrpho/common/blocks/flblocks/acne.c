@@ -1,4 +1,7 @@
 /* Speech-mean adaptation and spectral normalization for the ASR feature graph. */
+#include "gssdk/mathusage.h"
+#include "gssdk/blocks.h"
+#include "gssdk/heap.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -6,113 +9,70 @@
 #include "gssdk/mqueue.h"
 #include "gssdk/smoother.h"
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern TosQueue *qQueueInitEx(
-    TosQueue *queue, u16 elementSize, u8 initializeReaders,
-    u16 maxElements);
-extern u8 qQueueControl(
-    TosQueue *queue, u32 command, u16 elementSize, void *argument);
-extern void qQueueReset(TosQueue *queue);
-extern void qFreeUnusedElemements(TosQueue *queue);
-extern f32 HLnOnePlusExpHFloat(f32 value);
-extern f32 LogAdd(f32 value1, f32 value2);
-
 typedef struct Acne {
     /* TOS graph callbacks and the block's input and output ports. */
-    TosBaseBlock base;
+    struct _BLOCK BaseBlock;
     /* FIFO of feature frames waiting for segment normalization. */
-    TosQueue *queue;
-    /* Queue length at which state 1 emits its oldest frame; the queue itself has no capacity
-     * limit. */
-    u16 queueEmissionLength;
-    /* 0 emits each frame, 1 retains speech frames, and 2 waits for activity. */
-    s32 state;
+    struct _QUEUE *pInternalQueue;
+    /* Queue depth that causes an active speech segment to emit its oldest frame. */
+    u16 Qdepth;
+    /* Tracks whether the block is waiting for, retaining, or emitting frames. */
+    enum { StableCMS, Event, AwaitingEvent } CmsState;
     /* Set while queued frames are being emitted during a drain. */
-    u8 drainingQueue;
-    /* Enables normalization with smoothedMean; a failed refresh does not clear this flag. */
-    u8 meanNormalizationEnabled;
+    u8 FlushFlag;
+    /* Enables normalization with pChannelCompensation; a failed refresh does not clear this
+     * flag. */
+    u8 ValidChannel;
     /* Per-band smoothed adaptive speech mean in log-amplitude units. */
-    f32 *smoothedMean;
+    f32 *pChannelCompensation;
     /* Per-band speech mean updated from incoming feature frames. */
-    f32 *adaptiveMean;
+    f32 *pSpeechMean;
     /* Per-band noise estimate copied from the feature extractor. */
-    f32 *noiseEstimate;
+    f32 *pSilenceMean;
     /* Latest scalar reference used when converting every queued frame to output energy. */
-    f32 inputReference;
+    f32 SignalPeak;
     /* Accumulated weight used while adapting the speech mean. */
-    f32 accumulatedWeight;
+    f32 NbrSpeechFrames;
     /* Count of zero-activity frames since the first input, capped at 50 until reset. */
-    s32 zeroFrameCount;
+    s32 NbrSilenceFrames;
     /* Capped total activity weight used for the uniform correction applied to every band. */
-    f32 cumulativeWeight;
+    f32 NbrSpeechFramesForLevel;
     /* Progress toward refreshing the smoothed mean. */
-    f32 smoothingProgress;
+    f32 TotUpdate;
     /* Number of feature frames received since the last reset. */
-    u32 frameCount;
+    u32 SpeakerFrameCtr;
     /* Consecutive zero-activity frames used to end a speech segment. */
-    s32 consecutiveZeroFrames;
+    s32 SilGap;
     /* Number of spectral bands in each feature frame. */
-    u32 bandCount;
-    /* Smoothing progress required before refreshing smoothedMean. */
-    f32 smoothingThreshold;
+    u32 nLogPower;
+    /* Smoothing progress required before refreshing pChannelCompensation. */
+    f32 SmootherRecomputeThr;
     /* Maximum silent frames accepted before the block returns to silence. */
-    s32 maximumConsecutiveZeroFrames;
+    s32 MaxSilGap;
     /* Maximum accumulated activity weight before queued frames are drained. */
-    f32 maximumAccumulatedWeight;
+    f32 NbrFramesForStableCMS;
     /* Minimum scalar energy written to the normalized output. */
-    f32 scalarFloor;
+    f32 LogEMask;
     /* Ratio used for positive and negative adaptive-mean and residual corrections. */
-    f32 adaptationRatio;
+    f32 InBal;
     /* Offset applied to each per-band noise estimate before comparison. */
-    f32 noiseFloorOffset;
+    f32 PreMaskwrtNoise;
     /* Lower bound applied to the adjusted-input minus adaptive-mean difference before each mean
      * update. */
-    f32 minimumBandDifference;
-    /* Unused storage between the per-band settings and initialization weight. */
-    u32 unusedStorage;
+    f32 PreMaskwrtPeak;
+    u32 FrameTypeDelay; /* The game's code never reads this field. */
     /* Initial activity weight used when the speech means are seeded. */
-    f32 initialWeight;
+    f32 InitNbrSpeechFrames;
     /* Per-band output floors applied with the smoothed mean, or copied as output before it is
      * available. */
-    const f32 *noiseFloors;
+    const f32 *pNoiseFloors;
     /* Initial per-band speech means; initialization always uses the 11 kHz table. */
-    const f32 *initialMean;
+    const f32 *pSpeechMeanInit;
     /* Smoothing matrices; initialization always uses the 11 kHz set. */
-    const Smoother1600Info *smootherInfo;
-    /* Smoother used to prepare the initial mean and refresh the adaptive per-band mean. */
-    Smoother *smoother;
+    const struct _SMOOTHERINFO *pSmootherInfo;
+    /* Prepares the initial mean and refreshes the adaptive per-band mean. */
+    struct BandPassSmootherTag *pSmoother;
 } Acne;
-
-/* Scalar values saved after the three per-band arrays in an ASR session. */
-typedef struct AcneSessionScalars {
-    /* Scalar reference used by queued frames. */
-    f32 inputReference;
-    /* Activity weight accumulated before the session was saved. */
-    f32 accumulatedWeight;
-    /* Number of silent frames tracked at the time of saving. */
-    s32 zeroFrameCount;
-    /* Capped activity weight used for mean correction. */
-    f32 cumulativeWeight;
-    /* Progress toward the next smoothed-mean refresh. */
-    f32 smoothingProgress;
-    /* Number of feature frames processed before the save. */
-    u32 frameCount;
-    /* Consecutive silent frames at the time of saving. */
-    s32 consecutiveZeroFrames;
-} AcneSessionScalars;
-
-typedef char AcneMinimumBandDifferenceOffset[
-    (offsetof(Acne, minimumBandDifference) == 124) ? 1 : -1];
-typedef char AcneUnusedStorageOffset[
-    (offsetof(Acne, unusedStorage) == 128) ? 1 : -1];
-typedef char AcneInitialWeightOffset[
-    (offsetof(Acne, initialWeight) == 132) ? 1 : -1];
-typedef char AcneSmootherOffset[
-    (offsetof(Acne, smoother) == 148) ? 1 : -1];
-typedef char AcneSize[(sizeof(Acne) == 152) ? 1 : -1];
-typedef char AcneSessionScalarsSize[
-    (sizeof(AcneSessionScalars) == 28) ? 1 : -1];
 
 static const f32 g_SpeechMeanInit11kHz[21] = {
     7.5637002f,  8.22809982f, 8.59599972f, 8.69009972f,
@@ -132,401 +92,395 @@ static const f32 g_NoiseFloors11kHz[21] = {
     -3.05103707f,
 };
 
-static u8 Reset(Acne *block);
-static void AcneGetSession(Acne *block, u8 *session);
-static void AcnePutSession(Acne *block, const u8 *session);
-static u8 NormalizeAndEnQ(Acne *block);
-static void ProcessAcne(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount);
-static u32 ControlAcne(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize);
-static u32 InitAcne(TosBaseBlock *baseBlock);
+static u8 Reset(Acne *This);
+static void AcneGetSession(Acne *This, void *pAcneSession);
+static void AcnePutSession(Acne *This, void *pAcneSession);
+static u8 NormalizeAndEnQ(Acne *This);
 
 /* Clears queued frames and seeds the adaptive speech model for a new session. */
-static u8 Reset(Acne *block)
+static u8 Reset(Acne *This)
 {
-    qQueueReset(block->queue);
-    block->state = 2;
-    block->drainingQueue = 0;
-    if (block->initialWeight > 0.0f) {
+    qQueueReset(This->pInternalQueue);
+    This->CmsState = AwaitingEvent;
+    This->FlushFlag = 0;
+    if (This->InitNbrSpeechFrames > 0.0f) {
         memcpy(
-            block->adaptiveMean, block->initialMean,
-            block->bandCount * sizeof(f32));
+            This->pSpeechMean, This->pSpeechMeanInit,
+            This->nLogPower * sizeof(f32));
         memcpy(
-            block->smoothedMean, block->initialMean,
-            block->bandCount * sizeof(f32));
-        /* Smooth the starting mean before processing new frames. Failure keeps the emptied queue,
-        * state 2, cleared drain flag, and copied or partly smoothed means; the normalization
-        * flag and remaining estimator state are unchanged. */
-        if ((u8)Smoothing(block->smoother, block->smoothedMean)) {
+            This->pChannelCompensation, This->pSpeechMeanInit,
+            This->nLogPower * sizeof(f32));
+        /* A failed smoothing pass leaves the queue empty, the state set to AwaitingEvent,
+         * and the copied or partly smoothed means in place. */
+        if (Smoothing(This->pSmoother, This->pChannelCompensation)) {
             return 1;
         }
-        block->meanNormalizationEnabled = 1;
+        This->ValidChannel = 1;
     } else {
         memset(
-            block->adaptiveMean, 0,
-            block->bandCount * sizeof(f32));
-        block->meanNormalizationEnabled = 0;
+            This->pSpeechMean, 0,
+            This->nLogPower * sizeof(f32));
+        This->ValidChannel = 0;
     }
 
     memset(
-        block->noiseEstimate, 0,
-        block->bandCount * sizeof(f32));
-    block->inputReference = 100000.0f;
-    block->accumulatedWeight = block->initialWeight;
-    block->zeroFrameCount = 0;
-    block->cumulativeWeight = 0.5f;
-    block->smoothingProgress = 0.0f;
-    block->frameCount = 0;
-    block->consecutiveZeroFrames = 0;
+        This->pSilenceMean, 0,
+        This->nLogPower * sizeof(f32));
+    This->SignalPeak = 100000.0f;
+    This->NbrSpeechFrames = This->InitNbrSpeechFrames;
+    This->NbrSilenceFrames = 0;
+    This->NbrSpeechFramesForLevel = 0.5f;
+    This->TotUpdate = 0.0f;
+    This->SpeakerFrameCtr = 0;
+    This->SilGap = 0;
     return 0;
 }
 
 /* Saves the estimator state and per-band arrays for a TOS session snapshot. */
-static void AcneGetSession(Acne *block, u8 *session)
+static void AcneGetSession(Acne *This, void *pAcneSession)
 {
-    u32 arraySize = block->bandCount * sizeof(f32);
-    AcneSessionScalars *scalars;
+    u32 bandBytes = This->nLogPower * sizeof(f32);
+    u8 *session = pAcneSession;
+    u32 *sessionWords = pAcneSession;
+    float *pIn;
 
-    *(u32 *)session = block->state;
-    session[4] = block->drainingQueue;
-    session[8] = block->meanNormalizationEnabled;
+    sessionWords[0] = This->CmsState;
+    session[4] = This->FlushFlag;
+    session[8] = This->ValidChannel;
     /* The session header reserves twelve bytes before the per-band arrays. */
     session += 12;
 
-    memcpy(session, block->smoothedMean, arraySize);
-    session += arraySize;
-    memcpy(session, block->adaptiveMean, arraySize);
-    session += arraySize;
-    memcpy(session, block->noiseEstimate, arraySize);
-    session += arraySize;
+    memcpy(session, This->pChannelCompensation, bandBytes);
+    session += bandBytes;
+    memcpy(session, This->pSpeechMean, bandBytes);
+    session += bandBytes;
+    memcpy(session, This->pSilenceMean, bandBytes);
+    session += bandBytes;
 
-    scalars = (AcneSessionScalars *)session;
-    scalars->inputReference = block->inputReference;
-    scalars->accumulatedWeight = block->accumulatedWeight;
-    scalars->zeroFrameCount = block->zeroFrameCount;
-    scalars->cumulativeWeight = block->cumulativeWeight;
-    scalars->smoothingProgress = block->smoothingProgress;
-    scalars->frameCount = block->frameCount;
-    scalars->consecutiveZeroFrames = block->consecutiveZeroFrames;
+    pIn = (float *)session;
+    sessionWords = (u32 *)pIn;
+    pIn[0] = This->SignalPeak;
+    pIn[1] = This->NbrSpeechFrames;
+    sessionWords[2] = This->NbrSilenceFrames;
+    pIn[3] = This->NbrSpeechFramesForLevel;
+    pIn[4] = This->TotUpdate;
+    sessionWords[5] = This->SpeakerFrameCtr;
+    sessionWords[6] = This->SilGap;
 }
 
 /* Restores the estimator state and per-band arrays when a TOS session resumes. */
-static void AcnePutSession(Acne *block, const u8 *session)
+static void AcnePutSession(Acne *This, void *pAcneSession)
 {
-    u32 arraySize = block->bandCount * sizeof(f32);
-    const AcneSessionScalars *scalars;
+    u32 bandBytes = This->nLogPower * sizeof(f32);
+    const u8 *session = pAcneSession;
+    const u32 *sessionWords = pAcneSession;
+    const float *pIn;
 
-    block->state = *(const u32 *)session;
-    block->drainingQueue = session[4];
-    block->meanNormalizationEnabled = session[8];
+    This->CmsState = sessionWords[0];
+    This->FlushFlag = session[4];
+    This->ValidChannel = session[8];
     /* Skip the saved state and flags before restoring the per-band arrays. */
     session += 12;
 
-    memcpy(block->smoothedMean, session, arraySize);
-    session += arraySize;
-    memcpy(block->adaptiveMean, session, arraySize);
-    session += arraySize;
-    memcpy(block->noiseEstimate, session, arraySize);
-    session += arraySize;
+    memcpy(This->pChannelCompensation, session, bandBytes);
+    session += bandBytes;
+    memcpy(This->pSpeechMean, session, bandBytes);
+    session += bandBytes;
+    memcpy(This->pSilenceMean, session, bandBytes);
+    session += bandBytes;
 
-    scalars = (const AcneSessionScalars *)session;
-    block->inputReference = scalars->inputReference;
-    block->accumulatedWeight = scalars->accumulatedWeight;
-    block->zeroFrameCount = scalars->zeroFrameCount;
-    block->cumulativeWeight = scalars->cumulativeWeight;
-    block->smoothingProgress = scalars->smoothingProgress;
-    block->frameCount = scalars->frameCount;
-    block->consecutiveZeroFrames = scalars->consecutiveZeroFrames;
+    pIn = (const float *)session;
+    sessionWords = (const u32 *)pIn;
+    This->SignalPeak = pIn[0];
+    This->NbrSpeechFrames = pIn[1];
+    This->NbrSilenceFrames = (s32)sessionWords[2];
+    This->NbrSpeechFramesForLevel = pIn[3];
+    This->TotUpdate = pIn[4];
+    This->SpeakerFrameCtr = sessionWords[5];
+    This->SilGap = (s32)sessionWords[6];
 }
 
 /* Attempts to normalize and publish one queued feature frame. A smoothing failure drops the
-* frame but retains its queue node; a drain loop stalls if no unread frame remains to release it. */
-static u8 NormalizeAndEnQ(Acne *block)
+ * frame but retains its queue node. A drain loop stalls if no unread frame remains
+ * to release the node. */
+static u8 NormalizeAndEnQ(Acne *This)
 {
-    f32 *outputElement;
-    const f32 *noiseFloor;
-    f32 *output;
-    f32 *outputEnd;
-    f32 *mean;
-    u32 bandCount;
-    f32 *input;
+    f32 *pOut;
+    const f32 *pNoiseFloor;
+    f32 *pSpecOut;
+    f32 *pEnd;
+    f32 *pChannelCompensation;
+    u32 nLogPower;
+    f32 *Qread;
 
-    noiseFloor = block->noiseFloors;
-    bandCount = block->bandCount;
+    pNoiseFloor = This->pNoiseFloors;
+    nLogPower = This->nLogPower;
 
-    input = qDeQueueOne(block->queue, 0);
-    if (input == NULL) {
+    Qread = qDeQueueOne(This->pInternalQueue, 0);
+    if (Qread == NULL) {
         return 0;
     }
 
-    /* A refresh clears progress and overwrites smoothedMean before smoothing. Failure keeps
-     * those changes and leaves meanNormalizationEnabled unchanged. */
-    if (block->smoothingProgress > block->smoothingThreshold) {
-        block->smoothingProgress = 0.0f;
+    /* A failed refresh keeps the updated pChannelCompensation and leaves ValidChannel set
+     * as it was before smoothing. */
+    if (This->TotUpdate > This->SmootherRecomputeThr) {
+        This->TotUpdate = 0.0f;
         memcpy(
-            block->smoothedMean, block->adaptiveMean,
-            bandCount * sizeof(f32));
-        if ((u8)Smoothing(block->smoother, block->smoothedMean)) {
+            This->pChannelCompensation, This->pSpeechMean,
+            nLogPower * sizeof(f32));
+        if (Smoothing(This->pSmoother, This->pChannelCompensation)) {
             return 0;
         }
-        block->meanNormalizationEnabled = 1;
+        This->ValidChannel = 1;
     }
 
-    outputElement = qEnQueueOne(block->base.output[0].queue);
+    pOut = qEnQueueOne(This->BaseBlock.OutputQueues[0].pQ);
     /* Queue elements store scalar energy in slot zero and spectral bands after it. */
-    output = outputElement + 1;
-    if (block->meanNormalizationEnabled) {
+    pSpecOut = pOut + 1;
+    if (This->ValidChannel) {
         /* Subtract the learned speech mean, then apply the per-band noise floor. */
-        outputEnd = output + bandCount;
-        memcpy(output, input, bandCount * sizeof(f32));
-        mean = block->smoothedMean;
+        pEnd = pSpecOut + nLogPower;
+        memcpy(pSpecOut, Qread, nLogPower * sizeof(f32));
+        pChannelCompensation = This->pChannelCompensation;
 
-        while (output < outputEnd) {
-            *output -= *mean++;
-            if (*noiseFloor > *output) {
-                *output = *noiseFloor +
-                    HLnOnePlusExpHFloat(*output - *noiseFloor);
+        while (pSpecOut < pEnd) {
+            *pSpecOut -= *pChannelCompensation++;
+            if (*pNoiseFloor > *pSpecOut) {
+                *pSpecOut = *pNoiseFloor +
+                    HLnOnePlusExpHFloat(*pSpecOut - *pNoiseFloor);
             } else {
-                *output +=
-                    HLnOnePlusExpHFloat(*noiseFloor - *output);
+                *pSpecOut +=
+                    HLnOnePlusExpHFloat(*pNoiseFloor - *pSpecOut);
             }
-            output++;
-            noiseFloor++;
+            pSpecOut++;
+            pNoiseFloor++;
         }
     } else {
-        memcpy(
-            /* With mean normalization disabled, emit the configured floors for the spectral
-             * bands. */
-            output, noiseFloor,
-            bandCount * sizeof(f32));
+        /* Emit the configured spectral floors when normalization is disabled. */
+        memcpy(pSpecOut, pNoiseFloor, nLogPower * sizeof(f32));
     }
 
-    outputElement[0] = LogAdd(
-        input[bandCount] - block->inputReference,
-        block->scalarFloor);
-    qFreeUnusedElemements(block->queue);
+    pOut[0] = LogAdd(
+        Qread[nLogPower] - This->SignalPeak,
+        This->LogEMask);
+    qFreeUnusedElemements(This->pInternalQueue);
     return 1;
 }
 
 /* Queues and adapts a fresh feature frame unless a pending drain emits one queued frame and
-* returns first. TOS has already dequeued fresh inputs, so that drain callback discards them. */
-static void ProcessAcne(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+ * returns first. TOS has already dequeued fresh inputs, so that drain callback discards them. */
+static void ProcessAcne(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    Acne *block = (Acne *)baseBlock;
-    u32 bandCount;
-    f32 *input;
-    f32 *featureInput;
-    f32 *queuedInput;
-    f32 activity;
-    f32 scalarInput;
-    u32 arraySize;
+    Acne *This = (Acne *)_This;
+    u32 nLogPower;
+    f32 *pSpecIn;
+    f32 *Qwrite;
+    f32 FrameType;
+    f32 Energy;
 
-    (void)inputCount;
-    if (block->accumulatedWeight >= block->maximumAccumulatedWeight) {
-        block->state = 0;
-        block->drainingQueue = 1;
-        while (qQueueNbrElements(block->queue) != 0) {
-            NormalizeAndEnQ(block);
+    if (This->NbrSpeechFrames >= This->NbrFramesForStableCMS) {
+        This->CmsState = StableCMS;
+        This->FlushFlag = 1;
+        while (qQueueNbrElements(This->pInternalQueue) != 0) {
+            NormalizeAndEnQ(This);
         }
     }
 
-    if (block->drainingQueue &&
-        qQueueNbrElements(block->queue) == 0) {
-        block->drainingQueue = 0;
+    if (This->FlushFlag &&
+        qQueueNbrElements(This->pInternalQueue) == 0) {
+        This->FlushFlag = 0;
     }
-    if (block->drainingQueue) {
-        NormalizeAndEnQ(block);
+    if (This->FlushFlag) {
+        NormalizeAndEnQ(This);
         return;
     }
 
-    if (inputs[0] == NULL) {
+    if (((void **)pInputs)[0] == NULL) {
         return;
     }
 
-    input = (f32 *)inputs[0];
-    featureInput = (f32 *)inputs[3];
-    /* The side input's first two values are scalar frame energy and its reference; activity is
-     * input 2. */
-    activity = *(f32 *)inputs[2];
-    bandCount = block->bandCount;
-    scalarInput = featureInput[0];
-    block->inputReference = featureInput[1];
-    arraySize = bandCount * sizeof(f32);
-    memcpy(block->noiseEstimate, inputs[1], arraySize);
+    pSpecIn = ((void **)pInputs)[0];
+    /* Stationarity supplies the activity score. The VAD level packet starts with
+     * frame log energy and the tracked signal peak used as its reference here. */
+    FrameType = *(f32 *)((void **)pInputs)[2];
+    nLogPower = This->nLogPower;
+    Energy = ((f32 *)((void **)pInputs)[3])[0];
+    This->SignalPeak = ((f32 *)((void **)pInputs)[3])[1];
+    memcpy(This->pSilenceMean, ((void **)pInputs)[1], nLogPower * sizeof(f32));
 
-    queuedInput = qEnQueueOne(block->queue);
-    memcpy(queuedInput, input, arraySize);
-    queuedInput[bandCount] = scalarInput;
-    block->frameCount++;
+    Qwrite = qEnQueueOne(This->pInternalQueue);
+    memcpy(Qwrite, pSpecIn, nLogPower * sizeof(f32));
+    Qwrite[nLogPower] = Energy;
+    This->SpeakerFrameCtr++;
 
-    if (activity > 0.001f) {
-        f32 weight;
-        f32 positiveRate;
-        f32 negativeRate;
-        f32 meanCorrection;
-        f32 *noise = block->noiseEstimate;
-        f32 *mean = block->adaptiveMean;
-        f32 *meanEnd = mean + bandCount;
-        f32 *queued = queuedInput;
+    if (FrameType > 0.001f) {
+        f32 LevelAdapt;
+        f32 Gain_p;
+        f32 Gain_n;
+        f32 Update;
+        f32 *pNoise = This->pSilenceMean;
+        f32 *pDst = This->pSpeechMean;
+        f32 *pEnd = pDst + nLogPower;
+        f32 *pSrc = Qwrite;
 
-        block->accumulatedWeight += activity;
-        if (block->accumulatedWeight >=
-            block->maximumAccumulatedWeight) {
-            block->accumulatedWeight =
-                block->maximumAccumulatedWeight;
+        This->NbrSpeechFrames += FrameType;
+        if (This->NbrSpeechFrames >=
+            This->NbrFramesForStableCMS) {
+            This->NbrSpeechFrames =
+                This->NbrFramesForStableCMS;
         }
 
         /* Activity controls how quickly the adaptive model follows this frame. */
-        weight = activity / block->accumulatedWeight;
-        block->smoothingProgress += weight;
-        positiveRate = weight * block->adaptationRatio;
-        if (positiveRate > 1.0f) {
-            positiveRate = 1.0f;
+        LevelAdapt = FrameType / This->NbrSpeechFrames;
+        This->TotUpdate += LevelAdapt;
+        Gain_p = LevelAdapt * This->InBal;
+        if (Gain_p > 1.0f) {
+            Gain_p = 1.0f;
         }
-        negativeRate = weight / block->adaptationRatio;
-        if (negativeRate > 1.0f) {
-            negativeRate = 1.0f;
+        Gain_n = LevelAdapt / This->InBal;
+        if (Gain_n > 1.0f) {
+            Gain_n = 1.0f;
         }
 
-        meanCorrection = 0.0f;
+        Update = 0.0f;
 
-        for (; mean < meanEnd; mean++, queued++, noise++) {
-            f32 noiseFloor =
-                *noise + block->noiseFloorOffset;
-            f32 adjustedInput = *queued;
-            f32 difference;
+        for (; pDst < pEnd; pDst++, pSrc++, pNoise++) {
+            f32 FlooredSpeech = *pSrc;
+            f32 Diff;
             f32 update;
-            f32 residual;
 
-            if (adjustedInput < noiseFloor) {
-                adjustedInput = noiseFloor;
+            if (FlooredSpeech < *pNoise + This->PreMaskwrtNoise) {
+                FlooredSpeech = *pNoise + This->PreMaskwrtNoise;
             }
-            difference = adjustedInput - *mean;
-            if (difference < block->minimumBandDifference) {
-                difference = block->minimumBandDifference;
+            Diff = FlooredSpeech - *pDst;
+            if (Diff < This->PreMaskwrtPeak) {
+                Diff = This->PreMaskwrtPeak;
             }
-            if (difference > 0.0f) {
-                update = difference * positiveRate;
+            if (Diff > 0.0f) {
+                update = Diff * Gain_p;
             } else {
-                update = difference * negativeRate;
+                update = Diff * Gain_n;
             }
-            *mean += update;
+            *pDst += update;
 
-            residual = adjustedInput - *mean;
-            if (residual > 0.0f) {
-                update = residual * block->adaptationRatio;
+            Diff = FlooredSpeech - *pDst;
+            if (Diff > 0.0f) {
+                update = Diff * This->InBal;
             } else {
-                update = residual / block->adaptationRatio;
+                update = Diff / This->InBal;
             }
-            meanCorrection += update;
+            Update += update;
         }
 
         /* Apply a weighted band-average residual correction to every band, capped at +/-0.7. */
-        block->cumulativeWeight += activity;
-        if (block->cumulativeWeight > 200.0f) {
-            block->cumulativeWeight = 200.0f;
+        This->NbrSpeechFramesForLevel += FrameType;
+        if (This->NbrSpeechFramesForLevel > 200.0f) {
+            This->NbrSpeechFramesForLevel = 200.0f;
         }
-        weight = activity / block->cumulativeWeight;
-        block->smoothingProgress += weight;
-        meanCorrection *= weight / (f32)bandCount;
-        if (meanCorrection > 0.7f) {
-            meanCorrection = 0.7f;
+        LevelAdapt = FrameType / This->NbrSpeechFramesForLevel;
+        This->TotUpdate += LevelAdapt;
+        Update *= LevelAdapt / (f32)nLogPower;
+        if (Update > 0.7f) {
+            Update = 0.7f;
         }
-        if (meanCorrection < -0.7f) {
-            meanCorrection = -0.7f;
+        if (Update < -0.7f) {
+            Update = -0.7f;
         }
 
-        mean = block->adaptiveMean;
-        while (mean < meanEnd) {
-            *mean += meanCorrection;
-            mean++;
+        pDst = This->pSpeechMean;
+        while (pDst < pEnd) {
+            *pDst += Update;
+            pDst++;
         }
     }
 
-    if (!activity && block->frameCount != 0) {
-        block->consecutiveZeroFrames++;
-        block->zeroFrameCount++;
-        if (block->zeroFrameCount > 50) {
-            block->zeroFrameCount = 50;
+    if (!FrameType && This->SpeakerFrameCtr != 0) {
+        This->SilGap++;
+        This->NbrSilenceFrames++;
+        if (This->NbrSilenceFrames > 50) {
+            This->NbrSilenceFrames = 50;
         }
     } else {
-        block->consecutiveZeroFrames = 0;
+        This->SilGap = 0;
     }
 
-    /* State 1 holds speech frames; the other states flush or wait for them. */
-    switch (block->state) {
-    case 0:
-        NormalizeAndEnQ(block);
+    /* Holds frames during a speech event until silence or the queue depth requires output. */
+    switch (This->CmsState) {
+    case StableCMS:
+        NormalizeAndEnQ(This);
         break;
-    case 2:
-        if (activity > 0.001f) {
-            block->state = 1;
+    case AwaitingEvent:
+        if (FrameType > 0.001f) {
+            This->CmsState = Event;
         } else {
-            NormalizeAndEnQ(block);
+            NormalizeAndEnQ(This);
         }
         break;
-    case 1:
-        if (block->consecutiveZeroFrames >
-            block->maximumConsecutiveZeroFrames) {
-            block->state = 2;
-            while (qQueueNbrElements(block->queue) != 0) {
-                NormalizeAndEnQ(block);
+    case Event:
+        if (This->SilGap >
+            This->MaxSilGap) {
+            This->CmsState = AwaitingEvent;
+            while (qQueueNbrElements(This->pInternalQueue) != 0) {
+                NormalizeAndEnQ(This);
             }
-        } else if (qQueueNbrElements(block->queue) ==
-            block->queueEmissionLength) {
-            NormalizeAndEnQ(block);
+        } else if (qQueueNbrElements(This->pInternalQueue) ==
+            This->Qdepth) {
+            NormalizeAndEnQ(This);
         }
         break;
     }
 }
 
-/* Command 2 requests a drain on the next process callback, 3 saves when given a session buffer, 4
- * restores or resets, and 255 destroys the block. */
-static u32 ControlAcne(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Frees ACNE queues, model storage and the smoother. */
+static void FreeResourcesAcne(Acne *This)
 {
-    u32 *sessionOffset = (u32 *)argumentSize;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
 
-    switch ((u8)command) {
+    qQueueControl(This->pInternalQueue, 0xFF, 0, 0);
+    heap_Free(pTos->hHeap, This->pSpeechMean);
+    smtDestruct(This->pSmoother, pTos);
+    tosBaseBlockDestruct(&This->BaseBlock);
+}
+
+/* Command 2 requests a drain on the next process callback, 3 saves when given a session buffer, 4
+ * restores or resets, and 0xFF destroys the block. */
+static u8 ControlAcne(
+    struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
+{
+    switch (ControlId) {
     case 2:
-        ((Acne *)baseBlock)->drainingQueue = 1;
+        ((Acne *)_This)->FlushFlag = 1;
         break;
 
     case 4:
-        if (argument != NULL) {
-            AcnePutSession(
-                (Acne *)baseBlock, (u8 *)argument + *sessionOffset);
+        if (CParam != 0) {
+            u8 *session = (u8 *)CParam;
+
+            AcnePutSession((Acne *)_This, session + *(u32 *)DParam);
             /* The session payload includes a 12-byte header, three band arrays, and seven saved
              * scalar values. */
-            *sessionOffset +=
-                (((Acne *)baseBlock)->bandCount * 3 + 10) * sizeof(u32);
-        } else if (Reset((Acne *)baseBlock)) {
+            *(u32 *)DParam +=
+                (((Acne *)_This)->nLogPower * 3 + 10) * sizeof(u32);
+        } else if (Reset((Acne *)_This)) {
             return 0;
         }
         break;
 
     case 3:
-        if (argument != NULL) {
-            AcneGetSession(
-                (Acne *)baseBlock, (u8 *)argument + *sessionOffset);
+        if (CParam != 0) {
+            u8 *session = (u8 *)CParam;
+
+            AcneGetSession((Acne *)_This, session + *(u32 *)DParam);
         }
         /* Advance over the header, three band arrays, and seven scalars even without a session
          * buffer. */
-        *sessionOffset +=
-            (((Acne *)baseBlock)->bandCount * 3 + 10) * sizeof(u32);
+        *(u32 *)DParam +=
+            (((Acne *)_This)->nLogPower * 3 + 10) * sizeof(u32);
         break;
 
-    case 255: {
-        TosContext *context = baseBlock->context;
-
-        qQueueControl(((Acne *)baseBlock)->queue, 255, 0, NULL);
-        heap_Free(context->heap, ((Acne *)baseBlock)->adaptiveMean);
-        smtDestruct(((Acne *)baseBlock)->smoother, context);
-        tosBaseBlockDestruct(baseBlock);
+    case 255:
+        FreeResourcesAcne((Acne *)_This);
         break;
-    }
 
     default:
         return 0;
@@ -536,77 +490,72 @@ static u32 ControlAcne(
 }
 
 /* Allocates the block queues and speech-model buffers when the graph starts. */
-static u32 InitAcne(TosBaseBlock *baseBlock)
+static u8 InitAcne(struct _BLOCK *_This)
 {
-    Acne *block = (Acne *)baseBlock;
-    TosContext *context = baseBlock->context;
-    u32 bandCount;
-    u32 arraySize;
-    f32 knotSpacing;
-    const Smoother1600Info *smootherInfo;
+    Acne *This = (Acne *)_This;
+    struct _TOS *pTos = _This->Object.pTos;
+    u32 nLogPower;
+    f32 SegWidth;
 
     /* Profile values select the feature width and the queued-frame threshold for emission. */
-    bandCount = block->bandCount =
-        (u16)_tosGetProfileU32(block, 9, 21);
-    arraySize = bandCount * sizeof(f32);
-    baseBlock->input[0].inputSize = (u16)arraySize;
-    baseBlock->input[1].inputSize = (u16)arraySize;
-    baseBlock->input[2].inputSize = sizeof(f32);
-    baseBlock->input[3].inputSize = 24;
-    baseBlock->output[0].outputSize =
-        (u16)((bandCount + 1) * sizeof(f32));
+    nLogPower = This->nLogPower =
+        (u16)_tosGetProfileU32(&This->BaseBlock.Object, 9, 21);
+    _This->InputQueues[0].Size = (u16)(nLogPower * sizeof(f32));
+    _This->InputQueues[1].Size = (u16)(nLogPower * sizeof(f32));
+    _This->InputQueues[2].Size = sizeof(f32);
+    _This->InputQueues[3].Size = 6 * sizeof(f32); /* VAD level packet. */
+    _This->OutputQueues[0].Size =
+        (u16)((nLogPower + 1) * sizeof(f32));
 
-    block->queueEmissionLength =
-        (u16)_tosGetProfileU32(block, 2, 100);
-    block->queue = qQueueConstruct(context, 255, 1);
-    if (block->queue == NULL) {
+    This->Qdepth =
+        (u16)_tosGetProfileU32(&This->BaseBlock.Object, 2, 100);
+    This->pInternalQueue = qQueueConstruct(pTos, 0xFF, 1);
+    if (This->pInternalQueue == NULL) {
         return 1;
     }
     if (qQueueInitEx(
-            block->queue, (u16)((bandCount + 1) * sizeof(f32)), 1, 0) == NULL) {
+            This->pInternalQueue, (u16)((nLogPower + 1) * sizeof(f32)), 1, 0) == NULL) {
         return 1;
     }
 
-    block->adaptiveMean =
-        heap_Calloc(context->heap, bandCount * 3, sizeof(f32));
-    block->noiseEstimate = block->adaptiveMean + bandCount;
-    block->smoothedMean = block->noiseEstimate + bandCount;
+    This->pSpeechMean =
+        heap_Calloc(pTos->hHeap, nLogPower * 3, sizeof(f32));
+    This->pSilenceMean = This->pSpeechMean + nLogPower;
+    This->pChannelCompensation = This->pSilenceMean + nLogPower;
 
-    block->noiseFloorOffset =
-        0.11513f * _tosGetProfileFloat(block, 3, -1000.0f);
-    block->minimumBandDifference =
-        0.11513f * _tosGetProfileFloat(block, 4, -1000.0f);
-    block->adaptationRatio = 4.0f;
-    block->maximumAccumulatedWeight =
-        _tosGetProfileFloat(block, 5, 50.0f);
-    block->smoothingThreshold =
-        10.0f / block->maximumAccumulatedWeight;
-    block->maximumConsecutiveZeroFrames =
-        (s16)_tosGetProfileU32(block, 6, 15);
-    block->scalarFloor =
-        0.23026f * _tosGetProfileFloat(block, 7, -30.0f);
+    This->PreMaskwrtNoise =
+        0.11513f * _tosGetProfileFloat(&This->BaseBlock.Object, 3, -1000.0f);
+    This->PreMaskwrtPeak =
+        0.11513f * _tosGetProfileFloat(&This->BaseBlock.Object, 4, -1000.0f);
+    This->InBal = 4.0f;
+    This->NbrFramesForStableCMS =
+        _tosGetProfileFloat(&This->BaseBlock.Object, 5, 50.0f);
+    This->SmootherRecomputeThr =
+        10.0f / This->NbrFramesForStableCMS;
+    This->MaxSilGap =
+        (s16)_tosGetProfileU32(&This->BaseBlock.Object, 6, 15);
+    This->LogEMask =
+        0.23026f * _tosGetProfileFloat(&This->BaseBlock.Object, 7, -30.0f);
 
-    block->initialWeight = 5.0f;
-    block->noiseFloors = g_NoiseFloors11kHz;
-    block->initialMean = g_SpeechMeanInit11kHz;
-    block->smootherInfo = &Smoother1600Info11kHz;
-    knotSpacing = _tosGetProfileFloat(block, 8, 2.6f);
-    smootherInfo = block->smootherInfo;
-    block->smoother = smtConstruct(
-        context, bandCount,
-        knotSpacing, 0.0f,
-        smootherInfo);
+    This->InitNbrSpeechFrames = 5.0f;
+    This->pNoiseFloors = g_NoiseFloors11kHz;
+    This->pSpeechMeanInit = g_SpeechMeanInit11kHz;
+    This->pSmootherInfo = &Smoother1600Info11kHz;
+    SegWidth = _tosGetProfileFloat(&This->BaseBlock.Object, 8, 2.6f);
+    This->pSmoother = smtConstruct(
+        pTos, nLogPower,
+        SegWidth, This->pSmootherInfo, 0.0f);
 
-    if (Reset(block)) {
+    if (Reset(This)) {
         return 1;
     }
     return 0;
 }
 
 /* Allocates the adaptive feature block and installs its TOS callbacks during graph construction. */
-TosBaseBlock *ConstructAcne(TosContext *context, u8 blockIndex)
+struct _BLOCK *ConstructAcne(struct _TOS *pTos, u8 BlockID)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 4, 1, ProcessAcne, InitAcne,
+        pTos, BlockID, 4, 1, ProcessAcne, InitAcne,
         ControlAcne, sizeof(Acne));
 }

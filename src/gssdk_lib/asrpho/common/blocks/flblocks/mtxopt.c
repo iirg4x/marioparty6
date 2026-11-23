@@ -1,58 +1,62 @@
+/* Matrix operations for QR-based smoothing. */
 #include "gssdk/mtx.h"
 
 #include <string.h>
 
-u32 QrPreMult(FloatMatrix *matrix, FloatMatrix *multipliers, FloatMatrix *vector)
+/* Applies the stored QR multipliers before solving the matrix system. */
+enum MTXERRtAG QrPreMult(struct MTXTag *QR, struct MTXTag *Beta, struct MTXTag *Y)
 {
-    f32 *multiplier;
-    f32 *matrixValue;
-    f32 *matrixCursor;
-    f32 *vectorValue;
-    f32 *vectorCursor;
-    u32 row;
-    u32 column;
+    f32 *beta;
+    f32 *xr;
+    f32 *xScan;
+    f32 *y;
+    f32 *yScan;
+    u32 i;
+    u32 j;
 
-    column = 0;
-    vectorValue = vector->values;
-    multiplier = multipliers->values;
-    matrixValue = matrix->values;
+    j = 0;
+    y = Y->Entries;
+    beta = Beta->Entries;
+    xr = QR->Entries;
 
-    while (column++ < matrix->columns) {
-        f32 sum;
+    while (j++ < QR->N) {
+        f32 tmp;
 
-        matrixValue += column;
-        sum = *vectorValue++;
-        matrixCursor = matrixValue;
-        vectorCursor = vectorValue;
-        for (row = column; row < matrix->rows; row++) {
-            sum += *vectorCursor++ * *matrixCursor++;
+        xr += j;
+        tmp = *y++;
+        xScan = xr;
+        yScan = y;
+        for (i = j; i < QR->M; i++) {
+            tmp += *yScan++ * *xScan++;
         }
 
-        sum *= *multiplier++;
-        vectorValue[-1] -= sum;
-        vectorCursor = vectorValue;
-        for (row = column; row < matrix->rows; row++) {
-            *vectorCursor++ -= sum * *matrixValue++;
+        tmp *= *beta++;
+        y[-1] -= tmp;
+        yScan = y;
+        for (i = j; i < QR->M; i++) {
+            *yScan++ -= tmp * *xr++;
         }
     }
 
-    return 0;
+    return NoError;
 }
 
-void mtxFillCopy(FloatMatrix *destination, const FloatMatrix *source)
+/* Copies the source entries into an allocated destination. */
+void mtxFillCopy(struct MTXTag *PMTXDst, const struct MTXTag *PMTXSrc)
 {
     memcpy(
-        destination->values, source->values,
-        destination->elementCount * sizeof(f32));
+        PMTXDst->Entries, PMTXSrc->Entries,
+        PMTXDst->MxN * sizeof(f32));
 }
 
-void mtxFillX(FloatMatrix *matrix, f32 value)
+/* Fills the matrix entries with one value. */
+void mtxFillX(struct MTXTag *pMTX, f32 x)
 {
-    u32 elementCount = matrix->elementCount;
-    f32 *cursor = matrix->values;
+    u32 aEnd = pMTX->MxN;
+    f32 *a = pMTX->Entries;
     u32 i;
 
-    for (i = 0; i < elementCount; i++) {
-        *cursor++ = value;
+    for (i = 0; i < aEnd; i++) {
+        *a++ = x;
     }
 }

@@ -1,111 +1,118 @@
+/* Stationarity detection from changes in frame energy. */
+#include "gssdk/blocks.h"
+#include "gssdk/mqueue.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include "gssdk/tos.h"
 
-typedef struct Stationarity {
-    TosBaseBlock base;
-    u32 drain;
-    u32 queued;
-    u32 span;
-    f32 threshold;
-    f32 *history;
-    f32 *historyEnd;
-    f32 *historyWrite;
-    f32 *delayed;
-    f32 *delayedEnd;
-    f32 *delayedWrite;
+/* Energy history and delayed activity values for the stationarity check. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    u32 Flushing; /* Set when flushing the delayed activity values. */
+    u32 Delay; /* Frames buffered toward the delay. */
+    u32 MaxDelay; /* Delay in frames. */
+    f32 StationarityThreshold; /* Log-energy range above which the frame is nonstationary. */
+    /* Log-energy ring bounds and the next sample slot. */
+    f32 *pBeginStationarityBuf;
+    f32 *pEndStationarityBuf;
+    f32 *pWriteStationarityBuf;
+    /* Activity delay ring bounds and the next sample slot. */
+    f32 *pBeginVadDelayBuf;
+    f32 *pEndVadDelayBuf;
+    f32 *pWriteVadDelayBuf;
 } Stationarity;
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern f32 _tosGetProfileFloat(void *block, u32 key, f32 defaultValue);
-
-static f32 StationarityRange(f32 *cursor, f32 *end)
+/* Returns the difference between the maximum and minimum frame log energy. */
+static f32 EnergyVariation(Stationarity *This)
 {
-    f32 maximum;
-    f32 minimum = *cursor;
+    f32 *pBeg = This->pBeginStationarityBuf;
+    f32 *pEnd = This->pEndStationarityBuf;
+    f32 MaxVal;
+    f32 MinVal = *pBeg;
 
-    maximum = minimum;
-    while (++cursor < end) {
-        f32 value = *cursor;
+    MaxVal = MinVal;
+    while (++pBeg < pEnd) {
+        f32 value = *pBeg;
 
-        if (value < minimum) {
-            minimum = value;
+        if (value < MinVal) {
+            MinVal = value;
         }
-        if (value > maximum) {
-            maximum = value;
+        if (value > MaxVal) {
+            MaxVal = value;
         }
     }
-    return maximum - minimum;
+    return MaxVal - MinVal;
 }
 
-static void ProcessStationarity(TosBaseBlock *_This, void *pInputs)
+/* Attenuates delayed activity when the energy range crosses the stationarity threshold. */
+static void ProcessStationarity(struct _BLOCK *_This, void *pInputs)
 {
     Stationarity *This = (Stationarity *)_This;
-    f32 sample;
-    f32 incoming = 0.0f;
-    f32 delayed;
-    f32 *cursor;
-    f32 *output;
+    f32 LogE;
+    f32 Vad = 0.0f;
+    f32 VadOut;
+    f32 *pBuf;
+    f32 *pFrameWeight;
 
     if (((void **)pInputs)[0] != NULL) {
-        sample = *(f32 *)((void **)pInputs)[0];
-        incoming = *(f32 *)((void **)pInputs)[1];
-        if (This->queued == 0) {
-            cursor = This->history;
-            while (cursor < This->historyEnd) {
-                *cursor = sample;
-                cursor++;
+        LogE = *(f32 *)((void **)pInputs)[0];
+        Vad = *(f32 *)((void **)pInputs)[1];
+        if (This->Delay == 0) {
+            pBuf = This->pBeginStationarityBuf;
+            while (pBuf < This->pEndStationarityBuf) {
+                *pBuf = LogE;
+                pBuf++;
             }
-            This->historyWrite = This->history;
+            This->pWriteStationarityBuf = This->pBeginStationarityBuf;
         } else {
-            *This->historyWrite++ = sample;
-            if (This->historyWrite == This->historyEnd) {
-                This->historyWrite = This->history;
+            *This->pWriteStationarityBuf++ = LogE;
+            if (This->pWriteStationarityBuf == This->pEndStationarityBuf) {
+                This->pWriteStationarityBuf = This->pBeginStationarityBuf;
             }
         }
-        This->queued++;
-    } else if (This->drain == 0) {
+        This->Delay++;
+    } else if (This->Flushing == 0) {
         return;
     }
 
-    delayed = *This->delayedWrite;
-    *This->delayedWrite++ = incoming;
-    if (This->delayedWrite == This->delayedEnd) {
-        This->delayedWrite = This->delayed;
+    VadOut = *This->pWriteVadDelayBuf;
+    *This->pWriteVadDelayBuf++ = Vad;
+    if (This->pWriteVadDelayBuf == This->pEndVadDelayBuf) {
+        This->pWriteVadDelayBuf = This->pBeginVadDelayBuf;
     }
-    if (This->drain != 0 && This->queued == 0) {
-        This->drain = 0;
+    if (This->Flushing != 0 && This->Delay == 0) {
+        This->Flushing = 0;
     }
-    if (This->queued <= This->span && This->drain == 0) {
+    if (This->Delay <= This->MaxDelay && This->Flushing == 0) {
         return;
     }
 
-    output = qEnQueueOne(This->base.output->queue);
-    This->queued--;
-    if (delayed > 0.0f) {
-        if (!(StationarityRange(This->history, This->historyEnd) <
-        This->threshold)) {
-            delayed *= 0.1f;
+    pFrameWeight = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+    This->Delay--;
+    if (VadOut > 0.0f) {
+        if (!(EnergyVariation(This) < This->StationarityThreshold)) {
+            VadOut *= 0.1f;
         }
     }
-    *output = delayed;
+    *pFrameWeight = VadOut;
 }
 
-static u32 ControlStationarity(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Starts draining buffered activity on flush and releases the buffers on shutdown. */
+static u8 ControlStationarity(
+    struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
 {
-    Stationarity *block = (Stationarity *)baseBlock;
-    TosContext *context = baseBlock->context;
+    Stationarity *This = (Stationarity *)_This;
+    struct _TOS *pTos = _This->Object.pTos;
 
-    switch ((u8)command) {
-    case 1:
-        block->drain = 1;
+    switch (ControlId) {
+    case 0x01:
+        This->Flushing = 1;
         break;
-    case 255:
-        heap_Free(context->heap, block->history);
-        heap_Free(context->heap, block->delayed);
-        tosBaseBlockDestruct(block);
+    case 0xFF:
+        heap_Free(pTos->hHeap, This->pBeginStationarityBuf);
+        heap_Free(pTos->hHeap, This->pBeginVadDelayBuf);
+        tosBaseBlockDestruct(&This->BaseBlock);
         break;
     default:
         return 0;
@@ -113,37 +120,40 @@ static u32 ControlStationarity(
     return 1;
 }
 
-static u32 InitStationarity(TosBaseBlock *_This)
+/* Sizes the ports and initializes the energy and activity history buffers. */
+static u8 InitStationarity(struct _BLOCK *_This)
 {
     Stationarity *This = (Stationarity *)_This;
-    TosContext *context = This->base.context;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
     u32 i;
 
-    This->base.input[0].inputSize = 24;
-    This->base.input[1].inputSize = sizeof(f32);
-    This->base.output->outputSize = sizeof(f32);
-    This->span = (u8)_tosGetProfileU32(This, 1, 2);
-    This->threshold = _tosGetProfileFloat(This, 2, 2.0f);
-    This->history = heap_Calloc(
-    context->heap, This->span * 2 + 1, sizeof(f32));
-    This->delayed = heap_Calloc(context->heap, This->span, sizeof(f32));
-    if (This->history == NULL || This->delayed == NULL) {
-        return _tosErrorLog(This, 2);
+    This->BaseBlock.InputQueues[0].Size = 6 * sizeof(f32); /* VAD levels. Uses frame log energy. */
+    /* VAD activity score, delayed by the stationarity block. */
+    This->BaseBlock.InputQueues[1].Size = sizeof(f32);
+    This->BaseBlock.OutputQueues->Size = sizeof(f32);
+    This->MaxDelay = (u8)_tosGetProfileU32(&This->BaseBlock.Object, 1, 2);
+    This->StationarityThreshold = _tosGetProfileFloat(&This->BaseBlock.Object, 2, 2.0f);
+    This->pBeginStationarityBuf = heap_Calloc(pTos->hHeap, This->MaxDelay * 2 + 1, sizeof(f32));
+    This->pBeginVadDelayBuf = heap_Calloc(pTos->hHeap, This->MaxDelay, sizeof(f32));
+    if (This->pBeginStationarityBuf == NULL || This->pBeginVadDelayBuf == NULL) {
+        return _tosErrorLog(&This->BaseBlock.Object, 2);
     }
-    for (i = 0; i < This->span * 2 + 1; i++) {
-        This->history[i] = 0.0f;
+    for (i = 0; i < This->MaxDelay * 2 + 1; i++) {
+        This->pBeginStationarityBuf[i] = 0.0f;
     }
-    This->historyEnd = This->history + This->span * 2 + 1;
-    This->historyWrite = This->history;
-    This->delayedEnd = This->delayed + This->span;
-    This->delayedWrite = This->delayed;
+    This->pEndStationarityBuf = This->pBeginStationarityBuf + This->MaxDelay * 2 + 1;
+    This->pWriteStationarityBuf = This->pBeginStationarityBuf;
+    This->pEndVadDelayBuf = This->pBeginVadDelayBuf + This->MaxDelay;
+    This->pWriteVadDelayBuf = This->pBeginVadDelayBuf;
     return 0;
 }
 
-void *ConstructStationarity(TosContext *context, u8 blockIndex)
+/* Constructs a stationarity block with energy and activity inputs. */
+struct _BLOCK *ConstructStationarity(struct _TOS *pTos, u8 BlockID)
 {
+    /* ProcessStationarity reads the two input pointers without using their count. */
     return tosBaseBlockConstruct(
-    context, blockIndex, 2, 1, (TosProcessFunction)ProcessStationarity,
-    (TosInitFunction)InitStationarity,
-    (TosControlFunction)ControlStationarity, sizeof(Stationarity));
+        pTos, BlockID, 2, 1, (void (*)(struct _BLOCK *, void *, int))ProcessStationarity,
+        InitStationarity,
+        ControlStationarity, sizeof(Stationarity));
 }

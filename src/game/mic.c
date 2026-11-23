@@ -10,6 +10,8 @@
 #include "game/main.h"
 #include "game/memory.h"
 #include "game/mic.h"
+#include "gssdk/gsapi.h"
+#include "gssdk/heap.h"
 #include "game/object.h"
 #include "game/pad.h"
 #include "game/process.h"
@@ -51,8 +53,6 @@ extern s32 currentHeapHandle;
 s32 WipeCheckIn(void);
 void MICInit(void);
 
-typedef struct MicResultNode_s MicResultNode_s;
-
 static void InitMCSelWin(void);
 static void MCExtHandler(void);
 static void MCSelWinFunc(void);
@@ -62,12 +62,12 @@ static void MCDeviceMesExec(void);
 static void MCListenerFunc(void);
 static void *MCThreadFunc(void *);
 static void MCThreadWakeup(OSAlarm *, OSContext *);
-static void MicNotifyCallBack(u32 callbackContext, s32 event,
+static void MicNotifyCallBack(void *callbackContext, enum _GSAPI_NOTIFY_TYPE event,
                               u32 sample, u32 value);
-static void MicResultCallBack(u32 callbackContext,
-                              u32 callbackData, MicResultNode_s *resultNode);
-static void MicResultExec(u32 callbackContext, u32 callbackData,
-                          MicResultNode_s *root);
+static void MicResultCallBack(void *callbackContext, u32 callbackData,
+                              struct _GSAPI_RESULT *resultNode, u32 userData);
+static void MicResultExec(void *callbackContext, u32 callbackData,
+                          struct _GSAPI_RESULT *root);
 static s32 MicResultGet(s32);
 static void *MCDVDRead(char *);
 static char *MakeMCFilename(char *, char *);
@@ -112,10 +112,6 @@ typedef struct MCLngFileTbl_s {
 
 static s32 MicWriteResponseBuf(s16 responseType, MCResponseEntry_s *entries);
 
-typedef struct MCResponseData_s {
-    u32 data[24]; /* One 96-byte microphone response record. */
-} MCResponseData_s;
-
 typedef struct MCContextData_s {
     char path[64]; /* Base path used to load this recognition context. */
     void *ctxData; /* Loaded .ctx recognition-context file. */
@@ -124,14 +120,6 @@ typedef struct MCContextData_s {
     void *binData; /* Loaded .bin word-index table. */
     void *context; /* Recognition-engine context created from the loaded files. */
 } MCContextData_s;
-
-struct MicResultNode_s {
-    s32 status; /* Recognition-engine status copied to every candidate; not read here. */
-    u16 count; /* Number of entries in result, including engine boundary entries. */
-    u16 score; /* Recognition score for this candidate. */
-    s32 *result; /* Engine word-offset sequence for the candidate. */
-    struct MicResultNode_s *next; /* Next candidate in rank order. */
-};
 
 typedef struct MCSelWinWork_s {
     s16 winId; /* Active choice-window ID, or -1 when no window exists. */
@@ -150,6 +138,7 @@ static OSAlarm MCThreadAlarm;
 static MCResponse_s MCUnkResponseData;
 static MCSelWinWork_s MCSelWinWork;
 static MCResponse_s MCCurResponse;
+/* Saved session addresses for each player. */
 static u32 PlayerSession[4] ATTRIBUTE_ALIGN(32);
 static OSMessageQueue MCMessageQueue;
 static OSThread MCThread;
@@ -178,7 +167,7 @@ static OSMessage MCMessageArray[2];
 static OSThreadQueue MCThreadQueue;
 static s32 MC_gsapiEngineError;
 static s32 MicOpenF;
-static void *MCSessionP;
+static struct _GSAPI_SESSIONDATA *MCSessionP;
 static s8 MCSessionTimer[4];
 static MCResponseCallback MCCallback;
 static s32 MCSelWinMaxTime;
@@ -190,7 +179,7 @@ static s32 MCInitF;
 static u32 MCButtonDown;
 static u32 MCButton;
 static MCResponse_s *MCResponseBuf;
-static void *MC_gsapiEngine;
+static struct _GSAPI_ENGINE *MC_gsapiEngine;
 
 static s32 MCSprStat = 3;
 static s16 MCSessionCur = -1;
@@ -1663,7 +1652,7 @@ void HuMCSessionClose(void)
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (PlayerSession[playerIndex] != 0) {
-            gsapi_EngineSessionDataFree(PlayerSession[playerIndex]);
+            gsapi_EngineSessionDataFree((struct _GSAPI_SESSIONDATA *)PlayerSession[playerIndex]);
     }
   }
   MCSessionCur = MCSessionPrev = -1;
@@ -1687,7 +1676,7 @@ void HuMCSessionKill(short playerIndex)
   }
   if (PlayerSession[playerIndex] != 0) {
     gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
-    gsapi_EngineSessionDataFree(PlayerSession[playerIndex]);
+    gsapi_EngineSessionDataFree((struct _GSAPI_SESSIONDATA *)PlayerSession[playerIndex]);
     PlayerSession[playerIndex] = 0;
   }
   return;
@@ -1847,9 +1836,10 @@ void HuMCSessionExportReset(void)
       OSReport(reportStrings + 710,apiResult);
     }
     if (MCSessionPrev >= 0) {
-      gsapi_EngineSessionDataFree(PlayerSession[MCSessionPrev]);
+      gsapi_EngineSessionDataFree((struct _GSAPI_SESSIONDATA *)PlayerSession[MCSessionPrev]);
       HeapNum = MIC_SESSION_ALLOC_TAG;
-      apiResult = gsapi_EngineSessionDataExport(MC_gsapiEngine,PlayerSession + MCSessionPrev);
+      apiResult = gsapi_EngineSessionDataExport(
+          MC_gsapiEngine, (struct _GSAPI_SESSIONDATA **)(PlayerSession + MCSessionPrev));
       if (apiResult != 0) {
         OSReport(reportStrings + 738,apiResult,PlayerSession[MCSessionPrev]);
       }
@@ -1863,7 +1853,9 @@ void HuMCSessionExportReset(void)
       }
     } else if ((PlayerSession[MCSessionCur] != 0) &&
                (apiResult =
-                    gsapi_EngineSessionDataImport(MC_gsapiEngine, PlayerSession[MCSessionCur], 0),
+                    gsapi_EngineSessionDataImport(
+                        MC_gsapiEngine,
+                        (struct _GSAPI_SESSIONDATA *)PlayerSession[MCSessionCur], 0),
                 apiResult != 0)) {
         OSReport(reportStrings + 788, apiResult);
     }
@@ -2068,7 +2060,7 @@ static char * const MCErrorTbl[] = {
     lbl_8023ACC5, lbl_8023ACCF, lbl_8023ACDD
 };
 
-static void MicNotifyCallBack(u32 callbackContext, s32 event,
+static void MicNotifyCallBack(void *callbackContext, enum _GSAPI_NOTIFY_TYPE event,
                               u32 sample, u32 value)
 
 {
@@ -2088,7 +2080,7 @@ static void MicNotifyCallBack(u32 callbackContext, s32 event,
       if (((thresholdMicMode == 1) && (MC_gsapiEngine != 0)) &&
          (PlayerSession[thresholdSession] != 0)) {
         gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
-        gsapi_EngineSessionDataFree(PlayerSession[thresholdSession]);
+        gsapi_EngineSessionDataFree((struct _GSAPI_SESSIONDATA *)PlayerSession[thresholdSession]);
         PlayerSession[thresholdSession] = 0;
       }
       MCSessionTimer[MCSessionCur] = 0;
@@ -2105,7 +2097,7 @@ static void MicNotifyCallBack(u32 callbackContext, s32 event,
         if ((abnormalMicMode == 1) &&
            ((MC_gsapiEngine != 0 && (PlayerSession[abnormalSession] != 0)))) {
           gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
-          gsapi_EngineSessionDataFree(PlayerSession[abnormalSession]);
+          gsapi_EngineSessionDataFree((struct _GSAPI_SESSIONDATA *)PlayerSession[abnormalSession]);
           PlayerSession[abnormalSession] = 0;
         }
         MCSessionTimer[MCSessionCur] = 0;
@@ -2135,10 +2127,11 @@ static void MicNotifyCallBack(u32 callbackContext, s32 event,
 
 /* Called by the speech engine when a recognition result is ready. */
 
-void MicResultCallBack(u32 callbackContext, u32 callbackData, MicResultNode_s *resultNode)
+void MicResultCallBack(void *callbackContext, u32 callbackData,
+                       struct _GSAPI_RESULT *resultNode, u32 userData)
 
 {
-  MicResultExec(callbackContext,callbackData,resultNode);
+  MicResultExec(callbackContext, callbackData, resultNode);
   return;
 }
 
@@ -2148,11 +2141,11 @@ static char lbl_8023AD88[] =
     "%d:%d(%d),%s\n\0"
     "NBEST Error %x\n";
 
-static void MicResultExec(u32 callbackContext, u32 callbackData,
-                          MicResultNode_s *firstCandidate)
+static void MicResultExec(void *callbackContext, u32 callbackData,
+                          struct _GSAPI_RESULT *firstCandidate)
 
 {
-  MicResultNode_s *candidate;
+  struct _GSAPI_RESULT *candidate;
   s16 *candidateWords;
   s16 candidateIndex;
   s16 wordIndex;
@@ -2160,32 +2153,32 @@ static void MicResultExec(u32 callbackContext, u32 callbackData,
   MCResponseEntry_s candidates[10];
 
   candidate = firstCandidate;
-  if (firstCandidate->count != 0) {
+  if (firstCandidate->u16NbrWords != 0) {
     for (candidate = firstCandidate, candidateIndex = 0; candidateIndex < 10; candidateIndex++) {
-      if (!candidate || (candidate->count == 0)) {
+      if (!candidate || (candidate->u16NbrWords == 0)) {
         /* Missing candidates clear score and count only; their result pointer remains unset. */
         candidates[candidateIndex].score = 0;
         candidates[candidateIndex].count = 0;
         }
         else {
-        if (((candidate->count + (-2)) + MCResultNum) >= MIC_RESULT_WORD_CAPACITY) {
+        if (((candidate->u16NbrWords + (-2)) + MCResultNum) >= MIC_RESULT_WORD_CAPACITY) {
           MCResultNum = 0;
         }
         candidateWords = &MCResultData[MCResultNum];
         /* Copy each candidate using the first candidate's word count, even when this candidate's
          * count differs; its reported count still comes from candidate. */
-        for (wordIndex = 1; wordIndex < (firstCandidate->count - 1); wordIndex++) {
-          MCResultData[MCResultNum++] = MicResultGet(candidate->result[wordIndex]);
+        for (wordIndex = 1; wordIndex < (firstCandidate->u16NbrWords - 1); wordIndex++) {
+          MCResultData[MCResultNum++] = MicResultGet(candidate->pWordIds[wordIndex]);
           /* Ignore word-wordName lookup errors and log wordName even when the lookup leaves it
            * unassigned. */
-          gsapi_EngineGetParam(MC_gsapiEngine,candidate->result[wordIndex],&wordName);
-          OSReport(lbl_8023AD88, candidateIndex, MicResultGet(candidate->result[wordIndex]),
-                   candidate->score, wordName);
+          gsapi_EngineGetParam(MC_gsapiEngine, candidate->pWordIds[wordIndex], &wordName);
+          OSReport(lbl_8023AD88, candidateIndex, MicResultGet(candidate->pWordIds[wordIndex]),
+                   candidate->u16Conf, wordName);
         }
-        candidates[candidateIndex].score = candidate->score;
-        candidates[candidateIndex].count = candidate->count - 2;
+        candidates[candidateIndex].score = candidate->u16Conf;
+        candidates[candidateIndex].count = candidate->u16NbrWords - 2;
         candidates[candidateIndex].result = candidateWords;
-        candidate = candidate->next;
+        candidate = candidate->pNextBest;
       }
     }
 MicWriteResponseBuf(0,candidates);
@@ -2337,9 +2330,10 @@ static s32 ActivateContext(s16 contextId)
       OSReport(reportStrings + 710,apiResult);
     }
     if (MCSessionPrev >= 0) {
-      gsapi_EngineSessionDataFree(PlayerSession[MCSessionPrev]);
+      gsapi_EngineSessionDataFree((struct _GSAPI_SESSIONDATA *)PlayerSession[MCSessionPrev]);
       HeapNum = MIC_SESSION_ALLOC_TAG;
-      apiResult = gsapi_EngineSessionDataExport(MC_gsapiEngine,PlayerSession + MCSessionPrev);
+      apiResult = gsapi_EngineSessionDataExport(
+          MC_gsapiEngine, (struct _GSAPI_SESSIONDATA **)(PlayerSession + MCSessionPrev));
       if (apiResult != 0) {
         OSReport(reportStrings + 738,apiResult,PlayerSession[MCSessionPrev]);
       }
@@ -2353,7 +2347,9 @@ static s32 ActivateContext(s16 contextId)
       }
     } else if ((PlayerSession[MCSessionCur] != 0) &&
                (apiResult =
-                    gsapi_EngineSessionDataImport(MC_gsapiEngine, PlayerSession[MCSessionCur], 0),
+                    gsapi_EngineSessionDataImport(
+                        MC_gsapiEngine,
+                        (struct _GSAPI_SESSIONDATA *)PlayerSession[MCSessionCur], 0),
                 apiResult != 0)) {
         OSReport(reportStrings + 788, apiResult);
     }
@@ -2366,16 +2362,16 @@ static s32 ActivateContext(s16 contextId)
 
 /* Speech-engine initialization receives a zero heap handle and success; no separate heap is
  * created. */
-u32 heap_Open(u32 *heapHandle)
+u32 heap_Open(void **heapHandle, unsigned long heapUserData)
 
 {
-  *heapHandle = 0;
+  *heapHandle = NULL;
   return 0;
 }
 
 /* Speech-engine shutdown releases every heap-0 block in the current speech memory group and
  * reports success. */
-u32 heap_Close(void)
+u32 heap_Close(void *heapHandle)
 
 {
   HuMemDirectFreeNum(0,HeapNum);

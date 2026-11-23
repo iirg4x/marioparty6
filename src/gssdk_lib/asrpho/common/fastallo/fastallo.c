@@ -1,76 +1,77 @@
+/* Chunk allocation and size-class free lists for small allocations. */
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include <string.h>
 
 #include "gssdk/fastallo.h"
 
-extern void *heap_Realloc(void *heap, void *ptr, u32 size);
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-void *fastallo_AllocateMemoryFromChunk(FastAllocator *allocator, u32 words)
+/* Allocates Size words from the current chunk, obtaining a new chunk if needed. */
+void *fastallo_AllocateMemoryFromChunk(struct _FASTALLO_INST *pInst, unsigned short Size)
 {
-    void *result = NULL;
-    u32 chunk;
+    void *pRet = NULL;
+    unsigned long NbrOfArrays;
 
-    if ((u16)words == 0 || (u16)words > 64) {
+    if (Size == 0 || Size > 64) {
         goto done;
     }
 
-    if (allocator->wordsLeft < (u16)words) {
-        void **chunks;
-        void *memory;
+    if (pInst->FreeMemorySize < Size) {
+        void *pNewArrs;
+        void *pExtra;
 
-        chunk = allocator->chunkCount;
-        if (allocator->wordsLeft != 0) {
-            void **freeList = &allocator->freeLists[
-                ((u32)allocator->wordsLeft + 3) >> 2];
+        NbrOfArrays = pInst->NbrArrs;
+        if (pInst->FreeMemorySize != 0) {
+            struct _FASTALLO_FREE_NODE **pTemp = &pInst->pFreeNodes[
+                ((u32)pInst->FreeMemorySize + 3) >> 2];
 
-            *(void **)allocator->current = *freeList;
-            *freeList = allocator->current;
+            (pInst->pFreeMemory)->pNext = *pTemp;
+            *pTemp = pInst->pFreeMemory;
         }
 
-        chunks = heap_Realloc(allocator->heap, allocator->chunks,
-                              (chunk + 1) * sizeof(void *));
-        if (chunks == NULL) {
+        pNewArrs = heap_Realloc(pInst->hHeap, pInst->pArrs,
+                              (NbrOfArrays + 1) * sizeof(void *));
+        if (pNewArrs == NULL) {
             goto done;
         }
-        allocator->chunks = chunks;
+        pInst->pArrs = pNewArrs;
 
-        memory = heap_Alloc(allocator->heap, allocator->chunkBytes);
-        if (memory == NULL) {
+        pExtra = heap_Alloc(pInst->hHeap, pInst->ChunkSize);
+        if (pExtra == NULL) {
             goto done;
         }
-        allocator->chunks[chunk] = memory;
-        allocator->chunkCount = ++chunk;
-        allocator->current = memory;
-        allocator->wordsLeft = (u32)allocator->chunkBytes >> 2;
+        ((void **)pInst->pArrs)[NbrOfArrays] = pExtra;
+        pInst->NbrArrs = ++NbrOfArrays;
+        pInst->pFreeMemory = pExtra;
+        pInst->FreeMemorySize = (u32)pInst->ChunkSize >> 2;
     }
 
-    result = allocator->current;
-    allocator->wordsLeft -= (u16)words;
-    allocator->current = (u8 *)allocator->current + ((u16)words * sizeof(u32));
+    pRet = pInst->pFreeMemory;
+    pInst->FreeMemorySize -= (u32)Size;
+    pInst->pFreeMemory = (struct _FASTALLO_FREE_NODE *)((void **)pInst->pFreeMemory + Size);
 
 done:
-    return result;
+    return pRet;
 }
 
-void fastallo_Init(FastAllocator *allocator, void *heap, u16 chunkBytes)
+/* Clears the allocator state and records its heap and chunk size in bytes. */
+void fastallo_Init(struct _FASTALLO_INST *pInst, void *hHeap, unsigned short ChunkSize)
 {
-    memset(allocator, 0, sizeof(FastAllocator));
-    allocator->chunkBytes = chunkBytes;
-    allocator->heap = heap;
+    memset(pInst, 0, sizeof(struct _FASTALLO_INST));
+    pInst->ChunkSize = ChunkSize;
+    pInst->hHeap = hHeap;
 }
 
-void fastallo_Terminate(FastAllocator *allocator)
+/* Frees all chunks and the array of chunk pointers. */
+void fastallo_Terminate(struct _FASTALLO_INST *pInst)
 {
     u32 i;
-    u32 chunkCount = allocator->chunkCount;
+    u32 NbrArrs = pInst->NbrArrs;
 
-    for (i = 0; i < chunkCount; i++) {
-        heap_Free(allocator->heap, allocator->chunks[i]);
+    for (i = 0; i < NbrArrs; i++) {
+        heap_Free(pInst->hHeap, ((void **)pInst->pArrs)[i]);
     }
-    if (allocator->chunks != NULL) {
-        heap_Free(allocator->heap, allocator->chunks);
+    if (pInst->pArrs != NULL) {
+        heap_Free(pInst->hHeap, pInst->pArrs);
     }
 }

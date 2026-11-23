@@ -1,270 +1,250 @@
+/* Decimation filter and sample history for the voicing detector. */
+#include "gssdk/heap.h"
 #include "gssdk/triggerlr.h"
 
-#include "stdlib.h"
+#include <stdlib.h>
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-s32 Subsampler_Process(TriggerLR *block, const s16 *input)
+/* Filters the input into pSubSampledSignal and returns zero. */
+int Subsampler_Process(TriggerLR *This, s16 *pInSamples)
 {
-    if (input != NULL) {
-        const s16 *inputEnd = input + block->subsamplerInputCount;
-        s16 *output = block->subsamplerOutput;
+    if (pInSamples != NULL) {
+        s16 *pInSamples_End = pInSamples + This->NrInSamples;
+        s16 *pOutSamples = This->pSubSampledSignal;
+        s16 *pSample;
 
-        while (input < inputEnd) {
-            s16 sample = *input;
+        for (pSample = pInSamples; pSample < pInSamples_End; pSample++) {
+            s16 inputSample = *pSample;
 
-            if (block->subsamplerPhase == 1) {
-                *block->delayWrite++ = sample << block->sampleShift;
-                if (block->delayWrite >= block->delayEnd) {
-                    block->delayWrite = block->delay;
+            if (This->SubSampState == SUBSAMP_STATE_ODD) {
+                *This->pOddSamplesOldest++ = inputSample << This->centerTabShift;
+                if (This->pOddSamplesOldest >= This->pOddSamplesEnd) {
+                    This->pOddSamplesOldest = This->pOddSamplesBase;
                 }
 
-                block->delayRead++;
-                if (block->delayRead >= block->delayEnd) {
-                    block->delayRead = block->delay;
+                This->pOddSamplesCenter++;
+                if (This->pOddSamplesCenter >= This->pOddSamplesEnd) {
+                    This->pOddSamplesCenter = This->pOddSamplesBase;
                 }
-                block->subsamplerPhase = 0;
+                This->SubSampState = SUBSAMP_STATE_EVEN;
             } else {
-                s32 *product = *block->productRow;
-                s32 *symmetricProduct =
-                    product + block->halfImpulseLengthPlusOne;
-                s32 *coefficient = block->coefficients;
+                s32 *pLower = *This->ppEvenSamplesOldest;
+                s32 *pUpper = pLower + This->Neven;
+                s32 *pFilter = This->pFilterResponse;
                 s32 sum = 0;
-                s32 **row;
-                u32 column;
+                s32 **ppLong;
+                u32 index;
 
-                while (coefficient < block->coefficientsEnd) {
-                    s32 value = sample * *coefficient++;
+                while (pFilter < This->pFilterEnd) {
+                    s32 Sample = inputSample * *pFilter++;
 
-                    *--symmetricProduct = value;
-                    *product++ = value;
+                    *--pUpper = Sample;
+                    *pLower++ = Sample;
                 }
 
-                block->productRow++;
-                if (block->productRow >= block->productRowsEnd) {
-                    block->productRow = block->productRows;
+                This->ppEvenSamplesOldest++;
+                if (This->ppEvenSamplesOldest >= This->ppEvenSamplesEnd) {
+                    This->ppEvenSamplesOldest = This->ppEvenSamplesBase;
                 }
 
-                row = block->productRow;
-                for (column = 0;
-                     column < block->halfImpulseLengthPlusOne; column++) {
-                    sum += (*row)[column];
-                    row++;
-                    if (row >= block->productRowsEnd) {
-                        row = block->productRows;
+                ppLong = This->ppEvenSamplesOldest;
+                for (index = 0; index < This->Neven; index++) {
+                    sum += (*ppLong)[index];
+                    ppLong++;
+                    if (ppLong >= This->ppEvenSamplesEnd) {
+                        ppLong = This->ppEvenSamplesBase;
                     }
                 }
 
-                sum += *block->delayRead;
-                *output++ = (s16)(sum >> block->coefficientShift);
-                block->subsamplerPhase = 1;
+                sum += *This->pOddSamplesCenter;
+                *pOutSamples++ = (s16)(sum >> This->nrBitsInTabCoeff);
+                This->SubSampState = SUBSAMP_STATE_ODD;
             }
-            input++;
         }
     }
     return 0;
 }
 
-static s32 Subsampler_CheckImpulseResponse(
-    TriggerLR *block, const f64 *impulseResponse, u32 impulseLength)
+/* Checks the length and symmetry of the half-band filter response. */
+static int Subsampler_CheckImpulseResponse(TriggerLR *This, const f64 *pImpResp, unsigned int N)
 {
     const f64 tolerance = 1e-15;
-    const f64 *left;
-    const f64 *right;
-    s32 invalid = 0;
+    const f64 *pTop;
+    const f64 *pBottom;
+    s32 bRetVal = 0;
 
-    if ((impulseLength & 1) == 0) {
-        invalid = 1;
+    if ((N & 1) == 0) {
+        bRetVal = 1;
         goto done;
     }
 
-    block->halfImpulseLength = impulseLength >> 1;
-    block->halfImpulseLengthPlusOne = block->halfImpulseLength + 1;
-    if ((block->halfImpulseLength & 1) == 0) {
-        invalid = 1;
+    This->Nodd = N >> 1;
+    This->Neven = This->Nodd + 1;
+    if ((This->Nodd & 1) == 0) {
+        bRetVal = 1;
         goto done;
     }
-    if ((block->halfImpulseLengthPlusOne & 1) == 1) {
-        invalid = 1;
+    if ((This->Neven & 1) == 1) {
+        bRetVal = 1;
         goto done;
     }
 
-    left = impulseResponse;
-    right = impulseResponse + impulseLength - 1;
-    while (left < right) {
-        if (abs(*left - *right) > tolerance) {
-            invalid = 1;
+    pTop = pImpResp;
+    pBottom = pImpResp + N - 1;
+    while (pTop < pBottom) {
+        if (abs(*pTop - *pBottom) > tolerance) {
+            bRetVal = 1;
             goto done;
         }
-        left++;
-        right--;
+        pTop++;
+        pBottom--;
     }
 
-    if (abs(*left - 0.5) > tolerance) {
-        invalid = 1;
+    if (abs(*pTop - 0.5) > tolerance) {
+        bRetVal = 1;
         goto done;
     }
 
-    left = impulseResponse + 1;
-    while (left < right) {
-        if (abs(*left) > tolerance) {
-            invalid = 1;
+    pTop = pImpResp + 1;
+    while (pTop < pBottom) {
+        if (abs(*pTop) > tolerance) {
+            bRetVal = 1;
             goto done;
         }
-        left += 2;
+        pTop += 2;
     }
 
 done:
-    if (invalid != 0) {
-        _tosErrorLog(block, 300);
+    if (bRetVal != 0) {
+        _tosErrorLog(&This->BaseBlock.Object, 300);
     }
-    return invalid;
+    return bRetVal;
 }
 
-void Subsampler_Reset(TriggerLR *block)
+/* Clears the filter histories and resets their read and write positions. */
+void Subsampler_Reset(TriggerLR *This)
 {
-    s32 *delay;
-    s32 *value;
-    s32 **row;
+    s32 *pLong;
+    s32 **ppLong;
 
-    for (delay = block->delay; delay < block->delayEnd; delay++) {
-        *delay = 0;
+    for (pLong = This->pOddSamplesBase; pLong < This->pOddSamplesEnd; pLong++) {
+        *pLong = 0;
     }
-    block->delayWrite = block->delay;
-    block->delayRead = block->delayWrite + block->halfImpulseLength / 2;
+    This->pOddSamplesOldest = This->pOddSamplesBase;
+    This->pOddSamplesCenter = This->pOddSamplesOldest + This->Nodd / 2;
 
-    for (row = block->productRows; row < block->productRowsEnd; row++) {
-        for (value = *row;
-             value < *row + block->halfImpulseLengthPlusOne; value++) {
-            *value = 0;
+    for (ppLong = This->ppEvenSamplesBase; ppLong < This->ppEvenSamplesEnd; ppLong++) {
+        for (pLong = *ppLong; pLong < *ppLong + This->Neven; pLong++) {
+            *pLong = 0;
         }
     }
-    block->productRow = block->productRows;
-    block->subsamplerPhase = 0;
+    This->ppEvenSamplesOldest = This->ppEvenSamplesBase;
+    This->SubSampState = SUBSAMP_STATE_EVEN;
 }
 
-s32 Subsampler_Init(TriggerLR *block)
+/* Initializes the trigger's subsampler and filter coefficients. */
+int Subsampler_Init(TriggerLR *This)
 {
-    TosContext *context = block->base.context;
-    u32 result = 0;
-    f64 impulseResponse[23] = {
-        -0.0044691990096899963,
-        -2.8698779710312522e-16,
-        0.011551957698517620,
-        3.9956647417786528e-16,
-        -0.024138391579451441,
-        -5.5259703582695518e-16,
-        0.046702085726844770,
-        6.5110922026792407e-16,
-        -0.095170806790360677,
-        -7.6770895142885015e-16,
-        0.31453233358223820,
-        0.50000000000000078,
-        0.31453233358223820,
-        -7.6770895142885015e-16,
-        -0.095170806790360677,
-        6.5110922026792407e-16,
-        0.046702085726844770,
-        -5.5259703582695518e-16,
-        -0.024138391579451441,
-        3.9956647417786528e-16,
-        0.011551957698517620,
-        -2.8698779710312522e-16,
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
+    s32 bRetVal = 0;
+    f64 ImpulseResp[23] = {
+        -0.0044691990096899963, -2.8698779710312522e-16,
+        0.011551957698517620, 3.9956647417786528e-16,
+        -0.024138391579451441, -5.5259703582695518e-16,
+        0.046702085726844770, 6.5110922026792407e-16,
+        -0.095170806790360677, -7.6770895142885015e-16,
+        0.31453233358223820, 0.50000000000000078,
+        0.31453233358223820, -7.6770895142885015e-16,
+        -0.095170806790360677, 6.5110922026792407e-16,
+        0.046702085726844770, -5.5259703582695518e-16,
+        -0.024138391579451441, 3.9956647417786528e-16,
+        0.011551957698517620, -2.8698779710312522e-16,
         -0.0044691990096899963,
     };
-    s32 **row;
-    f64 scale;
-    s32 *coefficient;
-    f64 *impulse;
+    s32 **ppLong;
+    f64 Factor;
+    s32 *pIntegerResp;
+    f64 *pDoubleResp;
 
-    block->impulseLength = 23;
-    if (Subsampler_CheckImpulseResponse(
-            block, impulseResponse, block->impulseLength) != 0) {
-        result = 1;
+    This->N = 23;
+    if (Subsampler_CheckImpulseResponse(This, ImpulseResp, This->N) != 0) {
+        bRetVal = 1;
         goto done;
     }
 
-    block->subsamplerInputCount =
-        (u16)_tosGetProfileU32(block, 30, 110);
-    block->subsamplerOutput =
-        heap_Calloc(context->heap, block->frameLength, sizeof(s16));
-    block->coefficientShift = 12;
-    block->delayWrite = NULL;
-    block->delayRead = NULL;
-    block->productRow = NULL;
-    block->productRowsEnd = NULL;
+    This->NrInSamples = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 30, 110);
+    This->pSubSampledSignal = heap_Calloc(pTos->hHeap, This->frameSize, sizeof(s16));
+    This->nrBitsInTabCoeff = 12;
+    This->pOddSamplesOldest = NULL;
+    This->pOddSamplesCenter = NULL;
+    This->ppEvenSamplesOldest = NULL;
+    This->ppEvenSamplesEnd = NULL;
 
-    block->delay = heap_Calloc(
-        context->heap, block->halfImpulseLength, sizeof(s32));
-    block->delayEnd = block->delay + block->halfImpulseLength;
+    This->pOddSamplesBase = heap_Calloc(pTos->hHeap, This->Nodd, sizeof(s32));
+    This->pOddSamplesEnd = This->pOddSamplesBase + This->Nodd;
 
-    block->productRows = heap_Calloc(
-        context->heap, block->halfImpulseLengthPlusOne, sizeof(s32 *));
-    block->productRowsEnd =
-        block->productRows + block->halfImpulseLengthPlusOne;
+    This->ppEvenSamplesBase = heap_Calloc(pTos->hHeap, This->Neven, sizeof(s32 *));
+    This->ppEvenSamplesEnd = This->ppEvenSamplesBase + This->Neven;
 
-    if (block->subsamplerOutput == NULL || block->delay == NULL ||
-        block->productRows == NULL) {
-        _tosErrorLog(block, 2);
-        result = 1;
+    if (This->pSubSampledSignal == NULL || This->pOddSamplesBase == NULL ||
+        This->ppEvenSamplesBase == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 2);
+        bRetVal = 1;
         goto done;
     }
 
-    row = block->productRows;
-    while (row < block->productRowsEnd) {
-        *row = heap_Calloc(
-            context->heap, block->halfImpulseLengthPlusOne, sizeof(s32));
-        if (row == NULL) {
-            _tosErrorLog(block, 2);
-            result = 1;
+    ppLong = This->ppEvenSamplesBase;
+    while (ppLong < This->ppEvenSamplesEnd) {
+        *ppLong = heap_Calloc(pTos->hHeap, This->Neven, sizeof(s32));
+        /* The check is on the table cursor. */
+        if (ppLong == NULL) {
+            _tosErrorLog(&This->BaseBlock.Object, 2);
+            bRetVal = 1;
             goto done;
         }
-        row++;
+        ppLong++;
     }
 
-    block->coefficients = heap_Calloc(
-        context->heap, block->halfImpulseLengthPlusOne / 2, sizeof(s32));
-    block->coefficientsEnd =
-        block->coefficients + block->halfImpulseLengthPlusOne / 2;
-    if (block->coefficients == NULL) {
-        _tosErrorLog(block, 2);
-        result = 1;
+    This->pFilterResponse = heap_Calloc(pTos->hHeap, This->Neven / 2, sizeof(s32));
+    This->pFilterEnd = This->pFilterResponse + This->Neven / 2;
+    if (This->pFilterResponse == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 2);
+        bRetVal = 1;
         goto done;
     }
 
-    scale = 1 << block->coefficientShift;
-    impulse = impulseResponse;
-    coefficient = block->coefficients;
-    while (coefficient < block->coefficientsEnd) {
-        *coefficient++ = (s32)(*impulse * scale);
-        impulse += 2;
+    Factor = 1 << This->nrBitsInTabCoeff;
+    pDoubleResp = ImpulseResp;
+    pIntegerResp = This->pFilterResponse;
+    while (pIntegerResp < This->pFilterEnd) {
+        *pIntegerResp++ = (s32)(*pDoubleResp * Factor);
+        pDoubleResp += 2;
     }
-    block->sampleShift = block->coefficientShift - 1;
-    Subsampler_Reset(block);
+    This->centerTabShift = This->nrBitsInTabCoeff - 1;
+    Subsampler_Reset(This);
 
 done:
-    return result;
+    return bRetVal;
 }
 
-void Subsampler_Free(TriggerLR *block)
+/* Frees the filter coefficients and the odd and even sample buffers. */
+void Subsampler_Free(TriggerLR *This)
 {
-    TosContext *context = block->base.context;
-    s32 **row;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
+    s32 **ppLong;
 
-    if (block->coefficients != NULL) {
-        heap_Free(context->heap, block->coefficients);
+    if (This->pFilterResponse != NULL) {
+        heap_Free(pTos->hHeap, This->pFilterResponse);
     }
-    if (block->delay != NULL) {
-        heap_Free(context->heap, block->delay);
+    if (This->pOddSamplesBase != NULL) {
+        heap_Free(pTos->hHeap, This->pOddSamplesBase);
     }
-    for (row = block->productRows; row < block->productRowsEnd; row++) {
-        heap_Free(context->heap, *row);
+    for (ppLong = This->ppEvenSamplesBase; ppLong < This->ppEvenSamplesEnd; ppLong++) {
+        heap_Free(pTos->hHeap, *ppLong);
     }
-    if (block->productRows != NULL) {
-        heap_Free(context->heap, block->productRows);
+    if (This->ppEvenSamplesBase != NULL) {
+        heap_Free(pTos->hHeap, This->ppEvenSamplesBase);
     }
-    if (block->subsamplerOutput != NULL) {
-        heap_Free(context->heap, block->subsamplerOutput);
+    if (This->pSubSampledSignal != NULL) {
+        heap_Free(pTos->hHeap, This->pSubSampledSignal);
     }
 }

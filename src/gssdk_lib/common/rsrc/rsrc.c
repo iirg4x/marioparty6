@@ -1,4 +1,7 @@
-#include "gssdk/safeh.h"
+/* Allocation, validation and release of resource handles. */
+#include "gssdk/heap.h"
+#include "gssdk/rsrc.h"
+#include "gssdk/osspi.h"
 
 #include <stddef.h>
 
@@ -6,91 +9,81 @@
 #define RSRC_INVALID_RESOURCE 0x80160101
 #define RSRC_OUT_OF_MEMORY 0x80160186
 
-typedef struct Resource {
-    u16 type;
-    u16 reserved;
-    void *heap;
-    void *value0;
-    void *value1;
-    void *value2;
-} Resource;
+const struct RSRC_S g_NullResource = { RSRC_TYPE };
 
-extern u32 osspi_IsGoodWritePtr(void *address, u32 size);
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-const Resource g_NullResource = { RSRC_TYPE };
-
-static inline BOOL IsError(u32 result)
+/* Validates a handle and returns its resource record. */
+long InitRsrcFunction(SafeHandle hRsrc, const struct RSRC_S **ppRsrc)
 {
-    return result >= 0x80000000 ? TRUE : FALSE;
-}
+    long lhError = 0;
 
-u32 InitRsrcFunction(SafeHandle handle, void **resource)
-{
-    u32 result = 0;
-    Resource *closeResource;
-
-    if (safeh_HandlesEqual(handle, g_lhNullHandle)) {
-        *resource = (void *)&g_NullResource;
+    if (safeh_HandlesEqual(hRsrc, g_lhNullHandle)) {
+        *ppRsrc = &g_NullResource;
     } else {
-        result = safeh_HandleCheck(handle, RSRC_TYPE, sizeof(Resource));
-        if (IsError(result)) {
-            if ((result & 0x7F) == 9) {
-                result = RSRC_INVALID_RESOURCE;
+        lhError = safeh_HandleCheck(hRsrc, RSRC_TYPE, sizeof(struct RSRC_S));
+        if (IsError(lhError)) {
+            /* A bad handle type becomes an invalid-resource error. */
+            if ((lhError & 0x7FU) == 9) {
+                lhError = RSRC_INVALID_RESOURCE;
             }
-            return result;
+            return lhError;
         }
-        *resource = handle.address;
-        closeResource = *resource;
-        if (*resource == NULL || closeResource->type != RSRC_TYPE) {
+        *ppRsrc = hRsrc.address;
+        if (*ppRsrc == NULL || (*ppRsrc)->u16HandleValidityCheck != RSRC_TYPE) {
             return RSRC_INVALID_RESOURCE;
         }
     }
-    return result;
+    return lhError;
 }
 
-u32 rsrc_Open(void *heap, void *value0, void *value1, void *value2, SafeHandle *handle)
+/* Clears the validity marker before returning the resource to its heap. */
+static void FreeRsrc(struct RSRC_S *pRsrc)
 {
-    Resource *resource = NULL;
-    u32 result;
+    if (pRsrc != NULL) {
+        pRsrc->u16HandleValidityCheck = 0;
+        heap_Free(pRsrc->hHeap, pRsrc);
+    }
+}
 
-    result = osspi_IsGoodWritePtr(handle, sizeof(SafeHandle));
-    if (!IsError(result)) {
-        resource = heap_Calloc(heap, sizeof(Resource), 1);
-        if (resource == NULL) {
-            result = RSRC_OUT_OF_MEMORY;
+/* Allocates and initializes the resource attached to a new handle. */
+long rsrc_Open(void *hHeap, void *hCSClass, void *hBrk, void *hDbg, SafeHandle *phRsrc)
+{
+    struct RSRC_S *pRsrc = NULL;
+    long lhError;
+
+    lhError = osspi_IsGoodWritePtr(phRsrc, sizeof(SafeHandle));
+    if (!IsError(lhError)) {
+        pRsrc = heap_Calloc(hHeap, sizeof(struct RSRC_S), 1);
+        if (pRsrc == NULL) {
+            lhError = RSRC_OUT_OF_MEMORY;
         } else {
-            resource->heap = heap;
-            resource->value1 = value1;
-            resource->value0 = value0;
-            resource->value2 = value2;
-            handle->address = resource;
-            handle->type = RSRC_TYPE;
-            resource->heap = heap;
-            resource->value1 = value1;
-            resource->value0 = value0;
-            resource->value2 = value2;
-            resource->type = RSRC_TYPE;
+            pRsrc->hHeap = hHeap;
+            pRsrc->hBrk = hBrk;
+            pRsrc->hCSClass = hCSClass;
+            pRsrc->hDbg = hDbg;
+            phRsrc->address = pRsrc;
+            phRsrc->type = RSRC_TYPE;
+            pRsrc->hHeap = hHeap;
+            pRsrc->hBrk = hBrk;
+            pRsrc->hCSClass = hCSClass;
+            pRsrc->hDbg = hDbg;
+            pRsrc->u16HandleValidityCheck = RSRC_TYPE;
         }
     }
-    if (IsError(result) && resource != NULL) {
-        resource->type = 0;
-        heap_Free(resource->heap, resource);
+    if (IsError(lhError)) {
+        FreeRsrc(pRsrc);
     }
-    return result;
+    return lhError;
 }
 
-u32 rsrc_Close(SafeHandle handle)
+/* Validates the handle before releasing the resource. */
+long rsrc_Close(SafeHandle hRsrc)
 {
-    u32 result;
-    Resource *resource;
-    Resource *closeResource;
+    long lhError;
+    struct RSRC_S *pRsrc;
 
-    result = InitRsrcFunction(handle, (void **)&resource);
-    if (!IsError(result) && (closeResource = resource) != NULL) {
-        closeResource->type = 0;
-        heap_Free(closeResource->heap, closeResource);
+    lhError = InitRsrcFunction(hRsrc, (const struct RSRC_S **)&pRsrc);
+    if (!IsError(lhError)) {
+        FreeRsrc(pRsrc);
     }
-    return result;
+    return lhError;
 }

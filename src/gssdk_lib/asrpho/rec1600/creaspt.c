@@ -1,245 +1,126 @@
 /* Builds the word dictionary and pronunciation graph for speech recognition's tree search. */
+#include "gssdk/secondpass.h"
+#include "gssdk/context.h"
+#include "gssdk/engine.h"
+#include "gssdk/heap.h"
 #include "types.h"
 #include "gssdk/langdata.h"
 #include <string.h>
 
-/* 0xffff marks an absent graph link or unavailable joining translation. */
-enum { NO_GRAPH_INDEX = 65535 };
-
-typedef struct TreeWord {
-    s32 wordID;
-    /* Index of the next sequence word in wordSequences; -1 terminates the chain. */
-    u32 next;
-} TreeWord;
-
-typedef struct TreeItem {
-    /* Context word ID, or -1 - sequence index for a linked word sequence. */
-    s32 wordID;
-    u32 reservedItemData;
-} TreeItem;
-
-typedef struct WordGraphNode {
-    s32 wordID;
-    /* Pronunciation index relative to the context dictionary's base offset. */
-    u32 dictionaryIndex;
-    /* Head transition index for this node; NO_GRAPH_INDEX marks no outgoing edge. */
-    u16 firstTransition;
-    u16 reservedNodeData;
-} WordGraphNode;
-
-/* Destination node, next edge index (NO_GRAPH_INDEX terminates the list), and joining
- * translation ID (NO_GRAPH_INDEX means direct traversal). */
-typedef struct WordGraphTransition {
-    u16 destination;
-    u16 next;
-    u16 translationID;
-} WordGraphTransition;
-
-/* Assembled second-pass state and packed arrays; wordCount includes joining words,
- * and tokenCount includes two index words stored per pronunciation. */
-typedef struct SecondPassContext {
-    s32 state;
-    u32 wordCount;
-    u32 tokenCount;
-    u16 *wordFlags;
-    u16 *dictionary;
-    s16 *wordPenalties;
-    u32 *transitions;
-    u32 *wordOffsets;
-    void *menuMasks;
-} SecondPassContext;
-
-/* Pronunciation metadata: dictionary offset, encoded token count,
- * and leading/trailing speech-unit classes. */
-typedef struct DictionaryWord {
-    u32 transcriptionOffset;
-    u16 tokenCount;
-    u8 leadingClass;
-    u8 trailingClass;
-} DictionaryWord;
-
 /* Pronunciation metadata retained while resolving a graph node's joining word. */
 typedef struct NodeWordInfo {
-    u16 tokenCount;
-    u8 leadingClass;
-    u8 trailingClass;
+    u16 tokenCount; /* Number of pronunciation tokens. */
+    u8 leadingClass; /* Speech-unit class at the beginning. */
+    u8 trailingClass; /* Speech-unit class at the end. */
 } NodeWordInfo;
 
-typedef struct RecognitionContext {
-    u8 reservedHeader[564];
-    /* Passed to the speech allocator, which currently uses heap 0 and ignores this handle. */
-    void *heap;
-    u32 reservedState;
-    /* Points to the V2 context data pointer used to fill the local dictionaryContext table. */
-    void **dictionarySource;
-    u32 reservedPassSetup;
-    void *firstPassData;
-    u32 reservedDictionaryState;
-    DictionaryWord *dictionaryWords;
-    u32 reservedSearchState;
-    SecondPassContext *secondPass;
-    /* Maps source word and pronunciation IDs; joining translation entries store -1,-1. */
-    s32 *cachedData;
-    u32 reservedPassState[2];
-    LanguageData *language;
-    u8 reservedMenuState[64];
-    /* Input tree items; negative word IDs refer to linked entries in wordSequences. */
-    TreeItem **treeWords;
-    u32 treeWordCount;
-    u8 reservedRecognitionState[384];
-    /* Penalty copied to entries whose word flag has bit 7 set. */
-    s16 wordPenalty;
-    u16 reservedTreeFlags;
-    u32 reservedTreeState;
-    /* Linked sequence words indexed by the negative TreeItem wordID encoding. */
-    TreeWord *wordSequences;
-    u32 reservedSequenceState;
-    u32 maxSequenceLength;
-} RecognitionContext;
-
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *memory);
-extern void FreeSecondPassContext(RecognitionContext *context);
-extern u8 CreateMenuMasks(RecognitionContext *context, SecondPassContext *secondPass, u32 count);
-
-typedef struct ContextV2 ContextV2;
-typedef void (*ContextMethod)(void);
-
-struct ContextV2 {
-    void *data;
-    ContextMethod checkDataType;
-    ContextMethod getSize;
-    ContextMethod getLanguageVersionInfo;
-    ContextMethod getTS;
-    ContextMethod getAccuracy;
-    ContextMethod getRejection;
-    ContextMethod getGarbage;
-    ContextMethod getNbrItem;
-    u32 (*getNbrWord)(ContextV2 *context);
-    ContextMethod getNbrPron;
-    ContextMethod getNbrFollower;
-    ContextMethod getNbrStartWord;
-    ContextMethod getNbrStopWord;
-    ContextMethod getGarbageWordID;
-    ContextMethod isSpellingContext;
-    u16 *(*getLex)(ContextV2 *context);
-    u32 *(*getWordOffsets)(ContextV2 *context);
-    u16 *(*getWordProperties)(ContextV2 *context);
-    ContextMethod getSyntax;
-    ContextMethod isIsoWordContext;
-};
-
-/* Read token counts and joining classes for graph and edge construction.
+/* Reads token counts and joining classes for graph and edge construction.
  * Type 1 expands speech units, skipping the first and last units when there are more than two;
  * other types use direct tokens and the user-word class. Always returns 0. */
-u8 GetSecondPassInfo(RecognitionContext *context, ContextV2 *dictionaryContext,
-                      DictionaryWord *wordInfo, u32 pronunciationIndex)
+u8 GetSecondPassInfo(struct _ENGINE *pEngine, struct _ASRSPI_CONTEXT *pCtx,
+                     struct _SECONDPASSINFO *pSecondPassInfo, unsigned int PronID)
 {
-    u32 *speechUnitOffsets = ((u32 *(*)(LanguageData *))
-        context->language->reservedA8[0])(context->language);
-    u8 defaultClass = context->language->getUserWordSpeechUnitClass(context->language);
-    u16 *dictionary = dictionaryContext->getLex(dictionaryContext);
-    u32 *wordOffsets = dictionaryContext->getWordOffsets(dictionaryContext);
+    const u32 *pSpeechUnitLex = pEngine->pLang->langGetpSpeechUnit(pEngine->pLang);
+    u8 defaultClass = pEngine->pLang->langGetUserWordSpeechUnitClass(pEngine->pLang);
+    u16 *dictionary = pCtx->contextGetpLex(pCtx);
+    u32 *wordOffsets = pCtx->contextGetpBeginOfWords(pCtx);
     unsigned int wordType;
     u16 *pronunciation;
     u16 *end;
     int length;
 
     wordOffsets += *wordOffsets;
-    pronunciation = dictionary + wordOffsets[pronunciationIndex];
+    pronunciation = dictionary + wordOffsets[PronID];
     wordType = *pronunciation++;
-    end = dictionary + wordOffsets[pronunciationIndex + 1];
+    end = dictionary + wordOffsets[PronID + 1];
     length = end - pronunciation;
     if (wordType == 1) {
         u32 tokenCount = 0;
 
-        wordInfo->leadingClass = ((u16 *)speechUnitOffsets)[speechUnitOffsets[*pronunciation]];
+        pSecondPassInfo->LeftSpeechUnitClass =
+            ((const u16 *)pSpeechUnitLex)[pSpeechUnitLex[*pronunciation]];
         --end;
-        wordInfo->trailingClass = ((u16 *)speechUnitOffsets)[speechUnitOffsets[*end] + 1];
+        pSecondPassInfo->RightSpeechUnitClass =
+            ((const u16 *)pSpeechUnitLex)[pSpeechUnitLex[*end] + 1];
         if (length > 2) {
             ++pronunciation;
             --end;
         }
         while (pronunciation <= end) {
             u16 speechUnit = *pronunciation;
-            tokenCount += speechUnitOffsets[speechUnit + 1] - speechUnitOffsets[speechUnit] - 2;
+            tokenCount += pSpeechUnitLex[speechUnit + 1] - pSpeechUnitLex[speechUnit] - 2;
             ++pronunciation;
         }
-        wordInfo->tokenCount = tokenCount;
+        pSecondPassInfo->Size = tokenCount;
     } else {
-        wordInfo->trailingClass = defaultClass;
-        wordInfo->leadingClass = defaultClass;
-        wordInfo->tokenCount = length;
+        pSecondPassInfo->RightSpeechUnitClass = defaultClass;
+        pSecondPassInfo->LeftSpeechUnitClass = defaultClass;
+        pSecondPassInfo->Size = length;
     }
     return 0;
 }
 
-/* Append joining-translation pronunciations with token IDs shifted left two bits.
- * Nonfinal tokens set bit 1; the final token sets bit 0 instead. Record dictionary offsets
- * and append the low and high 16-bit halves of the second-pass word index. */
-static void putTransWordInDict(u32 **wordOffsetList, u32 *wordOffset,
-                        u16 **encodedWordList, u32 secondPassWordIndex,
-                        u16 *translationWordIndices, u16 *wordLimit, u16 *dictionary)
+/* Packs joining translations and appends the two halves of the second-pass word ID. */
+static void putTransWordInDict(u32 **ppBeginOfPron, u32 *pDictIndex, u16 **ppState,
+                               u32 WordID, u16 *pIndex, u16 *pIndexEnd, u16 *pTransWordLex)
 {
-    u16 wordIndexLow = secondPassWordIndex;
-    u32 *offsetCursor = *wordOffsetList;
-    u16 *encodedCursor = *encodedWordList;
-    u16 *indexCursor = translationWordIndices;
-    u16 *dictionaryCursor = dictionary + *indexCursor;
-    u16 *nextWord;
+    u16 wordIndexLow = WordID;
+    u32 *pBeginOfPron = *ppBeginOfPron;
+    u16 *pState = *ppState;
+    u16 *indexCursor = pIndex;
+    u16 *pPhen = pTransWordLex + *indexCursor;
+    u16 *pPhenEnd;
 
-    secondPassWordIndex >>= 16;
-    while (indexCursor < wordLimit) {
-        *offsetCursor++ = *wordOffset;
-        nextWord = dictionary + *++indexCursor;
-        *wordOffset += nextWord - dictionaryCursor + 2;
-        while (dictionaryCursor < nextWord - 1) {
-            *encodedCursor++ = (*dictionaryCursor++ * 4) | 2;
+    WordID >>= 16;
+    while (indexCursor < pIndexEnd) {
+        *pBeginOfPron++ = *pDictIndex;
+        pPhenEnd = pTransWordLex + *++indexCursor;
+        *pDictIndex += pPhenEnd - pPhen + 2;
+        while (pPhen < pPhenEnd - 1) {
+            *pState++ = (*pPhen++ * 4) | 2;
         }
-        encodedCursor[0] = (*dictionaryCursor++ * 4) | 1;
-        encodedCursor[1] = wordIndexLow;
-        encodedCursor[2] = secondPassWordIndex;
-        encodedCursor += 3;
+        pState[0] = (*pPhen++ * 4) | 1;
+        pState[1] = wordIndexLow;
+        pState[2] = WordID;
+        pState += 3;
     }
 
-    *encodedWordList = encodedCursor;
-    *wordOffsetList = offsetCursor;
+    *ppState = pState;
+    *ppBeginOfPron = pBeginOfPron;
 }
 
-/* Pack a context pronunciation as token IDs shifted left two bits. Type 1 expands speech
- * units, skipping the first and last units when there are more than two. Set bit 0 on the
- * final token and append the low and high 16-bit halves of its second-pass word index. */
-static void putWordInDict(RecognitionContext *context, ContextV2 *dictionaryContext,
-                   u32 pronunciationIndex, u32 *encodedOffset,
-                   u16 **encodedDictionary, u32 wordIndex)
+/* Packs a context pronunciation as token IDs shifted left two bits. Type 1 expands speech
+ * units, skipping the first and last units when there are more than two. Sets bit 0 on the
+ * final token and appends the low and high 16-bit halves of its second-pass word index. */
+static void putWordInDict(struct _ENGINE *pEngine, struct _ASRSPI_CONTEXT *pCtx,
+                          unsigned int PronID, u32 *pDictIndex, u16 **ppState, u32 WordID)
 {
-    u32 *speechUnitOffsets = ((u32 *(*)(LanguageData *))
-        context->language->reservedA8[0])(context->language);
-    u16 *dictionary = dictionaryContext->getLex(dictionaryContext);
-    u32 *wordOffsets = dictionaryContext->getWordOffsets(dictionaryContext);
+    const u32 *pSpeechUnitLex = pEngine->pLang->langGetpSpeechUnit(pEngine->pLang);
+    u16 *dictionary = pCtx->contextGetpLex(pCtx);
+    u32 *wordOffsets = pCtx->contextGetpBeginOfWords(pCtx);
     u32 offsetBase = *wordOffsets;
     u32 *pronunciationOffsets = wordOffsets + offsetBase;
-    u16 *pronunciation = dictionary + pronunciationOffsets[pronunciationIndex];
+    u16 *pronunciation = dictionary + pronunciationOffsets[PronID];
     unsigned int wordType = *pronunciation++;
-    u16 *end = dictionary + pronunciationOffsets[pronunciationIndex + 1];
+    u16 *end = dictionary + pronunciationOffsets[PronID + 1];
     unsigned int length = end - pronunciation;
-    u16 *output = *encodedDictionary;
+    u16 *output = *ppState;
     u32 tokensWritten = 0;
 
     if (wordType == 1) {
         --end;
-        if (length > 2U) {
+        if (length > 2) {
             ++pronunciation;
             --end;
         }
         while (pronunciation <= end) {
-            u32 *bounds = speechUnitOffsets + *pronunciation;
+            const u32 *bounds = pSpeechUnitLex + *pronunciation;
             u32 tokenCount = bounds[1] - bounds[0] - 2;
             u32 tokenIndex = 0;
-            u16 *tokens = (u16 *)speechUnitOffsets + bounds[0] + 2;
+            const u16 *pPhenoms = (const u16 *)pSpeechUnitLex + bounds[0] + 2;
 
             for (; tokenIndex < tokenCount; tokenIndex++) {
-                *output++ = (tokens[tokenIndex] * 4) & 0xFFFC;
+                *output++ = (pPhenoms[tokenIndex] * 4) & 0xFFFC;
             }
             tokensWritten += tokenCount;
             ++pronunciation;
@@ -252,23 +133,21 @@ static void putWordInDict(RecognitionContext *context, ContextV2 *dictionaryCont
         }
     }
     output[-1] |= 1;
-    output[0] = wordIndex;
-    output[1] = wordIndex >> 16;
-    *encodedOffset += tokensWritten + 2;
-    *encodedDictionary = output + 2;
+    output[0] = WordID;
+    output[1] = WordID >> 16;
+    *pDictIndex += tokensWritten + 2;
+    *ppState = output + 2;
 }
 
-extern void FillContextV2VirtualTable(ContextV2 *context);
-
-/* Build the shared-prefix pronunciation graph and packed second-pass context
+/* Builds the shared-prefix pronunciation graph and packed second-pass context
  * for configured tree words. */
-u8 CreateSecondPassTreeContext(RecognitionContext *context)
+u8 CreateSecondPassTreeContext(struct _ENGINE *pEngine)
 {
     u16 *translationOffsets;
     u32 *wordOffsets;
     u32 speechUnitClassCount;
     s32 *sequenceCursor;
-    TreeItem *itemCursor;
+    struct _WORDRESULT *itemCursor;
     u32 treeItemIndex;
     u32 rootEdgeCount;
     u32 tokenCount;
@@ -277,23 +156,23 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
     u16 *translationTokens;
     u16 *wordProperties;
     s32 finalWord;
-    SecondPassContext *secondPass;
+    struct _DYNPROG_CTXINFO *secondPass;
     unsigned int sequenceLength;
-    ContextV2 dictionaryContext;
+    struct _ASRSPI_CONTEXT dictionaryContext;
     NodeWordInfo sourceWordInfo;
     u32 *pronunciationOffsets;
     u32 encodedOffset;
     u16 *encodedDictionary;
-    DictionaryWord wordInfo;
-    WordGraphNode *graphNodes;
-    WordGraphTransition *edges;
-    TreeItem *treeWords;
-    TreeItem *treeWordCursor;
+    struct _SECONDPASSINFO wordInfo;
+    struct _NODE *graphNodes;
+    struct _VERTEX *edges;
+    struct _WORDRESULT *treeWords;
+    struct _WORDRESULT *treeWordCursor;
     u32 maximumPronunciations;
     u32 graphCapacity;
     u32 nextNode;
     u32 nextEdge;
-    void *translationDictionary;
+    struct _TRANSWORDINFO *translationDictionary;
     u32 contextWordCount;
     s32 firstWord;
     s32 *sequence;
@@ -310,9 +189,11 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
     u32 *packedTransitions;
     u32 *transitionBoundaries;
     u32 *allWordOffsets;
-    s32 *wordMap;
-    WordGraphNode *nodeCursor;
+    struct _NEWID2OLDID *wordMap;
+    struct _NODE *nodeCursor;
     u32 nodeIndex;
+    unsigned int i;
+    unsigned int iVertex;
 
     maximumPronunciations = 0;
     graphCapacity = 0;
@@ -322,76 +203,68 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
     rootEdgeCount = 0;
     nextNode = 1;
     tokenCount = 0;
-    speechUnitClassCount = context->language->getNbrSpeechUnitClass(context->language);
-    treeWords = *context->treeWords;
-    treeWordCursor = *context->treeWords;
-    treeWordCount = context->treeWordCount;
-    translationDictionary = ((void *(*)(LanguageData *))
-        context->language->reservedA8[1])(context->language);
-    translationTokens = ((u16 *(*)(void *))
-        context->language->reservedF4[3])(translationDictionary);
-    translationOffsets = ((u16 *(*)(void *))
-        context->language->reservedF4[4])(translationDictionary);
+    speechUnitClassCount = pEngine->pLang->langGetNbrSpeechUnitClass(pEngine->pLang);
+    treeWords = (struct _WORDRESULT *)pEngine->pRes->pResult;
+    treeWordCursor = (struct _WORDRESULT *)pEngine->pRes->pResult;
+    treeWordCount = pEngine->NBest;
+    translationDictionary = pEngine->pLang->langGetpTransWord(pEngine->pLang);
+    translationTokens = pEngine->pLang->transwGetpTransWordLex(translationDictionary);
+    translationOffsets = pEngine->pLang->transwGetpBeginOfTransWords(translationDictionary);
     encodedOffset = 0;
     firstWord = -1;
     finalWord = -1;
-    /* Discard existing second-pass state and cached mappings before allocating a replacement. */
-    if (context->secondPass != NULL) {
-        FreeSecondPassContext(context);
+    /* Discards existing second-pass state and cached mappings before allocating a replacement. */
+    if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo != NULL) {
+        FreeSecondPassContext(pEngine);
     }
-    secondPass = heap_Alloc(context->heap, sizeof(SecondPassContext));
+    secondPass = heap_Alloc(pEngine->hHeap, sizeof(struct _DYNPROG_CTXINFO));
     if (secondPass == NULL) {
         goto failure;
     }
-    memset(secondPass, 0, sizeof(SecondPassContext));
-    context->secondPass = secondPass;
+    memset(secondPass, 0, sizeof(struct _DYNPROG_CTXINFO));
+    pEngine->CtxInfo.pSecondPassDynProgCtxInfo = secondPass;
     FillContextV2VirtualTable(&dictionaryContext);
-    dictionaryContext.data = *context->dictionarySource;
-    contextWordCount = dictionaryContext.getNbrWord(&dictionaryContext);
-    wordProperties = dictionaryContext.getWordProperties(&dictionaryContext);
-    wordOffsets = dictionaryContext.getWordOffsets(&dictionaryContext);
+    dictionaryContext.pCtx = pEngine->ActivatedContext->pCtx;
+    contextWordCount = dictionaryContext.contextGetNbrWord(&dictionaryContext);
+    wordProperties = dictionaryContext.contextGetpWordProp(&dictionaryContext);
+    wordOffsets = dictionaryContext.contextGetpBeginOfWords(&dictionaryContext);
     pronunciationOffsetBase = *wordOffsets;
 
-    /* Find the context word IDs marked as first and final by their property bits. */
-    {
-        u32 propertyIndex = 0;
-        u16 *propertyCursor = wordProperties;
-        for (; propertyIndex < contextWordCount; propertyCursor++, propertyIndex++) {
-            if (*propertyCursor & 1) {
-                firstWord = propertyIndex;
-                if (finalWord != -1) {
-                    break;
-                }
+    /* Finds the context word IDs marked as first and final by their property bits. */
+    for (i = 0; i < contextWordCount; i++) {
+        if (wordProperties[i] & 1) {
+            firstWord = i;
+            if (finalWord != -1) {
+                break;
             }
-            if (*propertyCursor & 2) {
-                finalWord = propertyIndex;
-                if (firstWord != -1) {
-                    break;
-                }
+        }
+        if (wordProperties[i] & 2) {
+            finalWord = i;
+            if (firstWord != -1) {
+                break;
             }
         }
     }
-    /* Bound the temporary graph from each sequence's pronunciations
-     * and its inserted first/final words. */
+    /* Bounds the temporary graph using the sequence pronunciations and inserted first and final
+     * words. */
     for (itemIndex = 0; itemIndex < treeWordCount; itemIndex++, treeWordCursor++) {
-        s32 wordID = treeWordCursor->wordID;
+        s32 wordID = treeWordCursor->WordID;
         if (wordID < 0) {
             u32 sequenceIndex = -1 - wordID;
-            TreeWord *wordSequences = context->wordSequences;
+            struct _ISOWORD_BACKTRACE *wordSequences = pEngine->pBacktraceArray;
             while (sequenceIndex != -1) {
-                TreeWord *sequenceWord = wordSequences + sequenceIndex;
-                u32 *pronunciationBounds = wordOffsets + sequenceWord->wordID;
+                struct _ISOWORD_BACKTRACE *sequenceWord = wordSequences + sequenceIndex;
+                u32 *pronunciationBounds = wordOffsets + sequenceWord->s32WordID;
                 u32 count = pronunciationBounds[1] - pronunciationBounds[0];
                 if (count > maximumPronunciations) {
                     maximumPronunciations = count;
                 }
                 graphCapacity += count;
-                sequenceIndex = sequenceWord->next;
+                sequenceIndex = sequenceWord->u32PrevWordIdx;
             }
             graphCapacity += 2;
         } else {
-            u32 *pronunciationBounds = wordOffsets + wordID;
-            u32 count = pronunciationBounds[1] - pronunciationBounds[0];
+            u32 count = wordOffsets[wordID + 1] - wordOffsets[wordID];
             if (count > maximumPronunciations) {
                 maximumPronunciations = count;
             }
@@ -399,14 +272,15 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
             graphCapacity += 2;
         }
     }
-    graphNodes = heap_Alloc(context->heap, (graphCapacity + 1) * sizeof(WordGraphNode));
-    edges = heap_Alloc(context->heap,
-        graphCapacity * maximumPronunciations * sizeof(WordGraphTransition));
+    graphNodes = heap_Alloc(pEngine->hHeap, (graphCapacity + 1) * sizeof(struct _NODE));
+    edges = heap_Alloc(pEngine->hHeap,
+        graphCapacity * maximumPronunciations * sizeof(struct _VERTEX));
     if (graphNodes == NULL || edges == NULL) {
         goto failure;
     }
-    graphNodes[0].firstTransition = NO_GRAPH_INDEX;
-    sequence = heap_Alloc(context->heap, (context->maxSequenceLength + 3) * sizeof(s32));
+    graphNodes[0].iVertex = 0xFFFF;
+    sequence =
+        heap_Alloc(pEngine->hHeap, (pEngine->MaxNbrWordsInISOWordSentence + 3) * sizeof(s32));
     if (sequence == NULL) {
         goto failure;
     }
@@ -415,34 +289,35 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
     treeItemIndex = 0;
     for (; treeItemIndex < treeWordCount; itemCursor++, treeItemIndex++) {
         u32 currentNode = 0;
-        s32 inputWordID = itemCursor->wordID;
+        s32 inputWordID = itemCursor->WordID;
         u32 dictionaryIndex = 0;
         s32 wordID = 0;
         u32 step;
         u32 link;
         s32 *prefixCursor;
+        u32 endNodeIndex;
 
         sequenceLength = 1;
 
-        /* Copy a negative item's linked word IDs in reverse chain order between the first/final
-         * words. */
+        /* Copies a negative item's linked word IDs in reverse chain order between the first and
+         * final words. */
         if (inputWordID < 0) {
             u32 sequenceIndex;
-            TreeWord *wordSequences;
+            struct _ISOWORD_BACKTRACE *wordSequences;
             u32 cursor;
             u32 length;
             cursor = sequenceIndex = -1 - inputWordID;
-            wordSequences = context->wordSequences;
+            wordSequences = pEngine->pBacktraceArray;
             while (cursor != -1) {
                 ++sequenceLength;
-                cursor = wordSequences[cursor].next;
+                cursor = wordSequences[cursor].u32PrevWordIdx;
             }
             length = 0;
             while (sequenceIndex != -1) {
-                TreeWord *sequenceWord = wordSequences + sequenceIndex;
+                struct _ISOWORD_BACKTRACE *sequenceWord = wordSequences + sequenceIndex;
                 ++length;
-                sequence[sequenceLength - length] = sequenceWord->wordID;
-                sequenceIndex = sequenceWord->next;
+                sequence[sequenceLength - length] = sequenceWord->s32WordID;
+                sequenceIndex = sequenceWord->u32PrevWordIdx;
             }
         } else {
             sequence[sequenceLength++] = inputWordID;
@@ -451,18 +326,18 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
         step = 0;
         sequence[sequenceLength++] = finalWord;
 
-        /* Reuse the longest prefix already present in the pronunciation graph. */
+        /* Reuses the longest prefix already present in the pronunciation graph. */
         while (step < sequenceLength) {
-            WordGraphNode *node = graphNodes + currentNode;
+            struct _NODE *node = graphNodes + currentNode;
             wordID = *prefixCursor;
             dictionaryIndex = wordOffsets[wordID] - pronunciationOffsetBase;
-            link = node->firstTransition;
+            link = node->iVertex;
             for (;;) {
-                WordGraphTransition *edge;
-                if (link == NO_GRAPH_INDEX) {
+                struct _VERTEX *edge;
+                if (link == 0xFFFF) {
                     u32 count;
                     if (currentNode != 0) {
-                        u32 *pronunciationBounds = wordOffsets + node->wordID;
+                        u32 *pronunciationBounds = wordOffsets + node->OldWordID;
                         count = pronunciationBounds[1] - pronunciationBounds[0];
                     } else {
                         count = 1;
@@ -471,20 +346,20 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
                     break;
                 }
                 edge = edges + link;
-                if (dictionaryIndex == graphNodes[edge->destination].dictionaryIndex) {
-                    currentNode = edge->destination;
+                if (dictionaryIndex == graphNodes[edge->iNode].OldPronID) {
+                    currentNode = edge->iNode;
                     ++prefixCursor;
                     ++step;
                     break;
                 }
-                link = edge->next;
+                link = edge->iVertex;
             }
-            if (link == NO_GRAPH_INDEX) {
+            if (link == 0xFFFF) {
                 break;
             }
         }
-        link = graphNodes[currentNode].firstTransition;
-        /* Add every remaining pronunciation, connecting it to each preceding pronunciation. */
+        link = graphNodes[currentNode].iVertex;
+        /* Adds every remaining pronunciation, connecting it to each preceding pronunciation. */
         if (step < sequenceLength) {
             sequenceCursor = sequence + step;
             for (;;) {
@@ -496,20 +371,20 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
 
                     for (predecessor = 0; predecessor < previousPronunciationCount;
                          predecessor++) {
-                        edges[nextEdge + predecessor].destination = (u16)destination;
-                        edges[nextEdge + predecessor].next =
-                            link == NO_GRAPH_INDEX ? NO_GRAPH_INDEX : link + predecessor;
+                        edges[nextEdge + predecessor].iNode = destination;
+                        edges[nextEdge + predecessor].iVertex =
+                            link == 0xFFFF ? 0xFFFF : link + predecessor;
                     }
                     link = nextEdge;
                     if (pronunciation == count - 1) {
                         for (predecessor = 0; predecessor < previousPronunciationCount;
                              predecessor++) {
-                            graphNodes[currentNode + predecessor].firstTransition =
+                            graphNodes[currentNode + predecessor].iVertex =
                                 nextEdge + predecessor;
                         }
                     }
-                    graphNodes[destination].dictionaryIndex = dictionaryIndex + pronunciation;
-                    graphNodes[destination].wordID = wordID;
+                    graphNodes[destination].OldPronID = dictionaryIndex + pronunciation;
+                    graphNodes[destination].OldWordID = wordID;
                     nextEdge = (u16)(nextEdge + previousPronunciationCount);
                 }
                 currentNode = nextNode;
@@ -522,56 +397,51 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
                 }
                 wordID = *sequenceCursor;
                 dictionaryIndex = wordOffsets[wordID] - pronunciationOffsetBase;
-                link = NO_GRAPH_INDEX;
+                link = 0xFFFF;
             }
         }
-        {
-            u32 endNodeIndex;
-            for (endNodeIndex = 0; endNodeIndex < previousPronunciationCount; endNodeIndex++) {
-                graphNodes[currentNode++].firstTransition = NO_GRAPH_INDEX;
-            }
+        for (endNodeIndex = 0; endNodeIndex < previousPronunciationCount; endNodeIndex++) {
+            graphNodes[currentNode++].iVertex = 0xFFFF;
         }
     }
-    heap_Free(context->heap, sequence);
-    /* Count root edges separately because transitionCount excludes them from packed transitions. */
-    {
-        u32 link = graphNodes[0].firstTransition;
-        while (link != NO_GRAPH_INDEX) {
-            link = edges[link].next;
-            ++rootEdgeCount;
-        }
+    heap_Free(pEngine->hHeap, sequence);
+    /* Counts root edges separately because transitionCount excludes them from packed
+     * transitions. */
+    iVertex = graphNodes[0].iVertex;
+    while (iVertex != 0xFFFF) {
+        iVertex = edges[iVertex].iVertex;
+        ++rootEdgeCount;
     }
     wordCount = nextNode - 1;
     originalWordCount = pronunciationCount = wordCount;
     nextTranslationWordIndex = wordCount;
     transitionCount = nextEdge - rootEdgeCount;
-    /* Resolve each edge from source trailing and destination leading classes;
-     * mark missing joins for direct traversal. */
+    /* Resolves each edge from the trailing and leading classes. Missing joins traverse directly. */
     nodeCursor = graphNodes + 1;
     for (nodeIndex = 1; nodeIndex <= originalWordCount; nodeCursor++, nodeIndex++) {
         NodeWordInfo destinationWordInfo;
         u32 link;
-        if ((link = nodeCursor->firstTransition) != 0) {
-            if (GetSecondPassInfo(context, &dictionaryContext, &wordInfo,
-                                  nodeCursor->dictionaryIndex) != 0) {
+        if ((link = nodeCursor->iVertex) != 0) {
+            if (GetSecondPassInfo(pEngine, &dictionaryContext, &wordInfo,
+                                  nodeCursor->OldPronID) != 0) {
                 goto failure;
             }
-            /* Retain the source token count and trailing class
+            /* Retains the source token count and trailing class
              * while querying each destination pronunciation. */
-            sourceWordInfo.tokenCount = wordInfo.tokenCount;
-            sourceWordInfo.trailingClass = wordInfo.trailingClass;
+            sourceWordInfo.tokenCount = wordInfo.Size;
+            sourceWordInfo.trailingClass = wordInfo.RightSpeechUnitClass;
             tokenCount += sourceWordInfo.tokenCount;
-            while (link != NO_GRAPH_INDEX) {
-                WordGraphTransition *edge = edges + link;
+            while (link != 0xFFFF) {
+                struct _VERTEX *edge = edges + link;
                 u16 translationID;
                 u16 first;
                 u16 last;
                 int count;
-                if (GetSecondPassInfo(context, &dictionaryContext, &wordInfo,
-                                      graphNodes[edge->destination].dictionaryIndex) != 0) {
+                if (GetSecondPassInfo(pEngine, &dictionaryContext, &wordInfo,
+                                      graphNodes[edge->iNode].OldPronID) != 0) {
                     goto failure;
                 }
-                destinationWordInfo.leadingClass = wordInfo.leadingClass;
+                destinationWordInfo.leadingClass = wordInfo.LeftSpeechUnitClass;
                 translationID = destinationWordInfo.leadingClass +
                     sourceWordInfo.trailingClass * speechUnitClassCount;
                 first = translationOffsets[translationID];
@@ -583,132 +453,127 @@ u8 CreateSecondPassTreeContext(RecognitionContext *context)
                     wordCount++;
                     transitionCount++;
                 } else {
-                    translationID = NO_GRAPH_INDEX;
+                    translationID = 0xFFFF;
                 }
-                edge->translationID = translationID;
-                link = edge->next;
+                edge->TransWordIndex = translationID;
+                link = edge->iVertex;
             }
         }
     }
-    /* Use these packed-array allocations without individual NULL checks; only the subsequent
-     * CreateMenuMasks call reports a setup failure. */
-    secondPass->transitions = heap_Alloc(context->heap,
+    /* The packed-array allocations have no individual null checks. CreateMenuMasks reports setup
+     * failure. */
+    secondPass->pSyntax = heap_Alloc(pEngine->hHeap,
         (wordCount + 1 + transitionCount) * sizeof(u32));
-    transitionBoundaries = secondPass->transitions;
+    transitionBoundaries = secondPass->pSyntax;
     packedTransitions = transitionBoundaries + wordCount + 1;
-    secondPass->wordFlags = heap_Alloc(context->heap, wordCount * sizeof(u16));
-    wordFlagCursor = secondPass->wordFlags;
+    secondPass->pWordProps = heap_Alloc(pEngine->hHeap, wordCount * sizeof(u16));
+    wordFlagCursor = secondPass->pWordProps;
     memset(wordFlagCursor, 0, wordCount * sizeof(u16));
-    secondPass->wordPenalties = heap_Alloc(context->heap, wordCount * sizeof(s16));
-    penaltyCursor = secondPass->wordPenalties;
-    {
-        u32 pronunciationEntries = pronunciationCount + 2;
-        secondPass->wordOffsets = heap_Alloc(context->heap,
-            (wordCount + pronunciationEntries) * sizeof(u32));
-    }
-    allWordOffsets = secondPass->wordOffsets;
+    secondPass->pWordPenalties = heap_Alloc(pEngine->hHeap, wordCount * sizeof(s16));
+    penaltyCursor = secondPass->pWordPenalties;
+    secondPass->pBeginOfWords = heap_Alloc(pEngine->hHeap,
+        (wordCount + pronunciationCount + 2) * sizeof(u32));
+    allWordOffsets = secondPass->pBeginOfWords;
     wordBoundaries = allWordOffsets;
     pronunciationOffsets = allWordOffsets + wordCount + 1;
     tokenCount += pronunciationCount * 2;
-    secondPass->dictionary = heap_Alloc(context->heap, tokenCount * sizeof(u16));
-    encodedDictionary = secondPass->dictionary;
-    context->cachedData = heap_Alloc(context->heap, wordCount * 2 * sizeof(s32));
-    wordMap = context->cachedData;
+    secondPass->pStateInDict = heap_Alloc(pEngine->hHeap, tokenCount * sizeof(u16));
+    encodedDictionary = (u16 *)secondPass->pStateInDict;
+    pEngine->CtxInfo.pNewWordID2OldWordID =
+        heap_Alloc(pEngine->hHeap, wordCount * sizeof(struct _NEWID2OLDID));
+    wordMap = pEngine->CtxInfo.pNewWordID2OldWordID;
     encodedOffset = 0;
-    if (CreateMenuMasks(context, secondPass, wordCount) != 0) {
+    if (CreateMenuMasks(pEngine, secondPass, wordCount) != 0) {
         goto failure;
     }
-    /* Set the root-reachable flag on each graph destination. */
-    {
-        u32 link = graphNodes[0].firstTransition;
-        while (link != NO_GRAPH_INDEX) {
-            WordGraphTransition *edge = edges + link;
-            wordFlagCursor[edge->destination - 1] = 1;
-            link = edge->next;
-        }
+    /* Sets the root-reachable flag on each graph destination. */
+    iVertex = graphNodes[0].iVertex;
+    while (iVertex != 0xFFFF) {
+        struct _VERTEX *edge = edges + iVertex;
+        wordFlagCursor[edge->iNode - 1] = 1;
+        iVertex = edge->iVertex;
     }
-    /* Pack the context words, followed by the joining translation pronunciations. */
+    /* Packs the context words, followed by the joining translation pronunciations. */
     nodeCursor = graphNodes + 1;
     for (nodeIndex = 1; nodeIndex <= originalWordCount; nodeCursor++, nodeIndex++) {
-        u32 wordProperty = wordProperties[nodeCursor->wordID];
-        u32 link = nodeCursor->firstTransition;
-        wordMap[0] = nodeCursor->wordID;
-        wordMap[1] = nodeCursor->dictionaryIndex;
-        wordMap += 2;
-        *transitionBoundaries++ = packedTransitions - secondPass->transitions;
+        u32 wordProperty = wordProperties[nodeCursor->OldWordID];
+        u32 link = nodeCursor->iVertex;
+        wordMap->OldWordID = nodeCursor->OldWordID;
+        wordMap->OldPronID = nodeCursor->OldPronID;
+        wordMap++;
+        *transitionBoundaries++ = packedTransitions - secondPass->pSyntax;
         *pronunciationOffsets = encodedOffset;
         *wordBoundaries++ = pronunciationOffsets++ - allWordOffsets;
-        putWordInDict(context, &dictionaryContext, nodeCursor->dictionaryIndex,
+        putWordInDict(pEngine, &dictionaryContext, nodeCursor->OldPronID,
                       &encodedOffset, &encodedDictionary, nodeIndex - 1);
-        /* Preserve root/terminal status or word properties,
-         * then apply wordPenalty when flag bit 7 is set. */
+        /* The word penalty applies when the root, terminal, or context flags include bit 7. */
         if (link != 0) {
-            if (link == NO_GRAPH_INDEX) {
+            if (link == 0xFFFF) {
                 *wordFlagCursor |= 2;
             } else if (*wordFlagCursor != 1) {
                 *wordFlagCursor = wordProperty;
             }
-            if (*wordFlagCursor++ & (1 << 7)) {
-                *penaltyCursor++ = context->wordPenalty;
+            if (*wordFlagCursor++ & 0x80) {
+                *penaltyCursor++ = pEngine->WordPenalty;
             } else {
                 *penaltyCursor++ = 0;
             }
-            while (link != NO_GRAPH_INDEX) {
-                WordGraphTransition *edge = edges + link;
-                if (edge->translationID == NO_GRAPH_INDEX) {
-                    *packedTransitions++ = edge->destination - 1;
+            while (link != 0xFFFF) {
+                struct _VERTEX *edge = edges + link;
+                if (edge->TransWordIndex == 0xFFFF) {
+                    *packedTransitions++ = edge->iNode - 1;
                 } else {
                     *packedTransitions++ = nextTranslationWordIndex++;
                 }
-                link = edge->next;
+                link = edge->iVertex;
             }
         }
     }
     nextTranslationWordIndex = originalWordCount;
-    *transitionBoundaries++ = packedTransitions - secondPass->transitions;
+    *transitionBoundaries++ = packedTransitions - secondPass->pSyntax;
     *wordBoundaries++ = pronunciationOffsets - allWordOffsets;
-    /* Append each available joining translation and link it to its destination graph word. */
+    /* Appends each available joining translation and links it to its destination graph word. */
     nodeCursor = graphNodes + 1;
     for (nodeIndex = 1; nodeIndex <= originalWordCount; nodeCursor++, nodeIndex++) {
-        u32 link = nodeCursor->firstTransition;
+        u32 link = nodeCursor->iVertex;
         if (link != 0) {
-            while (link != NO_GRAPH_INDEX) {
-                WordGraphTransition *edge = edges + link;
-                u16 translationID = edge->translationID;
-                if (translationID != NO_GRAPH_INDEX) {
-                    wordMap[0] = -1;
-                    wordMap[1] = -1;
-                    wordMap += 2;
+            while (link != 0xFFFF) {
+                struct _VERTEX *edge = edges + link;
+                u16 translationID = edge->TransWordIndex;
+                if (translationID != 0xFFFF) {
+                    wordMap->OldWordID = -1;
+                    wordMap->OldPronID = -1;
+                    wordMap++;
                     putTransWordInDict(&pronunciationOffsets, &encodedOffset,
                         &encodedDictionary, nextTranslationWordIndex++,
                         translationOffsets + translationOffsets[translationID],
                         translationOffsets + translationOffsets[translationID + 1],
                         translationTokens);
                     *wordBoundaries++ = pronunciationOffsets - allWordOffsets;
-                    *packedTransitions++ = edge->destination - 1;
-                    *transitionBoundaries++ = packedTransitions - secondPass->transitions;
+                    *packedTransitions++ = edge->iNode - 1;
+                    *transitionBoundaries++ = packedTransitions - secondPass->pSyntax;
                     *penaltyCursor++ = 0;
                 }
-                link = edge->next;
+                link = edge->iVertex;
             }
         }
     }
     *pronunciationOffsets++ = encodedOffset;
-    heap_Free(context->heap, graphNodes);
-    heap_Free(context->heap, edges);
-    secondPass->state = 0;
-    secondPass->wordCount = wordCount;
-    secondPass->tokenCount = tokenCount;
+    heap_Free(pEngine->hHeap, graphNodes);
+    heap_Free(pEngine->hHeap, edges);
+    secondPass->iOptionalSilence = 0;
+    secondPass->uNbrOfWords = wordCount;
+    secondPass->uNrStatesInDict = tokenCount;
     return 0;
 
-/* Release temporary graph storage and partially built second-pass state after a failure. */
+/* Releases temporary graph storage and partially built second-pass state after a failure. */
 failure:
     if (graphNodes != NULL) {
-        heap_Free(context->heap, graphNodes);
+        heap_Free(pEngine->hHeap, graphNodes);
     }
     if (edges != NULL) {
-        heap_Free(context->heap, edges);
+        heap_Free(pEngine->hHeap, edges);
     }
-    FreeSecondPassContext(context);
+    FreeSecondPassContext(pEngine);
     return 1;
 }

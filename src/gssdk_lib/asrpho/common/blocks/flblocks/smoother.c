@@ -1,199 +1,200 @@
+/* Fits a reduced spline basis to smooth a feature vector. */
+
+#include "gssdk/heap.h"
 #include "gssdk/smoother.h"
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-Smoother *smtConstruct(
-    TosContext *context, u32 inputLength, f32 knotSpacing,
-    f32 rejectionThreshold, const Smoother1600Info *info)
+/* Allocates the smoother and associates its matrices with the supplied spline coefficients. */
+struct BandPassSmootherTag *smtConstruct(struct _TOS *pTos, unsigned int nLogPower, f32 SegWdth,
+                                        const struct _SMOOTHERINFO *pSmInfo, f32 Compression)
 {
-    Smoother *smoother;
-    u32 coefficientCount;
+    struct BandPassSmootherTag *lpSmoother;
+    u32 NbSegs;
 
-    smoother = heap_Calloc(context->heap, 1, sizeof(Smoother));
-    if (smoother == NULL) {
-        return NULL;
-    }
-
-    smoother->spline = mtxConstruct(context);
-    if (smoother->spline == NULL) {
-        heap_Free(context->heap, smoother);
-        return NULL;
-    }
-    mtxAssociateAll(
-        smoother->spline, info->spline.rows, info->spline.columns,
-        (f32 *)info->spline.data);
-
-    smoother->qrSpline = mtxConstruct(context);
-    if (smoother->qrSpline == NULL) {
-        heap_Free(context->heap, smoother);
-        return NULL;
-    }
-    mtxAssociateAll(
-        smoother->qrSpline, info->qrSpline.rows, info->qrSpline.columns,
-        (f32 *)info->qrSpline.data);
-
-    smoother->beta = mtxConstruct(context);
-    if (smoother->beta == NULL) {
-        heap_Free(context->heap, smoother);
-        return NULL;
-    }
-    mtxAssociateAll(
-        smoother->beta, info->beta.rows, info->beta.columns,
-        (f32 *)info->beta.data);
-
-    coefficientCount =
-        (u32)(0.5 + (f32)(inputLength - 1) / knotSpacing);
-
-    smoother->input = mtxConstruct(context);
-    if (smoother->input == NULL) {
-        heap_Free(context->heap, smoother);
-        return NULL;
-    }
-    mtxAssociateAll(smoother->input, inputLength, 1, NULL);
-
-    smoother->coefficients = mtxConstruct(context);
-    if (smoother->coefficients == NULL) {
-        heap_Free(context->heap, smoother);
-        return NULL;
-    }
-    if (mtxInit(
-            smoother->coefficients, coefficientCount + 2, 1, context) ==
-        NULL) {
-        heap_Free(context->heap, smoother);
+    lpSmoother = heap_Calloc(pTos->hHeap, 1, sizeof(struct BandPassSmootherTag));
+    if (lpSmoother == NULL) {
         return NULL;
     }
 
-    smoother->activeColumns = imtxConstruct(context);
-    if (smoother->activeColumns == NULL) {
-        heap_Free(context->heap, smoother);
+    /* These failure branches release the smoother record alone. */
+    lpSmoother->BaseSplineMtx = mtxConstruct(pTos);
+    if (lpSmoother->BaseSplineMtx == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
         return NULL;
     }
-    if (imtxInit(
-            smoother->activeColumns, 1, coefficientCount + 2, context) ==
-        NULL) {
-        heap_Free(context->heap, smoother);
+    mtxAssociateAll(lpSmoother->BaseSplineMtx, pSmInfo->SPLINEM, pSmInfo->SPLINEN,
+                    pSmInfo->aSpline);
+
+    lpSmoother->QrBaseSplineMtx = mtxConstruct(pTos);
+    if (lpSmoother->QrBaseSplineMtx == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
+        return NULL;
+    }
+    mtxAssociateAll(lpSmoother->QrBaseSplineMtx, pSmInfo->QRSPLINEM, pSmInfo->QRSPLINEN,
+                    pSmInfo->aQRSpline);
+
+    lpSmoother->Beta = mtxConstruct(pTos);
+    if (lpSmoother->Beta == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
+        return NULL;
+    }
+    mtxAssociateAll(lpSmoother->Beta, pSmInfo->BETAM, pSmInfo->BETAN, pSmInfo->aBeta);
+
+    NbSegs = (u32) (0.5 + (f32) (nLogPower - 1) / SegWdth);
+
+    lpSmoother->Spec = mtxConstruct(pTos);
+    if (lpSmoother->Spec == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
+        return NULL;
+    }
+    mtxAssociateAll(lpSmoother->Spec, nLogPower, 1, NULL);
+
+    lpSmoother->Param = mtxConstruct(pTos);
+    if (lpSmoother->Param == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
+        return NULL;
+    }
+    if (mtxInit(lpSmoother->Param, NbSegs + 2, 1, pTos) == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
         return NULL;
     }
 
-    smoother->workingQrSpline = mtxConstruct(context);
-    if (smoother->workingQrSpline == NULL) {
-        heap_Free(context->heap, smoother);
+    lpSmoother->RetainedCols = imtxConstruct(pTos);
+    if (lpSmoother->RetainedCols == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
         return NULL;
     }
-    if (mtxInitCopy(
-            smoother->workingQrSpline, smoother->qrSpline, context) == NULL) {
-        heap_Free(context->heap, smoother);
+    if (imtxInit(lpSmoother->RetainedCols, 1, NbSegs + 2, pTos) == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
         return NULL;
     }
 
-    smoother->rejectionThreshold = rejectionThreshold;
-    return smoother;
+    lpSmoother->QrSplineMtx = mtxConstruct(pTos);
+    if (lpSmoother->QrSplineMtx == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
+        return NULL;
+    }
+    if (mtxInitCopy(lpSmoother->QrSplineMtx, lpSmoother->QrBaseSplineMtx, pTos) == NULL) {
+        heap_Free(pTos->hHeap, lpSmoother);
+        return NULL;
+    }
+
+    lpSmoother->Compression = Compression;
+    return lpSmoother;
 }
 
-void smtDestruct(Smoother *smoother, TosContext *context)
+/* Releases the smoother's spline matrices and working memory. */
+void smtDestruct(struct BandPassSmootherTag *pSmoother, struct _TOS *pTos)
 {
-    mtxDestruct(smoother->spline, context);
-    mtxDestruct(smoother->qrSpline, context);
-    mtxDestruct(smoother->beta, context);
-    mtxDestruct(smoother->input, context);
-    mtxDestruct(smoother->coefficients, context);
-    imtxDestruct(smoother->activeColumns, context);
-    mtxDestruct(smoother->workingQrSpline, context);
-    heap_Free(context->heap, smoother);
+    mtxDestruct(pSmoother->BaseSplineMtx, pTos);
+    mtxDestruct(pSmoother->QrBaseSplineMtx, pTos);
+    mtxDestruct(pSmoother->Beta, pTos);
+    mtxDestruct(pSmoother->Spec, pTos);
+    mtxDestruct(pSmoother->Param, pTos);
+    imtxDestruct(pSmoother->RetainedCols, pTos);
+    mtxDestruct(pSmoother->QrSplineMtx, pTos);
+    heap_Free(pTos->hHeap, pSmoother);
 }
 
-u32 Smoothing(Smoother *smoother, f32 *input)
+/* Fits spline coefficients and replaces the input vector with the smoothed values. */
+unsigned char Smoothing(struct BandPassSmootherTag *lpSmoother, float *Vector)
 {
-    FloatMatrix *workingQrSpline = smoother->workingQrSpline;
-    FloatMatrix *spline = smoother->spline;
-    FloatMatrix *inputVector = smoother->input;
-    FloatMatrix *coefficients = smoother->coefficients;
-    IntMatrix *activeColumns = smoother->activeColumns;
-    u32 column;
-    u32 i;
+    unsigned int k;
+    int *Col;
+    float *p;
+    float *pEnd;
+    float Max;
+    unsigned int TotalCols;
+    struct MTXTag *BaseSplineMtx;
+    struct MTXTag *QrBaseSplineMtx;
+    struct MTXTag *QrSplineMtx;
+    struct MTXTag *Beta;
+    struct MTXTag *Spec;
+    struct MTXTag *Param;
+    struct INTMTXTag *RetainedCols;
+    struct MTXTag *QR;
+    struct MTXTag *y;
+    struct MTXTag *x;
+    float *px;
+    float *py;
+    float *xScan;
+    float *pr;
+    float *qrEnd;
+    float rkk;
+    float *tmp;
+    float *c;
+    unsigned int i;
 
-    mtxFillCopy(workingQrSpline, smoother->qrSpline);
-    inputVector->values = input;
-    inputVector->valuesEnd = input + inputVector->elementCount;
-    mtxCompress(
-        inputVector,
-        mtxMax(inputVector) - smoother->rejectionThreshold);
-
-    if (QrPreMult(workingQrSpline, smoother->beta, inputVector) != 0) {
+    BaseSplineMtx = lpSmoother->BaseSplineMtx;
+    QrBaseSplineMtx = lpSmoother->QrBaseSplineMtx;
+    QrSplineMtx = lpSmoother->QrSplineMtx;
+    Beta = lpSmoother->Beta;
+    Spec = lpSmoother->Spec;
+    Param = lpSmoother->Param;
+    RetainedCols = lpSmoother->RetainedCols;
+    mtxFillCopy(QrSplineMtx, QrBaseSplineMtx);
+    Spec->Entries = Vector;
+    Spec->EndEntries = Vector + Spec->MxN;
+    Max = mtxMax(Spec);
+    mtxCompress(Spec, Max - lpSmoother->Compression);
+    if (QrPreMult(QrSplineMtx, Beta, Spec) != NoError) {
         return 1;
     }
 
-    for (i = activeColumns->columns; i != 0; i--) {
-        activeColumns->values[i - 1] = i - 1;
+    for (k = RetainedCols->N; k != 0;) {
+        k--;
+        RetainedCols->Entries[k] = k;
     }
 
-    column = 3;
-    while (column > 2) {
-        f32 *coefficient;
-        f32 *inputValue;
-
-        column = workingQrSpline->columns;
-        coefficient = coefficients->values + coefficients->rows;
-        inputValue = inputVector->values + column;
-
-        for (; column != 0; column--) {
-            f32 *diagonal;
-            f32 *matrixValue;
-            f32 *nextCoefficient;
-
-            coefficient--;
-            inputValue--;
-            *coefficient = *inputValue;
-
-            diagonal =
-                workingQrSpline->values +
-                (column - 1) * workingQrSpline->rows + (column - 1);
-            matrixValue = diagonal + workingQrSpline->rows;
-            nextCoefficient = coefficient + 1;
-            while (matrixValue <
-                   workingQrSpline->values +
-                       workingQrSpline->rows * workingQrSpline->columns) {
-                *coefficient -= *matrixValue * *nextCoefficient++;
-                matrixValue += workingQrSpline->rows;
+    k = 3;
+    while (k > 2) {
+        QR = QrSplineMtx;
+        y = Spec;
+        x = Param;
+        px = x->Entries + x->M;
+        py = y->Entries + y->M;
+        qrEnd = QR->Entries + QR->M * QR->N;
+        py -= y->M - QR->N;
+        for (k = QR->N; k != 0; k--) {
+            pr = QR->Entries + (k - 1) * QR->M + k;
+            rkk = *--pr;
+            px--;
+            py--;
+            *px = *py;
+            xScan = px;
+            pr += QR->M;
+            while (pr < qrEnd) {
+                *px -= *pr * *++xScan;
+                pr += QR->M;
             }
-            *coefficient /= *diagonal;
-
-            if (*coefficient > 0.0f && column > 2) {
+            *px /= rkk;
+            if (*px > 0.0f && k > 2) {
                 break;
             }
         }
-
-        if (column != 0) {
-            if (QrDeleteCol(
-                    workingQrSpline, inputVector, column - 1) != 0) {
+        if (k != 0) {
+            if (QrDeleteCol(QrSplineMtx, Spec, k - 1) != NoError) {
                 return 1;
             }
-            coefficients->rows--;
-            imtxDeleteCol(activeColumns, column - 1);
+            Param->M--;
+            imtxDeleteCol(RetainedCols, k - 1);
         }
     }
 
-    mtxFillX(inputVector, 0.0f);
-    {
-        f32 *coefficient = coefficients->values;
-        f32 *coefficientEnd = coefficient + coefficients->rows;
-        s32 *activeColumn = activeColumns->values;
-
-        while (coefficient < coefficientEnd) {
-            f32 *output = inputVector->values;
-            f32 *splineValue =
-                spline->values + spline->rows * *activeColumn++;
-
-            for (i = 0; i < inputVector->elementCount; i++) {
-                *output++ += *splineValue++ * *coefficient;
-            }
-            coefficient++;
+    mtxFillX(Spec, 0.0f);
+    Col = RetainedCols->Entries;
+    c = Param->Entries;
+    pEnd = c + Param->M;
+    while (c < pEnd) {
+        tmp = BaseSplineMtx->Entries + BaseSplineMtx->M * *Col++;
+        p = Spec->Entries;
+        for (i = 0; i < Spec->MxN; i++) {
+            *p++ += *tmp++ * *c;
         }
+        c++;
     }
-
-    workingQrSpline->columns = spline->columns;
-    coefficients->rows = spline->columns;
-    activeColumns->columns = spline->columns;
+    TotalCols = BaseSplineMtx->N;
+    QrSplineMtx->N = TotalCols;
+    Param->M = TotalCols;
+    RetainedCols->N = TotalCols;
     return 0;
 }

@@ -1,504 +1,508 @@
+/* Estimates noise and suppresses it by spectral subtraction. */
+#include "gssdk/blocks.h"
+#include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h>
+#include "gssdk/mathusage.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
-#include <math.h>
 #include <stddef.h>
 #include <string.h>
 
 #include "gssdk/mqueue.h"
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern u8 qQueueControl(
-    TosQueue *queue, u32 command, u16 elementSize, void *argument);
-extern f32 logf_check(f32 value);
-
+/* Spectral subtraction state with noise estimates, SNR history and a frame FIFO. */
 typedef struct SpecSub {
-    TosBaseBlock base;
-    u16 frameCount;
-    u16 noiseUpdateCount;
-    f32 *noisePower;
-    f32 *noiseLogAmplitude;
-    f32 *priorSnr;
-    f32 *posteriorSnr;
-    f32 *history;
-    f32 *historyEnd;
-    f32 *historyWrite;
-    f32 *sessionHistoryCursor;
-    u16 historyLength;
-    f32 *gain;
-    u32 spectrumSize;
-    u16 outputStart;
-    f32 noiseSmoothing;
-    f32 noiseUpdateLimit;
-    /* Exact four-byte ABI reserve; semantic role unrecovered, never accessed. */
-    u32 reserved64;
-    f32 noiseScale;
-    f32 gainFloor;
-    u32 segmentCount;
-    u32 *segmentEnds;
-    f32 exponentBias;
-    f32 exponentScale;
-    f32 normalizationState;
-    f32 exponentClamp;
-    f32 denominatorConstant;
-    f32 numeratorConstant;
-    f32 denominatorFeedback;
-    f32 numeratorFeedback;
+    struct _BLOCK BaseBlock;    /* TOS callbacks, profile and queues. */
+    u16 DelayCtr;              /* Non-speech frame count since the latest speech frame. */
+    u16 NoiseUpdateCtr;        /* Count used while updating the noise estimates. */
+    f32 *pNoiseSpec;           /* Noise power estimated for each bin. */
+    f32 *pLogNoiseSpec;        /* Logarithmic form of the noise estimate. */
+    f32 *pSnrPrio;             /* Prior SNR estimate for each bin. */
+    f32 *pSnrPost;             /* Posterior SNR estimate for each bin. */
+    f32 *pFifoBufStart;        /* First bin of the buffered spectra. */
+    f32 *pFifoBufEnd;          /* End of the buffered spectra. */
+    f32 *pFifoBufWr;           /* Next FIFO frame to write. */
+    f32 *pFifoBufRd;           /* Next FIFO frame to read. */
+    u16 Delay;                 /* Number of frames between the FIFO read and write positions. */
+    f32 *Gain;                 /* Per-bin suppression gain applied to the current input spectrum. */
+    u32 NbOutputBins;          /* Number of bins in a frame. */
+    u16 FirstBandEnergy;       /* First bin included in the output energy sum. */
+    f32 LambdaSnr;             /* Weight for SNR history. */
+    f32 NoiseWindow;           /* Limit on the averaging denominator for noise updates. */
+    f32 SnrWindow;             /* The game's code never reads this field. */
+    f32 OverEstimate;          /* Multiplier on the noise power in the posterior SNR. */
+    f32 GainFloor;             /* Lower bound on the suppression gain. */
+    unsigned int Nbr_LR_Bands; /* Number of likelihood-ratio bands. */
+    unsigned int *LR_FreqBoundary; /* Bin boundaries for the likelihood-ratio bands. */
+    f32 LR_term;                   /* Offset in the likelihood-ratio exponent. */
+    f32 LR_factor;                 /* Scale of the maximum mean SNR in the exponent. */
+    f32 LR;                /* Recursive likelihood ratio. Its logarithm is the fourth output. */
+    f32 InfTest_CritValue; /* Upper bound on the likelihood-ratio exponent. */
+    f32 LR_a00;            /* Constant term in the likelihood-history denominator. */
+    f32 LR_a01;            /* Constant term in the likelihood-history numerator. */
+    f32 LR_a10;            /* Prior likelihood weight in the denominator. */
+    f32 LR_a11;            /* Prior likelihood weight in the numerator. */
 } SpecSub;
 
-typedef char SpecSubHistoryOffset[
-    (offsetof(SpecSub, history) == 0x3C) ? 1 : -1];
-typedef char SpecSubReserved64Offset[
-    (offsetof(SpecSub, reserved64) == 0x64) ? 1 : -1];
-typedef char SpecSubNoiseScaleOffset[
-    (offsetof(SpecSub, noiseScale) == 0x68) ? 1 : -1];
-typedef char SpecSubSegmentEndsOffset[
-    (offsetof(SpecSub, segmentEnds) == 0x74) ? 1 : -1];
-typedef char SpecSubNormalizationStateOffset[
-    (offsetof(SpecSub, normalizationState) == 0x80) ? 1 : -1];
-typedef char SpecSubNumeratorFeedbackOffset[
-    (offsetof(SpecSub, numeratorFeedback) == 0x94) ? 1 : -1];
-typedef char SpecSubSize[(sizeof(SpecSub) == 0x98) ? 1 : -1];
-
-static void Reset(SpecSub *block);
-static void SpecSubPutSession(SpecSub *block, const void *sessionData);
-static void SpecSubGetSession(SpecSub *block, void *sessionData);
-static void SpectralSubtraction(
-    SpecSub *block, u8 inhibitNoiseUpdate, const f32 *input,
-    f32 *outputSpectrum, f32 *outputEnergy);
-static void ProcessSpecSub(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount);
-static u32 ControlSpecSub(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize);
-static u32 InitSpecSub(TosBaseBlock *baseBlock);
-
-static void Reset(SpecSub *block)
+/* Resets the SNR arrays, delay counter and LR value. */
+static void Reset(SpecSub *This)
 {
-    f32 *value;
-    f32 *end;
+    u32 NrBands = This->NbOutputBins;
+    f32 *pTmp;
 
-    value = block->posteriorSnr;
-    end = value + block->spectrumSize;
-    while (value < end) {
-        *value++ = 1.0f;
+    pTmp = This->pSnrPost;
+    while (pTmp < This->pSnrPost + NrBands) {
+        *pTmp++ = 1.0f;
     }
 
-    value = block->priorSnr;
-    end = value + block->spectrumSize;
-    while (value < end) {
-        *value++ = 1.0f;
+    pTmp = This->pSnrPrio;
+    while (pTmp < This->pSnrPrio + NrBands) {
+        *pTmp++ = 1.0f;
     }
 
-    block->frameCount = 0;
-    block->normalizationState = 1.0f;
+    This->DelayCtr = 0;
+    This->LR = 1.0f;
 }
 
-static void SpecSubPutSession(SpecSub *block, const void *sessionData)
+/* Restores the noise estimates and delayed spectra from a saved session. */
+static void SpecSubPutSession(SpecSub *This, const void *pSpecSubSession)
 {
-    const u8 *session = (const u8 *)sessionData;
-    u32 spectrumSize = block->spectrumSize;
-    u32 arraySize = spectrumSize * sizeof(f32);
+    const f32 *pFlt;
     u32 i;
+    u32 spectrumSize;
+    const u32 *pDWord = pSpecSubSession;
+    const f32 *pIn = (const f32 *) (pDWord + 3);
 
-    block->frameCount = *(const u32 *)(session + 0);
-    block->noiseUpdateCount = *(const u32 *)(session + 4);
-    block->normalizationState = *(const f32 *)(session + 8);
-    session += 12;
+    spectrumSize = This->NbOutputBins;
 
-    memcpy(block->noisePower, session, arraySize);
-    session += arraySize;
-    memcpy(block->priorSnr, session, arraySize);
-    session += arraySize;
-    memcpy(block->posteriorSnr, session, arraySize);
-    session += arraySize;
-    memcpy(block->gain, session, arraySize);
-    session += arraySize;
+    This->DelayCtr = *pDWord;
+    This->NoiseUpdateCtr = pDWord[1];
+    pFlt = (const f32 *) (pDWord + 2);
+    This->LR = *pFlt;
+
+    memcpy(This->pNoiseSpec, pIn, spectrumSize * sizeof(f32));
+    pIn += spectrumSize;
+    memcpy(This->pSnrPrio, pIn, spectrumSize * sizeof(f32));
+    pIn += spectrumSize;
+    memcpy(This->pSnrPost, pIn, spectrumSize * sizeof(f32));
+    pIn += spectrumSize;
+    memcpy(This->Gain, pIn, spectrumSize * sizeof(f32));
+    pIn += spectrumSize;
 
     for (i = 0; i < spectrumSize; i++) {
-        block->noiseLogAmplitude[i] =
-            0.5f * logf_check(block->noisePower[i]);
+        This->pLogNoiseSpec[i] = 0.5f * logf_check(This->pNoiseSpec[i]);
     }
 
-    block->historyWrite = block->history + *(const u32 *)(session + 0);
-    block->sessionHistoryCursor =
-        block->history + *(const u32 *)(session + 4);
-    session += 8;
-    memcpy(
-        block->history, session,
-        spectrumSize * (block->historyLength + 1) * sizeof(f32));
+    pDWord = (const u32 *) pIn;
+    This->pFifoBufWr = This->pFifoBufStart + *pDWord;
+    This->pFifoBufRd = This->pFifoBufStart + pDWord[1];
+    pIn += 2;
+    spectrumSize *= This->Delay + 1;
+    memcpy(This->pFifoBufStart, pIn, spectrumSize * sizeof(f32));
 }
 
-static void SpecSubGetSession(SpecSub *block, void *sessionData)
+/* Saves the noise estimates and delayed spectra into the session buffer. */
+static void SpecSubGetSession(SpecSub *This, void *pSpecSubSession)
 {
-    u8 *session = (u8 *)sessionData;
-    u32 spectrumSize = block->spectrumSize;
-    u32 arraySize = spectrumSize * sizeof(f32);
+    u32 *pFifoOffsets;
+    f32 *pFlt;
+    u32 arraySize;
+    u32 spectrumSize;
+    u8 *session = (u8 *) pSpecSubSession + 2 * sizeof(u32) + sizeof(f32);
+    u32 *pDWord = pSpecSubSession;
 
-    *(u32 *)(session + 0) = block->frameCount;
-    *(u32 *)(session + 4) = block->noiseUpdateCount;
-    *(f32 *)(session + 8) = block->normalizationState;
-    session += 12;
+    spectrumSize = This->NbOutputBins;
+    arraySize = spectrumSize * sizeof(f32);
 
-    memcpy(session, block->noisePower, arraySize);
+    *pDWord = This->DelayCtr;
+    pDWord[1] = This->NoiseUpdateCtr;
+    pFlt = (f32 *) (pDWord + 2);
+    *pFlt = This->LR;
+    memcpy(session, This->pNoiseSpec, arraySize);
     session += arraySize;
-    memcpy(session, block->priorSnr, arraySize);
+    memcpy(session, This->pSnrPrio, arraySize);
     session += arraySize;
-    memcpy(session, block->posteriorSnr, arraySize);
+    memcpy(session, This->pSnrPost, arraySize);
     session += arraySize;
-    memcpy(session, block->gain, arraySize);
+    memcpy(session, This->Gain, arraySize);
     session += arraySize;
 
-    *(u32 *)(session + 0) = block->historyWrite - block->history;
-    *(u32 *)(session + 4) = block->sessionHistoryCursor - block->history;
-    session += 8;
-    memcpy(
-        session, block->history,
-        spectrumSize * (block->historyLength + 1) * sizeof(f32));
+    pFifoOffsets = (u32 *) session;
+    pFifoOffsets[0] = This->pFifoBufWr - This->pFifoBufStart;
+    pFifoOffsets[1] = This->pFifoBufRd - This->pFifoBufStart;
+    session += 2 * sizeof(u32);
+    spectrumSize *= This->Delay + 1;
+    memcpy(session, This->pFifoBufStart, spectrumSize * sizeof(f32));
 }
 
-static void SpectralSubtraction(
-    SpecSub *block, u8 inhibitNoiseUpdate, const f32 *input,
-    f32 *outputSpectrum, f32 *outputEnergy)
+/* Estimates noise and applies spectral gain to suppress it. */
+static void SpectralSubtraction(SpecSub *This, u8 FrameType, f32 *pInSpec, f32 *pOutSpec,
+                                f32 *pEnergyOut)
 {
-    u32 spectrumSize = block->spectrumSize;
-    u32 arraySize = spectrumSize * sizeof(f32);
-    f32 *historyWrite = block->historyWrite;
-    u16 historyLength = block->historyLength;
-    u16 noiseUpdateCount = block->noiseUpdateCount;
-    u16 frameCount = block->frameCount;
-    f32 smoothing = block->noiseSmoothing;
-    f32 *noisePower = block->noisePower;
-    f32 maximumAverage;
-    f32 exponent;
-    f32 total;
-    f32 value;
-    f32 difference;
-    f32 alpha;
-    f32 *cursor;
-    f32 *end;
-    u32 count;
-    u32 i;
-    u32 segment;
+    f32 *pIn;
+    f32 *pNs;
+    f32 *pGain;
+    f32 *pOut;
+    f32 *pPri;
+    f32 *pPst;
+    f32 *pEnd;
+    u32 NrBands = This->NbOutputBins;
+    f32 *BufWr = This->pFifoBufWr;
+    f32 *BufEnd = This->pFifoBufEnd;
+    f32 *BufSpIn = This->pFifoBufStart;
+    unsigned int Delay = This->Delay;
+    unsigned int NoiseUpdateCtr = This->NoiseUpdateCtr;
+    unsigned int DelayCtr = This->DelayCtr;
+    f32 NoiseWindow = This->NoiseWindow;
+    f32 *SpecNs = This->pNoiseSpec;
+    f32 LambdaSnr = This->LambdaSnr;
+    f32 EnergyOut = 0.0f;
+    f32 *pLogNoiseSpec; /* Logarithmic form of the noise estimate. */
 
-    memcpy(historyWrite, input, arraySize);
-    historyWrite += spectrumSize;
-    if (historyWrite == block->historyEnd) {
-        historyWrite = block->history;
+    memcpy(BufWr, pInSpec, NrBands * sizeof(f32));
+    BufWr += NrBands;
+    if (BufWr == BufEnd) {
+        BufWr = BufSpIn;
     }
 
-    if (inhibitNoiseUpdate != 0) {
-        frameCount = 0;
+    if (FrameType) {
+        DelayCtr = 0;
     } else {
-        if (noiseUpdateCount == 0) {
-            for (i = 0; i < spectrumSize; i++) {
-                noisePower[i] = input[i];
-                block->noiseLogAmplitude[i] =
-                    0.5f * logf_check(input[i]);
+        if (!NoiseUpdateCtr) {
+            pLogNoiseSpec = This->pLogNoiseSpec;
+            pIn = pInSpec;
+            pNs = SpecNs;
+            while (pNs < SpecNs + NrBands) {
+                *pNs = *pIn;
+                *pLogNoiseSpec = 0.5f * logf_check(*pIn);
+                pIn++;
+                pNs++;
+                pLogNoiseSpec++;
             }
         }
-
-        if (frameCount <= historyLength) {
-            frameCount++;
+        if (DelayCtr <= Delay) {
+            DelayCtr++;
         }
+        if (DelayCtr == Delay + 1) {
+            f32 oneminlambda;
+            f32 diff;
+            f32 *BufRd;
 
-        if (frameCount == historyLength + 1) {
-            if ((f32)noiseUpdateCount >= block->noiseUpdateLimit) {
-                alpha = 1.0f / block->noiseUpdateLimit;
+            if (NoiseUpdateCtr >= NoiseWindow) {
+                oneminlambda = 1.0f / NoiseWindow;
             } else {
-                noiseUpdateCount++;
-                alpha = 1.0f / (f32)noiseUpdateCount;
+                NoiseUpdateCtr++;
+                oneminlambda = 1.0f / NoiseUpdateCtr;
             }
-
-            for (i = 0; i < spectrumSize; i++) {
-                difference = historyWrite[i] - noisePower[i];
-                if (difference > noisePower[i]) {
-                    difference = noisePower[i];
+            BufRd = BufWr;
+            pLogNoiseSpec = This->pLogNoiseSpec;
+            pNs = SpecNs;
+            while (pNs < SpecNs + NrBands) {
+                diff = *BufRd++ - *pNs;
+                if (diff > *pNs) {
+                    diff = *pNs;
                 }
-                noisePower[i] += alpha * difference;
-                block->noiseLogAmplitude[i] =
-                    0.5f * logf_check(noisePower[i]);
+                *pNs += oneminlambda * diff;
+                *pLogNoiseSpec = 0.5f * logf_check(*pNs);
+                pNs++;
+                pLogNoiseSpec++;
             }
         }
     }
 
-    if (noiseUpdateCount != 0) {
-        for (i = 0; i < spectrumSize; i++) {
-            block->priorSnr[i] = smoothing *
-                (1.0f + block->posteriorSnr[i] * block->gain[i]);
-        }
+    if (NoiseUpdateCtr) {
+        f32 OneMinLambdaSnr;
+        f32 OverEstimate;
 
-        for (i = 0; i < spectrumSize; i++) {
-            block->posteriorSnr[i] =
-                (input[i] + 0.000001f) /
-                (block->noiseScale * noisePower[i] + 0.000001f);
+        OneMinLambdaSnr = 1.0f - LambdaSnr;
+        OverEstimate = This->OverEstimate;
+        pGain = This->Gain;
+        pPst = This->pSnrPost;
+        pPri = This->pSnrPrio;
+        pEnd = pPri + NrBands;
+        while (pPri < pEnd) {
+            *pPri = LambdaSnr * (1.0f + *pPst * *pGain);
+            pPri++;
+            pPst++;
+            pGain++;
         }
-
-        for (i = 0; i < spectrumSize; i++) {
-            block->priorSnr[i] +=
-                (1.0f - smoothing) * block->posteriorSnr[i];
+        pIn = pInSpec;
+        pNs = SpecNs;
+        pPst = This->pSnrPost;
+        pEnd = pPst + NrBands;
+        while (pPst < pEnd) {
+            *pPst = (0.000001f + *pIn) / (OverEstimate * *pNs + 0.000001f);
+            pPst++;
+            pIn++;
+            pNs++;
+        }
+        pPst = This->pSnrPost;
+        pPri = This->pSnrPrio;
+        pEnd = pPri + NrBands;
+        while (pPri < pEnd) {
+            *pPri++ += OneMinLambdaSnr * *pPst++;
         }
     }
+    {
+        f32 *pSNR;
+        f32 MaxMeanSNR;
+        f32 theLR;
+        f32 CandidateArgument;
+        unsigned int i;
+        f32 *pSNR_End;
+        f32 SumSNR;
+        f32 MeanSNR;
+        unsigned int FreqCounter;
 
-    maximumAverage = 0.0f;
-    cursor = block->posteriorSnr;
-    for (segment = 0; segment < block->segmentCount; segment++) {
-        end = block->posteriorSnr + block->segmentEnds[segment];
-        total = 0.0f;
-        count = 0;
-        while (cursor < end) {
-            total += *cursor++;
-            count++;
+        MaxMeanSNR = 0.0f;
+        pSNR = This->pSnrPost;
+        for (i = 0; i < This->Nbr_LR_Bands; i++) {
+            pSNR_End = This->pSnrPost + This->LR_FreqBoundary[i];
+            SumSNR = 0.0f;
+            FreqCounter = 0;
+            while (pSNR < pSNR_End) {
+                SumSNR += *pSNR++;
+                FreqCounter++;
+            }
+            MeanSNR = SumSNR / FreqCounter;
+            if (MeanSNR > MaxMeanSNR) {
+                MaxMeanSNR = MeanSNR;
+            }
         }
-        value = total / (f32)count;
-        if (value > maximumAverage) {
-            maximumAverage = value;
+        CandidateArgument = This->LR_term + MaxMeanSNR * This->LR_factor;
+        if (CandidateArgument > This->InfTest_CritValue) {
+            CandidateArgument = This->InfTest_CritValue;
         }
+        CandidateArgument = expf(CandidateArgument);
+        theLR = This->LR;
+        This->LR = CandidateArgument *
+                   ((This->LR_a01 + This->LR_a11 * theLR) / (This->LR_a00 + This->LR_a10 * theLR));
     }
 
-    exponent = block->exponentBias +
-               maximumAverage * block->exponentScale;
-    exponent = exponent <= block->exponentClamp
-                   ? exponent
-                   : block->exponentClamp;
-    value = expf(exponent);
-
-    block->normalizationState =
-        value *
-        ((block->numeratorConstant +
-          block->numeratorFeedback * block->normalizationState) /
-         (block->denominatorConstant +
-          block->denominatorFeedback * block->normalizationState));
-
-    if (noiseUpdateCount == 0) {
-        for (i = 0; i < spectrumSize; i++) {
-            block->gain[i] = 1.0f;
+    if (!NoiseUpdateCtr) {
+        pGain = This->Gain;
+        pEnd = pGain + NrBands;
+        while (pGain < pEnd) {
+            *pGain++ = 1.0f;
         }
     } else {
-        for (i = 0; i < spectrumSize; i++) {
-            if (block->priorSnr[i] <= 1.0f) {
-                value = 0.0f;
+        f32 GainFloor = This->GainFloor;
+        f32 Tmp;
+        pPri = This->pSnrPrio;
+        pEnd = pPri + NrBands;
+        pGain = This->Gain;
+        while (pPri < pEnd) {
+            if (*pPri > 1.0f) {
+                Tmp = 1.0f - 1.0f / *pPri;
             } else {
-                value = 1.0f - 1.0f / block->priorSnr[i];
+                Tmp = 0.0f;
             }
-            value *= value;
-            if (value <= block->gainFloor) {
-                value = block->gainFloor;
-            }
-            block->gain[i] = value;
+            Tmp *= Tmp;
+            *pGain++ = Tmp > GainFloor ? Tmp : GainFloor;
+            pPri++;
         }
     }
 
-    for (i = 0; i < block->outputStart; i++) {
-        value = block->gain[i] * input[i];
-        outputSpectrum[i] = 0.5f * logf_check(value);
+    pOut = pOutSpec;
+    pEnd = pOut + This->FirstBandEnergy;
+    pGain = This->Gain;
+    pIn = pInSpec;
+    while (pOut < pEnd) {
+        *pOut = 0.5f * logf_check(*pGain++ * *pIn++);
+        pOut++;
     }
-
-    total = 0.0f;
-    for (; i < spectrumSize; i++) {
-        value = block->gain[i] * input[i];
-        total += value;
-        outputSpectrum[i] = 0.5f * logf_check(value);
+    pEnd = pOutSpec + NrBands;
+    while (pOut < pEnd) {
+        f32 tmp = *pGain++ * *pIn++;
+        EnergyOut += tmp;
+        *pOut = 0.5f * logf_check(tmp);
+        pOut++;
     }
-    *outputEnergy = logf_check(total);
+    *pEnergyOut = logf_check(EnergyOut);
 
-    block->historyLength = historyLength;
-    block->noiseUpdateCount = noiseUpdateCount;
-    block->frameCount = frameCount;
-    block->historyWrite = historyWrite;
+    This->Delay = Delay;
+    This->NoiseUpdateCtr = NoiseUpdateCtr;
+    This->DelayCtr = DelayCtr;
+    This->pFifoBufWr = BufWr;
 }
 
-static void ProcessSpecSub(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Publishes the filtered spectrum, energy, noise estimate and log likelihood ratio. */
+static void ProcessSpecSub(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    SpecSub *block = (SpecSub *)baseBlock;
-    f32 *outputEnergy;
-    f32 *outputSpectrum;
-    f32 *outputNoise;
-    f32 *outputNormalization;
+    SpecSub *This = (SpecSub *) _This;
+    f32 *pSpecIn;
+    f32 *pSpecOut;
+    f32 *pNoiseSpecOut;
+    f32 *pEnergyOut;
+    f32 *pLogLR;
+    u8 *pFrameType;
 
-    if (inputs[0] == NULL) {
+    if (((void **) pInputs)[0] == NULL) {
         return;
     }
+    pSpecIn = ((void **) pInputs)[0];
 
-    outputEnergy = qEnQueueOne(baseBlock->output[0].queue);
-    outputSpectrum = qEnQueueOne(baseBlock->output[1].queue);
-    outputNoise = qEnQueueOne(baseBlock->output[2].queue);
-    outputNormalization = qEnQueueOne(baseBlock->output[3].queue);
+    pFrameType = (u8 *) ((void **) pInputs)[1];
 
-    SpectralSubtraction(
-        block, *(u8 *)inputs[1], inputs[0], outputSpectrum, outputEnergy);
-    memcpy(
-        outputNoise, block->noiseLogAmplitude,
-        block->spectrumSize * sizeof(f32));
-    *outputNormalization = logf_check(block->normalizationState);
+    pEnergyOut = qEnQueueOne(This->BaseBlock.OutputQueues[0].pQ);
+    pSpecOut = qEnQueueOne(This->BaseBlock.OutputQueues[1].pQ);
+    pNoiseSpecOut = qEnQueueOne(This->BaseBlock.OutputQueues[2].pQ);
+    pLogLR = qEnQueueOne(This->BaseBlock.OutputQueues[3].pQ);
+
+    SpectralSubtraction(This, *pFrameType, pSpecIn, pSpecOut, pEnergyOut);
+    memcpy(pNoiseSpecOut, This->pLogNoiseSpec, This->NbOutputBins * sizeof(f32));
+    *pLogLR = logf_check(This->LR);
 }
 
-static u32 ControlSpecSub(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Reinitializes the spectral subtraction state. */
+static void ResetSpecSub(SpecSub *This)
 {
-    SpecSub *block = (SpecSub *)baseBlock;
-    u32 *sessionOffset = (u32 *)argumentSize;
-    u32 sessionSize;
-    f32 *value;
-    f32 *end;
-    u32 result = 1;
+    f32 *pTmp;
+    u32 NrBands = This->NbOutputBins;
 
-    switch ((u8)command) {
-    case 1:
-        if (argument != NULL) {
-            SpecSubGetSession(
-                block, (u8 *)argument + *sessionOffset);
-        }
-        sessionSize =
-            (((block->historyLength + 5) * block->spectrumSize) + 5) *
-            sizeof(u32);
-        *sessionOffset += sessionSize;
-        break;
+    pTmp = This->pNoiseSpec;
+    while (pTmp < This->pNoiseSpec + NrBands + This->NbOutputBins) {
+        *pTmp++ = 1.0f;
+    }
+    This->NoiseUpdateCtr = 0;
+    Reset(This);
+}
+
+/* Handles queue controls, saved state and teardown for spectral subtraction. */
+static u8 ControlSpecSub(struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
+{
+    SpecSub *This = (SpecSub *) _This;
+    u8 RetVal = 1;
+
+    switch (ControlId) {
     case 2:
-        if (argument != NULL) {
-            SpecSubPutSession(
-                block, (const u8 *)argument + *sessionOffset);
-            sessionSize =
-                (((block->historyLength + 5) * block->spectrumSize) + 5) *
-                sizeof(u32);
-            *sessionOffset += sessionSize;
+        if (CParam != 0) {
+            SpecSubPutSession(This, (const u8 *) CParam + *(u32 *) DParam);
+            *(u32 *) DParam += (((This->Delay + 5) * This->NbOutputBins) + 5) * sizeof(u32);
         } else {
-            value = block->noisePower;
-            end = value + block->spectrumSize * 2;
-            while (value < end) {
-                *value++ = 1.0f;
-            }
-            block->noiseUpdateCount = 0;
-            Reset(block);
+            ResetSpecSub(This);
         }
+        break;
+    case 1:
+        if (CParam != 0) {
+            SpecSubGetSession(This, (u8 *) CParam + *(u32 *) DParam);
+        }
+        *(u32 *) DParam += (((This->Delay + 5) * This->NbOutputBins) + 5) * sizeof(u32);
         break;
     case 3:
-        result = qQueueControl(
-            baseBlock->input[1].queue, 5,
-            baseBlock->input[1].outputSize, NULL);
+        RetVal = qQueueControl(_This->InputQueues[1].pQ, 5, _This->InputQueues[1].ReadPos, 0);
         break;
     case 4:
-        result = qQueueControl(
-            baseBlock->input[1].queue, 6,
-            baseBlock->input[1].outputSize, NULL);
+        RetVal = qQueueControl(_This->InputQueues[1].pQ, 6, _This->InputQueues[1].ReadPos, 0);
         break;
-    case 255:
-        heap_Free(baseBlock->context->heap, block->history);
-        heap_Free(baseBlock->context->heap, block->segmentEnds);
-        tosBaseBlockDestruct(block);
+    case 0xFF:
+        heap_Free(_This->Object.pTos->hHeap, This->pFifoBufStart);
+        heap_Free(_This->Object.pTos->hHeap, This->LR_FreqBoundary);
+        tosBaseBlockDestruct(_This);
         break;
     default:
         return 0;
     }
-    return result;
+    return RetVal;
 }
 
-static u32 InitSpecSub(TosBaseBlock *baseBlock)
+/* Initializes spectral subtraction from the block's profile. */
+static u8 InitSpecSub(struct _BLOCK *_This)
 {
-    SpecSub *block = (SpecSub *)baseBlock;
-    TosContext *context = baseBlock->context;
-    u32 spectrumSize;
+    SpecSub *This = (SpecSub *) _This;
+    struct _TOS *pTos = _This->Object.pTos;
+    u32 NbOutputBins;
     u32 arraySize;
-    u32 endpoint;
-    u32 segment;
-    f32 ratio1;
-    f32 ratio2;
-    f32 maximumRatio;
-    f32 *value;
-    f32 *end;
+    f32 R1;
+    f32 R2;
+    f32 R;
+    unsigned int i;
+    unsigned int Candidate;
 
-    spectrumSize = _tosGetProfileU32(block, 8, 21);
-    block->spectrumSize = spectrumSize;
-    arraySize = spectrumSize * sizeof(f32);
+    NbOutputBins = This->NbOutputBins = _tosGetProfileU32(&This->BaseBlock.Object, 0x08, 21);
+    arraySize = NbOutputBins * sizeof(f32);
 
-    baseBlock->input[0].inputSize = arraySize;
-    baseBlock->input[1].inputSize = 1;
-    baseBlock->output[0].outputSize = sizeof(f32);
-    baseBlock->output[1].outputSize = arraySize;
-    baseBlock->output[2].outputSize = arraySize;
-    baseBlock->output[3].outputSize = sizeof(f32);
+    _This->InputQueues[0].Size = arraySize;
+    _This->InputQueues[1].Size = 1;
+    _This->OutputQueues[0].Size = sizeof(f32);
+    _This->OutputQueues[1].Size = arraySize;
+    _This->OutputQueues[2].Size = arraySize;
+    _This->OutputQueues[3].Size = sizeof(f32);
 
-    block->outputStart =
-        (u16)_tosGetProfileU32(block, 6, 1) - 1;
-    block->historyLength = _tosGetProfileU32(block, 1, 3);
-    block->gainFloor = _tosGetProfileFloat(block, 2, 0.01f);
-    block->noiseScale = _tosGetProfileFloat(block, 3, 1.0f);
-    block->noiseUpdateLimit =
-        _tosGetProfileFloat(block, 4, 40.0f);
-    block->noiseSmoothing =
-        _tosGetProfileFloat(block, 7, 0.99f);
+    This->FirstBandEnergy = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x06, 1) - 1;
+    This->Delay = _tosGetProfileU32(&This->BaseBlock.Object, 0x01, 3);
+    This->GainFloor = _tosGetProfileFloat(&This->BaseBlock.Object, 0x02, 0.01f);
+    This->OverEstimate = _tosGetProfileFloat(&This->BaseBlock.Object, 0x03, 1.0f);
+    This->NoiseWindow = _tosGetProfileFloat(&This->BaseBlock.Object, 0x04, 40.0f);
+    This->LambdaSnr = _tosGetProfileFloat(&This->BaseBlock.Object, 0x07, 0.99f);
 
-    block->history = heap_Calloc(
-        context->heap,
-        spectrumSize * (block->historyLength + 6), sizeof(f32));
-    block->historyWrite = block->history;
-    block->historyEnd =
-        block->history + spectrumSize * (block->historyLength + 1);
-    block->noisePower = block->historyEnd;
-    block->noiseLogAmplitude = block->noisePower + spectrumSize;
-    block->priorSnr = block->noiseLogAmplitude + spectrumSize;
-    block->posteriorSnr = block->priorSnr + spectrumSize;
-    block->gain = block->posteriorSnr + spectrumSize;
+    This->pFifoBufStart =
+        heap_Calloc(pTos->hHeap, NbOutputBins * (This->Delay + 6), sizeof(f32));
+    This->pFifoBufWr = This->pFifoBufStart;
+    This->pFifoBufEnd = This->pFifoBufStart + NbOutputBins * (This->Delay + 1);
+    This->pNoiseSpec = This->pFifoBufEnd;
+    This->pLogNoiseSpec = This->pNoiseSpec + NbOutputBins;
+    This->pSnrPrio = This->pLogNoiseSpec + NbOutputBins;
+    This->pSnrPost = This->pSnrPrio + NbOutputBins;
+    This->Gain = This->pSnrPost + NbOutputBins;
 
-    block->denominatorConstant = 0.8f;
-    block->numeratorConstant = 0.2f;
-    block->denominatorFeedback = 0.1f;
-    block->numeratorFeedback = 0.9f;
+    This->LR_a00 = 0.8f;
+    This->LR_a01 = 0.2f;
+    This->LR_a10 = 0.1f;
+    This->LR_a11 = 0.9f;
 
-    ratio1 = block->numeratorFeedback / block->denominatorFeedback;
-    ratio2 = block->numeratorConstant / block->denominatorConstant;
-    maximumRatio = ratio1 > ratio2 ? ratio1 : ratio2;
-    block->exponentClamp = logf_check(3.4028e38f / maximumRatio);
-    block->normalizationState = 1.0f;
-    block->exponentBias = -logf_check(11.0f);
-    block->exponentScale = 0.90909094f;
+    R1 = This->LR_a11 / This->LR_a10;
+    R2 = This->LR_a01 / This->LR_a00;
+    R = R1 > R2 ? R1 : R2;
+    This->InfTest_CritValue = logf_check(3.4028e38f / R);
+    This->LR = 1.0f;
+    This->LR_term = -logf_check(11.0f);
+    This->LR_factor = 0.90909094f;
 
-    block->segmentCount =
-        (u16)_tosGetProfileU32(block, 30, 1);
-    block->segmentEnds = heap_Calloc(
-        context->heap, block->segmentCount, sizeof(u32));
+    This->Nbr_LR_Bands = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x1E, 1);
+    This->LR_FreqBoundary = heap_Calloc(pTos->hHeap, This->Nbr_LR_Bands, sizeof(u32));
 
-    for (segment = 0; segment < block->segmentCount; segment++) {
-        switch (segment) {
+    for (i = 0; i < This->Nbr_LR_Bands; i++) {
+        switch (i) {
         case 0:
-            endpoint =
-                (u16)_tosGetProfileU32(block, 31, spectrumSize);
+            Candidate = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x1F, NbOutputBins);
+            if (Candidate > NbOutputBins) {
+                Candidate = NbOutputBins;
+            }
+            This->LR_FreqBoundary[0] = Candidate;
             break;
         case 1:
-            endpoint =
-                (u16)_tosGetProfileU32(block, 32, spectrumSize);
+            Candidate = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x20, NbOutputBins);
+            if (Candidate > NbOutputBins) {
+                Candidate = NbOutputBins;
+            }
+            This->LR_FreqBoundary[1] = Candidate;
             break;
         case 2:
-            endpoint =
-                (u16)_tosGetProfileU32(block, 33, spectrumSize);
+            Candidate = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x21, NbOutputBins);
+            if (Candidate > NbOutputBins) {
+                Candidate = NbOutputBins;
+            }
+            This->LR_FreqBoundary[2] = Candidate;
             break;
         default:
-            _tosErrorLog(block, 0x67);
+            _tosErrorLog(&This->BaseBlock.Object, 0x67);
             return 1;
         }
-        if (endpoint > spectrumSize) {
-            endpoint = spectrumSize;
-        }
-        block->segmentEnds[segment] = endpoint;
     }
 
-    if (block->history == NULL) {
-        return _tosErrorLog(block, 0x66);
+    /* The allocation is checked after the derived buffer pointers are set up. */
+    if (This->pFifoBufStart == NULL) {
+        return _tosErrorLog(&This->BaseBlock.Object, 0x66);
     }
 
-    value = block->noisePower;
-    end = value + spectrumSize * 2;
-    while (value < end) {
-        *value++ = 1.0f;
-    }
-    block->noiseUpdateCount = 0;
-    Reset(block);
+    ResetSpecSub(This);
     return 0;
 }
 
-void *ConstructSpecSub(TosContext *context, u8 blockIndex)
+/* Constructs a TOS block for spectral subtraction. */
+struct _BLOCK *ConstructSpecSub(struct _TOS *pTos, u8 BlockID)
 {
-    return tosBaseBlockConstruct(
-        context, blockIndex, 2, 4, ProcessSpecSub, InitSpecSub,
-        ControlSpecSub, sizeof(SpecSub));
+    return tosBaseBlockConstruct(pTos, BlockID, 2, 4, ProcessSpecSub, InitSpecSub, ControlSpecSub,
+                                 sizeof(SpecSub));
 }

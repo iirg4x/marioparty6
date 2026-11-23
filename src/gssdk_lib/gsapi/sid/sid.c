@@ -1,73 +1,84 @@
-#include "types.h"
+#include "gssdk/gsapi_internal.h"
+#include "gssdk/heap.h"
 
 #include "dolphin/m2s.h"
 
-typedef struct SidState {
-    u16 recording;
-} SidState;
+/* Hardware audio input state. */
+struct _SID {
+    unsigned short fIsRecording; /* Whether sampling is active. */
+};
 
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-s32 SidInit(void *heap, void *unused, SidState **sid)
+long SidInit(void *hHeap, long s32DevNum, unsigned int *phSid)
 {
-    SidState *state = heap_Alloc(heap, sizeof(SidState));
+    struct _SID *pSid = heap_Alloc(hHeap, sizeof *pSid);
 
     M2SOpen();
-    state->recording = FALSE;
-    *sid = state;
+    pSid->fIsRecording = FALSE;
+    *phSid = (unsigned int)pSid;
     return 0;
 }
 
-u16 SidIsRecording(SidState *sid)
+int SidIsRecording(unsigned int hSid)
 {
-    return sid->recording;
+    struct _SID *pSid = (struct _SID *)hSid;
+
+    return pSid->fIsRecording;
 }
 
-s32 SidClose(void *heap, SidState *sid)
+long SidClose(void *hHeap, unsigned int hSid)
 {
     M2SClose();
-    heap_Free(heap, sid);
+    heap_Free(hHeap, (struct _SID *)hSid);
     return 0;
 }
 
-s32 SidStart(SidState *sid)
+long SidStart(unsigned int hSid)
 {
+    struct _SID *pSid = (struct _SID *)hSid;
+
     M2SStart();
-    sid->recording = TRUE;
+    pSid->fIsRecording = TRUE;
     return 0;
 }
 
-s32 SidStop(SidState *sid)
+long SidStop(unsigned int hSid)
 {
+    struct _SID *pSid = (struct _SID *)hSid;
+
     M2SStop();
-    sid->recording = FALSE;
+    pSid->fIsRecording = FALSE;
     return 0;
 }
 
-s32 SidGetSamples(SidState *sid, s16 **buffer, s32 samples)
+long SidGetSamples(unsigned int hSid, short **pWaveBuffer, long nSamples)
 {
-    if (!sid->recording) {
+    struct _SID *pSid = (struct _SID *)hSid;
+
+    if (!pSid->fIsRecording) {
         return 0;
     }
-    return M2SGetSamples(buffer, samples);
+    return M2SGetSamples(pWaveBuffer, nSamples);
 }
 
-s32 SidGetSamplesLeft(SidState *sid)
+long SidGetSamplesLeft(unsigned int hSid)
 {
-    if (sid == NULL) {
+    struct _SID *pSid = (struct _SID *)hSid;
+
+    if (pSid == NULL) {
         return 0;
     }
-    if (!sid->recording) {
+    if (!pSid->fIsRecording) {
         return 0;
     }
     return M2SGetSamplesLeft();
 }
 
-s32 SidAdvanceBuffer(SidState *sid, s32 samples)
+long SidAdvanceBuffer(unsigned int hSid, long nSamples)
 {
-    if (sid->recording) {
-        M2SAdvanceBuffer(samples);
+    struct _SID *pSid = (struct _SID *)hSid;
+
+    if (pSid->fIsRecording) {
+        M2SAdvanceBuffer(nSamples);
     }
     return 0;
 }

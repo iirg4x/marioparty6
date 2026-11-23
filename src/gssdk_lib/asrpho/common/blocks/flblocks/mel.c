@@ -1,265 +1,239 @@
+/* Converts input spectra into mel-frequency bands. */
+#include "gssdk/blocks.h"
+#include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h>
+#include "gssdk/mathusage.h"
+#include "gssdk/mqueue.h"
+#include "gssdk/heap.h"
 #include "types.h"
+
+#include <string.h>
 
 #include "gssdk/tos.h"
 
-typedef struct Mel {
-    TosBaseBlock base;
-    u32 bandCount;
-    f32 **weights;
-    s32 *firstBins;
-    u32 *binCounts;
-    f32 sampleScale;
-} Mel;
+/* Mel filter bank and the warp supplied by control 0x01. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    u32 NbOutputBins;       /* Number of output bands. */
+    f32 **Weights;          /* Weights for each band's contiguous run of input bins. */
+    u32 *StartIdx;          /* First input bin for each band. */
+    u32 *Lengths;           /* Number of weighted input bins in each band. */
+    f32 Warp;               /* Frequency warp used when computing the filter weights. */
+} MelBlock;
 
-typedef union MelControlValue {
-    u32 bits;
-    f32 value;
-} MelControlValue;
+static u8 MelInitBands(MelBlock *This, f32 Warp);
 
-extern void *heap_Alloc(void *heap, u32 size);
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern f32 logf_check(f32 value);
-extern f32 powf(f32 base, f32 exponent);
-
-static u8 MelInitBands(Mel *block, f32 sampleScale);
-
-static void ProcessMel(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Sums the weighted spectrum bins for each mel band. */
+static void Mel(MelBlock *This, f32 *pInput, f32 *pOutput)
 {
-    Mel *block = (Mel *)baseBlock;
-    f32 *input = inputs[0];
-    f32 *output;
-    u32 band;
-
-    if (input == NULL) {
-        return;
-    }
-
-    output = qEnQueueOne(block->base.output->queue);
-    for (band = 0; band < block->bandCount; band++, output++) {
-        f32 *weight = block->weights[band];
-        f32 *weightEnd = weight + block->binCounts[band];
-        f32 *inputValue = input + block->firstBins[band];
-
-        *output = 10.0f;
-        while (weight < weightEnd) {
-            *output += *weight++ * *inputValue++;
+    f32 *Wght;
+    f32 *End;
+    f32 *Spec;
+    unsigned int i;
+    for (i = 0; i < This->NbOutputBins; i++, pOutput++) {
+        *pOutput = 10.0f;
+        Wght = This->Weights[i];
+        End = Wght + This->Lengths[i];
+        Spec = pInput + This->StartIdx[i];
+        while (Wght < End) {
+            *pOutput += *Wght++ * *Spec++;
         }
     }
 }
 
-static u32 ControlMel(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Applies the mel filters to the input spectrum and queues the resulting bands. */
+static void ProcessMel(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    Mel *block = (Mel *)baseBlock;
-    MelControlValue controlValue;
-    u32 result = 1;
-    u32 band;
+    MelBlock *This;
+    f32 *pSpecIn;
+    f32 *pMelOut;
+    This = (MelBlock *) _This;
+    if ((pSpecIn = ((void **) pInputs)[0]) != NULL) {
+        pMelOut = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+        Mel(This, pSpecIn, pMelOut);
+    }
+}
 
-    controlValue.bits = argumentSize;
-    switch ((u8)command) {
-    case 1:
-        if (block->weights != NULL) {
-            for (band = 0; band < block->bandCount; band++) {
-                heap_Free(block->base.context->heap, block->weights[band]);
-            }
-            heap_Free(block->base.context->heap, block->weights);
-            heap_Free(block->base.context->heap, block->firstBins);
-            heap_Free(block->base.context->heap, block->binCounts);
-            block->weights = NULL;
+/* Releases the mel band's filter tables. */
+static void FreeResourcesMel(MelBlock *This)
+{
+    struct _TOS *pTos;
+    u32 i;
+
+    if (This->Weights != NULL) {
+        pTos = This->BaseBlock.Object.pTos;
+        for (i = 0; i < This->NbOutputBins; i++) {
+            heap_Free(pTos->hHeap, This->Weights[i]);
         }
-        result = MelInitBands(block, controlValue.value) == 0;
+        heap_Free(pTos->hHeap, This->Weights);
+        heap_Free(pTos->hHeap, This->StartIdx);
+        heap_Free(pTos->hHeap, This->Lengths);
+        This->Weights = NULL;
+    }
+}
+
+/* Handles control commands for the mel feature block. */
+static u8 ControlMel(struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
+{
+    MelBlock *This = (MelBlock *) _This;
+    u8 RetVal = 1;
+
+    switch (ControlId) {
+    case 0x01:
+        if (This->Weights != NULL) {
+            FreeResourcesMel(This);
+        }
+        RetVal = !MelInitBands(This, *(f32 *) &DParam);
         break;
 
-    case 255:
-        if (block->weights != NULL) {
-            for (band = 0; band < block->bandCount; band++) {
-                heap_Free(block->base.context->heap, block->weights[band]);
-            }
-            heap_Free(block->base.context->heap, block->weights);
-            heap_Free(block->base.context->heap, block->firstBins);
-            heap_Free(block->base.context->heap, block->binCounts);
-            block->weights = NULL;
-        }
-        tosBaseBlockDestruct(block);
+    case 0xFF:
+        FreeResourcesMel(This);
+        tosBaseBlockDestruct(&This->BaseBlock);
         break;
 
     default:
-        result = 0;
+        RetVal = 0;
         break;
     }
-    return result;
+    return RetVal;
 }
 
-static u8 MelInitBands(Mel *block, f32 sampleScale)
+/* Builds the mel-band filter tables for the requested frequency warp. */
+static u8 MelInitBands(MelBlock *This, f32 Warp)
 {
-    TosContext *context = block->base.context;
-    f32 maximumFrequency;
-    u16 skippedBands;
-    u16 binCount;
-    f32 *frequencyBins;
-    f32 *frequencyBin;
-    f32 binWidth;
-    f32 frequency;
-    f32 linearEnd;
-    f32 *centerFrequencies;
-    f32 *centerFrequency;
-    u32 band;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
+    f32 *MelAxis;
+    f32 f;
+    f32 fBreak;
+    f32 df;
+    f32 MelCentre;
+    f32 *MelScan;
+    f32 *Wght;
+    f32 fNyquist = _tosGetProfileFloat(&This->BaseBlock.Object, 0x02, 4000.0f);
+    f32 *fCentre;
+    unsigned int FirstBand;
+    unsigned int OutBin;
+    unsigned int InputSize;
+    unsigned int InBin;
+    unsigned int Bingo;
+    FirstBand = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x05, 0);
+    InputSize = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x03, 0);
+    This->Warp = Warp;
 
-    maximumFrequency = _tosGetProfileFloat(block, 2, 4000.0f);
-    skippedBands = (u16)_tosGetProfileU32(block, 5, 0);
-    binCount = (u16)_tosGetProfileU32(block, 3, 0);
-    block->sampleScale = sampleScale;
-
-    frequencyBins = heap_Alloc(context->heap, binCount * sizeof(f32));
-    if (frequencyBins == NULL) {
-        _tosErrorLog(block, 100);
+    MelAxis = heap_Alloc(pTos->hHeap, InputSize * sizeof(f32));
+    if (MelAxis == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 0x64);
         return 1;
     }
 
-    binWidth = maximumFrequency / (binCount - 1);
-    linearEnd = maximumFrequency > 1000.0f ? 1000.0f : maximumFrequency;
-    frequency = 0.0f;
-    frequencyBin = frequencyBins;
-    while (frequency < linearEnd) {
-        *frequencyBin++ = frequency / (100.0f * sampleScale);
-        frequency += binWidth;
+    df = fNyquist / (InputSize - 1);
+    MelScan = MelAxis;
+    fBreak = fNyquist > 1000.0f ? 1000.0f : fNyquist;
+    for (f = 0.0f; f < fBreak; f += df) {
+        *MelScan++ = f / (100.0f * Warp);
     }
-    while (frequency < maximumFrequency + binWidth * 0.5f) {
-        *frequencyBin++ =
-            10.0f +
-            5.0f *
-                (logf_check(frequency / (1000.0f * sampleScale)) /
-                 0.693147f);
-        frequency += binWidth;
+    /* The logarithmic section spans the remaining input bins. */
+    fBreak = fNyquist + df / 2.0f;
+    for (; f < fBreak; f += df) {
+        *MelScan++ = 10.0f + 5.0f * (logf_check(f / (1000.0f * Warp)) / 0.693147f);
     }
 
-    if (maximumFrequency < 1000.0f) {
-        block->bandCount =
-            (u32)((f64)maximumFrequency / 100.0 - 0.95);
+    if (fNyquist < 1000.0f) {
+        This->NbOutputBins = fNyquist / 100.0 - 0.95;
     } else {
-        block->bandCount =
-            (u32)((f64)(
-                      10.0f +
-                      5.0f *
-                          logf_check((f32)((f64)frequency / 1000.0)) /
-                          0.693147f) -
-                  0.95);
+        This->NbOutputBins = (10.0f + 5.0f * logf_check(f / 1000.0) / 0.693147f) - 0.95;
     }
-    block->bandCount -= skippedBands;
+    This->NbOutputBins -= FirstBand;
 
-    if (block->bandCount != _tosGetProfileU32(block, 4, 21)) {
+    /* Error returns below leave the input-bin allocation in place. */
+    if (This->NbOutputBins != (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x04, 21)) {
         return 1;
     }
 
-    block->weights =
-        heap_Calloc(context->heap, block->bandCount, sizeof(f32 *));
-    if (block->weights == NULL) {
-        _tosErrorLog(block, 100);
+    This->Weights = heap_Calloc(pTos->hHeap, This->NbOutputBins, sizeof(f32 *));
+    if (This->Weights == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 0x64);
         return 1;
     }
 
-    block->firstBins =
-        heap_Calloc(context->heap, block->bandCount, sizeof(s32));
-    if (block->firstBins == NULL) {
-        _tosErrorLog(block, 100);
-        heap_Free(context->heap, block->weights);
+    This->StartIdx = heap_Calloc(pTos->hHeap, This->NbOutputBins, sizeof(u32));
+    if (This->StartIdx == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 0x64);
+        heap_Free(pTos->hHeap, This->Weights);
         return 1;
     }
 
-    block->binCounts =
-        heap_Calloc(context->heap, block->bandCount, sizeof(u32));
-    if (block->binCounts == NULL) {
-        _tosErrorLog(block, 100);
-        heap_Free(context->heap, block->weights);
-        heap_Free(context->heap, block->firstBins);
+    This->Lengths = heap_Calloc(pTos->hHeap, This->NbOutputBins, sizeof(u32));
+    if (This->Lengths == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 0x64);
+        heap_Free(pTos->hHeap, This->Weights);
+        heap_Free(pTos->hHeap, This->StartIdx);
         return 1;
     }
 
-    centerFrequencies =
-        heap_Calloc(context->heap, block->bandCount, sizeof(f32));
-    if (centerFrequencies == NULL) {
-        _tosErrorLog(block, 100);
-        heap_Free(context->heap, block->weights);
-        heap_Free(context->heap, block->firstBins);
-        heap_Free(context->heap, block->binCounts);
+    fCentre = heap_Calloc(pTos->hHeap, This->NbOutputBins, sizeof(f32));
+    if (fCentre == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 0x64);
+        heap_Free(pTos->hHeap, This->Weights);
+        heap_Free(pTos->hHeap, This->StartIdx);
+        heap_Free(pTos->hHeap, This->Lengths);
         return 1;
     }
 
-    centerFrequency = centerFrequencies;
-    for (band = 0; band < block->bandCount; band++, centerFrequency++) {
-        u32 melBand = band + skippedBands;
-        f32 bandPosition = (f32)(melBand + 1);
-        u32 bin;
-
-        block->binCounts[band] = 0;
-        block->firstBins[band] = -1;
-        if (melBand < 10) {
-            *centerFrequency = 100.0f * bandPosition;
+    /* The center frequencies are recorded here but never used to compute the weights. */
+    for (OutBin = 0; OutBin < This->NbOutputBins; OutBin++) {
+        This->Lengths[OutBin] = 0;
+        This->StartIdx[OutBin] = -1;
+        MelCentre = 1 + OutBin + FirstBand;
+        if (OutBin + FirstBand < 10) {
+            fCentre[OutBin] = 100.0f * MelCentre;
         } else {
-            *centerFrequency =
-                1000.0f *
-                powf(
-                    2.0f,
-                    (f32)((f64)(bandPosition / 5.0f) - 2.0));
+            fCentre[OutBin] = 1000.0f * powf(2.0f, MelCentre / 5.0f - 2.0);
         }
 
-        for (bin = 1; bin < binCount; bin++) {
-            f32 value = frequencyBins[bin];
-            u32 inBand =
-                value > bandPosition - 1.0 &&
-                value < bandPosition + 1.0;
+        for (InBin = 1; InBin < InputSize; InBin++) {
+            f32 fMel = MelAxis[InBin];
+            Bingo = fMel > MelCentre - 1.0 && fMel < 1.0 + MelCentre;
 
-            block->binCounts[band] += inBand;
-            if (inBand != 0 && block->firstBins[band] == -1) {
-                block->firstBins[band] = bin;
+            This->Lengths[OutBin] += Bingo;
+            if (Bingo != 0 && This->StartIdx[OutBin] == -1) {
+                This->StartIdx[OutBin] = InBin;
             }
         }
 
-        block->weights[band] = heap_Calloc(
-            context->heap, block->binCounts[band], sizeof(f32));
-        if (block->weights[band] == NULL) {
-            _tosErrorLog(block, 100);
-            heap_Free(context->heap, centerFrequencies);
+        This->Weights[OutBin] = heap_Calloc(pTos->hHeap, This->Lengths[OutBin], sizeof(f32));
+        if (This->Weights[OutBin] == NULL) {
+            _tosErrorLog(&This->BaseBlock.Object, 0x64);
+            heap_Free(pTos->hHeap, fCentre);
             return 1;
         }
 
-        {
-            f32 *weight = block->weights[band];
-
-            for (bin = 0; bin < block->binCounts[band]; bin++, weight++) {
-                f32 value =
-                    frequencyBins[block->firstBins[band] + bin];
-
-                if (value < bandPosition) {
-                    *weight = 1.0f - bandPosition + value;
-                } else {
-                    *weight = 1.0f - value + bandPosition;
-                }
-            }
+        Wght = This->Weights[OutBin];
+        for (InBin = 0; InBin < This->Lengths[OutBin]; Wght++, InBin++) {
+            f32 fMel = MelAxis[This->StartIdx[OutBin] + InBin];
+            *Wght = fMel < MelCentre ? 1.0f - MelCentre + fMel : 1.0f - fMel + MelCentre;
         }
     }
 
-    heap_Free(context->heap, centerFrequencies);
-    heap_Free(context->heap, frequencyBins);
+    heap_Free(pTos->hHeap, fCentre);
+    heap_Free(pTos->hHeap, MelAxis);
     return 0;
 }
 
-u32 InitMel(TosBaseBlock *baseBlock)
+/* Sets the input and output port sizes. */
+static u8 InitMel(struct _BLOCK *_This)
 {
-    Mel *block = (Mel *)baseBlock;
-    u16 binCount = (u16)_tosGetProfileU32(block, 3, 0);
-    u16 bandCount = (u16)_tosGetProfileU32(block, 4, 21);
+    MelBlock *This = (MelBlock *) _This;
+    u16 NrInputBands = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x03, 0);
+    u16 NbOutputBins = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x04, 21);
 
-    block->base.input->inputSize = binCount * sizeof(f32);
-    block->base.output->outputSize = bandCount * sizeof(f32);
+    This->BaseBlock.InputQueues->Size = NrInputBands * sizeof(f32);
+    This->BaseBlock.OutputQueues->Size = NbOutputBins * sizeof(f32);
     return 0;
 }
 
-void *ConstructMel(TosContext *context, u8 blockIndex)
+/* Constructs a TOS block for mel filtering. */
+struct _BLOCK *ConstructMel(struct _TOS *pTos, u8 BlockID)
 {
-    return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, ProcessMel, InitMel, ControlMel,
-        sizeof(Mel));
+    return tosBaseBlockConstruct(pTos, BlockID, 1, 1, ProcessMel, InitMel, ControlMel,
+                                 sizeof(MelBlock));
 }

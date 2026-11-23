@@ -1,628 +1,588 @@
+/* Constructs and runs the recognizer processing graph and its queues. */
 #include "types.h"
 
 #include <string.h>
 
+#include "gssdk/heap.h"
 #include "gssdk/mqueue.h"
 #include "gssdk/tos.h"
 
-typedef struct TosProfileOwner {
-    TosContext *context;
-    u8 ownerIndex;
-    u8 profileOwnerAlignment[3];
-} TosProfileOwner;
-
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-enum {
-    TOS_CONTROL_CONSTRUCT = 0xF8,
-    TOS_CONTROL_START = 0xF9,
-    TOS_CONTROL_STOP = 0xFA,
-    TOS_CONTROL_ENABLE = 0xFB,
-    TOS_CONTROL_DISABLE = 0xFC,
-    TOS_CONTROL_DESTRUCT = 0xFF
-};
-
-static u8 SetAndControlQSizes(TosContext *context)
+/* Verifies that each queue has a consistent element size across its connected ports. */
+static u8 SetAndControlQSizes(struct _TOS *This)
 {
-    TosQueue *queue;
-    TosBaseBlock *block;
-    TosQueuePort *port;
-    u16 elementSize;
-    u32 queueNumber;
-    u32 blockNumber;
-    u32 portNumber;
-    u8 found;
+    unsigned long q;
+    unsigned long p;
+    struct _QUEUE *QuePtr;
+    unsigned char FoundOne;
+    unsigned short Size;
+    unsigned long pq;
+    struct _BLOCK *BlPtr;
+    struct _INPUTQUEUE *pInQ;
+    struct _OUTPUTQUEUE *pOutQ;
 
-    for (queueNumber = 0; queueNumber < context->queueCount;
-         queueNumber++) {
-        queue = context->queues[queueNumber];
-        if (queue == NULL) {
+    for (q = 0; q < This->NrQueues; q++) {
+        QuePtr = This->AllQueues[q];
+        if (QuePtr == NULL) {
             continue;
         }
-
-        elementSize = 0xFFFF;
-        found = 0;
-        for (blockNumber = 0; blockNumber < context->blockCount;
-             blockNumber++) {
-            block = context->blocks[blockNumber];
-            if (block == NULL) {
+        Size = 0xFFFF;
+        FoundOne = 0;
+        for (p = 0; p < This->NrProces; p++) {
+            BlPtr = This->AllProcesses[p];
+            if (BlPtr == NULL) {
                 continue;
             }
-
-            for (portNumber = 0; portNumber < block->inputCount;
-                 portNumber++) {
-                port = &block->input[portNumber];
-                if (port->queue != queue) {
-                    continue;
+            for (pq = 0; pq < BlPtr->NrInputs; pq++) {
+                pInQ = &BlPtr->InputQueues[pq];
+                if (pInQ->pQ == QuePtr) {
+                    if (FoundOne) {
+                        if (pInQ->Size != Size) {
+                            return 1;
+                        }
+                    } else {
+                        FoundOne = 1;
+                        Size = pInQ->Size;
+                    }
                 }
-                if (found != 0 && elementSize != port->inputSize) {
-                    return 1;
-                }
-                found = 1;
-                elementSize = port->inputSize;
             }
-
-            for (portNumber = 0; portNumber < block->outputCount;
-                 portNumber++) {
-                port = &block->output[portNumber];
-                if (port->queue != queue) {
-                    continue;
+            for (pq = 0; pq < BlPtr->NrOutputs; pq++) {
+                pOutQ = &BlPtr->OutputQueues[pq];
+                if (pOutQ->pQ == QuePtr) {
+                    if (FoundOne) {
+                        if (pOutQ->Size != Size) {
+                            return 1;
+                        }
+                    } else {
+                        FoundOne = 1;
+                        Size = pOutQ->Size;
+                    }
                 }
-                if (found != 0 && elementSize != port->outputSize) {
-                    return 1;
-                }
-                found = 1;
-                elementSize = port->outputSize;
             }
         }
-
-        if (found == 0) {
+        if (!FoundOne) {
             return 1;
         }
-        queue->elementSize = elementSize;
+        QuePtr->Size = Size;
     }
     return 0;
 }
 
+/* Attaches a queue reader to a block input or to the architecture callback. */
 static u8 ConnectInQtoBlock(
-    TosContext *context, TosBaseBlock *block, TosQueue *queue,
-    u16 readerIndex)
+    struct _TOS *This, struct _BLOCK *BlPtr, struct _QUEUE *QPtr,
+    u16 ReadPos)
 {
-    u32 inputNumber;
+    s8 inputNumber;
 
-    if (block != NULL) {
-        if (block == (TosBaseBlock *)context) {
-            if (context->registerInputQueue(
-                    context, queue, readerIndex) != 0) {
+    if (BlPtr != NULL) {
+        /* Block ID zero uses the scheduler address and architecture callbacks. */
+        if (BlPtr == (struct _BLOCK *)This) {
+            if (This->TosData.cbRegInput(
+                    This, QPtr, ReadPos) != 0) {
                 return 1;
             }
         } else {
-            for (inputNumber = 0; inputNumber < block->inputCount;
+            for (inputNumber = 0; inputNumber < BlPtr->NrInputs;
                  inputNumber++) {
-                if (block->input[inputNumber].queue == NULL) {
-                    block->input[inputNumber].queue = queue;
-                    block->input[inputNumber].outputSize = readerIndex;
+                if (BlPtr->InputQueues[inputNumber].pQ == NULL) {
+                    BlPtr->InputQueues[inputNumber].pQ = QPtr;
+                    BlPtr->InputQueues[inputNumber].ReadPos = ReadPos;
                     break;
                 }
             }
-        }
-
-        if (queue != NULL &&
-            qQueueControl(queue, 10, readerIndex, NULL) == 0) {
-            return 1;
-        }
-    } else if (queue != NULL &&
-               qQueueControl(queue, 8, readerIndex, NULL) == 0) {
-        return 1;
-    }
-    return 0;
-}
-
-static u8 ConstructBlock(
-    TosContext *context, u32 blockIndex, u32 blockNumber)
-{
-    const TosBlockDefinition *definition;
-    const TosQueueWriterDefinition *writer;
-    const TosQueueReaderDefinition *reader;
-    TosBaseBlock *block;
-    TosQueue *queue;
-    u8 *readerCounts;
-    u32 inputNumber;
-    u32 outputNumber;
-    u32 queueNumber;
-
-    definition = context->blockDefinitions;
-    while (definition->blockIndex != (u8)blockIndex) {
-        definition++;
-    }
-
-    block = definition->constructor(context, (u8)blockIndex);
-    if (block == NULL) {
-        return 1;
-    }
-    context->blocks[blockNumber] = block;
-
-    outputNumber = 0;
-    writer = context->queueWriters;
-    while (writer->queueIndex != 0xFF) {
-        if (writer->blockIndex == (u8)blockIndex) {
-            queue = tosGetQueuePtr(context, writer->queueIndex);
-            if (block == (TosBaseBlock *)context) {
-                if (context->registerOutputQueue(context, queue) != 0) {
-                    return 1;
-                }
-            } else if (block != NULL && queue != NULL) {
-                block->output[outputNumber].queue = queue;
-                if (queue->elementSize == 0) {
-                    queue->elementSize =
-                        block->output[outputNumber].outputSize;
-                }
-            }
-            outputNumber++;
-        }
-        writer++;
-    }
-
-    readerCounts = heap_Calloc(
-        context->heap, context->queueCount, sizeof(u8));
-    if (readerCounts == NULL) {
-        return 1;
-    }
-
-    reader = context->queueReaders;
-    while (reader->queueIndex != 0xFF) {
-        queueNumber = reader->queueIndex - context->firstQueueIndex;
-        readerCounts[queueNumber]++;
-        reader++;
-    }
-
-    inputNumber = 0;
-    reader = context->queueReaders;
-    while (reader->queueIndex != 0xFF) {
-        if (reader->blockIndex == (u8)blockIndex) {
-            queueNumber = reader->queueIndex - context->firstQueueIndex;
-            queue = context->queues[queueNumber];
-            readerCounts[queueNumber]--;
-            if (ConnectInQtoBlock(
-                    context, block, queue,
-                    readerCounts[queueNumber]) != 0) {
-                heap_Free(context->heap, readerCounts);
+            if (QPtr != NULL &&
+                qQueueControl(QPtr, 0xA, ReadPos, 0) == 0) {
                 return 1;
             }
-            inputNumber++;
         }
-        reader++;
-    }
-
-    heap_Free(context->heap, readerCounts);
-    if (block->init(block) != 0) {
+    } else if (QPtr != NULL &&
+               qQueueControl(QPtr, 0x8, ReadPos, 0) == 0) {
         return 1;
     }
     return 0;
 }
 
+/* Connects the writer to the requested output port. */
+static u8 ConnectOutQtoBlockPos(
+    struct _TOS *This, struct _BLOCK *BlPtr, struct _QUEUE *QPtr, u8 OutPos)
+{
+    if (BlPtr == (struct _BLOCK *)This) {
+        if (This->TosData.cbRegOutput(This, QPtr) != 0) {
+            return 1;
+        }
+    } else if (BlPtr != NULL && QPtr != NULL) {
+        BlPtr->OutputQueues[OutPos].pQ = QPtr;
+        if (QPtr->Size == 0) {
+            QPtr->Size = BlPtr->OutputQueues[OutPos].Size;
+        }
+    }
+    return 0;
+}
+
+/* Connects a reader at the requested input port and read position. */
+static u8 ConnectInQtoBlockPos(
+    struct _TOS *This, struct _BLOCK *BlPtr, struct _QUEUE *QPtr,
+    u16 ReadPos, u16 QueInPos)
+{
+    if (BlPtr != NULL) {
+        if (BlPtr == (struct _BLOCK *)This) {
+            if (This->TosData.cbRegInput(This, QPtr, ReadPos) != 0) {
+                return 1;
+            }
+        } else {
+            BlPtr->InputQueues[QueInPos].pQ = QPtr;
+            BlPtr->InputQueues[QueInPos].ReadPos = ReadPos;
+            if (QPtr != NULL &&
+                qQueueControl(QPtr, 0xA, ReadPos, 0) == 0) {
+                return 1;
+            }
+        }
+    } else if (QPtr != NULL &&
+               qQueueControl(QPtr, 0x8, ReadPos, 0) == 0) {
+        return 1;
+    }
+    return 0;
+}
+
+/* Constructs a block, connects its existing queues and calls its initializer. */
+static u8 ConstructBlock(struct _TOS *This, u8 BlockID, int Index)
+{
+    const struct _PROCDESCRIP *Pd;
+    const struct _QDESCRIP *Qd;
+    const struct _QTARGETDESCRIP *Qt;
+    struct _BLOCK *BlkPtr;
+    u8 *pNbrReaders;
+    int WritePos;
+    int QueOutPos;
+    u8 QIdx;
+    int ReadPos;
+    int i;
+
+    i = 0;
+    Pd = This->pInitialBlocks;
+    while (Pd->BlockID != BlockID) {
+        Pd++;
+    }
+    BlkPtr = Pd->Constructor(This, BlockID);
+    if (BlkPtr == NULL) {
+        return 1;
+    }
+    This->AllProcesses[Index] = BlkPtr;
+    QueOutPos = 0;
+    Qd = This->pInitialQueues;
+    while (Qd->BlockID != 0xFF) {
+        if (Qd->SourceID == BlockID) {
+            if (ConnectOutQtoBlockPos(This, BlkPtr,
+                    tosGetQueuePtr(This, Qd->BlockID), QueOutPos++) != 0) {
+                return 1;
+            }
+        }
+        Qd++;
+    }
+    pNbrReaders = heap_Calloc(This->hHeap, This->NrQueues, sizeof(u8));
+    if (pNbrReaders == NULL) {
+        return 1;
+    }
+    Qt = This->pQueueReaders;
+    while (Qt->BlockID != 0xFF) {
+        pNbrReaders[Qt->BlockID - This->QueueOffset]++;
+        Qt++;
+    }
+    Qt = This->pQueueReaders;
+    while (Qt->BlockID != 0xFF) {
+        QIdx = Qt->BlockID - This->QueueOffset;
+        ReadPos = --pNbrReaders[QIdx];
+        if (Qt->TargetID == BlockID) {
+            if (ConnectInQtoBlockPos(This, BlkPtr,
+                    This->AllQueues[QIdx], ReadPos, i++) != 0) {
+                heap_Free(This->hHeap, pNbrReaders);
+                return 1;
+            }
+        }
+        Qt++;
+    }
+    heap_Free(This->hHeap, pNbrReaders);
+    if (BlkPtr->Init(BlkPtr) != 0) {
+        return 1;
+    }
+    return 0;
+}
+
+/* Constructs a queue and connects its writers and readers. */
 static u8 ConstructQueue(
-    TosContext *context, u32 queueIndex, u32 queueNumber)
+    struct _TOS *This, u8 BlockID, int Index)
 {
-    const TosQueueWriterDefinition *writer;
-    const TosQueueReaderDefinition *reader;
-    TosBaseBlock *block;
-    TosQueue *queue;
-    u8 *writerCounts;
-    u32 outputNumber;
-    u32 readerCount;
-    u32 readerIndex;
-    u32 blockNumber;
-    u32 index;
+    u8 *pNbrOutputs;
+    const struct _QTARGETDESCRIP *Qt;
+    const struct _QDESCRIP *Qd;
+    struct _BLOCK *BlPtrTarget;
+    struct _BLOCK *BlPtrSource;
+    struct _QUEUE *QuePtr;
+    int NbrReaders = 0;
 
-    writerCounts = heap_Calloc(
-        context->heap, context->blockCount, sizeof(u8));
-    if (writerCounts == NULL) {
+    pNbrOutputs = heap_Calloc(
+        This->hHeap, This->NrProces, sizeof(u8));
+    if (pNbrOutputs == NULL) {
         return 1;
     }
 
-    writer = context->queueWriters;
-    while (writer->queueIndex != (u8)queueIndex) {
-        writerCounts[writer->blockIndex]++;
-        writer++;
+    Qd = This->pInitialQueues;
+    while (Qd->BlockID != BlockID) {
+        pNbrOutputs[Qd->SourceID]++;
+        Qd++;
     }
 
-    readerCount = 0;
-    reader = context->queueReaders;
-    while (reader->queueIndex != 0xFF) {
-        if (reader->queueIndex == (u8)queueIndex) {
-            readerCount++;
+    Qt = This->pQueueReaders;
+    while (Qt->BlockID != 0xFF) {
+        if (Qt->BlockID == BlockID) {
+            NbrReaders++;
         }
-        reader++;
+        Qt++;
     }
 
-    queue = qQueueConstruct(context, queueIndex, (u8)readerCount);
-    if (queue == NULL) {
-        heap_Free(context->heap, writerCounts);
+    QuePtr = qQueueConstruct(This, BlockID, NbrReaders);
+    if (QuePtr == NULL) {
+        heap_Free(This->hHeap, pNbrOutputs);
         return 1;
     }
-    context->queues[queueNumber] = queue;
+    This->AllQueues[Index] = QuePtr;
+    Index = BlockID;
 
-    while (writer->queueIndex == (u8)queueIndex) {
-        if (writer->blockIndex != 0) {
-            blockNumber = writer->blockIndex - context->firstBlockIndex;
-            block = context->blocks[blockNumber];
-        } else {
-            block = (TosBaseBlock *)context;
-        }
+    while (Qd->BlockID == (u8)Index) {
+        BlPtrSource = Qd->SourceID != 0
+            ? This->AllProcesses[Qd->SourceID - This->BlockOffset]
+            : (struct _BLOCK *)This;
 
-        outputNumber = writerCounts[writer->blockIndex]++;
-        if (block == (TosBaseBlock *)context) {
-            if (context->registerOutputQueue(context, queue) != 0) {
-                heap_Free(context->heap, writerCounts);
-                return 1;
-            }
-        } else if (block != NULL && queue != NULL) {
-            block->output[outputNumber].queue = queue;
-            if (queue->elementSize == 0) {
-                queue->elementSize =
-                    block->output[outputNumber].outputSize;
-            }
-        }
-        writer++;
-    }
-
-    heap_Free(context->heap, writerCounts);
-
-    readerIndex = readerCount;
-    reader = context->queueReaders;
-    while (reader->queueIndex != 0xFF) {
-        if (reader->queueIndex == (u8)queueIndex) {
-            if (reader->blockIndex != 0) {
-                blockNumber =
-                    reader->blockIndex - context->firstBlockIndex;
-                block = context->blocks[blockNumber];
-            } else {
-                block = (TosBaseBlock *)context;
-            }
-            index = queueIndex - context->firstQueueIndex;
-            readerIndex--;
-            if (ConnectInQtoBlock(
-                    context, block, context->queues[index],
-                    (u16)readerIndex) != 0) {
-                return 1;
-            }
-        }
-        reader++;
-    }
-
-    if (qQueueInit(queue) == NULL) {
-        return 1;
-    }
-    return 0;
-}
-
-u8 DestructQueue(TosQueue *queue)
-{
-    TosContext *context = queue->context;
-    const TosQueueWriterDefinition *writer;
-    const TosQueueReaderDefinition *reader;
-    TosBaseBlock *block;
-    TosQueuePort *port;
-    u32 portNumber;
-    u32 blockNumber;
-    u32 queueNumber;
-    u8 queueIndex = queue->queueIndex;
-
-    qQueueReset(queue);
-
-    if (queueIndex != 0xFF) {
-        writer = context->queueWriters;
-        while (writer->queueIndex != queueIndex) {
-            writer++;
-        }
-        while (writer->queueIndex == queueIndex) {
-            if (writer->blockIndex != 0) {
-                blockNumber =
-                    writer->blockIndex - context->firstBlockIndex;
-                block = context->blocks[blockNumber];
-            } else {
-                block = (TosBaseBlock *)context;
-            }
-            if (block != NULL && block != (TosBaseBlock *)context) {
-                for (portNumber = 0;
-                     portNumber < block->outputCount; portNumber++) {
-                    port = &block->output[portNumber];
-                    if (port->queue == queue) {
-                        port->queue = NULL;
-                        break;
-                    }
-                }
-            }
-            writer++;
-        }
-    }
-
-    reader = context->queueReaders;
-    while (reader->queueIndex != 0xFF) {
-        if (reader->queueIndex == queueIndex) {
-            if (reader->blockIndex != 0) {
-                blockNumber =
-                    reader->blockIndex - context->firstBlockIndex;
-                block = context->blocks[blockNumber];
-            } else {
-                block = (TosBaseBlock *)context;
-            }
-            queueNumber = queueIndex - context->firstQueueIndex;
-            if (block != NULL && block != (TosBaseBlock *)context) {
-                for (portNumber = 0;
-                     portNumber < block->inputCount; portNumber++) {
-                    port = &block->input[portNumber];
-                    if (port->queue == context->queues[queueNumber]) {
-                        port->queue = NULL;
-                        break;
-                    }
-                }
-            }
-        }
-        reader++;
-    }
-
-    if (queueIndex != 0xFF) {
-        queueNumber = queueIndex - context->firstQueueIndex;
-        context->queues[queueNumber] = NULL;
-    }
-    heap_Free(context->heap, queue);
-    return 0;
-}
-
-static u8 ConstructArchitecture(
-    TosContext *context,
-    const TosBlockDefinition *blockDefinitions,
-    const TosQueueWriterDefinition *queueWriters,
-    const TosQueueReaderDefinition *queueReaders)
-{
-    const TosBlockDefinition *definition;
-    const TosQueueWriterDefinition *writer;
-    const TosQueueReaderDefinition *reader;
-    TosBaseBlock *block;
-    TosQueue *queue = NULL;
-    u8 *counts;
-    u8 *outputCounts;
-    u8 *inputCounts;
-    u8 *queueReaderCounts;
-    u32 definitionCount;
-    u32 queueDefinitionCount;
-    u32 blockNumber;
-    u32 queueNumber;
-    u32 outputNumber;
-    u32 readerIndex;
-    u32 maximumInputs;
-    u8 lastQueueIndex;
-
-    context->blockDefinitions = blockDefinitions;
-    context->queueWriters = queueWriters;
-    context->queueReaders = queueReaders;
-
-    definitionCount = 0;
-    definition = blockDefinitions;
-    while (definition->blockIndex != 0xFF) {
-        definitionCount++;
-        definition++;
-    }
-
-    queueDefinitionCount = 0;
-    lastQueueIndex = 0xFF;
-    writer = queueWriters;
-    while (writer->queueIndex != 0xFF) {
-        if (writer->queueIndex != lastQueueIndex) {
-            lastQueueIndex = writer->queueIndex;
-            queueDefinitionCount++;
-        }
-        writer++;
-    }
-
-    context->firstBlockIndex = blockDefinitions[1].blockIndex;
-    context->firstQueueIndex = queueWriters[0].queueIndex;
-
-    context->blocks = heap_Alloc(
-        context->heap, definitionCount * sizeof(TosBaseBlock *));
-    if (context->blocks == NULL) {
-        return 1;
-    }
-
-    context->queues = heap_Alloc(
-        context->heap, queueDefinitionCount * sizeof(TosQueue *));
-    if (context->queues == NULL) {
-        return 1;
-    }
-
-    counts = heap_Calloc(
-        context->heap,
-        queueDefinitionCount + definitionCount * 2,
-        sizeof(u8));
-    if (counts == NULL) {
-        return 1;
-    }
-    outputCounts = counts;
-    inputCounts = outputCounts + definitionCount;
-    queueReaderCounts = inputCounts + definitionCount;
-
-    writer = queueWriters;
-    while (writer->queueIndex != 0xFF) {
-        outputCounts[writer->blockIndex]++;
-        writer++;
-    }
-
-    reader = queueReaders;
-    while (reader->queueIndex != 0xFF) {
-        queueNumber = reader->queueIndex - context->firstQueueIndex;
-        queueReaderCounts[queueNumber]++;
-        inputCounts[reader->blockIndex]++;
-        reader++;
-    }
-
-    maximumInputs = 0;
-    context->blockCount = 0;
-    definition = blockDefinitions;
-    while (definition->blockIndex != 0xFF) {
-        if (inputCounts[definition->blockIndex] > maximumInputs) {
-            maximumInputs = inputCounts[definition->blockIndex];
-        }
-
-        if (definition->constructor != NULL) {
-            block = NULL;
-            if (definition->construct != 0) {
-                block = definition->constructor(
-                    context, definition->blockIndex);
-            }
-            blockNumber = context->blockCount++;
-            context->blocks[blockNumber] = block;
-            if (context->blockCount != definition->blockIndex) {
-                heap_Free(context->heap, counts);
-                return 1;
-            }
-        } else if (definition->blockIndex == 0 &&
-                   context->initializeQueues(
-                       context, inputCounts[0],
-                       outputCounts[0]) != 0) {
-            heap_Free(context->heap, counts);
+        if (ConnectOutQtoBlockPos(This, BlPtrSource, QuePtr,
+                                  pNbrOutputs[Qd->SourceID]++) != 0) {
+            heap_Free(This->hHeap, pNbrOutputs);
             return 1;
         }
-        definition++;
+        Qd++;
     }
 
-    memset(outputCounts, 0, definitionCount);
-    context->queueCount = 0;
-    lastQueueIndex = 0xFF;
-    writer = queueWriters;
-    while (writer->queueIndex != 0xFF) {
-        if (writer->blockIndex != 0) {
-            blockNumber =
-                writer->blockIndex - context->firstBlockIndex;
-            block = context->blocks[blockNumber];
-        } else {
-            block = (TosBaseBlock *)context;
-        }
+    heap_Free(This->hHeap, pNbrOutputs);
 
-        if (writer->queueIndex != lastQueueIndex) {
-            queue = NULL;
-            if (writer->construct != 0) {
-                queueNumber =
-                    writer->queueIndex - context->firstQueueIndex;
-                queue = qQueueConstruct(
-                    context, writer->queueIndex,
-                    queueReaderCounts[queueNumber]);
-                if (queue == NULL) {
-                    heap_Free(context->heap, counts);
+    Qt = This->pQueueReaders;
+    while (Qt->BlockID != 0xFF) {
+        if (BlockID == Qt->BlockID) {
+            u8 QIdx = Index - This->QueueOffset;
+            BlPtrTarget = Qt->TargetID != 0
+                ? This->AllProcesses[Qt->TargetID - This->BlockOffset]
+                : (struct _BLOCK *)This;
+            NbrReaders--;
+            if (ConnectInQtoBlock(
+                    This, BlPtrTarget, This->AllQueues[QIdx],
+                    NbrReaders) != 0) {
+                return 1;
+            }
+        }
+        Qt++;
+    }
+
+    if (qQueueInit(QuePtr) == NULL) {
+        return 1;
+    }
+    return 0;
+}
+
+/* Clears output ports that reference the queue. */
+static u8 DisconnectOutQtoBlock(struct _TOS *This, struct _BLOCK *BlPtr, struct _QUEUE *QPtr)
+{
+    s8 k;
+    if (BlPtr != (struct _BLOCK *)This && BlPtr != NULL) {
+        for (k = 0; k < BlPtr->NrOutputs; k++) {
+            if (BlPtr->OutputQueues[k].pQ == QPtr) {
+                BlPtr->OutputQueues[k].pQ = NULL;
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+/* Clears input ports that reference the queue. */
+static u8 DisconnectInQtoBlock(struct _TOS *This, struct _BLOCK *BlPtr, struct _QUEUE *QPtr)
+{
+    s8 k;
+    if (BlPtr != NULL && BlPtr != (struct _BLOCK *)This) {
+        for (k = 0; k < BlPtr->NrInputs; k++) {
+            if (BlPtr->InputQueues[k].pQ == QPtr) {
+                BlPtr->InputQueues[k].pQ = NULL;
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+/* Disconnects a queue from block ports and frees it. */
+u8 DestructQueue(struct _QUEUE *QuePtr)
+{
+    struct _TOS *This = QuePtr->Object.pTos;
+    struct _BLOCK *BlPtrSource;
+    struct _BLOCK *BlPtrTarget;
+    u8 QIdx;
+    u8 BlockID = QuePtr->Object.BlockID;
+    const struct _QDESCRIP *Qd;
+    const struct _QTARGETDESCRIP *Qt;
+
+    qQueueReset(QuePtr);
+
+    if (BlockID != 0xFF) {
+        Qd = This->pInitialQueues;
+        while (Qd->BlockID != BlockID) {
+            Qd++;
+        }
+        while (Qd->BlockID == BlockID) {
+            BlPtrSource = Qd->SourceID != 0
+                ? This->AllProcesses[Qd->SourceID - This->BlockOffset]
+                : (struct _BLOCK *)This;
+            DisconnectOutQtoBlock(This, BlPtrSource, QuePtr);
+            Qd++;
+        }
+    }
+
+    Qt = This->pQueueReaders;
+    while (Qt->BlockID != 0xFF) {
+        if (BlockID == Qt->BlockID) {
+            QIdx = BlockID - This->QueueOffset;
+            BlPtrTarget = Qt->TargetID != 0
+                ? This->AllProcesses[Qt->TargetID - This->BlockOffset]
+                : (struct _BLOCK *)This;
+            DisconnectInQtoBlock(This, BlPtrTarget,
+                This->AllQueues[QIdx]);
+        }
+        Qt++;
+    }
+
+    BlockID = QuePtr->Object.BlockID;
+    if (BlockID != 0xFF) {
+        This->AllQueues[BlockID - This->QueueOffset] = NULL;
+    }
+    heap_Free(This->hHeap, QuePtr);
+    return 0;
+}
+
+/* Allocates the scheduler tables and connects the blocks and queues from the descriptors. */
+static u8 ConstructArchitecture(
+    struct _TOS *This,
+    const struct _PROCDESCRIP *InitialProcs,
+    const struct _QDESCRIP *InitialQueues,
+    const struct _QTARGETDESCRIP *QueueReaders)
+{
+    const struct _PROCDESCRIP *Pd;
+    const struct _QDESCRIP *Qd;
+    const struct _QTARGETDESCRIP *Qt;
+    u8 *pNbrOutputs;
+    u8 *pNbrInputs;
+    u8 *pNbrReaders;
+    u8 BlockID;
+    struct _QUEUE *QuePtr;
+    int MaxNrInputs;
+    u32 NrProces;
+    u32 NrQueues;
+    struct _BLOCK *BlkPtr;
+    struct _BLOCK *BlPtrSource;
+    u8 QIdx;
+    struct _BLOCK *BlPtrTarget;
+
+    MaxNrInputs = 0;
+    NrProces = 0;
+    NrQueues = 0;
+    This->pInitialBlocks = InitialProcs;
+    This->pInitialQueues = InitialQueues;
+    This->pQueueReaders = QueueReaders;
+
+    Pd = InitialProcs;
+    while (Pd->BlockID != 0xFF) {
+        NrProces++;
+        Pd++;
+    }
+
+    BlockID = 0xFF;
+    Qd = InitialQueues;
+    while (Qd->BlockID != 0xFF) {
+        if (BlockID != Qd->BlockID) {
+            BlockID = Qd->BlockID;
+            NrQueues++;
+        }
+        Qd++;
+    }
+
+    This->BlockOffset = InitialProcs[1].BlockID;
+    This->QueueOffset = InitialQueues[0].BlockID;
+
+    This->AllProcesses = heap_Alloc(This->hHeap, NrProces * sizeof(struct _BLOCK *));
+    if (This->AllProcesses == NULL) {
+        return 1;
+    }
+    This->AllQueues = heap_Alloc(This->hHeap, NrQueues * sizeof(struct _QUEUE *));
+    if (This->AllQueues == NULL) {
+        return 1;
+    }
+
+    pNbrOutputs = heap_Calloc(This->hHeap, NrQueues + NrProces * 2, sizeof(u8));
+    if (pNbrOutputs == NULL) {
+        return 1;
+    }
+    pNbrInputs = pNbrOutputs + NrProces;
+    pNbrReaders = pNbrInputs + NrProces;
+
+    Qd = InitialQueues;
+    while (Qd->BlockID != 0xFF) {
+        pNbrOutputs[Qd->SourceID]++;
+        Qd++;
+    }
+
+    Qt = QueueReaders;
+    while (Qt->BlockID != 0xFF) {
+        pNbrReaders[Qt->BlockID - This->QueueOffset]++;
+        pNbrInputs[Qt->TargetID]++;
+        Qt++;
+    }
+
+    This->NrProces = 0;
+    Pd = InitialProcs;
+    while (Pd->BlockID != 0xFF) {
+        if (pNbrInputs[Pd->BlockID] > MaxNrInputs) {
+            MaxNrInputs = pNbrInputs[Pd->BlockID];
+        }
+        if (Pd->Constructor != NULL) {
+            BlkPtr = NULL;
+            if (Pd->Enabled != 0) {
+                BlkPtr = Pd->Constructor(This, Pd->BlockID);
+            }
+            This->AllProcesses[This->NrProces++] = BlkPtr;
+            if (This->NrProces != Pd->BlockID) {
+                heap_Free(This->hHeap, pNbrOutputs);
+                return 1;
+            }
+        } else if (Pd->BlockID == 0) {
+            if (This->TosData.cbInitQueues(This, pNbrInputs[0], pNbrOutputs[0]) != 0) {
+                heap_Free(This->hHeap, pNbrOutputs);
+                return 1;
+            }
+        }
+        Pd++;
+    }
+
+    memset(pNbrOutputs, 0, NrProces);
+    This->NrQueues = 0;
+    BlockID = 0xFF;
+    Qd = InitialQueues;
+    while (Qd->BlockID != 0xFF) {
+        BlPtrSource = Qd->SourceID != 0 ?
+            This->AllProcesses[Qd->SourceID - This->BlockOffset] :
+            (struct _BLOCK *)This;
+        if (BlockID != Qd->BlockID) {
+            QuePtr = NULL;
+            if (Qd->Enabled != 0) {
+                QuePtr = qQueueConstruct(This, Qd->BlockID,
+                    pNbrReaders[Qd->BlockID - This->QueueOffset]);
+                if (QuePtr == NULL) {
+                    heap_Free(This->hHeap, pNbrOutputs);
                     return 1;
                 }
             }
-            queueNumber = context->queueCount++;
-            context->queues[queueNumber] = queue;
-            lastQueueIndex = writer->queueIndex;
+            This->AllQueues[This->NrQueues++] = QuePtr;
+            BlockID = Qd->BlockID;
         }
-
-        outputNumber = outputCounts[writer->blockIndex]++;
-        if (block == (TosBaseBlock *)context) {
-            if (context->registerOutputQueue(context, queue) != 0) {
-                heap_Free(context->heap, counts);
-                return 1;
-            }
-        } else if (block != NULL && queue != NULL) {
-            block->output[outputNumber].queue = queue;
-            if (queue->elementSize == 0) {
-                queue->elementSize =
-                    block->output[outputNumber].outputSize;
-            }
-        }
-        writer++;
-    }
-
-    reader = queueReaders;
-    while (reader->queueIndex != 0xFF) {
-        if (reader->blockIndex != 0) {
-            blockNumber =
-                reader->blockIndex - context->firstBlockIndex;
-            block = context->blocks[blockNumber];
-        } else {
-            block = (TosBaseBlock *)context;
-        }
-
-        queueNumber = reader->queueIndex - context->firstQueueIndex;
-        queueReaderCounts[queueNumber]--;
-        if (ConnectInQtoBlock(
-                context, block, context->queues[queueNumber],
-                queueReaderCounts[queueNumber]) != 0) {
-            heap_Free(context->heap, counts);
+        if (ConnectOutQtoBlockPos(This, BlPtrSource, QuePtr,
+                pNbrOutputs[Qd->SourceID]++) != 0) {
+            heap_Free(This->hHeap, pNbrOutputs);
             return 1;
         }
-        reader++;
+        Qd++;
     }
 
-    heap_Free(context->heap, counts);
-    context->processInputs = heap_Alloc(
-        context->heap, maximumInputs * sizeof(void *));
-    if (context->processInputs == NULL) {
+    Qt = QueueReaders;
+    while (Qt->BlockID != 0xFF) {
+        QIdx = Qt->BlockID - This->QueueOffset;
+        BlPtrTarget = Qt->TargetID != 0 ?
+            This->AllProcesses[Qt->TargetID - This->BlockOffset] :
+            (struct _BLOCK *)This;
+        if (ConnectInQtoBlock(This, BlPtrTarget, This->AllQueues[QIdx],
+                --pNbrReaders[QIdx]) != 0) {
+            heap_Free(This->hHeap, pNbrOutputs);
+            return 1;
+        }
+        Qt++;
+    }
+
+    heap_Free(This->hHeap, pNbrOutputs);
+    This->pInputsToBlocks = heap_Alloc(This->hHeap, MaxNrInputs * sizeof(void *));
+    if (This->pInputsToBlocks == NULL) {
         return 1;
     }
     return 0;
 }
 
-static u8 DestructArchitecture(TosContext *context)
+/* Destroys the blocks and queues and frees the scheduler tables. */
+static u8 DestructArchitecture(struct _TOS *This)
 {
-    TosBaseBlock *block;
-    TosQueue *queue;
-    u32 blockNumber;
-    u32 queueNumber;
+    struct _BLOCK *block;
+    struct _QUEUE *queue;
+    s32 blockNumber;
+    s32 queueNumber;
     u8 failed = 0;
+    u8 operationFailed;
 
-    for (blockNumber = 0; blockNumber < context->blockCount;
+    for (blockNumber = 0; blockNumber < This->NrProces;
          blockNumber++) {
-        block = context->blocks[blockNumber];
-        if (block != NULL && block->control != NULL &&
-            block->control(
-                block, TOS_CONTROL_DESTRUCT, NULL, 0) == 0) {
-            failed = 1;
+        block = This->AllProcesses[blockNumber];
+        if (block != NULL) {
+            if (block->Control != NULL) {
+                operationFailed = !(u8)block->Control(
+                    block, 0xFF, 0, 0);
+                failed |= operationFailed;
+            }
         }
     }
 
-    for (queueNumber = 0; queueNumber < context->queueCount;
+    for (queueNumber = 0; queueNumber < This->NrQueues;
          queueNumber++) {
-        queue = context->queues[queueNumber];
-        if (queue != NULL &&
-            qQueueControl(
-                queue, TOS_CONTROL_DESTRUCT, 0, NULL) == 0) {
-            failed = 1;
+        queue = This->AllQueues[queueNumber];
+        if (queue != NULL) {
+            operationFailed = !qQueueControl(
+                queue, 0xFF, 0, 0);
+            failed |= operationFailed;
         }
     }
 
-    heap_Free(context->heap, context->blocks);
-    heap_Free(context->heap, context->queues);
-    heap_Free(context->heap, context->processInputs);
+    heap_Free(This->hHeap, This->AllProcesses);
+    heap_Free(This->hHeap, This->AllQueues);
+    heap_Free(This->hHeap, This->pInputsToBlocks);
     return failed;
 }
 
-static u8 InitializeArchitecture(TosContext *context)
+/* Initializes the configured blocks and queues. */
+static u8 InitializeArchitecture(struct _TOS *This)
 {
-    TosBaseBlock *block;
-    TosQueue *queue;
-    u32 blockNumber;
-    u32 queueNumber;
+    struct _BLOCK *block;
+    struct _QUEUE *queue;
+    u8 initResult;
+    s32 blockNumber;
+    s32 queueNumber;
 
-    for (blockNumber = 0; blockNumber < context->blockCount;
+    for (blockNumber = 0; blockNumber < This->NrProces;
          blockNumber++) {
-        block = context->blocks[blockNumber];
-        if (block != NULL && block->init != NULL &&
-            block->init(block) != 0) {
-            return 1;
+        block = This->AllProcesses[blockNumber];
+        if (block != NULL && block->Init != NULL) {
+            initResult = block->Init(block);
+            if (initResult != 0) {
+                return 1;
+            }
         }
     }
 
-    if (SetAndControlQSizes(context) != 0) {
+    if (SetAndControlQSizes(This) != 0) {
         return 1;
     }
 
-    for (queueNumber = 0; queueNumber < context->queueCount;
+    for (queueNumber = 0; queueNumber < This->NrQueues;
          queueNumber++) {
-        queue = context->queues[queueNumber];
+        queue = This->AllQueues[queueNumber];
         if (queue != NULL && qQueueInit(queue) == NULL) {
             return 1;
         }
@@ -630,525 +590,538 @@ static u8 InitializeArchitecture(TosContext *context)
     return 0;
 }
 
-TosQueue *tosGetQueuePtr(TosContext *context, u32 queueIndex)
+/* Looks up a queue by its block ID. */
+struct _QUEUE *tosGetQueuePtr(struct _TOS *This, u8 BlockID)
 {
-    s32 queueNumber =
-        (u8)queueIndex - (s32)context->firstQueueIndex;
+    s32 queueNumber = BlockID - (s32)This->QueueOffset;
 
-    if (queueNumber < 0 || queueNumber >= context->queueCount) {
-        return NULL;
+    if (queueNumber >= 0 && queueNumber < This->NrQueues) {
+        return This->AllQueues[queueNumber];
     }
-    return context->queues[queueNumber];
+    return NULL;
 }
 
+/* Looks up a process block in the configured block ID range. */
+static inline struct _BLOCK *tosGetBlockPtr(struct _TOS *This, u8 BlockID)
+{
+    int Index = BlockID - (s32)This->BlockOffset;
+
+    if (Index >= 0 && Index < This->NrProces) {
+        return This->AllProcesses[Index];
+    }
+    return NULL;
+}
+
+/* Dispatches the requested control ID to its block or queue. */
 u8 tosCallControlFunc(
-    TosContext *context, const TosControlTarget *target,
-    u32 argument0, u32 argument1)
+    struct _TOS *This, const struct _CTRL *pControl,
+    u32 CParam, u32 DParam)
 {
-    TosBaseBlock *block;
-    TosQueue *queue;
+    struct _BLOCK *pBlock;
+    struct _QUEUE *pQ;
     s32 blockNumber;
-    s32 queueNumber;
-    u8 wasEnabled;
-    u8 result = 0;
+    u8 WasEnabled;
+    u8 RetVal = 0;
 
-    blockNumber =
-        target->ownerIndex - (s32)context->firstBlockIndex;
-    if (blockNumber >= 0 && blockNumber < context->blockCount) {
-        block = context->blocks[blockNumber];
+    blockNumber = pControl->BlockID - (s32)This->BlockOffset;
+    pBlock = tosGetBlockPtr(This, pControl->BlockID);
+    if (pBlock != NULL) {
+        WasEnabled = pBlock->Enabled;
+        if (WasEnabled != 0 ||
+            pControl->ControlID == 0xFF) {
+            RetVal |= pBlock->Control(
+                pBlock, pControl->ControlID, CParam,
+                DParam);
+        }
+        if (pControl->ControlID >= 0xF8) {
+            RetVal |= tosBaseBlockControl(
+                pBlock, pControl->ControlID, CParam,
+                DParam);
+        }
+        if (WasEnabled == 0 && RetVal == 0) {
+            RetVal = 1;
+        }
     } else {
-        block = NULL;
-    }
+        pQ = tosGetQueuePtr(This, pControl->BlockID);
 
-    if (block != NULL) {
-        wasEnabled = block->enabled;
-        if (wasEnabled != 0 ||
-            target->command == TOS_CONTROL_DESTRUCT) {
-            result = block->control(
-                block, target->command, (void *)argument0,
-                argument1);
+        if (pQ != NULL) {
+            RetVal = qQueueControl(
+                pQ, pControl->ControlID, CParam,
+                DParam);
+        } else {
+            if (pControl->ControlID == 0xF8) {
+                if (blockNumber >= 0 &&
+                    blockNumber < This->NrProces) {
+                    if (This->AllProcesses[blockNumber] == NULL) {
+                        ConstructBlock(
+                            This, pControl->BlockID, blockNumber);
+                    }
+                } else {
+                    if (!((pControl->BlockID - This->QueueOffset) >= 0 &&
+                          (pControl->BlockID - This->QueueOffset) < This->NrQueues &&
+                          This->AllQueues[(pControl->BlockID - This->QueueOffset)] != NULL)) {
+                        ConstructQueue(
+                            This, pControl->BlockID,
+                            (pControl->BlockID - This->QueueOffset));
+                    }
+                }
+            }
+            RetVal = 1;
         }
-        if (target->command >= TOS_CONTROL_CONSTRUCT) {
-            result |= tosBaseBlockControl(
-                block, target->command, (void *)argument0,
-                argument1);
-        }
-        if (wasEnabled == 0 && result == 0) {
-            result = 1;
-        }
-        return result;
     }
-
-    queueNumber =
-        target->ownerIndex - (s32)context->firstQueueIndex;
-    if (queueNumber >= 0 && queueNumber < context->queueCount) {
-        queue = context->queues[queueNumber];
-    } else {
-        queue = NULL;
-    }
-
-    if (queue != NULL) {
-        return qQueueControl(
-            queue, target->command, (u16)argument0,
-            (void *)argument1);
-    }
-
-    if (target->command == TOS_CONTROL_CONSTRUCT) {
-        if (blockNumber >= 0 && blockNumber < context->blockCount &&
-            context->blocks[blockNumber] == NULL) {
-            ConstructBlock(
-                context, target->ownerIndex, blockNumber);
-        } else if (!(queueNumber >= 0 &&
-                     queueNumber < context->queueCount &&
-                     context->queues[queueNumber] != NULL)) {
-            ConstructQueue(
-                context, target->ownerIndex, queueNumber);
-        }
-        return 1;
-    }
-    return 1;
+    return RetVal;
 }
 
+/* Constructs and initializes the scheduler from its architecture description. */
 u8 tosInit(
-    TosContext *context, void *heap,
-    const TosArchitectureCallbacks *callbacks,
-    const TosProfileTable *profiles,
-    const TosBlockDefinition *blockDefinitions,
-    const TosQueueWriterDefinition *queueWriters,
-    const TosQueueReaderDefinition *queueReaders,
-    const TosControlBlock *const *const *controlTable,
-    u16 controlBank, u16 initialState)
+    struct _TOS *pTos, void *hHeap,
+    const struct _TOSDATA *pTosData,
+    const struct _KEYVALS *IniArray,
+    const struct _PROCDESCRIP *InitialProcs,
+    const struct _QDESCRIP *InitialQueues,
+    const struct _QTARGETDESCRIP *QueueReaders,
+    const struct _INBLOCK *const *const *ControlTable,
+    u16 InitialMode, u16 InitialState)
 {
-    context->heap = heap;
-    fastallo_Init(&context->queueAllocator, heap, 0x1000);
-    context->profiles = profiles;
-    context->controlTable = controlTable;
-    context->lastError = 0;
-    context->stateChanged = callbacks->stateChanged;
-    context->initializeQueues = callbacks->initializeQueues;
-    context->registerInputQueue = callbacks->registerInputQueue;
-    context->registerOutputQueue = callbacks->registerOutputQueue;
-    context->errorLogged = callbacks->errorLogged;
-    context->warningLogged = callbacks->warningLogged;
-    context->controlBank = controlBank;
-    context->state = initialState;
+    pTos->hHeap = hHeap;
+    fastallo_Init(&pTos->FastAllocHeap, hHeap, 0x1000);
+    pTos->IniArray = IniArray;
+    pTos->ControlTable = ControlTable;
+    pTos->ErrorLog = 0;
+    pTos->TosData = *pTosData;
+    pTos->ActiveMode = InitialMode;
+    pTos->ActiveState = InitialState;
 
     if (ConstructArchitecture(
-            context, blockDefinitions, queueWriters,
-            queueReaders) == 0 &&
-        InitializeArchitecture(context) == 0) {
+            pTos, InitialProcs, InitialQueues,
+            QueueReaders) == 0 &&
+        InitializeArchitecture(pTos) == 0) {
         return 0;
     }
 
-    fastallo_Terminate(&context->queueAllocator);
+    fastallo_Terminate(&pTos->FastAllocHeap);
     return 1;
 }
 
-u8 tosDestruct(TosContext *context)
+/* Releases the scheduler architecture. */
+u8 tosDestruct(struct _TOS *pTos)
 {
-    if (DestructArchitecture(context) != 0) {
+    if (DestructArchitecture(pTos) != 0) {
         return 1;
     }
-    fastallo_Terminate(&context->queueAllocator);
+    fastallo_Terminate(&pTos->FastAllocHeap);
     return 0;
 }
 
-static void blockFreeUnusedElementsInputQueues(TosBaseBlock *block)
+/* Returns unused elements from the block input queues. */
+static void blockFreeUnusedElementsInputQueues(struct _BLOCK *pBlock)
 {
     u32 inputNumber;
+    u32 inputCount;
+    struct _INPUTQUEUE *input;
 
-    for (inputNumber = 0; inputNumber < block->inputCount;
-         inputNumber++) {
-        if (block->input[inputNumber].queue != NULL) {
-            qFreeUnusedElemements(block->input[inputNumber].queue);
+    inputNumber = 0;
+    inputCount = pBlock->NrInputs;
+    input = pBlock->InputQueues;
+    while (inputNumber < inputCount) {
+        if (input->pQ != NULL) {
+            qFreeUnusedElemements(input->pQ);
         }
+        input++;
+        inputNumber++;
     }
 }
 
-u8 tosRun(TosContext *context, const u8 *schedule)
+/* Dequeues one set of inputs and calls the block process function. */
+static void CallBlockProcessFunction(struct _BLOCK *pBlock)
 {
-    TosBaseBlock *block;
-    const u8 *entry;
-    u32 blockNumber;
+    void **pInputs;
+    int NbrInputs;
 
-    if (schedule == NULL) {
+    if (pBlock != NULL) {
+        pInputs = pBlock->Object.pTos->pInputsToBlocks;
+        NbrInputs = pBlock->NrInputs;
+        qCheckDeQueueOne(pBlock->InputQueues, NbrInputs, pInputs);
+        pBlock->Process(pBlock, pInputs, NbrInputs);
+        blockFreeUnusedElementsInputQueues(pBlock);
+    }
+}
+
+/* Runs ready blocks and drains unused input queue elements. */
+u8 tosRun(struct _TOS *pTos, const u8 *pBlockIDs)
+{
+    if (pBlockIDs == NULL) {
+        unsigned int NrProces;
+        u8 p;
+        struct _BLOCK **ppBlock;
+
+        NrProces = pTos->NrProces;
         do {
-            context->enqueuesThisPass = 0;
-            for (blockNumber = 0;
-                 blockNumber < context->blockCount; blockNumber++) {
-                block = context->blocks[blockNumber];
-                if (block == NULL) {
-                    continue;
-                }
-                qCheckDeQueueOne(
-                    block->input, block->inputCount,
-                    context->processInputs);
-                block->process(
-                    block, context->processInputs,
-                    block->inputCount);
-                blockFreeUnusedElementsInputQueues(block);
+            ppBlock = pTos->AllProcesses;
+            pTos->NbrOfEnqueues = 0;
+            for (p = 0; p < NrProces; p++) {
+                CallBlockProcessFunction(*ppBlock++);
             }
-        } while (context->enqueuesThisPass != 0);
+        } while (pTos->NbrOfEnqueues != 0);
     } else {
+        const u8 *pIDs;
+        struct _BLOCK **ppBlock;
+
         do {
-            context->enqueuesThisPass = 0;
-            entry = schedule;
-            while (*entry != 0) {
-                blockNumber = *entry - context->firstBlockIndex;
-                entry++;
-                block = context->blocks[blockNumber];
-                if (block == NULL) {
-                    break;
-                }
-                qCheckDeQueueOne(
-                    block->input, block->inputCount,
-                    context->processInputs);
-                block->process(
-                    block, context->processInputs,
-                    block->inputCount);
-                blockFreeUnusedElementsInputQueues(block);
+            pIDs = pBlockIDs;
+            ppBlock = pTos->AllProcesses - pTos->BlockOffset;
+            pTos->NbrOfEnqueues = 0;
+            while (*pIDs != 0) {
+                CallBlockProcessFunction(ppBlock[*pIDs++]);
             }
-        } while (context->enqueuesThisPass != 0);
+        } while (pTos->NbrOfEnqueues != 0);
     }
     return 0;
 }
 
+/* Finds the current state command, changes state and invokes its targets and callback. */
 u8 _tosControl(
-    void *ownerPointer, u32 command, u32 argument0, u32 argument1)
+    struct _OBJECT *pObject, u32 ControlID, u32 CParam1, u32 CParam2)
 {
-    TosProfileOwner *owner = ownerPointer;
-    TosContext *context = owner->context;
-    const TosControlBlock *blockControls;
-    const TosControlCommand *control;
-    const TosControlCommand *const *controls;
-    const TosControlTarget *target;
-    u8 failed = 0;
+    struct _TOS *pTos = pObject->pTos;
+    u8 BlockID = pObject->BlockID;
+    const struct _INBLOCK *pInBlock;
+    const struct _CNTRL0 *pInControl;
+    const struct _CNTRL0 *const *ppInControl;
+    const struct _CTRL *OutputControl;
+    u8 RetVal = 0;
 
-    blockControls =
-        context->controlTable[context->controlBank][context->state];
-    while (blockControls->commands != NULL &&
-           blockControls->blockIndex != owner->ownerIndex) {
-        blockControls++;
+    pInBlock =
+        pTos->ControlTable[pTos->ActiveMode][pTos->ActiveState];
+    while (pInBlock->ppInControl != NULL) {
+        if (pInBlock->BlockID == BlockID) {
+            break;
+        }
+        pInBlock++;
     }
-    if (blockControls->commands == NULL) {
-        return _tosErrorLog(owner, 5);
-    }
-
-    controls = blockControls->commands;
-    while (*controls != NULL && (*controls)->command != (u8)command) {
-        controls++;
-    }
-    control = *controls;
-    if (control == NULL) {
-        return _tosErrorLog(owner, 5);
+    ppInControl = pInBlock->ppInControl;
+    if (ppInControl == NULL) {
+        return _tosErrorLog(pObject, 5);
     }
 
-    if (control->nextState != 0xFFFF &&
-        control->nextState != context->state) {
-        if (control->nextState == 0xFFFE) {
-            context->state++;
+    while (*ppInControl != NULL) {
+        if ((*ppInControl)->ControlID == (u8)ControlID) {
+            break;
+        }
+        ppInControl++;
+    }
+    pInControl = *ppInControl;
+    if (pInControl == NULL) {
+        return _tosErrorLog(pObject, 5);
+    }
+
+    if (pInControl->NextState != 0xFFFF &&
+        pInControl->NextState != pTos->ActiveState) {
+        if (pInControl->NextState == 0xFFFE) {
+            pTos->ActiveState++;
         } else {
-            context->state = control->nextState;
+            pTos->ActiveState = pInControl->NextState;
         }
-        failed = context->stateChanged(context, context->state);
-        if (failed != 0) {
-            return failed;
+        RetVal = pTos->TosData.cbState(pTos, pTos->ActiveState);
+        if (RetVal != 0) {
+            return RetVal;
         }
     }
 
-    target = (const TosControlTarget *)(control + 1);
-    if (control->runBetweenTargets == 0) {
-        while (target->command != 0) {
-            if (tosCallControlFunc(
-                    context, target, argument0, argument1) == 0) {
-                failed = 1;
-            }
-            target++;
+    /* The destination table ends at the record whose ControlID is 0. */
+    OutputControl = pInControl->OutputControl;
+    if (pInControl->SyncBlock == 0) {
+        while (OutputControl->ControlID != 0) {
+            RetVal |= (u8)!tosCallControlFunc(
+                pTos, OutputControl, CParam1, CParam2);
+            OutputControl++;
         }
     } else {
-        while (target->command != 0) {
-            if (tosCallControlFunc(
-                    context, target, argument0, argument1) == 0) {
-                failed = 1;
-            }
-            target++;
-            tosRun(context, NULL);
+        while (OutputControl->ControlID != 0) {
+            RetVal |= (u8)!tosCallControlFunc(
+                pTos, OutputControl, CParam1, CParam2);
+            OutputControl++;
+            tosRun(pTos, NULL);
         }
     }
 
-    if (control->callback != NULL) {
-        failed |= control->callback(
-            context, owner->ownerIndex, (u8)command,
-            (void *)argument0, argument1);
+    if (pInControl->CallBackFunc != NULL) {
+        RetVal |= pInControl->CallBackFunc(
+            pTos, BlockID, ControlID,
+            (void *)CParam1, CParam2);
     }
-    return failed;
+    return RetVal;
 }
 
-u32 _tosErrorLog(void *ownerPointer, u32 error)
+/* Records the first error and notifies the configured error callback. */
+u8 _tosErrorLog(struct _OBJECT *pObject, u16 ErrorCode)
 {
-    TosProfileOwner *owner = ownerPointer;
-    TosContext *context = owner->context;
+    struct _TOS *pTos = pObject->pTos;
+    u8 BlockID = pObject->BlockID;
 
-    if (context->lastError == 0) {
-        context->lastError =
-            ((u32)owner->ownerIndex << 16) | (u16)error;
+    if (pTos->ErrorLog == 0) {
+        pTos->ErrorLog =
+            ((u32)BlockID << 16) | ErrorCode;
     }
-    if (context->errorLogged != NULL) {
-        context->errorLogged(context, context->lastError);
+    if (pTos->TosData.cbError != NULL) {
+        pTos->TosData.cbError(pTos, pTos->ErrorLog);
     }
-    return (u8)error;
+    return (u8)ErrorCode;
 }
 
-u32 _tosWarningLog(void *ownerPointer, u32 warning)
+/* Records the first warning and notifies the configured warning callback. */
+u8 _tosWarningLog(struct _OBJECT *pObject, u16 WarningCode)
 {
-    TosProfileOwner *owner = ownerPointer;
-    TosContext *context = owner->context;
+    struct _TOS *pTos = pObject->pTos;
+    u8 BlockID = pObject->BlockID;
 
-    if (context->lastWarning == 0) {
-        context->lastWarning =
-            ((u32)owner->ownerIndex << 16) | (u16)warning;
+    if (pTos->WarningLog == 0) {
+        pTos->WarningLog =
+            ((u32)BlockID << 16) | WarningCode;
     }
-    if (context->warningLogged != NULL) {
-        context->warningLogged(context, context->lastWarning);
+    if (pTos->TosData.cbWarning != NULL) {
+        pTos->TosData.cbWarning(pTos, pTos->WarningLog);
     }
-    return (u8)warning;
+    return (u8)WarningCode;
 }
 
+/* Looks up a floating-point setting, falling back to an integer setting or the default. */
 f32 _tosGetProfileFloat(
-    void *ownerPointer, u32 key, f32 defaultValue)
+    struct _OBJECT *pObject, u16 KeyID, f32 RetVal)
 {
-    TosProfileOwner *owner = ownerPointer;
-    const TosProfileTable *profile =
-        &owner->context->profiles[owner->ownerIndex];
-    const TosFloatProfileEntry *floatEntry;
-    const TosU32ProfileEntry *u32Entry;
+    struct _TOS *pTos = pObject->pTos;
+    u8 BlockID = pObject->BlockID;
+    const struct _KEYVAL_FLT *pKeyValFLT;
+    const struct _KEYVAL_U32 *pKeyValU32;
+    f32 DefVal = RetVal;
+    int Found = 0;
 
-    floatEntry = profile->floatValues;
-    if (floatEntry != NULL) {
-        while (floatEntry->key != (u16)key &&
-               floatEntry->key != 0) {
-            floatEntry++;
+    pKeyValFLT =
+        pTos->IniArray[BlockID].pKeyValFLT;
+    pKeyValU32 =
+        pTos->IniArray[BlockID].pKeyValU32;
+    if (pKeyValFLT != NULL) {
+        while (pKeyValFLT->KeyID != KeyID &&
+               pKeyValFLT->KeyID != 0) {
+            pKeyValFLT++;
         }
-        if (floatEntry->key != 0) {
-            return floatEntry->value;
+        if (pKeyValFLT->KeyID != 0) {
+            DefVal = pKeyValFLT->Val;
+            Found = 1;
         }
     }
 
-    u32Entry = profile->u32Values;
-    if (u32Entry != NULL) {
-        while (u32Entry->key != (u16)key && u32Entry->key != 0) {
-            u32Entry++;
+    if (Found == 0 && pKeyValU32 != NULL) {
+        while (pKeyValU32->KeyID != KeyID && pKeyValU32->KeyID != 0) {
+            pKeyValU32++;
         }
-        if (u32Entry->key != 0) {
-            return (f32)u32Entry->value;
+        if (pKeyValU32->KeyID != 0) {
+            DefVal = (f32)pKeyValU32->Val;
         }
     }
-    return defaultValue;
+    return DefVal;
 }
 
+/* Looks up an integer setting, falling back to a floating-point setting or the default. */
 u32 _tosGetProfileU32(
-    void *ownerPointer, u32 key, u32 defaultValue)
+    struct _OBJECT *pObject, u16 KeyID, u32 RetVal)
 {
-    TosProfileOwner *owner = ownerPointer;
-    const TosProfileTable *profile =
-        &owner->context->profiles[owner->ownerIndex];
-    const TosFloatProfileEntry *floatEntry;
-    const TosU32ProfileEntry *u32Entry;
+    const struct _KEYVAL_FLT *pKeyValFLT;
+    const struct _KEYVAL_U32 *pKeyValU32;
+    u32 DefVal = RetVal;
+    int Found = 0;
 
-    u32Entry = profile->u32Values;
-    if (u32Entry != NULL) {
-        while (u32Entry->key != (u16)key && u32Entry->key != 0) {
-            u32Entry++;
+    pKeyValFLT =
+        pObject->pTos->IniArray[pObject->BlockID].pKeyValFLT;
+    pKeyValU32 =
+        pObject->pTos->IniArray[pObject->BlockID].pKeyValU32;
+    if (pKeyValU32 != NULL) {
+        while (pKeyValU32->KeyID != KeyID && pKeyValU32->KeyID != 0) {
+            pKeyValU32++;
         }
-        if (u32Entry->key != 0) {
-            return u32Entry->value;
+        if (pKeyValU32->KeyID != 0) {
+            DefVal = pKeyValU32->Val;
+            Found = 1;
         }
     }
 
-    floatEntry = profile->floatValues;
-    if (floatEntry != NULL) {
-        while (floatEntry->key != (u16)key &&
-               floatEntry->key != 0) {
-            floatEntry++;
+    if (Found == 0 && pKeyValFLT != NULL) {
+        while (pKeyValFLT->KeyID != KeyID &&
+               pKeyValFLT->KeyID != 0) {
+            pKeyValFLT++;
         }
-        if (floatEntry->key != 0) {
-            return (u32)floatEntry->value;
+        if (pKeyValFLT->KeyID != 0) {
+            DefVal = (u32)pKeyValFLT->Val;
         }
     }
-    return defaultValue;
+    return DefVal;
 }
 
-TosBaseBlock *tosBaseBlockConstruct(
-    TosContext *context, u8 blockIndex, u8 inputCount,
-    u8 outputCount, TosProcessFunction process,
-    TosInitFunction init, TosControlFunction control, u32 size)
+/* Allocates a block and its port descriptors and initializes its callbacks. */
+struct _BLOCK *tosBaseBlockConstruct(
+    struct _TOS *pTos, u8 BlockID, u8 NbrInputs,
+    u8 NbrOutputs, void (*Proces)(struct _BLOCK *, void *, int),
+    u8 (*Init)(struct _BLOCK *), u8 (*Control)(struct _BLOCK *, u8, u32, u32), u32 BlockSize)
 {
-    TosProfileOwner failedOwner;
-    TosBaseBlock *block;
-    u32 alignedSize = size;
+    struct _OBJECT Object;
+    struct _BLOCK *pBaseBlock;
+    u8 *allocation;
+    struct _INPUTQUEUE *input;
 
-    if ((alignedSize & 3) != 0) {
-        alignedSize += 4 - (alignedSize & 3);
+    Object.pTos = pTos;
+    Object.BlockID = BlockID;
+
+    if ((BlockSize & 3) != 0) {
+        BlockSize += 4 - (BlockSize & 3);
     }
 
-    block = heap_Calloc(
-        context->heap, 1,
-        alignedSize +
-            inputCount * sizeof(TosQueuePort) +
-            outputCount * sizeof(TosQueuePort));
-    if (block == NULL) {
-        failedOwner.context = context;
-        failedOwner.ownerIndex = blockIndex;
-        _tosErrorLog(&failedOwner, 2);
+    allocation = heap_Calloc(
+        pTos->hHeap, 1,
+        BlockSize +
+            NbrInputs * sizeof(struct _INPUTQUEUE) +
+            NbrOutputs * sizeof(struct _OUTPUTQUEUE));
+    if (allocation == NULL) {
+        _tosErrorLog(&Object, 2);
         return NULL;
     }
 
-    block->input = (TosQueuePort *)((u8 *)block + alignedSize);
-    block->output = block->input + inputCount;
-    block->context = context;
-    block->blockIndex = blockIndex;
-    block->inputCount = inputCount;
-    block->outputCount = outputCount;
-    block->init = init;
-    block->control = control;
-    block->process = process;
-    block->enabled = 1;
-    return block;
+    pBaseBlock = (struct _BLOCK *)allocation;
+
+    /* The input queues follow the full, aligned size of the concrete block. */
+    input = (struct _INPUTQUEUE *)(allocation + BlockSize);
+    pBaseBlock->InputQueues = input;
+    pBaseBlock->OutputQueues = (struct _OUTPUTQUEUE *)(input + NbrInputs);
+    pBaseBlock->Object.pTos = pTos;
+    pBaseBlock->Object.BlockID = BlockID;
+    pBaseBlock->NrInputs = NbrInputs;
+    pBaseBlock->NrOutputs = NbrOutputs;
+    pBaseBlock->Init = Init;
+    pBaseBlock->Control = Control;
+    pBaseBlock->Process = Proces;
+    pBaseBlock->Enabled = 1;
+    return pBaseBlock;
 }
 
-void tosBaseBlockDestruct(void *blockPointer)
+/* Disables the block readers and releases the block. */
+void tosBaseBlockDestruct(struct _BLOCK *pBaseBlock)
 {
-    TosBaseBlock *block = blockPointer;
-    TosContext *context = block->context;
-    u32 inputNumber;
-    u32 blockNumber;
+    struct _TOS *This = pBaseBlock->Object.pTos;
+    s32 NrInQueues = pBaseBlock->NrInputs;
+    s32 i;
 
-    for (inputNumber = 0; inputNumber < block->inputCount;
-         inputNumber++) {
-        if (block->input[inputNumber].queue != NULL) {
-            qQueueControl(
-                block->input[inputNumber].queue, 8,
-                block->input[inputNumber].outputSize, NULL);
+    i = 0;
+    while (i < NrInQueues) {
+        if (pBaseBlock->InputQueues[i].pQ != NULL) {
+            qQueueControl(pBaseBlock->InputQueues[i].pQ, 0x8,
+                          pBaseBlock->InputQueues[i].ReadPos, 0);
         }
+        i++;
     }
 
-    blockNumber = block->blockIndex - context->firstBlockIndex;
-    context->blocks[blockNumber] = NULL;
-    heap_Free(context->heap, block);
+    This->AllProcesses[
+        pBaseBlock->Object.BlockID -
+        This->BlockOffset] = NULL;
+    heap_Free(
+        pBaseBlock->Object.pTos->hHeap, pBaseBlock);
 }
 
-u8 tosBaseBlockDisableInputQueues(TosBaseBlock *block)
+/* Disables each connected input reader and accumulates failures. */
+u8 tosBaseBlockDisableInputQueues(struct _BLOCK *pBaseBlock)
 {
     u32 inputNumber;
+    struct _QUEUE *queue;
     u8 failed = 0;
 
-    for (inputNumber = 0; inputNumber < block->inputCount;
+    for (inputNumber = 0; inputNumber < pBaseBlock->NrInputs;
          inputNumber++) {
-        if (block->input[inputNumber].queue != NULL &&
-            qQueueControl(
-                block->input[inputNumber].queue, 8,
-                block->input[inputNumber].outputSize, NULL) == 0) {
-            failed = 1;
+        queue = pBaseBlock->InputQueues[inputNumber].pQ;
+        if (queue != NULL) {
+            failed |= (u8)!qQueueControl(
+                queue, 0x8, pBaseBlock->InputQueues[inputNumber].ReadPos, 0);
         }
     }
     return failed;
 }
 
+/* Starts connected input readers with the requested jump-back count. */
 u8 tosBaseBlockStartInputQueues(
-    TosBaseBlock *block, u32 jumpBackCount)
-{
-    u32 inputNumber;
-    u32 queueCommand;
-    u8 failed = 0;
-
-    if (jumpBackCount != 0) {
-        queueCommand = 7;
-    } else {
-        queueCommand = 5;
-    }
-
-    for (inputNumber = 0; inputNumber < block->inputCount;
-         inputNumber++) {
-        if (block->input[inputNumber].queue != NULL &&
-            qQueueControl(
-                block->input[inputNumber].queue, queueCommand,
-                block->input[inputNumber].outputSize,
-                (void *)jumpBackCount) == 0) {
-            failed = 1;
-        }
-    }
-    return failed;
-}
-
-static void DisabledProcess(
-    TosBaseBlock *block, void **inputs, s32 inputCount)
-{
-}
-
-u8 tosBaseBlockControl(
-    TosBaseBlock *block, u32 command, void *argument,
-    u32 argumentSize)
+    struct _BLOCK *pBaseBlock, u32 JumpBack)
 {
     u32 inputNumber;
     u32 queueCommand;
     u8 failed;
 
-    switch ((u8)command) {
-    case TOS_CONTROL_CONSTRUCT:
-        return 1;
-    case TOS_CONTROL_START:
-        if (block->enabled == 0) {
-            return 0;
+    queueCommand = JumpBack != 0 ? (u8)0x7 : (u8)0x5;
+    failed = 0;
+
+    for (inputNumber = 0; inputNumber < pBaseBlock->NrInputs;
+         inputNumber++) {
+        struct _QUEUE *queue = pBaseBlock->InputQueues[inputNumber].pQ;
+        if (queue != NULL) {
+            failed |= (u8)!qQueueControl(
+                queue, queueCommand,
+                pBaseBlock->InputQueues[inputNumber].ReadPos,
+                JumpBack);
         }
-        return tosBaseBlockStartInputQueues(block, (u32)argument) == 0;
-    case TOS_CONTROL_STOP:
-        if (block->enabled == 0) {
-            return 0;
-        }
-        failed = 0;
-        for (inputNumber = 0; inputNumber < block->inputCount;
-             inputNumber++) {
-            if (qQueueControl(
-                    block->input[inputNumber].queue, 6,
-                    block->input[inputNumber].outputSize, NULL) == 0) {
-                failed = 1;
-            }
-        }
-        return failed == 0;
-    case TOS_CONTROL_ENABLE:
-        block->enabled = 1;
-        if (block->process == DisabledProcess) {
-            block->process = block->savedProcess;
-        }
-        if (block->enabled == 0) {
-            return 0;
-        }
-        if (argument != NULL) {
-            queueCommand = 7;
-        } else {
-            queueCommand = 5;
-        }
-        failed = 0;
-        for (inputNumber = 0; inputNumber < block->inputCount;
-             inputNumber++) {
-            if (block->input[inputNumber].queue != NULL &&
-                qQueueControl(
-                    block->input[inputNumber].queue, queueCommand,
-                    block->input[inputNumber].outputSize,
-                    argument) == 0) {
-                failed = 1;
-            }
-        }
-        return failed == 0;
-    case TOS_CONTROL_DISABLE:
-        if (block->enabled == 0) {
-            return 0;
-        }
-        block->enabled = 0;
-        block->savedProcess = block->process;
-        block->process = DisabledProcess;
-        return tosBaseBlockDisableInputQueues(block) == 0;
-    default:
-        return 0;
     }
+    return failed;
+}
+
+/* Leaves a disabled block idle when the scheduler calls its process slot. */
+static void DisabledProcess(void)
+{
+}
+
+/* Stops the readers connected to the input ports. */
+static u8 tosBaseBlockStopInputQueues(struct _BLOCK *pBaseBlock)
+{
+    unsigned long i;
+    unsigned char RetVal = 0;
+    for (i = 0; i < pBaseBlock->NrInputs; i++) {
+        RetVal |= (u8)!qQueueControl(pBaseBlock->InputQueues[i].pQ, 0x6,
+            pBaseBlock->InputQueues[i].ReadPos, 0);
+    }
+    return RetVal;
+}
+
+/* Applies a scheduler control command to the block and its input readers. */
+u8 tosBaseBlockControl(
+    struct _BLOCK *pBaseBlock, u8 ControlId, u32 CParam,
+    u32 DParam)
+{
+    u8 RetVal = 1;
+
+    switch (ControlId) {
+    case 0xFC:
+        if (pBaseBlock->Enabled != 0) {
+            pBaseBlock->Enabled = 0;
+            pBaseBlock->SavedProcess = pBaseBlock->Process;
+            pBaseBlock->Process = (void (*)(struct _BLOCK *, void *, int))DisabledProcess;
+            return !tosBaseBlockDisableInputQueues(pBaseBlock);
+        }
+        return 0;
+    case 0xFA:
+        if (pBaseBlock->Enabled != 0) {
+            return !tosBaseBlockStopInputQueues(pBaseBlock);
+        }
+        return 0;
+    case 0xFB:
+        pBaseBlock->Enabled = 1;
+        CParam = 0;
+        if (pBaseBlock->Process == (void (*)(struct _BLOCK *, void *, int))DisabledProcess) {
+            pBaseBlock->Process = pBaseBlock->SavedProcess;
+        }
+        /* fall through */
+    case 0xF9:
+        if (pBaseBlock->Enabled != 0) {
+            return !tosBaseBlockStartInputQueues(pBaseBlock, CParam);
+        }
+        return 0;
+    case 0xF8:
+        break;
+    default:
+        RetVal = 0;
+        break;
+    }
+    return RetVal;
 }

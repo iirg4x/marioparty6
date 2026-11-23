@@ -1,180 +1,172 @@
 // Converts incoming audio frames into an amplitude or power spectrum.
+#include "gssdk/blocks.h"
+#include "gssdk/mathusage.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include "dolphin/math.h"
+#include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/cmath>
 #include <string.h>
 
 #include "gssdk/fft.h"
 #include "gssdk/mqueue.h"
 #include "gssdk/tos.h"
 
-typedef struct FFTMod {
-    TosBaseBlock base; // TinyOS block state and audio queue ports.
-    u32 inputLength; // Number of input audio samples in each frame.
-    u32 fftLength; // Number of samples transformed by the FFT.
-    u32 firstPowerBin; // First spectrum bin included in the power total.
-    u32 lastPowerBin; // Last spectrum bin included in the power total.
-    f32 powerFloor; // Initial value added to the selected-bin power total.
-    u8 padInput; // Nonzero when short frames are zero-padded to the FFT length.
-    u32 paddingBytes; // Number of trailing zero bytes added to each frame.
-    f32 *buffer; // Scratch frame used when input samples need zero-padding.
-    s16 powerLevel; // Smoothed power level in hundredths of a decibel.
-    u8 powerSpectrum; // Nonzero to output band power and a scalar power level.
+/* FFT configuration, frame sizes and power-spectrum output state. */
+typedef struct {
+    struct _BLOCK BaseBlock; // TinyOS block state and audio queue ports.
+    u32 WindowLength; // Number of input audio samples in each frame.
+    u32 fftN; // Number of samples transformed by the FFT.
+    u32 Nlow; // First spectrum bin included in the power total.
+    u32 Nhigh; // Last spectrum bin included in the power total.
+    f32 EnergyFloor; // Initial value added to the selected-bin power total.
+    u8 ZeroPadding; // Nonzero when short frames are zero-padded to the FFT length.
+    u32 NbrZeroPadBytes; // Number of trailing zero bytes added to each frame.
+    f32 *pFFTIn; // Scratch frame used when input samples need zero-padding.
+    s16 SignalLevel; // Smoothed power level in hundredths of a decibel.
+    u8 LogECalc; // Nonzero to output band power and a scalar power level.
 } FFTMod;
 
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern f32 logf_check(f32 value);
-extern f32 floorf(f32 value);
-
 // Called by ProcessFFTMod for each power-mode frame. Fills the spectrum and totals selected bins.
-static f32 CalcPowerSpec(FFTMod *block, f32 *input, f32 *output)
+static f32 CalcPowerSpec(FFTMod *This, f32 *pInput, f32 *pOutput)
 {
-    f32 *firstSpectrumValue;
-    f32 power = block->powerFloor;
-    f32 *realValues = input;
-    f32 *imaginaryValues = input + block->fftLength - 1;
-    f32 *firstPowerValue = output + block->firstPowerBin;
-    f32 *lastPowerValue = output + block->lastPowerBin;
-    f32 *lastInteriorValue = output + block->fftLength / 2;
+    f32 Energy = This->EnergyFloor;
+    f32 *pReal = pInput;
+    f32 *pImag = pInput + This->fftN - 1;
+    f32 *pLower = pOutput + This->Nlow;
+    f32 *pUpper = pOutput + This->Nhigh;
+    f32 *pEnd = pOutput + This->fftN / 2;
 
-    firstSpectrumValue = output;
-    *output = *realValues * *realValues;
-    realValues++;
-    output++;
-    if (firstSpectrumValue == firstPowerValue) {
-        power += *firstPowerValue++;
+    *pOutput = *pReal * *pReal;
+    pReal++;
+    if (pOutput++ == pLower) {
+        Energy += *pLower++;
     }
 
-    while (output < firstPowerValue) {
-        *output++ = *realValues * *realValues + *imaginaryValues * *imaginaryValues;
-        realValues++;
-        imaginaryValues--;
+    while (pOutput < pLower) {
+        *pOutput++ = *pReal * *pReal + *pImag * *pImag;
+        pReal++;
+        pImag--;
     }
-    while (output <= lastPowerValue) {
-        *output = *realValues * *realValues + *imaginaryValues * *imaginaryValues;
-        power += *output++;
-        realValues++;
-        imaginaryValues--;
+    while (pOutput <= pUpper) {
+        *pOutput = *pReal * *pReal + *pImag * *pImag;
+        Energy += *pOutput++;
+        pReal++;
+        pImag--;
     }
-    while (output < lastInteriorValue) {
-        *output++ = *realValues * *realValues + *imaginaryValues * *imaginaryValues;
-        realValues++;
-        imaginaryValues--;
+    while (pOutput < pEnd) {
+        *pOutput++ = *pReal * *pReal + *pImag * *pImag;
+        pReal++;
+        pImag--;
     }
-    *output = *realValues * *realValues;
-    return power;
+    *pOutput = *pReal * *pReal;
+    return Energy;
 }
 
 // Called by ProcessFFTMod for each amplitude-mode frame. Converts FFT bins to magnitudes.
-static void CalcAmplitudeSpec(FFTMod *block, f32 *input, f32 *output)
+static void CalcAmplitudeSpec(FFTMod *This, f32 *pInput, f32 *pOutput)
 {
-    f32 *realValues = input;
-    f32 *imaginaryValues = input + block->fftLength - 1;
-    f32 *firstPowerValue = output + block->firstPowerBin;
-    f32 *lastPowerValue = output + block->lastPowerBin;
-    f32 *lastInteriorValue = output + block->fftLength / 2;
+    f32 *pReal = pInput;
+    f32 *pImag = pInput + This->fftN - 1;
+    f32 *pLower = pOutput + This->Nlow;
+    f32 *pUpper = pOutput + This->Nhigh;
+    f32 *pEnd = pOutput + This->fftN / 2;
 
-    *output = sqrtf(*realValues * *realValues);
-    realValues++;
-    if (output++ == firstPowerValue) {
-        firstPowerValue++;
+    *pOutput = sqrtf(*pReal * *pReal);
+    pReal++;
+    if (pOutput++ == pLower) {
+        pLower++;
     }
 
-    while (output < firstPowerValue) {
-        *output++ = sqrtf(*realValues * *realValues + *imaginaryValues * *imaginaryValues);
-        realValues++;
-        imaginaryValues--;
+    while (pOutput < pLower) {
+        *pOutput++ = sqrtf(*pReal * *pReal + *pImag * *pImag);
+        pReal++;
+        pImag--;
     }
-    while (output <= lastPowerValue) {
-        *output++ = sqrtf(*realValues * *realValues + *imaginaryValues * *imaginaryValues);
-        realValues++;
-        imaginaryValues--;
+    while (pOutput <= pUpper) {
+        *pOutput++ = sqrtf(*pReal * *pReal + *pImag * *pImag);
+        pReal++;
+        pImag--;
     }
-    while (output < lastInteriorValue) {
-        *output++ = sqrtf(*realValues * *realValues + *imaginaryValues * *imaginaryValues);
-        realValues++;
-        imaginaryValues--;
+    while (pOutput < pEnd) {
+        *pOutput++ = sqrtf(*pReal * *pReal + *pImag * *pImag);
+        pReal++;
+        pImag--;
     }
-    *output = sqrtf(*realValues * *realValues);
+    *pOutput = sqrtf(*pReal * *pReal);
 }
 
-// Called by the audio graph per frame. Skips NULL input; otherwise transforms it and queues its
-// spectrum output.
-static void ProcessFFTMod(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+// Transforms each available input frame and queues its spectrum.
+static void ProcessFFTMod(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    FFTMod *block = (FFTMod *)baseBlock;
-    f32 *input;
-    f32 *spectrum;
+    FFTMod *This = (FFTMod *)_This;
+    f32 *pSamplesIn;
+    f32 *pPowSpecOut;
 
-    if (block->padInput != 0) {
-        if (inputs[0] != NULL) {
-            memcpy(block->buffer, inputs[0], block->base.input->inputSize);
-            input = block->buffer;
-            // The FFT uses a fixed frame length, so fill the remaining samples with silence.
-            memset(
-                input + block->inputLength, 0, block->paddingBytes);
+    if (This->ZeroPadding != 0) {
+        if (((void **)pInputs)[0] != NULL) {
+            memcpy(This->pFFTIn, ((void **)pInputs)[0], This->BaseBlock.InputQueues->Size);
+            pSamplesIn = This->pFFTIn;
+            // Samples beyond the pSamplesIn frame are zero in the fixed-length FFT.
+            memset(pSamplesIn + This->WindowLength, 0, This->NbrZeroPadBytes);
         } else {
-            input = NULL;
+            pSamplesIn = NULL;
         }
     } else {
-        input = inputs[0];
+        pSamplesIn = ((void **)pInputs)[0];
     }
 
-    if (input != NULL) {
-        if (block->powerSpectrum != 0) {
-            spectrum = qEnQueueOne(block->base.output[1].queue);
+    if (pSamplesIn != NULL) {
+        if (This->LogECalc != 0) {
+            pPowSpecOut = qEnQueueOne(This->BaseBlock.OutputQueues[1].pQ);
         } else {
-            spectrum = qEnQueueOne(block->base.output->queue);
+            pPowSpecOut = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
         }
 
-        realfft(block->fftLength, input);
-        if (block->powerSpectrum != 0) {
-            f32 logPower = logf_check(CalcPowerSpec(block, input, spectrum));
-            s16 powerLevel;
+        realfft(This->fftN, pSamplesIn);
+        if (This->LogECalc != 0) {
+            f32 Energy = logf_check(CalcPowerSpec(This, pSamplesIn, pPowSpecOut));
+            s16 NewSignalLevel;
 
-            qEnQueue(block->base.output->queue, &logPower, 1);
-            powerLevel =
-                (s16)((4.3429446f * (logPower - 27.37f)) * 100.0);
-            // Cap the reported level at 18 dB; lower readings decay the stored level gradually.
-            if (powerLevel > 1800) {
-                powerLevel = 1800;
+            qEnQueue(This->BaseBlock.OutputQueues->pQ, &Energy, 1);
+            NewSignalLevel = (s16)((4.3429446f * (Energy - 27.37f)) * 100.0);
+            // The reported level is capped at 18 dB and decays gradually for lower readings.
+            if (NewSignalLevel > 1800) {
+                NewSignalLevel = 1800;
             }
 
-            if (powerLevel > block->powerLevel) {
-                block->powerLevel = powerLevel;
+            if (NewSignalLevel > This->SignalLevel) {
+                This->SignalLevel = NewSignalLevel;
             } else {
-                block->powerLevel =
-                    (((block->powerLevel + 7200) * 64000) >> 16) - 7200;
+                This->SignalLevel = (((This->SignalLevel + 7200) * 64000) >> 16) - 7200;
             }
         } else {
-            CalcAmplitudeSpec(block, input, spectrum);
+            CalcAmplitudeSpec(This, pSamplesIn, pPowSpecOut);
         }
     }
 }
 
 // Answers power-level queries only in power mode (logging an error otherwise) and frees padding
 // storage and the block on shutdown.
-static u32 ControlFFTMod(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+static unsigned char ControlFFTMod(struct _BLOCK *_This, unsigned char ControlId,
+                                   unsigned long CParam)
 {
-    FFTMod *block = (FFTMod *)baseBlock;
-    TosContext *context = block->base.context;
+    FFTMod *This = (FFTMod *)_This;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
 
-    switch ((u8)command) {
-    case 1:
-        if (block->powerSpectrum == 0) {
-            _tosErrorLog(block, 102);
+    switch (ControlId) {
+    case 0x01:
+        if (This->LogECalc == 0) {
+            _tosErrorLog(&This->BaseBlock.Object, 0x66);
             return 1;
         }
-        *(s16 **)argument = &block->powerLevel;
+        *(s16 **)CParam = &This->SignalLevel;
         break;
-    case 255:
-        if (block->padInput != 0) {
-            heap_Free(context->heap, block->buffer);
+    case 0xFF:
+        if (This->ZeroPadding != 0) {
+            heap_Free(pTos->hHeap, This->pFFTIn);
         }
-        tosBaseBlockDestruct(block);
+        tosBaseBlockDestruct(&This->BaseBlock);
         break;
     default:
         return 0;
@@ -183,85 +175,67 @@ static u32 ControlFFTMod(
 }
 
 // Called when the audio graph starts this block. Reads its profile and sizes its queues.
-static u32 InitFFTMod(TosBaseBlock *_This)
+static unsigned char InitFFTMod(struct _BLOCK *_This)
 {
     FFTMod *This = (FFTMod *)_This;
-    u16 fftLength;
-    TosContext *context = _This->context;
-    s32 sampleRate;
-    f32 scale;
-    f32 frequency;
+    u32 fftN;
+    struct _TOS *pTos = _This->Object.pTos;
+    s32 fNyquist;
+    f32 Nlow;
+    f32 Nhigh;
 
-    sampleRate = (s16)_tosGetProfileU32(This, 3, 5500);
-    fftLength = (u16)_tosGetProfileU32(This, 4, 512);
-    This->fftLength = fftLength;
-    This->inputLength = (u16)_tosGetProfileU32(This, 6, 512);
-    if (This->inputLength > (u32)fftLength) {
+    fNyquist = (s16)_tosGetProfileU32(&This->BaseBlock.Object, 3, 5500);
+    fftN = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 4, 512);
+    This->fftN = fftN;
+    This->WindowLength = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 6, 512);
+    if (This->WindowLength > fftN) {
         return 1;
     }
 
-    if ((u32)fftLength > This->inputLength) {
-        This->padInput = 1;
-        This->paddingBytes =
-            ((u32)fftLength - This->inputLength) * sizeof(f32);
-        This->buffer =
-            heap_Alloc(context->heap, (u32)fftLength * sizeof(f32));
+    if (fftN > This->WindowLength) {
+        This->ZeroPadding = 1;
+        This->NbrZeroPadBytes = (fftN - This->WindowLength) * sizeof(f32);
+        This->pFFTIn = heap_Alloc(pTos->hHeap, fftN * sizeof(f32));
     }
 
-    This->base.input->inputSize = This->inputLength * sizeof(f32);
-    if (This->powerSpectrum == 0) {
-        This->base.output->outputSize =
-            ((u32)fftLength / 2 + 1) * sizeof(f32);
+    This->BaseBlock.InputQueues->Size = This->WindowLength * sizeof(f32);
+    if (This->LogECalc == 0) {
+        This->BaseBlock.OutputQueues->Size = (fftN / 2 + 1) * sizeof(f32);
     } else {
-        This->base.output->outputSize = sizeof(f32);
-        This->base.output[1].outputSize =
-            ((u32)fftLength / 2 + 1) * sizeof(f32);
+        This->BaseBlock.OutputQueues->Size = sizeof(f32);
+        This->BaseBlock.OutputQueues[1].Size = (fftN / 2 + 1) * sizeof(f32);
     }
 
-    frequency = _tosGetProfileFloat(This, 1, 300.0f);
-    frequency = (f32)This->fftLength * frequency;
-    scale = 2.0f * (f32)sampleRate;
-    This->firstPowerBin = (u32)floorf(frequency / scale);
-    This->firstPowerBin = This->firstPowerBin > 0 ? This->firstPowerBin : 0;
-    This->firstPowerBin =
-        This->firstPowerBin < This->fftLength / 2 - 1
-            ? This->firstPowerBin
-            : This->fftLength / 2 - 2;
+    Nlow = _tosGetProfileFloat(&This->BaseBlock.Object, 1, 300.0f);
+    This->Nlow = (u32)floorf((f32)This->fftN * Nlow / (2.0f * (f32)fNyquist));
+    This->Nlow = This->Nlow > 0 ? This->Nlow : 0;
+    This->Nlow = This->Nlow < This->fftN / 2 - 1 ? This->Nlow : This->fftN / 2 - 2;
 
-    frequency = _tosGetProfileFloat(This, 2, 4500.0f);
-    This->lastPowerBin =
-        (u32)floorf(
-            0.9999f + (This->fftLength * frequency) / scale);
-    This->lastPowerBin = This->lastPowerBin > 0 ? This->lastPowerBin : 0;
-    This->lastPowerBin =
-        This->lastPowerBin < This->fftLength / 2 - 1
-            ? This->lastPowerBin
-            : This->fftLength / 2 - 2;
-    This->lastPowerBin = This->lastPowerBin > This->firstPowerBin
-        ? This->lastPowerBin
-        : This->firstPowerBin;
+    Nhigh = _tosGetProfileFloat(&This->BaseBlock.Object, 2, 4500.0f);
+    This->Nhigh = (u32)floorf(0.9999f + (This->fftN * Nhigh) / (2.0f * (f32)fNyquist));
+    This->Nhigh = This->Nhigh > 0 ? This->Nhigh : 0;
+    This->Nhigh = This->Nhigh < This->fftN / 2 - 1 ? This->Nhigh : This->fftN / 2 - 2;
+    This->Nhigh = This->Nhigh > This->Nlow ? This->Nhigh : This->Nlow;
 
-    This->powerFloor = _tosGetProfileFloat(This, 5, 0.0f);
+    This->EnergyFloor = _tosGetProfileFloat(&This->BaseBlock.Object, 5, 0.0f);
     return 0;
 }
 
 // Called by the audio profile loader to create an FFT block with one or two output queues.
-void *ConstructFFTMod(TosContext *context, u8 blockIndex)
+struct _BLOCK *ConstructFFTMod(struct _TOS *pTos, u8 BlockID)
 {
-    struct TosProfileBlock {
-        TosContext *context;
-        u8 blockIndex;
-    } profileBlock;
-    FFTMod *block;
-    u8 powerSpectrum;
+    struct _OBJECT Object;
+    FFTMod *pFFTMod;
+    u8 LogECalc;
 
-    profileBlock.context = context;
-    profileBlock.blockIndex = blockIndex;
-    powerSpectrum =
-        (u8)_tosGetProfileU32(&profileBlock, 7, 1);
-    block = (FFTMod *)tosBaseBlockConstruct(
-        context, blockIndex, 1, powerSpectrum != 0 ? 2 : 1,
-        ProcessFFTMod, InitFFTMod, ControlFFTMod, sizeof(FFTMod));
-    block->powerSpectrum = powerSpectrum;
-    return block;
+    Object.pTos = pTos;
+    Object.BlockID = BlockID;
+    LogECalc = (u8)_tosGetProfileU32(&Object, 7, 1);
+    pFFTMod = (FFTMod *)tosBaseBlockConstruct(
+        pTos, BlockID, 1, LogECalc != 0 ? 2 : 1,
+        ProcessFFTMod, InitFFTMod,
+        /* ControlFFTMod reads the command and the first payload word. */
+        (u8 (*)(struct _BLOCK *, u8, u32, u32))ControlFFTMod, sizeof(FFTMod));
+    pFFTMod->LogECalc = LogECalc;
+    return &pFFTMod->BaseBlock;
 }

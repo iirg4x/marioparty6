@@ -1,9 +1,13 @@
+/* Recognition engines, contexts, and audio processing for the game speech API. */
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include <string.h>
 
+#include "gssdk/asrspi.h"
 #include "gssdk/gsapi.h"
-#include "gssdk/safeh.h"
+#include "gssdk/rsrc.h"
+#include "gssdk/gsapi_internal.h"
 
 #define GSAPI_ERROR_ALREADY_OPEN 0x80CC0000U
 #define GSAPI_ERROR_NOT_OPEN 0x80CC0001U
@@ -11,1108 +15,834 @@
 #define GSAPI_ERROR_ENGINE_LIMIT 0x80CC0005U
 #define GSAPI_ERROR_AUDIO 0x80CC0006U
 #define GSAPI_ERROR_MODE 0x80CC0007U
-#define GSAPI_ERROR_NO_RESULT 0x80CC000AU
-#define GSAPI_ERROR_PARAMETER_RANGE 0x80CC000BU
+#define GSAPI_ERROR_NO_WORD_DATA 0x80CC000AU
+#define GSAPI_ERROR_WORD_ID_RANGE 0x80CC000BU
 #define GSAPI_ERROR_PARAMETER_ID 0x80CC000CU
 #define GSAPI_ERROR_NO_PARAMETERS 0x80CC000DU
-#define GSAPI_ERROR_NO_PARAMETER_NAMES 0x80CC0080U
+#define GSAPI_ERROR_NO_WORD_LIST 0x80CC0080U
 #define GSAPI_ERROR_INVALID_ARGUMENT 0x80CC0083U
 #define GSAPI_ERROR_OUT_OF_MEMORY 0x80CC0086U
 #define GSAPI_ERROR_INVALID_HANDLE 0x80CC0089U
 
-#define GSAPI_PARAMETER_COUNT 18
 #define GSAPI_LANGUAGE_HEADER 0x00091874U
 
-typedef s32 (*GSResultCallback)(void);
-typedef s32 (*AsrSpiCallback)(void);
-
-typedef struct AsrSpiCallbacks {
-    AsrSpiCallback result;
-    AsrSpiCallback *signals;
-} AsrSpiCallbacks;
-
-typedef struct AsrSpiParameter {
-    u32 id;
-    s32 value;
-} AsrSpiParameter;
-
-typedef struct GSParameterState {
-    u8 reserved00[8];
-    u32 validParameters;
-    s32 values[GSAPI_PARAMETER_COUNT];
-} GSParameterState;
-
-typedef struct GSResultValues {
-    u32 lastIndex;
-    u32 *values;
-} GSResultValues;
-
-typedef struct GSActiveResult {
-    u8 reserved00[8];
-    void *result;
-    u8 reserved0C[0x10];
-    GSResultValues *parameters;
-} GSActiveResult;
-
-typedef struct GSEngine {
-    void *handle;
-    u32 mode;
-    u8 parameters[0x28];
-    GSActiveResult *activeResult;
-    void *resultData;
-    s32 active;
-    s32 asrState;
-    void *context;
-    u32 callbackValue;
-    u32 energyInterval;
-    void *audio;
-    s32 closing;
-    s32 callbackActive;
-    s32 restartPending;
-    s32 stopRequested;
-    u32 reserved60;
-} GSEngine;
-
-typedef void *GSEngineHandle;
-
-typedef struct GSAPIPrivate {
-    void *heap;
-    s32 heapSize;
-    SafeHandle resource;
-    s32 status;
-    void *userData;
-    GSResultCallback resultCallback;
-    GSNotifyCallback notify;
-    GSGetSamplesCallback getSamples;
-    void *language;
-    void *languageBuffer;
-    GSParameterState defaultParameters;
-    u32 copyResult;
-    GSEngine *engines;
-    u16 activeEngines;
-    u16 maxEngines;
-    u32 contextCount;
-    u32 sessionDataCount;
-} GSAPIPrivate;
-
-typedef struct ExtAudioState ExtAudioState;
-typedef struct SidState SidState;
-
-#define GSAPI_PRIVATE ((GSAPIPrivate *)&gGSAPI)
-
-static inline BOOL IsError(u32 result)
-{
-    return result >= 0x80000000 ? TRUE : FALSE;
-}
-
-static inline BOOL IsSuccess(u32 result)
+/* Tests whether the status has its error bit clear. */
+static BOOL IsSuccess(unsigned long result)
 {
     return result < 0x80000000 ? TRUE : FALSE;
 }
 
-static inline BOOL IsValidEngine(GSEngine *engine)
+/* Performs a pending restart and clears the restart flag. */
+static void CheckDelayedRestart(struct _GSAPI_ENGINE *pEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    GSEngine *engines = api->engines;
+    if (pEngine->bDelayedRestart == 1) {
+        RestartEngine(pEngine);
+        pEngine->bDelayedRestart = 0;
+    }
+}
 
-    if (engine == NULL) {
+/* Checks that the handle addresses a recognizer slot with an SPI engine. */
+static BOOL CheckEngineHandle(void *hEngine)
+{
+    unsigned long u32EngineAddress = (unsigned long)hEngine;
+    unsigned long u32BaseAddress = (unsigned long)gGSAPI.Recognizers;
+
+    if (hEngine == NULL) {
         return FALSE;
     }
-    if ((u32)engine < (u32)engines) {
+    if (u32EngineAddress < u32BaseAddress) {
         return FALSE;
     }
-    if (((u32)engine - (u32)engines) % sizeof(GSEngine) != 0) {
+    if ((u32EngineAddress - u32BaseAddress) % sizeof(struct _GSAPI_ENGINE) != 0) {
         return FALSE;
     }
-    if ((u32)engine >
-        (u32)((u8 *)engines +
-              (api->maxEngines * sizeof(GSEngine)))) {
+    if (u32EngineAddress >
+        u32BaseAddress + gGSAPI.u16MaxRecognizers * sizeof(struct _GSAPI_ENGINE)) {
         return FALSE;
     }
-    if (engine->handle == NULL) {
+    if (((struct _GSAPI_ENGINE *)hEngine)->hAsrSpiEngine == NULL) {
         return FALSE;
     }
     return TRUE;
 }
 
-static inline BOOL IsValidContext(void *context)
+/* Checks that the client supplied a context handle. */
+static BOOL IsValidContext(void *context)
 {
     return context == NULL ? FALSE : TRUE;
 }
 
-extern AsrSpiCallback AsrSpiSignalCallBacks[];
-extern AsrSpiCallbacks AsrSpiRecogCallBacks;
-extern s32 asrspi_cbEnergyLevel(u32 value, GSCallbackContext *context);
-extern s32 asrspi_cbSNRLevel(u32 value, GSCallbackContext *context);
-
-extern s32 asrspi_Acquisition(
-    void *engine, void *samples, u32 sampleBytes, s32 *complete);
-extern s32 asrspi_ActivateLng(void *engine, void *language);
-extern s32 asrspi_CloseEngine(void *engine);
-extern s32 asrspi_GetState(void *engine, s32 *state);
-extern s32 asrspi_OpenEngine(
-    SafeHandle resource, u32 flags, GSEngine *engine);
-extern s32 asrspi_SetParamList(
-    void *engine, AsrSpiParameter *parameters, u32 count);
-extern s32 asrspi_Start(
-    void *engine, u32 energyInterval, AsrSpiCallbacks *callbacks,
-    GSEngine *context);
-extern s32 asrspi_Stop(void *engine);
-
-extern s32 ExtAudioClose(void *heap, ExtAudioState *audio);
-extern u32 ExtAudioGetSamples(void *source, void *samples, u32 sampleCount);
-extern u32 ExtAudioGetSamplesLeft(ExtAudioState *audio);
-extern s32 ExtAudioInit(void *heap, ExtAudioState **audio);
-extern s32 ExtAudioStart(ExtAudioState *audio);
-extern s32 ExtAudioStop(ExtAudioState *audio);
-
-extern s32 SidAdvanceBuffer(SidState *sid, s32 samples);
-extern s32 SidClose(void *heap, SidState *sid);
-extern s32 SidGetSamples(SidState *sid, s16 **buffer, s32 samples);
-extern s32 SidGetSamplesLeft(SidState *sid);
-extern s32 SidInit(void *heap, void *unused, SidState **sid);
-extern s32 SidIsRecording(SidState *sid);
-extern s32 SidStart(SidState *sid);
-extern s32 SidStop(SidState *sid);
-
-extern s32 ContextAPIDeActivate(GSEngine *engine);
-extern s32 ContextActivate(GSEngine *engine, void *context);
-extern s32 ContextActivateParams(GSEngine *engine, void *context);
-extern s32 ContextDeActivate(GSEngine *engine);
-extern s32 ContextSetCtxData(void **contextData, void *data);
-extern s32 ContextSetGcdData(void *context, void *data);
-extern s32 ContextSetParam(void *context, s32 parameter, s32 value);
-extern s32 ContextSetWrdData(void *context, void *data);
-extern s32 ContextUnLoad(void *context);
-
-extern s32 SessionDataExport(GSEngine *engine, void **sessionData);
-extern s32 SessionDataFree(void *sessionData);
-extern s32 SessionDataImport(
-    GSEngine *engine, void *sessionData, s32 flags);
-
-extern void *heap_Alloc(void *heap, u32 size);
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Close(void *heap);
-extern void heap_Free(void *heap, void *ptr);
-extern s32 heap_Open(void **heap, s32 size);
-
-extern s32 rsrc_Close(SafeHandle resource);
-extern s32 rsrc_Open(
-    void *heap, u32 flags, void *arg2, void *arg3, SafeHandle *resource);
-
-u32 TranslateGsapiParamId2AsrSpiParamId(s32 parameter);
-void ActivateDefaultParams(void **engine);
-static void InitDefaultParams(void);
-static s32 ProcessAudio(GSEngine *engine);
-u32 RestartEngine(GSEngine *engine);
-s32 StartListening(GSEngine *engine);
-s32 StopListening(GSEngine *engine);
-s32 gsapi_Close(void);
-s32 gsapi_ContextActivate(GSEngineHandle engineHandle, void *context);
-s32 gsapi_ContextSetCtxData(void *data, void **context);
-s32 gsapi_ContextSetGcdData(void *context, void *data);
-s32 gsapi_ContextSetParam(void *context, s32 parameter, s32 value);
-s32 gsapi_ContextSetWrdData(void *context, void *data);
-s32 gsapi_ContextDeActivate(void *context);
-s32 gsapi_EngineClose(GSEngine *engine);
-s32 gsapi_EngineOpen(s32 device, GSEngine **engineOut);
-s32 gsapi_EngineSetMode(GSEngineHandle engineHandle, u32 mode);
-s32 gsapi_EngineSetParam(
-    GSEngineHandle engineHandle, s32 parameter, s32 value);
-s32 gsapi_EngineStart(GSEngine *engine);
-s32 gsapi_EngineStop(GSEngineHandle engineHandle);
-void gsapi_EngineRestart(void);
-s32 gsapi_EngineGetParam(GSEngine *engine, u32 parameter, u32 *value);
-s32 gsapi_Init(GSResultCallback resultCallback, void *userData);
-s32 gsapi_LanguageLoadBuffer(void *buffer, u32 loadParameters);
-s32 gsapi_LanguageUnLoad(void);
-s32 gsapi_EngineSessionDataExport(GSEngine *engine, void **sessionData);
-s32 gsapi_EngineSessionDataImport(
-    GSEngine *engine, void *sessionData, s32 flags);
-s32 gsapi_EngineSessionDataFree(void *sessionData);
-s32 gsapi_NotifySetCallback(GSNotifyCallback callback);
-s32 gsapi_SetUserData(s32 heapSize);
-
-const s32 TranslateParamTable[GSAPI_PARAMETER_COUNT] = {
+const long TranslateParamTable[GSAPI_PARAM_LAST] = {
     0, 1, 3, 0x11, 6, 7, 8, 9, 0xA,
     0xFF, 0xD, 0xE, 0xF, 0x10, 4, 0xB, 0xC, 0x12,
 };
 
-GSAPIState gGSAPI = { 0 };
+struct _GSAPI_GLOBAL gGSAPI = { 0 };
 
 char GSAPIVersionString[0x1C] = "  [ASRSPI %d.%02d.%04d]";
 
 u16 MAXRECOGNIZERS = 4;
 u16 DEFAULTENERGYINTERVAL = 500;
 
-u32 TranslateGsapiParamId2AsrSpiParamId(s32 parameter)
+/* Maps a GSAPI parameter ID to the corresponding SPI ID. */
+enum _ASRBASE_PARAMID TranslateGsapiParamId2AsrSpiParamId(enum _GSAPI_PARAMID parameter)
 {
     return TranslateParamTable[parameter];
 }
 
-void ActivateDefaultParams(void **engine)
+/* Maps global default parameter IDs to SPI IDs and applies their values. */
+long ActivateDefaultParams(struct _GSAPI_ENGINE *pEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    AsrSpiParameter parameters[GSAPI_PARAMETER_COUNT - 1];
-    u32 count = 0;
-    u32 i;
+    struct _ASRBASE_PARAM ParamList[GSAPI_PARAM_LAST - 1];
+    unsigned long count = 0;
+    unsigned long i;
 
-    for (i = 0; i < GSAPI_PARAMETER_COUNT; i++) {
+    for (i = 0; i < GSAPI_PARAM_LAST; i++) {
         if (TranslateParamTable[i] != 0xFF) {
-            parameters[count].id = TranslateParamTable[i];
-            parameters[count].value = api->defaultParameters.values[i];
+            ParamList[count].ID = TranslateParamTable[i];
+            ParamList[count].Value = gGSAPI.DefaultParams.Params[i];
             count++;
         }
     }
 
-    asrspi_SetParamList(*engine, parameters, count);
+    return asrspi_SetParamList(pEngine->hAsrSpiEngine, ParamList, count);
 }
 
+/* Initializes the shared recognition parameter values. */
 static void InitDefaultParams(void)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    api->defaultParameters.validParameters = 0x1FFFF;
-    api->defaultParameters.values[0] = 1;
-    api->defaultParameters.values[1] = 1;
-    api->defaultParameters.values[2] = 0;
-    api->defaultParameters.values[3] = 0x32;
-    api->defaultParameters.values[4] = 0x3C;
-    api->defaultParameters.values[5] = 1;
-    api->defaultParameters.values[6] = 1;
-    api->defaultParameters.values[7] = 0;
-    api->defaultParameters.values[8] = 0x7FFFFFFF;
-    api->defaultParameters.values[9] = 0x1388;
-    api->defaultParameters.values[10] = 0xC8;
-    api->defaultParameters.values[11] = 0x12C;
-    api->defaultParameters.values[12] = 0x28;
-    api->defaultParameters.values[13] = 0x28;
-    api->defaultParameters.values[14] = 1;
-    api->defaultParameters.values[15] = -0x1C20;
-    api->defaultParameters.values[16] = 0;
-    api->defaultParameters.values[17] = 0;
+    gGSAPI.DefaultParams.u32UsedParams = 0x1FFFF;
+    gGSAPI.DefaultParams.Params[0] = 1;
+    gGSAPI.DefaultParams.Params[1] = 1;
+    gGSAPI.DefaultParams.Params[2] = 0;
+    gGSAPI.DefaultParams.Params[3] = 0x32;
+    gGSAPI.DefaultParams.Params[4] = 0x3C;
+    gGSAPI.DefaultParams.Params[5] = 1;
+    gGSAPI.DefaultParams.Params[6] = 1;
+    gGSAPI.DefaultParams.Params[7] = 0;
+    gGSAPI.DefaultParams.Params[8] = 0x7FFFFFFF;
+    gGSAPI.DefaultParams.Params[9] = 0x1388;
+    gGSAPI.DefaultParams.Params[10] = 0xC8;
+    gGSAPI.DefaultParams.Params[11] = 0x12C;
+    gGSAPI.DefaultParams.Params[12] = 0x28;
+    gGSAPI.DefaultParams.Params[13] = 0x28;
+    gGSAPI.DefaultParams.Params[14] = 1;
+    gGSAPI.DefaultParams.Params[15] = -0x1C20;
+    gGSAPI.DefaultParams.Params[16] = 0;
+    gGSAPI.DefaultParams.Params[17] = 0;
 }
 
-static s32 ProcessAudio(GSEngine *engine)
+/* Applies the parameter overrides selected by the GCD parameter mask. */
+static long LoadDefaultParams(const unsigned long *pGcdData)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 *status;
-    GSGetSamplesCallback *getSamples;
-    s16 *samples = NULL;
-    s32 complete = 0;
-    s32 sampleCount;
-    s32 samplesLeft;
-    s32 currentStatus;
+    struct GSAPIParamBlock *ParamBuf;
+    int i;
+    unsigned long u32Used;
+    unsigned long *pValue;
 
-    sampleCount = asrspi_GetState(engine->handle, &engine->asrState);
-    *(status = &api->status) = sampleCount;
-    if (engine->active == 0) {
+    if (pGcdData != NULL) {
+        /* The SDK reads the parameter mask and values through a NULL block. */
+        ParamBuf = NULL;
+        u32Used = ParamBuf->u32UsedParams;
+        pValue = ParamBuf->Params;
+        for (i = 0; i < GSAPI_PARAM_LAST; i++) {
+            if (u32Used & 1) {
+                gGSAPI.DefaultParams.Params[i] = *pValue;
+            }
+            pValue++;
+            u32Used >>= 1;
+        }
+    }
+    return 0;
+}
+
+/* Feeds available audio to the recognizer and handles acquisition completion. */
+static long ProcessAudio(struct _GSAPI_ENGINE *pEngine)
+{
+    signed short *pWaveData = NULL;
+    long nSamplesRead;
+    long nSamplesLeft;
+    int bFinished = 0;
+
+    gGSAPI.lhError = asrspi_GetState(pEngine->hAsrSpiEngine, &pEngine->asrspiState);
+    if (pEngine->State == GSAPI_STATE_IDLE) {
         return 0;
     }
-    currentStatus = *status;
-    if (currentStatus != 0) {
-        return currentStatus;
+    if (gGSAPI.lhError != 0) {
+        return gGSAPI.lhError;
     }
 
-    switch (engine->active) {
-    case 1:
-        for (;;) {
-            if (*(getSamples = &api->getSamples) != NULL) {
-                sampleCount = ExtAudioGetSamples(engine, &samples, 0x6E);
+    switch (pEngine->State) {
+    case GSAPI_STATE_IDLE:
+        break;
+    case GSAPI_STATE_RECOGNIZING:
+        do {
+            if (gGSAPI.cbGetWaveData != NULL) {
+                nSamplesRead = ExtAudioGetSamples(pEngine, &pWaveData, 0x6E);
             } else {
-                sampleCount = SidGetSamples(
-                    (SidState *)engine->audio, &samples, 0x6E);
+                nSamplesRead = SidGetSamples(pEngine->hSid, &pWaveData, 0x6E);
             }
-
-            if (sampleCount > 0) {
-                if ((engine->mode & 4) != 0 && api->notify != NULL) {
-                    api->notify(engine, 1, (u32)samples, sampleCount * 2);
+            if (nSamplesRead > 0) {
+                if (pEngine->Mode & 4) {
+                    if (gGSAPI.cbNotify != NULL) {
+                        gGSAPI.cbNotify(
+                            pEngine, GSAPI_NOTIFY_WAVEDATA, (unsigned long)pWaveData,
+                            nSamplesRead * 2);
+                    }
                 }
-                *status = asrspi_Acquisition(
-                    engine->handle, samples, sampleCount * 2, &complete);
-                if (IsError(*status)) {
-                    return *status;
+                gGSAPI.lhError = asrspi_Acquisition(
+                    pEngine->hAsrSpiEngine, pWaveData, nSamplesRead * 2, &bFinished);
+                if (IsError(gGSAPI.lhError)) {
+                    return gGSAPI.lhError;
                 }
-                if (*getSamples == NULL) {
-                    SidAdvanceBuffer(
-                        (SidState *)engine->audio, sampleCount);
+                if (gGSAPI.cbGetWaveData == NULL) {
+                    SidAdvanceBuffer(pEngine->hSid, nSamplesRead);
                 }
-                if (complete != 0) {
-                    StopListening(engine);
+                if (bFinished) {
+                    StopListening(pEngine);
                 }
-            } else if (sampleCount < 0) {
+            } else if (nSamplesRead < 0) {
                 return GSAPI_ERROR_AUDIO;
             }
-
-            if (*getSamples != NULL) {
-                samplesLeft =
-                    ExtAudioGetSamplesLeft((ExtAudioState *)engine);
+            if (gGSAPI.cbGetWaveData != NULL) {
+                nSamplesLeft = ExtAudioGetSamplesLeft(pEngine);
             } else {
-                samplesLeft = SidGetSamplesLeft((SidState *)engine->audio);
+                nSamplesLeft = SidGetSamplesLeft(pEngine->hSid);
             }
-            if (samplesLeft < 0x6E) {
-                if (engine->restartPending == 1) {
-                    RestartEngine(engine);
-                    engine->restartPending = 0;
-                }
-                break;
-            }
-        }
-    case 0:
-    default:
-        return 0;
+        } while (nSamplesLeft >= 0x6E);
+        CheckDelayedRestart(pEngine);
+        break;
     }
+    return 0;
 }
 
-u32 RestartEngine(GSEngine *engine)
+/* Restarts recognition and reinstalls the signal callbacks. */
+long RestartEngine(struct _GSAPI_ENGINE *pEngine)
 {
-    s32 *status;
-
-    if (engine->callbackActive != 0) {
-        if (engine->stopRequested == 0) {
-            engine->restartPending = 1;
+    if (pEngine->bInCallback != 0) {
+        if (pEngine->bManualStop == 0) {
+            pEngine->bDelayedRestart = 1;
         }
         return 0;
     }
 
-    if (engine->energyInterval != 0) {
-        AsrSpiSignalCallBacks[4] =
-            (AsrSpiCallback)asrspi_cbEnergyLevel;
-        AsrSpiSignalCallBacks[5] =
-            (AsrSpiCallback)asrspi_cbSNRLevel;
+    if (pEngine->u32EnergyInterval != 0) {
+        AsrSpiSignalCallBacks.cbEnergyLevel = asrspi_cbEnergyLevel;
+        AsrSpiSignalCallBacks.cbSNRLevel = asrspi_cbSNRLevel;
     } else {
-        AsrSpiSignalCallBacks[4] = NULL;
-        AsrSpiSignalCallBacks[5] = NULL;
+        AsrSpiSignalCallBacks.cbEnergyLevel = NULL;
+        AsrSpiSignalCallBacks.cbSNRLevel = NULL;
     }
 
-    GSAPI_PRIVATE->status = asrspi_Start(
-        engine->handle, engine->energyInterval, &AsrSpiRecogCallBacks,
-        engine);
-    status = &GSAPI_PRIVATE->status;
-    if (IsError(*status)) {
-        return *status;
+    gGSAPI.lhError = asrspi_Start(
+        pEngine->hAsrSpiEngine, pEngine->u32EnergyInterval, &AsrSpiRecogCallBacks,
+        (unsigned long)pEngine);
+    if (IsError(gGSAPI.lhError)) {
+        return gGSAPI.lhError;
     }
-    *status = StartListening(engine);
-    return *status;
+    gGSAPI.lhError = StartListening(pEngine);
+    return gGSAPI.lhError;
 }
 
-s32 StartListening(GSEngine *engine)
+/* Starts audio input and notifies the client when listening begins. */
+long StartListening(struct _GSAPI_ENGINE *pEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (engine->audio != NULL) {
-        if (api->getSamples != NULL) {
-            if (api->notify != NULL) {
-                api->notify(engine, 2, 0, engine->callbackValue);
+    if (pEngine->hSid != 0) {
+        if (gGSAPI.cbGetWaveData != NULL) {
+            if (gGSAPI.cbNotify != NULL) {
+                gGSAPI.cbNotify(
+                    pEngine, GSAPI_NOTIFY_STARTLISTENING, 0, pEngine->u32EngineUserData);
             }
-            return ExtAudioStart((ExtAudioState *)engine->audio);
+            return ExtAudioStart(pEngine->hSid);
         }
-        if (SidIsRecording((SidState *)engine->audio) == 0) {
-            if (api->notify != NULL) {
-                api->notify(engine, 2, 0, engine->callbackValue);
+        if (SidIsRecording(pEngine->hSid) == 0) {
+            if (gGSAPI.cbNotify != NULL) {
+                gGSAPI.cbNotify(
+                    pEngine, GSAPI_NOTIFY_STARTLISTENING, 0, pEngine->u32EngineUserData);
             }
-            return SidStart((SidState *)engine->audio);
+            return SidStart(pEngine->hSid);
         }
     }
     return 0;
 }
 
-s32 StopListening(GSEngine *engine)
+/* Stops audio input and notifies the client when listening ends. */
+long StopListening(struct _GSAPI_ENGINE *pEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (engine->audio != NULL) {
-        if (api->getSamples != NULL) {
-            if (api->notify != NULL) {
-                api->notify(engine, 3, 0, engine->callbackValue);
+    if (pEngine->hSid != 0) {
+        if (gGSAPI.cbGetWaveData != NULL) {
+            if (gGSAPI.cbNotify != NULL) {
+                gGSAPI.cbNotify(pEngine, GSAPI_NOTIFY_STOPLISTENING, 0, pEngine->u32EngineUserData);
             }
-            return ExtAudioStop((ExtAudioState *)engine->audio);
+            return ExtAudioStop(pEngine->hSid);
         }
-        if (SidIsRecording((SidState *)engine->audio) != 0) {
-            if (api->notify != NULL) {
-                api->notify(engine, 3, 0, engine->callbackValue);
+        if (SidIsRecording(pEngine->hSid) != 0) {
+            if (gGSAPI.cbNotify != NULL) {
+                gGSAPI.cbNotify(pEngine, GSAPI_NOTIFY_STOPLISTENING, 0, pEngine->u32EngineUserData);
             }
-            return SidStop((SidState *)engine->audio);
+            return SidStop(pEngine->hSid);
         }
     }
     return 0;
 }
 
-s32 gsapi_Close(void)
+/* Closes the recognizers and releases the shared resource and heap. */
+long gsapi_Close(void)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    SafeHandle *resource = &api->resource;
-    u32 engineOffset;
-    GSEngine *engine;
-    s32 i;
+    unsigned long engineOffset;
+    struct _GSAPI_ENGINE *pEngine;
+    long i;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
 
-    for (i = 0, engineOffset = 0; i < api->maxEngines;
-         engineOffset += sizeof(GSEngine), i++) {
-        engine = (GSEngine *)((u8 *)api->engines + engineOffset);
-        if (engine->handle != NULL) {
-            api->status = gsapi_EngineClose(engine);
+    for (i = 0, engineOffset = 0; i < gGSAPI.u16MaxRecognizers;
+         engineOffset += sizeof(struct _GSAPI_ENGINE), i++) {
+        pEngine = (struct _GSAPI_ENGINE *)((u8 *)gGSAPI.Recognizers + engineOffset);
+        if (pEngine->hAsrSpiEngine != NULL) {
+            gGSAPI.lhError = gsapi_EngineClose(pEngine);
         }
     }
     gsapi_LanguageUnLoad();
-    heap_Free(api->heap, api->engines);
-    api->status = rsrc_Close(*resource);
-    if (api->status != 0) {
-        return api->status;
+    heap_Free(gGSAPI.hHeap, gGSAPI.Recognizers);
+    gGSAPI.lhError = rsrc_Close(gGSAPI.hRsrc);
+    if (gGSAPI.lhError != 0) {
+        return gGSAPI.lhError;
     }
-    *resource = g_lhNullHandle;
-    heap_Close(api->heap);
-    api->heap = NULL;
+    gGSAPI.hRsrc = g_lhNullHandle;
+    heap_Close(gGSAPI.hHeap);
+    gGSAPI.hHeap = NULL;
     return 0;
 }
 
-s32 gsapi_ContextActivate(
-    GSEngineHandle engineHandle, void *context)
+/* Releases the temporary context and activates the supplied context. */
+long gsapi_ContextActivate(void *hEngine, void *context)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 *status;
-    GSEngine *engine;
-    s32 deactivateStatus;
+    struct _GSAPI_ENGINE *pEngine;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine((GSEngine *)engineHandle)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(hEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
     if (!IsValidContext(context)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
 
-    engine = (GSEngine *)engineHandle;
-    deactivateStatus = ContextAPIDeActivate(engine);
-    status = &api->status;
-    *status = deactivateStatus;
-    if (IsError(*status)) {
-        return *status;
+    pEngine = (struct _GSAPI_ENGINE *)hEngine;
+    gGSAPI.lhError = ContextAPIDeActivate(pEngine);
+    if (IsError(gGSAPI.lhError)) {
+        return gGSAPI.lhError;
     }
-    if (*(u32 *)engine->parameters != 0) {
-        *status = ContextUnLoad(engine->parameters);
-        if (IsError(*status)) {
-            return *status;
+    if (pEngine->TempContext.pCtx != NULL) {
+        gGSAPI.lhError = ContextUnLoad(&pEngine->TempContext);
+        if (IsError(gGSAPI.lhError)) {
+            return gGSAPI.lhError;
         }
         memset(
-            engine->parameters, 0, sizeof(engine->parameters));
+            &pEngine->TempContext, 0, sizeof(pEngine->TempContext));
     }
-    *status = ContextActivate(engine, context);
-    return *status;
+    gGSAPI.lhError = ContextActivate(pEngine, context);
+    return gGSAPI.lhError;
 }
 
-s32 gsapi_ContextSetCtxData(void *data, void **contextOut)
+/* Allocates a context and sets its recognition data. */
+long gsapi_ContextSetCtxData(void *data, void **contextOut)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 *status;
-    s32 contextStatus;
-    void *context;
+    struct _GSAPI_CONTEXT *context;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
     if (data == NULL) {
-        return api->status = GSAPI_ERROR_INVALID_ARGUMENT;
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
     if (contextOut == NULL) {
-        return api->status = GSAPI_ERROR_INVALID_ARGUMENT;
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
 
-    context = heap_Alloc(api->heap, 0x28);
+    context = heap_Alloc(gGSAPI.hHeap, sizeof *context);
     if (context == NULL) {
         return GSAPI_ERROR_OUT_OF_MEMORY;
     }
-    memset(context, 0, 0x28);
-    contextStatus = ContextSetCtxData((void **)context, data);
-    status = &api->status;
-    *status = contextStatus;
-    if (IsError(*status)) {
-        heap_Free(api->heap, context);
-        return *status;
+    memset(context, 0, sizeof *context);
+    gGSAPI.lhError = ContextSetCtxData(context, data);
+    if (IsError(gGSAPI.lhError)) {
+        heap_Free(gGSAPI.hHeap, context);
+        return gGSAPI.lhError;
     }
-    api->contextCount++;
+    gGSAPI.NumContextsLoaded++;
     *contextOut = context;
     return 0;
 }
 
-s32 gsapi_ContextSetGcdData(void *context, void *data)
+/* Loads parameter overrides and word actions into a context. */
+long gsapi_ContextSetGcdData(void *context, void *data)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
     if (!IsValidContext(context)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
     return ContextSetGcdData(context, data);
 }
 
-s32 gsapi_ContextSetParam(void *context, s32 parameter, s32 value)
+/* Records a context parameter and applies it to engines using the context. */
+long gsapi_ContextSetParam(void *context, long parameter, long value)
 {
-    void *activeContext = context;
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 i;
+    struct _GSAPI_ENGINE *pEngine;
+    int i;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidContext(activeContext)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!IsValidContext(context)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
-    if (parameter < 0 || parameter > GSAPI_PARAMETER_COUNT - 1) {
+    if (parameter < 0 || parameter > GSAPI_PARAM_LAST - 1) {
         return GSAPI_ERROR_PARAMETER_ID;
     }
 
-    api->status = ContextSetParam(activeContext, parameter, value);
-    if (api->status != 0) {
-        return api->status;
+    gGSAPI.lhError = ContextSetParam(context, parameter, value);
+    if (gGSAPI.lhError != 0) {
+        return gGSAPI.lhError;
     }
-    for (i = 0; i < api->maxEngines; i++) {
-        if (api->engines[i].context == activeContext) {
-            ContextActivateParams(&api->engines[i], activeContext);
+    for (i = 0; i < gGSAPI.u16MaxRecognizers; i++) {
+        pEngine = &gGSAPI.Recognizers[i];
+        if (pEngine->hActiveContext == context) {
+            ContextActivateParams(pEngine, context);
         }
     }
     return 0;
 }
 
-s32 gsapi_ContextSetWrdData(void *context, void *data)
+/* Loads the word resource and its string index into a context. */
+long gsapi_ContextSetWrdData(void *context, void *data)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
     if (!IsValidContext(context)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
     return ContextSetWrdData(context, data);
 }
 
-s32 gsapi_ContextDeActivate(void *context)
+/* Deactivates and frees a loaded recognition context. */
+long gsapi_ContextDeActivate(void *context)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    void *activeContext = context;
-    s32 *status;
-    s32 i;
+    struct _GSAPI_ENGINE *pEngine;
+    int i;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidContext(activeContext)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!IsValidContext(context)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
 
-    status = &api->status;
-    for (i = 0; i < api->maxEngines; i++) {
-        if (api->engines[i].context == activeContext) {
-            *status = ContextDeActivate(&api->engines[i]);
-            if (IsError(*status)) {
-                return *status;
+    for (i = 0; i < gGSAPI.u16MaxRecognizers; i++) {
+        pEngine = &gGSAPI.Recognizers[i];
+        if (pEngine->hActiveContext == context) {
+            gGSAPI.lhError = ContextDeActivate(pEngine);
+            if (IsError(gGSAPI.lhError)) {
+                return gGSAPI.lhError;
             }
         }
     }
-    api->status = ContextUnLoad(activeContext);
-    status = &api->status;
-    heap_Free(api->heap, activeContext);
-    api->contextCount--;
-    return *status;
+    gGSAPI.lhError = ContextUnLoad(context);
+    heap_Free(gGSAPI.hHeap, context);
+    gGSAPI.NumContextsLoaded--;
+    return gGSAPI.lhError;
 }
 
-s32 gsapi_EngineClose(GSEngine *engine)
+/* Stops and closes a recognizer and releases its audio and context state. */
+long gsapi_EngineClose(struct _GSAPI_ENGINE *pEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 *status;
-    s32 closeStatus;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine(engine)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(pEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
 
-    engine->closing = 1;
-    gsapi_EngineStop(engine);
-    if (api->getSamples != NULL) {
-        ExtAudioClose(api->heap, (ExtAudioState *)engine->audio);
+    pEngine->bClosing = 1;
+    gsapi_EngineStop(pEngine);
+    if (gGSAPI.cbGetWaveData != NULL) {
+        ExtAudioClose(gGSAPI.hHeap, pEngine->hSid);
     } else {
-        if (SidIsRecording((SidState *)engine->audio) != 0) {
-            SidStop((SidState *)engine->audio);
+        if (SidIsRecording(pEngine->hSid) != 0) {
+            SidStop(pEngine->hSid);
         }
-        SidClose(api->heap, (SidState *)engine->audio);
+        SidClose(gGSAPI.hHeap, pEngine->hSid);
     }
-    ContextDeActivate(engine);
-    if (*(u32 *)engine->parameters != 0) {
-        ContextUnLoad(engine->parameters);
-        memset(engine->parameters, 0, sizeof(engine->parameters));
+    ContextDeActivate(pEngine);
+    if (pEngine->TempContext.pCtx != NULL) {
+        ContextUnLoad(&pEngine->TempContext);
+        memset(&pEngine->TempContext, 0, sizeof(pEngine->TempContext));
     }
-    closeStatus = asrspi_CloseEngine(engine->handle);
-    status = &api->status;
-    *status = closeStatus;
-    if (*status == 0) {
-        engine->handle = NULL;
-        api->activeEngines--;
+    gGSAPI.lhError = asrspi_CloseEngine(pEngine->hAsrSpiEngine);
+    if (gGSAPI.lhError == 0) {
+        pEngine->hAsrSpiEngine = NULL;
+        gGSAPI.u16NumRecognizers--;
     }
-    return *status;
+    return gGSAPI.lhError;
 }
 
-s32 gsapi_EngineOpen(s32 device, GSEngine **engineOut)
+/* Opens a recognizer for the selected audio device and activates the current language. */
+long gsapi_EngineOpen(long s32DevNum, struct _GSAPI_ENGINE **phEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    SafeHandle *resource = &api->resource;
-    u16 *activeEngines;
-    void **language;
-    s32 *status;
-    GSEngine *cursor;
-    GSEngine *engine = NULL;
-    s32 i;
+    struct _GSAPI_ENGINE *pEngine = NULL;
+    int i;
 
-    if (safeh_HandlesEqual(*resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (engineOut == NULL) {
-        return api->status = GSAPI_ERROR_INVALID_ARGUMENT;
+    if (phEngine == NULL) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
-    if (*(language = &api->language) == NULL) {
+    if (gGSAPI.pLang == NULL) {
         return GSAPI_ERROR_NO_LANGUAGE;
     }
-    if (*(activeEngines = &api->activeEngines) == api->maxEngines) {
+    if (gGSAPI.u16NumRecognizers == gGSAPI.u16MaxRecognizers) {
         return GSAPI_ERROR_ENGINE_LIMIT;
     }
 
-    cursor = api->engines;
-    for (i = 0; i < api->maxEngines; i++, cursor++) {
-        engine = cursor;
-        if (cursor->handle == NULL) {
+    for (i = 0; i < gGSAPI.u16MaxRecognizers; i++) {
+        pEngine = &gGSAPI.Recognizers[i];
+        if (pEngine->hAsrSpiEngine == NULL) {
             break;
         }
     }
+    pEngine->bClosing = 0;
+    pEngine->bInCallback = 0;
+    pEngine->bDelayedRestart = 0;
+    pEngine->DoSessionDataSave = 0;
+    pEngine->pCurrentContext = NULL;
+    pEngine->Mode = 1;
+    pEngine->u32EnergyInterval = DEFAULTENERGYINTERVAL;
+    pEngine->State = GSAPI_STATE_IDLE;
+    pEngine->hActiveContext = NULL;
+    pEngine->u32EngineUserData = 0;
 
-    engine->closing = 0;
-    engine->callbackActive = 0;
-    engine->restartPending = 0;
-    engine->reserved60 = 0;
-    engine->activeResult = NULL;
-    engine->mode = 1;
-    engine->energyInterval = DEFAULTENERGYINTERVAL;
-    engine->active = 0;
-    engine->context = NULL;
-    engine->callbackValue = 0;
-
-    if (api->getSamples != NULL) {
-        api->status = ExtAudioInit(
-            api->heap, (ExtAudioState **)&engine->audio);
+    if (gGSAPI.cbGetWaveData != NULL) {
+        gGSAPI.lhError = ExtAudioInit(gGSAPI.hHeap, &pEngine->hSid);
     } else {
-        api->status = SidInit(
-            api->heap, (void *)device, (SidState **)&engine->audio);
+        gGSAPI.lhError = SidInit(gGSAPI.hHeap, s32DevNum, &pEngine->hSid);
     }
-    status = &api->status;
-    if (IsError(*status)) {
-        return api->status;
+    if (IsError(gGSAPI.lhError)) {
+        return gGSAPI.lhError;
     }
 
-    memset(engine->parameters, 0, sizeof(engine->parameters));
-    *status = asrspi_OpenEngine(*resource, 0, engine);
-    if (IsSuccess(*status)) {
-        (*activeEngines)++;
-        *status = asrspi_ActivateLng(engine->handle, *language);
-        *engineOut = engine;
+    memset(&pEngine->TempContext, 0, sizeof(pEngine->TempContext));
+    gGSAPI.lhError = asrspi_OpenEngine(gGSAPI.hRsrc, ASRBASE_PCM_16_11KHZ, &pEngine->hAsrSpiEngine);
+    if (IsSuccess(gGSAPI.lhError)) {
+        gGSAPI.u16NumRecognizers++;
+        gGSAPI.lhError = asrspi_ActivateLng(pEngine->hAsrSpiEngine, gGSAPI.pLang);
+        *phEngine = pEngine;
     }
-    return *status;
+    return gGSAPI.lhError;
 }
 
-s32 gsapi_EngineSetMode(GSEngineHandle engineHandle, u32 mode)
+/* Sets the recognition mode after checking the client flags. */
+long gsapi_EngineSetMode(void *hEngine, unsigned long Mode)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    GSEngine *engine;
+    struct _GSAPI_ENGINE *pEngine;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine((GSEngine *)engineHandle)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(hEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
-    if (mode == 0) {
+    if (Mode == 0) {
         return GSAPI_ERROR_MODE;
     }
-    if ((mode & 1) != 0 && (mode & 2) != 0) {
+    if ((Mode & 1) != 0 && (Mode & 2) != 0) {
         return GSAPI_ERROR_MODE;
     }
-    engine = (GSEngine *)engineHandle;
-    engine->mode = mode;
+    pEngine = (struct _GSAPI_ENGINE *)hEngine;
+    pEngine->Mode = Mode;
     return 0;
 }
 
-s32 gsapi_EngineSetParam(
-    GSEngineHandle engineHandle, s32 parameter, s32 value)
+/* Sets a parameter on the engine's temporary context and applies it. */
+long gsapi_EngineSetParam(void *hEngine, long ParamId, long ParamValue)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 *status;
-    GSEngine *engine;
+    struct _GSAPI_ENGINE *pEngine;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine((GSEngine *)engineHandle)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(hEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
-    if (parameter < 0 || parameter > GSAPI_PARAMETER_COUNT - 1) {
+    if (ParamId < 0 || ParamId > GSAPI_PARAM_LAST - 1) {
         return GSAPI_ERROR_PARAMETER_ID;
     }
-    if (*(u32 *)((GSEngine *)engineHandle)->parameters == 0) {
+    pEngine = (struct _GSAPI_ENGINE *)hEngine;
+    if (pEngine->TempContext.pCtx == NULL) {
         return GSAPI_ERROR_NO_PARAMETERS;
     }
-
-    engine = (GSEngine *)engineHandle;
-    status = &api->status;
-    *status = ContextSetParam(
-        engine->parameters, parameter, value);
-    if (*status != 0) {
-        return *status;
+    gGSAPI.lhError = ContextSetParam(&pEngine->TempContext, ParamId, ParamValue);
+    if (gGSAPI.lhError != 0) {
+        return gGSAPI.lhError;
     }
-    *status = ContextActivateParams(engine, engine->parameters);
-    return *status;
+    gGSAPI.lhError = ContextActivateParams(pEngine, &pEngine->TempContext);
+    return gGSAPI.lhError;
 }
 
-s32 gsapi_EngineStart(GSEngine *engine)
+/* Installs the recognition callbacks and begins listening. */
+long gsapi_EngineStart(void *hEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 status;
+    long Error;
+    struct _GSAPI_ENGINE *pEngine;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine(engine)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(hEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
-
-    {
-        s32 *stopRequested = &engine->stopRequested;
-
-        *stopRequested = 0;
-        if (engine->callbackActive != 0) {
-            if (*stopRequested == 0) {
-                engine->restartPending = 1;
-            }
-            status = 0;
-        } else {
-            u32 *energyInterval = &engine->energyInterval;
-
-            if (*energyInterval != 0) {
-                AsrSpiSignalCallBacks[4] =
-                    (AsrSpiCallback)asrspi_cbEnergyLevel;
-                AsrSpiSignalCallBacks[5] =
-                    (AsrSpiCallback)asrspi_cbSNRLevel;
-            } else {
-                AsrSpiSignalCallBacks[4] = NULL;
-                AsrSpiSignalCallBacks[5] = NULL;
-            }
-            api->status = asrspi_Start(
-                engine->handle, *energyInterval,
-                &AsrSpiRecogCallBacks, engine);
-            status = api->status;
-            if (IsError(status) == FALSE) {
-                api->status = StartListening(engine);
-                status = api->status;
-            }
-        }
+    pEngine = (struct _GSAPI_ENGINE *)hEngine;
+    pEngine->bManualStop = 0;
+    Error = RestartEngine((struct _GSAPI_ENGINE *)hEngine);
+    if (Error >= 0) {
+        pEngine->State = GSAPI_STATE_RECOGNIZING;
     }
-    if (status >= 0) {
-        engine->active = 1;
-    }
-    return status;
+    return Error;
 }
 
-s32 gsapi_EngineStop(GSEngineHandle engineHandle)
+/* Stops listening and stops the recognizer if recognition is active. */
+long gsapi_EngineStop(void *hEngine)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    s32 *apiStatus;
-    GSEngine *engine;
-    s32 status;
+    struct _GSAPI_ENGINE *pEngine;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine((GSEngine *)engineHandle)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(hEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
 
-    engine = (GSEngine *)engineHandle;
-    engine->stopRequested = 1;
-    if (engine->audio == NULL) {
-        goto engine_stop_zero;
+    pEngine = (struct _GSAPI_ENGINE *)hEngine;
+    pEngine->bManualStop = 1;
+    gGSAPI.lhError = StopListening(pEngine);
+    if (gGSAPI.lhError != 0) {
+        return gGSAPI.lhError;
     }
-    if (api->getSamples != NULL) {
-        if (api->notify != NULL) {
-            api->notify(
-                engine, 3, 0, engine->callbackValue);
-        }
-        status = ExtAudioStop((ExtAudioState *)engine->audio);
-        goto engine_stop_done;
+    gGSAPI.lhError = asrspi_GetState(
+        pEngine->hAsrSpiEngine, &pEngine->asrspiState);
+    if (gGSAPI.lhError != 0) {
+        return gGSAPI.lhError;
     }
-    goto engine_stop_sid;
-
-engine_stop_sid:
-    if (SidIsRecording((SidState *)engine->audio) == 0) {
-        goto engine_stop_zero;
+    if (pEngine->asrspiState == ASRBASE_RECOGNIZING) {
+        gGSAPI.lhError = asrspi_Stop(pEngine->hAsrSpiEngine);
     }
-    if (api->notify != NULL) {
-        api->notify(
-            engine, 3, 0, engine->callbackValue);
+    if (IsSuccess(gGSAPI.lhError)) {
+        pEngine->State = GSAPI_STATE_IDLE;
     }
-    status = SidStop((SidState *)engine->audio);
-    goto engine_stop_done;
-
-engine_stop_zero:
-    status = 0;
-engine_stop_done:
-
-    apiStatus = &api->status;
-    *apiStatus = status;
-    if (*apiStatus != 0) {
-        return *apiStatus;
-    }
-    *apiStatus = asrspi_GetState(
-        engine->handle, &engine->asrState);
-    if (*apiStatus != 0) {
-        return *apiStatus;
-    }
-    if (engine->asrState == 3) {
-        *apiStatus = asrspi_Stop(engine->handle);
-    }
-    if (IsSuccess(*apiStatus)) {
-        engine->active = 0;
-    }
-    return *apiStatus;
+    return gGSAPI.lhError;
 }
 
-void gsapi_EngineRestart(void)
+/* Processes pending restarts and available audio for every recognizer. */
+void gsapi_EngineRestart()
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    u32 engineOffset;
-    SafeHandle nullHandle;
-    s32 *status = &api->status;
-    s32 i;
-    GSEngine *engine;
+    int i;
+    struct _GSAPI_ENGINE *pEngine;
 
-    *status = 0;
-    nullHandle = g_lhNullHandle;
-    if (safeh_HandlesEqual(api->resource, nullHandle)) {
-        *status = GSAPI_ERROR_NOT_OPEN;
+    gGSAPI.lhError = 0;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
         return;
     }
 
-    for (engineOffset = 0, i = 0; i < api->maxEngines;
-         engineOffset += sizeof(GSEngine), i++) {
-        engine = (GSEngine *)((u8 *)api->engines + engineOffset);
-        if (engine->restartPending == 1) {
-            RestartEngine(engine);
-            engine->restartPending = 0;
+    for (i = 0; i < gGSAPI.u16MaxRecognizers; i++) {
+        pEngine = &gGSAPI.Recognizers[i];
+        CheckDelayedRestart(pEngine);
+        gGSAPI.lhError = ProcessAudio(pEngine);
+        if (IsError(gGSAPI.lhError)) {
+            /* no code in the release build */
         }
-        *status = ProcessAudio(engine);
     }
 }
 
-s32 gsapi_EngineGetParam(GSEngine *engine, u32 parameter, u32 *value)
+/* Returns the string for a word ID in the engine's current context. */
+long gsapi_EngineGetParam(void *hEngine, unsigned long WordId, char **pszResult)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    GSActiveResult *result;
-    GSResultValues *parameters;
+    struct _GSAPI_ENGINE *pEngine = hEngine;
+    struct _GSAPI_CONTEXT *pContext;
+    struct tag_WRD_WORDLIST *wordList;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine(engine)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(pEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
-    if (value == NULL) {
-        return api->status = GSAPI_ERROR_INVALID_ARGUMENT;
+    if (pszResult == NULL) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
 
-    result = engine->activeResult;
-    if (result->result == NULL) {
-        return GSAPI_ERROR_NO_RESULT;
+    pContext = pEngine->pCurrentContext;
+    if (pContext->pWrd == NULL) {
+        return GSAPI_ERROR_NO_WORD_DATA;
     }
-    parameters = result->parameters;
-    if (parameters == NULL) {
-        return GSAPI_ERROR_NO_PARAMETER_NAMES;
+    wordList = pContext->pWordList;
+    if (wordList == NULL) {
+        return GSAPI_ERROR_NO_WORD_LIST;
     }
-    if (parameter > parameters->lastIndex) {
-        return GSAPI_ERROR_PARAMETER_RANGE;
+    if (WordId > wordList->u32NbrWords) {
+        return GSAPI_ERROR_WORD_ID_RANGE;
     }
-    *value = parameters->values[parameter];
+    *pszResult = wordList->pWordStringList[WordId];
     return 0;
 }
 
-s32 gsapi_Init(GSResultCallback resultCallback, void *userData)
+/* Creates the SDK heap and shared resource and allocates the recognizer slots. */
+long gsapi_Init(GSResultCallback cbResult, unsigned long u32UserData)
 {
-    SafeHandle *resource;
-    s32 status;
+    long Error;
 
-    if (resultCallback == NULL) {
-        return GSAPI_PRIVATE->status = GSAPI_ERROR_INVALID_ARGUMENT;
+    if (cbResult == NULL) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
-    resource = &GSAPI_PRIVATE->resource;
-    if (!safeh_HandlesEqual(
-            *(SafeHandle *)&gGSAPI.reserved04[4], g_lhNullHandle)) {
-        return GSAPI_PRIVATE->status = GSAPI_ERROR_ALREADY_OPEN;
+    if (!safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_ALREADY_OPEN;
     }
 
-    GSAPI_PRIVATE->maxEngines = MAXRECOGNIZERS;
-    GSAPI_PRIVATE->activeEngines = 0;
-    GSAPI_PRIVATE->resultCallback = resultCallback;
-    GSAPI_PRIVATE->notify = NULL;
-    GSAPI_PRIVATE->getSamples = NULL;
-    GSAPI_PRIVATE->contextCount = 0;
-    GSAPI_PRIVATE->userData = userData;
+    gGSAPI.u16MaxRecognizers = MAXRECOGNIZERS;
+    gGSAPI.u16NumRecognizers = 0;
+    gGSAPI.cbResult = cbResult;
+    gGSAPI.cbNotify = NULL;
+    gGSAPI.cbGetWaveData = NULL;
+    gGSAPI.NumContextsLoaded = 0;
+    gGSAPI.u32UserData = u32UserData;
 
-    status = heap_Open(&GSAPI_PRIVATE->heap, GSAPI_PRIVATE->heapSize);
-    if (IsError(status)) {
-        return status;
+    Error = heap_Open(&gGSAPI.hHeap, gGSAPI.u32HeapUserData);
+    if (IsError(Error)) {
+        return Error;
     }
-    GSAPI_PRIVATE->engines = heap_Calloc(
-        GSAPI_PRIVATE->heap, MAXRECOGNIZERS, sizeof(GSEngine));
-    if (GSAPI_PRIVATE->engines == NULL) {
+    gGSAPI.Recognizers = heap_Calloc(gGSAPI.hHeap, MAXRECOGNIZERS, sizeof(struct _GSAPI_ENGINE));
+    if (gGSAPI.Recognizers == NULL) {
         return GSAPI_ERROR_OUT_OF_MEMORY;
     }
-    status = rsrc_Open(GSAPI_PRIVATE->heap, 0, NULL, NULL, resource);
-    if (IsError(status)) {
-        return status;
+    Error = rsrc_Open(gGSAPI.hHeap, NULL, NULL, NULL, &gGSAPI.hRsrc);
+    if (IsError(Error)) {
+        return Error;
     }
     return 0;
 }
 
-s32 gsapi_LanguageLoadBuffer(void *buffer, u32 loadParameters)
+/* Loads the language payload and sets the default parameters. */
+long gsapi_LanguageLoadBuffer(const unsigned long *pu32LngData, const unsigned long *pu32GcdData)
 {
-    GSParameterState *parameters = NULL;
-    s32 *parameterValue;
-    u32 validParameters;
-    s32 i;
+    unsigned char *p = (unsigned char *)pu32LngData;
 
-    if (safeh_HandlesEqual(GSAPI_PRIVATE->resource, g_lhNullHandle)) {
-        return GSAPI_PRIVATE->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (buffer == NULL) {
-        return GSAPI_PRIVATE->status = GSAPI_ERROR_INVALID_ARGUMENT;
+    if (pu32LngData == NULL) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
 
     gsapi_LanguageUnLoad();
-    if (*(u32 *)buffer == GSAPI_LANGUAGE_HEADER) {
-        GSAPI_PRIVATE->languageBuffer = buffer;
-        GSAPI_PRIVATE->language = (u8 *)buffer + 0x10;
+    if (*pu32LngData == GSAPI_LANGUAGE_HEADER) {
+        gGSAPI.pHDECLang = p;
+        gGSAPI.pLang = p + 0x10;
     } else {
-        GSAPI_PRIVATE->language = buffer;
-        GSAPI_PRIVATE->languageBuffer = NULL;
+        gGSAPI.pLang = p;
+        gGSAPI.pHDECLang = NULL;
     }
     InitDefaultParams();
-
-    if (loadParameters != 0) {
-        validParameters = parameters->validParameters;
-        parameterValue = parameters->values;
-        for (i = 0; i < GSAPI_PARAMETER_COUNT; i++) {
-            if ((validParameters & 1) != 0) {
-                GSAPI_PRIVATE->defaultParameters.values[i] = *parameterValue;
-            }
-            validParameters >>= 1;
-            parameterValue++;
-        }
-    }
+    LoadDefaultParams(pu32GcdData);
     return 0;
 }
 
-s32 gsapi_LanguageUnLoad(void)
+/* Clears the currently loaded language pointers. */
+long gsapi_LanguageUnLoad(void)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-    void **language;
-    void *loadedLanguage;
-    s32 i;
+    long i;
 
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    loadedLanguage = *(language = &api->language);
-    if (loadedLanguage == NULL) {
+    if (gGSAPI.pLang == NULL) {
         return GSAPI_ERROR_NO_LANGUAGE;
     }
 
-    for (i = 0; i < api->maxEngines; i++) {
+    /* The SDK visits each recognizer slot without changing its state. */
+    for (i = 0; i < gGSAPI.u16MaxRecognizers; i++) {
     }
-    *language = NULL;
-    api->languageBuffer = NULL;
+    gGSAPI.pLang = NULL;
+    gGSAPI.pHDECLang = NULL;
     return 0;
 }
 
-s32 gsapi_EngineSessionDataExport(
-    GSEngine *engine, void **sessionData)
+/* Copies the engine's session state into a new buffer. */
+long gsapi_EngineSessionDataExport(
+    struct _GSAPI_ENGINE *pEngine, struct _GSAPI_SESSIONDATA **ppSessionData)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine(engine)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(pEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
-    if (sessionData == NULL) {
-        return api->status = GSAPI_ERROR_INVALID_ARGUMENT;
+    if (ppSessionData == NULL) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
-    return SessionDataExport(engine, sessionData);
+    return SessionDataExport(pEngine, ppSessionData);
 }
 
-s32 gsapi_EngineSessionDataImport(
-    GSEngine *engine, void *sessionData, s32 flags)
+/* Restores a saved session to an engine and optionally frees it. */
+long gsapi_EngineSessionDataImport(
+    struct _GSAPI_ENGINE *pEngine, struct _GSAPI_SESSIONDATA *pSessionData, int bFreeMemory)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (!IsValidEngine(engine)) {
-        return api->status = GSAPI_ERROR_INVALID_HANDLE;
+    if (!CheckEngineHandle(pEngine)) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_HANDLE;
     }
-    if (sessionData == NULL) {
-        return api->status = GSAPI_ERROR_INVALID_ARGUMENT;
+    if (pSessionData == NULL) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
-    return SessionDataImport(engine, sessionData, flags);
+    return SessionDataImport(pEngine, pSessionData, bFreeMemory);
 }
 
-s32 gsapi_EngineSessionDataFree(void *sessionData)
+/* Releases a saved session buffer. */
+long gsapi_EngineSessionDataFree(struct _GSAPI_SESSIONDATA *pSessionData)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    if (sessionData == NULL) {
-        return api->status = GSAPI_ERROR_INVALID_ARGUMENT;
+    if (pSessionData == NULL) {
+        return gGSAPI.lhError = GSAPI_ERROR_INVALID_ARGUMENT;
     }
-    return SessionDataFree(sessionData);
+    return SessionDataFree(pSessionData);
 }
 
-s32 gsapi_NotifySetCallback(GSNotifyCallback callback)
+/* Sets the client callback for notifications. */
+long gsapi_NotifySetCallback(GSNotifyCallback cbNotify)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_NOT_OPEN;
+    if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
-    api->notify = callback;
+    gGSAPI.cbNotify = cbNotify;
     return 0;
 }
 
-s32 gsapi_SetUserData(s32 heapSize)
+/* Stores the client heap value before the SDK is initialized. */
+long gsapi_SetUserData(long heapSize)
 {
-    GSAPIPrivate *api = GSAPI_PRIVATE;
-
-    if (!safeh_HandlesEqual(api->resource, g_lhNullHandle)) {
-        return api->status = GSAPI_ERROR_ALREADY_OPEN;
+    if (!safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
+        return gGSAPI.lhError = GSAPI_ERROR_ALREADY_OPEN;
     }
-    api->heapSize = heapSize;
+    gGSAPI.u32HeapUserData = heapSize;
     return 0;
 }

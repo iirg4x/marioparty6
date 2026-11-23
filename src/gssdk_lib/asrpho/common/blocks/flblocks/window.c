@@ -1,177 +1,182 @@
+/* Applies pre-emphasis and a window to overlapping input frames. */
+#include "gssdk/blocks.h"
+#include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h>
+#include "gssdk/mathusage.h"
+#include "gssdk/mqueue.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include <string.h>
 
 #include "gssdk/tos.h"
 
-typedef struct Window {
-    TosBaseBlock base;
-    f32 *history;
-    f32 *historyWrite;
-    f32 *historyEnd;
-    u16 windowLength;
-    u16 frameLength;
-    u16 reserved38;
-    u16 overlapLength;
-    u16 frameCount;
-    f32 previousSample;
-    u8 firstFrame;
-    u8 flushed;
-    s16 firstSample;
-    s16 lastSample;
-    u8 flushPending;
-    f32 *window;
+/* Window coefficients, sample history and flush state. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    f32 *pBeginSam; /* Start of the buffered sample history. */
+    f32 *pWriteSam; /* Next sample slot to write. */
+    f32 *pEndSam; /* End of the sample history allocation. */
+    u16 WindowLength; /* Number of samples in an output window. */
+    u16 FrameLength; /* Number of new samples supplied per frame. */
+    u16 Zeroes; /* The game's code never reads this field. */
+    u16 OverLap; /* Sample count shared by adjacent windows. */
+    u16 NbrFramesInWindow; /* Number of input frames that fit in one window. */
+    f32 PrevSample; /* Previous sample used by pre-emphasis. */
+    u8 FirstFrame; /* Marks the first input frame after initialization. */
+    u8 EmptyBuffer; /* Marks the sample history as drained. */
+    s16 FirstSampleOfLastFrame; /* First sample retained from the most recent frame. */
+    s16 LastSampleOfLastFrame; /* Last sample of the most recent frame. */
+    u8 FlushFlag; /* Requests output of the remaining samples. */
+    f32 *pflWindowCoef; /* Coefficients applied to the output samples. */
 } Window;
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern f32 cosf(f32 value);
-
-static void WindowFlush(Window *block)
+/* Emits the last windowed samples from the history. */
+static void WindowFlush(Window *This)
 {
-    u16 frameLength = block->frameLength;
-    f32 *previousFrame = block->historyWrite;
-    f32 *output;
-    f32 *window = block->window;
-    f32 *windowEnd;
-    f32 *history;
+    u16 FrameLength = This->FrameLength;
+    f32 *pRead = This->pWriteSam;
+    f32 *pWindowedSamples;
+    f32 *pWindowCoef = This->pflWindowCoef;
+    f32 *pWindowCoefEnd;
+    f32 *pBuffer;
 
-    output = qEnQueueOne(block->base.output->queue);
-    previousFrame -= frameLength;
-    if (previousFrame < block->history) {
-        previousFrame = block->historyEnd - frameLength;
+    pWindowedSamples = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+    pRead -= FrameLength;
+    if (pRead < This->pBeginSam) {
+        pRead = This->pEndSam - FrameLength;
     }
-    memcpy(block->historyWrite, previousFrame, frameLength * sizeof(f32));
-    *block->historyWrite = (f32)block->firstSample - (f32)block->lastSample;
+    memcpy(This->pWriteSam, pRead, FrameLength * sizeof(f32));
+    *This->pWriteSam = (f32)This->FirstSampleOfLastFrame - (f32)This->LastSampleOfLastFrame;
 
-    block->historyWrite += frameLength;
-    if (block->historyWrite == block->historyEnd) {
-        block->historyWrite = block->history;
-    }
-
-    history = block->historyWrite + frameLength - block->overlapLength;
-    windowEnd = window + block->overlapLength;
-    while (window < windowEnd) {
-        *output++ = *window++ * *history++;
-    }
-    if (history == block->historyEnd) {
-        history = block->history;
+    This->pWriteSam += FrameLength;
+    if (This->pWriteSam == This->pEndSam) {
+        This->pWriteSam = This->pBeginSam;
     }
 
-    windowEnd = window + frameLength;
-    while (window < windowEnd) {
-        *output++ = *window++ * *history++;
+    pBuffer = This->pWriteSam + FrameLength - This->OverLap;
+    pWindowCoefEnd = pWindowCoef + This->OverLap;
+    while (pWindowCoef < pWindowCoefEnd) {
+        *pWindowedSamples++ = *pWindowCoef++ * *pBuffer++;
     }
-    if (history == block->historyEnd) {
-        history = block->history;
-    }
-
-    windowEnd = window + block->overlapLength;
-    while (window < windowEnd) {
-        *output++ = *window++ * *history++;
+    if (pBuffer == This->pEndSam) {
+        pBuffer = This->pBeginSam;
     }
 
-    block->flushed = 1;
-    block->flushPending = 0;
+    pWindowCoefEnd = pWindowCoef + FrameLength;
+    while (pWindowCoef < pWindowCoefEnd) {
+        *pWindowedSamples++ = *pWindowCoef++ * *pBuffer++;
+    }
+    if (pBuffer == This->pEndSam) {
+        pBuffer = This->pBeginSam;
+    }
+
+    pWindowCoefEnd = pWindowCoef + This->OverLap;
+    while (pWindowCoef < pWindowCoefEnd) {
+        *pWindowedSamples++ = *pWindowCoef++ * *pBuffer++;
+    }
+
+    This->EmptyBuffer = 1;
+    This->FlushFlag = 0;
 }
 
-static void ProcessWindow(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Adds a PCM frame to the history and emits the overlapped window. */
+static void ProcessWindow(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    Window *block = (Window *)baseBlock;
-    s16 *input = inputs[0];
-    f32 *window;
-    f32 *history;
-    f32 *output;
-    f32 *windowEnd;
-    f32 previous;
-    f32 sample;
-    u16 frameLength;
+    Window *This = (Window *)_This;
+    s16 *pSamplesIn = ((void **)pInputs)[0];
+    f32 *pWindowCoef;
+    f32 *pBuffer;
+    f32 *pWindowedSamples;
+    f32 *pWindowCoefEnd;
+    f32 PrevSam;
+    f32 Sam;
+    u16 FrameLength;
     s32 i;
 
-    if (input != NULL) {
-        frameLength = block->frameLength;
-        window = block->window;
-        history = block->historyWrite;
-        block->firstSample = *input;
-        previous = block->previousSample;
+    if (pSamplesIn != NULL) {
+        FrameLength = This->FrameLength;
+        pWindowCoef = This->pflWindowCoef;
+        pBuffer = This->pWriteSam;
+        This->FirstSampleOfLastFrame = *pSamplesIn;
+        PrevSam = This->PrevSample;
 
-        for (i = 0; i < frameLength; i++) {
-            sample = (f32)*input++;
-            *history++ = sample - previous;
-            previous = sample;
+        for (i = 0; i < FrameLength; i++) {
+            Sam = (f32)*pSamplesIn++;
+            *pBuffer++ = Sam - PrevSam;
+            PrevSam = Sam;
         }
-        block->lastSample = input[-1];
-        block->previousSample = sample;
+        This->LastSampleOfLastFrame = pSamplesIn[-1];
+        This->PrevSample = Sam;
 
-        if (history == block->historyEnd) {
-            history = block->history;
+        if (pBuffer == This->pEndSam) {
+            pBuffer = This->pBeginSam;
         }
 
-        if (block->firstFrame != 0) {
-            f32 *firstFrameHistory = block->historyWrite;
-            *firstFrameHistory = 0.0f;
-            memcpy(history, firstFrameHistory, frameLength * sizeof(f32));
-            history += frameLength;
-            if (history == block->historyEnd) {
-                history = block->history;
+        if (This->FirstFrame != 0) {
+            f32 *pSam = This->pWriteSam;
+            *pSam = 0.0f;
+            memcpy(pBuffer, pSam, FrameLength * sizeof(f32));
+            pBuffer += FrameLength;
+            if (pBuffer == This->pEndSam) {
+                pBuffer = This->pBeginSam;
             }
-            block->firstFrame = 0;
-            block->flushed = 0;
-            block->historyWrite = history;
+            This->FirstFrame = 0;
+            This->EmptyBuffer = 0;
+            This->pWriteSam = pBuffer;
         } else {
-            output = qEnQueueOne(block->base.output->queue);
-            block->historyWrite = history;
-            history += frameLength - block->overlapLength;
+            pWindowedSamples = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+            This->pWriteSam = pBuffer;
+            pBuffer += FrameLength - This->OverLap;
 
-            windowEnd = window + block->overlapLength;
-            while (window < windowEnd) {
-                *output++ = *window++ * *history++;
+            pWindowCoefEnd = pWindowCoef + This->OverLap;
+            while (pWindowCoef < pWindowCoefEnd) {
+                *pWindowedSamples++ = *pWindowCoef++ * *pBuffer++;
             }
-            if (history == block->historyEnd) {
-                history = block->history;
-            }
-
-            windowEnd = window + frameLength;
-            while (window < windowEnd) {
-                *output++ = *window++ * *history++;
-            }
-            if (history == block->historyEnd) {
-                history = block->history;
+            if (pBuffer == This->pEndSam) {
+                pBuffer = This->pBeginSam;
             }
 
-            windowEnd = window + block->overlapLength;
-            while (window < windowEnd) {
-                *output++ = *window++ * *history++;
+            pWindowCoefEnd = pWindowCoef + FrameLength;
+            while (pWindowCoef < pWindowCoefEnd) {
+                *pWindowedSamples++ = *pWindowCoef++ * *pBuffer++;
+            }
+            if (pBuffer == This->pEndSam) {
+                pBuffer = This->pBeginSam;
+            }
+
+            pWindowCoefEnd = pWindowCoef + This->OverLap;
+            while (pWindowCoef < pWindowCoefEnd) {
+                *pWindowedSamples++ = *pWindowCoef++ * *pBuffer++;
             }
         }
     }
 
-    if (block->flushPending != 0) {
-        WindowFlush(block);
+    if (This->FlushFlag != 0) {
+        WindowFlush(This);
     }
 }
 
-static u32 ControlWindow(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Resets sample history, requests a flush, or destroys the window block. */
+static u8 ControlWindow(
+    struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
 {
-    Window *block = (Window *)baseBlock;
+    Window *This = (Window *)_This;
 
-    switch ((u8)command) {
-    case 1:
-        block->previousSample = 0.0f;
-        block->firstFrame = 1;
-        block->flushed = 1;
+    switch (ControlId) {
+    case 0x01:
+        This->PrevSample = 0.0f;
+        This->FirstFrame = 1;
+        This->EmptyBuffer = 1;
         break;
-    case 2:
-        if (block->flushed == 0) {
-            block->flushPending = 1;
+    case 0x02:
+        if (This->EmptyBuffer == 0) {
+            This->FlushFlag = 1;
         }
         break;
-    case 255:
-        heap_Free(block->base.context->heap, block->history);
-        heap_Free(block->base.context->heap, block->window);
-        tosBaseBlockDestruct(block);
+    case 0xFF:
+        heap_Free(This->BaseBlock.Object.pTos->hHeap, This->pBeginSam);
+        heap_Free(This->BaseBlock.Object.pTos->hHeap, This->pflWindowCoef);
+        tosBaseBlockDestruct(&This->BaseBlock);
         break;
     default:
         return 0;
@@ -179,52 +184,55 @@ static u32 ControlWindow(
     return 1;
 }
 
-static u32 InitWindow(TosBaseBlock *_This)
+/* Reads frame dimensions and allocates history and window coefficients. */
+static unsigned char InitWindow(struct _BLOCK *_This)
 {
     Window *This = (Window *)_This;
-    TosContext *context = _This->context;
-    u16 frameLength;
-    u16 windowLength;
+    struct _TOS *pTos = _This->Object.pTos;
+    u16 FrameLength;
+    u16 WindowLength;
     s32 i;
 
-    frameLength = (u16)_tosGetProfileU32(This, 1, 110);
-    This->frameLength = frameLength;
-    windowLength = This->windowLength = (u16)_tosGetProfileU32(This, 2, 330);
-    This->overlapLength = (windowLength - frameLength) / 2;
+    FrameLength = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 1, 110);
+    This->FrameLength = FrameLength;
+    WindowLength = This->WindowLength = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 2, 330);
+    This->OverLap = (WindowLength - FrameLength) / 2;
 
-    if (frameLength > windowLength || windowLength > frameLength * 3) {
+    if (FrameLength > WindowLength || WindowLength > FrameLength * 3) {
         return 1;
     }
 
-    This->base.input->inputSize = frameLength * sizeof(s16);
-    This->base.output->outputSize = windowLength * sizeof(f32);
-    This->frameCount = 3;
-    This->history = heap_Calloc(
-        context->heap, This->frameLength * 3, sizeof(f32));
-    This->window = heap_Calloc(context->heap, windowLength, sizeof(f32));
-    if (This->history == NULL || This->window == NULL) {
-        _tosErrorLog(This, 2);
+    This->BaseBlock.InputQueues->Size = FrameLength * sizeof(s16);
+    This->BaseBlock.OutputQueues->Size = WindowLength * sizeof(f32);
+    This->NbrFramesInWindow = 3;
+    This->pBeginSam = heap_Calloc(
+        pTos->hHeap, This->FrameLength * 3, sizeof(f32));
+    This->pflWindowCoef = heap_Calloc(pTos->hHeap, WindowLength, sizeof(f32));
+    if (This->pBeginSam == NULL || This->pflWindowCoef == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 2);
         return 1;
     }
 
-    This->historyWrite = This->history;
-    This->historyEnd = This->history + frameLength * 3;
-    for (i = 0; i < windowLength; i++) {
-        This->window[i] =
+    This->pWriteSam = This->pBeginSam;
+    This->pEndSam = This->pBeginSam + FrameLength * 3;
+    for (i = 0; i < WindowLength; i++) {
+        This->pflWindowCoef[i] =
             0.54f -
-            0.46f * cosf((6.283185308 * (f32)i) / (f32)(windowLength - 1));
+            0.46f * cosf((6.283185308 * (f32)i) / (f32)(WindowLength - 1));
     }
 
-    This->previousSample = 0.0f;
-    This->firstFrame = 1;
-    This->flushed = 1;
-    This->flushPending = 0;
+    This->PrevSample = 0.0f;
+    This->FirstFrame = 1;
+    This->EmptyBuffer = 1;
+    This->FlushFlag = 0;
     return 0;
 }
 
-void *ConstructWindow(TosContext *context, u8 blockIndex)
+/* Allocates a windowing block with one input and one output. */
+struct _BLOCK *ConstructWindow(struct _TOS *pTos, u8 BlockID)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, ProcessWindow, InitWindow, ControlWindow,
+        pTos, BlockID, 1, 1, ProcessWindow, InitWindow,
+        ControlWindow,
         sizeof(Window));
 }

@@ -1,261 +1,253 @@
 /* Scores extra-event state chains used by the rec1600 speech recognizer. */
+#include "gssdk/blocks.h"
+#include "gssdk/engine.h"
+#include "gssdk/heap.h"
+#include "gssdk/secondpass.h"
 #include "types.h"
 
 #include "gssdk/tos.h"
 
-#define EXTRA_EVENT_SCORE_INFINITY 2147483647
-#define EXTRA_EVENT_MAX_SCORE (EXTRA_EVENT_SCORE_INFINITY - 2048)
+/* One configured state ID and its accumulated path cost. */
+struct _EXEVACTIVEDPSTATE {
+    long Score; /* Accumulated path cost for this state. */
+    unsigned long StateIndex; /* Dictionary state index used to look up frame costs. */
+};
 
-typedef s16 (*ExtraEventStateScoreFunction)(void *callbackContext, u32 stateId);
-typedef s32 (*ExtraEventFrameScoreFunction)(void *callbackContext);
-typedef s16 *(*ExtraEventScoreCacheFunction)(void *callbackContext);
-
-typedef struct ExtraEventCallbacks {
-void *callbackContext; /* Opaque data passed to each score callback. */
-ExtraEventStateScoreFunction readStateScore; /* Returns the added cost for a state ID. */
-void *reservedCallback; /* Unused callback slot in this bundle. */
-ExtraEventScoreCacheFunction getScoreCache; /* Supplies cached state costs. */
-ExtraEventFrameScoreFunction readFrameScore; /* Returns the added cost for an input frame. */
-} ExtraEventCallbacks;
-
-typedef struct ExtraEventContextInfo {
-u32 stateCount; /* Number of configured state IDs. */
-u16 *stateIds; /* State IDs indexed by the dynamic-programming state table. */
-u16 *transitionBounds; /* Start and one-past-end state indices for each transition chain. */
-u32 transitionCount; /* Number of transition chains. */
-s32 transitionScore; /* Cost added when a chain advances from its first state. */
-s32 initialScore; /* Starting cost assigned to the first state. */
-} ExtraEventContextInfo;
-
-typedef struct ExtraEventState {
-s32 score; /* Accumulated signed cost for this state. */
-u32 stateId; /* ID used by the score callback and cache. */
-} ExtraEventState;
-
-typedef struct ExtraEventDP {
-TosBaseBlock base; /* TOS lifecycle and callback state for this block. */
-TosQueuePort *input; /* Single input port whose frames drive scoring. */
-void *callbackContext; /* Opaque data passed to the configured score callbacks. */
-ExtraEventStateScoreFunction readStateScore; /* Computes a state ID's added cost. */
-ExtraEventFrameScoreFunction readFrameScore; /* Computes an input frame's added cost. */
-ExtraEventScoreCacheFunction getScoreCache; /* Supplies the cache indexed by state ID. */
-s16 *scoreCache; /* Cached state costs; 32767 marks a cache miss. */
-u32 stateCount; /* Number of entries in states and stateIds. */
-u16 *stateIds; /* Configured IDs corresponding to each state entry. */
-s32 bestScore; /* Lower of the first and terminal state costs. */
-s32 accumulatedScore; /* Sum of frame costs processed by this block. */
-u16 frameCount; /* Processed-frame counter; initialized to 65535 before the first frame. */
-u16 reservedHalfword; /* Unused storage retained in the block layout. */
-s32 transitionScore; /* Cost added when a transition chain advances. */
-s32 initialScore; /* Initial cost assigned to the first state. */
-u32 reservedWord; /* Unused storage retained in the block layout. */
-u32 transitionCount; /* Number of configured transition chains. */
-u16 *transitionBounds; /* State-table boundaries delimiting each transition chain. */
-ExtraEventState *states; /* Dynamic-programming costs for configured states. */
+/* Paths and scoring callbacks for the extra-event recognizer. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* TOS lifecycle and callback state for this block. */
+    struct _INPUTQUEUE *LabelInQueue; /* Single input port whose frames drive scoring. */
+    void *pDistCalc; /* Opaque data passed to the configured score callbacks. */
+    short (*CalculateDistance)(void *, unsigned int); /* Computes a state ID's added cost. */
+    long (*GetDistanceOffset)(void *); /* Computes an input frame's added cost. */
+    short *(*GetpCachedDistances_DISTBLK)(void *); /* Supplies the cache indexed by state ID. */
+    short *pCachedDistances_DISTBLK; /* Cached state costs; 32767 marks a cache miss. */
+    unsigned int NbrPhenomes; /* Number of entries in the state table and dictionary. */
+    struct _DICTSTATE *pStateInDict; /* State entries used to seed the scoring table. */
+    long BestScore; /* Lower of the first and terminal state costs. */
+    long AccumulatedScoreOffset; /* Sum of frame costs processed by this block. */
+    /* Processed-frame counter; initialized to 65535 before the first frame. */
+    unsigned short u16FrameCounter;
+    long Rejection_NBS_penalty; /* Cost added when a transition chain advances. */
+    long Rejection_NBS_path_penalty; /* Initial cost assigned to the first state. */
+    unsigned long ExtraEventSilencePhenome; /* The game's code never reads this field. */
+    unsigned long NbrOfPronunciations_RejectionWord; /* Number of configured transition chains. */
+    /* State-table boundaries delimiting each transition chain. */
+    unsigned short *pBeginOfPronunciationsInDict;
+    struct _EXEVACTIVEDPSTATE *pDynProg; /* Dynamic-programming costs for configured states. */
 } ExtraEventDP;
-
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
 
 /* Command 2 calls this to restart scoring and seed the configured state chain. */
 static void InitViterbi(ExtraEventDP *eventBlock)
 {
-ExtraEventState *currentState;
-u32 stateIndex = 0;
+    struct _EXEVACTIVEDPSTATE *currentState;
+    u32 stateIndex = 0;
 
-eventBlock->bestScore = 0;
-eventBlock->accumulatedScore = 0;
-eventBlock->frameCount = 65535;
+    eventBlock->BestScore = 0;
+    eventBlock->AccumulatedScoreOffset = 0;
+    eventBlock->u16FrameCounter = 65535;
 
-currentState = eventBlock->states;
-currentState->score = eventBlock->initialScore;
-currentState->stateId = eventBlock->stateIds[0];
-currentState++;
-stateIndex++;
-
-while (stateIndex < eventBlock->stateCount) {
-    currentState->score = EXTRA_EVENT_MAX_SCORE;
-    currentState->stateId = eventBlock->stateIds[stateIndex];
-    stateIndex++;
+    currentState = eventBlock->pDynProg;
+    currentState->Score = eventBlock->Rejection_NBS_path_penalty;
+    currentState->StateIndex = eventBlock->pStateInDict[0].StateIndex;
     currentState++;
-}
+    stateIndex++;
+
+    while (stateIndex < eventBlock->NbrPhenomes) {
+        /* Start unvisited states at the score ceiling, below the signed long limit. */
+        currentState->Score = 2147483647 - 2048;
+        currentState->StateIndex = eventBlock->pStateInDict[stateIndex].StateIndex;
+        stateIndex++;
+        currentState++;
+    }
 }
 
 /* The process callback calls this for each input frame to update the state costs. */
 static void DynProgExtraEventsProcess(ExtraEventDP *eventBlock)
 {
- s32 chainScore;
-ExtraEventState *stateTable;
-ExtraEventState *terminalState;
-ExtraEventState *transitionState;
-ExtraEventState *transitionEnd;
-ExtraEventState *scoredState;
-u16 stateIndex;
-s16 *stateScoreCache;
-u16 transitionIndex = 1;
-s32 candidateScore;
-s32 previousTerminalScore;
+    s32 chainScore;
+    struct _EXEVACTIVEDPSTATE *stateTable;
+    struct _EXEVACTIVEDPSTATE *terminalState;
+    struct _EXEVACTIVEDPSTATE *transitionState;
+    struct _EXEVACTIVEDPSTATE *transitionEnd;
+    struct _EXEVACTIVEDPSTATE *scoredState;
+    u16 stateIndex;
+    s16 *stateScoreCache;
+    u16 transitionIndex = 1;
+    s32 candidateScore;
+    s32 previousTerminalScore;
 
-candidateScore = EXTRA_EVENT_SCORE_INFINITY;
-stateTable = eventBlock->states;
-terminalState = &stateTable[eventBlock->stateCount - 1];
-stateScoreCache = eventBlock->scoreCache;
-previousTerminalScore = terminalState->score;
+    candidateScore = 2147483647; /* Highest signed long score. */
+    stateTable = eventBlock->pDynProg;
+    terminalState = &stateTable[eventBlock->NbrPhenomes - 1];
+    stateScoreCache = eventBlock->pCachedDistances_DISTBLK;
+    previousTerminalScore = terminalState->Score;
 
-for (; transitionIndex <= eventBlock->transitionCount; transitionIndex++) {
-    chainScore = stateTable[0].score + eventBlock->transitionScore;
-    transitionState = &eventBlock->states[eventBlock->transitionBounds[transitionIndex]];
-    transitionEnd = &eventBlock->states[eventBlock->transitionBounds[transitionIndex + 1]] - 1;
+    for (; transitionIndex <= eventBlock->NbrOfPronunciations_RejectionWord; transitionIndex++) {
+        chainScore = stateTable[0].Score + eventBlock->Rejection_NBS_penalty;
+        transitionState =
+            &eventBlock->pDynProg[eventBlock->pBeginOfPronunciationsInDict[transitionIndex]];
+        transitionEnd =
+            &eventBlock->pDynProg[eventBlock->pBeginOfPronunciationsInDict[transitionIndex + 1]]
+            - 1;
 
-    while (transitionState < transitionEnd) {
-        candidateScore = chainScore;
-        chainScore = transitionState->score;
-        if (candidateScore < chainScore) {
-            transitionState->score = candidateScore;
+        while (transitionState < transitionEnd) {
+            candidateScore = chainScore;
+            chainScore = transitionState->Score;
+            if (candidateScore < chainScore) {
+                transitionState->Score = candidateScore;
+            }
+            transitionState++;
         }
-        transitionState++;
+
+        /* Each chain is compared with the terminal cost saved before this update. */
+        if (transitionState->Score < previousTerminalScore) {
+            terminalState->Score = transitionState->Score;
+        }
+        if (candidateScore < transitionState->Score) {
+            transitionState->Score = candidateScore;
+        }
     }
 
-    /* Each chain is compared with the terminal cost saved before this update. */
-    if (transitionState->score < previousTerminalScore) {
-        terminalState->score = transitionState->score;
-    }
-    if (candidateScore < transitionState->score) {
-        transitionState->score = candidateScore;
-    }
-}
-
-if (previousTerminalScore < stateTable[0].score) {
-    stateTable[0].score = terminalState->score;
-}
-
-scoredState = eventBlock->states;
-for (stateIndex = 0; stateIndex < eventBlock->stateCount; stateIndex++) {
-    s16 callbackScore;
-    if ((callbackScore = stateScoreCache[scoredState->stateId]) == 32767) {
-        callbackScore =
-            eventBlock->readStateScore(eventBlock->callbackContext, scoredState->stateId);
-        stateScoreCache[scoredState->stateId] = callbackScore;
+    if (previousTerminalScore < stateTable[0].Score) {
+        stateTable[0].Score = terminalState->Score;
     }
 
-    scoredState->score += callbackScore;
-    if (scoredState->score > EXTRA_EVENT_MAX_SCORE) {
-        scoredState->score = EXTRA_EVENT_MAX_SCORE;
-    }
-    scoredState++;
-}
+    scoredState = eventBlock->pDynProg;
+    for (stateIndex = 0; stateIndex < eventBlock->NbrPhenomes; stateIndex++) {
+        s16 callbackScore;
+        if ((callbackScore = stateScoreCache[scoredState->StateIndex]) == 32767) {
+            callbackScore =
+                eventBlock->CalculateDistance(eventBlock->pDistCalc, scoredState->StateIndex);
+            stateScoreCache[scoredState->StateIndex] = callbackScore;
+        }
 
-if (stateTable[0].score < terminalState->score) {
-    eventBlock->bestScore = stateTable[0].score;
-} else {
-    eventBlock->bestScore = terminalState->score;
-}
+        scoredState->Score += callbackScore;
+        /* Leave headroom for the next frame's score update. */
+        if (scoredState->Score > 2147483647 - 2048) {
+            scoredState->Score = 2147483647 - 2048; /* Score ceiling. */
+        }
+        scoredState++;
+    }
+
+    if (stateTable[0].Score < terminalState->Score) {
+        eventBlock->BestScore = stateTable[0].Score;
+    } else {
+        eventBlock->BestScore = terminalState->Score;
+    }
 }
 
 /* TOS calls this process callback; only a non-null first input advances frame scoring. */
-static u32 ProcessExtraEventDP(
-TosBaseBlock *tosBlock, void **inputs, s32 inputCount)
+static u8 ProcessExtraEventDP(ExtraEventDP *eventBlock, void *pInputs, int NbrInputs)
 {
-ExtraEventDP *eventBlock = (ExtraEventDP *)tosBlock;
-
-if (inputs[0] != NULL) {
-    eventBlock->frameCount++;
-    eventBlock->accumulatedScore += eventBlock->readFrameScore(eventBlock->callbackContext);
-    DynProgExtraEventsProcess(eventBlock);
-}
-
-return 0;
-}
-
-/* TOS calls this initializer to bind the input port and apply profile key 15's element size. */
-static unsigned char InitExtraEventDP(ExtraEventDP *This)
-{
-u32 inputElementSize;
-
-This->input = This->base.input;
-inputElementSize = (u16)_tosGetProfileU32(&This->base, 15, 4);
-This->input->inputSize = inputElementSize;
-return 0;
-}
-
-/* TOS calls this control callback for score queries, startup, configuration, and shutdown. */
-static unsigned char ControlExtraEventDP(
-    ExtraEventDP *This,
-    unsigned char ControlId,
-    unsigned long CParam)
-{
-TosContext *ownerContext;
-TosBaseBlock *tosBlock = (TosBaseBlock *)This;
-
-switch (ControlId) {
-case 1:
-    if (CParam != 0) {
-        *(s32 *)CParam = This->bestScore + This->accumulatedScore;
-    } else {
-        return 1;
-    }
-    break;
-case 2:
-    InitViterbi(This);
-    This->base.process = (TosProcessFunction)ProcessExtraEventDP;
-    break;
-case 3:
-    /* This control ID is accepted without changing the extra-event scorer. */
-    break;
-case 7:
-    /* This control ID is accepted without changing the extra-event scorer. */
-    break;
-case 8:
-    {
-    TosContext *stateHeapContext = tosBlock->context;
-    if (This->states != NULL) {
-        heap_Free(stateHeapContext->heap, This->states);
-        This->states = NULL;
+    if (((void **)pInputs)[0] != NULL) {
+        eventBlock->u16FrameCounter++;
+        eventBlock->AccumulatedScoreOffset += eventBlock->GetDistanceOffset(eventBlock->pDistCalc);
+        DynProgExtraEventsProcess(eventBlock);
     }
 
-    ownerContext = tosBlock->context;
-    This->transitionCount = ((ExtraEventContextInfo *)CParam)->transitionCount;
-    This->transitionScore = ((ExtraEventContextInfo *)CParam)->transitionScore;
-    This->initialScore = ((ExtraEventContextInfo *)CParam)->initialScore;
-    This->stateCount = ((ExtraEventContextInfo *)CParam)->stateCount;
-    This->stateIds = ((ExtraEventContextInfo *)CParam)->stateIds;
-    This->transitionBounds = ((ExtraEventContextInfo *)CParam)->transitionBounds;
-    This->scoreCache = This->getScoreCache(This->callbackContext);
-    This->states = heap_Alloc(
-        ownerContext->heap, This->stateCount * sizeof(ExtraEventState));
-    if (This->states == NULL) {
-        _tosErrorLog(This, 1);
-    }
-    break;
-    }
-case 6:
-    This->readStateScore = ((ExtraEventCallbacks *)CParam)->readStateScore;
-    This->getScoreCache = ((ExtraEventCallbacks *)CParam)->getScoreCache;
-    This->readFrameScore = ((ExtraEventCallbacks *)CParam)->readFrameScore;
-    This->callbackContext = ((ExtraEventCallbacks *)CParam)->callbackContext;
-    break;
-case 255:
-    {
-    ownerContext = tosBlock->context;
-    if (This->states != NULL) {
-        heap_Free(ownerContext->heap, This->states);
-        This->states = NULL;
-    }
-    tosBaseBlockDestruct(This);
-    break;
-    }
-default:
     return 0;
 }
 
-return 1;
+/* Binds the input port and applies the element size from profile key 15. */
+static unsigned char InitExtraEventDP(ExtraEventDP *This)
+{
+    u32 inputElementSize;
+
+    This->LabelInQueue = This->BaseBlock.InputQueues;
+    inputElementSize = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 0x0F, 4);
+    This->LabelInQueue->Size = inputElementSize;
+    return 0;
+}
+
+/* Releases the state costs before changing or destroying a recognition context. */
+static void FreeDynprog(ExtraEventDP *This)
+{
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
+
+    if (This->pDynProg != NULL) {
+        heap_Free(pTos->hHeap, This->pDynProg);
+        This->pDynProg = NULL;
+    }
+}
+
+/* Installs the state chains and allocates their accumulated costs. */
+static void InitDynprogContext(ExtraEventDP *This, struct _DYNPROG_EXEV_CTXINFO *pCtx)
+{
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
+    This->NbrOfPronunciations_RejectionWord = pCtx->NbrOfPronunciations_RejectionWord;
+    This->Rejection_NBS_penalty = pCtx->Rejection_NBS_penalty;
+    This->Rejection_NBS_path_penalty = pCtx->Rejection_NBS_path_penalty;
+    This->NbrPhenomes = pCtx->uNrStatesInDict;
+    This->pStateInDict = pCtx->pStateInDict;
+    This->pBeginOfPronunciationsInDict = pCtx->pBeginOfPronunciationsInDict;
+    This->pCachedDistances_DISTBLK = This->GetpCachedDistances_DISTBLK(This->pDistCalc);
+    This->pDynProg = heap_Alloc(pTos->hHeap, This->NbrPhenomes * sizeof(struct _EXEVACTIVEDPSTATE));
+    if (This->pDynProg == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 0x01);
+    }
+}
+
+/* TOS calls this control callback for score queries, startup, configuration, and shutdown. */
+static unsigned char ControlExtraEventDP(ExtraEventDP *This, unsigned char ControlId,
+                                         unsigned long CParam)
+{
+    switch (ControlId) {
+    case 0x01:
+        if (CParam != 0) {
+            *(s32 *) CParam = This->BestScore + This->AccumulatedScoreOffset;
+        } else {
+            return 1;
+        }
+        break;
+    case 0x02:
+        InitViterbi(This);
+        /* Dispatch ignores the extra-event scorer's byte status. */
+        This->BaseBlock.Process = (void (*)(struct _BLOCK *, void *, int)) ProcessExtraEventDP;
+        break;
+    case 0x03:
+        /* This control ID is accepted without changing the extra-event scorer. */
+        break;
+    case 0x07:
+        /* This control ID is accepted without changing the extra-event scorer. */
+        break;
+    case 0x08: {
+        struct _DYNPROG_EXEV_CTXINFO *pCtx = (struct _DYNPROG_EXEV_CTXINFO *)CParam;
+
+        FreeDynprog(This);
+
+        InitDynprogContext(This, pCtx);
+        break;
+    }
+    case 0x06: {
+        struct _DISTCALCFUNCS *pCtx = (struct _DISTCALCFUNCS *)CParam;
+
+        This->CalculateDistance = pCtx->CalculateDistance;
+        This->GetpCachedDistances_DISTBLK = pCtx->GetpCachedDistances;
+        This->GetDistanceOffset = pCtx->GetDistanceOffset;
+        This->pDistCalc = pCtx->pThis;
+        break;
+    }
+    case 0xFF: {
+        FreeDynprog(This);
+        tosBaseBlockDestruct(&This->BaseBlock);
+        break;
+    }
+    default:
+        return 0;
+    }
+
+    return 1;
 }
 
 /* The rec1600 block table uses this constructor for its extra-event scoring block. */
-void *ConstructExtraEventDp(TosContext *context, u8 blockIndex)
+struct _BLOCK *ConstructExtraEventDp(struct _TOS *pTos, u8 BlockID)
 {
-return tosBaseBlockConstruct(
-    context, blockIndex, 1, 0, (TosProcessFunction)ProcessExtraEventDP,
-    (TosInitFunction)InitExtraEventDP,
-    (TosControlFunction)ControlExtraEventDP, sizeof(ExtraEventDP));
+    /* The base pointer addresses the ExtraEventDP prefix. Dispatch ignores the process status.
+     * The control handler reads the command and its first payload word. */
+    return tosBaseBlockConstruct(pTos, BlockID, 1, 0,
+                                 (void (*)(struct _BLOCK *, void *, int)) ProcessExtraEventDP,
+                                 (u8 (*)(struct _BLOCK *)) InitExtraEventDP,
+                                 (u8 (*)(struct _BLOCK *, u8, u32, u32)) ControlExtraEventDP,
+                                 sizeof(ExtraEventDP));
 }

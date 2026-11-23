@@ -1,105 +1,126 @@
+/* Tracks the most likely pitch sequence using dynamic programming. */
+#include "gssdk/blocks.h"
+#include "gssdk/heap.h"
+#include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h>
+#include "gssdk/mathusage.h"
 #include "types.h"
 
 #include "gssdk/tos.h"
+#include "gssdk/mqueue.h"
 
-typedef struct PitchDPCell {
-    f32 observation;
-    f32 score;
-    u32 previousState;
+/* Observation, cumulative score and predecessor for one pitch state. */
+typedef struct {
+    f32 Ampl; /* Observation for this pitch state and frame. */
+    f32 AmplSum; /* Best cumulative score at this cell. */
+    long BackTrack; /* Pitch state selected in the preceding frame. */
 } PitchDPCell;
 
-typedef struct PitchDP {
-    TosBaseBlock base;
-    u16 stateCount;
-    u8 windowLength;
-    u8 delayLength;
-    u8 inputOffset;
-    u32 pruningDivisor;
-    u16 maximumJump;
-    f32 passNumber;
-    u16 sampleRate;
-    u16 historyLength;
-    f32 jumpScale;
-    u16 activeFrameCount;
-    u16 inputFrameCount;
-    u16 bufferedFrameCount;
-    u16 flushFrameCount;
-    u16 flushOutputIndex;
-    u8 flushing;
-    u8 firstFlush;
-    u8 initializeScores;
-    PitchDPCell *cells;
-    PitchDPCell **states;
-    f32 *pitchValues;
-    f32 **jumpFactors;
-    f32 *bestPath;
+/* Buffers observations and the best path through successive pitch frames. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    u16 Maxk; /* Number of pitch states. */
+    u8 BufferLength; /* Fresh frames in each analysis window after startup. */
+    u8 BufferOverlap; /* Frames overlapped on each side of the full window. */
+    u8 NbrOfOldFrames_AllreadyFilledIn; /* Retained frames preceding the current input. */
+    u32 Beam; /* Divisor used to set the pruning threshold below the best score. */
+    u16 Neighbours; /* Pitch bins searched on either side of the current state. */
+    f32 BufferID; /* Selects the first or subsequent pass through the pitch window. */
+    u16 MaxPitchChange; /* Pitch-change rate used with frame duration to set transition costs. */
+    u16 LineLength; /* Length of each pitch state history in frames. */
+    f32 FrameDuration; /* Time represented by one pitch frame. */
+    u16 NbrOfTotalFrames; /* Frames in the current dynamic-programming window. */
+    u16 NbrOfFreshFrames; /* New frames required to run the next pass. */
+    u16 NbrOfFreshFrames_AllreadyFilledIn; /* New frames already stored in the window. */
+    u16 NbrToFlush; /* Number of frames covered by the flush pass. */
+    u16 FlushCounter; /* Current output index during flush. */
+    u8 FlushFlag; /* Allows input-free scheduler ticks to drain the pending pitch path. */
+    u8 FirstFlush; /* Runs the final scoring pass before the first flush output. */
+    u8 FirstDP; /* Seeds cumulative scores when the first window is complete. */
+    PitchDPCell *pAllMeas; /* Contiguous pitch-state and frame histories. */
+    PitchDPCell **ppMeas; /* Start of each pitch state history. */
+    f32 *pIndexPitch; /* Pitch value corresponding to each state. */
+    f32 **ppJumpFactor; /* Score weights for transitions between pitch states. */
+    f32 *pOutDummy; /* Reconstructed pitch path awaiting output. */
 } PitchDP;
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern f32 logf_check(f32 value);
-extern f32 powf(f32 base, f32 exponent);
-
-static void Actual_DP(PitchDP *block, u16 stateCount, u16 frameCount)
+/* Stores the current observation in each pitch state history. */
+static void PreDP(float *pIn, PitchDP *This)
 {
-    PitchDPCell *cells = block->cells;
-    u16 maximumJump = block->maximumJump;
-    u16 historyLength = block->historyLength;
-    f32 **jumpFactors = block->jumpFactors;
-    PitchDPCell **states = block->states;
-    u16 frame;
+    unsigned short k;
+    unsigned short Maxk = This->Maxk;
+    PitchDPCell **ppMeas = This->ppMeas;
+    unsigned short NbrOfFreshFrames_AllreadyFilledIn = This->NbrOfFreshFrames_AllreadyFilledIn;
+    unsigned char NbrOfOldFrames_AllreadyFilledIn;
+    if (This->BufferID == 2.0) {
+        This->NbrOfTotalFrames = This->BufferLength + This->BufferOverlap * 2;
+        This->NbrOfFreshFrames = This->BufferLength;
+        This->NbrOfOldFrames_AllreadyFilledIn = This->BufferOverlap * 2;
+    }
+    NbrOfOldFrames_AllreadyFilledIn = This->NbrOfOldFrames_AllreadyFilledIn;
+    for (k = 0; k < Maxk; k++) {
+        ppMeas[k][NbrOfFreshFrames_AllreadyFilledIn +
+                  NbrOfOldFrames_AllreadyFilledIn].Ampl = pIn[k];
+    }
+}
 
-    for (frame = 1; frame < frameCount; frame++) {
-        f32 maximumScore = 0.0f;
-        f32 pruningScore;
-        u16 state;
-        PitchDPCell *cell = cells + frame - 1;
-
-        for (state = 0; state < block->stateCount;
-             state++, cell += historyLength) {
-            if (cell->score > maximumScore) {
-                maximumScore = cell->score;
-            }
+/* Finds the score threshold for retaining candidate states. */
+static float ThresholdDetermination(PitchDP *This, unsigned short Frame)
+{
+    unsigned short j;
+    unsigned short Maxk = This->Maxk;
+    PitchDPCell *pMeas = This->pAllMeas + Frame;
+    float Threshold = 0.0f;
+    unsigned short LineLength = This->LineLength;
+    for (j = 0; j < Maxk; j++, pMeas += LineLength) {
+        if (Threshold < pMeas->AmplSum) {
+            Threshold = pMeas->AmplSum;
         }
+    }
+    Threshold = Threshold - Threshold / This->Beam;
+    return Threshold;
+}
 
-        pruningScore =
-            maximumScore - maximumScore / block->pruningDivisor;
-        for (state = 0; state < stateCount; state++) {
-            PitchDPCell *previous =
-                &cells[state * historyLength + frame - 1];
-
-            if (previous->score > pruningScore) {
-                u16 firstState;
-                u16 lastState;
-                u16 nextState;
-
-                if (state < maximumJump) {
-                    firstState = 0;
+/* Scores each pitch state and records its best predecessor. */
+static void Actual_DP(PitchDP *This, unsigned int Maxk, unsigned int NbrOfFrames)
+{
+    unsigned int j;
+    PitchDPCell *pMeas_j;
+    PitchDPCell *pMeas_k;
+    float *pJumpFactor;
+    unsigned int k;
+    unsigned int Min;
+    unsigned short Max;
+    unsigned int Neighbours = This->Neighbours;
+    float maxAmpl;
+    unsigned int Frame;
+    float Threshold;
+    unsigned int LineLength = This->LineLength;
+    PitchDPCell *pAllMeas = This->pAllMeas;
+    float **ppJumpFactor = This->ppJumpFactor;
+    PitchDPCell **ppMeas = This->ppMeas;
+    for (Frame = 1; Frame < NbrOfFrames; Frame++) {
+        Threshold = ThresholdDetermination(This, Frame - 1);
+        for (j = 0; j < Maxk; j++) {
+            pMeas_j = pAllMeas + j * LineLength + Frame - 1;
+            if (pMeas_j->AmplSum > Threshold) {
+                if (j < Neighbours) {
+                    Min = 0;
                 } else {
-                    firstState = state - maximumJump;
+                    Min = (unsigned short)(j - Neighbours);
                 }
-
-                if (stateCount - state < maximumJump) {
-                    lastState = stateCount - 1;
+                if (Maxk - j < Neighbours) {
+                    Max = Maxk - 1;
                 } else {
-                    lastState = state + maximumJump;
+                    Max = j + Neighbours;
                 }
-
-                for (nextState = firstState;
-                     nextState < lastState; nextState++) {
-                    f32 jumpFactor =
-                        jumpFactors[state][nextState];
-
-                    if (jumpFactor > 0.0f) {
-                        PitchDPCell *next =
-                            &states[nextState][frame];
-                        f32 score =
-                            previous->score +
-                            next->observation * jumpFactor;
-
-                        if (score > next->score) {
-                            next->score = score;
-                            next->previousState = state;
+                pJumpFactor = ppJumpFactor[j] + Min;
+                for (k = Min; k < Max; k++, pJumpFactor++) {
+                    if (*pJumpFactor > 0.0f) {
+                        pMeas_k = ppMeas[k] + Frame;
+                        maxAmpl = pMeas_j->AmplSum + *pJumpFactor * pMeas_k->Ampl;
+                        if (maxAmpl > pMeas_k->AmplSum) {
+                            pMeas_k->AmplSum = maxAmpl;
+                            pMeas_k->BackTrack = j;
                         }
                     }
                 }
@@ -108,409 +129,364 @@ static void Actual_DP(PitchDP *block, u16 stateCount, u16 frameCount)
     }
 }
 
-static void BackTracking(PitchDP *block, u16 frameCount)
+/* Follows winning predecessors to reconstruct the pitch path. */
+static void BackTracking(PitchDP *This, unsigned int NbrOfTotalFrames)
 {
-    u16 stateCount = block->stateCount;
-    f32 *pitchValues = block->pitchValues;
-    PitchDPCell **states = block->states;
-    f32 *bestPath = block->bestPath;
-
-    if (frameCount > 1) {
-        u16 frame = frameCount - 1;
-        f32 maximumScore = states[0][frame].score;
-        u16 bestState = 0;
-        u16 state;
-        PitchDPCell **stateRow = states + 1;
-        f32 *pitchValue = pitchValues + 1;
-
-        bestPath[frame] = pitchValues[0];
-        for (state = 1; state < stateCount;
-             state++, stateRow++, pitchValue++) {
-            if ((*stateRow)[frame].score > maximumScore) {
-                maximumScore = (*stateRow)[frame].score;
-                bestState = state;
-                bestPath[frame] = *pitchValue;
+    unsigned long Track;
+    unsigned int Frame;
+    float maxAmpl;
+    PitchDPCell *pMeas;
+    unsigned int k;
+    unsigned int Maxk = This->Maxk;
+    float *pOutDummy = This->pOutDummy;
+    PitchDPCell **ppMeas = This->ppMeas;
+    float *pIndexPitch = This->pIndexPitch;
+    if (NbrOfTotalFrames > 1) {
+        Frame = (unsigned short)(NbrOfTotalFrames - 1);
+        maxAmpl = ppMeas[0][Frame].AmplSum;
+        Track = 0;
+        pOutDummy[Frame] = pIndexPitch[0];
+        for (k = 1; k < Maxk; k++) {
+            pMeas = ppMeas[k] + Frame;
+            if (pMeas->AmplSum > maxAmpl) {
+                maxAmpl = pMeas->AmplSum;
+                Track = k;
+                pOutDummy[Frame] = pIndexPitch[k];
             }
         }
-
-        {
-            PitchDPCell *cell = &states[bestState][frame];
-            f32 *output = bestPath + frame;
-
-            for (; frame != 0; frame--) {
-                bestState = cell->previousState;
-                cell = &states[bestState][frame - 1];
-                *--output = pitchValues[bestState];
-            }
+        pMeas = ppMeas[Track] + NbrOfTotalFrames - 1;
+        for (Frame = (unsigned short)(NbrOfTotalFrames - 1); Frame > 0;) {
+            --Frame;
+            pOutDummy[Frame] = pIndexPitch[pMeas->BackTrack];
+            pMeas = ppMeas[pMeas->BackTrack] + Frame;
         }
     } else {
-        f32 maximumScore = states[0][0].observation;
-        u16 state;
-        PitchDPCell **stateRow = states + 1;
-        f32 *pitchValue = pitchValues + 1;
-
-        bestPath[0] = 0.0f;
-        for (state = 1; state < stateCount;
-             state++, stateRow++, pitchValue++) {
-            if ((*stateRow)->observation > maximumScore) {
-                maximumScore = (*stateRow)->observation;
-                bestPath[0] = *pitchValue;
+        pOutDummy[0] = 0.0f;
+        maxAmpl = ppMeas[0]->Ampl;
+        for (k = 1; k < Maxk; k++) {
+            if (ppMeas[k]->Ampl > maxAmpl) {
+                maxAmpl = ppMeas[k]->Ampl;
+                pOutDummy[0] = pIndexPitch[k];
             }
         }
     }
 }
 
-static void Output(PitchDP *block)
+/* Queues the pitch values from the reconstructed path. */
+static void Output(PitchDP *This)
 {
-    u8 windowLength = block->windowLength;
-    f32 *bestPath = block->bestPath;
-    u8 delayLength = block->delayLength;
-    TosBaseBlock baseBlock = block->base;
-    u8 frame;
-
-    if (block->passNumber == 1.0) {
-        for (frame = 0; frame < windowLength; frame++) {
-            f32 *output = qEnQueueOne(baseBlock.output->queue);
-
-            *output = bestPath[frame];
+    u8 BufferLength = This->BufferLength;
+    u8 i;
+    f32 *pOutDummy = This->pOutDummy;
+    u8 BufferOverlap = This->BufferOverlap;
+    struct _BLOCK BaseBlock = This->BaseBlock;
+    if (This->BufferID == 1.0) {
+        for (i = 0; i < BufferLength; i++) {
+            f32 *pOut = qEnQueueOne(BaseBlock.OutputQueues->pQ);
+            *pOut = pOutDummy[i];
         }
     } else {
-        for (frame = 0; frame < windowLength; frame++) {
-            f32 *output = qEnQueueOne(baseBlock.output->queue);
-
-            *output = bestPath[delayLength + frame];
+        for (i = 0; i < BufferLength; i++) {
+            f32 *pOut = qEnQueueOne(BaseBlock.OutputQueues->pQ);
+            *pOut = pOutDummy[BufferOverlap + i];
         }
     }
 }
 
-static void PostDP(PitchDP *block)
+/* Retains observations shared by consecutive pitch windows. */
+static void PostDP(PitchDP *This)
 {
-    u16 stateCount = block->stateCount;
-    u8 windowLength = block->windowLength;
-    u8 delayLength = block->delayLength;
-    PitchDPCell **states = block->states;
-    u16 frame;
+    unsigned int i;
+    unsigned int j;
+    unsigned int Maxk = This->Maxk;
+    unsigned int BufferLength = This->BufferLength;
+    unsigned int BufferOverlap = This->BufferOverlap;
+    PitchDPCell **ppMeas = This->ppMeas;
 
-    if (block->passNumber == 1.0) {
-        for (frame = 0; frame < delayLength * 2; frame++) {
-            u16 state;
-
-            for (state = 0; state < stateCount; state++) {
-                states[state][frame] =
-                    states[state][frame + windowLength - delayLength];
+    if (This->BufferID == 1.0) {
+        for (i = 0; i < BufferOverlap * 2; i++) {
+            for (j = 0; j < Maxk; j++) {
+                ppMeas[j][i] = ppMeas[j][i + (BufferLength - BufferOverlap)];
             }
         }
     } else {
-        for (frame = 0; frame < delayLength * 2; frame++) {
-            u16 state;
-
-            for (state = 0; state < stateCount; state++) {
-                states[state][frame] =
-                    states[state][frame + windowLength];
+        for (i = 0; i < BufferOverlap * 2; i++) {
+            for (j = 0; j < Maxk; j++) {
+                ppMeas[j][i] = ppMeas[j][i + BufferLength];
             }
         }
     }
 }
 
-static u8 FlushPitchDP(PitchDP *block)
+/* Completes pending output after input has stopped. */
+static u8 FlushPitchDP(PitchDP *This)
 {
-    u8 result = 0;
-    u16 stateCount = block->stateCount;
+    u8 bRetVal = 0;
+    u32 Maxk = This->Maxk;
+    u32 k;
+    PitchDPCell **ppMeas;
+    f32 *pOut;
 
-    if (block->firstFlush != 0) {
-        u16 state;
-
-        if (block->passNumber == 1.0) {
-            block->flushFrameCount = block->bufferedFrameCount;
+    if (This->FirstFlush != 0) {
+        if (This->BufferID == 1.0) {
+            This->NbrToFlush = This->NbrOfFreshFrames_AllreadyFilledIn;
         } else {
-            block->flushFrameCount =
-                block->delayLength + block->bufferedFrameCount;
+            This->NbrToFlush = This->BufferOverlap + This->NbrOfFreshFrames_AllreadyFilledIn;
         }
 
-        if (block->flushFrameCount == 0) {
-            block->flushing = 0;
-            return 0;
+        if (This->NbrToFlush == 0) {
+            This->FlushFlag = 0;
+            goto flushComplete;
+        } else {
+            ppMeas = This->ppMeas;
+            for (k = 0; k < Maxk; k++) {
+                (*ppMeas++)[0].BackTrack = 0;
+            }
         }
-
-        for (state = 0; state < stateCount; state++) {
-            block->states[state][0].previousState = 0;
+        Actual_DP(This, Maxk, This->NbrToFlush);
+        BackTracking(This, This->NbrToFlush);
+        if (This->BufferID == 1.0) {
+            This->BufferOverlap = 0;
         }
-        Actual_DP(block, stateCount, block->flushFrameCount);
-        BackTracking(block, block->flushFrameCount);
-        if (block->passNumber == 1.0) {
-            block->delayLength = 0;
-        }
-        block->firstFlush = 0;
+        This->FirstFlush = 0;
     }
 
-    {
-        f32 *output = qEnQueueOne(block->base.output->queue);
-
-        *output = block->bestPath[
-            block->delayLength + block->flushOutputIndex];
-    }
-    block->flushOutputIndex++;
-    if (block->flushOutputIndex == block->flushFrameCount) {
-        block->flushing = 0;
+    pOut = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+    *pOut = This->pOutDummy[This->BufferOverlap + This->FlushCounter];
+    if (++This->FlushCounter == This->NbrToFlush) {
+        This->FlushFlag = 0;
     } else {
-        result = 1;
+        bRetVal = 1;
     }
-    return result;
+flushComplete:
+    return bRetVal;
 }
 
-static void ProcessPitchDP(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Stores a frame of pitch observations or advances a flush. */
+static void ProcessPitchDP(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    PitchDP *block = (PitchDP *)baseBlock;
-    f32 *input = inputs[0];
-    u16 stateCount = block->stateCount;
-    u16 activeFrameCount = block->activeFrameCount;
+    PitchDP *This = (PitchDP *)_This;
+    unsigned int k;
+    PitchDPCell **ppMeas;
+    PitchDPCell *pMeas;
+    unsigned int Maxk = This->Maxk;
+    f32 *pIn = ((void **)pInputs)[0];
+    unsigned int NbrOfTotalFrames = This->NbrOfTotalFrames;
 
-    if (input != NULL) {
-        u16 state;
+    if (pIn != NULL) {
+        PreDP(pIn, This);
 
-        if (block->passNumber == 2.0) {
-            block->activeFrameCount =
-                block->windowLength + block->delayLength * 2;
-            block->inputFrameCount = block->windowLength;
-            block->inputOffset = block->delayLength * 2;
-        }
-
-        for (state = 0; state < stateCount; state++) {
-            block->states[state][
-                block->bufferedFrameCount + block->inputOffset]
-                .observation = input[state];
-        }
-
-        if (block->bufferedFrameCount < block->inputFrameCount - 1) {
-            block->bufferedFrameCount++;
+        if (This->NbrOfFreshFrames_AllreadyFilledIn < This->NbrOfFreshFrames - 1) {
+            This->NbrOfFreshFrames_AllreadyFilledIn++;
             return;
         }
 
-        if (block->initializeScores != 0) {
-            for (state = 0; state < stateCount; state++) {
-                PitchDPCell *first = &block->states[state][0];
+        if (This->FirstDP != 0) {
+            ppMeas = This->ppMeas;
+            for (k = 0; k < Maxk; k++) {
+                pMeas = *ppMeas++;
 
-                first->score = first->observation;
-                first->previousState = 0;
+                pMeas->AmplSum = pMeas->Ampl;
+                pMeas->BackTrack = 0;
             }
-            block->initializeScores = 0;
+            This->FirstDP = 0;
         }
 
-        Actual_DP(block, stateCount, activeFrameCount);
-        BackTracking(block, activeFrameCount);
-        Output(block);
-        PostDP(block);
-        block->bufferedFrameCount = 0;
-        block->passNumber += 1.0f;
-    } else if (block->flushing == 1) {
-        FlushPitchDP(block);
+        Actual_DP(This, Maxk, NbrOfTotalFrames);
+        BackTracking(This, NbrOfTotalFrames);
+        Output(This);
+        PostDP(This);
+        This->NbrOfFreshFrames_AllreadyFilledIn = 0;
+        This->BufferID += 1.0f;
+    } else if (This->FlushFlag == 1) {
+        FlushPitchDP(This);
     }
 }
 
-static void PitchDPReset(PitchDP *block)
+/* Resets frame and path state for a new sequence. */
+static void PitchDPReset(PitchDP *This)
 {
-    u16 historyLength = block->historyLength;
-    u16 stateCount = block->stateCount;
-    PitchDPCell *cells = block->cells;
-    u16 initialFrameCount;
-    u16 frame;
+    PitchDPCell *frameCell;
+    u16 LineLength = This->LineLength;
+    u16 Maxk = This->Maxk;
+    u16 j;
+    PitchDPCell *pAllMeas = This->pAllMeas;
 
-    block->delayLength = (u8)_tosGetProfileU32(block, 5, 6);
-    initialFrameCount =
-        block->windowLength + block->delayLength;
-    block->activeFrameCount = initialFrameCount;
-    block->inputFrameCount = initialFrameCount;
-    block->bufferedFrameCount = 0;
-    block->passNumber = 1.0f;
-    block->inputOffset = 0;
-    block->flushFrameCount = 0;
-    block->flushing = 0;
-    block->firstFlush = 1;
-    block->initializeScores = 1;
-    block->flushOutputIndex = 0;
+    This->BufferOverlap = (u8)_tosGetProfileU32(&This->BaseBlock.Object, 0x05, 6);
+    This->NbrOfFreshFrames = This->NbrOfTotalFrames = This->BufferLength + This->BufferOverlap;
+    This->NbrOfFreshFrames_AllreadyFilledIn = 0;
+    This->BufferID = 1.0f;
+    This->NbrOfOldFrames_AllreadyFilledIn = 0;
+    This->NbrToFlush = 0;
+    This->FlushFlag = 0;
+    This->FirstFlush = 1;
+    This->FirstDP = 1;
+    This->FlushCounter = 0;
 
-    for (frame = 0; frame < historyLength; frame++) {
-        u16 state;
+    for (j = 0; j < LineLength; j++) {
+        u16 k;
 
-        for (state = 0; state < stateCount; state++) {
-            cells[state * historyLength + frame].score = 0.0f;
+        frameCell = &pAllMeas[j];
+        for (k = 0; k < Maxk; k++) {
+            frameCell[k * LineLength].AmplSum = 0.0f;
         }
     }
 }
 
-static u32 ControlPitchDP(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Handles reset, flush and destruction commands. */
+static unsigned char ControlPitchDP(struct _BLOCK *_This, unsigned char ControlId,
+                                    unsigned long CParam, unsigned long DParam)
 {
-    PitchDP *block = (PitchDP *)baseBlock;
+    PitchDP *This = (PitchDP *)_This;
 
-    switch ((u8)command) {
-    case 201:
-        PitchDPReset(block);
+    switch (ControlId) {
+    case 0xC9:
+        PitchDPReset(This);
         break;
-    case 200:
-        block->flushing = 1;
+    case 0xC8:
+        This->FlushFlag = 1;
         break;
-    case 255:
-        if (block->cells != NULL) {
-            TosContext *context = block->base.context;
-            u16 stateCount = block->stateCount;
-            f32 **jumpFactors = block->jumpFactors;
-            u16 state;
+    case 0xFF: {
+        u16 i;
+        u16 Maxk;
+        struct _TOS *pTos;
+        f32 **ppJumpFactor;
 
-            heap_Free(context->heap, block->cells);
-            heap_Free(context->heap, block->states);
-            heap_Free(context->heap, block->pitchValues);
-            heap_Free(context->heap, block->bestPath);
-            for (state = 0; state < stateCount; state++) {
-                heap_Free(
-                    context->heap, jumpFactors[state]);
+        Maxk = This->Maxk;
+        ppJumpFactor = This->ppJumpFactor;
+        pTos = This->BaseBlock.Object.pTos;
+
+        if (This->pAllMeas != NULL) {
+            heap_Free(pTos->hHeap, This->pAllMeas);
+            heap_Free(pTos->hHeap, This->ppMeas);
+            heap_Free(pTos->hHeap, This->pIndexPitch);
+            heap_Free(pTos->hHeap, This->pOutDummy);
+            for (i = 0; i < Maxk; i++) {
+                heap_Free(pTos->hHeap, ppJumpFactor[i]);
             }
-            heap_Free(context->heap, jumpFactors);
+            heap_Free(pTos->hHeap, This->ppJumpFactor);
         }
-        tosBaseBlockDestruct(block);
+        tosBaseBlockDestruct(&This->BaseBlock);
         break;
+    }
     default:
         return 0;
     }
     return 1;
 }
 
-static void InitJumpFactors(PitchDP *block)
+/* Initializes the cost factors for transitions between pitch states. */
+static void InitJumpFactors(PitchDP *This)
 {
-    f32 divisor = block->sampleRate * block->jumpScale;
-    s32 state;
+    s32 k;
+    s32 Maxk = This->Maxk;
+    f32 *pIndexPitch = This->pIndexPitch;
+    f32 **ppJumpFactor = This->ppJumpFactor;
+    f32 MaxJump = This->MaxPitchChange * This->FrameDuration;
 
-    for (state = 0; state < block->stateCount; state++) {
-        s32 otherState;
+    for (k = 0; k < Maxk; k++) {
+        s32 j;
+        f32 score;
+        ppJumpFactor[k][k] = 1.0f;
+        for (j = k - 1; j >= 0; j--) {
+            score = 1.0f -
+                (pIndexPitch[k] - pIndexPitch[j]) / MaxJump *
+                ((pIndexPitch[k] - pIndexPitch[j]) / MaxJump);
 
-        block->jumpFactors[state][state] = 1.0f;
-        for (otherState = state - 1; otherState >= 0; otherState--) {
-            f32 difference =
-                (block->pitchValues[state] -
-                 block->pitchValues[otherState]) /
-                divisor;
-
-            block->jumpFactors[state][otherState] =
-                1.0f - difference * difference;
-            if (block->jumpFactors[state][otherState] < 0.0f) {
-                block->jumpFactors[state][otherState] = 0.0f;
+            ppJumpFactor[k][j] = score;
+            if (ppJumpFactor[k][j] < 0.0f) {
+                ppJumpFactor[k][j] = 0.0f;
                 break;
             }
         }
 
-        for (otherState = state + 1;
-             otherState < block->stateCount; otherState++) {
-            f32 difference =
-                (block->pitchValues[otherState] -
-                 block->pitchValues[state]) /
-                divisor;
+        for (j = k + 1; j < Maxk; j++) {
+            score = 1.0f -
+                (pIndexPitch[j] - pIndexPitch[k]) / MaxJump *
+                ((pIndexPitch[j] - pIndexPitch[k]) / MaxJump);
 
-            block->jumpFactors[state][otherState] =
-                1.0f - difference * difference;
-            if (block->jumpFactors[state][otherState] < 0.0f) {
-                block->jumpFactors[state][otherState] = 0.0f;
+            ppJumpFactor[k][j] = score;
+            if (ppJumpFactor[k][j] < 0.0f) {
+                ppJumpFactor[k][j] = 0.0f;
                 break;
             }
         }
     }
 }
 
-static u32 InitPitchDP(TosBaseBlock *baseBlock)
+/* Loads pitch tracking settings and allocates its working buffers. */
+static unsigned char InitPitchDP(struct _BLOCK *_This)
 {
-    PitchDP *block = (PitchDP *)baseBlock;
-    TosContext *context = block->base.context;
-    u16 pitchResolution;
-    u8 inputPitchRange;
-    u16 maximumPitch;
-    u16 minimumPitch;
-    f32 logTwo;
-    u16 initialFrameCount;
-    u32 state;
+    PitchDP *This = (PitchDP *)_This;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
+    u32 i;
+    u16 MaximumPitch;
+    u8 NumberOfOctaves;
+    u16 PointsPerOctave;
+    u16 j;
+    u16 MinimumPitch;
 
-    pitchResolution = (u16)_tosGetProfileU32(block, 1, 50);
-    inputPitchRange = (u8)_tosGetProfileU32(block, 10, 5);
-    maximumPitch = (u16)_tosGetProfileU32(block, 2, 500);
-    minimumPitch = (u16)_tosGetProfileU32(block, 3, 50);
+    PointsPerOctave = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 0x01, 50);
+    NumberOfOctaves = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 0x0A, 5);
+    MaximumPitch = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 0x02, 500);
+    MinimumPitch = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 0x03, 50);
+    This->BaseBlock.InputQueues->Size = NumberOfOctaves * PointsPerOctave * sizeof(f32);
+    This->BaseBlock.OutputQueues->Size = sizeof(f32);
+    This->Beam = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 0x06, 10);
+    This->Neighbours = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 0x07, 10);
+    This->MaxPitchChange = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 0x08, 2000);
+    This->BufferLength = (u8)_tosGetProfileU32(&This->BaseBlock.Object, 0x04, 15);
+    This->BufferOverlap = (u8)_tosGetProfileU32(&This->BaseBlock.Object, 0x05, 6);
+    This->LineLength = This->BufferLength + This->BufferOverlap * 2;
+    This->FrameDuration = _tosGetProfileFloat(&This->BaseBlock.Object, 0x09, 0.01f);
 
-    block->base.input->inputSize =
-        inputPitchRange * pitchResolution * sizeof(f32);
-    block->base.output->outputSize = sizeof(f32);
-    block->pruningDivisor =
-        (u16)_tosGetProfileU32(block, 6, 10);
-    block->maximumJump =
-        (u16)_tosGetProfileU32(block, 7, 10);
-    block->sampleRate =
-        (u16)_tosGetProfileU32(block, 8, 2000);
-    block->windowLength =
-        (u8)_tosGetProfileU32(block, 4, 15);
-    block->delayLength =
-        (u8)_tosGetProfileU32(block, 5, 6);
-    block->historyLength =
-        block->windowLength + block->delayLength * 2;
-    block->jumpScale = _tosGetProfileFloat(block, 9, 0.01f);
+    This->BufferID = 1.0f;
+    This->NbrToFlush = 0;
+    This->FlushCounter = 0;
+    This->FlushFlag = 0;
+    This->FirstFlush = 1;
+    This->FirstDP = 1;
+    j = This->BufferLength + This->BufferOverlap;
+    This->NbrOfTotalFrames = j;
+    This->NbrOfFreshFrames = j;
+    This->NbrOfFreshFrames_AllreadyFilledIn = 0;
+    This->NbrOfOldFrames_AllreadyFilledIn = 0;
 
-    block->passNumber = 1.0f;
-    block->flushFrameCount = 0;
-    block->flushOutputIndex = 0;
-    block->flushing = 0;
-    block->firstFlush = 1;
-    block->initializeScores = 1;
-    initialFrameCount =
-        block->windowLength + block->delayLength;
-    block->activeFrameCount = initialFrameCount;
-    block->inputFrameCount = initialFrameCount;
-    block->bufferedFrameCount = 0;
-    block->inputOffset = 0;
+    This->Maxk = (u16)(
+        PointsPerOctave *
+        logf_check((f32)MaximumPitch / (f32)MinimumPitch) /
+        logf_check(2.0f));
 
-    logTwo = logf_check(2.0f);
-    block->stateCount = (u16)(
-        pitchResolution *
-        logf_check((f32)maximumPitch / (f32)minimumPitch) /
-        logTwo);
-
-    block->cells = heap_Calloc(
-        context->heap, block->stateCount * block->historyLength,
-        sizeof(PitchDPCell));
-    block->states = heap_Calloc(
-        context->heap, block->stateCount, sizeof(PitchDPCell *));
-    block->pitchValues = heap_Calloc(
-        context->heap, block->stateCount, sizeof(f32));
-    block->jumpFactors = heap_Calloc(
-        context->heap, block->stateCount, sizeof(f32 *));
-    block->bestPath = heap_Calloc(
-        context->heap,
-        block->windowLength + block->delayLength * 2, sizeof(f32));
-    if (block->cells == NULL || block->states == NULL ||
-        block->jumpFactors == NULL || block->pitchValues == NULL ||
-        block->bestPath == NULL) {
-        _tosErrorLog(block, 2);
+    This->pAllMeas = heap_Calloc(pTos->hHeap, This->Maxk * This->LineLength, sizeof(PitchDPCell));
+    This->ppMeas = heap_Calloc(pTos->hHeap, This->Maxk, sizeof(PitchDPCell *));
+    This->pIndexPitch = heap_Calloc(pTos->hHeap, This->Maxk, sizeof(f32));
+    This->ppJumpFactor = heap_Calloc(pTos->hHeap, This->Maxk, sizeof(f32 *));
+    This->pOutDummy = heap_Calloc(
+        pTos->hHeap, This->BufferLength + This->BufferOverlap * 2, sizeof(f32));
+    if (This->pAllMeas == NULL || This->ppMeas == NULL ||
+        This->ppJumpFactor == NULL || This->pIndexPitch == NULL ||
+        This->pOutDummy == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 2);
         return 1;
     }
 
-    for (state = 0; state < block->stateCount; state++) {
-        block->states[state] =
-            block->cells + block->historyLength * state;
-        block->pitchValues[state] =
-            minimumPitch *
-            powf(
-                2.0f,
-                (f32)state / (f32)pitchResolution);
-        block->jumpFactors[state] = heap_Calloc(
-            context->heap, block->stateCount, sizeof(f32));
-        if (block->jumpFactors[state] == NULL) {
-            _tosErrorLog(block, 2);
+    for (i = 0; i < This->Maxk; i++) {
+        This->ppMeas[i] = This->pAllMeas + This->LineLength * i;
+        This->pIndexPitch[i] = MinimumPitch * powf(2.0f, (f32)i / (f32)PointsPerOctave);
+        This->ppJumpFactor[i] = heap_Calloc(pTos->hHeap, This->Maxk, sizeof(f32));
+        if (This->ppJumpFactor[i] == NULL) {
+            _tosErrorLog(&This->BaseBlock.Object, 2);
             return 1;
         }
     }
 
-    InitJumpFactors(block);
+    InitJumpFactors(This);
     return 0;
 }
 
-void *ConstructPitchDP(TosContext *context, u8 blockIndex)
+/* Registers the pitch tracker with the scheduler. */
+struct _BLOCK *ConstructPitchDP(struct _TOS *pTos, u8 BlockID)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, ProcessPitchDP, InitPitchDP,
-        ControlPitchDP, sizeof(PitchDP));
+        pTos, BlockID, 1, 1, ProcessPitchDP, InitPitchDP, ControlPitchDP, sizeof(PitchDP));
 }

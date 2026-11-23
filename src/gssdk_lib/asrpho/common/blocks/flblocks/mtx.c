@@ -1,229 +1,230 @@
+/* Matrix storage and element operations for the speech DSP blocks. */
+#include "dolphin/math.h"
+#include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/cmath>
+#include "gssdk/mathusage.h"
+#include "gssdk/heap.h"
 #include "gssdk/mtx.h"
 
-#include "dolphin/math.h"
 #include <string.h>
 
-extern void *heap_Alloc(void *heap, u32 size);
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-extern f32 expf(f32 value);
-extern f32 logf_check(f32 value);
-
-FloatMatrix *mtxConstruct(TosContext *context)
+/* Allocates a floating-point matrix descriptor. */
+struct MTXTag *mtxConstruct(struct _TOS *pTos)
 {
-    FloatMatrix *matrix = heap_Calloc(context->heap, 1, sizeof(FloatMatrix));
+    struct MTXTag *pMtx = heap_Calloc(pTos->hHeap, 1, sizeof(struct MTXTag));
 
-    if (matrix == NULL) {
+    if (pMtx == NULL) {
         return NULL;
     }
-    return matrix;
+    return pMtx;
 }
 
-void mtxDestruct(FloatMatrix *matrix, TosContext *context)
+/* Releases a floating-point matrix and its entries. */
+void mtxDestruct(struct MTXTag *pMtx, struct _TOS *pTos)
 {
-    if (matrix->ownsValues != 0 && matrix->values != NULL) {
-        heap_Free(context->heap, matrix->values);
+    if (pMtx->Owner != 0 && pMtx->Entries != NULL) {
+        heap_Free(pTos->hHeap, pMtx->Entries);
     }
-    heap_Free(context->heap, matrix);
+    heap_Free(pTos->hHeap, pMtx);
 }
 
-IntMatrix *imtxConstruct(TosContext *context)
+/* Allocates an integer matrix descriptor. */
+struct INTMTXTag *imtxConstruct(struct _TOS *pTos)
 {
-    IntMatrix *matrix = heap_Calloc(context->heap, 1, sizeof(IntMatrix));
+    struct INTMTXTag *pMtx = heap_Calloc(pTos->hHeap, 1, sizeof(struct INTMTXTag));
 
-    if (matrix == NULL) {
+    if (pMtx == NULL) {
         return NULL;
     }
-    return matrix;
+    return pMtx;
 }
 
-void imtxDestruct(IntMatrix *matrix, TosContext *context)
+/* Releases an integer matrix and its entries. */
+void imtxDestruct(struct INTMTXTag *pMtx, struct _TOS *pTos)
 {
-    if (matrix->ownsValues != 0 && matrix->values != NULL) {
-        heap_Free(context->heap, matrix->values);
+    if (pMtx->Owner != 0 && pMtx->Entries != NULL) {
+        heap_Free(pTos->hHeap, pMtx->Entries);
     }
-    heap_Free(context->heap, matrix);
+    heap_Free(pTos->hHeap, pMtx);
 }
 
-FloatMatrix *mtxInit(
-    FloatMatrix *matrix, u32 rows, u32 columns, TosContext *context)
+/* Sets the dimensions and allocates zeroed floating-point entries. */
+struct MTXTag *mtxInit(
+    struct MTXTag *pMtx, unsigned int M, unsigned int N, struct _TOS *pTos)
 {
-    u32 elementCount = rows * columns;
-    u32 byteCount;
+    u32 elementCount = M * N;
 
-    byteCount = elementCount * sizeof(f32);
-    matrix->rows = rows;
-    matrix->columns = columns;
-    matrix->elementCount = elementCount;
-    matrix->values = heap_Alloc(context->heap, byteCount);
-    if (matrix->values == NULL) {
-        heap_Free(context->heap, matrix);
+    pMtx->M = M;
+    pMtx->N = N;
+    pMtx->MxN = elementCount;
+    pMtx->Entries = heap_Alloc(pTos->hHeap, elementCount * sizeof(f32));
+    if (pMtx->Entries == NULL) {
+        heap_Free(pTos->hHeap, pMtx);
         return NULL;
     }
-    matrix->ownsValues = 1;
-    matrix->valuesEnd = (f32 *)((u8 *)matrix->values + byteCount);
-    memset(matrix->values, 0, byteCount);
-    return matrix;
+    pMtx->Owner = 1;
+    pMtx->EndEntries = pMtx->Entries + elementCount;
+    memset(pMtx->Entries, 0, elementCount * sizeof(f32));
+    return pMtx;
 }
 
-IntMatrix *imtxInit(
-    IntMatrix *matrix, u32 rows, u32 columns, TosContext *context)
+/* Sets the dimensions and allocates integer entries. */
+struct INTMTXTag *imtxInit(
+    struct INTMTXTag *pMtx, unsigned int M, unsigned int N, struct _TOS *pTos)
 {
-    u32 elementCount = rows * columns;
+    u32 elementCount = M * N;
 
-    matrix->rows = rows;
-    matrix->columns = columns;
-    matrix->elementCount = elementCount;
-    matrix->values = heap_Calloc(context->heap, elementCount, sizeof(s32));
-    if (matrix->values == NULL) {
-        heap_Free(context->heap, matrix);
+    pMtx->M = M;
+    pMtx->N = N;
+    pMtx->MxN = elementCount;
+    pMtx->Entries = heap_Calloc(pTos->hHeap, elementCount, sizeof(int));
+    if (pMtx->Entries == NULL) {
+        heap_Free(pTos->hHeap, pMtx);
         return NULL;
     }
-    matrix->ownsValues = 1;
-    matrix->valuesEnd = matrix->values + elementCount;
-    return matrix;
+    pMtx->Owner = 1;
+    pMtx->EndEntries = pMtx->Entries + elementCount;
+    return pMtx;
 }
 
-FloatMatrix *mtxInitCopy(
-    FloatMatrix *matrix, const FloatMatrix *source, TosContext *context)
+/* Allocates entries and copies a floating-point matrix. */
+struct MTXTag *mtxInitCopy(
+    struct MTXTag *pMtxDst, const struct MTXTag *pMtxSrc, struct _TOS *pTos)
 {
-    matrix->rows = source->rows;
-    matrix->columns = source->columns;
-    matrix->elementCount = source->rows * source->columns;
-    matrix->values = heap_Alloc(
-        context->heap, matrix->rows * matrix->columns * sizeof(f32));
-    if (matrix->values == NULL) {
-        heap_Free(context->heap, matrix);
+    pMtxDst->M = pMtxSrc->M;
+    pMtxDst->N = pMtxSrc->N;
+    pMtxDst->MxN = pMtxSrc->M * pMtxSrc->N;
+    pMtxDst->Entries = heap_Alloc(
+        pTos->hHeap, pMtxDst->M * pMtxDst->N * sizeof(f32));
+    if (pMtxDst->Entries == NULL) {
+        heap_Free(pTos->hHeap, pMtxDst);
         return NULL;
     }
-    matrix->ownsValues = 1;
-    matrix->valuesEnd = matrix->values + matrix->rows * matrix->columns;
-    mtxFillCopy(matrix, source);
-    return matrix;
+    pMtxDst->Owner = 1;
+    pMtxDst->EndEntries = pMtxDst->Entries + pMtxDst->M * pMtxDst->N;
+    mtxFillCopy(pMtxDst, pMtxSrc);
+    return pMtxDst;
 }
 
-static s32 *imtxColumnAddress(IntMatrix *matrix, u32 column)
+/* Shifts entries over one deleted column and updates the stored counts. */
+void imtxDeleteCol(struct INTMTXTag *pMtx, unsigned int Col)
 {
-    return matrix->values + matrix->rows * column;
+    int *Entries = pMtx->Entries;
+    unsigned int M = pMtx->M;
+    unsigned int N = pMtx->N;
+    int *dest = Entries + M * Col;
+    int *src = dest + M;
+
+    memcpy(dest, src, (M * N - M - M * Col) * sizeof(int));
+    pMtx->N--;
+    /* The stored total is reduced once per deleted column. */
+    pMtx->MxN--;
+    pMtx->EndEntries -= pMtx->M;
 }
 
-void imtxDeleteCol(IntMatrix *matrix, u32 column)
-{
-    s32 *destination = imtxColumnAddress(matrix, column);
-
-    memcpy(
-        destination,
-        destination + matrix->rows,
-        (matrix->rows * matrix->columns - matrix->rows -
-         matrix->rows * column) *
-            sizeof(s32));
-    matrix->columns--;
-    matrix->elementCount--;
-    matrix->valuesEnd -= matrix->rows;
-}
-
+/* Associates a caller-supplied entry array with the matrix. */
 void mtxAssociateAll(
-    FloatMatrix *matrix, u32 rows, u32 columns, f32 *values)
+    struct MTXTag *pMtx, unsigned int m, unsigned int n, const f32 *x)
 {
-    matrix->rows = rows;
-    matrix->columns = columns;
-    matrix->elementCount = rows * columns;
-    matrix->values = values;
-    matrix->valuesEnd = values + matrix->elementCount;
+    pMtx->M = m;
+    pMtx->N = n;
+    pMtx->MxN = m * n;
+    pMtx->Entries = (f32 *)x;
+    pMtx->EndEntries = (f32 *)x + pMtx->MxN;
 }
 
-f32 mtxMax(const FloatMatrix *matrix)
+/* Finds the largest entry in the matrix. */
+f32 mtxMax(const struct MTXTag *pMtx)
 {
-    f32 *value = matrix->values;
-    f32 maximum = *value++;
+    f32 *x = pMtx->Entries;
+    f32 m = *x++;
+    u32 i;
+    u32 End = pMtx->MxN;
+
+    for (i = 1; i < End; i++) {
+        if (*x > m) {
+            m = *x;
+        }
+        x++;
+    }
+    return m;
+}
+
+/* Compresses matrix values above the specified soft limit. */
+void mtxCompress(struct MTXTag *pMtx, f32 a)
+{
+    f32 *src = pMtx->Entries;
+    u32 i = 0;
+    u32 End = pMtx->M * pMtx->N;
+
+    for (; i < End; i++) {
+        src[i] -= (f32)(0.5 * logf_check(1.0f + expf((f32)(2.0 * (src[i] - a)))));
+    }
+}
+
+/* Deletes a column from the QR factor and applies the rotations to y. */
+enum MTXERRtAG QrDeleteCol(struct MTXTag *R, struct MTXTag *y, unsigned int k)
+{
+    f32 *DirtyCol;
+    f32 *End;
+    f32 *rEnd = R->Entries + R->M * R->N;
+    f32 *yEnd = y->Entries + y->MxN;
     u32 i;
 
-    for (i = 1; i < matrix->elementCount; i++) {
-        if (*value > maximum) {
-            maximum = *value;
-        }
-        value++;
-    }
-    return maximum;
-}
+    for (i = k + 1; i < R->N;
+         i++) {
+        f32 a;
+        f32 b;
+        f32 aAbs;
+        f32 bAbs;
+        f32 tau;
+        f32 c;
+        f32 s;
+        f32 *CleanCol;
+        u32 j;
 
-void mtxCompress(FloatMatrix *matrix, f32 center)
-{
-    f32 *values = matrix->values;
-    u32 i = 0;
-    u32 elementCount = matrix->rows * matrix->columns;
+        DirtyCol = R->Entries + i * R->M;
+        End = DirtyCol + i;
+        b = *End--;
+        a = *End;
+        CleanCol = DirtyCol - R->M;
+        aAbs = a > 0.0f ? a : -a;
+        bAbs = b > 0.0f ? b : -b;
 
-    for (; i < elementCount; i++) {
-        f32 reduction =
-            0.5 * logf_check(1.0f + expf((f32)(2.0 * (values[i] - center))));
-
-        values[i] = values[i] - reduction;
-    }
-}
-
-u32 QrDeleteCol(FloatMatrix *matrix, FloatMatrix *vector, u32 column)
-{
-    f32 *source;
-    f32 *diagonal;
-    f32 *matrixEnd = matrix->values + matrix->rows * matrix->columns;
-    f32 *vectorEnd = vector->values + vector->elementCount;
-    u32 currentColumn;
-
-    for (currentColumn = column + 1; currentColumn < matrix->columns;
-         currentColumn++) {
-        f32 upper;
-        f32 lower;
-        f32 absoluteUpper;
-        f32 absoluteLower;
-        f32 ratio;
-        f32 cosine;
-        f32 sine;
-        f32 *destination;
-        u32 row;
-
-        source = matrix->values + currentColumn * matrix->rows;
-        diagonal = source + currentColumn;
-        lower = *diagonal--;
-        upper = *diagonal;
-        destination = source - matrix->rows;
-        absoluteUpper = upper > 0.0f ? upper : -upper;
-        absoluteLower = lower > 0.0f ? lower : -lower;
-
-        if (absoluteLower > absoluteUpper) {
-            ratio = -upper / lower;
-            sine = 1.0 / sqrtf(1.0f + ratio * ratio);
-            cosine = sine * ratio;
+        if (bAbs > aAbs) {
+            tau = -a / b;
+            s = 1.0 / sqrtf(1.0f + tau * tau);
+            c = s * tau;
         } else {
-            ratio = -lower / upper;
-            cosine = 1.0 / sqrtf(1.0f + ratio * ratio);
-            sine = cosine * ratio;
+            tau = -b / a;
+            c = 1.0 / sqrtf(1.0f + tau * tau);
+            s = c * tau;
         }
 
-        for (row = 1; row < currentColumn; row++) {
-            *destination++ = *source++;
+        for (j = 1; j < i; j++) {
+            *CleanCol++ = *DirtyCol++;
         }
-        *destination = cosine * upper - sine * lower;
+        *CleanCol = c * a - s * b;
 
-        diagonal += matrix->rows;
-        while (diagonal < matrixEnd) {
-            upper = diagonal[0];
-            lower = diagonal[1];
+        End += R->M;
+        while (End < rEnd) {
+            a = End[0];
+            b = End[1];
 
-            diagonal[0] = cosine * upper - sine * lower;
-            diagonal[1] = sine * upper + cosine * lower;
-            diagonal += matrix->rows;
+            End[0] = c * a - s * b;
+            End[1] = s * a + c * b;
+            End += R->M;
         }
 
-        diagonal = vector->values + currentColumn;
-        while (diagonal < vectorEnd) {
-            upper = diagonal[-1];
-            lower = diagonal[0];
+        End = y->Entries + i;
+        while (End < yEnd) {
+            a = End[-1];
+            b = End[0];
 
-            diagonal[-1] = cosine * upper - sine * lower;
-            diagonal[0] = sine * upper + cosine * lower;
-            diagonal += vector->rows;
+            End[-1] = c * a - s * b;
+            End[0] = s * a + c * b;
+            End += y->M;
         }
     }
-    matrix->columns--;
-    return 0;
+    R->N--;
+    return NoError;
 }

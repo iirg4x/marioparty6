@@ -1,358 +1,304 @@
+/* Scores user-word models with a Viterbi search and backtrace. */
+#include "gssdk/blocks.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include <stddef.h>
 #include <string.h>
 
-#include "gssdk/langdata.h"
+#include "gssdk/engine.h"
 #include "gssdk/mqueue.h"
 #include "gssdk/tos.h"
 
-typedef struct DpScoreUwBacktrace DpScoreUwBacktrace;
+/* Candidate scoring state, its distribution and its backtrace. */
+typedef struct _SCOREUWACTIVEDPSTATE {
+    s16 Score; /* Score of the candidate path. */
+    _SCOREUWBACKTRACE *pBacktrace; /* Path that reached this state. */
+    u16 State; /* Distribution at the end of the path. */
+} _SCOREUWACTIVEDPSTATE;
 
-struct DpScoreUwBacktrace {
-    s32 references;
-    DpScoreUwBacktrace *next;
-    u32 score;
-    u32 garbageScore;
-    u16 distribution;
-    u16 reserved12;
-    u32 frame;
+/* Forward declaration for the user-word scoring block. */
+typedef struct _DPSCOREUW _DPSCOREUW;
+
+/* User-word scoring state and the queues used to process its frames. */
+struct _DPSCOREUW {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    struct _INPUTQUEUE *InQueue; /* Signed distances received from the distance calculator. */
+    /* Active distribution IDs and flags sent to the distance calculator. */
+    struct _OUTPUTQUEUE *ActDistQueue;
+    _SCOREUWACTIVEDPSTATE *pDynProg; /* Current paths through the word and silence states. */
+    u16 AllocSize; /* Size in bytes of a backtrace allocation. */
+    u32 NbrBacktraceArrs; /* Number of allocated chunks in pBacktraceArrs. */
+    _SCOREUWBACKTRACE **pBacktraceArrs; /* Allocated backtrace chunks. */
+    _SCOREUWBACKTRACE *BacktraceFreelist; /* Nodes available for another scoring path. */
+    u16 NbrPhenoms; /* Number of phonemes in the word model. */
+    u16 TotNbrPhenoms; /* Total number of states, including leading and trailing silence. */
+    u16 NbrSilPhenoms; /* Number of silence phonemes in the initialization record. */
+    u16 NbrPhenomsInLang; /* Number of language distributions addressed by the activity flags. */
+    u16 NbrErgodicPhenoms; /* Number of ergodic phonemes in the language. */
+    u16 *pErgodicPhenoms; /* The game's code never reads this field. */
+    u16 *pPhenoms; /* Distribution selected for each word or silence state. */
+    u16 SilPhenom; /* Distribution used for the leading and trailing silence states. */
+    u16 singleWordGarbPhenom; /* Distribution scored on each frame for the garbage path. */
+    u32 AccumulatedScore; /* Sum of the score floors subtracted from the word paths. */
+    u32 AccumulatedGarbScore; /* Sum of the garbage distribution scores. */
+    s16 UserWordScore; /* Current score of the final word state. */
+    s16 sMin; /* Minimum score used to normalize the paths. */
+    u8 optionalPaths; /* Allows a transition from the last silence state when enabled. */
+    u8 EndOfSpeech; /* The game's code never reads this field. */
+    u32 FrameCounter; /* Current frame index. */
+    u32 TimeOut; /* Frame count limit for scoring the current utterance. */
+    /* Writes the active-distribution packet. */
+    u16 (*MakeActiveDist)(_DPSCOREUW *This, u16 *ActiveDist, u8 *ActiveBoolList);
+    enum _ACTDISTSTATE ActDistState; /* Current active-distribution mode. */
+    void (*SendResult)(_DPSCOREUW *This, u32 CParam, u32 DParam); /* Reports the completed path. */
 };
 
-typedef struct DpScoreUwState {
-    s16 score;
-    u16 reserved02;
-    DpScoreUwBacktrace *backtrace;
-    u16 distribution;
-    u16 reserved0A;
-} DpScoreUwState;
-
-typedef struct DpScoreUwLanguageInfo {
-    u32 wordStateCount;
-    u32 silenceStateCount;
-    u16 *stateDistributions;
-    u16 *silenceDistribution;
-} DpScoreUwLanguageInfo;
-
-typedef struct DpScoreUwResult {
-    u32 score;
-    u32 scoreDelta;
-    u32 frameCount;
-    f32 averageScore;
-    s32 speechScore;
-    u32 firstFrame;
-    u32 lastFrame;
-    u32 backtraceCount;
-    DpScoreUwBacktrace *backtrace;
-} DpScoreUwResult;
-
-typedef struct DpScoreUw DpScoreUw;
-typedef u16 (*DpScoreUwActiveDistributionsFunction)(
-    DpScoreUw *block, u16 *distributions, u8 *active);
-typedef void (*DpScoreUwResultFunction)(
-    DpScoreUw *block, void *argument, u32 argumentSize);
-
-struct DpScoreUw {
-    TosBaseBlock base;
-    TosQueuePort *input;
-    TosQueuePort *output;
-    DpScoreUwState *states;
-    u16 backtraceChunkBytes;
-    u16 reserved36;
-    u32 backtraceChunkCount;
-    DpScoreUwBacktrace **backtraceChunks;
-    DpScoreUwBacktrace *freeBacktraces;
-    u16 wordStateCount;
-    u16 stateCount;
-    u16 silenceStateCount;
-    u16 distributionCount;
-    u16 ergodicDistributionCount;
-    u16 reserved4E;
-    u16 *ergodicDistributions;
-    u16 *stateDistributions;
-    u16 silenceDistribution;
-    u16 singleWordGarbageDistribution;
-    u32 accumulatedScore;
-    u32 accumulatedGarbageScore;
-    s16 finalScore;
-    s16 bestScore;
-    u8 allowSilenceSkip;
-    u8 initialized;
-    u16 reserved6A;
-    u32 frame;
-    u32 maximumFrameCount;
-    DpScoreUwActiveDistributionsFunction makeActiveDistributions;
-    void *reserved78;
-    DpScoreUwResultFunction sendResult;
-};
-
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-static DpScoreUwBacktrace *AllocateBacktrace(
-    DpScoreUw *block, DpScoreUwBacktrace *lastBacktrace);
-
-static DpScoreUwBacktrace *InitBacktrace(DpScoreUw *block)
+/* Initializes the backtrace pool and returns its first node. */
+static _SCOREUWBACKTRACE *InitBacktrace(_DPSCOREUW *This)
 {
-    u32 backtracesPerChunk =
-        block->backtraceChunkBytes / sizeof(DpScoreUwBacktrace);
+    u32 backtracesPerChunk = This->AllocSize / sizeof(_SCOREUWBACKTRACE);
     u32 lastBacktraceIndex = backtracesPerChunk - 1;
-    DpScoreUwBacktrace *lastBacktrace = NULL;
-    u32 chunkIndex;
+    _SCOREUWBACKTRACE *pOld = NULL;
+    u32 i;
 
-    for (chunkIndex = 0; chunkIndex < block->backtraceChunkCount;
-         chunkIndex++) {
-        DpScoreUwBacktrace *backtraces =
-            block->backtraceChunks[chunkIndex];
-        u32 backtraceIndex;
+    for (i = 0; i < This->NbrBacktraceArrs; i++) {
+        _SCOREUWBACKTRACE *pState = This->pBacktraceArrs[i];
+        u32 j;
 
-        if (lastBacktrace != NULL) {
-            lastBacktrace->next = backtraces;
+        if (pOld != NULL) {
+            pOld->Previous = pState;
         }
-        lastBacktrace = NULL;
 
-        for (backtraceIndex = 0; backtraceIndex < lastBacktraceIndex;
-             backtraceIndex++) {
-            backtraces[backtraceIndex].next =
-                &backtraces[backtraceIndex + 1];
+        for (j = 0; j < lastBacktraceIndex; j++) {
+            pState[j].Previous = &pState[j + 1];
         }
-        lastBacktrace = &backtraces[backtraceIndex];
+        pOld = &pState[j];
     }
 
-    if (lastBacktrace != NULL) {
-        lastBacktrace->next = NULL;
+    if (pOld != NULL) {
+        pOld->Previous = NULL;
     }
 
-    lastBacktrace = block->backtraceChunks[0];
-    lastBacktrace->score = 0;
-    lastBacktrace->frame = 0;
-    lastBacktrace->references = 0;
-    lastBacktrace->distribution = 0;
-    block->freeBacktraces = lastBacktrace->next;
-    return lastBacktrace;
+    pOld = This->pBacktraceArrs[0];
+    pOld->Score = 0;
+    pOld->ExitTime = 0;
+    pOld->Count = 0;
+    pOld->State = 0;
+    This->BacktraceFreelist = pOld->Previous;
+    return pOld;
 }
 
-static DpScoreUwBacktrace *AllocateBacktrace(
-    DpScoreUw *block, DpScoreUwBacktrace *lastBacktrace)
+/* Allocates a chunk of backtrace nodes and appends it to the free list. */
+static _SCOREUWBACKTRACE *AllocateBacktrace(_DPSCOREUW *This, _SCOREUWBACKTRACE *pEndFree)
 {
-    u32 oldChunkCount = block->backtraceChunkCount;
-    TosContext *context = block->base.context;
-    DpScoreUwBacktrace **chunks = heap_Alloc(
-        context->heap,
-        (oldChunkCount + 1) * sizeof(DpScoreUwBacktrace *));
-    DpScoreUwBacktrace *backtraces;
+    u32 NbrOfArrays = This->NbrBacktraceArrs;
+    _SCOREUWBACKTRACE **pNewArrs;
+    _SCOREUWBACKTRACE *pExtra;
     u32 backtracesPerChunk;
+    u32 Max;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
 
-    if (chunks == NULL) {
-        _tosErrorLog(block, 2);
+    pNewArrs = heap_Alloc(pTos->hHeap, (NbrOfArrays + 1) * sizeof(_SCOREUWBACKTRACE *));
+    if (pNewArrs == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 2);
         return NULL;
     }
 
-    if (oldChunkCount != 0) {
-        memcpy(
-            chunks, block->backtraceChunks,
-            oldChunkCount * sizeof(DpScoreUwBacktrace *));
-        heap_Free(context->heap, block->backtraceChunks);
+    if (NbrOfArrays != 0) {
+        memcpy(pNewArrs, This->pBacktraceArrs, NbrOfArrays * sizeof(_SCOREUWBACKTRACE *));
+        heap_Free(pTos->hHeap, This->pBacktraceArrs);
     }
-    block->backtraceChunks = chunks;
 
-    backtracesPerChunk =
-        block->backtraceChunkBytes / sizeof(DpScoreUwBacktrace);
-    backtraces = heap_Alloc(
-        context->heap,
-        backtracesPerChunk * sizeof(DpScoreUwBacktrace));
-    if (backtraces == NULL) {
-        _tosErrorLog(block, 2);
+    This->pBacktraceArrs = pNewArrs;
+
+    backtracesPerChunk = This->AllocSize / sizeof(_SCOREUWBACKTRACE);
+    pExtra = heap_Alloc(pTos->hHeap, backtracesPerChunk * sizeof(_SCOREUWBACKTRACE));
+    if (pExtra == NULL) {
+        _tosErrorLog(&This->BaseBlock.Object, 2);
         return NULL;
     }
 
-    if (lastBacktrace != NULL) {
-        u32 backtraceIndex;
+    if (pEndFree != NULL) {
+        u32 i;
 
-        lastBacktrace->next = backtraces;
-        for (backtraceIndex = 0;
-             backtraceIndex < backtracesPerChunk - 1;
-             backtraceIndex++) {
-            backtraces[backtraceIndex].next =
-                &backtraces[backtraceIndex + 1];
+        backtracesPerChunk = This->AllocSize / sizeof(_SCOREUWBACKTRACE);
+        Max = backtracesPerChunk - 1;
+        pEndFree->Previous = pExtra;
+        for (i = 0; i < Max; i++) {
+            pExtra[i].Previous = &pExtra[i + 1];
         }
-        backtraces[backtraceIndex].next = NULL;
+        pExtra[i].Previous = NULL;
     }
 
-    block->backtraceChunks[oldChunkCount] = backtraces;
-    block->backtraceChunkCount = oldChunkCount + 1;
-    return backtraces;
+    This->pBacktraceArrs[NbrOfArrays++] = pExtra;
+    This->NbrBacktraceArrs = NbrOfArrays;
+    return pExtra;
 }
 
-static void FreeBacktrace(DpScoreUw *block)
+/* Frees the chunks of backtrace nodes owned by this block. */
+static void FreeBacktrace(_DPSCOREUW *This)
 {
-    TosContext *context = block->base.context;
+    struct _TOS *context = This->BaseBlock.Object.pTos;
     u32 chunkIndex;
 
-    for (chunkIndex = 0; chunkIndex < block->backtraceChunkCount;
-         chunkIndex++) {
-        heap_Free(context->heap, block->backtraceChunks[chunkIndex]);
+    for (chunkIndex = 0; chunkIndex < This->NbrBacktraceArrs; chunkIndex++) {
+        heap_Free(context->hHeap, This->pBacktraceArrs[chunkIndex]);
     }
 
-    if (block->backtraceChunks != NULL) {
-        heap_Free(context->heap, block->backtraceChunks);
+    if (This->pBacktraceArrs != NULL) {
+        heap_Free(context->hHeap, This->pBacktraceArrs);
     }
-    block->backtraceChunks = NULL;
-    block->backtraceChunkCount = 0;
+    This->pBacktraceArrs = NULL;
+    This->NbrBacktraceArrs = 0;
 }
 
-static DpScoreUwBacktrace *GetBacktrace(DpScoreUw *block)
+/* Returns the final backtrace, adding a closing node when silence states are disabled. */
+static _SCOREUWBACKTRACE *GetBacktrace(_DPSCOREUW *This)
 {
-    DpScoreUwState *state = &block->states[block->stateCount - 1];
-    DpScoreUwBacktrace *backtrace = state->backtrace;
+    _SCOREUWACTIVEDPSTATE *pDpOld = &This->pDynProg[This->TotNbrPhenoms - 1];
+    _SCOREUWBACKTRACE *Bt = pDpOld->pBacktrace;
+    s16 PrevScore;
 
-    if (block->silenceStateCount == 0) {
-        DpScoreUwBacktrace *newBacktrace = block->freeBacktraces;
-        s16 finalScore = block->finalScore;
+    if (This->NbrSilPhenoms == 0) {
+        _SCOREUWBACKTRACE *NewBacktrace = This->BacktraceFreelist;
+        PrevScore = This->UserWordScore;
 
-        if (newBacktrace->next == NULL) {
-            block->freeBacktraces = AllocateBacktrace(block, newBacktrace);
+        if (NewBacktrace->Previous == NULL) {
+            This->BacktraceFreelist = AllocateBacktrace(This, NewBacktrace);
         } else {
-            block->freeBacktraces = newBacktrace->next;
+            This->BacktraceFreelist = NewBacktrace->Previous;
         }
 
-        newBacktrace->next = backtrace;
-        backtrace->references++;
-        backtrace = newBacktrace;
-        newBacktrace->distribution = state->distribution;
-        newBacktrace->references = 0;
-        newBacktrace->frame = block->frame;
-        newBacktrace->score = block->accumulatedScore + finalScore;
-        newBacktrace->garbageScore = block->accumulatedGarbageScore;
-        newBacktrace->frame++;
+        NewBacktrace->Previous = Bt;
+        Bt->Count++;
+        Bt = NewBacktrace;
+        NewBacktrace->State = pDpOld->State;
+        NewBacktrace->Count = 0;
+        NewBacktrace->ExitTime = This->FrameCounter;
+        NewBacktrace->Score = PrevScore + This->AccumulatedScore;
+        NewBacktrace->GarbScore = This->AccumulatedGarbScore;
+        NewBacktrace->ExitTime++;
     }
 
-    return backtrace;
+    return Bt;
 }
 
-static void InitViterbi(DpScoreUw *block)
+/* Resets the user-word scoring states for a new utterance. */
+static void InitViterbi(_DPSCOREUW *This)
 {
-    DpScoreUwBacktrace *backtrace;
-    DpScoreUwState *state;
+    _SCOREUWBACKTRACE *backtrace;
+    _SCOREUWACTIVEDPSTATE *state;
     u32 stateIndex;
     u32 referenceCount = 0;
 
-    block->frame = -1;
-    block->bestScore = 0;
-    block->accumulatedScore = 0;
-    block->accumulatedGarbageScore = 0;
+    This->FrameCounter = -1;
+    This->sMin = 0;
+    This->AccumulatedScore = 0;
+    This->AccumulatedGarbScore = 0;
 
-    backtrace = InitBacktrace(block);
-    backtrace->next = NULL;
-    backtrace->distribution = 0;
-    backtrace->references = 0;
+    backtrace = InitBacktrace(This);
+    backtrace->Previous = NULL;
+    backtrace->State = 0;
+    backtrace->Count = 0;
 
-    state = block->states;
-    for (stateIndex = 0; stateIndex < block->silenceStateCount;
-         stateIndex++) {
-        state->distribution = block->silenceDistribution;
+    state = This->pDynProg;
+    for (stateIndex = 0; stateIndex < This->NbrSilPhenoms; stateIndex++) {
+        state->State = This->SilPhenom;
         if (stateIndex == 0) {
-            state->score = 0;
+            state->Score = 0;
         } else {
-            state->score = 0x77FF;
+            state->Score = 0x77FF;
         }
-        state->backtrace = backtrace;
+        state->pBacktrace = backtrace;
         state++;
         referenceCount++;
     }
 
-    for (stateIndex = 0; stateIndex < block->wordStateCount;
-         stateIndex++) {
-        state->distribution = block->stateDistributions[stateIndex];
-        state->score = 0x77FF;
-        state->backtrace = backtrace;
+    for (stateIndex = 0; stateIndex < This->NbrPhenoms; stateIndex++) {
+        state->State = This->pPhenoms[stateIndex];
+        state->Score = 0x77FF;
+        state->pBacktrace = backtrace;
         state++;
         referenceCount++;
     }
 
-    for (stateIndex = 0; stateIndex < block->silenceStateCount;
-         stateIndex++) {
-        state->distribution = block->silenceDistribution;
-        state->score = 0x77FF;
-        state->backtrace = backtrace;
+    for (stateIndex = 0; stateIndex < This->NbrSilPhenoms; stateIndex++) {
+        state->State = This->SilPhenom;
+        state->Score = 0x77FF;
+        state->pBacktrace = backtrace;
         state++;
         referenceCount++;
     }
 
-    if (block->silenceStateCount == 0) {
-        block->states[0].score = 0;
+    if (This->NbrSilPhenoms == 0) {
+        This->pDynProg[0].Score = 0;
     }
-    backtrace->references = referenceCount;
+    backtrace->Count = referenceCount;
 }
 
-static u32 InitDpScoreUw(TosBaseBlock *baseBlock)
+/* Initializes the user-word scoring block and its queues. */
+static u8 InitDpScoreUw(struct _BLOCK *_This)
 {
-    DpScoreUw *block = (DpScoreUw *)baseBlock;
-    u16 distributionCount =
-        _tosGetProfileU32(baseBlock, 0x13, 1);
+    _DPSCOREUW *block = (_DPSCOREUW *) _This;
+    u16 distributionCount = _tosGetProfileU32(&_This->Object, 0x13, 1);
 
-    block->input = baseBlock->input;
-    block->output = baseBlock->output;
-    block->input->inputSize = distributionCount * sizeof(s16);
-    block->output->outputSize = distributionCount * 3;
+    block->InQueue = _This->InputQueues;
+    block->ActDistQueue = _This->OutputQueues;
+    block->InQueue->Size = distributionCount * sizeof(s16);
+    /* Each distribution contributes a two-byte ID and a one-byte activity flag. */
+    block->ActDistQueue->Size = distributionCount * 3;
 
-    block->backtraceChunkBytes =
-        _tosGetProfileU32(baseBlock, 0x11, 400);
-    if (block->backtraceChunkBytes > 65000) {
-        block->backtraceChunkBytes = 65000;
-    } else if (block->backtraceChunkBytes < 200) {
-        block->backtraceChunkBytes = 200;
+    block->AllocSize = _tosGetProfileU32(&_This->Object, 0x11, 400);
+    if (block->AllocSize > 65000) {
+        block->AllocSize = 65000;
+    } else if (block->AllocSize < 200) {
+        block->AllocSize = 200;
     }
 
-    block->maximumFrameCount = 0;
-    block->allowSilenceSkip = 0;
+    block->TimeOut = 0;
+    block->optionalPaths = 0;
     return 0;
 }
 
-static void SendResultScoreUserWords(
-    DpScoreUw *block, void *argument, u32 argumentSize)
+/* Scores the selected backtrace and reports its speech span and frame counts. */
+static void SendResultScoreUserWords(_DPSCOREUW *block, u32 CParam, u32 DParam)
 {
-    DpScoreUwBacktrace *backtrace = GetBacktrace(block);
-    DpScoreUwBacktrace *currentBacktrace = backtrace;
-    DpScoreUwBacktrace *lastBacktrace;
-    u32 lastFrame;
     u32 lastScore;
+    u32 firstFrame;
+    u32 lastFrame;
+    u32 frameCount;
+    u32 backtraceCount = 0;
+    _SCOREUSERWORDRES result;
+    _SCOREUWBACKTRACE *backtrace = GetBacktrace(block);
+    _SCOREUWBACKTRACE *currentBacktrace = backtrace;
     s32 speechScore = 0;
     s32 speechFrames = 0;
-    u32 backtraceCount = 0;
-    u32 firstFrame = 0;
-    BOOL inSilence = FALSE;
-    DpScoreUwResult result;
+    _SCOREUWBACKTRACE *lastBacktrace;
+    _SCOREUWBACKTRACE *nextBacktrace;
+    u8 inSilence = FALSE;
+    f32 averageScore;
 
-    if (block->silenceStateCount == 0) {
-        currentBacktrace = NULL;
-        lastFrame = block->frame + 1;
-        lastScore = block->accumulatedScore + block->finalScore;
+    if (block->NbrSilPhenoms == 0) {
+        lastFrame = block->FrameCounter + 1;
+        firstFrame = 0;
+        lastScore = block->AccumulatedScore + block->UserWordScore;
     } else {
-        lastFrame = backtrace->frame;
-        lastScore = backtrace->score;
+        lastFrame = backtrace->ExitTime;
+        lastScore = backtrace->Score;
+        lastBacktrace = backtrace;
         inSilence = TRUE;
         backtraceCount = 1;
 
-        while (currentBacktrace->next != NULL) {
-            DpScoreUwBacktrace *nextBacktrace = currentBacktrace->next;
-
-            if (currentBacktrace->distribution ==
-                    block->silenceDistribution &&
-                !inSilence) {
+        while ((nextBacktrace = currentBacktrace->Previous) != NULL) {
+            if (currentBacktrace->State == block->SilPhenom && !inSilence) {
                 inSilence = TRUE;
-                speechScore -=
-                    currentBacktrace->score -
-                    currentBacktrace->garbageScore;
-                speechFrames -= currentBacktrace->frame;
-            } else if (currentBacktrace->distribution !=
-                           block->silenceDistribution &&
-                       inSilence) {
+                speechScore -= currentBacktrace->Score - currentBacktrace->GarbScore;
+                speechFrames -= currentBacktrace->ExitTime;
+            } else if (currentBacktrace->State != block->SilPhenom && inSilence) {
                 inSilence = FALSE;
-                speechScore +=
-                    currentBacktrace->score -
-                    currentBacktrace->garbageScore;
-                speechFrames += currentBacktrace->frame;
+                speechScore += currentBacktrace->Score - currentBacktrace->GarbScore;
+                speechFrames += currentBacktrace->ExitTime;
             }
 
             lastBacktrace = currentBacktrace;
@@ -360,362 +306,352 @@ static void SendResultScoreUserWords(
             backtraceCount++;
         }
 
-        lastScore -= lastBacktrace->score;
-        firstFrame = lastBacktrace->frame;
+        lastScore -= lastBacktrace->Score;
+        firstFrame = lastBacktrace->ExitTime;
     }
 
-    result.frameCount = lastFrame - firstFrame;
-    result.scoreDelta = lastScore;
-    if (result.frameCount != 0) {
-        result.averageScore =
-            (f32)result.scoreDelta / (f32)result.frameCount;
+    frameCount = lastFrame - firstFrame;
+    result.SpeechLength = frameCount;
+    result.SpeechScore = lastScore;
+    if (frameCount != 0) {
+        averageScore = (f32) lastScore / (f32) frameCount;
     } else {
-        result.averageScore = 0.0f;
+        averageScore = 0.0f;
     }
+    result.NormScore = averageScore;
 
-    result.score = block->accumulatedScore + block->finalScore;
-    result.firstFrame = firstFrame;
-    result.lastFrame = lastFrame;
-    result.backtraceCount = backtraceCount;
-    result.backtrace = backtrace;
+    result.UWScore = block->AccumulatedScore + block->UserWordScore;
+    result.StartIdx = firstFrame;
+    result.StopIdx = lastFrame;
+    result.NbrPhenoms = backtraceCount;
+    result.pBackTrace = backtrace;
     if (speechFrames == 0) {
-        result.speechScore = 100;
+        result.ConfValue = 100;
     } else {
-        result.speechScore = speechScore / speechFrames;
+        result.ConfValue = speechScore / speechFrames;
     }
 
-    if (_tosControl(block, 0x0C, (u32)&result, 2)) {
-        _tosErrorLog(block, 1);
+    if (_tosControl(&block->BaseBlock.Object, 0x0C, (u32) &result, 2)) {
+        _tosErrorLog(&block->BaseBlock.Object, 1);
     }
 }
 
-static u16 MakeScoreUserWordsActiveDist(
-    DpScoreUw *block, u16 *distributions, u8 *active)
+/* Collects the scored states' distinct active distributions. */
+static u16 MakeScoreUserWordsActiveDist(_DPSCOREUW *This, u16 *ActiveDist, u8 *ActiveBoolList)
 {
-    DpScoreUwState *state = block->states;
-    u16 activeCount;
+    _SCOREUWACTIVEDPSTATE *state = This->pDynProg;
+    u32 activeCount;
     u32 stateIndex;
 
-    memset(active, 0, block->distributionCount);
-    activeCount = block->ergodicDistributionCount;
-    memset(active, 1, activeCount);
+    memset(ActiveBoolList, 0, This->NbrPhenomsInLang);
+    activeCount = This->NbrErgodicPhenoms;
+    memset(ActiveBoolList, 1, activeCount);
 
-    for (stateIndex = 0; stateIndex < block->stateCount; stateIndex++) {
-        u16 distribution = state->distribution;
+    for (stateIndex = 0; stateIndex < This->TotNbrPhenoms; stateIndex++, state++) {
+        u16 distribution = state->State;
 
-        if (active[distribution] == 0) {
-            active[distribution] = 1;
-            activeCount++;
-            distributions[activeCount] = distribution;
+        if (ActiveBoolList[distribution] == 0) {
+            ActiveBoolList[distribution] = 1;
+            ActiveDist[++activeCount] = distribution;
         }
-        state++;
     }
 
-    distributions[0] = activeCount;
-    return activeCount;
+    ActiveDist[0] = activeCount;
+    return (u16) activeCount;
 }
 
-static inline void ReleaseBacktrace(
-    DpScoreUw *block, DpScoreUwBacktrace *backtrace)
+/* Discards backtrace nodes that are no longer referenced. */
+static inline void CleanUp(_DPSCOREUW *This, _SCOREUWBACKTRACE *FirstPtr)
 {
-    backtrace->references--;
-    if (backtrace->references <= 0) {
-        DpScoreUwBacktrace *firstBacktrace = backtrace;
-        DpScoreUwBacktrace *lastBacktrace = backtrace;
-        DpScoreUwBacktrace *sharedBacktrace = backtrace->next;
-
-        while (sharedBacktrace->references <= 1) {
-            lastBacktrace = sharedBacktrace;
-            sharedBacktrace = sharedBacktrace->next;
-        }
-        sharedBacktrace->references--;
-        lastBacktrace->next = block->freeBacktraces;
-        block->freeBacktraces = firstBacktrace;
+    _SCOREUWBACKTRACE *PrevPtr = FirstPtr;
+    _SCOREUWBACKTRACE *ThisPtr = FirstPtr->Previous;
+    while (ThisPtr->Count <= 1) {
+        PrevPtr = ThisPtr;
+        ThisPtr = ThisPtr->Previous;
     }
+    ThisPtr->Count--;
+    PrevPtr->Previous = This->BacktraceFreelist;
+    This->BacktraceFreelist = FirstPtr;
 }
 
-static s32 DynProgScoreUserWords(DpScoreUw *block, s16 *scores)
+/* Advances the user-word and garbage paths using the current frame's distances. */
+static int DynProgScoreUserWords(_DPSCOREUW *This, s16 *pDistances)
 {
-    DpScoreUwState *state;
-    DpScoreUwState *previousState;
-    DpScoreUwBacktrace *previousBacktrace;
-    DpScoreUwBacktrace *silenceBacktrace;
-    s16 previousScore;
-    s16 silenceScore;
-    s16 bestScore = 0x7FFF;
-    s16 normalization = block->bestScore;
-    u32 stateIndex;
+    int dbg_bSubModActive;
+    void *dbg_pInst;
+    _SCOREUWACTIVEDPSTATE *pDp1;
+    _SCOREUWACTIVEDPSTATE *pDpOld;
+    u32 St;
+    s32 sNewMin = 0x7FFF;
+    s32 sOldMin = This->sMin;
+    _SCOREUWBACKTRACE *PrevBt;
+    _SCOREUWBACKTRACE *pLastSilBt;
+    s32 PrevScore;
+    s32 LocScore;
+    s32 LastSilScore;
+    s32 NewScore;
+    _SCOREUWBACKTRACE *NewBt;
+    _SCOREUWBACKTRACE *NewBacktrace;
 
-    block->accumulatedScore += normalization;
-    block->accumulatedGarbageScore +=
-        scores[block->singleWordGarbageDistribution];
+    This->AccumulatedScore += sOldMin;
+    This->AccumulatedGarbScore += pDistances[This->singleWordGarbPhenom];
 
-    state = block->states;
-    for (stateIndex = 0; stateIndex < block->stateCount; stateIndex++) {
-        state->score -= normalization;
-        if (state->score > 0x77FF) {
-            state->score = 0x77FF;
+    pDp1 = This->pDynProg;
+    for (St = 0; St < This->TotNbrPhenoms; St++) {
+        pDp1->Score -= sOldMin;
+        if (pDp1->Score > 0x77FF) {
+            pDp1->Score = 0x77FF;
         }
-        state++;
+        pDp1++;
     }
 
-    state = block->states;
-    previousScore = state->score;
-    previousBacktrace = state->backtrace;
-    previousBacktrace->references++;
-    state->score += scores[state->distribution];
-    if (state->score < bestScore) {
-        bestScore = state->score;
+    pDp1 = This->pDynProg;
+    PrevScore = pDp1->Score;
+    PrevBt = pDp1->pBacktrace;
+    pDp1->Score = PrevScore + pDistances[pDp1->State];
+    if (pDp1->Score < sNewMin) {
+        sNewMin = pDp1->Score;
     }
+    PrevBt->Count++;
 
-    previousState = state;
-    silenceScore = state->score;
-    silenceBacktrace = state->backtrace;
-    state++;
+    pDpOld = pDp1;
+    LastSilScore = pDp1->Score;
+    pLastSilBt = pDp1->pBacktrace;
+    pDp1++;
 
-    for (stateIndex = 1; stateIndex < block->stateCount; stateIndex++) {
-        s16 transitionScore = previousScore;
-        DpScoreUwBacktrace *transitionBacktrace = previousBacktrace;
-        s16 oldScore = state->score;
-        DpScoreUwBacktrace *oldBacktrace = state->backtrace;
-        s16 distributionScore;
+    for (St = 1; St < This->TotNbrPhenoms; St++) {
+        NewScore = PrevScore;
+        NewBt = PrevBt;
+        PrevScore = pDp1->Score;
 
-        oldBacktrace->references++;
-        distributionScore = scores[state->distribution];
+        PrevBt = pDp1->pBacktrace;
+        PrevBt->Count++;
+        LocScore = pDistances[pDp1->State];
 
-        if (block->allowSilenceSkip &&
-            state->distribution == block->silenceDistribution &&
-            silenceScore < transitionScore &&
-            silenceScore < oldScore) {
-            state->score = silenceScore + distributionScore;
-            if (state->score < bestScore) {
-                bestScore = state->score;
+        if (This->optionalPaths && pDp1->State == This->SilPhenom &&
+            LastSilScore < NewScore && LastSilScore < PrevScore) {
+            pDp1->Score = LastSilScore + LocScore;
+            if (pDp1->Score < sNewMin) {
+                sNewMin = pDp1->Score;
             }
 
-            ReleaseBacktrace(block, state->backtrace);
-            state->backtrace = silenceBacktrace;
-            silenceBacktrace->references++;
-        } else if (transitionScore < oldScore) {
-            DpScoreUwBacktrace *newBacktrace;
-
-            state->score = transitionScore + distributionScore;
-            if (state->score < bestScore) {
-                bestScore = state->score;
+            if (--pDp1->pBacktrace->Count <= 0) {
+                CleanUp(This, pDp1->pBacktrace);
+            }
+            pDp1->pBacktrace = pLastSilBt;
+            pLastSilBt->Count++;
+        } else if (NewScore < PrevScore) {
+            pDp1->Score = NewScore + LocScore;
+            if (pDp1->Score < sNewMin) {
+                sNewMin = pDp1->Score;
             }
 
-            newBacktrace = block->freeBacktraces;
-            if (newBacktrace->next == NULL) {
-                block->freeBacktraces =
-                    AllocateBacktrace(block, newBacktrace);
+            NewBacktrace = This->BacktraceFreelist;
+            if (NewBacktrace->Previous == NULL) {
+                This->BacktraceFreelist = AllocateBacktrace(This, NewBacktrace);
             } else {
-                block->freeBacktraces = newBacktrace->next;
+                This->BacktraceFreelist = NewBacktrace->Previous;
             }
 
-            newBacktrace->next = transitionBacktrace;
-            transitionBacktrace->references++;
-            newBacktrace->distribution = previousState->distribution;
-            newBacktrace->references = 0;
-            newBacktrace->frame = block->frame;
-            newBacktrace->score =
-                block->accumulatedScore + transitionScore;
-            newBacktrace->garbageScore =
-                block->accumulatedGarbageScore;
-            newBacktrace->references++;
+            NewBacktrace->Previous = NewBt;
+            NewBt->Count++;
+            NewBacktrace->State = pDpOld->State;
+            NewBacktrace->Count = 0;
+            NewBacktrace->ExitTime = This->FrameCounter;
+            NewBacktrace->Score = NewScore + This->AccumulatedScore;
+            NewBacktrace->GarbScore = This->AccumulatedGarbScore;
+            NewBacktrace->Count++;
 
-            ReleaseBacktrace(block, state->backtrace);
-            state->backtrace = newBacktrace;
+            if (--pDp1->pBacktrace->Count <= 0) {
+                CleanUp(This, pDp1->pBacktrace);
+            }
+            pDp1->pBacktrace = NewBacktrace;
         } else {
-            state->score += distributionScore;
-            if (state->score < bestScore) {
-                bestScore = state->score;
+            pDp1->Score += LocScore;
+            if (pDp1->Score < sNewMin) {
+                sNewMin = pDp1->Score;
             }
         }
 
-        if (state->distribution == block->silenceDistribution) {
-            silenceScore = state->score;
-            silenceBacktrace = state->backtrace;
+        if (pDp1->State == This->SilPhenom) {
+            LastSilScore = PrevScore;
+            pLastSilBt = pDp1->pBacktrace;
         }
 
-        ReleaseBacktrace(block, transitionBacktrace);
-        previousState = state;
-        previousScore = oldScore;
-        previousBacktrace = oldBacktrace;
-        state++;
+        if (--NewBt->Count <= 0) {
+            CleanUp(This, NewBt);
+        }
+        pDpOld = pDp1;
+        pDp1++;
     }
 
-    ReleaseBacktrace(block, previousBacktrace);
-    block->bestScore = bestScore;
-    block->finalScore = previousState->score;
+    if (--PrevBt->Count <= 0) {
+        CleanUp(This, PrevBt);
+    }
+    This->sMin = sNewMin;
+    This->UserWordScore = pDpOld->Score;
     return 0;
 }
 
-static void IdleDpScoreUwProcess(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Leaves input frames unprocessed while user-word scoring is idle. */
+static void IdleDpScoreUwProcess(struct _BLOCK *baseBlock, void *inputs, int inputCount)
 {
 }
 
-static void DpScoreUwProcess(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Consumes one score frame and advances the user-word backtrace. */
+static void DpScoreUwProcess(struct _BLOCK *_This, void *pInputs, int inputCount)
 {
-    DpScoreUw *block = (DpScoreUw *)baseBlock;
-    s16 *scores = inputs[0];
+    _DPSCOREUW *This = (_DPSCOREUW *) _This;
+    void **pInputQueues = pInputs;
+    s16 *pDistances = pInputQueues[0];
 
-    if (scores != NULL) {
-        block->frame++;
-        if (block->frame == 0) {
-            DpScoreUwState *state = block->states;
+    if (pDistances != NULL) {
+        This->FrameCounter++;
+        if (This->FrameCounter == 0) {
+            _SCOREUWACTIVEDPSTATE *state = This->pDynProg;
 
-            state->score = scores[state->distribution];
-            block->bestScore = state->score;
-        } else if (DynProgScoreUserWords(block, scores) != 0) {
-            _tosErrorLog(block, 0x77);
-            block->base.process = IdleDpScoreUwProcess;
-            if (_tosControl(block, 0x0B, 0, 0)) {
-                block->base.process = IdleDpScoreUwProcess;
+            state->Score = pDistances[state->State];
+            This->sMin = state->Score;
+        } else if (DynProgScoreUserWords(This, pDistances) != 0) {
+            _tosErrorLog(&This->BaseBlock.Object, 0x77);
+            This->BaseBlock.Process = IdleDpScoreUwProcess;
+            if (_tosControl(&This->BaseBlock.Object, 0x0B, 0, 0)) {
+                This->BaseBlock.Process = IdleDpScoreUwProcess;
                 return;
             }
         }
 
         {
-            u8 *output = qEnQueueOne(block->output->queue);
-            block->makeActiveDistributions(
-                block, (u16 *)output,
-                output + block->input->inputSize - sizeof(u16));
+            u16 *ActiveDist = qEnQueueOne(This->ActDistQueue->pQ);
+
+            /* The frame packet puts flags before the final distance-width slot. */
+            This->MakeActiveDist(This, ActiveDist,
+                                 (u8 *) ActiveDist + This->InQueue->Size - sizeof(u16));
         }
 
-        if (block->maximumFrameCount != 0 &&
-            block->frame > block->maximumFrameCount) {
-            block->base.process = IdleDpScoreUwProcess;
-            if (_tosControl(block, 8, block->frame, 0)) {
-                _tosErrorLog(block, 1);
+        if (This->TimeOut != 0 && This->FrameCounter > This->TimeOut) {
+            This->BaseBlock.Process = IdleDpScoreUwProcess;
+            if (_tosControl(&This->BaseBlock.Object, 8, This->FrameCounter, 0)) {
+                _tosErrorLog(&This->BaseBlock.Object, 1);
             }
         }
     }
 }
 
-static u32 InitRecognitionLanguage(
-    DpScoreUw *block, DpScoreUwLanguageInfo *languageInfo)
+/* Initializes scoring from the user-word phoneme and silence lists. */
+static u8 InitScoreUserWords(_DPSCOREUW *This, _INITSCOREWUSERWORDDATA *pInitData)
 {
-    TosContext *context;
-    u32 error;
+    struct _TOS *context;
+    u16 *pSilPhenoms;
+    u8 error;
 
-    block->wordStateCount = languageInfo->wordStateCount;
-    block->stateDistributions = languageInfo->stateDistributions;
-    block->silenceStateCount = languageInfo->silenceStateCount;
+    This->NbrPhenoms = pInitData->NbrPhenoms;
+    This->pPhenoms = pInitData->pPhenoms;
+    This->NbrSilPhenoms = pInitData->NbrSilPhenoms;
+    pSilPhenoms = pInitData->pSilPhenoms;
 
-    if (block->silenceStateCount > 1) {
-        _tosErrorLog(block, 1);
+    if (This->NbrSilPhenoms > 1) {
+        _tosErrorLog(&This->BaseBlock.Object, 1);
         return 1;
     }
 
-    block->frame = -1;
-    block->bestScore = 0;
-    block->accumulatedScore = 0;
-    block->accumulatedGarbageScore = 0;
+    This->FrameCounter = -1;
+    This->sMin = 0;
+    This->AccumulatedScore = 0;
+    This->AccumulatedGarbScore = 0;
 
-    if (block->silenceStateCount != 0) {
-        block->silenceDistribution =
-            languageInfo->silenceDistribution[0];
-        block->stateCount = block->wordStateCount + 2;
+    if (This->NbrSilPhenoms != 0) {
+        This->SilPhenom = pSilPhenoms[0];
+        This->TotNbrPhenoms = This->NbrPhenoms + 2;
     } else {
-        block->silenceDistribution = 0;
-        block->stateCount = block->wordStateCount;
+        This->SilPhenom = 0;
+        This->TotNbrPhenoms = This->NbrPhenoms;
     }
 
-    context = block->base.context;
-    FreeBacktrace(block);
-    if (block->states != NULL) {
-        heap_Free(context->heap, block->states);
+    context = This->BaseBlock.Object.pTos;
+    FreeBacktrace(This);
+    if (This->pDynProg != NULL) {
+        heap_Free(context->hHeap, This->pDynProg);
     }
-    block->states = NULL;
+    This->pDynProg = NULL;
+    error = 0;
 
-    if (AllocateBacktrace(block, NULL) == NULL) {
+    if (AllocateBacktrace(This, NULL) == NULL) {
         return 1;
     }
 
-    block->states = heap_Alloc(
-        context->heap, block->stateCount * sizeof(DpScoreUwState));
-    if (block->states == NULL) {
-        error = _tosErrorLog(block, 0x71);
-    } else {
-        error = 0;
-    }
-    if (error) {
+    This->pDynProg = heap_Alloc(This->BaseBlock.Object.pTos->hHeap,
+                                This->TotNbrPhenoms * sizeof(_SCOREUWACTIVEDPSTATE));
+    if ((error = This->pDynProg == NULL ? _tosErrorLog(&This->BaseBlock.Object, 0x71) : error) !=
+        0) {
         return 1;
     }
 
-    block->initialized = 0;
-    block->input->inputSize = block->input->queue->elementSize;
-    block->output->outputSize = block->output->queue->elementSize;
+    This->EndOfSpeech = 0;
+    This->InQueue->Size = This->InQueue->pQ->Size;
+    This->ActDistQueue->Size = This->ActDistQueue->pQ->Size;
     return 0;
 }
 
-static u32 ControlDpScoreUw(
-    TosBaseBlock *baseBlock, u32 command, void *argument,
-    u32 argumentSize)
+/* Handles setup, scoring and teardown commands for the block. */
+static u8 ControlDpScoreUw(struct _BLOCK *_This, u8 ControlId, u32 CParam1, u32 CParam2)
 {
-    DpScoreUw *block = (DpScoreUw *)baseBlock;
+    _DPSCOREUW *block = (_DPSCOREUW *) _This;
 
-    switch ((u8)command) {
+    switch (ControlId) {
+    case 2:
+        block->BaseBlock.Process = IdleDpScoreUwProcess;
+        block->SendResult(block, CParam1, CParam2);
+        break;
     case 1:
         InitViterbi(block);
-        qQueueReset(block->output->queue);
+        qQueueReset(block->ActDistQueue->pQ);
         {
-            u8 *output = qEnQueueOne(block->output->queue);
-            block->makeActiveDistributions(
-                block, (u16 *)output,
-                output + block->input->inputSize);
+            u16 *output = qEnQueueOne(block->ActDistQueue->pQ);
+
+            /* The startup packet puts flags after the full distance extent. */
+            block->MakeActiveDist(block, output, (u8 *) output + block->InQueue->Size);
         }
-        block->base.process = DpScoreUwProcess;
-        break;
-    case 2:
-        block->base.process = IdleDpScoreUwProcess;
-        block->sendResult(block, argument, argumentSize);
+        block->BaseBlock.Process = DpScoreUwProcess;
         break;
     case 3:
-        block->base.process = IdleDpScoreUwProcess;
+        block->BaseBlock.Process = IdleDpScoreUwProcess;
+        break;
+    case 7:
+        block->NbrPhenomsInLang =
+            ((struct _LANGUAGE *) CParam1)->langGetNbrPhenome((struct _LANGUAGE *) CParam1);
+        block->NbrErgodicPhenoms =
+            ((struct _LANGUAGE *) CParam1)->langGetNbrErgodicPhenomes((struct _LANGUAGE *) CParam1);
+        block->pErgodicPhenoms =
+            ((struct _LANGUAGE *) CParam1)->langGetpErgodicPhenomes((struct _LANGUAGE *) CParam1);
+        block->singleWordGarbPhenom =
+            ((struct _LANGUAGE *) CParam1)
+                ->langGetSingleWordGarbagePhenome((struct _LANGUAGE *) CParam1);
+        if (block->ActDistQueue->pQ != NULL) {
+            block->ActDistQueue->Size = block->ActDistQueue->pQ->Size;
+        }
         break;
     case 4:
-        if (InitRecognitionLanguage(
-                block, (DpScoreUwLanguageInfo *)argument)) {
+        if (InitScoreUserWords(block, (_INITSCOREWUSERWORDDATA *) CParam1)) {
             return 0;
         }
         break;
+    case 0xFF: {
+        struct _TOS *context = block->BaseBlock.Object.pTos;
+
+        FreeBacktrace(block);
+        if (block->pDynProg != NULL) {
+            heap_Free(context->hHeap, block->pDynProg);
+        }
+        block->pDynProg = NULL;
+        tosBaseBlockDestruct(&block->BaseBlock);
+        break;
+    }
     case 5:
-        block->allowSilenceSkip = (u32)argument;
+        block->optionalPaths = CParam1;
         break;
     case 6:
-        *(u8 *)argument = block->allowSilenceSkip;
-        break;
-    case 7:
-        {
-            LanguageData *language = argument;
-
-            block->distributionCount =
-                language->getNbrPhenome(language);
-            block->ergodicDistributionCount =
-                language->getNbrErgodicPhenomes(language);
-            block->ergodicDistributions =
-                language->getpErgodicPhenomes(language);
-            block->singleWordGarbageDistribution =
-                language->getSingleWordGarbagePhenome(language);
-            if (block->output->queue != NULL) {
-                block->output->outputSize =
-                    block->output->queue->elementSize;
-            }
-        }
-        break;
-    case 0xFF:
-        {
-            TosContext *context = block->base.context;
-
-            FreeBacktrace(block);
-            if (block->states != NULL) {
-                heap_Free(context->heap, block->states);
-            }
-            block->states = NULL;
-            tosBaseBlockDestruct(block);
-        }
+        *(u8 *) CParam1 = block->optionalPaths;
         break;
     default:
         return 0;
@@ -724,13 +660,14 @@ static u32 ControlDpScoreUw(
     return 1;
 }
 
-void *ConstructDpScoreUw(TosContext *context, u8 blockIndex)
+/* Constructs a TOS block for user-word scoring. */
+struct _BLOCK *ConstructDpScoreUw(struct _TOS *pTos, u8 BlockID)
 {
-    DpScoreUw *block = (DpScoreUw *)tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, IdleDpScoreUwProcess,
-        InitDpScoreUw, ControlDpScoreUw, sizeof(DpScoreUw));
+    _DPSCOREUW *block =
+        (_DPSCOREUW *) tosBaseBlockConstruct(pTos, BlockID, 1, 1, IdleDpScoreUwProcess,
+                                             InitDpScoreUw, ControlDpScoreUw, sizeof(_DPSCOREUW));
 
-    block->makeActiveDistributions = MakeScoreUserWordsActiveDist;
-    block->sendResult = SendResultScoreUserWords;
-    return block;
+    block->MakeActiveDist = MakeScoreUserWordsActiveDist;
+    block->SendResult = SendResultScoreUserWords;
+    return &block->BaseBlock;
 }

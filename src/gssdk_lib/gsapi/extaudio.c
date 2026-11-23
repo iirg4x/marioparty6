@@ -1,46 +1,54 @@
-#include "gssdk/gsapi.h"
+#include "gssdk/gsapi_internal.h"
+#include "gssdk/heap.h"
 
-typedef struct ExtAudioState {
-    u32 active;
-} ExtAudioState;
+struct _SID {
+    int fIsRecording; /* Whether sampling is active. */
+};
 
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-s32 ExtAudioInit(void *heap, ExtAudioState **audio)
+/* Allocates the external audio session and leaves sampling stopped. */
+long ExtAudioInit(void *hHeap, unsigned int *phSid)
 {
-    ExtAudioState *state = heap_Alloc(heap, sizeof(ExtAudioState));
+    struct _SID *pSid = heap_Alloc(hHeap, sizeof(struct _SID));
 
-    state->active = FALSE;
-    *audio = state;
+    pSid->fIsRecording = FALSE;
+    *phSid = (unsigned int)pSid;
     return 0;
 }
 
-s32 ExtAudioClose(void *heap, ExtAudioState *audio)
+/* Frees the external audio session from its heap. */
+long ExtAudioClose(void *hHeap, unsigned int hSid)
 {
-    heap_Free(heap, audio);
+    struct _SID *pSid = (struct _SID *)hSid;
+
+    heap_Free(hHeap, pSid);
     return 0;
 }
 
-s32 ExtAudioStart(ExtAudioState *audio)
+/* Marks external sampling as active. */
+long ExtAudioStart(unsigned int hSid)
 {
-    audio->active = TRUE;
+    struct _SID *pSid = (struct _SID *)hSid;
+
+    pSid->fIsRecording = TRUE;
     return 0;
 }
 
-s32 ExtAudioStop(ExtAudioState *audio)
+/* Marks external sampling as stopped. */
+long ExtAudioStop(unsigned int hSid)
 {
-    audio->active = FALSE;
+    ((struct _SID *)hSid)->fIsRecording = FALSE;
     return 0;
 }
 
-u32 ExtAudioGetSamples(void *source, void *samples, u32 sampleCount)
+/* Requests samples from the client and returns the count it supplied. */
+long ExtAudioGetSamples(void *hEngine, short **Buffer, unsigned long nSamples)
 {
-    gGSAPI.getSamples(source, samples, &sampleCount);
-    return sampleCount;
+    gGSAPI.cbGetWaveData(hEngine, Buffer, &nSamples);
+    return nSamples;
 }
 
-u32 ExtAudioGetSamplesLeft(ExtAudioState *audio)
+/* Reports zero pending samples for the external source. */
+long ExtAudioGetSamplesLeft(void *hEngine)
 {
     return 0;
 }

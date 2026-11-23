@@ -1,191 +1,72 @@
 /* Builds the word and transition dictionaries used by speech recognition's second pass. */
+#include "gssdk/secondpass.h"
+#include "gssdk/context.h"
+#include "gssdk/engine.h"
+#include "gssdk/heap.h"
 #include "types.h"
 #include "gssdk/langdata.h"
 #include <string.h>
 
-enum { NO_GRAPH_INDEX = 65535 };
-
-extern void heap_Free(void *heap, void *ptr);
-extern void *heap_Alloc(void *heap, u32 size);
-
-typedef struct RecognitionWordNode {
-    /* Offset of this word's pronunciation data in the first-pass dictionary. */
-    s32 transcriptionOffset;
-    /* Additional menu-node data carried with the recognition entry. */
-    u32 reservedNodeData[2];
-    /* Child entries and sibling links in the enabled-menu word list. */
-    struct RecognitionWordNode *children;
-    struct RecognitionWordNode *next;
-} RecognitionWordNode;
-
-typedef struct DictionaryWord {
-    /* Offset of the encoded pronunciation in the first-pass dictionary. */
-    s32 transcriptionOffset;
-    /* Number of encoded speech units in this pronunciation. */
-    u16 tokenCount;
-    /* Speech-unit classes used to select a joining translation. */
-    u8 leadingClass;
-    u8 trailingClass;
-} DictionaryWord;
-
-typedef struct FirstPassContext {
-    /* First-pass state carried with the recognition context. */
-    u32 reservedState[3];
-    /* Per-word attributes and pronunciation data produced by the first pass. */
-    u16 *wordAttributes;
-    u16 *dictionary;
-    /* Additional first-pass context storage with unknown role. */
-    u32 reservedLimits[2];
-    /* Pronunciation start offsets indexed by first-pass word ID. */
-    u32 *wordOffsets;
-} FirstPassContext;
-
-typedef struct TranslationDictionary {
-    /* Translation-word count and encoded lexicon size. */
-    u32 wordCount;
-    u32 lexiconSize;
-    /* Encoded speech-unit lexicon followed by its offset tables. */
-    u16 data[];
-} TranslationDictionary;
-
-typedef struct WordGraphNode {
-    /* First-pass word ID and pronunciation index for this graph node. */
-    s32 wordID;
-    s32 dictionaryIndex;
-    /* Head transition index; 65535 marks a node with no outgoing edge. */
-    u16 firstTransition;
-    /* Additional data carried with the graph node. */
-    u16 reservedNodeData;
-} WordGraphNode;
-
-typedef struct WordGraphTransition {
-    /* Destination graph node and next edge in the source node's list. */
-    u16 destination;
-    u16 next;
-    /* Joining translation ID, or 65535 when no translation exists. */
-    u16 translationID;
-} WordGraphTransition;
-
-typedef struct SecondPassContext {
-    /* State and sizes of the assembled second-pass recognition data. */
-    s32 state;
-    u32 wordCount;
-    s32 tokenCount;
-    /* Per-word search flags, encoded pronunciations, and penalties. */
-    u16 *wordFlags;
-    u16 *dictionary;
-    s16 *wordPenalties;
-    /* Word transition offsets followed by the packed transition indices. */
-    u32 *transitions;
-    /* Boundaries of each word's pronunciation entries. */
-    u32 *wordOffsets;
-    /* Per-menu selection masks used during second-pass search. */
-    void *menuMasks;
-} SecondPassContext;
-
-typedef struct RecognitionContext {
-    /* Recognizer header storage whose fields are owned by the speech engine. */
-    u8 reservedHeader[564];
-    /* Accepted by the speech allocator, which uses the current speech group in heap 0 instead. */
-    void *heap;
-    /* Recognizer state carried with the recognition context. */
-    u32 reservedState[3];
-    /* First-pass words, attributes, and pronunciation offsets. */
-    FirstPassContext *firstPassData;
-    /* Recognizer dictionary state carried with the context. */
-    u32 reservedDictionaryState;
-    /* Metadata for each first-pass pronunciation. */
-    DictionaryWord *dictionaryWords;
-    /* Recognizer search state carried with the context. */
-    u32 reservedSearchState;
-    /* Search data assembled for the second recognition pass. */
-    SecondPassContext *secondPass;
-    /* Maps first-pass-backed second-pass words to their first-pass word and pronunciation IDs;
-     * joining translations use -1. */
-    s32 *cachedData;
-    /* Recognizer pass state carried with the context. */
-    u32 reservedPassState[2];
-    /* Language-specific speech-unit classes and translation lexicon. */
-    LanguageData *language;
-    /* Menu selection state owned by the recognizer. */
-    u8 reservedMenuState[64];
-    /* Enabled menu roots and their linked word entries. */
-    RecognitionWordNode **menus;
-    /* Additional recognizer state carried with the context. */
-    u8 reservedRecognitionState[388];
-    /* Penalty copied to words marked for penalty handling. */
-    s16 wordPenalty;
-} RecognitionContext;
-
-extern u8 CreateMenuMasks(RecognitionContext *, SecondPassContext *, u32);
-void FreeSecondPassContext(RecognitionContext *context);
-
-/*
-* Adds each pronunciation of a joining translation to the second-pass dictionary.
-* CreateSecondPassContext calls this while packing translation pronunciations and their transitions.
-*/
-static void putTransWordInDict(
-    u32 **wordOffsetTable, u32 *encodedOffset, u16 **encodedDictionary,
-    u32 secondPassWordIndex, u16 *translationWordIndices, u16 *translationWordLimit,
-    u16 *translationTokenLexicon)
+/* Packs joining translations and appends the two halves of the second-pass word ID. */
+static void putTransWordInDict(u32 **ppBeginOfPron, u32 *pDictIndex, u16 **ppState,
+                               u32 WordID, u16 *pIndex, u16 *pIndexEnd, u16 *pTransWordLex)
 {
-    u16 wordIndexLow = secondPassWordIndex;
-    u32 *wordBoundaryCursor = *wordOffsetTable;
-    u16 *dictionaryCursor = *encodedDictionary;
-    u16 *translationIndexCursor = translationWordIndices;
-    u16 *lexiconCursor = translationTokenLexicon + *translationIndexCursor;
-    u16 *nextPronunciation;
+    u16 wordIndexLow = WordID;
+    u32 *pBeginOfPron = *ppBeginOfPron;
+    u16 *pState = *ppState;
+    u16 *indexCursor = pIndex;
+    u16 *pPhen = pTransWordLex + *indexCursor;
+    u16 *pPhenEnd;
 
-    secondPassWordIndex >>= 16;
-
-    while (translationIndexCursor < translationWordLimit) {
-        *wordBoundaryCursor++ = *encodedOffset;
-        nextPronunciation = translationTokenLexicon + *++translationIndexCursor;
-        *encodedOffset += nextPronunciation - lexiconCursor + 2;
-        while (lexiconCursor < nextPronunciation - 1) {
-            *dictionaryCursor++ = (*lexiconCursor++ * 4) | 2;
+    WordID >>= 16;
+    while (indexCursor < pIndexEnd) {
+        *pBeginOfPron++ = *pDictIndex;
+        pPhenEnd = pTransWordLex + *++indexCursor;
+        *pDictIndex += pPhenEnd - pPhen + 2;
+        while (pPhen < pPhenEnd - 1) {
+            *pState++ = (*pPhen++ * 4) | 2;
         }
-        dictionaryCursor[0] = (*lexiconCursor++ * 4) | 1;
-        dictionaryCursor[1] = wordIndexLow;
-        dictionaryCursor[2] = secondPassWordIndex;
-        dictionaryCursor += 3;
+        pState[0] = (*pPhen++ * 4) | 1;
+        pState[1] = wordIndexLow;
+        pState[2] = WordID;
+        pState += 3;
     }
 
-    *encodedDictionary = dictionaryCursor;
-    *wordOffsetTable = wordBoundaryCursor;
+    *ppState = pState;
+    *ppBeginOfPron = pBeginOfPron;
 }
 
 /*
- * Builds the second-pass pronunciation graph and packed dictionary for the enabled menus.
+ * Builds the second-pass pronunciation graph and packed dictionary from the first-pass results.
  * Called by the recognizer when it prepares second-pass search data from first-pass results.
  */
-s32 CreateSecondPassContext(RecognitionContext *context)
+unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
 {
     int speechUnitClassCount;
     u16 *dictionary;
-    RecognitionWordNode *menuRoot;
+    struct _DYNPROG_RESULT_NODE *sentence;
     u32 firstPassOffsetBase;
     u16 *wordAttributes;
     s32 rootTransitionCount;
     u32 initialGraphWordCount;
     s32 tokenCount;
-    DictionaryWord *dictionaryWords;
+    struct _SECONDPASSINFO *dictionaryWords;
     u16 *translationTokenLexicon;
-    SecondPassContext *secondPass;
+    struct _DYNPROG_CTXINFO *secondPass;
     u32 *pronunciationOffsetTable;
     u32 encodedWordOffset;
     u16 *encodedPronunciationDictionary;
     u32 maxPronunciationsPerWord;
     s32 graphPronunciationCount;
-    WordGraphNode *graphNodes;
-    WordGraphTransition *transitions;
+    struct _NODE *graphNodes;
+    struct _VERTEX *transitions;
     u32 nextGraphTransition;
     u32 nextGraphNode;
-    FirstPassContext *firstPassData;
+    struct _DYNPROG_CTXINFO *firstPassData;
     u32 *wordOffsets;
-    RecognitionWordNode *enabledMenuCursor;
-    RecognitionWordNode *word;
-    TranslationDictionary *translationDictionary;
+    struct _DYNPROG_RESULT_NODE *pSent;
+    struct _DYNPROG_RESULT_NODE *word;
+    struct _TRANSWORDINFO *translationDictionary;
     u16 *translationPronunciationOffsets;
     u32 previousBranchCount;
     u32 wordCount;
@@ -198,8 +79,8 @@ s32 CreateSecondPassContext(RecognitionContext *context)
     u32 *packedTransitionCursor;
     u32 *transitionBoundaryCursor;
     u32 *allPronunciationOffsets;
-    s32 *firstPassWordMapCursor;
-    WordGraphNode *graphNodeCursor;
+    struct _NEWID2OLDID *firstPassWordMapCursor;
+    struct _NODE *graphNodeCursor;
     u32 graphNodeIndex;
     u16 translationID;
 
@@ -209,38 +90,36 @@ s32 CreateSecondPassContext(RecognitionContext *context)
     transitions = NULL;
     nextGraphTransition = 0;
     nextGraphNode = 1;
-    enabledMenuCursor = *context->menus;
-    firstPassData = context->firstPassData;
-    wordOffsets = firstPassData->wordOffsets;
+    pSent = pEngine->pRes->pResult;
+    firstPassData = pEngine->CtxInfo.pDynProgCtxInfo;
+    wordOffsets = firstPassData->pBeginOfWords;
     firstPassOffsetBase = *wordOffsets;
-    wordAttributes = firstPassData->wordAttributes;
-    dictionary = firstPassData->dictionary;
-    dictionaryWords = context->dictionaryWords;
+    wordAttributes = firstPassData->pWordProps;
+    dictionary = (u16 *)firstPassData->pStateInDict;
+    dictionaryWords = pEngine->CtxInfo.pSecondPassInfo;
     rootTransitionCount = 0;
     tokenCount = 0;
-    speechUnitClassCount = context->language->getNbrSpeechUnitClass(context->language);
-    translationDictionary = ((TranslationDictionary *(*)(LanguageData *))
-        context->language->reservedA8[1])(context->language);
-    translationTokenLexicon = ((u16 *(*)(TranslationDictionary *))
-        context->language->reservedF4[3])(translationDictionary);
-    translationPronunciationOffsets = ((u16 *(*)(TranslationDictionary *))
-        context->language->reservedF4[4])(translationDictionary);
+    speechUnitClassCount = pEngine->pLang->langGetNbrSpeechUnitClass(pEngine->pLang);
+    translationDictionary = pEngine->pLang->langGetpTransWord(pEngine->pLang);
+    translationTokenLexicon = pEngine->pLang->transwGetpTransWordLex(translationDictionary);
+    translationPronunciationOffsets =
+        pEngine->pLang->transwGetpBeginOfTransWords(translationDictionary);
     encodedWordOffset = 0;
-    if (context->secondPass != NULL) {
-        FreeSecondPassContext(context);
+    if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo != NULL) {
+        FreeSecondPassContext(pEngine);
     }
-    secondPass = heap_Alloc(context->heap, sizeof(SecondPassContext));
+    secondPass = heap_Alloc(pEngine->hHeap, sizeof(struct _DYNPROG_CTXINFO));
     if (secondPass == NULL) {
         goto failure;
     }
-    memset(secondPass, 0, sizeof(SecondPassContext));
-    context->secondPass = secondPass;
+    memset(secondPass, 0, sizeof(struct _DYNPROG_CTXINFO));
+    pEngine->CtxInfo.pSecondPassDynProgCtxInfo = secondPass;
 
-    /* Bound the temporary graph by the pronunciation counts of the menu words. */
-    while (enabledMenuCursor != NULL) {
-        word = enabledMenuCursor->children;
+    /* The first-pass pronunciation counts bound the temporary graph. */
+    while (pSent != NULL) {
+        word = pSent->pInfo;
         while (word != NULL) {
-            u16 *encodedWordEntry = dictionary + word->transcriptionOffset;
+            u16 *encodedWordEntry = dictionary + word->StateNbr;
             u32 *pronunciationBounds =
                 wordOffsets + (encodedWordEntry[1] + (encodedWordEntry[2] << 16));
             u32 count = pronunciationBounds[1] - pronunciationBounds[0];
@@ -248,41 +127,42 @@ s32 CreateSecondPassContext(RecognitionContext *context)
                 maxPronunciationsPerWord = count;
             }
             graphPronunciationCount += count;
-            word = word->next;
+            word = word->pNext;
         }
-        enabledMenuCursor = enabledMenuCursor->next;
+        pSent = pSent->pNext;
     }
-    graphNodes = heap_Alloc(context->heap, (graphPronunciationCount + 1) * sizeof(WordGraphNode));
-    transitions = heap_Alloc(context->heap,
-        graphPronunciationCount * maxPronunciationsPerWord * sizeof(WordGraphTransition));
+    graphNodes = heap_Alloc(pEngine->hHeap, (graphPronunciationCount + 1) * sizeof(struct _NODE));
+    transitions = heap_Alloc(pEngine->hHeap,
+        graphPronunciationCount * maxPronunciationsPerWord * sizeof(struct _VERTEX));
     if (graphNodes == NULL || transitions == NULL) {
         goto failure;
     }
-    graphNodes[0].firstTransition = NO_GRAPH_INDEX;
+    graphNodes[0].iVertex = 0xFFFF;
     /*
      * Enabled menus with common pronunciation paths share graph nodes; each distinct pronunciation
      * extends the search path with its own node.
      */
-    for (menuRoot = *context->menus; menuRoot != NULL; menuRoot = menuRoot->next) {
+    for (sentence = pEngine->pRes->pResult; sentence != NULL;
+         sentence = sentence->pNext) {
         u32 rootNodeIndex = 0;
         u32 dictionaryIndex = 0;
         s32 wordID = 0;
-        word = menuRoot->children;
+        word = sentence->pInfo;
         if (word != NULL) {
-            WordGraphTransition *transition;
+            struct _VERTEX *transition;
             u32 searchLink;
             u32 link;
             while (word != NULL) {
-                WordGraphNode *node = graphNodes + rootNodeIndex;
-                u16 *encodedWordEntry = dictionary + word->transcriptionOffset;
-                searchLink = node->firstTransition;
+                struct _NODE *node = graphNodes + rootNodeIndex;
+                u16 *encodedWordEntry = dictionary + word->StateNbr;
+                searchLink = node->iVertex;
                 wordID = encodedWordEntry[1] + (encodedWordEntry[2] << 16);
                 dictionaryIndex = wordOffsets[wordID] - firstPassOffsetBase;
                 for (;;) {
-                    if (searchLink == NO_GRAPH_INDEX) {
+                    if (searchLink == 0xFFFF) {
                         u32 count;
                         if (rootNodeIndex != 0) {
-                            u32 *pronunciationBounds = wordOffsets + node->wordID;
+                            u32 *pronunciationBounds = wordOffsets + node->OldWordID;
                             count = pronunciationBounds[1] - pronunciationBounds[0];
                         } else {
                             count = 1;
@@ -292,78 +172,77 @@ s32 CreateSecondPassContext(RecognitionContext *context)
                     } else {
                         u16 destination;
                         transition = transitions + searchLink;
-                        destination = transition->destination;
-                        if (dictionaryIndex == (u32)graphNodes[destination].dictionaryIndex) {
-                            word = word->next;
+                        destination = transition->iNode;
+                        if (dictionaryIndex == graphNodes[destination].OldPronID) {
+                            word = word->pNext;
                             rootNodeIndex = destination;
                             break;
                         }
-                        searchLink = transition->next;
+                        searchLink = transition->iVertex;
                     }
                 }
-                if (searchLink == NO_GRAPH_INDEX) {
+                if (searchLink == 0xFFFF) {
                     break;
                 }
             }
-            link = graphNodes[rootNodeIndex].firstTransition;
+            link = graphNodes[rootNodeIndex].iVertex;
             if (word != NULL) {
-              for (;;) {
-                u32 count;
-                u32 *pronunciationBounds = wordOffsets + wordID;
-                u32 pronunciation;
-                count = pronunciationBounds[1] - pronunciationBounds[0];
-                for (pronunciation = 0; pronunciation < count; pronunciation++) {
-                    u32 destination = nextGraphNode + pronunciation;
-                    u32 previousNodeIndex;
-                    previousNodeIndex = 0;
-                    for (; previousNodeIndex < previousBranchCount; previousNodeIndex++) {
-                        transitions[nextGraphTransition + previousNodeIndex].destination =
-                            (u16) destination;
-                        transitions[nextGraphTransition + previousNodeIndex].next =
-                            link == NO_GRAPH_INDEX ? NO_GRAPH_INDEX : link + previousNodeIndex;
-                    }
-                    link = nextGraphTransition;
-                    if (pronunciation == count - 1) {
+                for (;;) {
+                    u32 count;
+                    u32 *pronunciationBounds = wordOffsets + wordID;
+                    u32 pronunciation;
+                    count = pronunciationBounds[1] - pronunciationBounds[0];
+                    for (pronunciation = 0; pronunciation < count; pronunciation++) {
+                        u32 destination = nextGraphNode + pronunciation;
                         u32 previousNodeIndex;
                         for (previousNodeIndex = 0; previousNodeIndex < previousBranchCount;
                              previousNodeIndex++) {
-                            graphNodes[rootNodeIndex + previousNodeIndex].firstTransition =
-                                nextGraphTransition + previousNodeIndex;
+                            transitions[nextGraphTransition + previousNodeIndex].iNode =
+                                (u16) destination;
+                            transitions[nextGraphTransition + previousNodeIndex].iVertex =
+                                link == 0xFFFF ? 0xFFFF : link + previousNodeIndex;
                         }
+                        link = nextGraphTransition;
+                        if (pronunciation == count - 1) {
+                            for (previousNodeIndex = 0; previousNodeIndex < previousBranchCount;
+                                 previousNodeIndex++) {
+                                graphNodes[rootNodeIndex + previousNodeIndex].iVertex =
+                                    nextGraphTransition + previousNodeIndex;
+                            }
+                        }
+                        graphNodes[destination].OldPronID = dictionaryIndex + pronunciation;
+                        nextGraphTransition = (u16)(nextGraphTransition + previousBranchCount);
+                        graphNodes[destination].OldWordID = wordID;
                     }
-                    graphNodes[destination].dictionaryIndex = dictionaryIndex + pronunciation;
-                    nextGraphTransition = (u16)(nextGraphTransition + previousBranchCount);
-                    graphNodes[destination].wordID = wordID;
+                    word = word->pNext;
+                    rootNodeIndex = nextGraphNode;
+                    previousBranchCount = count;
+                    nextGraphNode = (u16)(nextGraphNode + count);
+                    if (word == NULL) {
+                        break;
+                    } else {
+                        u16 *encodedWordEntry;
+                        link = 0xFFFF;
+                        encodedWordEntry = dictionary + word->StateNbr;
+                        wordID = encodedWordEntry[1] + (encodedWordEntry[2] << 16);
+                        dictionaryIndex = wordOffsets[wordID] - firstPassOffsetBase;
+                    }
                 }
-                word = word->next;
-                rootNodeIndex = nextGraphNode;
-                previousBranchCount = count;
-                nextGraphNode = (u16)(nextGraphNode + count);
-                if (word == NULL) {
-                    break;
-                } else {
-                    u16 *encodedWordEntry;
-                    link = NO_GRAPH_INDEX;
-                    encodedWordEntry = dictionary + word->transcriptionOffset;
-                    wordID = encodedWordEntry[1] + (encodedWordEntry[2] << 16);
-                    dictionaryIndex = wordOffsets[wordID] - firstPassOffsetBase;
-                }
-              }
             }
             {
                 u32 previousNodeIndex;
                 for (previousNodeIndex = 0; previousNodeIndex < previousBranchCount;
                      previousNodeIndex++) {
-                    graphNodes[rootNodeIndex++].firstTransition = NO_GRAPH_INDEX;
+                    graphNodes[rootNodeIndex++].iVertex = 0xFFFF;
                 }
             }
         }
     }
 
     {
-        u32 link = graphNodes[0].firstTransition;
-        while (link != NO_GRAPH_INDEX) {
-            link = transitions[link].next;
+        u32 link = graphNodes[0].iVertex;
+        while (link != 0xFFFF) {
+            link = transitions[link].iVertex;
             rootTransitionCount++;
         }
     }
@@ -373,200 +252,196 @@ s32 CreateSecondPassContext(RecognitionContext *context)
     transitionCount = nextGraphTransition - rootTransitionCount;
     graphNodeCursor = graphNodes + 1;
     /*
-    * Resolve each edge's joining word from the source trailing class and destination leading class.
-    * Edges without an available translation are marked for direct traversal.
-    */
+     * Resolves each edge's joining word from the source trailing class and destination leading
+     * class. Edges without an available translation are marked for direct traversal.
+     */
     for (graphNodeIndex = 1; graphNodeIndex <= initialGraphWordCount;
          graphNodeCursor++, graphNodeIndex++) {
-        u32 link = graphNodeCursor->firstTransition;
+        u32 link = graphNodeCursor->iVertex;
         if (link != 0) {
-            DictionaryWord *word = dictionaryWords + graphNodeCursor->dictionaryIndex;
-            u16 trailingClass = word->trailingClass;
-            u16 wordTokenCount = word->tokenCount;
+            struct _SECONDPASSINFO *pInfo = dictionaryWords + graphNodeCursor->OldPronID;
+            u16 trailingClass = pInfo->RightSpeechUnitClass;
+            u16 wordTokenCount = pInfo->Size;
             tokenCount += wordTokenCount;
-            while (link != NO_GRAPH_INDEX) {
-                u16 destination = transitions[link].destination;
-                s32 destinationWord = graphNodes[destination].dictionaryIndex;
-                u16 leadingClass = dictionaryWords[destinationWord].leadingClass;
+            while (link != 0xFFFF) {
+                u16 destination = transitions[link].iNode;
+                s32 destinationWord = graphNodes[destination].OldPronID;
+                u16 leadingClass = dictionaryWords[destinationWord].LeftSpeechUnitClass;
                 u16 first;
                 u16 last;
                 int count;
                 translationID = leadingClass + trailingClass * speechUnitClassCount;
                 first = translationPronunciationOffsets[translationID];
                 last = translationPronunciationOffsets[translationID + 1];
-                count =
-                    translationPronunciationOffsets[last] - translationPronunciationOffsets[first];
+                count = translationPronunciationOffsets[last] -
+                    translationPronunciationOffsets[first];
                 if (count != 0) {
                     tokenCount = tokenCount + count;
                     totalPronunciationCount += last - first;
                     wordCount++;
                     transitionCount++;
                 } else {
-                    translationID = NO_GRAPH_INDEX;
+                    translationID = 0xFFFF;
                 }
-                transitions[link].translationID = translationID;
-                link = transitions[link].next;
+                transitions[link].TransWordIndex = translationID;
+                link = transitions[link].iVertex;
             }
         }
     }
-    /* Build the menu selection masks for this word list. */
-    if (CreateMenuMasks(context, secondPass, wordCount) != 0) {
+    /* Builds the menu selection masks for this word list. */
+    if (CreateMenuMasks(pEngine, secondPass, wordCount) != 0) {
         goto failure;
     }
-    secondPass->transitions = heap_Alloc(context->heap,
-        (wordCount + 1 + transitionCount) * sizeof(*secondPass->transitions));
-    if (secondPass->transitions == NULL) {
+    secondPass->pSyntax = heap_Alloc(pEngine->hHeap,
+        (wordCount + 1 + transitionCount) * sizeof(*secondPass->pSyntax));
+    if (secondPass->pSyntax == NULL) {
         goto failure;
     }
-    transitionBoundaryCursor = secondPass->transitions;
-    packedTransitionCursor = secondPass->transitions + wordCount + 1;
-    secondPass->wordFlags = heap_Alloc(context->heap, wordCount * 2);
-    if (secondPass->wordFlags == NULL) {
+    transitionBoundaryCursor = secondPass->pSyntax;
+    packedTransitionCursor = secondPass->pSyntax + wordCount + 1;
+    secondPass->pWordProps =
+        heap_Alloc(pEngine->hHeap, wordCount * sizeof(*secondPass->pWordProps));
+    if (secondPass->pWordProps == NULL) {
         goto failure;
     }
-    wordFlagCursor = secondPass->wordFlags;
-    memset(wordFlagCursor, 0, wordCount * 2);
-    secondPass->wordPenalties = heap_Alloc(context->heap, wordCount * 2);
-    if (secondPass->wordPenalties == NULL) {
+    wordFlagCursor = secondPass->pWordProps;
+    memset(wordFlagCursor, 0, wordCount * sizeof(*secondPass->pWordProps));
+    secondPass->pWordPenalties = heap_Alloc(pEngine->hHeap,
+        wordCount * sizeof(*secondPass->pWordPenalties));
+    if (secondPass->pWordPenalties == NULL) {
         goto failure;
     }
-    wordPenaltyCursor = secondPass->wordPenalties;
-    {
-        u32 pronunciationEntries = totalPronunciationCount + 2;
-        secondPass->wordOffsets = heap_Alloc(context->heap,
-            (wordCount + pronunciationEntries) * sizeof(*secondPass->wordOffsets));
-    }
-    if (secondPass->wordOffsets == NULL) {
+    wordPenaltyCursor = secondPass->pWordPenalties;
+    secondPass->pBeginOfWords = heap_Alloc(pEngine->hHeap,
+        (wordCount + totalPronunciationCount + 2) * sizeof(*secondPass->pBeginOfWords));
+    if (secondPass->pBeginOfWords == NULL) {
         goto failure;
     }
-    allPronunciationOffsets = secondPass->wordOffsets;
+    allPronunciationOffsets = secondPass->pBeginOfWords;
     pronunciationOffsetTable = allPronunciationOffsets + wordCount + 1;
     wordBoundaryCursor = allPronunciationOffsets;
     tokenCount += totalPronunciationCount * 2;
-    secondPass->dictionary = heap_Alloc(context->heap, tokenCount * 2);
-    if (secondPass->dictionary == NULL) {
+    secondPass->pStateInDict = heap_Alloc(pEngine->hHeap, tokenCount * sizeof(struct _DICTSTATE));
+    if (secondPass->pStateInDict == NULL) {
         goto failure;
     }
-    encodedPronunciationDictionary = secondPass->dictionary;
-    context->cachedData = heap_Alloc(context->heap, wordCount * 8);
-    if (context->cachedData == NULL) {
+    encodedPronunciationDictionary = (u16 *)secondPass->pStateInDict;
+    pEngine->CtxInfo.pNewWordID2OldWordID =
+        heap_Alloc(pEngine->hHeap, wordCount * sizeof(struct _NEWID2OLDID));
+    if (pEngine->CtxInfo.pNewWordID2OldWordID == NULL) {
         goto failure;
     }
-    firstPassWordMapCursor = context->cachedData;
+    firstPassWordMapCursor = pEngine->CtxInfo.pNewWordID2OldWordID;
     encodedWordOffset = 0;
     {
-        u32 link = graphNodes[0].firstTransition;
-        while (link != NO_GRAPH_INDEX) {
-            WordGraphTransition *transition = transitions + link;
-            wordFlagCursor[transition->destination - 1] = 1;
-            link = transition->next;
+        u32 link = graphNodes[0].iVertex;
+        while (link != 0xFFFF) {
+            struct _VERTEX *transition = transitions + link;
+            wordFlagCursor[transition->iNode - 1] = 1;
+            link = transition->iVertex;
         }
     }
-    /* Pack graph pronunciations into the second-pass arrays and record their first-pass IDs. */
+    /* Packs graph pronunciations into the second-pass arrays and records their first-pass IDs. */
     graphNodeCursor = graphNodes + 1;
-    {
-        for (graphNodeIndex = 1; graphNodeIndex <= initialGraphWordCount;
-             graphNodeCursor++, graphNodeIndex++) {
-            s32 wordID = graphNodeCursor->wordID;
-            u32 link = graphNodeCursor->firstTransition;
-            u32 wordAttributeFlags = wordAttributes[wordID];
-            DictionaryWord *word;
-            u16 pronunciationTokenCount;
-            u16 *wordTokenEnd;
-            u32 dictionaryWordIndex;
-            firstPassWordMapCursor[0] = wordID;
-            firstPassWordMapCursor[1] = graphNodeCursor->dictionaryIndex;
-            firstPassWordMapCursor += 2;
-            *transitionBoundaryCursor++ = packedTransitionCursor - secondPass->transitions;
-            *pronunciationOffsetTable = encodedWordOffset;
-            *wordBoundaryCursor++ = pronunciationOffsetTable++ - allPronunciationOffsets;
-            word = dictionaryWords + graphNodeCursor->dictionaryIndex;
-            pronunciationTokenCount = word->tokenCount;
-            wordTokenEnd = encodedPronunciationDictionary;
-            memcpy(wordTokenEnd, dictionary + word->transcriptionOffset,
-                   pronunciationTokenCount * 2);
-            wordTokenEnd += pronunciationTokenCount;
-            wordTokenEnd[-1] |= 1;
-            dictionaryWordIndex = graphNodeIndex - 1;
-            wordTokenEnd[0] = dictionaryWordIndex;
-            wordTokenEnd[1] = dictionaryWordIndex >> 16;
-            encodedPronunciationDictionary = wordTokenEnd + 2;
-            encodedWordOffset += pronunciationTokenCount + 2;
-            if (link != 0) {
-                if (link == NO_GRAPH_INDEX) {
-                    *wordFlagCursor |= 2;
-                } else if (*wordFlagCursor != 1) {
-                    *wordFlagCursor = wordAttributeFlags;
-                }
-                if (*wordFlagCursor++ & (1 << 7)) {
-                    *wordPenaltyCursor++ = context->wordPenalty;
+    for (graphNodeIndex = 1; graphNodeIndex <= initialGraphWordCount;
+         graphNodeCursor++, graphNodeIndex++) {
+        s32 wordID = graphNodeCursor->OldWordID;
+        u32 link = graphNodeCursor->iVertex;
+        u32 wordAttributeFlags = wordAttributes[wordID];
+        struct _SECONDPASSINFO *pInfo;
+        u16 pronunciationTokenCount;
+        u16 *wordTokenEnd;
+        u32 dictionaryWordIndex;
+        firstPassWordMapCursor->OldWordID = wordID;
+        firstPassWordMapCursor->OldPronID = graphNodeCursor->OldPronID;
+        firstPassWordMapCursor++;
+        *transitionBoundaryCursor++ = packedTransitionCursor - secondPass->pSyntax;
+        *pronunciationOffsetTable = encodedWordOffset;
+        *wordBoundaryCursor++ = pronunciationOffsetTable++ - allPronunciationOffsets;
+        pInfo = dictionaryWords + graphNodeCursor->OldPronID;
+        pronunciationTokenCount = pInfo->Size;
+        wordTokenEnd = encodedPronunciationDictionary;
+        memcpy(wordTokenEnd, dictionary + pInfo->StateDictIndex,
+               pronunciationTokenCount * sizeof(*wordTokenEnd));
+        wordTokenEnd += pronunciationTokenCount;
+        wordTokenEnd[-1] |= 1;
+        dictionaryWordIndex = graphNodeIndex - 1;
+        wordTokenEnd[0] = dictionaryWordIndex;
+        wordTokenEnd[1] = dictionaryWordIndex >> 16;
+        encodedPronunciationDictionary = wordTokenEnd + 2;
+        encodedWordOffset += pronunciationTokenCount + 2;
+        if (link != 0) {
+            if (link == 0xFFFF) {
+                *wordFlagCursor |= 2;
+            } else if (*wordFlagCursor != 1) {
+                *wordFlagCursor = wordAttributeFlags;
+            }
+            if (*wordFlagCursor++ & 0x80) {
+                *wordPenaltyCursor++ = pEngine->WordPenalty;
+            } else {
+                *wordPenaltyCursor++ = 0;
+            }
+            while (link != 0xFFFF) {
+                struct _VERTEX *transition = transitions + link;
+                if (transition->TransWordIndex == 0xFFFF) {
+                    *packedTransitionCursor++ = transition->iNode - 1;
                 } else {
-                    *wordPenaltyCursor++ = 0;
+                    *packedTransitionCursor++ = nextTranslationWordIndex++;
                 }
-                while (link != NO_GRAPH_INDEX) {
-                    WordGraphTransition *transition = transitions + link;
-                    if (transition->translationID == NO_GRAPH_INDEX) {
-                        *packedTransitionCursor++ = transition->destination - 1;
-                    } else {
-                        *packedTransitionCursor++ = nextTranslationWordIndex++;
-                    }
-                    link = transition->next;
-                }
+                link = transition->iVertex;
             }
         }
     }
-    /* Append available joining translations and connect each one to its destination word. */
+    /* Appends available joining translations and connects each one to its destination word. */
     graphNodeCursor = graphNodes + 1;
-    {
-        nextTranslationWordIndex = initialGraphWordCount;
-        *transitionBoundaryCursor++ = packedTransitionCursor - secondPass->transitions;
-        *wordBoundaryCursor++ = pronunciationOffsetTable - allPronunciationOffsets;
-        for (graphNodeIndex = 1; graphNodeIndex <= initialGraphWordCount;
-             graphNodeCursor++, graphNodeIndex++) {
-            u32 link = graphNodeCursor->firstTransition;
-            if (link != 0) {
-                while (link != NO_GRAPH_INDEX) {
-                    WordGraphTransition *transition = transitions + link;
-                    u16 translationID = transition->translationID;
-                    if (translationID != NO_GRAPH_INDEX) {
-                        firstPassWordMapCursor[0] = -1;
-                        firstPassWordMapCursor[1] = -1;
-                        firstPassWordMapCursor += 2;
-                        putTransWordInDict(&pronunciationOffsetTable, &encodedWordOffset,
-                                           &encodedPronunciationDictionary,
-                                           nextTranslationWordIndex++,
-                                           translationPronunciationOffsets +
-                                               translationPronunciationOffsets[translationID],
-                                           translationPronunciationOffsets +
-                                               translationPronunciationOffsets[translationID + 1],
-                                           translationTokenLexicon);
-                        *wordBoundaryCursor++ = pronunciationOffsetTable - allPronunciationOffsets;
-                        *packedTransitionCursor++ = transition->destination - 1;
-                        *transitionBoundaryCursor++ =
-                            packedTransitionCursor - secondPass->transitions;
-                        *wordPenaltyCursor++ = 0;
-                    }
-                    link = transition->next;
+    nextTranslationWordIndex = initialGraphWordCount;
+    *transitionBoundaryCursor++ = packedTransitionCursor - secondPass->pSyntax;
+    *wordBoundaryCursor++ = pronunciationOffsetTable - allPronunciationOffsets;
+    for (graphNodeIndex = 1; graphNodeIndex <= initialGraphWordCount;
+         graphNodeCursor++, graphNodeIndex++) {
+        u32 link = graphNodeCursor->iVertex;
+        if (link != 0) {
+            while (link != 0xFFFF) {
+                struct _VERTEX *transition = transitions + link;
+                u16 translationID = transition->TransWordIndex;
+                if (translationID != 0xFFFF) {
+                    firstPassWordMapCursor->OldWordID = -1;
+                    firstPassWordMapCursor->OldPronID = -1;
+                    firstPassWordMapCursor++;
+                    putTransWordInDict(&pronunciationOffsetTable, &encodedWordOffset,
+                                       &encodedPronunciationDictionary,
+                                       nextTranslationWordIndex++,
+                                       translationPronunciationOffsets +
+                                           translationPronunciationOffsets[translationID],
+                                       translationPronunciationOffsets +
+                                           translationPronunciationOffsets[translationID + 1],
+                                       translationTokenLexicon);
+                    *wordBoundaryCursor++ = pronunciationOffsetTable - allPronunciationOffsets;
+                    *packedTransitionCursor++ = transition->iNode - 1;
+                    *transitionBoundaryCursor++ =
+                        packedTransitionCursor - secondPass->pSyntax;
+                    *wordPenaltyCursor++ = 0;
                 }
+                link = transition->iVertex;
             }
         }
     }
     *pronunciationOffsetTable++ = encodedWordOffset;
-    heap_Free(context->heap, graphNodes);
-    heap_Free(context->heap, transitions);
-    secondPass->state = 0;
-    secondPass->wordCount = wordCount;
-    secondPass->tokenCount = tokenCount;
+    heap_Free(pEngine->hHeap, graphNodes);
+    heap_Free(pEngine->hHeap, transitions);
+    secondPass->iOptionalSilence = 0;
+    secondPass->uNbrOfWords = wordCount;
+    secondPass->uNrStatesInDict = tokenCount;
     return 0;
 
 failure:
     if (graphNodes != NULL) {
-        heap_Free(context->heap, graphNodes);
+        heap_Free(pEngine->hHeap, graphNodes);
     }
     if (transitions != NULL) {
-        heap_Free(context->heap, transitions);
+        heap_Free(pEngine->hHeap, transitions);
     }
-    FreeSecondPassContext(context);
+    FreeSecondPassContext(pEngine);
     return 1;
 }
 
@@ -574,33 +449,33 @@ failure:
  * Releases cached and second-pass search data.
  * CreateSecondPassContext calls this before a rebuild and when memory setup fails.
  */
-void FreeSecondPassContext(RecognitionContext *context)
+void FreeSecondPassContext(struct _ENGINE *pEngine)
 {
-    if (context->cachedData != NULL) {
-        heap_Free(context->heap, context->cachedData);
-        context->cachedData = NULL;
+    if (pEngine->CtxInfo.pNewWordID2OldWordID != NULL) {
+        heap_Free(pEngine->hHeap, pEngine->CtxInfo.pNewWordID2OldWordID);
+        pEngine->CtxInfo.pNewWordID2OldWordID = NULL;
     }
 
-    if (context->secondPass != NULL) {
-        if (context->secondPass->wordOffsets != NULL) {
-            heap_Free(context->heap, context->secondPass->wordOffsets);
+    if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo != NULL) {
+        if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pBeginOfWords != NULL) {
+            heap_Free(pEngine->hHeap, pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pBeginOfWords);
         }
-        if (context->secondPass->dictionary != NULL) {
-            heap_Free(context->heap, context->secondPass->dictionary);
+        if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pStateInDict != NULL) {
+            heap_Free(pEngine->hHeap, pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pStateInDict);
         }
-        if (context->secondPass->transitions != NULL) {
-            heap_Free(context->heap, context->secondPass->transitions);
+        if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pSyntax != NULL) {
+            heap_Free(pEngine->hHeap, pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pSyntax);
         }
-        if (context->secondPass->wordPenalties != NULL) {
-            heap_Free(context->heap, context->secondPass->wordPenalties);
+        if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pWordPenalties != NULL) {
+            heap_Free(pEngine->hHeap, pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pWordPenalties);
         }
-        if (context->secondPass->wordFlags != NULL) {
-            heap_Free(context->heap, context->secondPass->wordFlags);
+        if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pWordProps != NULL) {
+            heap_Free(pEngine->hHeap, pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pWordProps);
         }
-        if (context->secondPass->menuMasks != NULL) {
-            heap_Free(context->heap, context->secondPass->menuMasks);
+        if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pucMenuMasks != NULL) {
+            heap_Free(pEngine->hHeap, pEngine->CtxInfo.pSecondPassDynProgCtxInfo->pucMenuMasks);
         }
-        heap_Free(context->heap, context->secondPass);
-        context->secondPass = NULL;
+        heap_Free(pEngine->hHeap, pEngine->CtxInfo.pSecondPassDynProgCtxInfo);
+        pEngine->CtxInfo.pSecondPassDynProgCtxInfo = NULL;
     }
 }

@@ -1,79 +1,73 @@
+/* Copies the first available input feature vector to the output queue. */
+#include "gssdk/blocks.h"
 #include "types.h"
 
 #include <string.h>
 
+#include "gssdk/mqueue.h"
 #include "gssdk/tos.h"
 
-typedef struct GenderFilter {
-TosBaseBlock base;
-u32 numberInputs;
-u16 elementSize;
-u16 reserved2E;
+/* Input count and vector width for the feature stream selector. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    u32 NrInputs;           /* Number of feature inputs considered by the selector. */
+    u16 IODimension;        /* Width of the feature vector written to the output queue. */
 } GenderFilter;
 
-static void ProcessGenderFilter(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
-{
-GenderFilter *block = (GenderFilter *)baseBlock;
-void **inputCursor;
-s32 i;
-void *value;
-void *output;
+/* Copies the first available input into the output queue. */
+static void ProcessGenderFilter(struct _BLOCK *_This, void *pInputs, int NbrInputs) {
+    GenderFilter *This = (GenderFilter *) _This;
+    s32 i;
+    u8 *pIn;
+    u8 *pOut;
 
-inputCursor = inputs + 1;
-value = inputs[0];
-i = 1;
-while (value == NULL && i < inputCount) {
-    value = *inputCursor++;
-    i++;
-}
-if (value != NULL) {
-    output = qEnQueueOne(baseBlock->output->queue);
-    if (output != NULL) {
-        memcpy(output, value, block->elementSize);
+    pIn = *(void **) pInputs;
+    i = 1;
+    while (pIn == NULL && i < NbrInputs) {
+        pIn = ((void **) pInputs)[i];
+        i++;
+    }
+    if (pIn != NULL) {
+        pOut = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+        if (pOut != NULL) {
+            memcpy(pOut, pIn, This->IODimension);
+        }
     }
 }
+
+/* Releases the gender filter when it receives the destruction command. */
+static u8 ControlGenderFilter(struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam) {
+    switch (ControlId) {
+    case 0xFF:
+        tosBaseBlockDestruct(_This);
+        break;
+    default:
+        return 0;
+    }
+    return 1;
 }
 
-static u32 ControlGenderFilter(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
-{
-switch ((u8)command) {
-case 255:
-    tosBaseBlockDestruct(baseBlock);
-    break;
-default:
+/* Initializes the input and output settings for the gender filter. */
+static u8 InitGenderFilter(struct _BLOCK *_This) {
+    GenderFilter *This = (GenderFilter *) _This;
+    u32 i;
+
+    This->NrInputs = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 1, 3);
+    This->IODimension = _tosGetProfileU32(&This->BaseBlock.Object, 2, 4);
+    for (i = 0; i < This->NrInputs; i++) {
+        _This->InputQueues[i].Size = This->IODimension;
+    }
+    _This->OutputQueues->Size = This->IODimension;
     return 0;
 }
-return 1;
-}
 
-static u32 InitGenderFilter(TosBaseBlock *baseBlock)
-{
-GenderFilter *block = (GenderFilter *)baseBlock;
-u32 i;
+/* Constructs a TOS block that selects a stream by gender. */
+struct _BLOCK *ConstructGenderFilter(struct _TOS *pTos, u8 BlockID) {
+    struct _OBJECT Object;
 
-block->numberInputs = (u16)_tosGetProfileU32(block, 1, 3);
-block->elementSize = _tosGetProfileU32(block, 2, 4);
-for (i = 0; i < block->numberInputs; i++) {
-    baseBlock->input[i].inputSize = block->elementSize;
-}
-baseBlock->output->outputSize = block->elementSize;
-return 0;
-}
-
-void *ConstructGenderFilter(TosContext *context, u8 blockIndex)
-{
-struct TosProfileBlock {
-    TosContext *context;
-    u8 blockIndex;
-} profileBlock;
-
-profileBlock.context = context;
-profileBlock.blockIndex = blockIndex;
-return tosBaseBlockConstruct(
-    context, blockIndex, (u8)_tosGetProfileU32(&profileBlock, 1, 3), 1,
-    (TosProcessFunction)ProcessGenderFilter,
-    (TosInitFunction)InitGenderFilter,
-    (TosControlFunction)ControlGenderFilter, sizeof(GenderFilter));
+    Object.pTos = pTos;
+    Object.BlockID = BlockID;
+    return tosBaseBlockConstruct(pTos, BlockID, (u16) _tosGetProfileU32(&Object, 1, 3), 1,
+                                 ProcessGenderFilter, InitGenderFilter, ControlGenderFilter,
+                                 sizeof(GenderFilter));
 }

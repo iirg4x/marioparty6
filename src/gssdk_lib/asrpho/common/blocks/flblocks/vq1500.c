@@ -1,3 +1,7 @@
+/* Labels acoustic feature vectors by searching the configured codebooks. */
+#include "gssdk/blocks.h"
+#include "gssdk/mqueue.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include <float.h>
@@ -5,177 +9,164 @@
 #include "gssdk/langdata.h"
 #include "gssdk/tos.h"
 
-#define VQ_DEFAULT_INPUT_ELEMENTS 38
+/* Processing block and the language codebooks used by vector quantization. */
+struct _VQ1500 {
+    struct _BLOCK BaseBlock;          /* Scheduler-owned block header. */
+    u8 NbrOfCodeBooks;               /* Number of codebooks loaded from the active language. */
+    struct _CODEBOOK *pTheCodeBooks; /* Queue-label search data for each codebook. */
+};
 
-typedef struct VqCodeBook {
-    u8 dimension;
-    u8 firstCodeBookSize;
-    u8 secondSearchCount;
-    u8 secondCodeBookSize;
-    u16 compressedStart;
-    f32 *firstCodeBook;
-    u32 *secondCodeBookIndices;
-    f32 *secondCodeBook;
-} VqCodeBook;
+/* Releases the loaded codebook data. */
+static void FreeCodeBooks(struct _TOS *pTos, struct _VQ1500 *This);
+/* Releases the vector quantizer resources. */
+static void FreeVq1500(struct _VQ1500 *This);
 
-typedef struct Vq1500 {
-    TosBaseBlock base;
-    u8 codeBookCount;
-    VqCodeBook *codeBooks;
-} Vq1500;
-
-extern void *heap_Alloc(void *heap, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-static void FreeCodeBooks(TosContext *context, Vq1500 *block);
-static void FreeVq1500(Vq1500 *block);
-
-static u32 InitVq1500Process(TosBaseBlock *_This)
+/* Sets queue sizes and initializes codebook state. */
+static unsigned char InitVq1500Process(struct _BLOCK *_This)
 {
-    _This->input->inputSize =
-        _tosGetProfileU32(_This, 1, VQ_DEFAULT_INPUT_ELEMENTS) * sizeof(f32);
-    _This->output->outputSize =
-        (u8)_tosGetProfileU32(_This, 2, 4);
+    _This->InputQueues->Size = _tosGetProfileU32(&_This->Object, 1, 38) * sizeof(f32);
+    _This->OutputQueues->Size = (u8) _tosGetProfileU32(&_This->Object, 2, 4);
     return 0;
 }
 
-static u32 LoadCodeBooks(Vq1500 *block, LanguageData *language)
+/* Loads vector codebooks associated with the active language. */
+static unsigned char LoadCodeBooks(struct _VQ1500 *This, struct _LANGUAGE *pLang)
 {
-    TosContext *context = block->base.context;
-    VqCodeBook *destination;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
+    struct _CODEBOOK *pActCodeBook;
     u32 i;
-    CodeBookData *source;
+    struct _CDBINFO *pCodeBookInfo;
 
-    block->codeBookCount = language->getNbrCodeBook(language);
-    FreeCodeBooks(context, block);
-    block->codeBooks =
-        heap_Alloc(context->heap, block->codeBookCount * sizeof(VqCodeBook));
-    if (block->codeBooks == NULL) {
-        return _tosErrorLog(block, 2);
+    This->NbrOfCodeBooks = pLang->langGetNbrCodeBook(pLang);
+    FreeCodeBooks(pTos, This);
+    This->pTheCodeBooks = heap_Alloc(pTos->hHeap, This->NbrOfCodeBooks * sizeof(struct _CODEBOOK));
+    if (This->pTheCodeBooks == NULL) {
+        return _tosErrorLog(&This->BaseBlock.Object, 2);
     }
 
-    destination = block->codeBooks;
-    for (i = 0; i < block->codeBookCount; destination++, i++) {
-        source = language->getpCodeBook(language, i);
-        destination->dimension = language->getCodeBookDim(source);
-        destination->firstCodeBookSize = language->getFirstCdbSize(source);
-        destination->secondSearchCount = language->getNbrInSecSearch(source);
-        destination->secondCodeBookSize = language->getSecondCdbSize(source);
-        destination->compressedStart = (u8)language->getCompStart(source);
-        destination->firstCodeBook = language->getpFirstCdb(source);
-        destination->secondCodeBookIndices =
-            language->getpIndexInSecCdb(source);
-        destination->secondCodeBook = language->getpSecondCdb(source);
+    pActCodeBook = This->pTheCodeBooks;
+    for (i = 0; i < This->NbrOfCodeBooks; pActCodeBook++, i++) {
+        pCodeBookInfo = pLang->langGetpCodeBook(pLang, i);
+        pActCodeBook->CodeBookDim = pLang->cdbGetCodeBookDim(pCodeBookInfo);
+        pActCodeBook->FirstCdbSize = pLang->cdbGetFirstCdbSize(pCodeBookInfo);
+        pActCodeBook->NbrInSecSearch = pLang->cdbGetNbrInSecSearch(pCodeBookInfo);
+        pActCodeBook->SecondCdbSize = pLang->cdbGetSecondCdbSize(pCodeBookInfo);
+        pActCodeBook->CompStart = (u8) pLang->cdbGetCompStart(pCodeBookInfo);
+        pActCodeBook->pFirstCdb = (f32 *)pLang->cdbGetpFirstCdb(pCodeBookInfo);
+        pActCodeBook->pIndexInSecCdb = (u32 *)pLang->cdbGetpIndexInSecCdb(pCodeBookInfo);
+        pActCodeBook->pSecondCdb = (f32 *)pLang->cdbGetpSecondCdb(pCodeBookInfo);
     }
     return 0;
 }
 
-static u8 GetLabel(VqCodeBook *codeBook, f32 *input)
+/* Finds the closest codebook vector and returns its label. */
+static u8 GetLabel(struct _CODEBOOK *pCodeBook, f32 *pVector)
 {
-    f32 minimum;
-    f32 distance;
-    f32 difference;
-    u8 label;
+    f32 Min;
+    f32 Dist;
+    f32 diff;
+    u8 Label;
     s32 i;
     s32 j;
 
-    minimum = FLT_MAX;
-    label = 0;
+    Min = FLT_MAX;
+    Label = 0;
     {
-        f32 *vector;
-        f32 *inputValue;
+        f32 *pCdbs;
+        f32 *pX;
 
-        for (i = 0; i < codeBook->firstCodeBookSize; i++) {
-            vector = codeBook->firstCodeBook + i * codeBook->dimension;
-            inputValue = input;
-            difference = *inputValue++ - *vector++;
-            distance = difference * difference;
-            for (j = 1; j < codeBook->dimension; j++) {
-                difference = *inputValue++ - *vector++;
-                distance += difference * difference;
-                if (distance > minimum) {
+        for (i = 0; i < pCodeBook->FirstCdbSize; i++) {
+            pCdbs = pCodeBook->pFirstCdb + i * pCodeBook->CodeBookDim;
+            pX = pVector;
+            diff = *pX++ - *pCdbs++;
+            Dist = diff * diff;
+            for (j = 1; j < pCodeBook->CodeBookDim; j++) {
+                diff = *pX++ - *pCdbs++;
+                Dist += diff * diff;
+                if (Dist > Min) {
                     break;
                 }
             }
-            if (distance < minimum) {
-                minimum = distance;
-                label = i;
+            if (Dist < Min) {
+                Min = Dist;
+                Label = i;
             }
         }
     }
 
     {
-        u32 *indices;
-        s32 fineIndex;
-        f32 *vector;
-        f32 *inputValue;
+        u32 *pIndexInSecCdb;
+        s32 i;
+        f32 *pSecSearchVector;
+        f32 *pX;
 
-        indices = codeBook->secondCodeBookIndices +
-                  codeBook->secondSearchCount * label;
-        minimum = FLT_MAX;
-        for (fineIndex = 0; fineIndex < codeBook->secondSearchCount; fineIndex++) {
-            vector = codeBook->secondCodeBook + *indices++;
-            inputValue = input;
-            difference = *inputValue++ - *vector++;
-            distance = difference * difference;
-            for (j = 1; j < codeBook->dimension; j++) {
-                difference = *inputValue++ - *vector++;
-                distance += difference * difference;
-                if (distance > minimum) {
+        pIndexInSecCdb = pCodeBook->pIndexInSecCdb + pCodeBook->NbrInSecSearch * Label;
+        Min = FLT_MAX;
+        for (i = 0; i < pCodeBook->NbrInSecSearch; i++) {
+            pSecSearchVector = pCodeBook->pSecondCdb + *pIndexInSecCdb++;
+            pX = pVector;
+            diff = *pX++ - *pSecSearchVector++;
+            Dist = diff * diff;
+            for (j = 1; j < pCodeBook->CodeBookDim; j++) {
+                diff = *pX++ - *pSecSearchVector++;
+                Dist += diff * diff;
+                if (Dist > Min) {
                     break;
                 }
             }
-            if (distance < minimum) {
-                minimum = distance;
-                label = *(u32 *)vector;
+            if (Dist < Min) {
+                Min = Dist;
+                /* The second-stage vector is followed by its 32-bit label. */
+                Label = *(const u32 *) pSecSearchVector;
             }
         }
     }
-    return label;
+    return Label;
 }
 
-static void IdleVq1500Process(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Leaves the output queues untouched while the quantizer is idle. */
+static void IdleVq1500Process(void)
 {
 }
 
-static void Vq1500Process(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+/* Scores an incoming vector and queues its label. */
+static void Vq1500Process(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    Vq1500 *block = (Vq1500 *)baseBlock;
-    u8 *output;
-    VqCodeBook *codeBook;
-    f32 *input;
+    struct _VQ1500 *This = (struct _VQ1500 *) _This;
+    u8 *Outvec;
+    struct _CODEBOOK *pCodeBook;
+    f32 *pIn;
     s32 i;
 
-    input = inputs[0];
-    if (input == NULL) {
+    pIn = ((void **) pInputs)[0];
+    if (pIn == NULL) {
         return;
     }
 
-    output = qEnQueueOne(block->base.output->queue);
-    codeBook = block->codeBooks;
-    for (i = 0; i < block->codeBookCount; i++, codeBook++) {
-        *output++ = GetLabel(
-            codeBook, input + codeBook->compressedStart);
+    Outvec = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+    pCodeBook = This->pTheCodeBooks;
+    for (i = 0; i < This->NbrOfCodeBooks; i++, pCodeBook++) {
+        *Outvec++ = GetLabel(pCodeBook, pIn + pCodeBook->CompStart);
     }
 }
 
-static u32 ControlVq1500Process(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Loads the active codebooks or releases the block. */
+static unsigned char ControlVq1500Process(struct _BLOCK *_This, unsigned char ControlId,
+                                          unsigned long CParam1)
 {
-    Vq1500 *block = (Vq1500 *)baseBlock;
+    struct _VQ1500 *This = (struct _VQ1500 *) _This;
 
-    switch ((u8)command) {
-    case 1:
-        if ((u8)LoadCodeBooks(block, argument) != 0) {
-            block->base.process = IdleVq1500Process;
+    switch (ControlId) {
+    case 0x01:
+        if (LoadCodeBooks(This, (struct _LANGUAGE *) CParam1) != 0) {
+            /* The idle handler consumes none of the process arguments. */
+            This->BaseBlock.Process = (void (*)(struct _BLOCK *, void *, int)) IdleVq1500Process;
         } else {
-            block->base.process = Vq1500Process;
+            This->BaseBlock.Process = Vq1500Process;
         }
         break;
-    case 255:
-        FreeVq1500(block);
+    case 0xFF:
+        FreeVq1500(This);
         break;
     default:
         return 0;
@@ -183,23 +174,29 @@ static u32 ControlVq1500Process(
     return 1;
 }
 
-static void FreeCodeBooks(TosContext *context, Vq1500 *block)
+/* Releases the loaded codebook data. */
+static void FreeCodeBooks(struct _TOS *pTos, struct _VQ1500 *This)
 {
-    if (block->codeBooks != NULL) {
-        heap_Free(context->heap, block->codeBooks);
-        block->codeBooks = NULL;
+    if (This->pTheCodeBooks != NULL) {
+        heap_Free(pTos->hHeap, This->pTheCodeBooks);
+        This->pTheCodeBooks = NULL;
     }
 }
 
-static void FreeVq1500(Vq1500 *block)
+/* Releases the vector quantizer resources. */
+static void FreeVq1500(struct _VQ1500 *This)
 {
-    FreeCodeBooks(block->base.context, block);
-    tosBaseBlockDestruct(block);
+    FreeCodeBooks(This->BaseBlock.Object.pTos, This);
+    tosBaseBlockDestruct(&This->BaseBlock);
 }
 
-void *ConstructVq(TosContext *context, u8 blockIndex)
+/* Registers the vector quantizer with the scheduler. */
+struct _BLOCK *ConstructVq(struct _TOS *pTos, u8 BlockID)
 {
-    return tosBaseBlockConstruct(
-        context, blockIndex, 1, 1, IdleVq1500Process, InitVq1500Process,
-        ControlVq1500Process, sizeof(Vq1500));
+    /* The idle handler takes no arguments. The control handler takes one payload word. */
+    return tosBaseBlockConstruct(pTos, BlockID, 1, 1,
+                                 (void (*)(struct _BLOCK *, void *, int)) IdleVq1500Process,
+                                 InitVq1500Process,
+                                 (u8 (*)(struct _BLOCK *, u8, u32, u32)) ControlVq1500Process,
+                                 sizeof(struct _VQ1500));
 }

@@ -1,186 +1,194 @@
+/* Reads recognition context metadata and locates the tables in a context record. */
+#include "gssdk/context.h"
+#include "gssdk/engine.h"
 #include "types.h"
 
 #include <stddef.h>
 #include <string.h>
 
-typedef struct ContextDataV2 {
-    u32 dataType;
-    u32 size;
-    u8 languageVersionInfo[0x80];
-    u32 ts;
-    u32 accuracy;
-    u32 rejection;
-    u32 garbage;
-    u32 nbrItem;
-    u32 nbrWord;
-    u32 nbrPron;
-    u32 nbrFollower;
-    u32 nbrStartWord;
-    u32 nbrStopWord;
-    u32 garbageWordID;
-    u32 contextType;
-    u16 lex[1];
-} ContextDataV2;
-
-typedef struct ContextData {
-    ContextDataV2 *data;
-} ContextData;
-
-typedef void (*ContextV2Function)(void);
-
-BOOL _contextCheckDataType(ContextData *context)
+/* Checks that the record contains recognition context data. */
+static int _contextCheckDataType(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->dataType == 6;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->DataType == 0x6;
 }
 
-u32 _contextGetSize(ContextData *context)
+/* Returns the recorded size of the recognition context. */
+static unsigned long _contextGetSize(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->size;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->Size;
 }
 
-void *_contextGetLanguageVersionInfo(ContextData *context)
+/* Locates the language version string for the context. */
+static char *_contextGetLanguageVersionInfo(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->languageVersionInfo;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->VersionInfo;
 }
 
-u32 _contextGetTS(ContextData *context)
+/* Returns the context setting for terminal silence. */
+static unsigned long _contextGetTS(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->ts;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->TS;
 }
 
-u32 _contextGetAccuracy(ContextData *context)
+/* Returns the context's accuracy setting. */
+static unsigned long _contextGetAccuracy(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->accuracy;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->Accuracy;
 }
 
-u32 _contextGetRejection(ContextData *context)
+/* Returns the context's rejection setting. */
+static unsigned long _contextGetRejection(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->rejection;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->Rejection;
 }
 
-u32 _contextGetGarbage(ContextData *context)
+/* Returns the context's garbage setting. */
+static unsigned long _contextGetGarbage(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->garbage;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->Garbage;
 }
 
-u32 _contextGetNbrItem(ContextData *context)
+/* Returns the number of items recorded in the context. */
+static unsigned long _contextGetNbrItem(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->nbrItem;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->NbrItem;
 }
 
-u32 _contextGetNbrWord(ContextData *context)
+/* Returns the number of words in the context. */
+static unsigned long _contextGetNbrWord(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->nbrWord;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->NbrWord;
 }
 
-u32 _contextGetNbrPron(ContextData *context)
+/* Returns the number of pronunciations in the context. */
+static unsigned long _contextGetNbrPron(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->nbrPron;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->NbrPron;
 }
 
-u32 _contextGetNbrFollower(ContextData *context)
+/* Returns the number of follower entries in the context. */
+static unsigned long _contextGetNbrFollower(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->nbrFollower;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->NbrFollower;
 }
 
-u32 _contextGetNbrStartWord(ContextData *context)
+/* Returns the number of words that can start a recognition path. */
+static unsigned long _contextGetNbrStartWord(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->nbrStartWord;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->NbrStartWord;
 }
 
-u32 _contextGetNbrStopWord(ContextData *context)
+/* Returns the number of words that can end a recognition path. */
+static unsigned long _contextGetNbrStopWord(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->nbrStopWord;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->NbrStopWord;
 }
 
-u32 _contextGetGarbageWordID(ContextData *context)
+/* Returns the word ID reserved for garbage recognition. */
+static unsigned long _contextGetGarbageWordID(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->garbageWordID;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->GarbageWordID;
 }
 
-u8 _contextIsSpellingContext(ContextData *context)
+/* Tests whether the context is used for spelling recognition. */
+static unsigned char _contextIsSpellingContext(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->contextType == 1;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->ContextType == 1;
 }
 
-u8 _contextIsIsoWordContext(ContextData *context)
+/* Tests whether the context is used for isolated-word recognition. */
+static unsigned char _contextIsIsoWordContext(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->contextType == 2;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return pContext->ContextType == 0x2;
 }
 
-u16 *_contextGetpLex(ContextData *context)
+/* Locates the lexicon in the packed context data. */
+static unsigned short *_contextGetpLex(struct _ASRSPI_CONTEXT *pCtx)
 {
-    return context->data->lex;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+
+    return (unsigned short *)(pContext + 1);
 }
 
-u16 *_contextGetpBeginOfWords(ContextData *context)
+/* Locates the table of word offsets in the context data. */
+static unsigned long *_contextGetpBeginOfWords(struct _ASRSPI_CONTEXT *pCtx)
 {
-    ContextDataV2 *data = context->data;
-    u32 count = data->nbrItem + data->nbrPron;
-    u8 *words;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+    unsigned long NbrItem = pContext->NbrItem + pContext->NbrPron;
 
-    count += count & 1;
-    words = (u8 *)data + count * sizeof(u16);
-    return (u16 *)(words + offsetof(ContextDataV2, lex));
+    NbrItem += NbrItem & 1;
+    return (unsigned long *)(_contextGetpLex(pCtx) + NbrItem);
 }
 
-void *_contextGetpWordProp(ContextData *context)
+/* Locates the word property table in the context data. */
+static unsigned short *_contextGetpWordProp(struct _ASRSPI_CONTEXT *pCtx)
 {
-    ContextDataV2 *data = context->data;
-    u32 lexCount = data->nbrItem + data->nbrPron;
-    u32 wordPropCount;
-    u8 *wordProp;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+    char *Ptr = (char *)_contextGetpBeginOfWords(pCtx);
 
-    lexCount += lexCount & 1;
-    wordPropCount = data->nbrPron + data->nbrWord;
-    wordProp = (u8 *)data + lexCount * sizeof(u16);
-    wordProp += offsetof(ContextDataV2, lex);
-    return wordProp + (wordPropCount + 2) * sizeof(u32);
+    Ptr += ((pContext->NbrPron + 2) + pContext->NbrWord) * sizeof(u32);
+    return (unsigned short *)Ptr;
 }
 
-void *_contextGetpSyntax(ContextData *context)
+/* Locates the syntax table in the context data. */
+static unsigned long *_contextGetpSyntax(struct _ASRSPI_CONTEXT *pCtx)
 {
-    ContextDataV2 *data = context->data;
-    u32 lexCount = data->nbrItem + data->nbrPron;
-    u32 wordPropCount;
-    u32 syntaxCount;
-    u8 *syntax;
+    struct _ASRSPI_CONTEXTINFO *pContext = pCtx->pCtx;
+    unsigned long NbrWord = pContext->NbrWord;
 
-    lexCount += lexCount & 1;
-    wordPropCount = data->nbrPron + data->nbrWord;
-    syntaxCount = data->nbrWord;
-    syntaxCount += syntaxCount & 1;
-    syntax = (u8 *)data + lexCount * sizeof(u16);
-    syntax += offsetof(ContextDataV2, lex);
-    syntax += (wordPropCount + 2) * sizeof(u32);
-    return syntax + syntaxCount * sizeof(u16);
+    NbrWord += NbrWord & 1;
+    return (unsigned long *)(_contextGetpWordProp(pCtx) + NbrWord);
 }
 
-const ContextV2Function _ContextV2VirtualTable[] = {
-    NULL,
-    (ContextV2Function)_contextCheckDataType,
-    (ContextV2Function)_contextGetSize,
-    (ContextV2Function)_contextGetLanguageVersionInfo,
-    (ContextV2Function)_contextGetTS,
-    (ContextV2Function)_contextGetAccuracy,
-    (ContextV2Function)_contextGetRejection,
-    (ContextV2Function)_contextGetGarbage,
-    (ContextV2Function)_contextGetNbrItem,
-    (ContextV2Function)_contextGetNbrWord,
-    (ContextV2Function)_contextGetNbrPron,
-    (ContextV2Function)_contextGetNbrFollower,
-    (ContextV2Function)_contextGetNbrStartWord,
-    (ContextV2Function)_contextGetNbrStopWord,
-    (ContextV2Function)_contextGetGarbageWordID,
-    (ContextV2Function)_contextIsSpellingContext,
-    (ContextV2Function)_contextGetpLex,
-    (ContextV2Function)_contextGetpBeginOfWords,
-    (ContextV2Function)_contextGetpWordProp,
-    (ContextV2Function)_contextGetpSyntax,
-    (ContextV2Function)_contextIsIsoWordContext,
+/* Accessors for the version-two packed context format. */
+static const struct _ASRSPI_CONTEXT _ContextV2VirtualTable = {
+    NULL, _contextCheckDataType,
+    _contextGetSize, _contextGetLanguageVersionInfo,
+    _contextGetTS, _contextGetAccuracy,
+    _contextGetRejection, _contextGetGarbage,
+    _contextGetNbrItem, _contextGetNbrWord,
+    _contextGetNbrPron, _contextGetNbrFollower,
+    _contextGetNbrStartWord, _contextGetNbrStopWord,
+    _contextGetGarbageWordID, _contextIsSpellingContext,
+    _contextGetpLex, _contextGetpBeginOfWords,
+    _contextGetpWordProp, _contextGetpSyntax,
+    _contextIsIsoWordContext,
 };
 
-void FillContextV2VirtualTable(ContextV2Function *table)
+/* Installs the version-two context accessors in the caller's context record. */
+void FillContextV2VirtualTable(struct _ASRSPI_CONTEXT *pCtx)
 {
-    memcpy(table, _ContextV2VirtualTable, sizeof(_ContextV2VirtualTable));
+    memcpy(pCtx, &_ContextV2VirtualTable, sizeof(_ContextV2VirtualTable));
 }

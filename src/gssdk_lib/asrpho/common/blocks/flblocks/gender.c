@@ -1,3 +1,6 @@
+/* Estimates speaker gender from weighted acoustic frames and saved session state. */
+#include "gssdk/blocks.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include <float.h>
@@ -6,522 +9,518 @@
 
 #include "gssdk/langdata.h"
 #include "gssdk/tos.h"
+#include "gssdk/mqueue.h"
 
-typedef struct GenderCodeBook {
-    u8 dimension;
-    u8 firstCodeBookSize;
-    u8 secondSearchCount;
-    u8 secondCodeBookSize;
-    u16 compressedStart;
-    f32 *firstCodeBook;
-    u32 *secondCodeBookIndices;
-    f32 *secondCodeBook;
-} GenderCodeBook;
+/* Gender scores and the queued frames held while choosing an output. */
+typedef struct _GENDER {
+    struct _BLOCK BaseBlock; /* TOS callbacks, queues and object context. */
+    enum { NOT_STABLE_YET, FLUSHING, STABLE_GENDER } State; /* Output state. */
+    u32 EnabledGendersMask; /* Enabled gender bits and the high bit for disabling other queues. */
+    u16 CurrentGender; /* One-based gender selection, or zero before selection. */
+    u8 OnlyOneGender; /* Exactly one gender matches the enabled mask. */
+    f32 *Buffers; /* Circular storage for frames awaiting gender selection. */
+    f32 *pEnd; /* End of the circular frame buffer. */
+    f32 *pRead; /* Next buffered frame to send downstream. */
+    f32 *pWrite; /* Slot for the next input frame. */
+    f32 *pAccumulatedDistortion; /* Accumulated score for each gender. */
+    u32 NbrFramesInBuffer; /* Frames queued for output. */
+    f32 SumWeights; /* Total activity weight used during gender selection. */
+    s32 FrameCtr; /* Frame count used to scale each score update. */
+    f32 GenderUpdateCtr; /* Activity weight since the last gender selection. */
+    struct _CODEBOOK CodeBook; /* Language codebook used to score feature vectors. */
+    u8 *pTakeInput; /* Input flags indexed by one-based gender. */
+    u32 InputVectorSize; /* Upper input bin and width of each stored feature vector. */
+    u32 FirstEntry; /* First input bin included in gender scoring. */
+    u32 NbrGenders; /* Number of feature input queues. */
+    u32 BufferSizeInFrames; /* Number of frame slots in the circular buffer. */
+    u32 BufferWidth; /* Float count per frame, including all gender vectors. */
+    s32 MaxNbrFramesForGender; /* Frame count limit for accumulating pAccumulatedDistortion. */
+    s32 MinNbrFramesToUpdate; /* Weight required before choosing the output gender. */
+    s32 MinNbrFramesForStableGender; /* Weight required for a fixed gender choice. */
+    struct _LANGUAGE *pLang; /* Language data used by the classifier. */
+} _GENDER;
 
-typedef struct Gender {
-    TosBaseBlock base;
-    s32 state;
-    u32 genderMask;
-    u16 selectedGender;
-    u8 fixedGender;
-    f32 *frameBuffer;
-    f32 *frameBufferEnd;
-    f32 *outputFrame;
-    f32 *inputFrame;
-    f32 *scores;
-    u32 bufferedFrameCount;
-    f32 totalWeight;
-    u32 scoreFrameCount;
-    f32 outputWeight;
-    GenderCodeBook codeBook;
-    u8 *enabledGenders;
-    u32 inputEnd;
-    u32 inputStart;
-    u32 genderCount;
-    u32 frameBufferCapacity;
-    u32 frameSize;
-    s32 scoreFrameLimit;
-    s32 outputWeightThreshold;
-    s32 fixedGenderThreshold;
-    LanguageData *language;
-} Gender;
+static void ResetGender(_GENDER *This);
 
-typedef struct GenderSession {
-    u32 state;
-    u32 selectedGender;
-    f32 scores[];
-} GenderSession;
-
-typedef struct GenderSessionTail {
-    u32 bufferedFrameCount;
-    f32 totalWeight;
-    u32 scoreFrameCount;
-    f32 outputWeight;
-} GenderSessionTail;
-
-static const u8 ControlID_Disable[] = { 0xD, 0xE, 0xF };
-
-extern void *heap_Alloc(void *heap, u32 size);
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-static void ResetGender(Gender *block);
-
-static void GenderGetSession(Gender *block, GenderSession *session)
+/* Saves the current gender estimator state into the session data. */
+static void GenderGetSession(_GENDER *This, void *pSessionInfo)
 {
-    GenderSessionTail *tail;
-    f32 *score;
-    u32 i;
+    unsigned int i;
+    u32 *header = pSessionInfo;
+    float *pFlt = pSessionInfo;
+    u32 *bufferedFrameCount;
+    s32 *frameCount;
 
-    session->state = block->state;
-    session->selectedGender = block->selectedGender;
-    score = session->scores;
-    for (i = 0; i < block->genderCount; i++) {
-        *score++ = block->scores[i];
+    pFlt += 2;
+    header[0] = This->State;
+    header[1] = This->CurrentGender;
+    for (i = 0; i < This->NbrGenders; i++) {
+        *pFlt++ = This->pAccumulatedDistortion[i];
     }
 
-    tail = (GenderSessionTail *)score;
-    tail->bufferedFrameCount = block->bufferedFrameCount;
-    tail->totalWeight = block->totalWeight;
-    tail->scoreFrameCount = block->scoreFrameCount;
-    tail->outputWeight = block->outputWeight;
+    bufferedFrameCount = (u32 *)pFlt;
+    frameCount = (s32 *)pFlt;
+    *bufferedFrameCount = This->NbrFramesInBuffer;
+    pFlt[1] = This->SumWeights;
+    frameCount[2] = This->FrameCtr;
+    pFlt[3] = This->GenderUpdateCtr;
 }
 
-static void GenderPutSession(Gender *block, const GenderSession *session)
+/* Restores the gender estimator state from the session data. */
+static void GenderPutSession(_GENDER *This, void *pSessionInfo)
 {
-    const GenderSessionTail *tail;
-    const f32 *score;
-    u32 i;
+    unsigned int i;
+    const u32 *header = pSessionInfo;
+    const float *pFlt = pSessionInfo;
+    const u32 *bufferedFrameCount;
+    const s32 *frameCount;
 
-    block->state = session->state;
-    block->selectedGender = session->selectedGender;
-    score = session->scores;
-    for (i = 0; i < block->genderCount; i++) {
-        block->scores[i] = *score++;
+    pFlt += 2;
+    This->State = header[0];
+    This->CurrentGender = header[1];
+    for (i = 0; i < This->NbrGenders; i++) {
+        This->pAccumulatedDistortion[i] = *pFlt++;
     }
 
-    tail = (const GenderSessionTail *)score;
-    block->bufferedFrameCount = tail->bufferedFrameCount;
-    block->totalWeight = tail->totalWeight;
-    block->scoreFrameCount = tail->scoreFrameCount;
-    block->outputWeight = tail->outputWeight;
+    bufferedFrameCount = (const u32 *)pFlt;
+    frameCount = (const s32 *)pFlt;
+    This->NbrFramesInBuffer = *bufferedFrameCount;
+    This->SumWeights = pFlt[1];
+    This->FrameCtr = frameCount[2];
+    This->GenderUpdateCtr = pFlt[3];
 }
 
-static u32 LoadCodeBook(Gender *block, LanguageData *language)
+/* Loads the gender classifier's codebook from the language data. */
+static u8 LoadCodeBook(_GENDER *This, struct _LANGUAGE *pLang)
 {
-    CodeBookData *source;
+    struct _CDBINFO *pCodeBookInfo;
 
-    if (language->checkBitField(language, 4)) {
-        source = language->getpCodeBook(
-            language, language->getNbrCodeBook(language));
+    if (pLang->langCheckBitField(pLang, 4)) {
+        pCodeBookInfo = pLang->langGetpCodeBook(
+            pLang, pLang->langGetNbrCodeBook(pLang));
     } else {
-        source = language->getpCodeBook(language, 1);
+        pCodeBookInfo = pLang->langGetpCodeBook(pLang, 1);
     }
 
-    block->codeBook.dimension = language->getCodeBookDim(source);
-    block->codeBook.firstCodeBookSize = language->getFirstCdbSize(source);
-    block->codeBook.secondSearchCount =
-        language->getNbrInSecSearch(source);
-    block->codeBook.secondCodeBookSize =
-        language->getSecondCdbSize(source);
-    block->codeBook.compressedStart =
-        (u8)language->getCompStart(source);
-    block->codeBook.firstCodeBook = language->getpFirstCdb(source);
-    block->codeBook.secondCodeBookIndices =
-        language->getpIndexInSecCdb(source);
-    block->codeBook.secondCodeBook = language->getpSecondCdb(source);
+    This->CodeBook.CodeBookDim = pLang->cdbGetCodeBookDim(pCodeBookInfo);
+    This->CodeBook.FirstCdbSize = pLang->cdbGetFirstCdbSize(pCodeBookInfo);
+    This->CodeBook.NbrInSecSearch =
+        pLang->cdbGetNbrInSecSearch(pCodeBookInfo);
+    This->CodeBook.SecondCdbSize =
+        pLang->cdbGetSecondCdbSize(pCodeBookInfo);
+    This->CodeBook.CompStart =
+        (u8)pLang->cdbGetCompStart(pCodeBookInfo);
+    This->CodeBook.pFirstCdb = (f32 *)pLang->cdbGetpFirstCdb(pCodeBookInfo);
+    This->CodeBook.pIndexInSecCdb = (u32 *)pLang->cdbGetpIndexInSecCdb(pCodeBookInfo);
+    This->CodeBook.pSecondCdb = (f32 *)pLang->cdbGetpSecondCdb(pCodeBookInfo);
 
-    if (block->codeBook.dimension > block->inputEnd - block->inputStart) {
-        return _tosErrorLog(block, 0x66);
+    if (This->CodeBook.CodeBookDim > This->InputVectorSize - This->FirstEntry) {
+        return _tosErrorLog(&This->BaseBlock.Object, 0x66);
     }
-    block->language = language;
+    This->pLang = pLang;
     return 0;
 }
 
-static void GenderFixedGender(Gender *block, u32 genderMask)
+/* Sets the enabled genders and handles a fixed selection. */
+static void GenderFixedGender(_GENDER *This, u32 EnabledGendersMask)
 {
-    u32 *warpFactor;
-    u32 matchingGenderCount;
-    u16 matchingGender;
+    const struct _WARPINFO *pWarpFactors;
+    u32 NrActiveGenders;
+    u16 FixedGender;
+    u8 OnlyOneGender;
     u32 i;
 
-    warpFactor = block->language->getpWarpFactors(block->language);
-    matchingGenderCount = 0;
-    matchingGender = 0;
-    for (i = 0; i < block->genderCount; i++, warpFactor += 2) {
-        if (genderMask & *warpFactor) {
-            matchingGender = i;
-            matchingGenderCount++;
+    pWarpFactors = This->pLang->langGetpWarpFactors(This->pLang);
+    NrActiveGenders = 0;
+    FixedGender = 0;
+    for (i = 0; i < This->NbrGenders; pWarpFactors++, i++) {
+        if (EnabledGendersMask & pWarpFactors->GenderMask) {
+            FixedGender = i;
+            NrActiveGenders++;
         }
     }
 
-    if ((matchingGenderCount == 1) != block->fixedGender) {
-        ResetGender(block);
+    OnlyOneGender = NrActiveGenders == 1;
+    if (OnlyOneGender != This->OnlyOneGender) {
+        ResetGender(This);
     }
-    if (matchingGenderCount == 1) {
-        block->selectedGender = matchingGender + 1;
-        if (block->state == 0) {
-            block->state = 1;
+    if (OnlyOneGender) {
+        This->CurrentGender = FixedGender + 1;
+        if (This->State == NOT_STABLE_YET) {
+            This->State = FLUSHING;
         }
     }
-    block->fixedGender = matchingGenderCount == 1;
-    block->genderMask = genderMask;
+    This->OnlyOneGender = OnlyOneGender;
+    This->EnabledGendersMask = EnabledGendersMask;
 }
 
-static u32 ControlGender(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Handles recognition controls and saved state for the gender classifier. */
+static u8 ControlGender(
+    struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
 {
-    Gender *block = (Gender *)baseBlock;
-    u32 *sessionOffset = (u32 *)argumentSize;
-    u32 result = 1;
+    u8 RetVal = 1;
+    _GENDER *This = (_GENDER *)_This;
+    struct _TOS *pTos = This->BaseBlock.Object.pTos;
 
-    switch ((u8)command) {
-    case 1:
-        result = (u8)LoadCodeBook(block, argument) == 0;
-        break;
-    case 2:
-        block->enabledGenders[(u32)argument + 1] = 1;
-        break;
-    case 3:
-        if (block->bufferedFrameCount == 0 && argument == NULL) {
+    switch (ControlId) {
+    case 0x03:
+        if (This->NbrFramesInBuffer == 0 && CParam == 0) {
             break;
         }
-        if (block->selectedGender == 0) {
-            block->outputWeight = 1.0f + block->outputWeightThreshold;
+        if (This->CurrentGender == 0) {
+            This->GenderUpdateCtr = 1.0f + This->MinNbrFramesToUpdate;
         }
-        block->state = 1;
+        This->State = FLUSHING;
         break;
-    case 4:
-        result = qQueueControl(
-            baseBlock->input->queue, 7, baseBlock->input->outputSize,
-            argument);
-        break;
-    case 5:
-        result = qQueueControl(
-            baseBlock->input->queue, 6, baseBlock->input->outputSize,
-            argument);
-        break;
-    case 6:
-        if (argument != NULL) {
-            GenderPutSession(
-                block, (GenderSession *)((u8 *)argument + *sessionOffset));
-            *sessionOffset += (block->genderCount + 6) * sizeof(u32);
+    case 0x06:
+        if (CParam != 0) {
+            GenderPutSession(This, (u8 *)CParam + *(u32 *)DParam);
+            *(u32 *)DParam += (This->NbrGenders + 6) * sizeof(u32);
         } else {
-            ResetGender(block);
+            ResetGender(This);
         }
         break;
-    case 7:
-        if (argument != NULL) {
-            GenderGetSession(
-                block, (GenderSession *)((u8 *)argument + *sessionOffset));
+    case 0x07:
+        if (CParam != 0) {
+            GenderGetSession(This, (u8 *)CParam + *(u32 *)DParam);
         }
-        *sessionOffset += (block->genderCount + 6) * sizeof(u32);
+        *(u32 *)DParam += (This->NbrGenders + 6) * sizeof(u32);
         break;
-    case 8:
-        GenderFixedGender(block, *(u32 *)argument);
+    case 0x04:
+        RetVal = qQueueControl(
+            This->BaseBlock.InputQueues->pQ, 7, This->BaseBlock.InputQueues->ReadPos,
+            CParam);
         break;
-    case 9:
-        *(u32 *)argument = block->genderMask;
+    case 0x05:
+        RetVal = qQueueControl(
+            This->BaseBlock.InputQueues->pQ, 6, This->BaseBlock.InputQueues->ReadPos,
+            CParam);
         break;
-    case 10:
-        block->enabledGenders[(u32)argument + 1] = 0;
+    case 0x08:
+        GenderFixedGender(This, *(u32 *)CParam);
+        break;
+    case 0x09:
+        *(u32 *)CParam = This->EnabledGendersMask;
+        break;
+    case 0x01:
+        RetVal = !LoadCodeBook(This, (struct _LANGUAGE *)CParam);
+        break;
+    case 0x02:
+        This->pTakeInput[CParam + 1] = 1;
+        break;
+    case 0x0A:
+        This->pTakeInput[CParam + 1] = 0;
         break;
     case 0xFF:
-        heap_Free(block->base.context->heap, block->scores);
-        heap_Free(block->base.context->heap, block->frameBuffer);
-        heap_Free(block->base.context->heap, block->enabledGenders);
-        tosBaseBlockDestruct(block);
+        heap_Free(pTos->hHeap, This->pAccumulatedDistortion);
+        heap_Free(pTos->hHeap, This->Buffers);
+        heap_Free(pTos->hHeap, This->pTakeInput);
+        tosBaseBlockDestruct(&This->BaseBlock);
         break;
     default:
-        result = 0;
+        RetVal = 0;
         break;
     }
-    return result;
+    return RetVal;
 }
 
-static void ResetGender(Gender *block)
+/* Resets the gender score accumulators and frame counters. */
+static void ResetGender(_GENDER *This)
 {
     u32 i;
 
-    block->state = 0;
-    if (block->fixedGender) {
-        block->state = 1;
+    This->State = NOT_STABLE_YET;
+    if (This->OnlyOneGender) {
+        This->State = FLUSHING;
     } else {
-        block->selectedGender = 0;
+        This->CurrentGender = 0;
     }
-    block->inputFrame = block->frameBuffer;
-    block->outputFrame = block->frameBuffer;
-    for (i = 0; i < block->genderCount; i++) {
-        block->scores[i] = 0.0f;
+    This->pRead = This->pWrite = This->Buffers;
+    for (i = 0; i < This->NbrGenders; i++) {
+        This->pAccumulatedDistortion[i] = 0.0f;
     }
-    block->bufferedFrameCount = 0;
-    block->totalWeight = 0.0f;
-    block->scoreFrameCount = 0;
-    block->outputWeight = 0.0f;
+    This->NbrFramesInBuffer = 0;
+    This->SumWeights = 0.0f;
+    This->FrameCtr = 0;
+    This->GenderUpdateCtr = 0.0f;
 }
 
-static void GenderDataCompute(Gender *block, f32 *input, f32 weight)
+/* Accumulates weighted codebook distances for the input feature vector. */
+static void GenderDataCompute(_GENDER *This, f32 *pInput, f32 Weight)
 {
-    f32 *inputStart;
-    f32 *inputEnd;
-    f32 *codeBookValue;
-    f32 *inputValue;
-    f32 distance;
-    f32 minimum;
-    f32 difference;
-    f32 smoothing;
-    u32 *indices;
-    s32 firstCode;
-    u32 gender;
-    u32 code;
+    s32 j;
+    f32 lambda;
+    u32 i;
 
-    block->totalWeight += weight;
-    block->outputWeight += weight;
-    if (block->scoreFrameCount < block->scoreFrameLimit) {
-        block->scoreFrameCount++;
+    This->SumWeights += Weight;
+    This->GenderUpdateCtr += Weight;
+    if (This->FrameCtr < This->MaxNbrFramesForGender) {
+        This->FrameCtr++;
     }
-    smoothing = 1.0f / block->scoreFrameCount;
+    lambda = 1.0f / This->FrameCtr;
+    pInput += This->FirstEntry;
+    for (i = 0; i < This->NbrGenders; i++) {
+        if (This->pTakeInput[i + 1]) {
+            f32 *inend;
+            u32 *pIndexInSecCdb;
+            s32 BestFirstLevelCentroid = -1;
+            f32 BestDistortion;
+            f32 *cdbptr;
 
-    inputStart = input + block->inputStart;
-    for (gender = 0; gender < block->genderCount; gender++) {
-        if (block->enabledGenders[gender + 1]) {
-            minimum = FLT_MAX;
-            firstCode = -1;
-            inputEnd = inputStart + block->inputEnd - block->inputStart;
-            codeBookValue = block->codeBook.firstCodeBook;
-            for (code = 0; code < block->codeBook.firstCodeBookSize; code++) {
-                distance = 0.0f;
-                inputValue = inputStart;
-                while (inputValue < inputEnd) {
-                    difference = *inputValue++ - *codeBookValue++;
-                    distance += difference * difference;
-                    if (distance > minimum) {
+            j = 0;
+            BestDistortion = FLT_MAX;
+            inend = pInput + This->InputVectorSize - This->FirstEntry;
+            cdbptr = This->CodeBook.pFirstCdb;
+            while (j < This->CodeBook.FirstCdbSize) {
+                f32 TempDistortion = 0.0f;
+                f32 *inptr;
+                f32 temp;
+                inptr = pInput;
+                while (inptr < inend) {
+                    temp = *inptr - *cdbptr;
+                    TempDistortion += temp * temp;
+                    if (TempDistortion > BestDistortion) {
                         break;
                     }
+                    inptr++;
+                    cdbptr++;
                 }
-                if (inputValue == inputEnd) {
-                    minimum = distance;
-                    firstCode = code;
+                if (inptr == inend) {
+                    BestDistortion = TempDistortion;
+                    BestFirstLevelCentroid = j;
                 } else {
-                    codeBookValue += inputEnd - inputValue;
+                    cdbptr += inend - inptr;
                 }
+                j++;
             }
 
-            if (block->codeBook.secondSearchCount != 0) {
-                indices = block->codeBook.secondCodeBookIndices +
-                    firstCode * block->codeBook.secondSearchCount;
-                minimum = FLT_MAX;
-                for (code = 0; code < block->codeBook.secondSearchCount;
-                     code++) {
-                    codeBookValue =
-                        block->codeBook.secondCodeBook + *indices++;
-                    inputValue = inputStart;
-                    distance = 0.0f;
-                    while (inputValue < inputEnd) {
-                        difference = *inputValue++ - *codeBookValue++;
-                        distance += difference * difference;
-                        if (distance > minimum) {
+            if (This->CodeBook.NbrInSecSearch != 0) {
+                pIndexInSecCdb = This->CodeBook.pIndexInSecCdb +
+                    This->CodeBook.NbrInSecSearch * BestFirstLevelCentroid;
+                BestDistortion = FLT_MAX;
+                for (j = 0;
+                     j < This->CodeBook.NbrInSecSearch;
+                     j++) {
+                    f32 TempDistortion;
+                    f32 *inptr;
+                    f32 diff;
+                    cdbptr = This->CodeBook.pSecondCdb + *pIndexInSecCdb;
+                    inptr = pInput;
+                    TempDistortion = 0.0f;
+                    while (inptr < inend) {
+                        diff = *inptr - *cdbptr;
+                        inptr++;
+                        cdbptr++;
+                        TempDistortion +=
+                            diff * diff;
+                        if (TempDistortion > BestDistortion) {
                             break;
                         }
                     }
-                    if (inputValue == inputEnd) {
-                        minimum = distance;
+                    if (inptr == inend) {
+                        BestDistortion = TempDistortion;
                     }
+                    pIndexInSecCdb++;
                 }
             }
 
-            block->scores[gender] += smoothing *
-                (weight * sqrtf(minimum) - block->scores[gender]);
+            This->pAccumulatedDistortion[i] += lambda *
+                (Weight * sqrtf(BestDistortion) - This->pAccumulatedDistortion[i]);
         }
-        inputStart += block->inputEnd;
+        pInput += This->InputVectorSize;
     }
 }
 
-static void ReadFrame(Gender *block, void **inputs, s32 inputCount)
+/* Reads the activity weight and feature inputs for the current frame. */
+static void ReadFrame(_GENDER *This, void *pInputs, int NbrInputs)
 {
+    _GENDER *block = This;
+    void **inputData;
+    u32 input;
     f32 *frame;
     f32 activity;
-    u32 input;
 
-    if (inputs[0] == NULL) {
-        return;
-    }
-
-    frame = block->inputFrame;
-    for (input = 1; input <= block->genderCount; input++) {
-        if (block->enabledGenders[input]) {
-            memcpy(frame, inputs[input], block->inputEnd * sizeof(f32));
+    frame = block->pWrite;
+    if (((void **)pInputs)[0] != NULL) {
+        inputData = (void **)pInputs + 1;
+        for (input = 1; input <= block->NbrGenders; input++) {
+            if (block->pTakeInput[input]) {
+                memcpy(frame, *inputData, block->InputVectorSize * sizeof(f32));
+            }
+            inputData++;
+            frame += block->InputVectorSize;
         }
-        frame += block->inputEnd;
-    }
 
-    activity = *(f32 *)inputs[0];
-    if (!block->fixedGender && activity > 0.001f) {
-        GenderDataCompute(block, block->inputFrame, activity);
+        activity = *(f32 *)((void **)pInputs)[0];
+        if (!block->OnlyOneGender && activity > 0.001f) {
+            GenderDataCompute(block, block->pWrite, activity);
+        }
+        block->NbrFramesInBuffer++;
+        block->pWrite = frame == block->pEnd
+            ? block->Buffers : frame;
     }
-    block->bufferedFrameCount++;
-    block->inputFrame = frame == block->frameBufferEnd
-        ? block->frameBuffer : frame;
 }
 
-static u32 WriteFrameToOutput(Gender *block)
+/* Selects the lowest-scoring gender and may disable the other gender queues. */
+static u16 GenderSelection(_GENDER *This)
 {
-    u32 bestGender;
-    f32 minimum;
-    u32 gender;
+    /* Control IDs that disable competing output queues after selection. */
+    static const u8 ControlID_Disable[] = { 0xD, 0xE, 0xF };
+    u32 _Gender;
+    f32 BestDistortion;
+    u32 i;
 
-    bestGender = 0;
-    minimum = FLT_MAX;
-    for (gender = 0; gender < block->genderCount; gender++) {
-        if (block->enabledGenders[gender + 1] &&
-            block->scores[gender] < minimum) {
-            minimum = block->scores[gender];
-            bestGender = gender;
+    _Gender = 0;
+    BestDistortion = FLT_MAX;
+    for (i = 0; i < This->NbrGenders; i++) {
+        if (This->pTakeInput[i + 1] &&
+            This->pAccumulatedDistortion[i] < BestDistortion) {
+            BestDistortion = This->pAccumulatedDistortion[i];
+            _Gender = i;
         }
     }
 
-    if (block->totalWeight > block->fixedGenderThreshold &&
-        block->totalWeight > 0.001f &&
-        (block->genderMask & 0x80000000) != 0) {
-        for (gender = 0; gender < block->genderCount; gender++) {
-            if (gender != bestGender) {
+    if (This->SumWeights > This->MinNbrFramesForStableGender &&
+        This->SumWeights > 300.0f &&
+        (This->EnabledGendersMask >> 31) != 0) {
+        for (i = 0; i < This->NbrGenders; i++) {
+            if (i != _Gender) {
                 _tosControl(
-                    block, ControlID_Disable[gender], gender, bestGender);
+                    &This->BaseBlock.Object, ControlID_Disable[i], i, _Gender);
             }
         }
-        switch (bestGender + 1) {
+        switch (_Gender + 1) {
         case 1:
-            block->genderMask = 1;
+            This->EnabledGendersMask = 1;
             break;
         case 2:
-            block->genderMask = 2;
+            This->EnabledGendersMask = 2;
             break;
         case 3:
-            block->genderMask = 4;
+            This->EnabledGendersMask = 4;
             break;
         default:
             return 0;
         }
-        block->fixedGender = 1;
-        block->outputWeight = 0.0f;
-        block->state = 1;
+        This->OnlyOneGender = 1;
+        This->GenderUpdateCtr = 0.0f;
+        This->State = FLUSHING;
+        return _Gender + 1;
     } else {
-        block->outputWeight = 0.0f;
+        This->GenderUpdateCtr = 0.0f;
+        return _Gender + 1;
     }
-    return bestGender + 1;
 }
 
-static void OutputFrame(Gender *block)
+/* Outputs the current frame and advances the frame state. */
+static inline void WriteFrameToOutput(_GENDER *This)
 {
-    f32 *output;
+    f32 *pOutput;
 
-    output = qEnQueueOne(block->base.output->queue);
-    if (output == NULL) {
+    pOutput = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+    if (pOutput == NULL) {
         return;
     }
-    if (!block->fixedGender &&
-        (block->state == 0 ||
-         block->outputWeight > block->outputWeightThreshold)) {
-        block->selectedGender = WriteFrameToOutput(block);
+    if (!This->OnlyOneGender &&
+        (This->State == NOT_STABLE_YET ||
+         This->GenderUpdateCtr > This->MinNbrFramesToUpdate)) {
+        This->CurrentGender = GenderSelection(This);
     }
     memcpy(
-        output,
-        block->outputFrame +
-            (block->selectedGender - 1) * block->inputEnd,
-        block->inputEnd * sizeof(f32));
-    block->outputFrame += block->frameSize;
-    if (block->outputFrame == block->frameBufferEnd) {
-        block->outputFrame = block->frameBuffer;
+        pOutput,
+        This->pRead +
+            (This->CurrentGender - 1) * This->InputVectorSize,
+        This->InputVectorSize * sizeof(f32));
+    This->pRead += This->BufferWidth;
+    if (This->pRead == This->pEnd) {
+        This->pRead = This->Buffers;
     }
-    block->bufferedFrameCount--;
+    This->NbrFramesInBuffer--;
 }
 
-static u32 InitGender(TosBaseBlock *baseBlock)
+/* Initializes the gender analysis block from the profile. */
+static u8 InitGender(struct _BLOCK *_This)
 {
-    Gender *block = (Gender *)baseBlock;
-    TosContext *context = block->base.context;
+    int i;
+    _GENDER *This = (_GENDER *)_This;
+    _GENDER *pBlock = This;
+    struct _TOS *pTos = pBlock->BaseBlock.Object.pTos;
 
-    block->genderCount = block->base.inputCount - 1;
-    block->inputStart = (u16)_tosGetProfileU32(block, 5, 1);
-    block->inputEnd = (u16)_tosGetProfileU32(block, 6, 0);
-    block->frameBufferCapacity =
-        (u16)_tosGetProfileU32(block, 1, 50);
-    block->scoreFrameLimit =
-        (s16)_tosGetProfileU32(block, 2, 600);
-    block->outputWeightThreshold =
-        (s16)_tosGetProfileU32(block, 3, 10);
-    block->fixedGenderThreshold =
-        (s16)_tosGetProfileU32(block, 4, 20);
-    block->frameSize = block->genderCount * block->inputEnd;
-
-    block->frameBuffer = heap_Calloc(
-        context->heap,
-        block->frameBufferCapacity * block->frameSize, sizeof(f32));
-    block->frameBufferEnd = block->frameBuffer +
-        block->frameBufferCapacity * block->frameSize;
-    block->scores = heap_Alloc(
-        context->heap, block->genderCount * sizeof(f32));
-    block->enabledGenders = heap_Alloc(
-        context->heap, block->genderCount + 1);
-    if (block->frameBuffer == NULL || block->scores == NULL ||
-        block->enabledGenders == NULL) {
+    This->NbrGenders = This->BaseBlock.NrInputs - 1;
+    This->FirstEntry = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 5, 1);
+    This->InputVectorSize = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 6, 0);
+    This->BufferSizeInFrames = (u16)_tosGetProfileU32(&This->BaseBlock.Object, 1, 50);
+    This->MaxNbrFramesForGender = (s16)_tosGetProfileU32(&This->BaseBlock.Object, 2, 600);
+    This->MinNbrFramesToUpdate = (s16)_tosGetProfileU32(&This->BaseBlock.Object, 3, 10);
+    This->MinNbrFramesForStableGender = (s16)_tosGetProfileU32(&This->BaseBlock.Object, 4, 20);
+    This->BufferWidth = This->NbrGenders * This->InputVectorSize;
+    This->Buffers =
+        heap_Calloc(pTos->hHeap, This->BufferSizeInFrames * This->BufferWidth, sizeof(f32));
+    This->pEnd = This->Buffers + This->BufferSizeInFrames * This->BufferWidth;
+    This->pAccumulatedDistortion = heap_Alloc(pTos->hHeap, This->NbrGenders * sizeof(f32));
+    This->pTakeInput = heap_Alloc(pTos->hHeap, This->NbrGenders + 1);
+    if (This->Buffers == NULL || This->pAccumulatedDistortion == NULL ||
+        This->pTakeInput == NULL) {
+        /* Earlier allocations remain owned by the block. */
         return 1;
     }
-
-    memset(block->enabledGenders, 1, block->genderCount + 1);
-    block->base.input[0].inputSize = sizeof(f32);
-    block->base.input[1].inputSize = block->inputEnd * sizeof(f32);
-    block->base.input[2].inputSize = block->inputEnd * sizeof(f32);
-    block->base.input[3].inputSize = block->inputEnd * sizeof(f32);
-    block->base.output->outputSize = block->inputEnd * sizeof(f32);
-    block->genderMask = 0x7FFFFFFF;
-    ResetGender(block);
+    memset(This->pTakeInput, 1, This->NbrGenders + 1);
+    This->BaseBlock.InputQueues[0].Size = sizeof(f32);
+    This->BaseBlock.InputQueues[1].Size = This->InputVectorSize * sizeof(f32);
+    This->BaseBlock.InputQueues[2].Size = This->InputVectorSize * sizeof(f32);
+    This->BaseBlock.InputQueues[3].Size = This->InputVectorSize * sizeof(f32);
+    This->BaseBlock.OutputQueues->Size = This->InputVectorSize * sizeof(f32);
+    This->EnabledGendersMask = 0x7FFFFFFF; /* Enable all genders below the high bit. */
+    ResetGender(This);
     return 0;
 }
 
+/* Buffers startup frames, scores gender candidates and emits frames according to the current
+ * state. */
 static void ProcessGender(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+    struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-    Gender *block = (Gender *)baseBlock;
+    _GENDER *This = (_GENDER *)_This;
 
-    switch (block->state) {
-    case 0:
-        if (block->bufferedFrameCount == block->frameBufferCapacity &&
-            block->bufferedFrameCount != 0) {
-            OutputFrame(block);
+    switch (This->State) {
+    case NOT_STABLE_YET:
+        if (This->NbrFramesInBuffer == This->BufferSizeInFrames &&
+            This->NbrFramesInBuffer != 0) {
+            WriteFrameToOutput(This);
         }
-        if (block->bufferedFrameCount < block->frameBufferCapacity) {
-            ReadFrame(block, inputs, inputCount);
+        if (This->NbrFramesInBuffer < This->BufferSizeInFrames) {
+            ReadFrame(This, pInputs, NbrInputs);
         }
-        if (block->totalWeight > block->fixedGenderThreshold) {
-            block->state = 1;
-        }
-        break;
-    case 1:
-        if (block->bufferedFrameCount != 0) {
-            OutputFrame(block);
-        }
-        if (inputs[0] != NULL) {
-            ReadFrame(block, inputs, inputCount);
-        }
-        if (block->bufferedFrameCount == 0) {
-            block->state = 2;
+        if (This->SumWeights > This->MinNbrFramesForStableGender) {
+            This->State = FLUSHING;
         }
         break;
-    case 2:
-        if (block->bufferedFrameCount < block->frameBufferCapacity) {
-            ReadFrame(block, inputs, inputCount);
+    case FLUSHING:
+        if (This->NbrFramesInBuffer != 0) {
+            WriteFrameToOutput(This);
         }
-        if (block->bufferedFrameCount != 0) {
-            OutputFrame(block);
+        if (((void **)pInputs)[0] != NULL) {
+            ReadFrame(This, pInputs, NbrInputs);
+        }
+        if (This->NbrFramesInBuffer == 0) {
+            This->State = STABLE_GENDER;
+        }
+        break;
+    case STABLE_GENDER:
+        if (This->NbrFramesInBuffer < This->BufferSizeInFrames) {
+            ReadFrame(This, pInputs, NbrInputs);
+        }
+        if (This->NbrFramesInBuffer != 0) {
+            WriteFrameToOutput(This);
         }
         break;
     }
 }
 
-void *ConstructGender(TosContext *context, u8 blockIndex)
+/* Constructs a TOS block for gender analysis. */
+struct _BLOCK *ConstructGender(struct _TOS *pTos, u8 BlockID)
 {
     return tosBaseBlockConstruct(
-        context, blockIndex, 4, 1, ProcessGender, InitGender,
-        ControlGender, sizeof(Gender));
+        pTos, BlockID, 4, 1, ProcessGender, InitGender,
+        ControlGender, sizeof(_GENDER));
 }

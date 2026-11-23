@@ -1,19 +1,14 @@
+/* Validation and comparison of typed Voice SDK handles. */
+#include "gssdk/osspi.h"
 #include "gssdk/safeh.h"
 
 #include <stddef.h>
 
 #define SAFEH_INVALID_HANDLE 0x80170189
 
-extern u32 osspi_IsGoodReadPtr(void *address, u32 size);
-extern u32 osspi_IsGoodWritePtr(void *address, u32 size);
-
 const SafeHandle g_lhNullHandle = { NULL, 0 };
 
-static inline BOOL IsError(u32 result)
-{
-    return result >= 0x80000000 ? TRUE : FALSE;
-}
-
+/* Checks the handle type and validates its address for reading and writing. */
 u32 safeh_HandleCheck(SafeHandle handle, u32 type, u32 size)
 {
     u32 result;
@@ -32,6 +27,7 @@ u32 safeh_HandleCheck(SafeHandle handle, u32 type, u32 size)
     return osspi_IsGoodWritePtr(handle.address, size);
 }
 
+/* Compares both the handle type and its address. */
 BOOL safeh_HandlesEqual(SafeHandle left, SafeHandle right)
 {
     if (left.type != right.type) {

@@ -1,97 +1,99 @@
+/* Look-ahead block that delays frames until future context is available. */
+#include "gssdk/blocks.h"
+#include "gssdk/mqueue.h"
+#include "gssdk/heap.h"
 #include "types.h"
 
 #include "gssdk/tos.h"
 
-typedef struct LookAhead {
-TosBaseBlock base;
-u8 flushActive;
-u8 reserved29[3];
-u32 lookAhead;
-u32 historyLength;
-f32 threshold;
-f32 *history;
-f32 *historyWrite;
-f32 *historyEnd;
-f32 sum;
-u32 queued;
+/* Rolling sum and queued decisions for the look-ahead block. */
+typedef struct {
+    struct _BLOCK BaseBlock; /* Scheduler-owned block header. */
+    u8 Flushing; /* Set while queued decisions are drained. */
+    u32 LookAhead; /* Number of frames held before emitting decisions. */
+    u32 Span; /* Length of the rolling sample history. */
+    f32 Threshold; /* Threshold compared with the rolling sum. */
+    f32 *pBegin; /* First entry in the sample history. */
+    f32 *pWrite; /* Next sample to replace. */
+    f32 *pEnd; /* One past the last history entry. */
+    f32 Sum; /* Rolling sum of the sample history. */
+    u32 NbrFrames; /* Frames held for delayed output. */
 } LookAhead;
 
-extern void *heap_Calloc(void *heap, u32 count, u32 size);
-extern void heap_Free(void *heap, void *ptr);
-
-static void ProcessLookAhead(TosBaseBlock *_This, void *pInputs, int NbrInputs)
+/* Updates the rolling sum and queues threshold decisions. */
+static void ProcessLookAhead(struct _BLOCK *_This, void *pInputs, int NbrInputs)
 {
-LookAhead *This = (LookAhead *)_This;
-f32 *sample = ((void **)pInputs)[0];
-u8 *output;
+    LookAhead *This = (LookAhead *) _This;
+    f32 *pFrameType = ((void **) pInputs)[0];
+    u8 *pBoolOut;
 
-if (sample != NULL) {
-    This->sum -= *This->historyWrite;
-    *This->historyWrite++ = *sample;
-    This->sum += *sample;
-    if (This->historyWrite == This->historyEnd) {
-        This->historyWrite = This->history;
-    }
-    if (This->queued == This->lookAhead) {
-        output = qEnQueueOne(This->base.output->queue);
-        *output = This->sum > This->threshold;
-    } else {
-        This->queued++;
-    }
-} else if (This->flushActive != 0) {
-    while (This->queued != 0) {
-        output = qEnQueueOne(This->base.output->queue);
-        *output = This->sum > This->threshold;
-        This->queued--;
-    }
-    if (This->queued == 0) {
-        This->flushActive = 0;
+    if (pFrameType != NULL) {
+        This->Sum -= *This->pWrite;
+        *This->pWrite++ = *pFrameType;
+        This->Sum += *pFrameType;
+        if (This->pWrite == This->pEnd) {
+            This->pWrite = This->pBegin;
+        }
+        if (This->NbrFrames == This->LookAhead) {
+            pBoolOut = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+            *pBoolOut = This->Sum > This->Threshold;
+        } else {
+            This->NbrFrames++;
+        }
+    } else if (This->Flushing != 0) {
+        while (This->NbrFrames != 0) {
+            pBoolOut = qEnQueueOne(This->BaseBlock.OutputQueues->pQ);
+            *pBoolOut = This->Sum > This->Threshold;
+            This->NbrFrames--;
+        }
+        if (This->NbrFrames == 0) {
+            This->Flushing = 0;
+        }
     }
 }
+
+/* Requests a flush or releases the sample history. */
+static u8 ControlLookAhead(struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
+{
+    LookAhead *This = (LookAhead *) _This;
+
+    switch (ControlId) {
+    case 0x01:
+        This->Flushing = 1;
+        break;
+    case 0xFF:
+        heap_Free(This->BaseBlock.Object.pTos->hHeap, This->pBegin);
+        tosBaseBlockDestruct(&This->BaseBlock);
+        break;
+    default:
+        return 0;
+    }
+    return 1;
 }
 
-static u32 ControlLookAhead(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+/* Loads the look-ahead profile and allocates the sample history. */
+static unsigned char InitLookAhead(struct _BLOCK *_This)
 {
-LookAhead *block = (LookAhead *)baseBlock;
+    LookAhead *This = (LookAhead *) _This;
+    struct _TOS *pTos = _This->Object.pTos;
 
-switch ((u8)command) {
-case 1:
-    block->flushActive = 1;
-    break;
-case 255:
-    heap_Free(block->base.context->heap, block->history);
-    tosBaseBlockDestruct(block);
-    break;
-default:
+    This->LookAhead = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 1, 0);
+    This->Span = (u16) _tosGetProfileU32(&This->BaseBlock.Object, 2, 15);
+    This->Threshold = _tosGetProfileFloat(&This->BaseBlock.Object, 3, 1.0f);
+    This->BaseBlock.InputQueues->Size = sizeof(f32);
+    This->BaseBlock.OutputQueues->Size = sizeof(u8);
+    This->pBegin = heap_Calloc(pTos->hHeap, This->Span, sizeof(f32));
+    This->pWrite = This->pBegin;
+    This->pEnd = This->pBegin + This->Span;
+    This->Sum = 0.0f;
+    This->NbrFrames = 0;
     return 0;
 }
-return 1;
-}
 
-static u32 InitLookAhead(TosBaseBlock *_This)
+/* Registers the look-ahead block with the scheduler. */
+struct _BLOCK *ConstructLookAhead(struct _TOS *pTos, u8 BlockID)
 {
-LookAhead *This = (LookAhead *)_This;
-TosContext *context = _This->context;
-
-This->lookAhead = (u16)_tosGetProfileU32(This, 1, 0);
-This->historyLength = (u16)_tosGetProfileU32(This, 2, 15);
-This->threshold = _tosGetProfileFloat(This, 3, 1.0f);
-This->base.input->inputSize = sizeof(f32);
-This->base.output->outputSize = sizeof(u8);
-This->history = heap_Calloc(
-    context->heap, This->historyLength, sizeof(f32));
-This->historyWrite = This->history;
-This->historyEnd = This->history + This->historyLength;
-This->sum = 0.0f;
-This->queued = 0;
-return 0;
-}
-
-void *ConstructLookAhead(TosContext *context, u8 blockIndex)
-{
-return tosBaseBlockConstruct(
-    context, blockIndex, 1, 1, (TosProcessFunction)ProcessLookAhead,
-    (TosInitFunction)InitLookAhead, (TosControlFunction)ControlLookAhead,
-    sizeof(LookAhead));
+    return tosBaseBlockConstruct(pTos, BlockID, 1, 1, ProcessLookAhead, InitLookAhead,
+                                 ControlLookAhead,
+                                 sizeof(LookAhead));
 }
