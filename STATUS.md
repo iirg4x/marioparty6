@@ -1,8 +1,13 @@
-# Mario Party 6 recovery status
+# Mario Party 6 build status
 
-The current state of the supported `GP6E01` build on this branch, from the same snapshot as the [progress site](https://iirg4x.github.io/marioparty6/). It is regenerated whenever recovered sources change; the history of how it got here is in the commits and pull requests.
+The Mario Party 6 build for GameCube (USA Revision 0, `GP6E01`) is complete and
+reproduces `main.dol` and all 136 REL modules configured by `configure.py` byte for byte.
+The retail disc also contains `m580Dll.rel` and `m433Dll.rel`, which the game
+neither builds nor references (both have been commented out in
+`config/GP6E01/config.yml` since the start and have no splits, symbols, or source).
 
-Updated 2026-11-24 03:00 UTC.
+All 33,477 functions match retail. The configured RELs include 128 nonempty
+modules and eight empty modules.
 
 ## Progress
 
@@ -12,27 +17,13 @@ Updated 2026-11-24 03:00 UTC.
 | Main DOL | 100.00% | 100.00% |
 | REL modules | 100.00% | 100.00% |
 
-## REL modules
-
-**128 of 128** modules are complete: every byte is owned by a matching source file (8 more modules are empty).
-
-## Main DOL
-
-Every function of `main.dol` is recovered as matching source.
+These percentages measure bytes in matching source units from the
+[committed build snapshot](progress/GP6E01.json).
 
 ## Verification
 
-Every configured output must match retail:
+[Ninja and DTK](README.md#verify) check all 137 configured outputs against the
+retail hashes. The rebuilt `main.dol` has SHA-1
+`b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
 
-```sh
-ninja
-build/tools/dtk shasum -q -c config/GP6E01/build.sha1
-```
-
-On Windows, use `build/tools/dtk.exe`. All 137 configured outputs pass the retail checksum gate, and the rebuilt `main.dol` is byte-identical to retail (SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`).
-
-## Recovery standard
-
-A source file is marked Matching only when the configured compiler reproduces the target output. Matching is necessary, but recovered code should also remain readable and supported by evidence from the original game.
-
-Unknown names or fields stay explicit until their meaning is known. Compiler-specific constructs are not added solely to force a match unless the target clearly requires them.
+[Progress site](https://iirg4x.github.io/marioparty6/)

@@ -2,8 +2,7 @@
 
 ###
 # Generates build files for the project.
-# This file also includes the project configuration,
-# such as compiler flags and the object matching status.
+# This file selects the source units and compiler flags.
 #
 # Usage:
 #   python3 configure.py
@@ -73,11 +72,6 @@ parser.add_argument(
     help="generate map file(s)",
 )
 parser.add_argument(
-    "--no-asm",
-    action="store_true",
-    help="don't incorporate .s files from asm directory",
-)
-parser.add_argument(
     "--debug",
     action="store_true",
     help="build with debug info (non-matching)",
@@ -116,7 +110,7 @@ parser.add_argument(
     "--non-matching",
     dest="non_matching",
     action="store_true",
-    help="builds equivalent (but non-matching) or modded objects",
+    help="skip retail checksum verification for modified builds",
 )
 args = parser.parse_args()
 
@@ -136,8 +130,7 @@ config.non_matching = args.non_matching
 config.sjiswrap_path = args.sjiswrap
 if not is_windows():
     config.wrapper = args.wrapper
-if args.no_asm:
-    config.asm_dir = None
+config.asm_dir = None
 
 # Tool versions
 config.binutils_tag = "2.42-1"
@@ -333,9 +326,7 @@ def Rel(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
     }
 
 
-Matching = True                   # Object matches and should be linked
-NonMatching = False               # Object does not match and should not be linked
-Equivalent = config.non_matching  # Object should be linked when configured with --non-matching
+Matching = True
 
 config.warn_missing_config = True
 config.warn_missing_source = False

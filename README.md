@@ -1,68 +1,58 @@
 # Mario Party 6
 
-[![Code Progress]][progress] [![Data Progress]][progress] [![DOL Progress]][status] [![REL Progress]][status]
+[![Code][code-badge]][status] [![Data][data-badge]][status]
+[![DOL][dol-badge]][status] [![DLLs][dll-badge]][status]
 
-[Code Progress]: https://decomp.dev/iirg4x/marioparty6.svg?mode=shield&measure=code&label=Code
-[Data Progress]: https://decomp.dev/iirg4x/marioparty6.svg?mode=shield&measure=data&label=Data
-[progress]: https://decomp.dev/iirg4x/marioparty6
-[DOL Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdol.json
-[REL Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdlls.json
+[code-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fcode.json
+[data-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdata.json
+[dol-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdol.json
+[dll-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdlls.json
 [status]: STATUS.md
 
-A matching decompilation of **Mario Party 6**, targeting the GameCube USA
-Revision 0 release (`GP6E01`). This project reconstructs the original GameCube
-executable and modules; it is not a native PC port.
+The Mario Party 6 build for GameCube (USA Revision 0, `GP6E01`) is complete and
+reproduces `main.dol` and all 136 REL modules configured by `configure.py` byte for byte.
+The retail disc also contains `m580Dll.rel` and `m433Dll.rel`, which the game
+neither builds nor references (both have been commented out in
+`config/GP6E01/config.yml` since the start and have no splits, symbols, or source).
 
-You must provide a legally obtained copy of the game. This repository does not
-distribute game assets or original binaries.
+This repository contains source code. A legally obtained copy of the game is required
+for the original binaries and assets.
 
-## Progress
+[Build status](STATUS.md) · [decomp.dev](https://decomp.dev/iirg4x/marioparty6)
 
-Live progress, with history and per-module detail, is on
-[decomp.dev][progress]. The DOL and REL badges and [STATUS.md](STATUS.md) show
-generated progress from main. The DOL is the main executable; RELs are
-runtime-loaded modules, also called DLLs by the game. They are not Windows DLLs.
-
-Source completion and a matching build are different: unrecovered files can
-still be linked from original objects. A retail-identical build does **not**
-mean the entire game has been decompiled.
+The Data badge counts data bytes in matching units, while decomp.dev counts
+data symbols paired by name.
 
 ## Build
 
-Install Git, Python and [Ninja](https://ninja-build.org/). Native Windows is
-supported; WSL/MSYS2 are not required. Non-Windows hosts need a supported
-compiler wrapper: x86/x86-64 Linux builds can use the automatically downloaded
-`wibo`; macOS and other architectures generally use Wine. Run
-`python configure.py --help` for wrapper and other build options.
+Install Git, Python 3, and Ninja. Use native tools on Windows. On macOS, install
+[Wine Crossover](https://github.com/Gcenx/homebrew-wine) to run the Metrowerks
+tools. On x86 and x86-64 Linux, the build downloads
+[wibo](https://github.com/decompals/wibo).
 
-```sh
-git clone https://github.com/iirg4x/marioparty6.git
-cd marioparty6
-```
+1. Clone the repository.
 
-Extract the entire USA Revision 0 disc into `orig/GP6E01`, preserving its layout.
-Dolphin's **Extract Entire Disc** command can do this. The expected inputs include:
+   ```sh
+   git clone https://github.com/iirg4x/marioparty6.git
+   cd marioparty6
+   ```
 
-```text
-orig/GP6E01/sys/main.dol
-orig/GP6E01/files/dll/*.rel
-```
+2. Extract the USA Revision 0 disc to `orig/GP6E01` with its directory layout
+   intact. For example, Dolphin's **Extract Entire Disc** command provides
+   `orig/GP6E01/sys/main.dol` and `orig/GP6E01/files/dll/*.rel`.
 
-Then configure and build:
+3. Configure and build. The first build downloads the pinned tools as needed.
+   Run `python configure.py --help` for local tool paths and other options.
 
-```sh
-python configure.py
-python tools/build.py
-```
+   ```sh
+   python configure.py
+   ninja
+   ```
 
-Configuration downloads the project's pinned tools and compilers when needed.
-`tools/build.py` runs Ninja and refreshes the progress badge files when progress
-changes. It also regenerates `progress/report.json`, the
-[objdiff](https://github.com/encounter/objdiff) progress report that
-decomp.dev reads; GitHub's runners have no game files, so the report is built
-locally and committed, and a workflow uploads it on each push to main.
+## Verify
 
-Verify the built files against the retail checksums:
+The default build checks all configured outputs against the retail SHA-1 hashes.
+Run the same check directly with the command below.
 
 ```sh
 build/tools/dtk shasum -q -c config/GP6E01/build.sha1
@@ -70,21 +60,12 @@ build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 
 On Windows, use `build/tools/dtk.exe`.
 
-## Working on a match
+## Compare objects
 
-Configure once, then open [objdiff](https://github.com/encounter/objdiff) with
-this repository as the project directory. It loads the generated `objdiff.json`;
-select an object to compare its reconstructed source against the target.
+Open the repository in [objdiff](https://github.com/encounter/objdiff) after
+configuring. It loads `objdiff.json` from the project directory. Select an object
+to compare its compiled output with the retail object. Enable automatic builds
+to see the comparison update during edits.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for source-recovery and verification
-requirements.
-
-## Source layout
-
-- `src/game/`: shared game runtime and services.
-- `src/board/`: party-board systems, players, spaces, dice and events.
-- `src/REL/`: loadable game modes and other modules.
-- Other `src/` directories: Dolphin SDK, C/compiler runtimes, audio, speech and
-  supporting libraries.
-- `include/`, `config/`: headers, symbols, splits and build configuration.
-- `tools/`, `progress/`: build utilities and generated progress data.
+See the [repository guide](docs/README.md) for source and build configuration
+paths and [CONTRIBUTING.md](CONTRIBUTING.md) for verification before submission.

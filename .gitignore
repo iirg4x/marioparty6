@@ -31,6 +31,5 @@ compile_commands.json
 ctx.*
 *.ctx
 
-# Miscellaneous local output
-/*.txt
+# Local executables
 *.exe

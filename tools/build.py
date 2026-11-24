@@ -21,7 +21,7 @@ COMMITTED_REPORT = Path("progress/report.json")
 def compile_all_sources(resource_options: list[str]) -> None:
     """Compile every source file, including unlinked ones, so the report covers them.
 
-    Work-in-progress sources that do not compile are listed and left out."""
+    Unlinked sources that fail to compile are listed in the build output."""
     result = subprocess.run(
         ["ninja", *resource_options, "-k", "0", "all_source"],
         check=False,

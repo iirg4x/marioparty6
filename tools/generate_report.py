@@ -2,10 +2,8 @@
 """Generate the objdiff progress report that decomp.dev reads.
 
 objdiff-cli compares every unit in objdiff.json and stops if a unit's compiled
-object is missing. Some unlinked work-in-progress sources may not compile, so
-this runs objdiff-cli on a copy of objdiff.json in which such units are
-reported from their retail (target) object alone, with no matched code, and
-lists them.
+object is missing. This script lists missing objects and reports those units
+using their retail objects. The original objdiff.json is preserved.
 
 Usage:
     python tools/generate_report.py OBJDIFF_CLI OUTPUT

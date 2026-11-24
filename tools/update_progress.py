@@ -19,10 +19,12 @@ CATEGORY_LABELS = {
     "dol": "DOL",
     "modules": "DLLs",
 }
-BADGE_FILENAMES = {
-    "all": "all.json",
-    "dol": "dol.json",
-    "modules": "dlls.json",
+BADGE_METRICS = {
+    "all.json": ("all", "code"),
+    "dol.json": ("dol", "code"),
+    "dlls.json": ("modules", "code"),
+    "code.json": ("all", "code"),
+    "data.json": ("all", "data"),
 }
 
 
@@ -104,18 +106,18 @@ def output_documents(snapshot: Mapping[str, Any]) -> Dict[str, str]:
     documents: Dict[str, str] = {
         f"{version}.json": json.dumps(snapshot, indent=2) + "\n"
     }
-    for category, filename in BADGE_FILENAMES.items():
+    for filename, (category, metric) in BADGE_METRICS.items():
         value = categories.get(category)
         if not isinstance(value, Mapping):
             raise ProgressError(f"snapshot is missing category: {category}")
-        code = value.get("code")
-        if not isinstance(code, Mapping):
-            raise ProgressError(f"snapshot category has no code metric: {category}")
+        counts = value.get(metric)
+        if not isinstance(counts, Mapping):
+            raise ProgressError(f"snapshot category has no {metric} metric: {category}")
         try:
-            percent = float(code["percent"])
+            percent = float(counts["percent"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise ProgressError(f"invalid code percentage: {category}") from exc
-        label = str(value.get("label") or CATEGORY_LABELS[category])
+            raise ProgressError(f"invalid {metric} percentage: {category}") from exc
+        label = "Data" if metric == "data" else str(value.get("label") or CATEGORY_LABELS[category])
         documents[filename] = json.dumps(
             badge_payload(label, percent), indent=2
         ) + "\n"
