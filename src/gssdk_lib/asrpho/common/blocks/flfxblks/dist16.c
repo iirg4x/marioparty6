@@ -122,10 +122,10 @@ static signed short *GetpCachedDistances(void *pThis);
 /* Returns the distance baseline subtracted from each matrix result. */
 static long GetDistanceOffset(void *pThis);
 
-/* Sums byte distances for each code pair in one language. */
+/* Sums byte distances across the codebooks for one phenome. */
 static signed short CalculateDistance(void *pThis, unsigned int Phenom);
 
-/* Sums the packed four-bit distance for each code pair in one language. */
+/* Sums four-bit distances across the codebooks for one phenome. */
 static signed short CalculateDistance4Bit(void *pThis, unsigned int Phenom);
 
 /* Releases prior language matrices and resizes their table when needed. */
@@ -187,7 +187,6 @@ static u8 LoadMatrix(struct _OBJECT *This, DistanceMatrix *pMatrix, unsigned sho
 
 /* Initializes the silence distances from the selected gastone. */
 static void CopySilProbs(DISTSIL *This)
-
 {
     unsigned int i;
     unsigned int j;
@@ -303,7 +302,7 @@ static void UpdateRejectionAnySpeech(DISTSIL *This)
 }
 
 /* Resizes the connected queues for the new phoneme count. */
-static inline unsigned char ResizeQueues(DISTSIL *This, unsigned int NbrPhenom)
+static unsigned char ResizeQueues(DISTSIL *This, unsigned int NbrPhenom)
 {
     if (This->BaseBlock.NrInputs != 0 && This->OutQueue->pQ != NULL &&
         This->OutQueue->pQ->Size != NbrPhenom * 2) {
@@ -681,7 +680,6 @@ static u8 FreeDistCalc(DISTSIL *This)
 
 /* Initializes the distance queues and builds silence adaptation tables. */
 static u8 InitDistSilProcess(struct _BLOCK *_This)
-
 {
     DISTSIL *This = (DISTSIL *)_This;
     unsigned short NbrPhenoms;
@@ -753,7 +751,6 @@ static u8 InitDistSilProcess(struct _BLOCK *_This)
 
 /* Normalizes the adapted silence distances using their summed probability. */
 static void NormCorrection(DISTSIL *This, DistanceMatrix *ActMat, u8 *AdaptSilProb)
-
 {
     float flSum = 0.0f;
     int i;
@@ -807,9 +804,9 @@ static void DistSilProcess(struct _BLOCK *_This, void *pInputs, int NbrInputs)
     u8 *Labels = (u8 *)((void **)pInputs)[1];
 
     if (Labels != NULL) {
-        u8 *codeCursor = Labels;
+        u8 *pLabels = Labels;
 
-        if (codeCursor != NULL) {
+        if (pLabels != NULL) {
             s32 AdaptSilDist;
             DistanceMatrix *ActMat;
             s32 cdbid;
@@ -839,18 +836,18 @@ static void DistSilProcess(struct _BLOCK *_This, void *pInputs, int NbrInputs)
                 u8 *pAdaptSil = This->ppAdaptSil[cdbid];
 
                 if (UpdateHisto != 0) {
-                    ActMat->pHisto[*codeCursor]++;
+                    ActMat->pHisto[*pLabels]++;
                 }
                 This->Ptrs[cdbid] =
-                    (u8 *)ActMat->Matrix[*codeCursor];
+                    (u8 *)ActMat->Matrix[*pLabels];
                 if (AdaptSil != 0) {
                     AdaptSilence(ActMat, pAdaptSil, This->ppLookUp);
                     if (This->Frame2 >= SILENCE_NORMALIZATION_BATCHES) {
                         NormCorrection(This, ActMat, pAdaptSil);
                     }
                 }
-                AdaptSilDist += pAdaptSil[*codeCursor];
-                codeCursor++;
+                AdaptSilDist += pAdaptSil[*pLabels];
+                pLabels++;
                 ActMat++;
                 cdbid++;
             }
@@ -1041,7 +1038,7 @@ static u8 ControlDistSilProcess(struct _BLOCK *_This, unsigned char ControlId, u
     return RetVal;
 }
 
-/* Sums byte distances for each code pair in one language. */
+/* Sums byte distances across the codebooks for one phenome. */
 static signed short CalculateDistance(void *pThis, unsigned int Phenom)
 {
     DISTSIL *This = pThis;
@@ -1059,7 +1056,7 @@ static signed short CalculateDistance(void *pThis, unsigned int Phenom)
     return Dist - This->sOffset;
 }
 
-/* Sums the packed four-bit distance for each code pair in one language. */
+/* Sums four-bit distances across the codebooks for one phenome. */
 static signed short CalculateDistance4Bit(void *pThis, unsigned int Phenom)
 {
     DISTSIL *This = pThis;
@@ -1068,14 +1065,14 @@ static signed short CalculateDistance4Bit(void *pThis, unsigned int Phenom)
     u8 **Ptr = This->Ptrs;
     u8 **pStop = Ptr + NbrCodeBooks;
     s32 Dist = 0;
-    u8 packed;
+    u8 DistPair;
 
     do {
         u32 Gastone = *GasPtr++;
-        u8 *language = *Ptr++;
+        u8 *pCodebookRow = *Ptr++;
 
-        packed = language[Gastone >> 1];
-        Dist += (packed << ((Gastone * 4) & 4)) & 0xF0;
+        DistPair = pCodebookRow[Gastone >> 1];
+        Dist += (DistPair << ((Gastone * 4) & 4)) & 0xF0;
     } while (Ptr < pStop);
     return Dist - This->sOffset;
 }

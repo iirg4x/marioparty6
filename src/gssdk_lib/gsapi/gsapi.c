@@ -462,7 +462,6 @@ long gsapi_ContextDeActivate(void *context)
 /* Stops and closes a recognizer and releases its audio and context state. */
 long gsapi_EngineClose(struct _GSAPI_ENGINE *pEngine)
 {
-
     if (safeh_HandlesEqual(gGSAPI.hRsrc, g_lhNullHandle)) {
         return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
@@ -672,7 +671,7 @@ void gsapi_EngineRestart()
 }
 
 /* Returns the string for a word ID in the engine's current context. */
-long gsapi_EngineGetParam(void *hEngine, unsigned long WordId, char **pszResult)
+long gsapi_GetResultString(void *hEngine, unsigned long WordId, char **pszResult)
 {
     struct _GSAPI_ENGINE *pEngine = hEngine;
     struct _GSAPI_CONTEXT *pContext;

@@ -113,7 +113,7 @@ long gsapi_EngineStop(void *hEngine);
 void gsapi_EngineRestart();
 
 /* Returns the string for a word ID in the engine's current context. */
-long gsapi_EngineGetParam(void *hEngine, unsigned long WordId, char **pszResult);
+long gsapi_GetResultString(void *hEngine, unsigned long WordId, char **pszResult);
 
 /* Initializes the SDK and registers the recognition result callback. */
 long gsapi_Init(GSResultCallback cbResult, unsigned long u32UserData);

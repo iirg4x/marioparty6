@@ -2171,7 +2171,7 @@ static void MicResultExec(void *callbackContext, u32 callbackData,
           MCResultData[MCResultNum++] = MicResultGet(candidate->pWordIds[wordIndex]);
           /* Ignore word-wordName lookup errors and log wordName even when the lookup leaves it
            * unassigned. */
-          gsapi_EngineGetParam(MC_gsapiEngine, candidate->pWordIds[wordIndex], &wordName);
+          gsapi_GetResultString(MC_gsapiEngine, candidate->pWordIds[wordIndex], &wordName);
           OSReport(lbl_8023AD88, candidateIndex, MicResultGet(candidate->pWordIds[wordIndex]),
                    candidate->u16Conf, wordName);
         }
