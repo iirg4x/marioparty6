@@ -162,16 +162,17 @@ def configured_objects(source: str) -> Dict[str, str]:
     except SyntaxError as exc:
         raise SnapshotBuildError("configure.py is not valid Python: {}".format(exc)) from exc
 
+    expected_flags = {"Matching": True, "NonMatching": False}
     flags = {
         target.id: node.value
         for node in tree.body
         if isinstance(node, ast.Assign)
         for target in node.targets
-        if isinstance(target, ast.Name) and target.id in ("Matching", "NonMatching")
+        if isinstance(target, ast.Name) and target.id in expected_flags
     }
-    if any(
-        not isinstance(flags.get(key), ast.Constant) or flags[key].value is not value
-        for key, value in (("Matching", True), ("NonMatching", False))
+    if "Matching" not in flags or any(
+        not isinstance(value, ast.Constant) or value.value is not expected_flags[name]
+        for name, value in flags.items()
     ):
         raise SnapshotBuildError("source-selection flag definitions changed")
 
@@ -212,6 +213,8 @@ def configured_objects(source: str) -> Dict[str, str]:
         status = node.args[0].id if isinstance(node.args[0], ast.Name) else None
         if status not in ("Matching", "NonMatching", "Equivalent"):
             raise SnapshotBuildError("unsupported source-selection expression")
+        if status == "NonMatching" and status not in flags:
+            raise SnapshotBuildError("source-selection flag definitions changed")
         path = node.args[1].value
         state = "matching" if status == "Matching" else "remaining"
         # A shared framework source may be compiled by more than one Rel entry (m634DLL compiles
