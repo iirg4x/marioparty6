@@ -29,7 +29,7 @@ void sndAuxCallbackDelay(u8 reason, SND_AUX_INFO* info, void* user) {
 
   switch (reason) {
   case SND_AUX_REASON_BUFFERUPDATE:
-    c = (SND_AUX_DELAY*)user;
+    c = user;
     left = info->data.bufferUpdate.left;
     right = info->data.bufferUpdate.right;
     sur = info->data.bufferUpdate.surround;
@@ -77,9 +77,9 @@ bool sndAuxCallbackUpdateSettingsDelay(SND_AUX_DELAY* delay) {
     delay->currentOutput[i] = (delay->output[i] << 7) / 100;
   }
 
-  delay->left = (s32*)salMalloc(delay->currentSize[0] * 160 * 4);
-  delay->right = (s32*)salMalloc(delay->currentSize[1] * 160 * 4);
-  delay->sur = (s32*)salMalloc(delay->currentSize[2] * 160 * 4);
+  delay->left = salMalloc(delay->currentSize[0] * 160 * 4);
+  delay->right = salMalloc(delay->currentSize[1] * 160 * 4);
+  delay->sur = salMalloc(delay->currentSize[2] * 160 * 4);
 
   /* clang-format off */
   MUSY_ASSERT(delay->left!=NULL);

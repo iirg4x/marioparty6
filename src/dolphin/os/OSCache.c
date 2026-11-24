@@ -282,8 +282,8 @@ u32 LCStoreData(void *destAddr, void *srcAddr, u32 nBytes)
         else {
             LCStoreBlocks(destAddr, srcAddr, 0);
             numBlocks -= 128;
-            destAddr = (void *)((u32)destAddr + 4096);
-            srcAddr = (void *)((u32)srcAddr + 4096);
+            destAddr = (u8 *)destAddr + 4096;
+            srcAddr = (u8 *)srcAddr + 4096;
         }
     }
 

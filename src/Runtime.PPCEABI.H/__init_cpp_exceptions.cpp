@@ -1,9 +1,5 @@
 #include "Runtime.PPCEABI.H/NMWException.h"
-
-#if __MWERKS__
-#pragma exceptions off
-#pragma internal on
-#endif
+#include "PowerPC_EABI_Support/Runtime/__ppc_eabi_linker.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,15 +7,6 @@ extern "C" {
 
 void __init_cpp_exceptions(void);
 void __fini_cpp_exceptions(void);
-
-typedef struct __eti_init_info {
-    void* eti_start;
-    void* eti_end;
-    void* code_start;
-    unsigned long code_size;
-} __eti_init_info;
-
-extern __eti_init_info _eti_init_info[];
 
 #ifdef __cplusplus
 }

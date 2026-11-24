@@ -2,6 +2,7 @@
 #include "musyx/hardware.h"
 #include "musyx/musyx.h"
 #include "musyx/platform.h"
+#include "musyx/sal.h"
 #include "musyx/synthdata.h"
 
 #define ARAM_STREAM_ID_NONE 255
@@ -130,7 +131,7 @@ void aramInit(unsigned long length) {
 
   aramBase = ARGetBaseAddress();
 
-  tmpMem = (s16*)salMalloc(sizeof(s16) * 640);
+  tmpMem = salMalloc(sizeof(s16) * 640);
 #line 182
   MUSY_ASSERT_MSG(tmpMem != NULL, "Could not allocate temporary storage");
 

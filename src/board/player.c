@@ -788,7 +788,7 @@ static void PlayerMove(void)
     playerWorkP->moveHook = NULL;
 repeat:
     lbl_80265750[playerNo].masuIdPrev = lbl_80265750[playerNo].masuId;
-    if (!fn_8006A124(131073) ||
+    if (!fn_8006A124((2 << 16) | 1) ||
         fn_8006A124(65550)) {
         if (mbev_Branch(playerNo, &nextSpaceId)) {
             goto end;

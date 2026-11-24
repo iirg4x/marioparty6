@@ -28,10 +28,12 @@ typedef struct __bss_init_info {
 
 __declspec(section ".init") extern __bss_init_info _bss_init_info[];
 
+struct ExceptionTableIndex;
+
 typedef struct __eti_init_info {
-	void* eti_start;
-	void* eti_end;
-	void* code_start;
+	struct ExceptionTableIndex* eti_start;
+	struct ExceptionTableIndex* eti_end;
+	char* code_start;
 	unsigned long code_size;
 } __eti_init_info;
 

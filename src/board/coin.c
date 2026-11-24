@@ -166,7 +166,6 @@ static HUPROCESS *coinMdlProc;
 static int coin2MdlId;
 static int coin1MdlId;
 
-#ifdef __MWERKS__
 /* Write a world position into the translation column of a model matrix. */
 #define CoinMtxTranslationSet(matrix, position) do { \
     register MtxPtr coinMatrixPtr = (matrix); \
@@ -180,18 +179,6 @@ static int coin1MdlId;
         stfs fp6, 44(coinMatrixPtr); \
     } \
 } while (0)
-#else
-/* Write a world position into the translation column of a model matrix. */
-static inline void CoinMtxTranslationSet(Mtx mtx, const HuVecF *pos)
-{
-    float x = pos->x;
-    float y = pos->y;
-    float z = pos->z;
-    mtx[0][3] = x;
-    mtx[1][3] = y;
-    mtx[2][3] = z;
-}
-#endif
 
 /* Board startup loads the coin models, installs draw hooks, and starts resource maintenance. */
 void mbCoinInit(void)

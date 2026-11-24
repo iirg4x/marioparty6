@@ -4,6 +4,7 @@
 #include "game/charman.h"
 #include "game/process.h"
 #include "game/object.h"
+#include "game/omovl.h"
 #include "game/audio.h"
 #include "game/sprite.h"
 
@@ -904,8 +905,8 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case FILENUM(CHARMOT_HSF_c000m1_306):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
-                if ((omcurovl < 123 || omcurovl > 130) &&
-                    (omcurovl < 114 || omcurovl > 116)) {
+                if ((omcurovl < DLL_w01dll || omcurovl > DLL_w11dll) &&
+                    (omcurovl < DLL_s01dll || omcurovl > DLL_s03dll)) {
                     if(frameNo == winAnimLen[charNo]) {
                         CharWinVoicePlay(charNo, voiceFlag);
                         workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
@@ -3264,7 +3265,7 @@ static void PlayWinLoseVoice(void)
     }
     switch(motNo) {
         case FILENUM(CHARMOT_HSF_c000m1_306):
-            if(omcurovl >= 123 && omcurovl <= 123) {
+            if(omcurovl >= DLL_w01dll && omcurovl <= DLL_w01dll) {
                 HuPrcSleep(boardWinAnimLen[winLose->charNo]);
             } else {
                 HuPrcSleep(winAnimLen[winLose->charNo]);

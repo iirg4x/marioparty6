@@ -119,7 +119,7 @@ static inline int QueueLength(void)
     return 16 - (int)((cmd >> 24) & 0xff);
 }
 
-u32 WriteUARTN(const void *buf, unsigned long len)
+u32 WriteUARTN(void *buf, unsigned long len)
 {
     u32 cmd;
     int qLen;
@@ -136,7 +136,7 @@ u32 WriteUARTN(const void *buf, unsigned long len)
         return 0;
     }
 
-    for (ptr = (char *)buf; ptr - buf < len; ptr++) {
+    for (ptr = buf; ptr - (char *)buf < len; ptr++) {
         if (*ptr == '\n')
             *ptr = '\r';
     }
@@ -165,8 +165,8 @@ u32 WriteUARTN(const void *buf, unsigned long len)
             if (qLen < 4 && qLen < len)
                 break;
             xLen = (len < 4) ? (long)len : 4;
-            EXIImm(Chan, (void *)buf, xLen, EXI_WRITE, NULL);
-            (u8 *)buf += xLen;
+            EXIImm(Chan, buf, xLen, EXI_WRITE, NULL);
+            buf = (char *)buf + xLen;
             len -= xLen;
             qLen -= xLen;
             EXISync(Chan);

@@ -243,7 +243,7 @@ void *OSAllocFixed(void **rstart, void **rend)
                         ASSERTMSG(0x1F3, MINOBJSIZE <= cellEnd - (char *)end);
                         newCell = end;
 
-                        newCell->size = (s32)(cellEnd - (char *)end);
+                        newCell->size = cellEnd - (char *)end;
                         newCell->next = cell->next;
                         if (newCell->next) {
                             newCell->next->prev = newCell;
@@ -304,7 +304,7 @@ void OSFreeToHeap(int heap, void *ptr)
     ASSERTMSG1(0x23F, ((u32)ArenaStart + 0x20) <= (u32)ptr && (u32)ptr < (u32)ArenaEnd, "OSFreeToHeap(): invalid pointer.");
     ASSERTMSG1(0x240, OFFSET(ptr, ALIGNMENT) == 0, "OSFreeToHeap(): invalid pointer.");
     ASSERTMSG1(0x241, HeapArray[heap].size >= 0, "OSFreeToHeap(): invalid heap handle.");
-    cell = (void *)((u32)ptr - HEADERSIZE);
+    cell = (struct Cell *)((u8 *)ptr - HEADERSIZE);
     hd = &HeapArray[heap];
     ASSERTMSG1(0x246, cell->hd == hd, "OSFreeToHeap(): invalid pointer.");
     ASSERTMSG1(0x247, DLLookup(hd->allocated, cell), "OSFreeToHeap(): invalid pointer.");

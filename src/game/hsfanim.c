@@ -1540,7 +1540,6 @@ void fn_80034F8C(s16 layerNo, void *animBump, void *animSurface, void *animSky, 
     }
     waterP->posMin = *posMin;
     waterP->posMax = *posMax;
-    /* unk7C is never read by the game's code, so it keeps its offset name. */
     waterP->hiliteCol.r = waterP->hiliteCol.g = waterP->hiliteCol.b = 76;
     waterP->hiliteCol.a = 25;
     waterP->glowCol.r = waterP->glowCol.g = waterP->glowCol.b = waterP->glowCol.a = 255;

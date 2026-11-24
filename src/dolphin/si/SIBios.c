@@ -573,7 +573,6 @@ static inline void CallTypeAndStatusCallback(s32 chan, u32 type)
 static void GetTypeCallback(s32 chan, u32 error, OSContext *context)
 {
     static u32 cmdFixDevice[SI_MAX_CHAN];
-    static u32 _pad[SI_MAX_CHAN];
     u32 type;
     u32 chanBit;
     BOOL fix;

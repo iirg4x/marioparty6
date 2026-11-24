@@ -69,8 +69,8 @@ typedef struct MBSHOPOMWORK {
     int masuLinkId; /* First linked space after the shop space. */
     BOOL pathF; /* TRUE when the shop is reached along linked spaces. */
     int masuEndId; /* Last space the player walks to on the shop path; -1 for direct approach. */
-    int reservedStateA; /* Cleared during setup and never read in this file. */
-    int reservedStateB; /* Cleared during setup and never read in this file. */
+    int reservedStateA; /* The game's code never reads this field. */
+    int reservedStateB; /* The game's code never reads this field. */
     BOOL modelMotionF; /* TRUE when the main model has separate open and close motions. */
     BOOL motionExecF; /* TRUE while the shop's open or close motion is running. */
     BOOL openF; /* TRUE while the shop is opening or open. */

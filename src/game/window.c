@@ -347,7 +347,6 @@ HUWINID HuWinCreate(float posX, float posY, s16 winW, s16 winH, s16 frame)
     winP->charEntry = HuMemDirectMalloc(HEAP_HEAP, sizeof(WINCHARENTRY)*winP->charEntryMax);
     winP->attr = HUWIN_ATTR_NONE;
     winP->stat = HUWIN_STAT_NONE;
-    /* This field is retained in window state but is not read by the game. */
     winP->unk94 = 0;
     winP->mesTime = 0;
     winP->mesX = winP->mesY = 0;

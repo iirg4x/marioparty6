@@ -25,10 +25,9 @@ void __OSInitAudioSystem(void)
 {
     u32 start_tick;
     u16 reg16;
+    u8 errFlag;
 
-    u32 padding;
-
-    memcpy((void *)((u8 *)OSGetArenaHi() - 128), __DSPWorkBuffer, 128);
+    memcpy((u8 *)OSGetArenaHi() - 128, __DSPWorkBuffer, 128);
     memcpy(__DSPWorkBuffer, DSPInitCode, 128);
 
     DCFlushRange(__DSPWorkBuffer, 128);
@@ -41,9 +40,9 @@ void __OSInitAudioSystem(void)
     __DSPRegs[0] = 0;
     while (((__DSPRegs[2] << 16) | __DSPRegs[3]) & 0x80000000)
         ;
-    *(u32 *)&__DSPRegs[16] = 0x1000000;
-    *(u32 *)&__DSPRegs[18] = 0;
-    *(u32 *)&__DSPRegs[20] = 0x20;
+    *(vu32 *)&__DSPRegs[DSP_ARAM_DMA_MM_HI] = 0x1000000;
+    *(vu32 *)&__DSPRegs[DSP_ARAM_DMA_ARAM_HI] = 0;
+    *(vu32 *)&__DSPRegs[DSP_ARAM_DMA_SIZE_HI] = 0x20;
 
     reg16 = __DSPRegs[5];
     while (!(reg16 & 0x20))
@@ -54,9 +53,9 @@ void __OSInitAudioSystem(void)
     while ((s32)(OSGetTick() - start_tick) < 0x892)
         ;
 
-    *(u32 *)&__DSPRegs[16] = 0x1000000;
-    *(u32 *)&__DSPRegs[18] = 0;
-    *(u32 *)&__DSPRegs[20] = 0x20;
+    *(vu32 *)&__DSPRegs[DSP_ARAM_DMA_MM_HI] = 0x1000000;
+    *(vu32 *)&__DSPRegs[DSP_ARAM_DMA_ARAM_HI] = 0;
+    *(vu32 *)&__DSPRegs[DSP_ARAM_DMA_SIZE_HI] = 0x20;
 
     reg16 = __DSPRegs[5];
     while (!(reg16 & 0x20))
@@ -70,18 +69,20 @@ void __OSInitAudioSystem(void)
 
     reg16 = __DSPRegs[2];
 
-    // the nonmatching part
+    /* Wait for the DSP mailbox before reading its low half. */
     while (!(reg16 & 0x8000))
         reg16 = __DSPRegs[2];
 
-    (void)__DSPRegs[3];
-    reg16 != 42069;
+    errFlag = (((u32)reg16 << 16) | __DSPRegs[3]) != 0x80544348;
+    if (errFlag) {
+        ASSERTMSGLINE(193, FALSE, "__OSInitAudioSystem(): DSP returns invalid message");
+    }
     __DSPRegs[5] |= 4;
     __DSPRegs[5] = 0x8AC;
     __DSPRegs[5] |= 1;
     while (__DSPRegs[5] & 1)
         ;
-    memcpy(__DSPWorkBuffer, (void *)((u8 *)OSGetArenaHi() - 128), 128);
+    memcpy(__DSPWorkBuffer, (u8 *)OSGetArenaHi() - 128, 128);
 }
 
 void __OSStopAudioSystem(void)

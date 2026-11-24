@@ -73,7 +73,7 @@ typedef struct TelopWork_s {
     unsigned mode : 3; /* 0 enters, 1 waits for input, and 2 exits the bubble. */
     s8 playerNo; /* Player whose bubble is shown, or -1 for an automatic notice. */
     s8 telopNo; /* Index into the board bubble animation table. */
-    s8 unused; /* Work storage that this code does not read. */
+    s8 unk03; /* No code names this field. */
     s8 dismissDelay; /* Frames a bubble waits before automatic dismissal. */
     s16 time; /* Frames elapsed in the current bubble animation mode. */
     s16 maxTime; /* Number of frames in the current bubble animation mode. */

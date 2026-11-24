@@ -6,6 +6,10 @@
 #include "musyx/snd.h"
 #include "musyx/voice.h"
 
+#if MUSY_TARGET == MUSY_TARGET_DOLPHIN
+#include <dolphin/os.h>
+#endif
+
 VS vs;
 
 void vsInit() {
@@ -105,7 +109,7 @@ void vsSampleEndNotify(u32 pubID) {
   }
 }
 
-void vsUpdateBuffer(struct VS_BUFFER* sb, unsigned long cpos) {
+static void vsUpdateBuffer(struct VS_BUFFER* sb, unsigned long cpos) {
   u32 len; // r29
   u32 off; // r27
 

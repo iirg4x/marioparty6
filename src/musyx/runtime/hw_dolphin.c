@@ -37,7 +37,7 @@ static void callUserCallback(void)
     salLogicActive = 0;
 }
 
-void salCallback(void)
+static void salCallback(void)
 {
     salAIBufferIndex = (salAIBufferIndex + 1) % 4;
     AIInitDMA(OSCachedToPhysical(salAIBufferBase) + (salAIBufferIndex * DMA_BUFFER_LEN), DMA_BUFFER_LEN);
@@ -49,13 +49,13 @@ void salCallback(void)
     }
 }
 
-void dspInitCallback(void *task)
+static void dspInitCallback(void *task)
 {
     salDspIsDone = TRUE;
     salDspInitIsDone = TRUE;
 }
 
-void dspResumeCallback(void *task)
+static void dspResumeCallback(void *task)
 {
     salDspIsDone = TRUE;
     if (salLogicIsWaiting) {

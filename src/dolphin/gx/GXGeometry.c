@@ -36,7 +36,7 @@ void GXBegin(GXPrimitive type, GXVtxFmt vtxfmt, u16 nverts)
     if (gx->dirtyState != 0) {
         __GXSetDirtyState();
     }
-    if (*(u32 *)&gx->vNumNot == 0) { // checks both vNum and bpSentNot
+    if (*(u32 *)&gx->vNumNot == 0) { // Tests vNumNot and bpSentNot together.
         __GXSendFlushPrim();
     }
     GX_WRITE_U8(vtxfmt | type);

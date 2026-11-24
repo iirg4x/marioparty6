@@ -426,11 +426,11 @@ bool salInitDspCtrl(u8 numVoices, u8 numStudios, u32 defaultStudioDPL2) {
           for (i = 0; i < salMaxStudioNum; ++i) {
             MUSY_DEBUG("Initializing studio %d...\n", i);
             dspStudio[i].state = 0;
-            if (!(dspStudio[i].spb = (_SPB*)SAL_MALLOC(sizeof(_SPB)))) {
+            if (!(dspStudio[i].spb = SAL_MALLOC(sizeof(_SPB)))) {
               return FALSE;
             }
 
-            if (!(dspStudio[i].main[0] = (void*)SAL_MALLOC(0x3c00))) {
+            if (!(dspStudio[i].main[0] = SAL_MALLOC(0x3c00))) {
               return FALSE;
             }
 
@@ -1852,15 +1852,15 @@ void salBuildCommandList(s16* dest, u32 nsDelay) {
       dspCmdPtr[2] = (u32)stp->main[salFrame];
       dspCmdPtr += 3;
       spb = stp->spb;
-      DoDepopFade((long*)&spb->dpopLHi, (s16*)&spb->dpopLDelta, &stp->hostDPopSum.l);
-      DoDepopFade((long*)&spb->dpopRHi, (s16*)&spb->dpopRDelta, &stp->hostDPopSum.r);
-      DoDepopFade((long*)&spb->dpopSHi, (s16*)&spb->dpopSDelta, &stp->hostDPopSum.s);
-      DoDepopFade((long*)&spb->dpopALHi, (s16*)&spb->dpopALDelta, &stp->hostDPopSum.lA);
-      DoDepopFade((long*)&spb->dpopARHi, (s16*)&spb->dpopARDelta, &stp->hostDPopSum.rA);
-      DoDepopFade((long*)&spb->dpopASHi, (s16*)&spb->dpopASDelta, &stp->hostDPopSum.sA);
-      DoDepopFade((long*)&spb->dpopBLHi, (s16*)&spb->dpopBLDelta, &stp->hostDPopSum.lB);
-      DoDepopFade((long*)&spb->dpopBRHi, (s16*)&spb->dpopBRDelta, &stp->hostDPopSum.rB);
-      DoDepopFade((long*)&spb->dpopBSHi, (s16*)&spb->dpopBSDelta, &stp->hostDPopSum.sB);
+      DoDepopFade((long*)&spb->dpopLHi, &spb->dpopLDelta, &stp->hostDPopSum.l);
+      DoDepopFade((long*)&spb->dpopRHi, &spb->dpopRDelta, &stp->hostDPopSum.r);
+      DoDepopFade((long*)&spb->dpopSHi, &spb->dpopSDelta, &stp->hostDPopSum.s);
+      DoDepopFade((long*)&spb->dpopALHi, &spb->dpopALDelta, &stp->hostDPopSum.lA);
+      DoDepopFade((long*)&spb->dpopARHi, &spb->dpopARDelta, &stp->hostDPopSum.rA);
+      DoDepopFade((long*)&spb->dpopASHi, &spb->dpopASDelta, &stp->hostDPopSum.sA);
+      DoDepopFade((long*)&spb->dpopBLHi, &spb->dpopBLDelta, &stp->hostDPopSum.lB);
+      DoDepopFade((long*)&spb->dpopBRHi, &spb->dpopBRDelta, &stp->hostDPopSum.rB);
+      DoDepopFade((long*)&spb->dpopBSHi, &spb->dpopBSDelta, &stp->hostDPopSum.sB);
       DCFlushRangeNoSync(spb, sizeof(_SPB));
     }
   }

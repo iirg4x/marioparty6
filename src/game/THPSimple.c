@@ -7,7 +7,6 @@
 #define THP_WORK_AREA_SIZE 4096
 #define AUDIO_MIX_SAMPLE_COUNT 160
 #define THP_FILE_VERSION 65536
-#define AI_DMA_CACHED_ADDRESS_BIT_PATTERN 0x80000000
 
 static void __THPSimpleDVDCallback(s32 result, DVDFileInfo *fileInfo);
 static s32 VideoDecode(void *frameComponentData);
@@ -739,10 +738,10 @@ static void THPAudioMixCallback(void) {
                 CurAudioBuffer = LastAudioBuffer;
             }
             OldAIDCallback();
-            LastAudioBuffer = (u8*) AIGetDMAStartAddr() + AI_DMA_CACHED_ADDRESS_BIT_PATTERN;
+            LastAudioBuffer = OSPhysicalToCached(AIGetDMAStartAddr());
         } else {
             OldAIDCallback();
-            CurAudioBuffer = (u8*) AIGetDMAStartAddr() + AI_DMA_CACHED_ADDRESS_BIT_PATTERN;
+            CurAudioBuffer = OSPhysicalToCached(AIGetDMAStartAddr());
         }
         SoundBufferIndex ^= 1;
         AIInitDMA((u32) SoundBuffer[SoundBufferIndex], sizeof(SoundBuffer[0]));

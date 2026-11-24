@@ -1206,8 +1206,8 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
     obj = fn_8003AB38(mbObjMan, 258, 3, 0, -1, DiceNumObjOMExec);
     omSetStatBit(obj, (1 << 8));
     obj->data = vtx = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(DICE_NUM_VTX *) * 2, 0x10000000);
-    memset(obj->data, 0, sizeof(DICE_NUM_VTX *) * 2);
+        sizeof(*vtx) * 2, 0x10000000);
+    memset(obj->data, 0, sizeof(*vtx) * 2);
     objWork = ((DICE_NUM_WORK *)(&(obj->work[0])));
     objWork->killF = FALSE;
     objWork->rotF = FALSE;
@@ -1257,9 +1257,9 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
         obj->rot.z = targetPos->z;
         // Lower the target by 50 world units when x differs from the start by more than 25.
         // Otherwise, raise it by 50 when z differs from the start by more than 25.
-        if (__fabsf(obj->rot.x - obj->trans.x) > 25.0f) {
+        if (FloatAbs(obj->rot.x - obj->trans.x) > 25.0f) {
             obj->rot.y += -50.0f;
-        } else if (__fabsf(obj->rot.z - obj->trans.z) > 25.0f) {
+        } else if (FloatAbs(obj->rot.z - obj->trans.z) > 25.0f) {
             obj->rot.y -= -50.0f;
         }
     } else {
@@ -1533,9 +1533,9 @@ static void DiceNumObjReset(int playerNo)
             obj->trans.z = obj->rot.z;
             // Reverse the creation height adjustment when an x or z offset exceeds 25 world units.
             // Raise 50 units for an x offset; otherwise lower 50 units for a z offset.
-            if (__fabsf(obj->rot.x - obj->scale.x) > 25.0f) {
+            if (FloatAbs(obj->rot.x - obj->scale.x) > 25.0f) {
                 obj->rot.y -= -50.0f;
-            } else if (__fabsf(obj->rot.z - obj->scale.z) > 25.0f) {
+            } else if (FloatAbs(obj->rot.z - obj->scale.z) > 25.0f) {
                 obj->rot.y += -50.0f;
             }
             obj->rot.x = obj->scale.x;
@@ -1856,13 +1856,7 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
             data->pos.y += particleP->spawnOffsetY;
             angle = 360.0f * frandf();
             pitch = (1.6f * frandf()) - 0.8f;
-#ifdef __MWERKS__
-            asm {
-                fabs magnitude, pitch
-            }
-#else
-            magnitude = __fabsf(pitch);
-#endif
+            magnitude = FloatAbs(pitch);
             pitch = 90.0f * (pitch * magnitude);
             data->vel.x = sin(M_PI*angle/180.0) * cos(M_PI*pitch/180.0);
             data->vel.y = sin(M_PI*pitch/180.0);

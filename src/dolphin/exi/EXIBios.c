@@ -148,7 +148,7 @@ BOOL EXIImmEx(s32 chan, void* buf, s32 len, u32 mode) {
     if (!EXISync(chan)) {
       return FALSE;
     }
-    (u8*)buf += xLen;
+    buf = (u8*)buf + xLen;
     len -= xLen;
   }
 
@@ -777,5 +777,3 @@ char* EXIGetTypeString(u32 type) {
       return "Unknown";
   }
 }
-
-#pragma scheduling reset

@@ -30,7 +30,7 @@ void streamInit() {
 }
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
-void SetHWMix(const STREAM_INFO* si) {
+static void SetHWMix(const STREAM_INFO* si) {
   hwSetVolume(si->voice, 0, si->vol * (1 / 127.f), (si->pan << 16), (si->span << 16),
               si->auxa * (1 / 127.f), si->auxb * (1 / 127.f));
 }

@@ -542,7 +542,7 @@ void sndAuxCallbackChorus(u8 reason, SND_AUX_INFO* info, void* user) {
   u8 nextCurrentLast;
   switch (reason) {
   case SND_AUX_REASON_BUFFERUPDATE:
-    c = (SND_AUX_CHORUS*)user;
+    c = user;
     nextCurrentLast = (c->work.currentLast + 1) % 3;
     leftD = c->work.lastLeft[nextCurrentLast];
     rightD = c->work.lastRight[nextCurrentLast];
@@ -627,7 +627,7 @@ bool sndAuxCallbackPrepareChorus(SND_AUX_CHORUS* chorus) {
   s32* lastRight;
   s32* lastSur;
 
-  chorus->work.lastLeft[0] = (s32*)salMalloc(0x1680);
+  chorus->work.lastLeft[0] = salMalloc(0x1680);
 
   if (chorus->work.lastLeft[0] != NULL) {
     chorus->work.lastRight[0] = chorus->work.lastLeft[0] + 0x1e0;

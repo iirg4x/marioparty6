@@ -6,12 +6,12 @@
 #include <dolphin/gx/GXPriv.h>
 
 static struct __GXFifoObj DisplayListFifo;
-static volatile struct __GXFifoObj *OldCPUFifo;
+static GXFifoObj *OldCPUFifo;
 static struct __GXData_struct __savedGXdata;
 
 void GXBeginDisplayList(void *list, u32 size)
 {
-    struct __GXFifoObj *CPUFifo = (struct __GXFifoObj *)GXGetCPUFifo();
+    GXFifoObj *CPUFifo = GXGetCPUFifo();
 
     CHECK_GXBEGIN(0x89, "GXBeginDisplayList");
     ASSERTMSGLINE(0x8A, !__GXData->inDispList, "GXBeginDisplayList: display list already in progress");
@@ -30,7 +30,7 @@ void GXBeginDisplayList(void *list, u32 size)
     DisplayListFifo.rdPtr = list;
     DisplayListFifo.wrPtr = list;
     gx->inDispList = 1;
-    GXSaveCPUFifo((GXFifoObj *)CPUFifo);
+    GXSaveCPUFifo(CPUFifo);
     OldCPUFifo = CPUFifo;
     GXSetCPUFifo((GXFifoObj *)&DisplayListFifo);
     GXResetWriteGatherPipe();
@@ -48,7 +48,7 @@ unsigned long GXEndDisplayList(void)
     ov = (__piReg[5] >> 26) & 1;
     __GXSaveCPUFifoAux(&DisplayListFifo);
     ASSERTMSGLINE(0xC3, !ov, "GXEndDisplayList: display list commands overflowed buffer");
-    GXSetCPUFifo((GXFifoObj *)OldCPUFifo);
+    GXSetCPUFifo(OldCPUFifo);
     if (gx->dlSaveContext != 0) {
         enabled = OSDisableInterrupts();
         cpenable = gx->cpEnable;
@@ -73,7 +73,7 @@ void GXCallDisplayList(const void *list, u32 nbytes)
     if (gx->dirtyState != 0) {
         __GXSetDirtyState();
     }
-    if (*(u32 *)&gx->vNumNot == 0) { // checks both vNum and bpSent
+    if (*(u32 *)&gx->vNumNot == 0) { // Tests vNumNot and bpSentNot together.
         __GXSendFlushPrim();
     }
     GX_WRITE_U8(0x40);

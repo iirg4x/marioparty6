@@ -40,7 +40,7 @@ asm OSTick OSGetTick(void) {
 OSTime __OSGetSystemTime(void)
 {
     BOOL enabled;
-    OSTime *timeAdjustAddr = (OSTime *)(OS_BASE_CACHED + OS_SYSTEMTIME_BASE);
+    OSTime *timeAdjustAddr = OSPhysicalToCached(OS_SYSTEMTIME_BASE);
     OSTime result;
 
     enabled = OSDisableInterrupts();
@@ -53,7 +53,7 @@ OSTime __OSGetSystemTime(void)
 OSTime __OSTimeToSystemTime(OSTime time)
 {
     BOOL enabled;
-    OSTime *timeAdjustAddr = (OSTime *)(OS_BASE_CACHED + OS_SYSTEMTIME_BASE);
+    OSTime *timeAdjustAddr = OSPhysicalToCached(OS_SYSTEMTIME_BASE);
     OSTime result;
 
     enabled = OSDisableInterrupts();
@@ -137,4 +137,3 @@ void OSTicksToCalendarTime(OSTime ticks, OSCalendarTime *td)
     td->min = (secs / 60) % 60;
     td->sec = secs % 60;
 }
-#pragma dont_inline reset

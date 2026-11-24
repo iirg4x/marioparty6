@@ -247,7 +247,7 @@ void OSInit(void) {
         BI2DebugFlag = 0;
         __DVDLongFileNameFlag = 0;
 
-        bi2StartAddr = (void*)(*(u32*)OSPhysicalToCached(0xF4));
+        bi2StartAddr = *(BI2Debug**)OSPhysicalToCached(0xF4);
         if (bi2StartAddr) {
             BI2DebugFlag = &bi2StartAddr->debugFlag;
             __PADSpec = bi2StartAddr->padSpec;

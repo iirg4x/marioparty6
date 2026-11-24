@@ -83,7 +83,6 @@ void fn_8003C2DC(void)
     int boardNo;
     int charNo;
     memset(commonP, 0, sizeof(GW_COMMON));
-    /* unk4 and unk5BC are never read by the game's code, so they keep their offset names. */
     commonP->magic[0] = 0;
     commonP->unk4 = 0;
     commonP->languageNo = lbl_802BF788;

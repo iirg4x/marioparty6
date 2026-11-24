@@ -126,9 +126,9 @@ static inline int ExPPC_FindExceptionFragment(char* returnAddress, FragmentInfo*
                         break;
                     if (returnAddress >= exceptionInfo->code_start &&
                         returnAddress <
-                            (char *) exceptionInfo->code_start + exceptionInfo->code_size) {
-                        fragment->exceptionStart = (ExceptionTableIndex *) exceptionInfo->eti_start;
-                        fragment->exceptionEnd = (ExceptionTableIndex *) exceptionInfo->eti_end;
+                            exceptionInfo->code_start + exceptionInfo->code_size) {
+                        fragment->exceptionStart = exceptionInfo->eti_start;
+                        fragment->exceptionEnd = exceptionInfo->eti_end;
                         fragment->codeStart = 0;
                         fragment->codeEnd = 0;
                         fragment->dataStart = 0;

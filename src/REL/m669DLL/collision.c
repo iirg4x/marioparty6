@@ -707,12 +707,10 @@ f32 fn_1_3824(M669Segment *firstSegment, M669Segment *secondSegment, f32 *parame
 }
 
 /* Passes its inputs to the segment-distance routine and returns the square root of that result. */
-float fn_1_4420(HuVecF *queryPoint, M669Triangle *triangle, float *barycentricSOut,
-                float *barycentricTOut)
+float fn_1_4420(M669Segment *firstSegment, M669Segment *secondSegment, float *barycentricSOut,
+                 float *barycentricTOut)
 {
-    /* This wrapper passes the point and triangle storage as two segments. */
-    return sqrtf(fn_1_3824((M669Segment *)queryPoint, (M669Segment *)triangle, barycentricSOut,
-                           barycentricTOut));
+    return sqrtf(fn_1_3824(firstSegment, secondSegment, barycentricSOut, barycentricTOut));
 }
 
 /* Returns squared distance from a point to the nearest position on a finite segment. */

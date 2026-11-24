@@ -4,7 +4,7 @@
 #include "game/board/guide.h"
 
 // Board object model system (linked from DOL)
-MBMODELID mbObjCreate(int dataNum, int *motData, BOOL link);
+MBMODELID mbObjCreate(int dataNum, const int *motFileTbl, BOOL animOffF);
 int mbObjMotionNoCreate(int modelId, int dataNum, int motNo);
 int mbObjMotionIDGet(int modelId, int motNo);
 int mbObjMotionShiftIDGet(MBMODELID modelId);
@@ -18,7 +18,7 @@ void mbObjRotSetV(int modelId, HuVecF *rot);
 void mbObjScaleSet(int modelId, float x, float y, float z);
 void mbObjScaleGet(int modelId, HuVecF *scale);
 void mbObjMtxSet(int modelId, Mtx *mtx);
-void mbObjMtxGet(int modelId, Mtx *mtx);
+void mbObjMtxGet(MBMODELID modelId, Mtx *mtx);
 void mbObjCameraSet(int modelId, u16 cameraBit);
 void mbObjLayerSet(int modelId, int layer);
 void mbObjAttrSet(int modelId, u32 attr);
@@ -26,14 +26,12 @@ void mbObjDispSet(int modelId, BOOL dispF);
 void mbObjKill(int modelId);
 void mbObjHookSet(int modelId, char *objName, int hookMdlId);
 MBOBJMODEL *mbObjGet(MBMODELID modelId);
-
 void mbObjFadeCreate(int modelId, HuVecF *pos);
 void mbObjFadeKill(int modelId);
+
 void mbObjFadeTexColorSet(int modelId, int r, int g, int b, float a);
 void mbObjFadeTexRotSet(int modelId, HuVecF *pos, HuVecF *rot);
 
-float mbSinDeg(float deg);
-float mbCosDeg(float deg);
 BOOL mbPauseProcCheck(void);
 
 #endif

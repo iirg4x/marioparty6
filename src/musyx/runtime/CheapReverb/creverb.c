@@ -24,7 +24,7 @@ static void DLsetdelay(_SND_REVSTD_DELAYLINE* dl, s32 lag) {
 
 static void DLcreate(_SND_REVSTD_DELAYLINE* dl, s32 len) {
   dl->length = (s32)len * sizeof(f32);
-  dl->inputs = (f32*)salMalloc(len * sizeof(f32));
+  dl->inputs = salMalloc(len * sizeof(f32));
   memset(dl->inputs, 0, len * sizeof(len));
   dl->lastOutput = 0.f;
   DLsetdelay(dl, len >> 1);

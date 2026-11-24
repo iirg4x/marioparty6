@@ -289,7 +289,7 @@ void mbSingleSaveInit(int teamChar, int mgPack, int storyComDif)
     fn_8006A1C4(65556);
     fn_8006A268(65550);
     fn_8006A1C4(5);
-    fn_8006A268(196610);
+    fn_8006A268((3 << 16) | 2);
     fn_8006A1C4(65549);
 }
 

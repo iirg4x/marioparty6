@@ -29,7 +29,6 @@
 
 extern void fn_1_1DC8(s16);
 extern void fn_1_1DFC(void), fn_1_223C(void), fn_1_4D04(void);
-extern s32 fn_1_A430(void);
 extern s32 fn_1_A4B0(void), fn_1_A758(void), fn_1_A780(void);
 void fn_1_1918(s16);
 void ObjectSetup(void);

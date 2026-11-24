@@ -1,6 +1,7 @@
 #include <dolphin.h>
 #include <dolphin/DVDPriv.h>
 #include <dolphin/hw_regs.h>
+#include <dolphin/os/OSBootInfo.h>
 #include <dolphin/os/__os.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,7 +23,7 @@ static int PackArgs(void* addr, s32 argc, char** argv) {
   memset(bootInfo2, 0, 0x2000);
 
   if (argc == 0) {
-    *(u32*)(bootInfo2 + 8) = 0;
+    ((BI2Debug*)bootInfo2)->argOffset = 0;
   } else {
     numArgs = argc;
     ptr = bootInfo2 + 0x2000;
@@ -42,7 +43,7 @@ static int PackArgs(void* addr, s32 argc, char** argv) {
 
     ptr -= 4;
     *(u32*)ptr = numArgs;
-    *(u32*)(bootInfo2 + 8) = ptr - bootInfo2;
+    ((BI2Debug*)bootInfo2)->argOffset = ptr - bootInfo2;
   }
 
   return TRUE;
@@ -73,7 +74,7 @@ static void StartDol(const OSExecParams* params, void* entry) {
   OSExecParams* paramsWork = OSAllocFromArenaLo(sizeof(OSExecParams), 1);
 
   __OSSetExecParams(params, paramsWork);
-  __PIRegs[9] = 7;
+  __PIRegs[PI_RESETCODE] = 7;
 
   OSDisableInterrupts();
   Run(entry);
@@ -250,12 +251,12 @@ void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* 
     BOOT_REGION_END = (u32)regionEnd;
     g_unk_800030E2 = 1;
 
-    ReadDisc((void*)0x81300000, OSRoundUp32B(header->rebootSize),
+    ReadDisc((void*)OS_BOOTROM_ADDR, OSRoundUp32B(header->rebootSize),
              GetApploaderPosition() + 0x20 + header->size);
-    ICInvalidateRange((void*)0x81300000, OSRoundUp32B(header->rebootSize));
+    ICInvalidateRange((void*)OS_BOOTROM_ADDR, OSRoundUp32B(header->rebootSize));
     OSDisableInterrupts();
     ICFlashInvalidate();
-    Run((void*)0x81300000);
+    Run((void*)OS_BOOTROM_ADDR);
   }
 }
 

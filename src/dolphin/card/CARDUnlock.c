@@ -220,7 +220,7 @@ s32 __CARDUnlock(s32 chan, u8 flashID[12])
     card = &__CARDBlock[chan];
     task = &card->task;
     param = card->workArea;
-    input = (u8 *)param + sizeof(DecodeParameters);
+    input = (u8 *)(param + 1);
     input = OSRoundUpPtr(input, 32);
     output = input + 32;
 
@@ -365,7 +365,7 @@ static void DoneCallback(void *_task)
     }
 
     param = card->workArea;
-    input = (u8 *)param + sizeof(DecodeParameters);
+    input = (u8 *)(param + 1);
     input = OSRoundUpPtr(input, 32);
     output = input + 32;
 

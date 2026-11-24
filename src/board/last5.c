@@ -135,8 +135,8 @@ typedef struct Last5RouletteWork_s {
     u8 diceF : 1; // The roulette is displaying the dice model.
     u8 unused7F : 1; // Unused flag storage.
     s16 frameCount; // Frames elapsed while the roulette is cycling.
-    s16 unused4; // Unused work storage.
-    s16 unused6; // Unused work storage.
+    s16 unk04; /* No code names this field. */
+    s16 unk06; /* No code names this field. */
     s16 result; // Current roulette effect index: spaces, coins, capsules, or Koopa.
     s16 chanceCount; // Number of entries in the weighted result table.
     s16 remainingChanceCount; // Entries still available before the table is refilled.

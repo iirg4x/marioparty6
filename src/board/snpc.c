@@ -35,11 +35,6 @@
 
 #include "humath.h"
 
-extern inline float fabsf(float value)
-{
-    return __fabsf(value);
-}
-
 #define SNPC_MAGIC 'SNPC'
 #define MBOBJ_FADE_WORK_MAGIC 'MBTV'
 #define MBOBJ_METAL_WORK_MAGIC 'TV01'
@@ -124,14 +119,10 @@ typedef struct SNPCZOOMWORK {
     u8 killF : 1;
     // Unused flag bits.
     u8 unusedFlags : 6;
-    // Unused byte.
-    u8 unusedByte;
     // Elapsed transition frames.
     s16 time;
     // Transition duration in frames.
     s16 maxTime;
-    // Unused field.
-    s16 unused;
     // Camera zoom captured when the transition starts.
     float startZoom;
     // Requested camera zoom at the end of the transition.
@@ -145,8 +136,6 @@ typedef struct SNPCROTATEWORK {
     u8 killF : 1;
     // Unused flag bits.
     u8 unusedFlags : 6;
-    // Unused byte.
-    u8 unusedByte;
     // Elapsed frames in the current movement or turn.
     s16 time;
     // Duration of the current movement or turn in frames.
@@ -172,8 +161,7 @@ typedef struct SNPCSTAREFFWORK {
     s16 time;
     // Duration of the current star-animation phase in frames.
     s16 maxTime;
-    // Unused field.
-    s16 unused;
+    s16 unk06; /* No code names this field. */
     // Sequence phase: zero starts, one descends, two bobs, three shrinks.
     s16 phase;
     // Appearance-sound handle; set to -1 after stopping it.
@@ -227,8 +215,7 @@ typedef struct SNPCCHANCEPATH {
     s16 linkNo;
     // Remaining counted-space steps when this stack entry was saved.
     s16 chance;
-    // Unused entry field in the reachability search.
-    s16 unusedEntry;
+    s16 unk06; /* No code names this field. */
 } SNPCCHANCEPATH;
 
 typedef struct SNPCCHANCEINDEX {
@@ -1470,7 +1457,7 @@ static BOOL SNpcMoveExec(void)
         SNpcObjMotEndWait();
         SNpcZoomWait();
     }
-    if (lbl_80265B70.turnPlayerNo < 3 || fn_8006A124(131072)) {
+    if (lbl_80265B70.turnPlayerNo < 3 || fn_8006A124(2 << 16)) {
         mbCapMasuDispSet(TRUE);
         mbMasuPlayerDispSet(TRUE);
     }
@@ -1963,37 +1950,30 @@ static void SNpcDiceMotHook(int playerNo)
     SNpcObjMotShiftSet(0);
 }
 
-typedef struct SNPCMASUTBL {
-    // Table values for Donkey Kong at index zero and Bowser at index one.
-    int npcValue[2];
-} SNPCMASUTBL;
-
 const float lbl_802C332C[1] = { 2.0f };
 const float lbl_802C3330[1] = { 360.0f };
-
-const SNPCMASUTBL lbl_802C3334 = {{
-    SNPC_MASU_TYPE_DONKEY,
-    SNPC_MASU_TYPE_KOOPA,
-}};
-const SNPCMASUTBL lbl_802C333C = {{
-    MSM_SE_BRD06_DONKEY_SPACE_EVENT,
-    MSM_SE_BRD06_KOOPA_SPACE_EVENT,
-}};
 
 // Replaces the space type and removes its capsule; setF also plays the change sound and refreshes
 // the marker. Reset restores only the type.
 static void SNpcMasuSet(int masuId, BOOL setF)
 {
-    SNPCMASUTBL masuTypeTbl = lbl_802C3334;
-    SNPCMASUTBL masuSeTbl = lbl_802C333C;
+    // Donkey Kong is at index zero and Bowser is at index one.
+    int masuTypeTbl[] = {
+        SNPC_MASU_TYPE_DONKEY,
+        SNPC_MASU_TYPE_KOOPA,
+    };
+    int masuSeTbl[] = {
+        MSM_SE_BRD06_DONKEY_SPACE_EVENT,
+        MSM_SE_BRD06_KOOPA_SPACE_EVENT,
+    };
 
     snpcSaveWork->masuId = (u8)masuId;
     snpcWork->savedMasuType = mbMasuTypeGet((s16)masuId);
     mbMasuTypeSet((s16)masuId,
-        masuTypeTbl.npcValue[snpcSaveWork->isKoopa]);
+        masuTypeTbl[snpcSaveWork->isKoopa]);
     mbMasuCapsuleSet((s16)masuId, -1);
     if (setF) {
-        mbAudFXPlay((s16)masuSeTbl.npcValue[snpcSaveWork->isKoopa]);
+        mbAudFXPlay((s16)masuSeTbl[snpcSaveWork->isKoopa]);
         SNpcObjMasuSet(masuId);
     }
 }
@@ -2134,7 +2114,7 @@ static void SNpcKoopaFireExec(void)
         mtx[0][3] = mtx[1][3] = mtx[2][3] = 0.0f;
         offset.x = 15.000001f;
         offset.y = 1e+01f;
-        offset.z = (-25.0f);
+        offset.z = -25.0f;
         PSMTXMultVec(mtx, &offset, &offset);
         PSVECAdd(&fireP->vel, &offset, &fireP->vel);
         MBBoardVecCopy(&fireP->vel, &fire3P->vel);
@@ -3155,7 +3135,7 @@ int mbMasuChanceSet(u8 *chanceTbl, int masuId)
     if (mbMasuAttrGet(masuId) & MASU_FLAG_START) {
         if (mbRandMod(100) < 50) {
             basePos.x = 1.3e+03f;
-            basePos.z = (-3e+03f);
+            basePos.z = -3e+03f;
             maxNum = 20;
         } else {
             maxNum = 50;
@@ -4111,7 +4091,7 @@ static void FadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     if (alpha < 1e-06f) {
         alpha = 1e-06f;
     }
-    PSMTXScale(workMtx, 0.001f, (-0.01f) / alpha,
+    PSMTXScale(workMtx, 0.001f, -0.01f / alpha,
         1.0f);
     PSMTXConcat(workMtx, texMtx, texMtx);
     texMtx[1][3] += 0.96875f;
@@ -4307,7 +4287,7 @@ static void MetalMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
         GX_LINEAR);
     PSMTXCopy(drawObj->matrix, texMtx);
     PSMTXScale(workMtx, 0.5f / drawObj->scale.x,
-        (-0.5f) / drawObj->scale.y,
+        -0.5f / drawObj->scale.y,
         0.5f / drawObj->scale.z);
     PSMTXConcat(workMtx, texMtx, texMtx);
     texMtx[0][3] = texMtx[1][3] = 0.5f;
@@ -4329,7 +4309,7 @@ static void MetalMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
         PSMTXConcat(workMtx, texMtx, texMtx);
     }
     PSMTXScale(workMtx, 0.5f / drawObj->scale.x,
-        (-0.5f) / drawObj->scale.y,
+        -0.5f / drawObj->scale.y,
         0.5f / drawObj->scale.z);
     PSMTXConcat(workMtx, texMtx, texMtx);
     texMtx[0][3] = 0.5f;

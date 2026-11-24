@@ -363,7 +363,7 @@ void HuARDirFree(unsigned int dataNum) {
 void *fn_8005607C(unsigned int dataNum, u32 allocationNumber, HEAPID heap) {
     s32 *directoryEntry;
     void *decodedData;
-    void *transferBuffer;
+    u8 *transferBuffer;
     AMEM_PTR sourceAddress;
     s32 fileOffset;
     s32 transferSize;
@@ -412,7 +412,7 @@ void *fn_8005607C(unsigned int dataNum, u32 allocationNumber, HEAPID heap) {
     arqIdx++;
     arqIdx &= 0xF;
     while(fn_80055FB4());
-    directoryEntry = (s32*) ((u8*) transferBuffer + (fileOffset & 0x1F));
+    directoryEntry = (s32*) (transferBuffer + (fileOffset & 0x1F));
     decodedData = HuMemDirectMallocNum(
         heap, (directoryEntry[0] + 1) & ARMEM_FILE_SIZE_ALIGN_DOWN_MASK, allocationNumber);
     if(!decodedData) {

@@ -443,7 +443,7 @@ BOOL OSCreateThread(OSThread* thread, void* (*func)(void*), void* param, void* s
     thread->context.lr = (u32)&OSExitThread;
     thread->context.gpr[3] = (u32)param;
     thread->stackBase = stack;
-    thread->stackEnd = (void*)((unsigned int)stack - stackSize);
+    thread->stackEnd = (u32*)((u8*)stack - stackSize);
     *thread->stackEnd = OS_THREAD_STACK_MAGIC;
     thread->error = 0;
     for (i = 0; i < 2; i++) {

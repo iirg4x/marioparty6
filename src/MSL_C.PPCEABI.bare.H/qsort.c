@@ -3,7 +3,7 @@
 
 typedef int (*_compare_function)(const void *, const void *);
 
-#define table_ptr(i) (((char *)table_base) + (member_size * ((i) - 1)))
+#define table_ptr(i) (base + (member_size * ((i) - 1)))
 
 #define swap(dst, src, cnt)                                                    \
     do {                                                                       \
@@ -24,6 +24,7 @@ void qsort(
     void *table_base, size_t num_members, size_t member_size,
     _compare_function compare_members)
 {
+    char *base = table_base;
     size_t l, r, j, multiplier;
     char *lp;
     char *rp;

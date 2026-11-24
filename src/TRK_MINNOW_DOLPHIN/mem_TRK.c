@@ -1,7 +1,7 @@
 #include "TRK_MINNOW_DOLPHIN/MetroTRK/Portable/mem_TRK.h"
 #include "dolphin/types.h"
 
-void TRK_fill_mem(void *dest, int value, unsigned long length)
+static void TRK_fill_mem(void *dest, int value, unsigned long length)
 {
 #define cDest ((unsigned char *)dest)
 #define lDest ((unsigned long *)dest)
@@ -67,10 +67,10 @@ void TRK_fill_mem(void *dest, int value, unsigned long length)
 
 __declspec(section ".init") void *TRK_memcpy(void *dst, const void *src, size_t n)
 {
-    const char *p;
-    char *q;
+    const char *p = src;
+    char *q = dst;
 
-    for (p = (const char *)src - 1, q = (char *)dst - 1, n++; --n;)
+    for (p--, q--, n++; --n;)
         *++q = *++p;
 
     return dst;

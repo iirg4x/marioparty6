@@ -233,7 +233,7 @@ static void RemoveLayers(unsigned short* ref) { ScanIDList(ref, NULL, 3, 1); }
 
 static void InsertSamples(u16* ref, void* samples, void* sdir) {
   samples = hwTransAddr(samples);
-  if (dataInsertSDir((SDIR_DATA*)sdir, samples)) {
+  if (dataInsertSDir(sdir, samples)) {
     ScanIDList(ref, sdir, 1, 0);
   }
 }

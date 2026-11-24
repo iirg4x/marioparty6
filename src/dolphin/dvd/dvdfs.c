@@ -290,15 +290,12 @@ BOOL DVDReadAsyncPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset,
 
 	return TRUE;
 }
-#ifndef offsetof
-#define offsetof(type, memb) ((u32) & ((type*)0)->memb)
-#endif
-
 // Command block callback of an asynchronous read: passes the result to the file's own callback.
 static void cbForReadAsync(s32 result, DVDCommandBlock* block) {
 	DVDFileInfo* fileInfo;
 
-	fileInfo = (DVDFileInfo*)((char*)block - offsetof(DVDFileInfo, cb));
+	fileInfo = (DVDFileInfo*)block;
+	ASSERTLINE(774, &fileInfo->cb == block);
 	if (fileInfo->callback) {
 		(fileInfo->callback)(result, fileInfo);
 	}

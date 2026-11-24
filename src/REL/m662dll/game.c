@@ -25,7 +25,6 @@
 #include "humath.h"
 
 extern s16 lbl_1_bss_C58[4];
-void fn_1_AD68(void);
 void fn_1_5A5C(void), fn_1_7DE8(void), fn_1_5884(void), fn_1_887C(void);
 s32 fn_1_58B0(void), fn_1_8754(void);
 

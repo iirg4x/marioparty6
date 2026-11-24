@@ -78,7 +78,7 @@ void fn_1_2A4(s16 minigameCount, u8 *minigameOrder) {
     lbl_1_bss_88 = 0;
     lbl_1_bss_0 = minigameCount;
     lbl_1_bss_8C = HuMemDirectMallocNum(
-        0, minigameCount * sizeof(ANIMDATA *) * 2, 0x10000000);
+        0, minigameCount * sizeof(*lbl_1_bss_8C) * 2, 0x10000000);
     for (minigameIndex = 0; minigameIndex < lbl_1_bss_0; minigameIndex++) {
         lbl_1_bss_2[minigameIndex] = minigameOrder[minigameIndex];
         lbl_1_bss_8C[minigameIndex * 2] = HuSprAnimRead(

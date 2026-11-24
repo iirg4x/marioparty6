@@ -68,7 +68,7 @@ typedef struct ColWork_s {
     COLNARROW *narrowCol; // Narrow-phase pair storage ordered by contact time.
     s16 *colOrder1; // Left bounds used while sorting collision times.
     s16 *colOrder2; // Right bounds used while sorting collision times.
-    u32 reserved; // No collision routine reads or writes this storage.
+    u32 unk13C; /* No code names this field. */
 } COLWORK;
 
 typedef struct ColTri_s {

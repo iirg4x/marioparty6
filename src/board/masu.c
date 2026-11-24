@@ -121,17 +121,17 @@ static s16 masuSinglePatTbl[] = {
 
 #define DATA_READ16(ptr, dst) do { \
     (dst) = *(u16 *)(ptr); \
-    (ptr) = (u8 *)(ptr) + sizeof(u16); \
+    (ptr) += sizeof(u16); \
 } while (0)
 
 #define DATA_READLINK(ptr, dst) do { \
     (dst) = *(u16 *)(ptr) + 1; \
-    (ptr) = (u8 *)(ptr) + sizeof(u16); \
+    (ptr) += sizeof(u16); \
 } while (0)
 
 #define DATA_READ32(ptr, dst) do { \
     (dst) = *(u32 *)(ptr); \
-    (ptr) = (u8 *)(ptr) + sizeof(u32); \
+    (ptr) += sizeof(u32); \
 } while (0)
 
 #define DATA_READCOUNT(data, ptr, dst) do { \
@@ -141,7 +141,7 @@ static s16 masuSinglePatTbl[] = {
 
 #define DATA_READVEC(ptr, dst) do { \
     memcpy(&(dst), (ptr), sizeof(HuVecF)); \
-    (ptr) = (u8 *)(ptr) + sizeof(HuVecF); \
+    (ptr) += sizeof(HuVecF); \
 } while (0)
 
 /* Initializes board-space storage, graphics, gates, and the upcoming-space marker. */
@@ -190,7 +190,7 @@ void mbMasuClose(void)
 BOOL mbMasuDataRead(int dataNum)
 {
     MASU *masuP;
-    void *ptr;
+    u8 *ptr;
     int i;
     int j;
     int starNum;

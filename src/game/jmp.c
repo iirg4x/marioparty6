@@ -3,7 +3,6 @@
 
 // Process creation and yield paths call this to save a resumable CPU context.
 s32 gcsetjmp(register jmp_buf *jump) {
-    // clang-format off
     asm {
         mflr r5
         mfcr r6
@@ -34,11 +33,9 @@ s32 gcsetjmp(register jmp_buf *jump) {
         stfd f31, jump->flt_regs[17]
         stfd f0, jump->flt_regs[18]
     }
-    // clang-format on
     return 0;
 }
 
-// clang-format off
 // The scheduler and yielding processes use this to transfer control; zero becomes one.
 asm s32 gclongjmp(register jmp_buf *jump, register s32 status) {
     nofralloc
@@ -76,4 +73,3 @@ asm s32 gclongjmp(register jmp_buf *jump, register s32 status) {
     li r3, 1
     blr
 }
-// clang-format on

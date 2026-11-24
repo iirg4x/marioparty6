@@ -54,7 +54,6 @@ typedef struct statusMasuWork_s {
     unsigned offF : 1; // The counter sprite group has been created.
     unsigned dispF : 1; // The counter is enabled for display.
     unsigned : 6;
-    u8 reservedPad01; // Unused alignment byte.
     s16 masuNoPrev; // Previous displayed number of spaces remaining to the single-player goal.
     s16 masuNo; // Current spaces remaining to the goal; invalid route lengths display zero.
     HUSPR_GROUPID gid; // Sprite group containing the counter.

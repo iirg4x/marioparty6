@@ -301,7 +301,7 @@ static u8 __THPReadHuffmanTableSpecification(void)
     u16 length, num_Vij;
 
     __THPHuffmanSizeTab = __THPWorkArea;
-    __THPHuffmanCodeTab = (u16 *)((u32)__THPWorkArea + 256 + 1);
+    __THPHuffmanCodeTab = (u16 *)(__THPWorkArea + 256 + 1);
     length = (u16)((__THPInfo->c)[0] << 8 | (__THPInfo->c)[1]);
     __THPInfo->c += 2;
     length -= 2;
@@ -445,7 +445,7 @@ static void __THPPrepBitStream(void)
     u32 *ptr;
     u32 offset, i, j, k;
 
-    ptr = (u32 *)((u32)__THPInfo->c & 0xFFFFFFFC);
+    ptr = OSRoundDownPtr(__THPInfo->c, 4);
     offset = (u32)__THPInfo->c & 3;
 
     if (__THPInfo->cnt != 33) {

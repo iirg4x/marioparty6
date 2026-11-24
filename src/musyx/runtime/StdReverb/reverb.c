@@ -14,7 +14,7 @@ static inline void DLsetdelay(_SND_REVHI_DELAYLINE* delayline, s32 len) {
 
 static inline void DLcreate(_SND_REVHI_DELAYLINE* delayline, s32 length) {
   delayline->length = (s32)length * sizeof(f32);
-  delayline->inputs = (f32*)salMalloc(length * sizeof(f32));
+  delayline->inputs = salMalloc(length * sizeof(f32));
   memset(delayline->inputs, 0, length * sizeof(length));
   delayline->lastOutput = 0.f;
   DLsetdelay(delayline, length >> 1);
@@ -64,7 +64,7 @@ bool ReverbHICreate(_SND_REVHI_WORK* rev, f32 coloration, f32 time, f32 mix, f32
   if (preDelay != 0.f) {
     rev->preDelayTime = preDelay * 32000.f;
     for (i = 0; i < 3; ++i) {
-      rev->preDelayLine[i] = (f32*)salMalloc(rev->preDelayTime * sizeof(f32));
+      rev->preDelayLine[i] = salMalloc(rev->preDelayTime * sizeof(f32));
       memset(rev->preDelayLine[i], 0, rev->preDelayTime * sizeof(f32));
       rev->preDelayPtr[i] = rev->preDelayLine[i];
     }

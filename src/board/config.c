@@ -105,12 +105,12 @@ typedef struct PauseWork_s {
     s32 menuExitRequested; /* Set when the pause-menu selection loop should exit. */
     s32 padWinNo; /* Menu-controls or quit-confirmation help window, or -1 when closed. */
     s32 helpWinNo; /* Menu setting help window, or -1 when closed. */
-    s32 unusedWorkWord0; /* Unused by the pause menu. */
-    s32 unusedWorkWord1; /* Unused by the pause menu. */
-    s32 unusedWorkWord2; /* Unused by the pause menu. */
-    s32 unusedWorkWord3; /* Unused by the pause menu. */
-    s32 unusedWorkWord4; /* Unused by the pause menu. */
-    s32 unusedWorkWord5; /* Unused by the pause menu. */
+    s32 unk24; /* No code names this field. */
+    s32 unk28; /* No code names this field. */
+    s32 unk2C; /* No code names this field. */
+    s32 unk30; /* No code names this field. */
+    s32 unk34; /* No code names this field. */
+    s32 unk38; /* No code names this field. */
     s32 talkTime; /* Remaining frames in the guide's talking animation. */
     s32 prevTalkTime; /* Prior update's timer, used to detect talk start and end. */
     CONFIG_MENU_WORK menu[8]; /* The eight pause-menu settings and their panels. */

@@ -22,8 +22,8 @@ static void WriteCallback(s32 chan, s32 result)
     card = &__CARDBlock[chan];
 
     if (result >= 0) {
-        fat0 = (u16 *)((u8 *)card->workArea + 0x6000);
-        fat1 = (u16 *)((u8 *)card->workArea + 0x8000);
+        fat0 = (u16 *)((u8 *)card->workArea + 3 * CARD_SYSTEM_BLOCK_SIZE);
+        fat1 = (u16 *)((u8 *)card->workArea + 4 * CARD_SYSTEM_BLOCK_SIZE);
 
         if (card->currentFat == fat0) {
             card->currentFat = fat1;
@@ -50,7 +50,7 @@ static void EraseCallback(s32 chan, s32 result)
 {
     CARDControl *card;
     CARDCallback callback;
-    u32 temp[2]; /* this compiler sucks */
+    u32 temp[2];
     u16 *fat;
     u32 addr;
 

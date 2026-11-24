@@ -349,7 +349,7 @@ void __VIInit(VITVMode mode) {
     tm = getTiming(mode);
     __VIRegs[1] = 2;
 
-    // why?
+    // Hold the video interface in reset before programming its registers.
     for (a = 0; a < 1000; a++) {}
 
     __VIRegs[1] = 0;

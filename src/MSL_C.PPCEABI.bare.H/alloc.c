@@ -49,7 +49,7 @@ typedef struct MemPoolObject {
 typedef MemPoolObject MemPool;
 
 static unsigned char initialized;
-static const unsigned long fixedPoolSizes[] = {4, 12, 20, 36, 52, 68};
+static const unsigned long fix_pool_sizes[] = {4, 12, 20, 36, 52, 68};
 
 #define BLOCK_SIZE_MASK 4294967288U
 #define MIN_BLOCK_SIZE 80
@@ -463,9 +463,9 @@ static void FixBlock_construct(
     block->next = next;
     previous->next = block;
     next->prev = block;
-    block->client_size = fixedPoolSizes[poolIndex];
+    block->client_size = fix_pool_sizes[poolIndex];
 
-    entrySize = fixedPoolSizes[poolIndex] + 4;
+    entrySize = fix_pool_sizes[poolIndex] + 4;
     count = bufferSize / entrySize;
     cursor = (char*)first;
     for (; i < count - 1; i++) {
@@ -489,7 +489,7 @@ static void* allocate_from_fixed_pools(
     FixStart* fixed;
 
     poolIndex = 0;
-    while (size > fixedPoolSizes[poolIndex]) {
+    while (size > fix_pool_sizes[poolIndex]) {
         poolIndex++;
     }
 
@@ -501,7 +501,7 @@ static void* allocate_from_fixed_pools(
         unsigned long maximumFreeSize;
         unsigned long memorySize;
 
-        count = FIXED_POOL_PAYLOAD_SIZE / (fixedPoolSizes[poolIndex] + 4);
+        count = FIXED_POOL_PAYLOAD_SIZE / (fix_pool_sizes[poolIndex] + 4);
         if (count > FIXED_POOL_MAX_BLOCKS) {
             count = FIXED_POOL_MAX_BLOCKS;
         }
@@ -509,14 +509,14 @@ static void* allocate_from_fixed_pools(
 
         while (count >= 10) {
             memory = soft_allocate_from_var_pools(
-                pool, count * (fixedPoolSizes[poolIndex] + 4) + FIXED_POOL_HEADER_SIZE,
+                pool, count * (fix_pool_sizes[poolIndex] + 4) + FIXED_POOL_HEADER_SIZE,
                 &maximumFreeSize);
             if (memory != 0) {
                 break;
             }
             if (maximumFreeSize > FIXED_POOL_HEADER_SIZE) {
                 count = (maximumFreeSize - FIXED_POOL_HEADER_SIZE)
-                    / (fixedPoolSizes[poolIndex] + 4);
+                    / (fix_pool_sizes[poolIndex] + 4);
             } else {
                 count = 0;
             }
@@ -524,7 +524,7 @@ static void* allocate_from_fixed_pools(
 
         if (memory == 0 && count < maximumCount) {
             memory = allocate_from_var_pools(
-                pool, maximumCount * (fixedPoolSizes[poolIndex] + 4) + FIXED_POOL_HEADER_SIZE);
+                pool, maximumCount * (fix_pool_sizes[poolIndex] + 4) + FIXED_POOL_HEADER_SIZE);
             if (memory == 0) {
                 return 0;
             }
@@ -556,7 +556,7 @@ static void* allocate_from_fixed_pools(
     }
 }
 
-static void deallocate_from_fixed_pools(
+void deallocate_from_fixed_pools(
     MemPoolObject* pool, void* ptr, unsigned long size)
 {
     unsigned long poolIndex;
@@ -565,7 +565,7 @@ static void deallocate_from_fixed_pools(
     FixStart* fixed;
 
     poolIndex = 0;
-    while (size > fixedPoolSizes[poolIndex]) {
+    while (size > fix_pool_sizes[poolIndex]) {
         poolIndex++;
     }
 
@@ -618,13 +618,13 @@ static void initialize_pool(MemPool* pool)
 
 static MemPool* get_malloc_pool(void)
 {
-    static MemPool pool;
+    static MemPool protopool;
 
     if (!initialized) {
-        initialize_pool(&pool);
+        initialize_pool(&protopool);
         initialized = 1;
     }
-    return &pool;
+    return &protopool;
 }
 
 static void* pool_allocate(MemPool* pool, unsigned long size)

@@ -247,6 +247,8 @@ MGTIMER *fn_1_2EC0(int timerType, int durationSeconds, int endSeconds, f32 xPosi
                    f32 yPosition);
 void fn_1_2F34(MGTIMER *timer);
 s32 fn_1_2F60(MGTIMER *timer);
+void fn_1_AD68(void);
+s32 fn_1_A430(void);
 void fn_1_2F88(MGTIMER *timer);
 
 #endif

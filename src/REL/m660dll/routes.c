@@ -19,7 +19,6 @@
 #include "REL/m660dll/routes.h"
 #include "REL/m660dll.h"
 #include "humath.h"
-extern int printf();
 s16 fn_1_1265C(M660Player *player);
 s16 fn_1_12CA8(M660Player *player);
 s16 fn_1_131C8(M660Player *player, s16 selectFarthest, s16 useAlternateMode);

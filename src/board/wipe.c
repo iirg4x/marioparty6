@@ -53,7 +53,7 @@ typedef struct WipeImageWork_s {
     int imageNo; // Selected wipe image animation index.
     float centerX; // Image center X in the 576-pixel-wide image viewport.
     float centerY; // Image center Y in the 480-pixel-high image viewport.
-    float unusedSlot; // Not read or written by the image effect.
+    float unk0C; /* No code names this field. */
     float size; // Image square side length in screen pixels.
     float alpha; // Image opacity from 0.0 to 1.0.
 } WIPE_IMAGE_WORK;
