@@ -85,7 +85,7 @@ void MinigameCore::updateGame() {}
 
 // Called by the object manager after an exit request; keep the game updating through the wipe.
 // Once it ends, run game cleanup, delete the game, and request the preceding overlay.
-void MinigameCore::exitCallback(OMOBJ *)
+void MinigameCore::exitCallback(OMOBJ *object)
 {
     MinigameCore *game = current();
     if (WipeCheck()) {

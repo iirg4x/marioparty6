@@ -467,7 +467,7 @@ void RigidBox::fn_1_8B04()
         }
         if (this->squashTime.elapsed > this->squashTime.duration)
         {
-            this->squash += 1.0f / secondsToFrames<float>(0.9f);
+            this->squash += 1.0f / secondsToFrames(0.9f);
             if (this->squash >= 1.0f)
             {
                 this->squash = 1.0f;

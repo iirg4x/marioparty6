@@ -92,7 +92,7 @@ inline bool operator<(const EventEntry& left, const EventEntry& right)
 typedef std::priority_queue<EventEntry> EventQueue;
 
 /* Registered receiver addresses of one channel, without ownership of the receivers. */
-typedef std::set<unsigned long> EventReceivers;
+typedef std::set<EventCallback *> EventReceivers;
 
 struct CEventBroadcaster;
 /* Owner published at construction and cleared when that owner is destroyed. */
@@ -104,8 +104,8 @@ struct CEventBroadcaster : std::map<int, EventReceivers> {
     float current_time; /* Last processed event time in seconds; initially zero. */
     CEventBroadcaster();
     ~CEventBroadcaster();
-    void registerListener(int, unsigned long);
-    void removeListener(unsigned long);
+    void registerListener(int, EventCallback *);
+    void removeListener(EventCallback *);
 };
 void dispatch_event(CEventBroadcaster *, const EventPacket&);
 
@@ -128,7 +128,7 @@ CEventBroadcaster::~CEventBroadcaster()
 }
 
 /* Add a listener to its channel, creating an empty channel on the first registration. */
-void CEventBroadcaster::registerListener(int channel, unsigned long listener)
+void CEventBroadcaster::registerListener(int channel, EventCallback *listener)
 {
     iterator position = find(channel);
     if (position == end()) {
@@ -138,7 +138,7 @@ void CEventBroadcaster::registerListener(int channel, unsigned long listener)
 }
 
 /* Remove a listener from every channel when its event receiver is released. */
-void CEventBroadcaster::removeListener(unsigned long listener)
+void CEventBroadcaster::removeListener(EventCallback *listener)
 {
     iterator position = begin();
     iterator finish = end();
@@ -178,7 +178,7 @@ void process_event_queue()
     }
 }
 
-int forwardEvent(unsigned long, const EventPacket&);
+int forwardEvent(EventCallback *, const EventPacket&);
 
 /* Deliver a packet to every receiver currently registered for its channel. */
 void dispatch_event(CEventBroadcaster *owner, const EventPacket& packet)
@@ -197,9 +197,9 @@ void dispatch_event(CEventBroadcaster *owner, const EventPacket& packet)
 }
 
 /* Adapt a receiver's virtual event callback for the channel iteration operation. */
-int forwardEvent(unsigned long receiver, const EventPacket& packet)
+int forwardEvent(EventCallback *receiver, const EventPacket& packet)
 {
-    ((EventCallback*)receiver)->receive(&packet);
+    receiver->receive(&packet);
     return 0;
 }
 
@@ -224,7 +224,7 @@ EventListener::EventListener() {}
 EventListener::~EventListener()
 {
     CEventBroadcaster *owner = current_event_owner();
-    if (owner) owner->removeListener((unsigned long)this);
+    if (owner) owner->removeListener(this);
 }
 
 /* Register this receiver on a channel after the shared event owner has been created. */
@@ -232,7 +232,7 @@ void EventListener::registerChannel(int channel)
 {
     CEventBroadcaster *p = current_event_owner();
     assert(p != NULL);
-    p->registerListener(channel, (unsigned long)this);
+    p->registerListener(channel, this);
 }
 
 /* Construct an event with a channel, value and context, then apply the requested delay. */

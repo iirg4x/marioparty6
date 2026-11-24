@@ -22,7 +22,7 @@ struct Point2D
 struct QuadRegion
 {
     Point2D points[4];
-    bool fn_1_111E8(const Point2D *) const;
+    bool fn_1_111E8(const Point2D *point) const;
 
     /* Return a corner after checking its index. */
     const Point2D &operator[](int i) const

@@ -61,9 +61,9 @@ HuArchive::HuArchive(int dataNumber)
 {
     fillArchiveRange((signed char *)&header, (signed char *)&allocation, 0);
     // Loads the archive using allocation tag 0x10000000.
-    allocation = fn_80008DD0(dataNumber, 0x10000000, 2);
+    allocation = static_cast<ArchiveHeader *>(fn_80008DD0(dataNumber, 0x10000000, 2));
     relocated = false;
-    Load((ArchiveHeader *)allocation, 0);
+    Load(allocation, 0);
 }
 
 // Archive destruction leaves the loaded model-heap allocation in place.

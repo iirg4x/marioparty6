@@ -171,7 +171,7 @@ void PlayerPiece::fn_1_20D8()
     float verticalTranslation;
 
     box.get()->fn_1_A284(matrix);
-    frameFraction = remainingSteps / secondsToFrames<float>(3.0f);
+    frameFraction = remainingSteps / secondsToFrames(3.0f);
     verticalTranslation = frameFraction * cmToWorld(800.0f);
     PSMTXTransApply(matrix, matrix, 0.0f, 0.0f, verticalTranslation);
     animation->copy_matrix(matrix);

@@ -52,9 +52,9 @@ struct PlayerPiece : GameObject
                 PlayerInfo *player, ParticleEmitterState *child);
     virtual ~PlayerPiece();
     virtual void update();
-    void fn_1_1F10(Vec *) const;
-    void fn_1_1F2C(Vec *) const;
-    void fn_1_1F48(Vec *) const;
+    void fn_1_1F10(Vec *position) const;
+    void fn_1_1F2C(Vec *direction) const;
+    void fn_1_1F48(Vec *normal) const;
     void fn_1_2784(f32, f32);
     void fn_1_3AAC();
     /* Return this playing piece player configuration. */

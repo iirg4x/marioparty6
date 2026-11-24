@@ -18,7 +18,7 @@ typedef const EventPacket EventMessage;
 struct EventCallback {
     virtual ~EventCallback();
     // Called with each packet delivered to this receiver.
-    virtual void receive(const EventPacket *) = 0;
+    virtual void receive(const EventPacket *packet) = 0;
 };
 
 // A receiver that registers itself on event channels and leaves them all when it is deleted.

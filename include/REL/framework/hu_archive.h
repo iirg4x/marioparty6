@@ -74,7 +74,7 @@ private:
     unsigned long directoryState[2]; // Two words cleared by Load and unused by these methods.
     int initialized; // Set to one after Load clears the header and table bindings.
     void *image; // Image whose resource and directory blocks are currently bound.
-    void *allocation; // Model-heap buffer read during construction.
+    ArchiveHeader *allocation; // Model-heap buffer read during construction.
     bool relocated; // True after pointer fixups; Load does not reset it when binding another image.
 };
 

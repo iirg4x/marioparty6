@@ -15,7 +15,7 @@ public:
     MinigameCore();
     virtual ~MinigameCore();
     // Both setup paths ask the game to populate the newly created object manager.
-    virtual void setupObjects(OMOBJMAN *) = 0;
+    virtual void setupObjects(OMOBJMAN *manager) = 0;
     // Called on regular frames and while the outgoing exit wipe is active.
     // The frame that starts exit skips this callback.
     virtual void updateGame();
