@@ -30,58 +30,6 @@
 
 typedef void (*VoidFunc)(void);
 
-typedef struct OptionAnimPair {
-    s16 firstTextureAnimation; /* First texture animation slot attached to the model. */
-    s16 secondTextureAnimation; /* Second texture animation slot attached to the model. */
-    s16 modelId; /* Model that owns both texture animation slots. */
-} OptionAnimPair;
-
-typedef struct OptionDecaRecord {
-    s16 character; /* Character whose Decathlon scores are stored here. */
-    s16 finalScore; /* Total score across the Decathlon events. */
-    s16 score[10]; /* Score for each of the ten Decathlon events. */
-} OptionDecaRecord;
-
-typedef struct OptionPrizeEntry {
-    s16 flag; /* Saved prize unlock flag, or -1 for a heading entry. */
-    s16 tableEndMarker; /* -1 marks the final row in the prize table. */
-    u32 name; /* Message shown as the prize name. */
-    u32 description; /* Message shown as the prize description. */
-    s16 id; /* Prize value copied into the collection's prize ID list. */
-} OptionPrizeEntry;
-
-typedef struct OptionRecordDisplayEntry {
-    s16 minigameId; /* Minigame whose record is displayed. */
-    u8 recordId; /* Record field read from the saved minigame data. */
-    u8 displayType; /* Selects how the record value is formatted. */
-    s32 message; /* Message used for the record label. */
-} OptionRecordDisplayEntry;
-
-typedef struct OptionSelectionData {
-    s16 selectedOption; /* Initially highlighted choice when the submenu opens. */
-    s16 choiceCount; /* Number of choices available on this screen. */
-    s16 choiceAnimation[10]; /* Texture animation index used for each choice. */
-    s16 choiceAnimationBank[10]; /* Texture animation bank used for each choice. */
-} OptionSelectionData;
-
-typedef struct OptionWork {
-    s16 rumbleEnabled; /* Saved controller vibration setting. */
-    s16 micStatus; /* Microphone mode selected by the player. */
-    s16 soundMode; /* Output selection: 0 mono, 1 stereo, 2 surround. */
-    s16 boardRecord[6]; /* Saved records for the six boards. */
-    s16 boardCharacterRecord[6][11]; /* Board records grouped by character. */
-    OptionDecaRecord decaRecord[10]; /* Decathlon results for saved players. */
-    s32 prizeUnlocked[42]; /* Saved unlock state for each option prize. */
-    s16 prizeId[42]; /* Numeric prize values displayed by the collection screen. */
-    u32 prizeName[42]; /* Name messages for the collected prizes. */
-    u32 prizeDescription[42]; /* Description messages for the collected prizes. */
-    s32 minigameUnlocked[81]; /* Saved unlock state for minigames 601 through 681. */
-    u32 record[19]; /* Not accessed by the Option Mode menus. */
-    u8 consecutiveRecordCount; /* Number of consecutive minigame records saved. */
-    u8 consecutiveRecord[100]; /* Zero-based MgDataTbl indices in the saved consecutive-play
-                                * sequence. */
-} OptionWork;
-
 OptionAudioEntry lbl_1_data_510[8] = {
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 28), MSM_STREAM_HERE_WE_GO},
     {OPTION_AUDIO_STREAM, -1, MESSNUM(MESS_OPTION_SOUND, 29), MSM_STREAM_PARTY_MUSIC},

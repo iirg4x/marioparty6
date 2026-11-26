@@ -1162,7 +1162,7 @@ void fn_1_11920(s16 playerNo) {
     s32 hookIndex;
     M665PlayerWork *playerWork = &lbl_1_bss_10[playerNo];
     char *hookNames[2] = {lbl_1_data_375, lbl_1_data_380};
-    M665DetachedModel *effect;
+    M665BouncingWork *effect;
 
     hookIndex = 0;
     while (hookIndex < 2) {

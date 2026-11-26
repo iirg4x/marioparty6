@@ -1,5 +1,5 @@
 /* Draws the selection icon at one of three world-space positions. */
-/* Retail fixes the next assert's line; the earlier lines are unknown: 3 lines are left blank. */
+
 
 
 
