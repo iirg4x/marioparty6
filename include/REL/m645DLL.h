@@ -25,11 +25,11 @@ void fn_1_4B8(HuVecF *dst, const HuVecF *a, const HuVecF *b);
 f32 fn_1_4F0(HuVecF *dst, const HuVecF *src);
 void fn_1_6D0(HuVecF *dst, const HuVecF *src, f32 scale);
 void fn_1_708(M645Bounds *out, M645Capsule *capsule);
-void fn_1_8C0(M645Bounds *bounds, M645Triangle *triangle);
+void fn_1_8C0(M645Bounds *bounds, MinigameTriangle *triangle);
 void fn_1_B34(M645Bounds *out, M645Sphere *sphere);
 s32 fn_1_BC8(M645Bounds *a, M645Bounds *b);
 float fn_1_E40(void *point, void *triangle, float *barycentricS, float *barycentricT);
-f32 fn_1_F6C(M645Sphere *sphere, M645Triangle *triangle, f32 *barycentricS, f32 *barycentricT);
+f32 fn_1_F6C(M645Sphere *sphere, MinigameTriangle *triangle, f32 *barycentricS, f32 *barycentricT);
 f32 fn_1_1D70(M645Segment *queryPoint, M645Segment *triangle,
              f32 *barycentricSOut, f32 *barycentricTOut);
 f32 fn_1_2178(M645Sphere *movingSphere, const M645Segment *lineSegment);

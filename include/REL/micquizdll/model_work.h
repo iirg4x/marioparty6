@@ -2,13 +2,15 @@
 #ifndef REL_MICQUIZDLL_MODEL_WORK_H
 #define REL_MICQUIZDLL_MODEL_WORK_H
 
+#include <dolphin/mtx.h>
+
 typedef struct MicquizModelRecord_s {
     s32 active; /* Nonzero while this piece is visible. */
     s32 settled; /* Zero while falling; one after reaching the floor. */
-    f32 position[3]; /* World position, in scene units. */
-    f32 velocity[3]; /* Position change applied once per scene update. */
-    f32 rotation[3]; /* Euler rotation in degrees. */
-    f32 angularVelocity[3]; /* Rotation change in degrees per scene update. */
+    Vec position; /* World position, in scene units. */
+    Vec velocity; /* Position change applied once per scene update. */
+    Vec rotation; /* Euler rotation in degrees. */
+    Vec angularVelocity; /* Rotation change in degrees per scene update. */
     GXColor color; /* RGB tint applied to the shared model materials. */
     s32 settledFrames; /* Number of updates since the piece reached the floor. */
 } MicquizModelRecord;

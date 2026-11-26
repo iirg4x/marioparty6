@@ -1,4 +1,5 @@
 /* Runs capsule character events. */
+#include "game/board/capevent_work.h"
 #include "dolphin.h"
 #include "dolphin/math.h"
 #include "datanum/charmot.h"
@@ -24,52 +25,6 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 #include "humath.h"
-
-typedef struct EvCapWork {
-    int motId[64][4]; /* Player motion handles indexed by tracking slot and player. */
-    int objId[64]; /* Board object handles owned by the event. */
-    int sprId[64]; /* Sprite handles owned by the event. */
-    void *mem[64]; /* Allocations retained for cleanup at event end. */
-    int masuId[64]; /* Board-space IDs associated with event objects. */
-    HuVecF objPos[64]; /* Position offsets from the associated board spaces. */
-    int playerMasuId[4]; /* Each player's saved board-space ID. */
-    HuVecF playerPos[4]; /* Each player's position offset from the tracked board
-                                      * space. */
-    int bgId; /* Background resource handle, when this event loads one. */
-    OMOBJ *obj; /* Object-manager object used by the event. */
-} EVCAPWORK;
-
-typedef struct CapWorkFlag {
-    u8 unusedFlag0 : 1; /* No reader or writer in this event module identifies this bit. */
-    u8 unusedFlag1 : 1; /* No reader or writer in this event module identifies this bit. */
-    u8 unusedBits : 6; /* Bits not assigned by this event module. */
-    u8 trailingBytes[3]; /* Bytes following the flag bits in this record. */
-} CAPWORKFLAG;
-
-typedef struct CapWork {
-    int playerNo; /* Player who activated the capsule event. */
-    int targetPlayerNo; /* Player selected as the event's target. */
-    int capsuleNo; /* Capsule item associated with the event. */
-    int masuId; /* Board space where the event started. */
-    int masuIdNext; /* Next board space recorded for event movement. */
-    int unusedWorkValue14; /* Not read or written by this event module. */
-    int unusedWorkValue18; /* Not read or written by this event module. */
-    int unusedWorkValue1C; /* Not read or written by this event module. */
-    EVCAPWORK objWork; /* Objects, motions, and allocations tracked for cleanup. */
-    CAPWORKFLAG flags; /* Unidentified bits retained in the work record. */
-    int unusedWorkValueB6C; /* Not read or written by this event module. */
-    u8 workBytes[92]; /* Work-record bytes with no identified use in this event. */
-    int processNo; /* Slot index of the running capsule event in the process table. */
-    OMOBJ *explodeObj; /* Manager object for explosion effects. */
-    OMOBJ *boostObj; /* Manager object for boost effects. */
-    OMOBJ *snowObj; /* Manager object for snow effects. */
-    OMOBJ *glowObj; /* Manager object for glow effects. */
-    OMOBJ *ringObj; /* Manager object for ring effects. */
-    OMOBJ *coinObj; /* Manager object for coin effects. */
-    OMOBJ *coinManObj; /* Manager object for Kuribo's flying coin props. */
-    OMOBJ *unusedObjectHandle; /* No use identified in this event module. */
-    OMOBJ *capLoseObj; /* Manager object for removed-capsule effects. */
-} CAPWORK;
 
 typedef struct CapTogezoOMWork {
     int objectId; /* Board object handle used to position and animate Togezo. */

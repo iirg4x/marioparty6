@@ -224,9 +224,9 @@ void fn_1_16C0(Mtx out, Mtx input)
 }
 
 /* Transforms a stage point by a 4x4 matrix and writes homogeneous coordinate one. */
-void fn_1_16F0(M656Vec4 *out, Mtx44 matrix, HuVecF *vec)
+void fn_1_16F0(MinigameHomogeneousPoint *out, Mtx44 matrix, HuVecF *vec)
 {
-    M656Vec4 result;
+    MinigameHomogeneousPoint result;
     result.x = matrix[3][0] +
                ((matrix[2][0] * vec->z) + ((matrix[0][0] * vec->x) + (matrix[1][0] * vec->y)));
     result.y = matrix[3][1] +

@@ -74,7 +74,7 @@ u32 lbl_1_data_130[8] = {
     DATANUM(0x930000, 4), DATANUM(0x930000, 21),
     DATANUM(0x930000, 38), DATANUM(0x930000, 40)
 };
-M676MotionParam lbl_1_data_150[8] = {
+MinigamePlayerMotionParams lbl_1_data_150[8] = {
     {0, -1, 0.2f, ((1 << 30) | (1 << 0))}, {1, -1, 0.2f, ((1 << 30) | (1 << 0))},
     {2, -1, 0.2f, ((1 << 30) | (1 << 0))}, {3, -1, 0.2f, 0},
     {4, -1, 0.2f, 0}, {5, -1, 0.2f, ((1 << 30) | (1 << 0))},
@@ -994,8 +994,8 @@ s32 fn_1_7920(M676PlayerWork *work, const Vec *targetPosition, f32 targetAngle, 
         M_PI));
     work->actor.rotation.y = fn_1_52C0(work->actor.rotation.y, angle, 0.3f);
     movementSpeed = speed * params->movementScale;
-    desiredVelocityX = (f32)(movementSpeed * sin( (M_PI * (f64)angle) / 180.0));
-    desiredVelocityZ = (f32)(movementSpeed * cos( (M_PI * (f64)angle) / 180.0));
+    desiredVelocityX = (f32)(movementSpeed * sin((M_PI * (f64)angle) / 180.0));
+    desiredVelocityZ = (f32)(movementSpeed * cos((M_PI * (f64)angle) / 180.0));
     work->actor.velocity.x = (f32)((f64)work->actor.velocity.x +
         (0.3 * (f64)(desiredVelocityX - work->actor.velocity.x)));
     work->actor.velocity.z = (f32)((f64)work->actor.velocity.z +

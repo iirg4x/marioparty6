@@ -1,6 +1,7 @@
 #ifndef REL_M625DLL_WAVE_H
 #define REL_M625DLL_WAVE_H
 
+#include "REL/minigame_ripple_surface.h"
 #include <math.h>
 #include "dolphin/gx.h"
 #include "dolphin/gx/GXVert.h"
@@ -28,17 +29,6 @@
 #include "humath.h"
 #include "string.h"
 
-typedef struct M625WaveState {
-    s16 model;
-    void *textureBuffer;
-    ANIMDATA *anim0;
-    ANIMDATA *anim1;
-    f32 value;
-    f32 rippleX[32];
-    f32 amplitude[32];
-    f32 phase[32];
-} M625WaveState;
-
 typedef struct M625LightAsset_s {
     s32 resourceNumber;
     f32 positionY;
@@ -59,7 +49,7 @@ typedef struct M625LightPreset {
     GXColor color;
 } M625LightPreset;
 
-extern M625WaveState lbl_1_bss_0;
+extern MinigameRippleSurface lbl_1_bss_0;
 extern M625LightModelState lbl_1_bss_194;
 extern M625LightAsset lbl_1_data_108[10];
 extern M625LightPreset lbl_1_data_180[2];

@@ -25,7 +25,7 @@ void fn_1_1A08(HuVecF *position);
 void fn_1_1A70(HuVecF *direction);
 HuVecF *fn_1_1AD8();
 void fn_1_1B00(int red,int green,int blue,int alpha);
-void fn_1_1B84(OMOBJMAN *manager, M676FogParam *parameters);
+void fn_1_1B84(OMOBJMAN *manager, MinigameFogParams *parameters);
 void fn_1_1C84(OMOBJ *obj);
 void fn_1_1CDC(s16 layer);
 void fn_1_1DD0(OMOBJ_FUNC callback);
@@ -49,7 +49,7 @@ void fn_1_2EF8(u32 cameras, void *data);
 void fn_1_2FB0(u32 cameraMask);
 BOOL fn_1_3450(u32 cameras);
 double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 count, Vec *out);
-void fn_1_3A1C(HUPROCESS *process, M676AudioConfig *config);
+void fn_1_3A1C(HUPROCESS *process, MinigameAudioRange *config);
 void fn_1_3AB8(OMOBJ *obj);
 void fn_1_3B20(OMOBJ *object);
 void fn_1_3B78(OMOBJ *object);
@@ -115,13 +115,13 @@ void fn_1_1764(OMOBJ *object)
  * its light ID starts at -1. */
 void fn_1_1768(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 {
-    M676LightWork *work;
+    MinigameLightWork *work;
     OMOBJ *object;
     object = fn_8003AB38(manager, 24, 0, 0, -1, fn_1_1870);
     lbl_1_bss_42C = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M676LightWork), 0x10000000);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameLightWork), 0x10000000);
     object->data = work;
-    memset(work, 0, sizeof(M676LightWork));
+    memset(work, 0, sizeof(MinigameLightWork));
     work->position = *position;
     work->target = *target;
     work->color = *color;
@@ -133,7 +133,7 @@ void fn_1_1768(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 /* Light object's update callback: forwards each frame to its registered callback. */
 void fn_1_1870(OMOBJ *obj)
 {
-    M676LightWork *light = lbl_1_bss_42C->data;
+    MinigameLightWork *light = lbl_1_bss_42C->data;
     if (light->callback != NULL) {
         light->callback(obj);
     }
@@ -141,7 +141,7 @@ void fn_1_1870(OMOBJ *obj)
 
 /* Light setup: creates the shared directional light from the stored work values. */
 void fn_1_18C8(void) {
-    M676LightWork *light = lbl_1_bss_42C->data;
+    MinigameLightWork *light = lbl_1_bss_42C->data;
 
     light->lightId = fn_800286D0(&light->position, &light->direction, &light->color);
     Hu3DGLightInfinitytSet(light->lightId);
@@ -153,7 +153,7 @@ void fn_1_18C8(void) {
  * when unnamed. */
 void fn_1_192C(s32 modelId, char *lightName) {
     HU3D_LIGHT *lightRecords;
-    M676LightWork *light;
+    MinigameLightWork *light;
 
     light = lbl_1_bss_42C->data;
     lightRecords = Hu3DGlobalLight;
@@ -171,33 +171,33 @@ void fn_1_192C(s32 modelId, char *lightName) {
 
 /* Sets the shared light's update callback. */
 void fn_1_19E0(OMOBJ_FUNC callback) {
-    M676LightWork *light=lbl_1_bss_42C->data;
+    MinigameLightWork *light=lbl_1_bss_42C->data;
     light->callback=callback;
 }
 
 /* Updates the shared light's position and reapplies its stored direction. */
 void fn_1_1A08(HuVecF *position) {
-    M676LightWork *light=lbl_1_bss_42C->data;
+    MinigameLightWork *light=lbl_1_bss_42C->data;
     light->position=*position;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Updates the shared light's direction and reapplies its stored position. */
 void fn_1_1A70(HuVecF *direction) {
-    M676LightWork *light=lbl_1_bss_42C->data;
+    MinigameLightWork *light=lbl_1_bss_42C->data;
     light->direction=*direction;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Returns a pointer to the shared light's stored direction. */
 HuVecF *fn_1_1AD8() {
-    M676LightWork *light=lbl_1_bss_42C->data;
+    MinigameLightWork *light=lbl_1_bss_42C->data;
     return &light->direction;
 }
 
 /* Sets the stored shared-light color and the global light's RGBA color. */
 void fn_1_1B00(int red,int green,int blue,int alpha) {
-    M676LightWork *light=lbl_1_bss_42C->data;
+    MinigameLightWork *light=lbl_1_bss_42C->data;
     light->color.r=red;
     light->color.g=green;
     light->color.b=blue;
@@ -206,17 +206,17 @@ void fn_1_1B00(int red,int green,int blue,int alpha) {
 }
 
 /* Scene setup: installs the per-layer fog callback and initial fog distance. */
-void fn_1_1B84(OMOBJMAN *manager, M676FogParam *parameters)
+void fn_1_1B84(OMOBJMAN *manager, MinigameFogParams *parameters)
 {
-    M676FogWork *work;
+    MinigameFogWork *work;
     s32 index;
     OMOBJ *object;
 
     object = fn_8003AB38(manager, 26, 0, 0, -1, fn_1_1C84);
     lbl_1_bss_428 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M676FogWork), 0x10000000);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameFogWork), 0x10000000);
     object->data = work;
-    memset(work, 0, sizeof(M676FogWork));
+    memset(work, 0, sizeof(MinigameFogWork));
     work->parameters = parameters;
     work->factor = 1.0f;
     for (index = 0; parameters->layer != -1; index++, parameters++) {
@@ -231,7 +231,7 @@ void fn_1_1B84(OMOBJMAN *manager, M676FogParam *parameters)
 /* Fog object's update callback: forwards each frame to its registered callback. */
 void fn_1_1C84(OMOBJ *obj)
 {
-    M676FogWork *fogWork = lbl_1_bss_428->data;
+    MinigameFogWork *fogWork = lbl_1_bss_428->data;
     if (fogWork->callback != NULL) {
         fogWork->callback(obj);
     }
@@ -240,8 +240,8 @@ void fn_1_1C84(OMOBJ *obj)
 /* Render-layer callback: applies this layer's fog range using the current blend factor. */
 void fn_1_1CDC(s16 layer)
 {
-    M676FogWork *work;
-    M676FogParam *parameters;
+    MinigameFogWork *work;
+    MinigameFogParams *parameters;
     float fov, nearPlane, farPlane;
     float end;
 
@@ -260,7 +260,7 @@ void fn_1_1CDC(s16 layer)
 /* Sets the fog object's per-frame callback when the object exists. */
 void fn_1_1DD0(OMOBJ_FUNC callback)
 {
-    M676FogWork *record;
+    MinigameFogWork *record;
     if (lbl_1_bss_428 != NULL) {
         record = lbl_1_bss_428->data;
         record->callback = callback;
@@ -270,7 +270,7 @@ void fn_1_1DD0(OMOBJ_FUNC callback)
 /* Updates the fog interpolation factor used by subsequent layer callbacks. */
 void fn_1_1E10(f32 fogFactor)
 {
-    M676FogWork *work;
+    MinigameFogWork *work;
     if (lbl_1_bss_428 != NULL) {
         work = lbl_1_bss_428->data;
         work->factor = fogFactor;
@@ -698,7 +698,7 @@ double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 
 }
 
 /* Scene setup: creates the shared sound object and stores its configuration. */
-void fn_1_3A1C(HUPROCESS *process, M676AudioConfig *config) {
+void fn_1_3A1C(HUPROCESS *process, MinigameAudioRange *config) {
     OMOBJ *object;
     M676AudioWork *data;
 
@@ -725,7 +725,7 @@ void fn_1_3AB8(OMOBJ *obj) {
 void fn_1_3B20(OMOBJ *object)
 {
     M676AudioWork *state = lbl_1_bss_420->data;
-    M676AudioRecord *record = state->records;
+    MinigameAudioRecord *record = state->records;
     int index;
 
     for (index = 0; index < 64; index++, record++) {
@@ -737,7 +737,7 @@ void fn_1_3B20(OMOBJ *object)
 void fn_1_3B78(OMOBJ *object)
 {
     M676AudioWork *state;
-    M676AudioRecord *record;
+    MinigameAudioRecord *record;
     int index;
 
     state = lbl_1_bss_420->data;
@@ -780,12 +780,12 @@ int fn_1_3C88(float screenX) {
 s32 fn_1_3CB4(u32 cameras, float panCoordinate)
 {
     M676AudioWork *work;
-    M676AudioConfig *config;
+    MinigameAudioRange *config;
     s32 pan = 64;
     if (lbl_1_bss_420 != NULL) {
         work = lbl_1_bss_420->data;
-        for (config = work->config; config->cameras; config++) {
-            if (config->cameras & cameras) {
+        for (config = work->config; config->cameraMask; config++) {
+            if (config->cameraMask & cameras) {
                 /* Convert the 576-pixel screen coordinate to an offset within the pan range. */
                 panCoordinate *= (config->panMax - config->panMin) / 576.0f;
                 pan = config->panMin + panCoordinate;
@@ -827,7 +827,7 @@ void fn_1_3FF0(Vec *position)
 s32 fn_1_401C(u32 cameras, Vec *position)
 {
     M676AudioWork *audio;
-    M676AudioConfig *config;
+    MinigameAudioRange *config;
     M676CameraWork *work;
     M676CameraRecord *camera;
     Mtx matrix;
@@ -838,8 +838,8 @@ s32 fn_1_401C(u32 cameras, Vec *position)
         audio = lbl_1_bss_420->data;
         work = lbl_1_bss_424->data;
         camera = &work->entries[fn_1_2A68(cameras)];
-        for (config = audio->config; config->cameras; config++) {
-            if (config->cameras & cameras) {
+        for (config = audio->config; config->cameraMask; config++) {
+            if (config->cameraMask & cameras) {
                 C_MTXLookAt(matrix, &camera->position, &camera->up, &camera->target);
                 PSMTXMultVec(matrix, position, &cameraSpacePosition);
                 distance = -cameraSpacePosition.z;
@@ -939,12 +939,12 @@ void fn_1_4F54(unsigned int cameraMask, int effect, int handle, HuVecF *position
                int volumeEnabled)
 {
     M676AudioWork *state=lbl_1_bss_420->data;
-    M676AudioRecord *record=state->records;
+    MinigameAudioRecord *record=state->records;
     int index;
     for(index=0;index<64;index++,record++) {
         if(record->handle==-1) {
             record->handle=handle;
-            record->unk04=effect;
+            record->effect=effect;
             record->cameraMask=cameraMask;
             record->panEnabled=panEnabled;
             record->volumeEnabled=volumeEnabled;

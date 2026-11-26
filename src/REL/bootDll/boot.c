@@ -15,6 +15,9 @@
 #include "game/window.h"
 #include "game/wipe.h"
 #include "math.h"
+#include "REL/bootDll/boot.h"
+#include "game/charman.h"
+#include "game/gamemes.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -61,11 +64,6 @@ void BootTitleCreate(void);
 s32 BootTitleExec(s32 firstRun);
 void BootWarningExec(void);
 void *NintendoDataDecode(void);
-void fn_80056428(void);
-void GameMesInit(void);
-void OpeningCreate(void);
-void OpeningExec(s32 enablePrompt);
-void OpeningKill(void);
 
 // The overlay loader calls this entry point before BootExec starts.
 int _prolog(void)
@@ -164,14 +162,13 @@ void BootExec(void)
     if (lbl_802C0248 != 0) {
         HuAudSndGrpSetSet(MSM_GRP_MENU);
 
-        anim = HuSprAnimRead(fn_80008DD0(NINTENDO_SPRITE_DATA, 0x10000000, 2));
+        anim = HuSprAnimDataRead(NINTENDO_SPRITE_DATA);
         titleSprite = HuSprCreate(anim, 0, 0);
         HuSprGrpMemberSet(group, 1, titleSprite);
         HuSprPosSet(group, 1, 288.0f, 240.0f);
         HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
 
-        waitSprite = HuSprCreate(HuSprAnimRead(fn_80008DD0(OPENING_WAIT_SPRITE_DATA,
-                                                                    0x10000000, 2)),
+        waitSprite = HuSprCreate(HuSprAnimDataRead(OPENING_WAIT_SPRITE_DATA),
                                  0, 0);
         HuSprGrpMemberSet(group, 2, waitSprite);
         HuSprPosSet(group, 2, 288.0f, 206.0f);
@@ -227,15 +224,13 @@ void BootExec(void)
             }
             BootTitleCreate();
 
-            anim = HuSprAnimRead(
-                fn_80008DD0(NINTENDO_SPRITE_DATA, 0x10000000, 2));
+            anim = HuSprAnimDataRead(NINTENDO_SPRITE_DATA);
             titleSprite = HuSprCreate(anim, 0, 0);
             HuSprGrpMemberSet(group, 1, titleSprite);
             HuSprPosSet(group, 1, 288.0f, 240.0f);
             HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
 
-            waitSprite = HuSprCreate(HuSprAnimRead(fn_80008DD0(OPENING_WAIT_SPRITE_DATA,
-                                                                        0x10000000, 2)),
+            waitSprite = HuSprCreate(HuSprAnimDataRead(OPENING_WAIT_SPRITE_DATA),
                                      0, 0);
             HuSprGrpMemberSet(group, 2, waitSprite);
             HuSprPosSet(group, 2, 288.0f, 206.0f);
@@ -399,19 +394,17 @@ void BootProgExec(void)
     group = HuSprGrpCreate(3);
 
     anim =
-        HuSprAnimRead(fn_80008DD0(PROGRESSIVE_MSG_SPRITE_DATA, 0x10000000, 2));
+        HuSprAnimDataRead(PROGRESSIVE_MSG_SPRITE_DATA);
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 0, sprite);
     HuSprPosSet(group, 0, 288.0f, 240.0f);
 
-    anim = HuSprAnimRead(
-        fn_80008DD0(PROGRESSIVE_CURSOR_SPRITE_DATA, 0x10000000, 2));
+    anim = HuSprAnimDataRead(PROGRESSIVE_CURSOR_SPRITE_DATA);
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 1, sprite);
     HuSprPosSet(group, 1, posTbl[selection * 2], posTbl[selection * 2 + 1]);
 
-    anim = HuSprAnimRead(
-        fn_80008DD0(PROGRESSIVE_CURSOR_SEL_SPRITE_DATA, 0x10000000, 2));
+    anim = HuSprAnimDataRead(PROGRESSIVE_CURSOR_SEL_SPRITE_DATA);
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 2, sprite);
     HuSprPosSet(group, 2, posTbl[selection * 2], posTbl[selection * 2 + 1]);
@@ -459,11 +452,9 @@ void BootProgExec(void)
 
     group = HuSprGrpCreate(1);
     if (selection == 0) {
-        anim = HuSprAnimRead(
-            fn_80008DD0(PROGRESSIVE_ON_SPRITE_DATA, 0x10000000, 2));
+        anim = HuSprAnimDataRead(PROGRESSIVE_ON_SPRITE_DATA);
     } else {
-        anim = HuSprAnimRead(
-            fn_80008DD0(PROGRESSIVE_OFF_SPRITE_DATA, 0x10000000, 2));
+        anim = HuSprAnimDataRead(PROGRESSIVE_OFF_SPRITE_DATA);
     }
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 0, sprite);
@@ -772,8 +763,8 @@ void BootWarningExec(void)
     float tpLevel;
     float tpLevelStack[1];
 
-    scaleX = 0.9473684430122375f;
-    scaleY = 1.0714285373687744f;
+    scaleX = 0.94736844f;
+    scaleY = 1.0714285f;
 
     group = HuSprGrpCreate(WARNING_SPRITE_MEMBER_COUNT);
 

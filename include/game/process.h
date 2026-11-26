@@ -2,6 +2,7 @@
 #define _GAME_PROCESS_H
 
 #include "game/jmp.h"
+#include "game/memory.h"
 #include "dolphin/types.h"
 
 typedef struct Process_s HUPROCESS;
@@ -13,7 +14,7 @@ struct Process_s {
     HUPROCESS *parent;
     HUPROCESS *nextChild;
     HUPROCESS *firstChild;
-    void *heap;
+    MEMORY_BLOCK *heap; // First block in the process heap.
     u16 exec;
     u16 stat;
     u16 prio;

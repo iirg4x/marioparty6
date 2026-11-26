@@ -1,5 +1,6 @@
 // Updates and draws the rising and colliding particles.
 
+#include "REL/minigame_particle_quad.h"
 #include "game/sprput.h"
 #include "REL/framework/frame_time.h"
 #include "dolphin/types.h"
@@ -70,19 +71,6 @@ static inline void SetParticleVertexState()
 }
 
 // Draws a textured quad centered on the current position matrix.
-static inline void DrawParticleQuad(f32 halfWidth, f32 halfHeight)
-{
-    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-    GXPosition3f32(-halfWidth, halfHeight, 0.0f);
-    GXTexCoord2f32(1.0f, 0.0f);
-    GXPosition3f32(halfWidth, halfHeight, 0.0f);
-    GXTexCoord2f32(0.0f, 0.0f);
-    GXPosition3f32(halfWidth, -halfHeight, 0.0f);
-    GXTexCoord2f32(0.0f, 1.0f);
-    GXPosition3f32(-halfWidth, -halfHeight, 0.0f);
-    GXTexCoord2f32(1.0f, 1.0f);
-}
-
 // Initializes the render layer, animation resource, position, and item count.
 ParticleGroup::ParticleGroup(ANIMDATA *value, s32 count, const Position3 &initial)
     : RenderObject(4), texture(value), position(initial.value), particleCount(count)

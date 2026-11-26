@@ -79,7 +79,7 @@ static Vec lbl_1_data_560[4] = {
     {151.0f, 416.0f, 0.0f}, {425.0f, 416.0f, 0.0f}
 };
 
-void fn_1_A528(void *entry);
+void fn_1_A528(M649ScoreEntryView *entry);
 
 /* ObjectSetup creates this object at startup; its first update builds the player score displays. */
 void fn_1_A220(OMOBJMAN *manager)
@@ -173,13 +173,13 @@ void fn_1_A434(OMOBJ *object)
 }
 
 /* Positions one player's score box and number sprite while fn_1_A310 creates the display. */
-void fn_1_A528(void *entry) {
+void fn_1_A528(M649ScoreEntryView *entry) {
     f32 x;
     f32 y;
-    x = (*(f32 *)((s8 *)(entry) + (4)));
-    y = (*(f32 *)((s8 *)(entry) + (8)));
-    MgScoreBoxPosSet((*(s16 *)((s8 *)(entry) + (12))), x, y);
-    MgScorePosSet((*(MGSCORE * *)((s8 *)(entry) + (16))), 7.0f + x, y);
+    x = entry->x;
+    y = entry->y;
+    MgScoreBoxPosSet(entry->box, x, y);
+    MgScorePosSet(entry->score, 7.0f + x, y);
 }
 
 /* Prop updates award stamp points after scoring is enabled, capping each player's total at 99. */
@@ -200,9 +200,9 @@ void fn_1_A5A4(s32 playerIndex, s32 awardedPoints)
 /* fn_1_680 enables scoring during PREMAIN; the next score-object update reveals the displays. */
 void fn_1_A600(void) {
     OMOBJ *object = lbl_1_bss_5A8;
-    s32 *displayEnabled = (s32 *)object->data;
-    if (*displayEnabled == 0) {
-        ++*displayEnabled;
+    M649ScoreWorkView *work = object->data;
+    if (work->displayState == 0) {
+        ++work->displayState;
     }
 }
 

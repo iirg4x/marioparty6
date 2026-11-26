@@ -9,7 +9,7 @@
 
 M659Work *lbl_1_data_0 = &lbl_1_bss_4;
 static int lbl_1_data_4[2] = {1, 2};
-M659Viewport lbl_1_data_C[2] = {
+MinigameViewport lbl_1_data_C[2] = {
     {0, 0, 318, 480}, {0, 322, 318, 480}
 };
 extern HU3D_LIGHTID lbl_1_bss_0;
@@ -92,7 +92,7 @@ void fn_1_254(OMOBJMAN *manager)
 {
     M659Camera *camera = NULL;
     OMOBJ *obj = NULL;
-    M659Viewport *viewport;
+    MinigameViewport *viewport;
     int i = 0;
     for (i = 0; i < 2; i++) {
         viewport = &lbl_1_data_C[i];

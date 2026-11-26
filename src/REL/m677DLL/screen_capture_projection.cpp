@@ -1,5 +1,4 @@
-// Captures the framebuffer in an RGB565 texture and draws the transition geometry.
-// A separate 4x4 Z24X8 texture filled with 0xFF supplies depth for the fan.
+// Captures the framebuffer in an RGB565 texture and draws the transition fan using a separate 4x4 Z24X8 depth texture.
 
 #include "msm_se.h"
 #include <math.h>

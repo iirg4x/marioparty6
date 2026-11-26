@@ -34,8 +34,8 @@ void fn_1_31E74(HU3D_MODEL *hookModel, Mtx *parentMatrix) {
     for (recordIndex = 0; recordIndex < 240; recordIndex += 1) {
         record = &lbl_1_bss_5E4[recordIndex];
         if (record->active != 0) {
-            fn_80022E38(matrix, record->rotation[0], record->rotation[1], record->rotation[2]);
-            mtxTransCat(matrix, record->position[0], record->position[1], record->position[2]);
+            fn_80022E38(matrix, record->rotation.x, record->rotation.y, record->rotation.z);
+            mtxTransCat(matrix, record->position.x, record->position.y, record->position.z);
             mtxScaleCat(matrix, 1.5f, 1.5f, 1.5f);
             PSMTXConcat(*parentMatrix, matrix, matrix);
             fn_80024850(lbl_1_bss_5D8.bodyModel, object, matrix);
@@ -70,15 +70,15 @@ void fn_1_31FCC(void) {
                         lbl_1_bss_5D8.activeRecordCount--;
                     }
                 } else {
-                    PSVECAdd((Point3d *)record->position, (Point3d *)record->velocity,
-                             (Point3d *)record->position);
-                    PSVECAdd((Point3d *)record->rotation, (Point3d *)record->angularVelocity,
-                             (Point3d *)record->rotation);
+                    PSVECAdd(&record->position, &record->velocity,
+                             &record->position);
+                    PSVECAdd(&record->rotation, &record->angularVelocity,
+                             &record->rotation);
                     /* Pieces lie flat briefly after crossing the floor. */
-                    if (record->position[1] <= lbl_1_bss_5D8.floorHeight) {
-                        record->position[1] = lbl_1_bss_5D8.floorHeight;
-                        record->rotation[0] = -90.0f;
-                        record->rotation[2] = 0.0f;
+                    if (record->position.y <= lbl_1_bss_5D8.floorHeight) {
+                        record->position.y = lbl_1_bss_5D8.floorHeight;
+                        record->rotation.x = -90.0f;
+                        record->rotation.z = 0.0f;
                         record->settled = 1;
                     }
                 }
@@ -139,32 +139,32 @@ void fn_1_32250(const Vec *position, s32 pieceCount) {
             radius = (f32)frandmod(10000) / 100.0f;
             elevationAngle = (f32)frandmod(360);
             azimuthAngle = (f32)frandmod(360);
-            record->position[0] =
+            record->position.x =
                 (f32) ((f64) position->x +
                        ((f64) radius * (sin((M_PI * (f64) azimuthAngle) / 180.0) *
                                         cos((M_PI * (f64) elevationAngle) / 180.0))));
-            record->position[1] = (f32)((f64)position->y +
+            record->position.y = (f32)((f64)position->y +
                 ((f64)radius * -sin((M_PI * (f64)elevationAngle) / 180.0)));
-            record->position[2] = (f32)((f64)position->z +
+            record->position.z = (f32)((f64)position->z +
                 ((f64)radius * (cos((M_PI * (f64)azimuthAngle) / 180.0) *
                 cos((M_PI * (f64)elevationAngle) / 180.0))));
 
-            record->velocity[0] = (f32)(0.9f *
+            record->velocity.x = (f32)(0.9f *
                 (((f64)(f32)frandmod(201) - 100.0) / 100.0));
-            record->velocity[1] = -6.5f * ((f32)frandmod(100) / 100.0f);
-            if (record->velocity[1] > -2.6000001f) {
-                record->velocity[1] = -2.6000001f;
+            record->velocity.y = -6.5f * ((f32)frandmod(100) / 100.0f);
+            if (record->velocity.y > -2.6000001f) {
+                record->velocity.y = -2.6000001f;
             }
-            record->velocity[2] = (f32)(0.5 *
+            record->velocity.z = (f32)(0.5 *
                 (((f64)(f32)frandmod(201) - 100.0) / 100.0));
 
-            record->rotation[0] = record->rotation[1] =
-                record->rotation[2] = 0.0f;
-            record->angularVelocity[0] = (f32)(14.0 *
+            record->rotation.x = record->rotation.y =
+                record->rotation.z = 0.0f;
+            record->angularVelocity.x = (f32)(14.0 *
                 (((f64)(f32)frandmod(201) - 100.0) / 100.0));
-            record->angularVelocity[1] = (f32)(14.0 *
+            record->angularVelocity.y = (f32)(14.0 *
                 (((f64)(f32)frandmod(201) - 100.0) / 100.0));
-            record->angularVelocity[2] = (f32)(14.0 *
+            record->angularVelocity.z = (f32)(14.0 *
                 (((f64)(f32)frandmod(201) - 100.0) / 100.0));
             record->color = lbl_1_data_E68[frandmod(4)];
             record->settledFrames = 0;

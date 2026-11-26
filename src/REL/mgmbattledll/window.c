@@ -465,10 +465,10 @@ void fn_1_3018(void) {
     }
 }
 
-MgBattleWindow lbl_1_bss_D8[3];
-MgBattleWindow lbl_1_bss_A8[4];
+MinigameWindow lbl_1_bss_D8[3];
+MinigameWindow lbl_1_bss_A8[4];
 
-MgBattleMessageSound lbl_1_data_38[38] = {
+MinigameMessageSound lbl_1_data_38[38] = {
     { MESSNUM(MESS_MGM_KATINUKI, 0), 1, MSM_SE_GUIDE_NIGHT_INTRO },
     { MESSNUM(MESS_MGM_KATINUKI, 0), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN },
     { MESSNUM(MESS_MGM_KATINUKI, 0), 3, MSM_SE_GUIDE_NIGHT_EXPLAIN },

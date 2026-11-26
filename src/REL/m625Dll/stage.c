@@ -156,17 +156,17 @@ void fn_1_1E80(void)
     fn_80027884(lbl_1_bss_0.model, fn_1_2528);
     lbl_1_bss_0.textureBuffer = HuMemDirectMallocNum(
         2, GXGetTexBufferSize(640U, 480U, 4U, 0U, 0U), 0x10000000);
-    lbl_1_bss_0.anim0 =
+    lbl_1_bss_0.bumpAnimation =
         HuSprAnimDataRead(DATANUM(0x210000, 10));
     night = lbl_802C0278;
     if (night == 0) {
-        lbl_1_bss_0.anim1 =
+        lbl_1_bss_0.reflectionAnimation =
             HuSprAnimDataRead(DATANUM(0x540000, 14));
     } else {
-        lbl_1_bss_0.anim1 =
+        lbl_1_bss_0.reflectionAnimation =
             HuSprAnimDataRead(DATANUM(0x540000, 15));
     }
-    lbl_1_bss_0.value = 0.0f;
+    lbl_1_bss_0.textureScrollOffset = 0.0f;
     fn_8000DAC0(fn_1_20AC, 100U, 12288U, 0, lbl_1_bss_810);
 }
 
@@ -179,8 +179,8 @@ void fn_1_1FEC(const f32 *wavePositionX)
     while (index < 32) {
         if (-100000.0f == lbl_1_bss_0.rippleX[index]) {
             lbl_1_bss_0.rippleX[index] = *wavePositionX;
-            lbl_1_bss_0.amplitude[index] = 30.0f;
-            lbl_1_bss_0.phase[index] = 0.0f;
+            lbl_1_bss_0.rippleHeight[index] = 30.0f;
+            lbl_1_bss_0.rippleRadius[index] = 0.0f;
             return;
         }
         index++;
@@ -268,27 +268,27 @@ void fn_1_20AC(void)
                         distanceAbs = distance;
                     }
                     distance = distanceAbs;
-                    if (!(distance < (lbl_1_bss_0.phase[index] - 50.0f)) &&
-                        !(distance > (50.0f + lbl_1_bss_0.phase[index]))) {
-                        distance -= lbl_1_bss_0.phase[index];
+                    if (!(distance < (lbl_1_bss_0.rippleRadius[index] - 50.0f)) &&
+                        !(distance > (50.0f + lbl_1_bss_0.rippleRadius[index]))) {
+                        distance -= lbl_1_bss_0.rippleRadius[index];
                         vertices->y = (f32)((f64)vertices->y +
-                            ((f64)lbl_1_bss_0.amplitude[index] *
+                            ((f64)lbl_1_bss_0.rippleHeight[index] *
                             cos((M_PI *
                             (f64)(90.0f *
                             (distance / 50.0f))) /
                             180.0)));
                     }
                 }
-                lbl_1_bss_0.phase[index] += 2.0f;
-                lbl_1_bss_0.amplitude[index] *= 0.99;
-                if (lbl_1_bss_0.phase[index] > 500.0f) {
+                lbl_1_bss_0.rippleRadius[index] += 2.0f;
+                lbl_1_bss_0.rippleHeight[index] *= 0.99;
+                if (lbl_1_bss_0.rippleRadius[index] > 500.0f) {
                     lbl_1_bss_0.rippleX[index] = -100000.0f;
                 }
             }
         }
         DCFlushRangeNoSync(object->mesh.vertex->data, object->mesh.vertex->count * 12);
         phaseTime += 2.0f;
-        lbl_1_bss_0.value += 0.0002;
+        lbl_1_bss_0.textureScrollOffset += 0.0002;
     }
 }
 
@@ -305,8 +305,8 @@ void fn_1_2528(HU3D_DRAW_OBJ *waterDrawObject, HSF_MATERIAL *material) {
     fn_8002BCDC(0, 0, 640, 480, GX_TF_RGB565, 0, lbl_1_bss_0.textureBuffer);
     GXPixModeSync();
     fn_800360D8(lbl_1_bss_0.textureBuffer, 640, 480, 4, GX_CLAMP, GX_CLAMP, 1, GX_TEXMAP0);
-    HuSprTexLoad(lbl_1_bss_0.anim0, 0, 1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
-    HuSprTexLoad(lbl_1_bss_0.anim1, 0, 2, GX_REPEAT, GX_REPEAT, GX_LINEAR);
+    HuSprTexLoad(lbl_1_bss_0.bumpAnimation, 0, 1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
+    HuSprTexLoad(lbl_1_bss_0.reflectionAnimation, 0, 2, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     C_MTXLightPerspective(lightProjectionMatrix, camera->fov, camera->aspect,
                           0.5f, -0.5f,
                           0.5f, 0.5f);
@@ -329,7 +329,7 @@ void fn_1_2528(HU3D_DRAW_OBJ *waterDrawObject, HSF_MATERIAL *material) {
     GXSetTevAlphaIn(GX_TEVSTAGE1, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_KONST);
     GXSetTevAlphaOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
     PSMTXIdentity(textureMatrix);
-    mtxTransCat(textureMatrix, lbl_1_bss_0.value, 0.0f, 0.0f);
+    mtxTransCat(textureMatrix, lbl_1_bss_0.textureScrollOffset, 0.0f, 0.0f);
     mtxScaleCat(textureMatrix, 0.5f, 0.5f, 0.5f);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX1, GX_MTX2x4);
     GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY);
@@ -346,4 +346,4 @@ void fn_1_2528(HU3D_DRAW_OBJ *waterDrawObject, HSF_MATERIAL *material) {
 }
 
 M625LightModelState lbl_1_bss_194;
-M625WaveState lbl_1_bss_0;
+MinigameRippleSurface lbl_1_bss_0;

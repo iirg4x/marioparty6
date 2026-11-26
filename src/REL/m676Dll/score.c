@@ -19,7 +19,7 @@ void fn_1_11FC0(OMOBJ *obj);
 void fn_1_11FFC(OMOBJ *node);
 void fn_1_12024(OMOBJ *object);
 void fn_1_1228C(OMOBJ *object);
-void fn_1_12488(M676ScoreEntry *entry);
+void fn_1_12488(MinigameScoreEntry *entry);
 void fn_1_12514(s32 index, s32 amount);
 void fn_1_12590(void);
 s32 fn_1_125E4(s32 index);
@@ -67,7 +67,7 @@ void fn_1_12024(OMOBJ *object)
     scoreAnimation =
         HuSprAnimDataRead(DATANUM(0x9b0000, 48));
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        M676ScoreEntry *entry = &work->entries[playerIndex];
+        MinigameScoreEntry *entry = &work->entries[playerIndex];
         s16 scoreBox = MgScoreBoxCreateChar(120, 48, lbl_80265728[playerIndex].charNo);
         s16 spriteGroup;
         MGSCORE *score;
@@ -84,7 +84,7 @@ void fn_1_12024(OMOBJ *object)
         entry->animationState = 0;
         entry->digitScale = 1.0f;
         spriteGroup = HuSprGrpCreate(2);
-        entry->extraSprites = spriteGroup;
+        entry->decorationGroup = spriteGroup;
         HuSprGrpMemberSet(spriteGroup, 0, HuSprCreate(scoreBoxAnimation, 50, 0));
         HuSprPosSet(spriteGroup, 0, -9.0f, 0.0f);
         HuSprGrpMemberSet(spriteGroup, 1, HuSprCreate(scoreAnimation, 50, 0));
@@ -104,7 +104,7 @@ void fn_1_12024(OMOBJ *object)
 /* Score-object callback: displays the boxes and updates each player's score animation. */
 void fn_1_1228C(OMOBJ *object) {
     M676ScoreWork *work = object->data;
-    M676ScoreEntry *entry;
+    MinigameScoreEntry *entry;
     MGSCORE *score;
     s16 box;
     s16 extraSprites;
@@ -123,7 +123,7 @@ void fn_1_1228C(OMOBJ *object) {
             MgScoreBoxTPLvlSet(box, 1.0f);
             score = entry->score;
             MgScoreDispOn(score);
-            extraSprites = entry->extraSprites;
+            extraSprites = entry->decorationGroup;
             for (memberIndex = 0; memberIndex < 2; memberIndex++) {
                 HuSprAttrReset(extraSprites, (s16) memberIndex, 4);
             }
@@ -168,21 +168,21 @@ void fn_1_1228C(OMOBJ *object) {
 
 /* Applies one player's configured screen position to the box, numeric score, and additional
  * sprites. */
-void fn_1_12488(M676ScoreEntry *entry) {
+void fn_1_12488(MinigameScoreEntry *entry) {
     f32 scoreBoxX;
     f32 scoreBoxY;
     scoreBoxX = entry->x;
     scoreBoxY = entry->y;
     MgScoreBoxPosSet(entry->box, scoreBoxX, scoreBoxY);
     MgScorePosSet(entry->score, 22.0f + scoreBoxX, scoreBoxY);
-    HuSprGrpPosSet(entry->extraSprites, scoreBoxX, scoreBoxY);
+    HuSprGrpPosSet(entry->decorationGroup, scoreBoxX, scoreBoxY);
 }
 
 /* Adds a player's score change while the score-box display state is enabled. */
 void fn_1_12514(s32 playerIndex, s32 scoreChange)
 {
     M676ScoreWork *table;
-    M676ScoreEntry *record;
+    MinigameScoreEntry *record;
 
     if (lbl_1_bss_10B0 != NULL) {
         table = lbl_1_bss_10B0->data;
@@ -226,7 +226,7 @@ s32 fn_1_125E4(s32 playerIndex)
 void fn_1_1263C(s32 playerIndex, f32 *x, f32 *y)
 {
     M676ScoreWork *table;
-    M676ScoreEntry *record;
+    MinigameScoreEntry *record;
 
     if (lbl_1_bss_10B0 != NULL) {
         table = lbl_1_bss_10B0->data;

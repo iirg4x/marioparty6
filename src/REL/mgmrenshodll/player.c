@@ -1,4 +1,5 @@
 /* Player animation data and per-frame movement for Endurance Alley. */
+#include "REL/minigame_character_motion.h"
 #include <math.h>
 
 #include "game/object.h"
@@ -65,25 +66,14 @@ typedef struct MGRenshoPlayerState {
     Vec position; /* Character position in world units. */
     Vec rotation; /* Character rotation in degrees. */
     u8 unk_2C[4]; /* No code names this field. */
-    f32 landingStateA; /* Cleared when the fall begins and again on landing; other use is not
-                        * established. */
+    f32 unk30; /* The game's code never reads this field. */
     f32 vertical_velocity; /* Vertical movement per frame. */
-    f32 landingStateB; /* Cleared when the fall begins and again on landing; other use is not
-                        * established. */
+    f32 unk38; /* The game's code never reads this field. */
     s16 jump_frame; /* Current frame of the scripted jump arc. */
     s16 jump_frames; /* Number of frames in the scripted jump arc. */
     u8 unk_40[8]; /* No code names this field. */
     f32 remaining_distance; /* Distance left to move along the course, in world units. */
 } MGRenshoPlayerState;
-
-typedef struct MGRenshoMotionSetting {
-    s16 motion_index; /* Character motion selected for this player state. */
-    f32 duration; /* Blend duration in frames; short values select an immediate change. */
-    u32 model_attributes; /* Character model attributes applied with the motion. */
-    s32 voice_flag; /* Voice and particle effect enable setting applied when this motion is
-                     * selected. */
-    s32 motion_option; /* Selects a branch whose current code sets the same motion flag. */
-} MGRenshoMotionSetting;
 
 typedef struct MGRenshoDifficultyRow {
     s16 computer_difficulty_by_round[10]; /* CPU difficulty for each play-count tier. */
@@ -135,7 +125,7 @@ u32 lbl_1_data_338[10] = {
 s16 lbl_1_data_360 = -1;
 f32 lbl_1_data_364 = 20.0f;
 Vec lbl_1_data_368[2] = {{30.0f, 0.0f, 760.0f}, {30.0f, 0.0f, 160.0f}};
-MGRenshoMotionSetting lbl_1_data_380[11] = {
+MinigameCharacterMotion lbl_1_data_380[11] = {
     {0, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
     {0, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
     {1, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
@@ -167,28 +157,28 @@ void fn_1_927C(OMOBJ *object, s16 motionSettingIndex)
         return;
     }
     if (motionData->current_motion != motionSettingIndex) {
-        motionIndex = lbl_1_data_380[motionSettingIndex].motion_index;
+        motionIndex = lbl_1_data_380[motionSettingIndex].motionIndex;
         if (motionIndex != -1) {
             if (lbl_1_data_380[motionSettingIndex].duration <= 1.0f) {
                 fn_8005BE80(motionData->character_no, object->mtnId[motionIndex]);
                 fn_80026A44(object->mdlId[0],
                                    fn_80026AB8(object->mdlId[0]) | (1 << 30));
                 fn_8005C430(motionData->character_no,
-                                 lbl_1_data_380[motionSettingIndex].model_attributes);
+                                 lbl_1_data_380[motionSettingIndex].modelAttributes);
             } else {
                 fn_8005C430(motionData->character_no, ((1 << 30) | (1 << 1)));
                 fn_8005C2C8(motionData->character_no, object->mtnId[motionIndex],
                                    0.0f,
                                    lbl_1_data_380[motionSettingIndex].duration,
-                                   lbl_1_data_380[motionSettingIndex].model_attributes);
+                                   lbl_1_data_380[motionSettingIndex].modelAttributes);
             }
-            if (lbl_1_data_380[motionSettingIndex].motion_option != 0) {
+            if (lbl_1_data_380[motionSettingIndex].motionOption != 0) {
                 fn_8002DC74(object->mtnId[motionIndex], 1U);
             } else {
                 fn_8002DC74(object->mtnId[motionIndex], 1U);
             }
             fn_8005DFC0(motionData->character_no,
-                                  lbl_1_data_380[motionSettingIndex].voice_flag);
+                                  lbl_1_data_380[motionSettingIndex].voiceFlag);
         }
         motionData->current_motion = motionSettingIndex;
         if (motionData->current_motion == 0) {
@@ -907,9 +897,9 @@ void fn_1_AE08(OMOBJ *playerObject) {
                     fn_800269E8(playerObject->mdlId[0],
                                      ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
                                          ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
-                    playerState->landingStateA =
+                    playerState->unk30 =
                         playerState->vertical_velocity =
-                            playerState->landingStateB = 0.0f;
+                            playerState->unk38 = 0.0f;
                 }
                 break;
             case 8:
@@ -927,9 +917,9 @@ void fn_1_AE08(OMOBJ *playerObject) {
                             playerState->motion_state = 9;
                         }
                     }
-                    playerState->landingStateA =
+                    playerState->unk30 =
                         playerState->vertical_velocity =
-                            playerState->landingStateB = 0.0f;
+                            playerState->unk38 = 0.0f;
                     playerState->position.y = 0.0f;
                 }
                 break;

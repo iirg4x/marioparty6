@@ -72,12 +72,12 @@ void fn_1_E1C8(OMOBJ *object)
     s32 index;
     GXColor *configuration;
 
-    configuration = (GXColor *)object->data;
+    configuration = object->data;
     *configuration = lbl_1_data_678[0];
-    animation = HuSprAnimRead(fn_80008DD0(fn_1_E18(15), 0x10000000, 2));
+    animation = HuSprAnimDataRead(fn_1_E18(15));
     modelId = fn_8003216C(animation, 128);
     object->mdlId[0] = modelId;
-    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    particle = lbl_802C01C8[(s16)modelId].hookData;
     fn_8003269C(modelId, 0);
     fn_800326D0(modelId, fn_1_E300);
     fn_80026B8C(modelId, 6);
@@ -132,7 +132,7 @@ void fn_1_E460(OMOBJ *object)
 
     object->mdlId[1] = hook;
     fn_80026B8C(hook, 2);
-    work->animation = HuSprAnimRead(fn_80008DD0(fn_1_E18(14), 0x10000000, 2));
+    work->animation = HuSprAnimDataRead(fn_1_E18(14));
 }
 
 /* The effect object's update calls this each frame to grow and fade active ground quads. */
@@ -287,8 +287,7 @@ void fn_1_E9D8(OMOBJ *object, M674TextureWork *work)
     textureSize = GXGetTexBufferSize(320, 240, 4, 0, 0);
     work->textureBuffer = HuMemDirectMallocNum(HEAP_HEAP, textureSize, 0x10000000);
     work->textureData = fn_80008DD0(fn_1_E18(16), 0x10000000, 2);
-    work->animationData = HuSprAnimRead(
-        fn_80008DD0(fn_1_E18(17), 0x10000000, 2));
+    work->animationData = HuSprAnimDataRead(fn_1_E18(17));
     work->scrollX = 0.0f;
     work->scrollY = 0.0f;
     PSMTXIdentity(work->textureMatrices[0]);
@@ -574,7 +573,7 @@ void fn_1_F5D8(M674TextureWork *work) {
     GXSetArray(GX_VA_POS, (void *)lbl_1_rodata_6C0, 6U);
     GXSetArray(GX_VA_CLR0, (void *)lbl_1_rodata_5A0, 2U);
     GXSetArray(GX_VA_TEX0, (void *)lbl_1_rodata_780, 4U);
-    GXCallDisplayList((void *)lbl_1_rodata_800, 96U);
+    GXCallDisplayList(lbl_1_rodata_800, 96U);
 }
 
 /* Emit one rising particle near the supplied point when a particle slot is free. */

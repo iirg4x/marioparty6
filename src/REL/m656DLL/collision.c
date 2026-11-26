@@ -45,7 +45,7 @@ void fn_1_24C8(M656Bounds *bounds, M656Sphere *sphere)
 }
 
 /* Computes triangle bounds for broad-phase collision checks. */
-void fn_1_255C(M656Bounds *bounds, M656Triangle *triangle)
+void fn_1_255C(M656Bounds *bounds, MinigameTriangle *triangle)
 {
     HuVecF vertices[3];
     int vertexIndex;
@@ -156,7 +156,7 @@ float fn_1_2C8C(M656Sphere *sphereA, M656Sphere *sphereB)
 
 /* Returns the squared gap to the closest triangle point and optionally outputs its barycentric
  * weights. */
-f32 fn_1_2E18(Point3d *queryPoint, M656Triangle *triangle, f32 *barycentricSOut,
+f32 fn_1_2E18(Point3d *queryPoint, MinigameTriangle *triangle, f32 *barycentricSOut,
               f32 *barycentricTOut)
 {
     Point3d pointOffset;
@@ -367,7 +367,7 @@ f32 fn_1_2E18(Point3d *queryPoint, M656Triangle *triangle, f32 *barycentricSOut,
 }
 
 /* Takes the square root of the triangle gap for callers that need distance units. */
-float fn_1_36BC(HuVecF *queryPoint, M656Triangle *triangle, float *barycentricSOut,
+float fn_1_36BC(HuVecF *queryPoint, MinigameTriangle *triangle, float *barycentricSOut,
                 float *barycentricTOut)
 {
     return sqrtf(fn_1_2E18(queryPoint, triangle, barycentricSOut, barycentricTOut));

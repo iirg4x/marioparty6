@@ -1,6 +1,8 @@
 /* Shared state and helper declarations for Mass Meteor. */
 #ifndef M656_INTEGRATION_H
 #define M656_INTEGRATION_H
+#include "REL/minigame_homogeneous_point.h"
+#include "REL/minigame_triangle.h"
 #include "game/main.h"
 #include "game/object.h"
 #include "game/audio.h"
@@ -112,20 +114,10 @@ typedef struct M656Capsule {
     M656Segment segment; /* Capsule center line. */
     float radius;        /* Capsule radius in stage units. */
 } M656Capsule;
-typedef struct M656Triangle {
-    HuVecF start; /* Triangle base vertex. */
-    HuVecF edge1; /* Vector from start to the second vertex. */
-    HuVecF edge2; /* Vector from start to the third vertex. */
-} M656Triangle;
 typedef struct M656Bounds {
     HuVecF min; /* Minimum corner in stage units. */
     HuVecF max; /* Maximum corner in stage units. */
 } M656Bounds;
-typedef struct M656Vec4 {
-    float x, y, z; /* Transformed point coordinates. */
-    float w;       /* Homogeneous coordinate. */
-} M656Vec4;
-
 extern MGSEQ_PARAM lbl_1_data_0;
 extern OMOBJMAN *lbl_1_bss_0;
 extern s32 lbl_1_bss_10[2];
@@ -173,21 +165,21 @@ void fn_1_1548(Mtx out, f64 angle);
 void fn_1_1620(Mtx out, const Mtx input, float scale);
 void fn_1_1688(Point3d *out, Mtx matrix, Point3d *vec);
 void fn_1_16C0(Mtx out, Mtx input);
-void fn_1_16F0(M656Vec4 *out, Mtx44 matrix, HuVecF *vec);
+void fn_1_16F0(MinigameHomogeneousPoint *out, Mtx44 matrix, HuVecF *vec);
 s32 fn_1_17D4(Mtx44 out, HuVecF *start, HuVecF *end, HuVecF *up);
 s32 fn_1_1D48(Mtx44 out, f32 angle, f32 aspect);
 void fn_1_1E58(M656MatrixElements *out, M656MatrixElements *a, M656MatrixElements *b);
 void fn_1_22FC(M656Sphere *out, f32 x, f32 y, f32 z, f32 radius);
 void fn_1_2310(M656Bounds *out, M656Capsule *capsule);
 void fn_1_24C8(M656Bounds *out, M656Sphere *sphere);
-void fn_1_255C(M656Bounds *out, M656Triangle *triangle);
+void fn_1_255C(M656Bounds *out, MinigameTriangle *triangle);
 s32 fn_1_27C0(M656Bounds *boundsA, M656Bounds *boundsB);
 s32 fn_1_2830(M656Sphere *sphereA, HuVecF *velocityA, M656Sphere *sphereB, HuVecF *velocityB,
     float maxTime, float *time, HuVecF *out);
 float fn_1_2BE8(M656Sphere *sphereA, M656Sphere *sphereB);
 float fn_1_2C8C(M656Sphere *sphereA, M656Sphere *sphereB);
-f32 fn_1_2E18(Point3d *point, M656Triangle *triangle, f32 *triangleS, f32 *triangleT);
-float fn_1_36BC(HuVecF *a, M656Triangle *b, float *s, float *t);
+f32 fn_1_2E18(Point3d *point, MinigameTriangle *triangle, f32 *triangleS, f32 *triangleT);
+float fn_1_36BC(HuVecF *a, MinigameTriangle *b, float *s, float *t);
 f32 fn_1_37E8(M656Segment *segmentA, M656Segment *segmentB, f32 *parameterA, f32 *parameterB);
 float fn_1_43E4(M656Segment *a, M656Segment *b, float *s, float *t);
 float fn_1_4510(HuVecF *point, M656Segment *segment);

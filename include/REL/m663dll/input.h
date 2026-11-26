@@ -1,22 +1,9 @@
 #ifndef REL_M663DLL_INPUT_H
 #define REL_M663DLL_INPUT_H
 
+#include "REL/minigame_pad.h"
 #include "dolphin/types.h"
 #include "game/mg/timer.h"
-
-typedef struct M663PadInput {
-    s32 unk00; /* The game's code never reads this field. */
-    s32 buttonsDown;
-    u16 unk08; /* The game's code never reads this field. */
-    s8 unk0A; /* The game's code never reads this field. */
-    s8 unk0B; /* The game's code never reads this field. */
-    s8 unk0C; /* The game's code never reads this field. */
-    s8 unk0D; /* The game's code never reads this field. */
-    u8 unk0E; /* The game's code never reads this field. */
-    u8 unk0F; /* The game's code never reads this field. */
-    u8 unk10; /* The game's code never reads this field. */
-    u8 unk11; /* The game's code never reads this field. */
-} M663PadInput;
 
 typedef struct M663ModuleInput {
     u8 unk_00[8]; /* No code names this field. */
@@ -27,7 +14,7 @@ typedef struct M663ModuleInput {
     s16 transitionTimer;
     s16 winnerReady;
     u8 unk_14[4]; /* No code names this field. */
-    M663PadInput padInputs[4];
+    SystemPadInput padInputs[4];
     MGTIMER *timer;
     s32 frame;
     s16 unk70; /* The game's code never reads this field. */

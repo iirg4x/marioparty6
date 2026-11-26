@@ -5,6 +5,7 @@
 
 #include "game/process.h"
 #include "game/sprite.h"
+#include "game/sprput.h"
 #include "game/window.h"
 #include "game/hu3d.h"
 
@@ -13,8 +14,6 @@ static inline void DebugValue(s32 value) {
 }
 
 int HuMCSelModeGet(void);
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, GXTexWrapMode wrapT,
-                  GXTexFilter filter);
 
 typedef struct MicquizChoiceRecord_s {
     s32 answerIndex; /* Zero-based recognized answer index. */

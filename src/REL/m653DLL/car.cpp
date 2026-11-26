@@ -16,7 +16,7 @@
 
 #include "REL/framework/random.h"
 
-#include "REL/m653DLL/absolute.h"
+#include "REL/minigame_absolute.h"
 
 #include "REL/m653DLL/translate_matrix.h"
 
@@ -57,7 +57,7 @@ extern "C" {
 
 #include <functional>
 
-extern const s32 lbl_1_rodata_48[0xE] = {
+extern const s32 lbl_1_rodata_48[14] = {
     0x240, 0x228, 0x2B8, 0x318, 0x2E8, 0x1E0, 0x300,
     0x1F8, 0x2D0, 0x288, 0x210, 0x2A0, 0x270, 0x258
 };

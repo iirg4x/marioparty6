@@ -6,7 +6,7 @@
 #include "REL/m663dll/input.h"
 
 typedef struct M663PlayerWork {
-    M663PadInput input;
+    SystemPadInput input;
     s8 playerNo;
     s8 playerIndex;
     s8 characterNo;

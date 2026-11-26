@@ -1,6 +1,7 @@
 /* Player collision registrations, movement and character animation work. */
 #ifndef REL_M676DLL_PLAYER_TYPES_H
 #define REL_M676DLL_PLAYER_TYPES_H
+#include "REL/minigame_player_motion.h"
 
 #include "REL/m676Dll/actor_types.h"
 
@@ -93,20 +94,13 @@ extern M676PlayerWork *lbl_1_bss_43C[5];
 extern s32 lbl_1_bss_458[4];
 extern OMOBJ *lbl_1_bss_468[4];
 
-typedef struct M676MotionParam {
-    u16 motion;
-    s16 overlay;
-    f32 blend;
-    u32 attr;
-} M676MotionParam;
-
 typedef struct M676WanderEntry {
     f32 selectionTimingFactor;
     s32 preferredRank;
 } M676WanderEntry;
 
 extern u32 lbl_1_data_130[8];
-extern M676MotionParam lbl_1_data_150[8];
+extern MinigamePlayerMotionParams lbl_1_data_150[8];
 extern Vec lbl_1_data_1B0[4];
 extern f32 lbl_1_data_1E0[4];
 extern Vec lbl_1_data_1F0[4];

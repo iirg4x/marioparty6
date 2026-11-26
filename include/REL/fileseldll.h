@@ -11,6 +11,27 @@
 
 #include "datanum/filesel.h"
 
+typedef struct NameKeyboardBounds_s {
+    /* Keyboard edge coordinates in screen pixels, expanded for edge wrapping. */
+    f32 minX;
+    /* Top keyboard edge in screen pixels, expanded for edge wrapping. */
+    f32 minY;
+    /* Right keyboard edge in screen pixels, expanded for edge wrapping. */
+    f32 maxX;
+    /* Bottom keyboard edge in screen pixels, expanded for edge wrapping. */
+    f32 maxY;
+} NAMEKEYBOARD_BOUNDS;
+
+typedef struct {
+    /* File Select sprite data number and animation bank. */
+    s32 dataNum;
+    u8 bank;
+    /* Draw priority and position in pixels relative to the keyboard sprite group. */
+    s16 priority;
+    s16 x;
+    s16 y;
+} NAME_SPRITE_CONFIG;
+
 #define FILESEL_RESULT_CANCEL -1234
 #define FILESEL_FILENAME_LENGTH 17
 #define FILECARD_MESSID_NONE -1
@@ -120,5 +141,13 @@ void FileStatusMesClose(HUWINID window);
 void NameEnterInit(void);
 s32 NameEnterMain(s16 boxNo);
 void NameEnterClose(void);
+
+struct NameKeyboardBounds_s;
+
+/* Functions shared by the module's source files. */
+s16 fn_1_AAEC(s16 nameWinId);
+s16 fn_1_ABF8(s16 currentKeyIndex, f32 originX, f32 originY, f32 directionX, f32 directionY);
+void fn_1_8F34(s32 callbackData, s16 selectedKeyIndex);
+void fn_1_B234(struct NameKeyboardBounds_s *bounds);
 
 #endif

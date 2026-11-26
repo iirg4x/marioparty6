@@ -1,4 +1,4 @@
-#include "REL/m605DLL/value_bounds.h"
+#include "REL/minigame_value_bounds.h"
 #include "REL/framework/registered_value.h"
 #include "REL/framework/sound.h"
 #include "REL/framework/debug.h"

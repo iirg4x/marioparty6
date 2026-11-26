@@ -19,7 +19,7 @@
 
 M657Work lbl_1_bss_0;
 M657Work *lbl_1_data_0 = &lbl_1_bss_0;
-M657Viewport lbl_1_data_4[2] = {
+MinigameViewport lbl_1_data_4[2] = {
     { 0, 0, 320, 480 },
     { 0, 320, 320, 480 }
 };
@@ -53,7 +53,7 @@ void fn_1_70(void)
 void fn_1_BC(OMOBJMAN *objman)
 {
     M657Camera *camera;
-    M657Viewport *viewport;
+    MinigameViewport *viewport;
     int i;
     int team;
     OMOBJ *obj;

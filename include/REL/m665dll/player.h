@@ -2,6 +2,7 @@
 #ifndef REL_M665DLL_PLAYER_H
 #define REL_M665DLL_PLAYER_H
 
+#include "REL/m665dll/bouncing_work.h"
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 
@@ -18,18 +19,9 @@ typedef struct M665MainModels {
     s16 actionCooldown; /* Frames remaining before another action. */
 } M665MainModels;
 
-typedef struct M665DetachedModel {
-    s16 model; /* Detached effect model ID. */
-    s16 state; /* Detached-effect state. */
-    s16 blinkFrames; /* Elapsed effect updates; parity alternates visibility each update. */
-    f32 velocityX; /* X movement per update. */
-    f32 velocityY; /* Y movement per update. */
-    f32 velocityZ; /* Z movement per update. */
-} M665DetachedModel;
-
 typedef struct M665OtherModels {
     s16 mainMotionIDs[2]; /* Overlaps the first two motions in M665MainModels through the union. */
-    M665DetachedModel effects[2]; /* Detached effect models. */
+    M665BouncingWork effects[2]; /* Detached effect models. */
     s16 motions[2]; /* Alternate vehicle motion IDs. */
     s16 damageCount; /* Number of hits recorded for this player. */
     s16 recoveryFrames; /* Recovery countdown, then elapsed updates used for elimination

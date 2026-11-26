@@ -25,49 +25,6 @@ typedef void (*VoidFunc)(void);
 
 typedef struct OptionMessageEntry OptionMessageEntry;
 
-typedef struct OptionAnimPair {
-    s16 animId1;
-    s16 animId2;
-    s16 modelId;
-} OptionAnimPair;
-
-typedef struct OptionDecaRecord {
-    s16 character;
-    s16 finalScore;
-    s16 score[10];
-} OptionDecaRecord;
-
-typedef struct OptionRecordDisplayEntry {
-    s16 minigameId;
-    u8 recordId;
-    u8 displayType;
-    s32 message;
-} OptionRecordDisplayEntry;
-
-typedef struct OptionSelectionData {
-    s16 selectedIndex;
-    s16 optionCount;
-    s16 animationA[10];
-    s16 choiceAnimationBank[10];
-} OptionSelectionData;
-
-typedef struct OptionWork {
-    s16 rumbleEnabled; /* Saved controller vibration setting. */
-    s16 micStatus;
-    s16 soundMode;
-    s16 boardRecord[6];
-    s16 boardCharacterRecord[6][11];
-    OptionDecaRecord decaRecord[10];
-    s32 prizeUnlocked[42];
-    s16 prizeId[42];
-    u32 prizeName[42];
-    u32 prizeDescription[42];
-    s32 minigameUnlocked[81];
-    u32 record[19];
-    u8 consecutiveRecordCount;
-    u8 consecutiveRecord[100];
-} OptionWork;
-
 char lbl_1_data_450[18] = "gN01m1-itemhook_R";
 
 char lbl_1_data_462[8] = "ys77060";

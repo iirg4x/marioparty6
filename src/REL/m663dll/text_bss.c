@@ -22,8 +22,8 @@
 s16 lbl_1_bss_15A8;
 HUPROCESS *lbl_1_bss_15A0[2];
 M663CameraState lbl_1_bss_1428;
-M663LightState lbl_1_bss_13EC;
-M663ShadowState lbl_1_bss_139C;
+LightInitState lbl_1_bss_13EC;
+MinigameShadowCamera lbl_1_bss_139C;
 M663ProjectionState lbl_1_bss_1378;
 M663ParticleState lbl_1_bss_1368;
 M663ModelWork lbl_1_bss_750[86];

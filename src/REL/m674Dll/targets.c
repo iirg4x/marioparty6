@@ -36,7 +36,7 @@ void fn_1_8ACC(HUPROCESS *process);
 void fn_1_8BCC(void);
 void fn_1_8BD0(OMOBJ *object);
 void fn_1_8BE0(OMOBJ *object);
-void fn_1_8BE4(HUPROCESS *process, M674PropParam *param);
+void fn_1_8BE4(HUPROCESS *process, MinigamePropParams *param);
 void fn_1_8EA4(OMOBJ *object);
 OMOBJ *fn_1_8EF8(s32 type, s32 id);
 void fn_1_8F80(OMOBJ *object, s32 motionIndex);
@@ -94,8 +94,6 @@ s32 fn_1_E014(void);
 #define PROP_ROTATION_AXIS_Y 121
 #define TARGET_INITIAL_COLLISION_MASK 0x19
 #define TARGET_COLLISION_MASK 0x11
-#define MSM_SE_M674_TARGET_COLLECT 2222
-#define MSM_SE_M674_SCORE_FLIGHT 2223
 
 /* Initial scenery and actor positions, in world units. */
 Vec lbl_1_data_270[4] = {{0,0,0},{0,160,-850},{-150,-40,-500},{-1013,0,-916}};
@@ -103,7 +101,7 @@ Vec lbl_1_data_2A0 = {0, -200, 0};
 Vec lbl_1_data_2AC = {0, -210, 0};
 Vec lbl_1_data_2B8 = {0, -330, 0};
 /* Scripted actor motions: resource index, blend duration in seconds and playback flags. */
-M674PropMotionParam lbl_1_data_2C4[9] = {
+MinigamePropMotionParams lbl_1_data_2C4[9] = {
     {5, 0.2f, ((1 << 30) | (1 << 0))},
     {10, 0.2f, ((1 << 30) | (1 << 0))},
     {11, 0.2f, ((1 << 30) | (1 << 0))},
@@ -115,7 +113,7 @@ M674PropMotionParam lbl_1_data_2C4[9] = {
     {-2, 0, 0}
 };
 /* Prop instances, render settings and first-update callbacks; count -1 ends the table. */
-M674PropParam lbl_1_data_330[14] = {
+MinigamePropParams lbl_1_data_330[14] = {
     {1, 0, 1, 0, 6, ((1 << 30) | (1 << 0)), 0, -1, NULL, NULL, 0, fn_1_93D4},
     {1, 0, 0, 0, 6, ((1 << 30) | (1 << 0)), 2, 18, NULL, NULL, 0, fn_1_957C},
     {1, 0, 0, 1, 1, ((1 << 30) | (1 << 0)), 0, 19, NULL, NULL, 0, fn_1_93D0},
@@ -139,7 +137,7 @@ void fn_1_8ACC(HUPROCESS *process)
 {
     OMOBJ *manager;
     OMOBJ **entry;
-    M674PropParam *param;
+    MinigamePropParams *param;
     s32 index;
     void *work;
 
@@ -182,14 +180,14 @@ void fn_1_8BE0(OMOBJ *object)
 }
 
 /* Create each instance in a prop-table entry during setup, including its models and motions. */
-void fn_1_8BE4(HUPROCESS *process, M674PropParam *param)
+void fn_1_8BE4(HUPROCESS *process, MinigamePropParams *param)
 {
     s32 slot;
     OMOBJ *object;
     s32 model;
     M674PropWork *work;
     M674ActorState *state;
-    M674PropMotionParam *motion;
+    MinigamePropMotionParams *motion;
     s32 instanceIndex;
     s32 resourceIndex;
 
@@ -297,7 +295,7 @@ OMOBJ *fn_1_8EF8(s32 type, s32 id)
 void fn_1_8F80(OMOBJ *object, s32 motionIndex)
 {
     M674ActorState *state;
-    M674PropMotionParam *param;
+    MinigamePropMotionParams *param;
     M674PropWork *work = object->data;
     s32 model, motion;
 
@@ -314,9 +312,9 @@ void fn_1_8F80(OMOBJ *object, s32 motionIndex)
         model = object->mdlId[0];
         if (state->motionIndex < 0 || 0.0 == param->blend) {
             fn_8002C95C(model, motion);
-            fn_800269E8(model, param->attr);
+            fn_800269E8(model, param->attributes);
         } else {
-            fn_8002CCC0(model, motion, 0.0f, 60.0f * param->blend, param->attr);
+            fn_8002CCC0(model, motion, 0.0f, 60.0f * param->blend, param->attributes);
         }
         state->motionIndex = motionIndex;
     }
@@ -778,7 +776,7 @@ void fn_1_A8FC(OMOBJ *object)
             entry->rotation.z = 0.0f;
             entry->yawStep = 0.0f;
             fn_80026A44((s16)entry->modelId, (1 << 0));
-            fn_1_4040(MSM_SE_M674_SCORE_FLIGHT, &entry->position);
+            fn_1_4040(MSM_SE_MG674_SCORE_FLIGHT, &entry->position);
             break;
         case 2:
             entry->state = 6;
@@ -788,7 +786,7 @@ void fn_1_A8FC(OMOBJ *object)
             entry->rotation.z = 0.0f;
             entry->yawStep = 5.0f;
             fn_80026A44((s16)entry->modelId, (1 << 0));
-            fn_1_4040(MSM_SE_M674_SCORE_FLIGHT, &entry->position);
+            fn_1_4040(MSM_SE_MG674_SCORE_FLIGHT, &entry->position);
             break;
         case 3:
             entry->state = 8;
@@ -1042,7 +1040,7 @@ void fn_1_B37C(OMOBJ *object)
     modelState->state.task.shape.actor.position = &state->state.position;
     modelState->state.task.shape.actor.velocity = &state->state.velocity;
     modelState->state.task.shape.actor.initialPosition =
-        *(Vec *) modelState->state.task.shape.actor.position;
+        *modelState->state.task.shape.actor.position;
     if (tableIndex != 0) {
         modelState->state.task.shape.actor.radius = (100.0f);
         modelState->state.task.shape.actor.collisionFlag = (1.0f);
@@ -1104,7 +1102,7 @@ void fn_1_B6A4(OMOBJ *object)
             fn_800269E8(modelId, (1 << 0));
             fn_80026A44((s16)work->secondaryModel, (1 << 0));
             fn_80026A44((s16)work->secondaryModel, ((1 << 30) | (1 << 1)));
-            fn_1_4040(MSM_SE_M674_TARGET_COLLECT, &state->state.position);
+            fn_1_4040(MSM_SE_MG674_TARGET_COLLECT, &state->state.position);
             effectPosition = state->state.position;
             switch (lbl_1_bss_378[tableIndex]) {
             case 1:
@@ -1284,7 +1282,7 @@ void fn_1_C11C(OMOBJ *object)
             fn_80026FCC((s16)shadowWork->state.shadowModel);
         }
         fn_80026790((s16)shadowWork->state.shadowModel,
-            (HuVecF *)&shadowWork->state.position);
+            &shadowWork->state.position);
     } else {
         if (shadowWork->state.position.y < (500.0)) {
             fn_80026F9C((s16)modelId);

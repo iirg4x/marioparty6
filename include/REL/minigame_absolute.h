@@ -1,8 +1,9 @@
-#ifndef REL_M653DLL_ABSOLUTE_H
-#define REL_M653DLL_ABSOLUTE_H
+#ifndef REL_MINIGAME_ABSOLUTE_H
+#define REL_MINIGAME_ABSOLUTE_H
+
 #include "dolphin/types.h"
 
-// The size of a value, whatever its sign.
+/* Reflect negative values around zero. */
 static inline f32 absolute(f32 value)
 {
     if (value < 0.0f) {

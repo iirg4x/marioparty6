@@ -11,6 +11,7 @@
 #include "game/board/branch.h"
 #include "game/board/camera.h"
 #include "game/board/capevent.h"
+#include "game/board/capevent_work.h"
 #include "game/board/capsule.h"
 #include "game/board/coin.h"
 #include "game/board/main.h"
@@ -21,8 +22,6 @@
 #include "msm_se.h"
 #include "game/board/math.h"
 #include "humath.h"
-
-#define CAP_WORK_MAX 64
 
 enum {
     CAPTRAP_DATA_BOBLE = 61,
@@ -50,81 +49,6 @@ enum {
             mbCapEffNum = 0; \
         } \
     } while (0)
-
-typedef struct EvCapWork {
-    int motId[CAP_WORK_MAX][4]; /* Motion IDs loaded for each work slot and player. */
-    int objId[CAP_WORK_MAX]; /* Board object IDs owned by this capsule event. */
-    int sprId[CAP_WORK_MAX]; /* Sprite IDs owned by this capsule event. */
-    void *mem[CAP_WORK_MAX]; /* Allocations kept until the capsule event closes. */
-    int masuId[CAP_WORK_MAX]; /* Space ID associated with each work slot. */
-    HuVecF objPos[CAP_WORK_MAX]; /* Position offsets from each tracked object's board space, in
-                                  * world units. */
-    int playerMasuId[4]; /* Saved space ID for each player. */
-    HuVecF playerPos[4]; /* Position offsets from each player's board space, in world
-                                      * units. */
-    int bgId; /* Background resource ID used by the capsule event. */
-    OMOBJ *obj; /* Object manager entry associated with this event work. */
-} EVCAPWORK;
-
-typedef struct CapWorkFlag {
-    u8 _flag00 : 1;
-    u8 _flag01 : 1;
-    u8 _flag02 : 1;
-    u8 _flag03 : 1;
-    u8 _flag04 : 1;
-    u8 _flag05 : 1;
-    u8 _flag06 : 1;
-    u8 _flag07 : 1;
-    u8 _flag08 : 1;
-    u8 _flag09 : 1;
-    u8 _flag10 : 1;
-    u8 _flag11 : 1;
-    u8 _flag12 : 1;
-    u8 _flag13 : 1;
-    u8 _flag14 : 1;
-    u8 _flag15 : 1;
-    u8 _flag16 : 1;
-    u8 _flag17 : 1;
-    u8 _flag18 : 1;
-    u8 _flag19 : 1;
-    u8 _flag20 : 1;
-    u8 _flag21 : 1;
-    u8 _flag22 : 1;
-    u8 _flag23 : 1;
-    u8 _flag24 : 1;
-    u8 _flag25 : 1;
-    u8 _flag26 : 1;
-    u8 _flag27 : 1;
-    u8 _flag28 : 1;
-    u8 _flag29 : 1;
-    u8 _flag30 : 1;
-    u8 _flag31 : 1;
-} CAPWORKFLAG;
-
-typedef struct CapWork {
-    int playerNo; /* Player affected by this capsule event. */
-    int targetPlayerNo; /* Purpose is not established by reads in this translation unit. */
-    int capsuleNo; /* Purpose is not established by reads in this translation unit. */
-    int masuId; /* Purpose is not established by reads in this translation unit. */
-    int masuIdNext; /* Next board space used by the event's movement animation. */
-    int _unk14; /* Purpose is not established by reads in this translation unit. */
-    int _unk18; /* Purpose is not established by reads in this translation unit. */
-    int _unk1C; /* Purpose is not established by reads in this translation unit. */
-    EVCAPWORK objWork; /* Tracked objects, motions, sprites, and relative board positions. */
-    CAPWORKFLAG flags; /* Event state bits; a low-byte bit gates the BiriQ shock-delay wait. */
-    int _unkB6C; /* Purpose is not established by reads in this translation unit. */
-    u8 _unkB70[92]; /* Byte storage with no field-level use established in this file. */
-    int processNo; /* Purpose is not established by reads in this translation unit. */
-    OMOBJ *explodeObj; /* Explosion effect object used by trap variants. */
-    OMOBJ *boostObj; /* Purpose is not established by reads in this translation unit. */
-    OMOBJ *snowObj; /* Purpose is not established by reads in this translation unit. */
-    OMOBJ *glowObj; /* Glow effect object used by trap variants. */
-    OMOBJ *ringObj; /* Ring effect object used by trap variants. */
-    OMOBJ *coinObj; /* Purpose is not established by reads in this translation unit. */
-    OMOBJ *coinManObj; /* Purpose is not established by reads in this translation unit. */
-    OMOBJ *starManObj; /* Purpose is not established by reads in this translation unit. */
-    OMOBJ *capLoseObj; /* Purpose is not established by reads in this translation unit. */
-} CAPWORK;
 
 typedef struct CapBobleWork {
     int playerNo; /* Player whose capsule trap owns this floating model. */

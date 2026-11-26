@@ -251,7 +251,7 @@ void fn_1_229E0(void) {
         OSReport("COMP ANSER:RIGHT\n");
     }
     OSReport("COMP LEFT:%d RIGHT:%d\n", lbl_1_bss_18AC[0], lbl_1_bss_18AC[1]);
-    lbl_1_bss_18A8 = HuSprAnimRead(fn_80008DD0(DATANUM(0xa40000, 95), 0x10000000, 2));
+    lbl_1_bss_18A8 = HuSprAnimDataRead(DATANUM(0xa40000, 95));
     lbl_1_bss_18A6 = fn_80025A04(fn_80008DD0(DATANUM(0xa40000, 96), 0x10000000, 2));
     lbl_1_bss_18A4 = fn_80025A04(fn_80008DD0(DATANUM(0xa40000, 97), 0x10000000, 2));
     fn_800269E8(lbl_1_bss_18A6, 1);
@@ -610,8 +610,8 @@ void fn_1_24B40(OMOBJ *object) {
         if (lbl_1_bss_104 >= 120.0f) {
             lbl_1_bss_104 = 0.0f;
             lbl_1_bss_FC = 12;
-            WipeCreate(2, 0, 0x14);
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
+            WipeCreate(2, 0, 20);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 500);
             return;
         }
         lbl_1_bss_104 += 1.0f;
@@ -942,7 +942,7 @@ void fn_1_25DF4(void) {
     f32 firstScale;
     f32 secondScale;
 
-    animation = HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 1), 0x10000000, 2));
+    animation = HuSprAnimDataRead(DATANUM(0x210000, 1));
     fn_800097F4(0x210000);
     particleManager[0] = fn_1_26168(animation, lbl_1_bss_1820[0], 0);
     particleManager[1] = fn_1_26168(animation, lbl_1_bss_1820[1], 1);
@@ -995,7 +995,7 @@ void fn_1_25DF4(void) {
     secondProcess = fn_8000D818(fn_1_24FA4, 0x64, 0x1800, 0);
     SetProcessProperty(secondProcess, secondSelection, 1);
     HuAudFXPlay(0x52D);
-    HuPrcSleep(0x78);
+    HuPrcSleep(120);
     lbl_1_bss_1840 = 1;
     HuPrcEnd();
     while (1) {
@@ -1048,7 +1048,7 @@ s32 fn_1_262D4(s32 effectIndex, s32 blendMode) {
 
     modelId = (lbl_1_bss_182A[effectIndex] =
                    fn_8003216C(lbl_1_bss_1830[effectIndex], 0xC8));
-    particleWork = (HU3D_PARTICLE *)lbl_802C01C8[modelId].hookData;
+    particleWork = lbl_802C01C8[modelId].hookData;
     if (blendMode == 0) {
         fn_8003269C(modelId, 1);
     } else {

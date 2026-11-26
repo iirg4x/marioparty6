@@ -5,7 +5,8 @@
 
 #include "REL/m645DLL.h"
 
-void fn_1_8C0(M645Bounds *bounds, M645Triangle *triangle)
+/* Bound the four corners formed by the two edges of the triangle. */
+void fn_1_8C0(M645Bounds *bounds, MinigameTriangle *triangle)
 {
     HuVecF vertices[4];
     int vertexIndex;
@@ -52,9 +53,10 @@ s32 fn_1_BC8(M645Bounds *a, M645Bounds *b)
     return 0;
 }
 
-extern float fn_1_C38(M645Sphere *, M645Triangle *, float *, float *);
+extern float fn_1_C38(M645Sphere *, MinigameTriangle *, float *, float *);
 
-f32 fn_1_C38(M645Sphere *sphere, M645Triangle *triangle,
+/* Measure squared distance from the sphere center using the triangle edge projections. */
+f32 fn_1_C38(M645Sphere *sphere, MinigameTriangle *triangle,
              f32 *barycentricS, f32 *barycentricT)
 {
     HuVecF difference;
@@ -106,7 +108,8 @@ float fn_1_E40(void *point, void *triangle, float *barycentricS, float *barycent
     return sqrtf(fn_1_C38(point, triangle, barycentricS, barycentricT));
 }
 
-f32 fn_1_F6C(M645Sphere *sphere, M645Triangle *triangle,
+/* Subtract the squared sphere radius from the distance measure and clamp it to zero. */
+f32 fn_1_F6C(M645Sphere *sphere, MinigameTriangle *triangle,
              f32 *barycentricS, f32 *barycentricT)
 {
     f32 gapSquared = fn_1_C38(sphere, triangle, barycentricS, barycentricT);
@@ -118,7 +121,7 @@ f32 fn_1_F6C(M645Sphere *sphere, M645Triangle *triangle,
 }
 
 /* During stage collision checks, return the sphere-to-triangle distance and locate the closest point on the triangle. */
-f32 fn_1_FFC(M645Sphere *sphere, M645Triangle *triangle,
+f32 fn_1_FFC(M645Sphere *sphere, MinigameTriangle *triangle,
              f32 *barycentricS, f32 *barycentricT)
 {
     return sqrtf(fn_1_F6C(sphere, triangle, barycentricS, barycentricT));

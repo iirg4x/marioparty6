@@ -2,6 +2,7 @@
 #ifndef REL_M665DLL_STAGE_H
 #define REL_M665DLL_STAGE_H
 
+#include "REL/m665dll/bouncing_work.h"
 #include "dolphin/types.h"
 
 typedef struct M665FireEffect {
@@ -76,15 +77,6 @@ typedef struct M665RollingWork {
     f32 verticalSpeed;
     f32 depthSpeed;
 } M665RollingWork;
-
-typedef struct M665BouncingWork {
-    s16 modelID;
-    s16 state;
-    s16 frames;
-    f32 horizontalSpeed;
-    f32 verticalSpeed;
-    f32 depthSpeed;
-} M665BouncingWork;
 
 typedef struct M665StageWork {
     M665FireEffect fire[16];

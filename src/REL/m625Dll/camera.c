@@ -302,22 +302,22 @@ void fn_1_1398(Point3d *result, const Point3d *point, f32 distance)
     *result = fallback;
 }
 
-M625CameraParams lbl_1_data_0 = {
+MinigameCameraParams lbl_1_data_0 = {
     1, 25.0f, 10.0f, 10000.0f, 1.2f,
     0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f,
     { 0.0f, 0.0f, 1000.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }
 };
 
-M625CameraPose lbl_1_data_50 = {
+MinigameCameraPose lbl_1_data_50 = {
     { 0.0f, 0.0f, 3300.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, -100.0f, -265.0f }
 };
 
-M625CameraPose lbl_1_data_74[2] = {
+MinigameCameraPose lbl_1_data_74[2] = {
     { { 0.0f, 170.0f, 1500.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 170.0f, 0.0f } },
     { { 0.0f, -350.0f, 1500.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, -350.0f, 0.0f } }
 };
 
-M625CameraPose lbl_1_data_BC[2] = {
+MinigameCameraPose lbl_1_data_BC[2] = {
     { { 0.0f, 170.0f, 1500.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 170.0f, 0.0f } },
     { { 0.0f, 0.0f, 2000.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } }
 };

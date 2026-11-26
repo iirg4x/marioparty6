@@ -1,6 +1,7 @@
 /* Camera and shared minigame state for Asteroad Rage. */
 #ifndef M659_CONTEXT_H
 #define M659_CONTEXT_H
+#include "REL/minigame_viewport.h"
 
 typedef struct M659Camera {
     unsigned char unk00[8]; /* No code names this field. */
@@ -22,16 +23,9 @@ typedef struct M659Work {
     s16 otherPlayer; /* Losing side shown during the winner presentation. */
 } M659Work;
 
-typedef struct M659Viewport {
-    float y; /* Vertical origin in screen pixels. */
-    float x; /* Horizontal origin in screen pixels. */
-    float width; /* Viewport width in screen pixels. */
-    float height; /* Viewport height in screen pixels. */
-} M659Viewport;
-
 extern M659Work lbl_1_bss_4;
 extern M659Work *lbl_1_data_0;
-extern M659Viewport lbl_1_data_C[2];
+extern MinigameViewport lbl_1_data_C[2];
 extern const HuVecF lbl_1_rodata_10;
 extern const GXColor lbl_1_rodata_6C;
 extern const HuVecF lbl_1_rodata_70;

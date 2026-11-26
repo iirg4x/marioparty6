@@ -61,7 +61,7 @@ void fn_1_3070(s16 winId, u32 messageId, s16 characterCode) {
 
     for (entryIndex = 0; entryIndex < 38; entryIndex++) {
         if ((messageId == lbl_1_data_38[entryIndex].messageId) &&
-            (characterCode == lbl_1_data_38[entryIndex].characterCode) &&
+            (characterCode == lbl_1_data_38[entryIndex].callbackCode) &&
             (lbl_1_data_38[entryIndex].soundEffectId >= 0)) {
             HuAudFXPlayPan(lbl_1_data_38[entryIndex].soundEffectId, lbl_1_data_200);
             fn_1_45BC();

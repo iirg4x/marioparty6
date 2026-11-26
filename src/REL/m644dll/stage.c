@@ -1,4 +1,5 @@
 /* Animates stage models, updates shadow cameras, and maintains the sprite display. */
+#include "msm_se.h"
 #include "REL/m644dll/module_types.h"
 #include "game/hu3d.h"
 
@@ -7,10 +8,6 @@ M644StageModelTable lbl_1_bss_764;
 /* Set once a team reaches its final travel segment's finish frame. */
 s16 lbl_1_bss_760;
 
-#define MSM_SE_M644_TEAM0_TRAVEL 1962
-#define MSM_SE_M644_TEAM0_ARRIVE 1963
-#define MSM_SE_M644_TEAM1_TRAVEL 1964
-#define MSM_SE_M644_TEAM1_ARRIVE 1965
 #include "game/esprite.h"
 
 /* Alternating travel and boarding motions, followed by the final travel and finish motions. */

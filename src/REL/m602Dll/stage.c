@@ -221,8 +221,7 @@ void fn_1_179C(void)
     }
     stageIndex = 0;
     while (stageIndex < 5) {
-        lbl_1_bss_8C[stageIndex] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_E8[stageIndex], 0x10000000, 2));
+        lbl_1_bss_8C[stageIndex] = HuSprAnimDataRead(lbl_1_data_E8[stageIndex]);
         stageIndex += 1;
     }
     for (stageIndex = 0; stageIndex < 3; stageIndex++) {

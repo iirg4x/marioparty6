@@ -39,7 +39,7 @@ void fn_1_FAD4(OMOBJ *object);
 void fn_1_FB10(OMOBJ *object);
 void fn_1_FB38(OMOBJ *object);
 void fn_1_FDA0(OMOBJ *object);
-void fn_1_FF9C(M674ScoreEntry *entry);
+void fn_1_FF9C(MinigameScoreEntry *entry);
 
 /* Called by ObjectSetup during setup to create the score display object. */
 void fn_1_FA48(HUPROCESS *process)
@@ -84,13 +84,13 @@ void fn_1_FB38(OMOBJ *object)
         HuSprAnimRead(fn_80008DD0(DATANUM(0x9b0000, 48), M674_SCORE_DATA_GROUP,
             M674_SCORE_DATA_HEAP));
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        M674ScoreEntry *entry = &work->entries[playerIndex];
+        MinigameScoreEntry *entry = &work->entries[playerIndex];
         s16 scoreBox = MgScoreBoxCreateChar(M674_SCORE_BOX_X, M674_SCORE_BOX_Y,
             lbl_80265728[playerIndex].charNo);
         s16 spriteGroup;
         MGSCORE *score;
 
-        entry->scoreBox = scoreBox;
+        entry->box = scoreBox;
         MgScoreBoxDispSet(scoreBox, 0);
         MgScoreBoxTPLvlSet(scoreBox, 0.0f);
         score = MgScoreCreate(M674_SCORE_STYLE, -1, 1);
@@ -101,9 +101,9 @@ void fn_1_FB38(OMOBJ *object)
             M674_SCORE_COLOR_BLUE);
         MgScorePriSet(score, M674_SCORE_PRIORITY);
         entry->animationState = 0;
-        entry->scale = 1.0f;
+        entry->digitScale = 1.0f;
         spriteGroup = HuSprGrpCreate(2);
-        entry->spriteGroup = spriteGroup;
+        entry->decorationGroup = spriteGroup;
         HuSprGrpMemberSet(spriteGroup, 0,
                           HuSprCreate(scoreBoxAnimation, M674_SCORE_SPRITE_PRIORITY, 0));
         HuSprPosSet(spriteGroup, 0, -9.0f, 0.0f);
@@ -126,7 +126,7 @@ void fn_1_FB38(OMOBJ *object)
 /* Called each frame to reveal the gameplay score display and animate changed totals. */
 void fn_1_FDA0(OMOBJ *object) {
     M674ScoreWork *work = object->data;
-    M674ScoreEntry *entry;
+    MinigameScoreEntry *entry;
     MGSCORE *score;
     s16 box;
     s16 decorationGroup;
@@ -140,12 +140,12 @@ void fn_1_FDA0(OMOBJ *object) {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             entry = &work->entries[playerIndex];
 
-            box = entry->scoreBox;
+            box = entry->box;
             MgScoreBoxDispSet(box, 1);
             MgScoreBoxTPLvlSet(box, 1.0f);
             score = entry->score;
             MgScoreDispOn(score);
-            decorationGroup = entry->spriteGroup;
+            decorationGroup = entry->decorationGroup;
             for (memberIndex = 0; memberIndex < 2; memberIndex++) {
                 HuSprAttrReset(decorationGroup, (s16) memberIndex, 4);
             }
@@ -161,20 +161,20 @@ void fn_1_FDA0(OMOBJ *object) {
                 break;
             case 1:
                 entry->animationState++;
-                entry->scale = 1.0f;
+                entry->digitScale = 1.0f;
                 /* Continue growing the changed score. */
             case 2:
-                if ((entry->scale += 0.2) < 1.8) {
+                if ((entry->digitScale += 0.2) < 1.8) {
                     break;
                 }
                 entry->animationState++;
                 /* Shrink the score back to its resting size. */
             case 3:
-                if ((entry->scale -= 0.1) > 1.0) {
+                if ((entry->digitScale -= 0.1) > 1.0) {
                     break;
                 }
                 entry->animationState = 0;
-                entry->scale = 1.0f;
+                entry->digitScale = 1.0f;
                 break;
             }
 
@@ -183,27 +183,27 @@ void fn_1_FDA0(OMOBJ *object) {
                 entry->value = 99;
             }
             MgScoreValueSet(score, entry->value);
-            MgScoreDigitScaleSet(score, entry->scale, entry->scale);
+            MgScoreDigitScaleSet(score, entry->digitScale, entry->digitScale);
         }
     }
 }
 
 /* Called during setup to place one player's score box and digit sprites. */
-void fn_1_FF9C(M674ScoreEntry *entry) {
+void fn_1_FF9C(MinigameScoreEntry *entry) {
     f32 x;
     f32 y;
     x = entry->x;
     y = entry->y;
-    MgScoreBoxPosSet(entry->scoreBox, x, y);
+    MgScoreBoxPosSet(entry->box, x, y);
     MgScorePosSet(entry->score, 22.0f + x, y);
-    HuSprGrpPosSet(entry->spriteGroup, x, y);
+    HuSprGrpPosSet(entry->decorationGroup, x, y);
 }
 
 /* Called by gameplay score updates to add coins and start the player's pop animation. */
 void fn_1_10028(s32 scoreIndex, s32 coinAmount)
 {
     M674ScoreWork *work;
-    M674ScoreEntry *entry;
+    MinigameScoreEntry *entry;
 
     if (lbl_1_bss_6C8 != NULL) {
         work = lbl_1_bss_6C8->data;
@@ -248,7 +248,7 @@ s32 fn_1_100F8(s32 scoreIndex)
 void fn_1_10150(s32 scoreIndex, f32 *x, f32 *y)
 {
     M674ScoreWork *table;
-    M674ScoreEntry *record;
+    MinigameScoreEntry *record;
 
     if (lbl_1_bss_6C8 != NULL) {
         table = lbl_1_bss_6C8->data;

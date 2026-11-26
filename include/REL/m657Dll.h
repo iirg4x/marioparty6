@@ -1,6 +1,7 @@
 /* Shared state and interface for the Lunar-tics minigame REL. */
 #ifndef _REL_M657DLL_H
 #define _REL_M657DLL_H
+#include "REL/minigame_viewport.h"
 
 #include "game/main.h"
 #include "game/object.h"
@@ -131,17 +132,6 @@ typedef struct {
 } M657ComWork;
 
 typedef struct {
-    /* Vertical viewport origin in pixels. */
-    float y;
-    /* Horizontal viewport origin in pixels. */
-    float x;
-    /* Viewport width in pixels. */
-    float width;
-    /* Viewport height in pixels. */
-    float height;
-} M657Viewport;
-
-typedef struct {
     /* HUD sprite handles for the arena gauge. */
     s16 sprites[9];
     /* HUD marker sprite for each team. */
@@ -192,7 +182,7 @@ typedef struct {
 
 extern M657Work lbl_1_bss_0;
 extern M657Work *lbl_1_data_0;
-extern M657Viewport lbl_1_data_4[2];
+extern MinigameViewport lbl_1_data_4[2];
 extern s32 lbl_1_data_24[2];
 extern MGSEQ_PARAM lbl_1_data_2C;
 extern OMOBJ *lbl_1_bss_30[2];

@@ -1,3 +1,4 @@
+#include "REL/minigame_value_bounds.h"
 #include "REL/m681DLL/game_controller.h"
 #include "REL/framework/world_units.h"
 #include "REL/framework/debug.h"
@@ -66,11 +67,6 @@ void fn_1_7C30(void)
 }
 
 // Returns the smaller value.
-static inline double minimumValue(double first, double second)
-{
-    return first < second ? first : second;
-}
-
 // Moves the camera toward the selected player over one second.
 void GameCamera::fn_1_7C34()
 {

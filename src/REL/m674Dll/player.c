@@ -181,7 +181,7 @@ void fn_1_55D0(M674ActorState *state)
     s32 index;
     s32 player;
 
-    stateContext[0] = (u8 *)state + 372;
+    stateContext[0] = &state->config;
     for (index = 0; index < 5; index++) {
         if (lbl_1_bss_2E8[index] == NULL) {
             lbl_1_bss_2E8[index] = state;
@@ -332,7 +332,7 @@ s32 fn_1_5C04(M674PlayerWork *object)
     void *sequenceContext[1];
     s32 done;
 
-    sequenceContext[0] = (u8 *)object + 372;
+    sequenceContext[0] = &object->state.config;
     done = 0;
     switch (object->state.phase) {
     case 0:

@@ -58,7 +58,7 @@ OM_CAMERA_VIEW lbl_1_data_0 = {
 Vec lbl_1_data_1C = {0.0f, 800.0f, 0.0f};
 Vec lbl_1_data_28 = {0.0f, 0.0f, 0.0f};
 GXColor lbl_1_data_34 = {255, 255, 255, 255};
-M674AudioRange lbl_1_data_38[2] = {
+MinigameAudioRange lbl_1_data_38[2] = {
     {65535, 32, 96, 32, 64, 110, 2300.0f, 1800.0f, 1250.0f},
     {0}
 };
@@ -283,36 +283,24 @@ void fn_1_8A0(s16 sequenceMode, s16 frameNo) {
 
     if ((fn_1_A68(sequenceMode, frameNo) == 0) && (frameNo == 0)) {
         anyPlayerScored = 0;
-        playerIndex = 0;
-        goto check_players;
-    player_loop:
-        if (lbl_1_bss_14[playerIndex] >= 0) {
-            s16 awardedBonus;
-            s32 bonusBeforeAward;
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            if (lbl_1_bss_14[playerIndex] >= 0) {
+                s16 awardedBonus;
+                s32 bonusBeforeAward;
 
-            bonusBeforeAward = lbl_80265750[playerIndex].mgCoinBonus;
-            awardedBonus = bonusBeforeAward + fn_1_100F8(playerIndex);
+                bonusBeforeAward = lbl_80265750[playerIndex].mgCoinBonus;
+                awardedBonus = bonusBeforeAward + fn_1_100F8(playerIndex);
 
-            if (fn_8006A124(65551) == 0) {
-                lbl_80265750[playerIndex].mgCoinBonus = awardedBonus;
+                if (fn_8006A124(65551) == 0) {
+                    lbl_80265750[playerIndex].mgCoinBonus = awardedBonus;
+                }
             }
         }
-        playerIndex++;
-    check_players:
-        if (playerIndex < 4) {
-            goto player_loop;
-        }
 
-        playerIndex = 0;
-        goto check_results;
-    result_loop:
-        if (fn_1_100F8(playerIndex) != 0) {
-            anyPlayerScored = 1;
-        }
-        playerIndex++;
-    check_results:
-        if (playerIndex < 4) {
-            goto result_loop;
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            if (fn_1_100F8(playerIndex) != 0) {
+                anyPlayerScored = 1;
+            }
         }
 
         if (anyPlayerScored != 0) {
@@ -357,8 +345,8 @@ void fn_1_A70(OM_CAMERA_VIEW *start, OM_CAMERA_VIEW *end, OM_CAMERA_VIEW *result
 /* Initialize scene shadows and animate this camera from the opening view to its target. */
 void fn_1_B08(OMOBJ *object, u32 camera, s32 transitionIndex)
 {
-    M674CameraWork *work = object->data;
-    M674CameraEntry *entry = &work->entries[transitionIndex];
+    MinigameCameraWork *work = object->data;
+    MinigameCameraEntry *entry = &work->entries[transitionIndex];
     OM_CAMERA_VIEW *current = &entry->view;
     OM_CAMERA_VIEW *target = &entry->previousView;
 
@@ -433,21 +421,15 @@ u32 fn_1_E68(u32 scoreIndex) {
     s32 playerIndex;
     u32 playerStatus;
 
-    playerIndex = 0;
-    goto check;
-loop:
-    if (scoreIndex == (u32) lbl_1_bss_C[playerIndex]) {
-        if (lbl_1_bss_14[playerIndex] >= 0) {
-            playerStatus = 1;
-        } else {
-            playerStatus = (u32) -1;
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        if (scoreIndex == (u32) lbl_1_bss_C[playerIndex]) {
+            if (lbl_1_bss_14[playerIndex] >= 0) {
+                playerStatus = 1;
+            } else {
+                playerStatus = (u32) -1;
+            }
+            return playerStatus;
         }
-        return playerStatus;
-    }
-    playerIndex++;
-check:
-    if (playerIndex < 4) {
-        goto loop;
     }
     return scoreIndex;
 }

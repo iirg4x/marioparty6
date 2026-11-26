@@ -12,6 +12,7 @@
 #include "game/board/branch.h"
 #include "game/board/camera.h"
 #include "game/board/capevent.h"
+#include "game/board/capevent_work.h"
 #include "game/board/capsule.h"
 #include "game/board/capmove.h"
 #include "game/board/capthrow.h"
@@ -141,27 +142,6 @@ typedef struct CapEffBoostParticleData {
     GXColor color;
     int pat;
 } CAPEFFBOOSTPARTICLEWORK;
-
-typedef struct CapEffExplodeWork {
-    int modelId;
-    int num;
-    int objIdx;
-    ANIMDATA *animP;
-} CAPEFFEXPLODEWORK;
-
-typedef struct CapEffSnowWork {
-    int modelId;
-    int num;
-    int objIdx;
-    ANIMDATA *animP;
-} CAPEFFSNOWWORK;
-
-typedef struct CapEffGlowWork {
-    int modelId;
-    int num;
-    int objIdx;
-    ANIMDATA *animP;
-} CAPEFFGLOWWORK;
 
 typedef struct CapEffGlowParticleData {
     s16 mode;
@@ -465,34 +445,6 @@ typedef struct CapEffOpenWork {
     HuVecF pos;
 } CAPEFFOPENWORK;
 
-typedef struct CapCoinManWork {
-    int objIdx;
-    int activeF;
-    int screenSpaceF;
-    int modelId;
-    int playerNo;
-    int coinNum;
-    int time;
-    int timeMax;
-    float arcHeight;
-    HuVecF pos;
-    HuVecF targetPos;
-} CAPCOINMANWORK;
-
-typedef struct CapStarManWork {
-    int objIdx;
-    int activeF;
-    int screenSpaceF;
-    int modelId;
-    int playerNo;
-    int starNum;
-    int time;
-    int timeMax;
-    float arcHeight;
-    HuVecF pos;
-    HuVecF targetPos;
-} CAPSTARMANWORK;
-
 typedef struct CapEffCapLoseWork {
     int objIdx;
     int activeF;
@@ -504,81 +456,6 @@ typedef struct CapEffCapLoseWork {
     HuVecF pos;
     HuVecF vel;
 } CAPEFFCAPLOSEWORK;
-
-#define CAP_WORK_MAX 64
-
-struct EvCapWork {
-    int motId[CAP_WORK_MAX][4];
-    int objId[CAP_WORK_MAX];
-    int sprId[CAP_WORK_MAX];
-    void *mem[CAP_WORK_MAX];
-    int masuId[CAP_WORK_MAX];
-    HuVecF objPos[CAP_WORK_MAX];
-    int playerMasuId[4];
-    HuVecF playerPos[4];
-    int bgId;
-    OMOBJ *obj;
-};
-
-typedef struct CapWorkFlag {
-    u8 _flag00 : 1;
-    u8 _flag01 : 1;
-    u8 _flag02 : 1;
-    u8 _flag03 : 1;
-    u8 _flag04 : 1;
-    u8 _flag05 : 1;
-    u8 _flag06 : 1;
-    u8 _flag07 : 1;
-    u8 _flag08 : 1;
-    u8 _flag09 : 1;
-    u8 _flag10 : 1;
-    u8 _flag11 : 1;
-    u8 _flag12 : 1;
-    u8 _flag13 : 1;
-    u8 _flag14 : 1;
-    u8 _flag15 : 1;
-    u8 _flag16 : 1;
-    u8 _flag17 : 1;
-    u8 _flag18 : 1;
-    u8 _flag19 : 1;
-    u8 _flag20 : 1;
-    u8 _flag21 : 1;
-    u8 _flag22 : 1;
-    u8 _flag23 : 1;
-    u8 _flag24 : 1;
-    u8 _flag25 : 1;
-    u8 _flag26 : 1;
-    u8 _flag27 : 1;
-    u8 _flag28 : 1;
-    u8 _flag29 : 1;
-    u8 _flag30 : 1;
-    u8 _flag31 : 1;
-} CAPWORKFLAG;
-
-struct CapWork {
-    int playerNo;
-    int targetPlayerNo;
-    int capsuleNo;
-    int masuId;
-    int masuIdNext;
-    int moveF;
-    int stopF;
-    int trapF;
-    EVCAPWORK objWork;
-    CAPWORKFLAG flags;
-    int _unkB6C;
-    u8 _unkB70[92];
-    int processNo;
-    OMOBJ *explodeObj;
-    OMOBJ *boostObj;
-    OMOBJ *snowObj;
-    OMOBJ *glowObj;
-    OMOBJ *ringObj;
-    OMOBJ *coinObj;
-    OMOBJ *coinManObj;
-    OMOBJ *starManObj;
-    OMOBJ *capLoseObj;
-};
 
 typedef struct EvCapsuleData {
     void (*main)(void);
@@ -1025,7 +902,7 @@ void mbev_CapCallKettou(int playerNo, int masuId, BOOL stopF)
     work.stopF = 0;
     work.masuId = masuId;
     work.masuIdNext = -1;
-    work.flags._flag01 = stopF;
+    work.flags.kettouStopF = stopF;
     HuPrcSleep(10);
     mbAudFXPlay(MSM_SE_BRD00_HATENA_SPACE_TRIGGER);
     ev_CapCall(&work, TRUE);
@@ -1330,7 +1207,7 @@ void mbev_CapKettouEndCall(int playerNo)
     work.stopF = 0;
     work.masuId = lbl_80265750[playerNo].masuId;
     work.masuIdNext = -1;
-    work.flags._flag02 = TRUE;
+    work.flags.kettouMinigameReturnF = TRUE;
     mbPlayerColSnapSet(TRUE);
     ev_CapCall(&work, TRUE);
 }
@@ -1349,7 +1226,7 @@ void mbev_CapDonkeyEndCall(int playerNo)
     work.stopF = 0;
     work.masuId = lbl_80265750[playerNo].masuId;
     work.masuIdNext = -1;
-    work.flags._flag03 = TRUE;
+    work.flags.donkeyMinigameReturnF = TRUE;
     mbPlayerColSnapSet(TRUE);
     ev_CapCall(&work, TRUE);
 }
@@ -1368,7 +1245,7 @@ void mbev_CapKoopaEndCall(int playerNo)
     work.stopF = 0;
     work.masuId = lbl_80265750[playerNo].masuId;
     work.masuIdNext = -1;
-    work.flags._flag04 = TRUE;
+    work.flags.koopaMinigameReturnF = TRUE;
     mbPlayerColSnapSet(TRUE);
     ev_CapCall(&work, TRUE);
 }
@@ -2982,7 +2859,7 @@ void mbev_CapPlayerMoveObjKill(void)
 /* Creates the capsule burst effect object before an event adds its particles. */
 OMOBJ *mbev_CapEffExplodeCreate(void)
 {
-    CAPEFFEXPLODEWORK *workP;
+    CAPEFFWORK *workP;
     OMOBJ *obj;
     HU3D_MODEL *modelP;
     ANIMDATA *animP;
@@ -3000,10 +2877,10 @@ OMOBJ *mbev_CapEffExplodeCreate(void)
         fn_8003AB38(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapEffExplodeOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(CAPEFFEXPLODEWORK), 0x10000000);
+        sizeof(CAPEFFWORK), 0x10000000);
     obj->data = workData;
     workP = workData;
-    memset(workP, 0, sizeof(CAPEFFEXPLODEWORK));
+    memset(workP, 0, sizeof(CAPEFFWORK));
     animP = HuSprAnimRead(fn_80008634(
         DATANUM(0xc0000, 47), 0x10000000));
     workP->animP = animP;
@@ -3021,7 +2898,7 @@ OMOBJ *mbev_CapEffExplodeCreate(void)
 /* Creates the capsule exhaust effect object before an event adds its particles. */
 OMOBJ *mbev_CapEffExhaustCreate(void)
 {
-    CAPEFFEXPLODEWORK *workP;
+    CAPEFFWORK *workP;
     OMOBJ *obj;
     HU3D_MODEL *modelP;
     ANIMDATA *animP;
@@ -3039,10 +2916,10 @@ OMOBJ *mbev_CapEffExhaustCreate(void)
         fn_8003AB38(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapEffExplodeOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(CAPEFFEXPLODEWORK), 0x10000000);
+        sizeof(CAPEFFWORK), 0x10000000);
     obj->data = workData;
     workP = workData;
-    memset(workP, 0, sizeof(CAPEFFEXPLODEWORK));
+    memset(workP, 0, sizeof(CAPEFFWORK));
     animP = HuSprAnimRead(fn_80008634(
         DATANUM(0xc0000, 46), 0x10000000));
     workP->animP = animP;
@@ -3060,7 +2937,7 @@ OMOBJ *mbev_CapEffExhaustCreate(void)
 /* Advances burst particles once per object-manager update and releases the effect on shutdown. */
 void mbev_CapEffExplodeOMExec(OMOBJ *obj)
 {
-    CAPEFFEXPLODEWORK *workP;
+    CAPEFFWORK *workP;
     int i;
     HU3D_MODEL *modelP;
     CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
@@ -3126,7 +3003,7 @@ void mbev_CapEffExplodeKill(OMOBJ *obj)
 int mbev_CapEffExplodeAnimGet(OMOBJ *obj)
 {
     int i;
-    CAPEFFEXPLODEWORK *workP;
+    CAPEFFWORK *workP;
 
     for (i = 0; i < 8; i++) {
         if (ev_CapEffExplodeOMObj[i] == obj) {
@@ -3145,7 +3022,7 @@ int mbev_CapEffExplodeAnimGet(OMOBJ *obj)
 void mbev_CapEffExplodeAnimSet(OMOBJ *obj, int dataNum)
 {
     CAPEFFEXPLODEPARTWORK *particleP;
-    CAPEFFEXPLODEWORK *workP;
+    CAPEFFWORK *workP;
     int i;
     HU3D_MODEL *modelP;
     void *dataP;
@@ -3171,7 +3048,7 @@ void mbev_CapEffExplodeAnimSet(OMOBJ *obj, int dataNum)
 int mbev_CapEffExplodeAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
     float angleStep, float fadeStep, GXColor *color)
 {
-    CAPEFFEXPLODEWORK *workP;
+    CAPEFFWORK *workP;
     int i;
     HU3D_MODEL *modelP;
     CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
@@ -4064,7 +3941,7 @@ int mbev_CapEffBoostAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
 /* Throwman creates this effect before dropping onto the activating player. */
 OMOBJ *mbev_CapEffSnowCreate(void)
 {
-    CAPEFFSNOWWORK *workP;
+    CAPEFFWORK *workP;
     OMOBJ *obj;
     HU3D_MODEL *modelP;
     ANIMDATA *animP;
@@ -4082,10 +3959,10 @@ OMOBJ *mbev_CapEffSnowCreate(void)
         fn_8003AB38(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapEffSnowOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(CAPEFFSNOWWORK), 0x10000000);
+        sizeof(CAPEFFWORK), 0x10000000);
     obj->data = workData;
     workP = workData;
-    memset(workP, 0, sizeof(CAPEFFSNOWWORK));
+    memset(workP, 0, sizeof(CAPEFFWORK));
     animP = HuSprAnimRead(fn_80008634(
         CAPEVENT_DATA_BOOST_EFFECT, 0x10000000));
     workP->animP = animP;
@@ -4103,7 +3980,7 @@ OMOBJ *mbev_CapEffSnowCreate(void)
 /* The object manager moves active snow particles and fades them each frame. */
 void mbev_CapEffSnowOMExec(OMOBJ *obj)
 {
-    CAPEFFSNOWWORK *workP;
+    CAPEFFWORK *workP;
     int i;
     HU3D_MODEL *modelP;
     CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
@@ -4182,7 +4059,7 @@ int mbev_CapEffSnowDispGet(OMOBJ *obj)
 /* Throwman adds a snow particle at pos with the requested lifetime in frames. */
 int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time)
 {
-    CAPEFFSNOWWORK *workP;
+    CAPEFFWORK *workP;
     int i;
     HU3D_MODEL *modelP;
     CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
@@ -4229,7 +4106,7 @@ int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time)
 /* Capsule events create this glow-particle object before adding its effects. */
 OMOBJ *mbev_CapEffGlowCreate(void)
 {
-    CAPEFFGLOWWORK *workP;
+    CAPEFFWORK *workP;
     OMOBJ *obj;
     HU3D_MODEL *modelP;
     ANIMDATA *animP;
@@ -4247,10 +4124,10 @@ OMOBJ *mbev_CapEffGlowCreate(void)
         fn_8003AB38(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapEffGlowOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(CAPEFFGLOWWORK), 0x10000000);
+        sizeof(CAPEFFWORK), 0x10000000);
     obj->data = workData;
     workP = workData;
-    memset(workP, 0, sizeof(CAPEFFGLOWWORK));
+    memset(workP, 0, sizeof(CAPEFFWORK));
     animP = HuSprAnimRead(fn_80008634(
         DATANUM(0xc0000, 41), 0x10000000));
     workP->animP = animP;
@@ -4268,7 +4145,7 @@ OMOBJ *mbev_CapEffGlowCreate(void)
 /* Fire-themed capsule effects create this variant with the fire animation. */
 OMOBJ *mbev_CapEffGlowFireCreate(void)
 {
-    CAPEFFGLOWWORK *workP;
+    CAPEFFWORK *workP;
     OMOBJ *obj;
     HU3D_MODEL *modelP;
     ANIMDATA *animP;
@@ -4286,10 +4163,10 @@ OMOBJ *mbev_CapEffGlowFireCreate(void)
         fn_8003AB38(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapEffGlowOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(CAPEFFGLOWWORK), 0x10000000);
+        sizeof(CAPEFFWORK), 0x10000000);
     obj->data = workData;
     workP = workData;
-    memset(workP, 0, sizeof(CAPEFFGLOWWORK));
+    memset(workP, 0, sizeof(CAPEFFWORK));
     animP = HuSprAnimRead(fn_80008634(
         CAPEVENT_DATA_BOOST_EFFECT, 0x10000000));
     workP->animP = animP;
@@ -4308,7 +4185,7 @@ OMOBJ *mbev_CapEffGlowFireCreate(void)
  * ones. */
 void mbev_CapEffGlowOMExec(OMOBJ *obj)
 {
-    CAPEFFGLOWWORK *workP;
+    CAPEFFWORK *workP;
     int i;
     HU3D_MODEL *modelP;
     CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
@@ -4490,7 +4367,7 @@ void mbev_CapEffGlowAnimSet(OMOBJ *obj, int dataNum)
 int mbev_CapEffGlowAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, int time, float scale,
     float angleStep, float gravityStep, GXColor *color)
 {
-    CAPEFFGLOWWORK *workP;
+    CAPEFFWORK *workP;
     int i;
     HU3D_MODEL *modelP;
     CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
@@ -6264,10 +6141,10 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
 /* Capsule events create this manager for coins that travel to a player or screen target. */
 OMOBJ *mbev_CapCoinManCreate(void)
 {
-    CAPCOINMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     OMOBJ *obj;
     void *workData;
-    CAPCOINMANWORK *workBase;
+    CAPAWARDMANWORK *workBase;
     HU3D_MODEL *modelP;
     CAPEFFPARTICLESYSTEMWORK *particleP;
     int objIdx;
@@ -6282,16 +6159,16 @@ OMOBJ *mbev_CapCoinManCreate(void)
         fn_8003AB38(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapCoinManOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP,
-        64 * sizeof(CAPCOINMANWORK), 0x10000000);
+        64 * sizeof(CAPAWARDMANWORK), 0x10000000);
     memset(workBase = workP = obj->data = workData, 0,
-        64 * sizeof(CAPCOINMANWORK));
+        64 * sizeof(CAPAWARDMANWORK));
     workP->objIdx = objIdx;
     for (i = 0; i < 64; i++, workP++) {
         workP->modelId = -1;
         workP->activeF = 0;
         workP->screenSpaceF = 1;
         workP->playerNo = -1;
-        workP->coinNum = 0;
+        workP->count = 0;
         workP->time = 0;
         workP->timeMax = 0;
         workP->arcHeight = 0.0f;
@@ -6305,7 +6182,7 @@ OMOBJ *mbev_CapCoinManCreate(void)
  * The coins are retired before an interpolation weight of 1 is rendered. */
 void mbev_CapCoinManOMExec(OMOBJ *obj)
 {
-    CAPCOINMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     HuVecF pos;
     HuVecF pos3D;
     float weight;
@@ -6344,8 +6221,8 @@ void mbev_CapCoinManOMExec(OMOBJ *obj)
                 mbCoinObjNumDec((s16)workP->modelId);
                 workP->modelId = -1;
                 workP->activeF = FALSE;
-                if (workP->playerNo != -1 && workP->coinNum > 0) {
-                    mbPlayerCoinAdd(workP->playerNo, workP->coinNum);
+                if (workP->playerNo != -1 && workP->count > 0) {
+                    mbPlayerCoinAdd(workP->playerNo, workP->count);
                     if (!workP->screenSpaceF) {
                         mbPlayerPosGet(workP->playerNo, &pos);
                         pos.y += 50.0f;
@@ -6374,7 +6251,7 @@ void mbev_CapCoinManKill(OMOBJ *obj)
 /* Capsule event scripts use this count to wait for managed coin animations. */
 int mbev_CapCoinManNumGet(OMOBJ *obj)
 {
-    CAPCOINMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int objIdx;
     int i;
     int count;
@@ -6400,7 +6277,7 @@ int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
     float scale, float arcHeight, int timeMax, int playerNo, int coinNum,
     int screenSpaceF)
 {
-    CAPCOINMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int objIdx;
     int workNo;
     float angle;
@@ -6423,7 +6300,7 @@ int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
     workP->activeF = TRUE;
     workP->screenSpaceF = screenSpaceF;
     workP->playerNo = playerNo;
-    workP->coinNum = coinNum;
+    workP->count = coinNum;
     workP->time = 0;
     workP->timeMax = timeMax;
     workP->arcHeight = arcHeight;
@@ -6443,7 +6320,7 @@ int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
  * playerNo is not -1. */
 int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
 {
-    CAPCOINMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int workNo;
     int objIdx;
     int result;
@@ -6492,7 +6369,7 @@ int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
         workP->activeF = TRUE;
         workP->screenSpaceF = TRUE;
         workP->playerNo = playerNo;
-        workP->coinNum = coinNum;
+        workP->count = coinNum;
         workP->time = 0;
         workP->timeMax = time;
         workP->arcHeight = arcHeight;
@@ -6518,7 +6395,7 @@ int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
 int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
     int playerNo, BOOL coinNum)
 {
-    CAPCOINMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int workNo;
     int objIdx;
     int result;
@@ -6549,7 +6426,7 @@ int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         workP->activeF = TRUE;
         workP->screenSpaceF = 0;
         workP->playerNo = playerNo;
-        workP->coinNum = coinNum;
+        workP->count = coinNum;
         workP->time = 0;
         workP->timeMax = time;
         workP->arcHeight = arcHeight;
@@ -6574,10 +6451,10 @@ int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
 /* Capsule events create this manager for stars that travel to the screen or a player. */
 OMOBJ *mbev_CapStarManCreate(void)
 {
-    CAPSTARMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     OMOBJ *obj;
     void *workData;
-    CAPSTARMANWORK *workBase;
+    CAPAWARDMANWORK *workBase;
     HU3D_MODEL *modelP;
     CAPEFFPARTICLESYSTEMWORK *particleP;
     int objIdx;
@@ -6592,9 +6469,9 @@ OMOBJ *mbev_CapStarManCreate(void)
         fn_8003AB38(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapStarManOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP,
-        8 * sizeof(CAPSTARMANWORK), 0x10000000);
+        8 * sizeof(CAPAWARDMANWORK), 0x10000000);
     memset(workBase = workP = obj->data = workData, 0,
-        8 * sizeof(CAPSTARMANWORK));
+        8 * sizeof(CAPAWARDMANWORK));
     workP->objIdx = objIdx;
     for (i = 0; i < 8; i++, workP++) {
         workP->modelId = mbStarObjCreate();
@@ -6602,7 +6479,7 @@ OMOBJ *mbev_CapStarManCreate(void)
         workP->activeF = 0;
         workP->screenSpaceF = 0;
         workP->playerNo = -1;
-        workP->starNum = 0;
+        workP->count = 0;
         workP->time = 0;
         workP->timeMax = 0;
         workP->arcHeight = 0.0f;
@@ -6616,7 +6493,7 @@ OMOBJ *mbev_CapStarManCreate(void)
  * The stars are hidden before an interpolation weight of 1 is rendered. */
 void mbev_CapStarManOMExec(OMOBJ *obj)
 {
-    CAPSTARMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     HuVecF pos;
     HuVecF pos3D;
     float sinWeight;
@@ -6655,13 +6532,13 @@ void mbev_CapStarManOMExec(OMOBJ *obj)
             if (++workP->time >= workP->timeMax) {
                 mbStarObjDispSet(workP->modelId, FALSE);
                 workP->activeF = FALSE;
-                if (workP->playerNo != -1 && workP->starNum > 0) {
+                if (workP->playerNo != -1 && workP->count > 0) {
                     if (!workP->screenSpaceF) {
                         mbPlayerPosGet(workP->playerNo, &pos);
                         pos.y += 50.0f;
                         mbCoinEffCreate(&pos);
                     }
-                    mbPlayerStarAdd(workP->playerNo, workP->starNum);
+                    mbPlayerStarAdd(workP->playerNo, workP->count);
                 }
             }
         }
@@ -6684,7 +6561,7 @@ void mbev_CapStarManKill(OMOBJ *obj)
 /* Capsule event scripts use this count to wait for every managed star animation. */
 int mbev_CapStarManNumGet(OMOBJ *obj)
 {
-    CAPSTARMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int objIdx;
     int i;
     int count;
@@ -6710,7 +6587,7 @@ int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
     float scale, float arcHeight, int timeMax, int playerNo, int starNum,
     int screenSpaceF)
 {
-    CAPSTARMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int objIdx;
     int workNo;
 
@@ -6732,7 +6609,7 @@ int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
     workP->activeF = TRUE;
     workP->screenSpaceF = screenSpaceF;
     workP->playerNo = playerNo;
-    workP->starNum = starNum;
+    workP->count = starNum;
     workP->time = 0;
     workP->timeMax = timeMax;
     workP->arcHeight = arcHeight;
@@ -6749,7 +6626,7 @@ int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
  * playerNo is not -1. */
 int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
 {
-    CAPSTARMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int workNo;
     int objIdx;
     int result;
@@ -6797,7 +6674,7 @@ int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
         workP->activeF = TRUE;
         workP->screenSpaceF = TRUE;
         workP->playerNo = playerNo;
-        workP->starNum = starNum;
+        workP->count = starNum;
         workP->time = 0;
         workP->timeMax = time;
         workP->arcHeight = arcHeight;
@@ -6820,7 +6697,7 @@ int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
 int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
     int playerNo, BOOL starNum)
 {
-    CAPSTARMANWORK *workP;
+    CAPAWARDMANWORK *workP;
     int workNo;
     int objIdx;
     int result;
@@ -6850,7 +6727,7 @@ int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         workP->activeF = TRUE;
         workP->screenSpaceF = 0;
         workP->playerNo = playerNo;
-        workP->starNum = starNum;
+        workP->count = starNum;
         workP->time = 0;
         workP->timeMax = time;
         workP->arcHeight = arcHeight;

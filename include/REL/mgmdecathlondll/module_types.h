@@ -1,6 +1,7 @@
 /* Shared Decathlon Park state and data types used by its mode and scenery code. */
 #ifndef REL_MGMDECATHLONDLL_MODULE_TYPES_H
 #define REL_MGMDECATHLONDLL_MODULE_TYPES_H
+#include "REL/minigame_dialogue.h"
 
 #include <math.h>
 #include "game/window.h"
@@ -49,24 +50,12 @@ typedef union DecathlonPadMaskTable {
     s16 signedValues[4]; /* signed view used by the input helpers */
 } DecathlonPadMaskTable;
 
-typedef struct DecathlonWindowState {
-    HUWINID windowId; /* shared Decathlon result window */
-    f32 width; /* window width in screen units */
-    f32 height; /* window height in screen units */
-} DecathlonWindowState;
-
 typedef struct DecathlonMotionSetting {
     s16 motionIndex; /* index in the actor's motion array; -1 keeps the current motion */
     f32 duration; /* blend duration in frames; at most one selects the motion immediately */
     u32 modelAttributes; /* motion playback flags applied when selected */
     s32 voiceFlag; /* character voice setting passed to CharModelVoiceFlagSet */
 } DecathlonMotionSetting;
-
-typedef struct DecathlonMessageSound {
-    u32 messageId; /* archive message that can trigger this cue */
-    s16 characterCode; /* window callback code selecting the cue within the message */
-    s32 soundEffectId; /* sound effect ID; a negative value suppresses playback */
-} DecathlonMessageSound;
 
 extern s16 lbl_1_bss_0;
 extern s16 lbl_1_bss_2[4];
@@ -100,9 +89,9 @@ extern u32 lbl_1_data_C8C;
 extern s32 lbl_1_data_30[8];
 extern u32 lbl_1_data_88[10];
 extern u32 lbl_1_data_50[14];
-extern DecathlonMessageSound lbl_1_data_B0[42];
+extern MinigameMessageSound lbl_1_data_B0[42];
 
-extern DecathlonWindowState lbl_1_bss_18;
+extern MinigameWindow lbl_1_bss_18;
 extern MgmDecathlonPlayerRecord lbl_1_bss_24[4];
 extern OMOBJ *lbl_1_bss_8C;
 extern OMOBJ *lbl_1_bss_90;

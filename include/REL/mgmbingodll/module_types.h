@@ -1,5 +1,6 @@
 #ifndef REL_MGMBINGODLL_MODULE_TYPES_H
 #define REL_MGMBINGODLL_MODULE_TYPES_H
+#include "REL/minigame_character_motion.h"
 
 #include <math.h>
 #include "dolphin.h"
@@ -114,16 +115,8 @@ extern HSF_OBJECT *lbl_1_bss_670[4][30];
 extern HSF_OBJECT *lbl_1_bss_850[4][30];
 extern s16 lbl_1_bss_F0;
 
-typedef struct BingoMotionSetting {
-    s16 motionIndex;
-    f32 duration;
-    u32 modelAttributes;
-    s32 voiceFlag;
-    s32 setMotionAttribute;
-} BingoMotionSetting;
-
 extern Point3d lbl_1_data_868[4];
-extern BingoMotionSetting lbl_1_data_8B0[10];
+extern MinigameCharacterMotion lbl_1_data_8B0[10];
 
 extern MgmbingoWindowWork lbl_1_bss_C8;
 extern OMOBJ *lbl_1_bss_A8;

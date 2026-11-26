@@ -1,4 +1,5 @@
 /* Talkie Walkie particle, model, track, material, and spatial helpers. */
+#include "REL/minigame_particle_system.h"
 #include <math.h>
 #include "game/hsfex.h"
 #include "dolphin/types.h"
@@ -292,19 +293,8 @@ void fn_1_7424(OMOBJ *object, M667ModelDescription *description)
     }
 }
 
-/* Each particle-system descriptor records its resource, creation settings, and loaded handles. */
-typedef struct M667ParticleDescription {
-    u32 flags; /* Readiness bits used to skip animation and work-buffer setup. */
-    s32 resourceId; /* Sprite-animation data number; a negative value ends the list. */
-    s32 count; /* Maximum number of particle slots. */
-    s32 blendMode; /* Blend mode passed to the particle renderer. */
-    s32 modelId; /* Created particle-system model handle. */
-    ANIMDATA *unk14; /* The game's code never reads this field. */
-    u8 unk_18[4]; /* No code names this field. */
-} M667ParticleDescription;
-
 /* The particle-list initializer builds a system and per-slot settings for each descriptor. */
-void fn_1_7664(M667ParticleDescription *work)
+void fn_1_7664(MinigameParticleSystem *work)
 {
     s32 unusedWord = 0;
     void *resource;
@@ -314,7 +304,7 @@ void fn_1_7664(M667ParticleDescription *work)
     s32 particleIndex;
     s32 count;
     void *parameters;
-    M667ParticleDescription *description;
+    MinigameParticleSystem *description;
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
 

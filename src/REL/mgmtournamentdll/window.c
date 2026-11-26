@@ -1,4 +1,5 @@
 /* Shows tournament prompts, player choices and message sound callbacks. */
+#include "REL/minigame_dialogue.h"
 #include <math.h>
 #include "game/main.h"
 #include "game/window.h"
@@ -10,19 +11,7 @@
 #include "msm_se.h"
 #include "REL/mgmtournamentdll/module_types.h"
 
-typedef struct TournamentWindow {
-    HUWINID windowId; /* Shared framed dialogue window. */
-    float width; /* Dialogue frame width in screen pixels. */
-    float height; /* Dialogue frame height in screen pixels. */
-} TournamentWindow;
-
-typedef struct TournamentMessageSound {
-    u32 messageId; /* Message containing the sound callback marker. */
-    s16 callbackCode; /* Byte following a message's callback control code. */
-    s32 soundEffectId; /* Guide sound effect, or -1 for a silent marker. */
-} TournamentMessageSound;
-
-TournamentWindow lbl_1_bss_C8;
+MinigameWindow lbl_1_bss_C8;
 extern int MgModeWorkInt[16];
 extern s32 lbl_1_data_848;
 void fn_1_2D1C(HUWINID windowId, u32 messageId, s16 callbackCode);
@@ -36,7 +25,7 @@ s32 lbl_1_data_160[14] = {
     MESSNUM(MESS_CHARA_NAME, 10), MESSNUM(MESS_CHARA_NAME, 11),
     MESSNUM(MESS_CHARA_NAME, 12), MESSNUM(MESS_CHARA_NAME, 13)
 };
-TournamentMessageSound lbl_1_data_198[18] = {
+MinigameMessageSound lbl_1_data_198[18] = {
     { MESSNUM(MESS_MGM_TOURNAMENT, 0), 1, MSM_SE_GUIDE_NIGHT_INTRO },
     { MESSNUM(MESS_MGM_TOURNAMENT, 0), 2, -1 },
     { MESSNUM(MESS_MGM_TOURNAMENT, 0), 3, MSM_SE_GUIDE_NIGHT_EXPLAIN },

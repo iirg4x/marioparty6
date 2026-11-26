@@ -269,7 +269,7 @@ void fn_1_754(void)
                 }
                 stickResult = deadZoneValue;
             }
-            lbl_1_bss_4F0[index].input.unk0A = stickResult;
+            lbl_1_bss_4F0[index].input.stickX = stickResult;
             lbl_1_bss_4F0[index].input.unk0B = (s8)lbl_802BFFF8[lbl_1_bss_4F0[index].padNo];
             lbl_1_bss_4F0[index].input.unk0C = (s8)lbl_802BFFF4[lbl_1_bss_4F0[index].padNo];
             lbl_1_bss_4F0[index].input.unk0D = (s8)lbl_802BFFF0[lbl_1_bss_4F0[index].padNo];
@@ -285,7 +285,7 @@ void fn_1_754(void)
         lbl_1_bss_424.padInputs[index].unk00 = lbl_802C0010[index];
         lbl_1_bss_424.padInputs[index].buttonsDown = lbl_802C0008[index];
         lbl_1_bss_424.padInputs[index].unk08 = lbl_802C0000[index];
-        lbl_1_bss_424.padInputs[index].unk0A = (s8)lbl_802BFFFC[index];
+        lbl_1_bss_424.padInputs[index].stickX = (s8)lbl_802BFFFC[index];
         lbl_1_bss_424.padInputs[index].unk0B = (s8)lbl_802BFFF8[index];
         lbl_1_bss_424.padInputs[index].unk0C = (s8)lbl_802BFFF4[index];
         lbl_1_bss_424.padInputs[index].unk0D = (s8)lbl_802BFFF0[index];
@@ -553,41 +553,42 @@ void fn_1_1E98(HU3D_LIGHTID lightId) {
 void fn_1_2104(void) {
     Hu3DShadowCreate(5.0f, 1.6e+04f, 2.1e+04f);
     Hu3DShadowSizeSet(0x1E0);
-    lbl_1_bss_139C.azimuth = -9e+01f;
-    lbl_1_bss_139C.elevation = 0.0f;
+    lbl_1_bss_139C.elevation = -9e+01f;
+    lbl_1_bss_139C.azimuth = 0.0f;
     lbl_1_bss_139C.unk14 = 0.0f;
     lbl_1_bss_139C.target.x = 0.0f;
     lbl_1_bss_139C.target.y = -1e+02f;
     lbl_1_bss_139C.target.z = 0.0f;
-    lbl_1_bss_139C.transparency = 0.4f;
-    lbl_1_bss_139C.distance = 2.1e+04f;
+    lbl_1_bss_139C.shadowOpacity = 0.4f;
+    lbl_1_bss_139C.orbitDistance = 2.1e+04f;
     fn_1_2214();
 }
 
+/* Compute the shadow camera position and up vector from its orbit angles. */
 void fn_1_2214(void)
 {
     lbl_1_bss_139C.cameraPosition.x = (f32)((f64)lbl_1_bss_139C.target.x +
-        ((f64)lbl_1_bss_139C.distance *
-         (cos((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-          sin((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0))));
+        ((f64)lbl_1_bss_139C.orbitDistance *
+         (cos((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0))));
     lbl_1_bss_139C.cameraPosition.y = (f32)((f64)lbl_1_bss_139C.target.y +
-        ((f64)lbl_1_bss_139C.distance *
-         -sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0)));
+        ((f64)lbl_1_bss_139C.orbitDistance *
+         -sin((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0)));
     lbl_1_bss_139C.cameraPosition.z = (f32)((f64)lbl_1_bss_139C.target.z +
-        ((f64)lbl_1_bss_139C.distance *
-         (cos((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-          cos((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0))));
+        ((f64)lbl_1_bss_139C.orbitDistance *
+         (cos((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0))));
 
     lbl_1_bss_139C.cameraUp.x = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-        sin((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0));
     lbl_1_bss_139C.cameraUp.y = (f32)cos(
-        (M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0);
+        (M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0);
     lbl_1_bss_139C.cameraUp.z = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-        cos((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0));
 
-    Hu3DShadowTPLvlSet(lbl_1_bss_139C.transparency);
+    Hu3DShadowTPLvlSet(lbl_1_bss_139C.shadowOpacity);
     Hu3DShadowPosSet(&lbl_1_bss_139C.cameraPosition, &lbl_1_bss_139C.cameraUp,
                      &lbl_1_bss_139C.target);
 }

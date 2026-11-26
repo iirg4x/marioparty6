@@ -1,31 +1,13 @@
 /* Prop creation, target behavior and the model entries used for collected objects. */
 #ifndef REL_M674DLL_TARGETS_H
 #define REL_M674DLL_TARGETS_H
+#include "REL/minigame_prop_params.h"
+#include "REL/minigame_prop_motion.h"
 #include "REL/m674Dll/player.h"
 #include "REL/m674Dll/collision.h"
 
 typedef struct M674PropWork M674PropWork;
 typedef s32 (*M674TargetAction)(M674PropWork *work);
-typedef struct M674PropMotionParam {
-    s32 resource; /* Motion resource index; -1 skips a slot and -2 ends the list. */
-    f32 blend; /* Blend fraction, scaled to frames when a motion shift begins. */
-    u32 attr; /* Attributes passed to the 3D model-motion system. */
-} M674PropMotionParam;
-typedef struct M674PropParam {
-    s32 count; /* Number of instances; -1 marks the end of the prop table. */
-    s32 linkModel; /* Selects the shared linked-model path when nonzero. */
-    s32 type; /* Prop category used when looking up an instance by type and ID. */
-    s16 firstId; /* ID assigned to the first instance; later instances increment it. */
-    s16 layer; /* 3D render layer for the prop model. */
-    u32 attr; /* Model attributes applied when the prop model is created. */
-    s32 shadow; /* Shadow mode: 0 off, 1 casting, 2 shadow-map model. */
-    s32 modelResource; /* Model resource index; -1 creates no model. */
-    M674PropMotionParam *motions; /* Optional motion-resource table for the prop. */
-    Vec *position; /* Optional initial world position; NULL leaves the zeroed position. */
-    f32 rotationY; /* Initial heading in degrees around the Y axis. */
-    OMOBJ_FUNC update; /* Object callback used to update each prop instance. */
-} M674PropParam;
-
 typedef struct M674ModelEntry {
     s32 state; /* Collection-animation state; 0 means this pool slot is free. */
     f32 progress; /* Score-flight interpolation fraction, or countdown between five-item-pool
@@ -45,7 +27,7 @@ typedef struct M674ModelEntry {
 
 struct M674PropWork {
     M674ActorState state; /* Shared transform, motion and collision state for this prop. */
-    M674PropParam *param; /* Table entry that configures this prop instance. */
+    MinigamePropParams *param; /* Table entry that configures this prop instance. */
     s32 id; /* Instance ID derived from the table entry's first ID. */
     s32 timer; /* Elapsed update count used by prop animation callbacks. */
     Vec startPosition; /* World position restored by prop reset and animation setup. */
@@ -100,8 +82,8 @@ extern const M674AnnularRegionRecord lbl_1_rodata_2B8;
 extern const M674EllipseRecord lbl_1_rodata_2FC, lbl_1_rodata_334;
 extern Vec lbl_1_data_270[4];
 extern Vec lbl_1_data_2A0, lbl_1_data_2AC, lbl_1_data_2B8;
-extern M674PropMotionParam lbl_1_data_2C4[9];
-extern M674PropParam lbl_1_data_330[14];
+extern MinigamePropMotionParams lbl_1_data_2C4[9];
+extern MinigamePropParams lbl_1_data_330[14];
 extern Vec lbl_1_data_5A4[4], lbl_1_data_5D4, lbl_1_data_60C;
 extern M674TargetAction lbl_1_data_634[4];
 extern Vec lbl_1_data_644, lbl_1_data_650, lbl_1_data_65C, lbl_1_data_668;

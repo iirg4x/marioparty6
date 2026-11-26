@@ -57,7 +57,7 @@ Point3d lbl_1_data_868[4] = { { -430.0f, 1060.0f, 0.0f },
 
 Point3d lbl_1_data_898[2] = {{0.0f, 1900.0f, -700.0f}, {0.0f, 2240.0f, 50.0f}};
 
-BingoMotionSetting lbl_1_data_8B0[10] = {
+MinigameCharacterMotion lbl_1_data_8B0[10] = {
     {0, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
     {0, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
     {1, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
@@ -97,7 +97,7 @@ void fn_1_BF3C(OMOBJ *object, s16 motionSettingIndex) {
                     lbl_1_data_8B0[motionSettingIndex].modelAttributes);
             }
             // Both settings enable the same motion-record flag.
-            if (lbl_1_data_8B0[motionSettingIndex].setMotionAttribute != 0) {
+            if (lbl_1_data_8B0[motionSettingIndex].motionOption != 0) {
                 fn_8002DC74(object->mtnId[motionIndex], 1U);
             } else {
                 fn_8002DC74(object->mtnId[motionIndex], 1U);
@@ -761,100 +761,98 @@ s16 fn_1_F018(void) {
     HuPrcVSleep();
     BingoShowFollowupInstructions();
 
-restart_animation:
-    HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
-    playerIndex = 0;
-    while (playerIndex < 5) {
-        HuSprScaleSet(lbl_1_bss_A82, playerIndex + 3, 0.0f, 0.0f);
-        playerIndex++;
-    }
-    HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2, 1.0f, 1.0f);
-    HuSprScaleSet(lbl_1_bss_A82, 2, 1.0f, 1.0f);
-    HuSprScaleSet(lbl_1_bss_A82, 0, 1.0f, 1.0f);
-    HuSprScaleSet(lbl_1_bss_A82, 1, 1.0f, 1.0f);
-    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
-    scale = 0.0f;
-    while (scale < 1.0f) {
-        HuSprGrpScaleSet(lbl_1_bss_A82, scale, scale);
-        HuPrcVSleep();
-        scale += 0.1f;
-    }
-    HuSprGrpScaleSet(lbl_1_bss_A82, 1.0f, 1.0f);
-    BingoShowLineCountHint();
-    loopActive = 1;
-    previousGameNo = MgGameNo;
-
-    while (loopActive != 0) {
-        dpadRepeat = buttonDown = 0;
-        if (selectedPlayer >= 0) {
-            dpadRepeat = lbl_802BFFE0[controllerData->padIndex];
-            buttonDown = lbl_802C0008[controllerData->padIndex];
+    do {
+        HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
+        playerIndex = 0;
+        while (playerIndex < 5) {
+            HuSprScaleSet(lbl_1_bss_A82, playerIndex + 3, 0.0f, 0.0f);
+            playerIndex++;
         }
-        if (previousGameNo != MgGameNo) {
-            HuSprGrpScaleSet(lbl_1_bss_A82, 1.0f, 1.0f);
-            HuSprScaleSet(lbl_1_bss_A82, previousGameNo + 2, 0.0f, 0.0f);
-            HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2, 1.0f, 1.0f);
-            scale = 0.0f;
-            while (scale < 1.0f) {
-                if (scale >= 1.0f) {
-                    scale = 1.0f;
-                }
-                transitionScale = 1.0f +
-                    ((1.0f - scale) *
-                     (1.0f - scale));
-                if (((MgGameNo < previousGameNo) &&
-                     ((previousGameNo < 5) || (MgGameNo > 1))) ||
-                    ((previousGameNo == 1) && (MgGameNo > 2))) {
-                    HuSprScaleSet(lbl_1_bss_A82, 0, transitionScale, transitionScale);
-                } else {
-                    HuSprScaleSet(lbl_1_bss_A82, 1, transitionScale, transitionScale);
-                }
-                HuPrcVSleep();
-                scale += 0.1f;
-            }
-            HuSprScaleSet(lbl_1_bss_A82, 0, 1.0f, 1.0f);
-            HuSprScaleSet(lbl_1_bss_A82, 1, 1.0f, 1.0f);
+        HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2, 1.0f, 1.0f);
+        HuSprScaleSet(lbl_1_bss_A82, 2, 1.0f, 1.0f);
+        HuSprScaleSet(lbl_1_bss_A82, 0, 1.0f, 1.0f);
+        HuSprScaleSet(lbl_1_bss_A82, 1, 1.0f, 1.0f);
+        HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
+        scale = 0.0f;
+        while (scale < 1.0f) {
+            HuSprGrpScaleSet(lbl_1_bss_A82, scale, scale);
             HuPrcVSleep();
-            previousGameNo = MgGameNo;
-        } else if ((buttonDown & 0x100) != 0) {
-            HuAudFXPlay(MSM_SE_MGM00_CHOICE_CONFIRM);
-            loopActive = 0;
-            result = 0;
-        } else if ((buttonDown & 0x200) != 0) {
-            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
-            loopActive = 0;
-            result = 1;
-        } else if ((dpadRepeat & 1) != 0) {
-            HuAudFXPlay(MSM_SE_MGM00_CURSOR_MOVE);
-            MgGameNo--;
-            if (MgGameNo < 1) {
-                MgGameNo = 5;
-            }
-        } else if ((dpadRepeat & 2) != 0) {
-            HuAudFXPlay(MSM_SE_MGM00_CURSOR_MOVE);
-            MgGameNo++;
-            if (MgGameNo > 5) {
-                MgGameNo = 1;
-            }
+            scale += 0.1f;
         }
-        HuPrcVSleep();
-    }
-    BingoCloseLineCountHint();
-    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
-    scale = 1.0f;
-    while (scale > 0.0f) {
-        scale -= 0.1f;
-        if (scale <= 0.0f) {
-            scale = 0.0f;
+        HuSprGrpScaleSet(lbl_1_bss_A82, 1.0f, 1.0f);
+        BingoShowLineCountHint();
+        loopActive = 1;
+        previousGameNo = MgGameNo;
+
+        while (loopActive != 0) {
+            dpadRepeat = buttonDown = 0;
+            if (selectedPlayer >= 0) {
+                dpadRepeat = lbl_802BFFE0[controllerData->padIndex];
+                buttonDown = lbl_802C0008[controllerData->padIndex];
+            }
+            if (previousGameNo != MgGameNo) {
+                HuSprGrpScaleSet(lbl_1_bss_A82, 1.0f, 1.0f);
+                HuSprScaleSet(lbl_1_bss_A82, previousGameNo + 2, 0.0f, 0.0f);
+                HuSprScaleSet(lbl_1_bss_A82, MgGameNo + 2, 1.0f, 1.0f);
+                scale = 0.0f;
+                while (scale < 1.0f) {
+                    if (scale >= 1.0f) {
+                        scale = 1.0f;
+                    }
+                    transitionScale = 1.0f +
+                        ((1.0f - scale) *
+                         (1.0f - scale));
+                    if (((MgGameNo < previousGameNo) &&
+                         ((previousGameNo < 5) || (MgGameNo > 1))) ||
+                        ((previousGameNo == 1) && (MgGameNo > 2))) {
+                        HuSprScaleSet(lbl_1_bss_A82, 0, transitionScale, transitionScale);
+                    } else {
+                        HuSprScaleSet(lbl_1_bss_A82, 1, transitionScale, transitionScale);
+                    }
+                    HuPrcVSleep();
+                    scale += 0.1f;
+                }
+                HuSprScaleSet(lbl_1_bss_A82, 0, 1.0f, 1.0f);
+                HuSprScaleSet(lbl_1_bss_A82, 1, 1.0f, 1.0f);
+                HuPrcVSleep();
+                previousGameNo = MgGameNo;
+            } else if ((buttonDown & 0x100) != 0) {
+                HuAudFXPlay(MSM_SE_MGM00_CHOICE_CONFIRM);
+                loopActive = 0;
+                result = 0;
+            } else if ((buttonDown & 0x200) != 0) {
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
+                loopActive = 0;
+                result = 1;
+            } else if ((dpadRepeat & 1) != 0) {
+                HuAudFXPlay(MSM_SE_MGM00_CURSOR_MOVE);
+                MgGameNo--;
+                if (MgGameNo < 1) {
+                    MgGameNo = 5;
+                }
+            } else if ((dpadRepeat & 2) != 0) {
+                HuAudFXPlay(MSM_SE_MGM00_CURSOR_MOVE);
+                MgGameNo++;
+                if (MgGameNo > 5) {
+                    MgGameNo = 1;
+                }
+            }
+            HuPrcVSleep();
         }
-        HuSprGrpScaleSet(lbl_1_bss_A82, scale, scale);
+        BingoCloseLineCountHint();
+        HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
+        scale = 1.0f;
+        while (scale > 0.0f) {
+            scale -= 0.1f;
+            if (scale <= 0.0f) {
+                scale = 0.0f;
+            }
+            HuSprGrpScaleSet(lbl_1_bss_A82, scale, scale);
+            HuPrcVSleep();
+        }
+        HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
         HuPrcVSleep();
-    }
-    HuSprGrpScaleSet(lbl_1_bss_A82, 0.0f, 0.0f);
-    HuPrcVSleep();
-    if ((result != 0) && (BingoPromptTwoChoices() != 0)) {
-        goto restart_animation;
-    }
+    } while ((result != 0) && (BingoPromptTwoChoices() != 0));
     HuPrcVSleep();
     return result;
 }

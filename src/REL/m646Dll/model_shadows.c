@@ -109,7 +109,7 @@ void fn_1_4ED4(OMOBJ *obj)
     Hu3DShadowPosSet(&work->shadowCameraPosition, &work->shadowCameraUp, &work->shadowCameraTarget);
     fn_8002AAB4(50, 50, 50);
     Hu3DShadowSizeSet(192);
-    Hu3DShadowTPLvlSet(0.699999988f);
+    Hu3DShadowTPLvlSet(0.7f);
     /* The map is resized again to 240 pixels, replacing the earlier 192-pixel buffer. */
     fn_8002AAB4(50, 50, 50);
     Hu3DShadowSizeSet(240);

@@ -8,6 +8,7 @@
 #include "game/object.h"
 #include "game/board/camera.h"
 #include "game/board/capevent.h"
+#include "game/board/capevent_work.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/process.h"
@@ -24,79 +25,6 @@
 #include "game/board/dice.h"
 #include "game/board/star.h"
 #include "humath.h"
-
-typedef struct EvCapWork {
-    int motId[64][4];
-    int objId[64];
-    int sprId[64];
-    void *mem[64];
-    int masuId[64];
-    HuVecF objPos[64];
-    int playerMasuId[4];
-    HuVecF playerPos[4];
-    int bgId;
-    OMOBJ *obj;
-} EVCAPWORK;
-
-typedef struct {
-    u8 _flag00 : 1;
-    u8 _flag01 : 1;
-    u8 _flag02 : 1;
-    u8 _flag03 : 1;
-    u8 _flag04 : 1;
-    u8 _flag05 : 1;
-    u8 _flag06 : 1;
-    u8 _flag07 : 1;
-    u8 _flag08 : 1;
-    u8 _flag09 : 1;
-    u8 _flag10 : 1;
-    u8 _flag11 : 1;
-    u8 _flag12 : 1;
-    u8 _flag13 : 1;
-    u8 _flag14 : 1;
-    u8 _flag15 : 1;
-    u8 _flag16 : 1;
-    u8 _flag17 : 1;
-    u8 _flag18 : 1;
-    u8 _flag19 : 1;
-    u8 _flag20 : 1;
-    u8 _flag21 : 1;
-    u8 _flag22 : 1;
-    u8 _flag23 : 1;
-    u8 _flag24 : 1;
-    u8 _flag25 : 1;
-    u8 _flag26 : 1;
-    u8 _flag27 : 1;
-    u8 _flag28 : 1;
-    u8 _flag29 : 1;
-    u8 _flag30 : 1;
-    u8 _flag31 : 1;
-} CAPWORKFLAG;
-
-typedef struct CapWork {
-    int playerNo;
-    int targetPlayerNo;
-    int capsuleNo;
-    int masuId;
-    int masuIdNext;
-    int _unk14;
-    int _unk18;
-    int _unk1C;
-    EVCAPWORK objWork;
-    CAPWORKFLAG flags;
-    int effectModelId;
-    u8 _unkB70[92];
-    int processNo;
-    OMOBJ *explodeObj;
-    OMOBJ *boostObj;
-    OMOBJ *snowObj;
-    OMOBJ *glowObj;
-    OMOBJ *ringObj;
-    OMOBJ *coinObj;
-    OMOBJ *coinManObj;
-    OMOBJ *starManObj;
-    OMOBJ *capLoseObj;
-} CAPWORK;
 
 #define CAPMOVE_DATA_KINOKO DATANUM(0xc0000, 68)
 #define CAPMOVE_DATA_S_KINOKO DATANUM(0xc0000, 69)
@@ -188,7 +116,7 @@ void mbev_CapKinoko(void)
         HuPrcVSleep();
     }
     mbObjDispSet(mushroomModelId, TRUE);
-    capWork->effectModelId = mushroomModelId;
+    capWork->eventData[0] = mushroomModelId;
     ev_CapEffKinokoCreate(capWork);
     for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
         animProgress = frameIndex / 30.0f;
@@ -279,7 +207,7 @@ void mbev_CapSKinoko(void)
         HuPrcVSleep();
     }
     mbObjDispSet(mushroomModelId, TRUE);
-    capWork->effectModelId = mushroomModelId;
+    capWork->eventData[0] = mushroomModelId;
     ev_CapEffKinokoCreate(capWork);
     for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
         animProgress = frameIndex / 30.0f;
@@ -370,7 +298,7 @@ void mbev_CapPKinoko(void)
         HuPrcVSleep();
     }
     mbObjDispSet(mushroomModelId, TRUE);
-    capWork->effectModelId = mushroomModelId;
+    capWork->eventData[0] = mushroomModelId;
     ev_CapEffKinokoCreate(capWork);
     for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
         animProgress = frameIndex / 30.0f;
@@ -461,7 +389,7 @@ void mbev_CapMKinoko(void)
         HuPrcVSleep();
     }
     mbObjDispSet(effectModelId, TRUE);
-    capWork->effectModelId = effectModelId;
+    capWork->eventData[0] = effectModelId;
     ev_CapEffKinokoCreate(capWork);
     for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
         animProgress = frameIndex / 30.0f;
@@ -838,7 +766,7 @@ void mbev_CapHanachan(void)
         mbObjMan, -32768, 0, 0, -1, ev_CapHanachanOMExec);
     obj->work[0] = 0;
     obj->work[1] = 0;
-    work->effectModelId = modelId;
+    work->eventData[0] = modelId;
     obj->data = HuMemDirectMallocNum(
         HEAP_HEAP, sizeof(CAPWORK), 0x10000000);
     memcpy(obj->data, work, sizeof(CAPWORK));
@@ -1203,8 +1131,8 @@ static void ev_CapHanachanOMExec(OMOBJ *obj)
     switch ((int)obj->work[0]) {
     case 0:
         if (++obj->work[1] & 1) {
-        mbObjPosGet(work->effectModelId, &pos);
-        mbObjRotGet(work->effectModelId, &rot);
+        mbObjPosGet(work->eventData[0], &pos);
+        mbObjRotGet(work->eventData[0], &rot);
         pos.y += 50.0f;
         offset.x = 100.0f * (1.5f * (-0.5f + MBCapsuleEffRandF()));
         offset.y = 100.0f * (-0.5f + MBCapsuleEffRandF());
@@ -1268,7 +1196,7 @@ void mbev_CapNKinoko(void)
         HuPrcVSleep();
     }
     mbObjDispSet(modelId, TRUE);
-    work->effectModelId = modelId;
+    work->eventData[0] = modelId;
     ev_CapEffKinokoCreate(work);
     for (i = 0; i < 30.0f; i++) {
         time = i / 30.0f;
@@ -1999,7 +1927,7 @@ static void ev_CapEffKinokoOMExec(OMOBJ *obj)
         return;
     }
     work = obj->data;
-    modelId = work->effectModelId;
+    modelId = work->eventData[0];
     capsuleNo = work->capsuleNo;
     mbObjPosGet(modelId, &pos);
     mbObjScaleGet(modelId, &scale);

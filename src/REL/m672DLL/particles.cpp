@@ -1,3 +1,4 @@
+#include "REL/minigame_particle_quad.h"
 #include <math.h>
 #include "REL/framework/random.h"
 /* The particle effects drawn around the board: one rising burst, one ring that carries collision
@@ -37,19 +38,6 @@ static inline void SetParticleVertexState()
 }
 
 // Draws a textured quad centered on the current position matrix.
-static inline void DrawParticleQuad(f32 halfWidth, f32 halfHeight)
-{
-    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-    GXPosition3f32(-halfWidth, halfHeight, 0.0f);
-    GXTexCoord2f32(1.0f, 0.0f);
-    GXPosition3f32(halfWidth, halfHeight, 0.0f);
-    GXTexCoord2f32(0.0f, 0.0f);
-    GXPosition3f32(halfWidth, -halfHeight, 0.0f);
-    GXTexCoord2f32(0.0f, 1.0f);
-    GXPosition3f32(-halfWidth, -halfHeight, 0.0f);
-    GXTexCoord2f32(1.0f, 1.0f);
-}
-
 // Initializes the common render object, texture, position, and particle count.
 ParticleGroup::ParticleGroup(ANIMDATA *value, int count, const EffectVector &point)
     : RenderObject(3), texture(value), position(point), particleCount(count)

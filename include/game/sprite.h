@@ -34,78 +34,7 @@
 
 #define HuSprAnimDataRead(fileNum) HuSprAnimRead(fn_80008DD0(fileNum, 0x10000000, 2))
 
-typedef struct HuSprite_s HUSPRITE;
-typedef struct HuSprRect_s {
-    float x0;
-    float y0;
-    float x1;
-    float y1;
-} HUSPR_RECT;
-
-typedef s16 HUSPRID;
-typedef s16 HUSPR_GROUPID;
-
-typedef void (*HUSPR_FUNC)(HUSPRITE *sp);
-typedef void (*HUSPR_3DHOOK)(HUSPRITE *sp, Mtx *matrix, s16 layerIdx, HUSPR_RECT *rectVtx, HUSPR_RECT *rectST);
-
-typedef struct HuSpr3DData_s {
-    int col;
-    int row;
-    float depthScale;
-    HuVecF rot;
-    HuVecF *vtx;
-    HuVec2f *st;
-} HUSPR_3DDATA;
-
-struct HuSprite_s {
-    u8 r;
-    u8 g;
-    u8 b;
-    u8 drawNo;
-    s16 animNo;
-    s16 bank;
-    s16 attr;
-    s16 dirty;
-    s16 prio;
-    float time;
-    HuVec2f pos;
-    float zRot;
-    HuVec2f scale;
-    float speed;
-    float a;
-    GXTexWrapMode wrapS;
-    GXTexWrapMode wrapT;
-    s16 uvScaleX;
-    s16 uvScaleY;
-    Mtx *groupMtx;
-    union {
-        ANIMDATA *data;
-        HUSPR_FUNC func;
-    };
-    ANIMPAT *patP;
-    ANIMFRAME *frameP;
-    s16 work[4];
-    ANIMDATA *bg;
-    u16 bgBank;
-    s16 scissorX;
-    s16 scissorY;
-    s16 scissorW;
-    s16 scissorH;
-    GXColor vtxColor[4];
-    HUSPR_3DHOOK hook3D;
-    HUSPR_3DDATA *data3D;
-};
-
-typedef struct HuSprGroup_s {
-    s16 sprNum;
-    HuVec2f pos;
-    float zRot;
-    HuVec2f scale;
-    HuVec2f center;
-    HUSPRID *sprId;
-    Mtx mtx;
-    s16 work[4];
-} HUSPR_GROUP;
+#include "game/sprite_types.h"
 
 extern HUSPRITE *HuSprData;
 extern HUSPR_GROUP HuSprGrpData[HUSPR_GROUP_MAX];

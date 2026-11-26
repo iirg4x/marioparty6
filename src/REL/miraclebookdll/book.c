@@ -1,4 +1,5 @@
 // Runs the Miracle Book menu, including its page turns and reward effects.
+#include "REL/minigame_texture_transition.h"
 #include <math.h>
 
 #include "dolphin.h"
@@ -35,14 +36,6 @@
 
 #include "REL/miraclebookdll/book.h"
 #include "humath.h"
-
-typedef struct {
-    f32 textureMatrix[2][3];
-    GXColor color;
-    f32 textureOffsetY;
-    f32 textureOffsetSpeed;
-    f32 effectFramesRemaining;
-} UNK_MIRACLEBOOK_HOOK;
 
 s32 lbl_1_data_0[20] = {
     4, 4, 7, 1, 5, 1, 4, 1, 2, 4,
@@ -294,7 +287,7 @@ OMOBJMAN *lbl_1_bss_74;
 
 s16 lbl_1_bss_68[5];
 
-UNK_MIRACLEBOOK_HOOK lbl_1_bss_18[2];
+MinigameTextureTransition lbl_1_bss_18[2];
 
 ANIMDATA *lbl_1_bss_14;
 
@@ -1949,7 +1942,7 @@ void fn_1_7560(void)
     fn_80026B8C(lbl_1_bss_90[2], 5);
     fn_800269E8(lbl_1_bss_90[2], (1 << 0));
     lbl_1_bss_8C = 0;
-    anim = HuSprAnimRead(fn_80008DD0( DATANUM(0x210000, 0), 0x10000000, 2));
+    anim = HuSprAnimDataRead(DATANUM(0x210000, 0));
     for (i = 0; i < 5; i++) {
         lbl_1_bss_68[i] = fn_800334F4(anim, 100, &lbl_1_data_5C8);
         Hu3DParManAttrSet(lbl_1_bss_68[i], (1 << 2) | (1 << 5) | (1 << 6));
@@ -2101,7 +2094,7 @@ void fn_1_8A0C(s16 layerNo)
 void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     HU3D_CAMERA *camera = &Hu3DCamera[lbl_802C01A6];
-    UNK_MIRACLEBOOK_HOOK *effect;
+    MinigameTextureTransition *effect;
     Mtx modelMatrix;
     Mtx scaleMatrix;
     Mtx textureMatrix;
@@ -2111,7 +2104,7 @@ void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     f32 cameraCenterS;
 
     effect = drawObj->model->hookData;
-    effect->textureOffsetY = effect->textureOffsetY + effect->textureOffsetSpeed;
+    effect->textureScrollY = effect->textureScrollY + effect->textureScrollStep;
 
     GXInitTexObj(&screenTexture, lbl_1_bss_C, 640, 480, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_FALSE);
     GXInitTexObjLOD(&screenTexture, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f,
@@ -2133,7 +2126,7 @@ void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS,
         GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY);
 
-    PSMTXTrans(modelMatrix, 0.0f, effect->textureOffsetY, 0.0f);
+    PSMTXTrans(modelMatrix, 0.0f, effect->textureScrollY, 0.0f);
     PSMTXScale(scaleMatrix, 0.8f, 0.8f, 1.0f);
     PSMTXConcat(scaleMatrix, modelMatrix, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX0, GX_MTX2x4);
@@ -2157,36 +2150,36 @@ void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXSetIndTexOrder(GX_INDTEXSTAGE0, GX_TEXCOORD1, GX_TEXMAP2);
     GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
     GXSetTevIndWarp(GX_TEVSTAGE0, GX_INDTEXSTAGE0, GX_TRUE, GX_FALSE, GX_ITM_0);
-    GXSetIndTexMtx(GX_ITM_0, effect->textureMatrix, -1);
+    GXSetIndTexMtx(GX_ITM_0, effect->indirectMatrix, -1);
 }
 
 // Called by the effect object each update to fade and finish its two page overlays.
 void fn_1_8F10(OMOBJ *obj)
 {
-    UNK_MIRACLEBOOK_HOOK *effect;
+    MinigameTextureTransition *effect;
     s16 i = 0;
     f32 colorFadeProgress;
 
     effect = lbl_1_bss_18;
     for (; i < 2; i++, effect++) {
-        if (effect->effectFramesRemaining <= 0.0f) {
+        if (effect->remainingFrames <= 0.0f) {
             continue;
         } else {
-            effect->textureMatrix[0][0] = 0.0f;
-            effect->textureMatrix[0][1] = 0.0f;
-            effect->textureMatrix[0][2] = 0.09f * effect->effectFramesRemaining / 120.0f;
-            effect->textureMatrix[1][0] = 0.0f;
-            effect->textureMatrix[1][1] = 0.0f;
-            effect->textureMatrix[1][2] = 0.09f * effect->effectFramesRemaining / 120.0f;
-            effect->textureOffsetSpeed = -0.02f * effect->effectFramesRemaining / 120.0f;
-            colorFadeProgress = (effect->effectFramesRemaining - 80.0f) / 40.0f;
+            effect->indirectMatrix[0][0] = 0.0f;
+            effect->indirectMatrix[0][1] = 0.0f;
+            effect->indirectMatrix[0][2] = 0.09f * effect->remainingFrames / 120.0f;
+            effect->indirectMatrix[1][0] = 0.0f;
+            effect->indirectMatrix[1][1] = 0.0f;
+            effect->indirectMatrix[1][2] = 0.09f * effect->remainingFrames / 120.0f;
+            effect->textureScrollStep = -0.02f * effect->remainingFrames / 120.0f;
+            colorFadeProgress = (effect->remainingFrames - 80.0f) / 40.0f;
             if (colorFadeProgress >= 0.0f) {
                 effect->color.r = 0;
                 effect->color.g = (u8)(16.0f * colorFadeProgress);
                 effect->color.b = (u8)(64.0f * colorFadeProgress);
             }
-            effect->effectFramesRemaining -= 1.0f;
-            if (effect->effectFramesRemaining <= 0.0f) {
+            effect->remainingFrames -= 1.0f;
+            if (effect->remainingFrames <= 0.0f) {
                 fn_80025980(10);
                 fn_800269E8(obj->mdlId[i], (1 << 0));
                 obj->objFunc = NULL;
@@ -2206,8 +2199,8 @@ void fn_1_9130(s16 effectIndex, HuVecF *position)
     if (effectIndex >= 2 || effectIndex < 0) {
         return;
     }
-    lbl_1_bss_18[effectIndex].textureOffsetY = 0.0f;
-    lbl_1_bss_18[effectIndex].effectFramesRemaining = 120.0f;
+    lbl_1_bss_18[effectIndex].textureScrollY = 0.0f;
+    lbl_1_bss_18[effectIndex].remainingFrames = 120.0f;
     fn_80026A44(obj->mdlId[effectIndex], (1 << 0));
     fn_80026760(obj->mdlId[effectIndex], 0.0f, 21.0f, 10.0f);
     fn_80026808(obj->mdlId[effectIndex], 55.0f, 0.0f, 0.0f);
@@ -2225,8 +2218,8 @@ void fn_1_92B4(OMOBJ *obj)
     s16 i;
 
     omSetStatBit(obj, (1 << 8));
-    lbl_1_bss_10 = HuSprAnimRead(fn_80008DD0( DATANUM(0xbd0000, 86), 0x10000000, 2));
-    lbl_1_bss_14 = HuSprAnimRead(fn_80008DD0( DATANUM(0xbd0000, 86), 0x10000000, 2));
+    lbl_1_bss_10 = HuSprAnimDataRead(DATANUM(0xbd0000, 86));
+    lbl_1_bss_14 = HuSprAnimDataRead(DATANUM(0xbd0000, 86));
     lbl_1_bss_C = HuMemDirectMallocNum(2,
         GXGetTexBufferSize(640, 480, GX_TF_RGB565, GX_FALSE, 0), 0x10000000);
     for (i = 0; i < 2; i++) {
@@ -2235,13 +2228,13 @@ void fn_1_92B4(OMOBJ *obj)
         fn_80026B8C(obj->mdlId[i], 3);
         fn_800269E8(obj->mdlId[i], (1 << 0));
         fn_80027884(obj->mdlId[i], fn_1_8A78);
-        lbl_1_bss_18[i].textureMatrix[0][0] = lbl_1_bss_18[i].textureMatrix[0][1] =
-            lbl_1_bss_18[i].textureMatrix[0][2] = lbl_1_bss_18[i].textureMatrix[1][0] =
-            lbl_1_bss_18[i].textureMatrix[1][1] = lbl_1_bss_18[i].textureMatrix[1][2] =
+        lbl_1_bss_18[i].indirectMatrix[0][0] = lbl_1_bss_18[i].indirectMatrix[0][1] =
+            lbl_1_bss_18[i].indirectMatrix[0][2] = lbl_1_bss_18[i].indirectMatrix[1][0] =
+            lbl_1_bss_18[i].indirectMatrix[1][1] = lbl_1_bss_18[i].indirectMatrix[1][2] =
                 0.0f;
         lbl_1_bss_18[i].color = (GXColor){0, 16, 64, 16};
-        lbl_1_bss_18[i].textureOffsetY = 0.0f;
-        lbl_1_bss_18[i].textureOffsetSpeed = 0.0f;
+        lbl_1_bss_18[i].textureScrollY = 0.0f;
+        lbl_1_bss_18[i].textureScrollStep = 0.0f;
         model = &lbl_802C01C8[obj->mdlId[i]];
         model->hookData = &lbl_1_bss_18[i];
     }

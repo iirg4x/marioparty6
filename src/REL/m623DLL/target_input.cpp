@@ -1,6 +1,7 @@
 // Target selection and stick input for computer players.
 
 extern "C" {
+#include "REL/minigame_absolute.h"
 #include "dolphin/mtx.h"
 }
 
@@ -38,14 +39,6 @@ void fn_1_A15C(MotionController *motion, int viewIndex, Vec *position)
 const float lbl_1_rodata_464[4] = { 0.25f, 0.5f, 0.75f, 1.0f };
 
 // Returns the absolute value of the supplied input.
-static inline float motionAbs(float value)
-{
-    if (value < 0.0f) {
-        return -value;
-    }
-    return value;
-}
-
 // Steers the computer player away from a nearby spiny.
 void fn_1_A1D8(MotionController *motion, Vec *position, int difficulty)
 {
@@ -55,9 +48,9 @@ void fn_1_A1D8(MotionController *motion, Vec *position, int difficulty)
     // Reacts to a spiny within the forward and rear X limits.
     if (motion->hasSpinyTarget != 0 && deltaX < 10000.0f && deltaX > -200.0f) {
         // The lateral dodge input tapers to zero at the edge of the corridor.
-        if (motionAbs(deltaZ) < 300.0f) {
+        if (absolute(deltaZ) < 300.0f) {
             motion->horizontalInput =
-                ((300.0f - motionAbs(deltaZ)) / 300.0f) *
+                ((300.0f - absolute(deltaZ)) / 300.0f) *
                 (deltaZ > 0.0f ? -lbl_1_rodata_464[difficulty] : lbl_1_rodata_464[difficulty]);
             switch (difficulty) {
             case 0:
@@ -83,9 +76,9 @@ void fn_1_A3EC(MotionController *motion, Vec *position, int difficulty)
     float deltaZ = motion->targetPosition.z - position->z;
     float deltaX = motion->targetPosition.x - position->x;
     if (motion->hasTarget != 0) {
-        if (motionAbs(deltaZ) < 200.0f) {
+        if (absolute(deltaZ) < 200.0f) {
             // A nearly aligned player can move forward to collect the item.
-            if (motionAbs(deltaZ) > 50.0f) {
+            if (absolute(deltaZ) > 50.0f) {
                 motion->horizontalInput = deltaZ / 200.0f;
             } else if (difficulty > 1) {
                 motion->verticalInput = 1.0f;

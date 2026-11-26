@@ -50,4 +50,6 @@ s32 HuMCButtonDownGet(void);
 void HuMCSysInit(void);
 void HuMCPeriodicProc(void);
 
+void HuMCSelWinKill(void);
+
 #endif

@@ -3,7 +3,7 @@
 /* Player movement: motion state, collision response, turning and engine sound. */
 #include "REL/m653DLL/motion_work.h"
 #include "REL/m653DLL/boundary_plane.h"
-#include "REL/m653DLL/absolute.h"
+#include "REL/minigame_absolute.h"
 #include "REL/framework/square.h"
 #include "REL/m653DLL/translate_matrix.h"
 

@@ -14,6 +14,7 @@
 #include "game/window.h"
 #include "game/wipe.h"
 #include "messdir_enum.h"
+#include "REL/bootDll/boot.h"
 
 enum {
     OPENING_CAMERA_BIT = 1,
@@ -69,7 +70,7 @@ enum {
 #define OBJSTAR_X_AMPLITUDE 3.0
 #define OBJSTAR_Y_AMPLITUDE 5.0
 #define OBJSTAR_PHASE_WRAP_DEG 720.0f
-#define LIGHT_SCALE_MAX 0.8999999761581421f
+#define LIGHT_SCALE_MAX 0.9f
 #define LIGHT_SCALE_Z 1.0f
 #define SIDE_STAR_SCALE_MAX 0.5f
 #define SIDE_STAR_SCALE_Z 0.5f
@@ -229,8 +230,7 @@ void OpeningCreate(void)
         0x10000000);
 
     for (i = 0; i < 79; i++) {
-        OpeningCharAnim[i] = HuSprAnimRead(
-            fn_80008DD0(OpeningCharFileTbl[i], 0x10000000, 2));
+        OpeningCharAnim[i] = HuSprAnimDataRead(OpeningCharFileTbl[i]);
     }
 
     for (i = 0; i < 12; i++) {

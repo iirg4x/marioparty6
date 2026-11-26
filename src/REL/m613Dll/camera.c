@@ -1,38 +1,16 @@
 /* Creates the game camera and switches it to the result view. */
+#include "REL/minigame_camera.h"
 #include "REL/m613Dll/types.h"
 #include <math.h>
 #include "game/hu3d.h"
 
-typedef struct {
-    s32 cameraBit;
-    f32 fieldOfView;
-    f32 nearPlane;
-    f32 farPlane;
-    f32 aspectRatio;
-    f32 viewportX;
-    f32 viewportY;
-    f32 viewportWidth;
-    f32 viewportHeight;
-    f32 minDepth;
-    f32 maxDepth;
-    Point3d position;
-    Point3d up;
-    Point3d target;
-} M613CameraParams;
-
-typedef struct {
-    Point3d position;
-    Point3d up;
-    Point3d target;
-} M613CameraPose;
-
-M613CameraParams lbl_1_data_178 = {
+MinigameCameraParams lbl_1_data_178 = {
     1, 15.0f, 10.0f, 10000.0f, 1.2f,
     0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f,
     {0.0f,0.0f,1000.0f}, {0.0f,1.0f,0.0f}, {0.0f,0.0f,0.0f}
 };
-M613CameraPose lbl_1_data_1C8 = {{0.0f,3300.0f,3712.5f}, {0.0f,1.0f,0.0f}, {0.0f,0.0f,0.0f}};
-M613CameraPose lbl_1_data_1EC = {{0.0f,430.0f,900.0f}, {0.0f,1.0f,0.0f}, {0.0f,180.0f,-110.0f}};
+MinigameCameraPose lbl_1_data_1C8 = {{0.0f,3300.0f,3712.5f}, {0.0f,1.0f,0.0f}, {0.0f,0.0f,0.0f}};
+MinigameCameraPose lbl_1_data_1EC = {{0.0f,430.0f,900.0f}, {0.0f,1.0f,0.0f}, {0.0f,180.0f,-110.0f}};
 
 /* Called when the opening phase starts to create and aim the board camera. */
 void fn_1_F048(void)

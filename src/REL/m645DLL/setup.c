@@ -974,7 +974,7 @@ void fn_1_4E48(OMOBJ *obj)
 }
 
 typedef struct M645RouteGeometry {
-    M645Triangle triangle;
+    MinigameTriangle triangle;
     M645Bounds bounds;
 } M645RouteGeometry;
 

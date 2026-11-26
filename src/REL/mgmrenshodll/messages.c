@@ -1,4 +1,5 @@
 /* Shows the instructions, choices and results for the minigame streak mode. */
+#include "REL/minigame_dialogue.h"
 #include <math.h>
 #include "game/object.h"
 #include "game/window.h"
@@ -9,19 +10,7 @@
 #include "msm_se.h"
 #include "REL/mgmrenshodll/module_types.h"
 
-typedef struct {
-    HUWINID windowId;
-    f32 width;
-    f32 height;
-} MGRenshoWindowState;
-
-typedef struct {
-    u32 key;
-    s16 variant;
-    s32 soundEffect;
-} MGRenshoSoundCue;
-
-MGRenshoWindowState lbl_1_bss_B8;
+MinigameWindow lbl_1_bss_B8;
 s32 lbl_1_data_10[8] = {0, 1, 2, 3, 4, 5, 6, 7};
 u32 lbl_1_data_30[10] = {
     MESSNUM(MESS_MGM_DECATHLON, 55), MESSNUM(MESS_MGM_DECATHLON, 45),
@@ -32,7 +21,7 @@ u32 lbl_1_data_30[10] = {
 };
 char lbl_1_data_58[3] = {0, 0, 0};
 u32 lbl_1_data_5C[14] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-MGRenshoSoundCue lbl_1_data_94[25] = {
+MinigameMessageSound lbl_1_data_94[25] = {
     {MESSNUM(MESS_MGM_RENSHOU, 0), 1, MSM_SE_GUIDE_NIGHT_INTRO},
     {MESSNUM(MESS_MGM_RENSHOU, 0), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_RENSHOU, 0), 3, -1},
@@ -421,10 +410,10 @@ void fn_1_2B7C(HUWINID windowId, u32 key, s16 variant)
     s16 index;
 
     for (index = 0; index < 25; index++) {
-        if ((key == lbl_1_data_94[index].key) &&
-            (variant == lbl_1_data_94[index].variant) &&
-            (lbl_1_data_94[index].soundEffect >= 0)) {
-            HuAudFXPlayPan(lbl_1_data_94[index].soundEffect, lbl_1_data_1C0);
+        if ((key == lbl_1_data_94[index].messageId) &&
+            (variant == lbl_1_data_94[index].callbackCode) &&
+            (lbl_1_data_94[index].soundEffectId >= 0)) {
+            HuAudFXPlayPan(lbl_1_data_94[index].soundEffectId, lbl_1_data_1C0);
             fn_1_7D7C();
         }
     }

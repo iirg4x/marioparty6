@@ -1,22 +1,10 @@
 #ifndef M663DLL_SHADOW_H
 #define M663DLL_SHADOW_H
+#include "REL/minigame_shadow_camera.h"
 
 #include "game/hu3d.h"
 
-typedef struct M663ShadowState {
-    Vec cameraPosition;
-    f32 azimuth;
-    f32 elevation;
-    f32 unk14; /* The game's code never reads this field. */
-    Vec target;
-    u8 unobserved24[12];
-    Vec cameraUp;
-    u8 unk3C[12]; /* No code names this field. */
-    f32 distance;
-    f32 transparency;
-} M663ShadowState;
-
-extern M663ShadowState lbl_1_bss_139C;
+extern MinigameShadowCamera lbl_1_bss_139C;
 void fn_1_2104(void);
 void fn_1_2214(void);
 

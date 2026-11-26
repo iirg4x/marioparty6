@@ -40,58 +40,6 @@ typedef struct OptionModelEntry {
     u16 unk36; /* No code names this field. */
 } OptionModelEntry;
 
-typedef struct OptionAnimPair {
-    s16 animId1;
-    s16 animId2;
-    s16 modelId;
-} OptionAnimPair;
-
-typedef struct OptionDecaRecord {
-    s16 character;
-    s16 finalScore;
-    s16 score[10];
-} OptionDecaRecord;
-
-typedef struct OptionPrizeEntry {
-    s16 flag;
-    s16 tableEndMarker; /* -1 marks the final row in the prize table. */
-    u32 name;
-    u32 description;
-    s16 id;
-    s16 unkE; /* No code names this field. */
-} OptionPrizeEntry;
-
-typedef struct OptionRecordDisplayEntry {
-    s16 minigameId;
-    u8 recordId;
-    u8 displayType;
-    s32 message;
-} OptionRecordDisplayEntry;
-
-typedef struct OptionSelectionData {
-    s16 selectedIndex;
-    s16 optionCount;
-    s16 animationA[10];
-    s16 choiceAnimationBank[10];
-} OptionSelectionData;
-
-typedef struct OptionWork {
-    s16 rumbleEnabled; /* Saved controller vibration setting. */
-    s16 micStatus;
-    s16 soundMode;
-    s16 boardRecord[6];
-    s16 boardCharacterRecord[6][11];
-    OptionDecaRecord decaRecord[10];
-    s32 prizeUnlocked[42];
-    s16 prizeId[42];
-    u32 prizeName[42];
-    u32 prizeDescription[42];
-    s32 minigameUnlocked[81];
-    u32 record[19];
-    u8 consecutiveRecordCount;
-    u8 consecutiveRecord[100];
-} OptionWork;
-
 OptionModelEntry lbl_1_data_1AB0[26] = {
     {DATANUM(0xbe0000, 0), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
         0.00000000f, 0.00000000f}, {1.0f, 1.0f, 1.0f}, 0U, ((1 << 30) | (1 << 0)), 2, 0},
@@ -431,10 +379,10 @@ void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2)
         }
     }
     if (i != 17) {
-        fn_80030D50(lbl_1_bss_5D6[i].animId1, lbl_1_bss_BF8[animNo1]);
-        Hu3DAnimBankSet(lbl_1_bss_5D6[i].animId1, bank1);
-        fn_80030D50(lbl_1_bss_5D6[i].animId2, lbl_1_bss_BF8[animNo2]);
-        Hu3DAnimBankSet(lbl_1_bss_5D6[i].animId2, bank2);
+        fn_80030D50(lbl_1_bss_5D6[i].firstTextureAnimation, lbl_1_bss_BF8[animNo1]);
+        Hu3DAnimBankSet(lbl_1_bss_5D6[i].firstTextureAnimation, bank1);
+        fn_80030D50(lbl_1_bss_5D6[i].secondTextureAnimation, lbl_1_bss_BF8[animNo2]);
+        Hu3DAnimBankSet(lbl_1_bss_5D6[i].secondTextureAnimation, bank2);
     }
 }
 
@@ -452,11 +400,11 @@ BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2)
     if (i == 17) {
         return FALSE;
     }
-    anim = &Hu3DTexAnimData[lbl_1_bss_5D6[i].animId1];
+    anim = &Hu3DTexAnimData[lbl_1_bss_5D6[i].firstTextureAnimation];
     if (anim->anim != lbl_1_bss_BF8[animNo1] || anim->bank != bank1) {
         return FALSE;
     }
-    anim = &Hu3DTexAnimData[lbl_1_bss_5D6[i].animId2];
+    anim = &Hu3DTexAnimData[lbl_1_bss_5D6[i].secondTextureAnimation];
     if (anim->anim != lbl_1_bss_BF8[animNo2] || anim->bank != bank2) {
         return FALSE;
     }

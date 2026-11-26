@@ -1,4 +1,5 @@
 /* File Select overlay startup, save-slot presentation, and slot selection. */
+#include "REL/minigame_texture_transition.h"
 #include "dolphin.h"
 #include "REL/fileseldll.h"
 #include "datanum/filesel.h"
@@ -22,6 +23,8 @@
 #include "math.h"
 #include "string.h"
 #include "stdio.h"
+#include "game/mic.h"
+#include "game/sprput.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -41,53 +44,11 @@ typedef struct b234_point {
     /* Point attribute flags; the meaning of individual bits is not established here. */
     u16 flag;
 } B234Point;
-/* Coordinate bounds passed to the keyboard navigation helper. */
-typedef struct b234_rect {
-    /* Minimum horizontal coordinate. */
-    f32 minX;
-    /* Minimum vertical coordinate. */
-    f32 minY;
-    /* Maximum horizontal coordinate. */
-    f32 maxX;
-    /* Maximum vertical coordinate. */
-    f32 maxY;
-} B234Rect;
-
-/* Per-model distortion texture matrix, tint, offset, and remaining effect time. */
-typedef struct bss18_entry {
-    /* First row of the indirect texture matrix. */
-    Vec indirectMatrixRow0;
-    /* Second row of the indirect texture matrix. */
-    Vec indirectMatrixRow1;
-    /* Tint applied to the card distortion model. */
-    GXColor tint;
-    /* Current vertical texture offset. */
-    f32 textureOffset;
-    /* Texture offset increment applied on each material-hook invocation. */
-    f32 textureOffsetStep;
-    /* Remaining lifetime in frames. */
-    f32 framesRemaining;
-} BSS18_ENTRY; /* size = 0x28 */
-
 /* Five particle emission points on the selected slot model. */
 typedef struct vec5 {
     /* Five local-space particle emission offsets. */
     Vec v[5];
 } VEC5;
-
-/* Sprite asset and placement settings used to build the name keyboard. */
-typedef struct data48c {
-    /* File Select sprite data number. */
-    s32 dataNumber;
-    /* Sprite animation bank. */
-    u8 bank;
-    /* Sprite draw priority. */
-    s16 priority;
-    /* Horizontal offset in pixels from the keyboard sprite group's origin. */
-    s16 x;
-    /* Vertical offset in pixels from the keyboard sprite group's origin. */
-    s16 y;
-} DATA48C; /* size 0xC */
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -98,7 +59,7 @@ extern OMOBJ *lbl_1_bss_8;
 extern void *lbl_1_bss_C;
 extern ANIMDATA *lbl_1_bss_10;
 extern ANIMDATA *lbl_1_bss_14;
-extern BSS18_ENTRY lbl_1_bss_18[];
+extern MinigameTextureTransition lbl_1_bss_18[];
 extern HU3D_PARMANID lbl_1_bss_98[];
 extern HU3D_ANIMID lbl_1_bss_A2[];
 extern ANIMDATA *lbl_1_bss_C8;
@@ -120,7 +81,7 @@ extern HU3D_PARMAN_PARAM lbl_1_data_E8;
 extern char lbl_1_data_138[];
 extern char lbl_1_data_144[];
 extern char lbl_1_data_1FD[23];
-extern DATA48C lbl_1_data_48C[];
+extern NAME_SPRITE_CONFIG lbl_1_data_48C[];
 extern char lbl_1_data_B8[];
 extern char lbl_1_data_E2[];
 
@@ -161,25 +122,16 @@ s32 SLBoxDataOffsetGet(s16 boxNo);
 void SLCommonLoad(void);
 void SLCommonSet(void);
 
-s32 HuMCProbe(s32 chan);
-void HuMCMicSet(s32 flag);
-void HuMCInit(s32 chan);
-s32 HuMCMount(s32 chan);
-void HuMCClose(void);
-s32 HuMCMicGet(void);
-
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, s32 wrapS, s32 wrapT, s32 filter);
-
 void ObjectSetup(void);
 void FileselMain(void);
 void fn_1_680(void);
 void fn_1_6E8(void);
-void fn_1_C60(void);
-void fn_1_C8C(void);
+void fn_1_C60(s16 layer);
+void fn_1_C8C(s16 layer);
 void fn_1_179C(void);
 void fn_1_2654(s16 slotSelection);
 void fn_1_2A40(void);
-void fn_1_35AC(void);
+void fn_1_35AC(s16 layer);
 void fn_1_3C80(s16 boxNo, Vec *position);
 void fn_1_3CC0(s16 boxNo, f32 x, f32 y, f32 z);
 void fn_1_3CF4(s16 boxNo, s32 motionMode);
@@ -192,17 +144,12 @@ s32 fn_1_69B0(void);
 void FileselWipeDraw(void);
 void fn_1_7B64(void);
 void fn_1_7A0C(void);
-void fn_1_7DEC(void);
+void fn_1_7DEC(s16 layer);
 void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
 void fn_1_82F0(OMOBJ *obj);
 void fn_1_8510(s16 effectIndex, Vec *position);
 void fn_1_8688(OMOBJ *p);
 void fn_1_8A34(void);
-void fn_1_8F34(s32 callbackData, s16 selectedKeyIndex);
-s16 fn_1_AAEC(s16 winId);
-s16 fn_1_ABF8(s16 currentKeyIndex, f32 originX, f32 originY, f32 directionX, f32 directionY);
-void fn_1_B234(B234Rect *r);
-void NameEnterClose(void);
 void fn_1_3D14(void);
 s32 FileselCopy(s16 sourceBoxNo);
 
@@ -210,7 +157,6 @@ void FileselInit(void);
 void fn_1_15AC(void);
 void fn_1_36C4(s16 boxNo, s16 slotNumber);
 void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot);
-void NameEnterInit(void);
 void fn_1_CB4(s32 showSlots);
 s32 FileselSelect(void);
 
@@ -239,18 +185,17 @@ void _epilog(void)
     }
 }
 
-/* 0x00A0 */
 /* Called by _prolog to create File Select cameras, windows, and main process. */
 void ObjectSetup(void)
 {
     HU3D_LIGHTID lightId;
-    s16 lang;
+    s32 lang;
 
     OSReport(lbl_1_data_B8);
     lbl_1_bss_340 = fn_8003A8BC(50, 512);
     fn_80069F1C(lbl_1_bss_340);
     lang = lbl_802BF788;
-    lbl_80265E30.languageNo = lang;
+    GWLanguageSet(lang);
     lightId = (int)Hu3DGLightCreate(-1000.0f, 1500.0f, 1000.0f,
                                     1.0f, -1.5f, -1.0f,
                                     255, 255, 255);
@@ -276,7 +221,6 @@ void ObjectSetup(void)
     OSReport(lbl_1_data_E2, SAVE_BOX_SIZE);
 }
 
-/* 0x0374 */
 /* Main File Select process: load card data, handle the chosen slot, then transition overlays. */
 void FileselMain(void)
 {
@@ -293,52 +237,52 @@ void FileselMain(void)
         HuPrcVSleep();
     }
     status = FileBoxInit(-1);
-    if (status == -2) {
-        goto L_56C;
-    }
-    if (status == -1) {
-        HuAudFXPlay(1167);
-        fn_1_CB4(0);
-        lbl_80265E30 = lbl_80266400;
-        fn_1_6E54(0, 0);
-        SLSaveFlagSet(0);
-        flag = 0;
-        goto L_56C;
-    }
-    HuAudFXPlay(1167);
-    fn_1_CB4(1);
-L_454:
-    status = FileselSelect();
-    if (status == FILESEL_RESULT_CANCEL) {
-        goto L_56C;
-    }
-    if (status == -3) {
-        status = FileBoxInit(-1);
-        if (status == -2) {
-            goto L_56C;
-        }
+    if (status != -2) {
         if (status == -1) {
+            HuAudFXPlay(1167);
+            fn_1_CB4(0);
             lbl_80265E30 = lbl_80266400;
             fn_1_6E54(0, 0);
             SLSaveFlagSet(0);
-            goto L_568;
+            flag = 0;
+        } else {
+            HuAudFXPlay(1167);
+            fn_1_CB4(1);
+            while (1) {
+                status = FileselSelect();
+                if (status == FILESEL_RESULT_CANCEL) {
+                    goto L_56C;
+                }
+                if (status == -3) {
+                    status = FileBoxInit(-1);
+                    if (status == -2) {
+                        goto L_56C;
+                    }
+                    if (status == -1) {
+                        lbl_80265E30 = lbl_80266400;
+                        fn_1_6E54(0, 0);
+                        SLSaveFlagSet(0);
+                        break;
+                    }
+                    for (i = 0; i < 3; i++) {
+                        fn_1_36C4(i, i);
+                    }
+                    continue;
+                }
+                if (status == -1) {
+                    lbl_80265E30 = lbl_80266400;
+                    fn_1_6E54(0, 0);
+                    SLSaveFlagSet(0);
+                    flag = 0;
+                    goto L_56C;
+                }
+                SLSaveFlagSet(1);
+                fn_1_6E54(status, 1);
+                break;
+            }
+            flag = 0;
         }
-        for (i = 0; i < 3; i++) {
-            fn_1_36C4(i, i);
-        }
-        goto L_454;
     }
-    if (status == -1) {
-        lbl_80265E30 = lbl_80266400;
-        fn_1_6E54(0, 0);
-        SLSaveFlagSet(0);
-        flag = 0;
-        goto L_56C;
-    }
-    SLSaveFlagSet(1);
-    fn_1_6E54(status, 1);
-L_568:
-    flag = 0;
 L_56C:
     fn_800097F4(0xf20000);
     fn_800097F4(0x210000);
@@ -372,7 +316,6 @@ L_56C:
     }
 }
 
-/* 0x0680 */
 /* FileselMain calls this when leaving without saving. Disable microphone mode if channel 1
  * detection or mounting fails; initialization status is ignored before closing speech resources. */
 void fn_1_680(void)
@@ -391,7 +334,6 @@ void fn_1_680(void)
                    * value. */
 }
 
-/* 0x06E8 */
 /* FileselMain calls this at startup to load the scene, slot art, and effects. */
 void fn_1_6E8(void)
 {
@@ -437,7 +379,7 @@ void fn_1_6E8(void)
     fn_800269E8(lbl_1_bss_2D8[2], (1 << 0));
     fn_80026E44(lbl_1_bss_2D8[2]);
 
-    lbl_1_bss_C8 = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_DATA_SELECT, 0x10000000, 2));
+    lbl_1_bss_C8 = HuSprAnimDataRead(FILESEL_ANM_DATA_SELECT);
     lbl_1_bss_A2[0] = fn_80030B2C(lbl_1_bss_C8, lbl_1_bss_2D8[2], lbl_1_data_138);
     Hu3DAnimBankSet(lbl_1_bss_A2[0], 1);
     lbl_1_bss_A2[1] = fn_80030B2C(lbl_1_bss_C8, lbl_1_bss_2D8[2], lbl_1_data_144);
@@ -445,11 +387,11 @@ void fn_1_6E8(void)
 
     fn_8000DAC0(fn_1_15AC, 256, 4096, 0, fn_8000DD9C());
     NameEnterInit();
-    fn_8002583C(1, 0, (HU3D_LAYER_HOOK)fn_1_C60);
-    fn_8002583C(2, 0, (HU3D_LAYER_HOOK)fn_1_C8C);
+    fn_8002583C(1, 0, fn_1_C60);
+    fn_8002583C(2, 0, fn_1_C8C);
     fn_8003AB38(lbl_1_bss_340, 4096, 16, 16, -1, fn_1_8688);
 
-    parAnim = HuSprAnimRead(fn_80008DD0(0x210000, 0x10000000, 2));
+    parAnim = HuSprAnimDataRead(0x210000);
     for (i = 0; i < 5; i++) {
         lbl_1_bss_98[i] = fn_800334F4(parAnim, 100, &lbl_1_data_E8);
         Hu3DParManAttrSet(lbl_1_bss_98[i],
@@ -464,17 +406,15 @@ void fn_1_6E8(void)
     }
 }
 
-/* 0x0C60 */
 /* Camera 1 layer hook: draw the full-screen depth polygon with the RGBA framebuffer format. */
-void fn_1_C60(void)
+void fn_1_C60(s16 layer)
 {
     GXSetPixelFmt(GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
     FileselWipeDraw();
 }
 
-/* 0x0C8C */
 /* Camera 2 layer hook: restore the normal RGB framebuffer format. */
-void fn_1_C8C(void)
+void fn_1_C8C(s16 layer)
 {
     GXSetPixelFmt(GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 }
@@ -587,7 +527,6 @@ void fn_1_CB4(s32 showSlots)
     }
 }
 
-/* 0x15AC */
 /* Child process from scene setup: gently animate the book and data-select model. */
 void fn_1_15AC(void)
 {
@@ -616,7 +555,6 @@ void fn_1_15AC(void)
     }
 }
 
-/* 0x179C */
 /* Delayed child process from the reveal animation: open the main message window. */
 void fn_1_179C(void)
 {
@@ -655,221 +593,223 @@ s32 FileselSelect(void)
             HuPrcVSleep();
         }
     }
-L_192C:
-    for (i = count = 0; i < 3; i++) {
-        if (lbl_1_bss_D8[i].hasSave != 0) {
-            count++;
-        }
-        if (sel == i) {
-            fn_1_3CF4(i, 0);
-        } else {
-            fn_1_3CF4(i, 1);
-        }
-    }
-    fn_8002691C(lbl_1_bss_D8[sel].slotModel, &scale);
-    if (scale.x < 2.0f) {
-        for (i = 1; i <= 10; i++) {
-            w = &lbl_1_bss_D8[sel];
-            t = (f32)i / 10.0f;
-            fn_1_3CC0(sel, sv[sel].x, sv[sel].y, 20.0f * t + sv[sel].z);
-            t = (f32) (sin(3.141592653589793 * (130.0f * t) / 180.0) *
-                       (1.0 / sin(2.2689280275926285)));
-            fn_800268B0(w->slotModel,
-                (f32)(1.5 + 0.5 * t),
-                (f32)(1.5 + 0.5 * t),
-                (f32)(1.5 + 0.5 * t));
-            if (i == 5) {
-                w->visualState = 1;
-            }
-            HuPrcVSleep();
-        }
-    }
-    HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_SELECT_FILE);
-    HuWinMesWait(lbl_1_bss_2E0);
-    HuWinMesSet(lbl_1_bss_2DE, MESSNUM(MESS_SYS_GUIDE, 4));
-    HuWinDispOn(lbl_1_bss_2DE);
     for (;;) {
-        HuPrcVSleep();
-        if (UnMountCnt != 0) {
-            HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_CARD_REMOVED);
-            HuWinMesWait(lbl_1_bss_2E0);
-            UnMountCnt = 0;
-            goto L_241C;
-        }
-        dir = 0;
-        if (lbl_802C0008[0] & (PAD_BUTTON_A | PAD_BUTTON_START)) {
-            HuAudFXPlay(1);
-            HuWinDispOff(lbl_1_bss_2DE);
-            SLCurBoxNoSet(sel);
-            if (lbl_1_bss_D8[sel].hasSave != 0) {
-                if (count >= 3) {
-                    HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_PLAY_ERASE);
-                } else {
-                    HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_PLAY_COPY_ERASE);
-                }
-                HuWinMesWait(lbl_1_bss_2E0);
-                ret = HuWinChoiceGet(lbl_1_bss_2E0, -1);
-                if (UnMountCnt != 0) {
-                    HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_CARD_REMOVED);
-                    HuWinMesWait(lbl_1_bss_2E0);
-                    UnMountCnt = 0;
-                    goto L_241C;
-                }
-                if (ret == -1) {
-                    goto L_192C;
-                }
-                if (ret == 0) {
-                    SLCommonLoad();
-                    goto L_2414;
-                }
-                if ((count >= 3 && ret == 1) || (count < 3 && ret == 2)) {
-                    lbl_1_bss_D8[sel].visualState = 2;
-                    ret = FileselEraseConfirm(sel);
-                    lbl_1_bss_D8[sel].visualState = 1;
-                    if (ret == FILESEL_RESULT_CANCEL) {
-                        goto L_241C;
-                    }
-                    if (ret == -4) {
-                        goto L_241C;
-                    }
-                    if (ret == -5) {
-                        goto L_241C;
-                    }
-                    if (ret == -1) {
-                        goto L_254C;
-                    }
-                    goto L_192C;
-                } else {
-                    lbl_1_bss_D8[sel].visualState = 3;
-                    fn_1_63A0(sel, 1);
-                    ret = FileselCopy(sel);
-                    fn_1_63A0(sel, 0);
-                    lbl_1_bss_D8[sel].visualState = 1;
-                    if (ret == -4) {
-                        goto L_241C;
-                    }
-                    if (ret == -5) {
-                        goto L_241C;
-                    }
-                    if (ret == -1) {
-                        goto L_254C;
-                    }
-                    goto L_192C;
-                }
+        for (i = count = 0; i < 3; i++) {
+            if (lbl_1_bss_D8[i].hasSave != 0) {
+                count++;
+            }
+            if (sel == i) {
+                fn_1_3CF4(i, 0);
             } else {
-                UnMountCnt = 0;
-                fn_1_69B0();
-                fn_1_2654(-1);
-                ret = NameEnterMain(sel);
-                fn_1_2A40();
-                if (ret == FILESEL_RESULT_CANCEL) {
-                    goto L_192C;
-                }
-                if (UnMountCnt != 0) {
-                    HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_CARD_REMOVED);
-                    HuWinMesWait(lbl_1_bss_2E0);
-                    UnMountCnt = 0;
-                    goto L_241C;
-                }
-                if (FileTestOpen() == 0) {
-                    time = OSGetTime();
-                    SLSaveDataMake(1, &time);
-                    SLCommonSet();
-                    for (i = 0; i < 3; i++) {
-                        if (i != sel) {
-                            SLSaveEmptySet(curSlotNo, i);
-                        }
-                    }
-                    fxId = HuAudFXPlay(1165);
-                    ret = FileClear(-1);
-                    HuAudFXStop(fxId);
-                    if (ret == FILESEL_RESULT_CANCEL) {
-                        goto L_241C;
-                    }
-                    if (ret == -4) {
-                        goto L_241C;
-                    }
-                    if (ret == -5) {
-                        goto L_241C;
-                    }
-                    if (ret == -1) {
-                        goto L_254C;
-                    }
-                } else {
-                    time = OSGetTime();
-                    SLSaveDataMake(0, &time);
-                    SLCommonSet();
-                    fxId = HuAudFXPlay(1165);
-                    ret = FileSaveMesOpen(-1, FILE_SELECT_SAVING);
-                    HuAudFXStop(fxId);
-                    if (ret == FILESEL_RESULT_CANCEL) {
-                        goto L_241C;
-                    }
-                    if (ret == -4) {
-                        goto L_241C;
-                    }
-                    if (ret == -5) {
-                        goto L_241C;
-                    }
-                    if (ret == -1) {
-                        goto L_254C;
-                    }
-                }
-                lbl_1_bss_D8[sel].hasSave = 1;
-                lbl_1_bss_D8[sel].patternVariant = -1;
-                lbl_1_bss_D8[sel].displayNumber = 0;
-                OSTicksToCalendarTime(lbl_80265E30.time, &lbl_1_bss_D8[sel].saveTime);
-                fn_1_36C4(sel, sel);
-                goto L_2414;
+                fn_1_3CF4(i, 1);
             }
-        } else {
-            if (lbl_802C0008[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
-                sel = FILESEL_RESULT_CANCEL;
-                goto L_2414;
-            }
-            if (lbl_802BFFE0[0] & 0x1) {
-                dir = -1;
-            }
-            if (lbl_802BFFE0[0] & 0x2) {
-                dir = 1;
-            }
-            if (dir == 0) {
-                continue;
-            }
-            if (sel + dir < 0) {
-                continue;
-            }
-            if (sel + dir >= 3) {
-                continue;
-            }
-            HuAudFXPlay(1155);
-            fn_1_3CF4(sel + dir, 0);
-            fn_1_3CF4(sel, 1);
+        }
+        fn_8002691C(lbl_1_bss_D8[sel].slotModel, &scale);
+        if (scale.x < 2.0f) {
             for (i = 1; i <= 10; i++) {
+                w = &lbl_1_bss_D8[sel];
                 t = (f32)i / 10.0f;
+                fn_1_3CC0(sel, sv[sel].x, sv[sel].y, 20.0f * t + sv[sel].z);
                 t = (f32) (sin(3.141592653589793 * (130.0f * t) / 180.0) *
                            (1.0 / sin(2.2689280275926285)));
-                w = &lbl_1_bss_D8[sel + dir];
                 fn_800268B0(w->slotModel,
                     (f32)(1.5 + 0.5 * t),
                     (f32)(1.5 + 0.5 * t),
                     (f32)(1.5 + 0.5 * t));
-                fn_1_3CC0(sel + dir, sv[sel + dir].x, sv[sel + dir].y, 20.0f * t + sv[sel + dir].z);
-                t = (f32)(1.0 - t);
-                w = &lbl_1_bss_D8[sel];
-                fn_800268B0(w->slotModel,
-                    (f32)(1.5 + 0.5 * t),
-                    (f32)(1.5 + 0.5 * t),
-                    (f32)(1.5 + 0.5 * t));
-                fn_1_3CC0(sel, sv[sel].x, sv[sel].y, 20.0f * t + sv[sel].z);
                 if (i == 5) {
-                    lbl_1_bss_D8[sel + dir].visualState = 1;
-                    lbl_1_bss_D8[sel].visualState = 0;
+                    w->visualState = 1;
                 }
                 HuPrcVSleep();
             }
-            sel += dir;
+        }
+        HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_SELECT_FILE);
+        HuWinMesWait(lbl_1_bss_2E0);
+        HuWinMesSet(lbl_1_bss_2DE, MESSNUM(MESS_SYS_GUIDE, 4));
+        HuWinDispOn(lbl_1_bss_2DE);
+        for (;;) {
+            HuPrcVSleep();
+            if (UnMountCnt != 0) {
+                HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_CARD_REMOVED);
+                HuWinMesWait(lbl_1_bss_2E0);
+                UnMountCnt = 0;
+                goto L_241C;
+            }
+            dir = 0;
+            if (lbl_802C0008[0] & (PAD_BUTTON_A | PAD_BUTTON_START)) {
+                HuAudFXPlay(1);
+                HuWinDispOff(lbl_1_bss_2DE);
+                SLCurBoxNoSet(sel);
+                if (lbl_1_bss_D8[sel].hasSave != 0) {
+                    if (count >= 3) {
+                        HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_PLAY_ERASE);
+                    } else {
+                        HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_PLAY_COPY_ERASE);
+                    }
+                    HuWinMesWait(lbl_1_bss_2E0);
+                    ret = HuWinChoiceGet(lbl_1_bss_2E0, -1);
+                    if (UnMountCnt != 0) {
+                        HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_CARD_REMOVED);
+                        HuWinMesWait(lbl_1_bss_2E0);
+                        UnMountCnt = 0;
+                        goto L_241C;
+                    }
+                    if (ret == -1) {
+                        break;
+                    }
+                    if (ret == 0) {
+                        SLCommonLoad();
+                        goto L_2414;
+                    }
+                    if ((count >= 3 && ret == 1) || (count < 3 && ret == 2)) {
+                        lbl_1_bss_D8[sel].visualState = 2;
+                        ret = FileselEraseConfirm(sel);
+                        lbl_1_bss_D8[sel].visualState = 1;
+                        if (ret == FILESEL_RESULT_CANCEL) {
+                            goto L_241C;
+                        }
+                        if (ret == -4) {
+                            goto L_241C;
+                        }
+                        if (ret == -5) {
+                            goto L_241C;
+                        }
+                        if (ret == -1) {
+                            goto L_254C;
+                        }
+                        break;
+                    } else {
+                        lbl_1_bss_D8[sel].visualState = 3;
+                        fn_1_63A0(sel, 1);
+                        ret = FileselCopy(sel);
+                        fn_1_63A0(sel, 0);
+                        lbl_1_bss_D8[sel].visualState = 1;
+                        if (ret == -4) {
+                            goto L_241C;
+                        }
+                        if (ret == -5) {
+                            goto L_241C;
+                        }
+                        if (ret == -1) {
+                            goto L_254C;
+                        }
+                        break;
+                    }
+                } else {
+                    UnMountCnt = 0;
+                    fn_1_69B0();
+                    fn_1_2654(-1);
+                    ret = NameEnterMain(sel);
+                    fn_1_2A40();
+                    if (ret == FILESEL_RESULT_CANCEL) {
+                        break;
+                    }
+                    if (UnMountCnt != 0) {
+                        HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_CARD_REMOVED);
+                        HuWinMesWait(lbl_1_bss_2E0);
+                        UnMountCnt = 0;
+                        goto L_241C;
+                    }
+                    if (FileTestOpen() == 0) {
+                        time = OSGetTime();
+                        SLSaveDataMake(1, &time);
+                        SLCommonSet();
+                        for (i = 0; i < 3; i++) {
+                            if (i != sel) {
+                                SLSaveEmptySet(curSlotNo, i);
+                            }
+                        }
+                        fxId = HuAudFXPlay(1165);
+                        ret = FileClear(-1);
+                        HuAudFXStop(fxId);
+                        if (ret == FILESEL_RESULT_CANCEL) {
+                            goto L_241C;
+                        }
+                        if (ret == -4) {
+                            goto L_241C;
+                        }
+                        if (ret == -5) {
+                            goto L_241C;
+                        }
+                        if (ret == -1) {
+                            goto L_254C;
+                        }
+                    } else {
+                        time = OSGetTime();
+                        SLSaveDataMake(0, &time);
+                        SLCommonSet();
+                        fxId = HuAudFXPlay(1165);
+                        ret = FileSaveMesOpen(-1, FILE_SELECT_SAVING);
+                        HuAudFXStop(fxId);
+                        if (ret == FILESEL_RESULT_CANCEL) {
+                            goto L_241C;
+                        }
+                        if (ret == -4) {
+                            goto L_241C;
+                        }
+                        if (ret == -5) {
+                            goto L_241C;
+                        }
+                        if (ret == -1) {
+                            goto L_254C;
+                        }
+                    }
+                    lbl_1_bss_D8[sel].hasSave = 1;
+                    lbl_1_bss_D8[sel].patternVariant = -1;
+                    lbl_1_bss_D8[sel].displayNumber = 0;
+                    OSTicksToCalendarTime(lbl_80265E30.time, &lbl_1_bss_D8[sel].saveTime);
+                    fn_1_36C4(sel, sel);
+                    goto L_2414;
+                }
+            } else {
+                if (lbl_802C0008[0] & PAD_BUTTON_B) {
+                    HuAudFXPlay(3);
+                    sel = FILESEL_RESULT_CANCEL;
+                    goto L_2414;
+                }
+                if (lbl_802BFFE0[0] & 0x1) {
+                    dir = -1;
+                }
+                if (lbl_802BFFE0[0] & 0x2) {
+                    dir = 1;
+                }
+                if (dir == 0) {
+                    continue;
+                }
+                if (sel + dir < 0) {
+                    continue;
+                }
+                if (sel + dir >= 3) {
+                    continue;
+                }
+                HuAudFXPlay(1155);
+                fn_1_3CF4(sel + dir, 0);
+                fn_1_3CF4(sel, 1);
+                for (i = 1; i <= 10; i++) {
+                    t = (f32)i / 10.0f;
+                    t = (f32) (sin(3.141592653589793 * (130.0f * t) / 180.0) *
+                               (1.0 / sin(2.2689280275926285)));
+                    w = &lbl_1_bss_D8[sel + dir];
+                    fn_800268B0(w->slotModel,
+                        (f32)(1.5 + 0.5 * t),
+                        (f32)(1.5 + 0.5 * t),
+                        (f32)(1.5 + 0.5 * t));
+                    fn_1_3CC0(sel + dir, sv[sel + dir].x, sv[sel + dir].y,
+                        20.0f * t + sv[sel + dir].z);
+                    t = (f32)(1.0 - t);
+                    w = &lbl_1_bss_D8[sel];
+                    fn_800268B0(w->slotModel,
+                        (f32)(1.5 + 0.5 * t),
+                        (f32)(1.5 + 0.5 * t),
+                        (f32)(1.5 + 0.5 * t));
+                    fn_1_3CC0(sel, sv[sel].x, sv[sel].y, 20.0f * t + sv[sel].z);
+                    if (i == 5) {
+                        lbl_1_bss_D8[sel + dir].visualState = 1;
+                        lbl_1_bss_D8[sel].visualState = 0;
+                    }
+                    HuPrcVSleep();
+                }
+                sel += dir;
+            }
         }
     }
 L_2414:
@@ -903,7 +843,6 @@ L_254C:
     return -1;
 }
 
-/* 0x2654 */
 /* FileselSelect calls this before name entry to raise the three slots and move the data-select
  * model. */
 void fn_1_2654(s16 slotSelection)
@@ -947,7 +886,6 @@ void fn_1_2654(s16 slotSelection)
     }
 }
 
-/* 0x2A40 */
 /* Called after name entry to return the three slot models and data-select model to their
  * saved positions. */
 void fn_1_2A40(void)
@@ -979,7 +917,6 @@ void fn_1_2A40(void)
     }
 }
 
-/* 0x2C6C */
 /* Called during scene setup to create the four card panels, their text, and animated slot
  * models. */
 void FileselInit(void)
@@ -998,20 +935,20 @@ void FileselInit(void)
 
     HuSprExecLayerCameraSet(64, 2, 1);
     HuSprExecLayerCameraSet(120, 1, 8);
-    letterAnimation = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_08, 0x10000000, 2));
+    letterAnimation = HuSprAnimDataRead(FILESEL_ANM_08);
     spriteGroup = HuSprGrpCreate(1);
     sprite = HuSprCreate(letterAnimation, 0, 0);
     HuSprGrpMemberSet(spriteGroup, 0, sprite);
     HuSprGrpDrawNoSet(spriteGroup, 64);
     HuSprGrpPosSet(spriteGroup, 288.0f, 240.0f);
     HuSprGrpScaleSet(spriteGroup, 20.0f, 20.0f);
-    digitAnimation = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_07, 0x10000000, 2));
-    markerAnimation = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_06, 0x10000000, 2));
-    lbl_1_bss_CC[0] = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_09, 0x10000000, 2));
-    lbl_1_bss_CC[1] = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_11, 0x10000000, 2));
-    lbl_1_bss_CC[2] = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_10, 0x10000000, 2));
+    digitAnimation = HuSprAnimDataRead(FILESEL_ANM_07);
+    markerAnimation = HuSprAnimDataRead(FILESEL_ANM_06);
+    lbl_1_bss_CC[0] = HuSprAnimDataRead(FILESEL_ANM_09);
+    lbl_1_bss_CC[1] = HuSprAnimDataRead(FILESEL_ANM_11);
+    lbl_1_bss_CC[2] = HuSprAnimDataRead(FILESEL_ANM_10);
     for (i = 0; i < 8; i++) {
-        lbl_1_bss_A8[i] = HuSprAnimRead(fn_80008DD0(lbl_1_data_98[i], 0x10000000, 2));
+        lbl_1_bss_A8[i] = HuSprAnimDataRead(lbl_1_data_98[i]);
     }
     /* This self-assignment has no effect; the slot loop below resets the index. */
     i = i;
@@ -1096,12 +1033,11 @@ void FileselInit(void)
         box->displayNumber = 10;
         fn_1_36C4(i, i % 3);
     }
-    fn_8002583C(1, 1, (HU3D_LAYER_HOOK)fn_1_35AC);
+    fn_8002583C(1, 1, fn_1_35AC);
 }
 
-/* 0x35AC */
 /* Camera 1 layer callback: copy each card panel into its texture before the scene is drawn. */
-void fn_1_35AC(void)
+void fn_1_35AC(s16 layer)
 {
     s16 i;
 
@@ -1113,7 +1049,6 @@ void fn_1_35AC(void)
     }
 }
 
-/* 0x36C4 */
 /* Called after loading, creating, copying, or erasing a save to refresh one panel's details. */
 void fn_1_36C4(s16 boxNo, s16 slotNumber)
 {
@@ -1203,7 +1138,6 @@ void fn_1_36C4(s16 boxNo, s16 slotNumber)
     }
 }
 
-/* 0x3C80 */
 /* Called by slot animations to store a panel's base position in model coordinates. */
 void fn_1_3C80(s16 boxNo, Vec *position)
 {
@@ -1212,25 +1146,28 @@ void fn_1_3C80(s16 boxNo, Vec *position)
     p->basePosition = *position;
 }
 
-/* 0x3CC0 */
-/* Called by slot animations to store a panel's base position in model coordinates. */
-void fn_1_3CC0(s16 boxNo, f32 x, f32 y, f32 z)
+/* Store the three coordinates of a slot panel's base position. */
+static inline void FileselBoxBasePositionSet(FILESEL_BOX *p, f32 x, f32 y, f32 z)
 {
-    FILESEL_BOX *p = &lbl_1_bss_D8[boxNo];
-
     p->basePosition.x = x;
     p->basePosition.y = y;
     p->basePosition.z = z;
 }
 
-/* 0x3CF4 */
+/* Called by slot animations to store a panel's base position in model coordinates. */
+void fn_1_3CC0(s16 boxNo, f32 x, f32 y, f32 z)
+{
+    FILESEL_BOX *p = &lbl_1_bss_D8[boxNo];
+
+    FileselBoxBasePositionSet(p, x, y, z);
+}
+
 /* FileselSelect and the reveal process switch a slot between its motion modes here. */
 void fn_1_3CF4(s16 boxNo, s32 motionMode)
 {
     lbl_1_bss_D8[boxNo].motionState = (u8)motionMode;
 }
 
-/* 0x3D14 */
 /* Child process created for each slot in FileselInit; animate its idle motion and state models. */
 void fn_1_3D14(void)
 {
@@ -1472,7 +1409,6 @@ void fn_1_457C(OMOBJ *object)
     }
 }
 
-/* 0x50DC */
 /* The reveal flow calls this to start a child process with an integer property. */
 void fn_1_50DC(void (*func)(void), s32 processProperty)
 {
@@ -1480,7 +1416,6 @@ void fn_1_50DC(void (*func)(void), s32 processProperty)
     proc->property = (void *)processProperty;
 }
 
-/* 0x5130 */
 /* Child process used by copy and erase flows to flip the data-select model between banks. */
 void fn_1_5130(void)
 {
@@ -1575,9 +1510,7 @@ s32 FileselCopy(s16 sourceBoxNo)
         sy = pos[cur].y;
         sx = pos[cur].x;
         wpa = &lbl_1_bss_D8[cur];
-        wpa->basePosition.x = sx;
-        wpa->basePosition.y = sy;
-        wpa->basePosition.z = sz;
+        FileselBoxBasePositionSet(wpa, sx, sy, sz);
         HuPrcVSleep();
     }
     lbl_1_bss_D8[cur].visualState = 1;
@@ -1617,9 +1550,7 @@ s32 FileselCopy(s16 sourceBoxNo)
                     ny = pos[cur].y;
                     nx = pos[cur].x;
                     wpb = &lbl_1_bss_D8[cur];
-                    wpb->basePosition.x = nx;
-                    wpb->basePosition.y = ny;
-                    wpb->basePosition.z = nz;
+                    FileselBoxBasePositionSet(wpb, nx, ny, nz);
                     scale = (f32)(1.5 + 0.5 * (1.0 - i / 5.0));
                     fn_800268B0(lbl_1_bss_D8[prev].slotModel, scale, scale, scale);
                     scale = 1.0 - i / 5.0;
@@ -1627,9 +1558,7 @@ s32 FileselCopy(s16 sourceBoxNo)
                     py = pos[prev].y;
                     px = pos[prev].x;
                     wpc = &lbl_1_bss_D8[prev];
-                    wpc->basePosition.x = px;
-                    wpc->basePosition.y = py;
-                    wpc->basePosition.z = pz;
+                    FileselBoxBasePositionSet(wpc, px, py, pz);
                     HuPrcVSleep();
                 }
                 lbl_1_bss_D8[cur].visualState = 1;
@@ -1691,9 +1620,7 @@ s32 FileselCopy(s16 sourceBoxNo)
             ry = pos[cur].y;
             rx = pos[cur].x;
             wpd = &lbl_1_bss_D8[cur];
-            wpd->basePosition.x = rx;
-            wpd->basePosition.y = ry;
-            wpd->basePosition.z = rz;
+            FileselBoxBasePositionSet(wpd, rx, ry, rz);
             for (i = 1; i <= 10; i++) {
                 scale = (f32)(1.5 * (i / 10.0));
                 fn_800268B0(lbl_1_bss_D8[cur].slotModel, scale, scale, scale);
@@ -1707,9 +1634,7 @@ s32 FileselCopy(s16 sourceBoxNo)
             ey = pos[cur].y;
             ex = pos[cur].x;
             wpe = &lbl_1_bss_D8[cur];
-            wpe->basePosition.x = ex;
-            wpe->basePosition.y = ey;
-            wpe->basePosition.z = ez;
+            FileselBoxBasePositionSet(wpe, ex, ey, ez);
             for (i = 1; i <= 5; i++) {
                 scale = (f32)(1.5 * (i / 5.0));
                 fn_800268B0(lbl_1_bss_D8[cur].slotModel, scale, scale, scale);
@@ -1731,9 +1656,7 @@ s32 FileselCopy(s16 sourceBoxNo)
             qy = pos[cur].y;
             qx = pos[cur].x;
             wpf = &lbl_1_bss_D8[cur];
-            wpf->basePosition.x = qx;
-            wpf->basePosition.y = qy;
-            wpf->basePosition.z = qz;
+            FileselBoxBasePositionSet(wpf, qx, qy, qz);
             HuPrcVSleep();
         }
         lbl_1_bss_D8[cur].motionState = 1;
@@ -1743,7 +1666,6 @@ s32 FileselCopy(s16 sourceBoxNo)
     }
 }
 
-/* 0x6314 */
 /* Switch a slot's frame between its first highlight animation and its normal animation. */
 void fn_1_6314(s16 boxNo, s32 active)
 {
@@ -1754,7 +1676,6 @@ void fn_1_6314(s16 boxNo, s32 active)
     }
 }
 
-/* 0x63A0 */
 /* Called during copy prompts to show or restore the alternate slot frame animation. */
 void fn_1_63A0(s16 boxNo, s32 active)
 {
@@ -1852,7 +1773,6 @@ s32 FileselEraseConfirm(s16 boxNo)
 /* FileselSelect calls this before naming a new save. Restore common defaults and force mono or
  * stereo from the system sound mode. Detect and mount the channel-1 microphone, ignoring
  * initialization status, then close speech resources and return the resulting microphone mode. */
-/* 0x69B0 */
 s32 fn_1_69B0(void)
 {
     lbl_80265E30 = lbl_80266400;
@@ -1874,7 +1794,6 @@ s32 fn_1_69B0(void)
     return HuMCMicGet();
 }
 
-/* 0x6A8C */
 /* Camera-layer helper: draw a full-screen polygon at the far depth with color writes disabled. */
 void FileselWipeDraw(void)
 {
@@ -1928,7 +1847,6 @@ void FileselWipeDraw(void)
     GXSetColorUpdate(1);
 }
 
-/* 0x6E54 */
 /* After selection, center the book and start the camera zoom. When the selected-slot
  * animation is enabled, move the chosen slot toward the book as the other slots shrink. */
 void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot)
@@ -1992,7 +1910,7 @@ void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot)
             HuPrcVSleep();
         }
         proc1 = fn_8000DAC0(fn_1_7A0C, 16, 12288, 0, fn_8000DD9C());
-        proc1->property = (void *)0;
+        proc1->property = NULL;
         HuPrcSleep(40);
         HuAudFXPlay(1164);
         fn_1_8510(0, &vpos);
@@ -2064,7 +1982,7 @@ void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot)
             }
             if (i == 40) {
                 proc3 = fn_8000DAC0(fn_1_7A0C, 16, 12288, 0, fn_8000DD9C());
-                proc3->property = (void *)0;
+                proc3->property = NULL;
             }
             if (i == 75) {
                 HuAudFXPlay(1164);
@@ -2075,7 +1993,6 @@ void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot)
     }
 }
 
-/* 0x7A0C */
 /* Child process launched by fn_1_6E54 to ease the File Select camera zoom. */
 void fn_1_7A0C(void)
 {
@@ -2093,7 +2010,6 @@ void fn_1_7A0C(void)
     HuPrcEnd();
 }
 
-/* 0x7B64 */
 /* Child process launched for a slot animation; emit particles from its moving model. */
 void fn_1_7B64(void)
 {
@@ -2151,9 +2067,8 @@ void fn_1_7B64(void)
     }
 }
 
-/* 0x7DEC */
 /* Layer hook installed by fn_1_8510: copy the full framebuffer into the card effect's texture. */
-void fn_1_7DEC(void)
+void fn_1_7DEC(s16 layer)
 {
     if (lbl_1_bss_C != 0) {
         GXSetTexCopySrc(0, 0, 640, 480);
@@ -2162,12 +2077,11 @@ void fn_1_7DEC(void)
     }
 }
 
-/* 0x7E58 */
 /* Material hook installed on the card effect models to draw their animated texture. */
 void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     HU3D_CAMERA *cam = &Hu3DCamera[lbl_802C01A6];
-    BSS18_ENTRY *q;
+    MinigameTextureTransition *q;
     Mtx tmpMtx;
     Mtx scaleMtx;
     Mtx texMtx;
@@ -2177,7 +2091,7 @@ void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     f32 transS;
 
     q = drawObj->model->hookData;
-    q->textureOffset = q->textureOffset + q->textureOffsetStep;
+    q->textureScrollY = q->textureScrollY + q->textureScrollStep;
 
     GXInitTexObj(&texObj, lbl_1_bss_C, 640, 480, GX_TF_RGB565, 0, 0, 0);
     GXInitTexObjLOD(&texObj, 1, 1, 0.0f, 0.0f, 0.0f, 0, 0, 0);
@@ -2195,14 +2109,14 @@ void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     PSMTXConcat(texMtx, tmpMtx, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX1, GX_MTX3x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY);
-    PSMTXTrans(tmpMtx, 0.0f, q->textureOffset, 0.0f);
+    PSMTXTrans(tmpMtx, 0.0f, q->textureScrollY, 0.0f);
     PSMTXScale(scaleMtx, 0.8f, 0.8f, 1.0f);
     PSMTXConcat(scaleMtx, tmpMtx, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
     GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);
     GXSetTexCoordGen2(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
 
-    GXSetTevColor(1, q->tint);
+    GXSetTevColor(1, q->color);
     GXSetTevOrder(0, 0, 1, 0);
     GXSetTevColorIn(0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
     GXSetTevColorOp(0, 0, 0, 0, 1, 0);
@@ -2220,35 +2134,34 @@ void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXSetIndTexMtx(1, (f32 (*)[3])q, -1);
 }
 
-/* 0x82F0 */
 /* Object callback installed by fn_1_8510; update effect lifetime and tint each frame. */
 void fn_1_82F0(OMOBJ *obj)
 {
-    BSS18_ENTRY *e;
+    MinigameTextureTransition *e;
     s16 i;
     f32 t;
 
     for (i = 0, e = lbl_1_bss_18; i < 2; i++, e++) {
-        if (e->framesRemaining <= 0.0f) {
+        if (e->remainingFrames <= 0.0f) {
             continue;
         }
-        e->indirectMatrixRow0.x = 0.0f;
-        e->indirectMatrixRow0.y = 0.0f;
-        e->indirectMatrixRow0.z = 0.09f * e->framesRemaining / 120.0f;
-        e->indirectMatrixRow1.x = 0.0f;
-        e->indirectMatrixRow1.y = 0.0f;
-        e->indirectMatrixRow1.z = 0.09f * e->framesRemaining / 120.0f;
-        e->textureOffsetStep = -0.02f * e->framesRemaining / 120.0f;
-        t = (e->framesRemaining - 80.0f) / 40.0f;
+        e->indirectMatrix[0][0] = 0.0f;
+        e->indirectMatrix[0][1] = 0.0f;
+        e->indirectMatrix[0][2] = 0.09f * e->remainingFrames / 120.0f;
+        e->indirectMatrix[1][0] = 0.0f;
+        e->indirectMatrix[1][1] = 0.0f;
+        e->indirectMatrix[1][2] = 0.09f * e->remainingFrames / 120.0f;
+        e->textureScrollStep = -0.02f * e->remainingFrames / 120.0f;
+        t = (e->remainingFrames - 80.0f) / 40.0f;
         if (t >= 0.0f) {
-            e->tint.r = 0;
-            e->tint.g = 16.0f * t;
-            e->tint.b = 64.0f * t;
+            e->color.r = 0;
+            e->color.g = 16.0f * t;
+            e->color.b = 64.0f * t;
         }
-        e->framesRemaining = e->framesRemaining - 1.0f;
+        e->remainingFrames = e->remainingFrames - 1.0f;
         /* Expiring either effect disables the shared capture hook and the object's update
          * callback, even if the other effect still has time remaining. */
-        if (e->framesRemaining <= 0.0f) {
+        if (e->remainingFrames <= 0.0f) {
             fn_80025980(10);
             fn_800269E8(obj->mdlId[i], (1 << 0));
             obj->objFunc = 0;
@@ -2256,7 +2169,6 @@ void fn_1_82F0(OMOBJ *obj)
     }
 }
 
-/* 0x8510 */
 /* Called when a slot effect starts; place its model and install its update and layer hooks. */
 void fn_1_8510(s16 effectIndex, Vec *position)
 {
@@ -2268,17 +2180,16 @@ void fn_1_8510(s16 effectIndex, Vec *position)
     if (effectIndex >= 2 || effectIndex < 0) {
         return;
     }
-    lbl_1_bss_18[effectIndex].textureOffset = 0.0f;
-    lbl_1_bss_18[effectIndex].framesRemaining = 120.0f;
+    lbl_1_bss_18[effectIndex].textureScrollY = 0.0f;
+    lbl_1_bss_18[effectIndex].remainingFrames = 120.0f;
     fn_80026A44(effectObject->mdlId[effectIndex], (1 << 0));
     fn_80026760(effectObject->mdlId[effectIndex], position->x, position->y, position->z);
     fn_80026808(effectObject->mdlId[effectIndex], 90.0f, 0.0f, 0.0f);
     fn_800268B0(effectObject->mdlId[effectIndex], 1.0f, 1.0f, 1.0f);
-    fn_80025918(10, (HU3D_LAYER_HOOK)fn_1_7DEC);
+    fn_80025918(10, fn_1_7DEC);
     effectObject->objFunc = fn_1_82F0;
 }
 
-/* 0x8688 */
 const GXColor lbl_1_rodata_238[2] = {{0, 16, 64, 16}, {0, 0, 0, 0}};
 
 /* Object-manager callback from scene setup: create the card effect models and textures. */
@@ -2290,8 +2201,8 @@ void fn_1_8688(OMOBJ *p)
     HU3D_MODEL *mdl = NULL;
 
     omSetStatBit(p, (1 << 8));
-    lbl_1_bss_10 = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_25, 0x10000000, 2));
-    lbl_1_bss_14 = HuSprAnimRead(fn_80008DD0(FILESEL_ANM_25, 0x10000000, 2));
+    lbl_1_bss_10 = HuSprAnimDataRead(FILESEL_ANM_25);
+    lbl_1_bss_14 = HuSprAnimDataRead(FILESEL_ANM_25);
     lbl_1_bss_C =
         HuMemDirectMallocNum(2, GXGetTexBufferSize(640, 480, GX_TF_RGB565, 0, 0), 0x10000000);
     for (i = 0; i < 2; i++) {
@@ -2303,14 +2214,14 @@ void fn_1_8688(OMOBJ *p)
         fn_80026B8C(p->mdlId[i], 3);
         fn_800269E8(p->mdlId[i], (1 << 0));
         fn_80027884(p->mdlId[i], fn_1_7E58);
-        lbl_1_bss_18[i].indirectMatrixRow0.x = lbl_1_bss_18[i].indirectMatrixRow0.y =
-            lbl_1_bss_18[i].indirectMatrixRow0.z = lbl_1_bss_18[i].indirectMatrixRow1.x =
-                lbl_1_bss_18[i].indirectMatrixRow1.y = lbl_1_bss_18[i].indirectMatrixRow1.z = 0.0f;
+        lbl_1_bss_18[i].indirectMatrix[0][0] = lbl_1_bss_18[i].indirectMatrix[0][1] =
+            lbl_1_bss_18[i].indirectMatrix[0][2] = lbl_1_bss_18[i].indirectMatrix[1][0] =
+                lbl_1_bss_18[i].indirectMatrix[1][1] = lbl_1_bss_18[i].indirectMatrix[1][2] = 0.0f;
         color = lbl_1_rodata_238[0];
         cp = &color;
-        lbl_1_bss_18[i].tint = *cp;
-        lbl_1_bss_18[i].textureOffset = 0.0f;
-        lbl_1_bss_18[i].textureOffsetStep = 0.0f;
+        lbl_1_bss_18[i].color = *cp;
+        lbl_1_bss_18[i].textureScrollY = 0.0f;
+        lbl_1_bss_18[i].textureScrollStep = 0.0f;
         mdl = &lbl_802C01C8[p->mdlId[i]];
         mdl->hookData = &lbl_1_bss_18[i];
     }
@@ -2318,7 +2229,6 @@ void fn_1_8688(OMOBJ *p)
     lbl_1_bss_8 = p;
 }
 
-/* 0x8A34 */
 /* Effect cleanup helper: release models, animations, and texture memory. */
 void fn_1_8A34(void)
 {
@@ -2414,7 +2324,7 @@ ANIMDATA *lbl_1_bss_A8[8];
 HU3D_ANIMID lbl_1_bss_A2[3];
 HU3D_PARMANID lbl_1_bss_98[5];
 Vec lbl_1_bss_68[4];
-BSS18_ENTRY lbl_1_bss_18[2];
+MinigameTextureTransition lbl_1_bss_18[2];
 ANIMDATA *lbl_1_bss_14;
 ANIMDATA *lbl_1_bss_10;
 void *lbl_1_bss_C;

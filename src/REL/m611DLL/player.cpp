@@ -1,5 +1,5 @@
 // Updates the players and their cranes, boxes and character models.
-/* Retail fixes the next assert's line; the earlier lines are unknown: 7 lines are left blank. */
+
 
 
 

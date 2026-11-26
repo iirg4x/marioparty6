@@ -1,11 +1,11 @@
 /* Runs the minigame sequence, selects the winning group, and controls sequence audio. */
+#include "msm_se.h"
 #include "REL/m644dll/module_types.h"
 #include "game/hu3d.h"
 #include "game/flag.h"
 #include "msm_stream.h"
 #include "game/object.h"
 
-#define MSM_SE_M644_OPENING 1974
 
 void fn_1_234(s16 mode, s16 frameNo);
 void fn_1_254(s16 mode, s16 frameNo);
@@ -111,7 +111,7 @@ void fn_1_234(s16 mode, s16 frameNo)
 /* Plays and fades the opening sound during fade-in, then advances the sequence at frame 200. */
 void fn_1_254(s16 mode, s16 frameNo) {
     if (fn_80071DE4() == 0) {
-        lbl_1_data_10 = HuAudFXPlay(MSM_SE_M644_OPENING);
+        lbl_1_data_10 = HuAudFXPlay(MSM_SE_MG644_OPENING);
     }
     if ((fn_80071DE4() == 170) && (lbl_1_data_10 != -1)) {
         HuAudFXFadeOut(lbl_1_data_10, 500);
@@ -124,7 +124,7 @@ void fn_1_254(s16 mode, s16 frameNo) {
 /* Starts the minigame music once the start announcement reaches its sound cue. */
 void fn_1_2D4(s16 mode, s16 frameNo) {
     if ((lbl_1_data_C == -1) &&
-        ((GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0)) {
+        ((GameMesFXPlayCheck(fn_80071DF4())) != 0)) {
         lbl_1_data_C = HuAudSStreamPlay(MSM_STREAM_RELAXED);
     }
 }

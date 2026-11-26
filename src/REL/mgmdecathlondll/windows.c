@@ -1114,7 +1114,7 @@ void fn_1_57F4(HUWINID winId, u32 messageId, s16 characterCode) {
 
     for (entryIndex = 0; entryIndex < 42; entryIndex++) {
         if ((messageId == lbl_1_data_B0[entryIndex].messageId) &&
-            (characterCode == lbl_1_data_B0[entryIndex].characterCode) &&
+            (characterCode == lbl_1_data_B0[entryIndex].callbackCode) &&
             (lbl_1_data_B0[entryIndex].soundEffectId >= 0)) {
             HuAudFXPlayPan(lbl_1_data_B0[entryIndex].soundEffectId, lbl_1_data_2A8);
             fn_1_6E38();
@@ -1123,7 +1123,7 @@ void fn_1_57F4(HUWINID winId, u32 messageId, s16 characterCode) {
 }
 
 MgmDecathlonPlayerRecord lbl_1_bss_24[4];
-DecathlonWindowState lbl_1_bss_18;
+MinigameWindow lbl_1_bss_18;
 
 s32 lbl_1_data_30[8] = {0, 1, 2, 3, 4, 5, 6, 7};
 u32 lbl_1_data_50[14] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
@@ -1134,7 +1134,7 @@ u32 lbl_1_data_88[10] = {
     MESSNUM(MESS_MGM_DECATHLON, 50), MESSNUM(MESS_MGM_DECATHLON, 51),
     MESSNUM(MESS_MGM_DECATHLON, 52), MESSNUM(MESS_MGM_DECATHLON, 53)
 };
-DecathlonMessageSound lbl_1_data_B0[42] = {
+MinigameMessageSound lbl_1_data_B0[42] = {
     {MESSNUM(MESS_MGM_DECATHLON, 0), 1, MSM_SE_GUIDE_DAY_INTRO},
     {MESSNUM(MESS_MGM_DECATHLON, 0), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_DECATHLON, 1), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},

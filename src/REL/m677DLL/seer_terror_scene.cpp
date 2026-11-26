@@ -1,5 +1,4 @@
-// Creates the board resources. BoardView selects the weighted event and its result message
-// before the opening wipe, then creates the ropes and waits for the player to choose one.
+// Sets up the board, selects the event and result message, then waits for the player to choose a rope.
 
 #include "datadir_enum.h"
 #include "REL/m677DLL/message_sequence_window.h"

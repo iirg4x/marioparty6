@@ -2473,7 +2473,7 @@ void fn_1_B09C(void) {
         for (modelIndex = 0; modelIndex < 6; modelIndex++) {
             resourceIndex = (modelIndex + frandmod(3)) % 3;
             modelID = fn_80025A04(fn_80008DD0(resourceIds[resourceIndex], (1 << 28), 2));
-            lbl_1_bss_2E8.bouncing[modelIndex].modelID = modelID;
+            lbl_1_bss_2E8.bouncing[modelIndex].model = modelID;
             fn_800269E8(modelID, (1 << 0));
             fn_80026E44(modelID);
             lbl_1_bss_2E8.bouncing[modelIndex].state = 0;
@@ -2504,45 +2504,45 @@ void fn_1_B1E8(void) {
         case 1:
             angle = (s16) (frandmod(90) - 45);
             Hu3DModelObjPosGet(playerWork->vehicleModel, models[objectIndex], &position);
-            fn_80026A44(objectWork->modelID, (1 << 0));
-            fn_80026790(objectWork->modelID, &position);
+            fn_80026A44(objectWork->model, (1 << 0));
+            fn_80026790(objectWork->model, &position);
             objectWork->state = 2;
-            objectWork->horizontalSpeed =
+            objectWork->velocityX =
                 (f32) (15.0 * sin( M_PI * angle / 180.0));
-            objectWork->verticalSpeed = 15.0f;
-            objectWork->depthSpeed =
+            objectWork->velocityY = 15.0f;
+            objectWork->velocityZ =
                 (f32) (15.0 * cos( M_PI * angle / 180.0));
             break;
         case 2:
-            fn_800267CC(objectWork->modelID, &position);
-            position.x += objectWork->horizontalSpeed;
-            position.y += objectWork->verticalSpeed;
-            position.z += objectWork->depthSpeed;
+            fn_800267CC(objectWork->model, &position);
+            position.x += objectWork->velocityX;
+            position.y += objectWork->velocityY;
+            position.z += objectWork->velocityZ;
             if (position.y <= 0.0f) {
                 position.y = 0.0f;
-                objectWork->horizontalSpeed *= 0.5f;
-                objectWork->verticalSpeed *= (-0.5f);
-                objectWork->depthSpeed *= 0.5f;
-                if (objectWork->verticalSpeed <= 1.0f) {
+                objectWork->velocityX *= 0.5f;
+                objectWork->velocityY *= (-0.5f);
+                objectWork->velocityZ *= 0.5f;
+                if (objectWork->velocityY <= 1.0f) {
                     objectWork->state = 3;
-                    objectWork->frames = 30;
+                    objectWork->blinkFrames = 30;
                 }
             }
-            fn_80026790(objectWork->modelID, &position);
-            objectWork->verticalSpeed -= 2.0f;
+            fn_80026790(objectWork->model, &position);
+            objectWork->velocityY -= 2.0f;
             break;
         case 3:
-            fn_800267CC(objectWork->modelID, &position);
+            fn_800267CC(objectWork->model, &position);
             position.z += lbl_1_bss_250.scrollSpeed;
-            fn_80026790(objectWork->modelID, &position);
-            if (objectWork->frames & 1) {
-                fn_80026A44(objectWork->modelID, (1 << 0));
+            fn_80026790(objectWork->model, &position);
+            if (objectWork->blinkFrames & 1) {
+                fn_80026A44(objectWork->model, (1 << 0));
             } else {
-                fn_800269E8(objectWork->modelID, (1 << 0));
+                fn_800269E8(objectWork->model, (1 << 0));
             }
-            if (objectWork->frames-- <= 0) {
+            if (objectWork->blinkFrames-- <= 0) {
                 objectWork->state = 0;
-                fn_800269E8(objectWork->modelID, (1 << 0));
+                fn_800269E8(objectWork->model, (1 << 0));
             }
         }
         objectIndex++;
@@ -2741,7 +2741,7 @@ void fn_1_C0E0(void) {
         lbl_1_bss_2E8.hazards[index].state = 0;
     }
     for (index = 0; index < 6; index++) {
-        fn_800269E8(lbl_1_bss_2E8.bouncing[index].modelID, (1 << 0));
+        fn_800269E8(lbl_1_bss_2E8.bouncing[index].model, (1 << 0));
     }
     fn_8002D414(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel, 0.0f);
     fn_8002D86C(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel, 0.0f);

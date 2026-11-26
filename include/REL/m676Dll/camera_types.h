@@ -1,7 +1,11 @@
 /* Camera, light, fog, and positional-audio state used by the minigame. */
 #ifndef REL_M676DLL_CAMERA_TYPES_H
 #define REL_M676DLL_CAMERA_TYPES_H
+#include "REL/minigame_fog_work.h"
 
+#include "REL/minigame_positional_audio.h"
+#include "REL/minigame_fog.h"
+#include "REL/minigame_light.h"
 #include "game/object.h"
 
 typedef struct M676CameraRecord {
@@ -37,63 +41,17 @@ typedef struct M676CameraWork {
     u8 unkBA0[8]; /* No code names this field. */
 } M676CameraWork;
 
-typedef struct M676AudioConfig {
-    /* Cameras used to project sound and bounds for stereo pan and volume. */
-    u32 cameras;
-    s32 panMin, panMax;
-    s32 volumeMin, volumeMiddle, volumeMax;
-    /* Distance thresholds in world units, ordered farthest to nearest. */
-    f32 distanceFar, distanceMiddle, distanceNear;
-} M676AudioConfig;
-
-typedef struct M676FogParam {
-    /* Render layer, selected cameras, fog mode, and depth range. */
-    s32 layer;
-    u32 cameras;
-    GXFogType type;
-    f32 start, end;
-    /* Opaque fog color. */
-    GXColor color;
-} M676FogParam;
-
 typedef struct M676LightSettings {
     /* Scene light color and fog preset table, terminated by a layer value of -1. */
     GXColor lightColor;
-    M676FogParam fog[2];
+    MinigameFogParams fog[2];
 } M676LightSettings;
-
-typedef struct M676LightWork {
-    /* Global light slot and update callback. */
-    HU3D_LIGHTID lightId;
-    OMOBJ_FUNC callback;
-    /* Light position, target, and direction in world space. */
-    Vec position, target, direction;
-    /* Light color. */
-    GXColor color;
-} M676LightWork;
-
-typedef struct M676FogWork {
-    /* Fog presets, update callback, and current transition factor. */
-    M676FogParam *parameters;
-    OMOBJ_FUNC callback;
-    f32 factor;
-} M676FogWork;
-
-typedef struct M676AudioRecord {
-    /* Sound handle, camera selection, and enabled controls. */
-    s32 handle;
-    s32 unk04; /* The game's code never reads this field. */
-    u32 cameraMask;
-    s32 panEnabled, volumeEnabled;
-    /* World position used to update the sound's pan and volume. */
-    Vec *position;
-} M676AudioRecord;
 
 typedef struct M676AudioWork {
     /* Shared audio settings, update callback, and active sound records. */
-    M676AudioConfig *config;
+    MinigameAudioRange *config;
     OMOBJ_FUNC callback;
-    M676AudioRecord records[64];
+    MinigameAudioRecord records[64];
 } M676AudioWork;
 
 typedef struct M676CameraFitParams {
@@ -120,7 +78,7 @@ Vec *fn_1_2E90(void);
 void fn_1_2EF8(u32 cameras, void *data);
 void fn_1_2FB0(u32 cameraMask);
 double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 count, Vec *out);
-void fn_1_3A1C(HUPROCESS *process, M676AudioConfig *config);
+void fn_1_3A1C(HUPROCESS *process, MinigameAudioRange *config);
 s32 fn_1_3DD0(Vec *position);
 void fn_1_4754(s32 effect, Vec *position);
 s32 fn_1_49C8(s32 effect, Vec *position, s32 panEnabled, s32 volumeEnabled);

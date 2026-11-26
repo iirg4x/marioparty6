@@ -1,6 +1,7 @@
 /* Shared Battle Bridge scene, preview, window and stage types. */
 #ifndef REL_MGMBATTLEDLL_MODULE_TYPES_H
 #define REL_MGMBATTLEDLL_MODULE_TYPES_H
+#include "REL/minigame_dialogue.h"
 
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -80,28 +81,11 @@ extern ANIMDATA *lbl_1_bss_84;
 extern u8 lbl_1_bss_2[128];
 extern s16 lbl_1_bss_0;
 
-/* Window handles and their pixel dimensions. */
-typedef struct {
-    /* Window handle returned by the message-window system. */
-    s16 windowId;
-    /* Window width in screen pixels. */
-    f32 width;
-    /* Window height in screen pixels. */
-    f32 height;
-} MgBattleWindow;
-extern MgBattleWindow lbl_1_bss_A8[4];
-extern MgBattleWindow lbl_1_bss_D8[3];
+extern MinigameWindow lbl_1_bss_A8[4];
+extern MinigameWindow lbl_1_bss_D8[3];
 extern u32 lbl_1_data_0[14];
 
-typedef struct {
-    /* Message bank and message index for this dialogue line. */
-    u32 messageId;
-    /* Character code of the speaker associated with the line. */
-    s16 characterCode;
-    /* Sound effect played for the line, or -1 when silent. */
-    s32 soundEffectId;
-} MgBattleMessageSound;
-extern MgBattleMessageSound lbl_1_data_38[38];
+extern MinigameMessageSound lbl_1_data_38[38];
 extern s16 lbl_1_data_200;
 
 /* Stage objects, model resources, and their starting positions. */
