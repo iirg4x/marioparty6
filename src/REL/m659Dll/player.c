@@ -1,24 +1,15 @@
 /* Player ships, character animations, lane input, and collision response for Asteroad Rage. */
-#define M659_CHAR_FX_COURSE_CLEAR 577
-#define M659_SFX_LANE_SIDE_0 2105
-#define M659_SFX_LANE_SIDE_1 2106
-#define M659_SFX_HIT_SIDE_0 2107
-#define M659_SFX_HIT_SIDE_1 2108
-#define M659_SFX_ENGINE_SIDE_0 2109
-#define M659_SFX_ENGINE_SIDE_1 2110
 #define M659_DATA_SHIP_MODEL DATANUM(0x760000, 6)
 #define M659_DATA_SHIP_MOTION_0 DATANUM(0x760000, 7)
 #define M659_DATA_SHIP_MOTION_1 DATANUM(0x760000, 8)
 #define M659_DATA_SHIP_MOTION_2 DATANUM(0x760000, 9)
-#define M659_DATA_BURNER_MODEL DATANUM(0x760000, 10)
 #define M659_DATA_BURNER_MOTION_LEFT DATANUM(0x760000, 12)
 #define M659_DATA_BURNER_MOTION_RIGHT DATANUM(0x760000, 11)
-#define M659_DATA_ENDING_EFFECT_MODEL DATANUM(0x760000, 18)
-#define M659_DATA_ENDING_EFFECT_MOTION DATANUM(0x760000, 19)
 #define M659_DATA_CHARACTER_MOTION_0 DATANUM(0x8e0000, 32)
 #define M659_DATA_CHARACTER_MOTION_1 DATANUM(0x8e0000, 127)
 #define M659_DATA_CHARACTER_MOTION_2 DATANUM(0x8e0000, 11)
 #define M659_DATA_CHARACTER_MOTION_3 DATANUM(0x8e0000, 4)
+
 #include "REL/m659/player.h"
 #include "game/charman.h"
 #include "game/audio.h"
@@ -42,10 +33,8 @@ int lbl_1_data_D4[10] = {
 s16 lbl_1_data_FC[14] = {0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 char *lbl_1_data_130[2] = {"ship-stbox", "ship-stbox1"};
 int fn_1_2578(M659Collision *collision, M659Collision *other);
-int fn_1_4CA4(M659Collision *collision);
 #include "game/pad.h"
 
-extern float lbl_1_data_70[];
 void fn_1_220C(OMOBJ *obj, s16 motion);
 int fn_1_2384(s16 side);
 #include "game/frand.h"
@@ -55,6 +44,10 @@ extern HU3D_MODELID lbl_1_bss_28;
 
 #include "game/mg/seqman.h"
 #include "math.h"
+
+#define M659_DATA_BURNER_MODEL DATANUM(0x760000, 10)
+#define M659_DATA_ENDING_EFFECT_MODEL DATANUM(0x760000, 18)
+#define M659_DATA_ENDING_EFFECT_MOTION DATANUM(0x760000, 19)
 
 void fn_1_29B0(OMOBJ *obj);
 void fn_1_1E80(OMOBJ *obj);
@@ -86,14 +79,14 @@ void fn_1_16E4(void)
         if (playerData->info.result) {
             motion = 1;
             fn_1_19DC(obj, motion);
-            CharFXPlay(playerData->info.charNo, M659_CHAR_FX_COURSE_CLEAR);
+            CharFXPlay(playerData->info.charNo, MSM_SE_CHARVOICE_RESULT_WINNER_CHEER);
         }
         }
     }
 }
 
-/* The result transition calls this for the winner to install the course-clear ending callback. */
-void fn_1_1790(s16 side)
+/* Resets the player state when installing a new player callback. */
+static inline void PlayerStartBehavior(s16 side, OMOBJ_FUNC behavior)
 {
     M659Player *playerData;
     M659PlayerInfo *info;
@@ -101,19 +94,19 @@ void fn_1_1790(s16 side)
     playerData = obj->data;
     info = &playerData->info;
     info->state = 0;
-    obj->objFunc = fn_1_2D0C;
+    obj->objFunc = behavior;
+}
+
+/* The result transition calls this for the winner to install the course-clear ending callback. */
+void fn_1_1790(s16 side)
+{
+    PlayerStartBehavior(side, fn_1_2D0C);
 }
 
 /* The result transition calls this for the other side to install its losing ending callback. */
 void fn_1_17E8(s16 side)
 {
-    M659Player *playerData;
-    M659PlayerInfo *info;
-    OMOBJ *obj = lbl_1_bss_2C[side];
-    playerData = obj->data;
-    info = &playerData->info;
-    info->state = 0;
-    obj->objFunc = fn_1_2FE0;
+    PlayerStartBehavior(side, fn_1_2FE0);
 }
 
 /* Sequence and course callbacks call this to check whether a side's ship has finished its run. */
@@ -137,7 +130,7 @@ void fn_1_1888(OMOBJ *obj)
     s16 charNo;
     info->cameraBit = lbl_1_data_90[info->side];
     info->charNo = charNo = lbl_80265728[info->playerNo].charNo;
-    info->initializationMarker = 1;
+    info->unk0C = 1;
     model = obj->mdlId[0] = fn_80057068(charNo, 4);
     fn_80026B64(model, (u16)info->cameraBit);
     for (i = 0; i < 10; i++) {
@@ -196,8 +189,8 @@ void fn_1_1AF4(OMOBJ *obj)
     model = obj->mdlId[1] =
         fn_80025A04(fn_80008DD0(M659_DATA_SHIP_MODEL, 0x10000000, 2));
     for (i = 4; i < 7; i++) {
-        motionId = obj->mtnId[i] = fn_80030458(
-            model, fn_80008DD0(lbl_1_data_98[i - 4], 0x10000000, 2));
+        motionId = obj->mtnId[i] =
+            fn_80030458(model, fn_80008DD0(lbl_1_data_98[i - 4], 0x10000000, 2));
     }
     fn_8002C95C(model, motionId);
     fn_800269E8(model, ((1 << 30) | (1 << 0)));
@@ -212,12 +205,12 @@ void fn_1_1AF4(OMOBJ *obj)
         s16 part;
         HU3D_MOTIONID partMotionId;
         for (part = 2; part < 4; part++) {
-            partModel = obj->mdlId[part] = fn_80025A04(
-                fn_80008DD0(M659_DATA_BURNER_MODEL, 0x10000000, 2));
+            partModel = obj->mdlId[part] =
+                fn_80025A04(fn_80008DD0(M659_DATA_BURNER_MODEL, 0x10000000, 2));
             for (partMotion = 7; partMotion < 9; partMotion++) {
                 partMotionId = obj->mtnId[partMotion] =
-                    fn_80030458(partModel, fn_80008DD0(lbl_1_data_A4[partMotion - 7],
-                                                                    0x10000000, 2));
+                    fn_80030458(partModel,
+                        fn_80008DD0(lbl_1_data_A4[partMotion - 7], 0x10000000, 2));
             }
             fn_8002C95C(partModel, partMotionId);
             fn_800269E8(partModel, ((1 << 30) | (1 << 0)));
@@ -322,7 +315,8 @@ void fn_1_1E80(OMOBJ *obj)
                     motion->state = 1;
                     motion->substate = 0;
                     {
-                        int sideSoundIds[2] = {M659_SFX_LANE_SIDE_0, M659_SFX_LANE_SIDE_1};
+                        int sideSoundIds[2] = { MSM_SE_MG659_LANE_CHANGE_LEFT,
+                                                MSM_SE_MG659_LANE_CHANGE_RIGHT };
                         HuAudFXPlayPan(sideSoundIds[playerData->info.side],
                                        playerData->info.side * 32 + 48);
                     }
@@ -337,7 +331,8 @@ void fn_1_1E80(OMOBJ *obj)
                     motion->state = 1;
                     motion->substate = 0;
                     {
-                        int sideSoundIds[2] = {M659_SFX_LANE_SIDE_0, M659_SFX_LANE_SIDE_1};
+                        int sideSoundIds[2] = { MSM_SE_MG659_LANE_CHANGE_LEFT,
+                                                MSM_SE_MG659_LANE_CHANGE_RIGHT };
                         HuAudFXPlayPan(sideSoundIds[playerData->info.side],
                                        playerData->info.side * 32 + 48);
                     }
@@ -432,7 +427,7 @@ int fn_1_2578(M659Collision *collision, M659Collision *other)
     OMOBJ *obj = collision->userData;
     M659Player *playerData = obj->data;
     M659Motion *motion = &playerData->motion;
-    int sideSoundIds[2] = {M659_SFX_HIT_SIDE_0, M659_SFX_HIT_SIDE_1};
+    int sideSoundIds[2] = {MSM_SE_MG659_SHIP_HIT_LEFT, MSM_SE_MG659_SHIP_HIT_RIGHT};
     HuAudFXPlayPan(sideSoundIds[playerData->info.side], playerData->info.side * 32 + 48);
     HuAudFXStop(playerData->info.engineSoundHandle);
     motion->done = 1;
@@ -449,7 +444,7 @@ void fn_1_2648(OMOBJ *obj)
     fn_1_1888(obj);
     fn_1_1AF4(obj);
     fn_1_23F0(obj);
-    fn_1_5CB0(obj);
+    M659ComPlayerSet(obj);
     fn_1_220C(obj, 6);
     obj->objFunc = fn_1_29B0;
 }
@@ -463,7 +458,7 @@ void fn_1_29B0(OMOBJ *obj)
     switch (info->state) {
     case 0:
         if (info->engineSoundHandle == -1) {
-            int sideSoundIds[2] = {M659_SFX_ENGINE_SIDE_0, M659_SFX_ENGINE_SIDE_1};
+            int sideSoundIds[2] = {MSM_SE_MG659_ENGINE_LOOP_LEFT, MSM_SE_MG659_ENGINE_LOOP_RIGHT};
             info->engineSoundHandle = HuAudFXPlayPan(sideSoundIds[playerData->info.side],
                                                      playerData->info.side * 32 + 48);
         }
@@ -545,11 +540,11 @@ void fn_1_2D0C(OMOBJ *obj)
         fn_80026A44(lbl_1_bss_28, (1 << 0));
         fn_80026A44(model, (1 << 0));
         fn_80026A44(lbl_1_bss_28, ((1 << 30) | (1 << 1)));
-        info->endingPosition.x = info->endingPosition.y = info->endingPosition.z = 0.0f;
-        info->endingRotation.x = info->endingRotation.z = 0.0f;
-        info->endingRotation.y = 180.0f;
-        info->endingPosition.z = -100.0f;
-        info->endingPosition.x = -50.0f;
+        info->unk1C.x = info->unk1C.y = info->unk1C.z = 0.0f;
+        info->unk28.x = info->unk28.z = 0.0f;
+        info->unk28.y = 180.0f;
+        info->unk1C.z = -100.0f;
+        info->unk1C.x = -50.0f;
         fn_1_220C(obj, 6);
         HuAudFXStop(playerData->info.engineSoundHandle);
         return;

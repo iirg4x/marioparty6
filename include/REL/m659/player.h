@@ -31,8 +31,7 @@ typedef struct M659ComRecord {
     s16 difficulty; /* Computer difficulty, 0 through 3. */
     int active; /* Nonzero while a computer lane-change request is pending. */
     int state; /* Step in the computer player's lane-change request sequence. */
-    unsigned char unreadComBytes[4]; /* Bytes with no established computer-control behavior in this
-                                      * module. */
+    unsigned char unk10[4]; /* No code names this field. */
     s16 direction; /* Pending lane change: 0 left, 1 right, -1 none. */
     s16 routeIndex; /* Current obstacle row being followed. */
     M659ComRoute routes[22]; /* Planned lane for each obstacle row. */
@@ -44,14 +43,12 @@ typedef struct M659PlayerInfo {
     s16 side; /* Split-screen side and obstacle lane group. */
     s16 charNo; /* Selected character number. */
     s16 motionId; /* Current character animation index. */
-    int initializationMarker; /* Set to one during character setup; no reader in this module tests
-                               * it. */
+    int unk0C; /* The game's code never reads this field. */
     int state; /* Main player object state. */
-    unsigned char unreadPlayerBytes[4]; /* Bytes with no established player-info behavior in this
-                                         * module. */
+    unsigned char unk14[4]; /* No code names this field. */
     int result; /* Nonzero when this player has cleared the course. */
-    HuVecF endingPosition; /* Initialized during winner ending setup; not read in this module. */
-    HuVecF endingRotation; /* Initialized during winner ending setup; not read in this module. */
+    HuVecF unk1C; /* The game's code never reads this field. */
+    HuVecF unk28; /* The game's code never reads this field. */
     int engineSoundHandle; /* Handle returned by the looping engine sound. */
 } M659PlayerInfo;
 
@@ -61,8 +58,7 @@ typedef struct M659Player {
     s16 padNo; /* Controller assigned to this player. */
     float stickX; /* Last horizontal stick input. */
     float stickY; /* Last vertical stick input. */
-    unsigned char unreadPlayerDataBytes[8]; /* Bytes with no established player behavior in this
-                                             * module. */
+    unsigned char unk98[8]; /* No code names this field. */
     M659ComRecord com; /* Computer route and lane-request state. */
     M659Collision collision; /* Collision data registered for the ship. */
 } M659Player;
@@ -78,7 +74,7 @@ int fn_1_1840(s16 side);
 void fn_1_19DC(OMOBJ *obj, s16 motion);
 void fn_1_2D0C(OMOBJ *obj);
 void fn_1_2FE0(OMOBJ *obj);
-void fn_1_5CB0(OMOBJ *obj);
+void M659ComPlayerSet(OMOBJ *obj);
 int fn_1_5DB4(M659ComSlot *com);
 void fn_1_5E08(M659ComSlot *com);
 void fn_1_5E9C(M659ComSlot *com);

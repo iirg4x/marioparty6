@@ -2335,7 +2335,7 @@ void fn_1_6CE0(OMOBJ *object)
         actorRadius = 175.0f;
     }
     collisionRadius = actorRadius;
-    state->unusedCollisionState = 0;
+    state->unk0C = 0;
     state->modelId = fn_80025A04(fn_80008DD0(lbl_1_data_4C[state->cameraGroup],
                                                         0x10000000, 2));
     fn_80026B64(state->modelId, (u16)modelCameraMask);
@@ -2365,7 +2365,7 @@ void fn_1_6CE0(OMOBJ *object)
     fn_80086F44(state->actor);
     fn_80086AA8(state->actor, &lbl_1_data_F1C[state->cameraGroup]);
     state->velocity.x = state->velocity.y = state->velocity.z = 0.0f;
-    state->unusedPositionVector.x = state->unusedPositionVector.y = state->unusedPositionVector.z =
+    state->unk1C.x = state->unk1C.y = state->unk1C.z =
         0.0f;
     state->collisionMode = 0;
     state->soundMode = 1;
@@ -2379,7 +2379,7 @@ void fn_1_6F60(OMOBJ *object)
     M627ActorWork *work = object->data;
 
     if (fn_80071A8C() == 3) {
-        work->unusedCollisionState = 0;
+        work->unk0C = 0;
         fn_80026A44(work->modelId, ((1 << 30) | (1 << 1)));
         fn_80026A44(work->modelId, (1 << 0));
         fn_8002C95C(work->modelId, work->motionId);
@@ -2421,7 +2421,7 @@ void fn_1_7020(OMOBJ *object)
     position.y = 0.0f;
     if (fn_8002D75C(state->modelId) != 0) {
         fn_8002C95C(state->modelId, -1);
-        state->unusedCollisionState = 0;
+        state->unk0C = 0;
         fn_80086FA0(state->actor, &position);
         fn_80026790(state->modelId, &position);
         state->soundActive = 1;

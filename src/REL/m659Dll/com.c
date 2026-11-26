@@ -1,11 +1,12 @@
 /* Computer-player route planning and lane control for Asteroad Rage. */
-#include <math.h>
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h"
 #include "REL/m659/com.h"
 #include "game/memory.h"
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 #include "string.h"
 #include "REL/m659Dll.h"
+#include "REL/m659/typed-context.h"
 
 OMOBJ *lbl_1_bss_60;
 int lbl_1_data_1D8[4] = {5, 3, 2, 2};
@@ -20,11 +21,7 @@ void fn_1_64B0(M659Com *com);
 #include "REL/m659/objects.h"
 #include "REL/m659/player.h"
 
-extern OMOBJ *lbl_1_bss_60;
 #include "game/main.h"
-
-extern int lbl_1_data_1D8[4];
-int abs(int absoluteInput);
 
 /* Creates the computer-player manager during minigame startup. */
 void fn_1_5944(OMOBJMAN *manager)
@@ -144,7 +141,7 @@ void fn_1_5CAC(OMOBJ *obj)
 }
 
 /* Registers one player object with the computer-player manager during player setup. */
-void fn_1_5CB0(OMOBJ *obj)
+void M659ComPlayerSet(OMOBJ *obj)
 {
     M659Player *playerData = obj->data;
     M659ComManager *managerData = lbl_1_bss_60->data;

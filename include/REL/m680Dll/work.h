@@ -54,7 +54,7 @@ typedef struct M680GridNode {
     s16 itemModel, hookModel;
     /* Movement/result phase, frame timer, step count and direction run length. */
     s16 state, frames, steps, searchAttempts;
-    s16 unknown7BE;
+    s16 unk7BE; /* No code names this field. */
     s32 targetColumn, targetRow, pathIndex, pathLength;
     /* Completion flags and frame timers used by the round's animation callbacks. */
     s32 ready, result, winTimer, handTimer, loseTimer;
@@ -71,20 +71,24 @@ typedef struct M680PadButtons { u16 current, pressed, previous; } M680PadButtons
 /* A callback advances one model's motion over a requested number of frames. */
 typedef struct M680MotionDurationState {
     s16 motionId;
-    u16 unknown2;
+    u16 unk02; /* No code names this field. */
     s32 elapsedFrames, duration;
 } M680MotionDurationState;
 
 typedef struct M680MotionTimerState {
     s32 elapsedFrames, busy;
-    s16 motionId, unknownA;
+    s16 motionId;
+    s16 unk0A; /* No code names this field. */
 } M680MotionTimerState;
 
 typedef struct M680PhaseState { s16 models[3], phase; } M680PhaseState;
 
 typedef struct M680EffectState {
     f32 x, y, z;
-    s16 model_a, model_b, model_c, unknown12;
+    s16 model_a;
+    s16 model_b;
+    s16 model_c;
+    s16 unk12; /* No code names this field. */
     s32 progress, audio_handle;
 } M680EffectState;
 
@@ -92,7 +96,7 @@ typedef struct M680EffectState {
 typedef struct M680MotionWork {
     Vec position, rotation, origin, target;
     s16 model, endMotion, motion;
-    u8 unknown36[10];
+    u8 unk36[10]; /* No code names this field. */
     f32 angle;
     s32 state, frame, step;
 } M680MotionWork;
@@ -102,7 +106,7 @@ typedef struct M680State {
     M680CharacterState *actors[4];
     /* Cached stage model and joint-motion handles, indexed by resource entry. */
     s16 models[63], motions[15];
-    u8 unknownAC[4];
+    u8 unkAC[4]; /* No code names this field. */
     M680GridNode grid[10];
     M680GridNode *first, *selected;
     /* Board positions and occupancy/search states: 0 free, 1 occupied, 2/3 visited. */
@@ -110,33 +114,43 @@ typedef struct M680State {
     s32 nodeOrder[10];
     M680PlayerNode playerNodes[4];
     M680PlayerNode *players, *tail;
-    u8 unknown5D20[32];
+    u8 unk5D20[32]; /* No code names this field. */
     M680MotionWork stage;
-    u8 unknown5D90[12];
+    u8 unk5D90[12]; /* No code names this field. */
     s16 currentModel, motionIfNonzero, motionIfZero;
-    u8 unknown5DA2[14];
-    s16 attachedModel, attachedMotion;
-    u8 unknown5DB4[12];
-    s16 effectHookModel, effectHookMotion;
+    u8 unk5DA2[14]; /* No code names this field. */
+    s16 attachedModel;
+    s16 unk5DB2; /* The game's code never reads this field. */
+    u8 unk5DB4[12]; /* No code names this field. */
+    s16 unk5DC0; /* The game's code never reads this field. */
+    s16 unk5DC2; /* The game's code never reads this field. */
     M680EffectState effect;
     M680MotionDurationState transitions[3];
     MGTIMER *timer;
     Vec cursorPosition;
-    s16 cursorModel, unknown5E16;
+    s16 cursorModel;
+    s16 unk5E16; /* No code names this field. */
     M680PhaseState phaseEffect;
     M680PadButtons buttons;
-    s16 unknown5E26;
+    s16 unk5E26; /* No code names this field. */
     M680MotionTimerState gate;
     s16 state, openingPhase, musicStarted, winnerPhase, fadeState, finishPhase;
-    s16 nightMode, unknown5E42;
+    s16 unk5E40; /* The game's code never reads this field. */
+    s16 unk5E42; /* No code names this field. */
     /* Sequence frame counter, completed sectors, player target and round number. */
     s32 frame, roundWins, playerCount, round;
     s32 eliminatedPlayers[4], eliminatedCount, modeTimer;
-    s16 markers[5], gridIndex, repath, unknown5E7A;
+    s16 markers[5];
+    s16 gridIndex;
+    s16 repath;
+    s16 unk5E7A; /* No code names this field. */
     s32 transitionTimer, result, choiceFrames, choiceLimit, choiceCount;
 } M680State;
 
-typedef struct M680ObjectManagerState { OMOBJMAN *manager; u32 unknown4; } M680ObjectManagerState;
+typedef struct M680ObjectManagerState {
+    OMOBJMAN *manager;
+    u32 unk04; /* No code names this field. */
+} M680ObjectManagerState;
 
 /* The stage object owns M680State; the stream handle and manager outlive a round. */
 extern OMOBJ *lbl_1_bss_0;

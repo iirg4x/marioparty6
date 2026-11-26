@@ -3,6 +3,8 @@
 #include "game/memory.h"
 #include "string.h"
 #include "REL/m659/collision.h"
+#include "math.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/float.h"
 
 /* Collision-manager object whose data stores the registration table. */
 OMOBJ *lbl_1_bss_54;
@@ -10,22 +12,9 @@ OMOBJ *lbl_1_bss_54;
 int lbl_1_bss_50;
 
 /* Both array extents are bounded by the corresponding insertion and lookup
- * functions. The second set's element semantics are not yet reconstructed. */
+ * functions. The second set's element semantics are unknown. */
 void fn_1_4280(OMOBJ *obj);
 void fn_1_4290(OMOBJ *obj);
-/* IEEE-754 binary32 fields used to restore ship positions after NaN coordinates. */
-#define M659_FLOAT_EXPONENT_MASK 0x7F800000 /* Binary32 exponent bits 23 through 30. */
-/* An all-ones exponent denotes infinity or NaN. */
-#define M659_FLOAT_INFINITE_EXPONENT M659_FLOAT_EXPONENT_MASK
-#define M659_FLOAT_FRACTION_MASK 0x007FFFFF /* Binary32 fraction bits 0 through 22 distinguish NaN
-                                             * from infinity or zero. */
-enum {
-    M659_FP_NAN = 1, M659_FP_INFINITE = 2,
-    M659_FP_ZERO = 3, M659_FP_NORMAL = 4, M659_FP_SUBNORMAL = 5
-};
-
-/* The course ignores NaN coordinates and restores the last valid position. */
-#include "math.h"
 
 /* The distance helpers below use the course plane's X and Z coordinates only. */
 
@@ -53,30 +42,11 @@ void fn_1_4280(OMOBJ *obj)
     obj->objFunc = fn_1_4290;
 }
 
-/* Classifies a binary32 coordinate from its IEEE-754 exponent and fraction bits. */
-static inline int classifyFloat(float coordinate)
-{
-    switch (*(int *)&coordinate & M659_FLOAT_EXPONENT_MASK) {
-    case M659_FLOAT_INFINITE_EXPONENT:
-        if ((*(int *)&coordinate & M659_FLOAT_FRACTION_MASK) != 0) {
-            return M659_FP_NAN;
-        }
-        return M659_FP_INFINITE;
-    case 0:
-        if ((*(int *)&coordinate & M659_FLOAT_FRACTION_MASK) != 0) {
-            return M659_FP_SUBNORMAL;
-        }
-        return M659_FP_ZERO;
-    }
-    return M659_FP_NORMAL;
-}
-
 /* Restores the saved position when either horizontal coordinate is any NaN value. */
 static inline void recoverPosition(void *collisionData)
 {
     M659Collision *collision = collisionData;
-    if (classifyFloat(collision->position->x) == M659_FP_NAN ||
-        classifyFloat(collision->position->z) == M659_FP_NAN) {
+    if (isnan(collision->position->x) || isnan(collision->position->z)) {
         *collision->position = collision->previousPosition;
     }
 }

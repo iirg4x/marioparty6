@@ -10,7 +10,7 @@ typedef struct M680CallbackNode M680CallbackNode;
 typedef struct M680Scheduler {
     M680CallbackNode *freeHead;
     M680CallbackNode *activeHead;
-    M680CallbackNode *storage;
+    M680CallbackNode *unk08; /* The game's code never reads this field. */
 } M680Scheduler;
 
 struct M680CallbackNode {

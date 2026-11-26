@@ -8,8 +8,7 @@ typedef struct M659OMRecord {
     HuVecF velocity; /* Collision velocity in world units per frame. */
     HuVecF rotation; /* Obstacle rotation in degrees. */
     float rotationSpeedX, rotationSpeedY; /* Rotation added per frame on each axis. */
-    unsigned char unreadObstacleBytes[4]; /* Bytes with no established obstacle behavior in this
-                                           * module. */
+    unsigned char unk30[4]; /* No code names this field. */
     M659Collision collision; /* Collision shape and response data for this obstacle. */
     int active; /* Nonzero while activated during play; the result transition hides and disables
                  * it without clearing this flag. */

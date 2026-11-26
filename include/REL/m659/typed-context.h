@@ -3,8 +3,7 @@
 #define M659_CONTEXT_H
 
 typedef struct M659Camera {
-    unsigned char unreadCameraBytes[8]; /* Bytes with no established camera behavior in this
-                                         * module. */
+    unsigned char unk00[8]; /* No code names this field. */
     s32 cameraMask; /* Camera bit used by the graphics engine. */
     OMOBJ *target; /* Player object followed by this split-screen camera. */
     HuVecF position; /* Camera position in world units. */

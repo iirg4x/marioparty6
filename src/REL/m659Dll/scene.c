@@ -1,10 +1,6 @@
 /* Background, finish marker, and course-surface animation for Asteroad Rage. */
-#define M659_DATA_BACKGROUND_MODEL DATANUM(0x760000, 0)
-#define M659_DATA_BACKGROUND_MOTION DATANUM(0x760000, 1)
 #define M659_DATA_FINISH_MODEL DATANUM(0x760000, 2)
-#define M659_DATA_FINISH_MOTION DATANUM(0x760000, 3)
-#define M659_DATA_COURSE_SURFACE_MODEL DATANUM(0x760000, 4)
-#define M659_DATA_COURSE_SURFACE_MOTION DATANUM(0x760000, 5)
+
 #include <math.h>
 #include "game/object.h"
 #include "game/memory.h"
@@ -14,19 +10,21 @@
 #include "string.h"
 #include "REL/m659Dll.h"
 
-/* Course model labels and zeroed cells retained with the scene data. */
-char lbl_1_data_198[62] =
-    "\0\0\0\0\0\0\0\0\0\0\0\0"
-    "col\0\0\0\0\0\0\0"
-    "post_R\0\0\0\0"
-    "post_L\0\0\0\0"
-    "post_R_C\0\0"
-    "post_L_C";
+#define M659_DATA_BACKGROUND_MODEL DATANUM(0x760000, 0)
+#define M659_DATA_BACKGROUND_MOTION DATANUM(0x760000, 1)
+#define M659_DATA_FINISH_MOTION DATANUM(0x760000, 3)
+#define M659_DATA_COURSE_SURFACE_MODEL DATANUM(0x760000, 4)
+#define M659_DATA_COURSE_SURFACE_MOTION DATANUM(0x760000, 5)
+
+/* Course model labels stored in fixed-width records. */
+struct {
+    char unk00[12]; /* No code names this field. */
+    char unk0C[5][10]; /* No code names this field. */
+} lbl_1_data_198 = { { 0 }, { "col", "post_R", "post_L", "post_R_C", "post_L_C" } };
 
 /* Scene state begins after a 40-byte prefix not read by these routines. */
 typedef struct M659Scene {
-    unsigned char unreadSceneBytes[40]; /* Prefix bytes with no established scene-field behavior in
-                                         * this module. */
+    unsigned char unk00[40]; /* No code names this field. */
     HuVecF position; /* Zero-initialized position returned by fn_1_4F4C; not updated in this
                       * module. */
     float backgroundScale; /* Background scale, from 0.6 to 1.0. */

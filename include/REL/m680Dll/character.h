@@ -17,17 +17,16 @@ typedef struct M680CharacterState {
     s16 motionIds[10];
     s16 playerIndex;
     s16 character;
-    s16 group;
-    s16 unknown38;
+    s16 unk36; /* The game's code never reads this field. */
+    s16 unk38; /* No code names this field. */
     s16 padNo;
-    u8 unknown3C[4];
+    u8 unk3C[4]; /* No code names this field. */
     s16 playerType;
-    s16 difficulty;
-    s16 unknown44;
+    s16 unk42; /* The game's code never reads this field. */
+    s16 unk44; /* No code names this field. */
     s16 playerSlot;
     f32 targetAngle;
-    /* Cleared on creation and each update; no other use in this module. */
-    f32 clearedValue;
+    f32 unk4C; /* The game's code never reads this field. */
     s32 state;
     s32 frame;
     Vec origin;

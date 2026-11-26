@@ -81,10 +81,10 @@ typedef struct M627ActorWork {
     s16 cameraGroup; /* Split-screen side used for visibility and sound panning. */
     s16 modelId; /* Ball model rendered for this actor. */
     s16 motionId; /* Motion used to animate the ball model. */
-    s32 unusedCollisionState; /* Initialized to zero but not read in this module. */
+    s32 unk0C; /* The game's code never reads this field. */
     Vec velocity; /* Ball velocity: world space on the flat course, rotated collision space on the
                    * slope. */
-    Vec unusedPositionVector; /* Initialized to zero but not read in this module. */
+    Vec unk1C; /* The game's code never reads this field. */
     s16 collisionMode; /* Active collision response mode. */
     s16 soundActive; /* Rolling-cue state; can be set while soundMode suppresses playback. */
     s32 soundHandle; /* Handle of the rolling sound effect. */
@@ -96,7 +96,7 @@ typedef struct M627ActorWork {
 typedef struct M627CameraState {
     Vec cameraPosition[2]; /* World-space camera positions for the opening and split views. */
     Vec cameraTarget[2]; /* World-space look-at points for those views. */
-    s32 unk30; /* The game's code never reads this field. */
+    u8 unk30[4]; /* No code names this field. */
     s32 elapsedFrames; /* Frames elapsed in the active camera transition. */
     s16 startingColumn; /* Next slot in the five-sample camera trend history. */
     f32 rowValue[2]; /* Tracked Z reference: the first group-0 player's Z for row 0 and the midpoint

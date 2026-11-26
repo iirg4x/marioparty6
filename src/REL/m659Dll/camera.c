@@ -1,13 +1,11 @@
 /* Camera, sequence, lighting, and player-startup logic for Asteroad Rage. */
-#define M659_STREAM_COURSE 87
-#define M659_DATA_FINISH_GRID_MODEL DATANUM(0x760000, 20)
-#define M659_OBJECT_CAPACITY 200
-#define M659_OBJECT_MANAGER_PRIORITY 131072
+
 #include "game/object.h"
 #include "game/memory.h"
 #include "string.h"
 #include "REL/m659/typed-context.h"
 #include "REL/m659/player.h"
+#include "msm_stream.h"
 
 M659Work *lbl_1_data_0 = &lbl_1_bss_4;
 static int lbl_1_data_4[2] = {1, 2};
@@ -27,6 +25,8 @@ void ObjectSetup(void);
 #include "game/wipe.h"
 #include "game/data.h"
 #include "REL/m659Dll.h"
+
+#define M659_DATA_FINISH_GRID_MODEL DATANUM(0x760000, 20)
 
 void fn_1_B2C(s16 mode, s16 frameNo);
 void fn_1_BF0(s16 mode, s16 frameNo);
@@ -61,7 +61,7 @@ void fn_1_58(void)
 /* Creates the minigame object manager and initializes its game-system objects. */
 void fn_1_5C(void)
 {
-    lbl_1_data_0->objman = fn_8003A8BC(M659_OBJECT_CAPACITY, M659_OBJECT_MANAGER_PRIORITY);
+    lbl_1_data_0->objman = fn_8003A8BC(200, 0x20000);
     fn_80069F1C(lbl_1_data_0->objman);
 }
 
@@ -238,7 +238,7 @@ void fn_1_B2C(s16 mode, s16 frameNo)
 void fn_1_BF0(s16 mode, s16 frameNo)
 {
     if (fn_80071DE4() == 0) {
-        lbl_1_data_0->streamHandle = HuAudSStreamPlay(M659_STREAM_COURSE);
+        lbl_1_data_0->streamHandle = HuAudSStreamPlay(MSM_STREAM_DUELING_FOR_PRIZES);
     }
     if (fn_80071DE4() == 80) {
         fn_80071A9C();

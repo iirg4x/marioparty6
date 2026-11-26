@@ -4,8 +4,7 @@
 #define M659_DATA_OBSTACLE_MODEL_2 DATANUM(0x760000, 15)
 #define M659_DATA_OBSTACLE_MODEL_3 DATANUM(0x760000, 16)
 #define M659_DATA_OBSTACLE_MODEL_4 DATANUM(0x760000, 17)
-#define M659_DATA_COURSE_OUTER_MODEL DATANUM(0x760000, 21)
-#define M659_DATA_COURSE_INNER_MODEL DATANUM(0x760000, 22)
+
 #include <math.h>
 #include "REL/m659/objects.h"
 #include "game/memory.h"
@@ -15,6 +14,9 @@
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 #include "string.h"
+
+#define M659_DATA_COURSE_OUTER_MODEL DATANUM(0x760000, 21)
+#define M659_DATA_COURSE_INNER_MODEL DATANUM(0x760000, 22)
 
 extern HU3D_MODELID lbl_1_bss_3C[8];
 
@@ -65,8 +67,7 @@ void fn_1_33D8(OMOBJ *obj)
         int obstacleModelDataIds[5] = { M659_DATA_OBSTACLE_MODEL_0, M659_DATA_OBSTACLE_MODEL_1,
                                         M659_DATA_OBSTACLE_MODEL_2, M659_DATA_OBSTACLE_MODEL_3,
                                         M659_DATA_OBSTACLE_MODEL_4 };
-        model = obj->mdlId[i] = fn_80025A04(
-            fn_80008DD0(obstacleModelDataIds[i], 0x10000000, 2));
+        model = obj->mdlId[i] = fn_80025A04(fn_80008DD0(obstacleModelDataIds[i], 0x10000000, 2));
         fn_80026B8C(model, 3);
         fn_80026B64(model, 3);
         fn_80026760(model, -1000, 0, 0);

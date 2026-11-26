@@ -10,7 +10,7 @@ void fn_1_BD64(void)
 
     jobs = &lbl_1_bss_1410;
     node = lbl_1_bss_10;
-    jobs->storage = node;
+    jobs->unk08 = node;
     jobs->freeHead = node;
     jobs->activeHead = NULL;
     for (i = 0; i < 255; i++, node++) {

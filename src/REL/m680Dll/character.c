@@ -72,6 +72,15 @@ void fn_1_AB70(s32 count, M680PlayerRankEntry *entries)
     }
 }
 
+/* Copies the character position and rotation to both the model and its object. */
+static inline void applyCharacterTransform(M680CharacterState *state)
+{
+    fn_80026790(state->modelId, &state->position);
+    omSetTra(state->object, state->position.x, state->position.y, state->position.z);
+    fn_80026838(state->modelId, &state->rotation);
+    omSetRot(state->object, state->rotation.x, state->rotation.y, state->rotation.z);
+}
+
 /* Creates a player's model and motions, then installs the per-frame character update. */
 void fn_1_AD38(OMOBJ *object)
 {
@@ -83,10 +92,10 @@ void fn_1_AD38(OMOBJ *object)
     data->object = object;
     data->playerIndex = (s16)object->work[0];
     data->character = lbl_80265728[data->playerIndex].charNo;
-    data->group = lbl_80265728[data->playerIndex].grpNo;
+    data->unk36 = lbl_80265728[data->playerIndex].grpNo;
     data->padNo = lbl_80265728[data->playerIndex].padNo;
     data->playerType = lbl_80265728[data->playerIndex].type;
-    data->difficulty = lbl_80265728[data->playerIndex].comDif;
+    data->unk42 = lbl_80265728[data->playerIndex].comDif;
     data->playerSlot = (s16)object->work[1];
 
     *object->mdlId = fn_80057068(data->character, 4);
@@ -116,12 +125,9 @@ void fn_1_AD38(OMOBJ *object)
     data->rotation.y = 0.0f;
     data->rotation.z = 0.0f;
     data->targetAngle = 180.0f;
-    data->clearedValue = 0.0f;
+    data->unk4C = 0.0f;
     data->eliminated = 0;
-    fn_80026790(data->modelId, &data->position);
-    omSetTra(data->object, data->position.x, data->position.y, data->position.z);
-    fn_80026838(data->modelId, &data->rotation);
-    omSetRot(data->object, data->rotation.x, data->rotation.y, data->rotation.z);
+    applyCharacterTransform(data);
     fn_1_6538(data, data->playerSlot);
     object->objFunc = fn_1_AFF8;
 }
@@ -132,17 +138,14 @@ void fn_1_AFF8(OMOBJ *root)
     M680CharacterState *sequence;
 
     sequence = root->data;
-    sequence->clearedValue = 0.0f;
+    sequence->unk4C = 0.0f;
     if (sequence->playerType != 0) {
         fn_1_B0A8(sequence);
     } else {
         fn_1_B0A4(sequence);
     }
     fn_1_B0AC(sequence);
-    fn_80026790(sequence->modelId, &sequence->position);
-    omSetTra(sequence->object, sequence->position.x, sequence->position.y, sequence->position.z);
-    fn_80026838(sequence->modelId, &sequence->rotation);
-    omSetRot(sequence->object, sequence->rotation.x, sequence->rotation.y, sequence->rotation.z);
+    applyCharacterTransform(sequence);
 }
 
 /* The human-controlled character has no separate per-frame movement input. */
@@ -235,9 +238,9 @@ s32 fn_1_B26C(void *argument)
         }
         offsetAngle = targetAngle;
         work->position.x = (f32) ((f64) work->position.x +
-                                  (f64) amplitude * sin((f64) offsetAngle - 1.5707963267948966));
+                                  (f64) amplitude * sin((f64) offsetAngle - (M_PI * 90.0 / 180.0)));
         work->position.z = (f32) ((f64) work->position.z +
-                                  (f64) amplitude * cos((f64) offsetAngle - 1.5707963267948966));
+                                  (f64) amplitude * cos((f64) offsetAngle - (M_PI * 90.0 / 180.0)));
         currentDeltaZ = work->position.z - previousPosition.z;
         currentDeltaX = work->position.x - previousPosition.x;
         if (0.0f == currentDeltaZ) {
