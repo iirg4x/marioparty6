@@ -483,7 +483,31 @@ def scan_text(text, display, suffix, with_address_names=False):
                              "text": detail})
     for rule, line_number, detail in layout_findings(lines):
         findings.append({"category": "layout", "rule": rule, "file": display, "line": line_number, "text": detail})
+    for line_number, detail in split_table_calls(code):
+        findings.append({"category": "readability", "rule": "call split inside a data table row", "file": display,
+                         "line": line_number, "text": detail})
     return findings
+
+
+def split_table_calls(code):
+    """(line, detail) for each row of a file-scope data table where a call or macro call breaks across lines
+    (26 Nov, user: capsule.c's capsuleData "doesn't look human readable": `MESSNUM(MESS_CAPSULE_EX98,` on one line
+    and its second argument on the next). A row reads as one entry only when each call stays on one line."""
+    out = []
+    depths = brace_depths(code)
+    for table in re.finditer(r"=\s*\{", code):
+        start = table.end() - 1
+        if depths[start]:
+            continue                                  # only file-scope tables
+        end = _closing_brace(code, start)
+        first_line = line_of(code, start)
+        for index, line in enumerate(code[start:end].split("\n")):
+            open_calls = 0
+            for char in line:
+                open_calls += {"(": 1, ")": -1}.get(char, 0)
+            if open_calls > 0 and re.search(r"\w\s*\(", line):
+                out.append((first_line + index, f"a call continues on the next line: {line.strip()[:100]}"))
+    return out
 
 
 # ---------------------------------------------------------------------------------------------- layout
@@ -1025,7 +1049,7 @@ def parameter_types(params, cpp, aliases=SAME_TYPE):
 
 RECORD_START = re.compile(r"\b(?:typedef\s+)?(?:struct|union)\s*(\w*)\s*\{")
 # a declarator: pointer stars, the name, array dimensions, an optional bit-field width
-DECLARATOR = re.compile(r"^(\**)\s*(\w+)\s*((?:\[[^\]]*\]\s*)*)(?::\s*\w+)?$")
+DECLARATOR = re.compile(r"^(\**)\s*(\w+)\s*((?:\[[^\]]*\]\s*)*)(:\s*\w+)?$")
 
 
 def record_fields(body, aliases):
@@ -1047,15 +1071,18 @@ def record_fields(body, aliases):
             declarator = DECLARATOR.match(declarator_text.strip())
             if declarator is None:
                 return None
-            stars, name, dims = declarator.groups()
-            fields.append((base + stars + re.sub(r"\s+", "", dims), name))
+            stars, name, dims, width = declarator.groups()
+            spelled = base + stars + re.sub(r"\s+", "", dims) + re.sub(r"\s+", "", width or "")
+            fields.append((spelled, name))
     return fields
 
 
 def record_findings(parsed, aliases, add):
     """26 Nov (user: records copied per module "should be in the cleanup index"): a struct or union declared again
     with the same fields in another file, or under another name in the same file. A copy counts when the field types
-    and names agree (3+ fields), or when the types alone agree over 5+ fields that are not all of one type."""
+    and names agree (3+ fields), when the record has the same name and the same field types (its copies name
+    different fields: CAPWORKFLAG's bits in five board files), or when the types alone agree over 5+ fields
+    that are not all of one type."""
     records = []                              # (display, offset, record name, types, names)
     for display, (code, depths) in parsed.items():
         if not is_game_path(display) or display in JUMP_TABLES:
@@ -1082,7 +1109,8 @@ def record_findings(parsed, aliases, add):
     for types, group in by_types.items():
         for display, offset, name, _types, names in group:
             copies = [(d, n) for d, _o, n, _t, other in group
-                      if (d, n) != (display, name) and (other == names or (len(types) >= 5 and len(set(types)) > 1))]
+                      if (d, n) != (display, name)
+                      and (other == names or n == name or (len(types) >= 5 and len(set(types)) > 1))]
             if not copies:
                 continue
             where = ", ".join(f"{n} in {d}" for d, n in sorted(set(copies))[:3])
@@ -1090,6 +1118,21 @@ def record_findings(parsed, aliases, add):
             add("duplicates", "record declared in several files", display, offset,
                 f"{name}: the same {len(types)} fields as {where}{more}; the original declared it once, in a header "
                 "both include")
+    # 26 Nov (user, CAPWORKFLAG): capthrow.c spells the same record as two bits, six spare bits and three bytes where
+    # four other board files write 32 bits. One name declared with different fields in one program is one record
+    # written several ways.
+    by_name = defaultdict(list)
+    for record in records:
+        if record[2] != "(unnamed)":
+            by_name[(link_scope(record[0]), record[2])].append(record)
+    for (_scope, name), group in by_name.items():
+        if len({types for _d, _o, _n, types, _names in group}) < 2 or len({d for d, *_rest in group}) < 2:
+            continue
+        for display, offset, _name, types, _names in group:
+            others = sorted({d for d, _o, _n, other, _m in group if other != types})
+            add("duplicates", "record declared in several files", display, offset,
+                f"{name}: declared with different fields in {', '.join(others[:3])}; one record written several "
+                "ways, which the original declared once")
 
 
 def repository_findings(sources):

@@ -121,6 +121,8 @@ FAMILY_DEFINITIONS: Tuple[Mapping[str, str], ...] = (
     {"id": "comments", "label": "Process comments",
      "description": "Comments about the recovery process or left by the decompiler."},
     {"id": "pointer-access", "label": "Pointer access", "description": "Fields reached through casts and offsets."},
+    {"id": "readability", "label": "Readability",
+     "description": "Code laid out so a reader cannot follow it: table rows broken mid-call."},
     {"id": "pointer-cast", "label": "Pointer casts", "description": "Pointer casts."},
 )
 
@@ -145,6 +147,9 @@ AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] 
         "duplicate-record", "record in several files", "declarations",
         "A struct or union declared again with the same fields in another file or under another name: one record "
         "copied per module, where the original declared it once in a shared header."),
+    ("readability", "call split inside a data table row"): (
+        "split-table-row", "call split in a table row", "readability",
+        "A row of a data table where a call or macro breaks across lines, so the row no longer reads as one entry."),
     ("linkage", "C linkage on C++ code"): (
         "cpp-extern-c", "extern \"C\" in C++", "invented-structure",
         "An extern \"C\" definition in a C++ file, keeping an address name for a C++ function or class member."),
