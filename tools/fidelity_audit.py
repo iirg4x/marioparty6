@@ -1023,6 +1023,75 @@ def parameter_types(params, cpp, aliases=SAME_TYPE):
     return tuple(types)
 
 
+RECORD_START = re.compile(r"\b(?:typedef\s+)?(?:struct|union)\s*(\w*)\s*\{")
+# a declarator: pointer stars, the name, array dimensions, an optional bit-field width
+DECLARATOR = re.compile(r"^(\**)\s*(\w+)\s*((?:\[[^\]]*\]\s*)*)(?::\s*\w+)?$")
+
+
+def record_fields(body, aliases):
+    """[(type, name)] of a record body with no nested record, or None when it cannot be read plainly."""
+    if "{" in body or "(" in body or "#" in body:
+        return None
+    fields = []
+    for statement in body.split(";"):
+        statement = " ".join(statement.split())
+        if not statement:
+            continue
+        parts = [part.strip() for part in statement.split(",")]
+        # the first part holds the base type and the first declarator: `HuVecF *a[2]` -> `HuVecF`, `*a[2]`
+        first = re.match(r"^(.*?[\w\s])\s*(\**\s*\w+\s*(?:\[[^\]]*\]\s*)*(?::\s*\w+)?)$", parts[0])
+        if first is None or not first.group(1).strip():
+            return None
+        base = normal_type(first.group(1).strip(), aliases)
+        for declarator_text in [first.group(2)] + parts[1:]:
+            declarator = DECLARATOR.match(declarator_text.strip())
+            if declarator is None:
+                return None
+            stars, name, dims = declarator.groups()
+            fields.append((base + stars + re.sub(r"\s+", "", dims), name))
+    return fields
+
+
+def record_findings(parsed, aliases, add):
+    """26 Nov (user: records copied per module "should be in the cleanup index"): a struct or union declared again
+    with the same fields in another file, or under another name in the same file. A copy counts when the field types
+    and names agree (3+ fields), or when the types alone agree over 5+ fields that are not all of one type."""
+    records = []                              # (display, offset, record name, types, names)
+    for display, (code, depths) in parsed.items():
+        if not is_game_path(display) or display in JUMP_TABLES:
+            continue
+        for match in RECORD_START.finditer(code):
+            if depths[match.start()]:
+                continue
+            depth, end = 0, match.end() - 1
+            while end < len(code):
+                depth += {"{": 1, "}": -1}.get(code[end], 0)
+                if depth == 0:
+                    break
+                end += 1
+            fields = record_fields(code[match.end():end], aliases)
+            if not fields or len(fields) < 3:
+                continue
+            tail = re.match(r"\s*(\w*)", code[end + 1:end + 80])
+            name = (tail.group(1) if tail else "") or match.group(1) or "(unnamed)"
+            types = tuple(t for t, _n in fields)
+            records.append((display, match.start(), name, types, tuple(n for _t, n in fields)))
+    by_types = defaultdict(list)
+    for record in records:
+        by_types[record[3]].append(record)
+    for types, group in by_types.items():
+        for display, offset, name, _types, names in group:
+            copies = [(d, n) for d, _o, n, _t, other in group
+                      if (d, n) != (display, name) and (other == names or (len(types) >= 5 and len(set(types)) > 1))]
+            if not copies:
+                continue
+            where = ", ".join(f"{n} in {d}" for d, n in sorted(set(copies))[:3])
+            more = f" and {len(set(copies)) - 3} more" if len(set(copies)) > 3 else ""
+            add("duplicates", "record declared in several files", display, offset,
+                f"{name}: the same {len(types)} fields as {where}{more}; the original declared it once, in a header "
+                "both include")
+
+
 def repository_findings(sources):
     """Findings that compare files: {display path: text} -> [{category, rule, file, line, text}]."""
     findings = []
@@ -1134,6 +1203,7 @@ def repository_findings(sources):
                 add("duplicates", "helper defined in several files", display, offset,
                     f"{name}: the same body in {len(files)} files ({', '.join(names[:4])}); the original defined it "
                     "once, in a header or library")
+    record_findings(parsed, aliases, add)
     for display in parsed:
         stem = display.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         if is_game_path(display) and display.endswith((".c", ".cpp", ".cp")) and ADDRESS_FILE.search(stem):

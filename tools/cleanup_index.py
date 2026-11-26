@@ -141,6 +141,10 @@ AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] 
     ("duplicates", "helper defined in several files"): (
         "duplicate-helper", "helper in several files", "library-rebuilt",
         "An inline helper with the same body in more than one file: header or library code written again per file."),
+    ("duplicates", "record declared in several files"): (
+        "duplicate-record", "record in several files", "declarations",
+        "A struct or union declared again with the same fields in another file or under another name: one record "
+        "copied per module, where the original declared it once in a shared header."),
     ("linkage", "C linkage on C++ code"): (
         "cpp-extern-c", "extern \"C\" in C++", "invented-structure",
         "An extern \"C\" definition in a C++ file, keeping an address name for a C++ function or class member."),
