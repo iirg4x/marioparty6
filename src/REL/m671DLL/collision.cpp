@@ -133,10 +133,6 @@ void fn_1_360(Vec *normal, Vec *point)
     point->z = scaledNormal.z;
 }
 
-static inline Vec ObjectPosition(AnimationOwner *object)
-{
-    return object->position.value;
-}
 
 static inline Vec ObjectVelocity(AnimationOwner *object)
 {

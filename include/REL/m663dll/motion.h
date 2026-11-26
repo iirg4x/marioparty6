@@ -11,7 +11,7 @@ typedef struct M663PlayerMotionWork {
     f32 previousMotionSpeed;
     f32 motionTime;
     f32 previousMotionTime;
-    f32 motionLength;
+    f32 unk24; /* The game's code never reads this field. */
     u32 modelAttributes;
     u32 previousModelAttributes;
     u32 attributesToClear;
@@ -27,7 +27,7 @@ typedef struct M663PlayerMotionWork {
     f32 shiftStartTime;
     f32 shiftDuration;
     f32 currentShiftTime;
-    f32 shiftLength;
+    f32 unk5C; /* The game's code never reads this field. */
     /* Unknown bytes at 0x60..0x64: the target uses a 0x64 stride and
      * clears the complete 0xC8-byte lbl_1_bss_688 array. No field reads. */
     u8 unobserved[4];

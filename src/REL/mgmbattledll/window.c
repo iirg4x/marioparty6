@@ -6,13 +6,6 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 
-typedef struct {
-    s16 values[4];
-} PadMaskTable;
-typedef struct { s16 values[4]; } MessageIndices;
-
-void fn_1_45BC(void);
-
 u32 lbl_1_data_0[14] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };
 
 /* Called during battle setup to create the shared dialogue and player-name windows. */
@@ -93,11 +86,11 @@ void fn_1_12A8(void) {
 void fn_1_1334(void) {
     s16 player;
     s16 padMask = 0;
-    PadMaskTable masks = {{ 1, 2, 4, 8 }};
+    s16 masks[4] = { 1, 2, 4, 8 };
     player = 0;
     while (player < 4) {
         if (fn_1_BB40(player) == 0) {
-            padMask |= masks.values[fn_1_BB60(player)];
+            padMask |= masks[fn_1_BB60(player)];
         }
         player++;
     }
@@ -208,7 +201,7 @@ void fn_1_1528(s16 windowCount) {
 /* Displays a battle message or choice and waits for its scripted window interaction. */
 s16 fn_1_1648(s16 messageId) {
     s16 result = 0;
-    MessageIndices messageIndices = {{ 0, 1, 2, 3 }};
+    s16 messageIndices[4] = { 0, 1, 2, 3 };
     s16 player;
     s16 insertedCount;
 
@@ -341,7 +334,7 @@ s16 fn_1_1648(s16 messageId) {
             if (result >= 0) {
                 HuWinInsertMesSet(lbl_1_bss_D8[0].windowId,
                     lbl_1_data_0[result],
-                    messageIndices.values[insertedCount]);
+                    messageIndices[insertedCount]);
                 insertedCount++;
             }
         }
@@ -390,7 +383,7 @@ s16 fn_1_1648(s16 messageId) {
             if (result >= 0) {
                 HuWinInsertMesSet(lbl_1_bss_D8[0].windowId,
                     lbl_1_data_0[result],
-                    messageIndices.values[insertedCount]);
+                    messageIndices[insertedCount]);
                 insertedCount++;
             }
         }
@@ -476,43 +469,43 @@ MgBattleWindow lbl_1_bss_D8[3];
 MgBattleWindow lbl_1_bss_A8[4];
 
 MgBattleMessageSound lbl_1_data_38[38] = {
-    { MESSNUM(MESS_MGM_KATINUKI, 0), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 0), 2, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 0), 3, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 0), 4, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 1), 1, 944 },
+    { MESSNUM(MESS_MGM_KATINUKI, 0), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 0), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 0), 3, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 0), 4, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 1), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
     { MESSNUM(MESS_MGM_KATINUKI, 2), 1, -1 },
     { MESSNUM(MESS_MGM_KATINUKI, 3), 1, -1 },
     { MESSNUM(MESS_MGM_KATINUKI, 4), 1, -1 },
-    { MESSNUM(MESS_MGM_KATINUKI, 5), 1, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 6), 1, 942 },
+    { MESSNUM(MESS_MGM_KATINUKI, 5), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 6), 1, MSM_SE_GUIDE_NIGHT_INTRO },
     { MESSNUM(MESS_MGM_KATINUKI, 7), 1, -1 },
     { MESSNUM(MESS_MGM_KATINUKI, 8), 1, -1 },
     { MESSNUM(MESS_MGM_KATINUKI, 9), 1, -1 },
-    { MESSNUM(MESS_MGM_KATINUKI, 10), 1, 942 },
+    { MESSNUM(MESS_MGM_KATINUKI, 10), 1, MSM_SE_GUIDE_NIGHT_INTRO },
     { MESSNUM(MESS_MGM_KATINUKI, 10), 2, -1 },
-    { MESSNUM(MESS_MGM_KATINUKI, 10), 3, 944 },
+    { MESSNUM(MESS_MGM_KATINUKI, 10), 3, MSM_SE_GUIDE_NIGHT_EXPLAIN },
     { MESSNUM(MESS_MGM_KATINUKI, 11), 1, -1 },
     { MESSNUM(MESS_MGM_KATINUKI, 12), 1, -1 },
     { MESSNUM(MESS_MGM_KATINUKI, 13), 1, -1 },
-    { MESSNUM(MESS_MGM_KATINUKI, 14), 1, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 15), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 16), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 17), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 18), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 19), 1, 943 },
-    { MESSNUM(MESS_MGM_KATINUKI, 20), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 21), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 22), 1, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 23), 1, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 24), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 25), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 26), 1, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 27), 1, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 28), 1, 944 },
+    { MESSNUM(MESS_MGM_KATINUKI, 14), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 15), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 16), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 17), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 18), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 19), 1, MSM_SE_GUIDE_NIGHT_APOLOGY },
+    { MESSNUM(MESS_MGM_KATINUKI, 20), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 21), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 22), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 23), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 24), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 25), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 26), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 27), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 28), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
     { MESSNUM(MESS_MGM_KATINUKI, 28), 2, -1 },
-    { MESSNUM(MESS_MGM_KATINUKI, 28), 3, 942 },
-    { MESSNUM(MESS_MGM_KATINUKI, 29), 1, 944 },
-    { MESSNUM(MESS_MGM_KATINUKI, 30), 1, 942 }
+    { MESSNUM(MESS_MGM_KATINUKI, 28), 3, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_KATINUKI, 29), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_KATINUKI, 30), 1, MSM_SE_GUIDE_NIGHT_INTRO }
 };
 s16 lbl_1_data_200 = 64;

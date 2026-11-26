@@ -108,7 +108,7 @@ void fn_1_47D0(OMOBJ *obj)
 }
 
 /* Registers a player with the computer-input controller when its state is idle. */
-void fn_1_47EC(OMOBJ *obj)
+void M657ComPlayerSet(OMOBJ *obj)
 {
     M657ComPlayer **computerPlayer;
     M657Player *playerWork = obj->data;
@@ -251,14 +251,7 @@ void fn_1_4BA4(M657ComPlayer *com)
 /* Starts the third computer timing profile using its configured random ranges. */
 void fn_1_4C78(M657ComPlayer *com)
 {
-    M657Player *player = com->obj->data;
-    int durationVariation = frand() % lbl_1_data_1F8[player->difficulty].variation;
-
-    player->inputDelay = frand() % lbl_1_data_1F8[player->difficulty].delay;
-    player->inputDuration =
-        durationVariation + frand() % lbl_1_data_1F8[player->difficulty].duration;
-    player->inputActive = 1;
-    player->inputState = 0;
+    fn_1_4BA4(com);
 }
 
 /* Starts the hardest computer profile, including its rare long A-button interval. */

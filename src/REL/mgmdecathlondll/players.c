@@ -1,17 +1,6 @@
 /* Decathlon Park player models, motion changes and result reactions. */
 #include "REL/mgmdecathlondll/module_types.h"
 
-typedef struct DecathlonModelGroup {
-    u8 reservedBytes[12]; /* storage unused by the player actor code */
-    HU3D_MODELID playerModels[4]; /* four tied-rank label model IDs */
-    HU3D_MODELID variantModel; /* alternate display model ID */
-    HU3D_MODELID modeModels[5][10]; /* five total-score digit positions, each with ten digit
-                                     * models */
-    HU3D_MODELID spotlightModel; /* spotlight model ID */
-    HU3D_MODELID resultModels[4][10]; /* four event-award digit positions, each with ten digit
-                                       * models */
-} DecathlonModelGroup;
-
 #include <math.h>
 
 #include "game/object.h"

@@ -1,4 +1,5 @@
 /* Starts the Lunar-tics minigame and coordinates cameras, sequence, and results. */
+#include <stdlib.h>
 #include "REL/m657Dll.h"
 #include "game/gamework.h"
 #include "game/memory.h"
@@ -15,9 +16,6 @@
                                              * manager. */
 /* BGM resource selected when the entrance sequence begins. */
 
-
-/* This module calls the MSL library entry, not the stdlib.h builtin macro. */
-int abs(int value);
 
 M657Work lbl_1_bss_0;
 M657Work *lbl_1_data_0 = &lbl_1_bss_0;
@@ -320,7 +318,7 @@ void fn_1_D28(s16 mode, s16 frameNo)
             lbl_1_data_0->winnerCount = 2;
         } else if (teamTime[0] == teamTime[1]) {
             status = fn_80071C18(-1, -1, -1, -1);
-        } else if (abs(teamTime[0]) < abs(teamTime[1])) {
+        } else if ((abs)(teamTime[0]) < (abs)(teamTime[1])) {
             status = fn_80071C18(charNo[0], -1, -1, -1);
             fn_1_2BE4(0, 1);
             lbl_1_data_0->winners[0] = 0;

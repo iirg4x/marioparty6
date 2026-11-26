@@ -1,13 +1,8 @@
 /* Vector scaling and capsule bounding boxes for Clean Team. */
+#include "REL/m645DLL.h"
 #include "REL/m645DLL/shared_types.h"
 #include "humath.h"
 #include "game/object.h"
-
-
-
-
-
-void fn_1_480(HuVecF *out, const HuVecF *a, const HuVecF *b);
 
 void fn_1_6D0(HuVecF *dst, const HuVecF *src, f32 scale)
 {

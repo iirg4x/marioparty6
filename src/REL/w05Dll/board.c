@@ -61,19 +61,19 @@ void *lbl_1_bss_8;
 u8 *lbl_1_bss_4;
 OMOBJ *lbl_1_bss_0;
 
-typedef struct W05EffectWork_s {
+typedef struct {
     s32 modelId; /* Board particle model that receives the effect. */
     s32 count; /* Number of particles still active in this shared effect. */
     void *animation; /* Sprite animation data retained for the particle model. */
 } W05_EFFECT_WORK;
 
-typedef struct W05EffectOwner_s {
+typedef struct {
     s32 modelId; /* Board particle model that owns the active particles. */
     s32 activeCount; /* Number of particles still active in this shared effect. */
     void *animation; /* Sprite animation data retained for the particle model. */
 } W05_EFFECT_OWNER;
 
-typedef struct W05ColorEffectWork_s {
+typedef struct {
     s32 modelId; /* Board particle model used for colored particles. */
     s32 activeCount; /* Particles that have not finished fading. */
     s32 state; /* Cleared during setup; otherwise unused by this module. */
@@ -83,14 +83,7 @@ typedef struct W05ColorEffectWork_s {
 extern u32 mbCapEffNum;
 extern s16 *mbCapEffData;
 
-#define W05_EFFECT_RAND_NEXT() \
-    do { \
-        if (++mbCapEffNum >= 1024) { \
-            mbCapEffNum = 0; \
-        } \
-    } while (0)
-
-typedef struct W05TwinEffectWork_s {
+typedef struct {
     s32 modelId[2];
     s32 activeCount[2];
     ANIMDATA *animation;
@@ -98,7 +91,7 @@ typedef struct W05TwinEffectWork_s {
 
 extern BOOL mbSaveNewF;
 
-typedef struct W05ArrivalWork_s {
+typedef struct {
     u8 objectState[132];
     s32 eventRequested;
     s32 arrivalModel;
@@ -106,12 +99,12 @@ typedef struct W05ArrivalWork_s {
     s32 movingModel;
 } W05_ARRIVAL_WORK;
 
-typedef struct W05ParticleWork_s {
+typedef struct {
     s32 modelId; /* Board particle model advanced by the task callback. */
     s32 activeCount; /* Particles currently visible or moving. */
 } W05_PARTICLE_WORK;
 
-typedef struct W05TeresaSceneWork_s {
+typedef struct {
     u8 modelState[32];
     s32 motionModels[2]; /* Animated models selected by the two event spaces. */
     s32 spaces[2]; /* Spaces whose model motion accompanies Boo's entrance. */
@@ -119,14 +112,14 @@ typedef struct W05TeresaSceneWork_s {
     s32 defaultMotionModel; /* Model used when neither event space matches. */
 } W05_TERESA_SCENE_WORK;
 
-typedef struct W05SurfaceVertex_s {
+typedef struct {
     HuVecF phase; /* Independent wave phases in degrees for each axis. */
     HuVecF amplitude; /* Sine amplitudes; the y baseline is position.y minus amplitude.y. */
     HuVecF phaseStep; /* Added to the phases when the surface animation advances. */
     HuVecF position; /* Original model vertex coordinates. */
 } W05_SURFACE_VERTEX;
 
-typedef struct W05DrawWork_s {
+typedef struct {
     u8 sceneState[80];
     s32 modelId;
     s32 surfaceHookModel;
@@ -205,8 +198,7 @@ void fn_1_BB68(s32 count, f32 strength, s32 bothSides);
 void fn_1_C398(s32 playerNo);
 void fn_1_CE08(s32 playerNo, u32 spaceAttribute, s32 duration);
 void fn_1_D390(s32 playerNo, s32 spaceId, s32 motionNo, s32 soundId, HuVecF *offset);
-s32 fn_1_DFB0(s32 playerNo, s32 spaceId, s32 *occupiedSlots, HuVecF *position,
-              s32 skipFirst);
+s32 fn_1_DFB0(s32 playerNo, s32 spaceId, s32 *occupiedSlots, HuVecF *position, s32 skipFirst);
 void fn_1_E120(OMOBJ *object);
 void fn_1_E4A0(int playerNo, s32 inputSpace);
 void fn_1_F5C4(s32 playerNo);
@@ -269,7 +261,7 @@ static inline int W05BoardDataNumGet(int dataNum) {
         return dataNum;
     }
     dataNum = FILENUM(dataNum);
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         dataNum |= 0xdf0000;
     } else {
         dataNum |= 0xe00000;
@@ -281,7 +273,10 @@ static inline int W05BoardDataNumGet(int dataNum) {
 static inline f32 W05EffectRand(void) {
     s16 sample;
 
-    W05_EFFECT_RAND_NEXT();
+    /* Advance the effect random sequence, wrapping at 1024. */
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     sample = mbCapEffData[mbCapEffNum];
     return 3.051851e-05f * sample;
 }
@@ -290,30 +285,14 @@ static inline f32 W05AmbientOffset(void) {
     return W05EffectRand() - 0.5f;
 }
 
-/* Selects the day or night archive for Castaway Bay effect assets. */
-static inline int W05EffectDataNumGet(int dataNum) {
-    int directory;
-
-    dataNum = mbBoardDataNumGet(dataNum);
-    directory = DIRNUM(dataNum);
-    if (directory != 0xdf0000 && directory != 0xe00000) {
-        return dataNum;
-    }
-    dataNum = FILENUM(dataNum);
-    if (lbl_80265B70.curTime == 0) {
-        dataNum |= 0xdf0000;
-    } else {
-        dataNum |= 0xe00000;
-    }
-    return dataNum;
-}
-
 /* Saves the particle's final color, then samples the shared noise table for its lifetime. */
 static inline f32 W05ParticleLifetimeSample(GXColor *particleColor, GXColor *color) {
     s16 sample;
 
     *particleColor = *color;
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     sample = mbCapEffData[mbCapEffNum];
     return 3.051851e-05f * sample;
 }
@@ -336,7 +315,7 @@ static inline void W05HookRiseParticle(HuVecF *position, f32 strength) {
     color.b = 190.0f + 63.0f * tint;
     color.a = (96.0f + 63.0f * W05EffectRand()) - 64.0f * strength;
     scale = strength * (1.0f + 0.25f *
-        (MBCapsuleEffRandF()));
+        MBCapsuleEffRandF());
     if (MBCapsuleEffRandF() < 0.7f) {
         additive = 0;
     } else {
@@ -348,24 +327,6 @@ static inline void W05HookRiseParticle(HuVecF *position, f32 strength) {
         60.0f * (0.25f + 0.05f * W05ParticleLifetimeSample(&particleColor, &color)), additive);
 }
 
-/* Selects the day or night archive for Castaway Bay setup assets. */
-static inline int W05SetupDataNumGet(int dataNum) {
-    int directory;
-
-    dataNum = mbBoardDataNumGet(dataNum);
-    directory = DIRNUM(dataNum);
-    if (directory != 0xdf0000 && directory != 0xe00000) {
-        return dataNum;
-    }
-    dataNum = FILENUM(dataNum);
-    if (lbl_80265B70.curTime == 0) {
-        dataNum |= 0xdf0000;
-    } else {
-        dataNum |= 0xe00000;
-    }
-    return dataNum;
-}
-
 static inline void W05ModelPauseOn(MBMODELID modelId) {
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 1)));
 }
@@ -374,30 +335,13 @@ static inline void W05ModelPauseOff(MBMODELID modelId) {
     mbObjAttrReset(modelId, ((1 << 30) | (1 << 1)));
 }
 
-/* Selects the day or night archive for Castaway Bay surface assets. */
-static inline int W05SurfaceDataNumGet(int dataNum) {
-    int directory;
-
-    dataNum = mbBoardDataNumGet(dataNum);
-    directory = DIRNUM(dataNum);
-    if (directory != 0xdf0000 && directory != 0xe00000) {
-        return dataNum;
-    }
-    dataNum = FILENUM(dataNum);
-    if (lbl_80265B70.curTime == 0) {
-        dataNum |= 0xdf0000;
-    } else {
-        dataNum |= 0xe00000;
-    }
-    return dataNum;
-}
-
 static inline void *W05SurfaceScratchAlloc(void) {
     return HuMemDirectMallocNum(HEAP_HEAP, 65536, 0x10000000);
 }
 
+/* When the board loads, enter party mode and register the board setup and cleanup callbacks. */
 void ObjectSetup(void) {
-    lbl_80265B70.partyF = TRUE;
+    GWPartySet(TRUE);
     mbObjectSetup(4, fn_1_F4, fn_1_1D50);
 }
 
@@ -476,7 +420,7 @@ void fn_1_F4(void) {
 
     boardNo = MBBoardNoGet();
     HuAudSndGrpSetSet(26);
-    mbMasuInit(W05SetupDataNumGet(DATANUM(0xdf0000, 0)));
+    mbMasuInit(W05BoardDataNumGet(DATANUM(0xdf0000, 0)));
     lbl_1_bss_4 = (u8 *)lbl_80265B70.boardWork;
     if (mbSaveNewF) {
         *lbl_1_bss_4 = 0;
@@ -500,12 +444,12 @@ void fn_1_F4(void) {
     board->firstHookMoving = 0;
     board->firstHookPhaseWeight = 1.0f;
     board->secondHookPhaseWeight = 1.0f;
-    board->firstHookSway[0] = 360.0f * (MBCapsuleEffRandF());
-    board->firstHookSway[1] = 360.0f * (MBCapsuleEffRandF());
-    board->firstHookSway[2] = 360.0f * (MBCapsuleEffRandF());
-    board->secondHookSway[0] = 360.0f * (MBCapsuleEffRandF());
-    board->secondHookSway[1] = 360.0f * (MBCapsuleEffRandF());
-    board->secondHookSway[2] = 360.0f * (MBCapsuleEffRandF());
+    board->firstHookSway[0] = 360.0f * MBCapsuleEffRandF();
+    board->firstHookSway[1] = 360.0f * MBCapsuleEffRandF();
+    board->firstHookSway[2] = 360.0f * MBCapsuleEffRandF();
+    board->secondHookSway[0] = 360.0f * MBCapsuleEffRandF();
+    board->secondHookSway[1] = 360.0f * MBCapsuleEffRandF();
+    board->secondHookSway[2] = 360.0f * MBCapsuleEffRandF();
     board->hookMovementScale = 0.0f;
     board->secondHookSwing = 0.0f;
     board->movementFactorX = 0.0f;
@@ -518,23 +462,23 @@ void fn_1_F4(void) {
     fn_1_80D4(-1, 0);
     fn_1_80FC(-1, 0);
     fn_1_8124(-1, 0);
-    lbl_1_bss_18 = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 3)), NULL, FALSE);
+    lbl_1_bss_18 = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 3)), NULL, FALSE);
     mbObjPosSet(lbl_1_bss_18, 0.0f, 0.0f, 0.0f);
     backgroundModel = lbl_1_bss_18;
     mbObjAttrSet(backgroundModel, ((1 << 30) | (1 << 0)));
     mbObjCullRadiusSet(lbl_1_bss_18, -1.0f);
-    mbScrollInit(W05SetupDataNumGet(DATANUM(0xdf0000, 1)));
-    mbCapThrowColCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 2)));
-    mbev_ShopInit(W05SetupDataNumGet(DATANUM(0xdf0000, 14)));
-    mbev_ShopBackCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 13)), -1, FALSE, TRUE);
+    mbScrollInit(W05BoardDataNumGet(DATANUM(0xdf0000, 1)));
+    mbCapThrowColCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 2)));
+    mbev_ShopInit(W05BoardDataNumGet(DATANUM(0xdf0000, 14)));
+    mbev_ShopBackCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 13)), -1, FALSE, TRUE);
     mbev_NextTimeSet(fn_1_24C4);
     board->skipRequested = 0;
     board->skipEnabled = 0;
     mbLightFuncSet(fn_1_2010, fn_1_2094);
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 5)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 5)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     fn_80030644(mbObjModelIDGet(lbl_1_bss_18));
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 12)), NULL, TRUE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 12)), NULL, TRUE);
     board->backgroundAttachmentModel = modelId;
     fn_80030644(mbObjModelIDGet(modelId));
     for (hookNo = 0; hookNo < 4; hookNo++) {
@@ -546,23 +490,23 @@ void fn_1_F4(void) {
         board->movingModelPositions[hookNo].y = worldMatrix[1][3];
         board->movingModelPositions[hookNo].z = worldMatrix[2][3];
     }
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 16)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 16)), NULL, FALSE);
     board->rockingModel = modelId;
     mbObjPosSetV(modelId, &lbl_1_data_0);
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 17)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 17)), NULL, FALSE);
     board->rockingEffectModel = modelId;
     mbObjPosSetV(modelId, &lbl_1_data_C);
     mbObjLayerSet(modelId, 3);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjDispSet(modelId, FALSE);
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 19)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 19)), NULL, FALSE);
     board->raftParentModel = modelId;
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjMotionTimeSet(modelId, mbObjMotionMaxTimeGet(modelId));
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 18)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 18)), NULL, FALSE);
     board->raftModel = modelId;
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
@@ -572,7 +516,7 @@ void fn_1_F4(void) {
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     fn_1_15C98();
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 23)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 23)), NULL, FALSE);
     board->backgroundMotionModel = modelId;
     mbObjMotionSpeedSet(modelId, 0.0f);
     for (spaceId = 1, dockNo = 0; spaceId < mbMasuNumGet(); spaceId++) {
@@ -586,13 +530,13 @@ void fn_1_F4(void) {
             secondLink = mbMasuAttrFindLink(firstLink, 1 << 13);
             mbMasuPosGet(secondLink, &linkedPosition);
             PSVECSubtract(&dockPosition, &linkedPosition, &dockDirection);
-            modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 20)), NULL, TRUE);
+            modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 20)), NULL, TRUE);
             board->dockModels[hookNo] = modelId;
             mbObjMotionSpeedSet(modelId, 0.0f);
             mbObjPosSetV(modelId, &linkedPosition);
             mbObjRotSet(modelId, 0.0f,
                 180.0 * (atan2(dockDirection.x, dockDirection.z) / M_PI), 0.0f);
-            modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 21)), NULL, TRUE);
+            modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 21)), NULL, TRUE);
             board->lampModels[hookNo] = modelId;
             mbObjLayerSet(modelId, 3);
             mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
@@ -601,7 +545,7 @@ void fn_1_F4(void) {
                                attachmentMatrix);
             mbObjPosSet(modelId, attachmentMatrix[0][3], attachmentMatrix[1][3],
                         attachmentMatrix[2][3]);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 mbObjDispSet(modelId, FALSE);
             }
             board->dockSpaces[hookNo] = spaceId;
@@ -610,37 +554,37 @@ void fn_1_F4(void) {
     }
     board->lampAlpha = 1.0f;
     board->lampEnabled = 1;
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 7)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 7)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (hookNo = 0; hookNo < 4; hookNo++) {
         mbObjHookSet(lbl_1_bss_18, lbl_1_data_214[hookNo], modelId);
     }
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 6)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 6)), NULL, FALSE);
     for (hookNo = 0; hookNo < 5; hookNo++) {
         mbObjHookSet(lbl_1_bss_18, lbl_1_data_254[hookNo], modelId);
     }
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 8)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 8)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (hookNo = 0; hookNo < 3; hookNo++) {
         mbObjHookSet(lbl_1_bss_18, lbl_1_data_280[hookNo], modelId);
     }
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 9)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 9)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (hookNo = 0; hookNo < 2; hookNo++) {
         mbObjHookSet(lbl_1_bss_18, lbl_1_data_2A0[hookNo], modelId);
     }
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 10)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 10)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (hookNo = 0; hookNo < 3; hookNo++) {
         mbObjHookSet(lbl_1_bss_18, lbl_1_data_2CC[hookNo], modelId);
     }
-    modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 11)), NULL, FALSE);
+    modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 11)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (hookNo = 0; hookNo < 3; hookNo++) {
         mbObjHookSet(lbl_1_bss_18, lbl_1_data_300[hookNo], modelId);
     }
-    if (lbl_80265B70.curTime == 0) {
-        modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 42)), NULL, FALSE);
+    if (MBTimeDayGet()) {
+        modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 42)), NULL, FALSE);
         mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
         mbObjMotionSpeedSet(modelId, 2.0f);
         mbObjRotSet(modelId, 0.0f, 90.0f, 0.0f);
@@ -650,15 +594,15 @@ void fn_1_F4(void) {
             mbObjHookSet(lbl_1_bss_18, hookName, modelId);
         }
     } else {
-        modelId = mbObjCreate(W05SetupDataNumGet(DATANUM(0xdf0000, 40)), NULL, FALSE);
-        mbObjMotionCreate(modelId, W05SetupDataNumGet(DATANUM(0xdf0000, 41)));
+        modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 40)), NULL, FALSE);
+        mbObjMotionCreate(modelId, W05BoardDataNumGet(DATANUM(0xdf0000, 41)));
         mbObjMotionSet(modelId, 1, ((1 << 30) | (1 << 0)));
         mbObjHookSet(lbl_1_bss_18, "alienhook", modelId);
     }
     modelId = mbObjCreate(DATANUM(0xdf0000, 15), NULL, FALSE);
     mbObjLayerSet(modelId, 1);
     for (hookNo = 0; hookNo < 3; hookNo++) {
-        modelId = mbObjCreate(W05SetupDataNumGet(lbl_1_data_50[hookNo]), NULL, TRUE);
+        modelId = mbObjCreate(W05BoardDataNumGet(lbl_1_data_50[hookNo]), NULL, TRUE);
         board->eventModels[hookNo] = modelId;
         mbObjLayerSet(modelId, 3);
         mbObjDispSet(modelId, FALSE);
@@ -751,7 +695,7 @@ void fn_1_2010(void) {
     void *boardWork;
 
     boardWork = lbl_1_bss_8;
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         Hu3DBGColorSet(127U, 127U, 192U);
     } else {
         Hu3DBGColorSet(64U, 64U, 127U);
@@ -780,7 +724,7 @@ int fn_1_20F8(int playerNo, s16 spaceId) {
         if ((u32) (mbMasuMAttrGet(spaceId) & 0x20) != 0) {
             fn_1_E4A0(playerNo, (s16) spaceId);
         } else if ((u32) (mbMasuMAttrGet(spaceId) & 8) != 0) {
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 fn_1_12D20(playerNo, (s16) spaceId);
             } else {
                 fn_1_13C3C(playerNo, (s16) spaceId);
@@ -945,8 +889,7 @@ void fn_1_24C4(void) {
     mbCameraRotSetV(&lbl_1_data_424);
     mbCameraZoomSet(lbl_1_data_430);
     if (board->skipRequested == 0) {
-        mbCameraMovePos(&lbl_1_data_434, &lbl_1_data_440, NULL, lbl_1_data_44C,
-                       -1.0f, 160);
+        mbCameraMovePos(&lbl_1_data_434, &lbl_1_data_440, NULL, lbl_1_data_44C, -1.0f, 160);
     }
     window = mbWinCreateHelp(MESSNUM(MESS_BOARD_OPE, 12));
     mbWinPosGet(window, &windowPosition);
@@ -977,8 +920,7 @@ void fn_1_24C4(void) {
     fn_1_285C();
     mbCameraMoveOnSet(1);
     if (board->skipRequested == 0) {
-        mbCameraMovePos(&lbl_1_data_46C, &lbl_1_data_478, NULL, lbl_1_data_484,
-                       -1.0f, 300);
+        mbCameraMovePos(&lbl_1_data_46C, &lbl_1_data_478, NULL, lbl_1_data_484, -1.0f, 300);
     }
     if (board->skipRequested == 0) {
         mbWipeFadeIn();
@@ -1188,8 +1130,7 @@ void fn_1_3308(s32 hookIndex) {
         if (*lbl_1_bss_4 == 0) {
             mbObjMotionTimeSet(board->eventModel, 0.0f);
         } else {
-            mbObjMotionTimeSet(board->eventModel,
-                               mbObjMotionMaxTimeGet(board->eventModel) / 2.0f);
+            mbObjMotionTimeSet(board->eventModel, mbObjMotionMaxTimeGet(board->eventModel) / 2.0f);
         }
     }
 }
@@ -1426,8 +1367,7 @@ void fn_1_433C(int playerNo) {
     fn_1_76A4(1, &guideHookPosition, NULL, NULL);
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
     PSVECSubtract(&playerHookPosition, &playerPosition, &direction);
-    mbPlayerRotSet(playerNo, 0.0f,
-        180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     for (frame = 0; frame <= 30.0f; frame++) {
         phase = frame / 30.0f;
@@ -1444,8 +1384,7 @@ void fn_1_433C(int playerNo) {
     board->hookMovementScale = 1.0f;
     mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_STORY_LAST, FALSE);
     PSVECSubtract(&guideHookPosition, &playerHookPosition, &direction);
-    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-        15);
+    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI), 15);
     while (mbPlayerRotateCheck(playerNo) == 0) {
         HuPrcVSleep();
     }
@@ -1460,8 +1399,7 @@ void fn_1_433C(int playerNo) {
         PSVECSubtract(&playerHookPosition, &guideHookPosition, &direction);
         mbPlayerPosSetV(playerNo, &playerHookPosition);
         mbObjPosSetV(guideModel, &guideHookPosition);
-        mbObjRotSet(guideModel, 0.0f,
-            180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+        mbObjRotSet(guideModel, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
         HuPrcVSleep();
     }
     fn_1_80D4(guideModel, 1);
@@ -1470,7 +1408,7 @@ void fn_1_433C(int playerNo) {
     mbev_CapPlayerMotShiftSet(guideModel, 2, 0, TRUE);
     mbev_CapPlayerMotShiftSet(guideModel, 1, ((1 << 30) | (1 << 0)), TRUE);
     if (mbPlayerCoinGet(playerNo) >= 20) {
-        if (lbl_80265B70.curTime == 0) {
+        if (MBTimeDayGet()) {
             choiceMessage = MESSNUM(MESS_BOARD_W05, 0);
         } else {
             choiceMessage = MESSNUM(MESS_BOARD_W05, 6);
@@ -1483,7 +1421,7 @@ void fn_1_433C(int playerNo) {
         if (mbWinTopChoiceGet() == 0) {
             mbAudFXDelaySet(30);
             mbAudFXPlay(MSM_SE_GUIDE_DONKEY_TALK);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 purchaseMessage = MESSNUM(MESS_BOARD_W05, 1);
             } else {
                 purchaseMessage = MESSNUM(MESS_BOARD_W05, 7);
@@ -1505,7 +1443,7 @@ void fn_1_433C(int playerNo) {
             mbAudFXDelaySet(30);
             mbAudFXPlay(MSM_SE_GUIDE_DONKEY_LAUGH);
             mbObjMotionShiftSet(guideModel, 5, 0.0f, 8.0f, 0);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 declineMessage = MESSNUM(MESS_BOARD_W05, 3);
             } else {
                 declineMessage = MESSNUM(MESS_BOARD_W05, 9);
@@ -1517,7 +1455,7 @@ void fn_1_433C(int playerNo) {
         mbAudFXDelaySet(30);
         mbAudFXPlay(MSM_SE_GUIDE_DONKEY_LAUGH);
         mbObjMotionShiftSet(guideModel, 3, 0.0f, 8.0f, 0);
-        if (lbl_80265B70.curTime == 0) {
+        if (MBTimeDayGet()) {
             coinMessage = MESSNUM(MESS_BOARD_W05, 2);
         } else {
             coinMessage = MESSNUM(MESS_BOARD_W05, 8);
@@ -1526,7 +1464,7 @@ void fn_1_433C(int playerNo) {
         mbWinTopWait();
     }
     mbObjMotionShiftSet(guideModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         departureMessage = MESSNUM(MESS_BOARD_W05, 4);
     } else {
         departureMessage = MESSNUM(MESS_BOARD_W05, 10);
@@ -1546,8 +1484,7 @@ void fn_1_433C(int playerNo) {
     mbObjMotionTimeSet(board->hookModels[1], 0.0f);
     mbObjHookSet(board->hookModels[1], lbl_1_data_40[1][1], board->firstHookModel);
     PSVECSubtract(&playerHookPosition, &guideHookPosition, &direction);
-    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-        15);
+    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI), 15);
     while (mbPlayerRotateCheck(playerNo) == 0) {
         HuPrcVSleep();
     }
@@ -1559,19 +1496,16 @@ void fn_1_433C(int playerNo) {
     motionFrames = 2.0f * (mbObjMotionMaxTimeGet(board->hookModels[1]) / 5.0f);
     fn_8006A030(playerNo, 240, 4, 4);
     for (frame = 0; frame <= motionFrames; frame++) {
-        board->firstHookPhaseWeight = sin(M_PI * (180.0f
-            * (frame / motionFrames)) / 180.0);
+        board->firstHookPhaseWeight = sin(M_PI * (180.0f * (frame / motionFrames)) / 180.0);
         board->secondHookPhaseWeight = 0.0f;
         mbObjMotionTimeSet(board->hookModels[1], frame);
         fn_1_76A4(0, &playerHookPosition, NULL, NULL);
         fn_1_76A4(1, &guideHookPosition, NULL, NULL);
         PSVECSubtract(&playerHookPosition, &guideHookPosition, &direction);
         mbPlayerPosSetV(playerNo, &playerHookPosition);
-        mbPlayerRotSet(playerNo, 0.0f,
-            180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+        mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
         mbObjPosSetV(guideModel, &guideHookPosition);
-        mbObjRotSet(guideModel, 0.0f,
-            180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+        mbObjRotSet(guideModel, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
         HuPrcVSleep();
     }
     mbObjMotionSpeedSet(board->hookModels[1], 0.0f);
@@ -1592,8 +1526,7 @@ void fn_1_433C(int playerNo) {
     mbev_PlayerColMasuSet(playerNo, previousSpace, FALSE);
     fn_1_80AC(-1, 0);
     PSVECSubtract(&playerHookPosition, &playerPosition, &direction);
-    mbPlayerRotSet(playerNo, 0.0f,
-        180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     for (frame = 0; frame <= 30.0f; frame++) {
         phase = frame / 30.0f;
@@ -1609,8 +1542,7 @@ void fn_1_433C(int playerNo) {
     mbPlayerPosGet(playerNo, &playerPosition);
     mbMasuPosGet(destinationSpace, &playerHookPosition);
     PSVECSubtract(&playerHookPosition, &playerPosition, &direction);
-    mbPlayerRotSet(playerNo, 0.0f,
-        180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
     mbPlayerMotionShiftSet(playerNo, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     for (frame = 1; frame <= 30.0f; frame++) {
         phase = frame / 30.0f;
@@ -1640,7 +1572,7 @@ void fn_1_433C(int playerNo) {
     }
     mbAudFXPlay(MSM_SE_GUIDE_DONKEY_ANNOUNCE);
     mbObjMotionShiftSet(guideModel, 6, 0.0f, 8.0f, 0);
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         farewellMessage = MESSNUM(MESS_BOARD_W05, 5);
     } else {
         farewellMessage = MESSNUM(MESS_BOARD_W05, 11);
@@ -1712,8 +1644,7 @@ void fn_1_5900(int playerNo) {
     fn_1_7AF8(1, &guideHookPosition, NULL, NULL);
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
     PSVECSubtract(&playerHookPosition, &playerPosition, &direction);
-    mbPlayerRotSet(playerNo, 0.0f,
-        180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     for (frame = 0; frame <= 30.0f; frame++) {
         phase = frame / 30.0f;
@@ -1747,8 +1678,7 @@ void fn_1_5900(int playerNo) {
         PSVECSubtract(&playerHookPosition, &guideHookPosition, &direction);
         mbPlayerPosSetV(playerNo, &playerHookPosition);
         mbObjPosSetV(guideModel, &guideHookPosition);
-        mbObjRotSet(guideModel, 0.0f,
-            180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+        mbObjRotSet(guideModel, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
         HuPrcVSleep();
     }
     fn_1_8124(guideModel, 1);
@@ -1933,9 +1863,9 @@ void fn_1_5900(int playerNo) {
         /* The caller sets only opacity; fn_1_1EE80 forces the particle RGB channels to white. */
         color.a = 192;
         fn_1_1EE80(position, direction,
-            100.0f * (0.5f + 0.5f * (MBCapsuleEffRandF())),
+            100.0f * (0.5f + 0.5f * MBCapsuleEffRandF()),
             10.0f * (-0.5f + MBCapsuleEffRandF()),
-            0.5f + 0.3f * (MBCapsuleEffRandF()), color);
+            0.5f + 0.3f * MBCapsuleEffRandF(), color);
         if (frame == 27) {
             fn_1_1F090(&playerHookPosition, 200.0f, 100.0f, 16);
         }
@@ -2012,12 +1942,35 @@ void fn_1_7610(s32 hookIndex) {
                  (s16)boardWork->secondHookModel);
 }
 
+/* Exports the world-space transform of a model hook. */
+static inline void HookTransformGet(Mtx hookMatrix, HuVecF *forward, HuVecF *position, HuVecF *rotation, Mtx matrix)
+{
+    HuVecF direction;
+
+    if (matrix != NULL) {
+        PSMTXCopy(hookMatrix, matrix);
+    }
+    if (position != NULL) {
+        position->x = hookMatrix[0][3];
+        position->y = hookMatrix[1][3];
+        position->z = hookMatrix[2][3];
+    }
+    if (rotation != NULL) {
+        hookMatrix[0][3] = hookMatrix[1][3] = hookMatrix[2][3] = 0.0f;
+        PSMTXMultVec(hookMatrix, forward, &direction);
+        rotation->x = 180.0 *
+            (atan2(-direction.y, sqrtf(direction.x * direction.x + direction.z * direction.z)) /
+             M_PI);
+        rotation->y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
+        rotation->z = 0.0f;
+    }
+}
+
 /* Event sequences read a first-hook attachment's position or full matrix. Rotation output uses
 * its forward direction for pitch/yaw and always sets roll to zero. */
 void fn_1_76A4(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
     Mtx parentMatrix;
     Mtx attachmentMatrix;
-    HuVecF direction;
     s32 savedHookIndex[1];
     W05_BOARD_WORK *board;
 
@@ -2027,26 +1980,22 @@ void fn_1_76A4(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
         switch ((s32)*lbl_1_bss_4) {
         case 0:
             fn_80030644(mbObjModelIDGet(board->hookModels[1]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[1]),
-                              lbl_1_data_40[1][1], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[1]), lbl_1_data_40[1][1], parentMatrix);
             break;
         default:
             fn_80030644(mbObjModelIDGet(board->hookModels[1]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[1]),
-                              lbl_1_data_40[1][0], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[1]), lbl_1_data_40[1][0], parentMatrix);
             break;
         }
     } else {
         switch ((s32)*lbl_1_bss_4) {
         case 0:
             fn_80030644(mbObjModelIDGet(board->hookModels[0]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[0]),
-                              lbl_1_data_40[0][1], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[0]), lbl_1_data_40[0][1], parentMatrix);
             break;
         default:
             fn_80030644(mbObjModelIDGet(board->hookModels[0]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[0]),
-                              lbl_1_data_40[0][0], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[0]), lbl_1_data_40[0][0], parentMatrix);
             break;
         }
     }
@@ -2073,23 +2022,7 @@ void fn_1_76A4(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
         PSMTXConcat(parentMatrix, attachmentMatrix, attachmentMatrix);
         break;
     }
-    if (matrix != NULL) {
-        PSMTXCopy(attachmentMatrix, matrix);
-    }
-    if (position != NULL) {
-        position->x = attachmentMatrix[0][3];
-        position->y = attachmentMatrix[1][3];
-        position->z = attachmentMatrix[2][3];
-    }
-    if (rotation != NULL) {
-        attachmentMatrix[0][3] = attachmentMatrix[1][3] = attachmentMatrix[2][3] = 0.0f;
-        PSMTXMultVec(attachmentMatrix, &lbl_1_data_4EC, &direction);
-        rotation->x = 180.0 *
-            (atan2(-direction.y, sqrtf(direction.x * direction.x + direction.z * direction.z)) /
-             M_PI);
-        rotation->y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
-        rotation->z = 0.0f;
-    }
+    HookTransformGet(attachmentMatrix, &lbl_1_data_4EC, position, rotation, matrix);
 }
 
 HuVecF lbl_1_data_51C = {0.0f, 0.0f, 1.0f};
@@ -2101,7 +2034,6 @@ void fn_1_7AF8(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
     Mtx attachmentMatrix;
     Mtx baseMatrix;
     Mtx cannonMatrix;
-    HuVecF direction;
     s32 savedHookIndex[1];
     W05_BOARD_WORK *board;
 
@@ -2111,26 +2043,22 @@ void fn_1_7AF8(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
         switch ((s32)*lbl_1_bss_4) {
         case 0:
             fn_80030644(mbObjModelIDGet(board->hookModels[1]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[1]),
-                              lbl_1_data_40[1][0], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[1]), lbl_1_data_40[1][0], parentMatrix);
             break;
         default:
             fn_80030644(mbObjModelIDGet(board->hookModels[1]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[1]),
-                              lbl_1_data_40[1][1], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[1]), lbl_1_data_40[1][1], parentMatrix);
             break;
         }
     } else {
         switch ((s32)*lbl_1_bss_4) {
         case 0:
             fn_80030644(mbObjModelIDGet(board->hookModels[0]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[0]),
-                              lbl_1_data_40[0][0], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[0]), lbl_1_data_40[0][0], parentMatrix);
             break;
         default:
             fn_80030644(mbObjModelIDGet(board->hookModels[0]));
-            fn_80023398(mbObjModelIDGet(board->hookModels[0]),
-                              lbl_1_data_40[0][1], parentMatrix);
+            fn_80023398(mbObjModelIDGet(board->hookModels[0]), lbl_1_data_40[0][1], parentMatrix);
             break;
         }
     }
@@ -2180,23 +2108,7 @@ void fn_1_7AF8(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
         PSMTXConcat(cannonMatrix, attachmentMatrix, attachmentMatrix);
         break;
     }
-    if (matrix != NULL) {
-        PSMTXCopy(attachmentMatrix, matrix);
-    }
-    if (position != NULL) {
-        position->x = attachmentMatrix[0][3];
-        position->y = attachmentMatrix[1][3];
-        position->z = attachmentMatrix[2][3];
-    }
-    if (rotation != NULL) {
-        attachmentMatrix[0][3] = attachmentMatrix[1][3] = attachmentMatrix[2][3] = 0.0f;
-        PSMTXMultVec(attachmentMatrix, &lbl_1_data_51C, &direction);
-        rotation->x = 180.0 *
-            (atan2(-direction.y, sqrtf(direction.x * direction.x + direction.z * direction.z)) /
-             M_PI);
-        rotation->y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
-        rotation->z = 0.0f;
-    }
+    HookTransformGet(attachmentMatrix, &lbl_1_data_51C, position, rotation, matrix);
 }
 
 /* Records the player and state used by the first hook event's board update. */
@@ -2305,9 +2217,9 @@ void fn_1_814C(OMOBJ *object) {
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
-                (MBCapsuleEffRandF())),
-            10.0f * (-0.5f + (MBCapsuleEffRandF())),
-            0.5f + 0.3f * (MBCapsuleEffRandF()), color);
+                MBCapsuleEffRandF()),
+            10.0f * (-0.5f + MBCapsuleEffRandF()),
+            0.5f + 0.3f * MBCapsuleEffRandF(), color);
         if (progress >= 1.0f) {
             object->work[0]++;
             object->work[1] = 0;
@@ -2357,9 +2269,9 @@ void fn_1_8670(OMOBJ *object) {
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
-                (MBCapsuleEffRandF())),
-            10.0f * (-0.5f + (MBCapsuleEffRandF())),
-            0.5f + 0.3f * (MBCapsuleEffRandF()), color);
+                MBCapsuleEffRandF()),
+            10.0f * (-0.5f + MBCapsuleEffRandF()),
+            0.5f + 0.3f * MBCapsuleEffRandF(), color);
         if (progress >= 1.0f) {
             object->work[0]++;
             object->work[1] = 0;
@@ -2423,9 +2335,9 @@ void fn_1_8B58(OMOBJ *object) {
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
-                (MBCapsuleEffRandF())),
-            10.0f * (-0.5f + (MBCapsuleEffRandF())),
-            0.5f + 0.3f * (MBCapsuleEffRandF()), color);
+                MBCapsuleEffRandF()),
+            10.0f * (-0.5f + MBCapsuleEffRandF()),
+            0.5f + 0.3f * MBCapsuleEffRandF(), color);
         if (object->work[1] >= object->work[2]) {
             mbCameraShakeSet(75, 30.000002f);
             mbObjDispSet(modelId, FALSE);
@@ -2433,7 +2345,7 @@ void fn_1_8B58(OMOBJ *object) {
             mbObjMotionTimeSet(board->arrivalModel, 0.0f);
             mbObjMotionSpeedSet(board->arrivalModel, 1.0f);
             mbObjDispSet(board->arrivalModel, TRUE);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 eventChance = 0.15f;
             } else {
                 eventChance = 0.1f;
@@ -2477,7 +2389,7 @@ void fn_1_8FC0(s32 playerNo, s32 spaceId) {
     f32 scale;
 
     board = lbl_1_bss_8;
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         mbev_CapCallTeresa(playerNo, spaceId);
         return;
     }
@@ -2505,8 +2417,7 @@ sourceSpace = mbMasuAttrFindLink(linkedSpace, (1 << 13));
     mbObjMotionSet(booModel, 1, ((1 << 30) | (1 << 0)));
     mbObjPosSetV(booModel, &startPosition);
     PSVECSubtract(&endPosition, &startPosition, &direction);
-    mbObjRotSet(booModel, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-        0.0f);
+    mbObjRotSet(booModel, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
     mbObjScaleSet(booModel, 2.0f, 2.0f, 2.0f);
     mbObjLayerSet(booModel, 3);
     mbev_CapTeresaFadeCreate(booModel);
@@ -2515,8 +2426,7 @@ sourceSpace = mbMasuAttrFindLink(linkedSpace, (1 << 13));
     mbObjMotionSpeedSet(motionModel, 1.0f);
     fn_8006A030(playerNo, 20, 7, 3);
     PSVECSubtract(&endPosition, &startPosition, &direction);
-    mbPlayerRotateStart(playerNo, 180.0 + 180.0 * (atan2(direction.x,
-        direction.z) / M_PI), 15);
+    mbPlayerRotateStart(playerNo, 180.0 + 180.0 * (atan2(direction.x, direction.z) / M_PI), 15);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
@@ -2577,14 +2487,8 @@ void fn_1_9528(int playerNo, int currentSpace) {
     HuVecF rotation;
     HuVecF position;
     HuVecF cameraRotation;
-    HuVecF firstDeparture;
-    HuVecF secondDeparture;
-    HuVecF thirdDeparture;
     W05_BOARD_WORK *board;
     OMOBJ *raftObject;
-    OMOBJ *firstDepartureObject;
-    OMOBJ *secondDepartureObject;
-    OMOBJ *thirdDepartureObject;
     HuVecF *firstTarget;
     HuVecF *secondTarget;
     HuVecF *thirdTarget;
@@ -2639,8 +2543,7 @@ secondLinkedSpace = mbMasuAttrFindLink(firstLinkedSpace, (1 << 13));
     mbCameraPlayerViewSet(playerNo, 0);
     mbPlayerPosGet(playerNo, &playerPosition);
     PSVECSubtract(&linkedPosition, &playerPosition, &position);
-    mbPlayerRotateStart(playerNo, (s16)(180.0 * (atan2(position.x,
-        position.z) / M_PI)), 15);
+    mbPlayerRotateStart(playerNo, (s16)(180.0 * (atan2(position.x, position.z) / M_PI)), 15);
     HuPrcVSleep();
     mbCameraMoveWait();
     readId = mbBGRead(DATANUM(0x130000, 0));
@@ -2711,9 +2614,9 @@ secondLinkedSpace = mbMasuAttrFindLink(firstLinkedSpace, (1 << 13));
             if (lbl_80265750[playerNo].comF) {
                 estimatedCoins = mbPlayerCoinGet(playerNo) -
                     (f32)(lbl_80265750[playerNo].comDif * 10) *
-                    (MBCapsuleEffRandF());
+                    MBCapsuleEffRandF();
                 if ((f32)((3 - lbl_80265750[playerNo].comDif) * 10) <
-                    100.0f * (MBCapsuleEffRandF()) &&
+                    100.0f * MBCapsuleEffRandF() &&
                     *lbl_1_bss_4 != 0) {
                     estimatedCoins = 0;
                 }
@@ -2749,8 +2652,7 @@ secondLinkedSpace = mbMasuAttrFindLink(firstLinkedSpace, (1 << 13));
     }
     if (accepted == 0) {
         PSVECSubtract(&approachPosition, &linkedPosition, &position);
-        mbObjRotSet(modelId, 0.0f, 180.0 * (atan2(position.x, position.z) / M_PI),
-            0.0f);
+        mbObjRotSet(modelId, 0.0f, 180.0 * (atan2(position.x, position.z) / M_PI), 0.0f);
         mbObjMotionShiftSet(modelId, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         for (frame = 0; frame <= 30.0f; frame++) {
             progress = frame / 30.0f;
@@ -2760,8 +2662,7 @@ secondLinkedSpace = mbMasuAttrFindLink(firstLinkedSpace, (1 << 13));
             HuPrcVSleep();
         }
         PSVECSubtract(&launchPosition, &approachPosition, &position);
-        mbObjRotSet(modelId, 0.0f, 180.0 * (atan2(position.x, position.z) / M_PI),
-            0.0f);
+        mbObjRotSet(modelId, 0.0f, 180.0 * (atan2(position.x, position.z) / M_PI), 0.0f);
         mbObjMotionShiftSet(modelId, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         for (frame = 0; frame <= 15.0f; frame++) {
             progress = frame / 15.0f;
@@ -2843,65 +2744,17 @@ secondLinkedSpace = mbMasuAttrFindLink(firstLinkedSpace, (1 << 13));
             } else if (detour != 0) {
                 if (board->raftMotionProgress >= 0.46f && board->raftPreviousProgress < 0.46f) {
                     firstTarget = &lbl_1_data_5C8[(frand() & 0x7FFF) & 1];
-                    fn_1_7AF8(3, &firstDeparture, NULL, NULL);
-                    firstDepartureObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_8B58);
-                    firstDepartureObject->trans.x = firstDeparture.x;
-                    firstDepartureObject->trans.y = firstDeparture.y;
-                    firstDepartureObject->trans.z = firstDeparture.z;
-                    firstDepartureObject->rot.x =
-                        firstDeparture.x + (firstTarget->x - firstDeparture.x) / 2.0f;
-                    firstDepartureObject->rot.y = 1000.0f + firstTarget->y;
-                    firstDepartureObject->rot.z =
-                        firstDeparture.z + (firstTarget->z - firstDeparture.z) / 2.0f;
-                    firstDepartureObject->scale.x = firstTarget->x;
-                    firstDepartureObject->scale.y = firstTarget->y;
-                    firstDepartureObject->scale.z = firstTarget->z;
-                    firstDepartureObject->work[0] = 0;
-                    firstDepartureObject->work[1] = 0;
-                    firstDepartureObject->work[2] = 10;
-                    firstDepartureObject->work[3] = 0;
+                    fn_1_8A2C(firstTarget, 10);
                     mbAudFXPlay(MSM_SE_BRD05_RAFT_DEPART);
                 } else if (board->raftMotionProgress >= 0.51f &&
                            board->raftPreviousProgress < 0.51f) {
                     secondTarget = &lbl_1_data_5C8[(frand() & 0x7FFF) & 1] + 2;
-                    fn_1_7AF8(3, &secondDeparture, NULL, NULL);
-                    secondDepartureObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_8B58);
-                    secondDepartureObject->trans.x = secondDeparture.x;
-                    secondDepartureObject->trans.y = secondDeparture.y;
-                    secondDepartureObject->trans.z = secondDeparture.z;
-                    secondDepartureObject->rot.x =
-                        secondDeparture.x + (secondTarget->x - secondDeparture.x) / 2.0f;
-                    secondDepartureObject->rot.y = 1000.0f + secondTarget->y;
-                    secondDepartureObject->rot.z =
-                        secondDeparture.z + (secondTarget->z - secondDeparture.z) / 2.0f;
-                    secondDepartureObject->scale.x = secondTarget->x;
-                    secondDepartureObject->scale.y = secondTarget->y;
-                    secondDepartureObject->scale.z = secondTarget->z;
-                    secondDepartureObject->work[0] = 0;
-                    secondDepartureObject->work[1] = 0;
-                    secondDepartureObject->work[2] = 10;
-                    secondDepartureObject->work[3] = 0;
+                    fn_1_8A2C(secondTarget, 10);
                     mbAudFXPlay(MSM_SE_BRD05_RAFT_DEPART);
                 } else if (board->raftMotionProgress >= 0.57f &&
                            board->raftPreviousProgress < 0.57f) {
                     thirdTarget = &lbl_1_data_5C8[(frand() & 0x7FFF) & 1] + 4;
-                    fn_1_7AF8(3, &thirdDeparture, NULL, NULL);
-                    thirdDepartureObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_8B58);
-                    thirdDepartureObject->trans.x = thirdDeparture.x;
-                    thirdDepartureObject->trans.y = thirdDeparture.y;
-                    thirdDepartureObject->trans.z = thirdDeparture.z;
-                    thirdDepartureObject->rot.x =
-                        thirdDeparture.x + (thirdTarget->x - thirdDeparture.x) / 2.0f;
-                    thirdDepartureObject->rot.y = 1000.0f + thirdTarget->y;
-                    thirdDepartureObject->rot.z =
-                        thirdDeparture.z + (thirdTarget->z - thirdDeparture.z) / 2.0f;
-                    thirdDepartureObject->scale.x = thirdTarget->x;
-                    thirdDepartureObject->scale.y = thirdTarget->y;
-                    thirdDepartureObject->scale.z = thirdTarget->z;
-                    thirdDepartureObject->work[0] = 0;
-                    thirdDepartureObject->work[1] = 0;
-                    thirdDepartureObject->work[2] = 25;
-                    thirdDepartureObject->work[3] = 0;
+                    fn_1_8A2C(thirdTarget, 25);
                     mbAudFXPlay(MSM_SE_BRD05_RAFT_DEPART);
                 }
                 if (board->raftEventRequested != 0) {
@@ -2955,8 +2808,7 @@ secondLinkedSpace = mbMasuAttrFindLink(firstLinkedSpace, (1 << 13));
             PSMTXIdentity(playerMatrix);
             mbPlayerMtxSet(playerNo, &playerMatrix);
             mbPlayerPosGet(playerNo, &playerPosition);
-            mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(position.x,
-                position.z) / M_PI), 0.0f);
+            mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(position.x, position.z) / M_PI), 0.0f);
             lbl_80265750[playerNo].masuIdNext = destinationSpace;
             mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
             for (frame = 0; frame <= 30.0f; frame++) {
@@ -3013,29 +2865,12 @@ void fn_1_B078(HuVecF *position, HuVecF *rotation, Mtx matrix) {
     W05_BOARD_WORK *board;
     Mtx raftMatrix;
     Mtx playerMatrix;
-    HuVecF direction;
 
     board = lbl_1_bss_8;
     fn_80023398(mbObjModelIDGet(board->raftParentModel), "ikadahook", raftMatrix);
     fn_80023398(mbObjModelIDGet(board->raftModel), "playerhook", playerMatrix);
     PSMTXConcat(raftMatrix, playerMatrix, playerMatrix);
-    if (matrix != NULL) {
-        PSMTXCopy(playerMatrix, matrix);
-    }
-    if (position != NULL) {
-        position->x = playerMatrix[0][3];
-        position->y = playerMatrix[1][3];
-        position->z = playerMatrix[2][3];
-    }
-    if (rotation != NULL) {
-        playerMatrix[0][3] = playerMatrix[1][3] = playerMatrix[2][3] = 0.0f;
-        PSMTXMultVec(playerMatrix, &lbl_1_data_634, &direction);
-        rotation->x = 180.0 *
-            (atan2(-direction.y, sqrtf(direction.x * direction.x + direction.z * direction.z)) /
-             M_PI);
-        rotation->y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
-        rotation->z = 0.0f;
-    }
+    HookTransformGet(playerMatrix, &lbl_1_data_634, position, rotation, matrix);
 }
 
 /* Updates the raft motion and ride effects once per object-manager frame. */
@@ -3084,16 +2919,14 @@ void fn_1_B304(OMOBJ *object) {
             if (phase > 1.0f) {
                 phase = 1.0f;
             }
-            mbObjMotionSpeedSet(board->raftParentModel,
-                               1.0f + phase * board->raftMotionBoost);
+            mbObjMotionSpeedSet(board->raftParentModel, 1.0f + phase * board->raftMotionBoost);
         } else if (progress < 0.9f) {
             mbObjMotionSpeedSet(board->raftParentModel, 1.0f + board->raftMotionBoost);
         } else {
             phase = (progress - 0.9f) / 0.1f;
             mbObjMotionSpeedSet(board->raftParentModel,
                                1.0
-                                   + board->raftMotionBoost * cos(M_PI * (90.0f
-                                   * phase) / 180.0));
+                                   + board->raftMotionBoost * cos(M_PI * (90.0f * phase) / 180.0));
         }
         fn_1_B078(&position, &rotation, NULL);
         if (progress >= 0.0f && progress < 0.15f) {
@@ -3143,37 +2976,37 @@ void fn_1_BB68(s32 count, f32 strength, s32 bothSides) {
         position.x = 2.0f * (100.0f * (-0.5f +
             MBCapsuleEffRandF()));
         position.y = strength * (0.5f * (100.0f *
-            (MBCapsuleEffRandF())));
+            MBCapsuleEffRandF()));
         position.z = 100.0f * (1.5f + 0.5f *
-            (MBCapsuleEffRandF()));
+            MBCapsuleEffRandF());
         PSMTXMultVec(matrix, &position, &position);
         fn_1_19A90(&position, strength);
         if (bothSides != 0) {
             position.x = 2.0f * (100.0f * (-0.5f +
                 MBCapsuleEffRandF()));
             position.y = strength * (0.5f * (100.0f *
-                (MBCapsuleEffRandF())));
+                MBCapsuleEffRandF()));
             position.z = -(100.0f * (1.0f +
-                (MBCapsuleEffRandF())));
+                MBCapsuleEffRandF()));
             PSMTXMultVec(matrix, &position, &position);
             fn_1_19A90(&position, strength);
         }
     }
     for (particleIndex = 0; particleIndex < count; particleIndex++) {
         position.x = 100.0f * (1.0f + 0.5f *
-            (MBCapsuleEffRandF()));
+            MBCapsuleEffRandF());
         position.y = strength * (0.5f * (100.0f *
-            (MBCapsuleEffRandF())));
+            MBCapsuleEffRandF()));
         position.z = 2.5f * (100.0f * (-0.5f +
-            (MBCapsuleEffRandF())));
+            MBCapsuleEffRandF()));
         PSMTXMultVec(matrix, &position, &position);
         fn_1_19A90(&position, strength);
         position.x = -(100.0f * (1.0f + 0.5f *
-            (MBCapsuleEffRandF())));
+            MBCapsuleEffRandF()));
         position.y = strength * (0.5f * (100.0f *
-            (MBCapsuleEffRandF())));
+            MBCapsuleEffRandF()));
         position.z = 2.0f * (100.0f * (-0.5f +
-            (MBCapsuleEffRandF())));
+            MBCapsuleEffRandF()));
         PSMTXMultVec(matrix, &position, &position);
         fn_1_19A90(&position, strength);
     }
@@ -3272,8 +3105,7 @@ void fn_1_C398(s32 playerNo) {
             for (frame = 1; frame <= 60.0f; frame++) {
                 progress = (f32)frame / 60.0f;
                 mbObjRotSet(characterModel, 0.0f,
-                    mbev_CapAngleSumLerp(progress, modelRotation.y,
-                                        lbl_1_data_698[phase]), 0.0f);
+                    mbev_CapAngleSumLerp(progress, modelRotation.y, lbl_1_data_698[phase]), 0.0f);
                 HuPrcVSleep();
             }
             mbObjMotionShiftSet(characterModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
@@ -3410,9 +3242,9 @@ void fn_1_CE08(s32 playerNo, u32 spaceAttribute, s32 duration) {
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
-                (MBCapsuleEffRandF())),
-            10.0f * (-0.5f + (MBCapsuleEffRandF())),
-            0.5f + 0.3f * (MBCapsuleEffRandF()), color);
+                MBCapsuleEffRandF()),
+            10.0f * (-0.5f + MBCapsuleEffRandF()),
+            0.5f + 0.3f * MBCapsuleEffRandF(), color);
         HuPrcVSleep();
     }
     lbl_80265750[playerNo].masuId = destinationSpace;
@@ -3423,8 +3255,7 @@ void fn_1_CE08(s32 playerNo, u32 spaceAttribute, s32 duration) {
     mbObjMotionSpeedSet(board->raftModel, 0.0f);
     mbObjMotionTimeSet(board->raftModel, 0.0f);
     mbObjMotionSpeedSet(board->raftParentModel, 0.0f);
-    mbObjMotionTimeSet(board->raftParentModel,
-                      mbObjMotionMaxTimeGet(board->raftParentModel));
+    mbObjMotionTimeSet(board->raftParentModel, mbObjMotionMaxTimeGet(board->raftParentModel));
     HuPrcSleep(90);
 }
 
@@ -3490,10 +3321,10 @@ void fn_1_D390(s32 playerNo, s32 spaceId, s32 motionNo, s32 soundId, HuVecF *off
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
-                (MBCapsuleEffRandF())),
+                MBCapsuleEffRandF()),
             10.0f * (-0.5f +
-                (MBCapsuleEffRandF())),
-            0.5f + 0.3f * (MBCapsuleEffRandF()), color);
+                MBCapsuleEffRandF()),
+            0.5f + 0.3f * MBCapsuleEffRandF(), color);
         if (progress >= 0.5f && position.y <= startPosition.y) {
             for (particleIndex = 0; particleIndex < 6; particleIndex++) {
                 effectPosition.x = startPosition.x + 2.0f * (100.0f * (-0.5f +
@@ -3502,8 +3333,7 @@ void fn_1_D390(s32 playerNo, s32 spaceId, s32 motionNo, s32 soundId, HuVecF *off
                     MBCapsuleEffRandF())) - 100.0f;
                 effectPosition.z = startPosition.z + 2.0f * (100.0f * (-0.5f +
                     MBCapsuleEffRandF()));
-                fn_1_19A90(&effectPosition,
-                    1.0f + MBCapsuleEffRandF());
+                fn_1_19A90(&effectPosition, 1.0f + MBCapsuleEffRandF());
             }
         }
         HuPrcVSleep();
@@ -3536,8 +3366,7 @@ void fn_1_D390(s32 playerNo, s32 spaceId, s32 motionNo, s32 soundId, HuVecF *off
                 MBCapsuleEffRandF());
             effectPosition.z = attachmentPosition.z + 2.0f * (100.0f * (-0.5f +
                 MBCapsuleEffRandF()));
-            fn_1_19A90(&effectPosition,
-                0.5f + MBCapsuleEffRandF());
+            fn_1_19A90(&effectPosition, 0.5f + MBCapsuleEffRandF());
         }
         HuPrcVSleep();
     }
@@ -3563,8 +3392,7 @@ void fn_1_D390(s32 playerNo, s32 spaceId, s32 motionNo, s32 soundId, HuVecF *off
 /* Searches nine player offsets, optionally skipping zero, excluding occupied slots and positions
  * within 75 units of another player on this space. Assumes a slot qualifies: otherwise returns 9
  * and reads past the offset table. */
-s32 fn_1_DFB0(s32 playerNo, s32 spaceId, s32 *occupiedSlots, HuVecF *position,
-              s32 skipFirst) {
+s32 fn_1_DFB0(s32 playerNo, s32 spaceId, s32 *occupiedSlots, HuVecF *position, s32 skipFirst) {
     HuVecF playerPosition;
     HuVecF offsetPosition;
     HuVecF spacePosition;
@@ -3683,8 +3511,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
     board->effectBackward.x += 600.0 * sin(M_PI * (90.0f + startAngle) / 180.0);
     board->effectBackward.z += 600.0 * cos(M_PI * (90.0f + startAngle) / 180.0);
     board->effectBackwardAngle = 90.0f + board->playerFacingAngle;
-    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-        15);
+    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI), 15);
     if ((readId = mbBGRead(DATANUM(0x100000, 0))) != -1) {
         mbBGReadWait(readId);
     }
@@ -3721,8 +3548,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
     for (frame = 0; frame <= 6.0f; frame++) {
         phase = frame / 6.0f;
         mbObjRotSet(modelId, 0.0f,
-            mbev_CapAngleSumLerp(sin(M_PI * (90.0f * phase) / 180.0),
-                startAngle, endAngle), 0.0f);
+            mbev_CapAngleSumLerp(sin(M_PI * (90.0f * phase) / 180.0), startAngle, endAngle), 0.0f);
         HuPrcVSleep();
     }
     mbWipeSpecialFadeInCreate(1, 1);
@@ -3783,8 +3609,8 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
         for (frame = 0; frame <= 6.0f; frame++) {
             phase = frame / 6.0f;
             mbObjRotSet(modelId, 0.0f,
-                mbev_CapAngleSumLerp(sin(M_PI * (90.0f * phase) / 180.0),
-                    startAngle, endAngle), 0.0f);
+                mbev_CapAngleSumLerp(sin(M_PI * (90.0f * phase) / 180.0), startAngle, endAngle),
+                    0.0f);
             HuPrcVSleep();
         }
         mbev_CapStatusDispSetAll(FALSE, FALSE);
@@ -3801,8 +3627,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
         mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbCameraMoveWait();
         PSVECSubtract(&spacePosition, &linkedPosition, &direction);
-        mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-            15);
+        mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI), 15);
         mbAudFXPlay(MSM_SE_GUIDE_COIN_COLLECTOR_TALK);
         mbWinCreate(2, MESSNUM(MESS_BOARD_W05, 25), 16);
         mbWinTopWait();
@@ -3841,8 +3666,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
             mbPlayerMoveExec(playerNo, NULL, &source, phase, NULL, TRUE);
         }
         PSVECSubtract(&spacePosition, &linkedPosition, &direction);
-        mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-            15);
+        mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI), 15);
         while (mbPlayerRotateCheck(playerNo) == 0) {
             HuPrcVSleep();
         }
@@ -3898,11 +3722,11 @@ void fn_1_F5C4(s32 playerNo) {
     motion->rotation.x = motion->rotation.y = motion->rotation.z = 0.0f;
     motion->comJumpWait = 120.0f +
         (45.0f * (f32)lbl_80265750[playerNo].comDif +
-         45.0f * (MBCapsuleEffRandF()));
+         45.0f * MBCapsuleEffRandF());
     motion->comJumpHold = 20 - lbl_80265750[playerNo].comDif * 4;
     motion->comMoveDirection = 0;
     motion->comMoveWait = 30.0f * (f32)lbl_80265750[playerNo].comDif +
-        60.0f * (MBCapsuleEffRandF());
+        60.0f * MBCapsuleEffRandF();
     motion->comMoveFrames = 20 - lbl_80265750[playerNo].comDif * 4;
 }
 
@@ -4171,7 +3995,7 @@ void fn_1_1024C(void) {
                 }
             } else if (player->state == 0 || player->state == 1) {
                 if (candidateCount > 5 &&
-                    100.0f * (MBCapsuleEffRandF()) >
+                    100.0f * MBCapsuleEffRandF() >
                     (f32)(difficulty * 30)) {
 player->buttonsDown = PAD_BUTTON_A;
                 }
@@ -4185,7 +4009,7 @@ player->buttonsDown = PAD_BUTTON_A;
 player->buttons = PAD_BUTTON_A;
                 if (--player->comJumpHold <= 0) {
                     player->comJumpWait = 45.0f * lbl_80265750[playerNo].comDif +
-                        45.0f * (MBCapsuleEffRandF());
+                        45.0f * MBCapsuleEffRandF();
                     player->comJumpHold = 20 - lbl_80265750[playerNo].comDif * 4;
                 }
             }
@@ -4216,7 +4040,7 @@ void fn_1_10A18(s32 modelId) {
     motion->targetPoint = 0;
     motion->angle = motion->secondAngle = 0.0f;
     motion->delayTimer =
-        60.0f * (3.0f + 2.0f * (MBCapsuleEffRandF()));
+        60.0f * (3.0f + 2.0f * MBCapsuleEffRandF());
     mbObjPosGet(modelId, &motion->position);
     motion->displacement.x = motion->displacement.y = motion->displacement.z = 0.0f;
     mbObjRotGet(modelId, &motion->rotation);
@@ -4329,8 +4153,8 @@ s32 fn_1_10B90(s32 remainingFrames) {
             launchDirection = lbl_1_data_728[motion->currentPoint][0] +
                               (lbl_1_data_728[motion->currentPoint][1] -
                                lbl_1_data_728[motion->currentPoint][0]) *
-                                  (MBCapsuleEffRandF());
-            if (lbl_80265B70.curTime == 0) {
+                                  MBCapsuleEffRandF();
+            if (MBTimeDayGet()) {
                 if ((frand() & 7) == 0) {
                     fn_1_122DC(1, &position, launchDirection, progress);
                 } else {
@@ -4339,7 +4163,7 @@ s32 fn_1_10B90(s32 remainingFrames) {
             } else if (motion->delayTimer <= 0) {
                 fn_1_122DC(2, &position, launchDirection, progress);
                 motion->delayTimer = 60.0f * (3.0f + 2.0f *
-                    (MBCapsuleEffRandF()));
+                    MBCapsuleEffRandF());
             } else if ((frand() & 3) == 0) {
                 fn_1_122DC(1, &position, launchDirection, progress);
             } else {
@@ -4349,7 +4173,7 @@ s32 fn_1_10B90(s32 remainingFrames) {
         if (progress >= 1.0f || (f32)remainingFrames < 30.0f) {
             motion->elapsed = 0;
             motion->delay = 60.0f * (0.1f + 0.1f *
-                (MBCapsuleEffRandF()));
+                MBCapsuleEffRandF());
             motion->state = 0;
             mbObjMotionShiftSet(motion->modelId, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         }
@@ -4437,9 +4261,9 @@ s32 fn_1_115CC(s32 remainingFrames) {
                     color.a = 255;
                     fn_1_1DCE4(particlePosition, particleVelocity,
                         100.0f * (0.5f + 0.3f *
-                            (MBCapsuleEffRandF())),
+                            MBCapsuleEffRandF()),
                         60.0f * (0.5f + 0.25f *
-                            (MBCapsuleEffRandF())),
+                            MBCapsuleEffRandF()),
                         0.0f, 0.0f, color);
                     break;
                 }
@@ -4471,11 +4295,11 @@ s32 fn_1_115CC(s32 remainingFrames) {
                 switch (model->type) {
                 case 0:
                     model->spinAngles.y += 4.0f + 2.5f *
-                        (MBCapsuleEffRandF());
+                        MBCapsuleEffRandF();
                     break;
                 case 1:
                     model->spinAngles.x += 4.0f + 2.5f *
-                        (MBCapsuleEffRandF());
+                        MBCapsuleEffRandF();
                     break;
                 case 2:
                     particlePosition.x = model->position.x + 100.0f * (-0.5f +
@@ -4491,9 +4315,9 @@ s32 fn_1_115CC(s32 remainingFrames) {
                     color.a = 255;
                     fn_1_1DCE4(particlePosition, particleVelocity,
                         100.0f * (0.5f + 0.3f *
-                            (MBCapsuleEffRandF())),
+                            MBCapsuleEffRandF()),
                         60.0f * (0.5f + 0.25f *
-                            (MBCapsuleEffRandF())),
+                            MBCapsuleEffRandF()),
                         0.0f, 0.0f, color);
                     break;
                 }
@@ -4505,13 +4329,13 @@ s32 fn_1_115CC(s32 remainingFrames) {
                     /* Ground contact prepares a bounce and selects state 3, but immediately removes
                      * the model, so the bounce never advances. */
                     bounceSpeed = 100.0f * (0.1f + 0.05f *
-                        (MBCapsuleEffRandF()));
+                        MBCapsuleEffRandF());
                     bounceAngle = 360.0f *
-                        (MBCapsuleEffRandF());
+                        MBCapsuleEffRandF();
                     model->fallVelocity.x = bounceSpeed * sin(M_PI * bounceAngle / 180.0);
                     model->fallVelocity.z = bounceSpeed * cos(M_PI * bounceAngle / 180.0);
                     model->fallVelocity.y = 100.0f * (0.2f + 0.1f *
-                        (MBCapsuleEffRandF()));
+                        MBCapsuleEffRandF());
                     model->elapsed = 0;
                     model->duration = 18;
                     model->state = 3;
@@ -4600,7 +4424,7 @@ void fn_1_122DC(s32 type, HuVecF *position, f32 direction, f32 strength) {
             resolved = dataNum;
         } else {
             dataNum = FILENUM(dataNum);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 dataNum |= 0xdf0000;
             } else {
                 dataNum |= 0xe00000;
@@ -4613,7 +4437,7 @@ void fn_1_122DC(s32 type, HuVecF *position, f32 direction, f32 strength) {
         model->state = 0;
         model->type = type;
         model->elapsed = 0;
-        model->duration = 60.0 * (0.8 + 0.2f * (MBCapsuleEffRandF()));
+        model->duration = 60.0 * (0.8 + 0.2f * MBCapsuleEffRandF());
         model->delay = 30.0f * strength;
         model->blinkDelay = 0;
         model->gravity = 0.98f;
@@ -4622,12 +4446,12 @@ void fn_1_122DC(s32 type, HuVecF *position, f32 direction, f32 strength) {
         model->spinAngles.x = model->spinAngles.y = model->spinAngles.z = 0.0f;
         switch (model->type) {
         case 0:
-            model->spinAngles.y = 360.0f * (MBCapsuleEffRandF());
+            model->spinAngles.y = 360.0f * MBCapsuleEffRandF();
             break;
         case 1:
-            model->spinAngles.x = 360.0f * (MBCapsuleEffRandF());
-            model->spinAngles.y = 360.0f * (MBCapsuleEffRandF());
-            model->spinAngles.z = 360.0f * (MBCapsuleEffRandF());
+            model->spinAngles.x = 360.0f * MBCapsuleEffRandF();
+            model->spinAngles.y = 360.0f * MBCapsuleEffRandF();
+            model->spinAngles.z = 360.0f * MBCapsuleEffRandF();
             break;
         }
         magnitude = fabs(direction);
@@ -4694,20 +4518,20 @@ s32 fn_1_12720(s32 modelIndex) {
         if (magnitude < 100.0f && modelPosition.y < 200.0f + playerPosition.y &&
             modelPosition.y > playerPosition.y - 30.000002f) {
             magnitude = 100.0f * (0.1f + 0.05f *
-                (MBCapsuleEffRandF()));
-            angle = 360.0f * (MBCapsuleEffRandF());
+                MBCapsuleEffRandF());
+            angle = 360.0f * MBCapsuleEffRandF();
             model->fallVelocity.x = magnitude * sin(M_PI * angle / 180.0);
             model->fallVelocity.z = magnitude * cos(M_PI * angle / 180.0);
             model->fallVelocity.y = 100.0f * (0.2f + 0.1f *
-                (MBCapsuleEffRandF()));
+                MBCapsuleEffRandF());
             model->elapsed = 0;
             model->duration = 30;
             model->state = 3;
             model->blinkDelay = 18;
             burstRotation.x = 90.0f * (-0.5f +
-                (MBCapsuleEffRandF()));
+                MBCapsuleEffRandF());
             burstRotation.y = 360.0f * (-0.5f +
-                (MBCapsuleEffRandF()));
+                MBCapsuleEffRandF());
             burstRotation.z = 0.0f;
             fn_1_1DF14(&modelPosition, &burstRotation);
             fn_8006A030(player->playerNo, 20, 7, 3);
@@ -4768,8 +4592,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
     cameraRotation.z = 0.0f;
     mbCameraMoveObj(cameraModel, & cameraRotation, & cameraOffset, 1750.0f, - 1.09f, - 1);
     PSVECSubtract(& destinationPosition, & playerPosition, & direction);
-    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-        0.0f);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
     for (index = 0; index < 4; index++)
     {
         if (index != playerNo)
@@ -4822,8 +4645,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
         for (index = 1; (f32) index <= 102.0f; index++)
         {
             rotationWeight = (f32) index / 102.0f;
-            rotationWeight = sin(M_PI * (90.0f * (rotationWeight
-                * rotationWeight)) / 180.0);
+            rotationWeight = sin(M_PI * (90.0f * (rotationWeight * rotationWeight)) / 180.0);
             mbObjRotSet(characterModels[0], characterRotations[0].x,
                         characterRotations[0].y + 360.0f * rotationWeight, characterRotations[0].z);
             mbObjRotSet(characterModels[1], characterRotations[1].x,
@@ -5036,8 +4858,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
     cameraRotation.z = 0.0f;
     mbCameraMoveObj(cameraModel, &cameraRotation, &cameraOffset, 1750.0f, -1.09f, -1);
     PSVECSubtract(&destinationPosition, &playerPosition, &direction);
-    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-        0.0f);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
     for (index = 0; index < 4; index++) {
         if (index != playerNo) {
             mbPlayerDispSet(index, FALSE);
@@ -5172,8 +4993,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
     for (index = 1; index <= 120.0f; index++) {
         progress = index / 120.0f;
         cameraOffset = playerPosition;
-        cameraOffset.y += 8.0 * (100.0 * cos(M_PI *
-            (90.0f * (1.0f - progress)) / 180.0));
+        cameraOffset.y += 8.0 * (100.0 * cos(M_PI * (90.0f * (1.0f - progress)) / 180.0));
         mbPlayerPosSetV(playerNo, &cameraOffset);
         PSVECAdd(&cameraOffset, &lbl_1_data_788[lbl_80265750[playerNo].charNo], &liftPosition);
         mbObjPosSetV(liftModel, &liftPosition);
@@ -5238,8 +5058,7 @@ linkedSpace = mbMasuAttrFindLink(spaceId, (1 << 13));
         for (index = 1; index <= 120.0f; index++) {
             progress = index / 120.0f;
             cameraOffset = playerPosition;
-            cameraOffset.y += 8.0 * (100.0 * cos(M_PI *
-                (90.0f * (1.0f - progress)) / 180.0));
+            cameraOffset.y += 8.0 * (100.0 * cos(M_PI * (90.0f * (1.0f - progress)) / 180.0));
             /* The departing lift keeps using the initiating player's character offset. */
             PSVECAdd(&cameraOffset, &lbl_1_data_788[lbl_80265750[playerNo].charNo], &liftPosition);
             mbObjPosSetV(liftModel, &liftPosition);
@@ -5345,7 +5164,7 @@ void fn_1_15558(OMOBJ *object) {
         break;
     case 1:
         if ((board->rockingElapsed = (s32)((f32)board->rockingElapsed +
-            (2.0f + 2.0f * (MBCapsuleEffRandF())))) > 360) {
+            (2.0f + 2.0f * MBCapsuleEffRandF()))) > 360) {
             board->rockingElapsed -= 360;
         }
         mbObjPosSet(board->rockingModel, lbl_1_data_0.x,
@@ -5412,7 +5231,7 @@ void fn_1_15C98(void) {
             resolved = dataNum;
         } else {
             dataNum = FILENUM(dataNum);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 dataNum |= 0xdf0000;
             } else {
                 dataNum |= 0xe00000;
@@ -5441,7 +5260,7 @@ void fn_1_15C98(void) {
             resolved = dataNum;
         } else {
             dataNum = FILENUM(dataNum);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 dataNum |= 0xdf0000;
             } else {
                 dataNum |= 0xe00000;
@@ -5474,7 +5293,7 @@ linkedSpace = mbMasuAttrFindLink(selectedSpace, (1 << 13));
                     resolved = dataNum;
                 } else {
                     dataNum = FILENUM(dataNum);
-                    if (lbl_80265B70.curTime == 0) {
+                    if (MBTimeDayGet()) {
                         dataNum |= 0xdf0000;
                     } else {
                         dataNum |= 0xe00000;
@@ -5497,7 +5316,7 @@ linkedSpace = mbMasuAttrFindLink(selectedSpace, (1 << 13));
                     resolved = dataNum;
                 } else {
                     dataNum = FILENUM(dataNum);
-                    if (lbl_80265B70.curTime == 0) {
+                    if (MBTimeDayGet()) {
                         dataNum |= 0xdf0000;
                     } else {
                         dataNum |= 0xe00000;
@@ -5507,8 +5326,7 @@ linkedSpace = mbMasuAttrFindLink(selectedSpace, (1 << 13));
                 modelId = mbObjCreate(resolved, NULL, TRUE);
             }
             board->linkedPunchModels[hookIndex] = modelId;
-            mbObjRotSet(modelId, 0.0f,
-                        180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+            mbObjRotSet(modelId, 0.0f, 180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
             mbObjMotionSpeedSet(modelId, 0.0f);
             mbObjHookSet(board->linkedHookModels[hookIndex], "ukiwahook", board->eventModel);
             mbObjHookSet(board->linkedHookModels[hookIndex], "lamphook", board->eventLampModel);
@@ -5580,8 +5398,7 @@ linkedSpace = mbMasuAttrFindLink(startSpace, (1 << 13));
     PSVECScale(&position, &position, lbl_1_data_850[lbl_80265750[playerNo].charNo][0]);
     PSVECAdd(&linkedPosition, &position, &landingPosition);
     landingPosition.y += lbl_1_data_850[lbl_80265750[playerNo].charNo][1];
-    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI),
-        15);
+    mbPlayerRotateStart(playerNo, 180.0 * (atan2(direction.x, direction.z) / M_PI), 15);
     while (mbPlayerRotateCheck(playerNo) == 0) {
         HuPrcVSleep();
     }
@@ -5707,7 +5524,7 @@ void fn_1_1698C(void) {
     f32 depthWeight;
 
     board = lbl_1_bss_8;
-    board->modelId = modelId = mbObjCreate(W05SurfaceDataNumGet(DATANUM(0xdf0000, 4)), NULL, FALSE);
+    board->modelId = modelId = mbObjCreate(W05BoardDataNumGet(DATANUM(0xdf0000, 4)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     sourceModel = mbObjModelIDGet(modelId);
     model = &lbl_802C01C8[sourceModel];
@@ -5763,15 +5580,15 @@ void fn_1_1698C(void) {
     memset(surfaceVertex, 0, vertexCount * 48);
     board->warpDisabled = 0;
     board->animation =
-        HuSprAnimRead(fn_80008634(W05SurfaceDataNumGet(DATANUM(0xdf0000, 44)), 0x10000000));
+        HuSprAnimRead(fn_80008634(W05BoardDataNumGet(DATANUM(0xdf0000, 44)), 0x10000000));
     board->warpAnimation =
-        HuSprAnimRead(fn_80008634(W05SurfaceDataNumGet(DATANUM(0xdf0000, 45)), 0x10000000));
+        HuSprAnimRead(fn_80008634(W05BoardDataNumGet(DATANUM(0xdf0000, 45)), 0x10000000));
     vertex = vertices->data;
     for (faceBufferIndex = 0; faceBufferIndex < vertexCount;
          faceBufferIndex++, surfaceVertex++, vertex++) {
-        surfaceVertex->phase.x = 360.0f * (MBCapsuleEffRandF());
-        surfaceVertex->phase.y = 360.0f * (MBCapsuleEffRandF());
-        surfaceVertex->phase.z = 360.0f * (MBCapsuleEffRandF());
+        surfaceVertex->phase.x = 360.0f * MBCapsuleEffRandF();
+        surfaceVertex->phase.y = 360.0f * MBCapsuleEffRandF();
+        surfaceVertex->phase.z = 360.0f * MBCapsuleEffRandF();
         if (vertex->z > -1000.0f) {
             depthWeight = 1.0f;
         } else if (vertex->z < -2000.0f) {
@@ -5780,14 +5597,14 @@ void fn_1_1698C(void) {
             depthWeight = (2000.0f + vertex->z) / 1000.0f;
         }
         surfaceVertex->amplitude.x =
-            0.3f * (100.0f * (MBCapsuleEffRandF()));
+            0.3f * (100.0f * MBCapsuleEffRandF());
         surfaceVertex->amplitude.y =
-            depthWeight * (0.6f * (100.0f * (MBCapsuleEffRandF())));
+            depthWeight * (0.6f * (100.0f * MBCapsuleEffRandF()));
         surfaceVertex->amplitude.z =
-            0.3f * (100.0f * (MBCapsuleEffRandF()));
-        surfaceVertex->phaseStep.x = 0.5f + (MBCapsuleEffRandF());
-        surfaceVertex->phaseStep.y = 0.5f + (MBCapsuleEffRandF());
-        surfaceVertex->phaseStep.z = 0.5f + (MBCapsuleEffRandF());
+            0.3f * (100.0f * MBCapsuleEffRandF());
+        surfaceVertex->phaseStep.x = 0.5f + MBCapsuleEffRandF();
+        surfaceVertex->phaseStep.y = 0.5f + MBCapsuleEffRandF();
+        surfaceVertex->phaseStep.z = 0.5f + MBCapsuleEffRandF();
         surfaceVertex->position.x = vertex->x;
         surfaceVertex->position.y = vertex->y;
         surfaceVertex->position.z = vertex->z;
@@ -5911,11 +5728,9 @@ void fn_1_1761C(HU3D_MODEL *hookModel, Mtx *matrix) {
     } else {
         GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
     }
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    GX_TRUE, GX_TEVPREV);
+    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
     GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_KONST, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    GX_TRUE, GX_TEVPREV);
+    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
     HuSprTexLoad(board->animation, 0, GX_TEXMAP0, GX_MIRROR, GX_MIRROR, GX_LINEAR);
     if (board->warpDisabled == 0) {
         GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX1, GX_IDENTITY,
@@ -6044,9 +5859,9 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
         if (++board->seaFlowTimer >= board->seaFlowDuration) {
             board->seaFlowTimer = 0;
             board->seaFlowDuration =
-                60.0f * (10.0f + 10.0f * (MBCapsuleEffRandF()));
+                60.0f * (10.0f + 10.0f * MBCapsuleEffRandF());
             board->seaFlowAmplitude =
-                20.0f + 20.0f * (MBCapsuleEffRandF());
+                20.0f + 20.0f * MBCapsuleEffRandF();
             board->seaFlowSpeedS = 0.002f;
             board->seaFlowSpeedT = 0.002f;
         }
@@ -6070,7 +5885,9 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
     if (board->firstHookMoving == 0 && board->particlesEnabled != 0) {
         for (i = 0; i < 5; i++) {
             angle = 230.0f * (-0.5f + MBCapsuleEffRandF());
-            W05_EFFECT_RAND_NEXT();
+            if (++mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
             firstAmbientSample = mbCapEffData[mbCapEffNum];
             firstAmbientNoise = 3.051851e-05f * firstAmbientSample;
             firstAmbientOffset = firstAmbientNoise - 0.5f;
@@ -6078,12 +5895,13 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
             position.x = lbl_1_data_8E4.x + distance * BoardSinDeg(angle);
             position.y = lbl_1_data_8E4.y;
             position.z = lbl_1_data_8E4.z + distance * BoardCosDeg(angle);
-            fn_1_19A90(&position,
-                       1.3f + 0.2f * (-0.5f + MBCapsuleEffRandF()));
+            fn_1_19A90(&position, 1.3f + 0.2f * (-0.5f + MBCapsuleEffRandF()));
         }
         for (i = 0; i < 3; i++) {
             angle = -150.0f;
-            W05_EFFECT_RAND_NEXT();
+            if (++mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
             secondAmbientSample = mbCapEffData[mbCapEffNum];
             secondAmbientNoise = 3.051851e-05f * secondAmbientSample;
             secondAmbientOffset = secondAmbientNoise - 0.5f;
@@ -6091,12 +5909,13 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
             position.x = lbl_1_data_8F0.x + distance * BoardSinDeg(angle);
             position.y = lbl_1_data_8F0.y;
             position.z = lbl_1_data_8F0.z + distance * BoardCosDeg(angle);
-            fn_1_19A90(&position,
-                       1.0f + 0.3f * (-0.5f + MBCapsuleEffRandF()));
+            fn_1_19A90(&position, 1.0f + 0.3f * (-0.5f + MBCapsuleEffRandF()));
         }
         for (i = 0; i < 3; i++) {
             angle = 160.0f;
-            W05_EFFECT_RAND_NEXT();
+            if (++mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
             thirdAmbientSample = mbCapEffData[mbCapEffNum];
             thirdAmbientNoise = 3.051851e-05f * thirdAmbientSample;
             thirdAmbientOffset = thirdAmbientNoise - 0.5f;
@@ -6104,14 +5923,15 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
             position.x = lbl_1_data_8FC.x + distance * BoardSinDeg(angle);
             position.y = lbl_1_data_8FC.y;
             position.z = lbl_1_data_8FC.z + distance * BoardCosDeg(angle);
-            fn_1_19A90(&position,
-                       1.0f + 0.3f * (-0.5f + MBCapsuleEffRandF()));
+            fn_1_19A90(&position, 1.0f + 0.3f * (-0.5f + MBCapsuleEffRandF()));
         }
     }
     if ((board->hookSide != 0 || board->firstHookMoving == 0) && board->particlesEnabled != 0) {
         for (i = 0; i < 5; i++) {
             angle = 165.0f;
-            W05_EFFECT_RAND_NEXT();
+            if (++mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
             fourthAmbientSample = mbCapEffData[mbCapEffNum];
             fourthAmbientNoise = 3.051851e-05f * fourthAmbientSample;
             fourthAmbientOffset = fourthAmbientNoise - 0.5f;
@@ -6119,16 +5939,14 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
             position.x = lbl_1_data_908.x + distance * BoardSinDeg(angle);
             position.y = lbl_1_data_908.y;
             position.z = lbl_1_data_908.z + distance * BoardCosDeg(angle);
-            fn_1_19A90(&position,
-                       1.3f + 0.2f * (-0.5f + MBCapsuleEffRandF()));
+            fn_1_19A90(&position, 1.3f + 0.2f * (-0.5f + MBCapsuleEffRandF()));
         }
         angle = 165.0f;
         distance = -225.0f;
         position.x = lbl_1_data_908.x + distance * BoardSinDeg(angle);
         position.y = lbl_1_data_908.y;
         position.z = lbl_1_data_908.z + distance * BoardCosDeg(angle);
-        fn_1_19A90(&position,
-                   1.3f + 0.2f * (-0.5f + MBCapsuleEffRandF()));
+        fn_1_19A90(&position, 1.3f + 0.2f * (-0.5f + MBCapsuleEffRandF()));
     }
     if (board->particlesEnabled != 0) {
         fn_1_1E3C0(12);
@@ -6162,7 +5980,7 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
             position.y += 100.0f;
             fn_1_1F9B0(position, 12);
             board->splashTimer =
-                18.0f * (1.0f + 0.1f * (MBCapsuleEffRandF()));
+                18.0f * (1.0f + 0.1f * MBCapsuleEffRandF());
         }
     }
     if (board->firstHookMoving != 0) {
@@ -6179,19 +5997,25 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
                 0.0f,
                 (firstHookRollPhase = board->firstHookSway[2], BoardSinDeg(firstHookRollPhase)) +
                     10.0f * BoardSinDeg(360.0f * distance));
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     firstHookPitchSample = mbCapEffData[mbCapEffNum];
     firstHookPitchNoise = 3.051851e-05f * firstHookPitchSample;
     if ((board->firstHookSway[0] += 3.0f * firstHookPitchNoise) >= 360.0f) {
         board->firstHookSway[0] -= 360.0f;
     }
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     firstHookHeightSample = mbCapEffData[mbCapEffNum];
     firstHookHeightNoise = 3.051851e-05f * firstHookHeightSample;
     if ((board->firstHookSway[1] += 3.0f * firstHookHeightNoise) >= 360.0f) {
         board->firstHookSway[1] -= 360.0f;
     }
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     firstHookRollSample = mbCapEffData[mbCapEffNum];
     firstHookRollNoise = 3.051851e-05f * firstHookRollSample;
     if ((board->firstHookSway[2] += 3.0f * firstHookRollNoise) >= 360.0f) {
@@ -6213,19 +6037,25 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
         5.0f * BoardSinDeg(360.0f * factorZ) +
             ((secondHookRollPhase = board->secondHookSway[2], BoardSinDeg(secondHookRollPhase)) +
              10.0f * BoardSinDeg(360.0f * distance)));
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     secondHookPitchSample = mbCapEffData[mbCapEffNum];
     secondHookPitchNoise = 3.051851e-05f * secondHookPitchSample;
     if ((board->secondHookSway[0] += 3.0f * secondHookPitchNoise) >= 360.0f) {
         board->secondHookSway[0] -= 360.0f;
     }
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     secondHookHeightSample = mbCapEffData[mbCapEffNum];
     secondHookHeightNoise = 3.051851e-05f * secondHookHeightSample;
     if ((board->secondHookSway[1] += 3.0f * secondHookHeightNoise) >= 360.0f) {
         board->secondHookSway[1] -= 360.0f;
     }
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     secondHookRollSample = mbCapEffData[mbCapEffNum];
     secondHookRollNoise = 3.051851e-05f * secondHookRollSample;
     if ((board->secondHookSway[2] += 3.0f * secondHookRollNoise) >= 360.0f) {
@@ -6262,12 +6092,10 @@ void fn_1_19460(void) {
     s32 modelId;
 
     obj = lbl_1_bss_C = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_1964C);
-    work = obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W05_TWIN_EFFECT_WORK),
-        0x10000000);
+    work = obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W05_TWIN_EFFECT_WORK), 0x10000000);
     memset(work, 0, sizeof(W05_TWIN_EFFECT_WORK));
-    work->animation = animation = HuSprAnimRead(fn_80008634(
-        W05EffectDataNumGet(DATANUM(0xdf0000, 43)),
-        0x10000000));
+    work->animation = animation =
+        HuSprAnimRead(fn_80008634(W05BoardDataNumGet(DATANUM(0xdf0000, 43)), 0x10000000));
     for (effectIndex = 0; effectIndex < 2; effectIndex++) {
         work->modelId[effectIndex] = modelId = mbParticleCreate(animation, 512);
         model = &lbl_802C01C8[work->modelId[effectIndex]];
@@ -6430,37 +6258,49 @@ void fn_1_19A90(HuVecF *position, f32 strength) {
     s32 additive;
 
     velocity.x = 0.0f;
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     heightSample = mbCapEffData[mbCapEffNum];
     heightRandom = 3.051851e-05f * heightSample;
     velocity.y = 5.0f * (0.8f + 0.3f * heightRandom);
     velocity.z = 0.0f;
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     colorSample = mbCapEffData[mbCapEffNum];
     colorRandom = 3.051851e-05f * colorSample;
     tint = colorRandom;
     color.r = 150.0f + 63.0f * tint;
     color.g = 150.0f + 63.0f * tint;
     color.b = 190.0f + 63.0f * tint;
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     alphaSample = mbCapEffData[mbCapEffNum];
     alphaRandom = 3.051851e-05f * alphaSample;
     color.a = (96.0f + 63.0f * alphaRandom) - 64.0f * strength;
     scale = strength * (1.0f + 0.25f *
-        (MBCapsuleEffRandF()));
+        MBCapsuleEffRandF());
     if (MBCapsuleEffRandF() < 0.7f) {
         additive = 0;
     } else {
         additive = 1;
     }
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     sizeSample = mbCapEffData[mbCapEffNum];
     sizeRandom = 3.051851e-05f * sizeSample;
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     rotationSample = mbCapEffData[mbCapEffNum];
     rotationRandom = 3.051851e-05f * rotationSample;
     particleColor = color;
-    W05_EFFECT_RAND_NEXT();
+    if (++mbCapEffNum >= 1024) {
+        mbCapEffNum = 0;
+    }
     timeSample = mbCapEffData[mbCapEffNum];
     timeRandom = 3.051851e-05f * timeSample;
     fn_1_19864(position, &velocity,
@@ -6485,7 +6325,7 @@ void fn_1_1A13C(void) {
     }
     fn_1_76A4(2, &hookPosition, &hookRotation, hookMatrix);
     for (round = 0; round < 4; round++) {
-        radius = 4.0f * (100.0f * (MBCapsuleEffRandF()));
+        radius = 4.0f * (100.0f * MBCapsuleEffRandF());
         position.x = 100.0 + radius * sin(-M_PI / 4);
         position.y =
             50.0f + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
@@ -6493,7 +6333,7 @@ void fn_1_1A13C(void) {
         PSMTXMultVec(hookMatrix, &position, &position);
         W05HookRiseParticle(&position, 1.5f * board->firstHookPhaseWeight);
 
-        radius = 4.0f * (100.0f * (MBCapsuleEffRandF()));
+        radius = 4.0f * (100.0f * MBCapsuleEffRandF());
         position.x = 100.0 + radius * sin(-3 * M_PI / 4);
         position.y =
             50.0f + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
@@ -6502,19 +6342,19 @@ void fn_1_1A13C(void) {
         W05HookRiseParticle(&position, 1.5f * board->firstHookPhaseWeight);
 
         position.x =
-            -800.0f + 3.0f * (100.0f * (MBCapsuleEffRandF()));
+            -800.0f + 3.0f * (100.0f * MBCapsuleEffRandF());
         position.y =
             50.0f + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
-        position.z = 300.0f + 0.5f * (100.0f * (MBCapsuleEffRandF()));
+        position.z = 300.0f + 0.5f * (100.0f * MBCapsuleEffRandF());
         PSMTXMultVec(hookMatrix, &position, &position);
         W05HookRiseParticle(&position, 1.5f * board->firstHookPhaseWeight);
 
         position.x =
-            -800.0f + 3.0f * (100.0f * (MBCapsuleEffRandF()));
+            -800.0f + 3.0f * (100.0f * MBCapsuleEffRandF());
         position.y =
             50.0f + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
         position.z =
-            -300.0f + 0.5f * (100.0f * (MBCapsuleEffRandF()));
+            -300.0f + 0.5f * (100.0f * MBCapsuleEffRandF());
         PSMTXMultVec(hookMatrix, &position, &position);
         W05HookRiseParticle(&position, 1.5f * board->firstHookPhaseWeight);
     }
@@ -6536,7 +6376,7 @@ void fn_1_1C0AC(void) {
     }
     fn_1_7AF8(2, &hookPosition, &hookRotation, hookMatrix);
     for (round = 0; round < 4; round++) {
-        radius = 4.0f * (100.0f * (MBCapsuleEffRandF()));
+        radius = 4.0f * (100.0f * MBCapsuleEffRandF());
         position.x = 100.0 + radius * sin(-M_PI / 4);
         position.y =
             50.0f + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
@@ -6544,7 +6384,7 @@ void fn_1_1C0AC(void) {
         PSMTXMultVec(hookMatrix, &position, &position);
         W05HookRiseParticle(&position, 1.5f * board->secondHookPhaseWeight);
 
-        radius = 4.0f * (100.0f * (MBCapsuleEffRandF()));
+        radius = 4.0f * (100.0f * MBCapsuleEffRandF());
         position.x = 100.0 + radius * sin(-3 * M_PI / 4);
         position.y =
             50.0f + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
@@ -6552,10 +6392,10 @@ void fn_1_1C0AC(void) {
         PSMTXMultVec(hookMatrix, &position, &position);
         W05HookRiseParticle(&position, 1.5f * board->secondHookPhaseWeight);
 
-        position.x = -900.0f + 100.0f * (MBCapsuleEffRandF());
+        position.x = -900.0f + 100.0f * MBCapsuleEffRandF();
         position.y =
             50.0f + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
-        position.z = 100.0f * (MBCapsuleEffRandF());
+        position.z = 100.0f * MBCapsuleEffRandF();
         PSMTXMultVec(hookMatrix, &position, &position);
         W05HookRiseParticle(&position, 1.5f * board->secondHookPhaseWeight);
     }
@@ -6573,8 +6413,7 @@ void fn_1_1D82C(void) {
     s32 modelId;
     W05_EFFECT_WORK *allocatedWork;
 
-    particleObject = (lbl_1_bss_10 = fn_8003AB38(mbObjMan, -32768, 0, 0,
-                                                -1, fn_1_1D95C));
+    particleObject = (lbl_1_bss_10 = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_1D95C));
     allocatedWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W05_EFFECT_WORK), 0x10000000);
     particleObject->data = allocatedWork;
     work = allocatedWork;
@@ -6738,7 +6577,7 @@ s32 fn_1_1DCE4(HuVecF position, HuVecF velocity, f32 scale,
     particleData->scaleBase = rotationSpeed;
     particleData->scale = scale;
     particleData->color = color;
-    particleData->weight = 360.0f * (MBCapsuleEffRandF());
+    particleData->weight = 360.0f * MBCapsuleEffRandF();
     particleData->time = 0;
     work->activeCount++;
     return particleIndex;
@@ -6763,9 +6602,9 @@ void fn_1_1DF14(HuVecF *position, HuVecF *rotation) {
         azimuth = 45.0f * emitted +
             10.0f * (-0.5f + MBCapsuleEffRandF());
         if (emitted & 1) {
-            elevation = 10.0f * (MBCapsuleEffRandF());
+            elevation = 10.0f * MBCapsuleEffRandF();
         } else {
-            elevation = -10.0f * (MBCapsuleEffRandF());
+            elevation = -10.0f * MBCapsuleEffRandF();
         }
         speed = 5.0f * (0.5f + MBCapsuleEffRandF());
         velocity.x = speed *
@@ -6780,9 +6619,9 @@ void fn_1_1DF14(HuVecF *position, HuVecF *rotation) {
         color.a = 255;
         fn_1_1DCE4(*position, velocity,
             100.0f * (0.5f + 0.3f *
-                (MBCapsuleEffRandF())),
+                MBCapsuleEffRandF()),
             60.0f * (0.5f + 0.25f *
-                (MBCapsuleEffRandF())),
+                MBCapsuleEffRandF()),
             0.0f, 0.16333334f, color);
     }
 }
@@ -6801,19 +6640,19 @@ void fn_1_1E3C0(s32 count) {
     for (emitted = 0; emitted < count; emitted++) {
         position.x = 300.0f + board->particleBoundsStart.x +
             (board->particleBoundsSize.x - 600.0f) *
-            (MBCapsuleEffRandF());
+            MBCapsuleEffRandF();
         position.y = 20.0f + (board->particleBoundsStart.y +
             board->particleBoundsSize.y *
-            (MBCapsuleEffRandF()));
+            MBCapsuleEffRandF());
         position.z = board->particleBoundsStart.z + board->particleBoundsSize.z *
-            (MBCapsuleEffRandF());
+            MBCapsuleEffRandF();
         velocity.x = velocity.y = velocity.z = 0.0f;
         color.r = color.g = color.b = color.a = 255;
         particleIndex = fn_1_1DCE4(position, velocity,
             100.0f * (0.2f + 0.05f *
-                (MBCapsuleEffRandF())),
+                MBCapsuleEffRandF()),
             60.0f * (0.2f + 0.1f *
-                (MBCapsuleEffRandF())),
+                MBCapsuleEffRandF()),
             0.0f, 0.0f, color);
         if (particleIndex >= 0) {
             fn_1_1EA60(particleIndex);
@@ -6829,13 +6668,13 @@ void fn_1_1E6D0(HuVecF *position) {
     f32 speed;
     s32 emitted;
 
-    angle = 360.0f * (MBCapsuleEffRandF());
+    angle = 360.0f * MBCapsuleEffRandF();
     for (emitted = 0; emitted < 16; emitted++) {
-        speed = 5.0f * (0.5f + (MBCapsuleEffRandF()));
+        speed = 5.0f * (0.5f + MBCapsuleEffRandF());
         /* Each angle increment grows with the particle index, so these directions are not evenly
          * spaced. */
         angle += 22.5f * emitted +
-            10.0f * (-0.5f + (MBCapsuleEffRandF()));
+            10.0f * (-0.5f + MBCapsuleEffRandF());
         velocity.x = speed * sin(M_PI * angle / 180.0);
         velocity.y = speed * cos(M_PI * angle / 180.0);
         velocity.z = 0.0f;
@@ -6845,9 +6684,9 @@ void fn_1_1E6D0(HuVecF *position) {
         color.a = 255;
         fn_1_1DCE4(*position, velocity,
             100.0f * (0.5f + 0.3f *
-                (MBCapsuleEffRandF())),
+                MBCapsuleEffRandF()),
             60.0f * (0.5f + 0.25f *
-                (MBCapsuleEffRandF())),
+                MBCapsuleEffRandF()),
             0.0f, 0.0f, color);
     }
 }
@@ -6882,10 +6721,8 @@ void fn_1_1EAF4(void) {
     s32 modelId;
     W05_COLOR_EFFECT_WORK *allocatedWork;
 
-    particleObject = (lbl_1_bss_14 = fn_8003AB38(mbObjMan, -32768, 0, 0,
-                                                -1, fn_1_1EC00));
-    allocatedWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W05_COLOR_EFFECT_WORK),
-        0x10000000);
+    particleObject = (lbl_1_bss_14 = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_1EC00));
+    allocatedWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W05_COLOR_EFFECT_WORK), 0x10000000);
     particleObject->data = allocatedWork;
     work = allocatedWork;
     memset(work, 0, sizeof(W05_COLOR_EFFECT_WORK));
@@ -7000,7 +6837,7 @@ s32 fn_1_1EE80(HuVecF position, HuVecF velocity, f32 scale,
     particleData->scale = scale;
     particleData->color = color;
     particleData->color.r = particleData->color.g = particleData->color.b = 255;
-    particleData->weight = 360.0f * (MBCapsuleEffRandF());
+    particleData->weight = 360.0f * MBCapsuleEffRandF();
     particleData->time = 0;
     particleData->animTime = 0.0f;
     particleData->animSpeed = 0.0f;
@@ -7024,26 +6861,26 @@ void fn_1_1F090(HuVecF *position, f32 radius, f32 height, s32 count) {
     f32 shade;
 
     for (emitted = 0; emitted < count; emitted++) {
-        angle = 360.0f * (MBCapsuleEffRandF());
+        angle = 360.0f * MBCapsuleEffRandF();
         radialFraction = MBCapsuleEffRandF();
         distance = radialFraction * radius;
         emissionPosition.x = position->x + distance * sin(M_PI * angle / 180.0);
         emissionPosition.y = 50.0 + (position->y +
-            (height * (MBCapsuleEffRandF())) *
+            (height * MBCapsuleEffRandF()) *
             cos(M_PI * (90.0f * radialFraction) / 180.0));
         emissionPosition.z = position->z + distance * cos(M_PI * angle / 180.0);
         velocity.x = velocity.y = velocity.z = 0.0f;
         /* The sampled gray RGB is discarded by fn_1_1EE80, which forces white and keeps only the
          * supplied alpha. */
-        shade = 63.0f * (MBCapsuleEffRandF());
+        shade = 63.0f * MBCapsuleEffRandF();
         color.r = 192.0f + shade;
         color.g = 192.0f + shade;
         color.b = 192.0f + shade;
-        color.a = 192.0f + 63.0f * (MBCapsuleEffRandF());
+        color.a = 192.0f + 63.0f * MBCapsuleEffRandF();
         fn_1_1EE80(emissionPosition, velocity,
             100.0f * (3.0f + MBCapsuleEffRandF()),
             10.0f * (-0.5f + MBCapsuleEffRandF()),
-            0.33f + 0.2f * (MBCapsuleEffRandF()), color);
+            0.33f + 0.2f * MBCapsuleEffRandF(), color);
     }
 }
 
@@ -7068,21 +6905,21 @@ void fn_1_1F57C(HuVecF position, HuVecF rotation, s32 count) {
         angle = (360.0f / count) * emitted;
         sine = mbSinDeg(angle);
         velocity.x = 0.075f * (100.0f * sine) *
-            (0.9f + 0.1f * (MBCapsuleEffRandF()));
+            (0.9f + 0.1f * MBCapsuleEffRandF());
         velocity.y = 0.0f;
         cosine = mbCosDeg(angle);
         velocity.z = 0.075f * (100.0f * cosine) *
-            (0.9f + 0.1f * (MBCapsuleEffRandF()));
+            (0.9f + 0.1f * MBCapsuleEffRandF());
         PSMTXMultVec(rotationMatrix, &velocity, &velocity);
         /* The sampled gray RGB is discarded by fn_1_1EE80, which forces white and keeps only the
          * supplied alpha. */
-        shade = 63.0f * (MBCapsuleEffRandF());
+        shade = 63.0f * MBCapsuleEffRandF();
         color.r = (u8)(shade + 192);
         color.g = (u8)(shade + 192);
         color.b = (u8)(shade + 192);
-        color.a = 192.0f + 63.0f * (MBCapsuleEffRandF());
+        color.a = 192.0f + 63.0f * MBCapsuleEffRandF();
         fn_1_1EE80(emissionPosition, velocity, 200.0f,
-            10.0f * (-0.5f + (MBCapsuleEffRandF())),
+            10.0f * (-0.5f + MBCapsuleEffRandF()),
             0.33f, color);
     }
 }
@@ -7105,21 +6942,21 @@ void fn_1_1F9B0(HuVecF position, s32 count) {
         angle = (360.0f / count) * emitted;
         sine = mbSinDeg(angle);
         velocity.x = 0.05f * (100.0f * sine) *
-            (0.9f + 0.1f * (MBCapsuleEffRandF()));
+            (0.9f + 0.1f * MBCapsuleEffRandF());
         velocity.y = 5.0f *
-            (0.9f + 0.1f * (MBCapsuleEffRandF()));
+            (0.9f + 0.1f * MBCapsuleEffRandF());
         cosine = mbCosDeg(angle);
         velocity.z = 0.05f * (100.0f * cosine) *
-            (0.9f + 0.1f * (MBCapsuleEffRandF()));
+            (0.9f + 0.1f * MBCapsuleEffRandF());
         /* The sampled gray RGB is discarded by fn_1_1EE80, which forces white and keeps only the
          * supplied alpha. */
-        shade = 63.0f * (MBCapsuleEffRandF());
+        shade = 63.0f * MBCapsuleEffRandF();
         color.r = (u8)(shade + 192);
         color.g = (u8)(shade + 192);
         color.b = (u8)(shade + 192);
-        color.a = 192.0f + 63.0f * (MBCapsuleEffRandF());
+        color.a = 192.0f + 63.0f * MBCapsuleEffRandF();
         fn_1_1EE80(emissionPosition, velocity, 100.0f,
-            10.0f * (-0.5f + (MBCapsuleEffRandF())),
+            10.0f * (-0.5f + MBCapsuleEffRandF()),
             0.33f, color);
     }
 }

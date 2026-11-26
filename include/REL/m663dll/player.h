@@ -11,7 +11,7 @@ typedef struct M663PlayerWork {
     s8 playerIndex;
     s8 characterNo;
     s8 padNo;
-    s8 groupNo;
+    s8 unk18; /* The game's code never reads this field. */
     s8 playerType;
     s8 difficulty;
     s8 inputMode;

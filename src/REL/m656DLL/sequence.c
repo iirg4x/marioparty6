@@ -8,13 +8,13 @@ MGSEQ_PARAM lbl_1_data_0 = {
 OMOBJMAN *lbl_1_bss_0;
 
 /* Called by _prolog to create the object manager and start the sequence process. */
-void fn_1_A0(void)
+void ObjectSetup(void)
 {
     lbl_1_bss_0 = fn_80080418();
     fn_8000DAC0(fn_1_F4, 100U, 36864U, 0, lbl_1_bss_0);
 }
 
-/* The child process created by fn_1_A0 advances the object manager once per frame. */
+/* The child process created by ObjectSetup advances the object manager once per frame. */
 void fn_1_F4(void)
 {
     fn_80070788(&lbl_1_data_0);

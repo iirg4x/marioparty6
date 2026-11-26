@@ -6,7 +6,7 @@ struct MgPlayer_s;
 typedef struct M666PlayerRecord {
     struct MgPlayer_s *player;
     s16 playerNumber;
-    s16 padNumber;
+    s16 unk06; /* The game's code never reads this field. */
     s16 charNo;
     s16 modelId;
     s16 comDifficulty;
@@ -15,23 +15,22 @@ typedef struct M666PlayerRecord {
     /* Sine-displacement phase; each increment adds eight degrees to the phase. */
     s16 displacementPhase;
     f32 targetAngle;
-    f32 secondTargetAngle;
+    f32 unk18; /* The game's code never reads this field. */
     s16 nudgeTimer;
-    /* Written with the selected avoidance direction; game code never reads this field. */
-    s16 nudgeDirection;
+    s16 unk1E; /* The game's code never reads this field. */
     /* Random steering angle in degrees and the remaining steering countdown. */
     s16 wanderAngle;
     s16 wanderFrames;
-    /* Written by the steering update; game code never reads this bit. */
-    s8 outsideSteeringRadius : 1;
+
+    s8 unk24_0 : 1; /* The game's code never reads this field. */
     /* Disables steering-angle smoothing when set. */
     s8 suppressAngleSmoothing : 1;
     /* Adds 60 degrees to the CPU steering angle when set. */
     s8 addSteeringOffset : 1;
-    /* Written by player-event handling; game code never reads this bit. */
-    s8 obstacleCollision : 1;
-    /* Written by wall handling; game code never reads this bit. */
-    s8 wallContact : 1;
+
+    s8 unk24_3 : 1; /* The game's code never reads this field. */
+
+    s8 unk24_4 : 1; /* The game's code never reads this field. */
     /* Decay subtracted from the initial upward push velocity of 60. */
     f32 verticalPushDecay;
     f32 pushAngle;

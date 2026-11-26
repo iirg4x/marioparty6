@@ -1,6 +1,10 @@
 #ifndef M601DLL_H
 #define M601DLL_H
 
+#include "game/object.h"
+
+extern OMOBJMAN *lbl_1_bss_150;
+
 void fn_1_8798(OMOBJ *obj);
 void fn_1_9574(OMOBJ *obj);
 void fn_1_EE4(OMOBJ *obj);

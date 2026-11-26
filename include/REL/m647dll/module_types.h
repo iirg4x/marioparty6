@@ -26,7 +26,7 @@
 #include "datadir_enum.h"
 #include "game/window.h"
 
-typedef struct M647AnimState_s {
+typedef struct {
     HU3D_MODELID backgroundModelId;
     HU3D_MODELID modelId;
     HU3D_MODELID openingModelId;
@@ -49,7 +49,7 @@ typedef struct M647AnimState_s {
     s32 soundEffectId;
 } M647AnimState;
 
-typedef struct M647PlayerRecord_s {
+typedef struct {
     HU3D_MODELID modelId;
     HU3D_MOTIONID motionIds[9];
     s16 playerIndex;
@@ -75,7 +75,7 @@ typedef struct M647PlayerRecord_s {
     s16 mountingPhase;
 } M647PlayerRecord;
 
-typedef union M647ActivityState_u {
+typedef union {
     struct {
         u16 buttonOrder[8];
         s16 row;
@@ -113,7 +113,7 @@ typedef union M647ActivityState_u {
     } row;
 } M647ActivityState;
 
-typedef struct M647ActivityEntry_s {
+typedef struct {
     HU3D_MODELID modelId;
     HU3D_MOTIONID motionIds[3];
     Point3d position;
@@ -123,23 +123,23 @@ typedef struct M647ActivityEntry_s {
     s16 status;
 } M647ActivityEntry;
 
-typedef struct M647ActivityTable_s {
+typedef struct {
     M647ActivityEntry entries[4];
 } M647ActivityTable;
 
-typedef struct M647ModeState_s {
+typedef struct {
     s16 mode;                   /* +0x00 */
     s16 argument;               /* +0x02 */
 } M647ModeState;
 
-typedef struct M647ModelPair_s {
+typedef struct {
     HU3D_MODELID model0;        /* +0x00 */
     HU3D_MODELID model1;        /* +0x02 */
     f32 floorHeight;
     s32 particleCount;
 } M647ModelPair;
 
-typedef struct M647ParticleRecord_s {
+typedef struct {
     s32 active;
     s32 landed;
     Point3d position;
@@ -150,7 +150,7 @@ typedef struct M647ParticleRecord_s {
     s32 landedFrames;
 } M647ParticleRecord;
 
-typedef struct M647CameraSequence_s {
+typedef struct {
     OM_CAMERA_VIEW view;
     s16 frame;
     s16 phase;
@@ -220,5 +220,7 @@ void fn_1_AC40(s16 entryIndex);
 void fn_1_B108(void);
 void fn_1_B234(void);
 void fn_1_B38C(const Point3d *origin, s32 count);
+
+s32 fn_1_34A0(s16 activityIndex);
 
 #endif

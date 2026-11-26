@@ -1,5 +1,6 @@
 /* Collision tests and the minigame module entry and exit routines. */
 #include <math.h>
+#include "REL/m625Dll/sequence.h"
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -201,8 +202,6 @@ void _epilog(void)
         destructor++;
     }
 }
-
-void fn_1_13E14(s16 mode, s16 frameNo);
 
 /* static */
 extern HUPROCESS *lbl_1_bss_810;

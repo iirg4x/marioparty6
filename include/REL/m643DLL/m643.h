@@ -87,7 +87,7 @@ typedef struct M643TeamScenePrefix_s {
     f32 bobDegrees; /* Vertical bobbing phase, wrapped at 360 degrees. */
     HU3D_MODELID operatorFollowModel; /* Auxiliary model positioned with the operator. */
     u8 unk9E[4]; /* No code names this field. */
-    s16 unusedSetupValue; /* Set to one at setup; no cannon callback reads it. */
+    s16 unkA2; /* The game's code never reads this field. */
     s16 computerTargetPlatform; /* Computer aim target; zero requests a new target after firing. */
     s16 observedRunnerPlatform; /* Runner platform recorded when the computer aim target was
                                  * chosen. */
@@ -121,7 +121,7 @@ typedef struct M643CameraEffectWork_s {
     s16 rescueRequested; /* One from the fall request until the rescue departs. */
     HuVecF position; /* Current rescue position in world coordinates. */
     M643PlayerPrefix *runner; /* Runner retrieved by this rescue. */
-    s32 carryingRunner; /* One during lifting and return, zero during approach and idle. */
+    s32 unk18; /* The game's code never reads this field. */
     HuVecF curveStart; /* Approach starts above the camera. */
     HuVecF curveEnd; /* Approach ends at the runner's X, fixed Y=-500 and Z=100, above its fall
                       * position. */
@@ -158,6 +158,7 @@ M643TeamScenePrefix *fn_1_165C(s16 teamIndex);
 void *fn_1_1678(s16 teamIndex);
 M643ViewControlWork *fn_1_1694(s16 teamIndex);
 void fn_1_17A0(OMOBJ *object);
+void fn_1_1F98(OMOBJ *object);
 float fn_1_214(float cosine);
 void fn_1_298(HuVecF *out, f32 x, f32 y, f32 z);
 float fn_1_2A8(const HuVecF *vec);

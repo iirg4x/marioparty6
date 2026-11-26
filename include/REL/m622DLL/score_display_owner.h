@@ -12,7 +12,7 @@ struct ScoreDisplay {
     s16 spriteGroup;
     struct MgScore_s *score;
     f32 transparency;
-    s32 characterId;
+    s32 unk0C; /* The game's code never reads this field. */
     s32 value;
     f32 x;
     f32 y;

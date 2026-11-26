@@ -289,10 +289,6 @@ static inline void vectorCopy(MotionPosition *target, const MotionPosition &sour
     *target = *copySource;
 }
 
-static inline MotionPosition getEffectPosition(CallbackReceiver *owner)
-{
-    return owner->position;
-}
 
 static inline ParticleOwner *effectEmitterGet(AnimationOwner *owner)
 {

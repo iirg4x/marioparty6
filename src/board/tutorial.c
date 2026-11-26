@@ -48,7 +48,7 @@ typedef struct TutorialMgCallWork_s {
     u8 cursorNo : 3; /* This choice's slot in the four-item roulette. */
     u8 dispF : 1; /* Whether its help window is displayed. */
     s16 winNo; /* Help-window handle for this choice. */
-    s16 unused; /* Reserved short; this file does not read it. */
+    s16 unk04; // The game's code never reads this field.
     s16 time; /* Current frame within the active animation. */
     s16 maxTime; /* Last frame of the active animation. */
     int message; /* Minigame name message, or -1 when the slot is empty. */
@@ -56,9 +56,9 @@ typedef struct TutorialMgCallWork_s {
 
 typedef struct TutorialMgCallData_s {
     int active; /* Nonzero while the minigame roulette owns its effects and objects. */
-    int unused; /* Reserved word; this file does not read it. */
+    int unk04; // The game's code never reads this field.
     s16 espId[3]; /* Sprite handles for the roulette frame, highlight, and selector. */
-    s16 unusedShorts[5]; /* Reserved handles; this file does not use them. */
+    s16 unk0E[5]; /* No code names this field. */
     OMOBJ *obj[4]; /* The four displayed minigame choices. */
 } TUTORIALMGCALLDATA;
 

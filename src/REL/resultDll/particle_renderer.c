@@ -1,12 +1,5 @@
-/* Builds and draws the animated particle effects shown on result screens. */
-#define RESULT_FLOAT_SIGNLESS_MASK 0x7FFFFFFF
-#define RESULT_DISPLAY_LIST_CAPACITY 131072
-#define RESULT_DATA_ID_MASK 0xFFFF0000
-#define RESULT_DATA_ID_PATTERN DATANUM(0xc60000, 0)
-#define RESULT_PARTICLE_ORIENT_TO_WORLD_FLAG (1 << 4)
-#define RESULT_PARTICLE_ANIMATE_FLAG (1 << 3)
-#define RESULT_PARTICLE_LOOP_ANIMATION_FLAG (1 << 0)
-#define RESULT_PARTICLE_NO_COUNT_FLAG (1 << 1)
+/* Builds, sorts and draws the results screen particle quads. */
+#include "dolphin/gx.h"
 
 #include "dolphin/math.h"
 #include "game/hu3d.h"
@@ -16,7 +9,11 @@
 #include "dolphin/os/OSCache.h"
 #include "dolphin/os.h"
 #include "game/sprite.h"
+#include "game/sprput.h"
 #include "game/gamework.h"
+#include "humath.h"
+
+#define RESULT_DATA_ID_PATTERN DATANUM(0xc60000, 0)
 
 typedef struct ResultDrawSortEntry {
     s32 key; /* Signed integer key preserving the numerical order of particle depth. */
@@ -63,7 +60,7 @@ typedef struct ResultParticleRenderer {
     s16 group;
     Vec pos;
     Vec spawnCenter;
-    void *work;
+    void *unk1C; /* No code names this field. */
     s8 blendMode;
     u8 attributes;
     s16 sortEnabled;
@@ -130,7 +127,7 @@ struct ResultDrawRenderer {
     s16 group;
     Vec pos;
     Vec spawnCenter;
-    void *work;
+    void *unk1C; /* No code names this field. */
     u8 blendMode;
     u8 attributes;
     s16 sortEnabled;
@@ -160,8 +157,6 @@ extern f32 lbl_1_data_8E0[2];
 extern u32 minimumVcount;
 extern u32 GlobalCounter;
 void fn_1_B404(ResultDrawSortEntry *entries, s32 entryCount);
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS,
-    GXTexWrapMode wrapT, GXTexFilter filter);
 
 /* Converts a finite depth into a signed integer key with the same numerical ordering. */
 static inline void ResultDepthKeySet(s32 *key, f32 depth)
@@ -177,7 +172,7 @@ static inline void ResultDepthKeySet(s32 *key, f32 depth)
     representation.depth = value;
     bits = representation.bits;
     if (bits < 0) {
-        bits = -(bits & RESULT_FLOAT_SIGNLESS_MASK);
+        bits = -(bits & 0x7FFFFFFF);
     }
     *key = bits;
 }
@@ -386,17 +381,16 @@ s16 fn_1_AD24(ANIMDATA *anim, s16 particleCount)
     renderer->alphaInput[1] = GX_CA_TEXA;
     renderer->alphaInput[2] = GX_CA_RASA;
     renderer->alphaInput[3] = GX_CA_ZERO;
-    renderer->particles = particle = fn_1_ABA0(particleCount * sizeof(ResultParticleEntry),
-        model->mallocNo);
+    renderer->particles = particle =
+        fn_1_ABA0(particleCount * sizeof(ResultParticleEntry), model->mallocNo);
     for (particleIndex = 0; particleIndex < particleCount; particleIndex++, particle++) {
         particle->cameraBit = -1;
         particle->color = -1;
         particle->visible = 1;
     }
-    renderer->vertices = vertices = ModelHeapMallocNum(particleCount * sizeof(Vec) * 4,
-        model->mallocNo);
-    renderer->textureCoords = coords = ModelHeapMallocNum(particleCount * 8 * 4,
-        model->mallocNo);
+    renderer->vertices = vertices =
+        ModelHeapMallocNum(particleCount * sizeof(Vec) * 4, model->mallocNo);
+    renderer->textureCoords = coords = ModelHeapMallocNum(particleCount * 8 * 4, model->mallocNo);
     renderer->patternCoords = ModelHeapMallocNum(anim->patNum * 8 * 4, model->mallocNo);
     for (particleIndex = 0; particleIndex < anim->patNum; particleIndex++) {
         layer = anim->pat[particleIndex].layer;
@@ -413,10 +407,10 @@ s16 fn_1_AD24(ANIMDATA *anim, s16 particleCount)
         coords[3].x = widthScale * (layer->startX + layer->vtx[6]);
         coords[3].y = heightScale * (layer->startY + layer->vtx[7]);
     }
-    renderer->displayList = displayList = ResultDisplayListAlloc(particleCount * 96 + 128,
-        model->mallocNo);
+    renderer->displayList = displayList =
+        ResultDisplayListAlloc(particleCount * 96 + 128, model->mallocNo);
     /* The recorder receives a fixed capacity, while the buffer size depends on particle count. */
-    GXBeginDisplayList(displayList, RESULT_DISPLAY_LIST_CAPACITY);
+    GXBeginDisplayList(displayList, 131072);
     GXBegin(GX_QUADS, GX_VTXFMT0, particleCount * 4);
     for (particleIndex = 0; particleIndex < particleCount; particleIndex++) {
         vertexIndex = particleIndex * 4;
@@ -606,7 +600,7 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
             representation.depth = ResultParticleDepth(&particle->pos, cameraX, cameraY, cameraZ);
             bits = representation.bits;
             if (bits < 0) {
-                bits = -(bits & RESULT_FLOAT_SIGNLESS_MASK);
+                bits = -(bits & 0x7FFFFFFF);
             }
             entry->key = bits;
             entry->index = index;
@@ -635,8 +629,8 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
                 if (0.0f == particle->rotationZ) {
                     corners = cameraCorners;
                 } else {
-                    sine = 0.5 * sin((3.141592653589793 * particle->rotationZ) / 180.0);
-                    cosine = 0.5 * cos((3.141592653589793 * particle->rotationZ) / 180.0);
+                    sine = 0.5 * sin((M_PI * particle->rotationZ) / 180.0);
+                    cosine = 0.5 * cos((M_PI * particle->rotationZ) / 180.0);
                     rotatingCorners = lbl_1_data_918;
                     rotatingCorners[0].x = rotatingCorners[3].y = -sine - cosine;
                     rotatingCorners[0].y = rotatingCorners[1].x = -sine + cosine;
@@ -741,7 +735,7 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
     GXSetArray(GX_VA_TEX0, renderer->textureCoords, sizeof(HuVec2f));
     GXSetCullMode(GX_CULL_NONE);
-    GXLoadPosMtxImm(*matrix, 0);
+    GXLoadPosMtxImm(*matrix, GX_PNMTX0);
     if (lbl_802C01B0 != 0) {
         GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ONE, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
         GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
@@ -811,7 +805,7 @@ s32 fn_1_C45C(s32 dataNum)
     } else if (languageIndex > 5) {
         languageIndex = 5;
     }
-    if ((dataNum & RESULT_DATA_ID_MASK) != RESULT_DATA_ID_PATTERN) {
+    if ((dataNum & 0xFFFF0000) != DATANUM(0xc60000, 0)) {
         return dataNum;
     }
     return (dataNum & 0xFFFF) | lbl_1_data_968[languageIndex];

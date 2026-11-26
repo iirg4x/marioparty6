@@ -9,14 +9,13 @@ extern "C" {
 #include "game/gamework.h"
 }
 
-/* Creates the four camera views and installs their projection settings. */
-
 const Vec lbl_1_rodata_358[2] = { { 0.0f, 100.0f, 1300.0f }, { 0.0f, 20000.0f, 2500.0f } };
 
 const Vec lbl_1_rodata_370[2] = { { 0.0f, 100.0f, 0.0f }, { 0.0f, 20000.0f, 0.0f } };
 
 const Vec lbl_1_rodata_388 = { 0.0f, 1.0f, 0.0f };
 
+/* Creates the four camera views and installs their projection settings. */
 CameraOwner::CameraOwner() : elapsed(0.0f), mode(1), callback(&CameraOwner::fn_1_7CE0)
 {
     f32 fieldOfView;
@@ -25,13 +24,13 @@ CameraOwner::CameraOwner() : elapsed(0.0f), mode(1), callback(&CameraOwner::fn_1
     state = GWMgNightFGet();
     for (cameraIndex = 0; cameraIndex < 4; cameraIndex++)
     {
-        CameraView * camera;
+        CameraWork * camera;
         fieldOfView = 0.29625002f;
         camera = & cameras[cameraIndex];
-        camera->position = camera->desiredPosition = lbl_1_rodata_358[state];
-        camera->up = lbl_1_rodata_388;
-        camera->target = camera->desiredTarget = lbl_1_rodata_370[state];
-        camera->active = 0;
+        camera->frame.position = camera->cameraPosition.value = lbl_1_rodata_358[state];
+        camera->frame.up = lbl_1_rodata_388;
+        camera->frame.target = camera->cameraTarget.value = lbl_1_rodata_370[state];
+        camera->enabled = 0;
         Hu3DCameraCreate(cameraMasks[cameraIndex]);
         Hu3DCameraPerspectiveSet(cameraMasks[cameraIndex], 30.0f, 1.0f, 10000.0f, fieldOfView);
         Hu3DCameraViewportSet(cameraMasks[cameraIndex], 640.0f, 0.0f, 0.0f, 480.0f, 0.0f, 1.0f);
@@ -46,21 +45,19 @@ CameraOwner::CameraOwner() : elapsed(0.0f), mode(1), callback(&CameraOwner::fn_1
     }
 }
 
-static inline void setCallback(CameraOwner *owner, CameraOwner::Callback next)
-{
-    owner->callback = next;
-}
+/* Eases each camera toward its player's position and target during play. */
 void CameraOwner::fn_1_7CE0()
 {
     s32 index = 0;
     while (index < 4) {
-        CameraView *position = &cameras[index];
+        CameraWork *position = &cameras[index];
         fn_1_87B4(this, index, 12.0f);
-        cameraApplyToHud(position, cameraMasks[index]);
+        cameraApplyToHud(&position->frame, cameraMasks[index]);
         index++;
     }
 }
 
+/* Shrinks the main daytime view during the opening and reveals the other three views. */
 void CameraOwner::fn_1_7D6C()
 {
     s32 camera;
@@ -71,9 +68,9 @@ void CameraOwner::fn_1_7D6C()
     f32 previousWidth;
 
     for (camera = 0; camera < 4; camera++) {
-        CameraView *entry = &this->cameras[camera];
+        CameraWork *entry = &this->cameras[camera];
         fn_1_87B4(this, camera, 12.0f);
-        cameraApplyToHud(entry, cameraMasks[camera]);
+        cameraApplyToHud(&entry->frame, cameraMasks[camera]);
         if (this->elapsed >= 2.0f) {
             if (camera == 0) {
                 viewportWidth = 0.5f +
@@ -97,11 +94,11 @@ void CameraOwner::fn_1_7D6C()
             Hu3DCameraScissorSet(cameraMasks[camera], left, 0,
                                  viewportWidth, 0x1E0);
             if (this->elapsed > 2.5f) {
-                entry->desiredPosition.y = entry->desiredTarget.y = 100.0f +
+                entry->cameraPosition.value.y = entry->cameraTarget.value.y = 100.0f +
                     (2.0f *
                      (200.0f *
                       (this->elapsed - 2.5f)));
-                entry->desiredPosition.z = 1300.0f +
+                entry->cameraPosition.value.z = 1300.0f +
                     (2.0f *
                      (1200.0f *
                       (this->elapsed - 2.5f)));
@@ -118,6 +115,7 @@ void CameraOwner::fn_1_7D6C()
     setCallback(this, &CameraOwner::fn_1_7CE0);
 }
 
+/* Moves the night cameras to their opening targets with all four viewports visible. */
 void CameraOwner::fn_1_81B4()
 {
     f32 widthStep;
@@ -133,9 +131,9 @@ void CameraOwner::fn_1_81B4()
         left = 0.0f;
         viewportBase = 0.0f;
         for (camera = 0; camera < 4; camera++) {
-            CameraView *entry = &this->cameras[camera];
+            CameraWork *entry = &this->cameras[camera];
             fn_1_87B4(this, camera, 12.0f);
-            cameraApplyToHud(entry, cameraMasks[camera]);
+            cameraApplyToHud(&entry->frame, cameraMasks[camera]);
             if (camera == 0) {
                 left = 1.0f;
             } else {
@@ -161,19 +159,21 @@ void CameraOwner::fn_1_81B4()
     setCallback(this, &CameraOwner::fn_1_7CE0);
 }
 
+/* Eases the cameras toward their results positions with a slower follow rate. */
 void CameraOwner::fn_1_84B4()
 {
     s32 index = 0;
     while (index < 4) {
-        CameraView *position = &cameras[index];
+        CameraWork *position = &cameras[index];
         fn_1_87B4(this, index, 60.0f);
-        cameraApplyToHud(position, cameraMasks[index]);
+        cameraApplyToHud(&position->frame, cameraMasks[index]);
         index++;
     }
 }
 
 // The game's requests: 0 starts the opening (the opening effect by day), 1 lets the cameras follow the players,
 // 3 holds them on the result.
+/* Selects the opening or results camera move and acknowledges camera requests. */
 void CameraOwner::flagEnabled(int bit)
 {
     switch (bit)
@@ -207,6 +207,7 @@ void CameraOwner::flagEnabled(int bit)
     }
 }
 
+/* Runs the current camera move. */
 void CameraOwner::update()
 {
     if (callback != 0) {
@@ -214,46 +215,50 @@ void CameraOwner::update()
     }
 }
 
+/* Updates one camera's desired target and position once player following begins. */
 void fn_1_8730(CameraOwner *owner, s32 index, const Vec *target, const Vec *position)
 {
-    CameraView *record;
+    CameraWork *record;
 
     if (owner->mode != 1) {
         record = &owner->cameras[index];
-        record->desiredTarget = *target;
-        record->desiredPosition = *position;
+        record->cameraTarget.value = *target;
+        record->cameraPosition.value = *position;
     }
 }
 
+/* Returns the selected camera's current position. */
 Vec CameraOwner::fn_1_878C(s32 index) const
 {
-    return cameras[index].position;
+    return cameras[index].frame.position;
 }
 
+/* Moves the selected camera by a fraction of its remaining target and position deltas. */
 void fn_1_87B4(CameraOwner *records, s32 index, f32 divisor)
 {
-    CameraView *record = &records->cameras[index];
-    Vec *firstValue = &record->position;
-    Vec *second = &record->target;
+    CameraWork *record = &records->cameras[index];
+    Vec *firstValue = &record->frame.position;
+    Vec *second = &record->frame.target;
 
-    firstValue->x += (record->desiredPosition.x - firstValue->x) / divisor;
-    firstValue->y += (record->desiredPosition.y - firstValue->y) / divisor;
-    firstValue->z += (record->desiredPosition.z - firstValue->z) / divisor;
-    second->x += (record->desiredTarget.x - second->x) / divisor;
-    second->y += (record->desiredTarget.y - second->y) / divisor;
-    second->z += (record->desiredTarget.z - second->z) / divisor;
+    firstValue->x += (record->cameraPosition.value.x - firstValue->x) / divisor;
+    firstValue->y += (record->cameraPosition.value.y - firstValue->y) / divisor;
+    firstValue->z += (record->cameraPosition.value.z - firstValue->z) / divisor;
+    second->x += (record->cameraTarget.value.x - second->x) / divisor;
+    second->y += (record->cameraTarget.value.y - second->y) / divisor;
+    second->z += (record->cameraTarget.value.z - second->z) / divisor;
 }
 
+/* Returns the horizontal bearing from the target to the camera, in degrees. */
 f32 fn_1_8894(CameraOwner *owner, s32 index)
 {
     Vec difference;
-    const CameraView *record = &owner->cameras[index];
+    const CameraWork *record = &owner->cameras[index];
 
-    PSVECSubtract(&record->position, &record->target, &difference);
+    PSVECSubtract(&record->frame.position, &record->frame.target, &difference);
     return (f32)(180.0 * (atan2((f64)difference.x, (f64)difference.z) / M_PI));
 }
 
+/* Leaves the four camera views active at destruction. */
 CameraOwner::~CameraOwner()
 {
 }
-

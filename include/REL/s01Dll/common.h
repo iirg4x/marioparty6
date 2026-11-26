@@ -4,7 +4,7 @@
 
 #include "dolphin.h"
 #include "humath.h"
-#include "math.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/math.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/memory.h"

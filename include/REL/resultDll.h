@@ -1,6 +1,10 @@
 #ifndef RESULTDLL_H
 #define RESULTDLL_H
 
+#include "game/animdata.h"
+
+void ObjectSetup(void);
+
 int fn_1_7840(int team, int occurrence);
 s16 fn_1_78B4(s32 team);
 void fn_1_7A18(void);
@@ -17,5 +21,10 @@ void fn_1_3FB0(s16 *coinAwards);
 void fn_1_4694(void);
 void fn_1_47A8(void);
 void fn_1_49C4(void);
+
+extern f32 lbl_1_bss_65C;
+extern f32 lbl_1_bss_658;
+extern f32 lbl_1_bss_B8C[2];
+extern f32 lbl_1_bss_B94[2];
 
 #endif

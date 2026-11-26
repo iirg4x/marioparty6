@@ -11,6 +11,7 @@
 #include "datadir_enum.h"
 #include "REL/mgmtournamentdll/module_types.h"
 #include "game/hsfex.h"
+#include "humath.h"
 
 typedef struct TournamentCameraPair {
     Vec position; /* Camera location in world coordinates. */
@@ -205,7 +206,7 @@ void fn_1_16F8(
     sampleTimes[3] = 2.0f * durationFrames;
     /* A quarter sine wave slows the move as it reaches its destination. */
     elapsedFrames = (f32)((f64)durationFrames *
-        sin((3.141592653589793 *
+        sin((M_PI *
             (f64)(90.0f * (elapsedFrames / durationFrames))) /
             180.0));
 

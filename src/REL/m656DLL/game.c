@@ -1,47 +1,18 @@
 /* Holds Mass Meteor stage data and its gameplay and presentation callbacks. */
 #include <math.h>
 #include "REL/m656/m656.h"
+#include "msm_stream.h"
+#include "humath.h"
 
-#define M656_STAGE_STREAM 87
-#define M656_STAGE_START_SFX 2084
-#define M656_METEOR_HIT_SFX 2083
-#define M656_METEOR_HIT_VOICE 582
-#define M656_DATA_READ_FLAGS 0x10000000U
-#define M656_CHAR_MOTION_DATA_0 9633792
-#define M656_CHAR_MOTION_DATA_1 9306145
-#define M656_CHAR_MOTION_DATA_2 9633818
-#define M656_CHAR_MOTION_DATA_3 9633798
-#define M656_CHAR_MOTION_DATA_UNUSED 0
-#define M656_DATA_METEOR_MODEL_0 7536640
-#define M656_DATA_METEOR_MODEL_1 7536641
-#define M656_DATA_METEOR_MODEL_2 7536642
-#define M656_DATA_METEOR_MODEL_3 7536643
-#define M656_DATA_METEOR_MODEL_4 7536644
-#define M656_DATA_METEOR_MODEL_5 7536645
-#define M656_DATA_METEOR_MODEL_6 7536662
-#define M656_DATA_METEOR_MODEL_7 7536663
-#define M656_DATA_CHARACTER_MOTION_BASE 10158080
-#define M656_DATA_RESULTS_CAMERA_MOTION 7536651
-#define M656_DATA_PROGRESS_BAR_FULL 7536650
-#define M656_DATA_PROGRESS_BAR_EMPTY 7536649
-#define M656_DATA_STAGE_BACKDROP 7536652
-#define M656_DATA_STAGE_ANIMATION_MODEL 7536653
-#define M656_DATA_STAGE_ANIMATION_MOTION 7536654
-#define M656_DATA_STAGE_DECORATION_PARENT 7536657
-#define M656_DATA_STAGE_DECORATION_MOTION 7536659
-#define M656_DATA_METEOR_HIT_EFFECT 7536646
-#define M656_DATA_PLAYER_TRAIL 7536647
-#define M656_DATA_RESULT_MODEL_A 7536655
-#define M656_DATA_RESULT_MODEL_B 7536656
-#define M656_DATA_FINISH_MARKER 7536660
-
-u32 lbl_1_data_28[5] = { M656_CHAR_MOTION_DATA_0, M656_CHAR_MOTION_DATA_1, M656_CHAR_MOTION_DATA_2,
-                         M656_CHAR_MOTION_DATA_3, M656_CHAR_MOTION_DATA_UNUSED };
-s32 lbl_1_data_3C[8] = { M656_DATA_METEOR_MODEL_0, M656_DATA_METEOR_MODEL_1,
-                         M656_DATA_METEOR_MODEL_2, M656_DATA_METEOR_MODEL_3,
-                         M656_DATA_METEOR_MODEL_4, M656_DATA_METEOR_MODEL_5,
-                         M656_DATA_METEOR_MODEL_6, M656_DATA_METEOR_MODEL_7 };
-f32 lbl_1_data_5C[8] = { 100.0f, 150.0f, 250.0f, 100.0f, 150.0f, 250.0f, 150.0f, 150.0f };
+/* Character motion data 0-3; the unused entry is zero. */
+u32 lbl_1_data_28[5] = { DATANUM(0x930000, 0), DATANUM(0x8e0000, 33), DATANUM(0x930000, 26),
+                         DATANUM(0x930000, 6), 0 };
+/* Meteor model data 0-7. */
+s32 lbl_1_data_3C[8] = { DATANUM(0x730000, 0), DATANUM(0x730000, 1),
+                         DATANUM(0x730000, 2), DATANUM(0x730000, 3),
+                         DATANUM(0x730000, 4), DATANUM(0x730000, 5),
+                         DATANUM(0x730000, 22), DATANUM(0x730000, 23) };
+float lbl_1_data_5C[8] = { 100.0f, 150.0f, 250.0f, 100.0f, 150.0f, 250.0f, 150.0f, 150.0f };
 M656Entry10 lbl_1_data_7C[4][16] = {
     {
         { 0, 1500.0f, 0.0f, 0.0f },
@@ -245,8 +216,8 @@ void fn_1_5338(OMOBJ *obj)
 
     scene = obj->data;
     if ((scene->stream == -1) && (fn_80071A8C() == 2)) {
-        scene->stream = HuAudSStreamPlay(M656_STAGE_STREAM);
-        scene->fx = HuAudFXPlayPan(M656_STAGE_START_SFX, 64);
+        scene->stream = HuAudSStreamPlay(MSM_STREAM_DUELING_FOR_PRIZES);
+        scene->fx = HuAudFXPlayPan(MSM_SE_MG656_INTRO_AMBIENCE, 64);
     }
     if (fn_80071A8C() == 5) {
         fn_1_20C(obj, fn_1_53C4);
@@ -404,8 +375,7 @@ void fn_1_5D70(OMOBJ *obj)
         Hu3DCameraPerspectiveSet(3, 45.0f, 20.0f, 15000.0f, 1.3333334f);
         Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
         Hu3DCameraScissorSet(1, 0, 0, 640, 480);
-        motion = fn_8002C4C0(fn_80008DD0(M656_DATA_RESULTS_CAMERA_MOTION,
-                                                       M656_DATA_READ_FLAGS, 2));
+        motion = fn_8002C4C0(fn_80008DD0(DATANUM(0x730000, 11), 0x10000000U, 2));
         model = fn_800283F4(motion, 1);
         fn_8002D86C(model, 1.0f);
         fn_800284C8(model, 1);
@@ -429,8 +399,8 @@ s16 fn_1_5F4C(s32 modelKind)
 {
     HU3D_MODELID modelId;
     if (lbl_1_data_65C[modelKind] == -1) {
-        modelId = lbl_1_data_65C[modelKind] = fn_80025A04(
-            fn_80008DD0(lbl_1_data_3C[modelKind], M656_DATA_READ_FLAGS, 2));
+        modelId = lbl_1_data_65C[modelKind] =
+            fn_80025A04( fn_80008DD0(lbl_1_data_3C[modelKind], 0x10000000U, 2));
     } else {
         modelId = fn_80025D4C(lbl_1_data_65C[modelKind]);
     }
@@ -451,8 +421,7 @@ void fn_1_5FF8(OMOBJ *obj)
     ANIMDATA *anim;
 
     work = obj->data;
-    anim = HuSprAnimRead(
-        fn_80008DD0(M656_DATA_PROGRESS_BAR_FULL, M656_DATA_READ_FLAGS, 2));
+    anim = HuSprAnimDataRead(DATANUM(0x730000, 10));
     work->sprGroup = HuSprGrpCreate(11);
     HuSprGrpPosSet(work->sprGroup, 0.0f, 240.0f);
     for (index = 0; index < 10; index++) {
@@ -460,18 +429,14 @@ void fn_1_5FF8(OMOBJ *obj)
         HuSprGrpMemberSet(work->sprGroup, index, sprite);
         HuSprPosSet(work->sprGroup, index, index * 64 + (index >= 8 ? 32 : 0), 0.0f);
     }
-    anim = HuSprAnimRead(
-        fn_80008DD0(M656_DATA_PROGRESS_BAR_EMPTY, M656_DATA_READ_FLAGS, 2));
+    anim = HuSprAnimDataRead(DATANUM(0x730000, 9));
     HuSprGrpMemberSet(work->sprGroup, index, HuSprCreate(anim, 50, 0));
     HuSprPosSet(work->sprGroup, 10, 496.0f, 0.0f);
-    work->model2 = fn_80025A04(
-        fn_80008DD0(M656_DATA_STAGE_BACKDROP, M656_DATA_READ_FLAGS, 2));
-    work->model4 = fn_80025A04(
-        fn_80008DD0(M656_DATA_STAGE_ANIMATION_MODEL, M656_DATA_READ_FLAGS, 2));
+    work->model2 = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 12), 0x10000000U, 2));
+    work->model4 = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 13), 0x10000000U, 2));
     {
         s16 motion =
-            fn_80030458(work->model4, fn_80008DD0(M656_DATA_STAGE_ANIMATION_MOTION,
-                                                               M656_DATA_READ_FLAGS, 2));
+            fn_80030458(work->model4, fn_80008DD0(DATANUM(0x730000, 14), 0x10000000U, 2));
         fn_8002C95C(work->model4, motion);
     }
     fn_800269E8(work->model4, ((1 << 30) | (1 << 0)));
@@ -487,12 +452,10 @@ void fn_1_5FF8(OMOBJ *obj)
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
     Hu3DShadowTPLvlSet(0.3f);
     fn_80026FFC(work->model2);
-    work->model2E = fn_80025A04(
-        fn_80008DD0(M656_DATA_STAGE_DECORATION_PARENT, M656_DATA_READ_FLAGS, 2));
+    work->model2E = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 17), 0x10000000U, 2));
     {
         s16 motion =
-            fn_80030458(work->model2E, fn_80008DD0(M656_DATA_STAGE_DECORATION_MOTION,
-                                                                M656_DATA_READ_FLAGS, 2));
+            fn_80030458(work->model2E, fn_80008DD0(DATANUM(0x730000, 19), 0x10000000U, 2));
         fn_8002C95C(work->model2E, motion);
     }
     fn_8002D86C(work->model2E, 0.0f);
@@ -505,9 +468,9 @@ void fn_1_5FF8(OMOBJ *obj)
         fn_80026B64(work->models[index], 1);
         fn_800269E8(work->models[index], (1 << 0));
         fn_8002741C(work->model2E, lbl_1_data_60C[index], work->models[index]);
-        work->steps[index].x = 0.008726646259971648 * (double)(4.0f * frandf() - 2.0f);
-        work->steps[index].y = 0.008726646259971648 * (double)(4.0f * frandf() - 2.0f);
-        work->steps[index].z = 0.008726646259971648 * (double)(4.0f * frandf() - 2.0f);
+        work->steps[index].x = (M_PI * 0.5 / 180.0) * (double)(4.0f * frandf() - 2.0f);
+        work->steps[index].y = (M_PI * 0.5 / 180.0) * (double)(4.0f * frandf() - 2.0f);
+        work->steps[index].z = (M_PI * 0.5 / 180.0) * (double)(4.0f * frandf() - 2.0f);
     }
     fn_1_20C(obj, fn_1_65E0);
 }
@@ -547,9 +510,9 @@ void fn_1_66D0(OMOBJ *obj)
                  &environment->steps[modelIndex]);
         fn_80026808(
             environment->models[modelIndex],
-            (f32) ((f64) (180.0f * environment->angles[modelIndex].x) / 3.141592653589793),
-            (f32) ((f64) (180.0f * environment->angles[modelIndex].y) / 3.141592653589793),
-            (f32) ((f64) (180.0f * environment->angles[modelIndex].z) / 3.141592653589793));
+            (f32) ((f64) (180.0f * environment->angles[modelIndex].x) / M_PI),
+            (f32) ((f64) (180.0f * environment->angles[modelIndex].y) / M_PI),
+            (f32) ((f64) (180.0f * environment->angles[modelIndex].z) / M_PI));
         modelIndex += 1;
     }
 }
@@ -617,8 +580,7 @@ void fn_1_6990(OMOBJ *obj)
     fn_80026B64(model, (u16)lbl_1_rodata_88[work->group]);
     fn_1_2E0(&work->velocity, 0.0f, 0.0f, 0.0f);
     if (work->group == 0) {
-        work->model50 = fn_80025A04(
-            fn_80008DD0(M656_DATA_METEOR_HIT_EFFECT, M656_DATA_READ_FLAGS, 2));
+        work->model50 = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 6), 0x10000000U, 2));
     } else {
         work->model50 = fn_80025D4C(fn_1_4F4C(0)->model50);
     }
@@ -626,8 +588,7 @@ void fn_1_6990(OMOBJ *obj)
     fn_80026B64(work->model50, (u16)lbl_1_rodata_88[work->group]);
     fn_80026B8C(work->model50, 7);
     if (work->group == 0) {
-        work->model38 = fn_80025A04(
-            fn_80008DD0(M656_DATA_PLAYER_TRAIL, M656_DATA_READ_FLAGS, 2));
+        work->model38 = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 7), 0x10000000U, 2));
     } else {
         work->model38 = fn_80025D4C(fn_1_4F4C(0)->model38);
     }
@@ -635,17 +596,15 @@ void fn_1_6990(OMOBJ *obj)
     fn_80026B64(work->model38, (u16)lbl_1_rodata_88[work->group]);
     fn_80026760(work->model38, 0.0f, 0.0f, -600.0f);
     work->texScroll = fn_80031C10(work->model38, lbl_1_data_66C);
-    anim = HuSprAnimRead(fn_80008DD0(work->charNo + M656_DATA_CHARACTER_MOTION_BASE,
-                                              M656_DATA_READ_FLAGS, 2));
+    /* Character motion data directory. */
+    anim = HuSprAnimDataRead(work->charNo + DATANUM(0x9b0000, 0));
     work->sprGroup = HuSprGrpCreate(1);
     HuSprGrpPosSet(work->sprGroup, 0.0f, 240.0f);
     HuSprGrpMemberSet(work->sprGroup, 0, HuSprCreate(anim, 50, 0));
     HuSprPosSet(work->sprGroup, 0, 76.0f, (float)(work->group == 0 ? -16 : 16));
-    work->model48 = fn_80025A04(
-        fn_80008DD0(M656_DATA_RESULT_MODEL_A, M656_DATA_READ_FLAGS, 2));
+    work->model48 = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 15), 0x10000000U, 2));
     fn_8002D86C(work->model48, 0.0f);
-    work->model4A = fn_80025A04(
-        fn_80008DD0(M656_DATA_RESULT_MODEL_B, M656_DATA_READ_FLAGS, 2));
+    work->model4A = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 16), 0x10000000U, 2));
     fn_8002D86C(work->model4A, 0.0f);
     fn_1_20C(obj, fn_1_6E4C);
 }
@@ -772,8 +731,8 @@ void fn_1_7130(OMOBJ *obj)
         pan = 64.0f * (screen.x / 576.0f);
         pan = pan < 0.0f ? 0.0f : pan > 64.0f ? 64.0f : pan;
         pan += 32.0f;
-        HuAudFXPlayPan(M656_METEOR_HIT_SFX, (s16)pan);
-        CharFXPlay(work->charNo, M656_METEOR_HIT_VOICE);
+        HuAudFXPlayPan(MSM_SE_MG656_METEOR_TARGET_HIT, (s16)pan);
+        CharFXPlay(work->charNo, MSM_SE_CHARVOICE_ALARMED_GASP);
         fn_1_20C(obj, fn_1_8424);
         return;
     }
@@ -900,8 +859,8 @@ wander:
         pan = 64.0f * (screen.x / 576.0f);
         pan = pan < 0.0f ? 0.0f : pan > 64.0f ? 64.0f : pan;
         pan += 32.0f;
-        HuAudFXPlayPan(M656_METEOR_HIT_SFX, (s16)pan);
-        CharFXPlay(work->charNo, M656_METEOR_HIT_VOICE);
+        HuAudFXPlayPan(MSM_SE_MG656_METEOR_TARGET_HIT, (s16)pan);
+        CharFXPlay(work->charNo, MSM_SE_CHARVOICE_ALARMED_GASP);
         fn_1_20C(obj, fn_1_8424);
         return;
     }
@@ -1095,8 +1054,8 @@ s16 fn_1_8D78(s32 meteorKind)
 {
     HU3D_MODELID modelId;
     if (lbl_1_data_6BA[meteorKind] == -1) {
-        modelId = lbl_1_data_6BA[meteorKind] = fn_80025A04(
-            fn_80008DD0(lbl_1_data_3C[meteorKind], M656_DATA_READ_FLAGS, 2));
+        modelId = lbl_1_data_6BA[meteorKind] =
+            fn_80025A04( fn_80008DD0(lbl_1_data_3C[meteorKind], 0x10000000U, 2));
     } else {
         modelId = fn_80025D4C(lbl_1_data_6BA[meteorKind]);
     }
@@ -1122,7 +1081,7 @@ void fn_1_8E24(OMOBJ *obj)
         work->axis.y = 2.0f * frandf() - 1.0f;
         work->axis.z = 2.0f * frandf() - 1.0f;
         fn_1_518(&work->axis, &work->axis);
-        work->step = 0.008726646259971648 * (double)(6.0f * frandf() - 3.0f);
+        work->step = (M_PI * 0.5 / 180.0) * (double)(6.0f * frandf() - 3.0f);
     } else {
         work->axis = fn_1_4F64(0, work->index)->axis;
         work->step = fn_1_4F64(0, work->index)->step;
@@ -1209,8 +1168,7 @@ void fn_1_9398(OMOBJ *obj)
     finish->angle = 0.0f;
     finish->active = 0;
     fn_1_2E0(&finish->pos, 1500.0f, 0.0f, 0.0f);
-    finish->model = fn_80025A04(
-        fn_80008DD0(M656_DATA_FINISH_MARKER, M656_DATA_READ_FLAGS, 2));
+    finish->model = fn_80025A04( fn_80008DD0(DATANUM(0x730000, 20), 0x10000000U, 2));
     fn_80026B64(finish->model, (u16) lbl_1_rodata_88[finish->group]);
     fn_80026808(finish->model, finish->angle, 0.0f, 0.0f);
     fn_800269E8(finish->model, (1 << 0));

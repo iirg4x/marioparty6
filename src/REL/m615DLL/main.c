@@ -33,8 +33,6 @@ void _epilog(void) {
     }
 }
 
-extern OMOBJMAN *lbl_1_bss_4;
-
 void ObjectSetup(void)
 {
     s16 night;

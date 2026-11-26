@@ -1,6 +1,7 @@
 /* Insectiride: minigame sequence callbacks, camera moves and results. */
 #include "math.h"
 #include "REL/m647dll/module_types.h"
+#include "REL/m647dll/activity.h"
 #include "game/flag.h"
 
 
@@ -11,7 +12,6 @@ extern const VoidFunc _dtors[];
 void ObjectSetup(void);
 void fn_1_440(s16 frame);
 void fn_1_73C(void);
-void fn_1_AF18(s16 mode);
 
 void fn_1_F0(s16 mode, s16 frame);
 void fn_1_170(s16 mode, s16 frameNo);

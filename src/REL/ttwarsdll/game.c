@@ -114,7 +114,7 @@ s32 lbl_1_bss_0;
 
 // Creates the TT Wars object manager, camera, lighting, and initial scene callbacks during overlay
 // entry.
-void fn_1_A0(void) {
+void ObjectSetup(void) {
     OSReport("******* TTWARS ObjectSetup *********\n");
     lbl_1_bss_1870 = fn_8003A8BC(600, 8192);
     fn_80069F1C(lbl_1_bss_1870);

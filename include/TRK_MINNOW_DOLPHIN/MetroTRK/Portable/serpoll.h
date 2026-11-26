@@ -14,7 +14,7 @@ void TRKGetInput(void);
 MessageBufferID TRKTestForPacket();
 void TRKProcessInput(int bufferIdx);
 
-extern void* gTRKInputPendingPtr;
+extern volatile u8* gTRKInputPendingPtr;
 
 #ifdef __cplusplus
 }

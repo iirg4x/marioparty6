@@ -1,5 +1,6 @@
 /* Score displays and countdown digits for the three opposing players. */
 #include <math.h>
+#include "REL/m625Dll/score_box.h"
 #include "game/gamemes.h"
 #include "game/main.h"
 #include "game/gamework.h"
@@ -82,15 +83,15 @@ void fn_1_1284C(void)
                              lbl_1_data_414[boxIndex].y);
             MgScoreBoxDispSet(lbl_1_bss_7C8[boxIndex].secondaryBox, 0);
             lbl_1_bss_7C8[boxIndex].scoreBox = HuSprGrpCreate(3);
-            animations[1] = HuSprAnimRead(
-                fn_80008DD0(DATANUM(0x540000, 12), 0x10000000, 2));
+            animations[1] = HuSprAnimDataRead(
+                DATANUM(0x540000, 12));
             sprite = HuSprCreate(animations[1], 1, 0);
             HuSprGrpMemberSet(lbl_1_bss_7C8[boxIndex].scoreBox, 1, sprite);
             HuSprPosSet(lbl_1_bss_7C8[boxIndex].scoreBox, 1,
                         lbl_1_data_438[0], lbl_1_data_438[1]);
             HuSprBankSet(lbl_1_bss_7C8[boxIndex].scoreBox, 1, 0);
-            animations[2] = HuSprAnimRead(
-                fn_80008DD0(DATANUM(0x540000, 13), 0x10000000, 2));
+            animations[2] = HuSprAnimDataRead(
+                DATANUM(0x540000, 13));
             sprite = HuSprCreate(animations[2], 2, 0);
             HuSprGrpMemberSet(lbl_1_bss_7C8[boxIndex].scoreBox, 2, sprite);
             HuSprPosSet(lbl_1_bss_7C8[boxIndex].scoreBox, 2,

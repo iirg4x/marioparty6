@@ -16,14 +16,14 @@
 #include "string.h"
 #include "datadir_enum.h"
 #include "msm_stream.h"
+#include "humath.h"
 
-/* Sound entries used by this minigame. */
-#define MSM_SE_M631_01 1839
-#define MSM_SE_M631_02 1840
-#define MSM_SE_M631_03 1841
-#define MSM_SE_M631_04 1842
-#define MSM_SE_M631_05 1843
-#define MSM_SE_M631_06 1844
+
+
+
+
+
+
 
 typedef void (*VoidFunc)(void);
 
@@ -37,9 +37,6 @@ extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
 extern s16 lbl_802C0278;
-
-extern void fn_1_AFF8(void *, f32, s32);
-extern void fn_1_AF2C(void *, u32, u32, u32, u32, const HuVecF *);
 
 /* Camera-selection masks, one bit per camera. */
 const u16 lbl_1_rodata_10[4] = {1, 2, 4, 8};
@@ -61,7 +58,7 @@ void fn_1_1374(M631SceneWork *scene);
 void fn_1_14D0(M631SceneWork *scene);
 void fn_1_162C(M631SceneWork *scene);
 void fn_1_174C(OMOBJ *obj);
-void fn_1_17C8(void);
+void fn_1_17C8(OMOBJ *obj);
 void fn_1_1830(M631SceneWork *scene);
 void fn_1_1F78(M631SceneWork *scene);
 void fn_1_228C(HU3D_MODELID *models);
@@ -72,7 +69,8 @@ M631ActionNode *fn_1_2798(M631ActionQueue *owner);
 void fn_1_27E8(M631ActionNode *node);
 void fn_1_2868(void *callbackData);
 s32 fn_1_2A84(void *callbackData);
-void fn_1_2B60(void);
+void fn_1_2B60(M631MotionPairNode *callback,
+               M631MotionPairNode *context, f32 value);
 void fn_1_2B64(M631ActionQueue *work);
 M631AnimationQueue *fn_1_2E9C(void);
 void fn_1_2EC4(M631AnimationQueue *queue);
@@ -85,7 +83,7 @@ s32 fn_1_3690(void *callbackData);
 inline void fn_1_3704(M631AnimationNode *work, s32 positionIndex);
 s32 fn_1_37FC(void *callbackData);
 void fn_1_38E8(M631MotionPairNode *callback,
-               M631MotionPairNode *context);
+               M631MotionPairNode *context, f32 value);
 void fn_1_3B44(M631ActorWork *actor);
 void fn_1_3B7C(HuVecF *position);
 void fn_1_3BC4(void);
@@ -102,7 +100,8 @@ void fn_1_4DD4(const HuVecF *position, f32 radius);
 void fn_1_4EA4(M631SceneListNode *node);
 void fn_1_4F18(M631SceneListNode *callbackNode);
 s32 fn_1_4F6C(M631SceneListNode *callbackNode);
-void fn_1_5010(void);
+void fn_1_5010(M631MotionPairNode *callback,
+               M631MotionPairNode *context, f32 value);
 void fn_1_5014(HuVecF *destination);
 void fn_1_5054(void);
 void fn_1_5084(void);
@@ -209,7 +208,7 @@ void fn_1_248(s16 mode, s16 time)
         PSVECNormalize(&lightNormal, &lightNormal);
         fn_800614AC(&lightDirection, &lightNormal, &lightColor);
         fn_80061814();
-        HuAudFXPlay(MSM_SE_M631_01);
+        HuAudFXPlay(MSM_SE_MG631_OPENING_START);
         fn_800284C8(scene->sceneModels[13], lbl_1_rodata_10[0]);
         scene->openingFrames = 0;
         scene->openingPhase++;
@@ -290,7 +289,7 @@ void fn_1_560(s16 mode, s16 time)
     switch (scene->playPhase) {
     case 0:
         if (scene->isNight == 0) {
-            lbl_1_data_A0 = HuAudFXPlay(MSM_SE_M631_06);
+            lbl_1_data_A0 = HuAudFXPlay(MSM_SE_MG631_CONVEYOR_LOOP);
             fn_80026A44(scene->sceneModels[8], ((1 << 30) | (1 << 1)));
             fn_80026A44(scene->sceneModels[9], ((1 << 30) | (1 << 1)));
             scene->conveyorActive = 1;
@@ -331,14 +330,14 @@ void fn_1_644(s16 mode, s16 time)
             actor = scene->actorSlots[i];
             actor->dispatchEnabled = 0;
             actor->movementRequested = 0;
-            actor->motionController.finished = 0;
+            actor->motionController.unk80 = 0;
         }
         for (i = 0; i < scene->motionGroups[1].actorCount; i++) {
             actor = scene->motionGroups[1].actorSlots[i];
             if (actor->hit == 0 &&
-                fn_8002D3C4(actor->characterModelId) != actor->idleMotionId &&
-                fn_8002D3EC(actor->characterModelId) != actor->idleMotionId) {
-                fn_8005C2C8(actor->charNo, actor->idleMotionId,
+                fn_8002D3C4(actor->characterModelId) != actor->motionIds[0] &&
+                fn_8002D3EC(actor->characterModelId) != actor->motionIds[0]) {
+                fn_8005C2C8(actor->charNo, actor->motionIds[0],
                                    0.0f, 5.0f,
                                    ((1 << 30) | (1 << 0)));
             }
@@ -375,9 +374,9 @@ void fn_1_644(s16 mode, s16 time)
         for (i = 0; i < scene->motionGroups[1].actorCount; i++) {
             actor = scene->motionGroups[1].actorSlots[i];
             if (actor->hit == 0 &&
-                fn_8002D3C4(actor->characterModelId) != actor->idleMotionId &&
-                fn_8002D3EC(actor->characterModelId) != actor->idleMotionId) {
-                fn_8005C2C8(actor->charNo, actor->idleMotionId,
+                fn_8002D3C4(actor->characterModelId) != actor->motionIds[0] &&
+                fn_8002D3EC(actor->characterModelId) != actor->motionIds[0]) {
+                fn_8005C2C8(actor->charNo, actor->motionIds[0],
                                    0.0f, 5.0f,
                                    ((1 << 30) | (1 << 0)));
             }
@@ -413,7 +412,7 @@ void fn_1_990(s16 mode, s16 time)
         if (WipeCheck() == 0) {
             scene->resultsTransitionPhase++;
         }
-        goto finished;
+        break;
     case 2:
         scene->endingScene = 1;
         scene->primaryRotation = 0.0f;
@@ -525,7 +524,7 @@ void fn_1_990(s16 mode, s16 time)
         index = 0;
         while (index < 4) {
             actor = scene->actorSlots[index];
-            fn_8005BE80(actor->charNo, actor->idleMotionId);
+            fn_8005BE80(actor->charNo, actor->motionIds[0]);
             fn_8005C47C(actor->charNo, ((1 << 30) | (1 << 1)));
             fn_8005C430(actor->charNo, ((1 << 30) | (1 << 0)));
             fn_8005C47C(actor->charNo, (1 << 0));
@@ -559,8 +558,6 @@ void fn_1_990(s16 mode, s16 time)
         }
         break;
     }
-finished:
-    return;
 }
 
 /* The results phase starts each team's outcome animation and awards ten coins outside practice
@@ -577,7 +574,7 @@ void fn_1_10A0(s16 mode, s16 time)
         for (actorIndex = 0; actorIndex < scene->motionGroups[scene->winnerGroup].actorCount;
              actorIndex++) {
             actor = scene->motionGroups[scene->winnerGroup].actorSlots[actorIndex];
-            fn_8005C2C8(actor->charNo, actor->winMotionId, 0.0f, 5.0f, 0);
+            fn_8005C2C8(actor->charNo, actor->motionIds[6], 0.0f, 5.0f, 0);
             playerNo = actor->playerNo;
             if (fn_8006A124(65551) == 0) {
                 lbl_80265750[playerNo].mgCoinBonus = 10;
@@ -586,7 +583,7 @@ void fn_1_10A0(s16 mode, s16 time)
         for (actorIndex = 0; actorIndex < scene->motionGroups[scene->winnerGroup ^ 1].actorCount;
              actorIndex++) {
             actor = scene->motionGroups[scene->winnerGroup ^ 1].actorSlots[actorIndex];
-            fn_8005C2C8(actor->charNo, actor->loseMotionId, 0.0f, 5.0f, 0);
+            fn_8005C2C8(actor->charNo, actor->motionIds[7], 0.0f, 5.0f, 0);
         }
         scene->resultsPhase++;
         /* fall through */
@@ -689,7 +686,7 @@ void fn_1_162C(M631SceneWork *scene)
         scene->sceneModels[i] = -1;
     }
     for (i = 0; i < 1; i++) {
-        scene->unusedSlots[i] = -1;
+        scene->unk1798[i] = -1;
     }
     for (i = 0; i < 4; i++) {
         scene->actorSlots[i] = 0;
@@ -720,12 +717,12 @@ void fn_1_174C(OMOBJ *obj) {
     scene->endingScene = 0;
     scene->cameraAngle = 0.0f;
     fn_1_49B4();
-    obj->objFunc = (OMOBJ_FUNC) fn_1_17C8;
+    obj->objFunc = fn_1_17C8;
 }
 
 /* The scene's recurring update advances camera movement, conveyor spawning, scenery and active
  * effects. */
-void fn_1_17C8(void) {
+void fn_1_17C8(OMOBJ *obj) {
     M631SceneWork *scene = lbl_1_bss_8->data;
     fn_1_3E60(scene);
     if (scene->conveyorActive != 0) {
@@ -1050,7 +1047,7 @@ void fn_1_2588(M631ActionQueue *queue)
     node->next = NULL;
     queue->stage = 0;
     for (i = 0; i < 5; i++) {
-        queue->modelCounts[i] = 0;
+        queue->unk710[i] = 0;
     }
 }
 
@@ -1100,7 +1097,7 @@ void fn_1_27E8(M631ActionNode *node)
 {
     M631ActionQueue *owner;
     owner = node->owner;
-    owner->modelCounts[node->modelIndex]--;
+    owner->unk710[node->modelIndex]--;
     if (node->previous != 0) {
         node->previous->next = node->next;
     } else {
@@ -1129,7 +1126,7 @@ void fn_1_2868(void *callbackData)
             fn_80026A44(work->modelId, (1 << 0));
             work->state++;
             work->frame = 0;
-            HuAudFXPlayPan(MSM_SE_M631_04, 80);
+            HuAudFXPlayPan(MSM_SE_MG631_OBSTACLE_PASS, 80);
             return;
         }
         break;
@@ -1145,7 +1142,7 @@ void fn_1_2868(void *callbackData)
         break;
     case 2:
         if (work->position.x <= (-633.2f)) {
-            HuAudFXPlayPan(MSM_SE_M631_04, 80);
+            HuAudFXPlayPan(MSM_SE_MG631_OBSTACLE_PASS, 80);
             work->state++;
             work->frame = 0;
             return;
@@ -1173,31 +1170,19 @@ void fn_1_2868(void *callbackData)
 s32 fn_1_2A84(void *callbackData)
 {
     M631ActionNode *node;
-    M631ActionQueue *owner;
 
     node = callbackData;
     fn_80026790(node->modelId, &node->position);
     if (node->completed != 0 || node->position.x < (-800.0f)) {
-        owner = node->owner;
-        owner->modelCounts[node->modelIndex]--;
-        if (node->previous != 0) {
-            node->previous->next = node->next;
-        } else {
-            owner->activeHead = node->next;
-        }
-        if (node->next != 0) {
-            node->next->previous = node->previous;
-        }
-        node->previous = 0;
-        node->next = owner->freeHead;
-        owner->freeHead = node;
+        fn_1_27E8(node);
         return 1;
     }
     return 0;
 }
 
 /* The obstacle pair-contact callback has no additional response. */
-void fn_1_2B60(void) { }
+void fn_1_2B60(M631MotionPairNode *callback,
+               M631MotionPairNode *context, f32 value) { }
 
 /* While the conveyor runs, periodically spawns obstacles in one lane or one of the allowed lane
  * pairs. */
@@ -1263,11 +1248,12 @@ void fn_1_2B64(M631ActionQueue *work)
                 positionPointer = &position;
                 fn_1_4A34(positionPointer, 50.0f, 0);
                 fn_1_AFF8(&actor->callbackWork, 50.0f, 3);
-                fn_1_AF2C(&actor->callbackWork, (u32)actor, (u32)fn_1_2868,
-                          (u32)fn_1_2A84, (u32)fn_1_2B60,
+                fn_1_AF2C(&actor->callbackWork, actor, fn_1_2868,
+                          fn_1_2A84,
+                          fn_1_2B60,
                           &actor->position);
                 actor->modelIndex = selected[i];
-                work->modelCounts[actor->modelIndex]++;
+                work->unk710[actor->modelIndex]++;
                 fn_8002D414(actor->modelId, 0.0f);
                 actor->state = 0;
                 actor->completed = 0;
@@ -1420,7 +1406,7 @@ void fn_1_32C8(M631AnimationNode *inputWork)
 
     switch (work->animationState) {
     case 0:
-        HuAudFXPlayPan(MSM_SE_M631_02, fn_1_51D0(work->position.x));
+        HuAudFXPlayPan(MSM_SE_MG631_BOLT_DROP_APPEAR, fn_1_51D0(work->position.x));
         fn_80026A44(work->modelId, (1 << 0));
         work->timer = 0;
         work->animationState++;
@@ -1452,7 +1438,7 @@ void fn_1_32C8(M631AnimationNode *inputWork)
     case 3:
         work->position.y -= 30.0f;
         if (work->position.y <= (-100.0f)) {
-            work->soundId = HuAudFXPlayPan(MSM_SE_M631_03,
+            work->soundId = HuAudFXPlayPan(MSM_SE_MG631_BOLT_LAND,
                                            fn_1_51D0(work->position.x));
             work->position.y = -100.0f;
             work->callbackWork.state = 5;
@@ -1548,26 +1534,10 @@ inline void fn_1_3704(M631AnimationNode *work, s32 positionIndex)
  * left exit. */
 s32 fn_1_37FC(void *callbackData) {
     M631AnimationNode *node = callbackData;
-    M631AnimationQueue *queue;
     fn_80026790(node->modelId, &node->position);
     if ((node->position.x < (-800.0f)) || (node->animationState == 100)) {
         fn_800269E8(node->modelId, (1 << 0));
-        if (node->soundId >= 0) {
-            HuAudFXStop(node->soundId);
-            node->soundId = -1;
-        }
-        queue = node->queueOwner;
-        if (node->previous) {
-            node->previous->next = node->next;
-        } else {
-            queue->head = node->next;
-        }
-        if (node->next) {
-            node->next->previous = node->previous;
-        }
-        node->previous = NULL;
-        node->next = queue->freeHead;
-        queue->freeHead = node;
+        fn_1_3228(node);
         return 1;
     }
     return 0;
@@ -1576,7 +1546,7 @@ s32 fn_1_37FC(void *callbackData) {
 /* The pair-contact callback replaces a falling object with its effect when it reaches the contacted
  * height. */
 void fn_1_38E8(M631MotionPairNode *callback,
-               M631MotionPairNode *context)
+               M631MotionPairNode *context, f32 value)
 {
     M631AnimationNode *work =
         callback->owner;
@@ -1585,7 +1555,7 @@ void fn_1_38E8(M631MotionPairNode *callback,
     case 3: {
 
         if (work->position.y <= 100.0f) {
-            HuAudFXPlayPan(MSM_SE_M631_05, fn_1_51D0(work->position.x));
+            HuAudFXPlayPan(MSM_SE_MG631_BOLT_CONTACT, fn_1_51D0(work->position.x));
             work->animationState = 100;
             fn_1_3704(work, 1);
         }
@@ -1595,7 +1565,7 @@ void fn_1_38E8(M631MotionPairNode *callback,
     case 5: {
 
         if (work->position.y <= 200.0f) {
-            HuAudFXPlayPan(MSM_SE_M631_05, fn_1_51D0(work->position.x));
+            HuAudFXPlayPan(MSM_SE_MG631_BOLT_CONTACT, fn_1_51D0(work->position.x));
             work->animationState = 100;
             fn_1_3704(work, 2);
         }
@@ -1691,10 +1661,10 @@ void fn_1_3E60(M631SceneWork *work)
         lookAt = &lookAtPositions[work->endingScene];
         /* Both additions affect the same eye-position Y component. */
         eye->y += 50.0 *
-                     sin((3.141592653589793 * (f64)work->cameraAngle) /
+                     sin((M_PI * (f64)work->cameraAngle) /
                          180.0);
         eye->y += 50.0 *
-                     sin((3.141592653589793 * (f64)work->cameraAngle) /
+                     sin((M_PI * (f64)work->cameraAngle) /
                          180.0);
         PSVECSubtract(lookAt, eye, &direction);
         PSVECNormalize(&direction, &direction);
@@ -1750,7 +1720,7 @@ void fn_1_40BC(M631SceneModelPosition *position, s32 index)
     if (index == 0) {
         position->motionTime = 60.0f;
         {
-            f32 angle = (f32)((3.141592653589793 * (f64)position->motionTime) /
+            f32 angle = (f32)((M_PI * (f64)position->motionTime) /
                               180.0);
             fn_80026760(
                 model,
@@ -1790,7 +1760,7 @@ void fn_1_449C(M631SceneWork *work)
         work->indexedWorks[1].motionTime -= 360.0f;
     }
 
-    angle = (f32)((3.141592653589793 * (f64)work->indexedWorks[0].motionTime) /
+    angle = (f32)((M_PI * (f64)work->indexedWorks[0].motionTime) /
                   180.0);
     position.x = (f32)((f64)work->indexedWorks[0].position.x +
                        (200.0 * sin((f64)angle)));
@@ -1800,7 +1770,7 @@ void fn_1_449C(M631SceneWork *work)
     position.z = work->indexedWorks[0].position.z;
     fn_80026790(work->indexedWorks[0].model, &position);
 
-    angle = (f32)((3.141592653589793 * (f64)work->indexedWorks[1].motionTime) /
+    angle = (f32)((M_PI * (f64)work->indexedWorks[1].motionTime) /
                   180.0);
     position.x = (f32)((f64)work->indexedWorks[1].position.x +
                        (200.0 * sin((f64)angle)));
@@ -1995,8 +1965,10 @@ void fn_1_4DD4(const HuVecF *position, f32 radius)
         scene->sceneListHead = node;
         node->position = *position;
         fn_1_AFF8(&node->callbackWork, radius, 7);
-        fn_1_AF2C(&node->callbackWork, (u32)node,
-                  (u32)fn_1_4F18, (u32)fn_1_4F6C, (u32)fn_1_5010,
+        fn_1_AF2C(&node->callbackWork, node,
+                  (void (*)(void *))fn_1_4F18,
+                            (s32 (*)(void *))fn_1_4F6C,
+                  fn_1_5010,
                   &node->position);
     }
 }
@@ -2031,29 +2003,18 @@ void fn_1_4F18(M631SceneListNode *callbackNode)
 /* The contact-response completion callback recycles its node after it leaves the left edge. */
 s32 fn_1_4F6C(M631SceneListNode *callbackNode) {
     M631SceneListNode *node;
-    M631SceneWork *scene;
 
     node = callbackNode;
     if (node->position.x < (-700.0f)) {
-        scene = lbl_1_bss_8->data;
-        if (node->previous) {
-            node->previous->next = node->next;
-        } else {
-            scene->sceneListHead = node->next;
-        }
-        if (node->next) {
-            node->next->previous = node->previous;
-        }
-        node->previous = NULL;
-        node->next = scene->sceneListFreeHead;
-        scene->sceneListFreeHead = node;
+        fn_1_4EA4(node);
         return 1;
     }
     return 0;
 }
 
 /* The contact-response pair callback has no additional response. */
-void fn_1_5010(void) { }
+void fn_1_5010(M631MotionPairNode *callback,
+               M631MotionPairNode *context, f32 value) { }
 
 /* Actor behavior reads the first group-zero player's position for its movement decision. */
 void fn_1_5014(HuVecF *destination)
@@ -2089,9 +2050,9 @@ void fn_1_50DC(HuVecF *direction, f32 magnitude)
     HuVecF result;
     f32 angle = scene->motionGroups[1].actorSlots[0]->behaviorAngle;
 
-    result.x = (f32)(magnitude * sin((3.141592653589793 * (f64)angle) / 180.0));
+    result.x = (f32)(magnitude * sin((M_PI * (f64)angle) / 180.0));
     result.y = 0.0f;
-    result.z = (f32)(magnitude * cos((3.141592653589793 * (f64)angle) / 180.0));
+    result.z = (f32)(magnitude * cos((M_PI * (f64)angle) / 180.0));
     *direction = result;
 }
 

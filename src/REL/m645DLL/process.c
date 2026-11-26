@@ -1,4 +1,5 @@
 /* Minigame process startup and sequence callbacks for Clean Team. */
+#include "REL/m645DLL.h"
 #include "math.h"
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -33,14 +34,6 @@ void ObjectSetup(void) {
 }
 
 void fn_1_110(s16 mode, s16 frameNo);
-void fn_1_144(s16 mode, s16 frameNo);
-void fn_1_148(s16 mode, s16 frameNo);
-void fn_1_14C(s16 mode, s16 frameNo);
-void fn_1_150(s16 mode, s16 frameNo);
-void fn_1_154(s16 mode, s16 frameNo);
-void fn_1_158(s16 mode, s16 frameNo);
-void fn_1_15C(s16 mode, s16 frameNo);
-void fn_1_160(s16 mode, s16 frameNo);
 
 MGSEQ_PARAM lbl_1_data_0 = { 0x12C, 0, fn_1_110, fn_1_144, fn_1_148, fn_1_14C, fn_1_150, fn_1_154, fn_1_158, fn_1_15C, fn_1_160 };
 
@@ -51,11 +44,6 @@ void fn_1_F0(void) {
         HuPrcVSleep();
     }
 }
-
-void *fn_1_164(s32 priority, u32 bytes, void (*update)(OMOBJ *));
-
-/* static */
-void fn_1_2ABC(OMOBJ *object);
 
 /* static */
 

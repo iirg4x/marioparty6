@@ -306,10 +306,6 @@ Vec fn_1_9BFC(const CallbackReceiver *owner)
     return modelPosition;
 }
 
-static inline Vec getTransitionPosition(AnimationOwner *entry)
-{
-    return entry->position.value;
-}
 
 static inline void setDescentSpeed(AnimationOwner *entry, f32 radius)
 {
@@ -343,7 +339,7 @@ static inline Vec calculateLaunchVelocity(const Vec *positionSource,
     position.y = height;
     return position;
 }
-
+/* Updates the falling entries and advances their effect as they land. */
 void CallbackReceiver::fn_1_9C7C()
 {
     f32 ratio;
@@ -356,7 +352,7 @@ void CallbackReceiver::fn_1_9C7C()
     {
         ratio = (f32)((f64) this->timer / 0.2);
         AnimationOwner *entry = static_cast<AnimationOwner *>(this->objects[this->index]);
-        Vec position = getTransitionPosition(entry);
+        Vec position = ObjectPosition(entry);
         updateFallingHeight(this, ratio);
         position.x = this->position.value.x;
         position.z = this->position.value.z;
@@ -371,7 +367,7 @@ void CallbackReceiver::fn_1_9C7C()
             range = 1.5f;
         }
         AnimationOwner *entry = static_cast<AnimationOwner *>(this->objects[this->index]);
-        Vec entryPosition = getTransitionPosition(entry);
+        Vec entryPosition = ObjectPosition(entry);
         forwardOffset = 100.0f * RandomFloat(- range, range);
         horizontalOffset = 100.0f * RandomFloat(- range, range);
         Vec position;

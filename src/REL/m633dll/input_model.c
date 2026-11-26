@@ -1,6 +1,7 @@
 /* Creates the minigame camera, stage models, players, and sequence on entry. */
 #include <math.h>
 #include "REL/m633dll.h"
+#include "humath.h"
 
 /* Called by the REL prolog to initialize minigame state, configure camera 1, and register the
  * sequence callbacks. */
@@ -22,7 +23,7 @@ void ObjectSetup(void)
     while (setupIndex < 4) {
         memset(&lbl_1_bss_0.aiStates[setupIndex], 0, sizeof(M633AI));
         lbl_1_bss_0.aiStates[setupIndex].decisionCounter = -1;
-        lbl_1_bss_0.aiStates[setupIndex].reservedDecisionWord = -1;
+        lbl_1_bss_0.aiStates[setupIndex].unk04 = -1;
         setupIndex += 1;
     }
 
@@ -266,7 +267,7 @@ void fn_1_1598(OMOBJ *stageObject)
             fn_80086E3C(lbl_1_bss_0.players[setupIndex]);
             lbl_1_bss_0.aiStates[setupIndex].targetHeadingDegrees =
                 (f32) (180.0 * (atan2((f64) aiSpawnPosition.z, (f64) aiSpawnPosition.x) /
-                                3.141592653589793));
+                                M_PI));
             if (frandmod(100) < 50U) {
                 aiTurnDirection = -1.0f;
             } else {

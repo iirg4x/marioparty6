@@ -34,7 +34,7 @@ DSError TRKSendACK(TRKBuffer* buffer)
 
 	ackTries = 3;
 	do {
-		err = TRKMessageSend((TRK_Msg*)buffer);
+		err = TRKMessageSend(buffer);
 		--ackTries;
 	} while (err != DS_NoError && ackTries > 0);
 

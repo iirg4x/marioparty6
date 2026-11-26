@@ -938,9 +938,9 @@ void fn_1_EB48(PlayerState *player)
     void fn_1_D894(PlayerState *player);
     u8 *clampFlags;
 
-    player->unkA4 = 0;
+    player->clampFlags = 0;
     fn_1_EFAC(player);
-    clampFlags = &player->unkA4;
+    clampFlags = &player->clampFlags;
     *clampFlags |= fn_1_116D8(player);
     // Request 2 starts play after the start message clears.
     if (currentRequest() == 2) {

@@ -1,12 +1,11 @@
 /* Builds and updates the two team score displays used to decide the winner. */
+#include <stdlib.h>
 #include <math.h>
 #include "REL/m657Dll.h"
 #include "game/gamework.h"
 #include "game/memory.h"
 #include "game/gamemes.h"
 #include "string.h"
-
-int abs(int value);
 
 #define M657_SCORE_FRAMES_PER_SECOND 60
 #define M657_SCORE_INITIAL_FRAMES 600
@@ -187,18 +186,16 @@ void fn_1_42F4(OMOBJ *obj)
                 MgScoreColorSet(teamScore->hundredths, 255, 0, 0);
             }
             scoreValue = teamScore->frames % M657_SCORE_FRAMES_PER_SECOND;
-            scoreValue = abs(scoreValue);
+            scoreValue = (abs)(scoreValue);
             /* Convert the remaining frame fraction to two displayed decimal digits. */
             if (scoreWork->teams[0].running) {
-                MgScoreValueSet(scoreWork->teams[0].hundredths,
-                    scoreValue * 100 / M657_SCORE_FRAMES_PER_SECOND);
+                MgScoreValueSet(scoreWork->teams[0].hundredths, scoreValue * 100 / 60);
             }
             if (scoreWork->teams[1].running) {
-                MgScoreValueSet(scoreWork->teams[1].hundredths,
-                    scoreValue * 100 / M657_SCORE_FRAMES_PER_SECOND);
+                MgScoreValueSet(scoreWork->teams[1].hundredths, scoreValue * 100 / 60);
             }
             scoreValue = teamScore->frames / M657_SCORE_FRAMES_PER_SECOND;
-            scoreValue = abs(scoreValue);
+            scoreValue = (abs)(scoreValue);
             if (scoreWork->teams[0].running) {
                 MgScoreValueSet(scoreWork->teams[0].seconds, scoreValue);
             }

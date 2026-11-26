@@ -6,7 +6,7 @@
 
 DSError TRKInitializeMessageBuffers(void);
 DSError TRKSetBufferPosition(TRKBuffer* msg, u32 pos);
-void* TRKGetBuffer(int idx);
+TRKBuffer* TRKGetBuffer(int idx);
 void TRKResetBuffer(TRKBuffer* msg, u8 keepData);
 void TRKReleaseBuffer(int idx);
 DSError TRKGetFreeBuffer(int* msgID, TRKBuffer** outMsg);

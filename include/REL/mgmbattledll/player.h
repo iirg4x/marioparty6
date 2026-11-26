@@ -4,7 +4,7 @@
 
 #include "dolphin/mtx.h"
 
-typedef struct MgBattleRecord_s {
+typedef struct {
     /* No player routine reads or writes these leading bytes. */
     u8 unknownBytesAtStart[2];
     /* Character selected for this player. */

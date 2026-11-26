@@ -4,6 +4,7 @@
 #include "messdir_enum.h"
 #include "msm_se.h"
 #include "game/window.h"
+#include "game/frand.h"
 #include <math.h>
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -19,7 +20,6 @@
 #include "game/mg/timer.h"
 #include "game/mg/score.h"
 #include "game/pad.h"
-#include "game/frand.h"
 #include "game/sprite.h"
 #include "game/wipe.h"
 #include "game/mg/actman.h"
@@ -27,10 +27,9 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 
-#define DECATHLON_TEXT_TAB 12
-#define DECATHLON_UNUSED_MESSAGE 4294967295U
 #define DECATHLON_SCORE_MAX 9999
-#define DECATHLON_TIME_SCORE_MAX 5999 /* 99 seconds and 59 frames at 60 frames per second. */
+
+/* 99 seconds and 59 frames at 60 frames per second. */
 
 typedef struct {
     s8 first; /* first text byte; this two-byte view is unused */
@@ -69,14 +68,14 @@ void fn_1_1EB0(s16 playerNo, u32 messageId) {
     s16 sourceOffset;
 
     textOffset = 0;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
+    while (textOffset < 20) {
         if (lbl_1_bss_24[playerNo].messageBytes[textOffset] == 0) {
             break;
         }
         textOffset++;
     }
     sourceOffset = 0;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
+    while (textOffset < 20) {
         if (messageBytes[sourceOffset] == 0) {
             break;
         }
@@ -95,15 +94,16 @@ void fn_1_1FD4(s16 playerNo) {
     s16 textOffset;
 
     textOffset = 0;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
+    while (textOffset < 20) {
         if (lbl_1_bss_24[playerNo].messageBytes[textOffset] == 0) {
             break;
         }
         textOffset++;
     }
-    lbl_1_bss_24[playerNo].messageBytes[textOffset] = DECATHLON_TEXT_TAB;
+    /* Text control code 12 inserts a tab. */
+    lbl_1_bss_24[playerNo].messageBytes[textOffset] = 12;
     textOffset++;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
+    while (textOffset < 20) {
         lbl_1_bss_24[playerNo].messageBytes[textOffset] = 0;
         textOffset++;
     }
@@ -164,10 +164,7 @@ void fn_1_22C0(void) {
 s16 fn_1_22E0(void) {
     s16 state;
     s16 choice;
-    s16 firstPadMask;
-    s16 secondPadMask;
-    s16 thirdPadMask;
-    s16 fourthPadMask;
+
     state = 1;
     choice = 0;
     HuWinExOpen(lbl_1_bss_18.windowId);
@@ -231,24 +228,22 @@ s16 fn_1_22E0(void) {
 /* Before the next event, the sequence announces its place in the ten-event schedule. */
 void fn_1_2704(void) {
     s16 waitFrame;
-    s16 padMask;
-    s16 playerNo;
 
     waitFrame = 0;
     {
-        DecathlonMessageIds messageIds = {
-            { MESSNUM(MESS_MGM_DECATHLON, 45), MESSNUM(MESS_MGM_DECATHLON, 46),
+        u32 messageIds[10] = {
+              MESSNUM(MESS_MGM_DECATHLON, 45), MESSNUM(MESS_MGM_DECATHLON, 46),
               MESSNUM(MESS_MGM_DECATHLON, 47), MESSNUM(MESS_MGM_DECATHLON, 48),
               MESSNUM(MESS_MGM_DECATHLON, 49), MESSNUM(MESS_MGM_DECATHLON, 50),
               MESSNUM(MESS_MGM_DECATHLON, 51), MESSNUM(MESS_MGM_DECATHLON, 52),
-              MESSNUM(MESS_MGM_DECATHLON, 53), MESSNUM(MESS_MGM_DECATHLON, 54) }
+              MESSNUM(MESS_MGM_DECATHLON, 53), MESSNUM(MESS_MGM_DECATHLON, 54)
         };
         HuWinExOpen(lbl_1_bss_18.windowId);
         fn_1_6E38();
         HuWinComKeyReset();
         fn_1_220C();
         if ((s32) (MgModePlayNum + 1) < 10) {
-            HuWinInsertMesSet(lbl_1_bss_18.windowId, messageIds.messageIds[MgModePlayNum], 0);
+            HuWinInsertMesSet(lbl_1_bss_18.windowId, messageIds[MgModePlayNum], 0);
             HuWinMesSet(lbl_1_bss_18.windowId, MESSNUM(MESS_MGM_DECATHLON, 2));
     } else {
         HuWinMesSet(lbl_1_bss_18.windowId, MESSNUM(MESS_MGM_DECATHLON, 4));
@@ -266,7 +261,7 @@ void fn_1_2CF0(HUWINID window, s16 mode);
 /* The mode sequence calls this to show the game name and collect the next-game choice. */
 s16 fn_1_28E8(void) {
     HUWINID window;
-    s16 choice;
+
     s16 result;
     s16 state;
     s16 messageIndex;
@@ -285,8 +280,7 @@ s16 fn_1_28E8(void) {
     HuWinComKeyReset();
     fn_1_220C();
     fn_1_2CF0(lbl_1_bss_18.windowId, MgModePlayNum);
-    HuWinInsertMesSet(lbl_1_bss_18.windowId,
-                      lbl_1_data_CD0[MgModePlayNum].data->nameMes, 5);
+    HuWinInsertMesSet(lbl_1_bss_18.windowId, lbl_1_data_CD0[MgModePlayNum].data->nameMes, 5);
     HuWinMesSet(lbl_1_bss_18.windowId, MESSNUM(MESS_MGM_DECATHLON, 3));
     HuWinMesWait(lbl_1_bss_18.windowId);
     state = 1;
@@ -353,15 +347,14 @@ void fn_1_2CF0(HUWINID window, s16 mode) {
         while ((digitIndex < 4) && (record > 0)) {
             digit = record % 10;
             record = (record - digit) / 10;
-            HuWinInsertMesSet(window, lbl_1_data_88[digit],
-                              (s16)lbl_1_data_30[3 - digitIndex]);
+            HuWinInsertMesSet(window, lbl_1_data_88[digit], (s16)lbl_1_data_30[3 - digitIndex]);
             digitIndex++;
         }
         HuWinInsertMesSet(window, MESSNUM(MESS_MGM_DECATHLON, 35), (s16)lbl_1_data_30[4]);
     } else if ((mode == 2) || (mode == 7)) {
         record = lbl_80265E30.decaMgRecord[mode];
-        if (record > DECATHLON_TIME_SCORE_MAX) {
-            record = DECATHLON_TIME_SCORE_MAX;
+        if (record > 5999) {
+            record = 5999;
         }
         if (record < 0) {
             record = 0;
@@ -373,14 +366,13 @@ void fn_1_2CF0(HUWINID window, s16 mode) {
         while ((digitIndex < 2) && (record > 0)) {
             digit = record % 10;
             record = (record - digit) / 10;
-            HuWinInsertMesSet(window, lbl_1_data_88[digit],
-                              (s16)lbl_1_data_30[1 - digitIndex]);
+            HuWinInsertMesSet(window, lbl_1_data_88[digit], (s16)lbl_1_data_30[1 - digitIndex]);
             digitIndex++;
         }
         HuWinInsertMesSet(window, MESSNUM(MESS_MGM_DECATHLON, 34), (s16)lbl_1_data_30[2]);
         record = lbl_80265E30.decaMgRecord[mode];
-        if (record > DECATHLON_TIME_SCORE_MAX) {
-            record = DECATHLON_TIME_SCORE_MAX;
+        if (record > 5999) {
+            record = 5999;
         }
         if (record < 0) {
             record = 0;
@@ -393,8 +385,7 @@ void fn_1_2CF0(HUWINID window, s16 mode) {
         while ((digitIndex < 2) && (record > 0)) {
             digit = record % 10;
             record = (record - digit) / 10;
-            HuWinInsertMesSet(window, lbl_1_data_88[digit],
-                              (s16)lbl_1_data_30[4 - digitIndex]);
+            HuWinInsertMesSet(window, lbl_1_data_88[digit], (s16)lbl_1_data_30[4 - digitIndex]);
             digitIndex++;
         }
     } else if (mode == 3) {
@@ -410,8 +401,7 @@ void fn_1_2CF0(HUWINID window, s16 mode) {
         while ((digitIndex < 4) && (record > 0)) {
             digit = record % 10;
             record = (record - digit) / 10;
-            HuWinInsertMesSet(window, lbl_1_data_88[digit],
-                              (s16)lbl_1_data_30[3 - digitIndex]);
+            HuWinInsertMesSet(window, lbl_1_data_88[digit], (s16)lbl_1_data_30[3 - digitIndex]);
             digitIndex++;
         }
         HuWinInsertMesSet(window, MESSNUM(MESS_MGM_DECATHLON, 37), (s16)lbl_1_data_30[4]);
@@ -428,8 +418,7 @@ void fn_1_2CF0(HUWINID window, s16 mode) {
         while ((digitIndex < 4) && (record > 0)) {
             digit = record % 10;
             record = (record - digit) / 10;
-            HuWinInsertMesSet(window, lbl_1_data_88[digit],
-                              (s16)lbl_1_data_30[3 - digitIndex]);
+            HuWinInsertMesSet(window, lbl_1_data_88[digit], (s16)lbl_1_data_30[3 - digitIndex]);
             digitIndex++;
         }
         HuWinInsertMesSet(window, MESSNUM(MESS_MGM_DECATHLON, 36), (s16)lbl_1_data_30[4]);
@@ -437,7 +426,6 @@ void fn_1_2CF0(HUWINID window, s16 mode) {
 }
 
 extern s32 fn_1_50E4(s32 mode, s32 record, s32 score);
-extern s32 frandmod(s32 modulus);
 extern void fn_1_3878(HUWINID window, s16 mode, s16 row, s16 visible);
 
 /* The player-score formatter clears the player's insertion text before appending its digits. */
@@ -445,57 +433,9 @@ static inline void decathlonResultEntryClear(s16 index) {
     memset(&lbl_1_bss_24[index], 0, sizeof(lbl_1_bss_24[index]));
 }
 
-/* Score formatting appends a tab and clears unused text bytes. If the text is full, the tab
- * lands in the adjacent status byte and is cleared instead. */
-static inline void decathlonResultEntryAppendTab(s16 playerNo) {
-    s16 textOffset;
-
-    textOffset = 0;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
-        if (lbl_1_bss_24[playerNo].messageBytes[textOffset] == 0) {
-            break;
-        }
-        textOffset++;
-    }
-    lbl_1_bss_24[playerNo].messageBytes[textOffset] = DECATHLON_TEXT_TAB;
-    textOffset++;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
-        lbl_1_bss_24[playerNo].messageBytes[textOffset] = 0;
-        textOffset++;
-    }
-    lbl_1_bss_24[playerNo].enabled = 0;
-}
-
 static inline MgmDecathlonPlayerRecord *decathlonResultEntryGet(s16 playerNo) {
     lbl_1_bss_24[playerNo].enabled = 0;
     return &lbl_1_bss_24[playerNo];
-}
-
-/* Score formatting appends each message's bytes to the selected player's result text. */
-static inline void decathlonResultMessageSet(s16 playerNo, u32 messageId) {
-    u8 *messageBytes = (u8 *)HuWinMesPtrGet(messageId);
-    s16 textOffset;
-    s16 sourceOffset;
-
-    textOffset = 0;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
-        if (lbl_1_bss_24[playerNo].messageBytes[textOffset] == 0) {
-            break;
-        }
-        textOffset++;
-    }
-    sourceOffset = 0;
-    while (textOffset < DECATHLON_RESULT_TEXT_CAPACITY) {
-        if (messageBytes[sourceOffset] == 0) {
-            break;
-        }
-        /* A full buffer puts its terminator in the adjacent status byte, also cleared below. */
-        lbl_1_bss_24[playerNo].messageBytes[textOffset] = messageBytes[sourceOffset];
-        lbl_1_bss_24[playerNo].messageBytes[textOffset + 1] = 0;
-        textOffset++;
-        sourceOffset++;
-    }
-    lbl_1_bss_24[playerNo].enabled = 0;
 }
 
 /* The result sequence calls this to display scores and any newly earned record. */
@@ -503,8 +443,7 @@ void fn_1_337C(void) {
     HUWIN *window;
     s16 scorePlayer;
     s16 bestPlayer;
-    s16 leadPlayer;
-    s16 modeIndex;
+
     s32 record;
     s32 score;
     s32 scoreCopy;
@@ -546,8 +485,7 @@ void fn_1_337C(void) {
             HuWinComKeyReset();
             fn_1_220C();
             bestPlayer = fn_1_9744(bestPlayer);
-            HuWinInsertMesSet(lbl_1_bss_18.windowId,
-                              lbl_1_data_50[bestPlayer], lbl_1_data_30[0]);
+            HuWinInsertMesSet(lbl_1_bss_18.windowId, lbl_1_data_50[bestPlayer], lbl_1_data_30[0]);
             HuWinMesSet(lbl_1_bss_18.windowId, MESSNUM(MESS_MGM_DECATHLON, 26));
             HuWinMesWait(lbl_1_bss_18.windowId);
         }
@@ -571,11 +509,9 @@ void fn_1_3878(HUWINID window, s16 mode, s16 playerNo, s16 appendControlCode) {
     s32 timeScore;
     s32 digit;
     s16 messageIndex;
-    s16 textPosition;
-    s16 characterIndex;
 
     for (messageIndex = 0; messageIndex < 8; messageIndex++) {
-        messageIds[messageIndex] = DECATHLON_UNUSED_MESSAGE;
+        messageIds[messageIndex] = 0xFFFFFFFFU;
     }
     mode--;
     if (mode == 1) {
@@ -585,16 +521,16 @@ void fn_1_3878(HUWINID window, s16 mode, s16 playerNo, s16 appendControlCode) {
         if (score < 0) score = 0;
         messageIds[3] = lbl_1_data_88[0];
         for (messageIndex = 0; messageIndex < 4 && score > 0; messageIndex++) {
-            digit = score % 10; score = (score - digit) / 10;
+            digit = score % 10;
+            score = (score - digit) / 10;
             messageIds[3 - messageIndex] = lbl_1_data_88[digit];
         }
         messageIds[4] = MESSNUM(MESS_MGM_DECATHLON, 35);
     } else if ((mode == 2) || (mode == 7)) {
         s32 timeInputScore;
-
         timeScore = lbl_80265750[playerNo].mgScore;
         score = timeScore;
-        if (score > DECATHLON_TIME_SCORE_MAX) score = DECATHLON_TIME_SCORE_MAX;
+        if (score > 5999) score = 5999;
         if (score < 0) score = 0;
         score = (score - score % 60) / 60;
         messageIds[0] = lbl_1_data_88[0]; messageIds[1] = lbl_1_data_88[0];
@@ -605,7 +541,7 @@ void fn_1_3878(HUWINID window, s16 mode, s16 playerNo, s16 appendControlCode) {
         messageIds[2] = MESSNUM(MESS_MGM_DECATHLON, 34);
         timeInputScore = lbl_80265750[playerNo].mgScore;
         score = timeInputScore;
-        if (score > DECATHLON_TIME_SCORE_MAX) score = DECATHLON_TIME_SCORE_MAX;
+        if (score > 5999) score = 5999;
         if (score < 0) score = 0;
         score = score % 60;
         score = (s32)(100.0f * (0.016666668f * (f32)score));
@@ -656,13 +592,13 @@ void fn_1_3878(HUWINID window, s16 mode, s16 playerNo, s16 appendControlCode) {
 
     decathlonResultEntryClear(playerNo);
     for (messageIndex = 0; messageIndex < 8; messageIndex++) {
-        if (messageIds[messageIndex] != DECATHLON_UNUSED_MESSAGE) {
+        if (messageIds[messageIndex] != 0xFFFFFFFFU) {
             messageId = messageIds[messageIndex];
-            decathlonResultMessageSet(playerNo, messageId);
+            fn_1_1EB0(playerNo, messageId);
         }
     }
     if (appendControlCode != 0) {
-        decathlonResultEntryAppendTab(playerNo);
+        fn_1_1FD4(playerNo);
     }
     HuWinInsertMesSet(window, (u32)decathlonResultEntryGet(playerNo),
                       (s16)lbl_1_data_30[playerNo]);
@@ -1051,11 +987,6 @@ s32 fn_1_4130(void) {
     return allEventsComplete;
 }
 
-typedef struct DecathlonMessageText {
-    s8 first; /* first text byte; this two-byte view is unused */
-    s8 second; /* following text byte; this two-byte view is unused */
-} DecathlonMessageText;
-
 extern s16 MgModeScore[4];
 
 /* Result screens test whether the new score beats a record; timed events require a positive
@@ -1085,9 +1016,9 @@ void fn_1_5130(void) {
     s16 insertionSlot;
 
     {
-        DecathlonScoreMessages scoreMessages = {
-            { MESSNUM(MESS_MGM_DECATHLON, 29), MESSNUM(MESS_MGM_DECATHLON, 30),
-              MESSNUM(MESS_MGM_DECATHLON, 31), MESSNUM(MESS_MGM_DECATHLON, 32) }
+        u32 scoreMessages[4] = {
+              MESSNUM(MESS_MGM_DECATHLON, 29), MESSNUM(MESS_MGM_DECATHLON, 30),
+              MESSNUM(MESS_MGM_DECATHLON, 31), MESSNUM(MESS_MGM_DECATHLON, 32)
         };
         scoreMax = MgModeScore[0];
         playerNo = 0;
@@ -1144,7 +1075,7 @@ void fn_1_5130(void) {
         playerNo++;
     }
     digitOrLeaderIndex--;
-    HuWinMesSet(lbl_1_bss_18.windowId, scoreMessages.messageIds[digitOrLeaderIndex]);
+    HuWinMesSet(lbl_1_bss_18.windowId, scoreMessages[digitOrLeaderIndex]);
     HuWinMesWait(lbl_1_bss_18.windowId);
     HuAudSStreamFadeOut(lbl_1_data_C70, 200);
     HuWinExClose(lbl_1_bss_18.windowId);
@@ -1153,10 +1084,9 @@ void fn_1_5130(void) {
 }
 
 /* The end-of-mode sequence calls this to ask whether to return to the board. */
-s32 fn_1_567C(void) {
-    s32 result;
-    s16 padMask;
-    s16 player;
+s16 fn_1_567C(void) {
+    s16 result;
+
     s16 choice;
 
     result = 0;
@@ -1186,8 +1116,7 @@ void fn_1_57F4(HUWINID winId, u32 messageId, s16 characterCode) {
         if ((messageId == lbl_1_data_B0[entryIndex].messageId) &&
             (characterCode == lbl_1_data_B0[entryIndex].characterCode) &&
             (lbl_1_data_B0[entryIndex].soundEffectId >= 0)) {
-            HuAudFXPlayPan(lbl_1_data_B0[entryIndex].soundEffectId,
-                           lbl_1_data_2A8);
+            HuAudFXPlayPan(lbl_1_data_B0[entryIndex].soundEffectId, lbl_1_data_2A8);
             fn_1_6E38();
         }
     }
@@ -1206,47 +1135,47 @@ u32 lbl_1_data_88[10] = {
     MESSNUM(MESS_MGM_DECATHLON, 52), MESSNUM(MESS_MGM_DECATHLON, 53)
 };
 DecathlonMessageSound lbl_1_data_B0[42] = {
-    {MESSNUM(MESS_MGM_DECATHLON, 0), 1, 950},
-    {MESSNUM(MESS_MGM_DECATHLON, 0), 2, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 1), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 2), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 3), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 4), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 5), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 6), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 7), 1, 944},
+    {MESSNUM(MESS_MGM_DECATHLON, 0), 1, MSM_SE_GUIDE_DAY_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 0), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 1), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 2), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 3), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 4), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 5), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 6), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 7), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_DECATHLON, 8), 1, -1},
-    {MESSNUM(MESS_MGM_DECATHLON, 9), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 10), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 11), 1, 944},
+    {MESSNUM(MESS_MGM_DECATHLON, 9), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 10), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 11), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_DECATHLON, 11), 2, -1},
-    {MESSNUM(MESS_MGM_DECATHLON, 12), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 13), 1, 943},
-    {MESSNUM(MESS_MGM_DECATHLON, 14), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 15), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 16), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 16), 2, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 17), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 17), 2, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 18), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 19), 1, 943},
-    {MESSNUM(MESS_MGM_DECATHLON, 19), 2, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 20), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 21), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 22), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 23), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 24), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 25), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 27), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 28), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 29), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 30), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 31), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 32), 1, 942},
-    {MESSNUM(MESS_MGM_DECATHLON, 33), 1, 944},
-    {MESSNUM(MESS_MGM_DECATHLON, 58), 1, 944},
+    {MESSNUM(MESS_MGM_DECATHLON, 12), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 13), 1, MSM_SE_GUIDE_NIGHT_APOLOGY},
+    {MESSNUM(MESS_MGM_DECATHLON, 14), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 15), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 16), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 16), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 17), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 17), 2, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 18), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 19), 1, MSM_SE_GUIDE_NIGHT_APOLOGY},
+    {MESSNUM(MESS_MGM_DECATHLON, 19), 2, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 20), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 21), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 22), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 23), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 24), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 25), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 27), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 28), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 29), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 30), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 31), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 32), 1, MSM_SE_GUIDE_NIGHT_INTRO},
+    {MESSNUM(MESS_MGM_DECATHLON, 33), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
+    {MESSNUM(MESS_MGM_DECATHLON, 58), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_DECATHLON, 58), 2, -1},
-    {MESSNUM(MESS_MGM_DECATHLON, 58), 3, 944},
+    {MESSNUM(MESS_MGM_DECATHLON, 58), 3, MSM_SE_GUIDE_NIGHT_EXPLAIN},
     {MESSNUM(MESS_MGM_DECATHLON, 58), 4, -1},
 };
 s16 lbl_1_data_2A8 = 64;

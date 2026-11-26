@@ -5,10 +5,11 @@
 #include "game/wipe.h"
 #include "dolphin/mtx.h"
 #include "msm_stream.h"
-
 #define DECATHLON_MODE_GAME_NUMBER 10000
 #define DECATHLON_INITIAL_TIME_RECORD 5940
 #define MINIGAME_PUBLIC_NUMBER_BASE 601
+
+#include "humath.h"
 
 extern void fn_1_F184(void);
 
@@ -32,10 +33,7 @@ s32 _prolog(void) {
         (*constructor)();
         constructor++;
     }
-    lbl_1_bss_C0 = fn_8003A8BC(100, 8192);
-    MgModeSubMode = 0;
-    decathlonCameraSetup();
-    fn_8000DAC0(fn_1_F184, 100U, 12288U, 0, lbl_1_bss_C0);
+    fn_1_EC20();
     return 0;
 }
 
@@ -48,7 +46,13 @@ u32 lbl_1_data_C8C = -1;
 s32 lbl_1_data_C90 = -1;
 s32 lbl_1_data_C94 = -1;
 s32 lbl_1_data_C98[14] = {
-    1229, 1228, 1234, 1238, 1236, 1225, 1237, 1226, 1235, 1232, 1227, 1233, 1231, 1230
+    MSM_SE_MGM02_PLAYER_ARRIVE_MARIO,      MSM_SE_MGM02_PLAYER_ARRIVE_LUIGI,
+    MSM_SE_MGM02_PLAYER_ARRIVE_PEACH,      MSM_SE_MGM02_PLAYER_ARRIVE_YOSHI,
+    MSM_SE_MGM02_PLAYER_ARRIVE_WARIO,      MSM_SE_MGM02_PLAYER_ARRIVE_DAISY,
+    MSM_SE_MGM02_PLAYER_ARRIVE_WALUIGI,    MSM_SE_MGM02_PLAYER_ARRIVE_KINOPIO,
+    MSM_SE_MGM02_PLAYER_ARRIVE_TERESA,     MSM_SE_MGM02_PLAYER_ARRIVE_MINIKOOPA,
+    MSM_SE_MGM02_PLAYER_ARRIVE_KINOPIKO,   MSM_SE_MGM02_PLAYER_ARRIVE_MINIKOOPAR,
+    MSM_SE_MGM02_PLAYER_ARRIVE_MINIKOOPAG, MSM_SE_MGM02_PLAYER_ARRIVE_MINIKOOPAB
 };
 DecathlonModeData lbl_1_data_CD0[10] = {
     {0, &MgDataTbl[0]},
@@ -104,10 +108,7 @@ void fn_1_ED78(void) {
     }
     fn_8006A1C4(196609);
     fn_8006A1C4(196610);
-    playerNo = Hu3DGLightCreate(0.0f, 1000.0f,
-                                1000.0f, 0.0f,
-                                -1.0f, -0.5f,
-                                255, 255, 255);
+    playerNo = Hu3DGLightCreate(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, -0.5f, 255, 255, 255);
     Hu3DGLightInfinitytSet(playerNo);
     Hu3DShadowCreate(30.0f, 20.0f, 12000.0f);
     shadowTop.x = 0.0f;
@@ -168,9 +169,6 @@ void fn_1_F0D8(void) {
 extern s16 lbl_802C0278;
 
 extern void fn_1_ED78(void);
-extern s16 fn_1_C51C(void);
-extern s16 fn_1_6188(void);
-extern s16 fn_1_567C(void);
 
 /* Menu cancellation fades the mode music before starting the shared exit sequence. */
 static inline void decathlonModeExit(void) {
@@ -181,7 +179,7 @@ static inline void decathlonModeExit(void) {
 /* The child process created at startup advances menus, games, results, and exits by state. */
 void fn_1_F184(void) {
     OMOVLHIS *history;
-    s32 previousMode;
+
     s16 selection;
     s16 streamWait;
     s32 unlockMode;
@@ -265,12 +263,12 @@ void fn_1_F184(void) {
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        lbl_80265B70.mgInstDispF = 0;
+        GWMgInstDispSet(0);
         unlockMode = lbl_1_data_CD0[MgModePlayNum].modeId + MINIGAME_PUBLIC_NUMBER_BASE;
         fn_8003CCAC(unlockMode);
         lbl_80265B70.mgNo = unlockMode - MINIGAME_PUBLIC_NUMBER_BASE;
         lbl_802C0278 = 0;
-        omOvlCallEx(4, 1, 0, 0);
+        omOvlCallEx(DLL_instdll, 1, 0, 0);
         for (;;) {
             HuPrcVSleep();
         }
@@ -287,12 +285,12 @@ void fn_1_F184(void) {
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        lbl_80265B70.mgInstDispF = 1;
+        GWMgInstDispSet(1);
         instructionGameNumber = lbl_1_data_CD0[MgModePlayNum].modeId + MINIGAME_PUBLIC_NUMBER_BASE;
         fn_8003CCAC(instructionGameNumber);
         lbl_80265B70.mgNo = instructionGameNumber - MINIGAME_PUBLIC_NUMBER_BASE;
         lbl_802C0278 = 0;
-        omOvlCallEx(4, 1, 0, 0);
+        omOvlCallEx(DLL_instdll, 1, 0, 0);
         for (;;) {
             HuPrcVSleep();
         }
@@ -441,16 +439,15 @@ s32 fn_1_FB2C(Vec *direction, Vec *unitDirection) {
 }
 
 /* Player movement rotates a direction by X, then Y, then Z angles in degrees. */
-void fn_1_FC84(f32 angleX, f32 angleY, f32 angleZ,
-               Vec source, Vec *destination)
+void fn_1_FC84(f32 angleX, f32 angleY, f32 angleZ, Vec source, Vec *destination)
 {
     Mtx combinedRotation;
     Mtx axisRotation;
 
-    PSMTXRotRad(combinedRotation, 'x', 0.017453292f * angleX);
-    PSMTXRotRad(axisRotation, 'y', 0.017453292f * angleY);
+    PSMTXRotRad(combinedRotation, 'x', MTXDegToRad(angleX));
+    PSMTXRotRad(axisRotation, 'y', MTXDegToRad(angleY));
     PSMTXConcat(axisRotation, combinedRotation, combinedRotation);
-    PSMTXRotRad(axisRotation, 'z', 0.017453292f * angleZ);
+    PSMTXRotRad(axisRotation, 'z', MTXDegToRad(angleZ));
     PSMTXConcat(axisRotation, combinedRotation, combinedRotation);
     PSMTXMultVecSR(combinedRotation, &source, destination);
 }
@@ -470,7 +467,7 @@ f64 fn_1_FD44(Vec first, Vec second) {
         result = (f64)work / lengthProduct;
     }
     result = acos(result);
-    result = 180.0 * (result / 3.141592653589793);
+    result = 180.0 * (result / M_PI);
 
     /* Treat identical vectors as no turn even if floating-point math leaves residue. */
     work = first.x - second.x;

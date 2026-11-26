@@ -5,6 +5,7 @@
 #include "datadir_enum.h"
 #include "game/mgdata.h"
 #include "game/thpmain.h"
+#include "dolphin/gx.h"
 
 void fn_1_898(HU3D_MODEL *modelP, Mtx *matrix);
 void fn_1_854(s16 layerNo);
@@ -24,8 +25,8 @@ HU3D_MODELID fn_1_0(s16 modeNo, s16 timeNo, Point3d *position) {
         1.3f,
         1.3f,
         1.3f);
-    lbl_1_bss_9C = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9c0000, 15), 0x10000000, 2));
+    lbl_1_bss_9C = HuSprAnimDataRead(
+        DATANUM(0x9c0000, 15));
     lbl_1_bss_A2 = HuSprGrpCreate(1);
 
     if (modeNo != -1) {
@@ -177,10 +178,12 @@ void fn_1_898(HU3D_MODEL *modelP, Mtx *matrix)
     GXSetCullMode(GX_CULL_NONE);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
-    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+                  GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+                  GX_DF_CLAMP, GX_AF_SPOT);
     GXSetNumChans(0);
-    GXLoadPosMtxImm(*matrix, 0);
+    GXLoadPosMtxImm(*matrix, GX_PNMTX0);
     if (HuTHPStartCheck() != 0) {
         fn_800360D8(lbl_1_bss_94, 284, 256, 4, GX_CLAMP, GX_CLAMP, GX_TRUE,
                     GX_TEXMAP0);

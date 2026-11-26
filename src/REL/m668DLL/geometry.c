@@ -10,11 +10,6 @@ typedef struct {
     f32 margin; /* Allowed distance from the segment to a tested plane. */
 } M668SegmentBound;
 
-extern inline f32 m668_fabs32(f32 value)
-{
-    return fabs((f64)value);
-}
-
 /* Tests whether a segment crosses a plane or comes within its collision margin. */
 s32 fn_1_16FC(const M668VecBound *plane, const M668SegmentBound *segment)
 {
@@ -27,8 +22,8 @@ s32 fn_1_16FC(const M668VecBound *plane, const M668SegmentBound *segment)
         return 1;
     }
     intersects = 1;
-    if (!(m668_fabs32(begin) <= segment->margin) &&
-        !(m668_fabs32(end) <= segment->margin)) {
+    if (!(fabsf(begin) <= segment->margin) &&
+        !(fabsf(end) <= segment->margin)) {
         intersects = 0;
     }
     return intersects;

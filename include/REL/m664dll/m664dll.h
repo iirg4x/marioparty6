@@ -57,8 +57,6 @@ typedef struct M664ModelPair {
     s16 objectModelId; /* Companion model positioned at the opening model's fook00 object. */
 } M664ModelPair;
 
-typedef M664ModelPair ModelPair;
-
 typedef struct M664SoundHandles {
     s32 soundHandle[2]; /* Opening and course effects; -1 is absent, -2 stops course restarts. */
 } M664SoundHandles;

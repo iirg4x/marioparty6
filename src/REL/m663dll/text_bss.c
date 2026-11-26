@@ -1,5 +1,6 @@
 /* Module-wide work: camera, light, shadow, projection, particles, models, players, input,
  * score sprites and background controls. */
+#include "REL/m663dll/main.h"
 #include "REL/m663dll/transition.h"
 #include <math.h>
 
@@ -18,7 +19,7 @@
 #include "REL/m663dll/actors.h"
 #include "REL/m663dll/motion.h"
 
-u16 lbl_1_bss_15A8;
+s16 lbl_1_bss_15A8;
 HUPROCESS *lbl_1_bss_15A0[2];
 M663CameraState lbl_1_bss_1428;
 M663LightState lbl_1_bss_13EC;

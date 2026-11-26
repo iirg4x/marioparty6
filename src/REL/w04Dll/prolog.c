@@ -1,8 +1,8 @@
 // Module initialization and shutdown.
+#include "REL/w04Dll/board.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 // The REL loader calls this on module load to run constructors and initialize the board.
 int _prolog(void) {

@@ -39,7 +39,6 @@ extern s16 lbl_1_bss_814;
 void fn_1_296C(s16 index, s16 sequence);
 void fn_1_2C60(s16 index, Point3d *result);
 void fn_1_2D48(void);
-s32 fn_1_3E8C(s16 frameNo);
 void fn_1_3F6C(s16 index, s16 frame);
 void fn_1_4078(s16 index, s16 frame);
 void fn_1_4E60(void);
@@ -56,7 +55,6 @@ u8 fn_1_C438(void);
 void fn_1_DE68(void);
 void fn_1_EB00(void);
 void fn_1_EE94(void);
-s32 fn_1_EF24(s16 playerIndex);
 void fn_1_EF40(void);
 void fn_1_EF54(void);
 void fn_1_EFC4(void);
@@ -66,11 +64,6 @@ void fn_1_F900(s16 playerIndex);
 void fn_1_10BD4(void);
 void fn_1_10D74(HU3D_MODEL *model, HU3D_PARTICLE *particleSystem, Mtx matrix);
 void fn_1_10E90(Point3d position, f32 scale, f32 randomVelocity, f32 verticalAcceleration);
-
-static inline s16 M625NightModeGet(void)
-{
-    return lbl_802C0278;
-}
 
 /* Selects a player's motions when setup or a player action update changes their pose. */
 void fn_1_296C(s16 index, s16 sequence)
@@ -172,7 +165,7 @@ void fn_1_2D48(void)
     s32 playerIndex;
     s32 motionIndex;
 
-    nightMode = M625NightModeGet();
+    nightMode = GWMgNightFGet();
     lbl_1_bss_1D4 = 1;
     lbl_1_bss_1D0 = 1;
     lbl_1_bss_1CC = 0;
@@ -313,7 +306,7 @@ void fn_1_2D48(void)
         }
         lbl_1_bss_1D8[playerIndex].stickX =
             lbl_1_bss_1D8[playerIndex].stickY = 0;
-        lbl_1_bss_1D8[playerIndex].buttons =
+        lbl_1_bss_1D8[playerIndex].unk6E =
             lbl_1_bss_1D8[playerIndex].buttonsDown = 0;
         fn_8005DEB0(lbl_1_bss_1D8[playerIndex].characterNo,
                              (s16)lbl_1_data_1E8[1], 0);
@@ -446,7 +439,7 @@ void fn_1_4078(s16 index, s16 frame)
     case 25:
         lbl_1_bss_1D8[index].stickX =
             lbl_1_bss_1D8[index].stickY = 0;
-        lbl_1_bss_1D8[index].buttons =
+        lbl_1_bss_1D8[index].unk6E =
             lbl_1_bss_1D8[index].buttonsDown = 0;
         if (lbl_1_bss_1D8[index].position.x < 0.0f) {
             lbl_1_bss_1D8[index].stickX = -56;
@@ -467,7 +460,7 @@ void fn_1_4078(s16 index, s16 frame)
     case 27:
         lbl_1_bss_1D8[index].stickX =
             lbl_1_bss_1D8[index].stickY = 0;
-        lbl_1_bss_1D8[index].buttons =
+        lbl_1_bss_1D8[index].unk6E =
             lbl_1_bss_1D8[index].buttonsDown = 0;
         minimumDistance = 60000.0f;
         scanIndex = 0;
@@ -504,7 +497,7 @@ void fn_1_4078(s16 index, s16 frame)
     case 28:
         lbl_1_bss_1D8[index].stickX =
             lbl_1_bss_1D8[index].stickY = 0;
-        lbl_1_bss_1D8[index].buttons =
+        lbl_1_bss_1D8[index].unk6E =
             lbl_1_bss_1D8[index].buttonsDown = 0;
         /* fall through */
     default:
@@ -1401,7 +1394,7 @@ void fn_1_BF54(void)
         fn_80026838(lbl_1_bss_1D8[index].objectModel,
                          &lbl_1_bss_1D8[index].rotation);
         lbl_1_bss_1D8[index].stickX = lbl_1_bss_1D8[index].stickY = 0;
-        lbl_1_bss_1D8[index].buttons = lbl_1_bss_1D8[index].buttonsDown = 0;
+        lbl_1_bss_1D8[index].unk6E = lbl_1_bss_1D8[index].buttonsDown = 0;
     }
 }
 
@@ -1477,7 +1470,6 @@ u8 fn_1_C438(void) {
     s16 eligibleCount;
     s16 motionCount;
     s16 index;
-    s16 positionIndex;
     s16 playerIndex;
 
     fn_1_11698();
@@ -1703,23 +1695,7 @@ for (; playerIndex < 4; playerIndex += 1) {
                 lbl_1_bss_1D8[playerIndex].movedDistance = 100.0f;
                 lbl_1_bss_1D8[playerIndex].moveSpeed = 0.0f;
             }}
-        positionIndex = 0;
-for (; positionIndex < 4; positionIndex += 1) {
-            lbl_1_bss_1D8[positionIndex].position.x += lbl_1_bss_1D8[positionIndex].velocity.x;
-            lbl_1_bss_1D8[positionIndex].position.y += lbl_1_bss_1D8[positionIndex].velocity.y;
-            lbl_1_bss_1D8[positionIndex].position.z += lbl_1_bss_1D8[positionIndex].velocity.z;
-            lbl_1_bss_1D8[positionIndex].storedVelocity = lbl_1_bss_1D8[positionIndex].velocity;
-            lbl_1_bss_1D8[positionIndex].velocity.x =
-            lbl_1_bss_1D8[positionIndex].velocity.y =
-            lbl_1_bss_1D8[positionIndex].velocity.z = 0.0f;
-            fn_80026790(lbl_1_bss_1D8[positionIndex].objectModel,
-                             &lbl_1_bss_1D8[positionIndex].position);
-            fn_80026838(lbl_1_bss_1D8[positionIndex].objectModel,
-                             &lbl_1_bss_1D8[positionIndex].rotation);
-            lbl_1_bss_1D8[positionIndex].stickX =
-            lbl_1_bss_1D8[positionIndex].stickY = 0;
-            lbl_1_bss_1D8[positionIndex].buttons =
-            lbl_1_bss_1D8[positionIndex].buttonsDown = 0;}
+        fn_1_BF54();
         if (motionCount >= -4) {
             return 1;
         }
@@ -1798,7 +1774,7 @@ void fn_1_EB00(void)
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         lbl_1_bss_1D8[playerIndex].stickX =
             lbl_1_bss_1D8[playerIndex].stickY = 0;
-        lbl_1_bss_1D8[playerIndex].buttons =
+        lbl_1_bss_1D8[playerIndex].unk6E =
             lbl_1_bss_1D8[playerIndex].buttonsDown = 0;
         lbl_1_bss_1D8[playerIndex].stickX =
             lbl_802BFFFC[lbl_1_bss_1D8[playerIndex].controllerIndex];
@@ -1824,7 +1800,7 @@ void fn_1_EB00(void)
         if (lbl_1_bss_1D8[playerIndex].stickY < -56) {
             lbl_1_bss_1D8[playerIndex].stickY = -56;
         }
-        lbl_1_bss_1D8[playerIndex].buttons =
+        lbl_1_bss_1D8[playerIndex].unk6E =
             lbl_802C0010[lbl_1_bss_1D8[playerIndex].controllerIndex];
         lbl_1_bss_1D8[playerIndex].buttonsDown =
             lbl_802C0008[lbl_1_bss_1D8[playerIndex].controllerIndex];
@@ -1843,8 +1819,8 @@ void fn_1_EE94(void) {
         playerIndex += 1;
     }
 }
-
-s32 fn_1_EF24(s16 playerIndex) {
+/* Gets the player's current timer for the sequence update during play. */
+s16 fn_1_EF24(s16 playerIndex) {
     return lbl_1_bss_1D8[playerIndex].timer;
 }
 
@@ -1891,7 +1867,7 @@ void fn_1_F07C(void)
     while (index < 4) {
         if (lbl_1_bss_1D8[index].computerPlayer != 0) {
             lbl_1_bss_1D8[index].stickX = lbl_1_bss_1D8[index].stickY = 0;
-            lbl_1_bss_1D8[index].buttons = lbl_1_bss_1D8[index].buttonsDown = 0;
+            lbl_1_bss_1D8[index].unk6E = lbl_1_bss_1D8[index].buttonsDown = 0;
             if (lbl_1_bss_1D8[index].team == 0) {
                 fn_1_F174(index);
             } else {
@@ -2324,7 +2300,7 @@ void fn_1_10BD4(void)
     s16 index;
 
     animation =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 9), 0x10000000, 2));
+        HuSprAnimDataRead(DATANUM(0x210000, 9));
     lbl_1_bss_1C8 = fn_8003216C(animation, 300);
     fn_80026760(lbl_1_bss_1C8, 0.0f, 0.0f, 0.0f);
     fn_800268B0(lbl_1_bss_1C8, 1.0f, 1.0f, 1.0f);

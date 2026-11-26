@@ -14,11 +14,13 @@ const u32 lbl_1_rodata_210[4] = {0x3F0031, 0x3F0032, 0x3F0033, 0x3F0034};
 void fn_1_5074(HU3D_MODEL *, Mtx *);
 void fn_1_5314(LensFlare *, Mtx);
 
+/* Draws the flare with the view matrix supplied to the model hook. */
 void fn_1_5074(HU3D_MODEL *model, Mtx *data) {
     LensFlare *hookData = static_cast<LensFlare *>(model->hookData);
     fn_1_5314(hookData, *data);
 }
 
+/* Creates the render hook and loads the four flare animations. */
 LensFlare::LensFlare() {
     s32 index;
     s16 handle = fn_800260F4(fn_1_5074);
@@ -28,13 +30,12 @@ LensFlare::LensFlare() {
     model->hookData = this;
     modelId = (s16)handle;
     for (index=0; index<4; ++index) {
-        animations[index] = HuSprAnimRead(fn_80008DD0(lbl_1_rodata_210[index],0x10000000,2));
+        animations[index] = HuSprAnimDataRead(lbl_1_rodata_210[index]);
         HuSprAnimLock(animations[index]);
     }
 }
 
-extern "C" void fn_800262D0(short);
-
+/* Removes the render hook and releases the flare animations. */
 LensFlare::~LensFlare() {
     fn_800262D0(modelId);
     for (int spriteIndex = 0; spriteIndex < 4; spriteIndex++) {
@@ -42,6 +43,7 @@ LensFlare::~LensFlare() {
     }
 }
 
+/* Acknowledges the requested effect flag. */
 void LensFlare::flagEnabled(int bitIndex) {
     flags &= ~(1 << bitIndex);
 }
@@ -72,6 +74,7 @@ const FlareSpriteParameters lbl_1_rodata_230[8] = {
 
 }
 
+/* Loads the textures used by the secondary flare sprites. */
 void fn_1_5298(LensFlare *work)
 {
     for (s32 index = 1; index < 4; ++index) {
@@ -81,6 +84,7 @@ void fn_1_5298(LensFlare *work)
     }
 }
 
+/* Projects the light into the active view and draws its additive flare sprites. */
 void fn_1_5314(LensFlare *work, Mtx cameraTransform)
 {
     static Vec lbl_1_data_1D0 = { -100.0f, 4200.0f, 0.0f };
@@ -180,6 +184,7 @@ void fn_1_5314(LensFlare *work, Mtx cameraTransform)
     }
 }
 
+/* Draws one textured flare quad at the requested scale and opacity. */
 void fn_1_5B38(LensFlare *, f32 alphaScale, SpritePositionCopy position,
                            f32 halfSize, u32 packedColor,
                            GXTexMapID textureMap)
@@ -216,6 +221,7 @@ void fn_1_5B38(LensFlare *, f32 alphaScale, SpritePositionCopy position,
     GXTexCoord2f32(1.0f, 0.0f);
 }
 
+/* Projects a flare point into the camera's overlay viewport. */
 Vec fn_1_5F04(LensFlare *, SpritePositionCopy worldPosition, Mtx cameraTransform)
 {
     HU3D_CAMERA *camera;
@@ -247,6 +253,7 @@ Vec fn_1_5F04(LensFlare *, SpritePositionCopy worldPosition, Mtx cameraTransform
     return projectedPosition;
 }
 
+/* The model hook draws the flare during rendering. */
 void LensFlare::update()
 {
 }

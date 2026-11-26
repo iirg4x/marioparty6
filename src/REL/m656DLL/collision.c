@@ -82,13 +82,13 @@ s32 fn_1_27C0(M656Bounds *firstBounds, M656Bounds *secondBounds)
 }
 
 /* Predicts a moving sphere collision during the current frame and reports its contact time. */
-s32 fn_1_2830(M656Sphere *firstSphere, s32 velocityWordA, M656Sphere *secondSphere,
-              s32 velocityWordB, float maxTime, float *hitTime, HuVecF *contactPointOut)
+s32 fn_1_2830(M656Sphere *firstSphere, HuVecF *velocityA, M656Sphere *secondSphere,
+              HuVecF *velocityB, float maxTime, float *hitTime, HuVecF *contactPointOut)
 {
     HuVecF relativeVelocity, centerDelta, contactPoint;
     float relativeSpeedSquared, centerDistanceSquared, combinedRadius, combinedRadiusSquared;
     float velocityDotOffset, separationTerm, collisionDiscriminant;
-    fn_1_4E0(&relativeVelocity, (HuVecF *)&velocityWordB, (HuVecF *)&velocityWordA);
+    fn_1_4E0(&relativeVelocity, (HuVecF *)&velocityB, (HuVecF *)&velocityA);
     relativeSpeedSquared = fn_1_410(&relativeVelocity);
     fn_1_4E0(&centerDelta, &secondSphere->center, &firstSphere->center);
     centerDistanceSquared = fn_1_410(&centerDelta);

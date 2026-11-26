@@ -34,40 +34,12 @@
 
 /* Limits, timing values, priorities, and input masks for the instruction screen. */
 enum {
-    INST_MINIGAME_COUNT = 82,
     INST_MINIGAME_NUMBER_BASE = 601,
-    INST_AUX_OBJECT_PRIORITY = 32730,
-    INST_WIPE_FRAMES = 40,
     INST_INPUT_WAIT_FRAMES = 20,
     INST_SUBSTICK_STEP_MASK = (u8)~7
 };
 
-typedef struct StageModel_s {
-    u32 dataNum; /* Stage-model or joint-motion resource number. */
-    s16 motMdl; /* -1 creates a model; otherwise indexes the model receiving the joint motion. */
-    Vec pos; /* Preview position. */
-    Vec rot; /* Rotation in degrees. */
-    Vec scale; /* Per-axis scale. */
-    s16 cameraBit; /* Camera-selection mask. */
-} STAGE_MODEL;
-typedef struct Inst_data_798_view {
-    u8 stageModelCount;
-    u32 stageModelDataIds[4];
-    f32 orbitStartAngleDegrees;
-    f32 previewModelScale;
-    f32 characterFacingDegrees[5];
-    u8 stagePlayerMasks[4];
-    Vec characterPositions[5];
-} Inst_data_798_view;
-typedef struct Inst_bss_D8_view {
-    HU3D_MODELID stageModel;
-    u16 spinFramesRemaining;
-    f32 spinAngleDegrees;
-    u8 unusedStorage[12];
-    s8 playerIndices[5];
-    Vec playerPositions[5];
-} Inst_bss_D8_view;
-typedef struct InstDllMotionRecord {
+typedef struct {
     s16 motionIds[10];
 } InstDllMotionRecord;
 
@@ -75,14 +47,8 @@ typedef struct InstDllMotionRecord {
 extern HuVecF lbl_1_data_70C;
 extern HU3D_MOTIONID lbl_1_bss_4AA[];
 extern HU3D_MODELID lbl_1_bss_6AA[];
-extern u8 lbl_1_data_410[];
 extern STAGE_MODEL lbl_1_data_520[];
 extern HuVecF lbl_1_data_700;
-extern HuVecF lbl_1_data_718;
-extern HuVecF lbl_1_data_724;
-extern Inst_data_798_view lbl_1_data_798[9];
-extern u32 lbl_1_data_F8[];
-extern GXRenderModeObj *RenderMode;
 
 /* Initial stage-preview tint and camera views. */
 GXColor lbl_1_data_0 = { 20, 0, 0, 0 };
@@ -90,23 +56,7 @@ BOOL lbl_1_data_4 = TRUE;
 OM_CAMERA_VIEW lbl_1_data_8 = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 7e+03f };
 OM_CAMERA_VIEW lbl_1_data_24 = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 3e+03f };
 OM_CAMERA_VIEW lbl_1_data_40 = { { 1.7e+02f, 105.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 1e+02f };
-extern HU3D_MODELID lbl_1_bss_49E[6];
-extern InstDllMotionRecord lbl_1_bss_43A[5];
-extern s16 lbl_1_bss_438;
-extern HUSPR_GROUPID lbl_1_bss_238[256];
-extern Inst_bss_D8_view lbl_1_bss_D8[4];
-extern s16 lbl_1_bss_D4;
-extern BOOL lbl_1_bss_84[20];
-extern s16 lbl_1_bss_78[6];
-extern ANIMDATA * lbl_1_bss_70[2];
-extern s16 lbl_1_bss_6E;
 extern HU3D_MODELID lbl_1_bss_6C;
-extern HUSPR_GROUPID lbl_1_bss_66[3];
-extern ANIMDATA * lbl_1_bss_5C[2];
-extern ANIMDATA * lbl_1_bss_58;
-extern ANIMDATA * lbl_1_bss_50[2];
-extern void * lbl_1_bss_4C;
-extern f32 lbl_1_bss_48;
 OMOBJ * lbl_1_bss_40;
 OMOBJMAN * lbl_1_bss_3C;
 u16 lbl_1_bss_38;
@@ -137,7 +87,6 @@ void ObjectSetup(void)
     s32 count;
         OMOVLHIS *history;
     int lightId;
-    OMOBJ *obj;
     s32 languageNo;
     s16 initialNightMode;
     s32 selectedSubGameNo;
@@ -148,7 +97,7 @@ void ObjectSetup(void)
     languageNo = lbl_80265E30.languageNo;
     lbl_1_bss_34 = languageNo;
     lbl_1_bss_36 = lbl_80265B70.mgNo;
-    if (lbl_1_bss_36 >= INST_MINIGAME_COUNT) {
+    if (lbl_1_bss_36 >= 82) {
         lbl_1_bss_36 = 0;
     }
     fn_8003CCAC(lbl_1_bss_36 + INST_MINIGAME_NUMBER_BASE);
@@ -217,12 +166,8 @@ void ObjectSetup(void)
         }
     }
 
-    if (omprevovl >= 6 && omprevovl <= 87 &&
-        !fn_8006A124(65551) && fn_8006A124(196609)) {
-        goto prior_game_path;
-    }
-    if (lbl_802C0248 == 2) {
-prior_game_path:
+    if ((omprevovl >= DLL_m601dll && omprevovl <= DLL_m699dll &&
+         !fn_8006A124(65551) && fn_8006A124(196609)) || lbl_802C0248 == 2) {
         if (lbl_1_bss_20->flag & MG_FLAG_GRPORDER) {
             for (i = 0; i < 4; i++) {
                 lbl_80265728[i].grpNo = lbl_80265728[i].grpNo / 2;
@@ -246,9 +191,9 @@ prior_game_path:
             lbl_1_bss_20->type != MG_TYPE_1VS3 &&
             lbl_1_bss_20->type != MG_TYPE_2VS2 &&
             lbl_1_bss_20->type != MG_TYPE_BATTLE) {
-            omOvlHisChg(0, 4, 2, history->stat);
+            omOvlHisChg(0, DLL_instdll, 2, history->stat);
         } else {
-            omOvlHisChg(0, 113, history->evtno, history->stat);
+            omOvlHisChg(0, DLL_resultdll, history->evtno, history->stat);
         }
     }
 
@@ -268,30 +213,26 @@ prior_game_path:
                 break;
             }
         }
-        if (i != 4) {
-            goto checked_player_groups;
+        if (i == 4) {
+            for (i = 0; i < 4; i++) {
+                groupPlayers[lbl_80265728[i].grpNo][groupCount[lbl_80265728[i].grpNo]++] = i;
+            }
+            if ((s32)frand() & 1) {
+                lbl_80265728[groupPlayers[0][0]].grpNo = 0;
+                lbl_80265728[groupPlayers[0][1]].grpNo = 1;
+            } else {
+                lbl_80265728[groupPlayers[0][0]].grpNo = 1;
+                lbl_80265728[groupPlayers[0][1]].grpNo = 0;
+            }
+            if ((s32)frand() & 1) {
+                lbl_80265728[groupPlayers[1][0]].grpNo = 2;
+                lbl_80265728[groupPlayers[1][1]].grpNo = 3;
+            } else {
+                lbl_80265728[groupPlayers[1][0]].grpNo = 3;
+                lbl_80265728[groupPlayers[1][1]].grpNo = 2;
+            }
         }
-        for (i = 0; i < 4; i++) {
-            groupPlayers[lbl_80265728[i].grpNo][groupCount[lbl_80265728[i].grpNo]++] = i;
-        }
-        if ((s32)frand() & 1) {
-            lbl_80265728[groupPlayers[0][0]].grpNo = 0;
-            lbl_80265728[groupPlayers[0][1]].grpNo = 1;
-        } else {
-            lbl_80265728[groupPlayers[0][0]].grpNo = 1;
-            lbl_80265728[groupPlayers[0][1]].grpNo = 0;
-        }
-        if ((s32)frand() & 1) {
-            lbl_80265728[groupPlayers[1][0]].grpNo = 2;
-            lbl_80265728[groupPlayers[1][1]].grpNo = 3;
-        } else {
-            lbl_80265728[groupPlayers[1][0]].grpNo = 3;
-            lbl_80265728[groupPlayers[1][1]].grpNo = 2;
-        }
-        goto checked_player_groups;
-    }
-
-    if (MgDataTbl[lbl_1_bss_36].type == MG_TYPE_1VS3) {
+    } else if (MgDataTbl[lbl_1_bss_36].type == MG_TYPE_1VS3) {
         groupCount[0] = groupCount[1] = 0;
         for (i = 0; i < 4; i++) {
             if (lbl_80265728[i].grpNo > 1) {
@@ -326,8 +267,6 @@ prior_game_path:
     }
 
     }
-
-checked_player_groups:
     if (!fn_8006A124(5) || !GWMgInstDispGet()) {
         fn_8003D3B0(1);
         fn_800097F4(0x260000);
@@ -339,25 +278,15 @@ checked_player_groups:
     fn_800097F4(MgDataTbl[lbl_1_bss_36].dataDir);
     omSysPauseEnable(0);
     Hu3DCameraCreate(3);
-    Hu3DCameraPerspectiveSet(1, 5.0f, 20.0f,
-                             15000.0f, 1.2f);
-    Hu3DCameraViewportSet(1, 0.0f, 0.0f,
-                          640.0f, 480.0f,
-                          0.0f, 1.0f);
-    Hu3DCameraPerspectiveSet(2, 10.0f, 20.0f,
-                             15000.0f, 1.2f);
-    Hu3DCameraViewportSet(2, 0.0f, 0.0f,
-                          640.0f, 480.0f,
-                          0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(1, 5.0f, 20.0f, 15000.0f, 1.2f);
+    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
+    Hu3DCameraPerspectiveSet(2, 10.0f, 20.0f, 15000.0f, 1.2f);
+    Hu3DCameraViewportSet(2, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     fn_8003E488(1, &lbl_1_data_8);
     fn_8003E488(2, &lbl_1_data_24);
-    lightId = Hu3DGLightCreate(0.0f, 100.0f,
-                               1000.0f, 0.0f,
-                               -0.5f, -1.0f,
-                               255, 255, 255);
+    lightId = Hu3DGLightCreate(0.0f, 100.0f, 1000.0f, 0.0f, -0.5f, -1.0f, 255, 255, 255);
     Hu3DGLightInfinitytSet(lightId);
-    lbl_1_bss_40 = fn_8003AB38(lbl_1_bss_3C, INST_AUX_OBJECT_PRIORITY, 0, 0, -1,
-                              fn_8003DAA4);
+    lbl_1_bss_40 = fn_8003AB38(lbl_1_bss_3C, 32730, 0, 0, -1, fn_8003DAA4);
     lbl_1_bss_40->work[0] = 2;
     fn_8003AB38(lbl_1_bss_3C, 0, 32, 32, -1, fn_1_35F8);
     HuAudSStreamStop(0);
@@ -382,7 +311,7 @@ checked_player_groups:
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowDir);
     Hu3DShadowTPLvlSet(0.3f);
     }
-    if (omprevovl >= 6 && omprevovl <= 87) {
+    if (omprevovl >= DLL_m601dll && omprevovl <= DLL_m699dll) {
         lbl_1_bss_6 = 2;
     } else {
         lbl_1_bss_6 = 0;
@@ -393,22 +322,23 @@ checked_player_groups:
          lbl_1_bss_20->type == MG_TYPE_KUPA) && MgInstExitF) {
         lbl_1_bss_1C = 1;
     }
-    return;
 }
 
-u32 lbl_1_data_A8[] = { DATANUM(0x420000, 2), DATANUM(0x420000, 3), DATANUM(0x420000, 4),
-                        DATANUM(0x420000, 5), DATANUM(0x420000, 6) };
+u32 lbl_1_data_A8[] = {
+    MESSNUM(MESS_MG_INST_SYS, 2), MESSNUM(MESS_MG_INST_SYS, 3), MESSNUM(MESS_MG_INST_SYS, 4),
+    MESSNUM(MESS_MG_INST_SYS, 5), MESSNUM(MESS_MG_INST_SYS, 6)
+};
 
 /* Runs the instruction screen as the child process started by ObjectSetup. */
 void fn_1_1024(void)
 {
-    s32 flag_1;
-    s32 flag_2;
+    s32 cancelled;
+    s32 allCpu;
     s16 i;
     s32 value;
     OMOVLHIS *history;
 
-    flag_1 = 0;
+    cancelled = 0;
     fn_1_8FA0(lbl_1_bss_1C);
     fn_1_96F4(lbl_1_bss_1C);
     fn_1_4668(lbl_1_data_520);
@@ -421,7 +351,7 @@ void fn_1_1024(void)
     fn_8000DAC0(fn_1_4188, 2000, 12288, 0, fn_8000DD9C());
     fn_800097F4(0x260000);
     fn_8005B7BC(-1);
-    WipeCreate(1, 5, INST_WIPE_FRAMES);
+    WipeCreate(1, 5, 40);
     while (WipeCheck()) {
         HuPrcVSleep();
     }
@@ -432,7 +362,7 @@ void fn_1_1024(void)
     }
     lbl_1_bss_6 = 2;
 
-    flag_2 = 0;
+    allCpu = 0;
     if (lbl_1_bss_20->type != MG_TYPE_KETTOU) {
         i = 0;
         while (i < 4) {
@@ -442,7 +372,7 @@ void fn_1_1024(void)
             i++;
         }
         if (i == 4) {
-            flag_2 = 1;
+            allCpu = 1;
         }
     } else {
         i = 0;
@@ -455,7 +385,7 @@ void fn_1_1024(void)
             i++;
         }
         if (i == 4) {
-            flag_2 = 1;
+            allCpu = 1;
         }
     }
 
@@ -465,29 +395,29 @@ void fn_1_1024(void)
         fn_1_8DB0();
         if (lbl_1_bss_8 == 0) {
             if (lbl_1_bss_24 & PAD_BUTTON_START) {
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                 fn_8003D3B0(1);
-                goto finish;
+                break;
             }
             if (lbl_1_bss_24 & PAD_TRIGGER_Z) {
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                 history = omOvlHisGet(0);
-                omOvlHisChg(0, 4, 1, history->stat);
+                omOvlHisChg(0, DLL_instdll, 1, history->stat);
                 fn_8006A1C4(65551);
-                goto finish;
+                break;
             }
         }
 
         if (MgInstExitF) {
             if (lbl_1_bss_8 == 0 && (lbl_1_bss_24 & PAD_BUTTON_B)) {
-                HuAudFXPlay(3);
-                flag_1 = 1;
-                goto finish;
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
+                cancelled = 1;
+                break;
             }
             if (lbl_1_bss_30 == 0 && (lbl_1_bss_20->flag & MG_FLAG_HAS_NIGHT) &&
                 (lbl_1_bss_24 & PAD_BUTTON_X) && lbl_1_bss_8 == 0 && lbl_1_bss_C == 0) {
                 fn_1_15B4();
-                HuAudFXPlay(1);
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CONFIRM);
             }
             if (lbl_1_bss_8 != 0) {
                 lbl_1_bss_8--;
@@ -499,21 +429,20 @@ void fn_1_1024(void)
             }
         }
 
-        if (flag_2 != 0) {
+        if (allCpu != 0) {
             HuPrcSleep(60);
             break;
         }
         HuPrcVSleep();
     }
 
-finish:
-    if (flag_1 == 0) {
+    if (cancelled == 0) {
         lbl_1_bss_6 = 3;
         fn_8003E62C(2, &lbl_1_data_40, 60, 1);
         HuPrcSleep(20);
-        HuAudFXPlay(56);
+        HuAudFXPlay(MSM_SE_CMN_INSTRUCTIONS_FINISH);
     }
-    WipeCreate(2, 0, INST_WIPE_FRAMES);
+    WipeCreate(2, 0, 40);
     HuAudSStreamAllFadeOut(1000);
     while (WipeCheck()) {
         HuPrcVSleep();
@@ -523,7 +452,7 @@ finish:
         HuTHPClose();
         HuPrcVSleep();
     }
-    if (flag_1 == 0) {
+    if (cancelled == 0) {
         while (lbl_1_data_4 == 0) {
             HuPrcVSleep();
         }
@@ -652,10 +581,8 @@ void fn_1_15C8(void)
         }
         HuPrcSleep(20);
         for (i=0; i<=20; i++) {
-            HuWinPosSet(ctrlWinId[0],
-                ((1-sin(3.141592653589793*((i/20.0)*90)/180.0))*400)+ctrlPos.x, ctrlPos.y);
-            HuWinPosSet(instWinId[0], instPos.x,
-                instPos.y+((1-sin(3.141592653589793*((i/20.0)*90)/180.0))*200));
+            HuWinPosSet(ctrlWinId[0], ((1-sin(M_PI*((i/20.0)*90)/180.0))*400)+ctrlPos.x, ctrlPos.y);
+            HuWinPosSet(instWinId[0], instPos.x, instPos.y+((1-sin(M_PI*((i/20.0)*90)/180.0))*200));
             HuPrcVSleep();
         }
     }
@@ -699,15 +626,15 @@ void fn_1_15C8(void)
                 HuWinMesSet(ctrlWinId[0], ctrlMes);
                 instMes = lbl_1_bss_18[pageNo];
                 HuWinMesSet(instWinId[0], instMes);
-                HuAudFXPlay(55);
+                HuAudFXPlay(MSM_SE_CMN_PAGE_TURN_PREVIOUS);
                 for (i=0; i<15; i++) {
                     t = i/15.0;
                     HuWinPosSet(ctrlWinId[1],
-                        ctrlPos.x + (30 * sin(3.141592653589793*(t * 90)/180.0)),
-                                ctrlPos.y + (200 * (1 - cos(3.141592653589793*(t * 90)/180.0))));
+                        ctrlPos.x + (30 * sin(M_PI*(t * 90)/180.0)),
+                                ctrlPos.y + (200 * (1 - cos(M_PI*(t * 90)/180.0))));
                     HuWinPosSet(instWinId[1],
-                        instPos.x + (30 * sin(3.141592653589793*(t * 90)/180.0)),
-                                instPos.y + (200 * (1 - cos(3.141592653589793*(t * 90)/180.0))));
+                        instPos.x + (30 * sin(M_PI*(t * 90)/180.0)),
+                                instPos.y + (200 * (1 - cos(M_PI*(t * 90)/180.0))));
                     HuPrcVSleep();
                 }
                 HuWinDispOff(instWinId[1]);
@@ -747,15 +674,15 @@ void fn_1_15C8(void)
                 HuWinMesSet(ctrlWinId[0], ctrlMes);
                 instMes = lbl_1_bss_18[pageNo];
                 HuWinMesSet(instWinId[0], instMes);
-                HuAudFXPlay(54);
+                HuAudFXPlay(MSM_SE_CMN_PAGE_TURN_NEXT);
                 for (i=1; i<=15; i++) {
                     t = i/15.0;
                     HuWinPosSet(ctrlWinId[0],
-                        ctrlPos.x + (30 * cos(3.141592653589793*(t * 90)/180.0)),
-                                ctrlPos.y + (200 * (1 - sin(3.141592653589793*(t * 90)/180.0))));
+                        ctrlPos.x + (30 * cos(M_PI*(t * 90)/180.0)),
+                                ctrlPos.y + (200 * (1 - sin(M_PI*(t * 90)/180.0))));
                     HuWinPosSet(instWinId[0],
-                        instPos.x + (30 * cos(3.141592653589793*(t * 90)/180.0)),
-                                instPos.y + (200 * (1 - sin(3.141592653589793*(t * 90)/180.0))));
+                        instPos.x + (30 * cos(M_PI*(t * 90)/180.0)),
+                                instPos.y + (200 * (1 - sin(M_PI*(t * 90)/180.0))));
                     HuPrcVSleep();
                 }
                 HuWinDispOff(instWinId[1]);
@@ -823,10 +750,8 @@ void fn_1_15C8(void)
         HuPrcVSleep();
     }
     for (i=0; i<=10; i++) {
-        HuWinPosSet(ctrlWinId[0], ((1-cos(3.141592653589793*((i/10.0)*90)/180.0))*400)+ctrlPos.x,
-            ctrlPos.y);
-        HuWinPosSet(instWinId[0], instPos.x,
-            instPos.y+((1-cos(3.141592653589793*((i/10.0)*90)/180.0))*200));
+        HuWinPosSet(ctrlWinId[0], ((1-cos(M_PI*((i/10.0)*90)/180.0))*400)+ctrlPos.x, ctrlPos.y);
+        HuWinPosSet(instWinId[0], instPos.x, instPos.y+((1-cos(M_PI*((i/10.0)*90)/180.0))*200));
         HuPrcVSleep();
     }
     while (1) {
@@ -883,16 +808,16 @@ void fn_1_2A1C(void)
         for (i=1; i<=30; i++) {
             t = i/30.0f;
             fn_80026760(modelId,
-                lbl_1_data_70C.x-(200*(1-sin(3.141592653589793*(t*90)/180.0))),
+                lbl_1_data_70C.x-(200*(1-sin(M_PI*(t*90)/180.0))),
                 lbl_1_data_70C.y+(200.0*(1.0-t)), lbl_1_data_70C.z);
             if (i == 15) {
                 fn_8002CCC0(modelId, motion[0], 0, 15, ((1 << 30) | (1 << 0)));
             }
             if (i == 10) {
                 if (mode == 0) {
-                    HuAudFXPlay(950);
+                    HuAudFXPlay(MSM_SE_GUIDE_DAY_INTRO);
                 } else {
-                    HuAudFXPlay(942);
+                    HuAudFXPlay(MSM_SE_GUIDE_NIGHT_INTRO);
                 }
             }
             fn_80026808(modelId, 0, 15.0+(30.0*(1.0-t)), 0);
@@ -907,30 +832,28 @@ void fn_1_2A1C(void)
             posA = lbl_1_data_70C;
             posB = lbl_1_data_70C;
             if (mode == 0) {
-                posA.x = posA.x-100+(100*cos(3.141592653589793*(t*180)/180.0));
-                posB.x = posB.x-100-(100*cos(3.141592653589793*(t*180)/180.0));
+                posA.x = posA.x-100+(100*cos(M_PI*(t*180)/180.0));
+                posB.x = posB.x-100-(100*cos(M_PI*(t*180)/180.0));
             } else {
-                posA.x = posA.x-100-(100*cos(3.141592653589793*(t*180)/180.0));
-                posB.x = posB.x-100+(100*cos(3.141592653589793*(t*180)/180.0));
+                posA.x = posA.x-100-(100*cos(M_PI*(t*180)/180.0));
+                posB.x = posB.x-100+(100*cos(M_PI*(t*180)/180.0));
             }
-            posA.z += 100*sin(3.141592653589793*(t*180)/180.0);
-            posB.z -= 100*sin(3.141592653589793*(t*180)/180.0);
+            posA.z += 100*sin(M_PI*(t*180)/180.0);
+            posB.z -= 100*sin(M_PI*(t*180)/180.0);
             fn_80026790(lbl_1_bss_6AA[0], &posA);
             fn_80026790(lbl_1_bss_6AA[4], &posB);
             if (t == 1.0) {
                 mode = mode == 0 ? 1 : 0;
                 if (mode == 0) {
-                    HuAudFXPlay(950);
+                    HuAudFXPlay(MSM_SE_GUIDE_DAY_INTRO);
                 } else {
-                    HuAudFXPlay(942);
+                    HuAudFXPlay(MSM_SE_GUIDE_NIGHT_INTRO);
                 }
             }
             if (fn_8002D3C4(lbl_1_bss_6AA[0]) != lbl_1_bss_4AA[1] &&
                 fn_8002D3EC(lbl_1_bss_6AA[0]) != lbl_1_bss_4AA[1]) {
-                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5,
-                    ((1 << 30) | (1 << 0)));
-                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5,
-                    ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5, ((1 << 30) | (1 << 0)));
                 timer = 0;
             }
         } else if (lbl_1_bss_6 == 3) {
@@ -945,10 +868,8 @@ void fn_1_2A1C(void)
         if (timer != 0) {
             timer--;
             if (timer == 5) {
-                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5,
-                    ((1 << 30) | (1 << 0)));
-                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5,
-                    ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[0], lbl_1_bss_4AA[1], 0, 5, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(lbl_1_bss_6AA[4], lbl_1_bss_4AA[5], 0, 5, ((1 << 30) | (1 << 0)));
             }
             lbl_1_bss_10 = 0;
         }
@@ -964,9 +885,9 @@ void fn_1_2A1C(void)
     fn_8002CCC0(modelId, motion[0], 0, 15, 0);
     for (i=1; i<=30; i++) {
         t = i/30.0f;
-        fn_80026760(modelId, lbl_1_data_70C.x-(200*(1-cos(3.141592653589793*(t*90)/180.0))),
+        fn_80026760(modelId, lbl_1_data_70C.x-(200*(1-cos(M_PI*(t*90)/180.0))),
             lbl_1_data_70C.y+(100*t),
-                lbl_1_data_70C.z+(300*(1-cos(3.141592653589793*(t*90)/180.0))));
+                lbl_1_data_70C.z+(300*(1-cos(M_PI*(t*90)/180.0))));
         fn_80026808(modelId, 0, 15+90*(-t), 0);
         HuPrcVSleep();
     }
@@ -993,42 +914,42 @@ void fn_1_35F8(OMOBJ *obj)
             lbl_80266BD8[1] = 100.0f;
         }
         pos.x = lbl_80266B18[1].x
-            + (lbl_80266BD8[1] * (sin(3.141592653589793*lbl_80266A58[1].y/180.0)
-                * cos(3.141592653589793*lbl_80266A58[1].x/180.0)));
+            + (lbl_80266BD8[1] * (sin(M_PI*lbl_80266A58[1].y/180.0)
+                * cos(M_PI*lbl_80266A58[1].x/180.0)));
         pos.y = (lbl_80266B18[1].y
-            + (lbl_80266BD8[1] * -sin(3.141592653589793*lbl_80266A58[1].x/180.0)));
+            + (lbl_80266BD8[1] * -sin(M_PI*lbl_80266A58[1].x/180.0)));
         pos.z = (lbl_80266B18[1].z
-            + (lbl_80266BD8[1] * (cos(3.141592653589793*lbl_80266A58[1].y/180.0)
-                * cos(3.141592653589793*lbl_80266A58[1].x/180.0))));
+            + (lbl_80266BD8[1] * (cos(M_PI*lbl_80266A58[1].y/180.0)
+                * cos(M_PI*lbl_80266A58[1].x/180.0))));
         offset.x = lbl_80266B18[1].x - pos.x;
         offset.y = lbl_80266B18[1].y - pos.y;
         offset.z = lbl_80266B18[1].z - pos.z;
-        dir.x = (sin(3.141592653589793*lbl_80266A58[1].y/180.0)
-            * sin(3.141592653589793*lbl_80266A58[1].x/180.0));
-        dir.y = cos(3.141592653589793*lbl_80266A58[1].x/180.0);
-        dir.z = (cos(3.141592653589793*lbl_80266A58[1].y/180.0)
-            * sin(3.141592653589793*lbl_80266A58[1].x/180.0));
+        dir.x = (sin(M_PI*lbl_80266A58[1].y/180.0)
+            * sin(M_PI*lbl_80266A58[1].x/180.0));
+        dir.y = cos(M_PI*lbl_80266A58[1].x/180.0);
+        dir.z = (cos(M_PI*lbl_80266A58[1].y/180.0)
+            * sin(M_PI*lbl_80266A58[1].x/180.0));
         rotZ = lbl_80266A58[1].z;
         yOfs.x = dir.x * (offset.x * offset.x
-            + (1.0f - offset.x * offset.x) * cos(3.141592653589793*rotZ/180.0))
-            + dir.y * (offset.x * offset.y * (1.0f - cos(3.141592653589793*rotZ/180.0))
-                - offset.z * sin(3.141592653589793*rotZ/180.0))
-            + dir.z * (offset.x * offset.z * (1.0f - cos(3.141592653589793*rotZ/180.0))
-                + offset.y * sin(3.141592653589793*rotZ/180.0));
+            + (1.0f - offset.x * offset.x) * cos(M_PI*rotZ/180.0))
+            + dir.y * (offset.x * offset.y * (1.0f - cos(M_PI*rotZ/180.0))
+                - offset.z * sin(M_PI*rotZ/180.0))
+            + dir.z * (offset.x * offset.z * (1.0f - cos(M_PI*rotZ/180.0))
+                + offset.y * sin(M_PI*rotZ/180.0));
 
         yOfs.y = dir.y * (offset.y * offset.y
-            + (1.0f - offset.y * offset.y) * cos(3.141592653589793*rotZ/180.0))
-            + dir.x * (offset.x * offset.y * (1.0f - cos(3.141592653589793*rotZ/180.0))
-                + offset.z * sin(3.141592653589793*rotZ/180.0))
-            + dir.z * (offset.y * offset.z * (1.0f - cos(3.141592653589793*rotZ/180.0))
-                - offset.x * sin(3.141592653589793*rotZ/180.0));
+            + (1.0f - offset.y * offset.y) * cos(M_PI*rotZ/180.0))
+            + dir.x * (offset.x * offset.y * (1.0f - cos(M_PI*rotZ/180.0))
+                + offset.z * sin(M_PI*rotZ/180.0))
+            + dir.z * (offset.y * offset.z * (1.0f - cos(M_PI*rotZ/180.0))
+                - offset.x * sin(M_PI*rotZ/180.0));
 
         yOfs.z = dir.z * (offset.z * offset.z
-            + (1.0f - offset.z * offset.z) * cos(3.141592653589793*rotZ/180.0))
-            + (dir.x * (offset.x * offset.z * (1.0 - cos(3.141592653589793*rotZ/180.0))
-                - offset.y * sin(3.141592653589793*rotZ/180.0))
-                + dir.y * (offset.y * offset.z * (1.0 - cos(3.141592653589793*rotZ/180.0))
-                    + offset.x * sin(3.141592653589793*rotZ/180.0)));
+            + (1.0f - offset.z * offset.z) * cos(M_PI*rotZ/180.0))
+            + (dir.x * (offset.x * offset.z * (1.0 - cos(M_PI*rotZ/180.0))
+                - offset.y * sin(M_PI*rotZ/180.0))
+                + dir.y * (offset.y * offset.z * (1.0 - cos(M_PI*rotZ/180.0))
+                    + offset.x * sin(M_PI*rotZ/180.0)));
 
         VECCrossProduct(&dir, &offset, &offset);
         VECNormalize(&offset, &offset);

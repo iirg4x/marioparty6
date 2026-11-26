@@ -1,13 +1,14 @@
 #include <dolphin/os.h>
+#include <dolphin/os/OSBootInfo.h>
 #include <dolphin/hw_regs.h>
 
 #define TRUNC(n, a) (((u32)(n)) & ~((a)-1))
 #define ROUND(n, a) (((u32)(n) + (a)-1) & ~((a)-1))
 
 static BOOL OnReset(BOOL final);
-void Config24MB(void);
-void Config48MB(void);
-void RealMode(u32 addr);
+static void Config24MB(void);
+static void Config48MB(void);
+static void RealMode(u32 addr);
 
 static OSResetFunctionInfo ResetFunctionInfo = {
     OnReset,
@@ -18,7 +19,7 @@ static OSResetFunctionInfo ResetFunctionInfo = {
 
 u32 OSGetPhysicalMemSize()
 {
-    return *(u32 *)(OSPhysicalToCached(0x0028));
+    return ((OSBootInfo*)OSPhysicalToCached(0x0))->memorySize;
 }
 
 u32 OSGetConsoleSimulatedMemSize()
@@ -90,7 +91,7 @@ void OSProtectRange(u32 chan, void* addr, u32 nBytes, u32 control)
     OSRestoreInterrupts(enabled);
 }
 
-asm void Config24MB(void)
+static asm void Config24MB(void)
 {
     nofralloc
     li r7, 0
@@ -127,7 +128,7 @@ asm void Config24MB(void)
     rfi
 }
 
-asm void Config48MB(void)
+static asm void Config48MB(void)
 {
     nofralloc
     li r7, 0
@@ -204,7 +205,7 @@ void __OSInitMemoryProtection()
     if (temp < OSGetPhysicalMemSize() && temp == 0x1800000)
 #endif
     {
-        DCInvalidateRange((void *)0x81800000, 0x1800000);
+        DCInvalidateRange(OSPhysicalToCached(0x1800000), 0x1800000);
         __MEMRegs[20] = 2;
     }
 

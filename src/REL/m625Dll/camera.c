@@ -6,29 +6,6 @@ extern s16 lbl_1_bss_814;
 #include "math.h"
 #include "humath.h"
 
-/* Interpolates a point between camera poses with the minigame's eased timing curve. */
-void fn_1_0(Point3d *result, Point3d *start, Point3d *end, s16 duration, s16 elapsed)
-{
-    Point3d position;
-    f32 interpolation;
-
-    interpolation = (f32)cos((M_PI *
-                              (f64)((180.0f / (f32)duration) *
-                                    (f32)elapsed)) /
-                             180.0);
-    interpolation = 1.0f - (0.5f * (1.0f + interpolation));
-    position.x = end->x - start->x;
-    position.y = end->y - start->y;
-    position.z = end->z - start->z;
-    position.x *= interpolation;
-    position.y *= interpolation;
-    position.z *= interpolation;
-    position.x += start->x;
-    position.y += start->y;
-    position.z += start->z;
-    *result = position;
-}
-
 /* Applies a precomputed blend factor to one camera position or target. */
 static inline void interpolateCameraPoint(Point3d *result, Point3d *start,
                                            Point3d *end, f32 factor)
@@ -45,6 +22,19 @@ static inline void interpolateCameraPoint(Point3d *result, Point3d *start,
     offset.y += start->y;
     offset.z += start->z;
     *result = offset;
+}
+
+/* Interpolates a point between camera poses with the minigame's eased timing curve. */
+void fn_1_0(Point3d *result, Point3d *start, Point3d *end, s16 duration, s16 elapsed)
+{
+    f32 interpolation;
+
+    interpolation = (f32)cos((M_PI *
+                              (f64)((180.0f / (f32)duration) *
+                                    (f32)elapsed)) /
+                             180.0);
+    interpolation = 1.0f - (0.5f * (1.0f + interpolation));
+    interpolateCameraPoint(result, start, end, interpolation);
 }
 
 /* Called by sequence setup to create and position the stage camera. */
@@ -192,7 +182,7 @@ void fn_1_CB0(void)
 }
 
 /* Called by the pre-winner callback to move the camera into the selected view. */
-s32 fn_1_CB4(s16 frame)
+u8 fn_1_CB4(s16 frame)
 {
     s16 frameInShot;
     f32 factorA;

@@ -1,4 +1,5 @@
 /* Object allocation, callbacks and minigame sequence hooks for Clean Team. */
+#include "REL/m645DLL.h"
 #include "humath.h"
 
 #include "math.h"

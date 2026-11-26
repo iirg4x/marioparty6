@@ -12,7 +12,7 @@ public:
     OwnedModel model6, model7, model8, model9, model10, model11;
     s32 updateCount;
     u8 phaseStarted;
-    s32 sceneState;
+    s32 unk30; /* The game's code never reads this field. */
     s32 delayFrames;
     s32 completedSegments;
     f32 segmentPosition;
@@ -21,7 +21,7 @@ public:
         s32 selectedAction[50];
     } phases[4];
     f32 pathPosition;
-    s32 unusedValue;
+    s32 unk368; /* The game's code never reads this field. */
     u8 soundActive;
 
     SceneOwner();

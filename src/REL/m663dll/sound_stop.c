@@ -74,5 +74,3 @@ void M663SoundStopCopy(s16 soundIndex) {
 void fn_1_67E4(void) {
     HuAudAllStop();
 }
-
-extern s16 lbl_1_bss_15A8;

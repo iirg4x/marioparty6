@@ -1,9 +1,10 @@
 /* Loads and updates the models and sprites for Insectiride's four activities. */
 #include "REL/m647dll/module_types.h"
+#include "REL/m647dll/activity.h"
 #include <string.h>
 #include "msm_se.h"
 
-typedef struct M647MotionAssets_s {
+typedef struct {
     u32 motionDataNumbers[3]; /* Motion archive entries; zero marks an unused slot. */
 } M647MotionAssets;
 
@@ -56,7 +57,6 @@ char lbl_1_data_450[6] = {'A', 'B', 'X', 'Y', 'L', 'R'};
 u16 lbl_1_data_456[] = { (1 << 8), (1 << 9), (1 << 10), (1 << 11), (1 << 14), (1 << 13) };
 f32 lbl_1_data_464[8] = { 40.0f, 120.0f, 40.0f, 195.0f, 40.0f, 270.0f, 40.0f, 345.0f };
 
-extern s16 fn_1_34A0(s16 index);
 u16 fn_1_84E4(s16 playerIndex);
 s32 fn_1_8FF0(s16 playerIndex);
 void fn_1_8D5C(void);
@@ -79,7 +79,6 @@ void fn_1_7660(void);
 s16 fn_1_76E0(s16 playerIndex);
 void fn_1_77B0(s16 playerIndex);
 s16 fn_1_7940(void);
-void *fn_1_8F58(s32 index);
 void fn_1_80E4(void);
 void fn_1_8174(void);
 void fn_1_81BC(void);
@@ -112,7 +111,6 @@ void fn_1_AA64(void);
 void fn_1_AC40(s16 entryIndex);
 void fn_1_ADFC(s16 entryIndex);
 void fn_1_AE58(s16 mode);
-void fn_1_AF18(s16 cameraMode);
 void fn_1_66BC(void);
 void fn_1_6A2C(void);
 void fn_1_6F1C(void);
@@ -156,27 +154,21 @@ void fn_1_64C8(void) {
     s32 index;
 
     for (index = 0; index < 4; index++) {
-        lbl_1_bss_214[index] = HuSprAnimRead(
-        fn_80008DD0(lbl_1_data_3EC[index], 0x10000000, 2));
-        lbl_1_bss_1AC[index] = HuSprAnimRead(fn_80008DD0(
-            fn_1_2B68((s16) index) + DATANUM(0x9b0000, 0), 0x10000000, 2));
+        lbl_1_bss_214[index] = HuSprAnimDataRead(lbl_1_data_3EC[index]);
+        lbl_1_bss_1AC[index] = HuSprAnimDataRead(fn_1_2B68((s16) index) + DATANUM(0x9b0000, 0));
     }
     for (index = 0; index < 6; index++) {
-        lbl_1_bss_1F0[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_3FC[index], 0x10000000, 2));
-        lbl_1_bss_1D8[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_414[index], 0x10000000, 2));
-        lbl_1_bss_1C0[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_42C[index], 0x10000000, 2));
+        lbl_1_bss_1F0[index] = HuSprAnimDataRead(lbl_1_data_3FC[index]);
+        lbl_1_bss_1D8[index] = HuSprAnimDataRead(lbl_1_data_414[index]);
+        lbl_1_bss_1C0[index] = HuSprAnimDataRead(lbl_1_data_42C[index]);
     }
     for (index = 0; index < 3; index++) {
-        lbl_1_bss_208[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_444[index], 0x10000000, 2));
+        lbl_1_bss_208[index] = HuSprAnimDataRead(lbl_1_data_444[index]);
     }
     lbl_1_bss_1A8 =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x6a0000, 69), 0x10000000, 2));
+        HuSprAnimDataRead(DATANUM(0x6a0000, 69));
     lbl_1_bss_1BC =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x6a0000, 53), 0x10000000, 2));
+        HuSprAnimDataRead(DATANUM(0x6a0000, 53));
 }
 
 /* Creates shared activity models and attaches their item models during setup. */
@@ -245,35 +237,11 @@ void fn_1_66BC(void) {
 /* Loads activity sprites, creates the four activity models and initializes their motions. */
 void fn_1_6A2C(void) {
     s16 modelId;
-    s32 index;
     s32 modelIndex;
     s32 motionIndex;
 
     memset(&lbl_1_bss_224, 0, 304);
-    for (index = 0; index < 4; index++) {
-        lbl_1_bss_214[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_3EC[index], 0x10000000, 2));
-        lbl_1_bss_1AC[index] = HuSprAnimRead(fn_80008DD0(
-            fn_1_2B68((s16)index) + DATANUM(0x9b0000, 0),
-            0x10000000, 2));
-    }
-    for (index = 0; index < 6; index++) {
-        lbl_1_bss_1F0[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_3FC[index], 0x10000000, 2));
-        lbl_1_bss_1D8[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_414[index], 0x10000000, 2));
-        lbl_1_bss_1C0[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_42C[index], 0x10000000, 2));
-    }
-    for (index = 0; index < 3; index++) {
-        lbl_1_bss_208[index] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_444[index], 0x10000000, 2));
-    }
-    lbl_1_bss_1A8 =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x6a0000, 69), 0x10000000, 2));
-    lbl_1_bss_1BC =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x6a0000, 53), 0x10000000, 2));
-
+    fn_1_64C8();
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         modelId = fn_80025A04(
             fn_80008DD0(lbl_1_data_384[modelIndex], 0x10000000, 2));
@@ -337,7 +305,7 @@ void fn_1_6F1C(void) {
     HUSPR_GROUPID groupId;
 
     groupId = lbl_1_bss_224.entries[2].groupId;
-    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(2)], 10, 0));
+    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(2)], 10, 0));
 }
 
 /* Builds the tap activity's item model and sprite group during setup. */
@@ -582,7 +550,7 @@ void fn_1_79CC(void) {
     HUSPR_GROUPID groupId;
 
     groupId = lbl_1_bss_224.entries[3].groupId;
-    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(3)], 10, 0));
+    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(3)], 10, 0));
 }
 
 /* Creates and positions the row activity's sprite group during setup. */
@@ -866,7 +834,7 @@ void fn_1_8658(void) {
     HUSPR_GROUPID groupId;
 
     groupId = lbl_1_bss_224.entries[0].groupId;
-    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(0)], 10, 0));
+    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(0)], 10, 0));
 }
 
 /* Creates the grid activity's item model and sprite group during setup. */
@@ -1177,7 +1145,7 @@ void fn_1_937C(void) {
     HUSPR_GROUPID groupId;
 
     groupId = lbl_1_bss_224.entries[1].groupId;
-    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(1)], 10, 0));
+    HuSprGrpMemberSet(groupId, 1, HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(1)], 10, 0));
 }
 
 /* Creates the lever activity's attached models and indicator sprite group. */
@@ -1688,12 +1656,10 @@ void fn_1_AA64(void) {
     M647ActivityEntry *entry1;
     M647ActivityEntry *entry0;
     M647ActivityEntry *entry2;
-    M647ActivityEntry *entry3;
     s32 entryIndex;
     s32 column;
     s32 row;
     s32 secondCell;
-    s32 thirdCell;
 
     entry1 = &lbl_1_bss_224.entries[1];
     HuSprAttrSet(entry1->groupId, 2, 4);
@@ -1716,12 +1682,7 @@ void fn_1_AA64(void) {
     for (secondCell = 0; secondCell < 6; secondCell++) {
         HuSprAttrSet(entry2->groupId, (s16)(secondCell + 4), 4);
     }
-    entry3 = &lbl_1_bss_224.entries[3];
-    HuSprAttrSet(entry3->groupId, 2, 4);
-    HuSprAttrSet(entry3->groupId, 3, 4);
-    for (thirdCell = 0; thirdCell < 8; thirdCell++) {
-        HuSprAttrSet(entry3->groupId, (s16)(thirdCell + 4), 4);
-    }
+    fn_1_81BC();
     for (entryIndex = 0; entryIndex < 4; entryIndex++) {
         fn_1_ADFC((s16)entryIndex);
         HuSprAttrSet(lbl_1_bss_224.entries[entryIndex].groupId, 2, 4);
@@ -1740,19 +1701,23 @@ void fn_1_AC40(s16 entryIndex) {
     {
     case 0 :
         firstEntryGroupId = lbl_1_bss_224.entries[0].groupId;
-        HuSprGrpMemberSet(firstEntryGroupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(0)], 10, 0));
+        HuSprGrpMemberSet(firstEntryGroupId, 1,
+            HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(0)], 10, 0));
         break;
     case 1 :
         secondEntryGroupId = lbl_1_bss_224.entries[1].groupId;
-        HuSprGrpMemberSet(secondEntryGroupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(1)], 10, 0));
+        HuSprGrpMemberSet(secondEntryGroupId, 1,
+            HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(1)], 10, 0));
         break;
     case 2 :
         thirdEntryGroupId = lbl_1_bss_224.entries[2].groupId;
-        HuSprGrpMemberSet(thirdEntryGroupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(2)], 10, 0));
+        HuSprGrpMemberSet(thirdEntryGroupId, 1,
+            HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(2)], 10, 0));
         break;
     case 3 :
         fourthEntryGroupId = lbl_1_bss_224.entries[3].groupId;
-        HuSprGrpMemberSet(fourthEntryGroupId, 1, HuSprCreate(lbl_1_bss_1AC[fn_1_34A0(3)], 10, 0));
+        HuSprGrpMemberSet(fourthEntryGroupId, 1,
+            HuSprCreate(lbl_1_bss_1AC[(s16)fn_1_34A0(3)], 10, 0));
         break;
     }
     HuSprAttrReset(entry->groupId, 0, 4);

@@ -67,7 +67,6 @@
 
 #include "REL/m665dll/sequence.h"
 
-
 typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
@@ -102,41 +101,15 @@ void _epilog(void)
     }
 }
 
-void fn_1_484(void);
+void fn_1_484(s16 mode, s16 frameNo);
 
-extern GXColor lbl_1_data_40[2];
+MGSEQ_PARAM lbl_1_data_0 = {
+    300, 2, fn_1_F0, (MGSEQ_FUNC)fn_1_1A4,
+    (MGSEQ_FUNC)fn_1_33C, (MGSEQ_FUNC)fn_1_37C, (MGSEQ_FUNC)fn_1_400, (MGSEQ_FUNC)fn_1_464,
+    fn_1_484, fn_1_488, fn_1_48C,
+};
 
-extern Point3d lbl_1_data_34;
-
-extern s16 lbl_1_bss_4AC[4];
-
-extern s16 lbl_1_bss_4B4;
-
-extern s16 lbl_1_bss_4B6;
-
-extern s32 lbl_1_bss_2A8;
-
-extern s32 lbl_1_data_48[4];
-
-extern s32 lbl_1_data_80[2];
-
-extern s32 lbl_1_data_88[2];
-
-extern s32 lbl_1_data_90[2];
-
-extern s32 lbl_1_data_98[2];
-
-extern s32 lbl_1_data_A0[2];
-
-MGSEQ_PARAM lbl_1_data_0;
-
-char lbl_1_data_28[20];
-
-const char lbl_1_data_3C[12];
-
-extern u8 lbl_1_bss_20[8];
-
-extern u32 lbl_1_data_68[][2];
+char lbl_1_data_28[20] = "/mic/ctx/m665_words";
 
 /* Runs during module loading to initialize its global object manager and sequence. */
 void ObjectSetup(void)
@@ -146,11 +119,10 @@ void ObjectSetup(void)
     fn_80070788(&lbl_1_data_0);
 }
 
-
 extern s16 lbl_802C0278;
 
 /* The init callback opens microphone recognition and starts the sequence. */
-void fn_1_F0(void) {
+void fn_1_F0(s16 mode, s16 frameNo) {
     s16 nightFlag;
 
     lbl_1_bss_2 = 0;
@@ -168,7 +140,6 @@ void fn_1_F0(void) {
     fn_80071A9C();
 }
 
-
 void fn_1_4D4(void);
 
 /* The fade-in callback prepares four answer choices on its first frame. */
@@ -181,18 +152,9 @@ void fn_1_1A4(s16 unusedArgument, s16 frameNo)
     fn_1_4D4();
 }
 
-
-typedef struct SequenceUpdate {
-    s16 status; /* Zero for a successful microphone response. */
-    u16 score; /* Recognition score of the first candidate. */
-    s16 count; /* Number of recognized words in the first candidate. */
-    s16 *result; /* Word indices for the first candidate. */
-    s32 word; /* First word index or one-based answer-choice value. */
-} SequenceUpdate;
-
 /* The microphone listener callback maps the first recognized word to the result flag. */
 void fn_1_200(response)
-SequenceUpdate *response;
+MCResponse_s *response;
 {
     if ((response->status != 0) || (response->count == 0)) {
         return;
@@ -224,9 +186,8 @@ SequenceUpdate *response;
         lbl_1_bss_0 = 0;
         break;
     }
-    OSReport(lbl_1_data_3C, response->word);
+    OSReport("Result %d\n", response->word);
 }
-
 
 /* The start callback starts the minigame's streamed music on its first frame. */
 void fn_1_33C(s16 mode, s16 frameNo) {
@@ -234,7 +195,6 @@ void fn_1_33C(s16 mode, s16 frameNo) {
         lbl_1_bss_250.audioHandle = HuAudBGMPlay(MSM_STREAM_TENACIOUS);
     }
 }
-
 
 /* The main callback updates player effects and advances when a result is ready. */
 void fn_1_37C(s16 unusedArgument, s16 frameNo)
@@ -250,7 +210,6 @@ void fn_1_37C(s16 unusedArgument, s16 frameNo)
     }
 }
 
-
 /* The finish callback stops microphone input, fades music, and handles a draw. */
 void fn_1_400(s16 unusedArgument, s16 frameNo)
 {
@@ -265,49 +224,30 @@ void fn_1_400(s16 unusedArgument, s16 frameNo)
     }
 }
 
-
 /* The pre-winner callback begins the winner transition. */
 void fn_1_464(s16 mode, s16 frameNo)
 {
     fn_1_778();
 }
 
-extern s32 lbl_1_data_F18;
-
-extern float lbl_1_bss_1BC;
-
-extern s8 lbl_1_bss_218;
-
-extern s8 lbl_1_bss_219;
-
-extern s8 lbl_1_data_2758;
-
-void fn_1_484(void)
+/* The winner phase has no additional work after the winner transition begins. */
+void fn_1_484(s16 mode, s16 frameNo)
 {
 }
 
-void fn_1_488(void)
+/* The fade-out phase leaves the microphone context open for the close callback. */
+void fn_1_488(s16 mode, s16 frameNo)
 {
 }
-
 
 /* The close callback consumes a pending microphone response and closes the context. */
-void fn_1_48C(void) {
+void fn_1_48C(s16 mode, s16 frameNo) {
     if (lbl_1_bss_2 != 0) {
         HuMCResponseGet();
         lbl_1_bss_2 = 0;
     }
     HuMCClose();
 }
-
-MGSEQ_PARAM lbl_1_data_0 = {
-    300, 2, (MGSEQ_FUNC)fn_1_F0, (MGSEQ_FUNC)fn_1_1A4,
-    (MGSEQ_FUNC)fn_1_33C, (MGSEQ_FUNC)fn_1_37C, (MGSEQ_FUNC)fn_1_400, (MGSEQ_FUNC)fn_1_464,
-    (MGSEQ_FUNC)fn_1_484, (MGSEQ_FUNC)fn_1_488, (MGSEQ_FUNC)fn_1_48C,
-};
-
-char lbl_1_data_28[20] = "/mic/ctx/m665_words";
-const char lbl_1_data_3C[12] = "Result %d\n";
 
 /* The fade-in callback advances through prompt, sound, and camera setup phases. */
 void fn_1_4D4(void) {
@@ -320,8 +260,9 @@ void fn_1_4D4(void) {
             break;
         }
         if (lbl_1_bss_250.phaseFrames == 10) {
-            HuAudFXPlay(0x85F);
-            lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle = HuAudFXPlay(0x863);
+            HuAudFXPlay(MSM_SE_MG665_START_CUE);
+            lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle =
+                HuAudFXPlay(MSM_SE_MG665_ENGINE_LOOP);
         }
         break;
     case 1:
@@ -376,7 +317,6 @@ s16 lbl_1_bss_4;
 s16 lbl_1_bss_2;
 u16 lbl_1_bss_0;
 
-
 /* The pre-winner callback waits for wipes, stops effects, and sets the winning scene. */
 void fn_1_778(void) {
 
@@ -387,8 +327,7 @@ void fn_1_778(void) {
         fn_80071B08();
         WipeCreate(2, 0, 60);
         if (lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle != -1) {
-            HuAudFXFadeOut(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle,
-                           60);
+            HuAudFXFadeOut(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle, 60);
             lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle = -1;
         }
         lbl_1_bss_250.phase += 1;

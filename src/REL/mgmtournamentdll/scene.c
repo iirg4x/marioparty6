@@ -20,7 +20,6 @@
 
 #define TOURNAMENT_GAME_COUNT 101
 #define TOURNAMENT_GAME_NONE 255
-#define TOURNAMENT_GAME_TABLE_END 65535
 #define TOURNAMENT_UNLOCK_GAME_BASE 601
 
 s32 lbl_1_data_848 = -1; /* Selection music stream handle, or -1 before playback. */
@@ -65,7 +64,7 @@ void fn_1_D69C(void)
         index = 0;
         candidateIndex = 0;
         /* Only unlocked Duel minigames enter the tournament's game list. */
-        while (MgDataTbl[index].ovl != TOURNAMENT_GAME_TABLE_END) {
+        while (MgDataTbl[index].ovl != 65535) {
             remainingGameCount = index + TOURNAMENT_UNLOCK_GAME_BASE;
             if (fn_8003CC40(remainingGameCount) != 0 && MgDataTbl[index].type == MG_TYPE_KETTOU) {
                 MgModeWork[candidateIndex] = index;
@@ -107,10 +106,7 @@ void fn_1_D69C(void)
         MgModeSubMode = history->evtno;
     }
     fn_8006A1C4(196609);
-    index = Hu3DGLightCreate(
-        0.0f, 1000.0f, 1000.0f,
-        0.0f, -1.0f, -0.5f,
-        255, 255, 255);
+    index = Hu3DGLightCreate( 0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, -0.5f, 255, 255, 255);
     Hu3DGLightInfinitytSet(index);
     Hu3DShadowCreate(30.0f, 20.0f, 12000.0f);
     shadowPosition.x = 0.0f;
@@ -152,9 +148,9 @@ void fn_1_D69C(void)
     }
 }
 
-/* Overlay exit closes previews and windows, attempts to save changed common game data, and
-* returns to its caller. */
-void fn_1_DBB0(void) {
+/* Closes the tournament preview, saves common game data, and ends the scene process. */
+void fn_1_DBB0(void)
+{
     fn_1_7F0();
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 50);
     while (WipeCheck() != 0) {
@@ -169,7 +165,7 @@ void fn_1_DBB0(void) {
     SLSaveModeExec(0);
     fn_8003A5E4(1, 1);
     HuPrcEnd();
-while (1) {
+    while (1) {
         HuPrcVSleep();
     }
 }
@@ -229,23 +225,7 @@ void fn_1_DC28(void)
         result = fn_1_2128();
         if (result < 0) {
             HuAudSStreamFadeOut(lbl_1_data_848, 1000);
-            fn_1_7F0();
-            WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 50);
-            while (WipeCheck() != 0) {
-                HuPrcVSleep();
-            }
-            fn_1_B80C();
-            fn_1_824();
-            fn_1_4A1C();
-            fn_1_1BA0();
-            fn_1_1134();
-            fn_8006A268(196609);
-            SLSaveModeExec(0);
-            fn_8003A5E4(1, 1);
-            HuPrcEnd();
-            while (1) {
-                HuPrcVSleep();
-            }
+            fn_1_DBB0();
         }
         if (result == 2) {
             fn_1_6D78();
@@ -284,7 +264,7 @@ void fn_1_DC28(void)
             HuPrcVSleep();
         }
         /* This round choice enters the minigame without its instruction screen. */
-        lbl_80265B70.mgInstDispF = 0;
+        GWMgInstDispSet(0);
         gameId = MgModeWork[MgModePlayNum] + TOURNAMENT_UNLOCK_GAME_BASE;
         fn_8003CCAC(gameId);
         lbl_80265B70.mgNo = gameId - TOURNAMENT_UNLOCK_GAME_BASE;
@@ -295,7 +275,7 @@ void fn_1_DC28(void)
         }
         fn_1_B80C();
         fn_1_824();
-        omOvlCallEx(4, 1, 0, 0);
+        omOvlCallEx(DLL_instdll, 1, 0, 0);
         while (1) {
             HuPrcVSleep();
         }
@@ -313,7 +293,7 @@ void fn_1_DC28(void)
             HuPrcVSleep();
         }
         /* This round choice enters through the minigame's instruction screen. */
-        lbl_80265B70.mgInstDispF = 1;
+        GWMgInstDispSet(1);
         gameId = MgModeWork[MgModePlayNum] + TOURNAMENT_UNLOCK_GAME_BASE;
         fn_8003CCAC(gameId);
         lbl_80265B70.mgNo = gameId - TOURNAMENT_UNLOCK_GAME_BASE;
@@ -324,7 +304,7 @@ void fn_1_DC28(void)
         }
         fn_1_B80C();
         fn_1_824();
-        omOvlCallEx(4, 1, 0, 0);
+        omOvlCallEx(DLL_instdll, 1, 0, 0);
         while (1) {
             HuPrcVSleep();
         }
@@ -388,22 +368,6 @@ void fn_1_DC28(void)
         }
         break;
     default:
-        fn_1_7F0();
-        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 50);
-        while (WipeCheck() != 0) {
-            HuPrcVSleep();
-        }
-        fn_1_B80C();
-        fn_1_824();
-        fn_1_4A1C();
-        fn_1_1BA0();
-        fn_1_1134();
-        fn_8006A268(196609);
-        SLSaveModeExec(0);
-        fn_8003A5E4(1, 1);
-        HuPrcEnd();
-        while (1) {
-            HuPrcVSleep();
-        }
+        fn_1_DBB0();
     }
 }

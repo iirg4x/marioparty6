@@ -1,4 +1,6 @@
 /* Shared state and helper declarations for Mass Meteor. */
+#ifndef M656_INTEGRATION_H
+#define M656_INTEGRATION_H
 #include "game/main.h"
 #include "game/object.h"
 #include "game/audio.h"
@@ -20,8 +22,6 @@
 #include "datadir_enum.h"
 #include "string.h"
 #include "math.h"
-#ifndef M656_INTEGRATION_H
-#define M656_INTEGRATION_H
 
 /* Per-meteor pattern entry used to place and animate a falling object. */
 typedef struct M656Work60 M656Work60;
@@ -70,7 +70,7 @@ typedef struct M656Work50 {
     s16 index; /* Position in the group's sixteen-entry pattern. */
     s16 group; /* Player group, 0 or 1. */
     M656Entry10 *entry; /* Pattern data for this meteor. */
-    u8 unidentifiedBytes[4]; /* Bytes not read by the stage callbacks. */
+    u8 unk08[4]; /* No code names this field. */
     HuVecF pos; /* Current meteor position in stage units. */
     HuVecF velocity; /* Per-frame movement after a hit. */
     HU3D_MODELID model; /* Meteor model. */
@@ -91,7 +91,7 @@ struct M656Work60 {
     s32 timer; /* Frames in the current movement or transition state. */
     HuVecF velocity; /* Current player movement per frame. */
     HuVecF pos; /* Current player position in stage units. */
-    u8 unidentifiedBytes[12]; /* Bytes not read by the stage callbacks. */
+    u8 unk2C[12]; /* No code names this field. */
     HU3D_MODELID model38; /* Player's animated trail model. */
     s16 texScroll; /* Trail texture scroll handle. */
     s16 state; /* Gameplay state: 0 before movement, 1 moving, 2 hit, 3 finished. */
@@ -100,7 +100,7 @@ struct M656Work60 {
     float fraction; /* Progress along the 2350-frame course, clamped to 1. */
     HU3D_MODELID model48; /* Result animation model. */
     HU3D_MODELID model4A; /* Result animation model. */
-    u8 unidentifiedBytes2[4]; /* Bytes not read by the stage callbacks. */
+    u8 unk4C[4]; /* No code names this field. */
     HU3D_MODELID model50; /* Meteor impact effect model. */
     HuVecF target; /* Current computer-player wandering target. */
 };
@@ -142,7 +142,7 @@ extern char *lbl_1_data_60C[20];
 typedef struct M656MatrixElements {
     float elements[16]; /* Row-major 4x4 matrix elements. */
 } M656MatrixElements;
-void fn_1_A0(void);
+void ObjectSetup(void);
 void fn_1_F4(void);
 void fn_1_118(s16 mode, s16 frameNo);
 void fn_1_14C(s16 mode, s16 frameNo);
@@ -182,7 +182,7 @@ void fn_1_2310(M656Bounds *out, M656Capsule *capsule);
 void fn_1_24C8(M656Bounds *out, M656Sphere *sphere);
 void fn_1_255C(M656Bounds *out, M656Triangle *triangle);
 s32 fn_1_27C0(M656Bounds *boundsA, M656Bounds *boundsB);
-s32 fn_1_2830(M656Sphere *sphereA, s32 vectorWordA, M656Sphere *sphereB, s32 vectorWordB,
+s32 fn_1_2830(M656Sphere *sphereA, HuVecF *velocityA, M656Sphere *sphereB, HuVecF *velocityB,
     float maxTime, float *time, HuVecF *out);
 float fn_1_2BE8(M656Sphere *sphereA, M656Sphere *sphereB);
 float fn_1_2C8C(M656Sphere *sphereA, M656Sphere *sphereB);

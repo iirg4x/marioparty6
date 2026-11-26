@@ -20,4 +20,6 @@ typedef struct M663TransitionControl {
 
 extern M663TransitionControl lbl_1_bss_0[6];
 
+s32 fn_1_BFE8(void);
+
 #endif

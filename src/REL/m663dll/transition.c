@@ -144,8 +144,6 @@ s32 fn_1_BFE8(void) {
     return 0;
 }
 
-extern f32 lbl_802C028C;
-
 s32 fn_1_C05C(void)
 {
     s32 result = 0;

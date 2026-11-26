@@ -6,6 +6,7 @@
 #include "game/saveload.h"
 #include "dolphin/mtx.h"
 #include "msm_stream.h"
+#include "humath.h"
 typedef void (*MgBattleDestructor)(void);
 extern const MgBattleDestructor _dtors[];
 
@@ -14,12 +15,6 @@ extern MGBATTLE_CONSTRUCTOR _ctors[];
 
 void fn_1_1A738(void);
 void fn_1_1B3A4(OMOBJ *obj);
-void fn_1_409C(void);
-
-void fn_1_B414(void);
-void fn_1_35A0(void);
-void fn_1_125A0(void);
-void fn_1_174FC(void);
 
 s32 lbl_1_data_8D8 = -1;
 s32 lbl_1_data_8DC = -1;
@@ -35,33 +30,12 @@ extern s16 MgModeSubMode;
 extern s16 MgGameNo;
 extern u8 MgModePlayNum;
 
-void fn_1_1B0AC(f32 rotX, f32 rotY, f32 rotZ, const Vec *position, Vec *out);
-void fn_1_1408(s16 windowCount);
-void fn_1_1528(s16 windowCount);
-s32 fn_1_1648(s16 messageId);
-void fn_1_4548(u16 enabled);
 
 extern s16 MgModeScore[4];
 
-s32 fn_1_1B324(void);
-void fn_1_1B358(void);
 
-s32 fn_1_1AF5C(Point3d *vector, Point3d *out);
-
-void fn_1_12A8(void);
-void fn_1_139BC(void);
-void fn_1_13AAC(void);
-void fn_1_148BC(void);
-s16 fn_1_156CC(void);
-void fn_1_169FC(void);
-void fn_1_175A0(void);
-void fn_1_17740(void);
 void fn_1_1A498(void);
 void fn_1_1B394(s16 value);
-void fn_1_44E0(void);
-void fn_1_7F0(void);
-void fn_1_824(void);
-void fn_1_BB7C(void);
 
 void fn_1_1B470(void);
 void fn_1_1B51C(void);
@@ -69,12 +43,6 @@ void fn_1_1B95C(void);
 void fn_1_1BE28(void);
 void fn_1_1C2B8(OMOBJ *obj);
 
-f32 fn_1_B85C(void);
-f32 fn_1_B8E0(void);
-s16 fn_1_B964(void);
-s32 fn_1_B9E8(void);
-
-void fn_1_3B78(Point3d *position);
 
 /* Initializes the Battle Bridge object manager, camera and round-flow process. */
 void fn_1_1A088(void) {
@@ -258,7 +226,7 @@ void fn_1_1A738(void) {
                         HuPrcVSleep();
                     }
                     fn_1_824();
-                    lbl_80265B70.mgInstDispF = 0;
+                    GWMgInstDispSet(0);
                     mgNo = MgModeWork[MgModePlayNum] + 601;
                     fn_8003CCAC(mgNo);
                     lbl_80265B70.mgNo = mgNo - 601;
@@ -271,7 +239,7 @@ void fn_1_1A738(void) {
                     } else {
                         lbl_802C0278 = 0;
                     }
-                    omOvlCallEx(4, 1, 0, 0);
+                    omOvlCallEx(DLL_instdll, 1, 0, 0);
                     stateActive = 0;
                     for (;;) {
                         HuPrcVSleep();
@@ -289,7 +257,7 @@ void fn_1_1A738(void) {
                         HuPrcVSleep();
                     }
                     fn_1_824();
-                    lbl_80265B70.mgInstDispF = 1;
+                    GWMgInstDispSet(1);
                     mgNo = MgModeWork[MgModePlayNum] + 601;
                     fn_8003CCAC(mgNo);
                     lbl_80265B70.mgNo = mgNo - 601;
@@ -302,7 +270,7 @@ void fn_1_1A738(void) {
                     } else {
                         lbl_802C0278 = 0;
                     }
-                    omOvlCallEx(4, 1, 0, 0);
+                    omOvlCallEx(DLL_instdll, 1, 0, 0);
                     stateActive = 0;
                     for (;;) {
                         HuPrcVSleep();
@@ -425,10 +393,10 @@ void fn_1_1B0AC(f32 angle_x, f32 angle_y, f32 angle_z,
 {
     Mtx x_rotation;
     Mtx y_rotation;
-    PSMTXRotRad(x_rotation, 'x', 0.017453292f * angle_x);
-    PSMTXRotRad(y_rotation, 'y', 0.017453292f * angle_y);
+    PSMTXRotRad(x_rotation, 'x', MTXDegToRad(angle_x));
+    PSMTXRotRad(y_rotation, 'y', MTXDegToRad(angle_y));
     PSMTXConcat(y_rotation, x_rotation, x_rotation);
-    PSMTXRotRad(y_rotation, 'z', 0.017453292f * angle_z);
+    PSMTXRotRad(y_rotation, 'z', MTXDegToRad(angle_z));
     PSMTXConcat(y_rotation, x_rotation, x_rotation);
     PSMTXMultVecSR(x_rotation, source, destination);
 }
@@ -448,7 +416,7 @@ f64 fn_1_1B16C(Point3d *first, Point3d *second) {
         result = (f64)work / lengthProduct;
     }
     result = acos(result);
-    result = 180.0 * (result / 3.141592653589793);
+    result = 180.0 * (result / M_PI);
 
     work = first->x - second->x;
     if (-0.000001 <= work && work <= 0.000001) {
@@ -464,8 +432,8 @@ f64 fn_1_1B16C(Point3d *first, Point3d *second) {
 }
 
 /* Returns true while the ending camera sequence is within its first 150 frames. */
-s32 fn_1_1B324(void) {
-    s32 canAdvance;
+s16 fn_1_1B324(void) {
+    s16 canAdvance;
 
     canAdvance = 0;
     if (lbl_1_bss_668 <= 150) {
@@ -681,21 +649,21 @@ void fn_1_1C2B8(OMOBJ *obj) {
     yaw = lbl_80266A40.y;
     roll = lbl_80266A40.z;
     cameraPosition.x = (f32)((f64)lbl_80266A4C.x +
-        ((f64)lbl_802C028C * (sin((3.141592653589793 * (f64)yaw) / 180.0) *
-            cos((3.141592653589793 * (f64)pitch) / 180.0))));
+        ((f64)lbl_802C028C * (sin((M_PI * (f64)yaw) / 180.0) *
+            cos((M_PI * (f64)pitch) / 180.0))));
     cameraPosition.y = (f32)((f64)lbl_80266A4C.y +
-        ((f64)lbl_802C028C * -sin((3.141592653589793 * (f64)pitch) / 180.0)));
+        ((f64)lbl_802C028C * -sin((M_PI * (f64)pitch) / 180.0)));
     cameraPosition.z = (f32)((f64)lbl_80266A4C.z +
-        ((f64)lbl_802C028C * (cos((3.141592653589793 * (f64)yaw) / 180.0) *
-            cos((3.141592653589793 * (f64)pitch) / 180.0))));
+        ((f64)lbl_802C028C * (cos((M_PI * (f64)yaw) / 180.0) *
+            cos((M_PI * (f64)pitch) / 180.0))));
     center.x = lbl_80266A4C.x;
     center.y = lbl_80266A4C.y;
     center.z = lbl_80266A4C.z;
-    cameraUpBasis.x = (f32)(sin((3.141592653589793 * (f64)yaw) / 180.0) *
-        sin((3.141592653589793 * (f64)pitch) / 180.0));
-    cameraUpBasis.y = (f32)cos((3.141592653589793 * (f64)pitch) / 180.0);
-    cameraUpBasis.z = (f32)(cos((3.141592653589793 * (f64)yaw) / 180.0) *
-        sin((3.141592653589793 * (f64)pitch) / 180.0));
+    cameraUpBasis.x = (f32)(sin((M_PI * (f64)yaw) / 180.0) *
+        sin((M_PI * (f64)pitch) / 180.0));
+    cameraUpBasis.y = (f32)cos((M_PI * (f64)pitch) / 180.0);
+    cameraUpBasis.z = (f32)(cos((M_PI * (f64)yaw) / 180.0) *
+        sin((M_PI * (f64)pitch) / 180.0));
 
     PSVECSubtract(&cameraPosition, &center, &direction);
     if (direction.x == 0.0 && direction.y == 0.0 && direction.z == 0.0) {
@@ -706,41 +674,41 @@ void fn_1_1C2B8(OMOBJ *obj) {
     cameraUp.x = (f32)(((f64)cameraUpBasis.x *
         ((f64)(direction.x * direction.x) +
             ((f64)(1.0f - (direction.x * direction.x)) *
-                cos((3.141592653589793 * (f64)roll) / 180.0)))) +
+                cos((M_PI * (f64)roll) / 180.0)))) +
         ((f64)cameraUpBasis.y * ((f64)(direction.x * direction.y) *
-            (1.0 - cos((3.141592653589793 * (f64)roll) / 180.0)) -
+            (1.0 - cos((M_PI * (f64)roll) / 180.0)) -
             ((f64)direction.z *
-                sin((3.141592653589793 * (f64)roll) / 180.0)))) +
+                sin((M_PI * (f64)roll) / 180.0)))) +
         ((f64)cameraUpBasis.z * ((f64)(direction.x * direction.z) *
-            (1.0 - cos((3.141592653589793 * (f64)roll) / 180.0)) +
+            (1.0 - cos((M_PI * (f64)roll) / 180.0)) +
             ((f64)direction.y *
-                sin((3.141592653589793 * (f64)roll) / 180.0)))));
+                sin((M_PI * (f64)roll) / 180.0)))));
 
     cameraUp.y = (f32)(((f64)cameraUpBasis.y *
         ((f64)(direction.y * direction.y) +
             ((f64)(1.0f - (direction.y * direction.y)) *
-                cos((3.141592653589793 * (f64)roll) / 180.0)))) +
+                cos((M_PI * (f64)roll) / 180.0)))) +
         ((f64)cameraUpBasis.x * ((f64)(direction.x * direction.y) *
-            (1.0 - cos((3.141592653589793 * (f64)roll) / 180.0)) +
+            (1.0 - cos((M_PI * (f64)roll) / 180.0)) +
             ((f64)direction.z *
-                sin((3.141592653589793 * (f64)roll) / 180.0)))) +
+                sin((M_PI * (f64)roll) / 180.0)))) +
         ((f64)cameraUpBasis.z * ((f64)(direction.y * direction.z) *
-            (1.0 - cos((3.141592653589793 * (f64)roll) / 180.0)) -
+            (1.0 - cos((M_PI * (f64)roll) / 180.0)) -
             ((f64)direction.x *
-                sin((3.141592653589793 * (f64)roll) / 180.0)))));
+                sin((M_PI * (f64)roll) / 180.0)))));
 
     cameraUp.z = (f32)(((f64)cameraUpBasis.z *
         ((f64)(direction.z * direction.z) +
             ((f64)(1.0f - (direction.z * direction.z)) *
-                cos((3.141592653589793 * (f64)roll) / 180.0)))) +
+                cos((M_PI * (f64)roll) / 180.0)))) +
         (((f64)cameraUpBasis.x * ((f64)(direction.x * direction.z) *
-            (1.0 - cos((3.141592653589793 * (f64)roll) / 180.0)) -
+            (1.0 - cos((M_PI * (f64)roll) / 180.0)) -
             ((f64)direction.y *
-                sin((3.141592653589793 * (f64)roll) / 180.0)))) +
+                sin((M_PI * (f64)roll) / 180.0)))) +
             ((f64)cameraUpBasis.y * ((f64)(direction.y * direction.z) *
-                (1.0 - cos((3.141592653589793 * (f64)roll) / 180.0)) +
+                (1.0 - cos((M_PI * (f64)roll) / 180.0)) +
                 ((f64)direction.x *
-                    sin((3.141592653589793 * (f64)roll) / 180.0))))));
+                    sin((M_PI * (f64)roll) / 180.0))))));
 
     fn_1_1AF5C(&cameraUp, &cameraUp);
 

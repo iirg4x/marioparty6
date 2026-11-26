@@ -59,13 +59,6 @@ extern Vec lbl_1_data_1D4[4];
 
 void fn_1_2EBC(void);
 
-/* Sprite calls retain default argument promotions for the console build. */
-#ifdef __MWERKS__
-
-#else
-#include "game/esprite.h"
-#endif
-
 extern f32 lbl_1_bss_1B8[9][10];
 extern f32 lbl_1_bss_50[9][10];
 extern s32 lbl_1_bss_320[9][10];
@@ -112,17 +105,7 @@ extern Point3d lbl_1_data_1A4[4];
 
 extern s32 lbl_1_data_240[2];
 
-s32 fn_1_45D0(s32 player);
-
-void fn_1_31F0(s32 player, s32 value);
 void fn_1_333C(s32 player, s32 value);
-void fn_1_3488(s32 player, s32 value);
-
-/* Returns the minigame presentation mode selected by the board. */
-static inline s16 ResultNightModeGet(void)
-{
-    return lbl_802C0278;
-}
 
 extern u32 lbl_1_data_248[6][2];
 extern void fn_1_3FB0(s16 *coinAwards);
@@ -226,25 +209,19 @@ void ObjectSetup(void)
 f32 lbl_1_data_23C = 1.0f;
 s32 lbl_1_data_240[2] = {-80, -80};
 /* Board archives prefetched for the return, selected by board and day/night mode. */
-#define RESULT_BG_BOARD_0_DAY 14090240
-#define RESULT_BG_BOARD_0_NIGHT 14155776
-#define RESULT_BG_BOARD_1_DAY 14221312
-#define RESULT_BG_BOARD_1_NIGHT 14286848
-#define RESULT_BG_BOARD_2_DAY 14352384
-#define RESULT_BG_BOARD_2_NIGHT 14417920
-#define RESULT_BG_BOARD_3_DAY 14483456
-#define RESULT_BG_BOARD_3_NIGHT 14548992
-#define RESULT_BG_BOARD_4_DAY 14614528
-#define RESULT_BG_BOARD_4_NIGHT 14680064
-#define RESULT_BG_BOARD_5_DAY 14745600
-#define RESULT_BG_BOARD_5_NIGHT 14811136
 u32 lbl_1_data_248[6][2] = {
-    { RESULT_BG_BOARD_0_DAY, RESULT_BG_BOARD_0_NIGHT },
-    { RESULT_BG_BOARD_1_DAY, RESULT_BG_BOARD_1_NIGHT },
-    { RESULT_BG_BOARD_2_DAY, RESULT_BG_BOARD_2_NIGHT },
-    { RESULT_BG_BOARD_3_DAY, RESULT_BG_BOARD_3_NIGHT },
-    { RESULT_BG_BOARD_4_DAY, RESULT_BG_BOARD_4_NIGHT },
-    { RESULT_BG_BOARD_5_DAY, RESULT_BG_BOARD_5_NIGHT }
+    /* Board 0 backgrounds: day, night. */
+    { DATANUM(0xd70000, 0), DATANUM(0xd80000, 0) },
+    /* Board 1 backgrounds: day, night. */
+    { DATANUM(0xd90000, 0), DATANUM(0xda0000, 0) },
+    /* Board 2 backgrounds: day, night. */
+    { DATANUM(0xdb0000, 0), DATANUM(0xdc0000, 0) },
+    /* Board 3 backgrounds: day, night. */
+    { DATANUM(0xdd0000, 0), DATANUM(0xde0000, 0) },
+    /* Board 4 backgrounds: day, night. */
+    { DATANUM(0xdf0000, 0), DATANUM(0xe00000, 0) },
+    /* Board 5 backgrounds: day, night. */
+    { DATANUM(0xe10000, 0), DATANUM(0xe20000, 0) }
 };
 
 /* Started by ObjectSetup for ordinary minigames; presents player results and waits for confirmation
@@ -315,7 +292,7 @@ void fn_1_560(void)
         } else {
             for (player = 0; player < 4; player++) {
                 if (HuPadStatGet(player) == 0 && (lbl_802C0008[player] & PAD_BUTTON_A) != 0) {
-                    HuAudFXPlay(2);
+                    HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                     confirmed = 1;
                     break;
                 }
@@ -400,12 +377,12 @@ void fn_1_940(void)
             }
         }
         if (lbl_1_bss_8 != 0) {
-            lbl_1_bss_10 = sin((3.141592653589793 * lbl_1_bss_4) / 180.0);
+            lbl_1_bss_10 = sin((M_PI * lbl_1_bss_4) / 180.0);
             lbl_1_bss_4 += 5.0f;
             if (lbl_1_bss_4 > 180.0f) {
                 lbl_1_bss_4 -= 180.0f;
             }
-            lbl_1_bss_C = sin((3.141592653589793 * lbl_1_bss_4) / 180.0);
+            lbl_1_bss_C = sin((M_PI * lbl_1_bss_4) / 180.0);
             lbl_1_data_23C += 0.1f * (lbl_1_bss_C - lbl_1_bss_10);
             for (player = 0; player < 4; player++) {
                 if (lbl_1_bss_5EC[player] == 0) {
@@ -413,8 +390,7 @@ void fn_1_940(void)
                         0.95f * lbl_1_data_23C, 0.95f * lbl_1_data_23C);
                     espScaleSet(lbl_1_bss_488[player].rankSprite[1],
                         0.95f * lbl_1_data_23C, 0.95f * lbl_1_data_23C);
-                    espScaleSet(lbl_1_bss_488[player].placeSprite,
-                        lbl_1_data_23C, lbl_1_data_23C);
+                    espScaleSet(lbl_1_bss_488[player].placeSprite, lbl_1_data_23C, lbl_1_data_23C);
                 }
             }
         }
@@ -538,8 +514,7 @@ void fn_1_1074(void)
         fn_80026B8C(displayId, 1);
 
         lbl_1_bss_488[player].resultModels[0] = displayId =
-            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 22)),
-                0x10000000, 2));
+            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 22)), 0x10000000, 2));
         fn_80026B64(displayId, 1);
         Hu3D2Dto3D(&lbl_1_data_144[player], 1, &characterPosition);
         fn_80026790(displayId, &characterPosition);
@@ -549,8 +524,7 @@ void fn_1_1074(void)
         fn_800269E8(displayId, ((1 << 30) | (1 << 0)));
 
         lbl_1_bss_488[player].resultModels[1] = displayId =
-            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 25)),
-                0x10000000, 2));
+            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 25)), 0x10000000, 2));
         fn_80026B64(displayId, 1);
         Hu3D2Dto3D(&lbl_1_data_174[player], 1, &characterPosition);
         fn_800268B0(displayId, 0.6f, 0.6f, 0.6f);
@@ -558,8 +532,7 @@ void fn_1_1074(void)
         fn_80026B8C(displayId, 1);
 
         lbl_1_bss_488[player].resultModels[2] = displayId =
-            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 26)),
-                0x10000000, 2));
+            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 26)), 0x10000000, 2));
         fn_80026B64(displayId, 1);
         Hu3D2Dto3D(&lbl_1_data_1A4[player], 1, &characterPosition);
         fn_800268B0(displayId, 0.5f, 0.5f, 0.5f);
@@ -569,7 +542,7 @@ void fn_1_1074(void)
 
     for (player = 0; player < 9; player++) {
         for (digit = 0; digit < 10; digit++) {
-            if (ResultNightModeGet() == 0) {
+            if (GWMgNightFGet() == 0) {
                 lbl_1_bss_320[player][digit] = displayId =
                     espEntry(fn_1_C45C(DATANUM(0xc60000, 19)), 256, 0);
             } else {
@@ -673,7 +646,7 @@ void fn_1_2068(void)
     }
     phaseCount = appearDuration;
     for (frame = 0; frame <= phaseCount; frame++) {
-        scale = sin((3.141592653589793 * ((90.0 / phaseCount) * frame)) / 180.0);
+        scale = sin((M_PI * ((90.0 / phaseCount) * frame)) / 180.0);
         for (player = 0; player < 4; player++) {
             espScaleSet(lbl_1_bss_488[player].bonusSprite, scale, scale);
             for (digit = 0; digit < 3; digit++) {
@@ -690,8 +663,8 @@ void fn_1_2068(void)
             if (awards[player] >= 10) {
                 fn_80026A44((s16)lbl_1_bss_488[player].resultModels[0], (1 << 0));
             }
-            scale = 0.1f + sin((3.141592653589793 * ((120.0f / 14.0f) * bounceFrame)) / 180.0) *
-                (0.8 * (1.0 / sin((3.141592653589793 * 120.0) / 180.0)));
+            scale = 0.1f + sin((M_PI * ((120.0f / 14.0f) * bounceFrame)) / 180.0) *
+                (0.8 * (1.0 / sin((M_PI * 120.0) / 180.0)));
             fn_800268B0((s16)lbl_1_bss_488[player].resultModels[0], scale, scale, scale);
         }
         if (lbl_1_bss_624 != 0) {
@@ -726,7 +699,7 @@ void fn_1_2068(void)
                 } else {
                     coins[player]++;
                     awards[player]--;
-                    HuAudFXPlay(7);
+                    HuAudFXPlay(MSM_SE_CMN_COIN_GET);
                     lbl_1_bss_60C[player] = 3.0f;
                 }
                 fn_1_3488((s16)player, awards[player]);
@@ -747,7 +720,7 @@ void fn_1_2068(void)
     }
     phaseCount = disappearDuration;
     for (frame = 0; frame <= phaseCount; frame++) {
-        scale = cos((3.141592653589793 * ((90.0 / phaseCount) * frame)) / 180.0);
+        scale = cos((M_PI * ((90.0 / phaseCount) * frame)) / 180.0);
         for (player = 0; player < 4; player++) {
             espScaleSet(lbl_1_bss_488[player].bonusSprite, scale, scale);
             fn_800268B0((s16)lbl_1_bss_488[player].resultModels[0], scale, scale, scale);
@@ -788,8 +761,8 @@ void fn_1_2878(void)
             fn_8002CCC0((s16)lbl_1_bss_488[player].characterModel,
                 (s16)lbl_1_bss_488[player].characterMotions[1], 0.0f, 8.0f, 0);
             if (lbl_1_bss_5EC[player] != 0) {
-                CharFXStop(lbl_80265728[player].charNo, 575);
-                CharFXPlay(lbl_80265728[player].charNo, 579);
+                CharFXStop(lbl_80265728[player].charNo, MSM_SE_CHARVOICE_WIN_JUMP_CHEER);
+                CharFXPlay(lbl_80265728[player].charNo, MSM_SE_CHARVOICE_HAPPY_CHEER);
             }
         } else if ((s16)lbl_1_bss_5F4[player] < lbl_1_bss_5EC[player]) {
             changed[player] = 1;
@@ -1291,7 +1264,7 @@ void fn_1_4694(void)
             lbl_80265750[player].coinGraph[turnNo - 1] = lbl_80265750[player].coin;
         }
         if (SLSaveFlagGet() == 0) {
-            lbl_80265B70.saveMode = 1;
+            GWSaveModeSet(1);
         }
     }
     SLSaveBoardTurnExec();

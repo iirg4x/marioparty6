@@ -37,24 +37,24 @@ s32 lbl_1_data_160[14] = {
     MESSNUM(MESS_CHARA_NAME, 12), MESSNUM(MESS_CHARA_NAME, 13)
 };
 TournamentMessageSound lbl_1_data_198[18] = {
-    { MESSNUM(MESS_MGM_TOURNAMENT, 0), 1, 942 },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 0), 1, MSM_SE_GUIDE_NIGHT_INTRO },
     { MESSNUM(MESS_MGM_TOURNAMENT, 0), 2, -1 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 0), 3, 944 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 0), 4, 942 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 1), 1, 942 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 2), 1, 944 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 3), 1, 942 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 4), 1, 944 },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 0), 3, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 0), 4, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 1), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 2), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 3), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 4), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
     { MESSNUM(MESS_MGM_TOURNAMENT, 5), 1, -1 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 6), 1, 942 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 7), 1, 943 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 8), 1, 944 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 9), 1, 944 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 10), 1, 942 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 11), 1, 944 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 12), 1, 942 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 13), 1, 944 },
-    { MESSNUM(MESS_MGM_TOURNAMENT, 14), 1, 944 },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 6), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 7), 1, MSM_SE_GUIDE_NIGHT_APOLOGY },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 8), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 9), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 10), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 11), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 12), 1, MSM_SE_GUIDE_NIGHT_INTRO },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 13), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
+    { MESSNUM(MESS_MGM_TOURNAMENT, 14), 1, MSM_SE_GUIDE_NIGHT_EXPLAIN },
 };
 s16 lbl_1_data_270 = 64;
 
@@ -148,9 +148,6 @@ void fn_1_1D54(void)
 /* The opening scene shows the first introduction prompt before arranging the tournament. */
 void fn_1_1D74(void) {
 
-    s16 padMask;
-    s16 player;
-
     HuWinExOpen(lbl_1_bss_C8.windowId);
     fn_1_5728();
     HuWinComKeyReset();
@@ -164,9 +161,6 @@ void fn_1_1D74(void) {
 
 /* After the opening host movement, show the second tournament introduction prompt. */
 void fn_1_1E80(void) {
-
-    s16 padMask;
-    s16 player;
 
     HuWinExOpen(lbl_1_bss_C8.windowId);
     fn_1_5728();
@@ -184,8 +178,6 @@ void fn_1_1F90(void)
 {
 
     s16 mode;
-    s16 padMask;
-    s16 player;
 
     HuWinExOpen(lbl_1_bss_C8.windowId);
     fn_1_5728();
@@ -213,9 +205,6 @@ s16 fn_1_2128(void)
 {
     s16 promptState;
     s16 result;
-    s16 player;
-    s16 messageIndex;
-    HUWINID messageWindow;
 
     result = 0;
     HuWinExOpen(lbl_1_bss_C8.windowId);
@@ -296,7 +285,6 @@ s16 fn_1_2128(void)
 void fn_1_2728(s16 player)
 {
 
-    s16 padMask;
     s16 winnerCharacter;
 
     HuWinExOpen(lbl_1_bss_C8.windowId);
@@ -361,8 +349,7 @@ void fn_1_2948(void)
 s16 fn_1_2BA0(void) {
 
     s16 result;
-    s16 padMask;
-    s16 player;
+
     s16 choice;
 
     result = 0;

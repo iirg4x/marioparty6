@@ -10,7 +10,7 @@
 #include "game/memory.h"
 #include "string.h"
 
-enum { M668_ACTOR_STACK_SIZE = 36864 };
+
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -46,7 +46,7 @@ void fn_1_F4(void);
 void ObjectSetup(void)
 {
     lbl_1_bss_4 = fn_80080418();
-    fn_8000DAC0(fn_1_F4, 100, M668_ACTOR_STACK_SIZE, 0, lbl_1_bss_4);
+    fn_8000DAC0(fn_1_F4, 100, 36864, 0, lbl_1_bss_4);
 }
 
 /* Starts Burnstile's sequence, then updates actors once per scheduler pass. */

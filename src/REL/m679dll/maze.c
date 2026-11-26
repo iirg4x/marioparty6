@@ -45,7 +45,7 @@
 #include "datadir_enum.h"
 #include "messdir_enum.h"
 
-#include "REL/m679dll/module_state.h"
+#include "REL/m679dll/module_types.h"
 
 #include "dolphin/os.h"
 
@@ -59,16 +59,16 @@
 #include "humath.h"
 
 /* Cell edges, in the order consumed by maze generation and collision. */
-typedef struct M679Cell_s {
+typedef struct {
     u8 negativeZ;
     u8 positiveZ;
     u8 negativeX;
     u8 positiveX;
 } M679Cell;
 
-typedef struct M679TilePosition_s { s16 x, z; } M679TilePosition;
+typedef struct { s16 x, z; } M679TilePosition;
 
-typedef struct M679MazeLevel_s {
+typedef struct {
     s16 characterNo;
     s16 shadowModel;
     s16 baseModel;
@@ -84,9 +84,9 @@ typedef struct M679MazeLevel_s {
     s16 exitRow;
 } M679MazeLevel;
 
-typedef union M679ControllerValue40_u { s32 word; s16 halves[2]; } M679ControllerValue40;
+typedef union { s32 word; s16 halves[2]; } M679ControllerValue40;
 
-typedef struct M679Controller_s {
+typedef struct {
     s16 playerIndex;
     s16 modelId;
     s16 menuIndex;
@@ -110,7 +110,7 @@ typedef struct M679Controller_s {
     s16 unknownTail;
 } M679Controller;
 
-typedef struct M679Window_s {
+typedef struct {
     s16 phase;
     s16 primaryModel;
     s16 primaryMotion;
@@ -135,15 +135,15 @@ struct M679PlayerWork_s {
     s16 motions[4];
     s16 effectId;
     s16 playerIndex;
-    s16 eventIndex;
+    s16 unk10; /* The game's code never reads this field. */
     s16 unknownShort;
     s32 state;
     s16 motionCounter;
     s16 phase;
     M679Controller *owner;
     s16 action;
-    s16 model;
-    s16 catchTarget; /* Set to -1 with the target cell when the player catches this character. */
+    s16 unk22; /* The game's code never reads this field. */
+    s16 unk24; /* The game's code never reads this field. */
     s32 moving;
     s16 targetColumn;
     s16 targetRow;
@@ -152,18 +152,18 @@ struct M679PlayerWork_s {
     s16 unknownTail;
 };
 
-typedef struct M679HistoryEntry_s { s16 first, second; } M679HistoryEntry;
+typedef struct { s16 first, second; } M679HistoryEntry;
 
-typedef struct M679Queue_s {
+typedef struct {
     s32 count;
     s16 values[100];
     s16 source[100];
     u8 unknown_194[40]; /* No code names this field. */
 } M679Queue;
 
-typedef struct M679ModelPair_s { s16 first, second; } M679ModelPair;
+typedef struct { s16 first, second; } M679ModelPair;
 
-typedef struct M679RegionPoint_s {
+typedef struct {
     Point3d position;
     Point3d rotation;
     M679HistoryEntry coordinate;
@@ -173,12 +173,12 @@ typedef struct M679RegionPoint_s {
 extern s32 lbl_1_data_CC;
 
 /* Builds five random mazes, then records their paths, goals, and edge states. */
-typedef struct M679MazeCoordinate_s {
+typedef struct {
     s16 column;
     s16 row;
 } M679MazeCoordinate;
 
-typedef struct M679WallModel_s {
+typedef struct {
     s16 modelIds[4];
 } M679WallModel;
 
@@ -255,9 +255,7 @@ void fn_1_3B38(void);
 
 void fn_1_3B78(void);
 
-void fn_1_3DD8(void);
-
-void fn_1_3FA4(OMOBJ *object);
+void fn_1_3DD8(s16 value);
 
 void fn_1_4AA4(OMOBJ *object);
 
@@ -374,8 +372,6 @@ void fn_1_D144(void);
 
 extern s32 lbl_1_data_C8;
 
-extern HUPROCESS *fn_1_A0(void);
-
 extern const Point3d lbl_1_rodata_20;
 
 extern const Point3d lbl_1_rodata_2C;
@@ -388,12 +384,6 @@ extern s32 lbl_1_data_C4;
 
 extern const Point3d lbl_1_rodata_2E8;
 
-extern void fn_1_D37C(OMOBJ *obj);
-
-extern void fn_1_D750(void);
-
-s32 fn_1_D6C8(void);
-
 extern const HuVecF lbl_1_rodata_250;
 
 extern const Point3d lbl_1_rodata_1BC;
@@ -403,10 +393,6 @@ extern const Point3d lbl_1_rodata_1C8;
 extern const Point3d lbl_1_rodata_1D4;
 
 extern const HuVecF lbl_1_rodata_260;
-
-extern void fn_1_D7E0(void);
-
-extern void fn_1_D6B4(void);
 
 extern u32 lbl_1_data_D4[14];
 
@@ -418,15 +404,7 @@ extern const Point3d lbl_1_rodata_88;
 
 extern u32 lbl_1_data_10C[16];
 
-extern int abs(int value);
-
-extern int rand8(void);
-
 extern const Point3d lbl_1_rodata_22C;
-
-extern void fn_1_D700(void);
-
-extern void fn_1_D6A0(void);
 
 extern const Point3d lbl_1_rodata_288;
 
@@ -525,33 +503,13 @@ void fn_1_1238(M679Queue *work, s16 modelId)
 /* Pops the newest value from the wall queue lbl_1_bss_64F4; prints a stack warning
  * instead when the count is negative. */
 s16 fn_1_374(void) {
-    s16 value;
-    s32 count;
-
-    count = lbl_1_bss_64F4.count;
-    if (count < 0) {
-        OSReport("wall info Stack Over.\n");
-    } else {
-        lbl_1_bss_64F4.count -= 1;
-        value = lbl_1_bss_64F4.values[count];
-    }
-    return value;
+    return fn_1_2EC(&lbl_1_bss_64F4);
 }
 
 /* Pops the newest value from the wall queue lbl_1_bss_66B0; prints a stack warning
  * instead when the count is negative. */
 s16 fn_1_3FC(void) {
-    s16 value;
-    s32 count;
-
-    count = lbl_1_bss_66B0.count;
-    if (count < 0) {
-        OSReport("wall info Stack Over.\n");
-    } else {
-        lbl_1_bss_66B0.count -= 1;
-        value = lbl_1_bss_66B0.values[count];
-    }
-    return value;
+    return fn_1_2EC(&lbl_1_bss_66B0);
 }
 
 void fn_1_484(s16 value) {
@@ -567,33 +525,13 @@ void fn_1_4C4(s16 value) {
 /* Pops the newest value from the wall queue lbl_1_bss_617C; prints a stack warning
  * instead when the count is negative. */
 s16 fn_1_504(void) {
-    s16 value;
-    s32 count;
-
-    count = lbl_1_bss_617C.count;
-    if (count < 0) {
-        OSReport("wall info Stack Over.\n");
-    } else {
-        lbl_1_bss_617C.count -= 1;
-        value = lbl_1_bss_617C.values[count];
-    }
-    return value;
+    return fn_1_2EC(&lbl_1_bss_617C);
 }
 
 /* Pops the newest value from the wall queue lbl_1_bss_6338; prints a stack warning
  * instead when the count is negative. */
 s16 fn_1_58C(void) {
-    s16 value;
-    s32 count;
-
-    count = lbl_1_bss_6338.count;
-    if (count < 0) {
-        OSReport("wall info Stack Over.\n");
-    } else {
-        lbl_1_bss_6338.count -= 1;
-        value = lbl_1_bss_6338.values[count];
-    }
-    return value;
+    return fn_1_2EC(&lbl_1_bss_6338);
 }
 
 void fn_1_614(s16 value) {
@@ -800,16 +738,16 @@ void fn_1_E1C(OMOBJ *obj)
     }
     if ((lbl_1_bss_686C.transitionState == 0) &&
         (HuWinStatGet(lbl_1_bss_686C.window) == 0)) {
-        WipeCreate(2, 0, 0x3C);
+        WipeCreate(2, 0, 60);
         lbl_1_bss_686C.transitionState = 1;
         HuWinDispOff(lbl_1_bss_686C.window);
-        HuAudSStreamFadeOut(lbl_1_data_CC, 0x3E8);
+        HuAudSStreamFadeOut(lbl_1_data_CC, 1000);
     }
     if ((lbl_1_bss_686C.transitionState == 1) && (WipeCheck() == 0)) {
         fn_800269E8(lbl_1_bss_686C.primaryModel, 1U);
         fn_800269E8(lbl_1_bss_686C.shadowModel, 1U);
         fn_800269E8(lbl_1_bss_686C.mapModel, 1U);
-        WipeCreate(1, 5, 0x3C);
+        WipeCreate(1, 5, 60);
         lbl_1_data_D0 = 0;
         lbl_1_data_C8 = 0;
         GameMesPauseEnable(1);
@@ -1127,6 +1065,7 @@ s32 fn_1_1BF0(u8 *grid, s32 seed, s16 startColumn, s16 startRow,
     }
 }
 
+/* At setup, generate the five maze layouts and store their walls and openings for play. */
 void fn_1_2D7C(void)
 {
     s32 halfLength;
@@ -1215,7 +1154,7 @@ void fn_1_2D7C(void)
         if (candidateCount <= 1)
         {
             retryCount++;
-            if (retryCount < 0x14)
+            if (retryCount < 20)
             {
                 OSReport("dig retry.\n");
                 HuMemDirectFree(candidates);
@@ -1230,22 +1169,25 @@ void fn_1_2D7C(void)
             }
         }
         goalIndex = 0;
-        retry_goal : goalQuadrant = 0;
-        goalIndex = frandmod(candidateCount);
-        lbl_1_bss_68B4[level].goalColumn = candidates[goalIndex].column;
-        lbl_1_bss_68B4[level].goalRow = candidates[goalIndex].row;
-        if (halfLength <= lbl_1_bss_68B4[level].goalColumn)
-        {
-            goalQuadrant += 1;
-        }
-        if (halfLength <= lbl_1_bss_68B4[level].goalRow)
-        {
-            goalQuadrant += 2;
-        }
-        if (((abs(lbl_1_bss_68B4[level].goalColumn - lbl_1_bss_68B4[level].startColumn) < level + 2) || (abs(lbl_1_bss_68B4[level].goalRow - lbl_1_bss_68B4[level].startRow) < level + 2)) && (goalAttempts < 0x32))
-        {
+        for (;;) {
+            goalQuadrant = 0;
+            goalIndex = frandmod(candidateCount);
+            lbl_1_bss_68B4[level].goalColumn = candidates[goalIndex].column;
+            lbl_1_bss_68B4[level].goalRow = candidates[goalIndex].row;
+            if (halfLength <= lbl_1_bss_68B4[level].goalColumn)
+            {
+                goalQuadrant += 1;
+            }
+            if (halfLength <= lbl_1_bss_68B4[level].goalRow)
+            {
+                goalQuadrant += 2;
+            }
+            if (!(((abs(lbl_1_bss_68B4[level].goalColumn - lbl_1_bss_68B4[level].startColumn) < level + 2) ||
+                   (abs(lbl_1_bss_68B4[level].goalRow - lbl_1_bss_68B4[level].startRow) < level + 2)) &&
+                  (goalAttempts < 0x32))) {
+                break;
+            }
             goalAttempts++;
-            goto retry_goal;
         }
         HuMemDirectFree(candidates);
         switch (goalQuadrant)
@@ -1449,7 +1391,7 @@ void fn_1_3B78(void)
 }
 
 /* Fades the result overlay while pausing and hides it after unpausing. */
-void fn_1_3DD8(void)
+void fn_1_3DD8(s16 value)
 {
     if (lbl_802C0234 + fn_8003B748()) {
         if (lbl_1_data_D0 == 0) {
@@ -1518,7 +1460,7 @@ static inline void m679InitializeWindowModels(void)
     memset(&lbl_1_bss_6338.values[0], -1, 0xC8);
     memset(lbl_1_bss_6338.source, -1, 0xC8);
 }
-
+/* Loads the maze floors, their collision models, and effects before starting the maze update. */
 void fn_1_3FA4(OMOBJ *object)
 {
     s32 modelCount = 0;
@@ -1585,7 +1527,7 @@ void fn_1_3FA4(OMOBJ *object)
     fn_80080D7C(3, 8U);
     fn_80080D7C(4, 0x10U);
     fn_80080D7C(5, 0x1FU);
-    for (index = 0; index < 0x18; index++) {
+    for (index = 0; index < 24; index++) {
         fn_80080D7C(index + 6, 0x1FU);
     }
 
@@ -1639,7 +1581,7 @@ void fn_1_3FA4(OMOBJ *object)
     espPosSet(lbl_1_bss_1C[0], 320.0f, 240.0f);
     espScaleSet(lbl_1_bss_1C[0], 20.0f, 15.0f);
     espDispOff(lbl_1_bss_1C[0]);
-    fn_80025918(0xF, (void (*)(s16))fn_1_3DD8);
+    fn_80025918(0xF, fn_1_3DD8);
     fn_1_6640();
     fn_1_95A4();
     fn_1_CDD0();
@@ -2235,10 +2177,10 @@ void fn_1_6EB4(OMOBJ *object)
 
     if (fn_1_D6C8() == 1) {
         if (lbl_1_data_CC != -1) {
-            HuAudSStreamFadeOut(lbl_1_data_CC, 0x3E8);
+            HuAudSStreamFadeOut(lbl_1_data_CC, 1000);
             lbl_1_data_CC = -1;
         }
-        WipeCreate(2, 0, 0x3C);
+        WipeCreate(2, 0, 60);
         object->objFunc = fn_1_70EC;
         return;
     }
@@ -2259,7 +2201,7 @@ void fn_1_6EB4(OMOBJ *object)
             (f32)lbl_1_bss_7E6C.frame &&
         (f32)lbl_1_bss_7E6C.frame >
             30.0f + lbl_1_bss_7E6C.animationDuration) {
-        WipeCreate(2, 0, 0x3C);
+        WipeCreate(2, 0, 60);
         object->objFunc = fn_1_70EC;
     }
     lbl_1_bss_7E6C.frame++;
@@ -2422,14 +2364,14 @@ s32 fn_1_7798(void)
         lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].state = 2;
         lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].targetColumn = -1;
         lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].targetRow = -1;
-        lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].catchTarget = -1;
+        lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].unk24 = -1;
         lbl_1_bss_7E6C.frame = 0;
         lbl_1_bss_7E6C.inputActive = 0;
         fn_800267CC(lbl_1_bss_7E6C.modelId, &playerSpawnPosition);
-        lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].eventIndex =
+        lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].unk10 =
             lbl_1_bss_7E6C.progress;
         lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].owner = &lbl_1_bss_7E6C;
-        lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].model = lbl_1_bss_7E6C.modelId;
+        lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].unk22 = lbl_1_bss_7E6C.modelId;
         lbl_1_bss_7D2C[lbl_1_bss_7E6C.currentIndex].action = 0;
         lbl_1_bss_7E6C.progress++;
         lbl_1_bss_7E6C.playerState[
@@ -2460,7 +2402,7 @@ s32 fn_1_7AF4(s32 region, Point3d *position, Point3d *rotation)
     point.coordinate = gridIndices;
     if (fabs(point.position.x - lbl_1_bss_E4[region][0].position.x) >= 4.0 ||
         fabs(point.position.z - lbl_1_bss_E4[region][0].position.z) >= 4.0) {
-        for (index = 0x7F; index >= 1; index--) {
+        for (index = 127; index >= 1; index--) {
             lbl_1_bss_E4[region][index] =
                 lbl_1_bss_E4[region][index - 1];
         }
@@ -2487,6 +2429,7 @@ void fn_1_7D94(void)
     Hu3DShadowPosSet(&shadowPosition, &lightPosition, &actorPosition);
 }
 
+/* During movement, add a position to the region history once the actor has moved far enough. */
 static inline s32 m679RecordPlayerPoint(s32 region, Point3d *position, Point3d *rotation)
 {
     M679RegionPoint point;
@@ -2508,7 +2451,7 @@ static inline s32 m679RecordPlayerPoint(s32 region, Point3d *position, Point3d *
             lbl_1_bss_E4[region][0].position.x) >= 4.0 ||
         fabs(point.position.z -
             lbl_1_bss_E4[region][0].position.z) >= 4.0) {
-        for (index = 0x7F; index >= 1; index--) {
+        for (index = 127; index >= 1; index--) {
             lbl_1_bss_E4[region][index] =
                 lbl_1_bss_E4[region][index - 1];
         }
@@ -2520,6 +2463,7 @@ static inline s32 m679RecordPlayerPoint(s32 region, Point3d *position, Point3d *
 
 const HuVecF lbl_1_rodata_260 = { 0.0f, 0.0f, -1.0f };
 
+/* During play, handle the active character's stick input and update the movement history and shadow. */
 void fn_1_7E38(OMOBJ *object)
 {
     HuVecF lightPosition;
@@ -2634,7 +2578,7 @@ void fn_1_7E38(OMOBJ *object)
             HuAudFXPlay(MSM_SE_MG679_GOAL_DOOR_STEP);
             if (lbl_1_data_CC != - 1)
             {
-                HuAudSStreamFadeOut(lbl_1_data_CC, 0x3E8);
+                HuAudSStreamFadeOut(lbl_1_data_CC, 1000);
                 lbl_1_data_CC = - 1;
             }
         }
@@ -2674,9 +2618,9 @@ void fn_1_8DC8(OMOBJ *object)
             lbl_1_bss_7E6C.player->omObj->mtnId[3], 0.0f,
             10.0f, 0U);
         if (lbl_1_bss_7E6C.currentIndex == 4) {
-            WipeCreate(2, 0, 0x3C);
+            WipeCreate(2, 0, 60);
         } else {
-            WipeCreate(2, 0, 0x18);
+            WipeCreate(2, 0, 24);
         }
         lbl_1_bss_10 = 1;
         HuAudFXPlay(MSM_SE_MG679_EXIT_WIPE);
@@ -2728,7 +2672,7 @@ void fn_1_8DC8(OMOBJ *object)
         fn_8005DDEC(3);
         lbl_1_bss_7E6C.currentIndex++;
         fn_1_50D4(lbl_1_bss_7E6C.currentIndex);
-        WipeCreate(1, 0, 0x1E);
+        WipeCreate(1, 0, 30);
         object->objFunc = fn_1_7270;
         }
     }
@@ -2807,11 +2751,12 @@ void fn_1_96F4(s32 region, Point3d *position)
     }
 }
 
+/* When tracing a route across the maze, find the cell visited just before the requested one. */
 s32 fn_1_97CC(s32 region, M679HistoryEntry *gridCoordinate, Point3d *worldPosition)
 {
     s32 index = 0;
 
-    for (index = 0; index < 0x80; index++) {
+    for (index = 0; index < 128; index++) {
         if ((gridCoordinate->first == lbl_1_bss_E4[region][index].coordinate.first) &&
             (gridCoordinate->second == lbl_1_bss_E4[region][index].coordinate.second)) {
             if (index > 0) {
@@ -3135,6 +3080,7 @@ s32 fn_1_AD40(s32 mode)
     lbl_1_bss_7D2C[playerIndex].targetPosition = nextPosition;
 }
 
+/* Each update, move a following character along the party's recorded route or toward its current target. */
 void fn_1_B1F8(M679PlayerWork *moving)
 {
     Point3d playerPosition;
@@ -3155,20 +3101,18 @@ void fn_1_B1F8(M679PlayerWork *moving)
              (s32)(startPosition.z / 300.0f)) &&
             lbl_1_bss_7E6C.inputActive == 1) {
             moving->moving = 0;
-            goto update_history;
+        } else {
+            step = fn_1_9B04(moving);
+            if (fn_1_9D70(moving,
+                    &moving->targetPosition, step, 8.75f) == 1) {
+                fn_1_9D70(moving,
+                    &playerPosition, 0.0f, 0.0f);
+                moving->moving = 0;
+            }
+            return;
         }
-
-        step = fn_1_9B04(moving);
-        if (fn_1_9D70(moving,
-                &moving->targetPosition, step, 8.75f) == 1) {
-            fn_1_9D70(moving,
-                &playerPosition, 0.0f, 0.0f);
-            moving->moving = 0;
-        }
-        return;
     }
 
-update_history:
     if (lbl_1_bss_7E6C.inputActive == 1) {
         historyDistance = PSVECDistance(
             &lbl_1_bss_E4[moving->action][historyDelay].position,
@@ -3218,45 +3162,47 @@ void fn_1_C100(M679PlayerWork *character)
     fn_800267CC(character->modelId, &targetPosition);
     if ((character->targetColumn == -1) || (character->targetRow == -1)) {
         fn_1_1A0(&targetPosition, &cell);
-choose_tile:
-        targetX = (s32)(targetPosition.x / 300.0f);
-        targetZ = (s32)(targetPosition.z / 300.0f);
-        side = rand8() % 4;
-        attempts = 0;
-        while (attempts < 4) {
-            availableCell[0] = cell.negativeZ;
-            availableCell[1] = cell.positiveZ;
-            availableCell[2] = cell.negativeX;
-            availableCell[3] = cell.positiveX;
-            if (availableCell[side] == 0) {
+        for (;;) {
+            targetX = (s32)(targetPosition.x / 300.0f);
+            targetZ = (s32)(targetPosition.z / 300.0f);
+            side = rand8() % 4;
+            attempts = 0;
+            while (attempts < 4) {
+                availableCell[0] = cell.negativeZ;
+                availableCell[1] = cell.positiveZ;
+                availableCell[2] = cell.negativeX;
+                availableCell[3] = cell.positiveX;
+                if (availableCell[side] == 0) {
+                    break;
+                }
+                side = (side + 1) % 4;
+                attempts++;
+            }
+            switch (side) {
+            case 0:
+                targetZ--;
+                break;
+            case 1:
+                targetZ++;
+                break;
+            case 2:
+                targetX--;
+                break;
+            case 3:
+                targetX++;
                 break;
             }
-            side = (side + 1) % 4;
-            attempts++;
-        }
-        switch (side) {
-        case 0:
-            targetZ--;
+            if (abs(lbl_1_bss_68B4[playerIndex].exitColumn - targetX) > 3) {
+                continue;
+            }
+            if (abs(lbl_1_bss_68B4[playerIndex].exitRow - targetZ) > 3) {
+                continue;
+            }
+            if ((targetX == lbl_1_bss_68B4[playerIndex].goalColumn) &&
+                (targetZ == lbl_1_bss_68B4[playerIndex].goalRow)) {
+                continue;
+            }
             break;
-        case 1:
-            targetZ++;
-            break;
-        case 2:
-            targetX--;
-            break;
-        case 3:
-            targetX++;
-            break;
-        }
-        if (abs(lbl_1_bss_68B4[playerIndex].exitColumn - targetX) > 3) {
-            goto choose_tile;
-        }
-        if (abs(lbl_1_bss_68B4[playerIndex].exitRow - targetZ) > 3) {
-            goto choose_tile;
-        }
-        if ((targetX == lbl_1_bss_68B4[playerIndex].goalColumn) &&
-            (targetZ == lbl_1_bss_68B4[playerIndex].goalRow)) {
-            goto choose_tile;
         }
         character->targetColumn = targetX;
         character->targetRow = targetZ;

@@ -21,7 +21,7 @@ struct M631MotionPairNode {
     f32 deltaX; /* Horizontal X movement and accumulated contact correction. */
     f32 verticalDelta; /* Unused by the horizontal contact update. */
     f32 deltaZ; /* Horizontal Z movement and accumulated contact correction. */
-    u8 unusedBytes[12]; /* Unused storage. */
+    u8 unk1C[12]; /* No code names this field. */
     f32 radius; /* Contact radius in arena units. */
     s32 state; /* Contact kind: airborne, releasing, ground, obstacle, falling, landed, avoidance or
                 * response (0 to 7). */
@@ -59,8 +59,8 @@ typedef struct M631MotionController {
     s32 behaviorState; /* Current state of the computer behavior routine. */
     s32 alertState; /* Nearby ground-player indication for airborne release decisions. */
     s32 stateFrames; /* Frames spent in the current timed behavior. */
-    s32 finished; /* Reset during actor setup and the finish phase. */
-    u8 unusedBytes[8]; /* Unused storage. */
+    s32 unk80; /* The game's code never reads this field. */
+    u8 unk84[8]; /* No code names this field. */
     f32 previousAngle; /* Heading before the current computer movement update, in degrees. */
     f32 scale; /* Difficulty-dependent damping applied to the avoidance direction. */
 } M631MotionController;
@@ -81,22 +81,15 @@ struct M631ActorWork {
     f32 movementStrength; /* Ground movement strength, clamped to zero through one. */
     f32 randomOffset; /* Phase of the airborne vertical bob, in degrees. */
     HU3D_MODELID characterModelId; /* Character model. */
-    HU3D_MOTIONID idleMotionId; /* Idle and default character motion. */
-    HU3D_MOTIONID slowMoveMotionId; /* Character motion used at low ground movement strength. */
-    HU3D_MOTIONID fastMoveMotionId; /* Character motion used at higher ground movement strength. */
-    HU3D_MOTIONID airborneMotionId; /* Motion used by the character while attached to its airborne
-                                 * model. */
-    HU3D_MOTIONID eliminatedMotionId; /* Motion used while an eliminated player rises. */
-    HU3D_MOTIONID entranceMotionId; /* Ground player's entrance motion. */
-    HU3D_MOTIONID winMotionId; /* Winning player's results motion. */
-    HU3D_MOTIONID loseMotionId; /* Losing player's results motion. */
+    /* Idle, slow movement, fast movement, airborne, eliminated, entrance, win, and lose. */
+    HU3D_MOTIONID motionIds[8];
     s16 playerNo; /* Player slot, zero through three. */
     s16 charNo; /* Character selection. */
     s16 groupSelector; /* Configuration team: zero for the solo player, nonzero for the other
                         * three. */
-    s16 teamIndex; /* Index within this player's role group. */
+    s16 unk148; /* The game's code never reads this field. */
     s16 padNo; /* Controller port used for human input. */
-    u8 unusedBytes[4]; /* Unused storage. */
+    u8 unk14C[4]; /* No code names this field. */
     s16 isComputer; /* Nonzero for computer-controlled players. */
     s16 difficulty; /* Computer difficulty index, zero through three. */
     s16 isGroundPlayer; /* Zero for airborne players, nonzero for ground players. */
@@ -147,7 +140,7 @@ struct M631ActionNode {
     HuVecF position; /* World position on the conveyor. */
     s32 modelIndex; /* Conveyor lane index, zero through four. */
     s32 completed; /* Nonzero after the closing animation finishes. */
-    s16 unusedSlot; /* Unused storage. */
+    u8 unk68[2]; /* No code names this field. */
     s16 state; /* Opening, travel or closing state. */
     s16 frame; /* Frames spent playing the opening or closing animation. */
     HU3D_MODELID modelId; /* Conveyor obstacle model. */
@@ -158,7 +151,7 @@ struct M631ActionQueue {
     M631ActionNode *freeHead; /* First available conveyor obstacle. */
     s32 stage; /* Timed spawning stage, cycling through single and paired obstacles. */
     s32 timer; /* Frames elapsed in the current spawning stage. */
-    s32 modelCounts[5]; /* Active obstacle count in each of the five lanes. */
+    s32 unk710[5]; /* The game's code never reads this field. */
 };
 typedef struct M631SceneModelPosition {
     HuVecF position; /* Base world position of a background prop. */
@@ -178,8 +171,8 @@ typedef struct M631SceneWork {
     M631AnimationQueue animationQueue; /* Falling-object pool. */
     s16 sceneModels[30]; /* Shared model IDs indexed with the scene resource table; -1 means not
                           * loaded. */
-    s16 unusedSlots[1]; /* Slot initialized to -1 and otherwise unused. */
-    u8 unusedBytes[6]; /* Unused storage. */
+    s16 unk1798[1]; /* The game's code never reads this field. */
+    u8 unk179A[6]; /* No code names this field. */
     M631SceneModelPosition indexedWorks[5]; /* Background prop placements and movement phases. */
     M631SceneListNode *sceneListHead; /* First active contact-response node. */
     M631SceneListNode *sceneListFreeHead; /* First free contact-response node. */

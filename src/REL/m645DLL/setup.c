@@ -1,4 +1,5 @@
 /* Scene setup, player models, collision response and route control for Clean Team. */
+#include "REL/m645DLL.h"
 #include "math.h"
 
 #include "string.h"
@@ -63,14 +64,6 @@
 
 extern s16 lbl_802C0278;
 
-typedef void (*M645Callback)(OMOBJ *);
-
-extern void *fn_1_164(s32 priority, u32 bytes, M645Callback callback);
-
-extern void fn_1_2B8(HuVecF *out, f32 x, f32 y, f32 z);
-
-extern f32 fn_1_4F0(HuVecF *dst, const HuVecF *src);
-
 extern void fn_1_32E8(OMOBJ *object);
 
 extern void fn_1_3F38(OMOBJ *object);
@@ -80,8 +73,6 @@ extern void fn_1_8738(OMOBJ *object);
 extern void fn_1_557C(OMOBJ *object);
 
 extern void fn_1_405C(OMOBJ *object);
-
-extern void fn_1_204(OMOBJ *object, M645Callback callback);
 
 extern void fn_1_2F3C(OMOBJ *object);
 
@@ -131,8 +122,8 @@ void fn_1_2ABC(OMOBJ *object)
     s16 * work = object->data;
     s32 playerOrder[4];
     HuVecF direction;
-    struct M645PlayerPermutation { s32 values[4]; };
-    struct M645InitialWords { u32 first; u32 second; } initialWords = { 0, 2 };
+
+    struct  { u32 first; u32 second; } initialWords = { 0, 2 };
     s32 playerIndex;
     s16 nightMode;
     s16 light;
@@ -178,8 +169,6 @@ void fn_1_2ABC(OMOBJ *object)
     fn_8005DDEC(5);
     fn_1_204(object, fn_1_2F3C);
 }
-
-extern void fn_1_204(OMOBJ *obj, OMOBJ_FUNC callback);
 
 extern void fn_1_30D4(OMOBJ *obj);
 
@@ -293,8 +282,6 @@ void fn_1_3278(OMOBJ *object)
 extern HuVecF lbl_1_data_4C8[2];
 
 extern HuVecF lbl_1_data_4E0[2];
-
-extern void fn_1_480(HuVecF *out, HuVecF *a, HuVecF *b);
 
 extern void fn_1_35D8(OMOBJ *object);
 
@@ -538,8 +525,6 @@ void fn_1_3F38(OMOBJ *obj)
     fn_80026B8C((*modelIds)[1], 4);
     fn_1_204(obj, NULL);
 }
-
-extern void *fn_1_164(s32 priority, u32 bytes, OMOBJ_FUNC update);
 
 extern void fn_1_43C0(OMOBJ *object);
 
@@ -890,7 +875,7 @@ void fn_1_4C80(OMOBJ *obj)
         return;
     }
 }
-
+/* Waits before starting the next route phase and stops updating when the round ends. */
 void fn_1_4D10(OMOBJ *obj)
 {
     M645RouteObject *work;
@@ -900,7 +885,7 @@ void fn_1_4D10(OMOBJ *obj)
         fn_1_204(obj, 0);
         return;
     }
-    if (work->timer++ >= 0x50) {
+    if (work->timer++ >= 80) {
         work->phase = 3;
         fn_1_204(obj, fn_1_4D90);
         return;
@@ -926,13 +911,13 @@ void fn_1_4D90(OMOBJ *obj)
         return;
     }
 }
-
+/* Finishes the timed route animation, moves the stage effects to the route, and plays the sound for the current stage. */
 void fn_1_4E48(OMOBJ *obj)
 {
     M645RouteObject *work = obj->data;
     M645SceneWork *parent;
     M645SceneWork *motionParent;
-    const HuVecF *position;
+    HuVecF *position;
     s32 columnIndex;
     s32 quotient;
     s32 remainder;
@@ -945,10 +930,10 @@ void fn_1_4E48(OMOBJ *obj)
         fn_1_204(obj, NULL);
     } else {
         work->timer += 1;
-        if (work->timer == 0x0A) {
+        if (work->timer == 10) {
             fn_80026A44(work->displayModel, ((1 << 30) | (1 << 1)));
         }
-        if (work->timer < 0x50) {
+        if (work->timer < 80) {
             return;
         } else {
             work->phase = 6;
@@ -957,10 +942,10 @@ void fn_1_4E48(OMOBJ *obj)
             fn_800269E8(work->motionModel, (1 << 0));
             position = &lbl_1_data_24C[work->routeIndex];
             parent = work->scene;
-            fn_80026790(parent->stageModels[0], (Point3d *)position);
+            fn_80026790(parent->stageModels[0], position);
             fn_80026A44(parent->stageModels[0], 0x40000003U);
             fn_8002D414(parent->stageModels[0], 0.0f);
-            fn_80026790(parent->stageModels[1], (Point3d *)position);
+            fn_80026790(parent->stageModels[1], position);
             fn_80026A44(parent->stageModels[1], 0x40000003U);
             fn_8002D414(parent->stageModels[1], 0.0f);
             if (parent->stageIndex == 0) { firstSound = 0x7BB; }
@@ -988,8 +973,6 @@ void fn_1_4E48(OMOBJ *obj)
     }
 }
 
-extern f32 fn_1_20C(f32 cosine);
-
 typedef struct M645RouteGeometry {
     M645Triangle triangle;
     M645Bounds bounds;
@@ -1004,14 +987,6 @@ typedef struct M645CollisionList {
 extern void fn_1_5088(f32 scalar);
 
 extern void fn_1_53B4(M645CollisionList *work, f32 scalar);
-
-extern void fn_1_708(M645Bounds *bounds, M645Capsule *capsule);
-
-extern s32 fn_1_BC8(M645Bounds *boundsA, M645Bounds *boundsB);
-
-extern f32 fn_1_1D70(M645Segment *segmentA, M645Segment *segmentB, f32 *parameterAOut, f32 *parameterBOut);
-
-extern void fn_1_4B8(HuVecF *dst, const HuVecF *a, const HuVecF *b);
 
 void fn_1_5074(OMOBJ *object)
 {
@@ -1037,7 +1012,6 @@ void fn_1_5088(f32 radius)
     s32 otherIndex;
     M645CharacterSetupWork *player, *other;
     f32 distance, overlap;
-    char *hookName;
 
     memset(movement, 0, sizeof(movement));
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
@@ -1098,12 +1072,6 @@ void fn_1_5088(f32 radius)
     }
 }
 
-extern void fn_1_B34(M645Bounds *bounds, M645Sphere *sphere);
-
-extern f32 fn_1_F6C(M645Sphere *sphere, M645Triangle *triangle, s32 barycentricS, s32 barycentricT);
-
-extern f32 fn_1_E40(M645Sphere *sphere, M645Triangle *triangle, s32 barycentricS, s32 barycentricT);
-
 void fn_1_53B4(M645CollisionList *collisionData, f32 radius)
 {
     HuVecF totalMovement[4];
@@ -1155,8 +1123,6 @@ extern HuVecF lbl_1_data_378[5][2];
 
 extern M645StageCharacterData lbl_1_data_574[4];
 
-extern void fn_1_8C0(M645Bounds *bounds, M645Triangle *triangle);
-
 extern void fn_1_6284(OMOBJ *obj);
 
 static inline s32 fn_1_2984_for_557C(s32 index)
@@ -1177,7 +1143,7 @@ static inline M645RouteEntry *fn_1_2970(s32 index)
 const HuVecF lbl_1_rodata_174 = { 0.0f, 200.0f, 0.0f };
 
 const HuVecF lbl_1_rodata_180 = { 0.0f, 0.0f, 200.0f };
-
+/* Builds the course collision and route data when the stage object is created. */
 void fn_1_557C(OMOBJ *object)
 {
     M645CollisionList *work = object->data;
@@ -1191,8 +1157,7 @@ void fn_1_557C(OMOBJ *object)
     s32 routeIndex;
     s32 neighborCount;
     s32 neighborIndex;
-    s32 groupIndex;
-    s32 playerIndex;
+
     f32 yaw;
     s32 modelIndex;
     s16 models[2];
@@ -1660,8 +1625,6 @@ void fn_1_7160(M645CharacterSetupWork *work, s16 motion, f32 transition, s32 att
     M645MotionChange(work, motion, transition, attributes, playSound);
 }
 
-extern f32 fn_1_418(HuVecF *a, HuVecF *b);
-
 f32 fn_1_72FC(f32 angle, f32 heading, f32 rate)
 {
     HuVecF firstDirection;
@@ -1695,58 +1658,36 @@ f32 fn_1_72FC(f32 angle, f32 heading, f32 rate)
 
 extern HuVecF lbl_1_data_F0[];
 
+/* Restore the character's setup pose and start the requested motion at normal speed. */
+static inline void setupCharacterPoseSet(M645CharacterSetupWork *work, s16 motion)
+{
+    work->position = lbl_1_data_F0[work->variation];
+    fn_80026790(
+        work->mainObject->mdlId[0], &work->position);
+    work->facing = 0.0f;
+    fn_80026808(work->mainObject->mdlId[0],
+        0.0f,
+        (180.0f * work->facing) /
+            M_PI,
+        0.0f);
+    work->motionNo = -1;
+    fn_1_7160(work, motion, 0.0f, ((1 << 30) | (1 << 0)), 0);
+    fn_8002D86C(work->mainObject->mdlId[0], 1.0f);
+}
+
+/* Reset the character to the starting pose before it begins its route. */
 void fn_1_74C4(M645CharacterSetupWork *work)
 {
-    work->position = lbl_1_data_F0[work->variation];
-    fn_80026790(
-        work->mainObject->mdlId[0], &work->position);
-    work->facing = 0.0f;
-    fn_80026808(work->mainObject->mdlId[0],
-        0.0f,
-        (180.0f * work->facing) /
-            M_PI,
-        0.0f);
-    work->motionNo = -1;
-    fn_1_7160(work, 0, 0.0f, ((1 << 30) | (1 << 0)), 0);
-    fn_8002D86C(work->mainObject->mdlId[0], 1.0f);
+    setupCharacterPoseSet(work, 0);
 }
 
+/* Reset the character to the starting pose and select its alternate motion. */
 void fn_1_7694(M645CharacterSetupWork *work)
 {
-    work->position = lbl_1_data_F0[work->variation];
-    fn_80026790(
-        work->mainObject->mdlId[0], &work->position);
-    work->facing = 0.0f;
-    fn_80026808(work->mainObject->mdlId[0],
-        0.0f,
-        (180.0f * work->facing) /
-            M_PI,
-        0.0f);
-    work->motionNo = -1;
-    fn_1_7160(work, 0x0C, 0.0f, ((1 << 30) | (1 << 0)), 0);
-    fn_8002D86C(work->mainObject->mdlId[0], 1.0f);
+    setupCharacterPoseSet(work, 0x0C);
 }
-
-void fn_1_780C(void *object)
-{
-    HuVecF position;
-    f32 scale;
-
-    position = ((M645CharacterSetupWork *)object)->position;
-    if (((M645CharacterSetupWork *)object)->setupMode == 1) {
-        scale = 1.0f -
-            (((M645CharacterSetupWork *)object)->position.y / 1500.0f);
-        position.y = 0.0f;
-        fn_800268B0(((M645CharacterSetupWork *)object)->shadowModelId, scale,
-            1.0f, scale);
-    } else {
-        fn_800268B0(((M645CharacterSetupWork *)object)->shadowModelId, 1.0f,
-            1.0f, 1.0f);
-    }
-    fn_80026790(((M645CharacterSetupWork *)object)->shadowModelId, &position);
-}
-
-static inline void fn_1_780CInline(M645CharacterSetupWork *object)
+/* Follows the character with its shadow and scales the shadow with height during the descent. */
+void fn_1_780C(M645CharacterSetupWork *object)
 {
     HuVecF position;
     f32 scale;
@@ -1763,20 +1704,6 @@ static inline void fn_1_780CInline(M645CharacterSetupWork *object)
             1.0f, 1.0f);
     }
     fn_80026790(object->shadowModelId, &position);
-}
-
-extern f32 fn_1_2C8(const HuVecF *movement);
-
-extern f32 fn_1_2518(M645Sphere *routeSphere, M645Sphere *playerSphere);
-
-static void fn_1_780CInline(M645CharacterSetupWork *object);
-
-static inline M645RouteObject *fn_1_401C_for_78F4(s16 groupIndex, s16 itemIndex)
-{
-    M645RouteObject *value;
-
-    value = lbl_1_bss_15C[groupIndex]->routeObjects[itemIndex];
-    return value;
 }
 
 /* Updates movement, facing, and route selection for a board character. */
@@ -1822,13 +1749,13 @@ s32 fn_1_78F4(M645CharacterSetupWork *character, HuVecF *movement, s32 routeChec
             routeSphere.radius = 70.0f;
             if (fn_1_2518(&routeSphere, &playerSphere) <= 0.0f)
             {
-                routeNode = fn_1_401C_for_78F4(character->routePlayerNo, index);
+                routeNode = fn_1_401C(character->routePlayerNo, index);
                 if (character->assetSelection == 0)
                 {
-                    if (fn_1_401C_for_78F4(
+                    if (fn_1_401C(
                             character->routePlayerNo, index)->phase == 0)
                     {
-                        fn_1_401C_for_78F4(
+                        fn_1_401C(
                             character->routePlayerNo, index)->phase = 1;
                         character->routeIndex = index;
                         character->setupMode = 2;
@@ -1837,10 +1764,10 @@ s32 fn_1_78F4(M645CharacterSetupWork *character, HuVecF *movement, s32 routeChec
                 }
                 if (character->assetSelection == 1)
                 {
-                    if (fn_1_401C_for_78F4(
+                    if (fn_1_401C(
                             character->routePlayerNo, index)->phase == 3)
                     {
-                        fn_1_401C_for_78F4(
+                        fn_1_401C(
                             character->routePlayerNo, index)->phase = 4;
                         character->routeIndex = index;
                         character->setupMode = 3;
@@ -1855,7 +1782,7 @@ s32 fn_1_78F4(M645CharacterSetupWork *character, HuVecF *movement, s32 routeChec
 
 /* Applies vertical route movement and keeps the player's position in bounds. */
 const HuVecF lbl_1_rodata_214 = { 0.0f, 0.0f, 0.0f };
-
+/* Moves the character along the course and updates its facing and shadow. */
 void fn_1_80CC(M645CharacterSetupWork *work, HuVecF *inputMovement)
 {
     s16 model;
@@ -1932,7 +1859,7 @@ void fn_1_80CC(M645CharacterSetupWork *work, HuVecF *inputMovement)
     fn_80026808(model, 0.0f,
         (f32)((f64)(180.0f * work->facing) /
             M_PI), 0.0f);
-    fn_1_780CInline(work);
+    fn_1_780C(work);
 }
 
 extern HUPROCESS *lbl_1_bss_0;
@@ -1942,8 +1869,6 @@ extern s32 lbl_1_data_60[2];
 extern s32 lbl_1_data_68[2][2];
 
 extern u32 lbl_1_data_78[14];
-
-typedef void *(*M645SetupAllocator)(s32 priority, u32 bytes, void (*update)(OMOBJ *));
 
 extern void fn_1_6BA0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 
@@ -1962,14 +1887,7 @@ void fn_1_8738(OMOBJ *object)
     s32 routePlayer;
     s16 characterModel;
     s32 particleIndex;
-    s32 selectionIndex;
-    s32 jointIndex;
-    s32 tableIndex;
-    s32 particleModel;
-    s32 camera;
-    s32 motion;
-    s16 playerNo;
-    s16 assetMode;
+
     HU3D_PARTICLE *particleData;
     HU3D_PARTICLE_DATA *particleEntry;
     HU3D_PARTICLE *childParticleData;
@@ -1980,8 +1898,7 @@ void fn_1_8738(OMOBJ *object)
     s16 flag;
     M645LinkedModelWork *linked;
     s32 assetValues[4] = { 0, 1, 0, 1 };
-    OMOBJ * mainObject;
-    OMOBJ * displayObject;
+
     work->characterNo = lbl_80265728[work->playerNo].charNo;
     work->motionNo = - 1;
     work->setupMode = 0;
@@ -2081,24 +1998,11 @@ void fn_1_8738(OMOBJ *object)
 
 extern void fn_1_90B4(OMOBJ *object);
 
+/* Keep the character aligned with its stage model while waiting for the intro motion to begin. */
 void fn_1_8F98(OMOBJ *object)
 {
     M645CharacterSetupWork *child = object->data;
-    HuVecF position;
-    f32 scale;
-
-    position = child->position;
-    if (child->setupMode == 1) {
-        scale = 1.0f -
-            (child->position.y / 1500.0f);
-        position.y = 0.0f;
-        fn_800268B0(child->shadowModelId, scale,
-            1.0f, scale);
-    } else {
-        fn_800268B0(child->shadowModelId, 1.0f,
-            1.0f, 1.0f);
-    }
-    fn_80026790(child->shadowModelId, &position);
+    fn_1_780C(child);
     if (fn_80071A8C() == 2) {
         child->motionState = 0;
         fn_1_204(object, fn_1_90B4);
@@ -2107,7 +2011,7 @@ void fn_1_8F98(OMOBJ *object)
 }
 
 const HuVecF lbl_1_rodata_258 = { 265.0f, 152.0f, -75.0f };
-
+/* Keeps the character attached to its stage model during the intro and plays the character motions and sounds on cue. */
 void fn_1_90B4(OMOBJ *object)
 {
     M645CharacterSetupWork *work = object->data;
@@ -2119,7 +2023,7 @@ void fn_1_90B4(OMOBJ *object)
     HuVecF hookPosition;
     HuVecF shadowPosition;
     s16 characterModel;
-    s32 overlayMotion;
+
     f32 frame;
     HU3D_PARTICLE *particleData;
     s32 itemIndex;
@@ -2150,7 +2054,7 @@ void fn_1_90B4(OMOBJ *object)
             fn_1_7160(work, 1, 5.0f, ((1 << 30) | (1 << 0)), 0);
         } else if (work->motionState == 0xBF) {
             fn_1_7160(work, 4, 5.0f, 0, 0);
-            fn_8006A030(work->playerNo, 0xC, 7, 3);
+            fn_8006A030(work->playerNo, 12, 7, 3);
             HuAudFXPlayPan(0x7BF, 0x40);
         } else if (work->motionState == 0x10F) {
             fn_1_7160(work, 1, 5.0f, ((1 << 30) | (1 << 0)), 0);
@@ -2206,7 +2110,7 @@ void fn_1_90B4(OMOBJ *object)
             fn_1_7160(work, 1, 5.0f, ((1 << 30) | (1 << 0)), 0);
         } else if (work->motionState == 0x141) {
             fn_1_7160(work, 5, 5.0f, 0, 0);
-            fn_8006A030(work->playerNo, 0xC, 7, 3);
+            fn_8006A030(work->playerNo, 12, 7, 3);
             HuAudFXPlayPan(0x7C0, 0x40);
         } else if (work->motionState == 0x191) {
             fn_1_7160(work, 0, 5.0f, ((1 << 30) | (1 << 0)), 0);
@@ -2261,8 +2165,6 @@ extern void fn_1_BFCC(OMOBJ *object);
 extern void fn_1_B090(OMOBJ *object);
 
 extern void fn_1_AB2C(OMOBJ *object);
-
-extern f32 fn_1_2178(M645Sphere *sphere, const M645Segment *segment);
 
 extern void fn_1_AF3C(OMOBJ *object);
 
@@ -2394,23 +2296,13 @@ extern void fn_1_BAB0(OMOBJ *object);
 
 extern void fn_1_BD94(OMOBJ *object);
 
-static inline M645RouteObject *fn_1_401C_for_B090(s16 groupIndex, s16 itemIndex)
-{
-    M645RouteObject *value;
-
-    value = lbl_1_bss_15C[groupIndex]->routeObjects[itemIndex];
-    return value;
-}
-
 /* Moves the character model toward its route point and changes its motion state. */
 void fn_1_B090(OMOBJ *object)
 {
     M645CharacterSetupWork *work = object->data;
     HuVecF targetPosition;
     HuVecF firstDirection;
-    HuVecF secondDirection;
-    HuVecF alternateDirection;
-    HuVecF currentDirection;
+
     Point3d modelPosition;
     f32 distance;
     f32 speed;
@@ -2449,20 +2341,20 @@ void fn_1_B090(OMOBJ *object)
         if (work->setupMode == 2)
         {
             M645RouteObject *pathSlot;
-            pathSlot = fn_1_401C_for_B090(work->routePlayerNo, work->routeIndex);
+            pathSlot = fn_1_401C(work->routePlayerNo, work->routeIndex);
             pathSlot->timer = 0;
             pathSlot->phase = 2;
-            fn_8006A030(work->playerNo, 0xC, 7, 3);
+            fn_8006A030(work->playerNo, 12, 7, 3);
             fn_1_204(object, fn_1_BAB0);
             return;
         }
         if (work->setupMode == 3)
         {
             M645RouteObject *pathSlot;
-            pathSlot = fn_1_401C_for_B090(work->routePlayerNo, work->routeIndex);
+            pathSlot = fn_1_401C(work->routePlayerNo, work->routeIndex);
             pathSlot->timer = 0;
             pathSlot->phase = 5;
-            fn_8006A030(work->playerNo, 0xC, 7, 3);
+            fn_8006A030(work->playerNo, 12, 7, 3);
             fn_1_204(object, fn_1_BD94);
             return;
         }
@@ -2470,14 +2362,6 @@ void fn_1_B090(OMOBJ *object)
 }
 
 /* Applies the result pose and attaches it to the first available model item. */
-static inline M645RouteObject *fn_1_401C_for_BAB0(s16 groupIndex, s16 itemIndex)
-{
-    M645RouteObject *value;
-
-    value = lbl_1_bss_15C[groupIndex]->routeObjects[itemIndex];
-    return value;
-}
-
 void fn_1_BAB0(OMOBJ *object)
 {
     M645CharacterSetupWork *work = object->data;
@@ -2487,7 +2371,6 @@ void fn_1_BAB0(OMOBJ *object)
     Mtx matrix;
     HuVecF position;
     s32 itemIndex;
-    f32 scale;
 
     fn_1_7160(work, 4, 8.0f, 0, 1);
     if (fn_80071A8C() == 6) {
@@ -2514,7 +2397,7 @@ void fn_1_BAB0(OMOBJ *object)
 
     fn_1_780C(work);
 
-    if (fn_1_401C_for_BAB0(work->routePlayerNo, work->routeIndex)->phase == 3) {
+    if (fn_1_401C(work->routePlayerNo, work->routeIndex)->phase == 3) {
         work->setupMode = 0;
         if (lbl_80265728[work->playerNo].type != 0) {
             fn_1_204(object, fn_1_AD20);
@@ -2552,28 +2435,16 @@ void fn_1_BD94(OMOBJ *object)
 
 extern void fn_1_C37C(OMOBJ *object);
 
+/* Hold the character in its result pose until the result delay ends, then hide its display model. */
 void fn_1_BFCC(OMOBJ *object)
 {
     M645CharacterSetupWork *work = object->data;
-    HuVecF position;
-    f32 scale;
 
     if (work->setupMode == 1) {
         fn_8002D86C(
             work->mainObject->mdlId[0], 0.0f);
     }
-    position = work->position;
-    if (work->setupMode == 1) {
-        scale = 1.0f -
-            (work->position.y / 1500.0f);
-        position.y = 0.0f;
-        fn_800268B0(work->shadowModelId, scale,
-            1.0f, scale);
-    } else {
-        fn_800268B0(work->shadowModelId, 1.0f,
-            1.0f, 1.0f);
-    }
-    fn_80026790(work->shadowModelId, &position);
+    fn_1_780C(work);
     if (fn_80071A8C() == 7) {
         if (work->motionState++ > 0x3C || lbl_1_bss_158 == -1) {
             fn_800269E8(work->displayModelId, 1);
@@ -2583,56 +2454,30 @@ void fn_1_BFCC(OMOBJ *object)
     }
 }
 
+/* Move the character model to the results line and prepare its final motion once the results advance. */
 void fn_1_C140(OMOBJ *object)
 {
     M645CharacterSetupWork *work = object->data;
     HuVecF modelPosition;
-    HuVecF workPosition;
-    HuVecF restoredPosition;
-    f32 workScale;
-    f32 restoredScale;
 
     fn_800267CC(work->mainObject->mdlId[0], &modelPosition);
     modelPosition.z = 100.0f;
     fn_80026790(work->mainObject->mdlId[0], &modelPosition);
     work->position = modelPosition;
 
-    workPosition = work->position;
-    if (work->setupMode == 1) {
-        workScale = 1.0f -
-            (work->position.y / 1500.0f);
-        workPosition.y = 0.0f;
-        fn_800268B0(work->shadowModelId, workScale,
-            1.0f, workScale);
-    } else {
-        fn_800268B0(work->shadowModelId, 1.0f,
-            1.0f, 1.0f);
-    }
-    fn_80026790(work->shadowModelId, &workPosition);
+    fn_1_780C(work);
 
     if (fn_80071A8C() == 8) {
         fn_80026A44(work->mainObject->mdlId[0], 0x40000002);
-        restoredPosition = work->position;
-        if (work->setupMode == 1) {
-            restoredScale = 1.0f -
-                (work->position.y / 1500.0f);
-            restoredPosition.y = 0.0f;
-            fn_800268B0(work->shadowModelId, restoredScale,
-                1.0f, restoredScale);
-        } else {
-            fn_800268B0(work->shadowModelId, 1.0f,
-                1.0f, 1.0f);
-        }
-        fn_80026790(work->shadowModelId, &restoredPosition);
+        fn_1_780C(work);
         fn_1_204(object, fn_1_C37C);
         return;
     }
 }
 
+/* Play the character's winning or losing motion and keep its display aligned with the model. */
 void fn_1_C37C(OMOBJ *object)
 {
-    HuVecF position;
-    f32 scale;
     M645CharacterSetupWork *work = object->data;
 
     if (lbl_1_bss_158 == work->routePlayerNo) {
@@ -2642,17 +2487,7 @@ void fn_1_C37C(OMOBJ *object)
         fn_8002D86C(work->mainObject->mdlId[0],
             1.0f);
     }
-    position = work->position;
-    if (work->setupMode == 1) {
-        scale = 1.0f - (work->position.y / 1500.0f);
-        position.y = 0.0f;
-        fn_800268B0(work->shadowModelId, scale,
-            1.0f, scale);
-    } else {
-        fn_800268B0(work->shadowModelId, 1.0f,
-            1.0f, 1.0f);
-    }
-    fn_80026790(work->shadowModelId, &position);
+    fn_1_780C(work);
 }
 
 char *lbl_1_data_58[2] = { "no646madofuki-PC01splay", "no646madofuki-PC02mop" };
@@ -2711,11 +2546,9 @@ s8 lbl_1_data_571[0x3] = { 0x2D, 0x2D, 0x00 };
 
 M645StageCharacterData lbl_1_data_574[4] = { { { lbl_1_data_568, lbl_1_data_56B, lbl_1_data_56E, lbl_1_data_56E, lbl_1_data_571 } }, { { lbl_1_data_56E, lbl_1_data_568, lbl_1_data_56B, lbl_1_data_56E, lbl_1_data_571 } }, { { lbl_1_data_56B, lbl_1_data_56E, lbl_1_data_568, lbl_1_data_56B, lbl_1_data_571 } }, { { lbl_1_data_56E, lbl_1_data_56B, lbl_1_data_56E, lbl_1_data_568, lbl_1_data_571 } } };
 
-typedef M645RouteEntry M645PathNode;
-
 typedef struct M645PathSearchContext M645PathSearchContext;
 
-extern s32 fn_1_C594(M645PathSearchContext *context, void *target, M645PathNode *current, s32 depth, s32 *limit, M645PathNode **result, M645PathNode **visitedIds);
+extern s32 fn_1_C594(M645PathSearchContext *context, u32 target, M645RouteEntry *current, s32 depth, s32 *limit, M645RouteEntry **result, M645RouteEntry **visitedIds);
 
 struct M645PathSearchContext {
     u8 beforePlayerNo[0x0E];
@@ -2724,13 +2557,9 @@ struct M645PathSearchContext {
     s16 scoringPlayerNo;
 };
 
-typedef M645CharacterSetupWork M645RouteSetupState;
+extern void fn_1_DE48(M645CharacterSetupWork *context);
 
-typedef M645CharacterSetupWork M645PathController;
-
-extern void fn_1_DE48(void *context);
-
-extern s32 fn_1_C8D8(M645CharacterSetupWork *context, M645PathNode *target, M645PathNode *current, s32 depth, s32 *limit, M645PathNode **result, M645PathNode **visited);
+extern s32 fn_1_C8D8(M645CharacterSetupWork *context, M645RouteEntry *target, M645RouteEntry *current, s32 depth, s32 *limit, M645RouteEntry **result, M645RouteEntry **visited);
 
 extern void fn_1_D8B0(HuVecF *movement, M645RouteEntry *from, M645RouteEntry *to, M645CharacterSetupWork *playerWork);
 
@@ -2758,65 +2587,35 @@ static inline M645RouteEntry *M645RouteGet(s32 index)
     return &lbl_1_bss_C[index];
 }
 
-static inline M645PathNode *M645RouteSearch(M645CharacterSetupWork *controller,
-    M645PathNode *target, M645PathNode *current, s32 *statusResult)
-{
-    M645PathNode *visited[16];
-    s32 startIndex;
-    s32 limit;
-    M645PathNode *searchResult;
-    M645PathNode *result;
-    s32 searchStatus;
-
-    result = 0;
-    startIndex = 0;
-    limit = 100;
-    searchStatus = fn_1_C8D8(controller, target, current, startIndex,
-        &limit, &searchResult, visited);
-    if (searchStatus < 999) {
-        result = searchResult;
-        *statusResult = searchStatus;
-    }
-    return result;
-}
-
 s32 fn_1_EB84(M645CharacterSetupWork *controller);
 
-M645PathNode *fn_1_C854(M645PathSearchContext *context, void *target, M645PathNode *current);
+M645RouteEntry *fn_1_C854(M645PathSearchContext *context, u32 target, M645RouteEntry *current);
 
-M645PathNode *fn_1_CB18(M645CharacterSetupWork *context, M645PathNode *target, M645PathNode *current, s32 *statusResult);
-
-typedef M645RouteObject M645PathStateSlot;
+M645RouteEntry *fn_1_CB18(M645CharacterSetupWork *context, M645RouteEntry *target, M645RouteEntry *current, s32 *statusResult);
 
 /* Checks whether a route step reaches a currently open neighboring tile. */
 static inline s32 fn_1_2984(s32 index) { return lbl_1_bss_138[index]; }
 
 s32 fn_1_CBAC(M645CharacterSetupWork *context, M645RouteEntry *route);
 
-s32 fn_1_D5C4(M645CharacterSetupWork *context, M645PathNode *current, s32 depth, s32 *limit, M645PathNode **result, M645PathNode **visited);
+s32 fn_1_D5C4(M645CharacterSetupWork *context, M645RouteEntry *current, s32 depth, s32 *limit, M645RouteEntry **result, M645RouteEntry **visited);
 
 M645RouteEntry *fn_1_D820(M645CharacterSetupWork *controller, M645RouteEntry *route);
 
-extern s32 fn_1_E320(M645PathController *controller);
+extern s32 fn_1_E320(M645CharacterSetupWork *controller);
 
-extern s32 fn_1_F1BC(M645RouteSetupState *state);
+extern s32 fn_1_F1BC(M645CharacterSetupWork *state);
 
 s32 fn_1_FC04(M645CharacterSetupWork *object);
-
-/* Selects the shared movement range when two players occupy the same route slot. */
-static inline M645CharacterSetupWork *fn_1_29B4_for_DE48(s32 index)
-{
-    return lbl_1_bss_160[index];
-}
 
 /* Advances route selection and clears stale routes for the active players. */
 static inline M645RouteEntry *fn_1_D820_for_E320(void *controller, M645RouteEntry *route)
 {
-    M645PathNode *work[16];
+    M645RouteEntry *work[16];
     M645RouteEntry *result;
     s32 startIndex;
     s32 limit;
-    M645PathNode *searchResult;
+    M645RouteEntry *searchResult;
     s32 searchStatus;
 
     result = 0;
@@ -2832,15 +2631,15 @@ static inline M645RouteEntry *fn_1_D820_for_E320(void *controller, M645RouteEntr
     }
     return result;
 }
-
-static inline M645PathNode *M645PathSearchForE320(void *first,
-    M645PathNode *second, M645PathNode *third)
+/* Finds the next route entry for the requested destination while the character is moving. */
+static inline M645RouteEntry *M645PathSearchForE320(void *first,
+    u32 second, M645RouteEntry *third)
 {
-    M645PathNode *visitedIds[16];
-    M645PathNode *result;
+    M645RouteEntry *visitedIds[16];
+    M645RouteEntry *result;
     s32 startIndex;
     s32 limit;
-    M645PathNode *searchResult;
+    M645RouteEntry *searchResult;
     s32 searchStatus;
 
     result = 0;
@@ -2853,67 +2652,15 @@ static inline M645PathNode *M645PathSearchForE320(void *first,
     }
     return result;
 }
-
-static inline s32 M645RouteKeyForE320(s32 groupIndex)
+/* Finds the next step toward a route entry and returns the search score on success. */
+static inline M645RouteEntry *M645RouteSearch(M645CharacterSetupWork *controller,
+    M645RouteEntry *target, M645RouteEntry *current, s32 *statusResult)
 {
-    M645CharacterSetupWork *state = fn_1_29B4(groupIndex);
-    s32 tableIndex = state->pathState;
-    s32 result;
-
-    if (state->setupMode == 1) {
-        result = state->sideIndex == 0 ? 0 : 4;
-    } else {
-        result = (lbl_1_data_378[tableIndex][0].x >
-            state->position.x) ? 1 :
-            ((lbl_1_data_378[tableIndex][1].x <
-                state->position.x) ? 3 : 2);
-    }
-    return result + tableIndex * 5;
-}
-
-/* Chooses the next route for the active player and updates movement direction. */
-static inline s32 fn_1_7088_for_F1BC(s32 groupIndex)
-{
-    M645CharacterSetupWork *state = fn_1_29B4(groupIndex);
-    s32 tableIndex = state->pathState;
-    s32 result;
-    s32 direction;
-    s32 phase;
-    s32 outcome;
-
-    if (state->setupMode == 1) {
-        if (state->sideIndex == 0) {
-            direction = 0;
-        } else {
-            direction = 4;
-        }
-        result = direction;
-    } else {
-        if (lbl_1_data_378[tableIndex][0].x >
-            state->position.x) {
-            phase = 1;
-        } else {
-            if (lbl_1_data_378[tableIndex][1].x <
-                state->position.x) {
-                outcome = 3;
-            } else {
-                outcome = 2;
-            }
-            phase = outcome;
-        }
-        result = phase;
-    }
-    return result + tableIndex * 5;
-}
-
-static inline M645PathNode *M645RouteSearchForF1BC(M645CharacterSetupWork *controller,
-    M645PathNode *target, M645PathNode *current, s32 *statusResult)
-{
-    M645PathNode *visited[16];
-    M645PathNode *result;
+    M645RouteEntry *visited[16];
+    M645RouteEntry *result;
     s32 startIndex;
     s32 limit;
-    M645PathNode *searchResult;
+    M645RouteEntry *searchResult;
     s32 searchStatus;
 
     result = 0;
@@ -2927,15 +2674,15 @@ static inline M645PathNode *M645RouteSearchForF1BC(M645CharacterSetupWork *contr
     }
     return result;
 }
-
-s32 fn_1_C594(M645PathSearchContext *context, void *target, M645PathNode *current, s32 depth,
-    s32 *limit, M645PathNode **result, M645PathNode **visitedIds)
+/* Searches neighboring routes for the requested destination, avoiding the other player and tightening the depth limit as it finds shorter paths. */
+s32 fn_1_C594(M645PathSearchContext *context, u32 target, M645RouteEntry *current, s32 depth,
+    s32 *limit, M645RouteEntry **result, M645RouteEntry **visitedIds)
 {
-    s32 bestScore = 0x3E7;
-    M645PathNode *bestNode = current;
-    M645PathNode *childResult;
+    s32 bestScore = 999;
+    M645RouteEntry *bestNode = current;
+    M645RouteEntry *childResult;
     s32 visitedIndex;
-    M645PathNode *child;
+    M645RouteEntry *child;
     s32 childScore;
     s32 character;
     s32 scoreAdjustment;
@@ -2946,15 +2693,15 @@ s32 fn_1_C594(M645PathSearchContext *context, void *target, M645PathNode *curren
     *result = NULL;
     for (visitedIndex = 0; visitedIndex < depth; visitedIndex++) {
         if (visitedIds[visitedIndex] == current) {
-            return 0x3E7;
+            return 999;
         }
     }
     visitedIds[depth++] = current;
     if (depth >= 16) {
-        return 0x3E7;
+        return 999;
     }
     if (*limit < depth) {
-        return 0x3E7;
+        return 999;
     }
     if (depth > 1) {
         s32 expectedScore;
@@ -2980,13 +2727,13 @@ s32 fn_1_C594(M645PathSearchContext *context, void *target, M645PathNode *curren
         }
         expectedScore = scoreAdjustment + character * 5;
         if (current->pathIndex == expectedScore) {
-            return 0x3E7;
+            return 999;
         }
     }
-    if (current->pathIndex <= 0x13) {
+    if (current->pathIndex <= 19) {
         nodeIndex = current->pathIndex;
         playerNo = context->playerNo;
-        if (target == (void *)(fn_1_401C(
+        if (target == (fn_1_401C(
                 playerNo, nodeIndex))->phase &&
             depth < bestScore) {
             bestScore = depth;
@@ -3006,23 +2753,23 @@ s32 fn_1_C594(M645PathSearchContext *context, void *target, M645PathNode *curren
         }
     }
     *result = bestNode;
-    if (bestScore == 0x3E7) {
-        return 0x3E7;
+    if (bestScore == 999) {
+        return 999;
     }
     if (*limit > bestScore) {
         *limit = bestScore;
     }
     return bestScore;
 }
-
-M645PathNode *fn_1_C854(M645PathSearchContext *context, void *target, M645PathNode *current)
+/* Starts a destination search and returns the next route entry when it finds a path. */
+M645RouteEntry *fn_1_C854(M645PathSearchContext *context, u32 target, M645RouteEntry *current)
 {
-    M645PathNode *visitedIds[16];
+    M645RouteEntry *visitedIds[16];
     s32 limit;
-    M645PathNode *searchResult;
+    M645RouteEntry *searchResult;
     s32 startIndex;
     s32 searchStatus;
-    M645PathNode *result;
+    M645RouteEntry *result;
 
     result = 0;
     startIndex = 0;
@@ -3034,16 +2781,16 @@ M645PathNode *fn_1_C854(M645PathSearchContext *context, void *target, M645PathNo
     }
     return result;
 }
-
-s32 fn_1_C8D8(M645CharacterSetupWork *context, M645PathNode *target, M645PathNode *current, s32 depth,
-    s32 *limit, M645PathNode **result, M645PathNode **visited)
+/* Searches neighboring routes for the target entry while avoiding the paired player. */
+s32 fn_1_C8D8(M645CharacterSetupWork *context, M645RouteEntry *target, M645RouteEntry *current, s32 depth,
+    s32 *limit, M645RouteEntry **result, M645RouteEntry **visited)
 {
-    s32 bestScore = 0x3E7;
-    M645PathNode *bestNode = current;
-    M645PathNode *childResult;
+    s32 bestScore = 999;
+    M645RouteEntry *bestNode = current;
+    M645RouteEntry *childResult;
     s32 visitedIndex;
     s32 character;
-    M645PathNode *child;
+    M645RouteEntry *child;
     s32 childScore;
     s32 scoreAdjustment;
     s32 sideAdjustment;
@@ -3052,15 +2799,15 @@ s32 fn_1_C8D8(M645CharacterSetupWork *context, M645PathNode *target, M645PathNod
     *result = NULL;
     for (visitedIndex = 0; visitedIndex < depth; visitedIndex++) {
         if (visited[visitedIndex] == current) {
-            return 0x3E7;
+            return 999;
         }
     }
     visited[depth++] = current;
     if (depth >= 16) {
-        return 0x3E7;
+        return 999;
     }
     if (*limit < depth) {
-        return 0x3E7;
+        return 999;
     }
     if (depth > 1) {
         s32 expectedScore;
@@ -3092,7 +2839,7 @@ s32 fn_1_C8D8(M645CharacterSetupWork *context, M645PathNode *target, M645PathNod
         }
         expectedScore = scoreAdjustment + character * 5;
         if (current->pathIndex == expectedScore) {
-            return 0x3E7;
+            return 999;
         }
     }
     if (current == target && depth < bestScore) {
@@ -3110,23 +2857,23 @@ s32 fn_1_C8D8(M645CharacterSetupWork *context, M645PathNode *target, M645PathNod
         }
     }
     *result = bestNode;
-    if (bestScore == 0x3E7) {
-        return 0x3E7;
+    if (bestScore == 999) {
+        return 999;
     }
     if (*limit > bestScore) {
         *limit = bestScore;
     }
     return bestScore;
 }
-
-M645PathNode *fn_1_CB18(M645CharacterSetupWork *context, M645PathNode *target,
-    M645PathNode *current, s32 *statusResult)
+/* Starts a search toward a specific route entry and reports its score if a path is found. */
+M645RouteEntry *fn_1_CB18(M645CharacterSetupWork *context, M645RouteEntry *target,
+    M645RouteEntry *current, s32 *statusResult)
 {
-    M645PathNode *visitedIds[16];
+    M645RouteEntry *visitedIds[16];
     s32 limit;
-    M645PathNode *searchResult;
+    M645RouteEntry *searchResult;
     s32 startIndex;
-    M645PathNode *result;
+    M645RouteEntry *result;
     s32 searchStatus;
 
     result = 0;
@@ -3140,7 +2887,7 @@ M645PathNode *fn_1_CB18(M645CharacterSetupWork *context, M645PathNode *target,
     }
     return result;
 }
-
+/* Checks whether the route can be used based on the neighboring pieces and the paired player position. */
 s32 fn_1_CBAC(M645CharacterSetupWork *context, M645RouteEntry *route)
 {
     if (fn_1_2984(route->pathIndex / 5) == 1 && route->pathIndex % 5 == 3) {
@@ -3154,9 +2901,9 @@ s32 fn_1_CBAC(M645CharacterSetupWork *context, M645RouteEntry *route)
     if ((fn_1_2984(route->pathIndex / 5) == 1 || fn_1_2984(route->pathIndex / 5) == 2) && route->pathIndex % 5 == 2) {
         if (fn_1_401C(context->routePlayerNo, route->pathIndex)->phase == 6) return 1;
     }
-    if ((route->pathIndex >= 0x15 && route->pathIndex <= 0x17) || (route->pathIndex % 5 >= 1 && route->pathIndex % 5 <= 3)) {
+    if ((route->pathIndex >= 21 && route->pathIndex <= 23) || (route->pathIndex % 5 >= 1 && route->pathIndex % 5 <= 3)) {
         if (route->pathIndex / 5 != M645RouteIndexGet(context->pairedPlayerNo) / 5) {
-            if (fn_1_2984(route->pathIndex / 5) == 0 && (route->pathIndex >= 0x14 || fn_1_401C(context->routePlayerNo, route->pathIndex)->phase == 6)) return 1;
+            if (fn_1_2984(route->pathIndex / 5) == 0 && (route->pathIndex >= 20 || fn_1_401C(context->routePlayerNo, route->pathIndex)->phase == 6)) return 1;
         }
     }
     if (route->pathIndex / 5 != M645RouteIndexGet(context->pairedPlayerNo) / 5) {
@@ -3167,16 +2914,16 @@ s32 fn_1_CBAC(M645CharacterSetupWork *context, M645RouteEntry *route)
     }
     return 0;
 }
-
-s32 fn_1_D5C4(M645CharacterSetupWork *context, M645PathNode *current, s32 depth,
-    s32 *limit, M645PathNode **result, M645PathNode **visited)
+/* Searches for a nearby usable route while avoiding the entry occupied by the paired player. */
+s32 fn_1_D5C4(M645CharacterSetupWork *context, M645RouteEntry *current, s32 depth,
+    s32 *limit, M645RouteEntry **result, M645RouteEntry **visited)
 {
-    s32 bestScore = 0x3E7;
-    M645PathNode *bestNode = current;
-    M645PathNode *childResult;
+    s32 bestScore = 999;
+    M645RouteEntry *bestNode = current;
+    M645RouteEntry *childResult;
     s32 visitedIndex;
     s32 character;
-    M645PathNode *child;
+    M645RouteEntry *child;
     s32 childScore;
     s32 scoreAdjustment;
     s32 sideAdjustment;
@@ -3184,15 +2931,15 @@ s32 fn_1_D5C4(M645CharacterSetupWork *context, M645PathNode *current, s32 depth,
     *result = 0;
     for (visitedIndex = 0; visitedIndex < depth; visitedIndex++) {
         if (visited[visitedIndex] == current) {
-            return 0x3E7;
+            return 999;
         }
     }
     visited[depth++] = current;
     if (depth >= 16) {
-        return 0x3E7;
+        return 999;
     }
     if (*limit < depth) {
-        return 0x3E7;
+        return 999;
     }
     if (depth > 1) {
         s32 expectedScore;
@@ -3216,7 +2963,7 @@ s32 fn_1_D5C4(M645CharacterSetupWork *context, M645PathNode *current, s32 depth,
         }
         expectedScore = scoreAdjustment + character * 5;
         if (current->pathIndex == expectedScore) {
-            return 0x3E7;
+            return 999;
         }
     }
     if (fn_1_CBAC(context, current) != 0 && depth < bestScore) {
@@ -3236,20 +2983,20 @@ s32 fn_1_D5C4(M645CharacterSetupWork *context, M645PathNode *current, s32 depth,
         }
     }
     *result = bestNode;
-    if (bestScore == 0x3E7) {
-        return 0x3E7;
+    if (bestScore == 999) {
+        return 999;
     }
     if (bestScore < *limit) {
         *limit = bestScore;
     }
     return bestScore;
 }
-
+/* Uses the current route if available or searches neighboring routes for an alternative. */
 M645RouteEntry *fn_1_D820(M645CharacterSetupWork *controller, M645RouteEntry *route)
 {
-    M645PathNode *work[16];
+    M645RouteEntry *work[16];
     s32 limit;
-    M645PathNode *searchResult;
+    M645RouteEntry *searchResult;
     s32 startIndex;
     M645RouteEntry *result;
     s32 searchStatus;
@@ -3331,63 +3078,48 @@ void fn_1_D8B0(HuVecF *movement, M645RouteEntry *from, M645RouteEntry *to,
         fn_1_4F0(movement, movement);
     }
 }
-
-void fn_1_DE48(void *object)
+/* Sends paired characters toward separate route entries when they occupy the same one. */
+void fn_1_DE48(M645CharacterSetupWork *object)
 {
     M645CharacterSetupWork *candidate;
-    if (M645RouteIndexGet(((M645RouteSetupState *)object)->playerNo) != M645RouteIndexGet(((M645RouteSetupState *)object)->pairedPlayerNo))
+    if (M645RouteIndexGet(object->playerNo) != M645RouteIndexGet(object->pairedPlayerNo))
         return;
-    candidate = fn_1_29B4(((M645RouteSetupState *)object)->pairedPlayerNo);
-    if (((M645RouteSetupState *)object)->setupMode == 1) {
-        if (((M645RouteSetupState *)object)->sideIndex == 0) {
-            if (((M645RouteSetupState *)object)->position.y > candidate->position.y) {
-                ((M645RouteSetupState *)object)->currentRoute = ((M645RouteSetupState *)object)->nextRoute = M645RouteGet(0);
+    candidate = fn_1_29B4(object->pairedPlayerNo);
+    if (object->setupMode == 1) {
+        if (object->sideIndex == 0) {
+            if (object->position.y > candidate->position.y) {
+                object->currentRoute = object->nextRoute = M645RouteGet(0);
             } else {
-                ((M645RouteSetupState *)object)->currentRoute = ((M645RouteSetupState *)object)->nextRoute = M645RouteGet(20);
+                object->currentRoute = object->nextRoute = M645RouteGet(20);
             }
-        } else if (((M645RouteSetupState *)object)->sideIndex == 1) {
-            if (((M645RouteSetupState *)object)->position.y > candidate->position.y) {
-                ((M645RouteSetupState *)object)->currentRoute = ((M645RouteSetupState *)object)->nextRoute = M645RouteGet(4);
+        } else if (object->sideIndex == 1) {
+            if (object->position.y > candidate->position.y) {
+                object->currentRoute = object->nextRoute = M645RouteGet(4);
             } else {
-                ((M645RouteSetupState *)object)->currentRoute = ((M645RouteSetupState *)object)->nextRoute = M645RouteGet(24);
+                object->currentRoute = object->nextRoute = M645RouteGet(24);
             }
         }
     } else {
-        if (((M645RouteSetupState *)object)->position.x > candidate->position.x) {
-            ((M645RouteSetupState *)object)->currentRoute = ((M645RouteSetupState *)object)->nextRoute = M645RouteGet(M645RouteIndexGet(((M645RouteSetupState *)object)->playerNo) + 1);
+        if (object->position.x > candidate->position.x) {
+            object->currentRoute = object->nextRoute = M645RouteGet(M645RouteIndexGet(object->playerNo) + 1);
         } else {
-            ((M645RouteSetupState *)object)->currentRoute = ((M645RouteSetupState *)object)->nextRoute = M645RouteGet(M645RouteIndexGet(((M645RouteSetupState *)object)->playerNo) - 1);
+            object->currentRoute = object->nextRoute = M645RouteGet(M645RouteIndexGet(object->playerNo) - 1);
         }
     }
 }
 
 const HuVecF lbl_1_rodata_294 = { 0.0f, 0.0f, 0.0f };
-
-s32 fn_1_E320(M645PathController *controller)
+/* Chooses a destination and moves the character along its route until it reaches the next entry or has to choose again. */
+s32 fn_1_E320(M645CharacterSetupWork *controller)
 {
     s32 index;
     HuVecF movement = lbl_1_rodata_294;
     M645RouteEntry *route;
-    M645RouteEntry *selectedRoute;
-    M645PathNode *visitedFirst[16];
-    M645PathNode *visitedSecond[16];
-    M645PathNode *visitedThird[16];
-    M645PathNode *visitedFourth[16];
-    M645PathNode *visitedFifth[16];
-    M645CharacterSetupWork *playerWork;
+
     s32 emptySlots;
 
-    s32 character;
-    s32 lane;
-    s32 candidateLane;
-    s32 searchLimit;
-    s32 searchDepth;
-    s32 searchScore;
-    s32 returned;
     s32 isAtRoute;
-    s16 timer;
-    s16 stageIndex;
-    s16 candidateCharacter;
+
     s32 scanIndex;
 
     isAtRoute = 0;
@@ -3401,7 +3133,7 @@ s32 fn_1_E320(M645PathController *controller)
         }
     }
 
-    index = M645RouteKeyForE320(controller->playerNo);
+    index = M645RouteIndexGet(controller->playerNo);
     route = M645RouteGet(index);
     fn_1_DE48(controller);
 
@@ -3412,7 +3144,7 @@ s32 fn_1_E320(M645PathController *controller)
             }
             if (controller->currentRoute != 0) {
                 fn_1_D8B0(&movement, route, controller->currentRoute,
-                    (M645CharacterSetupWork *)controller);
+                    controller);
             }
         } else {
             if (controller->segmentNo == 0) {
@@ -3422,7 +3154,7 @@ s32 fn_1_E320(M645PathController *controller)
             }
             if (controller->currentRoute != 0) {
                 fn_1_D8B0(&movement, route, controller->currentRoute,
-                    (M645CharacterSetupWork *)controller);
+                    controller);
                 if (controller->currentRoute == route) {
                     isAtRoute = 1;
                 }
@@ -3430,18 +3162,18 @@ s32 fn_1_E320(M645PathController *controller)
                 controller->currentRoute = fn_1_D820_for_E320(controller, route);
                 if (controller->currentRoute != 0) {
                     fn_1_D8B0(&movement, route, controller->currentRoute,
-                        (M645CharacterSetupWork *)controller);
+                        controller);
                 }
             }
         }
     } else if (controller->assetSelection == 1) {
         if (controller->segmentNo == 0) {
-            controller->currentRoute = M645PathSearchForE320(controller, (M645PathNode *)3,
+            controller->currentRoute = M645PathSearchForE320(controller, 3,
                 route);
             controller->segmentNo = 0x3C;
         }
         if (controller->currentRoute != 0) {
-            fn_1_D8B0(&movement, route, controller->currentRoute, (M645CharacterSetupWork *)controller);
+            fn_1_D8B0(&movement, route, controller->currentRoute, controller);
             if (route == controller->currentRoute) {
                 isAtRoute = 1;
             }
@@ -3449,7 +3181,7 @@ s32 fn_1_E320(M645PathController *controller)
             controller->currentRoute = fn_1_D820_for_E320(controller, route);
             if (controller->currentRoute != 0) {
                 fn_1_D8B0(&movement, route, controller->currentRoute,
-                    (M645CharacterSetupWork *)controller);
+                    controller);
             }
         }
     }
@@ -3462,7 +3194,7 @@ s32 fn_1_E320(M645PathController *controller)
     if ((controller->currentRoute == route &&
         fabs(lbl_1_data_24C[route->pathIndex].x -
             controller->position.x) < 10.0) ||
-        index == M645RouteKeyForE320(controller->pairedPlayerNo) ||
+        index == M645RouteIndexGet(controller->pairedPlayerNo) ||
         controller->collisionFlag != 0) {
         controller->currentRoute = NULL;
         controller->segmentNo = 0;
@@ -3470,7 +3202,7 @@ s32 fn_1_E320(M645PathController *controller)
     if ((controller->nextRoute == route &&
         fabs(lbl_1_data_24C[route->pathIndex].x -
             controller->position.x) < 10.0) ||
-        index == M645RouteKeyForE320(controller->pairedPlayerNo) ||
+        index == M645RouteIndexGet(controller->pairedPlayerNo) ||
         controller->collisionFlag != 0) {
         controller->nextRoute = NULL;
         controller->currentRoute = NULL;
@@ -3557,8 +3289,8 @@ s32 fn_1_EB84(M645CharacterSetupWork *controller)
     }
     return returnValue;
 }
-
-s32 fn_1_F1BC(M645RouteSetupState *state)
+/* Chooses among eligible routes and advances the character toward the selected entry. */
+s32 fn_1_F1BC(M645CharacterSetupWork *state)
 {
     M645RouteEntry * currentRoute;
     s32 specialRoutes[25];
@@ -3589,7 +3321,7 @@ s32 fn_1_F1BC(M645RouteSetupState *state)
         }
         if (candidateCount == 0)
         {
-            isAtRoute = fn_1_EB84((M645CharacterSetupWork *)state);
+            isAtRoute = fn_1_EB84(state);
             return isAtRoute;
         }
         if (state->nextRoute == 0)
@@ -3600,28 +3332,27 @@ s32 fn_1_F1BC(M645RouteSetupState *state)
         {
             if (state->currentRoute == 0)
             {
-                state->currentRoute = M645RouteSearchForF1BC(
-                    (M645CharacterSetupWork *)state, state->nextRoute,
+                state->currentRoute = M645RouteSearch(
+                    state, state->nextRoute,
                     currentRoute, &normalDistance);
             }
             if (state->currentRoute != 0)
             {
-                fn_1_D8B0(& movement, currentRoute, state->currentRoute, (M645CharacterSetupWork *)state);
+                fn_1_D8B0(& movement, currentRoute, state->currentRoute, state);
                 if (currentRoute == state->currentRoute)
                 {
                     isAtRoute = 1;
                 }
-                goto routeChosen;
+            } else {
+                state->nextRoute = NULL;
+                isAtRoute = fn_1_EB84(state);
+                return isAtRoute;
             }
-            state->nextRoute = NULL;
-            isAtRoute = fn_1_EB84((M645CharacterSetupWork *)state);
+        } else {
+            isAtRoute = fn_1_EB84(state);
             return isAtRoute;
         }
-        isAtRoute = fn_1_EB84((M645CharacterSetupWork *)state);
-        return isAtRoute;
-    }
-    if (state->assetSelection == 1)
-    {
+    } else if (state->assetSelection == 1) {
         specialCount = 0;
         for (routeIndex = 0; routeIndex < 25; routeIndex++)
         {
@@ -3634,7 +3365,7 @@ s32 fn_1_F1BC(M645RouteSetupState *state)
         }
         if (specialCount == 0)
         {
-            isAtRoute = fn_1_EB84((M645CharacterSetupWork *)state);
+            isAtRoute = fn_1_EB84(state);
             return isAtRoute;
         }
         if (state->nextRoute == 0)
@@ -3645,27 +3376,27 @@ s32 fn_1_F1BC(M645RouteSetupState *state)
         {
             if (state->currentRoute == 0)
             {
-                state->currentRoute = M645RouteSearchForF1BC(
-                    (M645CharacterSetupWork *)state, state->nextRoute,
+                state->currentRoute = M645RouteSearch(
+                    state, state->nextRoute,
                     currentRoute, &specialDistance);
             }
             if (state->currentRoute != 0)
             {
-                fn_1_D8B0(& movement, currentRoute, state->currentRoute, (M645CharacterSetupWork *)state);
+                fn_1_D8B0(& movement, currentRoute, state->currentRoute, state);
                 if (currentRoute == state->currentRoute)
                 {
                     isAtRoute = 1;
                 }
-                goto routeChosen;
+            } else {
+                state->nextRoute = NULL;
+                isAtRoute = fn_1_EB84(state);
+                return isAtRoute;
             }
-            state->nextRoute = NULL;
-            isAtRoute = fn_1_EB84((M645CharacterSetupWork *)state);
+        } else {
+            isAtRoute = fn_1_EB84(state);
             return isAtRoute;
         }
-        isAtRoute = fn_1_EB84((M645CharacterSetupWork *)state);
-        return isAtRoute;
     }
-routeChosen:
     if (state->setupMode == 0) {
         isAtRoute = fn_1_78F4(state, &movement, isAtRoute);
     } else if (state->setupMode == 1) {
@@ -3687,18 +3418,26 @@ routeChosen:
     return isAtRoute;
 }
 
-s32 fn_1_FA1C(M645CharacterSetupWork *controller)
+/* Advance the setup timer and move to the next sequence when its time expires. */
+static inline void setupSequenceAdvance(M645CharacterSetupWork *controller, const s32 *durations,
+    s32 sequenceCount)
 {
-    s32 durations[2] = { 0xB4, 0xB4 };
-    s32 result;
-
     if (controller->setupMode == 0 || controller->setupMode == 1) {
         controller->setupState += 1;
     }
     if (controller->setupState > durations[controller->randomAngle]) {
         controller->setupState = 0;
-        controller->randomAngle = (s16)((controller->randomAngle + 1) % 2);
+        controller->randomAngle = (s16)((controller->randomAngle + 1) % sequenceCount);
     }
+}
+
+/* In the third setup sequence, advance the timing and run the corresponding character motion update. */
+s32 fn_1_FA1C(M645CharacterSetupWork *controller)
+{
+    s32 durations[2] = { 0xB4, 0xB4 };
+    s32 result;
+
+    setupSequenceAdvance(controller, durations, 2);
     if (controller->randomAngle == 0) {
         result = fn_1_E320(controller);
     } else {
@@ -3707,18 +3446,13 @@ s32 fn_1_FA1C(M645CharacterSetupWork *controller)
     return result;
 }
 
+/* In the fourth setup sequence, advance the timing and select the character motion for the current phase. */
 s32 fn_1_FAF8(M645CharacterSetupWork *controller)
 {
     s32 durations[3] = { 0xB4, 0x168, 0x3C };
     s32 result;
 
-    if (controller->setupMode == 0 || controller->setupMode == 1) {
-        controller->setupState += 1;
-    }
-    if (controller->setupState > durations[controller->randomAngle]) {
-        controller->setupState = 0;
-        controller->randomAngle = (s16)((controller->randomAngle + 1) % 3);
-    }
+    setupSequenceAdvance(controller, durations, 3);
     if (controller->randomAngle == 0) {
         result = fn_1_F1BC(controller);
     } else if (controller->randomAngle == 1) {
@@ -3728,21 +3462,15 @@ s32 fn_1_FAF8(M645CharacterSetupWork *controller)
     }
     return result;
 }
-
+/* Alternates between two route selection routines on a timer while the character is entering the course. */
 s32 fn_1_FC04(M645CharacterSetupWork *object)
 {
     s32 durations[2] = { 0xB4, 0xB4 };
     s32 result;
 
-    if (object->setupMode == 0 || object->setupMode == 1) {
-        object->setupState += 1;
-    }
-    if (object->setupState > durations[object->randomAngle]) {
-        object->setupState = 0;
-        object->randomAngle = (s16)((object->randomAngle + 1) % 2);
-    }
+    setupSequenceAdvance(object, durations, 2);
     if (object->randomAngle == 0) {
-        result = fn_1_F1BC((void *)object);
+        result = fn_1_F1BC(object);
     } else {
         result = fn_1_EB84(object);
     }

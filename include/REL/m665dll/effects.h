@@ -16,8 +16,7 @@ struct AnimData_s;
 
 typedef struct M665AnimationStorage {
     struct AnimData_s *animation; /* Animation loaded for the opponent score icons. */
-    u8 unreadAfterAnimation[12]; /* No M665 consumer reads the storage after the animation
-                                  * pointer. */
+    u8 unk04[12]; /* No code names this field. */
 } M665AnimationStorage;
 
 extern M665HitWork lbl_1_bss_CA8[64];

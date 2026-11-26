@@ -17,6 +17,7 @@ struct AnimationOwner : GameObject, OwnedModel {
     Mtx matrix;
     Quaternion rotation;
     unsigned char enabled;
+    // Reports whether this animation is enabled.
     unsigned char isActive() { return enabled; }
     int argument;
     float descentSpeed;
@@ -33,6 +34,7 @@ struct AnimationOwner : GameObject, OwnedModel {
     void (AnimationOwner::*callback)();
     void fn_1_62E8(const EventPacket &);
     void fn_1_634C(const EventPacket &);
+    // Returns the animation's current position.
     Vec getPosition() { return position.value; }
     void fn_1_6008();
     void fn_1_600C();
@@ -41,6 +43,7 @@ struct AnimationOwner : GameObject, OwnedModel {
     void fn_1_65BC();
     void fn_1_65C0();
     typedef void (AnimationOwner::*Callback)();
+    // Selects the callback run during the animation update.
     void setCallback(void (AnimationOwner::*callback)()) { this->callback = callback; }
 };
 
@@ -50,5 +53,11 @@ void fn_1_5824(AnimationOwner *, const Vec *);
 void fn_1_58E4(AnimationOwner *, const Vec *);
 void fn_1_5F00(AnimationOwner *, const Vec *);
 void fn_1_5F6C(AnimationOwner *, float);
+
+// Returns the object's current position.
+static inline Vec ObjectPosition(AnimationOwner *object)
+{
+    return object->position.value;
+}
 
 #endif

@@ -4,7 +4,7 @@
 #include "dolphin/types.h"
 
 typedef struct M663CameraRecord {
-    s32 cameraIndex;
+    s32 unk00; /* The game's code never reads this field. */
     u8 unobservedCameraData[0x0C]; /* Unknown data, zeroed at initialization. */
     f32 rotation[3];
     f32 position[3];

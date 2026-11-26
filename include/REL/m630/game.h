@@ -51,14 +51,14 @@ typedef struct M630MotionRecord {
     s16 model; /* Decorative model handle. */
     s16 motionA; /* Base looping motion. */
     s16 motionB; /* Brief alternate motion. */
-    unsigned char unusedBytes[18]; /* Unread bytes retained in the record. */
+    unsigned char unk06[18]; /* No code names this field. */
     int motionState; /* 0 for base motion, 1 while returning from the alternate motion. */
-    unsigned char unusedTail[4]; /* Unread trailing bytes retained in the record. */
+    unsigned char unk1C[4]; /* No code names this field. */
 } M630MotionRecord;
 
 typedef struct M630MovingModel {
     s16 model; /* Moving platform or row model handle. */
-    unsigned char reservedBytes[2]; /* Alignment bytes not read by the minigame. */
+    unsigned char unk02[2]; /* No code names this field. */
     s16 secondaryModel; /* Side decoration model handle. */
     HuVecF pos; /* Moving row position in world units. */
     int direction; /* 0 moves toward +X; 1 moves toward -X. */
@@ -70,10 +70,10 @@ typedef struct M630RotatingModel {
 } M630RotatingModel;
 
 /* Direction and retained bytes used by player 0's brief slide animation on a loss. */
-typedef struct M630Bss744 {
+typedef struct M630ResultSlideWork {
     float losingPlayerSlideStep; /* Horizontal movement per result callback, in world units. */
-    unsigned char unusedBytes[8]; /* Unread bytes retained in the record. */
-} M630Bss744;
+    unsigned char unk04[8]; /* No code names this field. */
+} M630ResultSlideWork;
 
 extern int lbl_1_bss_8;
 extern int lbl_1_bss_C[3];

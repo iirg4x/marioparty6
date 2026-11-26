@@ -58,7 +58,7 @@ void TRKNubMainLoop(void)
 			continue;
 		}
 
-		if ((isNewInput == FALSE) || (*(u8*)gTRKInputPendingPtr != '\0')) {
+		if ((isNewInput == FALSE) || (*gTRKInputPendingPtr != '\0')) {
 			isNewInput = TRUE;
 			TRKGetInput();
 			continue;

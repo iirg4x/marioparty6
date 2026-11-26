@@ -32,8 +32,6 @@ void fn_1_8C0(M645Bounds *bounds, M645Triangle *triangle)
     }
 }
 
-void fn_1_22FC(M645Sphere *out, f32 x, f32 y, f32 z, f32 radius);
-
 void fn_1_B34(M645Bounds *out, M645Sphere *sphere)
 {
     out->min = sphere->center;
@@ -46,8 +44,6 @@ void fn_1_B34(M645Bounds *out, M645Sphere *sphere)
     out->max.z += sphere->radius;
 }
 
-void fn_1_255C(M645Bounds *out, M645Triangle *triangle);
-
 s32 fn_1_BC8(M645Bounds *a, M645Bounds *b)
 {
     if ((a->min.z < b->max.z) && (a->max.z > b->min.z) && (a->min.x < b->max.x) && (a->max.x > b->min.x) && (a->min.y < b->max.y) && (a->max.y > b->min.y)) {
@@ -57,9 +53,6 @@ s32 fn_1_BC8(M645Bounds *a, M645Bounds *b)
 }
 
 extern float fn_1_C38(M645Sphere *, M645Triangle *, float *, float *);
-extern float fn_1_3E8(const HuVecF *);
-extern float fn_1_418(const HuVecF *, const HuVecF *);
-extern void fn_1_4B8(HuVecF *, const HuVecF *, const HuVecF *);
 
 f32 fn_1_C38(M645Sphere *sphere, M645Triangle *triangle,
              f32 *barycentricS, f32 *barycentricT)
@@ -124,19 +117,11 @@ f32 fn_1_F6C(M645Sphere *sphere, M645Triangle *triangle,
     return gapSquared;
 }
 
+/* During stage collision checks, return the sphere-to-triangle distance and locate the closest point on the triangle. */
 f32 fn_1_FFC(M645Sphere *sphere, M645Triangle *triangle,
              f32 *barycentricS, f32 *barycentricT)
 {
-    f32 gapSquared;
-    f32 radicand;
-
-    gapSquared = fn_1_C38(sphere, triangle, barycentricS, barycentricT);
-    gapSquared -= sphere->radius * sphere->radius;
-    if (gapSquared < 0.0f) {
-        gapSquared = 0.0f;
-    }
-    radicand = gapSquared;
-    return sqrtf(radicand);
+    return sqrtf(fn_1_F6C(sphere, triangle, barycentricS, barycentricT));
 }
 
 f32 fn_1_1174(M645Segment *firstSegment, M645Segment *secondSegment, f32 *parameterAOut,
@@ -440,33 +425,6 @@ f32 fn_1_1D70(M645Segment *queryPoint, M645Segment *triangle, f32 *barycentricSO
     return sqrtf(fn_1_1174(queryPoint, triangle, barycentricSOut, barycentricTOut));
 }
 
-void fn_1_6D0(HuVecF *dst, const HuVecF *src, f32 scale);
-
-static inline f32 pointSegmentDistanceSquared(HuVecF *queryPoint, M645Segment *lineSegment)
-{
-    HuVecF pointOffset;
-    HuVecF projectedOffset;
-    f32 segmentParameter;
-    f32 segmentLengthSquared;
-
-    fn_1_4B8(&pointOffset, queryPoint, &lineSegment->start);
-    segmentParameter = fn_1_418(&pointOffset, &lineSegment->delta);
-    if (segmentParameter <= 0.0f) {
-        segmentParameter = 0.0f;
-    } else {
-        segmentLengthSquared = fn_1_3E8(&lineSegment->delta);
-        if (segmentParameter >= segmentLengthSquared) {
-            segmentParameter = 1.0f;
-            fn_1_4B8(&pointOffset, &pointOffset, &lineSegment->delta);
-        } else {
-            segmentParameter /= segmentLengthSquared;
-            fn_1_6D0(&projectedOffset, &lineSegment->delta, segmentParameter);
-            fn_1_4B8(&pointOffset, &pointOffset, &projectedOffset);
-        }
-    }
-    return fn_1_3E8(&pointOffset);
-}
-
 f32 fn_1_1E9C(HuVecF *queryPoint, M645Segment *lineSegment)
 {
     HuVecF pointOffset;
@@ -491,10 +449,10 @@ f32 fn_1_1E9C(HuVecF *queryPoint, M645Segment *lineSegment)
     }
     return fn_1_3E8(&pointOffset);
 }
-
+/* Measures the distance from a point to the closest point on the segment. */
 f32 fn_1_1F94(HuVecF *queryPoint, M645Segment *lineSegment)
 {
-    return sqrtf(pointSegmentDistanceSquared(queryPoint, lineSegment));
+    return sqrtf(fn_1_1E9C(queryPoint, lineSegment));
 }
 
 f32 fn_1_2178(M645Sphere *movingSphere, const M645Segment *lineSegment)
@@ -529,12 +487,12 @@ f32 fn_1_2178(M645Sphere *movingSphere, const M645Segment *lineSegment)
     }
     return gapSquared;
 }
-
+/* Computes the squared distance to a segment less the sphere's squared radius, clamped to zero. */
 static inline f32 sphereSegmentGapSquared(M645Sphere *movingSphere, M645Segment *lineSegment)
 {
     f32 gapSquared;
 
-    gapSquared = pointSegmentDistanceSquared(&movingSphere->center, lineSegment);
+    gapSquared = fn_1_1E9C(&movingSphere->center, lineSegment);
     gapSquared -= movingSphere->radius * movingSphere->radius;
     if (gapSquared < 0.0f) {
         gapSquared = 0.0f;
@@ -578,18 +536,8 @@ f32 fn_1_2748(M645Capsule *firstCapsule, M645Capsule *secondCapsule)
     return gapSquared;
 }
 
+/* During actor collision checks, return the distance between the two capsule axes. */
 f32 fn_1_27E8(M645Capsule *firstCapsule, M645Capsule *secondCapsule)
 {
-    f32 gapSquared;
-    f32 radicand;
-
-    gapSquared = fn_1_1174(&firstCapsule->segment, &secondCapsule->segment,
-                           0, 0);
-    gapSquared -= firstCapsule->radius * firstCapsule->radius +
-                  secondCapsule->radius * secondCapsule->radius;
-    if (gapSquared < 0.0f) {
-        gapSquared = 0.0f;
-    }
-    radicand = gapSquared;
-    return sqrtf(radicand);
+    return sqrtf(fn_1_2748(firstCapsule, secondCapsule));
 }

@@ -157,14 +157,14 @@ void fn_1_1E80(void)
     lbl_1_bss_0.textureBuffer = HuMemDirectMallocNum(
         2, GXGetTexBufferSize(640U, 480U, 4U, 0U, 0U), 0x10000000);
     lbl_1_bss_0.anim0 =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 10), 0x10000000, 2));
+        HuSprAnimDataRead(DATANUM(0x210000, 10));
     night = lbl_802C0278;
     if (night == 0) {
         lbl_1_bss_0.anim1 =
-            HuSprAnimRead(fn_80008DD0(DATANUM(0x540000, 14), 0x10000000, 2));
+            HuSprAnimDataRead(DATANUM(0x540000, 14));
     } else {
         lbl_1_bss_0.anim1 =
-            HuSprAnimRead(fn_80008DD0(DATANUM(0x540000, 15), 0x10000000, 2));
+            HuSprAnimDataRead(DATANUM(0x540000, 15));
     }
     lbl_1_bss_0.value = 0.0f;
     fn_8000DAC0(fn_1_20AC, 100U, 12288U, 0, lbl_1_bss_810);
@@ -228,20 +228,20 @@ void fn_1_20AC(void)
     }
     DCInvalidateRange(object->mesh.vertex->data, object->mesh.vertex->count * 12);
     peakY = -100000.0f;
-    vertices = (Vec *)object->mesh.vertex->data;
+    vertices = object->mesh.vertex->positions;
     for (index = 0; index < object->mesh.vertex->count; index += 1, vertices += 1) {
         if (peakY < vertices->y) {
             peakY = vertices->y;
         }
     }
-    vertices = (Vec *)object->mesh.vertex->data;
+    vertices = object->mesh.vertex->positions;
     for (index = peakCount = 0; index < object->mesh.vertex->count; index += 1, vertices += 1) {
         if (peakY == vertices->y) {
             peakCount += 1;
         }
     }
-    peakVertices = (Vec **)HuMemDirectMallocNum(HEAP_HEAP, peakCount * 4, 0x10000000);
-    vertices = (Vec *)object->mesh.vertex->data;
+    peakVertices = HuMemDirectMallocNum(HEAP_HEAP, peakCount * 4, 0x10000000);
+    vertices = object->mesh.vertex->positions;
     for (index = peakListIndex = 0; index < object->mesh.vertex->count; index += 1, vertices += 1) {
         if (peakY == vertices->y) {
             peakVertices[peakListIndex] = vertices;

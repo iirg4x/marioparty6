@@ -54,4 +54,10 @@ struct CallbackReceiver : GameObject, ModelMotion, MinigameSingleton<CallbackRec
     Vec getMotionHeight() { return velocity; }
 };
 
+/* Returns the receiver position used to place its effect. */
+static inline MotionPosition getEffectPosition(CallbackReceiver *owner)
+{
+    return owner->position;
+}
+
 #endif

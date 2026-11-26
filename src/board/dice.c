@@ -67,7 +67,7 @@ typedef struct DiceWork_s {
     int color; // Dice color variant.
     OMOBJ *obj; // Current die object, or NULL after it is removed.
     DICE_EFF *eff; // Puff and triangle effect state.
-    u32 unusedStorage; // Unused storage in the dice roll work area.
+    u32 unk4C; // No code names this field.
     void *dlBuf; // Display-list storage used by the dice effects.
     u32 dlSize; // Size in bytes of dlBuf.
     ANIMDATA *animEffPuff; // Puff effect animation data.
@@ -1939,8 +1939,8 @@ static HU3D_MODELID DiceInEffCreate(void)
 {
     int modelId;
 
-    modelId = mbParticleCreate(HuSprAnimRead(fn_80008DD0(
-        mbBoardDataNumGet(DATANUM(0x50000, 100)), 0x10000000, 2)), 80);
+    modelId = mbParticleCreate(HuSprAnimDataRead(
+        mbBoardDataNumGet(DATANUM(0x50000, 100))), 80);
     mbParticleHookSet(modelId, DiceInEffHook);
     fn_80026B8C(modelId, 5);
     mbParticleAttrSet(modelId, MB_PARTICLE_ATTR_3D);
@@ -1953,8 +1953,8 @@ static HU3D_MODELID DiceInDotEffCreate(void)
 {
     int modelId;
 
-    modelId = mbParticleCreate(HuSprAnimRead(fn_80008DD0(
-        mbBoardDataNumGet(DATANUM(0x50000, 100)), 0x10000000, 2)), 150);
+    modelId = mbParticleCreate(HuSprAnimDataRead(
+        mbBoardDataNumGet(DATANUM(0x50000, 100))), 150);
     mbParticleHookSet(modelId, DiceInDotEffHook);
     fn_80026B8C(modelId, 5);
     return modelId;

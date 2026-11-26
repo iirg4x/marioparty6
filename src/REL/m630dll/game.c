@@ -16,7 +16,7 @@ void fn_1_43E8(int player);
 
 extern int lbl_1_bss_18[4];
 extern HUPROCESS *lbl_1_bss_834;
-extern M630Bss744 lbl_1_bss_744;
+extern M630ResultSlideWork lbl_1_bss_744;
 
 extern u32 lbl_1_data_28[9];
 #include "game/frand.h"
@@ -60,7 +60,7 @@ M630State lbl_1_bss_828;
 int lbl_1_bss_824;
 M630Player lbl_1_bss_754[4];
 int lbl_1_bss_750;
-M630Bss744 lbl_1_bss_744;
+M630ResultSlideWork lbl_1_bss_744;
 M630MovingModel lbl_1_bss_6FC[3];
 M630RotatingModel lbl_1_bss_6E4[3];
 M630ModelRow lbl_1_bss_1D4[3];

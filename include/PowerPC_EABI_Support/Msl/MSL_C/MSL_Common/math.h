@@ -1,6 +1,6 @@
 #ifndef MP6_PROJECT_MATH_H
 #define MP6_PROJECT_MATH_H
-/* The compiled objects math_ppc.o and board/pause.o use runtime arithmetic. */
+/* Expose the runtime arithmetic interface. */
 #define MP6_MATH_INTERFACE 1
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/cmath"
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/float.h"

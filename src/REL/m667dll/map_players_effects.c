@@ -1,5 +1,6 @@
 /* Talkie Walkie scene progression, map and player control, and entry effects. */
 #include "game/frand.h"
+#include <stdlib.h>
 #include "dolphin/types.h"
 #include <math.h>
 #include "REL/m667dll/recovered.h"
@@ -31,6 +32,7 @@
 #include "dolphin/mtx.h"
 #include "game/flag.h"
 #include "dolphin/gx/GXVert.h"
+#include "stdlib.h"
 
 /* Each model-effect type supplies draw and update callbacks plus its pool sizing. */
 typedef struct M667RegistryDescriptorView {
@@ -1339,7 +1341,6 @@ void fn_1_2DCC(OMOBJ *object)
 }
 
 s32 fn_1_C74(void *player);
-void fn_1_CFC(s32 mode);
 
 /* Scene mode 2 determines the outcome from the lone player's action or the sequence timeout.
  * Record the lone player as winner after reaching the far edge; otherwise record the majority
@@ -1432,7 +1433,6 @@ void fn_1_3300(OMOBJ *object)
     }
 }
 
-void fn_1_7F4(void);
 void fn_1_1E8C(M667PlayerView *entry);
 
 /* The ending phase waits for result timing or camera motion, then restores queued player modes. */
@@ -1500,8 +1500,8 @@ void fn_1_34EC(OMOBJ *object)
 }
 
 typedef struct LightSetupView {
-    s16 reservedWord; /* Reserved word in the light object's setup work. */
-    s16 phase;
+    s16 unk00; /* No code names this field. */
+    s16 unk02; /* The game's code never reads this field. */
     u8 unk04[4]; /* No code names this field. */
     s32 lightId;
     u8 unk0C[4]; /* No code names this field. */
@@ -1526,7 +1526,7 @@ void fn_1_378C(OMOBJ *object)
         fn_8002AA3C(16, 16, 16, 1);
         fn_8002A674(&lightPosition, &shadowUp, &shadowTarget, 1);
         fn_8002A7D8(0.3f, 1);
-        work->phase = 0;
+        work->unk02 = 0;
         fn_1_140(object, fn_1_38D0);
     }
 }
@@ -1665,7 +1665,7 @@ void fn_1_3D74(OMOBJ *object)
     camera = 1;
     actionFlags = 32;
     work->flags |= 2;
-    work->flags2 |= 2;
+    work->unk02 |= 2;
     param.height = 150.0f;
     param.radius = 40.0f;
     param.param = (group << 8) | work->index;
@@ -1680,7 +1680,7 @@ void fn_1_3D74(OMOBJ *object)
     work->group = group;
     work->difficulty = lbl_80265728[work->index].comDif;
     work->actionMode = 0;
-    work->reservedWord = 0;
+    work->unk14 = 0;
     work->controlMode = lbl_80265728[work->index].type;
     work->difficulty = lbl_80265728[work->index].comDif;
     work->aiMoveInterval = 0;
@@ -2221,7 +2221,6 @@ void fn_1_551C(OMOBJ *object)
     }
 }
 
-s32 fn_1_344(s32 modulus, s32 count, s32 *weights);
 
 /* fn_1_551C calls this during action mode 3 for an AI player without a map slot;
  * it builds grid movement choices and checks nearby thrown entries. */
@@ -2343,7 +2342,6 @@ void fn_1_5580(OMOBJ *object)
     }
 }
 
-s32 abs(s32);
 M667MapSlot *fn_1_1934(s32);
 s32 fn_1_344(s32, s32, s32 *);
 
@@ -2473,12 +2471,12 @@ void fn_1_5AF8(OMOBJ *object)
         work->entries[descriptorIndex].update = descriptor->update;
         /* Reset for each effect type, so the stored count ends with only the final pool's item
          * count. */
-        work->count = 0;
+        work->unk64 = 0;
         for (itemIndex = 0; itemIndex < descriptor->count; itemIndex++) {
             item = fn_1_7BA8(work->entries[descriptorIndex].pool);
             if (item != NULL) {
                 descriptor->update(item, 0);
-                work->count++;
+                work->unk64++;
             }
         }
         descriptorIndex++;
@@ -2865,7 +2863,7 @@ void fn_1_6988(OMOBJ *object)
         {0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}
     };
 
-    work->reservedWord = 0;
+    work->unk02 = 0;
     modelIndex = 0;
     for (ownerPlayerIndex = 0; ownerPlayerIndex < 4; ownerPlayerIndex++) {
         for (column = 0; column < 3; column++) {

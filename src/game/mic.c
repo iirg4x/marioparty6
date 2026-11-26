@@ -2,6 +2,7 @@
 #include "dolphin/math.h"
 #include "dolphin.h"
 #include "dolphin/m2s.h"
+#include "dolphin/mic.h"
 #include "game/armem.h"
 #include "game/data.h"
 #include "game/dvd.h"
@@ -51,10 +52,9 @@
 extern s32 currentHeapHandle;
 
 s32 WipeCheckIn(void);
-void MICInit(void);
 
 static void InitMCSelWin(void);
-static void MCExtHandler(void);
+static void MCExtHandler(s32 chan, s32 result);
 static void MCSelWinFunc(void);
 static void MCSelWinContextProc(void);
 static void MCAnswerMain(void);
@@ -820,7 +820,7 @@ inline s32 HuMCMount(s32 channel)
   s32 probeStatus;
   OSTick probeStartTick;
   s32 probeResult;
-  s32 deviceId;
+  u32 deviceId;
 
   M2SClose();
   MicOpenF = 1;
@@ -845,7 +845,7 @@ inline s32 HuMCMount(s32 channel)
   if (deviceIdResult != 0) {
     return deviceIdResult;
   }
-  if (deviceId != 0) {
+  if ((s32)deviceId != 0) {
     MCWrongDeviceF = 1;
     return -2;
   }
@@ -886,7 +886,7 @@ static inline s32 MCMountSub(s32 channel)
 {
   s32 result;
   s32 deviceIdResult;
-  s32 deviceId;
+  u32 deviceId;
   s32 channelResult;
 
   M2SClose();
@@ -905,7 +905,7 @@ static inline s32 MCMountSub(s32 channel)
   if (deviceIdResult != 0) {
     return deviceIdResult;
   }
-  if (deviceId != 0) {
+  if ((s32)deviceId != 0) {
     MCWrongDeviceF = 1;
     return -2;
   }
@@ -924,7 +924,7 @@ static inline s32 MCMountSub(s32 channel)
 }
 
 /* The microphone driver's detach callback marks capture unavailable and stops the speech stream. */
-void MCExtHandler(void)
+void MCExtHandler(s32 chan, s32 result)
 
 {
   MicOpenF = 1;

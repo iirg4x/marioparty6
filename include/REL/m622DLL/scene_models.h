@@ -103,7 +103,7 @@ struct FourModelOwner : ListNode<FourModelOwner> {
     Vec frameData;
     f32 scale;
     s32 state;
-    u32 unusedValue;
+    u32 unk34; /* The game's code never reads this field. */
     OwnedModel model0, model1, model2, model3;
 
     FourModelOwner(const OwnedModel &, const OwnedModel &, const OwnedModel &, const OwnedModel &,

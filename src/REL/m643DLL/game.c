@@ -138,34 +138,16 @@ M643ViewControlWork *fn_1_1694(s16 teamIndex);
 void fn_1_16B0(s32 out[4]);
 void fn_1_17A0(OMOBJ *object);
 void fn_1_1F10(OMOBJ *object);
-void fn_1_1F98(OMOBJ *object);
 s32 fn_1_2708(M643PlatformWork *work, s16 platform);
 void fn_1_2838(OMOBJ *object);
 void fn_1_2D90(OMOBJ *object);
-void fn_1_2E38(OMOBJ *object);
-void fn_1_2EF4(OMOBJ *object);
-void fn_1_2F5C(OMOBJ *object);
-void fn_1_2FBC(OMOBJ *object);
-void fn_1_3300(OMOBJ *object);
-void fn_1_3374(OMOBJ *object);
-void fn_1_3680(OMOBJ *object);
-void fn_1_36DC(OMOBJ *object);
-void fn_1_3A98(OMOBJ *object);
-void fn_1_40FC(OMOBJ *object);
 void fn_1_44B0(OMOBJ *object);
 s32 fn_1_44C4(M643PlayerPrefix *work, f32 radius);
 BOOL fn_1_4664(M643PlayerPrefix *work);
 void fn_1_4880(M643PlayerPrefix *work);
 BOOL fn_1_49B8(M643PlayerPrefix *work);
 void fn_1_4AEC(OMOBJ *object);
-void fn_1_5438(OMOBJ *object);
-void fn_1_58DC(OMOBJ *object);
 void fn_1_6450(OMOBJ *object);
-void fn_1_64B4(OMOBJ *object);
-void fn_1_6674(OMOBJ *object);
-void fn_1_6750(OMOBJ *object);
-void fn_1_696C(OMOBJ *object);
-void fn_1_6B98(OMOBJ *object);
 void fn_1_6CA0(M643TeamScenePrefix *work, s16 *minPlatform, s16 *maxPlatform);
 s32 fn_1_6DE0(M643TeamScenePrefix *work, f32 radius);
 void fn_1_6FA8(M643TeamScenePrefix *work, s16 motion, f32 blend, u32 flags);
@@ -584,7 +566,7 @@ void fn_1_1F98(OMOBJ *object)
         work->introSoundHandle = -1;
     }
     if (work->musicHandle == -1 &&
-        (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
+        GameMesFXPlayCheck(fn_80071DF4())) {
         work->musicHandle = HuAudSStreamPlay(MSM_STREAM_AMUSING);
     }
     if (fn_80071A8C() == 5) {
@@ -717,6 +699,7 @@ void fn_1_23C4(OMOBJ *object)
     fn_1_20C(object, fn_1_26F4);
 }
 
+/* This phase of the team platform object leaves its work unchanged. */
 void fn_1_26F4(OMOBJ *object)
 {
     void *objectData = object->data;
@@ -1413,7 +1396,7 @@ void fn_1_6450(OMOBJ *object)
 void fn_1_64B4(OMOBJ *object)
 {
     M643PlayerPrefix *work = object->data;
-    work->rescueSpinRadians += 0.08726646259971647;
+    work->rescueSpinRadians += (M_PI * 5.0 / 180.0);
     fn_80026790(work->player->actor->mdlId, &work->position);
     fn_80026808(work->player->actor->mdlId, 0.0f, 180.0f * work->rescueSpinRadians / M_PI, 0.0f);
     if (work->respawnPending == 0) {
@@ -1683,7 +1666,7 @@ void fn_1_7554(M643TeamScenePrefix *work)
                      &cameraTarget);
     work->cannonPosition.x = 600.0f + cameraPosition.x;
     work->cannonPosition.y = cameraPosition.y - 100.0f +
-        30.0 * sin(0.017453292519943295 * work->bobDegrees);
+        30.0 * sin((M_PI / 180.0) * work->bobDegrees);
     work->cannonPosition.z = 550.0f;
     work->bobDegrees += 1.0f;
     if (work->bobDegrees >= 360.0f) work->bobDegrees = 0.0f;
@@ -1702,8 +1685,8 @@ void fn_1_7554(M643TeamScenePrefix *work)
     current = work->yawRadians;
     if (cross >= 0.0f) current += 0.1f * difference;
     else if (cross < 0.0f) current -= 0.1f * difference;
-    while (current > 6.283185307179586) current -= 6.283185307179586;
-    while (current < (-6.283185307179586)) current += 6.283185307179586;
+    while (current > (2.0 * M_PI)) current -= (2.0 * M_PI);
+    while (current < (-(2.0 * M_PI))) current += (2.0 * M_PI);
     work->yawRadians = current;
     desired = atan2f(delta.z, delta.y);
     fn_1_298(&desiredDirection, (f32)sin(desired), 0.0f, (f32)cos(desired));
@@ -1714,8 +1697,8 @@ void fn_1_7554(M643TeamScenePrefix *work)
     current = work->pitchRadians;
     if (cross >= 0.0f) current += 0.1f * difference;
     else if (cross < 0.0f) current -= 0.1f * difference;
-    while (current > 6.283185307179586) current -= 6.283185307179586;
-    while (current < (-6.283185307179586)) current += 6.283185307179586;
+    while (current > (2.0 * M_PI)) current -= (2.0 * M_PI);
+    while (current < (-(2.0 * M_PI))) current += (2.0 * M_PI);
     work->pitchRadians = current;
     fn_80026808(work->barrelModel, 180.0f * work->pitchRadians / M_PI,
         180.0 + 180.0f * work->yawRadians / M_PI, 0.0f);
@@ -1845,7 +1828,7 @@ void fn_1_83C8(OMOBJ *object)
     work->computerTargetPlatform = 0;
     work->observedRunnerPlatform = 0;
     work->reactionFrames = 60;
-    work->unusedSetupValue = 1;
+    work->unkA2 = 1;
     fn_80027CD0(lbl_1_rodata_60[work->identity.teamIndex], &cameraPos, &cameraUp, &cameraTarget);
     work->cannonPosition.x = 500.0f + cameraPos.x;
     work->cannonPosition.y = cameraPos.y - 200.0f;
@@ -2186,8 +2169,8 @@ void fn_1_9D7C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
     for (particleIndex = 0; particleIndex < particle->maxCnt; particleIndex++, data++) {
         if (data->time == 0) {
             data->time++;
-            data->vel.x = 10.0 * sin(0.7853981633974483 * particleIndex);
-            data->vel.y = 10.0 * -cos(0.7853981633974483 * particleIndex);
+            data->vel.x = 10.0 * sin((M_PI * 45.0 / 180.0) * particleIndex);
+            data->vel.y = 10.0 * -cos((M_PI * 45.0 / 180.0) * particleIndex);
             data->vel.z = 0.0f;
             data->accel.y = 0.0f;
             data->color.r = 255;
@@ -2410,9 +2393,9 @@ void fn_1_A6F0(OMOBJ *object)
         work->fallVelocity.x = 10.0f * frandf() - 5.0f;
         work->fallVelocity.y = 10.0f * frandf();
         work->fallVelocity.z = 10.0f;
-        work->spinVelocity.x = 0.008726646259971648 * (10.0f * frandf() - 5.0f);
-        work->spinVelocity.y = 0.008726646259971648 * (10.0f * frandf() - 5.0f);
-        work->spinVelocity.z = 0.008726646259971648 * (10.0f * frandf() - 5.0f);
+        work->spinVelocity.x = (M_PI * 0.5 / 180.0) * (10.0f * frandf() - 5.0f);
+        work->spinVelocity.y = (M_PI * 0.5 / 180.0) * (10.0f * frandf() - 5.0f);
+        work->spinVelocity.z = (M_PI * 0.5 / 180.0) * (10.0f * frandf() - 5.0f);
         {
             s32 emitted = 0;
             HU3D_PARTICLE *particle = lbl_802C01C8[work->impactParticles].hookData;
@@ -2499,7 +2482,7 @@ void fn_1_B130(OMOBJ *object)
     fn_800269E8(work->model, (1 << 0));
     fn_8002C95C(work->model, work->motion);
     fn_800269E8(work->model, ((1 << 30) | (1 << 0)));
-    work->carryingRunner = 0;
+    work->unk18 = 0;
     fn_1_20C(object, fn_1_B21C);
 }
 
@@ -2512,7 +2495,7 @@ void fn_1_B21C(OMOBJ *object)
     f32 distance;
 
     fn_80027CD0(lbl_1_rodata_60[work->teamIndex], &cameraPos, &cameraUp, &cameraTarget);
-    work->carryingRunner = 0;
+    work->unk18 = 0;
     if (fn_80071A8C() == 6) {
         fn_1_20C(object, NULL);
         return;
@@ -2547,7 +2530,7 @@ void fn_1_B408(OMOBJ *object)
     HuVecF weightedVector, previousPosition = work->position, position;
     f32 progress;
 
-    work->carryingRunner = 0;
+    work->unk18 = 0;
     work->elapsedSeconds += 0.016666668f;
     progress = work->elapsedSeconds / work->durationSeconds;
     if (progress > 1.0f) {
@@ -2598,7 +2581,7 @@ void fn_1_B7F0(OMOBJ *object)
 {
     M643CameraEffectWork *work = object->data;
     HuVecF hookPosition;
-    work->carryingRunner = 1;
+    work->unk18 = 1;
     if (fn_80071A8C() == 6) {
         fn_1_20C(object, NULL);
         return;
@@ -2625,7 +2608,7 @@ void fn_1_B95C(OMOBJ *object)
     HuVecF platformPosition = lbl_1_data_C4[lbl_1_bss_8][work->runner->lastPlatform];
     HuVecF returnStep, hookPosition;
     platformPosition.z = -20.0f;
-    work->carryingRunner = 1;
+    work->unk18 = 1;
     Hu3DModelObjPosGet(work->model, "g008m5_000-itemhook_S", &hookPosition);
     if (fn_80071A8C() == 6) {
         fn_1_20C(object, NULL);
@@ -2661,7 +2644,7 @@ void fn_1_BC10(OMOBJ *object)
         /* The display flag is cleared here, leaving the model visible above the playfield. */
         fn_80026A44(work->model, (1 << 0));
         work->rescueRequested = 0;
-        work->carryingRunner = 0;
+        work->unk18 = 0;
         fn_1_20C(object, fn_1_B21C);
         return;
     }

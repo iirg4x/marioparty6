@@ -41,7 +41,7 @@ void MinigameThreadOwner::setupObjects(OMOBJMAN *)
     s32 index;
 
     RandomSeed(OSGetTick());
-    this->dayMode = !GWMgNightFGet();
+    this->unk35C = !GWMgNightFGet();
 
     new CameraOwner();
     new ScoreDisplayOwner();

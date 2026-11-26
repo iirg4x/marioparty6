@@ -1,8 +1,6 @@
 /* Sequence callbacks and shared labels for the Ray of Fright minigame. */
 #include "REL/m633dll.h"
 
-#define M633_GAMEPLAY_BGM_ID 75
-
 MGSEQ_PARAM lbl_1_data_0 = {
     0, 0, fn_1_224, fn_1_310, fn_1_55C, fn_1_690, fn_1_AB0, fn_1_C78,
     fn_1_118C, fn_1_1284, fn_1_1288,
@@ -89,7 +87,7 @@ s32 fn_1_A0(s32 streamHandle, s32 bgmId)
     s32 result;
 
     result = streamHandle;
-    if (result == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
+    if (result == -1 && GameMesFXPlayCheck(fn_80071DF4()) != 0) {
         result = HuAudBGMPlay((s16) bgmId);
     }
     return result;
@@ -144,7 +142,7 @@ void fn_1_310(s16 mode, s16 frameNo)
     fn_1_6DE8();
     lbl_1_bss_0.segmentUpdateCountdown -= 1;
     if (lbl_1_bss_0.segmentReflectionSoundPending != 0) {
-        HuAudFXPlay(M633_SEGMENT_WALL_REFLECTION_SE_ID);
+        HuAudFXPlay(MSM_SE_MG633_SEGMENT_WALL_REFLECTION);
     }
     lbl_1_bss_0.segmentReflectionSoundPending = 0;
     fn_800856A8();
@@ -182,7 +180,7 @@ void fn_1_310(s16 mode, s16 frameNo)
  * then updates actors and character voice pan. */
 void fn_1_55C(s16 mode, s16 frameNo)
 {
-    lbl_1_bss_0.bgmHandle = fn_1_A0(lbl_1_bss_0.bgmHandle, M633_GAMEPLAY_BGM_ID);
+    lbl_1_bss_0.bgmHandle = fn_1_A0(lbl_1_bss_0.bgmHandle, 75);
     fn_800856A8();
     fn_1_140();
 }
@@ -228,7 +226,7 @@ void fn_1_690(s16 mode, s16 frameNo)
         playerNo += 1;
     }
     if (lbl_1_bss_0.segmentReflectionSoundPending != 0) {
-        HuAudFXPlay(M633_SEGMENT_WALL_REFLECTION_SE_ID);
+        HuAudFXPlay(MSM_SE_MG633_SEGMENT_WALL_REFLECTION);
     }
     fn_800856A8();
     fn_1_140();
@@ -410,11 +408,13 @@ void fn_1_118C(s16 mode, s16 frameNo)
     }
 }
 
+/* Empty phase callback after the player result motions. */
 void fn_1_1284(s16 mode, s16 frameNo)
 {
 
 }
 
+/* Empty final callback in the phase table. */
 void fn_1_1288(s16 mode, s16 frameNo)
 {
 

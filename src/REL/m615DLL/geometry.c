@@ -2,65 +2,15 @@
  * between points, segments and triangles. */
 #include "dolphin/types.h"
 #include "humath.h"
+#include "REL/m615DLL.h"
+#include "REL/m615DLL/geometry.h"
 #include "math.h"
 
-typedef struct M615Bounds {
-    HuVecF min;
-    HuVecF max;
-} M615Bounds;
-
-typedef struct M615Segment {
-    HuVecF start;
-    HuVecF delta;
-} M615Segment;
-
-typedef struct M615Capsule {
-    M615Segment segment;
-    f32 radius;
-} M615Capsule;
-
-typedef struct M615Triangle {
-    HuVecF start;
-    HuVecF edge1;
-    HuVecF edge2;
-} M615Triangle;
-
-typedef struct M615Box {
-    HuVecF center;
-    HuVecF axis[3];
-    f32 halfExtents[3];
-} M615Box;
-
-void fn_1_444(HuVecF *out, f32 x, f32 y, f32 z);
-f32 fn_1_574(const HuVecF *v);
-f32 fn_1_5A4(const HuVecF *a, const HuVecF *b);
-void fn_1_5D4(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-void fn_1_60C(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-void fn_1_644(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-f32 fn_1_67C(HuVecF *dst, const HuVecF *src);
-void fn_1_85C(HuVecF *dst, const HuVecF *src, f32 scale);
-
-f32 fn_1_14E8(HuVecF *queryPoint, M615Triangle *triangle,
-              f32 *barycentricS, f32 *barycentricT);
-
-void fn_1_A0C(M615Bounds *out, M615Capsule *capsule);
-void fn_1_BC4(M615Bounds *bounds, M615Triangle *triangle);
-void fn_1_E38(M615Bounds *out, M615Triangle *triangle);
-void fn_1_109C(M615Bounds *bounds, const M615Box *transform);
-s32 fn_1_1478(M615Bounds *a, M615Bounds *b);
 f32 fn_1_16F0(HuVecF *queryPoint, M615Triangle *triangle, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_181C(M615Segment *firstSegment, M615Segment *secondSegment, f32 *parameterAOut,
-              f32 *parameterBOut);
 f32 fn_1_2418(M615Segment *firstSegment, M615Segment *secondSegment, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f32 *triangleSOut, f32 *triangleTOut);
 f32 fn_1_4198(M615Segment *segment, M615Triangle *triangle, f32 *segmentTime, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_42CC(HuVecF *queryPoint, M615Triangle *triangle, f32 *barycentricSOut,
-              f32 *barycentricTOut);
 f32 fn_1_4B70(HuVecF *queryPoint, M615Triangle *triangle, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_4C9C(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut,
-              f32 *triangleSOut, f32 *triangleTOut);
 f32 fn_1_6308(M615Segment *segment, M615Triangle *triangle, f32 *segmentTime, f32 *firstParameter, f32 *secondParameter);
-float fn_1_643C(HuVecF *queryPoint, M615Segment *lineSegment);
 f32 fn_1_6534(HuVecF *queryPoint, M615Segment *lineSegment);
 f32 fn_1_6718(const HuVecF *position, const M615Box *box,
               f32 *closestX, f32 *closestY, f32 *closestZ);
@@ -84,8 +34,6 @@ f32 fn_1_8230(const M615Segment *line, const M615Box *box, f32 *time,
               f32 *closestX, f32 *closestY, f32 *closestZ);
 f64 fn_1_8BCC(const M615Segment *line, const M615Box *box, f32 *time,
                 f32 *closestX, f32 *closestY, f32 *closestZ);
-f32 fn_1_8D08(const M615Segment *line, const M615Box *box, f32 *time,
-                 f32 *closestX, f32 *closestY, f32 *closestZ);
 double fn_1_8EB0(const M615Segment *line, const M615Box *bounds, f32 *time,
                  f32 *closestX, f32 *closestY, f32 *closestZ);
 
@@ -593,6 +541,7 @@ f32 fn_1_2418(M615Segment *firstSegment, M615Segment *secondSegment, f32 *firstP
     return sqrtf(fn_1_181C(firstSegment, secondSegment, firstParameter, secondParameter));
 }
 
+/* Finds the closest points on a segment and triangle and returns their squared distance. */
 f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f32 *triangleSOut, f32 *triangleTOut)
 {
     M615Segment edge;
@@ -603,10 +552,9 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
     f32 negativeSegmentEdge1Minor, negativeSegmentEdge2Minor, determinant;
     f32 inverseDeterminant, offsetParameter, edge1Parameter, edge2Parameter;
     f32 candidateSegmentT, candidateTriangleS, candidateTriangleT;
-    f32 bestSegmentT, bestTriangleS, bestTriangleT, bestDistance, distance;
+    f32 bestDistance, distance;
     f32 candidateSegmentTResult, candidateTriangleSResult, candidateTriangleTResult;
     HuVecF queryCenter;
-    f32 intermediateValue;
     f32 edge1Minor, segmentEdgeProduct, edge2Minor, determinantMagnitude;
     fn_1_644(& offset, & triangle->start, & segment->start);
     segmentLengthSquared = fn_1_574(& segment->delta);

@@ -23,20 +23,10 @@
 #include "string.h"
 #include "math.h"
 
-#define M633_SEGMENT_SPAWN_SE_ID 1849 /* Effect played after the two moving segments launch from the
-                                       * nozzles. */
-#define M633_SEGMENT_WALL_REFLECTION_SE_ID 1850 /* Effect played after a segment reflects from the
-                                                 * arena wall. */
-#define M633_PLAYER_ELIMINATION_SE_ID 1851 /* Effect played when a moving segment or nozzle
-                                            * collision eliminates a player. */
-#define M633_ROTATION_CONTROL_SE_ID 1852 /* Effect held while exactly one rotation control is
-                                          * pressed. */
-
 /* Shared arena, player, camera, and sequence state used by the minigame callbacks. */
 typedef struct M633Segment {
     s32 endpointModelIndex; /* Model index for the segment's displayed effect. */
     s16 reflected; /* 0 while advancing; 1 after a wall reflection. */
-    unsigned char reservedSegmentBytes[2]; /* Alignment padding, not used by the minigame. */
     Point3d startPosition; /* Starting point used for segment collision checks. */
     Point3d direction; /* Direction used while extending the segment. */
     Point3d endPosition; /* Current moving endpoint in world coordinates. */
@@ -45,8 +35,7 @@ typedef struct M633Segment {
 typedef struct M633AI {
     s32 decisionCounter; /* Computer-player callback counter; negative values have callback-specific
                           * behavior. */
-    s32 reservedDecisionWord; /* Initialized to -1 but otherwise unused by the current
-                               * computer-player behavior. */
+    s32 unk04; /* The game's code never reads this field. */
     s32 decisionMode; /* Decision mode: fn_1_38C0 selects a target or random heading; fn_1_3FFC
                        * selects free movement or arena routing. */
     float targetHeadingDegrees; /* Target heading in degrees. */
@@ -57,16 +46,14 @@ typedef struct M633AI {
 
 typedef struct M633Work {
     HUPROCESS *workProcess; /* Object process that owns the minigame callbacks. */
-    unsigned char reservedWorkBytes[12]; /* Reserved bytes before the camera state; this module does
-                                         * not read them. */
+    unsigned char unk04[12]; /* No code names this field. */
     /* Camera motion IDs and the currently active motion are kept in this group. */
     s16 cameraMotionIds[4]; /* Motion resource IDs for the four sequence camera views. */
     s16 cameraModelIds[4]; /* Camera model handles created from the corresponding motion. */
     s16 activeCameraModelId; /* Camera model currently driving camera 1, or -1 when none is
                               * active. */
-    unsigned char reservedCameraBytes[2]; /* Alignment padding before camera motion timing. */
-    float cameraMotionTime; /* Current active camera motion time in frames. */
-    float cameraMotionMaxTime; /* Total duration of the active camera motion in frames. */
+    float unk24; /* The game's code never reads this field. */
+    float unk28; /* The game's code never reads this field. */
     MGTIMER *timer; /* Round timer displayed during play. */
     OMOBJ *object; /* Stage object that owns the shared arena model and motions. */
     /* Handles for the four arena models switched by phase transitions. */
@@ -87,7 +74,6 @@ typedef struct M633Work {
     OMOBJ *playerObjects[4]; /* Per-player objects whose callbacks change with the round state. */
     u16 previousRotationButtonMask; /* Previous L/R rotation-button mask, compared with the current
                                    * mask to detect changes. */
-    unsigned char reservedWinnerBytes[2]; /* Alignment padding before result flags. */
     s32 winnerFlags[4]; /* Winner flags consumed by the results motion callback. */
     s32 segmentCount; /* Number of live arena segments. */
     s32 arenaPhase; /* Arena animation phase selected by fn_1_70A8. */

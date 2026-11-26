@@ -14,8 +14,7 @@ typedef struct M629Impulse {
 typedef struct M629Player {
     s32 index; /* Actor slot: zero is the solo player; one through three are opponents. */
     s32 playerNo; /* Player configuration slot used for input, vibration, and coin awards. */
-    s32 remappedCharNo; /* Character number with IDs 11 and above mapped to 9; not used by these
-                         * callbacks. */
+    s32 unk08; /* The game's code never reads this field. */
     s32 charNo; /* Character ID from the player's game configuration. */
     s32 padNo; /* Controller port, or -1 when this actor is CPU-controlled. */
     s32 difficulty; /* CPU difficulty index, from zero through three. */
@@ -471,30 +470,32 @@ void fn_1_9E8(OMOBJ *obj)
                     fn_8002CCC0(obj->mdlId[0], obj->mtnId[1], lbl_1_data_80[1],
                         lbl_1_data_74[1], lbl_1_data_6A[1] ? 0 : ((1 << 30) | (1 << 0)));
                 }
-                if (work->motion == 1) {
+                if (work->motion != 1) {
+                    break;
+                }
+                /* Fall through when a jump starts. */
             case 1:
-                    /* Releasing A caps upward speed at 12 before gravity; after frame zero, an A/L
-                     * press below that speed starts the stomp windup. */
-                    if (held == 0 && work->velocityY >= 12.0f) {
-                        work->velocityY = 12.0f;
-                    }
-                    work->velocityY += -1.5f;
-                    obj->trans.y += work->velocityY;
-                    if (obj->trans.y <= groundY) {
-                        work->motion = 2;
-                        work->frame = 0;
-                        obj->trans.y = groundY;
-                        work->velocityY = 0.0f;
-                        fn_8002CCC0(obj->mdlId[0], obj->mtnId[2], lbl_1_data_80[2],
-                            lbl_1_data_74[2], lbl_1_data_6A[2] ? 0 : ((1 << 30) | (1 << 0)));
-                    } else if (work->velocityY < 12.0f && (pressed | trigger) != 0 &&
-                               work->frame > 0) {
-                        work->motion = 3;
-                        work->frame = 0;
-                        work->velocityY = 0.0f;
-                        fn_8002CCC0(obj->mdlId[0], obj->mtnId[3], lbl_1_data_80[3],
-                            lbl_1_data_74[3], lbl_1_data_6A[3] ? 0 : ((1 << 30) | (1 << 0)));
-                    }
+                /* Releasing A caps upward speed at 12 before gravity; after frame zero, an A/L
+                 * press below that speed starts the stomp windup. */
+                if (held == 0 && work->velocityY >= 12.0f) {
+                    work->velocityY = 12.0f;
+                }
+                work->velocityY += -1.5f;
+                obj->trans.y += work->velocityY;
+                if (obj->trans.y <= groundY) {
+                    work->motion = 2;
+                    work->frame = 0;
+                    obj->trans.y = groundY;
+                    work->velocityY = 0.0f;
+                    fn_8002CCC0(obj->mdlId[0], obj->mtnId[2], lbl_1_data_80[2],
+                        lbl_1_data_74[2], lbl_1_data_6A[2] ? 0 : ((1 << 30) | (1 << 0)));
+                } else if (work->velocityY < 12.0f && (pressed | trigger) != 0 &&
+                           work->frame > 0) {
+                    work->motion = 3;
+                    work->frame = 0;
+                    work->velocityY = 0.0f;
+                    fn_8002CCC0(obj->mdlId[0], obj->mtnId[3], lbl_1_data_80[3],
+                        lbl_1_data_74[3], lbl_1_data_6A[3] ? 0 : ((1 << 30) | (1 << 0)));
                 }
                 break;
             case 3:
@@ -746,11 +747,22 @@ void fn_1_1F90(OMOBJ *obj)
     }
 }
 
+/* Empty fade-in hook. */
 void fn_1_3324(s16 mode, s16 frameNo) {}
+
+/* Empty start hook. */
 void fn_1_3328(s16 mode, s16 frameNo) {}
+
+/* Empty main-sequence hook. */
 void fn_1_332C(s16 mode, s16 frameNo) {}
+
+/* Empty finish hook. */
 void fn_1_3330(s16 mode, s16 frameNo) {}
+
+/* Empty hook before announcing the winner. */
 void fn_1_3334(s16 mode, s16 frameNo) {}
+
+/* Empty winner hook. */
 void fn_1_3338(s16 mode, s16 frameNo) {}
 
 /* Fade-out hook: requests advance at frame 60 if called that late; the default phase ends before
@@ -814,7 +826,7 @@ void fn_1_336C(OMOBJ *obj)
         break;
     case 3:
         /* Begin the music once the start banner has played its sound cue. */
-        if (lbl_1_data_B4 == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
+        if (lbl_1_data_B4 == -1 && GameMesFXPlayCheck(fn_80071DF4())) {
             lbl_1_data_B4 = HuAudBGMPlay(MSM_STREAM_UPBEAT);
         }
         break;
@@ -842,7 +854,7 @@ void fn_1_336C(OMOBJ *obj)
     case 6:
         lbl_1_bss_14[0] = 2;
         /* Fade the music once the finish banner has played its sound cue. */
-        if (lbl_1_data_B4 != -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
+        if (lbl_1_data_B4 != -1 && GameMesFXPlayCheck(fn_80071DF4())) {
             HuAudSStreamFadeOut(lbl_1_data_B4, 100);
             lbl_1_data_B4 = -1;
         }
@@ -937,7 +949,7 @@ void fn_1_3C8C(OMOBJ *obj)
         playerState->playerNo = playerState->index;
     }
     playerState->charNo = lbl_80265728[playerState->playerNo].charNo;
-    playerState->remappedCharNo = playerState->charNo >= 11 ? 9 : playerState->charNo;
+    playerState->unk08 = playerState->charNo >= 11 ? 9 : playerState->charNo;
     playerState->padNo = lbl_80265728[playerState->playerNo].type
         ? -1 : lbl_80265728[playerState->playerNo].padNo;
     playerState->difficulty = playerState->padNo != -1

@@ -14,9 +14,10 @@
 #include "game/thpmain.h"
 #include "game/frand.h"
 #include "datadir_enum.h"
+#include "dolphin/gx.h"
 
-#define TOURNAMENT_PREVIEW_CAPTURE_WIDTH 284
-#define TOURNAMENT_PREVIEW_CAPTURE_HEIGHT 256
+
+
 
 HU3D_MODELID lbl_1_bss_A4; /* Hook model positioning the framed preview in the scene. */
 HUSPR_GROUPID lbl_1_bss_A2; /* One-member group containing the movie sprite. */
@@ -49,8 +50,8 @@ HU3D_MODELID fn_1_0(s16 gameNo, s16 timeOfDay, Point3d *position) {
         1.0f,
         1.0f,
         1.0f);
-    lbl_1_bss_9C = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0xa10000, 27), 0x10000000, 2));
+    lbl_1_bss_9C = HuSprAnimDataRead(
+        DATANUM(0xa10000, 27));
     lbl_1_bss_A2 = HuSprGrpCreate(1);
 
     if (gameNo != -1) {
@@ -72,8 +73,8 @@ HU3D_MODELID fn_1_0(s16 gameNo, s16 timeOfDay, Point3d *position) {
     }
 
     lbl_1_bss_94 = HuMemDirectMallocNum(
-        0, GXGetTexBufferSize(TOURNAMENT_PREVIEW_CAPTURE_WIDTH,
-                            TOURNAMENT_PREVIEW_CAPTURE_HEIGHT, GX_TF_RGB565, 0, 0),
+        0, GXGetTexBufferSize(284,
+                            256, GX_TF_RGB565, 0, 0),
         0x10000000);
     fn_8002583C((1 << 0), 0, fn_1_854);
     return lbl_1_bss_A4;
@@ -86,7 +87,7 @@ void fn_1_2A4(s16 gameCount, u8 *gameOrder) {
     lbl_1_bss_88 = 0;
     lbl_1_bss_0 = gameCount;
     lbl_1_bss_8C = HuMemDirectMallocNum(
-        0, gameCount * sizeof(ANIMDATA *) * 2, 0x10000000);
+        0, gameCount * sizeof(*lbl_1_bss_8C) * 2, 0x10000000);
     for (gameIndex = 0; gameIndex < lbl_1_bss_0; gameIndex++) {
         lbl_1_bss_2[gameIndex] = gameOrder[gameIndex];
         lbl_1_bss_8C[gameIndex * 2] = HuSprAnimRead(
@@ -194,8 +195,8 @@ void fn_1_824(void) {
 
 /* Camera zero's layer-zero hook captures the top-left movie image for the framed preview. */
 void fn_1_854(s16 layerNo) {
-    fn_8002BCDC(0, 0, TOURNAMENT_PREVIEW_CAPTURE_WIDTH,
-                  TOURNAMENT_PREVIEW_CAPTURE_HEIGHT, GX_TF_RGB565, 0, lbl_1_bss_94);
+    fn_8002BCDC(0, 0, 284,
+                  256, GX_TF_RGB565, 0, lbl_1_bss_94);
 }
 
 /* The preview model's draw hook renders the movie capture or still image inside its frame. */
@@ -210,13 +211,15 @@ void fn_1_898(HU3D_MODEL *model, Mtx *matrix)
     GXSetCullMode(GX_CULL_NONE);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
-    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 1, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+                  GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+                  GX_DF_CLAMP, GX_AF_SPOT);
     GXSetNumChans(0);
-    GXLoadPosMtxImm(*matrix, 0);
+    GXLoadPosMtxImm(*matrix, GX_PNMTX0);
     if (HuTHPStartCheck() != 0) {
-        fn_800360D8(lbl_1_bss_94, TOURNAMENT_PREVIEW_CAPTURE_WIDTH,
-                    TOURNAMENT_PREVIEW_CAPTURE_HEIGHT, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_TRUE,
+        fn_800360D8(lbl_1_bss_94, 284,
+                    256, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_TRUE,
                     GX_TEXMAP0);
     } else {
         HuSprTexLoad(lbl_1_bss_98, 0, 0, 0, 0, 1);

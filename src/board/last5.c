@@ -36,7 +36,7 @@ void mbGuideMotionStop(OMOBJ *obj);
 BOOL mbGuideMotionCheck(OMOBJ *obj);
 int mbGuideSpeakerNoGet(void);
 
-MBMODELID mbObjCreate(int dataNum, int *motData, BOOL link);
+MBMODELID mbObjCreate(int dataNum, const int *motFileTbl, BOOL animOffF);
 BOOL mbObjMotionEndCheck(int modelId);
 void mbObjMotionSet(int modelId, int motNo, u32 attr);
 void mbObjMotionShiftSet(int modelId, int motNo, float start, float end,

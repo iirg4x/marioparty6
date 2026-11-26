@@ -45,12 +45,12 @@ SceneOwner::SceneOwner()
 {
     updateCount = 0;
     phaseStarted = 0;
-    sceneState = 0;
-    delayFrames = 0x2D;
+    unk30 = 0;
+    delayFrames = 45;
     completedSegments = 0;
     segmentPosition = 0.0f;
     sceneIndex = 0;
-    unusedValue = 0;
+    unk368 = 0;
     soundActive = 0;
 
     model0.setAttribute(1);
@@ -195,10 +195,10 @@ void SceneOwner::fn_1_1058()
         phaseStarted = 1;
         updateCount = 0;
     }
-    if (sceneIndex < 0x18) {
+    if (sceneIndex < 24) {
         fn_1_E00();
     }
-    if ((delayFrames = delayFrames - 1) > 0) {
+    if (--delayFrames > 0) {
         lbl_1_bss_AC = 0.0f;
         return;
     }
@@ -211,10 +211,10 @@ void SceneOwner::fn_1_1058()
         segmentPosition = 0.0f;
         switch (completedSegments) {
         case 0:
-            delayFrames = 0xB4;
+            delayFrames = 180;
             break;
         default:
-            delayFrames = 0x2D;
+            delayFrames = 45;
             break;
         }
         completedSegments++;
@@ -338,6 +338,7 @@ void ModelEntry::fn_1_1CF4()
     }
 }
 
+// Returns the first inactive entry in reach for this lane.
 ModelEntry *fn_1_1DB8(s32 ownerId)
 {
     ModelEntry *current = lbl_1_bss_40.front();
@@ -792,7 +793,7 @@ void FourModelOwner::fn_1_40A0()
     case 0:
         if ((scale += 0.1f) > 1.0f) {
             scale = 1.0f;
-            unusedValue = 0;
+            unk34 = 0;
             fn_8002C95C(model0, lbl_1_bss_B2);
             attributeModelIdForCalls = model3;
             fn_80026A44(attributeModelIdForCalls, ((1 << 30) | (1 << 1)));
@@ -922,23 +923,7 @@ void MovingPair::fn_1_49CC()
 /* Scrolls and places both models, updates visibility and deletes the pair offscreen. */
 void MovingPair::fn_1_4A70()
 {
-    Vec position;
-    frameData.x += lbl_1_bss_AC;
-    position.x = frameData.x;
-    position.y = frameData.y;
-    position.z = frameData.z;
-    frontModel.setPosition(&position);
-    backModel.setPosition(&position);
-    if (frameData.x > 0.0f) {
-        fn_1_1978(frontModel, &frameData, initialized);
-        fn_800269E8(backModel, 1);
-    } else {
-        fn_1_1978(backModel, &frameData, 0);
-        fn_800269E8(frontModel, 1);
-    }
-    if (frameData.x > 550.0f && lbl_1_bss_B4 == requestId) {
-        delete this;
-    }
+    fn_1_46CC();
 }
 
 /* Runs the object stored member callback. */

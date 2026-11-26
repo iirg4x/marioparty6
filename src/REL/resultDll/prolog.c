@@ -1,7 +1,8 @@
 /* Runs result setup before the results overlay starts. */
+#include "REL/resultDll.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
-void ObjectSetup(void);
 
 /* Runs setup functions before the results overlay begins. */
 int _prolog(void) {

@@ -49,7 +49,7 @@ extern f32 fn_1_25E0(ComputerControl *, s32);
 extern f32 fn_1_2658(ComputerControl *, s32);
 extern f32 fn_1_26D0(ComputerControl *, s32);
 extern f32 fn_1_2748(ComputerControl *, s32);
-
+/* Initializes the computer player's steering and installs its update. */
 ComputerControl::ComputerControl(Player *player, int option) : Controller(player)
 {
     this->unk44 = option;

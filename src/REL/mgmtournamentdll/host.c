@@ -12,8 +12,7 @@
 #include "datadir_enum.h"
 #include "msm_se.h"
 #include "REL/mgmtournamentdll/module_types.h"
-
-#define HOST_MOTION_BLEND_FRAMES 8.0f
+#include "humath.h"
 
 OMOBJ *lbl_1_bss_100;
 u32 lbl_1_bss_FC;
@@ -52,20 +51,13 @@ void fn_1_5154(void) {
     lbl_1_bss_100->work[3] = 1;
     lbl_1_bss_FC = 1;
     lbl_1_bss_100->stat |= (1 << 8);
-    *lbl_1_bss_100->mdlId = fn_80025A04(
-        fn_80008DD0(DATANUM(0xa10000, 28), 0x10000000, 2));
+    *lbl_1_bss_100->mdlId = fn_80025A04( fn_80008DD0(DATANUM(0xa10000, 28), 0x10000000, 2));
     fn_80026B64(*lbl_1_bss_100->mdlId, 1);
     fn_80026B8C(*lbl_1_bss_100->mdlId, 2);
-    fn_80026790(
-        *lbl_1_bss_100->mdlId,
-        &lbl_1_data_440[lbl_1_bss_100->work[2]]);
+    fn_80026790( *lbl_1_bss_100->mdlId, &lbl_1_data_440[lbl_1_bss_100->work[2]]);
     lbl_1_bss_F0 = lbl_1_data_440[lbl_1_bss_100->work[2]];
     fn_800269E8(*lbl_1_bss_100->mdlId, ((1 << 30) | (1 << 0)));
-    fn_800268B0(
-        *lbl_1_bss_100->mdlId,
-        1.2f,
-        1.2f,
-        1.2f);
+    fn_800268B0( *lbl_1_bss_100->mdlId, 1.2f, 1.2f, 1.2f);
     Hu3DLLightCreate(
         *lbl_1_bss_100->mdlId,
         0.0f,
@@ -77,23 +69,19 @@ void fn_1_5154(void) {
         204,
         204,
         204);
-    lbl_1_bss_100->mdlId[1] = fn_80025A04(
-        fn_80008DD0(DATANUM(0xa10000, 32), 0x10000000, 2));
+    lbl_1_bss_100->mdlId[1] = fn_80025A04( fn_80008DD0(DATANUM(0xa10000, 32), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_100->mdlId[1], 1);
     fn_80026B8C(lbl_1_bss_100->mdlId[1], 2);
     fn_8002741C(
         *lbl_1_bss_100->mdlId, "f-itemhook_R", lbl_1_bss_100->mdlId[1]);
     fn_800269E8(lbl_1_bss_100->mdlId[1], ((1 << 30) | (1 << 0)));
-    *lbl_1_bss_100->mtnId = fn_80030458(
-        *lbl_1_bss_100->mdlId,
-        fn_80008DD0(DATANUM(0xa10000, 29), 0x10000000, 2));
+    *lbl_1_bss_100->mtnId =
+        fn_80030458( *lbl_1_bss_100->mdlId, fn_80008DD0(DATANUM(0xa10000, 29), 0x10000000, 2));
     fn_8002C95C(*lbl_1_bss_100->mdlId, *lbl_1_bss_100->mtnId);
-    lbl_1_bss_100->mtnId[1] = fn_80030458(
-        *lbl_1_bss_100->mdlId,
-        fn_80008DD0(DATANUM(0xa10000, 30), 0x10000000, 2));
-    lbl_1_bss_100->mtnId[2] = fn_80030458(
-        *lbl_1_bss_100->mdlId,
-        fn_80008DD0(DATANUM(0xa10000, 31), 0x10000000, 2));
+    lbl_1_bss_100->mtnId[1] =
+        fn_80030458( *lbl_1_bss_100->mdlId, fn_80008DD0(DATANUM(0xa10000, 30), 0x10000000, 2));
+    lbl_1_bss_100->mtnId[2] =
+        fn_80030458( *lbl_1_bss_100->mdlId, fn_80008DD0(DATANUM(0xa10000, 31), 0x10000000, 2));
 }
 
 /* Scene setup places the host at the station selected for the current tournament mode. */
@@ -112,8 +100,7 @@ void fn_1_5590(void)
         lbl_1_bss_100->work[2] = 11;
     }
 
-    fn_80026790(lbl_1_bss_100->mdlId[0],
-                     &lbl_1_data_440[lbl_1_bss_100->work[2]]);
+    fn_80026790(lbl_1_bss_100->mdlId[0], &lbl_1_data_440[lbl_1_bss_100->work[2]]);
     lbl_1_bss_F0 = lbl_1_data_440[lbl_1_bss_100->work[2]];
 }
 
@@ -243,8 +230,7 @@ void fn_1_5B84(OMOBJ *object)
         if (object->work[1] == 1) {
             if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
                 (object->mtnId[2] != fn_8002D3C4(object->mdlId[0]))) {
-                fn_8002CCC0(object->mdlId[0], object->mtnId[2], 0.0f,
-                                   HOST_MOTION_BLEND_FRAMES, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(object->mdlId[0], object->mtnId[2], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 fn_8002D86C(object->mdlId[0], 1.0f);
                 object->work[0] = 0;
             }
@@ -256,12 +242,11 @@ void fn_1_5B84(OMOBJ *object)
                  (fn_8002D4E0(object->mdlId[0]) == 54.0f) ||
                  (fn_8002D4E0(object->mdlId[0]) == 70.0f))) {
                 /* The looping reaction repeats its cue at these five animation frames. */
-                HuAudFXPlay(940);
+                HuAudFXPlay(MSM_SE_GUIDE_NIGHT_CHEER);
             }
         } else if (fn_8002D3EC(object->mdlId[0]) < 0) {
             fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
-            fn_8002CCC0(object->mdlId[0], object->mtnId[0], 0.0f,
-                               HOST_MOTION_BLEND_FRAMES, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(object->mdlId[0], object->mtnId[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             fn_8002D86C(object->mdlId[0], 1.0f);
             object->work[1] = 0;
             object->work[0] = 0;
@@ -269,8 +254,7 @@ void fn_1_5B84(OMOBJ *object)
     } else if (object->work[0] != 0) {
         if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
             (object->mtnId[1] != fn_8002D3C4(object->mdlId[0]))) {
-            fn_8002CCC0(object->mdlId[0], object->mtnId[1], 0.0f,
-                               HOST_MOTION_BLEND_FRAMES, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(object->mdlId[0], object->mtnId[1], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             fn_8002D86C(object->mdlId[0], 2.0f);
             return;
         }
@@ -279,8 +263,7 @@ void fn_1_5B84(OMOBJ *object)
             motionMaxTime = fn_8002D530(object->mdlId[0]);
             if ((lbl_802C01C8[object->mdlId[0]].motWork.speed + fn_8002D4E0(object->mdlId[0])) >=
                 motionMaxTime) {
-                fn_8002CCC0(object->mdlId[0], object->mtnId[0], 0.0f,
-                                   HOST_MOTION_BLEND_FRAMES, ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(object->mdlId[0], object->mtnId[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 fn_8002D86C(object->mdlId[0], 1.0f);
                 object->work[0] = 0;
             }
@@ -302,9 +285,7 @@ void fn_1_60F8(Vec *interpolatedPosition, const Vec *beforeStart,
     sampleTimes[3] = 2.0f * durationFrames;
     /* Ease the movement with a quarter sine wave so it slows near the destination. */
     elapsedFrames = (f32)((f64)durationFrames *
-        sin((3.141592653589793 *
-            (f64)(90.0f * (elapsedFrames / durationFrames))) /
-            180.0));
+        sin((M_PI * (f64)(90.0f * (elapsedFrames / durationFrames))) / 180.0));
 
     axisSamples[0] = beforeStart->x;
     axisSamples[1] = startPosition->x;

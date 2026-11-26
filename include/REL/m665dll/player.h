@@ -80,15 +80,14 @@ typedef struct M665PlayerWork {
     } status;
     f32 speed; /* Main-vehicle horizontal speed, or an eliminated opponent's upward speed. */
     M665MovementCallback movement; /* Current movement update function. */
-    s16 movementIndex; /* Index into the movement-function table. */
+    s16 unk6C; /* The game's code never reads this field. */
     s16 movementFrames; /* Frames before the next movement decision. */
     f32 movementAngle; /* Movement direction in degrees. */
     s16 movementOverride; /* Forces the alternate movement routine when nonzero. */
     s16 selectedStage; /* Selected forward or backward stage index. */
-    u8 unreadBeforeMotionSpeed[4]; /* Unread byte storage before the vehicle-motion playback
-                                    * speed. */
+    u8 unk78[4]; /* No code names this field. */
     f32 motionSpeed; /* Vehicle-motion playback speed used for sound timing. */
-    u8 unreadBeforePlayerIndex[2]; /* Unread byte storage before the player-configuration index. */
+    u8 unk80[2]; /* No code names this field. */
     s16 playerIndex; /* Player-configuration index. */
     s16 groupIndex; /* Index among the three non-main players. */
     s16 character; /* Character ID from player configuration. */
@@ -104,6 +103,7 @@ void fn_1_1FFC(void);
 void fn_1_2058(s16 motion, f32 blendDuration);
 void fn_1_4768(void);
 s32 fn_1_4FA4(Vec *position);
+s32 fn_1_50D4();
 void fn_1_50DC(void);
 void fn_1_51F8(void);
 void fn_1_53C0(void);

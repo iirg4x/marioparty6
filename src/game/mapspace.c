@@ -7,7 +7,12 @@
 
 #undef HuSetVecF
 
-void MapWallCheck(float *worldSphere, float *localSphere, HSF_MAPATTR *mapAttribute);
+typedef struct MapSphere {
+    HuVecF center;
+    float radius;
+} MAP_SPHERE;
+
+void MapWallCheck(MAP_SPHERE *worldSphere, MAP_SPHERE *localSphere, HSF_MAPATTR *mapAttribute);
 BOOL Hitcheck_Triangle_with_Sphere(HuVecF *triangle, HuVecF *sphereCenter, float sphereRadius,
                                    HuVecF *closestPoint);
 BOOL Hitcheck_Quadrangle_with_Sphere(HuVecF *quadrangle, HuVecF *sphereCenter, float sphereRadius,
@@ -18,15 +23,15 @@ void CharRotInv(Mtx matrix, Mtx inverseMatrix, HuVecF *point, OMOBJ *object);
 static BOOL PolygonRangeCheck(HSF_MAPATTR *mapAttribute, float x, float z, float *heightOut,
                               float worldHeightLimit);
 static s32 DefIfnnerMapCircle(HuVecF *point, s16 *polygonData, HuVecF *vertices, HuVecF *direction);
-static s32 CalcPPLength(float *sphere, s16 *polygonData, HuVecF *vertices);
+static s32 CalcPPLength(MAP_SPHERE *sphere, s16 *polygonData, HuVecF *vertices);
 static float MapIflnnerCalc(float x, float y, float z, HuVecF *edgeStart, HuVecF *edgeEnd,
                             HuVecF *direction);
 static float MapCalcPoint(float x, float y, float z, HuVecF *vertices, u16 *polygonData);
 static BOOL AreaCheck(float x, float z, u16 *polygonData, HuVecF *vertices);
 static s32 MapIflnnerTriangle(float x, float z, u16 *polygonData, HuVecF *vertices);
 static s32 MapIflnnerQuadrangle(float x, float z, u16 *polygonData, HuVecF *vertices);
-BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
-                                float *localSphere);
+BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, MAP_SPHERE *worldSphere,
+                                MAP_SPHERE *localSphere);
 s32 PrecalcPntToTriangle(HuVecF *triangleOrigin, HuVecF *firstEdge, HuVecF *secondEdge,
                                 HuVecF *faceNormal, HuVecF *relativePoint, HuVecF *closestOffset);
 static void DefSetHitFace(float x, float y, float z);
@@ -69,8 +74,8 @@ s32 ColisionCount;
 // Contacts and containment indices are reset separately for each registered map object.
 void MapWall(float radius, float worldX, float worldY, float worldZ)
 {
-    float worldSphere[4]; // World X, Y, Z followed by the query radius.
-    float localSphere[4]; // Object-space center followed by the unchanged radius.
+    MAP_SPHERE worldSphere; // World X, Y, Z followed by the query radius.
+    MAP_SPHERE localSphere; // Object-space center followed by the unchanged radius.
     float queryRadius;
     float localX;
     float localZ;
@@ -86,12 +91,12 @@ void MapWall(float radius, float worldX, float worldY, float worldZ)
     for (objectIndex = 0; objectIndex < nMap; objectIndex++) {
         mapObject = MapObject[objectIndex];
         modelId = MapObject[objectIndex]->mdlId[0];
-        localSphere[0] = worldSphere[0] = worldX;
-        localSphere[1] = worldSphere[1] = worldY;
-        localSphere[2] = worldSphere[2] = worldZ;
-        localSphere[3] = worldSphere[3] = radius;
-        queryRadius = worldSphere[3];
-        CharRotInv(MapMT, MapMTR, (HuVecF *)localSphere, mapObject);
+        localSphere.center.x = worldSphere.center.x = worldX;
+        localSphere.center.y = worldSphere.center.y = worldY;
+        localSphere.center.z = worldSphere.center.z = worldZ;
+        localSphere.radius = worldSphere.radius = radius;
+        queryRadius = worldSphere.radius;
+        CharRotInv(MapMT, MapMTR, &localSphere.center, mapObject);
         ColisionCount = 0;
         HitFaceCount = 0;
         mapModel = &lbl_802C01C8[modelId];
@@ -101,22 +106,23 @@ void MapWall(float radius, float worldX, float worldY, float worldZ)
         mapAttribute = mapData->mapAttr;
         for (attributeIndex = 0; attributeIndex < mapData->mapAttrNum;
              attributeIndex++, mapAttribute++) {
-            localX = localSphere[0];
-            localZ = localSphere[2];
-            localSphere[3] = radius;
+            localX = localSphere.center.x;
+            localZ = localSphere.center.z;
+            localSphere.radius = radius;
             if (mapAttribute->minX <= localX + queryRadius &&
                 mapAttribute->maxX > localX - queryRadius &&
                 mapAttribute->minZ <= localZ + queryRadius &&
                 mapAttribute->maxZ > localZ - queryRadius) {
-                MapWallCheck(worldSphere, localSphere, mapAttribute);
+                MapWallCheck(&worldSphere, &localSphere, mapAttribute);
             }
         }
     }
 }
 
-// Called by MapWall for each nearby map-attribute block; visits its flagged wall polygons.
-// Both sphere arrays contain X, Y, Z and radius; correction is shared across polygon tests.
-void MapWallCheck(float *worldSphere, float *localSphere, HSF_MAPATTR *mapAttribute) {
+// MapWall calls this for each nearby map-attribute block to test its flagged wall polygons.
+// The world- and object-space sphere records hold a center and radius.
+// Polygon tests accumulate a shared correction.
+void MapWallCheck(MAP_SPHERE *worldSphere, MAP_SPHERE *localSphere, HSF_MAPATTR *mapAttribute) {
     u32 dataOffset;
     u16 polygonHeader;
     u16 *polygonData;
@@ -443,7 +449,7 @@ static inline void MapspaceInlineFunc01(HuVecF *normalOut, HuVecF *origin, HuVec
 
 // Called by GetPolygonCircleMtx to reject unflagged or distant wall planes and project the sphere
 // center onto the plane. Returns zero for rejection, otherwise minus one or one for its side.
-static s32 CalcPPLength(float *sphere, s16 *polygonData, HuVecF *vertices) {
+static s32 CalcPPLength(MAP_SPHERE *sphere, s16 *polygonData, HuVecF *vertices) {
     HuVecF *planePoint;
     HuVecF faceNormal;
     float projectionDistance; // Signed displacement from the sphere center to the wall plane.
@@ -475,22 +481,22 @@ static s32 CalcPPLength(float *sphere, s16 *polygonData, HuVecF *vertices) {
     planeX = planePoint->x;
     planeY = planePoint->y;
     planeZ = planePoint->z;
-    pointOffsetX = planeX - sphere[0];
-    pointOffsetY = planeY - sphere[1];
-    pointOffsetZ = planeZ - sphere[2];
+    pointOffsetX = planeX - sphere->center.x;
+    pointOffsetY = planeY - sphere->center.y;
+    pointOffsetZ = planeZ - sphere->center.z;
     signedDistance =
         faceNormal.x * pointOffsetX + faceNormal.y * pointOffsetY + faceNormal.z * pointOffsetZ;
     if (signedDistance >= 0.0f) {
         planeSide = 1;
     }
-    if (fabs(signedDistance) > sphere[3]) {
+    if (fabs(signedDistance) > sphere->radius) {
         return 0;
     }
     projectionDistance =
         faceNormal.x * pointOffsetX + faceNormal.y * pointOffsetY + faceNormal.z * pointOffsetZ;
-    sphere[0] += faceNormal.x * projectionDistance;
-    sphere[1] += faceNormal.y * projectionDistance;
-    sphere[2] += faceNormal.z * projectionDistance;
+    sphere->center.x += faceNormal.x * projectionDistance;
+    sphere->center.y += faceNormal.y * projectionDistance;
+    sphere->center.z += faceNormal.z * projectionDistance;
     return planeSide;
 }
 
@@ -729,7 +735,7 @@ static s32 MapIflnnerQuadrangle(float x, float z, u16 *polygonData, HuVecF *vert
 
 // Called by GetPolygonCircleMtx after transforming OldXYZ to object coordinates; returns the
 // saved point's side of the plane through the first three polygon vertices.
-static inline s32 MapspaceInlineFunc03(float *sphere, s16 *vertexIndices, HuVecF *vertices) {
+static inline s32 MapspaceInlineFunc03(MAP_SPHERE *sphere, s16 *vertexIndices, HuVecF *vertices) {
     HuVecF faceNormal;
     HuVecF *planePoint;
     float pointOffsetX;
@@ -745,9 +751,9 @@ static inline s32 MapspaceInlineFunc03(float *sphere, s16 *vertexIndices, HuVecF
     pointOffsetX = planePoint->x;
     pointOffsetY = planePoint->y;
     pointOffsetZ = planePoint->z;
-    pointOffsetX -= sphere[0];
-    pointOffsetY -= sphere[1];
-    pointOffsetZ -= sphere[2];
+    pointOffsetX -= sphere->center.x;
+    pointOffsetY -= sphere->center.y;
+    pointOffsetZ -= sphere->center.z;
     signedDistance =
         faceNormal.x * pointOffsetX + faceNormal.y * pointOffsetY + faceNormal.z * pointOffsetZ;
     return (signedDistance < 0.0f) ? -1 : 1;
@@ -755,12 +761,12 @@ static inline s32 MapspaceInlineFunc03(float *sphere, s16 *vertexIndices, HuVecF
 
 // Called by MapWallCheck for one wall polygon; tests sphere overlap, records the contact and
 // accumulates horizontal separation. A positive plane-side result also checks OldXYZ.
-BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
-                                float *localSphere) {
+BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, MAP_SPHERE *worldSphere,
+                                MAP_SPHERE *localSphere) {
     HuVecF quadrangle[4];
     HuVecF triangle[3];
-    float projectedSphere[4]; // Object-space projected center and radius; later holds OldXYZ.
-    float querySphere[4]; // Corrected local sphere, later replaced with its world-space center.
+    MAP_SPHERE projectedSphere; // Object-space projected center and radius; later holds OldXYZ.
+    MAP_SPHERE querySphere; // Corrected local sphere, later replaced with its world-space center.
     float contactOffsetX;
     float contactOffsetZ;
     float pushDistance;
@@ -775,12 +781,12 @@ BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
     Mtx normalMatrix;
 
     unusedCounter = 0;
-    querySphere[0] = projectedSphere[0] = localSphere[0] + MTRAdd.x;
-    querySphere[1] = projectedSphere[1] = localSphere[1];
-    querySphere[2] = projectedSphere[2] = localSphere[2] + MTRAdd.z;
-    querySphere[3] = projectedSphere[3] = localSphere[3];
+    querySphere.center.x = projectedSphere.center.x = localSphere->center.x + MTRAdd.x;
+    querySphere.center.y = projectedSphere.center.y = localSphere->center.y;
+    querySphere.center.z = projectedSphere.center.z = localSphere->center.z + MTRAdd.z;
+    querySphere.radius = projectedSphere.radius = localSphere->radius;
     vertexIndices = polygonData + 1;
-    if ((planeSide = CalcPPLength(projectedSphere, polygonData, vertices)) == 0) {
+    if ((planeSide = CalcPPLength(&projectedSphere, polygonData, vertices)) == 0) {
         return 0;
     }
     closestPoint.x = closestPoint.y = closestPoint.z = 0.0f;
@@ -797,8 +803,8 @@ BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
         quadrangle[3].x = vertices[vertexIndices[3]].x;
         quadrangle[3].y = vertices[vertexIndices[3]].y;
         quadrangle[3].z = vertices[vertexIndices[3]].z;
-        overlaps = Hitcheck_Quadrangle_with_Sphere(quadrangle, (HuVecF *) querySphere,
-                                                   projectedSphere[3], &closestPoint);
+        overlaps = Hitcheck_Quadrangle_with_Sphere(quadrangle, &querySphere.center,
+                                                   projectedSphere.radius, &closestPoint);
     } else {
         triangle[0].x = vertices[vertexIndices[0]].x;
         triangle[0].y = vertices[vertexIndices[0]].y;
@@ -809,41 +815,41 @@ BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
         triangle[2].x = vertices[vertexIndices[2]].x;
         triangle[2].y = vertices[vertexIndices[2]].y;
         triangle[2].z = vertices[vertexIndices[2]].z;
-        overlaps = Hitcheck_Triangle_with_Sphere(triangle, (HuVecF *) querySphere,
-                                                 projectedSphere[3], &closestPoint);
+        overlaps = Hitcheck_Triangle_with_Sphere(triangle, &querySphere.center,
+                                                 projectedSphere.radius, &closestPoint);
     }
     if (overlaps == TRUE) {
-        querySphere[0] = worldSphere[0] + AddX;
-        querySphere[1] = worldSphere[1];
-        querySphere[2] = worldSphere[2] + AddZ;
+        querySphere.center.x = worldSphere->center.x + AddX;
+        querySphere.center.y = worldSphere->center.y;
+        querySphere.center.z = worldSphere->center.z + AddZ;
         PSMTXMultVec(MapMT, &closestPoint, &closestPoint);
         DefSetHitFace(closestPoint.x, closestPoint.y, closestPoint.z);
         contactNormal = &HitFaceVec[HitFaceCount];
         // This normal indexes the header and the first two indices as vertex numbers.
         MapspaceInlineFunc01(contactNormal, &vertices[polygonData[0]], &vertices[polygonData[1]],
                              &vertices[polygonData[2]]);
-        contactOffsetX = closestPoint.x - querySphere[0];
-        contactOffsetY = closestPoint.y - querySphere[1];
-        contactOffsetZ = closestPoint.z - querySphere[2];
-        pushDistance = projectedSphere[3] -
+        contactOffsetX = closestPoint.x - querySphere.center.x;
+        contactOffsetY = closestPoint.y - querySphere.center.y;
+        contactOffsetZ = closestPoint.z - querySphere.center.z;
+        pushDistance = projectedSphere.radius -
                        sqrtf(contactOffsetX * contactOffsetX + contactOffsetZ * contactOffsetZ);
         HitFaceCount++;
         if (planeSide > 0) {
-            projectedSphere[0] = OldXYZ.x;
-            projectedSphere[1] = OldXYZ.y;
-            projectedSphere[2] = OldXYZ.z;
-            PSMTXMultVec(MapMTR, (HuVecF *) &projectedSphere, (HuVecF *) &projectedSphere);
-            if (MapspaceInlineFunc03(projectedSphere, vertexIndices, vertices) < 0) {
+            projectedSphere.center.x = OldXYZ.x;
+            projectedSphere.center.y = OldXYZ.y;
+            projectedSphere.center.z = OldXYZ.z;
+            PSMTXMultVec(MapMTR, &projectedSphere.center, &projectedSphere.center);
+            if (MapspaceInlineFunc03(&projectedSphere, vertexIndices, vertices) < 0) {
                 // This direction subtracts the world-space query center from the object-space
                 // OldXYZ point.
-                movementDirection.x = projectedSphere[0] - querySphere[0];
-                movementDirection.y = projectedSphere[1] - querySphere[1];
-                movementDirection.z = projectedSphere[2] - querySphere[2];
+                movementDirection.x = projectedSphere.center.x - querySphere.center.x;
+                movementDirection.y = projectedSphere.center.y - querySphere.center.y;
+                movementDirection.z = projectedSphere.center.z - querySphere.center.z;
                 MapspaceInlineFunc00(&movementDirection);
                 // The edge test starts one word before this polygon's header.
-                if (DefIfnnerMapCircle((HuVecF *) querySphere, polygonData - 1, vertices,
+                if (DefIfnnerMapCircle(&querySphere.center, polygonData - 1, vertices,
                                        &movementDirection) == 1) {
-                    pushDistance = projectedSphere[3] + sqrtf(contactOffsetX * contactOffsetX +
+                    pushDistance = projectedSphere.radius + sqrtf(contactOffsetX * contactOffsetX +
                                                               contactOffsetZ * contactOffsetZ);
                 }
             } else {

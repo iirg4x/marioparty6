@@ -1,7 +1,7 @@
-#include "humath.h"
-// Evaluate board curves and paths, and move players between their points.
 #ifndef REL_W04DLL_COMMON_H
 #define REL_W04DLL_COMMON_H
+#include "humath.h"
+// Evaluate board curves and paths, and move players between their points.
 
 // Curve and path helpers used by board movement.
 float fn_1_DF78(W04CurveEval speedAtParameter, HuVecF *curvePointA,
@@ -17,10 +17,8 @@ float fn_1_E64C(W04CurveEval speedAtParameter, HuVecF *curvePointA,
     HuVecF *curvePointB, HuVecF *curvePointC, HuVecF *curvePointD,
     float t, float targetDistance, int maxStep);
 f32 fn_1_E900(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, f32 t);
-f32 fn_1_E9A4(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
-    HuVecF *pointD, f32 t);
-f32 fn_1_EA60(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
-    HuVecF *pointD, f32 t);
+f32 fn_1_E9A4(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, HuVecF *pointD, f32 t);
+f32 fn_1_EA60(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, HuVecF *pointD, f32 t);
 f32 fn_1_EB1C(f32 pointA, f32 pointB, f32 pointC, f32 pointD, f32 t);
 f32 fn_1_EBA4(f32 pointA, f32 pointB, f32 pointC, f32 pointD, f32 t);
 void fn_1_EC7C(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
@@ -30,14 +28,11 @@ void fn_1_EF3C(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
 void fn_1_F2EC(HuVecF *points, int count, HuVecF *position, float t);
 float fn_1_F45C(int basisIndex, int degree, float t);
 void fn_1_F9D0(HuVecF *points, int count, HuVecF *outPosition, float t);
-void fn_1_FC8C(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d);
+void fn_1_FC8C(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d);
 void fn_1_FE68(HuVecF *points, s32 index, s32 count, HuVecF *pointA,
     HuVecF *pointB, HuVecF *tangentA, HuVecF *tangentB);
-void fn_1_FFB8(HuVecF *startPosition, HuVecF *endPosition,
-    HuVecF *position, f32 t);
-void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
-    float jumpHeight, int maxTime);
+void fn_1_FFB8(HuVecF *startPosition, HuVecF *endPosition, HuVecF *position, f32 t);
+void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY, float jumpHeight, int maxTime);
 void fn_1_102BC(void);
 OSTick fn_1_102E8(void);
 
@@ -60,14 +55,12 @@ float fn_1_DF78(W04CurveEval speedAtParameter, HuVecF *curvePointA,
     accumulatedSpeed = 0.0f;
     for (sampleIndex = 0; sampleIndex < sampleCount - 1; sampleIndex++) {
         sampleParameter += parameterStep;
-        accumulatedSpeed += speedAtParameter(curvePointA, curvePointB,
-            curvePointC, curvePointD, sampleParameter);
+        accumulatedSpeed +=
+            speedAtParameter(curvePointA, curvePointB, curvePointC, curvePointD, sampleParameter);
     }
     accumulatedSpeed = parameterStep * 0.5
-        * (speedAtParameter(curvePointA, curvePointB, curvePointC,
-                curvePointD, baseT)
-            + speedAtParameter(curvePointA, curvePointB, curvePointC,
-                curvePointD, targetParameter)
+        * (speedAtParameter(curvePointA, curvePointB, curvePointC, curvePointD, baseT)
+            + speedAtParameter(curvePointA, curvePointB, curvePointC, curvePointD, targetParameter)
             + (2.0 * accumulatedSpeed));
     return accumulatedSpeed;
 }
@@ -82,10 +75,8 @@ float fn_1_E120(W04CurveEval speedAtParameter, HuVecF *curvePointA,
     float integratedLength = 0.0f;
     float parameterSpan = targetParameter - baseT;
     float endpointEstimate = parameterSpan
-        * (speedAtParameter(curvePointA, curvePointB, curvePointC,
-                curvePointD, baseT)
-            + speedAtParameter(curvePointA, curvePointB, curvePointC,
-                curvePointD, targetParameter))
+        * (speedAtParameter(curvePointA, curvePointB, curvePointC, curvePointD, baseT)
+            + speedAtParameter(curvePointA, curvePointB, curvePointC, curvePointD, targetParameter))
         * 0.5f;
     float midpointEstimate;
     int sampleIndex;
@@ -172,21 +163,26 @@ f32 fn_1_E900(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, f32 t)
     return VECMag(&slope);
 }
 
+// Compute the cubic path tangent at t.
+static inline void BezierTangentGet(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
+    HuVecF *pointD, HuVecF *slope, float t)
+{
+    slope->x = fn_1_EBA4(pointA->x, pointB->x, pointC->x, pointD->x, t);
+    slope->y = fn_1_EBA4(pointA->y, pointB->y, pointC->y, pointD->y, t);
+    slope->z = fn_1_EBA4(pointA->z, pointB->z, pointC->z, pointD->z, t);
+}
+
 // Return the magnitude of the cubic Bezier tangent at the supplied time.
-f32 fn_1_E9A4(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
-    HuVecF *pointD, f32 t)
+f32 fn_1_E9A4(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, HuVecF *pointD, f32 t)
 {
     HuVecF slope;
 
-    slope.x = fn_1_EBA4(pointA->x, pointB->x, pointC->x, pointD->x, t);
-    slope.y = fn_1_EBA4(pointA->y, pointB->y, pointC->y, pointD->y, t);
-    slope.z = fn_1_EBA4(pointA->z, pointB->z, pointC->z, pointD->z, t);
+    BezierTangentGet(pointA, pointB, pointC, pointD, &slope, t);
     return VECMag(&slope);
 }
 
 // Return the magnitude of the Hermite tangent at the supplied time.
-f32 fn_1_EA60(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
-    HuVecF *pointD, f32 t)
+f32 fn_1_EA60(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, HuVecF *pointD, f32 t)
 {
     HuVecF slope;
 
@@ -231,16 +227,13 @@ void fn_1_EC7C(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
 void fn_1_EF3C(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
     HuVecF *pointD, HuVecF *slope, float t)
 {
-    slope->x = fn_1_EBA4(pointA->x, pointB->x, pointC->x, pointD->x, t);
-    slope->y = fn_1_EBA4(pointA->y, pointB->y, pointC->y, pointD->y, t);
-    slope->z = fn_1_EBA4(pointA->z, pointB->z, pointC->z, pointD->z, t);
+    BezierTangentGet(pointA, pointB, pointC, pointD, slope, t);
 }
 
 // Interpolate the supplied Bezier controls with De Casteljau subdivision.
 void fn_1_F2EC(HuVecF *points, int count, HuVecF *position, float t)
 {
-    HuVecF *workPoints = HuMemDirectMallocNum(
-        HEAP_HEAP, count * sizeof(HuVecF), 0x10000000);
+    HuVecF *workPoints = HuMemDirectMallocNum( HEAP_HEAP, count * sizeof(HuVecF), 0x10000000);
     HuVecF *interpolationPoints = workPoints;
     int level;
     int pointIndex;
@@ -314,8 +307,8 @@ void fn_1_F9D0(HuVecF *points, int count, HuVecF *outPosition, float t)
         *outPosition = points[count - 1];
         return;
     }
-    allocatedKnots = HuMemDirectMallocNum(HEAP_HEAP,
-        (count + degree + 1) * sizeof(float), 0x10000000);
+    allocatedKnots =
+        HuMemDirectMallocNum(HEAP_HEAP, (count + degree + 1) * sizeof(float), 0x10000000);
     lbl_1_bss_7310 = allocatedKnots;
     knotIndex = 0;
     for (pointIndex = 0; pointIndex <= degree; pointIndex++) {
@@ -340,8 +333,7 @@ void fn_1_F9D0(HuVecF *points, int count, HuVecF *outPosition, float t)
 }
 
 // Select consecutive Bezier controls, repeating the path endpoint.
-void fn_1_FC8C(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d)
+void fn_1_FC8C(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d)
 {
     HuVecF *point;
     HuVecF pointB;
@@ -406,8 +398,7 @@ void fn_1_FE68(HuVecF *points, s32 index, s32 count, HuVecF *pointA,
 }
 
 // Interpolate the position between two consecutive board path points.
-void fn_1_FFB8(HuVecF *startPosition, HuVecF *endPosition,
-    HuVecF *position, f32 t)
+void fn_1_FFB8(HuVecF *startPosition, HuVecF *endPosition, HuVecF *position, f32 t)
 {
     HuVecF delta;
 
@@ -417,8 +408,7 @@ void fn_1_FFB8(HuVecF *startPosition, HuVecF *endPosition,
 }
 
 // Move the player along a straight segment with a sinusoidal jump arc.
-void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
-    float jumpHeight, int maxTime)
+void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY, float jumpHeight, int maxTime)
 {
     HuVecF startPos;
     HuVecF playerPos;
@@ -435,8 +425,7 @@ void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
     for (frame = 0; frame <= maxTime; frame++) {
         progress = frame / (float)maxTime;
         if ((u32)frame == maxTime - 6) {
-            mbPlayerMotionShiftSet(
-                playerNo, 5, 0.0f, 2.0f, 0);
+            mbPlayerMotionShiftSet( playerNo, 5, 0.0f, 2.0f, 0);
         }
         playerPos.x = startPos.x + (progress * delta.x);
         playerPos.y = startPos.y + (progress * delta.y)
@@ -447,8 +436,7 @@ void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
         if (rotationProgress > 1.0f) {
             rotationProgress = 1.0f;
         }
-        mbPlayerRotYSet(playerNo,
-            mbAngleLerp(startRotY, dstRotY, rotationProgress));
+        mbPlayerRotYSet(playerNo, mbAngleLerp(startRotY, dstRotY, rotationProgress));
         mbPlayerWorkGet(playerNo)->_unk08 = maxTime - frame;
         HuPrcVSleep();
     }

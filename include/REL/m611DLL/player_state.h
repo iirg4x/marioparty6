@@ -50,8 +50,8 @@ struct PlayerState : ListNode<PlayerState> {
     s32 unk98; // The game's code never reads this field.
     u8 unk9C; // The game's code never reads this field.
     s32 updateCount;
-    // The game's code never reads this field.
-    u8 unkA4;
+    // Accumulates whether the player position was clamped to the scene bounds.
+    u8 clampFlags;
     s32 unkA8; // The game's code never reads this field.
     s32 selectedPosition;
     Vec targetPosition;

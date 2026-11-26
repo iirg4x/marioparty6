@@ -5,9 +5,6 @@ extern M679ScoreState lbl_1_bss_6160;
 extern s32 lbl_1_data_C4;
 extern s32 lbl_1_data_C8;
 
-HUPROCESS *fn_1_A0(void);
-void fn_1_3FA4(OMOBJ *obj);
-
 void fn_1_D37C(OMOBJ *object)
 {
     s32 hours;

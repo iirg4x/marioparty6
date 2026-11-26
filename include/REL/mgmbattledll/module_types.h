@@ -28,7 +28,7 @@
 #include "REL/mgmbattledll/player.h"
 
 /* Character motions available to Battle Bridge sequences. */
-typedef struct MgBattleMotion_s {
+typedef struct {
     /* Index into the player's loaded character-motion array; -1 skips motion playback. */
     s16 motionIndex;
     /* Blend duration in frames; values at or below one switch immediately. */
@@ -81,7 +81,7 @@ extern u8 lbl_1_bss_2[128];
 extern s16 lbl_1_bss_0;
 
 /* Window handles and their pixel dimensions. */
-typedef struct MgBattleWindow_s {
+typedef struct {
     /* Window handle returned by the message-window system. */
     s16 windowId;
     /* Window width in screen pixels. */
@@ -93,7 +93,7 @@ extern MgBattleWindow lbl_1_bss_A8[4];
 extern MgBattleWindow lbl_1_bss_D8[3];
 extern u32 lbl_1_data_0[14];
 
-typedef struct MgBattleMessageSound_s {
+typedef struct {
     /* Message bank and message index for this dialogue line. */
     u32 messageId;
     /* Character code of the speaker associated with the line. */
@@ -112,5 +112,38 @@ extern s32 lbl_1_data_208[7];
 extern Point3d lbl_1_data_224[7];
 
 #include "REL/mgmbattledll/effects.h"
+
+s32 fn_1_1AF5C(Point3d *vector, Point3d *out);
+void fn_1_1B0AC(f32 rotX, f32 rotY, f32 rotZ, const Vec *position, Vec *out);
+f64 fn_1_1B16C(Point3d *, Point3d *);
+void fn_1_4548(u16 enabled);
+void fn_1_1408(s16 windowCount);
+void fn_1_1528(s16 windowCount);
+void fn_1_1B358(void);
+s16 fn_1_1B324(void);
+void fn_1_3B78(Point3d *position);
+f32 fn_1_AD8C(s16 playerIndex);
+void fn_1_B414(void);
+f32 fn_1_B85C(void);
+f32 fn_1_B8E0(void);
+s16 fn_1_B964(void);
+s16 fn_1_BAEC(s16 playerIndex);
+void fn_1_BB7C(void);
+void fn_1_125A0(void);
+void fn_1_139BC(void);
+void fn_1_13AAC(void);
+void fn_1_148BC(void);
+s16 fn_1_156CC(void);
+void fn_1_169FC(void);
+void fn_1_174FC(void);
+void fn_1_175A0(void);
+void fn_1_17740(void);
+void fn_1_409C(void);
+void fn_1_35A0(void);
+void fn_1_12A8(void);
+void fn_1_44E0(void);
+void fn_1_7F0(void);
+void fn_1_824(void);
+void fn_1_45BC(void);
 
 #endif

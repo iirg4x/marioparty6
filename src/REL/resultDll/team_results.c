@@ -35,15 +35,11 @@ extern s32 lbl_1_bss_950[9][10];
 
 extern s32 lbl_1_bss_664;
 extern s16 lbl_1_bss_654;
-extern float lbl_1_bss_65C;
-extern float lbl_1_bss_658;
 extern s16 lbl_1_bss_668[2];
 extern s16 lbl_1_bss_66C[2];
 
 extern s32 lbl_1_bss_638;
 extern s32 lbl_1_bss_624;
-extern float lbl_1_bss_B8C[2];
-extern float lbl_1_bss_B94[2];
 extern void fn_1_523C(void);
 extern void fn_1_4D48(void);
 extern void fn_1_62F0(void);
@@ -63,6 +59,7 @@ extern void fn_1_73D4(s32 team, s32 coinTotal);
 
 #include "game/charman.h"
 #include "game/sprite.h"
+#include "humath.h"
 
 extern s32 lbl_1_bss_678[2];
 extern s32 lbl_1_bss_670[2];
@@ -86,12 +83,6 @@ void fn_1_73D4(s32 team, s32 coinTotal);
 void fn_1_7520(s32 team, s32 starTotal);
 void fn_1_766C(s32 team, s32 coinAward);
 s32 fn_1_7750(s16 firstCharacter, s16 secondCharacter);
-
-static inline s16 ResultNightModeGet(void)
-{
-    return lbl_802C0278;
-}
-
 
 extern s8 lbl_1_data_514[110];
 
@@ -188,7 +179,7 @@ void fn_1_49C4(void)
         } else {
             for (player = 0; player < 4; player++) {
                 if (HuPadStatGet(player) == 0 && (lbl_802C0008[player] & PAD_BUTTON_A) != 0) {
-                    HuAudFXPlay(2);
+                    HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                     confirmed = 1;
                     break;
                 }
@@ -442,7 +433,7 @@ void fn_1_523C(void)
     }
     for (team = 0; team < 9; team++) {
         for (slot = 0; slot < 10; slot++) {
-            if (ResultNightModeGet() == 0) {
+            if (GWMgNightFGet() == 0) {
                 lbl_1_bss_950[team][slot] = displayId =
                     espEntry(fn_1_C45C(DATANUM(0xc60000, 19)), 256, 0);
             } else {
@@ -519,7 +510,7 @@ void fn_1_62F0(void)
     }
     finished = lbl_1_bss_624 != 0 ? 3 : 10;
     for (frame = 0; frame <= finished; frame++) {
-        scale = sin(3.141592653589793*((90.0 / finished) * frame)/180.0);
+        scale = sin(M_PI*((90.0 / finished) * frame)/180.0);
         for (team = 0; team < 2; team++) {
             espScaleSet(lbl_1_bss_AB8[team].sprites[2], scale, scale);
             for (digit = 0; digit < 3; digit++) {
@@ -536,8 +527,8 @@ void fn_1_62F0(void)
             if (teamAwards[team] >= 10) {
                 fn_80026A44((s16)lbl_1_bss_AB8[team].resultModels[0], (1 << 0));
             }
-            scale = sin(3.141592653589793*((120.0f / 14.0f) * bounceFrame)/180.0) *
-                (0.8 * (1.0 / sin((3.141592653589793 * 2) / 3))) + 0.1f;
+            scale = sin(M_PI*((120.0f / 14.0f) * bounceFrame)/180.0) *
+                (0.8 * (1.0 / sin((M_PI * 2) / 3))) + 0.1f;
             fn_800268B0((s16)lbl_1_bss_AB8[team].resultModels[0], scale, scale, scale);
         }
         bounceFrame += lbl_1_bss_624 != 0 ? 2 : 1;
@@ -567,7 +558,7 @@ void fn_1_62F0(void)
                 } else {
                     coinTotals[team]++;
                     teamAwards[team]--;
-                    HuAudFXPlay(7);
+                    HuAudFXPlay(MSM_SE_CMN_COIN_GET);
                     lbl_1_bss_B94[team] = 3.0f;
                 }
                 fn_1_766C(team, teamAwards[team]);
@@ -583,7 +574,7 @@ void fn_1_62F0(void)
     HuPrcSleep(30);
     finished = lbl_1_bss_624 != 0 ? 3 : 10;
     for (frame = 0; frame <= finished; frame++) {
-        scale = cos(3.141592653589793*((90.0 / finished) * frame)/180.0);
+        scale = cos(M_PI*((90.0 / finished) * frame)/180.0);
         for (team = 0; team < 2; team++) {
             espScaleSet(lbl_1_bss_AB8[team].sprites[2], scale, scale);
             fn_800268B0((s16)lbl_1_bss_AB8[team].resultModels[0], scale, scale, scale);

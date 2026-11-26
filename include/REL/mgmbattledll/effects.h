@@ -6,14 +6,14 @@
 
 #include "game/object.h"
 
-typedef struct MgBattleWaveVertex_s {
+typedef struct {
     /* Vertex position in the stage model's local coordinate space. */
     Point3d position;
     /* Blend weight applied to this vertex during the wave. */
     f32 weight;
 } MgBattleWaveVertex;
 
-typedef struct MgBattleWaveWork_s {
+typedef struct {
     /* Nonzero while this stage model has an active wave effect. */
     s16 active;
     /* Frames elapsed since the wave started. */

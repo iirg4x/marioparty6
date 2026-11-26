@@ -21,6 +21,16 @@ typedef struct MBAudFXObj_s {
     int *fxRef; // Optional caller-owned slot updated when deferred playback starts.
 } MBAUDFXOBJ;
 
+/* Receives the effect slot for pause diagnostics in debug builds. */
+static inline void DebugValue(int value)
+{
+}
+
+/* Receives the deferred effect for pause diagnostics in debug builds. */
+static inline void DebugPointer(MBAUDFXOBJ *value)
+{
+}
+
 typedef struct MBAudFXData_s {
     int seId; // Sound-effect resource ID queued for delayed playback.
     int delay; // Remaining process frames before playback.
@@ -127,16 +137,16 @@ static inline void AudFXObjPauseSet(int seNo, BOOL pauseF)
     }
     if (pauseF == FALSE) {
         if (audFx->pauseF != FALSE) {
-            (void)i;
+            DebugValue(i);
         } else {
-            (void)i;
+            DebugValue(i);
             return;
         }
         audFx->pauseF = FALSE;
         msmSePause(audFx->seNo, FALSE, 1000);
     } else {
         if (audFx->pauseF != FALSE) {
-            (void)audFx;
+            DebugPointer(audFx);
         } else {
             audFx->pauseF = TRUE;
             msmSePause(audFx->seNo, TRUE, 1000);

@@ -40,92 +40,11 @@ enum {
     INST_NAME_FIRST_GLYPH_CODE = 48
 };
 
-typedef struct StageModel_s {
-    u32 modelDataId; /* Stage model or joint-motion resource. */
-    s16 sourceModelIndex; /* -1 creates a model; otherwise names its base model. */
-    Vec position; /* Stage model position in preview coordinates. */
-    Vec rotation; /* Stage model rotation in degrees. */
-    Vec scale; /* Per-axis stage model scale. */
-    s16 cameraMask; /* Camera visibility bits passed to the model renderer. */
-} STAGE_MODEL;
-typedef struct Inst_data_798_view {
-    u8 stageModelCount; /* Number of stage preview resources in this record. */
-    u32 stageModelDataIds[4]; /* Stage preview model resources. */
-    f32 orbitStartAngleDegrees; /* Starting angle for the preview orbit. */
-    f32 previewModelScale; /* Scale shared by the stage and character previews. */
-    f32 characterFacingDegrees[5]; /* Character facing angles in degrees. */
-    u8 stagePlayerMasks[4]; /* Character visibility bits for each stage model. */
-    Vec characterPositions[5]; /* Character positions in stage preview coordinates. */
-} Inst_data_798_view;
-typedef struct Inst_bss_D8_view {
-    HU3D_MODELID stageModel; /* Loaded stage preview model. */
-    u16 spinFramesRemaining; /* Frames left in the model spin animation. */
-    f32 spinAngleDegrees; /* Current spin angle in degrees. */
-    u8 reservedBytes[12]; /* Bytes with no established use in this code. */
-    s8 playerIndices[5]; /* Character indices; -1 marks an unused slot. */
-    Vec playerPositions[5]; /* Character positions in stage preview coordinates. */
-} Inst_bss_D8_view;
-typedef struct InstDllMotionRecord {
+typedef struct {
     s16 characterMotionIds[10]; /* Loaded character motions used by the preview. */
 } InstDllMotionRecord;
 
-/* When nonzero, enables controller-one input for the preview camera in fn_1_35F8. */
-extern BOOL lbl_1_bss_0;
-
 /* Shared instruction-screen state and resources. */
-extern u32 lbl_1_data_A8[5];
-extern s32 lbl_1_bss_10;
-extern HuVecF lbl_1_data_70C;
-extern s16 lbl_1_bss_14;
-extern u32 * lbl_1_bss_18;
-extern s16 lbl_1_bss_1C;
-extern MGDATA *lbl_1_bss_20;
-extern HUSPR_GROUPID lbl_1_bss_238[256];
-extern s16 lbl_1_bss_24;
-extern s16 lbl_1_bss_26;
-extern s16 lbl_1_bss_28[4];
-extern s32 lbl_1_bss_30;
-extern u8 lbl_1_bss_34;
-extern u16 lbl_1_bss_36;
-extern u16 lbl_1_bss_38;
-extern OMOBJMAN * lbl_1_bss_3C;
-extern u16 lbl_1_bss_4;
-extern OMOBJ * lbl_1_bss_40;
-extern s16 lbl_1_bss_438;
-extern InstDllMotionRecord lbl_1_bss_43A[5];
-extern f32 lbl_1_bss_48;
-extern HU3D_MODELID lbl_1_bss_49E[6];
-extern HU3D_MOTIONID lbl_1_bss_4AA[];
-extern void * lbl_1_bss_4C;
-extern ANIMDATA * lbl_1_bss_50[2];
-extern ANIMDATA * lbl_1_bss_58;
-extern ANIMDATA * lbl_1_bss_5C[2];
-extern s16 lbl_1_bss_6;
-extern HUSPR_GROUPID lbl_1_bss_66[3];
-extern HU3D_MODELID lbl_1_bss_6AA[];
-extern HU3D_MODELID lbl_1_bss_6C;
-extern s16 lbl_1_bss_6E;
-extern ANIMDATA * lbl_1_bss_70[2];
-extern s16 lbl_1_bss_78[6];
-extern s16 lbl_1_bss_8;
-extern BOOL lbl_1_bss_84[20];
-extern s16 lbl_1_bss_A;
-extern s32 lbl_1_bss_C;
-extern s16 lbl_1_bss_D4;
-extern Inst_bss_D8_view lbl_1_bss_D8[4];
-extern OM_CAMERA_VIEW lbl_1_data_24;
-extern BOOL lbl_1_data_4;
-extern OM_CAMERA_VIEW lbl_1_data_40;
-extern STAGE_MODEL lbl_1_data_520[];
-extern HuVecF lbl_1_data_700;
-extern HuVecF lbl_1_data_718;
-extern HuVecF lbl_1_data_724;
-extern Inst_data_798_view lbl_1_data_798[9];
-extern OM_CAMERA_VIEW lbl_1_data_8;
-extern char lbl_1_data_CE[];
-extern char lbl_1_data_DC[];
-extern char lbl_1_data_E7[];
-extern GXRenderModeObj *RenderMode;
 
 /* Maps encoded message characters to their sprite resources. */
 #define INST_NAME_NO_GLYPH 0
@@ -282,10 +201,11 @@ HUSPR_GROUPID fn_1_4400(u32 messageId)
         if (*nameMessage == ' ' || *nameMessage == INST_NAME_SPACING_CODE) {
             nameWidth += lbl_1_data_410[*nameMessage];
         } else if (*nameMessage >= INST_NAME_FIRST_GLYPH_CODE) {
+            /* Mark glyphs drawn four units lower. */
             u32 glyphDataAndOffset;
             glyphDataAndOffset = glyphDataByCode[*nameMessage];
-            glyphAnimation[glyphCount] = HuSprAnimRead(fn_80008DD0(
-                glyphDataAndOffset & ~INST_NAME_DATA_YOFFSET_BIT, 0x10000000, 2));
+            glyphAnimation[glyphCount] =
+                HuSprAnimDataRead(glyphDataAndOffset & ~INST_NAME_DATA_YOFFSET_BIT);
             glyphXOffset[glyphCount] = nameWidth;
             glyphYOffset[glyphCount] = 0;
             nameWidth += lbl_1_data_410[characterCode];

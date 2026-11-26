@@ -15,7 +15,7 @@ struct MinigameThreadOwner : MinigameCore, ThreadEntry {
     virtual void run(void *);
     u8 fn_1_418();
     TimerOwner timerState;
-    bool dayMode;
+    bool unk35C; /* The game's code never reads this field. */
     u8 unk35D[11]; /* No code names this field. */
 };
 

@@ -3,7 +3,7 @@
 #define REL_M665DLL_SEQUENCE_H
 
 #include "dolphin/types.h"
-#include "game/process.h"
+#include "game/object.h"
 
 typedef struct M665SequenceState {
     s16 mainPlayer; /* Player-work index for the player on team zero. */
@@ -24,10 +24,9 @@ extern M665SequenceState lbl_1_bss_250;
 extern u16 lbl_1_bss_0;
 extern s16 lbl_1_bss_2;
 extern s16 lbl_1_bss_4;
-extern HUPROCESS *lbl_1_bss_8;
+extern OMOBJMAN *lbl_1_bss_8;
 
-struct omObj_s;
-extern struct omObj_s *lbl_1_bss_274;
-extern struct omObj_s *lbl_1_bss_278;
+extern OMOBJ *lbl_1_bss_274;
+extern OMOBJ *lbl_1_bss_278;
 
 #endif

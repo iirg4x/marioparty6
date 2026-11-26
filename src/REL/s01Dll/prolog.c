@@ -1,9 +1,9 @@
 // Module initialization and shutdown.
+#include "REL/s01Dll/s01.h"
 typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 
 // Runs module constructors before the board code initializes.
 int _prolog(void)

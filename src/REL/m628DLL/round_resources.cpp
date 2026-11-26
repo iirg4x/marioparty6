@@ -91,7 +91,7 @@ void fn_1_10760(SceneAnimations *owner)
     firstModelEntry->setAttribute(1 << 0);
     secondModelEntry->setLightsDynamic(0);
     secondModelEntry->setLayer(2);
-    new LightSetup((s16 *)secondModelEntry);
+    new LightSetup(&secondModelEntry->modelId);
     owner->models.push_back(firstModelEntry);
     owner->models.push_back(secondModelEntry);
     owner->models.push_back(thirdModelEntry);

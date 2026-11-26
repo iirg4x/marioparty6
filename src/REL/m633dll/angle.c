@@ -1,6 +1,7 @@
 /* Creates and advances the moving line hazards that cross the arena. */
 #include <math.h>
 #include "REL/m633dll.h"
+#include "humath.h"
 
 /* The launch helper and player callbacks call this twice to create paired hazards; a segment
  * callback uses it after a wall reflection. It zeros the direction's vertical component. The
@@ -13,7 +14,7 @@ int fn_1_5ED0(Point3d *startPosition, Point3d *segmentDirection)
 
     segmentDirection->y = 0.0f;
     segmentYawDegrees =
-        (180.0 * (atan2(segmentDirection->x, segmentDirection->z) / 3.141592653589793)) - 90.0;
+        (180.0 * (atan2(segmentDirection->x, segmentDirection->z) / M_PI)) - 90.0;
     segmentObject = fn_8003AB38(lbl_1_bss_0.workProcess, 10000, 1, 0, 0, fn_1_60F4);
     /* Override the group-0 request with ungrouped tags, so deletion skips group-member removal. */
     segmentObject->grpNo = -1;
@@ -80,9 +81,7 @@ void fn_1_60F4(OMOBJ *segmentObject)
         proposedSegmentEnd.z = segment->endPosition.z + segmentMotionVector.z;
         if ((fn_80086910(&segment->endPosition, &proposedSegmentEnd, 1U, &wallCollision) ==
              1) &&
-            (wallNormal =
-                 *(Point3d *) ((HSF_FACE *) wallCollision.obj->mesh.face->data)[wallCollision.triNo]
-                      .nbt,
+            (wallNormal = wallCollision.obj->mesh.face->faces[wallCollision.triNo].normal,
              (((u32) (wallCollision.code & 0x80) == 0) != 0)) &&
             (PSVECDotProduct(&segment->direction, &wallNormal) <= 0.0f)) {
             C_VECReflect(&segment->direction, &wallNormal, &segmentMotionVector);
@@ -171,7 +170,7 @@ void fn_1_60F4(OMOBJ *segmentObject)
                             lbl_1_bss_0.activePlayerCount -= 1;
                             (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34B0;
                             hitPlayerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
-                            fn_1_24EC(M633_PLAYER_ELIMINATION_SE_ID, &hitPlayerPosition);
+                            fn_1_24EC(MSM_SE_MG633_PLAYER_ELIMINATION, &hitPlayerPosition);
                         }
                     }
                 }
@@ -231,7 +230,7 @@ void fn_1_60F4(OMOBJ *segmentObject)
                         lbl_1_bss_0.activePlayerCount -= 1;
                         (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34B0;
                         soundPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
-                        fn_1_24EC(M633_PLAYER_ELIMINATION_SE_ID, &soundPosition);
+                        fn_1_24EC(MSM_SE_MG633_PLAYER_ELIMINATION, &soundPosition);
                     }
                 }
             }

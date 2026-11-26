@@ -1,7 +1,9 @@
 /* Computer-player decisions and the paths made by moving arena segments. */
 #include <math.h>
 #include "REL/m633dll.h"
+#include "humath.h"
 
+/* Installed as the idle player object's update callback. */
 void fn_1_3828(OMOBJ *obj)
 {
 
@@ -58,15 +60,11 @@ void fn_1_38C0(s32 playerNo)
             }
             aiState->decisionMode = useRandomHeading;
             switch (aiState->decisionMode) {
-                do {
-                case 0:
+            case 0:
                 /* Retry if the draw selects this player or a player already removed. */
-retry_target_selection:
+                do {
                     targetPlayerNo = frandmod(4);
-                    if (targetPlayerNo == playerNo) {
-                        goto retry_target_selection;
-                    }
-                } while ((s32) lbl_1_bss_0.playerRemoved[targetPlayerNo] != 0);
+                } while (targetPlayerNo == playerNo || (s32) lbl_1_bss_0.playerRemoved[targetPlayerNo] != 0);
                 aiState->targetPlayerNo = targetPlayerNo;
                 aiState->decisionCounter = frandmod(60) + 60;
                 break;
@@ -75,14 +73,14 @@ retry_target_selection:
                 directionCalculation = (f32) (u32) frandmod(360);
                 aiState->targetHeadingDegrees = directionCalculation;
                 aiState->destination.x = targetOffsetComponent
-                    * cos(3.141592653589793*directionCalculation/180.0) -
+                    * cos(M_PI*directionCalculation/180.0) -
                                          targetOffsetComponent
-                                             * sin(3.141592653589793*directionCalculation/180.0);
+                                             * sin(M_PI*directionCalculation/180.0);
                 aiState->destination.y = 0.0f;
                 aiState->destination.z = targetOffsetComponent
-                    * sin(3.141592653589793*directionCalculation/180.0) +
+                    * sin(M_PI*directionCalculation/180.0) +
                                          targetOffsetComponent
-                                             * cos(3.141592653589793*directionCalculation/180.0);
+                                             * cos(M_PI*directionCalculation/180.0);
                 aiState->decisionCounter = frandmod(180) + 180;
                 break;
             }
@@ -105,7 +103,7 @@ retry_target_selection:
         fn_80026874(lbl_1_bss_0.rotatingStageModelId, &stageRotation);
         targetHeadingDegrees =
             (f32) (180.0 *
-                   (atan2((f64) targetPosition.x, (f64) targetPosition.z) / 3.141592653589793));
+                   (atan2((f64) targetPosition.x, (f64) targetPosition.z) / M_PI));
         stageYawDegrees = stageRotation.y;
         while (targetHeadingDegrees < 0.0f) {
             targetHeadingDegrees += 360.0f;
@@ -141,7 +139,7 @@ retry_target_selection:
         movementYawDegrees = movementRotation.y;
         movementHeadingDegrees =
             (f32) (180.0 *
-                   (atan2((f64) targetPosition.z, (f64) targetPosition.x) / 3.141592653589793));
+                   (atan2((f64) targetPosition.z, (f64) targetPosition.x) / M_PI));
         while (movementYawDegrees < 0.0f) {
             movementYawDegrees += 360.0f;
         }
@@ -178,7 +176,7 @@ void fn_1_3FFC(s32 playerNo)
         if (aiState->decisionMode == 2) {
             playerPosition = player->actor->pos;
             aiState->targetHeadingDegrees =
-                180.0 * (atan2(playerPosition.z, playerPosition.x) / 3.141592653589793);
+                180.0 * (atan2(playerPosition.z, playerPosition.x) / M_PI);
             aiState->destination = playerPosition;
             aiState->decisionCounter = 0;
         }
@@ -295,7 +293,7 @@ void fn_1_45EC(MGPLAYER *player, M633AI *ai, M633Segment *segment)
             return;
         }
         ai->targetHeadingDegrees =
-            180.0 * (atan2(playerPosition.z, playerPosition.x) / 3.141592653589793);
+            180.0 * (atan2(playerPosition.z, playerPosition.x) / M_PI);
         ai->destination = playerPosition;
         return;
     }
@@ -311,7 +309,7 @@ void fn_1_45EC(MGPLAYER *player, M633AI *ai, M633Segment *segment)
         return;
     }
     ai->targetHeadingDegrees =
-        180.0 * (atan2(playerPosition.z, playerPosition.x) / 3.141592653589793);
+        180.0 * (atan2(playerPosition.z, playerPosition.x) / M_PI);
     ai->destination = playerPosition;
     fn_1_55D0(player, ai);
 }
@@ -479,7 +477,7 @@ void fn_1_55D0(MGPLAYER *player, M633AI *ai)
             targetReached = 1;
             ai->targetHeadingDegrees =
                 (f32) (180.0 *
-                       (atan2((f64) playerPosition.z, (f64) playerPosition.x) / 3.141592653589793));
+                       (atan2((f64) playerPosition.z, (f64) playerPosition.x) / M_PI));
             ai->turnDirection = -ai->turnDirection;
         }
         playerPosition.y = 0.0f;
@@ -501,7 +499,7 @@ void fn_1_55D0(MGPLAYER *player, M633AI *ai)
         fn_80026874(lbl_1_bss_0.rotatingStageModelId, &arenaRotation);
         playerBearingDegrees = (f32) (180.0 * (atan2((f64) playerPositionForBearing.x,
                                                      (f64) playerPositionForBearing.z) /
-                                               3.141592653589793));
+                                               M_PI));
         arenaYawDegrees = arenaRotation.y;
         while (playerBearingDegrees < 0.0f) {
             playerBearingDegrees += 360.0f;
@@ -535,10 +533,10 @@ void fn_1_55D0(MGPLAYER *player, M633AI *ai)
         targetHeading = ai->targetHeadingDegrees;
         /* Rotate a 310-by-310 offset by the selected heading to set the next destination. */
         movementAmount = 310.0f;
-        targetX = movementAmount * cos(3.141592653589793*targetHeading/180.0)
-            - movementAmount * sin(3.141592653589793*targetHeading/180.0);
-        targetZ = movementAmount * sin(3.141592653589793*targetHeading/180.0)
-            + movementAmount * cos(3.141592653589793*targetHeading/180.0);
+        targetX = movementAmount * cos(M_PI*targetHeading/180.0)
+            - movementAmount * sin(M_PI*targetHeading/180.0);
+        targetZ = movementAmount * sin(M_PI*targetHeading/180.0)
+            + movementAmount * cos(M_PI*targetHeading/180.0);
         ai->destination.x = targetX;
         ai->destination.y = 0.0f;
         ai->destination.z = targetZ;
@@ -572,7 +570,7 @@ void fn_1_5B20(MGPLAYER *player, Point3d *startPosition, Point3d *destinationPos
     travelDistance = PSVECMag(movementDirection);
     movingPlayer = player;
     travelHeading = (f32) (180.0 * (atan2((f64) movementDirection->z, (f64) movementDirection->x) /
-                                    3.141592653589793));
+                                    M_PI));
     playerNo = 0;
     while (playerNo < 4) {
         otherPlayer = lbl_1_bss_0.players[playerNo];
@@ -589,9 +587,9 @@ void fn_1_5B20(MGPLAYER *player, Point3d *startPosition, Point3d *destinationPos
                 if (vectorMagnitude < 140.0f) {
                     sideOffset =
                         (nearbyPlayerPosition.x
-                            - destinationPosition->x) * sin(3.141592653589793*travelHeading/180.0) +
+                            - destinationPosition->x) * sin(M_PI*travelHeading/180.0) +
                         (destinationPosition->z
-                            - nearbyPlayerPosition.z) * cos(3.141592653589793*travelHeading/180.0);
+                            - nearbyPlayerPosition.z) * cos(M_PI*travelHeading/180.0);
                     sideOffset /= 90.0f;
                     if (sideOffset >= 0.0f) {
                         avoidanceHeadingOffset += 80.0f / (1.0f + sideOffset);
@@ -605,8 +603,8 @@ void fn_1_5B20(MGPLAYER *player, Point3d *startPosition, Point3d *destinationPos
     }
     if (nearbyPlayerFound != 0) {
         travelHeading += avoidanceHeadingOffset;
-        movementDirection->x = (f32) cos((3.141592653589793 * (f64) travelHeading) / 180.0);
-        movementDirection->z = (f32) sin((3.141592653589793 * (f64) travelHeading) / 180.0);
+        movementDirection->x = (f32) cos((M_PI * (f64) travelHeading) / 180.0);
+        movementDirection->z = (f32) sin((M_PI * (f64) travelHeading) / 180.0);
     }
     vectorMagnitude = PSVECMag(movementDirection);
     if (vectorMagnitude != 0.0f) {

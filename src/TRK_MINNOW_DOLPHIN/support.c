@@ -58,7 +58,7 @@ DSError TRKSuppAccessFile(u32 file_handle, u8* data, size_t* count,
 				error = TRKRequestSend(buffer, &replyBufferId, read ? 5 : 5, 3,
 				                       !(read && file_handle == 0));
 				if (error == DS_NoError) {
-					replyBuffer = (TRKBuffer*)TRKGetBuffer(replyBufferId);
+					replyBuffer = TRKGetBuffer(replyBufferId);
 					TRKSetBufferPosition(replyBuffer, 2);
 				}
 
@@ -90,7 +90,7 @@ DSError TRKSuppAccessFile(u32 file_handle, u8* data, size_t* count,
 				*io_result = (DSIOResult)replyIOResult;
 				TRKReleaseBuffer(replyBufferId);
 			} else {
-				error = TRKMessageSend((TRK_Msg*)buffer);
+				error = TRKMessageSend(buffer);
 			}
 		}
 
@@ -116,7 +116,7 @@ DSError TRKRequestSend(TRKBuffer* msgBuf, int* bufferId, u32 p1, u32 p2, int p3)
 
 	for (tries = p2 + 1; tries != 0 && *bufferId == -1 && error == DS_NoError;
 	     tries--) {
-		error = TRKMessageSend((TRK_Msg*)msgBuf);
+		error = TRKMessageSend(msgBuf);
 		if (error == DS_NoError) {
 			if (p3) {
 				timer = 0;

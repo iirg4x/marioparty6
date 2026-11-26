@@ -5,17 +5,17 @@
 #include "game/mg/timer.h"
 
 typedef struct M663PadInput {
-    s32 buttons;
+    s32 unk00; /* The game's code never reads this field. */
     s32 buttonsDown;
-    u16 buttonsRepeat;
-    s8 stickX;
-    s8 stickY;
-    s8 substickX;
-    s8 substickY;
-    u8 triggerL;
-    u8 triggerR;
-    u8 dpad;
-    u8 dpadRepeat;
+    u16 unk08; /* The game's code never reads this field. */
+    s8 unk0A; /* The game's code never reads this field. */
+    s8 unk0B; /* The game's code never reads this field. */
+    s8 unk0C; /* The game's code never reads this field. */
+    s8 unk0D; /* The game's code never reads this field. */
+    u8 unk0E; /* The game's code never reads this field. */
+    u8 unk0F; /* The game's code never reads this field. */
+    u8 unk10; /* The game's code never reads this field. */
+    u8 unk11; /* The game's code never reads this field. */
 } M663PadInput;
 
 typedef struct M663ModuleInput {
@@ -30,11 +30,11 @@ typedef struct M663ModuleInput {
     M663PadInput padInputs[4];
     MGTIMER *timer;
     s32 frame;
-    s16 nightFlag;
+    s16 unk70; /* The game's code never reads this field. */
     s16 effectTimer;
     f32 orbitAngle;
     s16 rumbleEnabled;
-    s16 transitionCount;
+    s16 unk7A; /* The game's code never reads this field. */
     u8 unk_7C[4]; /* No code names this field. */
     s32 bgmHandle;
     s32 bgmId;

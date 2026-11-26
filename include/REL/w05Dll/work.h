@@ -4,7 +4,7 @@
 #include "dolphin/types.h"
 #include "game/hu3d.h"
 
-typedef struct W05ModelMotion_s {
+typedef struct {
     s32 modelId;
     s32 state;
     s32 elapsed;
@@ -20,7 +20,7 @@ typedef struct W05ModelMotion_s {
     HuVecF targetPosition;
 } W05_MODEL_MOTION;
 
-typedef struct W05PlayerMotion_s {
+typedef struct {
     s32 playerNo;
     s32 state;
     s32 stateFrames;
@@ -43,7 +43,7 @@ typedef struct W05PlayerMotion_s {
     s32 comMoveFrames;
 } W05_PLAYER_MOTION;
 
-typedef struct W05FlyingModel_s {
+typedef struct {
     s32 modelId;
     s32 state;
     s32 type;
@@ -60,19 +60,19 @@ typedef struct W05FlyingModel_s {
 
 /* One sea-surface vertex: each axis has its own sine wave; y uses base.y - amplitude.y as its
  * baseline. */
-typedef struct W05SeaWave_s {
+typedef struct {
     HuVecF phase; /* Degrees, advanced by speed on unpaused updates and wrapped at 360. */
     HuVecF amplitude;
     HuVecF speed;
     HuVecF base;
 } W05_SEA_WAVE;
 
-typedef struct W05TexCoord_s {
+typedef struct {
     f32 s;
     f32 t;
 } W05_TEX_COORD;
 
-typedef struct W05BoardWork_s {
+typedef struct {
     union {
         u8 modelSetupState[48];
         struct {

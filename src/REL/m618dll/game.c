@@ -1307,7 +1307,7 @@ void fn_1_6704(int modelIndex)
         break;
     }
     fn_80026790(lbl_1_bss_30C[modelIndex].colModel, &modelPosition);
-    lbl_1_bss_30C[modelIndex].collisionHeight = modelPosition.y;
+    lbl_1_bss_30C[modelIndex].unk04 = modelPosition.y;
     fn_80026874(lbl_1_bss_30C[modelIndex].model, &modelRotation);
     fn_80026838(lbl_1_bss_30C[modelIndex].colModel, &modelRotation);
 }

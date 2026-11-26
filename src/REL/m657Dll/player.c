@@ -465,7 +465,7 @@ void fn_1_31CC(OMOBJ *obj)
     fn_1_21CC(obj);
     fn_1_23F4(obj);
     fn_1_2748(obj);
-    fn_1_47EC(obj);
+    M657ComPlayerSet(obj);
     work->player.ready = FALSE;
     obj->objFunc = fn_1_32F4;
 }

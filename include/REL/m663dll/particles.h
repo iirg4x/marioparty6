@@ -5,7 +5,7 @@
 
 typedef struct M663ParticleState {
     HU3D_MODELID modelIds[2];
-    s16 maximumCounts[2];
+    s16 unk04[2]; /* The game's code never reads this field. */
     void *allocation[2];
 } M663ParticleState;
 

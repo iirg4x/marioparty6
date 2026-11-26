@@ -45,8 +45,6 @@ enum {
     CAPMASU_OBJECT_PRIORITY = 260,
 };
 
-extern int Hu3D3Dto2D(HuVecF *src, s16 cameraBit, HuVecF *dst);
-
 static HUPROCESS *ev_CapSelectShrinkProc[4] = { NULL, NULL, NULL, NULL };
 
 static int ev_CapSelectObjId[4];

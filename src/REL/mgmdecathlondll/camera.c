@@ -23,6 +23,7 @@
 #include "game/board/object.h"
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
+#include "humath.h"
 
 s32 lbl_1_data_0[4] = {
     DATANUM(0x9e0000, 31),
@@ -40,8 +41,8 @@ void decathlonCameraSetup(void) {
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     motionIndex = 0;
     while (motionIndex < 4) {
-        lbl_1_bss_A[motionIndex] = fn_8002C4C0(fn_80008DD0(
-            lbl_1_data_0[motionIndex], 0x10000000, 2));
+        lbl_1_bss_A[motionIndex] =
+            fn_8002C4C0(fn_80008DD0( lbl_1_data_0[motionIndex], 0x10000000, 2));
         lbl_1_bss_2[motionIndex] =
             fn_800283F4(lbl_1_bss_A[motionIndex], 1U);
         fn_8002858C(lbl_1_bss_2[motionIndex]);
@@ -58,7 +59,7 @@ void fn_1_184(void)
 void fn_1_264(s16 modelId, s16 cameraMask, f32 durationFrames, s16 easingMode);
 void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
               Vec *initialTarget, f32 durationFrames, s16 easingMode);
-void fn_1_1AC8(s16 modelId, const u16 *trackWords, f32 channelValue, CAM_MOTION_WORK *output);
+void fn_1_1AC8(s16 modelId, const HSF_TRACK *track, f32 channelValue, CAM_MOTION_WORK *output);
 
 /* The mode sequence changes between its four camera presets, waiting for the view to move. */
 void fn_1_188(s16 presetNo) {
@@ -100,7 +101,6 @@ void fn_1_264(s16 modelId, s16 cameraMask, f32 durationFrames, s16 easingMode)
 #define CAM_PATH_EASE_OUT 1
 #define CAM_PATH_EASE_IN 2
 #define CAMERA_FLOAT_EXPONENT_MASK 0x7F800000
-#define CAMERA_FLOAT_FRACTION_MASK 0x007FFFFF
 #define CAMERA_VALUE_NAN 1
 #define CAMERA_VALUE_INFINITY 2
 #define CAMERA_VALUE_ZERO 3
@@ -118,12 +118,12 @@ static inline s32 DecathlonCameraValueClass(const f32 *value)
     representation.value = *value;
     switch (representation.bits & CAMERA_FLOAT_EXPONENT_MASK) {
     case CAMERA_FLOAT_EXPONENT_MASK:
-        if ((representation.bits & CAMERA_FLOAT_FRACTION_MASK) != 0) {
+        if ((representation.bits & 0x007FFFFF) != 0) {
             return CAMERA_VALUE_NAN;
         }
         return CAMERA_VALUE_INFINITY;
     case 0:
-        if ((representation.bits & CAMERA_FLOAT_FRACTION_MASK) != 0) {
+        if ((representation.bits & 0x007FFFFF) != 0) {
             return CAMERA_VALUE_SUBNORMAL;
         }
         return CAMERA_VALUE_ZERO;
@@ -197,7 +197,7 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
                 if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
                     if(cameraObject->type == 7) {
-                        fn_1_1AC8(modelId, (const u16 *)track, GetCurve(track, frame), sample);
+                        fn_1_1AC8(modelId, track, GetCurve(track, frame), sample);
                     }
                 }
             }
@@ -205,7 +205,7 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
             for(; track<tracksEnd; track++) {
                 if(track->type == 2) {
                    if(track->index ==  7) {
-                       fn_1_1AC8(modelId, (const u16 *)track, GetCurve(track, frame), sample);
+                       fn_1_1AC8(modelId, track, GetCurve(track, frame), sample);
                    }
                 }
             }
@@ -222,8 +222,7 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
                 if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
                     if(cameraObject->type == 7) {
-                        fn_1_1AC8(modelId, (const u16 *) track, GetCurve(track, motionEndFrame),
-                                  sample);
+                        fn_1_1AC8(modelId, track, GetCurve(track, motionEndFrame), sample);
                     }
                 }
             }
@@ -231,8 +230,7 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
             for(; track<tracksEnd; track++) {
                 if(track->type == 2) {
                    if(track->index ==  7) {
-                       fn_1_1AC8(modelId, (const u16 *) track, GetCurve(track, motionEndFrame),
-                                 sample);
+                       fn_1_1AC8(modelId, track, GetCurve(track, motionEndFrame), sample);
                    }
                 }
             }
@@ -262,12 +260,12 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
 
             case CAM_PATH_EASE_OUT:
                 easedFrame =
-                    durationFrames*sin(3.141592653589793*((frame/durationFrames)*90)/180.0);
+                    durationFrames*sin(M_PI*((frame/durationFrames)*90)/180.0);
                 break;
 
             case CAM_PATH_EASE_IN:
                 easedFrame =
-                    durationFrames*(1-cos(3.141592653589793*((frame/durationFrames)*90)/180.0));
+                    durationFrames*(1-cos(M_PI*((frame/durationFrames)*90)/180.0));
                 break;
         }
         for(sample=samples, intervalIndex=0; intervalIndex<sampleCount; intervalIndex++, sample++) {
@@ -484,14 +482,13 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
 }
 
 /* Path sampling applies one evaluated track channel to its camera sample, including camera roll. */
-void fn_1_1AC8(s16 modelId, const u16 *trackWords, f32 channelValue,
-               CAM_MOTION_WORK *output) {
+void fn_1_1AC8(s16 modelId, const HSF_TRACK *track, f32 channelValue, CAM_MOTION_WORK *output) {
     HuVecF rolledUp;
     HuVecF viewDirection;
     HU3D_MODEL *modelData;
 
     modelData = &lbl_802C01C8[modelId];
-    switch (trackWords[3]) {
+    switch (track->channel) {
     case 8:
         /* Position and target channels scale both the sampled value and the model's offset. */
         output->pos.x = modelData->scale.x * (channelValue + modelData->pos.x);
@@ -518,14 +515,14 @@ void fn_1_1AC8(s16 modelId, const u16 *trackWords, f32 channelValue,
         PSVECSubtract(&output->pos, &output->target, &viewDirection);
         PSVECNormalize(&viewDirection, &viewDirection);
         rolledUp.x = (viewDirection.x * viewDirection.y) *
-                         (1.0 - cos((3.141592653589793 * channelValue) / 180.0)) -
-                     (viewDirection.z * sin((3.141592653589793 * channelValue) / 180.0));
+                         (1.0 - cos((M_PI * channelValue) / 180.0)) -
+                     (viewDirection.z * sin((M_PI * channelValue) / 180.0));
         rolledUp.y = (viewDirection.y * viewDirection.y) +
                             (1.0f - (viewDirection.y * viewDirection.y)) *
-                            cos((3.141592653589793 * channelValue) / 180.0);
+                            cos((M_PI * channelValue) / 180.0);
         rolledUp.z = (viewDirection.y * viewDirection.z) *
-                         (1.0 - cos((3.141592653589793 * channelValue) / 180.0)) +
-                     (sin((3.141592653589793 * channelValue) / 180.0) * viewDirection.x);
+                         (1.0 - cos((M_PI * channelValue) / 180.0)) +
+                     (sin((M_PI * channelValue) / 180.0) * viewDirection.x);
         PSVECNormalize(&rolledUp, &output->up);
         break;
     }

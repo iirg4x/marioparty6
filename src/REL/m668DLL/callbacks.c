@@ -114,12 +114,6 @@ extern void fn_1_6924(OMOBJ *obj);
 extern s32 lbl_1_bss_C;
 extern void fn_1_6C24(OMOBJ *);
 
-/* Returns the magnitude used to keep the wave overlay vertical offset nonpositive. */
-static inline f32 M668Abs(f32 x)
-{
-    return (f32)fabs((f64)x);
-}
-
 /* Player state used while characters wait for the result sequence. */
 typedef struct {
     s16 playerNo;
@@ -243,7 +237,7 @@ void fn_1_1A48(OMOBJ *obj)
         HuMemDirectMallocNum(2, GXGetTexBufferSize(40U, 32U, 4U, 0U, 0U), 0x10000000);
     memset(lbl_1_bss_640, 0, GXGetTexBufferSize(40U, 32U, 4U, 0U, 0U));
     lbl_1_bss_3C =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x7f0000, 15), 0x10000000, 2));
+        HuSprAnimDataRead(DATANUM(0x7f0000, 15));
     lbl_1_bss_24 = -1;
     lbl_1_bss_18[0] = lbl_1_bss_18[1] = 0;
     fn_1_18E4(teamOrder);
@@ -578,11 +572,11 @@ void fn_1_2FA0(s16 layerNo)
         segmentIndex = 0;
         while (segmentIndex < 97) {
             waveOffsetX[segmentIndex] =
-                (f32) ((1.5 * sin(4.0 * (0.02617993877991494 *
+                (f32) ((1.5 * sin(4.0 * ((M_PI * 1.5 / 180.0) *
                                              (f64) (f32) (lbl_1_bss_10 + segmentIndex)))) /
                        640.0);
             waveOffsetY[segmentIndex] =
-                -M668Abs((f32) ((4.0 * cos(0.039269908169872414 *
+                -fabsf((f32) ((4.0 * cos((M_PI * 2.25 / 180.0) *
                                                  (f64) (f32) (lbl_1_bss_10 + (segmentIndex * 4)))) /
                                     480.0));
             segmentIndex += 1;
@@ -788,7 +782,7 @@ void fn_1_3CE4(s16 layerNo)
         particleSize = 0.125f;
         particleX = (f32)((f64)lbl_1_bss_340[i].x +
                          (0.1f *
-                          sin(0.017453292519943295 * (f64)(lbl_1_bss_14 + (i * 5)))));
+                          sin((M_PI / 180.0) * (f64)(lbl_1_bss_14 + (i * 5)))));
         particleY = lbl_1_bss_340[i].y; /* Draw this position before advancing it. */
 
         if (fn_8003B748() == 0) {
@@ -866,11 +860,11 @@ void fn_1_468C(M668PlayerWork *work, f32 desired, f32 blend, f32 speed)
     } else if (cross < 0.0f) {
         angle -= difference * blend;
     }
-    while (angle > 6.283185307179586) {
-        angle = (f32)((f64)angle - 6.283185307179586);
+    while (angle > (2.0 * M_PI)) {
+        angle = (f32)((f64)angle - (2.0 * M_PI));
     }
-    while (angle < -6.283185307179586) {
-        angle += 6.283185307179586;
+    while (angle < -(2.0 * M_PI)) {
+        angle += (2.0 * M_PI);
     }
     work->player->actor->rotY = (f32)((f64)(180.0f * angle) / M_PI);
     fn_1_2A4(&work->player->actor->push, 0.0f, 0.0f, speed);
@@ -1130,7 +1124,7 @@ void fn_1_54CC(OMOBJ *obj)
             while (rotorIndex < 1) {
                 s32 lookaheadFramesByDifficulty[4] = {19, 21, 23, 25};
                 rotorWork = fn_1_18CC(rotorIndex);
-                rotorAngleStep = (f32) (0.017453292519943295 *
+                rotorAngleStep = (f32) ((M_PI / 180.0) *
                                         (f64) (rotorWork->speed * rotorWork->speedScale));
                 angularStep = rotorAngleStep * (f32) lookaheadFramesByDifficulty[difficulty];
                 {
@@ -1340,7 +1334,7 @@ void fn_1_6924(OMOBJ *obj)
                 work->position[2].y = 0.0f;
                 magnitude = fn_1_4DC(&work->position[2], &work->position[2]);
                 reflectionCopy = work->position[2];
-                scale = M668Abs(2.0f * fn_1_404(&work->position[2], &normal));
+                scale = fabsf(2.0f * fn_1_404(&work->position[2], &normal));
                 work->position[2].x += work->position[2].x + normal.x * scale;
                 work->position[2].y = 0.0f;
                 work->position[2].z += work->position[2].z + normal.z * scale;
@@ -1502,7 +1496,7 @@ void fn_1_72CC(OMOBJ *obj)
         /* The shadow link ends up on layer 6, replacing the preceding layer 2 assignment. */
         fn_80026B8C(work->shadowModel, 6);
 
-        work->angle = (f32)(0.017453292519943295 * (f64)(10.0f * (f32)work->index));
+        work->angle = (f32)((M_PI / 180.0) * (f64)(10.0f * (f32)work->index));
         for (index = 0; index < 16; index++) {
             work->history[index] = work->angle;
         }
@@ -1548,7 +1542,7 @@ void fn_1_758C(OMOBJ *obj)
     HuVecF center;
     HuVecF fromCenter;
     M668VecBound objectBound;
-    f32 delta = (f32)(0.017453292519943295 * (f64)(work->speed * work->speedScale));
+    f32 delta = (f32)((M_PI / 180.0) * (f64)(work->speed * work->speedScale));
     f32 arcStep;
     f32 sweepAngle;
     M668PlayerWork *item;
@@ -1611,7 +1605,7 @@ void fn_1_758C(OMOBJ *obj)
 
     /* At a full turn, shift history a second time and reset the angle to zero, discarding
      * overshoot. */
-    if (work->angle >= 6.283185307179586 || work->angle <= -6.283185307179586) {
+    if (work->angle >= (2.0 * M_PI) || work->angle <= -(2.0 * M_PI)) {
         for (index = 15; index >= 1; index--) {
             work->history[index] = work->history[index - 1];
         }
@@ -1676,7 +1670,7 @@ void fn_1_7BE8(OMOBJ *obj)
     if (lbl_1_bss_20->state == 0) {
         /* Compute this frame's angle step before changing speedScale; sound pitch uses the
          * updated scale. */
-        delta = (f32)(0.017453292519943295 * (f64)(work->speed * work->speedScale));
+        delta = (f32)((M_PI / 180.0) * (f64)(work->speed * work->speedScale));
         if (lbl_1_bss_24 == -1) {
             work->speedScale += 0.004f;
         } else {

@@ -42,7 +42,7 @@ PlayerParticleEffect::PlayerParticleEffect(const Vec *sourcePosition, s32 camera
 
     enabled = 0;
     finishing = 0;
-    animation = HuSprAnimRead(fn_80008DD0(0x3F001A, 0x10000000, 2));
+    animation = HuSprAnimDataRead(0x3F001A);
     HuSprAnimLock(animation);
     particleModel = fn_8003216C(animation, 0x20);
     particle = static_cast<HU3D_PARTICLE *>(lbl_802C01C8[(s16)particleModel].hookData);
@@ -193,7 +193,7 @@ void fn_1_2798(HU3D_MODEL *model, Mtx *matrix)
 }
 
 void fn_1_2CFC(PlayerPositionHistory *);
-
+/* Sets up the position-history draw hook and loads its sprite animation. */
 PlayerPositionHistory::PlayerPositionHistory(Vec *unused, s32 cameraMask)
 {
     HU3D_MODEL *model;
@@ -205,7 +205,7 @@ PlayerPositionHistory::PlayerPositionHistory(Vec *unused, s32 cameraMask)
     model = &lbl_802C01C8[handle];
     model->hookData = this;
     modelId = (s16) handle;
-    animation = HuSprAnimRead(fn_80008DD0(0x3F0035, 0x10000000, 2));
+    animation = HuSprAnimDataRead(0x3F0035);
     HuSprAnimLock(animation);
     fn_80026B8C((s16) handle, 5);
     fn_80026B64((s16) handle, cameraMask);
@@ -246,6 +246,35 @@ void PlayerPositionHistory::update()
 
  void fn_1_3150(PlayerPositionHistory *);
 
+/* Set the depth, blend, color and vertex state shared by the two particle draw paths. */
+static inline void particleRenderStateSet(GXBlendFactor blend, GXTevColorArg color)
+{
+    GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, blend, GX_LO_NOOP);
+    GXSetZCompLoc(GX_TRUE);
+    GXSetAlphaUpdate(GX_TRUE);
+    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
+    GXSetNumChans(1);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL,
+                  GX_DF_CLAMP, GX_AF_NONE);
+    GXSetNumTexGens(1);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY,
+                      GX_FALSE, GX_PTIDENTITY);
+    GXSetNumTevStages(1);
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    GXSetTevColorIn(GX_TEVSTAGE0, color, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
+    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+                    GX_FALSE, GX_TEVPREV);
+    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_RASA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
+    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+                    GX_FALSE, GX_TEVPREV);
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+}
+/* Draw the player trail with its world transform during the particle render pass. */
 void fn_1_2AA0(PlayerPositionHistory *owner, Mtx inputMatrix)
 {
     Mtx transformMatrix;
@@ -261,30 +290,7 @@ void fn_1_2AA0(PlayerPositionHistory *owner, Mtx inputMatrix)
     GXLoadPosMtxImm(transformMatrix, GX_PNMTX0);
     HuSprTexLoad(owner->animation, 0, 0, (GXTexWrapMode)0, (GXTexWrapMode)0,
                  (GXTexFilter)1);
-    GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
-    GXSetZCompLoc(GX_TRUE);
-    GXSetAlphaUpdate(GX_TRUE);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL,
-                  GX_DF_CLAMP, GX_AF_NONE);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY,
-                      GX_FALSE, GX_PTIDENTITY);
-    GXSetNumTevStages(1);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    GX_FALSE, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_RASA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    GX_FALSE, GX_TEVPREV);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+    particleRenderStateSet(GX_BL_ONE, GX_CC_TEXC);
     GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
     GXSetCullMode(GX_CULL_NONE);
@@ -515,8 +521,6 @@ ParticleBurst::ParticleBurst(const Vec *position, s32 count, s32 camera) : Reque
 
 }
 
-extern "C" { void fn_800262D0(s16 modelId); }
-
 ParticleBurst::~ParticleBurst()
 {
     hookData->work = 0;
@@ -642,14 +646,14 @@ void fn_1_4180(ParticleBurst *owner, Mtx data) {
         entry++;
     }
 }
-
+/* Loads and locks the weather particle animation during stage setup. */
 WeatherParticles::WeatherParticles()
 {
     weatherState = 0;
     interval = 0;
     frame = 0;
     elapsed = 0.0f;
-    animation = HuSprAnimRead(fn_80008DD0(0x3F001A, 0x10000000, 2));
+    animation = HuSprAnimDataRead(0x3F001A);
     HuSprAnimLock(animation);
 }
 
@@ -763,6 +767,7 @@ void CameraHookOwner::update()
 const GXColor lbl_1_rodata_1F4[2] = { { 0x0, 0x0, 0xcc, 0x0 }, { 0x0, 0x0, 0x56, 0x0 } };
 const GXColor lbl_1_rodata_1FC[2] = { { 0x65, 0xff, 0xe5, 0x0 }, { 0x0, 0x9f, 0x70, 0x0 } };
 
+/* Draws a translated quad using the day or night gradient. */
 void fn_1_4BD4(CameraHookOwner *work, Mtx input)
 {
     Mtx translated;
@@ -773,33 +778,7 @@ void fn_1_4BD4(CameraHookOwner *work, Mtx input)
                translation.z);
     PSMTXConcat(input, translated, translated);
     GXLoadPosMtxImm(translated, GX_PNMTX0);
-    GXSetZMode(GX_ENABLE, GX_LEQUAL, GX_DISABLE);
-    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA,
-                   GX_LO_NOOP);
-    GXSetZCompLoc(GX_TRUE);
-    GXSetAlphaUpdate(GX_TRUE);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, GX_DISABLE, GX_SRC_VTX, GX_SRC_VTX, GX_LIGHT_NULL,
-                  GX_DF_CLAMP, GX_AF_NONE);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE,
-                      GX_PTIDENTITY);
-    GXSetNumTevStages(1);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_RASC, GX_CC_ZERO, GX_CC_ZERO,
-                    GX_CC_ZERO);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    GX_FALSE, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_RASA, GX_CA_ZERO, GX_CA_ZERO,
-                    GX_CA_ZERO);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    GX_FALSE, GX_TEVPREV);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+    particleRenderStateSet(GX_BL_INVSRCALPHA, GX_CC_RASC);
     GXSetCullMode(GX_CULL_NONE);
     colorIndex = work->nightMode;
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);

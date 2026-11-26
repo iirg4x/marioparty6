@@ -1,9 +1,6 @@
 /* Player object callbacks for controlling the rotating obstacle and handling hits. */
 #include "REL/m633dll.h"
 
-#define M633_PLAYER_HIT_REACTION_CHAR_SE_ID 576 /* Character sound effect used when a player is
-                                                 * knocked out. */
-
 /* Builds two moving hazards from opposite nozzle positions, sets their shared countdown, and
  * plays the launch effect. */
 void fn_1_258C(void)
@@ -24,7 +21,7 @@ void fn_1_258C(void)
     nozzleDirection.x = -nozzleDirection.x;
     nozzleDirection.z = -nozzleDirection.z;
     fn_1_5ED0(&nozzlePosition, &nozzleDirection);
-    HuAudFXPlay(M633_SEGMENT_SPAWN_SE_ID);
+    HuAudFXPlay(MSM_SE_MG633_SEGMENT_SPAWN);
 }
 
 /* Installed on group-zero player objects while their sequence callback has no active work. */
@@ -37,12 +34,9 @@ void fn_1_26B4(OMOBJ *groupZeroPlayerObject)
  * remain. */
 void fn_1_26B8(OMOBJ *playerObject)
 {
-    Point3d nozzleDirection;
-    Point3d nozzlePosition;
     MGPLAYER *player;
     s16 playerModelId;
     u32 playerNo;
-    f32 nozzleDistance;
 
     playerNo = playerObject->work[0];
     player = lbl_1_bss_0.players[playerNo];
@@ -55,19 +49,7 @@ void fn_1_26B8(OMOBJ *playerObject)
         break;
     case 1:
         if (lbl_1_bss_0.arenaPhase == 2) {
-            Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &nozzlePosition);
-            nozzlePosition.y -= 50.0f;
-            nozzleDirection = nozzlePosition;
-            PSVECNormalize(&nozzleDirection, &nozzleDirection);
-            lbl_1_bss_0.segmentUpdateCountdown = 90;
-            fn_1_5ED0(&nozzlePosition, &nozzleDirection);
-            nozzleDistance = PSVECMag(&nozzlePosition);
-            nozzlePosition.x += nozzleDirection.x * -(2.0f * nozzleDistance);
-            nozzlePosition.z += nozzleDirection.z * -(2.0f * nozzleDistance);
-            nozzleDirection.x = -nozzleDirection.x;
-            nozzleDirection.z = -nozzleDirection.z;
-            fn_1_5ED0(&nozzlePosition, &nozzleDirection);
-            HuAudFXPlay(M633_SEGMENT_SPAWN_SE_ID);
+            fn_1_258C();
             playerObject->work[1] = 2;
             fn_1_70A8(1);
         }
@@ -146,7 +128,7 @@ void fn_1_28A4(OMOBJ *playerObject)
                                        ((1 << 30) | (1 << 2)));
             }
             if (lbl_1_bss_0.rotationSoundHandle == -1) {
-                lbl_1_bss_0.rotationSoundHandle = HuAudFXPlay(M633_ROTATION_CONTROL_SE_ID);
+                lbl_1_bss_0.rotationSoundHandle = HuAudFXPlay(MSM_SE_MG633_ROTATION_CONTROL_HOLD);
             }
         } else if (buttonMask == 0x4000) {
             lbl_1_bss_0.arenaYawDegrees += 2.0f;
@@ -159,7 +141,7 @@ void fn_1_28A4(OMOBJ *playerObject)
                                    lbl_1_bss_0.stageAuxiliaryIds[0], 6.0f, 6.0f, 0U);
             }
             if (lbl_1_bss_0.rotationSoundHandle == -1) {
-                lbl_1_bss_0.rotationSoundHandle = HuAudFXPlay(M633_ROTATION_CONTROL_SE_ID);
+                lbl_1_bss_0.rotationSoundHandle = HuAudFXPlay(MSM_SE_MG633_ROTATION_CONTROL_HOLD);
             }
         } else {
             player = lbl_1_bss_0.players[playerNo];
@@ -195,7 +177,7 @@ void fn_1_28A4(OMOBJ *playerObject)
             nozzleDirection.x = -nozzleDirection.x;
             nozzleDirection.z = -nozzleDirection.z;
             fn_1_5ED0(&nozzlePosition, &nozzleDirection);
-            HuAudFXPlay(M633_SEGMENT_SPAWN_SE_ID);
+            HuAudFXPlay(MSM_SE_MG633_SEGMENT_SPAWN);
             fn_1_70A8(1);
             fn_8006A030((s16) playerNo, 20, 4, 4);
             if (lbl_1_bss_0.rotationSoundHandle != -1) {
@@ -257,7 +239,7 @@ void fn_1_28A4(OMOBJ *playerObject)
                     } else if (eliminationSoundPan > 127) {
                         eliminationSoundPan = 127;
                     }
-                    soundHandle = HuAudFXPlay(M633_PLAYER_ELIMINATION_SE_ID);
+                    soundHandle = HuAudFXPlay(MSM_SE_MG633_PLAYER_ELIMINATION);
                     HuAudFXPanning(soundHandle, (s16) eliminationSoundPan);
                 }
             }
@@ -342,7 +324,7 @@ void fn_1_34B0(OMOBJ *playerObject)
                        0.0f, 5.0f, 0U);
     playerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
     soundHandle = CharFXPlay((s16) lbl_1_bss_0.characterNumbers[playerNo],
-                             M633_PLAYER_HIT_REACTION_CHAR_SE_ID);
+                             MSM_SE_CHARVOICE_HIT_YELP);
     Hu3D3Dto2D(&playerPosition, 1, &projectedPosition);
     screenPan = (s32) projectedPosition.x;
     screenPan /= 5;

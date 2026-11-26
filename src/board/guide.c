@@ -2,7 +2,7 @@
 #include <math.h>
 
 #include "game/board/guide.h"
-#include "game/board/guide_object.h"
+#include "game/board/pause.h"
 #include "game/board/audio.h"
 
 #include "game/hu3d.h"
@@ -12,6 +12,32 @@
 #include "game/gamework.h"
 
 #include "dolphin/mtx.h"
+
+MBMODELID mbObjCreate(int dataNum, const int *motFileTbl, BOOL animOffF);
+int mbObjMotionNoCreate(int modelId, int dataNum, int motNo);
+int mbObjMotionIDGet(int modelId, int motNo);
+int mbObjMotionShiftIDGet(MBMODELID modelId);
+BOOL mbObjMotionEndCheck(int modelId);
+void mbObjMotionSet(int modelId, int motNo, u32 attr);
+void mbObjMotionShiftSet(int modelId, int motNo, float start, float end, BOOL loopF);
+void mbObjPosSetV(int modelId, HuVecF *pos);
+void mbObjPosGet(int modelId, HuVecF *pos);
+void mbObjRotSetV(int modelId, HuVecF *rot);
+void mbObjScaleSet(int modelId, float x, float y, float z);
+void mbObjScaleGet(int modelId, HuVecF *scale);
+void mbObjMtxSet(int modelId, Mtx *mtx);
+void mbObjMtxGet(MBMODELID modelId, Mtx *mtx);
+void mbObjCameraSet(int modelId, u16 cameraBit);
+void mbObjLayerSet(int modelId, int layer);
+void mbObjAttrSet(int modelId, u32 attr);
+void mbObjDispSet(int modelId, BOOL dispF);
+void mbObjKill(int modelId);
+void mbObjHookSet(int modelId, char *objName, int hookMdlId);
+MBOBJMODEL *mbObjGet(MBMODELID modelId);
+void mbObjFadeCreate(int modelId, HuVecF *pos);
+void mbObjFadeKill(int modelId);
+void mbObjFadeTexColorSet(int modelId, int r, int g, int b, float a);
+void mbObjFadeTexRotSet(int modelId, HuVecF *pos, HuVecF *rot);
 
 #define GUIDE_OBJECT_NAME 1296189252
 #define GUIDE_FADE_PARTICLE_CAPACITY 200

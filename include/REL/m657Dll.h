@@ -272,7 +272,7 @@ void fn_1_4608(OMOBJ *obj);
 void fn_1_463C(OMOBJ *obj);
 void fn_1_47A8(OMOBJ *obj);
 void fn_1_47D0(OMOBJ *obj);
-void fn_1_47EC(OMOBJ *obj);
+void M657ComPlayerSet(OMOBJ *obj);
 s32 fn_1_48C0(void);
 s32 fn_1_48E8(void);
 s32 fn_1_4910(M657ComPlayer *com);

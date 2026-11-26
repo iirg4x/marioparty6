@@ -5,7 +5,7 @@
 // Incorrect signature? Should be u8.
 UARTError WriteUART1(s8 arg0);
 
-DSError TRKMessageSend(TRK_Msg* msg)
+DSError TRKMessageSend(TRKBuffer* msg)
 {
     u8 var_r30;
     u8 var_r28;
@@ -14,14 +14,14 @@ DSError TRKMessageSend(TRK_Msg* msg)
     s32 i;
 
     var_r30 = 0;
-    for (i = 0; i < msg->m_msgLength; i++) {
-        var_r30 = var_r30 + msg->m_msg[i];
+    for (i = 0; i < msg->length; i++) {
+        var_r30 = var_r30 + msg->data[i];
     }
     var_r30 = var_r30 ^ 0xFF;
     var_r3 = WriteUART1(0x7E);
     if (var_r3 == 0) {
-        for (i = 0; i < msg->m_msgLength; i++) {
-            var_r28 = msg->m_msg[i];
+        for (i = 0; i < msg->length; i++) {
+            var_r28 = msg->data[i];
             if (var_r28 == 0x7E || var_r28 == 0x7D) {
                 var_r3 = WriteUART1(0x7D);
                 var_r28 ^= 0x20;

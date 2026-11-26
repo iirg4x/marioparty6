@@ -709,13 +709,13 @@ void fn_1_194C(s16 excludedPlayer) {
             continue;
         }
 
-        lbl_1_bss_8[playerCount].obstacleCollision = 0;
-        lbl_1_bss_8[playerCount].wallContact = 0;
+        lbl_1_bss_8[playerCount].unk24_3 = 0;
+        lbl_1_bss_8[playerCount].unk24_4 = 0;
         lbl_1_bss_8[playerCount].playerNumber = playerIndex;
         actorParam.param = playerCount;
         charNo = lbl_80265728[playerIndex].charNo;
         lbl_1_bss_8[playerCount].charNo = charNo;
-        lbl_1_bss_8[playerCount].padNumber = lbl_80265728[playerIndex].padNo;
+        lbl_1_bss_8[playerCount].unk06 = lbl_80265728[playerIndex].padNo;
         if (lbl_80265728[playerIndex].type == 1) {
             lbl_1_bss_8[playerCount].comDifficulty = lbl_80265728[playerIndex].comDif;
         } else {
@@ -863,7 +863,7 @@ void fn_1_2388(s16 playerIndex, s16 choiceIndex) {
     playerState->targetAngle =
         (f32)(avoidanceAngles[choiceIndex] + 10 - frandmod(20));
     playerState->nudgeTimer = frandmod(15) + 15;
-    playerState->nudgeDirection = choiceIndex;
+    playerState->unk1E = choiceIndex;
 }
 
 /* Sets the selected player's temporary avoidance angle and input timer. */
@@ -937,9 +937,9 @@ void fn_1_2458(s16 playerIndex) {
     if (sqrtf((playerPosition.x * playerPosition.x) +
               (playerPosition.z * playerPosition.z)) > 510.0f) {
         outsideSteeringRadius = 1;
-        player->outsideSteeringRadius = 1;
+        player->unk24_0 = 1;
     } else {
-        player->outsideSteeringRadius = 0;
+        player->unk24_0 = 0;
     }
 
     closestDistance = 1000.0f;
@@ -1083,7 +1083,7 @@ void fn_1_2458(s16 playerIndex) {
      * the wall-avoidance branches below can still read them. */
     if ((playerActor->colGroundAttr & 0x80) != 0 &&
         playerActor->colNorm.y == 0.0f && player->targetAngle != -500.0f) {
-        player->wallContact = 1;
+        player->unk24_4 = 1;
         player->suppressAngleSmoothing = 1;
         if (outsideSteeringRadius == 0) {
             if (playerActor->colNorm.x > 0.0f) {
@@ -1177,7 +1177,7 @@ void fn_1_2458(s16 playerIndex) {
         player->wanderFrames = frandmod(15) + 10;
         player->wanderAngle = frandmod(360);
     }
-    player->obstacleCollision = 0;
+    player->unk24_3 = 0;
 }
 
 /* Updates all three players' movement and collision state each frame from the sequence
@@ -1346,7 +1346,7 @@ void fn_1_4378(COL_NARROW_PARAM *playerEvent, COL_NARROW_PARAM *targetEvent) {
                     lbl_1_bss_8[(s16) playerIndex].targetAngle += 5.0f;
                 }
                 if (PSVECDotProduct(&separation, &uninitializedDirection) > 0.0f) {
-                    lbl_1_bss_8[(s16) playerIndex].secondTargetAngle += 5.0f;
+                    lbl_1_bss_8[(s16) playerIndex].unk18 += 5.0f;
                 }
                 }
             } else if ((targetEvent->paramB >= 4) &&
@@ -1366,14 +1366,14 @@ void fn_1_4378(COL_NARROW_PARAM *playerEvent, COL_NARROW_PARAM *targetEvent) {
                     (M_PI *
                      (f64) (lbl_1_bss_8[(s16) playerIndex].targetAngle -
                             45.0f)) / 180.0);
-                lbl_1_bss_8[(s16) playerIndex].obstacleCollision = 1;
+                lbl_1_bss_8[(s16) playerIndex].unk24_3 = 1;
                 if (PSVECDotProduct(&separation, &angleDirection) > 0.0f) {
                     lbl_1_bss_8[(s16) playerIndex].targetAngle += 30.0f;
                 }
             }
         }
     }
-    lbl_1_bss_8[(s16) playerIndex].wallContact = 0;
+    lbl_1_bss_8[(s16) playerIndex].unk24_4 = 0;
 }
 
 void fn_1_194C(s16 playerIndex);
@@ -1383,10 +1383,6 @@ void fn_1_194C(s16 playerIndex);
 void fn_1_4A40(void) {
     s16 playerIndex;
     s32 candidateIndex;
-    s16 charNo;
-    s16 modelId;
-    s16 motionId;
-    s32 motionIndex;
 
     playerIndex = 0;
     for (candidateIndex = 0; candidateIndex < 4; candidateIndex++) {
@@ -1396,27 +1392,7 @@ void fn_1_4A40(void) {
         }
     }
 
-    lbl_1_bss_98.playerIndex = playerIndex;
-    lbl_1_bss_98.padNo = lbl_80265728[playerIndex].padNo;
-    charNo = lbl_80265728[playerIndex].charNo;
-    lbl_1_bss_98.charNo = charNo;
-    if (lbl_80265728[playerIndex].type == 0) {
-        lbl_1_bss_98.difficulty = -1;
-    } else {
-        lbl_1_bss_98.difficulty = lbl_80265728[playerIndex].comDif;
-    }
-
-    modelId = fn_80057068(charNo, 4);
-    fn_80026760(modelId, 960.0f, 0.0f, 460.0f);
-    fn_80026808(modelId, 0.0f, -135.0f, 0.0f);
-    fn_80026E44(modelId);
-    lbl_1_bss_98.modelId = modelId;
-    for (motionIndex = 0; motionIndex < 6; motionIndex++) {
-        motionId = fn_8005B0B8(charNo, lbl_1_data_680[motionIndex].fileId);
-        lbl_1_bss_98.motionIds[motionIndex] = motionId;
-    }
-    fn_8005C2C8(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f,
-                       0.0f, lbl_1_data_680[0].flags);
+    fn_1_125C(playerIndex);
     fn_1_194C(playerIndex);
 }
 
@@ -1508,7 +1484,7 @@ void fn_1_4F24(void) {
 
     for (modelIndex = 0; modelIndex < 10; modelIndex++) {
         spriteAnimations[modelIndex] =
-            HuSprAnimRead( fn_80008DD0(spriteFileIds[modelIndex], 0x10000000, 2));
+            HuSprAnimDataRead(spriteFileIds[modelIndex]);
     }
 
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
@@ -2816,16 +2792,16 @@ void fn_1_9260(void) {
  * group motion, and plays the hook sound. */
 /* Hooks the selected bomb model when the group event begins. */
 void fn_1_9D3C(s16 groupIndex) {
-    void *model;
+    M666MovingObstacle *model;
 
     if (lbl_1_bss_580[groupIndex].state == 0) {
         lbl_1_bss_580[groupIndex].state = 1;
         model = &lbl_1_bss_604[groupIndex]
                               [lbl_1_bss_580[groupIndex].obstacleIndices[0]];
         fn_8002741C(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
-                        ((M666MovingObstacle *)model)->modelId);
-        fn_80026760(((M666MovingObstacle *)model)->modelId, 0.0f, 0.0f, 0.0f);
-        fn_80026808(((M666MovingObstacle *)model)->modelId, 0.0f, 0.0f, 0.0f);
+                        model->modelId);
+        fn_80026760(model->modelId, 0.0f, 0.0f, 0.0f);
+        fn_80026808(model->modelId, 0.0f, 0.0f, 0.0f);
         fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
         fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
         fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));

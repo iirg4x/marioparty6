@@ -36,11 +36,11 @@ extern ResultSceneHandles lbl_1_bss_FAC[4];
 #include "game/charman.h"
 #include "game/sprite.h"
 
-#define RESULT_MOTION_IDLE 9633792
-#define RESULT_MOTION_AWARD_REACTION 9633828
-#define RESULT_MOTION_NO_AWARD_REACTION 9633829
-#define RESULT_MOTION_ENTRY 9633795
-#define RESULT_MOTION_ARRIVAL 9633796
+
+
+
+
+
 
 extern s32 lbl_1_bss_1094[4];
 extern ResultParticleGroup lbl_1_bss_10A4[64];
@@ -74,12 +74,6 @@ extern HuVecF lbl_1_data_780;
 extern f32 lbl_1_data_78C[4];
 extern f32 lbl_1_data_79C[4];
 extern void fn_1_9D18(void);
-
-
-
-typedef struct ResultCleanupRecord {
-    s16 value[8];
-} ResultCleanupRecord;
 
 extern HuVecF lbl_1_data_620[4];
 extern HuVecF lbl_1_data_6B0[4];
@@ -129,7 +123,7 @@ typedef struct ResultParticleSystem {
     s16 group;
     Vec pos;
     Vec spawnCenter;
-    void *work;
+    void *unk1C; /* No code names this field. */
     s8 blendMode;
     u8 attributes;
     s16 sortEnabled;
@@ -247,7 +241,7 @@ void fn_1_7A18(void)
         } else {
             for (player = 0; player < 4; player++) {
                 if (HuPadStatGet(player) == 0 && (lbl_802C0008[player] & PAD_BUTTON_A) != 0) {
-                    HuAudFXPlay(2);
+                    HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                     confirmed = 1;
                     break;
                 }
@@ -373,13 +367,13 @@ void fn_1_7E0C(void)
         characterIndex[0] = character * 4;
         handle = fn_80057068(character, 2);
         lbl_1_bss_FAC[player].characterModelId = handle;
-        lbl_1_bss_FAC[player].idleMotionId = fn_8005B0B8(character, RESULT_MOTION_IDLE);
+        lbl_1_bss_FAC[player].idleMotionId = fn_8005B0B8(character, DATANUM(0x930000, 0));
         lbl_1_bss_FAC[player].motionId[0] =
-            fn_8005B0B8(character, RESULT_MOTION_AWARD_REACTION);
+            fn_8005B0B8(character, DATANUM(0x930000, 36));
         lbl_1_bss_FAC[player].motionId[1] =
-            fn_8005B0B8(character, RESULT_MOTION_NO_AWARD_REACTION);
-        lbl_1_bss_FAC[player].motionId[2] = fn_8005B0B8(character, RESULT_MOTION_ENTRY);
-        lbl_1_bss_FAC[player].arrivalMotionId = fn_8005B0B8(character, RESULT_MOTION_ARRIVAL);
+            fn_8005B0B8(character, DATANUM(0x930000, 37));
+        lbl_1_bss_FAC[player].motionId[2] = fn_8005B0B8(character, DATANUM(0x930000, 3));
+        lbl_1_bss_FAC[player].arrivalMotionId = fn_8005B0B8(character, DATANUM(0x930000, 4));
         fn_8005B4BC(character);
         fn_8002CCC0(handle, lbl_1_bss_FAC[player].motionId[2], 0.0f, 1.0f, 0);
         fn_80026B64(handle, 1);
@@ -409,8 +403,8 @@ void fn_1_7E0C(void)
         fn_80026B64(handle, 1);
         fn_80026B8C(handle, 3);
     }
-    lbl_1_bss_BA4 = HuSprAnimRead(
-        fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 21)), 0x10000000, 2));
+    lbl_1_bss_BA4 = HuSprAnimDataRead(
+        fn_1_C45C(DATANUM(0xc60000, 21)));
     HuSprExecLayerCameraSet(64, 1, 2);
 }
 
@@ -575,7 +569,7 @@ void fn_1_8D4C(void)
                 fn_80026790((s16)lbl_1_bss_DAC[index], &worldPosition);
                 fn_80026838((s16)lbl_1_bss_DAC[index], &rotations[index]);
                 if (positions[index].y >= lbl_1_data_6F0[lbl_1_bss_1094[ranks[index]]]) {
-                    HuAudFXPlay(7);
+                    HuAudFXPlay(MSM_SE_CMN_COIN_GET);
                     fn_1_A238(&worldPosition);
                     fn_800269E8((s16)lbl_1_bss_DAC[index], 1);
                     remaining--;
@@ -631,7 +625,7 @@ void fn_1_924C(void)
                 fn_80026790((s16)lbl_1_bss_DAC[model], &worldPosition);
                 fn_80026838((s16)lbl_1_bss_DAC[model], &rotations[model]);
                 if (positions[model].y >= lbl_1_data_6F0[lbl_1_bss_1094[lbl_1_bss_61C]]) {
-                    HuAudFXPlay(7);
+                    HuAudFXPlay(MSM_SE_CMN_COIN_GET);
                     fn_1_A238(&worldPosition);
                     fn_800269E8((s16)lbl_1_bss_DAC[model], 1);
                     remaining--;
@@ -671,7 +665,7 @@ void fn_1_95D8(void)
     }
     duration = lbl_1_bss_624 != 0 ? 3 : 10;
     for (frame = 0; frame <= duration; frame++) {
-        scale = sin(3.141592653589793 * ((90.0 / duration) * frame) / 180.0);
+        scale = sin(M_PI * ((90.0 / duration) * frame) / 180.0);
         for (player = 0; player < 4; player++) {
             espScaleSet(lbl_1_bss_FAC[player].spriteId[1], scale, scale);
             for (digit = 0; digit < 3; digit++) {
@@ -696,7 +690,7 @@ void fn_1_95D8(void)
             (s16)lbl_1_bss_FAC[player].idleMotionId, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     }
     for (frame = 0; frame <= duration; frame++) {
-        scale = cos(3.141592653589793 * ((90.0 / duration) * frame) / 180.0);
+        scale = cos(M_PI * ((90.0 / duration) * frame) / 180.0);
         for (player = 0; player < 4; player++) {
             espScaleSet(lbl_1_bss_FAC[player].spriteId[1], scale, scale);
             for (digit = 0; digit < 3; digit++) {
@@ -888,11 +882,11 @@ void fn_1_A238(Vec *position)
                 angle = 360.0f * frandf();
                 elevation = 1.7f * frandf() - 0.7f;
                 elevation = 90.0f * (elevation * FloatAbs(elevation));
-                particle->velocity.x = sin((3.141592653589793 * angle) / 180.0) *
-                    cos((3.141592653589793 * elevation) / 180.0);
-                particle->velocity.y = sin((3.141592653589793 * elevation) / 180.0);
-                particle->velocity.z = cos((3.141592653589793 * angle) / 180.0) *
-                    cos((3.141592653589793 * elevation) / 180.0);
+                particle->velocity.x = sin((M_PI * angle) / 180.0) *
+                    cos((M_PI * elevation) / 180.0);
+                particle->velocity.y = sin((M_PI * elevation) / 180.0);
+                particle->velocity.z = cos((M_PI * angle) / 180.0) *
+                    cos((M_PI * elevation) / 180.0);
                 PSVECScale(&particle->velocity, &particle->pos, 100.0f * (0.5f * frandf()));
                 PSVECScale(&particle->velocity, &particle->velocity,
                     (1.0f / 60.0f) * (300.0f + 100.0f * (4.0f * frandf())));
@@ -929,9 +923,9 @@ void fn_1_A928(void *model, ResultParticleSystem *system, Mtx matrix)
             PSVECAdd(&particle->pos, &particle->velocity, &particle->pos);
             particle->velocity.y += particle->verticalAccel;
             particle->velocity.x += particle->driftSpeed *
-                sin((3.141592653589793 * particle->driftAngle) / 180.0);
+                sin((M_PI * particle->driftAngle) / 180.0);
             particle->velocity.z += particle->driftSpeed *
-                cos((3.141592653589793 * particle->driftAngle) / 180.0);
+                cos((M_PI * particle->driftAngle) / 180.0);
             particle->driftAngle += 5.0f;
             particle->driftSpeed += 0.02777778f;
             particle->scale += particle->scaleSpeed;

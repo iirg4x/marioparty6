@@ -14,6 +14,7 @@
 #include "game/flag.h"
 #include "datadir_enum.h"
 #include "msm_se.h"
+#include "humath.h"
 
 /* Character motion resources, shared through the Mario motion archive. */
 u32 lbl_1_data_100[8] = {
@@ -22,9 +23,6 @@ u32 lbl_1_data_100[8] = {
     DATANUM(0x930000, 20), DATANUM(0x930000, 24),
     DATANUM(0x930000, 39), DATANUM(0x930000, 40)
 };
-
-extern void fn_1_AFF8(void *, f32, s32);
-extern void fn_1_AF2C(void *, u32, u32, u32, u32, const HuVecF *);
 
 void fn_1_5284(OMOBJ *object);
 void fn_1_55CC(OMOBJ *object);
@@ -88,7 +86,7 @@ void fn_1_5284(OMOBJ *object)
         HU3D_MOTIONID motion =
             fn_8005B0B8(work->charNo, lbl_1_data_100[motionIndex]);
 
-        (&work->idleMotionId)[motionIndex] = motion;
+        work->motionIds[motionIndex] = motion;
         object->mtnId[motionIndex] = motion;
     }
     fn_8005BE80(work->charNo, object->mtnId[0]);
@@ -246,20 +244,20 @@ void fn_1_5870(M631ActorWork *actor) {
  * callbacks. */
 void fn_1_5AAC(M631ActorWork *actor, s32 teamIndex, s32 isGroundPlayer)
 {
-    actor->teamIndex = (s16)teamIndex;
+    actor->unk148 = (s16)teamIndex;
     actor->isGroundPlayer = (s16)isGroundPlayer;
     if (isGroundPlayer != 0) {
         fn_1_AFF8(&actor->callbackWork, 50.0f, 2);
-        fn_1_AF2C(&actor->callbackWork, (u32)actor, (u32)fn_1_6C2C,
-                  (u32)fn_1_6C3C, (u32)fn_1_6D80, &actor->position);
+        fn_1_AF2C(&actor->callbackWork, actor, (void (*)(void *))fn_1_6C2C,
+                  fn_1_6C3C, fn_1_6D80, &actor->position);
         fn_80026E44(actor->characterModelId);
         fn_1_3BF4(&actor->hitEffect);
     } else {
         fn_1_AFF8(&actor->callbackWork, fn_1_2528(), 0);
-        fn_1_AF2C(&actor->callbackWork, (u32)actor, (u32)fn_1_6724,
-                  (u32)fn_1_674C, (u32)fn_1_6A14, &actor->position);
+        fn_1_AF2C(&actor->callbackWork, actor, (void (*)(void *))fn_1_6724,
+                  (s32 (*)(void *))fn_1_674C, fn_1_6A14, &actor->position);
         fn_1_228C(&actor->setupWork.modelId);
-        fn_8005BE80(actor->charNo, actor->airborneMotionId);
+        fn_8005BE80(actor->charNo, actor->motionIds[3]);
         actor->setupWork.animationQueue = fn_1_2E9C();
     }
     if (actor->isComputer != 0) {
@@ -311,9 +309,10 @@ void fn_1_5BBC(M631ActorWork *work)
                     } else {
                         fn_1_AFF8(&node->callbackWork, 75.0f, 4);
                     }
-                    fn_1_AF2C(&node->callbackWork, (u32)node,
-                              (u32)fn_1_32C8, (u32)fn_1_37FC,
-                              (u32)fn_1_38E8, &node->position);
+                    fn_1_AF2C(&node->callbackWork, node,
+                              (void (*)(void *))fn_1_32C8, fn_1_37FC,
+                              fn_1_38E8,
+                              &node->position);
                     node->animationState = 0;
                     work->releaseCooldown = 1;
                     fn_1_AFF8(&work->callbackWork, fn_1_2528(), 0);
@@ -341,7 +340,7 @@ void fn_1_5E5C(M631ActorWork *actor) {
         actor->randomOffset -= 360.0f;
     }
     actor->position.y =
-        (f32) (400.0 + (15.0 * sin((3.141592653589793 * (f64) actor->randomOffset) / 180.0)));
+        (f32) (400.0 + (15.0 * sin((M_PI * (f64) actor->randomOffset) / 180.0)));
 }
 
 /* Each ground-player update selects an idle, slower or faster movement animation and clears the
@@ -350,21 +349,21 @@ void fn_1_5F20(M631ActorWork *work)
 {
     if (work->movementRequested != 0) {
         if (work->movementStrength < 0.25f) {
-            if (work->slowMoveMotionId != fn_8002D3C4(work->characterModelId) &&
-                work->slowMoveMotionId != fn_8002D3EC(work->characterModelId)) {
-                fn_8005C2C8(work->charNo, work->slowMoveMotionId,
+            if (work->motionIds[1] != fn_8002D3C4(work->characterModelId) &&
+                work->motionIds[1] != fn_8002D3EC(work->characterModelId)) {
+                fn_8005C2C8(work->charNo, work->motionIds[1],
                                    0.0f, 5.0f,
                                    ((1 << 30) | (1 << 0)));
             }
-        } else if (work->fastMoveMotionId != fn_8002D3C4(work->characterModelId) &&
-                   work->fastMoveMotionId != fn_8002D3EC(work->characterModelId)) {
-            fn_8005C2C8(work->charNo, work->fastMoveMotionId,
+        } else if (work->motionIds[2] != fn_8002D3C4(work->characterModelId) &&
+                   work->motionIds[2] != fn_8002D3EC(work->characterModelId)) {
+            fn_8005C2C8(work->charNo, work->motionIds[2],
                                0.0f, 5.0f,
                                ((1 << 30) | (1 << 0)));
         }
-    } else if (work->idleMotionId != fn_8002D3C4(work->characterModelId) &&
-               work->idleMotionId != fn_8002D3EC(work->characterModelId)) {
-        fn_8005C2C8(work->charNo, work->idleMotionId,
+    } else if (work->motionIds[0] != fn_8002D3C4(work->characterModelId) &&
+               work->motionIds[0] != fn_8002D3EC(work->characterModelId)) {
+        fn_8005C2C8(work->charNo, work->motionIds[0],
                            0.0f, 5.0f,
                            ((1 << 30) | (1 << 0)));
     }
@@ -399,14 +398,14 @@ void fn_1_6090(M631ActorWork *work)
             angle = atanAngle;
         }
         work->behaviorAngle =
-            (f32)((f64)(180.0f * angle) / 3.141592653589793);
+            (f32)((f64)(180.0f * angle) / M_PI);
         work->direction.x = (f32)((f64)work->direction.x +
             ((f64)(5.0f * magnitude) *
-             sin((3.141592653589793 * (f64)work->rotation.y) /
+             sin((M_PI * (f64)work->rotation.y) /
                  180.0)));
         work->direction.z = (f32)((f64)work->direction.z +
             ((f64)(5.0f * magnitude) *
-             cos((3.141592653589793 * (f64)work->rotation.y) /
+             cos((M_PI * (f64)work->rotation.y) /
                  180.0)));
     } else {
         work->accelerationFrames = 0;
@@ -452,7 +451,7 @@ void fn_1_636C(M631ActorWork *work)
              cos((f64)adjustedAngle)));
         work->behaviorAngle =
             (f32)((f64)(180.0f * adjustedAngle) /
-                  3.141592653589793);
+                  M_PI);
         work->movementRequested = 1;
     }
 }
@@ -599,7 +598,7 @@ s32 fn_1_6C3C(void *callbackData) {
     fn_80026838(actor->characterModelId, &actor->rotation);
     omSetRot(actor->object, actor->rotation.x, actor->rotation.y, actor->rotation.z);
     if (actor->hit != 0) {
-        CharFXPlayPan(actor->charNo, 576, (s16) fn_1_51D0(actor->position.x));
+        CharFXPlayPan(actor->charNo, MSM_SE_CHARVOICE_HIT_YELP, (s16) fn_1_51D0(actor->position.x));
         fn_1_738C(actor);
         return 1;
     }
@@ -702,7 +701,7 @@ void fn_1_6D80(M631MotionPairNode *motion, M631MotionPairNode *target,
             owner->direction.y = 30.0f;
             owner->direction.z = (f32)(-distance * cos((f64)angleForTrig));
             if (owner->hit == 0) {
-                HuAudFXPlayPan(1845,
+                HuAudFXPlayPan(MSM_SE_MG631_PLAYER_KNOCKED,
                                (s16)fn_1_51D0(owner->position.x));
             }
             owner->hit = 1;
@@ -738,7 +737,7 @@ void fn_1_6D80(M631MotionPairNode *motion, M631MotionPairNode *target,
             owner->direction.z = (f32)(-distance * cos((f64)angleForTrig));
         }
         if (owner->hit == 0) {
-            HuAudFXPlayPan(1845, (s16)fn_1_51D0(owner->position.x));
+            HuAudFXPlayPan(MSM_SE_MG631_PLAYER_KNOCKED, (s16)fn_1_51D0(owner->position.x));
         }
         owner->hit = 1;
         break;
@@ -751,7 +750,7 @@ void fn_1_738C(M631ActorWork *actor) {
     fn_1_3BC4();
     fn_8006A030(actor->playerNo, 20, 20, 0);
     fn_1_B0B8(fn_1_749C, actor);
-    fn_8005C2C8(actor->charNo, actor->eliminatedMotionId, 0.0f, 5.0f,
+    fn_8005C2C8(actor->charNo, actor->motionIds[4], 0.0f, 5.0f,
         ((1 << 30) | (1 << 0)));
     if (fn_1_B0B8(fn_1_7448, &actor->hitEffect)) {
         fn_80026A44(actor->hitEffect.modelId, ((1 << 30) | (1 << 1)));
@@ -789,7 +788,7 @@ s32 fn_1_749C(void *callbackData) {
     omSetRot(actor->object, actor->rotation.x, actor->rotation.y, actor->rotation.z);
     /* The character keeps its upward velocity until this height cutoff. */
     if (actor->position.y > 1000.0f) {
-        fn_8005BE80(actor->charNo, actor->idleMotionId);
+        fn_8005BE80(actor->charNo, actor->motionIds[0]);
         fn_8005C430(actor->charNo, (1 << 0));
         fn_8005C430(actor->charNo, ((1 << 30) | (1 << 1)));
         return 1;
@@ -806,19 +805,21 @@ void fn_1_75D0(M631ActorWork *actor)
     node = &actor->motionController;
     if (actor->isGroundPlayer != 0) {
         node->sourcePosition = actor->position;
-        fn_1_AFF8(node, 150.0f, 6);
+        fn_1_AFF8(&node->callback, 150.0f, 6);
         if (actor->motionController.type == 1) {
-            fn_1_AF2C(node, (u32)node, (u32)fn_1_A2F4, (u32)fn_1_A418,
-                      (u32)fn_1_A730, &node->sourcePosition);
+            fn_1_AF2C(&node->callback, node, (void (*)(void *))fn_1_A2F4,
+                      (s32 (*)(void *))fn_1_A418,
+                      fn_1_A730, &node->sourcePosition);
             actor->motionController.scale =
                 dampingFactors[actor->difficulty];
         } else {
-            fn_1_AF2C(node, (u32)node, (u32)fn_1_A2A4, (u32)fn_1_A334,
-                      (u32)fn_1_A4FC, &node->sourcePosition);
+            fn_1_AF2C(&node->callback, node, fn_1_A2A4, (s32 (*)(void *))fn_1_A334,
+                      (void (*)(M631MotionPairNode *, M631MotionPairNode *, f32))fn_1_A4FC,
+                      &node->sourcePosition);
         }
         node->state = 0;
         node->stateFrames = 0;
-        node->finished = 0;
+        node->unk80 = 0;
         node->avoidanceDirection.x = 0.0f;
         node->avoidanceDirection.y = 0.0f;
         node->avoidanceDirection.z = 0.0f;
@@ -916,13 +917,13 @@ void fn_1_7738(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
         }
         if (work->motionController.alertState != 0 && work->releaseCooldown == 0 &&
             work->releaseFrames == 0) {
@@ -963,13 +964,13 @@ void fn_1_7738(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
         } else {
             work->accelerationFrames = 0;
             work->motionController.behaviorState = 0;
@@ -1026,13 +1027,13 @@ void fn_1_7738(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
         } else {
             work->accelerationFrames = 0;
             work->motionController.behaviorState = 0;
@@ -1177,13 +1178,13 @@ void fn_1_80F8(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
             return;
         }
         work->accelerationFrames = 0;
@@ -1248,13 +1249,13 @@ void fn_1_80F8(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
             return;
         } else {
             work->accelerationFrames = 0;
@@ -1276,7 +1277,7 @@ void fn_1_80F8(M631ActorWork *work)
         /* This temporary holds a radius here and a squared distance during travel. */
         distanceOrRadius = 150.0f;
         randomAngle = (f32)(2.0 *
-            (3.141592653589793 *
+            (M_PI *
              ((f32)frandmod(10001) / 10000.0f)));
 
         work->motionController.destination.x = (f32)((f64)work->position.x +
@@ -1321,13 +1322,13 @@ void fn_1_80F8(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
             return;
         }
         work->accelerationFrames = 0;
@@ -1357,7 +1358,7 @@ void fn_1_80F8(M631ActorWork *work)
             /* Choose a destination on a circle around the target player. */
             distanceOrRadius = 300.0f;
             randomAngle = (f32)(2.0 *
-                (3.141592653589793 *
+                (M_PI *
                  ((f32)frandmod(10001) / 10000.0f)));
             work->motionController.destination.x = (f32)((f64)target->position.x +
                 ((f64)distanceOrRadius * sin((f64)randomAngle)));
@@ -1403,13 +1404,13 @@ void fn_1_80F8(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
         } else {
             work->accelerationFrames = 0;
             work->motionController.behaviorState = 0;
@@ -1457,13 +1458,13 @@ void fn_1_80F8(M631ActorWork *work)
                 angle = atan2f(xDelta, zDelta);
             }
             work->behaviorAngle = (f32)((f64)(180.0f * angle) /
-                                         3.141592653589793);
+                                         M_PI);
             work->direction.x = (f32)((f64)work->direction.x +
                 (f64)(5.0f * step) *
-                    sin((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    sin((M_PI * (f64)work->rotation.y) / 180.0));
             work->direction.z = (f32)((f64)work->direction.z +
                 (f64)(5.0f * step) *
-                    cos((3.141592653589793 * (f64)work->rotation.y) / 180.0));
+                    cos((M_PI * (f64)work->rotation.y) / 180.0));
         } else {
             work->accelerationFrames = 0;
             work->motionController.behaviorState = 0;
@@ -1531,7 +1532,7 @@ void fn_1_954C(M631ActorWork *work)
                                  (f64)(10.0f * work->movementStrength) *
                                      cos((f64)angleForTrig));
         headingAngle = (f32)((f64)(180.0f * angleForTrig) /
-                             3.141592653589793);
+                             M_PI);
         work->behaviorAngle = 0.5f *
                         (headingAngle + work->motionController.previousAngle);
         work->movementRequested = 1;
@@ -1556,7 +1557,7 @@ void fn_1_954C(M631ActorWork *work)
             if (work->motionController.stateFrames >= 30) {
                 work->motionController.behaviorState = 0;
             }
-            angleForTrig = (f32)((3.141592653589793 * (f64)work->behaviorAngle) /
+            angleForTrig = (f32)((M_PI * (f64)work->behaviorAngle) /
                                  180.0);
             work->position.x = (f32)((f64)work->position.x +
                                      (f64)(10.0f *
@@ -1628,7 +1629,7 @@ void fn_1_9A70(M631ActorWork *motion)
                                   ((f64)(10.0f * motion->movementStrength) *
                                    cos((f64)angleForTrig)));
         headingAngle = (f32)((f64)(180.0f * angleForTrig) /
-                             3.141592653589793);
+                             M_PI);
         motion->behaviorAngle =
             0.5f * (headingAngle + motion->motionController.previousAngle);
         motion->movementRequested = 1;
@@ -1693,7 +1694,7 @@ void fn_1_9A70(M631ActorWork *motion)
                 }
                 motion->behaviorAngle =
                     (f32)((f64)(180.0f * rightSideEscapeAngle) /
-                          3.141592653589793);
+                          M_PI);
             }
         } else if ((throwerPosition.x < 0.0f) &&
                    (motion->position.x < 0.0f) &&
@@ -1715,9 +1716,9 @@ void fn_1_9A70(M631ActorWork *motion)
             }
             motion->behaviorAngle =
                 (f32)((f64)(180.0f * leftSideEscapeAngle) /
-                      3.141592653589793);
+                      M_PI);
         }
-        angleForTrig = (f32)((3.141592653589793 *
+        angleForTrig = (f32)((M_PI *
                               (f64)motion->behaviorAngle) /
                              180.0);
         motion->position.x = (f32)((f64)motion->position.x +
@@ -1784,19 +1785,7 @@ s32 fn_1_A334(M631MotionController *state)
  * arena edges. */
 s32 fn_1_A418(M631MotionController *state)
 {
-    M631MotionController *motion = state;
-
-    if (motion->sourcePosition.x < (-600.0f)) {
-        motion->avoidanceDirection.x += 100.0f;
-    } else if (motion->sourcePosition.x > 600.0f) {
-        motion->avoidanceDirection.x -= 100.0f;
-    }
-    if (motion->sourcePosition.z < (-400.0f)) {
-        motion->avoidanceDirection.z += 100.0f;
-    } else if (motion->sourcePosition.z > 400.0f) {
-        motion->avoidanceDirection.z -= 100.0f;
-    }
-    return 0;
+    return fn_1_A334(state);
 }
 
 /* The three-player computer contact callback adds avoidance, turning sideways while the player
@@ -1836,9 +1825,9 @@ void fn_1_A4FC(M631MotionPairNode *callback,
         /* Turn sideways while left of the hazard's right-side margin. */
         if (xDeltaInitial > (-25.0f) - context->radius) {
             if (zDeltaInitial < 0.0f) {
-                adjustedAngle += 1.5707963267948966;
+                adjustedAngle += (M_PI * 90.0 / 180.0);
             } else {
-                adjustedAngle -= 1.5707963267948966;
+                adjustedAngle -= (M_PI * 90.0 / 180.0);
             }
         }
         node->avoidanceDirection.x = (f32)((f64)node->avoidanceDirection.x -
@@ -1921,8 +1910,9 @@ s32 fn_1_A920(void *callbackData)
             } else {
                 fn_1_AFF8(&node->callbackWork, 75.0f, 4);
             }
-            fn_1_AF2C(&node->callbackWork, (u32)node,
-                      (u32)fn_1_32C8, (u32)fn_1_37FC, (u32)fn_1_38E8,
+            fn_1_AF2C(&node->callbackWork, node,
+                      (void (*)(void *))fn_1_32C8, fn_1_37FC,
+                      fn_1_38E8,
                       &node->position);
             node->animationState = 0;
             actor->releaseCooldown = 0;
@@ -1941,6 +1931,6 @@ s32 fn_1_A920(void *callbackData)
 /* The opening sequence starts a ground player's entrance animation and schedules the job that
  * restores idle when it ends. */
 void fn_1_AA78(M631ActorWork *actor) {
-    fn_8005C2C8(actor->charNo, actor->entranceMotionId, 0.0f, 5.0f, 0);
+    fn_8005C2C8(actor->charNo, actor->motionIds[5], 0.0f, 5.0f, 0);
     fn_1_B0B8(fn_1_AAD8, actor);
 }

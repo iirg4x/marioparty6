@@ -1,95 +1,68 @@
+// Dispatches player actions and their motion callbacks.
+/* Retail fixes the next assert's line; the earlier lines are unknown: 17 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include "REL/framework/event_manager.h"
+#undef NDEBUG
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/assert.h"
 #include "REL/framework/minigame_core.h"
 #include "REL/framework/frame_durations.h"
 #include "REL/game_gravity.h"
 extern "C"
 {
 #include "dolphin/types.h"
-}
-
-extern "C"
-{
 #include "math.h"
-}
-
-extern "C"
-{
 #include "dolphin/os.h"
-}
-
-extern "C"
-{
 #include "dolphin/mtx.h"
 }
 
 #include "REL/framework/game_object.h"
-
 #include "REL/framework/event_hm.h"
 #include <new>
 #include "REL/framework/event_callback_registration.h"
 #include "REL/framework/event_callback_inline.h"
-
 #include "REL/framework/game_object_man.h"
 
 extern "C"
 {
 #include "game/hu3d.h"
-}
-
-extern "C"
-{
 #include "game/charman.h"
-}
-
-extern "C"
-{
 #include "game/gamework.h"
-}
-
-extern "C"
-{
 #include "game/mg/actman.h"
-}
-
-extern "C"
-{
 #include "game/audio.h"
 }
 
 #include "REL/m628DLL/player_input_binding.h"
-
 #include "REL/m628DLL/range_record.h"
 
 extern "C"
 {
 #include "game/main.h"
-}
-
-extern "C"
-{
 #include "game/object.h"
-}
-
-extern "C"
-{
 #include "game/wipe.h"
-}
-
-extern "C"
-{
 #include "game/mg/timer.h"
 }
 
 #include "REL/framework/range.h"
-
 #include "REL/m628DLL/board_positions.h"
-
 #include <vector>
-
 #include <memory>
-
 #include <functional>
-
 #include "REL/m628DLL/computer_player_controller.h"
 #include "REL/framework/sound.h"
 #include "REL/framework/pad_control.h"
@@ -244,10 +217,8 @@ void ActPlayer::fn_1_FB4()
     fn_1_F40(DATANUM(0x930000, 0x0027));
     fn_1_F40(DATANUM(0x930000, 0x0028));
 
-    m_motion_id.size() == NUMBEROF_MOTION
-        ? (void)0
-    // The assertion records line 221 in the original source.
-        : __msl_assertion_failed("m_motion_id.size() == NUMBEROF_MOTION", "act_player.cpp", 221);
+    // Keep one motion ID for each motion.
+    assert(m_motion_id.size() == NUMBEROF_MOTION);
     fn_8005B4BC(characterModelId);
 }
 

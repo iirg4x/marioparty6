@@ -27,7 +27,7 @@ struct VectorElement {
     u8 red;
     u8 green;
     u8 blue;
-    u8 unidentified;
+    u8 unk03; /* No code names this field. */
 };
 struct Player : GameObject {
     Player(int, const EffectVector *);

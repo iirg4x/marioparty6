@@ -54,9 +54,6 @@
 #define TOURNAMENT_BONUS_ODDS_EQUAL_LEVEL 50
 #define TOURNAMENT_ROUND_COIN_BONUS 10
 #define TOURNAMENT_ORDER_UNUSED 255
-#define TOURNAMENT_ALL_MOTION_PAUSE_FLAGS \
-    (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) | \
-     ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)))
 
 void fn_1_B628(void);
 OMOBJMAN *lbl_1_bss_12C;
@@ -122,8 +119,7 @@ void fn_1_6278(OMOBJ *object, s16 modeNo)
         if (motionNo != -1) {
             if (lbl_1_data_578[modeNo].transitionTime <= 1.0f) {
                 fn_8005BE80(work->characterNo, object->mtnId[motionNo]);
-                fn_80026A44(object->mdlId[0],
-                                   fn_80026AB8(object->mdlId[0]) | (1 << 30));
+                fn_80026A44(object->mdlId[0], fn_80026AB8(object->mdlId[0]) | (1 << 30));
                 fn_8005C430(work->characterNo, lbl_1_data_578[modeNo].modelAttributes);
             } else {
                 fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
@@ -196,8 +192,7 @@ void fn_1_64A8(void)
 }
 
 /* Eases a character position between two points during a timed scene movement. */
-void fn_1_68A4(Vec *result, const Vec *point0, const Vec *point1,
-               f32 duration, f32 time)
+void fn_1_68A4(Vec *result, const Vec *point0, const Vec *point1, f32 duration, f32 time)
 {
     f32 times[4];
     f32 values[4];
@@ -207,9 +202,7 @@ void fn_1_68A4(Vec *result, const Vec *point0, const Vec *point1,
     times[2] = duration;
     times[3] = 2.0f * duration;
     time = (f32)((f64)duration *
-        sin((3.141592653589793 *
-            (f64)(90.0f * (time / duration))) /
-            180.0));
+        sin((M_PI * (f64)(90.0f * (time / duration))) / 180.0));
 
     values[0] = point0->x;
     values[1] = point0->x;
@@ -452,10 +445,8 @@ static inline void tournamentPlayerMotionSet(OMOBJ *object, s16 modeNo)
         if (motionNo != -1) {
             if (lbl_1_data_578[modeNo].transitionTime <= 1.0f) {
                 fn_8005BE80(work->characterNo, object->mtnId[motionNo]);
-                fn_80026A44(*object->mdlId,
-                    fn_80026AB8(*object->mdlId) | (1 << 30));
-                fn_8005C430(work->characterNo,
-                    lbl_1_data_578[modeNo].modelAttributes);
+                fn_80026A44(*object->mdlId, fn_80026AB8(*object->mdlId) | (1 << 30));
+                fn_8005C430(work->characterNo, lbl_1_data_578[modeNo].modelAttributes);
             } else {
                 fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 1)));
                 fn_8005C2C8(work->characterNo, object->mtnId[motionNo],
@@ -467,8 +458,7 @@ static inline void tournamentPlayerMotionSet(OMOBJ *object, s16 modeNo)
             } else {
                 fn_8002DC74(object->mtnId[motionNo], 1);
             }
-            fn_8005DFC0(work->characterNo,
-                lbl_1_data_578[modeNo].motionEffectsEnabled);
+            fn_8005DFC0(work->characterNo, lbl_1_data_578[modeNo].motionEffectsEnabled);
         }
         work->motionMode = modeNo;
         if (work->motionMode == 0) {
@@ -498,15 +488,15 @@ void fn_1_74BC(void)
         playerData->playerNo = player;
         playerData->characterNo = lbl_80265728[player].charNo;
         playerData->padNo = lbl_80265728[player].padNo;
-        playerData->groupNo = lbl_80265728[player].grpNo;
+        playerData->unk06 = lbl_80265728[player].grpNo;
         playerData->playerType = lbl_80265728[player].type;
         playerData->difficulty = lbl_80265728[player].comDif;
         playerData->sceneState = 0;
         *playerObject->mdlId = fn_80057068(playerData->characterNo, 2);
         motionIndex = 0;
         while (motionIndex < 13) {
-            playerObject->mtnId[motionIndex] = fn_8005B0B8(
-                playerData->characterNo, lbl_1_data_510[motionIndex]);
+            playerObject->mtnId[motionIndex] =
+                fn_8005B0B8( playerData->characterNo, lbl_1_data_510[motionIndex]);
             motionIndex++;
         }
         fn_8005B4BC(playerData->characterNo);
@@ -515,7 +505,7 @@ void fn_1_74BC(void)
         fn_80026B64(*playerObject->mdlId, 1);
         fn_80026B8C(*playerObject->mdlId, 1);
         fn_80026E44(*playerObject->mdlId);
-        playerData->modelHeight = fn_8005C4C8(playerData->characterNo);
+        playerData->unk2C = fn_8005C4C8(playerData->characterNo);
         playerData->position = lbl_1_data_548[player];
         fn_80026790(*playerObject->mdlId, &playerData->position);
         playerData->rotation.x = playerData->rotation.y =
@@ -524,17 +514,13 @@ void fn_1_74BC(void)
         Hu3DLLightCreate(*playerObject->mdlId, 0.0f, 1500.0f, 1500.0f, 0.0f,
                          -0.7f, -0.7f,
                          192, 192, 192);
-        fn_8005DEB0(playerData->characterNo,
-            (s16)lbl_1_data_510[8], 0);
-        fn_8005DEB0(playerData->characterNo,
-            (s16)lbl_1_data_510[3], 0);
+        fn_8005DEB0(playerData->characterNo, (s16)lbl_1_data_510[8], 0);
+        fn_8005DEB0(playerData->characterNo, (s16)lbl_1_data_510[3], 0);
         player++;
     }
     fn_8005DDEC(4);
     fn_1_A1F4();
 }
-
-extern f32 MgModeWorkFloat[16];
 
 /* Restores the character positions saved before the minigame and starts the eliminated
  * player's settled pose on return. */
@@ -555,16 +541,12 @@ void fn_1_7924(void)
         fn_80026790(*playerObject->mdlId, &playerWork->position);
         if (MgModeWorkInt[playerIndex + 4] == 3) {
             playerWork->sceneState = 9;
-            fn_8005DEB0(playerWork->characterNo,
-                (s16)lbl_1_data_510[11], FALSE);
+            fn_8005DEB0(playerWork->characterNo, (s16)lbl_1_data_510[11], FALSE);
             fn_1_6278(playerObject, 11);
         }
         playerIndex++;
     }
 }
-
-extern s16 lbl_1_data_360;
-extern OMOBJ *lbl_1_bss_140[4];
 
 /* Supplies a player's character number when the result scene builds its display. */
 s16 fn_1_7BC0(s16 player)
@@ -577,8 +559,6 @@ s16 fn_1_7BC0(s16 player)
     return characterNo;
 }
 
-extern OMOBJ *lbl_1_bss_ACC[4];
-
 /* Returns the selected player's type for tournament player and side checks. */
 s16 fn_1_7C00(s16 playerNo) {
     TournamentPlayerAnimationWork *playerData = lbl_1_bss_114[playerNo]->data;
@@ -586,8 +566,6 @@ s16 fn_1_7C00(s16 playerNo) {
 
     return playerType;
 }
-
-extern OMOBJ *lbl_1_bss_A8;
 
 /* Returns the controller slot assigned to the selected player. */
 s16 fn_1_7C44(s16 playerNo) {
@@ -763,8 +741,6 @@ void fn_1_818C(void) {
 }
 
 void fn_1_6278(OMOBJ *, s16);
-s32 fn_1_E378(Point3d *, Point3d *);
-void fn_1_E4D0(f32 angleX, f32 angleY, f32 angleZ, Vec source, Vec *destination);
 void fn_1_A35C(s16, const Vec *);
 /* Updates a character's tournament animation and movement from its scene state. */
 void fn_1_8238(OMOBJ *object) {
@@ -800,8 +776,8 @@ void fn_1_8238(OMOBJ *object) {
                 direction.x = direction.y = 0.0f;
                 direction.z = 1.0f;
                 fn_1_E4D0(0.0f, playerWork->rotation.y, 0.0f, direction, &direction);
-                angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
-                angle -= 180.0 * (atan2(direction.x, direction.z) / 3.141592653589793);
+                angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / M_PI);
+                angle -= 180.0 * (atan2(direction.x, direction.z) / M_PI);
                 if ((s32) angle >= 360) {
                     angle -= 360.0f;
                 }
@@ -810,7 +786,7 @@ void fn_1_8238(OMOBJ *object) {
                 }
                 if (((s32) angle > -10) && ((s32) angle < 10)) {
                     playerWork->rotation.y =
-                        180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
+                        180.0 * (atan2(targetDirection.x, targetDirection.z) / M_PI);
                     playerWork->sceneState = 2;
                 }
             } else {
@@ -860,8 +836,8 @@ void fn_1_8238(OMOBJ *object) {
                 direction.x = direction.y = 0.0f;
                 direction.z = 1.0f;
                 fn_1_E4D0(0.0f, playerWork->rotation.y, 0.0f, direction, &direction);
-                angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
-                angle -= 180.0 * (atan2(direction.x, direction.z) / 3.141592653589793);
+                angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / M_PI);
+                angle -= 180.0 * (atan2(direction.x, direction.z) / M_PI);
                 if ((s32) angle >= 360) {
                     angle -= 360.0f;
                 }
@@ -870,7 +846,7 @@ void fn_1_8238(OMOBJ *object) {
                 }
                 if (((s32) angle > -10) && ((s32) angle < 10)) {
                     playerWork->rotation.y =
-                        180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
+                        180.0 * (atan2(targetDirection.x, targetDirection.z) / M_PI);
                     playerWork->sceneState = 0;
                 }
             } else {
@@ -908,8 +884,8 @@ void fn_1_8238(OMOBJ *object) {
                 direction.x = direction.y = 0.0f;
                 direction.z = 1.0f;
     fn_1_E4D0(0.0f, playerWork->rotation.y, 0.0f, direction, &direction);
-    angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
-    angle -= 180.0 * (atan2(direction.x, direction.z) / 3.141592653589793);
+    angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / M_PI);
+    angle -= 180.0 * (atan2(direction.x, direction.z) / M_PI);
                 if ((s32) angle >= 360) {
                     angle -= 360.0f;
                 }
@@ -918,9 +894,9 @@ void fn_1_8238(OMOBJ *object) {
                 }
                 if (((s32) angle > -10) && ((s32) angle < 10)) {
                     playerWork->rotation.y =
-                        180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
+                        180.0 * (atan2(targetDirection.x, targetDirection.z) / M_PI);
                     fn_1_6278(object, 4);
-                    fn_800591C8(playerWork->characterNo, 593, 0);
+                    fn_800591C8(playerWork->characterNo, MSM_SE_CHARVOICE_SELECT_START_CALL, 0);
                     playerWork->sceneState = 5;
                     playerWork->velocity.x = playerWork->velocity.y = playerWork->velocity.z = 0.0f;
                     playerWork->velocity.y = 14.0f;
@@ -946,7 +922,8 @@ void fn_1_8238(OMOBJ *object) {
                 if ((lbl_802C01C8[*object->mdlId].motWork.speed +
                      fn_8005C1B8(playerWork->characterNo)) >=
                     fn_8005C1FC(playerWork->characterNo)) {
-                    fn_800269E8(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
+                    fn_800269E8(*object->mdlId, (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4))
+                        |  ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10))));
                 }
             }
             PSVECSubtract(&playerWork->targetPosition, &playerWork->position, &direction);
@@ -975,7 +952,8 @@ void fn_1_8238(OMOBJ *object) {
                 PSVECSubtract(&playerWork->targetPosition, &playerWork->position,
                               &playerWork->velocity);
                 PSVECScale(&playerWork->velocity, &playerWork->velocity, 0.1f);
-                fn_80026A44(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
+                fn_80026A44(*object->mdlId, (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                    ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10))));
     fn_1_6278(object, 5);
                 playerWork->sceneState = 6;
             }
@@ -1009,8 +987,8 @@ void fn_1_8238(OMOBJ *object) {
                     direction.x = direction.y = 0.0f;
                     direction.z = 1.0f;
     fn_1_E4D0(0.0f, playerWork->rotation.y, 0.0f, direction, &direction);
-    angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
-    angle -= 180.0 * (atan2(direction.x, direction.z) / 3.141592653589793);
+    angle = 180.0 * (atan2(targetDirection.x, targetDirection.z) / M_PI);
+    angle -= 180.0 * (atan2(direction.x, direction.z) / M_PI);
                     if ((s32) angle >= 360) {
                         angle -= 360.0f;
                     }
@@ -1020,7 +998,7 @@ void fn_1_8238(OMOBJ *object) {
                     if (((s32) angle > -10) && ((s32) angle < 10)) {
                         playerWork->rotation.y =
                             180.0 *
-                            (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
+                            (atan2(targetDirection.x, targetDirection.z) / M_PI);
                         playerWork->sceneState = 0;
                     }
                 } else {
@@ -1105,7 +1083,7 @@ void fn_1_8238(OMOBJ *object) {
             break;
         case 16:
     fn_1_6278(object, 8);
-            fn_800591C8(playerWork->characterNo, 579, 0);
+            fn_800591C8(playerWork->characterNo, MSM_SE_CHARVOICE_HAPPY_CHEER, 0);
             playerWork->sceneState = 17;
             break;
         case 17:
@@ -1147,7 +1125,7 @@ void fn_1_8238(OMOBJ *object) {
                 if (180.0f <= playerWork->rotation.y) {
     fn_1_6278(object, 12);
                     playerWork->sceneState = 23;
-                    CharFXPlay(playerWork->characterNo, 577);
+                    CharFXPlay(playerWork->characterNo, MSM_SE_CHARVOICE_RESULT_WINNER_CHEER);
                 }
             }
             break;
@@ -1167,7 +1145,8 @@ void fn_1_8238(OMOBJ *object) {
             if (fn_8005C284(playerWork->characterNo) < 0) {
                 if ((1.0f + fn_8005C1B8(playerWork->characterNo)) >=
                     fn_8005C1FC(playerWork->characterNo)) {
-                    fn_800269E8(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
+                    fn_800269E8(*object->mdlId, (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4))
+                        |  ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10))));
                 }
             }
             value = fn_1_3F00();
@@ -1200,7 +1179,7 @@ void fn_1_8238(OMOBJ *object) {
             if (value > 96) {
                 value = 96;
             }
-            CharFXPlayPan(playerWork->characterNo, 579, value);
+            CharFXPlayPan(playerWork->characterNo, MSM_SE_CHARVOICE_HAPPY_CHEER, value);
             break;
         case 26:
             if (object->work[1] != 0) {
@@ -1324,19 +1303,13 @@ void fn_1_A1F4(void) {
     playerIndex = 0;
     while (playerIndex < 4) {
         lbl_1_bss_10C[playerIndex] = fn_800334F4(
-            HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 1), 0x10000000, 2)),
+            HuSprAnimDataRead(DATANUM(0x210000, 1)),
             100, &lbl_1_data_710);
-        Hu3DParManAttrSet(lbl_1_bss_10C[playerIndex],
-                          (1 << 2) | (1 << 5) |
-                              (1 << 6));
-        fn_8003269C(
-            Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 1U);
-        fn_80026B64(
-            Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 1U);
-        fn_80026B8C(
-            Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 4);
-        Hu3DParManRotSet(lbl_1_bss_10C[playerIndex], 90.0f, 0.0f,
-                         0.0f);
+        Hu3DParManAttrSet(lbl_1_bss_10C[playerIndex], (1 << 2) | (1 << 5) | (1 << 6));
+        fn_8003269C( Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 1U);
+        fn_80026B64( Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 1U);
+        fn_80026B8C( Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 4);
+        Hu3DParManRotSet(lbl_1_bss_10C[playerIndex], 90.0f, 0.0f, 0.0f);
         Hu3DParManAttrSet(lbl_1_bss_10C[playerIndex], 1);
         playerIndex += 1;
     }
@@ -1344,8 +1317,7 @@ void fn_1_A1F4(void) {
 
 /* Moves one player's particle effect to that character's world position. */
 void fn_1_A35C(s16 playerNo, const Vec *position) {
-    Hu3DParManPosSet(lbl_1_bss_10C[playerNo],
-                     position->x, position->y, position->z);
+    Hu3DParManPosSet(lbl_1_bss_10C[playerNo], position->x, position->y, position->z);
 }
 
 /* Enables or stops new particles for one player during result scenes; already emitted
@@ -1588,30 +1560,6 @@ void fn_1_AB48(void)
     HuPrcSleep(76);
 }
 
-/* When fn_1_AD50 resets the bracket, send any listed result pose to its return-to-idle state,
- * even if that pose has not finished. */
-static inline void tournamentSequenceNormalize(s16 playerIndex)
-{
-    TournamentPlayerAnimationWork *motion;
-
-    motion = lbl_1_bss_114[playerIndex]->data;
-    if ((motion->sceneState == 10) || (motion->sceneState == 11)) {
-        motion->sceneState = 12;
-    }
-    if ((motion->sceneState == 13) || (motion->sceneState == 14)) {
-        motion->sceneState = 15;
-    }
-    if ((motion->sceneState == 16) || (motion->sceneState == 17)) {
-        motion->sceneState = 18;
-    }
-    if ((motion->sceneState == 19) || (motion->sceneState == 20)) {
-        motion->sceneState = 21;
-    }
-    if ((motion->sceneState == 25) || (motion->sceneState == 26)) {
-        motion->sceneState = 27;
-    }
-}
-
 /* Returns the players to their starting bracket positions, then pauses and rewinds all seven
  * markers. */
 void fn_1_AD50(void)
@@ -1624,7 +1572,7 @@ void fn_1_AD50(void)
 
     playerIndex = 0;
     while (playerIndex < 4) {
-        tournamentSequenceNormalize(playerIndex);
+        fn_1_7EA8(playerIndex);
         playerIndex++;
     }
     HuPrcSleep(10);
@@ -1755,11 +1703,7 @@ void fn_1_B2E0(void)
         stageOrPlayer = 0;
         while (stageOrPlayer < 4) {
             if ((MgModeWorkInt[stageOrPlayer] == 0) || (MgModeWorkInt[stageOrPlayer] == 1)) {
-                TournamentPlayerAnimationWork *playerSequence;
-
-                playerSequence = lbl_1_bss_114[stageOrPlayer]->data;
-                lbl_1_bss_114[stageOrPlayer]->work[1] = 1;
-                playerSequence->sceneState = 25;
+                fn_1_7E50(stageOrPlayer);
             }
             stageOrPlayer++;
         }
@@ -1767,11 +1711,7 @@ void fn_1_B2E0(void)
         stageOrPlayer = 0;
         while (stageOrPlayer < 4) {
             if ((MgModeWorkInt[stageOrPlayer] == 2) || (MgModeWorkInt[stageOrPlayer] == 3)) {
-                TournamentPlayerAnimationWork *playerSequence;
-
-                playerSequence = lbl_1_bss_114[stageOrPlayer]->data;
-                lbl_1_bss_114[stageOrPlayer]->work[1] = 1;
-                playerSequence->sceneState = 25;
+                fn_1_7E50(stageOrPlayer);
             }
             stageOrPlayer++;
         }
@@ -1779,11 +1719,7 @@ void fn_1_B2E0(void)
         stageOrPlayer = 0;
         while (stageOrPlayer < 4) {
             if (MgModeWorkInt[stageOrPlayer + 4] == 2) {
-                TournamentPlayerAnimationWork *playerSequence;
-
-                playerSequence = lbl_1_bss_114[stageOrPlayer]->data;
-                lbl_1_bss_114[stageOrPlayer]->work[1] = 1;
-                playerSequence->sceneState = 25;
+                fn_1_7E50(stageOrPlayer);
             }
             stageOrPlayer++;
         }
@@ -1791,11 +1727,7 @@ void fn_1_B2E0(void)
         stageOrPlayer = 0;
         while (stageOrPlayer < 4) {
             if (MgModeWorkInt[stageOrPlayer + 4] == 1) {
-                TournamentPlayerAnimationWork *playerSequence;
-
-                playerSequence = lbl_1_bss_114[stageOrPlayer]->data;
-                lbl_1_bss_114[stageOrPlayer]->work[1] = 1;
-                playerSequence->sceneState = 25;
+                fn_1_7E50(stageOrPlayer);
             }
             stageOrPlayer++;
         }
@@ -1908,7 +1840,7 @@ void fn_1_B850(void) {
     HuPrcVSleep();
     fn_1_43C();
     HuPrcVSleep();
-    HuAudFXPlay(1212);
+    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_ENTER);
     while (scale < 1.0f) {
         fn_800268B0(lbl_1_bss_10A, scale, scale, scale);
         scale += 0.1f;
@@ -1919,7 +1851,7 @@ void fn_1_B850(void) {
     }
     fn_800268B0(lbl_1_bss_10A, 1.0f, 1.0f, 1.0f);
     HuPrcVSleep();
-    lbl_1_data_850 = HuAudFXPlay(1213);
+    lbl_1_data_850 = HuAudFXPlay(MSM_SE_MGM00_PREVIEW_HOLD_LOOP);
     /* Keep updating the prop for 25 four-tick waits after its entrance sound. */
     appearanceWait = 1;
     while (appearanceWait != 0) {
@@ -1938,7 +1870,7 @@ void fn_1_B850(void) {
         HuAudFXStop(lbl_1_data_850);
     }
     lbl_1_data_850 = -1;
-    HuAudFXPlay(1214);
+    HuAudFXPlay(MSM_SE_MGM00_PREVIEW_EXIT);
     if (frandmod(2) != 0) {
         lbl_1_bss_128 = 1;
     } else {
@@ -1952,71 +1884,6 @@ void fn_1_B850(void) {
 void fn_1_7DA8(s16 player, s16 flag);
 
 void fn_1_7EA8(s16 player);
-
-/* Starts the selected player's win or loss pose in the result sequence. */
-static inline void tournamentResultStateSet(s16 player, s16 flag)
-{
-    TournamentPlayerAnimationWork *playerData;
-
-    playerData = lbl_1_bss_114[player]->data;
-    if (flag != 0) {
-        playerData->sceneState = 16;
-        return;
-    }
-    playerData->sceneState = 19;
-}
-
-/* After a round, send any listed result pose to its return-to-idle state,
- * even if that pose has not finished. */
-static inline void tournamentResultSequenceAdvance(s16 player)
-{
-    TournamentPlayerAnimationWork *playerData;
-
-    playerData = lbl_1_bss_114[player]->data;
-    if ((playerData->sceneState == 10) || (playerData->sceneState == 11)) {
-        playerData->sceneState = 12;
-    }
-    if ((playerData->sceneState == 13) || (playerData->sceneState == 14)) {
-        playerData->sceneState = 15;
-    }
-    if ((playerData->sceneState == 16) || (playerData->sceneState == 17)) {
-        playerData->sceneState = 18;
-    }
-    if ((playerData->sceneState == 19) || (playerData->sceneState == 20)) {
-        playerData->sceneState = 21;
-    }
-    if ((playerData->sceneState == 25) || (playerData->sceneState == 26)) {
-        playerData->sceneState = 27;
-    }
-}
-
-/* Starts the losing player's elimination fall to y = -500 unless it is already falling
- * or settled. */
-static inline void tournamentResultSceneStart(s16 player)
-{
-    TournamentPlayerAnimationWork *playerData;
-
-    playerData = lbl_1_bss_114[player]->data;
-    if ((playerData->sceneState != 7) && (playerData->sceneState != 8) &&
-        (playerData->sceneState != 9)) {
-        playerData->sceneState = 7;
-        lbl_1_bss_114[player]->work[0] = 0;
-    }
-}
-
-/* Reports readiness in the idle, settled, or prop-attached state. The prop-attached state
- * counts as ready before its animation and prop movement finish. */
-static inline s16 tournamentResultSceneDone(s16 player)
-{
-    TournamentPlayerAnimationWork *playerData;
-
-    playerData = lbl_1_bss_114[player]->data;
-    if ((playerData->sceneState == 0) || (playerData->sceneState == 9) ||
-        (playerData->sceneState == 24)) {
-        return 1;
-    }
-    return 0;
-}
 
 /* Gets the character number for the selected tournament player. */
 static inline s16 tournamentPlayerCharacterGet(s16 player)
@@ -2040,11 +1907,9 @@ static inline void tournamentResultPositionSet(s16 player, Vec position)
 }
 
 /* Starts the player's elimination fall when the result scene requests it. */
-void fn_1_8018(s16 player);
 
 /* Tests scene readiness; the prop-attached state counts as ready before its animation
 * and prop movement finish. */
-s16 fn_1_80CC(s16 player);
 
 /* Requests rumble for player type zero during the tournament result scene. */
 static inline void tournamentPlayerVibrate(s16 player, s16 time, s16 on, s16 off)
@@ -2093,7 +1958,7 @@ s16 fn_1_BAD4(void)
             MgModeWorkInt[8] = MgModeWorkInt[9] = MgModeWorkInt[10] = MgModeWorkInt[11] = 0;
             for (i = 0, count = 0; i < 4; i++) {
                 if ((MgModeWorkInt[i] == 0) || (MgModeWorkInt[i] == 1)) {
-                    tournamentResultStateSet(i, 0);
+                    fn_1_7DA8(i, 0);
                 }
             }
             result = -1;
@@ -2108,7 +1973,7 @@ s16 fn_1_BAD4(void)
             fn_1_2728(winner);
             tournamentCameraViewSet(4, 30);
             HuPrcSleep(30);
-            HuAudFXPlay(1249);
+            HuAudFXPlay(MSM_SE_MGM03_WINNER_SHOWN);
             tournamentResultPositionSet(winner, lbl_1_data_820[0]);
             Hu3DParManAttrReset(lbl_1_bss_10C[winner], 1);
             HuPrcVSleep();
@@ -2116,7 +1981,7 @@ s16 fn_1_BAD4(void)
             while (count != 0) {
                 count = 0;
                 for (i = 0; i < 4; i++) {
-                    if (tournamentResultSceneDone(i) == 0) {
+                    if (fn_1_80CC(i) == 0) {
                         count = 1;
                     }
                 }
@@ -2124,14 +1989,14 @@ s16 fn_1_BAD4(void)
             }
             Hu3DParManAttrSet(lbl_1_bss_10C[winner], 1);
             fn_1_56B4(1);
-            tournamentResultStateSet(winner, 1);
-            tournamentResultStateSet(loser, 0);
+            fn_1_7DA8(winner, 1);
+            fn_1_7DA8(loser, 0);
             MgModeWorkInt[winner + 4] = 1;
         }
         HuPrcSleep(150);
         fn_1_56B4(0);
         for (i = 0; i < 4; i++) {
-            tournamentResultSequenceAdvance(i);
+            fn_1_7EA8(i);
         }
         HuPrcSleep(16);
         for (i = 0; i < 7; i++) {
@@ -2157,7 +2022,7 @@ s16 fn_1_BAD4(void)
             MgModeWorkInt[8] = MgModeWorkInt[9] = MgModeWorkInt[10] = MgModeWorkInt[11] = 0;
             for (i = 0, count = 0; i < 4; i++) {
                 if ((MgModeWorkInt[i] == 2) || (MgModeWorkInt[i] == 3)) {
-                    tournamentResultStateSet(i, 0);
+                    fn_1_7DA8(i, 0);
                 }
             }
             result = -1;
@@ -2172,7 +2037,7 @@ s16 fn_1_BAD4(void)
             fn_1_2728(winner);
             tournamentCameraViewSet(6, 30);
             HuPrcSleep(30);
-            HuAudFXPlay(1249);
+            HuAudFXPlay(MSM_SE_MGM03_WINNER_SHOWN);
             tournamentResultPositionSet(winner, lbl_1_data_820[1]);
             Hu3DParManAttrReset(lbl_1_bss_10C[winner], 1);
             HuPrcVSleep();
@@ -2180,7 +2045,7 @@ s16 fn_1_BAD4(void)
             while (count != 0) {
                 count = 0;
                 for (i = 0; i < 4; i++) {
-                    if (tournamentResultSceneDone(i) == 0) {
+                    if (fn_1_80CC(i) == 0) {
                         count = 1;
                     }
                 }
@@ -2188,14 +2053,14 @@ s16 fn_1_BAD4(void)
             }
             Hu3DParManAttrSet(lbl_1_bss_10C[winner], 1);
             fn_1_56B4(1);
-            tournamentResultStateSet(winner, 1);
-            tournamentResultStateSet(loser, 0);
+            fn_1_7DA8(winner, 1);
+            fn_1_7DA8(loser, 0);
             MgModeWorkInt[winner + 4] = 1;
         }
         HuPrcSleep(150);
         fn_1_56B4(0);
         for (i = 0; i < 4; i++) {
-            tournamentResultSequenceAdvance(i);
+            fn_1_7EA8(i);
         }
         HuPrcSleep(16);
         for (i = 0; i < 7; i++) {
@@ -2221,7 +2086,7 @@ s16 fn_1_BAD4(void)
             MgModeWorkInt[8] = MgModeWorkInt[9] = MgModeWorkInt[10] = MgModeWorkInt[11] = 0;
             for (i = 0, count = 0; i < 4; i++) {
                 if (MgModeWorkInt[i + 4] == 2) {
-                    tournamentResultStateSet(i, 0);
+                    fn_1_7DA8(i, 0);
                 }
             }
             result = -1;
@@ -2241,9 +2106,9 @@ s16 fn_1_BAD4(void)
                 fn_1_34B0(2);
             }
             fn_1_2728(winner);
-            HuAudFXPlay(1250);
+            HuAudFXPlay(MSM_SE_MGM03_LOSER_DEFEAT);
             tournamentPlayerVibrate(loser, 20, 20, 0);
-            tournamentResultSceneStart(loser);
+            fn_1_8018(loser);
             if (MgModeWorkInt[loser] < 2) {
                 fn_1_3F18(0);
             } else {
@@ -2254,7 +2119,7 @@ s16 fn_1_BAD4(void)
             while (count != 0) {
                 count = 0;
                 for (i = 0; i < 4; i++) {
-                    if (tournamentResultSceneDone(i) == 0) {
+                    if (fn_1_80CC(i) == 0) {
                         count = 1;
                     }
                 }
@@ -2263,13 +2128,13 @@ s16 fn_1_BAD4(void)
             tournamentCameraViewSet(8, 30);
             HuPrcSleep(30);
             fn_1_56B4(1);
-            tournamentResultStateSet(winner, 1);
+            fn_1_7DA8(winner, 1);
             MgModeWorkInt[loser + 4] = 3;
         }
         HuPrcSleep(150);
         fn_1_56B4(0);
         for (i = 0; i < 4; i++) {
-            tournamentResultSequenceAdvance(i);
+            fn_1_7EA8(i);
         }
         HuPrcSleep(16);
         for (i = 0; i < 7; i++) {
@@ -2295,7 +2160,7 @@ s16 fn_1_BAD4(void)
             MgModeWorkInt[8] = MgModeWorkInt[9] = MgModeWorkInt[10] = MgModeWorkInt[11] = 0;
             for (i = 0, count = 0; i < 4; i++) {
                 if (MgModeWorkInt[i + 4] == 1) {
-                    tournamentResultStateSet(i, 0);
+                    fn_1_7DA8(i, 0);
                 }
             }
             result = -1;
@@ -2310,7 +2175,7 @@ s16 fn_1_BAD4(void)
             fn_1_2728(winner);
             tournamentCameraViewSet(10, 30);
             HuPrcSleep(30);
-            HuAudFXPlay(1249);
+            HuAudFXPlay(MSM_SE_MGM03_WINNER_SHOWN);
             tournamentResultPositionSet(winner, lbl_1_data_838);
             Hu3DParManAttrReset(lbl_1_bss_10C[winner], 1);
             HuPrcVSleep();
@@ -2318,7 +2183,7 @@ s16 fn_1_BAD4(void)
             while (count != 0) {
                 count = 0;
                 for (i = 0; i < 4; i++) {
-                    if (tournamentResultSceneDone(i) == 0) {
+                    if (fn_1_80CC(i) == 0) {
                         count = 1;
                     }
                 }
@@ -2326,15 +2191,15 @@ s16 fn_1_BAD4(void)
             }
             Hu3DParManAttrSet(lbl_1_bss_10C[winner], 1);
             fn_1_56B4(1);
-            tournamentResultStateSet(winner, 1);
-            tournamentResultStateSet(loser, 0);
+            fn_1_7DA8(winner, 1);
+            fn_1_7DA8(loser, 0);
             MgModeWorkInt[winner + 4] = 0;
             result = 1;
         }
         HuPrcSleep(150);
         fn_1_56B4(0);
         for (i = 0; i < 4; i++) {
-            tournamentResultSequenceAdvance(i);
+            fn_1_7EA8(i);
         }
         HuPrcSleep(16);
     }
@@ -2345,11 +2210,7 @@ extern s32 lbl_1_data_84C;
 extern s32 lbl_1_data_854;
 extern s32 lbl_1_data_858;
 
-s16 fn_1_7BC0(s16 player);
-
 void fn_1_7D58(s16 player, s16 flag);
-
-s16 fn_1_80CC(s16 player);
 
 /* Called by fn_1_CF6C to set one player's scene state for the winner presentation. */
 static inline void tournamentPlayerStateSet(s16 player, s16 state)
@@ -2414,7 +2275,7 @@ void fn_1_CF6C(void)
         }
         HuPrcVSleep();
     }
-    lbl_1_data_854 = HuAudFXPlay(1252);
+    lbl_1_data_854 = HuAudFXPlay(MSM_SE_MGM03_CHAMPION_CELEBRATION);
     HuPrcSleep(60);
     fn_1_56B4(0);
     if (0 <= lbl_1_data_858)
@@ -2506,10 +2367,7 @@ s32 _prolog(void)
         (*constructor)();
         constructor++;
     }
-    lbl_1_bss_12C = fn_8003A8BC(100, 8192);
-    MgModeSubMode = 0;
-    fn_1_E9C();
-    fn_8000DAC0(fn_1_DC28, 100U, 12288U, 0, lbl_1_bss_12C);
+    fn_1_D544();
     return 0;
 }
 

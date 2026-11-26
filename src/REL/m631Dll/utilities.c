@@ -5,9 +5,9 @@
 /* The scheduled entrance job returns the ground player to its looping idle motion when the entrance
  * animation ends. */
 s32 fn_1_AAD8(void *callbackData) {
-    M631ActorWork *actor = (M631ActorWork *) callbackData;
+    M631ActorWork *actor = callbackData;
     if (fn_8002D75C(actor->characterModelId) != 0) {
-        fn_8005BE80(actor->charNo, actor->idleMotionId);
+        fn_8005BE80(actor->charNo, actor->motionIds[0]);
         fn_8005C47C(actor->charNo, ((1 << 30) | (1 << 1)));
         fn_8005C430(actor->charNo, ((1 << 30) | (1 << 0)));
         return 1;
@@ -133,7 +133,7 @@ void fn_1_B014(void)
     int nodeIndex;
     jobs = &lbl_1_bss_1414;
     node = lbl_1_bss_14;
-    jobs->storage = node;
+    jobs->unk08 = node;
     jobs->freeHead = node;
     jobs->activeHead = NULL;
     for (nodeIndex = 0; nodeIndex < 255; nodeIndex++, node++) {

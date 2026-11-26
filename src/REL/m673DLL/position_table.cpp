@@ -59,7 +59,7 @@ void ScenePositionTable::fn_1_7B24()
     for (index = 0; index < count; index++) {
         source = static_cast<PositionSource *>(objects[index]);
         Vec position = source->position;
-        this->unk50.push_back(position);
+        this->category3Positions.push_back(position);
     }
 }
 

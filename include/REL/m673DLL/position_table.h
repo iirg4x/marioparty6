@@ -14,7 +14,7 @@ struct ScenePositionTable : GameObject, MinigameSingleton<ScenePositionTable> {
     std::vector<PlayerActor *> players; // Players in slot order.
     Vec unk1C[4]; /* The game's code never reads this field. */
     u8 unk4C[4]; /* The game's code never reads this field. */
-    std::vector<Vec> unk50; /* The game's code never reads this field. */
+    std::vector<Vec> category3Positions;
     Vec position; // Current position of the moving actor.
     f32 angle; // Current heading of the moving actor.
     s32 state; // Current state of the moving actor.

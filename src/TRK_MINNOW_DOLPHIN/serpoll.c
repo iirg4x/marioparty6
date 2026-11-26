@@ -7,7 +7,8 @@
 
 static TRKFramingState gTRKFramingState;
 
-void* gTRKInputPendingPtr;
+/* The receive interrupt updates this byte. */
+vu8* gTRKInputPendingPtr;
 
 static inline BOOL serpoll_inline_00(TRKBuffer* buffer) {
     if (buffer->length < 2) {

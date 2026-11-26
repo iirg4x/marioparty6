@@ -27,11 +27,6 @@ struct StageColors {
 };
 
 extern "C" {
-
-extern s16 lbl_802C01A6;
-}
-
-extern "C" {
 #include "game/gamework.h"
 }
 

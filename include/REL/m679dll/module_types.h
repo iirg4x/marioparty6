@@ -24,7 +24,17 @@
 #include "game/board/tutorial.h"
 #include "datadir_enum.h"
 #include "REL/m679dll/module_state.h"
+
+HUPROCESS *fn_1_A0(void);
+void fn_1_3FA4(OMOBJ *object);
+void fn_1_D37C(OMOBJ *object);
+void fn_1_D6A0(void);
+void fn_1_D6B4(void);
+s32 fn_1_D6C8(void);
+void fn_1_D700(void);
+void fn_1_D750(void);
 void fn_1_D7A0(void);
+void fn_1_D7E0(void);
 s32 fn_1_D830(void);
 
 #endif

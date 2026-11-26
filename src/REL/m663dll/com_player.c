@@ -14,6 +14,8 @@
 
 #include "REL/m663dll/actors.h"
 #include "game/frand.h"
+#include "REL/m663dll/main.h"
+#include "REL/m663dll/com_player.h"
 
 extern M663PlayerWork lbl_1_bss_4F0[2];
 
@@ -26,7 +28,7 @@ void fn_1_C4F8(void) {
     s16 slowChaseChance[4] = {60, 50, 30, 20};
     s16 actionFrames[4] = {60, 50, 30, 30};
     s16 startFrames[4] = {60, 50, 40, 30};
-    struct FrameRange {
+    struct {
         s16 start;
         s16 end;
     } frameRanges[4] = {{420, 180}, {240, 120}, {60, 120}, {60, 60}};
@@ -70,7 +72,7 @@ void fn_1_C744(void) {
         }
     }
 }
-
+/* Steer the computer player toward its chase target and report when the steering phase finishes. */
 s32 fn_1_C820(M663PlayerWork *move, s16 advance)
 {
     Vec target;
@@ -87,7 +89,7 @@ s32 fn_1_C820(M663PlayerWork *move, s16 advance)
         finished = fn_8007E8B4(
             lbl_1_bss_418.players[move->playerIndex], &target,
             move->chaseSpeed, move->chaseRadius);
-        if (finished != 0 || move->chaseTimer > 0x1E) {
+        if (finished != 0 || move->chaseTimer > 30) {
             if (advance != 0) {
                 move->communicationState++;
             } else {
@@ -104,8 +106,6 @@ s32 fn_1_C820(M663PlayerWork *move, s16 advance)
     }
     return result;
 }
-
-extern f32 fn_1_46A8(f32 value);
 
 extern s32 fn_1_C974(M663PlayerWork *work);
 

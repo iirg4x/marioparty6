@@ -85,7 +85,7 @@ void MinigameThreadOwner::run(void *)
     }
     timer.start();
     postRequest(3);
-    HuAudSStreamFadeOut(musicHandle, 0x64);
+    HuAudSStreamFadeOut(musicHandle, 100);
     fn_1_60C();
     fn_1_7C4();
     MinigameCore::showWinners();
@@ -118,23 +118,23 @@ void MinigameThreadOwner::fn_1_654()
     SpriteFade *spriteFade;
 
     fn_1_9C58();
-    for (openingFrames = 0; openingFrames < 0x3C; openingFrames++) {
+    for (openingFrames = 0; openingFrames < 60; openingFrames++) {
         suspend(0);
     }
-    WipeCreate(2, 6, 0x3C);
-    for (secondFrames = 0; secondFrames < 0x3C; secondFrames++) {
+    WipeCreate(2, 6, 60);
+    for (secondFrames = 0; secondFrames < 60; secondFrames++) {
         suspend(0);
     }
     cameraOwner = &CameraOwner::getChecked();
     cameraOwner->transitionRequested = 1;
     fn_1_6690();
-    WipeCreate(1, 6, 0x3C);
-    for (thirdFrames = 0; thirdFrames < 0x3C; thirdFrames++) {
+    WipeCreate(1, 6, 60);
+    for (thirdFrames = 0; thirdFrames < 60; thirdFrames++) {
         suspend(0);
     }
     spriteFade = &SpriteFade::getChecked();
     spriteFade->transitionState = 0;
-    for (closingFrames = 0; closingFrames < 0x3C; closingFrames++) {
+    for (closingFrames = 0; closingFrames < 60; closingFrames++) {
         suspend(0);
     }
 }
@@ -156,18 +156,18 @@ void MinigameThreadOwner::fn_1_7C4()
     for (frame = 0; (float)frame < 120.0f; frame++) {
         suspend(0);
     }
-    WipeCreate(2, 6, 0x3C);
-    for (wipeFrames = 0; wipeFrames < 0x3C; wipeFrames++) {
+    WipeCreate(2, 6, 60);
+    for (wipeFrames = 0; wipeFrames < 60; wipeFrames++) {
         suspend(0);
     }
-    HuAudFadeOut(0x96);
+    HuAudFadeOut(150);
     allScoresZero = fn_1_62DC();
     fn_1_67A0();
     ScoreDisplay::getChecked().fn_1_83F4();
     DrawListOwner::getChecked().fn_1_3714();
     postRequest(4);
-    WipeCreate(1, 6, 0x3C);
-    for (closingFrames = 0; closingFrames < 0x78; closingFrames++) {
+    WipeCreate(1, 6, 60);
+    for (closingFrames = 0; closingFrames < 120; closingFrames++) {
         suspend(0);
     }
     fn_1_6884();

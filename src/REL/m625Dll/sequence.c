@@ -1,5 +1,6 @@
 /* Minigame sequence callbacks for setup, play, results, and exit. */
 #include <math.h>
+#include "REL/m625Dll/sequence.h"
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -25,16 +26,13 @@
 #include "REL/m625Dll/players.h"
 #include "REL/m625Dll/wave.h"
 #include "REL/m625Dll/camera.h"
+#include "REL/m625Dll/score_box.h"
 
 s32 lbl_1_bss_818;
 s16 lbl_1_bss_816;
 s16 lbl_1_bss_814;
 HUPROCESS *lbl_1_bss_810;
 extern s16 lbl_802C0278;
-extern s32 fn_1_41C(s32);
-extern s32 fn_1_3E8C(s32);
-extern void fn_1_12F98(s16, s32);
-extern u8 fn_1_CB4(s16);
 
 /* Called by sequence initialization to set up the stage, shadows, water, and camera. */
 void fn_1_13C04(s16 mode, s16 frameNo)
@@ -64,7 +62,7 @@ void fn_1_13C04(s16 mode, s16 frameNo)
 }
 
 /* Called during fade-in to advance the camera and player entrance animations. */
-void fn_1_13D30(s32 mode, s32 frameNo)
+void fn_1_13D30(s16 mode, s16 frameNo)
 {
     s32 cameraReady;
     s32 playersReady;
@@ -78,7 +76,7 @@ void fn_1_13D30(s32 mode, s32 frameNo)
 }
 
 /* Called on the start phase to launch the music and begin the player intro. */
-void fn_1_13DAC(s32 mode, s16 frameNo)
+void fn_1_13DAC(s16 mode, s16 frameNo)
 {
     lbl_1_bss_816 = 2;
     lbl_1_bss_814 = 1;
@@ -90,7 +88,7 @@ void fn_1_13DAC(s32 mode, s16 frameNo)
 }
 
 /* Called at the end of play to switch to result presentation and stop gameplay input. */
-void fn_1_13E14(void) {
+void fn_1_13E14(s16 mode, s16 frameNo) {
     lbl_1_bss_816 = 3;
     lbl_1_bss_814 = 1;
     fn_1_EF40();
@@ -98,9 +96,9 @@ void fn_1_13E14(void) {
 }
 
 /* Called each play frame to update the game and prepare the winning player sequences. */
-void fn_1_13E58(void) {
+void fn_1_13E58(s16 mode, s16 frameNo) {
     s16 playerIndex;
-    s32 playerSequence;
+    s16 playerSequence;
 
     lbl_1_bss_816 = 3;
     fn_1_CB0();
@@ -155,11 +153,12 @@ void fn_1_13FEC(s16 mode, s16 frameNo)
     fn_1_12EA8();
 }
 
-void fn_1_14020(void) {
+/* The last sequence callback marks the minigame as closed. */
+void fn_1_14020(s16 mode, s16 frameNo) {
     lbl_1_bss_816 = 7;
 }
 
 MGSEQ_PARAM lbl_1_data_448 = {
-    30, 2, fn_1_13C04, (MGSEQ_FUNC)fn_1_13D30, (MGSEQ_FUNC)fn_1_13DAC, (MGSEQ_FUNC)fn_1_13E58,
-    fn_1_13EF8, fn_1_13F64, fn_1_13FEC, fn_1_13FEC, (MGSEQ_FUNC)fn_1_14020
+    30, 2, fn_1_13C04, fn_1_13D30, fn_1_13DAC, fn_1_13E58,
+    fn_1_13EF8, fn_1_13F64, fn_1_13FEC, fn_1_13FEC, fn_1_14020
 };

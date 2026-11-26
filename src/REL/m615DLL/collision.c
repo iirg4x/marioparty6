@@ -2,6 +2,8 @@
 #include "dolphin/types.h"
 #include "math.h"
 #include "humath.h"
+#include "REL/m615DLL.h"
+#include "REL/m615DLL/collision.h"
 #include "game/memory.h"
 #include "include/dolphin/types.h"
 #include "game/object.h"
@@ -20,58 +22,6 @@
 #include "include/string.h"
 #include "include/game/gamework.h"
 #include "include/game/gamemes.h"
-
-typedef struct M615Bounds {
-    HuVecF min;
-    HuVecF max;
-} M615Bounds;
-
-typedef struct M615Segment {
-    HuVecF start;
-    HuVecF delta;
-} M615Segment;
-
-typedef struct M615Capsule {
-    M615Segment segment;
-    f32 radius;
-} M615Capsule;
-
-typedef struct M615Sphere {
-    HuVecF center;
-    f32 radius;
-} M615Sphere;
-
-typedef struct M615Triangle {
-    HuVecF start;
-    HuVecF edge1;
-    HuVecF edge2;
-} M615Triangle;
-
-typedef struct M615CollisionData {
-    s32 type;
-    M615Triangle triangle;
-    HuVecF normal;
-    M615Bounds bounds;
-} M615CollisionData;
-
-typedef struct M615CollisionPool {
-    s32 count;
-    M615CollisionData **entries;
-} M615CollisionPool;
-
-extern s32 fn_1_1478(M615Bounds *a, M615Bounds *b);
-
-extern f32 fn_1_14E8(HuVecF *point, M615Triangle *triangle, f32 *barycentricS, f32 *barycentricT);
-
-extern f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f32 *triangleSOut, f32 *triangleTOut);
-
-extern f32 fn_1_42CC(HuVecF *point, M615Triangle *triangle, f32 *barycentricS, f32 *barycentricT);
-
-extern f32 fn_1_4C9C(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f32 *triangleSOut, f32 *triangleTOut);
-
-extern f32 fn_1_5A4(const HuVecF *a, const HuVecF *b);
-
-extern void fn_1_A0C(M615Bounds *bounds, M615Capsule *capsule);
 
 void fn_1_9140(M615CollisionPool **poolResult, s32 count)
 {

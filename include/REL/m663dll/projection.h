@@ -8,7 +8,7 @@ typedef struct M663ProjectionState {
     Vec target;
     f32 horizontalAngle;
     f32 verticalAngle;
-    f32 unobservedValue; /* Initialized to zero; never read. */
+    f32 unk18; /* The game's code never reads this field. */
     f32 distance;
     f32 transparency;
 } M663ProjectionState;

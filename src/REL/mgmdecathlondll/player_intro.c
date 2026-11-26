@@ -3,8 +3,8 @@
 #include "datadir_enum.h"
 #include "msm_se.h"
 
-#define MSM_SE_DECA_LAST_ENTRY 1247
-#define MSM_SE_DECA_ENTRY 1246
+
+
 
 s32 lbl_1_data_2B0[3] = {
     DATANUM(0x9e0000, 1),
@@ -111,10 +111,10 @@ void fn_1_5C50(void) {
 
 typedef struct DecathlonMotionPath {
     Vec position; /* entrance position in world units */
-    f32 pitch; /* X rotation in degrees */
-    f32 yaw; /* Y rotation in degrees */
-    f32 roll; /* Z rotation in degrees */
-    s16 delay; /* frames until this model appears */
+    f32 unk0C; /* The game's code never reads this field. */
+    f32 unk10; /* The game's code never reads this field. */
+    f32 unk14; /* The game's code never reads this field. */
+    s16 unk18; /* The game's code never reads this field. */
 } DecathlonMotionPath;
 
 /* The final results sequence randomizes model positions and schedules score-dependent entrances. */
@@ -161,24 +161,24 @@ void fn_1_5DF8(void) {
         paths[player].position.x = horizontalPositions[player];
         paths[player].position.y = (frandmod(12) * 10) + 800;
         paths[player].position.z = -900.0f;
-        paths[player].pitch = 0.0f;
-        paths[player].yaw = 10.0f * (1.0f + frandmod(36));
-        paths[player].roll = 0.0f;
-        paths[player].delay = (player * 60) + 60;
+        paths[player].unk0C = 0.0f;
+        paths[player].unk10 = 10.0f * (1.0f + frandmod(36));
+        paths[player].unk14 = 0.0f;
+        paths[player].unk18 = (player * 60) + 60;
     }
 }
 
-typedef struct MgmDecathlonRecord_s {
-    u8 poseBytes[24]; /* position and rotation, not read by the completion poll */
-    s16 countdown; /* -1000 after completion; -1 while the entrance motion runs */
-    u8 reservedBytes[2]; /* trailing storage, not read by the completion poll */
-} MgmDecathlonRecord;
+typedef struct DecathlonMotionState {
+    Vec position; /* world position applied on the first active frame */
+    Vec rotation; /* rotation in degrees applied on the first active frame */
+    s16 countdown; /* frames until appearance; -1 playing; -1000 finished */
+} DecathlonMotionState;
 
 /* The results flow polls this until every active entrance actor has finished. */
-s32 fn_1_6188(void) {
+s16 fn_1_6188(void) {
     s16 index;
-    s32 result;
-    MgmDecathlonRecord *records;
+    s16 result;
+    DecathlonMotionState *records;
 
     records = lbl_1_bss_88->data;
     if (records == 0) {
@@ -194,12 +194,6 @@ s32 fn_1_6188(void) {
     }
     return result;
 }
-
-typedef struct DecathlonMotionState {
-    Vec position; /* world position applied on the first active frame */
-    Vec rotation; /* rotation in degrees applied on the first active frame */
-    s16 countdown; /* frames until appearance; -1 playing; -1000 finished */
-} DecathlonMotionState;
 
 /* The entrance object's per-frame callback reveals timed models and hides each after its motion. */
 void fn_1_6224(OMOBJ *object) {
@@ -232,14 +226,14 @@ void fn_1_6224(OMOBJ *object) {
                     if ((u32)(object->work[0] - 1) == (u32)player) {
                         fn_800268B0(object->mdlId[player], 2.5f,
                                          2.5f, 2.5f);
-                        HuAudFXPlay(MSM_SE_DECA_LAST_ENTRY);
+                        HuAudFXPlay(MSM_SE_MGM02_PLAYER_ENTRY_LAST);
                         for (controller = 0; controller < 4; controller++) {
                             if (fn_1_9784(controller) == 0) {
                                 fn_8006A030(controller, 20, 20, 0);
                             }
                         }
                     } else {
-                        HuAudFXPlay(MSM_SE_DECA_ENTRY);
+                        HuAudFXPlay(MSM_SE_MGM02_PLAYER_ENTRY);
                         for (controller = 0; controller < 4; controller++) {
                             if (fn_1_9784(controller) == 0) {
                                 fn_8006A030(controller, 20, 4, 4);
@@ -279,7 +273,7 @@ void fn_1_65A0(s16 playerNo) {
         DATANUM(0x9e0000, 83), 0x10000000, 2));
     fn_80026B64(*object->mdlId, 1);
     fn_80026B8C(*object->mdlId, 1);
-    fn_80026790(*object->mdlId, (HuVecF *)&lbl_1_data_2BC[playerIndex]);
+    fn_80026790(*object->mdlId, &lbl_1_data_2BC[playerIndex]);
     fn_800268B0(*object->mdlId, 0.6f, 0.9f, 0.6f);
     fn_80026808(*object->mdlId, 0.0f, 0.0f, 0.0f);
     fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 0)));

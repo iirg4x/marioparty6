@@ -25,8 +25,7 @@ void ModelSetupOwner::update()
 {
 }
 
-/* Clears the owner model attributes and sets the hook model motion time to zero.
- * Both model ids are read through `this` cast to its own class, as in fn_1_65F8. */
+/* Clears the owner model attributes and sets the hook model motion time to zero. */
 void ModelSetupOwner::fn_1_658C()
 {
     s16 modelId = (s16)((ModelSetupOwner *)this)->model.modelId;

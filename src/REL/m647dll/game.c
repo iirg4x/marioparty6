@@ -69,7 +69,7 @@ Point3d lbl_1_data_2D4[4] = {
     1175.0f, -1110.0f, 210.0f, 1525.0f
 };
 
-typedef struct M647ActivityCallbacks_s {
+typedef struct {
     void (*entries[4])(s16 index); /* Activity update callback by activity index. */
 } M647ActivityCallbacks;
 
@@ -104,7 +104,6 @@ void fn_1_1FAC(void);
 void fn_1_2B84(s16 recordIndex, s16 motionIndex);
 void fn_1_2C2C(s16 playerIndex, Point3d *movement);
 void fn_1_32F4(s16 recordIndex);
-s32 fn_1_34A0(s16 activityIndex);
 void fn_1_353C(void);
 void fn_1_366C(s16 recordIndex);
 void fn_1_370C(s16 recordIndex);
@@ -306,18 +305,25 @@ f32 fn_1_12D8(void) {
     return maximumX;
 }
 
-/* Allocates the full-screen capture texture and installs its camera-layer hook. */
-void fn_1_14B0(void) {
+/* Allocates the screen texture and registers its draw callback. */
+static inline void M647ScreenTextureInit(s16 width, s16 height, HU3D_LAYER_HOOK hook)
+{
     u32 textureSize;
 
-    textureSize = GXGetTexBufferSize(640, 480, 6, 0, 0);
-    lbl_1_bss_8 = HuSprAnimMake(640, 480, 0);
+    textureSize = GXGetTexBufferSize(width, height, 6, 0, 0);
+    lbl_1_bss_8 = HuSprAnimMake(width, height, 0);
     lbl_1_bss_8->bmp->palData = NULL;
     lbl_1_bss_8->bmp->palNum = 0;
     lbl_1_bss_8->bmp->data =
         HuMemDirectMallocNum(2, (s32) textureSize, 0x10000000);
     lbl_1_bss_174.animId = fn_80030B2C(lbl_1_bss_8, lbl_1_bss_174.modelId, "screen");
-    fn_8002583C(1, 8, fn_1_15A4);
+    fn_8002583C(1, 8, hook);
+}
+
+/* Allocates the full-screen capture texture and installs its camera-layer hook. */
+void fn_1_14B0(void) {
+
+    M647ScreenTextureInit(640, 480, fn_1_15A4);
 }
 
 /* Copies the rendered scene for the full-screen overlay, then clears its depth. */
@@ -328,20 +334,12 @@ void fn_1_15A4(s16 layerNo) {
 
 /* Replaces the full-screen capture with a small view during the transition. */
 void fn_1_15F4(void) {
-    u32 textureSize;
 
     fn_80031010(lbl_1_bss_174.animId);
     fn_800258A8(1, 8);
     HuSprAnimKill(lbl_1_bss_8);
     lbl_1_bss_8 = NULL;
-    textureSize = GXGetTexBufferSize(144, 96, 6, 0, 0);
-    lbl_1_bss_8 = HuSprAnimMake(144, 96, 0);
-    lbl_1_bss_8->bmp->palData = NULL;
-    lbl_1_bss_8->bmp->palNum = 0;
-    lbl_1_bss_8->bmp->data =
-        HuMemDirectMallocNum(2, (s32) textureSize, 0x10000000);
-    lbl_1_bss_174.animId = fn_80030B2C(lbl_1_bss_8, lbl_1_bss_174.modelId, "screen");
-    fn_8002583C(1, 8, fn_1_17C4);
+    M647ScreenTextureInit(144, 96, fn_1_17C4);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 144.0f, 96.0f, 0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(1, 20.0f, 60.0f, 25000.0f, 1.2f);
     Hu3DCameraScissorSet(1, 0, 0, 144, 96);
@@ -924,7 +922,6 @@ void fn_1_3B54(M647PlayerRecord *input, Point3d *position) {
     f32 destinationX;
     s16 selectedSlot;
     s16 randomValue;
-    s32 searchIndex;
 
     if (input->cpuDifficulty == -1) {
         if (position->x == input->targetX && lbl_1_bss_14.mode == 0) {
@@ -1326,7 +1323,6 @@ void fn_1_5978(void) {
     f32 horizontalDistance;
     f32 verticalProgress;
     f32 horizontalProgress;
-    s16 oldFrame;
     s16 selectedIndex;
     s32 scanIndex;
     s32 recordIndex;

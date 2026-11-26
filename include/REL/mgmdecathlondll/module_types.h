@@ -2,8 +2,6 @@
 #ifndef REL_MGMDECATHLONDLL_MODULE_TYPES_H
 #define REL_MGMDECATHLONDLL_MODULE_TYPES_H
 
-#define DECATHLON_RESULT_TEXT_CAPACITY 20
-
 #include <math.h>
 #include "game/window.h"
 #include "game/object.h"
@@ -15,13 +13,14 @@
 #include "game/audio.h"
 
 /* Text and display state used while building each player's result message. */
-typedef struct MgmDecathlonPlayerRecord_s {
-    u8 messageBytes[DECATHLON_RESULT_TEXT_CAPACITY]; /* inline message bytes, including control
+typedef struct  {
+    /* Result text capacity is 20 bytes, including control codes. */
+    u8 messageBytes[20]; /* inline message bytes, including control
                                                       * codes */
     s8 enabled; /* status byte cleared when result text is built or retrieved */
 } MgmDecathlonPlayerRecord;
 
-typedef struct DecathlonPlayerActorData_s {
+typedef struct  {
     s16 playerNo; /* player slot, 0 through 3 */
     s16 characterNo; /* selected character */
     s16 padNo; /* controller slot */
@@ -30,7 +29,6 @@ typedef struct DecathlonPlayerActorData_s {
     s16 cpuDifficulty; /* CPU difficulty setting */
     s16 state; /* actor update state */
     s16 currentMotion; /* selected motion-setting index; -1 before initialization */
-    u8 reservedBytes[2]; /* storage unused by the player actor code */
     Vec position; /* world position */
     Vec rotation; /* rotation in degrees */
     f32 modelHeight; /* model height in world units */
@@ -50,14 +48,6 @@ typedef union DecathlonPadMaskTable {
     u16 unsignedValues[4]; /* one input bit mask per controller slot */
     s16 signedValues[4]; /* signed view used by the input helpers */
 } DecathlonPadMaskTable;
-
-typedef struct DecathlonMessageIds {
-    u32 messageIds[10]; /* event-number message IDs for one through ten */
-} DecathlonMessageIds;
-
-typedef struct DecathlonScoreMessages {
-    u32 messageIds[4]; /* result message selected by the number of leaders */
-} DecathlonScoreMessages;
 
 typedef struct DecathlonWindowState {
     HUWINID windowId; /* shared Decathlon result window */
@@ -122,7 +112,7 @@ extern OMOBJ *lbl_1_bss_A8[4];
 extern OMOBJMAN *lbl_1_bss_C0;
 extern s32 lbl_1_data_C90;
 extern HuVecF lbl_1_data_358;
-extern char lbl_1_data_364[16];
+
 extern void fn_1_6E80(OMOBJ *obj);
 extern s16 lbl_1_bss_BC;
 extern DecathlonRankPosition lbl_1_data_684[4];
@@ -158,6 +148,7 @@ extern void fn_1_9CD0(void);
 extern void fn_1_9E50(Vec *center);
 extern void fn_1_BC00(void);
 extern void fn_1_C344(s16 enabled);
+extern s16 fn_1_C51C(void);
 extern void fn_1_C6C8(OMOBJ *object);
 extern void fn_1_D484(s16 *values);
 extern void fn_1_D518(s16 playerNo, s16 positionNo);
@@ -184,5 +175,9 @@ extern s16 fn_1_28E8(void);
 extern void fn_1_337C(void);
 extern s32 fn_1_4130(void);
 extern void fn_1_5130(void);
+
+s16 fn_1_6188(void);
+
+s16 fn_1_567C(void);
 
 #endif /* REL_MGMDECATHLONDLL_MODULE_TYPES_H */

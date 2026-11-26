@@ -58,9 +58,9 @@
 #include "game/board/tutorial.h"
 
 #include "datadir_enum.h"
+#include "humath.h"
 
 /* Shared memory tag for Verbal Assault asset allocations. */
-#define M665_MEMORY_TAG (1 << 28)
 
 s32 lbl_1_data_338[2] = {DATANUM(0x7c0000, 7), DATANUM(0x7c0000, 10)};
 
@@ -77,10 +77,6 @@ char lbl_1_data_36C[] = "itemhook";
 char lbl_1_data_375[] = "itemhook_L";
 
 char lbl_1_data_380[] = "itemhook_R";
-
-char lbl_1_data_38B[] = "attacker's beam is not empty\n";
-
-char lbl_1_data_3A9[] = "itemhook_gun1";
 
 void fn_1_12948(void);
 
@@ -99,17 +95,14 @@ void fn_1_C40C(void) {
     while (playerIndex < 3) {
         playerNo = lbl_1_bss_250.otherPlayers[playerIndex];
         playerWork = &lbl_1_bss_10[playerNo];
-        modelID = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7c0000, 6), M665_MEMORY_TAG, 2));
+        modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 6), (1 << 28), 2));
         fn_80026760(modelID,
                         -600.0f + 600.0f * (f32) playerIndex,
                         0.0f,
                         2500.0f + lbl_1_data_340[playerIndex]);
         for (motionIndex = 0; motionIndex < 2; motionIndex++) {
-            motionID = fn_80030458(
-                modelID,
-                fn_80008DD0(lbl_1_data_338[motionIndex], M665_MEMORY_TAG,
-                                     2));
+            motionID =
+                fn_80030458( modelID, fn_80008DD0(lbl_1_data_338[motionIndex], (1 << 28), 2));
             playerWork->models.other.motions[motionIndex] = motionID;
         }
         fn_8002C95C(modelID, playerWork->models.other.motions[0]);
@@ -117,19 +110,15 @@ void fn_1_C40C(void) {
         fn_80026E44(modelID);
         fn_8002D414(modelID, (f32) frandmod(40));
         lbl_1_bss_10[playerNo].vehicleModel = modelID;
-        fn_8002741C(playerWork->vehicleModel, lbl_1_data_36C,
-                         playerWork->characterModel);
-        fn_80026808(playerWork->characterModel, 0.0f, 180.0f,
-                        0.0f);
+        fn_8002741C(playerWork->vehicleModel, lbl_1_data_36C, playerWork->characterModel);
+        fn_80026808(playerWork->characterModel, 0.0f, 180.0f, 0.0f);
         fn_1_170C(playerNo, 1, 0.0f);
         fn_8002D86C(playerWork->vehicleModel, 2.0f);
         playerWork->motionSpeed = 2.0f;
-        modelID = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7c0000, 11), M665_MEMORY_TAG, 2));
+        modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 11), (1 << 28), 2));
         fn_8002741C(playerWork->vehicleModel, lbl_1_data_375, modelID);
         playerWork->models.other.effects[0].model = modelID;
-        modelID = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7c0000, 11), M665_MEMORY_TAG, 2));
+        modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 11), (1 << 28), 2));
         fn_8002741C(playerWork->vehicleModel, lbl_1_data_380, modelID);
         playerWork->models.other.effects[1].model = modelID;
         playerIndex++;
@@ -191,24 +180,19 @@ void fn_1_C838(void) {
         playerWork = &lbl_1_bss_10[playerNo];
         scoreBox = MgScoreBoxCreateChar(152, 48, playerWork->character);
         MgScoreBoxTPLvlSet(scoreBox, 0.0f);
-        MgScoreBoxPosSet(scoreBox, lbl_1_data_358[playerIndex],
-                         420.0f);
+        MgScoreBoxPosSet(scoreBox, lbl_1_data_358[playerIndex], 420.0f);
         MgScoreBoxDispSet(scoreBox, 0);
         playerWork->effect.other.scoreGroup = scoreBox;
-        lbl_1_bss_EA8.animation = HuSprAnimRead(
-            fn_80008DD0(DATANUM(0x7c0000, 36), M665_MEMORY_TAG, 2));
+        lbl_1_bss_EA8.animation = HuSprAnimRead( fn_80008DD0(DATANUM(0x7c0000, 36), (1 << 28), 2));
         spriteGroup = HuSprGrpCreate(4);
-        HuSprGrpPosSet(spriteGroup, lbl_1_data_358[playerIndex],
-                       420.0f);
+        HuSprGrpPosSet(spriteGroup, lbl_1_data_358[playerIndex], 420.0f);
         member = 0;
         while (member < 3) {
             HuSprGrpMemberSet(spriteGroup, (s16) (member + 1),
                               HuSprCreate(lbl_1_bss_EA8.animation, 10, 0));
-            HuSprPosSet(spriteGroup, (s16) (member + 1),
-                        (f32) ((member << 5) - 16), 0.0f);
+            HuSprPosSet(spriteGroup, (s16) (member + 1), (f32) ((member << 5) - 16), 0.0f);
             HuSprAttrSet(spriteGroup, (s16) (member + 1), 4);
-            HuSprScaleSet(spriteGroup, (s16) (member + 1), 0.75f,
-                          0.75f);
+            HuSprScaleSet(spriteGroup, (s16) (member + 1), 0.75f, 0.75f);
             member++;
         }
         playerWork->effect.other.spriteGroup = spriteGroup;
@@ -380,16 +364,12 @@ void fn_1_D3C8(s16 playerNo, s16 *buttonX, s16 *stickY) {
         (s16) (((f64) lbl_1_data_364[playerWork->difficulty] *
                 (0.8 +
                  (f64) ((f32) frandmod(20) / 100.0f))) *
-               sin((3.141592653589793 *
-                    (f64) playerWork->movementAngle) /
-                   180.0));
+               sin((M_PI * (f64) playerWork->movementAngle) / 180.0));
     *stickY =
         (s16) (((f64) lbl_1_data_364[playerWork->difficulty] *
                 (0.8 +
                  (f64) ((f32) frandmod(20) / 100.0f))) *
-               cos((3.141592653589793 *
-                    (f64) playerWork->movementAngle) /
-                   180.0));
+               cos((M_PI * (f64) playerWork->movementAngle) / 180.0));
 }
 
 /* Computes horizontal and depth input from the player's position. */
@@ -457,13 +437,11 @@ void fn_1_DA0C(s16 playerNo, s16 *buttonX, s16 *stickY) {
                 positionDelta.y = 0.0f;
                 positionDelta.z = playerPosition.z - objectPosition.z;
                 targetAngle = (f32) (180.0 *
-                                     (atan2((f64) positionDelta.z,
-                                            (f64) positionDelta.x) /
-                                      3.141592653589793));
+                                     (atan2((f64) positionDelta.z, (f64) positionDelta.x) /
+                                      M_PI));
                 angle = fabs((f64) (targetAngle - objectWork->angle));
                 turnRate = (f32) ((f64) absoluteHorizontalDistance *
-                                  sin((3.141592653589793 * (f64) angle) /
-                                      180.0));
+                                  sin((M_PI * (f64) angle) / 180.0));
                 if (turnRate > 145.0f) {
                     continue;
                 }
@@ -472,17 +450,13 @@ void fn_1_DA0C(s16 playerNo, s16 *buttonX, s16 *stickY) {
                 } else {
                     angle = 90.0f + objectWork->angle;
                 }
-                *buttonX = (s16) (sin((3.141592653589793 *
-                                              (f64) angle) /
-                                             180.0) *
+                *buttonX = (s16) (sin((M_PI * (f64) angle) / 180.0) *
                                           ((f64) lbl_1_data_364[
                                                playerWork->difficulty] *
                                            (0.8 +
                                             (f64) ((f32) frandmod(20) /
                                                    100.0f))));
-                *stickY = (s16) (cos((3.141592653589793 *
-                                              (f64) angle) /
-                                             180.0) *
+                *stickY = (s16) (cos((M_PI * (f64) angle) / 180.0) *
                                           -((f64) lbl_1_data_364[
                                                  playerWork->difficulty] *
                                              (0.8 +
@@ -501,13 +475,9 @@ void fn_1_DEAC(s16 playerNo, s16 *buttonX, s16 *stickY) {
     HuVecF targetPosition;
     HuVecF direction;
     HuVecF modelRotation;
-    M665PlayerWork *playerWork;
+    M665PlayerWork *playerWork = &lbl_1_bss_10[playerNo];
     M665KillerWork *killerWork;
-    struct ButtonChanceTable {
-        u16 chanceThresholds[4];
-    };
-    static const struct ButtonChanceTable lbl_1_rodata_4DC = {{500, 500, 500, 600}};
-    struct ButtonChanceTable buttonChances;
+    u16 buttonChances[4] = {500, 500, 500, 600};
     s32 killerIndex;
     f32 angleDifference;
     f32 distanceSquared;
@@ -515,16 +485,12 @@ void fn_1_DEAC(s16 playerNo, s16 *buttonX, s16 *stickY) {
     f32 targetAngle;
     f32 turnRate;
 
-    playerWork = &lbl_1_bss_10[playerNo];
-    buttonChances = lbl_1_rodata_4DC;
     for (killerIndex = 0; killerIndex < 3; killerIndex++) {
         killerWork = &lbl_1_bss_2E8.killers[killerIndex];
         if (killerWork->targetPlayer != -1 && killerWork->state != 0) {
             fn_800267CC(playerWork->vehicleModel, &currentPosition);
             if (killerWork->targetPlayer != playerNo) {
-                fn_800267CC(
-                    lbl_1_bss_10[killerWork->targetPlayer].vehicleModel,
-                    &targetPosition);
+                fn_800267CC( lbl_1_bss_10[killerWork->targetPlayer].vehicleModel, &targetPosition);
                 direction.x = currentPosition.x - targetPosition.x;
                 direction.y = 0.0f;
                 direction.z = currentPosition.z - targetPosition.z;
@@ -541,8 +507,7 @@ void fn_1_DEAC(s16 playerNo, s16 *buttonX, s16 *stickY) {
             }
             fn_800267CC(killerWork->modelID, &currentModelPosition);
             fn_80026874(killerWork->modelID, &modelRotation);
-            distanceSquared = PSVECSquareDistance(&currentModelPosition,
-                                                  &currentPosition);
+            distanceSquared = PSVECSquareDistance(&currentModelPosition, &currentPosition);
             distance = sqrtf(distanceSquared);
             direction.x = currentPosition.x - currentModelPosition.x;
             direction.y = 0.0f;
@@ -550,7 +515,7 @@ void fn_1_DEAC(s16 playerNo, s16 *buttonX, s16 *stickY) {
             direction.z = currentPosition.x - currentModelPosition.z;
             targetAngle = (f32) (180.0 *
                 (atan2((f64) direction.z, (f64) direction.x) /
-                 3.141592653589793));
+                 M_PI));
             angleDifference = targetAngle - killerWork->angle;
             while (angleDifference < 0.0f) {
                 angleDifference += 360.0f;
@@ -572,13 +537,11 @@ void fn_1_DEAC(s16 playerNo, s16 *buttonX, s16 *stickY) {
             } else {
                 targetAngle = killerWork->angle - turnRate;
             }
-            *buttonX = (s16) (sin((3.141592653589793 *
-                (f64) targetAngle) / 180.0) *
+            *buttonX = (s16) (sin((M_PI * (f64) targetAngle) / 180.0) *
                 ((f64) lbl_1_data_364[playerWork->difficulty] *
                  (0.8 +
                   (f64) ((f32) frandmod(20) / 100.0f))));
-            *stickY = (s16) (cos((3.141592653589793 *
-                (f64) targetAngle) / 180.0) *
+            *stickY = (s16) (cos((M_PI * (f64) targetAngle) / 180.0) *
                 -((f64) lbl_1_data_364[playerWork->difficulty] *
                   (0.8 +
                    (f64) ((f32) frandmod(20) / 100.0f))));
@@ -638,8 +601,7 @@ void fn_1_E728(s16 playerNo, s16 *buttonX, s16 *stickY) {
             fn_800267CC(hazardWork->firstAnimation, &objectPosition);
         }
         objectPosition.y = 0.0f;
-        objectDistanceSquared = PSVECSquareDistance(&objectPosition,
-                                                     &playerPosition);
+        objectDistanceSquared = PSVECSquareDistance(&objectPosition, &playerPosition);
         if (sqrtf(objectDistanceSquared) < 210.0f) {
             if (objectPosition.z < playerPosition.z) {
                 *stickY = (s16) -((f64) lbl_1_data_364[playerWork->difficulty] *
@@ -687,9 +649,7 @@ void fn_1_E728(s16 playerNo, s16 *buttonX, s16 *stickY) {
     }
 
     if (playerWork->selectedStage != -1) {
-        fn_800267CC(
-            lbl_1_bss_2E8.hazards[playerWork->selectedStage].firstAnimation,
-            &direction);
+        fn_800267CC( lbl_1_bss_2E8.hazards[playerWork->selectedStage].firstAnimation, &direction);
         fn_800267CC(
             lbl_1_bss_2E8.hazards[playerWork->selectedStage + 1].firstAnimation,
             &nextPosition);
@@ -728,70 +688,31 @@ void fn_1_E728(s16 playerNo, s16 *buttonX, s16 *stickY) {
                 playerNo) {
                 fn_800267CC(lbl_1_bss_10[lbl_1_bss_250.otherPlayers[objectIndex]].vehicleModel,
                     &direction);
-                playerDistanceSquared = PSVECSquareDistance(&playerPosition,
-                                                             &direction);
+                playerDistanceSquared = PSVECSquareDistance(&playerPosition, &direction);
                 if (sqrtf(playerDistanceSquared) < 500.0f) {
                     direction.x = direction.x - playerPosition.x;
                     direction.y = 0.0f;
                     direction.z = direction.z - playerPosition.z;
                     PSVECNormalize(&direction, &direction);
-                    angle = (f32) (180.0 * (atan2((f64) direction.z,
-                                                  (f64) direction.x) /
-                                               3.141592653589793));
+                    angle = (f32) (180.0 * (atan2((f64) direction.z, (f64) direction.x) /
+                                               M_PI));
                     *buttonX = (s16) (
                         (f64) lbl_1_data_364[playerWork->difficulty] *
                         (0.8 + (f64) ((f32) frandmod(20) / 100.0f)) *
-                        sin((3.141592653589793 * (f64) angle) / 180.0));
+                        sin((M_PI * (f64) angle) / 180.0));
                     *stickY = (s16) (-(
                         (f64) lbl_1_data_364[playerWork->difficulty] *
                         (0.8 + (f64) ((f32) frandmod(20) / 100.0f))) *
-                        cos((3.141592653589793 * (f64) angle) / 180.0));
+                        cos((M_PI * (f64) angle) / 180.0));
                 }
             }
         }
     }
 }
 
-void fn_1_DA0C(s16 playerNo, s16 *buttonX, s16 *stickY);
-
-void fn_1_DEAC(s16 playerNo, s16 *buttonX, s16 *stickY);
-
-void fn_1_E728(s16 playerNo, s16 *buttonX, s16 *stickY);
-
 /* Chooses a difficulty-scaled angle offset from the player's horizontal side. */
 void fn_1_F610(s16 playerNo, s16 *angle) {
-    HuVecF position;
-    M665PlayerWork *playerWork;
-
-    playerWork = &lbl_1_bss_10[playerNo];
-    fn_800267CC(playerWork->vehicleModel, &position);
-    if (position.x > 0.0f) {
-        *angle = (s16) ((f64) lbl_1_data_364[playerWork->difficulty] *
-                        (0.8 +
-                         (f64) ((f32) frandmod(20) / 100.0f)));
-    } else {
-        *angle = (s16) -((f64) lbl_1_data_364[playerWork->difficulty] *
-                         (0.8 +
-                          (f64) ((f32) frandmod(20) / 100.0f)));
-    }
-}
-
-/* Sets horizontal input from the player's side while fn_1_F7BC selects movement. */
-static inline void horizontalInputFromX(s16 playerNo, s16 *horizontalInput) {
-    HuVecF position;
-    M665PlayerWork *playerWork;
-
-    playerWork = &lbl_1_bss_10[playerNo];
-    fn_800267CC(playerWork->vehicleModel, &position);
-    if (position.x > 0.0f) {
-        *horizontalInput = (s16) ((f64) lbl_1_data_364[playerWork->difficulty] *
-                        (0.8 +
-                         (f64) ((f32) frandmod(20) / 100.0f)));
-    } else {
-        *horizontalInput = (s16) -((f64) lbl_1_data_364[playerWork->difficulty] *
-                         (0.8 +
-                          (f64) ((f32) frandmod(20) / 100.0f)));
-    }
+    fn_1_E57C(playerNo, angle);
 }
 
 /* Chooses movement outputs from the main player's action and active effects for fn_1_10F18. */
@@ -850,7 +771,7 @@ void fn_1_F7BC(s16 playerNo, s16 *buttonX, s16 *stickY) {
         return;
     }
     else if (mainPlayerMode >= 8 && mainPlayerMode <= 12) {
-    horizontalInputFromX(playerNo, buttonX);
+    fn_1_E57C(playerNo, buttonX);
     }
     else if (mainPlayerMode >= 13 && mainPlayerMode <= 16) {
         fn_1_DA0C(playerNo, buttonX, stickY);
@@ -865,7 +786,7 @@ void fn_1_F7BC(s16 playerNo, s16 *buttonX, s16 *stickY) {
         return;
     }
     else if ((mainPlayerMode >= 28 && mainPlayerMode <= 32) || hasRollingState3 != 0) {
-    horizontalInputFromX(playerNo, buttonX);
+    fn_1_E57C(playerNo, buttonX);
     }
 }
 
@@ -889,13 +810,7 @@ void fn_1_1005C(s16 playerNo, s16 *buttonX, s16 *stickY) {
     }
 }
 
-void fn_1_D3B4(s16 playerNo, s16 *buttonX, s16 *stickY);
-
-void fn_1_D3C8(s16 playerNo, s16 *buttonX, s16 *stickY);
-
 void fn_1_10394(s16 playerNo, s16 *buttonX, s16 *stickY);
-
-void fn_1_1005C(s16 playerNo, s16 *buttonX, s16 *stickY);
 
 void fn_1_109AC(s16 playerNo, s16 *horizontalSpeed, s16 *verticalSpeed);
 
@@ -967,9 +882,7 @@ void fn_1_109AC(s16 playerNo, s16 *horizontalSpeed, s16 *verticalSpeed) {
     M665PlayerWork *playerWork;
 
     playerWork = &lbl_1_bss_10[playerNo];
-    fn_800267CC(
-        lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel,
-        &leaderPosition);
+    fn_800267CC( lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel, &leaderPosition);
     fn_800267CC(playerWork->vehicleModel, &playerPosition);
     if (playerPosition.x < leaderPosition.x - 350.0f) {
         *horizontalSpeed = (s16) (lbl_1_data_364[playerWork->difficulty] *
@@ -982,8 +895,7 @@ void fn_1_109AC(s16 playerNo, s16 *horizontalSpeed, s16 *verticalSpeed) {
     }
     if (playerPosition.z > (-500.0f)) {
         *verticalSpeed = (s16) (
-            sin((3.141592653589793 * (f64) frandmod(90)) /
-                180.0) *
+            sin((M_PI * (f64) frandmod(90)) / 180.0) *
             ((f64) lbl_1_data_364[playerWork->difficulty] *
              (0.8 + (f64) ((f32) frandmod(20) / 100.0f))) / 2);
     }
@@ -1026,7 +938,7 @@ void fn_1_10CE8(s16 playerNo) {
             movementIndex = 0;
         }
         playerWork->movement = movementFunctions[movementIndex];
-        playerWork->movementIndex = movementIndex;
+        playerWork->unk6C = movementIndex;
         playerWork->movementFrames =
             delayLimits[playerWork->difficulty] +
             frandmod(delayLimits[playerWork->difficulty]);
@@ -1035,12 +947,6 @@ void fn_1_10CE8(s16 playerNo) {
         }
     }
 }
-
-void fn_1_F7BC(s16 playerNo, s16 *buttonX, s16 *stickY);
-
-f32 fn_1_CA20(Point3d *position, s16 playerNo, s16 buttonX, s16 stickY);
-
-extern s32 fn_1_50D4();
 
 extern void fn_1_13A44(s16 playerNo);
 
@@ -1060,7 +966,7 @@ void fn_1_10F18(s16 playerNo, s16 *buttonX, s16 *stickY) {
         return;
     }
     if (playerWork->movement == NULL ||
-        (playerWork->movementFrames)-- <= 0) {
+        playerWork->movementFrames-- <= 0) {
         fn_1_10CE8(playerNo);
     }
 
@@ -1101,7 +1007,7 @@ void fn_1_10F18(s16 playerNo, s16 *buttonX, s16 *stickY) {
         return;
     }
     playerWork->selectedStage = -1;
-    (playerWork->movement)(playerNo, buttonX, stickY);
+    playerWork->movement(playerNo, buttonX, stickY);
 }
 
 /* Updates a player's input, movement, and hit reactions during each object update. */
@@ -1167,7 +1073,7 @@ void fn_1_112C0(s16 playerNo) {
             }
             break;
         case 2:
-            if ((playerWork->models.other.recoveryFrames)-- <= 0) {
+            if (playerWork->models.other.recoveryFrames-- <= 0) {
                 playerWork->models.other.recoveryFrames = 120;
                 playerWork->status.other.state = 3;
             } else if ((playerWork->models.other.recoveryFrames & 1) != 0) {
@@ -1177,7 +1083,7 @@ void fn_1_112C0(s16 playerNo) {
             }
             break;
         case 3:
-            if ((playerWork->models.other.recoveryFrames)-- <= 0) {
+            if (playerWork->models.other.recoveryFrames-- <= 0) {
                 playerWork->status.other.state = 1;
                 fn_80026A44(playerWork->vehicleModel, (1 << 0));
             } else {
@@ -1249,31 +1155,23 @@ void fn_1_112C0(s16 playerNo) {
     }
 }
 
-typedef struct {
-    char *hookNames[2];
-} HookNames;
-
 /* Advances detached vehicle models for an opponent during its object update. */
 void fn_1_11920(s16 playerNo) {
-    static const HookNames lbl_1_rodata_570 = {{lbl_1_data_375, lbl_1_data_380}};
     HuVecF position;
     HuVecF rotation;
     s32 hookIndex;
-    HookNames hookNames;
-    M665PlayerWork *playerWork;
+    M665PlayerWork *playerWork = &lbl_1_bss_10[playerNo];
+    char *hookNames[2] = {lbl_1_data_375, lbl_1_data_380};
     M665DetachedModel *effect;
 
-    playerWork = &lbl_1_bss_10[playerNo];
-    hookNames = lbl_1_rodata_570;
     hookIndex = 0;
     while (hookIndex < 2) {
         effect = &playerWork->models.other.effects[hookIndex];
         if (effect->state != 0 && effect->state != 3) {
             switch (effect->state) {
             case 1:
-                Hu3DModelObjPosGet(playerWork->vehicleModel, hookNames.hookNames[hookIndex],
-                                   &position);
-                fn_800275B4(playerWork->vehicleModel, hookNames.hookNames[hookIndex]);
+                Hu3DModelObjPosGet(playerWork->vehicleModel, hookNames[hookIndex], &position);
+                fn_800275B4(playerWork->vehicleModel, hookNames[hookIndex]);
                 fn_80026790(effect->model, &position);
                 fn_80026E44(effect->model);
                 effect->velocityX =
@@ -1316,30 +1214,18 @@ void fn_1_11920(s16 playerNo) {
     }
 }
 
-typedef struct SoundIds {
-    s32 soundID;
-    s32 second; /* Second sound ID, selected by index from this three-entry table. */
-    s32 third; /* Third sound ID, selected by index from this three-entry table. */
-} SoundIds;
-
-const SoundIds lbl_1_rodata_590 = {0x860, 0x861, 0x862};
-
-void fn_1_112C0(s16 playerNo);
-
-void fn_1_11920(s16 playerNo);
 
 void fn_1_13024(void);
 
 /* Plays motion-timed sounds and updates opponent and hit effects on each call. */
 void fn_1_11C04(void) {
     HuVecF position;
-    SoundIds soundIds;
     s16 playerNo;
     M665PlayerWork *playerWork;
     s32 playerIndex;
     f32 motionTime;
 
-    soundIds = lbl_1_rodata_590;
+    s32 soundIds[3] = {0x860, 0x861, 0x862};
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         playerNo = lbl_1_bss_250.otherPlayers[playerIndex];
         playerWork = &lbl_1_bss_10[playerNo];
@@ -1353,7 +1239,7 @@ void fn_1_11C04(void) {
                 ((motionTime > 44.0f) &&
                  (motionTime <= (44.0f +
                                  playerWork->motionSpeed)))) {
-                HuAudFXPlayPan((&soundIds.soundID)[playerWork->groupIndex],
+                HuAudFXPlayPan(soundIds[playerWork->groupIndex],
                                (s16) ((s32) (position.x / 40.0f) + 64));
             }
         }
@@ -1420,22 +1306,19 @@ s32 fn_1_11E50(void) {
     return 1;
 }
 
-const SoundIds lbl_1_rodata_5AC = {0x86A, 0x86B, 0x86C};
 
 /* Handles an opponent collision after fn_1_112C0 detects it. */
 void fn_1_11FD0(M665PlayerWork *playerWork) {
     HuVecF modelPosition;
-    SoundIds soundIDs;
+    s16 sequenceMode = (s16) fn_80071A8C();
+    s32 soundIDs[3] = {0x86A, 0x86B, 0x86C};
     HuVecF objectPosition;
-    s16 sequenceMode;
     s32 memberIndex;
 
-    sequenceMode = (s16) fn_80071A8C();
-    soundIDs = lbl_1_rodata_5AC;
     if (playerWork->status.other.state == 1) {
         if (playerWork->models.other.damageCount < 2) {
             fn_800267CC(playerWork->vehicleModel, &modelPosition);
-            HuAudFXPlayPan((&soundIDs.soundID)[playerWork->groupIndex],
+            HuAudFXPlayPan(soundIDs[playerWork->groupIndex],
                            (s16) ((s32) (modelPosition.x / 40.0f) + 64));
             playerWork->status.other.state = 2;
             playerWork->models.other.recoveryFrames = 60;
@@ -1487,25 +1370,16 @@ void fn_1_12228(void) {
         fn_800275B4(playerWork->vehicleModel, lbl_1_data_36C);
         fn_800269E8(playerWork->vehicleModel, (1 << 0));
         fn_80026A44(playerWork->characterModel, (1 << 0));
-        fn_80026808(playerWork->characterModel, 0.0f, 0.0f,
-                        0.0f);
-        fn_80026760(playerWork->characterModel, 240.0f * (f32) playerIndex,
-                        0.0f, 200.0f);
-        modelID = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7c0000, 6), M665_MEMORY_TAG, 2));
-        motionID = fn_80030458(
-            modelID,
-            fn_80008DD0(DATANUM(0x7c0000, 10), M665_MEMORY_TAG, 2));
+        fn_80026808(playerWork->characterModel, 0.0f, 0.0f, 0.0f);
+        fn_80026760(playerWork->characterModel, 240.0f * (f32) playerIndex, 0.0f, 200.0f);
+        modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 6), (1 << 28), 2));
+        motionID = fn_80030458( modelID, fn_80008DD0(DATANUM(0x7c0000, 10), (1 << 28), 2));
         fn_8002C95C(modelID, motionID);
-        fn_80026760(modelID, 300.0f * (f32) playerIndex,
-                        0.0f, -300.0f);
-        fn_80026808(modelID, 0.0f, 140.0f,
-                        0.0f);
+        fn_80026760(modelID, 300.0f * (f32) playerIndex, 0.0f, -300.0f);
+        fn_80026808(modelID, 0.0f, 140.0f, 0.0f);
         fn_80026E44(modelID);
         fn_80026E44(playerWork->characterModel);
-        fn_1_170C(
-            lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0,
-            0.0f);
+        fn_1_170C( lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0, 0.0f);
         playerNo = lbl_1_bss_250.otherPlayers[playerIndex];
         if (fn_8006A124(65551) == 0) {
             lbl_80265750[playerNo].mgCoinBonus = 10;
@@ -1524,37 +1398,26 @@ void fn_1_1247C(void) {
     while (playerIndex < 3) {
         playerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
         fn_800269E8(playerWork->vehicleModel, (1 << 0));
-        fn_80026808(playerWork->characterModel, 0.0f, 0.0f,
-                        0.0f);
-        fn_80026760(playerWork->characterModel,
-                        240.0f * (f32) playerIndex,
-                        0.0f, -300.0f);
+        fn_80026808(playerWork->characterModel, 0.0f, 0.0f, 0.0f);
+        fn_80026760(playerWork->characterModel, 240.0f * (f32) playerIndex, 0.0f, -300.0f);
         fn_80026A44(playerWork->characterModel, (1 << 0));
         fn_80026E44(playerWork->characterModel);
-        fn_1_170C(lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0,
-                  0.0f);
+        fn_1_170C(lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0, 0.0f);
         /* This selects motion ID 1 directly, rather than a stored vehicle motion ID. */
         fn_8002C95C(playerWork->vehicleModel, 1);
         fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 0)));
         playerWork->motionSpeed = 0.0f;
         playerIndex++;
     }
-    modelID = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7c0000, 9), M665_MEMORY_TAG, 2));
-    fn_80026760(modelID, 300.0f, 0.0f,
-                    -800.0f);
+    modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 9), (1 << 28), 2));
+    fn_80026760(modelID, 300.0f, 0.0f, -800.0f);
     fn_80026E44(modelID);
-    modelID = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7c0000, 34), M665_MEMORY_TAG, 2));
-    fn_80026760(modelID, 250.0f, 150.0f,
-                    -800.0f);
+    modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 34), (1 << 28), 2));
+    fn_80026760(modelID, 250.0f, 150.0f, -800.0f);
     fn_800269E8(modelID, ((1 << 30) | (1 << 0)));
-    modelID = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7c0000, 34), M665_MEMORY_TAG, 2));
-    fn_80026760(modelID, 400.0f, 140.0f,
-                    -750.0f);
-    fn_800268B0(modelID, 0.5f, 0.5f,
-                      0.5f);
+    modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 34), (1 << 28), 2));
+    fn_80026760(modelID, 400.0f, 140.0f, -750.0f);
+    fn_800268B0(modelID, 0.5f, 0.5f, 0.5f);
     fn_800269E8(modelID, ((1 << 30) | (1 << 0)));
     fn_8002D86C(modelID, 1.5f);
 }
@@ -1572,26 +1435,17 @@ void fn_1_12720(void) {
         fn_800275B4(playerWork->vehicleModel, lbl_1_data_36C);
         fn_800269E8(playerWork->vehicleModel, (1 << 0));
         fn_80026A44(playerWork->characterModel, (1 << 0));
-        modelID = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7c0000, 6), M665_MEMORY_TAG, 2));
-        motionID = fn_80030458(
-            modelID,
-            fn_80008DD0(DATANUM(0x7c0000, 10), M665_MEMORY_TAG, 2));
+        modelID = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 6), (1 << 28), 2));
+        motionID = fn_80030458( modelID, fn_80008DD0(DATANUM(0x7c0000, 10), (1 << 28), 2));
         fn_8002C95C(modelID, motionID);
-        fn_80026808(modelID, 0.0f, 140.0f,
-                        0.0f);
-        fn_80026760(modelID, 300.0f * (f32) playerIndex,
-                        0.0f, -600.0f);
+        fn_80026808(modelID, 0.0f, 140.0f, 0.0f);
+        fn_80026760(modelID, 300.0f * (f32) playerIndex, 0.0f, -600.0f);
         /* The motion selected above is immediately replaced with motion ID 1. */
         fn_8002C95C(modelID, 1);
-        fn_80026808(playerWork->characterModel, 0.0f, 0.0f,
-                        0.0f);
-        fn_80026760(playerWork->characterModel, 200.0f * (f32) playerIndex,
-                        0.0f, -200.0f);
+        fn_80026808(playerWork->characterModel, 0.0f, 0.0f, 0.0f);
+        fn_80026760(playerWork->characterModel, 200.0f * (f32) playerIndex, 0.0f, -200.0f);
         fn_80026E44(playerWork->characterModel);
-        fn_1_170C(
-            lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0,
-            0.0f);
+        fn_1_170C( lbl_1_bss_250.otherPlayers[(s16) playerIndex], 0, 0.0f);
         playerIndex++;
     }
 }
@@ -1605,27 +1459,23 @@ void fn_1_12948(void) {
     memset(lbl_1_bss_CA8, 0, 512);
     for (index = 0; index < 64; index++) {
         if (index == 0) {
-            baseModel = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7c0000, 23), M665_MEMORY_TAG, 2));
+            baseModel = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 23), (1 << 28), 2));
             modelID = baseModel;
         } else {
             modelID = fn_80025D4C(baseModel);
         }
         fn_800269E8(modelID, (1 << 0));
-        fn_800268B0(modelID, 2.0f, 2.0f,
-                          2.0f);
+        fn_800268B0(modelID, 2.0f, 2.0f, 2.0f);
         lbl_1_bss_CA8[index].model = modelID;
     }
     for (index = 0; index < 64; index++) {
         if (index == 0) {
-            baseModel = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7c0000, 33), M665_MEMORY_TAG, 2));
+            baseModel = fn_80025A04( fn_80008DD0(DATANUM(0x7c0000, 33), (1 << 28), 2));
             modelID = baseModel;
         } else {
             modelID = fn_80025D4C(baseModel);
         }
-        fn_800268B0(modelID, 2.0f, 2.0f,
-                          2.0f);
+        fn_800268B0(modelID, 2.0f, 2.0f, 2.0f);
         fn_800269E8(modelID, (1 << 0));
         fn_8002D86C(modelID, 0.0f);
         lbl_1_bss_CA8[index].impactModel = modelID;
@@ -1768,117 +1618,108 @@ static inline s32 fn_1_12AD4_for_13024(HuVecF *point) {
 
 /* Advances hit models and resolves their collisions in its object-manager callback. */
 void fn_1_13024(void) {
-    static const SoundIds lbl_1_rodata_624 = {0x867, 0x868, 0x869};
 
     HuVecF effectPosition;
     HuVecF mainPosition;
-    HuVecF sequenceHitPosition;
-    HuVecF otherPlayerHitPosition;
-    HuVecF pointHitPosition;
-    HuVecF offsetOrigin;
-    HuVecF boxHitPosition;
     M665PlayerWork *mainPlayerWork;
     M665HitWork *record;
     s16 soundIndex;
     s32 recordIndex;
-    f32 distance;
     f32 maxTime;
 
     mainPlayerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     {
-    SoundIds soundIds = lbl_1_rodata_624;
-    fn_800267CC(mainPlayerWork->vehicleModel, &mainPosition);
-    for (recordIndex = 0; recordIndex < 64; recordIndex++) {
-        record = &lbl_1_bss_CA8[recordIndex];
-        switch (record->state) {
-        case 1:
-            fn_800267CC(record->model, &effectPosition);
-            effectPosition.z -= 25.0f;
-            fn_80026790(record->model, &effectPosition);
-            if (effectPosition.z <= -4000.0f) {
-                record->state = 0;
-                fn_800269E8(record->model, (1 << 0));
-            }
-            /* These tests remain independent after a hit changes the record state. */
-            if (effectPosition.x <= mainPosition.x + 350.0f &&
-                effectPosition.x >= mainPosition.x - 350.0f &&
-                effectPosition.z <= mainPosition.z + 100.0f &&
-                effectPosition.z >= mainPosition.z - 600.0f) {
-                fn_1_12E4C((s16) recordIndex);
-                fn_1_C090();
-                soundIndex = record->soundPlayerIndex;
-                soundIndex = lbl_1_bss_10[soundIndex].groupIndex;
-                HuAudFXPlayPan((&soundIds.soundID)[soundIndex],
-                    (s16) ((s32) (effectPosition.x / 40.0f) + 64));
-            }
-            if ((s16) fn_1_12BF8_for_13024(&effectPosition)) {
-                fn_1_12E4C((s16) recordIndex);
-                fn_1_C090();
-                soundIndex = record->soundPlayerIndex;
-                soundIndex = lbl_1_bss_10[soundIndex].groupIndex;
-                HuAudFXPlayPan((&soundIds.soundID)[soundIndex],
-                    (s16) ((s32) (effectPosition.x / 40.0f) + 64));
-            }
-            if ((s16) fn_1_12AD4_for_13024(&effectPosition)) {
-                fn_1_12FA0((s16) recordIndex);
-                record->state = 0;
-            }
-            if (fn_1_B66C(&effectPosition) != 0) {
-                fn_1_12E4C((s16) recordIndex);
-            }
-            break;
-        case 2:
-            maxTime = fn_8002D530(record->impactModel);
-            if (fn_8002D4E0(record->impactModel) >= maxTime) {
-                fn_800269E8(record->impactModel, (1 << 0));
-                record->state = 0;
-            }
-            if ((u8) (mainPlayerWork->status.main.flags.byte >> 7 & 1) != 0) {
-                fn_800267CC(record->impactModel, &effectPosition);
-                if ((u8) (mainPlayerWork->status.main.flags.byte >> 6 & 1) != 0) {
-                    effectPosition.x += mainPlayerWork->speed;
-                } else {
-                    effectPosition.x -= mainPlayerWork->speed;
+        s32 soundIds[3] = {0x867, 0x868, 0x869};
+        fn_800267CC(mainPlayerWork->vehicleModel, &mainPosition);
+        for (recordIndex = 0; recordIndex < 64; recordIndex++) {
+            record = &lbl_1_bss_CA8[recordIndex];
+            switch (record->state) {
+            case 1:
+                fn_800267CC(record->model, &effectPosition);
+                effectPosition.z -= 25.0f;
+                fn_80026790(record->model, &effectPosition);
+                if (effectPosition.z <= -4000.0f) {
+                    record->state = 0;
+                    fn_800269E8(record->model, (1 << 0));
                 }
-                fn_80026790(record->impactModel, &effectPosition);
+                /* These tests remain independent after a hit changes the record state. */
+                if (effectPosition.x <= mainPosition.x + 350.0f &&
+                    effectPosition.x >= mainPosition.x - 350.0f &&
+                    effectPosition.z <= mainPosition.z + 100.0f &&
+                    effectPosition.z >= mainPosition.z - 600.0f) {
+                    fn_1_12E4C((s16) recordIndex);
+                    fn_1_C090();
+                    soundIndex = record->soundPlayerIndex;
+                    soundIndex = lbl_1_bss_10[soundIndex].groupIndex;
+                    HuAudFXPlayPan(soundIds[soundIndex],
+                        (s16) ((s32) (effectPosition.x / 40.0f) + 64));
+                }
+                if ((s16) fn_1_12BF8_for_13024(&effectPosition)) {
+                    fn_1_12E4C((s16) recordIndex);
+                    fn_1_C090();
+                    soundIndex = record->soundPlayerIndex;
+                    soundIndex = lbl_1_bss_10[soundIndex].groupIndex;
+                    HuAudFXPlayPan(soundIds[soundIndex],
+                        (s16) ((s32) (effectPosition.x / 40.0f) + 64));
+                }
+                if ((s16) fn_1_12AD4_for_13024(&effectPosition)) {
+                    fn_1_12FA0((s16) recordIndex);
+                    record->state = 0;
+                }
+                if (fn_1_B66C(&effectPosition) != 0) {
+                    fn_1_12E4C((s16) recordIndex);
+                }
+                break;
+            case 2:
+                maxTime = fn_8002D530(record->impactModel);
+                if (fn_8002D4E0(record->impactModel) >= maxTime) {
+                    fn_800269E8(record->impactModel, (1 << 0));
+                    record->state = 0;
+                }
+                if (mainPlayerWork->status.main.flags.bits.moving != 0) {
+                    fn_800267CC(record->impactModel, &effectPosition);
+                    if (mainPlayerWork->status.main.flags.bits.positiveDirection != 0) {
+                        effectPosition.x += mainPlayerWork->speed;
+                    } else {
+                        effectPosition.x -= mainPlayerWork->speed;
+                    }
+                    fn_80026790(record->impactModel, &effectPosition);
+                }
+                break;
             }
-            break;
         }
-    }
     }
 }
 
 /* Spawns a gun-hook hit object when fn_1_112C0 accepts an opponent action. */
 void fn_1_13A44(s16 playerNo) {
-    static const SoundIds lbl_1_rodata_634 = {0x864, 0x865, 0x866};
     HuVecF position;
     M665PlayerWork *playerWork;
-    SoundIds soundIds;
     s32 recordIndex;
 
     playerWork = &lbl_1_bss_10[playerNo];
-    soundIds = lbl_1_rodata_634;
-    if (fn_80071A8C() == 5) {
-        for (recordIndex = 0; recordIndex < 64; recordIndex++) {
-            if (lbl_1_bss_CA8[recordIndex].state == 0) {
-                break;
+    {
+        s32 soundIds[3] = {0x864, 0x865, 0x866};
+        if (fn_80071A8C() == 5) {
+            for (recordIndex = 0; recordIndex < 64; recordIndex++) {
+                if (lbl_1_bss_CA8[recordIndex].state == 0) {
+                    break;
+                }
             }
+            if (recordIndex == 64) {
+                OSReport("attacker's beam is not empty\n");
+                return;
+            }
+            lbl_1_bss_CA8[recordIndex].state = 1;
+            Hu3DModelObjPosGet(playerWork->vehicleModel, "itemhook_gun1", &position);
+            position.y -= 25.0f;
+            position.z -= 10.0f;
+            fn_80026790(lbl_1_bss_CA8[recordIndex].model, &position);
+            fn_80026A44( lbl_1_bss_CA8[recordIndex].model, (1 << 0));
+            playerWork->action = 30;
+            HuAudFXPlayPan(soundIds[playerWork->groupIndex],
+                           (s16) ((s32) (position.x / 40.0f) + 64));
         }
-        if (recordIndex == 64) {
-            OSReport(lbl_1_data_38B);
-            return;
-        }
-        lbl_1_bss_CA8[recordIndex].state = 1;
-        Hu3DModelObjPosGet(playerWork->vehicleModel, lbl_1_data_3A9, &position);
-        position.y -= 25.0f;
-        position.z -= 10.0f;
-        fn_80026790(lbl_1_bss_CA8[recordIndex].model,
-                         &position);
-        fn_80026A44(
-            lbl_1_bss_CA8[recordIndex].model, (1 << 0));
-        playerWork->action = 30;
-        HuAudFXPlayPan((&soundIds.soundID)[playerWork->groupIndex],
-                       (s16) ((s32) (position.x / 40.0f) + 64));
     }
 }
 

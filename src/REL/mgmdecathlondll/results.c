@@ -6,10 +6,6 @@
 #include "datadir_enum.h"
 #include "msm_se.h"
 
-#define MSM_SE_MGMDECA_SCORE_UPDATE 1242
-#define MSM_SE_MGMDECA_SCORE_COUNT 1243
-#define MSM_SE_MGMDECA_RANK_MOVE 1244
-
 typedef struct DecathlonModelGroup {
     u8 rankStateBytes[12]; /* rank and row bookkeeping, unused during model creation */
     HU3D_MODELID playerModels[4]; /* one visible model for the player's tied rank */
@@ -27,7 +23,7 @@ extern void fn_1_DAEC(s16 playerNo);
 extern void fn_1_DCF8(void);
 
 s32 lbl_1_data_5D8 = DATANUM(0x9e0000, 5);
-Vec lbl_1_data_5DC[4] = { { 82.0f, 395.0f, -290.0f },
+HuVecF lbl_1_data_5DC[4] = { { 82.0f, 395.0f, -290.0f },
                           { 82.0f, 335.0f, -290.0f },
                           { 82.0f, 275.0f, -290.0f },
                           { 82.0f, 215.0f, -290.0f } };
@@ -35,7 +31,7 @@ s32 lbl_1_data_60C[4] = {
     DATANUM(0x9e0000, 16), DATANUM(0x9e0000, 17),
     DATANUM(0x9e0000, 18), DATANUM(0x9e0000, 19)
 };
-Vec lbl_1_data_61C[4] = { { -215.0f, 400.0f, -290.0f },
+HuVecF lbl_1_data_61C[4] = { { -215.0f, 400.0f, -290.0f },
                           { -215.0f, 340.0f, -290.0f },
                           { -215.0f, 280.0f, -290.0f },
                           { -215.0f, 220.0f, -290.0f } };
@@ -85,22 +81,19 @@ void fn_1_BC00(void) {
 
     for (groupIndex = 0; groupIndex < 4; groupIndex++) {
         modelGroups[0].playerModels[groupIndex] =
-            fn_80025A04(fn_80008DD0(lbl_1_data_60C[groupIndex],
-                                                 0x10000000, 2));
+            fn_80025A04(fn_80008DD0(lbl_1_data_60C[groupIndex], 0x10000000, 2));
         fn_80026B64(modelGroups[0].playerModels[groupIndex], 1);
         fn_80026B8C(modelGroups[0].playerModels[groupIndex], 2);
     }
 
     modelGroups[0].variantModel =
-        fn_80025A04(fn_80008DD0(lbl_1_data_64C[fn_1_9744(0)],
-                                             0x10000000, 2));
+        fn_80025A04(fn_80008DD0(lbl_1_data_64C[fn_1_9744(0)], 0x10000000, 2));
     fn_80026B64(modelGroups[0].variantModel, 1);
     fn_80026B8C(modelGroups[0].variantModel, 2);
 
     for (groupIndex = 0; groupIndex < 10; groupIndex++) {
         modelGroups[0].modeModels[0][groupIndex] =
-            fn_80025A04(fn_80008DD0(lbl_1_data_6B4[groupIndex],
-                                                 0x10000000, 2));
+            fn_80025A04(fn_80008DD0(lbl_1_data_6B4[groupIndex], 0x10000000, 2));
         fn_80026B64(modelGroups[0].modeModels[0][groupIndex], 1);
         fn_80026B8C(modelGroups[0].modeModels[0][groupIndex], 2);
     }
@@ -115,8 +108,7 @@ void fn_1_BC00(void) {
     }
 
     modelGroups[0].spotlightModel =
-        fn_80025A04(fn_80008DD0(lbl_1_data_5D8,
-                                             0x10000000, 2));
+        fn_80025A04(fn_80008DD0(lbl_1_data_5D8, 0x10000000, 2));
     fn_80026B64(modelGroups[0].spotlightModel, 1);
     fn_80026B8C(modelGroups[0].spotlightModel, 2);
 
@@ -138,8 +130,7 @@ void fn_1_BC00(void) {
         }
 
         modelGroups[groupIndex].variantModel =
-            fn_80025A04(fn_80008DD0(lbl_1_data_64C[fn_1_9744(groupIndex)],
-                                                 0x10000000, 2));
+            fn_80025A04(fn_80008DD0(lbl_1_data_64C[fn_1_9744(groupIndex)], 0x10000000, 2));
         fn_80026B64(modelGroups[groupIndex].variantModel, 1);
         fn_80026B8C(modelGroups[groupIndex].variantModel, 2);
 
@@ -184,10 +175,6 @@ void fn_1_BC00(void) {
 s16 lbl_1_bss_BC;
 OMOBJ *lbl_1_bss_B8;
 
-extern void fn_1_D788(s16 playerNo);
-extern void fn_1_DCF8(void);
-extern void fn_1_DAEC(s16 playerNo);
-
 /* The mode sequence refreshes every player's score digits and rank display here. */
 void fn_1_C2FC(void) {
     s16 playerNo;
@@ -200,7 +187,7 @@ void fn_1_C2FC(void) {
     fn_1_DCF8();
 }
 
-typedef struct MgmDecathlonPlayerData_s {
+typedef struct  {
     u8 precedingDisplayBytes[122]; /* rank state and models not changed by this visibility helper */
     HU3D_MODELID modelId; /* marker beside the event award digits */
     u8 awardDigitBytes[80]; /* four sets of ten digit model IDs, unused by this helper */
@@ -230,7 +217,7 @@ void decathlonScoreDigitsRefresh(void) {
         fn_1_D788(playerNo);
         playerNo += 1;
     }
-    HuAudFXPlay(MSM_SE_MGMDECA_SCORE_UPDATE);
+    HuAudFXPlay(MSM_SE_MGM02_SCORE_UPDATE);
 }
 
 /* The main sequence hides each player's four-by-ten score digit models. */
@@ -259,7 +246,7 @@ void decathlonRankMoveStart(void) {
 }
 
 /* The main sequence polls this result-animation state before advancing. */
-s32 fn_1_C51C(void) {
+s16 fn_1_C51C(void) {
     if (lbl_1_bss_BC == 0) {
         return 1;
     }
@@ -276,7 +263,7 @@ typedef struct DecathlonPlayerResult {
 /* After the ranking animation, the main sequence selects reactions to improved or worsened
  * ranks. */
 void decathlonRankReactionsStart(void) {
-    DecathlonPlayerResult *results = (DecathlonPlayerResult *)lbl_1_bss_B8->data;
+    DecathlonPlayerResult *results = lbl_1_bss_B8->data;
     s16 playerNo;
 
     for (playerNo = 0; playerNo < 4; playerNo++) {
@@ -291,7 +278,7 @@ void decathlonRankReactionsStart(void) {
 
 /* The result callback rumbles players whose tied rank changed after the count. */
 void fn_1_C5FC(void) {
-    DecathlonPlayerResult *results = (DecathlonPlayerResult *)lbl_1_bss_B8->data;
+    DecathlonPlayerResult *results = lbl_1_bss_B8->data;
     s16 playerNo;
 
     for (playerNo = 0; playerNo < 4; playerNo++) {
@@ -304,7 +291,7 @@ void fn_1_C5FC(void) {
     }
 }
 
-typedef struct MgmDecathlonEntry_s {
+typedef struct  {
     u32 currentAndTargetRankBytes; /* the current and target tied ranks, unused here */
     s16 previousRank; /* tied rank before the latest score update */
     u8 remainingDisplayBytes[198]; /* row state and models unused by the rank formatter */
@@ -324,10 +311,7 @@ typedef struct DecathlonRankPlayer {
     u8 scoreModelBytes[182]; /* total and event-award display models, unused by movement */
 } DecathlonRankPlayer;
 
-extern void fn_1_D788(s16 playerNo);
-extern void fn_1_DAEC(s16 playerNo);
 extern void fn_1_DB94(s16 playerNo);
-extern void fn_1_DCF8(void);
 extern void fn_1_DE84(s16 playerNo);
 extern void fn_1_DFB0(void);
 
@@ -345,7 +329,7 @@ void fn_1_C6C8(OMOBJ *object) {
         /* Start one counting cue, using the first player with an award still to transfer. */
         for (playerNo = 0; playerNo < 4; playerNo++) {
             if (MgModeWorkInt[playerNo] > 0) {
-                lbl_1_data_C78[playerNo] = HuAudFXPlay(MSM_SE_MGMDECA_SCORE_COUNT);
+                lbl_1_data_C78[playerNo] = HuAudFXPlay(MSM_SE_MGM02_SCORE_COUNT);
                 return;
             }
         }
@@ -528,7 +512,7 @@ void fn_1_C6C8(OMOBJ *object) {
                         fn_1_DE84(playerNo);
                         if (players[playerNo].targetScoreRank !=
                             players[playerNo].currentScoreRank) {
-                            HuAudFXPlay(MSM_SE_MGMDECA_RANK_MOVE);
+                            HuAudFXPlay(MSM_SE_MGM02_RANK_MOVE);
                         }
                     }
                 }
@@ -584,11 +568,9 @@ void fn_1_D518(s16 playerNo, s16 positionNo) {
     playerModels[playerNo].rowOrder[0] = positionNo;
     playerModels[playerNo].rowOrder[1] = positionNo;
     for (group = 0; group < 4; group++) {
-        fn_80026790(playerModels[playerNo].startModels[group],
-                         (HuVecF *)&lbl_1_data_61C[positionNo]);
+        fn_80026790(playerModels[playerNo].startModels[group], &lbl_1_data_61C[positionNo]);
     }
-    fn_80026790(playerModels[playerNo].transitionModel,
-                     &lbl_1_data_684[positionNo].position);
+    fn_80026790(playerModels[playerNo].transitionModel, &lbl_1_data_684[positionNo].position);
     position.y = lbl_1_data_6F0[positionNo];
     position.z = lbl_1_data_700;
     for (group = 0; group < 5; group++) {
@@ -597,8 +579,7 @@ void fn_1_D518(s16 playerNo, s16 positionNo) {
             fn_80026790(playerModels[playerNo].groupedModels[group][model], &position);
         }
     }
-    fn_80026790(playerModels[playerNo].resultModel,
-                     (HuVecF *)&lbl_1_data_5DC[positionNo]);
+    fn_80026790(playerModels[playerNo].resultModel, &lbl_1_data_5DC[positionNo]);
     position.y = lbl_1_data_714[positionNo];
     position.z = lbl_1_data_724;
     for (group = 0; group < 4; group++) {
@@ -635,11 +616,9 @@ void fn_1_D788(s16 playerNo) {
     for (digitIndex = 0; digitIndex < 5; digitIndex++) {
         for (model = 0; model < 10; model++) {
             if (model == digits[digitIndex]) {
-                fn_80026A44(playerModels[playerNo].groupedModels[digitIndex][model],
-                                   (1 << 0));
+                fn_80026A44(playerModels[playerNo].groupedModels[digitIndex][model], (1 << 0));
             } else {
-                fn_800269E8(playerModels[playerNo].groupedModels[digitIndex][model],
-                                 (1 << 0));
+                fn_800269E8(playerModels[playerNo].groupedModels[digitIndex][model], (1 << 0));
             }
         }
     }
@@ -659,22 +638,20 @@ void fn_1_D788(s16 playerNo) {
     for (digitIndex = 0; digitIndex < 4; digitIndex++) {
         for (model = 0; model < 10; model++) {
             if (model == digits[digitIndex]) {
-                fn_80026A44(playerModels[playerNo].resultGroups[digitIndex][model],
-                                   (1 << 0));
+                fn_80026A44(playerModels[playerNo].resultGroups[digitIndex][model], (1 << 0));
             } else {
-                fn_800269E8(playerModels[playerNo].resultGroups[digitIndex][model],
-                                 (1 << 0));
+                fn_800269E8(playerModels[playerNo].resultGroups[digitIndex][model], (1 << 0));
             }
         }
     }
 }
 
-typedef struct MgmDecathlonModelData_s {
+typedef struct  {
     u8 precedingDisplayBytes[124]; /* rank state and other models, unused by this helper */
     HU3D_MODELID models[4][10]; /* four event-award digits, each with ten model choices */
 } MgmDecathlonModelData;
 
-typedef struct MgmDecathlonPlayerVisuals_s {
+typedef struct  {
     u8 rankStateBytes[12]; /* rank and row bookkeeping, unused by this helper */
     HU3D_MODELID models[4]; /* tied-rank label models */
     u16 characterMarkerId; /* character-specific marker; kept visible during movement */
@@ -719,7 +696,7 @@ void fn_1_DB94(s16 playerNo) {
     }
 }
 
-typedef struct MgmDecathlonSelectedPlayer_s {
+typedef struct  {
     s16 currentRank; /* currently displayed tied rank */
     s16 targetRank; /* target tied rank after the score update */
     s16 previousRank; /* tied rank before the latest update */
@@ -743,11 +720,9 @@ void fn_1_DCF8(void) {
     fn_1_E058(playerOrder, scoreOrder);
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-            fn_800269E8(players[playerOrder[playerIndex]].modelIds[modelIndex],
-                             (1 << 0));
+            fn_800269E8(players[playerOrder[playerIndex]].modelIds[modelIndex], (1 << 0));
         }
-        fn_80026A44(players[playerOrder[playerIndex]].modelIds[scoreOrder[playerIndex]],
-                           (1 << 0));
+        fn_80026A44(players[playerOrder[playerIndex]].modelIds[scoreOrder[playerIndex]], (1 << 0));
         players[playerOrder[playerIndex]].previousRank =
             players[playerOrder[playerIndex]].currentRank;
         players[playerOrder[playerIndex]].currentRank = scoreOrder[playerIndex];
@@ -756,7 +731,7 @@ void fn_1_DCF8(void) {
     }
 }
 
-typedef struct MgmDecathlonPlayerResult_s {
+typedef struct  {
     u16 currentRank; /* currently displayed tied rank, unused by this update */
     s16 targetRank; /* tied rank calculated from the new totals */
     u8 previousRankAndCurrentRowBytes[4]; /* prior tied rank and current row, unused here */
@@ -764,15 +739,11 @@ typedef struct MgmDecathlonPlayerResult_s {
     u8 remainingDisplayBytes[194]; /* previous row and model IDs, unused here */
 } MgmDecathlonPlayerResult;
 
-extern void fn_1_E058(s16 *playerOrder, s16 *scoreOrder);
-
-typedef struct MgmDecathlonPlayerModelSlots_s {
+typedef struct  {
     u8 rankStateBytes[12]; /* rank and row bookkeeping, unused by this helper */
     HU3D_MODELID modelIds[4]; /* tied-rank label model IDs */
     u8 scoreModelBytes[184]; /* character marker and score models, unused here */
 } MgmDecathlonPlayerModelSlots;
-
-extern void fn_1_D518(s16 playerIndex, s16 orderIndex);
 
 /* The rank animation selects the model for this player's current score rank. */
 void fn_1_DE84(s16 playerNo) {
@@ -790,8 +761,7 @@ void fn_1_DE84(s16 playerNo) {
         }
     }
     for (index = 0; index < 4; index++) {
-        fn_800269E8(players[playerOrder[selectedOrderIndex]].modelIds[index],
-                         (1 << 0));
+        fn_800269E8(players[playerOrder[selectedOrderIndex]].modelIds[index], (1 << 0));
     }
     fn_80026A44(
         players[playerOrder[selectedOrderIndex]].modelIds[scoreOrder[selectedOrderIndex]],
@@ -860,16 +830,26 @@ typedef struct DecathlonScoreBand {
 } DecathlonScoreBand;
 
 DecathlonScoreBand lbl_1_data_744[10][11] = {
-    {{1, 0, 0}, {1, 5, 100}, {1, 10, 300}, {1, 15, 600}, {1, 20, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 0, 0}, {1, 50, 100}, {1, 100, 300}, {1, 150, 500}, {1, 170, 700}, {1, 190, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 900, 1000}, {1, 1200, 600}, {1, 1800, 300}, {1, 3600, 100}, {1, 5400, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 0, 0}, {1, 900, 100}, {1, 1800, 300}, {1, 3600, 500}, {1, 6300, 700}, {1, 8460, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 0, 0}, {1, 10, 100}, {1, 20, 300}, {1, 30, 500}, {1, 35, 700}, {1, 40, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 0, 0}, {1, 10, 100}, {1, 20, 300}, {1, 40, 500}, {1, 50, 750}, {1, 65, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 0, 0}, {1, 5, 100}, {1, 10, 300}, {1, 15, 600}, {1, 20, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 1560, 1000}, {1, 1620, 800}, {1, 1800, 600}, {1, 2100, 400}, {1, 2400, 300}, {1, 3600, 100}, {1, 5400, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 0, 0}, {1, 300, 100}, {1, 1000, 300}, {1, 2000, 600}, {1, 3500, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-    {{1, 0, 0}, {1, 10, 100}, {1, 15, 300}, {1, 20, 500}, {1, 25, 700}, {1, 27, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 5, 100}, {1, 10, 300}, {1, 15, 600}, {1, 20, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0,
+        0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 50, 100}, {1, 100, 300}, {1, 150, 500}, {1, 170, 700}, {1, 190, 1000}, {0, 0,
+        0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 900, 1000}, {1, 1200, 600}, {1, 1800, 300}, {1, 3600, 100}, {1, 5400, 0}, {0, 0, 0}, {0, 0,
+        0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 900, 100}, {1, 1800, 300}, {1, 3600, 500}, {1, 6300, 700}, {1, 8460, 1000}, {0,
+        0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 10, 100}, {1, 20, 300}, {1, 30, 500}, {1, 35, 700}, {1, 40, 1000}, {0, 0, 0},
+        {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 10, 100}, {1, 20, 300}, {1, 40, 500}, {1, 50, 750}, {1, 65, 1000}, {0, 0, 0},
+        {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 5, 100}, {1, 10, 300}, {1, 15, 600}, {1, 20, 1000}, {0, 0, 0}, {0, 0, 0}, {0, 0,
+        0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 1560, 1000}, {1, 1620, 800}, {1, 1800, 600}, {1, 2100, 400}, {1, 2400, 300}, {1, 3600,
+        100}, {1, 5400, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 300, 100}, {1, 1000, 300}, {1, 2000, 600}, {1, 3500, 1000}, {0, 0, 0}, {0, 0,
+        0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+    {{1, 0, 0}, {1, 10, 100}, {1, 15, 300}, {1, 20, 500}, {1, 25, 700}, {1, 27, 1000}, {0, 0, 0},
+        {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
 };
 
 /* The mode sequence converts a minigame score into its Decathlon award points. */

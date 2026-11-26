@@ -1,7 +1,7 @@
 #ifndef REL_M679DLL_MODULE_STATE_H
 #define REL_M679DLL_MODULE_STATE_H
 
-typedef struct M679ModelSet_s {
+typedef struct {
     HU3D_MODELID model0;       /* +0x00 */
     HU3D_MOTIONID motion0;     /* +0x02 */
     HU3D_MODELID model1;       /* +0x04 */
@@ -13,7 +13,7 @@ typedef struct M679ModelSet_s {
     HU3D_MOTIONID motion3;     /* +0x12 */
 } M679ModelSet;
 
-typedef struct M679ScoreState_s {
+typedef struct {
     s16 scoreBox;              /* +0x00 */
     s16 mode;                  /* +0x02 */
     s32 state;                 /* +0x04 */

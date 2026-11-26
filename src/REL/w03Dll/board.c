@@ -105,7 +105,6 @@ typedef struct {
 } W03STARAWARD;
 
 extern BOOL mbSaveNewF;
-int sprintf();
 
 void ObjectSetup(void);
 void fn_1_F4(void);
@@ -478,13 +477,13 @@ void fn_1_F4(void)
     mbObjDispSet((s16)lbl_1_bss_4D4.motionModel, FALSE);
     if (boardIsDay()) {
         for (index = 0; index < 10; index++) {
-            lbl_1_bss_4D4.digitAnimations[index] = HuSprAnimRead(
-                fn_80008DD0(lbl_1_data_504[index], 0x10000000, 2));
+            lbl_1_bss_4D4.digitAnimations[index] = HuSprAnimDataRead(
+                lbl_1_data_504[index]);
         }
     } else {
         for (index = 0; index < 10; index++) {
-            lbl_1_bss_4D4.digitAnimations[index] = HuSprAnimRead(
-                fn_80008DD0(lbl_1_data_52C[index], 0x10000000, 2));
+            lbl_1_bss_4D4.digitAnimations[index] = HuSprAnimDataRead(
+                lbl_1_data_52C[index]);
         }
     }
     lbl_1_bss_4D4.largeDisplaySprites[0] = objectId = espEntry(
@@ -676,7 +675,7 @@ void fn_1_1BB4(OMOBJ *object)
 
 /* Refreshes the board model's light information whenever the board light hook runs. */
 void fn_1_1BB8(void) {
-        if (lbl_80265B70.curTime == 0) {
+        if (MBTimeDayGet()) {
             Hu3DBGColorSet(255U, 255U, 255U);
     } else {
         Hu3DBGColorSet(0U, 0U, 0U);
@@ -824,7 +823,7 @@ void fn_1_1F20(void)
     guide = mbGuideCreateFlag(&guidePosition, lbl_1_data_63D, FALSE, TRUE, FALSE);
     mbGuideMotionNextSet(guide, 1);
         lbl_1_bss_4D4.guideModel = (s16)mbGuideModelGet(guide);
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         mbAudGuidePlay(MSM_SE_GUIDE_DAY_HAPPY);
         mbGuideMotionShiftSet(guide, 12, TRUE);
         windowNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 68), 6);
@@ -1045,7 +1044,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
     int detailIndex;
     int scan;
 
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         speaker = 8;
         baseSpeed = 2.5f;
         secondSpeed = 4.5f;
@@ -1068,7 +1067,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
     if (mbPlayerCoinGet(playerNo) < lbl_1_data_6EC[timeSlot]) {
         mbPlayerWinLoseVoicePlay(playerNo, 13, MSM_SE_CHARVOICE_SAD_MOAN);
         mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f, 0);
-        if (lbl_80265B70.curTime == 0) {
+        if (MBTimeDayGet()) {
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 5), -1);
         } else {
             mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 6), -1);
@@ -1116,7 +1115,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
         mbWinCreate(2, MESSNUM(MESS_BOARD_W03, 0), speaker);
         mbWinTopWait();
         fn_1_12A14(0);
-        if (lbl_80265B70.curTime == 0) {
+        if (MBTimeDayGet()) {
             mbWinCreateChoice(0, MESSNUM(MESS_BOARD_W03, 1), speaker, 0);
         } else {
             mbWinCreateChoice(0, MESSNUM(MESS_BOARD_W03, 2), speaker, 0);
@@ -1192,7 +1191,7 @@ void fn_1_2718(int playerNo, s16 landingSpace)
                         espDispOn((s16)lbl_1_bss_4D4.payoutDigits[index][detailIndex]);
                     }
                 }
-                if (lbl_80265B70.curTime == 0) {
+                if (MBTimeDayGet()) {
                     displayCoins = lbl_1_data_694[index];
                 } else {
                     displayCoins = 2.0f * (float)lbl_1_data_694[index];
@@ -2405,7 +2404,7 @@ void fn_1_8154(s32 reverse)
     s32 objectCount;
     s32 objectIndex;
 
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         objectCount = 3;
     } else {
         objectCount = 6;
@@ -2497,7 +2496,7 @@ void fn_1_8758(void)
     u32 selection;
 
     selection = mbRandMod(3);
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         firstObject = lbl_1_data_730[selection][0];
         secondObject = lbl_1_data_730[selection][1];
         duration = 15.0f;
@@ -4444,14 +4443,14 @@ void fn_1_109C8(void)
     float progress;
     float starScale;
 
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         guideCharacter = 6;
         messageOffset = 0;
     } else {
         guideCharacter = 7;
         messageOffset = 1;
     }
-    if (lbl_80265B70.curTime == 0) {
+    if (MBTimeDayGet()) {
         /* Daytime star purchases reset the price to 20 coins. */
         lbl_1_bss_4D0->starPrice = 20;
     }
@@ -4907,7 +4906,7 @@ int fn_1_12268(int playerNo, int masuCount, s16 *masuIds, BOOL chooseNearest) {
                 }
             }
             randomValue = (s32)mbRandMod(10);
-            if (lbl_80265B70.curTime == 0) {
+            if (MBTimeDayGet()) {
                 if (coinCount >= 20 && randomValue >= 2) {
                     return i;
                 }

@@ -6,7 +6,8 @@ extern "C" {
 }
 #include "REL/framework/frame_time.h"
 #include "REL/framework/world_units.h"
-#include "REL/m652DLL/motion_algorithms.h"
+#include "REL/framework/square.h"
+#include "REL/framework/interpolation.h"
 extern "C" {
 #include "dolphin.h"
 #include "dolphin/types.h"

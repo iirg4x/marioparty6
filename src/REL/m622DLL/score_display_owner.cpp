@@ -89,11 +89,11 @@ ScoreDisplayOwner::ScoreDisplayOwner()
     ScoreDisplay *entry;
 
     active = 0;
-    lbl_1_bss_F0 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x510000, 17), 0x10000000, 2));
+    lbl_1_bss_F0 = HuSprAnimDataRead(DATANUM(0x510000, 17));
+
     HuSprAnimLock(lbl_1_bss_F0);
-    lbl_1_bss_F4 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9b0000, 48), 0x10000000, 2));
+    lbl_1_bss_F4 = HuSprAnimDataRead(DATANUM(0x9b0000, 48));
+
     HuSprAnimLock(lbl_1_bss_F4);
     for (index = 0; index < 4; index++) {
         entry = &displays[index];
@@ -162,7 +162,7 @@ void fn_1_8D74(ScoreDisplayOwner *owner, s32 index, s32 characterId)
     HuSprBankSet(spriteGroup, 1, 0x0F);
     HuSprColorSet(spriteGroup, 1, 0xFF, 0xFF, 0xFF);
     HuSprAttrSet(spriteGroup, 1, 4);
-    display->characterId = characterId;
+    display->unk0C = characterId;
     display->value = 0;
     display->x = lbl_1_rodata_2E8[index].x;
     display->y = lbl_1_rodata_2E8[index].y;

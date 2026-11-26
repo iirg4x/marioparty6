@@ -2,6 +2,7 @@
 #include <math.h>
 #include "dolphin/mtx.h"
 #include "game/frand.h"
+#include "REL/mgmtournamentdll/module_types.h"
 
 /* Character movement updates normalize a direction, returning zero when a random fallback
  * replaces a nearly zero vector and one when the supplied direction is used. */
@@ -28,15 +29,15 @@ s32 fn_1_E378(Point3d *direction, Point3d *unitDirection) {
 /* Character facing updates rotate a direction around X, Y and Z in that order; angles are
  * degrees. */
 void fn_1_E4D0(f32 angleX, f32 angleY, f32 angleZ,
-               const Vec *source, Vec *destination)
+               Vec source, Vec *destination)
 {
     Mtx combinedRotation;
     Mtx axisRotation;
 
-    PSMTXRotRad(combinedRotation, 'x', 0.017453292f * angleX);
-    PSMTXRotRad(axisRotation, 'y', 0.017453292f * angleY);
+    PSMTXRotRad(combinedRotation, 'x', MTXDegToRad(angleX));
+    PSMTXRotRad(axisRotation, 'y', MTXDegToRad(angleY));
     PSMTXConcat(axisRotation, combinedRotation, combinedRotation);
-    PSMTXRotRad(axisRotation, 'z', 0.017453292f * angleZ);
+    PSMTXRotRad(axisRotation, 'z', MTXDegToRad(angleZ));
     PSMTXConcat(axisRotation, combinedRotation, combinedRotation);
-    PSMTXMultVecSR(combinedRotation, source, destination);
+    PSMTXMultVecSR(combinedRotation, &source, destination);
 }

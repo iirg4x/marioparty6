@@ -7,11 +7,11 @@ typedef struct M663ShadowState {
     Vec cameraPosition;
     f32 azimuth;
     f32 elevation;
-    f32 unobservedValue; /* Initialized to zero; never read. */
+    f32 unk14; /* The game's code never reads this field. */
     Vec target;
     u8 unobserved24[12];
     Vec cameraUp;
-    u8 unobserved3C[12];
+    u8 unk3C[12]; /* No code names this field. */
     f32 distance;
     f32 transparency;
 } M663ShadowState;

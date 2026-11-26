@@ -31,7 +31,7 @@ DSError TRKInitializeNub(void)
 
 	if (ret == DS_NoError) {
 		uartErr = TRKInitializeIntDrivenUART(0x0000e100, 1, 0,
-		                                     (volatile u8**)&gTRKInputPendingPtr);
+		                                     &gTRKInputPendingPtr);
 		TRKTargetSetInputPendingPtr(gTRKInputPendingPtr);
 		if (uartErr != DS_NoError) {
 			ret = uartErr;

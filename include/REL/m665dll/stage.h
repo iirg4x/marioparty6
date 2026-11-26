@@ -12,10 +12,10 @@ typedef struct M665FireEffect {
     f32 scale;
     f32 opacity;
     f32 offsetX;
-    f32 offsetY;
+    f32 unk14; /* The game's code never reads this field. */
     f32 offsetZ;
     f32 velocityX;
-    f32 velocityY;
+    f32 unk20; /* The game's code never reads this field. */
     f32 velocityZ;
 } M665FireEffect;
 
@@ -46,8 +46,7 @@ typedef struct M665KillerWork {
     s16 trailFrames;
     s32 soundHandle;
     f32 horizontalSpeed;
-    u8 unreadBeforeVerticalSpeed[4]; /* No M665 consumer reads these bytes; verticalSpeed follows
-                                      * here. */
+    u8 unk198[4]; /* No code names this field. */
     f32 verticalSpeed;
     f32 angle;
 } M665KillerWork;
@@ -109,8 +108,8 @@ extern void *lbl_1_bss_2E0;
 extern s16 lbl_1_bss_2E4;
 
 typedef struct M665StageProgress {
-    f32 horizontalDistance;
-    f32 reserved; /* Retained value with an unknown role. */
+    f32 unk00; /* The game's code never reads this field. */
+    f32 unk04; /* The game's code never reads this field. */
     f32 depthDistance;
     f32 gapDistance; /* Euclidean distance between hazard positions, or -1 before it is computed. */
 } M665StageProgress;

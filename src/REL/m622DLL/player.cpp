@@ -31,22 +31,6 @@ static const Vec lbl_1_rodata_260[4] = {
 };
 
 /* Offsets the selected lane position to the player entry position. */
-void fn_1_6748(Vec *result, s32 index)
-{
-    f64 x;
-    f64 y;
-    f64 z;
-
-    z = lbl_1_rodata_260[index].z - 50.0f;
-    y = lbl_1_rodata_260[index].y;
-    x = lbl_1_rodata_260[index].x - 2000.0f;
-
-    result->x = x;
-    result->y = y;
-    result->z = z;
-}
-
-/* Offsets the selected lane position to the player entry position. */
 static inline void setPlayerEntryPosition(Vec *result, s32 index)
 {
     f64 z;
@@ -61,6 +45,22 @@ static inline void setPlayerEntryPosition(Vec *result, s32 index)
     result->y = y;
     result->z = z;
 }
+
+/* Offsets the selected lane position to the player entry position. */
+void fn_1_6748(Vec *result, s32 index)
+{
+    setPlayerEntryPosition(result, index);
+}
+
+
+
+
+
+
+
+
+
+
 
 /* Deletes every player in the player list. */
 void fn_1_67F8()
@@ -194,7 +194,7 @@ u8 fn_1_7138(void)
         }
         mgCoin = (s16)entry->mgCoin;
         playerIndex = entry->controller;
-        lbl_80265750[playerIndex].mgCoin = mgCoin;
+        GWMgCoinSet(playerIndex, mgCoin);
         nextEntry = static_cast<CallbackObject *>(entry->link0);
         entry = nextEntry;
     }
@@ -260,10 +260,10 @@ void CallbackObject::fn_1_73A4() {
     }
     if ((padIndex >= 0) && (vibrationType > 0)) {
         if (vibrationType == 1) {
-            fn_8006A030((s16) controller, 0x14, 7, 3);
+            fn_8006A030((s16) controller, 20, 7, 3);
             return;
         }
-        fn_8006A030((s16) controller, 0x14, 0x14, 0);
+        fn_8006A030((s16) controller, 20, 20, 0);
     }
 }
 
@@ -345,27 +345,7 @@ bool fn_1_76D0(const CallbackObject *object)
 /* Waits for the character motion to finish, then switches to motion 5. */
 void CallbackObject::fn_1_770C()
 {
-    s16 motionId;
-    s16 modelIdCopy;
-    s16 modelId;
-
-    if (motionEnded == 0) {
-        if (fn_8005C284((s16)character) < 0 &&
-            fn_8005C240((s16)character) != 0) {
-            motionEnded = 1;
-        }
-    } else {
-        modelId = (s16)model.modelId;
-        modelIdCopy = modelId;
-        motionId = m_mot_id.at(5);
-        if (state != 5) {
-            fn_80026A44(modelIdCopy, ((1 << 30) | (1 << 1)));
-            fn_8005C2C8((s16)character, motionId,
-                               0.0f, 8.0f,
-                               ((1 << 30) | (1 << 0)));
-            state = 5;
-        }
-    }
+    updateCompletedCharacterMotion(this);
 }
 
 /* Advances the reaction motion and returns to play after 102 frames. */
@@ -442,7 +422,7 @@ void CallbackObject::fn_1_7B78()
         applyCounterEvent(this);
         return;
     case 2: {
-        continuousVibrationFrames = 0x1E;
+        continuousVibrationFrames = 30;
         eventStep = 0;
         motionEnded = 0;
                     fn_1_7460(this, 4, 1);

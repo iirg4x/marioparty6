@@ -1,5 +1,6 @@
 /* Talkie Walkie particle, model, track, material, and spatial helpers. */
 #include <math.h>
+#include "game/hsfex.h"
 #include "dolphin/types.h"
 #include "dolphin/gx.h"
 #include "dolphin/gx/GXVert.h"
@@ -25,9 +26,6 @@
 #include "msm.h"
 #include "string.h"
 
-void Hu3DMtxTransGet(Mtx src, HuVecF *dst);
-void Hu3DMtxRotGet(Mtx src, HuVecF *dst);
-void Hu3DMtxScaleGet(Mtx src, HuVecF *dst);
 
 typedef struct M667ParticleConfigView {
     u32 flags;                         /* Bit 0 alternates scale between half and full size. */
@@ -301,7 +299,7 @@ typedef struct M667ParticleDescription {
     s32 count; /* Maximum number of particle slots. */
     s32 blendMode; /* Blend mode passed to the particle renderer. */
     s32 modelId; /* Created particle-system model handle. */
-    ANIMDATA *animation; /* Loaded animation used by the particle-system model. */
+    ANIMDATA *unk14; /* The game's code never reads this field. */
     u8 unk_18[4]; /* No code names this field. */
 } M667ParticleDescription;
 
@@ -332,7 +330,7 @@ void fn_1_7664(M667ParticleDescription *work)
          * those locals without loading a saved alternative. */
         if ((description->flags & (1U << 0)) == 0) {
             resource = fn_80008DD0(description->resourceId, 0x10000000, 2);
-            animation = (description->animation = HuSprAnimRead(resource));
+            animation = (description->unk14 = HuSprAnimRead(resource));
             /* particle descriptor work ready flag. */
             count = description->count;
             blendMode = description->blendMode;
@@ -373,8 +371,8 @@ void fn_1_77D0(M667ParticleAnimEntry *entries)
             break;
         }
         resourceData = fn_80008DD0(entry->resourceId, 0x10000000, 2);
-        anim = entry->anim = HuSprAnimRead(resourceData);
-        entry->anim = anim;
+        anim = entry->unk04 = HuSprAnimRead(resourceData);
+        entry->unk04 = anim;
         index += 1;
     }
 }
@@ -475,25 +473,25 @@ void fn_1_7AC8(void *item)
 }
 
 /* Effect-registry setup clears a fixed-size pool and links each item onto its free list. */
-void *fn_1_7B10(u8 *buffer, s32 bytes, s32 itemBytes)
+void *fn_1_7B10(void *buffer, s32 bytes, s32 itemBytes)
 {
     M667Pool *pool;
     M667PoolNode *node;
     s32 stride;
 
     memset(buffer, 0, bytes);
-    pool = (M667Pool *)buffer;
-    buffer += sizeof(M667Pool);
+    pool = buffer;
+    buffer = (u8 *)buffer + sizeof(M667Pool);
     bytes -= sizeof(M667Pool);
     while (bytes > 0) {
-        node = (M667PoolNode *)buffer;
+        node = buffer;
         if (pool->free) {
             pool->free->prev = node;
         }
         node->next = pool->free;
         pool->free = node;
         stride = itemBytes + sizeof(M667PoolNode);
-        buffer += stride;
+        buffer = (u8 *)buffer + stride;
         bytes -= stride;
     }
     return pool;
@@ -965,16 +963,16 @@ void fn_1_8C30(s32 modelId, char *objectName, s32 targetModelId)
     fn_800268E0(targetModelId, &scale);
 }
 
+
 /* Entry landing, throwing, and impact sounds use screen X for pan and world Z for volume.
  * Within Z -700 through 700, volume falls with distance from Z 110; outside that interval
  * it jumps to 64 below -700 or 110 above 700. */
-
 void fn_1_8CBC(HuVecF *worldPos, s32 soundId)
 {
     HuVecF screenPos;
     f32 positionFactor;
     f32 depthDistance;
-    s16 cameraBit;
+    s32 cameraBit;
     s32 pan;
     s32 volume;
 

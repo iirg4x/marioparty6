@@ -1502,12 +1502,78 @@ config.libs = [
     Rel(
         "m657Dll",
         objects={
-            Object(Matching, "REL/m657Dll/m657.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m657Dll/arena.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m657Dll/player.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m657Dll/score.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m657Dll/com.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m657Dll/hud.c", extra_cflags=["-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m657Dll/m657.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
+            Object(
+                Matching,
+                "REL/m657Dll/arena.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
+            Object(
+                Matching,
+                "REL/m657Dll/player.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
+            Object(
+                Matching,
+                "REL/m657Dll/score.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
+            Object(
+                Matching,
+                "REL/m657Dll/com.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
+            Object(
+                Matching,
+                "REL/m657Dll/hud.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                extra_cflags=["-pooldata off"],
+            ),
             Object(
                 Matching,
                 "REL/m657Dll/runtime.c",
@@ -1854,6 +1920,13 @@ config.libs = [
             Object(
                 Matching,
                 "REL/s01Dll/prolog.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
             ),
             Object(
                 Matching,
@@ -1866,6 +1939,13 @@ config.libs = [
             Object(
                 Matching,
                 "REL/s01Dll/s01.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
                 extra_cflags=["-sym", "on"],
             ),
         },
@@ -2253,11 +2333,25 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w04Dll/board.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
                 extra_cflags=["-pooldata", "off", "-sym", "on"],
             ),
             Object(
                 Matching,
                 "REL/w04Dll/prolog.c",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include',
+                    '-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include',
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
                 extra_cflags=["-pooldata", "off"],
             ),
             Object(

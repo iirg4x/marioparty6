@@ -7,7 +7,7 @@
 #include "game/data.h"
 #include "game/sprite.h"
 #include "game/gamemes.h"
-
+/* Creates the character score boxes and their count icons when the game starts. */
 void fn_1_D83C(void)
 {
     void *animation[3];
@@ -21,16 +21,16 @@ void fn_1_D83C(void)
     M663SpriteGroup *group;
     M663PlayerWork *playerWork;
 
-    animation[1] = HuSprAnimRead(fn_80008DD0(0x9B001F, 0x10000000, 2));
-    animation[2] = HuSprAnimRead(fn_80008DD0(0x9B001E, 0x10000000, 2));
+    animation[1] = HuSprAnimDataRead(0x9B001F);
+    animation[2] = HuSprAnimDataRead(0x9B001E);
     for (player = 0; player < 2; player++) {
         playerWork = &lbl_1_bss_4F0[player];
         attribute = &lbl_1_bss_120[player + 0xC];
         attribute->position = positions[player];
         attribute->width = 0x96;
         attribute->height = 0x30;
-        attribute->depth = 0.0f;
-        attribute->red = attribute->green = attribute->blue = attribute->alpha = 0x40;
+        attribute->unk18 = 0.0f;
+        attribute->red = attribute->green = attribute->blue = attribute->unk1F = 0x40;
         attribute->transparency = 0.0f;
         attribute->spriteId = MgScoreBoxCreateChar(attribute->width, attribute->height, playerWork->characterNo);
         MgScoreBoxPosSet(attribute->spriteId, attribute->position.x, attribute->position.y);

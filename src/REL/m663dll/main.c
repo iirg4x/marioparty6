@@ -47,6 +47,8 @@
 #include "game/printfunc.h"
 #include "REL/m663dll/effects.h"
 #include "dolphin/os.h"
+#include "REL/m663dll/main.h"
+#include "REL/m663dll/game_init.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -76,8 +78,6 @@ void _epilog(void)
     }
 }
 
-extern HUPROCESS *lbl_1_bss_15A0;
-
 void fn_1_124(s16 mode, s16 frameNo);
 
 void fn_1_2A4(s16 mode, s16 frameNo);
@@ -104,8 +104,8 @@ MGSEQ_PARAM lbl_1_data_0 = {
 /* Module setup: creates the minigame object manager and camera object, registers the
  * sequence hooks, and sets the delay frames for sequence modes 2 and 7. */
 void ObjectSetup(void) {
-    lbl_1_bss_15A0 = fn_80080418();
-    fn_8003AB38(lbl_1_bss_15A0, 0x7FDA, 0U, 0U, -1, fn_8003D4FC);
+    lbl_1_bss_15A0[0] = fn_80080418();
+    fn_8003AB38(lbl_1_bss_15A0[0], 0x7FDA, 0U, 0U, -1, fn_8003D4FC);
     fn_80070788(&lbl_1_data_0);
     fn_80071CE8(2, 0x3E8);
     fn_80071CE8(7, 0x3E8);
@@ -115,8 +115,6 @@ void ObjectSetup(void) {
 extern s16 lbl_802C0278;
 
 extern void fn_1_17E0(s16 cameraIndex);
-
-extern void fn_1_9EC8(void);
 
 /* Init phase: clears all module work, stores the night flag, sets up the camera, light,
  * shadow and black background, creates the game objects and sound settings, then advances
@@ -140,7 +138,7 @@ void fn_1_124(s16 mode, s16 frameNo) {
     memset(lbl_1_bss_0, 0, 0x120);
 
     nightFlag = lbl_802C0278;
-    lbl_1_bss_424.nightFlag = nightFlag;
+    lbl_1_bss_424.unk70 = nightFlag;
     fn_1_17E0(0);
     fn_1_1CC4();
     fn_1_2104();
@@ -185,8 +183,6 @@ void fn_1_3AC(s16 mode, s16 frameNo)
     if (fn_1_BFC0() != 0) fn_80071A9C();
 }
 
-s32 fn_1_BFE8(void);
-
 void fn_1_3D8(s16 mode, s16 frameNo)
 {
     if (fn_1_BFE8() != 0) fn_80071A9C();
@@ -195,7 +191,7 @@ void fn_1_3D8(s16 mode, s16 frameNo)
 void fn_1_404(void)
 {
 }
-
+/* Chooses the configured player for each group and sets their controller, character, and starting position. */
 void fn_1_408(void)
 {
     s16 playerLookup[2] = {-1, -1};
@@ -220,7 +216,7 @@ void fn_1_408(void)
             (s8)lbl_80265728[playerLookup[player]].charNo;
         lbl_1_bss_4F0[player].padNo =
             (s8)lbl_80265728[playerLookup[player]].padNo;
-        lbl_1_bss_4F0[player].groupNo =
+        lbl_1_bss_4F0[player].unk18 =
             (s8)lbl_80265728[playerLookup[player]].grpNo;
         lbl_1_bss_4F0[player].playerType =
             (s8)lbl_80265728[playerLookup[player]].type;
@@ -247,7 +243,7 @@ extern u8 lbl_802BFFE8[];
 extern u8 lbl_802BFFE4[];
 
 extern u8 lbl_802BFFE0[];
-
+/* Copies the current controller input for each player and clears it when human input is disabled. */
 void fn_1_754(void)
 {
     s32 index;
@@ -260,9 +256,9 @@ void fn_1_754(void)
             lbl_1_bss_4F0[index].inputMode != 0) {
             memset(&lbl_1_bss_4F0[index], 0, 0x14);
         } else {
-            lbl_1_bss_4F0[index].input.buttons = lbl_802C0010[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk00 = lbl_802C0010[lbl_1_bss_4F0[index].padNo];
             lbl_1_bss_4F0[index].input.buttonsDown = lbl_802C0008[lbl_1_bss_4F0[index].padNo];
-            lbl_1_bss_4F0[index].input.buttonsRepeat = lbl_802C0000[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk08 = lbl_802C0000[lbl_1_bss_4F0[index].padNo];
             if (lbl_802BFFFC[lbl_1_bss_4F0[index].padNo] > 0) {
                 stickResult = lbl_802BFFFC[lbl_1_bss_4F0[index].padNo];
             } else {
@@ -273,30 +269,30 @@ void fn_1_754(void)
                 }
                 stickResult = deadZoneValue;
             }
-            lbl_1_bss_4F0[index].input.stickX = stickResult;
-            lbl_1_bss_4F0[index].input.stickY = (s8)lbl_802BFFF8[lbl_1_bss_4F0[index].padNo];
-            lbl_1_bss_4F0[index].input.substickX = (s8)lbl_802BFFF4[lbl_1_bss_4F0[index].padNo];
-            lbl_1_bss_4F0[index].input.substickY = (s8)lbl_802BFFF0[lbl_1_bss_4F0[index].padNo];
-            lbl_1_bss_4F0[index].input.triggerL = lbl_802BFFEC[lbl_1_bss_4F0[index].padNo];
-            lbl_1_bss_4F0[index].input.triggerR = lbl_802BFFE8[lbl_1_bss_4F0[index].padNo];
-            lbl_1_bss_4F0[index].input.dpad = lbl_802BFFE4[lbl_1_bss_4F0[index].padNo];
-            lbl_1_bss_4F0[index].input.dpadRepeat = lbl_802BFFE0[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk0A = stickResult;
+            lbl_1_bss_4F0[index].input.unk0B = (s8)lbl_802BFFF8[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk0C = (s8)lbl_802BFFF4[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk0D = (s8)lbl_802BFFF0[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk0E = lbl_802BFFEC[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk0F = lbl_802BFFE8[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk10 = lbl_802BFFE4[lbl_1_bss_4F0[index].padNo];
+            lbl_1_bss_4F0[index].input.unk11 = lbl_802BFFE0[lbl_1_bss_4F0[index].padNo];
         }
     }
 
     index = 0;
     for (; index < 4; index++) {
-        lbl_1_bss_424.padInputs[index].buttons = lbl_802C0010[index];
+        lbl_1_bss_424.padInputs[index].unk00 = lbl_802C0010[index];
         lbl_1_bss_424.padInputs[index].buttonsDown = lbl_802C0008[index];
-        lbl_1_bss_424.padInputs[index].buttonsRepeat = lbl_802C0000[index];
-        lbl_1_bss_424.padInputs[index].stickX = (s8)lbl_802BFFFC[index];
-        lbl_1_bss_424.padInputs[index].stickY = (s8)lbl_802BFFF8[index];
-        lbl_1_bss_424.padInputs[index].substickX = (s8)lbl_802BFFF4[index];
-        lbl_1_bss_424.padInputs[index].substickY = (s8)lbl_802BFFF0[index];
-        lbl_1_bss_424.padInputs[index].triggerL = lbl_802BFFEC[index];
-        lbl_1_bss_424.padInputs[index].triggerR = lbl_802BFFE8[index];
-        lbl_1_bss_424.padInputs[index].dpad = lbl_802BFFE4[index];
-        lbl_1_bss_424.padInputs[index].dpadRepeat = lbl_802BFFE0[index];
+        lbl_1_bss_424.padInputs[index].unk08 = lbl_802C0000[index];
+        lbl_1_bss_424.padInputs[index].unk0A = (s8)lbl_802BFFFC[index];
+        lbl_1_bss_424.padInputs[index].unk0B = (s8)lbl_802BFFF8[index];
+        lbl_1_bss_424.padInputs[index].unk0C = (s8)lbl_802BFFF4[index];
+        lbl_1_bss_424.padInputs[index].unk0D = (s8)lbl_802BFFF0[index];
+        lbl_1_bss_424.padInputs[index].unk0E = lbl_802BFFEC[index];
+        lbl_1_bss_424.padInputs[index].unk0F = lbl_802BFFE8[index];
+        lbl_1_bss_424.padInputs[index].unk10 = lbl_802BFFE4[index];
+        lbl_1_bss_424.padInputs[index].unk11 = lbl_802BFFE0[index];
     }
 }
 
@@ -305,7 +301,7 @@ void fn_1_754(void)
 void fn_1_D14(void) {
     s32 index;
     index = 2;
-    while (index < 0x56)
+    while (index < 86)
     {
         fn_80026760(lbl_1_bss_750[index].modelId, (lbl_1_bss_750[index].position.x), (lbl_1_bss_750[index].position.y), (lbl_1_bss_750[index].position.z));
         fn_80026808(lbl_1_bss_750[index].modelId, (lbl_1_bss_750[index].rotation.x), (lbl_1_bss_750[index].rotation.y), (lbl_1_bss_750[index].rotation.z));
@@ -350,7 +346,7 @@ void fn_1_EF0(void)
         playerIndex++;
     }
 }
-
+/* Applies pending motion and attribute changes to the player models during the game update. */
 void fn_1_FE8(void)
 {
     s16 playerIndex;
@@ -360,7 +356,7 @@ void fn_1_FE8(void)
             fn_8002C95C(lbl_1_bss_750[playerIndex].modelId,
                           lbl_1_bss_688[playerIndex].motionIds[lbl_1_bss_688[playerIndex].motionIndex]);
             lbl_1_bss_688[playerIndex].previousMotionIndex = lbl_1_bss_688[playerIndex].motionIndex;
-            lbl_1_bss_688[playerIndex].motionLength =
+            lbl_1_bss_688[playerIndex].unk24 =
                 fn_8002D530(lbl_1_bss_750[playerIndex].modelId);
         }
         if (lbl_1_bss_688[playerIndex].motionSpeed != lbl_1_bss_688[playerIndex].previousMotionSpeed) {
@@ -399,7 +395,7 @@ void fn_1_FE8(void)
                                lbl_1_bss_688[playerIndex].shiftStartTime,
                                lbl_1_bss_688[playerIndex].shiftDuration,
                                lbl_1_bss_688[playerIndex].shiftAttributes);
-            lbl_1_bss_688[playerIndex].shiftLength =
+            lbl_1_bss_688[playerIndex].unk5C =
                 fn_8002D5D4(lbl_1_bss_750[playerIndex].modelId);
             lbl_1_bss_688[playerIndex].shiftState = 2;
             break;
@@ -439,7 +435,7 @@ void fn_1_FE8(void)
 }
 
 extern void fn_1_1C90(s16 cameraIndex);
-
+/* Sets up the selected camera with its initial view, viewport, and perspective. */
 void fn_1_17E0(s16 cameraIndex)
 {
     f32 presets[4][13] = {
@@ -450,7 +446,7 @@ void fn_1_17E0(s16 cameraIndex)
     };
     s16 cameraIds[4] = {1, 2, 4, 8};
 
-    lbl_1_bss_1428.cameras[cameraIndex].cameraIndex = cameraIndex;
+    lbl_1_bss_1428.cameras[cameraIndex].unk00 = cameraIndex;
     lbl_1_bss_1428.cameras[cameraIndex].position[0] = presets[cameraIndex][0];
     lbl_1_bss_1428.cameras[cameraIndex].position[1] = presets[cameraIndex][1];
     lbl_1_bss_1428.cameras[cameraIndex].position[2] = presets[cameraIndex][2];
@@ -520,9 +516,6 @@ void fn_1_1CC4(void) {
     Hu3DGLightInfinitytSet(lbl_1_bss_13EC.id);
 }
 
-extern double sin(double);
-extern double cos(double);
-
 /* Places the global light at its range from the aim point along its orientation angles,
  * aims it at that point and applies its color. */
 void fn_1_1E98(HU3D_LIGHTID lightId) {
@@ -562,7 +555,7 @@ void fn_1_2104(void) {
     Hu3DShadowSizeSet(0x1E0);
     lbl_1_bss_139C.azimuth = -9e+01f;
     lbl_1_bss_139C.elevation = 0.0f;
-    lbl_1_bss_139C.unobservedValue = 0.0f;
+    lbl_1_bss_139C.unk14 = 0.0f;
     lbl_1_bss_139C.target.x = 0.0f;
     lbl_1_bss_139C.target.y = -1e+02f;
     lbl_1_bss_139C.target.z = 0.0f;
@@ -606,17 +599,17 @@ void fn_1_2700(void);                                /* static */
 void fn_1_2538(void) {
     s16 modelIndex;
 
-    lbl_1_bss_1378.projectionId = Hu3DProjectionCreate(HuSprAnimRead(fn_80008DD0(DATANUM(0x7a0000, 35), 0x10000000, 2)), 1.0f, 2e+01f, 3e+04f);
+    lbl_1_bss_1378.projectionId = Hu3DProjectionCreate(HuSprAnimDataRead(DATANUM(0x7a0000, 35)), 1.0f, 2e+01f, 3e+04f);
     lbl_1_bss_1378.target.x = 0.0f;
     lbl_1_bss_1378.target.y = 5e+01f;
     lbl_1_bss_1378.target.z = 0.0f;
     lbl_1_bss_1378.horizontalAngle = 0.0f;
     lbl_1_bss_1378.verticalAngle = 0.0f;
-    lbl_1_bss_1378.unobservedValue = 0.0f;
+    lbl_1_bss_1378.unk18 = 0.0f;
     lbl_1_bss_1378.distance = 5e+03f;
     lbl_1_bss_1378.transparency = 1.0f;
     modelIndex = 0;
-    while (modelIndex < 0x56) {
+    while (modelIndex < 86) {
         if ((modelIndex != 2) && ((modelIndex < 0x1A) || (modelIndex > 0x4E)) && (modelIndex != 0x50) && (modelIndex != 0x51) && (modelIndex != 0x52) && (modelIndex != 0x53)) {
             fn_8002769C(lbl_1_bss_750[modelIndex].modelId, lbl_1_bss_1378.projectionId);
         }
@@ -656,63 +649,7 @@ void fn_1_2700(void) {
                            lbl_1_bss_1378.transparency);
 }
 
-typedef struct WordTable {
-    unsigned short words[4];
-} WordTable;
-
 extern void fn_1_FE8(void);
-
-static inline void fn_1_1E98_for_2A00(void)
-{
-    lbl_1_bss_13EC.position.x =
-        lbl_1_bss_13EC.aim.x +
-        lbl_1_bss_13EC.range *
-            (cos(M_PI * lbl_1_bss_13EC.orientation.x / 180.0) *
-             sin(M_PI * lbl_1_bss_13EC.orientation.y / 180.0));
-    lbl_1_bss_13EC.position.y =
-        lbl_1_bss_13EC.aim.y +
-        lbl_1_bss_13EC.range *
-            -sin(M_PI * lbl_1_bss_13EC.orientation.x / 180.0);
-    lbl_1_bss_13EC.position.z =
-        lbl_1_bss_13EC.aim.z +
-        lbl_1_bss_13EC.range *
-            (cos(M_PI * lbl_1_bss_13EC.orientation.x / 180.0) *
-             cos(M_PI * lbl_1_bss_13EC.orientation.y / 180.0));
-    PSVECSubtract(&lbl_1_bss_13EC.aim, &lbl_1_bss_13EC.position,
-                  &lbl_1_bss_13EC.direction);
-    PSVECNormalize(&lbl_1_bss_13EC.direction, &lbl_1_bss_13EC.direction);
-    Hu3DGLightPosSetV(lbl_1_bss_13EC.id, &lbl_1_bss_13EC.position,
-                      &lbl_1_bss_13EC.direction);
-    Hu3DGLightColorSet(lbl_1_bss_13EC.id, lbl_1_bss_13EC.color.r,
-                       lbl_1_bss_13EC.color.g, lbl_1_bss_13EC.color.b,
-                       lbl_1_bss_13EC.color.a);
-}
-
-static inline void fn_1_2214_for_2A00(void)
-{
-    lbl_1_bss_139C.cameraPosition.x = (f32)((f64)lbl_1_bss_139C.target.x +
-        ((f64)lbl_1_bss_139C.distance *
-         (cos((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-          sin((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0))));
-    lbl_1_bss_139C.cameraPosition.y = (f32)((f64)lbl_1_bss_139C.target.y +
-        ((f64)lbl_1_bss_139C.distance *
-         -sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0)));
-    lbl_1_bss_139C.cameraPosition.z = (f32)((f64)lbl_1_bss_139C.target.z +
-        ((f64)lbl_1_bss_139C.distance *
-         (cos((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-          cos((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0))));
-    lbl_1_bss_139C.cameraUp.x = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-        sin((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0));
-    lbl_1_bss_139C.cameraUp.y = (f32)cos(
-        (M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0);
-    lbl_1_bss_139C.cameraUp.z = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_139C.azimuth) / 180.0) *
-        cos((M_PI * (f64)lbl_1_bss_139C.elevation) / 180.0));
-    Hu3DShadowTPLvlSet(lbl_1_bss_139C.transparency);
-    Hu3DShadowPosSet(&lbl_1_bss_139C.cameraPosition,
-                     &lbl_1_bss_139C.cameraUp, &lbl_1_bss_139C.target);
-}
 
 static inline void fn_1_2700_for_2A00(M663ProjectionWorkVectors *vectors)
 {
@@ -734,7 +671,7 @@ static inline void fn_1_2700_for_2A00(M663ProjectionWorkVectors *vectors)
     Hu3DProjectionTPLvlSet(lbl_1_bss_1378.projectionId,
                            lbl_1_bss_1378.transparency);
 }
-
+/* Refresh the players, stage models and projected overlays for the current frame. */
 void fn_1_2A00(void)
 {
     struct {
@@ -759,7 +696,7 @@ void fn_1_2A00(void)
         lbl_1_bss_750[playerIndex].rotation = lbl_1_bss_4F0[playerIndex].rotation;
     }
 
-    for (modelIndex = 2; modelIndex < 0x56; modelIndex++) {
+    for (modelIndex = 2; modelIndex < 86; modelIndex++) {
         fn_80026760(lbl_1_bss_750[modelIndex].modelId,
                         lbl_1_bss_750[modelIndex].position.x,
                         lbl_1_bss_750[modelIndex].position.y,
@@ -787,9 +724,9 @@ void fn_1_2A00(void)
     fn_1_FE8();
     fn_1_1C90(0);
 
-    fn_1_1E98_for_2A00();
+    fn_1_1E98(lbl_1_bss_13EC.id);
 
-    fn_1_2214_for_2A00();
+    fn_1_2214();
 
     fn_1_2700_for_2A00(&work.projection);
 }
@@ -882,9 +819,9 @@ MGTIMER *fn_1_39F4(int type, int duration, int end, float x, float y) {
 void fn_1_3A68(MGTIMER *timer) {
     MgTimerModeOnSet(timer, 1);
 }
-
-void fn_1_3A94(MGTIMER *timer) {
-    MgTimerDoneCheck(timer);
+/* Checks whether the round timer has expired. */
+s32 fn_1_3A94(MGTIMER *timer) {
+    return MgTimerDoneCheck(timer);
 }
 
 void fn_1_3ABC(MGTIMER *timerWork) {
@@ -893,7 +830,6 @@ void fn_1_3ABC(MGTIMER *timerWork) {
 }
 
 void fn_1_3D8C(s16 player, s16 selection);
-extern s32 printf();
 
 /* Debug editor: holding L, X and Y step the selected index within lower..upper (wrapping),
  * the selection is edited, and pressing X and Y together prints the positions in range. */
@@ -1101,8 +1037,8 @@ void fn_1_4720(void) {
     s16 cameras[2] = {1, 1};
     s16 blendModes[2] = {0, 0};
     HU3D_PARTICLE_HOOK hooks[2] = {
-        (HU3D_PARTICLE_HOOK)fn_1_5294,
-        (HU3D_PARTICLE_HOOK)fn_1_54C8
+        fn_1_5294,
+        fn_1_54C8
     };
     s16 effectIndex;
 
@@ -1112,9 +1048,9 @@ void fn_1_4720(void) {
         HU3D_PARTICLE_DATA *entry;
         s16 particleIndex;
 
-        lbl_1_bss_1368.maximumCounts[effectIndex] = maximumParticles[effectIndex];
-        animation = HuSprAnimRead(fn_80008DD0(
-            dataNumbers[effectIndex], 0x10000000, 2));
+        lbl_1_bss_1368.unk04[effectIndex] = maximumParticles[effectIndex];
+        animation = HuSprAnimDataRead(
+            dataNumbers[effectIndex]);
         lbl_1_bss_1368.allocation[effectIndex] = HuMemDirectMallocNum(
             HEAP_HEAP, maximumParticles[effectIndex] * 0x3C, 0x10000000);
         lbl_1_bss_1368.modelIds[effectIndex] = fn_8003216C(
@@ -1146,7 +1082,7 @@ static inline f32 fn_1_46A8_for_49F8(f32 value)
     value = result;
     return value;
 }
-
+/* Spawns a pair of particles moving away from the origin on either side of the given angle. */
 void fn_1_49F8(Vec *origin, f32 baseAngle)
 {
     M663EffectParameters parameters;
@@ -1159,19 +1095,19 @@ void fn_1_49F8(Vec *origin, f32 baseAngle)
     s16 effectIndex;
     f32 speed;
 
-    parameters.unobservedValue = 0;
+    parameters.unk00 = 0;
     parameters.color.r = 0xFF;
     parameters.color.g = 0xFF;
     parameters.color.b = 0xFF;
     parameters.color.a = 0xC;
-    parameters.fields14[0] = -1;
-    parameters.fields14[1] = -1;
-    parameters.fields14[2] = -1;
-    parameters.fields14[3] = 0;
-    parameters.fields24[1] = 0.0f;
+    parameters.unk14[0] = -1;
+    parameters.unk14[1] = -1;
+    parameters.unk14[2] = -1;
+    parameters.unk14[3] = 0;
+    parameters.unk24[1] = 0.0f;
     parameters.opacityChange = -1.0f;
-    parameters.fields38 = 0.0f;
-    parameters.fields24[0] = 0.0f;
+    parameters.unk38 = 0.0f;
+    parameters.unk24[0] = 0.0f;
 
     alpha = 3e+01f +
         fn_1_46A8_for_49F8(1e+01f);
@@ -1218,39 +1154,41 @@ void fn_1_4FA8(void) {
     }
 }
 
+/* Initializes the first inactive particle in the model's effect pool. Returns its index, or -1
+ * when the pool is full. */
 s16 fn_1_5094(s16 modelNumber, s16 ownerIndex, Vec position, Vec velocity,
               f32 alpha, s16 state, M663EffectParameters *parameters) {
     HU3D_MODEL *model;
     s16 result;
-    M663EffectContext *context;
+    HU3D_PARTICLE *context;
     M663EffectParameters *currentParameters;
     s16 entryIndex;
-    M663EffectEntry *entry;
+    HU3D_PARTICLE_DATA *entry;
 
     result = -1;
     model = &lbl_802C01C8[lbl_1_bss_1368.modelIds[modelNumber]];
     context = model->hookData;
-    currentParameters = context->parameters;
+    currentParameters = context->work;
     entryIndex = 0;
-    entry = context->entries;
+    entry = context->data;
 
-    while (entryIndex < context->entryCount) {
-        if (entry->state <= 0) {
+    while (entryIndex < context->maxCnt) {
+        if (entry->time <= 0) {
             currentParameters[entryIndex] = *parameters;
-            currentParameters[entryIndex].fields04[2] =
-                currentParameters[entryIndex].fields04[1] =
-                    currentParameters[entryIndex].fields04[0] = 0.0f;
+            currentParameters[entryIndex].unk04[2] =
+                currentParameters[entryIndex].unk04[1] =
+                    currentParameters[entryIndex].unk04[0] = 0.0f;
 
-            entry->position = position;
-            entry->velocity = velocity;
-            entry->origin = position;
-            entry->fields20[2] = entry->fields20[1] =
-                entry->fields20[0] = 0.0f;
+            entry->pos = position;
+            entry->vel = velocity;
+            entry->accel = position;
+            entry->scaleBase = entry->colorIdx =
+                entry->speedDecay = 0.0f;
             entry->color = currentParameters[entryIndex].color;
-            entry->height = alpha;
-            entry->state = state;
-            entry->ownerIndex = ownerIndex;
-            context->lastEntry = entryIndex;
+            entry->scale = alpha;
+            entry->time = state;
+            entry->parManId = ownerIndex;
+            context->emitCnt = entryIndex;
             result = entryIndex;
             break;
         }
@@ -1262,19 +1200,19 @@ s16 fn_1_5094(s16 modelNumber, s16 ownerIndex, Vec position, Vec velocity,
 
 /* Particle hook for the first effect: moves live particles with damped velocity, fades them
  * every third frame, updates their height, and ends those that fade out or reach zero. */
-void fn_1_5294(s32, M663EffectContext *context) {
-    M663EffectParameters *parameters = context->parameters;
-    M663EffectEntry *entry = context->entries;
+void fn_1_5294(HU3D_MODEL *, HU3D_PARTICLE *context, Mtx) {
+    M663EffectParameters *parameters = context->work;
+    HU3D_PARTICLE_DATA *entry = context->data;
     s16 index;
 
-    for (index = 0; index < context->entryCount; index++, entry++) {
-        if (entry->state-- > 0) {
-            entry->velocity.x *= parameters[index].velocityScale[0];
-            entry->velocity.y *= parameters[index].velocityScale[1];
-            entry->velocity.z *= parameters[index].velocityScale[2];
-            PSVECAdd(&entry->velocity, &entry->position, &entry->position);
+    for (index = 0; index < context->maxCnt; index++, entry++) {
+        if (entry->time-- > 0) {
+            entry->vel.x *= parameters[index].velocityScale[0];
+            entry->vel.y *= parameters[index].velocityScale[1];
+            entry->vel.z *= parameters[index].velocityScale[2];
+            PSVECAdd(&entry->vel, &entry->pos, &entry->pos);
 
-            if (entry->state % 3 == 0) {
+            if (entry->time % 3 == 0) {
                 s16 opacity = (s16)((f32)entry->color.a + parameters[index].opacityChange);
                 if (opacity < 0) {
                     opacity = 0;
@@ -1283,22 +1221,22 @@ void fn_1_5294(s32, M663EffectContext *context) {
                 }
                 entry->color.a = (u8)opacity;
                 if (opacity <= 0) {
-                    entry->state = 0;
-                    entry->height = 0.0f;
+                    entry->time = 0;
+                    entry->scale = 0.0f;
                 }
             }
 
             parameters[index].verticalPosition *= parameters[index].verticalScale;
-            entry->height += parameters[index].verticalPosition;
-            if (entry->height <= 0.0f) {
-                entry->height = 0.0f;
-                entry->state = 0;
+            entry->scale += parameters[index].verticalPosition;
+            if (entry->scale <= 0.0f) {
+                entry->scale = 0.0f;
+                entry->time = 0;
             }
 
-            DCStoreRangeNoSync(context->entries, context->entryCount * 0x48);
+            DCStoreRangeNoSync(context->data, context->maxCnt * 0x48);
         } else {
-            entry->height = 0.0f;
-            entry->state = -1;
+            entry->scale = 0.0f;
+            entry->time = -1;
         }
     }
 }
@@ -1306,15 +1244,15 @@ void fn_1_5294(s32, M663EffectContext *context) {
 /* Particle hook for the second effect: when rumble is off, fades each player's marker in
  * while that player is idle near the goal and no grab is pending, otherwise fades it out;
  * the marker follows the player and bobs its height between 70 and 100. */
-void fn_1_54C8(s32, M663EffectContext *context) {
-    struct M663EffectParameters *positionOffsets = context->parameters;
+void fn_1_54C8(HU3D_MODEL *, HU3D_PARTICLE *context, Mtx) {
+    struct M663EffectParameters *positionOffsets = context->work;
     M663PlayerWork *player;
-    M663EffectEntry *entry = context->entries;
+    HU3D_PARTICLE_DATA *entry = context->data;
     s16 entryIndex;
 
     if (lbl_1_bss_424.rumbleEnabled == 0) {
-      for (entryIndex = 0; entryIndex < context->entryCount; entryIndex++, entry++) {
-        player = &lbl_1_bss_4F0[entry->ownerIndex];
+      for (entryIndex = 0; entryIndex < context->maxCnt; entryIndex++, entry++) {
+        player = &lbl_1_bss_4F0[entry->parManId];
 
         if (player->skipApproach != 0 && player->score == 0 && lbl_1_bss_424.winnerReady == 0 && lbl_1_bss_4F0[entryIndex ^ 1].scoreStatus == 0) {
                 if ((s32)entry->color.a + 0x10 >= 0xFF) {
@@ -1322,11 +1260,11 @@ void fn_1_54C8(s32, M663EffectContext *context) {
                 } else {
                     entry->color.a += 0x10;
                 }
-                if (entry->state == 1) {
-                    entry->state = 2;
+                if (entry->time == 1) {
+                    entry->time = 2;
                 }
         } else {
-            entry->state = 1;
+            entry->time = 1;
             if ((s32)entry->color.a - 0x30 <= 0) {
                 entry->color.a = 0;
             } else {
@@ -1334,15 +1272,15 @@ void fn_1_54C8(s32, M663EffectContext *context) {
             }
         }
 
-            entry->position = player->position;
-            entry->position.y = 2.5e+02f;
-            entry->height += positionOffsets[entryIndex].verticalPosition;
-            if (entry->height <= 7e+01f) {
-                entry->height = 7e+01f;
+            entry->pos = player->position;
+            entry->pos.y = 2.5e+02f;
+            entry->scale += positionOffsets[entryIndex].verticalPosition;
+            if (entry->scale <= 7e+01f) {
+                entry->scale = 7e+01f;
                 positionOffsets[entryIndex].verticalPosition = 3.0f;
             }
-            if (entry->height >= 1e+02f) {
-                entry->height = 1e+02f;
+            if (entry->scale >= 1e+02f) {
+                entry->scale = 1e+02f;
                 positionOffsets[entryIndex].verticalPosition = -3.0f;
             }
         entry->color.r = entry->color.g = entry->color.b = 0xFF;
@@ -1352,7 +1290,7 @@ void fn_1_54C8(s32, M663EffectContext *context) {
 
 /* Draw hook: draws the six "kiri" objects of models 80-85 from each model's position,
  * rotation and scale, skipping any whose control has reached mode 2. */
-void fn_1_56E8(s32, Mtx *viewMatrix) {
+void fn_1_56E8(HU3D_MODEL *model, Mtx *viewMatrix) {
     char objectNames[6][0x20] = {"kiri1", "kiri2", "kiri3", "kiri4", "kiri5", "kiri6"};
     f32 transform[3][4];
     f32 rotation[3][4];
@@ -1361,7 +1299,7 @@ void fn_1_56E8(s32, Mtx *viewMatrix) {
 
     fn_8002472C();
 
-    for (objectIndex = 0x50, playerIndex = 0; objectIndex <= 0x55; objectIndex++, playerIndex++) {
+    for (objectIndex = 80, playerIndex = 0; objectIndex <= 85; objectIndex++, playerIndex++) {
         M663ModelWork *object = &lbl_1_bss_750[objectIndex];
         HU3D_MODEL *model = &lbl_802C01C8[object->modelId];
 

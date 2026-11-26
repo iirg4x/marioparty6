@@ -6,7 +6,7 @@ typedef struct M631Job M631Job;
 typedef struct M631Jobs {
     M631Job *freeHead; /* First available job, or NULL when the pool is full. */
     M631Job *activeHead; /* First scheduled job, or NULL when no jobs are active. */
-    M631Job *storage; /* Beginning of the pool's job array. */
+    M631Job *unk08; /* The game's code never reads this field. */
 } M631Jobs;
 struct M631Job {
     M631Jobs *owner; /* Pool to which this job returns. */
@@ -28,7 +28,7 @@ M631AnimationQueue *fn_1_2E9C(void);
 M631AnimationNode *fn_1_31D8(M631AnimationQueue *owner);
 void fn_1_32C8(M631AnimationNode *inputWork);
 s32 fn_1_37FC(void *callbackData);
-void fn_1_38E8(M631MotionPairNode *callback, M631MotionPairNode *context);
+void fn_1_38E8(M631MotionPairNode *callback, M631MotionPairNode *context, f32 value);
 void fn_1_3B44(M631ActorWork *actor);
 void fn_1_3B7C(HuVecF *position);
 void fn_1_3BC4(void);
@@ -43,7 +43,12 @@ s32 fn_1_51D0(f32 positionX);
 s32 fn_1_AAD8(void *callbackData);
 void fn_1_AB4C(void);
 void fn_1_AB60(void);
+void fn_1_AF2C(M631MotionPairNode *object, void *owner, void (*beforeUpdate)(void *),
+               s32 (*afterUpdate)(void *),
+               void (*resolvePair)(M631MotionPairNode *, M631MotionPairNode *, f32),
+               HuVecF *position);
 void fn_1_AF94(M631MotionPairNode *object);
+void fn_1_AFF8(M631MotionPairNode *object, f32 radius, s32 contactKind);
 M631MotionPairNode *fn_1_B004(void);
 void fn_1_B014(void);
 void *fn_1_B0B8(s32 (*callback)(void *), void *data);

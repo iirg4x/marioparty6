@@ -1,26 +1,48 @@
+// GX frame buffer: the standard render modes and the display and texture copy registers.
 #include <dolphin/gx.h>
 #include <dolphin/os.h>
 
 #include <dolphin/gx/GXPriv.h>
 
-GXRenderModeObj GXNtsc240Int = { 0, 640, 240, 240, 40, 0, 640, 480, 0, 1, 0,
-    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 }, { 0, 0, 21, 22, 21, 0, 0 } };
+GXRenderModeObj GXNtsc240Int = {
+    0, 640, 240, 240, 40, 0, 640, 480, 0, 1, 0,
+    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    { 0, 0, 21, 22, 21, 0, 0 }
+};
 
-GXRenderModeObj GXNtsc480IntDf = { 0, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
-    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 }, { 8, 8, 10, 12, 10, 8, 8 } };
+GXRenderModeObj GXNtsc480IntDf = {
+    0, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
+    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    { 8, 8, 10, 12, 10, 8, 8 }
+};
 
-GXRenderModeObj GXNtsc480Int = { 0, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
-    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 }, { 0, 0, 21, 22, 21, 0, 0 } };
+GXRenderModeObj GXNtsc480Int = {
+    0, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
+    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    { 0, 0, 21, 22, 21, 0, 0 }
+};
 
-GXRenderModeObj GXNtsc480Prog = { 2, 640, 480, 480, 40, 0, 640, 480, 0, 0, 0,
-    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 }, { 0, 0, 21, 22, 21, 0, 0 } };
+GXRenderModeObj GXNtsc480Prog = {
+    2, 640, 480, 480, 40, 0, 640, 480, 0, 0, 0,
+    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    { 0, 0, 21, 22, 21, 0, 0 }
+};
 
-GXRenderModeObj GXMpal480IntDf = { 8, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
-    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 }, { 8, 8, 10, 12, 10, 8, 8 } };
-GXRenderModeObj GXPal528IntDf = { 4, 640, 528, 528, 40, 23, 640, 528, 1, 0, 0,
-    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 }, { 8, 8, 10, 12, 10, 8, 8 } };
-GXRenderModeObj GXEurgb60Hz480IntDf = { 20, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
-    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 }, { 8, 8, 10, 12, 10, 8, 8 } };
+GXRenderModeObj GXMpal480IntDf = {
+    8, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
+    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    { 8, 8, 10, 12, 10, 8, 8 }
+};
+GXRenderModeObj GXPal528IntDf = {
+    4, 640, 528, 528, 40, 23, 640, 528, 1, 0, 0,
+    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    { 8, 8, 10, 12, 10, 8, 8 }
+};
+GXRenderModeObj GXEurgb60Hz480IntDf = {
+    20, 640, 480, 480, 40, 0, 640, 480, 1, 0, 0,
+    { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 },
+    { 8, 8, 10, 12, 10, 8, 8 }
+};
 void GXAdjustForOverscan(const GXRenderModeObj *rmin, GXRenderModeObj *rmout, u16 hor, u16 ver)
 {
     u16 hor2 = hor * 2;
@@ -201,8 +223,10 @@ f32 GXGetYScaleFactor(u16 efbHeight, u16 xfbHeight)
     u32 tgtHt;
     u32 realHt;
 
-    ASSERTMSGLINE(0x5E6, xfbHeight <= 1024, "GXGetYScaleFactor: Display copy only supports up to 1024 lines.\n");
-    ASSERTMSGLINE(0x5E8, efbHeight <= xfbHeight, "GXGetYScaleFactor: EFB height should not be greater than XFB height.\n");
+    ASSERTMSGLINE(0x5E6, xfbHeight <= 1024,
+        "GXGetYScaleFactor: Display copy only supports up to 1024 lines.\n");
+    ASSERTMSGLINE(0x5E8, efbHeight <= xfbHeight,
+        "GXGetYScaleFactor: EFB height should not be greater than XFB height.\n");
 
     tgtHt = xfbHeight;
     yScale = (f32)xfbHeight / (f32)efbHeight;
@@ -230,25 +254,25 @@ f32 GXGetYScaleFactor(u16 efbHeight, u16 xfbHeight)
 
 u32 GXSetDispCopyYScale(f32 vscale)
 {
-	u32 scale;
-	GXBool check;
-	u32 height;
+	u32 iScale;
+	GXBool enable;
+	u32 ht;
 	u32 reg;
 
-	scale = (u32)(256.0f / vscale) & 0x1FF;
-	check = (scale != 0x100);
+	iScale = (u32)(256.0f / vscale) & 0x1FF;
+	enable = (iScale != 0x100);
 
 	reg = 0;
-	SET_REG_FIELD(0, reg, 9, 0, scale);
+	SET_REG_FIELD(0, reg, 9, 0, iScale);
 	SET_REG_FIELD(0, reg, 8, 24, 0x4E);
 	GX_WRITE_RAS_REG(reg);
 	gx->bpSentNot = GX_FALSE;
 
-	SET_REG_FIELD(0, gx->cpDisp, 1, 10, check);
+	SET_REG_FIELD(0, gx->cpDisp, 1, 10, enable);
 
-	height = (gx->cpDispSize >> 10 & 0x3FF) + 1;
+	ht = ((gx->cpDispSize >> 10) & 0x3FF) + 1;
 
-	return __GXGetNumXfbLines(height, scale);
+	return __GXGetNumXfbLines(ht, iScale);
 }
 
 void GXSetCopyClear(GXColor clear_clr, u32 clear_z)
@@ -386,22 +410,29 @@ static void __GXVerifCopy(void *dest, u8 clear)
     dy = GET_REG_FIELD(gx->cpDispSize, 10, 10) + 1;
 
     ASSERTMSGLINE(0x6EC, clmpT || y0 != 0, "GXCopy: Have to set GX_CLAMP_TOP if source top == 0");
-    ASSERTMSGLINE(0x6EE, clmpB || y0 + dy <= 528, "GXCopy: Have to set GX_CLAMP_BOTTOM if source bottom > 528");
-    ASSERTMSGLINE(0x6F3, (gx->peCtrl & 7) != 3 || clear == 0, "GXCopy: Can not do clear while pixel type is Z");
+    ASSERTMSGLINE(0x6EE, clmpB || y0 + dy <= 528,
+        "GXCopy: Have to set GX_CLAMP_BOTTOM if source bottom > 528");
+    ASSERTMSGLINE(0x6F3, (gx->peCtrl & 7) != 3 || clear == 0,
+        "GXCopy: Can not do clear while pixel type is Z");
     if ((u32)(gx->peCtrl & 7) == 5) {
         ASSERTMSGLINE(0x6F9, clear == 0, "GXCopy: Can not clear YUV framebuffer");
         ASSERTMSGLINE(0x6FB, (x0 & 3) == 0, "GXCopy: Source x is not multiple of 4 for YUV copy");
         ASSERTMSGLINE(0x6FD, (y0 & 3) == 0, "GXCopy: Source y is not multiple of 4 for YUV copy");
-        ASSERTMSGLINE(0x6FF, (dx & 3) == 0, "GXCopy: Source width is not multiple of 4 for YUV copy");
-        ASSERTMSGLINE(0x701, (dy & 3) == 0, "GXCopy: Source height is not multiple of 4 for YUV copy");
+        ASSERTMSGLINE(0x6FF, (dx & 3) == 0,
+            "GXCopy: Source width is not multiple of 4 for YUV copy");
+        ASSERTMSGLINE(0x701, (dy & 3) == 0,
+            "GXCopy: Source height is not multiple of 4 for YUV copy");
     }
     else {
         ASSERTMSGLINE(0x705, (x0 & 1) == 0, "GXCopy: Source x is not multiple of 2 for RGB copy");
         ASSERTMSGLINE(0x707, (y0 & 1) == 0, "GXCopy: Source y is not multiple of 2 for RGB copy");
-        ASSERTMSGLINE(0x709, (dx & 1) == 0, "GXCopy: Source width is not multiple of 2 for RGB copy");
-        ASSERTMSGLINE(0x70B, (dy & 1) == 0, "GXCopy: Source height is not multiple of 2 for RGB copy");
+        ASSERTMSGLINE(0x709, (dx & 1) == 0,
+            "GXCopy: Source width is not multiple of 2 for RGB copy");
+        ASSERTMSGLINE(0x70B, (dy & 1) == 0,
+            "GXCopy: Source height is not multiple of 2 for RGB copy");
     }
-    ASSERTMSGLINE(0x70F, ((u32)dest & 0x1F) == 0, "GXCopy: Display destination address not 32B aligned");
+    ASSERTMSGLINE(0x70F, ((u32)dest & 0x1F) == 0,
+        "GXCopy: Display destination address not 32B aligned");
 }
 #endif
 
@@ -429,7 +460,8 @@ void GXCopyDisp(void *dest, GXBool clear)
         GX_WRITE_RAS_REG(reg);
     }
     changePeCtrl = FALSE;
-    if ((clear || (u32)GET_REG_FIELD(gx->peCtrl, 3, 0) == 3) && (u32)GET_REG_FIELD(gx->peCtrl, 1, 6) == 1) {
+    if ((clear || (u32)GET_REG_FIELD(gx->peCtrl, 3, 0) == 3) &&
+        (u32)GET_REG_FIELD(gx->peCtrl, 1, 6) == 1) {
         changePeCtrl = TRUE;
         tempPeCtrl = gx->peCtrl;
         SET_REG_FIELD(0, tempPeCtrl, 1, 6, 0);

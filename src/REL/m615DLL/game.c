@@ -59,19 +59,12 @@
 #include "datadir_enum.h"
 #include <string.h>
 #include "REL/m615DLL.h"
-
-typedef struct M615EffectWork {
-    OMOBJ *modelObject;
-    u8 unknown_04[4]; /* No code names this field. */
-    s16 particles[4];
-    HuVecF position;
-    f32 rotation;
-    f32 scale[4];
-    s32 curveIndex;
-    HuVecF direction;
-    HuVecF velocity;
-    HuVecF updatedDirection;
-} M615EffectWork;
+#include "REL/m615DLL/collision.h"
+/* Gets the position of the effect the computer player steers toward. */
+static inline HuVecF targetPositionGet(M615EffectWork *target)
+{
+    return target->position;
+}
 
 typedef struct M615Camera M615Camera;
 
@@ -79,58 +72,6 @@ extern M615EffectWork *lbl_1_bss_2C[3];
 extern s32 lbl_1_bss_8;
 extern s32 lbl_1_bss_C[4];
 extern u32 lbl_1_data_28[2][3];
-
-typedef struct M615Bounds {
-    HuVecF min;
-    HuVecF max;
-} M615Bounds;
-
-typedef struct M615Segment {
-    HuVecF start;
-    HuVecF delta;
-} M615Segment;
-
-typedef struct M615Capsule {
-    M615Segment segment;
-    f32 radius;
-} M615Capsule;
-
-typedef struct M615Sphere {
-    HuVecF center;
-    f32 radius;
-} M615Sphere;
-
-typedef struct M615Triangle {
-    HuVecF start;
-    HuVecF edge1;
-    HuVecF edge2;
-} M615Triangle;
-
-typedef struct M615CollisionData {
-    s32 type;
-    M615Triangle triangle;
-    HuVecF normal;
-    M615Bounds bounds;
-} M615CollisionData;
-
-typedef struct M615CollisionPool {
-    s32 count;
-    M615CollisionData **entries;
-} M615CollisionPool;
-
-extern s32 fn_1_1478(M615Bounds *a, M615Bounds *b);
-
-extern f32 fn_1_14E8(HuVecF *queryPoint, M615Triangle *triangle, f32 *barycentricS, f32 *barycentricT);
-
-extern f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f32 *triangleSOut, f32 *triangleTOut);
-
-extern f32 fn_1_42CC(HuVecF *point, M615Triangle *triangle, f32 *barycentricS, f32 *barycentricT);
-
-extern f32 fn_1_4C9C(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f32 *triangleSOut, f32 *triangleTOut);
-
-extern void fn_1_A0C(M615Bounds *bounds, M615Capsule *capsule);
-
-extern double fmod(double value, double divisor);
 
 typedef struct M615MovementWork {
     MGPLAYER *player;
@@ -146,63 +87,22 @@ typedef struct M615MovementWork {
     f32 targetX;
 } M615MovementWork;
 
-extern double sin(double angle);
-
-extern double cos(double angle);
-
 extern s32 lbl_1_bss_1C[4];
-
-extern f32 fn_1_643C(HuVecF *queryPoint, M615Segment *lineSegment);
-
-typedef struct M615RoundPlayerWork {
-    s16 playerIndex;
-    u16 unknown02;
-    s16 teamIndex;
-} M615RoundPlayerWork;
 
 typedef struct M615SequenceWork {
     s32 frame;
 } M615SequenceWork;
-
-extern u32 lbl_1_bss_CC;
-
-void fn_1_248(OMOBJ *object, OMOBJ_FUNC callback);
 
 typedef struct M615StageAudioWork {
     s32 stageState;
     s16 streamHandle;
 } M615StageAudioWork;
 
-void fn_1_56A4(OMOBJ *object);
-
-extern void fn_1_BC4(M615Bounds *bounds, M615Triangle *triangle);
-
-extern void fn_1_E38(M615Bounds *bounds, M615Triangle *triangle);
-
-extern double fmod(double value, double divisor);
-
-extern double sin(double angle);
-
-extern double cos(double angle);
-
-static inline HuVecF targetPositionGet(M615EffectWork *target)
-{
-    return target->position;
-}
-
-extern f32 fn_1_643C(HuVecF *queryPoint, M615Segment *lineSegment);
-
-extern HUPROCESS *lbl_1_bss_4;
-
 extern s16 lbl_802C0278;
 
 extern char lbl_1_data_354[16];
 
 extern char lbl_1_data_364[16];
-
-extern void fn_1_BC4(M615Bounds *bounds, M615Triangle *triangle);
-
-extern void fn_1_E38(M615Bounds *bounds, M615Triangle *triangle);
 
 typedef struct M615PositionAdjustment {
     Point3d position;
@@ -214,7 +114,7 @@ u32 lbl_1_data_28[2][3] = {
     { DATANUM(0x4a0000, 4), DATANUM(0x4a0000, 0), DATANUM(0x4a0000, 2) }
 };
 
-unsigned int lbl_1_data_40[0x11] = {
+unsigned int lbl_1_data_40[17] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 1), DATANUM(0x930000, 2), DATANUM(0x930000, 3),
     DATANUM(0x930000, 4), DATANUM(0x930000, 5), DATANUM(0x930000, 56), DATANUM(0x930000, 8),
     DATANUM(0x930000, 10), DATANUM(0x930000, 9), DATANUM(0x930000, 15), DATANUM(0x930000, 16),
@@ -236,7 +136,7 @@ HuVecF lbl_1_data_B4[4] = {
     { 521.0f, 59.0f, 0.0f }
 };
 
-M615PositionAdjustment lbl_1_data_E4[0x1A] = {
+M615PositionAdjustment lbl_1_data_E4[26] = {
     {{-936.65f, 85.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
     {{-936.65f, 255.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
     {{-936.65f, 425.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
@@ -269,12 +169,6 @@ char lbl_1_data_354[16] = "6xx_tatake-colA";
 
 char lbl_1_data_364[16] = "6xx_tatake-colC";
 
-typedef struct M615Box {
-    HuVecF center;
-    HuVecF axis[3];
-    f32 halfExtents[3];
-} M615Box;
-
 typedef struct M615ModelSetup {
     s16 modelId;
     M615Box box;
@@ -282,29 +176,14 @@ typedef struct M615ModelSetup {
     f32 blend;
 } M615ModelSetup;
 
-extern void fn_1_109C(M615Bounds *bounds, const M615Box *box);
-
-extern s32 fn_1_1478(M615Bounds *a, M615Bounds *b);
-
-extern void fn_1_A0C(M615Bounds *bounds, M615Capsule *capsule);
-
-extern f32 fn_1_8D08(const M615Segment *line, const M615Box *box, f32 *time,
-                     f32 *closestX, f32 *closestY, f32 *closestZ);
-
 typedef struct M615CollisionPoint {
     Point3d start;
     f32 radius;
 } M615CollisionPoint;
 
-extern f32 fn_1_181C(M615Segment *firstSegment, M615Segment *secondSegment, f32 *firstParameter, f32 *secondParameter);
-
-extern f32 fn_1_181C(M615Segment *firstSegment,
-                      M615Segment *secondSegment,
-                      f32 *firstParameter, f32 *secondParameter);
-
 typedef struct M615CameraWork {
     HU3D_MODELID cameraModelId;
-    u16 unknown02;
+    u16 unk02; /* No code names this field. */
     Vec position;
     Vec up;
     Vec target;
@@ -319,18 +198,6 @@ typedef struct M615ScoreWork {
 } M615ScoreWork;
 
 extern M615CollisionPool *lbl_1_bss_48;
-
-extern void fn_1_9140(M615CollisionPool **poolResult, s32 count);
-extern M615CollisionData *fn_1_9228(M615CollisionPool *pool, s32 index);
-extern M615CollisionData *fn_1_9238(M615CollisionPool *pool, M615Capsule *capsule);
-
-extern void fn_1_444(HuVecF *out, f32 x, f32 y, f32 z);
-extern f32 fn_1_574(const HuVecF *v);
-extern f32 fn_1_5A4(const HuVecF *a, const HuVecF *b);
-extern void fn_1_60C(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-extern void fn_1_644(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-extern f32 fn_1_67C(HuVecF *dst, const HuVecF *src);
-extern void fn_1_85C(HuVecF *dst, const HuVecF *src, f32 scale);
 
 extern M615MovementWork *lbl_1_bss_38[4];
 
@@ -446,7 +313,7 @@ void fn_1_9530(s32 *groups)
         }
     }
 }
-
+/* Sets up the stage and player objects when the minigame starts. */
 void fn_1_9620(OMOBJ *obj)
 {
     M615StageAudioWork *work = obj->data;
@@ -466,9 +333,9 @@ void fn_1_9620(OMOBJ *obj)
     }
     fn_1_2F0(0x28, 4, fn_1_D708);
     for (setupPlayer = 0; setupPlayer < 4; setupPlayer++) {
-        M615RoundPlayerWork *roundWork = fn_1_2F0(0x14, 0x10, fn_1_D118);
+        M615ScoreWork *roundWork = fn_1_2F0(0x14, 0x10, fn_1_D118);
         roundWork->playerIndex = setupPlayer;
-        roundWork->teamIndex = winners[setupPlayer];
+        roundWork->positionIndex = winners[setupPlayer];
     }
     fn_8005DDEC(5);
     fn_1_390(obj, fn_1_9884);
@@ -512,6 +379,7 @@ void fn_1_9948(OMOBJ *object)
     }
 }
 
+/* When the round ends, tally player scores, announce the winners, and fade out the music. */
 void fn_1_99D0(OMOBJ *object)
 {
     M615StageAudioWork *work = object->data;
@@ -554,7 +422,7 @@ void fn_1_99D0(OMOBJ *object)
         if (fn_8006A124(0x30002U)) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 playerScore = lbl_1_bss_1C[playerIndex];
-                lbl_80265750[playerIndex].mgScore = playerScore;
+                GWMgScoreSet(playerIndex, playerScore);
             }
         } else {
             fn_80071C18((s16)winnerValues[0],
@@ -563,7 +431,7 @@ void fn_1_99D0(OMOBJ *object)
                            (s16)winnerValues[3]);
         }
         if (work->streamHandle != -1) {
-            HuAudSStreamFadeOut(work->streamHandle, 0x64);
+            HuAudSStreamFadeOut(work->streamHandle, 100);
         }
         fn_1_390(object, fn_1_9C28);
         return;
@@ -716,6 +584,7 @@ void fn_1_A454(OMOBJ *object)
     void *work = object->data;
 }
 
+/* As the stage starts up, create the moving obstacle models and place them at their initial positions. */
 void fn_1_A468(OMOBJ *object)
 {
     M615ModelSetup *models = object->data;
@@ -732,11 +601,11 @@ void fn_1_A468(OMOBJ *object)
     modelId = fn_80025A04(fn_80008DD0(modelData, 0x10000000, 2));
     models[0].modelId = modelId;
 
-    for (modelIndex = 1; modelIndex < 0x1A; modelIndex++) {
+    for (modelIndex = 1; modelIndex < 26; modelIndex++) {
         models[modelIndex].modelId = fn_80025D4C(modelId);
     }
 
-    for (modelIndex = 0; modelIndex < 0x1A; modelIndex++) {
+    for (modelIndex = 0; modelIndex < 26; modelIndex++) {
         fn_80026B8C(models[modelIndex].modelId, 5);
         fn_80026790(models[modelIndex].modelId, &lbl_1_data_E4[modelIndex].position);
         models[modelIndex].box.center = lbl_1_data_E4[modelIndex].position;
@@ -753,6 +622,7 @@ void fn_1_A468(OMOBJ *object)
     fn_1_390(object, fn_1_A6A4);
 }
 
+/* During play, advance the obstacle models and test their swept paths against the collision bounds. */
 void fn_1_A6A4(OMOBJ *object)
 {
     M615ModelSetup *models = object->data;
@@ -780,7 +650,7 @@ void fn_1_A6A4(OMOBJ *object)
         capsule.radius = 100.0f;
         fn_1_A0C(&collisionBounds, &capsule);
 
-        for (modelIndex = 0; modelIndex < 0x1A; modelIndex++) {
+        for (modelIndex = 0; modelIndex < 26; modelIndex++) {
             if (fn_1_1478(&collisionBounds,
                           &models[modelIndex].bounds) != 0 &&
                 fn_1_8D08(&capsule.segment,
@@ -791,7 +661,7 @@ void fn_1_A6A4(OMOBJ *object)
         }
     }
 
-    for (modelIndex = 0; modelIndex < 0x1A; modelIndex++) {
+    for (modelIndex = 0; modelIndex < 26; modelIndex++) {
         models[modelIndex].blend +=
             (1.0f - models[modelIndex].blend) / 5.0f;
         angleValue = 1.0f - models[modelIndex].blend;
@@ -808,6 +678,7 @@ void fn_1_A6A4(OMOBJ *object)
     }
 }
 
+/* During the end sequence, move the obstacle models along their departing paths. */
 void fn_1_A9C8(OMOBJ *object)
 {
     M615ModelSetup *models = object->data;
@@ -815,7 +686,7 @@ void fn_1_A9C8(OMOBJ *object)
     f32 remaining;
     s32 modelIndex;
 
-    for (modelIndex = 0; modelIndex < 0x1A; modelIndex++) {
+    for (modelIndex = 0; modelIndex < 26; modelIndex++) {
         models[modelIndex].blend +=
             (1.0f - models[modelIndex].blend) / 10.0f;
         remaining = 1.0f - models[modelIndex].blend;
@@ -1183,6 +1054,7 @@ void fn_1_B71C(OMOBJ *object)
 
 const HuVecF lbl_1_rodata_1EC = { 0.0f, 1.0f, 0.0f };
 
+/* Updates the beam particles and handles collisions between the beam and players. */
 void fn_1_BCE8(OMOBJ *object)
 {
     s32 particleIndex;
@@ -1209,8 +1081,6 @@ void fn_1_BCE8(OMOBJ *object)
     f32 scaleX;
     f32 scaleY;
     f32 closestDistance;
-    f32 playerCollisionRadius;
-    f32 effectCollisionRadius;
     s32 playerIndex;
     s16 hitParticleId;
     s16 trailParticleId;
@@ -1299,7 +1169,7 @@ void fn_1_BCE8(OMOBJ *object)
                         particleIndex++;
                         particles++;
                     }
-                    fn_8006A030((s16)playerIndex, 0xC, 7, 3);
+                    fn_8006A030((s16)playerIndex, 12, 7, 3);
                     {
                         s32 sounds[4] = { MSM_SE_MG615_BEAM_PLAYER_HIT_P1,
                                           MSM_SE_MG615_BEAM_PLAYER_HIT_P2,
@@ -1402,7 +1272,7 @@ void fn_1_BCE8(OMOBJ *object)
     }
 
     if ((u32)fn_80071A8C() == 6) {
-        fn_8006A030((s16)playerIndex, 0x1E, 0x1E, 0);
+        fn_8006A030((s16)playerIndex, 30, 0x1E, 0);
         fn_80026790(work->modelObject->mdlId[1], &work->position);
         fn_80026A44(work->modelObject->mdlId[1], 1);
         fn_80026A44(work->modelObject->mdlId[1], 0x40000002);
@@ -1722,6 +1592,7 @@ void fn_1_D7E8(M615MovementWork *work, s32 motionSlot, f32 endTime, s32 attr)
     }
 }
 
+/* Apply the player's movement to the actor and cue feedback when it hits the stage collision. */
 void fn_1_D864(M615MovementWork *work)
 {
     HuVecF position;
@@ -1757,7 +1628,7 @@ void fn_1_D864(M615MovementWork *work)
     }
 
     if (fn_80087114(work->player, 1) != 0) {
-        fn_8006A030(work->playerIndex, 0x14, 7, 3);
+        fn_8006A030(work->playerIndex, 20, 7, 3);
     }
 }
 
@@ -1823,13 +1694,10 @@ void fn_1_DD08(OMOBJ *object)
     }
 }
 
+/* Update the player during the round's final phase and switch to the finish motion when play ends. */
 void fn_1_DDA0(OMOBJ *object)
 {
     M615MovementWork *work = object->data;
-    HuVecF difference;
-    HuVecF position;
-    f32 speed;
-    s32 axis;
 
     if (fn_80071A8C() == 6) {
         fn_8007E818(work->player);
@@ -1838,43 +1706,7 @@ void fn_1_DDA0(OMOBJ *object)
         return;
     }
 
-    fn_80086BC8(work->player->actor, &position);
-    position.z = 0.0f;
-    fn_80086B04(work->player->actor, &position);
-    work->previousPosition = work->position;
-    work->position = position;
-    work->position.y += 100.0f;
-
-    speed = fn_1_67C(&work->player->actor->vel, &work->player->actor->vel);
-    speed += -speed / 6.0f;
-    fn_1_85C(&work->player->actor->vel, &work->player->actor->vel, speed);
-
-    for (axis = 0; axis < 3; axis++) {
-        work->approach[axis] +=
-            (1.0f - work->approach[axis]) / 15.0f;
-    }
-
-    for (axis = 0; axis < 3; axis++) {
-        if (work->reached[axis] == 0) {
-            M615EffectWork *targetPath;
-            s32 pathIndex;
-            M615EffectWork *path;
-            M615EffectWork *pathPosition;
-
-            pathIndex = axis;
-            path = lbl_1_bss_2C[pathIndex];
-            pathPosition = path;
-            targetPath = pathPosition;
-            fn_1_644(&difference, &targetPath->position, &work->position);
-            if (fn_1_454(&difference) > 100.0f * work->approach[axis]) {
-                work->reached[axis] = 1;
-            }
-        }
-    }
-
-    if (fn_80087114(work->player, 1) != 0) {
-        fn_8006A030(work->playerIndex, 0x14, 7, 3);
-    }
+    fn_1_D864(work);
     if (fn_80087148(work->player, 0x10) != 0) {
         fn_1_390(object, fn_1_E358);
         return;
@@ -2116,26 +1948,33 @@ void fn_1_F058(OMOBJ *object)
     }
 }
 
+/* Picks a new target when close to the old one and steers toward it. */
+static inline void M615SteerTowardTarget(M615MovementWork *work, s32 *direction)
+{
+    if (fabsf(work->position.x - work->targetX) <= 80.0f) {
+        work->targetX = (1500.0f * frandf()) - 750.0f;
+    }
+
+    if (work->position.x < work->targetX) {
+        *direction = 0x38;
+    } else if (work->position.x > work->targetX) {
+        *direction = -0x38;
+    }
+}
+/* Steers the computer player toward its target and occasionally requests an action. */
 s32 fn_1_F170(M615MovementWork *work, s32 *direction)
 {
     *direction = 0;
     if (fn_80087148(work->player, 1) != 0) {
         return 0;
     }
-    if (fabsf(work->position.x - work->targetX) <= 80.0f) {
-        work->targetX = (1500.0f * frandf()) - 750.0f;
-    }
-    if (work->position.x < work->targetX) {
-        *direction = 0x38;
-    } else if (work->position.x > work->targetX) {
-        *direction = -0x38;
-    }
+    M615SteerTowardTarget(work, direction);
     if ((rand8() % 180) == 0) {
         return 1;
     }
     return 0;
 }
-
+/* Steers toward the target and requests an action if another player crosses the path. */
 s32 fn_1_F2D4(M615MovementWork *work, s32 *direction)
 {
     HuVecF playerPosition;
@@ -2149,15 +1988,7 @@ s32 fn_1_F2D4(M615MovementWork *work, s32 *direction)
         return 0;
     }
 
-    if (fabsf(work->position.x - work->targetX) <= 80.0f) {
-        work->targetX = (1500.0f * frandf()) - 750.0f;
-    }
-
-    if (work->position.x < work->targetX) {
-        *direction = 0x38;
-    } else if (work->position.x > work->targetX) {
-        *direction = -0x38;
-    }
+    M615SteerTowardTarget(work, direction);
 
     if (fn_80087148(work->player, 1) == 0) {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {

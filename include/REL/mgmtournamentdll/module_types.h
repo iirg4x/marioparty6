@@ -19,14 +19,14 @@ typedef struct TournamentPlayerAnimationWork {
     s16 playerNo; /* Player slot, from zero through three. */
     s16 characterNo; /* Character model slot used by the character manager. */
     s16 padNo; /* Controller slot copied from the player configuration. */
-    s16 groupNo; /* Tournament side copied from the player configuration. */
+    s16 unk06; /* The game's code never reads this field. */
     s32 playerType; /* Configured player type; zero permits controller rumble. */
     s16 difficulty; /* CPU difficulty used to weight the round-bonus odds. */
     s16 sceneState; /* Current step in the character tournament scene animation. */
     s16 motionMode; /* Current character motion-table entry. */
     Point3d position; /* Character position in world coordinates. */
     Point3d rotation; /* Character rotation in degrees while turning toward a destination. */
-    f32 modelHeight; /* Height returned by the character manager during setup. */
+    f32 unk2C; /* The game's code never reads this field. */
     Point3d targetPosition; /* Destination position in world coordinates. */
     Point3d velocity; /* Per-update movement delta in world coordinates. */
     Point3d storedPosition; /* Position saved when a scene movement begins. */
@@ -91,5 +91,8 @@ s16 fn_1_2128(void);
 void fn_1_2728(s16 player);
 void fn_1_2948(void);
 s16 fn_1_2BA0(void);
+
+s32 fn_1_E378(Point3d *, Point3d *);
+void fn_1_E4D0(f32 angleX, f32 angleY, f32 angleZ, Vec source, Vec *destination);
 
 #endif

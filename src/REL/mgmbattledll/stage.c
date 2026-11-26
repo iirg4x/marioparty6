@@ -3,13 +3,8 @@
 #include "REL/mgmbattledll/module_types.h"
 #include "datadir_enum.h"
 #include <string.h>
-
-#define MGBATTLE_SE_STAGE_OPEN 1221
-#define MGBATTLE_SE_STAGE_CLOSE 1222
-#define MGBATTLE_SE_STAGE_FINISH 1223
-#define MGBATTLE_SE_STAGE_FINISH_CUE 1224
-#define MGBATTLE_STAGE_LIGHT_MAX_AGE 131071
-#define MGBATTLE_PARTICLE_MAX_AGE 2147483647
+#include "humath.h"
+#include "dolphin/mtx.h"
 
 HU3D_MODELID lbl_1_bss_3E0;
 OMOBJ *lbl_1_bss_3DC;
@@ -57,8 +52,6 @@ void fn_1_6C48(void);
 void fn_1_7870(void);
 void fn_1_7F94(void);
 void fn_1_35EC(void);
-void fn_1_44E0(void);
-void fn_1_45BC(void);
 void fn_1_578C(void);
 void fn_1_8244(void);
 
@@ -95,22 +88,19 @@ void fn_1_317C(void) {
     lbl_1_bss_3DC->stat |= (1 << 8);
 
     for (modelIndex = 0; modelIndex < 7; modelIndex++) {
-        lbl_1_bss_3DC->mdlId[modelIndex] = fn_80025A04(
-            fn_80008DD0(lbl_1_data_208[modelIndex], 0x10000000, 2));
+        lbl_1_bss_3DC->mdlId[modelIndex] =
+            fn_80025A04( fn_80008DD0(lbl_1_data_208[modelIndex], 0x10000000, 2));
         fn_80026B64(lbl_1_bss_3DC->mdlId[modelIndex], 1);
         fn_80026B8C(lbl_1_bss_3DC->mdlId[modelIndex], 0);
-        fn_80026790(lbl_1_bss_3DC->mdlId[modelIndex],
-            &lbl_1_data_224[modelIndex]);
+        fn_80026790(lbl_1_bss_3DC->mdlId[modelIndex], &lbl_1_data_224[modelIndex]);
         fn_800269E8(lbl_1_bss_3DC->mdlId[modelIndex], ((1 << 30) | (1 << 0)));
 
         if (modelIndex == 0) {
-            model = fn_80025A04(
-                fn_80008DD0(DATANUM(0x9c0000, 6), 0x10000000, 2));
+            model = fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 6), 0x10000000, 2));
             fn_80026FFC(model);
         }
         if (modelIndex == 1) {
-            lbl_1_bss_3E0 = fn_80025A04(
-                fn_80008DD0(DATANUM(0x9c0000, 9), 0x10000000, 2));
+            lbl_1_bss_3E0 = fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 9), 0x10000000, 2));
             fn_80026FFC(lbl_1_bss_3E0);
             position.y = position.z = 0.0f;
             if (MgGameNo == 3) {
@@ -166,10 +156,8 @@ void fn_1_35EC(void) {
     u8 modelSlots[3] = { 3, 4, 5 };
 
     for (slot = 0; slot < 3; slot++) {
-        fn_80026A44(
-            lbl_1_bss_3DC->mdlId[modelSlots[slot]], ((1 << 30) | (1 << 0)));
-        fn_800269E8(
-            lbl_1_bss_3DC->mdlId[modelSlots[slot]], ((1 << 30) | (1 << 1)));
+        fn_80026A44( lbl_1_bss_3DC->mdlId[modelSlots[slot]], ((1 << 30) | (1 << 0)));
+        fn_800269E8( lbl_1_bss_3DC->mdlId[modelSlots[slot]], ((1 << 30) | (1 << 1)));
         fn_800269E8(lbl_1_bss_3DC->mdlId[modelSlots[slot]], (1 << 0));
     }
 
@@ -208,7 +196,7 @@ void fn_1_3840(void) {
     fn_8002D414(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 0.0f);
     fn_8002CF98(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 0.0f);
     lbl_1_bss_3DC->work[0] = 1;
-    HuAudFXPlay(MGBATTLE_SE_STAGE_OPEN);
+    HuAudFXPlay(MSM_SE_MGM01_STAGE_INTRO_START);
 }
 
 /* Reports whether the stage opening animation is active. */
@@ -235,7 +223,7 @@ void fn_1_3974(void) {
     fn_8002D414(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 120.0f);
     fn_8002CF98(lbl_1_bss_3DC->mdlId[motionMap[gameIndex]], 120.0f);
     lbl_1_bss_3DC->work[0] = 2;
-    HuAudFXPlay(MGBATTLE_SE_STAGE_CLOSE);
+    HuAudFXPlay(MSM_SE_MGM01_STAGE_REVEAL);
 }
 
 /* Reports when the stage closing animation has reached its final frames. */
@@ -273,7 +261,7 @@ void fn_1_3BB4(void) {
     lbl_1_bss_3DC->work[1] = 1;
     fn_8002D414(lbl_1_bss_3DC->mdlId[6], 241.0f);
     fn_8002CF98(lbl_1_bss_3DC->mdlId[6], 241.0f);
-    HuAudFXPlay(MGBATTLE_SE_STAGE_FINISH);
+    HuAudFXPlay(MSM_SE_MGM01_STAGE_FINISH_START);
 }
 
 /* Per-frame callback that advances the selected stage model and background motions. */
@@ -343,7 +331,7 @@ void fn_1_3C34(OMOBJ *obj) {
             fn_8002CF98(obj->mdlId[6], 461.0f);
         }
         if (380.0f == 1.0f + fn_8002D4E0(obj->mdlId[6])) {
-            HuAudFXPlay(MGBATTLE_SE_STAGE_FINISH_CUE);
+            HuAudFXPlay(MSM_SE_MGM01_STAGE_FINISH_IMPACT);
         }
     }
 }
@@ -366,11 +354,10 @@ void fn_1_40A0(void)
     lbl_1_bss_3D4->work[1] = 0;
     lbl_1_bss_3D4->work[2] = 0;
     memset(lbl_1_bss_3D4->data, 0, 24);
-    position = ((Point3d *)(lbl_1_bss_3D4->data));
+    position = lbl_1_bss_3D4->data;
     PSVECAdd(&lbl_1_data_278, &lbl_80266A4C, position);
     position[1] = position[0];
-    *lbl_1_bss_3D4->mdlId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x9c0000, 52), 0x10000000, 2));
+    *lbl_1_bss_3D4->mdlId = fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 52), 0x10000000, 2));
     fn_80026B64(*lbl_1_bss_3D4->mdlId, 1);
     fn_80026B8C(*lbl_1_bss_3D4->mdlId, 0);
     fn_80026790(*lbl_1_bss_3D4->mdlId, position);
@@ -379,22 +366,18 @@ void fn_1_40A0(void)
     lbl_1_bss_3D4->stat |= (1 << 8);
     Hu3DLLightCreate(*lbl_1_bss_3D4->mdlId, 0.0f, 1500.0f, 1500.0f, 0.0f, -0.1f, -1.0f, 255U,
                      255U, 255U);
-    lbl_1_bss_3D4->mdlId[1] = fn_80025A04(
-        fn_80008DD0(DATANUM(0x9c0000, 56), 0x10000000, 2));
+    lbl_1_bss_3D4->mdlId[1] = fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 56), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_3D4->mdlId[1], 1);
     fn_80026B8C(lbl_1_bss_3D4->mdlId[1], 0);
     fn_8002741C(*lbl_1_bss_3D4->mdlId, "f-itemhook_R", lbl_1_bss_3D4->mdlId[1]);
     fn_800269E8(lbl_1_bss_3D4->mdlId[1], ((1 << 30) | (1 << 0)));
     *lbl_1_bss_3D4->mtnId =
-        fn_80030458(*lbl_1_bss_3D4->mdlId, fn_80008DD0(DATANUM(0x9c0000, 53),
-                                                                    0x10000000, 2));
+        fn_80030458(*lbl_1_bss_3D4->mdlId, fn_80008DD0(DATANUM(0x9c0000, 53), 0x10000000, 2));
     fn_8002C95C(*lbl_1_bss_3D4->mdlId, *lbl_1_bss_3D4->mtnId);
     lbl_1_bss_3D4->mtnId[1] =
-        fn_80030458(*lbl_1_bss_3D4->mdlId, fn_80008DD0(DATANUM(0x9c0000, 54),
-                                                                    0x10000000, 2));
+        fn_80030458(*lbl_1_bss_3D4->mdlId, fn_80008DD0(DATANUM(0x9c0000, 54), 0x10000000, 2));
     lbl_1_bss_3D4->mtnId[2] =
-        fn_80030458(*lbl_1_bss_3D4->mdlId, fn_80008DD0(DATANUM(0x9c0000, 55),
-                                                                    0x10000000, 2));
+        fn_80030458(*lbl_1_bss_3D4->mdlId, fn_80008DD0(DATANUM(0x9c0000, 55), 0x10000000, 2));
     lbl_1_bss_3D8 = 0;
 }
 
@@ -402,7 +385,7 @@ void fn_1_40A0(void)
 void fn_1_44E0(void) {
     Point3d *ornamentPosition;
 
-    ornamentPosition = ((Point3d *)(lbl_1_bss_3D4->data));
+    ornamentPosition = lbl_1_bss_3D4->data;
     PSVECAdd(&lbl_1_data_278, &lbl_80266A4C, ornamentPosition);
     fn_80026790(*lbl_1_bss_3D4->mdlId, ornamentPosition);
 }
@@ -428,9 +411,6 @@ s16 fn_1_45D4(void) {
 }
 
 extern s16 lbl_1_bss_672;
-extern s32 fn_1_1AF5C(Point3d *, Point3d *);
-extern void fn_1_1B0AC(f32, f32, f32, const Vec *, Vec *);
-extern f64 fn_1_1B16C(Point3d *, Point3d *);
 
 /* Updates the foreground ornament's orbit, position, and requested motion each frame. */
 void fn_1_45E4(OMOBJ *work) {
@@ -491,17 +471,15 @@ void fn_1_45E4(OMOBJ *work) {
             break;
         case 5:
             PSVECAdd(&lbl_1_data_284, &lbl_80266A4C, &position[1]);
-            if (lbl_802C028C <= 2800.0f) {
-                goto camera_offset_done;
+            if (!(lbl_802C028C <= 2800.0f)) {
+                if (lbl_802C028C <= 3000.0f) {
+                    position[1].x += 100.0f;
+                } else if (lbl_802C028C <= 3800.0f) {
+                    position[1].x += 150.0f;
+                } else {
+                    position[1].x += 300.0f;
+                }
             }
-            if (lbl_802C028C <= 3000.0f) {
-                position[1].x += 100.0f;
-            } else if (lbl_802C028C <= 3800.0f) {
-                position[1].x += 150.0f;
-            } else {
-                position[1].x += 300.0f;
-            }
-        camera_offset_done:
             position[1].y -= 100.0f;
             break;
         case 6:
@@ -589,7 +567,6 @@ void fn_1_45E4(OMOBJ *work) {
         }
 
         if (adjustPosition != 0) {
-            f32 separationScale;
 
             PSVECSubtract(&position[1], position, &separation);
             if (PSVECMag(&separation) > 5.0f) {
@@ -654,7 +631,7 @@ void fn_1_45E4(OMOBJ *work) {
         work->work[2] -= 360;
     }
     position->y = (f32)((f64)position->y +
-        (2.0 * sin((3.141592653589793 * (f64)(f32)work->work[2]) / 180.0)));
+        (2.0 * sin((M_PI * (f64)(f32)work->work[2]) / 180.0)));
     fn_80026838(*work->mdlId, &rotation);
     fn_80026790(*work->mdlId, position);
 
@@ -662,8 +639,7 @@ void fn_1_45E4(OMOBJ *work) {
         if (work->work[1] == 1) {
             if (fn_8002D3EC(*work->mdlId) < 0 &&
                 work->mtnId[2] != fn_8002D3C4(*work->mdlId)) {
-                fn_8002CCC0(*work->mdlId, work->mtnId[2], 0.0f, 8.0f,
-                    ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(*work->mdlId, work->mtnId[2], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 fn_8002D86C(*work->mdlId, 1.0f);
                 work->work[0] = 0;
             }
@@ -674,12 +650,11 @@ void fn_1_45E4(OMOBJ *work) {
                  fn_8002D4E0(*work->mdlId) == 38.0f ||
                  fn_8002D4E0(*work->mdlId) == 54.0f ||
                  fn_8002D4E0(*work->mdlId) == 70.0f)) {
-                HuAudFXPlay(940);
+                HuAudFXPlay(MSM_SE_GUIDE_NIGHT_CHEER);
             }
         } else if (fn_8002D3EC(*work->mdlId) < 0) {
             fn_800269E8(*work->mdlId, ((1 << 30) | (1 << 1)));
-            fn_8002CCC0(*work->mdlId, work->mtnId[0], 0.0f, 8.0f,
-                ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(*work->mdlId, work->mtnId[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             fn_8002D86C(*work->mdlId, 1.0f);
             work->work[1] = 0;
             work->work[0] = 0;
@@ -687,8 +662,7 @@ void fn_1_45E4(OMOBJ *work) {
     } else if (work->work[0] != 0) {
         if (fn_8002D3EC(*work->mdlId) < 0 &&
             work->mtnId[1] != fn_8002D3C4(*work->mdlId)) {
-            fn_8002CCC0(*work->mdlId, work->mtnId[1], 0.0f, 8.0f,
-                ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(*work->mdlId, work->mtnId[1], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             fn_8002D86C(*work->mdlId, 2.0f);
             return;
         }
@@ -696,8 +670,7 @@ void fn_1_45E4(OMOBJ *work) {
             work->mtnId[1] == fn_8002D3C4(*work->mdlId)) {
             if ((lbl_802C01C8[*work->mdlId].motWork.speed + fn_8002D4E0(*work->mdlId)) >=
                 fn_8002D530(*work->mdlId)) {
-                fn_8002CCC0(*work->mdlId, work->mtnId[0], 0.0f, 8.0f,
-                    ((1 << 30) | (1 << 0)));
+                fn_8002CCC0(*work->mdlId, work->mtnId[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 fn_8002D86C(*work->mdlId, 1.0f);
                 work->work[0] = 0;
             }
@@ -708,8 +681,6 @@ void fn_1_45E4(OMOBJ *work) {
 extern s32 lbl_1_data_8FC[4];
 
 void fn_1_5EAC(OMOBJ *obj);
-f32 fn_1_AD8C(s16 player);
-s16 fn_1_BAEC(s16 player);
 
 Point3d lbl_1_data_2D0[4] = { { -600.0f, -600.0f, 200.0f },
                               { -600.0f, -600.0f, -300.0f },
@@ -728,15 +699,14 @@ void fn_1_5510(void) {
         lbl_1_bss_364[playerIndex]->work[2] = 0;
         lbl_1_bss_364[playerIndex]->work[3] = 0;
         lbl_1_bss_364[playerIndex]->data = NULL;
-        *lbl_1_bss_364[playerIndex]->mdlId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x9c0000, 57), 0x10000000, 2));
+        *lbl_1_bss_364[playerIndex]->mdlId =
+            fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 57), 0x10000000, 2));
         fn_80026B64(*lbl_1_bss_364[playerIndex]->mdlId, 1);
         fn_80026B8C(*lbl_1_bss_364[playerIndex]->mdlId, 0);
         *lbl_1_bss_364[playerIndex]->mtnId = fn_80030458(
             *lbl_1_bss_364[playerIndex]->mdlId,
         fn_80008DD0(DATANUM(0x9c0000, 58), 0x10000000, 2));
-        fn_8002C95C(*lbl_1_bss_364[playerIndex]->mdlId,
-                      *lbl_1_bss_364[playerIndex]->mtnId);
+        fn_8002C95C(*lbl_1_bss_364[playerIndex]->mdlId, *lbl_1_bss_364[playerIndex]->mtnId);
         fn_800269E8(*lbl_1_bss_364[playerIndex]->mdlId, ((1 << 30) | (1 << 0)));
         lbl_1_bss_364[playerIndex]->stat |= (1 << 8);
         fn_800269E8(*lbl_1_bss_364[playerIndex]->mdlId, (1 << 0));
@@ -792,8 +762,7 @@ void fn_1_5808(s16 player, s16 modelId) {
     lbl_1_bss_374[player].z = 70.0f;
     fn_80026790(modelId, &lbl_1_bss_374[player]);
     fn_80026808(modelId, 0.0f, 0.0f, 0.0f);
-    fn_80026790(lbl_1_bss_364[player]->mdlId[0],
-        &lbl_1_data_2D0[playerPosition]);
+    fn_80026790(lbl_1_bss_364[player]->mdlId[0], &lbl_1_data_2D0[playerPosition]);
 
     if (playerCount == 1) {
         lbl_1_bss_3A4[player].x = position.x - 300.0f;
@@ -804,8 +773,7 @@ void fn_1_5808(s16 player, s16 modelId) {
             lbl_1_bss_3A4[player].x = position.x - 300.0f;
         } else {
             lbl_1_bss_3A4[player].x = 300.0f + position.x;
-            fn_80026790(lbl_1_bss_364[player]->mdlId[0],
-                &lbl_1_data_2D0[playerPosition + 1]);
+            fn_80026790(lbl_1_bss_364[player]->mdlId[0], &lbl_1_data_2D0[playerPosition + 1]);
         }
         lbl_1_bss_3A4[player].y = 0.0f;
         lbl_1_bss_3A4[player].z = 100.0f;
@@ -823,8 +791,8 @@ void fn_1_5808(s16 player, s16 modelId) {
 
     lbl_1_bss_364[player]->work[1] = 1;
     if (lbl_1_data_8FC[player] < 0) {
-        lbl_1_data_8FC[player] = HuAudFXEmiterPlay(963,
-            &lbl_1_bss_3A4[player]);
+        lbl_1_data_8FC[player] =
+            HuAudFXEmiterPlay(MSM_SE_GUIDE_CROWD_CHEER_LOOP, &lbl_1_bss_3A4[player]);
     }
 }
 
@@ -893,11 +861,11 @@ void fn_1_5EAC(OMOBJ *obj) {
             fn_1_1AF5C(&direction, &direction);
             PSVECScale(&direction, &direction, 7.0f);
             position.x += direction.x *
-                sin((3.141592653589793 * obj->work[3]) / 180.0);
+                sin((M_PI * obj->work[3]) / 180.0);
             position.y += 4.0 *
-                cos((3.141592653589793 * obj->work[3]) / 180.0);
+                cos((M_PI * obj->work[3]) / 180.0);
             position.z += direction.z *
-                sin((3.141592653589793 * obj->work[3]) / 180.0);
+                sin((M_PI * obj->work[3]) / 180.0);
         } else {
             position.x = lbl_1_bss_3A4[player].x;
             position.z = lbl_1_bss_3A4[player].z;
@@ -914,8 +882,7 @@ void fn_1_5EAC(OMOBJ *obj) {
         fn_800267CC(obj->mdlId[0], &direction);
         PSVECAdd(&direction, &lbl_1_bss_374[player], &direction);
         fn_80026790(modelId, &direction);
-        fn_80026808(modelId, 0.0f,
-                        0.0f, 0.0f);
+        fn_80026808(modelId, 0.0f, 0.0f, 0.0f);
         obj->work[1] = 4;
         if (lbl_1_data_8FC[player] >= 0) {
             HuAudFXFadeOut(lbl_1_data_8FC[player], 500);
@@ -934,18 +901,18 @@ void fn_1_5EAC(OMOBJ *obj) {
     }
 }
 
-#define sind(x) sin((3.141592653589793 * (x)) / 180.0)
-
 /* Interpolates between endpoints with a quarter-sine ease over the requested frames. */
 float fn_1_6380(float startValue, float endValue, float elapsedFrames, float durationFrames)
 {
     if (elapsedFrames <= 0.0f) {
         return startValue;
     }
+    /* sind. */
     if (elapsedFrames >= durationFrames) {
         return endValue;
     }
-    return startValue + ((endValue - startValue) * sind((90.0f / durationFrames) * elapsedFrames));
+    return startValue + ((endValue - startValue) * sin((M_PI * ((90.0f / durationFrames) *
+        elapsedFrames)) / 180.0));
 }
 
 /* Applies a half-sine pulse that returns to the start value at either endpoint. */
@@ -955,7 +922,8 @@ float fn_1_6468(float startValue, float peakValue, float elapsedFrames, float du
         return startValue;
     }
     return startValue +
-           ((peakValue - startValue) * sind((180.0f / durationFrames) * elapsedFrames));
+           ((peakValue - startValue) * sin((M_PI * ((180.0f / durationFrames) * elapsedFrames))
+               / 180.0));
 }
 
 /* Stores normalized height weights for each wave model's mesh vertices. */
@@ -1028,14 +996,8 @@ void fn_1_6718(OMOBJ *object) {
     s16 modelIndex;
     s16 objectIndex;
     s16 vertexIndex;
-    f32 weightDuration;
     f32 rotationAngle;
     f32 weight;
-    f32 weightValue;
-    f32 height;
-    f32 heightDuration;
-    f32 elapsedAtStart;
-    f32 elapsedForHeight;
     Mtx endRotation;
     Mtx startRotation;
     Point3d startPosition;
@@ -1062,13 +1024,13 @@ void fn_1_6718(OMOBJ *object) {
             if (rotationAngle > 360.0f) {
                 rotationAngle = 360.0f;
             }
-            PSMTXRotRad(startRotation, 'y', 0.017453292f * rotationAngle);
+            PSMTXRotRad(startRotation, 'y', MTXDegToRad(rotationAngle));
 
             rotationAngle = (450.0f * weight) - 90.0f;
             if (rotationAngle < 0.0f) {
                 rotationAngle = 0.0f;
             }
-            PSMTXRotRad(endRotation, 'y', 0.017453292f * rotationAngle);
+            PSMTXRotRad(endRotation, 'y', MTXDegToRad(rotationAngle));
 
             weight = fn_1_6468(350.0f, 500.0f, lbl_1_bss_2AC[modelIndex].elapsed,
                 lbl_1_bss_2AC[modelIndex].duration);
@@ -1137,9 +1099,7 @@ void fn_1_6C48(void) {
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         lbl_1_bss_34C[playerIndex] = 64;
-        lbl_1_bss_354[playerIndex] = fn_8003AB38(lbl_1_bss_674, 5376,
-            11, 0, -1,
-            fn_1_73B8);
+        lbl_1_bss_354[playerIndex] = fn_8003AB38(lbl_1_bss_674, 5376, 11, 0, -1, fn_1_73B8);
         lbl_1_bss_354[playerIndex]->work[0] = playerIndex;
         lbl_1_bss_354[playerIndex]->work[1] = 0;
         lbl_1_bss_354[playerIndex]->work[2] = frandmod(9) + 1;
@@ -1151,21 +1111,15 @@ void fn_1_6C48(void) {
 
         for (modelIndex = 0; modelIndex < 10; modelIndex++) {
             lbl_1_bss_354[playerIndex]->mdlId[modelIndex] =
-                fn_80025A04(
-                fn_80008DD0(lbl_1_data_30C[modelIndex], 0x10000000,
-                    2));
-            fn_80026B64(
-                lbl_1_bss_354[playerIndex]->mdlId[modelIndex], 1);
-            fn_80026B8C(
-                lbl_1_bss_354[playerIndex]->mdlId[modelIndex], 0);
-            fn_800269E8(
-                lbl_1_bss_354[playerIndex]->mdlId[modelIndex], ((1 << 30) | (1 << 0)));
-            fn_800269E8(
-                lbl_1_bss_354[playerIndex]->mdlId[modelIndex], (1 << 0));
+                fn_80025A04( fn_80008DD0(lbl_1_data_30C[modelIndex], 0x10000000, 2));
+            fn_80026B64( lbl_1_bss_354[playerIndex]->mdlId[modelIndex], 1);
+            fn_80026B8C( lbl_1_bss_354[playerIndex]->mdlId[modelIndex], 0);
+            fn_800269E8( lbl_1_bss_354[playerIndex]->mdlId[modelIndex], ((1 << 30) | (1 << 0)));
+            fn_800269E8( lbl_1_bss_354[playerIndex]->mdlId[modelIndex], (1 << 0));
         }
 
-        lbl_1_bss_354[playerIndex]->mdlId[10] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x9c0000, 63), 0x10000000, 2));
+        lbl_1_bss_354[playerIndex]->mdlId[10] =
+            fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 63), 0x10000000, 2));
         fn_80026B64(lbl_1_bss_354[playerIndex]->mdlId[10], 1);
         fn_80026B8C(lbl_1_bss_354[playerIndex]->mdlId[10], 0);
         fn_800269E8(lbl_1_bss_354[playerIndex]->mdlId[10], ((1 << 30) | (1 << 0)));
@@ -1210,7 +1164,7 @@ void fn_1_71AC(s16 playerIndex, Point3d *targetPosition) {
     normalizedDistance /= 1000.0f;
     lbl_1_bss_34C[playerIndex] =
         (s16)(32.0f + 64.0f * normalizedDistance);
-    HuAudFXPlayPan(1007, lbl_1_bss_34C[playerIndex]);
+    HuAudFXPlayPan(MSM_SE_BRD00_DICE_APPEAR, lbl_1_bss_34C[playerIndex]);
 }
 
 /* Returns the player's display-model position and the fixed offset used by its caller. */
@@ -1246,15 +1200,14 @@ void fn_1_73B8(OMOBJ *obj) {
     switch (obj->work[1]) {
     case 1:
         fn_80026A44(obj->mdlId[10], (1 << 0));
-        fn_800268B0(obj->mdlId[10], 1.0f,
-                          1.0f, 1.0f);
+        fn_800268B0(obj->mdlId[10], 1.0f, 1.0f, 1.0f);
         obj->work[1] = 2;
         break;
     case 2:
         obj->work[3] = 0;
         if (lbl_1_data_8EC[obj->work[0]] < 0) {
-            lbl_1_data_8EC[obj->work[0]] = HuAudFXPlayPan(
-                1005, lbl_1_bss_34C[obj->work[0]]);
+            lbl_1_data_8EC[obj->work[0]] =
+                HuAudFXPlayPan( MSM_SE_BRD00_DICE_ROLL_LOOP, lbl_1_bss_34C[obj->work[0]]);
         }
         break;
     case 3:
@@ -1262,7 +1215,7 @@ void fn_1_73B8(OMOBJ *obj) {
             HuAudFXStop(lbl_1_data_8EC[obj->work[0]]);
         }
         lbl_1_data_8EC[obj->work[0]] = -1;
-        HuAudFXPlayPan(1008, lbl_1_bss_34C[obj->work[0]]);
+        HuAudFXPlayPan(MSM_SE_BRD00_DICE_HIT_STOP, lbl_1_bss_34C[obj->work[0]]);
         obj->work[3]++;
         scaleX = 1.0f -
             0.12f * (f32)obj->work[3];
@@ -1294,8 +1247,7 @@ void fn_1_73B8(OMOBJ *obj) {
         if (obj->work[3] > 30) {
             obj->work[3] = 0;
             obj->work[1] = 6;
-            fn_800268B0(obj->mdlId[obj->work[2]], 1.0f,
-                              1.0f, 1.0f);
+            fn_800268B0(obj->mdlId[obj->work[2]], 1.0f, 1.0f, 1.0f);
             obj->work[3] = 0;
         }
         break;
@@ -1337,19 +1289,17 @@ void fn_1_7870(void) {
     lbl_1_bss_2A8->work[1] = 0;
     lbl_1_bss_2A8->work[2] = 0;
     lbl_1_bss_2A8->data = NULL;
-    *lbl_1_bss_2A8->mdlId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x9c0000, 59), 0x10000000, 2));
+    *lbl_1_bss_2A8->mdlId = fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 59), 0x10000000, 2));
     fn_80026B64(*lbl_1_bss_2A8->mdlId, 1U);
     fn_80026B8C(*lbl_1_bss_2A8->mdlId, 0);
     *lbl_1_bss_2A8->mtnId =
-        fn_80030458(*lbl_1_bss_2A8->mdlId, fn_80008DD0(DATANUM(0x9c0000, 60),
-                                                                    0x10000000, 2));
+        fn_80030458(*lbl_1_bss_2A8->mdlId, fn_80008DD0(DATANUM(0x9c0000, 60), 0x10000000, 2));
     fn_8002C95C(*lbl_1_bss_2A8->mdlId, *lbl_1_bss_2A8->mtnId);
     fn_800269E8(*lbl_1_bss_2A8->mdlId, ((1 << 30) | (1 << 0)));
     lbl_1_bss_2A8->stat |= (1 << 8);
     fn_800269E8(*lbl_1_bss_2A8->mdlId, (1 << 0));
     lbl_1_bss_2A4 = fn_800334F4(
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 1), 0x10000000, 2)),
+        HuSprAnimDataRead(DATANUM(0x210000, 1)),
         100, &lbl_1_data_354);
     Hu3DParManAttrSet(lbl_1_bss_2A4, 100);
     fn_8003269C(Hu3DParManModelIDGet(lbl_1_bss_2A4), 1U);
@@ -1373,7 +1323,7 @@ void fn_1_7AF0(void) {
     lbl_1_bss_2A8->work[0] = 1;
     lbl_1_bss_2A8->work[1] = 0;
     lbl_1_bss_2A8->work[2] = 0;
-    lbl_1_data_8E0 = HuAudFXPlayVol(1052, 72);
+    lbl_1_data_8E0 = HuAudFXPlayVol(MSM_SE_BRD00_HANACHAN_MOVE_LOOP, 72);
 }
 
 /* Per-frame callback that moves the center-stage effect and pans its looping sound. */
@@ -1392,8 +1342,8 @@ void fn_1_7C38(OMOBJ *motion) {
         break;
     case 1:
         motion->work[1]++;
-        if (motion->work[1] >= MGBATTLE_STAGE_LIGHT_MAX_AGE) {
-            motion->work[1] = MGBATTLE_STAGE_LIGHT_MAX_AGE;
+        if (motion->work[1] >= 0x1FFFF) {
+            motion->work[1] = 0x1FFFF;
         }
         fn_80026A44(motion->mdlId[0], (1 << 0));
         fn_80026874(motion->mdlId[0], &rotation);
@@ -1402,7 +1352,7 @@ void fn_1_7C38(OMOBJ *motion) {
             motion->work[2] -= 360;
         }
         position.y += 1.2f *
-            sin((3.141592653589793 * (f64)motion->work[2]) / 180.0);
+            sin((M_PI * (f64)motion->work[2]) / 180.0);
         if (motion->work[1] <= 80) {
             position.x -= 10.0f;
         } else {
@@ -1447,18 +1397,15 @@ void fn_1_7F94(void) {
     lbl_1_bss_2A0->work[1] = 0;
     lbl_1_bss_2A0->work[2] = 0;
     lbl_1_bss_2A0->data = NULL;
-    *lbl_1_bss_2A0->mdlId = fn_80025A04(
-        fn_80008DD0(DATANUM(0x9c0000, 0), 0x10000000, 2));
+    *lbl_1_bss_2A0->mdlId = fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 0), 0x10000000, 2));
     fn_80026B64(*lbl_1_bss_2A0->mdlId, 1U);
     fn_80026B8C(*lbl_1_bss_2A0->mdlId, 0);
-    lbl_1_bss_2A0->mdlId[1] = fn_80025A04(
-        fn_80008DD0(DATANUM(0x9c0000, 61), 0x10000000, 2));
+    lbl_1_bss_2A0->mdlId[1] = fn_80025A04( fn_80008DD0(DATANUM(0x9c0000, 61), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_2A0->mdlId[1], 1U);
     fn_80026B8C(lbl_1_bss_2A0->mdlId[1], 0);
     fn_800268B0(lbl_1_bss_2A0->mdlId[1], 0.7f, 0.7f, 0.7f);
     lbl_1_bss_2A0->mtnId[1] =
-        fn_80030458(lbl_1_bss_2A0->mdlId[1], fn_80008DD0(DATANUM(0x9c0000, 62),
-                                                                      0x10000000, 2));
+        fn_80030458(lbl_1_bss_2A0->mdlId[1], fn_80008DD0(DATANUM(0x9c0000, 62), 0x10000000, 2));
     fn_8002C95C(lbl_1_bss_2A0->mdlId[1], lbl_1_bss_2A0->mtnId[1]);
     lbl_1_bss_2A0->stat |= (1 << 8);
     fn_800269E8(*lbl_1_bss_2A0->mdlId, ((1 << 30) | (1 << 0)));
@@ -1480,10 +1427,7 @@ void fn_1_8244(void) {
         lbl_1_bss_2A0->work[0] = 0;
         lbl_1_bss_2A0->work[1] = 0;
         lbl_1_bss_2A0->work[2] = 0;
-        fn_800268B0(lbl_1_bss_2A0->mdlId[1],
-                          0.7f,
-                          0.7f,
-                          0.7f);
+        fn_800268B0(lbl_1_bss_2A0->mdlId[1], 0.7f, 0.7f, 0.7f);
         fn_8002C95C(lbl_1_bss_2A0->mdlId[1], lbl_1_bss_2A0->mtnId[1]);
         fn_800269E8(lbl_1_bss_2A0->mdlId[0], ((1 << 30) | (1 << 0)));
         fn_800269E8(lbl_1_bss_2A0->mdlId[1], ((1 << 30) | (1 << 0)));
@@ -1555,15 +1499,13 @@ void fn_1_8558(OMOBJ *motion) {
         if (motion->work[1] >= 360) {
             motion->work[1] -= 360;
         }
-        position.y += sin((3.141592653589793 * motion->work[1]) /
-            180.0);
+        position.y += sin((M_PI * motion->work[1]) / 180.0);
         motion->work[2]++;
         if (motion->work[2] >= 360) {
             motion->work[2] -= 360;
         }
         position.x += 7.0 *
-            sin((3.141592653589793 * motion->work[2]) /
-                180.0);
+            sin((M_PI * motion->work[2]) / 180.0);
         direction = position;
         direction.y += 100.0f;
         fn_1_A0C0(direction);
@@ -1615,10 +1557,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y += scale.x *
-            sin((3.141592653589793 * work->work[1]) / 180.0);
+            sin((M_PI * work->work[1]) / 180.0);
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     case 5:
@@ -1644,10 +1586,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y = (f32)((f64)position.y +
-            ((f64)scale.x * sin((3.141592653589793 * work->work[1]) / 180.0)));
+            ((f64)scale.x * sin((M_PI * work->work[1]) / 180.0)));
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     case 6:
@@ -1673,10 +1615,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y = (f32)((f64)position.y +
-            ((f64)scale.x * sin((3.141592653589793 * work->work[1]) / 180.0)));
+            ((f64)scale.x * sin((M_PI * work->work[1]) / 180.0)));
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     case 7:
@@ -1703,10 +1645,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y += (f64)scale.x *
-            sin((3.141592653589793 * work->work[1]) / 180.0);
+            sin((M_PI * work->work[1]) / 180.0);
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     case 8:
@@ -1733,10 +1675,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y += (f64)scale.x *
-            sin((3.141592653589793 * work->work[1]) / 180.0);
+            sin((M_PI * work->work[1]) / 180.0);
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     case 9:
@@ -1757,10 +1699,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y = (f32)((f64)position.y +
-            ((f64)scale.x * sin((3.141592653589793 * work->work[1]) / 180.0)));
+            ((f64)scale.x * sin((M_PI * work->work[1]) / 180.0)));
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     case 10:
@@ -1786,10 +1728,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y = (f32)((f64)position.y +
-            ((f64)scale.x * sin((3.141592653589793 * work->work[1]) / 180.0)));
+            ((f64)scale.x * sin((M_PI * work->work[1]) / 180.0)));
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     case 11:
@@ -1816,10 +1758,10 @@ void fn_1_88D8(OMOBJ *work) {
             work->work[1] -= 360;
         }
         position.y = (f32)((f64)position.y +
-            ((f64)scale.x * sin((3.141592653589793 * work->work[1]) / 180.0)));
+            ((f64)scale.x * sin((M_PI * work->work[1]) / 180.0)));
         work->work[2]++;
-        if (work->work[2] >= MGBATTLE_PARTICLE_MAX_AGE) {
-            work->work[2] = MGBATTLE_PARTICLE_MAX_AGE;
+        if (work->work[2] >= 0x7FFFFFFF) {
+            work->work[2] = 0x7FFFFFFF;
         }
         break;
     default:
@@ -1844,25 +1786,19 @@ void fn_1_9808(void) {
     s16 modelIndex;
     s16 effectIndex;
 
-    lbl_1_bss_290 = fn_8003AB38(lbl_1_bss_674, 6144, 32, 0, -1,
-        fn_1_A0E4);
+    lbl_1_bss_290 = fn_8003AB38(lbl_1_bss_674, 6144, 32, 0, -1, fn_1_A0E4);
     lbl_1_bss_290->work[0] = 0;
-    lbl_1_bss_290->data = HuMemDirectMallocNum(HEAP_HEAP, 640,
-        0x10000000);
+    lbl_1_bss_290->data = HuMemDirectMallocNum(HEAP_HEAP, 640, 0x10000000);
     memset(lbl_1_bss_290->data, 0, 640);
 
     lbl_1_bss_290->mdlId[0] =
-        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 1), 0x10000000,
-            2));
+        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 1), 0x10000000, 2));
     lbl_1_bss_290->mdlId[1] =
-        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 2), 0x10000000,
-            2));
+        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 2), 0x10000000, 2));
     lbl_1_bss_290->mdlId[2] =
-        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 3), 0x10000000,
-            2));
+        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 3), 0x10000000, 2));
     lbl_1_bss_290->mdlId[3] =
-        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 4), 0x10000000,
-            2));
+        fn_80025A04(fn_80008DD0(DATANUM(0x9c0000, 4), 0x10000000, 2));
 
     fn_80026B64(lbl_1_bss_290->mdlId[0], 1);
     fn_80026B64(lbl_1_bss_290->mdlId[1], 1);
@@ -1883,8 +1819,7 @@ void fn_1_9808(void) {
             fn_80025D4C(lbl_1_bss_290->mdlId[effectIndex]);
         fn_80026B64(lbl_1_bss_290->mdlId[modelIndex + 4], 1);
         fn_80026B8C(lbl_1_bss_290->mdlId[modelIndex + 4], 0);
-        fn_800268B0(lbl_1_bss_290->mdlId[modelIndex + 4],
-            0.0f, 0.0f, 0.0f);
+        fn_800268B0(lbl_1_bss_290->mdlId[modelIndex + 4], 0.0f, 0.0f, 0.0f);
     }
 
     lbl_1_bss_2A0->stat |= (1 << 8);
@@ -1892,8 +1827,7 @@ void fn_1_9808(void) {
 
     for (modelIndex = 0; modelIndex < 20; modelIndex++) {
         effectIndex = modelIndex % 4;
-        lbl_1_bss_240[modelIndex] = fn_80025D4C(
-            lbl_1_bss_290->mdlId[effectIndex]);
+        lbl_1_bss_240[modelIndex] = fn_80025D4C( lbl_1_bss_290->mdlId[effectIndex]);
         fn_80026B64(lbl_1_bss_240[modelIndex], 1);
         fn_80026B8C(lbl_1_bss_240[modelIndex], 0);
         fn_800268B0(lbl_1_bss_240[modelIndex], 0.0f, 0.0f, 0.0f);
@@ -1974,7 +1908,7 @@ void fn_1_A0E4(OMOBJ *object) {
         {
             particle->rotation -= 360.0f;
         }
-        PSMTXRotRad(rotation, 'z', 0.017453292f * particle->rotation);
+        PSMTXRotRad(rotation, 'z', MTXDegToRad(particle->rotation));
         fn_80026958(object->mdlId[index], & rotation);
         particle->state++;
         if (particle->state == 0)
@@ -2027,7 +1961,7 @@ void fn_1_A0E4(OMOBJ *object) {
         {
             lbl_1_bss_1F0[index] -= 360.0f;
         }
-        PSMTXRotRad(rotation, 'z', 0.017453292f * lbl_1_bss_1F0[index]);
+        PSMTXRotRad(rotation, 'z', MTXDegToRad(lbl_1_bss_1F0[index]));
         fn_80026958(lbl_1_bss_240[index], & rotation);
         lbl_1_bss_268[index]++;
         if (lbl_1_bss_268[index] == 0)

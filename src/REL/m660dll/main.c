@@ -40,7 +40,6 @@
 
 
 
-extern int printf();
 void MgTimerDispOff(MGTIMER *timer);
 void fn_1_1C1C(s16 cameraIndex);
 void fn_1_1C50(void);

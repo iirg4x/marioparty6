@@ -101,18 +101,14 @@
 #include "REL/m663dll/actors.h"
 
 #include "REL/m663dll/motion.h"
-
-extern s16 lbl_1_bss_15A8;
+#include "REL/m663dll/main.h"
+#include "REL/m663dll/com_player.h"
 
 void fn_1_69E8(void);
 
 void fn_1_987C(void);
 
-s32 fn_1_2A00(void);
-
 s16 fn_1_6A20(void);
-
-void fn_1_3588(void);
 
 /* Main phase: on the first frame enables both players, makes the score boxes translucent
  * and scales up the score icons; then runs the frame updates and returns nonzero once the
@@ -152,10 +148,6 @@ s32 fn_1_6804(void) {
     return result;
 }
 
-extern void fn_1_754(void);
-
-extern void fn_1_C744(void);
-
 extern void fn_1_6CB8(void);
 
 extern void fn_1_7EFC(void);
@@ -175,10 +167,6 @@ void fn_1_69E8(void) {
     fn_1_91D8();
     fn_1_DC48();
 }
-
-void fn_1_3A68(MGTIMER *timer);
-
-s32 fn_1_3A94(MGTIMER *timer);
 
 /* Ends play when a player's progress reaches 3 (that player wins, with 10 bonus coins unless
  * flag 65551 is set), or declares a draw when the timer started at frame 0x3F48 runs out with
@@ -212,7 +200,7 @@ s16 fn_1_6A20(void) {
         if (lbl_1_bss_424.frame++ == 0x3F48) {
         fn_1_3A68(lbl_1_bss_424.timer);
         }
-        if (lbl_1_bss_424.frame > 0x3F49 &&
+        if (lbl_1_bss_424.frame > 16201 &&
             fn_1_3A94(lbl_1_bss_424.timer) && lbl_1_bss_424.winnerReady == 0) {
             lbl_1_bss_4F0[0].inputMode = 1;
             lbl_1_bss_4F0[1].inputMode = 1;
@@ -256,7 +244,6 @@ void fn_1_6CB8(void) {
     s16 modelIndex;
     s16 playerIndex;
     M663PlayerWork *playerState;
-    M663ModelWork *model;
     M663ModelWork *goalModel;
 
     goalModel = &lbl_1_bss_750[0x17];
@@ -300,8 +287,8 @@ void fn_1_6CB8(void) {
                 } else {
                     playerState->carrying = 0;
                     if (lbl_1_bss_424.rumbleEnabled != 0) {
-                        if ((playerState->skipApproach != 0) && (playerState->rumbleFrames < 0xC) && (lbl_1_bss_4F0[playerIndex ^ 1].scoreStatus == 0)) {
-                            fn_8006A030(playerState->playerNo, 0x14, 7, 3);
+                        if ((playerState->skipApproach != 0) && (playerState->rumbleFrames < 12) && (lbl_1_bss_4F0[playerIndex ^ 1].scoreStatus == 0)) {
+                            fn_8006A030(playerState->playerNo, 20, 7, 3);
                             playerState->rumbleFrames++;
                         } else {
                             if (playerState->rumbleFrames++ > 0x2A) {
@@ -316,7 +303,7 @@ void fn_1_6CB8(void) {
                 playerState->carrying = 1;
                 if (lbl_1_bss_688[playerIndex].motionTime >= 28.9f) {
                     if (playerState->scoreStatus != 0) {
-                        for (modelIndex = 0x17; modelIndex <= 0x19; modelIndex++) {
+                        for (modelIndex = 0x17; modelIndex <= 25; modelIndex++) {
                             fn_80026A44(lbl_1_bss_750[modelIndex].modelId, (1 << 0));
                             fn_8002D86C(lbl_1_bss_750[modelIndex].modelId, 1.0f);
                             fn_8002D414(lbl_1_bss_750[modelIndex].modelId, 0.0f);
@@ -376,7 +363,7 @@ void fn_1_6CB8(void) {
                     playerState->progress++;
                     playerState->effectPending = 1;
                     playerState->score++;
-                    for (modelIndex = 0x17; modelIndex <= 0x19; modelIndex++) {
+                    for (modelIndex = 0x17; modelIndex <= 25; modelIndex++) {
                         if (modelIndex != 0x17) {
                             fn_800269E8(lbl_1_bss_750[modelIndex].modelId, (1 << 0));
                         }
@@ -450,7 +437,7 @@ void fn_1_6CB8(void) {
                 playerState->score++;
                 break;
             case 8:
-                if (playerState->chaseTimer > 0x1E) {
+                if (playerState->chaseTimer > 30) {
                     if (playerIndex == 0) {
                         step = 5.0f;
                     } else {
@@ -615,8 +602,6 @@ void fn_1_7EFC(void)
     }
 }
 
-extern f32 fn_1_46A8(f32 value);
-
 void fn_1_8528(s16 mode)
 {
     Vec distanceDelta;
@@ -673,7 +658,7 @@ void fn_1_8528(s16 mode)
     fn_1_6018(0, 5, NULL);
     character->position.x = -10000.0f;
 }
-
+/* Update the character motion from its travel speed and place a ground effect when the motion calls for one. */
 void fn_1_8B04(M663PlayerWork *character)
 {
     struct {
@@ -721,7 +706,7 @@ void fn_1_8B04(M663PlayerWork *character)
         character->motionCount++;
         if ((character->motionCount & 1U) == 0) {
             character->motionCount = 0;
-            for (index = 0x1C; index <= 0x4D; index++) {
+            for (index = 28; index <= 77; index++) {
                 M663ModelWork *candidate = &lbl_1_bss_750[index];
 
                 if (candidate->animationState == 0) {
@@ -735,13 +720,13 @@ void fn_1_8B04(M663PlayerWork *character)
         }
     }
 }
-
+/* Start queued stage animations and hide their models after playback finishes. */
 void fn_1_900C(void)
 {
     s16 objectIndex;
     M663ModelWork *object;
 
-    for (objectIndex = 0x1C; objectIndex <= 0x4D; objectIndex++) {
+    for (objectIndex = 28; objectIndex <= 77; objectIndex++) {
         object = &lbl_1_bss_750[objectIndex];
         switch (object->animationState) {
         case 0:
@@ -788,7 +773,7 @@ void fn_1_900C(void)
 }
 
 static inline void DebugValue(f32 value) { }
-
+/* Advance the stage effects along their scripted positions and update their opacity each frame. */
 void fn_1_91D8(void)
 {
     s16 index;
@@ -846,7 +831,7 @@ void fn_1_91D8(void)
     }
     };
 
-    for (modelIndex = 0x50, index = 0; modelIndex <= 0x55; modelIndex++, index++) {
+    for (modelIndex = 0x50, index = 0; modelIndex <= 85; modelIndex++, index++) {
         M663ModelWork *model = &lbl_1_bss_750[modelIndex];
         M663TransitionControl *control = &lbl_1_bss_0[index];
 
@@ -854,7 +839,7 @@ void fn_1_91D8(void)
         case 0:
             if (presets[control->playerIndex][control->presetIndex][0] < 0.0f) {
                 control->presetIndex = 0;
-                lbl_1_bss_424.transitionCount = 0;
+                lbl_1_bss_424.unk7A = 0;
             }
             progress = presets[control->playerIndex][control->presetIndex][0];
             DebugValue(progress);
@@ -893,10 +878,11 @@ void fn_1_91D8(void)
         fn_80026CBC(model->modelId, control->progress);
     }
     }
-    lbl_1_bss_424.transitionCount++;
+    lbl_1_bss_424.unk7A++;
 }
 
-extern void printf(const char *format);
+
+extern int printf();
 
 s32 fn_1_94E0(COL_NARROW_PARAM *first, COL_NARROW_PARAM *request)
 {
@@ -917,8 +903,8 @@ s32 fn_1_94E0(COL_NARROW_PARAM *first, COL_NARROW_PARAM *request)
     }
     return 0;
 }
-
-void fn_1_959C(MGACTOR *slot)
+/* After collision correction, records the player's collision mesh as its next motion index. */
+void fn_1_959C(MGACTOR *slot, int mode)
 {
     s32 playerIndex = slot->param;
     lbl_1_bss_4F0[playerIndex].motionIndex = (s16)slot->colMesh;

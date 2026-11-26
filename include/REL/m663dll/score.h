@@ -12,11 +12,11 @@ typedef struct M663ScoreAttribute {
     HuVec2f position;
     s16 width;
     s16 height;
-    f32 depth;
+    f32 unk18; /* The game's code never reads this field. */
     u8 red;
     u8 green;
     u8 blue;
-    u8 alpha;
+    u8 unk1F; /* The game's code never reads this field. */
     f32 transparency;
     s16 animationId;
 } M663ScoreAttribute;

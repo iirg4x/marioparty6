@@ -28,7 +28,7 @@ typedef void (*VoidFunc)(void);
 typedef struct S02PairModelIds {
     s32 modelId; /* Route model the event animates and moves. */
     s32 unk_04; /* Never read. */
-    s32 secondaryModelId; /* Set at board setup; never read. */
+    s32 unk08; /* The game's code never reads this field. */
     s32 effectModelId; /* Effect model hooked to the route model. */
 } S02PairModelIds;
 
@@ -47,21 +47,21 @@ typedef struct S02DataC8 {
 /* Model IDs and event state retained while the S02 board is active. */
 typedef struct S02Work {
     s32 modelId[3]; /* First three scene models. */
-    s32 loopingSceneModelA;
+    s32 unk0C; /* The game's code never reads this field. */
     s32 eventModelId; /* Animation model used by the move-start event. */
-    s32 loopingSceneModelB;
-    s32 modelId18;
+    s32 unk14; /* The game's code never reads this field. */
+    s32 unk18; /* The game's code never reads this field. */
     s32 mapObjId[12]; /* Scenery segments moved by the scroll callback. */
-    s32 modelId4C;
-    s32 unk_50;
-    s32 unk_54;
-    s32 modelId58;
-    s32 modelId5C;
+    s32 unk4C; /* The game's code never reads this field. */
+    s32 unk50; /* No code names this field. */
+    s32 unk54; /* No code names this field. */
+    s32 unk58; /* The game's code never reads this field. */
+    s32 hookModelId;
     s32 effectModelId;
-    s32 modelId64;
+    s32 unk64; /* The game's code never reads this field. */
     S02PairModelIds pair[2]; /* The two paired-space routes. */
     s32 modelId88; /* Model shown for the route-event finish effect. */
-    s32 modelId8C;
+    s32 unk8C; /* The game's code never reads this field. */
 } S02Work;
 
 extern const VoidFunc _ctors[];
@@ -140,7 +140,7 @@ void _epilog(void)
 /* Selects the S02 board and registers its setup and close callbacks. */
 void ObjectSetup(void)
 {
-    lbl_80265B70.partyF = FALSE;
+    GWPartySet(FALSE);
     mbObjectSetup(7, fn_1_F4, S02ObjectClose);
 }
 
@@ -359,7 +359,7 @@ void S02SceneModelsCreate(void)
     }
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 11), NULL, FALSE);
-    s02Work.loopingSceneModelA = modelId;
+    s02Work.unk0C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
@@ -370,13 +370,13 @@ void S02SceneModelsCreate(void)
     mbObjMotionSpeedSet(modelId, 0.0f);
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 13), NULL, FALSE);
-    s02Work.loopingSceneModelB = modelId;
+    s02Work.unk14 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 14), NULL, FALSE);
-    s02Work.modelId5C = modelId;
+    s02Work.hookModelId = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
@@ -385,17 +385,17 @@ void S02SceneModelsCreate(void)
     s02Work.effectModelId = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    mbObjHookSet((s16)s02Work.modelId5C, lbl_1_data_244,
+    mbObjHookSet((s16)s02Work.hookModelId, lbl_1_data_244,
         (s16)s02Work.effectModelId);
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 16), NULL, FALSE);
-    s02Work.modelId64 = modelId;
+    s02Work.unk64 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 17), NULL, FALSE);
-    s02Work.modelId18 = modelId;
+    s02Work.unk18 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
@@ -422,13 +422,13 @@ void S02SceneModelsCreate(void)
         / 6000.0f;
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 19), NULL, FALSE);
-    s02Work.modelId4C = modelId;
+    s02Work.unk4C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 21), NULL, FALSE);
-    s02Work.modelId58 = modelId;
+    s02Work.unk58 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
@@ -442,7 +442,7 @@ void S02SceneModelsCreate(void)
         mbObjRotSetV(modelId, &lbl_1_data_220[i]);
 
         modelId = (s16)mbObjCreate(lbl_1_data_C8.dataNum[i], NULL, FALSE);
-        s02Work.pair[i].secondaryModelId = modelId;
+        s02Work.pair[i].unk08 = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 1.0f);
         mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
@@ -461,7 +461,7 @@ void S02SceneModelsCreate(void)
     mbObjDispSet(modelId, FALSE);
 
     modelId = (s16)mbObjCreate(DATANUM(0xc80000, 6), NULL, FALSE);
-    s02Work.modelId8C = modelId;
+    s02Work.unk8C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));

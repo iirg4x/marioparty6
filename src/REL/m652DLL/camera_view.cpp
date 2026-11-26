@@ -5,7 +5,8 @@ extern "C" {
 #include "REL/framework/debug.h"
 #include <math.h>
 #include "REL/framework/frame_time.h"
-#include "REL/m652DLL/motion_algorithms.h"
+#include "REL/framework/square.h"
+#include "REL/framework/interpolation.h"
 #include "REL/framework/world_units.h"
 #include "REL/framework/list_object.h"
 #include <vector>

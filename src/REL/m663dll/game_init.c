@@ -58,6 +58,7 @@
 #include "REL/m663dll/score.h"
 #include "REL/m663dll/effects.h"
 #include "REL/m663dll.h"
+#include "REL/m663dll/game_init.h"
 
 extern s32 lbl_1_data_160[];
 
@@ -68,7 +69,7 @@ extern void fn_1_A85C(void);
 extern void fn_1_ABF0(void);
 
 extern void fn_1_AEAC(void);
-
+/* Sets up the scene models, player actors, rumble, and scores when the game starts. */
 s32 fn_1_9EC8(void)
 {
     MGACTOR_PARAM actorParam;
@@ -120,7 +121,7 @@ s32 fn_1_9EC8(void)
     actorParam.attr = 0;
     actorParam.narrowHook = (COL_NARROW_HOOK)fn_1_94E0;
     actorParam.correctHookParam = 0;
-    actorParam.correctHook = (MGACTOR_CORRECT_HOOK)fn_1_959C;
+    actorParam.correctHook = fn_1_959C;
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
         actorParam.param = playerIndex;
         lbl_1_bss_418.players[playerIndex] = fn_80080728(lbl_1_bss_4F0[playerIndex].playerNo,
@@ -188,7 +189,7 @@ void fn_1_A4E8(void) {
 
     modelIndex = 3;
     dataIndex = 1;
-    while (modelIndex <= 0xC) {
+    while (modelIndex <= 12) {
         lbl_1_bss_750[modelIndex].modelId = fn_80025A04(fn_80008DD0(lbl_1_data_160[dataIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_750[modelIndex].modelId, (1 << 0));
         fn_80026A44(lbl_1_bss_750[modelIndex].modelId, (1 << 0));
@@ -223,7 +224,7 @@ void fn_1_A4E8(void) {
 }
 
 extern char lbl_1_data_1E4[5][32];
-
+/* Load the stage models and assign the tutorial actors their starting positions and update delays. */
 void fn_1_A85C(void)
 {
     Vec setupVectors[5] = {
@@ -234,9 +235,9 @@ void fn_1_A85C(void)
         {651.0f, 0.0f, -211.0f}
     };
     s16 modelIndex = 0xD;
-    s16 dataIndex = 0xB;
+    s16 dataIndex = 11;
 
-    while (modelIndex <= 0x16) {
+    while (modelIndex <= 22) {
         lbl_1_bss_750[modelIndex].modelId = fn_80025A04(
             fn_80008DD0(lbl_1_data_160[dataIndex],
                                  0x10000000, 2));
@@ -288,8 +289,8 @@ void fn_1_ABF0(void) {
     s16 modelIndex;
 
     modelIndex = 0x17;
-    dataIndex = 0x15;
-    while (modelIndex <= 0x19) {
+    dataIndex = 21;
+    while (modelIndex <= 25) {
         lbl_1_bss_750[modelIndex].modelId = fn_80025A04(fn_80008DD0(lbl_1_data_160[dataIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_750[modelIndex].modelId, (1 << 0));
         if (modelIndex == 0x17) {
@@ -316,9 +317,7 @@ void fn_1_ABF0(void) {
         dataIndex += 1;
     }
 }
-
-extern void fn_1_56E8(HU3D_MODEL *model, Mtx *viewMatrix);
-
+/* Load the effects and background models and place them for the opening sequence. */
 void fn_1_AEAC(void)
 {
     Vec effectPositions[6] = {
@@ -334,21 +333,21 @@ void fn_1_AEAC(void)
     s16 dataIndex;
     s16 effectIndex;
 
-    index = 0x1A;
-    dataIndex = 0x18;
-    while (index <= 0x4E) {
-        if (index >= 0x1C) {
-            dataIndex = 0x19;
+    index = 26;
+    dataIndex = 24;
+    while (index <= 78) {
+        if (index >= 28) {
+            dataIndex = 25;
         }
-        if (index >= 0x4E) {
-            dataIndex = 0x1A;
+        if (index >= 78) {
+            dataIndex = 26;
         }
         lbl_1_bss_750[index].modelId = fn_80025A04(
             fn_80008DD0(lbl_1_data_160[dataIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_750[index].modelId, (1 << 0));
         fn_80026B64(lbl_1_bss_750[index].modelId, 1);
         fn_80026B8C(lbl_1_bss_750[index].modelId, 4);
-        if (index == 0x1A || index == 0x1B || index == 0x4E) {
+        if (index == 26 || index == 27 || index == 78) {
             fn_80026A44(lbl_1_bss_750[index].modelId, ((1 << 30) | (1 << 0)));
             fn_8002D86C(lbl_1_bss_750[index].modelId, 0.0f);
             fn_8002D414(lbl_1_bss_750[index].modelId, 0.0f);
@@ -366,10 +365,10 @@ void fn_1_AEAC(void)
         index++;
     }
 
-    index = 0x50;
-    dataIndex = 0x1B;
+    index = 80;
+    dataIndex = 27;
     effectIndex = 0;
-    while (index <= 0x55) {
+    while (index <= 85) {
 
         lbl_1_bss_750[index].modelId = fn_80025A04(
             fn_80008DD0(lbl_1_data_160[dataIndex], 0x10000000, 2));
@@ -391,7 +390,7 @@ void fn_1_AEAC(void)
         effectIndex++;
     }
 
-    index = 0x4F;
+    index = 79;
     lbl_1_bss_750[index].modelId = fn_800260F4(fn_1_56E8);
     fn_80026760(lbl_1_bss_750[index].modelId,
                     0.0f, 0.0f, 0.0f);
@@ -403,7 +402,7 @@ void fn_1_AEAC(void)
     fn_80026B64(lbl_1_bss_750[index].modelId, 1);
 
 }
-
+/* Advance the opening camera and scenery animation and signal when the sequence is complete. */
 s32 fn_1_B590(void)
 {
     s32 result = 0;
@@ -426,7 +425,7 @@ s32 fn_1_B590(void)
         lbl_802C028C = 700.0f;
         lbl_80266A40.x = -25.0f;
         lbl_80266A40.y = -90.0f - lbl_1_bss_424.orbitAngle;
-        for (modelIndex = 0x50, effectIndex = 0; modelIndex <= 0x55;
+        for (modelIndex = 0x50, effectIndex = 0; modelIndex <= 85;
              modelIndex++, effectIndex++) {
             lbl_1_bss_750[modelIndex].position.y = lbl_1_bss_0[effectIndex].position.y - 200.0f;
             lbl_1_bss_750[modelIndex].position.z = lbl_1_bss_0[effectIndex].position.z - 450.0f;
@@ -475,7 +474,7 @@ s32 fn_1_B590(void)
         motionFrames += fn_1_38D4(&lbl_80266A40.y, step, -20.0f, 0.0f);
         motionFrames += fn_1_38D4(&lbl_80266A40.z, step, 0.0f, 0.0f);
         motionFrames += fn_1_38D4(&lbl_802C028C, step, 700.0f, 2483.3f);
-        for (modelIndex = 0x50, effectIndex = 0; modelIndex <= 0x55;
+        for (modelIndex = 0x50, effectIndex = 0; modelIndex <= 85;
              modelIndex++, effectIndex++) {
             motionFrames += fn_1_38D4(&lbl_1_bss_750[modelIndex].position.y, step,
                                      lbl_1_bss_0[effectIndex].position.y - 200.0f,

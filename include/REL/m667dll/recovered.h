@@ -113,7 +113,7 @@ typedef struct M667Entry {
 
 typedef struct M667Entries {
     u8 unk00[2]; /* No code names this field. */
-    s16 reservedWord; /* Word initialized to zero before the entry array. */
+    s16 unk02; /* The game's code never reads this field. */
     M667Entry entries[12];
 } M667Entries;
 
@@ -148,14 +148,14 @@ typedef struct M667RegistryEntryView {
 typedef struct M667RegistryView {
     u8 unk00[4]; /* No code names this field. */
     M667RegistryEntryView entries[8];
-    s32 count; /* Number allocated from the final pool during registry setup. */
+    s32 unk64; /* The game's code never reads this field. */
     s32 model; /* Model handle whose draw hook processes the registered effects. */
 } M667RegistryView;
 
 /* Sprite-animation lists end at a negative resource ID. */
 typedef struct M667ParticleAnimEntry {
     s32 resourceId; /* Data number to load, or a negative list terminator. */
-    ANIMDATA *anim; /* Loaded sprite-animation reference. */
+    ANIMDATA *unk04; /* The game's code never reads this field. */
 } M667ParticleAnimEntry;
 
 /* Pool nodes link the active and available effect lists. */
@@ -203,7 +203,7 @@ typedef struct M667AIView {
 
 typedef struct M667PlayerView {
     u16 flags;
-    u16 flags2;
+    u16 unk02; /* The game's code never reads this field. */
     s16 controlMode;
     s8 actionMode;
     s8 nextActionMode;
@@ -211,7 +211,7 @@ typedef struct M667PlayerView {
     MGPLAYER *player;
     s16 actionTimer;
     s16 rotationTimer;
-    s16 reservedWord;
+    s16 unk14; /* The game's code never reads this field. */
     s16 index;
     s16 charNo;
     s8 group;
@@ -308,7 +308,7 @@ void fn_1_7350(M667ModelDescription *description, s32 *models, s32 *motions);
 void fn_1_7424(OMOBJ *object, M667ModelDescription *description);
 OMOBJ *fn_1_7868(M667ModelDescription *description);
 void fn_1_7AC8(void *item);
-void *fn_1_7B10(u8 *buffer, s32 bytes, s32 itemBytes);
+void *fn_1_7B10(void *buffer, s32 bytes, s32 itemBytes);
 void *fn_1_7BA8(M667Pool *pool);
 void fn_1_7C1C(M667Pool *pool, void *item);
 void *fn_1_7C8C(M667Pool *pool);

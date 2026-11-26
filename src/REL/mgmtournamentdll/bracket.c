@@ -13,8 +13,8 @@
 #include "datadir_enum.h"
 #include "REL/mgmtournamentdll/module_types.h"
 
-#define MSM_SE_MGTOUR_CHAMPION_REVEAL 1251
-#define MSM_SE_MGTOUR_MARKER_HIGHLIGHT 1253
+
+
 
 typedef struct PlayerSpriteIDs {
     HUSPRID badge; /* Place-badge sprite in member 0; -1 before creation. */
@@ -127,7 +127,7 @@ void fn_1_3394(s16 modelIndex, s16 enabled) {
     if (enabled != 0) {
         /* Play one cue even when several markers are enabled before the next bracket update. */
         if (lbl_1_bss_D8 == 0) {
-            HuAudFXPlay(MSM_SE_MGTOUR_MARKER_HIGHLIGHT);
+            HuAudFXPlay(MSM_SE_MGM03_MARKER_HIGHLIGHT);
         }
         lbl_1_bss_D8 += 1;
         if (lbl_1_bss_D8 > 100) {
@@ -278,7 +278,7 @@ void fn_1_43BC(void) {
                                                    ((1 << 30) | (1 << 7)) |
                                                    ((1 << 30) | (1 << 10)));
     fn_8002D414(lbl_1_bss_DC->mdlId[2], 0.0f);
-    HuAudFXPlay(MSM_SE_MGTOUR_CHAMPION_REVEAL);
+    HuAudFXPlay(MSM_SE_MGM03_CHAMPION_REVEAL);
 }
 
 /* Each object update starts pending side results and holds their completed animations.
@@ -385,7 +385,7 @@ void fn_1_4850(void) {
     index = 0;
     while (index < 4) {
         lbl_1_data_3FC[index] =
-            HuSprAnimRead(fn_80008DD0(lbl_1_data_3AC[index], 0x10000000, 2));
+            HuSprAnimDataRead(lbl_1_data_3AC[index]);
         lbl_1_data_424[index] = HuSprGrpCreate(2);
         lbl_1_data_42C[index].badge = HuSprCreate(lbl_1_data_3FC[index], 8, 0);
         HuSprGrpMemberSet(lbl_1_data_424[index], 0, lbl_1_data_42C[index].badge);
@@ -394,9 +394,9 @@ void fn_1_4850(void) {
         index += 1;
     }
     lbl_1_data_3FC[8] =
-        HuSprAnimRead(fn_80008DD0(lbl_1_data_3BC[0], 0x10000000, 2));
+        HuSprAnimDataRead(lbl_1_data_3BC[0]);
     lbl_1_data_3FC[9] =
-        HuSprAnimRead(fn_80008DD0(lbl_1_data_3BC[1], 0x10000000, 2));
+        HuSprAnimDataRead(lbl_1_data_3BC[1]);
 }
 
 /* Tournament exit releases the four place-badge groups and their member sprites. */
@@ -433,8 +433,8 @@ void fn_1_4A94(s16 playerNo, s16 characterNo, s16 groupNo, Point3d worldPosition
         HuSprGrpMemberSet(lbl_1_data_424[groupNo], 0, lbl_1_data_42C[groupNo].badge);
         HuSprPosSet(lbl_1_data_424[groupNo], 0, 0.0f, 0.0f);
     }
-    lbl_1_data_3FC[groupNo + 4] = HuSprAnimRead(
-        fn_80008DD0(lbl_1_data_3C4[characterNo], 0x10000000, 2));
+    lbl_1_data_3FC[groupNo + 4] = HuSprAnimDataRead(
+        lbl_1_data_3C4[characterNo]);
     lbl_1_data_42C[groupNo].portrait = HuSprCreate(lbl_1_data_3FC[groupNo + 4], 4, 0);
     HuSprGrpMemberSet(lbl_1_data_424[groupNo], 1, lbl_1_data_42C[groupNo].portrait);
     if (MgModeWorkInt[playerNo + 4] == 0) {

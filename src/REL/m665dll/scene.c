@@ -53,13 +53,6 @@
 #include "datadir_enum.h"
 #include "game/hu3d.h"
 
-
-typedef struct LightMapLevels {
-    f32 level[2];
-} LightMapLevels;
-
-#define M665_MEMORY_TAG (1 << 28)
-
 u32 lbl_1_data_68[7][2] = {
     {DATANUM(0x930000, 0), ((1 << 30) | (1 << 0))},
     {DATANUM(0x930000, 55), ((1 << 30) | (1 << 0))},
@@ -120,9 +113,7 @@ s16 fn_1_C64(void) {
             fn_80071C70();
             break;
         case 0:
-            fn_80071C18(
-                lbl_1_bss_10[lbl_1_bss_250.mainPlayer].character,
-                -1, -1, -1);
+            fn_80071C18( lbl_1_bss_10[lbl_1_bss_250.mainPlayer].character, -1, -1, -1);
             break;
         case 1:
             fn_80071C18(
@@ -134,7 +125,6 @@ s16 fn_1_C64(void) {
     }
     return result;
 }
-
 
 extern s16 lbl_802C0278;
 
@@ -156,8 +146,6 @@ void fn_1_E3C(void) {
     fn_1_1028();
     fn_1_1470();
 }
-
-extern HUPROCESS *lbl_1_bss_8;
 
 /* Sequence initialization creates the scene camera and its view-update process. */
 void fn_1_EA8(void) {
@@ -185,16 +173,14 @@ void fn_1_1028(void) {
     HuVecF shadowTarget = {0.0f, 0.0f, -1000.0f};
     HuVecF characterLightPosition;
     HuVecF characterLightDirection;
-    LightMapLevels shadowMapLevels = {{0.8f, 0.3f}};
+    f32 shadowMapLevels[2] = {0.8f, 0.3f};
     GXColor characterLightColor;
     s16 lightId;
     s16 baseModelId;
     s16 modelId;
     s32 modelIndex;
 
-    lightId = fn_800286D0(&lbl_1_data_A0,
-                                &lbl_1_data_AC,
-                                &lbl_1_data_B8[lbl_1_bss_250.nightMode]);
+    lightId = fn_800286D0(&lbl_1_data_A0, &lbl_1_data_AC, &lbl_1_data_B8[lbl_1_bss_250.nightMode]);
     Hu3DGLightStaticSet(lightId, TRUE);
     Hu3DGLightInfinitytSet(lightId);
     if (lbl_1_bss_250.nightMode != 0) {
@@ -207,29 +193,25 @@ void fn_1_1028(void) {
         characterLightDirection.z = -1.0f;
         characterLightColor.r = characterLightColor.g =
             characterLightColor.b = characterLightColor.a = 255;
-        fn_800614AC(&characterLightPosition, &characterLightDirection,
-                         &characterLightColor);
+        fn_800614AC(&characterLightPosition, &characterLightDirection, &characterLightColor);
         fn_80061814();
     }
     Hu3DShadowCreate(30.0f, 20.0f, 20000.0f);
     Hu3DShadowPosSet(&shadowPosition, &shadowUp, &shadowTarget);
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         if (modelIndex == 0) {
-            modelId = fn_80025A04(fn_80008DD0(
-                lbl_1_data_C0[lbl_1_bss_250.nightMode], M665_MEMORY_TAG, 2));
+            modelId =
+                fn_80025A04(fn_80008DD0( lbl_1_data_C0[lbl_1_bss_250.nightMode], (1 << 28), 2));
             baseModelId = modelId;
         } else {
             modelId = fn_80025D4C(baseModelId);
         }
         fn_80026FFC(modelId);
-        fn_800271F0(modelId,
-                                   shadowMapLevels.level[lbl_1_bss_250.nightMode]);
-        fn_80026760(modelId, 0.0f, 0.0f,
-                        -(5000.0f * (f32) modelIndex));
+        fn_800271F0(modelId, shadowMapLevels[lbl_1_bss_250.nightMode]);
+        fn_80026760(modelId, 0.0f, 0.0f, -(5000.0f * (f32) modelIndex));
         lbl_1_bss_250.backgroundModels[modelIndex] = modelId;
     }
-    modelId = fn_80025A04(fn_80008DD0(
-                lbl_1_data_C8[lbl_1_bss_250.nightMode], M665_MEMORY_TAG, 2));
+    modelId = fn_80025A04(fn_80008DD0( lbl_1_data_C8[lbl_1_bss_250.nightMode], (1 << 28), 2));
     fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
     lbl_1_bss_250.modelID = modelId;
     lbl_1_bss_278 = fn_8003AB38(lbl_1_bss_8, 80, 0U, 0U, -1, fn_1_13B4);
@@ -243,23 +225,17 @@ void fn_1_13B4(OMOBJ *obj) {
 
     backgroundIndex = 0;
     while (backgroundIndex < 4) {
-        fn_800267CC(lbl_1_bss_250.backgroundModels[backgroundIndex],
-                        &backgroundPosition);
+        fn_800267CC(lbl_1_bss_250.backgroundModels[backgroundIndex], &backgroundPosition);
         backgroundPosition.z += lbl_1_bss_250.scrollSpeed;
         if (backgroundPosition.z >= 500.0f) {
             backgroundPosition.z -= 20000.0f;
         }
-        fn_80026790(lbl_1_bss_250.backgroundModels[backgroundIndex],
-                         &backgroundPosition);
+        fn_80026790(lbl_1_bss_250.backgroundModels[backgroundIndex], &backgroundPosition);
         backgroundIndex += 1;
     }
 }
 
-extern OMOBJMAN *lbl_1_bss_8;
-
 void fn_1_17E0(OMOBJ *object);
-
-extern s32 lbl_1_data_100[7];
 
 /* Sequence initialization loads player configuration, character models, and seven motion slots. */
 void fn_1_1470(void) {
@@ -295,8 +271,7 @@ void fn_1_1470(void) {
             groupCount += 1;
         }
         modelID = fn_80057068(character, 4);
-        fn_800268B0(modelID, 1.2f, 1.2f,
-                          1.2f);
+        fn_800268B0(modelID, 1.2f, 1.2f, 1.2f);
         lbl_1_bss_10[playerIndex].characterModel = modelID;
         for (motionIndex = 0; motionIndex < 7; motionIndex++) {
             lbl_1_bss_10[playerIndex].characterMotions[motionIndex] =
@@ -310,40 +285,6 @@ void fn_1_1470(void) {
     lbl_1_bss_274 = fn_8003AB38(lbl_1_bss_8, 70, 0U, 0U, -1, fn_1_17E0);
 }
 
-typedef void (*VoidFunc)(void);
-
-extern const VoidFunc _ctors[];
-
-extern const VoidFunc _dtors[];
-
-extern GXColor lbl_1_data_40[2];
-
-extern Point3d lbl_1_data_28;
-
-extern Point3d lbl_1_data_34;
-
-extern s16 lbl_1_bss_4AC[4];
-
-extern s16 lbl_1_bss_4B4;
-
-extern s16 lbl_1_bss_4B6;
-
-extern s32 lbl_1_bss_2A8;
-
-extern s32 lbl_1_data_48[4];
-
-extern s32 lbl_1_data_80[2];
-
-extern s32 lbl_1_data_88[2];
-
-extern s32 lbl_1_data_90[2];
-
-extern s32 lbl_1_data_98[2];
-
-extern MGSEQ_PARAM lbl_1_data_0;
-
-extern u8 lbl_1_bss_20[8];
-
 /* Starts a character motion at frame zero with a nonnegative blend duration. */
 void fn_1_170C(s16 player, s16 motion, f32 blendDuration)
 {
@@ -355,13 +296,11 @@ void fn_1_170C(s16 player, s16 motion, f32 blendDuration)
                        0.0f, blendDuration, lbl_1_data_68[motion][1]);
 }
 
-
 /* Installed by player setup; runs each frame to update player and scene state. */
 void fn_1_17E0(OMOBJ *object) {
     fn_1_4768();
     fn_1_11C04();
 }
-
 
 /* Debug camera controls adjust and print the view while the modifier is held. */
 void fn_1_1804(void) {

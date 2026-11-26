@@ -8,14 +8,14 @@
 extern "C" {
 #endif
 
-void TRKTargetSetInputPendingPtr(void* ptr);
+void TRKTargetSetInputPendingPtr(volatile u8* ptr);
 
 void TRKSwapAndGo();
 void TRKTargetSetStopped(unsigned int);
 DSError TRKTargetInterrupt(TRKEvent*);
 DSError TRKTargetSupportRequest();
 void TRKDestructEvent(TRKEvent*);
-DSError TRKTargetFlushCache(u8, void* start, void* end);
+DSError TRKTargetFlushCache(u8, u8* start, u8* end);
 BOOL TRKTargetStopped(void);
 DSError TRKTargetAddStopInfo(TRKBuffer* b);
 DSError TRKTargetAddExceptionInfo(TRKBuffer* b);
@@ -179,7 +179,7 @@ typedef struct TRKState {
 	u32 dsisr;             // _94
 	BOOL isStopped;        // _98
 	BOOL inputActivated;   // _9C
-	void* inputPendingPtr; // _A0
+	volatile u8* inputPendingPtr; // _A0
 } TRKState;
 extern TRKState gTRKState;
 

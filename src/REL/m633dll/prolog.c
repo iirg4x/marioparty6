@@ -1,9 +1,10 @@
 /* Starts and stops the minigame REL around its constructor and destructor lists. */
+#include "REL/m633dll.h"
+
 typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-extern void ObjectSetup(void);
 
 /* The REL loader calls this on entry; run registered constructors before initializing minigame
  * state. */

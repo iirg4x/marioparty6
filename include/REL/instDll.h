@@ -7,7 +7,35 @@
 #include "game/object.h"
 #include "game/sprite.h"
 
-struct StageModel_s;
+typedef struct InstPreviewPose {
+    u8 stageModelCount;
+    u32 stageModelDataIds[4];
+    f32 orbitStartAngleDegrees;
+    f32 previewModelScale;
+    f32 characterFacingDegrees[5];
+    u8 stagePlayerMasks[4];
+    Vec characterPositions[5];
+} InstPreviewPose;
+typedef struct InstPreviewStage {
+    HU3D_MODELID stageModel;
+    u16 spinFramesRemaining;
+    f32 spinAngleDegrees;
+    u8 unk08[12]; /* No code names this field. */
+    s8 playerIndices[5];
+    Vec playerPositions[5];
+} InstPreviewStage;
+
+extern InstPreviewStage lbl_1_bss_D8[4];
+extern InstPreviewPose lbl_1_data_798[9];
+
+typedef struct StageModel_s {
+    u32 modelDataId; /* Stage model or joint-motion resource. */
+    s16 sourceModelIndex; /* -1 creates a model; otherwise names its base model. */
+    Vec position; /* Stage model position in preview coordinates. */
+    Vec rotation; /* Stage model rotation in degrees. */
+    Vec scale; /* Per-axis stage model scale. */
+    s16 cameraMask; /* Camera visibility bits passed to the model renderer. */
+} STAGE_MODEL;
 
 void ObjectSetup(void);
 void fn_1_1024(void);

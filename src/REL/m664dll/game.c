@@ -7,23 +7,6 @@
 
 #include "REL/m664dll/m664dll.h"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #define M664_SOUND_PAN_MIN 32
 #define M664_SOUND_PAN_MAX 96
 #define M664_SCENE_FRAME_250 250
@@ -56,6 +39,7 @@
 #define M664_SCENE_FRAME_3675 3675
 #define M664_SCENE_FRAME_4400 4400
 #define M664_SCENE_FRAME_4530 4530
+
 u32 lbl_1_data_28[7] = {
     DATANUM(0x930000, 0), DATANUM(0x930000, 21),
     DATANUM(0x8e0000, 184), DATANUM(0x930000, 34),
@@ -278,7 +262,6 @@ void fn_1_A428(void);
 
 void fn_1_640C(void);
 
-
 #include "game/hu3d.h"
 
 extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
@@ -293,89 +276,13 @@ void fn_1_4060(void);
 
 void fn_1_A428(void);
 
-extern const Point3d lbl_1_rodata_90;
-
-extern const Point3d lbl_1_rodata_9C;
-
-extern const Point3d lbl_1_rodata_A8;
-
-extern const Point3d lbl_1_rodata_B4;
-
-
-
-
-
 void fn_1_A8F0(void);
-
 
 s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
-/* Unused lineup helper: bobs the raft and places all four player models in a row. */
-static inline void fn_1_14C4_inlined(void) {
-    s32 playerIndex;
-
-    fn_1_640C();
-    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
-                        -300.0f + 200.0f * (f32)playerIndex,
-                        232.0f + lbl_1_bss_41C[0].position.y,
-                        0.0f);
-    }
-}
-
-extern const Point3d lbl_1_rodata_E8;
-
-extern const Point3d lbl_1_rodata_F4;
-
-extern const Point3d lbl_1_rodata_100;
-
-extern const Point3d lbl_1_rodata_10C;
-
-extern const s32 lbl_1_rodata_128[3];
-
-extern const s32 lbl_1_rodata_134[3];
-
-extern const HuVecF lbl_1_rodata_144;
-
-extern const HuVecF lbl_1_rodata_150;
-
-extern const HuVecF lbl_1_rodata_15C;
-
-extern const HuVecF lbl_1_rodata_168;
-
-extern const HuVecF lbl_1_rodata_174;
-
-extern const HuVecF lbl_1_rodata_180;
-
-extern const HuVecF lbl_1_rodata_18C;
-
-extern const HuVecF lbl_1_rodata_198;
-
-extern const HuVecF lbl_1_rodata_1A4;
-
-extern const HuVecF lbl_1_rodata_1B0;
-
-extern const HuVecF lbl_1_rodata_1BC;
-
-extern const HuVecF lbl_1_rodata_1C8;
-
-extern const HuVecF lbl_1_rodata_1D4;
-
-extern const HuVecF lbl_1_rodata_1E0;
-
-extern const HuVecF lbl_1_rodata_1EC;
-
-extern const HuVecF lbl_1_rodata_1F8;
-
-extern const HuVecF lbl_1_rodata_204;
-
-/* Unused camera helper: sets the saved center, rotation and zoom, then starts a view transition. */
-static inline void moveCameraView(
-    const HuVecF *centerSource,
-    const HuVecF *rotationSource,
-    const f32 *zoomSource,
-    s32 duration
-) {
+/* Apply the destination center and rotation to the camera move. */
+static inline void setCameraViewCenterRotation(const HuVecF *centerSource, const HuVecF *rotationSource)
+{
     HuVecF rotation;
     HuVecF center;
     HuVecF *rotationPointer;
@@ -387,6 +294,16 @@ static inline void moveCameraView(
     rotation = *rotationSource;
     rotationPointer = &rotation;
     lbl_1_bss_8C8.rot = *rotationPointer;
+}
+
+/* Unused camera helper: sets the saved center, rotation and zoom, then starts a view transition. */
+static inline void moveCameraView(
+    const HuVecF *centerSource,
+    const HuVecF *rotationSource,
+    const f32 *zoomSource,
+    s32 duration
+) {
+    setCameraViewCenterRotation(centerSource, rotationSource);
     lbl_1_bss_8C8.zoom = *zoomSource;
     fn_8003E7A0(&lbl_1_bss_8C8, duration, 3);
 }
@@ -398,17 +315,7 @@ static inline void moveCameraViewWithoutZoom(
     const HuVecF *rotationSource,
     s32 duration
 ) {
-    HuVecF rotation;
-    HuVecF center;
-    HuVecF *rotationPointer;
-    HuVecF *centerPointer;
-
-    center = *centerSource;
-    centerPointer = &center;
-    lbl_1_bss_8C8.center = *centerPointer;
-    rotation = *rotationSource;
-    rotationPointer = &rotation;
-    lbl_1_bss_8C8.rot = *rotationPointer;
+    setCameraViewCenterRotation(centerSource, rotationSource);
     fn_8003E7A0(&lbl_1_bss_8C8, duration, 3);
 }
 
@@ -438,7 +345,6 @@ extern void fn_1_AC58(s32 playerIndex);
 
 extern void fn_1_3868(s32 playerIndex);
 
-
 s32 fn_1_420C(s16 *collisionMap);
 
 s32 fn_1_4848(s16 *collisionMap);
@@ -454,8 +360,6 @@ void fn_1_6704(void);
 void fn_1_7E24(void);
 
 void fn_1_8E44(void);
-
-extern const Point3d lbl_1_rodata_278;
 
 void fn_1_476C(void);
 
@@ -473,20 +377,11 @@ void fn_1_9704(void);
 
 void fn_1_5D3C(void);
 
-
 void fn_1_1A70(void);
-
-extern const Point3d lbl_1_rodata_2AC;
-
-extern const Point3d lbl_1_rodata_2B8;
 
 void fn_1_5D90(void);
 
-
-extern Point3d lbl_1_rodata_2EC;
-
 extern s16 fn_1_B910(s16, s16, s16);
-
 
 void fn_1_B8FC(M664InputSettings *inputSettings, s32 stickX, s32 stickY, s32 buttonsDown,
                s32 buttonsHeld);
@@ -634,8 +529,7 @@ void fn_1_560(void) {
                                            lbl_1_bss_C8[playerIndex].motionIds[4],
                                            0.0f,
                                            8.0f, 0);
-                        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId,
-                            ((1 << 30) | (1 << 2)));
+                        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, ((1 << 30) | (1 << 2)));
                         if (playerIndex == 0) {
                             HuAudFXPlay(MSM_SE_MG664_INTRO_OPENING_HIT);
                         }
@@ -716,7 +610,7 @@ void fn_1_A08(void) {
 s32 fn_1_B74(void) {
     s32 result = 0;
     s32 playerIndex;
-    s16 motionId;
+
     s32 coinBonus;
 
     Point3d *scenePositionPointer;
@@ -740,16 +634,24 @@ s32 fn_1_B74(void) {
             lbl_1_bss_8C4 = 2;
             fn_1_A8F0();
             for (playerIndex = 0; playerIndex < 1; playerIndex++) {
-            { Point3d scenePosition = {0.0f, 0.0f, 0.0f}; scenePositionPointer = &scenePosition; lbl_1_bss_41C[playerIndex].position = *scenePositionPointer; }
-            fn_80026790(lbl_1_bss_41C[playerIndex].modelId[0],
-                             &lbl_1_bss_41C[playerIndex].position);
-            fn_80026790(lbl_1_bss_41C[playerIndex].modelId[1],
-                             &lbl_1_bss_41C[playerIndex].position);
-            { Point3d sceneRotation = {0.0f, 0.0f, 0.0f}; sceneRotationPointer = &sceneRotation; lbl_1_bss_41C[playerIndex].rotation = *sceneRotationPointer; }
-            fn_80026838(lbl_1_bss_41C[playerIndex].modelId[0],
-                             &lbl_1_bss_41C[playerIndex].rotation);
-            fn_80026838(lbl_1_bss_41C[playerIndex].modelId[1],
-                             &lbl_1_bss_41C[playerIndex].rotation);
+                {
+                    Point3d scenePosition = {0.0f, 0.0f, 0.0f};
+                    scenePositionPointer = &scenePosition;
+                    lbl_1_bss_41C[playerIndex].position = *scenePositionPointer;
+                }
+                fn_80026790(lbl_1_bss_41C[playerIndex].modelId[0],
+                            &lbl_1_bss_41C[playerIndex].position);
+                fn_80026790(lbl_1_bss_41C[playerIndex].modelId[1],
+                            &lbl_1_bss_41C[playerIndex].position);
+                {
+                    Point3d sceneRotation = {0.0f, 0.0f, 0.0f};
+                    sceneRotationPointer = &sceneRotation;
+                    lbl_1_bss_41C[playerIndex].rotation = *sceneRotationPointer;
+                }
+                fn_80026838(lbl_1_bss_41C[playerIndex].modelId[0],
+                            &lbl_1_bss_41C[playerIndex].rotation);
+                fn_80026838(lbl_1_bss_41C[playerIndex].modelId[1],
+                            &lbl_1_bss_41C[playerIndex].rotation);
             }
             fn_80026760(lbl_1_bss_418, 0.0f, 5.0f, 0.0f);
             fn_80026808(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
@@ -760,16 +662,22 @@ s32 fn_1_B74(void) {
                                 -300.0f + 200.0f * playerIndex,
                                 232.0f + lbl_1_bss_41C[0].position.y,
                                 0.0f);
-                fn_80026808(lbl_1_bss_C8[playerIndex].modelId, 0.0f,
-                                0.0f, 0.0f);
+                fn_80026808(lbl_1_bss_C8[playerIndex].modelId, 0.0f, 0.0f, 0.0f);
                 fn_8005BE80(lbl_1_bss_C8[playerIndex].characterNo,
                               lbl_1_bss_C8[playerIndex].motionIds[0]);
                 fn_80026A44(lbl_1_bss_C8[playerIndex].modelId, (1 << 0));
-                fn_800268B0(lbl_1_bss_C8[playerIndex].modelId, 1.0f,
-                                  1.0f, 1.0f);
+                fn_800268B0(lbl_1_bss_C8[playerIndex].modelId, 1.0f, 1.0f, 1.0f);
             }
-            { Point3d cameraCenter = {0.0f, 100.0f, -100.0f}; cameraCenterPointer = &cameraCenter; lbl_1_bss_8C8.center = *cameraCenterPointer; }
-            { Point3d cameraRotation = {-30.0f, 0.0f, 0.0f}; cameraRotationPointer = &cameraRotation; lbl_1_bss_8C8.rot = *cameraRotationPointer; }
+            {
+                Point3d cameraCenter = {0.0f, 100.0f, -100.0f};
+                cameraCenterPointer = &cameraCenter;
+                lbl_1_bss_8C8.center = *cameraCenterPointer;
+            }
+            {
+                Point3d cameraRotation = {-30.0f, 0.0f, 0.0f};
+                cameraRotationPointer = &cameraRotation;
+                lbl_1_bss_8C8.rot = *cameraRotationPointer;
+            }
             lbl_1_bss_8C8.zoom = 2250.0f;
             fn_8003E5A4(&lbl_1_bss_8C8);
             Hu3DGLightColorSet(lbl_1_bss_94C, 255, 255, 255, 255);
@@ -873,28 +781,42 @@ void fn_1_1584(void) {
                     lbl_1_rodata_6C[lbl_1_bss_8E4].z);
     Hu3DFogSet(500.0f, 30000.0f, 5, 0, 10);
 
-    { Point3d firstPosition = {1000.0f, 1000.0f, 5000.0f}; firstPositionPointer = &firstPosition; lbl_1_bss_940 = *firstPositionPointer; }
-    { Point3d firstDirection = {-1.0f, -1.0f, -1.0f}; firstDirectionPointer = &firstDirection; lbl_1_bss_934 = *firstDirectionPointer; }
+    {
+        Point3d firstPosition = {1000.0f, 1000.0f, 5000.0f};
+        firstPositionPointer = &firstPosition;
+        lbl_1_bss_940 = *firstPositionPointer;
+    }
+    {
+        Point3d firstDirection = {-1.0f, -1.0f, -1.0f};
+        firstDirectionPointer = &firstDirection;
+        lbl_1_bss_934 = *firstDirectionPointer;
+    }
     lbl_1_bss_930.r = lbl_1_rodata_60[lbl_1_bss_8E4][0];
     lbl_1_bss_930.g = lbl_1_rodata_60[lbl_1_bss_8E4][1];
     lbl_1_bss_930.b = lbl_1_rodata_60[lbl_1_bss_8E4][2];
     lbl_1_bss_930.a = 255;
-    lbl_1_bss_94C = fn_800286D0(&lbl_1_bss_940, &lbl_1_bss_934,
-                                      &lbl_1_bss_930);
+    lbl_1_bss_94C = fn_800286D0(&lbl_1_bss_940, &lbl_1_bss_934, &lbl_1_bss_930);
     lbl_1_bss_924[0] = lbl_1_bss_930.r;
     lbl_1_bss_924[1] = lbl_1_bss_930.g;
     lbl_1_bss_924[2] = lbl_1_bss_930.b;
     Hu3DGLightStaticSet(lbl_1_bss_94C, 1);
     Hu3DGLightInfinitytSet(lbl_1_bss_94C);
 
-    { Point3d secondPosition = {0.0f, 700.0f, 0.0f}; secondPositionPointer = &secondPosition; lbl_1_bss_914 = *secondPositionPointer; }
-    { Point3d secondDirection = {0.0f, -1.0f, 0.0f}; secondDirectionPointer = &secondDirection; lbl_1_bss_908 = *secondDirectionPointer; }
+    {
+        Point3d secondPosition = {0.0f, 700.0f, 0.0f};
+        secondPositionPointer = &secondPosition;
+        lbl_1_bss_914 = *secondPositionPointer;
+    }
+    {
+        Point3d secondDirection = {0.0f, -1.0f, 0.0f};
+        secondDirectionPointer = &secondDirection;
+        lbl_1_bss_908 = *secondDirectionPointer;
+    }
     lbl_1_bss_904.r = lbl_1_rodata_66[lbl_1_bss_8E4][0];
     lbl_1_bss_904.g = lbl_1_rodata_66[lbl_1_bss_8E4][1];
     lbl_1_bss_904.b = lbl_1_rodata_66[lbl_1_bss_8E4][2];
     lbl_1_bss_904.a = 255;
-    lbl_1_bss_920 = fn_800286D0(&lbl_1_bss_914, &lbl_1_bss_908,
-                                      &lbl_1_bss_904);
+    lbl_1_bss_920 = fn_800286D0(&lbl_1_bss_914, &lbl_1_bss_908, &lbl_1_bss_904);
     lbl_1_bss_8F8[0] = lbl_1_bss_904.r;
     lbl_1_bss_8F8[1] = lbl_1_bss_904.g;
     lbl_1_bss_8F8[2] = lbl_1_bss_904.b;
@@ -978,9 +900,17 @@ void fn_1_20B0(void) {
     HuVecF *centerPointer;
     HuVecF *rotationPointer;
 
-    { HuVecF center = {0.0f, 100.0f, 0.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; }
+    {
+        HuVecF center = {0.0f, 100.0f, 0.0f};
+        centerPointer = &center;
+        lbl_1_bss_8C8.center = *centerPointer;
+    }
 
-    { HuVecF rotation = {-40.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; }
+    {
+        HuVecF rotation = {-40.0f, 0.0f, 0.0f};
+        rotationPointer = &rotation;
+        lbl_1_bss_8C8.rot = *rotationPointer;
+    }
     lbl_1_bss_8C8.zoom = 2155.0f;
     fn_8003E5A4(&lbl_1_bss_8C8);
 }
@@ -990,77 +920,171 @@ void fn_1_2188(void)
 {
     switch (lbl_1_bss_8C0) {
     case 148: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 550.0f,
-            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-15.0f, 0.0f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } lbl_1_bss_8C8.zoom = 2000.0f; fn_8003E7A0(&lbl_1_bss_8C8, 200, 3); }
+        {
+            HuVecF *centerPointer;
+            HuVecF *rotationPointer;
+            {
+                HuVecF center = {0.0f, 550.0f, 0.0f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            {
+                HuVecF rotation = {-15.0f, 0.0f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            lbl_1_bss_8C8.zoom = 2000.0f;
+            fn_8003E7A0(&lbl_1_bss_8C8, 200, 3);
+        }
         return;
     }
     case 538: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 0.0f,
-            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-40.0f, 0.0f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } lbl_1_bss_8C8.zoom = 2500.0f; fn_8003E7A0(&lbl_1_bss_8C8, 240, 3); }
+        {
+            HuVecF *centerPointer;
+            HuVecF *rotationPointer;
+            {
+                HuVecF center = {0.0f, 0.0f, 0.0f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            {
+                HuVecF rotation = {-40.0f, 0.0f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            lbl_1_bss_8C8.zoom = 2500.0f;
+            fn_8003E7A0(&lbl_1_bss_8C8, 240, 3);
+        }
         return;
     }
     case 950: {
-        { HuVecF *centerPointer; { HuVecF center = {0.0f, 100.0f,
-            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 240, 3); }
+        {
+            HuVecF *centerPointer;
+            {
+                HuVecF center = {0.0f, 100.0f, 0.0f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            fn_8003E7A0(&lbl_1_bss_8C8, 240, 3);
+        }
         return;
     }
     case 1538: {
-        { HuVecF *rotationPointer; { HuVecF rotation = {-52.0f, -70.0f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 400, 3); }
+        {
+            HuVecF *rotationPointer;
+            {
+                HuVecF rotation = {-52.0f, -70.0f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            fn_8003E7A0(&lbl_1_bss_8C8, 400, 3);
+        }
         return;
     }
     case 2338: {
-        { HuVecF *rotationPointer; { HuVecF rotation = {-40.0f, 10.0f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 300, 3); }
+        {
+            HuVecF *rotationPointer;
+            {
+                HuVecF rotation = {-40.0f, 10.0f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            fn_8003E7A0(&lbl_1_bss_8C8, 300, 3);
+        }
         return;
     }
     case 2638: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {-496.5f, 300.0f,
-            112.5f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-45.5f, -2.7f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } lbl_1_bss_8C8.zoom = 2545.5f; fn_8003E7A0(&lbl_1_bss_8C8, 200, 3); }
+        {
+            HuVecF *centerPointer;
+            HuVecF *rotationPointer;
+            {
+                HuVecF center = {-496.5f, 300.0f, 112.5f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            {
+                HuVecF rotation = {-45.5f, -2.7f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            lbl_1_bss_8C8.zoom = 2545.5f;
+            fn_8003E7A0(&lbl_1_bss_8C8, 200, 3);
+        }
         return;
     }
     case 2938: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 300.0f,
-            500.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-30.0f, 0.0f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 200, 3); }
+        {
+            HuVecF *centerPointer;
+            HuVecF *rotationPointer;
+            {
+                HuVecF center = {0.0f, 300.0f, 500.0f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            {
+                HuVecF rotation = {-30.0f, 0.0f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            fn_8003E7A0(&lbl_1_bss_8C8, 200, 3);
+        }
         return;
     }
     case 3100: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 500.0f,
-            -200.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-30.0f, 0.0f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } lbl_1_bss_8C8.zoom = 2200.0f; fn_8003E7A0(&lbl_1_bss_8C8, 300, 3); }
+        {
+            HuVecF *centerPointer;
+            HuVecF *rotationPointer;
+            {
+                HuVecF center = {0.0f, 500.0f, -200.0f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            {
+                HuVecF rotation = {-30.0f, 0.0f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            lbl_1_bss_8C8.zoom = 2200.0f;
+            fn_8003E7A0(&lbl_1_bss_8C8, 300, 3);
+        }
         return;
     }
     case 3638: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {635.0f, 200.0f,
-            17.5f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-414.5f, -20.5f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } lbl_1_bss_8C8.zoom = 2772.0f; fn_8003E7A0(&lbl_1_bss_8C8, 400, 3); }
+        {
+            HuVecF *centerPointer;
+            HuVecF *rotationPointer;
+            {
+                HuVecF center = {635.0f, 200.0f, 17.5f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            {
+                HuVecF rotation = {-414.5f, -20.5f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            lbl_1_bss_8C8.zoom = 2772.0f;
+            fn_8003E7A0(&lbl_1_bss_8C8, 400, 3);
+        }
         return;
     }
     case 4638: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 100.0f,
-            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
-            *centerPointer; } { HuVecF rotation = {-40.0f, 0.0f,
-            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
-            *rotationPointer; } lbl_1_bss_8C8.zoom = 3000.0f; fn_8003E7A0(&lbl_1_bss_8C8, 400, 3); }
+        {
+            HuVecF *centerPointer;
+            HuVecF *rotationPointer;
+            {
+                HuVecF center = {0.0f, 100.0f, 0.0f};
+                centerPointer = &center;
+                lbl_1_bss_8C8.center = *centerPointer;
+            }
+            {
+                HuVecF rotation = {-40.0f, 0.0f, 0.0f};
+                rotationPointer = &rotation;
+                lbl_1_bss_8C8.rot = *rotationPointer;
+            }
+            lbl_1_bss_8C8.zoom = 3000.0f;
+            fn_8003E7A0(&lbl_1_bss_8C8, 400, 3);
+        }
         break;
     }
     }
@@ -1094,8 +1118,8 @@ void fn_1_2848(void) {
         lbl_1_bss_18[playerIndex].sessionState[1] = 0;
         lbl_1_bss_18[playerIndex].sessionState[2] = -1;
         lbl_1_bss_18[playerIndex].sessionState[3] = 0;
-        lbl_1_bss_C8[playerIndex].player = fn_80080728(
-            (s16) playerIndex, &actorParam, 8, 1, 47, NULL);
+        lbl_1_bss_C8[playerIndex].player =
+            fn_80080728( (s16) playerIndex, &actorParam, 8, 1, 47, NULL);
         fn_80087158(lbl_1_bss_C8[playerIndex].player, 1);
         Hu3DModelObjPosGet(lbl_1_bss_85C[playerIndex].modelId,
                            "fook00",
@@ -1110,20 +1134,18 @@ void fn_1_2848(void) {
         fn_8005DDEC(3);
         for (motionIndex = 0; motionIndex < 7; motionIndex++) {
             lbl_1_bss_C8[playerIndex].motionIds[motionIndex] =
-                fn_8005B0B8(lbl_1_bss_C8[playerIndex].characterNo,
-                                 lbl_1_data_28[motionIndex]);
+                fn_8005B0B8(lbl_1_bss_C8[playerIndex].characterNo, lbl_1_data_28[motionIndex]);
         }
         fn_8005B4BC(lbl_1_bss_C8[playerIndex].characterNo);
         lbl_1_bss_C8[playerIndex].currentMotion = 0;
         lbl_1_bss_C8[playerIndex].actionState = 0;
         lbl_1_bss_C8[playerIndex].sequenceCount = 0;
         lbl_1_bss_C8[playerIndex].stunSoundLatched = 0;
-        lbl_1_bss_C8[playerIndex].fallEffectModelId = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 3));
+        lbl_1_bss_C8[playerIndex].fallEffectModelId =
+            fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 3));
         fn_80026B64(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
         fn_800269E8(lbl_1_bss_C8[playerIndex].fallEffectModelId, (1 << 0));
-        fn_800268B0(lbl_1_bss_C8[playerIndex].fallEffectModelId,
-                          1.5f, 1.5f, 1.5f);
+        fn_800268B0(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1.5f, 1.5f, 1.5f);
         fn_80026B8C(lbl_1_bss_C8[playerIndex].fallEffectModelId, 5);
         lbl_1_bss_C8[playerIndex].fallEffectMotionId = fn_80030458(
             lbl_1_bss_C8[playerIndex].fallEffectModelId,
@@ -1383,18 +1405,19 @@ void fn_1_3E74(void) {
     s32 mapCount;
 
     mapCount = 0;
-    lbl_1_bss_86E = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7b0000, 20), 0x10000000, 2));
+    lbl_1_bss_86E = fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 20), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_86E, 1);
-    fn_80026760(lbl_1_bss_86E, 0.0f,
-                    0.0f, 0.0f);
+    fn_80026760(lbl_1_bss_86E, 0.0f, 0.0f, 0.0f);
     lbl_1_bss_850[0] = lbl_1_bss_850[1] = 0.0f;
     fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[0]);
     fn_80030644(lbl_1_bss_86E);
-    fn_800268B0(lbl_1_bss_86E, 10.0f,
-                      10.0f, 10.0f);
+    fn_800268B0(lbl_1_bss_86E, 10.0f, 10.0f, 10.0f);
     Hu3DModelObjPosGet(lbl_1_bss_86E, "fk_ikada", &currentPosition);
-    { Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f}; targetCopyPointer = &targetPositionCopy; targetPosition = *targetCopyPointer; }
+    {
+        Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f};
+        targetCopyPointer = &targetPositionCopy;
+        targetPosition = *targetCopyPointer;
+    }
     PSVECSubtract(&targetPosition, &currentPosition, &lbl_1_bss_40C);
     mapCount += fn_1_420C(&collisionMap[mapCount]);
     mapCount += fn_1_4848(&collisionMap[mapCount]);
@@ -1419,7 +1442,11 @@ void fn_1_4060(void) {
         fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[0]);
     }
     Hu3DModelObjPosGet(lbl_1_bss_86E, "fk_ikada", &currentPosition);
-    { Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f}; targetCopyPointer = &targetPositionCopy; targetPosition = *targetCopyPointer; }
+    {
+        Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f};
+        targetCopyPointer = &targetPositionCopy;
+        targetPosition = *targetCopyPointer;
+    }
     PSVECSubtract(&targetPosition, &currentPosition, &lbl_1_bss_40C);
     if ((lbl_1_bss_8C0 >= 2138) && (lbl_1_bss_8C0 <= 2438)) {
         lbl_1_bss_850[1] = lbl_1_bss_850[1] - 0.0013333333f * lbl_1_bss_850[0];
@@ -1450,22 +1477,20 @@ s32 fn_1_420C(s16 *createdModelIds) {
 
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         if (lbl_1_bss_8E4 == 0) {
-            lbl_1_bss_8A0[modelIndex] = fn_80025A04(
-                fn_80008DD0(modelIndex + 0x7b0000, 0x10000000, 2));
+            lbl_1_bss_8A0[modelIndex] =
+                fn_80025A04( fn_80008DD0(modelIndex + 0x7b0000, 0x10000000, 2));
         } else {
             if (modelIndex == 0) {
                 alternateModelIndex = 0;
             } else {
                 alternateModelIndex = modelIndex + 3;
             }
-            lbl_1_bss_8A0[modelIndex] = fn_80025A04(
-                fn_80008DD0(alternateModelIndex + 0x7b0000,
-                                     0x10000000, 2));
+            lbl_1_bss_8A0[modelIndex] =
+                fn_80025A04( fn_80008DD0(alternateModelIndex + 0x7b0000, 0x10000000, 2));
         }
         fn_80026B64(lbl_1_bss_8A0[modelIndex], 1);
         fn_80026790(lbl_1_bss_8A0[modelIndex], &lbl_1_bss_40C);
-        fn_800268B0(lbl_1_bss_8A0[modelIndex], 10.0f,
-                          10.0f, 10.0f);
+        fn_800268B0(lbl_1_bss_8A0[modelIndex], 10.0f, 10.0f, 10.0f);
         if (modelIndex == 0) {
             fn_80026B8C(lbl_1_bss_8A0[modelIndex], 4);
         }
@@ -1473,12 +1498,11 @@ s32 fn_1_420C(s16 *createdModelIds) {
             fn_800269E8(lbl_1_bss_8A0[modelIndex], (1 << 0));
         }
 
-        lbl_1_bss_894[modelIndex] = fn_80025A04(
-            fn_80008DD0(modelIndex + 0x7b0000 + 7, 0x10000000, 2));
+        lbl_1_bss_894[modelIndex] =
+            fn_80025A04( fn_80008DD0(modelIndex + 0x7b0000 + 7, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_894[modelIndex], 1);
         fn_80026790(lbl_1_bss_894[modelIndex], &lbl_1_bss_40C);
-        fn_800268B0(lbl_1_bss_894[modelIndex], 10.0f,
-                          10.0f, 10.0f);
+        fn_800268B0(lbl_1_bss_894[modelIndex], 10.0f, 10.0f, 10.0f);
         if (modelIndex > 0) {
             fn_800269E8(lbl_1_bss_894[modelIndex], (1 << 0));
         }
@@ -1492,17 +1516,15 @@ s32 fn_1_420C(s16 *createdModelIds) {
     } else {
         modelNumber = 12;
     }
-    lbl_1_bss_89E = fn_80025A04(
-        fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
+    lbl_1_bss_89E = fn_80025A04( fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
     fn_80026B64(lbl_1_bss_89E, 1);
     fn_80026790(lbl_1_bss_89E, &lbl_1_bss_40C);
-    fn_800268B0(lbl_1_bss_89E, 10.0f,
-                      10.0f, 10.0f);
+    fn_800268B0(lbl_1_bss_89E, 10.0f, 10.0f, 10.0f);
     fn_800269E8(lbl_1_bss_89E, (1 << 0));
 
     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-        lbl_1_bss_870[modelIndex] = fn_80025A04(
-            fn_80008DD0(modelIndex + 0x7b0000 + 18, 0x10000000, 2));
+        lbl_1_bss_870[modelIndex] =
+            fn_80025A04( fn_80008DD0(modelIndex + 0x7b0000 + 18, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_870[modelIndex], 1);
         fn_80026790(lbl_1_bss_870[modelIndex], &lbl_1_bss_40C);
         fn_800269E8(lbl_1_bss_870[modelIndex], ((1 << 30) | (1 << 0)));
@@ -1513,8 +1535,7 @@ s32 fn_1_420C(s16 *createdModelIds) {
         }
         fn_8002D86C(lbl_1_bss_870[modelIndex], motionSpeed);
         fn_80030644(lbl_1_bss_870[modelIndex]);
-        fn_800268B0(lbl_1_bss_870[modelIndex], 10.0f,
-                          10.0f, 10.0f);
+        fn_800268B0(lbl_1_bss_870[modelIndex], 10.0f, 10.0f, 10.0f);
         if (modelIndex == 0) {
             layer = 3;
         } else {
@@ -1523,12 +1544,10 @@ s32 fn_1_420C(s16 *createdModelIds) {
         fn_80026B8C(lbl_1_bss_870[modelIndex], layer);
     }
 
-    lbl_1_bss_86C = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7b0000, 21), 0x10000000, 3));
+    lbl_1_bss_86C = fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 21), 0x10000000, 3));
     fn_80026B64(lbl_1_bss_86C, 1);
     fn_80026790(lbl_1_bss_86C, &lbl_1_bss_40C);
-    fn_800268B0(lbl_1_bss_86C, 10.0f,
-                      10.0f, 10.0f);
+    fn_800268B0(lbl_1_bss_86C, 10.0f, 10.0f, 10.0f);
     fn_800269E8(lbl_1_bss_86C, ((1 << 30) | (1 << 0)));
     fn_8002D86C(lbl_1_bss_86C, 0.33f);
     fn_80026B8C(lbl_1_bss_86C, 4);
@@ -1571,8 +1590,8 @@ s32 fn_1_4848(s16 *objectModelOutput) {
 
     modelCount = 0;
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-        lbl_1_bss_85C[modelIndex].modelId = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7b0000, 22), 0x10000000, 2));
+        lbl_1_bss_85C[modelIndex].modelId =
+            fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 22), 0x10000000, 2));
         fn_80026B64(lbl_1_bss_85C[modelIndex].modelId, 1);
 
         position = lbl_1_bss_40C;
@@ -1597,13 +1616,12 @@ s32 fn_1_4848(s16 *objectModelOutput) {
         }
         rotation.y = rotationY;
         fn_80026838(lbl_1_bss_85C[modelIndex].modelId, &rotation);
-        fn_800268B0(lbl_1_bss_85C[modelIndex].modelId, 10.0f,
-                          10.0f, 10.0f);
+        fn_800268B0(lbl_1_bss_85C[modelIndex].modelId, 10.0f, 10.0f, 10.0f);
         fn_8002D86C(lbl_1_bss_85C[modelIndex].modelId, 0.0f);
         fn_80030644(lbl_1_bss_85C[modelIndex].modelId);
 
-        lbl_1_bss_85C[modelIndex].objectModelId = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7b0000, 23), 0x10000000, 2));
+        lbl_1_bss_85C[modelIndex].objectModelId =
+            fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 23), 0x10000000, 2));
         Hu3DModelObjPosGet(lbl_1_bss_85C[modelIndex].modelId, "fook00", &position);
         fn_80026790(lbl_1_bss_85C[modelIndex].objectModelId, &position);
         *objectModelOutput = lbl_1_bss_85C[modelIndex].objectModelId;
@@ -1617,21 +1635,17 @@ s32 fn_1_4848(s16 *objectModelOutput) {
     position = lbl_1_bss_40C;
     PSVECAdd(&position, &lbl_1_data_80, &position);
     fn_80026790(lbl_1_bss_85A, &position);
-    fn_800268B0(lbl_1_bss_85A, 10.0f,
-                      10.0f, 10.0f);
+    fn_800268B0(lbl_1_bss_85A, 10.0f, 10.0f, 10.0f);
 
     if (lbl_1_bss_8E4 == 0) {
         modelNumber = 25;
     } else {
         modelNumber = 26;
     }
-    lbl_1_bss_858 = fn_80025A04(fn_80008DD0(modelNumber + 0x7b0000,
-                                                         0x10000000, 2));
+    lbl_1_bss_858 = fn_80025A04(fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
     fn_80026B64(lbl_1_bss_858, 1);
-    fn_80026760(lbl_1_bss_858, 0.0f, 0.0f,
-                    0.0f);
-    fn_800268B0(lbl_1_bss_858, 10.0f,
-                      10.0f, 10.0f);
+    fn_80026760(lbl_1_bss_858, 0.0f, 0.0f, 0.0f);
+    fn_800268B0(lbl_1_bss_858, 10.0f, 10.0f, 10.0f);
     fn_800269E8(lbl_1_bss_858, (1 << 0));
     fn_80026FFC(lbl_1_bss_858);
         fn_800269E8(lbl_1_bss_858, ((1 << 30) | (1 << 0)));
@@ -1663,97 +1677,30 @@ void fn_1_4DD8(void) {
     Point3d position;
     Point3d rotation;
     s32 modelIndex;
-    char *objectName14;
-    char *objectName13;
-    char *objectName12;
-    char *objectName11;
-    char *objectName10;
-    char *objectName9;
-    char *objectName8;
-    char *objectName7;
-    char *objectName6;
-    char *objectName5;
-    char *objectName4;
-    char *objectName3;
-    char *objectName2;
 
     for (modelIndex = 0; modelIndex < 16; modelIndex++) {
         if (modelIndex < 2) {
-            lbl_1_bss_874[modelIndex] = fn_80025A04(
-                fn_80008DD0(modelIndex + 0x7b0000 + 13, 0x10000000, 2));
+            lbl_1_bss_874[modelIndex] =
+                fn_80025A04( fn_80008DD0(modelIndex + 0x7b0000 + 13, 0x10000000, 2));
             fn_80026790(lbl_1_bss_874[modelIndex], &lbl_1_bss_40C);
         } else {
-            lbl_1_bss_874[modelIndex] = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7b0000, 15), 0x10000000, 2));
-            if (modelIndex == 2) {
-                objectName14 = "drfook00";
-            } else if (modelIndex == 3) {
-                objectName13 = "drfook01";
-                goto objectName14From13;
-            } else if (modelIndex == 4) {
-                objectName12 = "drfook02";
-                goto objectName13From12;
-            } else if (modelIndex == 5) {
-                objectName11 = "drfook03";
-                goto objectName12From11;
-            } else if (modelIndex == 6) {
-                objectName10 = "drfook04";
-                goto objectName11From10;
-            } else if (modelIndex == 7) {
-                objectName9 = "drfook05";
-                goto objectName10From9;
-            } else if (modelIndex == 8) {
-                objectName8 = "drfook06";
-                goto objectName9From8;
-            } else if (modelIndex == 9) {
-                objectName7 = "drfook07";
-                goto objectName8From7;
-            } else if (modelIndex == 10) {
-                objectName6 = "drfook08";
-                goto objectName7From6;
-            } else if (modelIndex == 11) {
-                objectName5 = "drfook09";
-                goto objectName6From5;
-            } else if (modelIndex == 12) {
-                objectName4 = "drfook10";
-                goto objectName5From4;
-            } else if (modelIndex == 13) {
-                objectName3 = "drfook11";
-                goto objectName4From3;
-            } else if (modelIndex == 14) {
-                objectName2 = "drfook12";
-                goto objectName3From2;
-            } else {
-                objectName2 = "drfook13";
-                goto objectName3From2;
-            }
-            goto objectNameReady;
-objectName3From2:
-            objectName3 = objectName2;
-objectName4From3:
-            objectName4 = objectName3;
-objectName5From4:
-            objectName5 = objectName4;
-objectName6From5:
-            objectName6 = objectName5;
-objectName7From6:
-            objectName7 = objectName6;
-objectName8From7:
-            objectName8 = objectName7;
-objectName9From8:
-            objectName9 = objectName8;
-objectName10From9:
-            objectName10 = objectName9;
-objectName11From10:
-            objectName11 = objectName10;
-objectName12From11:
-            objectName12 = objectName11;
-objectName13From12:
-            objectName13 = objectName12;
-objectName14From13:
-            objectName14 = objectName13;
-objectNameReady:
-            fn_80023398(lbl_1_bss_874[1], objectName14, objectMatrix);
+            lbl_1_bss_874[modelIndex] =
+                fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 15), 0x10000000, 2));
+            fn_80023398(lbl_1_bss_874[1],
+                modelIndex == 2 ? "drfook00" :
+                modelIndex == 3 ? "drfook01" :
+                modelIndex == 4 ? "drfook02" :
+                modelIndex == 5 ? "drfook03" :
+                modelIndex == 6 ? "drfook04" :
+                modelIndex == 7 ? "drfook05" :
+                modelIndex == 8 ? "drfook06" :
+                modelIndex == 9 ? "drfook07" :
+                modelIndex == 10 ? "drfook08" :
+                modelIndex == 11 ? "drfook09" :
+                modelIndex == 12 ? "drfook10" :
+                modelIndex == 13 ? "drfook11" :
+                modelIndex == 14 ? "drfook12" :
+                "drfook13", objectMatrix);
             Hu3DMtxTransGet(objectMatrix, &position);
             Hu3DMtxRotGet(objectMatrix, &rotation);
             rotation.y += 180.0f;
@@ -1763,8 +1710,7 @@ objectNameReady:
         fn_80026B64(lbl_1_bss_874[modelIndex], 1);
         fn_8002D86C(lbl_1_bss_874[modelIndex], 0.0f);
         fn_80030644(lbl_1_bss_874[modelIndex]);
-        fn_800268B0(lbl_1_bss_874[modelIndex], 10.0f,
-                          10.0f, 10.0f);
+        fn_800268B0(lbl_1_bss_874[modelIndex], 10.0f, 10.0f, 10.0f);
         fn_80026B8C(lbl_1_bss_874[modelIndex], 4);
     }
 }
@@ -1810,38 +1756,32 @@ void fn_1_5108(void) {
         break;
     case 630:
         index = frandmod(2);
-        fn_8002D86C(index != 0 ? lbl_1_bss_874[3] : lbl_1_bss_874[10],
-                           0.6f);
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[3] : lbl_1_bss_874[10], 0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 3 : 10], 1);
         break;
     case 670:
         index = frandmod(2);
-        fn_8002D86C(index != 0 ? lbl_1_bss_874[4] : lbl_1_bss_874[11],
-                           0.6f);
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[4] : lbl_1_bss_874[11], 0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 4 : 11], 1);
         break;
     case 720:
         index = frandmod(2);
-        fn_8002D86C(index != 0 ? lbl_1_bss_874[5] : lbl_1_bss_874[12],
-                           0.6f);
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[5] : lbl_1_bss_874[12], 0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 5 : 12], 1);
         break;
     case 765:
         index = frandmod(2);
-        fn_8002D86C(index != 0 ? lbl_1_bss_874[6] : lbl_1_bss_874[13],
-                           0.6f);
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[6] : lbl_1_bss_874[13], 0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 6 : 13], 1);
         break;
     case 830:
         index = frandmod(2);
-        fn_8002D86C(index != 0 ? lbl_1_bss_874[7] : lbl_1_bss_874[14],
-                           0.6f);
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[7] : lbl_1_bss_874[14], 0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 7 : 14], 1);
         break;
     case 890:
         index = frandmod(2);
-        fn_8002D86C(index != 0 ? lbl_1_bss_874[8] : lbl_1_bss_874[15],
-                           0.6f);
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[8] : lbl_1_bss_874[15], 0.6f);
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 8 : 15], 1);
         break;
     }
@@ -1860,8 +1800,7 @@ void fn_1_5770(void) {
     } else {
         modelAssetOffset = 17;
     }
-    lbl_1_bss_89C = fn_80025A04(
-        fn_80008DD0(modelAssetOffset + 0x7b0000, 0x10000000, 2));
+    lbl_1_bss_89C = fn_80025A04( fn_80008DD0(modelAssetOffset + 0x7b0000, 0x10000000, 2));
     fn_80026B64(lbl_1_bss_89C, 1U);
     fn_80026790(lbl_1_bss_89C, &lbl_1_bss_40C);
     fn_800268B0(lbl_1_bss_89C, 10.0f, 10.0f, 10.0f);
@@ -1895,23 +1834,27 @@ s32 fn_1_58E8(s16 *createdModelIds) {
     s32 verticalDirection;
 
     for (modelIndex = 0; modelIndex < 1; modelIndex++) {
-        lbl_1_bss_41C[modelIndex].modelId[0] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7b0000, 52), 0x10000000, 3));
+        lbl_1_bss_41C[modelIndex].modelId[0] =
+            fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 52), 0x10000000, 3));
         fn_80026B64(lbl_1_bss_41C[modelIndex].modelId[0], 1);
-        { Point3d startPosition = {0.0f, 0.0f, 0.0f}; startPositionPointer = &startPosition; lbl_1_bss_41C[modelIndex].position = *startPositionPointer; }
-        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0],
-                         &lbl_1_bss_41C[modelIndex].position);
-        { Point3d startRotation = {0.0f, 0.0f, 0.0f}; startRotationPointer = &startRotation; lbl_1_bss_41C[modelIndex].rotation = *startRotationPointer; }
-        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[0],
-                         &lbl_1_bss_41C[modelIndex].rotation);
+        {
+            Point3d startPosition = {0.0f, 0.0f, 0.0f};
+            startPositionPointer = &startPosition;
+            lbl_1_bss_41C[modelIndex].position = *startPositionPointer;
+        }
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0], &lbl_1_bss_41C[modelIndex].position);
+        {
+            Point3d startRotation = {0.0f, 0.0f, 0.0f};
+            startRotationPointer = &startRotation;
+            lbl_1_bss_41C[modelIndex].rotation = *startRotationPointer;
+        }
+        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[0], &lbl_1_bss_41C[modelIndex].rotation);
     fn_80026FFC(lbl_1_bss_41C[modelIndex].modelId[0]);
-        lbl_1_bss_41C[modelIndex].modelId[1] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7b0000, 53), 0x10000000, 3));
+        lbl_1_bss_41C[modelIndex].modelId[1] =
+            fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 53), 0x10000000, 3));
         fn_80026B64(lbl_1_bss_41C[modelIndex].modelId[1], 1);
-        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[1],
-                         &lbl_1_bss_41C[modelIndex].position);
-        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1],
-                         &lbl_1_bss_41C[modelIndex].rotation);
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].position);
+        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].rotation);
         fn_800269E8(lbl_1_bss_41C[modelIndex].modelId[1], (1 << 0));
         *createdModelIds = lbl_1_bss_41C[modelIndex].modelId[1];
         createdModelIds++;
@@ -1921,8 +1864,7 @@ s32 fn_1_58E8(s16 *createdModelIds) {
         lbl_1_bss_41C[modelIndex].yawIncreasing = 0;
         lbl_1_bss_41C[modelIndex].yawPhase = 90.0f;
     }
-    lbl_1_bss_418 = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7b0000, 54), 0x10000000, 3));
+    lbl_1_bss_418 = fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 54), 0x10000000, 3));
     fn_80026B64(lbl_1_bss_418, 1);
     fn_80026760(lbl_1_bss_418, 0.0f, 5.0f, 0.0f);
     fn_80026808(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
@@ -2032,8 +1974,7 @@ void fn_1_5D90(void)
         fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].rotation);
     }
 
-    fn_80026808(lbl_1_bss_418, 0.0f, lbl_1_bss_41C[0].rotation.y,
-                    0.0f);
+    fn_80026808(lbl_1_bss_418, 0.0f, lbl_1_bss_41C[0].rotation.y, 0.0f);
 }
 
 /* Moves the raft models through their repeating vertical bob during gameplay and the results
@@ -2064,18 +2005,14 @@ void fn_1_640C(void) {
         if (lbl_1_bss_3F8 > 0) {
             lbl_1_bss_41C[modelIndex].position.y +=
                 0.8f *
-                sin((M_PI * lbl_1_bss_41C[modelIndex].heightPhase) /
-                    180.0);
+                sin((M_PI * lbl_1_bss_41C[modelIndex].heightPhase) / 180.0);
         } else {
             lbl_1_bss_41C[modelIndex].position.y +=
                 0.4f *
-                sin((M_PI * lbl_1_bss_41C[modelIndex].heightPhase) /
-                    180.0);
+                sin((M_PI * lbl_1_bss_41C[modelIndex].heightPhase) / 180.0);
         }
-        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0],
-                         &lbl_1_bss_41C[modelIndex].position);
-        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[1],
-                         &lbl_1_bss_41C[modelIndex].position);
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0], &lbl_1_bss_41C[modelIndex].position);
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].position);
     }
 }
 
@@ -2086,7 +2023,7 @@ void fn_1_6704(void)
     HuVecF position;
     s32 modelIndex;
     s32 motionIndex;
-    HU3D_MODELID modelId;
+
     s32 modelAssetNumber;
     s32 layerAssetNumber;
     s32 motionAssetNumber;
@@ -2100,12 +2037,11 @@ void fn_1_6704(void)
         } else {
             modelAssetNumber = 30 + modelIndex;
         }
-        lbl_1_bss_69E[modelIndex] = fn_80025A04(
-            fn_80008DD0(modelAssetNumber + 0x7b0000, 0x10000000, 3));
+        lbl_1_bss_69E[modelIndex] =
+            fn_80025A04( fn_80008DD0(modelAssetNumber + 0x7b0000, 0x10000000, 3));
         fn_80026B64(lbl_1_bss_69E[modelIndex], 1);
         fn_80026790(lbl_1_bss_69E[modelIndex], &lbl_1_bss_40C);
-        fn_800268B0(lbl_1_bss_69E[modelIndex], 10.0f,
-                          10.0f, 10.0f);
+        fn_800268B0(lbl_1_bss_69E[modelIndex], 10.0f, 10.0f, 10.0f);
         fn_800269E8(lbl_1_bss_69E[modelIndex], (1 << 0));
         if (modelIndex == 1) {
             fn_8002D86C(lbl_1_bss_69E[1], 0.0f);
@@ -2113,14 +2049,13 @@ void fn_1_6704(void)
         }
 
         for (motionIndex = 0; motionIndex < 7; motionIndex++) {
-            lbl_1_bss_674[modelIndex][motionIndex] = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7b0000, 33) + modelIndex, 0x10000000, 3));
+            lbl_1_bss_674[modelIndex][motionIndex] =
+                fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 33) + modelIndex, 0x10000000, 3));
             fn_80026B64(lbl_1_bss_674[modelIndex][motionIndex], 1);
             fn_80026790(lbl_1_bss_674[modelIndex][motionIndex], &lbl_1_bss_40C);
             fn_8002D86C(lbl_1_bss_674[modelIndex][motionIndex], 0.0f);
             fn_80030644(lbl_1_bss_674[modelIndex][motionIndex]);
-            fn_800268B0(lbl_1_bss_674[modelIndex][motionIndex], 10.0f,
-                              10.0f, 10.0f);
+            fn_800268B0(lbl_1_bss_674[modelIndex][motionIndex], 10.0f, 10.0f, 10.0f);
         }
     }
 
@@ -2130,8 +2065,8 @@ void fn_1_6704(void)
         } else {
             layerAssetNumber = 44 + modelIndex;
         }
-        lbl_1_bss_46C[modelIndex] = fn_80025A04(
-            fn_80008DD0(layerAssetNumber + 0x7b0000, 0x10000000, 2));
+        lbl_1_bss_46C[modelIndex] =
+            fn_80025A04( fn_80008DD0(layerAssetNumber + 0x7b0000, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_46C[modelIndex], 1);
         fn_80023398(lbl_1_bss_674[0][modelIndex], "sl0", modelMatrix);
         Hu3DMtxTransGet(modelMatrix, &lbl_1_bss_578[0][modelIndex]);
@@ -2139,8 +2074,7 @@ void fn_1_6704(void)
         fn_80026790(lbl_1_bss_46C[modelIndex], &lbl_1_bss_578[0][modelIndex]);
         fn_80026838(lbl_1_bss_46C[modelIndex], &lbl_1_bss_47C[0][modelIndex]);
         fn_800269E8(lbl_1_bss_46C[modelIndex], ((1 << 30) | (1 << 0)));
-        fn_800268B0(lbl_1_bss_46C[modelIndex], 8.5f,
-                          8.5f, 8.5f);
+        fn_800268B0(lbl_1_bss_46C[modelIndex], 8.5f, 8.5f, 8.5f);
         fn_800269E8(lbl_1_bss_46C[modelIndex], (1 << 0));
         fn_80026B8C(lbl_1_bss_46C[modelIndex], 5);
         if (modelIndex >= 5) {
@@ -2158,8 +2092,7 @@ void fn_1_6704(void)
 
     lbl_1_bss_464 = 0;
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-        lbl_1_bss_458[modelIndex] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x7b0000, 56), 0x10000000, 3));
+        lbl_1_bss_458[modelIndex] = fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 56), 0x10000000, 3));
         fn_80026B64(lbl_1_bss_458[modelIndex], 1);
         if (modelIndex == 0) {
             objectName = "he0";
@@ -2232,10 +2165,8 @@ void fn_1_6D7C(void)
         fn_80023398(lbl_1_bss_674[lbl_1_bss_464][index], jointName, matrix);
         Hu3DMtxTransGet(matrix, &lbl_1_bss_578[lbl_1_bss_464][index]);
         Hu3DMtxRotGet(matrix, &lbl_1_bss_47C[lbl_1_bss_464][index]);
-        fn_80026790(lbl_1_bss_46C[index],
-                         &lbl_1_bss_578[lbl_1_bss_464][index]);
-        fn_80026838(lbl_1_bss_46C[index],
-                         &lbl_1_bss_47C[lbl_1_bss_464][index]);
+        fn_80026790(lbl_1_bss_46C[index], &lbl_1_bss_578[lbl_1_bss_464][index]);
+        fn_80026838(lbl_1_bss_46C[index], &lbl_1_bss_47C[lbl_1_bss_464][index]);
         /* During group 0's speed ramps, each of the seven parts changes the shared rate;
          * later parts can receive different speeds within the same update. */
         if (lbl_1_bss_464 == 0) {
@@ -2301,7 +2232,11 @@ void fn_1_6D7C(void)
     }
     for (index = 0; index < 2; index++) {
         Hu3DModelObjPosGet(lbl_1_bss_46C[index + 5], "bom", &position);
-        { Point3d origin = {0.0f, 0.0f, 0.0f}; source = &origin; target = *source; }
+        {
+            Point3d origin = {0.0f, 0.0f, 0.0f};
+            source = &origin;
+            target = *source;
+        }
         PSVECSubtract(&target, &position, &delta);
         /* the direction in degrees, wrapped into (-180, 180] */
         angle = 180.0 * (atan2(-delta.z, delta.x) / M_PI) > 180.0
@@ -2314,41 +2249,53 @@ void fn_1_6D7C(void)
     switch (lbl_1_bss_8C0) {
     case M664_SCENE_FRAME_2828:
         fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
-        fn_8002D86C(lbl_1_bss_458[1], 2.0f); break;
+        fn_8002D86C(lbl_1_bss_458[1], 2.0f);
+        break;
     case M664_SCENE_FRAME_2853:
         fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f);
+        break;
     case M664_SCENE_FRAME_2978:
         fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
-        fn_8002D86C(lbl_1_bss_458[2], 2.0f); break;
+        fn_8002D86C(lbl_1_bss_458[2], 2.0f);
+        break;
     case M664_SCENE_FRAME_3003:
         fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[2], 1.0f); break;
+        fn_8002D86C(lbl_1_bss_458[2], 1.0f);
+        break;
     case M664_SCENE_FRAME_3648:
         fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
-        fn_8002D86C(lbl_1_bss_458[1], 2.0f); break;
+        fn_8002D86C(lbl_1_bss_458[1], 2.0f);
+        break;
     case M664_SCENE_FRAME_3673:
         fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f);
+        break;
     case M664_SCENE_FRAME_3653:
         fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
-        fn_8002D86C(lbl_1_bss_458[2], 2.0f); break;
+        fn_8002D86C(lbl_1_bss_458[2], 2.0f);
+        break;
     case M664_SCENE_FRAME_3678:
         fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[2], 1.0f); break;
+        fn_8002D86C(lbl_1_bss_458[2], 1.0f);
+        break;
     case M664_SCENE_FRAME_4378:
         fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
-        fn_8002D86C(lbl_1_bss_458[1], 2.0f); break;
+        fn_8002D86C(lbl_1_bss_458[1], 2.0f);
+        break;
     case M664_SCENE_FRAME_4403:
         fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f);
+        break;
     case M664_SCENE_FRAME_4508:
         fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], 0.0f, 8.0f, 0);
-        fn_8002D86C(lbl_1_bss_458[2], 2.0f); break;
+        fn_8002D86C(lbl_1_bss_458[2], 2.0f);
+        break;
     case M664_SCENE_FRAME_4533:
         /* This event changes model 2's motion but resets model 1's playback speed. */
         fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        fn_8002D86C(lbl_1_bss_458[1], 1.0f); break;
+        fn_8002D86C(lbl_1_bss_458[1], 1.0f);
+        break;
     }
     /* Reuse the last side's heading, turned by 90 degrees, for both side companions. */
     angle += 90.0f;
@@ -2369,14 +2316,12 @@ void fn_1_7E24(void) {
     s32 modelIndex;
     for (sideIndex = 0; sideIndex < 2; sideIndex++) {
         for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-            lbl_1_bss_248[sideIndex][modelIndex].modelId = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7b0000, 55), 0x10000000, 2));
+            lbl_1_bss_248[sideIndex][modelIndex].modelId =
+                fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 55), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_248[sideIndex][modelIndex].modelId, 1);
             fn_80026E44(lbl_1_bss_248[sideIndex][modelIndex].modelId);
-            fn_80026760(lbl_1_bss_248[sideIndex][modelIndex].modelId, 0.0f, 0.0f,
-                            0.0f);
-            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].modelId, 8.0f, 8.0f,
-                              8.0f);
+            fn_80026760(lbl_1_bss_248[sideIndex][modelIndex].modelId, 0.0f, 0.0f, 0.0f);
+            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].modelId, 8.0f, 8.0f, 8.0f);
             fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].modelId, (1 << 0));
             lbl_1_bss_248[sideIndex][modelIndex].state38 = 0;
             lbl_1_bss_248[sideIndex][modelIndex].state40 = 0;
@@ -2389,12 +2334,11 @@ void fn_1_7E24(void) {
             if (frandmod(2) != 0U) {
                 lbl_1_bss_248[sideIndex][modelIndex].destinationZ *= -1.0f;
             }
-            lbl_1_bss_248[sideIndex][modelIndex].effectModelId = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7b0000, 68), 0x10000000, 3));
+            lbl_1_bss_248[sideIndex][modelIndex].effectModelId =
+                fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 68), 0x10000000, 3));
             fn_80026B64(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 1);
             fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, (1 << 0));
-            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 3.5f,
-                              3.5f, 3.5f);
+            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 3.5f, 3.5f, 3.5f);
             fn_80026B8C(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 5);
             lbl_1_bss_248[sideIndex][modelIndex].effectMotionId = fn_80030458(
                 lbl_1_bss_248[sideIndex][modelIndex].effectModelId,
@@ -2478,11 +2422,9 @@ void fn_1_8244(void) {
                 lbl_1_bss_248[side][effectSet].state40 =
                     lbl_1_bss_248[side][effectSet].destinationY > 0.0f ? 1 : -1;
                 if (lbl_1_bss_248[side][effectSet].state40 == 1) {
-                    fn_1_B910(2132,
-                              lbl_1_bss_248[side][effectSet].modelId, 1);
+                    fn_1_B910(2132, lbl_1_bss_248[side][effectSet].modelId, 1);
                 } else {
-                    fn_1_B910(2140,
-                              lbl_1_bss_248[side][effectSet].modelId, 1);
+                    fn_1_B910(2140, lbl_1_bss_248[side][effectSet].modelId, 1);
                 }
             }
             if (lbl_1_bss_248[side][effectSet].state40 != 0) {
@@ -2523,8 +2465,7 @@ void fn_1_8244(void) {
             }
         } else if (lbl_1_bss_248[side][effectSet].state38 == 3) {
             if (lbl_1_bss_248[side][effectSet].state40 % 2 != 0) {
-                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, 10.0f, 10.0f,
-                                  10.0f);
+                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, 10.0f, 10.0f, 10.0f);
             } else {
                 fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, 8.0f, 8.0f, 8.0f);
             }
@@ -2552,12 +2493,10 @@ void fn_1_8E44(void) {
     s32 modelNumber;
     s16 jointMotionId;
 
-    lbl_1_bss_84E = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7b0000, 62), 0x10000000, 2));
+    lbl_1_bss_84E = fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 62), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_84E, 1);
     fn_80026790(lbl_1_bss_84E, &lbl_1_bss_40C);
-    fn_800268B0(lbl_1_bss_84E, 10.0f,
-                      10.0f, 10.0f);
+    fn_800268B0(lbl_1_bss_84E, 10.0f, 10.0f, 10.0f);
 
     for (boardIndex = 0; boardIndex < 5; boardIndex++) {
         if (lbl_1_bss_8E4 == 0) {
@@ -2565,8 +2504,8 @@ void fn_1_8E44(void) {
         } else {
             modelNumber = 65;
         }
-        lbl_1_bss_844[boardIndex] = fn_80025A04(
-            fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
+        lbl_1_bss_844[boardIndex] =
+            fn_80025A04( fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
         fn_80026B64(lbl_1_bss_844[boardIndex], 1);
         fn_80023398(lbl_1_bss_84E,
                            boardIndex == 0 ? "ut_hook0" :
@@ -2581,49 +2520,39 @@ void fn_1_8E44(void) {
         fn_800269E8(lbl_1_bss_844[boardIndex], ((1 << 30) | (1 << 0)));
         fn_80030644(lbl_1_bss_844[boardIndex]);
         fn_8002D86C(lbl_1_bss_844[boardIndex], 0.0f);
-        fn_800268B0(lbl_1_bss_844[boardIndex], 10.0f,
-                          10.0f, 10.0f);
+        fn_800268B0(lbl_1_bss_844[boardIndex], 10.0f, 10.0f, 10.0f);
         fn_800269E8(lbl_1_bss_844[boardIndex], (1 << 0));
 
         for (objectIndex = 0; objectIndex < 4; objectIndex++) {
-            lbl_1_bss_81C[boardIndex][objectIndex] = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7b0000, 60), 0x10000000, 2));
+            lbl_1_bss_81C[boardIndex][objectIndex] =
+                fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 60), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_81C[boardIndex][objectIndex], 1);
             Hu3DModelObjPosGet(lbl_1_bss_844[boardIndex],
                                objectIndex == 0 ? "nuts_hook0" :
                                objectIndex == 1 ? "nuts_hook1" :
                                objectIndex == 2 ? "nuts_hook2" : "nuts_hook3",
                                &objectPosition);
-            fn_80026790(lbl_1_bss_81C[boardIndex][objectIndex],
-                             &objectPosition);
-            fn_800268B0(lbl_1_bss_81C[boardIndex][objectIndex],
-                              2.0f, 2.0f,
-                              2.0f);
+            fn_80026790(lbl_1_bss_81C[boardIndex][objectIndex], &objectPosition);
+            fn_800268B0(lbl_1_bss_81C[boardIndex][objectIndex], 2.0f, 2.0f, 2.0f);
             fn_800269E8(lbl_1_bss_81C[boardIndex][objectIndex], (1 << 0));
             fn_80026E44(lbl_1_bss_81C[boardIndex][objectIndex]);
             lbl_1_bss_744[boardIndex][objectIndex] = frandmod(2);
             lbl_1_bss_744[boardIndex][objectIndex] *= frandmod(50);
             lbl_1_bss_6A4[boardIndex][objectIndex] = 0.0f;
             lbl_1_bss_6F4[boardIndex][objectIndex] = 0;
-            lbl_1_bss_7CC[boardIndex][objectIndex][0] = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7b0000, 61), 0x10000000, 2));
+            lbl_1_bss_7CC[boardIndex][objectIndex][0] =
+                fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 61), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_7CC[boardIndex][objectIndex][0], 1);
             fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][0], (1 << 0));
-            fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][0],
-                               0.0f);
-            fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][0],
-                              2.0f, 2.0f,
-                              2.0f);
+            fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][0], 0.0f);
+            fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][0], 2.0f, 2.0f, 2.0f);
             fn_80026B8C(lbl_1_bss_7CC[boardIndex][objectIndex][0], 5);
-            lbl_1_bss_7CC[boardIndex][objectIndex][1] = fn_80025A04(
-                fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 2));
+            lbl_1_bss_7CC[boardIndex][objectIndex][1] =
+                fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 2));
             fn_80026B64(lbl_1_bss_7CC[boardIndex][objectIndex][1], 1);
             fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][1], (1 << 0));
-            fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][1],
-                               0.0f);
-            fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][1],
-                              2.0f, 2.0f,
-                              2.0f);
+            fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][1], 0.0f);
+            fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][1], 2.0f, 2.0f, 2.0f);
             fn_80026B8C(lbl_1_bss_7CC[boardIndex][objectIndex][1], 5);
         }
 
@@ -2633,20 +2562,16 @@ void fn_1_8E44(void) {
                 nameIndex == 1 ? "uk_hook1" : "uk_hook2");
     }
 
-    lbl_1_bss_7CA = fn_80025A04(
-        fn_80008DD0(DATANUM(0x7b0000, 63), 0x10000000, 2));
+    lbl_1_bss_7CA = fn_80025A04( fn_80008DD0(DATANUM(0x7b0000, 63), 0x10000000, 2));
     fn_80026B64(lbl_1_bss_7CA, 1);
     fn_80023398(lbl_1_bss_844[0], lbl_1_bss_798[0], objectMatrix);
     Hu3DMtxTransGet(objectMatrix, &objectPosition);
     Hu3DMtxRotGet(objectMatrix, &objectRotation);
     fn_80026790(lbl_1_bss_7CA, &objectPosition);
     fn_80026838(lbl_1_bss_7CA, &objectRotation);
-    fn_800268B0(lbl_1_bss_7CA, 1.5f,
-                      1.5f, 1.5f);
+    fn_800268B0(lbl_1_bss_7CA, 1.5f, 1.5f, 1.5f);
     fn_800269E8(lbl_1_bss_7CA, (1 << 0));
-    jointMotionId = fn_80030458(
-        lbl_1_bss_7CA,
-        fn_80008DD0(DATANUM(0x7b0000, 64), 0x10000000, 2));
+    jointMotionId = fn_80030458( lbl_1_bss_7CA, fn_80008DD0(DATANUM(0x7b0000, 64), 0x10000000, 2));
     fn_8002C95C(lbl_1_bss_7CA, jointMotionId);
     fn_800269E8(lbl_1_bss_7CA, ((1 << 30) | (1 << 0)));
     fn_8002D86C(lbl_1_bss_7CA, 0.0f);
@@ -2755,13 +2680,11 @@ void fn_1_9704(void) {
                     fn_80086910(&collisionStart, &collisionEnd,
                                          -1U, (MGACTOR_COLMAP_POLY *)&hitPolygon) != 0) {
                     lbl_1_bss_6F4[boardIndex][pieceIndex] = 1;
-                    fn_1_B910(2130,
-                              lbl_1_bss_81C[boardIndex][pieceIndex], 1);
+                    fn_1_B910(2130, lbl_1_bss_81C[boardIndex][pieceIndex], 1);
                 }
                 if (objectPosition.y < 0.0f) {
                     lbl_1_bss_6F4[boardIndex][pieceIndex] = -1;
-                    fn_1_B910(2140,
-                              lbl_1_bss_81C[boardIndex][pieceIndex], 1);
+                    fn_1_B910(2140, lbl_1_bss_81C[boardIndex][pieceIndex], 1);
                 }
             }
             if (lbl_1_bss_6F4[boardIndex][pieceIndex] == 1) {
@@ -2935,8 +2858,7 @@ void fn_1_A8F0(void) {
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
         for (modelIndex = 0; modelIndex < 3; modelIndex++) {
             fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].modelId, (1 << 0));
-            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].effectModelId,
-                             (1 << 0));
+            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].effectModelId, (1 << 0));
         }
     }
     for (playerIndex = 0; playerIndex < 5; playerIndex++) {

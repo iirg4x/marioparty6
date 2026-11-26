@@ -141,8 +141,6 @@ void fn_1_2EC(s16 mode, s16 frameNo)
 {
 }
 
-extern HUPROCESS *lbl_1_bss_4;
-
 void *fn_1_2F0(s32 priority, u32 bytes, void (*update)(OMOBJ *))
 {
     OMOBJ *object;
@@ -187,8 +185,6 @@ f32 fn_1_398(f32 value) {
     return (f32) acos((f64) clampedValue);
 }
 
-double acos(double x);
-
 void fn_1_444(HuVecF *out, f32 x, f32 y, f32 z)
 {
     out->x = x;
@@ -206,45 +202,10 @@ f32 fn_1_574(const HuVecF *v)
     return (v->z * v->z) + ((v->x * v->x) + (v->y * v->y));
 }
 
-f32 fn_1_5A4(const HuVecF *a, const HuVecF *b);
-
-void fn_1_60C(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-
-#ifndef M615_COLLISION_LAYOUT_DEFINED
-
-#define M615_COLLISION_LAYOUT_DEFINED
-
-typedef struct M615Box {
-    HuVecF center;
-    HuVecF axis[3];
-    union {
-        HuVecF halfExtents;
-        HuVecF halfExtent;
-        HuVecF position;
-        f32 halfExtentComponents[3];
-    };
-} M615Box;
-
-typedef M615Box M615TrianglePosition;
-
-typedef M615Box M615CollisionExtents;
-
-typedef M615Box M615CollisionBox;
-
-#endif
-
 f32 fn_1_5A4(const HuVecF *a, const HuVecF *b)
 {
     return PSVECDotProduct(a, b);
 }
-
-void fn_1_5D4(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-
-#ifndef M615_COLLISION_LAYOUT_DEFINED
-
-#define M615_COLLISION_LAYOUT_DEFINED
-
-#endif
 
 void fn_1_5D4(HuVecF *dst, const HuVecF *a, const HuVecF *b)
 {
@@ -256,24 +217,10 @@ void fn_1_60C(HuVecF *dst, const HuVecF *a, const HuVecF *b)
     PSVECAdd(a, b, dst);
 }
 
-void fn_1_644(HuVecF *dst, const HuVecF *a, const HuVecF *b);
-
-#ifndef M615_COLLISION_LAYOUT_DEFINED
-
-#define M615_COLLISION_LAYOUT_DEFINED
-
-#endif
-
 void fn_1_644(HuVecF *dst, const HuVecF *a, const HuVecF *b)
 {
     PSVECSubtract(a, b, dst);
 }
-
-#ifndef M615_COLLISION_LAYOUT_DEFINED
-
-#define M615_COLLISION_LAYOUT_DEFINED
-
-#endif
 
 f32 fn_1_67C(HuVecF *dst, const HuVecF *src)
 {
@@ -297,12 +244,6 @@ f32 fn_1_67C(HuVecF *dst, const HuVecF *src)
     }
     return magnitude;
 }
-
-#ifndef M615_COLLISION_LAYOUT_DEFINED
-
-#define M615_COLLISION_LAYOUT_DEFINED
-
-#endif
 
 void fn_1_85C(HuVecF *dst, const HuVecF *src, f32 scale)
 {

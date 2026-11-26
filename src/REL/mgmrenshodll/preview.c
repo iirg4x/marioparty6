@@ -40,8 +40,8 @@ HU3D_MODELID fn_1_0(s16 minigameIndex, s16 stillIndex, Point3d *previewPosition)
         1.0f,
         1.0f,
         1.0f);
-    lbl_1_bss_9C = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0xa00000, 25), 0x10000000, 2));
+    lbl_1_bss_9C = HuSprAnimDataRead(
+        DATANUM(0xa00000, 25));
     lbl_1_bss_A2 = HuSprGrpCreate(1);
 
     if (minigameIndex != -1) {
@@ -74,7 +74,7 @@ void fn_1_2A4(s16 minigameCount, u8 *minigameOrder) {
     lbl_1_bss_88 = 0;
     lbl_1_bss_0 = minigameCount;
     lbl_1_bss_8C = HuMemDirectMallocNum(
-        0, minigameCount * sizeof(ANIMDATA *) * 2, 0x10000000);
+        0, minigameCount * sizeof(*lbl_1_bss_8C) * 2, 0x10000000);
     for (minigameOrderIndex = 0; minigameOrderIndex < lbl_1_bss_0; minigameOrderIndex++) {
         lbl_1_bss_2[minigameOrderIndex] = minigameOrder[minigameOrderIndex];
         lbl_1_bss_8C[minigameOrderIndex * 2] = HuSprAnimRead(
