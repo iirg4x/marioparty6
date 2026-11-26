@@ -1,6 +1,6 @@
 #ifndef REL_M634DLL_PLAYER_PART_H
 #define REL_M634DLL_PLAYER_PART_H
-#include "REL/m634DLL/stick_state.h"
+#include "REL/framework/stick_state.h"
 struct ActPlayer;
 struct ActPlayerPart {
     // Stores the input part owner.

@@ -120,8 +120,6 @@ f32 fn_1_364(f32 value)
                           (value < -1.0f ? -1.0f : value)));
 }
 
-float fn_1_220(float x);
-
 void fn_1_410(HuVecF *out, f32 x, f32 y, f32 z)
 {
     out->x = x;
@@ -313,6 +311,7 @@ void fn_1_D7C(OMOBJ *object)
     }
 }
 
+/* At the end of the round, rank the players by score and send the winners to the results sequence. */
 void fn_1_EB4(OMOBJ *object)
 {
     M607SetupWork *work = object->data;
@@ -361,7 +360,7 @@ void fn_1_EB4(OMOBJ *object)
                        (s16)winnerSlots[2],
                        (s16)winnerSlots[3]);
         if (work->streamId != -1) {
-            HuAudSStreamFadeOut(work->streamId, 0x64);
+            HuAudSStreamFadeOut(work->streamId, 100);
         }
         fn_1_35C(object, fn_1_10C8);
         return;
@@ -444,11 +443,11 @@ void fn_1_12CC(OMOBJ *obj)
 typedef struct M607CameraWork {
     HU3D_MOTIONID modelMotion;
     HU3D_MODELID camera;
-    f32 maxTime;
+    f32 unk04; /* The game's code never reads this field. */
     u8 unknown08[4]; /* No code names this field. */
     HU3D_MOTIONID cameraMotion;
 } M607CameraWork;
-
+/* Positions the camera from the model's opening motion. */
 void fn_1_1354(OMOBJ *object)
 {
     Point3d cameraTarget;
@@ -460,7 +459,7 @@ void fn_1_1354(OMOBJ *object)
     work->cameraMotion = fn_8002C4C0(fn_80008DD0(DATANUM(0x420000, 12), 0x10000000, 2));
     work->modelMotion = fn_8002C4C0(fn_80008DD0(DATANUM(0x420000, 11), 0x10000000, 2));
     work->camera = fn_800283F4(work->modelMotion, 1U);
-    work->maxTime = Hu3DMotionMotionMaxTimeGet(work->modelMotion);
+    work->unk04 = Hu3DMotionMotionMaxTimeGet(work->modelMotion);
     fn_80027CD0(1, &cameraPosition, &cameraUp, &cameraTarget);
     fn_800262D0(work->camera);
     Hu3DCameraPosSetV(1, &cameraPosition, &cameraUp, &cameraTarget);
@@ -812,23 +811,6 @@ void fn_1_1E90(M607PlayerWork *work, f32 angle, f32 pushDistance)
     push->z = pushDistance;
 }
 
-static inline f32 M607SelectionNormalize(Vec *dst, const Vec *src)
-{
-    f32 magnitude = fn_1_420(src);
-    if (magnitude > 1.1920929e-7f) {
-        f32 inverse = 1.0f / magnitude;
-        dst->x = src->x * inverse;
-        dst->y = src->y * inverse;
-        dst->z = src->z * inverse;
-    } else {
-        magnitude = 0.0f;
-        dst->x = 0.0f;
-        dst->y = 0.0f;
-        dst->z = 0.0f;
-    }
-    return magnitude;
-}
-
 /* Selects a nearby actor with a clear path, allowing flagged actors to take priority. */
 s32 fn_1_21F8(M607PlayerWork *source, f32 angleDegrees, M607ItemWork **selectedOut)
 {
@@ -870,11 +852,11 @@ s32 fn_1_21F8(M607PlayerWork *source, f32 angleDegrees, M607ItemWork **selectedO
         fn_80086BC8(candidate->actor, &candidatePosition);
         candidatePosition.y = 0.0f;
         PSVECSubtract(&candidatePosition, &sourcePosition, &direction);
-        distance = M607SelectionNormalize(&direction, &direction);
+        distance = fn_1_648(&direction, &direction);
         facing.x = (f32)sin((f64)facingAngle);
         facing.z = (f32)cos((f64)facingAngle);
         facing.y = 0.0f;
-        M607SelectionNormalize(&facing, &facing);
+        fn_1_648(&facing, &facing);
         candidateAngle = fn_1_364(fn_1_570(&facing, &direction));
         if (candidate->flagged != 0 &&
                          (lbl_80265728[source->playerIndex].comDif == 2 ||
@@ -928,17 +910,15 @@ s32 fn_1_21F8(M607PlayerWork *source, f32 angleDegrees, M607ItemWork **selectedO
     return 1;
 }
 
+/* Adjusts the heading away from the first nearby player. */
 f32 fn_1_2BEC(M607PlayerWork *owner, f32 angle)
 {
     Point3d ownerPosition;
     Point3d direction;
     Point3d otherPosition;
     Point3d difference;
-    f32 measuredDistance;
     f32 dotProduct;
     f32 distance;
-    f32 reciprocalDistance;
-    f32 dotProductResult;
     f32 angleDifference;
     f32 crossProduct;
     f32 targetAngle = angle;
@@ -987,29 +967,6 @@ extern unsigned int lbl_1_data_48[];
 extern HuVecF lbl_1_data_A4[];
 
 extern HuVecF lbl_1_data_D4[];
-
-static inline f32 M607PlayerSetupNormalize(HuVecF *dst, const HuVecF *src)
-{
-    f32 magnitude2;
-    f32 sqrt_result;
-    f32 magnitude;
-
-    magnitude2 = (src->z * src->z) + ((src->x * src->x) + (src->y * src->y));
-    sqrt_result = sqrtf(magnitude2);
-    magnitude = sqrt_result;
-    if (magnitude > 1.1920929e-07f) {
-        f32 inverse = 1.0f / magnitude;
-        dst->x = src->x * inverse;
-        dst->y = src->y * inverse;
-        dst->z = src->z * inverse;
-    } else {
-        magnitude = 0.0f;
-        dst->x = 0.0f;
-        dst->y = 0.0f;
-        dst->z = 0.0f;
-    }
-    return magnitude;
-}
 
 static inline void M607PlayerSetupFaceDirection(MGACTOR *actor,
                                                  const HuVecF *direction,
@@ -1070,36 +1027,13 @@ static inline f32 SpeedOf3048(M607PlayerWork *work)
     return work->selectionSpeed;
 }
 
-static inline f32 M607Player3048Normalize(HuVecF *dst, const HuVecF *src)
-{
-    f32 magnitude = fn_1_420(src);
-    if (magnitude > 1.1920929e-07f) {
-        f32 inverse = 1.0f / magnitude;
-        dst->x = src->x * inverse;
-        dst->y = src->y * inverse;
-        dst->z = src->z * inverse;
-    } else {
-        magnitude = 0.0f;
-        dst->x = 0.0f;
-        dst->y = 0.0f;
-        dst->z = 0.0f;
-    }
-    return magnitude;
-}
-
 static inline f32 M607Player3048Acos(f32 dot)
 {
     return (f32)acos((f64)(dot > 1.0f ? 1.0f :
                           (dot < -1.0f ? -1.0f : dot)));
 }
 
-static inline void M607Player3048Vector(HuVecF *direction, f32 x, f32 y, f32 z)
-{
-    direction->x = x;
-    direction->y = y;
-    direction->z = z;
-}
-
+/* Turns the computer player toward its chosen heading and applies its forward push. */
 static inline void M607Player3048Face(M607PlayerWork *work, f32 angle,
                                      f32 pushDistance)
 {
@@ -1115,9 +1049,9 @@ static inline void M607Player3048Face(M607PlayerWork *work, f32 angle,
     turnRate = lbl_1_data_150[lbl_80265728[work->playerIndex].comDif];
     targetRotation = (f32)(M_PI *
         (f64)(work->player->actor->rotY / 180.0f));
-    M607Player3048Vector(&targetDirection, (f32)sin((f64)angle), 0.0f,
+    M607PlayerMotionVector(&targetDirection, (f32)sin((f64)angle), 0.0f,
                          (f32)cos((f64)angle));
-    M607Player3048Vector(&actorDirection, (f32)sin((f64)targetRotation), 0.0f,
+    M607PlayerMotionVector(&actorDirection, (f32)sin((f64)targetRotation), 0.0f,
                          (f32)cos((f64)targetRotation));
     angleDifference = M607Player3048Acos(fn_1_570(&targetDirection, &actorDirection));
     crossProduct = targetDirection.x * actorDirection.z -
@@ -1142,33 +1076,17 @@ static inline void M607Player3048Face(M607PlayerWork *work, f32 angle,
     push->z = pushDistance;
 }
 
+/* Steers toward the push target and adjusts for nearby players. */
 void fn_1_3048(M607PlayerWork *work)
 {
     HuVecF actorPosition;
     HuVecF direction;
     f32 directionLength;
-    f32 targetAngleResult;
-    f32 targetAngle;
-    f32 actorAngle;
-    f32 targetCosine;
-    f32 targetSine;
-    f32 actorCosine;
-    f32 actorSine;
-    HuVecF targetFacing;
-    HuVecF actorFacing;
-    f32 dot;
-    f32 limitedDot;
-    f32 angleDifferenceResult;
-    f32 angleDifference;
-    f32 cross;
-    f32 nextAngle;
-    f32 turnRate;
     s32 playerIndex;
-    HuVecF *push;
 
     fn_80086BC8(work->player->actor, &actorPosition);
     PSVECSubtract(&work->push, &actorPosition, &direction);
-    directionLength = M607Player3048Normalize(&direction, &direction);
+    directionLength = fn_1_648(&direction, &direction);
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         M607PlayerWork *selectedWork = lbl_1_bss_4C[playerIndex];
@@ -1176,7 +1094,6 @@ void fn_1_3048(M607PlayerWork *work)
         HuVecF otherPosition;
         HuVecF playerSeparation;
         HuVecF otherPushDirection;
-        HuVecF normalizedPushDirection;
         f32 distance;
 
         if (otherWork == work) {
@@ -1185,13 +1102,13 @@ void fn_1_3048(M607PlayerWork *work)
         fn_80086BC8(otherWork->player->actor, &otherPosition);
         PSVECSubtract(&otherWork->push, &otherPosition, &otherPushDirection);
         PSVECSubtract(&otherPosition, &actorPosition, &playerSeparation);
-        distance = M607Player3048Normalize(&playerSeparation, &playerSeparation);
+        distance = fn_1_648(&playerSeparation, &playerSeparation);
         if (distance < 100.0f) {
             PSVECScale(&direction, &direction, 10.0f);
             PSVECScale(&playerSeparation, &playerSeparation,
                        0.5f * -(100.0f - distance));
             PSVECAdd(&direction, &playerSeparation, &direction);
-            M607Player3048Normalize(&direction, &direction);
+            fn_1_648(&direction, &direction);
         }
     }
 
@@ -1219,53 +1136,32 @@ static inline void applyPushDistance(M607PlayerWork *work, f32 angle)
                          cos(((2.0 * M_PI) * (f64)angle) / 180.0));
 }
 
+/* Blends the directions to the push target and the marker before steering. */
 void fn_1_3A8C(M607PlayerWork *work)
 {
     HuVecF actorPosition;
     HuVecF pushDirection;
     HuVecF markerPosition;
     HuVecF markerDirection;
-    f32 markerDistance;
     f32 directionLength;
-    f32 targetAngleResult;
-    f32 targetAngle;
-    f32 actorAngle;
-    f32 targetCosine;
-    f32 targetSine;
-    f32 actorCosine;
-    f32 actorSine;
-    HuVecF targetFacing;
-    HuVecF actorFacing;
-    f32 dotResult;
-    f32 dot;
-    f32 lowerLimitedDot;
-    f32 limitedDot;
-    f32 angleDifferenceResult;
-    f32 angleDifference;
-    f32 cross;
-    f32 nextAngle;
-    f32 turnRate;
-    f32 speed;
     s32 playerIndex;
-    HuVecF *push;
     M607RootWork *root = lbl_1_bss_20;
 
     fn_80086BC8(root->actor, &markerPosition);
     fn_80086BC8(work->player->actor, &actorPosition);
     PSVECSubtract(&markerPosition, &actorPosition, &markerDirection);
-    M607Player3048Normalize(&markerDirection, &markerDirection);
+    fn_1_648(&markerDirection, &markerDirection);
     PSVECSubtract(&work->push, &actorPosition, &pushDirection);
-    directionLength = M607Player3048Normalize(&pushDirection,
+    directionLength = fn_1_648(&pushDirection,
                                                 &pushDirection);
     PSVECAdd(&pushDirection, &markerDirection, &pushDirection);
-    M607Player3048Normalize(&pushDirection, &pushDirection);
+    fn_1_648(&pushDirection, &pushDirection);
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         M607PlayerWork *otherWork = fn_1_A14(playerIndex);
         HuVecF otherPosition;
         HuVecF playerSeparation;
         HuVecF otherPushDirection;
-        HuVecF awayDirection;
         f32 otherDistance;
 
         if (otherWork == work) {
@@ -1274,14 +1170,14 @@ void fn_1_3A8C(M607PlayerWork *work)
         fn_80086BC8(otherWork->player->actor, &otherPosition);
         PSVECSubtract(&otherWork->push, &otherPosition, &otherPushDirection);
         PSVECSubtract(&otherPosition, &actorPosition, &playerSeparation);
-        otherDistance = M607Player3048Normalize(&playerSeparation,
+        otherDistance = fn_1_648(&playerSeparation,
                                               &playerSeparation);
         if (otherDistance < 100.0f) {
             PSVECScale(&pushDirection, &pushDirection, 10.0f);
             PSVECScale(&playerSeparation, &playerSeparation,
                        0.5f * -(100.0f - otherDistance));
             PSVECAdd(&pushDirection, &playerSeparation, &pushDirection);
-            M607Player3048Normalize(&pushDirection, &pushDirection);
+            fn_1_648(&pushDirection, &pushDirection);
         }
     }
 
@@ -1324,7 +1220,7 @@ void fn_1_4878(M607PlayerWork *work)
         if (fn_1_21F8(work, work->selectionAngle, &selection) != 0) {
             fn_80086BC8(selection->actor, &targetPosition);
             PSVECSubtract(&targetPosition, &actorPosition, &direction);
-            M607Player3048Normalize(&direction, &direction);
+            fn_1_648(&direction, &direction);
             {
                 f32 targetAngle = atan2f(direction.x, direction.z);
                 M607Player3048Face(work, targetAngle,
@@ -1353,7 +1249,7 @@ void fn_1_4878(M607PlayerWork *work)
         fn_80086BC8(root->actor, &markerPosition);
         if (root->phase == 1) {
             PSVECSubtract(&markerPosition, &actorPosition, &markerDirection);
-            M607Player3048Normalize(&markerDirection, &markerDirection);
+            fn_1_648(&markerDirection, &markerDirection);
             {
                 M607Player3048Face(work,
                     atan2f(markerDirection.x, markerDirection.z),
@@ -1363,7 +1259,7 @@ void fn_1_4878(M607PlayerWork *work)
         }
         PSVECSubtract(&markerPosition, &actorPosition, &markerOffset);
         {
-            f32 markerDistance = M607Player3048Normalize(&markerOffset,
+            f32 markerDistance = fn_1_648(&markerOffset,
                                                            &markerOffset);
             f32 markerAngle = (f32)(M_PI *
                                     (f64)(root->actor->rotY / 180.0f));
@@ -1373,7 +1269,7 @@ void fn_1_4878(M607PlayerWork *work)
             PSVECScale(&markerStep, &markerStep, markerDistance);
             PSVECAdd(&markerPosition, &markerStep, &pathPosition);
             PSVECSubtract(&pathPosition, &actorPosition, &pathDirection);
-            M607Player3048Normalize(&pathDirection, &pathDirection);
+            fn_1_648(&pathDirection, &pathDirection);
         }
         {
             M607Player3048Face(work,
@@ -1386,7 +1282,7 @@ void fn_1_4878(M607PlayerWork *work)
         fn_80086BC8(fallbackRoot->actor, &fallbackPosition);
     }
     PSVECSubtract(&fallbackPosition, &actorPosition, &fallbackDirection);
-    M607Player3048Normalize(&fallbackDirection, &fallbackDirection);
+    fn_1_648(&fallbackDirection, &fallbackDirection);
     {
         M607Player3048Face(work,
             atan2f(fallbackDirection.x, fallbackDirection.z), work->selectionSpeed);
@@ -1395,6 +1291,27 @@ void fn_1_4878(M607PlayerWork *work)
 
 const MGACTOR_PARAM lbl_1_rodata_138 = { 0.0f, 0.0f, 0, 0, NULL, 0, 0, NULL };
 
+/* Applies a pending player motion change and refreshes its overlay. */
+static inline void M607ApplyPendingMotion(M607PlayerWork *work, f32 blendFrames)
+{
+    if (work->motionChangePending != 0) {
+        work->motionChangePending = 0;
+        if (work->overlayActive != 0) {
+            fn_8002CAF0(work->player->actor->mdlId);
+            work->overlayActive = 0;
+        }
+        fn_8005C2C8(work->characterId, work->player->omObj->mtnId[0],
+                           0.0f, blendFrames,
+                           ((1 << 30) | (1 << 0)));
+        if (work->selectedEntry) {
+            fn_8002CAA8(work->player->actor->mdlId,
+                                 work->player->omObj->mtnId[5]);
+            fn_800269E8(work->player->actor->mdlId, ((1 << 30) | (1 << 9)));
+            work->overlayActive = 1;
+        }
+    }
+}
+/* Sets up the player actor, motions and score display when the player object is created. */
 void fn_1_6318(OMOBJ *obj)
 {
     M607PlayerWork *work = obj->data;
@@ -1423,22 +1340,7 @@ void fn_1_6318(OMOBJ *obj)
     fn_80026E44(work->player->actor->mdlId);
     fn_80086AA8(work->player->actor, &lbl_1_data_A4[work->positionIndex]);
 
-    if (work->motionChangePending != 0) {
-        work->motionChangePending = 0;
-        if (work->overlayActive != 0) {
-            fn_8002CAF0(work->player->actor->mdlId);
-            work->overlayActive = 0;
-        }
-        fn_8005C2C8(work->characterId, work->player->omObj->mtnId[0],
-                           0.0f, 4.0f,
-                           ((1 << 30) | (1 << 0)));
-        if (work->selectedEntry) {
-            fn_8002CAA8(work->player->actor->mdlId,
-                                 work->player->omObj->mtnId[5]);
-            fn_800269E8(work->player->actor->mdlId, ((1 << 30) | (1 << 9)));
-            work->overlayActive = 1;
-        }
-    }
+    M607ApplyPendingMotion(work, 4.0f);
     fn_800269E8(work->player->actor->mdlId, (1 << 0));
     work->scoreBox = MgScoreBoxCreateChar(0x60, 0x30, work->characterId);
     MgScoreBoxPosSet(work->scoreBox, lbl_1_data_D4[work->positionIndex].x,
@@ -1617,28 +1519,13 @@ void fn_1_6A90(OMOBJ *obj)
     if (work->initialized == 0xF)
     {
         work->selectedEntry->value = 3;
-        fn_8006A030(work->playerIndex, 0xC, 7, 3);
+        fn_8006A030(work->playerIndex, 12, 7, 3);
         return;
     }
     if (Hu3DMotionMotionMaxTimeGet(work->player->omObj->mtnId[3]) <= (f32) work->initialized)
     {
         work->collisionState = 0;
-        if (work->motionChangePending != 0)
-        {
-            work->motionChangePending = 0;
-            if (work->overlayActive != 0)
-            {
-                fn_8002CAF0((s16) work->player->actor->mdlId);
-                work->overlayActive = 0;
-            }
-            fn_8005C2C8(work->characterId, work->player->omObj->mtnId[0], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-            if (work->selectedEntry)
-            {
-                fn_8002CAA8((s16) work->player->actor->mdlId, work->player->omObj->mtnId[5]);
-                fn_800269E8((s16) work->player->actor->mdlId, ((1 << 30) | (1 << 9)));
-                work->overlayActive = 1;
-            }
-        }
+        M607ApplyPendingMotion(work, 0.0f);
         if (0 != lbl_80265728[work->playerIndex].type)
         {
             fn_1_35C(obj, fn_1_69D4);
@@ -1652,6 +1539,7 @@ void fn_1_6A90(OMOBJ *obj)
 
 extern void fn_1_D4C4(s32 player);
 
+/* While a player activates a selected target, turn toward it, trigger its effect, and return control when the reaction ends. */
 void fn_1_6FC4(OMOBJ *object)
 {
     M607PlayerWork *work = object->data;
@@ -1707,7 +1595,7 @@ void fn_1_6FC4(OMOBJ *object)
     if (work->initialized == 0xF) {
         mode = work->selectedEntry->mode;
         fn_1_D4C4(mode);
-        fn_8006A030(work->playerIndex, 0x14, 7, 3);
+        fn_8006A030(work->playerIndex, 20, 7, 3);
         return;
     }
     if (work->initialized >= 0x1E) {
@@ -1724,7 +1612,7 @@ void fn_1_6FC4(OMOBJ *object)
         return;
     }
 }
-
+/* Releases the selected entry and restores the player motion before switching to the next update. */
 void fn_1_74DC(OMOBJ *object)
 {
     M607PlayerWork *work;
@@ -1734,21 +1622,7 @@ void fn_1_74DC(OMOBJ *object)
         fn_800269E8(work->selectedEntry->model->mdlId[0], (1 << 0));
         work->selectedEntry = NULL;
         work->motionChangePending = -1;
-        if (work->motionChangePending != 0) {
-            work->motionChangePending = 0;
-            if (work->overlayActive != 0) {
-                fn_8002CAF0((s16)work->player->actor->mdlId);
-                work->overlayActive = 0;
-            }
-            fn_8005C2C8(work->characterId, work->player->omObj->mtnId[0],
-                               0.0f, 4.0f, ((1 << 30) | (1 << 0)));
-            if (work->selectedEntry) {
-                fn_8002CAA8((s16)work->player->actor->mdlId,
-                                     work->player->omObj->mtnId[5]);
-                fn_800269E8((s16)work->player->actor->mdlId, ((1 << 30) | (1 << 9)));
-                work->overlayActive = 1;
-            }
-        }
+        M607ApplyPendingMotion(work, 4.0f);
     }
     fn_1_35C(object, fn_1_761C);
 }
@@ -1782,19 +1656,13 @@ void fn_1_761C(OMOBJ *object)
 
 extern HuVecF lbl_1_data_110[4];
 
-static inline void M607PlayerMotionVector(HuVecF *direction, f32 x, f32 y, f32 z)
-{
-    direction->x = x;
-    direction->y = y;
-    direction->z = z;
-}
-
 static inline f32 M607PlayerMotionAcos(f32 dot)
 {
     return (f32)acos((f64)(dot > 1.0f ? 1.0f :
                           (dot < -1.0f ? -1.0f : dot)));
 }
 
+/* Turns the actor toward a heading and sets the forward push distance. */
 static inline void M607PlayerMotionFace(M607PlayerWork *work, f32 angle,
                              f32 pushDistance)
 {
@@ -1806,15 +1674,8 @@ static inline void M607PlayerMotionFace(M607PlayerWork *work, f32 angle,
     f32 targetCosine;
     f32 actorSine;
     f32 actorCosine;
-    f32 dotProductResult;
-    f32 dotProduct;
-    f32 angleDifferenceResult;
-    f32 angleDifferenceValue;
     f32 angleDifference;
     f32 crossProduct;
-    f32 turnRate;
-    f32 clampedDotProduct;
-    f32 lowerClampedDotProduct;
     f32 newRotation;
 
     targetRotation = (f32)(M_PI *
@@ -1852,31 +1713,13 @@ static inline void M607PlayerMotionFace(M607PlayerWork *work, f32 angle,
     push->z = pushDistance;
 }
 
-static inline f32 M607PlayerMotionNormalize(HuVecF *dst, const HuVecF *src)
-{
-    f32 magnitude;
-
-    magnitude = fn_1_420(src);
-    if (magnitude > 1.1920929e-7f) {
-        f32 inverse = 1.0f / magnitude;
-        dst->x = src->x * inverse;
-        dst->y = src->y * inverse;
-        dst->z = src->z * inverse;
-    } else {
-        magnitude = 0.0f;
-        dst->x = 0.0f;
-        dst->y = 0.0f;
-        dst->z = 0.0f;
-    }
-    return magnitude;
-}
-
 /* Steers the player toward its assigned position while avoiding closer players. */
 static inline void PSVECSubtractInline(const Vec*a0, const Vec*a1, Vec*a2)
 {
     PSVECSubtract(a0, a1, a2);
 }
 
+/* Steers the player toward its assigned position while avoiding other players. */
 void fn_1_7740(OMOBJ *obj)
 {
     M607PlayerWork *work = obj->data;
@@ -1897,10 +1740,6 @@ void fn_1_7740(OMOBJ *obj)
     f32 directionLength;
     f32 targetRotation;
     f32 newRotation;
-    f32 targetCosine;
-    f32 targetSine;
-    f32 actorCosine;
-    f32 actorSine;
     HuVecF *push;
     s32 playerIndex;
 
@@ -1909,7 +1748,7 @@ void fn_1_7740(OMOBJ *obj)
     }
     fn_80086BC8(work->player->actor, &actorPosition);
     PSVECSubtract(&targetPosition, &actorPosition, &direction);
-    directionLength = M607PlayerMotionNormalize(&direction, &direction);
+    directionLength = fn_1_648(&direction, &direction);
     if (directionLength < 30.0f) {
         work->player->actor->rotY = 0.0f;
         lbl_1_bss_8++;
@@ -1930,13 +1769,13 @@ void fn_1_7740(OMOBJ *obj)
         PSVECSubtract(&otherPosition, &actorPosition, &awayDirection);
         otherDistance = fn_1_420(&awayDirection);
         if (!(otherDistance > directionLength)) {
-            separationDistance = M607PlayerMotionNormalize(&awayDirection, &awayDirection);
+            separationDistance = fn_1_648(&awayDirection, &awayDirection);
             if (separationDistance < 100.0f) {
                 PSVECScale(&direction, &direction, 10.0f);
                 PSVECScale(&awayDirection, &awayDirection,
                            0.5f * -(100.0f - separationDistance));
                 PSVECAdd(&direction, &awayDirection, &direction);
-                M607PlayerMotionNormalize(&direction, &direction);
+                fn_1_648(&direction, &direction);
             }
         }
     }
@@ -2227,41 +2066,15 @@ void fn_1_90E0(OMOBJ *object)
     fn_1_35C(object, fn_1_93D8);
 }
 
-static inline void M607TurnCryEffect(M607RootWork *work, const Point3d *sourcePosition)
-{
-    Point3d direction;
-    Point3d position = *sourcePosition;
-
-    position.y += 150.0f;
-    direction.x = (f32)sin((M_PI *
-                             (f64)(180.0f + work->actor->rotY)) /
-                            180.0);
-    direction.y = 0.8f;
-    direction.z = (f32)cos((M_PI *
-                             (f64)(180.0f + work->actor->rotY)) /
-                            180.0);
-    fn_800608C4(1, &position, &direction, 1.0f);
-}
-
+/* During the intro, follow the character model's attachment point until its motion ends. */
 void fn_1_93D8(OMOBJ *object)
 {
     M607RootWork *work = object->data;
     Point3d modelPosition;
-    Point3d effectPosition;
-    Point3d direction;
 
     Hu3DModelObjPosGet(*work->characterModel->mdlId, lbl_1_data_170,
                        &modelPosition);
-    effectPosition = modelPosition;
-    effectPosition.y += 150.0f;
-    direction.x = (f32)sin((M_PI *
-                            (180.0f + work->actor->rotY)) /
-                           180.0);
-    direction.y = 0.8f;
-    direction.z = (f32)cos((M_PI *
-                            (180.0f + work->actor->rotY)) /
-                           180.0);
-    fn_800608C4(1, &effectPosition, &direction, 1.0f);
+    fn_1_8FC8(work, &modelPosition);
     fn_8002D86C(*work->model->mdlId,
                        lbl_1_rodata_84[work->motionIndex]);
     work->frames++;
@@ -2275,13 +2088,14 @@ void fn_1_93D8(OMOBJ *object)
 
 const HuVecF lbl_1_rodata_19C = { 300.0f, 0.0f, 0.0f };
 
+/* Hold the actor offstage until the intro delay expires, then move it to its starting position. */
 void fn_1_9590(OMOBJ *obj)
 {
     M607RootWork *work = obj->data;
     HuVecF position;
 
     work->frames++;
-    if (work->frames == 0xFA) {
+    if (work->frames == 250) {
         fn_80026A44(work->model->mdlId[0], (1 << 0));
         position = lbl_1_rodata_19C;
         fn_80086AA8(work->actor, &position);
@@ -2331,78 +2145,12 @@ static inline f32 M607EnemyReturnAngleDifference(f32 dot)
     return (f32)acos((f64)clampedDot);
 }
 
-static inline void M607ReturnVector(HuVecF *dst, f32 x, f32 y, f32 z)
-{
-    dst->x = x; dst->y = y; dst->z = z;
-}
-
 static inline f32 M607ReturnAcos(f32 dot)
 {
     return (f32)acos((f64)(dot > 1.0f ? 1.0f :
                           (dot < -1.0f ? -1.0f : dot)));
 }
-
-static inline void M607EnemyReturnFace(M607RootWork *work,
-                                       f32 angle, f32 pushDistance,
-                                       f32 turnRate)
-{
-    Point3d targetDirection;
-    Point3d actorDirection;
-    HuVecF *push;
-    f32 targetRotation;
-    f32 angleDifference;
-    f32 crossProduct;
-    f32 newRotation;
-
-    targetRotation = (f32)(M_PI *
-        (f64)(work->actor->rotY / 180.0f));
-    M607ReturnVector(&targetDirection, (f32)sin((f64)angle), 0.0f, (f32)cos((f64)angle));
-    M607ReturnVector(&actorDirection, (f32)sin((f64)targetRotation), 0.0f, (f32)cos((f64)targetRotation));
-    angleDifference = M607ReturnAcos(fn_1_570(&targetDirection, &actorDirection));
-    crossProduct = (targetDirection.x * actorDirection.z) -
-                  (targetDirection.z * actorDirection.x);
-    newRotation = targetRotation;
-    if (crossProduct >= 0.0f) {
-        newRotation += angleDifference * turnRate;
-    } else {
-        if (crossProduct < 0.0f) {
-            newRotation -= angleDifference * turnRate;
-        }
-    }
-    while (newRotation > (2.0 * M_PI)) {
-        newRotation -= (2.0 * M_PI);
-    }
-    while (newRotation < -(2.0 * M_PI)) {
-        newRotation += (2.0 * M_PI);
-    }
-    work->actor->rotY = (f32)((f64)(180.0f * newRotation) /
-                              M_PI);
-    push = &work->actor->push;
-    push->x = 0.0f;
-    push->y = 0.0f;
-    push->z = pushDistance;
-    fn_8002D86C(work->model->mdlId[0],
-                       lbl_1_rodata_84[work->motionIndex]);
-}
-
-static inline f32 M607UnusedAngleDifference(f32 dot)
-{
-    f32 clampedDot;
-    f32 lowerClampedDot;
-
-    if (dot > 1.0f) {
-        clampedDot = 1.0f;
-    } else {
-        if (dot < -1.0f) {
-            lowerClampedDot = -1.0f;
-        } else {
-            lowerClampedDot = dot;
-        }
-        clampedDot = lowerClampedDot;
-    }
-    return (f32)acos((f64)clampedDot);
-}
-
+/* Turn the actor toward a heading and apply a push along the new direction. */
 static inline void M607UnusedFace(M607RootWork *work, f32 angle,
                              f32 pushDistance, f32 turnRate)
 {
@@ -2436,7 +2184,7 @@ static inline void M607UnusedFace(M607RootWork *work, f32 angle,
     actorDirection.z = actorCosine;
     dotProductResult = PSVECDotProduct(&targetDirection, &actorDirection);
     dotProduct = dotProductResult;
-    angleDifferenceResult = M607UnusedAngleDifference(dotProduct);
+    angleDifferenceResult = M607EnemyReturnAngleDifference(dotProduct);
     angleDifferenceValue = angleDifferenceResult;
     angleDifference = angleDifferenceValue;
     crossProduct = (targetDirection.x * actorDirection.z) -
@@ -2465,43 +2213,9 @@ static inline void M607UnusedFace(M607RootWork *work, f32 angle,
                        lbl_1_rodata_84[work->motionIndex]);
 }
 
-/* Turns away from the arena marker and plays the return movement effect. */
-static inline void M607EnemyReturnCry(M607RootWork *object,
-                                      const HuVecF *sourcePosition)
-{
-    HuVecF offset;
-    HuVecF position = *sourcePosition;
-
-    position.y += 150.0f;
-    offset.x = (f32)sin((M_PI *
-                         (f64)(180.0f + object->actor->rotY)) /
-                        180.0);
-    offset.y = 0.8f;
-    offset.z = (f32)cos((M_PI *
-                         (f64)(180.0f + object->actor->rotY)) /
-                        180.0);
-    fn_800608C4(1, &position, &offset, 1.0f);
-}
-
-static inline f32 M607ReturnNormalize(HuVecF *dst, const HuVecF *src)
-{
-    f32 magnitude = fn_1_420(src);
-    if (magnitude > 1.1920929e-07f) {
-        f32 inverse = 1.0f / magnitude;
-        dst->x = src->x * inverse;
-        dst->y = src->y * inverse;
-        dst->z = src->z * inverse;
-    } else {
-        magnitude = 0.0f;
-        dst->x = 0.0f;
-        dst->y = 0.0f;
-        dst->z = 0.0f;
-    }
-    return magnitude;
-}
-
 const Vec lbl_1_rodata_1AC = { 0.0f, 0.0f, 0.0f };
 
+/* Steer the actor toward its exit marker when the round ends and update its stage position along the way. */
 void fn_1_964C(OMOBJ *obj)
 {
     M607RootWork *work = obj->data;
@@ -2517,17 +2231,17 @@ void fn_1_964C(OMOBJ *obj)
     }
     fn_80086BC8(work->actor, &actorPosition);
     PSVECSubtract(&actorPosition, &markerPosition, &direction);
-    M607ReturnNormalize(&direction, &direction);
+    fn_1_648(&direction, &direction);
     PSVECScale(&direction, &scaledDirection, 500.0f);
     PSVECSubtract(&scaledDirection, &actorPosition, &movementDirection);
-    movementDistance = M607ReturnNormalize(&movementDirection, &movementDirection);
+    movementDistance = fn_1_648(&movementDirection, &movementDirection);
 
-    M607EnemyReturnFace(work,
+    fn_1_8C64(work,
                         atan2f(movementDirection.x, movementDirection.z),
                         12.0f,
                         0.1f);
 
-    M607EnemyReturnCry(work, &actorPosition);
+    fn_1_8FC8(work, &actorPosition);
     if (movementDistance <= 10.0f) {
         work->turnDirection = ((rand8() % 2) == 0) ? 1 : -1;
         work->frames = 0;
@@ -2541,9 +2255,9 @@ void fn_1_964C(OMOBJ *obj)
     }
 }
 
-/* Turns the enemy around the arena marker and selects its next movement state. */
 const Vec lbl_1_rodata_1C4 = { 0.0f, 0.0f, 0.0f };
 
+/* Turns the enemy around the arena marker and selects its next movement state. */
 void fn_1_9F24(OMOBJ *obj)
 {
     M607RootWork *work = obj->data;
@@ -2564,16 +2278,16 @@ void fn_1_9F24(OMOBJ *obj)
 
     fn_80086BC8(work->actor, &actorPosition);
     PSVECSubtract(&markerPosition, &actorPosition, &direction);
-    distance = M607ReturnNormalize(&direction, &direction);
+    distance = fn_1_648(&direction, &direction);
 
-    M607ReturnVector(&turnDirection, 0.0f,
+    M607PlayerMotionVector(&turnDirection, 0.0f,
                      (f32)work->turnDirection, 0.0f);
     PSVECCrossProduct(&turnDirection, &direction, &crossDirection);
     originalCrossDirection = crossDirection;
     PSVECScale(&direction, &direction, (500.0f - distance) / 12.0f);
     PSVECScale(&direction, &direction, -1.0f);
     PSVECAdd(&crossDirection, &direction, &crossDirection);
-    M607ReturnNormalize(&crossDirection, &crossDirection);
+    fn_1_648(&crossDirection, &crossDirection);
     targetAngle = atan2f(crossDirection.x, crossDirection.z);
     fn_1_8C64(work, targetAngle,
                           12.0f, 0.1f);
@@ -2593,7 +2307,7 @@ void fn_1_9F24(OMOBJ *obj)
         }
         if (randomChoice == 1) {
             PSVECSubtract(&markerPosition, &actorPosition, &work->direction);
-            M607ReturnNormalize(&work->direction, &work->direction);
+            fn_1_648(&work->direction, &work->direction);
             work->frames = 0;
             fn_1_35C(obj, fn_1_B248);
             return;
@@ -2612,7 +2326,7 @@ void fn_1_9F24(OMOBJ *obj)
             if (randomChoice == 1) {
                 PSVECSubtract(&markerPosition, &actorPosition,
                               &work->direction);
-                M607ReturnNormalize(&work->direction,
+                fn_1_648(&work->direction,
                                             &work->direction);
                 work->frames = 0;
                 fn_1_35C(obj, fn_1_B248);
@@ -2640,9 +2354,9 @@ void fn_1_AD60(OMOBJ *obj)
     }
 
     fn_80086BC8(work->actor, &actorPosition);
-    M607EnemyReturnFace(work, work->currentAngle, 0.0f, 0.1f);
+    fn_1_8C64(work, work->currentAngle, 0.0f, 0.1f);
 
-    M607TurnCryEffect(work, &actorPosition);
+    fn_1_8FC8(work, &actorPosition);
 
     if (work->frames++ >= 0xA) {
         work->frames = 0;
@@ -2658,6 +2372,7 @@ void fn_1_AD60(OMOBJ *obj)
 
 const Vec lbl_1_rodata_1D0 = { 0.0f, 0.0f, 0.0f };
 
+/* Guide the actor toward the stage marker while steering clear of nearby players. */
 void fn_1_B248(OMOBJ *obj)
 {
     M607RootWork *work = obj->data;
@@ -2674,7 +2389,7 @@ void fn_1_B248(OMOBJ *obj)
     }
     fn_80086BC8(work->actor, &actorPosition);
     PSVECSubtract(&targetPosition, &actorPosition, &direction);
-    distance = M607ReturnNormalize(&direction, &direction);
+    distance = fn_1_648(&direction, &direction);
     targetAngle = atan2f(direction.x, direction.z);
     fn_1_8C64(work, targetAngle,
               12.0f, 0.1f);
@@ -2723,14 +2438,7 @@ static inline f32 M607EnemyTurnAcos(f32 dot)
     return (f32)acos((f64)(dot > 1.0f ? 1.0f :
                           (dot < -1.0f ? -1.0f : dot)));
 }
-
-static inline void M607EnemyTurnDirection(HuVecF *direction, f32 x, f32 y, f32 z)
-{
-    direction->x = x;
-    direction->y = y;
-    direction->z = z;
-}
-
+/* Turns the enemy toward the selected player's position. */
 static inline void M607EnemyTurnFace(M607RootWork *work, f32 angle,
                                     f32 pushDistance, f32 turnRate)
 {
@@ -2744,9 +2452,9 @@ static inline void M607EnemyTurnFace(M607RootWork *work, f32 angle,
 
     targetRotation = (f32)(M_PI *
         (f64)(work->actor->rotY / 180.0f));
-    M607EnemyTurnDirection(&targetDirection, (f32)sin((f64)angle), 0.0f,
+    M607PlayerMotionVector(&targetDirection, (f32)sin((f64)angle), 0.0f,
                            (f32)cos((f64)angle));
-    M607EnemyTurnDirection(&actorDirection, (f32)sin((f64)targetRotation),
+    M607PlayerMotionVector(&actorDirection, (f32)sin((f64)targetRotation),
                            0.0f, (f32)cos((f64)targetRotation));
     angleDifference = M607EnemyTurnAcos(fn_1_570(&targetDirection, &actorDirection));
     crossProduct = (targetDirection.x * actorDirection.z) -
@@ -2827,26 +2535,6 @@ void fn_1_C004(OMOBJ *obj)
 
 extern Point3d lbl_1_data_104;
 
-static inline f32 M607C0A8Normalize(Point3d *dst, const Point3d *src)
-{
-    f32 sqrtResult;
-    f32 magnitude;
-
-    magnitude = fn_1_420(src);
-    if (magnitude > 1.1920929e-07f) {
-        f32 inverse = 1.0f / magnitude;
-        dst->x = src->x * inverse;
-        dst->y = src->y * inverse;
-        dst->z = src->z * inverse;
-    } else {
-        magnitude = 0.0f;
-        dst->x = 0.0f;
-        dst->y = 0.0f;
-        dst->z = 0.0f;
-    }
-    return magnitude;
-}
-
 static inline void M607C0A8PlayerPosGet(M607PlayerWork *player, Point3d *position)
 {
     fn_80086BC8(player->player->actor, position);
@@ -2858,6 +2546,7 @@ static inline f32 M607C0A8Acos(f32 dot)
                           (dot < -1.0f ? -1.0f : dot)));
 }
 
+/* Moves the actor to the marker while steering away from nearby players. */
 void fn_1_C0A8(OMOBJ *obj)
 {
     M607RootWork *work = obj->data;
@@ -2867,39 +2556,14 @@ void fn_1_C0A8(OMOBJ *obj)
     Point3d playerDirection;
     Point3d targetDirection;
     Point3d actorDirection;
-    f32 squaredLength;
     f32 distance;
     f32 speed;
-    f32 reciprocalDistance;
-    f32 playerSquaredLength;
     f32 playerDistance;
-    f32 playerReciprocalDistance;
-    f32 combinedSquaredLength;
-    f32 combinedDistance;
-    f32 combinedReciprocalDistance;
-    f32 targetAngleResult;
-    f32 targetAngle;
-    f32 actorAngle;
-    f32 targetCosine;
-    f32 targetSine;
-    f32 actorCosine;
-    f32 actorSine;
-    f32 dotProductResult;
-    f32 dotProduct;
-    f32 clampedDot;
-    f32 lowerClampedDot;
-    f32 upperClampedDot;
-    f32 angleDifferenceResult;
-    f32 angleDifferenceValue;
-    f32 angleDifference;
-    f32 crossProduct;
-    f32 newAngle;
     s32 playerIndex;
-    HuVecF *push;
 
     fn_80086BC8(work->actor, &actorPosition);
     PSVECSubtract(&lbl_1_data_104, &actorPosition, &markerDirection);
-    distance = M607C0A8Normalize(&markerDirection, &markerDirection);
+    distance = M607EnemyTurnLength(&markerDirection, &markerDirection);
     if (distance < 30.0f) {
         lbl_1_bss_8++;
         fn_80086B04(work->actor, &lbl_1_data_104);
@@ -2910,13 +2574,13 @@ void fn_1_C0A8(OMOBJ *obj)
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         M607C0A8PlayerPosGet(fn_1_A14(playerIndex), &playerPosition);
         PSVECSubtract(&playerPosition, &actorPosition, &playerDirection);
-        playerDistance = M607C0A8Normalize(&playerDirection, &playerDirection);
+        playerDistance = M607EnemyTurnLength(&playerDirection, &playerDirection);
         if (playerDistance < 100.0f) {
             PSVECScale(&markerDirection, &markerDirection, 10.0f);
             PSVECScale(&playerDirection, &playerDirection,
                        -(100.0f - playerDistance));
             PSVECAdd(&markerDirection, &playerDirection, &markerDirection);
-            M607C0A8Normalize(&markerDirection, &markerDirection);
+            M607EnemyTurnLength(&markerDirection, &markerDirection);
         }
     }
 
@@ -2932,6 +2596,7 @@ void fn_1_C0A8(OMOBJ *obj)
               atan2f(markerDirection.x, markerDirection.z), speed, 0.3f);
 }
 
+/* Switch the actor to its stationary motion and turn it to face forward. */
 void fn_1_CACC(OMOBJ *obj)
 {
     M607RootWork *work = obj->data;
@@ -2942,7 +2607,7 @@ void fn_1_CACC(OMOBJ *obj)
                            work->model->mtnId[3], 0.0f,
                            4.0f, ((1 << 30) | (1 << 0)));
     }
-    M607EnemyReturnFace(work, 0.0f, 0.0f, 0.1f);
+    fn_1_8C64(work, 0.0f, 0.0f, 0.1f);
 }
 
 typedef struct M607SceneSetupWork {
@@ -3041,18 +2706,6 @@ void fn_1_D1C4(OMOBJ *obj)
         return;
     }
 }
-
-extern s32 lbl_1_data_F18;
-
-extern float lbl_1_bss_1BC;
-
-extern s8 lbl_1_bss_218;
-
-extern s8 lbl_1_bss_219;
-
-extern s8 lbl_1_data_2758;
-
-s32 fn_1_367CC(s32 *player);
 
 void fn_1_D464(OMOBJ *object)
 {
@@ -3409,6 +3062,7 @@ void fn_1_E4D0(OMOBJ *object)
     }
 }
 
+/* Blink the item model during its final frames before hiding it. */
 void fn_1_E544(OMOBJ *object)
 {
     M607ItemWork *work = object->data;
@@ -3419,7 +3073,7 @@ void fn_1_E544(OMOBJ *object)
         fn_80026A44(work->model->mdlId[0], (1 << 0));
     }
     work->frame++;
-    if ((work->frame >= 0x5A) || (work->playerContext != 0)) {
+    if ((work->frame >= 90) || (work->playerContext != 0)) {
         fn_800269E8(work->model->mdlId[0], (1 << 0));
         fn_1_35C(object, 0);
         return;
@@ -3432,26 +3086,7 @@ static inline f32 m607ParticleVectorLength(const HuVecF *src)
                 ((src->x * src->x) + (src->y * src->y)));
 }
 
-static inline f32 m607ParticleNormalizeVector(HuVecF *dst, const HuVecF *src)
-{
-    f32 magnitude;
-
-    magnitude = m607ParticleVectorLength(src);
-    if (magnitude > 1.1920929e-07f) {
-        f32 inverse = 1.0f / magnitude;
-
-        dst->x = src->x * inverse;
-        dst->y = src->y * inverse;
-        dst->z = src->z * inverse;
-    } else {
-        magnitude = 0.0f;
-        dst->x = 0.0f;
-        dst->y = 0.0f;
-        dst->z = 0.0f;
-    }
-    return magnitude;
-}
-
+/* Advance each active firework particle, slowing its flight and fading it as it ages. */
 void fn_1_E608(HU3D_MODEL *model, HU3D_PARTICLE *particle, f32 (*mtx)[4])
 {
     HU3D_PARTICLE_DATA *data = particle->data;
@@ -3478,7 +3113,7 @@ void fn_1_E608(HU3D_MODEL *model, HU3D_PARTICLE *particle, f32 (*mtx)[4])
         }
         if (data->time == 1) {
             PSVECAdd(&data->pos, &data->vel, &data->pos);
-            magnitude = m607ParticleNormalizeVector(&data->vel, &data->vel);
+            magnitude = M607EnemyTurnLength(&data->vel, &data->vel);
             magnitude += -magnitude / 20.0f;
             PSVECScale(&data->vel, &data->vel, magnitude);
             data->scale *= 1.01f;
@@ -3499,11 +3134,11 @@ typedef struct M607FireworkModel {
     f32 horizontalSpeed;
     f32 verticalSpeed;
     f32 rotation;
-    f32 scale;
-    f32 positionX;
+    f32 unk1C; /* The game's code never reads this field. */
+    f32 unk20; /* The game's code never reads this field. */
     f32 orbitRadius;
-    f32 positionY;
-    s32 timer;
+    f32 unk28; /* The game's code never reads this field. */
+    s32 unk2C; /* The game's code never reads this field. */
 } M607FireworkModel;
 
 typedef struct M607FireworkWork {
@@ -3511,21 +3146,27 @@ typedef struct M607FireworkWork {
     s32 timer;
     s16 particleId;
 } M607FireworkWork;
-
-static inline void M607FireworkModelInit(M607FireworkModel *model, s32 modelData)
+/* Sets the initial motion and transform for a firework model. */
+static inline void M607FireworkModelLaunch(M607FireworkModel *model, const Vec *position)
 {
-    model->mdlId = fn_80025A04(fn_80008DD0(modelData, 0x10000000, 2));
-    model->position = lbl_1_rodata_94;
+    model->position = *position;
     model->horizontalSpeed = (6.0f * frandf()) - 3.0f;
     model->verticalSpeed = 12.0f;
     model->rotation = 0.0f;
-    model->scale = 60.0f * frandf() * (M_PI * 6.0 / 180.0);
-    model->timer = -(rand8() % 0x1E);
-    model->positionX = 1.0f + ((12.0f * frandf()) - 6.0f);
-    model->positionY = 35.0f + (20.0f * frandf());
+    model->unk1C = 60.0f * frandf() * (M_PI * 6.0 / 180.0);
+    model->unk2C = -(rand8() % 0x1E);
+    model->unk20 = 1.0f + ((12.0f * frandf()) - 6.0f);
+    model->unk28 = 35.0f + (20.0f * frandf());
     fn_80026808(model->mdlId, 45.0f, 0.0f, 0.0f);
     fn_80026790(model->mdlId, &model->position);
     fn_800268B0(model->mdlId, 1.5f, 1.5f, 1.5f);
+}
+
+/* Sets the launch position, velocity, and rotation for a result firework. */
+static inline void M607FireworkModelInit(M607FireworkModel *model, s32 modelData)
+{
+    model->mdlId = fn_80025A04(fn_80008DD0(modelData, 0x10000000, 2));
+    M607FireworkModelLaunch(model, &lbl_1_rodata_94);
 }
 
 /* Builds the layered firework models and particle system used for the celebration. */
@@ -3549,17 +3190,7 @@ void fn_1_EA48(OMOBJ *obj)
         } else {
             model->mdlId = fn_80025D4C(work->models[0].mdlId);
         }
-        model->position = work->models[0].position;
-        model->horizontalSpeed = (6.0f * frandf()) - 3.0f;
-        model->verticalSpeed = 12.0f;
-        model->rotation = 0.0f;
-        model->scale = (f32)((M_PI * 6.0 / 180.0) * (60.0f * frandf()));
-        model->timer = -(rand8() % 0x1E);
-        model->positionX = 1.0f + ((12.0f * frandf()) - 6.0f);
-        model->positionY = 35.0f + (20.0f * frandf());
-        fn_80026808(model->mdlId, 45.0f, 0.0f, 0.0f);
-        fn_80026790(model->mdlId, &model->position);
-        fn_800268B0(model->mdlId, 1.5f, 1.5f, 1.5f);
+        M607FireworkModelLaunch(model, &work->models[0].position);
         model++;
     }
 
@@ -3578,6 +3209,7 @@ void fn_1_EA48(OMOBJ *obj)
     fn_1_35C(obj, fn_1_F08C);
 }
 
+/* After the firework delay, play the burst, release particles, and cue all four player reactions. */
 void fn_1_F08C(OMOBJ *object)
 {
     M607FireworkWork *work;
@@ -3589,9 +3221,9 @@ void fn_1_F08C(OMOBJ *object)
 
     work = object->data;
     work->timer++;
-    if (work->timer == 0xD2) {
+    if (work->timer == 210) {
         HuAudFXPlay(MSM_SE_MG607_FIREWORK_BURST);
-    } else if (work->timer >= 0xD2) {
+    } else if (work->timer >= 210) {
         mdlId = work->particleId;
         hookData = lbl_802C01C8[mdlId].hookData;
         record = hookData->data;
@@ -3608,11 +3240,11 @@ void fn_1_F08C(OMOBJ *object)
             }
         }
     }
-    if (work->timer >= 0xD7) {
+    if (work->timer >= 215) {
         s32 player;
 
         for (player = 0; player < 4; player++) {
-            fn_8006A030((s16)player, 0x1E, 0x1E, 0);
+            fn_8006A030((s16)player, 30, 0x1E, 0);
         }
         fn_1_35C(object, fn_1_F1D4);
         return;
@@ -3624,7 +3256,7 @@ typedef struct M607FlashParticle {
     Point3d position;
     f32 horizontalSpeed;
     f32 verticalSpeed;
-    f32 depthSpeed;
+    f32 unk18; /* The game's code never reads this field. */
     f32 phase;
     f32 angularSpeed;
     f32 orbitRadius;
@@ -3633,24 +3265,24 @@ typedef struct M607FlashParticle {
 } M607FlashParticle;
 
 typedef struct M607FlashParticleWork {
-    M607FlashParticle particles[0x96];
+    M607FlashParticle particles[150];
     s32 frame;
     s16 mdlId;
 } M607FlashParticleWork;
-
+/* Moves the firework burst particles outward and hides them when the burst ends. */
 void fn_1_F1D4(OMOBJ *object)
 {
     M607FlashParticleWork *work = object->data;
     M607FlashParticle *particle = work->particles;
     s32 particleIndex;
 
-    for (particleIndex = 0; particleIndex < 0x96; particleIndex++, particle++) {
+    for (particleIndex = 0; particleIndex < 150; particleIndex++, particle++) {
         if (particle->lifetime == 0) {
             particle->position = lbl_1_rodata_94;
             particle->horizontalSpeed =
                 (6.0f * frandf()) - 3.0f;
             particle->verticalSpeed = 128.0f;
-            particle->depthSpeed = 0.0f;
+            particle->unk18 = 0.0f;
             particle->phase = (M_PI * 6.0 / 180.0) *
                               (60.0f * frandf());
             particle->orbitRadius = 0.0f;
@@ -3678,7 +3310,7 @@ void fn_1_F1D4(OMOBJ *object)
     }
 
     if (work->frame++ >= 0x122) {
-        for (particleIndex = 0; particleIndex < 0x96; particleIndex++) {
+        for (particleIndex = 0; particleIndex < 150; particleIndex++) {
             fn_800269E8(work->particles[particleIndex].mdlId, (1 << 0));
         }
         fn_1_35C(object, NULL);

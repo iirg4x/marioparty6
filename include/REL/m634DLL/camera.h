@@ -1,6 +1,7 @@
 #ifndef M634_CAMERA_H
 #define M634_CAMERA_H
 #include "REL/framework/game_object.h"
+#include "REL/framework/event_callback_registration.h"
 #include "REL/framework/singleton.h"
 #include "REL/framework/event_hm.h"
 #include "REL/framework/event_callback_inline.h"
@@ -13,7 +14,7 @@ struct SceneCameraMotion : CameraFrame {
 
     u8 unk3C[0x10]; /* No code names this field. */
 
-    u8 active;
+    u8 unk4C; /* The game's code never reads this field. */
 
     // Returns the initial camera position.
     const Vec &getInitialPosition() const
@@ -70,31 +71,5 @@ struct CameraSceneWork : GameObject, MinigameSingleton<CameraSceneWork> {
         initialCallback = next;
     }
 };
-
-template <typename Payload> struct CallbackRecord : EventCallback {
-    Payload callback;
-    // Releases the object and its member-owned resources.
-    virtual ~CallbackRecord() { }
-    virtual void receive(const EventPacket *value);
-    // Stores the callback payload.
-    CallbackRecord(const Payload &payload)
-        : EventCallback()
-        , callback(payload)
-    {
-    }
-};
-
-// Invokes the stored event callback.
-template <typename Payload> void CallbackRecord<Payload>::receive(const EventPacket *value)
-{
-    callback(*value);
-}
-
-// Registers a camera event callback for the requested key.
-template <typename Payload>
-void fn_1_112D4(EventHandlerManager *owner, const Payload &payload, s32 key)
-{
-    owner->addHandler(new CallbackRecord<Payload>(payload), key);
-}
 
 #endif

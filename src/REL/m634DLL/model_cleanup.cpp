@@ -1,4 +1,5 @@
 #include <vector>
+#include "REL/m634DLL/game_manager.h"
 #include "REL/framework/model.h"
 
 // Deletes the owned models and clears their list.

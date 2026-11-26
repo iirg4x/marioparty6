@@ -29,4 +29,6 @@ void fn_1_C534(GameManager *);
 }
 void fn_1_C708(GameManager *);
 
+void fn_1_CF58(std::vector<OwnedModel *> *models);
+
 #endif

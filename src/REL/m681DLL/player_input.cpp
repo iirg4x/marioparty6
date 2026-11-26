@@ -151,7 +151,7 @@ void ModeToggle::update(PlayerObject *work)
 // Sets the computer input threshold from its difficulty.
 ModeObject::ModeObject(s32 mode) : ModeBase()
 {
-    this->mode = mode;
+    unk18 = mode;
     active = 1;
     switch (mode) {
     case 0: modeValue = 3; break;
@@ -171,7 +171,7 @@ void ModeObject::update(PlayerObject *result)
     s32 *primaryPair;
     s32 *secondaryPair;
 
-    if (value >= modeValue && count <= 0x28) {
+    if (value >= modeValue && count <= 40) {
         primaryPair = &MinigameSingleton<M681GameState>::getChecked().textureChoices.values[2];
         result->modes.values[0] = primaryPair[0];
         result->modes.values[1] = primaryPair[1];

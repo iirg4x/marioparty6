@@ -2,7 +2,7 @@
 #define REL_M634DLL_ACT_PLAYER_H
 #include <functional>
 #include "REL/framework/vector3.h"
-#include "REL/m634DLL/pad_control.h"
+#include "REL/framework/pad_control.h"
 #include <vector>
 #include <memory>
 #include "REL/m634DLL/collision_shape.h"
@@ -35,7 +35,7 @@ struct PlayerChoicePart : ActPlayerPart {
     PadControl padControl;
     Vec position;
     s32 selectedIndex;
-    s32 idle;
+    s32 unk54; /* The game's code never reads this field. */
     u32 updateCount;
     s32 buttonDelay;
     s32 difficulty;
@@ -140,7 +140,7 @@ struct ActPlayer : GameObject {
     Vec velocity;
     CrossShape shape;
     f32 unk70; /* The game's code never reads this field. */
-    s32 updateCount;
+    s32 unk74; /* The game's code never reads this field. */
     s32 playerIndex;
     std::auto_ptr<OwnedModel> bodyModel;
     s16 secondaryLightId;

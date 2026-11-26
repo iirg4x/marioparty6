@@ -19,9 +19,9 @@ struct MotionObject : ModeRenderObject {
     unsigned char unk14[4]; /* No code names this field. */
     Vec position;
     unsigned char unk24[12]; /* No code names this field. */
-    unsigned char active;
+    unsigned char unk30; /* The game's code never reads this field. */
     unsigned char unk31[3]; /* No code names this field. */
-    float phase;
+    float unk34; /* The game's code never reads this field. */
     int state;
     int unk3C; /* The game's code never reads this field. */
     ANIMDATA *resource;

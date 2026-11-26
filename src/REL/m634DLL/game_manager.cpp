@@ -9,11 +9,11 @@ extern "C" {
 #include "game/hu3d.h"
 #include "game/sprite.h"
 #include "game/mg/actman.h"
-}
 #include "game/gamework.h"
 #include "game/object.h"
 #include "game/mgdata.h"
 #include "game/charman.h"
+}
 #include "datadir_enum.h"
 #include "REL/m634DLL/model_action.h"
 
@@ -35,12 +35,11 @@ struct CharacterModelParameterTable {
 extern "C" {
 extern char *lbl_1_data_684[16];
 }
-void fn_1_CF58(std::vector<OwnedModel *> *models);
 
 // Loads and locks a sprite animation.
 static inline ANIMDATA *loadAnimation(int resourceNumber)
 {
-    ANIMDATA *animation = HuSprAnimRead(fn_80008DD0(resourceNumber, 0x10000000, 2));
+    ANIMDATA *animation = HuSprAnimDataRead(resourceNumber);
     HuSprAnimLock(animation);
     return animation;
 }

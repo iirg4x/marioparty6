@@ -129,12 +129,12 @@ CameraSceneWork::CameraSceneWork()
     camera->setPosition(camera->initialPosition = cameraSetup.initialPosition);
     camera->up = cameraSetup.up;
     camera->setTarget(camera->initialTarget = cameraSetup.initialTarget);
-    camera->active = 0;
+    camera->unk4C = 0;
     cameraApplyToHud(camera, 1);
     HU3D_MOTIONID motion = fn_8002C4C0(fn_80008DD0(0x5D0001, 0x10000000, 2));
     this->motionId = fn_800283F4((s16)motion, 2);
     fn_800284C8(this->motionId, 2);
-    fn_1_112D4(
+    registerEventCallback(
         &this->registration, std::bind1st(std::mem_fun(&CameraSceneWork::fn_1_11064), this), 4);
     setCallback(&CameraSceneWork::fn_1_10E0C);
 }
@@ -185,7 +185,7 @@ void CameraSceneWork::fn_1_10E0C()
         motion->target.x = directionSource->x;
         motion->target.y = directionSource->y;
         motion->target.z = directionSource->z;
-        motion->active = 0;
+        motion->unk4C = 0;
         {
             MotionCallback initialValues = &CameraSceneWork::fn_1_10DB8;
 
@@ -257,14 +257,14 @@ void CameraSceneWork::fn_1_11064(const EventPacket &event)
 
     if (index != -1) {
         point = lbl_1_rodata_808[index];
-        PSVECAdd((Vec *)&point.value, &lbl_1_rodata_82C[index], (Vec *)&point.value);
+        PSVECAdd(&point.value, &lbl_1_rodata_82C[index], &point.value);
         SceneCameraMotion *camera = &camera0;
         camera->setPosition(camera->initialPosition = point.value);
         camera->up.x = lbl_1_rodata_820.x;
         camera->up.y = lbl_1_rodata_820.y;
         camera->up.z = lbl_1_rodata_820.z;
         camera->setTarget(camera->initialTarget = lbl_1_rodata_808[index].value);
-        camera->active = 0;
+        camera->unk4C = 0;
         cameraReadFromHud(camera, 2);
     }
 }
@@ -280,5 +280,3 @@ f32 CameraSceneWork::fn_1_111E0()
 
 // Releases the object and its member-owned resources.
 CameraSceneWork::~CameraSceneWork() { }
-
-void *operator new(unsigned long);

@@ -1,4 +1,5 @@
 #include "REL/m634DLL/act_player.h"
+#include <new>
 #include "msm_stream.h"
 #include "REL/framework/frame_time.h"
 #include "REL/framework/sound.h"
@@ -34,8 +35,7 @@ SceneObjectOwner::SceneObjectOwner()
 SceneObjectOwner::~SceneObjectOwner() { }
 
 #include "REL/framework/minigame_core.h"
-#include "REL/m634DLL/event_calls.h"
-#include "REL/m634DLL/random.h"
+#include "REL/framework/event.h"
 #include "REL/m634DLL/ActModels.h"
 #include "REL/m634DLL/camera.h"
 #include "REL/framework/thread.h"
@@ -47,6 +47,7 @@ SceneObjectOwner::~SceneObjectOwner() { }
 
 #include "dolphin/types.h"
 
+extern "C" {
 #include "game/main.h"
 
 #include "game/object.h"
@@ -76,6 +77,7 @@ SceneObjectOwner::~SceneObjectOwner() { }
 #include "game/board/object.h"
 
 #include "game/board/tutorial.h"
+}
 
 #include "datadir_enum.h"
 
@@ -84,7 +86,6 @@ extern "C" {
 #include "game/wipe.h"
 }
 
-void *operator new(unsigned long size);
 
 // Creates and initializes the game, camera, player, and scene objects.
 void SceneObjectOwner::setupObjects(OMOBJMAN *managerObject)
@@ -102,7 +103,6 @@ void SceneObjectOwner::setupObjects(OMOBJMAN *managerObject)
 
 extern "C" void fn_800856A8(void);
 
-void fn_1_50C8();
 
 // Updates queued events, game objects, and active collisions.
 void SceneObjectOwner::updateGame()
@@ -168,7 +168,7 @@ void SceneObjectOwner::run(void *initialArgument)
     while ((u8)fn_1_D840() == 0) {
         ThreadEntry::suspend(0);
     }
-    HuAudSStreamFadeOut(musicHandle, 0x64);
+    HuAudSStreamFadeOut(musicHandle, 100);
     sendEvent(1, 3, 0.0f);
     this->complete = 1;
     if (this->mode == 1) {

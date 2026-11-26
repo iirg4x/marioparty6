@@ -37,7 +37,7 @@ extern "C" {
 
 struct TextureController : MinigameSingleton<TextureController>, ModeRenderObject {
     GXTexObj texture;
-    unsigned char unk38[12]; /* No code names this field. */
+    unsigned char unk34[12]; /* No code names this field. */
     unsigned char frameBuffer[640 * 480 * 2];
     TextureController();
     virtual ~TextureController();

@@ -1,194 +1,76 @@
+// Dispatches player actions and their motion callbacks.
 #include "REL/framework/event_manager.h"
-#include "REL/m634DLL/player_callback.h"
+#include "REL/framework/event_hm.h"
+#include "REL/framework/event_callback_registration.h"
+#include "REL/framework/event_callback_inline.h"
 #include "REL/m634DLL/scene.h"
 #include "REL/framework/game_object_man.h"
 extern "C" {
+#include "REL/framework/assertion.h"
 #include "dolphin/types.h"
 }
 
 #include "dolphin/os.h"
-
 #include "dolphin/gx.h"
-
 #include "dolphin/mtx.h"
-
 #include "REL/m634DLL/actor_tables.h"
-
 #include "dolphin.h"
-
 #include "humath.h"
-
 #include "REL/framework/model.h"
-
 #include "REL/framework/singleton.h"
 
 extern "C" {
 #include "game/hu3d.h"
-}
-
-extern "C" {
 #include "game/object.h"
-}
-
-extern "C" {
 #include "game/gamework.h"
-}
-
-extern "C" {
 #include "game/audio.h"
-}
-
-extern "C" {
 #include "game/sprite.h"
-}
-
-extern "C" {
 #include "game/memory.h"
-}
-
-extern "C" {
 #include "game/data.h"
-}
-
-extern "C" {
 #include "game/main.h"
-}
-
-extern "C" {
 #include "game/pad.h"
-}
-
-extern "C" {
 #include "game/window.h"
-}
-
-extern "C" {
 #include "game/wipe.h"
-}
-
-extern "C" {
 #include "game/frand.h"
-}
-
-extern "C" {
 #include "game/charman.h"
-}
-
-extern "C" {
 #include "game/process.h"
-}
-
-extern "C" {
 #include "game/hsfex.h"
-}
-
-extern "C" {
 #include "game/gamemes.h"
-}
-
-extern "C" {
 #include "game/flag.h"
-}
-
-extern "C" {
 #include "game/armem.h"
-}
-
-extern "C" {
 #include "game/mgdata.h"
-}
-
-extern "C" {
 #include "game/printfunc.h"
-}
-
-extern "C" {
 #include "game/saveload.h"
-}
-
-extern "C" {
 #include "game/esprite.h"
-}
-
-extern "C" {
 #include "game/thpmain.h"
-}
-
-extern "C" {
 #include "game/mg/seqman.h"
-}
-
-extern "C" {
 #include "game/mg/actman.h"
-}
-
-extern "C" {
 #include "game/mg/timer.h"
-}
-
-extern "C" {
 #include "game/mg/score.h"
-}
-
-extern "C" {
 #include "game/board/object.h"
-}
-
-extern "C" {
 #include "game/board/main.h"
-}
-
-extern "C" {
 #include "game/board/audio.h"
-}
-
-extern "C" {
 #include "game/board/tutorial.h"
-}
-
-extern "C" {
 #include "game/board/masu.h"
-}
-
-extern "C" {
 #include "game/board/player.h"
 }
 
 #include "REL/m634DLL/collision_shape.h"
-
-#include "REL/framework/event_hm.h"
-
 #include "datadir_enum.h"
-
 #include "REL/m634DLL/camera_control.h"
-
 #include "REL/m634DLL/ActModels.h"
-
 #include "REL/m634DLL/act_player.h"
-
 #include "REL/framework/sound.h"
-
 #include "REL/framework/minigame_core.h"
-
 #include "REL/m634DLL/camera.h"
-
 #include "REL/framework/frame_time.h"
-
 #include <functional>
-
 #include <math.h>
-
 #include <string.h>
-
 #include <vector>
-
 #include <memory>
 
 static const int NUMBEROF_MOTION = 8;
-
-extern "C" {
-void __msl_assertion_failed(const char *condition, const char *file, int line);
-}
 
 extern "C" {
 extern const s32 lbl_1_rodata_34[3];
@@ -255,8 +137,6 @@ struct MotionValues {
     f32 speed;
     f32 y;
 };
-
-ActPlayer *fn_1_EC8C(Scene *, s32);
 
 // Loads the four player models.
 ActModels::ActModels()
@@ -353,7 +233,7 @@ ActPlayer::ActPlayer(s32 index, s32 mode, s32 category)
     : GameObject(category)
     , shape(50.0f)
     , unk70(0.0f)
-    , updateCount(0)
+    , unk74(0)
     , playerIndex(index)
     , actStarted(0)
     , actionReady(1)
@@ -370,12 +250,18 @@ ActPlayer::ActPlayer(s32 index, s32 mode, s32 category)
     s32 cameraMask;
     s32 night;
 
-    fn_1_3ED0(&firstHandlers, std::bind1st(std::mem_fun(&ActPlayer::fn_1_353C), this), 0);
-    fn_1_3ED0(&firstHandlers, std::bind1st(std::mem_fun(&ActPlayer::fn_1_3638), this), 2);
-    fn_1_3ED0(&firstHandlers, std::bind1st(std::mem_fun(&ActPlayer::fn_1_36D4), this), 3);
-    fn_1_3ED0(&firstHandlers, std::bind1st(std::mem_fun(&ActPlayer::fn_1_37FC), this), 4);
-    fn_1_3ED0(&firstHandlers, std::bind1st(std::mem_fun(&ActPlayer::fn_1_3A28), this), 5);
-    fn_1_3ED0(&secondHandlers, std::bind1st(std::mem_fun(&ActPlayer::fn_1_3D18), this), 1);
+    registerEventCallback(&firstHandlers,
+        std::bind1st(std::mem_fun(&ActPlayer::fn_1_353C), this), 0);
+    registerEventCallback(&firstHandlers,
+        std::bind1st(std::mem_fun(&ActPlayer::fn_1_3638), this), 2);
+    registerEventCallback(&firstHandlers,
+        std::bind1st(std::mem_fun(&ActPlayer::fn_1_36D4), this), 3);
+    registerEventCallback(&firstHandlers,
+        std::bind1st(std::mem_fun(&ActPlayer::fn_1_37FC), this), 4);
+    registerEventCallback(&firstHandlers,
+        std::bind1st(std::mem_fun(&ActPlayer::fn_1_3A28), this), 5);
+    registerEventCallback(&secondHandlers,
+        std::bind1st(std::mem_fun(&ActPlayer::fn_1_3D18), this), 1);
     const Vec &initialPosition = lbl_1_data_8C[playerMode];
     position.x = initialPosition.x;
     position.y = initialPosition.y;
@@ -735,7 +621,7 @@ void ActPlayer::update()
     }
     position.y = 0.0f;
     fn_80086B04(player->actor, &position);
-    updateCount++;
+    unk74++;
 }
 
 // Reads player input and updates movement, motion, and collision state.
@@ -794,84 +680,13 @@ extern "C" {
 s32 lbl_1_data_190[4] = { 0x70, 0x7c, 0x8c, 0xa4 };
 }
 
-// Restores the saved material colors for the transition.
-static inline void restoreTransitionColors(ActPlayer *effect)
-{
-    HSF_MATERIAL *material;
-    HU3D_MODEL *model;
-    s32 count;
-    s32 firstIndex;
-    s32 secondIndex;
-    model = &lbl_802C01C8[effect->modelId];
-    material = model->hsf->material;
-    count = model->hsf->materialNum;
-    for (firstIndex = 0; firstIndex < count; firstIndex++, material++) {
-        GXColor color = effect->firstColors.at(firstIndex);
-        material->color[0] = color.r;
-        material->color[1] = color.g;
-        material->color[2] = color.b;
-    }
-    model->ambR = 1.0f;
-    model->ambG = 1.0f;
-    model->ambB = 1.0f;
-
-    model = &lbl_802C01C8[*effect->models[1]];
-    material = model->hsf->material;
-    count = model->hsf->materialNum;
-    for (secondIndex = 0; secondIndex < count; secondIndex++, material++) {
-        GXColor color = effect->secondColors.at(secondIndex);
-        material->color[0] = color.r;
-        material->color[1] = color.g;
-        material->color[2] = color.b;
-    }
-    model->ambR = 1.0f;
-    model->ambG = 1.0f;
-    model->ambB = 1.0f;
-}
-
-// Scales the saved material colors for the transition.
-static inline void scaleTransitionColors(
-    ActPlayer *effect, f32 redScale, f32 greenScale, f32 blueScale)
-{
-    HU3D_MODEL *model;
-    HSF_MATERIAL *material;
-    s32 materialCount;
-    s32 firstMaterialIndex;
-    s32 secondMaterialIndex;
-    model = &lbl_802C01C8[effect->modelId];
-    material = model->hsf->material;
-    materialCount = model->hsf->materialNum;
-    for (firstMaterialIndex = 0; firstMaterialIndex < materialCount;
-        firstMaterialIndex++, material++) {
-        material->color[0] *= redScale;
-        material->color[1] *= greenScale;
-        material->color[2] *= blueScale;
-    }
-    model->ambR = redScale;
-    model->ambG = greenScale;
-    model->ambB = blueScale;
-
-    model = &lbl_802C01C8[*effect->models[1]];
-    material = model->hsf->material;
-    materialCount = model->hsf->materialNum;
-    for (secondMaterialIndex = 0; secondMaterialIndex < materialCount;
-        secondMaterialIndex++, material++) {
-        material->color[0] *= redScale;
-        material->color[1] *= greenScale;
-        material->color[2] *= blueScale;
-    }
-    model->ambR = redScale;
-    model->ambG = greenScale;
-    model->ambB = blueScale;
-}
-
 // Advances the timed model and color transition.
 void ActPlayer::fn_1_2A24()
 {
     if (this->transitionStep == lbl_1_data_190[this->playerMode]) {
         s32 nightMode2 = GWMgNightFGet();
-        restoreTransitionColors(this);
-        scaleTransitionColors(this, lbl_1_data_178[nightMode2].red,
+        fn_1_1DE8();
+        fn_1_1F9C(lbl_1_data_178[nightMode2].red,
             lbl_1_data_178[nightMode2].green, lbl_1_data_178[nightMode2].blue);
         fn_8005F77C(this->characterNumber, 1);
     }
@@ -1127,6 +942,6 @@ void ActPlayer::fn_1_3D18(const EventPacket &event)
     selectedPlayerId = *static_cast<s32 *>(event.context);
     activePlayerId = shape.shapeKind;
     if (selectedPlayerId == activePlayerId) {
-        fn_8006A030((s16)playerIndex, 0x14, 7, 3);
+        fn_8006A030((s16)playerIndex, 20, 7, 3);
     }
 }

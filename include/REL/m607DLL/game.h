@@ -71,4 +71,12 @@ void fn_1_35C(OMOBJ *object, OMOBJ_FUNC callback);
 void fn_1_B2C(OMOBJ *obj);
 void fn_1_238(void);
 
+// Sets the components of the player's motion vector.
+static inline void M607PlayerMotionVector(HuVecF *direction, f32 x, f32 y, f32 z)
+{
+    direction->x = x;
+    direction->y = y;
+    direction->z = z;
+}
+
 #endif

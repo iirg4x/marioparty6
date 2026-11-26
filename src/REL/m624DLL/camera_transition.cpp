@@ -23,8 +23,9 @@ extern "C" const CameraPose lbl_1_rodata_1C0[3] = {
     { { 793.18365f, 997.13837f, 541.37195f }, { -0.100574255f, 0.0f, -0.0f, 0.9949296f } },
 };
 
+/* Creates camera 1, sets the black clear color and loads the first two camera poses. */
 GameCamera::GameCamera()
-    : callback(&GameCamera::fn_1_43C0), state(-1), frameCount(0), frameLimit(0)
+    : callback(&GameCamera::fn_1_43C0), unk40(-1), frameCount(0), frameLimit(0)
 {
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, 45.0f, 100.0f,
@@ -34,16 +35,19 @@ GameCamera::GameCamera()
     set_camera_frame_from_pose(&setupCamera.frame, &lbl_1_rodata_1C0[1]);
 }
 
+/* Leaves camera 1 active at destruction. */
 GameCamera::~GameCamera() {}
 
 // The length of the camera's shake after a hit.
 static long shakeFrames = secondsToFrames(2L);
 
+/* Returns the current duration of the shake. */
 static inline s32 frameLimitGet(GameCamera *owner)
 {
     return owner->frameLimit;
 }
 
+/* Extends the shake to a fraction of two seconds if the current duration is shorter. */
 static inline s32 frameLimitNext(s32 currentFrame, f32 progress)
 {
     return currentFrame > (s32)(progress * (f32)shakeFrames)
@@ -59,16 +63,13 @@ extern const CameraPose lbl_1_rodata_1C0[];
 
 }
 
-static inline void setCallback(GameCamera *camera, GameCamera::Callback next)
-{
-    camera->callback = next;
-}
+/* Starts the opening move on request 0 and acknowledges the other camera requests. */
 void GameCamera::flagEnabled(int mode)
 {
     switch (mode) {
     case 0: {
         fn_1_47F0();
-        setCallback(this, &GameCamera::fn_1_4228);
+        this->setCallback(&GameCamera::fn_1_4228);
         break;
     }
     case 1:
@@ -87,6 +88,7 @@ void GameCamera::flagEnabled(int mode)
     }
 }
 
+/* Runs the current camera move, then applies the shake and updates the setup view. */
 void GameCamera::update()
 {
     run();
@@ -95,6 +97,7 @@ void GameCamera::update()
     debugResetHook(&setupCamera.frame, 0, 1);
 }
 
+/* Extends the shake in proportion to the hit strength. */
 void fn_1_40F4(GameCamera *owner, f32 progress)
 {
     s32 nextFrame;
@@ -104,6 +107,7 @@ void fn_1_40F4(GameCamera *owner, f32 progress)
     owner->frameLimit = nextFrame;
 }
 
+/* Moves from the first pose to the second over three seconds. */
 void GameCamera::fn_1_4228()
 {
     s32 cameraFrame;
@@ -119,16 +123,17 @@ void GameCamera::fn_1_4228()
     cameraApplyToHud(&camera, 1);
     if (frameCount >= cameraFrame) {
         flags &= ~1U;
-        setCallback(this, &GameCamera::fn_1_43C0);
+        this->setCallback(&GameCamera::fn_1_43C0);
     }
 }
 
-/* Native callback at .text:0x43C0 updates the embedded camera view. */
+/* Keeps camera 1 on the current view between transitions. */
 void GameCamera::fn_1_43C0()
 {
     cameraApplyToHud(&camera, 1);
 }
 
+/* Applies shake along the camera's horizontal and vertical axes. */
 void fn_1_43F0(GameCamera *owner) {
     s32 timerExpired;
     s32 currentTimer;
@@ -163,12 +168,14 @@ void fn_1_43F0(GameCamera *owner) {
     }
 }
 
+/* Restarts the frame counter and installs the move to the third pose. */
 void fn_1_45E8(GameCamera *owner)
 {
     owner->frameCount = 0;
-    setCallback(owner, &GameCamera::fn_1_4634);
+    owner->setCallback(&GameCamera::fn_1_4634);
 }
 
+/* Moves from the second pose to the third over three seconds. */
 void GameCamera::fn_1_4634()
 {
     f64 cameraFrames;
@@ -183,13 +190,15 @@ void GameCamera::fn_1_4634()
     interpolate_camera_poses(&camera, startPose, endPose, (f32)zoomAmount);
     cameraApplyToHud(&camera, 1);
     if (frameCount >= cameraFrames) {
-        setCallback(this, &GameCamera::fn_1_43C0);
+        this->setCallback(&GameCamera::fn_1_43C0);
     }
 }
 
+/* Resets the frame counter for the opening move. */
 void GameCamera::fn_1_47F0()
 {
     frameCount = 0;
 }
 
+/* Request 1 leaves the active camera move in place. */
 void GameCamera::fn_1_47FC() {}

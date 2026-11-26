@@ -12,11 +12,11 @@ extern "C" {
 
 #include "REL/m634DLL/choice_work.h"
 
-#include "REL/m634DLL/act_player.h"
+#include "REL/m634DLL/camera_control.h"
 
 #include "REL/m634DLL/player_part.h"
 
-#include "REL/m634DLL/stick_state.h"
+#include "REL/framework/stick_state.h"
 
 extern "C" {
 #include "game/gamework.h"
@@ -30,7 +30,7 @@ extern "C" {
 #include "humath.h"
 }
 
-#include "REL/m634DLL/random.h"
+#include "REL/framework/random.h"
 
 #include "REL/m634DLL/scene.h"
 
@@ -121,7 +121,7 @@ PlayerChoicePart::PlayerChoicePart(ActPlayer *player, s32 level)
     position.y = 0.0f;
     position.z = 0.0f;
     selectedIndex = 0;
-    idle = 0;
+    unk54 = 0;
     updateCount = 0;
     buttonDelay = 0;
     initialCallback = &PlayerChoicePart::fn_1_6CB0;
@@ -144,8 +144,6 @@ void PlayerChoicePart::reset()
 // Does nothing.
 void fn_1_6C20() { }
 
-void fn_1_160A4(PadControl *state, MGPLAYER *player);
-
 // Runs the choice callback and applies the resulting pad control.
 void PlayerChoicePart::readInput(StickState *output)
 {
@@ -159,7 +157,7 @@ void PlayerChoicePart::readInput(StickState *output)
     context = owner;
     player = context->player;
     actionPlayer = player;
-    fn_1_160A4(&padControl, actionPlayer);
+    padControl.applyToPlayer(actionPlayer);
     updateCount++;
 }
 
@@ -185,7 +183,7 @@ void PlayerChoicePart::fn_1_6CB4(StickState *output)
     output->magnitude = step / 9.333333333333334;
     PSVECNormalize(&movement, &movement);
     PSVECScale(&movement, &movement, step);
-    fn_1_15E74(&padControl, &movement, 0.2f);
+    padControl.updateMovement(&movement, 0.2f);
     u8 occupied = manager.fn_1_ED80(selectedIndex);
     if (occupied == 1) {
         setCallback(&PlayerChoicePart::fn_1_6F08);
@@ -203,7 +201,7 @@ void PlayerChoicePart::fn_1_6F08(StickState *output)
     Scene &manager = MinigameSingleton<Scene>::getChecked();
     s32 totalChoices = manager.fn_1_ED70();
     s32 playerNo = owner->getPlayerMode();
-    idle = 0;
+    unk54 = 0;
     s32 availableCount = 0;
     for (s32 choiceIndex = 0; choiceIndex < totalChoices; choiceIndex++) {
         if (manager.fn_1_ED80(choiceIndex) != 1) {
@@ -237,7 +235,7 @@ void PlayerChoicePart::fn_1_70D8(StickState *output)
     fn_1_72F0(this);
     u32 interval = buttonDelay + buttonIntervals[difficulty];
     if (updateCount % interval == 0) {
-        padControl.fn_1_15E34(0x100);
+        padControl.pressButtons(0x100);
         output->pressedButtons |= 0x100;
         buttonDelay = ((s32)RandomUnsigned()) & 3;
     }
@@ -251,7 +249,6 @@ extern "C" {
 struct CameraPointDirectory;
 }
 
-extern void fn_1_22FC(ActPlayer *, f32);
 
 // Turns the player toward its selected first-piece position.
 void fn_1_72F0(PlayerChoicePart *work)
@@ -314,7 +311,6 @@ PlayerMotionPart::PlayerMotionPart(ActPlayer *player, s32 level)
     callback = values;
 }
 
-void operator delete(void *);
 
 // Releases the object and its member-owned resources.
 PlayerMotionPart::~PlayerMotionPart() { }
@@ -340,7 +336,7 @@ void PlayerMotionPart::readInput(StickState *output)
     state = owner;
     player = state->player;
     actionPlayer = player;
-    fn_1_160A4(&padControl, actionPlayer);
+    padControl.applyToPlayer(actionPlayer);
 }
 
 // Does nothing.
@@ -352,18 +348,11 @@ struct PointWords;
 
 extern void fn_1_849C(PlayerMotionPart *work);
 
-extern s32 fn_1_F0A8(Scene *manager, s32 index, s32 *state);
 
-extern Vector3 fn_1_F044(Scene *manager, s32 index);
 
-extern void fn_1_F13C(Scene *manager, s32 *first, s32 *second, s32 value);
 
-extern s32 fn_1_F23C(
-    Scene *manager, const Vec *position, s32 *first, s32 *second, s32 selectedIndex);
 
-extern void fn_1_F4F8(Scene *manager, const Vec *position, s32 *choices, s32 *count);
 
-extern u8 fn_1_F72C(Scene *manager, s32 first, s32 second, s32 value);
 
 static const f32 stepScale = 100.0f;
 
@@ -392,7 +381,7 @@ void PlayerMotionPart::fn_1_77A0(StickState *output)
     output->magnitude = step / 9.333333333333334;
     PSVECNormalize(&movement, &movement);
     PSVECScale(&movement, &movement, step);
-    fn_1_15E74(&padControl, &movement, 0.2f);
+    padControl.updateMovement(&movement, 0.2f);
     selections = owner->getPlayerMode();
     if (owner->getProgress() >= selections * 10) {
         owner->resetProgress();
@@ -448,7 +437,7 @@ void PlayerMotionPart::fn_1_7A68(StickState *output)
     output->magnitude = step / 9.333333333333334;
     PSVECNormalize(&movement, &movement);
     PSVECScale(&movement, &movement, step);
-    fn_1_15E74(&padControl, &movement, 0.2f);
+    padControl.updateMovement(&movement, 0.2f);
     PSVECSubtract(&position, &sourcePosition, &movement);
     movement.y = 0.0f;
     distance = movement.length();
@@ -567,14 +556,14 @@ void PlayerMotionPart::fn_1_82C8(StickState *output)
     Vector3 sourceCopy = actor->getPosition();
     Vec targetCopy = fn_1_EF7C(&manager, selectedIndex);
     Vec movement;
-    PSVECSubtract((Vec *)&targetCopy, &sourceCopy, &movement);
+    PSVECSubtract(&targetCopy, &sourceCopy, &movement);
     movement.y = 0.0f;
     distance = PSVECMag(&movement);
     if (distance > 80.0f) {
         setCallback(&PlayerMotionPart::fn_1_7A68);
     }
     fn_1_849C(this);
-    padControl.fn_1_15E34(0x100);
+    padControl.pressButtons(0x100);
     output->pressedButtons |= 0x100;
     occupied = manager.fn_1_EDE8(selectedIndex);
     if (occupied != 0) {

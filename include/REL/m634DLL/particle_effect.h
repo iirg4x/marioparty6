@@ -17,7 +17,8 @@ public:
     u8 finished;
     u8 unk29[3]; /* No code names this field. */
     f32 scale;
-    s32 initializedCount, activeCount;
+    s32 unk30; /* The game's code never reads this field. */
+    s32 activeCount;
     ParticleModel634(ANIMDATA *, Vec *, s32);
     typedef void (ParticleModel634::*Callback)();
     Callback stateCallback;
@@ -47,7 +48,8 @@ public:
     typedef void (ParticleModel634::*Callback)();
     Callback callback;
     f32 elapsed, rotation;
-    s32 angleStep, modelIndex;
+    s32 unk58; /* The game's code never reads this field. */
+    s32 modelIndex;
     u8 enabled;
     ParticleRadialEffect634(ANIMDATA *, Vec *, s32, s32, s32, f32);
     void fn_1_12FD8(HU3D_PARTICLE_DATA *);

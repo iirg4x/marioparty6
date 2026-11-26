@@ -23,19 +23,19 @@ extern "C" {
 #include "game/main.h"
 
 #include "game/object.h"
-
+extern "C" {
 #include "game/audio.h"
 
 #include "game/charman.h"
-
+}
 #include "game/gamemes.h"
-
+extern "C" {
 #include "game/hsfex.h"
-
+}
 #include "game/data.h"
-
+extern "C" {
 #include "game/gamework.h"
-
+}
 #include "game/memory.h"
 
 #include "game/mg/seqman.h"
@@ -47,9 +47,9 @@ extern "C" {
 #include "game/pad.h"
 
 #include "game/frand.h"
-
+extern "C" {
 #include "game/wipe.h"
-
+}
 #include "game/mg/actman.h"
 
 #include "game/board/object.h"
@@ -104,8 +104,8 @@ extern "C" void fn_1_3E38(HU3D_DRAW_OBJ *, HSF_MATERIAL *);
 // Loads the monitor model, its overlay motion and the three sprite animations it shows.
 Monitor::Monitor()
     : MinigameSingleton<Monitor>(), GameObject(4), ModelMotion(DATANUM(0x8c0000, 11)), EventListener(),
-      callback(&Monitor::fn_1_3C24), max_frames(0.0f), textureScale(0x30), delay(0x24),
-      animations(), remaining(0), duration(0), firstChoice(0), secondChoice(0), updateCount(0), active(0)
+      callback(&Monitor::fn_1_3C24), max_frames(0.0f), textureScale(0x30), unk3C(0x24),
+      animations(), remaining(0), duration(0), firstChoice(0), secondChoice(0), unk5C(0), active(0)
 {
     s32 index;
 
@@ -120,8 +120,8 @@ Monitor::Monitor()
     setOverlayMotionTime(0.0f);
 
     for (index = 0; index < 3; ++index) {
-        animations.push_back(HuSprAnimRead(fn_80008DD0(
-            lbl_1_rodata_200[index], 0x10000000, 2)));
+        animations.push_back(HuSprAnimDataRead(lbl_1_rodata_200[index]));
+
     }
 
     fn_80027884(static_cast<ModelMotion *>(this)->id(), fn_1_3E38);
@@ -154,7 +154,7 @@ void Monitor::update()
     f32 fadeAmount;
 
     (this->*this->callback)();
-    ++this->updateCount;
+    ++this->unk5C;
     if (this->duration <= 0) {
         fade = 0.0;
     } else {

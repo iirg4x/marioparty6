@@ -8,7 +8,6 @@ s32 fn_1_4BE0(CrossShape *first, CrossShape *second);
 
 bool fn_1_4CD8(BoxShape *box, CrossShape *cross);
 
-void fn_1_50C8(void);
 
 std::vector<CollisionShape *> lbl_1_bss_34;
 

@@ -1,19 +1,17 @@
-#include "REL/m634DLL/random.h"
+#include "REL/framework/random.h"
+#include "game/sprput.h"
 #include "REL/m634DLL/motion_effect.h"
-extern "C" {
-void HuSprTexLoad(ANIMDATA *, short, short, GXTexWrapMode, GXTexWrapMode, GXTexFilter);
-}
 
 // Initializes the motion resource, position, and state.
 MotionObject::MotionObject(ANIMDATA *resourceId)
     : ModeRenderObject(0x60)
 {
-    active = 0;
+    unk30 = 0;
     resource = resourceId;
     position.x = 0.0f;
     position.y = 0.0f;
     position.z = 0.0f;
-    phase = 0.0f;
+    unk34 = 0.0f;
     state = 0;
     unk3C = 0;
 }
@@ -176,14 +174,7 @@ void MotionEffect::draw(Mtx *parentMatrix)
     GXSetNumTexGens(1);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-    GXSetNumChans(1);
-    GXSetChanCtrl(
-        GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    setTexturedQuadFormat();
 
     for (index = 0; index < motionCount; index++) {
         MotionRecord sprite = static_cast<const std::vector<MotionRecord> &>(motions).at(index);
@@ -223,7 +214,7 @@ void MotionEffect::mode(int value)
 {
     switch (value) {
     case 0: {
-        phase = 0.0f;
+        unk34 = 0.0f;
         state = 0;
         void (MotionEffect::*next)() = &MotionEffect::action1;
         callback = next;
@@ -235,7 +226,7 @@ void MotionEffect::mode(int value)
         break;
     }
     case 3: {
-        active = 1;
+        unk30 = 1;
         void (MotionEffect::*next)() = &MotionEffect::action3;
         callback = next;
         break;

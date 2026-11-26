@@ -24,7 +24,7 @@ struct ModeToggle : ModeBase {
 struct ModeObject : ModeBase {
     u8 active;
     s32 modeValue;
-    s32 mode;
+    s32 unk18; /* The game's code never reads this field. */
     ModeObject(s32 mode);
     virtual ~ModeObject();
     virtual void update(PlayerObject *);

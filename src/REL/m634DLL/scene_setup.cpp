@@ -1,7 +1,7 @@
 template <class Time> Time secondsToFrames(Time seconds);
 #include "REL/framework/minigame_core.h"
+#include <new>
 #include "REL/m634DLL/scene_owner_vtable.h"
-void *operator new(unsigned long);
 
 // Creates the scene owner and starts its actor manager.
 extern "C" void ObjectSetup(void)

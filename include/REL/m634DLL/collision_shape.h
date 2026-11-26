@@ -90,4 +90,6 @@ struct BoxShape : CollisionShape, RenderObject {
 
 extern std::vector<CollisionShape *> lbl_1_bss_34;
 
+void fn_1_50C8(void);
+
 #endif

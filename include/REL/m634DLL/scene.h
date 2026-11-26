@@ -43,5 +43,27 @@ struct Scene : GameObject, MinigameSingleton<Scene> {
     virtual void update();
 };
 
+
+ActPlayer *fn_1_EC8C(Scene *object, s32 mode);
+
+
+s32 fn_1_F0A8(Scene *owner, s32 entryIndex, s32 *position);
+
+
+Vector3 fn_1_F044(Scene *owner, s32 index);
+
+
+void fn_1_F13C(Scene *owner, s32 *listIndex, s32 *resultIndex, s32 value);
+
+
+s32 fn_1_F23C(Scene *owner, const Vec *position, s32 *matchingGroupIndex, s32 *matchingEntryIndex,
+    s32 selectedIndex);
+
+
+void fn_1_F4F8(Scene *owner, const Vec *position, s32 *motionIndices, s32 *motionIndexCount);
+
+
+u8 fn_1_F72C(Scene *owner, s32 listIndex, s32 entryIndex, s32 value);
+
 #include "REL/m634DLL/scene_points.h"
 #endif

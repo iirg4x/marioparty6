@@ -1,4 +1,5 @@
 #include "REL/m634DLL/TextureController.h"
+#include "game/sprput.h"
 #include "REL/m634DLL/render_owners.h"
 #include "REL/m634DLL/scene.h"
 #include "REL/framework/game_object2.h"
@@ -26,7 +27,12 @@ extern "C" {
 #include "game/animdata.h"
 
 #include "game/sprite.h"
+#include "math.h"
+#include "PowerPC_EABI_Support/Runtime/MWCPlusLib.h"
 }
+#include "REL/m634DLL/model_hook.h"
+#include "REL/framework/model.h"
+#include "REL/m634DLL/model_action.h"
 
 extern "C" {
 
@@ -123,9 +129,15 @@ void Camera2Renderer::update() { }
 
 const f32 lbl_1_rodata_184[6] = { -212.0f, 150.0f, -526.0f, -249.0f, 6.0f, -498.0f };
 
-// Draws the framebuffer texture using the second camera.
-void Camera2Renderer::draw(Mtx *modelView)
+/* Begins the quad that displays the captured framebuffer texture. */
+static inline void texturedQuadBegin(void)
+{
+    setTexturedQuadFormat();
+    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+}
 
+// Draws the captured camera image as a textured quad during the second camera pass.
+void Camera2Renderer::draw(Mtx *modelView)
 {
     TextureController *controller;
     GXTexObj texture;
@@ -150,15 +162,7 @@ void Camera2Renderer::draw(Mtx *modelView)
     GXSetNumTexGens(1);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
-    GXSetNumChans(1);
-    GXSetChanCtrl(
-        GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+    texturedQuadBegin();
     GXPosition3f32(lbl_1_rodata_184[0], lbl_1_rodata_184[1], lbl_1_rodata_184[2]);
     GXTexCoord2f32(0.4f, 0.0f);
     GXPosition3f32(lbl_1_rodata_184[3], lbl_1_rodata_184[1], lbl_1_rodata_184[2]);
@@ -201,10 +205,6 @@ void SpriteRenderer::update()
     }
 }
 
-extern "C" {
-void HuSprTexLoad(ANIMDATA *, s16, s16, GXTexWrapMode, GXTexWrapMode, GXTexFilter);
-}
-
 const GXColor lbl_1_rodata_1A8[2] = { { 128, 128, 128, 255 }, { 255, 255, 255, 255 } };
 
 const f32 lbl_1_rodata_1B0[6] = { -30.0f, -50.0f, -300.0f, 30.0f, 140.0f, -300.0f };
@@ -232,15 +232,7 @@ void SpriteRenderer::draw(Mtx *)
     GXSetNumTexGens(1);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-    GXSetNumChans(1);
-    GXSetChanCtrl(
-        GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+    texturedQuadBegin();
     GXPosition3f32(lbl_1_rodata_1B0[0], lbl_1_rodata_1B0[1], lbl_1_rodata_1B0[2]);
     GXTexCoord2f32(1.0f, 1.0f);
     GXPosition3f32(lbl_1_rodata_1B0[3], lbl_1_rodata_1B0[1], lbl_1_rodata_1B0[2]);
@@ -250,20 +242,6 @@ void SpriteRenderer::draw(Mtx *)
     GXPosition3f32(lbl_1_rodata_1B0[0], lbl_1_rodata_1B0[4], lbl_1_rodata_1B0[5]);
     GXTexCoord2f32(1.0f, 0.0f);
 }
-
-extern "C" {
-#include "math.h"
-}
-
-extern "C" {
-#include "PowerPC_EABI_Support/Runtime/MWCPlusLib.h"
-}
-
-#include "REL/m634DLL/model_hook.h"
-
-#include "REL/framework/model.h"
-
-#include "REL/m634DLL/model_action.h"
 
 // Forwards the material draw hook to the model action owner.
 void fn_1_96AC(HU3D_DRAW_OBJ *owner, HSF_MATERIAL *data)

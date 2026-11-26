@@ -1,7 +1,8 @@
 #include "REL/framework/linknode.h"
+#include <new>
 #include "REL/framework/thread.h"
 #include "REL/framework/game_object.h"
-#include "REL/m634DLL/random.h"
+#include "REL/framework/random.h"
 extern "C" {
 #include "dolphin/types.h"
 }
@@ -114,7 +115,6 @@ extern "C" {
 #include "datadir_enum.h"
 }
 
-void operator delete(void *);
 
 struct Data888Storage {
     f32 value;
@@ -145,7 +145,7 @@ ParticleModel634::ParticleModel634(ANIMDATA *animation, Vec *position, s32 parti
     y = 0.0f;
     z = 0.0f;
     scale = 0.0f;
-    initializedCount = 0;
+    unk30 = 0;
     activeCount = 0;
 }
 
@@ -193,7 +193,7 @@ void ParticleModel634::mode(s32 mode)
         Callback values;
 
         scale = 0.0f;
-        initializedCount = 0;
+        unk30 = 0;
         values = &ParticleModel634::fn_1_11918;
         stateCallback = values;
         break;
@@ -285,7 +285,7 @@ ParticleEffect634::ParticleEffect634(
     y = 0.0f;
     z = 0.0f;
     scale = 0.0f;
-    initializedCount = 0;
+    unk30 = 0;
     activeCount = 0;
     cb = &ParticleModel634::fn_1_11914;
     callback = cb;
@@ -405,7 +405,7 @@ ParticleRadialEffect634::ParticleRadialEffect634(
 
     this->elapsed = 0.0f;
     this->rotation = rotation;
-    this->angleStep = angleStep;
+    this->unk58 = angleStep;
     this->modelIndex = modelIndex;
     this->enabled = 0;
 
@@ -434,7 +434,7 @@ ParticleRadialEffect634::ParticleRadialEffect634(
     this->y = 0.0f;
     this->z = 0.0f;
     this->scale = 0.0f;
-    this->initializedCount = 0;
+    this->unk30 = 0;
     this->activeCount = 0;
     Callback callback = &ParticleModel634::fn_1_11914;
     this->callback = callback;

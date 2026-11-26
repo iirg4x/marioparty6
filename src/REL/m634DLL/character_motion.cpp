@@ -1,4 +1,5 @@
-#include "REL/m634DLL/event_calls.h"
+#include "REL/framework/event.h"
+#include <new>
 #include "REL/m634DLL/sequence_owner.h"
 #include "dolphin/mtx.h"
 extern "C" {
@@ -7,11 +8,6 @@ extern "C" {
 }
 void fn_1_106AC(SequenceOwner *);
 
-void *operator new(unsigned long);
-extern "C" {
-unsigned long lbl_1_bss_60;
-signed char lbl_1_bss_64;
-}
 
 const float lbl_1_rodata_780[2] = { 5.0f, 4.5f };
 
@@ -43,13 +39,10 @@ SequenceOwner::SequenceOwner(
     motionB->setCamera(2);
     motionB->setLayer(1);
     motionB->setAttribute(1);
-    if (lbl_1_bss_64 == 0) {
-        lbl_1_bss_60 = 0;
-        lbl_1_bss_64 = 1;
-    }
+    static unsigned long sequenceCount = 0;
     motionB->getObjectPosition(third, &box.position);
     box.position.y = 100.0f;
-    lbl_1_bss_60++;
+    sequenceCount++;
     box.enabled = 1;
     if (mode == 0x70) {
         box.shapeKind = 4;

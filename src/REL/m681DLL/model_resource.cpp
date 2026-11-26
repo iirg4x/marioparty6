@@ -2,8 +2,8 @@
 #include "REL/m681DLL/model_resource.h"
 extern "C" {
 #include "game/hu3d.h"
-}
 #include "game/hsfex.h"
+}
 #include "dolphin/mtx.h"
 #include "datadir_enum.h"
 #include "REL/m681DLL/game_constants.h"

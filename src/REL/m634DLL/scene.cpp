@@ -15,15 +15,12 @@
 
 #include "REL/m634DLL/point_list_io.h"
 
-ActPlayer *fn_1_EC8C(Scene *object, s32 mode);
 
 Vector3 fn_1_ECF0(Scene *owner, s32 index);
 
 Vector3 fn_1_EEB4(Scene *owner, s32 index);
 
-Vector3 fn_1_F044(Scene *owner, s32 index);
 
-s32 fn_1_F0A8(Scene *owner, s32 entryIndex, s32 *position);
 
 struct PointTable {
     Vector3 entries[16];

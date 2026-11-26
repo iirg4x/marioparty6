@@ -19,12 +19,19 @@ public:
     void fn_1_4634();
     void fn_1_47F0();
     void fn_1_47FC();
+    // Runs the active camera transition.
     void run() { (this->*callback)(); }
 
     CameraFrame camera;
+    // Selects the callback run by the camera transition.
+    void setCallback(Callback next)
+    {
+        callback = next;
+    }
+
     Callback callback;
-    s16 state;
-    u16 stateData;
+    s16 unk40; /* The game's code never reads this field. */
+    u16 unk42; /* No code names this field. */
     s32 frameCount;
     s32 frameLimit;
     CameraSetup setupCamera;

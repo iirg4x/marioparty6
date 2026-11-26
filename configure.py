@@ -7553,6 +7553,7 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m634DLL/pad_control.cpp",
+                source="REL/framework/pad_control.cpp",
                 cflags=[
                     *cflags_rel[:cflags_rel.index("-i include")],
                     "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",

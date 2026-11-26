@@ -18,13 +18,13 @@ public:
     Callback callback;
     f32 max_frames;
     s32 textureScale;
-    u32 delay;
+    u32 unk3C; /* The game's code never reads this field. */
     std::vector<ANIMDATA *> animations;
     s32 remaining;
     s32 duration;
     s32 firstChoice;
     s32 secondChoice;
-    u32 updateCount;
+    u32 unk5C; /* The game's code never reads this field. */
     u8 active;
     // Reports whether the countdown has reached zero.
     bool expired() const { return remaining <= 0; }
