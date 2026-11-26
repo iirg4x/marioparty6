@@ -5,21 +5,11 @@
 #include <game/process.h>
 #include <game/sprite.h>
 #include <game/window.h>
+#include <REL/mgmfreedll/menu_state.h>
 
-#define MGMFREE_SE_MODE_EXIT_SEQUENCE_FX_1 1218
-#define MGMFREE_SE_MODE_EXIT_SEQUENCE_FX_2 1219
-
-extern u8 lbl_1_bss_28[8];
+extern MGMFREE_ITEM_WINDOW lbl_1_bss_28;
 extern HUSPR_GROUPID lbl_1_bss_53E[10];
 extern HUWINID lbl_1_bss_9DC[2];
-
-s32 fn_1_A3FC(void);
-s32 fn_1_AB00(void);
-s16 fn_1_B75C(void);
-s16 fn_1_D324(void);
-void fn_1_4ECC(OMOBJ *obj);
-void fn_1_E5AC(HUSPR_GROUPID groupId, s32 attr);
-void fn_1_E62C(HUSPR_GROUPID groupId, s32 attr);
 
 /* Run selection and player reordering using shared menu state; mode is unused. Return 0 to
 * launch the selection or 1 to exit the menu. */
@@ -54,10 +44,10 @@ s32 fn_1_E0C0(s16 mode)
             }
             break;
         case 2:
-            HuAudFXPlay(2);
-            HuAudFXPlay(MGMFREE_SE_MODE_EXIT_SEQUENCE_FX_1);
-            HuAudFXPlay(MGMFREE_SE_MODE_EXIT_SEQUENCE_FX_2);
-            obj = (*(OMOBJ **)&lbl_1_bss_28[0]);
+            HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
+            HuAudFXPlay(MSM_SE_MGM00_MODE_FLOW_INTRO_WHOOSH);
+            HuAudFXPlay(MSM_SE_MGM00_MODE_FLOW_INTRO_CHIME);
+            obj = lbl_1_bss_28.object;
             obj->work[0] = 0;
             obj->work[1] = 30;
             fn_1_E5AC(lbl_1_bss_53E[1], HUSPR_ATTR_DISPOFF);
@@ -83,7 +73,7 @@ f32 fn_1_E264(f32 start, f32 end, f32 time, f32 duration)
         return end;
     }
     return start +
-           (end - start) * (1.0 - cos(3.141592653589793 * ((90.0f / duration) * time) / 180.0));
+           (end - start) * (1.0 - cos(M_PI * ((90.0f / duration) * time) / 180.0));
 }
 
 /* Interpolate linearly from start to end over the requested frame duration. */
@@ -116,7 +106,7 @@ f32 fn_1_E3E8(f32 start, f32 end, f32 time, f32 duration)
     if (time >= duration) {
         return end;
     }
-    return start + (end - start) * sin(3.141592653589793 * ((90.0f / duration) * time) / 180.0);
+    return start + (end - start) * sin(M_PI * ((90.0f / duration) * time) / 180.0);
 }
 
 /* Apply one sine cycle to the value, returning to start at the duration boundary. */
@@ -128,7 +118,7 @@ f32 fn_1_E4D0(f32 start, f32 end, f32 time, f32 duration)
     if (time >= duration) {
         return start;
     }
-    return start + (end - start) * sin(3.141592653589793 * ((360.0f / duration) * time) / 180.0);
+    return start + (end - start) * sin(M_PI * ((360.0f / duration) * time) / 180.0);
 }
 
 /* Set the requested sprite attribute on every member of a sprite group. */

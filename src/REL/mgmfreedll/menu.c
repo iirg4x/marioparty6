@@ -6,9 +6,12 @@
 #include <game/memory.h>
 #include <game/sprite.h>
 #include <game/window.h>
+#include <game/pad.h>
+#include <game/wipe.h>
 #include <string.h>
+#include <REL/mgmfreedll/menu_state.h>
 
-typedef struct MgmfreeSpriteInit {
+typedef struct {
     s16 groupNo;
     s16 memberNo;
     s16 animNo;
@@ -22,7 +25,6 @@ typedef struct MgmfreeSpriteInit {
 } MGMFREE_SPRITE_INIT;
 
 void fn_1_0(HUWINID winId, u32 mess, s16 index);
-void fn_1_E5AC(HUSPR_GROUPID groupId, s32 attr);
 
 #include <game/mgdata.h>
 #include <game/object.h>
@@ -36,13 +38,10 @@ void fn_1_E5AC(HUSPR_GROUPID groupId, s32 attr);
 #include <game/main.h>
 #include <messdir_enum.h>
 
-enum { MGMFREE_SE_MODE_MENU_ENTRY_FX = 1217 };
-#define MGMFREE_SE_RANDOM_MODEL_DISPLAY_START 1220
-
 /* These records track menu model animation state and transition timing. */
-typedef struct MgmfreeModelState {
+typedef struct {
     s16 state;
-    u8 unusedBeforeTiming[38];
+    u8 unk02[38]; /* No code names this field. */
     f32 interpolationTime;
     f32 interpolationDuration;
     union {
@@ -51,12 +50,10 @@ typedef struct MgmfreeModelState {
     } value;
     f32 transitionTarget;
     f32 transitionActive;
-    u8 unusedAfterTransition[4];
+    u8 unk3C[4]; /* No code names this field. */
 } MGMFREE_MODEL_STATE;
 
 void fn_1_6848(s16 mode);
-f32 fn_1_E35C(f32 start, f32 end, f32 time, f32 duration);
-f32 fn_1_E3E8(f32 start, f32 end, f32 time, f32 duration);
 
 #include <dolphin/os.h>
 
@@ -96,23 +93,23 @@ MGMFREE_SPRITE_INIT lbl_1_data_50[19] = {
 };
 s16 lbl_1_data_2B0[4] = {4, 3, 6, 3};
 /* Selection remapping entries consumed as signed halfwords by fn_1_CAD4. */
-u8 lbl_1_data_2B8[200] = { 0, 0, 0, 1, 0, 2, 0, 3, 0, 1, 0, 0, 0, 2, 0, 3, 0, 2, 0, 0, 0, 1, 0,
-                           3, 0, 3, 0, 0, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2,
-                           0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0, 3, 0,
-                           1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1,
-                           0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0,
-                           3, 0, 1, 0, 2, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0, 3, 0, 0, 0, 2, 0, 2,
-                           0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0,
-                           0, 0, 3, 0, 1, 0, 2, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0, 3, 0, 0, 0, 2,
-                           0, 2, 0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3 };
+struct {
+    s16 orders[4][6][4];
+    s16 unkC0[4]; /* No code names this field. */
+} lbl_1_data_2B8 = {
+    {
+        {{0, 1, 2, 3}, {1, 0, 2, 3}, {2, 0, 1, 3}, {3, 0, 1, 2}, {0, 1, 2, 3}, {0, 1, 2, 3}},
+        {{0, 1, 2, 3}, {0, 2, 1, 3}, {0, 3, 1, 2}, {0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}},
+        {{0, 1, 2, 3}, {0, 2, 1, 3}, {0, 3, 1, 2}, {1, 2, 0, 3}, {1, 3, 0, 2}, {2, 3, 0, 1}},
+        {{0, 1, 2, 3}, {0, 2, 1, 3}, {0, 3, 1, 2}, {1, 2, 0, 3}, {1, 3, 0, 2}, {2, 3, 0, 1}}
+    },
+    {0, 1, 2, 3}
+};
 /* Maps each on-screen player slot to its character-model/player index; reordering this table
 * determines player groups when a minigame launches. */
 s16 lbl_1_data_380[4] = {0, 1, 2, 3};
 /* Last text-message ID used by the window callback's sound de-duplication. */
 u32 lbl_1_data_388 = -1;
-char lbl_1_data_38C[] = "# ========== win callback :: %d\n";
-/* Preview startup states are 0–6; 100 is ready, and 999 blocks preview changes during teardown. */
-s16 lbl_1_data_3AE = 100;
 
 HU3D_LIGHTID lbl_1_bss_9E0[2];
 HUWINID lbl_1_bss_9DC[2];
@@ -158,18 +155,23 @@ s16 lbl_1_bss_4C[12];
 f32 lbl_1_bss_48;
 OMOBJ *lbl_1_bss_44;
 ANIMDATA *lbl_1_bss_40;
-/* This array is only zeroed at its first halfword in this TU; its role is unknown. */
-u8 lbl_1_bss_3A[6];
+struct {
+    s16 unk00; /* The game's code never reads this field. */
+    u8 unk02[4]; /* No code names this field. */
+} lbl_1_bss_3A;
 s16 lbl_1_bss_38;
 OMOBJ *lbl_1_bss_34;
 OMOBJ *lbl_1_bss_30;
 /* The first word points to the active item-window object; the remaining bytes have no known use. */
-u8 lbl_1_bss_28[8];
+MGMFREE_ITEM_WINDOW lbl_1_bss_28;
 OMOBJ *lbl_1_bss_24;
 OMOBJ *lbl_1_bss_20;
 OMOBJ *lbl_1_bss_1C;
-/* The first word points to the model-display object; the remaining bytes have no known use. */
-u8 lbl_1_bss_C[16];
+/* Holds the model-display object. */
+struct {
+    OMOBJ *object;
+    u8 unk04[12]; /* No code names this field. */
+} lbl_1_bss_C;
 OMOBJMAN *lbl_1_bss_8;
 u32 lbl_1_bss_4;
 s32 lbl_1_bss_0;
@@ -178,14 +180,18 @@ s32 lbl_1_bss_0;
 void fn_1_0(HUWINID winId, u32 mess, s16 index)
 {
     s32 sentinel[1] = {-1};
-    s32 sounds[16] = { 949, 950, 951, 952,
-                       953, 954, 955, -1,
-                       941, 942, 943, 944,
-                       945, 946, 947, -1 };
+    s32 sounds[16] = { MSM_SE_GUIDE_DAY_HAPPY,      MSM_SE_GUIDE_DAY_INTRO,
+                       MSM_SE_GUIDE_DAY_APOLOGY,    MSM_SE_GUIDE_DAY_EXPLAIN,
+                       MSM_SE_GUIDE_DAY_SURPRISE,   MSM_SE_GUIDE_DAY_DISAPPOINTED,
+                       MSM_SE_GUIDE_DAY_LAUGH,      -1,
+                       MSM_SE_GUIDE_NIGHT_HAPPY,    MSM_SE_GUIDE_NIGHT_INTRO,
+                       MSM_SE_GUIDE_NIGHT_APOLOGY,  MSM_SE_GUIDE_NIGHT_EXPLAIN,
+                       MSM_SE_GUIDE_NIGHT_SURPRISE, MSM_SE_GUIDE_NIGHT_DISAPPOINTED,
+                       MSM_SE_GUIDE_NIGHT_LAUGH,    -1 };
     s16 i;
 
     index--;
-    OSReport(lbl_1_data_38C, (s16)index);
+    OSReport("# ========== win callback :: %d\n", (s16)index);
     if (lbl_1_data_388 != mess) {
         lbl_1_data_388 = mess;
         /* The list ends immediately, so every new message takes the default-pan sound path. */
@@ -205,6 +211,9 @@ void fn_1_0(HUWINID winId, u32 mess, s16 index)
         }
     }
 }
+
+/* Preview startup states are 0–6; 100 is ready, and 999 blocks preview changes during teardown. */
+s16 lbl_1_data_3AE = 100;
 
 /* Set the initial category from the current mode, cache four player configurations, and build
  * per-category minigame and unlocked counts. */
@@ -380,7 +389,7 @@ void fn_1_BD4(void)
     HuWinBGTPLvlSet(lbl_1_bss_9DC[0], 0.0f);
     lbl_1_bss_9DC[1] = HuWinExCreateFrame(16.0f, 372.0f, 544, 68, -1, 3);
     HuWinDispOff(lbl_1_bss_9DC[1]);
-    HuWinBGTPLvlSet(lbl_1_bss_9DC[1], 0.8999999761581421f);
+    HuWinBGTPLvlSet(lbl_1_bss_9DC[1], 0.9f);
     HuWinPriSet(lbl_1_bss_9DC[1], 0);
     for (winNo = 0; winNo < 2; winNo++) {
         winData[lbl_1_bss_9DC[winNo]].padMask = 1;
@@ -405,10 +414,10 @@ void fn_1_DA4(void)
     MGMFREE_SPRITE_INIT *entry;
     s16 i;
 
-    entry = (MGMFREE_SPRITE_INIT *)lbl_1_data_50;
+    entry = lbl_1_data_50;
     for (i = 0; i < 11; i++) {
         lbl_1_bss_554[i] =
-            HuSprAnimRead(fn_80008DD0(lbl_1_data_10[i], 0x10000000, 2));
+            HuSprAnimDataRead(lbl_1_data_10[i]);
     }
     for (i = 0; i < 10; i++) {
         lbl_1_bss_53E[i] = HuSprGrpCreate(lbl_1_data_3C[i]);
@@ -527,8 +536,8 @@ void fn_1_1400(s16 mode)
         category = lbl_1_bss_9D0[0];
         index = (lbl_1_bss_9D0[2] + 2 * lbl_1_bss_9D0[1]) + 2 * lbl_1_bss_9D0[3];
         /* Read the instruction image before the later missing/locked-entry check. */
-        lbl_1_bss_40 = HuSprAnimRead(fn_80008DD0(
-            MgDataTbl[lbl_1_bss_580[category][index][0]].instPic[0][0], 0x10000000, 2));
+        lbl_1_bss_40 = HuSprAnimDataRead(
+            MgDataTbl[lbl_1_bss_580[category][index][0]].instPic[0][0]);
         HuSprAnimLock(lbl_1_bss_40);
         lbl_1_bss_4AA[0] = HuSprCreate(lbl_1_bss_40, 100, 0);
         HuSprGrpMemberSet(lbl_1_bss_4AE, 0, lbl_1_bss_4AA[0]);
@@ -590,7 +599,7 @@ void fn_1_1790(void)
     lbl_1_data_3CE = -1;
     lbl_1_bss_4A8 = -1;
     lbl_1_data_3AE = 100;
-    ((s16 *)lbl_1_bss_3A)[0] = 0;
+    lbl_1_bss_3A.unk00 = 0;
     fn_1_FBC();
     lbl_1_bss_44 = fn_8003AB38(lbl_1_bss_8, 4096, 16, 16, -1, fn_1_1218);
     fn_80025918(8, fn_1_16B4);
@@ -658,7 +667,7 @@ void fn_1_1C74(OMOBJ *obj)
                     record->interpolationTime = 0.0f;
                     record->interpolationDuration = table[i][5];
                     if (i == 0) {
-                        HuAudFXPlay(MGMFREE_SE_RANDOM_MODEL_DISPLAY_START);
+                        HuAudFXPlay(MSM_SE_MGM00_MENU_ITEM_SLIDE_IN);
                     }
                     if (i == 0) {
                         for (j = 0; j < 3; j++) {
@@ -921,7 +930,7 @@ void fn_1_3330(OMOBJ *obj)
     f32 height;
     s16 i;
 
-    fn_800267CC((*(OMOBJ **)lbl_1_bss_C)->mdlId[4], &position);
+    fn_800267CC(lbl_1_bss_C.object->mdlId[4], &position);
     for (i = 0; i < 3; i++) {
         if (i == 2) {
             fn_80026760(obj->mdlId[i], 60.0f + position.x, 170.0f, 86.0f);
@@ -930,7 +939,7 @@ void fn_1_3330(OMOBJ *obj)
         }
     }
     fn_80026760(obj->mdlId[3], position.x, 0.0f, 0.0f);
-    fn_800267CC((*(OMOBJ **)lbl_1_bss_C)->mdlId[4], &position);
+    fn_800267CC(lbl_1_bss_C.object->mdlId[4], &position);
     position.x = 1.1111112f * (20.0f + position.x);
     position.y = 300.0f;
     position.z = 150.0f;
@@ -956,8 +965,6 @@ void fn_1_3330(OMOBJ *obj)
     }
     Hu3DCameraScissorSet(32, (u32)x, (u32)y, (u32)width, (u32)height);
 }
-
-void fn_1_3330(OMOBJ *obj);
 
 /* Create three animated selection-display models and a static base, then install their callback. */
 void fn_1_361C(OMOBJ *obj)
@@ -993,10 +1000,6 @@ void fn_1_361C(OMOBJ *obj)
     fn_80026B64(obj->mdlId[3], (1 << 5));
     obj->objFunc = fn_1_3330;
 }
-
-f32 fn_1_E3A0(f32 start, f32 end, f32 time);
-f32 fn_1_E4D0(f32 start, f32 end, f32 time, f32 duration);
-void fn_1_E62C(HUSPR_GROUPID groupId, s32 attr);
 
 /* Release the three animated models, their motions, the static base model, and the selection
 * display object. Clearing obj affects only this local parameter. */
@@ -1166,8 +1169,6 @@ void fn_1_44D4(OMOBJ *obj)
     obj = NULL;
 }
 
-char lbl_1_data_426[] = "%2d";
-
 /* Fill the eight minigame windows with names, locked-entry messages, or cleared blanks, and put
  * unlocked/total counts in the side info window. */
 void fn_1_451C(void)
@@ -1193,25 +1194,19 @@ void fn_1_451C(void)
         }
         HuWinMesSpeedSet(lbl_1_bss_84[i], 0);
     }
-    sprintf(lbl_1_bss_6E, lbl_1_data_426, lbl_1_bss_980[lbl_1_bss_9D0[0]]);
+    sprintf(lbl_1_bss_6E, "%2d", lbl_1_bss_980[lbl_1_bss_9D0[0]]);
     HuWinInsertMesSet(lbl_1_bss_78, MESSNUM_PTR(lbl_1_bss_6E), 0);
-    sprintf(lbl_1_bss_64, lbl_1_data_426, lbl_1_bss_990[lbl_1_bss_9D0[0]]);
+    sprintf(lbl_1_bss_64, "%2d", lbl_1_bss_990[lbl_1_bss_9D0[0]]);
     HuWinInsertMesSet(lbl_1_bss_78, MESSNUM_PTR(lbl_1_bss_64), 1);
     HuWinMesSet(lbl_1_bss_78, MESSNUM(MESS_MGM_FREE, 3));
     HuWinMesSpeedSet(lbl_1_bss_78, 0);
 }
 
-void fn_1_451C(void);
-f32 fn_1_E264(f32 start, f32 end, f32 time, f32 duration);
-
-/* Slide the eight minigame windows, side count window, and list marker upward; show the prompt when
- * the callback finishes. */
-void fn_1_4860(OMOBJ *obj)
+/* Position and show the selection windows and their backing sprite. */
+static inline void selectionWindowsMove(f32 position)
 {
-    f32 position;
     s16 i;
 
-    position = fn_1_E3E8(1000.0f, 314.0f, (f32)obj->work[0], (f32)obj->work[1]);
     for (i = 0; i < 8; i++) {
         HuWinPosSet(lbl_1_bss_84[i], (i % 2) * 264 + 20,
                     ((position - 64.0f + (i / 2) * 32) - 4.0f) - 10.0f);
@@ -1220,7 +1215,17 @@ void fn_1_4860(OMOBJ *obj)
     HuWinPosSet(lbl_1_bss_78, 448.0f, (position - 64.0f + (i / 2) * 32) - 12.0f);
     HuWinDispOn(lbl_1_bss_78);
     HuSprGrpPosSet(lbl_1_bss_53E[0], 288.0f, position);
-     fn_1_E62C(lbl_1_bss_53E[0], HUSPR_ATTR_DISPOFF);
+    fn_1_E62C(lbl_1_bss_53E[0], HUSPR_ATTR_DISPOFF);
+}
+
+/* Slide the eight minigame windows, side count window, and list marker upward; show the prompt when
+ * the callback finishes. */
+void fn_1_4860(OMOBJ *obj)
+{
+    f32 position;
+
+    position = fn_1_E3E8(1000.0f, 314.0f, (f32)obj->work[0], (f32)obj->work[1]);
+    selectionWindowsMove(position);
     if (++obj->work[0] > obj->work[1]) {
         HuWinDispOn(lbl_1_bss_9DC[0]);
         HuWinAttrSet(lbl_1_bss_9DC[0], HUWIN_ATTR_ALIGN_CENTER);
@@ -1236,7 +1241,7 @@ void fn_1_4860(OMOBJ *obj)
 /* Prepare the item-window transition and install its upward-sliding callback. */
 void fn_1_4B58(void)
 {
-    OMOBJ *obj = *(OMOBJ **)&lbl_1_bss_28[0];
+    OMOBJ *obj = lbl_1_bss_28.object;
 
     fn_1_451C();
     obj->work[0] = 0;
@@ -1248,18 +1253,9 @@ void fn_1_4B58(void)
 void fn_1_4ECC(OMOBJ *obj)
 {
     f32 position;
-    s16 i;
 
     position = fn_1_E264(314.0f, 1000.0f, (f32)obj->work[0], (f32)obj->work[1]);
-    for (i = 0; i < 8; i++) {
-        HuWinPosSet(lbl_1_bss_84[i], (i % 2) * 264 + 20,
-                    ((position - 64.0f + (i / 2) * 32) - 4.0f) - 10.0f);
-        HuWinDispOn(lbl_1_bss_84[i]);
-    }
-    HuWinPosSet(lbl_1_bss_78, 448.0f, (position - 64.0f + (i / 2) * 32) - 12.0f);
-    HuWinDispOn(lbl_1_bss_78);
-    HuSprGrpPosSet(lbl_1_bss_53E[0], 288.0f, position);
-     fn_1_E62C(lbl_1_bss_53E[0], HUSPR_ATTR_DISPOFF);
+    selectionWindowsMove(position);
     if (++obj->work[0] > obj->work[1]) {
         obj->objFunc = NULL;
     }
@@ -1269,7 +1265,7 @@ void fn_1_4ECC(OMOBJ *obj)
 * windows away. */
 void fn_1_514C(void)
 {
-    OMOBJ *obj = *(OMOBJ **)&lbl_1_bss_28[0];
+    OMOBJ *obj = lbl_1_bss_28.object;
 
     obj->work[0] = 0;
     obj->work[1] = 30;
@@ -1444,7 +1440,7 @@ void fn_1_5F48(OMOBJ *obj)
             position.x -= step;
             fn_80026790(lbl_1_bss_20->mdlId[i + 4], &position);
         }
-        fn_800267CC((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], &position);
+        fn_800267CC(lbl_1_bss_C.object->mdlId[10], &position);
         position.x -= step;
         if (position.x < 0.0f) {
             for (i = 0; i < 4; i++) {
@@ -1453,23 +1449,23 @@ void fn_1_5F48(OMOBJ *obj)
                 fn_80026790(lbl_1_bss_20->mdlId[i], &position);
             }
             obj->objFunc = NULL;
-            fn_800267CC((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], &position);
+            fn_800267CC(lbl_1_bss_C.object->mdlId[10], &position);
             position.x = 0.0f;
         }
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], &position);
-        fn_800267CC((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[11], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[12], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[13], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[14], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[10], &position);
+        fn_800267CC(lbl_1_bss_C.object->mdlId[10], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[11], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[12], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[13], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[14], &position);
     } else {
-        fn_800267CC((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], &position);
+        fn_800267CC(lbl_1_bss_C.object->mdlId[10], &position);
         position.x -= step;
         if (position.x < -500.0f) {
             position.x = -500.0f;
             obj->objFunc = NULL;
         }
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[10], &position);
         fn_800267CC(lbl_1_bss_1C->mdlId[0], &position);
         position.x -= step;
         fn_80026790(lbl_1_bss_1C->mdlId[0], &position);
@@ -1484,11 +1480,11 @@ void fn_1_5F48(OMOBJ *obj)
             position.x -= step;
             fn_80026790(lbl_1_bss_20->mdlId[i + 4], &position);
         }
-        fn_800267CC((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[11], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[12], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[13], &position);
-        fn_80026790((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[14], &position);
+        fn_800267CC(lbl_1_bss_C.object->mdlId[10], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[11], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[12], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[13], &position);
+        fn_80026790(lbl_1_bss_C.object->mdlId[14], &position);
     }
     fn_1_3004();
 }
@@ -1506,7 +1502,7 @@ void fn_1_65E0(s16 mode)
     obj->work[0] = 0;
     obj->work[2] = mode;
     if (mode != 0) {
-        fn_80026760((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], 200.0f, 0.0f, 0.0f);
+        fn_80026760(lbl_1_bss_C.object->mdlId[10], 200.0f, 0.0f, 0.0f);
         fn_800267CC(lbl_1_bss_1C->mdlId[0], &position);
         position.x += 200.0f;
         fn_80026790(lbl_1_bss_1C->mdlId[0], &position);
@@ -1522,7 +1518,7 @@ void fn_1_65E0(s16 mode)
             fn_80026790(lbl_1_bss_20->mdlId[i + 4], &position);
         }
     } else {
-        fn_80026760((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[10], 0.0f, 0.0f, 0.0f);
+        fn_80026760(lbl_1_bss_C.object->mdlId[10], 0.0f, 0.0f, 0.0f);
     }
     obj->objFunc = fn_1_5F48;
 }
@@ -1568,13 +1564,13 @@ void fn_1_6A84(OMOBJ *obj)
 
     for (i = 0; i < 6; i++) {
         if (lbl_1_bss_4C[i] != 0) {
-            fn_800267CC((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[4], &position);
+            fn_800267CC(lbl_1_bss_C.object->mdlId[4], &position);
             fn_80026760(obj->mdlId[i], (position.x - 80.0f) - i * 20,
                              150.0f, position.z + (i % 3) * 40);
         }
     }
     for (i = 6; i < 12; i++) {
-        fn_80023398((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[5], lbl_1_data_42A, matrix);
+        fn_80023398(lbl_1_bss_C.object->mdlId[5], lbl_1_data_42A, matrix);
         position.x = matrix[0][3];
         position.y = matrix[1][3];
         position.z = matrix[2][3];
@@ -1622,7 +1618,7 @@ void fn_1_6F44(void)
 void fn_1_6F48(void)
 {
     fn_1_44D4(lbl_1_bss_24);
-    fn_1_5E4C(*(OMOBJ **)&lbl_1_bss_28[0]);
+    fn_1_5E4C(lbl_1_bss_28.object);
     fn_1_171C();
     fn_1_11C0();
     fn_1_D48();
@@ -1630,23 +1626,9 @@ void fn_1_6F48(void)
     fn_1_758();
 }
 
-/* Initialized strings and halfwords following the menu data. */
-char lbl_1_data_43E[] = "minigame index -1\n";
-char lbl_1_data_451[] = "minigame number error!!\n";
-char lbl_1_data_46A[] = "\n\nIDX ======= %d,%d,%d,%d\n";
-char lbl_1_data_485[] = "GRP ======= %d,%d,%d,%d\n\n";
-char lbl_1_data_49F[] = "\n-----===== MARIO PARTY 6 :: MINIGAME FREE PLAY =====-----\n\n";
-s16 lbl_1_data_4DC = -1;
-s16 lbl_1_data_4DE = -1;
-
-#include <game/pad.h>
-#include <game/wipe.h>
-
 extern BOOL MgPauseExitF;
 extern s32 lbl_802C0248;
 extern s32 lbl_802C0240;
-void OSReport(const char *message, ...);
-s32 fn_1_E0C0(s16 mode);
 
 typedef void (*MGMFREE_VOID_FUNC)(void);
 extern const MGMFREE_VOID_FUNC _ctors[];
@@ -1682,56 +1664,56 @@ void fn_1_717C(void)
     switch ((s16)result) {
     case 0:
         if (lbl_1_bss_580[category][index][0] == -1) {
-            OSReport(lbl_1_data_43E);
+            OSReport("minigame index -1\n");
             fn_8003A5E4(1, 1);
         } else {
             mgNo = MgNoGet(MgDataTbl[lbl_1_bss_580[category][index][0]].ovl);
             if (mgNo == -1) {
-                OSReport(lbl_1_data_451);
+                OSReport("minigame number error!!\n");
                 fn_8003A5E4(1, 1);
             } else {
                 history = omOvlHisGet(0);
                 omOvlHisChg(0, history->ovl, category + 1, index);
-                OSReport(lbl_1_data_46A, lbl_1_data_380[0], lbl_1_data_380[1],
+                OSReport("\n\nIDX ======= %d,%d,%d,%d\n", lbl_1_data_380[0], lbl_1_data_380[1],
                          lbl_1_data_380[2], lbl_1_data_380[3]);
                 if (lbl_1_bss_9D0[0] == 1) {
                     lbl_80265728[lbl_1_data_380[0]].grpNo = 0;
                     lbl_80265728[lbl_1_data_380[1]].grpNo = 1;
                     lbl_80265728[lbl_1_data_380[2]].grpNo = 1;
                     lbl_80265728[lbl_1_data_380[3]].grpNo = 1;
-                    OSReport(lbl_1_data_485, 0, 1, 1, 1);
+                    OSReport("GRP ======= %d,%d,%d,%d\n\n", 0, 1, 1, 1);
                 } else if (lbl_1_bss_9D0[0] == 2 || lbl_1_bss_38 == 1) {
                     lbl_80265728[lbl_1_data_380[0]].grpNo = 0;
                     lbl_80265728[lbl_1_data_380[1]].grpNo = 0;
                     lbl_80265728[lbl_1_data_380[2]].grpNo = 1;
                     lbl_80265728[lbl_1_data_380[3]].grpNo = 1;
-                    OSReport(lbl_1_data_485, 0, 0, 1, 1);
+                    OSReport("GRP ======= %d,%d,%d,%d\n\n", 0, 0, 1, 1);
                 } else if (lbl_1_bss_9D0[0] == 4) {
                     lbl_80265728[lbl_1_data_380[0]].grpNo = 0;
                     lbl_80265728[lbl_1_data_380[1]].grpNo = 1;
                     lbl_80265728[lbl_1_data_380[2]].grpNo = 2;
                     lbl_80265728[lbl_1_data_380[3]].grpNo = 2;
-                    OSReport(lbl_1_data_485, 0, 1, 2, 2);
+                    OSReport("GRP ======= %d,%d,%d,%d\n\n", 0, 1, 2, 2);
                 } else if (lbl_1_bss_9D0[0] == 7 && index == 1) {
                     if (lbl_1_bss_38 == 2) {
                         lbl_80265728[lbl_1_data_380[0]].grpNo = 0;
                         lbl_80265728[lbl_1_data_380[1]].grpNo = 0;
                         lbl_80265728[lbl_1_data_380[2]].grpNo = 1;
                         lbl_80265728[lbl_1_data_380[3]].grpNo = 1;
-                        OSReport(lbl_1_data_485, 0, 0, 1, 1);
+                        OSReport("GRP ======= %d,%d,%d,%d\n\n", 0, 0, 1, 1);
                     } else {
                         lbl_80265728[lbl_1_data_380[0]].grpNo = 0;
                         lbl_80265728[lbl_1_data_380[1]].grpNo = 1;
                         lbl_80265728[lbl_1_data_380[2]].grpNo = 1;
                         lbl_80265728[lbl_1_data_380[3]].grpNo = 1;
-                        OSReport(lbl_1_data_485, 0, 1, 1, 1);
+                        OSReport("GRP ======= %d,%d,%d,%d\n\n", 0, 1, 1, 1);
                     }
                 } else {
                     lbl_80265728[0].grpNo = 0;
                     lbl_80265728[1].grpNo = 1;
                     lbl_80265728[2].grpNo = 2;
                     lbl_80265728[3].grpNo = 3;
-                    OSReport(lbl_1_data_485, 0, 1, 2, 3);
+                    OSReport("GRP ======= %d,%d,%d,%d\n\n", 0, 1, 2, 3);
                 }
                 MgInstExitF = TRUE;
                 fn_8006A1C4(196612);
@@ -1741,7 +1723,7 @@ void fn_1_717C(void)
                 lbl_802C0278 = 0;
                 GWMgInstDispSet(TRUE);
                 inline_0(mgNo + 601);
-                omOvlCallEx(4, 1, 0, 0);
+                omOvlCallEx(DLL_instdll, 1, 0, 0);
             }
         }
         break;
@@ -1767,12 +1749,12 @@ void fn_1_7AE8(void)
     fn_1_DA4();
     fn_1_1790();
     fn_1_1A4();
-    *(OMOBJ **)lbl_1_bss_C = fn_8003AB38(lbl_1_bss_8, 4096, 16, 16, -1, fn_1_2590);
+    lbl_1_bss_C.object = fn_8003AB38(lbl_1_bss_8, 4096, 16, 16, -1, fn_1_2590);
     lbl_1_bss_20 = fn_8003AB38(lbl_1_bss_8, 4096, 16, 16, -1, fn_1_2BFC);
     lbl_1_bss_1C = fn_8003AB38(lbl_1_bss_8, 4096, 16, 16, -1, fn_1_3124);
     lbl_1_bss_30 = fn_8003AB38(lbl_1_bss_8, 4096, 4, 4, -1, fn_1_361C);
     lbl_1_bss_24 = fn_8003AB38(lbl_1_bss_8, 4096, 0, 0, -1, fn_1_4414);
-    *(OMOBJ **)lbl_1_bss_28 = fn_8003AB38(lbl_1_bss_8, 4096, 0, 0, -1, fn_1_5894);
+    lbl_1_bss_28.object = fn_8003AB38(lbl_1_bss_8, 4096, 0, 0, -1, fn_1_5894);
     lbl_1_bss_34 = fn_8003AB38(lbl_1_bss_8, 4096, 16, 16, -1, fn_1_6CB0);
     fn_8000DAC0(fn_1_717C, 12288, 12288, 0, lbl_1_bss_8);
 }
@@ -1780,12 +1762,15 @@ void fn_1_7AE8(void)
 /* Enter MGMfree from the minigame event and save the event state for the return path. */
 void ObjectSetup(void)
 {
-    OSReport(lbl_1_data_49F);
+    OSReport("\n-----===== MARIO PARTY 6 :: MINIGAME FREE PLAY =====-----\n\n");
     MgPauseExitF = 1;
     lbl_1_bss_0 = lbl_802C0248;
     lbl_1_bss_4 = lbl_802C0240;
     fn_1_7AE8();
 }
+
+s16 lbl_1_data_4DC = -1;
+s16 lbl_1_data_4DE = -1;
 
 /* Run the module startup hook before free-play objects are created. */
 int _prolog(void)
@@ -1857,8 +1842,8 @@ s16 fn_1_8B78(void)
     lbl_1_data_4DC = lbl_1_bss_9D0[0];
     lbl_1_data_4DE = (lbl_1_bss_9D0[2] + 2 * lbl_1_bss_9D0[1]) + 2 * lbl_1_bss_9D0[3];
     if (lbl_802C0010[0] & PAD_TRIGGER_L) {
-        fn_8002C95C((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[13],
-                      (*(OMOBJ **)&lbl_1_bss_C[0])->mtnId[13]);
+        fn_8002C95C(lbl_1_bss_C.object->mdlId[13],
+                      lbl_1_bss_C.object->mtnId[13]);
         lbl_1_bss_9D0[0]--;
         if (lbl_1_bss_9D0[0] < 0) {
             lbl_1_bss_9D0[0] = 7;
@@ -1869,8 +1854,8 @@ s16 fn_1_8B78(void)
         change = 1;
         fn_1_8658();
     } else if (lbl_802C0010[0] & PAD_TRIGGER_R) {
-        fn_8002C95C((*(OMOBJ **)&lbl_1_bss_C[0])->mdlId[14],
-                      (*(OMOBJ **)&lbl_1_bss_C[0])->mtnId[14]);
+        fn_8002C95C(lbl_1_bss_C.object->mdlId[14],
+                      lbl_1_bss_C.object->mtnId[14]);
         lbl_1_bss_9D0[0]++;
         if (lbl_1_bss_9D0[0] >= 8) {
             lbl_1_bss_9D0[0] = 0;
@@ -1948,7 +1933,7 @@ s16 fn_1_8B78(void)
                 lbl_1_bss_9D0[2] * 264 + 153, (lbl_1_bss_9D0[3] << 5) + 256);
     if (lbl_1_data_4DC != lbl_1_bss_9D0[0] ||
         lbl_1_data_4DE != (lbl_1_bss_9D0[2] + 2 * lbl_1_bss_9D0[1]) + 2 * lbl_1_bss_9D0[3]) {
-        HuAudFXPlay(0);
+        HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
         fn_1_1400(1);
         change = 1;
     } else {
@@ -1984,7 +1969,7 @@ s32 fn_1_A3FC(void)
         fn_1_4B58();
     }
     lbl_1_bss_9D8 = HuAudSStreamPlay(MSM_STREAM_MINI_GAME_TOUR);
-    HuAudFXPlay(MGMFREE_SE_MODE_MENU_ENTRY_FX);
+    HuAudFXPlay(MSM_SE_MGM00_MODE_MENU_ENTRY);
     WipeCreate(1, 0, 60);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
@@ -2038,24 +2023,24 @@ s16 fn_1_B278(void)
     for (;;) {
         HuPrcVSleep();
         if (lbl_802C0008[0] & PAD_BUTTON_A) {
-            HuAudFXPlay(2);
+            HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
             result = 1;
             break;
         } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             result = 0;
             break;
         } else {
             if (lbl_802BFFE0[0] & 4) {
                 if (selection == 0) {
-                    HuAudFXPlay(0);
+                    HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                 }
                 if (selection == 0) {
                     selection = 1;
                 }
             } else if (lbl_802BFFE0[0] & 8) {
                 if (selection == 1) {
-                    HuAudFXPlay(0);
+                    HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                 }
                 if (selection == 1) {
                     selection = 0;
@@ -2088,17 +2073,17 @@ s16 fn_1_B4E8(void)
     for (;;) {
         HuPrcVSleep();
         if (lbl_802C0008[0] & PAD_BUTTON_A) {
-            HuAudFXPlay(2);
+            HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
             result = 1;
             break;
         } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
-            HuAudFXPlay(3);
+            HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
             result = 0;
             break;
         } else {
             if (lbl_802BFFE0[0] & 4) {
                 if (selection != 2) {
-                    HuAudFXPlay(0);
+                    HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                 }
                 selection++;
                 if (selection >= 2) {
@@ -2106,7 +2091,7 @@ s16 fn_1_B4E8(void)
                 }
             } else if (lbl_802BFFE0[0] & 8) {
                 if (selection != 0) {
-                    HuAudFXPlay(0);
+                    HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
                 }
                 selection--;
                 if (selection <= 0) {
@@ -2144,14 +2129,14 @@ s16 fn_1_B75C(void)
             if (lbl_802C0008[0] & PAD_BUTTON_A) {
                 index = (lbl_1_bss_9D0[2] + 2 * lbl_1_bss_9D0[1]) + 2 * lbl_1_bss_9D0[3];
                 if (lbl_1_bss_580[lbl_1_bss_9D0[0]][index][1] == 1) {
-                    HuAudFXPlay(2);
+                    HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
                     result = 1;
                     break;
                 } else {
-                    HuAudFXPlay(4);
+                    HuAudFXPlay(MSM_SE_CMN_CHOICE_DENIED);
                 }
             } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
                 result = -1;
                 break;
             }
@@ -2293,65 +2278,67 @@ s16 fn_1_D324(void)
         rowNo = 3;
     }
     fn_1_3F20(1);
-restart:
-    HuPrcVSleep();
-    fn_1_3D08(0);
-    fn_1_3D08(1);
-    fn_1_C870(1);
-    fn_1_3AE8();
     for (;;) {
         HuPrcVSleep();
-        if (lbl_802BFFE0[0] & 1) {
-            HuAudFXPlay(0);
-            selection--;
-            if (selection < 0) {
-                selection = lbl_1_data_2B0[rowNo] - 1;
+        fn_1_3D08(0);
+        fn_1_3D08(1);
+        fn_1_C870(1);
+        fn_1_3AE8();
+        for (;;) {
+            HuPrcVSleep();
+            if (lbl_802BFFE0[0] & 1) {
+                HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
+                selection--;
+                if (selection < 0) {
+                    selection = lbl_1_data_2B0[rowNo] - 1;
+                }
+                fn_1_39A0();
+                fn_1_3C14(0);
+                fn_1_CAD4(lbl_1_data_2B8.orders[rowNo][selection], 1);
+                continue;
             }
-            fn_1_39A0();
-            fn_1_3C14(0);
-            fn_1_CAD4((s16 *)(lbl_1_data_2B8 + rowNo * 48 + selection * 8), 1);
-            continue;
-        }
-        if (lbl_802BFFE0[0] & 2) {
-            HuAudFXPlay(0);
-            selection++;
-            if (selection >= lbl_1_data_2B0[rowNo]) {
-                selection = 0;
+            if (lbl_802BFFE0[0] & 2) {
+                HuAudFXPlay(MSM_SE_CMN_CURSOR_MOVE);
+                selection++;
+                if (selection >= lbl_1_data_2B0[rowNo]) {
+                    selection = 0;
+                }
+                fn_1_39A0();
+                fn_1_3C14(1);
+                fn_1_CAD4(lbl_1_data_2B8.orders[rowNo][selection], 1);
+                continue;
             }
-            fn_1_39A0();
-            fn_1_3C14(1);
-            fn_1_CAD4((s16 *)(lbl_1_data_2B8 + rowNo * 48 + selection * 8), 1);
-            continue;
+            if (lbl_802C0008[0] & PAD_BUTTON_A) {
+                HuAudFXPlay(MSM_SE_CMN_MENU_ADVANCE);
+                result = 1;
+            } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
+                result = 0;
+            } else if (lbl_802C0008[0] & PAD_BUTTON_X) {
+                HuAudFXPlay(MSM_SE_CMN_CHOICE_CANCEL);
+                result = -1;
+            } else {
+                continue;
+            }
+            break;
         }
-        if (lbl_802C0008[0] & PAD_BUTTON_A) {
-            HuAudFXPlay(2);
-            result = 1;
-        } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
-            HuAudFXPlay(3);
-            result = 0;
-        } else if (lbl_802C0008[0] & PAD_BUTTON_X) {
-            HuAudFXPlay(3);
-            result = -1;
-        } else {
-            continue;
+        fn_1_3EA0(0);
+        fn_1_3EA0(1);
+        if (result == -1 || result == 0) {
+            fn_1_3BE4();
+        }
+        if (result == 0) {
+            fn_1_CAD4(lbl_1_data_2B8.orders[0][4], 0);
+            fn_1_3F20(0);
+        }
+        if (result == -1) {
+            if (!fn_1_B160()) {
+                result = -1;
+            } else {
+                continue;
+            }
         }
         break;
-    }
-    fn_1_3EA0(0);
-    fn_1_3EA0(1);
-    if (result == -1 || result == 0) {
-        fn_1_3BE4();
-    }
-    if (result == 0) {
-        fn_1_CAD4((s16 *)(lbl_1_data_2B8 + 32), 0);
-        fn_1_3F20(0);
-    }
-    if (result == -1) {
-        if (!fn_1_B160()) {
-            result = -1;
-        } else {
-            goto restart;
-        }
     }
     return result;
 }
