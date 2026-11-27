@@ -30,20 +30,6 @@ typedef struct EndingLightVectors {
     HuVecF vector[2];
 } EndingLightVectors;
 
-typedef struct EndingMotionWork {
-    s16 state; /* 0 is inactive; 1 is moving for the particle and entrance work. */
-    float time; /* Callback time in frames; negative values can encode a delayed start or hidden
-                 * effect state. */
-    float duration; /* Total animation frames for the interpolation. */
-    HuVecF startOrVelocity; /* Starting point for a path, or particle velocity per update. */
-    HuVecF controlOrPosition; /* Path control point, hook position, or particle position. */
-    HuVecF endOrEffectParams; /* Path endpoint, or particle scale in x and yaw step in y. */
-    float start; /* Starting yaw in degrees or starting x position, depending on callback. */
-    float end; /* Target yaw in degrees or target x position, depending on callback. */
-    float finalMotionStarted; /* Zero until the character's follow-up motion starts. */
-    float unk_3C; /* Retained storage with no reads or writes in this source file. */
-} EndingMotionWork;
-
 #define sind(x) sin((M_PI * (x)) / 180.0)
 
 
@@ -365,18 +351,7 @@ void fn_1_C44(s16 window, u32 message)
 /* Shows an ending message and optionally waits before its caller continues. */
 void fn_1_DAC(s16 window, u32 message, s16 delay)
 {
-    if (lbl_1_data_38 != -1 && lbl_1_data_38 != window) {
-        fn_1_BE0();
-    }
-    if (lbl_1_data_38 == -1 || lbl_1_data_38 != window) {
-        HuWinExOpen(lbl_1_bss_1A48[window]);
-        lbl_1_data_38 = window;
-    }
-    HuWinAttrSet(lbl_1_bss_1A48[window], 2048);
-    HuWinMesSet(lbl_1_bss_1A48[window], message);
-    if (lbl_1_data_0 != message) {
-        lbl_1_data_0 = -1;
-    }
+    fn_1_C44(window, message);
     if (delay > 0) {
         HuPrcSleep(delay);
     }
@@ -507,8 +482,7 @@ void fn_1_14F4(void)
     s16 index;
 
     for (index = 0; index < 10; index++) {
-        lbl_1_bss_1A20[index] = HuSprAnimRead(fn_80008DD0(
-            DATANUM(0x220000, 20) + index, 0x10000000, 2));
+        lbl_1_bss_1A20[index] = HuSprAnimDataRead(DATANUM(0x220000, 20) + index);
     }
     lbl_1_bss_1A1C[0] = HuSprGrpCreate(10);
     for (index = 0; index < 10; index++) {
@@ -535,8 +509,7 @@ void fn_1_16D4(void)
     void *fileData;
     ANIMDATA *animation;
 
-    animation = HuSprAnimRead(fn_80008DD0(
-            DATANUM(0x220000, 19), 0x10000000, 2));
+    animation = HuSprAnimDataRead(DATANUM(0x220000, 19));
     lbl_1_bss_1A1C[1] = HuSprGrpCreate(1);
     sprite = HuSprCreate(animation, 0, 0);
     HuSprGrpMemberSet(lbl_1_bss_1A1C[1], 0, sprite);
@@ -1254,8 +1227,6 @@ void fn_1_45C0(OMOBJ *object)
 {
     Vec position = { 0.0f, 280.0f, 150.0f };
     s16 model;
-    OMOBJ *effectObject;
-    HU3D_MODEL *modelData;
 
     omSetStatBit(object, (1 << 8));
     for (model = 0; model < 9; model++) {
@@ -1295,12 +1266,7 @@ void fn_1_45C0(OMOBJ *object)
     for (model = 0; model < 7; model++) {
         lbl_1_bss_1834[model].time = 120 - (model * 30);
     }
-    effectObject = lbl_1_bss_18;
-    modelData = &lbl_802C01C8[effectObject->mdlId[0]];
-    fn_8002CEB0(effectObject->mdlId[0], effectObject->mtnId[0]);
-    fn_8002CF98(effectObject->mdlId[0], 0.0f);
-    modelData->motShapeWork.speed = -2.0f;
-    effectObject->work[3] = 0;
+    fn_1_4058();
     fn_1_E1EC(1, &position);
     fn_1_EAB8(1, &position);
     object->objFunc = fn_1_40F0;
@@ -1326,13 +1292,9 @@ void fn_1_4A0C(OMOBJ *object)
 /* Destroys ending particle effects and dialogue windows, then clears lights and the camera. */
 void fn_1_4AB4(void)
 {
-    s16 window;
 
     fn_1_12838();
-    for (window = 0; window < 4; window++) {
-        HuWinExKill(lbl_1_bss_1A48[window]);
-    }
-    HuWinAllKill();
+    fn_1_1104();
     fn_80028D70();
     Hu3DCameraKill(1);
 }
@@ -1341,17 +1303,10 @@ void fn_1_4AB4(void)
  * overlay. */
 void fn_1_4B20(OMOBJ *object)
 {
-    s16 window;
 
     if (WipeCheck() == 0) {
         HuAudFadeOut(1000);
-        fn_1_12838();
-        for (window = 0; window < 4; window++) {
-            HuWinExKill(lbl_1_bss_1A48[window]);
-        }
-        HuWinAllKill();
-        fn_80028D70();
-        Hu3DCameraKill(1);
+        fn_1_4AB4();
         HuAudAllStop();
         fn_8003A5E4(1, 1);
         object->objFunc = NULL;
@@ -1404,7 +1359,6 @@ void fn_1_4BC8(OMOBJ *object)
  * overlay. */
 void fn_1_4DAC(void)
 {
-    s16 window;
 
     fn_1_DD14();
     HuAudSStreamFadeOut(lbl_1_bss_1DDC, 1000);
@@ -1413,10 +1367,7 @@ void fn_1_4DAC(void)
         HuPrcVSleep();
     }
     fn_1_12838();
-    for (window = 0; window < 4; window++) {
-        HuWinExKill(lbl_1_bss_1A48[window]);
-    }
-    HuWinAllKill();
+    fn_1_1104();
     fn_80028D70();
     Hu3DCameraKill(1);
     fn_8003A5E4(1, 1);
@@ -1461,30 +1412,7 @@ inline void fn_1_4E5C(void);
 void fn_1_52D8(void)
 {
     OSReport("\n-----===== MARIO PARTY 6 :: ENDING =====-----\n\n");
-    lbl_1_bss_0 = fn_8003A8BC(11, 8192);
-    Hu3DCameraCreate(1);
-    fn_1_B2C();
-    fn_1_F34();
-    fn_1_11F34();
-
-    lbl_1_bss_4 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1,
-        fn_1_189C);
-    lbl_1_bss_8 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 96, -1,
-        fn_1_23D8);
-    lbl_1_bss_14 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1, NULL);
-    lbl_1_bss_C = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1,
-        fn_1_3B4C);
-    lbl_1_bss_10 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1,
-        fn_1_3D5C);
-    lbl_1_bss_18 = fn_8003AB38(lbl_1_bss_0, 4096, 32, 32, -1,
-        fn_1_45C0);
-    lbl_1_bss_1C = fn_8003AB38(lbl_1_bss_0, 4096, 96, 16, -1, NULL);
-    if (lbl_80265E30.unkFlag4 != 0) {
-        lbl_1_bss_20 = fn_8003AB38(lbl_1_bss_0, 4096, 0, 0, -1,
-            fn_1_4BC8);
-    }
-    lbl_80265E30.unkFlag4 = 1;
-    fn_8000DAC0(fn_1_4DAC, 12288, 12288, 0, lbl_1_bss_0);
+    fn_1_4E5C();
 }
 
 inline void fn_1_52D8(void);
@@ -1498,31 +1426,7 @@ int _prolog(void)
     for (ctor = _ctors; *ctor != 0; ctor++) {
         (*ctor)();
     }
-    OSReport("\n-----===== MARIO PARTY 6 :: ENDING =====-----\n\n");
-    lbl_1_bss_0 = fn_8003A8BC(11, 8192);
-    Hu3DCameraCreate(1);
-    fn_1_B2C();
-    fn_1_F34();
-    fn_1_11F34();
-
-    lbl_1_bss_4 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1,
-        fn_1_189C);
-    lbl_1_bss_8 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 96, -1,
-        fn_1_23D8);
-    lbl_1_bss_14 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1, NULL);
-    lbl_1_bss_C = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1,
-        fn_1_3B4C);
-    lbl_1_bss_10 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1,
-        fn_1_3D5C);
-    lbl_1_bss_18 = fn_8003AB38(lbl_1_bss_0, 4096, 32, 32, -1,
-        fn_1_45C0);
-    lbl_1_bss_1C = fn_8003AB38(lbl_1_bss_0, 4096, 96, 16, -1, NULL);
-    if (lbl_80265E30.unkFlag4 != 0) {
-        lbl_1_bss_20 = fn_8003AB38(lbl_1_bss_0, 4096, 0, 0, -1,
-            fn_1_4BC8);
-    }
-    lbl_80265E30.unkFlag4 = 1;
-    fn_8000DAC0(fn_1_4DAC, 12288, 12288, 0, lbl_1_bss_0);
+    fn_1_52D8();
     return 0;
 }
 
@@ -1981,21 +1885,6 @@ void fn_1_A6D8(void)
     fn_1_7B4();
 }
 
-/* Prepares the staff-roll lights and sparkle object for fn_1_A964's camera transition. */
-static inline void ending_inline_A6D8(HuVecF *position)
-{
-    s16 light;
-
-    *position = lbl_1_rodata_288;
-    fn_1_93A0(lbl_1_bss_1C);
-    fn_1_F1B8(1, position);
-    HuPrcVSleep();
-    fn_1_F23C(1);
-    fn_1_F068(1, 1, position);
-    fn_1_F11C(1, 0);
-    fn_80028D70();
-    fn_1_7B4();
-}
 
 /* Presents the first staff-roll section and starts its camera move; called by the ending
  * entrypoint. */
@@ -2015,16 +1904,9 @@ void fn_1_A964(void)
     s16 lightIndex;
     s32 firstSound;
     s32 secondSound;
-    HuVecF position;
-    HuVecF cameraTarget;
-    HuVecF cameraUp;
-    HuVecF cameraPosition;
     EndingLightVectors lightPosition;
     EndingLightVectors lightDirection;
     GXColor lightColor;
-    s16 sprite;
-    void *fileData;
-    ANIMDATA *animation;
 
     HuAudFXStop(lbl_1_bss_1D5C.channel[4]);
     WipeCreate(2, 0, 10);
@@ -2034,16 +1916,9 @@ void fn_1_A964(void)
 
     fn_1_8CFC();
 
-    ending_inline_A6D8(&position);
+    fn_1_A6D8();
 
-    fn_80027CD0(1, &cameraPosition, &cameraUp, &cameraTarget);
-    cameraPosition.x = 0.0f;
-    cameraPosition.y = 250.0f;
-    cameraPosition.z = 400.0f;
-    cameraTarget.x = 0.0f;
-    cameraTarget.y = 280.0f;
-    cameraTarget.z = 0.0f;
-    Hu3DCameraPosSetV(1, &cameraPosition, &cameraUp, &cameraTarget);
+    fn_1_951C();
 
     if (lbl_1_bss_26 == 0) {
         firstSound = HuAudFXPlay(MSM_SE_BANK_ENDING_STAFF_AMBIENT_A_LOOP);
@@ -2058,15 +1933,7 @@ void fn_1_A964(void)
     }
     lbl_1_bss_1D5C.channel[9] = secondSound;
 
-    fileData = fn_8005607C(
-        DATANUM(0xf20000, 51), 0x30000000, 2);
-    animation = HuSprAnimRead(fileData);
-    lbl_1_data_10E = HuSprGrpCreate(1);
-    sprite = HuSprCreate(animation, 1, 0);
-    HuSprGrpMemberSet(lbl_1_data_10E, 0, sprite);
-    HuSprTPLvlSet(lbl_1_data_10E, 0, 0.3f);
-    HuSprGrpPosSet(lbl_1_data_10E, 288.0f, 240.0f);
-    HuSprScaleSet(lbl_1_data_10E, 0, 20.0f, 20.0f);
+    fn_1_A58C();
     WipeCreate(1, 0, 10);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
@@ -2158,11 +2025,6 @@ void fn_1_B244(void)
 void fn_1_B568(void)
 {
     s16 frame;
-    OMOBJ *mainObject;
-    OMOBJ *staffObject;
-    OMOBJ *effectObject;
-    s16 staffModel;
-    s16 effectModel;
     HU3D_MODEL *modelData;
     HU3D_LIGHTID lightId;
     float color;
@@ -2176,39 +2038,7 @@ void fn_1_B568(void)
     while (WipeCheck()) {
         HuPrcVSleep();
     }
-    if (lbl_1_data_10E != -1) {
-        HuSprGrpKill(lbl_1_data_10E);
-    }
-
-    mainObject = lbl_1_bss_4;
-    fn_8002C624(mainObject->mtnId[0]);
-    fn_800262D0(mainObject->mdlId[0]);
-
-    staffObject = lbl_1_bss_1C;
-    if (staffObject) {
-        fn_1_111B0(0);
-        for (staffModel = 95; staffModel >= 0; staffModel--) {
-            fn_800262D0(staffObject->mdlId[staffModel]);
-        }
-        omDelObjEx(lbl_1_bss_0, staffObject);
-    }
-    staffObject = NULL;
-    lbl_1_bss_1C->objFunc = NULL;
-    lbl_1_bss_1C = NULL;
-
-    effectObject = lbl_1_bss_18;
-    if (effectObject) {
-        fn_1_E1EC(0, NULL);
-        fn_1_EAB8(0, NULL);
-        for (effectModel = 0; effectModel < 16; effectModel++) {
-            fn_8002C624(effectObject->mtnId[effectModel]);
-            fn_800262D0(effectObject->mdlId[effectModel]);
-        }
-        omDelObjEx(lbl_1_bss_0, effectObject);
-    }
-    effectObject = NULL;
-    lbl_1_bss_18->objFunc = NULL;
-    lbl_1_bss_18 = NULL;
+    fn_1_B0A4();
 
     fn_1_B244();
     fn_80026A44(lbl_1_bss_4->mdlId[1], 1);
@@ -2327,13 +2157,9 @@ void fn_1_BBEC(void)
 /* Runs the final staff-roll camera and prop sequence; called by the ending entrypoint. */
 void fn_1_BE30(void)
 {
-    OMOBJ *mainObject;
     OMOBJ *object;
-    s16 index;
-    s16 cleanupIndex;
     s16 frame;
     s32 sound;
-    HuVecF position;
     float height;
 
     HuAudFXStop(lbl_1_bss_1D5C.channel[5]);
@@ -2342,49 +2168,9 @@ void fn_1_BE30(void)
         HuPrcVSleep();
     }
 
-    object = lbl_1_bss_4;
-    for (cleanupIndex = 0; cleanupIndex < 2; cleanupIndex++) {
-        fn_8002C624(object->mtnId[cleanupIndex + 1]);
-        fn_800262D0(object->mdlId[cleanupIndex + 1]);
-    }
+    fn_1_BB10();
 
-    object = lbl_1_bss_14;
-    fn_80027508(object->mdlId[0]);
-    for (cleanupIndex = 0; cleanupIndex < 2; cleanupIndex++) {
-        fn_8002C624(object->mtnId[cleanupIndex]);
-    }
-    fn_800262D0(object->mdlId[0]);
-    fn_800262D0(object->mdlId[1]);
-
-    mainObject = lbl_1_bss_4;
-    for (index = 0; index < 2; index++) {
-        mainObject->mdlId[index + 3] = fn_80025A04(fn_80008DD0(
-            DATANUM(0x220000, 3) + index, 0x10000000, 2));
-        mainObject->mtnId[index + 3] = fn_8002D3C4(mainObject->mdlId[index + 3]);
-        fn_8002CCC0(mainObject->mdlId[index + 3], mainObject->mtnId[index + 3],
-            0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-    }
-    fn_80026FFC(mainObject->mdlId[3]);
-
-    position = lbl_1_rodata_2B8;
-    fn_1_F1B8(1, &position);
-
-    mainObject = lbl_1_bss_14;
-    mainObject->mdlId[2] = fn_80025A04(fn_80008DD0(
-        DATANUM(0x220000, 45), 0x10000000, 2));
-    for (index = 0; index < 2; index++) {
-        mainObject->mtnId[index + 2] = fn_80030458(
-            mainObject->mdlId[2], fn_80008DD0(
-                DATANUM(0x220000, 46) + index, 0x10000000, 2));
-    }
-    fn_80026760(mainObject->mdlId[2], 0.0f,
-        0.0f, 0.0f);
-    fn_8002CCC0(mainObject->mdlId[2], mainObject->mtnId[3],
-        0.0f, 0.0f, 0);
-    fn_80026E44(mainObject->mdlId[2]);
-    HuPrcVSleep();
-
-    fn_8002D86C(lbl_1_bss_4->mdlId[4], 0.25f);
+    fn_1_BBEC();
     fn_8002803C(lbl_1_bss_4->mdlId[3], 1);
     fn_80028D70();
     fn_80029850(lbl_1_bss_4->mdlId[3], 1);

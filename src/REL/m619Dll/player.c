@@ -2,6 +2,8 @@
 #include "REL/m619Dll/module_types.h"
 #include "REL/m619Dll/player.h"
 #include "msm_se.h"
+#include "REL/m619Dll/particle.h"
+#include "REL/m619Dll/scene.h"
 
 #define M619_IMPACT_MOTION_START 0.0f
 #define M619_IMPACT_MOTION_END 5.0f
@@ -34,14 +36,6 @@ s32 fn_1_C420(M619Player *playerState);
 void fn_1_C628(M619Player *player);
 void fn_1_C690(s32 *responseState);
 
-extern void fn_1_5780(M619ModelQueueNode *node);
-extern void fn_1_51EC(M619ModelQueueNode *node, const HuVecF *position);
-extern void fn_1_55BC(M619ModelQueueNode *node, f32 scale, s32 mode);
-extern void fn_1_792C(M619PlayerMotionPayload *recipient, M619Player *source);
-extern void fn_1_9EEC(M619ModelMotion *modelMotion, s32 variant);
-extern void fn_1_C69C(M619ParticleEffect *effect, const HuVecF *position, const HuVecF *rotation);
-extern void fn_1_5794(HuVecF *position);
-
 static inline f32 M619ImpactMagnitude(f32 angle) {
     return (f32)fabs(angle);
 }
@@ -69,16 +63,16 @@ s32 fn_1_A1F4(void *motionData) {
 /* Runs when a player object is created, loading its character and initializing its effects. */
 void fn_1_A23C(OMOBJ *object) {
     M619Player *player;
-    M619Player **playerSlots;
+    M619Scene *scene;
     s32 index;
     HU3D_MOTIONID motion;
 
-    player = (M619Player *)object->data;
-    playerSlots = (M619Player **)lbl_1_bss_0->data;
+    player = object->data;
+    scene = lbl_1_bss_0->data;
     index = 0;
     while (index < 4) {
-        if (playerSlots[index] == NULL) {
-            playerSlots[index] = player;
+        if (scene->players[index] == NULL) {
+            scene->players[index] = player;
             break;
         }
         index++;
@@ -106,7 +100,7 @@ void fn_1_A23C(OMOBJ *object) {
     fn_8005B4BC(player->character);
     fn_8005DFC0(player->character, 0);
     fn_80026B8C(player->characterModel, 3);
-    fn_1_B3C0((M619Sway *)&player->sway,
+    fn_1_B3C0(&player->sway,
               player);
     player->phase = 4;
     player->enabled = 1;
@@ -157,13 +151,13 @@ void fn_1_A23C(OMOBJ *object) {
 void fn_1_A614(OMOBJ *object) {
     M619Player *player;
 
-    player = (M619Player *)object->data;
+    player = object->data;
     if (player->inputEnabled != 0) {
         if (player->playerType != 0) {
             fn_1_A894(player);
             return;
         }
-        fn_1_A674((M619Player *)player);
+        fn_1_A674(player);
     }
 }
 
@@ -548,7 +542,7 @@ void fn_1_B678(void *playerData) {
     state = playerData;
     if (state->enabled != 0) {
         fn_1_B200(state);
-        fn_1_AEE4((M619Player *)state);
+        fn_1_AEE4(state);
         isMoving = state->phase == 1;
         fn_1_B3FC(&state->sway, isMoving);
     }

@@ -10,7 +10,12 @@ typedef struct M619ParticleEffect {
     const HuVecF *positionSource; /* Position sampled when particles spawn. */
     const HuVecF *rotationSource; /* Rotation in degrees used when particles spawn. */
     s32 state; /* Effect-specific particle lifecycle state. */
-    s32 active; /* Whether this effect is active. */
+    s32 unk24; /* The game's code never reads this field. */
     HU3D_MODELID model; /* Model that draws the effect's particles. */
 } M619ParticleEffect;
+
+/* Functions shared by the module's source files. */
+void fn_1_C69C(M619ParticleEffect *work, const HuVecF *position,
+               const HuVecF *rotation);
+
 #endif

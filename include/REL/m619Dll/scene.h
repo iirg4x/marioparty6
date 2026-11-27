@@ -128,10 +128,19 @@ typedef struct M619Scene {
     s16 winnerCount; /* Number of winners recorded for the result. */
     f32 materialTransparency[4][10]; /* Transparency values for scene materials. */
     HU3D_MODELID models[33]; /* Models loaded for the scene. */
-    HU3D_MOTIONID defaultAnimation[1]; /* Default animation loaded for the scene model. */
+    HU3D_MOTIONID unk1D5E[1]; /* The game's code never reads this field. */
     ANIMDATA *animations[1]; /* Animation data used by particle effects. */
     M619CameraOrbit camera; /* Scene camera position and orbit state. */
     s16 actionTimer; /* Frames remaining in the current action. */
     s16 actionPhase; /* Current action-sequence phase. */
 } M619Scene;
+
+/* Functions shared by the module's source files. */
+void fn_1_51EC(M619ModelQueueNode *node, const HuVecF *position);
+void fn_1_55BC(M619ModelQueueNode *group, f32 scale, s32 variant);
+void fn_1_5780(M619ModelQueueNode *queueNode);
+void fn_1_5794(HuVecF *point);
+void fn_1_792C(M619PlayerMotionPayload *recipient, M619Player *source);
+void fn_1_9EEC(M619ModelMotion *work, s32 characterIndex);
+
 #endif

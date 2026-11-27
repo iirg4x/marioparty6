@@ -1,6 +1,7 @@
 #ifndef REL_ENDINGDLL_ENDING_H
 #define REL_ENDINGDLL_ENDING_H
 
+#include "game/hu3d.h"
 #include "game/object.h"
 #include "game/window.h"
 
@@ -47,5 +48,19 @@ void fn_1_112E0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 void fn_1_11714(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 void fn_1_11F34(void);
 void fn_1_12838(void);
+
+typedef struct EndingMotionWork {
+    s16 state; /* 0 is inactive; 1 is moving for the particle and entrance work. */
+    float time; /* Callback time in frames; negative values can encode a delayed start or hidden
+                 * effect state. */
+    float duration; /* Total animation frames for the interpolation. */
+    HuVecF startOrVelocity; /* Starting point for a path, or particle velocity per update. */
+    HuVecF controlOrPosition; /* Path control point, hook position, or particle position. */
+    HuVecF endOrEffectParams; /* Path endpoint, or particle scale in x and yaw step in y. */
+    float start; /* Starting yaw in degrees or starting x position, depending on callback. */
+    float end; /* Target yaw in degrees or target x position, depending on callback. */
+    float finalMotionStarted; /* Zero until the character's follow-up motion starts. */
+    u8 unk3C[4]; /* No code names this field. */
+} EndingMotionWork;
 
 #endif

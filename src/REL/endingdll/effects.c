@@ -58,19 +58,6 @@ typedef struct EndingScenePositions {
     HuVecF position[3];
 } EndingScenePositions;
 
-typedef struct EndingMotionWork {
-    s16 state;
-    float time;
-    float duration;
-    HuVecF unk_0C;
-    HuVecF unk_18;
-    HuVecF unk_24;
-    float start;
-    float end;
-    float unk_38;
-    float unk_3C;
-} EndingMotionWork;
-
 #define sind(x) sin((M_PI * (x)) / 180.0)
 
 extern const VoidFunc _ctors[];
@@ -190,17 +177,6 @@ enum {
     ENDING_PARTICLE_DATA_SIZE = sizeof(HU3D_PARTICLE_DATA),
 };
 
-/* Interpolate a winner-burst particle's scale factor as it ages. */
-static inline float tail7_fn_1_3F50C(float startValue, float endValue, float time, float duration)
-{
-    if (time <= 0.0f) {
-        return startValue;
-    }
-    if (time >= duration) {
-        return endValue;
-    }
-    return startValue + ((time / duration) * (endValue - startValue));
-}
 /* Move staff-particle alpha and scale toward their targets over ten hook passes. */
 static inline float tail17_staff_approach_inlined(float current, float target, s32 steps)
 {
@@ -208,136 +184,6 @@ static inline float tail17_staff_approach_inlined(float current, float target, s
         return target;
     }
     return (target + current * (steps - 1)) / steps;
-}
-/* Fade a spawned ending particle as its particle hook advances its age. */
-static inline float tail19_fn_1_0_inlined(float start, float end, float time, float duration)
-{
-    if (time <= 0.0f) {
-        return start;
-    }
-    if (time >= duration) {
-        return end;
-    }
-    return start + ((time / duration) * (end - start));
-}
-/* Start the selected staff sparkle emitters when fn_1_10DEC enables them. */
-static inline void tail20_fn_1_6C90_inlined(s16 modelNo, HuVecF *pos, GXColor *color)
-{
-    HU3D_MODEL *model;
-    HU3D_PARTICLE *particle;
-    s16 i;
-    HU3D_PARTICLE_DATA *entry;
-
-    model = &lbl_802C01C8[lbl_1_bss_1E22[modelNo]];
-    particle = model->hookData;
-    for (i = 0, entry = particle->data; i < particle->maxCnt; i++, entry++) {
-        entry->time = 1;
-        if (color != NULL) {
-            entry->color.r = color->r;
-            entry->color.g = color->g;
-            entry->color.b = color->b;
-        }
-    }
-    if (pos != NULL) {
-        fn_80026790(lbl_1_bss_1E22[modelNo], pos);
-    }
-    fn_80026A44(lbl_1_bss_1E22[modelNo], (1 << 0));
-}
-/* Enable one staff burst emitter and save its color and particle spawn center. */
-static inline void tail20_staff_spawn_effect_inlined(s16 modelNo, HuVecF *pos, GXColor *color)
-{
-    HU3D_MODEL *model;
-    HU3D_PARTICLE *particle;
-
-    model = &lbl_802C01C8[lbl_1_bss_1E1E[modelNo]];
-    particle = model->hookData;
-    particle->dataCnt = 1;
-    if (color != NULL) {
-        particle->pos.x = color->r;
-        particle->pos.y = color->g;
-        particle->pos.z = color->b;
-    }
-    if (pos != NULL) {
-        particle->spawnCenter.x = pos->x;
-        particle->spawnCenter.y = pos->y;
-        particle->spawnCenter.z = pos->z;
-    }
-    fn_80026A44(lbl_1_bss_1E1E[modelNo], (1 << 0));
-}
-/* Mark every selected staff sparkle particle for its fade-out hook state. */
-static inline void tail20_fn_1_6D94_inlined(s16 modelNo)
-{
-    HU3D_MODEL *model;
-    HU3D_PARTICLE *particle;
-    s16 i;
-    HU3D_PARTICLE_DATA *entry;
-
-    model = &lbl_802C01C8[lbl_1_bss_1E22[modelNo]];
-    particle = model->hookData;
-    for (i = 0, entry = particle->data; i < particle->maxCnt; i++, entry++) {
-        entry->time = 2;
-    }
-}
-/* Stop spawning from the selected staff burst emitter when fn_1_10DEC hides it. */
-static inline void tail20_staff_stop_effect_inlined(s16 modelNo)
-{
-    HU3D_MODEL *model;
-    HU3D_PARTICLE *particle;
-
-    model = &lbl_802C01C8[lbl_1_bss_1E1E[modelNo]];
-    particle = model->hookData;
-    particle->dataCnt = 0;
-}
-/* Start all five emitters for a winner group when fn_1_12988 selects display mode 1. */
-static inline void tail22_fn_1_ED60_inlined(s16 groupNo, HuVecF *spawnPosition, GXColor *color)
-{
-    s16 i;
-    HU3D_MODEL *model;
-    HU3D_PARTICLE *emitter;
-
-    for (i = 0; i < 5; i++) {
-        model = &lbl_802C01C8[lbl_1_bss_1DE0[groupNo][i]];
-        emitter = model->hookData;
-        emitter->dataCnt = 1;
-        if (color != NULL) {
-            emitter->pos.x = color->r;
-            emitter->pos.y = color->g;
-            emitter->pos.z = color->b;
-        }
-        if (spawnPosition != NULL) {
-
-            emitter->spawnCenter.x = spawnPosition->x;
-            emitter->spawnCenter.y = spawnPosition->y;
-            emitter->spawnCenter.z = spawnPosition->z;
-        }
-        fn_80026A44(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
-    }
-}
-/* Stop new particles in all five emitters when fn_1_12988 selects mode 0. */
-static inline void tail22_fn_1_EEC8_inlined(s16 groupNo)
-{
-    s16 i;
-    HU3D_MODEL *model;
-    s16 *work;
-
-    for (i = 0; i < 5; i++) {
-        model = &lbl_802C01C8[lbl_1_bss_1DE0[groupNo][i]];
-        work = model->hookData;
-        *work = 0;
-    }
-}
-/* Show or hide every emitter model in a winner group for fn_1_12988. */
-static inline void tail22_fn_1_ECAC_inlined(s16 groupNo, s16 show)
-{
-    s16 i;
-
-    for (i = 0; i < 5; i++) {
-        if (show) {
-            fn_80026A44(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
-        } else {
-            fn_800269E8(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
-        }
-    }
 }
 /* Approach an ending particle's target alpha or scale over the remaining frames. */
 static inline float tail23_ending_lerp(float start, float end, float time)
@@ -347,54 +193,8 @@ static inline float tail23_ending_lerp(float start, float end, float time)
     }
     return (start * (time - 1.0f) + end) / time;
 }
-/* Create the four-particle pale sparkle model during ending effect setup. */
-static inline void ending_inline_EF58(void)
-{
-    lbl_1_bss_1E2A = fn_8003216C(lbl_1_bss_1E30[1], 4);
-    fn_80026760(lbl_1_bss_1E2A, 0.0f,
-        100.0f, 200.0f);
-    fn_800268B0(lbl_1_bss_1E2A, 1.0f,
-        1.0f, 1.0f);
-    fn_80026B8C(lbl_1_bss_1E2A, 6);
-    fn_800326D0(lbl_1_bss_1E2A, fn_1_EBCC);
-    fn_8003269C(lbl_1_bss_1E2A, 1);
-}
 
-/* Create two hidden staff sparkle models during ending effect setup. */
-static inline void ending_inline_1025C(void)
-{
-    s16 i;
 
-    for (i = 0; i < 2; i++) {
-        lbl_1_bss_1E22[i] = fn_8003216C(lbl_1_bss_1E30[1], 10);
-        fn_80026760(lbl_1_bss_1E22[i], 0.0f,
-            0.0f, 0.0f);
-        fn_800268B0(lbl_1_bss_1E22[i], 1.0f,
-            1.0f, 1.0f);
-        fn_800269E8(lbl_1_bss_1E22[i], (1 << 0));
-        fn_80026B8C(lbl_1_bss_1E22[i], 2);
-        fn_800326D0(lbl_1_bss_1E22[i], fn_1_FDD4);
-        fn_8003269C(lbl_1_bss_1E22[i], 1);
-    }
-}
-
-/* Create two hidden staff burst models during ending effect setup. */
-static inline void ending_inline_10C28(void)
-{
-    s16 i;
-
-    for (i = 0; i < 2; i++) {
-        lbl_1_bss_1E1E[i] = fn_8003216C(lbl_1_bss_1E30[0], 128);
-        fn_80026760(lbl_1_bss_1E1E[i], 0.0f,
-            0.0f, 0.0f);
-        fn_800268B0(lbl_1_bss_1E1E[i], 1.0f,
-            1.0f, 1.0f);
-        fn_800269E8(lbl_1_bss_1E1E[i], (1 << 0));
-        fn_80026B8C(lbl_1_bss_1E1E[i], 2);
-        fn_800326D0(lbl_1_bss_1E1E[i], fn_1_10628);
-        fn_8003269C(lbl_1_bss_1E1E[i], 1);
-    }
-}
 
 /* Return the linear fade value used by particle hooks as their age advances. */
 float fn_1_DDF8(float start, float end, float time, float duration)
@@ -1076,7 +876,7 @@ void fn_1_10628(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 data->zRot = MTXDegToRad(frandmod(360));
                 data->color.a = frandmod(127) + 128;
             }
-            random = tail19_fn_1_0_inlined(1.0f, 0.0f, data->vel.x, data->vel.y);
+            random = fn_1_DDF8(1.0f, 0.0f, data->vel.x, data->vel.y);
             data->scale = frandmod(60) * random;
             if ((data->vel.x += 1.0f) > data->vel.y) {
                 data->time = 0;
@@ -1127,13 +927,13 @@ void fn_1_10DEC(s16 modelNo, HuVecF *pos, s16 display)
         { 109, 207, 246, 0 },
     };
     if (display == 1) {
-        tail20_fn_1_6C90_inlined(modelNo, pos, &colors[modelNo]);
+        fn_1_FC48(modelNo, pos, &colors[modelNo]);
 
-        tail20_staff_spawn_effect_inlined(modelNo, pos, &colors[modelNo]);
+        fn_1_1049C(modelNo, pos, &colors[modelNo]);
     } else if (display == 0) {
-        tail20_fn_1_6D94_inlined(modelNo);
+        fn_1_FD4C(modelNo);
 
-        tail20_staff_stop_effect_inlined(modelNo);
+        fn_1_105D4(modelNo);
     } else if (display == 2) {
         fn_800269E8(lbl_1_bss_1E22[modelNo], (1 << 0));
         fn_800269E8(lbl_1_bss_1E1E[modelNo], (1 << 0));
@@ -1322,7 +1122,7 @@ void fn_1_11714(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 data->zRot = MTXDegToRad(frandmod(360));
                 data->color.a = frandmod(127) + 128;
             }
-            random = tail7_fn_1_3F50C(1.0f, 0.0f, data->vel.x, data->vel.y);
+            random = fn_1_DDF8(1.0f, 0.0f, data->vel.x, data->vel.y);
             data->scale = 40.0f * random;
             if (++data->vel.x > data->vel.y) {
                 data->time = 0;
@@ -1381,15 +1181,14 @@ void fn_1_11F34(void)
     s16 index;
 
     for (index = 0; index < 3; index++) {
-        lbl_1_bss_1E30[index] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_128[index], 0x10000000, 2));
+        lbl_1_bss_1E30[index] = HuSprAnimDataRead(lbl_1_data_128[index]);
     }
     fn_1_E9A8();
-    ending_inline_EF58();
+    fn_1_EF58();
     fn_1_F9B8();
     fn_1_11368();
-    ending_inline_1025C();
-    ending_inline_10C28();
+    fn_1_1025C();
+    fn_1_10C28();
     fn_1_11C94();
 }
 
@@ -1435,10 +1234,10 @@ void fn_1_12988(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo)
     };
 
     if (mode == 1) {
-        tail22_fn_1_ED60_inlined(groupNo, pos, &colors[colorNo]);
+        fn_1_1152C(groupNo, pos, &colors[colorNo]);
     } else if (mode == 0) {
-        tail22_fn_1_EEC8_inlined(groupNo);
+        fn_1_11694(groupNo);
     } else if (mode == 2) {
-        tail22_fn_1_ECAC_inlined(groupNo, FALSE);
+        fn_1_11478(groupNo, FALSE);
     }
 }

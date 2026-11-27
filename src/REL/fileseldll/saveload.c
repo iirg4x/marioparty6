@@ -61,7 +61,6 @@ s32 FileCardChoice(s16 choiceFlags, s16 sourceWindowId);
 /* functions in strict ascending target-address order */
 /* ======================================================================== */
 
-/* 0xB5B4 */
 /* After name entry, hide its sprites and all three stored window IDs. Only the first two
 * IDs are initialized as keyboard windows; the third remains zero. */
 void FileCommonInit(void)
@@ -263,7 +262,6 @@ cleanup:
     return result;
 }
 
-/* 0xBF9C */
 /* FileBoxInit calls this after finding no save file to check whether a save can be created. */
 s32 FileCheckCardSpace(void)
 {
@@ -299,7 +297,6 @@ s32 FileCheckCardSpace(void)
     return 0;
 }
 
-/* 0xC098 */
 /* Create or reuse a warning window, then try mounting and opening the save file.
  * On failure, discard that result and remount to check space. A passing space check
  * returns success without reopening the file. A newly created window starts hidden. */
@@ -364,7 +361,6 @@ s32 FileCardWarning(s16 winId)
     return ret;
 }
 
-/* 0xC278 */
 /* After naming an empty box, FileselSelect uses this to test whether the card already has
 * the save file. Return one only when both mounting and opening succeed. */
 s32 FileTestOpen(void)
@@ -378,7 +374,6 @@ s32 FileTestOpen(void)
     return 0;
 }
 
-/* 0xC2F0 */
 /* Card load/save callers use this dialog loop to handle removal, formatting, and retry choices. */
 s32 FileCardErrorExec(s32 err, s16 winId)
 {
@@ -523,7 +518,6 @@ s32 FileCardErrorExec(s32 err, s16 winId)
     return -5;
 }
 
-/* 0xC898 */
 /* When saving is enabled, mount and open the named save file, reporting the handled card
  * errors. Unlisted open errors, including busy, return success. When saving is disabled,
  * return success without opening the file. */
@@ -567,7 +561,6 @@ s32 FileCardOpen(const char *fileName)
     return 0;
 }
 
-/* 0xC9D0 */
 /* When saving is enabled, read bytes from the open card file and report read errors; otherwise
  * return success without reading. */
 s32 FileCardRead(s32 length, void *addr)
@@ -587,7 +580,6 @@ s32 FileCardRead(s32 length, void *addr)
     return ret;
 }
 
-/* 0xCA58 */
 /* Closes the current card file when card saving is enabled. */
 s32 FileCardClose(void)
 {
@@ -642,7 +634,6 @@ s32 FileCardMount(s16 slot)
         }
     }
 }
-/* 0xCBC8 */
 /* After format confirmation, format the active curSlotNo; slot only selects the warning text.
  * Removal before formatting returns success without formatting the card. HuCardFormat clears
  * reset/disc-error suppression even if it was already set. Unhandled negative format results
@@ -694,7 +685,6 @@ s32 FileCardFormat(s16 slot)
     return ret;
 }
 
-/* 0xCDA8 */
 /* FileBoxInit reads the save image when saving is enabled; otherwise it uses the existing
  * buffer. Unlisted open errors, including busy, are treated as success before reading.
  * The card-close result and checksum comparison over the first SAVE_BOX_SIZE bytes are
@@ -773,7 +763,6 @@ s32 FileCardLoad(void)
     return ret;
 }
 
-/* 0xCFF4 */
 /* When saving is enabled, create a card save file, write its erase marker and supplied image,
  * and update status; otherwise return success without writing. */
 s32 FileCardCopy(const char *fileName, s32 size, void *addr)
@@ -905,7 +894,6 @@ s32 FileClear(s16 sourceWindowId)
     return ret;
 }
 
-/* 0xD448 */
 /* When saving is enabled, write the supplied bytes to the open card file and update card
  * status; otherwise return success without writing. */
 s32 FileCardWrite(s32 length, const void *addr)
@@ -1053,7 +1041,6 @@ s32 FileSave(void)
     return rv;
 }
 
-/* 0xD90C */
 /* Save, copy and erase callers use this retry loop to show progress and resolve card errors.
 * A zero save result becomes -5 if the subsequent serial check detects a different card. */
 s32 FileSaveMesOpen(s16 sourceWindowId, s32 statusMessageId)
@@ -1091,7 +1078,6 @@ s32 FileSaveMesOpen(s16 sourceWindowId, s32 statusMessageId)
     return ret;
 }
 
-/* 0xDA18 */
 /* Saving callers use this to show a centered status message sized for its text and inserts. */
 HUWINID FileStatusMesOpen(u32 mesId, u32 insMes0, u32 insMes1, s16 windowY)
 {
@@ -1118,7 +1104,6 @@ HUWINID FileStatusMesOpen(u32 mesId, u32 insMes0, u32 insMes1, s16 windowY)
     return winId;
 }
 
-/* 0xDB5C */
 /* Closes and destroys a status window returned by FileStatusMesOpen. */
 void FileStatusMesClose(s16 winId)
 {
@@ -1128,7 +1113,6 @@ void FileStatusMesClose(s16 winId)
     }
 }
 
-/* 0xDBA0 */
 /* Card operations use this to show a message in the shared warning window or a temporary one. */
 HUWINID FileCardMesOpen(u32 messNum, u32 insMesNum1, u32 insMesNum2, s16 posY)
 {
@@ -1163,7 +1147,6 @@ HUWINID FileCardMesOpen(u32 messNum, u32 insMesNum1, u32 insMesNum2, s16 posY)
     return winId;
 }
 
-/* 0xDD24 */
 /* Closes a temporary card message window while preserving the shared save window. */
 void FileCardMesClose(s16 winId)
 {
@@ -1173,7 +1156,6 @@ void FileCardMesClose(s16 winId)
     }
 }
 
-/* 0xDD84 */
 /* Card operations call this to show their error message; selected modes also ask a choice or wait
  * for A. */
 s16 FileMessOut(s16 mode)
@@ -1292,7 +1274,6 @@ s16 FileMessOut(s16 mode)
     return choice;
 }
 
-/* 0xE210 */
 /* FileCardErrorExec calls this to display the retry, format, and cancel choices for an error. */
 s32 FileCardChoice(s16 choiceFlags, s16 sourceWindowId)
 {

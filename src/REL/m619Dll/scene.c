@@ -6,17 +6,8 @@
 #include "game/hu3d.h"
 #include "game/memory.h"
 #include "msm_se.h"
+#include "REL/m619Dll/particle.h"
 
-#define MSM_SE_M619_6DF 1759
-#define MSM_SE_M619_6E0 1760
-#define MSM_SE_M619_6E1 1761
-#define MSM_SE_M619_6E2 1762
-#define MSM_SE_M619_6E3 1763
-#define MSM_SE_M619_6E4 1764
-#define MSM_SE_M619_6E5 1765
-#define MSM_SE_M619_6E6 1766
-#define MSM_SE_M619_6E7 1767
-#define MSM_SE_M619_6E8 1768
 
 int _prolog(void);
 void _epilog(void);
@@ -184,7 +175,6 @@ extern void fn_1_BB4C(M619MotionNode *object, M619MotionNode *event, f32 impactS
 extern void fn_1_B3C0(M619Sway *sway,
                       M619Player *owner);
 extern void fn_1_C690(void *work);
-extern void fn_1_C69C(M619ParticleEffect *effect, const HuVecF *position, const HuVecF *rotation);
 extern void fn_1_A614(OMOBJ *object);
 
 extern void fn_1_C890(M619ParticleEffect *flash);
@@ -273,7 +263,7 @@ void ObjectSetup(void) {
 void fn_1_1E8(s16 mode, s16 frameNo) {
     M619Scene *state;
 
-    state = (M619Scene *) lbl_1_bss_0->data;
+    state = lbl_1_bss_0->data;
     fn_8005DDEC(6);
     fn_1_182C(state);
     fn_1_1F60(&state->sceneAnimation, state);
@@ -490,7 +480,7 @@ void fn_1_250(s16 mode, s16 frameNo) {
 /* Sequence audio callback: starts the victory track once. */
 void fn_1_B60(s16 mode, s16 frameNo)
 {
-    M619Scene *audioView = (M619Scene *)lbl_1_bss_0->data;
+    M619Scene *audioView = lbl_1_bss_0->data;
 
     switch (audioView->audioState) {
     case 0:
@@ -510,7 +500,7 @@ void fn_1_BD0(s16 mode, s16 frameNo) {
     s32 playerNumber;
     s32 activeCount;
 
-    state = (M619Scene *)lbl_1_bss_0->data;
+    state = lbl_1_bss_0->data;
     switch (state->startState) {
     case 0:
         state->selection.status = 1;
@@ -553,7 +543,7 @@ void fn_1_D0C(s16 mode, s16 frameNo) {
     s16 playerOrder[4];
     s32 playerNumber;
 
-    state = (M619Scene *)lbl_1_bss_0->data;
+    state = lbl_1_bss_0->data;
     switch (state->winnerState) {
     case 0:
         state->selection.status = 0;
@@ -596,7 +586,7 @@ void fn_1_E84(s16 mode, s16 frameNo) {
     s32 playerIndex;
     f32 heightProgress;
 
-    state = (M619Scene *)lbl_1_bss_0->data;
+    state = lbl_1_bss_0->data;
     switch (state->finishState) {
     case 0:
         fn_80071B08();
@@ -678,7 +668,7 @@ void fn_1_11A8(s16 mode, s16 frameNo) {
     s32 playerNumber;
     s32 playerIndex;
 
-    state = (M619Scene *)lbl_1_bss_0->data;
+    state = lbl_1_bss_0->data;
     switch (state->exitState) {
     case 0:
         for (playerNumber = 0; playerNumber < 4; playerNumber++) {
@@ -741,7 +731,7 @@ void fn_1_1450(M619Scene *state) {
     lightDirection.x = lightTarget.x - lightPosition.x;
     lightDirection.y = lightTarget.y - lightPosition.y;
     lightDirection.z = lightTarget.z - lightPosition.z;
-    PSVECNormalize((Vec *)&lightDirection, (Vec *)&lightDirection);
+    PSVECNormalize(&lightDirection, &lightDirection);
 
     if (state->nightLighting != 0) {
         light = Hu3DGLightCreate(lightPosition.x, lightPosition.y, lightPosition.z,
@@ -765,7 +755,7 @@ void fn_1_15CC(M619Scene *scene) { }
 void fn_1_15D0(OMOBJ *object) {
     M619Scene *state;
 
-    state = (M619Scene *)lbl_1_bss_0->data;
+    state = lbl_1_bss_0->data;
     fn_1_6140(&state->selection);
     object->objFunc = fn_1_1624;
 }
@@ -774,7 +764,7 @@ void fn_1_15D0(OMOBJ *object) {
 void fn_1_1624(OMOBJ *object) {
     M619Scene *state;
 
-    state = (M619Scene *) lbl_1_bss_0->data;
+    state = lbl_1_bss_0->data;
     fn_1_69E8(&state->selection);
     fn_1_4278(&state->sceneAnimation);
     fn_1_4B44(state);
@@ -793,11 +783,10 @@ void fn_1_1688(M619Scene *module) {
         module->models[i] = -1;
     }
     for (i = 0; i < 1; i++) {
-        module->defaultAnimation[i] = -1;
+        module->unk1D5E[i] = -1;
     }
     for (i = 0; i < 1; i++) {
-        module->animations[i] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_AC[i], 0x10000000, 2));
+        module->animations[i] = HuSprAnimDataRead(lbl_1_data_AC[i]);
     }
     for (i = 0; i < 4; i++) {
         module->players[i] = 0;
@@ -1185,7 +1174,7 @@ void fn_1_2724(void *input) {
             sourcePosition = *&state->position;
             sourcePositionPointer = &sourcePosition;
             fn_1_A124(&state->modelMotion,
-                      (const HuVecF *)sourcePositionPointer);
+                      sourcePositionPointer);
         }
         if ((s32) state->frame >= 15) {
             if (state->active) {
@@ -1493,7 +1482,7 @@ s32 fn_1_3CBC(M619PlayerPose *burst) {
         }
         break;
     case 2:
-        Hu3D3Dto2D((Point3d *)&context->position, lbl_1_rodata_10[0], &projected);
+        Hu3D3Dto2D(&context->position, lbl_1_rodata_10[0], &projected);
         screenX = projected.x / 576.0f;
         if ((screenX >= 0.0f) && (screenX <= 1.0f)) {
             pan = (s16)((s32)(64.0f * screenX) + 32);
@@ -1559,10 +1548,10 @@ s32 fn_1_3CBC(M619PlayerPose *burst) {
         finished = 1;
         break;
     }
-    fn_80026790(context->firstModel, (Point3d *)&context->position);
-    fn_80026838(context->firstModel, (Point3d *)&context->rotation);
+    fn_80026790(context->firstModel, &context->position);
+    fn_80026838(context->firstModel, &context->rotation);
     fn_80026760(context->secondModel, context->position.x, -130.0f, context->position.z);
-    fn_80026838(context->secondModel, (Point3d *)&context->rotation);
+    fn_80026838(context->secondModel, &context->rotation);
     return finished;
 }
 
@@ -1616,19 +1605,13 @@ void fn_1_449C(M619SceneAnimation *state, s32 callbackValue) {
         slot = &state->actors[slotIndex];
         if (callbackValue == 0) {
             if (slot->player->excluded == 0) {
-                fn_1_E508(&slot->collision, slot->scale, 2);
-                fn_1_E43C(&slot->collision, slot, fn_1_2724, fn_1_39E8, fn_1_3A5C, &slot->position);
-                slot->kind = 0;
-                slot->mode = callbackValue;
+                fn_1_3BFC(slot, callbackValue);
                 slot->position.x = slot->player->position.x;
                 slot->position.y = -130.0f;
                 slot->position.z = slot->player->position.z;
             }
         } else if (callbackValue == 1) {
-            fn_1_E508(&slot->collision, slot->scale, 2);
-            fn_1_E43C(&slot->collision, slot, fn_1_2724, fn_1_39E8, fn_1_3A5C, &slot->position);
-            slot->kind = 0;
-            slot->mode = callbackValue;
+            fn_1_3BFC(slot, callbackValue);
             slot->angle = 45.0f +
                              (90.0f * (f32)slotIndex);
             phaseAngle = (f32)((3.141592653589793 * (f64)slot->angle) /
@@ -1637,10 +1620,7 @@ void fn_1_449C(M619SceneAnimation *state, s32 callbackValue) {
             slot->position.y = -130.0f;
             slot->position.z = (f32)(400.0 * cos((f64)phaseAngle));
         } else {
-            fn_1_E508(&slot->collision, slot->scale, 2);
-            fn_1_E43C(&slot->collision, slot, fn_1_2724, fn_1_39E8, fn_1_3A5C, &slot->position);
-            slot->kind = 0;
-            slot->mode = callbackValue;
+            fn_1_3BFC(slot, callbackValue);
             slot->angle = 45.0f +
                              (90.0f * (f32)slotIndex);
             phaseAngle = (f32)((3.141592653589793 * (f64)slot->angle) /
@@ -1703,12 +1683,12 @@ void fn_1_4900(M619CameraOrbit *orbit) {
                             sin(3.141592653589793 * orbit->phase / 180.0));
     position.z = orbit->position.z;
 
-    PSVECSubtract((Vec *)orbit, (Vec *)&orbit->target, (Vec *)&direction);
-    PSVECNormalize((Vec *)&direction, (Vec *)&direction);
-    PSVECCrossProduct((Vec *)&axis, (Vec *)&direction, (Vec *)&side);
-    PSVECNormalize((Vec *)&side, (Vec *)&side);
-    PSVECCrossProduct((Vec *)&direction, (Vec *)&side, (Vec *)&up);
-    PSVECNormalize((Vec *)&up, (Vec *)&up);
+    PSVECSubtract(&orbit->position, &orbit->target, &direction);
+    PSVECNormalize(&direction, &direction);
+    PSVECCrossProduct(&axis, &direction, &side);
+    PSVECNormalize(&side, &side);
+    PSVECCrossProduct(&direction, &side, &up);
+    PSVECNormalize(&up, &up);
     Hu3DCameraPosSet(lbl_1_rodata_10[0], position.x, position.y, position.z,
                      up.x, up.y, up.z, target.x, target.y, target.z);
 }
@@ -1851,7 +1831,7 @@ s32 fn_1_4B44(M619Scene *scene) {
 void fn_1_51EC(M619ModelQueueNode *node, const HuVecF *position) {
     M619Scene *queue;
 
-    queue = (M619Scene *)lbl_1_bss_0->data;
+    queue = lbl_1_bss_0->data;
     node->next = queue->modelQueue;
     node->previous = NULL;
     queue->modelQueue = node;
@@ -1873,7 +1853,7 @@ void fn_1_51EC(M619ModelQueueNode *node, const HuVecF *position) {
 void fn_1_52E0(M619ModelQueueNode *node) {
     M619Scene *owner;
 
-    owner = (M619Scene *)lbl_1_bss_0->data;
+    owner = lbl_1_bss_0->data;
     if (node->previous) {
         node->previous->next = node->next;
     } else {
@@ -1936,7 +1916,7 @@ void fn_1_55BC(M619ModelQueueNode *group, f32 scale, s32 variant) {
     HU3D_MODELID model;
     s32 modelIndex;
 
-    repository = (M619Scene *)lbl_1_bss_0->data;
+    repository = lbl_1_bss_0->data;
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
         if (repository->models[variant + 5] < 0) {
             model = repository->models[variant + 5] = fn_80025A04(
@@ -1977,7 +1957,7 @@ void fn_1_5794(HuVecF *point) {
     f32 directionAngle;
     f32 distanceSquared;
 
-    control = (M619Scene *)lbl_1_bss_0->data;
+    control = lbl_1_bss_0->data;
     if (control->adjustmentEnabled == 0) {
         return;
     }
@@ -2009,7 +1989,7 @@ void fn_1_5794(HuVecF *point) {
 /* Selection setup: creates the record's three display models and queued motion group. */
 void fn_1_5A80(M619SelectionRecord *node, s32 mode) {
     M619Scene *state =
-        (M619Scene *)lbl_1_bss_0->data;
+        lbl_1_bss_0->data;
     HU3D_MODELID model;
     s32 useAlternate;
     f32 scale;
@@ -2154,18 +2134,10 @@ void fn_1_6344(M619Selection *selection) {
     s32 groupIndex;
     s32 playerIndex;
     s32 slotIndex;
-    s32 groupInitializeIndex;
-    s32 groupSecondIndex;
-    s32 groupFirstIndex;
-    s32 playerInitializeIndex;
-    s32 playerSecondIndex;
-    s32 playerFirstIndex;
-    s32 groupValue;
-    s32 playerValue;
 
     groupIndex = selection->groupOrder[selection->groupState];
     playerIndex = selection->playerOrder[selection->selectionState];
-    motion = (M619SelectionRecord *)&selection->records[groupIndex][0];
+    motion = &selection->records[groupIndex][0];
     for (slotIndex = 0; slotIndex < 8; slotIndex++,
          motion++) {
         if (motion->initialized != 0) {
@@ -2226,39 +2198,10 @@ void fn_1_6344(M619Selection *selection) {
         selection->groupState++;
         selection->selectionState++;
         if (selection->groupState >= 3) {
-            for (groupInitializeIndex = 0; groupInitializeIndex < 3;
-                 groupInitializeIndex++) {
-                selection->groupOrder[groupInitializeIndex] = groupInitializeIndex;
-            }
-            for (groupInitializeIndex = 0; groupInitializeIndex < 3;
-                 groupInitializeIndex++) {
-                groupFirstIndex = frandmod(3);
-                groupSecondIndex = frandmod(3);
-                groupValue = selection->groupOrder[groupFirstIndex];
-                selection->groupOrder[groupFirstIndex] =
-                    selection->groupOrder[groupSecondIndex];
-                selection->groupOrder[groupSecondIndex] =
-                    groupValue;
-            }
-            selection->groupState = 0;
+            fn_1_6290(selection);
         }
         if (selection->selectionState >= 4) {
-            for (playerInitializeIndex = 0; playerInitializeIndex < 4;
-                 playerInitializeIndex++) {
-                selection->playerOrder[playerInitializeIndex] =
-                    playerInitializeIndex;
-            }
-            for (playerInitializeIndex = 0; playerInitializeIndex < 4;
-                 playerInitializeIndex++) {
-                playerFirstIndex = frandmod(4);
-                playerSecondIndex = frandmod(4);
-                playerValue = selection->playerOrder[playerFirstIndex];
-                selection->playerOrder[playerFirstIndex] =
-                    selection->playerOrder[playerSecondIndex];
-                selection->playerOrder[playerSecondIndex] =
-                    playerValue;
-            }
-            selection->selectionState = 0;
+            fn_1_61DC(selection);
         }
         break;
     }
@@ -2496,8 +2439,8 @@ void fn_1_74E0(M619SelectionRecord *pose) {
     pose->initialized = 0;
     fn_800269E8(pose->models[0], (1 << 0));
     fn_800269E8(pose->models[2], (1 << 0));
-    ((M619SelectionRecord *)pose)->modelQueue.flags = 0;
-    ((M619SelectionRecord *)pose)->modelQueue.state = 0;
+    pose->modelQueue.flags = 0;
+    pose->modelQueue.state = 0;
     if (fn_1_E5B8((s32 (*)(void *))fn_1_7640, pose) != 0U) {
         fn_80026790(pose->models[1], &pose->position);
         fn_80026838(pose->models[1], &pose->rotation);
@@ -2632,7 +2575,7 @@ void fn_1_7A20(void *motionPayload) {
     pathParameter = (s32)lbl_1_bss_0->data;
     {
     M619MotionPathFactorTable pathFactors = {{0.1f, 0.3f, 6.0f, 7.0f}};
-    if (((M619Player *)recipient->owner)->inputEnabled != 0) {
+    if (recipient->owner->inputEnabled != 0) {
         z = recipient->position.z;
         x = recipient->position.x;
         if (0.0f == z) {
@@ -2653,19 +2596,19 @@ void fn_1_7A20(void *motionPayload) {
                          600.0));
         recipient->position.x =
             (f32) ((f64) recipient->position.x +
-                   ((pathFactors.factors[((M619Player *) recipient->owner)->difficulty] *
+                   ((pathFactors.factors[recipient->owner->difficulty] *
                      sin((f64) angleForTrig)) -
                     ((f64) tangent * sin(1.5707963267948966 + (f64) angleForTrig))));
         recipient->position.z =
             (f32) ((f64) recipient->position.z +
-                   ((pathFactors.factors[((M619Player *) recipient->owner)->difficulty] *
+                   ((pathFactors.factors[recipient->owner->difficulty] *
                      cos((f64) angleForTrig)) -
                     ((f64) tangent * cos(1.5707963267948966 + (f64) angleForTrig))));
     } else {
         recipient->position.x =
-            ((M619Player *)recipient->owner)->position.x;
+            recipient->owner->position.x;
         recipient->position.z =
-            ((M619Player *)recipient->owner)->position.z;
+            recipient->owner->position.z;
     }
     recipient->usesPlayerHeading = 0;
     }
@@ -3237,7 +3180,7 @@ s32 fn_1_98F0(void *scene) {
     HuVecF *position;
 
     result = 0;
-    state = (M619Scene *)scene;
+    state = scene;
     switch (state->actionPhase) {
     case 0:
         state->actionTimer = 0;
@@ -3275,7 +3218,7 @@ s32 fn_1_98F0(void *scene) {
             player->modelQueue.flags = 1;
             fn_80026A44(player->sway.model, (1 << 0));
             fn_1_B3FC(&player->sway, 0);
-            fn_1_E508((M619MotionNode *)&player->collision, 65.0f, 0);
+            fn_1_E508(&player->collision, 65.0f, 0);
             fn_1_E43C(&player->collision, player, fn_1_B678, fn_1_BADC, fn_1_BB4C,
                       &player->position);
             player->turnFrames = 60;
@@ -3371,7 +3314,7 @@ void fn_1_9EEC(M619ModelMotion *work, s32 characterIndex) {
     HU3D_MODELID model;
     M619Scene *modelState;
 
-    modelState = (M619Scene *)lbl_1_bss_0->data;
+    modelState = lbl_1_bss_0->data;
     if (characterIndex == 0) {
         if (modelState->models[8] < 0) {
             model = (modelState->models[8] = fn_80025A04(
