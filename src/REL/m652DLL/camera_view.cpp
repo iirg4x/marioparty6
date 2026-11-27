@@ -1,3 +1,4 @@
+#include "REL/minigame_value_bounds.h"
 extern "C" {
 #include "game/hu3d.h"
 #include "REL/framework/assertion.h"
@@ -10,7 +11,6 @@ extern "C" {
 #include "REL/framework/world_units.h"
 #include "REL/framework/list_object.h"
 #include <vector>
-#include "dolphin/types.h"
 #include "REL/framework/game_object.h"
 #include "REL/framework/camera_frame.h"
 #include "REL/framework/category_sphere.h"
@@ -68,11 +68,6 @@ void fn_1_34C0(CameraSplit *self, int value)
 }
 
 /* Returns the larger integer. */
-static inline int maximumInteger(int first, int second)
-{
-    return first > second ? first : second;
-}
-
 /* Clamps an integer to zero. */
 static inline int nonnegative(int value)
 {
@@ -131,7 +126,7 @@ void CameraSplit::update()
             } else {
                 leftMargin = nonnegative(16 - previousPosition);
                 rightMargin = nonnegative(targetPosition - 624);
-                clip = maximumInteger(leftMargin, rightMargin);
+                clip = maximumValue(leftMargin, rightMargin);
                 viewportStart = clipViewportPosition(previousPosition) - clip;
                 viewportEnd = clip + clipViewportPosition(targetPosition);
                 viewportWidth = nonnegative(viewportEnd - viewportStart);

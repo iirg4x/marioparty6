@@ -26,73 +26,6 @@ typedef struct MDMinidllHalfwordTemplate {
     s16 particleCount[5];
 } MDMinidllHalfwordTemplate;
 
-float fn_1_2CF38(float startValue, float endValue, float elapsedFrames, float durationFrames);
-float fn_1_2D020(float startValue, float endValue, float elapsedFrames, float durationFrames);
-float fn_1_2D0FC(float startValue, float endValue, float elapsedFrames, float durationFrames);
-float fn_1_2D140(float currentValue, float targetValue, float weight);
-void fn_1_2D170(s16 layerNo);
-void fn_1_2D1DC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
-void fn_1_2D65C(OMOBJ *obj);
-void fn_1_2D75C(s16 textureSlot, HuVecF *position);
-void fn_1_2D850(OMOBJ *obj);
-void fn_1_2DA34(OMOBJ *obj);
-void fn_1_2DAE4(void);
-void fn_1_2DB34(void);
-void fn_1_2DC10(Point3d *position);
-void fn_1_2DCD0(s16 layerNo);
-void fn_1_2E68C(void);
-void fn_1_2E6B8(void);
-void fn_1_2E6DC(
-    s16 particleNo, float lifetimeFrames, float targetScale, HuVecF *position, GXColor color);
-void fn_1_2E7DC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_2EA9C(void);
-void fn_1_2EBB0(void);
-void fn_1_2EBDC(s16 effectNo, float lifetimeFrames, HuVecF *position, GXColor color);
-void fn_1_2ECC4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_2F20C(void);
-void fn_1_2F3CC(void);
-void fn_1_2F424(void);
-void fn_1_2F4C4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_2FC50(void);
-void fn_1_2FD50(void);
-void fn_1_2FD7C(s16 effectNo, float durationFrames, HuVecF *position);
-void fn_1_2FE48(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_30730(void);
-void fn_1_308C4(void);
-void fn_1_3091C(HuVecF *position, GXColor *color, float lifetimeFrames, float targetScale);
-void fn_1_30A40(float lifetimeFrames, float travelDistance, HuVecF *position,
-    GXColor *color);
-void fn_1_30BE0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_31088(void);
-void fn_1_3116C(void);
-void fn_1_31198(s16 effectNo, s16 visible);
-void fn_1_31214(s16 effectNo, HuVecF *position, GXColor *color);
-void fn_1_31318(s16 effectNo);
-void fn_1_313A0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_31818(void);
-void fn_1_31984(void);
-void fn_1_319DC(s16 effectNo, s16 visible);
-void fn_1_31A58(s16 effectNo, HuVecF *position, GXColor *color);
-void fn_1_31B90(s16 effectNo);
-void fn_1_31BE4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_321E4(void);
-void fn_1_32350(void);
-void fn_1_323A8(s16 modelNo, HuVecF *position, s16 displayMode);
-void fn_1_3276C(s16 groupNo, s16 show);
-void fn_1_32820(s16 groupNo, HuVecF *spawnPosition, GXColor *color);
-void fn_1_32988(s16 groupNo);
-void fn_1_32A08(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix);
-void fn_1_32FB4(void);
-void fn_1_331E0(void);
-void fn_1_33264(HUPROCESS *process);
-void fn_1_33D84(void);
-void fn_1_33FC0(HuVecF *position);
-void fn_1_341B8(s16 particleNo, Point3d *position, s16 colorNo);
-void fn_1_344B4(s16 particleNo, HuVecF *position, s16 colorNo, s16 mode);
-void fn_1_34958(void);
-void fn_1_34A18(HuVecF *position);
-void fn_1_34FA4(s16 groupNo, HuVecF *position, s16 mode, s16 colorNo);
-
 /* Ease an effect value toward its endpoint over the supplied frame interval. */
 float fn_1_2CF38(float startValue, float endValue, float elapsedFrames, float durationFrames)
 {
@@ -158,7 +91,7 @@ void fn_1_2D1DC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     Mtx textureProjection;
     Mtx inverseView;
     GXTexObj screenTexture;
-    MDPARTY_STAGE_TEXTURE_WORK *textureWork;
+    MinigameTextureTransition *textureWork;
     HU3D_CAMERA *camera;
 
     textureWork = drawObj->model->hookData;
@@ -219,17 +152,17 @@ void fn_1_2D1DC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
     GXSetTevIndWarp(GX_TEVSTAGE0, GX_INDTEXSTAGE0, 1U, 0U, GX_ITM_0);
     GXSetIndTexMtx(
-        GX_ITM_0, (const f32 (*)[3]) &textureWork->matrixRow0, -1);
+        GX_ITM_0, textureWork->indirectMatrix, -1);
 }
 
 /* Reduce the screen distortion and scrolling over ninety updates, then hide its model. */
 void fn_1_2D65C(OMOBJ *obj)
 {
-    MDPARTY_STAGE_TEXTURE_WORK *work = lbl_1_bss_1428;
+    MinigameTextureTransition *work = lbl_1_bss_1428;
 
-    work->matrixRow0.x = work->matrixRow1.x = 0.0f;
-    work->matrixRow0.y = work->matrixRow1.y = 0.0f;
-    work->matrixRow0.z = work->matrixRow1.z =
+    work->indirectMatrix[0][0] = work->indirectMatrix[1][0] = 0.0f;
+    work->indirectMatrix[0][1] = work->indirectMatrix[1][1] = 0.0f;
+    work->indirectMatrix[0][2] = work->indirectMatrix[1][2] =
         (0.09f * work->remainingFrames) / 90.0f;
     work->textureScrollStep =
         (-0.02f * work->remainingFrames) / 90.0f;
@@ -262,12 +195,8 @@ void fn_1_2D850(OMOBJ *obj)
     HU3D_MODEL *model = NULL;
 
     omSetStatBit(obj, (1 << 8));
-    lbl_1_bss_13C0 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9a0000, 134), 0x10000000,
-            2));
-    lbl_1_bss_13C4 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9a0000, 134), 0x10000000,
-            2));
+    lbl_1_bss_13C0 = HuSprAnimDataRead(DATANUM(0x9a0000, 134));
+    lbl_1_bss_13C4 = HuSprAnimDataRead(DATANUM(0x9a0000, 134));
     lbl_1_bss_13C8 = HuMemDirectMallocNum(
         2,
         GXGetTexBufferSize(320, 240, GX_TF_RGB565, GX_FALSE, 0),
@@ -283,7 +212,7 @@ void fn_1_2D850(OMOBJ *obj)
     fn_80026B8C(obj->mdlId[0], 1);
     fn_800269E8(obj->mdlId[0], (1 << 0));
     fn_80027884(obj->mdlId[0], fn_1_2D1DC);
-    memset(lbl_1_bss_1428, 0, sizeof(MDPARTY_STAGE_TEXTURE_WORK));
+    memset(lbl_1_bss_1428, 0, sizeof(MinigameTextureTransition));
     model = &lbl_802C01C8[obj->mdlId[0]];
     model->hookData = lbl_1_bss_1428;
     obj->objFunc = NULL;
@@ -482,8 +411,8 @@ void fn_1_2E7DC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         model->attr |= (1 << 0);
         return;
     }
-    for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
-         particleNo++, data++) {
+    particleNo = 0;
+    for (data = particle->data; particleNo < particle->maxCnt; particleNo++, data++) {
         if (data->time == 1) {
             data->scale = fn_1_2CF38(
                 0.0f, data->accel.x, data->vel.x, data->vel.y);
@@ -557,7 +486,8 @@ void fn_1_2ECC4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     }
     if (particle->dataCnt == 1) {
         sharedParticle = particle->data;
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             data->attr |= (1 << 2);
             data->zRot = MTXDegToRad(frandmod(360));
@@ -568,10 +498,12 @@ void fn_1_2ECC4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 cosd(MTXRadToDeg(data->zRot)) * data->vel.z;
             data->scale = 0.1f * data->vel.z;
             data->scaleY = 3.0f * data->vel.z;
+
             data->color.r = sharedParticle->color.r;
             data->color.g = sharedParticle->color.g;
             data->color.b = sharedParticle->color.b;
             data->color.a = sharedParticle->color.a;
+
             data->pos.x = data->vel.x;
             data->pos.y = data->vel.y;
             data->pos.z = 0.0f;
@@ -579,7 +511,8 @@ void fn_1_2ECC4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->dataCnt = 2;
     } else if (particle->dataCnt == 2) {
         sharedParticle = particle->data;
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             if ((particleNo % 2) == 0) {
                 data->zRot += particleNo / 500.0f;
@@ -680,7 +613,8 @@ void fn_1_2F4C4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 radius = 1.0f;
             }
         }
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             if (data->time == 0) {
                 if (spawnCount < 7) {
@@ -792,7 +726,8 @@ void fn_1_2FE48(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     s16 colorComponent;
 
     if (particle->dataCnt == 1) {
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             randomVector.x = frandmod(100) - 50;
             randomVector.y = frandmod(100) - 50;
@@ -820,7 +755,8 @@ void fn_1_2FE48(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->dataCnt = 2;
     } else if (particle->dataCnt == 2) {
         sharedParticle = particle->data;
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             data->scale = fn_1_2CF38(
                 0.0f, 125.0f, sharedParticle->time, 5.0f);
@@ -831,7 +767,8 @@ void fn_1_2FE48(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         }
     } else if (particle->dataCnt == 3) {
         sharedParticle = particle->data;
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             data->pos.x = fn_1_2CF38(
                 data->accel.x, data->vel.x, sharedParticle->time,
@@ -925,7 +862,8 @@ void fn_1_30A40(float lifetimeFrames, float travelDistance, HuVecF *position,
     HU3D_PARTICLE_DATA *data;
     s16 particleNo;
 
-    for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+    for (particleNo = 0, data = particle->data;
+         particleNo < particle->maxCnt;
          particleNo++, data++) {
         if (data->time == 0) {
             data->time = 2;
@@ -954,7 +892,7 @@ void fn_1_30A40(float lifetimeFrames, float travelDistance, HuVecF *position,
     data->colorIdx = frandmod(100) - 50;
     data->scaleBase = 0.0f;
     PSVECNormalize(
-        (HuVecF *)&data->speedDecay, (HuVecF *)&data->speedDecay);
+        &data->effectDirection, &data->effectDirection);
 }
 
 /* Animate growing pulses and scattering particles during the reward-impact particle callback. */
@@ -965,12 +903,14 @@ void fn_1_30BE0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     float positionScale;
 
     if (particle->count == 0) {
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             data->time = 0;
         }
     }
-    for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+    for (particleNo = 0, data = particle->data;
+         particleNo < particle->maxCnt;
          particleNo++, data++) {
         if (data->time == 1) {
             float unusedScalar;
@@ -1049,7 +989,8 @@ void fn_1_31214(s16 effectNo, HuVecF *position, GXColor *color)
 
     model = &lbl_802C01C8[lbl_1_bss_140E[effectNo]];
     particle = model->hookData;
-    for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+    for (particleNo = 0, data = particle->data;
+         particleNo < particle->maxCnt;
          particleNo++, data++) {
         data->time = 1;
         if (color != NULL) {
@@ -1074,7 +1015,8 @@ void fn_1_31318(s16 effectNo)
 
     model = &lbl_802C01C8[lbl_1_bss_140E[effectNo]];
     particle = model->hookData;
-    for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+    for (particleNo = 0, data = particle->data;
+         particleNo < particle->maxCnt;
          particleNo++, data++) {
         data->time = 2;
     }
@@ -1099,12 +1041,14 @@ void fn_1_313A0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     s16 particleNo;
 
     if (particle->count == 0) {
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             data->time = 0;
         }
     }
-    for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+    for (particleNo = 0, data = particle->data;
+         particleNo < particle->maxCnt;
          particleNo++, data++) {
         if (data->time == 1) {
             data->pos.x = 0.0f;
@@ -1222,7 +1166,8 @@ void fn_1_31BE4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     float brightnessOrFade;
 
     if (particle->count == 0) {
-        for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+        for (particleNo = 0, data = particle->data;
+             particleNo < particle->maxCnt;
              particleNo++, data++) {
             data->time = 0;
         }
@@ -1232,7 +1177,8 @@ void fn_1_31BE4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->pos.z = 255.0f;
     }
 
-    for (particleNo = 0, data = particle->data; particleNo < particle->maxCnt;
+    for (particleNo = 0, data = particle->data;
+         particleNo < particle->maxCnt;
          particleNo++, data++) {
         if (data->time == 0 && particle->dataCnt == 1 && spawnCount <= 3) {
             spawnCount++;
@@ -1403,7 +1349,8 @@ void fn_1_32A08(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix)
     float brightnessOrFade;
 
     if (emitter->count == 0) {
-        for (particleNo = 0, particleData = emitter->data; particleNo < emitter->maxCnt;
+        for (particleNo = 0, particleData = emitter->data;
+             particleNo < emitter->maxCnt;
              particleNo++, particleData++) {
             particleData->time = 0;
         }
@@ -1413,7 +1360,8 @@ void fn_1_32A08(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix)
         emitter->pos.z = 255.0f;
     }
 
-    for (particleNo = 0, particleData = emitter->data; particleNo < emitter->maxCnt;
+    for (particleNo = 0, particleData = emitter->data;
+         particleNo < emitter->maxCnt;
          particleNo++, particleData++) {
         if (particleData->time == 0 && emitter->dataCnt == 1 && spawnCount < 1) {
             spawnCount++;
@@ -1523,8 +1471,7 @@ void fn_1_33264(HUPROCESS *process)
     fn_1_2DAE4();
     animIndex = 0;
     while (animIndex < 9) {
-        lbl_1_bss_1478[animIndex] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_CD8[animIndex], 0x10000000, 2));
+        lbl_1_bss_1478[animIndex] = HuSprAnimDataRead(lbl_1_data_CD8[animIndex]);
         animIndex += 1;
     }
     fn_1_2EA9C();
@@ -1559,19 +1506,11 @@ void fn_1_33FC0(HuVecF *position)
     GXColor savedColor;
     GXColor *colorBuffer;
     HU3D_PARTICLE_DATA *particleData;
-    OMOBJ *object;
     HU3D_PARTICLE *particle;
     HU3D_MODEL *model;
 
-    object = lbl_1_bss_13BC;
-    if (object) {
-        lbl_1_bss_1428[0].textureScrollY = 0.0f;
-        lbl_1_bss_1428[0].remainingFrames = 90.0f;
-        fn_80026760(*object->mdlId, position->x, position->y, -840.0f);
-        fn_80026A44(*object->mdlId, (1 << 0));
-        fn_80025918(1, fn_1_2D170);
-        object->objFunc = fn_1_2D65C;
-    }
+    fn_1_2DC10(position);
+
     {
     GXColor sourceColor = {128, 128, 255, 128};
     colorBuffer = &sourceColor;
@@ -1736,24 +1675,9 @@ void fn_1_344B4(s16 particleNo, HuVecF *position, s16 colorNo, s16 mode)
 /* Start the departure sequence's captured-screen overlay and spiral particles together. */
 void fn_1_34958(void)
 {
-    HU3D_PARTICLE_DATA *data;
-    HU3D_PARTICLE *particle;
-    s16 particleNo;
-    HU3D_MODEL *model;
 
     fn_80025918(14, fn_1_2DCD0);
-    model = &lbl_802C01C8[lbl_1_bss_141C];
-    particle = model->hookData;
-    particleNo = 0;
-    data = particle->data;
-    while (particleNo < particle->maxCnt) {
-        data->time = 0;
-        data->scale = 0.0f;
-        particleNo += 1;
-        data += 1;
-    }
-    particle->dataCnt = 1;
-    model->attr &= MDSING_MODEL_VISIBLE_MASK;
+    fn_1_2F424();
 }
 
 /* Add 100 to the supplied position's Z, then play a pulse and six scattering particles
@@ -1814,7 +1738,7 @@ s32 lbl_1_data_CD8[9] = {
 /* Loaded particle textures shared by all stage effect models. */
 ANIMDATA *lbl_1_bss_1478[9];
 /* Texture scroll, distortion matrix, color, and remaining frames for the screen effect. */
-MDPARTY_STAGE_TEXTURE_WORK lbl_1_bss_1428[2];
+MinigameTextureTransition lbl_1_bss_1428[2];
 /* Shared growing-fade particles; each slot has its own scale, alpha, and lifetime. */
 HU3D_MODELID lbl_1_bss_1426;
 /* Four radial streak slots, the departure spiral, and four spreading burst slots. */

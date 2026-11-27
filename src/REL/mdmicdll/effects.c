@@ -7,6 +7,7 @@
 #include "game/data.h"
 #include "game/memory.h"
 #include "REL/mdmicdll/stage.h"
+#include "game/frand.h"
 
 #define sind(x) sin((3.141592653589793 * (x)) / 180.0)
 #define cosd(x) cos((3.141592653589793 * (x)) / 180.0)
@@ -16,7 +17,6 @@ enum {
     MDPARTY_COLOR_COMPONENT_MASK = 255,
 };
 
-extern s32 frandmod(s32 modulus);
 
 /* Particle callbacks use this sine curve to interpolate values over an effect's frames. */
 float fn_1_35A10(float startValue, float endValue, float time, float duration)
@@ -65,7 +65,7 @@ void fn_1_35B6C(s16 layerNo)
 void fn_1_35BD8(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     HU3D_CAMERA *camera;
-    MDMIC_TEXTURE_WORK *work;
+    MinigameTextureTransition *work;
     Mtx tmpMtx;
     Mtx scaleMtx;
     Mtx texMtx;
@@ -158,7 +158,7 @@ void fn_1_35BD8(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
  * overlay when its lifetime expires. */
 void fn_1_36058(OMOBJ *obj)
 {
-    MDMIC_TEXTURE_WORK *work = lbl_1_bss_AD0;
+    MinigameTextureTransition *work = lbl_1_bss_AD0;
 
     work->indirectMatrix[0][0] = work->indirectMatrix[1][0] = 0.0f;
     work->indirectMatrix[0][1] = work->indirectMatrix[1][1] = 0.0f;
@@ -195,10 +195,8 @@ void fn_1_3624C(OMOBJ *obj)
     HU3D_MODEL *model = NULL;
 
     omSetStatBit(obj, (1 << 8));
-    lbl_1_bss_A68 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x950000, 103), 0x10000000, 2));
-    lbl_1_bss_A6C = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x950000, 103), 0x10000000, 2));
+    lbl_1_bss_A68 = HuSprAnimDataRead(DATANUM(0x950000, 103));
+    lbl_1_bss_A6C = HuSprAnimDataRead(DATANUM(0x950000, 103));
     lbl_1_bss_A70 = HuMemDirectMallocNum(
         2,
         GXGetTexBufferSize(320, 240, GX_TF_RGB565, GX_FALSE, 0),
@@ -1269,8 +1267,7 @@ void fn_1_3B3E4(HUPROCESS *process)
     fn_1_364E0();
     animationNo = 0;
     while (animationNo < 9) {
-        lbl_1_bss_B20[animationNo] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_FA0[animationNo], 0x10000000, 2));
+        lbl_1_bss_B20[animationNo] = HuSprAnimDataRead(lbl_1_data_FA0[animationNo]);
         animationNo += 1;
     }
     fn_1_37498();
@@ -1376,24 +1373,8 @@ void fn_1_3C554(s16 particleNo, HuVecF *position, s16 colorNo, s16 mode)
 * reveals their model. */
 void fn_1_3C9F8(void)
 {
-    HU3D_PARTICLE_DATA *data;
-    HU3D_PARTICLE *particle;
-    s16 particleNo;
-    HU3D_MODEL *model;
-
     fn_80025918(14, fn_1_366CC);
-    model = &lbl_802C01C8[lbl_1_bss_AC2];
-    particle = model->hookData;
-    particleNo = 0;
-    data = particle->data;
-    while (particleNo < particle->maxCnt) {
-        data->time = 0;
-        data->scale = 0.0f;
-        particleNo += 1;
-        data += 1;
-    }
-    particle->dataCnt = 1;
-    model->attr &= MDMIC_MODEL_VISIBLE_MASK;
+    fn_1_37E20();
 }
 
 /* Effect callers start, stop or hide a selected color group at the supplied position. */
@@ -1419,7 +1400,7 @@ void fn_1_3CAB8(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo)
 }
 
 ANIMDATA *lbl_1_bss_B20[9];
-MDMIC_TEXTURE_WORK lbl_1_bss_AD0[2];
+MinigameTextureTransition lbl_1_bss_AD0[2];
 HU3D_MODELID lbl_1_bss_ACC;
 HU3D_MODELID lbl_1_bss_AC4[4];
 HU3D_MODELID lbl_1_bss_AC2;

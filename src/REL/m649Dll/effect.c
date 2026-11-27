@@ -1,5 +1,7 @@
 /* Draws Stamp By Me's routed-prop shadows, moving markers, and score effects. */
+#include "REL/m649Dll/effect_work.h"
 #include "dolphin/math.h"
+#include "REL/m649Dll/module_types.h"
 
 #include "dolphin/gx.h"
 
@@ -55,67 +57,9 @@ typedef struct M649EffectSlotsView_s {
     void *entries[1];
 } M649EffectSlotsView;
 
-typedef struct M649ShadowRecord_s {
-    s32 active, camera; /* Draw flag and camera index selecting the shadow model. */
-    float radius; /* Shadow fan radius in world units. */
-    Vec *position, *offset; /* Live shadow center and the offset added when drawing it. */
-} M649ShadowRecord;
-
-typedef struct M649EffectOwnerWorkView_s {
-    ANIMDATA *animations[2];
-} M649EffectOwnerWorkView;
-
-typedef struct M649Point_s { Vec position; s16 active, hit; } M649Point;
-
-typedef struct M649Motion_s {
-    s32 id, timer; /* Prop identity and its startup delay in frames. */
-    float position, speed, targetSpeed; /* Travel distance and current/desired speed. */
-    s32 mode, group, character, nextPoint; /* Marker mode, color group, character, and next path
-                                            * slot. */
-    M649Point points[64];
-} M649Motion;
-
-typedef struct M649EffectOwner_s { ANIMDATA *animations[2]; } M649EffectOwner;
-
-typedef struct M649EffectRecordView_s {
-    s32 visible, generation, phase, spawnDelay, frame; /* Draw flag, trail depth, and update
-                                                        * state. */
-    float size; /* Radius of the rendered score effect in world units. */
-    float *speed; /* Live travel speed of the prop that created this effect. */
-    Vec position, trailPosition; /* Moving effect position and rising trail center. */
-    GXColor color; /* Trail color and fading alpha. */
-} M649EffectRecordView;
-
-typedef struct M649EffectRecordView_s_099FC {
-    s32 visible, generation, phase, spawnDelay, frame; /* Draw flag, trail depth, and update
-                                                        * state. */
-    float size; /* Radius of the rendered score effect in world units. */
-    float *speed; /* Live travel speed of the prop that created this effect. */
-    Vec position, trailPosition; /* Moving effect position and rising trail center. */
-    GXColor color; /* Trail color and fading alpha. */
-} M649EffectRecordView_099FC;
-
-typedef struct M649EffectRecord_s {
-    s32 visible, generation, phase, spawnDelay, frame; /* Draw flag, trail depth, and update
-                                                        * state. */
-    float size; /* Radius of the rendered score effect in world units. */
-    float *speed; /* Live travel speed of the prop that created this effect. */
-    Vec position, trailPosition; /* Moving effect position and rising trail center. */
-    GXColor color; /* Trail color and fading alpha. */
-} M649EffectRecord;
-
-typedef struct M649EffectSlotsView_s_0A018 {
+typedef struct M649ShadowSlots_s {
     M649ShadowRecord *entries[1];
-} M649EffectSlotsView_0A018;
-
-typedef struct M649EffectRecordView_s_0A018 {
-    s32 visible, generation, phase, spawnDelay, frame; /* Draw flag, trail depth, and update
-                                                        * state. */
-    float size; /* Radius of the rendered score effect in world units. */
-    float *speed; /* Live travel speed of the prop that created this effect. */
-    Vec position, trailPosition; /* Moving effect position and rising trail center. */
-    GXColor color; /* Trail color and fading alpha. */
-} M649EffectRecordView_0A018;
+} M649ShadowSlots;
 
 void fn_1_9014(OMOBJ *obj);
 
@@ -251,11 +195,10 @@ void fn_1_941C(OMOBJ *object)
 {
     s32 i, j;
     s16 modelId;
-    M649EffectOwnerWorkView *work = lbl_1_bss_5A0->data;
+    M649EffectOwner *work = lbl_1_bss_5A0->data;
     HU3D_MODEL *model;
     for (i = 0; i < 2; i++) {
-        work->animations[i] = HuSprAnimRead(fn_80008DD0(
-            fn_1_1210(lbl_1_data_538[i]), 0x10000000, 2));
+        work->animations[i] = HuSprAnimDataRead(fn_1_1210(lbl_1_data_538[i]));
     }
     for (j = 0; j < 16; j++) {
         modelId = fn_800260F4(fn_1_9500);
@@ -333,7 +276,7 @@ void fn_1_9934(OMOBJ *object)
     s32 i;
     s16 modelId;
     HU3D_MODEL *model;
-    M649EffectRecordView *records;
+    M649EffectRecord *records;
     s32 size;
     for (i = 0; i < 4; i++) {
         modelId = fn_800260F4(fn_1_9C14);
@@ -356,7 +299,7 @@ static GXColor lbl_1_data_540[7] = {
 /* Advances each score effect once per frame, spawning its trail and fading it out. */
 void fn_1_99FC(OMOBJ *object)
 {
-    M649EffectRecordView_099FC *record;
+    M649EffectRecord *record;
     HU3D_MODEL *model;
     s16 modelId;
     s32 i, j;
@@ -371,7 +314,7 @@ void fn_1_99FC(OMOBJ *object)
             case 1:
                 record->phase++;
                 record->spawnDelay = 4;
-                record->frame = 8;
+                record->unk10 = 8;
                 record->visible = 1;
                 record->size = (30.0f);
                 record->trailPosition = record->position;
@@ -408,7 +351,7 @@ static const Vec lbl_1_rodata_360[10] = {
 /* Draws visible score-effect trails through the hook registered by fn_1_9934. */
 void fn_1_9C14(HU3D_MODEL *model, Mtx *view)
 {
-    M649EffectOwnerWorkView *work = lbl_1_bss_5A0->data;
+    M649EffectOwner *work = lbl_1_bss_5A0->data;
     const Vec *point;
     M649EffectRecord *record = model->hookData;
     s32 j;
@@ -472,23 +415,23 @@ void fn_1_9C14(HU3D_MODEL *model, Mtx *view)
 }
 
 /* Attaches a queued shadow effect to its selected model when the caller submits it. */
-void fn_1_A018(void *effect)
+void fn_1_A018(M649ShadowRecord *effect)
 {
     M649ShadowRecord **entry;
     s32 i;
     OMOBJ *object;
     HU3D_MODEL *model;
     s16 modelId;
-    M649EffectSlotsView_0A018 *work;
-    if (((M649ShadowRecord *)effect) != NULL) {
+    M649ShadowSlots *work;
+    if (effect != NULL) {
         object = lbl_1_bss_5A0;
-        modelId = object->mdlId[((M649ShadowRecord *)effect)->camera];
+        modelId = object->mdlId[effect->camera];
         model = &lbl_802C01C8[modelId];
         work = model->hookData;
         entry = work->entries;
         for (i = 0; i < 1; i++, entry++) {
             if (*entry == NULL) {
-                *entry = ((M649ShadowRecord *)effect);
+                *entry = effect;
                 break;
             }
         }
@@ -515,7 +458,7 @@ void fn_1_A0BC(M649Motion *motion)
 /* Adds a score-effect record to the first free slot for the selected camera. */
 void fn_1_A168(s32 cameraIndex, Vec *position, float *speed, s32 effectType)
 {
-    M649EffectRecordView_0A018 *record;
+    M649EffectRecord *record;
     s32 i;
     OMOBJ *object = lbl_1_bss_5A0;
     HU3D_MODEL *model;

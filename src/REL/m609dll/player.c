@@ -237,6 +237,19 @@ s16 fn_1_126F0(M609Player *movement, s16 advanceAfterChase) {
     return complete;
 }
 
+/* Starts the CPU jump, then switches to holding the jump button in the air. */
+static inline void RouteJumpStart(M609Player *action)
+{
+    if (lbl_1_bss_4.players[action->playerNo]->mode != 1) {
+        action->computerButtonsDown |= 0x100;
+    } else {
+        fn_8007E818(lbl_1_bss_4.players[action->playerNo]);
+        action->computerButtonsHeld |= 0x100;
+        action->unkD8++;
+        action->routeStep++;
+    }
+}
+
 /* After fn_1_14B64 selects a target, drives jump and chase input until a collision mesh
  * is reached. The chase-arrival result is ignored. */
 s16 fn_1_12830(M609Player *action) {
@@ -244,19 +257,12 @@ s16 fn_1_12830(M609Player *action) {
 
     switch (action->routeStep) {
     case 0:
-        if (lbl_1_bss_4.players[action->playerNo]->mode != 1) {
-            action->computerButtonsDown |= 0x100;
-        } else {
-            fn_8007E818(lbl_1_bss_4.players[action->playerNo]);
-            action->computerButtonsHeld |= 0x100;
-            action->chaseUpdateCount++;
-            action->routeStep++;
-        }
+        RouteJumpStart(action);
         break;
     case 1:
         if (action->collisionMesh >= 0) {
             fn_8007E888(lbl_1_bss_4.players[action->playerNo]);
-            action->chaseUpdateCount = 0;
+            action->unkD8 = 0;
             action->routeStep = 0;
             complete = 1;
         } else {
@@ -266,7 +272,7 @@ s16 fn_1_12830(M609Player *action) {
                 action->routeSpeed,
                 action->routeRadius);
             action->computerButtonsHeld |= 0x100;
-            action->chaseUpdateCount++;
+            action->unkD8++;
         }
         break;
     }
@@ -281,20 +287,13 @@ s16 fn_1_12990(M609Player *action) {
 
     switch (action->routeStep) {
     case 0:
-        if (lbl_1_bss_4.players[action->playerNo]->mode != 1) {
-            action->computerButtonsDown |= 0x100;
-        } else {
-            fn_8007E818(lbl_1_bss_4.players[action->playerNo]);
-            action->computerButtonsHeld |= 0x100;
-            action->chaseUpdateCount++;
-            action->routeStep++;
-        }
+        RouteJumpStart(action);
         break;
     case 1:
         if (action->collisionMesh >= 0 &&
             lbl_1_bss_4.players[action->playerNo]->mode != 1) {
             fn_8007E888(lbl_1_bss_4.players[action->playerNo]);
-            action->chaseUpdateCount = 0;
+            action->unkD8 = 0;
             action->routeStep = 0;
             complete = 1;
         } else if (action->collisionMesh == -1) {
@@ -304,7 +303,7 @@ s16 fn_1_12990(M609Player *action) {
                 action->routeSpeed,
                 action->routeRadius);
             action->computerButtonsHeld |= 0x100;
-            action->chaseUpdateCount++;
+            action->unkD8++;
         }
         break;
     }
@@ -536,7 +535,7 @@ void fn_1_12FFC(M609Player *update) {
     motionReferenceOrPlayerDelta.z = start.z - update->position.z;
     /* Store the horizontal distance to the projected segment origin;
      * this field is not read by this module. */
-    update->horizontalOriginDistance =
+    update->unk118 =
         sqrt((double) ((motionReferenceOrPlayerDelta.x * motionReferenceOrPlayerDelta.x) +
                        (motionReferenceOrPlayerDelta.z * motionReferenceOrPlayerDelta.z)));
 }

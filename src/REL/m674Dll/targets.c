@@ -28,7 +28,7 @@ extern f32 fn_1_4CC8(f32 start, f32 end);
 extern f32 fn_1_4D7C(Vec *start, Vec *end);
 extern s32 fn_1_4FDC(Vec *start, Vec *end, f32 gravity, f32 initialY, Vec *velocity);
 extern s32 fn_1_36BC(void *position);
-extern s32 fn_1_7660(M674CollisionParam *first, M674CollisionParam *second);
+extern s32 fn_1_7660(M674Entry *first, M674Entry *second);
 extern void fn_1_10028(s32 scoreIndex, s32 coinAmount);
 extern void fn_1_10150(s32 scoreIndex, f32 *x, f32 *y);
 
@@ -303,7 +303,7 @@ void fn_1_8F80(OMOBJ *object, s32 motionIndex)
     if (state->motionIndex != motionIndex && motionIndex < 8) {
         motion = object->mtnId[motionIndex];
         work->timer = 0;
-        state->motionFrame = 0;
+        state->unk8C = 0;
         if (motion == -1) {
             state->motionActive = 0;
             return;

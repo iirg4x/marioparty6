@@ -1,6 +1,7 @@
 /* Owns the Hyper Sniper stage models, shadow camera, and introduction and main-stage motions. */
 #include "dolphin/math.h"
 #include "REL/m646Dll/module_types.h"
+#include "REL/m646Dll/m646.h"
 
 #define M646_STAGE_WORK_BYTES 860
 #define M646_INTRO_MODEL_FILE 2
@@ -27,9 +28,6 @@ extern OMOBJ *lbl_1_bss_68;
 
 extern s32 lbl_1_data_140[2];
 void fn_1_4ED4(OMOBJ *obj);
-void fn_1_8158(OMOBJMAN *objman);
-void fn_1_8980(void);
-void fn_1_B4BC(s32 effect);
 void fn_1_52F0(OMOBJ *obj);
 void fn_1_52B4(OMOBJ *obj);
 

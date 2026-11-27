@@ -5,6 +5,7 @@
 #include "game/object.h"
 #include "game/process.h"
 #include "game/mic.h"
+#include "game/wipe.h"
 #include "REL/micquiz/quiz.h"
 
 /* Per-model counters and sound handles; the intervening bytes are unknown. */
@@ -19,12 +20,6 @@ typedef struct MicquizBss28Storage {
     s32 value;
     u8 unknown_04[0x10]; /* No code names this field. */
 } MicquizBss28Storage;
-
-/* Storage with an accessed value and additional unknown bytes. */
-typedef struct MicquizBss48Storage {
-    s32 value;
-    u8 unknown_04[0x10]; /* No code names this field. */
-} MicquizBss48Storage;
 
 /* Storage with an accessed value and additional unknown bytes. */
 typedef struct MicquizBss60Storage {
@@ -55,7 +50,7 @@ extern MicquizResponseStorage lbl_1_bss_1C;
 extern s16 lbl_1_bss_24;
 extern MicquizBss28Storage lbl_1_bss_28;
 extern MicquizBss60Storage lbl_1_bss_60;
-extern s32 lbl_1_data_388[0x36];
+extern s32 lbl_1_data_388[54];
 extern s32 lbl_1_data_4BC;
 extern s32 lbl_1_data_52C;
 s32 fn_1_760(s32 left, s32 right);
@@ -66,5 +61,18 @@ void fn_1_1D4AC(OMOBJ *object);
 
 /* Not declared by the game's headers. */
 void HuMCSelWinMaxTimeSet(f32 maxTime);
+
+/* Functions shared by the module's source files. */
+/* Close the microphone context and leave the overlay once the wipe finishes. */
+static inline void CloseMicContextAfterWipe(void)
+{
+    if (WipeCheck() == 0) {
+        HuMCSelWinContextKill();
+        HuMCClose();
+        fn_8003A5E4(1, 1);
+    }
+}
+
+void ObjectSetup(void);
 
 #endif

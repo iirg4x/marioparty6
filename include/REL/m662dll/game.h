@@ -1,7 +1,9 @@
 /* Trick or Tree player, scene, motion, puzzle and particle state shared by its updates. */
 #ifndef REL_M662DLL_GAME_H
 #define REL_M662DLL_GAME_H
+#include "REL/minigame_shadow_camera.h"
 
+#include "REL/minigame_light.h"
 #include "dolphin/types.h"
 
 extern s16 lbl_1_bss_C60;
@@ -161,27 +163,12 @@ typedef struct M662ParticleModule {
     s16 unk02[1]; /* The game's code never reads this field. */
     ParticleParameters *allocation[1];
 } M662ParticleModule;
-/* Shadow camera position, orbit angles, target and opacity. */
-typedef struct M662Shadow {
-    /* World position. */
-    HuVecF position;
-    f32 angle[2];
-    f32 unk14; /* The game's code never reads this field. */
-    HuVecF target;
-    u8 unk24[12]; /* No code names this field. */
-    HuVecF up;
-    u8 unk3C[12]; /* No code names this field. */
-    /* Orbit radius in world units and opacity multiplier supplied to the shadow renderer. */
-    f32 radius, textureLevel;
-} M662Shadow;
-/* Global light handle, world position and direction, aim controls and RGBA color. */
-typedef struct M662Light {
-    HU3D_LIGHTID id;
-    HuVecF position, orientation, aim, direction;
-    f32 range;
-    GXColor color;
-} M662Light;
-/* Camera viewport and perspective values, with copies of the setup transform. */
+extern M662Bounds lbl_1_bss_0[13];
+extern M662Puzzle lbl_1_bss_D0[4];
+extern M662ParticleModule lbl_1_bss_A74;
+extern MinigameShadowCamera lbl_1_bss_A7C;
+extern LightInitState lbl_1_bss_ACC;
+/* Stores the local camera presets and their projection settings. */
 typedef struct M662CameraRecord {
     s32 unk00; /* The game's code never reads this field. */
     u8 unk04[12]; /* No code names this field. */
@@ -193,17 +180,12 @@ typedef struct M662CameraRecord {
     f32 viewport[4]; /* X, Y, width and height. */
     f32 fieldOfView;
 } M662CameraRecord;
-/* The local preset table supplies both the stored values and the live camera transform.
- * Camera setup reads the stored viewport and perspective values. */
+
 typedef struct M662CameraState {
     M662CameraRecord cameras[4];
     u8 unk140[8]; /* No code names this field. */
 } M662CameraState;
-extern M662Bounds lbl_1_bss_0[13];
-extern M662Puzzle lbl_1_bss_D0[4];
-extern M662ParticleModule lbl_1_bss_A74;
-extern M662Shadow lbl_1_bss_A7C;
-extern M662Light lbl_1_bss_ACC;
+
 extern M662CameraState lbl_1_bss_B08;
 
 /* Curved X/Z path: duration in frames, center, angle endpoints and X amplitude. */

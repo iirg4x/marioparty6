@@ -615,18 +615,6 @@ void fn_1_7048(void)
 }
 
 typedef struct {
-    f32 height;
-    f32 radius;
-    s32 param;
-    s32 type;
-    COL_NARROW_HOOK narrowHook;
-    u32 attr;
-    s32 correctHookParam;
-    MGACTOR_CORRECT_HOOK correctHook;
-    MGACTOR_CORRECT_HOOK correctionCallbacks[16];
-} M617PlayerSetupParam;
-
-typedef struct {
     s8 flags[2][4]; /* Per-layout edge settings; -1 disables an edge. */
 } M617BoxEdgeFlags;
 

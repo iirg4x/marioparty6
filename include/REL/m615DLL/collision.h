@@ -5,7 +5,7 @@
 
 typedef struct M615CollisionData {
     s32 type;
-    M615Triangle triangle;
+    MinigameTriangle triangle;
     HuVecF normal;
     M615Bounds bounds;
 } M615CollisionData;

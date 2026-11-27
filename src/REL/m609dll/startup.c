@@ -43,7 +43,7 @@ void fn_1_120C(void);
 void fn_1_19D0(s16 cameraIndex);
 
 typedef struct ParticleConfiguration {
-    s32 reservedValue;
+    s32 unk00; /* The game's code never reads this field. */
     GXColor color; /* Starting RGBA color. */
     u8 targetColor[4]; /* Target RGB channels; the fourth byte is initialized but not read here. */
     /* Velocity scales, gravity, Z-rotation step, scale delta/decay, alpha step, and RGB rate. */
@@ -196,7 +196,7 @@ void fn_1_3C0(void) {
         lbl_1_bss_24C[playerNo].playerNo = playerNo;
         lbl_1_bss_24C[playerNo].characterNo = lbl_80265728[playerNo].charNo;
         lbl_1_bss_24C[playerNo].padNo = lbl_80265728[playerNo].padNo;
-        lbl_1_bss_24C[playerNo].groupNo = lbl_80265728[playerNo].grpNo;
+        lbl_1_bss_24C[playerNo].unk17 = lbl_80265728[playerNo].grpNo;
         lbl_1_bss_24C[playerNo].participantType = lbl_80265728[playerNo].type;
         lbl_1_bss_24C[playerNo].difficulty = lbl_80265728[playerNo].comDif;
         lbl_1_bss_24C[playerNo].position = initialPositions[playerNo];
@@ -216,11 +216,11 @@ void fn_1_670(void) {
             lbl_1_bss_24C[playerOrPadIndex].disableInput != 0) {
             memset(&lbl_1_bss_24C[playerOrPadIndex], 0, 20);
         } else {
-            lbl_1_bss_24C[playerOrPadIndex].padInput.buttons =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk00 =
                 lbl_802C0010[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.buttonsDown =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk04 =
                 lbl_802C0008[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.buttonsRepeat =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk08 =
                 lbl_802C0000[lbl_1_bss_24C[playerOrPadIndex].padNo];
             if (lbl_802BFFFC[lbl_1_bss_24C[playerOrPadIndex].padNo] > 0) {
                 adjustedStickX =
@@ -235,36 +235,36 @@ void fn_1_670(void) {
                 }
                 adjustedStickX = filteredStickX;
             }
-            lbl_1_bss_24C[playerOrPadIndex].padInput.stickX = adjustedStickX;
-            lbl_1_bss_24C[playerOrPadIndex].padInput.stickY =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk0A = adjustedStickX;
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk0B =
                 (s8)lbl_802BFFF8[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.substickX =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk0C =
                 (s8)lbl_802BFFF4[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.substickY =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk0D =
                 (s8)lbl_802BFFF0[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.triggerL =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk0E =
                 lbl_802BFFEC[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.triggerR =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk0F =
                 lbl_802BFFE8[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.directions =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk10 =
                 lbl_802BFFE4[lbl_1_bss_24C[playerOrPadIndex].padNo];
-            lbl_1_bss_24C[playerOrPadIndex].padInput.directionsRepeat =
+            lbl_1_bss_24C[playerOrPadIndex].padInput.unk11 =
                 lbl_802BFFE0[lbl_1_bss_24C[playerOrPadIndex].padNo];
         }
     }
 
     for (playerOrPadIndex = 0; playerOrPadIndex < 4; playerOrPadIndex++) {
-        lbl_1_bss_30.padInputs[playerOrPadIndex].buttons = lbl_802C0010[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].buttonsDown = lbl_802C0008[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].buttonsRepeat = lbl_802C0000[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].stickX = (s8)lbl_802BFFFC[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].stickY = (s8)lbl_802BFFF8[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].substickX = (s8)lbl_802BFFF4[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].substickY = (s8)lbl_802BFFF0[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].triggerL = lbl_802BFFEC[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].triggerR = lbl_802BFFE8[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].directions = lbl_802BFFE4[playerOrPadIndex];
-        lbl_1_bss_30.padInputs[playerOrPadIndex].directionsRepeat = lbl_802BFFE0[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk00 = lbl_802C0010[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk04 = lbl_802C0008[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk08 = lbl_802C0000[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk0A = (s8)lbl_802BFFFC[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk0B = (s8)lbl_802BFFF8[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk0C = (s8)lbl_802BFFF4[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk0D = (s8)lbl_802BFFF0[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk0E = lbl_802BFFEC[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk0F = lbl_802BFFE8[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk10 = lbl_802BFFE4[playerOrPadIndex];
+        lbl_1_bss_30.padInputs[playerOrPadIndex].unk11 = lbl_802BFFE0[playerOrPadIndex];
     }
 }
 
@@ -387,7 +387,7 @@ void fn_1_120C(void)
                     lbl_1_bss_70C[playerNo].mode]);
             lbl_1_bss_70C[playerNo].previousMode =
                 lbl_1_bss_70C[playerNo].mode;
-            lbl_1_bss_70C[playerNo].maximumTime = fn_8002D530(
+            lbl_1_bss_70C[playerNo].unk2C = fn_8002D530(
                 lbl_1_bss_8BC[playerNo].model);
         }
         if (lbl_1_bss_70C[playerNo].speed !=
@@ -432,7 +432,7 @@ void fn_1_120C(void)
                 lbl_1_bss_70C[playerNo].shiftStart,
                 lbl_1_bss_70C[playerNo].blendDuration,
                 lbl_1_bss_70C[playerNo].shiftFlags);
-            lbl_1_bss_70C[playerNo].shiftMaximumTime =
+            lbl_1_bss_70C[playerNo].unk64 =
                 fn_8002D5D4(lbl_1_bss_8BC[playerNo].model);
             lbl_1_bss_70C[playerNo].shiftState = 2;
             break;
@@ -488,7 +488,7 @@ void fn_1_19D0(s16 cameraIndex) {
                              0.0f, 0.0f, 640.0f, 480.0f, 45.0f } };
     s16 cameraMasks[4] = {1, 2, 4, 8};
 
-    lbl_1_bss_6C34.cameras[cameraIndex].cameraIndex = cameraIndex;
+    lbl_1_bss_6C34.cameras[cameraIndex].unk00 = cameraIndex;
     lbl_1_bss_6C34.cameras[cameraIndex].target.x = presets[cameraIndex][0];
     lbl_1_bss_6C34.cameras[cameraIndex].target.y = presets[cameraIndex][1];
     lbl_1_bss_6C34.cameras[cameraIndex].target.z = presets[cameraIndex][2];
@@ -614,14 +614,14 @@ void fn_1_234C(void) {
     Hu3DShadowCreate(5.0f, 19500.0f,
                      22500.0f);
     Hu3DShadowSizeSet(480);
-    lbl_1_bss_6B6C.verticalAngle = -90.0f;
-    lbl_1_bss_6B6C.horizontalAngle = 0.0f;
+    lbl_1_bss_6B6C.elevation = -90.0f;
+    lbl_1_bss_6B6C.azimuth = 0.0f;
     /* This setup value is stored but is not read by this module. */
-    lbl_1_bss_6B6C.state14 = 0.0f;
+    lbl_1_bss_6B6C.unk14 = 0.0f;
     lbl_1_bss_6B6C.target.x = 0.0f;
     lbl_1_bss_6B6C.target.y = -100.0f;
     lbl_1_bss_6B6C.target.z = -1940.0f;
-    lbl_1_bss_6B6C.shadowTransparency = 0.5f;
+    lbl_1_bss_6B6C.shadowOpacity = 0.5f;
     lbl_1_bss_6B6C.orbitDistance = 21500.0f;
     fn_1_245C();
 }
@@ -631,26 +631,26 @@ void fn_1_245C(void)
 {
     lbl_1_bss_6B6C.cameraPosition.x = (f32)((f64)lbl_1_bss_6B6C.target.x +
         ((f64)lbl_1_bss_6B6C.orbitDistance *
-         (cos((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
-          sin((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0))));
+         (cos((M_PI * (f64)lbl_1_bss_6B6C.elevation) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_6B6C.azimuth) / 180.0))));
     lbl_1_bss_6B6C.cameraPosition.y = (f32)((f64)lbl_1_bss_6B6C.target.y +
         ((f64)lbl_1_bss_6B6C.orbitDistance *
-         -sin((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0)));
+         -sin((M_PI * (f64)lbl_1_bss_6B6C.elevation) / 180.0)));
     lbl_1_bss_6B6C.cameraPosition.z = (f32)((f64)lbl_1_bss_6B6C.target.z +
         ((f64)lbl_1_bss_6B6C.orbitDistance *
-         (cos((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
-          cos((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0))));
+         (cos((M_PI * (f64)lbl_1_bss_6B6C.elevation) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_6B6C.azimuth) / 180.0))));
 
     lbl_1_bss_6B6C.cameraUp.x = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
-        sin((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_6B6C.elevation) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_6B6C.azimuth) / 180.0));
     lbl_1_bss_6B6C.cameraUp.y = (f32)cos(
-        (M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0);
+        (M_PI * (f64)lbl_1_bss_6B6C.elevation) / 180.0);
     lbl_1_bss_6B6C.cameraUp.z = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_6B6C.verticalAngle) / 180.0) *
-        cos((M_PI * (f64)lbl_1_bss_6B6C.horizontalAngle) / 180.0));
+        sin((M_PI * (f64)lbl_1_bss_6B6C.elevation) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_6B6C.azimuth) / 180.0));
 
-    Hu3DShadowTPLvlSet(lbl_1_bss_6B6C.shadowTransparency);
+    Hu3DShadowTPLvlSet(lbl_1_bss_6B6C.shadowOpacity);
     Hu3DShadowPosSet(&lbl_1_bss_6B6C.cameraPosition, &lbl_1_bss_6B6C.cameraUp,
                      &lbl_1_bss_6B6C.target);
 }
@@ -846,9 +846,8 @@ void fn_1_35D8(void) {
         HU3D_PARTICLE_DATA *data;
         s16 particleIndex;
 
-        lbl_1_bss_6B64.particleCounts[effectIndex] = particleCounts[effectIndex];
-        animation = HuSprAnimRead(fn_80008DD0(
-            animationFiles[effectIndex], 0x10000000, 2));
+        lbl_1_bss_6B64.unk02[effectIndex] = particleCounts[effectIndex];
+        animation = HuSprAnimDataRead(animationFiles[effectIndex]);
         lbl_1_bss_6B64.allocation[effectIndex] = HuMemDirectMallocNum(
             HEAP_HEAP, particleCounts[effectIndex] * 48, 0x10000000);
         lbl_1_bss_6B64.modelIds[effectIndex] = fn_8003216C(
@@ -881,7 +880,7 @@ void fn_1_3860(Vec *spawnPosition) {
     s16 particleAttempt;
     f32 scale;
 
-    configuration.reservedValue = 0;
+    configuration.unk00 = 0;
     configuration.color.r = -1;
     configuration.color.g = -1;
     configuration.color.b = -1;
@@ -1227,9 +1226,9 @@ void fn_1_46F8(s16 voiceSlot, s16 panMode, Vec *position) {
 
 HUPROCESS *lbl_1_bss_6D7C;
 M609CameraBank lbl_1_bss_6C34;
-M609LightState lbl_1_bss_6BF8;
+LightInitState lbl_1_bss_6BF8;
 u8 lbl_1_bss_6BBC[60];
-M609ShadowState lbl_1_bss_6B6C;
+MinigameShadowCamera lbl_1_bss_6B6C;
 M609ParticleState lbl_1_bss_6B64;
 M609Model lbl_1_bss_8BC[154];
 M609Motion lbl_1_bss_70C[4];

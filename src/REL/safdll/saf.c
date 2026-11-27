@@ -31,6 +31,7 @@
 #include "humath.h"
 #include "string.h"
 #include "REL/safdll/saf.h"
+#include "game/sprput.h"
 
 /* Resources and message used by the motion-check scene. */
 #define SAF_TEST_HSF_ID DATANUM(0xca0000, 0)
@@ -811,16 +812,16 @@ void fn_1_3A24(void) {
     lbl_1_bss_4.textureBuffer = HuMemDirectMallocNum(
         2, GXGetTexBufferSize(640U, 480U, GX_TF_RGB565, 0U, 0U), 0x10000000);
     lbl_1_bss_4.bumpAnimation =
-        HuSprAnimRead(fn_80008DD0(SAF_WATER_BUMP_ANIM_ID, 0x10000000, 2));
+        HuSprAnimDataRead(SAF_WATER_BUMP_ANIM_ID);
     lbl_1_bss_4.reflectionAnimation =
-        HuSprAnimRead(fn_80008DD0(SAF_REFLECTION_ANIM_ID, 0x10000000, 2));
+        HuSprAnimDataRead(SAF_REFLECTION_ANIM_ID);
     lbl_1_bss_4.textureScrollOffset = 0.0f;
     fn_8000DAC0(fn_1_3BB0, 100U, 12288U, 0, lbl_1_bss_1B8);
 }
 
 extern char lbl_1_data_54;
 
-extern SafState lbl_1_bss_4;
+extern MinigameRippleSurface lbl_1_bss_4;
 
 /* Started by fn_1_3A24; finds the model's top edge and animates ripples on it each frame. */
 void fn_1_3BB0(void) {
@@ -846,14 +847,14 @@ void fn_1_3BB0(void) {
     }
     DCInvalidateRange(object->mesh.vertex->data, object->mesh.vertex->count * 12);
     topEdgeY = -100000.0f;
-    vertices = (Vec *)object->mesh.vertex->data;
+    vertices = object->mesh.vertex->data;
     for (vertexIndex = 0; vertexIndex < object->mesh.vertex->count;
          vertexIndex += 1, vertices += 1) {
         if (topEdgeY < vertices->y) {
             topEdgeY = vertices->y;
         }
     }
-    vertices = (Vec *)object->mesh.vertex->data;
+    vertices = object->mesh.vertex->data;
     for (vertexIndex = topEdgeVertexCount = 0; vertexIndex < object->mesh.vertex->count;
          vertexIndex += 1, vertices += 1) {
         if (topEdgeY == vertices->y) {
@@ -862,7 +863,7 @@ void fn_1_3BB0(void) {
     }
     topEdgeVertices =
         HuMemDirectMallocNum(HEAP_HEAP, topEdgeVertexCount * 4, 0x10000000);
-    vertices = (Vec *)object->mesh.vertex->data;
+    vertices = object->mesh.vertex->data;
     for (vertexIndex = peakVertexIndex = 0; vertexIndex < object->mesh.vertex->count;
          vertexIndex += 1, vertices += 1) {
         if (topEdgeY == vertices->y) {
@@ -929,8 +930,6 @@ void fn_1_3BB0(void) {
 const GXColor lbl_1_rodata_140 = { 160, 160, 255, 0 };
 
 extern f32 lbl_1_data_3C[2][3];
-extern void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
-                         GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
 
 /* Registered by fn_1_3A24 and called by the model draw path to set up the surface material. */
 void fn_1_4114(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {

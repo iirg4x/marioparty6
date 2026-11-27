@@ -9,6 +9,16 @@ typedef struct M658PlayerWork M658PlayerWork;
 
 #include "dolphin/mtx/GeoTypes.h"
 struct MgPlayer_s;
+typedef struct M658HookActor {
+    u16 flags; /* Allocation, active state, and release flags. */
+    s16 unk2; /* The game's code never reads this field. */
+    u8 unk4[2]; /* No code names this field. */
+    s16 model;
+    u8 unk8[48]; /* No code names this field. */
+    s32 hostModel;
+    char *hook;
+} M658HookActor;
+
 typedef struct M658PlayerChoiceRange {
     s32 minimumElapsedFrames, maximumElapsedFrames, selectionWeight;
 } M658PlayerChoiceRange;
@@ -16,9 +26,10 @@ struct M658PlayerWork {
     u16 flags, actorFlags;
     s16 playerType;
     s8 state, nextState;
-    s32 reserved08, frame; /* Only frame is used after the player work is cleared. */
+    u8 unk8[4]; /* No code names this field. */
+    s32 frame;
     struct MgPlayer_s *player;
-    s16 unused; /* Cleared on creation; the player's state callbacks never read it. */
+    s16 unk14; /* The game's code never reads this field. */
     s16 playerNo, characterNo;
     s8 playerIndex, registryIndex;
     s32 action;
@@ -27,10 +38,12 @@ struct M658PlayerWork {
     f32 actorRotation, rotation, spinY, spinZ;
     Vec motionStart, motionEnd;
     u8 reserved58[16]; /* Cleared at player setup and unused by the state callbacks. */
-    struct M658HookActor *itemEffect; /* Pooled effect attached during the response to a missed row
+    M658HookActor *itemEffect; /* Pooled effect attached during the response to a missed row
                                        * selection. */
     void *materialColors; /* Saved actor material RGB bytes for the flash effect. */
-    s16 difficulty, attemptCount, inputState, inputDelayFrames;
+    s16 difficulty, attemptCount;
+    s16 unk74; /* The game's code never reads this field. */
+    s16 inputDelayFrames;
     s16 interval, elapsedInputFrames, firstLimit, secondLimit;
     M658PlayerChoiceRange *choiceRange;
 };
@@ -45,16 +58,16 @@ typedef struct M658PlayerRow {
 } M658PlayerRow;
 
 typedef struct M658Rows {
-    u8 reserved00[2]; /* Cleared at row setup; row updates leave these bytes untouched. */
+    u8 unk0[2]; /* No code names this field. */
     s8 registryIndex[2];
-    u8 reserved04[4]; /* Cleared at row setup; row updates leave these bytes untouched. */
+    u8 unk4[4]; /* No code names this field. */
     M658PlayerWork *entries[2][4];
     u8 reserved28[32]; /* Cleared at row setup; row updates leave these bytes untouched. */
     M658PlayerRow player[2];
     s32 modelCount;
     s16 collisionModels[4];
     s32 collisionModelCount;
-    u16 *transitionObjects[2];
+    M658HookActor *transitionObjects[2];
 } M658Rows;
 
 typedef struct M658Runtime {
@@ -76,11 +89,11 @@ typedef struct M658Runtime {
 typedef struct M658RegistryEntry {
     void *pool;
     void (*render)(void);
-    void (*update)(void *item, s32 event);
+    void (*update)(M658HookActor *item, s32 event);
 } M658RegistryEntry;
 
 typedef struct M658RegistryWork {
-    void *reserved00; /* Cleared at registry setup and unused by entry processing. */
+    u8 unk0[4]; /* No code names this field. */
     M658RegistryEntry entries[7];
     s32 count;
 } M658RegistryWork;

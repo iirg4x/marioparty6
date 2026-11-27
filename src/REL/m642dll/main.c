@@ -972,7 +972,7 @@ s32 fn_1_2B08(M642FlagState *state, s32 mask)
     return state->flags & mask;
 }
 
-M642ParticleConfig lbl_1_data_450 = {
+MinigameParticleConfig lbl_1_data_450 = {
     0,
     {255, 255, 255, 255},
     {255, 255, 255, 255},

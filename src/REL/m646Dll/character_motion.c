@@ -1,9 +1,13 @@
 /* Loads Hyper Sniper players, updates their aim, and animates shots and the finish sequence. */
+#include "REL/m646Dll/moving_stage.h"
+#include "REL/m646Dll/collision_state.h"
+#include "REL/minigame_mesh_edges.h"
 #include "dolphin/math.h"
 #include "REL/m646Dll/module_types.h"
 
 #include "dolphin/types.h"
 #include "dolphin/mtx/GeoTypes.h"
+#include "REL/m646Dll/m646.h"
 
 #define M646_HELD_GUN_P1_FILE 14
 #define M646_HELD_GUN_P2_FILE 15
@@ -49,181 +53,16 @@ s32 lbl_1_data_254[7] = { CHARMOT_HSF_c000m1_300, CHARMOT_HSF_c000m1_306,
 char lbl_1_data_270[] = "ske_head";
 char lbl_1_data_279[] = "ske_R_arm1";
 
-typedef struct M646ActorAnchor_s M646ActorAnchor;
-typedef struct M646ModelCollider_s M646ModelCollider;
-typedef struct M646ModelAttachment_s M646ModelAttachment;
-
-typedef struct M646MeshEdge_s {
-    Vec first; /* First endpoint in mesh coordinates. */
-    Vec second; /* Second endpoint in mesh coordinates. */
-    Mtx *matrix; /* Matrix transforming these endpoints into world coordinates. */
-} M646MeshEdge;
-
-typedef struct M646WorldEdge_s {
-    Vec first; /* First endpoint in world coordinates. */
-    Vec second; /* Second endpoint in world coordinates. */
-    Vec normal; /* Edge normal; zero when its endpoints coincide, including model-target buffers. */
-    f32 planeConstant; /* Signed plane offset in world units. */
-} M646WorldEdge;
-
-typedef struct M646CollisionRecord_s {
-    u8 stageCollisionPrefix[32]; /* Collision header preceding the edge list. */
-    s32 edgeCount; /* Number of collision edges. */
-    M646WorldEdge *current; /* Edges used by this frame's collision tests. */
-    M646WorldEdge *alternate; /* Spare world-edge buffer swapped during transforms. */
-    M646MeshEdge *original; /* Endpoints retained in source mesh coordinates. */
-    s32 transformCount; /* Number of source objects supplying transforms. */
-    HSF_TRANSFORM **transforms; /* Source-object transforms. */
-    Mtx *matrices; /* Matrices applied to the source edges. */
-} M646CollisionRecord;
-
-struct M646ModelCollider_s {
-    u32 kind; /* Collision registration and activity flags. */
-    s32 group; /* Group mask tested against projectiles. */
-    s32 callbackType; /* Contact category selecting the target's reaction. */
-    s32 unusedPlayerIndex; /* Player-index slot not used by target attachments. */
-    s32 callbackMode; /* 11 selects the model-target contact test. */
-    M646ModelAttachment *owner; /* Attachment supplied to the update callback. */
-    void (*update)(M646ModelAttachment *); /* Unused target-update callback; setup assigns an empty
-                                            * function. */
-    s32 (*contact)(M646ModelCollider *, M646ActorAnchor *); /* Handles a projectile hit. */
-    s32 edgeCount; /* Number of collider edges. */
-    M646WorldEdge *current; /* Edges used by this frame's contact test. */
-    M646WorldEdge *alternate; /* Spare edge buffer. */
-    s32 transformCount; /* Number of collider transforms. */
-    HSF_TRANSFORM pose; /* Target joint position, rotation, and scale. */
-    Mtx *matrices; /* Allocated and zeroed matrix buffer; model-target setup and contact tests leave
-                    * it unused. */
-    u8 contactEdgeStorage[4]; /* Storage for the edge selected during a contact test. */
-    s16 category; /* Index selecting a category-specific contact distance. */
-    HU3D_MODELID model; /* Model containing the target joint. */
-    char jointName[64]; /* Joint followed by this target. */
-    HSF_OBJECT *source; /* Source mesh used during collider setup. */
-    s32 assigned; /* Nonzero while a computer player has reserved this attachment. */
-};
-
-struct M646ModelAttachment_s {
-    HU3D_MODELID parentModel; /* Stage model containing the attachment's hook. */
-    HU3D_MODELID model; /* Model displaying the attachment animation. */
-    HU3D_MOTIONID motion; /* Motion played after a hit. */
-    s16 state; /* Zero makes this attachment available as a target. */
-    M646ModelCollider collider; /* Registered target collider. */
-    Vec position; /* Attachment position in world coordinates. */
-};
-
-typedef struct M646MovingStageState_s {
-    HU3D_MODELID model; /* Moving stage model. */
-    HU3D_MODELID hiddenModel; /* Hidden model supplying collision meshes. */
-    HU3D_MODELID parentModel; /* Model carrying this stage's hook. */
-    s16 modelPadding; /* Storage between the model IDs and the stage kind. */
-    u32 stageKind; /* Index into the stage descriptor table. */
-    M646ModelAttachment attachments[5][12]; /* Targets grouped by contact category. */
-    s16 jointIndex[5]; /* Next collision-joint index in each attachment group. */
-    u8 jointPadding[2]; /* Storage following the attachment joint counters. */
-    M646CollisionRecord collision; /* Stage surface edges checked against projectiles. */
-    u8 collisionTail[104]; /* Stage storage following the collision record. */
-} M646MovingStageState;
-
-typedef struct M646MovingStageGroup_s {
-    char **attachmentNames; /* Hooks where this group's target models are attached. */
-    char **colliderNames; /* Hidden-model joints supplying the target collider meshes. */
-    s16 attachmentCount; /* Number of targets in this group. */
-    u8 attachmentCountPadding[2]; /* Storage between attachment count and contact category. */
-    s32 callbackType; /* Base contact category for targets in this group. */
-} M646MovingStageGroup;
-
-typedef struct M646MovingStageDescriptor_s {
-    s32 modelFile; /* Resource number for the visible stage model. */
-    s32 hiddenModelFile; /* Resource number for the collision model. */
-    char *hiddenHook; /* Visible-model hook carrying the collision model. */
-    M646MovingStageGroup groups[5]; /* Attachment groups in this stage. */
-} M646MovingStageDescriptor;
-
-typedef struct M646MovingStageWork_s {
-    s32 state; /* Cleared at stage creation; not read or changed by the stage callbacks. */
-    s32 stageOrder[6]; /* Descriptor index assigned to each stage slot. */
-    M646MovingStageState stages[6]; /* Models, targets, and collision work for each slot. */
-} M646MovingStageWork;
-
-/* Player aiming state, item transforms, and target results shared by the callbacks below. */
-typedef struct M646PlayerAnchor_s {
-    s32 kind; /* Collision registration and activity flags. */
-    s32 group; /* Collision group bits. */
-    s32 callbackType; /* Contact category; player setup uses zero. */
-    s32 playerIndex; /* Player associated with this anchor. */
-    s32 callbackMode; /* Zero selects the actor collision path. */
-    OMOBJ *owner; /* Character object owning this anchor. */
-    s32 updateCallbackSlot; /* Cleared at setup to disable the collision update callback. */
-    s32 contactCallbackSlot; /* Cleared at setup to disable the collision response callback. */
-    Vec *position; /* Player position in world coordinates. */
-    Vec *rotation; /* Player rotation vector supplied as the collision direction buffer. */
-    Vec savedPosition; /* Saved position used when a collision update yields invalid coordinates. */
-    f32 radius; /* Collision radius in world units. */
-    f32 responseScale; /* Scales the displacement applied by actor contact handling. */
-} M646PlayerAnchor;
-
-typedef struct M646PlayerAimState_s {
-    M646PlayerWork motion; /* Character motion and turn-transition state. */
-    f32 forceAngle; /* Forced head-joint Z rotation, in degrees. */
-} M646PlayerAimState;
-
-typedef struct M646PlayerFullWork_s {
-    M646PlayerAimState aiming; /* Character motion and forced aim angle. */
-    Vec modelPosition; /* Aim-model position; projectile target is 120 world units farther in Z. */
-    Vec projectileDirection; /* Flight displacement per frame, with length 40 world units. */
-    Vec projectilePosition; /* Gun-hook position where a shot starts. */
-    Vec itemPosition; /* Detached gun position during the finish animation. */
-    Vec itemRotation; /* Detached gun rotation in degrees. */
-    f32 itemPhase; /* Frames elapsed in the detached-gun animation. */
-    f32 itemDuration; /* Detached-gun animation duration in frames. */
-    u8 itemWorkTail[12]; /* Player storage between item animation and controller state. */
-    s16 padIndex; /* Controller port used by this player. */
-    u8 padIndexPadding[2]; /* Storage after the controller index. */
-    f32 stickOffsetX; /* Horizontal aim displacement for this frame, in world units. */
-    f32 stickOffsetY; /* Vertical aim displacement for this frame, in world units. */
-    u32 buttons; /* Buttons pressed this frame. */
-    s32 playerKind; /* Zero for a human player; nonzero for a computer player. */
-    s16 comDifficulty; /* Computer difficulty; -1 for a human player. */
-    u8 difficultyPadding[2]; /* Storage between difficulty and targeting flags. */
-    s32 targetReady; /* Nonzero while a computer player's target is active. */
-    s32 motionReady; /* Nonzero while the computer aim is still moving toward its target. */
-    M646ModelAttachment *targetData; /* Chosen target, or NULL when aiming at stored coordinates. */
-    f32 aimError; /* Extra arrival tolerance in world units. */
-    f32 randomX; /* Horizontal computer aim error added to the target, in world units. */
-    f32 randomY; /* Vertical computer aim error added to the target, in world units. */
-    s16 targetDelayTicks; /* Remaining target-selection attempts to wait; not a frame count. */
-    s16 shotCount; /* Number of shots fired by the computer player. */
-    f32 targetX; /* Horizontal fallback aim coordinate in world units. */
-    f32 targetY; /* Vertical fallback aim coordinate in world units. */
-    M646PlayerAnchor anchor; /* Player's record registered with collision handling. */
-    u8 playerWorkTail[104]; /* Player storage following the collision anchor. */
-} M646PlayerFullWork;
 
 extern OMOBJ *lbl_1_bss_70[4];
-extern s32 lbl_1_data_238[7];
-extern char *lbl_1_data_1EC[4];
-extern s32 lbl_1_data_20C[4];
-extern s32 lbl_1_data_1FC[4];
-extern s32 lbl_1_data_254[7];
-extern Vec lbl_1_data_190[4];
-extern Vec lbl_1_bss_84;
-extern s8 lbl_1_data_21C[];
-extern s8 lbl_1_data_22A[];
-extern char lbl_1_data_270[];
-extern char lbl_1_data_279[];
 
 void fn_1_5A64(OMOBJ *obj, s16 motion);
-OMOBJ *fn_1_23D0(Vec *position, f64 parameter, Vec *direction, OMOBJ *player);
-s32 fn_1_B3C0(Vec *position, s32 sound);
 void fn_1_6158(OMOBJ *obj);
 void fn_1_680C(OMOBJ *obj);
-f64 fn_1_2968(Vec lhs, Vec rhs);
 void fn_1_6658(OMOBJ *obj);
 void fn_1_6E20(OMOBJ *obj);
 void fn_1_728C(OMOBJ *obj);
 void fn_1_7858(OMOBJ *obj);
-s32 fn_1_3E80(void *value);
-void fn_1_A028(OMOBJ *obj);
 
 void fn_1_543C(OMOBJMAN *manager);
 void fn_1_5540(void);
@@ -259,7 +98,7 @@ OMOBJ *lbl_1_bss_70[4];
 void fn_1_543C(OMOBJMAN *manager)
 {
     OMOBJ *obj = NULL;
-    M646PlayerFullWork *work = NULL;
+    M646PlayerRuntimeWork *work = NULL;
     s32 player = 0;
     for (player = 0; player < 4; player++) {
         obj = lbl_1_bss_70[player] = fn_8003AB38(manager, 110, 3, 7, -1, fn_1_6E20);
@@ -368,7 +207,7 @@ void fn_1_5850(s16 player)
 void fn_1_589C(s16 player)
 {
     OMOBJ *obj = lbl_1_bss_70[player];
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     Vec position;
     Vec direction;
     fn_1_5A64(obj, 4);
@@ -394,7 +233,7 @@ void fn_1_5964(s16 player, s32 resetAttribute)
 void fn_1_59E0(s16 player, Vec *position)
 {
     OMOBJ *obj = lbl_1_bss_70[player];
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     HU3D_MODELID model = obj->mdlId[2];
     work->modelPosition.x = position->x;
     work->modelPosition.y = position->y;
@@ -441,7 +280,7 @@ void fn_1_5A64(OMOBJ *obj, s16 motion)
 /* Each human or computer aiming update turns the character toward its current aim point. */
 void fn_1_5BD4(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     Vec direction;
     f32 angle;
     PSVECSubtract(&work->modelPosition, &work->aiming.motion.translation, &direction);
@@ -453,7 +292,7 @@ void fn_1_5BD4(OMOBJ *obj)
 /* Aiming updates sample the gun hook and store a 40-unit shot vector toward the aim point. */
 void fn_1_5C98(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     HU3D_MODELID model = obj->mdlId[0];
     Vec direction;
     Vec position;
@@ -471,7 +310,7 @@ void fn_1_5C98(OMOBJ *obj)
 /* Reads human input and updates the player's aim during the active turn. */
 void fn_1_5DAC(OMOBJ *obj)
 {
-    M646PlayerFullWork *playerWork = obj->data;
+    M646PlayerRuntimeWork *playerWork = obj->data;
     if (fn_80071A8C() == 5) {
         fn_1_6658(obj);
     }
@@ -484,7 +323,7 @@ void fn_1_5DAC(OMOBJ *obj)
  * direction, and aim pose. */
 void fn_1_5F80(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     HU3D_MODELID model = obj->mdlId[0];
     if (work->targetReady != 0 && work->motionReady != 0) {
         fn_1_680C(obj);
@@ -497,7 +336,7 @@ void fn_1_5F80(OMOBJ *obj)
 /* Each aiming update derives the forced head Z rotation from the current aim point. */
 void fn_1_6158(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     M646PlayerAimState *aim = &work->aiming;
     HU3D_MODELID model = obj->mdlId[0];
     Mtx rotationMatrix;
@@ -528,7 +367,7 @@ void fn_1_6158(OMOBJ *obj)
 /* Optional arm-aim helper forces the right-arm rotation from the current aim point. */
 void fn_1_6308(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     HU3D_MODELID model = obj->mdlId[0];
     Mtx rotationMatrix;
     Mtx inverseMatrix;
@@ -572,7 +411,7 @@ void fn_1_6538(OMOBJ *obj, s32 transitionCommand)
 /* Character initialization creates the hidden aim model at the stage's aiming depth. */
 void fn_1_6554(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     HU3D_MODELID model = obj->mdlId[2] = fn_80025A04(
         fn_80008DD0(lbl_1_data_20C[work->aiming.motion.playerIndex], 0x10000000,
                              2));
@@ -580,39 +419,45 @@ void fn_1_6554(OMOBJ *obj)
     fn_800269E8(obj->mdlId[2], (1 << 0));
     work->modelPosition.x = (0.0f);
     work->modelPosition.y = (0.0f);
-    work->modelPosition.z = lbl_1_bss_84.z - (120.0f);
+    work->modelPosition.z = lbl_1_bss_84.points[0].z - (120.0f);
     fn_800268B0(model, (1.0f), (1.0f), (1.0f));
     fn_80026790(model, &work->modelPosition);
+}
+
+/* Limits the aim model to the target area. */
+static inline void AimPositionClamp(Vec *position)
+{
+    if (position->x > (425.0f)) {
+        position->x = (425.0f);
+    }
+    if (position->x < (-420.0f)) {
+        position->x = (-420.0f);
+    }
+    if (position->y > (620.0f)) {
+        position->y = (620.0f);
+    }
+    if (position->y < (176.0f)) {
+        position->y = (176.0f);
+    }
 }
 
 /* The human update moves the aim model from stick input and clamps it to the target area. */
 void fn_1_6658(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     HU3D_MODELID model = obj->mdlId[2];
     work->stickOffsetX = (0.15f) * -lbl_802BFFFC[work->padIndex];
     work->stickOffsetY = (0.15f) * lbl_802BFFF8[work->padIndex];
     work->modelPosition.x += work->stickOffsetX;
     work->modelPosition.y += work->stickOffsetY;
-    if (work->modelPosition.x > (425.0f)) {
-        work->modelPosition.x = (425.0f);
-    }
-    if (work->modelPosition.x < (-420.0f)) {
-        work->modelPosition.x = (-420.0f);
-    }
-    if (work->modelPosition.y > (620.0f)) {
-        work->modelPosition.y = (620.0f);
-    }
-    if (work->modelPosition.y < (176.0f)) {
-        work->modelPosition.y = (176.0f);
-    }
+    AimPositionClamp(&work->modelPosition);
     fn_80026790(model, &work->modelPosition);
 }
 
 /* Computer updates move toward the target and finish aiming within 3+aimError world units. */
 void fn_1_680C(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     M646ModelAttachment *attachment = NULL;
     M646ModelCollider *collider = NULL;
     HU3D_MODELID model = obj->mdlId[2];
@@ -656,18 +501,7 @@ void fn_1_680C(OMOBJ *obj)
     direction.z *= (6.5f);
     work->modelPosition.x += direction.x;
     work->modelPosition.y += direction.y;
-    if (work->modelPosition.x > (425.0f)) {
-        work->modelPosition.x = (425.0f);
-    }
-    if (work->modelPosition.x < (-420.0f)) {
-        work->modelPosition.x = (-420.0f);
-    }
-    if (work->modelPosition.y > (620.0f)) {
-        work->modelPosition.y = (620.0f);
-    }
-    if (work->modelPosition.y < (176.0f)) {
-        work->modelPosition.y = (176.0f);
-    }
+    AimPositionClamp(&work->modelPosition);
     position.x = work->modelPosition.x;
     position.y = work->modelPosition.y;
     position.z = (120.0f) + work->modelPosition.z;
@@ -684,7 +518,7 @@ void fn_1_680C(OMOBJ *obj)
  * animation. */
 void fn_1_6B84(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     HU3D_MODELID item = obj->mdlId[1];
     char *hook = NULL;
     HU3D_MODELID model = obj->mdlId[0];
@@ -702,7 +536,7 @@ void fn_1_6B84(OMOBJ *obj)
 /* Finish updates shrink the gun, then hide it; head rotation tends toward 180 or 90 degrees. */
 s32 fn_1_6C48(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     M646PlayerAimState *aim = &work->aiming;
     HU3D_MODELID model = obj->mdlId[0];
     HU3D_MODELID item = obj->mdlId[1];
@@ -734,14 +568,14 @@ s32 fn_1_6C48(OMOBJ *obj)
 /* Initializes each player's character models, callbacks, and collision anchor. */
 void fn_1_6E20(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = NULL;
+    M646PlayerRuntimeWork *work = NULL;
     s32 motionIndex = 0;
     s16 player;
     HU3D_MODELID model;
     s16 character;
     HU3D_MODELID item;
     char *hook;
-    M646PlayerAnchor *anchor;
+    M646ActorAnchor *anchor;
 
     work = obj->data;
     player = work->aiming.motion.playerIndex;
@@ -786,10 +620,10 @@ void fn_1_6E20(OMOBJ *obj)
     anchor->playerIndex = work->aiming.motion.playerIndex;
     anchor->callbackMode = 0;
     anchor->owner = obj;
-    anchor->updateCallbackSlot = 0;
-    anchor->contactCallbackSlot = 0;
+    anchor->update = NULL;
+    anchor->contact = NULL;
     anchor->position = &work->aiming.motion.translation;
-    anchor->rotation = &work->aiming.motion.rotation;
+    anchor->direction = &work->aiming.motion.rotation;
     anchor->savedPosition = *anchor->position;
     anchor->radius = (40.0f);
     anchor->responseScale = (0.5f);
@@ -805,7 +639,7 @@ void fn_1_6E20(OMOBJ *obj)
 /* Runs the human player's per-frame update and result transition. */
 void fn_1_728C(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     if (fn_80071A8C() <= 5) {
         fn_1_5DAC(obj);
     }
@@ -860,7 +694,7 @@ void fn_1_728C(OMOBJ *obj)
 /* Runs the computer player's per-frame update and result transition. */
 void fn_1_7858(OMOBJ *obj)
 {
-    M646PlayerFullWork *work = obj->data;
+    M646PlayerRuntimeWork *work = obj->data;
     if (fn_80071A8C() <= 5) {
         fn_1_5F80(obj);
     }

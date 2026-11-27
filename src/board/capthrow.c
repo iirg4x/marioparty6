@@ -53,7 +53,7 @@ enum {
     CAPTHROW_MESSAGE_THROWMAN_RESULT = 20,
 };
 
-extern void mbev_CapWait(CAPWORK *work);
+extern void mbev_CapWait(struct CapWork *work);
 extern OMOBJ *mbev_CapEffGlowCreate(void);
 extern OMOBJ *mbev_CapEffRingHitCreate(void);
 extern OMOBJ *mbev_CapEffExplodeCreate(void);
@@ -73,7 +73,7 @@ extern void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF pos);
 extern void mbev_CapEffCapLoseAdd(OMOBJ *obj, int playerNo, int count,
     float spawnRadius);
 extern int mbev_CapEffCapLoseNumGet(OMOBJ *obj);
-extern s16 mbev_CapPlayerMotionCreate(EVCAPWORK *work, int playerNo,
+extern s16 mbev_CapPlayerMotionCreate(struct EvCapWork *work, int playerNo,
     int dataNum);
 extern void mbev_CapPlayerMotShiftWait(int playerNo, int motionNo, u32 attr,
     BOOL shiftF);
@@ -89,9 +89,9 @@ extern void mbev_CapPlayerIdleWait(void);
 extern float mbev_CapAngleSumLerp(float t, float a, float b);
 extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
     HuVecF *out);
-extern int mbev_CapObjCreate(EVCAPWORK *work, int dataNum, int *motFile,
+extern int mbev_CapObjCreate(struct EvCapWork *work, int dataNum, int *motFile,
     BOOL linkF, int delay, BOOL closeDir);
-extern void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId,
+extern void mbev_CapObjPosSet(struct EvCapWork *work, int objId, int masuId,
     HuVecF *pos);
 extern void mbev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum,
     BOOL highF);
@@ -121,7 +121,7 @@ static void KokamekkuObjUpdate(float t, float angle, int *objId, int objNum,
 /* Capsule event-table handler: Togezo takes up to ten coins in three bursts. */
 void mbev_CapTogezo(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     CAPTOGEZOOMWORK *objWork;
     OMOBJ *obj;
     HU3D_MODEL *model;
@@ -462,7 +462,7 @@ static s8 diceKuriboNumTbl[] = { 0, 1, 2, 3, -1 };
  * amount from the active player and gives it to the selected target player. */
 void mbev_CapKuribo(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     int motionFiles[8];
     HuVecF payerStartPos;
     HuVecF kuriboPos;
@@ -720,7 +720,7 @@ void mbev_CapKuriboKill(void)
  * that player's coins, and transfers those coins to the selected target. */
 void mbev_CapPakkun(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     int loopIndex;
     int pakkunModelId;
     int particleIndex;
@@ -957,7 +957,7 @@ static HuVecF jangoPlayerOfs = { 0.0f, -120.0f, 0.0f };
  * space if no start space is marked. */
 void mbev_CapJango(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     Mtx hookMtx;
     int motionId[16];
     HuVecF playerPos;
@@ -1204,7 +1204,7 @@ static GXColor kokamekkuColorTbl[2] = {{ 255, 127, 127, 255 }, { 127, 127, 255, 
  * when their spaces differ and the activating player is not metal. */
 void mbev_CapPatapata(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     Mtx hookMtx;
     int motionFiles[16];
     HuVecF playerPos[2];
@@ -1567,7 +1567,7 @@ void mbev_CapPatapataKill(void)
  */
 void mbev_CapKokamekku(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     s8 moveDir[20];
     int capsuleObjId[5];
     HuVecF playerPos;
@@ -2093,7 +2093,7 @@ typedef struct CapKamekkuOMWork {
     float modelAlpha[16]; /* Trail opacity weights, scaled during fade-in
      * and reduced during fade-out. */
     HuVecF modelPos[16]; /* Recent world positions used to draw the model trail. */
-    CAPWORK *capWork; /* Parent event work, including the glow-effect handle. */
+    struct CapWork *capWork; /* Parent event work, including the glow-effect handle. */
 } CAPKAMEKKUOMWORK;
 
 enum {
@@ -2110,7 +2110,7 @@ enum {
     CAPTHROW_MESSAGE_KAMEKKU_RESULT = 19,
 };
 
-extern void *mbev_CapMalloc(EVCAPWORK *work, int size);
+extern void *mbev_CapMalloc(struct EvCapWork *work, int size);
 extern BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
 extern void mbev_CapObjMotionSet(int modelId, int time, int motNo,
     int nextMotNo, u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr);
@@ -2124,7 +2124,7 @@ static void ev_CapKamekkuOMExec(OMOBJ *obj);
  * the active player and any selected target. */
 void mbev_CapKamekku(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     CAPKAMEKKUOMWORK *omWork;
     OMOBJ *obj;
     HSF_DATA *hsf;
@@ -2443,7 +2443,7 @@ void mbev_CapKamekkuKill(void)
 static void ev_CapKamekkuOMExec(OMOBJ *obj)
 {
     CAPKAMEKKUOMWORK *work = obj->data;
-    CAPWORK *capWork = work->capWork;
+    struct CapWork *capWork = work->capWork;
     HuVecF hookPos;
     HuVecF glowPos;
     HuVecF glowVel;
@@ -2616,7 +2616,7 @@ static void ev_CapKamekkuOMExec(OMOBJ *obj)
  * removes their carried capsules while the hit motion is paused at frame 20. */
 void mbev_CapThrowman(void)
 {
-    CAPWORK *work = fn_8000DD9C()->property;
+    struct CapWork *work = fn_8000DD9C()->property;
     int i;
     int modelId;
     float time;

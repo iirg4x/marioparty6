@@ -54,13 +54,7 @@
 #include "game/hu3d.h"
 
 #include "REL/m641Dll/m641Dll.h"
-
-typedef struct {
-    s16 motionId;       /* Character motion-table index, or -1 when unused. */
-    f32 blendTime;      /* Motion blend duration in frames. */
-    u32 attributes;     /* Character-model attributes applied with this motion. */
-    s32 voiceEnabled;   /* Nonzero enables character voice and effect cues. */
-} M641MotionInfo;
+#include "REL/m641Dll/motion.h"
 
 #define M641_MOVEMENT_STATE_COLLISION_LAUNCH 11
 

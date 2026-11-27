@@ -1,6 +1,10 @@
 /* Loads the moving stage models and their attached collision and animation data. */
+#include "REL/m646Dll/moving_stage.h"
+#include "REL/m646Dll/collision_state.h"
+#include "REL/minigame_mesh_edges.h"
 #include "dolphin/math.h"
 #include "REL/m646Dll/module_types.h"
+#include "REL/m646Dll/m646.h"
 
 #define M646_CARRIER_OPENING_MODEL_FILE 48
 #define M646_CARRIER_OPENING_MOTION_FILE 49
@@ -48,99 +52,6 @@
 #define M646_TARGET_SCORE_RESET_MOTION_FILE 91
 #define M646_STAGE_ORDER_MASK 0x1F
 
-typedef struct M646ActorAnchor_s M646ActorAnchor;
-typedef struct M646ModelCollider_s M646ModelCollider;
-typedef struct M646ModelAttachment_s M646ModelAttachment;
-
-typedef struct M646MeshEdge_s {
-    Vec first; /* First source-mesh endpoint in local coordinates. */
-    Vec second; /* Second source-mesh endpoint in local coordinates. */
-    Mtx *matrix; /* Matrix that transforms this edge into world coordinates. */
-} M646MeshEdge;
-
-typedef struct M646WorldEdge_s {
-    Vec first; /* First endpoint in world coordinates. */
-    Vec second; /* Second endpoint in world coordinates. */
-    Vec normal; /* Plane normal used by the contact tests. */
-    f32 planeConstant; /* Plane offset in stage units. */
-} M646WorldEdge;
-
-typedef struct M646CollisionRecord_s {
-    u8 stageCollisionPrefix[32]; /* Collision flags, owner, and callbacks before the edge list. */
-    s32 edgeCount; /* Number of collision edges. */
-    M646WorldEdge *current; /* World edges used by the current contact pass. */
-    M646WorldEdge *alternate; /* Spare edge buffer swapped during a transform update. */
-    M646MeshEdge *original; /* Source-mesh endpoints retained for transforms. */
-    s32 transformCount; /* Number of source objects with transforms. */
-    HSF_TRANSFORM **transforms; /* Source-object transforms used by the stage edges. */
-    Mtx *matrices; /* Matrices that transform the source edges. */
-} M646CollisionRecord;
-
-struct M646ModelCollider_s {
-    u32 kind; /* Registration and active-contact flags. */
-    s32 group; /* Group bits used to filter projectile contacts. */
-    s32 callbackType; /* Target category selecting points and impact sounds. */
-    s32 unusedPlayerIndex; /* Player-index slot unused by stage targets. */
-    s32 callbackMode; /* 11 selects model-target collision processing. */
-    M646ModelAttachment *owner; /* Target attachment passed to the callbacks. */
-    void (*update)(M646ModelAttachment *); /* Unused target-update callback; setup assigns an empty
-                                            * function. */
-    s32 (*contact)(M646ModelCollider *, M646ActorAnchor *); /* Handles a projectile contact. */
-    s32 edgeCount; /* Number of collision edges. */
-    M646WorldEdge *current; /* World edges used by the current contact pass. */
-    M646WorldEdge *alternate; /* Spare edge buffer. */
-    s32 transformCount; /* Number of transforms applied to the target geometry. */
-    HSF_TRANSFORM pose; /* Joint position and scale used for contact checks. */
-    Mtx *matrices; /* Matrices for the target collision geometry. */
-    u8 contactEdgeStorage[4]; /* Collision manager stores the contacted edge pointer here. */
-    s16 category; /* Target group selecting the contact-distance threshold. */
-    HU3D_MODELID model; /* Carrier model from which the target joint is sampled. */
-    char jointName[64]; /* Carrier joint used to follow this target. */
-    HSF_OBJECT *source; /* Hidden mesh used to initialize collision geometry. */
-    s32 assigned; /* Nonzero while a computer player has reserved this target. */
-};
-
-struct M646ModelAttachment_s {
-    HU3D_MODELID parentModel; /* Hook parent, or -1 after the first projectile contact. */
-    HU3D_MODELID model; /* Visible target model. */
-    HU3D_MOTIONID motion; /* Hit animation, paused until first contact. */
-    s16 state; /* Number of contacts; zero means still attached and unhit. */
-    M646ModelCollider collider; /* Contact geometry and callbacks for this target. */
-    Vec position; /* World position captured when the target detaches. */
-};
-
-typedef struct M646MovingStageState_s {
-    HU3D_MODELID model; /* Visible layout hooked to its carrier. */
-    HU3D_MODELID hiddenModel; /* Invisible model supplying collision meshes. */
-    HU3D_MODELID parentModel; /* Carrier model holding this layout. */
-    s16 modelPadding; /* Unused storage between model IDs and the layout kind. */
-    u32 stageKind; /* Descriptor index: 0-4 normal, 5 opening, 6 special. */
-    M646ModelAttachment attachments[5][12]; /* Targets grouped by contact-distance category. */
-    s16 jointIndex[5]; /* Next collider name to read in each target group. */
-    u8 jointIndexPadding[2]; /* Unused storage after the collider-name indices. */
-    M646CollisionRecord collision; /* Edge geometry for the layout's stage surface. */
-    u8 reservedStageStorage[104]; /* Remaining storage not accessed by these stage callbacks. */
-} M646MovingStageState;
-
-typedef struct M646MovingStageGroup_s {
-    char **attachmentNames; /* Hook names for the visible targets. */
-    char **colliderNames; /* Mesh names in the hidden collision model. */
-    s16 attachmentCount; /* Number of targets created in this group. */
-    s32 callbackType; /* Contact category, offset by target index for the opening layout. */
-} M646MovingStageGroup;
-
-typedef struct M646MovingStageDescriptor_s {
-    s32 modelFile; /* DATA_m646 resource for the visible layout. */
-    s32 hiddenModelFile; /* DATA_m646 resource for its collision meshes. */
-    char *hiddenHook; /* Visible-model joint holding the hidden collision model. */
-    M646MovingStageGroup groups[5]; /* Target hooks and collision categories for this layout. */
-} M646MovingStageDescriptor;
-
-typedef struct M646MovingStageWork_s {
-    s32 state; /* Cleared at startup; not read by these stage callbacks. */
-    s32 stageOrder[6]; /* Opening layout followed by five randomized layouts. */
-    M646MovingStageState stages[6]; /* Loaded layout and target work for each carrier. */
-} M646MovingStageWork;
 
 extern OMOBJ *lbl_1_bss_80;
 extern s32 lbl_1_data_1D38[6];
@@ -151,18 +62,12 @@ extern s32 lbl_1_data_2E0[5];
 extern s32 lbl_1_data_2F4[5];
 extern char lbl_1_data_308[7][30];
 extern char *lbl_1_data_468[6];
-extern M646PositionTable lbl_1_bss_84;
 extern M646MovingStageDescriptor lbl_1_data_1AB4[7];
 void fn_1_8ACC(OMOBJ *obj);
 void fn_1_8C88(OMOBJ *obj);
 void fn_1_8380(OMOBJ *obj, s32 index);
 void fn_1_89EC(OMOBJ *obj);
-void fn_1_4DD0(M646ModelCollider *collider);
-s32 fn_1_48DC(M646ModelCollider *collider, HSF_OBJECT *object, HU3D_MODELID model, char *name);
-void fn_1_436C(M646CollisionRecord *record, HSF_OBJECT *object);
-void fn_1_43A0(M646CollisionRecord *record);
-s32 fn_1_3EF8(void *record);
-s32 fn_1_8DAC(M646ModelCollider *collider, M646ActorAnchor *actor);
+s32 fn_1_8DAC(M646ModelCollider *collider, void *actor);
 void fn_1_8E74(M646ModelAttachment *attachment);
 
 void fn_1_8158(OMOBJMAN *objman);
@@ -176,7 +81,7 @@ void fn_1_8980(void);
 void fn_1_89EC(OMOBJ *obj);
 void fn_1_8ACC(OMOBJ *obj);
 void fn_1_8C88(OMOBJ *obj);
-s32 fn_1_8DAC(M646ModelCollider *collider, M646ActorAnchor *actor);
+s32 fn_1_8DAC(M646ModelCollider *collider, void *actor);
 void fn_1_8E74(M646ModelAttachment *attachment);
 
 M646PositionTable lbl_1_bss_84;
@@ -946,7 +851,7 @@ void fn_1_8380(OMOBJ *obj, s32 index)
     HU3D_MODELID attachmentModel;
     HU3D_MOTIONID motion;
     M646ModelCollider *collider;
-    M646AnchorRecord *anchor;
+    M646CollisionRecord *anchor;
     s16 attachmentIndex;
     s32 groupIndex;
     HSF_OBJECT *mesh;
@@ -962,8 +867,8 @@ void fn_1_8380(OMOBJ *obj, s32 index)
     fn_80026B8C(model, 4);
     parent = obj->mdlId[index];
     fn_8002741C(parent, lbl_1_data_468[index], model);
-    stage->parentModel = parent;
-    hidden = stage->hiddenModel = fn_80025A04(
+    stage->unk4 = parent;
+    hidden = stage->unk2 = fn_80025A04(
         fn_80008DD0(descriptor->hiddenModelFile, 0x10000000, 2));
     fn_8002741C(model, descriptor->hiddenHook, hidden);
     fn_80026B8C(hidden, 4);
@@ -1020,17 +925,17 @@ void fn_1_8380(OMOBJ *obj, s32 index)
     }
     worldMesh = fn_80026BF4(hidden, lbl_1_data_308[kind]);
     if (worldMesh != NULL) {
-        anchor = (M646AnchorRecord *)&stage->collision;
+        anchor = &stage->collision;
         anchor->kind = 1;
         anchor->group = 4;
         anchor->callbackType = 12;
-        anchor->unknown0C = 0;
+        anchor->playerIndex = 0;
         anchor->callbackMode = 10;
-        anchor->owner = obj;
-        anchor->unknown18 = 0;
-        anchor->unknown1C = 0;
-        fn_1_436C((M646CollisionRecord *)anchor, worldMesh);
-        fn_1_43A0((M646CollisionRecord *)anchor);
+        anchor->unk14 = obj;
+        anchor->update = NULL;
+        anchor->contact = NULL;
+        fn_1_436C(anchor, worldMesh);
+        fn_1_43A0(anchor);
         fn_1_3EF8(anchor);
     }
 }
@@ -1134,7 +1039,7 @@ void fn_1_8C88(OMOBJ *obj)
 
 /* The collision manager detaches a target on its first projectile contact and starts its hit
  * motion. */
-s32 fn_1_8DAC(M646ModelCollider *collider, M646ActorAnchor *actor)
+s32 fn_1_8DAC(M646ModelCollider *collider, void *actor)
 {
     M646MovingStageWork *stageWork = lbl_1_bss_80->data;
     M646ModelAttachment *attachment = collider->owner;

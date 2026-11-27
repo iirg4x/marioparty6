@@ -39,13 +39,13 @@ void fn_1_11340(M676TextureWork *work, Mtx *matrix);
 void fn_1_113A0(M676TextureWork *texture, Mtx *matrix);
 void fn_1_11928(M676TextureWork *work);
 void fn_1_119B0(Vec *position, Vec *velocity);
-void fn_1_11EA4(M676ShadowRecord *effect);
+void fn_1_11EA4(MinigameGroundEffect *effect);
 
 /* Queues a scene effect request for the manager to consume during its update. */
 void fn_1_10288(s32 type, s32 index, Vec *position, s32 requestValue)
 {
     OMOBJ *manager;
-    M676SceneEffectWork *storage;
+    M676PropWork *storage;
     M676ParticleRecord *request;
     s32 requestLimit;
     s32 i;
@@ -190,7 +190,7 @@ void fn_1_108A0(HU3D_MODEL *model, Mtx *view)
 {
     M676ShadowWork *effects = model->hookData;
     Mtx matrix;
-    M676ShadowRecord *record;
+    MinigameGroundEffect *record;
     f32 *xOffsets;
     f32 *zOffsets;
     s32 i;
@@ -637,9 +637,9 @@ void fn_1_11A74(Vec *position, f32 radius, s32 count)
 }
 
 /* Register a shadow record in the first free slot used by the custom shadow draw hook. */
-void fn_1_11EA4(M676ShadowRecord *effect)
+void fn_1_11EA4(MinigameGroundEffect *effect)
 {
-    M676ShadowRecord **entry;
+    MinigameGroundEffect **entry;
     s32 i;
     OMOBJ *object;
     HU3D_MODEL *model;

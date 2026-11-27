@@ -3,6 +3,7 @@
 
 /* Shared constants and work records for the minigame result overlay. */
 
+#include "REL/minigame_menu_sprite.h"
 #include "dolphin.h"
 #include "game/hu3d.h"
 #include "game/object.h"
@@ -155,17 +156,6 @@ typedef struct MdResultCharacterWork_s {
     s16 padNo; /* Controller slot used for the result prompt. */
 } MDRESULT_CHARACTER_WORK;
 
-typedef struct MdResultSpriteInfo_s {
-    s16 groupNo; /* Sprite group receiving this sprite. */
-    s16 memberNo; /* Member slot within the group. */
-    s16 animNo; /* Animation resource index. */
-    s16 priority; /* Draw priority before the screen-wide offset. */
-    s16 bank; /* Initial sprite bank. */
-    HuVec2f pos; /* Screen position in pixels. */
-    HuVec2f scale; /* Horizontal and vertical sprite scale. */
-    float zRot; /* Rotation around the screen Z axis, in degrees. */
-} MDRESULT_SPRITE_INFO;
-
 typedef struct MdResultPlayerSpriteInfo_s {
     s16 animNo; /* Animation resource index. */
     s16 priority; /* Draw priority before the screen-wide offset. */
@@ -201,7 +191,7 @@ typedef struct MdResultPlayerSpriteWork_s {
     HU3D_MODELID models[3]; /* Character and result-scene model IDs. */
     HUSPR_GROUPID group; /* Main player-result sprite group. */
     HUSPRID sprites[14]; /* Individual score and label sprites. */
-    u32 unk24; /* The game's code never reads this field. */
+    u32 unk24; /* No code names this field. */
 } MDRESULT_PLAYER_SPRITE_WORK;
 
 typedef struct MdResultEmitterWork_s {
@@ -228,7 +218,6 @@ typedef struct MdResultPlayerWork_s {
         };
         struct {
             HUSPRID sprites[14];
-            u32 unk24; /* The game's code never reads this field. */
         } sprite;
         struct {
             HUSPRID sprites[12];
@@ -303,12 +292,7 @@ typedef struct MdResultModelEffectWork_s {
     float verticalDrift; /* Y movement per frame, plus the shared drift value. */
     float depthSpeed; /* Z movement per frame. */
     float horizontalLimit; /* X boundary that restarts the model's travel. */
-    float unk28; /* The game's code never reads this field. */
-    float unk2C; /* The game's code never reads this field. */
-    float unk30; /* The game's code never reads this field. */
-    float unk34; /* The game's code never reads this field. */
-    float unk38; /* The game's code never reads this field. */
-    float unk3C; /* The game's code never reads this field. */
+    u8 unk28[24]; /* No code names this field. */
 } MDRESULT_MODEL_EFFECT_WORK;
 
 struct MdResultCameraWork_s {
@@ -322,7 +306,7 @@ struct MdResultCameraWork_s {
     MDRESULT_CAMERA_CALLBACK callback; /* Active camera motion callback. */
     s16 reserved; /* Unused by the visible camera routines. */
     s16 cameraMode; /* Mode selected by the result sequence for camera motion. */
-    float unk44; /* The game's code never reads this field. */
+    float unk44; /* No code names this field. */
 };
 
 float fn_1_1F8BC(float current, float target, float weight);

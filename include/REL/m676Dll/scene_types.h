@@ -34,7 +34,7 @@ extern OMOBJ *lbl_1_bss_E9C;
 extern OMOBJ *lbl_1_bss_E98, *lbl_1_bss_E94;
 extern s32 lbl_1_bss_E90, lbl_1_bss_E8C, lbl_1_bss_E88;
 extern M676SceneRegistration lbl_1_bss_E40;
-extern M676PropParam lbl_1_data_36C[];
+extern MinigamePropParams lbl_1_data_36C[];
 extern const M676CollisionBounds lbl_1_rodata_340;
 extern Vec lbl_1_data_6E0[6];
 extern f32 lbl_1_data_728[6];

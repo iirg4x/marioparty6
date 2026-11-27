@@ -1,7 +1,8 @@
 /* Microphone quiz module initialization and shutdown. */
+#include "REL/micquizohdedll.h"
+
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
-extern void ObjectSetup(void);
 
 /* Run static constructors, then start the quiz. */
 int _prolog(void) {

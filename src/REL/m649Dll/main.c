@@ -1,4 +1,5 @@
 /* Sets up Stamp By Me, handles its sequence callbacks, and manages split-screen cameras. */
+#include "REL/minigame_positional_audio.h"
 #include <math.h>
 
 #include "game/object.h"
@@ -63,9 +64,8 @@
 #define M649_MOTION_RESOURCE_NONE (-1)
 #define M649_MOTION_RESOURCE_END (-2)
 
-typedef struct M649AudioCameraConfig_s M649AudioCameraConfig;
 
-typedef void (*M649CameraCallback)(OMOBJ *, u32, u32);
+typedef void (*M649CameraCallback)(OMOBJ *, u32, s32);
 
 extern OMOBJMAN *lbl_1_bss_74;
 
@@ -83,7 +83,7 @@ extern GXColor lbl_1_data_34;
 
 extern OM_CAMERA_VIEW lbl_1_data_0;
 
-extern M649AudioCameraConfig lbl_1_data_38[];
+extern MinigameAudioRange lbl_1_data_38[];
 
 void fn_1_680(short mode, short state);
 
@@ -98,11 +98,11 @@ s32 fn_1_1210(s32 resource);
 
 extern void fn_1_2BCC(u32 cameras, void *data);
 
-void fn_1_C78(OMOBJ *object, u32 camera, u32 index);
+void fn_1_C78(OMOBJ *object, u32 camera, s32 index);
 
 extern void fn_1_2780(M649CameraCallback callback);
 
-extern void fn_1_3250(OMOBJMAN *manager, M649AudioCameraConfig *config);
+extern void fn_1_3250(OMOBJMAN *manager, MinigameAudioRange *config);
 
 extern void fn_1_A220(OMOBJMAN *manager);
 
@@ -382,6 +382,7 @@ void fn_1_BB0(s16 mode, s16 frameNo)
     fn_1_A2A8();
 }
 
+/* Returns zero for the mode and frame supplied by the sequence. */
 s32 fn_1_BD8(s16 mode, s16 frame)
 {
     return 0;
@@ -396,10 +397,10 @@ void fn_1_BE0(OM_CAMERA_VIEW *start, OM_CAMERA_VIEW *end, OM_CAMERA_VIEW *result
 }
 
 /* Updates one camera each frame, easing into its saved view and setting its viewport. */
-void fn_1_C78(OMOBJ *object, u32 camera, u32 index)
+void fn_1_C78(OMOBJ *object, u32 camera, s32 index)
 {
-    M649CameraEntry *entry;
-    M649CameraWork *work = object->data;
+    MinigameCameraEntry *entry;
+    MinigameCameraWork *work = object->data;
     OM_CAMERA_VIEW *view, *previous;
     float x, y, factor, width, height;
     entry = &work->entries[index];
@@ -421,7 +422,7 @@ void fn_1_C78(OMOBJ *object, u32 camera, u32 index)
     switch (entry->phase) {
     case 0:
         if (fn_1_2C84(camera)) { break; }
-        if (index != 0) {
+        if ((u32)index != 0) {
             entry->phase = -1;
             break;
         }
@@ -475,13 +476,15 @@ void fn_1_C78(OMOBJ *object, u32 camera, u32 index)
     fn_1_281C(camera, x, y, width, height);
 }
 
+/* Combines a resource index with the minigame's data directory. */
 s32 fn_1_1210(s32 resource)
 {
     return resource + 0x6c0000;
 }
 
+/* Returns the camera mask for the requested screen slot. */
 s32 fn_1_1218(s32 cameraIndex) {
-    return *(s32 *) ((u8 *) &lbl_1_data_A8 + ((cameraIndex & 3) * 4));
+    return lbl_1_data_A8[cameraIndex & 3];
 }
 
 /* Reports whether the route schedule has been stopped near the end of gameplay. */
@@ -495,6 +498,7 @@ void fn_1_1244(void) {
     fn_80071B58();
 }
 
+/* Returns the registered result for a player slot. */
 s32 fn_1_1264(s32 index) { return lbl_1_bss_2C[index]; }
 
 /* Returns 1 for a winning registered result, -1 for another, or 0 when there are no winners;
@@ -543,16 +547,6 @@ s32 fn_1_1388(void)
     }
     return 1;
 }
-#include <math.h>
-#include "game/object.h"
-#include "game/mg/seqman.h"
-
-struct M649AudioCameraConfig_s {
-    u32 cameras;
-    s32 panMin, panMax;
-    s32 volumeMin, volumeMiddle, volumeMax;
-    float distanceFar, distanceMiddle, distanceNear;
-};
 
 typedef struct M649PlayerMotionParam_s {
     u16 motion;
@@ -561,32 +555,10 @@ typedef struct M649PlayerMotionParam_s {
     u32 attr;
 } M649PlayerMotionParam;
 
-typedef struct M649PropMotionParam_s {
-    s32 resource;
-    float blend;
-    u32 attr;
-} M649PropMotionParam;
-
-typedef struct M649PropParam_s {
-    s32 count, linkModel, type;
-    s16 firstId, layer;
-    u32 attr;
-    s32 shadow, modelResource;
-    M649PropMotionParam *motions;
-    Vec *position;
-    float rotationY;
-    OMOBJ_FUNC update;
-} M649PropParam;
-
 typedef struct M649PathView_s {
     s32 time;
     s32 points[7];
 } M649PathView;
-
-typedef struct M649ComputerParam_s {
-    float firstDelay, delay, randomDelay, error;
-    s32 targetScore;
-} M649ComputerParam;
 
 extern void fn_1_330(s16 mode, s16 frame);
 extern void fn_1_36C(s16 mode, s16 frame);
@@ -610,7 +582,7 @@ OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, 0.0f, 0.0f}, {-60.0f, 0.0f, 0.0f}, 1000.0f
 Vec lbl_1_data_1C = {0.0f, 800.0f, 0.0f};
 Vec lbl_1_data_28 = {0.0f, 0.0f, 0.0f};
 GXColor lbl_1_data_34 = {255, 255, 255, 255};
-M649AudioCameraConfig lbl_1_data_38[2] = { { 65535, 32, 96, 32, 64, 110, 900.0f, 700.0f, 500.0f },
+MinigameAudioRange lbl_1_data_38[2] = { { 65535, 32, 96, 32, 64, 110, 900.0f, 700.0f, 500.0f },
                                            { 0, 0, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f } };
 MGSEQ_PARAM lbl_1_data_80 = {
     30, 0, fn_1_330, fn_1_36C, fn_1_620, fn_1_6BC, fn_1_718, fn_1_7AC, fn_1_AD4, fn_1_B78, fn_1_BB0
@@ -651,11 +623,11 @@ u8 lbl_1_data_1C4[96] = {
     0, 65, 64, 0, 0, 63, 25, 153, 154, 0, 0, 0, 19, 65, 144, 0, 0, 65, 64, 0, 0, 64, 192,
     0, 0, 63, 0, 0, 0, 0, 0, 0, 23
 };
-M649PropMotionParam lbl_1_data_224[3] = { { M649_MOTION_RESOURCE_NONE, M649_MOTION_BLEND,
+MinigamePropMotionParams lbl_1_data_224[3] = { { M649_MOTION_RESOURCE_NONE, M649_MOTION_BLEND,
                                             ((1 << 30) | (1 << 0)) },
                                           { 2, M649_MOTION_BLEND, ((1 << 30) | (1 << 0)) },
                                           { M649_MOTION_RESOURCE_END, 0.0f, 0 } };
-M649PropParam lbl_1_data_248[12] = {
+MinigamePropParams lbl_1_data_248[12] = {
     {1, 0, 0, 0, 2, ((1 << 30) | (1 << 0)), 0, 4, 0, 0, 0.0f, fn_1_728C},
     {1, 0, 0, 1, 1, ((1 << 30) | (1 << 0)), 2, 5, 0, 0, 0.0f, fn_1_7288},
     {16, 0, 1, 0, 2, 0, 0, -1, 0, 0, 0.0f, fn_1_7300},

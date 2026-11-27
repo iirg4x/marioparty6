@@ -22,6 +22,7 @@
 #include "msm_stream.h"
 #include "humath.h"
 #include "dolphin/mtx.h"
+#include "game/sprput.h"
 
 
 
@@ -32,33 +33,7 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
-float fn_1_1F8BC(float current, float target, float weight);
-void fn_1_1FB50(HuVecF *current, const HuVecF *target, float weight);
 void fn_1_1F868(HuVecF *vec, float x, float y, float z);
-void fn_1_26164(s16 index, HuVecF *position);
-float fn_1_1F878(float start, float end, float time, float duration);
-float fn_1_1FD7C(float start, float end, float time, float duration);
-void fn_1_1F948(HuVecF *result, const HuVecF *start,
-    const HuVecF *middle, const HuVecF *end, float time);
-float fn_1_1FF48(float start, float end, float time, float duration);
-float fn_1_1FE74(float start, float end, float time, float duration);
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
-    GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
-void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel);
-float fn_1_1FC94(float start, float end, float time, float duration);
-void fn_1_2001C(HU3D_MODELID modelId, const HuVecF *first,
-    const HuVecF *second);
-void fn_1_20108(HUSPR_GROUPID groupId, s32 attr);
-void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number);
-void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 number);
-void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, GXColor *color);
-void fn_1_26070(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, GXColor *color);
-void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
-    float accelX, GXColor *color);
-void fn_1_26BE4(s16 index);
-void fn_1_26EB0(HuVecF *position);
 void fn_1_0(s16 index, s16 table);
 s32 fn_1_2CC(s16 first, s16 second);
 void fn_1_5484(OMOBJ *obj);
@@ -153,20 +128,12 @@ void fn_1_1D318(void);
 void fn_1_1D8EC(OMOBJ *obj);
 void fn_1_1E19C(void);
 void fn_1_1E47C(void);
-void fn_1_20188(HUSPR_GROUPID groupId, s32 attr);
-void fn_1_25DB0(s16 index, HuVecF *position, float alpha);
-void fn_1_25D0C(float colorIndex);
-void fn_1_25FF4(s16 index);
-void fn_1_25B90(void);
-void fn_1_26EAC(float ignoredValue);
-void fn_1_26F74(void);
 void fn_1_1F3D4(void);
 void fn_1_1F7FC(void);
 void fn_1_1F834(void);
 void fn_1_1C050(void);
 void fn_1_1D874(void);
 void fn_1_1E5E8(HUSPRITE *sprite);
-void fn_1_252F8(void);
 
 extern OMOBJMAN *lbl_1_bss_0;
 extern OMOBJ *lbl_1_bss_C;
@@ -237,7 +204,7 @@ extern HuVecF lbl_1_data_0[16];
 extern s32 lbl_1_data_C0[39];
 extern s16 lbl_1_data_15C[6];
 extern s32 lbl_1_data_5F4[11];
-extern MDRESULT_SPRITE_INFO lbl_1_data_168[18];
+extern MinigameMenuSprite lbl_1_data_168[18];
 extern s32 lbl_1_data_620;
 extern char lbl_1_data_624[];
 extern char lbl_1_data_654[];
@@ -920,13 +887,11 @@ void fn_1_2CA4(void)
  * sprites. */
 void fn_1_2CA8(void)
 {
-    MDRESULT_SPRITE_INFO *desc;
+    MinigameMenuSprite *desc;
     s16 i;
 
     for (i = 0; i < 39; i++) {
-        lbl_1_bss_11AC[i] = HuSprAnimRead(
-            fn_80008DD0(
-                lbl_1_data_C0[i], 0x10000000, 2));
+        lbl_1_bss_11AC[i] = HuSprAnimDataRead(lbl_1_data_C0[i]);
     }
     for (i = 0; i < 6; i++) {
         lbl_1_bss_11A0[i] = HuSprGrpCreate(lbl_1_data_15C[i]);
@@ -1449,9 +1414,8 @@ void fn_1_49C8(OMOBJ *obj)
     obj = NULL;
 }
 
-/* Speeds up the character motion for 30 frames, then restores normal speed and starts its looping
- * motion. */
-void fn_1_4A9C(OMOBJ *obj)
+/* Returns the result model to its idle motion after the celebration. */
+static inline void ResultMotionUpdate(OMOBJ *obj)
 {
     fn_8002D86C(obj->mdlId[0], 2.0f);
     if (obj->work[3]++ > 30) {
@@ -1461,6 +1425,13 @@ void fn_1_4A9C(OMOBJ *obj)
             0.0f, 15.0f,
             ((1 << 30) | (1 << 0)));
     }
+}
+
+/* Speeds up the character motion for 30 frames, then restores normal speed and starts its looping
+ * motion. */
+void fn_1_4A9C(OMOBJ *obj)
+{
+    ResultMotionUpdate(obj);
 }
 
 /* Starts the character transition motion and installs fn_1_4A9C to restore the idle motion after
@@ -1479,14 +1450,7 @@ void fn_1_4B44(void)
  * looping motion. */
 void fn_1_4BB8(OMOBJ *obj)
 {
-    fn_8002D86C(obj->mdlId[0], 2.0f);
-    if (obj->work[3]++ > 30) {
-        obj->objFunc = NULL;
-        fn_8002D86C(obj->mdlId[0], 1.0f);
-        fn_8002CCC0(obj->mdlId[0], obj->mtnId[0],
-            0.0f, 15.0f,
-            ((1 << 30) | (1 << 0)));
-    }
+    ResultMotionUpdate(obj);
 }
 
 /* Starts the next result-character motion and resets its transition timer. */
@@ -1797,29 +1761,7 @@ void fn_1_6290(OMOBJ *obj)
 
         if (work->state == 0) {
             if (position.x > work->horizontalLimit) {
-                MDRESULT_MODEL_EFFECT_WORK *resetWork;
-
-                resetWork = &lbl_1_bss_ADC[i + 8];
-                resetWork->state = rand8() % 2;
-                resetWork->rotationSpeedX = (frandmod(10) - 5) * 0.2f;
-                resetWork->rotationSpeedY = (frandmod(10) - 5) * 0.2f;
-                resetWork->rotationSpeedZ = (frandmod(10) - 5) * 0.2f;
-                if (resetWork->state == 0) {
-                    fn_80026760(obj->mdlId[i + 8],
-                        -1000.0f, frandmod(200) + 400,
-                        -1250 - (i * 200));
-                    resetWork->horizontalSpeed = frandmod(3) + 1;
-                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.01f;
-                    resetWork->depthSpeed = 0.0f;
-                } else {
-                    fn_80026760(obj->mdlId[i + 8],
-                        1000.0f, frandmod(200) + 400,
-                        -1250 - (i * 200));
-                    resetWork->horizontalSpeed = -(frandmod(3) + 1);
-                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.1f;
-                    resetWork->depthSpeed = 0.0f;
-                }
-                resetWork->horizontalLimit = frandmod(1000) + 1500.0f;
+                fn_1_5A70(obj, i);
                 if (i == 1) {
                     fn_8002CCC0(obj->mdlId[9],
                         obj->mtnId[rand8() % 3], 0.0f,
@@ -1832,29 +1774,7 @@ void fn_1_6290(OMOBJ *obj)
             }
         } else {
             if (position.x < -work->horizontalLimit) {
-                MDRESULT_MODEL_EFFECT_WORK *resetWork;
-
-                resetWork = &lbl_1_bss_ADC[i + 8];
-                resetWork->state = rand8() % 2;
-                resetWork->rotationSpeedX = (frandmod(10) - 5) * 0.2f;
-                resetWork->rotationSpeedY = (frandmod(10) - 5) * 0.2f;
-                resetWork->rotationSpeedZ = (frandmod(10) - 5) * 0.2f;
-                if (resetWork->state == 0) {
-                    fn_80026760(obj->mdlId[i + 8],
-                        -1000.0f, frandmod(200) + 400,
-                        -1250 - (i * 200));
-                    resetWork->horizontalSpeed = frandmod(3) + 1;
-                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.01f;
-                    resetWork->depthSpeed = 0.0f;
-                } else {
-                    fn_80026760(obj->mdlId[i + 8],
-                        1000.0f, frandmod(200) + 400,
-                        -1250 - (i * 200));
-                    resetWork->horizontalSpeed = -(frandmod(3) + 1);
-                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.1f;
-                    resetWork->depthSpeed = 0.0f;
-                }
-                resetWork->horizontalLimit = frandmod(1000) + 1500.0f;
+                fn_1_5A70(obj, i);
                 if (i == 1) {
                     fn_8002CCC0(obj->mdlId[9],
                         obj->mtnId[rand8() % 3], 0.0f,
@@ -3396,8 +3316,6 @@ void fn_1_CE9C(void)
     OMOBJ *obj;
     HuVecF pos;
     s16 i;
-    s16 j;
-    MDRESULT_MOVE_WORK *work;
     MDRESULT_CAMERA_WORK *camera;
 
     obj = lbl_1_bss_10;
@@ -3461,13 +3379,7 @@ void fn_1_CE9C(void)
 
     fn_1_26EAC(-50.0f);
     lbl_1_bss_44 = -50.0f;
-    for (j = 0; j < 4; j++) {
-        work = &lbl_1_bss_F9C[j];
-        work->target.y -= 1.0f;
-        if (work->target.y < -20.0f) {
-            work->target.y = -20.0f;
-        }
-    }
+    fn_1_3E98();
     fn_1_25D0C(-40.0f);
     camera = &lbl_1_bss_12BC;
     camera->cameraMode = 6;
@@ -4031,18 +3943,13 @@ void fn_1_10270(s32 ignoredCallbackArg, MDRESULT_CAMERA_WORK *work)
 s32 fn_1_102E4(void)
 {
     OMOBJ *first;
-    OMOBJ *second;
 
     first = lbl_1_bss_4;
     fn_8002CCC0(first->mdlId[0], first->mtnId[1],
         0.0f, 10.0f, 0);
     first->work[3] = 0;
     first->objFunc = fn_1_4A9C;
-    second = lbl_1_bss_8;
-    fn_8002CCC0(second->mdlId[0], second->mtnId[1],
-        0.0f, 10.0f, 0);
-    second->work[3] = 0;
-    second->objFunc = fn_1_4BB8;
+    fn_1_4C60();
     fn_1_258C(4, MESSNUM(MESS_PARTY_RESULTS, 0), 1);
     fn_1_246C();
     return TRUE;
@@ -4054,7 +3961,6 @@ s32 fn_1_105CC(void)
 {
     OMOBJ *first;
     OMOBJ *second;
-    OMOBJ *third;
 
     first = lbl_1_bss_4;
     fn_8002CCC0(first->mdlId[0], first->mtnId[1],
@@ -4073,11 +3979,7 @@ s32 fn_1_105CC(void)
     second->objFunc = fn_1_4A9C;
     fn_1_258C(3, MESSNUM(MESS_PARTY_RESULTS, 2), 1);
     fn_1_246C();
-    third = lbl_1_bss_18;
-    third->work[0] = 0;
-    third->work[1] = 10;
-    third->work[2] = 0;
-    third->objFunc = fn_1_8F28;
+    fn_1_95A4();
     HuPrcSleep(10);
     HuAudFXPlay(MSM_SE_MENU_RESULTS_PANEL_APPEAR);
     HuPrcSleep(50);
@@ -4090,7 +3992,6 @@ s32 fn_1_10B34(void)
 {
     OMOBJ *first;
     OMOBJ *second;
-    OMOBJ *third;
 
     first = lbl_1_bss_8;
     fn_8002CCC0(first->mdlId[0], first->mtnId[1],
@@ -4109,11 +4010,7 @@ s32 fn_1_10B34(void)
     second->objFunc = fn_1_4BB8;
     fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 4), 1);
     fn_1_246C();
-    third = lbl_1_bss_18;
-    third->work[0] = 0;
-    third->work[1] = 10;
-    third->work[2] = 0;
-    third->objFunc = fn_1_8F28;
+    fn_1_95A4();
     HuPrcSleep(10);
     HuAudFXPlay(MSM_SE_MENU_RESULTS_PAGE2_PANEL_APPEAR);
     HuPrcSleep(50);
@@ -4428,12 +4325,12 @@ void fn_1_11208(s16 index)
  * result window. */
 s32 fn_1_1295C(void)
 {
-    OMOBJ *obj = lbl_1_bss_8;
+    fn_1_4C60();
 
-    fn_8002CCC0(obj->mdlId[0], obj->mtnId[1],
-        0.0f, 10.0f, 0);
-    obj->work[3] = 0;
-    obj->objFunc = fn_1_4BB8;
+
+
+
+
     fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 23), 1);
     fn_1_246C();
     fn_1_23C0();
@@ -5575,8 +5472,8 @@ void fn_1_1AAF8(void)
     lbl_1_bss_38->objFunc = fn_1_1AAA8;
 }
 
-/* Hides the summary layout selected for individual or team mode and clears its update callback. */
-void fn_1_1AB5C(void)
+/* Select the next result screen. */
+static inline void ResultScreenSelect(void)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
 
@@ -5585,6 +5482,12 @@ void fn_1_1AB5C(void)
         fn_1_1A468();
     }
     lbl_1_bss_38->objFunc = NULL;
+}
+
+/* Hides the summary layout selected for individual or team mode and clears its update callback. */
+void fn_1_1AB5C(void)
+{
+    ResultScreenSelect();
 }
 
 /* Creates the shared summary models, links them into individual or team summary groups, and hides
@@ -5609,12 +5512,7 @@ void fn_1_1AD68(OMOBJ *obj)
     fn_800269E8(obj->mdlId[1], (1 << 0));
     fn_800269E8(obj->mdlId[2], (1 << 0));
 
-    if (lbl_1_bss_1278.values[3] == 0) {
-        fn_1_18E14();
-    } else {
-        fn_1_1A468();
-    }
-    lbl_1_bss_38->objFunc = NULL;
+    ResultScreenSelect();
     obj->objFunc = NULL;
 }
 
@@ -5636,18 +5534,7 @@ void fn_1_1B064(OMOBJ *obj)
             }
         }
     } else {
-        s16 player;
-        MDRESULT_PLAYER_WORK *work;
-        s16 model;
-
-        player = 0;
-        work = lbl_1_bss_66C;
-        for (; player < 2; player++, work++) {
-            HuWinExKill(work->winId);
-            for (model = 0; model < 3; model++) {
-                fn_800262D0(obj->mdlId[model]);
-            }
-        }
+        fn_1_1AA10(obj);
     }
     for (i = 0; i < 3; i++) {
         fn_8002C624(obj->mtnId[i]);
@@ -5794,9 +5681,8 @@ void fn_1_1BAF4(void)
     }
 }
 
-/* Hides the graph header, grid, mode controls, and cursor model before rebuilding the graph
- * view. */
-void fn_1_1C050(void)
+/* Hides the result sprites and result model. */
+static inline void ResultDisplayHide(void)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
     OMOBJ *obj;
@@ -5807,6 +5693,13 @@ void fn_1_1C050(void)
     fn_1_1F834();
     obj = lbl_1_bss_30;
     fn_800269E8(obj->mdlId[0], (1 << 0));
+}
+
+/* Hides the graph header, grid, mode controls, and cursor model before rebuilding the graph
+ * view. */
+void fn_1_1C050(void)
+{
+    ResultDisplayHide();
 }
 
 /* Creates the sprite groups for the individual statistics graph, its grid, selected-row highlights,
@@ -6109,15 +6002,7 @@ void fn_1_1D318(void)
 /* Hides the graph header, grid, mode controls, cursor, and the selected-statistic model. */
 void fn_1_1D874(void)
 {
-    HUSPR_GROUPID *group = lbl_1_bss_3D2;
-    OMOBJ *obj;
-
-    fn_1_20108(group[0], HUSPR_ATTR_DISPOFF);
-    fn_1_20108(group[31], HUSPR_ATTR_DISPOFF);
-    fn_1_20108(group[291], HUSPR_ATTR_DISPOFF);
-    fn_1_1F834();
-    obj = lbl_1_bss_30;
-    fn_800269E8(obj->mdlId[0], (1 << 0));
+    ResultDisplayHide();
 }
 
 /* Creates the team statistics graph sprite groups, grid, selected-row highlights, graph-mode
@@ -6511,8 +6396,7 @@ void fn_1_1F308(void)
 
     lbl_1_bss_60 = HuSprGrpCreate(2);
     sprite = HuSprFuncCreate(fn_1_1E5E8, 0);
-    lbl_1_bss_5C = HuSprAnimRead(fn_80008DD0(
-        DATANUM(0x980000, 116), 0x10000000, 2));
+    lbl_1_bss_5C = HuSprAnimDataRead(DATANUM(0x980000, 116));
     HuSprGrpMemberSet(lbl_1_bss_60, 0, sprite);
     HuSprPosSet(lbl_1_bss_60, 0, 130.0f, 335.0f);
     HuSprAttrSet(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
@@ -6563,13 +6447,13 @@ void fn_1_1F3D4(void)
         }
     }
 }
-
+/* Loads the history data and shows the base of the results graph. */
 void fn_1_1F7FC(void)
 {
     fn_1_1F3D4();
     HuSprAttrReset(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
 }
-
+/* Hides the base of the results graph when the graph closes. */
 void fn_1_1F834(void)
 {
     HuSprAttrSet(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
@@ -6629,7 +6513,7 @@ s16 lbl_1_data_15C[6] = {
     3, 3, 3, 3, 5, 1,
 };
 
-MDRESULT_SPRITE_INFO lbl_1_data_168[18] = {
+MinigameMenuSprite lbl_1_data_168[18] = {
     { 0, 0,  0, 0, 0, {   0.0f,   0.0f }, { 1.0f, 1.0f }, 0.0f },
     { 0, 1,  0, 0, 0, {   0.0f,   0.0f }, { 1.0f, 1.0f }, 0.0f },
     { 0, 2,  0, 0, 0, {   0.0f,   0.0f }, { 1.0f, 1.0f }, 0.0f },

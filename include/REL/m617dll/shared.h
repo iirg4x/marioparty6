@@ -1,9 +1,14 @@
 /* Shared state and records used by Light Up My Night module files. */
 #ifndef M617DLL_SHARED_H
 #define M617DLL_SHARED_H
+#include "REL/minigame_participant_motion.h"
+#include "REL/minigame_shadow_camera.h"
 
+#include "REL/minigame_light.h"
 #include "dolphin/types.h"
 #include "game/hu3d.h"
+#include "game/mg/colman.h"
+#include "game/mg/actman.h"
 
 typedef struct M617Vector2 {
     f32 x;
@@ -58,7 +63,7 @@ typedef struct M617BoxEdgeLinks {
 
 /* State shared by the sequence, controller snapshots, board setup and audio. */
 typedef struct M617State {
-    u8 unknown00[8];
+    u8 unknown00[8]; /* No code names this field. */
     s16 transitionPhase;
     s16 transitionFrame;
     s16 sequencePhase;
@@ -67,19 +72,19 @@ typedef struct M617State {
     M617PadSnapshot padSnapshots[4];
     struct MgTimer_s *timer;
     s32 timerFrames;
-    u8 unknown6C[2];
+    u8 unk6C[2]; /* No code names this field. */
     s16 unk6E; /* The game's code never reads this field. */
     s16 selection;
     f32 limit;
     s16 layout;
     f32 rotation;
     M617BoardSelection selected[9];
-    u8 unknownA4[4];
+    u8 unkA4[4]; /* No code names this field. */
     s32 firstStream;
     s32 bgmId;
     s32 secondStream;
     s32 jingleId;
-    u8 unknownB8[4];
+    u8 unkB8[4]; /* No code names this field. */
     s32 soundId[3];
     s16 soundActive[3];
     s16 panMinimum;
@@ -121,21 +126,21 @@ typedef struct M617PlayerStateData {
     s8 motionState;
     s8 resultState;
     s32 completionState;
-    u8 unknown24[4];
+    u8 unk24[4]; /* No code names this field. */
     s32 actionFrame;
-    u8 unknown2C[4];
+    u8 unk2C[4]; /* No code names this field. */
     s8 unk30; /* The game's code never reads this field. */
     Vec position;
     Vec target;
     Vec rotation;
     s8 transformState;
-    u8 unknown59;
+    u8 unk59[1]; /* No code names this field. */
     s16 collisionMeshIndex;
     s16 unk5C; /* The game's code never reads this field. */
     s16 linkedPlayer;
     s16 previousLinkedPlayer;
     s16 orbitCounter;
-    u8 unknown64[4];
+    u8 unk64[4]; /* No code names this field. */
     char *itemHook;
     Vec previousPosition;
     Vec snapshotPosition;
@@ -207,7 +212,7 @@ extern M617PlayerBindings lbl_1_bss_9BC;
 typedef struct M617ModelSetupRecord {
     s16 modelId;
     s16 motionState;
-    u8 unknown04[4];
+    u8 unk04[4]; /* No code names this field. */
     Vec position;
     Vec secondaryPosition;
     Vec rotation;
@@ -216,63 +221,14 @@ typedef struct M617ModelSetupRecord {
     f32 scaleStep;
 } M617ModelSetupRecord;
 
-typedef struct M617ParticipantMotionState {
-    s16 motionIds[7];
-    s16 mode;
-    s16 previousMode;
-    f32 speed;
-    f32 previousSpeed;
-    f32 time;
-    f32 previousTime;
-    f32 unk24; /* The game's code never reads this field. */
-    u32 attributes;
-    u32 previousAttributes;
-    u32 attributesToReset;
-    s32 motionEnded;
-    s16 resetRequested;
-    s16 resetMode;
-    f32 transition;
-    u32 resetAttributes;
-    u32 resetAttributesToClear;
-    s16 shiftState;
-    s16 shiftMotion;
-    u32 shiftFlags;
-    f32 shiftStart;
-    f32 shiftEnd;
-    f32 shiftTime;
-    f32 unk5C; /* The game's code never reads this field. */
-    u8 unknown60[4];
-} M617ParticipantMotionState;
-
 typedef struct ParticleModuleData {
     s16 modelIds[1];
     s16 unk02[1]; /* The game's code never reads this field. */
     void *allocation[1];
 } ParticleModuleData;
 
-typedef struct M617LightInitState {
-    HU3D_LIGHTID id;
-    HuVecF position;
-    HuVecF orientation;
-    HuVecF aim;
-    HuVecF direction;
-    f32 range;
-    GXColor color;
-} M617LightInitState;
-
-typedef struct M617ShadowWork {
-    HuVecF position;
-    HuVecF rotation;
-    HuVecF origin;
-    u8 unknown24[12];
-    HuVecF direction;
-    u8 unknown3C[12];
-    f32 radius;
-    f32 shadowOpacity;
-} M617ShadowWork;
-
 typedef struct M617LightSource {
-    u8 unknown00[4];
+    u8 unknown00[4]; /* No code names this field. */
     s16 lightId;
     s16 modelId;
     s16 modelIndex;
@@ -294,7 +250,7 @@ extern M617LightSource lbl_1_bss_458[15];
 extern M617ScoreBoxEntry lbl_1_bss_0[22];
 extern M617SpriteGroup lbl_1_bss_370[2];
 extern M617ModelSetupRecord lbl_1_bss_E88[96];
-extern M617ParticipantMotionState lbl_1_bss_DC0[2];
+extern MinigameParticipantMotionState lbl_1_bss_DC0[2];
 extern M617BoxEdgeLinks lbl_1_bss_398[24];
 extern struct Process_s *lbl_1_bss_38E4;
 extern struct MgSeqParam_s lbl_1_data_0;
@@ -314,8 +270,8 @@ typedef struct M617CameraStorage {
 } M617CameraStorage;
 
 extern M617CameraStorage lbl_1_bss_379C;
-extern M617LightInitState lbl_1_bss_3760;
-extern M617ShadowWork lbl_1_bss_3710;
+extern LightInitState lbl_1_bss_3760;
+extern MinigameShadowCamera lbl_1_bss_3710;
 extern ParticleModuleData lbl_1_bss_3708;
 extern s16 lbl_1_data_F6[4];
 extern u32 lbl_1_data_118[51];
@@ -357,5 +313,17 @@ int fn_1_780C(struct ColNarrowParam_s *first, struct ColNarrowParam_s *second);
 void fn_1_788C(struct MgActor_s *task);
 
 BOOL fn_1_3054(struct MgTimer_s *timer);
+
+typedef struct {
+    f32 height;
+    f32 radius;
+    s32 param;
+    s32 type;
+    COL_NARROW_HOOK narrowHook;
+    u32 attr;
+    s32 correctHookParam;
+    MGACTOR_CORRECT_HOOK correctHook;
+    MGACTOR_CORRECT_HOOK correctionCallbacks[16];
+} M617PlayerSetupParam;
 
 #endif

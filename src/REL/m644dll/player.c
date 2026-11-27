@@ -30,8 +30,12 @@ unsigned int lbl_1_data_188[17] = {
 s32 lbl_1_data_1CC = -1;
 
 /* Depth and side offsets scale the approach by each rock type's size. */
-static const Vec lbl_1_rodata_168 = {1.8f, 1.2f, 1.1f};
-static const Vec lbl_1_rodata_174 = {1.45f, 1.0f, 1.0f};
+typedef struct RockOffsets {
+    f32 by_type[3];
+} RockOffsets;
+
+static const RockOffsets lbl_1_rodata_168 = {{1.8f, 1.2f, 1.1f}};
+static const RockOffsets lbl_1_rodata_174 = {{1.45f, 1.0f, 1.0f}};
 
 extern s32 fn_1_9124(s32 selector);
 extern s32 fn_1_6588(s32 route);
@@ -48,19 +52,9 @@ extern s32 frandmod(s32 range);
 
 /* Per-player course, CPU and boarding state, linked to the other teammate. */
 M644PlayerRecord lbl_1_bss_78[4];
-typedef struct M644GroupVariants_s {
-    /* The next boarding slot (zero or one) for each team. */
-    s32 next_slot[2];
-} M644GroupVariants;
-
 extern OMOBJMAN *fn_1_A0(void);
 
 extern void fn_1_8064(s32 entry_index, s32 slot, Mtx matrix);
-
-typedef struct M644CameraSelect_s {
-    /* One render-camera mask for each team. */
-    u32 camera_bit[2];
-} M644CameraSelect;
 
 extern int fn_1_213C(COL_NARROW_PARAM *contact, COL_NARROW_PARAM *other_contact);
 extern void fn_1_7E5C(HU3D_MODELID modelId, s32 group, s32 variant);
@@ -155,8 +149,8 @@ void fn_1_2288(M644PlayerRecord *player)
     Vec teammate_position;
     Vec approach_position;
     Vec rock_reference;
-    Vec depth_offsets;
-    Vec side_offsets;
+    RockOffsets depth_offsets;
+    RockOffsets side_offsets;
 
     lane_index = player->selected_lane;
     approach_position = *(Vec *)player->local_collision_points[lane_index];
@@ -166,20 +160,20 @@ void fn_1_2288(M644PlayerRecord *player)
     depth_offsets = lbl_1_rodata_168;
     side_offsets = lbl_1_rodata_174;
     fn_80086BC8(player->teammate->player->actor, &teammate_position);
-    approach_position.z += player->reference_radius * ((f32 *)&depth_offsets)[rock_type];
+    approach_position.z += player->reference_radius * depth_offsets.by_type[rock_type];
     PSMTXMultVec(player->section_matrix, &approach_position, &approach_position);
     turn_side = (s32)((approach_position.x * (teammate_position.z - rock_reference.z)) +
                       ((teammate_position.x * (rock_reference.z - approach_position.z)) +
                        (rock_reference.x * (approach_position.z - teammate_position.z))));
     if (turn_side != 0) {
         approach_position = *(Vec *)player->local_collision_points[lane_index];
-        approach_position.z += player->reference_radius * ((f32 *)&depth_offsets)[rock_type];
+        approach_position.z += player->reference_radius * depth_offsets.by_type[rock_type];
         if (turn_side > 0) {
             approach_position.x += (player->reference_radius / 2.0f) *
-                          ((f32 *)&side_offsets)[rock_type];
+                          side_offsets.by_type[rock_type];
         } else {
             approach_position.x -= (player->reference_radius / 2.0f) *
-                          ((f32 *)&side_offsets)[rock_type];
+                          side_offsets.by_type[rock_type];
         }
         PSMTXMultVec(player->section_matrix, &approach_position, &approach_position);
     }
@@ -278,28 +272,16 @@ void fn_1_28CC(M644PlayerRecord *player)
 /* Advances CPU movement toward its target each frame and reports arrival at striking distance. */
 s32 fn_1_2B44(M644PlayerRecord *player)
 {
-    s32 route;
-    s32 route_selector;
-    s32 lane_index;
     s32 point_index;
     Vec chase_position;
     Vec player_position;
     Vec linked_position;
     Vec difference;
     f32 partner_distance_limit;
-    Point3d section_origin;
 
     player->cpu_state = 2;
     if (player->selected_lane == -1) {
-        route = fn_1_9124(player->group);
-        route_selector = fn_1_6588(route);
-        fn_1_1EA8(route >> 1, &section_origin, player->section_matrix);
-        for (lane_index = 0; lane_index < 3; lane_index++) {
-            player->rock_life[lane_index] = fn_1_65A4(player->group, route, lane_index);
-            fn_1_6684(route, lane_index, (Vec *)player->world_collision_points[lane_index]);
-            fn_1_671C(route, lane_index, (Vec *)player->local_collision_points[lane_index]);
-        }
-        player->reference_radius = fn_1_6768(route, 0);
+        fn_1_21B8(player);
         fn_1_24D4(player);
     }
     if (fn_8007E8B4(player->player, (Vec *)player->approach_point,
@@ -676,9 +658,9 @@ s32 fn_1_4E84(void)
     OMOBJ *object;
     s32 teammate_index;
 
-    M644GroupVariants group_start_slots = {{0, 0}};
-        group_start_slots.next_slot[0] = rand8() % 2;
-        group_start_slots.next_slot[1] = rand8() % 2;
+    s32 group_start_slots[2] = {0, 0};
+        group_start_slots[0] = rand8() % 2;
+        group_start_slots[1] = rand8() % 2;
     for (player_index = 0; player_index < 4; player_index++) {
         object = fn_8003AB38(fn_1_A0(), 512, 0, 0, 0, fn_1_58A8);
         object->data = &lbl_1_bss_78[player_index];
@@ -686,9 +668,9 @@ s32 fn_1_4E84(void)
         player = object->data;
         player->slot = player_index;
         player->group = lbl_80265728[player_index].grpNo;
-        player->boarding_slot = group_start_slots.next_slot[player->group];
-        group_start_slots.next_slot[player->group] =
-            1 - group_start_slots.next_slot[player->group];
+        player->boarding_slot = group_start_slots[player->group];
+        group_start_slots[player->group] =
+            1 - group_start_slots[player->group];
         player->player_type = lbl_80265728[player_index].type;
         player->com_difficulty = lbl_80265728[player_index].comDif;
         player->attack_contact = 0;
@@ -929,7 +911,7 @@ void fn_1_5780(OMOBJ *object, HuVecF *position_out)
 void fn_1_58A8(OMOBJ *object)
 {
     M644PlayerRecord *data = object->data;
-    M644CameraSelect camera_masks = {{1, 2}};
+    u32 camera_masks[2] = {1, 2};
     HuVecF spawn_position;
     MGACTOR_PARAM actor_params;
 
@@ -943,7 +925,7 @@ void fn_1_58A8(OMOBJ *object)
     actor_params.correctHook = 0;
 
     data->player = fn_80080728(
-        data->slot, &actor_params, 4, camera_masks.camera_bit[data->group],
+        data->slot, &actor_params, 4, camera_masks[data->group],
         M644_PLAYER_ACTION_MASK, lbl_1_data_188);
 
     {
@@ -960,7 +942,7 @@ void fn_1_58A8(OMOBJ *object)
     fn_80080DD4(data->player->actor,
                       M644_PLAYER_COLLISION_MASK + data->group * M644_PLAYER_COLLISION_MASK);
     fn_80026B64(
-        data->player->actor->mdlId, camera_masks.camera_bit[data->group]);
+        data->player->actor->mdlId, camera_masks[data->group]);
     fn_80026A44(data->player->actor->mdlId, (1 << 0));
     fn_80026E44(data->player->actor->mdlId);
     fn_8007E818(data->player);
@@ -978,29 +960,10 @@ void fn_1_58A8(OMOBJ *object)
 void fn_1_5AE4(OMOBJ *object)
 {
     M644PlayerRecord *data;
-    Point3d section_origin;
-    s32 route_selector;
-    s32 route;
-    s32 lane_index;
 
     data = object->data;
     if (fn_80071A8C() == 5) {
-        if (data->player_type != 0) {
-            data->cpu_state = 0;
-            data->cpu_timer = 0;
-            data->selected_lane = -1;
-            route = fn_1_9124(data->group);
-            route_selector = fn_1_6588(route);
-            fn_1_1EA8(route >> 1, &section_origin, data->section_matrix);
-            for (lane_index = 0; lane_index < 3; lane_index++) {
-                data->rock_life[lane_index] =
-                    fn_1_65A4(data->group, route, lane_index);
-                fn_1_6684(route, lane_index, (Vec *)data->world_collision_points[lane_index]);
-                fn_1_671C(route, lane_index, (Vec *)data->local_collision_points[lane_index]);
-            }
-            data->reference_radius = fn_1_6768(route, 0);
-            fn_1_24D4(data);
-        }
+        fn_1_215C(data);
         object->objFunc = fn_1_5C04;
     }
 }
@@ -1113,7 +1076,7 @@ void fn_1_60E0(OMOBJ *object)
             state->player->mode != 0) {
             return;
         }
-        if (fn_8007E8B4(state->player, (HuVecF *)&state->return_target,
+        if (fn_8007E8B4(state->player, &state->return_target,
                              12.0f, 60.0f) != 0) {
             state->player->actor->gravity = 0.0f;
             state->active = 0;

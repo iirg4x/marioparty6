@@ -1,4 +1,6 @@
 /* Solo Mode character selection, board setup and minigame results. */
+#include "REL/minigame_menu_heading.h"
+#include "REL/minigame_menu_motion.h"
 #include "math.h"
 #include <string.h>
 #include "dolphin/os.h"
@@ -43,6 +45,7 @@ BOOL SLSaveFlagGet(void);
 #include "game/window.h"
 #include "REL/mdsingdll/object_state.h"
 #include "REL/mdsingdll/settings.h"
+#include "REL/mdsingdll/stage_effects.h"
 #include "REL/mdsingdll/selection.h"
 #include "REL/mdsingdll/camera.h"
 #include "REL/mdsingdll/model.h"
@@ -72,7 +75,6 @@ typedef struct BitmapNameTable {
     char *name[4];
 } BITMAP_NAME_TABLE;
 
-typedef MDSING_MODEL LBL_1_BSS_E74_ENTRY;
 
 typedef struct {
     /* Model travel endpoints in world coordinates. */
@@ -316,90 +318,17 @@ void fn_1_2A4F4(void);
 s32 fn_1_2A81C(void);
 s32 fn_1_2AD60(void);
 s32 fn_1_2C158(void);
-float fn_1_2CF38(float startValue, float endValue, float time, float duration);
-float fn_1_2D020(float startValue, float endValue, float time, float duration);
-float fn_1_2D0FC(float startValue, float endValue, float elapsedFrames, float durationFrames);
-float fn_1_2D140(float currentValue, float targetValue, float weight);
-void fn_1_2D170(s16 layerNo);
-void fn_1_2D1DC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
-void fn_1_2D65C(OMOBJ *obj);
-void fn_1_2D75C(s16 textureSlot, HuVecF *position);
-void fn_1_2D850(OMOBJ *obj);
-void fn_1_2DA34(OMOBJ *obj);
-void fn_1_2DAE4(void);
-void fn_1_2DB34(void);
-void fn_1_2DC10(Point3d *position);
-void fn_1_2DCD0(s16 layerNo);
-void fn_1_2E68C(void);
-void fn_1_2E6B8(void);
-void fn_1_2E6DC(
-    s16 particleNo, float lifetime, float targetScale, HuVecF *position, GXColor color);
-void fn_1_2E7DC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_2EA9C(void);
-void fn_1_2EBB0(void);
-void fn_1_2EBDC(s16 effectNo, float durationFrames, HuVecF *position, GXColor color);
-void fn_1_2ECC4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_2F20C(void);
-void fn_1_2F3CC(void);
-void fn_1_2F424(void);
-void fn_1_2F4C4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_2FC50(void);
-void fn_1_2FD50(void);
-void fn_1_2FD7C(s16 effectNo, float durationFrames, HuVecF *position);
-void fn_1_2FE48(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_30730(void);
-void fn_1_308C4(void);
-void fn_1_3091C(HuVecF *pos, GXColor *color, float velocityY, float accelY);
-void fn_1_30A40(float velocityY, float velocityZ, HuVecF *position,
-    GXColor *color);
-void fn_1_30BE0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_31088(void);
-void fn_1_3116C(void);
-void fn_1_31198(s16 index, s16 visible);
-void fn_1_31214(s16 effectNo, HuVecF *position, GXColor *color);
-void fn_1_31318(s16 effectNo);
-void fn_1_313A0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_31818(void);
-void fn_1_31984(void);
-void fn_1_319DC(s16 index, s16 visible);
-void fn_1_31A58(s16 effectNo, HuVecF *position, GXColor *color);
-void fn_1_31B90(s16 effectNo);
-void fn_1_31BE4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_321E4(void);
-void fn_1_32350(void);
-void fn_1_323A8(s16 modelNo, HuVecF *pos, s16 display);
-void fn_1_3276C(s16 groupNo, s16 show);
-void fn_1_32820(s16 groupNo, HuVecF *spawnPosition, GXColor *color);
-void fn_1_32988(s16 groupNo);
-void fn_1_32A08(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix);
-void fn_1_32FB4(void);
-void fn_1_331E0(void);
-void fn_1_33264(HUPROCESS *process);
-void fn_1_33D84(void);
-void fn_1_33FC0(HuVecF *position);
-void fn_1_341B8(s16 particleNo, Point3d *position, s16 colorNo);
-void fn_1_344B4(s16 particleNo, HuVecF *position, s16 colorNo, s16 mode);
-void fn_1_34958(void);
-void fn_1_34A18(HuVecF *position);
-void fn_1_34FA4(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo);
 
 static inline float quadratic_interpolate(float start, float middle, float end, float time);
-static inline float fn_1_13A8_inlined(float startValue, float controlValue, float endValue,
+static inline float menuQuadraticPosition(float startValue, float controlValue, float endValue,
                                       float progress);
 static inline void fn_1_1404_inlined(
     HuVecF *dst, const HuVecF *start, const HuVecF *control, const HuVecF *end, float progress);
 static inline void fn_1_A18(s16 winNo);
 static inline void show_message_window(s16 winNo);
-static inline void set_message_window(s16 winNo, s32 messNum, s16 speed);
-static inline f32 fn_1_4C78_ease90_inlined(f32 start, f32 end, f32 elapsed, f32 duration);
-static inline f32 fn_1_4C78_ease180_inlined(f32 start, f32 end, f32 elapsed, f32 duration);
 static inline void fn_1_22A8_inlined(
     HU3D_MODELID modelId, const HuVecF *start, const HuVecF *control, const HuVecF *end,
     float time, float duration);
-static inline void fn_1_18AC_inlined(
-    HU3D_MODELID modelId, HuVecF *start, HuVecF *end, float time,
-    float duration);
-static inline void fn_1_1C14_inlined(HU3D_MODELID modelId, float rotY);
 static inline void fn_1_1D54_inlined(
     HU3D_MODELID modelId, HuVecF *start, HuVecF *end, float time,
     float duration, float rotY);
@@ -407,24 +336,16 @@ static inline f32 fn_1_10AC_inlined_inlined(f32 start, f32 control, f32 end, f32
 static inline void fn_1_1108_inlined_inlined(Point3d *destination, const Point3d *start,
                                              const Point3d *control, const Point3d *end,
                                              f32 progress);
-static inline void fn_1_89E0_inlined(OMOBJ *obj);
 static inline void fn_1_AB64_inlined(void);
 static inline void fn_1_AC88_inlined_inlined(void);
 static inline void fn_1_AF70(s32 modelNo);
 static inline void fn_1_122FC(s16 characterNo);
 static inline void fn_1_C28C_inlined(
     s16 modelNo, s16 elapsedFrames, s16 durationFrames, HuVecF *position, float scale);
-static inline void fn_1_8C28_inlined(s16 animNo);
-static inline void fn_1_8950_inlined(void);
 static inline void update_entry_display(s16 modelNo, s16 elapsedFrames,
     s16 durationFrames, const Vec *position, f32 scale);
 static inline f32 MdsingInterpolate(f32 start, f32 end, f32 elapsedFrames, f32 durationFrames);
 static inline void MdsingModelTransition(MDSING_MODEL *entry, s16 elapsedFrames);
-static inline void fn_1_8670_inlined(OMOBJ *obj);
-static inline void fn_1_3908_inlined(void);
-static inline void fn_1_48F4_inlined(void);
-static inline void fn_1_B998_inlined(void);
-static inline void fn_1_52B0_inlined_inlined(void);
 static inline s16 fn_1_381C_inlined_inlined(s16 winNo, s16 mode);
 static inline s16 fn_1_3F28_inlined_inlined(s16 mode);
 static inline s16 fn_1_3F28_inlined(s16 mode);
@@ -433,22 +354,13 @@ static inline s16 fn_1_2EF24_inlined(void);
 static inline s32 fn_1_5B48_inlined_inlined(void);
 static inline void fn_1_3474_inlined_inlined(s16 windowNo);
 static inline void fn_1_3B10_inlined_inlined(void);
-static inline void set_message_window_for_1AA1C(s16 windowNo, s32 messageNo, s16 speed);
 static inline void fn_1_4338_for_1AA1C(s32 messageNo);
-static inline void fn_1_3B8C_for_1AA1C(s16 windowNo);
 static inline void fn_1_3F0C_for_1AA1C(s16 windowNo, s32 messageNo, s16 speed);
 static inline void fn_1_35EC_for_1B5EC(s16 windowNo);
 static inline void fn_1_4338_for_1B5EC(s32 messageNo);
 static inline s16 fn_1_19A20_for_1B5EC(void);
-static inline void fn_1_64C_inlined_2(void);
-static inline void fn_1_7900_inlined(void);
 static inline s16 fn_1_2EF24_inlined_2(void);
-static inline s32 fn_1_1A494_for_20624(void);
-static inline void fn_1_5E8_for_20624(void);
-static inline void fn_1_1DCE0_for_20624(void);
-static inline void set_five_digits(s16 spriteGroup, s32 firstSprite, s16 value);
-static inline void fn_1_8BC0_for_26DFC(
-    s16 memberNo, Vec *worldPosition, float xOffset, float yOffset);
+static inline void fn_1_1A494_for_20624(void);
 static inline void mdsingResultPanelOpen(void);
 static inline void show_result_window(s16 winNo);
 static inline void fn_1_44E4_for_28B78(s32 messageNo);
@@ -698,7 +610,6 @@ MDSING_CHARACTER_NEIGHBORS lbl_1_data_AF4[11] = {
 
 char lbl_1_data_BBA[] = "\n-----===== retry setting ok!! =====-----\n\n";
 
-char lbl_1_data_BE6[] = "\n-----===== retry setting!! =====-----\n\n";
 
 
 s32 lbl_1_bss_13A4[5];
@@ -726,11 +637,11 @@ ANIMDATA *lbl_1_bss_11F4[25];
 MDSING_MODEL lbl_1_bss_E74[16];
 
 /* Motion paths for the guide and selected characters. */
-MDSING_MOTION_PATH lbl_1_bss_E14[2];
+MinigameMenuTrajectory lbl_1_bss_E14[2];
 
-MDSING_MOTION_PATH lbl_1_bss_DB4[2];
+MinigameMenuTrajectory lbl_1_bss_DB4[2];
 
-MDSING_MOTION_PATH lbl_1_bss_CF4[4];
+MinigameMenuTrajectory lbl_1_bss_CF4[4];
 
 /* Player-marker target/current scales in x/y; z is reset during initialization. */
 HuVecF lbl_1_bss_CDC[2];
@@ -843,22 +754,20 @@ void fn_1_0(HUWINID winId, u32 messageNo, s16 speakerNo)
     OSReport(lbl_1_data_8F0, (s16) speakerNo);
     if ((u32) lbl_1_data_8EC != messageNo) {
         lbl_1_data_8EC = messageNo;
-        messageIndex = 0;
-checkMessageSound:
-        if (sentinel[messageIndex] == -1) {
-            HuAudFXPlay(guideSounds[speakerNo]);
-            return;
-        }
-        if (messageNo == (u32) sentinel[messageIndex]) {
-            if (speakerNo >= 8) {
-                HuAudFXPlayPan(guideSounds[speakerNo], 80);
+        for (messageIndex = 0; ; messageIndex++) {
+            if (sentinel[messageIndex] == -1) {
+                HuAudFXPlay(guideSounds[speakerNo]);
                 return;
             }
-            HuAudFXPlayPan(guideSounds[speakerNo], 48);
-            return;
+            if (messageNo == (u32) sentinel[messageIndex]) {
+                if (speakerNo >= 8) {
+                    HuAudFXPlayPan(guideSounds[speakerNo], 80);
+                    return;
+                }
+                HuAudFXPlayPan(guideSounds[speakerNo], 48);
+                return;
+            }
         }
-        messageIndex += 1;
-        goto checkMessageSound;
     }
 }
 
@@ -975,8 +884,8 @@ void fn_1_3A0(void)
     }
 }
 
-/* Starts asynchronous board loading after releasing the Solo menu archive. */
-void fn_1_5E8(void)
+/* Reports the mode allocations, frees the Solo menu archive and starts board loading. */
+static inline void BoardLoadStart(void)
 {
     lbl_1_bss_34 = 0;
     OSReport(lbl_1_data_928);
@@ -988,6 +897,12 @@ void fn_1_5E8(void)
     OSReport(lbl_1_data_99D);
     fn_800097F4(DATANUM(0x9a0000, 0));
     fn_8000DAC0(fn_1_3A0, 256, 16384, 0, lbl_1_bss_0);
+}
+
+/* Starts asynchronous board loading after releasing the Solo menu archive. */
+void fn_1_5E8(void)
+{
+    BoardLoadStart();
 }
 
 /* Commits the selected character, difficulty and minigame pack before starting a Solo board. */
@@ -1318,24 +1233,13 @@ float fn_1_2154(float startValue, float peakValue, float elapsedFrames, float du
            ((peakValue - startValue) * sind((180.0f / durationFrames) * elapsedFrames));
 }
 
-/* Evaluates a quadratic path component for curved model movement. */
-static inline float fn_1_13A8_inlined(float startValue, float controlValue, float endValue,
-                                      float progress)
-{
-    float remaining = 1.0f - progress;
-
-    return (endValue * (progress * progress))
-        + ((startValue * (remaining * remaining))
-            + ((controlValue * (remaining * progress) * 2.0f)));
-}
-
 /* Evaluates the three coordinates of the curved movement path. */
 static inline void fn_1_1404_inlined(
     HuVecF *dst, const HuVecF *start, const HuVecF *control, const HuVecF *end, float progress)
 {
-    dst->x = fn_1_13A8_inlined(start->x, control->x, end->x, progress);
-    dst->y = fn_1_13A8_inlined(start->y, control->y, end->y, progress);
-    dst->z = fn_1_13A8_inlined(start->z, control->z, end->z, progress);
+    dst->x = menuQuadraticPosition(start->x, control->x, end->x, progress);
+    dst->y = menuQuadraticPosition(start->y, control->y, end->y, progress);
+    dst->z = menuQuadraticPosition(start->z, control->z, end->z, progress);
 }
 
 /* Moves a model along a curved path while turning it toward the next position. */
@@ -1386,20 +1290,25 @@ void fn_1_267C(void)
     }
 }
 
+/* Copy the center, rotation and zoom between two camera poses. */
+static inline void CopyCameraPose(HuVecF *center, HuVecF *rot, float *zoom,
+    const HuVecF *sourceCenter, const HuVecF *sourceRot, const float *sourceZoom)
+{
+    memcpy(center, sourceCenter, sizeof(HuVecF));
+    memcpy(rot, sourceRot, sizeof(HuVecF));
+    *zoom = *sourceZoom;
+}
+
 /* Snaps the camera's current center, rotation and zoom to the requested target. */
 void fn_1_26FC(MDSING_CAMERA_WORK *work)
 {
-    memcpy(&work->center, &work->targetCenter, sizeof(HuVecF));
-    memcpy(&work->rot, &work->targetRot, sizeof(HuVecF));
-    work->zoom = work->targetZoom;
+    CopyCameraPose(&work->center, &work->rot, &work->zoom, &work->targetCenter, &work->targetRot, &work->targetZoom);
 }
 
 /* Copies the current camera pose into its target before a new transition is prepared. */
 void fn_1_274C(MDMinidllCameraState *work)
 {
-    memcpy(&work->targetCenter, &work->center, sizeof(HuVecF));
-    memcpy(&work->targetRot, &work->rot, sizeof(HuVecF));
-    work->targetZoom = work->zoom;
+    CopyCameraPose(&work->targetCenter, &work->targetRot, &work->targetZoom, &work->center, &work->rot, &work->zoom);
 }
 
 /* Smooths the current camera pose toward its target during camera updates. */
@@ -1569,6 +1478,7 @@ void fn_1_365C(s16 winNo)
     }
 }
 
+/* Wait for the menu window to finish displaying its message. */
 void fn_1_36CC(s16 winNo)
 {
     HuWinMesWait(lbl_1_bss_1398[winNo]);
@@ -1592,8 +1502,8 @@ s16 fn_1_3708(s16 winNo, s16 mode)
     return choice;
 }
 
-/* Sets centered dialogue text and its reveal speed before the menu waits for input. */
-void fn_1_37DC(s16 winNo, s32 messNum, s16 speed)
+/* Displays a message in the center of the chosen window. */
+static inline void MessageWindowSet(s16 winNo, s32 messNum, s16 speed)
 {
     HuWinAttrSet(lbl_1_bss_1398[winNo], HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSet(lbl_1_bss_1398[winNo], messNum);
@@ -1603,6 +1513,12 @@ void fn_1_37DC(s16 winNo, s32 messNum, s16 speed)
     }
 }
 
+/* Sets centered dialogue text and its reveal speed before the menu waits for input. */
+void fn_1_37DC(s16 winNo, s32 messNum, s16 speed)
+{
+    MessageWindowSet(winNo, messNum, speed);
+}
+
 /* Replaces an inserted message when a menu updates a value inside its dialogue. */
 void fn_1_3898(s16 winNo, s32 messNum, s16 insertPos)
 {
@@ -1610,9 +1526,8 @@ void fn_1_3898(s16 winNo, s32 messNum, s16 insertPos)
     HuWinInsertMesSet(lbl_1_bss_1398[winNo], messNum, insertPos);
 }
 
-/* Creates the four dialogue and help windows, using controller one and the speaker sound
- * callback. */
-void fn_1_3908(void)
+/* Creates the guide windows and sets their sound callback. */
+static inline void GuideWindowsCreate(void)
 {
     s16 windowNo;
 
@@ -1633,6 +1548,13 @@ void fn_1_3908(void)
         winData[lbl_1_bss_1398[windowNo]].padMask = 1;
         HuWinCallbackSet(lbl_1_bss_1398[windowNo], fn_1_0);
     }
+}
+
+/* Creates the four dialogue and help windows, using controller one and the speaker sound
+ * callback. */
+void fn_1_3908(void)
+{
+    GuideWindowsCreate();
 }
 
 /* Destroys the Solo dialogue windows during mode teardown. */
@@ -1732,17 +1654,6 @@ static inline void show_message_window(s16 winNo)
     HuWinPosSet(lbl_1_bss_1398[0], 16.0f, 337.0f);
 }
 
-/* Sets centered menu text and resets the speaker sound cache for a new message. */
-static inline void set_message_window(s16 winNo, s32 messNum, s16 speed)
-{
-    HuWinAttrSet(lbl_1_bss_1398[winNo], HUWIN_ATTR_ALIGN_CENTER);
-    HuWinMesSet(lbl_1_bss_1398[winNo], messNum);
-    HuWinMesSpeedSet(lbl_1_bss_1398[winNo], speed);
-    if (lbl_1_data_8EC != messNum) {
-        lbl_1_data_8EC = -1;
-    }
-}
-
 /* Shows a persistent help message at the upper help-window position. */
 void fn_1_4338(s32 messNum)
 {
@@ -1753,7 +1664,7 @@ void fn_1_4338(s32 messNum)
     }
     if (lbl_1_data_A9C[2] != messNum) {
         lbl_1_data_A9C[2] = messNum;
-        set_message_window(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
+        MessageWindowSet(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
     }
 }
 
@@ -1768,7 +1679,7 @@ void fn_1_44E4(s32 messNum)
     }
     if (lbl_1_data_A9C[2] != messNum) {
         lbl_1_data_A9C[2] = messNum;
-        set_message_window(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
+        MessageWindowSet(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
     }
 }
 
@@ -1802,6 +1713,7 @@ void fn_1_473C(void)
     Hu3DShadowPosSet(&lightPosition, &upDirection, &targetPosition);
 }
 
+/* This entry point returns without changing state. */
 void fn_1_47F0(void)
 {
 }
@@ -1828,15 +1740,14 @@ void fn_1_4874(HUSPR_GROUPID groupId, s32 attr)
     }
 }
 
-/* Loads menu sprite animations and creates their groups and members, initially hidden. */
-void fn_1_48F4(void)
+/* Hide the guide sprite groups. */
+static inline void GuideSpriteGroupsHide(void)
 {
     MDSING_SPRITE_DESC *spriteDesc;
     s16 entryNo;
 
     for (entryNo = 0; entryNo < 25; entryNo++) {
-        lbl_1_bss_12A4[entryNo] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_32C[entryNo], 0x10000000, 2));
+        lbl_1_bss_12A4[entryNo] = HuSprAnimDataRead(lbl_1_data_32C[entryNo]);
     }
     for (entryNo = 0; entryNo < 9; entryNo++) {
         lbl_1_bss_1292[entryNo] = HuSprGrpCreate(lbl_1_data_390[entryNo]);
@@ -1859,6 +1770,13 @@ void fn_1_48F4(void)
     }
 }
 
+/* Loads menu sprite animations and creates their groups and members, initially hidden. */
+void fn_1_48F4(void)
+{
+    GuideSpriteGroupsHide();
+}
+
+/* This entry point returns without changing state. */
 void fn_1_4B40(void)
 {
 }
@@ -1873,7 +1791,7 @@ static inline f32 fn_1_4C78_ease90_inlined(f32 start, f32 end, f32 elapsed, f32 
         return end;
     }
     return (f32)((f64)start + (f64)(end - start) *
-        sin((3.141592653589793 * (f64)((90.0f / duration) * elapsed)) / 180.0));
+        sin((M_PI * (f64)((90.0f / duration) * elapsed)) / 180.0));
 }
 
 /* Raises and lowers a guide-linked effect coordinate over its flight. */
@@ -1883,15 +1801,16 @@ static inline f32 fn_1_4C78_ease180_inlined(f32 start, f32 end, f32 elapsed, f32
         return start;
     }
     return (f32)((f64)start + (f64)(end - start) *
-        sin((3.141592653589793 * (f64)((180.0f / duration) * elapsed)) / 180.0));
+        sin((M_PI * (f64)((180.0f / duration) * elapsed)) / 180.0));
 }
+
 
 /* Object callback: moves the guide-linked effects outward along arcing paths. */
 void fn_1_4B44(OMOBJ *obj)
 {
     HuVecF position;
-    MDSING_MOTION_PATH *first;
-    MDSING_MOTION_PATH *second;
+    MinigameMenuTrajectory *first;
+    MinigameMenuTrajectory *second;
     s16 completed;
     OMOBJ *firstObj;
     OMOBJ *secondObj;
@@ -1904,11 +1823,11 @@ void fn_1_4B44(OMOBJ *obj)
     first = lbl_1_bss_E14;
     second = &lbl_1_bss_E14[1];
     if (firstObj != NULL) {
-        position.x = fn_1_4C78_ease90_inlined(first->position.x, 500.0f,
+        position.x = fn_1_4C78_ease90_inlined(first->startPosition.x, 500.0f,
             first->elapsed, duration);
-        position.y = fn_1_4C78_ease180_inlined(first->position.y, 400.0f,
+        position.y = fn_1_4C78_ease180_inlined(first->startPosition.y, 400.0f,
             first->elapsed, duration);
-        position.z = first->position.z;
+        position.z = first->startPosition.z;
         if ((first->elapsed += 1.0f) > duration) {
             completed += 1;
             fn_1_323A8(0, NULL, 0);
@@ -1917,11 +1836,11 @@ void fn_1_4B44(OMOBJ *obj)
         }
     }
     if (secondObj != NULL) {
-        position.x = fn_1_4C78_ease90_inlined(second->position.x, -500.0f,
+        position.x = fn_1_4C78_ease90_inlined(second->startPosition.x, -500.0f,
             second->elapsed, duration);
-        position.y = fn_1_4C78_ease180_inlined(second->position.y, 400.0f,
+        position.y = fn_1_4C78_ease180_inlined(second->startPosition.y, 400.0f,
             second->elapsed, duration);
-        position.z = second->position.z;
+        position.z = second->startPosition.z;
         if ((second->elapsed += 1.0f) > duration) {
             completed += 1;
             fn_1_323A8(1, NULL, 0);
@@ -1940,17 +1859,17 @@ void fn_1_4F94(OMOBJ *obj)
 {
     OMOBJ *primaryObject = lbl_1_bss_C;
     OMOBJ *secondaryObject = NULL;
-    MDSING_MOTION_PATH *primaryPath = &lbl_1_bss_E14[0];
-    MDSING_MOTION_PATH *secondaryPath = &lbl_1_bss_E14[1];
+    MinigameMenuTrajectory *primaryPath = &lbl_1_bss_E14[0];
+    MinigameMenuTrajectory *secondaryPath = &lbl_1_bss_E14[1];
 
     if (primaryObject != NULL) {
-        Hu3DModelObjPosGet(primaryObject->mdlId[0], lbl_1_data_AA8, &primaryPath->position);
-        fn_1_323A8(0, &primaryPath->position, 1);
+        Hu3DModelObjPosGet(primaryObject->mdlId[0], lbl_1_data_AA8, &primaryPath->startPosition);
+        fn_1_323A8(0, &primaryPath->startPosition, 1);
         primaryPath->elapsed = 0.0f;
     }
     if (secondaryObject != NULL) {
-        Hu3DModelObjPosGet(secondaryObject->mdlId[0], lbl_1_data_AA8, &secondaryPath->position);
-        fn_1_323A8(1, &secondaryPath->position, 1);
+        Hu3DModelObjPosGet(secondaryObject->mdlId[0], lbl_1_data_AA8, &secondaryPath->startPosition);
+        fn_1_323A8(1, &secondaryPath->startPosition, 1);
         secondaryPath->elapsed = 0.0f;
     }
     if (++obj->work[0] > 30) {
@@ -2025,7 +1944,7 @@ static inline void fn_1_22A8_inlined(
  * finished. */
 void fn_1_5268(OMOBJ *obj)
 {
-    MDSING_MOTION_PATH *work = &lbl_1_bss_DB4[0];
+    MinigameMenuTrajectory *work = &lbl_1_bss_DB4[0];
     HuVecF pos;
 
     if (work->state == 0) {
@@ -2033,14 +1952,14 @@ void fn_1_5268(OMOBJ *obj)
         pos.y += 5.0f;
         fn_80026790(obj->mdlId[0], &pos);
         if ((work->elapsed += 1.0f) > work->duration) {
-            fn_800267CC(obj->mdlId[0], &work->position);
+            fn_800267CC(obj->mdlId[0], &work->startPosition);
             work->state = 1;
             work->elapsed = 0.0f;
             work->duration = 90.0f;
         }
     }
     if (work->state == 1) {
-        fn_1_22A8_inlined(obj->mdlId[0], &work->position, &work->controlPosition,
+        fn_1_22A8_inlined(obj->mdlId[0], &work->startPosition, &work->controlPosition,
             &work->endPosition, work->elapsed, work->duration);
         if ((work->elapsed += 1.0f) > work->duration) {
             HuAudFXStop(lbl_1_bss_13A4[0]);
@@ -2058,16 +1977,16 @@ void fn_1_5268(OMOBJ *obj)
  * updater. */
 void fn_1_57E4(void)
 {
-    MDSING_MOTION_PATH *work = &lbl_1_bss_DB4[0];
+    MinigameMenuTrajectory *work = &lbl_1_bss_DB4[0];
     OMOBJ *obj = lbl_1_bss_C;
 
     work->state = 0;
     work->elapsed = 0.0f;
     work->duration = 20.0f;
-    fn_800267CC(obj->mdlId[0], &work->position);
-    work->position.x = -325.0f;
-    work->position.y = 0.0f;
-    work->position.z = 100.0f;
+    fn_800267CC(obj->mdlId[0], &work->startPosition);
+    work->startPosition.x = -325.0f;
+    work->startPosition.y = 0.0f;
+    work->startPosition.z = 100.0f;
     fn_800267CC(obj->mdlId[0], &work->controlPosition);
     work->controlPosition.x = 0.0f;
     work->controlPosition.y = 400.0f;
@@ -2082,65 +2001,15 @@ void fn_1_57E4(void)
     obj->objFunc = fn_1_5268;
 }
 
-/* Moves a model along a straight path and smooths its facing during menu transitions. */
-static inline void fn_1_18AC_inlined(
-    HU3D_MODELID modelId, HuVecF *start, HuVecF *end, float time,
-    float duration)
-{
-    HuVecF previousPosition;
-    HuVecF previousRotation;
-    HuVecF nextPosition;
-    HuVecF nextRotation;
-
-    fn_800267CC(modelId, &previousPosition);
-    fn_80026874(modelId, &previousRotation);
-    nextPosition.x = fn_1_16F0(start->x, end->x, time, duration);
-    nextPosition.y = fn_1_16F0(start->y, end->y, time, duration);
-    nextPosition.z = fn_1_16F0(start->z, end->z, time, duration);
-    previousPosition.x -= nextPosition.x;
-    previousPosition.z -= nextPosition.z;
-    nextRotation.y = -(180.0 * (atan2(previousPosition.x,
-        -previousPosition.z) / 3.141592653589793));
-    if (previousRotation.y - nextRotation.y > 180.0f) {
-        previousRotation.y -= 360.0f;
-    } else if (previousRotation.y - nextRotation.y < -180.0f) {
-        previousRotation.y += 360.0f;
-    }
-    nextRotation.x = previousRotation.x;
-    nextRotation.y = fn_1_1494(previousRotation.y, nextRotation.y, 10.0f);
-    nextRotation.z = previousRotation.z;
-    fn_80026790(modelId, &nextPosition);
-    fn_80026838(modelId, &nextRotation);
-}
-
-/* Smooths a model toward its final Y rotation after a menu movement. */
-static inline void fn_1_1C14_inlined(HU3D_MODELID modelId, float rotY)
-{
-    HuVecF previousRotation;
-    HuVecF nextRotation;
-
-    fn_80026874(modelId, &previousRotation);
-    nextRotation.y = rotY;
-    if (previousRotation.y - nextRotation.y > 180.0f) {
-        previousRotation.y -= 360.0f;
-    } else if (previousRotation.y - nextRotation.y < -180.0f) {
-        previousRotation.y += 360.0f;
-    }
-    nextRotation.x = previousRotation.x;
-    nextRotation.y = fn_1_1494(previousRotation.y, nextRotation.y, 10.0f);
-    nextRotation.z = previousRotation.z;
-    fn_80026838(modelId, &nextRotation);
-}
-
 /* Updates straight model travel and then settles its final facing. */
 static inline void fn_1_1D54_inlined(
     HU3D_MODELID modelId, HuVecF *start, HuVecF *end, float time,
     float duration, float rotY)
 {
     if (time <= duration) {
-        fn_1_18AC_inlined(modelId, start, end, time, duration);
+        fn_1_1734(modelId, start, end, time, duration);
     } else {
-        fn_1_1C14_inlined(modelId, rotY);
+        fn_1_1A9C(modelId, rotY);
     }
 }
 
@@ -2273,7 +2142,7 @@ void fn_1_633C(OMOBJ *obj)
     Point3d previousPosition;
     Point3d position;
     MDSING_CHARACTER_SELECTION *selection;
-    MDSING_MOTION_PATH *path;
+    MinigameMenuTrajectory *path;
     s16 playerNo;
     s16 modelId;
     f32 curvedProgress;
@@ -2291,7 +2160,7 @@ void fn_1_633C(OMOBJ *obj)
             modelId = obj->mdlId[selection->characterNo];
             progress = fn_1_16F0(0.0f, 1.0f, elapsedFrames, durationFrames);
             curvedProgress = progress;
-            fn_1_1108_inlined_inlined(&position, &path->position, &path->controlPosition,
+            fn_1_1108_inlined_inlined(&position, &path->startPosition, &path->controlPosition,
                                       &path->endPosition, curvedProgress);
             fn_800267CC(modelId, &previousPosition);
             fn_80026874(modelId, &modelRotation);
@@ -2341,7 +2210,7 @@ void fn_1_68C0(void)
 {
     MDSING_CHARACTER_SELECTION *selection;
     OMOBJ *obj = lbl_1_bss_10;
-    MDSING_MOTION_PATH *path;
+    MinigameMenuTrajectory *path;
     s16 playerNo;
 
     for (playerNo = 0, selection = &lbl_1_bss_1308[playerNo]; playerNo < 2;
@@ -2350,7 +2219,7 @@ void fn_1_68C0(void)
         path->state = 1;
         path->elapsed = 0.0f;
         path->duration = 90.0f;
-        fn_800267CC(obj->mdlId[selection->characterNo], &path->position);
+        fn_800267CC(obj->mdlId[selection->characterNo], &path->startPosition);
         fn_800267CC(obj->mdlId[selection->characterNo], &path->controlPosition);
         path->controlPosition.x += 0.5f * path->controlPosition.x;
         path->controlPosition.y = 550.0f;
@@ -2531,11 +2400,7 @@ void fn_1_7668(void) {
         return;
     }
     HuSprGrpPosSet(lbl_1_bss_1292[0], 288.0f, 120.0f);
-    groupId = lbl_1_bss_1292[0];
-    group = &HuSprGrpData[groupId];
-    for (memberNo = 0; memberNo < group->sprNum; memberNo++) {
-        HuSprAttrReset(groupId, memberNo, HUSPR_ATTR_DISPOFF);
-    }
+    fn_1_4874(lbl_1_bss_1292[0], HUSPR_ATTR_DISPOFF);
 }
 
 /* Start the board title fade by installing its update callback. */
@@ -2632,8 +2497,8 @@ void fn_1_7B94(void)
     HuSprGrpTPLvlSet(lbl_1_bss_1292[1], 0.0f);
 }
 
-/* Advance the heading group's requested fade once per object update. */
-void fn_1_7BF4(OMOBJ *obj)
+/* Updates the alpha of the fading sprite group. */
+static inline void SpriteFadeUpdate(OMOBJ *obj)
 {
     float alpha;
 
@@ -2655,6 +2520,12 @@ void fn_1_7BF4(OMOBJ *obj)
             }
             break;
     }
+}
+
+/* Advance the heading group's requested fade once per object update. */
+void fn_1_7BF4(OMOBJ *obj)
+{
+    SpriteFadeUpdate(obj);
 }
 
 /* Change the background texture animations for the selected menu entry and start its fade. */
@@ -2679,31 +2550,6 @@ void fn_1_7EE0(void)
     headingObject = lbl_1_bss_8;
     headingObject->work[2] = 2;
     headingObject->work[3] = 0;
-}
-
-/* Advance the heading fade from the rotating background's update callback. */
-static inline void fn_1_89E0_inlined(OMOBJ *obj)
-{
-    float alpha;
-
-    switch (obj->work[2]) {
-        case 1:
-            alpha = fn_1_16F0(
-                0.0f, 1.0f, obj->work[3], 10.0f);
-            HuSprGrpTPLvlSet(lbl_1_bss_1292[1], alpha);
-            if (++obj->work[3] > 10) {
-                obj->work[2] = 0;
-            }
-            break;
-        case 2:
-            alpha = fn_1_16F0(
-                1.0f, 0.0f, obj->work[3], 10.0f);
-            HuSprGrpTPLvlSet(lbl_1_bss_1292[1], alpha);
-            if (++obj->work[3] > 10) {
-                obj->work[2] = 0;
-            }
-            break;
-    }
 }
 
 /* Rotate the menu background and advance its model and heading fades each frame. */
@@ -2739,7 +2585,7 @@ void fn_1_7F34(OMOBJ *obj)
             }
             break;
     }
-    fn_1_89E0_inlined(obj);
+    SpriteFadeUpdate(obj);
 }
 
 /* Create the rotating menu background and its texture animations during menu setup. */
@@ -2848,6 +2694,7 @@ void fn_1_8A80(OMOBJ *obj)
     obj->objFunc = fn_1_8880;
 }
 
+/* This entry point returns without changing state. */
 void fn_1_8B24(void)
 {
 }
@@ -3368,12 +3215,10 @@ void fn_1_B998(void)
     s16 animationNo;
 
     for (entryNo = 0; entryNo < 25; entryNo++) {
-        lbl_1_bss_11F4[entryNo] = HuSprAnimRead(
-            fn_80008DD0(
-                lbl_1_data_744[entryNo], 0x10000000, 2));
+        lbl_1_bss_11F4[entryNo] = HuSprAnimDataRead(lbl_1_data_744[entryNo]);
     }
     for (entryNo = 0; entryNo < 16; entryNo++) {
-        memset(&lbl_1_bss_E74[entryNo], 0, sizeof(LBL_1_BSS_E74_ENTRY));
+        memset(&lbl_1_bss_E74[entryNo], 0, sizeof(MDSING_MODEL));
         if (entryNo == 0) {
             lbl_1_bss_E74[entryNo].modelId = fn_80025A04(
                 fn_80008DD0(
@@ -3456,7 +3301,7 @@ void fn_1_BDA8(OMOBJ *obj)
                 {
                     fn_1_8F64(
                         playerNo,
-                        (Vec *)&lbl_1_data_7A8[selection->characterNo + 10]);
+                        &lbl_1_data_7A8[selection->characterNo + 10]);
                     obj->work[0] = 0;
                 }
                 else
@@ -3577,7 +3422,7 @@ void fn_1_C724(OMOBJ *obj)
                             0, &choice->characterNo, lbl_1_data_AF4, 11)) {
                         fn_1_8F64(
                             playerNo,
-                            (Vec *)&lbl_1_data_7A8[choice->characterNo + 10]);
+                            &lbl_1_data_7A8[choice->characterNo + 10]);
                         obj->work[0] = 0;
                     } else if (lbl_802C0008[0] & PAD_BUTTON_A) {
                         if (lbl_1_bss_30 == 0 && choice->characterNo == 10) {
@@ -3682,11 +3527,9 @@ void fn_1_CE2C(OMOBJ *obj)
 /* Reset player choices and spin the character cards into view when character selection opens. */
 void fn_1_CF94(OMOBJ *obj)
 {
-    MDSING_CHARACTER_SELECTION *player;
     MDSING_MODEL *entry;
     float animatedValue;
     s16 characterNo;
-    s16 playerNo;
     s16 elapsedFrames;
 
     if (obj->work[0] == 0) {
@@ -3699,18 +3542,7 @@ void fn_1_CF94(OMOBJ *obj)
         if (lbl_1_bss_30 == 0) {
             fn_1_A450(10, 11);
         }
-        for (playerNo = 0, player = lbl_1_bss_1308; playerNo < 4;
-             playerNo++, player++) {
-            player->choiceState = 0;
-            player->setupValue = 0;
-            player->isComputer = 0;
-            if (playerNo != 0) {
-                player->isComputer = 1;
-            }
-            player->difficulty = 0;
-            player->characterNo = 0;
-            player->padNo = playerNo;
-        }
+        fn_1_267C();
     }
     for (characterNo = 0; characterNo < 11; characterNo++) {
         elapsedFrames = obj->work[0];
@@ -3769,12 +3601,37 @@ void fn_1_D57C(OMOBJ *obj)
     }
 }
 
+/* Rotate and shrink one card during a menu transition. */
+static inline void SpinCardAway(MDSING_MODEL *entry, s16 elapsedFrames)
+{
+    float value;
+
+    if (elapsedFrames == 0) {
+        if (lbl_1_bss_3C == 0) {
+            HuAudFXPlay(53);
+            lbl_1_bss_3C = 1;
+        }
+        fn_800267CC(entry->modelId, &entry->position);
+        fn_80026874(entry->modelId, &entry->rotation);
+        fn_8002691C(entry->modelId, &entry->scale);
+    } else {
+        lbl_1_bss_3C = 0;
+    }
+    value = fn_1_16F0(
+        entry->rotation.y, entry->rotation.y - 540.0f, elapsedFrames, 10.0f);
+    fn_80026808(entry->modelId, 0.0f, value, 0.0f);
+    value = fn_1_16F0(entry->scale.x, 0.0f, elapsedFrames, 10.0f);
+    fn_800268B0(entry->modelId, value, value, 1.0f);
+    if (elapsedFrames <= 10) {
+        fn_80026A44(entry->modelId, (1 << 0));
+    }
+}
+
 /* Shrink both player markers and spin the selected character cards away during a transition. */
 void fn_1_DE98(OMOBJ *obj)
 {
     MDSING_CHARACTER_SELECTION *player;
     MDSING_MODEL *entry;
-    float modelValue;
     s32 characterModelIndex;
     s16 playerNo;
     s16 elapsedFrames;
@@ -3788,25 +3645,7 @@ void fn_1_DE98(OMOBJ *obj)
         elapsedFrames = obj->work[0];
         characterModelIndex = (s16)player->characterNo;
         entry = &lbl_1_bss_E74[characterModelIndex];
-        if (elapsedFrames == 0) {
-            if (lbl_1_bss_3C == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_3C = 1;
-            }
-            fn_800267CC(entry->modelId, &entry->position);
-            fn_80026874(entry->modelId, &entry->rotation);
-            fn_8002691C(entry->modelId, &entry->scale);
-        } else {
-            lbl_1_bss_3C = 0;
-        }
-        modelValue = fn_1_16F0(
-            entry->rotation.y, entry->rotation.y - 540.0f, elapsedFrames, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, modelValue, 0.0f);
-        modelValue = fn_1_16F0(entry->scale.x, 0.0f, elapsedFrames, 10.0f);
-        fn_800268B0(entry->modelId, modelValue, modelValue, 1.0f);
-        if (elapsedFrames <= 10) {
-            fn_80026A44(entry->modelId, (1 << 0));
-        }
+        SpinCardAway(entry, elapsedFrames);
     }
     if (obj->work[0]++ > 10) {
         obj->objFunc = NULL;
@@ -3881,7 +3720,6 @@ void fn_1_EA7C(OMOBJ *obj)
 
     if (obj->work[0]++ >= 10) {
         if (lbl_802BFFE0[0] & PAD_BUTTON_LEFT) {
-            OMOBJ *workObj;
             s16 memberNo;
 
             lbl_1_bss_1340.boardNo--;
@@ -3891,21 +3729,12 @@ void fn_1_EA7C(OMOBJ *obj)
             obj->work[0] = 0;
             obj->work[1] = 0;
             memberNo = lbl_1_bss_1340.boardNo;
-            workObj = lbl_1_bss_8;
-            HuSprGrpPosSet(
-                lbl_1_bss_1292[1], 288.0f, 60.0f);
-            HuSprGrpTPLvlSet(lbl_1_bss_1292[1], 0.0f);
-            fn_1_47F4(lbl_1_bss_1292[1], HUSPR_ATTR_DISPOFF);
-            HuSprAttrReset(
-                lbl_1_bss_1292[1], memberNo, HUSPR_ATTR_DISPOFF);
-            workObj->work[2] = 1;
-            workObj->work[3] = 0;
+            fn_1_7A60(memberNo);
             lbl_1_bss_C94[0] = 2.0f;
             if (lbl_1_data_AC8[0] == 1) {
                 HuAudFXPlay(0);
             }
         } else if (lbl_802BFFE0[0] & PAD_BUTTON_RIGHT) {
-            OMOBJ *workObj;
             s16 memberNo;
 
             lbl_1_bss_1340.boardNo++;
@@ -3915,15 +3744,7 @@ void fn_1_EA7C(OMOBJ *obj)
             obj->work[0] = 0;
             obj->work[1] = 1;
             memberNo = lbl_1_bss_1340.boardNo;
-            workObj = lbl_1_bss_8;
-            HuSprGrpPosSet(
-                lbl_1_bss_1292[1], 288.0f, 60.0f);
-            HuSprGrpTPLvlSet(lbl_1_bss_1292[1], 0.0f);
-            fn_1_47F4(lbl_1_bss_1292[1], HUSPR_ATTR_DISPOFF);
-            HuSprAttrReset(
-                lbl_1_bss_1292[1], memberNo, HUSPR_ATTR_DISPOFF);
-            workObj->work[2] = 1;
-            workObj->work[3] = 0;
+            fn_1_7A60(memberNo);
             lbl_1_bss_C94[1] = 2.0f;
             if (lbl_1_data_AC8[1] == 1) {
                 HuAudFXPlay(0);
@@ -4047,19 +3868,6 @@ void fn_1_FCC8(OMOBJ *obj)
     }
 }
 
-/* Switch the background textures to the chosen board and begin their model fade. */
-static inline void fn_1_8C28_inlined(s16 animNo)
-{
-    OMOBJ *obj = lbl_1_bss_8;
-
-    fn_80030D50(
-        obj->mtnId[2], lbl_1_bss_12A4[(2 * animNo) + 3]);
-    fn_80030D50(
-        obj->mtnId[3], lbl_1_bss_12A4[(2 * animNo) + 4]);
-    obj->work[0] = 1;
-    obj->work[1] = 0;
-}
-
 /* Dismiss unchosen board cards and animate the chosen card into the background transition. */
 void fn_1_FD5C(OMOBJ *obj)
 {
@@ -4086,7 +3894,7 @@ void fn_1_FD5C(OMOBJ *obj)
         fn_80025980(2);
         fn_1_33FC0(&lbl_1_data_7A8[9]);
         HuAudFXPlay(1182);
-        fn_1_8C28_inlined(lbl_1_bss_1340.boardNo);
+        fn_1_7E3C(lbl_1_bss_1340.boardNo);
         fn_800269E8(
             lbl_1_bss_E74[lbl_1_bss_1340.boardNo + 11].modelId,
             (1 << 0));
@@ -4103,7 +3911,6 @@ void fn_1_10744(OMOBJ *obj)
     MDSING_MODEL *entry;
     s16 boardNo;
     OMOBJ *workObj;
-    float animatedValue;
     s16 elapsedFrames;
 
     if (obj->work[0] == 0) {
@@ -4114,25 +3921,7 @@ void fn_1_10744(OMOBJ *obj)
     for (boardNo = 0; boardNo < 3; boardNo++) {
         elapsedFrames = obj->work[0];
         entry = &lbl_1_bss_E74[(s16)(boardNo + 11)];
-        if (elapsedFrames == 0) {
-            if (lbl_1_bss_3C == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_3C = 1;
-            }
-            fn_800267CC(entry->modelId, &entry->position);
-            fn_80026874(entry->modelId, &entry->rotation);
-            fn_8002691C(entry->modelId, &entry->scale);
-        } else {
-            lbl_1_bss_3C = 0;
-        }
-        animatedValue = fn_1_16F0(
-            entry->rotation.y, entry->rotation.y - 540.0f, elapsedFrames, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, animatedValue, 0.0f);
-        animatedValue = fn_1_16F0(entry->scale.x, 0.0f, elapsedFrames, 10.0f);
-        fn_800268B0(entry->modelId, animatedValue, animatedValue, 1.0f);
-        if (elapsedFrames <= 10) {
-            fn_80026A44(entry->modelId, (1 << 0));
-        }
+        SpinCardAway(entry, elapsedFrames);
     }
     if (obj->work[0]++ > 10) {
         fn_80025980(2);
@@ -4192,15 +3981,6 @@ void fn_1_119E8(OMOBJ *obj)
     }
 }
 
-/* Start fading the heading out during a menu transition. */
-static inline void fn_1_8950_inlined(void)
-{
-    OMOBJ *obj = lbl_1_bss_8;
-
-    obj->work[2] = 2;
-    obj->work[3] = 0;
-}
-
 /* Dismiss the settings and character cards while fading the background and heading. */
 void fn_1_1241C(OMOBJ *obj)
 {
@@ -4212,7 +3992,7 @@ void fn_1_1241C(OMOBJ *obj)
         workObj = lbl_1_bss_8;
         workObj->work[0] = 2;
         workObj->work[1] = 0;
-        fn_1_8950_inlined();
+        minigameMenuHeadingFadeOut(lbl_1_bss_8);
         for (playerNo = 0; playerNo < 2; playerNo++) {
             lbl_1_bss_CDC[playerNo].x = 0.0f;
         }
@@ -4260,13 +4040,6 @@ void fn_1_13D38(OMOBJ *object) {
     Point3d model15RotationB;
     Point3d choicePositionA;
     Point3d choicePositionB;
-    MDSING_MODEL *model14AnimationA;
-    MDSING_MODEL *model14AnimationB;
-    MDSING_MODEL *model14AnimationC;
-    MDSING_MODEL *model14AnimationD;
-    MDSING_MODEL *model15AnimationA;
-    MDSING_MODEL *model15AnimationB;
-    MDSING_MODEL *model15AnimationC;
     MDSING_MODEL *model15AnimationD;
     s16 selectedModelType;
     s16 selectedModelOption;
@@ -4475,8 +4248,8 @@ void fn_1_15280(OMOBJ *obj)
     if (obj->work[0] == 0)
     {
         lbl_1_bss_1340.settingsRow = 0;
-        lbl_1_bss_1340.difficulty = (((u8 *) & lbl_80265E30)[1069] >> 5) & 3;
-        lbl_1_bss_1340.minigamePack = (((u8 *) & lbl_80265E30)[1066] >> 1) & 7;
+        lbl_1_bss_1340.difficulty = lbl_80265E30.confSingleDiff;
+        lbl_1_bss_1340.minigamePack = lbl_80265E30.storyMgPack;
         difficultyTexture = lbl_1_bss_1340.difficulty + 15;
         for (difficultySurfaceNo = 0; difficultySurfaceNo < 4; difficultySurfaceNo++)
         {
@@ -4680,26 +4453,6 @@ void fn_1_16E70(OMOBJ *obj)
     }
 }
 
-/* Release the background animations and linked models during full menu teardown. */
-static inline void fn_1_8670_inlined(OMOBJ *obj)
-{
-    s16 modelNo;
-
-    if (obj) {
-        for (modelNo = 0; modelNo < 2; modelNo++) {
-            fn_80031010(obj->mtnId[2 * modelNo]);
-            fn_80031010(obj->mtnId[(2 * modelNo) + 1]);
-            obj->mtnId[2 * modelNo] = -1;
-            obj->mtnId[(2 * modelNo) + 1] = -1;
-        }
-        for (modelNo = 1; modelNo >= 0; modelNo--) {
-            fn_800262D0(obj->mdlId[modelNo]);
-        }
-        omDelObjEx(lbl_1_bss_0, obj);
-    }
-    obj = NULL;
-}
-
 /* Release the Solo menu objects, cards, windows, lights, and camera before changing overlays. */
 void fn_1_1750C(void)
 {
@@ -4726,7 +4479,7 @@ void fn_1_1750C(void)
     }
     setupObj = NULL;
 
-    fn_1_8670_inlined(lbl_1_bss_8);
+    fn_1_8670(lbl_1_bss_8);
 
     characterObj = lbl_1_bss_C;
     if (characterObj) {
@@ -4780,12 +4533,7 @@ void fn_1_1750C(void)
     HuWinAllKill();
     Hu3DGLightKill(lbl_1_bss_13A0[0]);
     Hu3DGLightKill(lbl_1_bss_13A0[1]);
-    cameraWork = &lbl_1_bss_1348;
-    Hu3DCameraKill(1);
-    if (cameraWork->obj) {
-        omDelObjEx(lbl_1_bss_0, cameraWork->obj);
-    }
-    cameraWork->obj = NULL;
+    fn_1_3428();
 }
 
 /* Finish Solo menu teardown and return to the previous overlay once the outgoing wipe ends. */
@@ -4834,47 +4582,9 @@ void fn_1_179B0(void)
     }
     fn_1_1750C();
     if (result == 2) {
-        OMOVLHIS *readHistory;
-
-        do {
-            HuPrcVSleep();
-        } while (lbl_1_bss_34 == 0);
-        readHistory = omOvlHisGet(0);
-        omOvlHisChg(0, readHistory->ovl, 1, lbl_1_bss_1308[1].characterNo);
-        OSReport(lbl_1_data_9A3);
-        OSReport(lbl_1_data_95A, _effect);
-        OSReport(lbl_1_data_96B, _gamemes);
-        OSReport(lbl_1_data_97D, _mgconst);
-        OSReport(lbl_1_data_98F, _win);
-        HuAMemDump();
-        OSReport(lbl_1_data_99D);
-        switch (lbl_1_bss_1340.boardNo) {
-        case 0:
-            omOvlCallEx(114, 1, 0, 0);
-            break;
-        case 1:
-            omOvlCallEx(115, 1, 0, 0);
-            break;
-        case 2:
-            omOvlCallEx(116, 1, 0, 0);
-            break;
-        }
+        fn_1_EA0();
     } else if (result == 1) {
-        OMOVLHIS *returnHistory;
-
-        do {
-            HuPrcVSleep();
-        } while (lbl_1_bss_34 == 0);
-        returnHistory = omOvlHisGet(0);
-        omOvlHisChg(0, returnHistory->ovl, 2, 0);
-        OSReport(lbl_1_data_9A3);
-        OSReport(lbl_1_data_95A, _effect);
-        OSReport(lbl_1_data_96B, _gamemes);
-        OSReport(lbl_1_data_97D, _mgconst);
-        OSReport(lbl_1_data_98F, _win);
-        HuAMemDump();
-        OSReport(lbl_1_data_99D);
-        omOvlCallEx(130, 1, 0, 0);
+        fn_1_FEC();
     } else {
         fn_800567D8(-1);
         HuARDirFree(DATANUM(0x50000, 0));
@@ -4895,118 +4605,14 @@ void fn_1_179B0(void)
     }
 }
 
-/* Create the Solo dialogue windows and restrict their input to controller zero during setup. */
-static inline void fn_1_3908_inlined(void)
-{
-    s16 windowNo;
-
-    HuWinInit(1);
-    lbl_1_bss_1398[0] = HuWinExCreateFrame(16.0f, 337.0f, 544, 42, -1, 0);
-    HuWinDispOff(lbl_1_bss_1398[0]);
-    HuWinBGTPLvlSet(lbl_1_bss_1398[0], 0.0f);
-    lbl_1_bss_1398[1] = HuWinExCreateFrame(16.0f, 372.0f, 544, 68, -1, 0);
-    HuWinDispOff(lbl_1_bss_1398[1]);
-    HuWinBGTPLvlSet(lbl_1_bss_1398[1], 0.9f);
-    lbl_1_bss_1398[2] = HuWinExCreateFrame(16.0f, 372.0f, 544, 68, -1, 3);
-    HuWinDispOff(lbl_1_bss_1398[2]);
-    HuWinBGTPLvlSet(lbl_1_bss_1398[2], 0.9f);
-    lbl_1_bss_1398[3] = HuWinExCreateFrame(16.0f, 372.0f, 544, 68, -1, 4);
-    HuWinDispOff(lbl_1_bss_1398[3]);
-    HuWinBGTPLvlSet(lbl_1_bss_1398[3], 0.9f);
-    for (windowNo = 0; windowNo < 4; windowNo++) {
-        winData[lbl_1_bss_1398[windowNo]].padMask = 1;
-        HuWinCallbackSet(lbl_1_bss_1398[windowNo], fn_1_0);
-    }
-}
-
-/* Load and arrange Solo menu sprite groups, leaving them hidden until their screens open. */
-static inline void fn_1_48F4_inlined(void)
-{
-    MDSING_SPRITE_DESC *spriteDesc;
-    s16 entryNo;
-
-    for (entryNo = 0; entryNo < 25; entryNo++) {
-        lbl_1_bss_12A4[entryNo] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_32C[entryNo], 0x10000000, 2));
-    }
-    for (entryNo = 0; entryNo < 9; entryNo++) {
-        lbl_1_bss_1292[entryNo] = HuSprGrpCreate(lbl_1_data_390[entryNo]);
-    }
-    for (entryNo = 0, spriteDesc = lbl_1_data_3A4; entryNo < 29; entryNo++, spriteDesc++) {
-        lbl_1_bss_1258[entryNo] = HuSprCreate(
-            lbl_1_bss_12A4[spriteDesc->animNo], spriteDesc->priority, spriteDesc->bank);
-        HuSprGrpMemberSet(lbl_1_bss_1292[spriteDesc->groupNo], spriteDesc->memberNo,
-            lbl_1_bss_1258[entryNo]);
-        HuSprPosSet(lbl_1_bss_1292[spriteDesc->groupNo], spriteDesc->memberNo,
-            spriteDesc->pos.x, spriteDesc->pos.y);
-        HuSprScaleSet(lbl_1_bss_1292[spriteDesc->groupNo], spriteDesc->memberNo,
-            spriteDesc->scale.x, spriteDesc->scale.y);
-        HuSprZRotSet(lbl_1_bss_1292[spriteDesc->groupNo], spriteDesc->memberNo,
-            spriteDesc->zRot);
-    }
-    for (entryNo = 0; entryNo < 9; entryNo++) {
-        fn_1_47F4(lbl_1_bss_1292[entryNo], 4);
-    }
-}
-
-/* Load menu card textures and linked models while the Solo menu is initialized. */
-static inline void fn_1_B998_inlined(void)
-{
-    BITMAP_NAME_TABLE bitmapName = lbl_1_rodata_270;
-    s16 entryNo;
-    s16 animationNo;
-
-    for (entryNo = 0; entryNo < 25; entryNo++) {
-        lbl_1_bss_11F4[entryNo] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_744[entryNo], 0x10000000, 2));
-    }
-    for (entryNo = 0; entryNo < 16; entryNo++) {
-        memset(&lbl_1_bss_E74[entryNo], 0, sizeof(MDSING_MODEL));
-        if (entryNo == 0) {
-            lbl_1_bss_E74[entryNo].modelId = fn_80025A04(
-                fn_80008DD0(DATANUM(0x9a0000, 21),
-                    0x10000000, 2));
-        } else {
-            lbl_1_bss_E74[entryNo].modelId =
-                fn_80025D4C(lbl_1_bss_E74[0].modelId);
-        }
-        for (animationNo = 0; animationNo < 4; animationNo++) {
-            lbl_1_bss_E74[entryNo].animationId[animationNo] = fn_80030B2C(
-                lbl_1_bss_11F4[0], lbl_1_bss_E74[entryNo].modelId,
-                bitmapName.name[animationNo]);
-        }
-        fn_80026B8C(lbl_1_bss_E74[entryNo].modelId, 1);
-        fn_800269E8(lbl_1_bss_E74[entryNo].modelId, (1 << 0));
-    }
-    lbl_1_bss_24 = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, NULL);
-}
-
 /* Create the Solo menu scene and start its setup process on entry or return from a board. */
 void fn_1_17D38(void) {
-    MDSING_CAMERA_WORK *cameraWork;
     Point3d shadowTarget;
     Point3d shadowUp;
     Point3d shadowCenter;
 
     lbl_1_bss_0 = fn_8003A8BC(27, 8192);
-    cameraWork = &lbl_1_bss_1348;
-    Hu3DCameraCreate(1);
-    Hu3DCameraPerspectiveSet(1, 30.0f, 10.0f, 10000.0f, 1.2f);
-    Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
-    memset(cameraWork, 0, 80U);
-    cameraWork->callback = fn_1_18DB0;
-    cameraWork->center.x = 0.0f;
-    cameraWork->center.y = 65.0f;
-    cameraWork->center.z = -800.0f;
-    cameraWork->rot.x = -7.25f;
-    cameraWork->rot.y = 0.0f;
-    cameraWork->rot.z = 0.0f;
-    if (lbl_1_bss_28 == 0) {
-        cameraWork->zoom = 2650.0f;
-    } else {
-        cameraWork->zoom = 2150.0f;
-    }
-    cameraWork->obj = fn_8003AB38(lbl_1_bss_0, 2304, 16U, 16U, -1, fn_1_31BC);
+    fn_1_328C(fn_1_18DB0);
     lbl_1_bss_13A0[0] = Hu3DGLightCreate(
         0.0f, 1.0f, 1.0f, 0.0f, -1.0f, -1.0f, 255U, 255U, 255U);
     Hu3DGLightInfinitytSet(lbl_1_bss_13A0[0]);
@@ -5015,14 +4621,14 @@ void fn_1_17D38(void) {
         -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 255U, 255U, 255U);
     Hu3DGLightInfinitytSet(lbl_1_bss_13A0[1]);
     Hu3DGLightStaticSet(lbl_1_bss_13A0[1], 1);
-    fn_1_3908_inlined();
+    GuideWindowsCreate();
     shadowCenter = lbl_1_rodata_108;
     shadowUp = lbl_1_rodata_114;
     shadowTarget = lbl_1_rodata_120;
     Hu3DShadowCreate(30.0f, 10.0f, 10000.0f);
     Hu3DShadowPosSet(&shadowCenter, &shadowUp, &shadowTarget);
-    fn_1_48F4_inlined();
-    fn_1_B998_inlined();
+    GuideSpriteGroupsHide();
+    fn_1_B998();
     fn_1_33264(lbl_1_bss_0);
     lbl_1_bss_4 = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, fn_1_77C0);
     lbl_1_bss_8 = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, fn_1_842C);
@@ -5046,34 +4652,9 @@ void fn_1_17D38(void) {
 /* Wait for board data to be ready, then reenter the selected Solo board. */
 void fn_1_188C0(void)
 {
-    OMOVLHIS *history;
-
     HuPrcVSleep();
     OSReport(lbl_1_data_BBA);
-    do {
-        HuPrcVSleep();
-    } while (lbl_1_bss_34 == 0);
-
-    history = omOvlHisGet(0);
-    omOvlHisChg(0, history->ovl, 1, lbl_1_bss_1308[1].characterNo);
-    OSReport(lbl_1_data_9A3);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
-    HuAMemDump();
-    OSReport(lbl_1_data_99D);
-    switch (lbl_1_bss_1340.boardNo) {
-        case 0:
-            omOvlCallEx(114, 1, 0, 0);
-            break;
-        case 1:
-            omOvlCallEx(115, 1, 0, 0);
-            break;
-        case 2:
-            omOvlCallEx(116, 1, 0, 0);
-            break;
-    }
+    fn_1_EA0();
     HuPrcEnd();
     while (TRUE) {
         HuPrcVSleep();
@@ -5087,7 +4668,7 @@ void fn_1_18A18(void)
     fn_1_193B0();
     fn_1_6B4();
     lbl_1_bss_34 = 1;
-    OSReport(lbl_1_data_BE6);
+    OSReport("\n-----===== retry setting!! =====-----\n\n");
     fn_8000DAC0(fn_1_188C0, 12288, 12288, 0, lbl_1_bss_0);
 }
 
@@ -5114,7 +4695,7 @@ void ObjectSetup(void)
         fn_1_193B0();
         fn_1_6B4();
         lbl_1_bss_34 = 1;
-        OSReport(lbl_1_data_BE6);
+        OSReport("\n-----===== retry setting!! =====-----\n\n");
         fn_8000DAC0(fn_1_188C0, 12288U, 12288U, 0, lbl_1_bss_0);
         return;
     }
@@ -5233,6 +4814,21 @@ void fn_1_193B0(void)
     lbl_1_bss_1308[1].padNo = 0;
 }
 
+/* Pose the selected character and fade in the Solo scene. */
+static inline void FadeInSoloMenu(void)
+{
+    if (lbl_1_bss_28 == 1) {
+        fn_80026A44(lbl_1_bss_10->mdlId[lbl_1_bss_22], (1 << 0));
+        fn_8002CCC0(lbl_1_bss_10->mdlId[lbl_1_bss_22],
+            lbl_1_bss_10->mtnId[35], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
+        fn_80026760(lbl_1_bss_10->mdlId[lbl_1_bss_22], 0.0f, 0.0f, 0.0f);
+    }
+    WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
+    while (WipeCheck() != 0) {
+        HuPrcVSleep();
+    }
+}
+
 /* Start entry-specific music and the incoming wipe before the Solo menu sequence continues. */
 s32 fn_1_19570(void)
 {
@@ -5252,17 +4848,7 @@ s32 fn_1_19570(void)
         lbl_1_data_320[2] = HuAudSStreamPlay(MSM_STREAM_TOO_BAD);
     }
 music_started:
-    if (lbl_1_bss_28 == 1) {
-        fn_80026A44(lbl_1_bss_10->mdlId[lbl_1_bss_22], (1 << 0));
-        fn_8002CCC0(lbl_1_bss_10->mdlId[lbl_1_bss_22],
-                           lbl_1_bss_10->mtnId[35],
-                           0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-        fn_80026760(lbl_1_bss_10->mdlId[lbl_1_bss_22], 0.0f, 0.0f, 0.0f);
-    }
-    WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
-    while (WipeCheck() != 0) {
-        HuPrcVSleep();
-    }
+    FadeInSoloMenu();
     return 1;
 }
 
@@ -5274,17 +4860,6 @@ s32 fn_1_19748(void)
     fn_1_3DB4();
     fn_1_778C();
     return 1;
-}
-
-/* Start the guide's dialogue motion and install the callback that returns it to idle. */
-static inline void fn_1_52B0_inlined_inlined(void)
-{
-    OMOBJ *obj = lbl_1_bss_C;
-
-    fn_8002CCC0(
-        obj->mdlId[0], obj->mtnId[3], 0.0f, 10.0f, 0);
-    obj->work[3] = 0;
-    obj->objFunc = fn_1_514C;
 }
 
 /* Read a dialogue choice, applying the requested cancellation policy for this prompt. */
@@ -5316,7 +4891,7 @@ static inline s16 fn_1_3F28_inlined_inlined(s16 mode)
 /* Ask whether to leave the current selection screen after the player presses the exit button. */
 s16 fn_1_19A20(void)
 {
-    fn_1_52B0_inlined_inlined();
+    fn_1_51F4();
     fn_1_3F0C(3, (((int)MESSNUM(MESS_SINGLE_SETTING, 2))), 1);
     return fn_1_3F28_inlined_inlined(3);
 }
@@ -5348,7 +4923,7 @@ static inline void fn_1_64C_inlined(void)
 /* Show the exit confirmation and treat cancellation as its second choice. */
 static inline s16 fn_1_2EF24_inlined(void)
 {
-    fn_1_52B0_inlined_inlined();
+    fn_1_51F4();
     fn_1_3F0C(3, (int)MESSNUM(MESS_SINGLE_SETTING, 2), 1);
     return fn_1_3F28_inlined(2);
 }
@@ -5359,7 +4934,7 @@ s16 fn_1_19D28(void)
     s16 menuChoice = 0;
     while (TRUE) {
         HuPrcVSleep();
-        fn_1_52B0_inlined_inlined();
+        fn_1_51F4();
         fn_1_3F0C(3, (int)MESSNUM(MESS_SINGLE_SETTING, 1), 1);
         menuChoice = fn_1_3F28_inlined(0);
         if (menuChoice != -1) {
@@ -5440,17 +5015,6 @@ s32 fn_1_1A610(void)
     return 1;
 }
 
-/* Set centered selection instructions and their text speed when the prompt changes. */
-static inline void set_message_window_for_1AA1C(s16 windowNo, s32 messageNo, s16 speed)
-{
-    HuWinAttrSet(lbl_1_bss_1398[windowNo], HUWIN_ATTR_ALIGN_CENTER);
-    HuWinMesSet(lbl_1_bss_1398[windowNo], messageNo);
-    HuWinMesSpeedSet(lbl_1_bss_1398[windowNo], speed);
-    if (lbl_1_data_8EC != messageNo) {
-        lbl_1_data_8EC = -1;
-    }
-}
-
 /* Open or refresh the lower instruction window during human character selection. */
 static inline void fn_1_4338_for_1AA1C(s32 messageNo)
 {
@@ -5462,32 +5026,18 @@ static inline void fn_1_4338_for_1AA1C(s32 messageNo)
     }
     if (lbl_1_data_A9C[2] != messageNo) {
         lbl_1_data_A9C[2] = messageNo;
-        set_message_window_for_1AA1C(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
-    }
-}
-
-/* Switch the active dialogue window during human character selection. */
-static inline void fn_1_3B8C_for_1AA1C(s16 windowNo)
-{
-    if (lbl_1_data_A98[0] != -1 && lbl_1_data_A98[0] != windowNo) {
-        fn_1_365C(lbl_1_data_A98[0]);
-    }
-    if (lbl_1_data_A98[0] == -1 || lbl_1_data_A98[0] != windowNo) {
-        lbl_1_data_A98[0] = windowNo;
-        lbl_1_data_A9C[0] = -1;
-        lbl_1_data_A9C[1] = -1;
-        fn_1_35EC(lbl_1_data_A98[0]);
+        MessageWindowSet(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
     }
 }
 
 /* Update the active human-selection dialogue only when its message changes. */
 static inline void fn_1_3F0C_for_1AA1C(s16 windowNo, s32 messageNo, s16 speed)
 {
-    fn_1_3B8C_for_1AA1C(windowNo);
+    fn_1_3B8C(windowNo);
     if (lbl_1_data_A9C[0] != messageNo) {
         lbl_1_data_A9C[0] = messageNo;
         lbl_1_data_A9C[1] = -1;
-        set_message_window_for_1AA1C(lbl_1_data_A98[0], lbl_1_data_A9C[0], speed);
+        MessageWindowSet(lbl_1_data_A98[0], lbl_1_data_A9C[0], speed);
     }
 }
 
@@ -5557,7 +5107,7 @@ static inline void fn_1_4338_for_1B5EC(s32 messageNo)
     }
     if (lbl_1_data_A9C[2] != messageNo) {
         lbl_1_data_A9C[2] = messageNo;
-        set_message_window_for_1AA1C(lbl_1_data_A98[1],
+        MessageWindowSet(lbl_1_data_A98[1],
             lbl_1_data_A9C[2], 0);
     }
 }
@@ -5733,58 +5283,13 @@ s16 fn_1_1D174(void) {
     return selectedAction;
 }
 
-/* Begin loading board resources while the menu prepares to leave for play. */
-static inline void fn_1_64C_inlined_2(void)
-{
-    lbl_1_bss_34 = FALSE;
-    OSReport(lbl_1_data_928);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
-    HuAMemDump();
-    OSReport(lbl_1_data_99D);
-    fn_800097F4(DATANUM(0x9a0000, 0));
-    fn_8000DAC0(fn_1_3A0, 256, 16384, 0, lbl_1_bss_0);
-}
-
-/* Send the two selected characters along their departure paths before board play begins. */
-static inline void fn_1_7900_inlined(void)
-{
-    MDSING_CHARACTER_SELECTION *selection;
-    OMOBJ *obj = lbl_1_bss_10;
-    MDSING_MOTION_PATH *path;
-    s16 playerNo;
-
-    for (playerNo = 0, selection = &lbl_1_bss_1308[playerNo]; playerNo < 2;
-         playerNo++, selection++) {
-        path = &lbl_1_bss_CF4[playerNo];
-        path->state = 1;
-        path->elapsed = 0.0f;
-        path->duration = 90.0f;
-        fn_800267CC(obj->mdlId[selection->characterNo], &path->position);
-        fn_800267CC(obj->mdlId[selection->characterNo], &path->controlPosition);
-        path->controlPosition.x += 0.5f * path->controlPosition.x;
-        path->controlPosition.y = 550.0f;
-        path->controlPosition.z = 100.0f;
-        fn_800267CC(obj->mdlId[selection->characterNo], &path->endPosition);
-        path->endPosition.y = 225.0f;
-        path->endPosition.z = -800.0f;
-        fn_8002CCC0(obj->mdlId[selection->characterNo],
-            obj->mtnId[(2 * selection->characterNo) + 1], 0.0f, 10.0f,
-            ((1 << 30) | (1 << 0)));
-    }
-    HuAudFXPlay(1186);
-    obj->objFunc = fn_1_633C;
-}
-
 /* Commit player choices and run the character, guide, audio, and camera departure sequence. */
 void fn_1_1DCE0(void)
 {
     fn_1_6B4();
-    fn_1_64C_inlined_2();
+    BoardLoadStart();
     HuPrcSleep(10);
-    fn_1_7900_inlined();
+    fn_1_68C0();
     fn_1_57E4();
     HuPrcSleep(10);
     fn_1_34958();
@@ -5801,7 +5306,7 @@ void fn_1_1DCE0(void)
 /* Show the settings exit confirmation with cancellation selecting the second choice. */
 static inline s16 fn_1_2EF24_inlined_2(void)
 {
-    fn_1_52B0_inlined_inlined();
+    fn_1_51F4();
     fn_1_3F0C(3, (((int)MESSNUM(MESS_SINGLE_SETTING, 2))), 1);
     return fn_1_3F28_inlined(2);
 }
@@ -5848,7 +5353,7 @@ s16 fn_1_1E104(s16 returningToSelection)
         HuPrcVSleep();
         fn_1_B900(fn_1_14DA8);
         fn_1_4338((((int)MESSNUM(MESS_SYS_GUIDE, 10))));
-        fn_1_52B0_inlined_inlined();
+        fn_1_51F4();
         switch (lbl_1_bss_1340.settingsRow) {
             case 0:
                 fn_1_3F0C(3, (((int)MESSNUM(MESS_SINGLE_SETTING, 9))), 0);
@@ -5953,7 +5458,7 @@ void fn_1_1F30C(void)
 
 /* When the guide's X is above -200, request its return, close dialogue and wait ninety ticks,
  * even if the movement helper declines the request. */
-static inline s32 fn_1_1A494_for_20624(void)
+static inline void fn_1_1A494_for_20624(void)
 {
     Point3d position;
 
@@ -5963,41 +5468,6 @@ static inline s32 fn_1_1A494_for_20624(void)
         fn_1_3CF8();
         HuPrcSleep(90);
     }
-}
-
-/* Start asynchronous board resource loading while the setup process prepares to leave. */
-static inline void fn_1_5E8_for_20624(void)
-{
-    lbl_1_bss_34 = 0;
-    OSReport(lbl_1_data_928);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
-    HuAMemDump();
-    OSReport(lbl_1_data_99D);
-    fn_800097F4(DATANUM(0x9a0000, 0));
-    fn_8000DAC0(fn_1_3A0, 256, 16384, 0, lbl_1_bss_0);
-}
-
-/* Commit settings and run the departure sequence before the setup process enters board play. */
-static inline void fn_1_1DCE0_for_20624(void)
-{
-    fn_1_6B4();
-    fn_1_5E8_for_20624();
-    HuPrcSleep(10);
-    fn_1_68C0();
-    fn_1_57E4();
-    HuPrcSleep(10);
-    fn_1_34958();
-    if (lbl_1_data_320[0] != -1) {
-        HuAudSStreamFadeOut(lbl_1_data_320[0], 3000);
-        lbl_1_data_320[0] = -1;
-    }
-    HuAudFXPlay(1187);
-    HuPrcSleep(90);
-    lbl_1_bss_1348.callback = fn_1_19114;
-    HuPrcSleep(60);
 }
 
 /* Run the Solo setup screens in order, returning the requested destination or cancellation. */
@@ -6015,16 +5485,7 @@ s16 fn_1_20624(s16 mode)
     } else {
         lbl_1_data_320[2] = HuAudSStreamPlay(MSM_STREAM_TOO_BAD);
     }
-    if (lbl_1_bss_28 == 1) {
-        fn_80026A44(lbl_1_bss_10->mdlId[lbl_1_bss_22], (1 << 0));
-        fn_8002CCC0(lbl_1_bss_10->mdlId[lbl_1_bss_22],
-            lbl_1_bss_10->mtnId[35], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
-        fn_80026760(lbl_1_bss_10->mdlId[lbl_1_bss_22], 0.0f, 0.0f, 0.0f);
-    }
-    WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
-    while (WipeCheck() != 0) {
-        HuPrcVSleep();
-    }
+    FadeInSoloMenu();
     if (lbl_1_bss_28 == 0) {
         fn_1_19748();
     } else if (lbl_1_bss_28 == 2) {
@@ -6105,7 +5566,7 @@ s16 fn_1_20624(s16 mode)
             }
             break;
         case 7:
-            fn_1_1DCE0_for_20624();
+            fn_1_1DCE0();
             return 2;
         }
         if (result == -1) {
@@ -6398,18 +5859,13 @@ void fn_1_229D8(void)
         HuWinBGTPLvlSet(lbl_1_bss_C80[windowIndex], 0.0f);
     }
 
-    lbl_1_bss_478 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9a0000, 150), 0x10000000, 2));
+    lbl_1_bss_478 = HuSprAnimDataRead(DATANUM(0x9a0000, 150));
     lbl_1_bss_474 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_474, 0, HuSprCreate(lbl_1_bss_478, 100, 0));
     HuSprGrpPosSet(lbl_1_bss_474, 288.0f, 240.0f);
     HuSprGrpScaleSet(lbl_1_bss_474, 40.0f, 40.0f);
     HuSprDrawNoSet(lbl_1_bss_474, 0, 64);
-    spriteGroup = lbl_1_bss_474;
-    group = &HuSprGrpData[spriteGroup];
-    for (spriteIndex = 0; spriteIndex < group->sprNum; spriteIndex++) {
-        HuSprAttrSet(spriteGroup, spriteIndex, HUSPR_ATTR_DISPOFF);
-    }
+    fn_1_47F4(lbl_1_bss_474, HUSPR_ATTR_DISPOFF);
 }
 
 /* Release the ten result-list windows when the results display is closed. */
@@ -6529,46 +5985,6 @@ fn_1_22CF4(state->modelId, NULL,
         427.0f, (index * 26) + 160);
 }
 
-/* Set the total's five digit sprites and hide leading zeros when the total changes. */
-static inline void set_five_digits(s16 spriteGroup, s32 firstSprite, s16 value)
-{
-    s16 tenThousands = value / 10000;
-    s16 thousands;
-    s16 hundreds;
-    s16 tens;
-
-    HuSprBankSet(spriteGroup, firstSprite, tenThousands);
-    if (tenThousands == 0) {
-        HuSprAttrSet(spriteGroup, firstSprite, HUSPR_ATTR_DISPOFF);
-    }
-
-    value -= tenThousands * 10000;
-    thousands = value / 1000;
-    HuSprBankSet(spriteGroup, firstSprite + 1, thousands);
-    if (thousands == 0 && tenThousands == 0) {
-        HuSprAttrSet(spriteGroup, firstSprite + 1, HUSPR_ATTR_DISPOFF);
-    }
-
-    value -= thousands * 1000;
-    hundreds = value / 100;
-    HuSprBankSet(spriteGroup, firstSprite + 2, hundreds);
-    if (hundreds == 0 && thousands == 0 && tenThousands == 0) {
-        HuSprAttrSet(spriteGroup, firstSprite + 2, HUSPR_ATTR_DISPOFF);
-    }
-
-    value -= hundreds * 100;
-    tens = value / 10;
-    HuSprBankSet(spriteGroup, firstSprite + 3, tens);
-    if (tens == 0 && hundreds == 0 && tenThousands == 0 && thousands == 0) {
-        HuSprAttrSet(spriteGroup, firstSprite + 3, HUSPR_ATTR_DISPOFF);
-    }
-
-    {
-        s16 ones = value % 10;
-        HuSprBankSet(spriteGroup, firstSprite + 4, ones);
-    }
-}
-
 /* Show the result total and its model, or hide them when the value is -1. */
 void fn_1_23498(s16 value)
 {
@@ -6591,7 +6007,7 @@ void fn_1_23498(s16 value)
         value = -31073;
     }
     HuSprBankSet(state->groupId, 0, 10);
-    set_five_digits(state->groupId, 1, value);
+    fn_1_22F48(state->groupId, 1, value);
     fn_1_22CF4(state->modelId, NULL, 312.0f, 397.0f);
 }
 
@@ -6642,8 +6058,7 @@ void fn_1_23C24(OMOBJ *obj)
     s16 row;
     s16 member;
 
-    lbl_1_bss_3E0 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9a0000, 144), 0x10000000, 2));
+    lbl_1_bss_3E0 = HuSprAnimDataRead(DATANUM(0x9a0000, 144));
     row = 0;
     entry = lbl_1_bss_3E4;
     for (; row < 8; row++, entry++) {
@@ -6691,14 +6106,10 @@ void fn_1_24674(OMOBJ *obj) {
     if (obj) {
         modelNo = 0;
         entry = lbl_1_bss_3E4;
-        goto loop_check;
-release_model:
-        fn_800262D0(entry->modelId);
-        modelNo += 1;
-        entry += 1;
-loop_check:
-        if (modelNo < 9) {
-            goto release_model;
+        while (modelNo < 9) {
+            fn_800262D0(entry->modelId);
+            modelNo += 1;
+            entry += 1;
         }
         omDelObjEx(lbl_1_bss_0, obj);
     }
@@ -6771,13 +6182,9 @@ void fn_1_24B1C(s16 spawnCount) {
             lbl_1_bss_3D8 = 500;
         }
         modelNo = 0;
-        goto loop_check;
-clear_model_slot:
-        lbl_1_bss_358[modelNo] = 0;
-        modelNo += 1;
-loop_check:
-        if (modelNo < 64) {
-            goto clear_model_slot;
+        while (modelNo < 64) {
+            lbl_1_bss_358[modelNo] = 0;
+            modelNo += 1;
         }
         obj->objFunc = fn_1_246F8;
     }
@@ -6789,20 +6196,16 @@ void fn_1_24BC8(OMOBJ *obj) {
 
     omSetStatBit(obj, (1 << 8));
     modelNo = 0;
-    goto loop_check;
-create_falling_model:
-    if (modelNo == 0) {
-        obj->mdlId[modelNo] = fn_80025A04(
-            fn_80008DD0(DATANUM(0x9a0000, 142), 0x10000000, 2));
-    } else {
-        obj->mdlId[modelNo] = fn_80025D4C(*obj->mdlId);
-    }
-    fn_800268B0(obj->mdlId[modelNo], 0.5f, 0.5f, 0.5f);
-    fn_800269E8(obj->mdlId[modelNo], (1 << 0));
-    modelNo += 1;
-loop_check:
-    if (modelNo < 64) {
-        goto create_falling_model;
+    while (modelNo < 64) {
+        if (modelNo == 0) {
+            obj->mdlId[modelNo] = fn_80025A04(
+                fn_80008DD0(DATANUM(0x9a0000, 142), 0x10000000, 2));
+        } else {
+            obj->mdlId[modelNo] = fn_80025D4C(*obj->mdlId);
+        }
+        fn_800268B0(obj->mdlId[modelNo], 0.5f, 0.5f, 0.5f);
+        fn_800269E8(obj->mdlId[modelNo], (1 << 0));
+        modelNo += 1;
     }
     obj->objFunc = NULL;
 }
@@ -6931,8 +6334,7 @@ void fn_1_2542C(OMOBJ *obj)
     fn_800269E8(*obj->mdlId, (1 << 0));
     fn_8002CCC0(*obj->mdlId, *obj->mtnId, 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
 
-    lbl_1_bss_54 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9a0000, 144), 0x10000000, 2));
+    lbl_1_bss_54 = HuSprAnimDataRead(DATANUM(0x9a0000, 144));
     obj->work[0] = (u32) HuSprGrpCreate(3);
     for (digitIndex = 0; digitIndex < 3; digitIndex++) {
         spriteId = HuSprCreate(lbl_1_bss_54, 0, 0);
@@ -6979,10 +6381,6 @@ s32 fn_1_256A8(void)
  * return. */
 void fn_1_256C8(void)
 {
-    HUSPR_GROUP *group;
-    s16 windowIndex;
-    s16 spriteGroup;
-    s16 spriteIndex;
 
     {
         s32 miniGamePack;
@@ -7018,31 +6416,7 @@ void fn_1_256C8(void)
     HuSprDrawNoSet(lbl_1_bss_1292[6], 0, 64);
     HuSprDrawNoSet(lbl_1_bss_1292[6], 2, 64);
 
-    for (windowIndex = 0; windowIndex < 8; windowIndex++) {
-        lbl_1_bss_C80[windowIndex] = HuWinExCreateFrame(
-            38.0f, (f32)(windowIndex * 26 + 136), 500, 42, -1, 0);
-    }
-    lbl_1_bss_C80[8] = HuWinExCreateFrame(138.0f, 79.0f, 300, 42, -1, 0);
-    lbl_1_bss_C80[9] = HuWinExCreateFrame(138.0f, 375.0f, 300, 42, -1, 0);
-
-    for (windowIndex = 0; windowIndex < 10; windowIndex++) {
-        HuWinDispOff(lbl_1_bss_C80[windowIndex]);
-        HuWinPriSet(lbl_1_bss_C80[windowIndex], 0);
-        HuWinBGTPLvlSet(lbl_1_bss_C80[windowIndex], 0.0f);
-    }
-
-    lbl_1_bss_478 =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x9a0000, 150), 0x10000000, 2));
-    lbl_1_bss_474 = HuSprGrpCreate(1);
-    HuSprGrpMemberSet(lbl_1_bss_474, 0, HuSprCreate(lbl_1_bss_478, 100, 0));
-    HuSprGrpPosSet(lbl_1_bss_474, 288.0f, 240.0f);
-    HuSprGrpScaleSet(lbl_1_bss_474, 40.0f, 40.0f);
-    HuSprDrawNoSet(lbl_1_bss_474, 0, 64);
-    spriteGroup = lbl_1_bss_474;
-    group = &HuSprGrpData[spriteGroup];
-    for (spriteIndex = 0; spriteIndex < group->sprNum; spriteIndex++) {
-        HuSprAttrSet(spriteGroup, spriteIndex, HUSPR_ATTR_DISPOFF);
-    }
+    fn_1_229D8();
 
     lbl_1_bss_44 = fn_8003AB38(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_23C24);
     lbl_1_bss_3DC = fn_8003AB38(lbl_1_bss_0, 4096, 64, 64, -1, fn_1_24BC8);
@@ -7142,17 +6516,6 @@ void fn_1_25FD4(void)
     fn_1_47F4(lbl_1_bss_1292[6], HUSPR_ATTR_DISPOFF);
 }
 
-/* Show a result-list navigation arrow at the requested screen position and enlarged size. */
-static inline void fn_1_8BC0_for_26DFC(
-    s16 memberNo, Vec *worldPosition, float xOffset, float yOffset)
-{
-    fn_1_8B28(memberNo, worldPosition, xOffset, yOffset);
-    HuSprScaleSet(lbl_1_bss_1292[2], memberNo,
-        2.0f, 2.0f);
-    HuSprAttrReset(
-        lbl_1_bss_1292[2], memberNo, HUSPR_ATTR_DISPOFF);
-}
-
 /* Refresh the selected results page, visible rows, total, and available scroll arrows. */
 void fn_1_26DFC(void)
 {
@@ -7169,15 +6532,11 @@ void fn_1_26DFC(void)
 
     if (lbl_1_bss_48 == 0) {
         if (lbl_1_data_CC8[0] != 1) {
-            fn_1_8BC0_for_26DFC(2, NULL, 288.0f, 130.0f);
-            lbl_1_bss_C94[2] = 2.0f;
-            lbl_1_data_AC8[2] = 1;
+            fn_1_8BC0(2, NULL, 288.0f, 130.0f);
             lbl_1_data_CC8[0] = 1;
         }
         if (lbl_1_data_CC8[1] != 1) {
-            fn_1_8BC0_for_26DFC(3, NULL, 288.0f, 364.0f);
-            lbl_1_bss_C94[3] = 2.0f;
-            lbl_1_data_AC8[3] = 1;
+            fn_1_8BC0(3, NULL, 288.0f, 364.0f);
             lbl_1_data_CC8[1] = 1;
         }
         if (lbl_1_bss_4A <= 0) {
@@ -7192,15 +6551,11 @@ void fn_1_26DFC(void)
         }
     } else {
         if (lbl_1_data_CC8[0] != 1) {
-            fn_1_8BC0_for_26DFC(2, NULL, 288.0f, 130.0f);
-            lbl_1_bss_C94[2] = 2.0f;
-            lbl_1_data_AC8[2] = 1;
+            fn_1_8BC0(2, NULL, 288.0f, 130.0f);
             lbl_1_data_CC8[0] = 1;
         }
         if (lbl_1_data_CC8[1] != 1) {
-            fn_1_8BC0_for_26DFC(3, NULL, 288.0f, 364.0f);
-            lbl_1_bss_C94[3] = 2.0f;
-            lbl_1_data_AC8[3] = 1;
+            fn_1_8BC0(3, NULL, 288.0f, 364.0f);
             lbl_1_data_CC8[1] = 1;
         }
         if (lbl_1_bss_4C == 0) {
@@ -7322,12 +6677,8 @@ void fn_1_28568(void)
 /* Play the guide's introductory results dialogue before showing the result lists. */
 s32 fn_1_28828(void)
 {
-    OMOBJ *obj = lbl_1_bss_C;
+    fn_1_51F4();
 
-    fn_8002CCC0(obj->mdlId[0], obj->mtnId[3],
-        0.0f, 10.0f, 0);
-    obj->work[3] = 0;
-    obj->objFunc = fn_1_514C;
     fn_1_3F0C(3, MESSNUM(MESS_SINGLE_RESULT, 0), 1);
     fn_1_3DB4();
     fn_1_3CF8();
@@ -7390,9 +6741,9 @@ s32 fn_1_28B78(void)
     mdsingResultPanelOpen();
     fn_1_26DFC();
     fn_1_44E4_for_28B78(MESSNUM(MESS_SYS_GUIDE, 32));
-    do
+    for (;;)
     {
-        read_result_input : HuPrcVSleep();
+        HuPrcVSleep();
         if (inputDelay > 5)
         {
             HuSprBankSet(lbl_1_bss_1292[6], 4, 0);
@@ -7401,7 +6752,7 @@ s32 fn_1_28B78(void)
         inputDelay += 1;
         if (inputDelay < 10)
         {
-            goto read_result_input;
+            continue;
         }
         inputDelay = 20;
         if ((lbl_802C0008[0] & PAD_TRIGGER_L))
@@ -7415,7 +6766,7 @@ s32 fn_1_28B78(void)
             fn_1_26DFC();
             HuSprBankSet(lbl_1_bss_1292[6], 4, 1);
             inputDelay = 0;
-            goto read_result_input;
+            continue;
         }
         if ((lbl_802C0008[0] & PAD_TRIGGER_R) != 0)
         {
@@ -7428,7 +6779,7 @@ s32 fn_1_28B78(void)
             fn_1_26DFC();
             HuSprBankSet(lbl_1_bss_1292[6], 5, 1);
             inputDelay = 0;
-            goto read_result_input;
+            continue;
         }
         if ((lbl_802BFFE0[0] & PAD_BUTTON_DOWN) != 0)
         {
@@ -7460,7 +6811,7 @@ s32 fn_1_28B78(void)
                     inputDelay = 5;
                 }
             }
-            goto read_result_input;
+            continue;
         }
         if ((lbl_802BFFE0[0] & PAD_BUTTON_UP) != 0)
         {
@@ -7492,10 +6843,13 @@ s32 fn_1_28B78(void)
                     inputDelay = 5;
                 }
             }
-            goto read_result_input;
+            continue;
+        }
+        if ((PAD_BUTTON_A & lbl_802C0008[0]) != 0)
+        {
+            break;
         }
     }
-    while ((PAD_BUTTON_A & lbl_802C0008[0]) == 0);
     HuAudFXPlay(2);
     HuSprAttrSet(lbl_1_bss_1292[2], 2, HUSPR_ATTR_DISPOFF);
     lbl_1_data_AC8[2] = 0;

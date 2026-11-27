@@ -42,18 +42,6 @@ u32 lbl_1_data_118[51] = {
 };
 
 typedef struct {
-    f32 height;
-    f32 radius;
-    s32 param;
-    s32 type;
-    COL_NARROW_HOOK narrowHook;
-    u32 attr;
-    s32 correctHookParam;
-    MGACTOR_CORRECT_HOOK correctHook;
-    MGACTOR_CORRECT_HOOK correctionCallbacks[16];
-} M617PlayerSetupParam;
-
-typedef struct {
     s8 flags[2][4];
 } M617BoxEdgeFlags;
 
@@ -951,7 +939,7 @@ s32 fn_1_CCB4(void)
 {
     M617PlayerStateData *players;
     M617ModelSetupRecord *model;
-    M617ParticipantMotionState *transition;
+    MinigameParticipantMotionState *transition;
     M617LightSource *modelConfiguration;
     s32 finished;
     s32 animationResult;

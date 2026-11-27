@@ -462,7 +462,7 @@ void fn_1_176C(s16 cameraIndex)
     lbl_1_bss_2530.records[cameraIndex].unk10[1] = presets[cameraIndex][4];
     lbl_1_bss_2530.records[cameraIndex].unk10[2] = presets[cameraIndex][5];
     lbl_1_bss_2530.records[cameraIndex].unk34 = presets[cameraIndex][6];
-    lbl_1_bss_2530.records[cameraIndex].aspect = presets[cameraIndex][7];
+    lbl_1_bss_2530.records[cameraIndex].aspectRatio = presets[cameraIndex][7];
     lbl_1_bss_2530.records[cameraIndex].viewport[0] = presets[cameraIndex][8];
     lbl_1_bss_2530.records[cameraIndex].viewport[1] = presets[cameraIndex][9];
     lbl_1_bss_2530.records[cameraIndex].viewport[2] = presets[cameraIndex][10];
@@ -479,7 +479,7 @@ void fn_1_176C(s16 cameraIndex)
     Hu3DCameraPerspectiveSet(cameraIds[cameraIndex],
                              lbl_1_bss_2530.records[cameraIndex].fieldOfView,
                              20.0f, 40000.0f,
-                             lbl_1_bss_2530.records[cameraIndex].aspect);
+                             lbl_1_bss_2530.records[cameraIndex].aspectRatio);
     /* Apply the same preset's position, rotation and zoom to the live camera. */
     lbl_80266A4C.x = presets[cameraIndex][0];
     lbl_80266A4C.y = presets[cameraIndex][1];
@@ -494,11 +494,11 @@ void fn_1_176C(s16 cameraIndex)
 s16 lbl_1_bss_2680[4];
 M660ManagerState lbl_1_bss_2678;
 M660CameraState lbl_1_bss_2530;
-M660LightState lbl_1_bss_24F4;
-M660ShadowCamera lbl_1_bss_24A4;
+LightInitState lbl_1_bss_24F4;
+MinigameShadowCamera lbl_1_bss_24A4;
 M660ParticleModuleData lbl_1_bss_2484;
 M660Model lbl_1_bss_60C[75];
-M660Motion lbl_1_bss_544[2];
+MinigameParticipantMotionState lbl_1_bss_544[2];
 M660Player lbl_1_bss_2DC[2];
 /* Shared stage sequence, controller samples and audio state. */
 M660StageState lbl_1_bss_1F4;

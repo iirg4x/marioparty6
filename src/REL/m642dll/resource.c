@@ -36,7 +36,7 @@ f32 fn_1_89E8(f32 startValue, f32 endValue, f32 fraction);
 /* The particle model calls this hook each frame to update live Cashapult particles. */
 void fn_1_78A0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
-    M642ParticleConfig *config = particle->work;
+    MinigameParticleConfig *config = particle->work;
     HU3D_PARTICLE_DATA *data;
     s16 i;
     float alpha, alphaDeltaCopy;
@@ -88,14 +88,14 @@ void fn_1_78A0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 }
 
 /* Called by Cashapult effect callbacks to emit a configured particle in world space. */
-s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, float x, float y, float z, float scale,
-              M642ParticleConfig *config)
+s16 fn_1_7D1C(MinigameParticleSystem *owner, s16 camera, float x, float y, float z, float scale,
+              MinigameParticleConfig *config)
 {
     s16 result = -1;
-    s16 modelId = owner->model;
+    s16 modelId = owner->modelId;
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
-    M642ParticleConfig *configs;
+    MinigameParticleConfig *configs;
     HU3D_PARTICLE_DATA *data;
     s16 i;
     if (modelId == -1) {
@@ -143,12 +143,12 @@ s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, float x, float y, float z, f
 }
 
 /* Tests for live particles from the current emission index onward. */
-s32 fn_1_7F68(M642ParticleOwner *owner)
+s32 fn_1_7F68(MinigameParticleSystem *owner)
 {
 
     s16 noModelResult = -1;
     HU3D_MODEL *model;
-    s16 modelId = owner->model;
+    s16 modelId = owner->modelId;
     HU3D_PARTICLE *particle;
     void *particleWork;
     HU3D_PARTICLE_DATA *data;
@@ -245,7 +245,7 @@ void fn_1_8024(OMOBJ *owner, M642ResourceTableView *resources)
 }
 
 /* Called by fn_1_8568 during scene setup to load each particle owner's reusable buffers. */
-void fn_1_82D4(M642ParticleOwner *owners)
+void fn_1_82D4(MinigameParticleSystem *owners)
 {
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
@@ -256,27 +256,27 @@ void fn_1_82D4(M642ParticleOwner *owners)
     s32 count, blendMode;
     for (i = 0; ; i++) {
         void *file;
-        M642ParticleOwner *owner;
-        M642ParticleConfig *configs;
+        MinigameParticleSystem *owner;
+        MinigameParticleConfig *configs;
         owner = &owners[i];
         file = NULL;
-        if (owner->resource < 0) {
+        if (owner->resourceId < 0) {
             break;
         }
         if (!(owner->flags & 1)) {
-            file = fn_80008DD0(owner->resource, 0x10000000, 2);
-            anim = owner->animation = HuSprAnimRead(file);
+            file = fn_80008DD0(owner->resourceId, 0x10000000, 2);
+            anim = owner->unk14 = HuSprAnimRead(file);
             count = owner->count;
             blendMode = owner->blendMode;
         }
         if (!(owner->flags & 2)) {
-            configs = HuMemDirectMallocNum(0, count * sizeof(M642ParticleConfig), 0x10000000);
-            memset(configs, 0, count * sizeof(M642ParticleConfig));
+            configs = HuMemDirectMallocNum(0, count * sizeof(MinigameParticleConfig), 0x10000000);
+            memset(configs, 0, count * sizeof(MinigameParticleConfig));
         }
-        owner->model = fn_8003216C(anim, count);
-        fn_8003269C(owner->model, blendMode);
-        fn_800326D0(owner->model, fn_1_78A0);
-        particle = lbl_802C01C8[owner->model].hookData;
+        owner->modelId = fn_8003216C(anim, count);
+        fn_8003269C(owner->modelId, blendMode);
+        fn_800326D0(owner->modelId, fn_1_78A0);
+        particle = lbl_802C01C8[owner->modelId].hookData;
         particle->emitCnt = 0;
         particle->work = configs;
         particle->count = 1;
@@ -327,7 +327,7 @@ OMOBJ *fn_1_84D8(M642ResourceTableView *capacity)
 /* Called during effect setup to load each particle owner's animation and buffers. */
 void *fn_1_8568(void *work)
 {
-    extern void fn_1_82D4(M642ParticleOwner *owners);
+    extern void fn_1_82D4(MinigameParticleSystem *owners);
     fn_1_82D4(work);
     return work;
 }
@@ -870,13 +870,13 @@ void *lbl_1_data_148C[9] = {
     &lbl_1_data_1360
 };
 
-M642ParticleOwner lbl_1_data_14B0[3] = {
+MinigameParticleSystem lbl_1_data_14B0[3] = {
     {0, DATANUM(0x650000, 46), 40, 0, 0, NULL, {0}},
     {1, 0, 0, 0, -1, NULL, {0}},
     {0, -1, 0, 0, -1, NULL, {0}},
 };
 
-M642ParticleOwner lbl_1_data_1504[3] = {
+MinigameParticleSystem lbl_1_data_1504[3] = {
     {0, DATANUM(0x650000, 47), 40, 0, 0, NULL, {0}},
     {1, 0, 0, 0, -1, NULL, {0}},
     {0, -1, 0, 0, -1, NULL, {0}},

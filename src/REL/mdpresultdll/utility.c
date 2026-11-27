@@ -21,6 +21,7 @@
 #include "REL/mdpresultDll.h"
 #include "humath.h"
 #include "dolphin/mtx.h"
+#include "game/sprput.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -37,8 +38,6 @@ void fn_1_1F948(HuVecF *result, const HuVecF *start,
     const HuVecF *middle, const HuVecF *end, float time);
 float fn_1_1FF48(float start, float end, float time, float duration);
 float fn_1_1FE74(float start, float end, float time, float duration);
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
-    GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
 void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel);
 float fn_1_1FC94(float start, float end, float time, float duration);
 void fn_1_2001C(HU3D_MODELID modelId, const HuVecF *first,
@@ -271,16 +270,19 @@ void fn_1_20188(HUSPR_GROUPID groupId, s32 attr)
     }
 }
 
-/* Writes a three-digit value into consecutive sprite banks, showing bank 10 for a zero hundreds
- * digit and hiding a leading zero tens digit. */
-void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number)
+/* Sets three digit banks and chooses how to display a leading zero. */
+static inline void ResultNumberBanksSet(HUSPR_GROUPID groupId, s32 member, s16 number, BOOL hideHundreds)
 {
     s16 digit;
 
     digit = number / 100;
     HuSprBankSet(groupId, member, digit);
     if (digit == 0) {
-        HuSprBankSet(groupId, member, 10);
+        if (hideHundreds) {
+            HuSprAttrSet(groupId, member, HUSPR_ATTR_DISPOFF);
+        } else {
+            HuSprBankSet(groupId, member, 10);
+        }
     }
     digit = (number - (digit * 100)) / 10;
     HuSprBankSet(groupId, member + 1, digit);
@@ -291,24 +293,18 @@ void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number)
     HuSprBankSet(groupId, member + 2, digit);
 }
 
+/* Writes a three-digit value into consecutive sprite banks, showing bank 10 for a zero hundreds
+ * digit and hiding a leading zero tens digit. */
+void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number)
+{
+    ResultNumberBanksSet(groupId, member, number, FALSE);
+}
+
 /* Writes a three-digit value into consecutive sprite banks and hides leading zero hundreds and tens
  * digits. */
 void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 number)
 {
-    s16 digit;
-
-    digit = number / 100;
-    HuSprBankSet(groupId, member, digit);
-    if (digit == 0) {
-        HuSprAttrSet(groupId, member, HUSPR_ATTR_DISPOFF);
-    }
-    digit = (number - (digit * 100)) / 10;
-    HuSprBankSet(groupId, member + 1, digit);
-    if (digit == 0 && number / 100 == 0) {
-        HuSprAttrSet(groupId, member + 1, HUSPR_ATTR_DISPOFF);
-    }
-    digit = number % 10;
-    HuSprBankSet(groupId, member + 2, digit);
+    ResultNumberBanksSet(groupId, member, number, TRUE);
 }
 
 /* Sets the color-table index on every particle in the shared layer-one effect model. */
@@ -542,8 +538,8 @@ void fn_1_2104C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             }
             data->colorIdx = frandmod(100) - 50;
             data->scaleBase = 0.0f;
-            PSVECNormalize((HuVecF *)&data->speedDecay,
-                (HuVecF *)&data->speedDecay);
+            PSVECNormalize(&data->effectDirection,
+                &data->effectDirection);
             data->scale = frandmod(50) + 50;
             colorNo = rand8() % 7;
             data->color.r = colors[colorNo].r;
@@ -573,9 +569,8 @@ void fn_1_2104C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     }
 }
 
-/* Creates the hidden 128-particle result effect and registers fn_1_2104C as its particle
- * callback. */
-void fn_1_21604(void)
+/* Create the result particle model. */
+static inline void ResultParticlesCreate(void)
 {
     lbl_1_bss_14C2 = fn_8003216C(lbl_1_bss_14C8[5], 128);
     fn_80026760(lbl_1_bss_14C2, 0.0f,
@@ -585,6 +580,13 @@ void fn_1_21604(void)
     fn_80026B8C(lbl_1_bss_14C2, 1);
     fn_800269E8(lbl_1_bss_14C2, (1 << 0));
     fn_800326D0(lbl_1_bss_14C2, fn_1_2104C);
+}
+
+/* Creates the hidden 128-particle result effect and registers fn_1_2104C as its particle
+ * callback. */
+void fn_1_21604(void)
+{
+    ResultParticlesCreate();
 }
 
 /* Releases the 128-particle effect model created by fn_1_21604. */
@@ -974,7 +976,6 @@ void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
     HuVecF direction;
     float fade;
     s16 i;
-    s16 j;
 
     GXLoadPosMtxImm(*matrix, GX_PNMTX0);
     GXSetNumTexGens(1);
@@ -1077,31 +1078,7 @@ void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
             (1.0f / work->pointCount) * i, 0.0f);
     }
 
-    for (j = work->pointCount - 1; j >= 1; j--) {
-        work->points[j - 1].y -= 0.001f;
-        work->points[j].x =
-            work->base.x + work->points[j - 1].x;
-        work->points[j].y =
-            work->base.y + work->points[j - 1].y;
-        work->points[j].z =
-            work->base.z + work->points[j - 1].z;
-    }
-
-    if (work->moving == 0) {
-        if (work->state == 1) {
-            work->color.a += 5;
-            if (work->color.a >= 255) {
-                work->color.a = 255;
-            }
-        } else {
-            work->color.a -= 5;
-            if (work->color.a == 0) {
-                work->color.a = 0;
-                fn_800269E8(
-                    lbl_1_bss_1480[work->modelIndex], (1 << 0));
-            }
-        }
-    }
+    fn_1_22CBC(work);
 
     if (work->moving == 1) {
         work->points[0].x += 25.0f * work->velocity.x;
@@ -1122,8 +1099,7 @@ void fn_1_23AA8(void)
 {
     s16 i;
 
-    lbl_1_bss_131C = HuSprAnimRead(fn_80008DD0(
-        DATANUM(0x980000, 54), 0x10000000, 2));
+    lbl_1_bss_131C = HuSprAnimDataRead(DATANUM(0x980000, 54));
     for (i = 0; i < 8; i++) {
         MDRESULT_TRAIL_WORK *work = &lbl_1_bss_1320[i];
         HU3D_MODEL *model;
@@ -1495,22 +1471,14 @@ void fn_1_252F8(void)
     s16 i;
 
     for (i = 0; i < 7; i++) {
-        lbl_1_bss_14C8[i] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_788[i], 0x10000000, 2));
+        lbl_1_bss_14C8[i] = HuSprAnimDataRead(lbl_1_data_788[i]);
     }
     fn_1_20BC8();
     fn_1_20E9C();
     fn_1_22080();
     fn_1_22A4C();
 
-    lbl_1_bss_14C2 = fn_8003216C(lbl_1_bss_14C8[5], 128);
-    fn_80026760(lbl_1_bss_14C2, 0.0f,
-        0.0f, 0.0f);
-    fn_800268B0(lbl_1_bss_14C2, 1.0f,
-        1.0f, 1.0f);
-    fn_80026B8C(lbl_1_bss_14C2, 1);
-    fn_800269E8(lbl_1_bss_14C2, (1 << 0));
-    fn_800326D0(lbl_1_bss_14C2, fn_1_2104C);
+    ResultParticlesCreate();
 
     fn_1_23AA8();
     fn_1_24AD0();
@@ -1531,17 +1499,7 @@ void fn_1_25B90(void)
 /* Sets the color-table index on every particle in the selected shared model. */
 void fn_1_25D0C(float colorIndex)
 {
-    HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_14C6];
-    HU3D_PARTICLE_DATA *data;
-    HU3D_PARTICLE *particle = model->hookData;
-    s16 i;
-
-    fn_80026B8C(lbl_1_bss_14C6, 1);
-    i = 0;
-    data = particle->data;
-    for (; i < particle->maxCnt; i++, data++) {
-        data->colorIdx = colorIndex;
-    }
+    fn_1_204B0(colorIndex);
 }
 
 /* Sets one particle position and scales its alpha from the supplied opacity. */
@@ -1579,17 +1537,10 @@ void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
 /* For valid effect slots 0 through 8, resets the first particle timer. */
 void fn_1_25FF4(s16 index)
 {
-    HU3D_PARTICLE_DATA *data;
-    HU3D_PARTICLE *particle;
-    HU3D_MODEL *model;
-
     if (index < 0 || index > 8) {
         return;
     }
-    model = &lbl_802C01C8[lbl_1_bss_14B0[index]];
-    particle = model->hookData;
-    data = particle->data;
-    data->time = 0;
+    fn_1_21A70(index);
 }
 
 /* For valid effect slots 0 through 8, initializes the effect using the alternate particle setup
@@ -1609,32 +1560,15 @@ void fn_1_26164(s16 index, HuVecF *position)
 {
     GXColor color = {255, 255, 255, 64};
     s16 k;
-    HU3D_PARTICLE *particle;
-    HU3D_MODEL *model;
-    HU3D_PARTICLE_DATA *data;
     HU3D_PARTICLE *sharedParticle;
     HU3D_MODEL *sharedModel;
     HU3D_PARTICLE_DATA *sharedData;
     float accelX;
-    s16 i;
-    s16 j;
 
     if (index < 0 || index > 3) {
         return;
     }
-    for (i = 0; i < 4; i++) {
-        model = &lbl_802C01C8[lbl_1_bss_1490[index][i]];
-        particle = model->hookData;
-        j = 0;
-        data = particle->data;
-        for (; j < particle->maxCnt; j++, data++) {
-            data->time = 0;
-            data->parManId = 0;
-            data->scale = 0.0f;
-        }
-        model->attr &= ~(1 << 0);
-        fn_80026790(lbl_1_bss_1490[index][i], position);
-    }
+    fn_1_22244(index, position);
     position->z += 100.0f;
     for (k = 0; k < 3; k++) {
         accelX = (float)(rand8() + 200);
@@ -1751,7 +1685,6 @@ void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel)
     HU3D_PARTICLE_DATA *burstData;
     HU3D_PARTICLE *burstParticle;
     HU3D_MODEL *burstModel;
-    MDRESULT_TRAIL_WORK *work;
     s16 i;
 
     burstModel = &lbl_802C01C8[lbl_1_bss_14B0[index]];
@@ -1759,12 +1692,7 @@ void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel)
     burstData = burstParticle->data;
     fn_1_21714(index, -1, position, -1.0f, NULL);
     burstData->accel.y = verticalAccel;
-    work = &lbl_1_bss_1320[index];
-    work->points[0].x = position->x;
-    work->points[0].y = position->y;
-    work->points[0].z = position->z;
-    work->base.x = work->base.y = work->base.z = 0.0f;
-    work->base.y = verticalAccel;
+    fn_1_23D38(index, position, verticalAccel);
     for (i = 0; i < 5; i++) {
         HU3D_PARTICLE_DATA *data;
         HU3D_PARTICLE *loopParticle;

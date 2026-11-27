@@ -37,6 +37,7 @@
 #include "game/board/capspecial.h"
 #include "game/board/telop.h"
 #include "dolphin/mtx.h"
+#include "game/sprput.h"
 
 #define W01_DATA_DAY 0xd70000
 #define W01_DATA_NIGHT 0xd80000
@@ -132,7 +133,7 @@ typedef void (*VoidFunc)(void);
 typedef float (*W01CurveEval)();
 
 typedef struct W01StarMasuWork {
-    u8 unk_00[4]; // Not accessed by the board's star-space code.
+    u8 unk00[4]; /* No code names this field. */
     u8 count; // Number of available star positions.
     u8 order[8]; // Order in which the star positions are visited.
     u8 index; // Current entry in the star-position order.
@@ -141,7 +142,6 @@ typedef struct W01StarMasuWork {
 typedef struct W01CoinEffect {
     s32 active;
     s16 modelId;
-    s16 pad06;
     HuVecF pos;
     HuVecF vel;
     s16 time;
@@ -206,7 +206,7 @@ typedef struct W01WhParticle {
     HuVecF velocity; // Translational velocity in board units per second.
     HuVecF acceleration; // Per-axis multiplier for the shared wind acceleration.
     s16 delay; // Frames before release; -1 keeps the particle attached.
-    u8 unk_3E[2]; // Not accessed by the particle update.
+    u8 unk3E[2]; /* No code names this field. */
     float phase; // Swing angle in radians after release.
     float phaseVelocity; // Change in swing angle per second.
 } W01_WH_PARTICLE;
@@ -364,7 +364,7 @@ typedef struct W01CoinEventWork {
     s32 count; // Falling-object capacity: 50 by day or 30 at night.
     W01_COIN_ENTRY *data; // Falling objects reused for each group of players.
     s16 playerMotion[4]; // Reaction motion loaded for each player during the event.
-    float hitReactionAmount[4]; // Set to 0.5 when a night coin strikes each player.
+    float unk20[4]; /* The game's code never reads this field. */
     s16 coinCount[4]; // Available coins for loss effects, indexed by player or team.
 } W01_COIN_EVENT_WORK;
 
@@ -480,8 +480,6 @@ void fn_1_13D04(void);
 void fn_1_13D8C(const HuVecF *pos, s32 count);
 void fn_1_13F50(void);
 
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
-    GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
 
 extern W01_COIN_EFFECT lbl_1_bss_0[32];
 extern ANIMDATA *lbl_1_bss_4A4[3];
@@ -1410,6 +1408,15 @@ static const float lbl_1_rodata_F8[14] = {
     -80.0f, -90.0f, -80.0f, -80.0f, -80.0f, -80.0f, -80.0f
 };
 
+/* Places a hanging segment below the spring and clears its velocity. */
+static inline void SpringSegmentReset(W01_SPRING_SEGMENT_WORK *segment, const HuVecF *pos, s32 i)
+{
+    segment->pos.x = pos->x;
+    segment->pos.y = pos->y - (50.0f * (i + 1));
+    segment->pos.z = pos->z;
+    segment->vel.x = segment->vel.y = segment->vel.z = 0.0f;
+}
+
 // MB1_Create builds the spring route and initializes its four hanging segments.
 void fn_1_2A1C(void)
 {
@@ -1470,10 +1477,7 @@ void fn_1_2A1C(void)
         segment->modelId = mbObjCreate(
             DATANUM(dataDir3, 10), NULL, TRUE);
         mbObjScaleSet(segment->modelId, 0.7f, 0.7f, 0.5f);
-        segment->pos.x = pos.x;
-        segment->pos.y = pos.y - (50.0f * (i + 1));
-        segment->pos.z = pos.z;
-        segment->vel.x = segment->vel.y = segment->vel.z = 0.0f;
+        SpringSegmentReset(segment, &pos, i);
     }
 }
 
@@ -1721,10 +1725,7 @@ void fn_1_44C0(void)
     fn_1_3214(0.05f);
     mbObjPosGet(work->mainModelId, &pos);
     for (i = 0; i < 4; i++, segment++) {
-        segment->pos.x = pos.x;
-        segment->pos.y = pos.y - (50.0f * (i + 1));
-        segment->pos.z = pos.z;
-        segment->vel.x = segment->vel.y = segment->vel.z = 0.0f;
+        SpringSegmentReset(segment, &pos, i);
     }
 }
 
@@ -2170,11 +2171,9 @@ void fn_1_5C7C(void)
         }
     }
 
-    lbl_1_bss_13D0[0] = HuSprAnimRead(fn_80008DD0(
-        mbBoardDataNumGet(W01_DATA_STAR_ANIM_DAY), 0x10000000, 2));
+    lbl_1_bss_13D0[0] = HuSprAnimDataRead(mbBoardDataNumGet(W01_DATA_STAR_ANIM_DAY));
     HuSprAnimLock(lbl_1_bss_13D0[0]);
-    lbl_1_bss_13D0[1] = HuSprAnimRead(fn_80008DD0(
-        mbBoardDataNumGet(W01_DATA_STAR_ANIM_NIGHT), 0x10000000, 2));
+    lbl_1_bss_13D0[1] = HuSprAnimDataRead(mbBoardDataNumGet(W01_DATA_STAR_ANIM_NIGHT));
     HuSprAnimLock(lbl_1_bss_13D0[1]);
 }
 
@@ -2563,7 +2562,7 @@ s32 fn_1_6D98(void)
                         fn_8006A030(data->playerNo, 20, 7, 3);
                         mbPlayerMotionShiftSet(data->playerNo, 6, 0.0f, 4.0f,
                             ((1 << 30) | (1 << 0)));
-                        work->hitReactionAmount[data->playerNo] = 0.5f;
+                        work->unk20[data->playerNo] = 0.5f;
                         if (!GWTeamFGet()) {
                             if (work->coinCount[data->playerNo] > 0) {
                                 mbPlayerPosGet(data->playerNo, &pos);
@@ -2974,8 +2973,7 @@ void fn_1_8474(void)
         work->active = TRUE;
     }
 
-    lbl_1_bss_1334 = HuSprAnimRead(fn_80008DD0(
-        mbBoardDataNumGet(W01_DATA_STAR_ANIM_DAY), 0x10000000, 2));
+    lbl_1_bss_1334 = HuSprAnimDataRead(mbBoardDataNumGet(W01_DATA_STAR_ANIM_DAY));
     HuSprAnimLock(lbl_1_bss_1334);
 }
 
@@ -3280,9 +3278,7 @@ void fn_1_9574(void)
             mbMasuFind_MAttrMatchIdGet(-1, attr, 0xE0000000);
     }
 
-    lbl_1_bss_121C = HuSprAnimRead(fn_80008DD0(
-        DATANUM(MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 51),
-        0x10000000, 2));
+    lbl_1_bss_121C = HuSprAnimDataRead(DATANUM(MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT, 51));
     HuSprAnimLock(lbl_1_bss_121C);
     lbl_1_bss_120C[0] = fn_1_C7DC(&lbl_1_bss_1214[0]);
     lbl_1_bss_120C[1] = fn_1_CAA4(&lbl_1_bss_1214[1]);
@@ -5925,10 +5921,8 @@ void fn_1_12A4C(void)
         particle->textureNo = mbRandMod(3);
     }
     for (i = 0; i < 3; i++) {
-        lbl_1_bss_4A4[i] = HuSprAnimRead(fn_80008DD0(
-            (lbl_1_data_7F8[i] & 0xFFFF)
-                | (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT),
-            0x10000000, 2));
+        lbl_1_bss_4A4[i] = HuSprAnimDataRead((lbl_1_data_7F8[i] & 0xFFFF)
+                | (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT));
         HuSprAnimLock(lbl_1_bss_4A4[i]);
     }
     lbl_1_bss_498 = fn_1_130C4(&lbl_1_bss_49C);

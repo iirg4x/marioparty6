@@ -553,14 +553,14 @@ inline void fn_1_1FD0(void) {
 void fn_1_223C(void) {
     Hu3DShadowCreate(5.0f, 16000.0f, 21000.0f);
     Hu3DShadowSizeSet(480);
-    lbl_1_bss_A7C.angle[0] = -90.0f;
-    lbl_1_bss_A7C.angle[1] = 0.0f;
+    lbl_1_bss_A7C.elevation = -90.0f;
+    lbl_1_bss_A7C.azimuth = 0.0f;
     lbl_1_bss_A7C.unk14 = 0.0f;
     lbl_1_bss_A7C.target.x = 0.0f;
     lbl_1_bss_A7C.target.y = -100.0f;
     lbl_1_bss_A7C.target.z = 0.0f;
-    lbl_1_bss_A7C.textureLevel = 0.2f;
-    lbl_1_bss_A7C.radius = 21000.0f;
+    lbl_1_bss_A7C.shadowOpacity = 0.2f;
+    lbl_1_bss_A7C.orbitDistance = 21000.0f;
     fn_1_234C();
 }
 
@@ -568,29 +568,29 @@ void fn_1_223C(void) {
  * orbit angles. */
 inline void fn_1_234C(void)
 {
-    lbl_1_bss_A7C.position.x = (f32)((f64)lbl_1_bss_A7C.target.x +
-        ((f64)lbl_1_bss_A7C.radius *
-         (cos((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-          sin((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0))));
-    lbl_1_bss_A7C.position.y = (f32)((f64)lbl_1_bss_A7C.target.y +
-        ((f64)lbl_1_bss_A7C.radius *
-         -sin((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0)));
-    lbl_1_bss_A7C.position.z = (f32)((f64)lbl_1_bss_A7C.target.z +
-        ((f64)lbl_1_bss_A7C.radius *
-         (cos((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-          cos((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0))));
+    lbl_1_bss_A7C.cameraPosition.x = (f32)((f64)lbl_1_bss_A7C.target.x +
+        ((f64)lbl_1_bss_A7C.orbitDistance *
+         (cos((M_PI * (f64)lbl_1_bss_A7C.elevation) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_A7C.azimuth) / 180.0))));
+    lbl_1_bss_A7C.cameraPosition.y = (f32)((f64)lbl_1_bss_A7C.target.y +
+        ((f64)lbl_1_bss_A7C.orbitDistance *
+         -sin((M_PI * (f64)lbl_1_bss_A7C.elevation) / 180.0)));
+    lbl_1_bss_A7C.cameraPosition.z = (f32)((f64)lbl_1_bss_A7C.target.z +
+        ((f64)lbl_1_bss_A7C.orbitDistance *
+         (cos((M_PI * (f64)lbl_1_bss_A7C.elevation) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_A7C.azimuth) / 180.0))));
 
-    lbl_1_bss_A7C.up.x = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-        sin((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0));
-    lbl_1_bss_A7C.up.y = (f32)cos(
-        (M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0);
-    lbl_1_bss_A7C.up.z = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_A7C.angle[0]) / 180.0) *
-        cos((M_PI * (f64)lbl_1_bss_A7C.angle[1]) / 180.0));
+    lbl_1_bss_A7C.cameraUp.x = (f32)(
+        sin((M_PI * (f64)lbl_1_bss_A7C.elevation) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_A7C.azimuth) / 180.0));
+    lbl_1_bss_A7C.cameraUp.y = (f32)cos(
+        (M_PI * (f64)lbl_1_bss_A7C.elevation) / 180.0);
+    lbl_1_bss_A7C.cameraUp.z = (f32)(
+        sin((M_PI * (f64)lbl_1_bss_A7C.elevation) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_A7C.azimuth) / 180.0));
 
-    Hu3DShadowTPLvlSet(lbl_1_bss_A7C.textureLevel);
-    Hu3DShadowPosSet(&lbl_1_bss_A7C.position, &lbl_1_bss_A7C.up,
+    Hu3DShadowTPLvlSet(lbl_1_bss_A7C.shadowOpacity);
+    Hu3DShadowPosSet(&lbl_1_bss_A7C.cameraPosition, &lbl_1_bss_A7C.cameraUp,
                      &lbl_1_bss_A7C.target);
 }
 
@@ -1311,8 +1311,8 @@ s16 lbl_1_bss_C60;
 s16 lbl_1_bss_C58[4];
 HUPROCESS *lbl_1_bss_C50[2];
 M662CameraState lbl_1_bss_B08;
-M662Light lbl_1_bss_ACC;
-M662Shadow lbl_1_bss_A7C;
+LightInitState lbl_1_bss_ACC;
+MinigameShadowCamera lbl_1_bss_A7C;
 M662ParticleModule lbl_1_bss_A74;
 M662Model lbl_1_bss_4B4[46];
 M662Motion lbl_1_bss_3F4[2];

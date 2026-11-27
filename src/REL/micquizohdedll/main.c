@@ -96,11 +96,11 @@
 
 void fn_1_548(OMOBJ *obj);
 void fn_1_558(OMOBJ *obj);
-void fn_1_6D8(void);
+void fn_1_6D8(OMOBJ *obj);
 
 MicquizBss60Storage lbl_1_bss_60;
 OMOBJ * lbl_1_bss_5C;
-MicquizBss48Storage lbl_1_bss_48;
+MicquizBss28Storage lbl_1_bss_48;
 OMOBJ * lbl_1_bss_44;
 OMOBJ * lbl_1_bss_40;
 f32 lbl_1_bss_3C;
@@ -122,7 +122,7 @@ struct MicquizCameraData {
     u32 unknown_1C[9]; /* No code names this field. */
 };
 
-s32 lbl_1_data_388[0x36] = {
+s32 lbl_1_data_388[54] = {
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x8e0000, 0x360000, 0xc00000, 0xf30000,
     0xec0000, 0x140000, 0xe60000, 0x300000, 0xcf0000, 0xa80000, 0x2a0000
@@ -192,11 +192,11 @@ void fn_1_548(OMOBJ *obj)
 void fn_1_558(OMOBJ *obj) {
     if (omSysExitReq != 0) {
         if (lbl_1_data_4BC != -1) {
-            HuAudSStreamFadeOut(lbl_1_data_4BC, 0x1F4);
+            HuAudSStreamFadeOut(lbl_1_data_4BC, 500);
             lbl_1_data_4BC = -1;
         }
-        WipeCreate(2, 0, 0x14);
-        obj->objFunc = (OMOBJ_FUNC)fn_1_6D8;
+        WipeCreate(2, 0, 20);
+        obj->objFunc = fn_1_6D8;
     }
 
     switch (obj->work[0]) {
@@ -210,7 +210,7 @@ void fn_1_558(OMOBJ *obj) {
         break;
     case 2:
         fn_1_12D08();
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         obj->work[0] = 3;
         break;
     case 3:
@@ -230,12 +230,8 @@ void fn_1_558(OMOBJ *obj) {
 }
 
 /* Close the microphone context after the exit wipe finishes. */
-void fn_1_6D8(void) {
-    if (WipeCheck() == 0) {
-        HuMCSelWinContextKill();
-        HuMCClose();
-        fn_8003A5E4(1, 1);
-    }
+void fn_1_6D8(OMOBJ *obj) {
+    CloseMicContextAfterWipe();
 }
 
 s32 fn_1_718(void)
@@ -268,7 +264,7 @@ s16 fn_1_778(char *contextId) {
 }
 
 /* Initialized words with unknown meaning. */
-u32 micquizUnidentifiedWords500[0xB] = {
+u32 micquizUnidentifiedWords500[11] = {
     0x00A4007A, 0x00A4007B, 0x00A4007C, 0x00A4007D, 0x00A4007E, 0x00A4007F, 0x00A40080, 0x00000800,
     0x00000200, 0x00000100, 0x00000400
 };

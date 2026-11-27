@@ -1,6 +1,7 @@
 /* Work records and mesh data used by the minigame's scene effects. */
 #ifndef REL_M676DLL_EFFECT_TYPES_H
 #define REL_M676DLL_EFFECT_TYPES_H
+#include "REL/minigame_ground_effect.h"
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "REL/m676Dll/particle_types.h"
@@ -22,17 +23,10 @@ typedef struct M676EffectWork {
     s32 enabled; /* Set after the texture hooks have been initialized. */
     M676TextureWork texture; /* Captured scene texture and its transforms. */
 } M676EffectWork;
-typedef struct M676ShadowRecord {
-    s32 active; /* Whether the custom draw hook renders this shadow disc. */
-    f32 radius; /* Disc radius in world units. */
-    Vec *position; /* World position used by the disc; drawing adds 3 units to Y. */
-} M676ShadowRecord;
 typedef struct M676ShadowWork {
-    M676ShadowRecord *records[10]; /* Shadow discs registered for drawing. */
+    MinigameGroundEffect *records[10]; /* Shadow discs registered for drawing. */
     f32 xOffsets[10], zOffsets[10]; /* Unit-circle vertex offsets for the disc fan. */
 } M676ShadowWork;
-
-typedef M676PropWork M676SceneEffectWork;
 
 void fn_1_10288(s32 type, s32 index, Vec *position, s32 requestValue);
 void fn_1_1033C(HUPROCESS *process);

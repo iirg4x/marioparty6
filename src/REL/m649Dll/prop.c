@@ -1,4 +1,6 @@
 /* Creates and updates the moving props used by Stamp By Me. */
+#include "REL/m649Dll/effect_work.h"
+#include "msm_se.h"
 #include "dolphin/math.h"
 
 #include "dolphin/gx.h"
@@ -49,48 +51,6 @@
 
 #include "REL/m649Dll/module_types.h"
 
-#define MSM_SE_M649_PROP_2018 2018
-#define MSM_SE_M649_PROP_2019 2019
-#define MSM_SE_M649_PROP_2020 2020
-#define MSM_SE_M649_PROP_2021 2021
-#define MSM_SE_M649_PROP_2022 2022
-#define MSM_SE_M649_PROP_2023 2023
-#define MSM_SE_M649_PROP_2024 2024
-#define MSM_SE_M649_PROP_2025 2025
-#define MSM_SE_M649_PROP_2026 2026
-#define MSM_SE_M649_PROP_2027 2027
-
-/* Model creation parameters shared by every prop callback. */
-typedef struct M649PropMotionParam_s {
-    s32 resource;
-    float blend;
-    u32 attr;
-} M649PropMotionParam;
-
-typedef struct M649PropParam_s {
-    s32 count, linkModel, type;
-    s16 firstId, layer;
-    u32 attr;
-    s32 shadow, modelResource;
-    M649PropMotionParam *motions;
-    Vec *position;
-    float rotationY;
-    OMOBJ_FUNC update;
-} M649PropParam;
-
-/* A lane marker stores its world position and whether it has already scored a hit. */
-typedef struct M649Point_s {
-    Vec position;
-    s16 active, hit;
-} M649Point;
-
-/* Each lane stores its travel speed and 64 point slots for route targets or stamped markers. */
-typedef struct M649Motion_s {
-    s32 id, timer;
-    float position, speed, targetSpeed;
-    s32 mode, group, character, nextPoint;
-    M649Point points[64];
-} M649Motion;
 
 /* The route timer selects a terminated list of destination indices. */
 typedef struct M649PathView_s {
@@ -102,28 +62,18 @@ typedef struct M649Scene_s {
     s32 phase, delay, direction;
 } M649Scene;
 
-/* Shadow display record registered by the held-item prop. */
-typedef struct M649EffectView_s {
-    s32 active; /* Nonzero enables the shadow draw. */
-    s32 camera; /* Camera index whose shadow hook draws this record. */
-    float radius; /* World-space radius of the shadow fan. */
-    Vec *position, *offset;
-} M649EffectView;
-
 /* Position and motion state shared by prop setup and its frame callbacks. */
 typedef struct M649PropState_s {
     s32 camera;
-    /* Cleared when the prop is created; no prop callback reads these bytes. */
-    u8 unknown_04_to_0F[12];
+    u8 unk4[12]; /* No code names this field. */
     Vec position, velocity, rotation;
-    /* Cleared when the prop is created; no prop callback reads these bytes. */
-    u8 unknown_34_to_43[16];
-    s32 motion, motionTime;
-    /* Cleared when the prop is created; no prop callback reads these bytes. */
-    u8 unknown_4C_to_83[56];
-    s32 motionActive, motionTimer;
-    /* Cleared when the prop is created; no prop callback reads these bytes. */
-    u8 unknown_8C_to_E3[88];
+    u8 unk34[16]; /* No code names this field. */
+    s32 motion;
+    s32 unk48; /* The game's code never reads this field. */
+    u8 unk4C[56]; /* No code names this field. */
+    s32 motionActive;
+    s32 unk88; /* The game's code never reads this field. */
+    u8 unk8C[88]; /* No code names this field. */
 } M649PropState;
 
 /* Prop types retain either a lane's marker list, an effect's live speed, or a route cursor. */
@@ -136,27 +86,26 @@ typedef union M649PropMovement_u {
 /* Each prop stores its position, model setup, sounds, and current movement state. */
 typedef struct M649PropWork_s {
     M649PropState state;
-    M649PropParam *param;
+    MinigamePropParams *param;
     s32 id, timer;
     Vec startPosition;
     s32 phase, pathTime;
-    /* Cleared when the prop is created; no prop callback reads these bytes. */
-    u8 unknown_104_to_1B3[176];
+    u8 unk104[176]; /* No code names this field. */
     M649PropMovement movement;
     s32 leftSound, rightSound;
     s32 childModel;
-    M649EffectView effect;
+    M649ShadowRecord effect;
 } M649PropWork;
 
 void fn_1_6A88(OMOBJ *obj);
 
-void fn_1_6A9C(HUPROCESS *process, M649PropParam *param);
+void fn_1_6A9C(HUPROCESS *process, MinigamePropParams *param);
 
 extern OMOBJ *lbl_1_bss_39C[128];
 
 extern OMOBJ *lbl_1_bss_59C;
 
-extern M649PropParam lbl_1_data_248[];
+extern MinigamePropParams lbl_1_data_248[];
 
 void fn_1_6A98(OMOBJ *obj);
 
@@ -206,8 +155,6 @@ void fn_1_80B0(OMOBJ *object);
 
 void fn_1_8154(OMOBJ *object);
 
-extern void fn_1_A018(M649EffectView *effect);
-
 void fn_1_83BC(OMOBJ *object);
 
 extern void fn_1_A5A4(s32 player, s32 score);
@@ -239,14 +186,14 @@ static inline OMOBJ *m649_local_6DB0_06FAC(s32 type, s32 id)
 static inline void m649_local_6E38_07120(OMOBJ *object, s32 index)
 {
     M649PropState *state;
-    M649PropMotionParam *param;
+    MinigamePropMotionParams *param;
     M649PropWork *work = object->data;
     s32 model, motion;
     state = &work->state;
     if (state->motion != index && index < 2) {
     motion = object->mtnId[index];
     work->timer = 0;
-    state->motionTime = 0;
+    state->unk48 = 0;
     if (motion == -1) {
         state->motionActive = 0;
         return;
@@ -255,17 +202,17 @@ static inline void m649_local_6E38_07120(OMOBJ *object, s32 index)
     model = object->mdlId[0];
     if (state->motion < 0 || (0.0) == param->blend) {
         fn_8002C95C(model, motion);
-        fn_800269E8(model, param->attr);
+        fn_800269E8(model, param->attributes);
     } else {
         fn_8002CCC0(model, motion, (0.0f),
-            (60.0f) * param->blend, param->attr);
+            (60.0f) * param->blend, param->attributes);
     }
     state->motion = index;
     }
 }
 
 /* Applies a prop's current position and rotation to its model each update. */
-static inline void m649_local_7120(OMOBJ *object)
+static inline void PropTransformApply(OMOBJ *object)
 {
     M649PropState *state;
     M649PropWork *work = object->data;
@@ -297,67 +244,12 @@ static inline void m649_local_71DC_07120(OMOBJ *object)
     if (state->motionActive) {
         if (m649_local_6F44_07120(object)) {
             state->motionActive = 0;
-            state->motionTimer = 0;
+            state->unk88 = 0;
         }
     } else {
-        state->motionTimer = 0;
+        state->unk88 = 0;
     }
     work->timer++;
-}
-
-/* Finds a registered prop by type and ID. */
-static inline OMOBJ *m649_local_6DB0_07300(s32 type, s32 id)
-{
-    OMOBJ *object;
-    OMOBJ **entry = lbl_1_bss_39C;
-    M649PropWork *work;
-    s32 i;
-    for (i = 0; i < 128; i++, entry++) {
-        object = *entry;
-        if (object != NULL) {
-            work = object->data;
-            if (work->param->type == type && work->id == id) { return object; }
-        }
-    }
-    return NULL;
-}
-
-/* Used by fn_1_7CA4 to find the moving prop that owns this linked prop. */
-static inline OMOBJ *m649_local_6DB0_07CA4(s32 type, s32 id)
-{
-    OMOBJ *object;
-    OMOBJ **entry = lbl_1_bss_39C;
-    M649PropWork *work;
-    s32 i;
-    for (i = 0; i < 128; i++, entry++) {
-        object = *entry;
-        if (object != NULL) {
-            work = object->data;
-            if (work->param->type == type && work->id == id) {
-                return object;
-            }
-        }
-    }
-    return NULL;
-}
-
-/* Used by fn_1_7DE8 to find the moving prop that owns these route props. */
-static inline OMOBJ *m649_local_6DB0_07DE8(s32 type, s32 id)
-{
-    OMOBJ *object;
-    OMOBJ **entry = lbl_1_bss_39C;
-    M649PropWork *work;
-    s32 i;
-    for (i = 0; i < 128; i++, entry++) {
-        object = *entry;
-        if (object != NULL) {
-            work = object->data;
-            if (work->param->type == type && work->id == id) {
-                return object;
-            }
-        }
-    }
-    return NULL;
 }
 
 /* Checks whether the model's motion reached its endpoint with no transition pending. */
@@ -370,51 +262,12 @@ static inline BOOL m649_local_6F44_08154(OMOBJ *object)
     return FALSE;
 }
 
-/* Used by fn_1_88FC to find a lane's moving prop. */
-static inline OMOBJ *m649_local_6DB0_088FC(s32 type, s32 id)
-{
-    OMOBJ *object;
-    OMOBJ **entry = lbl_1_bss_39C;
-    M649PropWork *work;
-    s32 i;
-    for (i = 0; i < 128; i++, entry++) {
-        object = *entry;
-        if (object != NULL) {
-            work = object->data;
-            if (work->param->type == type && work->id == id) {
-                return object;
-            }
-        }
-    }
-    return NULL;
-}
-
-/* Used by fn_1_8C2C to find a stamp-effect prop by type and ID;
-* the caller checks whether it is idle. */
-static inline OMOBJ *m649_local_6DB0_08C2C(s32 type, s32 id)
-{
-    OMOBJ *object;
-    OMOBJ **entry = lbl_1_bss_39C;
-    M649PropWork *work;
-    s32 i;
-    for (i = 0; i < 128; i++, entry++) {
-        object = *entry;
-        if (object != NULL) {
-            work = object->data;
-            if (work->param->type == type && work->id == id) {
-                return object;
-            }
-        }
-    }
-    return NULL;
-}
-
 /* Runs during minigame setup to clear the prop registry and create its configured props. */
 void fn_1_6990(HUPROCESS *manager) {
     OMOBJ *object;
     OMOBJ **objectSlot;
-    M649PropParam *param;
-    void *managerData;
+    MinigamePropParams *param;
+    M649Scene *managerData;
     s32 objectIndex;
     objectSlot = lbl_1_bss_39C;
     objectIndex = 0;
@@ -430,7 +283,7 @@ void fn_1_6990(HUPROCESS *manager) {
     managerData = HuMemDirectMallocNum(HEAP_HEAP, 12, 0x10000000);
     object->data = managerData;
     memset(managerData, 0, 12);
-    (*(s32 *)((s8 *)(managerData) + (8))) = (s32)(frand() & 1);
+    managerData->direction = (s32)(frand() & 1);
     param = lbl_1_data_248;
     while (param->count != -1)
     {
@@ -453,14 +306,14 @@ void fn_1_6A98(OMOBJ *obj)
 }
 
 /* Called by fn_1_6990 during setup to create a configured prop group and initialize its models. */
-void fn_1_6A9C(HUPROCESS *process, M649PropParam *param)
+void fn_1_6A9C(HUPROCESS *process, MinigamePropParams *param)
 {
     s32 i;
     OMOBJ *object;
     s32 model;
     M649PropWork *work;
     M649PropState *state;
-    M649PropMotionParam *motion;
+    MinigamePropMotionParams *motion;
     s32 group;
     s32 resource;
     for (group = 0; group < param->count; group++) {
@@ -564,14 +417,14 @@ OMOBJ *fn_1_6DB0(s32 type, s32 id)
 void fn_1_6E38(OMOBJ *object, s32 index)
 {
     M649PropState *state;
-    M649PropMotionParam *param;
+    MinigamePropMotionParams *param;
     M649PropWork *work = object->data;
     s32 model, motion;
     state = &work->state;
     if (state->motion != index && index < 2) {
     motion = object->mtnId[index];
     work->timer = 0;
-    state->motionTime = 0;
+    state->unk48 = 0;
     if (motion == -1) {
         state->motionActive = 0;
         return;
@@ -580,10 +433,10 @@ void fn_1_6E38(OMOBJ *object, s32 index)
     model = object->mdlId[0];
     if (state->motion < 0 || (0.0) == param->blend) {
         fn_8002C95C(model, motion);
-        fn_800269E8(model, param->attr);
+        fn_800269E8(model, param->attributes);
     } else {
         fn_8002CCC0(model, motion, (0.0f),
-            (60.0f) * param->blend, param->attr);
+            (60.0f) * param->blend, param->attributes);
     }
     state->motion = index;
     }
@@ -611,7 +464,9 @@ BOOL fn_1_6FAC(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
     HSF_OBJECT *part;
     s32 model;
     object = m649_local_6DB0_06FAC(type, id);
-    if (object == NULL) { return FALSE; }
+    if (object == NULL) {
+        return FALSE;
+    }
     work = object->data;
     model = object->mdlId[0];
     part = fn_80026BF4(model, name);
@@ -634,14 +489,7 @@ void fn_1_70E8(OMOBJ *object) {
 /* Wraps the prop's stored yaw and copies its position and rotation to the model. */
 void fn_1_7120(OMOBJ *object)
 {
-    M649PropState *state;
-    s32 model;
-    M649PropWork *work = object->data;
-    state = &work->state;
-    model = object->mdlId[0];
-    state->rotation.y = fmodf(state->rotation.y, 360.0f);
-    fn_80026790(model, &state->position);
-    fn_80026838(model, &state->rotation);
+    PropTransformApply(object);
 }
 
 /* Clears completed motion state when no blend remains and advances the prop's update counter. */
@@ -660,10 +508,10 @@ void fn_1_71DC(OMOBJ *object)
         }
         if (done) {
             state->motionActive = 0;
-            state->motionTimer = 0;
+            state->unk88 = 0;
         }
     } else {
-        state->motionTimer = 0;
+        state->unk88 = 0;
     }
     work->timer++;
 }
@@ -733,7 +581,7 @@ void fn_1_7300(OMOBJ *object)
     motion->speed = (0.0f);
     motion->targetSpeed = speed;
     motion->group = group;
-    motion->character = fn_1_6958(group);
+    motion->unk1C = fn_1_6958(group);
     motion->nextPoint = 0;
     if ((id & 3) >= 2) {
         motion->mode = 0;
@@ -743,7 +591,9 @@ void fn_1_7300(OMOBJ *object)
         y = (105.0f);
     }
     z = (0.0f);
-    if (speed > (0.0f)) { step = (400.0f); }
+    if (speed > (0.0f)) {
+        step = (400.0f);
+    }
     else { step = (-400.0f); }
     for (i = 0; i < 64; i++) {
         point = &motion->points[i];
@@ -755,14 +605,24 @@ void fn_1_7300(OMOBJ *object)
                 motion->nextPoint++;
                 point->active = 1;
                 special = 0;
-                if (i == 0) { z += offset; }
-                if ((id & 1) == 0) {
-                    if (i == 0) { special = 1; }
-                } else {
-                    if (i == 0) { special = -1; }
-                    if (i == 1) { special = 1; }
+                if (i == 0) {
+                    z += offset;
                 }
-                if (i == count - 1) { special = 1; }
+                if ((id & 1) == 0) {
+                    if (i == 0) {
+                        special = 1;
+                    }
+                } else {
+                    if (i == 0) {
+                        special = -1;
+                    }
+                    if (i == 1) {
+                        special = 1;
+                    }
+                }
+                if (i == count - 1) {
+                    special = 1;
+                }
                 switch (special) {
                 case 0:
                     point->position.z = z + (100.0) *
@@ -775,7 +635,9 @@ void fn_1_7300(OMOBJ *object)
             }
             /* Marker lanes reach this test without assigning special; only route lanes set it
              * above. */
-            if (special != -1) { z += step; }
+            if (special != -1) {
+                z += step;
+            }
         }
     }
     fn_1_A0BC(motion);
@@ -791,11 +653,15 @@ void fn_1_76DC(OMOBJ *object)
     M649Motion *motion = work->movement.motion;
     switch (work->phase) {
     case 0:
-        if (work->id == 0) { fn_1_78D0(); }
+        if (work->id == 0) {
+            fn_1_78D0();
+        }
         work->phase++;
         work->leftSound = work->rightSound = -1;
     case 1:
-        if (!lbl_1_bss_398) { return; }
+        if (!lbl_1_bss_398) {
+            return;
+        }
         work->phase++;
         motion->timer = 60;
     case 2:
@@ -941,7 +807,7 @@ void fn_1_7CA4(OMOBJ *object)
     OMOBJ *owner;
     float speed;
     s32 model = object->mdlId[0];
-    owner = m649_local_6DB0_07CA4(1, work->id & 1);
+    owner = m649_local_6DB0_06FAC(1, work->id & 1);
     if (owner != NULL) {
         ownerWork = owner->data;
         motion = ownerWork->movement.motion;
@@ -974,12 +840,14 @@ void fn_1_7DE8(OMOBJ *object)
     s32 i, j, count, model;
     float z;
     for (i = 0; i < 4; i++) {
-        owner = m649_local_6DB0_07DE8(1, work->id + i * 4);
+        owner = m649_local_6DB0_06FAC(1, work->id + i * 4);
         if (owner != NULL) {
             ownerWork = owner->data;
             motion = ownerWork->movement.motion;
             count = 0;
-            if (work->id == 0) { slot = &lbl_1_bss_368[i * 3]; }
+            if (work->id == 0) {
+                slot = &lbl_1_bss_368[i * 3];
+            }
             else { slot = &lbl_1_bss_338[i * 3]; }
             for (j = 0; j < 64; j++) {
                 point = &motion->points[j];
@@ -990,7 +858,9 @@ void fn_1_7DE8(OMOBJ *object)
                         model = prop->mdlId[0];
                         fn_80026A44(model, 1);
                         fn_80026760(model, point->position.x, point->position.y, z);
-                        if (++count >= 3) { break; }
+                        if (++count >= 3) {
+                            break;
+                        }
                     }
                 }
             }
@@ -1074,7 +944,7 @@ static Vec lbl_1_data_464 = {5.0f, 3.0f, -5.0f};
 void fn_1_8278(OMOBJ *object)
 {
     M649PropState *state;
-    M649EffectView *effect;
+    M649ShadowRecord *effect;
     M649PropWork *work = object->data;
     s32 model, cameraMask;
     state = &work->state;
@@ -1168,7 +1038,7 @@ void fn_1_83BC(OMOBJ *object)
         state->velocity.z += (0.2) * (z - state->velocity.z);
         VECAdd(&state->position, &state->velocity, &state->position);
         if (distance > (20.0)) {
-            m649_local_7120(object);
+            PropTransformApply(object);
             m649_local_71DC_07120(object);
             break;
         }
@@ -1212,7 +1082,7 @@ void fn_1_88FC(s32 group, s32 id)
     if (lbl_1_bss_398 || group == 0) {
         HuAudFXPlay(lbl_1_rodata_2C8[group]);
     }
-    object = m649_local_6DB0_088FC(1, objectId);
+    object = m649_local_6DB0_06FAC(1, objectId);
     if (object != NULL) {
         work = object->data;
         motion = work->movement.motion;
@@ -1228,7 +1098,7 @@ void fn_1_88FC(s32 group, s32 id)
         position.y = point->position.y;
         position.z = (0.0f);
         speed = &motion->speed;
-        object = m649_local_6DB0_088FC(1, objectId - 2);
+        object = m649_local_6DB0_06FAC(1, objectId - 2);
         if (object != NULL) {
             work = object->data;
             motion = work->movement.motion;
@@ -1272,7 +1142,7 @@ void fn_1_8C2C(s32 type, s32 id, Vec *position, float *speed)
     s32 propType = type + 6;
     objectId = id * 2;
     for (i = 0; i < 2; i++, objectId++) {
-        object = m649_local_6DB0_08C2C(propType, objectId);
+        object = m649_local_6DB0_06FAC(propType, objectId);
         if (object != NULL) {
             work = object->data;
             if (work->phase == 0) {

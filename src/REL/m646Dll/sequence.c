@@ -1,6 +1,7 @@
 /* Owns Hyper Sniper setup, shared sequence state, camera motion, and phase hooks. */
 #include "math.h"
 #include "REL/m646Dll/module_types.h"
+#include "REL/m646Dll/m646.h"
 
 #define M646_OPENING_CAMERA_MOTION_FILE 0
 #define M646_ALTERNATE_CAMERA_MOTION_FILE 1
@@ -14,18 +15,7 @@ extern M646MainData lbl_1_bss_0;
 extern s32 lbl_1_data_4[2];
 
 void fn_1_310(OMOBJ *obj);
-void fn_1_543C(OMOBJMAN *objman);
-void fn_1_2B50(OMOBJMAN *objman);
-void fn_1_4E28(OMOBJMAN *objman);
-void fn_1_AFC(OMOBJMAN *objman, s16 player);
-void fn_1_8E78(OMOBJMAN *objman);
-void fn_1_98E0(OMOBJMAN *objman);
 extern MGSEQ_PARAM lbl_1_data_C;
-void fn_1_5564(s16 player, s32 state);
-void fn_1_5964(s16 player, s32 command);
-void fn_1_9024(void);
-u16 fn_1_8FD4(void);
-void fn_1_9118(void);
 s32 fn_1_A0D4(void);
 s32 fn_1_A0FC(void);
 
@@ -79,8 +69,8 @@ void fn_1_0(void)
     memset(&lbl_1_bss_0, 0, sizeof(M646MainData));
     lbl_1_data_0->streamId = -1;
     nightMode = lbl_802C0278;
-    lbl_1_data_0->nightFlag = nightMode;
-    lbl_1_data_0->resetValue = 0;
+    lbl_1_data_0->unk1C = nightMode;
+    lbl_1_data_0->unk14 = 0;
     lbl_1_data_0->unknown20 = 0;
 }
 
@@ -102,7 +92,7 @@ void fn_1_E0(OMOBJMAN *objman)
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, (90.0f), (20.0f),
                             (10000.0f), (1.2f));
-    lbl_1_data_0->camera.object =
+    lbl_1_data_0->camera.unk00 =
         fn_8003AB38(objman, M646_CAMERA_OBJECT_PRIORITY, 0, 0, -1, fn_1_310);
     for (motionIndex = 0; motionIndex < 2; motionIndex++) {
         lbl_1_data_0->camera.motions[motionIndex] = fn_8002C4C0(
@@ -158,7 +148,7 @@ void fn_1_318(void)
     HuVecF initialColorSource = {20.0f, 45.0f, 1000.0f};
 
     /* Creation reads the vector's first four bytes as color; the color is then set to white. */
-    light = lbl_1_data_0->lightId =
+    light = lbl_1_data_0->unk10 =
         fn_800286D0(&position, &direction, (GXColor *) &initialColorSource);
     Hu3DGLightPointSet(light, (1000.0f), (1.0f), GX_DA_MEDIUM);
     Hu3DGLightStaticSet(light, TRUE);
@@ -230,7 +220,7 @@ void fn_1_878(s16 sequenceMode, s16 phaseFrame)
 void fn_1_8A4(s16 sequenceMode, s16 phaseFrame)
 {
     if ((lbl_1_data_0->streamId == -1) &&
-        ((s32)(GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0)) {
+        ((s32)(GameMesFXPlayCheck(fn_80071DF4())) != 0)) {
         lbl_1_data_0->streamId = HuAudSStreamPlay(MSM_STREAM_FAST_AND_FURIOUS);
     }
 }

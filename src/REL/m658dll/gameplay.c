@@ -72,12 +72,12 @@ extern void fn_1_70F8(s32 model, const s8 *colors, f32 scale);
 #define M658_SOUND_RESULT_3 2103
 #define M658_SOUND_RESULT_4 2104
 void fn_1_404(MGPLAYER *);
-void fn_1_2000(void *, s32);
-void fn_1_2188(void *, s32);
-void fn_1_2310(void *, s32);
-void fn_1_24F0(void *, s32);
-void fn_1_260C(void *, s32);
-void fn_1_2728(void *, s32);
+void fn_1_2000(M658HookActor *, s32);
+void fn_1_2188(M658HookActor *, s32);
+void fn_1_2310(M658HookActor *, s32);
+void fn_1_24F0(M658HookActor *, s32);
+void fn_1_260C(M658HookActor *, s32);
+void fn_1_2728(M658HookActor *, s32);
 s32 lbl_1_data_30 = 2;
 s32 lbl_1_data_34 = 4;
 unsigned int lbl_1_data_38[17] = {
@@ -91,7 +91,7 @@ unsigned int lbl_1_data_38[17] = {
     DATANUM(0x930000, 22), DATANUM(0x930000, 22),
     0
 };
-u32 lbl_1_data_7C[4][3] = {
+M658PlayerChoiceRange lbl_1_data_7C[4] = {
     { 5400, 7200, 60 },
     { 3600, 5400, 60 },
     { 3000, 4200, 60 },
@@ -139,7 +139,7 @@ s32 lbl_1_data_26C[6][20] = {
 MGPLAYER_MODE_FUNC lbl_1_data_44C[18] = {0,0,0,0,0,0,0,0,0,0,fn_1_404};
 typedef struct M658RegistryDescriptor {
     void (*render)(void);
-    void (*update)(void *, s32);
+    void (*update)(M658HookActor *, s32);
     s32 itemBytes, count;
 } M658RegistryDescriptor;
 /* Each descriptor gives effect callbacks, item work size and pool capacity; the last ends the
@@ -252,8 +252,8 @@ extern void fn_1_1500(s32 player, s32 mode);
 extern void fn_1_6414(void *resource);
 extern s16 *fn_1_753C(s32 index);
 extern OMOBJ *fn_1_6384(void *description);
-extern u16 *fn_1_1F04(u32 index);
-extern s32 fn_1_1D14(M658PlayerWork *, s32);
+extern M658HookActor *fn_1_1F04(u32 index);
+extern void fn_1_1D14(M658PlayerWork *, s32);
 extern void fn_8002D414(s16 model, f32 time);
 extern void fn_8002D86C(s16 model, f32 speed);
 extern void fn_80026A44(s16 model, u32 flags);
@@ -339,7 +339,7 @@ s32 fn_1_C84(void)
 s32 fn_1_CD0(void) {
     s32 isResultPhase;
 
-    if ((void *) lbl_1_bss_38 == NULL) {
+    if (lbl_1_bss_38 == NULL) {
         return 0;
     }
     isResultPhase = 1;
@@ -350,7 +350,7 @@ s32 fn_1_CD0(void) {
 }
 /* Reports whether the sequence has reached the winner presentation phase. */
 s32 fn_1_D40(void) {
-    if ((void *) lbl_1_bss_38 == NULL) {
+    if (lbl_1_bss_38 == NULL) {
         return 0;
     }
     return (s16) lbl_1_bss_38->phase == 6;
@@ -359,7 +359,7 @@ M658Runtime *lbl_1_bss_38;
 M658PlayerWork *lbl_1_bss_28[4];
 M658Rows *lbl_1_bss_24;
 void *lbl_1_bss_20;
-void *lbl_1_bss_1C;
+struct M658CameraStorageView *lbl_1_bss_1C;
 M658RegistryWork *lbl_1_bss_18;
 s32 lbl_1_bss_14;
 s32 lbl_1_bss_10;
@@ -387,7 +387,7 @@ void fn_1_D8C(void)
     }
 }
 /* Adds a player record to the runtime's eligible-player list. */
-s32 fn_1_EB0(void *player)
+void fn_1_EB0(void *player)
 {
     lbl_1_bss_38->available[lbl_1_bss_38->count] = player;
     lbl_1_bss_38->count++;
@@ -740,9 +740,9 @@ typedef struct M658CameraStorageView {
 } M658CameraStorageView;
 /* Selects the scene camera's mode and restarts its per-mode frame counter. */
 void fn_1_1C54(u16 mode) {
-    if ((void *) lbl_1_bss_1C != NULL) {
-        ((M658CameraStorageView *)lbl_1_bss_1C)->frame = 0;
-        ((M658CameraStorageView *)lbl_1_bss_1C)->mode = mode;
+    if (lbl_1_bss_1C != NULL) {
+        lbl_1_bss_1C->frame = 0;
+        lbl_1_bss_1C->mode = mode;
     }
 }
 /* Player-state callbacks shift to a new character motion only when its slot changes. */
@@ -756,7 +756,7 @@ void fn_1_1C98(M658PlayerWork *work, s32 motionSlot, f32 endTime, s32 attributes
     }
 }
 /* Called by character-state handlers to restart the frame counter on a state change. */
-s32 fn_1_1D14(M658PlayerWork *work, s32 nextState)
+void fn_1_1D14(M658PlayerWork *work, s32 nextState)
 {
     if (work->state != nextState) {
         work->frame = 0;
@@ -771,20 +771,20 @@ void fn_1_1D3C(M658PlayerWork *work) {
 }
 /* Disables motion-event processing and resets the selected event-table index. */
 void fn_1_1D50(void) {
-    if ((void *) lbl_1_bss_38 != NULL) {
+    if (lbl_1_bss_38 != NULL) {
         (lbl_1_bss_38->motionActive) = 0;
         (lbl_1_bss_38->motionEventSet) = 0;
     }
 }
 /* Sets the motion-event processing enable value without changing the selected event table. */
 void fn_1_1D94(u16 enabled) {
-    if ((void *) lbl_1_bss_38 != NULL) {
+    if (lbl_1_bss_38 != NULL) {
         (lbl_1_bss_38->motionActive) = enabled;
     }
 }
 /* Starts processing the selected motion-event table from its first entry. */
 void fn_1_1DC4(s32 eventTable) {
-    if ((void *) lbl_1_bss_38 != NULL) {
+    if (lbl_1_bss_38 != NULL) {
         (lbl_1_bss_38->motionActive) = 1;
         (lbl_1_bss_38->motionEventSet) = eventTable;
         (lbl_1_bss_38->motionEventIndex) = 0;
@@ -822,70 +822,63 @@ void fn_1_1E18(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lag)
         (lbl_1_bss_38->motionEventIndex)++;
     }
 }
-extern void *fn_1_6764(void *pool);
-extern void *fn_1_67A0(void *pool, void *item);
+typedef struct M658Pool M658Pool;
+extern void *fn_1_6764(M658Pool *pool);
+extern void *fn_1_67A0(M658Pool *pool, void *item);
 /* Player and scene handlers claim an inactive pooled effect and run its start callback. */
-u16 *fn_1_1F04(u32 index)
+M658HookActor *fn_1_1F04(u32 index)
 {
     M658RegistryEntry *entry;
     void *pool;
-    u16 *item;
+    M658HookActor *item;
 
     if (lbl_1_bss_18 == NULL) {
         return NULL;
     }
     entry = &lbl_1_bss_18->entries[index];
     pool = entry->pool;
-    item = (u16 *)fn_1_6764(pool);
+    item = fn_1_6764(pool);
     while (item) {
-        if ((item[0] & 1) == 0) {
-            item[0] |= 1;
-            item[1] = 0;
+        if ((item->flags & 1) == 0) {
+            item->flags |= 1;
+            item->unk2 = 0;
             entry->update(item, 2);
             return item;
         }
-        item = (u16 *)fn_1_67A0(pool, item);
+        item = fn_1_67A0(pool, item);
     }
     return NULL;
 }
 /* Requests the effect's release callback and inactive state on the next registry update. */
-void fn_1_1FEC(u16 *flags)
+void fn_1_1FEC(M658HookActor *item)
 {
-    *flags |= 2;
+    item->flags |= 2;
 }
-extern void fn_1_1FEC(u16 *);
-/* The pooled attachment stores its effect model, host model, and attachment name. */
-typedef struct M658HookActor {
-    u8 unreadBytesBeforeModel[6];
-    s16 model;
-    u8 unreadBytesBeforeHost[48];
-    s32 hostModel;
-    char *hook;
-} M658HookActor;
+extern void fn_1_1FEC(M658HookActor *);
 /* Manages the first pooled character effect through allocation, playback, and return. */
-void fn_1_2000(void *callbackData, s32 action)
+void fn_1_2000(M658HookActor *callbackData, s32 action)
 {
 
     switch (action) {
     case 0:
-        ((M658HookActor *)callbackData)->model =
+        callbackData->model =
             lbl_1_bss_38->objects[5]->mdlId[lbl_1_bss_18->count + 1];
-        fn_8002D414(((M658HookActor *)callbackData)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)callbackData)->model, 0.0f);
-        fn_800269E8(((M658HookActor *)callbackData)->model, 1);
+        fn_8002D414(callbackData->model, 0.0f);
+        fn_8002D86C(callbackData->model, 0.0f);
+        fn_800269E8(callbackData->model, 1);
         break;
     case 2:
-        fn_80026A44(((M658HookActor *)callbackData)->model, 1);
-        fn_800268B0(((M658HookActor *)callbackData)->model, 0.88f, 1.0f, 0.88f);
-        fn_8002D414(((M658HookActor *)callbackData)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)callbackData)->model, 1.0f);
-        fn_80026B8C(((M658HookActor *)callbackData)->model, (s16)lbl_1_bss_14);
+        fn_80026A44(callbackData->model, 1);
+        fn_800268B0(callbackData->model, 0.88f, 1.0f, 0.88f);
+        fn_8002D414(callbackData->model, 0.0f);
+        fn_8002D86C(callbackData->model, 1.0f);
+        fn_80026B8C(callbackData->model, (s16)lbl_1_bss_14);
         break;
     case 3:
-        if (fn_8002D75C(((M658HookActor *)callbackData)->model)) {
-            fn_8002D414(((M658HookActor *)callbackData)->model, 0.0f);
-            fn_8002D86C(((M658HookActor *)callbackData)->model, 0.0f);
-            fn_800269E8(((M658HookActor *)callbackData)->model, 1);
+        if (fn_8002D75C(callbackData->model)) {
+            fn_8002D414(callbackData->model, 0.0f);
+            fn_8002D86C(callbackData->model, 0.0f);
+            fn_800269E8(callbackData->model, 1);
             fn_1_1FEC(callbackData);
         }
         break;
@@ -894,29 +887,29 @@ void fn_1_2000(void *callbackData, s32 action)
     }
 }
 /* Manages the second pooled character effect through allocation, playback, and return. */
-void fn_1_2188(void *callbackData, s32 action)
+void fn_1_2188(M658HookActor *callbackData, s32 action)
 {
 
     switch (action) {
     case 0:
-        ((M658HookActor *)callbackData)->model =
+        callbackData->model =
             lbl_1_bss_38->objects[7]->mdlId[lbl_1_bss_18->count + 1];
-        fn_8002D414(((M658HookActor *)callbackData)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)callbackData)->model, 0.0f);
-        fn_800269E8(((M658HookActor *)callbackData)->model, 1);
+        fn_8002D414(callbackData->model, 0.0f);
+        fn_8002D86C(callbackData->model, 0.0f);
+        fn_800269E8(callbackData->model, 1);
         break;
     case 2:
-        fn_80026A44(((M658HookActor *)callbackData)->model, 1);
-        fn_800268B0(((M658HookActor *)callbackData)->model, 0.88f, 1.0f, 0.88f);
-        fn_8002D414(((M658HookActor *)callbackData)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)callbackData)->model, 1.0f);
-        fn_80026B8C(((M658HookActor *)callbackData)->model, (s16)lbl_1_bss_14);
+        fn_80026A44(callbackData->model, 1);
+        fn_800268B0(callbackData->model, 0.88f, 1.0f, 0.88f);
+        fn_8002D414(callbackData->model, 0.0f);
+        fn_8002D86C(callbackData->model, 1.0f);
+        fn_80026B8C(callbackData->model, (s16)lbl_1_bss_14);
         break;
     case 3:
-        if (fn_8002D75C(((M658HookActor *)callbackData)->model)) {
-            fn_8002D414(((M658HookActor *)callbackData)->model, 0.0f);
-            fn_8002D86C(((M658HookActor *)callbackData)->model, 0.0f);
-            fn_800269E8(((M658HookActor *)callbackData)->model, 1);
+        if (fn_8002D75C(callbackData->model)) {
+            fn_8002D414(callbackData->model, 0.0f);
+            fn_8002D86C(callbackData->model, 0.0f);
+            fn_800269E8(callbackData->model, 1);
             fn_1_1FEC(callbackData);
         }
         break;
@@ -924,91 +917,90 @@ void fn_1_2188(void *callbackData, s32 action)
         break;
     }
 }
+/* Keeps a result prop at its named model attachment. */
+static inline void HookActorFollow(M658HookActor *actor, Vec *position)
+{
+    if (actor->hook) {
+        Hu3DModelObjPosGet(actor->hostModel, actor->hook, position);
+        fn_80026790(actor->model, position);
+    }
+}
+
+/* Stops the prop motion when the pooled item is released. */
+static inline void HookActorStop(M658HookActor *actor)
+{
+    fn_8002D414(actor->model, 0.0f);
+    fn_8002D86C(actor->model, 0.0f);
+    fn_800269E8(actor->model, 1);
+}
+
 /* Positions a pooled floating model at its named character attachment. */
-void fn_1_2310(void *actor, s32 phase)
+void fn_1_2310(M658HookActor *actor, s32 phase)
 {
     Vec position;
     switch (phase) {
     case 0:
-        ((M658HookActor *)actor)->model = lbl_1_bss_38->objects[6]->mdlId[lbl_1_bss_18->count + 1];
-        fn_8002D414(((M658HookActor *)actor)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)actor)->model, 0.0f);
-        fn_800269E8(((M658HookActor *)actor)->model, ((1 << 30) | (1 << 0)));
-        fn_800269E8(((M658HookActor *)actor)->model, 1);
-        fn_800273EC(((M658HookActor *)actor)->model, 2.0f, 2.0f, 2.0f);
-        fn_800268B0(((M658HookActor *)actor)->model, 0.7f, 0.7f, 0.7f);
+        actor->model = lbl_1_bss_38->objects[6]->mdlId[lbl_1_bss_18->count + 1];
+        fn_8002D414(actor->model, 0.0f);
+        fn_8002D86C(actor->model, 0.0f);
+        fn_800269E8(actor->model, ((1 << 30) | (1 << 0)));
+        fn_800269E8(actor->model, 1);
+        fn_800273EC(actor->model, 2.0f, 2.0f, 2.0f);
+        fn_800268B0(actor->model, 0.7f, 0.7f, 0.7f);
         break;
     case 2:
-        fn_80026B8C(((M658HookActor *)actor)->model, lbl_1_bss_C);
-        fn_80026A44(((M658HookActor *)actor)->model, 1);
-        fn_8002D414(((M658HookActor *)actor)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)actor)->model, 2.0f);
+        fn_80026B8C(actor->model, lbl_1_bss_C);
+        fn_80026A44(actor->model, 1);
+        fn_8002D414(actor->model, 0.0f);
+        fn_8002D86C(actor->model, 2.0f);
         break;
     case 3:
-        if (((M658HookActor *)actor)->hook) {
-            Hu3DModelObjPosGet(((M658HookActor *) actor)->hostModel,
-                               ((M658HookActor *) actor)->hook, &position);
-            fn_80026790(((M658HookActor *)actor)->model, &position);
-        }
+        HookActorFollow(actor, &position);
         break;
     case 1:
-        fn_8002D414(((M658HookActor *)actor)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)actor)->model, 0.0f);
-        fn_800269E8(((M658HookActor *)actor)->model, 1);
+        HookActorStop(actor);
         break;
     }
 }
 /* Places the result prop at its named attachment and stops it when its pooled item is released. */
-void fn_1_24F0(void *actor, s32 phase)
+void fn_1_24F0(M658HookActor *actor, s32 phase)
 {
     Vec position;
     switch (phase) {
     case 0:
         break;
     case 2:
-        ((M658HookActor *)actor)->model = lbl_1_bss_38->objects[10]->mdlId[0];
-        ((M658HookActor *)actor)->hostModel = lbl_1_bss_38->objects[2]->mdlId[0];
-        ((M658HookActor *)actor)->hook = lbl_1_data_1A4[12];
-        fn_80026B8C(((M658HookActor *)actor)->model, lbl_1_data_30);
+        actor->model = lbl_1_bss_38->objects[10]->mdlId[0];
+        actor->hostModel = lbl_1_bss_38->objects[2]->mdlId[0];
+        actor->hook = lbl_1_data_1A4[12];
+        fn_80026B8C(actor->model, lbl_1_data_30);
         /* The creation phase also updates the attachment position. */
     case 3:
-        if (((M658HookActor *)actor)->hook) {
-            Hu3DModelObjPosGet(((M658HookActor *) actor)->hostModel,
-                               ((M658HookActor *) actor)->hook, &position);
-            fn_80026790(((M658HookActor *)actor)->model, &position);
-        }
+        HookActorFollow(actor, &position);
         break;
     case 1:
-        fn_8002D414(((M658HookActor *)actor)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)actor)->model, 0.0f);
-        fn_800269E8(((M658HookActor *)actor)->model, 1);
+        HookActorStop(actor);
         break;
     }
 }
 /* Follows the second result prop's attachment and stops it when its pooled item is released. */
-void fn_1_260C(void *work, s32 action)
+void fn_1_260C(M658HookActor *work, s32 action)
 {
     HuVecF position;
 
     switch (action) {
     case 2:
-        ((M658HookActor *)work)->model =
+        work->model =
             lbl_1_bss_38->objects[11]->mdlId[0];
-        ((M658HookActor *)work)->hostModel =
+        work->hostModel =
             lbl_1_bss_38->objects[2]->mdlId[0];
-        ((M658HookActor *)work)->hook = lbl_1_data_1A4[13];
-        fn_80026B8C(((M658HookActor *)work)->model, (s16)lbl_1_data_30);
+        work->hook = lbl_1_data_1A4[13];
+        fn_80026B8C(work->model, (s16)lbl_1_data_30);
     case 3:
-        if (((M658HookActor *)work)->hook) {
-            Hu3DModelObjPosGet((s16)((M658HookActor *)work)->hostModel,
-                               ((M658HookActor *)work)->hook, &position);
-            fn_80026790(((M658HookActor *)work)->model, &position);
-        }
+        HookActorFollow(work, &position);
         break;
     case 1:
-        fn_8002D414(((M658HookActor *)work)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)work)->model, 0.0f);
-        fn_800269E8(((M658HookActor *)work)->model, 1);
+        HookActorStop(work);
         break;
     case 0:
     default:
@@ -1017,26 +1009,24 @@ void fn_1_260C(void *work, s32 action)
 }
 /* Hooks the end effect to the closing scene's second model and stops it when the pooled item
  * is released. */
-void fn_1_2728(void *work, s32 action)
+void fn_1_2728(M658HookActor *work, s32 action)
 {
     switch (action) {
     case 2:
-        ((M658HookActor *)work)->model =
+        work->model =
             lbl_1_bss_38->objects[12]->mdlId[0];
-        ((M658HookActor *)work)->hostModel =
+        work->hostModel =
             lbl_1_bss_38->objects[13]->mdlId[1];
-        ((M658HookActor *)work)->hook = lbl_1_data_1A4[14];
-        fn_800269E8(((M658HookActor *)work)->model, ((1 << 30) | (1 << 0)));
-        fn_8002741C((HU3D_MODELID)((M658HookActor *)work)->hostModel,
-                         ((M658HookActor *)work)->hook,
-                         ((M658HookActor *)work)->model);
+        work->hook = lbl_1_data_1A4[14];
+        fn_800269E8(work->model, ((1 << 30) | (1 << 0)));
+        fn_8002741C((HU3D_MODELID)work->hostModel,
+                         work->hook,
+                         work->model);
         break;
     case 3:
         return;
     case 1:
-        fn_8002D414(((M658HookActor *)work)->model, 0.0f);
-        fn_8002D86C(((M658HookActor *)work)->model, 0.0f);
-        fn_800269E8(((M658HookActor *)work)->model, 1);
+        HookActorStop(work);
         break;
     case 0:
     default:
@@ -1118,7 +1108,7 @@ extern void fn_1_EF4(s32);
 /* Starts the opening camera, then enables both selection rows and players when main play begins. */
 void fn_1_2AF4(OMOBJ *obj)
 {
-    s16 *work = (s16 *)obj->data;
+    s16 *work = obj->data;
     s32 index;
 
     if (work[0] == 0) {
@@ -1135,13 +1125,6 @@ void fn_1_2AF4(OMOBJ *obj)
         work[1] = 2;
     }
 }
-typedef struct M658TransitionWork {
-
-    s16 timer;
-
-    s16 phase;
-
-} M658TransitionWork;
 typedef struct M658SequenceUpdateWork {
 
     s16 timer;
@@ -1171,7 +1154,7 @@ void fn_1_2BB4(OMOBJ *object)
 
 {
 
-    M658TransitionWork *work = object->data;
+    M658SequenceUpdateWork *work = object->data;
 
     M658PlayerWork *sequences[2];
 
@@ -1253,17 +1236,17 @@ void fn_1_2DAC(OMOBJ *object)
 
     case 0:
 
-        if (((M658Runtime *)lbl_1_bss_38)->selected->state == 8) {
+        if (lbl_1_bss_38->selected->state == 8) {
 
-            fn_8002C95C(((OMOBJ *)((M658Runtime *)lbl_1_bss_38)->objects[2])->mdlId[0],
+            fn_8002C95C(lbl_1_bss_38->objects[2]->mdlId[0],
 
-                          ((OMOBJ *)((M658Runtime *)lbl_1_bss_38)->objects[2])->mtnId[2]);
+                          lbl_1_bss_38->objects[2]->mtnId[2]);
 
-            fn_8002D86C(((OMOBJ *)((M658Runtime *)lbl_1_bss_38)->objects[8])->mdlId[0],
+            fn_8002D86C(lbl_1_bss_38->objects[8]->mdlId[0],
 
                                1.0f);
 
-            fn_8002D414(((OMOBJ *)((M658Runtime *)lbl_1_bss_38)->objects[8])->mdlId[0],
+            fn_8002D414(lbl_1_bss_38->objects[8]->mdlId[0],
 
                               0.0f);
 
@@ -1293,17 +1276,17 @@ void fn_1_2DAC(OMOBJ *object)
 
         if (work->timer == 250) {
 
-            fn_800269E8(((M658Runtime *)lbl_1_bss_38)->selected->player->actor->mdlId, 1);
+            fn_800269E8(lbl_1_bss_38->selected->player->actor->mdlId, 1);
 
-            ((M658Runtime *)lbl_1_bss_38)->selected->rotation = 1.8e+02f;
+            lbl_1_bss_38->selected->rotation = 1.8e+02f;
 
-            fn_80086CA8(((M658Runtime *)lbl_1_bss_38)->selected->player->actor,
+            fn_80086CA8(lbl_1_bss_38->selected->player->actor,
 
-                           ((M658Runtime *)lbl_1_bss_38)->selected->rotation);
+                           lbl_1_bss_38->selected->rotation);
 
-            ((M658Runtime *)lbl_1_bss_38)->objects[10] = fn_1_6384(fn_1_753C(10));
+            lbl_1_bss_38->objects[10] = fn_1_6384(fn_1_753C(10));
 
-            ((M658Runtime *)lbl_1_bss_38)->objects[11] = fn_1_6384(fn_1_753C(11));
+            lbl_1_bss_38->objects[11] = fn_1_6384(fn_1_753C(11));
 
             lbl_1_bss_24->transitionObjects[0] = fn_1_1F04(3);
 
@@ -1317,14 +1300,14 @@ void fn_1_2DAC(OMOBJ *object)
 
         }
 
-        if ((((M658Runtime *)lbl_1_bss_38)->stateFlags & 2) != 0) {
+        if ((lbl_1_bss_38->stateFlags & 2) != 0) {
 
-            fn_1_1D14(((M658Runtime *)lbl_1_bss_38)->selected, 10);
+            fn_1_1D14(lbl_1_bss_38->selected, 10);
 
         } else {
 
             /* This event-bit test is discarded and does not change the reveal state. */
-            DebugValue(((M658Runtime *)lbl_1_bss_38)->stateFlags & 4);
+            DebugValue(lbl_1_bss_38->stateFlags & 4);
 
         }
 
@@ -1332,7 +1315,7 @@ void fn_1_2DAC(OMOBJ *object)
 
     case 2:
 
-        if (fn_8002D4E0(((OMOBJ *)((M658Runtime *)lbl_1_bss_38)->objects[2])->mdlId[0]) <
+        if (fn_8002D4E0(lbl_1_bss_38->objects[2]->mdlId[0]) <
 
             4e+02f) break;
 
@@ -1340,11 +1323,11 @@ void fn_1_2DAC(OMOBJ *object)
 
         work->timer = 120;
 
-        fn_80071C18(((M658Runtime *)lbl_1_bss_38)->selected->characterNo,
+        fn_80071C18(lbl_1_bss_38->selected->characterNo,
 
                        -1, -1, -1);
 
-        fn_1_571C(((M658Runtime *)lbl_1_bss_38)->selected->playerNo, 10);
+        fn_1_571C(lbl_1_bss_38->selected->playerNo, 10);
 
         work->state++;
 
@@ -1360,13 +1343,13 @@ void fn_1_2DAC(OMOBJ *object)
 
             fn_1_1FEC(lbl_1_bss_24->transitionObjects[1]);
 
-            fn_80026A44(((M658Runtime *)lbl_1_bss_38)->selected->player->actor->mdlId, 1);
+            fn_80026A44(lbl_1_bss_38->selected->player->actor->mdlId, 1);
 
-            ((M658Runtime *)lbl_1_bss_38)->selected->rotation = 0.0f;
+            lbl_1_bss_38->selected->rotation = 0.0f;
 
-            fn_80086CA8(((M658Runtime *)lbl_1_bss_38)->selected->player->actor,
+            fn_80086CA8(lbl_1_bss_38->selected->player->actor,
 
-                           ((M658Runtime *)lbl_1_bss_38)->selected->rotation);
+                           lbl_1_bss_38->selected->rotation);
 
             work->state = 0;
 
@@ -1387,9 +1370,9 @@ typedef struct M658ModeState {
     s16 substate;
 } M658ModeState;
 typedef struct M658ModeSnapshot {
-    s32 initial;
-    M658PlayerWork *firstPlayer;
-    M658PlayerWork *secondPlayer;
+    s32 unk0; /* The game's code never reads this field. */
+    M658PlayerWork *unk4; /* The game's code never reads this field. */
+    M658PlayerWork *unk8; /* The game's code never reads this field. */
 } M658ModeSnapshot;
 void fn_1_2BB4(OMOBJ *object);
 void fn_1_2DAC(OMOBJ *object);
@@ -1400,9 +1383,9 @@ void fn_1_31E8(OMOBJ *object)
     M658ModeSnapshot snapshot;
 
     /* These snapshot fields are initialized but never read by this callback. */
-    snapshot.initial = 0;
-    snapshot.firstPlayer = lbl_1_bss_24->entries[0][0];
-    snapshot.secondPlayer = lbl_1_bss_24->entries[1][0];
+    snapshot.unk0 = 0;
+    snapshot.unk4 = lbl_1_bss_24->entries[0][0];
+    snapshot.unk8 = lbl_1_bss_24->entries[1][0];
     switch (state->substate) {
     case 0:
         state->timer = 210;
@@ -1708,7 +1691,7 @@ void fn_1_3BC0(OMOBJ *object)
     work->characterNo = lbl_80265728[work->playerNo].charNo;
     work->playerIndex = (s8)fn_1_730(work);
     work->state = 1;
-    work->unused = 0;
+    work->unk14 = 0;
     work->playerType = lbl_80265728[work->playerNo].type;
     work->difficulty = lbl_80265728[work->playerNo].comDif;
     work->inputDelayFrames = 0;
@@ -1722,7 +1705,7 @@ void fn_1_3BC0(OMOBJ *object)
     fn_80026B64(work->player->actor->mdlId, cameraBit);
     fn_80026E44(work->player->actor->mdlId);
     fn_8005DDEC((s16)lbl_1_bss_14);
-    fn_1_1158((M658PlayerWork *)work);
+    fn_1_1158(work);
 
     position = work->startPosition;
     position.x += lbl_1_data_24C.x;
@@ -1733,7 +1716,7 @@ void fn_1_3BC0(OMOBJ *object)
                       &lbl_1_data_264[fn_1_5770()]);
 
     if (work->playerType != 0) {
-        work->choiceRange = (M658PlayerChoiceRange *)&lbl_1_data_7C[work->difficulty];
+        work->choiceRange = &lbl_1_data_7C[work->difficulty];
         work->interval = (u32)work->choiceRange->maximumElapsedFrames / 6;
         work->firstLimit = work->interval;
         work->secondLimit = work->firstLimit;
@@ -1820,13 +1803,13 @@ void fn_1_402C(OMOBJ *object)
     Vec position;
 
     if (work->frame == 0) {
-        u16 *animation;
+        M658HookActor *animation;
 
         fn_1_1040(lbl_1_data_1E4[(s32)work->playerIndex][work->action],
                   0, &position);
         animation = fn_1_1F04(1);
         if ((u32)animation != 0) {
-            fn_80026790(((s16 *)animation)[3], &position);
+            fn_80026790(animation->model, &position);
         }
         work->player->actor->gravity = 1.5e+02f;
         work->rotation = 0.0f;
@@ -1861,7 +1844,7 @@ void fn_1_47A8(OMOBJ *object)
     fn_1_1D14(playerWork, 3);
 }
 void fn_1_4FCC(OMOBJ *);
-s32 fn_1_EB0(void *);
+void fn_1_EB0(void *);
 
 /* Called by fn_1_3F14 in state 3 each frame; it handles input and advances a pending selection. */
 void fn_1_4268(OMOBJ *object) {
@@ -1881,35 +1864,19 @@ void fn_1_4268(OMOBJ *object) {
     }
     if ((s32)(playerWork->flags & 8) != 0) {
         playerWork->flags = (u16)(playerWork->flags & M658_PLAYER_FLAG_3_CLEAR_MASK);
-        playerWork->inputState = 0;
+        playerWork->unk74 = 0;
         fn_1_1D14(playerWork, 7);
         return;
     }
     if (((s32)(playerWork->flags & 4) != 0) && playerWork->player->mode != 5) {
         playerWork->flags = (u16)(playerWork->flags & M658_PLAYER_FLAG_2_CLEAR_MASK);
-        playerWork->inputState = 0;
+        playerWork->unk74 = 0;
         if ((s32)playerWork->action >= 4) {
             fn_1_EB0(playerWork);
         }
         fn_1_1D14(playerWork, 4);
     }
 }
-typedef struct M658PlayerPhaseWork {
-    u8 unreadBytesBeforeTimer[12];
-    s32 timer;
-    MGPLAYER *player;
-    u8 unreadBytesBeforePlayerNumber[6];
-    s8 playerIndex;
-    u8 unreadByteBeforeModelIndex;
-    s32 modelIndex;
-    u8 unreadBytesBeforeRotation[20];
-    f32 rotation;
-} M658PlayerPhaseWork;
-/* A position prop pairs its model ID with the stored callback data before it. */
-typedef struct M658PositionModel {
-    u8 unreadBytesBeforeModelId[6];
-    s16 modelId;
-} M658PositionModel;
 /* A record with four model ID slots. */
 typedef struct M658ModelList {
     u8 unreadBytesBeforeModels[64];
@@ -1941,22 +1908,22 @@ extern void fn_8007E888(MGPLAYER *);
  * on entry, or preserves the current marker if set during the transition. */
 void fn_1_4390(OMOBJ *object)
 {
-    M658PlayerPhaseWork *work = object->data;
+    M658PlayerWork *work = object->data;
     Vec position;
     Vec scale;
     f32 progress;
-    M658PositionModel *positionModel;
+    M658HookActor *positionModel;
 
-    if (work->timer == 0) {
-        if ((*(u16 *)work & 0x40) != 0) {
+    if (work->frame == 0) {
+        if ((work->flags & 0x40) != 0) {
             fn_8007E818(work->player);
-        fn_1_1D14((M658PlayerWork *)work, 8);
+        fn_1_1D14(work, 8);
             return;
         }
-        fn_1_1040(lbl_1_data_1E4[(s32)work->playerIndex][work->modelIndex], 0,
+        fn_1_1040(lbl_1_data_1E4[(s32)work->playerIndex][work->action], 0,
                   &position);
-        positionModel = (M658PositionModel *)fn_1_1F04(0);
-        fn_80026790(positionModel->modelId, &position);
+        positionModel = fn_1_1F04(0);
+        fn_80026790(positionModel->model, &position);
         work->player->actor->gravity = 0.0f;
         if (work->playerIndex == 0) {
             fn_1_736C(&position, M658_SOUND_ROW_ENTRY_PLAYER_1);
@@ -1964,9 +1931,9 @@ void fn_1_4390(OMOBJ *object)
             fn_1_736C(&position, M658_SOUND_ROW_ENTRY_PLAYER_2);
         }
     }
-    work->timer++;
-    if (work->timer >= 20) {
-        progress = (work->timer - 20) / 2e+01f;
+    work->frame++;
+    if (work->frame >= 20) {
+        progress = (work->frame - 20) / 2e+01f;
         if (progress >= 1.0f) {
             progress = 1.0f;
         }
@@ -1975,18 +1942,18 @@ void fn_1_4390(OMOBJ *object)
         scale.z = fn_1_69B8(1.0f, 0.0f, progress);
         fn_800268E0(work->player->actor->mdlId, &scale);
         if (1.0f == progress) {
-            if ((*(u16 *)work & 0x40) == 0) {
-                work->modelIndex++;
+            if ((work->flags & 0x40) == 0) {
+                work->action++;
             }
-            fn_1_1040(lbl_1_data_1E4[(s32)work->playerIndex][work->modelIndex], 1,
+            fn_1_1040(lbl_1_data_1E4[(s32)work->playerIndex][work->action], 1,
                       &position);
             fn_80086AA8(work->player->actor, &position);
-            fn_1_1D14((M658PlayerWork *)work, 5);
-            if (work->modelIndex >= 5) {
+            fn_1_1D14(work, 5);
+            if (work->action >= 5) {
                 fn_1_1500(work->playerIndex, 6);
-                work->timer = 120;
-            } else if ((*(u16 *)work & 0x40) != 0) {
-                work->timer = 120;
+                work->frame = 120;
+            } else if ((work->flags & 0x40) != 0) {
+                work->frame = 120;
             }
         }
     }
@@ -1998,24 +1965,24 @@ void fn_1_465C(OMOBJ *obj)
 
     playerWork->frame--;
     if (playerWork->frame <= 0) {
-        fn_1_1D14((M658PlayerWork *)playerWork, 6);
+        fn_1_1D14(playerWork, 6);
     }
 }
 /* The player-state dispatcher returns the character to its row after the choice resolves. */
 void fn_1_46B4(OMOBJ *object)
 {
-    M658PlayerPhaseWork *work = object->data;
+    M658PlayerWork *work = object->data;
     Vec position;
     Vec scale;
     f32 progress;
-    M658PositionModel *positionModel;
+    M658HookActor *positionModel;
 
-    if (work->timer == 0) {
-        fn_1_1040(lbl_1_data_1E4[(s32)work->playerIndex][work->modelIndex], 0,
+    if (work->frame == 0) {
+        fn_1_1040(lbl_1_data_1E4[(s32)work->playerIndex][work->action], 0,
                   &position);
-        positionModel = (M658PositionModel *)fn_1_1F04(1);
-        fn_80026790(positionModel->modelId, &position);
-        if (work->modelIndex < 5) {
+        positionModel = fn_1_1F04(1);
+        fn_80026790(positionModel->model, &position);
+        if (work->action < 5) {
             fn_1_1500(work->playerIndex, 3);
         }
         work->player->actor->gravity = 1.5e+02f;
@@ -2026,9 +1993,9 @@ void fn_1_46B4(OMOBJ *object)
             fn_1_736C(&position, M658_SOUND_ROW_RETURN_PLAYER_2);
         }
     }
-    work->timer++;
-    if (work->timer >= 20) {
-        progress = (work->timer - 20) / 2e+01f;
+    work->frame++;
+    if (work->frame >= 20) {
+        progress = (work->frame - 20) / 2e+01f;
         if (progress >= 1.0f) {
             progress = 1.0f;
         }
@@ -2037,13 +2004,13 @@ void fn_1_46B4(OMOBJ *object)
         scale.z = fn_1_69B8(0.0f, 1.0f, progress);
         fn_800268E0(work->player->actor->mdlId, &scale);
         if (1.0f == progress) {
-            if (work->modelIndex >= 5) {
-                fn_1_1D14((M658PlayerWork *)work, 8);
+            if (work->action >= 5) {
+                fn_1_1D14(work, 8);
             } else {
-                if ((*(u16 *)work & 1) != 0) {
+                if ((work->flags & 1) != 0) {
                     fn_8007E888(work->player);
                 }
-                fn_1_1D14((M658PlayerWork *)work, 3);
+                fn_1_1D14(work, 3);
             }
         }
     }
@@ -2056,7 +2023,7 @@ void fn_1_4918(OMOBJ *obj)
     HuVecF effectPosition;
 
     if (playerWork->frame == 0) {
-        playerWork->itemEffect = (M658HookActor *)fn_1_1F04(2);
+        playerWork->itemEffect = fn_1_1F04(2);
         playerWork->itemEffect->hostModel = playerWork->player->actor->mdlId;
         playerWork->itemEffect->hook =
             fn_8005C0F0(playerWork->player->charNo, 2, 4);
@@ -2070,11 +2037,11 @@ void fn_1_4918(OMOBJ *obj)
     }
     playerWork->frame++;
     if (playerWork->player->mode != 10) {
-        fn_1_1FEC((u16 *)playerWork->itemEffect);
+        fn_1_1FEC(playerWork->itemEffect);
         if ((playerWork->flags & 1) != 0) {
             fn_8007E888(playerWork->player);
         }
-        fn_1_1D14((M658PlayerWork *)playerWork, 3);
+        fn_1_1D14(playerWork, 3);
     }
 }
 /* On the first state-8 update, enables stick override and selects the looping idle motion. */
@@ -2197,7 +2164,7 @@ extern s32 fn_1_72D0(s32 modulus, s32 count, s32 *weights);
 extern s32 frandmod(s32 modulus);
 
 void fn_1_506C(OMOBJ *obj);
-extern void fn_1_533C(void *object);
+extern void fn_1_533C(OMOBJ *object);
 extern void fn_1_5370(OMOBJ *obj);
 
 /* During computer-controlled selection in player state 3, advances the input delay and timing
@@ -2277,7 +2244,7 @@ void fn_1_506C(OMOBJ *obj)
     }
     if (forceChoice == 1) {
         work->inputDelayFrames = move;
-        work->inputState = 1;
+        work->unk74 = 1;
         if (work->attemptCount != 0) {
             work->attemptCount--;
         }
@@ -2307,18 +2274,18 @@ void fn_1_506C(OMOBJ *obj)
         break;
     }
     work->inputDelayFrames = move;
-    work->inputState = 1;
+    work->unk74 = 1;
 }
 
 /* Computer input state 1 waits for the scheduled attempt, then starts its 13-frame input
  * sequence. */
-void fn_1_533C(void *object) {
+void fn_1_533C(OMOBJ *object) {
     M658PlayerWork *playerWork;
 
-    playerWork = ((OMOBJ *)object)->data;
+    playerWork = object->data;
     if (playerWork->inputDelayFrames <= 0) {
         playerWork->inputDelayFrames = 13;
-        playerWork->inputState = 2;
+        playerWork->unk74 = 2;
     }
 }
 
@@ -2336,9 +2303,9 @@ void fn_1_5370(OMOBJ *obj)
             fn_80080520(work->player, 0, 0, 256, 0);
         }
         if ((work->flags & 0x30) != 0) {
-            work->inputState = 0;
+            work->unk74 = 0;
         } else {
-            work->inputState = 3;
+            work->unk74 = 3;
         }
     }
 }
@@ -2356,13 +2323,13 @@ void fn_1_5430(OMOBJ *object)
 {
     M658RegistryWork *work;
     const M658RegistryDescriptor *descriptor;
-    void *item;
+    M658HookActor *item;
     void *buffer;
     s32 descriptorIndex;
     s32 itemIndex;
     s32 bufferBytes;
 
-    work = (M658RegistryWork *)object->data;
+    work = object->data;
     {
         /* This zero-initialized local template is never read. */
         M658RegistryTemplate templateCopy = {{0}};

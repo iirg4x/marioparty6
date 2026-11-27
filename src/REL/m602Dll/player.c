@@ -237,7 +237,7 @@ void fn_1_5254(void)
     s32 motionOrChoice;
 
     cardAnimationData =
-        HuSprAnimRead(fn_80008DD0(DATANUM(0x3d0000, 20), 0x10000000, 2));
+        HuSprAnimDataRead(DATANUM(0x3d0000, 20));
     for (player = 0; player < 4; player++) {
         lbl_1_bss_318[player].playerIndex = player;
         lbl_1_bss_318[player].character = lbl_80265728[player].charNo;
@@ -442,11 +442,25 @@ void fn_1_61E0(void)
     lbl_1_bss_30C = -1;
 }
 
+/* Finishes the responding player's choice motion and holds its pose. */
+static inline void FinishCardChoiceMotion(s16 player)
+{
+    f32 motionEnd;
+
+    if ((lbl_1_bss_314 != 0) && (lbl_1_bss_318[player].motionIndex == 1)) {
+        motionEnd = fn_8005C1FC(lbl_1_bss_318[player].character);
+        if ((1.0f + fn_8005C1B8(lbl_1_bss_318[player].character)) >= motionEnd) {
+            lbl_1_bss_318[player].motionIndex = 2;
+            fn_8005BE80(lbl_1_bss_318[player].character,
+                          lbl_1_bss_318[player].motion[lbl_1_bss_318[player].motionIndex]);
+        }
+    }
+}
+
 /* Each answer frame reads human and CPU choices, selects one simultaneous responder, and plays the
  * choice motion. */
 void fn_1_647C(void)
 {
-    f32 motionEnd;
     s16 responseCountOrSelection;
     s16 player;
 
@@ -542,14 +556,7 @@ void fn_1_647C(void)
                 }
             }
         }
-        if ((lbl_1_bss_314 != 0) && (lbl_1_bss_318[player].motionIndex == 1)) {
-            motionEnd = fn_8005C1FC(lbl_1_bss_318[player].character);
-            if ((1.0f + fn_8005C1B8(lbl_1_bss_318[player].character)) >= motionEnd) {
-                lbl_1_bss_318[player].motionIndex = 2;
-                fn_8005BE80(lbl_1_bss_318[player].character,
-                              lbl_1_bss_318[player].motion[lbl_1_bss_318[player].motionIndex]);
-            }
-        }
+        FinishCardChoiceMotion(player);
         player += 1;
     }
 }
@@ -578,19 +585,11 @@ void fn_1_6C5C(void)
 /* During the card reveal, finish the responding player choice motion and hold its selected pose. */
 void fn_1_6DB8(void)
 {
-    f32 motionEnd;
     s16 player;
 
     player = 0;
     while (player < 4) {
-        if ((lbl_1_bss_314 != 0) && (lbl_1_bss_318[player].motionIndex == 1)) {
-            motionEnd = fn_8005C1FC(lbl_1_bss_318[player].character);
-            if ((1.0f + fn_8005C1B8(lbl_1_bss_318[player].character)) >= motionEnd) {
-                lbl_1_bss_318[player].motionIndex = 2;
-                fn_8005BE80(lbl_1_bss_318[player].character,
-                              lbl_1_bss_318[player].motion[lbl_1_bss_318[player].motionIndex]);
-            }
-        }
+        FinishCardChoiceMotion(player);
         player += 1;
     }
 }

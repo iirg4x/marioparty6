@@ -52,6 +52,7 @@
 #include "game/hu3d.h"
 
 #include "REL/m641Dll/m641Dll.h"
+#include "REL/m641Dll/motion.h"
 
 #include "dolphin.h"
 
@@ -659,19 +660,43 @@ void fn_1_2DD8(void) {
     u8 countTable[18];
 
     if (lbl_1_bss_7DC == 0) {
-        countTable[15] = 4; countTable[16] = 5; countTable[17] = 6;
-        countTable[12] = 5; countTable[13] = 4; countTable[14] = 3;
-        countTable[9] = 2; countTable[10] = 2; countTable[11] = 2;
-        countTable[6] = 3; countTable[7] = 2; countTable[8] = 1;
-        countTable[3] = 1; countTable[4] = 2; countTable[5] = 3;
-        countTable[0] = 1; countTable[1] = 0; countTable[2] = 1;
+        countTable[15] = 4;
+        countTable[16] = 5;
+        countTable[17] = 6;
+        countTable[12] = 5;
+        countTable[13] = 4;
+        countTable[14] = 3;
+        countTable[9] = 2;
+        countTable[10] = 2;
+        countTable[11] = 2;
+        countTable[6] = 3;
+        countTable[7] = 2;
+        countTable[8] = 1;
+        countTable[3] = 1;
+        countTable[4] = 2;
+        countTable[5] = 3;
+        countTable[0] = 1;
+        countTable[1] = 0;
+        countTable[2] = 1;
     } else {
-        countTable[15] = 4; countTable[16] = 5; countTable[17] = 6;
-        countTable[12] = 5; countTable[13] = 4; countTable[14] = 3;
-        countTable[9] = 2; countTable[10] = 2; countTable[11] = 2;
-        countTable[6] = 3; countTable[7] = 2; countTable[8] = 1;
-        countTable[3] = 1; countTable[4] = 2; countTable[5] = 3;
-        countTable[0] = 1; countTable[1] = 0; countTable[2] = 1;
+        countTable[15] = 4;
+        countTable[16] = 5;
+        countTable[17] = 6;
+        countTable[12] = 5;
+        countTable[13] = 4;
+        countTable[14] = 3;
+        countTable[9] = 2;
+        countTable[10] = 2;
+        countTable[11] = 2;
+        countTable[6] = 3;
+        countTable[7] = 2;
+        countTable[8] = 1;
+        countTable[3] = 1;
+        countTable[4] = 2;
+        countTable[5] = 3;
+        countTable[0] = 1;
+        countTable[1] = 0;
+        countTable[2] = 1;
     }
 
     for (boardIndex = 0; boardIndex < 2; boardIndex++) {
@@ -1619,36 +1644,7 @@ void fn_1_682C(s16 frame) {
         }
         fn_1_4660(boardIndex, 0, 2);
     }
-    if (lbl_1_data_240 >= 0) {
-        lbl_1_bss_18 += 1;
-        if (lbl_1_bss_18 >= 6) {
-            lbl_1_data_240 = -1;
-            lbl_1_bss_18 = 0;
-        }
-    } else {
-        lbl_1_data_240 = -1;
-        lbl_1_bss_18 = 0;
-    }
-    if (lbl_1_data_244 >= 0) {
-        lbl_1_bss_1A += 1;
-        if (lbl_1_bss_1A >= 6) {
-            lbl_1_data_244 = -1;
-            lbl_1_bss_1A = 0;
-        }
-    } else {
-        lbl_1_data_244 = -1;
-        lbl_1_bss_1A = 0;
-    }
-    if (lbl_1_data_248 >= 0) {
-        lbl_1_bss_1C += 1;
-        if (lbl_1_bss_1C >= 6) {
-            lbl_1_data_248 = -1;
-            lbl_1_bss_1C = 0;
-        }
-    } else {
-        lbl_1_data_248 = -1;
-        lbl_1_bss_1C = 0;
-    }
+    fn_1_15FC();
 }
 
 extern void fn_1_682C(s16 choice);
@@ -1930,47 +1926,10 @@ void fn_1_8D9C(s16 winningGroup) {
         fn_1_4660(boardIndex, 0, 2);
     }
     lbl_1_bss_1E++;
-    if (lbl_1_data_240 >= 0) {
-        lbl_1_bss_18 += 1;
-        if (lbl_1_bss_18 >= 6) {
-            lbl_1_data_240 = -1;
-            lbl_1_bss_18 = 0;
-        }
-    } else {
-        lbl_1_data_240 = -1;
-        lbl_1_bss_18 = 0;
-    }
-    if (lbl_1_data_244 >= 0) {
-        lbl_1_bss_1A += 1;
-        if (lbl_1_bss_1A >= 6) {
-            lbl_1_data_244 = -1;
-            lbl_1_bss_1A = 0;
-        }
-    } else {
-        lbl_1_data_244 = -1;
-        lbl_1_bss_1A = 0;
-    }
-    if (lbl_1_data_248 >= 0) {
-        lbl_1_bss_1C += 1;
-        if (lbl_1_bss_1C >= 6) {
-            lbl_1_data_248 = -1;
-            lbl_1_bss_1C = 0;
-        }
-    } else {
-        lbl_1_data_248 = -1;
-        lbl_1_bss_1C = 0;
-    }
+    fn_1_15FC();
 
 }
 
-typedef struct M641MotionInfo {
-    s16 motionId;
-    f32 blendTime;
-    u32 attributes;
-    s32 voiceEnabled;
-} M641MotionInfo;
-
-extern M641MotionInfo lbl_1_data_344[14];
 
 /* Fade-in and main hooks map an action category to its delay for the selected board layout. */
 s16 fn_1_9ABC(s16 delayIndex) {

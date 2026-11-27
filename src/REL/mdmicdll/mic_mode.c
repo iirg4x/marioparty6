@@ -1,4 +1,6 @@
 /* Microphone mode setup, player selection and scene transitions. */
+#include "REL/minigame_menu_heading.h"
+#include "REL/minigame_menu_motion.h"
 #include "math.h"
 #include "REL/mdmicdll/object_state.h"
 #include "REL/mdmicdll/menu_state.h"
@@ -43,6 +45,7 @@
 #include "string.h"
 #include "dolphin/mtx/GeoTypes.h"
 #include "game/board/main.h"
+#include "REL/mdmicdll/stage.h"
 #include "game/printfunc.h"
 #include "REL/mdmicdll/rodata_state.h"
 #include "messdir_enum.h"
@@ -227,10 +230,6 @@ extern int HuAudFXPlay(int seId);
 
 extern const Point3d lbl_1_rodata_25C;
 
-extern void fn_8006A268(u32 flag);
-extern void fn_800567D8(s16 charNo);
-extern void HuAMemDump(void);
-extern void fn_8003A5E4(s16 overlay, s16 event);
 
 extern int HuAudSStreamPlay(s16 streamId);
 
@@ -246,9 +245,9 @@ HUSPRID lbl_1_bss_888[60];
 ANIMDATA *lbl_1_bss_814[29];
 MDMIC_MODEL_WORK lbl_1_bss_29C[25];
 s16 lbl_1_bss_298;
-MDMIC_TRAJECTORY lbl_1_bss_238[2];
-MDMIC_TRAJECTORY lbl_1_bss_1D8[2];
-MDMIC_TRAJECTORY lbl_1_bss_118[4];
+MinigameMenuTrajectory lbl_1_bss_238[2];
+MinigameMenuTrajectory lbl_1_bss_1D8[2];
+MinigameMenuTrajectory lbl_1_bss_118[4];
 HUWINID lbl_1_bss_114[2];
 HuVecF lbl_1_bss_E4[4];
 HuVecF lbl_1_bss_B4[4];
@@ -296,7 +295,7 @@ u32 lbl_1_data_24[32] = {
     DATANUM(0x950000, 54), DATANUM(0x950000, 22)
 };
 s16 lbl_1_data_A4[18] = {2, 8, 6, 4, 2, 2, 2, 2, 4, 4, 4, 4, 5, 2, 4, 4, 1, 9};
-MDMIC_SPRITE_DESC lbl_1_data_C8[60] = {
+MinigameMenuSprite lbl_1_data_C8[60] = {
     {0, 0, 0, 10, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
     {1, 0, 15, 0, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
     {1, 1, 15, 0, 1, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
@@ -310,10 +309,10 @@ MDMIC_SPRITE_DESC lbl_1_data_C8[60] = {
     {2, 3, 21, 0, 7, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
     {2, 4, 21, 0, 4, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
     {2, 5, 21, 0, 6, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
-    {3, 0, 22, 0, 0, {0.0f, 0.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
-    {3, 1, 22, 0, 0, {0.0f, 0.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
-    {3, 2, 22, 0, 0, {0.0f, 0.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
-    {3, 3, 22, 0, 0, {0.0f, 0.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
+    {3, 0, 22, 0, 0, {0.0f, 0.0f}, {0.8f, 0.8f}, 0.0f},
+    {3, 1, 22, 0, 0, {0.0f, 0.0f}, {0.8f, 0.8f}, 0.0f},
+    {3, 2, 22, 0, 0, {0.0f, 0.0f}, {0.8f, 0.8f}, 0.0f},
+    {3, 3, 22, 0, 0, {0.0f, 0.0f}, {0.8f, 0.8f}, 0.0f},
     {4, 0, 22, 9, 0, {22.0f, -24.0f}, {1.0f, 1.0f}, 0.0f},
     {4, 1, 23, 10, 0, {22.0f, -24.0f}, {1.0f, 1.0f}, 0.0f},
     {5, 0, 22, 9, 0, {22.0f, -24.0f}, {1.0f, 1.0f}, 0.0f},
@@ -323,20 +322,20 @@ MDMIC_SPRITE_DESC lbl_1_data_C8[60] = {
     {7, 0, 22, 9, 0, {22.0f, -24.0f}, {1.0f, 1.0f}, 0.0f},
     {7, 1, 23, 10, 0, {22.0f, -24.0f}, {1.0f, 1.0f}, 0.0f},
     {8, 0, 25, 9, 0, {-44.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
-    {8, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
-    {8, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.8999999761581421f, 0.8999999761581421f}, 0.0f},
+    {8, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.8f, 0.8f}, 0.0f},
+    {8, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.9f, 0.9f}, 0.0f},
     {8, 3, 23, 10, 1, {-22.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
     {9, 0, 25, 9, 0, {-44.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
-    {9, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
-    {9, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.8999999761581421f, 0.8999999761581421f}, 0.0f},
+    {9, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.8f, 0.8f}, 0.0f},
+    {9, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.9f, 0.9f}, 0.0f},
     {9, 3, 23, 10, 1, {-22.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
     {10, 0, 25, 9, 0, {-44.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
-    {10, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
-    {10, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.8999999761581421f, 0.8999999761581421f}, 0.0f},
+    {10, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.8f, 0.8f}, 0.0f},
+    {10, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.9f, 0.9f}, 0.0f},
     {10, 3, 23, 10, 1, {-22.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
     {11, 0, 25, 9, 0, {-44.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
-    {11, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.800000011920929f, 0.800000011920929f}, 0.0f},
-    {11, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.8999999761581421f, 0.8999999761581421f}, 0.0f},
+    {11, 1, 24, 9, 10, {-25.0f, 25.0f}, {0.8f, 0.8f}, 0.0f},
+    {11, 2, 24, 9, 0, {-4.0f, 24.0f}, {0.9f, 0.9f}, 0.0f},
     {11, 3, 23, 10, 1, {-22.0f, 24.0f}, {1.0f, 1.0f}, 0.0f},
     {12, 0, 27, 9, 0, {-125.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
     {12, 1, 27, 9, 0, {-85.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
@@ -768,68 +767,10 @@ s32 fn_1_29184(void);
 s16 fn_1_29E70(s16 *activePlayer, s16 *firstComputerPlayer, s16 *lastPlayerSlot);
 s16 fn_1_2B590(s16 returningFromPreviousStep);
 s16 fn_1_2BA88(s16 *activePlayer, s16 *firstComputerPlayer, s16 *lastPlayerSlot);
-float fn_1_35A10(float startValue, float endValue, float time, float duration);
-float fn_1_35AF8(float startValue, float endValue, float time, float duration);
-float fn_1_35B3C(float current, float target, float weight);
-void fn_1_35B6C(s16 layerNo);
-void fn_1_35BD8(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
-void fn_1_36058(OMOBJ *obj);
-void fn_1_36158(s16 textureSlot, HuVecF *position);
-void fn_1_3624C(OMOBJ *obj);
-void fn_1_36430(OMOBJ *obj);
-void fn_1_364E0(void);
-void fn_1_36530(void);
-void fn_1_3660C(Point3d *position);
-void fn_1_366CC(s16 layerNo);
-void fn_1_37088(void);
-void fn_1_370B4(void);
-void fn_1_370D8(
-    s16 particleNo, float lifetime, float targetScale, HuVecF *position, GXColor color);
-void fn_1_371D8(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_37498(void);
-void fn_1_375AC(void);
-void fn_1_375D8(s16 effectNo, float duration, HuVecF *position, GXColor color);
-void fn_1_376C0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_37C08(void);
-void fn_1_37DC8(void);
-void fn_1_37E20(void);
-void fn_1_37EC0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_3864C(void);
-void fn_1_3874C(void);
-void fn_1_38778(s16 effectNo, float duration, HuVecF *position);
-void fn_1_38844(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_3912C(void);
-void fn_1_392C0(void);
-void fn_1_39318(s16 index, s16 visible);
-void fn_1_39394(s16 effectNo, HuVecF *position, GXColor *color);
-void fn_1_39498(s16 effectNo);
-void fn_1_39520(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_39998(void);
-void fn_1_39B04(void);
-void fn_1_39B5C(s16 index, s16 visible);
-void fn_1_39BD8(s16 effectNo, HuVecF *position, GXColor *color);
-void fn_1_39D10(s16 effectNo);
-void fn_1_39D64(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
-void fn_1_3A364(void);
-void fn_1_3A4D0(void);
-void fn_1_3A528(s16 modelNo, HuVecF *pos, s16 display);
-void fn_1_3A8EC(s16 groupNo, s16 show);
-void fn_1_3A9A0(s16 groupNo, HuVecF *spawnPosition, GXColor *color);
-void fn_1_3AB08(s16 groupNo);
-void fn_1_3AB88(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix);
-void fn_1_3B134(void);
-void fn_1_3B360(void);
-void fn_1_3B3E4(HUPROCESS *process);
-void fn_1_3BE34(void);
-void fn_1_3C060(HuVecF *position);
-void fn_1_3C258(s16 particleNo, Point3d *position, s16 colorNo);
-void fn_1_3C554(s16 particleNo, HuVecF *position, s16 colorNo, s16 mode);
-void fn_1_3C9F8(void);
-void fn_1_3CAB8(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo);
 
 static inline void fn_1_1404_inlined_mdmicdll_text_00000c(
     HuVecF *dst, const HuVecF *a, const HuVecF *b, const HuVecF *c, float t);
-static inline float fn_1_13A8_inlined_mdmicdll_text_00000c(float startValue, float controlValue,
+static inline float menuQuadraticPosition(float startValue, float controlValue,
                                                            float endValue, float progress);
 static inline float fn_1_620_inlined_mdmicdll_text_00000c(float a, float b, float c, float t);
 static inline void fn_1_89E0_inlined_inlined_mdmicdll_text_07F14c(OMOBJ *obj);
@@ -839,12 +780,8 @@ static inline void fn_1_1A1D8_move_player_mdmicdll_text_1A1D8c(
 static inline void MdmicPlayerExitTransition_mdmicdll_text_1A914c(MDMIC_PLAYER_WORK *player,
                                                                   s16 frame);
 static inline void MdmicExitTransition_mdmicdll_text_1A914c(MDMIC_MODEL_WORK *entry, s16 frame);
-static inline void MdmicPlayerTransition_mdmicdll_text_1B5F0c(MDMIC_PLAYER_WORK *player, s16 frame);
-static inline void MdmicModelTransition_mdmicdll_text_1B5F0c(MDMIC_MODEL_WORK *entry, s16 frame);
-static inline void MdmicPlayerTransition_mdmicdll_text_1CC48c(MDMIC_PLAYER_WORK *player, s16 frame);
-static inline void MdmicModelTransition_mdmicdll_text_1CC48c(MDMIC_MODEL_WORK *entry, s16 frame);
-static inline void MdmicPlayerTransition_mdmicdll_text_1D3B8c(MDMIC_PLAYER_WORK *player, s16 frame);
-static inline void MdmicModelTransition_mdmicdll_text_1D3B8c(MDMIC_MODEL_WORK *entry, s16 frame);
+static inline void MicModelTransition(MDMIC_MODEL_WORK *entry, s16 frame);
+static inline void MicPlayerTransition(MDMIC_PLAYER_WORK *player, s16 frame);
 static inline int CurrentSubGameGet_mdmicdll_text_216D4c(void);
 static inline int CurrentMinigameGet_mdmicdll_text_216D4c(void);
 static inline void DebugValue_mdmicdll_text_2299Cc(s32 value);
@@ -860,20 +797,13 @@ static inline s16 fn_1_32904_inlined_mdmicdll_text_29224c(void);
 static inline s16 fn_1_2EF24_inlined_mdmicdll_text_29FA4c(void);
 static inline s16 fn_1_2EF24_inlined_mdmicdll_text_2BBBCc(void);
 static inline s32 fn_1_272D4_for_34C78_mdmicdll_text_2CD28c(void);
-static inline void fn_1_3F5C_mdmicdll_text_2CD28c(s16 windowNo, s32 messageNo,
-                             s16 insertPosition);
 static inline s16 fn_1_26364_for_2D06C_mdmicdll_text_2CD28c(void);
 static inline void fn_1_4150_for_2D06C_mdmicdll_text_2CD28c(s32 messageNo);
-static inline f32 fn_1_4C78_ease180_mdmicdll_text_4C78c(f32 start, f32 end, f32 elapsed,
-                                                        f32 duration);
-static inline f32 fn_1_4C78_ease90_mdmicdll_text_4C78c(f32 start, f32 end, f32 elapsed,
-                                                       f32 duration);
 static inline f32 fn_1_10AC_inlined_mdmicdll_text_63F8c(f32 start, f32 control, f32 end,
                                                         f32 progress);
 static inline void fn_1_1108_inlined_mdmicdll_text_63F8c(Point3d *position, const Point3d *start,
                                                          const Point3d *control, const Point3d *end,
                                                          f32 progress);
-static inline void fn_1_8950_inlined_07E70_fn_1_7E70c(void);
 /* Window text callbacks use this to play a cue once per message ID. */
 void fn_1_0(HUWINID winId, u32 messageNo, s16 cueNo)
 {
@@ -886,22 +816,20 @@ void fn_1_0(HUWINID winId, u32 messageNo, s16 cueNo)
     OSReport(lbl_1_data_C80, (s16) cueNo);
     if ((u32) lbl_1_data_C7C != messageNo) {
         lbl_1_data_C7C = messageNo;
-        messageIndex = 0;
-checkMessage:
-        if (sentinel[messageIndex] == -1) {
-            HuAudFXPlay(table.value[cueNo]);
-            return;
-        }
-        if (messageNo == (u32) sentinel[messageIndex]) {
-            if (cueNo >= 8) {
-                HuAudFXPlayPan(table.value[cueNo], 80);
+        for (messageIndex = 0; ; messageIndex++) {
+            if (sentinel[messageIndex] == -1) {
+                HuAudFXPlay(table.value[cueNo]);
                 return;
             }
-            HuAudFXPlayPan(table.value[cueNo], 48);
-            return;
+            if (messageNo == (u32) sentinel[messageIndex]) {
+                if (cueNo >= 8) {
+                    HuAudFXPlayPan(table.value[cueNo], 80);
+                    return;
+                }
+                HuAudFXPlayPan(table.value[cueNo], 48);
+                return;
+            }
         }
-        messageIndex += 1;
-        goto checkMessage;
     }
 }
 
@@ -968,32 +896,9 @@ void fn_1_44C(void)
         {0xa20000, 0xa70000, 0x260000}};
     s16 playerNo;
     s32 motionPlayerNo;
-    s32 characterReadStatus;
     s32 modeReadStatus;
 
-    playerNo = 0;
-    while (playerNo < 4) {
-        if ((void *) fn_80056598((s16) lbl_80265750[playerNo].charNo) == NULL) {
-            break;
-        }
-        playerNo += 1;
-    }
-    if (playerNo != 4) {
-        fn_800567D8(-1);
-        playerNo = 0;
-        while (playerNo < 4) {
-            characterReadStatus = fn_80007F20(lbl_8022E718[lbl_80265750[playerNo].charNo][4]);
-            if (characterReadStatus != -1) {
-                while (fn_80008270(characterReadStatus) == 0) {
-                    HuPrcVSleep();
-                }
-            }
-            fn_800565B4((s16) lbl_80265750[playerNo].charNo);
-            fn_800097F4(lbl_8022E718[lbl_80265750[playerNo].charNo][4]);
-            playerNo += 1;
-        }
-    }
-
+    fn_1_2FC();
     modeReadStatus = fn_80007F20(motionDirectories.value[lbl_1_bss_9DC.modeSelection]);
     if (modeReadStatus != -1) {
         while (fn_80008270(modeReadStatus) == 0) {
@@ -1119,7 +1024,7 @@ void fn_1_C78(void)
         fn_8006A1C4(196609);
         fn_8006A1C4(196612);
         lbl_802C0278 = 0;
-        lbl_80265B70.mgInstDispF = 1;
+        GWMgInstDispSet(1);
         minigameNo = lbl_1_data_D36[lbl_1_bss_9DC.gameSelection];
         fn_8003CCAC(minigameNo);
         lbl_80265B70.mgNo = minigameNo - 601;
@@ -1310,24 +1215,13 @@ float fn_1_1ED8(float startValue, float peakValue, float elapsedFrames, float du
            ((peakValue - startValue) * sind((180.0f / durationFrames) * elapsedFrames));
 }
 
-/* The curved movement helper evaluates one coordinate from its three control values. */
-static inline float fn_1_13A8_inlined_mdmicdll_text_00000c(float startValue, float controlValue,
-                                                           float endValue, float progress)
-{
-    float remaining = 1.0f - progress;
-
-    return (endValue * (progress * progress))
-        + ((startValue * (remaining * remaining))
-            + ((controlValue * (remaining * progress) * 2.0f)));
-}
-
 /* The model path helper evaluates each coordinate of its quadratic curve. */
 static inline void fn_1_1404_inlined_mdmicdll_text_00000c(
     HuVecF *dst, const HuVecF *a, const HuVecF *b, const HuVecF *c, float t)
 {
-    dst->x = fn_1_13A8_inlined_mdmicdll_text_00000c(a->x, b->x, c->x, t);
-    dst->y = fn_1_13A8_inlined_mdmicdll_text_00000c(a->y, b->y, c->y, t);
-    dst->z = fn_1_13A8_inlined_mdmicdll_text_00000c(a->z, b->z, c->z, t);
+    dst->x = menuQuadraticPosition(a->x, b->x, c->x, t);
+    dst->y = menuQuadraticPosition(a->y, b->y, c->y, t);
+    dst->z = menuQuadraticPosition(a->z, b->z, c->z, t);
 }
 
 /* Movement callbacks follow a curved path while easing the model to face its direction of
@@ -1782,12 +1676,11 @@ void fn_1_44B8(HUSPR_GROUPID groupId, s32 attr)
 /* Mic Mode setup loads sprite animations and creates the menu's grouped sprites. */
 void fn_1_4538(void)
 {
-    MDMIC_SPRITE_DESC *desc;
+    MinigameMenuSprite *desc;
     s16 i;
 
     for (i = 0; i < 32; i++) {
-        lbl_1_bss_924[i] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_24[i], 0x10000000, 2));
+        lbl_1_bss_924[i] = HuSprAnimDataRead(lbl_1_data_24[i]);
     }
     for (i = 0; i < 18; i++) {
         lbl_1_bss_900[i] = HuSprGrpCreate(lbl_1_data_A4[i]);
@@ -1913,7 +1806,7 @@ void fn_1_4C74(void)
 {
 }
 
-/* The prop-exit effect eases its horizontal position toward the edge of the screen. */
+/* Interpolates to the end coordinate with a sine ease-out. */
 static inline f32 fn_1_4C78_ease90_mdmicdll_text_4C78c(f32 start, f32 end, f32 elapsed,
                                                        f32 duration)
 {
@@ -1924,10 +1817,10 @@ static inline f32 fn_1_4C78_ease90_mdmicdll_text_4C78c(f32 start, f32 end, f32 e
         return end;
     }
     return (f32)((f64)start + (f64)(end - start) *
-        sin((3.141592653589793 * (f64)((90.0f / duration) * elapsed)) / 180.0));
+        sin((M_PI * (f64)((90.0f / duration) * elapsed)) / 180.0));
 }
 
-/* The prop-exit effect lifts its vertical position midway through the path, then returns it. */
+/* Rises and returns to the start coordinate over one half sine wave. */
 static inline f32 fn_1_4C78_ease180_mdmicdll_text_4C78c(f32 start, f32 end, f32 elapsed,
                                                         f32 duration)
 {
@@ -1935,7 +1828,7 @@ static inline f32 fn_1_4C78_ease180_mdmicdll_text_4C78c(f32 start, f32 end, f32 
         return start;
     }
     return (f32)((f64)start + (f64)(end - start) *
-        sin((3.141592653589793 * (f64)((180.0f / duration) * elapsed)) / 180.0));
+        sin((M_PI * (f64)((180.0f / duration) * elapsed)) / 180.0));
 }
 
 /* After the host confirmation motion, the effect callback moves its prop sparkle along an arcing
@@ -1943,8 +1836,8 @@ static inline f32 fn_1_4C78_ease180_mdmicdll_text_4C78c(f32 start, f32 end, f32 
 void fn_1_4C78(OMOBJ *obj)
 {
     HuVecF position;
-    MDMIC_TRAJECTORY *first;
-    MDMIC_TRAJECTORY *second;
+    MinigameMenuTrajectory *first;
+    MinigameMenuTrajectory *second;
     s16 completed;
     OMOBJ *firstObj;
     OMOBJ *secondObj;
@@ -1993,8 +1886,8 @@ void fn_1_50C8(OMOBJ *obj)
 {
     OMOBJ *obj0 = lbl_1_bss_C[0];
     OMOBJ *obj1 = NULL;
-    MDMIC_TRAJECTORY *work0 = &lbl_1_bss_238[0];
-    MDMIC_TRAJECTORY *work1 = &lbl_1_bss_238[1];
+    MinigameMenuTrajectory *work0 = &lbl_1_bss_238[0];
+    MinigameMenuTrajectory *work1 = &lbl_1_bss_238[1];
 
     if (obj0 != NULL) {
         Hu3DModelObjPosGet(obj0->mdlId[0], lbl_1_data_E44, &work0->startPosition);
@@ -2048,7 +1941,7 @@ void fn_1_5328(void)
  * trail. */
 void fn_1_539C(OMOBJ *obj)
 {
-    MDMIC_TRAJECTORY *work = &lbl_1_bss_1D8[0];
+    MinigameMenuTrajectory *work = &lbl_1_bss_1D8[0];
     HuVecF pos;
 
     if (work->state == 0) {
@@ -2080,7 +1973,7 @@ void fn_1_539C(OMOBJ *obj)
 /* Game entry starts the host departure animation, its curved path and its accompanying sound. */
 void fn_1_5918(void)
 {
-    MDMIC_TRAJECTORY *work = &lbl_1_bss_1D8[0];
+    MinigameMenuTrajectory *work = &lbl_1_bss_1D8[0];
     OMOBJ *obj = lbl_1_bss_C[0];
 
     work->state = 0;
@@ -2220,7 +2113,7 @@ void fn_1_63F8(OMOBJ *obj)
     Point3d heading;
     Point3d position;
     MDMIC_PLAYER_WORK *player;
-    MDMIC_TRAJECTORY *trajectory;
+    MinigameMenuTrajectory *trajectory;
     s16 playerNo;
     s16 playerCount;
     s16 modelId;
@@ -2299,7 +2192,7 @@ void fn_1_69D8(void)
     void fn_1_63F8(OMOBJ *obj);
     OMOBJ *object;
     MDMIC_PLAYER_WORK *player;
-    MDMIC_TRAJECTORY *motion;
+    MinigameMenuTrajectory *motion;
     s16 index;
     s16 count;
     s16 includeSelected;
@@ -2660,16 +2553,6 @@ void fn_1_7DCC(s16 animationNo)
     object->work[1] = 0;
 }
 
-/* The preview reset helper requests that the selection heading fade out from the start of its
- * timer. */
-static inline void fn_1_8950_inlined_07E70_fn_1_7E70c(void)
-{
-    OMOBJ *obj = lbl_1_bss_8;
-
-    obj->work[2] = 2;
-    obj->work[3] = 0;
-}
-
 /* Selection transitions restore the first preview while fading the heading and hiding the game
  * name. */
 void fn_1_7E70(void)
@@ -2679,7 +2562,7 @@ void fn_1_7E70(void)
 
     obj->work[0] = 2;
     obj->work[1] = 0;
-    fn_1_8950_inlined_07E70_fn_1_7E70c();
+    minigameMenuHeadingFadeOut(lbl_1_bss_8);
     HuWinDispOff(lbl_1_bss_298);
 }
 
@@ -2888,14 +2771,20 @@ void fn_1_8B3C(void)
     }
 }
 
-/* Player-interface teardown releases the two paired-choice heading windows. */
-void fn_1_8CBC(void)
+/* Closes both player windows. */
+static inline void PlayerWindowsDestroy(void)
 {
     s16 i;
 
     for (i = 0; i < 2; i++) {
         HuWinExKill(lbl_1_bss_114[i]);
     }
+}
+
+/* Player-interface teardown releases the two paired-choice heading windows. */
+void fn_1_8CBC(void)
+{
+    PlayerWindowsDestroy();
 }
 
 /* Player-selection setup reveals a player icon group with its requested animation bank. */
@@ -2964,9 +2853,10 @@ void fn_1_90E4(s16 playerNo, s16 bank)
     HuSprBankSet(lbl_1_bss_900[playerNo + 14], 2, bank);
 }
 
+/* Clears the player record's x coordinate. */
 void fn_1_91D0(s16 playerNo)
 {
-    ((HuVecF *)lbl_1_bss_9C)[playerNo].x = 0.0f;
+    lbl_1_bss_9C[playerNo].x = 0.0f;
 }
 
 void fn_1_91F8(s16 playerNo, s16 bank)
@@ -3076,11 +2966,7 @@ void fn_1_9980(OMOBJ *obj)
 /* Player-interface teardown releases the two paired-choice heading windows. */
 void fn_1_9C28(void)
 {
-    s16 i;
-
-    for (i = 0; i < 2; i++) {
-        HuWinExKill(lbl_1_bss_114[i]);
-    }
+    PlayerWindowsDestroy();
 }
 
 /* Selection updates position a menu sprite at an optional world point plus a screen-space
@@ -3600,9 +3486,7 @@ void fn_1_CF3C(void)
     s16 j;
 
     for (i = 0; i < 29; i++) {
-        lbl_1_bss_814[i] = HuSprAnimRead(
-            fn_80008DD0(
-                lbl_1_data_848[i], 0x10000000, 2));
+        lbl_1_bss_814[i] = HuSprAnimDataRead(lbl_1_data_848[i]);
     }
     for (i = 0; i < 25; i++) {
         memset(&lbl_1_bss_29C[i], 0, sizeof(MDMIC_MODEL_WORK));
@@ -3766,9 +3650,8 @@ void fn_1_EE40(OMOBJ *obj)
     *lbl_1_bss_24->mtnId = 1;
 }
 
-/* Leaving player-count input hides both adjustment arrows and signals that the screen is
- * stopped. */
-void fn_1_EE70(OMOBJ *obj)
+/* Hides both player sprites and stops the object update. */
+static inline void PlayerSpritesHide(OMOBJ *obj)
 {
     HuSprAttrSet(lbl_1_bss_900[2], 4, 4);
     lbl_1_data_E64[4] = 0;
@@ -3776,6 +3659,13 @@ void fn_1_EE70(OMOBJ *obj)
     lbl_1_data_E64[5] = 0;
     obj->objFunc = NULL;
     *lbl_1_bss_24->mtnId = 1;
+}
+
+/* Leaving player-count input hides both adjustment arrows and signals that the screen is
+ * stopped. */
+void fn_1_EE70(OMOBJ *obj)
+{
+    PlayerSpritesHide(obj);
 }
 
 /* Player-count entrance counts connected pads and spins in cards showing active and inactive
@@ -3865,37 +3755,44 @@ void fn_1_EF08(OMOBJ *obj)
     }
 }
 
+/* Spins and shrinks a card while it leaves the menu. */
+static inline void MicModelTransition(MDMIC_MODEL_WORK *entry, s16 frame)
+{
+    if (frame == 0) {
+        if (lbl_1_bss_42 == 0) {
+            HuAudFXPlay(53);
+            lbl_1_bss_42 = 1;
+        }
+        fn_800267CC(entry->modelId, &entry->pos);
+        fn_80026874(entry->modelId, &entry->rot);
+        fn_8002691C(entry->modelId, &entry->scale);
+    } else {
+        lbl_1_bss_42 = 0;
+    }
+    {
+        float value = fn_1_156C(entry->rot.y, entry->rot.y - 540.0f,
+                                       (float)frame, 10.0f);
+        fn_80026808(entry->modelId, 0.0f, value, 0.0f);
+        value = fn_1_156C(entry->scale.x, 0.0f, (float)frame, 10.0f);
+        fn_800268B0(entry->modelId, value, value, 1.0f);
+    }
+    if (frame <= 10) {
+        fn_80026A44(entry->modelId, 1U);
+    }
+}
+
 /* Player-count exit spins and shrinks its four cards, preserving hidden inactive slots in the first
  * mode. */
 void fn_1_F4D8(OMOBJ *obj)
 {
     MDMIC_MODEL_WORK *entry;
-    float value;
     s16 i;
     s16 time;
 
     for (i = 0; i < 4; i++) {
         time = obj->work[0];
         entry = &lbl_1_bss_29C[(s16)(i + 17)];
-        if (time == 0) {
-            if (lbl_1_bss_42 == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_42 = 1;
-            }
-            fn_800267CC(entry->modelId, &entry->pos);
-            fn_80026874(entry->modelId, &entry->rot);
-            fn_8002691C(entry->modelId, &entry->scale);
-        } else {
-            lbl_1_bss_42 = 0;
-        }
-        value = fn_1_156C(
-            entry->rot.y, entry->rot.y - 540.0f, time, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-        value = fn_1_156C(entry->scale.x, 0.0f, time, 10.0f);
-        fn_800268B0(entry->modelId, value, value, 1.0f);
-        if (time <= 10) {
-            fn_80026A44(entry->modelId, (1 << 0));
-        }
+        MicModelTransition(entry, time);
         if (i >= lbl_1_bss_9DC.participantCount) {
             if (lbl_1_bss_9DC.modeSelection == 0) {
                 fn_800269E8(lbl_1_bss_29C[i + 17].modelId, (1 << 0));
@@ -4182,6 +4079,22 @@ void fn_1_1064C(OMOBJ *obj)
     }
 }
 
+/* Reserves the first available character and positions the computer player's cursor. */
+static inline void ReserveFirstAvailableCharacter(MDMIC_PLAYER_WORK *entry, s16 playerNo)
+{
+    s16 j;
+
+    for (j = 0; j < 11; j++) {
+        if (lbl_1_data_E90[j].selectionState == -1) {
+            entry->chrSel = j;
+            lbl_1_data_E90[j].selectionState = 1;
+            break;
+        }
+    }
+    fn_1_A144(
+        playerNo, &lbl_1_data_8BC[entry->chrSel + 14], 4);
+}
+
 /* Computer setup reserves a free character or restores the current difficulty arrows, then enables
  * input. */
 void fn_1_11534(OMOBJ *obj)
@@ -4189,20 +4102,11 @@ void fn_1_11534(OMOBJ *obj)
     MDMIC_PLAYER_WORK *entry;
     HuVecF pos;
     s16 i;
-    s16 j;
 
     for (i = 0, entry = lbl_1_bss_9A4; i < 4; i++, entry++) {
         if (entry->isComputer == 1) {
             if (entry->characterChoiceState == 0) {
-                for (j = 0; j < 11; j++) {
-                    if (lbl_1_data_E90[j].selectionState == -1) {
-                        entry->chrSel = j;
-                        lbl_1_data_E90[j].selectionState = 1;
-                        break;
-                    }
-                }
-                fn_1_A144(
-                    i, &lbl_1_data_8BC[entry->chrSel + 14], 4);
+                ReserveFirstAvailableCharacter(entry, i);
                 break;
             } else if (entry->characterChoiceState == 1) {
                 fn_800267CC(
@@ -4334,19 +4238,10 @@ void fn_1_12334(OMOBJ *obj)
 {
     MDMIC_PLAYER_WORK *entry;
     s16 i;
-    s16 j;
 
     for (i = 0, entry = lbl_1_bss_9A4; i < 4; i++, entry++) {
         if (entry->isComputer == 1 && entry->characterChoiceState == 0) {
-            for (j = 0; j < 11; j++) {
-                if (lbl_1_data_E90[j].selectionState == -1) {
-                    entry->chrSel = j;
-                    lbl_1_data_E90[j].selectionState = 1;
-                    break;
-                }
-            }
-            fn_1_A144(
-                i, &lbl_1_data_8BC[entry->chrSel + 14], 4);
+            ReserveFirstAvailableCharacter(entry, i);
             break;
         }
     }
@@ -4633,7 +4528,6 @@ void fn_1_15994(OMOBJ *obj)
 {
     MDMIC_PLAYER_WORK *player;
     MDMIC_MODEL_WORK *entry;
-    float value;
     s32 modelNo;
     s16 i;
     s16 time;
@@ -4647,25 +4541,7 @@ void fn_1_15994(OMOBJ *obj)
         time = obj->work[0];
         modelNo = (s16)player->chrSel;
         entry = &lbl_1_bss_29C[modelNo];
-        if (time == 0) {
-            if (lbl_1_bss_42 == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_42 = 1;
-            }
-            fn_800267CC(entry->modelId, &entry->pos);
-            fn_80026874(entry->modelId, &entry->rot);
-            fn_8002691C(entry->modelId, &entry->scale);
-        } else {
-            lbl_1_bss_42 = 0;
-        }
-        value = fn_1_156C(
-            entry->rot.y, entry->rot.y - 540.0f, time, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-        value = fn_1_156C(entry->scale.x, 0.0f, time, 10.0f);
-        fn_800268B0(entry->modelId, value, value, 1.0f);
-        if (time <= 10) {
-            fn_80026A44(entry->modelId, (1 << 0));
-        }
+        MicModelTransition(entry, time);
     }
     if (obj->work[0]++ > 10) {
         obj->objFunc = NULL;
@@ -4917,17 +4793,13 @@ void fn_1_17D90(OMOBJ *obj)
 {
     OMOBJ *firstWorkObj;
     OMOBJ *fallbackWorkObj;
-    OMOBJ *secondWorkObj;
 
     if (obj->work[0] == 0) {
         if (lbl_1_bss_9DC.modeSelection != 1) {
             firstWorkObj = lbl_1_bss_8;
             firstWorkObj->work[0] = 2;
             firstWorkObj->work[1] = 0;
-            secondWorkObj = lbl_1_bss_8;
-            secondWorkObj->work[2] = 2;
-            secondWorkObj->work[3] = 0;
-            HuWinDispOff(lbl_1_bss_298);
+            fn_1_79E4();
         } else {
             fallbackWorkObj = lbl_1_bss_8;
             fallbackWorkObj->work[0] = 2;
@@ -5422,17 +5294,13 @@ void fn_1_1AE7C(OMOBJ *obj)
 {
     MDMIC_MODEL_WORK *primaryModel;
     MDMIC_PLAYER_WORK *player;
-    OMOBJ *selectionObj;
     s16 index;
     s16 primaryFrame;
     s16 playerFrame;
     s16 primaryModelNo;
 
     if (obj->work[0] == 0) {
-        selectionObj = lbl_1_bss_8;
-        selectionObj->work[2] = 2;
-        selectionObj->work[3] = 0;
-        HuWinDispOff(lbl_1_bss_298);
+        fn_1_79E4();
         for (index = 0; index < 4; index++) {
             lbl_1_bss_E4[index].x = 0.0f;
         }
@@ -5452,64 +5320,15 @@ void fn_1_1AE7C(OMOBJ *obj)
     if (obj->work[0]++ > 10U) {
         fn_1_6DC4();
         obj->objFunc = NULL;
-        ((OMOBJ *)lbl_1_bss_24)->mtnId[0] = 1;
-    }
-}
-
-/* The preview-return transition uses this helper to spin and shrink its selected game card. */
-static inline void MdmicModelTransition_mdmicdll_text_1B5F0c(MDMIC_MODEL_WORK *entry, s16 frame)
-{
-    if (frame == 0) {
-        if (lbl_1_bss_42 == 0) {
-            HuAudFXPlay(53);
-            lbl_1_bss_42 = 1;
-        }
-        fn_800267CC(entry->modelId, &entry->pos);
-        fn_80026874(entry->modelId, &entry->rot);
-        fn_8002691C(entry->modelId, &entry->scale);
-    } else {
-        lbl_1_bss_42 = 0;
-    }
-    {
-        float value = fn_1_156C(entry->rot.y, entry->rot.y - 540.0f,
-                                       (float)frame, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-        value = fn_1_156C(entry->scale.x, 0.0f, (float)frame, 10.0f);
-        fn_800268B0(entry->modelId, value, value, 1.0f);
-    }
-    if (frame <= 10) {
-        fn_80026A44(entry->modelId, 1U);
+        lbl_1_bss_24->mtnId[0] = 1;
     }
 }
 
 /* The preview-return transition uses this helper to spin and shrink one player's character card. */
-static inline void MdmicPlayerTransition_mdmicdll_text_1B5F0c(MDMIC_PLAYER_WORK *player, s16 frame)
+static inline void MicPlayerTransition(MDMIC_PLAYER_WORK *player, s16 frame)
 {
-    MDMIC_MODEL_WORK *entry;
-    float value;
-    s16 modelNo;
-
-    modelNo = (s16)player->chrSel;
-    entry = &lbl_1_bss_29C[modelNo];
-    if (frame == 0) {
-        if (lbl_1_bss_42 == 0) {
-            HuAudFXPlay(53);
-            lbl_1_bss_42 = 1;
-        }
-        fn_800267CC(entry->modelId, &entry->pos);
-        fn_80026874(entry->modelId, &entry->rot);
-        fn_8002691C(entry->modelId, &entry->scale);
-    } else {
-        lbl_1_bss_42 = 0;
-    }
-    value = fn_1_156C(entry->rot.y, entry->rot.y - 540.0f,
-                             (float)frame, 10.0f);
-    fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-    value = fn_1_156C(entry->scale.x, 0.0f, (float)frame, 10.0f);
-    fn_800268B0(entry->modelId, value, value, 1.0f);
-    if (frame <= 10) {
-        fn_80026A44(entry->modelId, 1U);
-    }
+    s16 modelNo = (s16)player->chrSel;
+    MicModelTransition(&lbl_1_bss_29C[modelNo], frame);
 }
 
 /* Returning to the preview clears badges, fades the heading and shrinks the game and character
@@ -5542,16 +5361,16 @@ void fn_1_1B5F0(OMOBJ *obj)
     primaryFrame = (s16)obj->work[0];
     primaryModelNo = lbl_1_bss_9DC.gameSelection + 11;
     primaryModel = &lbl_1_bss_29C[primaryModelNo];
-    MdmicModelTransition_mdmicdll_text_1B5F0c(primaryModel, primaryFrame);
+    MicModelTransition(primaryModel, primaryFrame);
 
     for (index = 0, player = lbl_1_bss_9A4; index < 4; index++, player++) {
         playerFrame = (s16)obj->work[0];
-        MdmicPlayerTransition_mdmicdll_text_1B5F0c(player, playerFrame);
+        MicPlayerTransition(player, playerFrame);
     }
 
     if (obj->work[0]++ > 10U) {
         obj->objFunc = NULL;
-        ((OMOBJ *)lbl_1_bss_24)->mtnId[0] = 1;
+        lbl_1_bss_24->mtnId[0] = 1;
     }
 }
 
@@ -5728,63 +5547,6 @@ void fn_1_1CC24(OMOBJ *obj)
     lbl_1_bss_24->mtnId[0] = 1;
 }
 
-/* The activity confirmation exit uses this helper to spin and shrink its activity card. */
-static inline void MdmicModelTransition_mdmicdll_text_1CC48c(MDMIC_MODEL_WORK *entry, s16 frame)
-{
-    if (frame == 0) {
-        if (lbl_1_bss_42 == 0) {
-            HuAudFXPlay(53);
-            lbl_1_bss_42 = 1;
-        }
-        fn_800267CC(entry->modelId, &entry->pos);
-        fn_80026874(entry->modelId, &entry->rot);
-        fn_8002691C(entry->modelId, &entry->scale);
-    } else {
-        lbl_1_bss_42 = 0;
-    }
-    {
-        float value = fn_1_156C(entry->rot.y, entry->rot.y - 540.0f,
-                                       (float)frame, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-        value = fn_1_156C(entry->scale.x, 0.0f, (float)frame, 10.0f);
-        fn_800268B0(entry->modelId, value, value, 1.0f);
-    }
-    if (frame <= 10) {
-        fn_80026A44(entry->modelId, 1U);
-    }
-}
-
-/* The activity confirmation exit uses this helper to spin and shrink one player's character
- * card. */
-static inline void MdmicPlayerTransition_mdmicdll_text_1CC48c(MDMIC_PLAYER_WORK *player, s16 frame)
-{
-    MDMIC_MODEL_WORK *entry;
-    float value;
-    s32 modelNo;
-
-    modelNo = (s16)player->chrSel;
-    entry = &lbl_1_bss_29C[modelNo];
-    if (frame == 0) {
-        if (lbl_1_bss_42 == 0) {
-            HuAudFXPlay(53);
-            lbl_1_bss_42 = 1;
-        }
-        fn_800267CC(entry->modelId, &entry->pos);
-        fn_80026874(entry->modelId, &entry->rot);
-        fn_8002691C(entry->modelId, &entry->scale);
-    } else {
-        lbl_1_bss_42 = 0;
-    }
-    value = fn_1_156C(entry->rot.y, entry->rot.y - 540.0f,
-                             (float)frame, 10.0f);
-    fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-    value = fn_1_156C(entry->scale.x, 0.0f, (float)frame, 10.0f);
-    fn_800268B0(entry->modelId, value, value, 1.0f);
-    if (frame <= 10) {
-        fn_80026A44(entry->modelId, 1U);
-    }
-}
-
 /* Activity confirmation hides the record display, shrinks the cards and starts character-model
  * appearance. */
 void fn_1_1CC48(OMOBJ *obj)
@@ -5813,73 +5575,17 @@ void fn_1_1CC48(OMOBJ *obj)
     primaryFrame = (s16)obj->work[0];
     primaryModelNo = lbl_1_bss_9DC.gameSelection + 11;
     primaryModel = &lbl_1_bss_29C[primaryModelNo];
-    MdmicModelTransition_mdmicdll_text_1CC48c(primaryModel, primaryFrame);
+    MicModelTransition(primaryModel, primaryFrame);
 
     for (index = 0, player = lbl_1_bss_9A4; index < 4; index++, player++) {
         playerFrame = (s16)obj->work[0];
-        MdmicPlayerTransition_mdmicdll_text_1CC48c(player, playerFrame);
+        MicPlayerTransition(player, playerFrame);
     }
 
     if (obj->work[0]++ > 10U) {
         fn_1_6DC4();
         obj->objFunc = NULL;
-        ((OMOBJ *)lbl_1_bss_24)->mtnId[0] = 1;
-    }
-}
-
-/* The activity preview-return transition spins and shrinks its activity card with this helper. */
-static inline void MdmicModelTransition_mdmicdll_text_1D3B8c(MDMIC_MODEL_WORK *entry, s16 frame)
-{
-    if (frame == 0) {
-        if (lbl_1_bss_42 == 0) {
-            HuAudFXPlay(53);
-            lbl_1_bss_42 = 1;
-        }
-        fn_800267CC(entry->modelId, &entry->pos);
-        fn_80026874(entry->modelId, &entry->rot);
-        fn_8002691C(entry->modelId, &entry->scale);
-    } else {
-        lbl_1_bss_42 = 0;
-    }
-    {
-        float value = fn_1_156C(entry->rot.y, entry->rot.y - 540.0f,
-                                       (float)frame, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-        value = fn_1_156C(entry->scale.x, 0.0f, (float)frame, 10.0f);
-        fn_800268B0(entry->modelId, value, value, 1.0f);
-    }
-    if (frame <= 10) {
-        fn_80026A44(entry->modelId, 1U);
-    }
-}
-
-/* The activity preview-return transition spins and shrinks each player card with this helper. */
-static inline void MdmicPlayerTransition_mdmicdll_text_1D3B8c(MDMIC_PLAYER_WORK *player, s16 frame)
-{
-    MDMIC_MODEL_WORK *entry;
-    float value;
-    s16 modelNo;
-
-    modelNo = (s16)player->chrSel;
-    entry = &lbl_1_bss_29C[modelNo];
-    if (frame == 0) {
-        if (lbl_1_bss_42 == 0) {
-            HuAudFXPlay(53);
-            lbl_1_bss_42 = 1;
-        }
-        fn_800267CC(entry->modelId, &entry->pos);
-        fn_80026874(entry->modelId, &entry->rot);
-        fn_8002691C(entry->modelId, &entry->scale);
-    } else {
-        lbl_1_bss_42 = 0;
-    }
-    value = fn_1_156C(entry->rot.y, entry->rot.y - 540.0f,
-                             (float)frame, 10.0f);
-    fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-    value = fn_1_156C(entry->scale.x, 0.0f, (float)frame, 10.0f);
-    fn_800268B0(entry->modelId, value, value, 1.0f);
-    if (frame <= 10) {
-        fn_80026A44(entry->modelId, 1U);
+        lbl_1_bss_24->mtnId[0] = 1;
     }
 }
 
@@ -5915,16 +5621,16 @@ void fn_1_1D3B8(OMOBJ *obj)
     primaryFrame = (s16)obj->work[0];
     primaryModelNo = lbl_1_bss_9DC.gameSelection + 11;
     primaryModel = &lbl_1_bss_29C[primaryModelNo];
-    MdmicModelTransition_mdmicdll_text_1D3B8c(primaryModel, primaryFrame);
+    MicModelTransition(primaryModel, primaryFrame);
 
     for (index = 0, player = lbl_1_bss_9A4; index < 4; index++, player++) {
         playerFrame = (s16)obj->work[0];
-        MdmicPlayerTransition_mdmicdll_text_1D3B8c(player, playerFrame);
+        MicPlayerTransition(player, playerFrame);
     }
 
     if (obj->work[0]++ > 10U) {
         obj->objFunc = NULL;
-        ((OMOBJ *)lbl_1_bss_24)->mtnId[0] = 1;
+        lbl_1_bss_24->mtnId[0] = 1;
     }
 }
 
@@ -6024,12 +5730,7 @@ void fn_1_1DF74(OMOBJ *obj)
 /* Leaving player-order input hides both arrows and stops its callback. */
 void fn_1_1E1B0(OMOBJ *obj)
 {
-    HuSprAttrSet(lbl_1_bss_900[2], 4, 4);
-    lbl_1_data_E64[4] = 0;
-    HuSprAttrSet(lbl_1_bss_900[2], 5, 4);
-    lbl_1_data_E64[5] = 0;
-    obj->objFunc = NULL;
-    *lbl_1_bss_24->mtnId = 1;
+    PlayerSpritesHide(obj);
 }
 
 /* Player-order entrance resets the arrangement to zero and moves all four characters into its
@@ -6525,7 +6226,6 @@ void fn_1_2299C(OMOBJ *obj)
 {
     MDMIC_MODEL_WORK *entry;
     OMOBJ *targetObj;
-    float value;
     s16 modelNo;
     s16 time;
 
@@ -6536,25 +6236,7 @@ void fn_1_2299C(OMOBJ *obj)
     time = (s16)obj->work[0];
     modelNo = lbl_1_bss_9DC.gameSelection + 11;
     entry = &lbl_1_bss_29C[modelNo];
-    if (time == 0) {
-        if (lbl_1_bss_42 == 0) {
-            HuAudFXPlay(53);
-            lbl_1_bss_42 = 1;
-        }
-        fn_800267CC(entry->modelId, &entry->pos);
-        fn_80026874(entry->modelId, &entry->rot);
-        fn_8002691C(entry->modelId, &entry->scale);
-    } else {
-        lbl_1_bss_42 = 0;
-    }
-    value = fn_1_156C(
-        entry->rot.y, entry->rot.y - 540.0f, (float)time, 10.0f);
-    fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-    value = fn_1_156C(entry->scale.x, 0.0f, (float)time, 10.0f);
-    fn_800268B0(entry->modelId, value, value, 1.0f);
-    if (time <= 10) {
-        fn_80026A44(entry->modelId, (1 << 0));
-    }
+    MicModelTransition(entry, time);
     if (obj->work[0]++ > 10U) {
         obj->objFunc = NULL;
         lbl_1_bss_24->mtnId[0] = 1;
@@ -6609,7 +6291,6 @@ void fn_1_23B18(OMOBJ *obj)
     s16 modelCount;
     s16 i;
     s16 frame;
-    float value;
     OMOBJ *workObj;
 
     if (lbl_1_bss_9DC.modeSelection == 1) {
@@ -6625,25 +6306,7 @@ void fn_1_23B18(OMOBJ *obj)
     for (i = 0; i < modelCount; i++) {
         frame = (s16)obj->work[0];
         entry = &lbl_1_bss_29C[(s16)(i + 11)];
-        if (frame == 0) {
-            if (lbl_1_bss_42 == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_42 = 1;
-            }
-            fn_800267CC(entry->modelId, &entry->pos);
-            fn_80026874(entry->modelId, &entry->rot);
-            fn_8002691C(entry->modelId, &entry->scale);
-        } else {
-            lbl_1_bss_42 = 0;
-        }
-        value = fn_1_156C(
-            entry->rot.y, entry->rot.y - 540.0f, frame, 10.0f);
-        fn_80026808(entry->modelId, 0.0f, value, 0.0f);
-        value = fn_1_156C(entry->scale.x, 0.0f, frame, 10.0f);
-        fn_800268B0(entry->modelId, value, value, 1.0f);
-        if (frame <= 10) {
-            fn_80026A44(entry->modelId, (1 << 0));
-        }
+        MicModelTransition(entry, frame);
     }
     if (obj->work[0]++ > 10) {
         fn_80025980(2);
@@ -6672,7 +6335,6 @@ void fn_1_23F2C(void)
     s16 i;
     s16 j;
     s16 finalWindow;
-    s16 firstWindow;
     s16 playerModel;
     OMOBJ **objectPointer;
 
@@ -6707,9 +6369,7 @@ void fn_1_23F2C(void)
         omDelObjEx(lbl_1_bss_0, fourthObj);
     }
     fourthObj = NULL;
-    for (firstWindow = 0; firstWindow < 2; firstWindow++) {
-        HuWinExKill(lbl_1_bss_114[firstWindow]);
-    }
+    PlayerWindowsDestroy();
     lastObj = lbl_1_bss_1C[0];
     if (lastObj) {
         fn_8002C624(lastObj->mtnId[0]);
@@ -6892,12 +6552,12 @@ void fn_1_24614(void)
     object = lbl_1_bss_38;
     ((u32 *)(&(object->work[0])))[1] = 0;
     fn_1_3B3E4(lbl_1_bss_0);
-    lbl_1_bss_298 = HuWinExCreateFrame(134.0f,
-                                        40.0f,
-                                        300, 42, -1, 0);
-    HuWinDispOff(lbl_1_bss_298);
-    HuWinBGTPLvlSet(lbl_1_bss_298, 0.0f);
-    HuWinPriSet(lbl_1_bss_298, 0);
+    fn_1_4788();
+
+
+
+
+
     lbl_1_bss_4 = fn_8003AB38(lbl_1_bss_0, MDMIC_OBJECT_PRIORITY, 4, 4, -1, fn_1_7588);
     lbl_1_bss_8 = fn_8003AB38(lbl_1_bss_0, MDMIC_OBJECT_PRIORITY, 2, 4, -1, fn_1_84B0);
     lbl_1_bss_C[0] = fn_8003AB38(lbl_1_bss_0, MDMIC_OBJECT_PRIORITY, 1, 4, -1, fn_1_60D4);
@@ -7059,8 +6719,8 @@ void fn_1_25B50(void)
             s16 groupId;
 
             padNumber = lbl_1_bss_9A4[selectionIndex].padNo;
-            lbl_1_bss_E4[selectionIndex].x = 0.85000002384185791f;
-            lbl_1_bss_E4[selectionIndex].y = 0.85000002384185791f;
+            lbl_1_bss_E4[selectionIndex].x = 0.85f;
+            lbl_1_bss_E4[selectionIndex].y = 0.85f;
             groupId = lbl_1_bss_900[selectionIndex + 4];
             group = &HuSprGrpData[groupId];
             memberIndex = 0;
@@ -7075,8 +6735,8 @@ void fn_1_25B50(void)
             s16 memberIndex;
             s16 groupId;
 
-            lbl_1_bss_E4[selectionIndex].x = 0.85000002384185791f;
-            lbl_1_bss_E4[selectionIndex].y = 0.85000002384185791f;
+            lbl_1_bss_E4[selectionIndex].x = 0.85f;
+            lbl_1_bss_E4[selectionIndex].y = 0.85f;
             groupId = lbl_1_bss_900[selectionIndex + 4];
             group = &HuSprGrpData[groupId];
             memberIndex = 0;
@@ -7091,8 +6751,8 @@ void fn_1_25B50(void)
             s16 groupId;
 
             difficultyBank = lbl_1_bss_9A4[selectionIndex].computerDifficulty + 5;
-            lbl_1_bss_E4[selectionIndex].x = 0.85000002384185791f;
-            lbl_1_bss_E4[selectionIndex].y = 0.85000002384185791f;
+            lbl_1_bss_E4[selectionIndex].x = 0.85f;
+            lbl_1_bss_E4[selectionIndex].y = 0.85f;
             groupId = lbl_1_bss_900[selectionIndex + 4];
             group = &HuSprGrpData[groupId];
             memberIndex = 0;
@@ -7135,8 +6795,8 @@ void fn_1_25B50(void)
                         lbl_1_data_8BC[selectionIndex + 25].x,
                         lbl_1_data_8BC[selectionIndex + 25].y,
                         lbl_1_data_8BC[selectionIndex + 25].z);
-        fn_800268B0(selectedCard->modelId, 1.2500000000000000f,
-                          1.2500000000000000f, 1.0f);
+        fn_800268B0(selectedCard->modelId, 1.25f,
+                          1.25f, 1.0f);
         fn_80026A44(selectedCard->modelId, 1U);
         selectionIndex += 1;
     }
@@ -7939,16 +7599,7 @@ s16 fn_1_2D06C(s16 returningFromPreviousStep) {
 
 /* Selection processes update a dialogue insertion and invalidate the cached main message when it
  * changes. */
-static inline void fn_1_3F5C_mdmicdll_text_2CD28c(s16 windowNo, s32 messageNo,
-                             s16 insertPosition)
-{
-    fn_1_39A4(windowNo);
-    if ((s32)lbl_1_data_E38[1] != messageNo) {
-        lbl_1_data_E38[0] = -1;
-        lbl_1_data_E38[1] = messageNo;
-        fn_1_36B0(lbl_1_data_E32[0], lbl_1_data_E38[1], insertPosition);
-    }
-}
+
 
 /* The handicap process initializes or restores its layout, runs value input and handles confirm,
  * back and exit. */
@@ -7966,11 +7617,11 @@ s16 fn_1_2DD78(s16 returningFromPreviousStep)
         HuPrcVSleep();
         fn_1_CEA4(fn_1_19134);
         fn_1_4150_for_2D06C_mdmicdll_text_2CD28c(((int)MESSNUM(MESS_SYS_GUIDE, 10)));
-        fn_1_3F5C_mdmicdll_text_2CD28c(3, lbl_1_bss_9A4[lbl_1_bss_9DC.handicapPlayer].chrSel, 0);
+        fn_1_3F5C(3, lbl_1_bss_9A4[lbl_1_bss_9DC.handicapPlayer].chrSel, 0);
         fn_1_3D24(3, ((int)MESSNUM(MESS_PARTY_SETTING, 34)), 0);
         while (TRUE) {
             HuPrcVSleep();
-            fn_1_3F5C_mdmicdll_text_2CD28c(3, lbl_1_bss_9A4[lbl_1_bss_9DC.handicapPlayer].chrSel,
+            fn_1_3F5C(3, lbl_1_bss_9A4[lbl_1_bss_9DC.handicapPlayer].chrSel,
                                            0);
             fn_1_3D24(3, ((int)MESSNUM(MESS_PARTY_SETTING, 34)), 0);
             if (!fn_1_CE6C()) {
@@ -8300,14 +7951,7 @@ s16 fn_1_33AD8(s16 returningToSelection)
     s16 result = 0;
 
     if (returningToSelection == 0) {
-        OMOBJ *obj = lbl_1_bss_24;
-        lbl_1_bss_24->mtnId[0] = 0;
-        obj->work[0] = 0;
-        obj->work[1] = 0;
-        obj->work[2] = 0;
-        obj->work[3] = 0;
-        obj->objFunc = fn_1_1E248;
-        while (lbl_1_bss_24->mtnId[0] == 0) HuPrcVSleep();
+        fn_1_CEA4(fn_1_1E248);
     } else {
         fn_1_CEA4(fn_1_1E9D8);
     }
@@ -8438,9 +8082,7 @@ s16 fn_1_34C78(s16 mode) {
         result = 0;
         state = 0;
         returningFromPreviousStep = 0;
-        goto mainStateLoop;
-    }
-    if (lbl_1_bss_9DC.modeSelection == 0) {
+    } else if (lbl_1_bss_9DC.modeSelection == 0) {
         state = 1;
         returningFromPreviousStep = 0;
         lbl_1_bss_28 = 0;
@@ -8451,151 +8093,151 @@ s16 fn_1_34C78(s16 mode) {
         state = MDMIC_STEP_MINIGAME_CHOICE;
         returningFromPreviousStep = 0;
     }
-mainStateLoop:
-    HuPrcVSleep();
-    switch (state) {
-    case 0:
-        fn_1_272D4_for_34C78_mdmicdll_text_2CD28c();
-        state = 1;
-        returningFromPreviousStep = 0;
-        break;
-    case 1:
-        result = fn_1_2D06C(returningFromPreviousStep);
-        if (result == 1) {
-            state = 0;
-            returningFromPreviousStep = 1;
-        } else if (result == 0) {
-            state = (lbl_1_bss_9DC.modeSelection * MDMIC_MODE_STEP_STRIDE) +
-                    MDMIC_STEP_QUIZ_PLAYER_COUNT;
-            returningFromPreviousStep = 0;
-        }
-        break;
-    case 2:
-        fn_1_3107C();
-        return 2;
-    case MDMIC_STEP_QUIZ_PLAYER_COUNT:
-        result = fn_1_276E0(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_QUIZ_CHARACTERS;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
+    for (;;) {
+        HuPrcVSleep();
+        switch (state) {
+        case 0:
+            fn_1_272D4_for_34C78_mdmicdll_text_2CD28c();
             state = 1;
-            returningFromPreviousStep = 1;
+            returningFromPreviousStep = 0;
+            break;
+        case 1:
+            result = fn_1_2D06C(returningFromPreviousStep);
+            if (result == 1) {
+                state = 0;
+                returningFromPreviousStep = 1;
+            } else if (result == 0) {
+                state = (lbl_1_bss_9DC.modeSelection * MDMIC_MODE_STEP_STRIDE) +
+                        MDMIC_STEP_QUIZ_PLAYER_COUNT;
+                returningFromPreviousStep = 0;
+            }
+            break;
+        case 2:
+            fn_1_3107C();
+            return 2;
+        case MDMIC_STEP_QUIZ_PLAYER_COUNT:
+            result = fn_1_276E0(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_QUIZ_CHARACTERS;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = 1;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_QUIZ_CHARACTERS:
+            result =
+                fn_1_2B844(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_QUIZ_CONFIRM;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = MDMIC_STEP_QUIZ_PLAYER_COUNT;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_QUIZ_CONFIRM:
+            result = fn_1_2F9A4();
+            if (result == 0) {
+                state = 2;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = 0;
+                returningFromPreviousStep = 0;
+            } else if (result == 2) {
+                state = MDMIC_STEP_QUIZ_CHARACTERS;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_ACTIVITY_CHARACTERS:
+            result = fn_1_2CD28(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_ACTIVITY_CHOICE;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = 1;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_ACTIVITY_CHOICE:
+            result = fn_1_31770(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_ACTIVITY_CONFIRM;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = MDMIC_STEP_ACTIVITY_CHARACTERS;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_ACTIVITY_CONFIRM:
+            result = fn_1_30510();
+            if (result == 0) {
+                state = 2;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = 0;
+                returningFromPreviousStep = 0;
+            } else if (result == 2) {
+                state = MDMIC_STEP_ACTIVITY_CHOICE;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_MINIGAME_PLAYER_COUNT:
+            result = fn_1_276E0(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_MINIGAME_CHARACTERS;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = 1;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_MINIGAME_CHARACTERS:
+            result = fn_1_2B590(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_MINIGAME_CHOICE;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = MDMIC_STEP_MINIGAME_PLAYER_COUNT;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_MINIGAME_CHOICE:
+            result = fn_1_32934(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_MINIGAME_ORDER;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = MDMIC_STEP_MINIGAME_CHARACTERS;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_MINIGAME_ORDER:
+            result = fn_1_33AD8(returningFromPreviousStep);
+            if (result == 0) {
+                state = MDMIC_STEP_MINIGAME_CONFIRM;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = MDMIC_STEP_MINIGAME_CHOICE;
+                returningFromPreviousStep = 1;
+            }
+            break;
+        case MDMIC_STEP_MINIGAME_CONFIRM:
+            result = fn_1_2EE38();
+            if (result == 0) {
+                state = 2;
+                returningFromPreviousStep = 0;
+            } else if (result == 1) {
+                state = 0;
+                returningFromPreviousStep = 0;
+            } else if (result == 2) {
+                state = MDMIC_STEP_MINIGAME_ORDER;
+                returningFromPreviousStep = 1;
+            }
+            break;
         }
-        break;
-    case MDMIC_STEP_QUIZ_CHARACTERS:
-        result =
-            fn_1_2B844(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_QUIZ_CONFIRM;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = MDMIC_STEP_QUIZ_PLAYER_COUNT;
-            returningFromPreviousStep = 1;
+        if (result == -1) {
+            return 0;
         }
-        break;
-    case MDMIC_STEP_QUIZ_CONFIRM:
-        result = fn_1_2F9A4();
-        if (result == 0) {
-            state = 2;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = 0;
-            returningFromPreviousStep = 0;
-        } else if (result == 2) {
-            state = MDMIC_STEP_QUIZ_CHARACTERS;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_ACTIVITY_CHARACTERS:
-        result = fn_1_2CD28(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_ACTIVITY_CHOICE;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = 1;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_ACTIVITY_CHOICE:
-        result = fn_1_31770(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_ACTIVITY_CONFIRM;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = MDMIC_STEP_ACTIVITY_CHARACTERS;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_ACTIVITY_CONFIRM:
-        result = fn_1_30510();
-        if (result == 0) {
-            state = 2;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = 0;
-            returningFromPreviousStep = 0;
-        } else if (result == 2) {
-            state = MDMIC_STEP_ACTIVITY_CHOICE;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_MINIGAME_PLAYER_COUNT:
-        result = fn_1_276E0(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_MINIGAME_CHARACTERS;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = 1;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_MINIGAME_CHARACTERS:
-        result = fn_1_2B590(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_MINIGAME_CHOICE;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = MDMIC_STEP_MINIGAME_PLAYER_COUNT;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_MINIGAME_CHOICE:
-        result = fn_1_32934(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_MINIGAME_ORDER;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = MDMIC_STEP_MINIGAME_CHARACTERS;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_MINIGAME_ORDER:
-        result = fn_1_33AD8(returningFromPreviousStep);
-        if (result == 0) {
-            state = MDMIC_STEP_MINIGAME_CONFIRM;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = MDMIC_STEP_MINIGAME_CHOICE;
-            returningFromPreviousStep = 1;
-        }
-        break;
-    case MDMIC_STEP_MINIGAME_CONFIRM:
-        result = fn_1_2EE38();
-        if (result == 0) {
-            state = 2;
-            returningFromPreviousStep = 0;
-        } else if (result == 1) {
-            state = 0;
-            returningFromPreviousStep = 0;
-        } else if (result == 2) {
-            state = MDMIC_STEP_MINIGAME_ORDER;
-            returningFromPreviousStep = 1;
-        }
-        break;
     }
-    if (result == -1) {
-        return 0;
-    }
-    goto mainStateLoop;
 }

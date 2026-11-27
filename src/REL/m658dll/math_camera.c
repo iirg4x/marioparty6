@@ -1,4 +1,6 @@
 /* Shared camera, particle, resource-pool and sound helpers for T Minus Five. */
+#include "REL/minigame_particle_config.h"
+#include "REL/minigame_particle_system.h"
 #include "dolphin/math.h"
 #include "REL/m658dll/recovered.h"
 #include "humath.h"
@@ -16,10 +18,17 @@
 #include "string.h"
 #include "datadir_enum.h"
 
-typedef struct M658ParticleAnimEntry { s32 resourceId; ANIMDATA *anim; } M658ParticleAnimEntry;
+typedef struct M658ParticleAnimEntry {
+    s32 resourceId;
+    ANIMDATA *unk4; /* The game's code never reads this field. */
+} M658ParticleAnimEntry;
 typedef struct M658PoolNode { struct M658PoolNode *prev; struct M658PoolNode *next; } M658PoolNode;
 /* List operations leave the unused portion of the cleared pool header untouched. */
-typedef struct M658Pool { M658PoolNode *active; M658PoolNode *free; u8 reserved08[8]; } M658Pool;
+typedef struct M658Pool {
+    M658PoolNode *active;
+    M658PoolNode *free;
+    u8 unk8[8]; /* No code names this field. */
+} M658Pool;
 extern HUPROCESS *lbl_1_bss_0;
 
 typedef struct M658RegistryDescriptorView {
@@ -47,20 +56,15 @@ extern void *fn_1_6680(M658Pool *pool);
 extern void fn_1_140(OMOBJ *object, OMOBJ_FUNC update);
 extern void fn_1_55FC(OMOBJ *object);
 
-typedef struct M658RegistryItemView {
-    u16 flags;
-    s16 age;
-} M658RegistryItemView;
-
-extern void *fn_1_6764(void *pool);
-extern void *fn_1_67A0(void *pool, void *item);
+extern void *fn_1_6764(M658Pool *pool);
+extern void *fn_1_67A0(M658Pool *pool, void *item);
 
 /* Runs each frame to render registry entries and update pending or active items. */
 void fn_1_55FC(OMOBJ *object)
 {
     s32 unusedValue;
     s32 index;
-    M658RegistryItemView *item;
+    M658HookActor *item;
     M658RegistryEntry *entry;
     M658RegistryWork *work;
     void *pool;
@@ -87,7 +91,7 @@ void fn_1_55FC(OMOBJ *object)
             if ((item->flags & M658_REGISTRY_ITEM_ACTIVE_FLAG) != 0) {
                 entry->update(item, 3);
                 entry->update(item, 4);
-                item->age++;
+                item->unk2++;
             }
             item = fn_1_67A0(pool, item);
         }
@@ -95,29 +99,7 @@ void fn_1_55FC(OMOBJ *object)
     }
 }
 
-typedef struct M658ParticleConfig {
-    u32 flags;
-    GXColor endColor;
-    GXColor startColor;
-    Vec velocity;
-    Vec decay;
-    f32 gravity;
-    f32 scale;
-    f32 scaleDelta;
-    f32 alphaDelta;
-    f32 colorTime;
-} M658ParticleConfig;
-
-typedef struct M658ParticleOwner {
-    u32 flags;
-    s32 resource;
-    s32 count;
-    s32 blendMode;
-    s32 model;
-    ANIMDATA *anim;
-    u8 reserved[4]; /* Particle setup leaves these bytes unchanged. */
-} M658ParticleOwner;
-
+/* Interpolates between two scalar values. */
 f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation);
 
 /* Stores the requested player's coin bonus, replacing its previous value;
@@ -129,15 +111,16 @@ void fn_1_571C(s32 player, s16 amount)
     }
 }
 
+/* Returns the minigame night flag. */
 s16 fn_1_5770(void)
 {
-    return lbl_802C0278;
+    return GWMgNightFGet();
 }
 
 /* Particle callback updates motion, sampled RGB, alpha and scale for each live particle. */
 void fn_1_5780(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
-    M658ParticleConfig *config = particle->work;
+    MinigameParticleConfig *config = particle->work;
     HU3D_PARTICLE_DATA *data;
     s16 i;
     f32 alpha;
@@ -182,7 +165,7 @@ void fn_1_5780(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 data->scale = data->scaleBase;
             }
             data->scaleBase += config[i].scaleDelta;
-            if (data->scaleBase <= 0.009999999776482582f) {
+            if (data->scaleBase <= 0.01f) {
                 data->scale = 0.0f;
             }
         }
@@ -192,15 +175,15 @@ void fn_1_5780(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 }
 
 /* Particle emission uses this to place an effect; it returns its slot or -1 when none is free. */
-s16 fn_1_5BFC(M658ParticleOwner *owner, s16 cameraBit, f32 positionX, f32 positionY,
+s16 fn_1_5BFC(MinigameParticleSystem *owner, s16 cameraBit, f32 positionX, f32 positionY,
               f32 positionZ, f32 scale,
-              M658ParticleConfig *config)
+              MinigameParticleConfig *config)
 {
     s16 result = -1;
-    s16 modelId = owner->model;
+    s16 modelId = owner->modelId;
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
-    M658ParticleConfig *configs;
+    MinigameParticleConfig *configs;
     HU3D_PARTICLE_DATA *data;
     s16 i;
 
@@ -408,7 +391,7 @@ void fn_1_5780(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 /* fn_1_64B4 calls this to build particle models and emitter buffers. Resource reuse retains
 * the preceding animation settings. Configuration reuse leaves this iteration's local
 * configuration-buffer pointer uninitialized. */
-void fn_1_6180(M658ParticleOwner *owners)
+void fn_1_6180(MinigameParticleSystem *owners)
 {
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
@@ -422,28 +405,28 @@ void fn_1_6180(M658ParticleOwner *owners)
 
     for (i = 0;; i++) {
         void *file;
-        M658ParticleOwner *owner;
-        M658ParticleConfig *configs;
+        MinigameParticleSystem *owner;
+        MinigameParticleConfig *configs;
 
         owner = &owners[i];
         file = NULL;
-        if (owner->resource < 0) {
+        if (owner->resourceId < 0) {
             break;
         }
         if (!(owner->flags & M658_PARTICLE_OWNER_REUSE_RESOURCE_FLAG)) {
-            file = fn_80008DD0(owner->resource, 0x10000000, 2);
-            anim = owner->anim = HuSprAnimRead(file);
+            file = fn_80008DD0(owner->resourceId, 0x10000000, 2);
+            anim = owner->unk14 = HuSprAnimRead(file);
             count = owner->count;
             blendMode = owner->blendMode;
         }
         if (!(owner->flags & M658_PARTICLE_OWNER_REUSE_CONFIG_FLAG)) {
-            configs = HuMemDirectMallocNum(0, count * sizeof(M658ParticleConfig), 0x10000000);
-            memset(configs, 0, count * sizeof(M658ParticleConfig));
+            configs = HuMemDirectMallocNum(0, count * sizeof(MinigameParticleConfig), 0x10000000);
+            memset(configs, 0, count * sizeof(MinigameParticleConfig));
         }
-        owner->model = fn_8003216C(anim, count);
-        fn_8003269C(owner->model, blendMode);
-        fn_800326D0(owner->model, fn_1_5780);
-        particle = lbl_802C01C8[owner->model].hookData;
+        owner->modelId = fn_8003216C(anim, count);
+        fn_8003269C(owner->modelId, blendMode);
+        fn_800326D0(owner->modelId, fn_1_5780);
+        particle = lbl_802C01C8[owner->modelId].hookData;
         particle->emitCnt = 0;
         particle->work = configs;
         particle->count = 1;
@@ -473,8 +456,8 @@ void fn_1_62EC(M658ParticleAnimEntry *entries)
             break;
         }
         resourceData = fn_80008DD0(entry->resourceId, 0x10000000, 2);
-        anim = entry->anim = HuSprAnimRead(resourceData);
-        entry->anim = anim;
+        anim = entry->unk4 = HuSprAnimRead(resourceData);
+        entry->unk4 = anim;
         index += 1;
     }
 }
@@ -522,7 +505,7 @@ void fn_1_6414(OMOBJ *object) {
 /* Initializes particle systems from the supplied owner records and returns those records. */
 void *fn_1_64B4(void *work)
 {
-    extern void fn_1_6180(M658ParticleOwner *owners);
+    extern void fn_1_6180(MinigameParticleSystem *owners);
     fn_1_6180(work);
     return work;
 }
@@ -635,12 +618,12 @@ void fn_1_66F4(M658Pool *pool, void *item)
     pool->free = node;
 }
 /* Starts the active-item iteration used by registry and gameplay update loops. */
-void *fn_1_6764(void *pool)
+void *fn_1_6764(M658Pool *pool)
 {
     M658PoolNode *node;
     u8 *data;
 
-    node = ((M658Pool *)pool)->active;
+    node = pool->active;
     data = (u8 *)node;
     if (data == NULL) {
         return NULL;
@@ -648,7 +631,7 @@ void *fn_1_6764(void *pool)
     return data + sizeof(M658PoolNode);
 }
 /* Advances active-item iteration used by registry and gameplay update loops. */
-void *fn_1_67A0(void *pool, void *item)
+void *fn_1_67A0(M658Pool *pool, void *item)
 {
     M658PoolNode *node;
     u8 *data;
@@ -687,6 +670,7 @@ s32 fn_1_67E4(M658Track **tracks, s32 frame)
     return 1;
 }
 
+/* Interpolates between two scalar values. */
 f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation);
 /* Samples every value of a kind-0 track by keyframe interpolation; other kinds leave output
  * unchanged. */
@@ -735,6 +719,7 @@ void fn_1_6840(M658Track **tracks, s32 frame, s32 trackIndex, f32 *outValues)
     }
 }
 
+/* Interpolates between two scalar values. */
 f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation)
 {
     return startValue + (interpolation * (endValue - startValue));
@@ -750,6 +735,7 @@ void fn_1_69C8(Point3d *start, Point3d *end, Point3d *out, f32 t)
 extern f64 atan2(f64 y, f64 x);
 extern f64 fmod(f64 x, f64 y);
 extern f64 fn_1_6C54(f64 value);
+/* Returns the heading of the direction projected onto the ground plane. */
 f32 fn_1_6A20(HuVecF *direction)
 {
     return (180.0 * atan2(direction->x, direction->z)) / 3.141592653589793;
@@ -999,6 +985,7 @@ void fn_1_736C(HuVecF *worldPosition, int soundId)
     HuAudFXPlayVolPan(soundId, volume, pan);
 }
 
+/* Plays the effect at full volume with centered pan. */
 s32 fn_1_7468(s32 soundId)
 {
     return HuAudFXPlayVolPan(soundId, 127, 64);
@@ -1127,4 +1114,5 @@ M658ResourceEntry *lbl_1_data_938[] = {
     lbl_1_data_918, lbl_1_data_7E8, lbl_1_data_838
 };
 
+/* Returns the resource table for this index. */
 M658ResourceEntry *fn_1_753C(s32 index) { return lbl_1_data_938[index]; }

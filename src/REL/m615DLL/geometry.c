@@ -6,15 +6,21 @@
 #include "REL/m615DLL/geometry.h"
 #include "math.h"
 
-f32 fn_1_16F0(HuVecF *queryPoint, M615Triangle *triangle, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_2418(M615Segment *firstSegment, M615Segment *secondSegment, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_4198(M615Segment *segment, M615Triangle *triangle, f32 *segmentTime, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_4B70(HuVecF *queryPoint, M615Triangle *triangle, f32 *firstParameter, f32 *secondParameter);
-f32 fn_1_6308(M615Segment *segment, M615Triangle *triangle, f32 *segmentTime, f32 *firstParameter, f32 *secondParameter);
+f32 fn_1_16F0(HuVecF *queryPoint, MinigameTriangle *triangle, f32 *firstParameter,
+    f32 *secondParameter);
+f32 fn_1_2418(M615Segment *firstSegment, M615Segment *secondSegment, f32 *firstParameter,
+    f32 *secondParameter);
+f32 fn_1_4198(M615Segment *segment, MinigameTriangle *triangle, f32 *segmentTime,
+    f32 *firstParameter, f32 *secondParameter);
+f32 fn_1_4B70(HuVecF *queryPoint, MinigameTriangle *triangle, f32 *firstParameter,
+    f32 *secondParameter);
+f32 fn_1_6308(M615Segment *segment, MinigameTriangle *triangle, f32 *segmentTime,
+    f32 *firstParameter, f32 *secondParameter);
 f32 fn_1_6534(HuVecF *queryPoint, M615Segment *lineSegment);
 f32 fn_1_6718(const HuVecF *position, const M615Box *box,
               f32 *closestX, f32 *closestY, f32 *closestZ);
-f32 fn_1_6960(const HuVecF *position, const M615Box *box, f32 *closestX, f32 *closestY, f32 *closestZ);
+f32 fn_1_6960(const HuVecF *position, const M615Box *box, f32 *closestX, f32 *closestY,
+    f32 *closestZ);
 void fn_1_6A94(int primaryAxis, int sideAxisA, int sideAxisB,
                HuVecF *position, const HuVecF *direction, const M615Box *box,
                f32 *offset, f32 *time, f32 *distanceSquared);
@@ -37,6 +43,7 @@ f64 fn_1_8BCC(const M615Segment *line, const M615Box *box, f32 *time,
 double fn_1_8EB0(const M615Segment *line, const M615Box *bounds, f32 *time,
                  f32 *closestX, f32 *closestY, f32 *closestZ);
 
+/* Builds an axis-aligned box around the capsule and its radius. */
 void fn_1_A0C(M615Bounds *out, M615Capsule *capsule)
 {
     HuVecF points[2];
@@ -50,7 +57,8 @@ void fn_1_A0C(M615Bounds *out, M615Capsule *capsule)
     out->max.z = capsule->radius + (points[0].z >= points[1].z ? points[0].z : points[1].z);
 }
 
-void fn_1_BC4(M615Bounds *bounds, M615Triangle *triangle)
+/* Finds the bounds of the four corners formed by the triangle edges. */
+void fn_1_BC4(M615Bounds *bounds, MinigameTriangle *triangle)
 {
     HuVecF vertices[4];
     int vertexIndex;
@@ -77,7 +85,8 @@ void fn_1_BC4(M615Bounds *bounds, M615Triangle *triangle)
     }
 }
 
-void fn_1_E38(M615Bounds *out, M615Triangle *triangle)
+/* Finds the axis-aligned bounds of the triangle. */
+void fn_1_E38(M615Bounds *out, MinigameTriangle *triangle)
 {
     HuVecF points[3];
     int index;
@@ -96,6 +105,7 @@ void fn_1_E38(M615Bounds *out, M615Triangle *triangle)
     }
 }
 
+/* Finds the world-space bounds of an oriented box from its eight corners. */
 void fn_1_109C(M615Bounds *bounds, const M615Box *transform)
 {
     HuVecF scaledZ;
@@ -181,6 +191,7 @@ void fn_1_109C(M615Bounds *bounds, const M615Box *transform)
     }
 }
 
+/* Checks whether two axis-aligned boxes overlap on all three axes. */
 s32 fn_1_1478(M615Bounds *a, M615Bounds *b)
 {
     if ((a->min.z < b->max.z) && (a->max.z > b->min.z) && (a->min.x < b->max.x) && (a->max.x > b->min.x) && (a->min.y < b->max.y) && (a->max.y > b->min.y)) {
@@ -189,7 +200,8 @@ s32 fn_1_1478(M615Bounds *a, M615Bounds *b)
     return 0;
 }
 
-f32 fn_1_14E8(HuVecF *queryPoint, M615Triangle *triangle,
+/* Finds the closest point on the triangle and returns the squared distance. */
+f32 fn_1_14E8(HuVecF *queryPoint, MinigameTriangle *triangle,
              f32 *barycentricS, f32 *barycentricT)
 {
     HuVecF difference;
@@ -236,11 +248,14 @@ f32 fn_1_14E8(HuVecF *queryPoint, M615Triangle *triangle,
     return fabs((f64)distanceSquared);
 }
 
-f32 fn_1_16F0(HuVecF *queryPoint, M615Triangle *triangle, f32 *firstParameter, f32 *secondParameter)
+/* Returns the distance from a point to the triangle. */
+f32 fn_1_16F0(HuVecF *queryPoint, MinigameTriangle *triangle, f32 *firstParameter,
+    f32 *secondParameter)
 {
     return sqrtf(fn_1_14E8(queryPoint, triangle, firstParameter, secondParameter));
 }
 
+/* Finds the closest points on two segments and returns their squared distance. */
 f32 fn_1_181C(M615Segment *firstSegment, M615Segment *secondSegment, f32 *parameterAOut,
               f32 *parameterBOut)
 {
@@ -536,13 +551,16 @@ f32 fn_1_181C(M615Segment *firstSegment, M615Segment *secondSegment, f32 *parame
     return fabsf(distanceSquared);
 }
 
-f32 fn_1_2418(M615Segment *firstSegment, M615Segment *secondSegment, f32 *firstParameter, f32 *secondParameter)
+/* Returns the distance between two line segments. */
+f32 fn_1_2418(M615Segment *firstSegment, M615Segment *secondSegment, f32 *firstParameter,
+    f32 *secondParameter)
 {
     return sqrtf(fn_1_181C(firstSegment, secondSegment, firstParameter, secondParameter));
 }
 
 /* Finds the closest points on a segment and triangle and returns their squared distance. */
-f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f32 *triangleSOut, f32 *triangleTOut)
+f32 fn_1_2544(M615Segment *segment, MinigameTriangle *triangle, f32 *segmentTOut,
+    f32 *triangleSOut, f32 *triangleTOut)
 {
     M615Segment edge;
     HuVecF offset;
@@ -590,11 +608,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                 {
                     edge.start = triangle->start;
                     edge.delta = triangle->edge2;
-                    bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                    bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                        & candidateTriangleT);
                     candidateTriangleS = 0.0f;
                     edge.start = triangle->start;
                     edge.delta = triangle->edge1;
-                    distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                    distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                        & candidateTriangleSResult);
                     candidateTriangleTResult = 0.0f;
                     if (distance < bestDistance)
                     {
@@ -603,7 +623,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         candidateTriangleS = candidateTriangleSResult;
                         candidateTriangleT = candidateTriangleTResult;
                     }
-                    distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                    distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult,
+                        & candidateTriangleTResult);
                     candidateSegmentTResult = 0.0f;
                     if (distance < bestDistance)
                     {
@@ -619,9 +640,11 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                     {
                         edge.start = triangle->start;
                         edge.delta = triangle->edge2;
-                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                            & candidateTriangleT);
                         candidateTriangleS = 0.0f;
-                        distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                        distance = fn_1_14E8(&segment->start, triangle,
+                            & candidateTriangleSResult, & candidateTriangleTResult);
                         candidateSegmentTResult = 0.0f;
                         if (distance < bestDistance)
                         {
@@ -635,11 +658,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                     {
                         edge.start = triangle->start;
                         edge.delta = triangle->edge2;
-                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                            & candidateTriangleT);
                         candidateTriangleS = 0.0f;
                         fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                         edge.delta = triangle->edge1;
-                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                            & candidateTriangleSResult);
                         candidateTriangleTResult = 1.0f;
                         if (distance < bestDistance)
                         {
@@ -648,7 +673,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             candidateTriangleS = candidateTriangleSResult;
                             candidateTriangleT = candidateTriangleTResult;
                         }
-                        distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                        distance = fn_1_14E8(&segment->start, triangle,
+                            & candidateTriangleSResult, & candidateTriangleTResult);
                         candidateSegmentTResult = 0.0f;
                         if (distance < bestDistance)
                         {
@@ -668,9 +694,11 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                     {
                         edge.start = triangle->start;
                         edge.delta = triangle->edge1;
-                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleS);
+                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                            & candidateTriangleS);
                         candidateTriangleT = 0.0f;
-                        distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                        distance = fn_1_14E8(&segment->start, triangle,
+                            & candidateTriangleSResult, & candidateTriangleTResult);
                         candidateSegmentTResult = 0.0f;
                         if (distance < bestDistance)
                         {
@@ -684,16 +712,19 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                     {
                         if (candidateTriangleT <= 1.0f)
                         {
-                            bestDistance = fn_1_14E8(&segment->start, triangle, & candidateTriangleS, & candidateTriangleT);
+                            bestDistance = fn_1_14E8(&segment->start, triangle,
+                                & candidateTriangleS, & candidateTriangleT);
                             candidateSegmentT = 0.0f;
                         }
                         else
                         {
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                             edge.delta = triangle->edge1;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleS);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleS);
                             candidateTriangleT = 1.0f;
-                            distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&segment->start, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             candidateSegmentTResult = 0.0f;
                             if (distance < bestDistance)
                             {
@@ -711,11 +742,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                     {
                         fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                         edge.delta = triangle->edge2;
-                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                            & candidateTriangleT);
                         candidateTriangleS = 1.0f;
                         edge.start = triangle->start;
                         edge.delta = triangle->edge1;
-                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                            & candidateTriangleSResult);
                         candidateTriangleTResult = 0.0f;
                         if (distance < bestDistance)
                         {
@@ -724,7 +757,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             candidateTriangleS = candidateTriangleSResult;
                             candidateTriangleT = candidateTriangleTResult;
                         }
-                        distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                        distance = fn_1_14E8(&segment->start, triangle,
+                            & candidateTriangleSResult, & candidateTriangleTResult);
                         candidateSegmentTResult = 0.0f;
                         if (distance < bestDistance)
                         {
@@ -740,9 +774,11 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 1.0f;
-                            distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&segment->start, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             candidateSegmentTResult = 0.0f;
                             if (distance < bestDistance)
                             {
@@ -756,11 +792,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 1.0f;
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                             edge.delta = triangle->edge1;
-                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                                & candidateTriangleSResult);
                             candidateTriangleTResult = 1.0f;
                             if (distance < bestDistance)
                             {
@@ -769,7 +807,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                                 candidateTriangleS = candidateTriangleSResult;
                                 candidateTriangleT = candidateTriangleTResult;
                             }
-                            distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&segment->start, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             candidateSegmentTResult = 0.0f;
                             if (distance < bestDistance)
                             {
@@ -793,11 +832,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                     {
                         edge.start = triangle->start;
                         edge.delta = triangle->edge2;
-                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                            & candidateTriangleT);
                         candidateTriangleS = 0.0f;
                         edge.start = triangle->start;
                         edge.delta = triangle->edge1;
-                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                            & candidateTriangleSResult);
                         candidateTriangleTResult = 0.0f;
                         if (distance < bestDistance)
                         {
@@ -813,18 +854,21 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             edge.start = triangle->start;
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 0.0f;
                         }
                         else
                         {
                             edge.start = triangle->start;
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 0.0f;
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                             edge.delta = triangle->edge1;
-                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                                & candidateTriangleSResult);
                             candidateTriangleTResult = 1.0f;
                             if (distance < bestDistance)
                             {
@@ -844,7 +888,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             edge.start = triangle->start;
                             edge.delta = triangle->edge1;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleS);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleS);
                             candidateTriangleT = 0.0f;
                         }
                         else
@@ -857,7 +902,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             {
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                                 edge.delta = triangle->edge1;
-                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleS);
+                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                    & candidateTriangleS);
                                 candidateTriangleT = 1.0f;
                             }
                         }
@@ -868,11 +914,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 1.0f;
                             edge.start = triangle->start;
                             edge.delta = triangle->edge1;
-                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                                & candidateTriangleSResult);
                             candidateTriangleTResult = 0.0f;
                             if (distance < bestDistance)
                             {
@@ -888,18 +936,21 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             {
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                                 edge.delta = triangle->edge2;
-                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                    & candidateTriangleT);
                                 candidateTriangleS = 1.0f;
                             }
                             else
                             {
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                                 edge.delta = triangle->edge2;
-                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                    & candidateTriangleT);
                                 candidateTriangleS = 1.0f;
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                                 edge.delta = triangle->edge1;
-                                distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                                distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                                    & candidateTriangleSResult);
                                 candidateTriangleTResult = 1.0f;
                                 if (distance < bestDistance)
                                 {
@@ -921,11 +972,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                     {
                         edge.start = triangle->start;
                         edge.delta = triangle->edge2;
-                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                        bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                            & candidateTriangleT);
                         candidateTriangleS = 0.0f;
                         edge.start = triangle->start;
                         edge.delta = triangle->edge1;
-                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                            & candidateTriangleSResult);
                         candidateTriangleTResult = 0.0f;
                         if (distance < bestDistance)
                         {
@@ -935,7 +988,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             candidateTriangleT = candidateTriangleTResult;
                         }
                         fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                        distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                        distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult,
+                            & candidateTriangleTResult);
                         candidateSegmentTResult = 1.0f;
                         if (distance < bestDistance)
                         {
@@ -951,11 +1005,14 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             edge.start = triangle->start;
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 0.0f;
-                            distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&segment->start, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                            distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&queryCenter, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             candidateSegmentTResult = 1.0f;
                             if (distance < bestDistance)
                             {
@@ -969,11 +1026,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             edge.start = triangle->start;
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 0.0f;
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                             edge.delta = triangle->edge1;
-                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                                & candidateTriangleSResult);
                             candidateTriangleTResult = 1.0f;
                             if (distance < bestDistance)
                             {
@@ -983,7 +1042,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                                 candidateTriangleT = candidateTriangleTResult;
                             }
                             fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                            distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&queryCenter, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             candidateSegmentTResult = 1.0f;
                             if (distance < bestDistance)
                             {
@@ -1003,10 +1063,12 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             edge.start = triangle->start;
                             edge.delta = triangle->edge1;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleS);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleS);
                             candidateTriangleT = 0.0f;
                             fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                            distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&queryCenter, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             candidateSegmentTResult = 1.0f;
                             if (distance < bestDistance)
                             {
@@ -1021,17 +1083,20 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             if (candidateTriangleT <= 1.0f)
                             {
                                 fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                                bestDistance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleS, & candidateTriangleT);
+                                bestDistance = fn_1_14E8(&queryCenter, triangle,
+                                    & candidateTriangleS, & candidateTriangleT);
                                 candidateSegmentT = 1.0f;
                             }
                             else
                             {
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                                 edge.delta = triangle->edge1;
-                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleS);
+                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                    & candidateTriangleS);
                                 candidateTriangleT = 1.0f;
                                 fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                                distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                                distance = fn_1_14E8(&queryCenter, triangle,
+                                    & candidateTriangleSResult, & candidateTriangleTResult);
                                 candidateSegmentTResult = 1.0f;
                                 if (distance < bestDistance)
                                 {
@@ -1049,11 +1114,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                         {
                             fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                             edge.delta = triangle->edge2;
-                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                            bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                & candidateTriangleT);
                             candidateTriangleS = 1.0f;
                             edge.start = triangle->start;
                             edge.delta = triangle->edge1;
-                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                            distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                                & candidateTriangleSResult);
                             candidateTriangleTResult = 0.0f;
                             if (distance < bestDistance)
                             {
@@ -1063,7 +1130,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                                 candidateTriangleT = candidateTriangleTResult;
                             }
                             fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                            distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                            distance = fn_1_14E8(&queryCenter, triangle,
+                                & candidateTriangleSResult, & candidateTriangleTResult);
                             candidateSegmentTResult = 1.0f;
                             if (distance < bestDistance)
                             {
@@ -1079,10 +1147,12 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             {
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                                 edge.delta = triangle->edge2;
-                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                    & candidateTriangleT);
                                 candidateTriangleS = 1.0f;
                                 fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                                distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                                distance = fn_1_14E8(&queryCenter, triangle,
+                                    & candidateTriangleSResult, & candidateTriangleTResult);
                                 candidateSegmentTResult = 1.0f;
                                 if (distance < bestDistance)
                                 {
@@ -1096,11 +1166,13 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                             {
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
                                 edge.delta = triangle->edge2;
-                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleT);
+                                bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT,
+                                    & candidateTriangleT);
                                 candidateTriangleS = 1.0f;
                                 fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
                                 edge.delta = triangle->edge1;
-                                distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+                                distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+                                    & candidateTriangleSResult);
                                 candidateTriangleTResult = 1.0f;
                                 if (distance < bestDistance)
                                 {
@@ -1110,7 +1182,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
                                     candidateTriangleT = candidateTriangleTResult;
                                 }
                                 fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-                                distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+                                distance = fn_1_14E8(&queryCenter, triangle,
+                                    & candidateTriangleSResult, & candidateTriangleTResult);
                                 candidateSegmentTResult = 1.0f;
                                 if (distance < bestDistance)
                                 {
@@ -1133,7 +1206,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
         bestDistance = fn_1_181C(segment, & edge, & candidateSegmentT, & candidateTriangleS);
         candidateTriangleT = 0.0f;
         edge.delta = triangle->edge2;
-        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleTResult);
+        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+            & candidateTriangleTResult);
         candidateTriangleSResult = 0.0f;
         if (distance < bestDistance)
         {
@@ -1144,7 +1218,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
         }
         fn_1_60C(& edge.start, & triangle->start, & triangle->edge2);
         edge.delta = triangle->edge1;
-        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleSResult);
+        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+            & candidateTriangleSResult);
         candidateTriangleTResult = 1.0f;
         if (distance < bestDistance)
         {
@@ -1155,7 +1230,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
         }
         fn_1_60C(& edge.start, & triangle->start, & triangle->edge1);
         edge.delta = triangle->edge2;
-        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult, & candidateTriangleTResult);
+        distance = fn_1_181C(segment, & edge, & candidateSegmentTResult,
+            & candidateTriangleTResult);
         candidateTriangleSResult = 1.0f;
         if (distance < bestDistance)
         {
@@ -1164,7 +1240,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
             candidateTriangleS = candidateTriangleSResult;
             candidateTriangleT = candidateTriangleTResult;
         }
-        distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+        distance = fn_1_14E8(&segment->start, triangle, & candidateTriangleSResult,
+            & candidateTriangleTResult);
         candidateSegmentTResult = 0.0f;
         if (distance < bestDistance)
         {
@@ -1174,7 +1251,8 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
             candidateTriangleT = candidateTriangleTResult;
         }
         fn_1_60C(& queryCenter, & segment->start, & segment->delta);
-        distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult, & candidateTriangleTResult);
+        distance = fn_1_14E8(&queryCenter, triangle, & candidateTriangleSResult,
+            & candidateTriangleTResult);
         candidateSegmentTResult = 1.0f;
         if (distance < bestDistance)
         {
@@ -1199,12 +1277,15 @@ f32 fn_1_2544(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut, f3
     return fabs(bestDistance);
 }
 
-f32 fn_1_4198(M615Segment *segment, M615Triangle *triangle, f32 *segmentTime, f32 *firstParameter, f32 *secondParameter)
+/* Returns the distance between a segment and a triangle. */
+f32 fn_1_4198(M615Segment *segment, MinigameTriangle *triangle, f32 *segmentTime,
+    f32 *firstParameter, f32 *secondParameter)
 {
     return sqrtf(fn_1_2544(segment, triangle, segmentTime, firstParameter, secondParameter));
 }
 
-f32 fn_1_42CC(HuVecF *queryPoint, M615Triangle *triangle, f32 *barycentricSOut,
+/* Finds the closest point on the triangle using its edge parameters. */
+f32 fn_1_42CC(HuVecF *queryPoint, MinigameTriangle *triangle, f32 *barycentricSOut,
               f32 *barycentricTOut)
 {
     HuVecF pointOffset;
@@ -1414,12 +1495,15 @@ f32 fn_1_42CC(HuVecF *queryPoint, M615Triangle *triangle, f32 *barycentricSOut,
     return fabsf(distanceSquared);
 }
 
-f32 fn_1_4B70(HuVecF *queryPoint, M615Triangle *triangle, f32 *firstParameter, f32 *secondParameter)
+/* Returns the point-to-triangle distance and the closest point parameters. */
+f32 fn_1_4B70(HuVecF *queryPoint, MinigameTriangle *triangle, f32 *firstParameter,
+    f32 *secondParameter)
 {
     return sqrtf(fn_1_42CC(queryPoint, triangle, firstParameter, secondParameter));
 }
 
-f32 fn_1_4C9C(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut,
+/* Finds the closest points on the segment and triangle and returns their squared distance. */
+f32 fn_1_4C9C(M615Segment *segment, MinigameTriangle *triangle, f32 *segmentTOut,
               f32 *triangleSOut, f32 *triangleTOut)
 {
     M615Segment edge;
@@ -1520,7 +1604,8 @@ f32 fn_1_4C9C(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut,
                         bestTriangleT = triangleT;
                     }
                 } else {
-                    bestDistance = fn_1_42CC(&segment->start, triangle, &bestTriangleS, &bestTriangleT);
+                    bestDistance = fn_1_42CC(&segment->start, triangle, &bestTriangleS,
+                        &bestTriangleT);
                     bestSegmentT = 0.0f;
                 }
             } else if (bestTriangleS < 0.0f) {
@@ -1828,11 +1913,14 @@ f32 fn_1_4C9C(M615Segment *segment, M615Triangle *triangle, f32 *segmentTOut,
     return bestDistance;
 }
 
-f32 fn_1_6308(M615Segment *segment, M615Triangle *triangle, f32 *segmentTime, f32 *firstParameter, f32 *secondParameter)
+/* Returns the segment-to-triangle distance and the closest point parameters. */
+f32 fn_1_6308(M615Segment *segment, MinigameTriangle *triangle, f32 *segmentTime,
+    f32 *firstParameter, f32 *secondParameter)
 {
     return sqrtf(fn_1_4C9C(segment, triangle, segmentTime, firstParameter, secondParameter));
 }
 
+/* Returns the squared distance to the nearest point on a segment. */
 float fn_1_643C(HuVecF *queryPoint, M615Segment *lineSegment)
 {
     HuVecF pointOffset, projectedOffset;
@@ -1855,11 +1943,13 @@ float fn_1_643C(HuVecF *queryPoint, M615Segment *lineSegment)
     return fn_1_574(&pointOffset);
 }
 
+/* Returns the distance from a point to a segment. */
 f32 fn_1_6534(HuVecF *queryPoint, M615Segment *lineSegment)
 {
     return sqrtf(fn_1_643C(queryPoint, lineSegment));
 }
 
+/* Finds the closest point within the box and returns its squared distance from the query. */
 f32 fn_1_6718(const HuVecF *position, const M615Box *box,
               f32 *closestX, f32 *closestY, f32 *closestZ)
 {
@@ -1916,11 +2006,14 @@ f32 fn_1_6718(const HuVecF *position, const M615Box *box,
     return distanceSquared;
 }
 
-f32 fn_1_6960(const HuVecF *position, const M615Box *box, f32 *closestX, f32 *closestY, f32 *closestZ)
+/* Returns the distance from a point to the box. */
+f32 fn_1_6960(const HuVecF *position, const M615Box *box, f32 *closestX, f32 *closestY,
+    f32 *closestZ)
 {
     return sqrtf(fn_1_6718(position, box, closestX, closestY, closestZ));
 }
 
+/* Tests the selected face and its boundary for the nearest point along the line. */
 void fn_1_6A94(int primaryAxis, int sideAxisA, int sideAxisB,
                HuVecF *position, const HuVecF *direction, const M615Box *box,
                f32 *offset, f32 *time, f32 *distanceSquared)
@@ -2082,6 +2175,7 @@ edgeProjection = (axisMagnitude * projectedComponents[sideAxisA]) - (directionCo
 
 }
 
+/* Selects a box face for a line with nonzero direction along all three axes. */
 void fn_1_78B8(HuVecF *point, const HuVecF *direction,
                const M615Box *triangle, f32 *time, f32 *distanceSquared)
 {
@@ -2117,6 +2211,7 @@ void fn_1_78B8(HuVecF *point, const HuVecF *direction,
     fn_1_6A94(2, 0, 1, point, direction, triangle, &offset.x, time, distanceSquared);
 }
 
+/* Tests the box edges for a line parallel to one of its axes. */
 void fn_1_7AA0(s32 firstAxis, s32 secondAxis, s32 thirdAxis,
                HuVecF *point, const HuVecF *direction,
                const M615Box *triangle, f32 *correction,
@@ -2203,6 +2298,7 @@ void fn_1_7AA0(s32 firstAxis, s32 secondAxis, s32 thirdAxis,
     }
 }
 
+/* Finds the distance to the box for a line moving along one axis. */
 void fn_1_7EC8(s32 velocityAxis, s32 firstAxis, s32 secondAxis,
                f32 *positionInput, f32 *velocityInput,
                const M615Box *collision,
@@ -2243,6 +2339,7 @@ void fn_1_7EC8(s32 velocityAxis, s32 firstAxis, s32 secondAxis,
     }
 }
 
+/* Clamps a stationary point to the box and accumulates its squared distance. */
 void fn_1_80B8(HuVecF *position, const M615Box *box,
                             f32 *distanceSquared)
 {
@@ -2279,6 +2376,7 @@ void fn_1_80B8(HuVecF *position, const M615Box *box,
     }
 }
 
+/* Returns the squared distance from an infinite line to the box. */
 f32 fn_1_8230(const M615Segment *line, const M615Box *box, f32 *time,
               f32 *closestX, f32 *closestY, f32 *closestZ)
 {
@@ -2388,12 +2486,14 @@ f32 fn_1_8230(const M615Segment *line, const M615Box *box, f32 *time,
     return distanceSquared;
 }
 
+/* Returns the distance from an infinite line to the box. */
 f64 fn_1_8BCC(const M615Segment *line, const M615Box *box, f32 *time,
                 f32 *closestX, f32 *closestY, f32 *closestZ)
 {
     return sqrtf(fn_1_8230(line, box, time, closestX, closestY, closestZ));
 }
 
+/* Clamps the closest line point to the segment and returns the squared distance to the box. */
 f32 fn_1_8D08(const M615Segment *line, const M615Box *box, f32 *time,
                  f32 *closestX, f32 *closestY, f32 *closestZ)
 {
@@ -2441,6 +2541,7 @@ f32 fn_1_8D08(const M615Segment *line, const M615Box *box, f32 *time,
     return distance;
 }
 
+/* Returns the distance from a segment to the box. */
 double fn_1_8EB0(const M615Segment *line, const M615Box *bounds, f32 *time,
                  f32 *closestX, f32 *closestY, f32 *closestZ)
 {

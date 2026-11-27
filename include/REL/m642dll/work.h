@@ -1,6 +1,8 @@
 /* Shared scene, player, grid and effect state used by Cashapult REL code. */
 #ifndef REL_M642DLL_WORK_H
 #define REL_M642DLL_WORK_H
+#include "REL/minigame_particle_config.h"
+#include "REL/minigame_particle_system.h"
 
 #include "dolphin/gx.h"
 #include "game/main.h"
@@ -44,19 +46,12 @@ typedef struct  {
     ANIMDATA *animation; /* Loaded sprite animation. */
 } M642SpriteAsset;
 typedef struct  {
-    u32 flags; /* Reuse and initialization state bits. */
-    s32 resource, count, blendMode, model; /* Animation resource, particle capacity, blend mode and
-                                            * model. */
-    ANIMDATA *animation; /* Loaded particle animation. */
-    u8 unknown18[4]; /* No code names this field. */
-} M642ParticleOwner;
-typedef struct  {
     s16 timer, state, phase, round, scoreCount; /* Scene timing, sequence state and round
                                                  * counters. */
     M642ScoreRecord players[4]; /* Score display records, indexed by team. */
     u8 unk11C[4]; /* No code names this field. */
     OMOBJ *scene_objects[8]; /* Scene, player, grid and effect objects. */
-    M642ParticleOwner *owners; /* Particle settings for each team. */
+    MinigameParticleSystem *owners; /* Particle settings for each team. */
     M642SpriteAsset *spriteAssets; /* Loaded score-indicator animations. */
     s32 playerGroups[4]; /* Team assignment for each player number. */
     s16 selection[2]; /* Selected grid row and column. */
@@ -123,18 +118,6 @@ typedef struct M642TrackView {
     s16 end; /* Last frame at which the track is active. */
     M642TrackKeyView *keys; /* Ordered animation keys, terminated by a negative frame. */
 } M642TrackView;
-
-typedef struct  {
-    u32 flags; /* Particle behavior flags, including alternating-size animation. */
-    GXColor endColor; /* Initial RGBA at emission and the target RGB for interpolation. */
-    GXColor startColor; /* Starting RGB for interpolation. Alpha is updated separately. */
-    Vec velocity, decay; /* Initial velocity and per-frame velocity multipliers. */
-    float gravity; /* Vertical velocity added each frame. */
-    float unk28; /* No code names this field. */
-    float scaleDelta; /* Per-frame change to the particle's base size. */
-    float alphaDelta; /* Per-frame change to particle transparency. */
-    float colorTime; /* Interpolation amount between the configured tint colors. */
-} M642ParticleConfig;
 
 struct M642ResourceTableView_s;
 
@@ -216,8 +199,8 @@ void *fn_1_86B0(M642Pool *pool);
 s32 fn_1_8814(M642TrackView **tracks, s32 frame);
 void fn_1_8870(M642TrackView **tracks, s32 frame, s32 trackIndex, f32 *outValues);
 s32 fn_1_8A50(Point3d *source, Point3d *destination);
-s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, float x, float y, float z,
-              float scale, M642ParticleConfig *config);
+s16 fn_1_7D1C(MinigameParticleSystem *owner, s16 camera, float x, float y, float z,
+              float scale, MinigameParticleConfig *config);
 OMOBJ *fn_1_84D8(struct M642ResourceTableView_s *capacity);
 s16 fn_1_8E68(Vec *position, s32 camera, float nearPan, float farPan);
 

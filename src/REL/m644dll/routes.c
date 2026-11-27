@@ -1,18 +1,11 @@
 /* Initializes route points and obstacle models and handles their collision animations. */
+#include "msm_se.h"
 #include "REL/m644dll/module_types.h"
 #include "game/hu3d.h"
 
 M644RouteModelTable lbl_1_bss_5AC;
 M644RouteVectors lbl_1_bss_3D8[9];
 
-#define MSM_SE_M644_TEAM0_ROCK_HIT 1966
-#define MSM_SE_M644_TEAM1_ROCK_HIT 1967
-#define MSM_SE_M644_TEAM0_LARGE_ROCK_HIT 1968
-#define MSM_SE_M644_TEAM1_LARGE_ROCK_HIT 1969
-#define MSM_SE_M644_ROCK_DAMAGE 1970
-#define MSM_SE_M644_LARGE_ROCK_DAMAGE 1971
-#define MSM_SE_M644_ROCK_BREAK 1972
-#define MSM_SE_M644_LARGE_ROCK_BREAK 1973
 #define M644_ROCK_CONTACT_BITS 0x80
 #define M644_PLAYER_CONTACT_BITS 0x100
 #define M644_ROCK_TEAM_COLLISION_MASK 0x81
@@ -60,7 +53,7 @@ extern void fn_1_7548(OMOBJ *object);
 extern s32 fn_1_519C(s32 index);
 
 /* Leaves the player unchanged after its final travel callback ends. */
-void fn_1_6394(void)
+void fn_1_6394(OMOBJ *object)
 {
 }
 
@@ -186,11 +179,11 @@ s32 fn_1_6838(void)
         {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f},
          {250.0f, 0.0f, -70.0f}, {250.0f, 0.0f, 0.0f}, 0},
         {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f},
-         {-240.00001525878906f, 0.0f, -54.0f},
-         {-240.00001525878906f, 0.0f, -80.0f}, 1},
+         {-240.00002f, 0.0f, -54.0f},
+         {-240.00002f, 0.0f, -80.0f}, 1},
         {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f},
-         {240.00001525878906f, 0.0f, -54.0f},
-         {240.00001525878906f, 0.0f, -80.0f}, 1},
+         {240.00002f, 0.0f, -54.0f},
+         {240.00002f, 0.0f, -80.0f}, 1},
         {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f},
          {0.0f, 0.0f, -54.0f}, {0.0f, 0.0f, 0.0f}, 2}
     };
@@ -319,10 +312,10 @@ s32 fn_1_6C90(s32 model_index, s32 contact_type)
     /* Damage-pose sounds play only when the remaining life selects a different motion. */
     if (fn_8002D3C4(model_id) != lbl_1_data_2E0[motion_number]) {
         if (lbl_1_bss_5AC.entry[model_index].rock_type == 2) {
-            HuAudFXPlayPan(MSM_SE_M644_LARGE_ROCK_DAMAGE,
+            HuAudFXPlayPan(MSM_SE_MG644_LARGE_ROCK_DAMAGE,
                            (s16) ((lbl_1_bss_5AC.entry[model_index].side << 5) + 48));
         } else {
-            HuAudFXPlayPan(MSM_SE_M644_ROCK_DAMAGE,
+            HuAudFXPlayPan(MSM_SE_MG644_ROCK_DAMAGE,
                            (s16) ((lbl_1_bss_5AC.entry[model_index].side << 5) + 48));
         }
     }
@@ -356,10 +349,10 @@ int fn_1_6FBC(COL_NARROW_PARAM *rock_contact, COL_NARROW_PARAM *other_contact)
             fn_1_50E0(player_slot);
             fn_1_5660(lbl_1_bss_5AC.entry[model_index].side);
             if (model_index == 8 || model_index == 17) {
-                HuAudFXPlayPan(MSM_SE_M644_LARGE_ROCK_BREAK,
+                HuAudFXPlayPan(MSM_SE_MG644_LARGE_ROCK_BREAK,
                                (s16) ((lbl_1_bss_5AC.entry[model_index].side << 5) + 48));
             } else {
-                HuAudFXPlayPan(MSM_SE_M644_ROCK_BREAK,
+                HuAudFXPlayPan(MSM_SE_MG644_ROCK_BREAK,
                                (s16) ((lbl_1_bss_5AC.entry[model_index].side << 5) + 48));
             }
         } else {
@@ -369,15 +362,15 @@ int fn_1_6FBC(COL_NARROW_PARAM *rock_contact, COL_NARROW_PARAM *other_contact)
             struct M644RockSoundIds {
                 /* Per-team impact sound IDs. */
                 s32 ids[2];
-            } special_sound_ids = { { MSM_SE_M644_TEAM0_LARGE_ROCK_HIT,
-                                      MSM_SE_M644_TEAM1_LARGE_ROCK_HIT } };
+            } special_sound_ids = { { MSM_SE_MG644_TEAM_A_LARGE_ROCK_HIT,
+                                      MSM_SE_MG644_TEAM_B_LARGE_ROCK_HIT } };
 
             HuAudFXPlay(special_sound_ids.ids[lbl_1_bss_5AC.entry[model_index].side]);
         } else {
             struct M644RockSoundIds {
                 /* Per-team impact sound IDs. */
                 s32 ids[2];
-            } group_sound_ids = {{MSM_SE_M644_TEAM0_ROCK_HIT, MSM_SE_M644_TEAM1_ROCK_HIT}};
+            } group_sound_ids = {{MSM_SE_MG644_TEAM_A_ROCK_HIT, MSM_SE_MG644_TEAM_B_ROCK_HIT}};
 
             HuAudFXPlay(group_sound_ids.ids[lbl_1_bss_5AC.entry[model_index].side]);
     }

@@ -1,6 +1,7 @@
 /* Shared player, model, motion, camera and stage state for Boo'd Off the Stage. */
 #ifndef REL_M660_SCENE_H
 #define REL_M660_SCENE_H
+#include "REL/minigame_participant_motion.h"
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "dolphin/gx.h"
@@ -114,34 +115,6 @@ typedef struct M660Model {
 } M660Model;
 
 /* The record stride is 100 bytes. */
-typedef struct M660Motion {
-    s16 motionIds[7];
-    s16 mode;
-    s16 previousMode;
-    f32 speed;
-    f32 previousSpeed;
-    f32 time;
-    f32 previousTime;
-    f32 unk24; /* The game's code never reads this field. */
-    u32 attributes;
-    u32 previousAttributes;
-    u32 attributesToReset;
-    s32 motionEnded;
-    s16 resetRequested;
-    s16 resetMode;
-    f32 transition;
-    u32 resetAttributes;
-    u32 resetAttributesToClear;
-    s16 shiftState;
-    s16 shiftMotion;
-    u32 shiftFlags;
-    f32 shiftStart;
-    f32 shiftEnd;
-    f32 shiftTime;
-    f32 unk5C; /* The game's code never reads this field. */
-    u8 unk60[4]; /* No code names this field. */
-} M660Motion;
-
 /* Stage sequence, controller samples and effect state. */
 typedef struct M660StageState {
     u8 unk00[8]; /* No code names this field. */
@@ -188,7 +161,11 @@ typedef struct M660StageState {
     f32 zMaximum;
 } M660StageState;
 
-/* Stored camera presets and projection settings. */
+extern M660Player lbl_1_bss_2DC[2];
+extern M660Model lbl_1_bss_60C[75];
+extern MinigameParticipantMotionState lbl_1_bss_544[2];
+extern M660StageState lbl_1_bss_1F4;
+/* Stores the local camera presets and their projection settings. */
 typedef struct M660CameraRecord {
     s32 unk00; /* The game's code never reads this field. */
     u8 unk04[12]; /* No code names this field. */
@@ -196,15 +173,11 @@ typedef struct M660CameraRecord {
     f32 unk1C[3]; /* The game's code never reads this field. */
     u8 unk28[12]; /* No code names this field. */
     f32 unk34; /* The game's code never reads this field. */
-    f32 aspect;
+    f32 aspectRatio;
     f32 viewport[4];
     f32 fieldOfView;
 } M660CameraRecord;
 
-extern M660Player lbl_1_bss_2DC[2];
-extern M660Model lbl_1_bss_60C[75];
-extern M660Motion lbl_1_bss_544[2];
-extern M660StageState lbl_1_bss_1F4;
 typedef struct M660CameraState {
     M660CameraRecord records[4];
     u8 unk140[8]; /* No code names this field. */

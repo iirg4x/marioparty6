@@ -1,7 +1,9 @@
 /* Shared state records for the Daft Rafts minigame. */
 #ifndef M609_STATE_H
 #define M609_STATE_H
+#include "REL/minigame_shadow_camera.h"
 
+#include "REL/minigame_light.h"
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "dolphin/gx/GXStruct.h"
@@ -28,17 +30,17 @@ typedef struct M609Placement {
 } M609Placement;
 
 typedef struct M609PadInput {
-    s32 buttons;
-    s32 buttonsDown;
-    u16 buttonsRepeat;
-    s8 stickX;
-    s8 stickY;
-    s8 substickX;
-    s8 substickY;
-    u8 triggerL;
-    u8 triggerR;
-    u8 directions;
-    u8 directionsRepeat;
+    s32 unk00; /* The game's code never reads this field. */
+    s32 unk04; /* The game's code never reads this field. */
+    u16 unk08; /* The game's code never reads this field. */
+    s8 unk0A; /* The game's code never reads this field. */
+    s8 unk0B; /* The game's code never reads this field. */
+    s8 unk0C; /* The game's code never reads this field. */
+    s8 unk0D; /* The game's code never reads this field. */
+    u8 unk0E; /* The game's code never reads this field. */
+    u8 unk0F; /* The game's code never reads this field. */
+    u8 unk10; /* The game's code never reads this field. */
+    u8 unk11; /* The game's code never reads this field. */
     u8 remaining[2];
 } M609PadInput;
 
@@ -47,7 +49,7 @@ typedef struct M609Player {
     s8 playerNo;
     s8 characterNo;
     s8 padNo;
-    s8 groupNo;
+    s8 unk17; /* The game's code never reads this field. */
     s8 participantType;
     s8 difficulty;
     s8 disableInput;
@@ -102,7 +104,7 @@ typedef struct M609Player {
     f32 chaseRadius;
     s16 routeStep;
     s16 routePhase;
-    s16 chaseUpdateCount;
+    s16 unkD8; /* The game's code never reads this field. */
     u8 unkDA[2]; /* No code names this field. */
     Vec chasePosition;
     f32 routeSpeed;
@@ -114,7 +116,7 @@ typedef struct M609Player {
     Vec target;
     s16 targetSegment;
     s16 movementSegment;
-    f32 horizontalOriginDistance;
+    f32 unk118; /* The game's code never reads this field. */
     s16 sample;
     s16 sampleGroup;
     s16 rank;
@@ -136,7 +138,7 @@ typedef struct M609Motion {
     f32 previousSpeed;
     f32 time;
     f32 previousTime;
-    f32 maximumTime;
+    f32 unk2C; /* The game's code never reads this field. */
     u32 attributes;
     u32 previousAttributes;
     u32 attributesToReset;
@@ -152,7 +154,7 @@ typedef struct M609Motion {
     f32 shiftStart;
     f32 blendDuration;
     f32 shiftTime;
-    f32 shiftMaximumTime;
+    f32 unk64; /* The game's code never reads this field. */
     u8 state68[4];
 } M609Motion;
 
@@ -215,7 +217,7 @@ typedef struct M609Control {
     Vec raftOffset; /* Setup initializes all axes; auxiliary placement and route checks use Y. */
     f32 scroll;
     f32 pushSpeed;
-    f32 rate;
+    f32 unk178; /* The game's code never reads this field. */
     f32 playerRadius;
     f32 hazardRadius;
     f32 obstacleRadius;
@@ -250,37 +252,14 @@ typedef struct M609PlayerActors {
     struct MgPlayer_s *players[4];
 } M609PlayerActors;
 
-typedef struct M609LightState {
-    s16 id;
-    Vec position;
-    Vec orientation;
-    Vec aim;
-    Vec direction;
-    f32 range;
-    GXColor color;
-} M609LightState;
-
-typedef struct M609ShadowState {
-    Vec cameraPosition;
-    f32 verticalAngle;
-    f32 horizontalAngle;
-    f32 state14;
-    Vec target;
-    f32 unk24[3]; /* No code names this field. */
-    Vec cameraUp;
-    f32 unk3C[3]; /* No code names this field. */
-    f32 orbitDistance;
-    f32 shadowTransparency;
-} M609ShadowState;
-
 typedef struct M609ParticleState {
     s16 modelIds[1];
-    s16 particleCounts[1];
+    s16 unk02[1]; /* The game's code never reads this field. */
     void *allocation[1];
 } M609ParticleState;
 
 typedef struct M609CameraRecord {
-    s32 cameraIndex;
+    s32 unk00; /* The game's code never reads this field. */
     u8 unk04[12]; /* No code names this field. */
     Vec rotation;
     Vec target;
@@ -302,8 +281,8 @@ extern M609Player lbl_1_bss_24C[4];
 extern M609Motion lbl_1_bss_70C[4];
 extern M609Model lbl_1_bss_8BC[154];
 extern M609ParticleState lbl_1_bss_6B64;
-extern M609ShadowState lbl_1_bss_6B6C;
-extern M609LightState lbl_1_bss_6BF8;
+extern MinigameShadowCamera lbl_1_bss_6B6C;
+extern LightInitState lbl_1_bss_6BF8;
 extern u8 lbl_1_bss_6BBC[60];
 extern M609CameraBank lbl_1_bss_6C34;
 extern struct Process_s *lbl_1_bss_6D7C;

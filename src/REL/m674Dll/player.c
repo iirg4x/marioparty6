@@ -14,7 +14,6 @@
 #include "REL/m674Dll/scene.h"
 #include <string.h>
 
-#define MSM_SE_M674_GROUND_IMPACT 2221
 
 /* Shared result-slot, scene, score, and collision helpers used by player objects. */
 extern void fn_1_EE4(s32 slotIndex, u32 scoreIndex, u32 characterNo);
@@ -60,7 +59,7 @@ s32 fn_1_6A1C(OMOBJ *object);
 s32 fn_1_6A88(OMOBJ *object);
 void fn_1_6AE0(M674PlayerWork *work);
 void fn_1_6DC0(M674PlayerWork *work);
-s32 fn_1_7660(M674CollisionParam *first, M674CollisionParam *second);
+s32 fn_1_7660(M674Entry *first, M674Entry *second);
 void fn_1_77F0(M674PlayerWork *work);
 void fn_1_7958(M674PlayerWork *work);
 void fn_1_7DB0(M674PlayerWork *work);
@@ -79,7 +78,7 @@ u32 lbl_1_data_D8[8] = {
     DATANUM(0x930000, 4), DATANUM(0x8e0000, 33),
     DATANUM(0x930000, 38), DATANUM(0x930000, 7)
 };
-M674PlayerMotionParam lbl_1_data_F8[8] = {
+MinigamePlayerMotionParams lbl_1_data_F8[8] = {
     {0,-1,0.2f,((1 << 30) | (1 << 0))}, {1,-1,0.2f,((1 << 30) | (1 << 0))},
     {2,-1,0.2f,((1 << 30) | (1 << 0))}, {3,-1,0.2f,0},
     {4,-1,0.2f,0}, {5,-1,0.2f,((1 << 30) | (1 << 0))},
@@ -150,7 +149,7 @@ void fn_1_547C(OMOBJ *object)
             if (lbl_1_bss_2E0 == 0 && fn_1_E014() == 0) {
                 lbl_1_bss_2E0 = 1;
             }
-            state->registeredFrames = state->registeredFrames + 1;
+            state->unkCC = state->unkCC + 1;
         }
         index += 1;
     }
@@ -226,7 +225,7 @@ void fn_1_56D4(OMOBJ *object)
     characterNo = work->characterNo = lbl_80265728[playerIndex].charNo;
     scoreIndex = state->state.scoreIndex = object->work[1];
     playerNo = object->work[2];
-    state->state.previousPlayer = state->state.playerNo = playerNo;
+    state->state.unk48 = state->state.playerNo = playerNo;
     state->state.controlEnabled = 1;
     state->state.computer = lbl_80265728[playerIndex].type;
     state->state.difficulty = lbl_80265728[playerIndex].comDif & 3;
@@ -248,7 +247,7 @@ void fn_1_56D4(OMOBJ *object)
     fn_1_6840(object, 0);
     visualData = &state->state.config;
     *visualData = lbl_1_data_1E4;
-    visualData->characterHeight = fn_8005C4C8(characterNo);
+    visualData->unk04 = fn_8005C4C8(characterNo);
     fn_1_55D0(&state->state);
 
     state->state.spareState = 5;
@@ -502,7 +501,7 @@ void fn_1_6288(OMOBJ *object)
     M674PlayerWork *work = object->data;
 
     state = work;
-    work->updateCount++;
+    work->unk1E0++;
     if (state->state.motionActive) {
         if (fn_1_6A1C(object) != 0) {
             state->state.motionActive = 0;
@@ -618,7 +617,7 @@ void fn_1_6840(OMOBJ *object, s32 index)
             blend = (60.0f) * lbl_1_data_F8[index].blend;
         }
         state->state.motionIndex = index;
-        state->state.motionFrame = 0;
+        state->state.unk8C = 0;
         motion = object->mtnId[lbl_1_data_F8[index].motion];
         attr = lbl_1_data_F8[index].attr;
         fn_80026A44(model, ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 2)) |
@@ -912,7 +911,7 @@ void fn_1_6DC0(M674PlayerWork *work)
                 M674PlayerWork * work2 = work;
             fn_8006A030((s16) work2->playerIndex, 20, 20, 0);
             }
-            fn_1_4040(MSM_SE_M674_GROUND_IMPACT, & work->state.position);
+            fn_1_4040(MSM_SE_MG674_GROUND_IMPACT, & work->state.position);
         }
         else
         {
@@ -938,7 +937,7 @@ void fn_1_6DC0(M674PlayerWork *work)
 
 /* Handle actor contacts, recording contact pulses and requesting an upper-actor bounce and
  * lower-actor compression when the vertical test succeeds. */
-s32 fn_1_7660(M674CollisionParam *first, M674CollisionParam *second)
+s32 fn_1_7660(M674Entry *first, M674Entry *second)
 {
     OMOBJ *firstObject;
     OMOBJ *secondObject;
@@ -947,8 +946,8 @@ s32 fn_1_7660(M674CollisionParam *first, M674CollisionParam *second)
     M674PlayerWork *firstWork;
     M674PlayerWork *secondWork;
     M674PlayerWork *linkedWork;
-    M674CollisionParam *firstParam;
-    M674CollisionParam *secondParam;
+    M674Entry *firstParam;
+    M674Entry *secondParam;
     M674PlayerWork *voiceData;
     f32 verticalDelta;
     s32 soundHandle;
@@ -1374,7 +1373,7 @@ void fn_1_88C8(M674ActorState *work, s32 modelId)
             fn_80026A44(modelId, 1);
         }
     }
-    work->motionFrame++;
+    work->unk8C++;
 }
 
 /* Count player objects whose work data exists and whose action result is still clear. */

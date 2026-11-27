@@ -1,4 +1,5 @@
 /* Collision registration and contact resolution for scene objects. */
+#include "REL/minigame_collision_position.h"
 #include <math.h>
 #include "REL/m676Dll/collision_types.h"
 #include "game/memory.h"
@@ -24,18 +25,6 @@ int fn_1_13F54(void *registration);
 void fn_1_13FE4(s32 index);
 void *fn_1_14064(s32 index);
 void *fn_1_140F0(u32 type, s32 id);
-
-/* Detects NaN or infinite coordinates before the owner update; contact callbacks have already
- * run. */
-static inline s32 M676CollisionPositionInvalid(Vec *position)
-{
-    return isnan(position->x) ||
-        isinf(position->x) ||
-        isnan(position->y) ||
-        isinf(position->y) ||
-        isnan(position->z) ||
-        isinf(position->z);
-}
 
 s32 fn_1_1269C(void) { return 0; }
 
@@ -164,7 +153,7 @@ void fn_1_12740(OMOBJ *obj)
         if (firstHeader->state == 0) {
             positionNode = first;
             position = positionNode->shape.dynamic.position;
-            if (M676CollisionPositionInvalid(position)) {
+            if (collisionPositionInvalid(position)) {
                 *positionNode->shape.dynamic.position = positionNode->shape.dynamic.currentPosition;
             }
         }
@@ -263,54 +252,49 @@ s32 fn_1_131B4(M676CollisionEntry *object, M676CollisionEntry *region)
     outerTestRadius =
         outerXScale * (region->shape.region.outerRadius.x + object->shape.dynamic.radius);
 
-    if (position->y < minimumY) {
-        goto noCollision;
-    }
-    verticalDistance = maximumY - position->y;
-    if (verticalDistance < 0.0f) {
-        goto noCollision;
-    }
-    innerScaledX = innerXScale * (position->x - center->x);
-    deltaZ = position->z - center->z;
-    innerDistance = sqrtf((innerScaledX * innerScaledX) + (deltaZ * deltaZ));
-    innerGap = innerDistance - innerTestRadius;
-    if (innerGap < 0.0f) {
-        goto noCollision;
-    }
-    outerScaledX = outerXScale * (position->x - center->x);
-    secondDeltaZ = position->z - center->z;
-    outerDistance = sqrtf((outerScaledX * outerScaledX) + (secondDeltaZ * secondDeltaZ));
-    outerGap = outerTestRadius - outerDistance;
-    if (outerGap < 0.0f) {
-        goto noCollision;
-    }
-    if (verticalDistance < innerGap && verticalDistance < outerGap &&
-        (object->header.flags & 4) == 0) {
-        position->y = maximumY;
-        object->shape.dynamic.velocity->y = 0.0f;
-    } else {
-        if (innerGap < outerGap) {
-            edgeX = region->shape.region.innerRadiusX - object->shape.dynamic.radius;
-            edgeZ = region->shape.region.innerRadiusZ - object->shape.dynamic.radius;
-            contactAngle = (f32)(180.0 *
-                (atan2((f64)innerScaledX, (f64)deltaZ) / M_PI));
-        } else {
-            edgeX = region->shape.region.outerRadius.x + object->shape.dynamic.radius;
-            edgeZ = region->shape.region.outerRadius.y + object->shape.dynamic.radius;
-            contactAngle = (f32)(180.0 *
-                (atan2((f64)outerScaledX, (f64)secondDeltaZ) /
-                    M_PI));
+    if (!(position->y < minimumY)) {
+        verticalDistance = maximumY - position->y;
+        if (!(verticalDistance < 0.0f)) {
+            innerScaledX = innerXScale * (position->x - center->x);
+            deltaZ = position->z - center->z;
+            innerDistance = sqrtf((innerScaledX * innerScaledX) + (deltaZ * deltaZ));
+            innerGap = innerDistance - innerTestRadius;
+            if (!(innerGap < 0.0f)) {
+                outerScaledX = outerXScale * (position->x - center->x);
+                secondDeltaZ = position->z - center->z;
+                outerDistance = sqrtf((outerScaledX * outerScaledX) + (secondDeltaZ * secondDeltaZ));
+                outerGap = outerTestRadius - outerDistance;
+                if (!(outerGap < 0.0f)) {
+                    if (verticalDistance < innerGap && verticalDistance < outerGap &&
+                        (object->header.flags & 4) == 0) {
+                        position->y = maximumY;
+                        object->shape.dynamic.velocity->y = 0.0f;
+                    } else {
+                        if (innerGap < outerGap) {
+                            edgeX = region->shape.region.innerRadiusX - object->shape.dynamic.radius;
+                            edgeZ = region->shape.region.innerRadiusZ - object->shape.dynamic.radius;
+                            contactAngle = (f32)(180.0 *
+                                (atan2((f64)innerScaledX, (f64)deltaZ) / M_PI));
+                        } else {
+                            edgeX = region->shape.region.outerRadius.x + object->shape.dynamic.radius;
+                            edgeZ = region->shape.region.outerRadius.y + object->shape.dynamic.radius;
+                            contactAngle = (f32)(180.0 *
+                                (atan2((f64)outerScaledX, (f64)secondDeltaZ) /
+                                    M_PI));
+                        }
+                        position->x = (f32)((f64)center->x +
+                            ((f64)edgeX * sin((M_PI * (f64)contactAngle) / 180.0)));
+                        position->z = (f32)((f64)center->z +
+                            ((f64)edgeZ * cos((M_PI * (f64)contactAngle) / 180.0)));
+                    }
+                    if (object->shape.dynamic.callback != NULL) {
+                        object->shape.dynamic.callback(object, region);
+                    }
+                    return 1;
+                }
+            }
         }
-        position->x = (f32)((f64)center->x +
-            ((f64)edgeX * sin((M_PI * (f64)contactAngle) / 180.0)));
-        position->z = (f32)((f64)center->z +
-            ((f64)edgeZ * cos((M_PI * (f64)contactAngle) / 180.0)));
     }
-    if (object->shape.dynamic.callback != NULL) {
-        object->shape.dynamic.callback(object, region);
-    }
-    return 1;
-noCollision:
     return 0;
 }
 

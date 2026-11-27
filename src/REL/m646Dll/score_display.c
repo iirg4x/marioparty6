@@ -81,12 +81,8 @@ M646ScorePositionTable lbl_1_data_1D68 = {
 /* Creates the score object that owns the four player totals and result display. */
 void fn_1_8E78(OMOBJMAN *objman)
 {
-    OMOBJ *obj = fn_8003AB38(objman, M646_SCORE_OBJECT_PRIORITY, 0, 0, -1, fn_1_93E0);
-    void *data;
-    lbl_1_bss_B8 = obj;
-    data = HuMemDirectMallocNum(HEAP_HEAP, M646_SCORE_WORK_BYTES, 0x10000000);
-    obj->data = data;
-    memset(data, 0, M646_SCORE_WORK_BYTES);
+    ManagerObjectCreate(objman, M646_SCORE_OBJECT_PRIORITY, fn_1_93E0,
+                        M646_SCORE_WORK_BYTES, &lbl_1_bss_B8);
 }
 
 void fn_1_8F00(void)

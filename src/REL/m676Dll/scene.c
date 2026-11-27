@@ -44,7 +44,7 @@ typedef struct M676SceneManagerWork {
 void fn_1_89F0(void);
 void fn_1_89F4(OMOBJ *obj);
 void fn_1_8A04(OMOBJ *owner);
-void fn_1_8A58(HUPROCESS *process, M676PropParam *propParameters);
+void fn_1_8A58(HUPROCESS *process, MinigamePropParams *propParameters);
 void fn_1_8D18(OMOBJ *object);
 OMOBJ *fn_1_8D6C(s32 propType, s32 propId);
 void fn_1_8DF4(OMOBJ *object, s32 motionIndex, s32 updateShapeMotion);
@@ -125,7 +125,7 @@ OMOBJ *fn_1_FF18(Vec *position, f32 heading, f32 angleLimit,
 Vec lbl_1_data_2D0[2] = {{0.0f, 0.0f, 0.0f}, {0.0f, 151.0f, 5200.0f}};
 Vec lbl_1_data_2E8 = {-1400.0f, 10.0f, 800.0f};
 Vec lbl_1_data_2F4 = {-1300.0f, 0.0f, 1500.0f};
-M676PropMotionParam lbl_1_data_300[9] = {
+MinigamePropMotionParams lbl_1_data_300[9] = {
     {4, 0.2f, ((1 << 30) | (1 << 0))},
     {9, 0.2f, ((1 << 30) | (1 << 0))},
     {10, 0.2f, ((1 << 30) | (1 << 0))},
@@ -136,7 +136,7 @@ M676PropMotionParam lbl_1_data_300[9] = {
     {11, 0.2f, 0},
     {-2, 0.0f, 0}
 };
-M676PropParam lbl_1_data_36C[19] = {
+MinigamePropParams lbl_1_data_36C[19] = {
     {1, 0, 1, 0, 3, 0, 0, -1, NULL, NULL, 0.0f, fn_1_94A4},
     {1, 0, 0, 0, 3, ((1 << 30) | (1 << 0)), 0, 16, NULL, NULL, 0.0f, fn_1_9650},
     {1, 0, 0, 1, 3, (1 << 14), 0, 17, NULL, NULL, 0.0f, fn_1_94A0},
@@ -163,7 +163,7 @@ M676PropParam lbl_1_data_36C[19] = {
 void fn_1_88C0(HUPROCESS *process) {
     OMOBJ *managerObject;
     OMOBJ **registeredObject;
-    M676PropParam *propParameters;
+    MinigamePropParams *propParameters;
     s32 objectIndex;
     void *managerWork;
 
@@ -212,14 +212,14 @@ void fn_1_8A04(OMOBJ *owner) {
 }
 
 /* Creates the configured prop group during scene setup. */
-void fn_1_8A58(HUPROCESS *process, M676PropParam *propParameters)
+void fn_1_8A58(HUPROCESS *process, MinigamePropParams *propParameters)
 {
     s32 index;
     OMOBJ *object;
     s32 modelId;
     M676PropWork *propWork;
     M676PropState *propState;
-    M676PropMotionParam *motionParameters;
+    MinigamePropMotionParams *motionParameters;
     s32 groupIndex;
     s32 motionResource;
 
@@ -325,7 +325,7 @@ OMOBJ *fn_1_8D6C(s32 propType, s32 propId)
 void fn_1_8DF4(OMOBJ *object, s32 motionIndex, s32 updateShapeMotion)
 {
     M676PropState *propState;
-    M676PropMotionParam *motionParameters;
+    MinigamePropMotionParams *motionParameters;
     M676PropWork *propWork = object->data;
     s32 modelId, motionId;
 
@@ -345,13 +345,13 @@ void fn_1_8DF4(OMOBJ *object, s32 motionIndex, s32 updateShapeMotion)
                 fn_8002CEB0((s16) modelId, (s16) motionId);
             }
             fn_8002C95C((s16) modelId, (s16) motionId);
-            fn_800269E8((s16) modelId, motionParameters->attr);
+            fn_800269E8((s16) modelId, motionParameters->attributes);
         } else {
             if (updateShapeMotion) {
                 fn_8002CEB0((s16) modelId, (s16) motionId);
             }
             fn_8002CCC0((s16) modelId, (s16) motionId, 0.0f,
-                60.0f * motionParameters->blend, motionParameters->attr);
+                60.0f * motionParameters->blend, motionParameters->attributes);
         }
         propState->actor.currentMotion = motionIndex;
     }
@@ -1354,33 +1354,28 @@ s32 fn_1_BE3C(M676CollisionEntry *first, M676CollisionEntry *second)
                 } else {
                     firstState->contactState = 10;
                 }
-                goto apply_first_result;
-            }
-                if (secondState->movementState != 0) {
-                    if (firstWork->state.actor.position.x + firstState->pitchPhase <
-                        secondWork->state.actor.position.x) {
-                        direction = 1.0;
-                    } else {
-                        direction = -1.0;
-                    }
+            } else if (secondState->movementState != 0) {
+                if (firstWork->state.actor.position.x + firstState->pitchPhase <
+                    secondWork->state.actor.position.x) {
+                    direction = 1.0;
+                } else {
+                    direction = -1.0;
+                }
                 directionValue = (f32)direction;
                 if (directionValue * firstState->pitchPhase < 0.0) {
                     return 1;
                 }
-                goto apply_first_result;
             }
-apply_first_result:
             first->shape.dynamic.active = 1;
             first->contactId = secondState->state.actor.playerSlot;
             fn_1_4754(MSM_SE_MG676_PROP_BUMP, &firstWork->state.actor.position);
-            goto done;
+        } else {
+            fallbackObject = first->header.callbackArgument;
+            fallbackWork = fallbackObject->data;
+            second->shape.dynamic.active = 1;
+            second->contactId = fallbackWork->state.actor.playerSlot;
         }
-        fallbackObject = first->header.callbackArgument;
-        fallbackWork = fallbackObject->data;
-        second->shape.dynamic.active = 1;
-        second->contactId = fallbackWork->state.actor.playerSlot;
     }
-done:
     return 1;
 }
 

@@ -207,7 +207,7 @@ s32 fn_1_D1CC(void)
     fn_1_10FC();
     fn_1_2780();
     lbl_1_bss_30.scroll = 7.0f;
-    lbl_1_bss_30.rate = 1.3f;
+    lbl_1_bss_30.unk178 = 1.3f;
     lbl_1_bss_30.update = 1;
     lbl_1_bss_30.startZ = -5500.0f;
     lbl_1_bss_30.winnerPositions[0][0].x = 0.0f;

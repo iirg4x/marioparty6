@@ -99,8 +99,8 @@ void fn_1_19AE4(s16 layerNo);
 void fn_1_19B24(s16 level);
 void fn_1_1A550(s16 layerNo);
 void fn_1_1AA0C(s16 unused);
-void fn_1_1ADAC(void);
-void fn_1_1AED4(void);
+void fn_1_1ADAC(s16 unused);
+void fn_1_1AED4(s16 unused);
 void fn_1_1AED8(s16 layerNo);
 void fn_1_1BD68(void *hookContext, f32 (*positionMatrix)[4]);
 void fn_1_1C088(HU3D_MODEL *model, f32 (*positionMatrix)[4]);
@@ -144,7 +144,7 @@ MicquizCameraState lbl_1_bss_414[8];
 GXTexObj lbl_1_bss_3F4;
 GXTexObj lbl_1_bss_3D4;
 GXTexObj lbl_1_bss_3B4;
-s32 lbl_1_bss_38C[0xA];
+s32 lbl_1_bss_38C[10];
 f32 lbl_1_bss_388;
 s32 lbl_1_bss_384;
 f32 lbl_1_bss_380;
@@ -171,12 +171,12 @@ s16 lbl_1_data_53A = -1;
 OM_CAMERA_VIEW lbl_1_data_53C[2] = { { { 0.0f, 57.0f, 0.7f }, { -8.0f, 0.0f, 0.0f }, 800.0f },
                                      { { 0.0f, 57.0f, 0.7f }, { -6.0f, 0.0f, 0.0f }, 750.0f } };
 s32 lbl_1_data_574[5] = { 10, 20, 30, 40, 50 };
-s32 lbl_1_data_588[0x16] = {
+s32 lbl_1_data_588[22] = {
     0x8E0000, 0x360000, 0xC00000, 0xF30000, 0xEC0000, 0x140000, 0xE60000, 0x300000,
     0xCF0000, 0xA80000, 0x2A0000, 0x930000, 0x3B0000, 0xC50000, 0xF80000, 0xF10000,
     0x190000, 0xEB0000, 0x350000, 0xD40000, 0xBC0000, 0x2F0000
 };
-Point3d lbl_1_data_5E0[0xE] = { { 0.0f, 0.0f, 0.0f },     { 0.0f, -19.0f, 0.0f },
+Point3d lbl_1_data_5E0[14] = { { 0.0f, 0.0f, 0.0f },     { 0.0f, -19.0f, 0.0f },
                                 { 0.0f, -40.0f, -14.0f }, { 0.0f, -11.0f, -25.0f },
                                 { 0.0f, 5.0f, -17.0f },   { 0.0f, -36.0f, -14.0f },
                                 { 0.0f, -53.0f, -31.0f }, { 0.0f, 36.0f, -2.0f },
@@ -564,11 +564,11 @@ void fn_1_138E0(void) {
             if (lbl_1_bss_534 == 1)
             {
                 lbl_1_data_52C = 1;
-                lbl_1_bss_590 = HuSprAnimRead(fn_80008DD0(DATANUM(0xa60000, 0x20), 0x10000000, 2));
+                lbl_1_bss_590 = HuSprAnimDataRead(DATANUM(0xa60000, 0x20));
                 Hu3DReflectMapSet(fn_80008DD0(DATANUM(0xa60000, 0x21), 0x10000000, 2));
                 fn_8002583C(1, 0, (HU3D_LAYER_HOOK) fn_1_1AA0C);
-                fn_8002583C(1, 8, (HU3D_LAYER_HOOK) fn_1_1ADAC);
-                fn_8002583C(1, 4, (HU3D_LAYER_HOOK)fn_1_1AED4);
+                fn_8002583C(1, 8, fn_1_1ADAC);
+                fn_8002583C(1, 4, fn_1_1AED4);
                 fn_8002583C(1, 0xC, fn_1_1AED8);
                 lbl_1_bss_530 = rand8() % 9;
                 lbl_1_data_534 =
@@ -742,7 +742,7 @@ void fn_1_144B0(void) {
 
 Point3d lbl_1_data_744 = { 0.0f, 0.0f, 0.0f };
 f32 lbl_1_data_750 = -128.0f;
-s32 lbl_1_data_754[0x16] = {
+s32 lbl_1_data_754[22] = {
     127, 0x41A00000, 0x42740000, -0x3E380000,
     0x41A00000, 0x42740000, -0x3E380000, -0x3CF60000,
     0x42680000, -0x3E380000, 0x42200000, 0x42480000,
@@ -1143,6 +1143,16 @@ void fn_1_15F60(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
     }
 }
 
+/* Selects one texture coordinate and one TEV stage for the quiz effects. */
+static inline void SetTextureTevStage(void)
+{
+    GXSetNumTevStages(1);
+    GXSetNumTexGens(1);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+}
+
+/* Composites the captured screen using alternating intensity strips. */
 void fn_1_16804(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                 s32 sourceHeight, GXTexFmt textureFormat, f32 strength) {
     GXTexObj intensityTexture;
@@ -1234,10 +1244,7 @@ void fn_1_16804(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                      GX_CLAMP, GX_CLAMP, 0);
         GXInitTexObjLOD(& intensityTexture, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f, 0, 0, GX_ANISO_1);
         GXLoadTexObj(& intensityTexture, GX_TEXMAP1);
-        GXSetNumTevStages(1);
-        GXSetNumTexGens(1);
-        GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-        GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+        SetTextureTevStage();
         GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
         GXSetNumChans(1);
         GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP,
@@ -1319,8 +1326,8 @@ void fn_1_17478(s32 sourceLeft, s32 sourceTop, s32 sourceWidth, s32 sourceHeight
         GXSetScissor(sourceLeft, sourceTop, sourceWidth, sourceHeight);
         GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
         if (lbl_1_bss_364 == 0) {
-            for (row = 0; row < 0x200; row++) {
-                for (column = 0; column < 0x200; column++) {
+            for (row = 0; row < 512; row++) {
+                for (column = 0; column < 512; column++) {
                     pixel = &lbl_1_bss_564[column + (row << 9)];
                     *pixel = rand8() + (rand8() << 8);
                 }
@@ -1352,10 +1359,7 @@ void fn_1_17478(s32 sourceLeft, s32 sourceTop, s32 sourceWidth, s32 sourceHeight
                      0U);
         GXInitTexObjLOD(&noiseTexture, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f, 0U, 0U, GX_ANISO_1);
         GXLoadTexObj(&noiseTexture, GX_TEXMAP1);
-        GXSetNumTevStages(1U);
-        GXSetNumTexGens(1U);
-        GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0U, GX_PTIDENTITY);
-        GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+        SetTextureTevStage();
         GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
         GXSetNumChans(1U);
         GXSetChanCtrl(GX_COLOR0A0, 0U, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP,
@@ -1519,6 +1523,7 @@ void fn_1_17E20(s32 sourceLeft, s32 sourceTop, s32 sourceWidth, s32 sourceHeight
     }
 }
 
+/* Draws the wavy screen effect over the captured viewport. */
 void fn_1_187F0(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                 s32 sourceHeight, GXTexFmt textureFormat, f32 strength) {
     GXTexObj alphaTexture;
@@ -1555,8 +1560,8 @@ void fn_1_187F0(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
         GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC);
         GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
         GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
-        GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 0x22);
-        for (row = 0; row < 0x11; row++)
+        GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 34);
+        for (row = 0; row < 17; row++)
         {
             for (column = 0; column < 2; column++)
             {
@@ -1568,8 +1573,8 @@ void fn_1_187F0(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
             }
         }
         GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
-        GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 0x22);
-        for (row = 0; row < 0x11; row++)
+        GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 34);
+        for (row = 0; row < 17; row++)
         {
             for (column = 0; column < 2; column++)
             {
@@ -1604,10 +1609,7 @@ void fn_1_187F0(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
                      GX_REPEAT, GX_REPEAT, 0);
         GXInitTexObjLOD(& alphaTexture, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, 0, 0, GX_ANISO_1);
         GXLoadTexObj(& alphaTexture, GX_TEXMAP1);
-        GXSetNumTevStages(1);
-        GXSetNumTexGens(1);
-        GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-        GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+        SetTextureTevStage();
         GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
         GXSetNumChans(1);
         GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP,
@@ -1678,6 +1680,30 @@ void fn_1_187F0(s32 sourceLeft, s32 sourceTop, s32 sourceWidth,
     }
 }
 
+/* Configures color and alpha inputs and the vertex color channel. */
+static inline void SetTextureTevInputs(GXTevColorArg colorB, GXTevColorArg colorC,
+    GXTevColorArg colorD, GXTevAlphaArg alphaB, GXTevAlphaArg alphaC, GXTevAlphaArg alphaD)
+{
+    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
+    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, colorB, colorC, colorD);
+    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
+    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, alphaB, alphaC, alphaD);
+    GXSetNumChans(1);
+    GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+}
+
+/* Configures texture inputs and disables depth testing for a screen quad. */
+static inline void SetScreenQuadTevState(GXTevColorArg colorB, GXTevColorArg colorC,
+    GXTevColorArg colorD, GXTevAlphaArg alphaB, GXTevAlphaArg alphaC, GXTevAlphaArg alphaD)
+{
+    SetTextureTevStage();
+    GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
+    SetTextureTevInputs(colorB, colorC, colorD, alphaB, alphaC, alphaD);
+    GXSetZMode(0, GX_ALWAYS, 0);
+    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
+    GXSetZCompLoc(0);
+}
+
 /* Capture the viewport and apply the selected screen effect. */
 void fn_1_195DC(s16 unused) {
     f32 copyScale;
@@ -1707,23 +1733,8 @@ void fn_1_195DC(s16 unused) {
     }
     PSMTXIdentity(matrixWorkspace.positionWorkspace.position);
     GXLoadPosMtxImm(matrixWorkspace.positionWorkspace.position, GX_PNMTX0);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    1, GX_TEVPREV);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_RASC, GX_CC_TEXC, GX_CC_ZERO);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    1, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL,
-                  GX_DF_CLAMP, GX_AF_NONE);
-    GXSetZMode(0, GX_ALWAYS, 0);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
-    GXSetZCompLoc(0);
+    SetScreenQuadTevState(GX_CC_RASC, GX_CC_TEXC, GX_CC_ZERO,
+        GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1831,10 +1842,7 @@ void fn_1_19B24(s16 level) {
     GXSetProjection(matrixWorkspace.projection, GX_ORTHOGRAPHIC);
     PSMTXIdentity(matrixWorkspace.positionWorkspace.position);
     GXLoadPosMtxImm(matrixWorkspace.positionWorkspace.position, GX_PNMTX0);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    SetTextureTevStage();
     GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
     GXSetNumChans(1);
     GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
@@ -1992,23 +2000,8 @@ void fn_1_1A550(s16 layerNo) {
     }
     PSMTXIdentity(position);
     GXLoadPosMtxImm(position, GX_PNMTX0);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    1, GX_TEVPREV);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_RASC, GX_CC_TEXC, GX_CC_ZERO);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
-                    1, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_RASA, GX_CA_TEXA, GX_CA_ZERO);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL,
-                  GX_DF_CLAMP, GX_AF_NONE);
-    GXSetZMode(0, GX_ALWAYS, 0);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
-    GXSetZCompLoc(0);
+    SetScreenQuadTevState(GX_CC_RASC, GX_CC_TEXC, GX_CC_ZERO,
+        GX_CA_RASA, GX_CA_TEXA, GX_CA_ZERO);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_INVSRCALPHA, GX_LO_NOOP);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -2073,20 +2066,8 @@ void fn_1_1AA0C(s16 unused) {
     }
     PSMTXIdentity(matrixWorkspace.positionWorkspace.position);
     GXLoadPosMtxImm(matrixWorkspace.positionWorkspace.position, GX_PNMTX0);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
-    GXSetZMode(0, GX_ALWAYS, 0);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
-    GXSetZCompLoc(0);
+    SetScreenQuadTevState(GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC,
+        GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ZERO, GX_LO_NOOP);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -2121,7 +2102,7 @@ void fn_1_1AA0C(s16 unused) {
 }
 
 /* Copy the central viewport into the screen texture. */
-void fn_1_1ADAC(void) {
+void fn_1_1ADAC(s16 unused) {
     s32 sourceX = 0x50;
     s32 sourceY = 0x3C;
     s32 copyWidth = 0x1E0;
@@ -2140,7 +2121,8 @@ void fn_1_1ADAC(void) {
     GXSetCopyFilter(RenderMode->aa, RenderMode->sample_pattern, 1, RenderMode->vfilter);
 }
 
-void fn_1_1AED4(void)
+/* Empty render-layer hook installed during quiz setup. */
+void fn_1_1AED4(s16 unused)
 {
 }
 
@@ -2211,11 +2193,7 @@ void fn_1_1AED8(s16 layerNo) {
     GXInitTexObjLOD(&rgbaTexture, GX_LINEAR, GX_LINEAR,
                     0.0f, 0.0f, 0.0f, 0, 0, GX_ANISO_1);
     GXLoadTexObj(&rgbaTexture, GX_TEXMAP1);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
-                      GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    SetTextureTevStage();
     GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
     GXSetNumChans(1);
     GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
@@ -2293,11 +2271,7 @@ void fn_1_1AED8(s16 layerNo) {
     GXInitTexObjLOD(&rgbaTexture, GX_LINEAR, GX_LINEAR,
                     0.0f, 0.0f, 0.0f, 0, 0, GX_ANISO_1);
     GXLoadTexObj(&rgbaTexture, GX_TEXMAP1);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
-                      GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    SetTextureTevStage();
     GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
     GXSetNumChans(1);
     GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
@@ -2375,16 +2349,9 @@ void fn_1_1BD68(void *hookContext, f32 (*positionMatrix)[4]) {
     s32 vertex;
 
     GXLoadPosMtxImm(positionMatrix, GX_PNMTX0);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ONE);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_KONST);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+    SetTextureTevStage();
+    SetTextureTevInputs(GX_CC_ZERO, GX_CC_ZERO, GX_CC_ONE,
+        GX_CA_ZERO, GX_CA_ZERO, GX_CA_KONST);
     GXSetZMode(1, GX_LEQUAL, 1);
     GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
     GXSetZCompLoc(1);
@@ -2434,16 +2401,9 @@ void fn_1_1C088(HU3D_MODEL *model, f32 (*positionMatrix)[4]) {
     GXSetScissor(sourceLeft, sourceTop, sourceWidth, sourceHeight);
     GXLoadPosMtxImm(positionMatrix, GX_PNMTX0);
     GXSetCopyFilter(0, RenderMode->sample_pattern, 0, RenderMode->vfilter);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+    SetTextureTevStage();
+    SetTextureTevInputs(GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC,
+        GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
     GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
     GXSetZCompLoc(1);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ZERO, GX_LO_NOOP);
@@ -2556,26 +2516,8 @@ void fn_1_1CB64(s16 layerNo) {
     GXSetProjection(matrixWorkspace.projection, GX_ORTHOGRAPHIC);
     PSMTXIdentity(matrixWorkspace.positionWorkspace.position);
     GXLoadPosMtxImm(matrixWorkspace.positionWorkspace.position, GX_PNMTX0);
-    GXSetNumTevStages(1);
-    GXSetNumTexGens(1);
-    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4,
-                      GX_TG_TEX0, GX_IDENTITY, 0, GX_PTIDENTITY);
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0,
-                  GX_TEXMAP0, GX_COLOR0A0);
-    GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO,
-                    GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_RASC,
-                    GX_CC_TEXC, GX_CC_ZERO);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO,
-                    GX_CS_SCALE_1, 1, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO,
-                    GX_CA_ZERO, GX_CA_TEXA);
-    GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
-    GXSetZMode(0, GX_ALWAYS, 0);
-    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
-    GXSetZCompLoc(0);
+    SetScreenQuadTevState(GX_CC_RASC, GX_CC_TEXC, GX_CC_ZERO,
+        GX_CA_ZERO, GX_CA_ZERO, GX_CA_TEXA);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA,
                    GX_BL_INVSRCALPHA, GX_LO_NOOP);
     GXClearVtxDesc();
@@ -3175,21 +3117,17 @@ void fn_1_1D4AC(OMOBJ *object) {
             if ((lbl_1_bss_58C >= 60.0f) && (lbl_1_bss_328 > 4)) {
                 lbl_1_bss_588 = 7;
                 if (lbl_1_data_4BC != -1) {
-                    HuAudSStreamFadeOut(lbl_1_data_4BC, 0x1F4);
+                    HuAudSStreamFadeOut(lbl_1_data_4BC, 500);
                     lbl_1_data_4BC = -1;
                 }
-                WipeCreate(2, 0, 0x14);
+                WipeCreate(2, 0, 20);
                 lbl_1_bss_58C = 0.0f;
             } else {
                 lbl_1_bss_58C += (f32) (lbl_1_bss_328 == 5);
             }
             break;
         case 7:                                     /* switch 2 */
-            if (WipeCheck() == 0) {
-                HuMCSelWinContextKill();
-                HuMCClose();
-                fn_8003A5E4(1, 1);
-            }
+            CloseMicContextAfterWipe();
             break;
         }
 

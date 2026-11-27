@@ -1,20 +1,13 @@
 /* Shared state and callbacks for the microphone mode's scene effects. */
 #ifndef REL_MDMICDLL_STAGE_H
 #define REL_MDMICDLL_STAGE_H
+#include "REL/minigame_texture_transition.h"
 
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/sprite.h"
-
-typedef struct MDMICTextureWork {
-    f32 indirectMatrix[2][3]; /* Two indirect-texture transform rows. */
-    GXColor color; /* Tint used by the overlay material. */
-    float textureScrollY; /* Current vertical texture offset. */
-    float textureScrollStep; /* Vertical offset added whenever the overlay material hook runs. */
-    float remainingFrames; /* Frames left before the overlay is hidden. */
-} MDMIC_TEXTURE_WORK;
 
 typedef struct MDMICParticleTarget {
     u8 scale; /* Target particle size on the effect's 0-255 scale. */
@@ -38,7 +31,7 @@ extern HU3D_MODELID lbl_1_bss_ABA[4]; /* Expanding and scattering particle burst
 extern HU3D_MODELID lbl_1_bss_AC2; /* Rising-particle emitter. */
 extern HU3D_MODELID lbl_1_bss_AC4[4]; /* Rotating radial particle bursts. */
 extern HU3D_MODELID lbl_1_bss_ACC; /* Timed expanding particles. */
-extern MDMIC_TEXTURE_WORK lbl_1_bss_AD0[2]; /* Overlay texture and lifetime settings. */
+extern MinigameTextureTransition lbl_1_bss_AD0[2]; /* Overlay texture and lifetime settings. */
 extern ANIMDATA *lbl_1_bss_B20[9]; /* Animation assets shared by the particle models. */
 extern s32 lbl_1_data_FA0[9]; /* Data entries for the shared particle animations. */
 

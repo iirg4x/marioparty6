@@ -445,11 +445,11 @@ M617RouteGroup lbl_1_bss_38F0[24];
 u16 lbl_1_bss_38E8[4];
 struct Process_s *lbl_1_bss_38E4;
 M617CameraStorage lbl_1_bss_379C;
-M617LightInitState lbl_1_bss_3760;
-M617ShadowWork lbl_1_bss_3710;
+LightInitState lbl_1_bss_3760;
+MinigameShadowCamera lbl_1_bss_3710;
 ParticleModuleData lbl_1_bss_3708;
 M617ModelSetupRecord lbl_1_bss_E88[96];
-M617ParticipantMotionState lbl_1_bss_DC0[2];
+MinigameParticipantMotionState lbl_1_bss_DC0[2];
 M617PlayerStateData lbl_1_bss_AB0[2];
 M617State lbl_1_bss_9C8;
 M617PlayerBindings lbl_1_bss_9BC;
@@ -529,42 +529,42 @@ void fn_1_20A4(void)
 {
     Hu3DShadowCreate(5.0f, 16000.0f, 21000.0f);
     Hu3DShadowSizeSet(480);
-    lbl_1_bss_3710.rotation.x = -90.0f;
-    lbl_1_bss_3710.rotation.y = 0.0f;
-    lbl_1_bss_3710.rotation.z = 0.0f;
-    lbl_1_bss_3710.origin.x = 0.0f;
-    lbl_1_bss_3710.origin.y = -100.0f;
-    lbl_1_bss_3710.origin.z = 0.0f;
+    lbl_1_bss_3710.elevation = -90.0f;
+    lbl_1_bss_3710.azimuth = 0.0f;
+    lbl_1_bss_3710.unk14 = 0.0f;
+    lbl_1_bss_3710.target.x = 0.0f;
+    lbl_1_bss_3710.target.y = -100.0f;
+    lbl_1_bss_3710.target.z = 0.0f;
     lbl_1_bss_3710.shadowOpacity = 0.5f;
-    lbl_1_bss_3710.radius = 21000.0f;
+    lbl_1_bss_3710.orbitDistance = 21000.0f;
     fn_1_21B4();
 }
 
 /* Called by fn_1_20A4 to compute the shadow camera position and direction from its angles. */
 void fn_1_21B4(void)
 {
-    lbl_1_bss_3710.position.x = (f32)((f64)lbl_1_bss_3710.origin.x +
-        ((f64)lbl_1_bss_3710.radius *
-         (cos((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
-          sin((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0))));
-    lbl_1_bss_3710.position.y = (f32)((f64)lbl_1_bss_3710.origin.y +
-        ((f64)lbl_1_bss_3710.radius *
-         -sin((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0)));
-    lbl_1_bss_3710.position.z = (f32)((f64)lbl_1_bss_3710.origin.z +
-        ((f64)lbl_1_bss_3710.radius *
-         (cos((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
-          cos((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0))));
-    lbl_1_bss_3710.direction.x = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
-        sin((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0));
-    lbl_1_bss_3710.direction.y = (f32)cos( (M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0);
-    lbl_1_bss_3710.direction.z = (f32)(
-        sin((M_PI * (f64)lbl_1_bss_3710.rotation.x) / 180.0) *
-        cos((M_PI * (f64)lbl_1_bss_3710.rotation.y) / 180.0));
+    lbl_1_bss_3710.cameraPosition.x = (f32)((f64)lbl_1_bss_3710.target.x +
+        ((f64)lbl_1_bss_3710.orbitDistance *
+         (cos((M_PI * (f64)lbl_1_bss_3710.elevation) / 180.0) *
+          sin((M_PI * (f64)lbl_1_bss_3710.azimuth) / 180.0))));
+    lbl_1_bss_3710.cameraPosition.y = (f32)((f64)lbl_1_bss_3710.target.y +
+        ((f64)lbl_1_bss_3710.orbitDistance *
+         -sin((M_PI * (f64)lbl_1_bss_3710.elevation) / 180.0)));
+    lbl_1_bss_3710.cameraPosition.z = (f32)((f64)lbl_1_bss_3710.target.z +
+        ((f64)lbl_1_bss_3710.orbitDistance *
+         (cos((M_PI * (f64)lbl_1_bss_3710.elevation) / 180.0) *
+          cos((M_PI * (f64)lbl_1_bss_3710.azimuth) / 180.0))));
+    lbl_1_bss_3710.cameraUp.x = (f32)(
+        sin((M_PI * (f64)lbl_1_bss_3710.elevation) / 180.0) *
+        sin((M_PI * (f64)lbl_1_bss_3710.azimuth) / 180.0));
+    lbl_1_bss_3710.cameraUp.y = (f32)cos((M_PI * (f64)lbl_1_bss_3710.elevation) / 180.0);
+    lbl_1_bss_3710.cameraUp.z = (f32)(
+        sin((M_PI * (f64)lbl_1_bss_3710.elevation) / 180.0) *
+        cos((M_PI * (f64)lbl_1_bss_3710.azimuth) / 180.0));
     Hu3DShadowTPLvlSet(lbl_1_bss_3710.shadowOpacity);
-    Hu3DShadowPosSet(&lbl_1_bss_3710.position,
-        &lbl_1_bss_3710.direction,
-        &lbl_1_bss_3710.origin);
+    Hu3DShadowPosSet(&lbl_1_bss_3710.cameraPosition,
+        &lbl_1_bss_3710.cameraUp,
+        &lbl_1_bss_3710.target);
 }
 
 /* Called by phase updates to sync participant models, animation, and shadow placement. */

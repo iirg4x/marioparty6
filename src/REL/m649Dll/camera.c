@@ -1,4 +1,7 @@
 /* Camera, lighting, audio and resource helpers used by Stamp By Me's minigame objects. */
+#include "REL/minigame_positional_audio.h"
+#include "REL/minigame_camera_fit.h"
+#include "REL/minigame_fog.h"
 #include "dolphin/math.h"
 
 #include "game/object.h"
@@ -79,7 +82,7 @@
 
 #undef fn_1_48DC
 
-typedef void (*CameraCallback)(OMOBJ *, unsigned int, int);
+typedef void (*CameraCallback)(OMOBJ *, u32, s32);
 
 typedef struct M649LightWork_s {
     s16 light; /* Renderer light handle, or -1 before creation. */
@@ -89,57 +92,25 @@ typedef struct M649LightWork_s {
     GXColor color; /* RGBA color sent to the renderer. */
 } M649LightWork;
 
-typedef struct M649CameraFitParams_s {
-    Vec direction; /* Viewing direction used to orient the fitting camera. */
-    Vec up; /* Up direction used to orient the fitting camera. */
-    float fov; /* Vertical field of view in radians. */
-    s32 width; /* View width in pixels. */
-    s32 height; /* View height in pixels. */
-    s32 marginX; /* Horizontal safe-area margin in pixels on each side. */
-    s32 marginY; /* Vertical safe-area margin in pixels on each side. */
-} M649CameraFitParams;
-
 typedef struct M649CameraFitSphere_s {
     Vec center; /* Sphere center in world coordinates. */
     float radius; /* Sphere radius in world units. */
 } M649CameraFitSphere;
 
-typedef struct M649AudioConfigView_s {
-    u32 cameras; /* Camera bits to which these sound settings apply. */
-    s32 panMin, panMax; /* Output pan range for screen X from 0 to 576. */
-    s32 volumeMin, volumeMiddle, volumeMax; /* Output volume at far, middle, and near distances. */
-    float distanceFar, distanceMiddle, distanceNear; /* Camera-space depth breakpoints. */
-} M649AudioConfigView;
-
 typedef struct M649AudioWorkView_s {
-    M649AudioConfigView *config; /* Zero-camera-terminated sound settings. */
+    MinigameAudioRange *config; /* Zero-camera-terminated sound settings. */
 } M649AudioWorkView;
 
-typedef struct M649FogParam_s {
-    s32 layer; /* Renderer layer using this fog entry; -1 terminates the table. */
-    u32 cameras; /* Camera mask selecting the perspective used for this fog layer. */
-    GXFogType type; /* Renderer fog mode. */
-    float start, end; /* Fog start and end distances. */
-    GXColor color; /* RGBA fog color. */
-} M649FogParam;
-
 typedef struct M649FogWork_s {
-    M649FogParam *parameters; /* Fog settings terminated by a layer value of -1. */
+    MinigameFogParams *parameters; /* Fog settings terminated by a layer value of -1. */
     s32 callbackValue; /* Optional object-update callback address; unused by the layer hook. */
     float factor; /* Scales the configured range from start toward end. */
 } M649FogWork;
 
-typedef struct M649AudioEntry_s {
-    s32 handle, effect; /* Playing sound handle and the effect used to start it. */
-    u32 cameras; /* Camera mask used for position-based updates. */
-    s32 updatePan, updateVolume; /* Nonzero when the corresponding value is refreshed. */
-    Vec *position; /* Live world position used by each audio-object update. */
-} M649AudioEntry;
-
 typedef struct M649AudioWork_s {
     void *config; /* Audio settings table selected at object creation. */
     s32 callbackValue; /* Optional callback address invoked after the sound updates. */
-    M649AudioEntry entries[64]; /* Active sound records; handle -1 marks a free slot. */
+    MinigameAudioRecord entries[64]; /* Active sound records; handle -1 marks a free slot. */
 } M649AudioWork;
 
 extern OMOBJ *lbl_1_bss_308;
@@ -213,7 +184,9 @@ static inline s32 m649_local_273C(u32 cameras)
 {
     s32 cameraIndex;
     for (cameraIndex = 0; cameraIndex < 16; cameraIndex++, cameras >>= 1) {
-        if (cameras & 1) { return cameraIndex; }
+        if (cameras & 1) {
+            return cameraIndex;
+        }
     }
     return 0;
 }
@@ -222,16 +195,20 @@ static inline s32 m649_local_273C(u32 cameras)
 static inline s32 m649_local_34E8(u32 cameras, float x)
 {
     M649AudioWorkView *work;
-    M649AudioConfigView *config;
+    MinigameAudioRange *config;
     s32 pan = MSM_PAN_CENTER;
     if (lbl_1_bss_2F8 != NULL) {
         work = lbl_1_bss_2F8->data;
-        for (config = work->config; config->cameras; config++) {
-            if (config->cameras & cameras) {
+        for (config = work->config; config->cameraMask; config++) {
+            if (config->cameraMask & cameras) {
                 x *= (config->panMax - config->panMin) / 576.0f;
                 pan = config->panMin + x;
-                if (pan < config->panMin) { pan = config->panMin; }
-                if (pan > config->panMax) { pan = config->panMax; }
+                if (pan < config->panMin) {
+                    pan = config->panMin;
+                }
+                if (pan > config->panMax) {
+                    pan = config->panMax;
+                }
                 break;
             }
         }
@@ -242,14 +219,14 @@ static inline s32 m649_local_34E8(u32 cameras, float x)
 /* Map a world position to sound pan for fn_1_3AE8, fn_1_3FBC, and fn_1_4240. */
 static inline s32 m649_local_3630(u32 cameras, Vec *position)
 {
-    M649CameraWork *work = lbl_1_bss_2FC->data;
-    M649CameraEntry *camera = &work->entries[m649_local_273C(cameras)];
+    MinigameCameraWork *work = lbl_1_bss_2FC->data;
+    MinigameCameraEntry *camera = &work->entries[m649_local_273C(cameras)];
     Vec screenPosition;
     float panCoordinate;
     Hu3D3Dto2D(position, cameras, &screenPosition);
     /* Apply the camera's split-screen rectangle with the audio helper's 0.9 scale. */
     panCoordinate = screenPosition.x / 576.0f;
-    panCoordinate = 0.9f * camera->viewportX + panCoordinate * (0.9f * camera->viewportWidth);
+    panCoordinate = 0.9f * camera->viewport[0] + panCoordinate * (0.9f * camera->viewport[2]);
     return m649_local_34E8(cameras, panCoordinate);
 }
 
@@ -257,9 +234,9 @@ static inline s32 m649_local_3630(u32 cameras, Vec *position)
 static inline s32 m649_local_3850(u32 cameras, Vec *position)
 {
     M649AudioWorkView *audio;
-    M649AudioConfigView *config;
-    M649CameraWork *work;
-    M649CameraEntry *camera;
+    MinigameAudioRange *config;
+    MinigameCameraWork *work;
+    MinigameCameraEntry *camera;
     Mtx cameraViewMatrix;
     Vec cameraSpacePosition;
     float cameraDepth, volumeScale;
@@ -268,8 +245,8 @@ static inline s32 m649_local_3850(u32 cameras, Vec *position)
         audio = lbl_1_bss_2F8->data;
         work = lbl_1_bss_2FC->data;
         camera = &work->entries[m649_local_273C(cameras)];
-        for (config = audio->config; config->cameras; config++) {
-            if (config->cameras & cameras) {
+        for (config = audio->config; config->cameraMask; config++) {
+            if (config->cameraMask & cameras) {
                 C_MTXLookAt(cameraViewMatrix, &camera->position, &camera->up, &camera->target);
                 PSMTXMultVec(cameraViewMatrix, position, &cameraSpacePosition);
                 cameraDepth = -cameraSpacePosition.z;
@@ -284,8 +261,12 @@ static inline s32 m649_local_3850(u32 cameras, Vec *position)
                     volumeScale *= config->volumeMiddle - config->volumeMin;
                     volume = config->volumeMiddle - volumeScale;
                 }
-                if (volume < config->volumeMin) { volume = config->volumeMin; }
-                if (volume > config->volumeMax) { volume = config->volumeMax; }
+                if (volume < config->volumeMin) {
+                    volume = config->volumeMin;
+                }
+                if (volume > config->volumeMax) {
+                    volume = config->volumeMax;
+                }
                 break;
             }
         }
@@ -365,8 +346,8 @@ void fn_1_14A0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 /* Runs from the light object's update callback and forwards the frame to its client callback. */
 void fn_1_15A8(OMOBJ *obj)
 {
-    M620LightData *light = ((M620LightData *)(lbl_1_bss_304->data));
-    if (light->callback != (OMOBJ_FUNC)(void *)0) {
+    MinigameLightWork *light = lbl_1_bss_304->data;
+    if (light->callback != NULL) {
         light->callback(obj);
     }
 }
@@ -374,7 +355,7 @@ void fn_1_15A8(OMOBJ *obj)
 /* Creates a directional renderer light and shares its saved direction.
 * Successful creation replaces a zero saved direction with +Z. */
 void fn_1_1600(void) {
-    M620LightData *light = ((M620LightData *)(lbl_1_bss_304->data));
+    MinigameLightWork *light = lbl_1_bss_304->data;
 
     light->lightId = fn_800286D0(&light->position, &light->direction, &light->color);
     Hu3DGLightInfinitytSet(light->lightId);
@@ -407,33 +388,33 @@ void fn_1_1664(s32 modelId, char *lightName) {
 
 /* Stores the optional light-object callback invoked by fn_1_15A8 on each update. */
 void fn_1_1718(OMOBJ_FUNC callback) {
-    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
+    MinigameLightWork *light=lbl_1_bss_304->data;
     light->callback=callback;
 }
 
 /* Moves the active directional light when its owner changes the world position. */
 void fn_1_1740(HuVecF *position) {
-    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
+    MinigameLightWork *light=lbl_1_bss_304->data;
     light->position=*position;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Changes the active directional light direction when its owner updates the lighting. */
 void fn_1_17A8(HuVecF *direction) {
-    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
+    MinigameLightWork *light=lbl_1_bss_304->data;
     light->direction=*direction;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Returns a pointer to the stored light direction. */
 HuVecF *fn_1_1810() {
-    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
+    MinigameLightWork *light=lbl_1_bss_304->data;
     return &light->direction;
 }
 
 /* Updates the active minigame light color when a caller changes its lighting. */
 void fn_1_1838(int red,int green,int blue,int alpha) {
-    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
+    MinigameLightWork *light=lbl_1_bss_304->data;
     light->color.r=red;
     light->color.g=green;
     light->color.b=blue;
@@ -443,7 +424,7 @@ void fn_1_1838(int red,int green,int blue,int alpha) {
 
 /* Sets global exponential fog from the first entry's distances and RGB, with alpha 255;
  * layer hooks apply each entry's own type and color. */
-void fn_1_18BC(OMOBJMAN *manager, void *parameters)
+void fn_1_18BC(OMOBJMAN *manager, MinigameFogParams *parameters)
 {
     M649FogWork *work;
     s32 layerIndex;
@@ -453,24 +434,24 @@ void fn_1_18BC(OMOBJMAN *manager, void *parameters)
     work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649FogWork), 0x10000000);
     object->data = work;
     memset(work, 0, sizeof(M649FogWork));
-    work->parameters = ((M649FogParam *)parameters);
+    work->parameters = parameters;
     work->factor = 1.0f;
-    for (layerIndex = 0; ((M649FogParam *)parameters)->layer != -1;
-         layerIndex++, ((M649FogParam *)parameters)++) {
+    for (layerIndex = 0; parameters->layer != -1;
+         layerIndex++, parameters++) {
         if (layerIndex == 0)
-            Hu3DFogSet(((M649FogParam *) parameters)->start, ((M649FogParam *) parameters)->end,
-                       ((M649FogParam *) parameters)->color.r,
-                       ((M649FogParam *) parameters)->color.g,
-                       ((M649FogParam *) parameters)->color.b);
-        fn_80025918(((M649FogParam *)parameters)->layer, fn_1_1A14);
+            Hu3DFogSet(parameters->start, parameters->end,
+                       parameters->color.r,
+                       parameters->color.g,
+                       parameters->color.b);
+        fn_80025918(parameters->layer, fn_1_1A14);
     }
 }
 
 /* Runs from the fog object's update callback and forwards the frame to its client callback. */
 void fn_1_19BC(OMOBJ *obj)
 {
-    M620LightData *fogState = ((M620LightData *)(lbl_1_bss_300->data));
-    if (fogState->callback != (OMOBJ_FUNC)(void *)0) {
+    MinigameLightWork *fogState = lbl_1_bss_300->data;
+    if (fogState->callback != NULL) {
         fogState->callback(obj);
     }
 }
@@ -480,7 +461,7 @@ void fn_1_19BC(OMOBJ *obj)
 void fn_1_1A14(s16 layer)
 {
     M649FogWork *work;
-    M649FogParam *parameters;
+    MinigameFogParams *parameters;
     float fov, nearPlane, farPlane;
     float end;
     work = lbl_1_bss_300->data;
@@ -510,7 +491,7 @@ void fn_1_1B48(f32 factor) {
     M649FogWork *work;
 
     if (lbl_1_bss_300 != NULL) {
-        work = ((M649FogWork *)(lbl_1_bss_300->data));
+        work = lbl_1_bss_300->data;
         work->factor = factor;
     }
 }
@@ -519,17 +500,17 @@ void fn_1_1B48(f32 factor) {
 void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float farPlane,
     float shadowRadius, OM_CAMERA_VIEW *view)
 {
-    M649CameraEntry *entry;
-    M649CameraWork *work;
+    MinigameCameraEntry *entry;
+    MinigameCameraWork *work;
     OMOBJ *object;
     s32 i;
     u32 bit;
     s32 count = 0;
     object = fn_8003AB38(manager, 28, 0, 0, -1, fn_1_1EF4);
     lbl_1_bss_2FC = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649CameraWork), 0x10000000);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameCameraWork), 0x10000000);
     object->data = work;
-    memset(work, 0, sizeof(M649CameraWork));
+    memset(work, 0, sizeof(MinigameCameraWork));
     work->cameras = cameras;
     work->shadowRadius = shadowRadius;
     work->shadowFov = 20.0f;
@@ -556,10 +537,10 @@ void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float
             entry->nearPlane = nearPlane;
             entry->farPlane = farPlane;
             entry->aspect = 1.2f;
-            entry->viewportX = entry->scissorX = 0.0f;
-            entry->viewportY = entry->scissorY = 0.0f;
-            entry->viewportWidth = entry->scissorWidth = 640.0f;
-            entry->viewportHeight = entry->scissorHeight = 480.0f;
+            entry->viewport[0] = entry->scissor[0] = 0.0f;
+            entry->viewport[1] = entry->scissor[1] = 0.0f;
+            entry->viewport[2] = entry->scissor[2] = 640.0f;
+            entry->viewport[3] = entry->scissor[3] = 480.0f;
         }
     }
     Hu3DCameraCreate(cameras);
@@ -573,8 +554,8 @@ void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float
 /* Updates active cameras once per object-manager frame and refreshes their render viewports. */
 void fn_1_1EF4(OMOBJ *object)
 {
-    M649CameraWork *work = object->data;
-    M649CameraEntry *entry;
+    MinigameCameraWork *work = object->data;
+    MinigameCameraEntry *entry;
     s32 i, shadowDone = 0;
     u32 bit;
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
@@ -595,17 +576,19 @@ void fn_1_1EF4(OMOBJ *object)
             if (work->entries[i].active) {
                 fn_1_211C(object, bit, i);
             } else {
-                if (work->callback != NULL) { work->callback(object, bit, i); }
+                if (work->callback != NULL) {
+                    work->callback(object, bit, i);
+                }
                 lbl_80266B18[i] = entry->view.center;
                 lbl_80266A58[i] = entry->view.rot;
                 lbl_80266BD8[i] = entry->view.zoom;
             }
             Hu3DCameraPerspectiveSet(bit, entry->fov, entry->nearPlane, entry->farPlane,
                                      entry->aspect);
-            Hu3DCameraViewportSet(bit, entry->viewportX, entry->viewportY, entry->viewportWidth,
-                                  entry->viewportHeight, 0.0f, 1.0f);
-            Hu3DCameraScissorSet(bit, (u32) entry->scissorX, (u32) entry->scissorY,
-                                 (u32) entry->scissorWidth, (u32) entry->scissorHeight);
+            Hu3DCameraViewportSet(bit, entry->viewport[0], entry->viewport[1], entry->viewport[2],
+                                  entry->viewport[3], 0.0f, 1.0f);
+            Hu3DCameraScissorSet(bit, (u32) entry->scissor[0], (u32) entry->scissor[1],
+                                 (u32) entry->scissor[2], (u32) entry->scissor[3]);
         }
     }
 }
@@ -613,8 +596,8 @@ void fn_1_1EF4(OMOBJ *object)
 /* Copies the animated camera pose into its view during fn_1_1EF4 and saves it when motion ends. */
 void fn_1_211C(OMOBJ *object, u32 camera, s32 index)
 {
-    M649CameraEntry *entry;
-    M649CameraWork *work = object->data;
+    MinigameCameraEntry *entry;
+    MinigameCameraWork *work = object->data;
     Vec cameraOffset;
     entry = &work->entries[index];
     lbl_80266B18[index] = entry->target;
@@ -680,7 +663,7 @@ int fn_1_273C(unsigned int mask)
 
 /* Stores the callback that updates camera view data during the camera object's frame update. */
 extern void fn_1_2780(CameraCallback callback) {
-    M649CameraWork *state=((M649CameraWork *)(lbl_1_bss_2FC->data));
+    MinigameCameraWork *state=lbl_1_bss_2FC->data;
     state->callback=callback;
 }
 
@@ -688,10 +671,10 @@ extern void fn_1_2780(CameraCallback callback) {
 void fn_1_27A8(u32 cameras, float aspectRatio)
 {
     OMOBJ *object = lbl_1_bss_2FC;
-    M649CameraEntry *entry;
+    MinigameCameraEntry *entry;
     s32 i;
     u32 bit;
-    M649CameraWork *work = object->data;
+    MinigameCameraWork *work = object->data;
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if (cameras & bit) {
             entry = &work->entries[i];
@@ -721,18 +704,18 @@ void fn_1_281C(u32 cameras, float x, float y, float width, float height)
 /* Stores the viewport rectangle selected by fn_1_281C during camera frame updates. */
 void fn_1_29E4(u32 cameras, float x, float y, float width, float height)
 {
-    M649CameraEntry *entry;
+    MinigameCameraEntry *entry;
     s32 i;
     u32 bit;
     OMOBJ *object = lbl_1_bss_2FC;
-    M649CameraWork *work = object->data;
+    MinigameCameraWork *work = object->data;
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if (cameras & bit) {
             entry = &work->entries[i];
-            entry->viewportX = x;
-            entry->viewportY = y;
-            entry->viewportWidth = width;
-            entry->viewportHeight = height;
+            entry->viewport[0] = x;
+            entry->viewport[1] = y;
+            entry->viewport[2] = width;
+            entry->viewport[3] = height;
         }
     }
 }
@@ -740,26 +723,26 @@ void fn_1_29E4(u32 cameras, float x, float y, float width, float height)
 /* Stores the scissor rectangle selected by fn_1_281C during camera frame updates. */
 void fn_1_2A64(u32 cameras, float x, float y, float width, float height)
 {
-    M649CameraEntry *entry;
+    MinigameCameraEntry *entry;
     s32 i;
     u32 bit;
     OMOBJ *object = lbl_1_bss_2FC;
-    M649CameraWork *work = object->data;
+    MinigameCameraWork *work = object->data;
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if (cameras & bit) {
             entry = &work->entries[i];
-            entry->scissorX = x;
-            entry->scissorY = y;
-            entry->scissorWidth = width;
-            entry->scissorHeight = height;
+            entry->scissor[0] = x;
+            entry->scissor[1] = y;
+            entry->scissor[2] = width;
+            entry->scissor[3] = height;
         }
     }
 }
 
 /* Sets the camera shadow field of view in degrees. */
 extern void fn_1_2AE4(f32 shadowFov) {
-    OMOBJ *object = (OMOBJ *)lbl_1_bss_2FC;
-    M649CameraWork *work = (M649CameraWork *)object->data;
+    OMOBJ *object = lbl_1_bss_2FC;
+    MinigameCameraWork *work = object->data;
     work->shadowFov = shadowFov;
 }
 
@@ -767,15 +750,15 @@ extern void fn_1_2AE4(f32 shadowFov) {
 void fn_1_2B14(HuVecF *direction) {
     OMOBJ *object=lbl_1_bss_2FC;
     if(object != NULL) {
-        M649CameraWork *state=((M649CameraWork *)(object->data));
+        MinigameCameraWork *state=object->data;
         state->shadowDirection=*direction;
     }
 }
 
 /* Returns the camera shadow direction's X component for in-place updates. */
 extern f32 *fn_1_2B64() {
-    OMOBJ *object = (OMOBJ *)lbl_1_bss_2FC;
-    M649CameraWork *work = (M649CameraWork *)object->data;
+    OMOBJ *object = lbl_1_bss_2FC;
+    MinigameCameraWork *work = object->data;
     return &work->shadowDirection.x;
 }
 
@@ -783,7 +766,7 @@ extern f32 *fn_1_2B64() {
 void fn_1_2B94(u8 red, u8 green, u8 blue)
 {
     OMOBJ *object = lbl_1_bss_2FC;
-    M649CameraWork *work = object->data;
+    MinigameCameraWork *work = object->data;
     work->shadowColor.r = red;
     work->shadowColor.g = green;
     work->shadowColor.b = blue;
@@ -792,11 +775,11 @@ void fn_1_2B94(u8 red, u8 green, u8 blue)
 /* Starts the supplied camera motion on every selected camera during scene setup. */
 void fn_1_2BCC(u32 cameras, void *data)
 {
-    M649CameraEntry *entry;
+    MinigameCameraEntry *entry;
     s32 i;
     u32 bit;
     OMOBJ *object = lbl_1_bss_2FC;
-    M649CameraWork *work = object->data;
+    MinigameCameraWork *work = object->data;
     s32 motion = fn_8002C4C0(data);
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if (cameras & bit) {
@@ -815,7 +798,7 @@ BOOL fn_1_2C84(u32 cameras)
     s32 i;
     u32 bit;
     OMOBJ *object = lbl_1_bss_2FC;
-    M649CameraWork *work = object->data;
+    MinigameCameraWork *work = object->data;
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if ((cameras & bit) && work->entries[i].active) {
             return TRUE;
@@ -825,7 +808,7 @@ BOOL fn_1_2C84(u32 cameras)
 }
 
 /* Fits a camera around the supplied spheres and returns the required viewing distance. */
-double fn_1_2D08(void *fitParams, void *fitSpheres, s32 sphereCount, Vec *cameraPosition)
+double fn_1_2D08(CameraFitParams *fitParams, M649CameraFitSphere *fitSpheres, s32 sphereCount, Vec *cameraPosition)
 {
     Mtx view;
     Mtx inverse;
@@ -844,21 +827,21 @@ double fn_1_2D08(void *fitParams, void *fitSpheres, s32 sphereCount, Vec *camera
     M649CameraFitSphere *sphere;
     s32 i;
 
-    MTXLookAt(view, &origin, &((M649CameraFitParams *) fitParams)->up,
-              &((M649CameraFitParams *) fitParams)->direction);
+    MTXLookAt(view, &origin, &fitParams->up,
+              &fitParams->direction);
     MTXInverse(view, inverse);
     {
-        double aspect = (double) ((M649CameraFitParams *) fitParams)->width /
-                        ((M649CameraFitParams *) fitParams)->height;
-        tangent = tan(((M649CameraFitParams *)fitParams)->fov / 2.0f);
-        slopeX = aspect * (tangent * ((double) (((M649CameraFitParams *) fitParams)->width -
-                                                2 * ((M649CameraFitParams *) fitParams)->marginX) /
-                                      ((M649CameraFitParams *) fitParams)->width));
-        slopeY = tangent * ((double) (((M649CameraFitParams *) fitParams)->height -
-                                      2 * ((M649CameraFitParams *) fitParams)->marginY) /
-                            ((M649CameraFitParams *) fitParams)->height);
+        double aspect = (double) fitParams->width /
+                        fitParams->height;
+        tangent = tan(fitParams->fov / 2.0f);
+        slopeX = aspect * (tangent * ((double) (fitParams->width -
+                                                2 * fitParams->marginX) /
+                                      fitParams->width));
+        slopeY = tangent * ((double) (fitParams->height -
+                                      2 * fitParams->marginY) /
+                            fitParams->height);
     }
-    sphere = ((M649CameraFitSphere *)fitSpheres);
+    sphere = fitSpheres;
     MTXMultVecSR(view, &sphere->center, &lower);
     upper = lower;
     nearZ = lower.z - sphere->radius;
@@ -868,7 +851,7 @@ double fn_1_2D08(void *fitParams, void *fitSpheres, s32 sphereCount, Vec *camera
         MTXMultVecSR(view, &sphere->center, &position);
         nearZ = FIT_MIN(nearZ, position.z - sphere->radius);
     }
-    for (sphere = ((M649CameraFitSphere *)fitSpheres), i = 0; i < sphereCount; i++, sphere++) {
+    for (sphere = fitSpheres, i = 0; i < sphereCount; i++, sphere++) {
         Vec position;
         MTXMultVecSR(view, &sphere->center, &position);
         extentX = sphere->radius + slopeX * (position.z - nearZ);
@@ -894,7 +877,7 @@ double fn_1_2D08(void *fitParams, void *fitSpheres, s32 sphereCount, Vec *camera
         center.y = (lower.y + upper.y) / 2.0f;
         center.z = nearZ;
         MTXMultVecSR(inverse, &center, &center);
-        VECNormalize(&((M649CameraFitParams *)fitParams)->direction, &offset);
+        VECNormalize(&fitParams->direction, &offset);
         VECScale(&offset, &offset, distance);
         VECSubtract(&center, &offset, cameraPosition);
     }
@@ -908,7 +891,7 @@ void fn_1_3250(HUPROCESS *objectManager, u32 audioConfig) {
 
     object = fn_8003AB38(objectManager, 30, 0, 0, -1, fn_1_32EC);
     lbl_1_bss_2F8 = object;
-    objectState = (u32 *)HuMemDirectMallocNum(HEAP_HEAP, 1544, 0x10000000);
+    objectState = HuMemDirectMallocNum(HEAP_HEAP, 1544, 0x10000000);
     object->data = objectState;
     memset(objectState, 0, 1544);
     *objectState = audioConfig;
@@ -917,7 +900,7 @@ void fn_1_3250(HUPROCESS *objectManager, u32 audioConfig) {
 
 /* Runs each frame for the shared audio object, updating sounds before its optional callback. */
 void fn_1_32EC(OMOBJ *obj) {
-    M620ObjectState *state = ((M620ObjectState *)(lbl_1_bss_2F8->data));
+    M620ObjectState *state = lbl_1_bss_2F8->data;
 
     fn_1_33AC(obj);
     if (state->callback != NULL) {
@@ -928,8 +911,8 @@ void fn_1_32EC(OMOBJ *obj) {
 /* Initializes the sound tracking table when the audio object is created. */
 void fn_1_3354(OMOBJ *object)
 {
-    M649AudioWork *state = ((M649AudioWork *)(lbl_1_bss_2F8->data));
-    M649AudioEntry *record = state->entries;
+    M649AudioWork *state = lbl_1_bss_2F8->data;
+    MinigameAudioRecord *record = state->entries;
     int index;
 
     for (index = 0; index < 64; index++, record++) {
@@ -941,7 +924,7 @@ void fn_1_3354(OMOBJ *object)
 void fn_1_33AC(OMOBJ *object)
 {
     M649AudioWork *work;
-    M649AudioEntry *entry;
+    MinigameAudioRecord *entry;
     s32 soundIndex;
     work = lbl_1_bss_2F8->data;
     entry = work->entries;
@@ -952,10 +935,10 @@ void fn_1_33AC(OMOBJ *object)
                 entry->handle = -1;
                 continue;
             }
-            if (entry->updatePan)
-                HuAudFXPanning(entry->handle, fn_1_3630(entry->cameras, entry->position));
-            if (entry->updateVolume)
-                HuAudFXVolSet(entry->handle, fn_1_3850(entry->cameras, entry->position));
+            if (entry->panEnabled)
+                HuAudFXPanning(entry->handle, fn_1_3630(entry->cameraMask, entry->position));
+            if (entry->volumeEnabled)
+                HuAudFXVolSet(entry->handle, fn_1_3850(entry->cameraMask, entry->position));
         }
     }
 }
@@ -979,16 +962,20 @@ extern int fn_1_34BC(float screenX) {
 s32 fn_1_34E8(u32 cameras, float x)
 {
     M649AudioWorkView *work;
-    M649AudioConfigView *config;
+    MinigameAudioRange *config;
     s32 pan = MSM_PAN_CENTER;
     if (lbl_1_bss_2F8 != NULL) {
         work = lbl_1_bss_2F8->data;
-        for (config = work->config; config->cameras; config++) {
-            if (config->cameras & cameras) {
+        for (config = work->config; config->cameraMask; config++) {
+            if (config->cameraMask & cameras) {
                 x *= (config->panMax - config->panMin) / 576.0f;
                 pan = config->panMin + x;
-                if (pan < config->panMin) { pan = config->panMin; }
-                if (pan > config->panMax) { pan = config->panMax; }
+                if (pan < config->panMin) {
+                    pan = config->panMin;
+                }
+                if (pan > config->panMax) {
+                    pan = config->panMax;
+                }
                 break;
             }
         }
@@ -1005,15 +992,7 @@ void fn_1_3604(void *position)
 /* Player voice updates and tracked sounds compute pan through the first selected camera. */
 s32 fn_1_3630(u32 cameras, Vec *position)
 {
-    M649CameraWork *work = lbl_1_bss_2FC->data;
-    M649CameraEntry *camera = &work->entries[m649_local_273C(cameras)];
-    Vec screenPosition;
-    float panCoordinate;
-    Hu3D3Dto2D(position, cameras, &screenPosition);
-    /* Apply the camera's split-screen rectangle with the audio helper's 0.9 scale. */
-    panCoordinate = screenPosition.x / 576.0f;
-    panCoordinate = 0.9f * camera->viewportX + panCoordinate * (0.9f * camera->viewportWidth);
-    return m649_local_34E8(cameras, panCoordinate);
+    return m649_local_3630(cameras, position);
 }
 
 /* Calculates volume through camera 0, then discards the result. */
@@ -1025,41 +1004,7 @@ void fn_1_3824(void *position)
 /* Player voice updates and tracked sounds scale volume by depth in the first selected camera. */
 s32 fn_1_3850(u32 cameras, Vec *position)
 {
-    M649AudioWorkView *audio;
-    M649AudioConfigView *config;
-    M649CameraWork *work;
-    M649CameraEntry *camera;
-    Mtx cameraViewMatrix;
-    Vec cameraSpacePosition;
-    float cameraDepth, volumeScale;
-    s32 volume = MSM_VOL_MAX;
-    if (lbl_1_bss_2F8 != NULL) {
-        audio = lbl_1_bss_2F8->data;
-        work = lbl_1_bss_2FC->data;
-        camera = &work->entries[m649_local_273C(cameras)];
-        for (config = audio->config; config->cameras; config++) {
-            if (config->cameras & cameras) {
-                C_MTXLookAt(cameraViewMatrix, &camera->position, &camera->up, &camera->target);
-                PSMTXMultVec(cameraViewMatrix, position, &cameraSpacePosition);
-                cameraDepth = -cameraSpacePosition.z;
-                if (cameraDepth < config->distanceMiddle) {
-                    volumeScale = (config->distanceMiddle - cameraDepth) /
-                             (config->distanceMiddle - config->distanceNear);
-                    volumeScale *= config->volumeMax - config->volumeMiddle;
-                    volume = config->volumeMiddle + volumeScale;
-                } else {
-                    volumeScale = (cameraDepth - config->distanceMiddle) /
-                             (config->distanceFar - config->distanceMiddle);
-                    volumeScale *= config->volumeMiddle - config->volumeMin;
-                    volume = config->volumeMiddle - volumeScale;
-                }
-                if (volume < config->volumeMin) { volume = config->volumeMin; }
-                if (volume > config->volumeMax) { volume = config->volumeMax; }
-                break;
-            }
-        }
-    }
-    return volume;
+    return m649_local_3850(cameras, position);
 }
 
 /* Plays a positioned sound with volume and pan for camera 0, then discards its handle. */
@@ -1119,9 +1064,13 @@ s32 fn_1_4240(u32 cameras, s32 effect, Vec *position, s32 panEnabled, s32 volume
     s32 handle = -1;
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if (cameras & bit) {
-            if (panEnabled) { pan = m649_local_3630(bit, position); }
+            if (panEnabled) {
+                pan = m649_local_3630(bit, position);
+            }
             else { pan = MSM_PAN_CENTER; }
-            if (volumeEnabled) { volume = m649_local_3850(bit, position); }
+            if (volumeEnabled) {
+                volume = m649_local_3850(bit, position);
+            }
             else { volume = MSM_VOL_MAX; }
             handle = HuAudFXPlayVolPan(effect, volume, pan);
             fn_1_4788(bit, effect, handle, position, panEnabled, volumeEnabled);
@@ -1140,16 +1089,16 @@ extern void fn_1_473C(int effect, int handle, Vec *position, int panEnabled, int
 void fn_1_4788(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    M649AudioWork *state=((M649AudioWork *)(lbl_1_bss_2F8->data));
-    M649AudioEntry *record=state->entries;
+    M649AudioWork *state=lbl_1_bss_2F8->data;
+    MinigameAudioRecord *record=state->entries;
     int index;
     for(index=0;index<64;index++,record++) {
         if(record->handle==-1) {
             record->handle=handle;
             record->effect=effect;
-            record->cameras=cameraMask;
-            record->updatePan=panEnabled;
-            record->updateVolume=volumeEnabled;
+            record->cameraMask=cameraMask;
+            record->panEnabled=panEnabled;
+            record->volumeEnabled=volumeEnabled;
             record->position=position;
             break;
         }
@@ -1162,8 +1111,8 @@ void fn_1_4800(void) {
 
     index = 0;
     while (index < 80) {
-        *(s32 *) ((u8 *) &lbl_1_bss_1B8 + (index * 4)) = -1;
-        *(s32 *) ((u8 *) &lbl_1_bss_78 + (index * 4)) = -1;
+        lbl_1_bss_1B8[index] = -1;
+        lbl_1_bss_78[index] = -1;
         index += 1;
     }
 }

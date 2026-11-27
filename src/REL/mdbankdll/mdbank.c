@@ -186,7 +186,19 @@ extern const MDBANK_VOID_FUNC _dtors[];
 s32 lbl_1_data_0 = -1;
 s32 lbl_1_data_4[12] = { DATANUM(0x940000, 3), DATANUM(0x940000, 4), DATANUM(0x940000, 6), DATANUM(0x940000, 7), DATANUM(0x940000, 24), DATANUM(0x940000, 9), DATANUM(0x940000, 28), DATANUM(0x940000, 19), DATANUM(0x940000, 20), DATANUM(0x940000, 21), DATANUM(0x940000, 22), DATANUM(0x940000, 75) };
 s16 lbl_1_data_34[4] = { 2, 4, 4, 1 };
-MDBANK_SPRITE_CONFIG lbl_1_data_3C[11] = { { 0, 0, 2, 10, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 0, 1, 3, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 0, 5, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 1, 5, 0, 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 2, 5, 0, 3, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 1, 3, 5, 0, 1, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 0, 4, 20, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 1, 4, 21, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 2, 4, 22, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 2, 3, 4, 23, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f }, { 3, 0, 11, 0, 0, 288.0f, 240.0f, 10.0f, 10.0f, 0.0f } };
+MDBANK_SPRITE_CONFIG lbl_1_data_3C[11] = {
+    {0, 0, 2, 10, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {0, 1, 3, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 0, 5, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 1, 5, 0, 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 2, 5, 0, 3, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 3, 5, 0, 1, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 0, 4, 20, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 1, 4, 21, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 2, 4, 22, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 3, 4, 23, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {3, 0, 11, 0, 0, 288.0f, 240.0f, 10.0f, 10.0f, 0.0f},
+};
 s32 lbl_1_data_19C[36] = { DATANUM(0x940000, 28), DATANUM(0x940000, 30), DATANUM(0x940000, 29), DATANUM(0x940000, 54), DATANUM(0x940000, 31), DATANUM(0x940000, 32), DATANUM(0x940000, 33), DATANUM(0x940000, 34), DATANUM(0x940000, 35), DATANUM(0x940000, 36), DATANUM(0x940000, 41), DATANUM(0x940000, 42), DATANUM(0x940000, 43), DATANUM(0x940000, 44), DATANUM(0x940000, 45), DATANUM(0x940000, 46), DATANUM(0x940000, 47), DATANUM(0x940000, 48), DATANUM(0x940000, 49), DATANUM(0x940000, 50), DATANUM(0x940000, 51), DATANUM(0x940000, 37), DATANUM(0x940000, 38), DATANUM(0x940000, 39), DATANUM(0x940000, 40), DATANUM(0x940000, 53), DATANUM(0x940000, 52), DATANUM(0x940000, 59), DATANUM(0x940000, 60), DATANUM(0x940000, 61), DATANUM(0x940000, 62), DATANUM(0x940000, 55), DATANUM(0x940000, 63), DATANUM(0x940000, 56), DATANUM(0x940000, 57), DATANUM(0x940000, 58) };
 MDBANK_ITEM lbl_1_data_22C[55] = {
     { 0, 1, 1, 10, 4, -1, -1, -1, -1, -1, 0, 0, MESSNUM(MESS_SBANK_ITEM, 0), MESSNUM(MESS_SBANK_ITEM, 55) },
@@ -817,8 +829,8 @@ void fn_1_1BD0(void)
 {
 }
 
-/* Returns the left guide to its first motion after the gesture timer expires. */
-void fn_1_1BD4(OMOBJ *obj)
+/* Restores the guide motion when the gesture timer expires. */
+static inline void GuideGestureEnd(OMOBJ *obj)
 {
     if (obj->work[3]++ > 45) {
         obj->objFunc = NULL;
@@ -826,39 +838,39 @@ void fn_1_1BD4(OMOBJ *obj)
         fn_8002CCC0(obj->mdlId[0], obj->mtnId[0], 0.0f,
             15.0f, ((1 << 30) | (1 << 0)));
     }
+}
+
+/* Returns the left guide to its first motion after the gesture timer expires. */
+void fn_1_1BD4(OMOBJ *obj)
+{
+    GuideGestureEnd(obj);
+}
+
+/* Starts a guide gesture and sets its return callback. */
+static inline void GuideGestureStart(OMOBJ *obj, OMOBJ_FUNC endGesture)
+{
+    fn_8002CCC0(obj->mdlId[0], obj->mtnId[1], 0.0f,
+        20.0f, 0);
+    obj->work[3] = 0;
+    obj->objFunc = endGesture;
 }
 
 /* Starts the left guide gesture and installs its timed return callback. */
 void fn_1_1C64(void)
 {
-    OMOBJ *obj = lbl_1_bss_C;
-
-    fn_8002CCC0(obj->mdlId[0], obj->mtnId[1], 0.0f,
-        20.0f, 0);
-    obj->work[3] = 0;
-    obj->objFunc = fn_1_1BD4;
+    GuideGestureStart(lbl_1_bss_C, fn_1_1BD4);
 }
 
 /* Returns the right guide to its first motion after the gesture timer expires. */
 void fn_1_1CD8(OMOBJ *obj)
 {
-    if (obj->work[3]++ > 45) {
-        obj->objFunc = NULL;
-        fn_8002D86C(obj->mdlId[0], 1.0f);
-        fn_8002CCC0(obj->mdlId[0], obj->mtnId[0], 0.0f,
-            15.0f, ((1 << 30) | (1 << 0)));
-    }
+    GuideGestureEnd(obj);
 }
 
 /* Starts the right guide gesture and installs its timed return callback. */
 void fn_1_1D68(void)
 {
-    OMOBJ *obj = lbl_1_bss_10;
-
-    fn_8002CCC0(obj->mdlId[0], obj->mtnId[1], 0.0f,
-        20.0f, 0);
-    obj->work[3] = 0;
-    obj->objFunc = fn_1_1CD8;
+    GuideGestureStart(lbl_1_bss_10, fn_1_1CD8);
 }
 
 /* Moves the left guide along its stored curve while turning it fifteen degrees. */
@@ -1945,8 +1957,7 @@ void fn_1_5D64(OMOBJ *obj)
     s16 j;
 
     for (i = 0; i < 36; i++) {
-        lbl_1_bss_18A0[i] = HuSprAnimRead(fn_80008DD0(
-            lbl_1_data_19C[i], 0x10000000, 2));
+        lbl_1_bss_18A0[i] = HuSprAnimDataRead(lbl_1_data_19C[i]);
     }
 
     for (i = 0; i < 10; i++, set++) {
@@ -2659,16 +2670,16 @@ s32 fn_1_9DE8(void)
     fn_1_11A0();
     fn_8002CCC0(lbl_1_bss_C->mdlId[0], lbl_1_bss_C->mtnId[2], 0.0f, 30.0f, 0);
     fn_8002CCC0(lbl_1_bss_10->mdlId[0], lbl_1_bss_10->mtnId[2], 0.0f, 30.0f, 0);
-    HuPrcSleep(0x2D);
+    HuPrcSleep(45);
     fn_1_1EE8();
     fn_1_2378();
-    HuPrcSleep(0x1E);
+    HuPrcSleep(30);
     fn_1_6B0C();
     fn_1_5C1C(0);
-    HuPrcSleep(0x1E);
+    HuPrcSleep(30);
     fn_8002CCC0(lbl_1_bss_C->mdlId[0], lbl_1_bss_C->mtnId[0], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
     fn_8002CCC0(lbl_1_bss_10->mdlId[0], lbl_1_bss_10->mtnId[0], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
-    HuPrcSleep(0x3C);
+    HuPrcSleep(60);
     return 1;
 }
 
@@ -2913,7 +2924,7 @@ short fn_1_EA98(s32 unused0, s32 unused1)
     HuAudFXPlay(MSM_SE_BANK_DEPOSIT_DONE);
     fn_1_92A4();
 
-    WipeCreate(1, 0, 0x3C);
+    WipeCreate(1, 0, 60);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
     }
