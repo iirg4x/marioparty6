@@ -1,5 +1,5 @@
 /* Owns the player score boxes and updates totals and rankings for Hyper Sniper results. */
-#include "dolphin/math.h"
+#include "REL/m646Dll/m646.h"
 #include "REL/m646Dll/module_types.h"
 #include "game/esprite.h"
 
@@ -57,7 +57,6 @@ u16 fn_1_8FD4(void);
 s32 fn_1_8FFC(void);
 s32 fn_1_9024(void);
 void fn_1_9118(void);
-s32 fn_1_9380(void);
 void fn_1_93E0(OMOBJ *obj);
 void fn_1_9764(OMOBJ *obj);
 

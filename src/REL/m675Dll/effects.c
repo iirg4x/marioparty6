@@ -1,4 +1,6 @@
 /* Sets up and draws the Banana Shake particle and ground effects. */
+#include "REL/m675Dll/prop_work.h"
+#include "REL/minigame_ground_effect.h"
 #include "dolphin/math.h"
 
 #include "dolphin/gx.h"
@@ -28,110 +30,15 @@
 #define M675_LARGE_PARTICLE_RESOURCE FILENUM(DATANUM(0x860000, 17))
 #define M675_BURST_PARTICLE_RESOURCE FILENUM(DATANUM(0x860000, 18))
 
-typedef struct M675EffectRecord {
-
-    s32 active;
-
-    f32 radius;
-
-    Vec *position;
-
-} M675EffectRecord;
-
 typedef struct M675EffectCollection {
 
-    M675EffectRecord *records[5];
+    MinigameGroundEffect *records[5];
 
     f32 xOffsets[10];
 
     f32 zOffsets[10];
 
 } M675EffectCollection;
-
-typedef struct M675EffectCollision {
-    u32 flags, mask, type;
-    s32 index; /* Owner-supplied record index. */
-    s32 shapeType; /* Collision shape selector: 0 for sphere, 10 for ring, 11 for boundary. */
-    OMOBJ *owner;
-    void *excludedOwner;
-    OMOBJ_FUNC update;
-    s32 (*contact)(struct M675EffectCollision *, struct M675EffectCollision *);
-    Vec *position, *velocity;
-    Vec positionCopy;
-    f32 radius;
-    f32 yieldOnContact; /* Nonzero makes this sphere move against a zero-valued sphere. */
-    s32 handled;
-} M675EffectCollision;
-
-/* Records updated by the three prop emitter managers and queried by computer-player input. */
-typedef struct M675EffectRequest {
-
-    s32 type;
-
-    s32 enabled;
-
-    s32 active;
-
-    f32 timer;
-    u32 unmappedWordAfterTimer;
-    s32 phaseCounter, modelId;
-
-    s32 index;
-
-    Vec position;
-
-    Vec rotation, velocity, rotationDelta;
-    f32 scale, verticalOffset, heightLimit;
-    Vec sourcePosition, projectedPosition;
-    M675EffectCollision collision;
-
-} M675EffectRequest;
-
-/* Transform, motion and sequence state shared by prop emitter managers. */
-typedef struct M675EmitterState {
-    u8 unmappedBytesBeforePosition[96];
-    Vec position, velocity, rotation;
-    u8 unmappedBytesBeforeMotion[20];
-    s32 motion, motionFrame, requestedMotion;
-    f32 motionSpeed;
-    s32 phase, phaseTimer;
-    f32 countdown, targetAngle;
-    Vec targetPosition;
-    s32 actionPhase, actionTimer, soundTimer;
-    u8 unmappedBytesBeforeMovement[4];
-    s32 movementPhase, movementTimer;
-    u8 unmappedBytesBeforeMotionTracking[32];
-    s32 motionActive, motionTimer;
-    u8 unmappedBytesBeforeAirborne[4];
-    s32 airborne;
-    u8 unmappedBytesBeforePositionSync[28];
-    s32 positionSyncEnabled;
-    Vec displayOffset;
-    f32 movementSoundDistance;
-    M675EffectRecord effectRegistration;
-    u8 unmappedBytesAfterEffectRegistration[108];
-} M675EmitterState;
-
-typedef struct M675PropParameter M675PropParameter;
-
-/* Prop callbacks allocate the record pool; computer-player input queries its active positions. */
-typedef struct M675EffectRequestStorage {
-    M675EmitterState state;
-    M675PropParameter *parameters;
-    s32 id, updateCount;
-    Vec initialPosition;
-    s32 sequencePhase, delay, sequenceTimer;
-    u8 unmappedBytesBeforeControl[4];
-    s32 controlValue, secondaryControlValue;
-    f32 bounceScale, bounceAngle;
-    u8 unmappedBytesBeforeRequests[152];
-    M675EffectRequest *requests;
-    s32 soundHandle, eventCount, shuffleIndex, effectActive;
-    f32 effectMotionSpeed; /* Shared main/shape motion playback-speed multiplier. */
-    s32 alternateMotionStart;
-    u8 shuffledEffectTypes[20];
-    Vec displayPosition;
-} M675EffectRequestStorage;
 
 typedef struct M675ParticleConfiguration {
 
@@ -163,7 +70,10 @@ OMOBJ **lbl_1_data_848[4] = {
 
 extern OMOBJ **lbl_1_data_834[5];
 
-u8 lbl_1_data_858[8] = { 192, 192, 192, 96, 144, 144, 208, 96 };
+M675ParticleConfiguration lbl_1_data_858[2] = {
+    {{192, 192, 192, 96}},
+    {{144, 144, 208, 96}}
+};
 
 extern u8 *fn_1_A38(s32 resourceId);
 
@@ -197,9 +107,9 @@ Vec *fn_1_D550(s32 type, s32 index)
 
     OMOBJ *manager;
 
-    M675EffectRequestStorage *storage;
+    M675PropWork *storage;
 
-    M675EffectRequest *request;
+    M675EmitterRecord *request;
 
     Vec *best = NULL;
 
@@ -225,13 +135,13 @@ Vec *fn_1_D550(s32 type, s32 index)
 
     storage = manager->data;
 
-    request = storage->requests;
+    request = storage->records;
 
     for (i = 0; i < requestLimit; i++, request++) {
 
-        if (request->active != 0 && request->enabled != 0 &&
+        if (request->state != 0 && request->enabled != 0 &&
 
-            request->type == type && request->index == index) {
+            request->type == type && request->playerIndex == index) {
 
             if (best == NULL) {
 
@@ -321,9 +231,9 @@ void fn_1_D708(OMOBJ *object)
 
     M675ParticleConfiguration *configuration;
 
-    configuration = (M675ParticleConfiguration *)object->data;
+    configuration = object->data;
 
-    *configuration = *(const M675ParticleConfiguration *)lbl_1_data_858;
+    *configuration = lbl_1_data_858[0];
 
     animation = HuSprAnimRead(fn_80008DD0((s32) fn_1_A38(M675_LARGE_PARTICLE_RESOURCE),
                                                    0x10000000, 2));
@@ -332,7 +242,7 @@ void fn_1_D708(OMOBJ *object)
 
     object->mdlId[0] = modelId;
 
-    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    particle = lbl_802C01C8[(s16)modelId].hookData;
 
     fn_8003269C(modelId, 0);
 
@@ -432,14 +342,13 @@ void fn_1_D9A4(OMOBJ *object)
 
     s32 index;
 
-    animation = HuSprAnimRead(fn_80008DD0((s32) fn_1_A38(M675_BURST_PARTICLE_RESOURCE),
-                                                   0x10000000, 2));
+    animation = HuSprAnimDataRead((s32)fn_1_A38(M675_BURST_PARTICLE_RESOURCE));
 
     modelId = fn_8003216C(animation, 64);
 
     object->mdlId[1] = modelId;
 
-    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    particle = lbl_802C01C8[(s16)modelId].hookData;
 
     fn_800325B0(modelId, 218, 203, 158);
 
@@ -588,7 +497,7 @@ void fn_1_DE14(HU3D_MODEL *model, Mtx *view)
 
     Mtx matrix;
 
-    M675EffectRecord *record;
+    MinigameGroundEffect *record;
 
     f32 *xOffsets;
 
@@ -834,11 +743,11 @@ void fn_1_E4F8(const Vec *position, f32 radius, s32 count)
 
 /* Player and prop setup register a live position/radius record in the first free ground-effect
  * slot. */
-void fn_1_E918(M675EffectRecord *effect)
+void fn_1_E918(MinigameGroundEffect *effect)
 
 {
 
-    M675EffectRecord **entry;
+    MinigameGroundEffect **entry;
 
     s32 index;
 

@@ -62,19 +62,7 @@ M646TargetCandidate *fn_1_ABB0(M646PlayerTicket *ticket);
 M646TargetCandidate *fn_1_AE64(M646PlayerTicket *ticket);
 M646TargetCandidate *fn_1_B07C(M646PlayerTicket *ticket);
 f32 fn_1_B2BC(M646PlayerTicket *ticket);
-void fn_1_1E4(s32 camera);
-void fn_1_81FC(s16 index, Vec *out);
-void fn_1_59E0(s16 player, Vec *position);
-s32 fn_1_2CC(void);
-void fn_1_5850(s16 player);
-s32 fn_1_57DC(s16 player);
-void fn_1_589C(s16 player);
-void fn_1_5634(OMOBJ *obj);
-s32 fn_1_5694(OMOBJ *obj);
-void fn_1_5A64(OMOBJ *obj, s16 motion);
 
-void fn_1_55A0(void);
-s32 fn_1_9380(void);
 
 void fn_1_98E0(OMOBJMAN *objman);
 void fn_1_9978(OMOBJ *obj);
@@ -83,8 +71,6 @@ void fn_1_9CD8(OMOBJ *obj);
 void fn_1_9E3C(OMOBJ *obj);
 void fn_1_9F80(OMOBJ *obj);
 void fn_1_A028(OMOBJ *obj);
-s32 fn_1_A0D4(void);
-s32 fn_1_A0FC(void);
 void fn_1_A124(void);
 void fn_1_A158(void);
 s32 fn_1_A34C(const M646PlayerTicket *ticket);

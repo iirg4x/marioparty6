@@ -1,4 +1,5 @@
 /* Solo Mode character selection, board setup and minigame results. */
+#include "REL/minigame_menu_easing.h"
 #include "REL/minigame_menu_heading.h"
 #include "REL/minigame_menu_motion.h"
 #include "math.h"
@@ -355,7 +356,6 @@ static inline s32 fn_1_5B48_inlined_inlined(void);
 static inline void fn_1_3474_inlined_inlined(s16 windowNo);
 static inline void fn_1_3B10_inlined_inlined(void);
 static inline void fn_1_4338_for_1AA1C(s32 messageNo);
-static inline void fn_1_3F0C_for_1AA1C(s16 windowNo, s32 messageNo, s16 speed);
 static inline void fn_1_35EC_for_1B5EC(s16 windowNo);
 static inline void fn_1_4338_for_1B5EC(s32 messageNo);
 static inline s16 fn_1_19A20_for_1B5EC(void);
@@ -608,7 +608,6 @@ MDSING_CHARACTER_NEIGHBORS lbl_1_data_AF4[11] = {
     { { 6, -1, -1, -1, -1, -1, 9, 5 }, -1 }
 };
 
-char lbl_1_data_BBA[] = "\n-----===== retry setting ok!! =====-----\n\n";
 
 
 
@@ -884,8 +883,8 @@ void fn_1_3A0(void)
     }
 }
 
-/* Reports the mode allocations, frees the Solo menu archive and starts board loading. */
-static inline void BoardLoadStart(void)
+/* Starts asynchronous board loading after releasing the Solo menu archive. */
+void fn_1_5E8(void)
 {
     lbl_1_bss_34 = 0;
     OSReport(lbl_1_data_928);
@@ -897,12 +896,6 @@ static inline void BoardLoadStart(void)
     OSReport(lbl_1_data_99D);
     fn_800097F4(DATANUM(0x9a0000, 0));
     fn_8000DAC0(fn_1_3A0, 256, 16384, 0, lbl_1_bss_0);
-}
-
-/* Starts asynchronous board loading after releasing the Solo menu archive. */
-void fn_1_5E8(void)
-{
-    BoardLoadStart();
 }
 
 /* Commits the selected character, difficulty and minigame pack before starting a Solo board. */
@@ -1502,8 +1495,8 @@ s16 fn_1_3708(s16 winNo, s16 mode)
     return choice;
 }
 
-/* Displays a message in the center of the chosen window. */
-static inline void MessageWindowSet(s16 winNo, s32 messNum, s16 speed)
+/* Sets centered dialogue text and its reveal speed before the menu waits for input. */
+void fn_1_37DC(s16 winNo, s32 messNum, s16 speed)
 {
     HuWinAttrSet(lbl_1_bss_1398[winNo], HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSet(lbl_1_bss_1398[winNo], messNum);
@@ -1513,12 +1506,6 @@ static inline void MessageWindowSet(s16 winNo, s32 messNum, s16 speed)
     }
 }
 
-/* Sets centered dialogue text and its reveal speed before the menu waits for input. */
-void fn_1_37DC(s16 winNo, s32 messNum, s16 speed)
-{
-    MessageWindowSet(winNo, messNum, speed);
-}
-
 /* Replaces an inserted message when a menu updates a value inside its dialogue. */
 void fn_1_3898(s16 winNo, s32 messNum, s16 insertPos)
 {
@@ -1526,8 +1513,9 @@ void fn_1_3898(s16 winNo, s32 messNum, s16 insertPos)
     HuWinInsertMesSet(lbl_1_bss_1398[winNo], messNum, insertPos);
 }
 
-/* Creates the guide windows and sets their sound callback. */
-static inline void GuideWindowsCreate(void)
+/* Creates the four dialogue and help windows, using controller one and the speaker sound
+ * callback. */
+void fn_1_3908(void)
 {
     s16 windowNo;
 
@@ -1548,13 +1536,6 @@ static inline void GuideWindowsCreate(void)
         winData[lbl_1_bss_1398[windowNo]].padMask = 1;
         HuWinCallbackSet(lbl_1_bss_1398[windowNo], fn_1_0);
     }
-}
-
-/* Creates the four dialogue and help windows, using controller one and the speaker sound
- * callback. */
-void fn_1_3908(void)
-{
-    GuideWindowsCreate();
 }
 
 /* Destroys the Solo dialogue windows during mode teardown. */
@@ -1664,7 +1645,7 @@ void fn_1_4338(s32 messNum)
     }
     if (lbl_1_data_A9C[2] != messNum) {
         lbl_1_data_A9C[2] = messNum;
-        MessageWindowSet(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
+        fn_1_37DC(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
     }
 }
 
@@ -1679,7 +1660,7 @@ void fn_1_44E4(s32 messNum)
     }
     if (lbl_1_data_A9C[2] != messNum) {
         lbl_1_data_A9C[2] = messNum;
-        MessageWindowSet(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
+        fn_1_37DC(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
     }
 }
 
@@ -1740,8 +1721,8 @@ void fn_1_4874(HUSPR_GROUPID groupId, s32 attr)
     }
 }
 
-/* Hide the guide sprite groups. */
-static inline void GuideSpriteGroupsHide(void)
+/* Loads menu sprite animations and creates their groups and members, initially hidden. */
+void fn_1_48F4(void)
 {
     MDSING_SPRITE_DESC *spriteDesc;
     s16 entryNo;
@@ -1770,40 +1751,10 @@ static inline void GuideSpriteGroupsHide(void)
     }
 }
 
-/* Loads menu sprite animations and creates their groups and members, initially hidden. */
-void fn_1_48F4(void)
-{
-    GuideSpriteGroupsHide();
-}
-
 /* This entry point returns without changing state. */
 void fn_1_4B40(void)
 {
 }
-
-/* Returns a clamped sine-eased coordinate for the guide-linked effect's movement. */
-static inline f32 fn_1_4C78_ease90_inlined(f32 start, f32 end, f32 elapsed, f32 duration)
-{
-    if (elapsed <= 0.0f) {
-        return start;
-    }
-    if (elapsed >= duration) {
-        return end;
-    }
-    return (f32)((f64)start + (f64)(end - start) *
-        sin((M_PI * (f64)((90.0f / duration) * elapsed)) / 180.0));
-}
-
-/* Raises and lowers a guide-linked effect coordinate over its flight. */
-static inline f32 fn_1_4C78_ease180_inlined(f32 start, f32 end, f32 elapsed, f32 duration)
-{
-    if ((elapsed <= 0.0f) || (elapsed >= duration)) {
-        return start;
-    }
-    return (f32)((f64)start + (f64)(end - start) *
-        sin((M_PI * (f64)((180.0f / duration) * elapsed)) / 180.0));
-}
-
 
 /* Object callback: moves the guide-linked effects outward along arcing paths. */
 void fn_1_4B44(OMOBJ *obj)
@@ -1823,9 +1774,9 @@ void fn_1_4B44(OMOBJ *obj)
     first = lbl_1_bss_E14;
     second = &lbl_1_bss_E14[1];
     if (firstObj != NULL) {
-        position.x = fn_1_4C78_ease90_inlined(first->startPosition.x, 500.0f,
+        position.x = MinigameMenuEaseOut(first->startPosition.x, 500.0f,
             first->elapsed, duration);
-        position.y = fn_1_4C78_ease180_inlined(first->startPosition.y, 400.0f,
+        position.y = MinigameMenuHalfSine(first->startPosition.y, 400.0f,
             first->elapsed, duration);
         position.z = first->startPosition.z;
         if ((first->elapsed += 1.0f) > duration) {
@@ -1836,9 +1787,9 @@ void fn_1_4B44(OMOBJ *obj)
         }
     }
     if (secondObj != NULL) {
-        position.x = fn_1_4C78_ease90_inlined(second->startPosition.x, -500.0f,
+        position.x = MinigameMenuEaseOut(second->startPosition.x, -500.0f,
             second->elapsed, duration);
-        position.y = fn_1_4C78_ease180_inlined(second->startPosition.y, 400.0f,
+        position.y = MinigameMenuHalfSine(second->startPosition.y, 400.0f,
             second->elapsed, duration);
         position.z = second->startPosition.z;
         if ((second->elapsed += 1.0f) > duration) {
@@ -2497,8 +2448,8 @@ void fn_1_7B94(void)
     HuSprGrpTPLvlSet(lbl_1_bss_1292[1], 0.0f);
 }
 
-/* Updates the alpha of the fading sprite group. */
-static inline void SpriteFadeUpdate(OMOBJ *obj)
+/* Advance the heading group's requested fade once per object update. */
+void fn_1_7BF4(OMOBJ *obj)
 {
     float alpha;
 
@@ -2520,12 +2471,6 @@ static inline void SpriteFadeUpdate(OMOBJ *obj)
             }
             break;
     }
-}
-
-/* Advance the heading group's requested fade once per object update. */
-void fn_1_7BF4(OMOBJ *obj)
-{
-    SpriteFadeUpdate(obj);
 }
 
 /* Change the background texture animations for the selected menu entry and start its fade. */
@@ -2585,7 +2530,7 @@ void fn_1_7F34(OMOBJ *obj)
             }
             break;
     }
-    SpriteFadeUpdate(obj);
+    fn_1_7BF4(obj);
 }
 
 /* Create the rotating menu background and its texture animations during menu setup. */
@@ -4621,13 +4566,13 @@ void fn_1_17D38(void) {
         -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 255U, 255U, 255U);
     Hu3DGLightInfinitytSet(lbl_1_bss_13A0[1]);
     Hu3DGLightStaticSet(lbl_1_bss_13A0[1], 1);
-    GuideWindowsCreate();
+    fn_1_3908();
     shadowCenter = lbl_1_rodata_108;
     shadowUp = lbl_1_rodata_114;
     shadowTarget = lbl_1_rodata_120;
     Hu3DShadowCreate(30.0f, 10.0f, 10000.0f);
     Hu3DShadowPosSet(&shadowCenter, &shadowUp, &shadowTarget);
-    GuideSpriteGroupsHide();
+    fn_1_48F4();
     fn_1_B998();
     fn_1_33264(lbl_1_bss_0);
     lbl_1_bss_4 = fn_8003AB38(lbl_1_bss_0, 4096, 16U, 16U, -1, fn_1_77C0);
@@ -4653,7 +4598,7 @@ void fn_1_17D38(void) {
 void fn_1_188C0(void)
 {
     HuPrcVSleep();
-    OSReport(lbl_1_data_BBA);
+    OSReport("\n-----===== retry setting ok!! =====-----\n\n");
     fn_1_EA0();
     HuPrcEnd();
     while (TRUE) {
@@ -5026,18 +4971,7 @@ static inline void fn_1_4338_for_1AA1C(s32 messageNo)
     }
     if (lbl_1_data_A9C[2] != messageNo) {
         lbl_1_data_A9C[2] = messageNo;
-        MessageWindowSet(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
-    }
-}
-
-/* Update the active human-selection dialogue only when its message changes. */
-static inline void fn_1_3F0C_for_1AA1C(s16 windowNo, s32 messageNo, s16 speed)
-{
-    fn_1_3B8C(windowNo);
-    if (lbl_1_data_A9C[0] != messageNo) {
-        lbl_1_data_A9C[0] = messageNo;
-        lbl_1_data_A9C[1] = -1;
-        MessageWindowSet(lbl_1_data_A98[0], lbl_1_data_A9C[0], speed);
+        fn_1_37DC(lbl_1_data_A98[1], lbl_1_data_A9C[2], 0);
     }
 }
 
@@ -5053,10 +4987,10 @@ s16 fn_1_1AA1C(s16 waitForOpeningMotion)
         fn_1_B900(fn_1_C264);
         fn_1_4338_for_1AA1C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_51F4();
-        fn_1_3F0C_for_1AA1C(3, MESSNUM(MESS_SINGLE_SETTING, 4), 0);
+        fn_1_3F0C(3, MESSNUM(MESS_SINGLE_SETTING, 4), 0);
         for (;;) {
             HuPrcVSleep();
-            fn_1_3F0C_for_1AA1C(3, MESSNUM(MESS_SINGLE_SETTING, 4), 0);
+            fn_1_3F0C(3, MESSNUM(MESS_SINGLE_SETTING, 4), 0);
             if (!fn_1_B8C8()) {
                 continue;
             }
@@ -5107,7 +5041,7 @@ static inline void fn_1_4338_for_1B5EC(s32 messageNo)
     }
     if (lbl_1_data_A9C[2] != messageNo) {
         lbl_1_data_A9C[2] = messageNo;
-        MessageWindowSet(lbl_1_data_A98[1],
+        fn_1_37DC(lbl_1_data_A98[1],
             lbl_1_data_A9C[2], 0);
     }
 }
@@ -5287,7 +5221,7 @@ s16 fn_1_1D174(void) {
 void fn_1_1DCE0(void)
 {
     fn_1_6B4();
-    BoardLoadStart();
+    fn_1_5E8();
     HuPrcSleep(10);
     fn_1_68C0();
     fn_1_57E4();

@@ -56,9 +56,9 @@ void MicQuizMicContextSet(s32 questionType);
 void MicQuizPortraitShow(s32 playerIndex);
 
 struct QuizCardEntries {
-    s32 marker;
+    s32 unk00; /* The game's code never reads this field. */
     s32 objectIndex;
-    s32 placementState;
+    s32 unk08; /* The game's code never reads this field. */
 };
 
 u8 lbl_1_data_5F0[0x1C] = { 0x00, 0xA4, 0x00, 0x7A, 0x00, 0xA4, 0x00, 0x7B, 0x00, 0xA4, 0x00, 0x7C,
@@ -149,21 +149,21 @@ void fn_1_14EE0(void) {
     fn_80026760(lbl_1_bss_3D8[1], lbl_1_data_66C[lbl_1_bss_100],
                     0.0f, -110.0f);
 
-    for (index = 0; index < 0x14; index++) {
+    for (index = 0; index < 20; index++) {
         lbl_1_bss_AC[index] = 0;
     }
     for (index = 0; index < 8; index++) {
         for (column = 0; column < 4; column++) {
             lbl_1_bss_6E0[index].entries[column].motionType = -1;
             lbl_1_bss_6E0[index].entries[column].objectIndex = -1;
-            lbl_1_bss_6E0[index].entries[column].placed = -1;
+            lbl_1_bss_6E0[index].entries[column].unk08 = -1;
         }
     }
     for (index = 0; index < 8; index++) {
         for (column = 0; column < 8; column++) {
-            lbl_1_bss_3E0[index][column].marker = -1;
+            lbl_1_bss_3E0[index][column].unk00 = -1;
             lbl_1_bss_3E0[index][column].objectIndex = -1;
-            lbl_1_bss_3E0[index][column].placementState = -1;
+            lbl_1_bss_3E0[index][column].unk08 = -1;
         }
     }
     for (index = 0; index < 8; index++) {
@@ -222,40 +222,7 @@ s32 fn_1_15714(void) {
 
 /* Counts the objects that make up the answer, reports it and records it. */
 void fn_1_15828(void) {
-    s32 count;
-    s32 index;
-    count = 0;
-    lbl_1_bss_94 = lbl_1_bss_74[0];
-    switch (lbl_1_bss_98)
-    {
-    case 0 :
-        index = 0;
-        while (index < lbl_1_bss_90)
-        {
-            if (lbl_1_bss_94 == lbl_1_bss_24[index])
-            {
-                count += 1;
-            }
-            index += 1;
-        }
-        break;
-    case 1 :
-        count = lbl_1_bss_90;
-        break;
-    case 2 :
-        index = 0;
-        while (index < lbl_1_bss_90)
-        {
-            if (lbl_1_bss_94 != lbl_1_bss_24[index])
-            {
-                count += 1;
-            }
-            index += 1;
-        }
-        break;
-    }
-    MicQuizExpectedAnswerSet(count);
-    OSReport("----------------------------ANSER:%d\n", count);
+    QuizCountAnswerRecord();
 }
 
 void fn_1_15968(void) {
@@ -379,8 +346,8 @@ void fn_1_1598C(OMOBJ *object) {
         if (lbl_1_bss_104 >= 180.0f) {
             lbl_1_bss_104 = 0.0f;
             lbl_1_bss_FC = 0xC;
-            WipeCreate(2, 0, 0x14);
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
+            WipeCreate(2, 0, 20);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 500);
             return;
         }
         lbl_1_bss_104 += 1.0f;
@@ -465,7 +432,7 @@ s32 fn_1_1626C(s32 groupIndex, s32 entryIndex, s32 motionType, s32 objectIndex) 
     if (lbl_1_bss_6E0[groupIndex].entries[entryIndex].motionType == -1) {
         lbl_1_bss_6E0[groupIndex].entries[entryIndex].motionType = motionType;
         lbl_1_bss_6E0[groupIndex].entries[entryIndex].objectIndex = objectIndex;
-        lbl_1_bss_6E0[groupIndex].entries[entryIndex].placed = 1;
+        lbl_1_bss_6E0[groupIndex].entries[entryIndex].unk08 = 1;
         return 1;
     }
     return 0;
@@ -578,7 +545,7 @@ s32 fn_1_166D4(HuVecF *position, s32 motionType, s32 objectIndex) {
         if (lbl_1_bss_6E0[row].entries[column].motionType == -1) {
             lbl_1_bss_6E0[row].entries[column].motionType = motionType;
             lbl_1_bss_6E0[row].entries[column].objectIndex = objectIndex;
-            lbl_1_bss_6E0[row].entries[column].placed = 1;
+            lbl_1_bss_6E0[row].entries[column].unk08 = 1;
             result = 1;
         } else {
             result = 0;
@@ -698,9 +665,9 @@ s32 fn_1_16BA8(s32 row, s32 column, s32 value) {
             (lbl_1_bss_3E0[row][previousColumn].objectIndex == -1) &&
             (lbl_1_bss_3E0[row][nextColumn].objectIndex == -1))
         {
-            lbl_1_bss_3E0[row][column].marker = -1;
+            lbl_1_bss_3E0[row][column].unk00 = -1;
             lbl_1_bss_3E0[row][column].objectIndex = value;
-            lbl_1_bss_3E0[row][column].placementState = 1;
+            lbl_1_bss_3E0[row][column].unk08 = 1;
             return 1;
         }
         return 0;
@@ -708,42 +675,16 @@ s32 fn_1_16BA8(s32 row, s32 column, s32 value) {
     return 0;
 }
 
+/* Spreads the two counting models apart along X. */
 void fn_1_16D74(void)
 {
-    HuVecF positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
 }
 
+/* Spreads the two counting models apart along X. */
 void fn_1_16E38(void)
 {
-    HuVecF positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
 }
 
 /* Slides the two side models toward the middle by the given step (0 puts them there at once) and

@@ -80,16 +80,16 @@ void fn_1_1E460(void);
 void fn_1_1E524(s16 modelId);
 void fn_1_1E600(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination);
 void fn_1_1E6B8(void);
-extern s16 lbl_1_bss_1024[0x24];
+extern s16 lbl_1_bss_1024[36];
 extern s32 lbl_1_bss_106C;
 extern QuizGridCell lbl_1_bss_1070[36];
 extern s16 lbl_1_bss_1190;
-extern ANIMDATA *lbl_1_bss_1194[0x24];
+extern ANIMDATA *lbl_1_bss_1194[36];
 extern s16 lbl_1_bss_1224;
 extern OMOBJ *lbl_1_bss_1228;
 extern OMOBJ *lbl_1_bss_122C;
 extern s32 lbl_1_bss_1230;
-extern QuizGridTileView lbl_1_bss_1234[0x24];
+extern QuizGridTileView lbl_1_bss_1234[36];
 extern s32 lbl_1_bss_1594;
 extern HUPROCESS *lbl_1_bss_E38;
 extern f32 lbl_1_bss_E3C;
@@ -99,7 +99,7 @@ extern ANIMDATA *lbl_1_bss_E5C;
 extern s16 lbl_1_bss_E60;
 extern s16 lbl_1_bss_E62;
 extern Vec lbl_1_bss_E64;
-extern s16 lbl_1_bss_E70[0xDA];
+extern s16 lbl_1_bss_E70[218];
 
 /* Builds the quiz grid, its tile animations, and the scene's display tasks. */
 void fn_1_1C210(void) {
@@ -199,7 +199,7 @@ void fn_1_1C210(void) {
         HuSprAttrSet(lbl_1_bss_1190, (s16) index, 4);
     }
     fn_1_1D578();
-    lbl_1_bss_E5C = HuSprAnimRead(fn_80008DD0(DATANUM(0xa40000, 0x43), 0x10000000, 2));
+    lbl_1_bss_E5C = HuSprAnimDataRead(DATANUM(0xa40000, 0x43));
     animationId = fn_80030B2C(lbl_1_bss_E5C, lbl_1_bss_E60, "v77_BG");
     Hu3DAnimBankSet(animationId, (u16) lbl_1_bss_E40[0]);
     for (index = 0; index < lbl_1_bss_1230 * lbl_1_bss_1230; ++index)
@@ -270,7 +270,7 @@ void fn_1_1C210(void) {
             lbl_1_bss_1234[quizState + index * lbl_1_bss_1230].rotationX = rotationX;
             lbl_1_bss_1234[quizState + index * lbl_1_bss_1230].rotationY = rotationY;
             lbl_1_bss_1234[quizState + index * lbl_1_bss_1230].rotationZ = rotationZ;
-            lbl_1_bss_1234[quizState + index * lbl_1_bss_1230].velocityZ = 0.0f;
+            lbl_1_bss_1234[quizState + index * lbl_1_bss_1230].unk14 = 0.0f;
         }
     }
     lbl_1_bss_E70[0] = fn_80025A04(fn_80008DD0((DATANUM(0xa40000, 0x32)), 0x10000000, 2));
@@ -327,7 +327,7 @@ void fn_1_1D6BC(OMOBJ *work) {
         model->motions[motionIndex] = fn_80030458(model->modelId, animation);
     }
     model->state = 0;
-    model->characterId = work->work[0];
+    model->unk04 = work->work[0];
     fn_800269E8(model->modelId, 0x40000002);
     fn_8002C95C(model->modelId, model->motions[0]);
     fn_80026760(model->modelId, 0.0f, 0.0f, 0.0f);
@@ -357,7 +357,7 @@ void fn_1_1D82C(OMOBJ *object) {
         motionIndex += 1;
     }
     work->state = 0;
-    work->characterId = object->work[0];
+    work->unk04 = object->work[0];
     fn_800269E8(lbl_1_bss_E62, 0x40000001);
     fn_800269E8(lbl_1_bss_E62, 1);
     fn_8002C95C(lbl_1_bss_E62, work->motions[0]);
@@ -507,8 +507,8 @@ void fn_1_1DBBC(OMOBJ *object) {
         if (lbl_1_bss_104 >= 120.0f) {
             lbl_1_bss_104 = 0.0f;
             lbl_1_bss_FC = 0x10;
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
-            WipeCreate(2, 0, 0x14);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 500);
+            WipeCreate(2, 0, 20);
             return;
         }
         lbl_1_bss_104 += 1.0f;
@@ -547,23 +547,10 @@ void fn_1_1E364(void) {
     }
 }
 
+/* Spreads the two cube-round models apart along X. */
 void fn_1_1E460(void)
 {
-    Vec positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
 }
 
 /* Layer hook: draws the cube grid's cells from their images. */
@@ -584,11 +571,10 @@ void fn_1_1E524(s16 modelId) {
     fn_8002BF48();
 }
 
+/* Copies the specified EFB region to a cube-round texture. */
 void fn_1_1E600(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format,
                 void *destination) {
-    GXSetTexCopySrc((u16)x, (u16)y, (u16)width, (u16)height);
-    GXSetTexCopyDst((u16)width, (u16)height, format, 0);
-    GXCopyTex(destination, 1);
+    QuizTextureCopy(x, y, width, height, format, destination);
 }
 
 /* Returns 1 when the value is zero, within 0.0001. */
@@ -642,7 +628,7 @@ void fn_1_1E6B8(void) {
         }
 
         else if (lbl_1_bss_1594 == 3) {
-            for (frame = 0; frame < 0x78; ++frame) {
+            for (frame = 0; frame < 120; ++frame) {
                 HuPrcVSleep();
                 for (row = 0; row < lbl_1_bss_1230; ++row) {
                     for (column = 0; column < lbl_1_bss_1230; ++column) {
@@ -671,7 +657,7 @@ void fn_1_1E6B8(void) {
         else if (lbl_1_bss_1594 == 4) {
             spread = 60.0f * lbl_1_data_1348[lbl_1_bss_100];
             step = (spread * (f32)(lbl_1_bss_1230 - 1)) / 60.0f;
-            for (frame = 0; frame < 0x3C; ++frame) {
+            for (frame = 0; frame < 60; ++frame) {
                 HuPrcVSleep();
                 for (row = 0; row < lbl_1_bss_1230; ++row) {
                     for (column = 0; column < lbl_1_bss_1230; ++column) {
@@ -781,17 +767,17 @@ void fn_1_1F690(void) {
 }
 
 s32 lbl_1_bss_1594;
-QuizGridTileView lbl_1_bss_1234[0x24];
+QuizGridTileView lbl_1_bss_1234[36];
 s32 lbl_1_bss_1230;
 OMOBJ *lbl_1_bss_122C;
 OMOBJ *lbl_1_bss_1228;
 s16 lbl_1_bss_1224;
-ANIMDATA *lbl_1_bss_1194[0x24];
+ANIMDATA *lbl_1_bss_1194[36];
 s16 lbl_1_bss_1190;
 QuizGridCell lbl_1_bss_1070[36];
 s32 lbl_1_bss_106C;
-s16 lbl_1_bss_1024[0x24];
-s16 lbl_1_bss_E70[0xDA];
+s16 lbl_1_bss_1024[36];
+s16 lbl_1_bss_E70[218];
 Vec lbl_1_bss_E64;
 s16 lbl_1_bss_E62;
 s16 lbl_1_bss_E60;

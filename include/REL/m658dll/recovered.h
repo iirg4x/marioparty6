@@ -3,9 +3,11 @@
 #define REL_M658DLL_RECOVERED_H
 
 #include "dolphin/types.h"
+#include "game/object.h"
 struct omObj_s;
 
 typedef struct M658PlayerWork M658PlayerWork;
+typedef struct M658Pool M658Pool;
 
 #include "dolphin/mtx/GeoTypes.h"
 struct MgPlayer_s;
@@ -37,7 +39,7 @@ struct M658PlayerWork {
     s32 motionSlot;
     f32 actorRotation, rotation, spinY, spinZ;
     Vec motionStart, motionEnd;
-    u8 reserved58[16]; /* Cleared at player setup and unused by the state callbacks. */
+    u8 unk58[16]; /* No code names this field. */
     M658HookActor *itemEffect; /* Pooled effect attached during the response to a missed row
                                        * selection. */
     void *materialColors; /* Saved actor material RGB bytes for the flash effect. */
@@ -62,7 +64,7 @@ typedef struct M658Rows {
     s8 registryIndex[2];
     u8 unk4[4]; /* No code names this field. */
     M658PlayerWork *entries[2][4];
-    u8 reserved28[32]; /* Cleared at row setup; row updates leave these bytes untouched. */
+    u8 unk28[32]; /* No code names this field. */
     M658PlayerRow player[2];
     s32 modelCount;
     s16 collisionModels[4];
@@ -73,7 +75,7 @@ typedef struct M658Rows {
 typedef struct M658Runtime {
     s16 timer, phase, substate;
     struct omObj_s *objects[14];
-    u8 reserved40[8]; /* Cleared at runtime setup and unused by the sequence callbacks. */
+    u8 unk40[8]; /* No code names this field. */
     s32 group[4];
     M658PlayerWork *selected;
     M658PlayerWork *other;
@@ -107,5 +109,40 @@ extern M658RegistryWork *lbl_1_bss_18;
 extern s32 lbl_1_bss_8;
 extern M658Rows *lbl_1_bss_24;
 extern M658Runtime *lbl_1_bss_38;
+
+/* Model resources, effects, and interpolation. */
+void fn_1_7048(s32 model, u8 *colors);
+void fn_1_70F8(s32 model, const s8 *colors, f32 scale);
+void fn_1_6414(OMOBJ *object);
+M658ResourceEntry *fn_1_753C(s32 index);
+OMOBJ *fn_1_6384(M658ResourceEntry *description);
+void fn_1_736C(HuVecF *worldPosition, int soundId);
+void *fn_1_6764(M658Pool *pool);
+void *fn_1_67A0(M658Pool *pool, void *item);
+s32 fn_1_7468(s32 soundId);
+void fn_1_571C(s32 player, s16 amount);
+void fn_1_7244(s32 modelId, char *objectName, s32 targetModelId);
+s8 *fn_1_6F70(s32 model);
+s16 fn_1_5770(void);
+f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation);
+f32 fn_1_6A78(f32 startDegrees, f32 endDegrees, f32 interpolation);
+void fn_1_69C8(Point3d *start, Point3d *end, f32 t, Point3d *out);
+s32 fn_1_72D0(s32 modulus, s32 count, s32 *weights);
+void *fn_1_65E8(u8 *buffer, s32 bytes, s32 itemBytes);
+void *fn_1_6680(M658Pool *pool);
+void fn_1_55FC(OMOBJ *object);
+
+/* Setup and shared game state. */
+void *fn_1_A0(s32 priority, u32 bytes, void (*update)(OMOBJ *));
+void ObjectSetup(void);
+void fn_1_264(void);
+void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback);
+
+/* Player and sequence updates. */
+void fn_1_768(void);
+s32 fn_1_C38(void);
+s32 fn_1_C84(void);
+s32 fn_1_CD0(void);
+s32 fn_1_D40(void);
 
 #endif

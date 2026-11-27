@@ -1388,8 +1388,9 @@ void fn_1_4FE8(void)
 
 inline void fn_1_4FE8(void);
 
-/* Restores the character's idle motion after the setup prompt. */
-static inline void UpdateSetupMotion(OMOBJ *obj)
+/* Setup prompt callback: doubles the current motion's speed for 32 updates, then restores speed 1
+ * and loops motion 0. */
+void fn_1_50EC(OMOBJ *obj)
 {
     fn_8002D86C(obj->mdlId[0], 2.0f);
     if (obj->work[3]++ > 30) {
@@ -1398,13 +1399,6 @@ static inline void UpdateSetupMotion(OMOBJ *obj)
         fn_8002CCC0(obj->mdlId[0], obj->mtnId[0], 0.0f, 15.0f,
             ((1 << 30) | (1 << 0)));
     }
-}
-
-/* Setup prompt callback: doubles the current motion's speed for 32 updates, then restores speed 1
- * and loops motion 0. */
-void fn_1_50EC(OMOBJ *obj)
-{
-    UpdateSetupMotion(obj);
 }
 
 /* Starts the character's setup motion and installs its frame callback. */
@@ -1428,7 +1422,7 @@ inline void fn_1_5194(void);
  * and loops motion 0. */
 void fn_1_5208(OMOBJ *obj)
 {
-    UpdateSetupMotion(obj);
+    fn_1_50EC(obj);
 }
 
 /* Starts the second character's brief setup motion and installs its per-frame callback. */
@@ -3289,8 +3283,6 @@ void fn_1_114F4(OMOBJ *obj)
     lbl_1_bss_24->mtnId[0] = 1;
 }
 
-inline void fn_1_114F4(OMOBJ *obj);
-
 /* Enters the player-count screen and initializes the human count from connected controllers,
 * forcing at least one human slot even if no controller is connected. */
 void fn_1_1158C(OMOBJ *obj)
@@ -4313,21 +4305,15 @@ void fn_1_19D24(OMOBJ *obj)
     lbl_1_bss_24->mtnId[0] = 1;
 }
 
-/* Hides the four setup arrows and ends the cursor update. */
-static inline void HideSetupArrows(OMOBJ *obj)
+/* Hides the four handicap and player-selection arrows when fn_1_39C60 ends the handicap step,
+ * then lets that menu transition continue. */
+void fn_1_1A124(OMOBJ *obj)
 {
     HuSprAttrSet(lbl_1_bss_918[2], 2, HUSPR_ATTR_DISPOFF);
     lbl_1_data_DE6[2] = 0;
     HuSprAttrSet(lbl_1_bss_918[2], 3, HUSPR_ATTR_DISPOFF);
     lbl_1_data_DE6[3] = 0;
     fn_1_114F4(obj);
-}
-
-/* Hides the four handicap and player-selection arrows when fn_1_39C60 ends the handicap step,
- * then lets that menu transition continue. */
-void fn_1_1A124(OMOBJ *obj)
-{
-    HideSetupArrows(obj);
 }
 
 /* On first entry to individual handicap setup, moves the four character cards into position and
@@ -5179,7 +5165,7 @@ void fn_1_2457C(OMOBJ *obj)
 /* Hides the team-selection and handicap arrows when team handicap setup ends. */
 void fn_1_249A4(OMOBJ *obj)
 {
-    HideSetupArrows(obj);
+    fn_1_1A124(obj);
 }
 
 /* Brings the player models into the handicap layout and initializes both handicaps. */
@@ -5498,7 +5484,7 @@ void fn_1_28044(OMOBJ *obj)
 /* Hides the rule-selection arrows and ends their object callback after the choice. */
 void fn_1_28434(OMOBJ *obj)
 {
-    HideSetupArrows(obj);
+    fn_1_1A124(obj);
 }
 
 /* Loads saved Party Mode rules into the menu and animates their values into view. */

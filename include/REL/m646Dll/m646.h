@@ -38,6 +38,22 @@ void fn_1_9118(void);
 void fn_1_98E0(OMOBJMAN *objman);
 void fn_1_A028(OMOBJ *obj);
 void fn_1_AFC(OMOBJMAN *objman, s16 player);
+void fn_1_1E4(s32 cameraMotionIndex);
+s32 fn_1_2CC(void);
+void fn_1_AF4(s16 mode, s16 frame);
+void fn_1_AF8(s16 mode, s16 frame);
+void fn_1_55A0(void);
+void fn_1_5634(OMOBJ *obj);
+s32 fn_1_5694(OMOBJ *obj);
+s32 fn_1_57DC(s16 player);
+void fn_1_5850(s16 player);
+void fn_1_589C(s16 player);
+void fn_1_59E0(s16 player, Vec *position);
+void fn_1_5A64(OMOBJ *obj, s16 motion);
+void fn_1_81FC(s16 index, Vec *out);
+s32 fn_1_9380(void);
+s32 fn_1_A0D4(void);
+s32 fn_1_A0FC(void);
 
 #ifdef __cplusplus
 }

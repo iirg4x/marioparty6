@@ -93,4 +93,9 @@ void fn_1_67B0(M674ActorState *state);
 void fn_1_67CC(M674ActorState *state, s32 motion, f32 speed);
 void fn_1_8894(M674ActorState *state);
 void fn_1_88C8(M674ActorState *state, s32 model);
+
+/* Target setup and state queries. */
+s32 fn_1_E014(void);
+M674ActorState *fn_1_DC2C(Vec *origin, f32 heading, f32 headingRange, f32 maxDistance);
+
 #endif

@@ -1,4 +1,10 @@
 /* Overlay startup, camera setup, and the first minigame sequence callbacks. */
+#include "REL/m626Dll/support.h"
+#include "REL/m626Dll/scenery.h"
+#include "REL/m626Dll/player.h"
+#include "REL/m626Dll/objects.h"
+#include "REL/m626Dll/effects.h"
+#include "REL/m626Dll/collision.h"
 #include "dolphin/types.h"
 #include "game/audio.h"
 #include "game/data.h"
@@ -39,29 +45,12 @@ void _epilog(void)
 OMOBJMAN *lbl_1_bss_34;
 
 extern void fn_1_3AC(s16 mode, s16 frameNo);
-extern void fn_1_A08(OMOBJMAN *manager);
-extern void fn_1_AD0(OMOBJMAN *manager, void *lightPosition, void *lightTarget, void *lightColor);
-extern void fn_1_EEC(OMOBJMAN *manager, void *fogParameters);
-extern void fn_1_11B8(OMOBJMAN *manager, s32 cameras, f32 fieldOfView, f32 nearPlane,
-                       f32 farPlane, f32 shadowRadius, void *cameraView);
-extern void fn_1_1F4C(s32 red, s32 green, s32 blue);
-extern void fn_1_1F84(s32 cameras, void *motionData);
-extern s32 fn_1_830(s32 index);
-extern void fn_1_2608(OMOBJMAN *manager, void *audioConfig);
-extern void fn_1_E268(OMOBJMAN *manager);
-extern void fn_1_42DC(OMOBJMAN *manager);
-extern void fn_1_8C50(OMOBJMAN *manager);
-extern void fn_1_BA34(OMOBJMAN *manager);
 
 void fn_1_2C4(short mode, short frameNo);
 void fn_1_300(s16 mode, s16 frameNo);
 void fn_1_374(short mode, short state);
 void fn_1_3E4(s16 mode, s16 frameNo);
 void fn_1_4A8(s16 mode, s16 frameNo);
-void fn_1_52C(s16 player, s16 frameNo);
-void fn_1_6EC(s16 player, s16 frameNo);
-void fn_1_7C4(s16 mode, s16 frameNo);
-void fn_1_7FC(s16 mode, s16 frameNo);
 
 OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, -300.0f, -1200.0f}, {-30.0f, 0.0f, 0.0f}, 2000.0f};
 
@@ -71,19 +60,19 @@ Vec lbl_1_data_28 = {0.0f, 0.0f, 0.0f};
 
 GXColor lbl_1_data_34 = {255, 255, 255, 255};
 
-M626FogParameters lbl_1_data_38[3] = {
+MinigameFogParams lbl_1_data_38[3] = {
     {0, 1, 2, 20.0f, 6000.0f, {192, 192, 192, 0}},
     {1, 1, 0, 20.0f, 10000.0f, {192, 192, 192, 0}},
     {-1, 0, 0, 0.0f, 0.0f, {0, 0, 0, 0}}
 };
 
-M626FogParameters lbl_1_data_80[3] = {
+MinigameFogParams lbl_1_data_80[3] = {
     {0, 1, 2, 20.0f, 6000.0f, {64, 64, 64, 0}},
     {1, 1, 0, 20.0f, 10000.0f, {192, 192, 192, 0}},
     {-1, 0, 0, 0.0f, 0.0f, {0, 0, 0, 0}}
 };
 
-M626AudioParameters lbl_1_data_C8[2] = {
+MinigameAudioRange lbl_1_data_C8[2] = {
     {65535, 32, 96, 32, 64, 110, 2300.0f, 2000.0f, 1700.0f},
     {0, 0, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f}
 };
@@ -111,7 +100,6 @@ s16 lbl_1_bss_0[4];
 void ObjectSetup(void)
 {
     s32 index;
-    s16 nightMode;
 
     lbl_1_bss_30 = 0;
     lbl_1_bss_24[0] = 0;
@@ -125,24 +113,22 @@ void ObjectSetup(void)
     fn_80071D20(4, fn_1_3AC);
     fn_1_A08(lbl_1_bss_34);
     fn_1_AD0(lbl_1_bss_34, &lbl_1_data_1C, &lbl_1_data_28, &lbl_1_data_34);
-    nightMode = lbl_802C0278;
-    if (nightMode != 1) {
-        fn_1_EEC(lbl_1_bss_34, &lbl_1_data_38);
+    if (GWMgNightFGet() != 1) {
+        fn_1_EEC(lbl_1_bss_34, lbl_1_data_38);
     } else {
-        fn_1_EEC(lbl_1_bss_34, &lbl_1_data_80);
+        fn_1_EEC(lbl_1_bss_34, lbl_1_data_80);
     }
     fn_1_11B8(lbl_1_bss_34, 1, 45.0f, 20.0f, 13000.0f,
               1200.0f, &lbl_1_data_0);
     fn_1_1F4C(0, 0, 128);
     fn_1_1F84(1, fn_80008DD0(fn_1_830(0), 0x10000000, 2));
-    fn_1_2608(lbl_1_bss_34, &lbl_1_data_C8);
+    fn_1_2608(lbl_1_bss_34, lbl_1_data_C8);
     fn_1_E268(lbl_1_bss_34);
     fn_1_42DC(lbl_1_bss_34);
     fn_1_8C50(lbl_1_bss_34);
     fn_1_BA34(lbl_1_bss_34);
 }
 
-s32 fn_1_824(s16, s16);
 /* Advances the sequence when the mode's completion check accepts its callback. */
 void fn_1_2C4(short mode, short frameNo)
 {
@@ -181,7 +167,6 @@ void fn_1_3AC(short mode, short state)
     }
 }
 
-s32 fn_1_8B58(s32 index);
 
 typedef struct M626CategoryCountPair {
     s32 values[2];

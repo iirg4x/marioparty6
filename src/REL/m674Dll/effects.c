@@ -8,6 +8,7 @@
 #include "game/frand.h"
 #include "REL/m674Dll/effects.h"
 #include "string.h"
+#include "REL/m674Dll/main.h"
 #define M674_WATER_TEXTURE_HEADER_BIT_PATTERN 20971760
 #define M674_WATER_TEXTURE_SCALE_BIT_PATTERN 1142292480
 #define M674_WATER_TEXTURE_FORMAT_BIT_PATTERN 721761
@@ -15,7 +16,6 @@
 HUPROCESS *lbl_1_bss_6C4;
 OMOBJ *lbl_1_bss_6C0;
 GXColor lbl_1_data_678[2] = {{192, 192, 192, 96}, {144, 144, 208, 96}};
-extern s32 fn_1_E18(s32 index);
 void fn_1_E180(OMOBJ *object);
 void fn_1_E190(OMOBJ *object);
 void fn_1_E1C8(OMOBJ *object);

@@ -1,4 +1,6 @@
 /* Builds the stage, animates scenery, and manages moving scene actors. */
+#include "REL/m626Dll/support.h"
+#include "REL/m626Dll/setup.h"
 #include "dolphin/math.h"
 #include "REL/m626Dll/scenery.h"
 #include "game/charman.h"
@@ -20,31 +22,7 @@
 extern s32 frand(void);
 typedef struct M626CollisionParameters { Vec start, end; } M626CollisionParameters;
 
-s32 fn_1_830(s32);
-s32 fn_1_3C94(s32);
-s32 fn_1_3D9C(s32, s32);
-void fn_1_C94(s32, char *, s32);
-void fn_1_DD8(Vec *);
-void fn_1_1ECC(Vec *);
-s32 fn_1_3340(s32, Vec *);
-f32 fn_1_407C(Vec *, Vec *);
-f32 fn_1_4118(Vec *, Vec *);
-f32 fn_1_3EAC(f32, f32, f32);
-void fn_1_E068(const Vec *);
-void fn_1_E1D8(M626EffectRecord *);
-void fn_1_DBC0(Vec *, Vec *);
-void fn_1_DD48(s32, f32, const Vec *);
-void fn_1_4CE4(M626ObjectWork *);
-s32 fn_1_7050(M626Entry *, M626Entry *);
-void fn_1_8570(M626ObjectWork *);
-void fn_1_6120(M626ObjectWork *);
-s32 fn_1_57A8(M626ObjectWork *);
-s32 fn_1_5C20(M626ObjectWork *);
-s32 fn_1_5E88(M626ObjectWork *);
-void fn_1_85A4(M626ObjectWork *, s32);
 
-void fn_1_8C50(HUPROCESS *process);
-void fn_1_8D40(void);
 void fn_1_8D44(OMOBJ *obj);
 void fn_1_8D54(OMOBJ *object);
 void fn_1_8D7C(HUPROCESS *process, M626SceneryParameters *param);
@@ -79,37 +57,33 @@ void fn_1_A680(OMOBJ *object);
 s32 fn_1_A87C(OMOBJ *object);
 void fn_1_B288(OMOBJ *object);
 void fn_1_B494(OMOBJ *object);
-void fn_1_B55C(s32 key, const Vec *throwPosition, const Vec *throwVelocity, void *collisionPartner);
-s32 fn_1_B62C(u32 key, const Vec *position, f32 angle, f32 angleRange,
-               f32 maxDistance);
-void *fn_1_B998(s32 scenerySlot);
 s32 fn_1_BA10(void);
 
 M626PlayerConfig lbl_1_data_470[2] = {
-{50.0000000f, 150.000000f, 1.10000002f, 0.800000012f, 8.33333302f, 36.6666679f, 5.83333349f, {{0, 2, 2.00000000f, 3, 1.00000000f}, {10, 11, 2.00000000f, 12, 1.00000000f}}, 9, 8, 6, 0, 4, 5},
-{50.0000000f, 150.000000f, 1.00000000f, 1.00000000f, 8.33333302f, 36.6666679f, 5.83333349f, {{0, 2, 2.00000000f, 3, 1.00000000f}, {10, 11, 2.00000000f, 12, 1.00000000f}}, 9, 8, 6, 0, 4, 5}
+{50.0f, 150.0f, 1.1f, 0.8f, 8.333333f, 36.666668f, 5.8333335f, {{0, 2, 2.0f, 3, 1.0f}, {10, 11, 2.0f, 12, 1.0f}}, 9, 8, 6, 0, 4, 5},
+{50.0f, 150.0f, 1.0f, 1.0f, 8.333333f, 36.666668f, 5.8333335f, {{0, 2, 2.0f, 3, 1.0f}, {10, 11, 2.0f, 12, 1.0f}}, 9, 8, 6, 0, 4, 5}
 };
 
 M626SceneryMotion lbl_1_data_528[14] = {
-{12, 0.200000003f, ((1 << 30) | (1 << 0))},
+{12, 0.2f, ((1 << 30) | (1 << 0))},
 {-1, 0.00000000f, 0},
-{13, 0.200000003f, ((1 << 30) | (1 << 0))},
-{14, 0.200000003f, ((1 << 30) | (1 << 0))},
-{15, 0.200000003f, 0},
-{16, 0.200000003f, 0},
-{17, 0.200000003f, 0},
-{18, 0.200000003f, 0},
-{19, 0.200000003f, 0},
-{20, 0.200000003f, 0},
-{21, 0.200000003f, ((1 << 30) | (1 << 0))},
-{22, 0.200000003f, ((1 << 30) | (1 << 0))},
-{23, 0.200000003f, ((1 << 30) | (1 << 0))},
+{13, 0.2f, ((1 << 30) | (1 << 0))},
+{14, 0.2f, ((1 << 30) | (1 << 0))},
+{15, 0.2f, 0},
+{16, 0.2f, 0},
+{17, 0.2f, 0},
+{18, 0.2f, 0},
+{19, 0.2f, 0},
+{20, 0.2f, 0},
+{21, 0.2f, ((1 << 30) | (1 << 0))},
+{22, 0.2f, ((1 << 30) | (1 << 0))},
+{23, 0.2f, ((1 << 30) | (1 << 0))},
 {-2, 0.00000000f, 0}
 };
 
 M626SceneryMotion lbl_1_data_5D0[15] = {
 {-1, 0.00000000f, 0},
-{5, 0.200000003f, ((1 << 30) | (1 << 0))},
+{5, 0.2f, ((1 << 30) | (1 << 0))},
 {-2, 0.00000000f, 0},
 {0, 0.00000000f, 0},
 {0, 0.00000000f, 0},
@@ -136,7 +110,7 @@ M626SceneryParameters lbl_1_data_684[8] = {
 {-1, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, 0.00000000f, NULL}
 };
 
-Vec lbl_1_data_7E4 = {0.00000000f, -1.00000000f, 0.00000000f};
+Vec lbl_1_data_7E4 = {0.00000000f, -1.0f, 0.00000000f};
 
 OMOBJ *lbl_1_bss_6C0;
 OMOBJ *lbl_1_bss_4C0[128];
@@ -423,9 +397,9 @@ void fn_1_9564(OMOBJ *object)
 }
 
 Vec lbl_1_data_80C[3] = {
-{-390.000000f, 42.0000000f, -820.000000f},
-{837.000000f, 205.000000f, -400.000000f},
-{880.000000f, 390.000000f, -432.000000f}
+{-390.0f, 42.0f, -820.0f},
+{837.0f, 205.0f, -400.0f},
+{880.0f, 390.0f, -432.0f}
 };
 
 /* Emits the drifting stage particle from one of three authored positions. */
@@ -468,8 +442,8 @@ const M626RangeBounds lbl_1_rodata_354 = { 1,
                                            NULL,
                                            NULL,
                                            NULL,
-                                           { -1000.00000f, 0.00000000f, -1000.00000f },
-                                           { -50.0000000f, 0.00000000f, 1000.00000f } };
+                                           { -1000.0f, 0.00000000f, -1000.0f },
+                                           { -50.0f, 0.00000000f, 1000.0f } };
 
 const M626RangeBounds lbl_1_rodata_38C = { 1,
                                            8,
@@ -479,8 +453,8 @@ const M626RangeBounds lbl_1_rodata_38C = { 1,
                                            NULL,
                                            NULL,
                                            NULL,
-                                           { 50.0000000f, 0.00000000f, -1000.00000f },
-                                           { 1000.00000f, 0.00000000f, 1000.00000f } };
+                                           { 50.0f, 0.00000000f, -1000.0f },
+                                           { 1000.0f, 0.00000000f, 1000.0f } };
 
 /* Registers the stage's central surface and two edge collision bounds. */
 void fn_1_97A8(OMOBJ *object)
@@ -519,7 +493,7 @@ void fn_1_9974(OMOBJ *object)
                             5.0000000000000000 *
                                 (0.000030517578125000000 *
                                   (f64)(f32)((u16)frand() - 32768))));
-    fn_8002D86C(model, 0.300000000f);
+    fn_8002D86C(model, 0.3f);
     object->objFunc = fn_1_9A80;
 }
 
@@ -594,14 +568,14 @@ void fn_1_9DB8(void *objectToRegister)
 }
 
 Vec lbl_1_data_838[2] = {
-{0.00000000f, 1.00000000f, 0.00000000f},
-{0.00000000f, -1.00000000f, 0.00000000f}
+{0.00000000f, 1.0f, 0.00000000f},
+{0.00000000f, -1.0f, 0.00000000f}
 };
 
 Vec lbl_1_data_850 = {0.00000000f, 0.00000000f, 0.00000000f};
 
 M626CollisionParameters lbl_1_data_85C = { { 0.00000000f, 0.00000000f, 0.00000000f },
-                                           { 0.00000000f, 100.000000f, 0.00000000f } };
+                                           { 0.00000000f, 100.0f, 0.00000000f } };
 
 /* Configures a snowball's collision segment, effect and initial display state. */
 void fn_1_9E18(OMOBJ *object)
@@ -610,7 +584,6 @@ void fn_1_9E18(OMOBJ *object)
     M626SceneryWork *work;
     M626SceneryWork *positionWork;
     s32 modelId;
-    s32 index;
 
     runtimeWork = object->data;
     work = runtimeWork;
@@ -637,12 +610,7 @@ void fn_1_9E18(OMOBJ *object)
     runtimeWork->effect.radius = 30.0f;
     runtimeWork->effect.position = &work->common.position;
     fn_1_E1D8(&runtimeWork->effect);
-    for (index = 0; index < 30; index++) {
-        if (lbl_1_bss_448[index] == NULL) {
-            lbl_1_bss_448[index] = object;
-            break;
-        }
-    }
+    fn_1_9DB8(object);
     fn_800268B0(modelId, 1.5f, 1.5f, 1.5f);
     fn_800269E8(modelId, (1 << 0));
     object->objFunc = fn_1_9FF8;
@@ -703,7 +671,7 @@ void fn_1_A17C(OMOBJ *object, s32 particleCount)
     work->common.collisionFlags &= ~(1 << 0);
     state->effect.active = 0;
     fn_800269E8(model, (1 << 0));
-    fn_1_DD48(20, 30.0000000f, &work->common.position);
+    fn_1_DD48(20, 30.0f, &work->common.position);
     fn_1_3340(M626_SNOWBALL_IMPACT_SOUND_ID, &work->common.position);
 }
 
@@ -733,7 +701,7 @@ void fn_1_A318(OMOBJ *object)
 
     if (work->timer == 90) {
         fn_80026A44(model, ((1 << 30) | (1 << 1)));
-        fn_8002D86C(model, 2.00000000f);
+        fn_8002D86C(model, 2.0f);
     }
     work->timer++;
 }
@@ -789,7 +757,7 @@ void fn_1_A398(OMOBJ *object)
     task->common.segmentStart = lbl_1_data_85C.start;
     task->common.segmentEnd = lbl_1_data_85C.end;
     task->common.radius = configuration->jumpHeight;
-    task->common.collisionMode = 1.00000000f;
+    task->common.collisionMode = 1.0f;
     fn_1_10598(task);
     fn_1_4CE4(&work->common);
 
@@ -1026,7 +994,7 @@ s32 fn_1_B62C(u32 key, const Vec *position, f32 angle, f32 angleRange,
     f32 zDifference;
     f32 angleDifference;
     f32 wrappedAngle;
-    f32 closestDistance = 100000.000f;
+    f32 closestDistance = 100000.0f;
     s32 closestIndex = -1;
     s32 index;
 
@@ -1054,10 +1022,10 @@ s32 fn_1_B62C(u32 key, const Vec *position, f32 angle, f32 angleRange,
                 (f64)(angleDifference - angle), 360.00000000000000);
             angleDifference = wrappedAngle;
             if (angleDifference < 0.0f) {
-                angleDifference += 360.000000f;
+                angleDifference += 360.0f;
             }
             if (angleDifference > angleRange &&
-                angleDifference < 360.000000f - angleRange) {
+                angleDifference < 360.0f - angleRange) {
                 /* A same-key snowball outside the cone makes the routine return no target. */
                 return 0;
             }

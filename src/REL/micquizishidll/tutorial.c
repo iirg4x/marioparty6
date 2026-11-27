@@ -11,7 +11,7 @@ extern s32 lbl_1_bss_1BE8;
 extern HuVec2f lbl_1_bss_1BEC;
 extern s16 lbl_1_bss_1BF4;
 extern ANIMDATA *lbl_1_bss_1BF8;
-extern MicQuizSpritePosition lbl_1_data_22FC[6];
+extern HuVec2f lbl_1_data_22FC[6];
 extern Point3d lbl_1_data_232C;
 extern Point3d lbl_1_data_2338;
 extern Point3d lbl_1_data_2344;
@@ -45,7 +45,7 @@ void fn_1_2EDB4(void) {
     lbl_1_bss_9C[1] = fn_80025A04(fn_80008DD0(DATANUM(0xa40000, 45), 0x10000000, 2));
     fn_80026760(lbl_1_bss_9C[0], -500.0f, 0.0f, 0.0f);
     fn_80026760(lbl_1_bss_9C[1], 500.0f, 0.0f, 0.0f);
-    lbl_1_bss_1BF8 = HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 50), 0x10000000, 2));
+    lbl_1_bss_1BF8 = HuSprAnimDataRead(DATANUM(0xa20000, 50));
     lbl_1_bss_1BF4 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_1BF4, 0, HuSprCreate(lbl_1_bss_1BF8, 0x30, 2));
     HuSprAttrSet(lbl_1_bss_1BF4, 0, 4);
@@ -95,7 +95,7 @@ void fn_1_2F368(void) {
     fn_1_2F57C();
     HuSprAttrSet(lbl_1_bss_1BF4, 0, 4);
     lbl_1_bss_FC = 2;
-    WipeCreate(2, 0, 0x14);
+    WipeCreate(2, 0, 20);
     HuPrcEnd();
     for (;;) {
         HuPrcVSleep();
@@ -197,7 +197,7 @@ void fn_1_2F7F8(s32 positionIndex) {
 
 u8 lbl_1_data_22E0[0x1C] = { 0x00, 0xA4, 0x00, 0x7A, 0x00, 0xA4, 0x00, 0x7B, 0x00, 0xA4, 0x00, 0x7C,
         0x00, 0xA4, 0x00, 0x7D, 0x00, 0xA4, 0x00, 0x7E, 0x00, 0xA4, 0x00, 0x7F, 0x00, 0xA4, 0x00, 0x80 };
-MicQuizSpritePosition lbl_1_data_22FC[6] = { { 279.0f, 116.0f }, { 90.0f, 113.0f },
+HuVec2f lbl_1_data_22FC[6] = { { 279.0f, 116.0f }, { 90.0f, 113.0f },
         { 393.0f, 110.0f }, { 514.0f, 145.0f }, { 509.0f, 306.0f }, { 478.0f, 315.0f } };
 Point3d lbl_1_data_232C = { -100.0f, 8000.0f, -400.0f };
 Point3d lbl_1_data_2338 = { 0.0f, 1.0f, 0.0f };

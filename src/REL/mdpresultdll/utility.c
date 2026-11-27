@@ -569,8 +569,9 @@ void fn_1_2104C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     }
 }
 
-/* Create the result particle model. */
-static inline void ResultParticlesCreate(void)
+/* Creates the hidden 128-particle result effect and registers fn_1_2104C as its particle
+ * callback. */
+void fn_1_21604(void)
 {
     lbl_1_bss_14C2 = fn_8003216C(lbl_1_bss_14C8[5], 128);
     fn_80026760(lbl_1_bss_14C2, 0.0f,
@@ -580,13 +581,6 @@ static inline void ResultParticlesCreate(void)
     fn_80026B8C(lbl_1_bss_14C2, 1);
     fn_800269E8(lbl_1_bss_14C2, (1 << 0));
     fn_800326D0(lbl_1_bss_14C2, fn_1_2104C);
-}
-
-/* Creates the hidden 128-particle result effect and registers fn_1_2104C as its particle
- * callback. */
-void fn_1_21604(void)
-{
-    ResultParticlesCreate();
 }
 
 /* Releases the 128-particle effect model created by fn_1_21604. */
@@ -1478,7 +1472,7 @@ void fn_1_252F8(void)
     fn_1_22080();
     fn_1_22A4C();
 
-    ResultParticlesCreate();
+    fn_1_21604();
 
     fn_1_23AA8();
     fn_1_24AD0();

@@ -1,4 +1,6 @@
 /* Sets up player groups and interpolates points for Snow Brawl objects. */
+#include "REL/m626Dll/setup.h"
+#include "REL/m626Dll/player.h"
 #include <math.h>
 #include "REL/m626Dll/objects.h"
 #include "dolphin/mtx.h"
@@ -27,10 +29,6 @@ typedef struct M626PlayerSlots_s {
 static const M626GroupCounts lbl_1_rodata_C8 = {{0, 0}};
 static const M626PlayerSlots lbl_1_rodata_D0 = {{0, 1}};
 
-extern void fn_1_44F8(OMOBJ *object);
-extern void fn_1_4548(OMOBJ *object);
-extern void fn_1_4EA8(OMOBJ *object);
-extern s32 fn_1_960(s32 player, u32 group, s16 character);
 
 /* Called by ObjectSetup during startup to create players and assign fallback teams. */
 void fn_1_42DC(HUPROCESS *process)

@@ -109,13 +109,11 @@ void fn_1_5C50(void) {
     }
 }
 
-typedef struct DecathlonMotionPath {
-    Vec position; /* entrance position in world units */
-    f32 unk0C; /* The game's code never reads this field. */
-    f32 unk10; /* The game's code never reads this field. */
-    f32 unk14; /* The game's code never reads this field. */
-    s16 unk18; /* The game's code never reads this field. */
-} DecathlonMotionPath;
+typedef struct DecathlonMotionState {
+    Vec position; /* world position applied on the first active frame */
+    Vec rotation; /* rotation in degrees applied on the first active frame */
+    s16 countdown; /* frames until appearance; -1 playing; -1000 finished */
+} DecathlonMotionState;
 
 /* The final results sequence randomizes model positions and schedules score-dependent entrances. */
 void fn_1_5DF8(void) {
@@ -124,7 +122,7 @@ void fn_1_5DF8(void) {
     s16 highestScore;
     s16 player;
     s16 swapIndex;
-    DecathlonMotionPath *paths;
+    DecathlonMotionState *paths;
 
     highestScore = 0;
     for (player = 0; player < 4; player++) {
@@ -161,18 +159,12 @@ void fn_1_5DF8(void) {
         paths[player].position.x = horizontalPositions[player];
         paths[player].position.y = (frandmod(12) * 10) + 800;
         paths[player].position.z = -900.0f;
-        paths[player].unk0C = 0.0f;
-        paths[player].unk10 = 10.0f * (1.0f + frandmod(36));
-        paths[player].unk14 = 0.0f;
-        paths[player].unk18 = (player * 60) + 60;
+        paths[player].rotation.x = 0.0f;
+        paths[player].rotation.y = 10.0f * (1.0f + frandmod(36));
+        paths[player].rotation.z = 0.0f;
+        paths[player].countdown = (player * 60) + 60;
     }
 }
-
-typedef struct DecathlonMotionState {
-    Vec position; /* world position applied on the first active frame */
-    Vec rotation; /* rotation in degrees applied on the first active frame */
-    s16 countdown; /* frames until appearance; -1 playing; -1000 finished */
-} DecathlonMotionState;
 
 /* The results flow polls this until every active entrance actor has finished. */
 s16 fn_1_6188(void) {

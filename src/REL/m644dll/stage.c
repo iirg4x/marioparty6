@@ -1,6 +1,6 @@
 /* Animates stage models, updates shadow cameras, and maintains the sprite display. */
 #include "msm_se.h"
-#include "REL/m644dll/module_types.h"
+#include "REL/m644dll/module_declarations.h"
 #include "game/hu3d.h"
 
 M644DisplayState lbl_1_bss_7C0;
@@ -18,7 +18,6 @@ s32 lbl_1_data_3D8[12] = {
 };
 /* Loaded route motions, shared by both team route models. */
 s16 lbl_1_data_408[12] = {-1};
-void fn_1_1EA8(s32 route, Point3d *position, Mtx matrix);
 
 typedef Vec M644CameraUp;
 
@@ -29,52 +28,16 @@ typedef struct M644CameraBitPair_s {
 
 typedef Mtx M644Fn1EA8Scratch;
 
-extern OMOBJMAN *fn_1_A0(void);
 
 typedef struct HookNamePair {
     /* Player hook names, indexed by the teammate's boarding slot. */
     char *name[2];
 } HookNamePair;
 
-extern void fn_1_5444(s32);
-extern void fn_1_54F0(s32);
-
-void fn_1_51B4(s32, s32);
-f32 fn_1_65A4(s32, s32, s32);
-
-void fn_1_7C24(s32 player, s32 difficulty);
-void fn_1_51B4(s32 player, s32 state);
-void fn_1_205C(s32 player);
-
 extern s16 lbl_802C0278;
-
-extern s32 fn_1_6588(s32 route);
-
 extern s32 abs(s32 absoluteInput);
 
-void fn_1_51B4(s32, s32);
-s32 fn_1_5210(s32);
-
-extern void fn_1_690(s32 player_index, s32 motion_id);
-extern s32 fn_1_7C8(s32 motion_step);
-extern void fn_1_1FB4(s32 player_index, s32 motion_step);
-extern void fn_1_51B4(s32 player_index, s32 mode);
-extern void fn_1_7C24(s32 player_index, s32 motion_step);
-
-void fn_1_205C(s32);
-void fn_1_B0(s16);
-
-extern void fn_1_1510(void);
-extern void fn_1_20A0(s32);
-
-OMOBJMAN *fn_1_A0(void);
-
 void fn_1_7CB8(s32 *route_state);
-s32 fn_1_7D98(void);
-void fn_1_7F8C(s32 unused_context, s32 entry_index, s32 slot);
-void fn_1_7FF4(s32 entry_index, s32 slot, Point3d *position);
-void fn_1_8064(s32 entry_index, s32 slot, Mtx matrix);
-void fn_1_80D4(s32 team_index, Mtx matrix);
 void fn_1_8120(s32 entry_index, s32 slot);
 void fn_1_8194(s32 team_index);
 void fn_1_81B4(HU3D_MODELID model_id, HU3D_MOTIONID motion_id, BOOL timing_cue);
@@ -86,19 +49,10 @@ void fn_1_8B40(OMOBJ *object);
 void fn_1_8BDC(OMOBJ *object);
 void fn_1_8E5C(OMOBJ *object);
 void fn_1_8FFC(OMOBJ *object);
-void fn_1_9190(void);
 void fn_1_91F4(OMOBJ *object);
 void fn_1_9380(OMOBJ *object);
-void fn_1_94A4(s32 index);
-void fn_1_9614(void);
-void fn_1_9664(void);
 s32 fn_1_96B4(s32 team_index);
-void fn_1_7E5C(s16 model, s32 entry_index, s32 slot);
 void fn_1_7F50(s16 team_index);
-s32 fn_1_9124(s32 team_index);
-void fn_1_913C(s32 team_index);
-f32 fn_1_9178(s32 team_index);
-s16 fn_1_9114(void);
 
 static const Vec lbl_1_rodata_458 = {0.0f, 0.0f, 1.0f};
 static const M644CameraBitPair lbl_1_rodata_464 = {{1, 2}};
@@ -164,7 +118,7 @@ void fn_1_7F50(s16 team_index)
 }
 
 /* Detaches a character's boarding hook when that player enters the course. */
-void fn_1_7F8C(s32 unused_context, s32 entry_index, s32 slot)
+void fn_1_7F8C(s16 unused_context, s32 entry_index, s32 slot)
 {
     HookNamePair hook_names = {{"no644douro-P1", "no644douro-P2"}};
 

@@ -62,7 +62,7 @@ typedef struct M646MainData_s {
     s32 unk14; /* The game's code never reads this field. */
     s32 streamId;                     /* Sequence music handle, or -1 before music starts. */
     s16 unk1C; /* The game's code never reads this field. */
-    s32 unknown20;
+    s32 unk20; /* The game's code never reads this field. */
 } M646MainData;
 
 /* Character motion and result-facing turn state shared by the player callbacks. */
@@ -125,7 +125,7 @@ typedef struct M646PlayerRuntimeWork_s {
     f32 targetX;                       /* Horizontal fallback aim coordinate in world units. */
     f32 targetY;                       /* Vertical fallback aim coordinate in world units. */
     M646ActorAnchor anchor; /* Player collision record. */
-    u8 playerWorkTail[104]; /* Storage following the collision anchor. */
+    u8 unk118[104]; /* No code names this field. */
 } M646PlayerRuntimeWork;
 
 /* World positions sampled from the moving stage for stage-boundary checks. */

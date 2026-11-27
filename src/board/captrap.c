@@ -68,8 +68,6 @@ typedef struct CapBobleWork {
 
 extern int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot,
     HuVecF *scale, int kind, int time, int bank, GXColor *color);
-extern void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF pos, HuVecF rot,
-    HuVecF scale);
 extern u32 mbCapEffNum;
 extern s16 *mbCapEffData;
 

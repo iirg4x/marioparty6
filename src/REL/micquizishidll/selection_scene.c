@@ -91,11 +91,11 @@ extern s32 lbl_1_bss_18DC;
 extern s32 lbl_1_bss_18E0[6];
 extern s16 lbl_1_bss_18F8[2];
 extern s16 lbl_1_bss_18FC[2];
-extern s16 lbl_1_bss_1900[0x14];
+extern s16 lbl_1_bss_1900[20];
 extern QuizModelList lbl_1_bss_1928;
 extern QuizSelectionTable lbl_1_bss_1954;
 extern s32 lbl_1_bss_1A48;
-extern s16 lbl_1_bss_1A4C[0x14];
+extern s16 lbl_1_bss_1A4C[20];
 extern TexturePair lbl_1_bss_1A74[20];
 extern s16 lbl_1_bss_1B14;
 extern s16 lbl_1_bss_1B16;
@@ -116,7 +116,7 @@ void fn_1_26810(void) {
     lbl_1_bss_FC = 2;
     lbl_1_bss_8C = 11.111111f;
     do {
-        randomChoice = frandmod(0xB);
+        randomChoice = frandmod(11);
     } while (randomChoice == 8);
     MicQuizExpectedAnswerSet(randomChoice);
     MicQuizPortraitShow(MicQuizCurrentPlayerGet());
@@ -186,7 +186,7 @@ void fn_1_26810(void) {
     fn_800268B0(lbl_1_bss_18F8[1], 1.5f, 1.5f, 1.5f);
 
     for (side = 0; side < 2; ++side) {
-        for (row = 0; row < 0x14; ++row) {
+        for (row = 0; row < 20; ++row) {
             fn_8000C200(lbl_1_bss_1A74[row].animation[side] =
                                   HuSprAnimMake(0xB4, 0xA, 0),
                               0x10000000);
@@ -208,7 +208,7 @@ void fn_1_26810(void) {
     lbl_1_bss_1B18->data = HuMemDirectMallocNum(HEAP_HEAP, 36, 0x10000000);
     lbl_1_bss_1B18->work[0] = randomChoice;
 
-    for (row = 0; row < 0x14; ++row) {
+    for (row = 0; row < 20; ++row) {
         lbl_1_bss_1928.models[row] = fn_80025A04(fn_80008DD0(DATANUM(0xa40000, 0x45), 0x10000000,
                 2));
         fn_80026B64(lbl_1_bss_1928.models[row], 4);
@@ -238,8 +238,9 @@ void fn_1_26810(void) {
     lbl_1_bss_20 = HuAudSStreamPlay(MSM_STREAM_QUESTION_MUSIC_FIFTH);
 }
 
-/* Creates a character model with its motions at its place and darkens its materials. */
-void fn_1_27740(OMOBJ *work) {
+/* Creates the selection character model and starts its first motion. */
+static inline void QuizSelectionCharacterCreate(OMOBJ *work, s16 layer)
+{
     QuizCharacterModel *model;
     s32 motionIndex;
 
@@ -261,37 +262,19 @@ void fn_1_27740(OMOBJ *work) {
     fn_80026760(model->modelId, model->positionX, model->positionY, model->positionZ);
     fn_80026808(model->modelId, 0.0f, 0.0f, 0.0f);
     fn_800269E8(model->modelId, 1);
-    fn_80026B64(model->modelId, 1);
+    fn_80026B64(model->modelId, layer);
     fn_800268B0(model->modelId, 1.5f, 1.5f, 1.5f);
     work->objFunc = fn_1_27C08;
 }
 
+/* Creates a character model with its motions at its place and darkens its materials. */
+void fn_1_27740(OMOBJ *work) {
+    QuizSelectionCharacterCreate(work, 1);
+}
+
 /* Creates the second character model with its motions at its place and darkens its materials. */
 void fn_1_278F4(OMOBJ *work) {
-    QuizCharacterModel *model;
-    s32 motionIndex;
-
-    model = work->data;
-    model->modelId = fn_80025A04(fn_80008DD0(lbl_1_data_1BAC[work->work[0]], 0x10000000, 2));
-    fn_1_29300(model->modelId);
-    for (motionIndex = 0; motionIndex < 3; motionIndex++) {
-        model->motions[motionIndex] = fn_80030458(model->modelId,
-                fn_80008DD0(lbl_1_data_1A5C[work->work[0]].dataNumbers[motionIndex], 0x10000000,
-                            2));
-    }
-    model->state = 0;
-    model->characterId = work->work[0];
-    model->positionX = 0.0f;
-    model->positionY = 0.0f;
-    model->positionZ = 0.0f;
-    fn_800269E8(model->modelId, 0x40000001);
-    fn_8002C95C(model->modelId, model->motions[0]);
-    fn_80026760(model->modelId, model->positionX, model->positionY, model->positionZ);
-    fn_80026808(model->modelId, 0.0f, 0.0f, 0.0f);
-    fn_800269E8(model->modelId, 1);
-    fn_80026B64(model->modelId, 2);
-    fn_800268B0(model->modelId, 1.5f, 1.5f, 1.5f);
-    work->objFunc = fn_1_27C08;
+    QuizSelectionCharacterCreate(work, 2);
 }
 
 /* Creates a player character's model at its place. */
@@ -431,65 +414,42 @@ void fn_1_27CA0(OMOBJ *object) {
     }
 }
 
+/* Spreads the two selection-scene models apart along X. */
 void fn_1_280E8(void)
 {
-    Point3d positions[2];
-    s32 i;
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
+}
 
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
+/* Copies the visible selection entries to their textures. */
+static inline void QuizSelectionImagesCopy(s32 imageIndex)
+{
+    s32 index;
+
+    if (lbl_1_bss_18D8 == 0) {
+        fn_8002BF48();
+        return;
     }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
+
+    for (index = 0; index < 20; index++) {
+        fn_1_28364(
+            (s16)(lbl_1_data_19BC[index].x + 0x140),
+            (s16)(lbl_1_data_19BC[index].y + 0xF0),
+            lbl_1_data_19BC[index].width,
+            lbl_1_data_19BC[index].height,
+            6,
+            lbl_1_bss_1A74[index].animation[imageIndex]->bmp->data);
     }
+    fn_8002BF48();
 }
 
 /* Layer hook: draws the twenty entries from their first image while the entries are shown. */
 void fn_1_281AC(s16 layer) {
-    s32 index;
-
-    if (lbl_1_bss_18D8 == 0) {
-        fn_8002BF48();
-        return;
-    }
-
-    for (index = 0; index < 0x14; index++) {
-        fn_1_28364(
-            (s16)(lbl_1_data_19BC[index].x + 0x140),
-            (s16)(lbl_1_data_19BC[index].y + 0xF0),
-            lbl_1_data_19BC[index].width,
-            lbl_1_data_19BC[index].height,
-            6,
-            lbl_1_bss_1A74[index].animation[0]->bmp->data);
-    }
-    fn_8002BF48();
+    QuizSelectionImagesCopy(0);
 }
 
 /* Layer hook: draws the twenty entries from their second image while the entries are shown. */
 void fn_1_28288(s16 layer) {
-    s32 index;
-
-    if (lbl_1_bss_18D8 == 0) {
-        fn_8002BF48();
-        return;
-    }
-
-    for (index = 0; index < 0x14; index++) {
-        fn_1_28364(
-            (s16)(lbl_1_data_19BC[index].x + 0x140),
-            (s16)(lbl_1_data_19BC[index].y + 0xF0),
-            lbl_1_data_19BC[index].width,
-            lbl_1_data_19BC[index].height,
-            6,
-            lbl_1_bss_1A74[index].animation[1]->bmp->data);
-    }
-    fn_8002BF48();
+    QuizSelectionImagesCopy(1);
 }
 
 void fn_1_28364(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format,
@@ -553,8 +513,8 @@ void fn_1_284F0(void) {
     cardIndex = 0;
     while ((u32)cardIndex < pairCount) {
         for (;;) {
-            firstCandidate = frandmod(0x14);
-            secondCandidate = frandmod(0x14);
+            firstCandidate = frandmod(20);
+            secondCandidate = frandmod(20);
             if (firstCandidate == secondCandidate) {
                 continue;
             }
@@ -634,7 +594,7 @@ void fn_1_284F0(void) {
     angle = 0.0f;
     alpha = 0.0f;
     cardIndex = 0;
-    while (cardIndex < 0x14) {
+    while (cardIndex < 20) {
         fn_80026A44(lbl_1_bss_1900[cardIndex], 1);
         fn_80026CBC(lbl_1_bss_1900[cardIndex], alpha);
         cardIndex += 1;
@@ -644,7 +604,7 @@ void fn_1_284F0(void) {
         HuPrcVSleep();
         alpha = (f32)sin((M_PI * angle) / 180.0);
         cardIndex = 0;
-        while (cardIndex < 0x14) {
+        while (cardIndex < 20) {
             fn_80026CBC(lbl_1_bss_1900[cardIndex], alpha);
             cardIndex += 1;
         }
@@ -661,7 +621,7 @@ void fn_1_284F0(void) {
     angle = 90.0f;
     alpha = 1.0f;
     cardIndex = 0;
-    while (cardIndex < 0x14) {
+    while (cardIndex < 20) {
         fn_80026A44(lbl_1_bss_1900[cardIndex], 1);
         fn_80026CBC(lbl_1_bss_1900[cardIndex], alpha);
         cardIndex += 1;
@@ -670,7 +630,7 @@ void fn_1_284F0(void) {
         HuPrcVSleep();
         alpha = (f32)sin((M_PI * angle) / 180.0);
         cardIndex = 0;
-        while (cardIndex < 0x14) {
+        while (cardIndex < 20) {
             fn_80026CBC(lbl_1_bss_1900[cardIndex], alpha);
             cardIndex += 1;
         }
@@ -678,7 +638,7 @@ void fn_1_284F0(void) {
     } while (!(angle <= 0.0f));
 
     cardIndex = 0;
-    while (cardIndex < 0x14) {
+    while (cardIndex < 20) {
         fn_80026CBC(lbl_1_bss_1900[cardIndex], 0.0f);
         cardIndex += 1;
     }
@@ -756,7 +716,7 @@ void fn_1_28C98(void) {
             HuPrcVSleep();
         } while (lbl_1_bss_18E0[0] == 0);
         if (lbl_1_bss_18E0[0] != 2 && fn_1_29294() == 0) {
-            HuPrcSleep(0x78);
+            HuPrcSleep(120);
             continue;
         }
         lbl_1_bss_1A48 = 1;
@@ -802,18 +762,7 @@ s32 fn_1_29294(void) {
 
 /* Sets every material of a model to black. */
 void fn_1_29300(s16 modelId) {
-    HU3D_MODEL *model = &lbl_802C01C8[modelId];
-    HSF_DATA *hsf = model->hsf;
-    HSF_MATERIAL *material = hsf->material;
-    s32 index;
-
-    for (index = 0; index < hsf->materialNum;) {
-        material->color[0] = 0;
-        material->color[1] = 0;
-        material->color[2] = 0;
-        index++;
-        material++;
-    }
+    QuizModelMaterialsBlack(modelId);
 }
 
 /* Plays random idle motions on the two character models for a while, then ends this process. */
@@ -916,7 +865,7 @@ void fn_1_294F4(void) {
         process->property = (void *)index;
         HuPrcSleep(5);
     }
-    HuPrcSleep(0x3C);
+    HuPrcSleep(60);
     lbl_1_bss_18D8 = 0;
     for (index = 0; index < 20; index++) {
         fn_800262D0(lbl_1_bss_1928.models[index]);
@@ -926,8 +875,8 @@ void fn_1_294F4(void) {
     HuAudFXPlay(lbl_1_data_458[soundWork->characterId]);
     fn_8002CCC0(soundWork->modelId, soundWork->motions[1],
                        0.0f, 8.0f, 0U);
-    HuPrcSleep(0x78);
-    HuPrcSleep(0x3C);
+    HuPrcSleep(120);
+    HuPrcSleep(60);
     lbl_1_bss_18D4 = 1;
     HuPrcEnd();
     for (;;) {
@@ -1035,7 +984,7 @@ s16 lbl_1_bss_1B14;
 
 TexturePair lbl_1_bss_1A74[20];
 
-s16 lbl_1_bss_1A4C[0x14];
+s16 lbl_1_bss_1A4C[20];
 
 s32 lbl_1_bss_1A48;
 
@@ -1043,7 +992,7 @@ QuizSelectionTable lbl_1_bss_1954;
 
 QuizModelList lbl_1_bss_1928;
 
-s16 lbl_1_bss_1900[0x14];
+s16 lbl_1_bss_1900[20];
 s16 lbl_1_bss_18FC[2];
 s16 lbl_1_bss_18F8[2];
 s32 lbl_1_bss_18E0[6];

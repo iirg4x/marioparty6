@@ -20,55 +20,62 @@ static void HuDVDReadAsyncCallBack(s32 ignoredResult, DVDFileInfo* ignoredFileIn
 static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int heapOrAllocationNumber,
                                BOOL readAsync)
 {
-    u32 fileLength;
+    u32 length;
     u8 *dataBuffer;
-    fileLength = dvdFile->length;
+    length = dvdFile->length;
     // Preserve the full file size for callers, including when an asynchronous read starts in
     // chunks.
-    lbl_802C0028 = fileLength;
+    lbl_802C0028 = length;
     // Modes select the DVD heap, numbered DVD heap, selected heap, or selected heap tail.
     switch(allocationMode) {
         case 0:
-            dataBuffer = HuMemDirectMalloc(3, OSRoundUp32B(fileLength));
+            dataBuffer = HuMemDirectMalloc(3, OSRoundUp32B(length));
             break;
             
         case 1:
             dataBuffer =
-                HuMemDirectMallocNum(3, OSRoundUp32B(fileLength), heapOrAllocationNumber);
+                HuMemDirectMallocNum(3, OSRoundUp32B(length), heapOrAllocationNumber);
             break;
             
         case 2:
-            dataBuffer = HuMemDirectMalloc(heapOrAllocationNumber, OSRoundUp32B(fileLength));
+            dataBuffer = HuMemDirectMalloc(heapOrAllocationNumber, OSRoundUp32B(length));
             break;
          
         case 3:
-            dataBuffer = fn_8000B560(heapOrAllocationNumber, OSRoundUp32B(fileLength));
+            dataBuffer = fn_8000B560(heapOrAllocationNumber, OSRoundUp32B(length));
             break;
         
         default:
-            OSPanic("dvd.c", 58, "dvd.c: HuDvdDataReadWait Mode Error");
-            break;
+/* Retail fixes the next panic's line; the earlier lines are unknown: 8 lines are left blank. */
+
+
+
+
+
+
+
+
+            OSPanic(__FILE__, __LINE__, "dvd.c: HuDvdDataReadWait Mode Error");
     }
     if(!dataBuffer) {
-        OSReport("dvd.c: Memory Allocation Error (Length %x) (mode %d)\n", fileLength,
-                 allocationMode);
+        OSReport("dvd.c: Memory Allocation Error (Length %x) (mode %d)\n", length, allocationMode);
         OSReport("Rest Memory %x\n", fn_8000B790(3)-HuMemUsedMallocSizeGet(3));
-        OSPanic("dvd.c", 63, "\n");
+        OSPanic(__FILE__, __LINE__, "\n");
         return NULL;
     }
     OSReport("Rest Memory %x\n", fn_8000B790(3)-HuMemUsedMallocSizeGet(3));
     // Read-submission results are ignored; the synchronous path waits for its callback below.
     if(readAsync) {
-        if(fileLength > HU_DVD_BLOCKSIZE) {
-            fileLength = HU_DVD_BLOCKSIZE;
+        if(length > HU_DVD_BLOCKSIZE) {
+            length = HU_DVD_BLOCKSIZE;
         }
-        DVDReadAsyncPrio(dvdFile, dataBuffer, OSRoundUp32B(fileLength), 0,
+        DVDReadAsyncPrio(dvdFile, dataBuffer, OSRoundUp32B(length), 0,
                          fn_80007C88, 3);
     } else {
         u32 chunkSize;
         u32 readOffset;
-        for(readOffset=chunkSize=0; readOffset<fileLength; readOffset += HU_DVD_BLOCKSIZE) {
-            chunkSize = fileLength-readOffset;
+        for(readOffset=chunkSize=0; readOffset<length; readOffset += HU_DVD_BLOCKSIZE) {
+            chunkSize = length-readOffset;
             if(chunkSize > HU_DVD_BLOCKSIZE) {
                 chunkSize = HU_DVD_BLOCKSIZE;
             }
@@ -91,7 +98,15 @@ void *HuDvdDataRead(char *filePath)
     DVDFileInfo dvdFile;
     void *fileData = NULL;
     if(!DVDOpen(filePath, &dvdFile)) {
-        OSPanic("dvd.c", 109, "dvd.c: File Open Error");
+/* Retail fixes the next panic's line; the earlier lines are unknown: 7 lines are left blank. */
+
+
+
+
+
+
+
+        OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         fileData = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);
         DVDClose(&dvdFile);
@@ -114,7 +129,20 @@ void **HuDvdDataReadMulti(char **filePaths)
     fileDataArray = HuMemDirectMalloc(0, pathCount*sizeof(void *));
     for(pathIndex=0; pathIndex<pathCount; pathIndex++) {
         if(!DVDOpen(filePaths[pathIndex], &dvdFile)) {
-            OSPanic("dvd.c", 145, "dvd.c: File Open Error");
+/* Retail fixes the next panic's line; the earlier lines are unknown: 12 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+            OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
             return NULL;
         } else {
             fileDataArray[pathIndex] = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);
@@ -130,7 +158,10 @@ void *HuDvdDataReadDirect(char *filePath, HEAPID targetHeap)
     DVDFileInfo dvdFile;
     void *fileData = NULL;
     if(!DVDOpen(filePath, &dvdFile)) {
-        OSPanic("dvd.c", 164, "dvd.c: File Open Error");
+/* Retail fixes the next panic's line; the earlier lines are unknown: 2 lines are left blank. */
+
+
+        OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         fileData = HuDvdDataReadWait(&dvdFile, 2, targetHeap, FALSE);
         DVDClose(&dvdFile);
@@ -144,7 +175,34 @@ void *HuDvdDataFastRead(s32 entryNumber)
     DVDFileInfo dvdFile;
     void *fileData = NULL;
     if(!DVDFastOpen(entryNumber, &dvdFile)) {
-        OSPanic("dvd.c", 205, "dvd.c: File Open Error");
+/* Retail fixes the next panic's line; the earlier lines are unknown: 26 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         fileData = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);
         DVDClose(&dvdFile);
@@ -158,7 +216,8 @@ void *HuDvdDataFastReadNum(s32 entryNumber, s32 allocationTag)
     DVDFileInfo dvdFile;
     void *fileData = NULL;
     if(!DVDFastOpen(entryNumber, &dvdFile)) {
-        OSPanic("dvd.c", 220, "dvd.c: File Open Error");
+
+        OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         fileData = HuDvdDataReadWait(&dvdFile, 1, allocationTag, FALSE);
         DVDClose(&dvdFile);
@@ -173,7 +232,8 @@ void *HuDvdDataFastReadAsync(s32 entryNumber, HUDATASTAT *readStatus)
     DVDFileInfo unusedFileInfo; // The open file is stored in readStatus->dvdFile.
     void *fileData = NULL;
     if(!DVDFastOpen(entryNumber, &readStatus->dvdFile)) {
-        OSPanic("dvd.c", 236, "dvd.c: File Open Error");
+
+        OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         readStatus->readOfs = 0;
         readStatus->readLen = readStatus->dvdFile.length;

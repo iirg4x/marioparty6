@@ -1,7 +1,8 @@
 /* Creates players and advances their route choices, movement, and motion states. */
-#include "REL/m644dll/module_types.h"
+#include "REL/m644dll/module_declarations.h"
 #include "dolphin/pad.h"
 #include "game/hu3d.h"
+#include "game/frand.h"
 
 /* All engine actions except hip drop; team collision groups use paired mask bits. */
 #define M644_PLAYER_ACTION_MASK 0xFFFFFFEF
@@ -37,63 +38,18 @@ typedef struct RockOffsets {
 static const RockOffsets lbl_1_rodata_168 = {{1.8f, 1.2f, 1.1f}};
 static const RockOffsets lbl_1_rodata_174 = {{1.45f, 1.0f, 1.0f}};
 
-extern s32 fn_1_9124(s32 selector);
-extern s32 fn_1_6588(s32 route);
-extern void fn_1_1EA8(s32 entry_index, Point3d *position, Mtx matrix);
-extern f32 fn_1_65A4(s32 side, s32 route, s32 variant);
-extern void fn_1_6684(s32 route, s32 variant, Vec *out);
-extern void fn_1_671C(s32 route, s32 variant, Vec *out);
-extern f32 fn_1_6768(s32 route, s32 variant);
-
-extern s32 fn_1_67CC(s32 route, s32 variant);
-
-extern void fn_1_7FF4(s32 group, s32 point, Vec *out);
-extern s32 frandmod(s32 range);
-
 /* Per-player course, CPU and boarding state, linked to the other teammate. */
 M644PlayerRecord lbl_1_bss_78[4];
-extern OMOBJMAN *fn_1_A0(void);
 
-extern void fn_1_8064(s32 entry_index, s32 slot, Mtx matrix);
-
-extern int fn_1_213C(COL_NARROW_PARAM *contact, COL_NARROW_PARAM *other_contact);
-extern void fn_1_7E5C(HU3D_MODELID modelId, s32 group, s32 variant);
-
-void fn_1_7FF4(s32, s32, Vec *);
-
-s32 fn_1_9124(s32);
-s32 fn_1_6588(s32);
-void fn_1_8064(s32, s32, Mtx);
-void fn_1_1EA8(s32, Point3d *, Mtx);
-f32 fn_1_65A4(s32, s32, s32);
-void fn_1_6684(s32, s32, Vec *);
-void fn_1_671C(s32, s32, Vec *);
-f32 fn_1_6768(s32, s32);
-
-void fn_1_7F8C(s16, s32, s32);
-
-void fn_1_6394(OMOBJ *);
-
-void fn_1_21B8(M644PlayerRecord *player);
 void fn_1_2288(M644PlayerRecord *player);
-void fn_1_24D4(M644PlayerRecord *player);
 void fn_1_28CC(M644PlayerRecord *player);
 s32 fn_1_2B44(M644PlayerRecord *player);
 s32 fn_1_2FE0(M644PlayerRecord *player);
 s32 fn_1_32D0(M644PlayerRecord *player);
 void fn_1_4440(OMOBJ *object);
 void fn_1_46C0(OMOBJ *object);
-s32 fn_1_4E84(void);
-void fn_1_50E0(s32 player_slot);
-void fn_1_51B4(s32 group, s32 phase);
-s32 fn_1_5210(s32 group);
 void fn_1_5284(s32 group);
 void fn_1_5364(s32 group);
-void fn_1_5444(s32 group);
-void fn_1_54F0(s32 group);
-void fn_1_559C(s32 group);
-void fn_1_5660(s32 group);
-void fn_1_56D4(s32 group);
 void fn_1_5780(OMOBJ *object, HuVecF *position_out);
 void fn_1_58A8(OMOBJ *object);
 void fn_1_5AE4(OMOBJ *object);
@@ -104,9 +60,6 @@ void fn_1_6250(OMOBJ *object);
 void fn_1_3338(OMOBJ *object);
 void fn_1_3BBC(OMOBJ *object);
 void fn_1_4940(OMOBJ *object);
-s32 fn_1_5168(s32 player_slot);
-void fn_1_5180(s32 player_slot);
-s16 fn_1_519C(s32 player_slot);
 MGPLAYER *fn_1_5150(s32 player_slot);
 
 /* Resets CPU planning after a hit or spawn, then chooses a fresh route target. */
@@ -721,7 +674,7 @@ void fn_1_5180(s32 player_slot) {
 }
 
 /* Returns the team assigned to a player slot. */
-s16 fn_1_519C(s32 player_slot) {
+s32 fn_1_519C(s32 player_slot) {
     return lbl_1_bss_78[player_slot].group;
 }
 

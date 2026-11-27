@@ -395,37 +395,37 @@ void fn_1_1780(s16 playerIndex)
     s16 cameraIds[4] = { 1, 2, 4, 8 };
 
     lbl_1_bss_379C.cameras[playerIndex].unk00 = playerIndex;
-    lbl_1_bss_379C.cameras[playerIndex].position.x = presets[playerIndex][0];
-    lbl_1_bss_379C.cameras[playerIndex].position.y = presets[playerIndex][1];
-    lbl_1_bss_379C.cameras[playerIndex].position.z = presets[playerIndex][2];
+    lbl_1_bss_379C.cameras[playerIndex].target.x = presets[playerIndex][0];
+    lbl_1_bss_379C.cameras[playerIndex].target.y = presets[playerIndex][1];
+    lbl_1_bss_379C.cameras[playerIndex].target.z = presets[playerIndex][2];
     lbl_1_bss_379C.cameras[playerIndex].rotation.x = presets[playerIndex][3];
     lbl_1_bss_379C.cameras[playerIndex].rotation.y = presets[playerIndex][4];
     lbl_1_bss_379C.cameras[playerIndex].rotation.z = presets[playerIndex][5];
-    lbl_1_bss_379C.cameras[playerIndex].viewSettings[0] =
+    lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[0] =
         presets[playerIndex][6];
-    lbl_1_bss_379C.cameras[playerIndex].viewSettings[1] =
+    lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[1] =
         presets[playerIndex][7];
-    lbl_1_bss_379C.cameras[playerIndex].viewSettings[2] =
+    lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[2] =
         presets[playerIndex][8];
-    lbl_1_bss_379C.cameras[playerIndex].viewSettings[3] =
+    lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[3] =
         presets[playerIndex][9];
-    lbl_1_bss_379C.cameras[playerIndex].viewSettings[4] =
+    lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[4] =
         presets[playerIndex][10];
-    lbl_1_bss_379C.cameras[playerIndex].viewSettings[5] =
+    lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[5] =
         presets[playerIndex][11];
     lbl_1_bss_379C.cameras[playerIndex].fieldOfView =
         presets[playerIndex][12];
     Hu3DCameraCreate(cameraIds[playerIndex]);
     Hu3DCameraViewportSet(cameraIds[playerIndex],
-                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[2],
-                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[3],
-                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[4],
-                          lbl_1_bss_379C.cameras[playerIndex].viewSettings[5],
+                          lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[2],
+                          lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[3],
+                          lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[4],
+                          lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[5],
                           0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(cameraIds[playerIndex],
                              lbl_1_bss_379C.cameras[playerIndex].fieldOfView,
                              20.0f, 40000.0f,
-                             lbl_1_bss_379C.cameras[playerIndex].viewSettings[1]);
+                             lbl_1_bss_379C.cameras[playerIndex].projectionAndViewport[1]);
     lbl_80266A4C.x = presets[playerIndex][0];
     lbl_80266A4C.y = presets[playerIndex][1];
     lbl_80266A4C.z = presets[playerIndex][2];
@@ -447,7 +447,7 @@ struct Process_s *lbl_1_bss_38E4;
 M617CameraStorage lbl_1_bss_379C;
 LightInitState lbl_1_bss_3760;
 MinigameShadowCamera lbl_1_bss_3710;
-ParticleModuleData lbl_1_bss_3708;
+MinigameParticleModels lbl_1_bss_3708;
 M617ModelSetupRecord lbl_1_bss_E88[96];
 MinigameParticipantMotionState lbl_1_bss_DC0[2];
 M617PlayerStateData lbl_1_bss_AB0[2];

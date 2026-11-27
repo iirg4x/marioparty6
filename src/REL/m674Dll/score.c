@@ -10,6 +10,7 @@
 #include "REL/m674Dll/score.h"
 #include "datadir_enum.h"
 #include "string.h"
+#include "REL/m674Dll/main.h"
 
 #define M674_SCORE_WORK_SIZE 116
 #define M674_SCORE_DATA_GROUP 0x10000000
@@ -34,7 +35,6 @@ Vec lbl_1_data_680[4] = {
     {383.6f, 64.0f, 0.0f},
     {500.0f, 64.0f, 0.0f}
 };
-extern s32 fn_1_E18(s32 index);
 void fn_1_FAD4(OMOBJ *object);
 void fn_1_FB10(OMOBJ *object);
 void fn_1_FB38(OMOBJ *object);

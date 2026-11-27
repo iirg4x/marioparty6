@@ -55,7 +55,6 @@ void fn_1_173C(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float
 void fn_1_1AA8(OMOBJ *object);
 void fn_1_1CCC(OMOBJ *object, u32 camera, s32 index);
 void fn_1_1DC4(OMOBJ *object, u32 camera, s32 index);
-void fn_1_21A8(s32 camera, Vec *direction, Vec *target, float fov, float radius);
 int fn_1_2354(unsigned int mask);
 void fn_1_2398(CameraCallback callback);
 void fn_1_23C0(u32 cameras, float value);
@@ -67,7 +66,6 @@ void fn_1_272C(HuVecF *direction);
 f32 *fn_1_277C();
 void fn_1_27AC(u8 red, u8 green, u8 blue);
 void fn_1_27E4(u32 cameras, void *data);
-void fn_1_289C(u32 cameraMask);
 BOOL fn_1_2D3C(u32 cameras);
 double fn_1_2DC0(CameraFitParams *fitParams, CameraFitSphere *sphereList, s32 sphereCount,
     Vec *cameraPosition);
@@ -77,30 +75,21 @@ void fn_1_3464(OMOBJ *object);
 void fn_1_3534(OMOBJ_FUNC callback);
 int fn_1_3574(float value);
 s32 fn_1_35A0(s32 cameras, float x);
-void fn_1_36BC(void *object);
 s32 fn_1_36E8(u32 cameras, HuVecF *position);
 void fn_1_38DC(void *object);
 s32 fn_1_3908(u32 cameras, HuVecF *position);
 s32 fn_1_3B6C(s32 effect, Vec *position);
 s32 fn_1_3BA0(u32 cameras, s32 effect, HuVecF *position);
-s32 fn_1_4040(s32 effect, Vec *position);
 s32 fn_1_4074(u32 cameras, s32 effect, HuVecF *position);
 s32 fn_1_42B4(s32 effect, Vec *position, s32 panEnabled, s32 volumeEnabled);
 s32 fn_1_42F8(u32 cameras, s32 effect, HuVecF *position, s32 panEnabled,
               s32 volumeEnabled);
-void fn_1_47F4(int effect, int handle, Vec *position, int flag, int value);
 void fn_1_4840(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled);
 void fn_1_48B8(void);
 int fn_1_4910(int handle);
-int fn_1_4994(int dataNum);
-s32 fn_1_4A9C(s32 model, s32 dataNum);
-float fn_1_4BAC(float start, float end, float factor);
-f32 fn_1_4CC8(f32 start, f32 end);
-float fn_1_4D7C(HuVecF *firstPosition, HuVecF *secondPosition);
 float fn_1_4E18(Vec *first, Vec *second);
 void fn_1_4F84(Point3d *start, Point3d *end, f32 t, Point3d *out);
-s32 fn_1_4FDC(Vec *start, Vec *end, f32 gravity, f32 initialY, Vec *velocity);
 
 /* Creates the scene utility object, clears scene-object pointers, and resets resource caches. */
 void fn_1_F8C(OMOBJMAN *manager) {
@@ -812,11 +801,10 @@ inline s32 fn_1_35A0(s32 cameras, float x)
     return pan;
 }
 
-/* Call the camera-one pan calculation without a C return statement; module callers nevertheless
- * declare this wrapper as returning s32 and use its result. */
-void fn_1_36BC(void *object)
+/* Returns the audio pan for a world position using camera mask 1. */
+s32 fn_1_36BC(Vec *position)
 {
-    fn_1_36E8(1, object);
+    return fn_1_36E8(1, position);
 }
 
 /* Projects a world position through a camera and maps its X coordinate to audio pan. */

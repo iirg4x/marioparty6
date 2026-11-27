@@ -10,6 +10,8 @@
 #include "game/mg/timer.h"
 #include "datadir_enum.h"
 #include "REL/m674Dll/scene.h"
+#include "REL/m674Dll/main.h"
+#include "REL/m674Dll/score.h"
 
 /* Started with the stage music and faded by the results exit callback. */
 #define M674_STAGE_SE 2220
@@ -35,12 +37,8 @@ s32 lbl_1_bss_0;
 void ObjectSetup(void);
 s32 fn_1_A68(s16 sequenceMode, s16 frameNo);
 void fn_1_B08(OMOBJ *object, u32 camera, s32 transitionIndex);
-s32 fn_1_E18(s32 resourceIndex);
 extern s32 fn_1_8A44(void), fn_1_DF88(void), fn_1_DB40(void);
-extern s32 fn_1_100F8(s32 player);
 extern void fn_1_100A4(void), fn_1_8BCC(void), fn_1_53F8(void), fn_1_FAD0(void);
-extern void fn_1_21A8(s32 camera, Vec *direction, Vec *target, f32 fov, f32 radius);
-extern void fn_1_289C(u32 cameraMask);
 
 void fn_1_2D4(s16 sequenceMode, s16 frameNo);
 void fn_1_310(s16 sequenceMode, s16 frameNo);
@@ -449,7 +447,7 @@ void fn_1_F1C(unsigned int playerIndex) {
 }
 
 /* Return whether all four player slots have registered their completion. */
-int fn_1_F3C() {
+int fn_1_F3C(void) {
     int playerIndex;
     for(playerIndex=0;playerIndex<4;playerIndex++) {
         if(lbl_1_bss_1C[playerIndex]==0) return 0;

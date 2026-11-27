@@ -185,16 +185,6 @@ static inline float tail17_staff_approach_inlined(float current, float target, s
     }
     return (target + current * (steps - 1)) / steps;
 }
-/* Approach an ending particle's target alpha or scale over the remaining frames. */
-static inline float tail23_ending_lerp(float start, float end, float time)
-{
-    if (start == end || time <= 1.0f) {
-        return end;
-    }
-    return (start * (time - 1.0f) + end) / time;
-}
-
-
 
 /* Return the linear fade value used by particle hooks as their age advances. */
 float fn_1_DDF8(float start, float end, float time, float duration)
@@ -445,10 +435,10 @@ void fn_1_EBCC(HU3D_MODEL *model, HU3D_PARTICLE *work, Mtx mtx)
         }
 
         targetAlpha = entry->vel.x;
-        entry->color.a = tail23_ending_lerp(entry->color.a, targetAlpha, 10.0f);
+        entry->color.a = fn_1_DF18(entry->color.a, targetAlpha, 10.0f);
 
         targetValue = entry->vel.y;
-        entry->scale = tail23_ending_lerp(entry->scale, targetValue, 10.0f);
+        entry->scale = fn_1_DF18(entry->scale, targetValue, 10.0f);
         index++;
         entry++;
     }

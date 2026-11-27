@@ -584,7 +584,6 @@ void fn_1_5468(MikeActPlayerRecord *record)
     }
 }
 
-extern MikeActPlayerRecord *fn_1_E1F8(void);
 
 void fn_1_6AA8(MGPLAYER *);
 void fn_1_6AAC(MGPLAYER *);

@@ -1,4 +1,5 @@
 /* Creates and updates the particle, ripple, and weather effects used during play. */
+#include "REL/m626Dll/setup.h"
 #include "dolphin/math.h"
 #include "dolphin/PPCArch.h"
 #include "dolphin/os/OSCache.h"
@@ -22,8 +23,6 @@
 #define M626_SPARK_VERTEX_COLOR_BIT_PATTERN 0xFFFFFF00U
 
 extern s32 frand(void);
-s32 fn_1_830(s32 resourceId);
-void fn_1_BA34(HUPROCESS *process);
 void fn_1_BADC(void);
 void fn_1_BAE0(OMOBJ *object);
 void fn_1_BB3C(OMOBJ *object);
@@ -41,12 +40,7 @@ void fn_1_CCAC(HU3D_MODEL *model, Mtx *view);
 void fn_1_CF84(OMOBJ *object);
 void fn_1_D1D8(OMOBJ *object);
 void fn_1_D7AC(HU3D_MODEL *model, Mtx *view);
-void fn_1_DBC0(Vec *position, Vec *velocity);
 void fn_1_DC84(Vec *position, Vec *velocity);
-void fn_1_DD48(s32 count, f32 radius, const Vec *position);
-void fn_1_E068(const Vec *position);
-void fn_1_E114(const Vec *position, f32 fanRadius);
-void fn_1_E1D8(M626EffectRecord *effect);
 
 /* Creates the effect manager and renderer when the scene starts its effect process. */
 void fn_1_BA34(HUPROCESS *process) {
@@ -92,11 +86,10 @@ void fn_1_BB74(OMOBJ *object)
     HU3D_PARTICLE *particle;
     s32 index;
 
-    animation = HuSprAnimRead(fn_80008DD0(fn_1_830(6), 0x10000000,
-                                                    2));
+    animation = HuSprAnimDataRead(fn_1_830(6));
     modelId = fn_8003216C(animation, 256);
     object->mdlId[0] = modelId;
-    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    particle = lbl_802C01C8[(s16)modelId].hookData;
     fn_8003269C(modelId, 0);
     fn_800326D0(modelId, fn_1_BC80);
     fn_80026B8C(modelId, 6);
@@ -162,11 +155,10 @@ void fn_1_BE74(OMOBJ *object)
     HU3D_PARTICLE *particle;
     s32 index;
 
-    animation = HuSprAnimRead(fn_80008DD0(fn_1_830(6), 0x10000000,
-                                                    2));
+    animation = HuSprAnimDataRead(fn_1_830(6));
     modelId = fn_8003216C(animation, 320);
     object->mdlId[1] = modelId;
-    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    particle = lbl_802C01C8[(s16)modelId].hookData;
     fn_8003269C(modelId, 0);
     fn_800326D0(modelId, fn_1_BF80);
     fn_80026B8C(modelId, 6);
@@ -238,7 +230,7 @@ void fn_1_C0FC(OMOBJ *object)
         fn_80008DD0(fn_1_830(7), 0x10000000, 2));
     modelId = fn_8003216C(animation, 128);
     object->mdlId[2] = modelId;
-    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    particle = lbl_802C01C8[(s16)modelId].hookData;
     fn_8003269C(modelId, 0);
     fn_800326D0(modelId, fn_1_C278);
     fn_80026B8C(modelId, 6);
@@ -259,7 +251,7 @@ void fn_1_C278(HU3D_MODEL *unusedModel, HU3D_PARTICLE *system, Mtx matrix)
     HU3D_PARTICLE_DATA *record = system->data;
     s32 index = 0;
 
-    while (index < system->maxCnt) {
+    for (; index < system->maxCnt; index++, record++) {
         switch (record->time) {
         case 0: {
             record->time++;
@@ -289,7 +281,7 @@ void fn_1_C278(HU3D_MODEL *unusedModel, HU3D_PARTICLE *system, Mtx matrix)
         case 1:
             break;
         default:
-            goto next_record;
+            continue;
         }
 
         record->scale += 4.0f;
@@ -297,7 +289,7 @@ void fn_1_C278(HU3D_MODEL *unusedModel, HU3D_PARTICLE *system, Mtx matrix)
         if (record->color.a > 240) {
             record->time = -1;
             record->scale = 0.0f;
-            goto next_record;
+            continue;
         }
 
         record->pos.x += record->accel.x;
@@ -307,9 +299,6 @@ void fn_1_C278(HU3D_MODEL *unusedModel, HU3D_PARTICLE *system, Mtx matrix)
         record->accel.y -= 0.05;
         record->accel.z *= 0.9;
 
-    next_record:
-        index++;
-        record++;
     }
     DCStoreRangeNoSync(system->data, system->maxCnt * sizeof(*record));
     PPCSync();
@@ -481,7 +470,7 @@ void fn_1_CCAC(HU3D_MODEL *model, Mtx *view)
 {
     M626EffectCollection *effects = model->hookData;
     Mtx matrix;
-    M626EffectRecord *record;
+    MinigameGroundEffect *record;
     f32 *xOffsets;
     f32 *zOffsets;
     s32 i;
@@ -729,8 +718,8 @@ void fn_1_D7AC(HU3D_MODEL *model, Mtx *view)
     }
 }
 
-/* Adds a snow particle at the supplied position with the supplied velocity. */
-void fn_1_DBC0(Vec *position, Vec *velocity)
+/* Starts a snow particle in the first free slot of the selected system. */
+static inline void emitSnowParticle(s32 systemIndex, const Vec *position, const Vec *velocity)
 {
     OMOBJ *object;
     HU3D_MODELID modelId;
@@ -739,7 +728,7 @@ void fn_1_DBC0(Vec *position, Vec *velocity)
     s32 index;
 
     object = lbl_1_bss_6C8;
-    modelId = object->mdlId[0];
+    modelId = object->mdlId[systemIndex];
     work = lbl_802C01C8[modelId].hookData;
     record = work->data;
     for (index = 0; index < work->maxCnt; index++, record++) {
@@ -752,27 +741,16 @@ void fn_1_DBC0(Vec *position, Vec *velocity)
     }
 }
 
+/* Adds a snow particle at the supplied position with the supplied velocity. */
+void fn_1_DBC0(Vec *position, Vec *velocity)
+{
+    emitSnowParticle(0, position, velocity);
+}
+
 /* Adds a large snow particle at the supplied position with its initial velocity. */
 void fn_1_DC84(Vec *position, Vec *velocity)
 {
-    OMOBJ *object;
-    HU3D_MODELID modelId;
-    HU3D_PARTICLE *work;
-    HU3D_PARTICLE_DATA *record;
-    s32 index;
-
-    object = lbl_1_bss_6C8;
-    modelId = object->mdlId[1];
-    work = lbl_802C01C8[modelId].hookData;
-    record = work->data;
-    for (index = 0; index < work->maxCnt; index++, record++) {
-        if (record->time < 0) {
-            record->time = 0;
-            record->pos = *position;
-            record->accel = *velocity;
-            break;
-        }
-    }
+    emitSnowParticle(1, position, velocity);
 }
 
 /* Emits snow around a position when player or scenery code requests a burst. */
@@ -783,11 +761,6 @@ void fn_1_DD48(s32 count, f32 radius, const Vec *position)
     for (index = 0; index < count; index++) {
         Vec start;
         Vec velocity;
-        s32 slot;
-        OMOBJ *manager;
-        s16 modelIndex;
-        HU3D_PARTICLE *model;
-        HU3D_PARTICLE_DATA *particle;
 
         start.x = (f32)((f64)position->x + radius *
             ((f32)((frand() & 0xFFFF) - M626_RANDOM_SIGNED_OFFSET) * 3.0517578125e-05));
@@ -803,19 +776,7 @@ void fn_1_DD48(s32 count, f32 radius, const Vec *position)
         velocity.z =
             (f32) ((f32) ((frand() & 0xFFFF) - M626_RANDOM_SIGNED_OFFSET) * 3.0517578125e-05 * 3.0);
 
-        manager = lbl_1_bss_6C8;
-        modelIndex = manager->mdlId[1];
-        model = lbl_802C01C8[modelIndex].hookData;
-        particle = model->data;
-
-        for (slot = 0; slot < model->maxCnt; slot++, particle++) {
-            if (particle->time < 0) {
-                particle->time = 0;
-                particle->pos = start;
-                particle->accel = velocity;
-                break;
-            }
-        }
+        emitSnowParticle(1, &start, &velocity);
     }
 }
 
@@ -865,13 +826,13 @@ void fn_1_E114(const Vec *position, f32 fanRadius)
 }
 
 /* Adds an effect record to the renderer queue when scenery activates it. */
-void fn_1_E1D8(M626EffectRecord *effect)
+void fn_1_E1D8(MinigameGroundEffect *effect)
 {
     OMOBJ *object = lbl_1_bss_6C8;
     s16 modelId = object->mdlId[4];
     HU3D_MODEL *model = &lbl_802C01C8[modelId];
     M626EffectCollection *work = model->hookData;
-    M626EffectRecord **entry = work->records;
+    MinigameGroundEffect **entry = work->records;
     s32 i;
 
     for (i = 0; i < 30; i++, entry++) {
@@ -887,8 +848,8 @@ OMOBJ *lbl_1_bss_6C8;
 GXColor lbl_1_data_8C0[2] = {{255, 255, 255, 128}, {144, 144, 208, 128}};
 Vec lbl_1_data_8C8[5] = {
     {0.0f, 10.0f, 0.0f},
-    {9.51056957f, 3.09016991f, 0.0f},
-    {5.87785006f, -8.09016991f, 0.0f},
-    {-5.87785006f, -8.09016991f, 0.0f},
-    {-9.51056957f, 3.09016991f, 0.0f},
+    {9.51057f, 3.09017f, 0.0f},
+    {5.87785f, -8.09017f, 0.0f},
+    {-5.87785f, -8.09017f, 0.0f},
+    {-9.51057f, 3.09017f, 0.0f},
 };

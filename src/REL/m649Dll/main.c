@@ -64,9 +64,6 @@
 #define M649_MOTION_RESOURCE_NONE (-1)
 #define M649_MOTION_RESOURCE_END (-2)
 
-
-typedef void (*M649CameraCallback)(OMOBJ *, u32, s32);
-
 extern OMOBJMAN *lbl_1_bss_74;
 
 extern s32 lbl_1_bss_70, lbl_1_bss_64, lbl_1_bss_60, lbl_1_bss_5C, lbl_1_bss_8;
@@ -87,32 +84,16 @@ extern MinigameAudioRange lbl_1_data_38[];
 
 void fn_1_680(short mode, short state);
 
-extern void fn_1_13D8(OMOBJMAN *manager);
-
-extern void fn_1_14A0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color);
-
-extern void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float near, float far,
-                      float shadowRadius, OM_CAMERA_VIEW *view);
-
-s32 fn_1_1210(s32 resource);
-
-extern void fn_1_2BCC(u32 cameras, void *data);
-
 void fn_1_C78(OMOBJ *object, u32 camera, s32 index);
 
-extern void fn_1_2780(M649CameraCallback callback);
 
-extern void fn_1_3250(OMOBJMAN *manager, MinigameAudioRange *config);
 
-extern void fn_1_A220(OMOBJMAN *manager);
 
-extern void fn_1_4F24(OMOBJMAN *manager);
 
-extern void fn_1_6990(OMOBJMAN *manager);
 
-extern void fn_1_8F58(OMOBJMAN *manager);
 
 s32 fn_1_BD8(s16 mode, s16 frame);
+extern void fn_1_4ECC(Vec *start, Vec *end, float factor, Vec *result);
 
 extern s32 lbl_1_bss_6C, lbl_1_bss_68, lbl_1_bss_8;
 
@@ -120,35 +101,17 @@ extern s32 lbl_1_bss_8;
 
 extern float lbl_1_bss_0, lbl_1_bss_4;
 
-extern s32 fn_1_2C84(u32 cameras);
-
-extern void fn_1_2590(u32 cameras, Vec *direction, Vec *target, float fov, float scale);
-
-extern void fn_1_4ECC(Vec *from, Vec *to, float factor, Vec *result);
-
-extern void fn_1_281C(u32 cameras, float x, float y, float width, float height);
-
 extern s32 lbl_1_bss_64;
 
-void fn_1_A600(void);
 
 extern s32 lbl_1_bss_5C;
 
-extern s32 fn_1_A644(s32 player);
 
 extern s32 lbl_1_bss_2C[4], lbl_1_bss_C[4], lbl_1_bss_4C[4];
 
 extern s32 lbl_1_data_A8[4];
 
 extern s32 lbl_1_bss_60;
-
-void fn_1_6A84(void);
-
-void fn_1_5020(void);
-
-void fn_1_A2A8(void);
-
-extern void fn_1_4ECC(Vec *start, Vec *end, float factor, Vec *result);
 
 extern s32 lbl_1_bss_2C[4];
 
@@ -492,10 +455,9 @@ extern s32 fn_1_1234(void) {
     return lbl_1_bss_5C;
 }
 
-/* Computer-player timing calls this to read the sequence timer; the void wrapper discards its
- * return value. */
-void fn_1_1244(void) {
-    fn_80071B58();
+/* Returns the sequence timer for computer-player timing. */
+s32 fn_1_1244(void) {
+    return fn_80071B58();
 }
 
 /* Returns the registered result for a player slot. */
@@ -537,7 +499,7 @@ void fn_1_1368(s32 player)
 }
 
 /* Returns whether all four player results have been submitted. */
-s32 fn_1_1388(void)
+BOOL fn_1_1388(void)
 {
     s32 player;
     for (player = 0; player < 4; player++) {
@@ -569,14 +531,6 @@ extern void fn_1_7AC(s16 mode, s16 frame);
 extern void fn_1_AD4(s16 mode, s16 frame);
 extern void fn_1_B78(s16 mode, s16 frame);
 extern void fn_1_BB0(s16 mode, s16 frame);
-extern void fn_1_728C(OMOBJ *object);
-extern void fn_1_7288(OMOBJ *object);
-extern void fn_1_7300(OMOBJ *object);
-extern void fn_1_7C94(OMOBJ *object);
-extern void fn_1_7DD8(OMOBJ *object);
-extern void fn_1_7FD4(OMOBJ *object);
-extern void fn_1_80B4(OMOBJ *object);
-extern void fn_1_8278(OMOBJ *object);
 
 OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, 0.0f, 0.0f}, {-60.0f, 0.0f, 0.0f}, 1000.0f};
 Vec lbl_1_data_1C = {0.0f, 800.0f, 0.0f};

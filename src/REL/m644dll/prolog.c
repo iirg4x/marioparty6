@@ -1,12 +1,12 @@
 /* Runs module constructors and destructors and exposes its object manager. */
 #include "dolphin/math.h"
 #include "game/object.h"
+#include "REL/m644dll/module_declarations.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 extern HUPROCESS *lbl_1_bss_0[2];
-void ObjectSetup(void);
 
 /* Runs module constructors before starting Rocky Road's object manager. */
 int _prolog(void)

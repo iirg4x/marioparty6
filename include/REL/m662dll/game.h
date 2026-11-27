@@ -1,6 +1,7 @@
 /* Trick or Tree player, scene, motion, puzzle and particle state shared by its updates. */
 #ifndef REL_M662DLL_GAME_H
 #define REL_M662DLL_GAME_H
+#include "REL/minigame_camera_preset.h"
 #include "REL/minigame_shadow_camera.h"
 
 #include "REL/minigame_light.h"
@@ -168,21 +169,8 @@ extern M662Puzzle lbl_1_bss_D0[4];
 extern M662ParticleModule lbl_1_bss_A74;
 extern MinigameShadowCamera lbl_1_bss_A7C;
 extern LightInitState lbl_1_bss_ACC;
-/* Stores the local camera presets and their projection settings. */
-typedef struct M662CameraRecord {
-    s32 unk00; /* The game's code never reads this field. */
-    u8 unk04[12]; /* No code names this field. */
-    f32 unk10[3]; /* The game's code never reads this field. */
-    f32 unk1C[3]; /* The game's code never reads this field. */
-    u8 unk28[12]; /* No code names this field. */
-    f32 unk34; /* The game's code never reads this field. */
-    f32 aspectRatio;
-    f32 viewport[4]; /* X, Y, width and height. */
-    f32 fieldOfView;
-} M662CameraRecord;
-
 typedef struct M662CameraState {
-    M662CameraRecord cameras[4];
+    MinigameCameraPreset cameras[4];
     u8 unk140[8]; /* No code names this field. */
 } M662CameraState;
 

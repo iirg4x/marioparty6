@@ -72,7 +72,6 @@ void fn_1_8E74(M646ModelAttachment *attachment);
 
 void fn_1_8158(OMOBJMAN *objman);
 void fn_1_81F8(void);
-void fn_1_81FC(s16 index, Point3d *out);
 void fn_1_8270(OMOBJ *obj);
 void fn_1_8380(OMOBJ *obj, s32 index);
 void fn_1_8800(OMOBJ *obj);
@@ -805,7 +804,7 @@ void fn_1_81F8(void)
 }
 
 /* The turn coordinator queries an opening target position before aiming its player. */
-void fn_1_81FC(s16 index, Point3d *out)
+void fn_1_81FC(s16 index, Vec *out)
 {
     void *stageWork = lbl_1_bss_80->data;
     out->x = lbl_1_bss_84.points[index].x;

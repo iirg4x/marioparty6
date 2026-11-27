@@ -16,8 +16,6 @@ extern s32 lbl_1_data_4[2];
 
 void fn_1_310(OMOBJ *obj);
 extern MGSEQ_PARAM lbl_1_data_C;
-s32 fn_1_A0D4(void);
-s32 fn_1_A0FC(void);
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
@@ -29,8 +27,6 @@ void fn_1_90(void);
 void fn_1_94(void);
 void fn_1_E0(OMOBJMAN *objman);
 void fn_1_1E0(void);
-void fn_1_1E4(s32 camera);
-s32 fn_1_2CC(void);
 void fn_1_310(OMOBJ *obj);
 void fn_1_314(OMOBJ *obj);
 void fn_1_318(void);
@@ -53,9 +49,7 @@ s32 lbl_1_data_4[2] = {
     DATANUM(0x690000, M646_ALTERNATE_CAMERA_MOTION_FILE)
 };
 
-void fn_1_AF4(s16 mode, s16 frame);
 
-void fn_1_AF8(s16 mode, s16 frame);
 
 MGSEQ_PARAM lbl_1_data_C = {30, 0,
      fn_1_858, fn_1_878, fn_1_8A4, fn_1_908, fn_1_934, fn_1_9A0, fn_1_AB4, fn_1_AF4, fn_1_AF8};
@@ -71,7 +65,7 @@ void fn_1_0(void)
     nightMode = lbl_802C0278;
     lbl_1_data_0->unk1C = nightMode;
     lbl_1_data_0->unk14 = 0;
-    lbl_1_data_0->unknown20 = 0;
+    lbl_1_data_0->unk20 = 0;
 }
 
 void fn_1_90(void)

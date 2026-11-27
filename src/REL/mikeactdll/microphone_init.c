@@ -335,9 +335,7 @@ extern MikeActPlayerRecord *lbl_1_bss_C4[5];
 
 extern MikeActStateRecord lbl_1_bss_1B8[0x100];
 
-extern void HuMCSelWinKill(void);
 
-extern void HuMCSessionKill(s32 session);
 
 void fn_1_B4C(void)
 {
@@ -693,7 +691,6 @@ void fn_1_1C6C(void) {
     lbl_1_bss_40 = lbl_1_bss_4E;
 }
 
-extern void HuMCSelWinCreate(f32 x, f32 y);
 
 void fn_1_1CD0(void)
 {

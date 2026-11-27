@@ -25,4 +25,8 @@ static inline void MikeActActivityInit(void)
     fn_1_20E8();
 }
 
+/* Functions shared by the module's source files. */
+void fn_1_1698C(void);
+void fn_1_17B5C(void);
+
 #endif

@@ -1,5 +1,6 @@
 /* Round result: the per-frame steps that close a round and start each player's
  * result motion. */
+#include "REL/m661dll/model_setup.h"
 
 #include "dolphin/types.h"
 
@@ -57,40 +58,13 @@
 #include "REL/m661dll.h"
 
 
-typedef struct ModelSetupRecord {
-    HU3D_MODELID modelId;
-    s16 state;
-    HuVecF position;
-    HuVecF shadowPosition;
-    HuVecF rotation;
-} ModelSetupRecord;
-
-typedef struct PlayerAnimationWork {
-    s16 motionIds[5];
-    s16 motionId, appliedMotionId;
-    f32 motionSpeed, appliedMotionSpeed;
-    f32 motionTime, appliedMotionTime, motionDuration;
-    u32 modelAttributes, appliedModelAttributes, attributesToReset;
-    s32 motionEnded;
-    s16 repeatMotion, nextMotionId;
-    f32 nextMotionTime;
-    u32 nextModelAttributes, transitionState;
-    s16 shiftState, shiftedMotionId;
-    u32 shiftAttributes;
-    f32 shiftTime, shiftDuration, shiftElapsed, shiftMaxTime;
-    /* The array's 0x60-byte element stride leaves four unidentified bytes here. */
-    u8 unknown5C[4]; /* No code names this field. */
-} PlayerAnimationWork;
-
-
-extern PlayerAnimationWork lbl_1_bss_1D7C[2];
-extern ModelSetupRecord lbl_1_bss_1E3C[113];
 
 void fn_1_C5C4(void);
 
 
 
 
+/* Advances both players' choice states and continues the scene update. */
 s32 fn_1_BA38(void)
 {
     s16 result = 0;
@@ -192,6 +166,7 @@ extern f32 lbl_802C028C;
 extern void fn_1_308C(MGTIMER *);
 
 
+/* Runs the results sequence, including winner staging, coin awards, and the exit wipe. */
 s32 fn_1_BD6C(void)
 {
     s32 result = 0;
@@ -200,26 +175,26 @@ s32 fn_1_BD6C(void)
     switch (lbl_1_bss_196C.phase) {
     case 0:
         if (lbl_1_bss_196C.timer++ > 0x1E) {
-            WipeCreate(2, 6, 0x3C);
+            WipeCreate(2, 6, 60);
             lbl_1_bss_196C.timer = 0;
             lbl_1_bss_196C.phase++;
         }
         break;
     case 1:
         if (WipeCheck() == 0) {
-            lbl_1_bss_1C04[0].x = -125.0f;
-            lbl_1_bss_1C04[0].y = 0.0f;
-            lbl_1_bss_1C04[0].z = -478.0f;
-            lbl_1_bss_1C04[1].x = 125.0f;
-            lbl_1_bss_1C04[1].y = 0.0f;
-            lbl_1_bss_1C04[1].z = -478.0f;
+            lbl_1_bss_1C04[0].position.x = -125.0f;
+            lbl_1_bss_1C04[0].position.y = 0.0f;
+            lbl_1_bss_1C04[0].position.z = -478.0f;
+            lbl_1_bss_1C04[1].position.x = 125.0f;
+            lbl_1_bss_1C04[1].position.y = 0.0f;
+            lbl_1_bss_1C04[1].position.z = -478.0f;
 
             for (index = 0; index < 2; index++) {
                     lbl_1_bss_1C04[index].playerStatus[0] = 0;
                     lbl_1_bss_1C04[index].active = 1;
-                    lbl_1_bss_1C04[index].rotationX = 0.0f;
-                    lbl_1_bss_1C04[index].rotationY = 0.0f;
-                    lbl_1_bss_1C04[index].rotationZ = 0.0f;
+                    lbl_1_bss_1C04[index].rotation.x = 0.0f;
+                    lbl_1_bss_1C04[index].rotation.y = 0.0f;
+                    lbl_1_bss_1C04[index].rotation.z = 0.0f;
                     lbl_1_bss_1D7C[index].appliedModelAttributes =
                         (lbl_1_bss_1D7C[index].appliedMotionId = -1);
                     lbl_1_bss_1D7C[index].motionId = 0;
@@ -247,7 +222,7 @@ s32 fn_1_BD6C(void)
             lbl_802C028C = 800.0f;
 
             {
-                for (index = 0x23; index < 0x71; index++) {
+                for (index = 35; index < 113; index++) {
                     fn_800269E8(lbl_1_bss_1E3C[index].modelId, 1);
                 }
             }
@@ -261,9 +236,9 @@ s32 fn_1_BD6C(void)
             fn_800269E8(lbl_1_bss_1E3C[0x11].modelId, 1);
 
             {
-                for (index = 0x1A; index <= 0x22; index++) {
+                for (index = 26; index <= 34; index++) {
                     fn_80026A44(lbl_1_bss_1E3C[index].modelId, 1);
-                    if (index == 0x1D || index == 0x20 || index == 0x22) {
+                    if (index == 29 || index == 32 || index == 34) {
                         fn_800269E8(
                             lbl_1_bss_1E3C[index].modelId, 0x40000001);
                         fn_8002D86C(
@@ -273,16 +248,16 @@ s32 fn_1_BD6C(void)
                 }
             }
 
-            lbl_1_bss_196C.result = 0;
+            lbl_1_bss_196C.unk20 = 0;
             if (lbl_1_bss_1C04[0].score == lbl_1_bss_1C04[1].score) {
-                lbl_1_bss_196C.result = 1;
+                lbl_1_bss_196C.unk20 = 1;
                 fn_80071C18(-1, -1, -1, -1);
             } else if (lbl_1_bss_1C04[0].score > lbl_1_bss_1C04[1].score) {
                 s32 winnerController;
 
                 lbl_1_bss_1C04[0].resultCharacter =
                     lbl_1_bss_1C04[0].character;
-                winnerController = lbl_1_bss_1C04[0].controller;
+                winnerController = lbl_1_bss_1C04[0].groupSlot;
                 if (fn_8006A124(0x1000F) == 0) {
                     lbl_80265750[winnerController].mgCoinBonus = 0xA;
                 }
@@ -293,7 +268,7 @@ s32 fn_1_BD6C(void)
 
                 lbl_1_bss_1C04[1].resultCharacter =
                     lbl_1_bss_1C04[1].character;
-                winnerController = lbl_1_bss_1C04[1].controller;
+                winnerController = lbl_1_bss_1C04[1].groupSlot;
                 if (fn_8006A124(0x1000F) == 0) {
                     lbl_80265750[winnerController].mgCoinBonus = 0xA;
                 }
@@ -305,7 +280,7 @@ s32 fn_1_BD6C(void)
         break;
     case 2:
         if (lbl_1_bss_196C.timer++ > 0x1E) {
-            WipeCreate(1, 6, 0x3C);
+            WipeCreate(1, 6, 60);
             lbl_1_bss_196C.timer = 0;
             lbl_1_bss_196C.phase++;
         }
@@ -334,6 +309,7 @@ s32 fn_1_BD6C(void)
 extern MotionControl lbl_1_bss_10[];
 
 
+/* Steps through the result effects up to the higher score. */
 void fn_1_C5C4(void)
 {
     s16 maximum;
@@ -354,8 +330,8 @@ void fn_1_C5C4(void)
     if (lbl_1_bss_196C.waitTimer++ > 0x14 &&
         lbl_1_bss_196C.activeCount < activeCountLimit) {
         progressAsFloat = (f32)(lbl_1_bss_196C.activeCount % 2);
-        for (effectIndex = 0x62, settingsIndex = 0x3F;
-             effectIndex <= 0x70;
+        for (effectIndex = 98, settingsIndex = 63;
+             effectIndex <= 112;
              effectIndex++, settingsIndex++) {
             effect = &lbl_1_bss_1E3C[effectIndex];
             settings = &lbl_1_bss_10[settingsIndex];
@@ -382,8 +358,8 @@ void fn_1_C5C4(void)
         lbl_1_bss_196C.waitTimer = 0;
     }
 
-    for (effectIndex = 0x62, settingsIndex = 0x3F;
-         effectIndex <= 0x70;
+    for (effectIndex = 98, settingsIndex = 63;
+         effectIndex <= 112;
          effectIndex++, settingsIndex++) {
         effect = &lbl_1_bss_1E3C[effectIndex];
         settings = &lbl_1_bss_10[settingsIndex];

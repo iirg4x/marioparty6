@@ -13,24 +13,10 @@
 #include "REL/m674Dll/effects.h"
 #include "REL/m674Dll/scene.h"
 #include <string.h>
-
-/* Shared archive, sequence, scene, player, and collision helpers used by props. */
-extern s32 fn_1_E18(s32 resource);
-extern s32 fn_1_E20(void);
-extern s32 fn_1_F3C(void);
-extern s32 fn_1_4994(void);
-extern s32 fn_1_4A9C(s32 model, s32 resource);
-extern s32 fn_1_11218(M674Entry *entry);
-extern void fn_1_112A8(M674Entry *record);
-extern s32 fn_1_4040(s32 effect, void *position);
-extern f32 fn_1_4BAC(f32 start, f32 end, f32 factor);
-extern f32 fn_1_4CC8(f32 start, f32 end);
-extern f32 fn_1_4D7C(Vec *start, Vec *end);
-extern s32 fn_1_4FDC(Vec *start, Vec *end, f32 gravity, f32 initialY, Vec *velocity);
-extern s32 fn_1_36BC(void *position);
-extern s32 fn_1_7660(M674Entry *first, M674Entry *second);
-extern void fn_1_10028(s32 scoreIndex, s32 coinAmount);
-extern void fn_1_10150(s32 scoreIndex, f32 *x, f32 *y);
+#include "REL/m674Dll/main.h"
+#include "REL/m674Dll/score.h"
+#include "REL/m674Dll/collision.h"
+#include "REL/m674Dll/player.h"
 
 void fn_1_8ACC(HUPROCESS *process);
 void fn_1_8BCC(void);
@@ -85,9 +71,7 @@ void fn_1_D8CC(OMOBJ *object);
 void fn_1_D9FC(OMOBJ *object);
 s32 fn_1_DB40(void);
 void fn_1_DB50(s32 collectionType, s32 scoreIndex, Vec *position);
-M674ActorState *fn_1_DC2C(Vec *origin, f32 heading, f32 headingRange, f32 maxDistance);
 s32 fn_1_DF88(void);
-s32 fn_1_E014(void);
 
 /* Random offsets use the midpoint of the 16-bit random range. */
 #define RANDOM_U16_MIDPOINT 32768
@@ -210,10 +194,7 @@ void fn_1_8BE4(HUPROCESS *process, MinigamePropParams *param)
         }
         if (param->modelResource >= 0) {
             if (param->linkModel != 0) {
-                /* Discard the archive-number result, then call the model cache without an explicit
-                 * data number. */
-                fn_1_E18(param->modelResource);
-                model = fn_1_4994();
+                model = fn_1_4994(fn_1_E18(param->modelResource));
             } else {
                 model = fn_80025A04(fn_80008DD0(fn_1_E18(param->modelResource),
                     0x10000000, 2));
@@ -724,10 +705,7 @@ void fn_1_A730(M674PropWork *owner, s32 resource, s32 count)
     memset(entries, 0, allocationSize);
     owner->models = entries;
     for (index = 0; index < count; index++, entries++) {
-        /* Discard the archive-number result, then call the model cache without an explicit data
-         * number. */
-        fn_1_E18(resource);
-        entries->modelId = fn_1_4994();
+        entries->modelId = fn_1_4994(fn_1_E18(resource));
         fn_800269E8((s16)entries->modelId, (1 << 0));
     }
 }
@@ -1021,10 +999,7 @@ void fn_1_B37C(OMOBJ *object)
             ((0.000030517578125) * (f64)(f32)((s32)(frand() & 0xFFFF) - RANDOM_U16_MIDPOINT)));
     }
 
-    /* Discard the archive-number result, then call the model cache without an explicit data
-     * number. */
-    fn_1_E18(24);
-    work->secondaryModel = fn_1_4994();
+    work->secondaryModel = fn_1_4994(fn_1_E18(24));
     fn_80026B8C((s16)work->secondaryModel, 3);
     fn_800269E8((s16)work->secondaryModel, (1 << 0));
     fn_800269E8((s16)work->secondaryModel, ((1 << 30) | (1 << 1)));
@@ -1215,10 +1190,7 @@ void fn_1_BDC8(OMOBJ *object)
     work->state.task.shape.actor.radius = (80.0f);
     work->state.task.shape.actor.collisionFlag = (1.0f);
     fn_1_11218(&work->state.task);
-    /* Discard the archive-number result, then call the model cache without an explicit data
-     * number. */
-    fn_1_E18(3);
-    modelWork->state.shadowModel = fn_1_4994();
+    modelWork->state.shadowModel = fn_1_4994(fn_1_E18(3));
     fn_80026B8C((s16)modelWork->state.shadowModel, 3);
     fn_80026E44((s16)modelWork->state.shadowModel);
     fn_800269E8((s16)modelWork->state.shadowModel, (1 << 3));

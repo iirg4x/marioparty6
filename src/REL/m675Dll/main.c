@@ -1,4 +1,8 @@
 /* Sets up Banana Shake and handles its opening, play and result sequence. */
+#include "REL/minigame_camera_work.h"
+#include "REL/minigame_positional_audio.h"
+#include "REL/minigame_fog.h"
+#include "msm_se.h"
 #include "math.h"
 #include "game/object.h"
 #include "game/gamework.h"
@@ -7,7 +11,6 @@
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 #include "msm_stream.h"
-#define MSM_SE_M675_2224 2224
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[], _dtors[];
 void ObjectSetup(void);
@@ -49,30 +52,14 @@ Vec lbl_1_data_1C = {0.0f, 800.0f, 0.0f};
 Vec lbl_1_data_28 = {0.0f, 0.0f, 0.0f};
 GXColor lbl_1_data_34 = {255, 255, 255, 255};
 
-typedef struct M675FogParam_s {
-    s32 layer; /* Render layer; -1 ends the list. */
-    u32 cameras; /* Camera mask supplying the clipping distances. */
-    GXFogType type; /* GX fog projection and falloff mode. */
-    float start; /* Near fog distance in world units. */
-    float end; /* Far fog distance before the controller's interpolation. */
-    GXColor color; /* Fog color passed to GX. */
-} M675FogParam;
-
 /* The fog list ends at the entry whose layer is -1. */
-M675FogParam lbl_1_data_38[] = {
+MinigameFogParams lbl_1_data_38[] = {
     {0, 1, GX_FOG_NONE, 20.0f, 10000.0f, {192, 192, 192, 0}},
     {-1, 0, GX_FOG_NONE, 0.0f, 0.0f, {0, 0, 0, 0}}
 };
 
-typedef struct M675AudioConfig_s {
-    u32 cameras; /* Camera mask; zero ends the list. */
-    s32 panMin, panMax; /* Pan at the left and right screen edges. */
-    s32 volumeMin, volumeMiddle, volumeMax; /* Volume at far, middle and near depth. */
-    float distanceFar, distanceMiddle, distanceNear; /* Camera-space depth in world units. */
-} M675AudioConfig;
-
 /* Audio distance and panning ranges; a zero camera mask ends the list. */
-M675AudioConfig lbl_1_data_68[] = {
+MinigameAudioRange lbl_1_data_68[] = {
     {((1 << 16) - 1), 32, 96, 32, 64, 110, 2400.0f, 1900.0f, 1400.0f},
     {0, 0, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f}
 };
@@ -93,24 +80,6 @@ MGSEQ_PARAM lbl_1_data_B0 = {
 };
 Vec lbl_1_data_D8 = {0.0f, 200.0f, 500.0f};
 Vec lbl_1_data_E4 = {0.1f, -1.0f, -0.35f};
-
-typedef struct M675ShadowEntry {
-    u8 unmappedBytes00To97[152];
-    s32 setupState; /* Zero requests the one-time camera-motion stop. */
-    s32 setupTimer; /* Reset when the entry's setup state advances. */
-    u8 unmappedBytesA0ToB7[24];
-} M675ShadowEntry;
-
-typedef struct M675ShadowWork {
-    s32 cameraMask; /* Cameras sharing the shadow setup. */
-    u8 unmappedBytes04To07[4];
-    f32 shadowFov; /* Shadow-camera field of view in degrees. */
-    u8 unmappedBytes0CTo17[12];
-    u8 shadowColor[4]; /* RGBA shadow tint; this callback applies RGB only. */
-    u8 unmappedBytes1CTo1F[4];
-    M675ShadowEntry entries[16]; /* One entry for each camera bit. */
-    s32 initializationCount; /* Nonzero after the shared shadow setup has run. */
-} M675ShadowWork;
 
 /* Runs registered initializers before Banana Shake's minigame setup begins. */
 int _prolog(void)
@@ -243,7 +212,7 @@ void fn_1_310(s16 mode, s16 frame)
 
         lbl_1_bss_34 = HuAudBGMPlay(MSM_STREAM_GAMING_WITH_DK);
 
-        lbl_1_bss_30 = HuAudFXPlay(MSM_SE_M675_2224);
+        lbl_1_bss_30 = HuAudFXPlay(MSM_SE_MG675_INTRO_AMBIENCE);
 
     }
 
@@ -354,36 +323,24 @@ void fn_1_6F4(s16 mode, s16 frame) {
 
     if ((fn_1_8BC(mode, frame) == 0) && (frame == 0)) {
         hasScore = 0;
-        playerIndex = 0;
-        goto check_players;
-    player_loop:
-        if (lbl_1_bss_14[playerIndex] >= 0) {
-            s16 coinBonus;
-            s32 previousCoinBonus;
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            if (lbl_1_bss_14[playerIndex] >= 0) {
+                s16 coinBonus;
+                s32 previousCoinBonus;
 
-            previousCoinBonus = lbl_80265750[playerIndex].mgCoinBonus;
-            coinBonus = previousCoinBonus + fn_1_F058(playerIndex);
+                previousCoinBonus = lbl_80265750[playerIndex].mgCoinBonus;
+                coinBonus = previousCoinBonus + fn_1_F058(playerIndex);
 
-            if (fn_8006A124(65551) == 0) {
-                lbl_80265750[playerIndex].mgCoinBonus = coinBonus;
+                if (fn_8006A124(65551) == 0) {
+                    lbl_80265750[playerIndex].mgCoinBonus = coinBonus;
+                }
             }
         }
-        playerIndex++;
-    check_players:
-        if (playerIndex < 4) {
-            goto player_loop;
-        }
 
-        playerIndex = 0;
-        goto check_results;
-    result_loop:
-        if (fn_1_F058(playerIndex) != 0) {
-            hasScore = 1;
-        }
-        playerIndex++;
-    check_results:
-        if (playerIndex < 4) {
-            goto result_loop;
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            if (fn_1_F058(playerIndex) != 0) {
+                hasScore = 1;
+            }
         }
 
         if (hasScore != 0) {
@@ -440,24 +397,24 @@ void fn_1_8C4(OM_CAMERA_VIEW *start, OM_CAMERA_VIEW *end, OM_CAMERA_VIEW *result
 void fn_1_95C(OMOBJ *object, void *callbackData, s32 entryIndex)
 {
     void *entryByteAddresses[2];
-    M675ShadowWork *work = object->data;
-    M675ShadowEntry *entry = &work->entries[entryIndex];
+    MinigameCameraWork *work = object->data;
+    MinigameCameraEntry *entry = &work->entries[entryIndex];
 
-    entryByteAddresses[1] = (u8 *) entry + 12;
-    entryByteAddresses[0] = (u8 *) entry + 40;
+    entryByteAddresses[1] = &entry->view;
+    entryByteAddresses[0] = &entry->previousView;
 
-    if (work->initializationCount == 0) {
-        work->initializationCount++;
-        fn_1_1DD8(work->cameraMask, &lbl_1_data_E4, &lbl_1_data_D8,
+    if (work->shadowInitialized == 0) {
+        work->shadowInitialized++;
+        fn_1_1DD8(work->cameras, &lbl_1_data_E4, &lbl_1_data_D8,
             work->shadowFov, 1000.0f);
-        fn_8002AAB4(work->shadowColor[0], work->shadowColor[1],
-            work->shadowColor[2]);
+        fn_8002AAB4(work->shadowColor.r, work->shadowColor.g,
+            work->shadowColor.b);
     }
-    switch (entry->setupState) {
+    switch (entry->phase) {
     case 0:
         fn_1_24CC(1);
-        entry->setupState++;
-        entry->setupTimer = 0;
+        entry->phase++;
+        entry->timer = 0;
         break;
     }
 }
@@ -486,21 +443,15 @@ u32 fn_1_A98(u32 playerToken) {
     s32 playerIndex;
     u32 outcome;
 
-    playerIndex = 0;
-    goto check;
-loop:
-    if (playerToken == (u32) lbl_1_bss_C[playerIndex]) {
-        if (lbl_1_bss_14[playerIndex] >= 0) {
-            outcome = 1;
-        } else {
-            outcome = (u32) -1;
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        if (playerToken == (u32) lbl_1_bss_C[playerIndex]) {
+            if (lbl_1_bss_14[playerIndex] >= 0) {
+                outcome = 1;
+            } else {
+                outcome = (u32) -1;
+            }
+            return outcome;
         }
-        return outcome;
-    }
-    playerIndex++;
-check:
-    if (playerIndex < 4) {
-        goto loop;
     }
     /* Tokens outside the four registered players pass through unchanged. */
     return playerToken;

@@ -1,32 +1,26 @@
 /* Stage setup: loads the players, stage models and pieces, places the pieces at random
  * free points, creates the spotlight, timer and score display, and runs the opening
  * scene. */
+#include "REL/m661dll/model_setup.h"
 #include "game/data.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
 
-typedef struct ModelSetupRecord {
-    HU3D_MODELID modelId;
-    HuVecF position;
-    HuVecF shadowPosition;
-    HuVecF rotation;
-} ModelSetupRecord;
-
-extern ModelSetupRecord lbl_1_bss_1E3C[0x71];
 extern s32 lbl_1_data_100[35];
 
 #include "math.h"
 #include "dolphin.h"
 #include "dolphin/types.h"
 #include "REL/m661dll/motion.h"
+#include "REL/m661dll/light.h"
 #include "REL/m661dll/system_state.h"
 #include "REL/m661dll/player_actors.h"
+#include "REL/m661dll/player_state.h"
 #include "REL/m661dll/particle.h"
 #include "REL/m661dll/sound.h"
 
-extern MotionControl lbl_1_bss_10[0x4E];
+extern MotionControl lbl_1_bss_10[78];
 
-typedef struct BoundaryEdge { f32 x0; f32 x1; f32 z0; f32 z1; } BoundaryEdge;
 s32 lbl_1_data_100[35] = {
     DATANUM(0x780000, 0), DATANUM(0x780000, 1), DATANUM(0x780000, 2),
     DATANUM(0x780000, 3), DATANUM(0x780000, 4), DATANUM(0x780000, 5),
@@ -43,25 +37,6 @@ s32 lbl_1_data_100[35] = {
 };
 
 #include "REL/m661dll.h"
-
-typedef struct PointLightState {
-    u8 unknown00[4]; /* No code names this field. */
-    s16 handle;
-    s16 modelId;
-    s16 lightIndex;
-    s16 modelLightId;
-    s16 lightType;
-    HuVecF position;
-    u8 unk_1C[0x0C]; /* No code names this field. */
-    HuVecF unusedVector; /* The game's code never reads this vector. */
-    HuVecF direction;
-    GXColor color;
-    f32 referenceDistance;
-    f32 referenceBrightness;
-    f32 cutoff;
-} PointLightState;
-
-extern PointLightState lbl_1_bss_1870[];
 
 #include "dolphin/os.h"
 #include "dolphin/gx.h"
@@ -101,61 +76,8 @@ extern PointLightState lbl_1_bss_1870[];
 #include "game/board/masu.h"
 #include "game/board/player.h"
 
-/* The unidentified byte intervals lie between fields used by the player code. */
-struct PlayerSequenceState {
-    s32 buttons;
-    s32 buttonsDown;
-    u16 buttonsRepeat;
-    s8 stickX, stickY, subStickX, subStickY;
-    u8 triggerL, triggerR, dPad, dPadRepeat;
-    u8 unknown12[2]; /* No code names this field. */
-    s8 groupSlot;
-    s8 playerIndex;
-    s8 character, controllerPort, group, playerType, computerDifficulty;
-    s8 choiceMode, selectedCharacter;
-    u8 unknown1D[0x13]; /* No code names this field. */
-    s8 flagBeforePosition;
-    Point3d position;
-    u8 unknown40[0xC]; /* No code names this field. */
-    Point3d rotation;
-    s8 flagAfterRotation;
-    u8 unknown59[0xB]; /* No code names this field. */
-    s16 score;
-    s16 unknownAfterScore;
-    s32 padX, padY, inputStickX, inputStickY;
-    s16 inputPhase;
-    u8 unknown7A[4]; /* No code names this field. */
-    s16 movementPhase;
-    Point3d target;
-    u8 unknown8C[0xC]; /* No code names this field. */
-    f32 chaseSpeed;
-    f32 chaseRadius;
-    u8 unknownA0[4]; /* No code names this field. */
-    s16 action;
-    u8 unknownA6[0x10]; /* No code names this field. */
-    s16 pathOffset;
-    s16 pathVariant;
-};
-struct PlayerAnimationWork {
-    s16 motionIds[5];
-    s16 motionId, appliedMotionId;
-    f32 motionSpeed, appliedMotionSpeed;
-    f32 motionTime, appliedMotionTime, motionDuration;
-    u32 modelAttributes, appliedModelAttributes, attributesToReset;
-    s32 motionEnded;
-    s16 repeatMotion, nextMotionId;
-    f32 nextMotionTime;
-    u32 nextModelAttributes, transitionState;
-    s16 shiftState, shiftedMotionId;
-    u32 shiftAttributes;
-    f32 shiftTime, shiftDuration, shiftElapsed, shiftMaxTime;
-    /* The array's 0x60-byte element stride leaves four unidentified bytes here. */
-    u8 unknown5C[4]; /* No code names this field. */
-};
-s32 fn_1_20E50(struct PlayerSequenceState *, s16);
+s32 fn_1_20E50(M661PlayerState *player, s16 advance);
 s32 fn_1_2EA4(f32 *, f32, f32, f32);
-extern struct PlayerSequenceState lbl_1_bss_1C04[2];
-extern struct PlayerAnimationWork lbl_1_bss_1D7C[2];
 
 #include "REL/m661dll/routes.h"
 #include "REL/m661dll/score_display.h"
@@ -170,6 +92,7 @@ void fn_1_71C(void);
 void fn_1_2B58(void);
 void fn_1_24E8(void);
 
+/* Prepares the actors, props, lighting, particles, and score display before play. */
 s32 fn_1_88B8(void)
 {
     MGACTOR_PARAM actorParam;
@@ -217,20 +140,20 @@ s32 fn_1_88B8(void)
         fn_80026B8C((s16)lbl_1_bss_1960.players[index]->actor->mdlId, 1);
         fn_8002D414(lbl_1_bss_1E3C[index].modelId, 20.0f);
         fn_8005F77C(lbl_1_bss_1C04[index].character, 0);
-        lbl_1_bss_1C04[index].flagAfterRotation = 1;
-        lbl_1_bss_1C04[index].flagBeforePosition = 1;
-        lbl_1_bss_1C04[index].choiceMode = 1;
+        lbl_1_bss_1C04[index].playerStatus[0] = 1;
+        lbl_1_bss_1C04[index].unk30 = 1;
+        lbl_1_bss_1C04[index].active = 1;
         fn_8005DFC0(lbl_1_bss_1C04[index].character, 1);
     }
 
     fn_8005DDEC(1);
-    index = 0x23;
-    for (; index < 0x71; index++) {
+    index = 35;
+    for (; index < 113; index++) {
         fn_800273EC(lbl_1_bss_1E3C[index].modelId, 0.7f,
                         0.7f, 0.7f);
     }
-    index = 0x62;
-    for (; index <= 0x70; index++) {
+    index = 98;
+    for (; index <= 112; index++) {
         fn_800273EC(lbl_1_bss_1E3C[index].modelId, 0.7f,
                         0.7f, 0.7f);
     }
@@ -240,8 +163,8 @@ s32 fn_1_88B8(void)
     fn_1_249A8();
     lbl_1_bss_196C.action = fn_1_2FC4(0, 0x14, 0, 288.0f,
                                           64.0f);
-    lbl_1_bss_1C04[0].action = 2;
-    lbl_1_bss_1C04[1].action = 2;
+    lbl_1_bss_1C04[0].targetKind = 2;
+    lbl_1_bss_1C04[1].targetKind = 2;
     return 0;
 }
 
@@ -267,6 +190,7 @@ s16 fn_1_8E14() {
     return result;
 }
 
+/* Loads the course models and configures their shadows. */
 void fn_1_8E50(void)
 {
     HuVecF shadowPositions[16] = { { -650.0f, 0.0f, -650.0f }, { -225.0f, 0.0f, -650.0f }, { 225.0f, 0.0f, -650.0f }, { 650.0f, 0.0f, -650.0f }, { -650.0f, 0.0f, -225.0f }, { -225.0f, 0.0f, -225.0f }, { 225.0f, 0.0f, -225.0f }, { 650.0f, 0.0f, -225.0f }, { -650.0f, 0.0f, 225.0f }, { -225.0f, 0.0f, 225.0f }, { 225.0f, 0.0f, 225.0f }, { 650.0f, 0.0f, 225.0f }, { -650.0f, 0.0f, 650.0f }, { -225.0f, 0.0f, 650.0f }, { 225.0f, 0.0f, 650.0f }, { 650.0f, 0.0f, 650.0f } };
@@ -277,7 +201,7 @@ void fn_1_8E50(void)
     modelIndex = 3;
     fileIndex = 1;
     shadowPositionIndex = 0;
-    while (modelIndex <= 0x19) {
+    while (modelIndex <= 25) {
         lbl_1_bss_1E3C[modelIndex].modelId = fn_80025A04(fn_80008DD0(
             lbl_1_data_100[fileIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_1E3C[modelIndex].modelId, 1);
@@ -319,8 +243,8 @@ void fn_1_8E50(void)
     }
 
     modelIndex = 0x1A;
-    fileIndex = 0x18;
-    while (modelIndex <= 0x22) {
+    fileIndex = 24;
+    while (modelIndex <= 34) {
         lbl_1_bss_1E3C[modelIndex].modelId = fn_80025A04(fn_80008DD0(
             lbl_1_data_100[fileIndex], 0x10000000, 2));
         fn_800269E8(lbl_1_bss_1E3C[modelIndex].modelId, 1);
@@ -340,6 +264,7 @@ void fn_1_8E50(void)
     }
 }
 
+/* Places the course models and sets up their motions within the boundaries. */
 void fn_1_949C(void)
 {
     Point3d normalDirections[2] = { { 1.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 1.0f } };
@@ -378,8 +303,8 @@ void fn_1_949C(void)
     collisionRadius *= collisionRadius;
 
     {
-    for (modelIndex = 0x62, motionIndex = 0x3F;
-         modelIndex <= 0x70;
+    for (modelIndex = 0x62, motionIndex = 63;
+         modelIndex <= 112;
          modelIndex++, motionIndex++) {
         lbl_1_bss_1E3C[modelIndex].modelId = fn_80025A04(
             fn_80008DD0(lbl_1_data_100[33], 0x10000000, 2));
@@ -420,7 +345,7 @@ void fn_1_949C(void)
 
     {
     for (modelIndex = 0x23, motionIndex = 0, pathIndex = 0;
-         modelIndex < 0x62;
+         modelIndex < 98;
          modelIndex++, motionIndex++, pathIndex++) {
 
         lbl_1_bss_1E3C[modelIndex].modelId = fn_80025A04(
@@ -453,7 +378,7 @@ void fn_1_949C(void)
             candidatePosition.x = start.x + fn_1_3D04(lbl_1_bss_196C.initialGridStep.x);
             candidatePosition.y = -50.0f;
             candidatePosition.z = start.z + fn_1_3D04(lbl_1_bss_196C.initialGridStep.z);
-            for (scanIndex = 0x23, blocked = 0; scanIndex < 0x71; scanIndex++) {
+            for (scanIndex = 35, blocked = 0; scanIndex < 113; scanIndex++) {
                 delta.x = candidatePosition.x - lbl_1_bss_1E3C[scanIndex].position.x;
                 delta.z = candidatePosition.z - lbl_1_bss_1E3C[scanIndex].position.z;
                 distance = (f32)sqrt((f64)(delta.x * delta.x + delta.z * delta.z));
@@ -526,6 +451,7 @@ void fn_1_949C(void)
     }
 }
 
+/* Initializes the stage light records and configures the model lights. */
 void fn_1_A6C0(void)
 {
     HuVecF lightPositions[3] = { { 0.0f, 700.0f, 0.0f }, { -1200.0f, 500.0f, 0.0f }, { 1200.0f, 500.0f, 0.0f } };
@@ -537,7 +463,7 @@ void fn_1_A6C0(void)
     s16 modelIndex;
 
     for (lightIndex = 0, positionIndex = 0; lightIndex < 3; lightIndex++, positionIndex++) {
-        PointLightState *light;
+        LightConfig *light;
         HU3D_MODEL *model;
 
         if (lightIndex != 0) {
@@ -545,11 +471,11 @@ void fn_1_A6C0(void)
         }
         light = &lbl_1_bss_1870[lightIndex];
             light->modelId = lbl_1_bss_1E3C[targetModelIndices[positionIndex]].modelId;
-            light->lightIndex = lightIndex;
+            light->unk8 = lightIndex;
             light->position = lightPositions[positionIndex];
-            light->unusedVector.x = 0.0f;
-            light->unusedVector.y = 0.0f;
-            light->unusedVector.z = 0.0f;
+            light->unk28.x = 0.0f;
+            light->unk28.y = 0.0f;
+            light->unk28.z = 0.0f;
             light->direction.x = 0.0f;
             light->direction.y = -1.0f;
             light->direction.z = 0.0f;
@@ -557,7 +483,7 @@ void fn_1_A6C0(void)
             light->referenceDistance = light->position.y;
             light->referenceBrightness = 1.0f;
             light->cutoff = 90.0f;
-            light->lightType = lightTypes[positionIndex];
+            light->type = lightTypes[positionIndex];
 
             lbl_1_bss_1870[0].referenceBrightness = 1.0f;
             lbl_1_bss_1870[1].referenceBrightness = 0.9f;
@@ -567,25 +493,14 @@ void fn_1_A6C0(void)
             lbl_1_bss_1870[2].cutoff = 90.0f;
 
             model = &lbl_802C01C8[light->modelId];
-            light->handle = fn_800288B4(light->modelId, &light->position,
+            light->lightId = fn_800288B4(light->modelId, &light->position,
                                                &light->direction, &light->color);
-            light->modelLightId = model->LLightId[light->handle];
-            fn_800296E0(light->modelId, light->handle, TRUE);
+            light->modelLightId = model->LLightId[light->lightId];
+            fn_800296E0(light->modelId, light->lightId, TRUE);
 
-            switch (light->lightType) {
-            case 0:
-                break;
-            case 1:
-                fn_80028C1C(light->modelId, light->handle,
-                                   light->referenceDistance, light->referenceBrightness,
-                                   GX_DA_STEEP);
-                break;
-            case 2:
-                fn_80028AA8(light->modelId, light->handle, light->cutoff, GX_SP_COS);
-                break;
-            }
+            StageLightSetAttenuation(light);
 
-            for (modelIndex = 0; modelIndex < 0x71; modelIndex++) {
+            for (modelIndex = 0; modelIndex < 113; modelIndex++) {
                 fn_1_3B54(lbl_1_bss_1E3C[modelIndex].modelId,
                           light->modelLightId);
             }
@@ -597,7 +512,7 @@ void fn_1_A6C0(void)
  * then change motion while the pieces fade in and rise, and 1 is returned once the
  * scene is over; each frame also spawns a particle at two fixed corner points. */
 s32 fn_1_AAB4(void) {
-    struct PlayerSequenceState *player;
+    M661PlayerState *player;
     s32 finished = 0;
     s32 totalFrames = 0;
     f32 cameraMoveFrames;
@@ -635,8 +550,8 @@ s32 fn_1_AAB4(void) {
             model->position.x = (f32) ((f64) model->position.x + (10.0 * sin((M_PI * (f64) lbl_1_bss_196C.heading) / 180.0)));
             model->position.z = (f32) ((f64) model->position.z + (10.0 * cos((M_PI * (f64) lbl_1_bss_196C.heading) / 180.0)));
             model->rotation.y = lbl_1_bss_196C.heading;
-            player->target.x = model->position.x;
-            player->target.z = model->position.z;
+            player->movementTarget.x = model->position.x;
+            player->movementTarget.z = model->position.z;
             player->chaseSpeed = 10.0f;
             player->chaseRadius = 10.1f;
             totalFrames = fn_1_20E50(player, 1);
@@ -665,7 +580,7 @@ s32 fn_1_AAB4(void) {
     }
             if (player->position.z >= 0.0f) {
                 fn_8007E888(lbl_1_bss_1960.players[player->playerIndex]);
-                player->movementPhase = 0;
+                player->phase = 0;
                 player->position.z = 0.0f;
                 fn_80086AA8(lbl_1_bss_1960.players[0]->actor, &player->position);
                 lbl_1_bss_196C.modelSpeed = 15.0f;
@@ -783,7 +698,7 @@ s32 fn_1_AAB4(void) {
                 lbl_1_bss_196C.sequenceState += 1;
             }
             cameraMoveFrames = 35.0f;
-            for (modelIndex = 0x23; modelIndex <= 0x61; modelIndex++) {
+            for (modelIndex = 0x23; modelIndex <= 97; modelIndex++) {
                 model = &lbl_1_bss_1E3C[modelIndex];
                 fn_80026CBC(model->modelId, lbl_1_bss_196C.transparency);
                 fn_1_2EA4(&model->position.y, cameraMoveFrames,

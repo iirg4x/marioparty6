@@ -219,11 +219,9 @@ void fn_1_2A164(void) {
         fn_80008DD0(DATANUM(0xa40000, 0x31), 0x10000000, 2));
 
     do {
-        randomIndex = frandmod(0xB);
+        randomIndex = frandmod(11);
     } while (randomIndex == 8);
-    lbl_1_bss_1B6C = HuSprAnimRead(
-        fn_80008DD0(lbl_1_data_1D6C[randomIndex], 0x10000000,
-                             2));
+    lbl_1_bss_1B6C = HuSprAnimDataRead(lbl_1_data_1D6C[randomIndex]);
     MicQuizExpectedAnswerSet(randomIndex);
     fn_80026B64(lbl_1_bss_1B7C, 1);
     fn_80026B8C(lbl_1_bss_1B7C, 1);
@@ -294,23 +292,10 @@ void fn_1_2A164(void) {
     lbl_1_bss_20 = HuAudSStreamPlay(MSM_STREAM_QUESTION_MUSIC_FIFTH);
 }
 
+/* Spreads the two hint models apart along X. */
 void fn_1_2ADF8(void)
 {
-    Point3d positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_1B80[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_1B80[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_1B80, &lbl_1_bss_8C);
 }
 
 void fn_1_2AEBC(s16 layerNo) {
@@ -318,11 +303,10 @@ void fn_1_2AEBC(s16 layerNo) {
     fn_8002BF48();
 }
 
+/* Copies the specified EFB region to a hint texture. */
 void fn_1_2AF08(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format,
                 void *destination) {
-    GXSetTexCopySrc((u16)x, (u16)y, (u16)width, (u16)height);
-    GXSetTexCopyDst((u16)width, (u16)height, format, 0);
-    GXCopyTex(destination, 1);
+    QuizTextureCopy(x, y, width, height, format, destination);
 }
 
 /* Moves the two hint models back and forth between their places, with a sound at each turn. */
@@ -528,8 +512,8 @@ void fn_1_2B290(OMOBJ *object) {
     case 12:
         if (lbl_1_bss_104 >= 180.0f) {
             lbl_1_bss_FC = 0xD;
-            WipeCreate(2, 0, 0x14);
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
+            WipeCreate(2, 0, 20);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 500);
             lbl_1_bss_104 = 0.0f;
         } else {
             lbl_1_bss_104 += 1.0f;
@@ -548,18 +532,7 @@ void fn_1_2B290(OMOBJ *object) {
 
 /* Sets every material of a model to black. */
 void fn_1_2BD60(s16 modelId) {
-    HU3D_MODEL *model = &lbl_802C01C8[modelId];
-    HSF_DATA *hsf = model->hsf;
-    HSF_MATERIAL *material = hsf->material;
-    s32 index;
-
-    for (index = 0; index < hsf->materialNum;) {
-        material->color[0] = 0;
-        material->color[1] = 0;
-        material->color[2] = 0;
-        index++;
-        material++;
-    }
+    QuizModelMaterialsBlack(modelId);
 }
 
 /* Sets a model's ambient color and gives every material that color. */

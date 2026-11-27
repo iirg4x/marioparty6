@@ -56,7 +56,6 @@ char lbl_1_data_279[] = "ske_R_arm1";
 
 extern OMOBJ *lbl_1_bss_70[4];
 
-void fn_1_5A64(OMOBJ *obj, s16 motion);
 void fn_1_6158(OMOBJ *obj);
 void fn_1_680C(OMOBJ *obj);
 void fn_1_6658(OMOBJ *obj);
@@ -67,15 +66,7 @@ void fn_1_7858(OMOBJ *obj);
 void fn_1_543C(OMOBJMAN *manager);
 void fn_1_5540(void);
 void fn_1_5564(s16 player, s32 state);
-void fn_1_55A0(void);
-void fn_1_5634(OMOBJ *obj);
-s32 fn_1_5694(OMOBJ *obj);
-s32 fn_1_57DC(s16 player);
-void fn_1_5850(s16 player);
-void fn_1_589C(s16 player);
 void fn_1_5964(s16 player, s32 resetAttribute);
-void fn_1_59E0(s16 player, Vec *position);
-void fn_1_5A64(OMOBJ *obj, s16 motion);
 void fn_1_5BD4(OMOBJ *obj);
 void fn_1_5C98(OMOBJ *obj);
 void fn_1_5DAC(OMOBJ *obj);

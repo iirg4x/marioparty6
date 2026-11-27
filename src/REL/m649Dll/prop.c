@@ -109,35 +109,17 @@ extern MinigamePropParams lbl_1_data_248[];
 
 void fn_1_6A98(OMOBJ *obj);
 
-extern s32 fn_1_1210(s32 resource);
-
-extern s32 fn_1_48DC(s32 resource);
-
-extern s32 fn_1_49E4(s32 model, s32 resource);
-
 void fn_1_6D5C(OMOBJ *object);
 
 void fn_1_7120(OMOBJ *object);
 
 void fn_1_71DC(OMOBJ *object);
 
-extern float fn_1_4CC4(Vec *from, Vec *to);
-
-extern float fn_1_4D60(Vec *from, Vec *to);
-
-extern float fn_1_4AF4(float current, float target, float speed);
-
-extern s32 fn_1_1234(void);
-
 extern s32 lbl_1_bss_398;
 
 extern void fn_1_1664(s16 model, void *sequence, s32 mode);
 
 void fn_1_72FC(OMOBJ *object);
-
-extern s32 fn_1_6958(s32 group);
-
-extern void fn_1_A0BC(M649Motion *motion);
 
 void fn_1_76DC(OMOBJ *object);
 
@@ -149,7 +131,6 @@ void fn_1_7CA4(OMOBJ *object);
 
 void fn_1_7DE8(OMOBJ *object);
 
-extern s32 fn_1_1218(s32 camera);
 
 void fn_1_80B0(OMOBJ *object);
 
@@ -157,11 +138,9 @@ void fn_1_8154(OMOBJ *object);
 
 void fn_1_83BC(OMOBJ *object);
 
-extern void fn_1_A5A4(s32 player, s32 score);
 
 void fn_1_8C2C(s32 type, s32 id, Vec *position, float *speed);
 
-extern void fn_1_A168(s32 type, Vec *position, float *speed, s32 generation);
 
 /* Finds the prop object with the requested type and ID in the manager's object table. */
 static inline OMOBJ *m649_local_6DB0_06FAC(s32 type, s32 id)
@@ -516,7 +495,8 @@ void fn_1_71DC(OMOBJ *object)
     work->timer++;
 }
 
-void fn_1_7288(void)
+/* Empty callback selected by the prop setup table. */
+void fn_1_7288(OMOBJ *object)
 {
 }
 

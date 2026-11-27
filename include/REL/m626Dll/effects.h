@@ -1,6 +1,7 @@
 /* State records for Snow Brawl's particles, ripples, and queued effects. */
 #ifndef M626_EFFECTS_H
 #define M626_EFFECTS_H
+#include "REL/minigame_ground_effect.h"
 #include "game/object.h"
 #include "game/hu3d.h"
 
@@ -25,14 +26,8 @@ typedef struct M626RippleWork_s {
     f32 cosineTable[10]; /* Unit-circle Z offsets for the ten fan vertices. */
 } M626RippleWork;
 
-typedef struct M626EffectRecord_s {
-    s32 active; /* Nonzero while this queued effect is drawn. */
-    f32 radius; /* Fan radius in world units. */
-    Vec *position; /* Pointer to the effect's live world position. */
-} M626EffectRecord;
-
 typedef struct M626EffectCollection_s {
-    M626EffectRecord *records[30]; /* Queued effect records; NULL marks a free slot. */
+    MinigameGroundEffect *records[30]; /* Queued effect records; NULL marks a free slot. */
     f32 sineTable[10]; /* Unit-circle X offsets for the ten fan vertices. */
     f32 cosineTable[10]; /* Unit-circle Z offsets for the ten fan vertices. */
 } M626EffectCollection;
@@ -53,4 +48,12 @@ extern OMOBJ *lbl_1_bss_6C8;
 extern HUPROCESS *lbl_1_bss_6CC;
 extern GXColor lbl_1_data_8C0[2];
 extern Vec lbl_1_data_8C8[5];
+
+void fn_1_BA34(HUPROCESS *process);
+void fn_1_DBC0(Vec *position, Vec *velocity);
+void fn_1_DD48(s32 count, f32 radius, const Vec *position);
+void fn_1_E068(const Vec *position);
+void fn_1_E114(const Vec *position, f32 fanRadius);
+void fn_1_E1D8(MinigameGroundEffect *effect);
+
 #endif

@@ -1229,7 +1229,7 @@ M609CameraBank lbl_1_bss_6C34;
 LightInitState lbl_1_bss_6BF8;
 u8 lbl_1_bss_6BBC[60];
 MinigameShadowCamera lbl_1_bss_6B6C;
-M609ParticleState lbl_1_bss_6B64;
+MinigameParticleModels lbl_1_bss_6B64;
 M609Model lbl_1_bss_8BC[154];
 M609Motion lbl_1_bss_70C[4];
 M609Player lbl_1_bss_24C[4];

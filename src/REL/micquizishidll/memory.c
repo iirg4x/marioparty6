@@ -99,11 +99,11 @@ struct MemoryHintState {
     u8 unknown04[4]; /* No code names this field. */
 };
 
-OMOBJ *lbl_1_bss_DFC[0xF];
+OMOBJ *lbl_1_bss_DFC[15];
 s16 lbl_1_bss_DFA;
 s16 lbl_1_bss_DE8[9];
 s16 lbl_1_bss_DD8[8];
-s32 lbl_1_bss_DA8[0xC];
+s32 lbl_1_bss_DA8[12];
 s32 lbl_1_bss_D88[8];
 s32 lbl_1_bss_D68[8];
 s32 lbl_1_bss_D64;
@@ -401,8 +401,8 @@ void fn_1_19FD8(OMOBJ *modeObject) {
         if (lbl_1_bss_104 >= 180.0f) {
             lbl_1_bss_104 = 0.0f;
             lbl_1_bss_FC = 0xB;
-            WipeCreate(2, 0, 0x14);
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
+            WipeCreate(2, 0, 20);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 500);
             return;
         }
         lbl_1_bss_104 += 1.0f;
@@ -484,7 +484,7 @@ void fn_1_1A708(OMOBJ *object) {
         }
         break;
     case 2:
-        if (work->timer >= 0x3C) {
+        if (work->timer >= 60) {
             work->timer = 0;
             work->state = 3U;
         } else {
@@ -521,7 +521,7 @@ void fn_1_1A708(OMOBJ *object) {
         }
         break;
     case 7:
-        if (work->timer >= 0xF0) {
+        if (work->timer >= 240) {
             work->timer = 0;
             work->state = 8U;
         } else {
@@ -571,7 +571,7 @@ void fn_1_1A708(OMOBJ *object) {
     case 16:
         fn_1_1B5FC(object, 0, 8.0f, ((1 << 30) | (1 << 0)));
         work->rotation.y = fn_1_2AD8(work->rotation.y, 0.0f, 0.05f);
-        if (work->timer >= 0x78) {
+        if (work->timer >= 120) {
             work->timer = 0;
             work->state = 0x11U;
             fn_1_1B5FC(object, 1, 8.0f, ((1 << 30) | (1 << 0)));
@@ -744,31 +744,7 @@ void fn_1_1B67C(OMOBJ *obj, s32 motion, f32 blend, u32 attr) {
 
 /* Debug view: prints the camera's center, rotation and zoom in a window. */
 void fn_1_1B6F0(void) {
-    GXColor windowColor;
-
-    windowColor.r = 0;
-    windowColor.g = 0;
-    windowColor.b = 0x90;
-    windowColor.a = 0xC0;
-
-    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
-    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
-    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
-    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
-    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].z -= 5.0f;
-    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].z += 5.0f;
-    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
-    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
-
-    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, &lbl_1_data_9FC);
-
-    printWin(0x10, 0x28, 0x180, 0x54, &windowColor);
-    fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
-           lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
-           lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+    QuizDebugCamera(&lbl_1_data_9FC);
 }
 
 /* Starts the objects' first motion and puts the first object into its next state. */
@@ -930,21 +906,8 @@ void fn_1_1C010(void) {
     lbl_1_bss_D5C = nextSelection;
 }
 
+/* Spreads the two memory-round models apart along X. */
 void fn_1_1C14C(void)
 {
-    Vec positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
 }

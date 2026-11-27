@@ -1,4 +1,9 @@
 /* Updates player models, input, motion, and proximity interactions. */
+#include "REL/m626Dll/support.h"
+#include "REL/m626Dll/setup.h"
+#include "REL/m626Dll/scenery.h"
+#include "REL/m626Dll/effects.h"
+#include "msm_se.h"
 #include "dolphin/math.h"
 #include "REL/m626Dll/player.h"
 #include "REL/m626Dll/collision.h"
@@ -16,10 +21,6 @@
 
 extern s32 frand(void);
 
-#define MSM_SE_SNOW_BRAWL_EFFECT_1803 1803
-#define MSM_SE_SNOW_BRAWL_EFFECT_1805 1805
-#define MSM_SE_SNOW_BRAWL_EFFECT_1804 1804
-#define MSM_SE_SNOW_BRAWL_EFFECT_1806 1806
 #define M626_COLLISION_MASK_TEAM_0 55
 #define M626_COLLISION_MASK_TEAM_1 59
 #define M626_COLLISION_MASK_UPPER_BITS 0xE0U
@@ -39,44 +40,17 @@ typedef struct M626CollisionParameters {
     Vec end; /* End point of the character collision segment, in model space. */
 } M626CollisionParameters;
 
-s32 fn_1_824(s16, s16);
-s32 fn_1_8A4(s32);
-s32 fn_1_86C(void);
-s32 fn_1_830(s32);
-s32 fn_1_3C94(s32);
-s32 fn_1_3D9C(s32, s32);
-f32 fn_1_407C(Vec *, Vec *);
-f32 fn_1_4118(Vec *, Vec *);
-f32 fn_1_3EAC(f32, f32, f32);
-s32 fn_1_29BC(Vec *);
-s32 fn_1_2BDC(Vec *);
-void fn_1_3AF4(s32, s32, Vec *, s32, s32);
-s32 fn_1_3340(s32, Vec *);
-void fn_1_E114(const Vec *, f32);
-void fn_1_DD48(s32, f32, const Vec *);
-void fn_1_B55C(s32, const Vec *, const Vec *, void *);
-s32 fn_1_B62C(u32, const Vec *, f32, f32, f32);
-void *fn_1_B998(s32);
 
-void fn_1_44D4(void);
-void fn_1_44F8(OMOBJ *object);
-void fn_1_4548(OMOBJ *object);
 void fn_1_45F8(M626ObjectWork *work);
 void fn_1_48C4(M626ObjectWork *work);
 void fn_1_4B90(M626ObjectWork *work);
 void fn_1_4CC8(M626ObjectWork *state);
 void fn_1_4CE0(M626ObjectWork *work);
-void fn_1_4CE4(M626ObjectWork *work);
-void fn_1_4EA8(OMOBJ *object);
 void fn_1_53F4(OMOBJ *object);
 s32 fn_1_552C(M626ObjectWork *work);
-s32 fn_1_57A8(M626ObjectWork *work);
-s32 fn_1_5C20(M626ObjectWork *work);
-s32 fn_1_5E88(M626ObjectWork *state);
 void fn_1_5FA4(OMOBJ *object);
 void fn_1_6040(OMOBJ *object, s32 effect);
 void fn_1_60C4(OMOBJ *object);
-void fn_1_6120(M626ObjectWork *state);
 void fn_1_613C(M626ObjectWork *state, s32 mode, f32 value);
 void fn_1_6148(OMOBJ *object);
 void fn_1_61CC(OMOBJ *object, s32 index);
@@ -86,7 +60,6 @@ void fn_1_6474(M626ObjectWork *work);
 s32 fn_1_6728(M626ObjectWork *work, Vec *target, f32 targetAngle,
               f32 speed);
 void fn_1_6D28(M626ObjectWork *work);
-s32 fn_1_7050(M626Entry *trigger, M626Entry *contact);
 void fn_1_71AC(M626ObjectWork *controller);
 void fn_1_723C(M626ObjectWork *controller,
                M626ControlUpdate callback);
@@ -98,13 +71,9 @@ void fn_1_78DC(M626ObjectWork *controller);
 s32 fn_1_797C(M626ObjectWork *work);
 s32 fn_1_7C44(M626ObjectWork *work);
 s32 fn_1_7F30(M626ObjectWork *work, f32 baseY);
-void fn_1_8570(M626ObjectWork *state);
-void fn_1_85A4(M626ObjectWork *state, s32 model);
 void *fn_1_879C(u32 mode, void *work, Vec *position, f32 range, f32 angle,
                 f32 scale, u32 flags);
 s32 fn_1_8ADC(u32 key);
-u32 fn_1_8B58(s32 index);
-s32 fn_1_8B90(s32 playerIndex);
 s32 fn_1_8BD0(u32 key);
 
 u32 lbl_1_data_148[10] = {
@@ -116,29 +85,29 @@ u32 lbl_1_data_148[10] = {
 };
 
 M626CharacterMotionParam lbl_1_data_170[12] = {
-{0, -1, 0.200000003f, ((1 << 30) | (1 << 0))},
-{1, -1, 0.200000003f, ((1 << 30) | (1 << 0))},
-{2, -1, 0.200000003f, ((1 << 30) | (1 << 0))},
-{3, -1, 0.100000001f, 0},
-{4, -1, 0.200000003f, 0},
-{6, -1, 0.200000003f, 0},
-{7, -1, 0.200000003f, 0},
-{8, -1, 0.200000003f, 0},
-{9, -1, 0.200000003f, 0},
-{0, 5, 0.200000003f, ((1 << 30) | (1 << 0))},
-{1, 5, 0.200000003f, ((1 << 30) | (1 << 0))},
-{2, 5, 0.200000003f, ((1 << 30) | (1 << 0))}
+{0, -1, 0.2f, ((1 << 30) | (1 << 0))},
+{1, -1, 0.2f, ((1 << 30) | (1 << 0))},
+{2, -1, 0.2f, ((1 << 30) | (1 << 0))},
+{3, -1, 0.1f, 0},
+{4, -1, 0.2f, 0},
+{6, -1, 0.2f, 0},
+{7, -1, 0.2f, 0},
+{8, -1, 0.2f, 0},
+{9, -1, 0.2f, 0},
+{0, 5, 0.2f, ((1 << 30) | (1 << 0))},
+{1, 5, 0.2f, ((1 << 30) | (1 << 0))},
+{2, 5, 0.2f, ((1 << 30) | (1 << 0))}
 };
 
 Vec lbl_1_data_200[12] = {
-{-300.000000f, 0.00000000f, 0.00000000f},
-{400.000000f, 0.00000000f, 0.00000000f},
-{300.000000f, 0.00000000f, 300.000000f},
-{300.000000f, 0.00000000f, -300.000000f},
-{-450.000000f, 0.00000000f, 250.000000f},
-{-400.000000f, 0.00000000f, -150.000000f},
-{-500.000000f, 0.00000000f, 450.000000f},
-{-500.000000f, 0.00000000f, -350.000000f},
+{-300.0f, 0.00000000f, 0.00000000f},
+{400.0f, 0.00000000f, 0.00000000f},
+{300.0f, 0.00000000f, 300.0f},
+{300.0f, 0.00000000f, -300.0f},
+{-450.0f, 0.00000000f, 250.0f},
+{-400.0f, 0.00000000f, -150.0f},
+{-500.0f, 0.00000000f, 450.0f},
+{-500.0f, 0.00000000f, -350.0f},
 {0.00000000f, 0.00000000f, 0.00000000f},
 {0.00000000f, 0.00000000f, 0.00000000f},
 {0.00000000f, 0.00000000f, 0.00000000f},
@@ -146,44 +115,44 @@ Vec lbl_1_data_200[12] = {
 };
 
 f32 lbl_1_data_290[15] = {
-    60.0000000f, 280.000000f, 260.000000f, 280.000000f,
-    90.0000000f, 90.0000000f, 90.0000000f, 90.0000000f,
-    90.0000000f, 90.0000000f, 90.0000000f, 90.0000000f,
+    60.0f, 280.0f, 260.0f, 280.0f,
+    90.0f, 90.0f, 90.0f, 90.0f,
+    90.0f, 90.0f, 90.0f, 90.0f,
     0.00000000f, 0.00000000f, 0.00000000f
 };
 
 Vec lbl_1_data_2CC[2] = {
-{-200.000000f, 0.00000000f, 0.00000000f},
-{200.000000f, 0.00000000f, 0.00000000f}
+{-200.0f, 0.00000000f, 0.00000000f},
+{200.0f, 0.00000000f, 0.00000000f}
 };
 
 M626DllCharacterDimensions lbl_1_data_2E4[16] = {
-{1.10000002f, 1.00000000f},
-{1.10000002f, 1.10000002f},
-{1.20000005f, 1.20000005f},
-{1.29999995f, 1.00000000f},
-{1.29999995f, 1.00000000f},
-{1.20000005f, 1.20000005f},
-{1.10000002f, 1.39999998f},
-{1.00000000f, 1.00000000f},
-{1.20000005f, 1.00000000f},
-{1.39999998f, 0.800000012f},
-{1.00000000f, 1.00000000f},
-{1.39999998f, 0.800000012f},
-{1.39999998f, 0.800000012f},
-{1.39999998f, 0.800000012f},
-{1.00000000f, 1.00000000f},
-{1.00000000f, 1.00000000f}
+{1.1f, 1.0f},
+{1.1f, 1.1f},
+{1.2f, 1.2f},
+{1.3f, 1.0f},
+{1.3f, 1.0f},
+{1.2f, 1.2f},
+{1.1f, 1.4f},
+{1.0f, 1.0f},
+{1.2f, 1.0f},
+{1.4f, 0.8f},
+{1.0f, 1.0f},
+{1.4f, 0.8f},
+{1.4f, 0.8f},
+{1.4f, 0.8f},
+{1.0f, 1.0f},
+{1.0f, 1.0f}
 };
 
 M626PlayerConfig lbl_1_data_364 = {
-50.0000000f, 200.000000f, 1.00000000f, 1.00000000f, 11.6666670f, 36.6666679f, 5.83333349f,
-{{0, 1, 2.00000000f, 2, 1.00000000f}, {9, 10, 2.00000000f, 11, 1.00000000f}},
+50.0f, 200.0f, 1.0f, 1.0f, 11.666667f, 36.666668f, 5.8333335f,
+{{0, 1, 2.0f, 2, 1.0f}, {9, 10, 2.0f, 11, 1.0f}},
 3, 4, 5, 6, 7, 8
 };
 
 M626CollisionParameters lbl_1_data_3C0 = { { 0.00000000f, 0.00000000f, 0.00000000f },
-                                           { 0.00000000f, 140.000000f, 0.00000000f } };
+                                           { 0.00000000f, 140.0f, 0.00000000f } };
 
 OMOBJ *lbl_1_bss_304;
 OMOBJ *lbl_1_bss_2F4[4];
@@ -275,7 +244,7 @@ void fn_1_45F8(M626ObjectWork *work)
             15.000000000000000 * cos(3.1415926535897931 * angle / 180.00000000000000) +
             8.0000000000000000 *
                 (0.000030517578125000000 * (f32)((frand() & 0xFFFF) - 32768)));
-        fn_1_E114(&target, 10.0000000f);
+        fn_1_E114(&target, 10.0f);
     }
 
 updatePosition:
@@ -292,14 +261,14 @@ void fn_1_48C4(M626ObjectWork *work)
             Vec local;
             M626ObjectWork *playerWork;
 
-            work->tiltAngle = 90.0000000f;
+            work->tiltAngle = 90.0f;
             if (work->effectComplete == 0) {
                 local.x = local.z = 0.00000000f;
                 local.y = (f32)(0.69999999999999996 * work->config.modelHeight);
                 PSMTXMultVec(work->matrix, &local, &world);
                 world.y += 30.0;
                 PSVECAdd(&world, &work->position, &world);
-                fn_1_DD48(50, 120.000000f, &world);
+                fn_1_DD48(50, 120.0f, &world);
                 work->collisionMode = 0.00000000f;
                 work->effectComplete = 1;
                 if (work->flags != 0) {
@@ -309,10 +278,10 @@ void fn_1_48C4(M626ObjectWork *work)
             }
         }
         if ((work->effectRise += 0.050000000000000003) > 1.0000000000000000) {
-            work->effectRise = 1.00000000f;
+            work->effectRise = 1.0f;
         }
         if (work->eventSent == 0 && work->effectRise > 0.80000000000000004) {
-            fn_1_3340(MSM_SE_SNOW_BRAWL_EFFECT_1805, &work->position);
+            fn_1_3340(MSM_SE_MG626_SNOW_PILE_RISE, &work->position);
             work->eventSent = 1;
         }
     } else {
@@ -340,7 +309,7 @@ void fn_1_4B90(M626ObjectWork *work)
 {
     if (work->motionState != 0) {
         if ((work->pulseProgress += 0.2) > 1.0000000000000000) {
-            work->pulseProgress = 1.00000000f;
+            work->pulseProgress = 1.0f;
         }
     } else {
         if ((work->pulseProgress = (f32) ((f64) work->pulseProgress - 0.29999999999999999)) <=
@@ -541,7 +510,7 @@ s32 fn_1_552C(M626ObjectWork *work)
         if (++work->stateTimer >= 108) {
             work->statePhase = 5;
             work->stateTimer = 0;
-            fn_1_613C(work, 6, 1.00000000f);
+            fn_1_613C(work, 6, 1.0f);
             work->motionActive = 1;
             work->targetPosition = work->position;
             work->targetPosition.x =
@@ -581,7 +550,7 @@ s32 fn_1_552C(M626ObjectWork *work)
     case 5:
         if (work->motionActive == 0 &&
             fn_1_6728(work, &work->targetPosition, work->targetAngle,
-                      1.00000000f) != 0) {
+                      1.0f) != 0) {
             work->statePhase++;
             work->stateTimer = 0;
             /* fall through */
@@ -675,7 +644,7 @@ s32 fn_1_57A8(M626ObjectWork *work)
         }
         work->statePhase++;
         work->stateTimer = 0;
-        fn_1_613C(work, motionWork->profiles[0].closeMotion, 1.00000000f);
+        fn_1_613C(work, motionWork->profiles[0].closeMotion, 1.0f);
     default:
         done = 1;
         break;
@@ -700,7 +669,7 @@ s32 fn_1_5C20(M626ObjectWork *work)
         work->statePhase++;
         work->stateTimer = 0;
         if (work->status == 0) {
-            fn_1_613C(work, selection->profiles[0].closeMotion, 1.00000000f);
+            fn_1_613C(work, selection->profiles[0].closeMotion, 1.0f);
         }
         work->motionActive = 0;
         /* fall through */
@@ -718,9 +687,9 @@ s32 fn_1_5C20(M626ObjectWork *work)
         if (work->status == 0) {
             work->rotation.y = fn_1_3EAC(work->rotation.y, 0.0f, 0.1f);
             if (fabs(fn_1_3FC8(work->rotation.y, 0.0f)) > 3.0) {
-                fn_1_613C(work, selection->profiles[0].slowMotion, 1.00000000f);
+                fn_1_613C(work, selection->profiles[0].slowMotion, 1.0f);
             } else {
-                fn_1_613C(work, selection->profiles[0].closeMotion, 1.00000000f);
+                fn_1_613C(work, selection->profiles[0].closeMotion, 1.0f);
             }
         }
         if (work->flags != 0) {
@@ -738,7 +707,7 @@ s32 fn_1_5C20(M626ObjectWork *work)
         work->statePhase++;
         work->stateTimer = 0;
         if (work->status == 0) {
-            fn_1_613C(work, selection->profiles[0].closeMotion, 1.00000000f);
+            fn_1_613C(work, selection->profiles[0].closeMotion, 1.0f);
             }
         /* fall through */
     default:
@@ -761,9 +730,9 @@ s32 fn_1_5E88(M626ObjectWork *state)
         if (state->status == 0) {
             if (fn_1_8A4(state->key) > 0) {
                 useWinMotion = 1;
-                fn_1_613C(state, config->winMotion, 1.00000000f);
+                fn_1_613C(state, config->winMotion, 1.0f);
             } else {
-                fn_1_613C(state, config->loseMotion, 1.00000000f);
+                fn_1_613C(state, config->loseMotion, 1.0f);
             }
             if (state->flags != 0) {
                 work = state;
@@ -831,7 +800,7 @@ void fn_1_60C4(OMOBJ *object)
 /* Clears the requested motion and restores normal playback speed before phase selection. */
 void fn_1_6120(M626ObjectWork *state) {
     state->requestedMotion = -1;
-    state->motionSpeed = 1.00000000f;
+    state->motionSpeed = 1.0f;
 }
 
 /* Queues a character motion and its playback speed for the next model update. */
@@ -873,7 +842,7 @@ void fn_1_61CC(OMOBJ *object, s32 index)
         if (state->motionIndex < 0) {
             blend = 0.00000000f;
         } else {
-            blend = 60.0000000f * lbl_1_data_170[index].blendFraction;
+            blend = 60.0f * lbl_1_data_170[index].blendFraction;
         }
         state->motionIndex = index;
         state->motionFrame = 0;
@@ -897,7 +866,7 @@ void fn_1_61CC(OMOBJ *object, s32 index)
             fn_8002CAF0(model);
             fn_8005C2C8(work->identity.character, motion, 0.00000000f, blend, attr);
         }
-        fn_8005C390(work->identity.character, 1.00000000f);
+        fn_8005C390(work->identity.character, 1.0f);
     }
 }
 
@@ -952,14 +921,14 @@ void fn_1_6474(M626ObjectWork *work)
             (work->modelAttributes & 0x200) != 0) {
             targetB = motion->effectTargetB;
             work->requestedMotion = targetB;
-            work->motionSpeed = 1.00000000f;
+            work->motionSpeed = 1.0f;
             work->firstTimer = 30;
             work->transitionTimer = 30;
             work->motionActive = 1;
             work->motionTimer = 1;
         }
         if (work->firstTimer == 24) {
-            fn_1_3340(MSM_SE_SNOW_BRAWL_EFFECT_1803, (Vec *)&work->position);
+            fn_1_3340(MSM_SE_MG626_SNOWBALL_SCOOP, &work->position);
         }
         if (work->firstTimer == 20) {
             work->motionState = 1;
@@ -969,7 +938,7 @@ void fn_1_6474(M626ObjectWork *work)
             (work->modelAttributes & 0x100) != 0) {
             targetA = motion->effectTargetA;
             work->requestedMotion = targetA;
-            work->motionSpeed = 1.00000000f;
+            work->motionSpeed = 1.0f;
             work->cooldown = 30;
             work->transitionTimer = 30;
             work->motionActive = 1;
@@ -985,14 +954,14 @@ void fn_1_6474(M626ObjectWork *work)
             velocity.x = sine * motion->horizontalSpeed;
             velocity.y = motion->startSpeed;
             velocity.z = cosine * motion->horizontalSpeed;
-            fn_1_B55C(work->key, (Vec *)&targetPosition, (Vec *)&velocity,
+            fn_1_B55C(work->key, &targetPosition, &velocity,
                       work->owner);
             work->motionState = 0;
             if (work->flags != 0) {
                 vibrationWork = work;
                 fn_8006A030((s16)vibrationWork->actor.playerIndex, 12, 4, 4);
             }
-            fn_1_3340(MSM_SE_SNOW_BRAWL_EFFECT_1804, (Vec *)&work->position);
+            fn_1_3340(MSM_SE_MG626_SNOWBALL_THROW, &work->position);
         }
     }
 }
@@ -1148,9 +1117,9 @@ void fn_1_6D28(M626ObjectWork *work)
         return;
     }
     if (work->active != 0) {
-        if (distance > 0.0500000000f && work->motionTimer == 0) {
+        if (distance > 0.05f && work->motionTimer == 0) {
             work->rotation.y = fn_1_3EAC(work->rotation.y, work->targetDistance,
-                                    0.300000000f);
+                                    0.3f);
         }
         return;
     }
@@ -1181,7 +1150,7 @@ void fn_1_6D28(M626ObjectWork *work)
     }
 
     mode = work->motionActive;
-    if (distance >= 0.0500000000f && work->transitionTimer == 0) {
+    if (distance >= 0.05f && work->transitionTimer == 0) {
         work->motionActive = 0;
         movement = distance * motion->movementScale;
         work->velocity.x = (f32)((f64)movement *
@@ -1192,7 +1161,7 @@ void fn_1_6D28(M626ObjectWork *work)
                 180.00000000000000));
         if (work->motionTimer == 0) {
             work->rotation.y = fn_1_3EAC(work->rotation.y, work->targetDistance,
-                                    0.300000000f);
+                                    0.3f);
         }
         if (mode == 0) {
             if (work->motionIndex == otherPlayer) {
@@ -1212,17 +1181,17 @@ void fn_1_6D28(M626ObjectWork *work)
     } else {
         if (mode == 0) {
             work->requestedMotion = fromPlayer;
-            work->motionSpeed = 1.00000000f;
+            work->motionSpeed = 1.0f;
         }
         work->velocity.x = work->velocity.z = 0.00000000f;
-        if (distance > 0.0500000000f && work->motionTimer == 0) {
+        if (distance > 0.05f && work->motionTimer == 0) {
             work->rotation.y = fn_1_3EAC(work->rotation.y, work->targetDistance,
-                                    0.300000000f);
+                                    0.3f);
         }
     }
 }
 
-Vec lbl_1_data_3F4 = {0.00000000f, 1.00000000f, 0.00000000f};
+Vec lbl_1_data_3F4 = {0.00000000f, 1.0f, 0.00000000f};
 
 /* Handles contact between opposing players, starting the hit reaction and its feedback. */
 s32 fn_1_7050(M626Entry *trigger, M626Entry *contact)
@@ -1264,19 +1233,19 @@ s32 fn_1_7050(M626Entry *trigger, M626Entry *contact)
             if (state->flags != 0) {
                 fn_8006A030((s16)work->actor.playerIndex, 12, 7, 3);
             }
-            fn_1_3340(MSM_SE_SNOW_BRAWL_EFFECT_1806, &state->position);
+            fn_1_3340(MSM_SE_MG626_PLAYER_HIT, &state->position);
         }
     }
     return 1;
 }
 
 f32 lbl_1_data_400[6][4] = {
-{0.200000003f, 0.0199999996f, 0.00800000038f, 0.800000012f},
-{0.400000006f, 0.0399999991f, 0.0149999997f, 0.600000024f},
-{0.600000024f, 0.0700000003f, 0.0700000003f, 0.400000006f},
-{0.800000012f, 0.100000001f, 0.100000001f, 0.200000003f},
-{0.100000001f, 0.0199999996f, 0.0199999996f, 0.699999988f},
-{0.100000001f, 0.0199999996f, 0.0199999996f, 0.699999988f}
+{0.2f, 0.02f, 0.008f, 0.8f},
+{0.4f, 0.04f, 0.015f, 0.6f},
+{0.6f, 0.07f, 0.07f, 0.4f},
+{0.8f, 0.1f, 0.1f, 0.2f},
+{0.1f, 0.02f, 0.02f, 0.7f},
+{0.1f, 0.02f, 0.02f, 0.7f}
 };
 
 /* Dispatches the active computer-player strategy each update. */
@@ -1339,14 +1308,14 @@ s32 fn_1_7264(M626ObjectWork *model, Vec *target, f32 angle, f32 speed)
 
     if (model->movementState == 0 && distance > 25.000000000000000) {
         model->targetDistance = fn_1_407C(&model->position, &targetPosition);
-        model->movementSpeed = 0.300000000f;
+        model->movementSpeed = 0.3f;
         return 0;
     }
 
     model->movementState = 1;
     if (fabs(fn_1_3FC8(model->rotation.y, angle)) > 10.000000000000000) {
         model->targetDistance = angle;
-        model->movementSpeed = 0.100000000f;
+        model->movementSpeed = 0.1f;
         return 0;
     }
     return 1;
@@ -1383,17 +1352,17 @@ void fn_1_7648(M626ObjectWork *controller) {
 void fn_1_7708(M626ObjectWork *controller)
 {
     void *difficultySettings = lbl_1_data_400[controller->computerDifficulty];
-    f32 speed = -500.000000f;
+    f32 speed = -500.0f;
 
     if (fn_1_797C(controller) == 0 && fn_1_7C44(controller) == 0) {
         if (controller->computerDifficulty >= 1 && fn_1_8ADC(controller->key ^ 1) <= 1) {
-            speed = -400.000000f;
+            speed = -400.0f;
         }
         if (controller->computerDifficulty >= 2 && fn_1_86C() < 600) {
-            speed = -600.000000f;
+            speed = -600.0f;
         }
         if (controller->computerDifficulty >= 3 && fn_1_8ADC(controller->key) >= 4) {
-            speed = -600.000000f;
+            speed = -600.0f;
         }
         fn_1_7F30(controller, speed);
     }
@@ -1403,15 +1372,15 @@ void fn_1_7708(M626ObjectWork *controller)
 void fn_1_7808(M626ObjectWork *controller)
 {
     void *difficultySettings = lbl_1_data_400[controller->computerDifficulty];
-    f32 speed = -500.000000f;
+    f32 speed = -500.0f;
 
     if (fn_1_797C(controller) == 0 && fn_1_7C44(controller) == 0) {
         if (controller->groupIndex < 3) {
             if (fn_1_8ADC(controller->key ^ 1) <= 1) {
-                speed = -400.000000f;
+                speed = -400.0f;
             }
         } else if (fn_1_8ADC(controller->key) >= 4) {
-            speed = -400.000000f;
+            speed = -400.0f;
         }
         fn_1_7F30(controller, speed);
     }
@@ -1421,12 +1390,12 @@ void fn_1_7808(M626ObjectWork *controller)
 void fn_1_78DC(M626ObjectWork *controller)
 {
     void *difficultySettings = lbl_1_data_400[controller->computerDifficulty];
-    f32 speed = 500.000000f;
+    f32 speed = 500.0f;
 
     if (fn_1_797C(controller) == 0 &&
         fn_1_7C44(controller) == 0) {
         if (controller->computerDifficulty >= 1) {
-            speed = 600.000000f;
+            speed = 600.0f;
         }
         fn_1_7F30(controller, speed);
     }
@@ -1447,7 +1416,7 @@ s32 fn_1_797C(M626ObjectWork *work)
         difference = (f32)(work->key == 0 ? 90 : 270);
         range = (f32)(200.00000000000000 + 250.00000000000000 * parameters[0]);
         key = fn_1_B62C(work->key ^ 1, &work->position, difference,
-                        80.0000000f, range);
+                        80.0f, range);
         target = fn_1_B998(key);
         if (target == NULL) {
             return 0;
@@ -1461,15 +1430,15 @@ s32 fn_1_797C(M626ObjectWork *work)
             return 0;
         }
         if (difference < 0.00000000f) {
-            difference = distance - 90.0000000f;
+            difference = distance - 90.0f;
         } else {
-            difference = 90.0000000f + distance;
+            difference = 90.0f + distance;
         }
         if (work->position.z < -350.00000000000000) {
             difference = 0.00000000f;
         }
         if (work->position.z > 350.00000000000000) {
-            difference = 180.000000f;
+            difference = 180.0f;
         }
         work->controlCount = 10;
         work->outputAngle = (s32)difference;
@@ -1480,7 +1449,7 @@ s32 fn_1_797C(M626ObjectWork *work)
     if (work->controlCount != 0) {
         work->controlCount--;
         work->targetDistance = (f32)work->outputAngle;
-        work->movementSpeed = 1.00000000f;
+        work->movementSpeed = 1.0f;
         return 1;
     }
     return 0;
@@ -1497,7 +1466,7 @@ s32 fn_1_7C44(M626ObjectWork *work)
 
     if (work->cooldown != 0) {
         work->targetDistance = work->secondaryAngle;
-        work->movementSpeed = 0.100000000f;
+        work->movementSpeed = 0.1f;
         work->reverseCount = 0;
         return 1;
     }
@@ -1508,9 +1477,9 @@ s32 fn_1_7C44(M626ObjectWork *work)
             angleLimit = 270;
         }
         range = (f32)angleLimit;
-        angle = 40.0000000f + 30.0000000f * parameters[0];
+        angle = 40.0f + 30.0f * parameters[0];
         target = fn_1_879C(work->key ^ 1, work, &work->position, range,
-                          angle, 2000.00000f, 1);
+                          angle, 2000.0f, 1);
         if (target == NULL) {
             return 0;
         } else {
@@ -1559,17 +1528,17 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
     f32 distanceToTarget;
     if ((f64)work->reverseCount > 180.00000000000000)
     {
-        target = fn_1_879C(work->key ^ 1, work, &work->position, 0.00000000f, 180.000000f,
-                           3000.00000f, 1);
+        target = fn_1_879C(work->key ^ 1, work, &work->position, 0.00000000f, 180.0f,
+                           3000.0f, 1);
         if (target != NULL)
         {
             angle = fn_1_407C(& work->position, &target->position);
             work->targetDistance = angle;
-            work->movementSpeed = 0.800000000f;
+            work->movementSpeed = 0.8f;
             if (work->reverseCount > 360.00000000000000)
             {
-                target = fn_1_879C(work->key, work, &work->position, work->rotation.y, 40.0000000f,
-                                   200.000000f, 2);
+                target = fn_1_879C(work->key, work, &work->position, work->rotation.y, 40.0f,
+                                   200.0f, 2);
                 if (target != NULL)
                 {
                     work->reverseCount = 0.0f;
@@ -1579,7 +1548,7 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
         }
     }
     target =
-        fn_1_879C(work->key, work, &work->position, work->rotation.y, 40.0000000f, 200.000000f, 3);
+        fn_1_879C(work->key, work, &work->position, work->rotation.y, 40.0f, 200.0f, 3);
     if (target != NULL)
     {
         work->controlAmount = (work->controlDirection * 10) + work->controlAmount;
@@ -1612,7 +1581,7 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
                        cos((3.1415926535897931 * (f64) work->rotation.y) / 180.00000000000000) *
                            50.000000000000000);
             work->targetDistance = fn_1_407C(& work->position, & destination);
-            work->movementSpeed = 1.00000000f;
+            work->movementSpeed = 1.0f;
             work->movementState = 0;
         }
         else
@@ -1620,7 +1589,7 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
             if (distanceToTarget > 50.000000000000000)
             {
                 work->targetDistance = fn_1_407C(& work->position, & currentTarget);
-                work->movementSpeed = 0.500000000f;
+                work->movementSpeed = 0.5f;
                 work->movementState = 0;
             }
             else
@@ -1628,7 +1597,7 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
                 if (work->movementState == 0 && distanceToTarget > 25.000000000000000)
                 {
                     work->targetDistance = fn_1_407C(& work->position, & currentTarget);
-                    work->movementSpeed = 0.300000000f;
+                    work->movementSpeed = 0.3f;
                 }
                 else
                 {
@@ -1636,7 +1605,7 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
                     if (fabs(fn_1_3FC8(work->rotation.y, currentAngle)) > 10.0)
                     {
                         work->targetDistance = currentAngle;
-                        work->movementSpeed = 0.100000000f;
+                        work->movementSpeed = 0.1f;
                     }
                 }
             }
@@ -1655,7 +1624,7 @@ void fn_1_8570(M626ObjectWork *state) {
     state->movementSpeed = 0.00000000f;
 }
 
-Vec lbl_1_data_460 = {0.00000000f, 1.00000000f, 0.00000000f};
+Vec lbl_1_data_460 = {0.00000000f, 1.0f, 0.00000000f};
 
 /* Builds the player model's rotation matrix, applies hit tilt, and updates its transform. */
 void fn_1_85A4(M626ObjectWork *state, s32 model)
@@ -1762,7 +1731,7 @@ s32 fn_1_8ADC(u32 key)
 }
 
 /* Returns whether the indexed player's snowball effect has completed. */
-u32 fn_1_8B58(s32 index) {
+s32 fn_1_8B58(s32 index) {
     OMOBJ *object = lbl_1_bss_2F4[index];
     M626ObjectWork *data = object->data;
     return data->effectComplete;

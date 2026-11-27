@@ -24,11 +24,11 @@ typedef struct M658ParticleAnimEntry {
 } M658ParticleAnimEntry;
 typedef struct M658PoolNode { struct M658PoolNode *prev; struct M658PoolNode *next; } M658PoolNode;
 /* List operations leave the unused portion of the cleared pool header untouched. */
-typedef struct M658Pool {
+struct M658Pool {
     M658PoolNode *active;
     M658PoolNode *free;
     u8 unk8[8]; /* No code names this field. */
-} M658Pool;
+};
 extern HUPROCESS *lbl_1_bss_0;
 
 typedef struct M658RegistryDescriptorView {
@@ -51,13 +51,7 @@ typedef struct M658RegistryTemplate72 {
 #define M658_RESOURCE_HAS_LINKED_MODELS_FLAG (1 << 0)
 
 extern const M658RegistryDescriptorView lbl_1_data_494[];
-extern void *fn_1_65E8(u8 *buffer, s32 bytes, s32 itemBytes);
-extern void *fn_1_6680(M658Pool *pool);
-extern void fn_1_140(OMOBJ *object, OMOBJ_FUNC update);
-extern void fn_1_55FC(OMOBJ *object);
 
-extern void *fn_1_6764(M658Pool *pool);
-extern void *fn_1_67A0(M658Pool *pool, void *item);
 
 /* Runs each frame to render registry entries and update pending or active items. */
 void fn_1_55FC(OMOBJ *object)
@@ -98,9 +92,6 @@ void fn_1_55FC(OMOBJ *object)
         index++;
     }
 }
-
-/* Interpolates between two scalar values. */
-f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation);
 
 /* Stores the requested player's coin bonus, replacing its previous value;
  * practice mode suppresses the write. */
@@ -280,19 +271,9 @@ void fn_1_5E48(M658ResourceEntry *entries, s32 *modelCountOut, s32 *motionCountO
     *motionCountOut = motionCount;
 }
 
-extern s16 fn_80025A04(void *);
-extern s16 fn_80025D4C(s16);
-extern s16 fn_8002C4C0(void *);
-extern void fn_8002858C(s16);
-extern s16 fn_80030458(s16, void *);
-extern s16 fn_8002CF58(s16);
-extern void fn_8002C95C(s16, s16);
-extern void fn_8002CEB0(s16, s16);
-extern void fn_800269E8(s16, u32);
 extern void Hu3DModelAttrFlagSet(s16, u32);
 extern void Hu3DModelAttrFlagReset(s16, u32);
 extern void Hu3DModelAttrFlagGet(s16);
-extern void fn_80026A44(s16, u32);
 /* fn_1_6384 calls this after reserving model and motion slots to load a resource object's
  * assets. */
 void fn_1_5EFC(OMOBJ *work, M658ResourceEntry *entries)
@@ -463,7 +444,7 @@ void fn_1_62EC(M658ParticleAnimEntry *entries)
 }
 
 /* Creates an object for a resource list, reserves its model and motion slots, and loads it. */
-OMOBJ *fn_1_6384(void *description)
+OMOBJ *fn_1_6384(M658ResourceEntry *description)
 {
     extern void fn_1_5E48(M658ResourceEntry *entries, s32 *models, s32 *motions);
     extern void fn_1_5EFC(OMOBJ *object, M658ResourceEntry *entries);
@@ -548,7 +529,6 @@ void fn_1_65A0(void *item)
     }
 }
 
-void *fn_1_65E8(u8 *buffer, s32 bytes, s32 itemBytes);
 /* fn_1_5430 calls this during registry setup to initialize its free-node list. */
 void *fn_1_65E8(u8 *buffer, s32 bytes, s32 itemBytes)
 {
@@ -574,7 +554,6 @@ void *fn_1_65E8(u8 *buffer, s32 bytes, s32 itemBytes)
     return pool;
 }
 
-void *fn_1_6680(M658Pool *pool);
 /* fn_1_5430 calls this during registry setup to activate each initial item. */
 void *fn_1_6680(M658Pool *pool)
 {
@@ -670,8 +649,6 @@ s32 fn_1_67E4(M658Track **tracks, s32 frame)
     return 1;
 }
 
-/* Interpolates between two scalar values. */
-f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation);
 /* Samples every value of a kind-0 track by keyframe interpolation; other kinds leave output
  * unchanged. */
 void fn_1_6840(M658Track **tracks, s32 frame, s32 trackIndex, f32 *outValues)
@@ -725,15 +702,13 @@ f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation)
     return startValue + (interpolation * (endValue - startValue));
 }
 /* Player state 13 uses this to interpolate the character's closing path between its endpoints. */
-void fn_1_69C8(Point3d *start, Point3d *end, Point3d *out, f32 t)
+void fn_1_69C8(Point3d *start, Point3d *end, f32 t, Point3d *out)
 {
     out->x = start->x + (t * (end->x - start->x));
     out->y = start->y + (t * (end->y - start->y));
     out->z = start->z + (t * (end->z - start->z));
 }
 
-extern f64 atan2(f64 y, f64 x);
-extern f64 fmod(f64 x, f64 y);
 extern f64 fn_1_6C54(f64 value);
 /* Returns the heading of the direction projected onto the ground plane. */
 f32 fn_1_6A20(HuVecF *direction)

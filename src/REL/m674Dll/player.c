@@ -13,27 +13,9 @@
 #include "REL/m674Dll/collision.h"
 #include "REL/m674Dll/scene.h"
 #include <string.h>
-
-
-/* Shared result-slot, scene, score, and collision helpers used by player objects. */
-extern void fn_1_EE4(s32 slotIndex, u32 scoreIndex, u32 characterNo);
-extern s32 fn_1_E014(void);
-extern s32 fn_1_E18(s32 resource);
-extern s32 fn_1_E20(void);
-extern u32 fn_1_E68(u32 scoreIndex);
-extern void fn_1_F1C(s32 player);
-extern s32 fn_1_F3C(void);
-extern s32 fn_1_4994(void);
-extern s32 fn_1_4040(s32 resource, void *position);
-extern void fn_1_47F4(s32 effect, s32 handle, void *position, s32 pan, s32 volume);
-extern s32 fn_1_36BC(void *position);
-extern f32 fn_1_4BAC(f32 start, f32 end, f32 factor);
-extern f32 fn_1_4CC8(f32 start, f32 end);
-extern f32 fn_1_4D7C(Vec *start, Vec *end);
-extern s32 fn_1_100F8(s32 player);
-extern s32 fn_1_11218(M674Entry *entry);
-extern M674Entry *fn_1_11444(s32 type, s32 index);
-extern M674ActorState *fn_1_DC2C(Vec *position, f32 heading, f32 range, f32 distance);
+#include "REL/m674Dll/main.h"
+#include "REL/m674Dll/score.h"
+#include "REL/m674Dll/targets.h"
 
 void fn_1_52FC(HUPROCESS *manager);
 void fn_1_53F8(void);
@@ -59,7 +41,6 @@ s32 fn_1_6A1C(OMOBJ *object);
 s32 fn_1_6A88(OMOBJ *object);
 void fn_1_6AE0(M674PlayerWork *work);
 void fn_1_6DC0(M674PlayerWork *work);
-s32 fn_1_7660(M674Entry *first, M674Entry *second);
 void fn_1_77F0(M674PlayerWork *work);
 void fn_1_7958(M674PlayerWork *work);
 void fn_1_7DB0(M674PlayerWork *work);
@@ -266,11 +247,7 @@ void fn_1_56D4(OMOBJ *object)
     task->shape.actor.radius = 50.0f;
     task->shape.actor.collisionFlag = 1.0f;
     fn_1_11218(task);
-    /* Discard the resource-number result here, then call the model cache without an explicit
-     * data-number argument. */
-    fn_1_E18(3);
-
-    state->state.shadowModel = fn_1_4994();
+    state->state.shadowModel = fn_1_4994(fn_1_E18(3));
     fn_80026B8C((s16)state->state.shadowModel, 3);
     fn_80026E44((s16)state->state.shadowModel);
     fn_800269E8((s16)state->state.shadowModel, 8);

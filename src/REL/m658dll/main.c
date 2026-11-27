@@ -9,18 +9,12 @@
 #include "game/wipe.h"
 #include "msm_stream.h"
 #include <string.h>
+#include "REL/m658dll/recovered.h"
 
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 OMOBJMAN *lbl_1_bss_0;
-void ObjectSetup(void);
-void fn_1_264(void);
-void fn_1_768(void);
-s32 fn_1_C38(void);
-s32 fn_1_C84(void);
-s32 fn_1_CD0(void);
-s32 fn_1_D40(void);
 void fn_1_288(s16 mode, s16 frameNo);
 void fn_1_2BC(s16 mode, s16 frameNo);
 void fn_1_31C(s16 mode, s16 frameNo);

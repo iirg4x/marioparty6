@@ -80,17 +80,14 @@ void fn_1_99FC(OMOBJ *object);
 
 void fn_1_910C(HU3D_MODEL *model, Mtx *view);
 
-extern s32 fn_1_1218(s32 camera);
 
 static signed long lbl_1_data_538[2] = {3, 3};
 
-extern s32 fn_1_1210(s32 resource);
 
 void fn_1_9500(HU3D_MODEL *model, Mtx *view);
 
 void fn_1_9C14(HU3D_MODEL *model, Mtx *view);
 
-void fn_1_A168(s32 type, Vec *position, float *speed, s32 mode);
 
 /* Creates the effect owner and its shadow, marker, and score-effect models at setup. */
 void fn_1_8F58(HUPROCESS *process) {

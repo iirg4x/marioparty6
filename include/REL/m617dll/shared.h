@@ -1,6 +1,8 @@
 /* Shared state and records used by Light Up My Night module files. */
 #ifndef M617DLL_SHARED_H
 #define M617DLL_SHARED_H
+#include "REL/minigame_particle_models.h"
+#include "REL/minigame_course_camera.h"
 #include "REL/minigame_participant_motion.h"
 #include "REL/minigame_shadow_camera.h"
 
@@ -221,12 +223,6 @@ typedef struct M617ModelSetupRecord {
     f32 scaleStep;
 } M617ModelSetupRecord;
 
-typedef struct ParticleModuleData {
-    s16 modelIds[1];
-    s16 unk02[1]; /* The game's code never reads this field. */
-    void *allocation[1];
-} ParticleModuleData;
-
 typedef struct M617LightSource {
     u8 unknown00[4]; /* No code names this field. */
     s16 lightId;
@@ -254,25 +250,15 @@ extern MinigameParticipantMotionState lbl_1_bss_DC0[2];
 extern M617BoxEdgeLinks lbl_1_bss_398[24];
 extern struct Process_s *lbl_1_bss_38E4;
 extern struct MgSeqParam_s lbl_1_data_0;
-typedef struct M617CameraRecord {
-    s32 unk00; /* The game's code never reads this field. */
-    u8 beforeRotation[12];
-    Vec rotation;
-    Vec position;
-    u8 beforeViewport[12];
-    f32 viewSettings[6];
-    f32 fieldOfView;
-} M617CameraRecord;
-
 typedef struct M617CameraStorage {
-    M617CameraRecord cameras[4];
+    MinigameCourseCamera cameras[4];
     u8 unk140[8]; /* No code names this field. */
 } M617CameraStorage;
 
 extern M617CameraStorage lbl_1_bss_379C;
 extern LightInitState lbl_1_bss_3760;
 extern MinigameShadowCamera lbl_1_bss_3710;
-extern ParticleModuleData lbl_1_bss_3708;
+extern MinigameParticleModels lbl_1_bss_3708;
 extern s16 lbl_1_data_F6[4];
 extern u32 lbl_1_data_118[51];
 void ObjectSetup(void);

@@ -1,5 +1,9 @@
 /* Mode-selection overlay: builds the six-choice screen, handles player input, and enters the
  * selected mode. */
+#include "game/mic.h"
+#include "game/data.h"
+#include "game/frand.h"
+#include "game/main.h"
 #include <math.h>
 #include "datadir_enum.h"
 #include "messdir_enum.h"
@@ -38,7 +42,6 @@ enum {
 };
 
 typedef void (*VoidFunc)(void);
-typedef void (*MCResponseCallback)(u16 *response);
 
 typedef struct Lbl1Bss1D4Entry {
     HU3D_MODELID modelId; /* Model whose sound is tracked; NONE marks a free slot. */
@@ -109,21 +112,9 @@ typedef struct Lbl1Bss24CEntry {
     u8 reservedTail[80]; /* Preserved bytes with no use in this file. */
 } LBL_1_BSS_24C_ENTRY;
 
-/* Microphone listener response data read by the recognition callback. */
-typedef struct MdselMicResponse {
-    s16 status; /* Zero is successful; the callback also requires count > 0 before reading
-                 * result. */
-    s16 reservedStatus; /* Preserved response field with no use in this file. */
-    s16 count; /* Number of recognized word IDs in result. */
-    s16 reservedCount; /* Preserved alignment field. */
-    s16 *result; /* Recognized mode-choice word IDs. */
-    s32 reservedTail; /* Preserved response field with no use in this file. */
-} MDSEL_MIC_RESPONSE;
-
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
-extern void fn_80009A30(void);
 extern void HuAudFadeOut(s32 speed);
 extern int HuAudFXPlay(int seId);
 extern int HuAudFXPlayPan(int seId, int pan);
@@ -131,17 +122,6 @@ extern int HuAudFXPlayVolPan(int seId, int volume, int pan);
 extern void HuAudFXStop(int seNo);
 extern int HuAudSStreamPlay(s16 streamId);
 extern void HuAudSStreamFadeOut(int streamNo, s32 speed);
-extern s32 HuMCInit(s16 mountResult);
-extern s32 HuMCMount(s32 chan);
-extern void HuMCClose(void);
-extern void HuMCMicSet(s32 flag);
-extern void HuMCListenerKill(void);
-extern void HuMCContextKill(s16 context);
-extern s16 HuMCContextCreate(char *path);
-extern void HuMCListenerCreate(
-    s16 context, MCResponseCallback callback, u8 property);
-extern s32 frandmod(s32 modulus);
-extern s32 rand8(void);
 
 extern int lbl_1_bss_0;
 extern int lbl_1_bss_4;
@@ -221,7 +201,7 @@ void fn_1_0(HUWINID winId, u32 mess, s16 index);
 void fn_1_1370(OMOBJ *obj);
 void fn_1_5614(OMOBJ *obj);
 void fn_1_607C(OMOBJ *obj);
-void fn_1_651C(MDSEL_MIC_RESPONSE *response);
+void fn_1_651C(MCResponse_s *response);
 void fn_1_EF48(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix);
 void fn_1_F790(void);
 void fn_1_2A78(s16 layerNo);
@@ -821,8 +801,7 @@ void fn_1_2828(void)
     s16 i;
 
     for (i = 0; i < 1; i++) {
-        lbl_1_bss_1A3C[i] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_0[i], 0x10000000, 2));
+        lbl_1_bss_1A3C[i] = HuSprAnimDataRead(lbl_1_data_0[i]);
     }
     for (i = 0; i < 1; i++) {
         lbl_1_bss_1A38[i] = HuSprGrpCreate(lbl_1_data_4[i]);
@@ -1549,7 +1528,7 @@ void fn_1_607C(OMOBJ *obj)
 
 /* Microphone listener callback registered by fn_1_6C04; maps recognized words to guide
  * animations. */
-void fn_1_651C(MDSEL_MIC_RESPONSE *response)
+void fn_1_651C(MCResponse_s *response)
 {
     if (response->status != 0 || response->count == 0) {
         return;
@@ -1606,7 +1585,7 @@ void fn_1_6C04(void)
             } else {
                 OSReport(lbl_1_data_223);
                 lbl_1_bss_1A4C = HuMCContextCreate(lbl_1_data_25E);
-                HuMCListenerCreate(lbl_1_bss_1A4C, (MCResponseCallback)fn_1_651C, 1);
+                HuMCListenerCreate(lbl_1_bss_1A4C, fn_1_651C, 1);
                 lbl_1_bss_38 = 1;
                 OSReport(lbl_1_data_275);
             }
@@ -2413,196 +2392,197 @@ s16 fn_1_BAB4(void)
     result = 0;
     previousColumn = 1;
 
-restart:
-    HuPrcVSleep();
-    index = lbl_1_bss_1A30[1] + (3 * lbl_1_bss_1A30[2]);
-    lbl_1_bss_1A30[0] = lbl_1_data_70[index];
-    fn_1_FEC(index);
-    fn_1_9160(&lbl_1_data_28[index]);
-    fn_1_25F8(MESSNUM(MESS_SYS_GUIDE, 2));
-    fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
-    fn_1_8D44();
-    lbl_1_bss_3E = 1;
-
     for (;;) {
         HuPrcVSleep();
-        fn_1_75A4(0);
         index = lbl_1_bss_1A30[1] + (3 * lbl_1_bss_1A30[2]);
         lbl_1_bss_1A30[0] = lbl_1_data_70[index];
         fn_1_FEC(index);
-        fn_1_90FC(&lbl_1_data_28[index]);
+        fn_1_9160(&lbl_1_data_28[index]);
+        fn_1_25F8(MESSNUM(MESS_SYS_GUIDE, 2));
+        fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
         fn_1_8D44();
+        lbl_1_bss_3E = 1;
 
-        if (lbl_1_bss_1A30[1] == 0) {
-            if (previousColumn != lbl_1_bss_1A30[1]) {
-                previousColumn = lbl_1_bss_1A30[1];
-                fn_8002CCC0(lbl_1_bss_14->mdlId[0],
-                    lbl_1_bss_14->mtnId[3], 0.0f, 5.0f,
-                    ((1 << 30) | (1 << 0)));
-                fn_8002CCC0(lbl_1_bss_18->mdlId[0],
-                    lbl_1_bss_18->mtnId[2], 0.0f, 15.0f,
-                    ((1 << 30) | (1 << 0)));
-                fn_8002D678(
-                    lbl_1_bss_18->mdlId[0], 20.0f, 100.0f);
-            }
-            fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
-        } else if (lbl_1_bss_1A30[1] == 2) {
-            if (previousColumn != lbl_1_bss_1A30[1]) {
-                previousColumn = lbl_1_bss_1A30[1];
-                fn_8002CCC0(lbl_1_bss_14->mdlId[0],
-                    lbl_1_bss_14->mtnId[2], 0.0f, 15.0f,
-                    ((1 << 30) | (1 << 0)));
-                fn_8002CCC0(lbl_1_bss_18->mdlId[0],
-                    lbl_1_bss_18->mtnId[3], 0.0f, 5.0f,
-                    ((1 << 30) | (1 << 0)));
-                fn_8002D678(
-                    lbl_1_bss_14->mdlId[0], 20.0f, 100.0f);
-            }
-            fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
-        } else {
-            if (previousColumn != lbl_1_bss_1A30[1]) {
-                previousColumn = lbl_1_bss_1A30[1];
-                fn_8002CCC0(lbl_1_bss_14->mdlId[0],
-                    lbl_1_bss_14->mtnId[0], 0.0f, 15.0f,
-                    ((1 << 30) | (1 << 0)));
-                fn_8002CCC0(lbl_1_bss_18->mdlId[0],
-                    lbl_1_bss_18->mtnId[0], 0.0f, 15.0f,
-                    ((1 << 30) | (1 << 0)));
-            }
-            fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
-        }
+        for (;;) {
+            HuPrcVSleep();
+            fn_1_75A4(0);
+            index = lbl_1_bss_1A30[1] + (3 * lbl_1_bss_1A30[2]);
+            lbl_1_bss_1A30[0] = lbl_1_data_70[index];
+            fn_1_FEC(index);
+            fn_1_90FC(&lbl_1_data_28[index]);
+            fn_1_8D44();
 
-        if (++inputDelay < 5) {
-            continue;
-        }
-        inputDelay = 11;
-
-        if (lbl_802BFFE0[0] & PAD_BUTTON_LEFT) {
-            if (lbl_1_bss_1A30[1] > 0) {
-                HuAudFXPlay(0);
-                lbl_1_bss_1A30[1]--;
-                inputDelay = 0;
-            } else if (lbl_1_bss_1A30[2] == 0) {
-                HuAudFXPlay(0);
-                lbl_1_bss_1A30[2] = 1;
-                inputDelay = 0;
-            }
-        } else if (lbl_802BFFE0[0] & PAD_BUTTON_RIGHT) {
-            if (lbl_1_bss_1A30[1] < 2) {
-                HuAudFXPlay(0);
-                lbl_1_bss_1A30[1]++;
-                inputDelay = 0;
-            } else if (lbl_1_bss_1A30[2] == 0) {
-                HuAudFXPlay(0);
-                lbl_1_bss_1A30[2] = 1;
-                inputDelay = 0;
-            }
-        } else if (lbl_802BFFE0[0] & PAD_BUTTON_DOWN) {
-            if (lbl_1_bss_1A30[2] < 1) {
-                HuAudFXPlay(0);
-                lbl_1_bss_1A30[2]++;
-                inputDelay = 0;
-            }
-        } else if (lbl_802BFFE0[0] & PAD_BUTTON_UP) {
-            if (lbl_1_bss_1A30[2] > 0) {
-                HuAudFXPlay(0);
-                lbl_1_bss_1A30[2]--;
-                inputDelay = 0;
-            }
-        } else if (lbl_802C0008[0] & PAD_BUTTON_A) {
-            if (lbl_1_bss_1A30[0] == 0 || lbl_1_bss_1A30[0] == 1) {
-                if (lbl_80265E30.mic == 1 && !fn_1_6E54()) {
-                    OSReport(lbl_1_data_308);
-                    HuMCMicSet(0);
+            if (lbl_1_bss_1A30[1] == 0) {
+                if (previousColumn != lbl_1_bss_1A30[1]) {
+                    previousColumn = lbl_1_bss_1A30[1];
+                    fn_8002CCC0(lbl_1_bss_14->mdlId[0],
+                        lbl_1_bss_14->mtnId[3], 0.0f, 5.0f,
+                        ((1 << 30) | (1 << 0)));
+                    fn_8002CCC0(lbl_1_bss_18->mdlId[0],
+                        lbl_1_bss_18->mtnId[2], 0.0f, 15.0f,
+                        ((1 << 30) | (1 << 0)));
+                    fn_8002D678(
+                        lbl_1_bss_18->mdlId[0], 20.0f, 100.0f);
                 }
-                HuAudFXPlay(2);
-                if (lbl_1_bss_1A30[0] == 0 || lbl_1_bss_1A30[0] == 5) {
-                    HuAudFXPlayPan(
-                        950, (MSM_PAN_LEFT + MSM_PAN_CENTER) / 2);
-                    HuAudFXPlayPan(
-                        942, (MSM_PAN_CENTER + MSM_PAN_RIGHT) / 2);
-                } else if (lbl_1_bss_1A30[0] == 1
-                    || lbl_1_bss_1A30[0] == 3) {
-                    HuAudFXPlay(950);
-                } else {
-                    HuAudFXPlay(942);
+                fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
+            } else if (lbl_1_bss_1A30[1] == 2) {
+                if (previousColumn != lbl_1_bss_1A30[1]) {
+                    previousColumn = lbl_1_bss_1A30[1];
+                    fn_8002CCC0(lbl_1_bss_14->mdlId[0],
+                        lbl_1_bss_14->mtnId[2], 0.0f, 15.0f,
+                        ((1 << 30) | (1 << 0)));
+                    fn_8002CCC0(lbl_1_bss_18->mdlId[0],
+                        lbl_1_bss_18->mtnId[3], 0.0f, 5.0f,
+                        ((1 << 30) | (1 << 0)));
+                    fn_8002D678(
+                        lbl_1_bss_14->mdlId[0], 20.0f, 100.0f);
                 }
-                result = 1;
-                break;
-            }
-
-            if (lbl_1_bss_1A30[0] == 3) {
-                if (lbl_80265E30.mic == 2) {
-                    HuAudFXPlay(2);
-                    HuAudFXPlay(950);
-                    result = 1;
-                    break;
-                }
-                if (lbl_80265E30.mic == 0) {
-                    HuAudFXPlay(4);
-                    fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 9), 1);
-                    fn_1_2288();
-                    fn_1_21DC();
-                } else if (!fn_1_6E54()) {
-                    OSReport(lbl_1_data_333);
-                    HuAudFXPlay(4);
-                    fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 8), 1);
-                    fn_1_2288();
-                    fn_1_21DC();
-                } else {
-                    HuAudFXPlay(2);
-                    HuAudFXPlay(950);
-                    result = 1;
-                    break;
-                }
+                fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
             } else {
-                HuAudFXPlay(2);
-                if (lbl_1_bss_1A30[0] == 0 || lbl_1_bss_1A30[0] == 5) {
-                    HuAudFXPlayPan(
-                        950, (MSM_PAN_LEFT + MSM_PAN_CENTER) / 2);
-                    HuAudFXPlayPan(
-                        942, (MSM_PAN_CENTER + MSM_PAN_RIGHT) / 2);
-                } else if (lbl_1_bss_1A30[0] == 1
-                    || lbl_1_bss_1A30[0] == 3) {
-                    HuAudFXPlay(950);
-                } else {
-                    HuAudFXPlay(942);
+                if (previousColumn != lbl_1_bss_1A30[1]) {
+                    previousColumn = lbl_1_bss_1A30[1];
+                    fn_8002CCC0(lbl_1_bss_14->mdlId[0],
+                        lbl_1_bss_14->mtnId[0], 0.0f, 15.0f,
+                        ((1 << 30) | (1 << 0)));
+                    fn_8002CCC0(lbl_1_bss_18->mdlId[0],
+                        lbl_1_bss_18->mtnId[0], 0.0f, 15.0f,
+                        ((1 << 30) | (1 << 0)));
                 }
-                result = 1;
+                fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 2) + lbl_1_bss_1A30[0], 0);
+            }
+
+            if (++inputDelay < 5) {
+                continue;
+            }
+            inputDelay = 11;
+
+            if (lbl_802BFFE0[0] & PAD_BUTTON_LEFT) {
+                if (lbl_1_bss_1A30[1] > 0) {
+                    HuAudFXPlay(0);
+                    lbl_1_bss_1A30[1]--;
+                    inputDelay = 0;
+                } else if (lbl_1_bss_1A30[2] == 0) {
+                    HuAudFXPlay(0);
+                    lbl_1_bss_1A30[2] = 1;
+                    inputDelay = 0;
+                }
+            } else if (lbl_802BFFE0[0] & PAD_BUTTON_RIGHT) {
+                if (lbl_1_bss_1A30[1] < 2) {
+                    HuAudFXPlay(0);
+                    lbl_1_bss_1A30[1]++;
+                    inputDelay = 0;
+                } else if (lbl_1_bss_1A30[2] == 0) {
+                    HuAudFXPlay(0);
+                    lbl_1_bss_1A30[2] = 1;
+                    inputDelay = 0;
+                }
+            } else if (lbl_802BFFE0[0] & PAD_BUTTON_DOWN) {
+                if (lbl_1_bss_1A30[2] < 1) {
+                    HuAudFXPlay(0);
+                    lbl_1_bss_1A30[2]++;
+                    inputDelay = 0;
+                }
+            } else if (lbl_802BFFE0[0] & PAD_BUTTON_UP) {
+                if (lbl_1_bss_1A30[2] > 0) {
+                    HuAudFXPlay(0);
+                    lbl_1_bss_1A30[2]--;
+                    inputDelay = 0;
+                }
+            } else if (lbl_802C0008[0] & PAD_BUTTON_A) {
+                if (lbl_1_bss_1A30[0] == 0 || lbl_1_bss_1A30[0] == 1) {
+                    if (lbl_80265E30.mic == 1 && !fn_1_6E54()) {
+                        OSReport(lbl_1_data_308);
+                        HuMCMicSet(0);
+                    }
+                    HuAudFXPlay(2);
+                    if (lbl_1_bss_1A30[0] == 0 || lbl_1_bss_1A30[0] == 5) {
+                        HuAudFXPlayPan(
+                            950, (MSM_PAN_LEFT + MSM_PAN_CENTER) / 2);
+                        HuAudFXPlayPan(
+                            942, (MSM_PAN_CENTER + MSM_PAN_RIGHT) / 2);
+                    } else if (lbl_1_bss_1A30[0] == 1
+                        || lbl_1_bss_1A30[0] == 3) {
+                        HuAudFXPlay(950);
+                    } else {
+                        HuAudFXPlay(942);
+                    }
+                    result = 1;
+                    break;
+                }
+
+                if (lbl_1_bss_1A30[0] == 3) {
+                    if (lbl_80265E30.mic == 2) {
+                        HuAudFXPlay(2);
+                        HuAudFXPlay(950);
+                        result = 1;
+                        break;
+                    }
+                    if (lbl_80265E30.mic == 0) {
+                        HuAudFXPlay(4);
+                        fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 9), 1);
+                        fn_1_2288();
+                        fn_1_21DC();
+                    } else if (!fn_1_6E54()) {
+                        OSReport(lbl_1_data_333);
+                        HuAudFXPlay(4);
+                        fn_1_23E0(1, MESSNUM(MESS_ALL_MAIN_MENU, 8), 1);
+                        fn_1_2288();
+                        fn_1_21DC();
+                    } else {
+                        HuAudFXPlay(2);
+                        HuAudFXPlay(950);
+                        result = 1;
+                        break;
+                    }
+                } else {
+                    HuAudFXPlay(2);
+                    if (lbl_1_bss_1A30[0] == 0 || lbl_1_bss_1A30[0] == 5) {
+                        HuAudFXPlayPan(
+                            950, (MSM_PAN_LEFT + MSM_PAN_CENTER) / 2);
+                        HuAudFXPlayPan(
+                            942, (MSM_PAN_CENTER + MSM_PAN_RIGHT) / 2);
+                    } else if (lbl_1_bss_1A30[0] == 1
+                        || lbl_1_bss_1A30[0] == 3) {
+                        HuAudFXPlay(950);
+                    } else {
+                        HuAudFXPlay(942);
+                    }
+                    result = 1;
+                    break;
+                }
+            } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
+                HuAudFXPlay(3);
+                result = -1;
                 break;
             }
-        } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
-            HuAudFXPlay(3);
+
+            index = lbl_1_bss_1A30[1] + (3 * lbl_1_bss_1A30[2]);
+            lbl_1_bss_1A30[0] = lbl_1_data_70[index];
+            fn_1_8D44();
+        }
+
+        lbl_1_bss_3E = 0;
+        if (result == -1) {
+            previousColumn = -1;
+            fn_8002CCC0(lbl_1_bss_14->mdlId[0],
+                lbl_1_bss_14->mtnId[0], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
+            fn_8002CCC0(lbl_1_bss_18->mdlId[0],
+                lbl_1_bss_18->mtnId[0], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
+            fn_1_75A4(-1);
+        }
+        fn_1_FEC(-1);
+        fn_1_927C();
+        fn_1_8E38();
+        fn_1_277C();
+
+        if (result == -1) {
+            if (fn_1_B804()) {
+                continue;
+            }
             result = -1;
-            break;
         }
-
-        index = lbl_1_bss_1A30[1] + (3 * lbl_1_bss_1A30[2]);
-        lbl_1_bss_1A30[0] = lbl_1_data_70[index];
-        fn_1_8D44();
+        return result;
     }
-
-    lbl_1_bss_3E = 0;
-    if (result == -1) {
-        previousColumn = -1;
-        fn_8002CCC0(lbl_1_bss_14->mdlId[0],
-            lbl_1_bss_14->mtnId[0], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
-        fn_8002CCC0(lbl_1_bss_18->mdlId[0],
-            lbl_1_bss_18->mtnId[0], 0.0f, 30.0f, ((1 << 30) | (1 << 0)));
-        fn_1_75A4(-1);
-    }
-    fn_1_FEC(-1);
-    fn_1_927C();
-    fn_1_8E38();
-    fn_1_277C();
-
-    if (result == -1) {
-        if (fn_1_B804()) {
-            goto restart;
-        }
-        result = -1;
-    }
-    return result;
 }
 
 /* Closes the menu prompt and animates the selected display models before the chosen mode starts. */
@@ -2879,8 +2859,7 @@ void fn_1_F790(void)
     s16 i;
 
     for (i = 0; i < 5; i++) {
-        lbl_1_bss_80[i] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_35C[i], 0x10000000, 2));
+        lbl_1_bss_80[i] = HuSprAnimDataRead(lbl_1_data_35C[i]);
     }
     fn_1_F4E4();
 }
@@ -2888,14 +2867,7 @@ void fn_1_F790(void)
 /* Kills the stored particle models for all six choice groups. */
 void fn_1_FA18(void)
 {
-    s16 j;
-    s16 i;
-
-    for (i = 0; i < 6; i++) {
-        for (j = 0; j < 5; j++) {
-            fn_800262D0(lbl_1_bss_44[i][j]);
-        }
-    }
+    fn_1_F70C();
 }
 
 /* Updates each choice group's particle visibility, position, and emission state for the menu

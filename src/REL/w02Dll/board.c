@@ -1,4 +1,6 @@
 /* E. Gadd's Garage board events, routes, capsule stations, and model effects. */
+#include "REL/w02Dll/event_work.h"
+#include "REL/w02Dll/event_model.h"
 #include "math.h"
 #include "game/gamework.h"
 #include "game/board/main.h"
@@ -53,20 +55,6 @@
 
 /* Initializes the mechanical board's models and registers its board event hooks. */
 
-typedef struct ModelEntry {
-    int modelId;
-    int entryIndex;
-    int flightStage;
-    int age;
-    int travelFrames;
-    float jumpHeight;
-    float rotationSpeed;
-    HuVecF start;
-    HuVecF end;
-    HuVecF bend;
-    HuVecF rotation;
-} ModelEntry;
-
 typedef struct ModelTransform {
     Mtx matrix;
     HuVecF position;
@@ -77,87 +65,6 @@ typedef struct SpaceBinding {
     s16 transformIndex;
 } SpaceBinding;
 
-typedef struct MapMarker {
-    int modelId;
-    int spaceId;
-    int linkedSpace;
-} MapMarker;
-
-typedef struct SpriteEffect {
-    int objectId;
-    int flightSlot;
-    u8 stateData[16];
-    BOOL active;
-    u8 trajectoryData[140];
-} SpriteEffect;
-
-typedef struct FlyingEffect {
-    int objectId;
-    int state;
-    int age;
-    int travelFrames;
-    int remainingFrames;
-    int mode;
-    BOOL active;
-    HuVecF position;
-    HuVecF previousPosition;
-    HuVecF rotation;
-    HuVecF positionHistory[4];
-    HuVecF start;
-    HuVecF control;
-    HuVecF end;
-    float spinAngle;
-    float spinSpeedSlope;
-    float startDrift;
-    float spiralRadius;
-    float spinRateScale;
-} FlyingEffect;
-
-typedef struct SpriteParticle {
-    s16 index;
-    s16 state;
-    u8 textureData[4];
-    HuVecF velocity;
-    u8 movementData[8];
-    float rotationSpeed;
-    u8 animationData[12];
-    float animationTime;
-    float animationSpeed;
-    float activityValue;
-    HuVecF position;
-    HuVec2f rendering;
-    float rotation;
-    GXColor color;
-    int timer;
-} SpriteParticle;
-
-typedef struct PathSpaces {
-    int boardModelId;
-    int modelId;
-    int spaceCount;
-    int modelSpaceCount;
-    float length;
-    float travelDistance;
-    HuVecF end;
-    HuVecF start;
-    HuVecF markerStart;
-    HuVecF positions[32];
-    int spaceIds[32];
-    int spaceTypes[32];
-} PathSpaces;
-
-typedef struct ThrowPath {
-    BOOL ready;
-    int state;
-    int age;
-    int travelFrames;
-    HuVecF start;
-    HuVecF bend;
-    HuVecF end;
-    HuVecF trailStart;
-    HuVecF trailEnd;
-} ThrowPath;
-
 typedef struct PositionModel {
     int primaryModel;
     int secondaryModel;
@@ -165,12 +72,12 @@ typedef struct PositionModel {
     int spaceState;
     ModelTransform transforms[14];
     SpaceBinding bindings[32];
-    PathSpaces paths[5];
+    W02PathSpaces paths[5];
     u8 earlierState[4];
-    int pathEffectModel;
+    int unk1188; /* The game's code never reads this field. */
     int particleModels[4];
     int coinRewardCount;
-    MapMarker markers[3];
+    W02MapMarker markers[3];
     int markerCount;
     int markerEffectModels[5];
     int models[3];
@@ -178,21 +85,19 @@ typedef struct PositionModel {
     int restorePlayer;
     HSF_MATERIAL *materialBackup;
     HSF_PALETTE *paletteBackup;
-    int *objectData;
-    int linkedSpaceBaseModel;
-    int linkedSpaceBodyModel;
-    int eyeModel;
+    s32 *objectData;
+    int machineModels[3];
     int attachmentModel;
-    int subAttachmentModel;
+    int unk120C; /* The game's code never reads this field. */
     int transitionModel;
     OMOBJ *entryObject;
-    ModelEntry *entryData;
+    W02EventModelEntry *entryData;
     int stationLiftBaseModel;
     int motionReferenceModel;
     int modelId;
     int hookedModel;
-    int displayModels[4];
-    int hiddenModel;
+    int unk122C[4]; /* The game's code never reads this field. */
+    int unk123C; /* The game's code never reads this field. */
     int emissionFrame;
     int eventPlayerNo;
     int eventTimer;
@@ -201,16 +106,16 @@ typedef struct PositionModel {
     HuVecF flightOrigin;
     HuVecF flightDestination;
     OMOBJ *modelObject;
-    FlyingEffect *flyingModels;
+    W02FlyingEffect *flyingModels;
     BOOL modelsEnabled;
     OMOBJ *coinObject;
-    FlyingEffect *flyingCoins;
+    W02FlyingEffect *flyingCoins;
     BOOL coinsEnabled;
     int leverObjectId;
     int liftObjectId;
     int characterObjectId;
     OMOBJ *effectObject;
-    SpriteEffect *effects;
+    W02FlyingEffect *effects;
     ANIMDATA *effectAnimation;
     int effectModel;
     float effectScale;
@@ -218,7 +123,7 @@ typedef struct PositionModel {
     int pairedModel;
     int throwPathIndex;
     int throwPathCount;
-    ThrowPath *throwPaths;
+    W02ThrowPath *throwPaths;
     BOOL throwStopped;
     int spaceModels[3];
     int eventModel;
@@ -277,37 +182,6 @@ extern HuVecF lbl_1_data_504;
 
 extern float lbl_1_data_510;
 
-/* Runs the station's paid capsule launches toward eligible board spaces. */
-
-typedef struct CapsuleShot {
-    BOOL ready;
-    int playerNo;
-    int destinationSpace;
-    int travelFrames;
-    HuVecF start;
-    HuVecF bend;
-    HuVecF end;
-    HuVecF trailStart;
-    HuVecF trailEnd;
-} CapsuleShot;
-
-typedef struct CapsuleStation {
-    u8 boardState[4584];
-    int stationModel;
-    u8 attachmentState[184];
-    int launchBaseModel;
-    int cannonModel;
-    int shotIndex;
-    int shotCount;
-    CapsuleShot *shots;
-    BOOL shotsStopped;
-    int spaceModels[3];
-    int eventModel;
-    int mapDisplayModel;
-    u8 mapState[168];
-    BOOL mapEffectsHidden;
-} CapsuleStation;
-
 extern int lbl_1_data_C64[4][5];
 
 extern HuVecF lbl_1_data_CB4;
@@ -320,74 +194,6 @@ int sprintf();
 
 /* Shared state for Garage model flights, route markers, and particle effects. */
 
-typedef struct EventModelEntry {
-    s32 modelId;
-    s32 entryIndex;
-    s32 flightStage;
-    s32 age;
-    s32 travelFrames;
-    float jumpHeight;
-    float rotationSpeed;
-    HuVecF start;
-    HuVecF end;
-    HuVecF bend;
-    HuVecF rotation;
-} EventModelEntry;
-
-typedef struct EventMapMarker {
-    s32 modelId;
-    s32 spaceId;
-    s32 linkedSpace;
-} EventMapMarker;
-
-typedef struct EventSpriteEffect {
-    s32 objectId;
-    s32 flightSlot;
-    u8 stateData[16];
-    BOOL active;
-    u8 trajectoryData[140];
-} EventSpriteEffect;
-
-typedef struct EventFlyingEffect {
-    s32 objectId;
-    s32 state;
-    s32 age;
-    s32 travelFrames;
-    s32 remainingFrames;
-    s32 mode;
-    BOOL active;
-    HuVecF position;
-    HuVecF previousPosition;
-    HuVecF rotation;
-    HuVecF positionHistory[4];
-    HuVecF start;
-    HuVecF control;
-    HuVecF end;
-    float spinAngle;
-    float spinSpeedSlope;
-    float startDrift;
-    float spiralRadius;
-    float spinRateScale;
-} EventFlyingEffect;
-
-typedef struct EventSpriteParticle {
-    s16 frame;
-    s16 state;
-    u8 textureData[4];
-    HuVecF velocity;
-    u8 movementData[8];
-    float rotationSpeed;
-    u8 animationData[12];
-    float animationTime;
-    float animationSpeed;
-    float activityValue;
-    HuVecF position;
-    HuVec2f rendering;
-    float rotation;
-    GXColor color;
-    s32 timer;
-} EventSpriteParticle;
-
 typedef struct EventSpriteObject {
     s32 modelId;
     s32 state;
@@ -395,121 +201,32 @@ typedef struct EventSpriteObject {
     ANIMDATA *animation;
 } EventSpriteObject;
 
-typedef struct EventSpriteHook {
-    s16 textureFrame;
-    s16 textureIndex;
-    u8 renderingData[28];
-    s8 blendMode;
-    u8 animationData;
+typedef struct SpriteRenderHook SpriteRenderHook;
+
+struct SpriteRenderHook {
+    s16 unk00; /* The game's code never reads this field. */
+    s16 unk02; /* The game's code never reads this field. */
+    u8 unk04[28]; /* No code names this field. */
+    u8 blendMode;
+    u8 animationFlags;
     u8 flags;
-    u8 hookFlags[3];
+    u8 unk23; /* The game's code never reads this field. */
+    u8 unk24[2]; /* No code names this field. */
     s16 particleCount;
-    u32 frameCounter;
-    u32 lastUpdate;
+    u32 frame;
+    u32 lastDraw;
     u32 duration;
     u32 displayListSize;
     ANIMDATA *animation;
-    EventSpriteParticle *particles;
+    W02EventSpriteParticle *particles;
     HuVecF *positions;
     HuVec2f *textureCoordinates;
     void *displayList;
-    u32 callbackAddress;
+    void (*update)(HU3D_MODEL *, SpriteRenderHook *, Mtx *);
     HuVec2f *tileCoordinates;
-    void *corners;
-    u32 linkedModelAddress;
-} EventSpriteHook;
-
-typedef struct EventPathSpaces {
-    s32 state;
-    s32 modelId;
-    s32 spaceCount;
-    s32 modelSpaceCount;
-    float length;
-    float travelDistance;
-    HuVecF end;
-    HuVecF start;
-    HuVecF markerStart;
-    HuVecF positions[32];
-    s32 spaceIds[32];
-    s32 spaceTypes[32];
-} EventPathSpaces;
-
-typedef struct EventThrowPath {
-    BOOL ready;
-    s32 state;
-    s32 age;
-    s32 travelFrames;
-    HuVecF start;
-    HuVecF bend;
-    HuVecF end;
-    HuVecF trailStart;
-    HuVecF trailEnd;
-} EventThrowPath;
-
-typedef struct BoardModels {
-    s32 primaryModel;
-    s32 secondaryModel;
-    s32 spaceCount;
-    s32 spaceState;
-    ModelTransform transforms[14];
-    SpaceBinding bindings[32];
-    EventPathSpaces paths[5];
-    u8 earlierState[8];
-    s32 particleModels[4];
-    s32 coinRewardCount;
-    EventMapMarker markers[3];
-    s32 markerCount;
-    s32 markerEffectModels[5];
-    s32 models[3];
-    s32 attachedModel;
-    s32 restorePlayer;
-    HSF_MATERIAL *materialBackup;
-    HSF_PALETTE *paletteBackup;
-    s32 *objectData;
-    s32 linkedSpaceBaseModel;
-    s32 linkedSpaceBodyModel;
-    s32 eyeModel;
-    s32 attachmentModel;
-    s32 subAttachmentModel;
-    u8 laterState[4];
-    OMOBJ *entryObject;
-    EventModelEntry *entryData;
-    u8 positionState[8];
-    s32 positionModel;
-    s32 hookedModel;
-    s32 displayModels[4];
-    s32 hiddenModel;
-    u8 spaceData[20];
-    HuVecF flightOrigin;
-    HuVecF flightDestination;
-    OMOBJ *modelObject;
-    EventFlyingEffect *flyingModels;
-    BOOL modelsEnabled;
-    OMOBJ *coinObject;
-    EventFlyingEffect *flyingCoins;
-    BOOL coinsEnabled;
-    s32 leverObjectId;
-    s32 liftObjectId;
-    s32 characterObjectId;
-    OMOBJ *effectObject;
-    EventSpriteEffect *effects;
-    ANIMDATA *effectAnimation;
-    s32 effectModel;
-    float effectScale;
-    s32 parentModel;
-    s32 pairedModel;
-    s32 throwPathIndex;
-    s32 throwPathCount;
-    EventThrowPath *throwPaths;
-    BOOL throwStopped;
-    s32 spaceModels[3];
-    s32 eventModel;
-    s32 mapDisplayModel;
-    s32 starModel;
-    s32 mapModels[5];
-    u8 laterEventState[144];
-    BOOL mapView;
-} BoardModels;
+    HuVecF *corners;
+    HU3D_MODEL *linkedModel;
+};
 
 extern HuVecF lbl_1_data_888[5];
 
@@ -553,47 +270,7 @@ typedef struct PlayerTravel {
     HuVecF destination;
 } PlayerTravel;
 
-typedef struct EffectElement {
-    u8 earlierData[52];
-    float value;
-    HuVecF position;
-    u8 elementData[8];
-    float rotation;
-    GXColor color;
-    s32 type;
-} EffectElement;
-
-typedef struct EffectData {
-    u8 earlierData[34];
-    u8 flags;
-    u8 animationState[3];
-    s16 elementCount;
-    u8 laterData[20];
-    EffectElement *elements;
-} EffectData;
-
-/* Updates the flying board models and coins while their event objects are active. */
-
-typedef struct BoardEffects {
-    u8 earlierState[4716];
-    OMOBJ *modelObject;
-    EventFlyingEffect *models;
-    BOOL modelsEnabled;
-    OMOBJ *coinObject;
-    EventFlyingEffect *coins;
-    BOOL coinsEnabled;
-} BoardEffects;
-
 extern s32 lbl_1_data_BE0[12];
-
-typedef struct TransferWork {
-    u8 earlierState[4512];
-    EventMapMarker markers[3];
-    s32 markerCount;
-    s32 markerEffectModels[5];
-    s32 models[3];
-    s32 attachedModel;
-} TransferWork;
 
 extern s32 lbl_1_data_A84[3];
 
@@ -603,145 +280,11 @@ extern HuVecF lbl_1_data_9E0[9];
 
 extern float lbl_1_data_A4C[];
 
-/* Updates space-link destinations and the visibility of their capsule markers. */
-
-typedef struct SpaceGroup {
-    s32 state;
-    s32 modelId;
-    s32 spaceCount;
-    u8 displayData[432];
-    s32 spaceIds[64];
-} SpaceGroup;
-
-typedef struct SpaceEffectWork {
-    u8 earlierState[984];
-    SpaceGroup groups[5];
-} SpaceEffectWork;
-
-typedef struct MarkerParticle {
-    u8 renderingData[83];
-    u8 alpha;
-    u8 colorData[4];
-} MarkerParticle;
-
-typedef struct MarkerHook {
-    u8 renderingData[60];
-    MarkerParticle *particles;
-} MarkerHook;
-
 extern s32 lbl_1_data_704[][4];
-
-typedef struct SpacePathSpaces {
-    s32 state;
-    s32 modelId;
-    s32 spaceCount;
-    s32 modelSpaceCount;
-    u8 pathData[428];
-    s32 spaceIds[32];
-    s32 spaceTypes[32];
-} SpacePathSpaces;
-
-typedef struct BoardPaths {
-    u8 earlierData[984];
-    SpacePathSpaces paths[5];
-} BoardPaths;
-
-typedef struct SpaceElement {
-    u8 earlierData[52];
-    float value;
-    HuVecF position;
-    u8 elementData[12];
-    GXColor color;
-    s32 type;
-} SpaceElement;
-
-typedef struct SpaceEffect {
-    u8 earlierData[38];
-    s16 elementCount;
-    u8 laterData[20];
-    SpaceElement *elements;
-} SpaceEffect;
-
-/* Creates the board's sprite models and their update objects. */
-
-typedef struct spriteinitializeSpriteParticle {
-    s16 frame;
-    s16 state;
-    u8 textureData[4];
-    HuVecF velocity;
-    u8 movementData[8];
-    float rotationSpeed;
-    u8 animationData[12];
-    float animationTime;
-    float animationSpeed;
-    float activityValue;
-    HuVecF position;
-    u8 renderingData[8];
-    float rotation;
-    GXColor color;
-    s32 animationFrame;
-} spriteinitializeSpriteParticle;
-
-typedef struct spriteinitializeSpriteHook {
-    u8 renderingData[32];
-    s8 blendMode;
-    u8 animationData;
-    u8 flags;
-    u8 updateFlags;
-    u8 hookState[2];
-    s16 particleCount;
-    u8 renderParameters[20];
-    spriteinitializeSpriteParticle *particles;
-} spriteinitializeSpriteHook;
-
-typedef struct BoardSpriteModels {
-    u8 earlierState[4492];
-    s32 models[4];
-} BoardSpriteModels;
 
 extern HuVecF lbl_1_data_930[4];
 
 extern float lbl_1_data_960[16][2];
-
-/* Draws the board's sprite particles, building vertices and texture coordinates for their display
- * list. */
-
-typedef struct spriterenderSpriteParticle {
-    s16 frame;
-    s16 state;
-    u8 renderingData[48];
-    float size;
-    HuVecF position;
-    HuVecF rotation;
-    GXColor color;
-    s32 textureFrame;
-} spriterenderSpriteParticle;
-
-typedef struct SpriteRenderHook SpriteRenderHook;
-
-struct SpriteRenderHook {
-    s16 textureFrame;
-    s16 textureIndex;
-    u8 renderingData[28];
-    u8 blendMode;
-    u8 animationFlags;
-    u8 flags;
-    u8 hookFlags[3];
-    s16 particleCount;
-    u32 frame;
-    u32 lastDraw;
-    u32 duration;
-    u32 displayListSize;
-    ANIMDATA *animation;
-    spriterenderSpriteParticle *particles;
-    HuVecF *positions;
-    HuVec2f *textureCoordinates;
-    void *displayList;
-    void (*update)(HU3D_MODEL *, SpriteRenderHook *, Mtx *);
-    HuVec2f *tileCoordinates;
-    HuVecF *corners;
-    HU3D_MODEL *linkedModel;
-};
 
 typedef struct StarOrder {
     u8 configuration;
@@ -751,24 +294,6 @@ typedef struct StarOrder {
     u8 position;
 } StarOrder;
 
-typedef struct StarDisplayWork {
-    u8 earlierState[4816];
-    s32 starModel;
-} StarDisplayWork;
-
-/* Animates the board station's capsule exchange, particles, and coin rewards. */
-
-typedef struct StationWork {
-    u8 boardState[4584];
-    int stationModel;
-    u8 restoreState[16];
-    int machineModels[3];
-    int capsuleGateModel;
-    u8 cameraState[16];
-    int liftBaseModel;
-    int liftBodyModel;
-} StationWork;
-
 extern HuVecF lbl_1_data_B08;
 
 extern HuVecF lbl_1_data_B14;
@@ -777,136 +302,9 @@ extern char *lbl_1_data_B34[2];
 
 extern float lbl_1_data_B3C[2];
 
-typedef struct textSpriteParticle {
-    s16 maxAlpha;
-    s16 alphaStep;
-    u8 renderingData[48];
-    float value;
-    HuVecF position;
-    HuVecF rotation;
-    GXColor color;
-    s32 type;
-} textSpriteParticle;
-
-typedef struct textSpriteHook {
-    u8 renderingData[60];
-    textSpriteParticle *particles;
-} textSpriteHook;
-
-typedef struct BoardSpriteWork {
-    u8 earlierState[4692];
-    HuVecF origin;
-    HuVecF destination;
-    OMOBJ *modelObject;
-    EventFlyingEffect *models;
-    BOOL modelsEnabled;
-    OMOBJ *coinObject;
-    EventFlyingEffect *coins;
-    BOOL coinsEnabled;
-    s32 leverObjectId;
-    s32 liftObjectId;
-    s32 characterObjectId;
-    OMOBJ *effectObject;
-    EventFlyingEffect *effects;
-    ANIMDATA *effectAnimation;
-    s32 effectModel;
-    float effectScale;
-} BoardSpriteWork;
-
 extern GXColor lbl_1_data_648;
 
 extern GXColor lbl_1_data_64C;
-
-typedef struct PathPathSpaces {
-    s32 boardModelId;
-    s32 modelId;
-    s32 spaceCount;
-    s32 modelSpaceCount;
-    float length;
-    float travelDistance;
-    HuVecF end;
-    HuVecF start;
-    HuVecF markerStart;
-    HuVecF positions[32];
-    s32 spaceIds[32];
-    s32 spaceTypes[32];
-} PathPathSpaces;
-
-typedef struct PathBoardModels {
-    s32 primaryModel;
-    s32 secondaryModel;
-    s32 spaceCount;
-    s32 spaceState;
-    ModelTransform transforms[14];
-    SpaceBinding bindings[32];
-    PathPathSpaces paths[5];
-    u8 earlierState[4];
-    s32 pathEffectModel;
-    s32 particleModels[4];
-    s32 coinRewardCount;
-    EventMapMarker markers[3];
-    s32 markerCount;
-    s32 markerEffectModels[5];
-    s32 models[3];
-    s32 attachedModel;
-    s32 restorePlayer;
-    HSF_MATERIAL *materialBackup;
-    HSF_PALETTE *paletteBackup;
-    s32 *objectData;
-    s32 linkedSpaceBaseModel;
-    s32 linkedSpaceBodyModel;
-    s32 eyeModel;
-    s32 attachmentModel;
-    s32 subAttachmentModel;
-    s32 transitionModel;
-    OMOBJ *entryObject;
-    EventModelEntry *entryData;
-    u8 positionState[8];
-    s32 positionModel;
-    s32 hookedModel;
-    s32 displayModels[4];
-    s32 hiddenModel;
-    s32 emissionFrame;
-    u8 spaceData[12];
-    s32 eventStage;
-    HuVecF flightOrigin;
-    HuVecF flightDestination;
-    OMOBJ *modelObject;
-    EventFlyingEffect *flyingModels;
-    BOOL modelsEnabled;
-    OMOBJ *coinObject;
-    EventFlyingEffect *flyingCoins;
-    BOOL coinsEnabled;
-    s32 leverObjectId;
-    s32 liftObjectId;
-    s32 characterObjectId;
-    OMOBJ *effectObject;
-    EventSpriteEffect *effects;
-    ANIMDATA *effectAnimation;
-    s32 effectModel;
-    float effectScale;
-    s32 parentModel;
-    s32 pairedModel;
-    s32 throwPathIndex;
-    s32 throwPathCount;
-    EventThrowPath *throwPaths;
-    BOOL throwStopped;
-    s32 spaceModels[3];
-    s32 eventModel;
-    s32 mapDisplayModel;
-    s32 starModel;
-    s32 mapModels[5];
-    float orbitAngles[5];
-    float orbitRadii[5];
-    float bobAngles[5];
-    float orbitSpeed;
-    HuVecF particleOrigins[4];
-    s32 emissionDelays[4];
-    s32 burstFrames[4];
-    BOOL particlesDisabled;
-    BOOL mapView;
-    BOOL transitionActive;
-} PathBoardModels;
 
 extern HUPROCESS *mbMainProc;
 
@@ -967,26 +365,6 @@ typedef struct BoardFlightWork {
     HuVecF destination;
 } BoardFlightWork;
 
-/* Builds throw paths one at a time for the board's pending capsule flights. */
-
-typedef struct throwpathsThrowPath {
-    BOOL ready;
-    s32 state;
-    s32 age;
-    s32 travelFrames;
-    HuVecF start;
-    HuVecF bend;
-    HuVecF end;
-    u8 flightData[24];
-} throwpathsThrowPath;
-
-typedef struct ThrowPathWork {
-    u8 earlierState[4780];
-    s32 pathIndex;
-    s32 pathCount;
-    throwpathsThrowPath *paths;
-} ThrowPathWork;
-
 extern void (*lbl_1_data_874[5])(void);
 
 extern HuVecF lbl_1_data_BA8;
@@ -994,22 +372,6 @@ extern HuVecF lbl_1_data_BA8;
 extern HuVecF lbl_1_data_D44[4];
 
 extern HuVec2f lbl_1_data_D74[4];
-
-typedef struct TextureGridHook {
-    u8 renderingData[32];
-    s8 blendMode;
-    u8 animationData;
-    u8 flags;
-    u8 hookFlags[3];
-    s16 particleCount;
-    u8 renderParameters[20];
-    SpriteParticle *particles;
-    HuVecF *positions;
-    HuVec2f *textureCoordinates;
-    void *displayList;
-    u32 callbackAddress;
-    HuVec2f *tileCoordinates;
-} TextureGridHook;
 
 s16 lbl_1_bss_5C;
 
@@ -1041,7 +403,7 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity);
 
 s32 fn_1_D4D0(HuVecF *start, HuVecF *end);
 
-void fn_1_10D20(EventFlyingEffect *effect, HuVecF *position, float scale, float spread);
+void fn_1_10D20(W02FlyingEffect *effect, HuVecF *position, float scale, float spread);
 
 void fn_1_150F0(OMOBJ *object);
 
@@ -1194,7 +556,7 @@ void fn_1_100A8(s32 playerNo, s32 emissionState, s32 targetPlayer);
 
 void fn_1_12CB8(OMOBJ *object);
 
-void fn_1_112B4(EventFlyingEffect *effect);
+void fn_1_112B4(W02FlyingEffect *effect);
 
 void fn_1_16E84(s16 modelId, s32 columns, s32 rows, s32 alternate);
 
@@ -1280,19 +642,8 @@ static inline void *BoardWorkAllocate(void) {
     return HuMemDirectMallocNum(HEAP_HEAP, sizeof(PositionModel), 0x10000000);
 }
 
-/* Selects the Garage day or night archive for model data requested by board setup. */
-static inline int BoardModelDataNum(int dataNum) {
-    dataNum = FILENUM(dataNum);
-    if (!lbl_80265B70.curTime) {
-        dataNum |= 0xd90000;
-    } else {
-        dataNum |= 0xda0000;
-    }
-    return dataNum;
-}
-
 /* Copies a sprite particle's position or rotation vector while advancing its trail. */
-static inline void CopySpriteVector(HuVecF *destination, HuVecF *source) {
+static inline void CopySpriteVector(HuVecF *destination, const HuVecF *source) {
     float x;
     float y;
     float z;
@@ -1307,8 +658,8 @@ static inline void CopySpriteVector(HuVecF *destination, HuVecF *source) {
 /* Initializes a free particle with its position, velocity, color, and animation speeds. */
 static inline s32 EmitSpriteParticle(HuVecF *position, HuVecF *velocity, float activityValue,
     float rotationSpeed, float animationSpeed, GXColor *color) {
-    EventSpriteParticle *particle;
-    EventSpriteHook *hook;
+    W02EventSpriteParticle *particle;
+    SpriteRenderHook *hook;
     EventSpriteObject *work;
     s32 index;
     OMOBJ *object;
@@ -1320,14 +671,14 @@ static inline s32 EmitSpriteParticle(HuVecF *position, HuVecF *velocity, float a
     hook = model->hookData;
     particle = hook->particles;
     for (index = 0; index < hook->particleCount; index++, particle++) {
-        if (particle->activityValue <= 0.0f) {
+        if (particle->size <= 0.0f) {
             break;
         }
     }
     if (index >= hook->particleCount) {
         return -1;
     }
-    particle->frame = particle->state = 0;
+    particle->maxAlpha = particle->alphaStep = 0;
     particle->position.x = position->x;
     particle->position.y = position->y;
     particle->position.z = position->z;
@@ -1335,30 +686,18 @@ static inline s32 EmitSpriteParticle(HuVecF *position, HuVecF *velocity, float a
     particle->velocity.y = velocity->y;
     particle->velocity.z = velocity->z;
     particle->rotationSpeed = rotationSpeed;
-    particle->activityValue = activityValue;
+    particle->size = activityValue;
     particle->color = *color;
     /* 2^-28 scales mbRandMod(0x10000000) to [0, 1). */
-    particle->rotation = 360.0f * (3.7252903e-09f * mbRandMod(0x10000000));
-    particle->timer = 0;
-    particle->frame = 0;
+    particle->rotation.z = 360.0f * (3.7252903e-09f * mbRandMod(0x10000000));
+    particle->textureFrame = 0;
+    particle->maxAlpha = 0;
     particle->animationTime = 0.0f;
     particle->animationSpeed = animationSpeed;
     work->state++;
     return index;
 }
 
-/* Copies a recent flight position while updating a sprite effect's trail. */
-static inline void CopyFlightPosition(HuVecF *destination, const HuVecF *source) {
-    float x;
-    float y;
-    float z;
-    x = source->x;
-    y = source->y;
-    z = source->z;
-    destination->x = x;
-    destination->y = y;
-    destination->z = z;
-}
 HuVecF lbl_1_data_0[3] = { { 1790.0f, 0.0f, -1960.0f },
                            { 1455.0f, 0.0f, -2145.0f },
                            { 1275.0f, 0.0f, -2480.0f } };
@@ -1472,7 +811,7 @@ void fn_1_F4(void) {
     work->effects = NULL;
     work->effectModel = -1;
     work->effectAnimation =
-        HuSprAnimRead(fn_80008DD0( BoardResourceGet(DATANUM(0xd90000, 57)), 0x10000000, 2));
+        HuSprAnimDataRead(BoardResourceGet(DATANUM(0xd90000, 57)));
     lbl_1_bss_5C = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 3)), NULL, FALSE);
     mbObjPosSet(lbl_1_bss_5C, 0.0f, 0.0f, 0.0f);
     backgroundModel = lbl_1_bss_5C;
@@ -1684,7 +1023,7 @@ void fn_1_1BD8(OMOBJ *object) {
     GXColor color;
     GXColor pistonColor;
     GXColor emitterColor;
-    PathBoardModels *work;
+    PositionModel *work;
     s32 index;
     s32 particleIndex;
     u32 group;
@@ -2011,7 +1350,7 @@ HuVecF lbl_1_data_AC0[3] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f,
 /* Shows the time-change title, rotates the board, and plays the day/night transition. */
 void fn_1_31D8(void) {
     HuVec2f windowPosition;
-    PathBoardModels *work;
+    PositionModel *work;
     s32 index;
     s32 window;
 
@@ -2192,7 +1531,7 @@ int fn_1_39EC(int playerNo, s16 id) { return 0; }
 
 /* Runs after a player finishes moving, restarting the animation for the space's active event. */
 int fn_1_39F4(int player, s16 spaceId) {
-    BoardModels *work;
+    PositionModel *work;
     u32 modelNo;
 
     work = lbl_1_bss_8;
@@ -2213,18 +1552,18 @@ int fn_1_3AF4(s16 id, u32 mAttr, s16 *linkTbl, BOOL endF) { return 0; }
 
 /* At turn start, reveals the model on the drone hooks and enables the steam emitters. */
 void fn_1_3AFC(int playerNo) {
-    BoardModels *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     mbObjDispSet((s16)work->mapDisplayModel, 1);
-    work->mapView = 0;
+    work->particlesDisabled = 0;
 }
 
 /* Switches event models to map sprites while the map view is open. */
 void fn_1_3B44(BOOL mapView) {
     s32 spaceId;
-    BoardModels *work;
-    EventMapMarker *marker;
+    PositionModel *work;
+    W02MapMarker *marker;
     s32 linkedSpace;
 
     work = lbl_1_bss_8;
@@ -2242,7 +1581,7 @@ void fn_1_3B44(BOOL mapView) {
         for (spaceId = 0; spaceId < 5; spaceId++) {
             mbObjDispSet(work->mapModels[spaceId], FALSE);
         }
-        work->mapView = TRUE;
+        work->particlesDisabled = TRUE;
     } else {
         for (spaceId = 1; spaceId < mbMasuNumGet(); spaceId++) {
             if (mbMasuMAttrGet(spaceId) & 1) {
@@ -2254,14 +1593,14 @@ void fn_1_3B44(BOOL mapView) {
         for (spaceId = 0; spaceId < 5; spaceId++) {
             mbObjDispSet(work->mapModels[spaceId], TRUE);
         }
-        work->mapView = FALSE;
+        work->particlesDisabled = FALSE;
     }
 }
 
 /* Loads the moving board geometry and associates marked spaces with nearby model transforms. */
 void fn_1_3CC8(void) {
     ModelTransform *transform;
-    BoardModels *work;
+    PositionModel *work;
     s32 spaceId;
     SpaceBinding *binding;
     s32 modelId;
@@ -2271,11 +1610,11 @@ void fn_1_3CC8(void) {
 
     work = lbl_1_bss_8;
     work->primaryModel = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 20)), NULL, FALSE);
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 20)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
     fn_80030644(mbObjModelIDGet(modelId));
     work->spaceState = 0;
-    work->secondaryModel = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 21)), NULL, FALSE);
+    work->secondaryModel = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 21)), NULL, FALSE);
     mbObjMotionSpeedSet(work->secondaryModel, 0.0f);
     mbObjLayerSet(work->secondaryModel, 3);
     /* This pass reads marked-space attributes without changing any board state. */
@@ -2335,7 +1674,7 @@ void fn_1_4020(void) {
     HuVecF playerRotation[4];
     HuVecF position;
     HuVecF spacePosition;
-    PathBoardModels *work;
+    PositionModel *work;
     s32 playerNo;
     s32 frame;
     s32 sound;
@@ -2415,7 +1754,7 @@ void fn_1_4494(void) {
     Mtx matrix;
     ModelTransform *transform;
     s32 index;
-    BoardModels *work;
+    PositionModel *work;
     SpaceBinding *binding;
     s32 modelId;
 
@@ -2491,8 +1830,8 @@ s32 fn_1_46D0(s32 spaceId) {
 void fn_1_471C(void) {
     s32 spaceIds[32];
     HuVecF position;
-    PathPathSpaces *path;
-    PathBoardModels *work;
+    W02PathSpaces *path;
+    PositionModel *work;
     s32 spaceId;
     s32 spaceCount;
     s32 modelId;
@@ -2500,26 +1839,26 @@ void fn_1_471C(void) {
 
     work = lbl_1_bss_8;
     work->paths[0].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 42)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 42)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[1].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 43)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 43)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[2].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 44)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 44)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[3].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 45)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 45)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[4].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 47)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 47)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    work->pathEffectModel = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 46)), NULL, FALSE);
+    work->unk1188 = modelId =
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 46)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 3.0f);
 
@@ -2680,8 +2019,8 @@ void fn_1_471C(void) {
 void fn_1_4FB0(void) {
     HuVecF position;
     s32 players[4];
-    PathBoardModels *work;
-    PathPathSpaces *path;
+    PositionModel *work;
+    W02PathSpaces *path;
     s32 sound;
     s32 finished;
     s32 eventStarted;
@@ -2689,8 +2028,8 @@ void fn_1_4FB0(void) {
     s32 destinationSpace;
     s32 frame;
     s32 index;
-    EffectElement *element;
-    EffectData *effect;
+    W02EventSpriteParticle *element;
+    SpriteRenderHook *effect;
     HU3D_MODEL *model;
 
     work = lbl_1_bss_8;
@@ -2738,7 +2077,7 @@ void fn_1_4FB0(void) {
         }
         model = &lbl_802C01C8[path->modelId];
         effect = model->hookData;
-        element = effect->elements;
+        element = effect->particles;
         for (index = 0; index < path->modelSpaceCount; index++, element++) {
             element->position = path->positions[index];
             element->position.x += path->travelDistance;
@@ -2778,7 +2117,7 @@ void fn_1_4FB0(void) {
     path->travelDistance = 0.0f;
     model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
-    element = effect->elements;
+    element = effect->particles;
     for (index = 0; index < path->modelSpaceCount; index++, element++) {
         element->position = path->positions[index];
         element->position.y += 3.0f;
@@ -2799,8 +2138,8 @@ void fn_1_544C(void) {
     HuVecF position;
     s32 players[4];
     s16 parentSpaces[MASU_LINK_MAX];
-    PathBoardModels *work;
-    PathPathSpaces *path;
+    PositionModel *work;
+    W02PathSpaces *path;
     s32 sound;
     s32 finished;
     s32 eventStarted;
@@ -2808,8 +2147,8 @@ void fn_1_544C(void) {
     s32 destinationSpace;
     s32 frame;
     s32 index;
-    EffectElement *element;
-    EffectData *effect;
+    W02EventSpriteParticle *element;
+    SpriteRenderHook *effect;
     HU3D_MODEL *model;
 
     work = lbl_1_bss_8;
@@ -2857,7 +2196,7 @@ void fn_1_544C(void) {
         }
         model = &lbl_802C01C8[path->modelId];
         effect = model->hookData;
-        element = effect->elements;
+        element = effect->particles;
         for (index = 0; index < path->modelSpaceCount; index++, element++) {
             element->position = path->positions[index];
             element->position.z += path->travelDistance;
@@ -2897,7 +2236,7 @@ void fn_1_544C(void) {
     path->travelDistance = 0.0f;
     model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
-    element = effect->elements;
+    element = effect->particles;
     for (index = 0; index < path->modelSpaceCount; index++, element++) {
         element->position = path->positions[index];
         element->position.y += 3.0f;
@@ -2917,8 +2256,8 @@ void fn_1_544C(void) {
 void fn_1_58E8(void) {
     HuVecF position;
     s32 players[4];
-    PathBoardModels *work;
-    PathPathSpaces *path;
+    PositionModel *work;
+    W02PathSpaces *path;
     s32 sound;
     s32 finished;
     s32 eventStarted;
@@ -2926,8 +2265,8 @@ void fn_1_58E8(void) {
     s32 destinationSpace;
     s32 frame;
     s32 index;
-    EffectElement *element;
-    EffectData *effect;
+    W02EventSpriteParticle *element;
+    SpriteRenderHook *effect;
     HU3D_MODEL *model;
 
     work = lbl_1_bss_8;
@@ -2974,7 +2313,7 @@ void fn_1_58E8(void) {
         }
         model = &lbl_802C01C8[path->modelId];
         effect = model->hookData;
-        element = effect->elements;
+        element = effect->particles;
         for (index = 0; index < path->modelSpaceCount; index++, element++) {
             element->position = path->positions[index];
             element->position.x -= path->travelDistance;
@@ -3014,7 +2353,7 @@ void fn_1_58E8(void) {
     path->travelDistance = 0.0f;
     model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
-    element = effect->elements;
+    element = effect->particles;
     for (index = 0; index < path->modelSpaceCount; index++, element++) {
         element->position = path->positions[index];
         element->position.y += 3.0f;
@@ -3039,8 +2378,8 @@ void fn_1_5D6C(void) {
     s32 participants[4];
     s32 coinCounts[4];
     s32 displayIds[4];
-    PathBoardModels *work;
-    PathPathSpaces *path;
+    PositionModel *work;
+    W02PathSpaces *path;
     u32 participantIndex;
     s32 playerNo;
     s32 sound;
@@ -3165,8 +2504,8 @@ void fn_1_6378(void) {
     HuVecF particleVelocity;
     GXColor color;
     GXColor particleColor;
-    PathBoardModels *work;
-    PathPathSpaces *path;
+    PositionModel *work;
+    W02PathSpaces *path;
     s32 destinationSpace;
     s32 sound;
     s32 finished;
@@ -3341,13 +2680,13 @@ s32 fn_1_6DCC(void) {
 void fn_1_6E28(s32 pathIndex, s32 *spaceIds, BOOL createMarkers) {
     HuVecF direction;
     HuVecF position;
-    EventPathSpaces *path;
+    W02PathSpaces *path;
     s32 markerIndex;
     s32 spaceIndex;
-    EffectElement *element;
-    EffectData *effect;
+    W02EventSpriteParticle *element;
+    SpriteRenderHook *effect;
     HU3D_MODEL *model;
-    BoardModels *work;
+    PositionModel *work;
     float spacing;
 
     work = lbl_1_bss_8;
@@ -3381,16 +2720,16 @@ void fn_1_6E28(s32 pathIndex, s32 *spaceIds, BOOL createMarkers) {
         return;
     }
     path->modelId =
-        fn_1_15E30(HuSprAnimRead(fn_80008DD0(0x40000, 0x10000000, 2)), path->modelSpaceCount);
+        fn_1_15E30(HuSprAnimDataRead(0x40000), path->modelSpaceCount);
     fn_1_16E44(path->modelId, lbl_1_data_900, lbl_1_data_7F4);
     model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
     effect->flags |= 0xC;
-    element = effect->elements;
+    element = effect->particles;
     for (markerIndex = 0; markerIndex < path->modelSpaceCount; markerIndex++, element++) {
-        element->type = 3;
-        element->value = 200.0f;
-        element->rotation = 0.0f;
+        element->textureFrame = 3;
+        element->size = 200.0f;
+        element->rotation.z = 0.0f;
         element->position = path->positions[markerIndex];
         element->position.y += 3.0f;
         if (markerIndex < path->spaceCount + 1) {
@@ -3403,9 +2742,9 @@ void fn_1_6E28(s32 pathIndex, s32 *spaceIds, BOOL createMarkers) {
 
 /* Swaps blue and red route spaces after movement or while restoring a saved route state. */
 void fn_1_71B4(s32 pathIndex) {
-    SpacePathSpaces *path;
+    W02PathSpaces *path;
     s32 spaceIndex;
-    BoardPaths *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     path = &work->paths[pathIndex];
@@ -3423,18 +2762,18 @@ void fn_1_71B4(s32 pathIndex) {
 
 /* Prepares a route's colored space markers for display using the current board-space types. */
 void fn_1_7280(s32 pathIndex) {
-    BoardPaths *work;
-    SpacePathSpaces *path;
+    PositionModel *work;
+    W02PathSpaces *path;
     s32 spaceIndex;
-    SpaceEffect *effect;
+    SpriteRenderHook *effect;
     HU3D_MODEL *model;
-    SpaceElement *element;
+    W02EventSpriteParticle *element;
 
     work = lbl_1_bss_8;
     path = &work->paths[pathIndex];
     model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
-    element = effect->elements;
+    element = effect->particles;
     for (spaceIndex = 0; spaceIndex < path->modelSpaceCount; spaceIndex++, element++) {
         if (spaceIndex < path->spaceCount) {
             path->spaceTypes[spaceIndex] = mbMasuTypeGet(path->spaceIds[spaceIndex]);
@@ -3456,16 +2795,16 @@ void fn_1_7280(s32 pathIndex) {
         }
         switch (path->spaceTypes[spaceIndex]) {
             case 1:
-                element->type = 0;
+                element->textureFrame = 0;
                 break;
             case 2:
-                element->type = 1;
+                element->textureFrame = 1;
                 break;
             case 3:
-                element->type = 2;
+                element->textureFrame = 2;
                 break;
             default:
-                element->type = 3;
+                element->textureFrame = 3;
                 break;
         }
     }
@@ -3473,21 +2812,21 @@ void fn_1_7280(s32 pathIndex) {
 
 /* Refreshes marker opacity while all five route-event process slots are empty. */
 void fn_1_7418(OMOBJ *object) {
-    SpaceGroup *group;
-    MarkerParticle *particle;
+    W02PathSpaces *group;
+    W02EventSpriteParticle *particle;
     s32 eventIndex;
     s32 particleIndex;
-    MarkerHook *hook;
+    SpriteRenderHook *hook;
     HU3D_MODEL *model;
     BOOL refresh;
-    SpaceEffectWork *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     if (mbExitCheck()) {
         omDelObjEx(mbObjMan, object);
         return;
     }
-    group = &work->groups[object->work[0]];
+    group = &work->paths[object->work[0]];
     for (eventIndex = 0; eventIndex < 5; eventIndex++) {
         if (lbl_1_bss_18[eventIndex] != NULL) {
             break;
@@ -3505,9 +2844,9 @@ void fn_1_7418(OMOBJ *object) {
         for (particleIndex = 0; particleIndex < group->spaceCount; particleIndex++, particle++) {
             /* w02 path particle alpha max. */
             if (mbCapMasuDispTypeGet(group->spaceIds[particleIndex]) == 1) {
-                particle->alpha = 0;
+                particle->color.a = 0;
             } else {
-                particle->alpha = 255;
+                particle->color.a = 255;
             }
         }
     }
@@ -3517,19 +2856,19 @@ void fn_1_7418(OMOBJ *object) {
  * have alpha below 255. */
 void fn_1_7548(s32 pathIndex) {
     Mtx matrix;
-    SpaceElement *element;
-    SpacePathSpaces *path;
+    W02EventSpriteParticle *element;
+    W02PathSpaces *path;
     s32 spaceIndex;
-    SpaceEffect *effect;
+    SpriteRenderHook *effect;
     HU3D_MODEL *model;
-    BoardPaths *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     path = &work->paths[pathIndex];
     PSMTXIdentity(matrix);
     model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
-    element = effect->elements;
+    element = effect->particles;
     for (spaceIndex = 0; spaceIndex < path->spaceCount; spaceIndex++, element++) {
         matrix[0][3] = element->position.x;
         matrix[1][3] = element->position.y;
@@ -3543,18 +2882,18 @@ void fn_1_7548(s32 pathIndex) {
 
 /* Creates four model-heap sprite effects and installs their board update object. */
 void fn_1_762C(void) {
-    BoardSpriteModels *work;
+    PositionModel *work;
     s32 index;
-    spriteinitializeSpriteHook *hook;
+    SpriteRenderHook *hook;
     HU3D_MODEL *model;
 
     work = lbl_1_bss_8;
     for (index = 0; index < 4; index++) {
-        work->models[index] =
-            fn_1_15E30( HuSprAnimRead(fn_80008DD0(DATANUM(0x40000, 0), 0x10000000, 2)), 16);
-        fn_1_16E44(work->models[index], lbl_1_data_930, lbl_1_data_960);
-        fn_80026B8C(work->models[index], 2);
-        model = &lbl_802C01C8[work->models[index]];
+        work->particleModels[index] =
+            fn_1_15E30( HuSprAnimDataRead(DATANUM(0x40000, 0)), 16);
+        fn_1_16E44(work->particleModels[index], lbl_1_data_930, lbl_1_data_960);
+        fn_80026B8C(work->particleModels[index], 2);
+        model = &lbl_802C01C8[work->particleModels[index]];
         hook = model->hookData;
         hook->flags |= 0xC;
     }
@@ -3563,11 +2902,11 @@ void fn_1_762C(void) {
 
 /* Clears every particle's render size in the four path sprite models until board exit. */
 void fn_1_774C(OMOBJ *object) {
-    EffectData *effect;
-    EffectElement *element;
+    SpriteRenderHook *effect;
+    W02EventSpriteParticle *element;
     s32 modelIndex;
     s32 elementIndex;
-    BoardModels *work;
+    PositionModel *work;
     HU3D_MODEL *model;
 
     work = lbl_1_bss_8;
@@ -3578,9 +2917,9 @@ void fn_1_774C(OMOBJ *object) {
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         model = &lbl_802C01C8[work->particleModels[modelIndex]];
         effect = model->hookData;
-        element = effect->elements;
-        for (elementIndex = 0; elementIndex < effect->elementCount; elementIndex++, element++) {
-            element->value = 0.0f;
+        element = effect->particles;
+        for (elementIndex = 0; elementIndex < effect->particleCount; elementIndex++, element++) {
+            element->size = 0.0f;
         }
     }
 }
@@ -3928,8 +3267,8 @@ void fn_1_87D0(HuVecF *start, HuVecF *velocity, s32 playerNo, s32 duration) {
 /* Builds markers for linked spaces and keeps the event's five supporting models hidden. */
 void fn_1_89A8(void) {
     s32 modelId;
-    BoardModels *work;
-    EventMapMarker *marker;
+    PositionModel *work;
+    W02MapMarker *marker;
     s32 spaceId;
     s32 linkedSpace;
     s32 markerCount;
@@ -3942,7 +3281,7 @@ void fn_1_89A8(void) {
     for (; spaceId < mbMasuNumGet(); spaceId++) {
         if (mbMasuMAttrGet(spaceId) & 2) {
             marker->modelId = modelId =
-                mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 23)), NULL, TRUE);
+                mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 23)), NULL, TRUE);
             mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
             mbMasuPosGet(spaceId, &position);
             mbObjPosSetV(modelId, &position);
@@ -3959,19 +3298,19 @@ void fn_1_89A8(void) {
     }
     work->markerCount = markerCount;
     work->markerEffectModels[0] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 24)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 24)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[1] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 25)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 25)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[2] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 26)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 26)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[3] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 27)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 27)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[4] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 28)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 28)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
 }
 
@@ -3988,8 +3327,8 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     s16 innerTrail[1];
     s16 arrivalBeam[1];
     s16 arrivalShell[1];
-    TransferWork *work;
-    EventMapMarker *marker;
+    PositionModel *work;
+    W02MapMarker *marker;
     int sourceSpace;
     int linkedStarDistance;
     s16 effectModel;
@@ -4308,7 +3647,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
 /* Finds the index of a stored Garage space entry by its space ID, or returns -1 when absent. */
 s32 fn_1_A4B4(s32 needle) {
     PositionModel *base = lbl_1_bss_8;
-    MapMarker *entry = base->markers;
+    W02MapMarker *entry = base->markers;
     s32 index = 0;
 
     while (index < base->markerCount) {
@@ -4324,7 +3663,7 @@ s32 fn_1_A4B4(s32 needle) {
 /* Returns the space ID stored at the requested Garage route-entry index. */
 s32 fn_1_A51C(s32 index) {
     PositionModel *work = lbl_1_bss_8;
-    MapMarker *entry = &work->markers[index];
+    W02MapMarker *entry = &work->markers[index];
 
     return entry->spaceId;
 }
@@ -4333,7 +3672,7 @@ s32 fn_1_A51C(s32 index) {
 void fn_1_A554(s32 playerNo) {
     HSF_DATA *modelData;
     HSF_MATERIAL *material;
-    BoardModels *work;
+    PositionModel *work;
     s16 objectIndex;
     HSF_OBJECT *object;
     MBMODELID modelObject;
@@ -4418,7 +3757,7 @@ void fn_1_A554(s32 playerNo) {
 /* Restores a player's saved model materials, palette and object state after the Garage effect. */
 void fn_1_A7BC(s32 playerNo) {
     HSF_DATA *modelData;
-    BoardModels *work;
+    PositionModel *work;
     s16 objectIndex;
     HSF_OBJECT *object;
     s16 modelObject;
@@ -4469,7 +3808,7 @@ void fn_1_A7BC(s32 playerNo) {
 void fn_1_A914(void) {
     int dataNum;
     s32 index;
-    BoardModels *work;
+    PositionModel *work;
     int model;
     int resource;
 
@@ -4495,7 +3834,7 @@ void fn_1_A914(void) {
 /* Loads the hooked event character, plays its sound cues, and freezes the parent at frame 86. */
 void fn_1_AA04(s32 index) {
     int motionData[16];
-    BoardModels *work;
+    PositionModel *work;
     s32 modelId;
     s32 readStatus;
 
@@ -4528,7 +3867,7 @@ void fn_1_AA04(s32 index) {
 /* Plays the shared attachment action, resumes the indexed parent model, then blends the
  * attachment back to its looping idle motion. */
 void fn_1_AB78(s32 index) {
-    BoardModels *work;
+    PositionModel *work;
     s32 model;
 
     work = lbl_1_bss_8;
@@ -4544,7 +3883,7 @@ void fn_1_AB78(s32 index) {
 /* Reverses the indexed Garage effect model, then removes its hooked attachment when it reaches the
  * start. */
 void fn_1_AC34(s32 index) {
-    BoardModels *work;
+    PositionModel *work;
     s32 model;
 
     work = lbl_1_bss_8;
@@ -4563,7 +3902,7 @@ void fn_1_AC34(s32 index) {
 
 /* Stops the indexed Garage effect model and removes its temporary hooked attachment. */
 void fn_1_ACF4(s32 index) {
-    BoardModels *work;
+    PositionModel *work;
     s32 model;
 
     work = lbl_1_bss_8;
@@ -4579,7 +3918,7 @@ void fn_1_ACF4(s32 index) {
  * looping child on tosakahook. */
 void fn_1_AD84(void) {
     s32 modelId;
-    BoardModels *work;
+    PositionModel *work;
     s32 spaceId;
     s32 firstSpace;
     s32 bodyModel;
@@ -4599,32 +3938,32 @@ void fn_1_AD84(void) {
     mbMasuPosGet(firstSpace, &firstPosition);
     mbMasuPosGet(secondSpace, &secondPosition);
     PSVECSubtract(&firstPosition, &secondPosition, &delta);
-    work->linkedSpaceBaseModel = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 36)), NULL, FALSE);
+    work->machineModels[0] = modelId =
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 36)), NULL, FALSE);
     mbObjPosSetV(modelId, &secondPosition);
     mbObjRotSet(modelId, 0.0f, 180.0 * (atan2(delta.x, delta.z) / M_PI), 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    modelId = bodyModel = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 37)), NULL, FALSE);
-    work->linkedSpaceBodyModel = modelId;
+    modelId = bodyModel = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 37)), NULL, FALSE);
+    work->machineModels[1] = modelId;
     mbObjPosSetV(modelId, &secondPosition);
     mbObjRotSet(modelId, 0.0f, 180.0 * (atan2(delta.x, delta.z) / M_PI), 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    work->eyeModel = modelId = mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 38)), NULL, FALSE);
+    work->machineModels[2] = modelId = mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 38)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjHookSet(bodyModel, "OYeyehook", modelId);
     work->attachmentModel = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 39)), NULL, FALSE);
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 39)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjHookSet(bodyModel, "OYhook", modelId);
-    work->subAttachmentModel = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 41)), NULL, FALSE);
+    work->unk120C = modelId =
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 41)), NULL, FALSE);
             mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjHookSet(work->attachmentModel, "tosakahook", modelId);
 }
 
 /* Offers the capsule exchange, reopening the choice after the player views the board map. */
 void fn_1_B11C(s32 playerNo) {
-    BoardModels *work;
+    PositionModel *work;
     s32 choice;
     s32 capsuleCount;
 
@@ -4670,7 +4009,7 @@ void fn_1_B11C(s32 playerNo) {
 
 /* Offers to sell the carried capsules for their combined rank-dependent price. */
 void fn_1_B334(s32 playerNo) {
-    BoardModels *work;
+    PositionModel *work;
     s32 index;
     s32 choice;
     s32 totalPrice;
@@ -4756,7 +4095,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
     HuVecF *secondVelocityCapture;
     HuVecF *secondPositionCapture;
     CAPSULE_LIST *list;
-    StationWork *work;
+    PositionModel *work;
     int index;
     int step;
     int model;
@@ -4810,18 +4149,18 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         motionData[2] = DATANUM(0x100000, 4);
         motionData[3] = DATANUM(0x100000, 5);
         motionData[4] = -1;
-        work->stationModel = mbObjCreate(DATANUM(0x100000, 0), motionData, 0);
-        mbObjMotionSet((s16) work->stationModel, 2, ((1 << 30) | (1 << 0)));
-        mbObjLayerSet((s16) work->stationModel, 3U);
+        work->attachedModel = mbObjCreate(DATANUM(0x100000, 0), motionData, 0);
+        mbObjMotionSet((s16) work->attachedModel, 2, ((1 << 30) | (1 << 0)));
+        mbObjLayerSet((s16) work->attachedModel, 3U);
         fn_800097F4(0x100000);
-        mbObjHookSet((s16) work->liftBodyModel, "oyamahook", (s16) work->stationModel);
-        mbObjMotionTimeSet((s16) work->liftBodyModel, 0.0f);
-        mbObjDispSet((s16) work->liftBaseModel, 1);
+        mbObjHookSet((s16) work->motionReferenceModel, "oyamahook", (s16) work->attachedModel);
+        mbObjMotionTimeSet((s16) work->motionReferenceModel, 0.0f);
+        mbObjDispSet((s16) work->stationLiftBaseModel, 1);
         mbPlayerPosGet(playerNo, &position);
         PSVECAdd(&position, &lbl_1_data_B14, &position);
         position.y += 900.0f;
-        mbObjPosSetV((s16) work->liftBaseModel, &position);
-        mbObjRotSet((s16) work->liftBaseModel, 0.0f, -90.0f, 0.0f);
+        mbObjPosSetV((s16) work->stationLiftBaseModel, &position);
+        mbObjRotSet((s16) work->stationLiftBaseModel, 0.0f, -90.0f, 0.0f);
         mbWipeSpecialFadeOutCreate(1, 60);
         mbAudFXPlay(MSM_SE_BRD02_LIFT_APPEAR);
         for (index = 1; (f32) index <= 60.0f; index++) {
@@ -4831,11 +4170,11 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
             position.y = (f32) ((f64) position.y +
                                 (900.0
                                     - (900.0 * sin((M_PI * (f64) (90.0f * progress)) / 180.0))));
-            mbObjPosSetV((s16) work->liftBaseModel, &position);
+            mbObjPosSetV((s16) work->stationLiftBaseModel, &position);
             HuPrcVSleep();
         }
-        mbObjMotionSpeedSet((s16) work->liftBodyModel, 0.0f);
-        mbObjMotionShiftSet((s16) work->stationModel, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        mbObjMotionSpeedSet((s16) work->motionReferenceModel, 0.0f);
+        mbObjMotionShiftSet((s16) work->attachedModel, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         return;
     case 1:
         model = work->machineModels[0];
@@ -4846,8 +4185,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         mbObjMotionSpeedSet((s16) model, 1.0f);
         return;
     case 2:
-        mbObjMotionShiftSet((s16) work->stationModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
-        model = work->capsuleGateModel;
+        mbObjMotionShiftSet((s16) work->attachedModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        model = work->attachmentModel;
         mbObjMotionTimeSet((s16) model, 0.0f);
         mbObjMotionSpeedSet((s16) model, 1.0f);
         while (mbObjMotionTimeGet(model) < 0.5f * mbObjMotionMaxTimeGet(model)) {
@@ -4876,7 +4215,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
             mbAudFXPlay(MSM_SE_BRD02_CAPSULE_INSERT);
             fn_8006A030((s16) playerNo, 20, 4, 4);
         }
-        model = work->capsuleGateModel;
+        model = work->attachmentModel;
         mbObjMotionSpeedSet((s16) model, 1.0f);
         while (mbObjMotionTimeGet(model) < mbObjMotionMaxTimeGet(model)) {
             HuPrcVSleep();
@@ -4926,14 +4265,14 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
             }
             HuPrcVSleep();
         }
-        mbObjMotionShiftSet((s16) work->stationModel, 2,
-                            mbObjMotionTimeGet((s16) work->liftBodyModel), 8.0f,
+        mbObjMotionShiftSet((s16) work->attachedModel, 2,
+                            mbObjMotionTimeGet((s16) work->motionReferenceModel), 8.0f,
                                 ((1 << 30) | (1 << 0)));
-        while (mbObjMotionShiftIDGet((s16) work->stationModel) != -1) {
+        while (mbObjMotionShiftIDGet((s16) work->attachedModel) != -1) {
             HuPrcVSleep();
         }
-        mbObjMotionSpeedSet((s16) work->liftBodyModel, 1.0f);
-        mbObjMotionTimeSet((s16) work->liftBodyModel, mbObjMotionTimeGet((s16) work->stationModel));
+        mbObjMotionSpeedSet((s16) work->motionReferenceModel, 1.0f);
+        mbObjMotionTimeSet((s16) work->motionReferenceModel, mbObjMotionTimeGet((s16) work->attachedModel));
         sound = mbAudFXPlay(MSM_SE_BRD02_LIFT_MACHINE_RUN_LOOP);
         model = work->machineModels[0];
         mbObjMotionTimeSet((s16) model, 0.0f);
@@ -4972,8 +4311,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         if (sound != -1) {
             mbAudFXStop(sound);
         }
-        mbObjMotionSpeedSet((s16) work->liftBodyModel, 0.0f);
-        mbObjMotionShiftSet((s16) work->stationModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        mbObjMotionSpeedSet((s16) work->motionReferenceModel, 0.0f);
+        mbObjMotionShiftSet((s16) work->attachedModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbAudFXPlay(MSM_SE_BRD02_LIFT_STOP);
         for (index = 0; (f32) index < 60.0f; index++) {
             for (step = 0; step < 2; step++) {
@@ -5097,14 +4436,14 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         mbev_CapCoinDisp(playerNo, rewardCount, 1, 1);
         return;
     case 16:
-        mbObjMotionShiftSet((s16) work->stationModel, 4, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        mbObjMotionShiftSet((s16) work->attachedModel, 4, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbAudFXPlay(MSM_SE_BRD02_LIFT_RISE);
         for (index = 1; (f32) index <= 60.0f; index++) {
             progress = (f32) index / 60.0f;
             mbPlayerPosGet(playerNo, &position);
             PSVECAdd(&position, &lbl_1_data_B14, &position);
             position.y += 900.0f * (progress * progress);
-            mbObjPosSetV((s16) work->liftBaseModel, &position);
+            mbObjPosSetV((s16) work->stationLiftBaseModel, &position);
             HuPrcVSleep();
         }
         mbWipeSpecialFadeInCreate(1, 1);
@@ -5116,10 +4455,10 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
         mbCameraPlayerViewSetFast(playerNo, 0);
         mbCameraMoveWait();
-        mbObjHookReset((s16) work->liftBodyModel);
-        mbObjKill((s16) work->stationModel);
-        work->stationModel = -1;
-        mbObjDispSet((s16) work->liftBaseModel, 0);
+        mbObjHookReset((s16) work->motionReferenceModel);
+        mbObjKill((s16) work->attachedModel);
+        work->attachedModel = -1;
+        mbObjDispSet((s16) work->stationLiftBaseModel, 0);
         mbWipeSpecialFadeOutCreate(1, 60);
         /* fallthrough */
     default:
@@ -5130,17 +4469,17 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
 /* Allocates the Garage flying-model table and marks all 64 model slots unused before effects
  * run. */
 void fn_1_D410(void) {
-    BoardModels *work;
-    EventModelEntry *entry;
+    PositionModel *work;
+    W02EventModelEntry *entry;
     s32 index;
-    EventModelEntry *allocation;
+    W02EventModelEntry *allocation;
 
     work = lbl_1_bss_8;
     work->entryObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_D8EC);
-    allocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventModelEntry) * 64, 0x10000000);
+    allocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W02EventModelEntry) * 64, 0x10000000);
     work->entryData = allocation;
     entry = allocation;
-    memset(work->entryData, 0, sizeof(EventModelEntry) * 64);
+    memset(work->entryData, 0, sizeof(W02EventModelEntry) * 64);
     for (index = 0; index < 64; index++, entry++) {
         entry->modelId = -1;
     }
@@ -5148,9 +4487,9 @@ void fn_1_D410(void) {
 
 /* Starts a two-arc model flight between two positions, returning its pool index. */
 s32 fn_1_D4D0(HuVecF *start, HuVecF *end) {
-    EventModelEntry *entry;
+    W02EventModelEntry *entry;
     s32 index;
-    BoardModels *work;
+    PositionModel *work;
     MBMODELID positionModel;
     MBMODELID rotationModel;
     MBMODELID scaleModel;
@@ -5168,7 +4507,7 @@ s32 fn_1_D4D0(HuVecF *start, HuVecF *end) {
     }
     modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(0x50000, 4)), NULL, TRUE);
     entry->modelId = modelId;
-    entry->entryIndex = index;
+    entry->unk4 = index;
     entry->flightStage = 0;
     entry->age = 0;
     entry->travelFrames = 60.0f * (0.4f +
@@ -5203,8 +4542,8 @@ s32 fn_1_D4D0(HuVecF *start, HuVecF *end) {
 void fn_1_D8EC(OMOBJ *object) {
     HuVecF displacement;
     HuVecF position;
-    BoardModels *work;
-    EventModelEntry *entry;
+    PositionModel *work;
+    W02EventModelEntry *entry;
     s32 index;
     float progress;
 
@@ -5266,8 +4605,8 @@ void fn_1_D8EC(OMOBJ *object) {
 
 /* Counts active two-arc flights; the capsule sale waits for them before crediting coins. */
 s32 fn_1_DC70(void) {
-    BoardModels *work;
-    EventModelEntry *effectData;
+    PositionModel *work;
+    W02EventModelEntry *effectData;
     s32 effectIndex;
     s32 activeCount;
     work = lbl_1_bss_8;
@@ -5290,7 +4629,7 @@ s32 fn_1_DC70(void) {
 /* Frees the Garage flying-effect table and clears its data and update-object pointers after the
  * sequence. */
 void fn_1_DCF0(void) {
-    BoardModels *manager;
+    PositionModel *manager;
     void *allocation;
     void *allocationToFree;
 
@@ -5309,42 +4648,42 @@ HuVecF lbl_1_data_B94 = { -2690.0f, 1000.0f, -4900.0f };
 /* Creates the event's positioned base, hooked fan, and initially hidden display models. */
 void fn_1_DD5C(void) {
     s32 modelId;
-    BoardModels *work;
+    PositionModel *work;
     s32 primaryModel;
 
     work = lbl_1_bss_8;
-    primaryModel = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 30)), NULL, FALSE);
-    work->positionModel = primaryModel;
+    primaryModel = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 30)), NULL, FALSE);
+    work->modelId = primaryModel;
     modelId = primaryModel;
             mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjPosSetV(modelId, &lbl_1_data_B94);
     work->hookedModel = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 31)), NULL, FALSE);
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 31)), NULL, FALSE);
     mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.5f);
     mbObjHookSet(primaryModel, "fanhook", modelId);
-    work->displayModels[0] = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 32)), NULL, TRUE);
+    work->unk122C[0] = modelId =
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 32)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
-    work->displayModels[1] = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 33)), NULL, TRUE);
+    work->unk122C[1] = modelId =
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 33)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
-    work->displayModels[2] = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 34)), NULL, TRUE);
+    work->unk122C[2] = modelId =
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 34)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
-    work->displayModels[3] = modelId =
-        mbObjCreate( BoardModelDataNum(DATANUM(0xd90000, 35)), NULL, TRUE);
+    work->unk122C[3] = modelId =
+        mbObjCreate( BoardResourceGet(DATANUM(0xd90000, 35)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     {
         s16 commonModel[1];
 
         commonModel[0] = mbObjCreate(mbBoardDataNumGet(DATANUM(0x50000, 4)), NULL, TRUE);
-        work->hiddenModel = modelId = commonModel[0];
+        work->unk123C = modelId = commonModel[0];
         mbObjDispSet(modelId, FALSE);
     }
 }
@@ -5810,7 +5149,7 @@ void fn_1_FF6C(HuVecF *position) {
     Mtx leverMatrix;
     Mtx liftMatrix;
     Mtx characterMatrix;
-    BoardModels *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     fn_80023398(mbObjModelIDGet(work->leverObjectId), "lever2hook", leverMatrix);
@@ -5842,17 +5181,17 @@ void fn_1_100A8(s32 playerNo, s32 emissionState, s32 targetPlayer) {
     HuVecF end;
     HuVecF direction;
     HuVecF position;
-    PathBoardModels *work;
+    PositionModel *work;
     s32 frame;
     s32 modelId;
-    PathBoardModels *modelWork;
+    PositionModel *modelWork;
     s32 index;
     float horizontalLength;
 
     work = lbl_1_bss_8;
     frame = work->emissionFrame;
     modelWork = lbl_1_bss_8;
-    modelId = mbObjModelIDGet(modelWork->positionModel);
+    modelId = mbObjModelIDGet(modelWork->modelId);
     fn_80023398(modelId, "char1hook", startMatrix);
     fn_80023398(modelId, "char2hook", endMatrix);
     start.x = startMatrix[0][3];
@@ -5926,19 +5265,19 @@ s32 lbl_1_data_BE0[12] = {
 
 /* Builds 32 hidden flight models, yielding after each pair before enabling updates. */
 void fn_1_10954(void) {
-    BoardEffects *work;
-    EventFlyingEffect *effect;
+    PositionModel *work;
+    W02FlyingEffect *effect;
     int dataNum;
     s32 index;
     int resource;
-    EventFlyingEffect *models;
+    W02FlyingEffect *models;
 
     work = lbl_1_bss_8;
     work->modelObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_1119C);
-    work->models = models =
-        HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventFlyingEffect) * 32, 0x10000000);
+    work->flyingModels = models =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(W02FlyingEffect) * 32, 0x10000000);
     effect = models;
-    memset(work->models, 0, sizeof(EventFlyingEffect) * 32);
+    memset(work->flyingModels, 0, sizeof(W02FlyingEffect) * 32);
     work->modelsEnabled = FALSE;
     for (index = 0; index < 32; index++, effect++) {
         dataNum = lbl_1_data_BE0[index % 12];
@@ -5962,15 +5301,15 @@ void fn_1_10954(void) {
 
 /* Starts an available flight model, searching from a random slot before wrapping to zero. */
 s32 fn_1_10AC0(HuVecF *position, s32 shortFlight) {
-    EventFlyingEffect *effect;
+    W02FlyingEffect *effect;
     s32 index;
-    BoardEffects *work;
+    PositionModel *work;
     MBMODELID modelId;
 
     work = lbl_1_bss_8;
-    effect = work->models;
+    effect = work->flyingModels;
     index = mbRandMod(32);
-    effect = &work->models[index];
+    effect = &work->flyingModels[index];
     for (; index < 32; index++, effect++) {
         if (!effect->active) {
             break;
@@ -5978,7 +5317,7 @@ s32 fn_1_10AC0(HuVecF *position, s32 shortFlight) {
     }
     if (index >= 32) {
         index = 0;
-        effect = work->models;
+        effect = work->flyingModels;
         for (; index < 32; index++, effect++) {
             if (!effect->active) {
                 break;
@@ -6010,11 +5349,11 @@ s32 fn_1_10AC0(HuVecF *position, s32 shortFlight) {
 }
 
 /* Prepares a model's curved flight, spiral motion and travel duration. */
-void fn_1_10D20(EventFlyingEffect *effect, HuVecF *position, float scale, float spread) {
+void fn_1_10D20(W02FlyingEffect *effect, HuVecF *position, float scale, float spread) {
     HuVecF origin;
     HuVecF destination;
     HuVecF displacement;
-    BoardModels *work;
+    PositionModel *work;
     s32 index;
     float distance;
 
@@ -6065,12 +5404,12 @@ void fn_1_10D20(EventFlyingEffect *effect, HuVecF *position, float scale, float 
 
 /* Moves each live model and retires it when its flight or timeout ends. */
 void fn_1_1119C(OMOBJ *object) {
-    EventFlyingEffect *effect;
-    BoardEffects *work;
+    W02FlyingEffect *effect;
+    PositionModel *work;
     s32 index;
 
     work = lbl_1_bss_8;
-    effect = work->models;
+    effect = work->flyingModels;
     if (mbExitCheck() || work->modelObject == NULL) {
         omDelObjEx(mbObjMan, object);
         return;
@@ -6092,7 +5431,7 @@ void fn_1_1119C(OMOBJ *object) {
 }
 
 /* Blends curved flight with a shrinking spiral, retaining recent positions for trails. */
-void fn_1_112B4(EventFlyingEffect *effect) {
+void fn_1_112B4(W02FlyingEffect *effect) {
     Mtx rotation;
     HuVecF origin;
     HuVecF destination;
@@ -6146,21 +5485,21 @@ void fn_1_112B4(EventFlyingEffect *effect) {
     effect->previousPosition = effect->position;
     effect->position = position;
     if (effect->mode) {
-        CopyFlightPosition(&effect->positionHistory[3], &effect->positionHistory[2]);
-        CopyFlightPosition(&effect->positionHistory[2], &effect->positionHistory[1]);
-        CopyFlightPosition(&effect->positionHistory[1], &effect->positionHistory[0]);
-        CopyFlightPosition(&effect->positionHistory[0], &effect->position);
+        CopySpriteVector(&effect->positionHistory[3], &effect->positionHistory[2]);
+        CopySpriteVector(&effect->positionHistory[2], &effect->positionHistory[1]);
+        CopySpriteVector(&effect->positionHistory[1], &effect->positionHistory[0]);
+        CopySpriteVector(&effect->positionHistory[0], &effect->position);
     }
 }
 
 /* Counts active Garage flight models; the machine sequence waits for them to finish. */
 s32 fn_1_117E8(void) {
-    BoardEffects *work;
-    EventFlyingEffect *modelEntries;
+    PositionModel *work;
+    W02FlyingEffect *modelEntries;
     s32 modelIndex;
     s32 activeModelCount;
     work = lbl_1_bss_8;
-    modelEntries = work->models;
+    modelEntries = work->flyingModels;
     if (modelEntries == NULL) {
         return 0;
     }
@@ -6178,24 +5517,24 @@ s32 fn_1_117E8(void) {
 
 /* Kills all 32 Garage flight models and frees their table when the machine effects are released. */
 void fn_1_11868(void) {
-    BoardEffects *manager;
-    EventFlyingEffect *objectList;
+    PositionModel *manager;
+    W02FlyingEffect *objectList;
     s32 index;
     void *allocationToFree;
 
     manager = lbl_1_bss_8;
-    objectList = manager->models;
-    if (manager->models != NULL) {
+    objectList = manager->flyingModels;
+    if (manager->flyingModels != NULL) {
         index = 0;
         while (index < 32) {
             mbObjKill((s16)objectList->objectId);
             index += 1;
             objectList++;
         }
-        allocationToFree = manager->models;
+        allocationToFree = manager->flyingModels;
         HuMemDirectFree(allocationToFree);
     }
-    manager->models = NULL;
+    manager->flyingModels = NULL;
     manager->modelObject = NULL;
 }
 HuVecF lbl_1_data_C10[4] = {
@@ -6204,21 +5543,21 @@ HuVecF lbl_1_data_C10[4] = {
 
 /* Allocates 256 inactive effects and creates their shared layer-five sprite model. */
 void fn_1_11904(void) {
-    BoardModels *work;
-    EventSpriteEffect *effect;
+    PositionModel *work;
+    W02FlyingEffect *effect;
     s32 index;
     HU3D_MODEL *model;
-    EventSpriteHook *hook;
+    SpriteRenderHook *hook;
     void *data;
 
     work = lbl_1_bss_8;
     work->effectObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_11A54);
-    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventSpriteEffect) * 256, 0x10000000);
+    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W02FlyingEffect) * 256, 0x10000000);
     work->effects = data;
     effect = data;
-    memset(work->effects, 0, sizeof(EventSpriteEffect) * 256);
+    memset(work->effects, 0, sizeof(W02FlyingEffect) * 256);
     for (index = 0; index < 256; index++, effect++) {
-        effect->flightSlot = -1;
+        effect->state = -1;
         effect->active = FALSE;
     }
     work->effectScale = 1.0f;
@@ -6238,11 +5577,11 @@ void fn_1_11A54(OMOBJ *object) {
     HuVecF savedPosition;
     HuVecF previousRotation;
     HuVecF savedRotation;
-    BoardSpriteWork *work;
-    EventFlyingEffect *flight;
-    textSpriteParticle *particle;
+    PositionModel *work;
+    W02FlyingEffect *flight;
+    W02EventSpriteParticle *particle;
     HU3D_MODEL *model;
-    textSpriteHook *hook;
+    SpriteRenderHook *hook;
     int effectIndex;
     int particleIndex;
     u8 previousAlpha;
@@ -6271,7 +5610,7 @@ void fn_1_11A54(OMOBJ *object) {
                 flight->state = -1;
                 flight->active = FALSE;
                 for (particleIndex = 0; particleIndex < 3; particleIndex++, particle++) {
-                    particle->value = 0.0f;
+                    particle->size = 0.0f;
                 }
             } else {
                 u8 alpha;
@@ -6282,7 +5621,7 @@ void fn_1_11A54(OMOBJ *object) {
                 for (particleIndex = 0; particleIndex < 3; particle++, particleIndex++) {
                     CopySpriteVector(&savedPosition, &particle->position);
                     CopySpriteVector(&savedRotation, &particle->rotation);
-                    savedValue = particle->value;
+                    savedValue = particle->size;
                     savedAlpha = particle->color.a;
                     if (particleIndex == 0) {
                         PSVECSubtract(&flight->positionHistory[particleIndex],
@@ -6291,7 +5630,7 @@ void fn_1_11A54(OMOBJ *object) {
                         PSVECScale(&direction, &direction, 0.5f);
                         PSVECAdd(&flight->positionHistory[particleIndex + 1], &direction,
                             &particle->position);
-                        particle->value = length;
+                        particle->size = length;
                         length = sqrtf(direction.x * direction.x + direction.z * direction.z);
                         particle->rotation.x = 180.0 * (atan2(-direction.y, length) / M_PI);
                         particle->rotation.y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
@@ -6300,7 +5639,7 @@ void fn_1_11A54(OMOBJ *object) {
                     } else {
                         CopySpriteVector(&particle->position, &previousPosition);
                         CopySpriteVector(&particle->rotation, &previousRotation);
-                        particle->value = previousValue;
+                        particle->size = previousValue;
                         particle->color.a = (float) previousAlpha * work->effectScale;
                     }
                     CopySpriteVector(&previousPosition, &savedPosition);
@@ -6315,7 +5654,7 @@ void fn_1_11A54(OMOBJ *object) {
 
 /* Releases the Garage sprite model and its effect table when its display effect ends. */
 void fn_1_12030(void) {
-    BoardModels *work = lbl_1_bss_8;
+    PositionModel *work = lbl_1_bss_8;
     if (work->effectModel >= 0) {
         fn_800262D0((s16)work->effectModel);
     }
@@ -6331,12 +5670,12 @@ void fn_1_12030(void) {
 /* Starts one free flight effect and initializes its three linked sprite particles. */
 void fn_1_120B4(HuVecF *position, s32 shortFlight) {
     HuVecF direction;
-    EventFlyingEffect *flight;
-    BoardSpriteWork *work;
-    textSpriteParticle *particle;
-    textSpriteParticle *copy;
+    W02FlyingEffect *flight;
+    PositionModel *work;
+    W02EventSpriteParticle *particle;
+    W02EventSpriteParticle *copy;
     HU3D_MODEL *model;
-    textSpriteHook *hook;
+    SpriteRenderHook *hook;
     s32 effectIndex;
     s32 copyIndex;
     float horizontalLength;
@@ -6361,25 +5700,25 @@ void fn_1_120B4(HuVecF *position, s32 shortFlight) {
             flight->remainingFrames = 20;
         }
         flight->active = TRUE;
-        particle->value = 100.0f * (1.0f + 0.5f *
+        particle->size = 100.0f * (1.0f + 0.5f *
             (3.7252903e-09f * (float) mbRandMod(0x10000000)));
         particle->position = *position;
-        particle->type = 3 * ((frand() & 0x7FFF) % 3);
+        particle->textureFrame = 3 * ((frand() & 0x7FFF) % 3);
         particle->color.a = 0;
         particle->maxAlpha = 64.0f + 64.0f *
             (3.7252903e-09f * (float) mbRandMod(0x10000000));
         particle->alphaStep = 8;
-        PSVECSubtract(&work->origin, position, &direction);
+        PSVECSubtract(&work->flightOrigin, position, &direction);
         horizontalLength = sqrtf(direction.x * direction.x + direction.z * direction.z);
         particle->rotation.x = 180.0 * (atan2(-direction.y, horizontalLength) / M_PI);
         particle->rotation.y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
         particle->rotation.z = 0.0f;
         copy = particle + 1;
         for (copyIndex = 1; copyIndex < 3; copyIndex++, copy++) {
-            copy->value = particle->value;
+            copy->size = particle->size;
             CopySpriteVector(&copy->position, &particle->position);
             CopySpriteVector(&copy->rotation, &particle->rotation);
-            copy->type = particle->type + copyIndex;
+            copy->textureFrame = particle->textureFrame + copyIndex;
             copy->color.a = particle->color.a;
         }
     }
@@ -6389,17 +5728,17 @@ void fn_1_120B4(HuVecF *position, s32 shortFlight) {
  * them. */
 void fn_1_125C0(void) {
     s32 coinIndex;
-    BoardEffects *work;
-    EventFlyingEffect *coinAllocation;
-    EventFlyingEffect *coinEntry;
+    PositionModel *work;
+    W02FlyingEffect *coinAllocation;
+    W02FlyingEffect *coinEntry;
 
     work = lbl_1_bss_8;
     work->coinObject =
         fn_8003AB38(mbObjMan, -32768, 0U, 0U, -1, fn_1_128A8);
-    coinAllocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventFlyingEffect) * 32, 0x10000000);
-    work->coins = coinAllocation;
+    coinAllocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(W02FlyingEffect) * 32, 0x10000000);
+    work->flyingCoins = coinAllocation;
     coinEntry = coinAllocation;
-    memset(work->coins, 0, sizeof(EventFlyingEffect) * 32);
+    memset(work->flyingCoins, 0, sizeof(W02FlyingEffect) * 32);
     work->coinsEnabled = 0;
     coinIndex = 0;
     while (coinIndex < 32) {
@@ -6414,9 +5753,9 @@ void fn_1_125C0(void) {
 
 /* Starts an available flying coin, with an optional fifteen-frame timeout. */
 s32 fn_1_126AC(HuVecF *position, s32 shortFlight) {
-    EventFlyingEffect *effect;
+    W02FlyingEffect *effect;
     s32 index;
-    BoardModels *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     effect = work->flyingCoins;
@@ -6447,12 +5786,12 @@ s32 fn_1_126AC(HuVecF *position, s32 shortFlight) {
 
 /* Applies the same flight update to coin objects owned by the board event. */
 void fn_1_128A8(OMOBJ *object) {
-    EventFlyingEffect *effect;
-    BoardEffects *work;
+    W02FlyingEffect *effect;
+    PositionModel *work;
     s32 index;
 
     work = lbl_1_bss_8;
-    effect = work->coins;
+    effect = work->flyingCoins;
     if (mbExitCheck() || work->coinObject == NULL) {
         omDelObjEx(mbObjMan, object);
         return;
@@ -6475,13 +5814,13 @@ void fn_1_128A8(OMOBJ *object) {
 
 /* Counts Garage coin slots whose effect state is still active while the sequence waits. */
 s32 fn_1_129C0(void) {
-    BoardEffects *manager;
-    EventFlyingEffect *record;
+    PositionModel *manager;
+    W02FlyingEffect *record;
     s32 coinIndex;
     s32 active_count;
 
     manager = lbl_1_bss_8;
-    record = manager->coins;
+    record = manager->flyingCoins;
     coinIndex = 0;
     active_count = 0;
     while (coinIndex < 32) {
@@ -6496,24 +5835,24 @@ s32 fn_1_129C0(void) {
 
 /* Releases all 32 Garage coin objects and frees their table after the machine effect. */
 void fn_1_12A2C(void) {
-    BoardEffects *manager;
-    EventFlyingEffect *coinObjectList;
+    PositionModel *manager;
+    W02FlyingEffect *coinObjectList;
     s32 index;
     void *allocationToFree;
 
     manager = lbl_1_bss_8;
-    coinObjectList = manager->coins;
-    if (manager->coins != NULL) {
+    coinObjectList = manager->flyingCoins;
+    if (manager->flyingCoins != NULL) {
         index = 0;
         while (index < 32) {
             mbCoinObjNumDec((s16)coinObjectList->objectId);
             index += 1;
             coinObjectList++;
         }
-        allocationToFree = manager->coins;
+        allocationToFree = manager->flyingCoins;
         HuMemDirectFree(allocationToFree);
     }
-    manager->coins = NULL;
+    manager->flyingCoins = NULL;
     manager->coinObject = NULL;
 }
 
@@ -6553,7 +5892,7 @@ OMOBJ *fn_1_12AC8(s32 playerNo, HuVecF *eventPosition) {
 void fn_1_12CB8(OMOBJ *object) {
     HuVecF position;
     HuVecF rotation;
-    PathBoardModels *work;
+    PositionModel *work;
     PlayerMove *move;
     float progress;
 
@@ -6668,15 +6007,15 @@ void fn_1_12CB8(OMOBJ *object) {
 /* Creates the parent and its initially hidden attachment with frozen motion. */
 void fn_1_135B0(void) {
     s32 modelId;
-    BoardModels *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
-    modelId = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 55)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 55)), NULL, FALSE);
     work->parentModel = modelId;
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjLayerSet(modelId, 3);
-    modelId = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 56)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 56)), NULL, FALSE);
     work->pairedModel = modelId;
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
@@ -6715,8 +6054,8 @@ void fn_1_13708(int playerNo, int spaceId) {
     int cameraModel;
     struct { int coins; } budget;
     int capsuleCount;
-    CapsuleShot *releasedShots;
-    CapsuleShot *allocatedShots;
+    W02ThrowPath *releasedShots;
+    W02ThrowPath *allocatedShots;
     s16 *allocatedDestinations;
     s16 *allocatedOccupiedSpaces;
     s16 *destinations;
@@ -6730,9 +6069,9 @@ void fn_1_13708(int playerNo, int spaceId) {
     int choice;
     s16 turnFrames;
     s16 cameraStack;
-    CapsuleStation *work;
+    PositionModel *work;
     int *costs;
-    CapsuleShot *shot;
+    W02ThrowPath *shot;
     OMOBJ *object;
     int index;
     int count;
@@ -6749,9 +6088,9 @@ void fn_1_13708(int playerNo, int spaceId) {
 
     work = lbl_1_bss_8;
     allocatedShots = HuMemDirectMallocNum(HEAP_HEAP, 380, 0x10000000);
-    shot = work->shots = allocatedShots;
+    shot = work->throwPaths = allocatedShots;
     memset(shot, 0, 380);
-    work->shotIndex = work->shotCount = 0;
+    work->throwPathIndex = work->throwPathCount = 0;
     costs = lbl_1_data_C64[lbl_80265750[playerNo].rank];
     originalSpace = spaceId;
     nextSpace = mbMasuAttrFindLink(originalSpace, (1 << 13));
@@ -6766,13 +6105,13 @@ void fn_1_13708(int playerNo, int spaceId) {
     motionData[2] = DATANUM(0x100000, 4);
     motionData[3] = DATANUM(0x100000, 5);
     motionData[4] = -1;
-    work->stationModel = mbObjCreate(DATANUM(0x100000, 0), motionData, 0);
-    mbObjLayerSet(work->stationModel, 3);
+    work->attachedModel = mbObjCreate(DATANUM(0x100000, 0), motionData, 0);
+    mbObjLayerSet(work->attachedModel, 3);
     HuPrcVSleep();
-    mbObjMotionSet(work->stationModel, 1, ((1 << 30) | (1 << 0)));
+    mbObjMotionSet(work->attachedModel, 1, ((1 << 30) | (1 << 0)));
     mbMasuPosGet(exitSpace, &position);
-    mbObjPosSetV(work->stationModel, &position);
-    mbObjRotSet(work->stationModel, 0.0f, -180.0f, 0.0f);
+    mbObjPosSetV(work->attachedModel, &position);
+    mbObjRotSet(work->attachedModel, 0.0f, -180.0f, 0.0f);
     fn_800097F4(0x100000);
     PSVECSubtract(&stationPosition, &playerStart, &direction);
     mbPlayerMotionSet(playerNo, 4, 0);
@@ -6789,7 +6128,7 @@ void fn_1_13708(int playerNo, int spaceId) {
     position.x = 0.0f;
     position.y = 100.0f;
     position.z = -300.0f;
-    mbCameraMoveObj(work->stationModel, NULL, &position, -1.0f, -1.0f, 45);
+    mbCameraMoveObj(work->attachedModel, NULL, &position, -1.0f, -1.0f, 45);
     mbCameraMoveWait();
     mbAudFXPlay(MSM_SE_BRD02_GUIDE_QUESTION);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 19), 14);
@@ -6867,12 +6206,12 @@ void fn_1_13708(int playerNo, int spaceId) {
             mbWinTopWait();
             choice = mbWinTopChoiceGet();
             if (choice >= 0 && choice <= 4) {
-                work->shotCount = choice + 1;
+                work->throwPathCount = choice + 1;
             } else if (choice == 5) {
                 mbev_Scroll(playerNo, 0);
             }
         } while (choice == 5);
-        if (work->shotCount == 0) {
+        if (work->throwPathCount == 0) {
             mbAudFXPlay(MSM_SE_BRD02_GUIDE_SHOTS_EMPTY);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 25), 14);
             mbWinTopWait();
@@ -6948,10 +6287,10 @@ void fn_1_13708(int playerNo, int spaceId) {
                     count++;
                 }
             }
-            for (index = 0, shot = work->shots;
-                index < work->shotCount && index < count; index++, shot++) {
+            for (index = 0, shot = work->throwPaths;
+                index < work->throwPathCount && index < count; index++, shot++) {
                 shot->ready = FALSE;
-                shot->playerNo = playerNo;
+                shot->unk4 = playerNo;
                 shot->destinationSpace = destinations[index];
                 shot->travelFrames = 0;
                 shot->start = lbl_1_data_CCC;
@@ -6972,20 +6311,20 @@ void fn_1_13708(int playerNo, int spaceId) {
             object->work[0] = object->work[1] = object->work[2] = object->work[3] = 0;
             mbAudFXPlay(MSM_SE_BRD02_GUIDE_NOTICE);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 23), 14);
-            sprintf(numberText, "%d", work->shotCount);
+            sprintf(numberText, "%d", work->throwPathCount);
             mbWinTopInsertMesSet((u32) numberText, 0);
             mbWinTopWait();
             mbWipeSpecialFadeInCreate(1, 1);
-            mbObjDispSet(work->cannonModel, 1);
-            mbObjRotSet(work->cannonModel, 0.0f, 0.0f, 0.0f);
-            mbObjMotionTimeSet(work->cannonModel, 0.0f);
-            mbObjMotionSpeedSet(work->cannonModel, 1.0f);
-            mbObjHookSet(work->cannonModel, "cpoyhook", work->stationModel);
-            mbObjMotionTimeSet(work->cannonModel, 0.0f);
-            mbObjMotionSet(work->stationModel, 2, ((1 << 30) | (1 << 0)));
-            mbObjMotionTimeSet(work->stationModel, 0.0f);
-            mbObjPosSet(work->stationModel, 0.0f, 0.0f, 0.0f);
-            mbObjRotSet(work->stationModel, 0.0f, 0.0f, 0.0f);
+            mbObjDispSet(work->pairedModel, 1);
+            mbObjRotSet(work->pairedModel, 0.0f, 0.0f, 0.0f);
+            mbObjMotionTimeSet(work->pairedModel, 0.0f);
+            mbObjMotionSpeedSet(work->pairedModel, 1.0f);
+            mbObjHookSet(work->pairedModel, "cpoyhook", work->attachedModel);
+            mbObjMotionTimeSet(work->pairedModel, 0.0f);
+            mbObjMotionSet(work->attachedModel, 2, ((1 << 30) | (1 << 0)));
+            mbObjMotionTimeSet(work->attachedModel, 0.0f);
+            mbObjPosSet(work->attachedModel, 0.0f, 0.0f, 0.0f);
+            mbObjRotSet(work->attachedModel, 0.0f, 0.0f, 0.0f);
             /* The camera is saved on the stack, but the returned stack index is not used here. */
             cameraStack = mbCameraStackPush();
     cameraModel = mbObjCreate(DATANUM(0xc0000, 68), NULL, 0);
@@ -6996,18 +6335,18 @@ void fn_1_13708(int playerNo, int spaceId) {
             mbWipeSpecialFadeOutCreate(1, 60);
             fn_8006A030(playerNo, 90, 4, 4);
             mbAudFXPlay(MSM_SE_BRD02_CANNON_APPEAR);
-            mbObjMotionTimeSet(work->launchBaseModel, 0.0f);
-            mbObjMotionSpeedSet(work->launchBaseModel, 1.0f);
+            mbObjMotionTimeSet(work->parentModel, 0.0f);
+            mbObjMotionSpeedSet(work->parentModel, 1.0f);
             HuPrcSleep(50);
             mbAudFXPlay(MSM_SE_BRD02_CANNON_BASE_OPEN);
             mbAudFXPlay(MSM_SE_BRD02_CANNON_TURN);
-            while (!mbObjMotionEndCheck(work->launchBaseModel)) {
+            while (!mbObjMotionEndCheck(work->parentModel)) {
                 HuPrcVSleep();
             }
             mbAudFXPlay(MSM_SE_BRD02_CANNON_AIM_LOCK);
             currentAngle = 0.0f;
-            work->shotsStopped = FALSE;
-            for (index = 0, shot = work->shots; index < work->shotCount; index++, shot++) {
+            work->throwStopped = FALSE;
+            for (index = 0, shot = work->throwPaths; index < work->throwPathCount; index++, shot++) {
                 PSVECSubtract(&shot->end, &shot->start, &position);
                 targetAngle = 180.0 * (atan2(position.x, position.z) / M_PI);
                 turnAngle = fabs(mbev_CapAngleWrap(currentAngle, targetAngle));
@@ -7024,19 +6363,19 @@ void fn_1_13708(int playerNo, int spaceId) {
                     progress = (float) selectionValue / (float) turnFrames;
                     progress = (float) sin((M_PI * (90.0f * progress)) / 180.0);
                     turnAngle = mbev_CapAngleSumLerp(progress, currentAngle, targetAngle);
-                    mbObjRotSet(work->cannonModel, 0.0f, turnAngle, 0.0f);
+                    mbObjRotSet(work->pairedModel, 0.0f, turnAngle, 0.0f);
                     HuPrcVSleep();
                 }
                 currentAngle = targetAngle;
-                mbObjRotSet(work->cannonModel, 0.0f, currentAngle, 0.0f);
+                mbObjRotSet(work->pairedModel, 0.0f, currentAngle, 0.0f);
                 if (turnFrames > 1) {
                     mbAudFXPlay(MSM_SE_BRD02_CANNON_AIM_LOCK);
                 }
-                fn_80023398(mbObjModelIDGet(work->launchBaseModel), "cpmac",
+                fn_80023398(mbObjModelIDGet(work->parentModel), "cpmac",
                     parentMatrix);
-                fn_80023398(mbObjModelIDGet(work->cannonModel), "cpcphook",
+                fn_80023398(mbObjModelIDGet(work->pairedModel), "cpcphook",
                     barrelStartMatrix);
-                fn_80023398(mbObjModelIDGet(work->cannonModel), "cp2hook",
+                fn_80023398(mbObjModelIDGet(work->pairedModel), "cp2hook",
                     barrelEndMatrix);
                 PSMTXConcat(parentMatrix, barrelStartMatrix, barrelStartMatrix);
                 PSMTXConcat(parentMatrix, barrelEndMatrix, barrelEndMatrix);
@@ -7070,11 +6409,11 @@ void fn_1_13708(int playerNo, int spaceId) {
                 HuPrcSleep(30);
             }
             mbWipeSpecialFadeInCreate(1, 1);
-            work->shotsStopped = TRUE;
-            work->mapEffectsHidden = TRUE;
+            work->throwStopped = TRUE;
+            work->particlesDisabled = TRUE;
             mbObjDispSet(work->mapDisplayModel, 0);
-            for (index = 0, capsuleIndex = 0, shot = work->shots;
-                index < work->shotCount; index++, shot++) {
+            for (index = 0, capsuleIndex = 0, shot = work->throwPaths;
+                index < work->throwPathCount; index++, shot++) {
                 while (mbCapUseModeGet(capsules[capsuleIndex]) != 1 &&
                     mbCapUseModeGet(capsules[capsuleIndex]) != 2) {
                     if (++capsuleIndex >= capsuleCount) {
@@ -7103,27 +6442,27 @@ void fn_1_13708(int playerNo, int spaceId) {
                 }
                 HuPrcSleep(2);
             }
-            work->mapEffectsHidden = FALSE;
+            work->particlesDisabled = FALSE;
             mbObjDispSet(work->mapDisplayModel, 1);
-            mbObjMotionTimeSet(work->launchBaseModel, 0.0f);
-            mbObjMotionSpeedSet(work->launchBaseModel, 0.0f);
-            mbObjHookReset(work->cannonModel);
-            mbObjRotSet(work->cannonModel, 0.0f, 0.0f, 0.0f);
+            mbObjMotionTimeSet(work->parentModel, 0.0f);
+            mbObjMotionSpeedSet(work->parentModel, 0.0f);
+            mbObjHookReset(work->pairedModel);
+            mbObjRotSet(work->pairedModel, 0.0f, 0.0f, 0.0f);
             mbMasuPosGet(exitSpace, &position);
-            mbObjPosSetV(work->stationModel, &position);
-            mbObjRotSet(work->stationModel, 0.0f, -180.0f, 0.0f);
-            mbObjMotionSet(work->stationModel, 3, ((1 << 30) | (1 << 0)));
+            mbObjPosSetV(work->attachedModel, &position);
+            mbObjRotSet(work->attachedModel, 0.0f, -180.0f, 0.0f);
+            mbObjMotionSet(work->attachedModel, 3, ((1 << 30) | (1 << 0)));
             position.x = 0.0f;
             position.y = 100.0f;
             position.z = -300.0f;
-            mbCameraMoveObj(work->stationModel, NULL, &position, -1.0f, -1.0f, -1);
+            mbCameraMoveObj(work->attachedModel, NULL, &position, -1.0f, -1.0f, -1);
             mbCameraMoveWait();
             mbCameraStackPop(1);
             mbObjKill(cameraModel);
             mbWipeSpecialFadeOutCreate(1, 60);
             mbAudFXPlay(MSM_SE_BRD02_GUIDE_FAREWELL);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 24), 14);
-            sprintf(numberText, "%d", work->shotCount);
+            sprintf(numberText, "%d", work->throwPathCount);
             mbWinTopInsertMesSet((u32) numberText, 0);
             mbWinTopWait();
         }
@@ -7135,13 +6474,13 @@ void fn_1_13708(int playerNo, int spaceId) {
     mbPlayerColSnapPlayerSet(playerNo, 1);
     mbCameraPlayerViewSetFast(playerNo, 1);
     mbCameraMoveWait();
-    mbObjHookReset(work->cannonModel);
-    mbObjKill(work->stationModel);
-    work->stationModel = -1;
-    mbObjDispSet(work->cannonModel, 0);
-    releasedShots = work->shots;
+    mbObjHookReset(work->pairedModel);
+    mbObjKill(work->attachedModel);
+    work->attachedModel = -1;
+    mbObjDispSet(work->pairedModel, 0);
+    releasedShots = work->throwPaths;
     HuMemDirectFree(releasedShots);
-    work->shots = NULL;
+    work->throwPaths = NULL;
     mbWipeDissolveFadeInTime(60);
 }
 
@@ -7150,15 +6489,15 @@ void fn_1_14F9C(OMOBJ *object) {
     HuVecF start;
     HuVecF end;
     int travelFrames;
-    throwpathsThrowPath *path;
-    ThrowPathWork *work;
+    W02ThrowPath *path;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     if (mbExitCheck() || object->work[3] != 0U) {
         omDelObjEx(mbObjMan, object);
         return;
     }
-    path = &work->paths[work->pathIndex];
+    path = &work->throwPaths[work->throwPathIndex];
     switch (object->work[0]) {
     case 0:
         start = path->start;
@@ -7171,7 +6510,7 @@ void fn_1_14F9C(OMOBJ *object) {
             path->ready = TRUE;
             path->travelFrames = travelFrames;
             path->bend = start;
-            if (++work->pathIndex >= work->pathCount) {
+            if (++work->throwPathIndex >= work->throwPathCount) {
                 object->work[3] = 1;
                 return;
             }
@@ -7193,8 +6532,8 @@ void fn_1_150F0(OMOBJ *object) {
     GXColor *colorPtr;
     HuVecF *velocityPtr;
     HuVecF *positionPtr;
-    EventThrowPath *path;
-    BoardModels *work;
+    W02ThrowPath *path;
+    PositionModel *work;
     float brightness;
     float progress;
 
@@ -7261,11 +6600,11 @@ void fn_1_1557C(void) {
     fn_1_1560C();
 }
 
-/* Reattaches the visible star to the hook selected by its current space group. */
-void fn_1_1560C(void) {
+/* Resets and attaches the model at the new star hook. */
+static inline void StarDisplayAttach(void) {
     char hookName[32];
     s32 hookIndex;
-    StarDisplayWork *work;
+    PositionModel *work;
 
     work = lbl_1_bss_8;
     mbObjHookObjReset(lbl_1_bss_5C, "starhook1");
@@ -7291,14 +6630,16 @@ void fn_1_1560C(void) {
     mbObjDispSet(work->starModel, TRUE);
 }
 
+/* Reattaches the visible star to the hook selected by its current space group. */
+void fn_1_1560C(void) {
+    StarDisplayAttach();
+}
+
 /* Restores the old space to blue, wraps the star order, and attaches the next star model. */
 void fn_1_15794(void) {
-    char hookName[32];
     HuVecF previousPosition;
     s16 spaceIds[8];
     int spaceCount;
-    s32 hookIndex;
-    StarDisplayWork *work;
 
     /* The previous star position is fetched but is not used to select or place the next star. */
     mbMasuPosGet(lbl_1_bss_14, &previousPosition);
@@ -7311,28 +6652,7 @@ void fn_1_15794(void) {
     lbl_1_bss_14 = spaceIds[lbl_1_bss_4->order[lbl_1_bss_4->position]];
     mbMasuTypeSet(lbl_1_bss_14, 7);
     mbStarMasuNextSet(lbl_1_bss_14);
-    work = lbl_1_bss_8;
-    mbObjHookObjReset(lbl_1_bss_5C, "starhook1");
-    mbObjHookObjReset(lbl_1_bss_5C, "starhook2");
-    mbObjHookObjReset(lbl_1_bss_5C, "starhook3");
-    mbObjHookObjReset(lbl_1_bss_5C, "starhook4");
-    mbObjHookObjReset(lbl_1_bss_5C, "starhook5");
-    mbObjHookObjReset(lbl_1_bss_5C, "starhook6");
-    hookIndex = fn_1_15DE4(lbl_1_bss_14);
-    if (hookIndex == 5) {
-        if (lbl_1_bss_4->configuration == 0) {
-            hookIndex = 5;
-        } else if (lbl_1_bss_4->configuration == 1) {
-            hookIndex = 5;
-        } else if (lbl_1_bss_4->configuration == 2) {
-            hookIndex = 6;
-        } else {
-            hookIndex = 6;
-        }
-    }
-    sprintf(hookName, "starhook%d", hookIndex);
-    mbObjHookSet(lbl_1_bss_5C, hookName, work->starModel);
-    mbObjDispSet(work->starModel, TRUE);
+    StarDisplayAttach();
 }
 
 /* Shuffles star spaces, then retries group transitions and avoids the previous opening space. */
@@ -7427,8 +6747,8 @@ s32 fn_1_15DE4(s32 spaceId) {
 s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
     HU3D_MODELID modelId = fn_800260F4(fn_1_16300);
     HuVecF *vertex;
-    EventSpriteHook *hook;
-    EventSpriteParticle *particle;
+    SpriteRenderHook *hook;
+    W02EventSpriteParticle *particle;
     s16 index;
     HuVec2f *coordinate;
     HU3D_MODEL *model;
@@ -7437,34 +6757,34 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
 
     fn_80026B64(modelId, (1 << 0));
     model = &lbl_802C01C8[modelId];
-    hook = ModelHeapMallocNum(sizeof(EventSpriteHook), model->mallocNo);
+    hook = ModelHeapMallocNum(sizeof(SpriteRenderHook), model->mallocNo);
     model->hookData = hook;
     hook->animation = animation;
     hook->particleCount = capacity;
     hook->blendMode = 0;
     hook->flags = 0;
-    hook->callbackAddress = 0;
-    hook->linkedModelAddress = 0;
-    hook->frameCounter = 0;
-    hook->animationData = 0;
-    hook->hookFlags[0] = 0;
+    hook->update = NULL;
+    hook->linkedModel = NULL;
+    hook->frame = 0;
+    hook->animationFlags = 0;
+    hook->unk23 = 0;
     hook->duration = 0;
-    hook->textureFrame = hook->textureIndex = 0;
+    hook->unk00 = hook->unk02 = 0;
     hook->tileCoordinates = NULL;
     hook->corners = NULL;
-    particle = ModelHeapMallocNum(sizeof(EventSpriteParticle) * capacity, model->mallocNo);
+    particle = ModelHeapMallocNum(sizeof(W02EventSpriteParticle) * capacity, model->mallocNo);
     hook->particles = particle;
-    memset(particle, 0, sizeof(EventSpriteParticle) * capacity);
+    memset(particle, 0, sizeof(W02EventSpriteParticle) * capacity);
     for (index = 0; index < capacity; index++, particle++) {
-        particle->activityValue = 0.0f;
-        particle->rendering.x = particle->rendering.y = particle->rotation = 0.0f;
+        particle->size = 0.0f;
+        particle->rotation.x = particle->rotation.y = particle->rotation.z = 0.0f;
         particle->animationTime = 0.0f;
         particle->animationSpeed = 1.0f;
         particle->position.x = 0.0f;
         particle->position.y = 0.0f;
         particle->position.z = 0.0f;
         particle->color.r = particle->color.g = particle->color.b = particle->color.a = 255;
-        particle->timer = 0;
+        particle->textureFrame = 0;
     }
     hook->positions = vertex = ModelHeapMallocNum((sizeof(HuVecF) * capacity) * 4, model->mallocNo);
     for (index = 0; index < capacity * 4; index++, vertex++) {
@@ -7529,7 +6849,7 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
     ROMtx reordered;
     HuVecF *corners;
     SpriteRenderHook *hook;
-    spriterenderSpriteParticle *particle;
+    W02EventSpriteParticle *particle;
     HuVecF *vertex;
     HuVec2f *texture;
     HuVecF *cachedPtr;
@@ -7714,7 +7034,7 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
         DCFlushRangeNoSync(hook->positions, hook->particleCount * sizeof(HuVecF) * 4);
         DCFlushRangeNoSync(hook->textureCoordinates, hook->particleCount * sizeof(HuVec2f) * 4);
         DCFlushRangeNoSync(hook->particles,
-                           hook->particleCount * sizeof(spriterenderSpriteParticle));
+                           hook->particleCount * sizeof(W02EventSpriteParticle));
         PPCSync();
         GXClearVtxDesc();
         GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
@@ -7722,7 +7042,7 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
         GXSetArray(GX_VA_POS, hook->positions, sizeof(HuVecF));
         GXSetVtxDesc(GX_VA_CLR0, GX_INDEX16);
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
-        GXSetArray(GX_VA_CLR0, &hook->particles->color, sizeof(spriterenderSpriteParticle));
+        GXSetArray(GX_VA_CLR0, &hook->particles->color, sizeof(W02EventSpriteParticle));
         GXSetVtxDesc(GX_VA_TEX0, GX_INDEX16);
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
         GXSetArray(GX_VA_TEX0, hook->textureCoordinates, sizeof(HuVec2f));
@@ -7758,7 +7078,7 @@ void fn_1_16E84(s16 modelId, s32 columns, s32 rows, s32 alternate) {
     s32 row;
     s32 column;
     HU3D_MODEL *model;
-    TextureGridHook *hook;
+    SpriteRenderHook *hook;
     s32 tileCount;
     float width;
     float height;
@@ -7828,7 +7148,7 @@ void fn_1_1735C(void) {
     s32 modelId[1];
     OMOBJ *object;
     EventSpriteObject *work;
-    spriteinitializeSpriteHook *hook;
+    SpriteRenderHook *hook;
     HU3D_MODEL *model;
     ANIMDATA *animation;
     void *data;
@@ -7851,9 +7171,9 @@ void fn_1_1735C(void) {
 
 /* Advances live particles each frame and releases the sprite model when the board exits. */
 void fn_1_17474(OMOBJ *object) {
-    spriteinitializeSpriteParticle *particle;
+    W02EventSpriteParticle *particle;
     EventSpriteObject *work;
-    spriteinitializeSpriteHook *hook;
+    SpriteRenderHook *hook;
     s32 index;
     HU3D_MODEL *model;
 
@@ -7875,24 +7195,24 @@ void fn_1_17474(OMOBJ *object) {
     model = &lbl_802C01C8[work->modelId];
     hook = model->hookData;
     particle = hook->particles;
-    hook->updateFlags = 0;
+    hook->unk23 = 0;
     for (index = 0; index < hook->particleCount; index++, particle++) {
-        if (particle->activityValue <= 0.0f) {
+        if (particle->size <= 0.0f) {
             continue;
         }
         particle->position.x += particle->velocity.x;
         particle->position.y += particle->velocity.y;
         particle->position.z += particle->velocity.z;
-        particle->rotation += particle->rotationSpeed;
-        if (particle->rotation >= 360.0f) {
-            particle->rotation -= 360.0f;
+        particle->rotation.z += particle->rotationSpeed;
+        if (particle->rotation.z >= 360.0f) {
+            particle->rotation.z -= 360.0f;
         }
-        particle->animationFrame = particle->animationTime;
+        particle->textureFrame = particle->animationTime;
         particle->animationTime += particle->animationSpeed;
         if (particle->animationTime >= 16.0f) {
-            particle->animationFrame = 0;
-            particle->frame = 0;
-            particle->activityValue = 0.0f;
+            particle->textureFrame = 0;
+            particle->maxAlpha = 0;
+            particle->size = 0.0f;
             work->state--;
         }
     }
@@ -7919,8 +7239,8 @@ s32 fn_1_1769C(void)
 /* Starts one inactive particle when a board effect emits a sprite. */
 s32 fn_1_176E4(HuVecF *position, HuVecF *velocity, float activityValue,
     float rotationSpeed, float animationSpeed, GXColor *color) {
-    EventSpriteParticle *particle;
-    EventSpriteHook *hook;
+    W02EventSpriteParticle *particle;
+    SpriteRenderHook *hook;
     s32 index;
     EventSpriteObject *work;
     OMOBJ *object;
@@ -7932,14 +7252,14 @@ s32 fn_1_176E4(HuVecF *position, HuVecF *velocity, float activityValue,
     hook = model->hookData;
     particle = hook->particles;
     for (index = 0; index < hook->particleCount; index++, particle++) {
-        if (particle->activityValue <= 0.0f) {
+        if (particle->size <= 0.0f) {
             break;
         }
     }
     if (index >= hook->particleCount) {
         return -1;
     }
-    particle->frame = particle->state = 0;
+    particle->maxAlpha = particle->alphaStep = 0;
     particle->position.x = position->x;
     particle->position.y = position->y;
     particle->position.z = position->z;
@@ -7947,11 +7267,11 @@ s32 fn_1_176E4(HuVecF *position, HuVecF *velocity, float activityValue,
     particle->velocity.y = velocity->y;
     particle->velocity.z = velocity->z;
     particle->rotationSpeed = rotationSpeed;
-    particle->activityValue = activityValue;
+    particle->size = activityValue;
     particle->color = *color;
-    particle->rotation = 360.0f * (3.7252903e-09f * mbRandMod(0x10000000));
-    particle->timer = 0;
-    particle->frame = 0;
+    particle->rotation.z = 360.0f * (3.7252903e-09f * mbRandMod(0x10000000));
+    particle->textureFrame = 0;
+    particle->maxAlpha = 0;
     particle->animationTime = 0.0f;
     particle->animationSpeed = animationSpeed;
     work->state++;

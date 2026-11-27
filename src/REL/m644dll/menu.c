@@ -1,6 +1,6 @@
 /* Runs the minigame sequence, selects the winning group, and controls sequence audio. */
 #include "msm_se.h"
-#include "REL/m644dll/module_types.h"
+#include "REL/m644dll/module_declarations.h"
 #include "game/hu3d.h"
 #include "game/flag.h"
 #include "msm_stream.h"
@@ -32,12 +32,6 @@ MGSEQ_PARAM lbl_1_data_14 = {
     300, 0, fn_1_234, fn_1_254, fn_1_2D4, fn_1_330, fn_1_334, fn_1_490, fn_1_4BC, fn_1_528, fn_1_52C
 };
 
-void fn_1_1124(s32);
-s32 fn_1_913C(s32);
-
-s32 fn_1_559C(s16);
-s32 fn_1_56D4(s32);
-
 extern M644EffectMenuData lbl_1_bss_8;
 
 typedef struct SceneModelIds {
@@ -45,31 +39,20 @@ typedef struct SceneModelIds {
     s32 model_ids[12];
 } SceneModelIds;
 
-extern void fn_1_11F0(void);
 
 typedef struct M644CameraIdPair_s {
     /* Camera IDs for the two team views. */
     s32 camera_ids[2];
 } M644CameraIdPair;
 
-extern void fn_1_11F0(void);
-extern f32 fn_1_9178(s32 entry_index);
-
-extern void fn_1_94A4(s32 index);
-extern s16 fn_1_9114(void);
-extern void fn_1_1060(OMOBJ *object);
-
 typedef struct M644CameraIds_s {
     /* Camera IDs for the two team views. */
     s32 camera_ids[2];
 } M644CameraIds;
 
-extern s32 fn_1_224(void);
 
 s32 fn_1_367CC(s32 *player);
 
-void fn_1_1690(void);
-void fn_1_590(void);
 /* Actor-manager process shared with module startup and player object creation. */
 HUPROCESS *lbl_1_bss_0[2];
 

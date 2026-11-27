@@ -1,22 +1,23 @@
 #ifndef M661DLL_SYSTEM_STATE_H
 #define M661DLL_SYSTEM_STATE_H
 
+#include "REL/minigame_shadow_camera.h"
 #include "dolphin/types.h"
 #include "game/mg/timer.h"
 #include "dolphin/mtx/GeoTypes.h"
 
 typedef struct SystemPadInput {
-    s32 buttons;
-    s32 buttonsDown;
-    u16 buttonsRepeat;
-    s8 stickX;
-    s8 stickY;
-    s8 subStickX;
-    s8 subStickY;
-    u8 triggerL;
-    u8 triggerR;
-    u8 dPad;
-    u8 dPadRepeat;
+    s32 unk_00; /* The game's code never reads this field. */
+    s32 unk_04; /* The game's code never reads this field. */
+    u16 unk_08; /* The game's code never reads this field. */
+    s8 unk_0A; /* The game's code never reads this field. */
+    s8 unk_0B; /* The game's code never reads this field. */
+    s8 unknown_0C; /* The game's code never reads this field. */
+    s8 unk_0D; /* The game's code never reads this field. */
+    u8 unk_0E; /* The game's code never reads this field. */
+    u8 unk_0F; /* The game's code never reads this field. */
+    u8 unk_10; /* The game's code never reads this field. */
+    u8 unk_11; /* The game's code never reads this field. */
 } SystemPadInput;
 
 typedef struct SystemInputState {
@@ -32,7 +33,7 @@ typedef struct SystemInputState {
     u8 unk_18[2]; /* No code names this field. */
     s16 timer;
     s16 waitTimer;
-    s16 result;
+    s16 unk20; /* The game's code never reads this field. */
     s16 activeCount;
     SystemPadInput pads[4];
     MGTIMER *action;
@@ -47,15 +48,15 @@ typedef struct SystemInputState {
     Point3d initialPositions[16];
     Point3d initialGridStep;
     s16 boardChoiceCounts[16];
-    f32 playerOverlapRatios[16];
+    f32 unk190[16]; /* The game's code never reads this field. */
     Point3d secondaryPositions[4];
     Point3d secondaryGridStep;
     s16 targetChoiceCounts[4];
-    f32 regionOverlapRatios[4];
+    f32 unk214[4]; /* The game's code never reads this field. */
     Point3d specialBounds[2];
     Point3d specialExpansion;
     s16 playerChoiceCounts[2];
-    f32 specialOverlapRatios[2];
+    f32 unk24C[2]; /* The game's code never reads this field. */
     /* The sound setup accesses bgmHandle after this unidentified interval. */
     u8 unk_254[4]; /* No code names this field. */
     s32 bgmHandle;
@@ -77,5 +78,40 @@ typedef struct SystemInputState {
 } SystemInputState;
 
 extern SystemInputState lbl_1_bss_196C;
+
+/* Shared state defined by the module core. */
+extern MinigameShadowCamera lbl_1_bss_2FEC;
+
+/* Shared state defined by the module core. */
+typedef struct ModelAnimationWork {
+    s16 motionIds[5];
+    s16 motionId;
+    s16 appliedMotionId;
+    f32 motionSpeed;
+    f32 appliedMotionSpeed;
+    f32 motionTime;
+    f32 appliedMotionTime;
+    f32 unk20; /* The game's code never reads this field. */
+    u32 modelAttributes;
+    u32 appliedModelAttributes;
+    u32 attributesToReset;
+    s32 motionEnded;
+    s16 repeatMotion;
+    s16 nextMotionId;
+    f32 nextMotionTime;
+    u32 nextModelAttributes;
+    u32 transitionState;
+    s16 shiftState;
+    s16 shiftedMotionId;
+    u32 shiftAttributes;
+    f32 shiftTime;
+    f32 shiftDuration;
+    f32 shiftElapsed;
+    f32 unk58; /* The game's code never reads this field. */
+    /* The two animation records have a 0x60-byte stride; these bytes are unidentified. */
+    u8 unknown5C[4]; /* No code names this field. */
+} ModelAnimationWork;
+
+extern ModelAnimationWork lbl_1_bss_1D7C[2];
 
 #endif

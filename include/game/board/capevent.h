@@ -49,6 +49,7 @@ void mbev_CapBiriQMetalShockCreate(int playerNo);
 void mbev_CapPlayerStunSet(int *playerNo, int playerNum, BOOL type);
 void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *pos);
 OMOBJ *mbev_CapEffRingHitCreate(void);
+void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF pos, HuVecF rot, HuVecF scale);
 OMOBJ *mbev_CapEffGlowFireCreate(void);
 OMOBJ *mbev_CapEffElectricCreate(void);
 int mbev_CapEffElectricAdd(OMOBJ *obj, HuVecF *pos, int time, int bank);

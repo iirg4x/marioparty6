@@ -1,6 +1,7 @@
 /* Shared player, model, motion, camera and stage state for Boo'd Off the Stage. */
 #ifndef REL_M660_SCENE_H
 #define REL_M660_SCENE_H
+#include "REL/minigame_camera_preset.h"
 #include "REL/minigame_participant_motion.h"
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
@@ -165,21 +166,8 @@ extern M660Player lbl_1_bss_2DC[2];
 extern M660Model lbl_1_bss_60C[75];
 extern MinigameParticipantMotionState lbl_1_bss_544[2];
 extern M660StageState lbl_1_bss_1F4;
-/* Stores the local camera presets and their projection settings. */
-typedef struct M660CameraRecord {
-    s32 unk00; /* The game's code never reads this field. */
-    u8 unk04[12]; /* No code names this field. */
-    f32 unk10[3]; /* The game's code never reads this field. */
-    f32 unk1C[3]; /* The game's code never reads this field. */
-    u8 unk28[12]; /* No code names this field. */
-    f32 unk34; /* The game's code never reads this field. */
-    f32 aspectRatio;
-    f32 viewport[4];
-    f32 fieldOfView;
-} M660CameraRecord;
-
 typedef struct M660CameraState {
-    M660CameraRecord records[4];
+    MinigameCameraPreset records[4];
     u8 unk140[8]; /* No code names this field. */
 } M660CameraState;
 

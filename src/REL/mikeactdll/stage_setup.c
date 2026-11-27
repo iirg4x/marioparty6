@@ -43,6 +43,8 @@
 #include "game/main.h"
 
 #include "game/gamework.h"
+#include "REL/mikeactdll/microphone_init.h"
+#include "REL/mikeactdll/module.h"
 
 #include "game/wipe.h"
 
@@ -55,9 +57,9 @@ int fn_1_1662C(COL_NARROW_PARAM *, COL_NARROW_PARAM *);
 Point3d lbl_1_data_1100 = { 0.0f, 5000.0f, 50000.0f };
 Point3d lbl_1_data_110C = { 0.1f, -1.0f, -0.8f };
 GXColor lbl_1_data_1118 = { 96, 96, 120, 255 };
-Point3d lbl_1_data_111C[0xD] = { { 5300.0f, 0.0f, 0.0f }, { 7000.0f, 0.0f, 300.0f }, { 9000.0f, 0.0f, 0.0f }, { 15900.0f, 0.0f, -300.0f }, { 36300.0f, 0.0f, 300.0f }, { 37500.0f, 0.0f, 0.0f }, { 42200.0f, 0.0f, -300.0f }, { 42200.0f, 0.0f, 0.0f }, { 43400.0f, 0.0f, 0.0f }, { 42200.0f, 0.0f, 300.0f }, { 44700.0f, 0.0f, -300.0f }, { 45800.0f, 0.0f, 0.0f }, { 47300.0f, 0.0f, 300.0f } };
+Point3d lbl_1_data_111C[13] = { { 5300.0f, 0.0f, 0.0f }, { 7000.0f, 0.0f, 300.0f }, { 9000.0f, 0.0f, 0.0f }, { 15900.0f, 0.0f, -300.0f }, { 36300.0f, 0.0f, 300.0f }, { 37500.0f, 0.0f, 0.0f }, { 42200.0f, 0.0f, -300.0f }, { 42200.0f, 0.0f, 0.0f }, { 43400.0f, 0.0f, 0.0f }, { 42200.0f, 0.0f, 300.0f }, { 44700.0f, 0.0f, -300.0f }, { 45800.0f, 0.0f, 0.0f }, { 47300.0f, 0.0f, 300.0f } };
 Point3d lbl_1_data_11B8[1] = { { 24000.0f, 0.0f, 0.0f } };
-Point3d lbl_1_data_11C4[0xC] = { { 3200.0f, 0.0f, 300.0f }, { 9900.0f, 0.0f, -300.0f }, { 14700.0f, 0.0f, 300.0f }, { 17200.0f, 0.0f, -300.0f }, { 18200.0f, 0.0f, 300.0f }, { 30200.0f, 0.0f, -300.0f }, { 37300.0f, 0.0f, 300.0f }, { 36300.0f, 0.0f, 0.0f }, { 43400.0f, 0.0f, -300.0f }, { 43400.0f, 0.0f, 300.0f }, { 45800.0f, 0.0f, -300.0f }, { 48300.0f, 0.0f, 300.0f } };
+Point3d lbl_1_data_11C4[12] = { { 3200.0f, 0.0f, 300.0f }, { 9900.0f, 0.0f, -300.0f }, { 14700.0f, 0.0f, 300.0f }, { 17200.0f, 0.0f, -300.0f }, { 18200.0f, 0.0f, 300.0f }, { 30200.0f, 0.0f, -300.0f }, { 37300.0f, 0.0f, 300.0f }, { 36300.0f, 0.0f, 0.0f }, { 43400.0f, 0.0f, -300.0f }, { 43400.0f, 0.0f, 300.0f }, { 45800.0f, 0.0f, -300.0f }, { 48300.0f, 0.0f, 300.0f } };
 Point3d lbl_1_data_1254[6] = { { 9900.0f, 0.0f, 300.0f }, { 16600.0f, 0.0f, 300.0f }, { 28400.0f, 0.0f, 0.0f }, { 31800.0f, 0.0f, 0.0f }, { 32100.0f, 0.0f, 0.0f }, { 46100.0f, 0.0f, 300.0f } };
 MGACTOR_PARAM lbl_1_data_129C = { 2000.0f, 149.9f, 12, 5, fn_1_16624, 32, 0, 0 };
 Point3d lbl_1_data_12BC[9] = { { 3200.0f, 0.0f, -300.0f }, { 8100.0f, 0.0f, 0.0f }, { 27600.0f, 0.0f, 0.0f }, { 27600.0f, 0.0f, 300.0f }, { 29800.0f, 0.0f, 0.0f }, { 30700.0f, 0.0f, 0.0f }, { 31000.0f, 0.0f, 300.0f }, { 38500.0f, 0.0f, -300.0f }, { 47000.0f, 0.0f, -300.0f } };
@@ -319,6 +321,7 @@ void fn_1_16718(s32 index, f32 positionX)
     fn_80026CBC(lbl_1_bss_36FC[index].linkedModelId, 0.0f);
 }
 
+/* Raises the stage particles while their effect is active. */
 void fn_1_186D0(HU3D_MODEL *model, HU3D_PARTICLE *manager, Mtx matrix);
 
 void fn_1_18C54(void);
@@ -720,7 +723,7 @@ void fn_1_1698C(void)
     lbl_1_bss_3420 = 0;
 }
 
-extern Point3d lbl_1_bss_34E4[0x10];
+extern Point3d lbl_1_bss_34E4[16];
 
 extern s16 lbl_1_bss_3414;
 
@@ -866,6 +869,7 @@ void fn_1_17B5C(void)
 
 extern s32 lbl_1_bss_3404;
 
+/* Raises the stage particles while their effect is active. */
 void fn_1_186D0(HU3D_MODEL *model, HU3D_PARTICLE *manager, Mtx matrix)
 {
     s16 index;
@@ -873,7 +877,7 @@ void fn_1_186D0(HU3D_MODEL *model, HU3D_PARTICLE *manager, Mtx matrix)
     HU3D_PARTICLE_DATA *currentParticle;
 
     currentParticle = manager->data;
-    for (index = 0; index < 0x10;
+    for (index = 0; index < 16;
          index++, currentParticle++) {
         currentParticle->scale = 0.0f;
     }
@@ -884,7 +888,7 @@ void fn_1_186D0(HU3D_MODEL *model, HU3D_PARTICLE *manager, Mtx matrix)
     }
     currentParticle = manager->data;
     if (manager->count != 0) {
-        for (index = 0; index < 0x10;
+        for (index = 0; index < 16;
              currentParticle++, index++) {
             currentParticle->pos.x = lbl_1_bss_34E4[index].x;
             if (manager->count <= 7) {
@@ -910,7 +914,7 @@ extern f32 lbl_1_bss_3410;
 extern void fn_1_1C53C(MCResponse_s *event);
 
 void fn_1_1AED4(MCResponse_s *context);
-
+/* Positions the stage slots for the selected lane. */
 static inline void MikeActLayoutApply(s32 laneIndex)
 {
     Point3d position;
@@ -922,7 +926,7 @@ static inline void MikeActLayoutApply(s32 laneIndex)
     lbl_1_bss_3400 = 0;
     index = 0;
     allocationCount = 0;
-    for (; index < 0x18; index++) {
+    for (; index < 24; index++) {
         slotIndex = lbl_1_bss_375C[index];
         if (lbl_1_bss_3400 > 0 ||
             lbl_1_data_1348[laneIndex][index].layoutId == -1) {
@@ -964,8 +968,8 @@ void fn_1_18880(s32 laneIndex)
     MikeActLayoutApply(laneIndex);
 }
 
-extern MikeActStateRecord lbl_1_bss_1B8[0x100];
-
+extern MikeActStateRecord lbl_1_bss_1B8[256];
+/* Moves the players into position and runs the stage sequence. */
 void fn_1_18C54(void)
 {
     Point3d playerPosition;
@@ -1100,10 +1104,10 @@ void fn_1_18C54(void)
         frameCount = lbl_1_bss_36FC[laneIndex].state->callback_state;
         switch (lbl_1_bss_36FC[laneIndex].state->event_state) {
         case 0:
-            frameCount += frameCount < 0x28;
+            frameCount += frameCount < 40;
             fn_80026CBC(
                 lbl_1_bss_36FC[laneIndex].linkedModelId,
-                (frameCount > 0xA) ? 1.0f : (f32)frameCount / 10.0f);
+                (frameCount > 10) ? 1.0f : (f32)frameCount / 10.0f);
             if (((s32)actorPosition.z == 0 &&
                  lbl_1_data_1838[0] != 0 &&
                  lbl_1_data_1254[3].x - 180.0f < actorPosition.x &&
@@ -1223,11 +1227,12 @@ extern s16 lbl_1_bss_1AA;
 
 extern u32 lbl_1_bss_341C;
 
+/* Runs the transition triggered when the stage actor passes the fixed X position. */
 void fn_1_1A234(void)
 {
     s32 playerIndex;
 
-    if (lbl_1_bss_B8 != ((void *)0)) {
+    if (lbl_1_bss_B8 != NULL) {
       switch (lbl_1_bss_3420) {
     case 0:
         if (lbl_1_bss_F0->position.x > 10750.0f) {
@@ -1281,7 +1286,7 @@ void fn_1_1A234(void)
                              &lbl_1_data_1894[playerIndex], 5.0f, 5.0f);
         }
         if (lbl_1_bss_341C++ == 0xF) {
-            WipeCreate(2, 0, 0x1E);
+            WipeCreate(2, 0, 30);
             lbl_1_bss_3420 = 5;
             return;
         }
@@ -1332,7 +1337,7 @@ void fn_1_1A234(void)
                              0x40000002U);
             fn_8005C16C(lbl_1_bss_C4[playerIndex]->character_no, 0.0f);
         }
-        WipeCreate(1, 0, 0x1E);
+        WipeCreate(1, 0, 30);
         lbl_1_bss_3420 = 6;
         return;
     case 6:
@@ -1364,7 +1369,7 @@ void fn_1_1A234(void)
         return;
     case 0x33: {
         if (lbl_1_bss_341C++ == 0x78) {
-            WipeCreate(2, 0, 0x1E);
+            WipeCreate(2, 0, 30);
             lbl_1_bss_3420++;
             return;
         }
@@ -1381,7 +1386,7 @@ void fn_1_1A234(void)
                 fn_8007EEBC(lbl_1_bss_C4[playerIndex]->player, 0);
             }
             fn_1_1AFD0();
-            WipeCreate(1, 0, 0x1E);
+            WipeCreate(1, 0, 30);
             lbl_1_bss_3420++;
             return;
         }
@@ -1397,7 +1402,7 @@ void fn_1_1A234(void)
       }
     }
 }
-
+/* Starts the guide animation when the microphone response matches. */
 void fn_1_1AED4(MCResponse_s *context)
 {
     s32 playerIndex;
@@ -1417,7 +1422,6 @@ void fn_1_1AED4(MCResponse_s *context)
     }
 }
 
-void fn_1_1F94(void);
 
 void fn_1_1AFB0(s16 mode, s16 frameNo)
 {
@@ -1439,7 +1443,7 @@ void fn_1_1AFD0(void) {
     }
     fn_1_F598();
 }
-
+/* Advances the guide animation and updates the progress display. */
 s32 fn_1_1B07C(void)
 {
     s32 playerIndex;
@@ -1469,11 +1473,12 @@ extern f32 lbl_1_bss_340C;
 
 extern s16 lbl_1_bss_3416;
 
+/* Runs the transition at the next stage marker and repositions the other players. */
 void fn_1_1B2B8(void)
 {
     s32 playerIndex;
 
-    if (lbl_1_bss_B8 == ((void *)0)) {
+    if (lbl_1_bss_B8 == NULL) {
         return;
     }
     switch (lbl_1_bss_3420) {
@@ -1540,7 +1545,7 @@ void fn_1_1B2B8(void)
                              &lbl_1_data_1910[playerIndex], 5.0f, 5.0f);
         }
         if (lbl_1_bss_341C++ == 0xF) {
-            WipeCreate(2, 0, 0x1E);
+            WipeCreate(2, 0, 30);
             lbl_1_bss_3420 = 5;
             return;
         }
@@ -1578,7 +1583,7 @@ void fn_1_1B2B8(void)
         fn_1_1B40(1, fn_1_1C53C);
         fn_1_1E1C(MESSNUM(MESS_MICGOSUPORT, 14), 1);
         lbl_1_bss_3418 = 0;
-        WipeCreate(1, 0, 0x1E);
+        WipeCreate(1, 0, 30);
         lbl_1_bss_3420 = 6;
         return;
     case 6:
@@ -1688,7 +1693,7 @@ void fn_1_1B2B8(void)
         if (lbl_1_bss_341C == 0x4B) {
             HuAudFXPlay(MSM_SE_GUIDE_TERESA_FAILURE);
         }
-        for (playerIndex = 0; playerIndex < 0x10; playerIndex++) {
+        for (playerIndex = 0; playerIndex < 16; playerIndex++) {
             if (lbl_1_bss_341C >= 0x2D && lbl_1_bss_341C < 0x4B) {
                 lbl_1_bss_3404 = 1;
                 fn_800269E8(lbl_1_bss_35C4[playerIndex], 0x40000002U);
@@ -1708,7 +1713,7 @@ void fn_1_1B2B8(void)
             HuAudFXPlay(1343);
         }
         if (lbl_1_bss_341C++ == 0xC3) {
-            WipeCreate(2, 0, 0x1E);
+            WipeCreate(2, 0, 30);
             lbl_1_bss_3420++;
             return;
         }
@@ -1716,7 +1721,7 @@ void fn_1_1B2B8(void)
     case 0x98:
         if (WipeCheck() == 0) {
             fn_1_1C7D4();
-            WipeCreate(1, 0, 0x1E);
+            WipeCreate(1, 0, 30);
             lbl_1_bss_3420++;
             return;
         }
@@ -1731,7 +1736,7 @@ void fn_1_1B2B8(void)
         break;
     }
 }
-
+/* Handles microphone responses for the current guide step. */
 void fn_1_1C53C(MCResponse_s *event)
 {
     s32 playerIndex;
@@ -1795,7 +1800,7 @@ void fn_1_1C7B4(s16 mode, s16 frameNo)
 void fn_1_1C7D4(void) {
     fn_1_1AFD0();
 }
-
+/* Advances the timed movement for the guide's other players. */
 s32 fn_1_1C880(void)
 {
     s32 duration;
@@ -1817,7 +1822,7 @@ s32 fn_1_1C880(void)
             lbl_1_bss_340C -= 180.0f;
         }
         lbl_1_bss_3410 += 60.0f / lbl_1_bss_3408;
-        if (step < 0x1E && lbl_1_bss_3410 >= 30.0f) {
+        if (step < 30 && lbl_1_bss_3410 >= 30.0f) {
             HuAudFXPlay(lbl_1_bss_3416 % 2 != 0 ? 0x54F : 0x550);
         }
         if (lbl_1_bss_3410 > 60.0f) {
@@ -1883,7 +1888,7 @@ s16 lbl_1_bss_35EA;
 s16 lbl_1_bss_35E4[3];
 s16 lbl_1_bss_35C4[16];
 s16 lbl_1_bss_35A4[16];
-Point3d lbl_1_bss_34E4[0x10];
+Point3d lbl_1_bss_34E4[16];
 Point3d lbl_1_bss_3424[16];
 s16 lbl_1_bss_3422;
 s16 lbl_1_bss_3420;

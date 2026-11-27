@@ -15,6 +15,7 @@ typedef struct WordQuad {
     } values[2];
 } WordQuad;
 
+/* Creates the character boxes and initializes both players' score displays. */
 void fn_1_249A8(void)
 {
     f32 characterBoxSize[2] = {96.0f, 48.0f};
@@ -30,7 +31,7 @@ void fn_1_249A8(void)
 
     for (; playerIndex < 2; playerIndex++) {
         ScoreDisplay *display = &lbl_1_bss_0[playerIndex];
-        PlayerResult *playerData = &lbl_1_bss_1C04[playerIndex];
+        M661PlayerState *playerData = &lbl_1_bss_1C04[playerIndex];
 
         display->characterBox = MgScoreBoxCreateChar(
             (s16)characterBoxSize[0], (s16)characterBoxSize[1],

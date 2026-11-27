@@ -1,4 +1,7 @@
 /* Resolves round winners, awards the round bonus, and tracks player sides. */
+#include "REL/m626Dll/setup.h"
+#include "REL/m626Dll/scenery.h"
+#include "REL/m626Dll/player.h"
 #include <math.h>
 #include "dolphin/types.h"
 #include "game/flag.h"
@@ -6,10 +9,6 @@
 #include "game/mg/seqman.h"
 #include "game/charman.h"
 
-s32 fn_1_824(s16 mode, s16 frameNo);
-s32 fn_1_8B90(s32 player);
-void fn_1_8D40(void);
-void fn_1_44D4(void);
 void fn_1_E2F0(void);
 
 extern s16 lbl_1_bss_0[4];
@@ -60,14 +59,12 @@ void fn_1_52C(s16 mode, s16 frameNo)
 void fn_1_6EC(s16 mode, s16 frameNo)
 {
     s16 newBonus;
-    s16 oldBonus;
     s32 playerIndex;
 
     if (fn_1_824(mode, frameNo) == 0 && frameNo == 0) {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (lbl_1_bss_10[playerIndex] >= 0) {
-                oldBonus = lbl_80265750[playerIndex].mgCoinBonus;
-                newBonus = oldBonus + 10;
+                newBonus = GWMgCoinBonusGet(playerIndex) + 10;
                 if (fn_8006A124(65551) == 0) {
                     lbl_80265750[playerIndex].mgCoinBonus = newBonus;
                 }
@@ -105,17 +102,17 @@ void fn_1_82C(void)
 s32 fn_1_830(s32 fileIndex)
 {
     if (fileIndex >= 8) {
-        s16 nightMode = lbl_802C0278;
-        if (nightMode == 1) {
+        if (GWMgNightFGet() == 1) {
             fileIndex += 16;
         }
     }
     return fileIndex + 0x550000;
 }
 
-void fn_1_86C(void)
+/* Returns the minigame sequence's timer value in frames. */
+s32 fn_1_86C(void)
 {
-    fn_80071B58();
+    return fn_80071B58();
 }
 
 /* Returns the winning player ID stored for one player slot. */
@@ -125,7 +122,7 @@ s16 fn_1_88C(s32 index)
 }
 
 /* Resolves a side ID to the live winner state for this round. */
-u32 fn_1_8A4(u32 sideId)
+s32 fn_1_8A4(u32 sideId)
 {
     s32 index;
     s32 result;

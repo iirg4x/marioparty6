@@ -1,6 +1,6 @@
 /* Initializes route points and obstacle models and handles their collision animations. */
 #include "msm_se.h"
-#include "REL/m644dll/module_types.h"
+#include "REL/m644dll/module_declarations.h"
 #include "game/hu3d.h"
 
 M644RouteModelTable lbl_1_bss_5AC;
@@ -48,9 +48,7 @@ typedef struct M644CameraIds {
     s32 masks[2];
 } M644CameraIds;
 
-extern OMOBJMAN *fn_1_A0(void);
 extern void fn_1_7548(OMOBJ *object);
-extern s32 fn_1_519C(s32 index);
 
 /* Leaves the player unchanged after its final travel callback ends. */
 void fn_1_6394(OMOBJ *object)
@@ -101,7 +99,7 @@ f32 fn_1_6570(s32 rock_type) {
 }
 
 /* Returns the number of rocks in the route section selected by a paired motion index. */
-s16 fn_1_6588(s32 route_motion) {
+s32 fn_1_6588(s32 route_motion) {
     return lbl_1_data_35C[route_motion >> 1].rock_count;
 }
 
@@ -256,10 +254,6 @@ typedef struct M644RockMotionTable_s {
     s16 motion[3][16];
 } M644RockMotionTable;
 
-extern void fn_1_50E0(s32 model_index);
-extern s32 fn_1_5168(s32 model_index);
-extern void fn_1_5180(s32 model_index);
-extern void fn_1_5660(s32 group);
 
 typedef struct M644RouteCameraIds_s {
     /* Camera-selection bits for the two teams. */
@@ -267,13 +261,11 @@ typedef struct M644RouteCameraIds_s {
 } M644RouteCameraIds;
 
 extern s16 lbl_802C0278;
-extern void fn_1_1EA8(s32 route, Point3d *position, Mtx matrix);
 
 s32 fn_1_6C90(s32 model_index, s32 contact_type);
 int fn_1_6FBC(COL_NARROW_PARAM *rock_contact, COL_NARROW_PARAM *other_contact);
 void fn_1_7548(OMOBJ *object);
 void fn_1_7BCC(OMOBJ *object);
-void fn_1_7C24(s32 team_index, s32 section_index);
 
 /* Applies one contact's damage to a rock, selecting its damaged pose or starting its break
  * animation. */

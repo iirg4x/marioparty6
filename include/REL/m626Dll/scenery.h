@@ -36,7 +36,7 @@ typedef struct M626SceneryWork {
     Vec initialPosition; /* Position captured when the character action begins. */
     Vec targetPosition; /* Latest attachment position tracked during the action. */
     u8 unclassifiedBytesB[132]; /* Byte block not read or written by scenery behavior. */
-    M626EffectRecord effect;
+    MinigameGroundEffect effect;
 } M626SceneryWork;
 
 typedef union M626CollisionRecord {
@@ -46,5 +46,11 @@ typedef union M626CollisionRecord {
 } M626CollisionRecord;
 
 extern M626CollisionRecord lbl_1_bss_310[3];
+
+void fn_1_8C50(HUPROCESS *process);
+void fn_1_8D40(void);
+void fn_1_B55C(s32 key, const Vec *throwPosition, const Vec *throwVelocity, void *collisionPartner);
+s32 fn_1_B62C(u32 key, const Vec *position, f32 angle, f32 angleRange, f32 maxDistance);
+void *fn_1_B998(s32 scenerySlot);
 
 #endif

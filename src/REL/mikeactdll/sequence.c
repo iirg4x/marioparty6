@@ -112,7 +112,7 @@ extern s16 lbl_1_bss_37F2;
 
 extern s16 lbl_1_bss_37F4;
 
-extern Point3d lbl_1_data_1AB4[0xF];
+extern Point3d lbl_1_data_1AB4[15];
 
 extern MGACTOR_PARAM lbl_1_data_1B68;
 
@@ -148,7 +148,6 @@ extern s16 lbl_1_bss_37D0;
 
 extern u32 lbl_1_bss_3804;
 
-extern void fn_1_1F5C(void);
 
 extern Point3d lbl_1_data_1D94[4];
 
@@ -195,7 +194,7 @@ Point3d lbl_1_data_1A74 = { 0.1f, -1.0f, -0.4f };
 GXColor lbl_1_data_1A80 = { 255, 255, 255, 255 };
 Point3d lbl_1_data_1A84[3] = { { 14620.0f, 300.0f, -300.0f }, { 17165.0f, 300.0f, -300.0f }, { 43875.0f, 0.0f, 0.0f } };
 Point3d lbl_1_data_1AA8 = { 32875.0f, 300.0f, 0.0f };
-Point3d lbl_1_data_1AB4[0xF] = { { 1950.0f, 0.0f, -300.0f }, { 1150.0f, 0.0f, 300.0f }, { 5130.0f, 300.0f, 0.0f }, { 8367.5f, 300.0f, 0.0f }, { 15630.0f, 0.0f, 0.0f }, { 30130.0f, 300.0f, 0.0f }, { 35130.0f, 0.0f, -300.0f }, { 37125.0f, 0.0f, -300.0f }, { 37380.0f, 0.0f, -300.0f }, { 36125.0f, 0.0f, 0.0f }, { 38625.0f, 0.0f, 0.0f }, { 34630.0f, 0.0f, 300.0f }, { 37875.0f, 0.0f, 300.0f }, { 45135.0f, 300.0f, -300.0f }, { 45135.0f, 300.0f, 300.0f } };
+Point3d lbl_1_data_1AB4[15] = { { 1950.0f, 0.0f, -300.0f }, { 1150.0f, 0.0f, 300.0f }, { 5130.0f, 300.0f, 0.0f }, { 8367.5f, 300.0f, 0.0f }, { 15630.0f, 0.0f, 0.0f }, { 30130.0f, 300.0f, 0.0f }, { 35130.0f, 0.0f, -300.0f }, { 37125.0f, 0.0f, -300.0f }, { 37380.0f, 0.0f, -300.0f }, { 36125.0f, 0.0f, 0.0f }, { 38625.0f, 0.0f, 0.0f }, { 34630.0f, 0.0f, 300.0f }, { 37875.0f, 0.0f, 300.0f }, { 45135.0f, 300.0f, -300.0f }, { 45135.0f, 300.0f, 300.0f } };
 MGACTOR_PARAM lbl_1_data_1B68 = { 180.0f, 100.0f, 12, 5, fn_1_1DEE0, 0, 0, 0 };
 Point3d lbl_1_data_1B88[2] = { { 6750.0f, 300.0f, 0.0f }, { 31750.0f, 300.0f, 0.0f } };
 Point3d lbl_1_data_1BA0[2] = { { 5627.5f, 300.0f, 0.0f }, { 30627.5f, 300.0f, 0.0f } };
@@ -358,6 +357,7 @@ void fn_1_1CDEC(void)
     MikeActPreActorCallbackSet(fn_1_1E29C);
 }
 
+/* Sets up the third stage's models, effect objects and collision attributes. */
 void fn_1_1D594(void)
 {
     COL_ATTRPARAM collisionParams;
@@ -422,7 +422,7 @@ void fn_1_1D594(void)
             placementWork->mode = (s16)(frandmod(2) + 1);
         }
         placementWork->positionIndex = fn_1_10CFC(modelA, &lbl_1_data_1BB8[placementIndex]);
-        for (itemIndex = 0; itemIndex < 0x14; itemIndex++) {
+        for (itemIndex = 0; itemIndex < 20; itemIndex++) {
             modelA = fn_80025D4C(lbl_1_bss_37F8);
             fn_80026B8C(modelA, 6);
             placementWork->items[itemIndex].model_id = modelA;
@@ -557,13 +557,14 @@ void fn_1_1DD38(s16 playerNo, HuVecF *eventPosition, HuVecF *playerPosition)
     fn_1_10E64((s16)lbl_1_bss_1B8[playerNo].event_state);
 }
 
+/* Handles a collision event for a valid record and spawns the linked effect
+ * halfway between the two event points along X. */
 int fn_1_1DEE0(COL_NARROW_PARAM *eventSource, COL_NARROW_PARAM *eventContext)
 {
 
     HuVecF effectPosition;
     OMOBJ *callbackObject;
     s16 recordIndex;
-    s16 modelId;
 
     if (eventContext->paramB >= 0 && eventContext->paramB < 4) {
         recordIndex = fn_1_1106C(eventSource->paramA);
@@ -581,13 +582,7 @@ int fn_1_1DEE0(COL_NARROW_PARAM *eventSource, COL_NARROW_PARAM *eventContext)
             effectPosition.z = 0.0f;
             PSVECScale(&effectPosition, &effectPosition, 0.5f);
             PSVECAdd(&eventContext->point, &effectPosition, &effectPosition);
-            modelId = fn_80036EBC(lbl_1_bss_3802);
-            fn_80026A44(modelId, (1 << 0));
-            fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
-            fn_800269E8(modelId, (1 << 27));
-            fn_800269E8(modelId, (1 << 22));
-            fn_80026B8C(modelId, 7);
-            fn_80026790(modelId, &effectPosition);
+            createLinkedEffectModel(&effectPosition);
             fn_1_30A0(&effectPosition, 0x546);
             lbl_1_bss_1B8[recordIndex].callback_state = 1;
             fn_1_10E64((s16)lbl_1_bss_1B8[recordIndex].event_state);
@@ -650,6 +645,7 @@ void fn_1_1E29C(void)
     }
 }
 
+/* Advances the first player transition and releases the other players at its end. */
 void fn_1_1E2F0(void)
 {
     s32 playerNo;
@@ -698,7 +694,7 @@ void fn_1_1E2F0(void)
         case 3:
             if (lbl_1_bss_3804++ == 0xF0U) {
                 lbl_1_bss_3804 = 0;
-                fn_8003EA54(&lbl_1_data_1D18, 0x1E);
+                fn_8003EA54(&lbl_1_data_1D18, 30);
                 for (playerNo = 1; playerNo < 4; playerNo++) {
                     lbl_1_bss_C4[playerNo]->movement_angle = 0.0f;
                     fn_80086CA8(lbl_1_bss_C4[playerNo]->player->actor,
@@ -900,6 +896,7 @@ void fn_1_1ED4C(MCResponse_s *context)
     }
 }
 
+/* Advances the second player transition, including its screen wipes. */
 void fn_1_1F18C(void)
 {
     s32 playerNo;
@@ -958,7 +955,7 @@ void fn_1_1F18C(void)
                              &lbl_1_data_1DC4[playerNo], 5.0f, 5.0f);
         }
         if ((u32)lbl_1_bss_3804++ == 0xFU) {
-            WipeCreate(2, 0, 0x1E);
+            WipeCreate(2, 0, 30);
             lbl_1_bss_3808 = 5;
         }
         break;
@@ -984,7 +981,7 @@ void fn_1_1F18C(void)
         fn_1_F370(MESSNUM(MESS_MICGO, 23), 0);
         fn_1_1B40(1, fn_1_1FFE8);
         fn_1_1E1C(MESSNUM(MESS_MICGOSUPORT, 20), 1);
-        WipeCreate(1, 0, 0x1E);
+        WipeCreate(1, 0, 30);
         lbl_1_bss_37CE = 0;
         lbl_1_bss_37CC = 0;
         lbl_1_bss_37CA = 0;
@@ -1066,7 +1063,7 @@ void fn_1_1F18C(void)
             fn_1_35A0(0x1E);
         }
         if ((u32)lbl_1_bss_3804++ == 0x96U) {
-            WipeCreate(2, 0, 0x1E);
+            WipeCreate(2, 0, 30);
             lbl_1_bss_3808++;
         }
         break;
@@ -1086,7 +1083,7 @@ void fn_1_1F18C(void)
                     lbl_1_bss_C4[playerNo]->player->actor->mdlId, (1 << 0));
             }
             fn_1_F598();
-            WipeCreate(1, 0, 0x1E);
+            WipeCreate(1, 0, 30);
             lbl_1_bss_3808++;
         }
         break;
@@ -1206,6 +1203,7 @@ void fn_1_1FFE8(MCResponse_s *context)
     }
 }
 
+/* Moves the spawner, updates its particles and removes it when they expire. */
 void fn_1_20188(OMOBJ *object)
 {
     MikeActEffectSpawner *spawner;
@@ -1217,7 +1215,7 @@ void fn_1_20188(OMOBJ *object)
 
     spawner = object->data;
     fn_800267CC(spawner->modelId, &modelPosition);
-    for (particleIndex = 0; particleIndex < 0x20; particleIndex++) {
+    for (particleIndex = 0; particleIndex < 32; particleIndex++) {
         if (spawner->particles[particleIndex].active != 0) {
             spawner->particles[particleIndex].scale +=
                 0.01 + (f64)((f32)frandmod(0x64) / 10000.0f);
@@ -1272,7 +1270,7 @@ void fn_1_20188(OMOBJ *object)
         /* The state-3 cleanup immediately follows the model kill. */
     case 3:
         allParticlesInactive = 1;
-        for (particleIndex = 0; particleIndex < 0x20; particleIndex++) {
+        for (particleIndex = 0; particleIndex < 32; particleIndex++) {
             if (spawner->particles[particleIndex].active == 1) {
                 allParticlesInactive = 0;
                 break;
@@ -1302,6 +1300,7 @@ void fn_1_204F0(HuVecF *position)
     fn_80026808(effectData->modelId, 0.0f, 270.0f, 0.0f);
 }
 
+/* Starts a particle in the first free slot after the spawn cooldown. */
 void fn_1_205EC(MikeActEffectSpawner *spawner)
 {
     s32 particleIndex;
@@ -1312,7 +1311,7 @@ void fn_1_205EC(MikeActEffectSpawner *spawner)
         return;
     }
     fn_800267CC(spawner->modelId, &position);
-    for (particleIndex = 0; particleIndex < 0x20; particleIndex++) {
+    for (particleIndex = 0; particleIndex < 32; particleIndex++) {
         if (spawner->particles[particleIndex].active == 0) {
             spawner->particles[particleIndex].active = 1;
             spawner->cooldown = frandmod(5) + 5;
@@ -1642,6 +1641,7 @@ void fn_1_21304(OMOBJ *controller)
     }
 }
 
+/* Starts an item effect at the selected model hook. */
 void fn_1_21590(MikeActVisibilityTarget *work, s16 useDownHook)
 {
     Point3d position;
@@ -1651,7 +1651,7 @@ void fn_1_21590(MikeActVisibilityTarget *work, s16 useDownHook)
 
     item = NULL;
     itemIndex = 0;
-    while (itemIndex < 0x14) {
+    while (itemIndex < 20) {
         if (work->items[itemIndex].active == 0) {
             item = &work->items[itemIndex];
             break;

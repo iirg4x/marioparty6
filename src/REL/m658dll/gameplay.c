@@ -35,11 +35,6 @@
 #include <game/object.h>
 #include <dolphin/types.h>
 
-typedef struct Position {
-    HuVecF position;
-    unsigned char unreadBytes[12];
-    HuVecF offset;
-} Position;
 extern s32 lbl_1_data_F18;
 extern float lbl_1_bss_1BC;
 extern s8 lbl_1_bss_218, lbl_1_bss_219, lbl_1_data_2758;
@@ -49,8 +44,6 @@ typedef struct M658CharacterSetting {
     u8 unreadBytes[20];
     s16 idleMotion;
 } M658CharacterSetting;
-extern void fn_1_7048(s32 model, u8 *colors);
-extern void fn_1_70F8(s32 model, const s8 *colors, f32 scale);
 #define M658_UNREAD_VALUE_A_BIT_PATTERN 0x44FA0000
 #define M658_UNREAD_VALUE_B_BIT_PATTERN 0xBF800000
 #define M658_UNREAD_VALUE_C_BIT_PATTERN 0xFFFFFFFF
@@ -243,22 +236,13 @@ s32 fn_1_730(M658PlayerWork *player)
     return lbl_1_bss_38->group[player->playerNo];
 }
 void fn_1_2828(OMOBJ *);
-void *fn_1_A0(s32, u32, void (*)(OMOBJ *));
 /* The sequence setup callback creates the shared T Minus Five runtime object. */
 void fn_1_768(void) {
     lbl_1_bss_38 = fn_1_A0(100, 132, fn_1_2828);
 }
 extern void fn_1_1500(s32 player, s32 mode);
-extern void fn_1_6414(void *resource);
-extern s16 *fn_1_753C(s32 index);
-extern OMOBJ *fn_1_6384(void *description);
 extern M658HookActor *fn_1_1F04(u32 index);
 extern void fn_1_1D14(M658PlayerWork *, s32);
-extern void fn_8002D414(s16 model, f32 time);
-extern void fn_8002D86C(s16 model, f32 speed);
-extern void fn_80026A44(s16 model, u32 flags);
-extern void fn_80026790(s16 model, Vec *position);
-extern void fn_80086F44(MGACTOR *actor);
 extern void fn_1_1C98(M658PlayerWork *work, s32 mode, f32 time, s32 flags);
 extern void fn_1_1C54(u16 mode);
 /* After the winner reveal, replaces selection props with the closing scene and prepares both
@@ -436,8 +420,6 @@ void fn_1_1040(s32 index, s32 adjust, Vec *position)
     }
 }
 extern void fn_1_1040(s32 index, s32 adjust, Vec *position);
-extern void fn_80086AA8(MGACTOR *actor, Vec *position);
-extern void fn_80086CA8(MGACTOR *actor, f32 rotation);
 /* Registers a player's character for the selection rows and places it at its marker. */
 void fn_1_1158(M658PlayerWork *work)
 {
@@ -476,11 +458,9 @@ void fn_1_1158(M658PlayerWork *work)
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-void ObjectSetup(void);
 extern HUPROCESS *lbl_1_bss_0;
 extern OMOBJMAN *lbl_1_bss_0;
 extern const HuVecF lbl_1_rodata_10, lbl_1_rodata_1C, lbl_1_rodata_28;
-extern void fn_1_264(void);
 /* The row constructor adds each board model to the collision map used during selection. */
 void fn_1_1238(M658Rows *rows, s16 modelId)
 {
@@ -555,7 +535,6 @@ void fn_1_1574(s32 player, s32 resetAttributes)
         }
     }
 }
-extern void fn_1_736C(Vec *position, s32 soundId);
 /* Called each row-update tick to move the highlight, play its sound, and finish choices. */
 void fn_1_162C(s32 player)
 {
@@ -822,9 +801,6 @@ void fn_1_1E18(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lag)
         (lbl_1_bss_38->motionEventIndex)++;
     }
 }
-typedef struct M658Pool M658Pool;
-extern void *fn_1_6764(M658Pool *pool);
-extern void *fn_1_67A0(M658Pool *pool, void *item);
 /* Player and scene handlers claim an inactive pooled effect and run its start callback. */
 M658HookActor *fn_1_1F04(u32 index)
 {
@@ -1035,10 +1011,6 @@ void fn_1_2728(M658HookActor *work, s32 action)
 }
 #define fn_1_358C fn_1_38E4
 #define fn_1_61C fn_1_5C0
-s16 *fn_1_753C(s32 index);
-OMOBJ *fn_1_6384(void *description);
-void *fn_1_A0(s32 priority, u32 bytes, OMOBJ_FUNC update);
-void fn_1_140(OMOBJ *object, OMOBJ_FUNC update);
 void fn_1_1E18(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lag);
 void fn_1_358C(OMOBJ *), fn_1_3940(OMOBJ *), fn_1_34E0(OMOBJ *), fn_1_3BC0(OMOBJ *),
     fn_1_5430(OMOBJ *), fn_1_2A58(OMOBJ *);
@@ -1134,18 +1106,8 @@ typedef struct M658SequenceUpdateWork {
     s16 state;
 
 } M658SequenceUpdateWork;
-extern u32 fn_80071A8C(void);
-extern u16 fn_80071C70(void);
 extern void fn_1_D8C(void);
-extern void fn_8002C95C(s16 model, s16 motion);
-extern f32 fn_8002D4E0(s16 model);
-extern void fn_800269E8(s16 model, u32 flags);
-extern void fn_1_7468(s32 soundId);
 extern void fn_1_1DC4(s32 eventTable);
-extern void fn_1_571C(s32 player, s32 amount);
-extern void WipeCreate(s16 type, s16 direction, s16 duration);
-extern u16 fn_80071C18(s16 firstCharacter, s16 secondCharacter, s16 thirdCharacter,
-                          s16 fourthCharacter);
 /* Minigame diagnostics discard the supplied value in the game build. */
 static inline void DebugValue(s32 value) { }
 /* During main play, waits for a selected player or a draw, then enters the corresponding result
@@ -1403,8 +1365,6 @@ void fn_1_31E8(OMOBJ *object)
 }
 
 extern void fn_1_7A4(void);
-extern s32 CharFXPlay(s16 characterNo, s16 effect);
-extern void fn_1_7244(s32 modelId, char *objectName, s32 targetModelId);
 /* Runs the winner's exit animation after the result sequence completes. */
 void fn_1_3294(OMOBJ *object)
 {
@@ -1458,7 +1418,6 @@ void fn_1_33CC(OMOBJ *object)
         state->substate++;
     }
 }
-void fn_1_140(OMOBJ *, OMOBJ_FUNC);
 void fn_1_3578(OMOBJ *object);
 typedef struct M658LightWork {
     u8 unreadBytesBeforePhase[2];
@@ -1485,7 +1444,6 @@ void fn_1_3578(OMOBJ *object)
 
     work = object->data;
 }
-extern void *memset(void *destination, int value, unsigned long count);
 void fn_1_3684(OMOBJ *object);
 void fn_1_3714(OMOBJ *object);
 void fn_1_380C(OMOBJ *object);
@@ -1594,7 +1552,6 @@ typedef struct M658SceneParameters {
 } M658SceneParameters;
 extern void fn_1_12EC(s32 player);
 extern void fn_1_1238(M658Rows *work, s16 modelId);
-extern void fn_1_140(OMOBJ *object, void (*callback)(OMOBJ *));
 extern void fn_1_3B94(OMOBJ *object);
 /* Initializes both selection rows, their shared goal marker and collision models, then
  * installs row updates. */
@@ -1649,9 +1606,7 @@ void fn_1_3B94(OMOBJ *object)
 }
 extern void fn_1_1B58(MGACTOR *actor, int workValue);
 extern s32 fn_1_730(M658PlayerWork *work);
-extern void *fn_1_6F70(s32 value);
 extern void fn_1_1158(M658PlayerWork *work);
-extern s16 fn_1_5770(void);
 extern void fn_1_3F14(OMOBJ *object);
 /* Sequence setup registers this as each active player's object initializer; it creates the
 * character actor and installs its selection update callback. Player creation also replaces
@@ -1794,7 +1749,6 @@ void fn_1_3F14(OMOBJ *object)
         break;
     }
 }
-extern f32 fn_1_69B8(f32 start, f32 end, f32 t);
 /* State 1 places a row-return effect and restores normal character scale after a delay.
  * Both players use the first row's return sound. */
 void fn_1_402C(OMOBJ *object)
@@ -1830,7 +1784,6 @@ void fn_1_402C(OMOBJ *object)
     }
 }
 typedef struct MgPlayer_s MGPLAYER;
-void fn_8007E888(MGPLAYER *);
 /* State 2 enables normal input when main play begins. Pre-setting state 3 makes the following
  * state-setter call leave frame and nextState unchanged. */
 void fn_1_47A8(OMOBJ *object)
@@ -1902,8 +1855,6 @@ typedef struct M658Scene {
     u8 unreadBytesBeforeFlags[28];
     s16 flags;
 } M658Scene;
-extern void fn_800268E0(s16, Vec *);
-extern void fn_8007E888(MGPLAYER *);
 /* State 4 collapses X/Z and stretches Y before changing markers. Flag 0x40 skips to state 8
  * on entry, or preserves the current marker if set during the transition. */
 void fn_1_4390(OMOBJ *object)
@@ -2068,7 +2019,6 @@ void fn_1_4A98(OMOBJ *owner)
         work->frame += 1;
     }
 }
-extern f32 fn_1_6A78(f32 start, f32 end, f32 t);
 /* The winner-state handler moves and turns the character into the result pose. */
 void fn_1_4B24(OMOBJ *object)
 {
@@ -2130,8 +2080,6 @@ void fn_1_4DAC(OMOBJ *owner)
     }
 }
 
-extern f64 atan2(f64 y, f64 x);
-extern void fn_1_69C8(Vec *start, Vec *end, f32 t, Vec *out);
 
 /* Called in player state 13 each update to spin and move the character along its result path. */
 void fn_1_4E50(OMOBJ *object)
@@ -2160,8 +2108,6 @@ void fn_1_4E50(OMOBJ *object)
 }
 
 extern s32 fn_1_1AA0(s32 playerIndex, s32 target);
-extern s32 fn_1_72D0(s32 modulus, s32 count, s32 *weights);
-extern s32 frandmod(s32 modulus);
 
 void fn_1_506C(OMOBJ *obj);
 extern void fn_1_533C(OMOBJ *object);
@@ -2312,11 +2258,6 @@ void fn_1_5370(OMOBJ *obj)
 
 typedef struct M658RegistryTemplate { u32 initialWords[16]; } M658RegistryTemplate;
 
-extern void *fn_1_65E8(u8 *buffer, s32 bytes, s32 itemBytes);
-struct M658Pool;
-extern void *fn_1_6680(struct M658Pool *pool);
-extern void fn_1_140(OMOBJ *object, OMOBJ_FUNC update);
-extern void fn_1_55FC(OMOBJ *object);
 
 /* Builds configured item pools on the first object update, then installs their tick. */
 void fn_1_5430(OMOBJ *object)

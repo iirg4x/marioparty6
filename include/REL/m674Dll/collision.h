@@ -51,4 +51,10 @@ typedef struct M674EntryWork {
     M674Entry *entries[31]; /* Primary collision-entry slots. */
     M674Entry *secondaryEntries[10]; /* Secondary entries checked against the primary set. */
 } M674EntryWork;
+
+/* Collision entry registration and queries. */
+s32 fn_1_11218(M674Entry *registration);
+M674Entry *fn_1_11444(u32 type, s32 id);
+s32 fn_1_112A8(M674Entry *entry);
+
 #endif

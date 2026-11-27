@@ -1,6 +1,8 @@
 /* Shared state records for the Daft Rafts minigame. */
 #ifndef M609_STATE_H
 #define M609_STATE_H
+#include "REL/minigame_particle_models.h"
+#include "REL/minigame_course_camera.h"
 #include "REL/minigame_shadow_camera.h"
 
 #include "REL/minigame_light.h"
@@ -252,25 +254,8 @@ typedef struct M609PlayerActors {
     struct MgPlayer_s *players[4];
 } M609PlayerActors;
 
-typedef struct M609ParticleState {
-    s16 modelIds[1];
-    s16 unk02[1]; /* The game's code never reads this field. */
-    void *allocation[1];
-} M609ParticleState;
-
-typedef struct M609CameraRecord {
-    s32 unk00; /* The game's code never reads this field. */
-    u8 unk04[12]; /* No code names this field. */
-    Vec rotation;
-    Vec target;
-    u8 unk28[12]; /* No code names this field. */
-    /* Indices 0/1: orbit distance/aspect; 2 through 5: viewport x/y/width/height. */
-    f32 projectionAndViewport[6];
-    f32 fieldOfView;
-} M609CameraRecord;
-
 typedef struct M609CameraBank {
-    M609CameraRecord cameras[4];
+    MinigameCourseCamera cameras[4];
     u8 unk140[8]; /* No code names this field. */
 } M609CameraBank;
 
@@ -280,7 +265,7 @@ extern M609Control lbl_1_bss_30;
 extern M609Player lbl_1_bss_24C[4];
 extern M609Motion lbl_1_bss_70C[4];
 extern M609Model lbl_1_bss_8BC[154];
-extern M609ParticleState lbl_1_bss_6B64;
+extern MinigameParticleModels lbl_1_bss_6B64;
 extern MinigameShadowCamera lbl_1_bss_6B6C;
 extern LightInitState lbl_1_bss_6BF8;
 extern u8 lbl_1_bss_6BBC[60];

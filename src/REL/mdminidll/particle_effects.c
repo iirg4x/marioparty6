@@ -18,13 +18,6 @@
 #include "game/sprite.h"
 #include "REL/mdminidll/readonly_scalars.h"
 
-typedef struct MDMinIndirectTextureConsumedView {
-    f32 warpMatrix[2][3]; /* Indirect-texture transform applied to the captured scene. */
-    GXColor tint; /* Color and blend amount supplied to the warp stages. */
-    f32 scrollY; /* Vertical texture-coordinate translation. */
-    f32 scrollStep; /* Translation added on each material-hook call. */
-} MDMinIndirectTextureConsumedView;
-
 extern ANIMDATA *lbl_1_bss_880;
 extern ANIMDATA *lbl_1_bss_884;
 extern void *lbl_1_bss_888;
@@ -119,31 +112,12 @@ typedef struct MDMinidllParticleByteTemplate {
 
 extern s16 lbl_1_bss_8CA[2];
 
-typedef struct MDMinModelHookDataView {
-    s16 emitting; /* 1 permits new trail particles; 0 lets existing particles finish. */
-    f32 baseColor[3]; /* Base RGB intensities, copied from the supplied 0-255 channels. */
-    Point3d spawnCenter; /* Center of the particle-spawn region in model coordinates. */
-} MDMinModelHookDataView;
 #include "game/hu3d.h"
 
 extern s16 lbl_1_bss_88E[6][5];
 
-typedef struct MDMinigHookDataView {
-    s16 emitting; /* 1 permits new particles; 0 lets existing particles finish. */
-    u8 unusedEmitterState[2]; /* Emitter state left unchanged by row controls. */
-    f32 baseRed; /* Base red intensity, copied from an 8-bit channel. */
-    f32 baseGreen; /* Base green intensity, copied from an 8-bit channel. */
-    f32 baseBlue; /* Base blue intensity, copied from an 8-bit channel. */
-    f32 spawnX; /* X center of the particle-spawn region in model coordinates. */
-    f32 spawnY; /* Y center of the particle-spawn region in model coordinates. */
-    f32 spawnZ; /* Z center of the particle-spawn region in model coordinates. */
-} MDMinigHookDataView;
-
 extern s16 lbl_1_bss_8CE[];
 
-typedef struct MDMinidllColorTemplate {
-    u8 rows[2][4]; /* RGB and an unused alpha byte for each preview effect. */
-} MDMinidllColorTemplate;
 #include "game/main.h"
 #include "game/hu3d.h"
 
@@ -173,17 +147,8 @@ extern s16 lbl_1_bss_88E[6][5];
 #include "game/window.h"
 #include "humath.h"
 
-typedef struct MDMinTrajectory {
-    s16 state; /* Menu path phase selected by its animation callback. */
-    HuVecF current; /* First position passed to the menu path interpolator. */
-    HuVecF from; /* Second position passed to the menu path interpolator. */
-    HuVecF to; /* Third position passed to the menu path interpolator. */
-    f32 elapsed; /* Number of animation updates completed in the current phase. */
-    f32 limit; /* Duration of the current animation phase, in updates. */
-} MDMinTrajectory;
-
 ANIMDATA *lbl_1_bss_938[9]; /* Flash, ring, spiral, trail and five character-effect textures. */
-MDMinidllLayerEffectStateView lbl_1_bss_8E8[2]; /* Texture warp and countdown state for each
+MinigameTextureTransition lbl_1_bss_8E8[2]; /* Texture warp and countdown state for each
                                                  * slot. */
 HU3D_MODELID lbl_1_bss_8E4; /* Shared eight-slot growing-flash pool. */
 HU3D_MODELID lbl_1_bss_8DC[4]; /* Four rotating radial-ring models. */
@@ -413,7 +378,7 @@ void fn_1_22EBC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx transform);
 void fn_1_23334(void);
 void fn_1_234A0(void);
 void fn_1_234F8(s16 effectIndex, s16 visible);
-void fn_1_23574(s16 effectIndex, Point3d *position, u8 *baseColor);
+void fn_1_23574(s16 effectIndex, Point3d *position, GXColor *baseColor);
 void fn_1_236AC(s16 effectIndex);
 void fn_1_23700(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx transform);
 void fn_1_23D00(void);
@@ -493,10 +458,10 @@ void fn_1_1F574(HU3D_DRAW_OBJ *drawObject, HSF_MATERIAL *material)
     Mtx projectionMatrix;
     Mtx inverseCamera;
     GXTexObj captureTexture;
-    MDMinIndirectTextureConsumedView *textureState;
+    MinigameTextureTransition *textureState;
     HU3D_CAMERA *camera;
 
-    /* The model hook holds the warp matrix, tint and scrolling offset. */
+    /* The model hook holds the warp matrix, color and scrolling offset. */
     textureState = drawObject->model->hookData;
     camera = Hu3DCamera;
     GXInitTexObj(&captureTexture, lbl_1_bss_888, 320U, 240U, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 0U);
@@ -514,14 +479,14 @@ void fn_1_1F574(HU3D_DRAW_OBJ *drawObject, HSF_MATERIAL *material)
     GXLoadTexMtxImm(textureMatrix, 33U, GX_MTX3x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, 33U, 0U, 125U);
     PSMTXTrans(textureTransform, 0.0f,
-               (textureState->scrollY += textureState->scrollStep),
+               (textureState->textureScrollY += textureState->textureScrollStep),
                0.0f);
     PSMTXScale(textureScale, 0.8f, 0.8f, 1.0f);
     PSMTXConcat(textureScale, textureTransform, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, 30U, GX_MTX2x4);
     GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, 30U, 0U, 125U);
     GXSetTexCoordGen2(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0, 60U, 0U, 125U);
-    GXSetTevColor(GX_TEVREG0, textureState->tint);
+    GXSetTevColor(GX_TEVREG0, textureState->color);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP1, GX_COLOR0);
     GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_C0);
     GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
@@ -542,24 +507,24 @@ void fn_1_1F574(HU3D_DRAW_OBJ *drawObject, HSF_MATERIAL *material)
     GXSetIndTexOrder(GX_INDTEXSTAGE0, GX_TEXCOORD1, GX_TEXMAP2);
     GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
     GXSetTevIndWarp(GX_TEVSTAGE0, GX_INDTEXSTAGE0, 1U, 0U, GX_ITM_0);
-    GXSetIndTexMtx(GX_ITM_0, textureState->warpMatrix, -1);
+    GXSetIndTexMtx(GX_ITM_0, textureState->indirectMatrix, -1);
 }
 
 /* While screen distortion is active, the object callback reduces the first slot's warp and scroll
  * speed with its countdown, then hides the model once the countdown becomes negative. */
 void fn_1_1F9F4(OMOBJ *effectObject)
 {
-    MDMinidllLayerEffectStateView *state =
-        (MDMinidllLayerEffectStateView *) lbl_1_bss_8E8;
+    MinigameTextureTransition *state =
+        lbl_1_bss_8E8;
 
     /* Both warp axes use the same offset; direct S/T contributions stay zero. */
-    state->warpSFromS = state->warpTFromS = 0.0f;
-    state->warpSFromT = state->warpTFromT = 0.0f;
-    state->warpSOffset = state->warpTOffset =
-        (0.09f * state->remainingUpdates) / 90.0f;
-    state->scrollStep =
-        ((-0.02f) * state->remainingUpdates) / 90.0f;
-    if ((state->remainingUpdates -= 1.0f) < 0.0f) {
+    state->indirectMatrix[0][0] = state->indirectMatrix[1][0] = 0.0f;
+    state->indirectMatrix[0][1] = state->indirectMatrix[1][1] = 0.0f;
+    state->indirectMatrix[0][2] = state->indirectMatrix[1][2] =
+        (0.09f * state->remainingFrames) / 90.0f;
+    state->textureScrollStep =
+        ((-0.02f) * state->remainingFrames) / 90.0f;
+    if ((state->remainingFrames -= 1.0f) < 0.0f) {
         fn_800269E8(*effectObject->mdlId, (1 << 0));
         fn_80025980(1);
         effectObject->objFunc = NULL;
@@ -573,9 +538,9 @@ void fn_1_1FAF4(s16 effectIndex, Point3d *position)
     OMOBJ *obj = lbl_1_bss_87C;
 
     if (obj) {
-        ((MDMinidllLayerEffectStateView *) lbl_1_bss_8E8)[effectIndex].scrollY =
+        lbl_1_bss_8E8[effectIndex].textureScrollY =
             0.0f;
-        ((MDMinidllLayerEffectStateView *) lbl_1_bss_8E8)[effectIndex].remainingUpdates =
+        lbl_1_bss_8E8[effectIndex].remainingFrames =
             90.0f;
         /* Use the requested x/y, but fix the distortion plane at z = -840. */
         fn_80026760(obj->mdlId[effectIndex], position->x, position->y, (-840.0f));
@@ -592,12 +557,8 @@ void fn_1_1FBE8(OMOBJ *obj)
     HU3D_MODEL *model = NULL;
 
     omSetStatBit(obj, (1 << 8));
-    lbl_1_bss_880 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x960000, 88), 0x10000000,
-            2));
-    lbl_1_bss_884 = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x960000, 88), 0x10000000,
-            2));
+    lbl_1_bss_880 = HuSprAnimDataRead(DATANUM(0x960000, 88));
+    lbl_1_bss_884 = HuSprAnimDataRead(DATANUM(0x960000, 88));
     lbl_1_bss_888 = HuMemDirectMallocNum(
         2,
         GXGetTexBufferSize(320, 240, GX_TF_RGB565, GX_FALSE, 0),
@@ -612,7 +573,7 @@ void fn_1_1FBE8(OMOBJ *obj)
     fn_800269E8(obj->mdlId[0], (1 << 0));
     fn_80027884(obj->mdlId[0], fn_1_1F574);
     /* Only the first state slot is cleared and attached to this model. */
-    memset(lbl_1_bss_8E8, 0, sizeof(MDMinidllLayerEffectStateView));
+    memset(lbl_1_bss_8E8, 0, sizeof(MinigameTextureTransition));
     model = &lbl_802C01C8[obj->mdlId[0]];
     model->hookData = lbl_1_bss_8E8;
     obj->objFunc = NULL;
@@ -674,18 +635,7 @@ void fn_1_1FECC(void)
  * countdown set to 90; the update hides it after the countdown becomes negative. */
 void fn_1_1FFA8(Point3d *position)
 {
-    OMOBJ *obj = lbl_1_bss_87C;
-
-    if (obj) {
-        ((MDMinidllLayerEffectStateView *) lbl_1_bss_8E8)->scrollY =
-            0.0f;
-        ((MDMinidllLayerEffectStateView *) lbl_1_bss_8E8)->remainingUpdates =
-            90.0f;
-        fn_80026760(*obj->mdlId, position->x, position->y, -840.0f);
-        fn_80026A44(*obj->mdlId, (1 << 0));
-        fn_80025918(1, fn_1_1F508);
-        obj->objFunc = fn_1_1F9F4;
-    }
+    fn_1_1FAF4(0, position);
 }
 
 /* Layer-14 hook blends four expanded copies of the captured scene, captures the result and clears
@@ -849,8 +799,8 @@ void fn_1_20B74(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx transform)
     DCFlushRangeNoSync(particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
-/* Effect setup creates the eight-slot flash pool on layer 7, initially hidden. */
-void fn_1_20E34(void)
+/* Initialize the layer particles. */
+static inline void InitiateLayerParticles(void)
 {
     lbl_1_bss_8E4 = fn_8003216C(lbl_1_bss_938[0], 8);
     fn_80026760(lbl_1_bss_8E4, 0.0f, 0.0f,
@@ -862,6 +812,12 @@ void fn_1_20E34(void)
     fn_800324E0(lbl_1_bss_8E4, 1.0f);
     fn_800326D0(lbl_1_bss_8E4, fn_1_20B74);
     fn_8003269C(lbl_1_bss_8E4, 1);
+}
+
+/* Effect setup creates the eight-slot flash pool on layer 7, initially hidden. */
+void fn_1_20E34(void)
+{
+    InitiateLayerParticles();
 }
 
 /* Effect teardown destroys the flash-particle model. */
@@ -1097,7 +1053,7 @@ void fn_1_2185C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx transform)
                            cos((3.141592653589793 * (f64) particleData->vel.x) / 180.0));
                 particleData->pos.z =
                     fn_1_1F494(800.0f, -2000.0f, particleData->accel.x, particleData->accel.y);
-                particleData->zRot += 0.10000000149011612f;
+                particleData->zRot += 0.1f;
                 particleData->scale =
                     fn_1_1F494(150.0f, 50.0f, particleData->accel.x, particleData->accel.y);
                 particleData->vel.x += 2.0f;
@@ -1120,8 +1076,8 @@ void fn_1_2185C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx transform)
     DCFlushRangeNoSync(particle->data, particle->maxCnt * 72);
 }
 
-/* Effect setup creates the hidden thousand-slot spiral emitter on layer 7. */
-void fn_1_21FE8(void)
+/* Start the layer particle emission. */
+static inline void StartLayerParticles(void)
 {
     lbl_1_bss_8DA = fn_8003216C(lbl_1_bss_938[2], 1000);
     fn_80026760(lbl_1_bss_8DA,
@@ -1136,6 +1092,12 @@ void fn_1_21FE8(void)
     fn_800269E8(lbl_1_bss_8DA, (1 << 0));
     fn_800324E0(lbl_1_bss_8DA, 1.0f);
     fn_800326D0(lbl_1_bss_8DA, fn_1_2185C);
+}
+
+/* Effect setup creates the hidden thousand-slot spiral emitter on layer 7. */
+void fn_1_21FE8(void)
+{
+    StartLayerParticles();
 }
 
 /* Effect teardown destroys the spiral-emitter model. */
@@ -1401,16 +1363,22 @@ void fn_1_23334(void)
     }
 }
 
-/* Effect teardown destroys both preview-glow models. */
-void fn_1_234A0(void)
+/* Destroys the two effect models used to preview the next minigame. */
+static inline void DestroyPreviewModels(s16 *models)
 {
     s16 effectIndex;
 
     effectIndex = 0;
     while (effectIndex < 2) {
-        fn_800262D0(lbl_1_bss_8CE[effectIndex]);
+        fn_800262D0(models[effectIndex]);
         effectIndex += 1;
     }
+}
+
+/* Effect teardown destroys both preview-glow models. */
+void fn_1_234A0(void)
+{
+    DestroyPreviewModels(lbl_1_bss_8CE);
 }
 
 /* Menu effect control toggles visibility of one of the two preview particle trails. */
@@ -1425,16 +1393,16 @@ void fn_1_234F8(s16 effectIndex, s16 visible)
 
 /* Preview-transition trigger: enables its trail and optionally updates the base RGB and spawn
  * center. */
-void fn_1_23574(s16 effectIndex, Point3d *position, u8 *baseColor)
+void fn_1_23574(s16 effectIndex, Point3d *position, GXColor *baseColor)
 {
     HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_8CA[effectIndex]];
-    MDMinModelHookDataView *hookData = model->hookData;
+    HU3D_PARTICLE *hookData = model->hookData;
 
-    hookData->emitting = 1;
+    hookData->dataCnt = 1;
     if (baseColor != NULL) {
-        hookData->baseColor[0] = (f32) baseColor[0];
-        hookData->baseColor[1] = (f32) baseColor[1];
-        hookData->baseColor[2] = (f32) baseColor[2];
+        hookData->pos.x = (f32) baseColor->r;
+        hookData->pos.y = (f32) baseColor->g;
+        hookData->pos.z = (f32) baseColor->b;
     }
     if (position != NULL) {
         hookData->spawnCenter.x = position->x;
@@ -1522,7 +1490,7 @@ void fn_1_23700(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx transform)
             particleData->pos.y += particleData->accel.y;
             particleData->pos.z += particleData->accel.z;
             if ((s32) (rand8() % 5) == 0) {
-                particleData->zRot = 0.01745329238474369f * (f32) frandmod(360);
+                particleData->zRot = 0.017453292f * (f32) frandmod(360);
                 particleData->color.a = frandmod(127) + 128;
             }
             brightnessOrScale = fn_1_1F494(1.0f, 0.0f, particleData->vel.x, particleData->vel.y);
@@ -1560,24 +1528,18 @@ void fn_1_23D00(void)
 /* Effect teardown destroys both preview-trail emitters. */
 void fn_1_23E6C(void)
 {
-    s16 effectIndex;
-
-    effectIndex = 0;
-    while (effectIndex < 2) {
-        fn_800262D0(lbl_1_bss_8CA[effectIndex]);
-        effectIndex += 1;
-    }
+    DestroyPreviewModels(lbl_1_bss_8CA);
 }
 
 /* Preview-transition control starts a color-coded glow and trail together. Mode 0 fades the glow
 * and stops new trail particles; mode 2 hides both. */
 void fn_1_23EC4(s16 effectIndex, HuVecF *position, s16 mode)
 {
-    MDMinidllColorTemplate localColors = {{{255, 114, 46, 0}, {109, 207, 246, 0}}};
+    GXColor localColors[2] = {{255, 114, 46, 0}, {109, 207, 246, 0}};
 
     if (mode == 1) {
-        fn_1_22D30(effectIndex, position, (GXColor *)localColors.rows[effectIndex]);
-        fn_1_23574(effectIndex, position, localColors.rows[effectIndex]);
+        fn_1_22D30(effectIndex, position, &localColors[effectIndex]);
+        fn_1_23574(effectIndex, position, &localColors[effectIndex]);
         return;
     } else if (mode == 0) {
         fn_1_22E34(effectIndex);
@@ -1609,22 +1571,22 @@ void fn_1_2433C(s16 row, Point3d *position, u8 *baseColor)
 {
     s16 effectType;
     HU3D_MODEL *model;
-    MDMinigHookDataView *emitterState;
+    HU3D_PARTICLE *emitterState;
 
     effectType = 0;
     while (effectType < 5) {
         model = &lbl_802C01C8[lbl_1_bss_88E[row][effectType]];
         emitterState = model->hookData;
-        emitterState->emitting = 1;
+        emitterState->dataCnt = 1;
         if (baseColor != NULL) {
-            emitterState->baseRed = (f32) baseColor[0];
-            emitterState->baseGreen = (f32) baseColor[1];
-            emitterState->baseBlue = (f32) baseColor[2];
+            emitterState->pos.x = (f32) baseColor[0];
+            emitterState->pos.y = (f32) baseColor[1];
+            emitterState->pos.z = (f32) baseColor[2];
         }
         if (position != NULL) {
-            emitterState->spawnX = position->x;
-            emitterState->spawnY = position->y;
-            emitterState->spawnZ = position->z;
+            emitterState->spawnCenter.x = position->x;
+            emitterState->spawnCenter.y = position->y;
+            emitterState->spawnCenter.z = position->z;
         }
         fn_80026A44(lbl_1_bss_88E[row][effectType], (1 << 0));
         effectType += 1;
@@ -1714,7 +1676,7 @@ void fn_1_24524(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx transform)
             particleData->pos.y += particleData->colorIdx;
             particleData->colorIdx += particleData->accel.y;
             if ((s32) (rand8() % 5) == 0) {
-                particleData->zRot = 0.01745329238474369f * (f32) frandmod(360);
+                particleData->zRot = 0.017453292f * (f32) frandmod(360);
                 particleData->color.a = frandmod(127) + 128;
             }
             brightnessOrScale = fn_1_1F494(1.0f, 0.0f, particleData->vel.x, particleData->vel.y);
@@ -1778,31 +1740,20 @@ void fn_1_24CFC(void)
  * screen-warp, flash, ring, spiral, preview and character-transition models. */
 void fn_1_24D80(HUPROCESS *process)
 {
-    MDMinidllHalfwordTemplate capacities;
     s16 ringIndex;
-    s16 effectType;
     s16 burstIndex;
     s16 glowIndex;
     s16 trailIndex;
-    s16 row;
     s16 animationIndex;
 
     lbl_1_bss_878 = process;
     lbl_1_bss_87C = fn_8003AB38(lbl_1_bss_878, 4096, 1U, 0U, -1, fn_1_1FBE8);
     animationIndex = 0;
     while (animationIndex < 9) {
-        lbl_1_bss_938[animationIndex] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_998[animationIndex], 0x10000000, 2));
+        lbl_1_bss_938[animationIndex] = HuSprAnimDataRead(lbl_1_data_998[animationIndex]);
         animationIndex += 1;
     }
-    lbl_1_bss_8E4 = fn_8003216C(lbl_1_bss_938[0], 8);
-    fn_80026760(lbl_1_bss_8E4, 0.0f, 0.0f, 0.0f);
-    fn_800268B0(lbl_1_bss_8E4, 1.0f, 1.0f, 1.0f);
-    fn_80026B8C(lbl_1_bss_8E4, 7);
-    fn_800269E8(lbl_1_bss_8E4, (1 << 0));
-    fn_800324E0(lbl_1_bss_8E4, 1.0f);
-    fn_800326D0(lbl_1_bss_8E4, fn_1_20B74);
-    fn_8003269C(lbl_1_bss_8E4, 1);
+    InitiateLayerParticles();
     ringIndex = 0;
     while (ringIndex < 4) {
         lbl_1_bss_8DC[ringIndex] = fn_8003216C(lbl_1_bss_938[1], 16);
@@ -1817,14 +1768,7 @@ void fn_1_24D80(HUPROCESS *process)
         fn_8003269C(lbl_1_bss_8DC[ringIndex], 1);
         ringIndex += 1;
     }
-    lbl_1_bss_8DA = fn_8003216C(lbl_1_bss_938[2], 1000);
-    fn_80026760(lbl_1_bss_8DA, 0.0f, 275.0f, 0.0f);
-    fn_800268B0(lbl_1_bss_8DA, 1.0f,
-        1.0f, 1.0f);
-    fn_80026B8C(lbl_1_bss_8DA, 7);
-    fn_800269E8(lbl_1_bss_8DA, (1 << 0));
-    fn_800324E0(lbl_1_bss_8DA, 1.0f);
-    fn_800326D0(lbl_1_bss_8DA, fn_1_2185C);
+    StartLayerParticles();
     burstIndex = 0;
     while (burstIndex < 4) {
         lbl_1_bss_8D2[burstIndex] = fn_8003216C(lbl_1_bss_938[2], 64);
@@ -1865,35 +1809,19 @@ void fn_1_24D80(HUPROCESS *process)
         fn_8003269C(lbl_1_bss_8CA[trailIndex], 1);
         trailIndex += 1;
     }
-    capacities = lbl_1_rodata_398;
-    for (row = 0; row < 6; row += 1) {
-        for (effectType = 0; effectType < 5; effectType += 1) {
-            lbl_1_bss_88E[row][effectType] = fn_8003216C(
-                lbl_1_bss_938[effectType + 4], capacities.particleCounts[effectType]);
-            fn_80026760(lbl_1_bss_88E[row][effectType],
-                0.0f, 0.0f, 0.0f);
-            fn_800268B0(lbl_1_bss_88E[row][effectType],
-                1.0f, 1.0f, 1.0f);
-            fn_800269E8(lbl_1_bss_88E[row][effectType], (1 << 0));
-            fn_80026B8C(lbl_1_bss_88E[row][effectType], 2);
-            fn_800326D0(lbl_1_bss_88E[row][effectType], fn_1_24524);
-            fn_8003269C(lbl_1_bss_88E[row][effectType], 1);
-        }
-    }
+    fn_1_24AD0();
 }
 
 /* Called when minigame mode leaves its menu: destroys all particle models, disables the scene hooks
  * and releases the screen-distortion model and capture buffer. */
 void fn_1_257D0(void)
 {
-    OMOBJ *effectObject;
     s16 ringIndex;
     s16 burstIndex;
     s16 glowIndex;
     s16 trailIndex;
     s16 effectType;
     s16 row;
-    HU3D_MODEL *model;
 
     fn_800262D0(lbl_1_bss_8E4);
     ringIndex = 0;
@@ -1927,22 +1855,7 @@ void fn_1_257D0(void)
         row += 1;
     }
     fn_80025980(14);
-    if ((OMOBJ *) lbl_1_bss_87C) {
-        effectObject = lbl_1_bss_87C;
-        model = NULL;
-        fn_80025980(1);
-        if (effectObject) {
-            model = &lbl_802C01C8[*effectObject->mdlId];
-            model->hookData = lbl_1_bss_8E8;
-            fn_800262D0(*effectObject->mdlId);
-            if ((void *) lbl_1_bss_888) {
-                HuMemDirectFree(lbl_1_bss_888);
-            }
-            lbl_1_bss_888 = NULL;
-        }
-        effectObject = NULL;
-    }
-    lbl_1_bss_87C = NULL;
+    fn_1_1FECC();
 }
 
 const GXColor lbl_1_rodata_3A2 = {128, 128, 255, 128};
@@ -1962,8 +1875,8 @@ void fn_1_259FC(HuVecF *position)
 
     object = lbl_1_bss_87C;
     if (object) {
-        ((MDMinidllLayerEffectStateView *) lbl_1_bss_8E8)->scrollY = 0.0f;
-        ((MDMinidllLayerEffectStateView *) lbl_1_bss_8E8)->remainingUpdates = 90.0f;
+        lbl_1_bss_8E8->textureScrollY = 0.0f;
+        lbl_1_bss_8E8->remainingFrames = 90.0f;
         fn_80026760(*object->mdlId, position->x, position->y, -840.0f);
         fn_80026A44(*object->mdlId, (1 << 0));
         fn_80025918(1, fn_1_1F508);
@@ -2138,25 +2051,8 @@ void fn_1_25EF0(s16 particleNo, HuVecF *position, s16 colorNo, s16 mode)
  * particles. */
 void fn_1_26394(void)
 {
-    HU3D_PARTICLE_DATA *particleData;
-    HU3D_PARTICLE *particle;
-    s16 particleIndex;
-    HU3D_MODEL *model;
-
-    /* Restarting clears particle slots but preserves the emitter angle and draw count. */
     fn_80025918(14, fn_1_20068);
-    model = &lbl_802C01C8[lbl_1_bss_8DA];
-    particle = model->hookData;
-    particleIndex = 0;
-    particleData = particle->data;
-    while (particleIndex < particle->maxCnt) {
-        particleData->time = 0;
-        particleData->scale = 0.0f;
-        particleIndex += 1;
-        particleData += 1;
-    }
-    particle->dataCnt = 1;
-    model->attr &= MDMIN_VISIBLE_MODEL_MASK;
+    fn_1_217BC();
 }
 
 /* Character-transition effect control: mode 1 enables a row with a palette color, mode 0 stops

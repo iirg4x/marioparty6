@@ -9,4 +9,9 @@ typedef struct M674ScoreWork {
     MinigameScoreEntry entries[4]; /* Per-player score display state. */
 } M674ScoreWork;
 
+/* Score and result updates. */
+s32 fn_1_100F8(s32 scoreIndex);
+void fn_1_10028(s32 scoreIndex, s32 coinAmount);
+void fn_1_10150(s32 scoreIndex, f32 *x, f32 *y);
+
 #endif

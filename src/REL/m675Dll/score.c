@@ -1,4 +1,5 @@
 /* Draws and updates the four player score displays. */
+#include "REL/minigame_score_entry.h"
 #include "dolphin/math.h"
 #include "game/object.h"
 #include "game/gamework.h"
@@ -10,20 +11,9 @@
 #include "datadir_enum.h"
 #include "string.h"
 
-typedef struct ScoreDisplayEntry {
-    s32 value; /* Displayed score, capped at 99. */
-    f32 x; /* Score-box position in screen pixels. */
-    f32 y; /* Score-box position in screen pixels. */
-    s16 box; /* Score-panel group containing the player's character tile. */
-    s16 decorationGroup; /* Sprite group for the two static score decorations. */
-    MGSCORE *score; /* Numeric score renderer. */
-    s32 animationState; /* Digit pop-animation phase. */
-    f32 digitScale; /* Uniform scale used by the pop animation. */
-} ScoreDisplayEntry;
-
 typedef struct ScoreDisplayWork {
     s32 displayState; /* 0 hidden, 1 reveal requested, 2 updating. */
-    ScoreDisplayEntry entries[4]; /* One score display for each player. */
+    MinigameScoreEntry entries[4]; /* One score display for each player. */
 } ScoreDisplayWork;
 
 typedef struct ScoreDisplayPosition {
@@ -45,7 +35,7 @@ void fn_1_EA34(OMOBJ *object);
 void fn_1_EA70(OMOBJ *object);
 void fn_1_EA98(OMOBJ *object);
 void fn_1_ED00(OMOBJ *object);
-void fn_1_EEFC(ScoreDisplayEntry *entry);
+void fn_1_EEFC(MinigameScoreEntry *entry);
 
 /* Called by ObjectSetup during setup to create the score-display object. */
 void fn_1_E9A8(HUPROCESS *process)
@@ -92,14 +82,13 @@ void fn_1_EA98(OMOBJ *object)
     s32 spriteIndex;
 
     scoreBoxAnimation =
-        HuSprAnimRead(fn_80008DD0(fn_1_A38(16), 0x10000000, 2));
+        HuSprAnimDataRead(fn_1_A38(16));
 
-    scoreAnimation = HuSprAnimRead(
-        fn_80008DD0(DATANUM(0x9b0000, 48), 0x10000000, 2));
+    scoreAnimation = HuSprAnimDataRead(DATANUM(0x9b0000, 48));
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
 
-        ScoreDisplayEntry *entry = &work->entries[playerIndex];
+        MinigameScoreEntry *entry = &work->entries[playerIndex];
 
         s16 scoreBox = MgScoreBoxCreateChar(120, 48, lbl_80265728[playerIndex].charNo);
 
@@ -166,7 +155,7 @@ void fn_1_EA98(OMOBJ *object)
 /* The score-object update reveals requested displays and refreshes their digits each frame. */
 void fn_1_ED00(OMOBJ *object) {
     ScoreDisplayWork *work = object->data;
-    ScoreDisplayEntry *entry;
+    MinigameScoreEntry *entry;
     MGSCORE *score;
     s16 box;
     s16 decorationGroup;
@@ -229,7 +218,7 @@ void fn_1_ED00(OMOBJ *object) {
 }
 
 /* Called by fn_1_EA98 to place a player's box and digit sprites together. */
-void fn_1_EEFC(ScoreDisplayEntry *entry)
+void fn_1_EEFC(MinigameScoreEntry *entry)
 {
     f32 x;
     f32 y;
@@ -247,7 +236,7 @@ void fn_1_EF88(s32 playerIndex, s32 amount)
 
     ScoreDisplayWork *table;
 
-    ScoreDisplayEntry *record;
+    MinigameScoreEntry *record;
 
     if (lbl_1_bss_540 != NULL) {
 
@@ -317,7 +306,7 @@ void fn_1_F0B0(s32 playerIndex, f32 *xPosition, f32 *yPosition)
 
     ScoreDisplayWork *table;
 
-    ScoreDisplayEntry *record;
+    MinigameScoreEntry *record;
 
     if (lbl_1_bss_540 != NULL) {
 

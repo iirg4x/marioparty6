@@ -144,7 +144,7 @@ void fn_1_2F83C(void) {
     } while ((lbl_802C0008[0] & PAD_BUTTON_START) == 0);
 
     lbl_1_bss_FC = 2;
-    WipeCreate(2, 0, 0x14);
+    WipeCreate(2, 0, 20);
     HuPrcEnd();
     for (;;) {
         HuPrcVSleep();
@@ -184,7 +184,7 @@ void fn_1_2F890(void) {
     lbl_1_bss_9C[1] = fn_80025A04(fn_80008DD0(0xA4002D, 0x10000000, 2));
     lbl_1_bss_1CC4 = 0;
     index = 0;
-    while (index < 0xA) {
+    while (index < 10) {
         lbl_1_bss_1CB0[index] = -1;
         index += 1;
     }
@@ -303,31 +303,7 @@ void fn_1_301DC(void)
 
 /* Debug view: prints the camera's center, rotation and zoom in a window. */
 void fn_1_302A0(void) {
-    GXColor windowColor;
-
-    windowColor.r = 0;
-    windowColor.g = 0;
-    windowColor.b = 0x90;
-    windowColor.a = 0xC0;
-
-    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
-    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
-    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
-    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
-    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].z -= 5.0f;
-    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].z += 5.0f;
-    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
-    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
-
-    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, &lbl_1_data_25A0);
-
-    printWin(0x10, 0x28, 0x180, 0x54, &windowColor);
-    fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
-           lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
-           lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+    QuizDebugCamera(&lbl_1_data_25A0);
 }
 
 /* Animates the cast models while the cast changes, forward or backward, hiding the message
@@ -653,7 +629,7 @@ void fn_1_31904(void) {
     s32 modelIndex;
 
     modelIndex = 0;
-    while (modelIndex < 0xA) {
+    while (modelIndex < 10) {
         lbl_1_bss_1CB0[modelIndex] = fn_80025A04(fn_80008DD0(lbl_1_data_241C[modelIndex],
                 0x10000000, 2));
         fn_800097F4(lbl_1_data_23CC[modelIndex]);
@@ -741,7 +717,7 @@ void fn_1_31DF0(void) {
             }
             if (result == 3) {
                 MicQuizMicHudStateSet(0);
-                WipeCreate(2, 0, 0x14);
+                WipeCreate(2, 0, 20);
                 lbl_1_bss_FC = 5;
             } else {
                 continue;
@@ -749,17 +725,17 @@ void fn_1_31DF0(void) {
         } else {
             if (result == -2) {
                 MicQuizMicHudStateSet(0);
-                HuPrcSleep(0x3C);
+                HuPrcSleep(60);
                 continue;
             }
             if (result == -3) {
                 MicQuizMicHudStateSet(0);
-                HuPrcSleep(0x3C);
+                HuPrcSleep(60);
                 continue;
             }
             if (result == -4) {
                 MicQuizMicHudStateSet(0);
-                HuPrcSleep(0x3C);
+                HuPrcSleep(60);
                 continue;
             }
             if (result == 0) {
@@ -774,7 +750,7 @@ void fn_1_31DF0(void) {
             }
             if (result == 2) {
                 MicQuizMicHudStateSet(0);
-                WipeCreate(2, 0, 0x14);
+                WipeCreate(2, 0, 20);
                 lbl_1_bss_FC = 5;
             } else {
                 fn_1_31FA0(result - 3);
@@ -794,7 +770,7 @@ void fn_1_31F4C(void) {
         HuPrcVSleep();
     } while ((lbl_802C0008[0] & PAD_BUTTON_START) == 0);
 
-    WipeCreate(2, 0, 0x14);
+    WipeCreate(2, 0, 20);
     lbl_1_bss_FC = 5;
     HuPrcEnd();
     for (;;) {
@@ -871,7 +847,7 @@ void fn_1_31FA0(s32 playerId) {
 
     OSReport("Nothing \n");
     MicQuizMicHudStateSet(0);
-    HuPrcSleep(0x3C);
+    HuPrcSleep(60);
 }
 
 /* Opens a mic selection, waits for the choice and returns the recognized response. */
@@ -948,7 +924,7 @@ void fn_1_3250C(void) {
     HuWinMesSpeedSet((s16)windowId, 0);
     HuWinAttrSet((s16)windowId, 0x800);
     HuWinMesSet((s16)windowId, 0x1C003A);
-    HuPrcSleep(0x3C);
+    HuPrcSleep(60);
     HuWinExClose((s16)windowId);
     HuWinKill((s16)windowId);
 }

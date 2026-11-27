@@ -4,7 +4,7 @@
 #include "game/armem.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
-#include "game/board/guide.h"
+#include "game/board/guide_object.h"
 #include "game/board/main.h"
 #include "game/board/player.h"
 #include "game/board/tutorial.h"
@@ -16,8 +16,6 @@
 #include "messdir_enum.h"
 #include "game/board/wipe.h"
 #include "humath.h"
-
-MBMODELID mbObjCreate(int dataNum, const int *motFileTbl, BOOL animOffF);
 
 extern BOOL mbSaveNewF;
 

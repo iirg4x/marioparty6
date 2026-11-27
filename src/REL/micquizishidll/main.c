@@ -98,14 +98,14 @@ typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
 
-HUPROCESS *lbl_1_bss_114[0xB];
+HUPROCESS *lbl_1_bss_114[11];
 s32 lbl_1_bss_110;
 u8 lbl_1_bss_10C[0x4];
 OMOBJ *lbl_1_bss_108;
 f32 lbl_1_bss_104;
 s32 lbl_1_bss_100;
 s32 lbl_1_bss_FC;
-OMOBJ *lbl_1_bss_AC[0x14];
+OMOBJ *lbl_1_bss_AC[20];
 OMOBJ *lbl_1_bss_A8;
 u8 lbl_1_bss_A6[0x2];
 s16 lbl_1_bss_A4;
@@ -117,7 +117,7 @@ s32 lbl_1_bss_94;
 s32 lbl_1_bss_90;
 f32 lbl_1_bss_8C;
 s32 lbl_1_bss_74[6];
-s32 lbl_1_bss_24[0x14];
+s32 lbl_1_bss_24[20];
 s32 lbl_1_bss_20;
 s32 lbl_1_bss_1C;
 f32 micQuizPauseBgScroll;
@@ -208,8 +208,8 @@ void fn_1_234(OMOBJ *object) {
     s32 selectedValue;
 
     if (omSysExitReq != 0) {
-        HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
-        WipeCreate(2, 0, 0x14);
+        HuAudSStreamFadeOut(lbl_1_bss_20, 500);
+        WipeCreate(2, 0, 20);
         object->objFunc = fn_1_7D8;
     }
 
@@ -282,7 +282,7 @@ void fn_1_234(OMOBJ *object) {
     case 2:
         fn_1_14EE0();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 3;
         break;
     case 3:
@@ -293,7 +293,7 @@ void fn_1_234(OMOBJ *object) {
     case 4:
         fn_1_1706C();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 5;
         break;
     case 5:
@@ -304,7 +304,7 @@ void fn_1_234(OMOBJ *object) {
     case 6:
         fn_1_197D4();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 7;
         break;
     case 7:
@@ -315,7 +315,7 @@ void fn_1_234(OMOBJ *object) {
     case 8:
         fn_1_2A164();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 9;
         break;
     case 9:
@@ -326,7 +326,7 @@ void fn_1_234(OMOBJ *object) {
     case 10:
         fn_1_1C210();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 11;
         break;
     case 11:
@@ -337,7 +337,7 @@ void fn_1_234(OMOBJ *object) {
     case 12:
         fn_1_26810();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 13;
         break;
     case 13:
@@ -348,7 +348,7 @@ void fn_1_234(OMOBJ *object) {
     case 14:
         fn_1_1FB04();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 15;
         break;
     case 15:
@@ -359,7 +359,7 @@ void fn_1_234(OMOBJ *object) {
     case 16:
         fn_1_229E0();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 17;
         break;
     case 17:
@@ -370,7 +370,7 @@ void fn_1_234(OMOBJ *object) {
     case 18:
         fn_1_2C624();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 19;
         break;
     case 19:
@@ -381,7 +381,7 @@ void fn_1_234(OMOBJ *object) {
     case 20:
         fn_1_2EDB4();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 21;
         break;
     case 21:
@@ -392,7 +392,7 @@ void fn_1_234(OMOBJ *object) {
     case 22:
         fn_1_2F890();
         HuPrcSleep(10);
-        WipeCreate(1, 0, 0x14);
+        WipeCreate(1, 0, 20);
         object->work[0] = 23;
         break;
     case 23:
@@ -605,7 +605,7 @@ void fn_1_2670(void)
 }
 /* Starts an object's motion unless that motion is already playing. */
 void fn_1_2788(OMOBJ *object, s32 motion, f32 scale, u32 attribute) {
-    MicquizObjectWork *work = (MicquizObjectWork *)object->data;
+    MicquizObjectWork *work = object->data;
 
     if (work->currentMotion != motion) {
         work->currentMotion = motion;
@@ -622,7 +622,7 @@ void fn_1_2800(void) {
     for (index = 0; index < 6; index++) {
         lbl_1_bss_74[index] = -1;
     }
-    for (index = 0; index < 0x14; index++) {
+    for (index = 0; index < 20; index++) {
         lbl_1_bss_24[index] = -1;
     }
     for (index = 0; index < lbl_1_data_41C[lbl_1_bss_100].count; index++) {
@@ -706,38 +706,9 @@ f32 fn_1_2BDC(f32 start, f32 end, s32 frameCount) {
 }
 /* Gives the world position of a model's named object. */
 void fn_1_2D18(HU3D_MODELID modelId, char *objName, Vec *position) {
-    Mtx matrix;
-
-    fn_80023398(modelId, objName, matrix);
-    position->x = matrix[0][3];
-    position->y = matrix[1][3];
-    position->z = matrix[2][3];
+    QuizObjectWorldPosition(modelId, objName, position);
 }
 /* Debug view: prints the camera's center, rotation and zoom in a window. */
 void fn_1_2D70(void) {
-    GXColor windowColor;
-
-    windowColor.r = 0;
-    windowColor.g = 0;
-    windowColor.b = 0x90;
-    windowColor.a = 0xC0;
-
-    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
-    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
-    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
-    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
-    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].z -= 5.0f;
-    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].z += 5.0f;
-    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
-    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
-
-    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, &lbl_1_data_388);
-
-    printWin(0x10, 0x28, 0x180, 0x54, &windowColor);
-    fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
-           lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
-           lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+    QuizDebugCamera(&lbl_1_data_388);
 }

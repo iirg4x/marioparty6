@@ -1414,8 +1414,9 @@ void fn_1_49C8(OMOBJ *obj)
     obj = NULL;
 }
 
-/* Returns the result model to its idle motion after the celebration. */
-static inline void ResultMotionUpdate(OMOBJ *obj)
+/* Speeds up the character motion for 30 frames, then restores normal speed and starts its looping
+ * motion. */
+void fn_1_4A9C(OMOBJ *obj)
 {
     fn_8002D86C(obj->mdlId[0], 2.0f);
     if (obj->work[3]++ > 30) {
@@ -1425,13 +1426,6 @@ static inline void ResultMotionUpdate(OMOBJ *obj)
             0.0f, 15.0f,
             ((1 << 30) | (1 << 0)));
     }
-}
-
-/* Speeds up the character motion for 30 frames, then restores normal speed and starts its looping
- * motion. */
-void fn_1_4A9C(OMOBJ *obj)
-{
-    ResultMotionUpdate(obj);
 }
 
 /* Starts the character transition motion and installs fn_1_4A9C to restore the idle motion after
@@ -1450,7 +1444,7 @@ void fn_1_4B44(void)
  * looping motion. */
 void fn_1_4BB8(OMOBJ *obj)
 {
-    ResultMotionUpdate(obj);
+    fn_1_4A9C(obj);
 }
 
 /* Starts the next result-character motion and resets its transition timer. */
@@ -5472,8 +5466,8 @@ void fn_1_1AAF8(void)
     lbl_1_bss_38->objFunc = fn_1_1AAA8;
 }
 
-/* Select the next result screen. */
-static inline void ResultScreenSelect(void)
+/* Hides the summary layout selected for individual or team mode and clears its update callback. */
+void fn_1_1AB5C(void)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
 
@@ -5482,12 +5476,6 @@ static inline void ResultScreenSelect(void)
         fn_1_1A468();
     }
     lbl_1_bss_38->objFunc = NULL;
-}
-
-/* Hides the summary layout selected for individual or team mode and clears its update callback. */
-void fn_1_1AB5C(void)
-{
-    ResultScreenSelect();
 }
 
 /* Creates the shared summary models, links them into individual or team summary groups, and hides
@@ -5512,7 +5500,7 @@ void fn_1_1AD68(OMOBJ *obj)
     fn_800269E8(obj->mdlId[1], (1 << 0));
     fn_800269E8(obj->mdlId[2], (1 << 0));
 
-    ResultScreenSelect();
+    fn_1_1AB5C();
     obj->objFunc = NULL;
 }
 
@@ -5681,8 +5669,9 @@ void fn_1_1BAF4(void)
     }
 }
 
-/* Hides the result sprites and result model. */
-static inline void ResultDisplayHide(void)
+/* Hides the graph header, grid, mode controls, and cursor model before rebuilding the graph
+ * view. */
+void fn_1_1C050(void)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
     OMOBJ *obj;
@@ -5693,13 +5682,6 @@ static inline void ResultDisplayHide(void)
     fn_1_1F834();
     obj = lbl_1_bss_30;
     fn_800269E8(obj->mdlId[0], (1 << 0));
-}
-
-/* Hides the graph header, grid, mode controls, and cursor model before rebuilding the graph
- * view. */
-void fn_1_1C050(void)
-{
-    ResultDisplayHide();
 }
 
 /* Creates the sprite groups for the individual statistics graph, its grid, selected-row highlights,
@@ -6002,7 +5984,7 @@ void fn_1_1D318(void)
 /* Hides the graph header, grid, mode controls, cursor, and the selected-statistic model. */
 void fn_1_1D874(void)
 {
-    ResultDisplayHide();
+    fn_1_1C050();
 }
 
 /* Creates the team statistics graph sprite groups, grid, selected-row highlights, graph-mode

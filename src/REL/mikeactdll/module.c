@@ -43,6 +43,7 @@
 #include "game/mg/actman.h"
 
 #include "game/board/object.h"
+#include "REL/mikeactdll/microphone_init.h"
 
 #include "game/board/tutorial.h"
 
@@ -90,9 +91,7 @@ void _epilog(void) {
 
 typedef struct Process_s HUPROCESS;
 
-HUPROCESS *fn_80080418(void);
 
-HUPROCESS *fn_8000DAC0(void (*func)(void), u16 priority, u32 stackSize, s32 extraSize, HUPROCESS *parent);
 
 extern HUPROCESS *lbl_1_bss_6C;
 
@@ -106,14 +105,14 @@ extern void (*lbl_1_bss_24)(void);
 
 extern void (*lbl_1_bss_20)(void);
 
-void fn_1_320(void);
 
+/* Starts the activity's processes and normalizes the selected mode. */
 void ObjectSetup(void)
 {
     u16 normalizedMode;
     s16 gameMode;
 
-    lbl_1_bss_6C = (HUPROCESS *) fn_80080418();
+    lbl_1_bss_6C = fn_80080418();
     fn_8000DAC0(fn_1_534, 0x0BB8, 0x4000, 0, lbl_1_bss_6C);
     fn_8000DAC0(fn_1_320, 0x07D0, 0x4000, 0, lbl_1_bss_6C);
     gameMode = lbl_80265B70.subGameNo;

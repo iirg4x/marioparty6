@@ -2112,7 +2112,6 @@ void fn_1_6290(M619Selection *selection) {
     s32 firstIndex;
     s32 secondIndex;
     s32 group;
-    s32 value;
 
     for (index = 0; index < 3; index++) {
         selection->groupOrder[index] = index;

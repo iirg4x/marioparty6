@@ -4868,10 +4868,9 @@ int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF pos, HuVecF rot, HuVecF scale,
 }
 
 /* Impact events add a gold ring with the fixed hit fade used by the trap effect. */
-void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot,
-    HuVecF *scale)
+void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF pos, HuVecF rot, HuVecF scale)
 {
-    mbev_CapEffRingAdd(obj, *pos, *rot, *scale, 1, 12, 2,
+    mbev_CapEffRingAdd(obj, pos, rot, scale, 1, 12, 2,
         capsuleRingColor);
 }
 

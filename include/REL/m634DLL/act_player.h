@@ -17,10 +17,6 @@ struct ActPlayer;
 typedef void (ActPlayer::*CallbackMethod)(const EventPacket &);
 typedef void (ActPlayer::*ActState)();
 
-struct NightScale {
-    f32 x, y, z;
-};
-
 // The object a player's input comes from: a pad, or one of the two computer levels.
 #include "REL/m634DLL/player_part.h"
 

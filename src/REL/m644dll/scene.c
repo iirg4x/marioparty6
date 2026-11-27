@@ -1,5 +1,5 @@
 /* Builds the course models and looks up their camera and collision transforms. */
-#include "REL/m644dll/module_types.h"
+#include "REL/m644dll/module_declarations.h"
 #include "game/hu3d.h"
 
 #define M644_COURSE_COLLISION_MASK 0x60
@@ -14,7 +14,6 @@ s32 lbl_1_data_70[4] = {
 /* Loaded motion IDs shared by the two team course models. */
 s16 lbl_1_data_80[4] = {-1, -1, -1, -1};
 
-extern OMOBJMAN *fn_1_A0(void);
 
 /* Model and motion IDs shared by route, camera and collision setup. */
 M644ModelScene lbl_1_bss_40;
@@ -24,8 +23,6 @@ typedef struct ModelObjectNames {
     char *name[5];
 } ModelObjectNames;
 
-void fn_1_21B8(M644PlayerRecord *);
-void fn_1_24D4(M644PlayerRecord *);
 
 typedef struct M644ResourceIds_s {
     /* Packed model or motion entries for the three scene pieces. */
@@ -38,20 +35,8 @@ static const M644ResourceIds seasonal_motion_resources =
     {{DATANUM(0x670000, 78), DATANUM(0x670000, 80), DATANUM(0x670000, 82)}};
 
 extern s16 lbl_802C0278;
-extern void fn_1_7D98(void);
-extern void fn_1_4E84(void);
-extern void fn_1_6838(void);
-extern void fn_1_848(void);
-extern s32 fn_1_9190(void);
 
-void fn_1_1690(void);
-void fn_1_1EA8(s32 entry_index, Point3d *position, Mtx matrix);
 void fn_1_1F38(s32 entry_index, Mtx matrix);
-void fn_1_1FB4(s32 team_index, s32 route_sequence);
-void fn_1_205C(s32 team_index);
-void fn_1_20A0(s32 team_index);
-int fn_1_213C(COL_NARROW_PARAM *contact, COL_NARROW_PARAM *other_contact);
-void fn_1_215C(M644PlayerRecord *player);
 void fn_1_16F4(OMOBJ *object);
 void fn_1_20E4(MGPLAYER *player);
 void fn_1_2110(MGPLAYER *player);

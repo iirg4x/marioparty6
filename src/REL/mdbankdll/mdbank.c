@@ -829,8 +829,8 @@ void fn_1_1BD0(void)
 {
 }
 
-/* Restores the guide motion when the gesture timer expires. */
-static inline void GuideGestureEnd(OMOBJ *obj)
+/* Returns the left guide to its first motion after the gesture timer expires. */
+void fn_1_1BD4(OMOBJ *obj)
 {
     if (obj->work[3]++ > 45) {
         obj->objFunc = NULL;
@@ -838,12 +838,6 @@ static inline void GuideGestureEnd(OMOBJ *obj)
         fn_8002CCC0(obj->mdlId[0], obj->mtnId[0], 0.0f,
             15.0f, ((1 << 30) | (1 << 0)));
     }
-}
-
-/* Returns the left guide to its first motion after the gesture timer expires. */
-void fn_1_1BD4(OMOBJ *obj)
-{
-    GuideGestureEnd(obj);
 }
 
 /* Starts a guide gesture and sets its return callback. */
@@ -864,7 +858,7 @@ void fn_1_1C64(void)
 /* Returns the right guide to its first motion after the gesture timer expires. */
 void fn_1_1CD8(OMOBJ *obj)
 {
-    GuideGestureEnd(obj);
+    fn_1_1BD4(obj);
 }
 
 /* Starts the right guide gesture and installs its timed return callback. */

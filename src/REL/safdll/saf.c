@@ -1,5 +1,6 @@
 /* Sets up the motion-check overlay and renders its model, camera, and surface tests. */
 #include "math.h"
+#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/cmath"
 #include "dolphin/gx.h"
 #include "dolphin/gx/GXVert.h"
 #include "dolphin/gx/GXTexture.h"
@@ -700,8 +701,6 @@ void fn_1_301C(void) {
 
 extern u16 *lbl_1_bss_198;
 extern void *lbl_1_bss_19C;
-
-f64 exp(f64);
 
 /* Called during fn_1_6E0 setup to allocate the depth image and build its alpha lookup table. */
 void fn_1_33FC(void) {

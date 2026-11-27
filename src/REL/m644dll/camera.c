@@ -1,5 +1,5 @@
 /* Sets up the two camera views and updates their scene models and transitions. */
-#include "REL/m644dll/module_types.h"
+#include "REL/m644dll/module_declarations.h"
 #include "game/hu3d.h"
 #include "game/object.h"
 
@@ -9,12 +9,6 @@ s32 lbl_1_data_40[7] = {
     DATANUM(0x670000, 4), DATANUM(0x670000, 5), DATANUM(0x670000, 6)
 };
 
-void fn_1_1124(s32);
-s32 fn_1_913C(s32);
-
-s32 fn_1_559C(s16);
-s32 fn_1_56D4(s32);
-
 /* Rail selection and split-screen transition state shared by camera callbacks. */
 M644EffectMenuData lbl_1_bss_8;
 
@@ -23,57 +17,33 @@ typedef struct SceneModelIds {
     s32 rail_selector[12];
 } SceneModelIds;
 
-extern void fn_1_11F0(void);
 extern void fn_1_C44(OMOBJ *obj);
 
-extern void fn_1_9664(void);
 extern void fn_1_EE0(OMOBJ *object);
 typedef struct M644CameraIdPair_s {
     /* One value per team view: mask or viewport dimension, as selected by the caller. */
     s32 per_team[2];
 } M644CameraIdPair;
 
-extern OMOBJMAN *fn_1_A0(void);
 extern void fn_1_C0C(OMOBJ *object);
 extern void fn_1_1180(s32 index);
-
-extern void fn_1_11F0(void);
-extern f32 fn_1_9178(s32 entry_index);
-
-extern void fn_1_94A4(s32 index);
-extern s16 fn_1_9114(void);
-extern void fn_1_1060(OMOBJ *object);
 
 typedef struct M644CameraIds_s {
     /* One value per team view: mask or viewport dimension, as selected by the caller. */
     s32 per_team[2];
 } M644CameraIds;
 
-extern void fn_1_80D4(s32 cameraIndex, Mtx modelMatrix);
-
-extern s32 fn_1_224(void);
-extern void fn_1_9614(void);
-
 s32 fn_1_367CC(s32 *player);
 
-void fn_1_1690(void);
-void fn_1_590(void);
 
 void fn_1_5A8(void);
-void fn_1_690(s32 index, s32 selector);
 BOOL fn_1_6F8(s32 team_index);
 float fn_1_760(s32 index);
-s32 fn_1_7C8(s32 entry_index);
-void fn_1_848(void);
 void fn_1_C0C(OMOBJ *object);
 void fn_1_C44(OMOBJ *object);
 void fn_1_EE0(OMOBJ *object);
-void fn_1_1060(OMOBJ *object);
-void fn_1_1124(s32 team_index);
 void fn_1_1180(s32 index);
-void fn_1_11F0(void);
 void fn_1_134C(void);
-void fn_1_1510(void);
 
 /* Loads seven invisible animated camera rails for each team during camera setup. */
 void fn_1_5A8(void)

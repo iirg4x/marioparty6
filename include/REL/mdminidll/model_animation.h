@@ -1,6 +1,7 @@
 /* Selection-card models, texture animations and saved transition state for minigame mode. */
 #ifndef REL_MDMINIDLL_MODEL_ANIMATION_H
 #define REL_MDMINIDLL_MODEL_ANIMATION_H
+#include "REL/minigame_menu_trajectory.h"
 #include "dolphin/types.h"
 #include "dolphin/mtx/GeoTypes.h"
 

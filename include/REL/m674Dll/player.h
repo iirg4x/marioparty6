@@ -105,4 +105,8 @@ extern Vec lbl_1_data_158[4], lbl_1_data_198[4], lbl_1_data_1D8;
 extern f32 lbl_1_data_188[4], lbl_1_data_1C8[4];
 extern M674PlayerConfig lbl_1_data_1E4;
 extern M674ComputerParam lbl_1_data_240[4];
+
+/* Player setup and updates. */
+s32 fn_1_7660(M674Entry *first, M674Entry *second);
+
 #endif

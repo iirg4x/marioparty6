@@ -6,6 +6,7 @@
 #include "REL/minigame_prop_motion.h"
 
 #include "REL/minigame_light.h"
+#include "REL/minigame_positional_audio.h"
 #include "dolphin/gx.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -44,23 +45,6 @@ typedef struct {
     M620ObjectCallback callback; /* Optional per-frame callback after sound updates. */
 } M620ObjectState;
 
-/* A movement sample stores its starting point, displacement, and calculated point. */
-typedef struct {
-    Point3d origin; /* Starting point of this particle's movement sample. */
-    Point3d delta; /* Per-step displacement applied to the starting point. */
-    Point3d result; /* Calculated position stored for this sample. */
-} M620VectorRecord;
-
-/* Groups particle movement settings with the batch's 32 position samples. */
-typedef struct {
-    u32 source; /* Source particle or object index selected by the caller. */
-    u32 target; /* Destination particle or object index selected by the caller. */
-    u32 resource; /* Data resource used to create the particle batch. */
-    f32 step; /* Movement increment used to calculate each position sample. */
-    s32 active; /* Nonzero while this batch is being updated. */
-    M620VectorRecord records[32]; /* Position samples used by the particle movement. */
-} M620ParticleBatch;
-
 /* Character height and motion selections copied into every contestant's state at setup. */
 typedef struct {
     float unk0; /* The game's code never reads this field. */
@@ -91,5 +75,67 @@ typedef struct {
     s32 nextPoint;
     M649Point points[64];
 } M649Motion;
+
+/* Called to update a camera view. */
+typedef void (*M649CameraCallback)(OMOBJ *, u32, s32);
+
+/* Setup and shared game state. */
+s32 fn_1_1218(s32 cameraIndex);
+s32 fn_1_1210(s32 resource);
+void fn_1_1338(s32 player, u32 resultId, u32 character);
+void fn_1_1368(s32 player);
+BOOL fn_1_1388(void);
+s32 fn_1_127C(u32 resultId);
+void ObjectSetup(void);
+s32 fn_1_1234(void);
+s32 fn_1_1244(void);
+
+/* Camera, lighting, audio, and resource support. */
+void fn_1_13D8(OMOBJMAN *manager);
+void fn_1_14A0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color);
+void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float farPlane,
+    float shadowRadius, OM_CAMERA_VIEW *view);
+void fn_1_2BCC(u32 cameras, void *data);
+void fn_1_2780(M649CameraCallback callback);
+void fn_1_3250(HUPROCESS *objectManager, MinigameAudioRange *audioConfig);
+BOOL fn_1_2C84(u32 cameras);
+void fn_1_2590(s32 camera, Vec *direction, Vec *target, float fov, float radius);
+void fn_1_281C(u32 cameras, float x, float y, float width, float height);
+s32 fn_1_48DC(s32 dataNum);
+float fn_1_4AF4(float start, float end, float factor);
+float fn_1_4C10(float start, float end);
+s32 fn_1_49E4(s32 model, s32 dataNum);
+float fn_1_4CC4(HuVecF *currentPosition, HuVecF *nextPosition);
+float fn_1_4D60(Vec *first, Vec *second);
+
+/* Score and result updates. */
+void fn_1_A220(OMOBJMAN *manager);
+void fn_1_A600(void);
+s32 fn_1_A644(s32 playerIndex);
+void fn_1_A2A8(void);
+void fn_1_A5A4(s32 playerIndex, s32 awardedPoints);
+
+/* Player setup and updates. */
+void fn_1_4F24(HUPROCESS *manager);
+void fn_1_5020(void);
+s32 fn_1_6958(s32 player);
+
+/* Prop setup and updates. */
+void fn_1_6990(HUPROCESS *manager);
+void fn_1_6A84(void);
+void fn_1_728C(OMOBJ *object);
+void fn_1_7288(OMOBJ *object);
+void fn_1_7300(OMOBJ *object);
+void fn_1_7C94(OMOBJ *obj);
+void fn_1_7DD8(OMOBJ *obj);
+void fn_1_7FD4(OMOBJ *object);
+void fn_1_80B4(OMOBJ *object);
+void fn_1_8278(OMOBJ *object);
+s32 fn_1_8D20(s32 group, s32 id, s32 frames);
+
+/* Effect setup and particle updates. */
+void fn_1_8F58(HUPROCESS *process);
+void fn_1_A0BC(M649Motion *motion);
+void fn_1_A168(s32 cameraIndex, Vec *position, float *speed, s32 effectType);
 
 #endif

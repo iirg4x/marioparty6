@@ -5,6 +5,7 @@
 #include "REL/mikeactdll/module_types.h"
 
 #include "string.h"
+#include "REL/mikeactdll/module.h"
 
 extern s16 lbl_1_bss_1AE[3];
 
@@ -18,7 +19,7 @@ extern u16 lbl_1_bss_34;
 
 extern s16 lbl_1_bss_1B4;
 
-extern s16 lbl_1_bss_31BA[0x100];
+extern s16 lbl_1_bss_31BA[256];
 
 extern s16 lbl_1_bss_33BA;
 
@@ -37,14 +38,12 @@ extern MikeActSetupCallback lbl_1_data_964[3];
 
 void fn_1_105FC(void);
 
-void fn_1_1698C(void);
-void fn_1_17B5C(void);
 MikeActSetupCallback lbl_1_data_958[3] = { fn_1_12804, fn_1_1698C, fn_1_1CDEC };
 MikeActSetupCallback lbl_1_data_964[3] = { fn_1_12E48, fn_1_17B5C, fn_1_1D594 };
 char *lbl_1_data_B28[55] = { "blk01_A", "blk01_B", "blk01_C", "blk01_D", "blk01_E", "blk02_A", "blk02_B", "blk02_C", "blk02_D", "blk02_E", "blk03_A", "blk03_B", "blk03_C", "blk03_D", "blk03_E", "blk04_A", "blk04_B", "blk04_C", "blk04_D", "blk04_E", "blk05_A", "blk05_B", "blk05_C", "blk05_D", "blk05_E", "blk06_A", "blk06_B", "blk06_C", "blk06_D", "blk06_E", "blk07_A", "blk07_B", "blk07_C", "blk07_D", "blk07_E", "blk08_A", "blk08_B", "blk08_C", "blk08_D", "blk08_E", "blk09_A", "blk09_B", "blk09_C", "blk09_D", "blk09_E", "blk10_A", "blk10_B", "blk10_C", "blk10_D", "blk10_E", "blk11_A", "blk11_B", "blk11_C", "blk11_D", "blk11_E" };
 
 extern const Point3d lbl_1_rodata_3A0;
-
+/* Loads the collision stage and starts the mode audio. */
 void fn_1_101C0(s16 mode)
 {
     s16 modelId;
@@ -114,7 +113,7 @@ void fn_1_101C0(s16 mode)
 }
 
 const Point3d lbl_1_rodata_3A0 = { 49000.0f, 50.0f, -500.0f };
-
+/* Places an animated stage model at the requested position. */
 void fn_1_105FC(void)
 {
     Point3d position;
@@ -142,7 +141,7 @@ void fn_1_105FC(void)
 }
 
 extern s16 lbl_1_bss_31B8;
-
+/* Changes the selected stage piece's motion. */
 void fn_1_10770(s16 selectionNo)
 {
     fn_8002CCC0(
@@ -150,7 +149,7 @@ void fn_1_10770(s16 selectionNo)
         lbl_1_bss_1AE[selectionNo],
         0.0f, 10.0f, ((1 << 30) | (1 << 0)));
 }
-
+/* Hides the model and records it in the stage work. */
 s16 fn_1_107EC(s16 modelId)
 {
     lbl_1_bss_31BA[lbl_1_bss_33BA++] = modelId;
@@ -158,11 +157,12 @@ s16 fn_1_107EC(s16 modelId)
     return lbl_1_bss_33BA - 1;
 }
 
+/* Reserves a free collision entry and returns its index. */
 s16 fn_1_10868(void)
 {
     s16 index;
 
-    for (index = 0; index < 0x100; index++) {
+    for (index = 0; index < 256; index++) {
         if ((lbl_1_bss_1B8[index].flags & 1) == 0) {
             memset(&lbl_1_bss_1B8[index], 0, sizeof(lbl_1_bss_1B8[index]));
             lbl_1_bss_1B8[index].flags = 1;
@@ -280,11 +280,12 @@ void fn_1_10FB4(s16 index)
     }
 }
 
+/* Finds the active collision entry for an actor number. */
 s16 fn_1_1106C(u32 value)
 {
     s16 index;
 
-    for (index = 0; index < 0x100; index++) {
+    for (index = 0; index < 256; index++) {
         if (lbl_1_bss_1B8[index].flags != 0 &&
             lbl_1_bss_1B8[index].kind == 0 &&
             value == (u32)lbl_1_bss_1B8[index].actor->no) {
@@ -294,11 +295,12 @@ s16 fn_1_1106C(u32 value)
     return -1;
 }
 
+/* Finds the active collision entry for a collision map index. */
 s16 fn_1_1110C(s16 state)
 {
     s16 index;
 
-    for (index = 0; index < 0x100; index++) {
+    for (index = 0; index < 256; index++) {
         if (lbl_1_bss_1B8[index].flags != 0 &&
             lbl_1_bss_1B8[index].kind == 1 &&
             lbl_1_bss_1B8[index].collision_map_index == state) {
@@ -450,6 +452,7 @@ void fn_1_118CC(OMOBJ *object)
     }
 }
 
+/* Shows stage sections around the current position and updates collision entries. */
 void fn_1_11B44(void)
 {
     Point3d position;
@@ -478,7 +481,7 @@ void fn_1_11B44(void)
             modelObject->mesh.base.scale.z = 1.0f;
     }
 
-    for (index = 0; index < 0x100; index++) {
+    for (index = 0; index < 256; index++) {
         if ((lbl_1_bss_1B8[index].flags & 1) == 0 ||
             (lbl_1_bss_1B8[index].flags & 2) != 0) {
             continue;
@@ -523,9 +526,9 @@ void fn_1_11B44(void)
 s16 lbl_1_bss_33BE;
 s16 lbl_1_bss_33BC;
 s16 lbl_1_bss_33BA;
-s16 lbl_1_bss_31BA[0x100];
+s16 lbl_1_bss_31BA[256];
 s16 lbl_1_bss_31B8;
-MikeActStateRecord lbl_1_bss_1B8[0x100];
+MikeActStateRecord lbl_1_bss_1B8[256];
 s16 lbl_1_bss_1B4;
 s16 lbl_1_bss_1AE[3];
 s16 lbl_1_bss_1AC;

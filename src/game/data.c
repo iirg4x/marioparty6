@@ -49,7 +49,21 @@ void fn_80007668(void)
     while(dirStat->archivePath) {
         if((dirStat->dvdEntryNumber = DVDConvertPathToEntrynum(dirStat->archivePath)) == -1) {
             OSReport("data.c: Data File Error(%s)\n", dirStat->archivePath);
-            OSPanic("data.c", 66, "\n");
+/* Retail fixes the next panic's line; the earlier lines are unknown: 13 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+            OSPanic(__FILE__, __LINE__, "\n");
         }
         archiveIndex++;
         dirStat++;
@@ -235,7 +249,119 @@ void fn_80007C88(s32 dvdResult, DVDFileInfo* dvdFileInfo)
         }
     }
     if(statusIndex >= DATA_MAX_READSTAT) {
-        OSPanic("data.c", 364, "dvd.c AsyncCallBack Error");
+/* Retail fixes the next panic's line; the earlier lines are unknown: 111 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        OSPanic(__FILE__, __LINE__, "dvd.c AsyncCallBack Error");
     }
     readStat = &ReadDataStat[statusIndex];
     if(dvdResult == DVD_RESULT_CANCELED) {
@@ -685,20 +811,155 @@ static BOOL HuDataDVDdirDirectOpen(int dataNum, DVDFileInfo *fileInfo)
 	if(!DVDFastOpen(DataDirStat[archiveId].dvdEntryNumber, fileInfo)) {
 		char panicMessage[48];
 		sprintf(panicMessage, "HuDataDVDdirDirectOpen: File Open Error(%08x)", dataNum);
-		OSPanic("data.c", 951, panicMessage);
+/* Retail fixes the next panic's line; the earlier lines are unknown: 136 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		OSPanic(__FILE__, __LINE__, panicMessage);
 	}
 	return TRUE;
 }
-
 // Submits a direct DVD range read and returns its submission result after command state 0.
-// Nonzero states, including errors, keep the wait running; shortAccessSleep controls yielding.
-static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *readBuffer, s32 readBytes,
-                                  s32 readOffset)
+static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *buffer, s32 size, s32 offset)
 {
-	s32 result = DVDReadAsync(fileInfo, readBuffer, readBytes, readOffset, NULL);
+	s32 result = DVDReadAsync(fileInfo, buffer, size, offset, NULL);
 	if(result != 1) {
-		OSPanic("data.c", 960, "HuDataDVDdirDirectRead: File Read Error");
+		OSPanic(__FILE__, __LINE__, "HuDataDVDdirDirectRead: File Read Error");
 	}
+	// Nonzero states, including errors, keep the wait running; shortAccessSleep controls yielding.
 	while(DVDGetCommandBlockStatus(&fileInfo->cb)) {
 		if(shortAccessSleep) {
 			HuPrcVSleep();

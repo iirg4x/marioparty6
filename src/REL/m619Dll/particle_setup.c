@@ -2,8 +2,6 @@
 #include "REL/m619Dll/module_types.h"
 #include "REL/m619Dll/particle.h"
 
-void fn_1_C69C(M619ParticleEffect *work, const HuVecF *position,
-               const HuVecF *rotation);
 s16 fn_1_C7E4(void *owner, ANIMDATA *animation, s32 particleCount);
 void fn_1_C890(M619ParticleEffect *effect);
 void fn_1_C8CC(M619ParticleEffect *effect);
@@ -23,9 +21,9 @@ void fn_1_D9EC(M619ParticleEffect *work, const HuVecF *position,
                const HuVecF *rotation);
 void fn_1_DBD0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 
-/* Creates and configures the model shared by the scene's particle effects. */
-static inline void createParticleEffect(M619ParticleEffect *work, s32 count,
-                                        HU3D_PARTICLE_HOOK hook) {
+/* Creates this effect's model from the scene's shared particle animation. */
+static inline void M619ParticleModelCreate(M619ParticleEffect *work, s32 count,
+                                           HU3D_PARTICLE_HOOK hook) {
     M619Scene *mainState = lbl_1_bss_0->data;
     HU3D_MODELID model = fn_1_C7E4(work, mainState->animations[0], count);
 
@@ -42,7 +40,7 @@ static inline void createParticleEffect(M619ParticleEffect *work, s32 count,
 /* Player-object setup calls this for both flash points, each with a five-particle burst. */
 void fn_1_C69C(M619ParticleEffect *work, const HuVecF *position,
                const HuVecF *rotation) {
-    createParticleEffect(work, 5, fn_1_C948);
+    M619ParticleModelCreate(work, 5, fn_1_C948);
     work->position = *position;
     work->positionSource = position;
     work->rotation = *rotation;
@@ -185,11 +183,11 @@ void fn_1_C948(HU3D_MODEL *model, HU3D_PARTICLE *task, Mtx matrix) {
     }
 }
 
-/* Creates a burst that follows the supplied position and rotation. */
-static inline void createParticleBurst(M619ParticleEffect *work, const HuVecF *position,
-                                       const HuVecF *rotation, s32 count, HU3D_PARTICLE_HOOK hook)
+/* Initializes a burst or ring effect that follows the supplied position and rotation. */
+static inline void M619TrackedParticleEffectInit(M619ParticleEffect *work, const HuVecF *position,
+                                                const HuVecF *rotation, s32 count, HU3D_PARTICLE_HOOK hook)
 {
-    createParticleEffect(work, count, hook);
+    M619ParticleModelCreate(work, count, hook);
     work->position.x = 0.0f;
     work->position.y = 0.0f;
     work->position.z = 0.0f;
@@ -205,7 +203,7 @@ static inline void createParticleBurst(M619ParticleEffect *work, const HuVecF *p
 /* Model-transition setup calls this to create its 16-particle radial burst. */
 void fn_1_CE20(M619ParticleEffect *work, const HuVecF *position,
                const HuVecF *rotation) {
-    createParticleBurst(work, position, rotation, 16, fn_1_D004);
+    M619TrackedParticleEffectInit(work, position, rotation, 16, fn_1_D004);
 }
 
 /* Initializes and advances an outward particle burst on each model hook. */
@@ -291,7 +289,7 @@ void fn_1_D004(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix) {
 /* Model-transition setup calls this to create its 32-particle expanding ring. */
 void fn_1_D420(M619ParticleEffect *work, const HuVecF *position,
                const HuVecF *rotation) {
-    createParticleBurst(work, position, rotation, 32, fn_1_D604);
+    M619TrackedParticleEffectInit(work, position, rotation, 32, fn_1_D604);
 }
 
 /* The particle hook expands the ring and fades it over 45 eligible updates. */
@@ -373,7 +371,7 @@ void fn_1_D604(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix) {
 /* Scene animation setup calls this three times to create its six-particle ring effects. */
 void fn_1_D9EC(M619ParticleEffect *work, const HuVecF *position,
                const HuVecF *rotation) {
-    createParticleBurst(work, position, rotation, 6, fn_1_DBD0);
+    M619TrackedParticleEffectInit(work, position, rotation, 6, fn_1_DBD0);
 }
 
 /* The particle hook restarts the ring every 60 updates until the effect's final cycle ends. */

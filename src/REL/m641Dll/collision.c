@@ -44,19 +44,6 @@ extern s32 fn_1_E10(const Point3d *firstPosition, const Point3d *firstDisplaceme
                     const Point3d *secondDisplacement, f32 secondRadius,
                     f32 *result);
 
-typedef struct M641LightConfiguration {
-    HU3D_LIGHTID primaryLight;
-    s16 padding;
-    HuVecF primaryPosition;
-    HuVecF primaryDirection;
-    GXColor primaryColor;
-    HU3D_LIGHTID alternateLight;
-    s16 alternatePadding;
-    HuVecF alternatePosition;
-    HuVecF alternateDirection;
-    GXColor alternateColor;
-} M641LightConfiguration;
-
 extern s16 lbl_1_bss_7DC;
 
 extern f32 lbl_1_bss_20;

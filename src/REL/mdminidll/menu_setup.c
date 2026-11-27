@@ -1,4 +1,27 @@
 /* Resources, player options, camera and windows for the minigame-mode menu. */
+#include "REL/minigame_menu_motion.h"
+#include "game/gamework.h"
+#include "game/main.h"
+#include "game/data.h"
+#include "game/process.h"
+#include "game/armem.h"
+#include "game/memory.h"
+#include "REL/mdminidll/player_config.h"
+#include "game/object.h"
+#include "REL/mdminidll/camera.h"
+#include "string.h"
+#include "game/pad.h"
+#include "game/printfunc.h"
+#include "game/sprite.h"
+#include "dolphin/types.h"
+#include "REL/mdminidll/model_animation.h"
+#include "dolphin/mtx/GeoTypes.h"
+#include "game/animdata.h"
+#include "game/window.h"
+#include "humath.h"
+#include "game/saveload.h"
+#include "game/mgdata.h"
+
 #include <math.h>
 #include "REL/mdminidll/window_callback.h"
 /* Host builds use the complete audio declarations. */
@@ -14,6 +37,7 @@
 #include "msm_se.h"
 #include "msm_stream.h"
 #include "game/wipe.h"
+#include "REL/mdminidll/layer_effect_state.h"
 
 typedef struct MDMinidllAudioTable {
     s32 soundId[16]; /* Two sets of seven selection sounds, each followed by -1. */
@@ -38,26 +62,23 @@ void fn_1_0(HUWINID unusedWindow, u32 messageId, s16 soundIndex)
     OSReport(lbl_1_data_694, (s16) soundIndex);
     if ((u32) lbl_1_data_690 != messageId) {
         lbl_1_data_690 = messageId;
-        exceptionIndex = 0;
-nextSoundException:
-        if (panExceptions[exceptionIndex] == -1) {
-            HuAudFXPlay(sounds.soundId[soundIndex]);
-            return;
-        }
-        if (messageId == (u32) panExceptions[exceptionIndex]) {
-            if (soundIndex >= 8) {
-                HuAudFXPlayPan(sounds.soundId[soundIndex], 80);
+        for (exceptionIndex = 0; ; exceptionIndex++) {
+            if (panExceptions[exceptionIndex] == -1) {
+                HuAudFXPlay(sounds.soundId[soundIndex]);
                 return;
             }
-            HuAudFXPlayPan(sounds.soundId[soundIndex], 48);
-            return;
+            if (messageId == (u32) panExceptions[exceptionIndex]) {
+                if (soundIndex >= 8) {
+                    HuAudFXPlayPan(sounds.soundId[soundIndex], 80);
+                    return;
+                }
+                HuAudFXPlayPan(sounds.soundId[soundIndex], 48);
+                return;
+            }
         }
-        exceptionIndex += 1;
-        goto nextSoundException;
     }
 }
 
-#include "game/gamework.h"
 
 /* Minigame lists used to decide which menu modes are available. */
 extern s16 lbl_1_data_0[];
@@ -80,98 +101,89 @@ s16 fn_1_1A4(s16 mode)
     default:
         break;
     case 1:
-        index = 0;
-battlePrimaryList:
-        if (lbl_1_data_0[index] == -1) {
-            return 0;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_0[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_0[index]) == 1) {
+                break;
+            }
         }
-        if (fn_8003CC40((s32) lbl_1_data_0[index]) != 1) {
-            index += 1;
-            goto battlePrimaryList;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_2E[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_2E[index]) == 1) {
+                break;
+            }
         }
-        index = 0;
-battleSecondaryList:
-        if (lbl_1_data_2E[index] == -1) {
-            return 0;
-        }
-        if (fn_8003CC40((s32) lbl_1_data_2E[index]) != 1) {
-            index += 1;
-            goto battleSecondaryList;
-        }
-        index = 0;
-battleTertiaryList:
-        if (lbl_1_data_44[index] == -1) {
-            return 0;
-        }
-        if (fn_8003CC40((s32) lbl_1_data_44[index]) != 1) {
-            index += 1;
-            goto battleTertiaryList;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_44[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_44[index]) == 1) {
+                break;
+            }
         }
         result = 1;
         break;
     case 2:
-        index = 0;
-bingoGameList:
-        if (lbl_1_data_0[index] == -1) {
-            return 0;
-        }
-        if (fn_8003CC40((s32) lbl_1_data_0[index]) != 1) {
-            index += 1;
-            goto bingoGameList;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_0[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_0[index]) == 1) {
+                break;
+            }
         }
         result = 1;
         break;
     case 3:
-        index = 0;
-tournamentGameList:
-        if (lbl_1_data_5C[index] == -1) {
-            return 0;
-        }
-        if (fn_8003CC40((s32) lbl_1_data_5C[index]) != 1) {
-            index += 1;
-            goto tournamentGameList;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_5C[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_5C[index]) == 1) {
+                break;
+            }
         }
         result = 1;
         break;
     case 4:
-        index = 0;
-decathlonGameList:
-        if (lbl_1_data_7C[index] == -1) {
-            return 1;
-        }
-        if (fn_8003CC40((s32) lbl_1_data_7C[index]) != 0) {
-            index += 1;
-            goto decathlonGameList;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_7C[index] == -1) {
+                return 1;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_7C[index]) == 0) {
+                break;
+            }
         }
         result = 0;
         break;
     case 5:
-        index = 0;
-singlePlayerPrimaryList:
-        if (lbl_1_data_0[index] == -1) {
-            return 0;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_0[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_0[index]) == 1) {
+                break;
+            }
         }
-        if (fn_8003CC40((s32) lbl_1_data_0[index]) != 1) {
-            index += 1;
-            goto singlePlayerPrimaryList;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_2E[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_2E[index]) == 1) {
+                break;
+            }
         }
-        index = 0;
-singlePlayerSecondaryList:
-        if (lbl_1_data_2E[index] == -1) {
-            return 0;
-        }
-        if (fn_8003CC40((s32) lbl_1_data_2E[index]) != 1) {
-            index += 1;
-            goto singlePlayerSecondaryList;
-        }
-        index = 0;
-singlePlayerTertiaryList:
-        if (lbl_1_data_5C[index] == -1) {
-            return 0;
-        }
-        if (fn_8003CC40((s32) lbl_1_data_5C[index]) != 1) {
-            index += 1;
-            goto singlePlayerTertiaryList;
+        for (index = 0; ; index++) {
+            if (lbl_1_data_5C[index] == -1) {
+                return 0;
+            }
+            if (fn_8003CC40((s32) lbl_1_data_5C[index]) == 1) {
+                break;
+            }
         }
         result = 1;
         break;
@@ -179,11 +191,9 @@ singlePlayerTertiaryList:
     return result;
 }
 
-#include "game/gamework.h"
 extern s16 lbl_1_bss_28;
 extern s16 lbl_1_bss_2A;
 extern s16 lbl_1_data_6B6[6];
-s16 fn_1_1A4(s16 mode);
 
 /* Menu setup snapshots bank unlocks and computes each mode's availability. */
 void fn_1_558(void)
@@ -206,11 +216,6 @@ void fn_1_558(void)
     if (lbl_1_data_6B6[5] == 1) lbl_1_data_6B6[5] = fn_1_1A4(5);
 }
 
-#include "game/main.h"
-#include "game/charman.h"
-#include "game/data.h"
-#include "game/gamework.h"
-#include "game/process.h"
 
 /* Character motion archives are reloaded when any selected character lacks one. */
 void fn_1_6CC(void)
@@ -244,15 +249,6 @@ void fn_1_6CC(void)
     }
 }
 
-#include "game/main.h"
-#include "game/charman.h"
-#include "game/data.h"
-#include "game/gamework.h"
-#include "game/process.h"
-#include "game/armem.h"
-#include "game/memory.h"
-#include "datadir_enum.h"
-#include "REL/mdminidll/player_config.h"
 
 #define MDMINIDLL_MOTION_BLEND_FRAMES 15.0f
 
@@ -269,34 +265,9 @@ void fn_1_81C(void)
     MDMinidllMotionDirectoryIds motionDirectoryIds = {
         {0x9f0000, 0x9c0000, 0x9d0000, 0xa10000,
          0x9e0000, 0xa00000}};
-    s16 playerIndex;
     s32 selectedModeMotionReadStatus;
-    s32 characterMotionReadStatus;
 
-    playerIndex = 0;
-    while (playerIndex < 4) {
-        if ((void *) fn_80056598((s16) lbl_80265750[playerIndex].charNo) == NULL) {
-            break;
-        }
-        playerIndex += 1;
-    }
-    if (playerIndex != 4) {
-        fn_800567D8(-1);
-        playerIndex = 0;
-        while (playerIndex < 4) {
-            characterMotionReadStatus = fn_80007F20(
-                lbl_8022E718[lbl_80265750[playerIndex].charNo][4]);
-            /* A failed asynchronous read is not retried before motion initialization. */
-            if (characterMotionReadStatus != -1) {
-                while (fn_80008270(characterMotionReadStatus) == 0) {
-                    HuPrcVSleep();
-                }
-            }
-            fn_800565B4((s16) lbl_80265750[playerIndex].charNo);
-            fn_800097F4(lbl_8022E718[lbl_80265750[playerIndex].charNo][4]);
-            playerIndex += 1;
-        }
-    }
+    fn_1_6CC();
     if (lbl_1_bss_804[1] <= 4) {
         selectedModeMotionReadStatus = fn_80007F20(
             motionDirectoryIds.directoryIds[lbl_1_bss_804[1]]);
@@ -313,17 +284,11 @@ void fn_1_81C(void)
     }
     lbl_1_bss_2C = 1;
     HuPrcEnd();
-processEndWait:
-    HuPrcVSleep();
-    goto processEndWait;
+    for (;;) {
+        HuPrcVSleep();
+    }
 }
 
-#include "dolphin/os.h"
-#include "game/armem.h"
-#include "game/data.h"
-#include "game/object.h"
-#include "game/process.h"
-#include "game/charman.h"
 
 extern s16 lbl_1_bss_2C;
 extern OMOBJMAN *lbl_1_bss_4;
@@ -336,39 +301,45 @@ extern char lbl_1_data_736[];
 extern char lbl_1_data_738[];
 extern char lbl_1_data_767[];
 
-void fn_1_81C(void);
+
+/* Reports the remaining audio memory and prints the allocation dump. */
+static inline void MenuArenaMemoryReport(void)
+{
+    OSReport(lbl_1_data_6F3, 33);
+    OSReport(lbl_1_data_704, 36);
+    OSReport(lbl_1_data_716, 155);
+    OSReport(lbl_1_data_728, 242);
+    HuAMemDump();
+    OSReport(lbl_1_data_736);
+}
 
 /* Called by fn_1_1E1AC during its transition to release mode data and start the motion loader. */
 void fn_1_A4C(void)
 {
     lbl_1_bss_2C = 0;
     OSReport(lbl_1_data_6C2);
-    OSReport(lbl_1_data_6F3, 33);
-    OSReport(lbl_1_data_704, 36);
-    OSReport(lbl_1_data_716, 155);
-    OSReport(lbl_1_data_728, 242);
-    HuAMemDump();
-    OSReport(lbl_1_data_736);
+    MenuArenaMemoryReport();
     fn_800097F4(0x960000);
     fn_8000DAC0(fn_1_81C, 256, 16384, 0, lbl_1_bss_4);
 }
 
-/* The menu reset helper releases cached minigame-mode archives and prints the remaining ARAM
- * allocations. */
-void fn_1_B18(void)
+/* Releases the cached minigame mode archives. */
+static inline void ReleaseMenuModeArchives(void)
 {
     HuARDirFree(0x9f0000);
     HuARDirFree(0x9c0000);
     HuARDirFree(0x9d0000);
     HuARDirFree(0xa10000);
     HuARDirFree(0x9e0000);
+}
+
+/* The menu reset helper releases cached minigame-mode archives and prints the remaining ARAM
+ * allocations. */
+void fn_1_B18(void)
+{
+    ReleaseMenuModeArchives();
     OSReport(lbl_1_data_738);
-    OSReport(lbl_1_data_6F3, 33);
-    OSReport(lbl_1_data_704, 36);
-    OSReport(lbl_1_data_716, 155);
-    OSReport(lbl_1_data_728, 242);
-    HuAMemDump();
-    OSReport(lbl_1_data_736);
+    MenuArenaMemoryReport();
 }
 
 /* The menu return helper closes every character archive, releases mode archives and prints the
@@ -376,18 +347,9 @@ void fn_1_B18(void)
 void fn_1_BD0(void)
 {
     fn_800567D8(-1);
-    HuARDirFree(0x9f0000);
-    HuARDirFree(0x9c0000);
-    HuARDirFree(0x9d0000);
-    HuARDirFree(0xa10000);
-    HuARDirFree(0x9e0000);
+    ReleaseMenuModeArchives();
     OSReport(lbl_1_data_767);
-    OSReport(lbl_1_data_6F3, 33);
-    OSReport(lbl_1_data_704, 36);
-    OSReport(lbl_1_data_716, 155);
-    OSReport(lbl_1_data_728, 242);
-    HuAMemDump();
-    OSReport(lbl_1_data_736);
+    MenuArenaMemoryReport();
 }
 
 /* Minigame-mode setup puts every player on team zero. */
@@ -416,11 +378,6 @@ void fn_1_C90(void)
     }
 }
 
-#include "game/object.h"
-#include "game/process.h"
-#include "game/armem.h"
-#include "dolphin/os.h"
-#include "REL/mdminidll/player_config.h"
 
 extern s16 lbl_1_bss_2C;
 extern char lbl_1_data_798[];
@@ -471,7 +428,6 @@ void fn_1_F10(void)
     }
 }
 
-#include "game/hu3d.h"
 
 /* Curve and easing helpers used by menu model and camera transitions. */
 
@@ -612,16 +568,13 @@ f32 fn_1_1ED8(f32 startValue, f32 endValue, f32 elapsed, f32 duration)
              180.0)));
 }
 
-#include "REL/mdminidll/camera.h"
-#include "string.h"
-#include "game/pad.h"
 
 static inline float fn_1_1868_inlined(float startValue, float endValue, float elapsedFrames,
                                       float durationFrames);
 static inline void fn_1_1404_inlined(HuVecF *dst, const HuVecF *a, const HuVecF *b, const HuVecF *c,
                                      float t);
 static inline float fn_1_160C_inlined(float currentValue, float targetValue, float easingFactor);
-static inline float fn_1_13A8_inlined(float startValue, float controlValue, float endValue,
+static inline float menuQuadraticPosition(float startValue, float controlValue, float endValue,
                                       float progress);
 
 /* Camera updates clamp elapsed transition time before interpolating a value. */
@@ -642,9 +595,9 @@ static inline void fn_1_1404_inlined(
     HuVecF *position, const HuVecF *start, const HuVecF *control,
     const HuVecF *end, float progress)
 {
-    position->x = fn_1_13A8_inlined(start->x, control->x, end->x, progress);
-    position->y = fn_1_13A8_inlined(start->y, control->y, end->y, progress);
-    position->z = fn_1_13A8_inlined(start->z, control->z, end->z, progress);
+    position->x = menuQuadraticPosition(start->x, control->x, end->x, progress);
+    position->y = menuQuadraticPosition(start->y, control->y, end->y, progress);
+    position->z = menuQuadraticPosition(start->z, control->z, end->z, progress);
 }
 
 /* Host departure turns use this weighted step to approach the travel heading. */
@@ -654,17 +607,6 @@ static inline float fn_1_160C_inlined(float currentValue, float targetValue, flo
         return targetValue;
     }
     return (targetValue + (currentValue * (easingFactor - 1.0f))) / easingFactor;
-}
-
-/* Host departure paths use this quadratic curve for one position coordinate. */
-static inline float fn_1_13A8_inlined(float startValue, float controlValue, float endValue,
-                                      float progress)
-{
-    float remaining = 1.0f - progress;
-
-    return (endValue * (progress * progress))
-        + ((startValue * (remaining * remaining))
-            + ((controlValue * (remaining * progress) * 2.0f)));
 }
 
 /* The host departure callback moves its model along a Bezier path and faces it along its travel. */
@@ -770,7 +712,6 @@ void fn_1_2868(MDMinidllCameraCallback callback)
     lbl_1_bss_808.callback = callback;
 }
 
-#include "game/printfunc.h"
 extern s16 lbl_1_bss_0;
 extern HU3D_LIGHTID lbl_1_bss_860[2];
 extern char lbl_1_data_7C8[], lbl_1_data_7EA[], lbl_1_data_804[], lbl_1_data_81E[];
@@ -875,8 +816,8 @@ void fn_1_30A4(MDMinidllCameraCallback callback)
     cameraState->outViewObj = fn_8003AB38(lbl_1_bss_4, 32730, 16U, 16U, -1, fn_1_2FD4);
 }
 
-/* Menu camera teardown disables camera zero and releases its view-update object. */
-void fn_1_3240(void)
+/* Releases the menu camera and its out of view object. */
+static inline void MenuCameraDestroy(void)
 {
     MDMinidllCameraState *cameraState;
     cameraState = &lbl_1_bss_808;
@@ -885,6 +826,12 @@ void fn_1_3240(void)
         omDelObjEx(lbl_1_bss_4, cameraState->outViewObj);
     }
     cameraState->outViewObj = NULL;
+}
+
+/* Menu camera teardown disables camera zero and releases its view-update object. */
+void fn_1_3240(void)
+{
+    MenuCameraDestroy();
 }
 
 /* Menu scene setup creates two fixed white directional lights. */
@@ -909,7 +856,6 @@ void fn_1_33C8(void)
     Hu3DGLightKill(lbl_1_bss_860[1]);
 }
 
-#include "game/sprite.h"
 extern HUWINID lbl_1_bss_858[4];
 extern s16 lbl_1_data_82C[2];
 extern s32 lbl_1_data_830[3];
@@ -1029,9 +975,8 @@ void fn_1_3720(void)
     }
 }
 
-/* Menu window teardown releases all four menu windows and then clears the remaining window
- * slots. */
-void fn_1_3948(void)
+/* Close the menu windows. */
+static inline void MenuWindowsDestroy(void)
 {
     s16 windowIndex;
     windowIndex = 0;
@@ -1040,6 +985,13 @@ void fn_1_3948(void)
         windowIndex += 1;
     }
     HuWinAllKill();
+}
+
+/* Menu window teardown releases all four menu windows and then clears the remaining window
+ * slots. */
+void fn_1_3948(void)
+{
+    MenuWindowsDestroy();
 }
 
 /* Before changing prompt text, closes a different active window and opens the requested one with
@@ -1179,8 +1131,7 @@ static inline void fn_1_4538_inlined(void)
 
     layoutIndex = 0;
     while (layoutIndex < 26) {
-        lbl_1_bss_764[layoutIndex] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_98[layoutIndex], 0x10000000, 2));
+        lbl_1_bss_764[layoutIndex] = HuSprAnimDataRead(lbl_1_data_98[layoutIndex]);
         layoutIndex += 1;
     }
     layoutIndex = 0;
@@ -1189,7 +1140,7 @@ static inline void fn_1_4538_inlined(void)
         layoutIndex += 1;
     }
     layoutIndex = 0;
-    layoutEntry = (MDMinidllSpriteLayoutEntry *) &lbl_1_data_114;
+    layoutEntry = lbl_1_data_114;
     while (layoutIndex < 27) {
         lbl_1_bss_71C[layoutIndex] =
             HuSprCreate(lbl_1_bss_764[layoutEntry->animationIndex],
@@ -1222,31 +1173,9 @@ void fn_1_478C(void)
 {
 }
 
-/* Menu objects, animation resources and window state. */
 
-#include "dolphin/types.h"
-#include "REL/mdminidll/camera.h"
-#include "REL/mdminidll/model_animation.h"
-#include "REL/mdminidll/player_config.h"
-#include "dolphin/mtx/GeoTypes.h"
-#include "game/animdata.h"
-#include "game/hu3d.h"
-#include "game/object.h"
-#include "game/process.h"
-#include "game/sprite.h"
-#include "game/window.h"
-#include "humath.h"
 
 /* Motion phases and curved paths for the host and selected characters. */
-typedef struct MDMinTrajectory {
-    s16 state; /* 0 for the initial rise, 1 for path travel, 2 for completion. */
-    HuVecF current; /* Captured starting position for the path. */
-    HuVecF from; /* Curved-path control point. */
-    HuVecF to; /* Destination position. */
-    f32 elapsed; /* Update frames spent in the current phase. */
-    f32 limit; /* Duration of the current phase, in update frames. */
-} MDMinTrajectory;
-
 u32 lbl_1_bss_864[5];
 HU3D_LIGHTID lbl_1_bss_860[2];
 HUWINID lbl_1_bss_858[4];
@@ -1258,9 +1187,9 @@ HUSPR_GROUPID lbl_1_bss_752[9];
 HUSPRID lbl_1_bss_71C[27];
 ANIMDATA *lbl_1_bss_6C8[21];
 MDMinidllModelAnimationRecord lbl_1_bss_230[21];
-MDMinTrajectory lbl_1_bss_1D0[2];
-MDMinTrajectory lbl_1_bss_170[2];
-MDMinTrajectory lbl_1_bss_B0[4];
+MinigameMenuTrajectory lbl_1_bss_1D0[2];
+MinigameMenuTrajectory lbl_1_bss_170[2];
+MinigameMenuTrajectory lbl_1_bss_B0[4];
 Point3d lbl_1_bss_80[4];
 Point3d lbl_1_bss_50[4];
 f32 lbl_1_bss_38[6];
@@ -1280,7 +1209,7 @@ OMOBJMAN *lbl_1_bss_4;
 s16 lbl_1_bss_0;
 
 typedef struct MDMinidllSelectionView {
-    u8 neighborBytes[16]; /* Eight signed neighbor indices stored as byte pairs; -1 ends a link. */
+    s16 neighborCharacter[8]; /* Linked character by direction; -1 means no link. */
     s16 claimed; /* 1 for a claimed character card; -1 when it is available. */
 } MDMinidllSelectionView;
 
@@ -1321,10 +1250,10 @@ MDMinidllSpriteLayoutEntry lbl_1_data_114[27] = {
     {2, 3, 21, 0, 7, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
     {2, 4, 21, 0, 4, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
     {2, 5, 21, 0, 6, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {3, 0, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.80000001f, 0.80000001f, 0.0f},
-    {3, 1, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.80000001f, 0.80000001f, 0.0f},
-    {3, 2, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.80000001f, 0.80000001f, 0.0f},
-    {3, 3, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.80000001f, 0.80000001f, 0.0f},
+    {3, 0, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
+    {3, 1, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
+    {3, 2, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
+    {3, 3, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
     {4, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
     {4, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
     {5, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
@@ -1389,29 +1318,27 @@ char lbl_1_data_882[] = "ys77121";
 char lbl_1_data_88A[] = "ys77060";
 char lbl_1_data_892[] = "ys77061";
 MDMinidllSelectionView lbl_1_data_89A[11] = {
-    {{255, 255, 255, 255, 0, 1, 0, 5, 0, 4, 255, 255, 255, 255, 255, 255}, -1},
-    {{255, 255, 255, 255, 0, 2, 0, 6, 0, 5, 0, 4, 0, 0, 255, 255}, -1},
-    {{255, 255, 255, 255, 0, 3, 255, 255, 0, 6, 0, 5, 0, 1, 255, 255}, -1},
-    {{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 6, 0, 2, 255, 255}, -1},
-    {{0, 0, 0, 1, 0, 5, 0, 9, 0, 8, 0, 7, 255, 255, 255, 255}, -1},
-    {{0, 1, 0, 2, 0, 6, 0, 10, 0, 9, 0, 8, 0, 4, 0, 0}, -1},
-    {{0, 2, 0, 3, 0, 10, 0, 10, 0, 10, 0, 9, 0, 5, 0, 1}, -1},
-    {{255, 255, 0, 4, 0, 8, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}, -1},
-    {{0, 4, 0, 5, 0, 9, 255, 255, 255, 255, 255, 255, 0, 7, 255, 255}, -1},
-    {{0, 5, 0, 6, 0, 10, 255, 255, 255, 255, 255, 255, 0, 8, 0, 4}, -1},
-    {{0, 6, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 9, 0, 5}, -1}
+    {{-1, -1, 1, 5, 4, -1, -1, -1}, -1},
+    {{-1, -1, 2, 6, 5, 4, 0, -1}, -1},
+    {{-1, -1, 3, -1, 6, 5, 1, -1}, -1},
+    {{-1, -1, -1, -1, -1, 6, 2, -1}, -1},
+    {{0, 1, 5, 9, 8, 7, -1, -1}, -1},
+    {{1, 2, 6, 10, 9, 8, 4, 0}, -1},
+    {{2, 3, 10, 10, 10, 9, 5, 1}, -1},
+    {{-1, 4, 8, -1, -1, -1, -1, -1}, -1},
+    {{4, 5, 9, -1, -1, -1, 7, -1}, -1},
+    {{5, 6, 10, -1, -1, -1, 8, 4}, -1},
+    {{6, -1, -1, -1, -1, -1, 9, 5}, -1}
 };
-char lbl_1_data_960[] = "\n-----===== MARIO PARTY 6 :: MINIGAME MODE =====-----\n\n";
 
-void fn_1_23EC4(s16 modelNo, HuVecF *pos, s16 display);
 
 /* After confirmation, updates only the second preview departure trajectory; the first source is
  * disabled, so the two-preview completion test never clears this callback. */
 void fn_1_4790(OMOBJ *animationObject)
 {
     Point3d position;
-    MDMinTrajectory *first;
-    MDMinTrajectory *second;
+    MinigameMenuTrajectory *first;
+    MinigameMenuTrajectory *second;
     s16 completed;
     OMOBJ *firstObj;
     OMOBJ *secondObj;
@@ -1425,9 +1352,9 @@ void fn_1_4790(OMOBJ *animationObject)
     first = lbl_1_bss_1D0;
     second = &lbl_1_bss_1D0[1];
     if (firstObj != NULL) {
-        position.x = fn_1_1484(first->current.x, 500.0f, first->elapsed, duration);
-        position.y = fn_1_1ED8(first->current.y, 400.0f, first->elapsed, duration);
-        position.z = first->current.z;
+        position.x = fn_1_1484(first->startPosition.x, 500.0f, first->elapsed, duration);
+        position.y = fn_1_1ED8(first->startPosition.y, 400.0f, first->elapsed, duration);
+        position.z = first->startPosition.z;
         if ((first->elapsed += 1.0f) > duration) {
             completed += 1;
             fn_1_23EC4(0, NULL, 0);
@@ -1436,9 +1363,9 @@ void fn_1_4790(OMOBJ *animationObject)
         }
     }
     if (secondObj != NULL) {
-        position.x = fn_1_1484(second->current.x, -500.0f, second->elapsed, duration);
-        position.y = fn_1_1ED8(second->current.y, 400.0f, second->elapsed, duration);
-        position.z = second->current.z;
+        position.x = fn_1_1484(second->startPosition.x, -500.0f, second->elapsed, duration);
+        position.y = fn_1_1ED8(second->startPosition.y, 400.0f, second->elapsed, duration);
+        position.z = second->startPosition.z;
         if ((second->elapsed += 1.0f) > duration) {
             completed += 1;
             fn_1_23EC4(1, NULL, 0);
@@ -1457,19 +1384,19 @@ void fn_1_4BE0(OMOBJ *transitionObject)
     /* The first slot has no source object here. */
     OMOBJ *firstObject = NULL;
     OMOBJ *object = lbl_1_bss_10;
-    MDMinTrajectory *first = lbl_1_bss_1D0;
-    MDMinTrajectory *second = &lbl_1_bss_1D0[1];
+    MinigameMenuTrajectory *first = lbl_1_bss_1D0;
+    MinigameMenuTrajectory *second = &lbl_1_bss_1D0[1];
 
     if (firstObject != NULL) {
         Hu3DModelObjPosGet(firstObject->mdlId[0], lbl_1_data_83C,
-            &first->current);
-        fn_1_23EC4(0, &first->current, 1);
+            &first->startPosition);
+        fn_1_23EC4(0, &first->startPosition, 1);
         first->elapsed = 0.0f;
     }
     if (object != NULL) {
         Hu3DModelObjPosGet(object->mdlId[0], lbl_1_data_83C,
-            &second->current);
-        fn_1_23EC4(1, &second->current, 1);
+            &second->startPosition);
+        fn_1_23EC4(1, &second->startPosition, 1);
         second->elapsed = 0.0f;
     }
     if (++transitionObject->work[0] > 30U) {
@@ -1502,7 +1429,6 @@ void fn_1_4D98(OMOBJ *entryObject)
     }
 }
 
-void fn_1_26454(s16 slot, HuVecF *position, s16 enabled, s16 pattern);
 
 /* Before displaying a menu prompt, starts the host gesture and installs the callback that returns
  * it to idle. */
@@ -1520,24 +1446,24 @@ void fn_1_4E40(void)
  * the accompanying effect each update. */
 void fn_1_4EB4(OMOBJ *hostObject)
 {
-    MDMinTrajectory *trajectory = &lbl_1_bss_170[1];
+    MinigameMenuTrajectory *trajectory = &lbl_1_bss_170[1];
     HuVecF hostPosition;
 
     if (trajectory->state == 0) {
         fn_800267CC(hostObject->mdlId[0], &hostPosition);
         hostPosition.y += 5.0f;
         fn_80026790(hostObject->mdlId[0], &hostPosition);
-        if ((trajectory->elapsed += 1.0f) > trajectory->limit) {
-            fn_800267CC(hostObject->mdlId[0], &trajectory->current);
+        if ((trajectory->elapsed += 1.0f) > trajectory->duration) {
+            fn_800267CC(hostObject->mdlId[0], &trajectory->startPosition);
             trajectory->state = 1;
             trajectory->elapsed = 0.0f;
-            trajectory->limit = 90.0f;
+            trajectory->duration = 90.0f;
         }
     }
     if (trajectory->state == 1) {
-        fn_1_1FAC(hostObject->mdlId[0], &trajectory->current, &trajectory->from,
-            &trajectory->to, trajectory->elapsed, trajectory->limit);
-        if ((trajectory->elapsed += 1.0f) > trajectory->limit) {
+        fn_1_1FAC(hostObject->mdlId[0], &trajectory->startPosition, &trajectory->controlPosition,
+            &trajectory->endPosition, trajectory->elapsed, trajectory->duration);
+        if ((trajectory->elapsed += 1.0f) > trajectory->duration) {
             HuAudFXStop(lbl_1_bss_864[1]);
             trajectory->state = 2;
         }
@@ -1553,29 +1479,29 @@ void fn_1_4EB4(OMOBJ *hostObject)
  * installs the path callback. */
 void fn_1_5434(void)
 {
-    MDMinTrajectory *trajectory = &lbl_1_bss_170[1];
+    MinigameMenuTrajectory *trajectory = &lbl_1_bss_170[1];
     OMOBJ *hostObject = lbl_1_bss_10;
 
     trajectory->state = 0;
     trajectory->elapsed = 0.0f;
-    trajectory->limit = 20.0f;
+    trajectory->duration = 20.0f;
 
     /* The fetched position is replaced with fixed coordinates for each of these three path
      * points. */
-    fn_800267CC(hostObject->mdlId[0], &trajectory->current);
-    trajectory->current.x = 325.0f;
-    trajectory->current.y = 0.0f;
-    trajectory->current.z = 100.0f;
+    fn_800267CC(hostObject->mdlId[0], &trajectory->startPosition);
+    trajectory->startPosition.x = 325.0f;
+    trajectory->startPosition.y = 0.0f;
+    trajectory->startPosition.z = 100.0f;
 
-    fn_800267CC(hostObject->mdlId[0], &trajectory->from);
-    trajectory->from.x = 0.0f;
-    trajectory->from.y = 400.0f;
-    trajectory->from.z = 200.0f;
+    fn_800267CC(hostObject->mdlId[0], &trajectory->controlPosition);
+    trajectory->controlPosition.x = 0.0f;
+    trajectory->controlPosition.y = 400.0f;
+    trajectory->controlPosition.z = 200.0f;
 
-    fn_800267CC(hostObject->mdlId[0], &trajectory->to);
-    trajectory->to.x = 0.0f;
-    trajectory->to.y = 125.0f;
-    trajectory->to.z = -1000.0f;
+    fn_800267CC(hostObject->mdlId[0], &trajectory->endPosition);
+    trajectory->endPosition.x = 0.0f;
+    trajectory->endPosition.y = 125.0f;
+    trajectory->endPosition.z = -1000.0f;
 
     fn_8002CCC0(hostObject->mdlId[0], hostObject->mtnId[2],
         0.0f, 0.0f, 0U);
@@ -1679,7 +1605,6 @@ void fn_1_5EC0(OMOBJ *hostObject)
     hostObject->objFunc = NULL;
 }
 
-void fn_1_25EF0(s16 slot, HuVecF *position, s16 pad, s16 phase);
 
 /* During the final start sequence, moves selected characters along their departure paths, turns
  * them toward travel and hides each model when its path ends. */
@@ -1690,7 +1615,7 @@ void fn_1_5F6C(OMOBJ *characterObject)
     Point3d modelToPath;
     Point3d position;
     MDMinidllPlayerConfig *playerConfig;
-    MDMinTrajectory *trajectory;
+    MinigameMenuTrajectory *trajectory;
     s16 playerIndex;
     s16 playerCount;
     s16 playerModelId;
@@ -1710,12 +1635,12 @@ void fn_1_5F6C(OMOBJ *characterObject)
     while (playerIndex < playerCount) {
         trajectory = &lbl_1_bss_B0[playerIndex];
         if (trajectory->state == 1) {
-            durationFrames = trajectory->limit;
+            durationFrames = trajectory->duration;
             elapsedFrames = trajectory->elapsed;
             playerModelId = characterObject->mdlId[playerConfig->charNo];
             progress = fn_1_156C(0.0f, 1.0f, elapsedFrames, durationFrames);
             pathProgress = progress;
-            fn_1_1108(&position, &trajectory->current, &trajectory->from, &trajectory->to,
+            fn_1_1108(&position, &trajectory->startPosition, &trajectory->controlPosition, &trajectory->endPosition,
                       pathProgress);
             fn_800267CC(playerModelId, &modelToPath);
             fn_80026874(playerModelId, &modelRotation);
@@ -1731,7 +1656,7 @@ void fn_1_5F6C(OMOBJ *characterObject)
             modelRotation.y = fn_1_1310(modelRotation.y, modelToPath.y, 10.0f);
             fn_80026760(playerModelId, position.x, position.y, position.z);
             fn_80026808(playerModelId, 0.0f, modelRotation.y, 0.0f);
-            if ((trajectory->elapsed += 1.0f) > trajectory->limit) {
+            if ((trajectory->elapsed += 1.0f) > trajectory->duration) {
                 trajectory->state = 2;
                 fn_800269E8(characterObject->mdlId[playerConfig->charNo], (1 << 0));
             }
@@ -1764,7 +1689,7 @@ void fn_1_5F6C(OMOBJ *characterObject)
 void fn_1_6520(void)
 {
     MDMinidllPlayerConfig *playerConfig;
-    MDMinTrajectory *trajectory;
+    MinigameMenuTrajectory *trajectory;
     OMOBJ *characterObject;
     s16 playerCount;
     s16 playerIndex;
@@ -1782,18 +1707,18 @@ void fn_1_6520(void)
         trajectory = &lbl_1_bss_B0[playerIndex];
         trajectory->state = 1;
         trajectory->elapsed = 0.0f;
-        trajectory->limit = 90.0f;
+        trajectory->duration = 90.0f;
         fn_800267CC(characterObject->mdlId[playerConfig->charNo],
-                        (Point3d *) &trajectory->current.x);
+                        &trajectory->startPosition);
         fn_800267CC(characterObject->mdlId[playerConfig->charNo],
-                        (Point3d *) &trajectory->from.x);
-        trajectory->from.x += 0.5f * trajectory->from.x;
-        trajectory->from.y = 550.0f;
-        trajectory->from.z = 100.0f;
+                        &trajectory->controlPosition);
+        trajectory->controlPosition.x += 0.5f * trajectory->controlPosition.x;
+        trajectory->controlPosition.y = 550.0f;
+        trajectory->controlPosition.z = 100.0f;
         fn_800267CC(characterObject->mdlId[playerConfig->charNo],
-                        (Point3d *) &trajectory->to.x);
-        trajectory->to.y = 225.0f;
-        trajectory->to.z = -800.0f;
+                        &trajectory->endPosition);
+        trajectory->endPosition.y = 225.0f;
+        trajectory->endPosition.z = -800.0f;
         fn_8002CCC0(characterObject->mdlId[playerConfig->charNo],
                            characterObject->mtnId[(playerConfig->charNo * 2) + 1], 0.0f, 10.0f,
                            ((1 << 30) | (1 << 0)));
@@ -2215,7 +2140,7 @@ void fn_1_7F8C(s16 playerIndex, s16 bankIndex) {
 /* Shows a player confirmation sprite and sets its target size when a character is accepted. */
 void fn_1_809C(s16 playerIndex, s16 bankIndex)
 {
-    lbl_1_bss_80[playerIndex].x = 0.8500000238418579f;
+    lbl_1_bss_80[playerIndex].x = 0.85f;
     fn_1_44B8(lbl_1_bss_752[playerIndex + 4], HUSPR_ATTR_DISPOFF);
     HuSprBankSet(lbl_1_bss_752[playerIndex + 4], 0, bankIndex);
 }
@@ -2396,10 +2321,6 @@ typedef struct {
     /* Three neighbor directions to try for each of 12 input classifications. */
     s16 directionPriorities[12][3];
 } MDMinNeighborTable;
-typedef struct _struct_lbl_1_data_89A_0x12 {
-    s16 neighborCharacter[8]; /* Linked character index by direction; -1 means no link. */
-    s16 selectionState; /* -1 for an available character; other values reserve it. */
-} LBL_1_DATA_E12_ENTRY;
 
 /* Each frame, eases selection markers toward their target poses, aligns their sprites and updates
  * arrow pulses. */
@@ -2489,7 +2410,7 @@ void fn_1_92C0(OMOBJ *markerObject)
 /* Finds an unoccupied character for fn_1_9730 by following neighbor links and trying fallback
  * directions. */
 s16 fn_1_9348(s16 currentCharacter, s16 direction, s16 fallbackDirection, s16 lastFallbackDirection,
-              LBL_1_DATA_E12_ENTRY *selectionEntries, s16 characterCount)
+              MDMinidllSelectionView *selectionEntries, s16 characterCount)
 {
     s16 nextCharacter;
     s16 characterIndex;
@@ -2497,7 +2418,7 @@ s16 fn_1_9348(s16 currentCharacter, s16 direction, s16 fallbackDirection, s16 la
     if (direction == -1) {
         return -1;
     }
-    nextCharacter = ((s16 (*)[9])selectionEntries)[currentCharacter][direction];
+    nextCharacter = selectionEntries[currentCharacter].neighborCharacter[direction];
     if (nextCharacter == -1) {
         nextCharacter = fn_1_9348(currentCharacter, fallbackDirection, lastFallbackDirection, -1,
                                   selectionEntries, characterCount);
@@ -2505,7 +2426,7 @@ s16 fn_1_9348(s16 currentCharacter, s16 direction, s16 fallbackDirection, s16 la
     characterIndex = 0;
     while (characterIndex < characterCount) {
         if ((currentCharacter != characterIndex) &&
-            (((s16(*)[9]) selectionEntries)[characterIndex][8] != -1) &&
+            (selectionEntries[characterIndex].claimed != -1) &&
             (nextCharacter == characterIndex)) {
             nextCharacter = fn_1_9348(nextCharacter, direction, fallbackDirection,
                                       lastFallbackDirection, selectionEntries, characterCount);
@@ -2527,7 +2448,7 @@ static const MDMinNeighborTable lbl_1_rodata_1CC = {
 
 /* Chooses the neighbor-direction priorities for the input class before character navigation
  * searches for a free slot. */
-s16 fn_1_9730(s16 currentCharacter, LBL_1_DATA_E12_ENTRY *selectionEntries,
+s16 fn_1_9730(s16 currentCharacter, MDMinidllSelectionView *selectionEntries,
               s16 directionClass, s16 characterCount)
 {
     MDMinNeighborTable neighbors = lbl_1_rodata_1CC;
@@ -2540,7 +2461,7 @@ s16 fn_1_9730(s16 currentCharacter, LBL_1_DATA_E12_ENTRY *selectionEntries,
 /* Moves the character cursor from repeated directional input, skipping occupied characters and
  * updating both selection records. */
 s16 fn_1_97D8(s16 padNo, s16 *currentCharacter,
-    LBL_1_DATA_E12_ENTRY *selectionEntries, s16 characterCount)
+    MDMinidllSelectionView *selectionEntries, s16 characterCount)
 {
     s16 nextCharacter = 0;
     s16 directionClass = 0;
@@ -2604,26 +2525,13 @@ s16 fn_1_97D8(s16 padNo, s16 *currentCharacter,
 
     if ((nextCharacter = fn_1_9730(*currentCharacter, selectionEntries, directionClass,
                                    characterCount)) != -1) {
-        selectionEntries[*currentCharacter].selectionState = -1;
+        selectionEntries[*currentCharacter].claimed = -1;
         *currentCharacter = nextCharacter;
-        selectionEntries[*currentCharacter].selectionState = 1;
+        selectionEntries[*currentCharacter].claimed = 1;
         HuAudFXPlay(0);
         return TRUE;
     }
     return FALSE;
-}
-
-/* Character-selection callbacks replace one texture animation here; bank -1 leaves the new
- * animation at bank zero. */
-static inline void fn_1_A3A8_inlined(s16 modelIndex, s16 animationSlot, s16 animationDataIndex,
-                                     s16 bankIndex)
-{
-    MDMinidllModelAnimationRecord *modelRecord = &lbl_1_bss_230[modelIndex];
-
-    fn_80030D50(modelRecord->animation[animationSlot], lbl_1_bss_6C8[animationDataIndex]);
-    if (bankIndex != -1) {
-        Hu3DAnimBankSet(modelRecord->animation[animationSlot], bankIndex);
-    }
 }
 
 /* Replaces a selection model texture animation during menu updates; bank -1 leaves the new
@@ -2743,29 +2651,6 @@ void fn_1_A700(s16 modelIndex, s16 elapsedFrames, s16 durationFrames, Point3d *t
     fn_800268B0(model->model, scale, scale, 1.0f);
 }
 
-/* Selection callbacks replace one texture animation here; bank -1 leaves the new animation at bank
- * zero. */
-static inline void fn_1_C158_inlined(s16 modelIndex, s16 animationSlot, s16 animationDataIndex,
-                                     s16 bankIndex)
-{
-    MDMinidllModelAnimationRecord *modelRecord = &lbl_1_bss_230[modelIndex];
-
-    fn_80030D50(modelRecord->animation[animationSlot], lbl_1_bss_6C8[animationDataIndex]);
-    if (bankIndex != -1) {
-        Hu3DAnimBankSet(modelRecord->animation[animationSlot], bankIndex);
-    }
-}
-
-/* Selection callbacks change all four texture animations on a card with the same animation data. */
-static inline void fn_1_C200_inlined(s16 modelIndex, s16 animationDataIndex)
-{
-    s16 animationSlot;
-
-    for (animationSlot = 0; animationSlot < 4; animationSlot++) {
-        fn_1_C158_inlined(modelIndex, animationSlot, animationDataIndex, -1);
-    }
-}
-
 /* Flips a player-count card, changes its animation halfway through and resets yaw at the end of the
  * count-change animation. */
 void fn_1_ACF0(s16 modelIndex, s32 animationOffset, s32 baseAnimationIndex, s16 elapsedFrames,
@@ -2872,8 +2757,7 @@ void fn_1_B3E0(void)
     textureNames = lbl_1_rodata_238;
     modelIndex = 0;
     while (modelIndex < 21) {
-        lbl_1_bss_6C8[modelIndex] = HuSprAnimRead(
-            fn_80008DD0(lbl_1_data_474[modelIndex], 0x10000000, 2));
+        lbl_1_bss_6C8[modelIndex] = HuSprAnimDataRead(lbl_1_data_474[modelIndex]);
         modelIndex += 1;
     }
 
@@ -3107,39 +2991,46 @@ void fn_1_C770(OMOBJ *controllerObject)
     }
 }
 
+/* Spins and shrinks one card as it leaves the menu. */
+static inline void DismissMenuCard(MDMinidllModelAnimationRecord *model, s16 frame)
+{
+    float value;
+
+    if (frame == 0) {
+        if (lbl_1_bss_34 == 0) {
+            HuAudFXPlay(53);
+            lbl_1_bss_34 = 1;
+        }
+        fn_800267CC(model->model, &model->savedPosition);
+        fn_80026874(model->model, &model->savedRotation);
+        fn_8002691C(model->model, &model->savedScale);
+    } else {
+        lbl_1_bss_34 = 0;
+    }
+    value = fn_1_1868_inlined(model->savedRotation.y,
+                                       model->savedRotation.y - 540.0f,
+                                       frame, 10.0f);
+    fn_80026808(model->model, 0.0f, value, 0.0f);
+    value = fn_1_1868_inlined(model->savedScale.x, 0.0f,
+                                       frame, 10.0f);
+    fn_800268B0(model->model, value, value, 1.0f);
+    if (frame <= 10) {
+        fn_80026A44(model->model, (1 << 0));
+    }
+}
+
 /* Spins and shrinks the four player-count cards over ten frames, then signals the selection process
  * to continue. */
 void fn_1_D09C(OMOBJ *controllerObject)
 {
     MDMinidllModelAnimationRecord *modelRecord;
-    float transformValue;
     s16 playerIndex;
     s16 elapsedFrames;
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         elapsedFrames = controllerObject->work[0];
         modelRecord = &lbl_1_bss_230[(s16)(playerIndex + 17)];
-        if (elapsedFrames == 0) {
-            if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_34 = 1;
-            }
-            fn_800267CC(modelRecord->model, &modelRecord->savedPosition);
-            fn_80026874(modelRecord->model, &modelRecord->savedRotation);
-            fn_8002691C(modelRecord->model, &modelRecord->savedScale);
-        } else {
-            lbl_1_bss_34 = 0;
-        }
-        transformValue = fn_1_1868_inlined(modelRecord->savedRotation.y,
-                                           modelRecord->savedRotation.y - 540.0f,
-                                           elapsedFrames, 10.0f);
-        fn_80026808(modelRecord->model, 0.0f, transformValue, 0.0f);
-        transformValue = fn_1_1868_inlined(modelRecord->savedScale.x, 0.0f,
-                                           elapsedFrames, 10.0f);
-        fn_800268B0(modelRecord->model, transformValue, transformValue, 1.0f);
-        if (elapsedFrames <= 10) {
-            fn_80026A44(modelRecord->model, (1 << 0));
-        }
+        DismissMenuCard(modelRecord, elapsedFrames);
     }
     if (controllerObject->work[0]++ > 10) {
         controllerObject->objFunc = NULL;
@@ -3173,7 +3064,6 @@ void fn_1_D4EC(s16 characterIndex)
                     0.0f, 0.0f);
 }
 
-void fn_1_25BF4(s16 particleNo, Point3d *position, s16 colorNo);
 
 /* Handles human character choices each frame, then rotates any character card that is still being
  * chosen. */
@@ -3190,7 +3080,7 @@ void fn_1_D554(OMOBJ *controllerObject)
             if (playerConfig->selectionPhase == 0) {
                 if (controllerObject->work[selectionSlot]++ > 10U) {
                     if (fn_1_97D8(playerConfig->padNo, &playerConfig->charNo,
-                                  (LBL_1_DATA_E12_ENTRY *) lbl_1_data_89A, 11) != 0) {
+                                  lbl_1_data_89A, 11) != 0) {
                         fn_1_8914(selectionSlot, &lbl_1_data_4C8[playerConfig->charNo + 14]);
                         controllerObject->work[selectionSlot] = 0;
                     } else if ((s32) (lbl_802C0008[playerConfig->padNo] & PAD_BUTTON_A) != 0) {
@@ -3252,28 +3142,12 @@ void fn_1_DD00(OMOBJ *controllerObject)
     while ((s16)playerIndex < 4) {
         if (playerConfig->comF == 0 && playerConfig->selectionPhase == 0) {
             Point3d *characterPosition;
-            OMOBJ *markerObject;
             s16 bankIndex;
 
             lbl_1_data_89A[playerConfig->charNo].claimed = 1;
             bankIndex = playerConfig->padNo;
             characterPosition = &lbl_1_data_4C8[playerConfig->charNo + 14];
-            markerObject = lbl_1_bss_1C[0];
-
-            fn_80026760(markerObject->mdlId[(s16) playerIndex], characterPosition->x,
-                            characterPosition->y, characterPosition->z);
-            fn_80026808(markerObject->mdlId[(s16)playerIndex], 0.0f, 0.0f, 180.0f);
-            fn_800268B0(markerObject->mdlId[(s16)playerIndex], 1.0f, 1.0f, 1.0f);
-
-            lbl_1_bss_50[(s16)playerIndex].x = characterPosition->x - 50.0f;
-            lbl_1_bss_50[(s16)playerIndex].y = 50.0f + characterPosition->y;
-            lbl_1_bss_50[(s16)playerIndex].z = 50.0f + characterPosition->z;
-
-            fn_80026A44(markerObject->mdlId[(s16)playerIndex], (1 << 0));
-            HuSprScaleSet(lbl_1_bss_752[3], (s16) playerIndex, 0.800000011920929f,
-                          0.800000011920929f);
-            HuSprAttrReset(lbl_1_bss_752[3], (s16)playerIndex, HUSPR_ATTR_DISPOFF);
-            HuSprBankSet(lbl_1_bss_752[3], (s16)playerIndex, bankIndex);
+            fn_1_899C(playerIndex, characterPosition, bankIndex);
         }
         playerIndex += 1;
         playerConfig += 1;
@@ -3302,7 +3176,7 @@ void fn_1_DF64(OMOBJ *controllerObject)
                 markerObject = lbl_1_bss_1C[0];
                 fn_800269E8(markerObject->mdlId[selectionSlot], (1 << 0));
                 HuSprScaleSet(lbl_1_bss_752[3], (s16)selectionSlot,
-                              0.800000011920929f, 0.800000011920929f);
+                              0.8f, 0.8f);
                 HuSprAttrSet(lbl_1_bss_752[3], (s16)selectionSlot, HUSPR_ATTR_DISPOFF);
             }
         }
@@ -3332,8 +3206,8 @@ void fn_1_E0B0(OMOBJ *controllerObject)
 
     playerConfig->selectionPhase = 0;
     lbl_1_bss_80[0].x = 0.0f;
-    fn_1_C158_inlined((s16)playerConfig->charNo, 0, (s16)playerConfig->charNo, 0);
-    fn_1_C158_inlined((s16)playerConfig->charNo, 2, (s16)playerConfig->charNo, 0);
+    fn_1_9D58((s16)playerConfig->charNo, 0, (s16)playerConfig->charNo, 0);
+    fn_1_9D58((s16)playerConfig->charNo, 2, (s16)playerConfig->charNo, 0);
     controllerObject->objFunc = NULL;
     lbl_1_bss_24->mtnId[0] = 1;
 }
@@ -3354,7 +3228,7 @@ void fn_1_E1C0(OMOBJ *controllerObject)
             if (playerConfig->selectionPhase == 0) {
                 if (controllerObject->work[0]++ > 10) {
                     if (fn_1_97D8(
-                            0, &playerConfig->charNo, (LBL_1_DATA_E12_ENTRY *)lbl_1_data_89A, 11)) {
+                            0, &playerConfig->charNo, lbl_1_data_89A, 11)) {
                         fn_1_8914(
                             selectionSlot, &lbl_1_data_4C8[playerConfig->charNo + 14]);
                         controllerObject->work[0] = 0;
@@ -3368,9 +3242,9 @@ void fn_1_E1C0(OMOBJ *controllerObject)
                         playerConfig->comDif = 1;
                         fn_1_8B70(selectionSlot);
                         fn_1_809C(selectionSlot, playerConfig->comDif + 5);
-                        fn_1_C158_inlined(
+                        fn_1_9D58(
                             (s16)playerConfig->charNo, 0, (s16)playerConfig->charNo, 1);
-                        fn_1_C158_inlined(
+                        fn_1_9D58(
                             (s16)playerConfig->charNo, 2, (s16)playerConfig->charNo, 1);
                         fn_800267CC(
                             lbl_1_bss_230[playerConfig->charNo].model, &characterPosition);
@@ -3390,9 +3264,9 @@ void fn_1_E1C0(OMOBJ *controllerObject)
                                     lbl_1_bss_7CC[otherPlayerIndex].charNo]
                                     .claimed = -1;
                                 fn_1_8188(otherPlayerIndex);
-                                fn_1_C158_inlined((s16)lbl_1_bss_7CC[otherPlayerIndex].charNo, 0,
+                                fn_1_9D58((s16)lbl_1_bss_7CC[otherPlayerIndex].charNo, 0,
                                     (s16)lbl_1_bss_7CC[otherPlayerIndex].charNo, 0);
-                                fn_1_C158_inlined((s16)lbl_1_bss_7CC[otherPlayerIndex].charNo, 2,
+                                fn_1_9D58((s16)lbl_1_bss_7CC[otherPlayerIndex].charNo, 2,
                                     (s16)lbl_1_bss_7CC[otherPlayerIndex].charNo, 0);
                                 break;
                             }
@@ -3451,9 +3325,9 @@ void fn_1_E1C0(OMOBJ *controllerObject)
                         playerConfig->selectionPhase = 0;
                         fn_1_8694(4);
                         fn_1_8694(5);
-                        fn_1_C158_inlined(
+                        fn_1_9D58(
                             (s16)playerConfig->charNo, 0, (s16)playerConfig->charNo, 0);
-                        fn_1_C158_inlined(
+                        fn_1_9D58(
                             (s16)playerConfig->charNo, 2, (s16)playerConfig->charNo, 0);
                         fn_1_899C(
                             selectionSlot, &lbl_1_data_4C8[playerConfig->charNo + 14], 4);
@@ -3482,7 +3356,6 @@ void fn_1_F0A8(OMOBJ *controllerObject)
     MDMinidllPlayerConfig *playerConfig;
     s16 playerIndex;
     Point3d *markerPosition;
-    OMOBJ *markerObject;
     s16 characterIndex;
 
     playerIndex = 0;
@@ -3502,19 +3375,7 @@ void fn_1_F0A8(OMOBJ *controllerObject)
                     break;
                 }
                 markerPosition = &lbl_1_data_4C8[playerConfig->charNo + 14];
-                markerObject = lbl_1_bss_1C[0];
-                fn_80026760(markerObject->mdlId[playerIndex], markerPosition->x,
-                                markerPosition->y, markerPosition->z);
-                fn_80026808(markerObject->mdlId[playerIndex], 0.0f, 0.0f, 180.0f);
-                fn_800268B0(markerObject->mdlId[playerIndex], 1.0f, 1.0f, 1.0f);
-                lbl_1_bss_50[playerIndex].x = markerPosition->x - 50.0f;
-                lbl_1_bss_50[playerIndex].y = 50.0f + markerPosition->y;
-                lbl_1_bss_50[playerIndex].z = 50.0f + markerPosition->z;
-                fn_80026A44(markerObject->mdlId[playerIndex], (1 << 0));
-                HuSprScaleSet(lbl_1_bss_752[3], (s16) playerIndex, 0.800000011920929f,
-                              0.800000011920929f);
-                HuSprAttrReset(lbl_1_bss_752[3], (s16) playerIndex, HUSPR_ATTR_DISPOFF);
-                HuSprBankSet(lbl_1_bss_752[3], (s16) playerIndex, 4);
+                fn_1_899C(playerIndex, markerPosition, 4);
                 break;
             } else if (playerConfig->selectionPhase == 1) {
                 fn_800267CC(lbl_1_bss_230[playerConfig->charNo].model, &characterPosition);
@@ -3549,23 +3410,19 @@ void fn_1_F52C(OMOBJ *controllerObject)
                 markerObject = lbl_1_bss_1C[0];
                 fn_800269E8(markerObject->mdlId[selectionSlot], (1 << 0));
                 HuSprScaleSet(lbl_1_bss_752[3], (s16)selectionSlot,
-                              0.800000011920929f, 0.800000011920929f);
+                              0.8f, 0.8f);
                 HuSprAttrSet(lbl_1_bss_752[3], (s16)selectionSlot, HUSPR_ATTR_DISPOFF);
+                break;
             } else if (playerConfig->selectionPhase == 1) {
                 HuSprAttrSet(lbl_1_bss_752[2], 4, HUSPR_ATTR_DISPOFF);
                 lbl_1_data_86E[4] = 0;
                 HuSprAttrSet(lbl_1_bss_752[2], 5, HUSPR_ATTR_DISPOFF);
                 lbl_1_data_86E[5] = 0;
-            } else {
-                goto next_player;
+                break;
             }
-            break;
-        } else {
-        next_player:
-            selectionSlot += 1;
-            playerConfig += 1;
-            continue;
         }
+        selectionSlot += 1;
+        playerConfig += 1;
     }
 
     selectionSlot = 0;
@@ -3732,7 +3589,6 @@ void fn_1_105DC(OMOBJ *controllerObject)
 {
     MDMinidllPlayerConfig *playerConfig;
     MDMinidllModelAnimationRecord *characterCard;
-    float dismissValue;
     s32 characterIndex;
     s16 playerIndex;
     s16 dismissFrame;
@@ -3747,27 +3603,7 @@ void fn_1_105DC(OMOBJ *controllerObject)
         dismissFrame = controllerObject->work[0];
         characterIndex = (s16)playerConfig->charNo;
         characterCard = &lbl_1_bss_230[characterIndex];
-        if (dismissFrame == 0) {
-            if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_34 = 1;
-            }
-            fn_800267CC(characterCard->model, &characterCard->savedPosition);
-            fn_80026874(characterCard->model, &characterCard->savedRotation);
-            fn_8002691C(characterCard->model, &characterCard->savedScale);
-        } else {
-            lbl_1_bss_34 = 0;
-        }
-        dismissValue = fn_1_1868_inlined(characterCard->savedRotation.y,
-                                         characterCard->savedRotation.y - 540.0f,
-                                         dismissFrame, 10.0f);
-        fn_80026808(characterCard->model, 0.0f, dismissValue, 0.0f);
-        dismissValue = fn_1_1868_inlined(characterCard->savedScale.x, 0.0f,
-                                         dismissFrame, 10.0f);
-        fn_800268B0(characterCard->model, dismissValue, dismissValue, 1.0f);
-        if (dismissFrame <= 10) {
-            fn_80026A44(characterCard->model, (1 << 0));
-        }
+        DismissMenuCard(characterCard, dismissFrame);
     }
     if (controllerObject->work[0]++ > 10) {
         controllerObject->objFunc = NULL;
@@ -3782,7 +3618,6 @@ void fn_1_109D4(OMOBJ *controllerObject)
     MDMinidllModelAnimationRecord *characterCard;
     s16 characterIndex;
     s16 dismissFrame;
-    f32 dismissValue;
 
     if (controllerObject->work[0] == 0) {
         for (characterIndex = 0; characterIndex < 4; characterIndex++) {
@@ -3792,26 +3627,7 @@ void fn_1_109D4(OMOBJ *controllerObject)
     for (characterIndex = 0; characterIndex < 11; characterIndex++) {
         dismissFrame = controllerObject->work[0];
         characterCard = &lbl_1_bss_230[characterIndex];
-        if (dismissFrame == 0) {
-            if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_34 = 1;
-            }
-            fn_800267CC(characterCard->model, &characterCard->savedPosition);
-            fn_80026874(characterCard->model, &characterCard->savedRotation);
-            fn_8002691C(characterCard->model, &characterCard->savedScale);
-        } else {
-            lbl_1_bss_34 = 0;
-        }
-        dismissValue = fn_1_1868_inlined(characterCard->savedRotation.y,
-            characterCard->savedRotation.y - 540.0f, dismissFrame, 10.0f);
-        fn_80026808(characterCard->model, 0.0f, dismissValue, 0.0f);
-        dismissValue = fn_1_1868_inlined(characterCard->savedScale.x,
-            0.0f, dismissFrame, 10.0f);
-        fn_800268B0(characterCard->model, dismissValue, dismissValue, 1.0f);
-        if (dismissFrame <= 10) {
-            fn_80026A44(characterCard->model, (1 << 0));
-        }
+        DismissMenuCard(characterCard, dismissFrame);
     }
     if (controllerObject->work[0]++ > 10U) {
         controllerObject->objFunc = NULL;
@@ -4111,7 +3927,6 @@ void fn_1_12E88(OMOBJ *controllerObject)
     MDMinidllModelAnimationRecord *modeCard;
     s16 modeIndex;
     OMOBJ *labelFadeObject;
-    float dismissValue;
     s16 dismissFrame;
 
     if (controllerObject->work[0] == 0) {
@@ -4122,25 +3937,7 @@ void fn_1_12E88(OMOBJ *controllerObject)
     for (modeIndex = 0; modeIndex < 6; modeIndex++) {
         dismissFrame = controllerObject->work[0];
         modeCard = &lbl_1_bss_230[(s16)(modeIndex + 11)];
-        if (dismissFrame == 0) {
-            if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(53);
-                lbl_1_bss_34 = 1;
-            }
-            fn_800267CC(modeCard->model, &modeCard->savedPosition);
-            fn_80026874(modeCard->model, &modeCard->savedRotation);
-            fn_8002691C(modeCard->model, &modeCard->savedScale);
-        } else {
-            lbl_1_bss_34 = 0;
-        }
-        dismissValue = fn_1_1868_inlined(
-            modeCard->savedRotation.y, modeCard->savedRotation.y - 540.0f, dismissFrame, 10.0f);
-        fn_80026808(modeCard->model, 0.0f, dismissValue, 0.0f);
-        dismissValue = fn_1_1868_inlined(modeCard->savedScale.x, 0.0f, dismissFrame, 10.0f);
-        fn_800268B0(modeCard->model, dismissValue, dismissValue, 1.0f);
-        if (dismissFrame <= 10) {
-            fn_80026A44(modeCard->model, (1 << 0));
-        }
+        DismissMenuCard(modeCard, dismissFrame);
     }
     if (controllerObject->work[0]++ > 10) {
         fn_80025980(2);
@@ -4287,7 +4084,6 @@ void fn_1_148B4(OMOBJ *controllerObject)
  * object-manager slots. */
 static inline void fn_1_157B4_inlined(void)
 {
-    OMOBJ *hostObject;
     OMOBJ *displayObject;
     s16 displayModelIndex;
     OMOBJ *menuObject;
@@ -4324,20 +4120,7 @@ static inline void fn_1_157B4_inlined(void)
         omDelObjEx(lbl_1_bss_4, displayObject);
     }
     displayObject = NULL;
-    hostObject = lbl_1_bss_10;
-    if (hostObject) {
-        fn_80027508(hostObject->mdlId[1]);
-        fn_8002C624(hostObject->mtnId[0]);
-        fn_8002C624(hostObject->mtnId[1]);
-        fn_8002C624(hostObject->mtnId[2]);
-        fn_8002C624(hostObject->mtnId[3]);
-        fn_8002C624(hostObject->mtnId[4]);
-        fn_800262D0(hostObject->mdlId[0]);
-        fn_800262D0(hostObject->mdlId[1]);
-        omDelObjEx(lbl_1_bss_4, hostObject);
-    }
-    /* The callback is cleared unconditionally after the object-manager slot is released. */
-    hostObject->objFunc = NULL;
+    fn_1_5EC0(lbl_1_bss_10);
 }
 
 /* The exit process releases the initial menu, animated display and host objects before saving and
@@ -4350,10 +4133,8 @@ void fn_1_157B4(void)
 /* Menu teardown releases selection cards, windows, lights and the camera-view object. */
 void fn_1_159BC(void)
 {
-    MDMinidllCameraState *cameraState;
     s16 cardIndex;
     s16 animationSlot;
-    s16 windowIndex;
 
     fn_1_257D0();
     if (lbl_1_bss_24) {
@@ -4370,61 +4151,18 @@ void fn_1_159BC(void)
         }
     }
     lbl_1_bss_24 = NULL;
-    windowIndex = 0;
-    while (windowIndex < 4) {
-        HuWinExKill(lbl_1_bss_858[windowIndex]);
-        windowIndex++;
-    }
-    HuWinAllKill();
+    MenuWindowsDestroy();
     Hu3DGLightKill(lbl_1_bss_860[0]);
     Hu3DGLightKill(lbl_1_bss_860[1]);
-    cameraState = &lbl_1_bss_808;
-    Hu3DCameraKill(1);
-    if (cameraState->outViewObj) {
-        omDelObjEx(lbl_1_bss_4, cameraState->outViewObj);
-    }
-    cameraState->outViewObj = NULL;
+    MenuCameraDestroy();
 }
 
 /* The system-exit callback waits for the outgoing wipe, releases menu resources and returns to the
  * previous overlay. */
 void fn_1_15B3C(OMOBJ *unusedObject)
 {
-    MDMinidllCameraState *cameraState;
-    s16 cardIndex;
-    s16 animationSlot;
-    s16 windowIndex;
-
     if (WipeCheck() == 0) {
-        fn_1_257D0();
-        if (lbl_1_bss_24) {
-            *lbl_1_bss_24->mtnId = -1;
-            cardIndex = 20;
-            while (cardIndex >= 0) {
-                animationSlot = 0;
-                while (animationSlot < 4) {
-                    fn_80031010(lbl_1_bss_230[cardIndex].animation[animationSlot]);
-                    animationSlot++;
-                }
-                fn_800262D0(lbl_1_bss_230[cardIndex].model);
-                cardIndex--;
-            }
-        }
-        lbl_1_bss_24 = NULL;
-        windowIndex = 0;
-        while (windowIndex < 4) {
-            HuWinExKill(lbl_1_bss_858[windowIndex]);
-            windowIndex++;
-        }
-        HuWinAllKill();
-        Hu3DGLightKill(lbl_1_bss_860[0]);
-        Hu3DGLightKill(lbl_1_bss_860[1]);
-        cameraState = &lbl_1_bss_808;
-        Hu3DCameraKill(1);
-        if (cameraState->outViewObj) {
-            omDelObjEx(lbl_1_bss_4, cameraState->outViewObj);
-        }
-        cameraState->outViewObj = NULL;
+        fn_1_159BC();
         fn_8003A5E4(1, 1);
     }
 }
@@ -4464,7 +4202,6 @@ void fn_1_15D30(void)
     HuPrcSleep(5);
 }
 
-#include "game/saveload.h"
 s16 fn_1_1E86C(s32 unused);
 /* The child menu process runs selection, then wipes out and either saves before returning or waits
  * for loading and enters the chosen mode. */
@@ -4526,12 +4263,7 @@ void fn_1_15E0C(void)
         history = omOvlHisGet(0);
         omOvlHisChg(0, history->ovl, 1, 0);
         OSReport(lbl_1_data_798);
-        OSReport(lbl_1_data_6F3, 33);
-        OSReport(lbl_1_data_704, 36);
-        OSReport(lbl_1_data_716, 155);
-        OSReport(lbl_1_data_728, 242);
-        HuAMemDump();
-        OSReport(lbl_1_data_736);
+        MenuArenaMemoryReport();
         switch (lbl_1_bss_804[1])
         {
         case 0 :
@@ -4558,18 +4290,9 @@ void fn_1_15E0C(void)
     else
     {
         fn_800567D8(-1);
-        HuARDirFree(0x9f0000);
-        HuARDirFree(0x9c0000);
-        HuARDirFree(0x9d0000);
-        HuARDirFree(0xa10000);
-        HuARDirFree(0x9e0000);
+        ReleaseMenuModeArchives();
         OSReport(lbl_1_data_767);
-        OSReport(lbl_1_data_6F3, 33);
-        OSReport(lbl_1_data_704, 36);
-        OSReport(lbl_1_data_716, 155);
-        OSReport(lbl_1_data_728, 242);
-        HuAMemDump();
-        OSReport(lbl_1_data_736);
+        MenuArenaMemoryReport();
         fn_8003A5E4(1, 1);
     }
     HuPrcEnd();
@@ -4580,7 +4303,6 @@ void fn_1_15E0C(void)
 }
 
 void fn_1_17294(OMOBJ *, MDMinidllCameraState *);
-void fn_1_24D80(HUPROCESS *);
 /* Overlay initialization creates the menu object manager, camera, sprites, windows, selection cards
  * and the child selection process. */
 void fn_1_16400(void)
@@ -4603,41 +4325,16 @@ void fn_1_16400(void)
     fn_8000DAC0(fn_1_15E0C, 12288U, 12288U, 0, lbl_1_bss_4);
 }
 
-#include "game/mgdata.h"
 /* Overlay entry releases prior mode archives, refreshes unlock availability and resets minigame
  * flags before creating the menu. */
 void ObjectSetup(void)
 {
-    OSReport(lbl_1_data_960);
-    HuARDirFree(0x9f0000);
-    HuARDirFree(0x9c0000);
-    HuARDirFree(0x9d0000);
-    HuARDirFree(0xa10000);
-    HuARDirFree(0x9e0000);
+    OSReport("\n-----===== MARIO PARTY 6 :: MINIGAME MODE =====-----\n\n");
+    ReleaseMenuModeArchives();
     OSReport(lbl_1_data_738);
-    OSReport(lbl_1_data_6F3, 33);
-    OSReport(lbl_1_data_704, 36);
-    OSReport(lbl_1_data_716, 155);
-    OSReport(lbl_1_data_728, 242);
-    HuAMemDump();
-    OSReport(lbl_1_data_736);
+    MenuArenaMemoryReport();
     MgPauseExitF = 0;
-    lbl_1_bss_28 = 0;
-    lbl_1_bss_2A = 0;
-    if (fn_8003D2F0(2) != 0) lbl_1_bss_28 = 1;
-    if (fn_8003D2F0(3) != 0) lbl_1_bss_2A = 1;
-    lbl_1_data_6B6[0] = 1;
-    lbl_1_data_6B6[1] = 1;
-    lbl_1_data_6B6[2] = 1;
-    lbl_1_data_6B6[3] = 1;
-    lbl_1_data_6B6[4] = 1;
-    lbl_1_data_6B6[5] = 0;
-    if (fn_8003D2F0(7) != 0) lbl_1_data_6B6[5] = 1;
-    lbl_1_data_6B6[1] = fn_1_1A4(1);
-    lbl_1_data_6B6[2] = fn_1_1A4(2);
-    lbl_1_data_6B6[3] = fn_1_1A4(3);
-    lbl_1_data_6B6[4] = fn_1_1A4(4);
-    if (lbl_1_data_6B6[5] == 1) lbl_1_data_6B6[5] = fn_1_1A4(5);
+    fn_1_558();
     lbl_1_bss_0 = (s16)lbl_802C0248;
     if (lbl_1_bss_0 == 0) fn_8003D3A0(0U);
     MgInstExitF = 0;
@@ -4653,7 +4350,6 @@ void ObjectSetup(void)
 typedef void (*MDMinidllVoidFunc)(void);
 extern const MDMinidllVoidFunc _ctors[];
 extern const MDMinidllVoidFunc _dtors[];
-void ObjectSetup(void);
 
 /* Overlay entry runs each constructor, then initializes the minigame-mode menu. */
 int _prolog(void)
@@ -4749,8 +4445,8 @@ void fn_1_17894(void)
         lbl_1_bss_7CC[selectionIndex].padNo = lbl_80265750[selectionIndex].padNo;
         if (lbl_1_bss_7CC[selectionIndex].comF == 0) {
             padNumber = lbl_1_bss_7CC[selectionIndex].padNo;
-            lbl_1_bss_80[selectionIndex].x = 0.85000002384185791f;
-            lbl_1_bss_80[selectionIndex].y = 0.85000002384185791f;
+            lbl_1_bss_80[selectionIndex].x = 0.85f;
+            lbl_1_bss_80[selectionIndex].y = 0.85f;
             humanBadgeGroupId = lbl_1_bss_752[selectionIndex + 4];
             humanBadgeGroup = &HuSprGrpData[humanBadgeGroupId];
             humanMemberIndex = 0;
@@ -4762,8 +4458,8 @@ void fn_1_17894(void)
             lbl_1_bss_804[0] += 1;
         } else {
             difficultyBank = lbl_1_bss_7CC[selectionIndex].comDif + 5;
-            lbl_1_bss_80[selectionIndex].x = 0.85000002384185791f;
-            lbl_1_bss_80[selectionIndex].y = 0.85000002384185791f;
+            lbl_1_bss_80[selectionIndex].x = 0.85f;
+            lbl_1_bss_80[selectionIndex].y = 0.85f;
             cpuBadgeGroupId = lbl_1_bss_752[selectionIndex + 4];
             cpuBadgeGroup = &HuSprGrpData[cpuBadgeGroupId];
             cpuMemberIndex = 0;
@@ -4804,8 +4500,8 @@ void fn_1_17894(void)
                         lbl_1_data_4C8[selectionIndex + 25].x,
                         lbl_1_data_4C8[selectionIndex + 25].y,
                         lbl_1_data_4C8[selectionIndex + 25].z);
-        fn_800268B0(selectedCard->model, 1.2500000000000000f,
-                          1.2500000000000000f, 1.0f);
+        fn_800268B0(selectedCard->model, 1.25f,
+                          1.25f, 1.0f);
         fn_80026A44(selectedCard->model, (1 << 0));
         selectionIndex += 1;
     }
@@ -4867,7 +4563,6 @@ s32 fn_1_18650(void)
     return 1;
 }
 
-void fn_1_26394(void);
 s16 fn_1_19940(s16);
 s16 fn_1_1A6C0(s16);
 /* The player-count step shows its cards and prompt and accepts confirmation or cancellation.
@@ -5056,50 +4751,54 @@ s16 fn_1_1A6C0(s16 unusedSelectionState)
     lastPlayerIndex = 0;
     pendingCpuCount = 0;
     pendingCpuCount = fn_1_1A58C(&pendingPlayerIndex, &firstCpuIndex, &lastPlayerIndex);
-again:
-    HuPrcVSleep();
-    fn_1_4150(MESSNUM(MESS_SYS_GUIDE, 10));
-    fn_1_4E40();
-    if (lbl_1_bss_7CC[pendingPlayerIndex].selectionPhase == 0) {
-        fn_1_3F5C(2, MESSNUM(MESS_PARTY_SETTING, 19) - (pendingCpuCount - 1), 0);
-        fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 8), 0);
-    } else {
-        fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 12), 0);
-    }
-    fn_1_B348(fn_1_F0A8);
-poll:
-    HuPrcVSleep();
-    if (lbl_1_bss_7CC[pendingPlayerIndex].selectionPhase == 0) {
-        fn_1_3F5C(2, MESSNUM(MESS_PARTY_SETTING, 19) - (pendingCpuCount - 1), 0);
-        fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 8), 0);
-    } else {
-        fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 12), 0);
-    }
-    if (fn_1_B310() == 0) {
-        goto poll;
-    }
-    pendingCpuCount = fn_1_1A58C(&pendingPlayerIndex, &firstCpuIndex, &lastPlayerIndex);
-    if (pendingPlayerIndex > lastPlayerIndex) {
-        selectionResult = 0;
-    } else if ((firstCpuIndex == pendingPlayerIndex) &&
-               (lbl_1_bss_7CC[pendingPlayerIndex].selectionPhase == 0) &&
-               ((lbl_802C0008[0] & PAD_BUTTON_B) != 0)) {
-        HuAudFXPlay(3);
-        selectionResult = 1;
-    } else if ((lbl_802C0008[0] & PAD_BUTTON_X) != 0) {
-        HuAudFXPlay(3);
-        selectionResult = -1;
-    } else {
-        goto poll;
-    }
-    fn_1_42D4();
-    fn_1_B348(fn_1_F52C);
-    if (selectionResult == -1) {
-        if (!fn_1_181CC()) {
-            selectionResult = -1;
+    for (;;) {
+        HuPrcVSleep();
+        fn_1_4150(MESSNUM(MESS_SYS_GUIDE, 10));
+        fn_1_4E40();
+        if (lbl_1_bss_7CC[pendingPlayerIndex].selectionPhase == 0) {
+            fn_1_3F5C(2, MESSNUM(MESS_PARTY_SETTING, 19) - (pendingCpuCount - 1), 0);
+            fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 8), 0);
         } else {
-            goto again;
+            fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 12), 0);
         }
+        fn_1_B348(fn_1_F0A8);
+        for (;;) {
+            HuPrcVSleep();
+            if (lbl_1_bss_7CC[pendingPlayerIndex].selectionPhase == 0) {
+                fn_1_3F5C(2, MESSNUM(MESS_PARTY_SETTING, 19) - (pendingCpuCount - 1), 0);
+                fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 8), 0);
+            } else {
+                fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 12), 0);
+            }
+            if (fn_1_B310() == 0) {
+                continue;
+            }
+            pendingCpuCount = fn_1_1A58C(&pendingPlayerIndex, &firstCpuIndex, &lastPlayerIndex);
+            if (pendingPlayerIndex > lastPlayerIndex) {
+                selectionResult = 0;
+            } else if ((firstCpuIndex == pendingPlayerIndex) &&
+                       (lbl_1_bss_7CC[pendingPlayerIndex].selectionPhase == 0) &&
+                       ((lbl_802C0008[0] & PAD_BUTTON_B) != 0)) {
+                HuAudFXPlay(3);
+                selectionResult = 1;
+            } else if ((lbl_802C0008[0] & PAD_BUTTON_X) != 0) {
+                HuAudFXPlay(3);
+                selectionResult = -1;
+            } else {
+                continue;
+            }
+            break;
+        }
+        fn_1_42D4();
+        fn_1_B348(fn_1_F52C);
+        if (selectionResult == -1) {
+            if (!fn_1_181CC()) {
+                selectionResult = -1;
+            } else {
+                continue;
+            }
+        }
+        break;
     }
     return selectionResult;
 }
@@ -5166,20 +4865,11 @@ s16 fn_1_1BF60(s16 returningFromStartPrompt)
         fn_1_B348(fn_1_1240C);
     }
     fn_1_B348(fn_1_11E14);
-restart:
-    HuPrcVSleep();
-    fn_1_B348(fn_1_118A0);
-    fn_1_4150(MESSNUM(MESS_SYS_GUIDE, 10));
-    fn_1_4E40();
-    if (lbl_1_data_6B6[lbl_1_bss_804[1]] == 1) {
-        fn_1_3D24(2, messages.message[lbl_1_bss_804[1]], 0);
-    } else if ((lbl_1_bss_804[1] == 5) && (fn_8003D2F0(7) == 0)) {
-        fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 23), 0);
-    } else {
-        fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 22), 0);
-    }
-    while (1) {
+    for (;;) {
         HuPrcVSleep();
+        fn_1_B348(fn_1_118A0);
+        fn_1_4150(MESSNUM(MESS_SYS_GUIDE, 10));
+        fn_1_4E40();
         if (lbl_1_data_6B6[lbl_1_bss_804[1]] == 1) {
             fn_1_3D24(2, messages.message[lbl_1_bss_804[1]], 0);
         } else if ((lbl_1_bss_804[1] == 5) && (fn_8003D2F0(7) == 0)) {
@@ -5187,34 +4877,45 @@ restart:
         } else {
             fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 22), 0);
         }
-        if (fn_1_B310() == 0) {
-            continue;
-        }
-        if (lbl_802C0008[0] & PAD_BUTTON_A) {
-            if (lbl_1_data_6B6[lbl_1_bss_804[1]] == 0) {
-                HuAudFXPlay(4);
+        while (1) {
+            HuPrcVSleep();
+            if (lbl_1_data_6B6[lbl_1_bss_804[1]] == 1) {
+                fn_1_3D24(2, messages.message[lbl_1_bss_804[1]], 0);
+            } else if ((lbl_1_bss_804[1] == 5) && (fn_8003D2F0(7) == 0)) {
+                fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 23), 0);
+            } else {
+                fn_1_3D24(2, MESSNUM(MESS_MGM_MAIN_MENU, 22), 0);
+            }
+            if (fn_1_B310() == 0) {
                 continue;
             }
-            HuAudFXPlay(2);
-            selectionResult = 0;
-        } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
-            HuAudFXPlay(3);
-            selectionResult = 1;
-        } else if (lbl_802C0008[0] & PAD_BUTTON_X) {
-            HuAudFXPlay(3);
+            if (lbl_802C0008[0] & PAD_BUTTON_A) {
+                if (lbl_1_data_6B6[lbl_1_bss_804[1]] == 0) {
+                    HuAudFXPlay(4);
+                    continue;
+                }
+                HuAudFXPlay(2);
+                selectionResult = 0;
+            } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
+                HuAudFXPlay(3);
+                selectionResult = 1;
+            } else if (lbl_802C0008[0] & PAD_BUTTON_X) {
+                HuAudFXPlay(3);
+                selectionResult = -1;
+            } else {
+                continue;
+            }
+            break;
+        }
+        fn_1_42D4();
+        fn_1_B348(fn_1_11B0C);
+        if (selectionResult == -1) {
+            if (fn_1_181CC()) {
+                continue;
+            }
             selectionResult = -1;
-        } else {
-            continue;
         }
         break;
-    }
-    fn_1_42D4();
-    fn_1_B348(fn_1_11B0C);
-    if (selectionResult == -1) {
-        if (fn_1_181CC()) {
-            goto restart;
-        }
-        selectionResult = -1;
     }
     if (selectionResult == 0) {
         fn_1_B348(fn_1_124A0);

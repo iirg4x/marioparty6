@@ -108,8 +108,6 @@ typedef struct M646ActorPlayerSource_s {
 #define M646_TARGET_SCORE_CLEAR_SE_ID 1988
 #define M646_STAGE_FALL_SE_ID 1989
 
-void fn_1_AF4(void);
-void fn_1_AF8(void);
 void fn_1_AFC(OMOBJMAN *objman, s16 player);
 void fn_1_BF4(void);
 void fn_1_BF8(OMOBJ *obj);
@@ -188,11 +186,13 @@ OMOBJ *lbl_1_bss_30[4][3];
 
 s16 lbl_1_bss_28[4];
 
-void fn_1_AF4(void)
+/* The sequence fade-out hook has no actor work. */
+void fn_1_AF4(s16 mode, s16 frame)
 {
 }
 
-void fn_1_AF8(void)
+/* The sequence close hook has no actor work. */
+void fn_1_AF8(s16 mode, s16 frame)
 {
 }
 

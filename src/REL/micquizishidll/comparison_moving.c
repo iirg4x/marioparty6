@@ -297,7 +297,7 @@ void fn_1_239D4(OMOBJ *object) {
     }
     fn_80026E44(work->model);
     work->state = 4;
-    work->modelVariant = object->work[0];
+    work->unk58 = object->work[0];
     work->positionIndex = object->work[1];
     work->side = object->work[2];
     work->position.x = work->position.y = work->position.z = 1e+06f;
@@ -787,23 +787,10 @@ s32 fn_1_2548C(void) {
     return 1;
 }
 
+/* Spreads the two moving-comparison models apart along X. */
 void fn_1_25524(void)
 {
-    HuVecF positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
 }
 
 /* Recipient symbol bindings for a retained source (copy of micquizishidll fn_1_22434). */
@@ -816,29 +803,7 @@ void fn_1_255E8(void) {
 void fn_1_2560C(void) {
     GXColor windowColor;
 
-    windowColor.r = 0;
-    windowColor.g = 0;
-    windowColor.b = 0x90;
-    windowColor.a = 0xC0;
-
-    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
-    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
-    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
-    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
-    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].x -= 5.0f;
-    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].x += 5.0f;
-    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
-    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
-
-    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, &lbl_1_data_1714);
-
-    printWin(0x10, 0x28, 0xF0, 0x54, &windowColor);
-    fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
-           lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
-           lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+    QuizComparisonCameraUpdate(&lbl_1_data_1714, &windowColor);
 }
 
 /* Returns 1 when two spheres overlap. */

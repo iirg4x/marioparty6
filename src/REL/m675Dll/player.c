@@ -1,4 +1,6 @@
 /* Player input, movement, character motions and collision responses. */
+#include "REL/minigame_ground_effect.h"
+#include "REL/m675Dll/actor_state.h"
 #include "dolphin/math.h"
 #include "game/main.h"
 #include "game/object.h"
@@ -13,27 +15,6 @@
 #include "datadir_enum.h"
 #include <string.h>
 
-typedef struct M675Collision M675Collision;
-struct M675Collision {
-    u32 flags, mask; /* Collision enable flags and overlap-channel mask. */
-    u32 type; /* Event type reported by this collision record. */
-    s32 index; /* Owner-supplied record index. */
-    s32 shapeType; /* Collision shape selector: 0 sphere, 10 ring, 11 boundary. */
-    OMOBJ *owner; /* Object that owns this collision record. */
-    void *excludedOwner; /* Other owner ignored when the collision pair is checked. */
-    OMOBJ_FUNC update; /* Callback that refreshes the owner's transform. */
-    s32 (*contact)(M675Collision *, M675Collision *); /* Pair-contact callback. */
-    Vec *position, *velocity; /* World position and velocity used by collision response. */
-    Vec positionCopy; /* Position snapshot stored when the record is initialized. */
-    f32 radius; /* Collision radius. */
-    f32 yieldOnContact; /* Nonzero makes this sphere move against a zero-valued sphere. */
-    s32 handled; /* Nonzero after another callback handles this event. */
-};
-typedef struct M675EffectRegistration {
-    s32 active; /* Nonzero enables drawing this registration's ground ring. */
-    f32 radius; /* World-space radius around position. */
-    Vec *position; /* Address of the registered effect's world position. */
-} M675EffectRegistration;
 typedef struct M675PlayerConfig {
     u32 unmappedConfigWordsBeforeMovement[2]; /* Copied setup data with no established player
                                                * use. */
@@ -48,48 +29,33 @@ typedef struct M675PlayerConfig {
     s32 idleMotion, actionMotion, firstAlternateMotion, secondAlternateMotion; /* Input motions. */
     s32 contactMotion, winMotion, loseMotion, exitMotion; /* Contact and result motions. */
 } M675PlayerConfig;
-/* State passed to the shared actor input, motion and transform helpers. */
-typedef struct M675ActorState {
-    M675Collision collision; /* Player contact data; prop instances leave it disabled. */
-    s32 playerMappingIndex; /* Player mapping used by the player gameplay helpers. */
-    s32 formationIndexAtCreation; /* Formation slot supplied when a player is created. */
-    s32 formationIndex; /* Current player slot in the formation arrays. */
-    s32 active; /* Gates human input, motion-offset easing, result arrival reporting and character
-                 * feedback. */
-    Vec basePosition; /* Player formation position before a motion offset is applied. */
-    Vec position, velocity, rotation; /* World position, per-frame movement and Euler angles. */
-    f32 baseYaw; /* Player facing angle before its motion offset is applied. */
-    u32 buttonsDown, buttons; /* Buttons pressed this frame and currently held. */
-    f32 stickAngle, stickMagnitude; /* Stick angle in degrees and its magnitude. */
-    s32 motion, motionFrame; /* Selected motion and transform-update count since its selection. */
-    s32 requestedMotion; /* Motion queued by the current frame's behavior. */
-    f32 motionSpeed; /* Playback speed for the queued motion. */
-} M675ActorState;
-
 typedef struct M675PlayerWork {
     M675ActorState actor;
     s32 phase, phaseTimer; /* Current player phase and its frame timer. */
     u8 unmappedPlayerGapBeforeComputerState[48]; /* Existing storage with no demonstrated player
                                                   * use. */
-    s32 updateCounter; /* Frames elapsed since the manager registered this player. */
+    s32 unkE0; /* The game's code never reads this field. */
     s32 computer; /* Whether the player uses computer-controlled input. */
     s32 difficulty; /* Computer-player difficulty setting, in the range 0 through 3. */
     s32 computerPhase, actionDelay, randomDelay; /* Computer input phase and its frame timers. */
     f32 triggerHeight; /* Height threshold used by the computer player's effect check. */
-    s32 motionActive, motionTimer, movementInProgress; /* Current motion and movement state. */
+    s32 motionActive; /* Current motion and movement state. */
+    s32 unk100; /* The game's code never reads this field. */
+    s32 unk104; /* The game's code never reads this field. */
     s32 unmappedPlayerWordAfterMovement; /* Existing word with no demonstrated player use. */
     /* Hit response state and initialization count. */
-    s32 contactEvent, contactCooldown, contactPhase, initializedCounter;
-    f32 initializedScale; /* Scale value written during player registration. */
+    s32 contactEvent, contactCooldown, contactPhase;
+    s32 unk118; /* The game's code never reads this field. */
+    f32 unk11C; /* The game's code never reads this field. */
     u8 unmappedPlayerGapBeforeEffect[28]; /* Existing storage with no demonstrated player use. */
-    M675EffectRegistration effect; /* Position and radius registered for game effects. */
+    MinigameGroundEffect effect; /* Position and radius registered for game effects. */
     M675PlayerConfig config; /* Movement and character-motion settings. */
     s32 playerIndex; /* Player number from the game setup. */
     s32 character; /* Character number used by character-model APIs. */
     s32 processPhase; /* Outer player-object phase advanced by fn_1_55F4. */
     s32 unmappedPlayerWordBeforeUpdateCount; /* Existing word with no demonstrated player use. */
-    s32 updateCount; /* Number of times fn_1_5FCC has run. */
-    s32 voiceState; /* Voice setting cleared before the result voice-volume update. */
+    s32 unk1C4; /* The game's code never reads this field. */
+    s32 unk1C8; /* The game's code never reads this field. */
 } M675PlayerWork;
 typedef struct M675MotionParameter {
     u16 motionIndex; /* Index into the character object's motion array. */
@@ -136,7 +102,7 @@ void fn_1_4BB4(Vec *,Vec *,f32,Vec *);
 f32 fn_1_47DC(f32,f32,f32);
 f32 fn_1_48F8(f32,f32);
 s32 fn_1_10170(M675Collision *);
-void fn_1_E918(M675EffectRegistration *);
+void fn_1_E918(MinigameGroundEffect *);
 void fn_1_4F2C(HUPROCESS *manager);
 void fn_1_5048(void);
 void fn_1_506C(OMOBJ *manager);
@@ -339,7 +305,7 @@ void fn_1_50BC(OMOBJ *manager)
             if (object->contactCooldown > 0) {
                 object->contactCooldown -= 1;
             }
-            object->updateCounter += 1;
+            object->unkE0 += 1;
         }
         index += 1;
     }
@@ -370,8 +336,8 @@ void fn_1_5170(M675PlayerWork *state)
             state->actor.rotation.y =
                 state->actor.baseYaw;
             state->contactPhase = 0;
-            state->initializedCounter = 0;
-            state->initializedScale = 1.0f;
+            state->unk118 = 0;
+            state->unk11C = 1.0f;
             break;
         }
     }
@@ -402,7 +368,7 @@ void fn_1_527C(OMOBJ *object)
     state->character = character;
     mappingIndex = work->actor.playerMappingIndex = object->work[1];
     formationIndex = object->work[2];
-    work->actor.formationIndexAtCreation = work->actor.formationIndex = formationIndex;
+    work->actor.unk48 = work->actor.formationIndex = formationIndex;
     work->actor.active = 1;
     work->computer = lbl_80265728[player].type;
     work->difficulty = lbl_80265728[player].comDif & 3;
@@ -424,7 +390,7 @@ void fn_1_527C(OMOBJ *object)
     fn_1_5170(work);
     callback = &work->actor.collision;
     callback->flags = 1;
-    callback->mask = 9;
+    callback->collisionMask = 9;
     callback->type = 0;
     callback->index = player;
     callback->shapeType = 0;
@@ -442,7 +408,7 @@ void fn_1_527C(OMOBJ *object)
     work->effect.position = &work->actor.position;
     fn_1_E918(&work->effect);
     state->processPhase = 0;
-    state->voiceState = 1;
+    state->unk1C8 = 1;
     object->objFunc = fn_1_55F4;
 }
 
@@ -587,8 +553,8 @@ s32 fn_1_5998(M675PlayerWork *work)
             y = -lbl_8024C7E8[controllerIndex];
             work->actor.buttons = lbl_802C0010[controllerIndex];
             work->actor.buttonsDown = lbl_802C0008[controllerIndex];
-            work->actor.stickAngle = 180.0 * (atan2(x, y) / 3.141592653589793);
-            work->actor.stickMagnitude = sqrtf(x * x + y * y);
+            work->actor.unk90 = 180.0 * (atan2(x, y) / 3.141592653589793);
+            work->actor.unk94 = sqrtf(x * x + y * y);
         }
         break;
     case 2:
@@ -630,7 +596,7 @@ s32 fn_1_5CB4(M675PlayerWork *work)
         work->phase++;
         work->phaseTimer = 0;
         work->motionActive = 0;
-        work->motionTimer = 0;
+        work->unk100 = 0;
         work->contactCooldown = 0;
         fn_1_6210(&work->actor, motionSettings->exitMotion, 1.0f);
         /* fall through */
@@ -645,7 +611,7 @@ s32 fn_1_5CB4(M675PlayerWork *work)
     case 3:
         targetPosition = lbl_1_data_268[work->actor.formationIndex];
         targetYaw = lbl_1_data_298[work->actor.formationIndex];
-        if (fn_1_68B0(work, &targetPosition, targetYaw, 0.800000011920929f) == 0) {
+        if (fn_1_68B0(work, &targetPosition, targetYaw, 0.8f) == 0) {
             break;
         }
         work->phase++;
@@ -689,7 +655,7 @@ s32 fn_1_5EB4(M675PlayerWork *state)
         }
         if (state->actor.active) {
             work = state;
-            work->voiceState = 0;
+            work->unk1C8 = 0;
             fn_80060F40(work->character, 127);
         }
         state->phase++;
@@ -716,14 +682,14 @@ void fn_1_5FCC(OMOBJ *object)
     M675PlayerWork *work = object->data;
 
     state = work;
-    work->updateCount++;
+    work->unk1C4++;
     if (state->motionActive) {
         if (fn_1_6460(object) != 0) {
             state->motionActive = 0;
-            state->motionTimer = 0;
+            state->unk100 = 0;
         }
     } else {
-        state->motionTimer = 0;
+        state->unk100 = 0;
     }
     fn_80060F14((s16) work->character,
                          (s16) fn_1_32EC(&state->actor.position));
@@ -749,10 +715,10 @@ void fn_1_60DC(M675PlayerWork *state)
 
     if (state->actor.active != 0) {
         PSVECAdd(&state->actor.basePosition, &lbl_1_data_2A8[state->actor.motion], &position);
-        fn_1_4BB4(&state->actor.position, &position, 0.30000001192092896f, &state->actor.position);
+        fn_1_4BB4(&state->actor.position, &position, 0.3f, &state->actor.position);
         targetAngle = state->actor.baseYaw + lbl_1_data_32C[state->actor.motion];
         state->actor.rotation.y =
-            fn_1_47DC(state->actor.rotation.y, targetAngle, 0.30000001192092896f);
+            fn_1_47DC(state->actor.rotation.y, targetAngle, 0.3f);
     }
 }
 
@@ -871,52 +837,38 @@ void fn_1_6524(M675PlayerWork *work)
     M675PlayerConfig *settings =
         &work->config;
 
-    if (work->contactCooldown <= 0) {
-        if (work->motionActive != 0 && work->actor.motion == settings->firstAlternateMotion) {
-            goto movementUpdate;
-        }
+    if (work->contactCooldown <= 0 &&
+        !(work->motionActive != 0 && work->actor.motion == settings->firstAlternateMotion)) {
         if ((work->actor.buttons & PAD_BUTTON_B) != 0) {
-            if (work->actor.motion == settings->secondAlternateMotion) {
-                goto movementUpdate;
+            if (work->actor.motion != settings->secondAlternateMotion) {
+                if (work->actor.motion != settings->firstAlternateMotion) {
+                    firstMotion = settings->firstAlternateMotion;
+                    work->actor.requestedMotion = firstMotion;
+                    work->actor.motionSpeed = 1.0f;
+                    work->motionActive = 1;
+                } else {
+                    secondMotion = settings->secondAlternateMotion;
+                    work->actor.requestedMotion = secondMotion;
+                    work->actor.motionSpeed = 1.0f;
+                }
             }
-            if (work->actor.motion != settings->firstAlternateMotion) {
-                firstMotion = settings->firstAlternateMotion;
-                work->actor.requestedMotion = firstMotion;
+        } else {
+            if ((work->actor.buttonsDown & PAD_BUTTON_A) != 0) {
+                fn_1_D494(work->actor.playerMappingIndex, 0);
+                work->actor.motion = settings->defaultMotion;
+                activeMotion = settings->actionMotion;
+                work->actor.requestedMotion = activeMotion;
                 work->actor.motionSpeed = 1.0f;
                 work->motionActive = 1;
-                goto movementUpdate;
             }
-            secondMotion = settings->secondAlternateMotion;
-            work->actor.requestedMotion = secondMotion;
-            work->actor.motionSpeed = 1.0f;
-            goto movementUpdate;
-        }
-        if ((work->actor.buttonsDown & PAD_BUTTON_A) != 0) {
-            fn_1_D494(work->actor.playerMappingIndex, 0);
-            work->actor.motion = settings->defaultMotion;
-            activeMotion = settings->actionMotion;
-            work->actor.requestedMotion = activeMotion;
-            work->actor.motionSpeed = 1.0f;
-            work->motionActive = 1;
-        }
-        if (work->motionActive == 0) {
-            idleMotion = settings->idleMotion;
-            work->actor.requestedMotion = idleMotion;
-            work->actor.motionSpeed = 1.0f;
+            if (work->motionActive == 0) {
+                idleMotion = settings->idleMotion;
+                work->actor.requestedMotion = idleMotion;
+                work->actor.motionSpeed = 1.0f;
+            }
         }
     }
-movementUpdate:
-    if (work->actor.active != 0) {
-        Vec destination;
-        f32 adjustedAngle;
-
-        PSVECAdd(&work->actor.basePosition, &lbl_1_data_2A8[work->actor.motion], &destination);
-        fn_1_4BB4(&work->actor.position, &destination, 0.30000001192092896f,
-            &work->actor.position);
-        adjustedAngle = work->actor.baseYaw + lbl_1_data_32C[work->actor.motion];
-        work->actor.rotation.y =
-            fn_1_47DC(work->actor.rotation.y, adjustedAngle, 0.30000001192092896f);
-    }
+    fn_1_60DC(work);
 }
 
 /* Handles player contacts and hit feedback; the hit sound's initial pan uses a wrapper
@@ -1004,7 +956,7 @@ s32 fn_1_68B0(M675PlayerWork *work, Vec *target, f32 targetAngle,
     s32 slowMotion;
     s32 farMotion;
 
-    work->movementInProgress = 1;
+    work->unk104 = 1;
     closeMotionSpeed = settings->slowMotionSpeed;
     farMotionSpeed = settings->fastMotionSpeed;
     closeMotion = settings->defaultMotion;
@@ -1039,7 +991,7 @@ s32 fn_1_68B0(M675PlayerWork *work, Vec *target, f32 targetAngle,
         work->actor.velocity.x *= 0.8;
         work->actor.velocity.z *= 0.8;
         work->actor.rotation.y =
-            fn_1_47DC(work->actor.rotation.y, targetAngle, 0.20000000298023224f);
+            fn_1_47DC(work->actor.rotation.y, targetAngle, 0.2f);
         if (distance > 30.0) {
             return 0;
         }
@@ -1057,7 +1009,7 @@ s32 fn_1_68B0(M675PlayerWork *work, Vec *target, f32 targetAngle,
         }
         work->actor.velocity.x = work->actor.velocity.z = 0.0f;
         work->actor.rotation.y = targetAngle;
-        work->movementInProgress = 0;
+        work->unk104 = 0;
         return 1;
     }
 
@@ -1068,7 +1020,7 @@ s32 fn_1_68B0(M675PlayerWork *work, Vec *target, f32 targetAngle,
     }
     angle = (f32)(180.0 *
         (atan2((f64)deltaX, (f64)deltaZ) / 3.141592653589793));
-    work->actor.rotation.y = fn_1_47DC(work->actor.rotation.y, angle, 0.30000001192092896f);
+    work->actor.rotation.y = fn_1_47DC(work->actor.rotation.y, angle, 0.3f);
     movementSpeed = (f32)speed * settings->movementScale;
     desiredVelocityX =
         (f32)(movementSpeed *
@@ -1201,8 +1153,8 @@ void fn_1_6E78(M675PlayerWork *work)
 void fn_1_74C8(M675ActorState *state) {
     state->buttonsDown = 0;
     state->buttons = 0;
-    state->stickAngle = (f32) 0.0f;
-    state->stickMagnitude = (f32) 0.0f;
+    state->unk90 = (f32) 0.0f;
+    state->unk94 = (f32) 0.0f;
 }
 
 /* Applies the actor transform during player collision updates and prop display setup. */

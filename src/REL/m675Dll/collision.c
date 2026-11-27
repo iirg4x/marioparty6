@@ -1,4 +1,5 @@
 /* Runs Banana Shake's registered collision checks and contact callbacks. */
+#include "REL/m675Dll/actor_state.h"
 #include "dolphin/math.h"
 #include "dolphin/mtx.h"
 #include "dolphin/types.h"
@@ -52,55 +53,36 @@ void fn_1_F1A4(OMOBJ *obj)
     obj->objFunc = fn_1_F268;
 }
 
-typedef struct M675Entry_s {
-    u32 flags; /* Bit 0 enables contact; bit 1 skips region tests. */
-    u32 collisionMask; /* A pair is tested only when these masks overlap. */
-    u32 collisionType; /* Category supplied by the record's owner. */
-    u32 registrationIndex; /* Owner-supplied record index. */
-    s32 state; /* Zero selects sphere contact; region records use 10 or 11. */
-    void *owner; /* Argument passed to the per-frame owner update. */
-    void *excludedOwner; /* Skip pairs whose other owner equals this pointer. */
-    void (*update)(void *owner); /* Called after all pair responses, even for disabled entries. */
-    u8 unmappedBytes20To3F[32];
-    s32 unmappedCounter;
-} M675Entry;
-
 typedef struct M675EntryWork_s {
     s32 initializationState; /* Startup phase used by fn_1_F1B4. */
     s32 initializationTimer; /* Startup delay in object updates. */
-    M675Entry *collisionEntries[84]; /* Moving-object registrations; NULL means free. */
-    M675Entry *regionEntries[10]; /* Region registrations; NULL means free. */
+    M675Collision *collisionEntries[84]; /* Moving-object registrations; NULL means free. */
+    M675Collision *regionEntries[10]; /* Region registrations; NULL means free. */
 } M675EntryWork;
 
-typedef struct CollisionObject CollisionObject;
 typedef struct M675CollisionObject_s M675CollisionObject;
 typedef struct M675CollisionRegion_s M675CollisionRegion;
 typedef struct M675BoundaryObject_s M675BoundaryObject;
 typedef struct M675EllipseBoundary_s M675EllipseBoundary;
-s32 fn_1_F4FC(CollisionObject *first, CollisionObject *second);
+s32 fn_1_F4FC(M675Collision *first, M675Collision *second);
 s32 fn_1_F8AC(M675CollisionObject *object, M675CollisionRegion *region);
 s32 fn_1_FE84(M675BoundaryObject *state, M675EllipseBoundary *parameters);
-
-typedef struct InitializationWork {
-    s32 state; /* Startup phase: zero begins the three-update delay. */
-    s32 timer; /* Number of updates since startup. */
-} InitializationWork;
 
 /* This alternate manager callback waits three updates, runs 180 contact passes, then one per
  * update. */
 void fn_1_F1B4(OMOBJ *object)
 {
-    InitializationWork *work;
+    M675EntryWork *work;
     s32 index;
 
     work = object->data;
-    switch (work->state) {
+    switch (work->initializationState) {
     case 0:
-        work->state++;
-        work->timer = 0;
+        work->initializationState++;
+        work->initializationTimer = 0;
     case 1:
-        if (++work->timer >= 3) {
-            work->state++;
+        if (++work->initializationTimer >= 3) {
+            work->initializationState++;
             for (index = 0; index < 180; index++) {
                 fn_1_F268(object);
             }
@@ -120,10 +102,10 @@ static inline void DebugValue(int hasNonSphereShape)
 void fn_1_F268(OMOBJ *obj)
 {
     M675EntryWork *work;
-    M675Entry *firstEntry;
-    M675Entry *secondEntry;
-    M675Entry *current;
-    M675Entry *candidate;
+    M675Collision *firstEntry;
+    M675Collision *secondEntry;
+    M675Collision *current;
+    M675Collision *candidate;
     s32 entryIndex;
     s32 candidateIndex;
 
@@ -132,7 +114,7 @@ void fn_1_F268(OMOBJ *obj)
         firstEntry = work->collisionEntries[entryIndex];
         if (firstEntry != NULL) {
             /* This preliminary shape check discards its result. */
-            DebugValue(firstEntry->state != 0);
+            DebugValue(firstEntry->shapeType != 0);
         }
     }
 
@@ -142,7 +124,7 @@ void fn_1_F268(OMOBJ *obj)
             continue;
         }
         current = firstEntry;
-        if ((current->flags & 1) == 0 || current->state != 0) {
+        if ((current->flags & 1) == 0 || current->shapeType != 0) {
             continue;
         }
         for (candidateIndex = entryIndex + 1; candidateIndex < 84; candidateIndex++) {
@@ -163,8 +145,8 @@ void fn_1_F268(OMOBJ *obj)
                 candidate->excludedOwner == current->owner) {
                 continue;
             }
-            if (candidate->state == 0) {
-                fn_1_F4FC((CollisionObject *)firstEntry, (CollisionObject *)secondEntry);
+            if (candidate->shapeType == 0) {
+                fn_1_F4FC(firstEntry, secondEntry);
             }
         }
 
@@ -187,7 +169,7 @@ void fn_1_F268(OMOBJ *obj)
                     candidate->excludedOwner == current->owner) {
                     continue;
                 }
-                switch (candidate->state) {
+                switch (candidate->shapeType) {
                 case 10:
                     fn_1_F8AC((M675CollisionObject *)firstEntry,
                         (M675CollisionRegion *)secondEntry);
@@ -212,19 +194,8 @@ void fn_1_F268(OMOBJ *obj)
     }
 }
 
-typedef struct CollisionObject CollisionObject;
-struct CollisionObject {
-    u32 flags;
-    u8 unmappedBytes04To1F[28];
-    void (*contactCallback)(CollisionObject *, CollisionObject *); /* Called after separation. */
-    Vec *position; /* Live world-space position. */
-    u8 unmappedBytes28To37[16];
-    f32 radius; /* Sphere radius in world units. */
-    f32 yieldOnContact; /* Nonzero makes this sphere yield to a zero-valued partner. */
-};
-
 /* The collision manager separates overlapping spheres in X/Z, then notifies both owners. */
-s32 fn_1_F4FC(CollisionObject *first, CollisionObject *second) {
+s32 fn_1_F4FC(M675Collision *first, M675Collision *second) {
     Vec *firstPosition;
     Vec *secondPosition;
     f32 x;
@@ -261,11 +232,11 @@ s32 fn_1_F4FC(CollisionObject *first, CollisionObject *second) {
             second->position->x += -x + (normalX * radius);
             second->position->z += -z + (normalZ * radius);
         }
-        if (first->contactCallback != NULL) {
-            first->contactCallback(first, second);
+        if (first->contact != NULL) {
+            first->contact(first, second);
         }
-        if (second->contactCallback != NULL) {
-            second->contactCallback(second, first);
+        if (second->contact != NULL) {
+            second->contact(second, first);
         }
         return 1;
     }
@@ -274,17 +245,16 @@ s32 fn_1_F4FC(CollisionObject *first, CollisionObject *second) {
 
 typedef struct M675CollisionObject_s {
     u32 flags;
-    u8 unmappedBytes04To1F[28];
+    u8 collisionHeader[28]; /* Collision registration fields after flags. */
     void (*contactCallback)(void *, void *); /* Receives the object and contacted region. */
     Vec *position; /* Live world-space position adjusted by the response. */
     Vec *velocity; /* Live velocity; a top-face contact clears its Y component. */
-    u8 unmappedBytes2CTo37[12];
+    Vec positionCopy;
     f32 radius; /* Contact radius in world units. */
-    f32 unmappedFloat3C;
 } M675CollisionObject;
 
 typedef struct M675CollisionRegion_s {
-    u8 unmappedBytes00To1F[32];
+    u8 collisionHeader[32]; /* Collision registration fields. */
     Vec center; /* World-space center of the region's ellipses. */
     f32 bottomOffsetY; /* Bottom-plane height relative to the center. */
     f32 height; /* Height from the bottom plane to the top plane. */
@@ -383,12 +353,12 @@ noCollision:
 }
 
 typedef struct M675BoundaryObject_s {
-    u8 unmappedBytes00To1F[32];
+    u8 collisionHeader[32]; /* Collision registration fields. */
     void (*callback)(void *state, void *parameters); /* Receives the object and boundary record. */
     Vec *position; /* Live world-space position constrained by the boundary. */
 } M675BoundaryObject;
 typedef struct M675EllipseBoundary_s {
-    u8 unmappedBytes00To1F[32];
+    u8 collisionHeader[32]; /* Collision registration fields. */
     Vec center; /* World-space ellipse center. */
     f32 radiusX; /* Ellipse X semi-axis in world units. */
     f32 radiusZ; /* Ellipse Z semi-axis in world units. */
@@ -425,23 +395,18 @@ s32 fn_1_FE84(M675BoundaryObject *state, M675EllipseBoundary *parameters)
     return 0;
 }
 
-typedef struct RegistrationWork {
-    u8 unmappedBytes00To07[8];
-    void *collisionRegistrations[84];
-} RegistrationWork;
-
 /* Player and prop setup add a collision record to the first free slot, or receive -1 when full. */
 s32 fn_1_10170(void *registration)
 {
     OMOBJ *object;
-    RegistrationWork *work;
-    void **entry;
+    M675EntryWork *work;
+    M675Collision **entry;
     s32 index;
 
     if (lbl_1_bss_548 != NULL) {
         object = lbl_1_bss_548;
         work = object->data;
-        entry = work->collisionRegistrations;
+        entry = work->collisionEntries;
         for (index = 0; index < 84; index++, entry++) {
             if (*entry == NULL) {
                 *entry = registration;
@@ -452,25 +417,13 @@ s32 fn_1_10170(void *registration)
     return -1;
 }
 
-typedef struct M675RegistrationTable_s {
-    u8 unmappedBytes00To07[8];
-    void *collisionEntries[84];
-    void *regionEntries[10];
-} M675RegistrationTable;
-
-typedef struct M675Registration_s {
-    u8 unmappedBytes00To07[8];
-    void *categoryWord;
-    s32 recordIndex;
-} M675Registration;
-
 /* Region setup takes the first free region slot, returning 84-93 or -1 when unavailable. */
 int fn_1_10200(void *registration)
 {
     if (lbl_1_bss_548 != NULL) {
         OMOBJ *object = lbl_1_bss_548;
-        M675RegistrationTable *table = object->data;
-        void **entry = table->regionEntries;
+        M675EntryWork *table = object->data;
+        M675Collision **entry = table->regionEntries;
         s32 index;
 
         for (index = 0; index < 10; index++, entry++) {
@@ -488,7 +441,7 @@ void fn_1_10290(s32 index)
 {
     if (lbl_1_bss_548 != NULL) {
         OMOBJ *object = lbl_1_bss_548;
-        M675RegistrationTable *table = object->data;
+        M675EntryWork *table = object->data;
 
         if (index >= 0) {
             if (index < 84) {
@@ -509,7 +462,7 @@ void *fn_1_10310(s32 index)
 {
     if (lbl_1_bss_548 != NULL) {
         OMOBJ *object = lbl_1_bss_548;
-        M675RegistrationTable *table = object->data;
+        M675EntryWork *table = object->data;
 
         if (index < 0) {
             return NULL;
@@ -526,22 +479,22 @@ void *fn_1_10310(s32 index)
 }
 
 /* Finds a region whose collision-category word and owner-supplied record index match. */
-void *fn_1_1039C(void *categoryWord, s32 recordIndex)
+void *fn_1_1039C(u32 type, s32 index)
 {
     OMOBJ *object;
-    M675RegistrationTable *table;
-    M675Registration *entry;
-    M675Registration *record;
-    s32 index;
+    M675EntryWork *table;
+    M675Collision *entry;
+    M675Collision *record;
+    s32 slot;
 
     if (lbl_1_bss_548 != NULL) {
         object = lbl_1_bss_548;
         table = object->data;
-        for (index = 0; index < 10; index++) {
-            entry = table->regionEntries[index];
+        for (slot = 0; slot < 10; slot++) {
+            entry = table->regionEntries[slot];
             if (entry != NULL) {
                 record = entry;
-                if (record->categoryWord == categoryWord && record->recordIndex == recordIndex) {
+                if (record->type == type && record->index == index) {
                     return entry;
                 }
             }

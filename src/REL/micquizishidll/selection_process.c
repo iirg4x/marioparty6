@@ -465,8 +465,8 @@ void fn_1_2CEA4(OMOBJ *object) {
         if (lbl_1_bss_104 >= 180.0f) {
             lbl_1_bss_104 = 0.0f;
             lbl_1_bss_FC = 0x17;
-            WipeCreate(2, 0, 0x14);
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
+            WipeCreate(2, 0, 20);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 500);
         } else {
             lbl_1_bss_104 += 1.0f;
         }
@@ -492,29 +492,7 @@ void fn_1_2DA80(void) {
     f32 rotationY;
     f32 rotationX;
 
-    windowColor.r = 0;
-    windowColor.g = 0;
-    windowColor.b = 0x90;
-    windowColor.a = 0xC0;
-
-    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
-    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
-    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
-    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
-    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].z -= 5.0f;
-    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].z += 5.0f;
-    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
-    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
-
-    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, &lbl_1_data_1EA4);
-
-    printWin(0x10, 0x28, 0x180, 0x54, &windowColor);
-    fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x,
-           lbl_80266B18[0].y, lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x,
-           lbl_80266A58[0].y, lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+    QuizDebugCameraUpdate(&lbl_1_data_1EA4, &windowColor);
 
     rotationX = lbl_80266A58[0].x;
     rotationY = lbl_80266A58[0].y;
@@ -539,23 +517,10 @@ void fn_1_2DA80(void) {
            centerPosition.z);
 }
 
+/* Spreads the selection process's two models apart along X. */
 void fn_1_2E074(void)
 {
-    Point3d positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_1BAC[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_1BD8;
-    positions[1].x += lbl_1_bss_1BD8;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_1BAC[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_1BAC, &lbl_1_bss_1BD8);
 }
 
 /* Picks eight different random choices for the round. */
@@ -672,7 +637,7 @@ void fn_1_2E2EC(void) {
     step.y = movementDifference.y / 120.0f;
     step.z = movementDifference.z / 120.0f;
     angle = 90.0f;
-    for (index = 0; index < 0x78; index++) {
+    for (index = 0; index < 120; index++) {
         HuPrcVSleep();
         opacity = (f32)sin((M_PI * (f64)angle) / 180.0);
         targetPosition.x += step.x;
@@ -771,8 +736,8 @@ void fn_1_2E89C(void) {
         }
     }
 
-    HuPrcSleep(0x3C);
-    for (frame = 0; frame < 0x3C; frame++) {
+    HuPrcSleep(60);
+    for (frame = 0; frame < 60; frame++) {
         HuPrcVSleep();
         for (index = 0; index < selectedCount; index++) {
             fn_1_2EC80(micQuizChoiceRecords[selectedIndices[index]].modelId);

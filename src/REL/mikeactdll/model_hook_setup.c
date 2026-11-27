@@ -28,6 +28,7 @@
 
 void fn_1_D994(void);
 
+/* Loads and configures the stage particle manager. */
 void fn_1_E208(void);
 
 const Point3d lbl_1_rodata_278 = { -300.0f, 800.0f, 0.0f };
@@ -56,6 +57,7 @@ extern s32 lbl_1_bss_E8;
 
 MGACTOR_PARAM lbl_1_data_478 = { 2.0f, 50.0f, 10, 5, fn_1_D974, 0xA0, (int)fn_1_D990, 0 };
 
+/* Creates the stage actor and places it at its initial position. */
 void fn_1_D994(void)
 {
     Point3d position;
@@ -69,7 +71,7 @@ void fn_1_D994(void)
     fn_800268B0(modelId, 0.35f, 0.35f, 0.35f);
     object = fn_8003AB38(lbl_1_bss_6C, 0x2100, 0U, 0U, -1, fn_1_DB04);
     object->data = HuMemDirectMallocNum(HEAP_HEAP, 0x1C, 0x10000000);
-    lbl_1_bss_F0 = (MikeActWorldContext *) object->data;
+    lbl_1_bss_F0 = object->data;
     memset(lbl_1_bss_F0, 0, 0x1CU);
     actor = fn_80080B04(&lbl_1_data_478, modelId);
     fn_80086CBC(actor, 10.0f);
@@ -80,7 +82,7 @@ void fn_1_D994(void)
 }
 
 extern s16 lbl_1_bss_EC;
-
+/* Positions the held item at its character model hook. */
 void fn_1_DB04(OMOBJ *object)
 {
     Point3d modelPosition;
@@ -202,12 +204,13 @@ MikeActPlayerRecord *fn_1_E1F8(void)
 
 extern struct Hu3DParmanParam_s lbl_1_data_498;
 
+/* Loads and configures the stage particle manager. */
 void fn_1_E208(void)
 {
     ANIMDATA *animation;
     s16 particleManager;
 
-    animation = HuSprAnimRead(fn_80008DD0(0x210001, 0x10000000, 2));
+    animation = HuSprAnimDataRead(0x210001);
     particleManager = fn_800334F4(animation, 0x64, &lbl_1_data_498);
     Hu3DParManAttrSet(particleManager, 0x64);
     fn_8003269C(Hu3DParManModelIDGet(particleManager), 1U);

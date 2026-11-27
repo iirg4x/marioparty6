@@ -82,8 +82,6 @@
 
 #undef fn_1_48DC
 
-typedef void (*CameraCallback)(OMOBJ *, u32, s32);
-
 typedef struct M649LightWork_s {
     s16 light; /* Renderer light handle, or -1 before creation. */
     s32 callbackValue; /* Optional object-update callback address, read by fn_1_15A8. */
@@ -108,7 +106,7 @@ typedef struct M649FogWork_s {
 } M649FogWork;
 
 typedef struct M649AudioWork_s {
-    void *config; /* Audio settings table selected at object creation. */
+    MinigameAudioRange *config; /* Audio settings table selected at object creation. */
     s32 callbackValue; /* Optional callback address invoked after the sound updates. */
     MinigameAudioRecord entries[64]; /* Active sound records; handle -1 marks a free slot. */
 } M649AudioWork;
@@ -123,6 +121,13 @@ extern OMOBJ *lbl_1_bss_300;
 
 extern OMOBJ *lbl_1_bss_304;
 
+s32 fn_1_3630(u32 cameras, Vec *position);
+
+s32 fn_1_3850(u32 cameras, Vec *position);
+
+void fn_1_4788(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
+               int volumeEnabled);
+
 void fn_1_149C(OMOBJ *object);
 
 void fn_1_4800(void);
@@ -133,8 +138,6 @@ void fn_1_2B14(HuVecF *direction);
 
 extern OMOBJ *lbl_1_bss_2FC, *lbl_1_bss_2F8;
 
-void fn_1_4788(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
-               int volumeEnabled);
 
 void fn_1_19BC(OMOBJ *obj);
 
@@ -148,7 +151,6 @@ extern GXColor lbl_1_data_C4;
 
 extern Vec lbl_1_data_B8;
 
-void fn_1_2590(s32 camera, Vec *direction, Vec *target, float fov, float radius);
 
 void fn_1_211C(OMOBJ *object, u32 camera, s32 index);
 
@@ -161,10 +163,6 @@ void fn_1_32EC(OMOBJ *obj);
 void fn_1_3354(OMOBJ *object);
 
 void fn_1_33AC(OMOBJ *object);
-
-s32 fn_1_3630(u32 cameras, Vec *position);
-
-s32 fn_1_3850(u32 cameras, Vec *position);
 
 s32 fn_1_34E8(u32 cameras, float x);
 
@@ -662,7 +660,7 @@ int fn_1_273C(unsigned int mask)
 }
 
 /* Stores the callback that updates camera view data during the camera object's frame update. */
-extern void fn_1_2780(CameraCallback callback) {
+extern void fn_1_2780(M649CameraCallback callback) {
     MinigameCameraWork *state=lbl_1_bss_2FC->data;
     state->callback=callback;
 }
@@ -885,16 +883,16 @@ double fn_1_2D08(CameraFitParams *fitParams, M649CameraFitSphere *fitSpheres, s3
 }
 
 /* ObjectSetup calls this at startup to create the audio object and its sound-tracking records. */
-void fn_1_3250(HUPROCESS *objectManager, u32 audioConfig) {
+void fn_1_3250(HUPROCESS *objectManager, MinigameAudioRange *audioConfig) {
     OMOBJ *object;
-    u32 *objectState;
+    M649AudioWork *objectState;
 
     object = fn_8003AB38(objectManager, 30, 0, 0, -1, fn_1_32EC);
     lbl_1_bss_2F8 = object;
     objectState = HuMemDirectMallocNum(HEAP_HEAP, 1544, 0x10000000);
     object->data = objectState;
     memset(objectState, 0, 1544);
-    *objectState = audioConfig;
+    objectState->config = audioConfig;
     fn_1_3354(object);
 }
 
@@ -1135,7 +1133,7 @@ int fn_1_4858(int handle) {
 }
 
 /* Loads a model resource once and links another model instance on later requests. */
-int fn_1_48DC(int dataNum) {
+s32 fn_1_48DC(s32 dataNum) {
     int slot=fn_1_4858(dataNum);
     int model;
     if(slot>=0) {

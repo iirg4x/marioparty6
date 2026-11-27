@@ -42,6 +42,7 @@
 #include "game/memory.h"
 
 #include "game/data.h"
+#include "game/sprput.h"
 
 #include "game/window.h"
 
@@ -211,14 +212,14 @@ extern struct M678LinkEntry lbl_1_bss_70A8[2][0x66];
 
 typedef struct M678SoundEntry {
     s32 count;
-    s32 handle;
+    s32 unk04; /* The game's code never reads this field. */
 } M678SoundEntry;
 
 extern s32 lbl_1_bss_0;
 
 extern s32 lbl_1_bss_154;
 
-extern struct M678SoundEntry lbl_1_bss_174[0x26];
+extern struct M678SoundEntry lbl_1_bss_174[38];
 
 extern u32 lbl_1_bss_66F0[2];
 
@@ -315,14 +316,12 @@ s32 fn_1_78C(s32 player, void *gridOutput, s32 pass, s32 groupIndex, s32 *offset
         struct M678LinkEntry *grid[6][30] = {{NULL}};
         struct M678LinkEntry *savedGrid[6][30] = {{NULL}};
         struct M678LinkEntry *rowHeads[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
-        /* Initialized words with no subsequent access. */
-        u32 unknownWords0[0xB4] = {0};
+        u32 unk80C[180] = {0}; /* The game's code never reads this field. */
         struct { s32 words[2]; } unusedPairs[3] = {0};
         struct { s32 words[2]; } unusedOtherPairs[3] = {0};
         int rowSlots[6];
         int candidateSlots[6];
-        /* Initialized words with no subsequent access. */
-        u32 unknownWords1[0x198] = {0};
+        u32 unk1AC[408] = {0}; /* The game's code never reads this field. */
     firstColumn = 0;
     lastColumn = 0;
     bestScore = -0xC350;
@@ -345,11 +344,9 @@ s32 fn_1_78C(s32 player, void *gridOutput, s32 pass, s32 groupIndex, s32 *offset
             lastColumn = (f32)lastColumn < groupEntry->gridRow ? groupEntry->gridRow : (f32)lastColumn;
             groupEntry = groupEntry->nextInGroup[0];
         }
-        goto initializeEntryGroups;
     }
-initializeEntryGroups:
     index = 0;
-    while (index < 0x66) {
+    while (index < 102) {
         entry = &lbl_1_bss_70A8[player][index];
         nextEntry = NULL;
         previousEntry = NULL;
@@ -401,7 +398,7 @@ initializeEntryGroups:
         while (((s32) (&rowSlots[0])[index] > 0) && currentRowEntry) {
             if ((pass == 1) && currentRowEntry->group[0] && currentRowEntry->group[0]->index == groupIndex) {
                 (&displacedEntries[0])[displacedCount] = currentRowEntry;
-                displacedCount += displacedCount < 0x1E;
+                displacedCount += displacedCount < 30;
                 currentRowEntry = currentRowEntry->nextInRow;
                 foundGroupEntry = 1;
             } else {
@@ -427,7 +424,7 @@ initializeEntryGroups:
     for (candidateColumn = 0; candidateColumn < ((pass == 0) ? 1 : ((fixedGroup != 0) ? 1 : 6 - (lastColumn - firstColumn))); candidateColumn++) {
         if (pass == 1) {
             index = 0;
-            while (index < 0x66) {
+            while (index < 102) {
                 resetEntry = &lbl_1_bss_70A8[player][index];
                 lbl_1_bss_2D0[player].counts[pass] = 0;
                 resetEntry->group[pass] = 0;
@@ -441,21 +438,19 @@ initializeEntryGroups:
             memcpy(&grid, &savedGrid, 0x2D0U);
             memcpy(&candidateSlots[0], &rowSlots[0], 0x18U);
             if ((fixedGroup == 0) != 0) {
-            while (movingEntry) {
-                destinationRow = (s32) (0.5f + movingEntry->gridRow);
-                destinationRow = candidateColumn + (destinationRow - firstColumn);
-                grid[destinationRow][candidateSlots[destinationRow]] = movingEntry;
-                (&candidateSlots[0])[destinationRow] -= (&candidateSlots[0])[destinationRow] > 0;
-                movingEntry = movingEntry->nextInGroup[0];
-            }
-            if ((preservesOrder == 0) || (candidateColumn != firstColumn)) {
-                goto buildCandidateGroups;
-            }
-                        continue;
+                while (movingEntry) {
+                    destinationRow = (s32) (0.5f + movingEntry->gridRow);
+                    destinationRow = candidateColumn + (destinationRow - firstColumn);
+                    grid[destinationRow][candidateSlots[destinationRow]] = movingEntry;
+                    (&candidateSlots[0])[destinationRow] -= (&candidateSlots[0])[destinationRow] > 0;
+                    movingEntry = movingEntry->nextInGroup[0];
+                }
+                if (preservesOrder != 0 && candidateColumn == firstColumn) {
+                    continue;
+                }
             }
         }
         {
-buildCandidateGroups:
             row = 0;
             while (row < 6) {
                 column = -0xF;
@@ -468,7 +463,7 @@ buildCandidateGroups:
                             newGroup->count = 1;
                             newGroup->firstEntry = gridEntry;
                             newGroup->lastEntry = gridEntry;
-                            lbl_1_bss_2D0[player].counts[pass] += lbl_1_bss_2D0[player].counts[pass] < 0x66;
+                            lbl_1_bss_2D0[player].counts[pass] += lbl_1_bss_2D0[player].counts[pass] < 102;
                             gridEntry->previousInGroup[pass] =
                                 gridEntry->nextInGroup[pass] = 0;
                             gridEntry->group[pass] = newGroup;
@@ -477,7 +472,7 @@ buildCandidateGroups:
                         while (index < 2) {
                             int rowSteps[2] = { 1, 0 };
                             int columnSteps[2] = { 0, 1 };
-                            if (((s32) lbl_1_bss_2D0[player].counts[pass] < 0x66) && ((s32) (row + rowSteps[index]) >= 0) && ((s32) (row + rowSteps[index]) < 6) && ((s32) (column + columnSteps[index]) >= -0xF) && ((s32) (column + columnSteps[index]) < 0xF) && grid[row + rowSteps[index]][column + columnSteps[index] + 0xF]) {
+                            if (((s32) lbl_1_bss_2D0[player].counts[pass] < 102) && ((s32) (row + rowSteps[index]) >= 0) && ((s32) (row + rowSteps[index]) < 6) && ((s32) (column + columnSteps[index]) >= -0xF) && ((s32) (column + columnSteps[index]) < 0xF) && grid[row + rowSteps[index]][column + columnSteps[index] + 0xF]) {
                                 currentEntry = grid[row][column + 0xF];
                                 neighborEntry = grid[row + rowSteps[index]][column + columnSteps[index] + 0xF];
                                 if (((s32) currentEntry->variant != 0) && ((s32) neighborEntry->variant != 0) && ((s32) currentEntry->variant == (s32) neighborEntry->variant) && ((pass == 1) || (((s32) currentEntry->kind == 1) && ((s32) neighborEntry->kind == 1))) && (((u32) currentEntry->group[pass] == 0U) || ((u32) neighborEntry->group[pass] == 0U) || ((u32) currentEntry->group[pass] != (u32) neighborEntry->group[pass]))) {
@@ -518,7 +513,7 @@ buildCandidateGroups:
                                             mergedGroup->count = 2;
                                             mergedGroup->firstEntry = currentEntry;
                                             mergedGroup->lastEntry = neighborEntry;
-                                            lbl_1_bss_2D0[player].counts[pass] += lbl_1_bss_2D0[player].counts[pass] < 0x66;
+                                            lbl_1_bss_2D0[player].counts[pass] += lbl_1_bss_2D0[player].counts[pass] < 102;
                                             currentEntry->nextInGroup[pass] = neighborEntry;
                                             neighborEntry->previousInGroup[pass] = currentEntry;
                                             currentEntry->group[pass] =
@@ -763,7 +758,7 @@ void fn_1_1BC8(OMOBJ *obj) {
                         playerWork->computerWaitFrames = (s32) (playerWork->computerWaitFrames + 1);
                         entryIndex = 0;
                         workIndex = 0;
-                        while (entryIndex < 0x66) {
+                        while (entryIndex < 102) {
                             workIndex += lbl_1_bss_70A8[playerIndex][entryIndex].kind != 0 && lbl_1_bss_70A8[playerIndex][entryIndex].fadeTimer == 0;
                             entryIndex += 1;
                         }
@@ -834,7 +829,7 @@ void fn_1_1BC8(OMOBJ *obj) {
                         playerWork->computerWaitFrames = (s32) (playerWork->computerWaitFrames + 1);
                         if ((s32) lbl_1_data_A8[playerIndex] == 0) {
                             playerWork->computerState = 2;
-                            playerWork->computerWaitFrames = 0x64;
+                            playerWork->computerWaitFrames = 100;
                         } else {
                             buttonAHeld = 1;
                             if ((s32) playerWork->computerWaitFrames >= (s32) holdWaitByDifficulty[playerWork->difficulty]) {
@@ -854,7 +849,7 @@ void fn_1_1BC8(OMOBJ *obj) {
                         playerWork->computerWaitFrames = (s32) (playerWork->computerWaitFrames + 1);
                         if ((s32) lbl_1_data_A8[playerIndex] == 0) {
                             playerWork->computerState = 2;
-                            playerWork->computerWaitFrames = 0x64;
+                            playerWork->computerWaitFrames = 100;
                         } else if ((s32) playerWork->computerWaitFrames < (s32) releaseWaitByDifficulty[playerWork->difficulty]) {
                             buttonAHeld = 1;
                         } else {
@@ -912,7 +907,7 @@ void fn_1_1BC8(OMOBJ *obj) {
             if ((buttonAHeld != 0) && ((s32) lbl_1_data_A8[playerIndex] == 0) && ((s32) playerWork->state[6] != 3) && ((s32) playerWork->state[6] != 4)) {
                 grabbedEntry = NULL;
                 connectedCount = 0;
-                for (entryIndex = 0; entryIndex < 0x66; entryIndex++) {
+                for (entryIndex = 0; entryIndex < 102; entryIndex++) {
                     grabCandidate = &lbl_1_bss_70A8[playerIndex][entryIndex];
                     if (((s32) grabCandidate->kind != 0) && ((s32) grabCandidate->kind == 1) && ((s32) grabCandidate->variant != 0) && ((s32) grabCandidate->category == 0) && ((s32) grabCandidate->age > 0) && ((s32) grabCandidate->fadeTimer == 0) && ((s32) grabCandidate->groupMaximum == 0) && (grabCandidate->gridRow == playerWork->gridRow) && (grabCandidate->gridColumn == playerWork->gridColumn) && (grabCandidate->fallSpeed == 0.0f)) {
                         grabCandidate->connected = 1;
@@ -1012,7 +1007,7 @@ void fn_1_1BC8(OMOBJ *obj) {
                 if ((s32) playerWork->state[7] == 7) {
                     nearestEntry = NULL;
                     entryIndex = 0;
-                    while (entryIndex < 0x66) {
+                    while (entryIndex < 102) {
                         if (((s32) (impactEntry = &lbl_1_bss_70A8[playerIndex][entryIndex])->kind != 0) && ((s32) impactEntry->kind == 4) && (impactEntry->gridRow == playerWork->gridRow) && ((0.4f + impactEntry->gridColumn) >= playerWork->gridColumn) && (playerWork->gridColumn >= (impactEntry->gridColumn - 0.4f)) && ((!nearestEntry) || (fabs(impactEntry->gridColumn - playerWork->gridColumn) < fabs(nearestEntry->gridColumn - playerWork->gridColumn)))) {
                             nearestEntry = impactEntry;
                         }
@@ -1038,7 +1033,7 @@ void fn_1_1BC8(OMOBJ *obj) {
                 workIndex = 0;
                 while (workIndex < 3) {
                     entryIndex = 0;
-                    while (entryIndex < 0x66) {
+                    while (entryIndex < 102) {
                         if (lbl_1_bss_70A8[playerIndex][entryIndex].kind != 0) {
                             if ((workIndex == 0) && (lbl_1_bss_70A8[playerIndex][entryIndex].category == 6)) {
                                 fallingCounts[(s32) lbl_1_bss_70A8[playerIndex][entryIndex].gridRow] += 1;
@@ -1156,7 +1151,6 @@ float fn_1_4DEC(float frame, float rise, float hold, float fall)
                 : 1.0f;
 }
 
-typedef M678PlayerSetupWork M678PlayerWork;
 
 extern s32 lbl_1_bss_30;
 
@@ -1185,15 +1179,13 @@ typedef s32 M678UnknownValue;
 /* Optional value trace. */
 static inline void DebugValue(f32 value) { }
 
-struct _struct_lbl_1_bss_5BF0_0x140 { u8 bytes[0x140]; };
-
 struct _struct_lbl_1_bss_5E70_0x8 { s32 write[2]; };
 
-struct _struct_lbl_1_bss_5E90_0x400 { s32 entries[2][0x80]; };
+struct M678QueueEntryCounts { s32 entries[2][0x80]; };
 
-struct _struct_lbl_1_bss_66C0_0x18 { s32 overflowFrames[6]; };
-
-struct _struct_lbl_1_bss_70A8_0x3960 { M678LinkEntry entries[102]; };
+struct _struct_lbl_1_bss_66C0_0x18 {
+    s32 unk00[6]; /* The game's code never reads this field. */
+};
 
 struct _struct_lbl_1_data_138_0x18 { s32 rowCounts[6]; };
 
@@ -1209,8 +1201,8 @@ struct _struct_lbl_1_bss_5E80_0x8 {
 /* size = 0x8 */
 struct _struct_lbl_1_bss_6690_0xC {
     u8 unknown_00[4]; /* No code names this field. */
-    s32 rowQueueElapsedFrames;
-    s32 fallingQueueElapsedFrames;
+    s32 unk04; /* The game's code never reads this field. */
+    s32 unk08; /* The game's code never reads this field. */
 };
 
 /* size = 0xC */
@@ -1248,7 +1240,7 @@ extern s32 lbl_1_bss_40[5];
 
 extern struct _struct_lbl_1_bss_45FC_0x24 lbl_1_bss_45D8;
 
-extern struct _struct_lbl_1_bss_45FC_0x24 lbl_1_bss_45FC[0x14];
+extern struct _struct_lbl_1_bss_45FC_0x24 lbl_1_bss_45FC[20];
 
 typedef struct M678TextureEffect {
     s32 textureIndex;
@@ -1256,13 +1248,13 @@ typedef struct M678TextureEffect {
     f32 y;
 } M678TextureEffect;
 
-struct M678TextureEffectStorage { M678TextureEffect entries[0xCC]; };
+struct M678TextureEffectStorage { M678TextureEffect entries[204]; };
 
 extern struct M678TextureEffectStorage lbl_1_bss_48CC[2];
 
 extern s32 lbl_1_bss_54;
 
-extern struct _struct_lbl_1_bss_5BF0_0x140 lbl_1_bss_5BF0[2];
+extern u8 lbl_1_bss_5BF0[2][320];
 
 extern s32 lbl_1_bss_5C;
 
@@ -1272,7 +1264,7 @@ extern struct _struct_lbl_1_bss_66A8_0xC lbl_1_bss_66A8[2];
 
 extern struct _struct_lbl_1_bss_6690_0xC lbl_1_bss_6690[2];
 
-extern struct _struct_lbl_1_bss_5E90_0x400 lbl_1_bss_5E90[2];
+extern struct M678QueueEntryCounts lbl_1_bss_5E90[2];
 
 extern struct _struct_lbl_1_bss_5E80_0x8 lbl_1_bss_5E80[2];
 
@@ -1288,7 +1280,7 @@ extern f32 lbl_1_bss_6C[2];
 
 extern f32 lbl_1_bss_74[2];
 
-extern void *lbl_1_bss_7C[0x28];
+extern void *lbl_1_bss_7C[40];
 
 extern s32 lbl_1_data_100[2];
 
@@ -1415,7 +1407,7 @@ f32 lbl_1_data_258 = 0.75f;
 /* Advances falling pieces, matches, incoming queues, effects, and loss conditions. */
 void fn_1_4FB0(OMOBJ *hookWork) {
 
-    M678PlayerWork *playerWorks[4];
+    M678PlayerSetupWork *playerWorks[4];
     s32 averageLevel;
     s32 thresholdIndex;
     s32 clearedState;
@@ -1555,7 +1547,7 @@ void fn_1_4FB0(OMOBJ *hookWork) {
     M678LinkEntry *matchedGroupEntry;
 
     for (index = 0; index < lbl_1_bss_8; index++) {
-        playerWorks[index] = (M678PlayerWork *) lbl_1_bss_15C[index]->data;
+        playerWorks[index] = lbl_1_bss_15C[index]->data;
     }
     lbl_1_bss_154 = fn_80071A8C();
     lbl_1_bss_C = fn_80071DE4();
@@ -1702,13 +1694,13 @@ M678LinkEntry * highestColumnEntries[6] = { NULL, NULL, NULL, NULL, NULL, NULL }
             playerWorks[playerIndex]->gridColumn -= rowShift;
             playerWorks[playerIndex]->shiftedPosition -= rowShift;
             index = 0;
-            while (index < 0x66) {
+            while (index < 102) {
                 shiftEntry = &lbl_1_bss_70A8[playerIndex][index];
                 if (shiftEntry->kind != 0) {
-                    if ((shiftEntry->category != 5) && (((void *) lowestColumnEntries[(s32) shiftEntry->gridRow] == 0) || (lowestColumnEntries[(s32) shiftEntry->gridRow]->gridColumn > shiftEntry->gridColumn))) {
+                    if ((shiftEntry->category != 5) && ((lowestColumnEntries[(s32) shiftEntry->gridRow] == 0) || (lowestColumnEntries[(s32) shiftEntry->gridRow]->gridColumn > shiftEntry->gridColumn))) {
                         lowestColumnEntries[(s32) shiftEntry->gridRow] = shiftEntry;
                     }
-                    if ((shiftEntry->category != 5) && (((void *) highestColumnEntries[(s32) shiftEntry->gridRow] == 0) || (highestColumnEntries[(s32) shiftEntry->gridRow]->gridColumn < shiftEntry->gridColumn))) {
+                    if ((shiftEntry->category != 5) && ((highestColumnEntries[(s32) shiftEntry->gridRow] == 0) || (highestColumnEntries[(s32) shiftEntry->gridRow]->gridColumn < shiftEntry->gridColumn))) {
                         highestColumnEntries[(s32) shiftEntry->gridRow] = shiftEntry;
                     }
                     if ((shiftEntry->category != 5) && (shiftEntry->kind != 0) && (shiftEntry->variant != 0)) {
@@ -1741,7 +1733,7 @@ M678LinkEntry * highestColumnEntries[6] = { NULL, NULL, NULL, NULL, NULL, NULL }
             }
             index = 0;
             scan = 0;
-            while ((index < 0x66) && (scan < 6)) {
+            while ((index < 102) && (scan < 6)) {
                 if (lbl_1_bss_70A8[playerIndex][index].kind == 0) {
                     newRowEntry = &lbl_1_bss_70A8[playerIndex][index];
 
@@ -1751,7 +1743,7 @@ s32 variantWeights[5] = { 0x0, 0x0, 0x0, 0x0, 0x0 };
                     variantDraw = rand8();
                     loop = 0;
                     while (loop < variantCount) {
-                        variantWeights[loop] = ((((((void *) lowestColumnEntries[scan] && ((s32) (loop + 1) == (s32) lowestColumnEntries[scan]->variant))) || (((void *) highestColumnEntries[scan] && ((s32) (loop + 1) == (s32) highestColumnEntries[scan]->variant)))) != 0) ? (1) : ((((s32) rowEntryCounts[scan] == 0) ? (1) : ((s32) (1.0f + (100.0f * (1.0f - ((f32) linkCounts[scan][loop] / (f32) rowEntryCounts[scan]))))))));
+                        variantWeights[loop] = (((((lowestColumnEntries[scan] && ((s32) (loop + 1) == (s32) lowestColumnEntries[scan]->variant))) || ((highestColumnEntries[scan] && ((s32) (loop + 1) == (s32) highestColumnEntries[scan]->variant)))) != 0) ? (1) : ((((s32) rowEntryCounts[scan] == 0) ? (1) : ((s32) (1.0f + (100.0f * (1.0f - ((f32) linkCounts[scan][loop] / (f32) rowEntryCounts[scan]))))))));
                         totalVariantWeight += variantWeights[loop];
                         loop += 1;
                     }
@@ -1812,12 +1804,12 @@ do {
 do {
                         newRowIndex = (s32) (6.0f * ((f32) rand8() / 256.0f));
                         variantRetryCount += 1;
-} while ((variantRetryCount < 0x400) && (longestRunVariant != newRowEntries[newRowIndex]->variant));
+} while ((variantRetryCount < 1024) && (longestRunVariant != newRowEntries[newRowIndex]->variant));
                         variantRetryCount = 0;
 do {
                         currentVariant = (s32) (1.0f + ((f32) variantCount * ((f32) rand8() / 256.0f)));
                         variantRetryCount += 1;
-} while ((variantRetryCount < 0x400) && ((longestRunVariant == currentVariant) || (((u32) newRowEntries[newRowIndex]->sequenceNextInRow != 0U) && (currentVariant == (s32) newRowEntries[newRowIndex]->sequenceNextInRow->variant)) || (((u32) newRowEntries[newRowIndex]->sequenceNextInRow != 0U) && ((u32) newRowEntries[newRowIndex]->sequenceNextInRow->sequenceNextInRow != 0U) && (currentVariant == (s32) newRowEntries[newRowIndex]->sequenceNextInRow->sequenceNextInRow->variant))));
+} while ((variantRetryCount < 1024) && ((longestRunVariant == currentVariant) || (((u32) newRowEntries[newRowIndex]->sequenceNextInRow != 0U) && (currentVariant == (s32) newRowEntries[newRowIndex]->sequenceNextInRow->variant)) || (((u32) newRowEntries[newRowIndex]->sequenceNextInRow != 0U) && ((u32) newRowEntries[newRowIndex]->sequenceNextInRow->sequenceNextInRow != 0U) && (currentVariant == (s32) newRowEntries[newRowIndex]->sequenceNextInRow->sequenceNextInRow->variant))));
                     newRowEntries[newRowIndex]->variant = currentVariant;
                         index += 1;
 
@@ -1835,7 +1827,7 @@ do {
                     index += 1;
                 }
                 index = 0;
-                while ((index < scan) && (index < (s32) lbl_1_bss_5E90[playerIndex].entries[0][lbl_1_bss_5E80[playerIndex].read[0]]) && (firstQueueRetryCount < 0x400)) {
+                while ((index < scan) && (index < (s32) lbl_1_bss_5E90[playerIndex].entries[0][lbl_1_bss_5E80[playerIndex].read[0]]) && (firstQueueRetryCount < 1024)) {
                     entryIndex = rand8() % scan;
                     if (newRowEntries[entryIndex]->kind == 4) {
                         newRowEntries[entryIndex]->kind = 5;
@@ -1848,7 +1840,7 @@ do {
                 lbl_1_bss_5E80[playerIndex].read[0] += 1;
                 lbl_1_bss_5E80[playerIndex].read[0] %= 0x80;
                 lbl_1_bss_66A8[playerIndex].pendingCount[1] -= 1;
-                lbl_1_bss_6690[playerIndex].rowQueueElapsedFrames = 0;
+                lbl_1_bss_6690[playerIndex].unk04 = 0;
                 if ((s32) lbl_1_bss_174[playerIndex + 0x18].count < 3) {
                     lbl_1_bss_174[playerIndex + 0x18].count += 1;
                 }
@@ -1866,33 +1858,30 @@ do {
                 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002,
                 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002, 0x00000002
             };
-                for (index = 0; (index < entryCountsByLevel[((s32) lbl_1_data_C8[playerIndex] >= 0x64) ? 0x63 : lbl_1_data_C8[playerIndex]]) && ((s32) lbl_1_data_E8[playerIndex] > 0); index++) {
+                for (index = 0; (index < entryCountsByLevel[((s32) lbl_1_data_C8[playerIndex] >= 100) ? 0x63 : lbl_1_data_C8[playerIndex]]) && ((s32) lbl_1_data_E8[playerIndex] > 0); index++) {
                     if ((s32) lbl_1_data_C8[playerIndex] >= 0x3C) {
-
                         scan = ((index == 0) ? (0) : (5));
-                        goto convertSpecialEntry;
-                    }
-                    if ((s32) lbl_1_data_C8[playerIndex] >= 0x2D) {
+                    } else if ((s32) lbl_1_data_C8[playerIndex] >= 0x2D) {
                         scan = index;
-                        goto convertSpecialEntry;
+                    } else {
+                        loop = 0;
+                        do {
+                            scan = (s32) (6.0f * ((f32) rand8() / 256.0f));
+                            loop += 1;
+                        } while ((newRowEntries[scan]->kind != 1) && (loop < 384));
+                        if (loop >= 384) {
+                            continue;
+                        }
                     }
-                    loop = 0;
-do {
-                    scan = (s32) (6.0f * ((f32) rand8() / 256.0f));
-                    loop += 1;
-} while ((newRowEntries[scan]->kind != 1) && (loop < 0x180));
-                    if (loop < 0x180) {
-convertSpecialEntry:
                     newRowEntries[scan]->kind = 2;
-                        lbl_1_data_E8[playerIndex] -= 1;
-                    }
+                    lbl_1_data_E8[playerIndex] -= 1;
                 }
                 if (((s32) lbl_1_data_118[playerIndex] == 0) && ((s32) lbl_1_data_120[playerIndex] == 0) && (lbl_1_bss_0 != 5) && ((s32) lbl_1_bss_45D8.state == 0)) {
                     lbl_1_data_120[playerIndex] = 1;
                     lbl_1_data_118[playerIndex] += 0x3C;
                     lbl_1_data_128[playerIndex] = 0;
                     index = 0;
-                    while (index < 0x80) {
+                    while (index < 128) {
                         if (newRowEntries[(scan = rand8() % 6)]->kind == 1) {
                         newRowEntries[scan]->kind = 3;
                         break;
@@ -1900,7 +1889,7 @@ convertSpecialEntry:
                             index += 1;
                             }
                     }
-                    if (index == 0x80) {
+                    if (index == 128) {
                         lbl_1_data_110[playerIndex] += 1;
                     } else {
                         lbl_1_data_110[playerIndex] = (rand8() % 3) + 9;
@@ -1917,7 +1906,7 @@ s32 spawnIntervals[16] = { 0x10, 0xC, 0x9, 0x7, 0x6, 0x5, 0x5, 0x4, 0x4, 0x4, 0x
 do {
                     scan = (s32) (6.0f * ((f32) rand8() / 256.0f));
                     index += 1;
-} while ((newRowEntries[scan]->kind != 1) && (index < 0x180));
+} while ((newRowEntries[scan]->kind != 1) && (index < 384));
 
                     newRowEntries[scan]->kind = (((s32) (rand8() % 3) != 0) ? (7) : (6));
                     lbl_1_data_100[playerIndex] += (s32) ((f32) spawnIntervals[thresholdIndex] + (0.5f + (((f32) spawnIntervals[thresholdIndex] * ((f32) rand8() / 256.0f)) - ((f32) spawnIntervals[thresholdIndex] / 2.0f))));
@@ -1962,7 +1951,7 @@ do {
                 index += 1;
             }
             index = 0;
-            while (index < 0x66) {
+            while (index < 102) {
                 if (((s32) lbl_1_bss_70A8[playerIndex][index].kind != 0) && ((s32) lbl_1_bss_70A8[playerIndex][index].category != 5)) {
                     (&rowLandingColumns[0])[((s32) ((s32) (0.5f + lbl_1_bss_70A8[playerIndex][index].gridRow)))] -= 1.0f;
                 }
@@ -1978,11 +1967,8 @@ s32 spawnRows[3] = { 0x0, 0x0, 0x0 };
             index = 0;
             while (index < 3) {
                 do {
-retrySpawnRow:
-                    if ((s32) chosenRows[(scan = (s32) (6.0f * ((f32) rand8() / 256.0f)))] != 0) {
-                        goto retrySpawnRow;
-                    }
-                } while (lbl_1_data_1AC[playerIndex].bytes[scan] != 0);
+                    scan = (s32) (6.0f * ((f32) rand8() / 256.0f));
+                } while (chosenRows[scan] != 0 || lbl_1_data_1AC[playerIndex].bytes[scan] != 0);
                 chosenRows[scan] = lbl_1_data_1AC[playerIndex].bytes[scan] = 1;
                 spawnRows[index] = scan;
                 scan = 0;
@@ -2004,7 +1990,7 @@ retrySpawnRow:
 }
             index = 0;
             scan = 0;
-            while ((index < 0x66) && (scan < 3)) {
+            while ((index < 102) && (scan < 3)) {
                 if ((s32) lbl_1_bss_70A8[playerIndex][index].kind == 0) {
                     spawnedFallingEntry = &lbl_1_bss_70A8[playerIndex][index];
                     spawnedFallingEntry->kind = 4;
@@ -2028,7 +2014,7 @@ retrySpawnRow:
                 index += 1;
             }
             index = 0;
-            while ((index < scan) && (index < (s32) lbl_1_bss_5E90[playerIndex].entries[1][lbl_1_bss_5E80[playerIndex].read[1]]) && (secondQueueRetryCount < 0x400)) {
+            while ((index < scan) && (index < (s32) lbl_1_bss_5E90[playerIndex].entries[1][lbl_1_bss_5E80[playerIndex].read[1]]) && (secondQueueRetryCount < 1024)) {
                 spawnedEntryIndex = rand8() % scan;
                 if ((s32) (&spawnedFallingEntries[0])[spawnedEntryIndex]->kind == 4) {
                     (&spawnedFallingEntries[0])[spawnedEntryIndex]->kind = 5;
@@ -2039,16 +2025,16 @@ retrySpawnRow:
                 index += 1;
             }
             lbl_1_bss_66A8[playerIndex].pendingCount[2] -= 1;
-            lbl_1_bss_6690[playerIndex].fallingQueueElapsedFrames = 0;
+            lbl_1_bss_6690[playerIndex].unk08 = 0;
             lbl_1_bss_5E80[playerIndex].read[1] += 1;
             lbl_1_bss_5E80[playerIndex].read[1] %= 0x80;
         }
 }
 }
-        lbl_1_bss_6690[playerIndex].rowQueueElapsedFrames += 1;
-        lbl_1_bss_6690[playerIndex].fallingQueueElapsedFrames += 1;
+        lbl_1_bss_6690[playerIndex].unk04 += 1;
+        lbl_1_bss_6690[playerIndex].unk08 += 1;
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             sortingEntry = &lbl_1_bss_70A8[playerIndex][index];
             rowInsertionNext = NULL;
             rowInsertionPrevious = NULL;
@@ -2083,7 +2069,7 @@ retrySpawnRow:
             index += 1;
 }
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             linkedEntry = &lbl_1_bss_70A8[playerIndex][index];
             if ((s32) linkedEntry->kind != 0) {
                 linkedEntry->previousFalling = linkedEntry->sequencePreviousInRow;
@@ -2092,7 +2078,7 @@ retrySpawnRow:
             index += 1;
         }
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             fallingSortEntry = &lbl_1_bss_70A8[playerIndex][index];
             fallingInsertionNext = NULL;
             fallingInsertionPrevious = NULL;
@@ -2146,7 +2132,7 @@ retrySpawnRow:
         lbl_1_data_C0[playerIndex] = 0;
         lbl_1_data_B8[playerIndex] = 0;
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             gridCandidate = &lbl_1_bss_70A8[playerIndex][index];
             if ((gridCandidate->kind != 0) && ((gridCandidate->category == 0) || (gridCandidate->category == 1)) && (gridCandidate->category != 5) && (gridCandidate->category != 6) && (gridCandidate->gridColumn == (f32) (s32) gridCandidate->gridColumn)) {
                 entryGridRow = (s32) gridCandidate->gridRow;
@@ -2158,14 +2144,14 @@ retrySpawnRow:
             index += 1;
         }
         scan = 0;
-        while (scan < 0x66) {
+        while (scan < 102) {
             connectingEntry = &lbl_1_bss_70A8[playerIndex][scan];
             if (((s32) connectingEntry->kind != 0) && ((s32) connectingEntry->category != 5) && ((s32) connectingEntry->category != 6)) {
                 index = 0;
                 while (index < 2) {
                     neighborEntry = NULL;
                     if (index == 0) {
-                        if ((void *) connectingEntry->sequenceNextInRow && ((s32) connectingEntry->sequenceNextInRow->kind != 0) && (connectingEntry->sequenceNextInRow->gridColumn == (connectingEntry->gridColumn - 1.0f)) && (connectingEntry->sequenceNextInRow->fallSpeed >= connectingEntry->fallSpeed)) {
+                        if (connectingEntry->sequenceNextInRow && ((s32) connectingEntry->sequenceNextInRow->kind != 0) && (connectingEntry->sequenceNextInRow->gridColumn == (connectingEntry->gridColumn - 1.0f)) && (connectingEntry->sequenceNextInRow->fallSpeed >= connectingEntry->fallSpeed)) {
                             neighborEntry = connectingEntry->sequenceNextInRow;
                         }
                     } else if (connectingEntry->gridRow < 5.0f) {
@@ -2186,22 +2172,22 @@ retrySpawnRow:
                             adjacentEntries[connectingEntry->index][1] = neighborEntry;
                             adjacentEntries[neighborEntry->index][3] = connectingEntry;
                         }
-                        if (((s32) connectingEntry->variant != 0) && ((s32) neighborEntry->variant != 0) && ((s32) connectingEntry->variant == (s32) neighborEntry->variant) && (((void *) connectingEntry->sequenceGroup == 0) || ((void *) neighborEntry->sequenceGroup == 0) || ((void *) connectingEntry->sequenceGroup != (void *) neighborEntry->sequenceGroup))) {
+                        if (((s32) connectingEntry->variant != 0) && ((s32) neighborEntry->variant != 0) && ((s32) connectingEntry->variant == (s32) neighborEntry->variant) && ((connectingEntry->sequenceGroup == 0) || (neighborEntry->sequenceGroup == 0) || (connectingEntry->sequenceGroup != neighborEntry->sequenceGroup))) {
                             firstGroupRoot = connectingEntry->sequenceGroup;
                             neighborGroupRoot = neighborEntry->sequenceGroup;
                             while (firstGroupRoot && firstGroupRoot->parent) {
                                 firstGroupRoot = firstGroupRoot->parent;
                             }
-                            while (neighborGroupRoot && (void *) neighborGroupRoot->parent) {
+                            while (neighborGroupRoot && neighborGroupRoot->parent) {
                                 neighborGroupRoot = neighborGroupRoot->parent;
                             }
 
                             mergedGroup = (((((firstGroupRoot == 0) && (neighborGroupRoot == 0))) != 0) ? (NULL) : (((firstGroupRoot == 0) ? (neighborGroupRoot) : (firstGroupRoot))));
                             if (firstGroupRoot && neighborGroupRoot && (firstGroupRoot != neighborGroupRoot)) {
                                 neighborGroupRoot->parent = firstGroupRoot;
-                                firstGroupRoot->last->sequenceNextInGroup = (void *) neighborGroupRoot->first;
-                                neighborGroupRoot->first->sequencePreviousInGroup = (void *) firstGroupRoot->last;
-                                firstGroupRoot->last = (void *) neighborGroupRoot->last;
+                                firstGroupRoot->last->sequenceNextInGroup = neighborGroupRoot->first;
+                                neighborGroupRoot->first->sequencePreviousInGroup = firstGroupRoot->last;
+                                firstGroupRoot->last = neighborGroupRoot->last;
                                 firstGroupRoot->count += neighborGroupRoot->count;
 
                                 firstGroupRoot->maximum = (((s32) firstGroupRoot->maximum > (s32) neighborGroupRoot->maximum) ? (firstGroupRoot->maximum) : (neighborGroupRoot->maximum));
@@ -2232,7 +2218,7 @@ retrySpawnRow:
 
                                     firstGroupRoot->maximum = (((s32) neighborEntry->groupMaximum > (s32) firstGroupRoot->maximum) ? (neighborEntry->groupMaximum) : (firstGroupRoot->maximum));
                                     firstGroupRoot->last->sequenceNextInGroup = neighborEntry;
-                                    neighborEntry->sequencePreviousInGroup = (void *) firstGroupRoot->last;
+                                    neighborEntry->sequencePreviousInGroup = firstGroupRoot->last;
                                     neighborEntry->sequenceGroup = firstGroupRoot;
                                     firstGroupRoot->last = neighborEntry;
                                 }
@@ -2246,7 +2232,7 @@ retrySpawnRow:
 
                                     neighborGroupRoot->maximum = (((s32) neighborGroupRoot->maximum > (s32) connectingEntry->groupMaximum) ? (neighborGroupRoot->maximum) : (connectingEntry->groupMaximum));
                                     neighborGroupRoot->last->sequenceNextInGroup = connectingEntry;
-                                    connectingEntry->sequencePreviousInGroup = (void *) neighborGroupRoot->last;
+                                    connectingEntry->sequencePreviousInGroup = neighborGroupRoot->last;
                                     connectingEntry->sequenceGroup = neighborGroupRoot;
                                     neighborGroupRoot->last = connectingEntry;
                                 }
@@ -2258,7 +2244,7 @@ retrySpawnRow:
             }
             scan += 1;
 }
-        effectTravelFrames = 0x19;
+        effectTravelFrames = 25;
         index = 0;
         while (index < (s32) lbl_1_bss_2F80[playerIndex]) {
             matchedGroup = &lbl_1_bss_2F88[playerIndex].entries[index];
@@ -2278,7 +2264,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
                         if ((lbl_1_bss_8 == 1) && ((s32) matchedGroupEntry->kind == 2)) {
                             lbl_1_data_D0[playerIndex] -= 1;
                             scan = 0;
-                            while (scan < 0x14) {
+                            while (scan < 20) {
                                 if ((s32) lbl_1_bss_45FC[scan].state == 0) {
                                     lbl_1_bss_45FC[scan].state = 1;
                                     lbl_1_bss_45FC[scan].frame = 0;
@@ -2290,7 +2276,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
                                     pathDist = sqrtf(((f32) (effectRowDistance * effectRowDistance)) + ((f32) (effectColumnDistance * effectColumnDistance)));
                                     lbl_1_bss_45FC[scan].duration = effectTravelFrames;
 
-                                    effectTravelFrames = effectTravelFrames + ((effectTravelFrames < 0x20) ? (3) : (2));
+                                    effectTravelFrames = effectTravelFrames + ((effectTravelFrames < 32) ? (3) : (2));
                                     break;
                                 }
                                 scan += 1;
@@ -2383,7 +2369,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
             index += 1;
 }
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             timerEntry = &lbl_1_bss_70A8[playerIndex][index];
             if (((s32) timerEntry->kind != 0) && ((s32) timerEntry->groupMaximum > 0)) {
                 lbl_1_data_B8[playerIndex] = 1;
@@ -2420,7 +2406,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
         }
         if (lbl_1_bss_8 == 1) {
             index = 0;
-            while (index < 0x14) {
+            while (index < 20) {
                 if ((s32) lbl_1_bss_45FC[index].state == 0) {
                     HuSprAttrSet((s16) lbl_1_bss_120, (s16) index, 4);
                 } else {
@@ -2468,7 +2454,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
                     } else {
                         HuSprAttrSet((s16) lbl_1_bss_120, (s16) index, 4);
                     }
-                    if ((s32) lbl_1_bss_45FC[index].frame > 0xA) {
+                    if ((s32) lbl_1_bss_45FC[index].frame > 10) {
                         lbl_1_bss_45FC[index].state = 0;
                         lbl_1_bss_45FC[index].frame = 0;
                     }
@@ -2505,7 +2491,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
                 HuSprZRotSet((s16) lbl_1_bss_11C, 0, 360.0f * ((f32) lbl_1_bss_45D8.frame / 30.0f));
                 HuSprPriSet((s16) lbl_1_bss_11C, 0, 0x33);
                 HuSprTPLvlSet((s16) lbl_1_bss_11C, 0, 1.0f);
-                if ((s32) lbl_1_bss_45D8.frame >= 0x1E) {
+                if ((s32) lbl_1_bss_45D8.frame >= 30) {
                     lbl_1_bss_45D8.state = 2;
                     lbl_1_bss_45D8.frame = 0;
                     if (lbl_1_bss_0 != 4) {
@@ -2530,7 +2516,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
                 } else {
                     HuSprAttrSet((s16) lbl_1_bss_11C, 0, 4);
                 }
-                if ((s32) lbl_1_bss_45D8.frame > 0xA) {
+                if ((s32) lbl_1_bss_45D8.frame > 10) {
                     lbl_1_bss_45D8.state = 0;
                     lbl_1_bss_45D8.frame = 0;
                 }
@@ -2549,7 +2535,7 @@ s32 matchSoundId[5] = { 0x6, 0x8, 0xC, 0x14, 0x12 };
                         rowEntry->fadeTimer = 0;
                         if ((rowEntry->kind == 4) || (rowEntry->kind == 5)) {
                             loop = 0;
-                            while (loop < 0xCC) {
+                            while (loop < 204) {
                                 if ((s32) lbl_1_bss_48CC[playerIndex].entries[loop].textureIndex == 0) {
                                     effectRecord = &lbl_1_bss_48CC[playerIndex].entries[loop];
                                     effectRecord->x = (f32) rowEntry->gridRow;
@@ -2591,13 +2577,13 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
         index = 0;
         while (index < 6) {
             fallingRowFronts[index] = fallHeads[index];
-            while ((void *) fallingRowFronts[index] && ((s32) fallingRowFronts[index]->category == 6) && ((u32) fallingRowFronts[index]->previousFalling != 0U) && ((s32) fallingRowFronts[index]->previousFalling->releaseSerial == (s32) fallingRowFronts[index]->releaseSerial)) {
+            while (fallingRowFronts[index] && ((s32) fallingRowFronts[index]->category == 6) && ((u32) fallingRowFronts[index]->previousFalling != 0U) && ((s32) fallingRowFronts[index]->previousFalling->releaseSerial == (s32) fallingRowFronts[index]->releaseSerial)) {
                 fallingRowFronts[index] = fallingRowFronts[index]->previousFalling;
             }
             index += 1;
         }
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             movingEntry = &lbl_1_bss_70A8[playerIndex][index];
             if (((s32) movingEntry->kind != 0) && (((s32) movingEntry->category == 0) || ((s32) movingEntry->category == 3) || ((s32) movingEntry->category == 6) || ((s32) movingEntry->category == 4))) {
                 movingEntry->previousColumn = (f32) movingEntry->gridColumn;
@@ -2609,13 +2595,13 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
             index += 1;
         }
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             fallingEntry = &lbl_1_bss_70A8[playerIndex][index];
             entryBelow = fallingEntry->previousFalling;
             while (entryBelow && ((s32) entryBelow->category == 6) && ((s32) entryBelow->releaseSerial != -1) && (((s32) entryBelow->releaseSerial > (s32) fallingEntry->releaseSerial) || (((s32) entryBelow->releaseSerial == 0) && ((s32) fallingEntry->releaseSerial == 0xFFFF)))) {
                 entryBelow = entryBelow->previousFalling;
             }
-            if (((s32) fallingEntry->category == 6) && (fallingEntry->fallSpeed < 0.0f) && ((void *) fallingRowFronts[(s32) fallingEntry->gridRow] == fallingEntry) && ((entryBelow == 0) || ((((s32) entryBelow->category != 6) || ((s32) entryBelow->releaseSerial != (s32) fallingEntry->releaseSerial)) && ((entryBelow->gridColumn - 1.25f) > fallingEntry->gridColumn)))) {
+            if (((s32) fallingEntry->category == 6) && (fallingEntry->fallSpeed < 0.0f) && (fallingRowFronts[(s32) fallingEntry->gridRow] == fallingEntry) && ((entryBelow == 0) || ((((s32) entryBelow->category != 6) || ((s32) entryBelow->releaseSerial != (s32) fallingEntry->releaseSerial)) && ((entryBelow->gridColumn - 1.25f) > fallingEntry->gridColumn)))) {
                 sameFallEntry = fallingEntry;
 
                 floorOverlap = fallingEntry->gridColumn - (((entryBelow) ? (entryBelow->gridColumn) : 15.0f) - 1.25f);
@@ -2632,7 +2618,7 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
             index += 1;
         }
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             integratedEntry = &lbl_1_bss_70A8[playerIndex][index];
             if (((s32) integratedEntry->kind != 0) && (((s32) integratedEntry->category == 0) || ((s32) integratedEntry->category == 3) || ((s32) integratedEntry->category == 6) || ((s32) integratedEntry->category == 4))) {
                 integratedEntry->gridColumn += integratedEntry->fallSpeed;
@@ -2658,32 +2644,32 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
             };
             loop += 1;
             index = 0;
-            while (index < 0x66) {
+            while (index < 102) {
             hitEntry = &lbl_1_bss_70A8[playerIndex][index];
                 if ((s32) (&visitedEntries[0])[index] == 0) {
                     (&visitedEntries[0])[index] = 1;
-                    if ((loop < 0x32) && ((s32) hitEntry->kind != 0) && ((s32) hitEntry->fadeTimer > 0) && (((s32) hitEntry->category == 0) || ((s32) hitEntry->category == 3)) && hitEntry->sequenceGroup) {
+                    if ((loop < 50) && ((s32) hitEntry->kind != 0) && ((s32) hitEntry->fadeTimer > 0) && (((s32) hitEntry->category == 0) || ((s32) hitEntry->category == 3)) && hitEntry->sequenceGroup) {
                         groupCollisionOffset = 0.0f;
                         groupCollisionSpeed = hitEntry->fallSpeed;
                         collisionCategory = hitEntry->category;
                         collisionTimer = hitEntry->age;
                         fallingGroup = hitEntry->sequenceGroup;
-                        while (fallingGroup && (void *) fallingGroup->parent) {
+                        while (fallingGroup && fallingGroup->parent) {
                             fallingGroup = fallingGroup->parent;
                         }
                         collisionGroupEntry = fallingGroup->first;
                         while (collisionGroupEntry) {
                             otherGroup = NULL;
                             limitOrScale = collisionGroupEntry->sequencePreviousInRow ? collisionGroupEntry->sequencePreviousInRow->gridColumn : 15.0f;
-                            if ((void *) collisionGroupEntry->sequencePreviousInRow) {
+                            if (collisionGroupEntry->sequencePreviousInRow) {
                                 otherGroup = collisionGroupEntry->sequencePreviousInRow->sequenceGroup;
-                                while (otherGroup && (void *) otherGroup->parent) {
+                                while (otherGroup && otherGroup->parent) {
                                     otherGroup = otherGroup->parent;
                                 }
                             }
                             if ((otherGroup != fallingGroup) && (collisionGroupEntry->gridColumn > (limitOrScale - 1.0f)) && (((limitOrScale - 1.0f) - collisionGroupEntry->gridColumn) < groupCollisionOffset)) {
                                 groupCollisionOffset = (limitOrScale - 1.0f) - collisionGroupEntry->gridColumn;
-                                if ((void *) collisionGroupEntry->sequencePreviousInRow == 0) {
+                                if (collisionGroupEntry->sequencePreviousInRow == 0) {
                                     groupCollisionSpeed = 0.0f;
                                 } else {
 
@@ -2719,9 +2705,9 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
                         if (((s32) hitEntry->kind != 0) && (((s32) hitEntry->category == 0) || ((s32) hitEntry->category == 3) || (((s32) hitEntry->category == 6) && (hitEntry->fallSpeed >= 0.0f)))) {
             below = rowHeads[(s32) hitEntry->gridRow];
                          below = below && (below == hitEntry) ? below->sequenceNextInRow : below;
-                        while (below && (below->gridColumn >= hitEntry->gridColumn) && (void *) below->sequenceNextInRow && ((((void *) below->sequenceNextInRow != hitEntry) && (below->sequenceNextInRow->gridColumn >= hitEntry->gridColumn)) || (((void *) below->sequenceNextInRow == hitEntry) && (void *) below->sequenceNextInRow->sequenceNextInRow && (below->sequenceNextInRow->sequenceNextInRow->gridColumn >= hitEntry->gridColumn)))) {
+                        while (below && (below->gridColumn >= hitEntry->gridColumn) && below->sequenceNextInRow && (((below->sequenceNextInRow != hitEntry) && (below->sequenceNextInRow->gridColumn >= hitEntry->gridColumn)) || ((below->sequenceNextInRow == hitEntry) && below->sequenceNextInRow->sequenceNextInRow && (below->sequenceNextInRow->sequenceNextInRow->gridColumn >= hitEntry->gridColumn)))) {
 
-                            below = (((void *) below->sequenceNextInRow != hitEntry) ? (below->sequenceNextInRow) : (below->sequenceNextInRow->sequenceNextInRow));
+                            below = ((below->sequenceNextInRow != hitEntry) ? (below->sequenceNextInRow) : (below->sequenceNextInRow->sequenceNextInRow));
                         }
                         if (below && (below->gridColumn < hitEntry->gridColumn)) {
                             below = NULL;
@@ -2804,7 +2790,7 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
             index += 1;
         }
         index = 0;
-        while (index < 0x66) {
+        while (index < 102) {
             countedEntry = &lbl_1_bss_70A8[playerIndex][index];
             if ((s32) countedEntry->kind != 0) {
                 if (((s32) countedEntry->kind == 2) && ((s32) countedEntry->fadeTimer == 0)) {
@@ -2861,7 +2847,7 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
         playerBaseX = ((60.0f * ((playerWorks[playerIndex]->gridRow - 0.25f) + lbl_1_data_60[playerIndex])) + (f32) (lbl_1_bss_8 <= 1 ? 0 : (playerIndex == 0 ? -0x15E : 0x15E))) - 150.0f;
         playerBaseY = -54.0f * (1.5f + ((0.6f + playerWorks[playerIndex]->gridColumn + lbl_1_data_68[playerIndex]) - 15.0f));
         if ((s32) playerWorks[playerIndex]->state[6] == 2) {
-            static const f32 lbl_1_rodata_2730[0x1E] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+            static const f32 lbl_1_rodata_2730[30] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
             static const f32 lbl_1_rodata_27A8[30] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
             static const f32 lbl_1_rodata_2820[30] = { 350.0f, 342.0f, 335.0f, 333.0f, 342.0f, 351.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
             lbl_1_data_254 = 1.5f;
@@ -2886,12 +2872,12 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
         fn_80026760(lbl_1_bss_15C[playerIndex]->mdlId[1], playerBaseX + (60.0f * ((playerHorizontalOffset / 256.0f) - rotationOffsetX)), playerBaseY + (-54.0f * ((playerVerticalOffset / 256.0f) + rotationOffsetY)), 20.0f);
         fn_80026808(lbl_1_bss_15C[playerIndex]->mdlId[1], 0.0f, 0.0f, (f32) -rotationAngle);
         index = 0;
-        while (index < 0xCC) {
+        while (index < 204) {
             effectAgePointer = &lbl_1_bss_48CC[playerIndex].entries[index];
             if ((s32) effectAgePointer->textureIndex != 0) {
                 effectAgePointer->textureIndex = effectAgePointer->textureIndex + 1;
                 DebugValue(effectAgePointer->x);
-                if ((s32) effectAgePointer->textureIndex >= 0x28) {
+                if ((s32) effectAgePointer->textureIndex >= 40) {
                     effectAgePointer->textureIndex = 0;
                 }
             }
@@ -2903,10 +2889,10 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
         loop = 0;
         while (index < 6) {
             if ((s32) lbl_1_data_168[playerIndex][index] > 0xB) {
-                lbl_1_bss_66C0[playerIndex].overflowFrames[index] += 1;
+                lbl_1_bss_66C0[playerIndex].unk00[index] += 1;
                 scan += 1;
             } else {
-                lbl_1_bss_66C0[playerIndex].overflowFrames[index] = 0;
+                lbl_1_bss_66C0[playerIndex].unk00[index] = 0;
             }
             loop += ((((s32) lbl_1_data_19C[playerIndex] == 0) && ((s32) lbl_1_data_168[playerIndex][index] > (s32) (0xB - ((lbl_1_bss_8 == 1) ? 0 : 1))))) || ((((s32) lbl_1_data_19C[playerIndex] == 1) && ((s32) lbl_1_data_138[playerIndex].rowCounts[index] > (s32) (0xB - ((lbl_1_bss_8 == 1) ? 0 : 3)))));
             index += 1;
@@ -2922,7 +2908,7 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
         }
         if ((s32) playerWorks[playerIndex]->pendingRumble != 0) {
             playerWorks[playerIndex]->pendingRumble = 0;
-                fn_8006A030((s16) playerWorks[playerIndex]->groupPlayerIndex, 0x14, 7, 3);
+                fn_8006A030((s16) playerWorks[playerIndex]->groupPlayerIndex, 20, 7, 3);
         }
         if (lbl_1_bss_0 == 2) {
             if ((u32) (lbl_1_bss_66F0[playerIndex] % 40) == 1) {
@@ -2945,14 +2931,14 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
         if ((lbl_1_bss_8 == 1) && (lbl_1_bss_0 == 5) && (lbl_1_data_C8[0] == 0x2C)) {
                 if (lbl_1_bss_4 == 0) {
                     if ((lbl_1_bss_18 == 0) && (lbl_1_bss_1C == 0)) {
-                        HuAudSStreamFadeOut(lbl_1_data_1F0, 0x3E8);
+                        HuAudSStreamFadeOut(lbl_1_data_1F0, 1000);
                         lbl_1_data_1F0 = -1;
                         if (lbl_1_data_1F4 != -1) {
                             HuAudSStreamStop(lbl_1_data_1F4);
                         }
                         lbl_1_data_1F4 = -1;
                     } else if ((lbl_1_bss_18 == 1) && (lbl_1_bss_1C == 0)) {
-                        HuAudSStreamFadeOut(lbl_1_data_1F4, 0x3E8);
+                        HuAudSStreamFadeOut(lbl_1_data_1F4, 1000);
                         lbl_1_data_1F4 = -1;
                         HuAudSStreamStop(lbl_1_data_1F0);
                         lbl_1_data_1F0 = -1;
@@ -3041,12 +3027,12 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
                 memset(lbl_1_data_1AC, 0, 6U);
                 memset(lbl_1_bss_48CC, 0, 0x990U);
                 index = 0;
-                while (index < 0x66) {
+                while (index < 102) {
                     lbl_1_bss_70A8[0][index].index = index;
                     index += 1;
                 }
                 index = 0;
-                while (index < 0x66) {
+                while (index < 102) {
                     lbl_1_bss_2E0[0][1][index].index = index;
                     lbl_1_bss_2E0[0][0][index].index = index;
                     lbl_1_bss_2F88[0].entries[index].index = index;
@@ -3195,7 +3181,7 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
             }
             if (lbl_1_bss_4 >= 0x1E) {
                 index = 0;
-                while (index < 0x66) {
+                while (index < 102) {
                     endingEntry = &lbl_1_bss_70A8[playerIndex][index];
                     if ((s32) endingEntry->kind != 0) {
                         endingEntry->opacityScale = (f32) ((1.0f - ((f32) (lbl_1_bss_4 - 0x1E) / 40.0f)) + (0.02f * endingEntry->gridColumn));
@@ -3258,12 +3244,12 @@ M678LinkEntry * fallingRowFronts[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
                     memset(&lbl_1_data_1AC[playerIndex], 0, 6U);
                     memset(&lbl_1_bss_48CC[playerIndex], 0, 0x990U);
                     index = 0;
-                    while (index < 0x66) {
+                    while (index < 102) {
                         lbl_1_bss_70A8[playerIndex][index].index = index;
                         index += 1;
                     }
                     index = 0;
-                    while (index < 0x66) {
+                    while (index < 102) {
                         lbl_1_bss_2E0[playerIndex][1][index].index = index;
                         lbl_1_bss_2E0[playerIndex][0][index].index = index;
                         lbl_1_bss_2F88[playerIndex].entries[index].index = index;
@@ -3464,7 +3450,7 @@ s32 modelPositions[2][2] = { -0x190, -0x190, -0x55, 0x55 };
         MgScoreValueSet(lbl_1_bss_2B4[4], lbl_1_data_E0[0] % 100);
         MgScoreValueSet(lbl_1_bss_2B4[5], ((lbl_1_data_F0[0] + 0x3B) / 60) % 100);
         index = 0;
-        while (index < 0x14) {
+        while (index < 20) {
             if ((s32) lbl_1_bss_45FC[index].state == 2) {
                 scorePulse = 1.0f + (0.333f * (1.0f - ((f32) lbl_1_bss_45FC[index].frame / 10.0f)));
 
@@ -3559,7 +3545,7 @@ s32 cameraTableValue5[4] = { 0x1, 0x1, -0x1, -0x1 };
                 lbl_1_bss_5C = projectedCameraY[1] - lbl_1_bss_64;
                 lbl_1_bss_3C = GXGetTexBufferSize((u16) lbl_1_bss_60, (u16) lbl_1_bss_5C, 6U, 0U, 0U);
                 index = 0;
-                while (index < 0x28) {
+                while (index < 40) {
                     lbl_1_bss_7C[index] = HuMemDirectMallocNum(2, (s32) lbl_1_bss_3C, 0x10000000U);
                     index += 1;
                 }
@@ -3609,9 +3595,10 @@ void fn_1_106D0(s16 mode, s16 frameNo)
     }
 }
 
+/* Each frame, plays queued sound effects and handles music and winner cues for the current phase. */
 void fn_1_10700(OMOBJ *obj)
 {
-    M678PlayerWork *playerData[4];
+    M678PlayerSetupWork *playerData[4];
     s32 frameNo;
     s32 player;
     s32 animationPlayer;
@@ -3624,8 +3611,8 @@ void fn_1_10700(OMOBJ *obj)
         playerData[player] = lbl_1_bss_15C[player]->data;
     }
     player = 0;
-    for (; player < 0x26; player++) {
-        s32 soundEffectIds[0x26] = {
+    for (; player < 38; player++) {
+        s32 soundEffectIds[38] = {
             2263, 2264, 2265, 2266, 2267, 2268, 2269, 2270,
             2271, 2272, 2273, 2274, 2275, 2276, 2277, 2278,
             2279, 2280, 2281, 2282, 2283, 2284, 2285, 2286,
@@ -3639,8 +3626,8 @@ void fn_1_10700(OMOBJ *obj)
         if (lbl_1_bss_174[player].count > 0) {
             if (soundEffectIds[player] != -1) {
                 soundHandle = HuAudFXPlay(soundEffectIds[player]);
-                lbl_1_bss_174[player].handle = soundHandle;
-                if (lbl_1_bss_8 > 1 && player != 0x10 && player != 0x11) {
+                lbl_1_bss_174[player].unk04 = soundHandle;
+                if (lbl_1_bss_8 > 1 && player != 16 && player != 17) {
                     if (player % 2) {
                         pan = 0x50;
                     } else {
@@ -3856,26 +3843,26 @@ static inline void DebugCheckModels(OMOBJ *obj, s32 enabled)
 
     if (enabled) {
         count = 0;
-        for (model = 0; model < 0x2C; model++) {
+        for (model = 0; model < 44; model++) {
             if (obj->mdlId[model] >= 0) {
                 count++;
             }
         }
-        if (count == 0 || count == 0x2C) {
+        if (count == 0 || count == 44) {
             return;
         }
-        for (model = 0; model < 0x2C; model++) {
+        for (model = 0; model < 44; model++) {
             if (obj->mdlId[model] < 0) {
                 count = model;
                 break;
             }
         }
-        if (count < 0x14) {
-            for (model = count; model < 0x14; model++) {
+        if (count < 20) {
+            for (model = count; model < 20; model++) {
                 fn_800269E8(obj->mdlId[model], (1 << 0));
             }
         } else {
-            for (model = count; model < 0x2C; model++) {
+            for (model = count; model < 44; model++) {
                 fn_80026A44(obj->mdlId[model], (1 << 0));
             }
         }
@@ -3902,11 +3889,11 @@ void fn_1_11148(OMOBJ *obj) {
     memset(& lbl_1_bss_45D8.state, 0, 0x24U);
     for (modelIndex = 0; modelIndex < 2; modelIndex++)
     {
-        for (index = 0; index < 0x66; index++)
+        for (index = 0; index < 102; index++)
         {
             lbl_1_bss_70A8[modelIndex][index].index = index;
         }
-        for (index = 0; index < 0x66; index += 1)
+        for (index = 0; index < 102; index += 1)
         {
             lbl_1_bss_2F88[modelIndex].entries[index].index = index;
         }
@@ -4031,10 +4018,10 @@ void fn_1_11148(OMOBJ *obj) {
     modelIndex = 43;
     obj->mdlId[modelIndex] = fn_800260F4(fn_1_1332C);
     fn_80026B8C(obj->mdlId[modelIndex], 5);
-    spriteAnimation = HuSprAnimRead(fn_80008DD0(DATANUM(0x890000, 4), 0x10000000, 2));
+    spriteAnimation = HuSprAnimDataRead(DATANUM(0x890000, 4));
     lbl_1_bss_120 = (s32) HuSprGrpCreate(0x14);
     index = 0;
-    while (index < 0x14)
+    while (index < 20)
     {
         spriteId = HuSprCreate(spriteAnimation, 0x33, 0);
         HuSprGrpMemberSet((s16) lbl_1_bss_120, (s16) index, spriteId);
@@ -4042,7 +4029,7 @@ void fn_1_11148(OMOBJ *obj) {
         HuSprAttrSet((s16) lbl_1_bss_120, (s16) index, HUSPR_ATTR_DISPOFF);
         index += 1;
     }
-    spriteAnimation = HuSprAnimRead(fn_80008DD0(DATANUM(0x890000, 5), 0x10000000, 2));
+    spriteAnimation = HuSprAnimDataRead(DATANUM(0x890000, 5));
     lbl_1_bss_11C = (s32) HuSprGrpCreate(4);
     index = 0;
     while (index < 4)
@@ -4145,9 +4132,9 @@ void ObjectSetup(void)
     }
     lbl_1_bss_5BEC = fn_8003C860(7);
     lbl_802BFF80 = 0;
-    for (i = 0; i < 0x26; i++) {
+    for (i = 0; i < 38; i++) {
         lbl_1_bss_174[i].count = 0;
-        lbl_1_bss_174[i].handle = -1;
+        lbl_1_bss_174[i].unk04 = -1;
     }
 
     lbl_1_bss_150 = fn_80080418();
@@ -4330,7 +4317,6 @@ void fn_1_1332C(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
-void HuSprTexLoad(ANIMDATA *, s16, s16, GXTexWrapMode, GXTexWrapMode, GXTexFilter);
 
 /* Sprite animation references and sprite group members. */
 typedef struct M678SpriteAnimation {
@@ -4354,7 +4340,7 @@ static inline void DebugCheckEntries(const f32 *horizontalOffset, s32 enabled)
         if (*horizontalOffset != 0.0f) {
             return;
         }
-        for (index = 0; index < 0x66; index++) {
+        for (index = 0; index < 102; index++) {
             if (lbl_1_bss_70A8[0][index].kind < 0 || lbl_1_bss_70A8[0][index].kind > 7 ||
                 lbl_1_bss_70A8[1][index].kind < 0 || lbl_1_bss_70A8[1][index].kind > 7) {
                 return;
@@ -4482,7 +4468,7 @@ void fn_1_1350C(HU3D_MODEL *modelP, f32 (*mtx)[3][4]) {
             while (drawPass < 2)
             {
                 entryIndex = 0;
-                while (entryIndex < 0x66)
+                while (entryIndex < 102)
                 {
                     if ((lbl_1_bss_70A8[playerIndex][entryIndex].kind != 0) && (((drawPass == 0) && (lbl_1_bss_70A8[playerIndex][entryIndex].category != 5) && (lbl_1_bss_70A8[playerIndex][entryIndex].category != 6)) || ((drawPass == 1) && ((lbl_1_bss_70A8[playerIndex][entryIndex].category == 5) || (lbl_1_bss_70A8[playerIndex][entryIndex].category == 6)))))
                     {
@@ -4581,7 +4567,7 @@ void fn_1_1350C(HU3D_MODEL *modelP, f32 (*mtx)[3][4]) {
         {
             highlightAlpha = (s32)(192.0f + (63.0f * ((f32)(lbl_1_bss_14 % 30) / 30.0f)));
             entryIndex = 0;
-            while (entryIndex < 0x66)
+            while (entryIndex < 102)
             {
                 overlayEntry = &lbl_1_bss_70A8[playerIndex][entryIndex];
                 if ((overlayEntry->kind != 0) && (entryOpacity[playerIndex][entryIndex] > 0) && ((overlayEntry->kind == 2) || (overlayEntry->kind == 3) || (overlayEntry->kind == 6) || (overlayEntry->kind == 7)))
@@ -4642,7 +4628,7 @@ void fn_1_1350C(HU3D_MODEL *modelP, f32 (*mtx)[3][4]) {
             {
                 effectAlpha = (s32)(192.0f + (63.0f * ((f32)(lbl_1_bss_14 % 30) / 30.0f)));
                 entryIndex = 0;
-                while (entryIndex < 0x66)
+                while (entryIndex < 102)
                 {
                     if ((entryOpacity[playerIndex][entryIndex] != 0) && ((! drawEntries[playerIndex][entryIndex]) || (drawEntries[playerIndex][entryIndex]->category != 5)) && (lbl_1_data_168[playerIndex][(s32)(0.5f + lbl_1_bss_70A8[playerIndex][entryIndex].gridRow)] > 0xB))
                     {
@@ -4695,12 +4681,12 @@ void fn_1_1350C(HU3D_MODEL *modelP, f32 (*mtx)[3][4]) {
         while (playerIndex < lbl_1_bss_8)
         {
             entryIndex = 0;
-            while (entryIndex < 0xCC)
+            while (entryIndex < 204)
             {
                 GXTexObj textureObject;
                 M678TextureEffect *textureEntry;
                 textureEntry = &lbl_1_bss_48CC[playerIndex].entries[entryIndex];
-                if (((s32) textureEntry->textureIndex != 0) && ((s32) textureEntry->textureIndex <= 0x28))
+                if (((s32) textureEntry->textureIndex != 0) && ((s32) textureEntry->textureIndex <= 40))
                 {
                     textureX = ((60.0f * textureEntry->x) + (f32)(lbl_1_bss_8 <= 1 ? 0 : playerIndex == 0 ? - 0x15E : 0x15E)) - 150.0f;
                     textureY = - 54.0f * (1.5f + ((0.5f + textureEntry->y) - 15.0f));
@@ -4797,7 +4783,7 @@ void fn_1_1350C(HU3D_MODEL *modelP, f32 (*mtx)[3][4]) {
                 displayBottom = - 81.0f;
                 digitScale = displayValue >= 0xA ? 0.5f : 1.0f;
                 drawIndex = 0;
-                while (drawIndex < (s32)((displayValue >= 0xA) + 1))
+                while (drawIndex < (s32)((displayValue >= 10) + 1))
                 {
                     digit = digitScale == 1.0f ? displayValue : drawIndex == 0 ? (displayValue / 10) % 10 : displayValue % 10;
                     GXBegin(GX_QUADS, GX_VTXFMT0, 4U);
@@ -4837,13 +4823,13 @@ u32 lbl_1_bss_66F0[2];
 struct _struct_lbl_1_bss_66C0_0x18 lbl_1_bss_66C0[2];
 struct _struct_lbl_1_bss_66A8_0xC lbl_1_bss_66A8[2];
 struct _struct_lbl_1_bss_6690_0xC lbl_1_bss_6690[2];
-struct _struct_lbl_1_bss_5E90_0x400 lbl_1_bss_5E90[2];
+struct M678QueueEntryCounts lbl_1_bss_5E90[2];
 struct _struct_lbl_1_bss_5E80_0x8 lbl_1_bss_5E80[2];
 struct _struct_lbl_1_bss_5E70_0x8 lbl_1_bss_5E70[2];
-struct _struct_lbl_1_bss_5BF0_0x140 lbl_1_bss_5BF0[2];
+u8 lbl_1_bss_5BF0[2][320];
 u32 lbl_1_bss_5BEC;
 struct M678TextureEffectStorage lbl_1_bss_48CC[2];
-struct _struct_lbl_1_bss_45FC_0x24 lbl_1_bss_45FC[0x14];
+struct _struct_lbl_1_bss_45FC_0x24 lbl_1_bss_45FC[20];
 struct _struct_lbl_1_bss_45FC_0x24 lbl_1_bss_45D8;
 M678LinkGroupSet lbl_1_bss_2F88[2];
 s32 lbl_1_bss_2F80[2];
@@ -4851,7 +4837,7 @@ struct M678LinkGroup lbl_1_bss_2E0[2][2][0x66];
 struct _struct_lbl_1_bss_2D0_0x8 lbl_1_bss_2D0[2];
 MGSCORE *lbl_1_bss_2B4[7];
 s16 lbl_1_bss_2A4[8];
-struct M678SoundEntry lbl_1_bss_174[0x26];
+struct M678SoundEntry lbl_1_bss_174[38];
 OMOBJ *lbl_1_bss_170;
 OMOBJ *lbl_1_bss_16C;
 OMOBJ *lbl_1_bss_15C[4];
@@ -4869,7 +4855,7 @@ s32 lbl_1_bss_128;
 s32 lbl_1_bss_124;
 s32 lbl_1_bss_120;
 s32 lbl_1_bss_11C;
-void *lbl_1_bss_7C[0x28];
+void *lbl_1_bss_7C[40];
 f32 lbl_1_bss_74[2];
 f32 lbl_1_bss_6C[2];
 s32 lbl_1_bss_68;

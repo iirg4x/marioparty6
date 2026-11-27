@@ -166,7 +166,7 @@ void fn_1_1706C(void) {
     fn_8002C95C(lbl_1_bss_9C[1], lbl_1_bss_D46[1]);
 
     index = 0;
-    while (index < 0x14) {
+    while (index < 20) {
         lbl_1_bss_AC[index] = 0;
         index += 1;
     }
@@ -176,7 +176,7 @@ void fn_1_1706C(void) {
         while (slot < 4) {
             lbl_1_bss_BB0[index][slot].motionType = -1;
             lbl_1_bss_BB0[index][slot].objectIndex = -1;
-            lbl_1_bss_BB0[index][slot].placed = -1;
+            lbl_1_bss_BB0[index][slot].unk08 = -1;
             slot += 1;
         }
         index += 1;
@@ -237,40 +237,7 @@ s32 fn_1_17974(void) {
 
 /* Counts the objects that make up the answer, reports it and records it. */
 void fn_1_17A88(void) {
-    s32 answerCount;
-    s32 index;
-    answerCount = 0;
-    lbl_1_bss_94 = lbl_1_bss_74[0];
-    switch (lbl_1_bss_98)
-    {
-    case 0 :
-        index = 0;
-        while (index < lbl_1_bss_90)
-        {
-            if (lbl_1_bss_94 == lbl_1_bss_24[index])
-            {
-                answerCount += 1;
-            }
-            index += 1;
-        }
-        break;
-    case 1 :
-        answerCount = lbl_1_bss_90;
-        break;
-    case 2 :
-        index = 0;
-        while (index < lbl_1_bss_90)
-        {
-            if (lbl_1_bss_94 != lbl_1_bss_24[index])
-            {
-                answerCount += 1;
-            }
-            index += 1;
-        }
-        break;
-    }
-    MicQuizExpectedAnswerSet(answerCount);
-    OSReport("----------------------------ANSER:%d\n", answerCount);
+    QuizCountAnswerRecord();
 }
 
 void fn_1_17BC8(void) {
@@ -409,8 +376,8 @@ void fn_1_17BEC(OMOBJ *object) {
         if (lbl_1_bss_104 >= 180.0f) {
             lbl_1_bss_104 = 0.0f;
             lbl_1_bss_FC = 0xE;
-            WipeCreate(2, 0, 0x14);
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x64);
+            WipeCreate(2, 0, 20);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 100);
             return;
         }
         lbl_1_bss_104 += 1.0f;
@@ -479,7 +446,7 @@ s32 fn_1_18578(s32 groupIndex, s32 entryIndex, s32 motionType, s32 objectIndex) 
     if (lbl_1_bss_BB0[groupIndex][entryIndex].motionType == -1) {
         lbl_1_bss_BB0[groupIndex][entryIndex].motionType = motionType;
         lbl_1_bss_BB0[groupIndex][entryIndex].objectIndex = objectIndex;
-        lbl_1_bss_BB0[groupIndex][entryIndex].placed = 1;
+        lbl_1_bss_BB0[groupIndex][entryIndex].unk08 = 1;
         return 1;
     }
     return 0;
@@ -514,7 +481,7 @@ s32 fn_1_18670(Vec *position, s32 motionType, s32 objectIndex) {
         if (lbl_1_bss_BB0[row][column].motionType == -1) {
             lbl_1_bss_BB0[row][column].motionType = motionType;
             lbl_1_bss_BB0[row][column].objectIndex = objectIndex;
-            lbl_1_bss_BB0[row][column].placed = 1;
+            lbl_1_bss_BB0[row][column].unk08 = 1;
             slotClaimed = 1;
         } else {
             slotClaimed = 0;
@@ -562,23 +529,10 @@ void fn_1_18858(void) {
     }
 }
 
+/* Spreads the two models in the second counting round apart along X. */
 void fn_1_18998(void)
 {
-    HuVecF positions[2];
-    s32 i;
-
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
 }
 
 /* Steps the light color toward 0 on every channel, sets the light's color and returns 1 once

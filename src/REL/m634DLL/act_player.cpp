@@ -303,7 +303,7 @@ ActPlayer::ActPlayer(s32 index, s32 mode, s32 category)
     s32 alternate = playerMode == 0 ? 0 : 1;
     part.reset(fn_1_3A0(this, index, alternate));
     loadColors();
-    static NightScale lbl_1_data_104[2] = { { 2.0f, 2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f } };
+    static Vec lbl_1_data_104[2] = { { 2.0f, 2.0f, 2.0f }, { 0.5f, 0.5f, 0.5f } };
     static Vec lbl_1_data_11C = { 0.85f, 0.85f, 0.85f };
     night = GWMgNightFGet();
     fn_1_1F9C(lbl_1_data_104[night].x, lbl_1_data_104[night].y, lbl_1_data_104[night].z);

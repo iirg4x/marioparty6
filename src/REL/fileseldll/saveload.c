@@ -57,10 +57,6 @@ s32 FileSave(void);
 s16 FileMessOut(s16 mode);
 s32 FileCardChoice(s16 choiceFlags, s16 sourceWindowId);
 
-/* ======================================================================== */
-/* functions in strict ascending target-address order */
-/* ======================================================================== */
-
 /* After name entry, hide its sprites and all three stored window IDs. Only the first two
 * IDs are initialized as keyboard windows; the third remains zero. */
 void FileCommonInit(void)
@@ -634,6 +630,7 @@ s32 FileCardMount(s16 slot)
         }
     }
 }
+
 /* After format confirmation, format the active curSlotNo; slot only selects the warning text.
  * Removal before formatting returns success without formatting the card. HuCardFormat clears
  * reset/disc-error suppression even if it was already set. Unhandled negative format results

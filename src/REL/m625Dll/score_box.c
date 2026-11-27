@@ -35,18 +35,9 @@ typedef struct M625ScoreBoxState_s {
     u8 trailing[2];
 } M625ScoreBoxState;
 
-typedef struct M625ScoreBoxPlacement_s {
-    /* Score-box x coordinate in screen pixels. */
-    f32 x;
-    /* Score-box y coordinate in screen pixels. */
-    f32 y;
-    /* Stored z coordinate, initialized to zero. */
-    f32 z;
-} M625ScoreBoxPlacement;
-
 M625ByteArray lbl_1_data_410 = { { 64, 64, 64, 0 } };
 
-M625ScoreBoxPlacement lbl_1_data_414[3] = {
+Point3d lbl_1_data_414[3] = {
     { 58.0f, 58.0f, 0.0f },
     { 174.0f, 58.0f, 0.0f },
     { 290.0f, 58.0f, 0.0f }

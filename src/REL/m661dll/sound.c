@@ -14,8 +14,6 @@ extern s32 lbl_1_bss_210;
 
 s16 lbl_1_bss_31C8[4];
 
-extern f32 lbl_1_bss_2FEC[];
-
 void fn_1_3038(MGTIMER *timer);
 
 void fn_1_58DC(void);
@@ -92,6 +90,7 @@ void fn_1_5784(void) {
     HuAudAllStop();
 }
 
+/* Shows the score displays on entry and advances the result phase. */
 s32 fn_1_57A4(void)
 {
     s32 result = 0;
@@ -105,7 +104,7 @@ s32 fn_1_57A4(void)
                                0.8f);
             MgScoreDispOn(lbl_1_bss_0[playerIndex].score);
         }
-        lbl_1_bss_2FEC[0x48 / sizeof(f32)] = 25300.0f;
+        lbl_1_bss_2FEC.orbitDistance = 25300.0f;
         lbl_1_bss_31C8[0] = 1;
     }
     if (lbl_1_bss_31C8[0] != 0) {

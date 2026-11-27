@@ -1292,7 +1292,6 @@ void fn_1_4A0C(OMOBJ *object)
 /* Destroys ending particle effects and dialogue windows, then clears lights and the camera. */
 void fn_1_4AB4(void)
 {
-
     fn_1_12838();
     fn_1_1104();
     fn_80028D70();
@@ -1303,7 +1302,6 @@ void fn_1_4AB4(void)
  * overlay. */
 void fn_1_4B20(OMOBJ *object)
 {
-
     if (WipeCheck() == 0) {
         HuAudFadeOut(1000);
         fn_1_4AB4();
@@ -1359,7 +1357,6 @@ void fn_1_4BC8(OMOBJ *object)
  * overlay. */
 void fn_1_4DAC(void)
 {
-
     fn_1_DD14();
     HuAudSStreamFadeOut(lbl_1_bss_1DDC, 1000);
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 60);
@@ -1884,7 +1881,6 @@ void fn_1_A6D8(void)
     fn_80028D70();
     fn_1_7B4();
 }
-
 
 /* Presents the first staff-roll section and starts its camera move; called by the ending
  * entrypoint. */

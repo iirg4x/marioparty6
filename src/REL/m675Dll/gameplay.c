@@ -1,206 +1,32 @@
 /* Controls the Banana Shake prop actors, their scripted movement, and attached effects. */
+#include "REL/minigame_prop_motion.h"
+#include "REL/m675Dll/prop_work.h"
+#include <math.h>
+#include "dolphin/gx.h"
+#include "dolphin/os.h"
+#include "game/main.h"
+#include "game/object.h"
+#include "game/hu3d.h"
+#include "game/gamework.h"
+#include "game/audio.h"
+#include "game/memory.h"
+#include "game/data.h"
+#include "game/hsfex.h"
+#include "game/charman.h"
+#include "game/frand.h"
+#include "game/mg/seqman.h"
+#include "msm_se.h"
+#include <string.h>
+
+/* Evaluates an argument from disabled debug output. */
 static inline void DebugValue(int value)
 {
 }
 
-#include "dolphin/math.h"
-
-#include "dolphin/gx.h"
-
-#include "dolphin/os.h"
-
-#include "game/main.h"
-
-#include "game/object.h"
-
-#include "game/hu3d.h"
-
-#include "game/gamework.h"
-
-#include "game/audio.h"
-
-#include "game/memory.h"
-
-#include "game/data.h"
-
-#include "game/hsfex.h"
-
-#include "game/charman.h"
-
-#include "game/frand.h"
-
-#include "game/mg/seqman.h"
-
-#include "msm_se.h"
-
-#include <string.h>
-
-#define MSM_SE_M675_2225 2225
-#define MSM_SE_M675_2226 2226
-#define MSM_SE_M675_2227 2227
-#define MSM_SE_M675_2228 2228
-#define MSM_SE_M675_2229 2229
-
-typedef struct M675EmitterRecord M675EmitterRecord;
-
-typedef struct M675PropMotionParameter {
-    s32 resource; /* Motion resource index; -1 skips this slot and -2 ends the list. */
-    f32 blend; /* Blend duration multiplier used when switching from another motion. */
-    u32 attributes; /* Motion attributes applied when this motion starts. */
-} M675PropMotionParameter;
-
-typedef struct M675PropParameter {
-    s32 count; /* Number of instances created from this entry. */
-    s32 linkModel; /* Reuse an existing model when nonzero. */
-    s32 type; /* Category used by the prop lookup table. */
-    s16 firstId; /* ID assigned to the first instance. */
-    s16 layer; /* Render layer for each instance's model. */
-    u32 attributes; /* Model attributes enabled at creation. */
-    s32 shadowMode; /* Selects no shadow, model shadow, or shadow-map reception. */
-    s32 modelResource; /* Model data resource, or -1 when the prop has no model. */
-    M675PropMotionParameter * motions; /* Motion resource and playback settings. */
-    Vec * position; /* Optional initial world position. */
-    f32 rotationY; /* Initial yaw in degrees. */
-    OMOBJ_FUNC update; /* Per-frame callback assigned to each instance. */
-} M675PropParameter;
-
-typedef struct M675Collision M675Collision;
-
-struct M675Collision {
-    /* Collision enable flags, mask, and effect category. */
-    u32 flags, mask, type;
-    s32 index; /* Owner-supplied record index. */
-    s32 shapeType; /* Collision shape selector: 0 for sphere, 10 for ring, 11 for boundary. */
-    OMOBJ *owner;
-    void *excludedOwner;
-    OMOBJ_FUNC update;
-    s32 (*contact)(M675Collision *, M675Collision *);
-    Vec *position, *velocity;
-    Vec positionCopy;
-    f32 radius;
-    f32 yieldOnContact; /* Nonzero makes this sphere move against a zero-valued sphere. */
-    s32 handled;
-};
-
-/* State passed to the shared actor input, motion and transform helpers. */
-typedef struct M675ActorState {
-    M675Collision collision; /* Player contact data; prop instances leave it disabled. */
-    s32 playerMappingIndex; /* Player mapping used by the player gameplay helpers. */
-    s32 formationIndexAtCreation; /* Formation slot supplied when a player is created. */
-    s32 formationIndex; /* Current player slot in the formation arrays. */
-    s32 active; /* Gates human input, motion-offset easing, result arrival reporting and character
-                 * feedback. */
-    Vec basePosition; /* Player formation position before a motion offset is applied. */
-    Vec position, velocity, rotation; /* World position, per-frame movement and Euler angles. */
-    f32 baseYaw; /* Player facing angle before its motion offset is applied. */
-    u32 buttonsDown, buttons; /* Buttons pressed this frame and currently held. */
-    f32 stickAngle, stickMagnitude; /* Stick angle in degrees and its magnitude. */
-    s32 motion, motionFrame; /* Selected motion and transform-update count since that motion was
-                              * selected. */
-    s32 requestedMotion; /* Motion queued by the current frame's behavior. */
-    f32 motionSpeed; /* Playback speed for the queued motion. */
-} M675ActorState;
-
-typedef struct M675PropState {
-    M675ActorState actor;
-    /* Script phase and its frame timer or repeated-action counter; countdown and desired yaw. */
-    s32 phase;
-    s32 phaseTimer;
-    f32 countdown; /* Remaining frames in a timed action. */
-    f32 targetAngle;
-    /* World-space destination and sub-action progress. */
-    Vec targetPosition;
-    s32 actionPhase;
-    s32 actionTimer; /* Elapsed frames for the current action. */
-    s32 soundTimer; /* Frames until the next repeated sound. */
-    /* Unused bytes cleared when the prop is created. */
-    u8 unknown_0D0_to_0D3[4];
-    s32 movementPhase; /* Substate of a turn, walk, or jump routine. */
-    s32 movementTimer; /* Frames remaining or elapsed in that movement substate. */
-    /* Unused bytes cleared when the prop is created. */
-    u8 unknown_0DC_to_0FB[32];
-    s32 motionActive; /* Nonzero while the selected motion is being tracked. */
-    s32 motionTimer; /* Cleared when motion tracking is inactive or the motion and blend have
-                      * ended. */
-    /* Unused bytes cleared when the prop is created. */
-    u8 unknown_104_to_107[4];
-    s32 airborne; /* Whether display positioning uses the airborne depth bands. */
-    /* Unused bytes cleared when the prop is created. */
-    u8 unknown_10C_to_127[28];
-    s32 positionSyncEnabled; /* Follows the paired sequence actor's position when set. */
-    Vec displayOffset; /* Temporary offset added when placing the model. */
-    f32 movementSoundDistance; /* Accumulated requested walk speed, used to space walking sounds. */
-    s32 effectRegistrationActive; /* Nonzero enables drawing the prop's registered ground ring. */
-    f32 effectRegistrationRadius; /* Ground-ring radius in world units. */
-    Vec * effectRegistrationPosition; /* Position shared with the effect manager. */
-    /* Unused bytes cleared when the prop is created. */
-    u8 unknown_148_to_1B3[108];
-} M675PropState;
-
-typedef struct M675PropWork {
-    M675PropState state;
-    M675PropParameter * parameters;
-    s32 id;
-    s32 updateCount;
-    Vec initialPosition;
-    /* Outer sequence phase, delayed-start frames, and phase timer. */
-    s32 sequencePhase;
-    s32 delay;
-    s32 sequenceTimer;
-    /* Unused bytes cleared when the prop is created. */
-    u8 unknown_1D8_to_1DB[4];
-    /* Sequence selection values used by the prop callbacks. */
-    union {
-        s32 controlValue;
-        s32 frameCount;
-    };
-    union {
-        s32 secondaryControlValue;
-        s32 lastRecordedFrame;
-    };
-    /* Bounce deformation scale and angle. */
-    f32 bounceScale;
-    f32 bounceAngle;
-    /* Unused bytes cleared when the prop is created. */
-    u8 unknown_1EC_to_283[152];
-    /* Type 0's path recorder and types 2 through 4's emitters share this slot. */
-    union {
-        Vec *samples;
-        M675EmitterRecord *records;
-    };
-    s32 soundHandle; /* Active sound-effect handle, or the stored inactive value. */
-    s32 eventCount; /* Number of sequence events recorded for this prop. */
-    s32 shuffleIndex; /* Current index in the shuffled effect-type list. */
-    s32 effectActive; /* Whether the prop's triggered main/shape motion sequence is active. */
-    f32 effectMotionSpeed; /* Shared main/shape motion playback-speed multiplier. */
-    s32 alternateMotionStart; /* Main/shape motion start selector: zero uses frame 0, nonzero uses
-                               * frame 15. */
-    u8 shuffledEffectTypes[20]; /* Shuffled effect types emitted by this sequence. */
-    Vec displayPosition; /* Ground-ring position; airborne props choose its Y from depth bands. */
-} M675PropWork;
-
-typedef M675PropWork M675PlaybackWork;
-typedef M675PropWork M675EmitterWork;
-
-typedef struct M675EmitterRecord {
-    /* Effect category, visibility/interaction state, and animation timer. */
-    s32 type, enabled, state;
-    f32 timer;
-    u32 unmappedWordAfterTimer; /* Cleared with the emitter record; no later access is shown. */
-    /* Phase count, model slot, and source player index. */
-    s32 phaseCounter, modelId, playerIndex;
-    /* Current transform and per-frame movement/rotation increments. */
-    Vec position, rotation, velocity, rotationDelta;
-    /* Uniform scale, model height adjustment, and floor cutoff offset from world Y=200. */
-    f32 scale, verticalOffset, heightLimit;
-    /* Endpoints used when moving the effect toward a screen-space target. */
-    Vec sourcePosition, projectedPosition;
-    M675Collision collision;
-} M675EmitterRecord;
 
 typedef struct M675MotionObjectView_s {
     u8 unmappedHeaderBytes[64];
-    s32 modelIdsAddress;
+    s16 *modelIds;
     s32 unmappedWordAfterModelIds;
     s32 unmappedWordBetweenModelIdsAndVector;
     s32 unmappedWordBeforeVector;
@@ -248,7 +74,7 @@ extern void fn_1_4BB4(Vec *start, Vec *end, f32 timer, Vec *position);
 
 extern void fn_1_EF88(s32 playerIndex, s32 amount);
 
-extern void fn_1_E918(void *registration);
+extern void fn_1_E918(MinigameGroundEffect *registration);
 
 extern f32 fn_1_49AC(Vec *start, Vec *end);
 
@@ -381,7 +207,7 @@ void fn_1_7670(OMOBJ *obj);
 
 void fn_1_7680(OMOBJ *obj);
 
-void fn_1_7684(HUPROCESS *process, M675PropParameter *param);
+void fn_1_7684(HUPROCESS *process, MinigamePropParams *param);
 
 BOOL fn_1_7DF0(s32 type, s32 id, char *name, Vec *position, Vec *rotation);
 
@@ -407,14 +233,14 @@ s32 fn_1_D3CC(void);
 static inline void M675SequenceMotionSet(OMOBJ *object, s32 index, s32 setShape)
 {
     M675PropWork *state;
-    M675PropMotionParameter *parameter;
+    MinigamePropMotionParams *parameter;
     M675PropWork *work = object->data;
     s32 model, motion;
 
     state = work;
     if (state->state.actor.motion != index && index < 9) {
         motion = object->mtnId[index];
-        work->updateCount = 0;
+        work->unk1BC = 0;
         state->state.actor.motionFrame = 0;
         if (motion == -1) {
             state->state.motionActive = 0;
@@ -444,7 +270,7 @@ static inline void M675SequenceMotionSet(OMOBJ *object, s32 index, s32 setShape)
 static inline void M675PlaybackSamples(s32 frameOffset, Vec *first, Vec *second)
 {
     OMOBJ *object = lbl_1_bss_330;
-    M675PlaybackWork *work = object->data;
+    M675PropWork *work = object->data;
     Vec *samples = work->samples;
     s32 model = object->mdlId[0];
     s32 frame;
@@ -478,7 +304,7 @@ static inline void M675PlaybackSamples(s32 frameOffset, Vec *first, Vec *second)
 static inline void M675PlaybackApplyTransform(OMOBJ *object)
 {
     void *data = object->data;
-    M675PlaybackWork *work = data;
+    M675PropWork *work = data;
     s32 model = object->mdlId[0];
 
     work->state.actor.rotation.y = fmodf(work->state.actor.rotation.y, 360.0f);
@@ -541,7 +367,7 @@ static inline OMOBJ *M675B330Find(s32 type, s32 mode)
 static inline void M675SequenceSample(s32 frameOffset, Vec *first, Vec *second)
 {
     OMOBJ *object = lbl_1_bss_330;
-    M675PlaybackWork *work = object->data;
+    M675PropWork *work = object->data;
     Vec *samples = work->samples;
     s32 model = object->mdlId[0];
     s32 frame;
@@ -595,14 +421,14 @@ static inline OMOBJ *find_prop_inlined(s32 type, s32 id)
 static inline void MotionSetInline(OMOBJ *object, s32 index, s32 setShape)
 {
     M675PropState *state;
-    M675PropMotionParameter *parameter;
+    MinigamePropMotionParams *parameter;
     M675PropWork *work = object->data;
     s32 model, motion;
 
     state = &work->state;
     if (state->actor.motion != index && index < 9) {
         motion = object->mtnId[index];
-        work->updateCount = 0;
+        work->unk1BC = 0;
         state->actor.motionFrame = 0;
         if (motion == -1) {
             state->motionActive = 0;
@@ -627,42 +453,6 @@ static inline void MotionSetInline(OMOBJ *object, s32 index, s32 setShape)
     }
 }
 
-/* Changes the shadow actor's motion using its configured blend settings. */
-static inline void M675ShadowMotionSet(OMOBJ *object, s32 index, s32 setShape)
-{
-    M675PropWork *state;
-    M675PropMotionParameter *entry;
-    M675PropWork *work = object->data;
-    s32 model, motion;
-
-    state = work;
-    if (state->state.actor.motion != index && index < 9) {
-        motion = object->mtnId[index];
-        work->updateCount = 0;
-        state->state.actor.motionFrame = 0;
-        if (motion == -1) {
-            state->state.motionActive = 0;
-            return;
-        }
-        entry = &work->parameters->motions[index];
-        model = object->mdlId[0];
-        if (state->state.actor.motion < 0 || 0.0 == entry->blend) {
-            if (setShape) {
-                fn_8002CEB0((s16)model, (s16)motion);
-            }
-            fn_8002C95C((s16)model, (s16)motion);
-            fn_800269E8((s16)model, entry->attributes);
-        } else {
-            if (setShape) {
-                fn_8002CEB0((s16)model, (s16)motion);
-            }
-            fn_8002CCC0((s16)model, (s16)motion, 0.0f,
-                60.0f * entry->blend, entry->attributes);
-        }
-        state->state.actor.motion = index;
-    }
-}
-
 /* Finds a sequence actor by its configured type and instance ID. */
 static inline OMOBJ *M675SequenceFind(s32 type, s32 mode)
 {
@@ -683,12 +473,12 @@ static inline OMOBJ *M675SequenceFind(s32 type, s32 mode)
     }
     return NULL;
 }
-
+/* Starts a motion on the shadow object. */
 static inline void M675ShadowMotionSetPlain(OMOBJ *object, s32 index)
 {
-    M675ShadowMotionSet(object, index, 0);
+    M675SequenceMotionSet(object, index, 0);
 }
-
+/* Starts a sequence motion without its shape motion (the 0); its attributes still apply. */
 static inline void M675SequenceMotionSetPlain(OMOBJ *object, s32 index)
 {
     M675SequenceMotionSet(object, index, 0);
@@ -703,12 +493,12 @@ static inline void M675PlaybackAdvanceMotion(OMOBJ *object)
     if (state->state.motionActive != 0) {
         if (M675PlaybackMotionEnded(object->mdlId[0])) {
             state->state.motionActive = 0;
-            state->state.motionTimer = 0;
+            state->state.unk100 = 0;
         }
     } else {
-        state->state.motionTimer = 0;
+        state->state.unk100 = 0;
     }
-    work->updateCount++;
+    work->unk1BC++;
 }
 
 /* Sets the paired playback prop's bounce and dust request. */
@@ -732,9 +522,9 @@ Vec lbl_1_data_454 = {3000.0f, 3000.0f, -6500.0f};
 
 Vec lbl_1_data_460 = {0.0f, 30.0f, 0.0f};
 
-M675PropMotionParameter lbl_1_data_46C[10] = {
-    {25, 0.20000000298023224f, 0},
-    {26, 0.20000000298023224f, 0},
+MinigamePropMotionParams lbl_1_data_46C[10] = {
+    {25, 0.2f, 0},
+    {26, 0.2f, 0},
     {-2, 0.0f, 0},
     {0, 0.0f, 0},
     {0, 0.0f, 0},
@@ -745,20 +535,20 @@ M675PropMotionParameter lbl_1_data_46C[10] = {
     {0, 0.0f, 0}
 };
 
-M675PropMotionParameter lbl_1_data_4E4[10] = {
-    {5, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {10, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {13, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {6, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
-    {7, 0.20000000298023224f, 0},
-    {8, 0.20000000298023224f, 0},
-    {9, 0.20000000298023224f, 0},
-    {14, 0.20000000298023224f, 0},
-    {15, 0.20000000298023224f, ((1 << 30) | (1 << 0))},
+MinigamePropMotionParams lbl_1_data_4E4[10] = {
+    {5, 0.2f, ((1 << 30) | (1 << 0))},
+    {10, 0.2f, ((1 << 30) | (1 << 0))},
+    {13, 0.2f, ((1 << 30) | (1 << 0))},
+    {6, 0.2f, ((1 << 30) | (1 << 0))},
+    {7, 0.2f, 0},
+    {8, 0.2f, 0},
+    {9, 0.2f, 0},
+    {14, 0.2f, 0},
+    {15, 0.2f, ((1 << 30) | (1 << 0))},
     {-2, 0.0f, 0}
 };
 
-M675PropParameter lbl_1_data_55C[11] = {
+MinigamePropParams lbl_1_data_55C[11] = {
     {1, 0, 0, 0, 1, ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)), 0, 19, NULL, NULL, 0.0f,
         fn_1_80D0},
     {1, 0, 0, 1, 3, ((1 << 30) | (1 << 0)), 2, 20, NULL, NULL, 0.0f, fn_1_80CC},
@@ -780,7 +570,7 @@ s32 lbl_1_data_740[4] = {48, 56, 72, 80};
 void fn_1_7554(HUPROCESS *process) {
     OMOBJ *manager;
     OMOBJ **entry;
-    M675PropParameter *parameter;
+    MinigamePropParams *parameter;
     s32 index;
     void *managerData;
 
@@ -806,29 +596,29 @@ void fn_1_7554(HUPROCESS *process) {
         parameter++;
     }
 }
-
+/* Empty prop sequence entry point. */
 void fn_1_766C(void)
 {
 }
-
+/* Installs the idle prop update. */
 void fn_1_7670(OMOBJ *obj)
 {
     obj->objFunc = fn_1_7680;
 }
-
+/* Leaves the idle prop unchanged. */
 void fn_1_7680(OMOBJ *obj)
 {
 }
 
 /* Builds the configured prop instances and loads their models and motions at startup. */
-void fn_1_7684(HUPROCESS *process, M675PropParameter *param)
+void fn_1_7684(HUPROCESS *process, MinigamePropParams *param)
 {
     s32 i;
     OMOBJ *object;
     s32 model;
     M675PropWork *work;
     M675PropState *state;
-    M675PropMotionParameter *motion;
+    MinigamePropMotionParams *motion;
     s32 group;
     s32 resource;
 
@@ -881,8 +671,8 @@ void fn_1_7684(HUPROCESS *process, M675PropParameter *param)
             fn_80026760(model, 0.0f, 0.0f, 0.0f);
             fn_80026808(model, 0.0f, 0.0f, 0.0f);
             fn_80026B8C(model, param->layer);
-            fn_800269E8(model, param->attributes);
-            switch (param->shadowMode) {
+            fn_800269E8(model, param->attr);
+            switch (param->shadow) {
             case 1:
                 fn_80026E44(model);
                 break;
@@ -932,14 +722,14 @@ OMOBJ *fn_1_7998(s32 type, s32 id)
 void fn_1_7A20(OMOBJ *object, s32 index, s32 setShape)
 {
     M675PropState *state;
-    M675PropMotionParameter *parameter;
+    MinigamePropMotionParams *parameter;
     M675PropWork *work = object->data;
     s32 model, motion;
 
     state = &work->state;
     if (state->actor.motion != index && index < 9) {
         motion = object->mtnId[index];
-        work->updateCount = 0;
+        work->unk1BC = 0;
         state->actor.motionFrame = 0;
         if (motion == -1) {
             state->motionActive = 0;
@@ -964,11 +754,13 @@ void fn_1_7A20(OMOBJ *object, s32 index, s32 setShape)
     }
 }
 
+/* Sets the prop motion without blending. */
 void fn_1_7B58(OMOBJ *object, s32 index)
 {
     MotionSetInline(object, index, 0);
 }
 
+/* Sets the prop motion with blending. */
 void fn_1_7C64(OMOBJ *object, s32 index)
 {
     MotionSetInline(object, index, 1);
@@ -979,7 +771,7 @@ BOOL fn_1_7D88(M675MotionObjectView *actor)
 {
     s32 model_id;
 
-    model_id = *(s16 *) actor->modelIdsAddress;
+    model_id = actor->modelIds[0];
     if (fn_8002D75C((HU3D_MODELID) model_id) != 0 &&
         fn_8002D3EC((HU3D_MODELID) model_id) < 0) {
         return TRUE;
@@ -1014,6 +806,7 @@ BOOL fn_1_7DF0(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
     return !fn_8002D75C(model);
 }
 
+/* Updates the prop transform and tracks its motion. */
 void fn_1_7F2C(OMOBJ *object) {
     fn_1_7F64(object);
     fn_1_8020(object);
@@ -1022,15 +815,7 @@ void fn_1_7F2C(OMOBJ *object) {
 /* Applies a prop's stored position and wrapped yaw to its model each update. */
 void fn_1_7F64(OMOBJ *object)
 {
-    M675PropState *state;
-    M675PropWork *work = object->data;
-    s32 model;
-
-    state = &work->state;
-    model = object->mdlId[0];
-    state->actor.rotation.y = fmodf(state->actor.rotation.y, 360.0f);
-    fn_80026790(model, &state->actor.position);
-    fn_80026838(model, &state->actor.rotation);
+    M675PlaybackApplyTransform(object);
 }
 
 /* Clears motion tracking after playback and any blend finish during the prop update. */
@@ -1051,14 +836,15 @@ void fn_1_8020(OMOBJ *object)
         }
         if (done) {
             state->motionActive = 0;
-            state->motionTimer = 0;
+            state->unk100 = 0;
         }
     } else {
-        state->motionTimer = 0;
+        state->unk100 = 0;
     }
-    work->updateCount++;
+    work->unk1BC++;
 }
 
+/* Leaves the inert prop unchanged during the update. */
 void fn_1_80CC(OMOBJ *object)
 {
 }
@@ -1068,7 +854,7 @@ char lbl_1_data_750[] = "inf_light";
 /* Sets up the path recorder and allocates one pair of transform samples per frame. */
 void fn_1_80D0(OMOBJ *object) {
     s32 sampleBytes;
-    M675PlaybackWork *work;
+    M675PropWork *work;
     s16 model;
     work = object->data;
     model = object->mdlId[0];
@@ -1087,7 +873,7 @@ char lbl_1_data_75A[] = "tatiiti";
 /* Records the named part's position and rotation during the recorder object's updates. */
 void fn_1_81A8(OMOBJ *object)
 {
-    M675PlaybackWork *work = object->data;
+    M675PropWork *work = object->data;
     M675PropWork *searchWork;
     OMOBJ **entry;
     OMOBJ *candidate;
@@ -1155,7 +941,7 @@ foundSampleObject:
 void fn_1_8394(s32 frameOffset, Vec *first, Vec *second)
 {
     OMOBJ *object = lbl_1_bss_330;
-    M675PlaybackWork *work = object->data;
+    M675PropWork *work = object->data;
     Vec *samples = work->samples;
     s32 model = object->mdlId[0];
     s32 frame;
@@ -1199,12 +985,12 @@ static inline void M675PlaybackEmitMotion(OMOBJ *object)
     Vec rotatedPoints[4];
     Vec point;
     void *data = object->data;
-    M675PlaybackWork *work = data;
+    M675PropWork *work = data;
     s32 pointIndex;
     s32 sampleIndex;
 
     PSMTXRotRad(rotationMatrix, 'y',
-        0.01745329238474369f * work->state.actor.rotation.y);
+        0.017453292f * work->state.actor.rotation.y);
     PSMTXMultVecArraySR(rotationMatrix, lbl_1_data_764, rotatedPoints, 4);
     for (pointIndex = 0; pointIndex < 2; pointIndex++) {
         Vec *startPoint = &rotatedPoints[pointIndex];
@@ -1235,7 +1021,7 @@ void fn_1_84C4(OMOBJ *object)
     s32 sampleIndex;
 
     PSMTXRotRad(rotationMatrix, 'y',
-        0.01745329238474369f * work->state.actor.rotation.y);
+        0.017453292f * work->state.actor.rotation.y);
     PSMTXMultVecArraySR(rotationMatrix, lbl_1_data_764,
         rotatedPoints, 4);
     for (pointIndex = 0; pointIndex < 2; pointIndex++) {
@@ -1254,6 +1040,7 @@ void fn_1_84C4(OMOBJ *object)
     }
 }
 
+/* Installs the recorded-transform playback callback. */
 void fn_1_8624(OMOBJ *obj)
 {
     obj->objFunc = fn_1_8634;
@@ -1262,8 +1049,8 @@ void fn_1_8624(OMOBJ *obj)
 /* Replays recorded transforms and restarts its bounce and dust burst for each nonzero request. */
 void fn_1_8634(OMOBJ *object)
 {
-    M675PlaybackWork *work = object->data;
-    M675PlaybackWork *state = work;
+    M675PropWork *work = object->data;
+    M675PropWork *state = work;
 
     M675PlaybackSamples(0, &state->state.actor.position, &state->state.actor.rotation);
     if (work->controlValue != 0) {
@@ -1364,14 +1151,14 @@ void fn_1_8CBC(OMOBJ *object)
 
     targetAngle = fn_1_49AC(&work->state.actor.position, &work->state.targetPosition);
     work->state.actor.rotation.y = fn_1_47DC(work->state.actor.rotation.y, targetAngle,
-        0.009999999776482582f);
+        0.01f);
     if (fn_1_48F8(targetAngle, work->state.actor.rotation.y) < 0.0) {
         targetAngle = 10.0f;
     } else {
         targetAngle = -10.0f;
     }
     work->state.actor.rotation.z = fn_1_47DC(work->state.actor.rotation.z, targetAngle,
-        0.05000000074505806f);
+        0.05f);
 
     targetVelocityX = (f32)((f64)movementScale *
         sin((3.141592653589793 * (f64)work->state.actor.rotation.y) /
@@ -1464,12 +1251,12 @@ void fn_1_8FE0(OMOBJ *object)
         }
         if (motionEnded != 0) {
             activeState->state.motionActive = 0;
-            activeState->state.motionTimer = 0;
+            activeState->state.unk100 = 0;
         }
     } else {
-        activeState->state.motionTimer = 0;
+        activeState->state.unk100 = 0;
     }
-    activeWork->updateCount++;
+    activeWork->unk1BC++;
     object->objFunc = fn_1_92A0;
 }
 
@@ -1588,7 +1375,7 @@ void fn_1_92A0(OMOBJ *object)
 void fn_1_9AF0(OMOBJ *object, s32 resourceId, s32 collisionType,
     f32 verticalOffset, f32 heightLimit)
 {
-    M675EmitterWork *work = object->data;
+    M675PropWork *work = object->data;
     s32 recordCount = object->work[0];
     s32 allocationSize = recordCount * sizeof(M675EmitterRecord);
     M675EmitterRecord *records = HuMemDirectMallocNum(
@@ -1607,7 +1394,7 @@ void fn_1_9AF0(OMOBJ *object, s32 resourceId, s32 collisionType,
         callback = &records->collision;
 
         callback->flags = 0;
-        callback->mask = 8;
+        callback->collisionMask = 8;
         callback->type = collisionType;
         callback->index = index;
         callback->shapeType = 0;
@@ -1637,7 +1424,7 @@ void fn_1_9CAC(OMOBJ *object)
 {
     s32 allocationSize;
     s32 recordCount;
-    M675EmitterWork *work;
+    M675PropWork *work;
     M675EmitterRecord *records;
     s32 index;
 
@@ -1659,7 +1446,7 @@ void fn_1_9CAC(OMOBJ *object)
         records->heightLimit = 0.0f;
         callback = &records->collision;
         callback->flags = 0;
-        callback->mask = 8;
+        callback->collisionMask = 8;
         callback->type = 3;
         callback->index = index;
         callback->shapeType = 0;
@@ -1681,7 +1468,7 @@ void fn_1_9E18(OMOBJ *object)
 {
     s32 allocationSize;
     s32 recordCount;
-    M675EmitterWork *work;
+    M675PropWork *work;
     M675EmitterRecord *records;
     s32 index;
 
@@ -1703,7 +1490,7 @@ void fn_1_9E18(OMOBJ *object)
         records->heightLimit = 0.0f;
         callback = &records->collision;
         callback->flags = 0;
-        callback->mask = 8;
+        callback->collisionMask = 8;
         callback->type = 4;
         callback->index = index;
         callback->shapeType = 0;
@@ -1725,7 +1512,7 @@ void fn_1_9F84(OMOBJ *object)
 {
     s32 allocationSize;
     s32 recordCount;
-    M675EmitterWork *work;
+    M675PropWork *work;
     M675EmitterRecord *records;
     s32 index;
 
@@ -1747,7 +1534,7 @@ void fn_1_9F84(OMOBJ *object)
         records->heightLimit = -80.0f;
         callback = &records->collision;
         callback->flags = 0;
-        callback->mask = 8;
+        callback->collisionMask = 8;
         callback->type = 5;
         callback->index = index;
         callback->shapeType = 0;
@@ -1769,7 +1556,7 @@ M675MotionEmitterUpdate lbl_1_data_794[5] = {fn_1_A274, fn_1_A448, fn_1_A5B4, fn
 /* Advances active emitter records and updates their models once per object tick. */
 void fn_1_A0F0(OMOBJ *object)
 {
-    M675EmitterWork *work = object->data;
+    M675PropWork *work = object->data;
     M675EmitterRecord *record = work->records;
     s32 recordCount = object->work[0];
     s32 index;
@@ -1814,7 +1601,7 @@ void fn_1_A274(M675EmitterRecord *state)
         fn_1_ACB0(state);
         state->state++;
         state->enabled = 1;
-        state->velocity.y = -19.16666603088379f;
+        state->velocity.y = -19.166666f;
 
     case 2:
         if (state->collision.handled == 0) {
@@ -1856,7 +1643,7 @@ void fn_1_A448(M675EmitterRecord *state)
         state->state++;
         state->phaseCounter = 10;
         state->enabled = 1;
-        state->velocity.y = -19.16666603088379f;
+        state->velocity.y = -19.166666f;
 
     case 2:
         if (state->collision.handled == 0) {
@@ -1894,7 +1681,7 @@ void fn_1_A5B4(M675EmitterRecord *state)
         state->state++;
         state->phaseCounter = 0;
         state->enabled = 1;
-        state->velocity.y = -19.16666603088379f;
+        state->velocity.y = -19.166666f;
         state->rotation.y = 90.0f;
         state->rotation.z = 90.0f;
         state->rotationDelta.z = 8.0f;
@@ -1903,9 +1690,9 @@ void fn_1_A5B4(M675EmitterRecord *state)
             state->state++;
             state->timer = 0.0f;
             state->enabled = 0;
-            state->velocity.x = -6.666666507720947f;
-            state->velocity.y = 13.333333015441895f;
-            state->velocity.z = 6.666666507720947f;
+            state->velocity.x = -6.6666665f;
+            state->velocity.y = 13.333333f;
+            state->velocity.z = 6.6666665f;
             state->collision.flags &= ~1U;
             HuAudFXPlayPan(2229, (s16)lbl_1_data_740[state->playerIndex]);
             break;
@@ -1915,9 +1702,9 @@ void fn_1_A5B4(M675EmitterRecord *state)
             state->state++;
             state->timer = 0.0f;
             state->enabled = 0;
-            state->velocity.x = 3.3333332538604736f;
-            state->velocity.y = 13.333333015441895f;
-            state->velocity.z = 6.666666507720947f;
+            state->velocity.x = 3.3333333f;
+            state->velocity.y = 13.333333f;
+            state->velocity.z = 6.6666665f;
             state->rotationDelta.z = -10.0f;
             state->collision.flags &= ~1U;
             position = state->position;
@@ -1994,7 +1781,7 @@ void fn_1_AA48(M675EmitterRecord *state)
         fn_1_ACB0(state);
         state->state++;
         state->enabled = 1;
-        state->velocity.y = -19.16666603088379f;
+        state->velocity.y = -19.166666f;
 
     case 2:
         if (state->collision.handled != 0) {
@@ -2027,7 +1814,7 @@ void fn_1_AA48(M675EmitterRecord *state)
     }
     /* Collection still forces this fall speed and rotation each update, and the below-400 cutoff
      * applies in every state. */
-    state->velocity.y = -19.16666603088379f;
+    state->velocity.y = -19.166666f;
     state->rotation.y = 180.0f;
     state->rotation.z = -190.0f;
     if (state->position.y < 700.0) {
@@ -2075,10 +1862,10 @@ void fn_1_ADDC(OMOBJ *object)
     M675ShadowMotionSetPlain(object, 0);
     fn_80026FFC((s16)modelId);
     activeWork->displayPosition = active->state.actor.position;
-    active->state.effectRegistrationActive = 1;
-    active->state.effectRegistrationRadius = 60.0f;
-    active->state.effectRegistrationPosition = &activeWork->displayPosition;
-    fn_1_E918(&active->state.effectRegistrationActive);
+    active->state.effect.active = 1;
+    active->state.effect.radius = 60.0f;
+    active->state.effect.position = &activeWork->displayPosition;
+    fn_1_E918(&active->state.effect);
     object->objFunc = fn_1_AF38;
 }
 
@@ -2208,12 +1995,12 @@ void fn_1_B114(OMOBJ *object)
         }
         if (motionEnded != 0) {
             motionState->state.motionActive = 0;
-            motionState->state.motionTimer = 0;
+            motionState->state.unk100 = 0;
         }
     } else {
-        motionState->state.motionTimer = 0;
+        motionState->state.unk100 = 0;
     }
-    motionWork->updateCount++;
+    motionWork->unk1BC++;
 }
 
 Vec lbl_1_data_7A8 = {400.0f, 200.0f, 1500.0f};
@@ -2245,7 +2032,7 @@ s32 fn_1_B330(M675PropWork *work)
         }
 
     case 2:
-        if (fn_1_CDF4(work, 1.089627742767334f,
+        if (fn_1_CDF4(work, 1.0896277f,
                 500.0f, 12, 0) == 0) {
             break;
         }
@@ -2255,7 +2042,7 @@ s32 fn_1_B330(M675PropWork *work)
         work->state.targetAngle = 270.0f;
 
     case 3:
-        fn_1_C7E0(work, 0.30000001192092896f);
+        fn_1_C7E0(work, 0.3f);
         if (++work->state.phaseTimer >= 30) {
             work->state.phase++;
             work->state.phaseTimer = 0;
@@ -2274,7 +2061,7 @@ s32 fn_1_B330(M675PropWork *work)
         } else {
             work->state.displayOffset.x = (f32)(work->state.displayOffset.x +
                 (0.2 * -(f64)work->state.displayOffset.x));
-            fn_1_C7E0(work, 0.20000000298023224f);
+            fn_1_C7E0(work, 0.2f);
         }
         if ((work->state.countdown -= 1.0) > 0.0) {
             break;
@@ -2288,7 +2075,7 @@ s32 fn_1_B330(M675PropWork *work)
         work->state.phaseTimer = 0;
 
     case 5:
-        fn_1_C7E0(work, 0.20000000298023224f);
+        fn_1_C7E0(work, 0.2f);
         if (lbl_1_bss_320 != 0) {
             work->state.phase++;
             work->state.phaseTimer = 0;
@@ -2319,7 +2106,7 @@ s32 fn_1_B330(M675PropWork *work)
             break;
         }
     case 7:
-        if (fn_1_CDF4(work, 1.089627742767334f,
+        if (fn_1_CDF4(work, 1.0896277f,
                 200.0f, 0, 1) == 0) {
             break;
         }
@@ -2337,7 +2124,7 @@ s32 fn_1_B330(M675PropWork *work)
         }
 
     case 8:
-        if (fn_1_CDF4(work, 1.089627742767334f,
+        if (fn_1_CDF4(work, 1.0896277f,
                 200.0f, 0, 0) == 0) {
             break;
         }
@@ -2349,7 +2136,7 @@ s32 fn_1_B330(M675PropWork *work)
         fn_1_D494(6, 0);
 
     case 9:
-        if (fn_1_CDF4(work, 1.089627742767334f,
+        if (fn_1_CDF4(work, 1.0896277f,
                 500.0f, 18, 0) == 0) {
             break;
         }
@@ -2359,7 +2146,7 @@ s32 fn_1_B330(M675PropWork *work)
         work->state.targetAngle = 0.0f;
 
     case 10:
-        if (fn_1_C7E0(work, 0.30000001192092896f) == 0) {
+        if (fn_1_C7E0(work, 0.3f) == 0) {
             break;
         }
         work->state.phase++;
@@ -2427,11 +2214,10 @@ s32 fn_1_BA58(M675PropWork *work)
         work->state.actor.velocity.y = 0.0f;
         work->state.actor.velocity.z = 0.0f;
         fn_1_6210(&work->state.actor, 0, 1.0f);
-        goto finished;
+        break;
     default:
-        goto finished;
+        break;
     }
-finished:
     ready = 1;
 done:
     return ready;
@@ -2463,7 +2249,7 @@ s32 fn_1_BBDC(M675PropWork *work)
         work->state.targetPosition = lbl_1_data_7F4[0];
 
     case 3:
-        if (fn_1_CDF4(work, 1.089627742767334f,
+        if (fn_1_CDF4(work, 1.0896277f,
                 800.0f, 18, 1) == 0) {
             break;
         }
@@ -2477,7 +2263,7 @@ s32 fn_1_BBDC(M675PropWork *work)
         work->state.targetPosition = lbl_1_data_7F4[0];
 
     case 5:
-        if (fn_1_C94C(work, 6.666666507720947f) == 0) {
+        if (fn_1_C94C(work, 6.6666665f) == 0) {
             break;
         }
         work->state.phase++;
@@ -2539,7 +2325,7 @@ s32 fn_1_BE60(M675PropWork *work)
         work->state.targetPosition = lbl_1_data_800;
 
     case 1:
-        if (fn_1_CDF4(work, 1.089627742767334f, 800.0f,
+        if (fn_1_CDF4(work, 1.0896277f, 800.0f,
                 18, 1) == 0) {
             break;
         }
@@ -2559,7 +2345,7 @@ s32 fn_1_BE60(M675PropWork *work)
         offset = 100.0 * (3.0 *
             sin((3.141592653589793 * turnAngle) / 180.0));
         work->state.targetPosition.x = lbl_1_data_800.x + offset;
-        fn_1_C94C(work, 6.666666507720947f);
+        fn_1_C94C(work, 6.6666665f);
 
     case 4:
         if (++work->state.actionTimer < 180) {
@@ -2593,7 +2379,7 @@ s32 fn_1_C0B8(M675PropWork *work)
         work->state.targetPosition = lbl_1_data_80C;
 
     case 1:
-        if (fn_1_CDF4(work, 1.089627742767334f, 800.0f, 18, 1) == 0) {
+        if (fn_1_CDF4(work, 1.0896277f, 800.0f, 18, 1) == 0) {
             break;
         }
         work->state.actionPhase++;
@@ -2601,7 +2387,7 @@ s32 fn_1_C0B8(M675PropWork *work)
         work->state.targetAngle = 30.0f;
 
     case 2:
-        if (fn_1_C7E0(work, 0.20000000298023224f) == 0) {
+        if (fn_1_C7E0(work, 0.2f) == 0) {
             break;
         }
         work->state.actionPhase++;
@@ -2643,7 +2429,7 @@ s32 fn_1_C29C(M675PropWork *work)
     s32 done = 0;
     s32 frameDelta;
     Vec sampledRotation;
-    f32 delta = 1.089627742767334f;
+    f32 delta = 1.0896277f;
 
     switch (work->state.actionPhase) {
     case 0:
@@ -2654,7 +2440,7 @@ s32 fn_1_C29C(M675PropWork *work)
 
     case 1:
         work->state.actor.rotation.y =
-            fn_1_47DC(work->state.actor.rotation.y, work->state.targetAngle, 0.20000000298023224f);
+            fn_1_47DC(work->state.actor.rotation.y, work->state.targetAngle, 0.2f);
         if (fabs((f64)fn_1_48F8(work->state.actor.rotation.y, work->state.targetAngle)) > 3.0) {
             break;
         }
@@ -2691,7 +2477,7 @@ s32 fn_1_C29C(M675PropWork *work)
             break;
         }
     case 4:
-        if (fn_1_C7E0(work, 0.20000000298023224f) != 0) {
+        if (fn_1_C7E0(work, 0.2f) != 0) {
             work->state.actionPhase++;
             work->state.actionTimer = 0;
             work->state.movementPhase = 0;
@@ -2767,7 +2553,7 @@ s32 fn_1_C94C(M675PropWork *work, f32 speed)
         work->state.actor.velocity.x *= 0.8;
         work->state.actor.velocity.z *= 0.8;
         work->state.actor.rotation.y =
-            fn_1_47DC(work->state.actor.rotation.y, work->state.targetAngle, 0.20000000298023224f);
+            fn_1_47DC(work->state.actor.rotation.y, work->state.targetAngle, 0.2f);
         if (fabs((f64)fn_1_48F8(work->state.actor.rotation.y, work->state.targetAngle)) >
             3.0) {
             return 0;
@@ -2824,7 +2610,7 @@ s32 fn_1_CDF4(M675PropWork *work, f32 delta, f32 step,
     case 1:
         if (angleMode != 0) {
             work->state.actor.rotation.y = fn_1_47DC(work->state.actor.rotation.y,
-                                                     work->state.targetAngle, 0.20000000298023224f);
+                                                     work->state.targetAngle, 0.2f);
             if (fabs((f64)fn_1_48F8(work->state.actor.rotation.y, work->state.targetAngle)) > 3.0) {
                 break;
             }
@@ -2837,7 +2623,7 @@ s32 fn_1_CDF4(M675PropWork *work, f32 delta, f32 step,
     case 2:
         if (angleMode == 0) {
             work->state.actor.rotation.y = fn_1_47DC(work->state.actor.rotation.y,
-                                                     work->state.targetAngle, 0.20000000298023224f);
+                                                     work->state.targetAngle, 0.2f);
         }
         if (--work->state.movementTimer > 0) {
             break;
@@ -2853,7 +2639,7 @@ s32 fn_1_CDF4(M675PropWork *work, f32 delta, f32 step,
     case 3:
         if (angleMode == 0) {
             work->state.actor.rotation.y = fn_1_47DC(work->state.actor.rotation.y,
-                                                     work->state.targetAngle, 0.20000000298023224f);
+                                                     work->state.targetAngle, 0.2f);
         }
         work->state.actor.velocity.y -= delta;
         if (work->state.movementTimer == 7) {
@@ -2943,18 +2729,20 @@ void fn_1_D278(OMOBJ *object)
         }
         if (resetShift != 0) {
             motionState->state.motionActive = 0;
-            motionState->state.motionTimer = 0;
+            motionState->state.unk100 = 0;
         }
     } else {
-        motionState->state.motionTimer = 0;
+        motionState->state.unk100 = 0;
     }
-    motionWork->updateCount++;
+    motionWork->unk1BC++;
 }
 
+/* Returns the prop sequence flag that holds the main state. */
 s32 fn_1_D3BC(void) {
     return lbl_1_bss_31C;
 }
 
+/* Returns the prop sequence flag checked by the player update. */
 s32 fn_1_D3CC(void) {
     return lbl_1_bss_318;
 }
@@ -2967,7 +2755,7 @@ OMOBJ **lbl_1_data_834[5] = {
 void fn_1_D3DC(s32 type, s32 index, Vec *position)
 {
     OMOBJ *manager;
-    M675EmitterWork *storage;
+    M675PropWork *storage;
     M675EmitterRecord *request;
     s32 requestLimit;
     s32 i;

@@ -1,16 +1,11 @@
 /* Computer-player behavior: route tables, per-frame input, target choice, route
  * following, the piece-herding and other moves, and the play-area bounds test. */
+#include "REL/m661dll/model_setup.h"
 #include "game/mg/actman.h"
 #include "REL/m661dll/motion.h"
 #include "REL/m661dll/player_actors.h"
-typedef struct ModelSetupRecord {
-    s16 modelId;
-    HuVecF position;
-    HuVecF shadowPosition;
-    HuVecF rotation;
-} ModelSetupRecord;
-extern ModelSetupRecord lbl_1_bss_1E3C[0x71];
-extern MotionControl lbl_1_bss_10[0x4E];
+#include "REL/m661dll/player_state.h"
+extern MotionControl lbl_1_bss_10[78];
 
 #include "dolphin/types.h"
 #include "game/frand.h"
@@ -18,58 +13,6 @@ extern MotionControl lbl_1_bss_10[0x4E];
 #include "REL/m661dll/routes.h"
 
 BoardRouteGroup lbl_1_bss_31D0[16];
-
-/* Selects a movement destination for the current player from board state. */
-typedef struct SequenceChoiceState {
-    SystemPadInput input;
-    s8 groupSlot;
-    s8 playerIndex;
-    s8 character;
-    s8 controllerPort;
-    s8 group;
-    s8 playerType;
-    s8 choiceMode;
-    s8 active;
-    s8 selectedCharacter;
-    /* Player data between character selection and position. */
-    u8 unknown1D[0x17]; /* No code names this field. */
-    Point3d position;
-    Point3d previousPosition;
-    Point3d rotation;
-    s8 playerStatus[2];
-    s16 currentValue;
-    s16 previousValue;
-    s16 pairedIndex;
-    s16 previousPairedIndex;
-    s16 targetState;
-    s16 previousTarget;
-    s32 padX;
-    s32 padY;
-    s32 stickX;
-    s32 stickY;
-    s16 inputPhase;
-    s16 choicePhase;
-    u8 unknown7C[2]; /* No code names this field. */
-    s16 phase;
-    Point3d movementTarget;
-    /* Player data between movement target and chase settings. */
-    u8 unknown8C[0xC]; /* No code names this field. */
-    f32 chaseSpeed;
-    f32 chaseRadius;
-    u8 unknownA0[2]; /* No code names this field. */
-    s16 target;
-    s16 targetKind;
-    s16 action;
-    s16 targetIndex;
-    s16 firstResetValue;
-    s16 secondResetValue;
-    s16 settleTimer;
-    s16 forceStop;
-    s16 selectedModel;
-    s16 targetCount;
-    s16 roundCount;
-    s16 overrideChance;
-} SequenceChoiceState;
 
 typedef struct ChoiceTotals {
     s16 values[4];
@@ -79,21 +22,19 @@ typedef struct ChoiceTable2 {
     s16 values[2];
 } ChoiceTable2;
 
-extern SequenceChoiceState lbl_1_bss_1C04[2];
-
 #include <math.h>
 #include "REL/m661dll/particle.h"
 
 typedef HuVecF PlayerPosition;
 
-s16 fn_1_20F90(SequenceChoiceState *object);
-s16 fn_1_21F24(SequenceChoiceState *object, s16 side);
+s16 fn_1_20F90(M661PlayerState *object);
+s16 fn_1_21F24(M661PlayerState *object, s16 side);
 
 #include "humath.h"
 
-void fn_1_238E0(SequenceChoiceState *state);
+void fn_1_238E0(M661PlayerState *state);
 
-s32 fn_1_22C70(SequenceChoiceState *object);
+s32 fn_1_22C70(M661PlayerState *object);
 
 typedef struct PlanePoint {
     f32 x;
@@ -147,17 +88,10 @@ typedef struct PlaneEdge {
 
 s16 fn_1_24470(Point3d position);
 
-typedef struct BoardPointXZ {
-    f32 x;
-    f32 z;
-} BoardPointXZ;
-
-extern SystemInputState lbl_1_bss_196C;
-
 #include "REL/m661dll.h"
 
-void fn_1_243E8(SequenceChoiceState *state);
 
+/* Lays out the target grid and prepares the computer players' routes. */
 void fn_1_C8D4(void)
 {
     s16 pathOffsets[4][2] = { { 1, 5 }, { 6, 4 }, { 10, 3 }, { 64, 1 } };
@@ -170,7 +104,7 @@ void fn_1_C8D4(void)
     s16 index;
     for (group = 0; group < 2; group++) {
         if (lbl_1_bss_1C04[group].playerType != 0) {
-            s16 choice = lbl_1_bss_1C04[group].choiceMode;
+            s16 choice = lbl_1_bss_1C04[group].computerDifficulty;
             lbl_1_bss_1C04[group].roundCount =
                 pathOffsets[choice][0] +
                 frandmod(pathOffsets[choice][1]);
@@ -1931,10 +1865,11 @@ void fn_1_C8D4(void)
     point++;
 }
 
+/* Refreshes target occupancy and updates player inputs for the current phase. */
 void fn_1_20D74(void)
 {
     s16 index;
-    SequenceChoiceState *state;
+    M661PlayerState *state;
 
     fn_1_23248();
     for (index = 0; index < 2; index++) {
@@ -1956,7 +1891,8 @@ void fn_1_20D74(void)
     }
 }
 
-s16 fn_1_20E50(SequenceChoiceState *move, s16 advance)
+/* Starts, advances, and ends the move toward the player target. */
+s16 fn_1_20E50(M661PlayerState *move, s16 advance)
 {
     HuVecF target;
     s16 result = 0;
@@ -1995,7 +1931,7 @@ s16 fn_1_20E50(SequenceChoiceState *move, s16 advance)
  * then get behind it and follow it until it stops roaming or the angle passes 100
  * degrees. With two computer players and the target timer past 60 it stops in place
  * instead; returns 1 when the move ends. */
-s16 fn_1_20F90(SequenceChoiceState *state) {
+s16 fn_1_20F90(M661PlayerState *state) {
     struct ModelSetupRecord *model;
     Point3d candidatePosition;
     f32 approachAngle;
@@ -2007,7 +1943,7 @@ s16 fn_1_20F90(SequenceChoiceState *state) {
     Point3d candidatePositions[2] = { { 700.0f, 0.0f, 0.0f }, { -700.0f, 0.0f, 0.0f } };
     Point3d candidateOffsets[2] = { { -800.0f, 0.0f, 0.0f }, { 800.0f, 0.0f, 0.0f } };
 
-    if ((lbl_1_bss_1C04[0].playerType != 0) && (lbl_1_bss_1C04[1].playerType != 0) && (state->targetState > 0x3C)) {
+    if ((lbl_1_bss_1C04[0].playerType != 0) && (lbl_1_bss_1C04[1].playerType != 0) && (state->updateCount > 60)) {
         state->action = 5;
     }
     switch (state->action) {
@@ -2023,7 +1959,7 @@ s16 fn_1_20F90(SequenceChoiceState *state) {
         movementResult = fn_1_20E50(state, 1);
         state->selectedModel = -1;
         for (modelIndex = 0x23, motionIndex = 0;
-             modelIndex <= 0x61;
+             modelIndex <= 97;
              modelIndex++, motionIndex++) {
             model = &lbl_1_bss_1E3C[modelIndex];
             if (state->playerIndex == 0) {
@@ -2149,7 +2085,8 @@ s16 fn_1_20F90(SequenceChoiceState *state) {
     return finished;
 }
 
-s16 fn_1_21F24(SequenceChoiceState *object, s16 side)
+/* Moves toward a random destination on the selected side until it is reached. */
+s16 fn_1_21F24(M661PlayerState *object, s16 side)
 {
     s16 result = 0;
     s16 blocked;
@@ -2227,7 +2164,7 @@ s16 fn_1_21F24(SequenceChoiceState *object, s16 side)
         }
         break;
     case 1:
-        if (object->targetState > targetLimits[side]) {
+        if (object->updateCount > targetLimits[side]) {
             object->movementTarget = object->position;
         }
         moveFinished = fn_1_20E50(object, 1);
@@ -2242,7 +2179,8 @@ s16 fn_1_21F24(SequenceChoiceState *object, s16 side)
     return result;
 }
 
-s32 fn_1_22C70(SequenceChoiceState *object)
+/* Advances the computer player along its chosen route and reports when it finishes. */
+s32 fn_1_22C70(M661PlayerState *object)
 {
     MovementPath *playerState;
     f32 distanceX;
@@ -2325,7 +2263,7 @@ s32 fn_1_22C70(SequenceChoiceState *object)
                         lbl_1_bss_196C.playerChoiceCounts[object->playerIndex] < timings[region][2]) {
                         object->firstResetValue = timings[region][1];
                     }
-                    if (object->previousTarget >= object->roundCount) {
+                    if (object->score >= object->roundCount) {
                         object->firstResetValue = timings[region][1];
                     }
                 }
@@ -2338,7 +2276,7 @@ s32 fn_1_22C70(SequenceChoiceState *object)
                 }
                 break;
             }
-            if (lbl_1_bss_1C04[0].playerType != 0 && lbl_1_bss_1C04[1].playerType != 0 && object->targetState > 0x1E) {
+            if (lbl_1_bss_1C04[0].playerType != 0 && lbl_1_bss_1C04[1].playerType != 0 && object->updateCount > 30) {
                 object->forceStop = 1;
                 result = 1;
             }
@@ -2367,6 +2305,7 @@ s32 fn_1_22C70(SequenceChoiceState *object)
     return result;
 }
 
+/* Counts the active pieces overlapping each target before computer players choose a move. */
 void fn_1_23248(void)
 {
     s16 objectId;
@@ -2387,10 +2326,10 @@ void fn_1_23248(void)
         lbl_1_bss_196C.playerChoiceCounts[index] = 0;
     }
 
-    denominator = (0x40 - lbl_1_bss_1C04[0].previousTarget) + lbl_1_bss_1C04[1].previousTarget;
+    denominator = (0x40 - lbl_1_bss_1C04[0].score) + lbl_1_bss_1C04[1].score;
     objectId = 0x23;
     objectIndex = 0;
-    for (; objectId <= 0x62; objectId++, objectIndex++) {
+    for (; objectId <= 98; objectId++, objectIndex++) {
         ModelSetupRecord *bounds = &lbl_1_bss_1E3C[objectId];
         state = &lbl_1_bss_10[objectIndex];
 
@@ -2438,20 +2377,21 @@ void fn_1_23248(void)
         lbl_1_bss_196C.boardChoiceCounts[14] + lbl_1_bss_196C.boardChoiceCounts[15];
 
     for (index = 0; index < 16; index++) {
-        lbl_1_bss_196C.playerOverlapRatios[index] = 100.0f *
+        lbl_1_bss_196C.unk190[index] = 100.0f *
             ((f32)lbl_1_bss_196C.boardChoiceCounts[index] / (f32)denominator);
     }
     for (index = 0; index < 4; index++) {
-        lbl_1_bss_196C.regionOverlapRatios[index] = 100.0f *
+        lbl_1_bss_196C.unk214[index] = 100.0f *
             ((f32)lbl_1_bss_196C.targetChoiceCounts[index] / (f32)denominator);
     }
     for (index = 0; index < 2; index++) {
-        lbl_1_bss_196C.specialOverlapRatios[index] = 100.0f *
+        lbl_1_bss_196C.unk24C[index] = 100.0f *
             ((f32)lbl_1_bss_196C.playerChoiceCounts[index] / (f32)denominator);
     }
 }
 
-void fn_1_238E0(SequenceChoiceState *state)
+/* Chooses a computer player's next target and resets its movement counters. */
+void fn_1_238E0(M661PlayerState *state)
 {
     s16 choices12[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     s16 choices8[8] = { 2, 3, 4, 5, 8, 9, 10, 11 };
@@ -2470,22 +2410,22 @@ void fn_1_238E0(SequenceChoiceState *state)
     s16 randomValue;
 
     state->target = -1;
-    if (state->choiceMode == 0) {
+    if (state->computerDifficulty == 0) {
         state->target = 0x10;
-    } else if (state->choiceMode == 1) {
+    } else if (state->computerDifficulty == 1) {
         if (state->targetCount == 0) {
             state->target = choices8[frandmod(8)];
         } else {
             randomValue = frandmod(0x64);
             if (randomValue < 0x32 &&
-                state->roundCount - state->previousTarget >= 5) {
+                state->roundCount - state->score >= 5) {
                 state->target = choices8[frandmod(8)];
             } else {
                 state->target = 0x10;
             }
         }
     } else if (state->targetCount == 0) {
-        if (state->choiceMode == 2) {
+        if (state->computerDifficulty == 2) {
             if (lbl_1_bss_1C04[state->playerIndex ^ 1].targetKind == 2) {
                 state->target = choices12[frandmod(0xC)];
             } else if (lbl_1_bss_1C04[state->playerIndex ^ 1].targetKind == 0) {
@@ -2591,7 +2531,7 @@ void fn_1_238E0(SequenceChoiceState *state)
                 else { state->target = 1; }
             }
         }
-        if (state->choiceMode == 2 && state->roundCount - state->previousTarget <= 3) {
+        if (state->computerDifficulty == 2 && state->roundCount - state->score <= 3) {
             state->target = 0x10;
         }
         if (lbl_1_bss_196C.playerChoiceCounts[state->playerIndex] > 3 ||
@@ -2604,7 +2544,7 @@ void fn_1_238E0(SequenceChoiceState *state)
         state->target = 0x12;
     }
     randomValue = frandmod(0x64);
-    if (state->previousTarget >= state->roundCount || randomValue < state->overrideChance) {
+    if (state->score >= state->roundCount || randomValue < state->overrideChance) {
         state->target = 0x11;
     }
     switch (state->target) {
@@ -2621,13 +2561,13 @@ void fn_1_238E0(SequenceChoiceState *state)
     state->firstResetValue = 0;
     state->action = 0;
     state->secondResetValue = 0;
-    state->targetState = 0;
+    state->updateCount = 0;
     state->targetCount++;
 }
 
 /* Computer-player choice loop: chooses a new target with fn_1_238E0, then runs
  * fn_1_22C70 each frame until it reports done, and chooses again. */
-void fn_1_243E8(SequenceChoiceState *self) {
+void fn_1_243E8(M661PlayerState *self) {
     s32 result = 0;
 
     switch (self->choicePhase) {
@@ -2644,6 +2584,7 @@ void fn_1_243E8(SequenceChoiceState *self) {
     }
 }
 
+/* Checks a position against the course boundaries. */
 s16 fn_1_24470(HuVecF position)
 {
     PlaneEdge edges[4];

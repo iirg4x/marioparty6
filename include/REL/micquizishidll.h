@@ -20,6 +20,7 @@
 #include "game/mg/timer.h"
 #include "game/mg/score.h"
 #include "game/pad.h"
+#include "game/printfunc.h"
 #include "game/frand.h"
 #include "game/sprite.h"
 #include "game/wipe.h"
@@ -38,7 +39,7 @@ typedef struct QuizGridTileView {
     f32 rotationZ;
     f32 velocityX;
     f32 velocityY;
-    f32 velocityZ; /* the game's code never reads this field */
+    f32 unk14; /* The game's code never reads this field. */
 } QuizGridTileView;
 
 typedef struct QuizCameraViewRecord {
@@ -55,7 +56,7 @@ typedef struct QuizGridCell_s {
 
 typedef struct QuizCharacterMotionView {
     u8 unknown_00[4]; /* No code names this field. */
-    s32 characterId;
+    s32 unk04; /* The game's code never reads this field. */
     s32 state;
     u8 unknown_0C[4]; /* No code names this field. */
     s16 modelId;
@@ -78,14 +79,12 @@ struct SoundChoice {
 typedef struct MicQuizRecord {
     s32 motionType; /* Motion type of the object on this place; minus one when free. */
     s32 objectIndex; /* Index of the object on this place. */
-    s32 placed; /* One while an object holds this place, minus one when cleared; never read. */
+    s32 unk08; /* The game's code never reads this field. */
 } MicQuizRecord;
 
 typedef struct MicQuizRecordGroup {
     MicQuizRecord entries[4];
 } MicQuizRecordGroup;
-
-typedef HuVec2f MicQuizSpritePosition;
 
 typedef struct MicquizCameraRange {
     f32 width;
@@ -133,7 +132,7 @@ typedef struct QuizMenuCharacterMotionData {
 typedef struct QuizCharacterEntry {
     s32 unknown_00;
     s32 voiceId;
-    s32 unknown_08;
+    s32 unk08; /* The game's code never reads this field. */
 } QuizCharacterEntry;
 
 typedef struct Rectangle {
@@ -173,7 +172,7 @@ typedef struct QuizParticleWork {
     Vec rotation;
     Vec scale;
     s32 side;
-    s32 modelVariant;
+    s32 unk58; /* The game's code never reads this field. */
     s32 positionIndex;
     s32 state;
     s16 model;
@@ -196,9 +195,9 @@ typedef struct QuizMotionWork {
     Vec rotation;
     Vec scale;
     Vec positionStep;
-    f32 rotationStepX;
+    f32 unk44; /* The game's code never reads this field. */
     f32 rotationStepY;
-    f32 rotationStepZ;
+    f32 unk4C; /* The game's code never reads this field. */
     s32 variantIndex;
     s32 state;
     s32 modelNameIndex;
@@ -242,9 +241,9 @@ void fn_1_2B290(OMOBJ *object);
 extern s32 lbl_1_bss_100;
 extern f32 lbl_1_bss_104;
 extern s32 lbl_1_bss_110;
-extern HUPROCESS *lbl_1_bss_114[0xB];
+extern HUPROCESS *lbl_1_bss_114[11];
 extern s32 lbl_1_bss_20;
-extern s32 lbl_1_bss_24[0x14];
+extern s32 lbl_1_bss_24[20];
 extern s32 lbl_1_bss_74[6];
 extern f32 lbl_1_bss_8C;
 extern s32 lbl_1_bss_90;
@@ -255,7 +254,7 @@ extern s16 lbl_1_bss_A0;
 extern s16 lbl_1_bss_A2;
 extern s16 lbl_1_bss_A4;
 extern OMOBJ *lbl_1_bss_A8;
-extern OMOBJ *lbl_1_bss_AC[0x14];
+extern OMOBJ *lbl_1_bss_AC[20];
 extern s32 lbl_1_bss_FC;
 extern OM_CAMERA_VIEW lbl_1_data_388;
 extern u32 lbl_1_data_3A4[6][4];
@@ -306,5 +305,166 @@ void fn_1_27CA0(OMOBJ *object);
 /* tutorial.c */
 void fn_1_2EDB4(void);
 void fn_1_2F2B8(OMOBJ *object);
+
+/* Adjusts and shows the debug camera, with a preset for the current quiz round. */
+static inline void QuizDebugCameraUpdate(OM_CAMERA_VIEW *defaultView, GXColor *windowColor)
+{
+    windowColor->r = 0;
+    windowColor->g = 0;
+    windowColor->b = 0x90;
+    windowColor->a = 0xC0;
+
+    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
+    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
+    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
+    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
+    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].z -= 5.0f;
+    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].z += 5.0f;
+    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
+    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
+
+    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, defaultView);
+
+    printWin(0x10, 0x28, 0x180, 0x54, windowColor);
+    fontcolor = FONT_COLOR_YELLOW;
+    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
+           lbl_80266B18[0].z);
+    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
+           lbl_80266A58[0].z);
+    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+}
+
+/* Shows the debug camera in its standard window. */
+static inline void QuizDebugCamera(OM_CAMERA_VIEW *defaultView)
+{
+    GXColor windowColor;
+
+    QuizDebugCameraUpdate(defaultView, &windowColor);
+}
+
+/* Updates and shows the comparison rounds' debug camera. */
+static inline void QuizComparisonCameraUpdate(OM_CAMERA_VIEW *defaultView, GXColor *windowColor)
+{
+    windowColor->r = 0;
+    windowColor->g = 0;
+    windowColor->b = 0x90;
+    windowColor->a = 0xC0;
+
+    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
+    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
+    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
+    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
+    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].x -= 5.0f;
+    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].x += 5.0f;
+    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
+    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
+
+    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, defaultView);
+
+    printWin(0x10, 0x28, 0xF0, 0x54, windowColor);
+    fontcolor = FONT_COLOR_YELLOW;
+    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
+           lbl_80266B18[0].z);
+    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
+           lbl_80266A58[0].z);
+    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+}
+
+/* Spreads the two models apart along X. */
+static inline void QuizModelPairSpread(s16 *models, const f32 *spread)
+{
+    Vec positions[2];
+    s32 i;
+
+    i = 0;
+    while (i < 2) {
+        fn_800267CC(models[i], &positions[i]);
+        i += 1;
+    }
+    positions[0].x -= *spread;
+    positions[1].x += *spread;
+    i = 0;
+    while (i < 2) {
+        fn_80026790(models[i], &positions[i]);
+        i += 1;
+    }
+}
+
+/* Gets a named model object's world position. */
+static inline void QuizObjectWorldPosition(HU3D_MODELID modelId, char *objName, Vec *position)
+{
+    Mtx matrix;
+
+    fn_80023398(modelId, objName, matrix);
+    position->x = matrix[0][3];
+    position->y = matrix[1][3];
+    position->z = matrix[2][3];
+}
+
+/* Counts the objects for the quiz answer and records the result. */
+static inline void QuizCountAnswerRecord(void)
+{
+    void MicQuizExpectedAnswerSet(s32 expectedAnswer);
+
+    s32 count;
+    s32 index;
+    count = 0;
+    lbl_1_bss_94 = lbl_1_bss_74[0];
+    switch (lbl_1_bss_98)
+    {
+    case 0 :
+        index = 0;
+        while (index < lbl_1_bss_90)
+        {
+            if (lbl_1_bss_94 == lbl_1_bss_24[index])
+            {
+                count += 1;
+            }
+            index += 1;
+        }
+        break;
+    case 1 :
+        count = lbl_1_bss_90;
+        break;
+    case 2 :
+        index = 0;
+        while (index < lbl_1_bss_90)
+        {
+            if (lbl_1_bss_94 != lbl_1_bss_24[index])
+            {
+                count += 1;
+            }
+            index += 1;
+        }
+        break;
+    }
+    MicQuizExpectedAnswerSet(count);
+    OSReport("----------------------------ANSER:%d\n", count);
+}
+
+/* Copies the specified EFB region to a texture. */
+static inline void QuizTextureCopy(s16 x, s16 y, s32 width, s32 height, enum _GXTexFmt format, void *destination)
+{
+    GXSetTexCopySrc((u16)x, (u16)y, (u16)width, (u16)height);
+    GXSetTexCopyDst((u16)width, (u16)height, format, 0);
+    GXCopyTex(destination, 1);
+}
+
+/* Sets every material of a model to black. */
+static inline void QuizModelMaterialsBlack(s16 modelId)
+{
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
+    HSF_DATA *hsf = model->hsf;
+    HSF_MATERIAL *material = hsf->material;
+    s32 index;
+
+    for (index = 0; index < hsf->materialNum;) {
+        material->color[0] = 0;
+        material->color[1] = 0;
+        material->color[2] = 0;
+        index++;
+        material++;
+    }
+}
 
 #endif

@@ -1,4 +1,5 @@
 /* Microphone mode setup, player selection and scene transitions. */
+#include "REL/minigame_menu_easing.h"
 #include "REL/minigame_menu_heading.h"
 #include "REL/minigame_menu_motion.h"
 #include "math.h"
@@ -1806,31 +1807,6 @@ void fn_1_4C74(void)
 {
 }
 
-/* Interpolates to the end coordinate with a sine ease-out. */
-static inline f32 fn_1_4C78_ease90_mdmicdll_text_4C78c(f32 start, f32 end, f32 elapsed,
-                                                       f32 duration)
-{
-    if (elapsed <= 0.0f) {
-        return start;
-    }
-    if (elapsed >= duration) {
-        return end;
-    }
-    return (f32)((f64)start + (f64)(end - start) *
-        sin((M_PI * (f64)((90.0f / duration) * elapsed)) / 180.0));
-}
-
-/* Rises and returns to the start coordinate over one half sine wave. */
-static inline f32 fn_1_4C78_ease180_mdmicdll_text_4C78c(f32 start, f32 end, f32 elapsed,
-                                                        f32 duration)
-{
-    if ((elapsed <= 0.0f) || (elapsed >= duration)) {
-        return start;
-    }
-    return (f32)((f64)start + (f64)(end - start) *
-        sin((M_PI * (f64)((180.0f / duration) * elapsed)) / 180.0));
-}
-
 /* After the host confirmation motion, the effect callback moves its prop sparkle along an arcing
  * exit. */
 void fn_1_4C78(OMOBJ *obj)
@@ -1851,9 +1827,9 @@ void fn_1_4C78(OMOBJ *obj)
     first = lbl_1_bss_238;
     second = &lbl_1_bss_238[1];
     if (firstObj != NULL) {
-        position.x = fn_1_4C78_ease90_mdmicdll_text_4C78c(first->startPosition.x, 500.0f,
+        position.x = MinigameMenuEaseOut(first->startPosition.x, 500.0f,
             first->elapsed, duration);
-        position.y = fn_1_4C78_ease180_mdmicdll_text_4C78c(first->startPosition.y, 400.0f,
+        position.y = MinigameMenuHalfSine(first->startPosition.y, 400.0f,
             first->elapsed, duration);
         position.z = first->startPosition.z;
         if ((first->elapsed += 1.0f) > duration) {
@@ -1864,9 +1840,9 @@ void fn_1_4C78(OMOBJ *obj)
         }
     }
     if (secondObj != NULL) {
-        position.x = fn_1_4C78_ease90_mdmicdll_text_4C78c(second->startPosition.x, -500.0f,
+        position.x = MinigameMenuEaseOut(second->startPosition.x, -500.0f,
             second->elapsed, duration);
-        position.y = fn_1_4C78_ease180_mdmicdll_text_4C78c(second->startPosition.y, 400.0f,
+        position.y = MinigameMenuHalfSine(second->startPosition.y, 400.0f,
             second->elapsed, duration);
         position.z = second->startPosition.z;
         if ((second->elapsed += 1.0f) > duration) {
@@ -2771,20 +2747,14 @@ void fn_1_8B3C(void)
     }
 }
 
-/* Closes both player windows. */
-static inline void PlayerWindowsDestroy(void)
+/* Player-interface teardown releases the two paired-choice heading windows. */
+void fn_1_8CBC(void)
 {
     s16 i;
 
     for (i = 0; i < 2; i++) {
         HuWinExKill(lbl_1_bss_114[i]);
     }
-}
-
-/* Player-interface teardown releases the two paired-choice heading windows. */
-void fn_1_8CBC(void)
-{
-    PlayerWindowsDestroy();
 }
 
 /* Player-selection setup reveals a player icon group with its requested animation bank. */
@@ -2966,7 +2936,7 @@ void fn_1_9980(OMOBJ *obj)
 /* Player-interface teardown releases the two paired-choice heading windows. */
 void fn_1_9C28(void)
 {
-    PlayerWindowsDestroy();
+    fn_1_8CBC();
 }
 
 /* Selection updates position a menu sprite at an optional world point plus a screen-space
@@ -3650,8 +3620,9 @@ void fn_1_EE40(OMOBJ *obj)
     *lbl_1_bss_24->mtnId = 1;
 }
 
-/* Hides both player sprites and stops the object update. */
-static inline void PlayerSpritesHide(OMOBJ *obj)
+/* Leaving player-count input hides both adjustment arrows and signals that the screen is
+ * stopped. */
+void fn_1_EE70(OMOBJ *obj)
 {
     HuSprAttrSet(lbl_1_bss_900[2], 4, 4);
     lbl_1_data_E64[4] = 0;
@@ -3659,13 +3630,6 @@ static inline void PlayerSpritesHide(OMOBJ *obj)
     lbl_1_data_E64[5] = 0;
     obj->objFunc = NULL;
     *lbl_1_bss_24->mtnId = 1;
-}
-
-/* Leaving player-count input hides both adjustment arrows and signals that the screen is
- * stopped. */
-void fn_1_EE70(OMOBJ *obj)
-{
-    PlayerSpritesHide(obj);
 }
 
 /* Player-count entrance counts connected pads and spins in cards showing active and inactive
@@ -5730,7 +5694,7 @@ void fn_1_1DF74(OMOBJ *obj)
 /* Leaving player-order input hides both arrows and stops its callback. */
 void fn_1_1E1B0(OMOBJ *obj)
 {
-    PlayerSpritesHide(obj);
+    fn_1_EE70(obj);
 }
 
 /* Player-order entrance resets the arrangement to zero and moves all four characters into its
@@ -6369,7 +6333,7 @@ void fn_1_23F2C(void)
         omDelObjEx(lbl_1_bss_0, fourthObj);
     }
     fourthObj = NULL;
-    PlayerWindowsDestroy();
+    fn_1_8CBC();
     lastObj = lbl_1_bss_1C[0];
     if (lastObj) {
         fn_8002C624(lastObj->mtnId[0]);

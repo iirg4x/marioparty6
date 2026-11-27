@@ -201,7 +201,7 @@ void fn_1_1FB04(void) {
         OSReport("COMP ANSER:RIGHT\n");
     }
     OSReport("COMP LEFT:%d RIGHT:%d\n", lbl_1_bss_15A8[0], lbl_1_bss_15A8[1]);
-    lbl_1_bss_159C = HuSprAnimRead(fn_80008DD0(DATANUM(0xa40000, 0x5F), 0x10000000, 2));
+    lbl_1_bss_159C = HuSprAnimDataRead(DATANUM(0xa40000, 0x5F));
     lbl_1_bss_159A = fn_80025A04(fn_80008DD0(DATANUM(0xa40000, 0x60), 0x10000000, 2));
     lbl_1_bss_1598 = fn_80025A04(fn_80008DD0(DATANUM(0xa40000, 0x61), 0x10000000, 2));
     fn_800269E8(lbl_1_bss_159A, 1);
@@ -278,8 +278,8 @@ void fn_1_20804(OMOBJ *object) {
         if (lbl_1_bss_104 >= 120.0f) {
             lbl_1_bss_104 = 0.0f;
             lbl_1_bss_FC = 9;
-            WipeCreate(2, 0, 0x14);
-            HuAudSStreamFadeOut(lbl_1_bss_20, 0x1F4);
+            WipeCreate(2, 0, 20);
+            HuAudSStreamFadeOut(lbl_1_bss_20, 500);
             return;
         }
         lbl_1_bss_104 += 1.0f;
@@ -295,11 +295,6 @@ void fn_1_20804(OMOBJ *object) {
     }
 }
 
-typedef struct MicquizPlayerWork {
-    u8 unknown_00[0x60]; /* No code names this field. */
-    s32 animationState;
-} MicquizPlayerWork;
-
 /* Plays the answer: the players' motions and sounds, moves the objects, then starts the result
    display. */
 void fn_1_20B70(void) {
@@ -310,8 +305,8 @@ void fn_1_20B70(void) {
     s16 modelId1;
     s16 angle;
     s32 soundId;
-    MicquizPlayerWork *firstPlayerData;
-    MicquizPlayerWork *secondPlayerData;
+    QuizMotionWork *firstPlayerData;
+    QuizMotionWork *secondPlayerData;
     s32 maxPlayerCount;
     s32 playerIndex;
     s32 rotationFrame;
@@ -324,7 +319,7 @@ void fn_1_20B70(void) {
     lbl_1_bss_15A4 = 2;
     fn_80026874(lbl_1_bss_1760[0], &firstRotation);
     fn_80026874(lbl_1_bss_1760[1], &secondRotation);
-    for (rotationFrame = 0; rotationFrame < 0x96; rotationFrame++) {
+    for (rotationFrame = 0; rotationFrame < 150; rotationFrame++) {
         HuPrcVSleep();
         firstRotation.y = fn_1_2AD8(firstRotation.y, 0.0f, 0.04f);
         secondRotation.y = fn_1_2AD8(secondRotation.y, 0.0f, 0.04f);
@@ -375,17 +370,17 @@ void fn_1_20B70(void) {
         if (lbl_1_bss_1768[0][playerIndex] != NULL) {
             fn_1_211C4((u8)playerNumber, 0);
             firstPlayerData = lbl_1_bss_1768[0][playerIndex]->data;
-            firstPlayerData->animationState = 4;
+            firstPlayerData->motionState = 4;
         }
         if (lbl_1_bss_1768[1][playerIndex] != NULL) {
             fn_1_211C4((u8)playerNumber, 1);
             secondPlayerData = lbl_1_bss_1768[1][playerIndex]->data;
-            secondPlayerData->animationState = 4;
+            secondPlayerData->motionState = 4;
         }
         playerNumber++;
-        HuPrcSleep(0x2D);
+        HuPrcSleep(45);
     }
-    HuPrcSleep(0x3C);
+    HuPrcSleep(60);
     angle = 90;
     while (1) {
         HuPrcVSleep();
@@ -543,23 +538,26 @@ void fn_1_21604(void) {
     }
 }
 
+/* Spreads the two comparison models apart along X. */
 void fn_1_216A0(void)
 {
-    Vec positions[2];
-    s32 i;
+    QuizModelPairSpread(lbl_1_bss_9C, &lbl_1_bss_8C);
+}
 
-    i = 0;
-    while (i < 2) {
-        fn_800267CC(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
+/* Sets the position and turn steps for a comparison object. */
+static inline void QuizComparisonMotionStepsSet(QuizMotionWork *work)
+{
+    if (work->modelPairIndex == 0) {
+        work->positionStep.x = (-350.0f - work->referencePosition.x) / 90.0f;
+        work->positionStep.y = (450.0f - work->referencePosition.y) / 90.0f;
+        work->positionStep.z = (-450.0f - work->referencePosition.z) / 90.0f;
+    } else {
+        work->positionStep.x = (350.0f - work->referencePosition.x) / 90.0f;
+        work->positionStep.y = (450.0f - work->referencePosition.y) / 90.0f;
+        work->positionStep.z = (-450.0f - work->referencePosition.z) / 90.0f;
     }
-    positions[0].x -= lbl_1_bss_8C;
-    positions[1].x += lbl_1_bss_8C;
-    i = 0;
-    while (i < 2) {
-        fn_80026790(lbl_1_bss_9C[i], &positions[i]);
-        i += 1;
-    }
+    work->unk44 = work->unk4C = 0.0f;
+    work->rotationStepY = ((450.0f - work->referencePosition.y) / 2.0f) / 60.0f;
 }
 
 /* Creates one comparison object: its model, joint motions and place, then hands it to its update
@@ -600,18 +598,7 @@ void fn_1_21764(OMOBJ *object) {
     work->rotation.x = work->rotation.y = work->rotation.z = 0.0f;
     work->frame = 0;
 
-    if (work->modelPairIndex == 0) {
-        work->positionStep.x = (-350.0f - work->referencePosition.x) / 90.0f;
-        work->positionStep.y = (450.0f - work->referencePosition.y) / 90.0f;
-        work->positionStep.z = (-450.0f - work->referencePosition.z) / 90.0f;
-    } else {
-        work->positionStep.x = (350.0f - work->referencePosition.x) / 90.0f;
-        work->positionStep.y = (450.0f - work->referencePosition.y) / 90.0f;
-        work->positionStep.z = (-450.0f - work->referencePosition.z) / 90.0f;
-    }
-
-    work->rotationStepX = work->rotationStepZ = 0.0f;
-    work->rotationStepY = ((450.0f - work->referencePosition.y) / 2.0f) / 60.0f;
+    QuizComparisonMotionStepsSet(work);
     if (work->variantIndex == 4) {
         work->motionSpeed = 0.0055555557f;
     } else {
@@ -645,7 +632,7 @@ void fn_1_21B14(OMOBJ *object) {
             work->frame = 0;
         }
     } else if (work->motionState == 1) {
-        if (work->frame >= 0x3C) {
+        if (work->frame >= 60) {
             work->frame = 0;
             work->motionState = 3;
         } else {
@@ -657,7 +644,7 @@ void fn_1_21B14(OMOBJ *object) {
             work->frame++;
         }
     } else if (work->motionState == 2) {
-        if (work->frame >= 0x3C) {
+        if (work->frame >= 60) {
             work->position.y = 0.0f;
             work->frame = 0;
             work->motionState = 0;
@@ -680,29 +667,11 @@ void fn_1_21B14(OMOBJ *object) {
                     work->rotation.z);
 }
 
-typedef struct MicquizNameObjectWork {
-    Vec position;
-    Vec targetPosition;
-    u8 unknown_18[0x20]; /* No code names this field. */
-    f32 deltaX;
-    f32 deltaY;
-    f32 deltaZ;
-    f32 velocityX; /* the game's code never reads this field */
-    f32 verticalVelocity;
-    f32 velocityZ; /* the game's code never reads this field */
-    u32 unknown_50;
-    u32 unknown_54;
-    s32 nameIndex;
-    s32 groupIndex;
-    s32 state;
-    s16 modelId;
-} MicquizNameObjectWork;
-
 /* Sets each object's move from its place to a model joint's place, with a vertical speed. */
 void fn_1_21E00(void) {
     s32 group;
     s32 index;
-    MicquizNameObjectWork *work;
+    QuizMotionWork *work;
 
     group = 0;
     while (group < 2) {
@@ -710,21 +679,11 @@ void fn_1_21E00(void) {
         index = 0;
         while (index < lbl_1_bss_15A8[group]) {
             work = lbl_1_bss_1768[group][index]->data;
-            fn_1_225AC(lbl_1_bss_1760[work->groupIndex],
-                lbl_1_data_1584[work->nameIndex],
-                &work->targetPosition);
-            work->position = work->targetPosition;
-            if (work->groupIndex == 0) {
-                work->deltaX = (-350.0f - work->targetPosition.x) / 90.0f;
-                work->deltaY = (450.0f - work->targetPosition.y) / 90.0f;
-                work->deltaZ = (-450.0f - work->targetPosition.z) / 90.0f;
-            } else {
-                work->deltaX = (350.0f - work->targetPosition.x) / 90.0f;
-                work->deltaY = (450.0f - work->targetPosition.y) / 90.0f;
-                work->deltaZ = (-450.0f - work->targetPosition.z) / 90.0f;
-            }
-            work->velocityX = work->velocityZ = 0.0f;
-            work->verticalVelocity = ((450.0f - work->targetPosition.y) / 2.0f) / 60.0f;
+            fn_1_225AC(lbl_1_bss_1760[work->modelPairIndex],
+                lbl_1_data_1584[work->modelNameIndex],
+                &work->referencePosition);
+            work->position = work->referencePosition;
+            QuizComparisonMotionStepsSet(work);
             fn_80026760(work->modelId, work->position.x,
                 work->position.y, work->position.z);
             index += 1;
@@ -861,39 +820,12 @@ void fn_1_22458(void) {
 
 /* Gives the world position of a model's named object. */
 void fn_1_225AC(HU3D_MODELID modelId, char *objName, Vec *position) {
-    Mtx matrix;
-
-    fn_80023398(modelId, objName, matrix);
-    position->x = matrix[0][3];
-    position->y = matrix[1][3];
-    position->z = matrix[2][3];
+    QuizObjectWorldPosition(modelId, objName, position);
 }
 
 /* Debug view: prints the camera's center, rotation and zoom in a window. */
 void fn_1_22604(void) {
     GXColor windowColor;
 
-    windowColor.r = 0;
-    windowColor.g = 0;
-    windowColor.b = 0x90;
-    windowColor.a = 0xC0;
-
-    lbl_80266BD8[0] += (f32)(lbl_802BFFEC[0] / 5);
-    lbl_80266BD8[0] -= (f32)(lbl_802BFFE8[0] / 5);
-    if (lbl_802C0010[0] & 0x4) lbl_80266B18[0].y -= 5.0f;
-    if (lbl_802C0010[0] & 0x8) lbl_80266B18[0].y += 5.0f;
-    if (lbl_802C0010[0] & 0x1) lbl_80266B18[0].x -= 5.0f;
-    if (lbl_802C0010[0] & 0x2) lbl_80266B18[0].x += 5.0f;
-    lbl_80266A58[0].x += 5.0f * ((f32)lbl_802BFFF0[0] / 44.0f);
-    lbl_80266A58[0].y -= 5.0f * ((f32)lbl_802BFFF4[0] / 44.0f);
-
-    if (lbl_802C0008[0] & 0x800) fn_8003E488(1, &lbl_1_data_150C);
-
-    printWin(0x10, 0x28, 0xF0, 0x54, &windowColor);
-    fontcolor = FONT_COLOR_YELLOW;
-    print8(0x10, 0x28, 1.0f, "Center X:%.02f Y:%.02f Z:%.02f", lbl_80266B18[0].x, lbl_80266B18[0].y,
-           lbl_80266B18[0].z);
-    print8(0x10, 0x34, 1.0f, "CRot X:%.02f Y:%.02f Z:%.02f", lbl_80266A58[0].x, lbl_80266A58[0].y,
-           lbl_80266A58[0].z);
-    print8(0x10, 0x40, 1.0f, "CZoom:%.02f", lbl_80266BD8[0]);
+    QuizComparisonCameraUpdate(&lbl_1_data_150C, &windowColor);
 }
