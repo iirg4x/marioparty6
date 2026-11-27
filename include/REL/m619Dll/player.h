@@ -67,7 +67,7 @@ struct M619Player {
     HU3D_MOTIONID motions[8]; /* Character motions loaded for the minigame. */
     s16 playerNumber; /* Player slot number. */
     s16 character; /* Character ID used by the character manager. */
-    s16 group; /* Player's configured team or group number. */
+    s16 unk16E; /* The game's code never reads this field. */
     u8 unidentifiedBytes[2]; /* Opaque bytes retained in the player record. */
     s16 pad; /* Controller assigned to this player. */
     u8 unidentifiedBytes2[4]; /* Opaque bytes retained in the player record. */
@@ -87,4 +87,25 @@ struct M619Player {
                          * trigger its flash. */
     M619MotionNode collision; /* Player collision node and callbacks. */
 };
+
+/* Player movement, sway and collision callbacks. */
+s32 fn_1_A1F4(void *motionData);
+void fn_1_A23C(OMOBJ *object);
+void fn_1_A614(OMOBJ *object);
+void fn_1_B3C0(M619Sway *setup, M619Player *player);
+void fn_1_B3FC(M619Sway *motion, s32 expand);
+void fn_1_B678(void *playerData);
+s32 fn_1_BADC(void *player);
+void fn_1_BB4C(M619MotionNode *object, M619MotionNode *event,
+               f32 impactStrength);
+void fn_1_C194(M619Player *player);
+void fn_1_C1E8(M619Player *player, f32 y);
+s32 fn_1_C324(void *playerData);
+void fn_1_C628(M619Player *player);
+void fn_1_C690(s32 *responseState);
+
+/* Player callbacks queued by the scene. */
+s32 fn_1_C3B4(void *player);
+s32 fn_1_C420(void *playerState);
+
 #endif

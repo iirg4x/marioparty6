@@ -266,7 +266,7 @@ static u8 InitNewUtterance(struct _ISOWORDTOKENDP *This)
     pFromP = This->Wheel.pFirstFrom;
     *pFromP = This->pNodeHead;
     FASTALLO_TAKE(&pTos->FastAllocHeap, (uLastState * 2 + 7) / 4,
-                  (void *)&This->pNodeHead->pToken)
+                  &This->pNodeHead->pToken)
     This->pNodeHead->pToken->u8LastState = uLastState;
     This->pNodeHead->pToken->pScore[0] = 0;
     This->pNodeHead->pToken->u8LastActState = 0;

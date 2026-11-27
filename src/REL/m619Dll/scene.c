@@ -1,4 +1,5 @@
 /* Builds the minigame scene and advances its shared models, effects and sequence hooks. */
+#include "REL/m619Dll/player.h"
 #include <math.h>
 #include "humath.h"
 #include "REL/m619Dll/types.h"
@@ -84,35 +85,15 @@ s32 fn_1_9C44(void *transition);
 void fn_1_9EEC(M619ModelMotion *work, s32 characterIndex);
 void fn_1_A124(M619ModelMotion *object, const HuVecF *position);
 
-extern f64 sin(f64 angle);
-
-extern f64 atan2(f64 y, f64 x);
-extern f64 cos(f64 angle);
-
-extern void fn_1_C194(M619Player *player);
-
 typedef struct M619SpeedFactorTable_s {
     /* NPC motion speeds for each difficulty level. */
     f32 factors[4];
 } M619SpeedFactorTable;
 
-extern void fn_1_C890(M619ParticleEffect *effect);
-
 typedef struct M619MotionPathFactorTable_s {
     /* Per-state path scaling values. */
     f32 factors[4];
 } M619MotionPathFactorTable;
-
-extern void fn_1_D9EC(M619ParticleEffect *effect, const HuVecF *position, const HuVecF *rotation);
-
-extern void fn_1_C8CC(M619ParticleEffect *effect);
-extern void fn_1_D420(M619ParticleEffect *effect, const HuVecF *position, const HuVecF *rotation);
-
-extern void fn_1_CE20(M619ParticleEffect *effect, const HuVecF *position, const HuVecF *rotation);
-
-extern s32 fn_1_A1F4(void *object);
-extern void fn_1_C8D8(M619ParticleEffect *effect, HuVecF *position);
-extern s32 fn_1_C324(void *state);
 
 MGSEQ_PARAM lbl_1_data_0 = {
     30, 2, fn_1_1E8, fn_1_250, fn_1_B60, fn_1_BD0, fn_1_D0C, fn_1_E84,
@@ -135,8 +116,6 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
-void fn_1_A23C(OMOBJ *obj);                         /* static */
-
 typedef struct {
     HuVecF start;  /* Initial camera or target position. */
     HuVecF finish; /* Final camera or target position. */
@@ -147,10 +126,6 @@ HUPROCESS *lbl_1_bss_8[2];
 s32 lbl_1_bss_4;
 OMOBJ *lbl_1_bss_0;
 
-extern s32 fn_1_C3B4(void *player);
-
-extern s32 fn_1_C420(void *player);
-
 typedef struct Position {
     HuVecF position;
     unsigned char reservedBytes[12]; /* Unread bytes between the position and offset vectors. */
@@ -159,25 +134,10 @@ typedef struct Position {
 
 s32 fn_1_367CC(s32 *player);
 
-extern s32 fn_1_C1E8(M619Player *player, f32 yOffset);
-
 typedef struct M619AngleTableView_s {
     /* Starting angles in degrees for the four player positions. */
     f32 angles[4];
 } M619AngleTableView;
-
-extern void fn_1_C628(M619Player *player);
-extern void fn_1_B3FC(void *motion, s32 expand);
-extern void fn_1_B678(void *player);
-extern s32 fn_1_BADC(void *player);
-extern void fn_1_BB4C(M619MotionNode *object, M619MotionNode *event, f32 impactStrength);
-
-extern void fn_1_B3C0(M619Sway *sway,
-                      M619Player *owner);
-extern void fn_1_C690(void *work);
-extern void fn_1_A614(OMOBJ *object);
-
-extern void fn_1_C890(M619ParticleEffect *flash);
 
 /* Radial motion updates use this helper to convert an X/Z direction to an angle. */
 static inline f32 M619InitializationDirection(f32 x, f32 z) {

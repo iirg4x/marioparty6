@@ -1,5 +1,10 @@
 /* Sound-effect slot controls (pan, pitch, volume, stop) and the main play phase: its
  * start, per-frame update order and end check. */
+#include "REL/m661dll/timer.h"
+#include "REL/m661dll/routes.h"
+#include "REL/m661dll/motion.h"
+#include "REL/m661dll/sound.h"
+#include "REL/m661dll.h"
 #include <math.h>
 #include "game/audio.h"
 #include "game/charman.h"
@@ -14,25 +19,9 @@ extern s32 lbl_1_bss_210;
 
 s16 lbl_1_bss_31C8[4];
 
-void fn_1_3038(MGTIMER *timer);
-
 void fn_1_58DC(void);
 
-void fn_1_695C(void);
-
-void fn_1_24E8(void);
-
 s32 fn_1_5954(void);
-
-extern void fn_1_71C(void);
-
-extern void fn_1_20D74(void);
-
-extern void fn_1_59F0(void);
-
-extern void fn_1_5A7C(void);
-
-extern void fn_1_67DC(void);
 
 #include "dolphin/types.h"
 

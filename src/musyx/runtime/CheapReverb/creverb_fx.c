@@ -22,12 +22,15 @@ extern void ReverbSTDCallback(s32* left, s32* right, s32* surround, _SND_REVSTD_
 extern unsigned long ReverbSTDModify(_SND_REVSTD_WORK* rv, float coloration, float time, float mix,
                                      float damping, float predelay);
 
+/* Apply standard reverb to the auxiliary buffers when enabled. */
 void sndAuxCallbackReverbSTD(u8 reason, SND_AUX_INFO* info, void* user) {
+  SND_AUX_REVERBSTD* rev = user;
+
   switch (reason) {
   case SND_AUX_REASON_BUFFERUPDATE:
-    if ((u8)((SND_AUX_REVERBSTD*)user)->tempDisableFX == 0) {
+    if (rev->tempDisableFX == 0) {
       ReverbSTDCallback(info->data.bufferUpdate.left, info->data.bufferUpdate.right,
-                        info->data.bufferUpdate.surround, &((SND_AUX_REVERBSTD*)user)->rv);
+                        info->data.bufferUpdate.surround, &rev->rv);
     }
     break;
   case SND_AUX_REASON_PARAMETERUPDATE:

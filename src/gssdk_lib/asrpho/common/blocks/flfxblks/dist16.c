@@ -801,7 +801,7 @@ static void DistSilProcess(struct _BLOCK *_This, void *pInputs, int NbrInputs)
     u8 AdaptSil;
     int UpdateHisto;
     DISTSIL *This = (DISTSIL *)_This;
-    u8 *Labels = (u8 *)((void **)pInputs)[1];
+    u8 *Labels = ((void **)pInputs)[1];
 
     if (Labels != NULL) {
         u8 *pLabels = Labels;
@@ -838,8 +838,7 @@ static void DistSilProcess(struct _BLOCK *_This, void *pInputs, int NbrInputs)
                 if (UpdateHisto != 0) {
                     ActMat->pHisto[*pLabels]++;
                 }
-                This->Ptrs[cdbid] =
-                    (u8 *)ActMat->Matrix[*pLabels];
+                This->Ptrs[cdbid] = ActMat->Matrix[*pLabels];
                 if (AdaptSil != 0) {
                     AdaptSilence(ActMat, pAdaptSil, This->ppLookUp);
                     if (This->Frame2 >= SILENCE_NORMALIZATION_BATCHES) {

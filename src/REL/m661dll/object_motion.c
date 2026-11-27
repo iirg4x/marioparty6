@@ -70,8 +70,6 @@ typedef struct MotionSettings {
 
 extern MotionControl lbl_1_bss_10[];
 
-s32 fn_1_2EA4(f32 *value, f32 step, f32 start, f32 end);
-
 /* Updates board piece motion and turns pieces in response to player input. */
 void fn_1_5A7C(void)
 {

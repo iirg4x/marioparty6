@@ -2761,7 +2761,7 @@ static unsigned char ControlNBestDynProgProcess(
         break;
     }
     case 0x1D:
-        *(void **)CParam1 = (void *)This->pucMenuMasks;
+        *(void **)CParam1 = This->pucMenuMasks;
         *(u32 *)CParam2 = This->uNbrOfWordsBit;
         break;
     case 0x1A: {

@@ -1,4 +1,7 @@
 /* Sets up and draws the Banana Shake particle and ground effects. */
+#include "REL/m675Dll/module_types.h"
+#include "dolphin/os/OSCache.h"
+#include "dolphin/PPCArch.h"
 #include "REL/m675Dll/prop_work.h"
 #include "REL/minigame_ground_effect.h"
 #include "dolphin/math.h"
@@ -76,10 +79,6 @@ M675ParticleConfiguration lbl_1_data_858[2] = {
 };
 
 extern u8 *fn_1_A38(s32 resourceId);
-
-extern void DCStoreRangeNoSync(void *address, u32 length);
-
-extern void PPCSync(void);
 
 void fn_1_D6F4(OMOBJ *obj);
 

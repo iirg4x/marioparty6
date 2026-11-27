@@ -52,7 +52,7 @@ static void PeakEnhancement(SHS_VUV *This, void *pInputs)
         *pPeakEnhSpec++ = 0.0f;
     }
 
-    pAmpSpecBegin = (float *) ((void **)pInputs)[1];
+    pAmpSpecBegin = ((void **)pInputs)[1];
     freqRes = This->ActualSampleFrequency / (float)This->FFTsize;
     skip = (long)(This->MinimumPitch / freqRes);
     pAmplitudeSpectrum = pAmpSpecBegin + skip;

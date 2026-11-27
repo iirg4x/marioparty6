@@ -1,6 +1,8 @@
 /* Boonanza! module core: module entry and sequence phase callbacks, player setup and
  * input, model and motion updates, camera, lighting and shadow, timers, particles and
  * sound. */
+#include "REL/m661dll/timer.h"
+#include "REL/m661dll/routes.h"
 #include "REL/minigame_shadow_camera.h"
 #include "REL/m661dll/model_setup.h"
 #include <math.h>
@@ -66,8 +68,6 @@ extern MotionControl lbl_1_bss_10[78];
 #include "REL/m661dll/particle.h"
 #include "REL/m661dll/sound.h"
 #include "msm_se.h"
-
-s32 fn_1_57A4(void);
 
 typedef void (*VoidFunc)(void);
 
@@ -217,9 +217,6 @@ typedef struct LightInitState {
 extern LightInitState lbl_1_bss_303C;
 void fn_1_1E48(void);
 
-
-extern f64 sin(f64 angle);
-extern f64 cos(f64 angle);
 
 /* Applies stored stage transforms and positions the active player models. */
 static inline void updatePlayerModels(void)
@@ -1308,23 +1305,11 @@ extern s32 lbl_1_bss_210;
 
 extern s16 lbl_1_bss_31C8[4];
 
-void fn_1_58DC(void);
-
-void fn_1_695C(void);
-
 s32 fn_1_5954(void);
 
 typedef struct SetupValues {
     HuVecF positions[2];
 } SetupValues;
-
-extern void fn_1_20D74(void);
-
-extern void fn_1_59F0(void);
-
-extern void fn_1_5A7C(void);
-
-extern void fn_1_67DC(void);
 
 /* Sets the character sound's pan and volume for its current position and mode. */
 void fn_1_4918(M661PlayerState *object, s16 mode)

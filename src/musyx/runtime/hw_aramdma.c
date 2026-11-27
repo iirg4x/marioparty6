@@ -210,7 +210,7 @@ void* aramStoreData(void* src, unsigned long len
     aramSyncTransferQueue();
 #endif
     blkSize = len >= aramUploadChunkSize ? aramUploadChunkSize : len;
-    buffer = (void*)aramUploadCallback((u32)src, blkSize);
+    buffer = aramUploadCallback((u32)src, blkSize);
 #line 297
     MUSY_ASSERT_MSG(!((u32)buffer & 31), "MRAM address is not aligned properly");
     DCFlushRange(buffer, blkSize);

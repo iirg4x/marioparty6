@@ -170,7 +170,7 @@ static long CalcWordConfidence(struct _DYNPROG_RESULT *pRes, long Score,
 static void casrCreateResult(struct _ENGINE *pEngine, struct _CASRRESULT **ppCasrResult,
     struct _DYNPROG_RESULT *pResult, unsigned char ConvertTimes)
 {
-    struct _DYNPROG_RESULT_NODE *pRes = (struct _DYNPROG_RESULT_NODE *)pResult->pResult;
+    struct _DYNPROG_RESULT_NODE *pRes = pResult->pResult;
     struct _CASRRESULT *pCasrResult;
     struct _SENTENCE *pSentences;
     unsigned int BeginTimeOffset = *pEngine->pBeginTime;
@@ -235,7 +235,7 @@ static void casrCreateResult(struct _ENGINE *pEngine, struct _CASRRESULT **ppCas
     }
     pCasrResult->iNbr = NbrSentences;
     pCasrResult->pSentences = pSentences;
-    for (pRes = (struct _DYNPROG_RESULT_NODE *)pResult->pResult; pRes; pRes = pRes->pNext) {
+    for (pRes = pResult->pResult; pRes; pRes = pRes->pNext) {
         unsigned char First = 1;
         unsigned long ExitScore;
         struct _DYNPROG_RESULT_NODE *pTrans = pRes->pInfo;
@@ -1201,9 +1201,9 @@ static u8 casrReadLabelInQueue(struct _ENGINE *pEngine, int UttIdx)
             break;
         pWriteLab = pEngine->pWriteLab[UttIdx];
         pNextWriteLab = pWriteLab + pQ->Size;
-        if (pNextWriteLab > (unsigned char *)pEngine->pEndLab[UttIdx]) {
+        if (pNextWriteLab > pEngine->pEndLab[UttIdx]) {
             OldLabBuf = pEngine->UtteranceLabels[UttIdx];
-            bufSize = (unsigned char *)pEngine->pEndLab[UttIdx] - OldLabBuf;
+            bufSize = pEngine->pEndLab[UttIdx] - OldLabBuf;
             NewLabBuf = heap_Alloc(pEngine->hHeap, bufSize + 0x7D0);
             if (NewLabBuf == 0)
                 return _tosErrorLog(&pEngine->Object, 2);
@@ -1536,7 +1536,7 @@ int casrSetParam(struct HCASR__ *hcAsr, unsigned long ParamID, unsigned long Par
         break;
     case 5: pEngine->ParamList.ArchiParam.TimeOut = ParamValue * 0x64; break;
     case 0xF:
-        pLang = (struct _LANGUAGE *)pEngine->pLang;
+        pLang = pEngine->pLang;
         if (pLang != 0) {
             if (ParamValue != 0 && pLang->langCheckBitField(pLang, 0x10) != 0)
                 return (u8)_tosErrorLog(&pEngine->Object, 0x1C);
@@ -1572,11 +1572,11 @@ int casrSetParam(struct HCASR__ *hcAsr, unsigned long ParamID, unsigned long Par
             if (Context.contextIsIsoWordContext(&Context) == 0 &&
                 Context.contextIsSpellingContext(&Context) == 0 &&
                 pEngine->MaxNbrWordsInISOWordSentence != pEngine->IsActiveContextIsoWord) {
-                Err = casrActivateContext((struct HCASR__ *)pEngine,
+                Err = casrActivateContext(hcAsr,
                     (struct HCTX__ *)pEngine->ActivatedContext, pEngine->bSetOptimalParameters);
                 if (Err != 0) {
                     pEngine->MaxNbrWordsInISOWordSentence = u32OldMaxNbr;
-                    DummyError = casrActivateContext((struct HCASR__ *)pEngine,
+                    DummyError = casrActivateContext(hcAsr,
                         (struct HCTX__ *)pEngine->ActivatedContext, pEngine->bSetOptimalParameters);
                     if (DummyError != 0) return DummyError;
                     return Err;
@@ -1808,7 +1808,7 @@ int casrActivateData(struct HCASR__ *hcAsr, struct HCDATA__ *hcData)
             heap_Free(pEngine->hHeap, pEngine->pLang);
             pEngine->pLang = 0;
             if ((pEngine->ActivatedContext != 0) &&
-                (casrActivateContext((struct HCASR__ *)pEngine, (struct HCTX__ *)0, 0) != 0)) {
+                (casrActivateContext(hcAsr, 0, 0) != 0)) {
                 return 1;
             }
             if (_tosControl(&pEngine->Object, 0x5F, 0, 0) != 0) {
@@ -1837,7 +1837,7 @@ int casrActivateData(struct HCASR__ *hcAsr, struct HCDATA__ *hcData)
 
         pEngine->pLang->pLang = (struct _LANGUAGEINFO *)pDataImport->pData;
         if ((pEngine->ActivatedContext != 0) &&
-            (casrActivateContext((struct HCASR__ *)pEngine, (struct HCTX__ *)0, 0) != 0)) {
+            (casrActivateContext(hcAsr, 0, 0) != 0)) {
             return 1;
         }
         if (_tosControl(&pEngine->Object, 0x25,
@@ -1864,7 +1864,7 @@ int casrActivateData(struct HCASR__ *hcAsr, struct HCDATA__ *hcData)
                 }
             }
         }
-        if (casrGetParam((struct HCASR__ *)pEngine, 0xF, &SecondPassEnable) != 0) {
+        if (casrGetParam(hcAsr, 0xF, &SecondPassEnable) != 0) {
             return 1;
         }
         if (SecondPassEnable != 0) {
@@ -2155,12 +2155,12 @@ int casrActivateContext(struct HCASR__ *hcAsr, struct HCTX__ *hCtx,
     }
 
     if ((bSetOptimalParameters != 0) &&
-        ((casrSetParam((struct HCASR__ *)pEngine, 6, (s32)Acc) != 0) ||
-         (casrSetParam((struct HCASR__ *)pEngine, 7,
+        ((casrSetParam(hcAsr, 6, (s32)Acc) != 0) ||
+         (casrSetParam(hcAsr, 7,
                        (s32)((struct _ASRSPI_CONTEXTINFO *)Ctx.pCtx)->Rejection) != 0) ||
-         (casrSetParam((struct HCASR__ *)pEngine, 4,
+         (casrSetParam(hcAsr, 4,
                        (s32)((struct _ASRSPI_CONTEXTINFO *)Ctx.pCtx)->TS) != 0) ||
-         (casrSetParam((struct HCASR__ *)pEngine, 8,
+         (casrSetParam(hcAsr, 8,
                        (s32)((struct _ASRSPI_CONTEXTINFO *)Ctx.pCtx)->Garbage) != 0))) {
         return 1;
     }
@@ -2315,10 +2315,10 @@ u8 casrDoSpelling(struct _ENGINE *pEngine)
     pTheStateDict = pEngine->CtxInfo.pDynProgCtxInfo->pStateInDict;
     pNormalisedScore = heap_Alloc(pEngine->hHeap, NbrNormalisedScore * sizeof(float));
     if (pNormalisedScore == 0) return _tosErrorLog(&pEngine->Object, 1);
-    pResTemp = ((struct _DYNPROG_RESULT_NODE *)pEngine->pRes->pResult)->pNext;
-    ((struct _DYNPROG_RESULT_NODE *)pEngine->pRes->pResult)->pNext = 0;
+    pResTemp = pEngine->pRes->pResult->pNext;
+    pEngine->pRes->pResult->pNext = 0;
     casrCreateResult(pEngine, &pCasrResult, pEngine->pRes, 0);
-    ((struct _DYNPROG_RESULT_NODE *)pEngine->pRes->pResult)->pNext = pResTemp;
+    pEngine->pRes->pResult->pNext = pResTemp;
     pRecWords = pCasrResult->pSentences->pWords;
     if (_tosControl(&pEngine->Object, 0x24,
             (u32)pEngine->CtxInfo.pSpellingDynProgCtxInfo, 0) != 0 ||
@@ -2364,7 +2364,7 @@ u8 casrDoSpelling(struct _ENGINE *pEngine)
             return 1;
         }
         heap_Free(pEngine->hHeap, pRecWords[WordNr].pAlternatives);
-        pSpellRes = (struct _DYNPROG_RESULT_NODE *)pEngine->pRes->pResult;
+        pSpellRes = pEngine->pRes->pResult;
         if (pSpellRes == 0) {
             pRecWords[WordNr].iNbrAlternatives = 0;
             pRecWords[WordNr].pAlternatives = 0;
@@ -2389,13 +2389,13 @@ u8 casrDoSpelling(struct _ENGINE *pEngine)
                 if (pNormalisedScore == 0) return 1;
             }
             TotalScore = 0.0f;
-            pSpellRes = (struct _DYNPROG_RESULT_NODE *)pEngine->pRes->pResult;
+            pSpellRes = pEngine->pRes->pResult;
             for (i = 0; i < cActiveWords; i++) {
                 TotalScore += (pNormalisedScore[i] =
                     expf((float)-(long)(pSpellRes->pInfo->Score - BestScore) / 1000.0));
                 pSpellRes = pSpellRes->pNext;
             }
-            pSpellRes = (struct _DYNPROG_RESULT_NODE *)pEngine->pRes->pResult;
+            pSpellRes = pEngine->pRes->pResult;
             for (i = 0; i < cActiveWords; i++) {
                 p = pNormalisedScore[i] / TotalScore;
                 if (p > 0.001f)

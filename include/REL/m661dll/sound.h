@@ -11,4 +11,7 @@ typedef struct VoicePosition {
 
 void fn_1_5020(s16 slot, s16 mode, VoicePosition *position);
 
+/* Sound manager initialization. */
+s32 fn_1_57A4(void);
+
 #endif

@@ -447,21 +447,23 @@ static void FreeResourcesAcne(Acne *This)
 static u8 ControlAcne(
     struct _BLOCK *_This, u8 ControlId, u32 CParam, u32 DParam)
 {
+    Acne *This = (Acne *)_This;
+
     switch (ControlId) {
     case 2:
-        ((Acne *)_This)->FlushFlag = 1;
+        This->FlushFlag = 1;
         break;
 
     case 4:
         if (CParam != 0) {
             u8 *session = (u8 *)CParam;
 
-            AcnePutSession((Acne *)_This, session + *(u32 *)DParam);
+            AcnePutSession(This, session + *(u32 *)DParam);
             /* The session payload includes a 12-byte header, three band arrays, and seven saved
              * scalar values. */
             *(u32 *)DParam +=
-                (((Acne *)_This)->nLogPower * 3 + 10) * sizeof(u32);
-        } else if (Reset((Acne *)_This)) {
+                (This->nLogPower * 3 + 10) * sizeof(u32);
+        } else if (Reset(This)) {
             return 0;
         }
         break;
@@ -470,16 +472,16 @@ static u8 ControlAcne(
         if (CParam != 0) {
             u8 *session = (u8 *)CParam;
 
-            AcneGetSession((Acne *)_This, session + *(u32 *)DParam);
+            AcneGetSession(This, session + *(u32 *)DParam);
         }
         /* Advance over the header, three band arrays, and seven scalars even without a session
          * buffer. */
         *(u32 *)DParam +=
-            (((Acne *)_This)->nLogPower * 3 + 10) * sizeof(u32);
+            (This->nLogPower * 3 + 10) * sizeof(u32);
         break;
 
     case 255:
-        FreeResourcesAcne((Acne *)_This);
+        FreeResourcesAcne(This);
         break;
 
     default:

@@ -21,12 +21,15 @@ extern void ReverbHIModify(_SND_REVHI_WORK* rev, f32 coloration, f32 time, f32 m
                            f32 preDelay, f32 crosstalk);
 extern void ReverbHICallback(s32* left, s32* right, s32* surround, SND_AUX_REVERBHI* rev);
 
+/* Apply high-quality reverb to the auxiliary buffers when enabled. */
 void sndAuxCallbackReverbHI(u8 reason, SND_AUX_INFO* info, void* user) {
+  SND_AUX_REVERBHI* rev = user;
+
   switch (reason) {
   case SND_AUX_REASON_BUFFERUPDATE:
-    if (((SND_AUX_REVERBHI*)user)->tempDisableFX == 0) {
+    if (rev->tempDisableFX == 0) {
       ReverbHICallback(info->data.bufferUpdate.left, info->data.bufferUpdate.right,
-                       info->data.bufferUpdate.surround, (SND_AUX_REVERBHI*)user);
+                       info->data.bufferUpdate.surround, rev);
     }
 
     break;

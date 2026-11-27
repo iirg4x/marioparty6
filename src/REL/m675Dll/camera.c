@@ -1,4 +1,5 @@
 /* Camera paths, lighting, shadows and positioned audio for Banana Shake. */
+#include "REL/m675Dll/module_types.h"
 #include "REL/minigame_camera_work.h"
 #include "REL/minigame_positional_audio.h"
 
@@ -88,7 +89,6 @@ void fn_1_16D8(OMOBJ *object);
 
 Vec lbl_1_data_F0 = {0.0f, -1.0f, 0.0f};
 GXColor lbl_1_data_FC = {0, 0, 0, 0};
-void fn_1_1DD8(s32 camera, Vec *direction, Vec *target, float fov, float radius);
 void fn_1_19F4(OMOBJ *object, u32 camera, s32 index);
 void fn_1_222C(u32 cameras, float x, float y, float width, float height);
 void fn_1_22AC(u32 cameras, float x, float y, float width, float height);

@@ -16,4 +16,7 @@ typedef struct BoardRouteGroup {
 extern BoardRouteGroup lbl_1_bss_31D0[16];
 void fn_1_C8D4(void);
 
+/* Initialization for player movement routes. */
+void fn_1_20D74(void);
+
 #endif

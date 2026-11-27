@@ -15,27 +15,10 @@ s32 lbl_1_data_118[8] = {
     DATANUM(0x930000, 34), DATANUM(0x930000, 23)
 };
 
-s32 fn_1_A1F4(void *motionData);
-void fn_1_A23C(OMOBJ *object);
-void fn_1_A614(OMOBJ *object);
 void fn_1_A674(M619Player *player);
 void fn_1_A894(M619Player *player);
 void fn_1_AEE4(M619Player *state);
 void fn_1_B200(M619Player *state);
-void fn_1_B3C0(M619Sway *setup, M619Player *player);
-void fn_1_B3FC(M619Sway *motion, s32 expand);
-void fn_1_B678(void *playerData);
-s32 fn_1_BADC(void *player);
-void fn_1_BB4C(M619MotionNode *object, M619MotionNode *event,
-               f32 impactStrength);
-void fn_1_C194(M619Player *player);
-void fn_1_C1E8(M619Player *player, f32 y);
-s32 fn_1_C324(void *playerData);
-s32 fn_1_C3B4(M619Player *player);
-s32 fn_1_C420(M619Player *playerState);
-void fn_1_C628(M619Player *player);
-void fn_1_C690(s32 *responseState);
-
 static inline f32 M619ImpactMagnitude(f32 angle) {
     return (f32)fabs(angle);
 }
@@ -80,7 +63,7 @@ void fn_1_A23C(OMOBJ *object) {
     player->object = object;
     player->playerNumber = object->work[0];
     player->character = lbl_80265728[player->playerNumber].charNo;
-    player->group = lbl_80265728[player->playerNumber].grpNo;
+    player->unk16E = lbl_80265728[player->playerNumber].grpNo;
     player->pad = lbl_80265728[player->playerNumber].padNo;
     player->playerType = lbl_80265728[player->playerNumber].type;
     player->difficulty =
@@ -739,7 +722,7 @@ s32 fn_1_C324(void *playerData) {
 }
 
 /* Queued during scene exit to seek the finished final motion back to time 35. */
-s32 fn_1_C3B4(M619Player *player) {
+s32 fn_1_C3B4(void *player) {
     M619Player *state;
 
     state = player;
@@ -751,7 +734,7 @@ s32 fn_1_C3B4(M619Player *player) {
 }
 
 /* Scene movement callbacks use this to steer a player and finish within ten XZ units. */
-s32 fn_1_C420(M619Player *playerState) {
+s32 fn_1_C420(void *playerState) {
     M619Player *player;
     s32 result;
     f32 deltaX;

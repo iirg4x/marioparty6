@@ -3,22 +3,13 @@
 #include "REL/m619Dll/particle.h"
 
 s16 fn_1_C7E4(void *owner, ANIMDATA *animation, s32 particleCount);
-void fn_1_C890(M619ParticleEffect *effect);
-void fn_1_C8CC(M619ParticleEffect *effect);
-void fn_1_C8D8(M619ParticleEffect *flash, HuVecF *position);
 void fn_1_C910(M619ParticleEffect *flash, HuVecF *rotation);
 void fn_1_C948(HU3D_MODEL *model, HU3D_PARTICLE *task, Mtx matrix);
 /* Creates the scene's 16-particle radial burst when that effect is started. */
-void fn_1_CE20(M619ParticleEffect *work, const HuVecF *position,
-               const HuVecF *rotation);
 void fn_1_D004(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 /* When a transition or player effect starts, creates its 32-particle expanding ring. */
-void fn_1_D420(M619ParticleEffect *work, const HuVecF *position,
-               const HuVecF *rotation);
 void fn_1_D604(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 /* Scene animation setup calls this to create its six-particle repeating ring effects. */
-void fn_1_D9EC(M619ParticleEffect *work, const HuVecF *position,
-               const HuVecF *rotation);
 void fn_1_DBD0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 
 /* Creates this effect's model from the scene's shared particle animation. */

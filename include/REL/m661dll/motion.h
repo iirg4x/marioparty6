@@ -26,4 +26,11 @@ typedef struct MotionControl {
 } MotionControl;
 void fn_1_A6C0(void);
 
+/* Model motion initialization and reset. */
+void fn_1_5A7C(void);
+void fn_1_67DC(void);
+
+/* Step interpolation for model motion. */
+s32 fn_1_2EA4(f32 *value, f32 step, f32 start, f32 end);
+
 #endif

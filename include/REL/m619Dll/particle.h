@@ -18,4 +18,15 @@ typedef struct M619ParticleEffect {
 void fn_1_C69C(M619ParticleEffect *work, const HuVecF *position,
                const HuVecF *rotation);
 
+/* Particle model setup and emission. */
+void fn_1_C890(M619ParticleEffect *effect);
+void fn_1_C8CC(M619ParticleEffect *effect);
+void fn_1_C8D8(M619ParticleEffect *flash, HuVecF *position);
+void fn_1_CE20(M619ParticleEffect *work, const HuVecF *position,
+               const HuVecF *rotation);
+void fn_1_D420(M619ParticleEffect *work, const HuVecF *position,
+               const HuVecF *rotation);
+void fn_1_D9EC(M619ParticleEffect *work, const HuVecF *position,
+               const HuVecF *rotation);
+
 #endif

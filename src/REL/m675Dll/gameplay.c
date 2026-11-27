@@ -1,4 +1,5 @@
 /* Controls the Banana Shake prop actors, their scripted movement, and attached effects. */
+#include "REL/m675Dll/module_types.h"
 #include "REL/minigame_prop_motion.h"
 #include "REL/m675Dll/prop_work.h"
 #include <math.h>
@@ -58,56 +59,11 @@ s32 lbl_1_bss_320;
 s32 lbl_1_bss_31C;
 s32 lbl_1_bss_318;
 
-extern void fn_1_6210(M675ActorState *sequence, s32 motion, f32 speed);
-
-extern f32 fn_1_47DC(f32 start, f32 end, f32 speed);
-
-extern f32 fn_1_48F8(f32 start, f32 end);
-
-void fn_1_74FC(M675ActorState *work, s32 modelId);
-
-extern void fn_1_F0B0(s32 playerIndex, float *x, float *y);
-
-extern void fn_1_E4F8(Point3d *position, f32 radius, s32 count);
-
 extern void fn_1_4BB4(Vec *start, Vec *end, f32 timer, Vec *position);
-
-extern void fn_1_EF88(s32 playerIndex, s32 amount);
-
-extern void fn_1_E918(MinigameGroundEffect *registration);
-
-extern f32 fn_1_49AC(Vec *start, Vec *end);
-
-extern s32 fn_1_4C0C(Vec *start, Vec *end, f32 delta, f32 step,
-    Vec *velocity);
-
-extern void fn_1_3C70(s32 resource, Vec *position);
 
 extern s32 fn_1_32EC(Vec *position);
 
-extern void fn_1_E0F0(Vec *position);
-
-extern s32 fn_1_A40(void);
-
-extern s32 fn_1_B6C(void);
-
-extern s32 fn_1_A50(void);
-
-extern void fn_1_74C8(M675ActorState *work);
-
-extern void fn_1_61F4(M675ActorState *work);
-
-extern f32 fn_1_4A48(Vec *first, Vec *second);
-
-s32 fn_1_46CC(s32 model, s32 resource);
-
-int fn_1_45C4(int dataNum);
-
 s32 fn_1_A38(s32 resource);
-
-s32 fn_1_10170(M675Collision *registration);
-
-void fn_1_E48(s16 model, char *name, s32 mode);
 
 void fn_1_7944(OMOBJ *object);
 
@@ -124,8 +80,6 @@ s32 fn_1_C7E0(M675PropWork *work, f32 speed);
 void fn_1_D278(OMOBJ *object);
 
 void fn_1_D3DC(s32 type, s32 index, Vec *position);
-
-void fn_1_7554(HUPROCESS *process);
 
 void fn_1_80CC(OMOBJ *object);
 
@@ -175,8 +129,6 @@ void fn_1_9AF0(OMOBJ *object, s32 resourceId, s32 collisionType,
 
 void fn_1_D148(OMOBJ *object);
 
-void fn_1_D494(s32 type, s32 value);
-
 void fn_1_81A8(OMOBJ *object);
 
 void fn_1_8394(s32 frameOffset, Vec *first, Vec *second);
@@ -224,10 +176,6 @@ void fn_1_8020(OMOBJ *object);
 void fn_1_A5B4(M675EmitterRecord *state);
 
 void fn_1_AA48(M675EmitterRecord *state);
-
-s32 fn_1_D3BC(void);
-
-s32 fn_1_D3CC(void);
 
 /* Changes a prop's motion when its sequence requests a different motion index. */
 static inline void M675SequenceMotionSet(OMOBJ *object, s32 index, s32 setShape)

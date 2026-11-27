@@ -95,7 +95,7 @@ static void Build_Tree_ForChinese(struct _ENGINE *pEngine, struct _NODE *pNodeTa
 
     VertexIndex = 0;
     NodeIndex = 1;
-    for (pSent = (struct _DYNPROG_RESULT_NODE *)pEngine->pRes->pResult; pSent != NULL;
+    for (pSent = pEngine->pRes->pResult; pSent != NULL;
         pSent = pSent->pNext) {
         iNode = 0;
         OldPronID = 0;
@@ -809,7 +809,7 @@ unsigned char CreateSecondPassContext_ForChinese(struct _ENGINE *pEngine)
     pStateInDict = pEngine->CtxInfo.pDynProgCtxInfo->pStateInDict;
     StateDictIndex = *pBeginOfWords;
     pDimensionsOfToneConversionMatrix =
-        ((u16 *)pLang->langGetpDimensionsOfToneConversionMatrix(pLang));
+        pLang->langGetpDimensionsOfToneConversionMatrix(pLang);
     pChineseSecondPassInfo = pEngine->CtxInfo.pChineseSecondPassInfo;
     if (pEngine->CtxInfo.pSecondPassDynProgCtxInfo != NULL)
         FreeSecondPassContext_ForChinese(pEngine);
@@ -829,8 +829,8 @@ unsigned char CreateSecondPassContext_ForChinese(struct _ENGINE *pEngine)
     pGroupedArgs->pCtxLexicon = pChineseSecondPassInfo->pCtxLexicon;
     pGroupedArgs->pCtxPronBegin = pChineseSecondPassInfo->pCtxPronBegin;
     pGroupedArgs->pSpeechUnitLex = pLang->langGetpSpeechUnit(pLang);
-    pGroupedArgs->pTCM = ((u16 *)pLang->langGetpToneConversionMatrix(pLang))
-                         - *((u16 *)pLang->langGetOffsetForFinals(pLang));
+    pGroupedArgs->pTCM = pLang->langGetpToneConversionMatrix(pLang)
+                         - *pLang->langGetOffsetForFinals(pLang);
     pGroupedArgs->NbrOfFinals = pDimensionsOfToneConversionMatrix[2];
     pGroupedArgs->NbrOfFinals_x_NbrOfLeftTones =
         pDimensionsOfToneConversionMatrix[2] * pDimensionsOfToneConversionMatrix[1];

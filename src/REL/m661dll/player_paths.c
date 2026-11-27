@@ -86,8 +86,6 @@ typedef struct PlaneEdge {
 #include "game/board/masu.h"
 #include "game/board/player.h"
 
-s16 fn_1_24470(Point3d position);
-
 #include "REL/m661dll.h"
 
 

@@ -1,4 +1,5 @@
 /* Sets up Banana Shake and handles its opening, play and result sequence. */
+#include "REL/m675Dll/module_types.h"
 #include "REL/minigame_camera_work.h"
 #include "REL/minigame_positional_audio.h"
 #include "REL/minigame_fog.h"
@@ -24,28 +25,13 @@ s16 lbl_1_bss_1C[4], lbl_1_bss_14[4], lbl_1_bss_C[4], lbl_1_bss_4[4];
 s32 lbl_1_bss_0; /* Set after the opening prop sequence has finished. */
 
 void fn_1_4E4(s16, s16);
-void fn_1_BBC(OMOBJMAN *);
-void fn_1_C84(OMOBJMAN *, Vec *, Vec *, GXColor *);
-void fn_1_136C(OMOBJMAN *, u32, f32, f32, f32, f32, OM_CAMERA_VIEW *);
 s32 fn_1_A38(s32);
-void fn_1_2414(s32, void *);
 void fn_1_95C(OMOBJ *, void *, s32);
 void fn_1_1FC8(void (*callback)(OMOBJ *, void *, s32));
 void fn_1_2F38(OMOBJMAN *, void *);
-void fn_1_E9A8(OMOBJMAN *);
-void fn_1_F118(OMOBJMAN *);
-void fn_1_4F2C(OMOBJMAN *);
-void fn_1_7554(OMOBJMAN *);
-void fn_1_D638(OMOBJMAN *);
 s32 fn_1_8BC(s16, s16);
-s32 fn_1_D3BC(void);
-void fn_1_F004(void);
-s32 fn_1_F058(s32);
 void fn_1_766C(void), fn_1_5048(void), fn_1_EA30(void);
 void fn_1_4BB4(Vec *, Vec *, float, Vec *);
-void fn_1_1DD8(s32, Vec *, Vec *, float, float);
-void fn_1_24CC(s32);
-
 /* Camera and light settings used during setup. */
 OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, 500.0f, 0.0f}, {-5.0f, 0.0f, 0.0f}, 2000.0f};
 Vec lbl_1_data_1C = {0.0f, 800.0f, 0.0f};

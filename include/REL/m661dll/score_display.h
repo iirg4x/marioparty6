@@ -13,6 +13,9 @@ extern "C" {
 #endif
 extern ScoreDisplay lbl_1_bss_0[2];
 void fn_1_249A8(void);
+
+/* Score display updates. */
+void fn_1_59F0(void);
 #ifdef __cplusplus
 }
 #endif

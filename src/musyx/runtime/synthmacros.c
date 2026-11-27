@@ -367,7 +367,7 @@ static void mcmdIfKey(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro((cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) != NULL) {
+  if ((addr = dataGetMacro((cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) != NULL) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
   }
@@ -379,7 +379,7 @@ static void mcmdIfVelocity(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
+  if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
   }
@@ -397,7 +397,7 @@ static void mcmdIfModulation(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
+  if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)(cstep->para[1]);
   }
@@ -409,7 +409,7 @@ static void mcmdIfRandom(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
+    if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
   }
@@ -417,7 +417,7 @@ static void mcmdIfRandom(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
 static u32 mcmdGoto(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r31
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
+    if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
     return 0;
@@ -428,7 +428,7 @@ static u32 mcmdGoto(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
 static u32 mcmdGosub(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r30
-  if ((addr = (MSTEP*)dataGetMacro((u16)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) != NULL) {
+  if ((addr = dataGetMacro((u16)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) != NULL) {
     svoice->callStackIndex = (svoice->callStackIndex + 1) & 3;
     svoice->callStack[svoice->callStackIndex].addr = svoice->addr;
     svoice->callStack[svoice->callStackIndex].curAddr = svoice->curAddr;
@@ -447,7 +447,7 @@ static u32 mcmdGosub(SYNTH_VOICE* svoice, MSTEP* cstep) {
 static void mcmdTrapEvent(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r29
   u8 t;        // r30
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
+  if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
     t = (u8)(cstep->para[0] >> 8);
     svoice->trapEventAddr[t] = addr;
     svoice->trapEventCurAddr[t] = addr + (u16)cstep->para[1];
@@ -1058,7 +1058,7 @@ static u32 TranslateVolume(u32 volume, u16 curve) {
   s32 d;     // r27
 
   if (curve != MAC_CURVE_NONE) {
-    if ((ptr = (u8*)dataGetCurve(curve))) {
+    if ((ptr = dataGetCurve(curve))) {
       vhigh = (volume >> 16) & MAC_PACK_MASK_HALFWORD;
       vlow = volume & MAC_PACK_MASK_HALFWORD;
 

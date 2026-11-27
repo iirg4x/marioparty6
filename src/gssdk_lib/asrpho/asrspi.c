@@ -555,16 +555,18 @@ long asrspi_CloseEngine(void *hAsrSpi)
 /* Reads the current recognition state from the engine. */
 long asrspi_GetState(void *hAsrSpi, enum _ASRSPI_STATE *pState)
 {
+    struct ASRSPItag *pAsrSpi = hAsrSpi;
+
     if (hAsrSpi == NULL) {
         return 0x80040083;
     }
-    if (((struct ASRSPItag *)hAsrSpi)->HandleValidityCheck != 0x2B67) {
+    if (pAsrSpi->HandleValidityCheck != 0x2B67) {
         return 0x80040001;
     }
     if (pState == NULL) {
         return 0x80040083;
     }
-    *pState = ((struct ASRSPItag *)hAsrSpi)->State;
+    *pState = pAsrSpi->State;
     return 0;
 }
 
@@ -617,7 +619,7 @@ long asrspi_ActivateLng(void *hAsrSpi, void *pAsrSpiLng)
             }
             return 0x80040008;
         }
-        hSpiLng = casrImportData(pAsrSpi->hHeap, (struct _DATA *)pAsrSpiLng);
+        hSpiLng = casrImportData(pAsrSpi->hHeap, pAsrSpiLng);
         if (hSpiLng == NULL) {
             if (pAsrSpi->hCritSec != NULL) {
                 critsec_Enter(pAsrSpi->hCritSec);

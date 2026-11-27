@@ -1,6 +1,7 @@
 /* Stage setup: loads the players, stage models and pieces, places the pieces at random
  * free points, creates the spotlight, timer and score display, and runs the opening
  * scene. */
+#include "REL/m661dll/timer.h"
 #include "REL/m661dll/model_setup.h"
 #include "game/data.h"
 #include "game/hu3d.h"
@@ -77,21 +78,12 @@ s32 lbl_1_data_100[35] = {
 #include "game/board/player.h"
 
 s32 fn_1_20E50(M661PlayerState *player, s16 advance);
-s32 fn_1_2EA4(f32 *, f32, f32, f32);
-
 #include "REL/m661dll/routes.h"
 #include "REL/m661dll/score_display.h"
 
 extern void fn_1_68A8(MGACTOR *, int);
 extern void fn_1_6928(MGACTOR *, int);
-extern void fn_1_2B58(void);
-extern MGTIMER *fn_1_2FC4(int, int, int, float, float);
-
 s32 fn_1_AAB4(void);
-void fn_1_71C(void);
-void fn_1_2B58(void);
-void fn_1_24E8(void);
-
 /* Prepares the actors, props, lighting, particles, and score display before play. */
 s32 fn_1_88B8(void)
 {

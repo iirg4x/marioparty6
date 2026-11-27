@@ -1,4 +1,5 @@
 /* Player input, movement, character motions and collision responses. */
+#include "REL/m675Dll/module_types.h"
 #include "REL/minigame_ground_effect.h"
 #include "REL/m675Dll/actor_state.h"
 #include "dolphin/math.h"
@@ -87,23 +88,10 @@ u32 lbl_1_bss_2FC;
 u32 lbl_1_bss_2F8;
 M675PlayerWork *lbl_1_bss_2E4[5];
 s32 lbl_1_bss_2E0;
-void fn_1_B14(s32,s32,s32);
 s32 fn_1_A98(s32);
-void fn_1_B4C(s32);
-s32 fn_1_B6C(void);
-s32 fn_1_D3CC(void);
-s32 fn_1_D494(s32,s32);
 s32 fn_1_A60(void);
-s32 fn_1_F058(s32);
-Vec *fn_1_D550(s32,s32);
 s32 fn_1_32EC(Vec *);
-void fn_1_4424(s32,s32,Vec *,s32,s32);
 void fn_1_4BB4(Vec *,Vec *,f32,Vec *);
-f32 fn_1_47DC(f32,f32,f32);
-f32 fn_1_48F8(f32,f32);
-s32 fn_1_10170(M675Collision *);
-void fn_1_E918(MinigameGroundEffect *);
-void fn_1_4F2C(HUPROCESS *manager);
 void fn_1_5048(void);
 void fn_1_506C(OMOBJ *manager);
 void fn_1_50BC(OMOBJ *manager);
@@ -118,8 +106,6 @@ void fn_1_5FCC(OMOBJ *object);
 void fn_1_6068(OMOBJ *object, s32 effect);
 void fn_1_60DC(M675PlayerWork *state);
 void fn_1_6198(OMOBJ *object);
-void fn_1_61F4(M675ActorState *state);
-void fn_1_6210(M675ActorState *state, s32 motionIndex, f32 speed);
 void fn_1_621C(OMOBJ *object);
 void fn_1_6284(OMOBJ *object, s32 index);
 s32 fn_1_6460(OMOBJ *object);
@@ -130,8 +116,6 @@ void fn_1_67CC(M675PlayerWork *state);
 s32 fn_1_68B0(M675PlayerWork *work, Vec *target, f32 targetAngle,
     f32 speed);
 void fn_1_6E78(M675PlayerWork *work);
-void fn_1_74C8(M675ActorState *state);
-void fn_1_74FC(M675ActorState *state, s32 modelId);
 void fn_1_516C(M675PlayerWork *work);
 
 u32 lbl_1_data_100[9] = {

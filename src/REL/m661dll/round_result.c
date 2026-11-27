@@ -1,5 +1,6 @@
 /* Round result: the per-frame steps that close a round and start each player's
  * result motion. */
+#include "REL/m661dll/timer.h"
 #include "REL/m661dll/model_setup.h"
 
 #include "dolphin/types.h"
@@ -162,8 +163,6 @@ s32 fn_1_BD48(void) {
 
 
 extern f32 lbl_802C028C;
-
-extern void fn_1_308C(MGTIMER *);
 
 
 /* Runs the results sequence, including winner staging, coin awards, and the exit wipe. */

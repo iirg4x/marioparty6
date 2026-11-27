@@ -781,9 +781,9 @@ unsigned char CreateSecondPassTreeContext_ForChinese(struct _ENGINE *pEngine)
     pGroupedArgs->pEngine = pEngine;
     pGroupedArgs->pCtxLexicon = pChineseSecondPassInfo->pCtxLexicon;
     pGroupedArgs->pCtxPronBegin = pChineseSecondPassInfo->pCtxPronBegin;
-    pGroupedArgs->pSpeechUnitLex = (const unsigned long *)pLang->langGetpSpeechUnit(pLang);
-    pGroupedArgs->pTCM = (const unsigned short *)pLang->langGetpToneConversionMatrix(pLang)
-                         - *(const unsigned short *)pLang->langGetOffsetForFinals(pLang);
+    pGroupedArgs->pSpeechUnitLex = pLang->langGetpSpeechUnit(pLang);
+    pGroupedArgs->pTCM = pLang->langGetpToneConversionMatrix(pLang)
+                         - *pLang->langGetOffsetForFinals(pLang);
     pGroupedArgs->NbrOfFinals = pDimensionsOfToneConversionMatrix[2];
     pGroupedArgs->NbrOfFinals_x_NbrOfLeftTones =
         pDimensionsOfToneConversionMatrix[2] * pDimensionsOfToneConversionMatrix[1];

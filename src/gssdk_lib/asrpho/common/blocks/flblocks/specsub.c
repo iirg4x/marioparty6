@@ -342,7 +342,7 @@ static void ProcessSpecSub(struct _BLOCK *_This, void *pInputs, int NbrInputs)
     }
     pSpecIn = ((void **) pInputs)[0];
 
-    pFrameType = (u8 *) ((void **) pInputs)[1];
+    pFrameType = ((void **) pInputs)[1];
 
     pEnergyOut = qEnQueueOne(This->BaseBlock.OutputQueues[0].pQ);
     pSpecOut = qEnQueueOne(This->BaseBlock.OutputQueues[1].pQ);

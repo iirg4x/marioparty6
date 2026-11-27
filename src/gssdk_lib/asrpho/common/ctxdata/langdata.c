@@ -389,10 +389,10 @@ static u16 *_langGetpPhenUserWordTraining(struct _LANGUAGE *pLang)
 /* Locates the stored dimensions of the tone conversion matrix. */
 static u16 *_langGetpDimensionsOfToneConversionMatrix(struct _LANGUAGE *pLang)
 {
-    u16 *pPhenUserWordTraining = _langGetpPhenUserWordTraining(pLang);
-    char *pCandidate = (char *)(pPhenUserWordTraining +
-                               _langGetNbrPhenUserWordTraining(pLang));
+    void *pPhenUserWordTraining = _langGetpPhenUserWordTraining(pLang);
+    char *pCandidate = pPhenUserWordTraining;
 
+    pCandidate += _langGetNbrPhenUserWordTraining(pLang) * sizeof(u16);
     if (pLang->langCheckBitField(pLang, 4)) {
         return (u16 *)(pCandidate + _cdbGetCodeBookSize(pLang, (struct _CDBINFO *)pCandidate));
     }

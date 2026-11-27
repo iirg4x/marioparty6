@@ -99,19 +99,20 @@ s16 sndSin(u16 angle) {
   return -sndSintab[SINTAB_ELEMENT_COUNT - (angle & SINTAB_ELEMENT_COUNT)];
 }
 
+/* Find the entry that compares equal to the key in a sorted table. */
 void* sndBSearch(void* key, void* base, s32 num, s32 len, SND_COMPARE cmp) {
   long l;    // r31
   long r;    // r30
   long m;    // r29
   long c;    // r28
   void* ptr; // r27
+  u8* entries = base;
 
   if (num != 0) {
     l = 1;
     r = num;
     do {
-      // This is kind of gross....
-      if ((c = cmp(key, (ptr = (void*)((size_t)base + len * ((m = (l + r) >> 1) - 1))))) == 0) {
+      if ((c = cmp(key, (ptr = entries + len * ((m = (l + r) >> 1) - 1)))) == 0) {
         return ptr;
       }
 

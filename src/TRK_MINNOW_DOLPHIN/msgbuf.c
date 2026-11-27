@@ -121,8 +121,9 @@ DSError TRKAppendBuffer(TRKBuffer* msg, const void* data, size_t length)
 	}
 
 	if (length == 1) {
-		// If the length of bytes to append is 1, just copy the byte over
-		msg->data[msg->position] = ((u8*)data)[0];
+		// Copy a single byte directly.
+		const u8* byteData = data;
+		msg->data[msg->position] = byteData[0];
 	} else {
 		// Otherwise, use memcpy
 		TRK_memcpy(msg->data + msg->position, data, length);

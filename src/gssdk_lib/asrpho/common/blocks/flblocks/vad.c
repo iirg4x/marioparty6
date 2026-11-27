@@ -650,11 +650,11 @@ static void ProcessVad(struct _BLOCK *_This, void *pInputs, int NbrInputs)
     if (pEnergyIn != NULL) {
         This->FrameCounter++;
         VadFastTrackProcess(This, *pEnergyIn);
-        pFrameTypeOut = (f32 *) qEnQueueOne(This->BaseBlock.OutputQueues[0].pQ);
+        pFrameTypeOut = qEnQueueOne(This->BaseBlock.OutputQueues[0].pQ);
         *pFrameTypeOut = This->FrameType;
 
         if (This->OutputLevels != 0) {
-            pLevelsOut = (f32 *) qEnQueueOne(This->BaseBlock.OutputQueues[1].pQ);
+            pLevelsOut = qEnQueueOne(This->BaseBlock.OutputQueues[1].pQ);
             *pLevelsOut++ = *pEnergyIn;
             *pLevelsOut++ = This->SignalPeakTrackerState;
             *pLevelsOut++ = This->SpeechThr;

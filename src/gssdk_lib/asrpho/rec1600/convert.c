@@ -267,7 +267,7 @@ u8 CreateCtxInfo(struct _ENGINE *pEngine, struct _ASRSPI_CONTEXT *pCtx)
     if (pEngine->CtxInfo.pDynProgCtxInfo->pStateInDict == NULL) {
         goto failed;
     }
-    pStateInDict = (struct _DICTSTATE *)pEngine->CtxInfo.pDynProgCtxInfo->pStateInDict;
+    pStateInDict = pEngine->CtxInfo.pDynProgCtxInfo->pStateInDict;
     pDictState = pStateInDict;
     pBeginOfWords = pEngine->CtxInfo.pDynProgCtxInfo->pBeginOfWords;
     pBeginOfProns = pBeginOfWords + uNbrOfWords + 1;
@@ -456,7 +456,7 @@ u32 CalcAccuracyCtxInfo(struct _ENGINE *pEngine)
     unsigned long *wordBoundaries = accuracyInfo->pSyntax;
     unsigned long *end = wordBoundaries + wordCount;
     u32 accuracy = (u32)((end[0] - wordBoundaries[0]) * 50) /
-        (u32)(((u8 *)end - (u8 *)wordBoundaries) / 4);
+        (u32)(end - wordBoundaries);
     u32 minimumAccuracy;
 
     if (pEngine->IsActiveContextSpelling != 0) {

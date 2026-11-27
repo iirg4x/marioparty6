@@ -1,4 +1,5 @@
 /* Runs Banana Shake's registered collision checks and contact callbacks. */
+#include "REL/m675Dll/module_types.h"
 #include "REL/m675Dll/actor_state.h"
 #include "dolphin/math.h"
 #include "dolphin/mtx.h"

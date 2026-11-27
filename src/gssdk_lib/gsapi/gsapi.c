@@ -289,7 +289,6 @@ long StopListening(struct _GSAPI_ENGINE *pEngine)
 /* Closes the recognizers and releases the shared resource and heap. */
 long gsapi_Close(void)
 {
-    unsigned long engineOffset;
     struct _GSAPI_ENGINE *pEngine;
     long i;
 
@@ -297,9 +296,8 @@ long gsapi_Close(void)
         return gGSAPI.lhError = GSAPI_ERROR_NOT_OPEN;
     }
 
-    for (i = 0, engineOffset = 0; i < gGSAPI.u16MaxRecognizers;
-         engineOffset += sizeof(struct _GSAPI_ENGINE), i++) {
-        pEngine = (struct _GSAPI_ENGINE *)((u8 *)gGSAPI.Recognizers + engineOffset);
+    for (i = 0; i < gGSAPI.u16MaxRecognizers; i++) {
+        pEngine = &gGSAPI.Recognizers[i];
         if (pEngine->hAsrSpiEngine != NULL) {
             gGSAPI.lhError = gsapi_EngineClose(pEngine);
         }
@@ -564,7 +562,7 @@ long gsapi_EngineSetMode(void *hEngine, unsigned long Mode)
     if ((Mode & 1) != 0 && (Mode & 2) != 0) {
         return GSAPI_ERROR_MODE;
     }
-    pEngine = (struct _GSAPI_ENGINE *)hEngine;
+    pEngine = hEngine;
     pEngine->Mode = Mode;
     return 0;
 }
@@ -583,7 +581,7 @@ long gsapi_EngineSetParam(void *hEngine, long ParamId, long ParamValue)
     if (ParamId < 0 || ParamId > GSAPI_PARAM_LAST - 1) {
         return GSAPI_ERROR_PARAMETER_ID;
     }
-    pEngine = (struct _GSAPI_ENGINE *)hEngine;
+    pEngine = hEngine;
     if (pEngine->TempContext.pCtx == NULL) {
         return GSAPI_ERROR_NO_PARAMETERS;
     }

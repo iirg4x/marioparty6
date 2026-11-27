@@ -194,9 +194,7 @@ s32 FileBoxInit(s16 sourceWindowId)
             } else {
                 for (i = 0; i < 3; i++) {
                     char buf[8];
-                    /* Formatting the box number also stores the format-string address in result;
-                    * the later save call replaces it before the error checks. */
-                    sprintf(buf, (char *)(result = (s32)"%d"), i + 1);
+                    sprintf(buf, "%d", i + 1);
                     if (boxStatus[i] == 1) {
                         HuWinInsertMesSet(winId, (u32)buf, 0);
                         HuWinMesSet(winId, FILE_SELECT_SAVE_REPAIR);
