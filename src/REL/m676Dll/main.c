@@ -81,7 +81,7 @@ s16 lbl_1_bss_150[4];
 s32 lbl_1_bss_14C;
 s32 lbl_1_bss_148;
 s32 lbl_1_bss_144;
-M676CameraFitSphere lbl_1_bss_4[20];
+MinigameCameraFitSphere lbl_1_bss_4[20];
 MGTIMER *lbl_1_bss_0;
 
 /* Run module constructors, then initialize this minigame's board state. */
@@ -351,7 +351,7 @@ s32 fn_1_A4C(s16 mode, s16 state) {
 /* Called by scene objects to add a world-space sphere to the camera-fit set. */
 void fn_1_A70(f32 x, f32 y, f32 z, f32 w) {
     if (lbl_1_bss_144 < 20) {
-        M676CameraFitSphere *slot = &lbl_1_bss_4[lbl_1_bss_144++];
+        MinigameCameraFitSphere *slot = &lbl_1_bss_4[lbl_1_bss_144++];
         slot->center.x = x;
         slot->center.y = y;
         slot->center.z = z;

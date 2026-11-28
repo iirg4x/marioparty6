@@ -20,7 +20,6 @@ typedef struct MdsingModel {
     u8 trailingBytes[6];
 } MDSING_MODEL;
 
-typedef MDSING_MODEL LBL_1_BSS_288_ENTRY;
 extern MDSING_MODEL lbl_1_bss_E74[16];
 
 #endif

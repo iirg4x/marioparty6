@@ -451,9 +451,11 @@ static BOOL _langCheckBitField(struct _LANGUAGE *pLang, unsigned long bit)
 }
 
 /* Locates the transition-word lexicon after its header. */
-static u16 *_transwGetpTransWordLex(struct _TRANSWORDINFO *pTransWord)
+static u16 *_transwGetpTransWordLex(void *pTransWord)
 {
-    return (u16 *)(pTransWord + 1);
+    struct _TRANSWORDINFO *pTransWordInfo = pTransWord;
+
+    return (u16 *)(pTransWordInfo + 1);
 }
 
 /* Locates the table of transition-word offsets. */

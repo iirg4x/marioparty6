@@ -1,6 +1,7 @@
 /* Camera, light, fog, and positional-audio state used by the minigame. */
 #ifndef REL_M676DLL_CAMERA_TYPES_H
 #define REL_M676DLL_CAMERA_TYPES_H
+#include "REL/minigame_camera_fit.h"
 #include "REL/minigame_fog_work.h"
 
 #include "REL/minigame_positional_audio.h"
@@ -47,13 +48,6 @@ typedef struct M676LightSettings {
     MinigameFogParams fog[2];
 } M676LightSettings;
 
-typedef struct M676AudioWork {
-    /* Shared audio settings, update callback, and active sound records. */
-    MinigameAudioRange *config;
-    OMOBJ_FUNC callback;
-    MinigameAudioRecord records[64];
-} M676AudioWork;
-
 typedef struct M676CameraFitParams {
     /* View direction, up direction, field of view in radians, and screen dimensions/margins
      * in pixels. */
@@ -63,11 +57,6 @@ typedef struct M676CameraFitParams {
     s32 margin[2];
 } M676CameraFitParams;
 
-typedef struct M676CameraFitSphere {
-    /* World-space sphere used to fit the camera view. */
-    Vec center;
-    f32 radius;
-} M676CameraFitSphere;
 void fn_1_16A0(OMOBJMAN *manager);
 void fn_1_1768(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color);
 void fn_1_18C8(void);
@@ -77,7 +66,7 @@ void fn_1_28BC(s32 camera, Vec *direction, Vec *target, float fov, float radius)
 Vec *fn_1_2E90(void);
 void fn_1_2EF8(u32 cameras, void *data);
 void fn_1_2FB0(u32 cameraMask);
-double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 count, Vec *out);
+double fn_1_34D4(M676CameraFitParams *params, MinigameCameraFitSphere *spheres, s32 count, Vec *out);
 void fn_1_3A1C(HUPROCESS *process, MinigameAudioRange *config);
 s32 fn_1_3DD0(Vec *position);
 void fn_1_4754(s32 effect, Vec *position);

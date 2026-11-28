@@ -48,7 +48,7 @@ void fn_1_2EC0(u8 red, u8 green, u8 blue);
 void fn_1_2EF8(u32 cameras, void *data);
 void fn_1_2FB0(u32 cameraMask);
 BOOL fn_1_3450(u32 cameras);
-double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 count, Vec *out);
+double fn_1_34D4(M676CameraFitParams *params, MinigameCameraFitSphere *spheres, s32 count, Vec *out);
 void fn_1_3A1C(HUPROCESS *process, MinigameAudioRange *config);
 void fn_1_3AB8(OMOBJ *obj);
 void fn_1_3B20(OMOBJ *object);
@@ -626,7 +626,7 @@ BOOL fn_1_3450(u32 cameras)
 
 /* Fits the camera, writes its position to out, and returns zoom; initializes from spheres[0]
  * even when count is zero. */
-double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 count, Vec *out)
+double fn_1_34D4(M676CameraFitParams *params, MinigameCameraFitSphere *spheres, s32 count, Vec *out)
 {
     Mtx view;
     Mtx inverse;
@@ -642,7 +642,7 @@ double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 
     double distanceY;
     double tangent;
     double distance;
-    M676CameraFitSphere *sphere;
+    MinigameCameraFitSphere *sphere;
     s32 i;
 
     MTXLookAt(view, &origin, &params->up, &params->direction);
@@ -700,7 +700,7 @@ double fn_1_34D4(M676CameraFitParams *params, M676CameraFitSphere *spheres, s32 
 /* Scene setup: creates the shared sound object and stores its configuration. */
 void fn_1_3A1C(HUPROCESS *process, MinigameAudioRange *config) {
     OMOBJ *object;
-    M676AudioWork *data;
+    MinigameAudioWork *data;
 
     object = fn_8003AB38(process, 30, 0, 0, -1, fn_1_3AB8);
     lbl_1_bss_420 = object;
@@ -713,7 +713,7 @@ void fn_1_3A1C(HUPROCESS *process, MinigameAudioRange *config) {
 
 /* Audio object's update callback: refreshes tracked sounds and then calls its client. */
 void fn_1_3AB8(OMOBJ *obj) {
-    M676AudioWork *state = lbl_1_bss_420->data;
+    MinigameAudioWork *state = lbl_1_bss_420->data;
 
     fn_1_3B78(obj);
     if (state->callback != NULL) {
@@ -724,8 +724,8 @@ void fn_1_3AB8(OMOBJ *obj) {
 /* Audio setup: marks all 64 sound records as unused. */
 void fn_1_3B20(OMOBJ *object)
 {
-    M676AudioWork *state = lbl_1_bss_420->data;
-    MinigameAudioRecord *record = state->records;
+    MinigameAudioWork *state = lbl_1_bss_420->data;
+    MinigameAudioRecord *record = state->entries;
     int index;
 
     for (index = 0; index < 64; index++, record++) {
@@ -736,12 +736,12 @@ void fn_1_3B20(OMOBJ *object)
 /* Audio object's update: releases ended sounds and refreshes active pan and volume. */
 void fn_1_3B78(OMOBJ *object)
 {
-    M676AudioWork *state;
+    MinigameAudioWork *state;
     MinigameAudioRecord *record;
     int index;
 
     state = lbl_1_bss_420->data;
-    record = state->records;
+    record = state->entries;
     for (index = 0; index < 64; index++, record++) {
         if (record->handle != -1) {
             if (HuAudFXStatusGet(record->handle) != 2) {
@@ -763,7 +763,7 @@ void fn_1_3B78(OMOBJ *object)
 /* Sets the client callback invoked by the shared audio object's update. */
 void fn_1_3C48(OMOBJ_FUNC callback)
 {
-    M676AudioWork *record;
+    MinigameAudioWork *record;
     if (lbl_1_bss_420 != NULL) {
         record = lbl_1_bss_420->data;
         record->callback = callback;
@@ -779,7 +779,7 @@ int fn_1_3C88(float screenX) {
  * clamped pan range; returns center pan when no configuration applies. */
 s32 fn_1_3CB4(u32 cameras, float panCoordinate)
 {
-    M676AudioWork *work;
+    MinigameAudioWork *work;
     MinigameAudioRange *config;
     s32 pan = 64;
     if (lbl_1_bss_420 != NULL) {
@@ -826,7 +826,7 @@ void fn_1_3FF0(Vec *position)
 /* Computes sound volume from the position's depth in the selected camera view. */
 s32 fn_1_401C(u32 cameras, Vec *position)
 {
-    M676AudioWork *audio;
+    MinigameAudioWork *audio;
     MinigameAudioRange *config;
     M676CameraWork *work;
     M676CameraRecord *camera;
@@ -938,8 +938,8 @@ void fn_1_4F08(int effect, int handle, Vec *position, int panEnabled, int volume
 void fn_1_4F54(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    M676AudioWork *state=lbl_1_bss_420->data;
-    MinigameAudioRecord *record=state->records;
+    MinigameAudioWork *state=lbl_1_bss_420->data;
+    MinigameAudioRecord *record=state->entries;
     int index;
     for(index=0;index<64;index++,record++) {
         if(record->handle==-1) {

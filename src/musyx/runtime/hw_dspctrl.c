@@ -369,7 +369,7 @@ SND_MESSAGE_CALLBACK salMessageCallback = NULL;
 bool salInitDspCtrl(u8 numVoices, u8 numStudios, u32 defaultStudioDPL2) {
   u32 i;         // r31
   u32 j;         // r27
-  s16* itdPtr;   // r28
+  size_t itdPtr; // r28
 
   salNumVoices = numVoices;
   salMaxStudioNum = numStudios;
@@ -391,7 +391,7 @@ bool salInitDspCtrl(u8 numVoices, u8 numStudios, u32 defaultStudioDPL2) {
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
           DCInvalidateRange(dspITDBuffer, salNumVoices * 64);
 #endif
-          itdPtr = dspITDBuffer;
+          itdPtr = (u32)dspITDBuffer;
           for (i = 0; i < salNumVoices; ++i) {
             MUSY_DEBUG("Initializing voice %d...\n", i);
             dspVoice[i].state = 0;
@@ -410,8 +410,8 @@ bool salInitDspCtrl(u8 numVoices, u8 numStudios, u32 defaultStudioDPL2) {
             dspVoice[i].pb->update.dataLo = ((u16)dspVoice[i].patchData);
             dspVoice[i].pb->itd.bufferHi = ((u32)itdPtr >> 16);
             dspVoice[i].pb->itd.bufferLo = ((u16)itdPtr);
-            dspVoice[i].itdBuffer = itdPtr;
-            itdPtr += 32;
+            dspVoice[i].itdBuffer = (void*)itdPtr;
+            itdPtr += 64;
             dspVoice[i].virtualSampleID = 4294967295U;
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
             DCStoreRangeNoSync(dspVoice[i].pb, sizeof(_PB));

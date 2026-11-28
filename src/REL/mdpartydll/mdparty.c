@@ -98,7 +98,7 @@ typedef struct Lbl1DataE12Entry {
                          * character. */
 } LBL_1_DATA_E12_ENTRY;
 
-typedef struct Lbl1Bss288Entry {
+typedef struct MdpartyMenuModel {
     HU3D_MODELID modelId; /* Menu display model for a character, board, or option. */
     HU3D_ANIMID animId[4]; /* Texture animation slots attached to the model. */
     s16 unk_A; /* Storage not read by this module. */
@@ -108,7 +108,7 @@ typedef struct Lbl1Bss288Entry {
     s16 highlightSpinFrame; /* Highlight delay counter; clamped to 35 once the board model starts
                              * spinning. */
     u8 unk_32[6]; /* Cleared when the model set is created, never read. */
-} LBL_1_BSS_288_ENTRY;
+} MdpartyMenuModel;
 
 typedef struct Lbl1Bss1C {
     OMOBJ *obj; /* Object holding the four player marker models. */
@@ -2881,7 +2881,7 @@ s16 fn_1_BBD8(s16 padNo, s16 *current,
  * -1 overrides that reset. */
 void fn_1_C158(s16 modelNo, s16 animNo, s16 dataNo, s16 bank)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
 
     fn_80030D50(entry->animId[animNo], lbl_1_bss_800[dataNo]);
     if (bank != -1) {
@@ -2906,7 +2906,7 @@ void fn_1_C200(s16 modelNo, s16 dataNo)
 void fn_1_C28C(
     s16 modelNo, s16 time, s16 duration, HuVecF *pos, float scale)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
     float value;
 
     if (time == 0) {
@@ -2933,7 +2933,7 @@ inline void fn_1_C28C(
 /* Spins a display model away and shrinks it during a menu transition. */
 void fn_1_C698(s16 modelNo, s16 time, s16 duration)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
     float value;
 
     if (time == 0) {
@@ -2964,7 +2964,7 @@ inline void fn_1_C698(s16 modelNo, s16 time, s16 duration);
 void fn_1_CA68(
     s16 modelNo, s16 time, s16 duration, HuVecF *pos, float scale)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
     HuVecF modelPos;
     float value;
 
@@ -2989,7 +2989,7 @@ inline void fn_1_CA68(
 void fn_1_D058(s16 modelNo, s16 dataNo, s16 dataOffset, s16 time,
     s16 duration, s16 direction)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
     HuVecF rot;
 
     if (time == 0 || time >= duration) {
@@ -3015,7 +3015,7 @@ inline void fn_1_D058(s16 modelNo, s16 dataNo, s16 dataOffset, s16 time,
  * argument only chooses how the captured starting yaw wraps. */
 void fn_1_D3E0(s16 modelNo, float angle, s16 time, s16 duration)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
     float rotY;
 
     if (time == 0) {
@@ -3091,7 +3091,7 @@ void fn_1_D748(void)
         lbl_1_bss_800[i] = HuSprAnimDataRead(lbl_1_data_800[i]);
     }
     for (i = 0; i < 25; i++) {
-        memset(&lbl_1_bss_288[i], 0, sizeof(LBL_1_BSS_288_ENTRY));
+        memset(&lbl_1_bss_288[i], 0, sizeof(MdpartyMenuModel));
         if (i == 0) {
             lbl_1_bss_288[i].modelId = fn_80025A04(fn_80008DD0(
                 MDPARTY_DATA_CHARACTER_SELECT_MODEL, 0x10000000, 2));
@@ -3324,7 +3324,7 @@ void fn_1_1158C(OMOBJ *obj)
 }
 
 /* Spins and shrinks a setup model for the ten-frame exit animation. */
-static inline void ShrinkSetupModel(LBL_1_BSS_288_ENTRY *entry, s16 frame)
+static inline void ShrinkSetupModel(MdpartyMenuModel *entry, s16 frame)
 {
     float value;
 
@@ -3352,7 +3352,7 @@ static inline void ShrinkSetupModel(LBL_1_BSS_288_ENTRY *entry, s16 frame)
 /* Spins and shrinks the four player-count models as the selector screen closes. */
 void fn_1_11EAC(OMOBJ *obj)
 {
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     s16 i;
     s16 time;
 
@@ -3372,7 +3372,7 @@ void fn_1_11EAC(OMOBJ *obj)
 void fn_1_12260(s16 modelNo)
 {
     HuVecF rot;
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
 
     fn_80026874(entry->modelId, &rot);
     rot.y += 6.0f;
@@ -3385,7 +3385,7 @@ void fn_1_12260(s16 modelNo)
 /* Character-selection updates reset cards that are not highlighted by an unconfirmed player. */
 void fn_1_122FC(s16 modelNo)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[modelNo];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[modelNo];
 
     fn_80026808(entry->modelId, 0.0f, 0.0f, 0.0f);
 }
@@ -3833,7 +3833,7 @@ void fn_1_14F64(OMOBJ *obj)
 void fn_1_150D0(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     OMOBJ *workObj;
     float value;
     s16 i;
@@ -3956,7 +3956,7 @@ void fn_1_160A0(OMOBJ *obj)
 void fn_1_16A8C(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     s32 characterModelIndex;
     s16 i;
     s16 frame;
@@ -3982,7 +3982,7 @@ void fn_1_16A8C(OMOBJ *obj)
  * roster marker scales, and spins and shrinks all 11 character cards. */
 void fn_1_16E84(OMOBJ *obj)
 {
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     s16 boardIndex;
     s16 i;
     s16 frame;
@@ -4009,7 +4009,7 @@ void fn_1_16E84(OMOBJ *obj)
 void fn_1_1733C(s16 boardIndex)
 {
     HuVecF modelVector;
-    LBL_1_BSS_288_ENTRY *modelEntry = &lbl_1_bss_288[boardIndex + 11];
+    MdpartyMenuModel *modelEntry = &lbl_1_bss_288[boardIndex + 11];
 
     fn_800267CC(modelEntry->modelId, &modelVector);
     fn_1_163C(&modelVector, &lbl_1_data_8A4[boardIndex + 7], 5.0f);
@@ -4032,7 +4032,7 @@ void fn_1_1733C(s16 boardIndex)
 /* Places a nonhighlighted board model in its selection slot and resets its transform. */
 void fn_1_1765C(s16 boardIndex)
 {
-    LBL_1_BSS_288_ENTRY *entry = &lbl_1_bss_288[boardIndex + 11];
+    MdpartyMenuModel *entry = &lbl_1_bss_288[boardIndex + 11];
 
     fn_80026790(entry->modelId, &lbl_1_data_8A4[boardIndex + 1]);
     fn_80026808(entry->modelId, 0.0f, 0.0f, 0.0f);
@@ -4214,7 +4214,7 @@ void fn_1_18AA4(OMOBJ *obj)
  * callback only in its unreachable result-1 branch. */
 void fn_1_1948C(OMOBJ *obj)
 {
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     s16 i;
     OMOBJ *selectionObj;
     s16 frame;
@@ -4321,7 +4321,7 @@ void fn_1_1A124(OMOBJ *obj)
 void fn_1_1A20C(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *playerSetup;
-    LBL_1_BSS_288_ENTRY *characterModel;
+    MdpartyMenuModel *characterModel;
     HuVecF targetPosition;
     float targetScale;
     s32 characterModelIndex;
@@ -4367,7 +4367,7 @@ void fn_1_1A20C(OMOBJ *obj)
 void fn_1_1A8B0(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *playerSetup;
-    LBL_1_BSS_288_ENTRY *characterModel;
+    MdpartyMenuModel *characterModel;
     HuVecF targetPosition;
     float targetScale;
     s32 characterModelIndex;
@@ -4407,7 +4407,7 @@ void fn_1_1A8B0(OMOBJ *obj)
 void fn_1_1AE60(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *playerSetup;
-    LBL_1_BSS_288_ENTRY *characterModel;
+    MdpartyMenuModel *characterModel;
     HuVecF targetPosition;
     float targetScale;
     s32 characterModelIndex;
@@ -4446,7 +4446,7 @@ void fn_1_1AE60(OMOBJ *obj)
 void fn_1_1B400(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *playerSetup;
-    LBL_1_BSS_288_ENTRY *characterModel;
+    MdpartyMenuModel *characterModel;
     HuVecF targetPosition;
     float targetScale;
     s16 playerIndex;
@@ -4989,7 +4989,7 @@ void fn_1_23224(OMOBJ *obj)
 void fn_1_232A0(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     HuVecF pos;
     float value;
     s32 modelNo;
@@ -5061,7 +5061,7 @@ void fn_1_23A00(OMOBJ *obj)
 void fn_1_23AC0(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     HuVecF pos;
     float value;
     s32 modelNo;
@@ -5172,7 +5172,7 @@ void fn_1_249A4(OMOBJ *obj)
 void fn_1_24A8C(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     HuVecF pos;
     float value;
     s32 modelNo;
@@ -5219,7 +5219,7 @@ void fn_1_24A8C(OMOBJ *obj)
 void fn_1_25160(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     HuVecF pos;
     float value;
     s32 modelNo;
@@ -5258,7 +5258,7 @@ void fn_1_25160(OMOBJ *obj)
 void fn_1_25740(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     HuVecF pos;
     float value;
     s32 modelNo;
@@ -5296,7 +5296,7 @@ void fn_1_25740(OMOBJ *obj)
 void fn_1_25D10(OMOBJ *obj)
 {
     LBL_1_BSS_9BC_ENTRY *player;
-    LBL_1_BSS_288_ENTRY *entry;
+    MdpartyMenuModel *entry;
     HuVecF pos;
     float value;
     s32 modelNo;
@@ -7211,7 +7211,7 @@ ANIMDATA *lbl_1_bss_93C[32];
 HUSPR_GROUPID lbl_1_bss_918[17];
 HUSPRID lbl_1_bss_8A4[58];
 ANIMDATA *lbl_1_bss_800[41];
-LBL_1_BSS_288_ENTRY lbl_1_bss_288[25];
+MdpartyMenuModel lbl_1_bss_288[25];
 MdpartyModelTransition lbl_1_bss_228[2];
 MdpartyModelTransition lbl_1_bss_1C8[2];
 MdpartyModelTransition lbl_1_bss_108[4];

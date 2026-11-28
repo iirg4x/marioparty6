@@ -85,8 +85,6 @@ extern NAME_SPRITE_CONFIG lbl_1_data_48C[];
 extern char lbl_1_data_B8[];
 extern char lbl_1_data_E2[];
 
-extern char lbl_1_data_1F3[];
-
 extern Vec lbl_1_bss_2E4[];
 extern ANIMDATA *lbl_1_bss_A8[];
 extern s32 lbl_1_bss_0[2];
@@ -94,8 +92,6 @@ extern s32 lbl_1_bss_0[2];
 extern char *lbl_1_data_88[];
 extern Vec lbl_1_data_154[];
 extern char *lbl_1_data_190[];
-extern char lbl_1_data_1E6[];
-extern char lbl_1_data_1EB[];
 extern char lbl_1_data_1F0[];
 
 extern s16 lbl_1_bss_37E;
@@ -1049,6 +1045,48 @@ void fn_1_35AC(s16 layer)
     }
 }
 
+OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, 250.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 7000.0f};
+OM_CAMERA_VIEW lbl_1_data_1C = {{0.0f, -4.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 2800.0f};
+char lbl_1_data_38[20] = "book_012-itemhook01";
+char lbl_1_data_4C[20] = "book_013-itemhook02";
+char lbl_1_data_60[20] = "book_014-itemhook03";
+char lbl_1_data_74[20] = "book_015-itemhook04";
+char *lbl_1_data_88[4] = {lbl_1_data_38, lbl_1_data_4C, lbl_1_data_60, lbl_1_data_74};
+int lbl_1_data_98[8] = {
+    FILESEL_ANM_12, FILESEL_ANM_13, FILESEL_ANM_14, FILESEL_ANM_15,
+    FILESEL_ANM_16, FILESEL_ANM_17, FILESEL_ANM_18, FILESEL_ANM_19,
+};
+char lbl_1_data_B8[42] = "******* FileSelect ObjectSetup *********\n";
+char lbl_1_data_E2[4] = "%d\n";
+HU3D_PARMAN_PARAM lbl_1_data_E8 = {
+    50,
+    0,
+    1.0f,
+    10.0f,
+    0.0f,
+    {0.0f, -0.02f, 0.0f},
+    2.0f,
+    1.0f,
+    20.0f,
+    0.98f,
+    2,
+    {{240, 224, 32, 255}, {255, 255, 64, 255}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+    {{192, 128, 16, 0}, {192, 64, 16, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+};
+char lbl_1_data_138[12] = "data_select";
+char lbl_1_data_144[16] = "data_select_ura";
+Vec lbl_1_data_154[3] = {{-130.0f, 120.0f, 30.0f}, {20.0f, 10.0f, 60.0f}, {170.0f, 90.0f, 30.0f}};
+char lbl_1_data_178[6] = "card1";
+char lbl_1_data_17E[6] = "card2";
+char lbl_1_data_184[6] = "card3";
+char lbl_1_data_18A[6] = "card4";
+char *lbl_1_data_190[4] = {lbl_1_data_178, lbl_1_data_17E, lbl_1_data_184, lbl_1_data_18A};
+char lbl_1_data_1A0[13] = "siori_waku01";
+char lbl_1_data_1AD[14] = "siori_moyou01";
+char lbl_1_data_1BB[13] = "siori_moji01";
+char lbl_1_data_1C8[21] = "siori_fix-itemhook_a";
+char lbl_1_data_1DD[9] = "ABCDEFGH";
+
 /* Called after loading, creating, copying, or erasing a save to refresh one panel's details. */
 void fn_1_36C4(s16 boxNo, s16 slotNumber)
 {
@@ -1092,15 +1130,15 @@ void fn_1_36C4(s16 boxNo, s16 slotNumber)
         }
         HuSprBankSet(sprId, 2, 11);
         HuSprBankSet(sprId, 5, 11);
-        sprintf(buf, lbl_1_data_1E6, q->mon + 1);
+        sprintf(buf, "%02d", q->mon + 1);
         for (i = 0; i < 2; i++) {
             HuSprBankSet(sprId, i, buf[i] & FILESEL_DECIMAL_DIGIT_MASK);
         }
-        sprintf(buf, lbl_1_data_1E6, q->mday);
+        sprintf(buf, "%02d", q->mday);
         for (i = 0; i < 2; i++) {
             HuSprBankSet(sprId, i + 3, buf[i] & FILESEL_DECIMAL_DIGIT_MASK);
         }
-        sprintf(buf, lbl_1_data_1EB, q->year);
+        sprintf(buf, "%04d", q->year);
         for (i = 0; i < 4; i++) {
             HuSprBankSet(sprId, i + 6, buf[i] & FILESEL_DECIMAL_DIGIT_MASK);
         }
@@ -1847,6 +1885,8 @@ void FileselWipeDraw(void)
     GXSetColorUpdate(1);
 }
 
+char lbl_1_data_1F0[3] = "%d";
+
 /* After selection, center the book and start the camera zoom. When the selected-slot
  * animation is enabled, move the chosen slot toward the book as the other slots shrink. */
 void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot)
@@ -1941,7 +1981,7 @@ void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot)
         }
         bp = &lbl_1_bss_D8[selectedBoxNo];
         fn_800267CC(bp->slotModel, &pos24);
-        OSReport(lbl_1_data_1F3, pos24.x, pos24.y, pos24.z);
+        OSReport("%f,%f,%f\n", pos24.x, pos24.y, pos24.z);
         if (frandmod(2) == 0) {
             dir = 1;
         } else {
@@ -2261,52 +2301,6 @@ void fn_1_8A34(void)
     lbl_1_bss_C = 0;
 }
 
-/* ==================== module .data definitions (head, 0x0..0x214) ==================== */
-OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, 250.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 7000.0f};
-OM_CAMERA_VIEW lbl_1_data_1C = {{0.0f, -4.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 2800.0f};
-char lbl_1_data_38[20] = "book_012-itemhook01";
-char lbl_1_data_4C[20] = "book_013-itemhook02";
-char lbl_1_data_60[20] = "book_014-itemhook03";
-char lbl_1_data_74[20] = "book_015-itemhook04";
-char *lbl_1_data_88[4] = {lbl_1_data_38, lbl_1_data_4C, lbl_1_data_60, lbl_1_data_74};
-int lbl_1_data_98[8] = {
-    FILESEL_ANM_12, FILESEL_ANM_13, FILESEL_ANM_14, FILESEL_ANM_15,
-    FILESEL_ANM_16, FILESEL_ANM_17, FILESEL_ANM_18, FILESEL_ANM_19,
-};
-char lbl_1_data_B8[42] = "******* FileSelect ObjectSetup *********\n";
-char lbl_1_data_E2[4] = "%d\n";
-HU3D_PARMAN_PARAM lbl_1_data_E8 = {
-    50,
-    0,
-    1.0f,
-    10.0f,
-    0.0f,
-    {0.0f, -0.02f, 0.0f},
-    2.0f,
-    1.0f,
-    20.0f,
-    0.98f,
-    2,
-    {{240, 224, 32, 255}, {255, 255, 64, 255}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-    {{192, 128, 16, 0}, {192, 64, 16, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-};
-char lbl_1_data_138[12] = "data_select";
-char lbl_1_data_144[16] = "data_select_ura";
-Vec lbl_1_data_154[3] = {{-130.0f, 120.0f, 30.0f}, {20.0f, 10.0f, 60.0f}, {170.0f, 90.0f, 30.0f}};
-char lbl_1_data_178[6] = "card1";
-char lbl_1_data_17E[6] = "card2";
-char lbl_1_data_184[6] = "card3";
-char lbl_1_data_18A[6] = "card4";
-char *lbl_1_data_190[4] = {lbl_1_data_178, lbl_1_data_17E, lbl_1_data_184, lbl_1_data_18A};
-char lbl_1_data_1A0[13] = "siori_waku01";
-char lbl_1_data_1AD[14] = "siori_moyou01";
-char lbl_1_data_1BB[13] = "siori_moji01";
-char lbl_1_data_1C8[21] = "siori_fix-itemhook_a";
-char lbl_1_data_1DD[9] = "ABCDEFGH";
-char lbl_1_data_1E6[5] = "%02d";
-char lbl_1_data_1EB[5] = "%04d";
-char lbl_1_data_1F0[3] = "%d";
-char lbl_1_data_1F3[10] = "%f,%f,%f\n";
 char lbl_1_data_1FD[23] = "siori_fix02-siori_waku";
 
 OMOBJ *lbl_1_bss_344;

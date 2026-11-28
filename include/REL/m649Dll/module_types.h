@@ -37,14 +37,6 @@
 #include "string.h"
 #include "stdio.h"
 
-/* Stores per-object context and the optional frame callback used by the sound manager. */
-typedef void (*M620ObjectCallback)(OMOBJ *obj);
-
-typedef struct {
-    void *userData; /* Client-owned data retained by the sound manager object. */
-    M620ObjectCallback callback; /* Optional per-frame callback after sound updates. */
-} M620ObjectState;
-
 /* Character height and motion selections copied into every contestant's state at setup. */
 typedef struct {
     float unk0; /* The game's code never reads this field. */

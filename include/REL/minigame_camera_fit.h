@@ -15,9 +15,9 @@ typedef struct CameraFitParams {
 } CameraFitParams;
 
 /* World-space sphere to fit. */
-typedef struct CameraFitSphere {
+typedef struct MinigameCameraFitSphere {
     Vec center;
     f32 radius;
-} CameraFitSphere;
+} MinigameCameraFitSphere;
 
 #endif

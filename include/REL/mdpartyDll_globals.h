@@ -29,7 +29,7 @@ extern HUWINID lbl_1_bss_104[2];
 extern MdpartyModelTransition lbl_1_bss_108[4];
 extern MdpartyModelTransition lbl_1_bss_1C8[2];
 extern MdpartyModelTransition lbl_1_bss_228[2];
-extern LBL_1_BSS_288_ENTRY lbl_1_bss_288[25];
+extern MdpartyMenuModel lbl_1_bss_288[25];
 extern ANIMDATA *lbl_1_bss_800[41];
 extern HUSPRID lbl_1_bss_8A4[58];
 extern HUSPR_GROUPID lbl_1_bss_918[17];

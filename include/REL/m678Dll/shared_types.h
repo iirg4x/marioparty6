@@ -16,7 +16,7 @@ typedef struct _struct_lbl_1_bss_45FC_0x24 {
     f32 arc;
     f32 startX;
     f32 startY;
-    f32 unk20; /* the game's code never reads this field */
+    f32 unk20; /* The game's code never reads this field. */
 } _struct_lbl_1_bss_45FC_0x24;
 
 #endif

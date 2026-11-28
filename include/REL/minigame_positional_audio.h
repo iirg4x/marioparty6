@@ -17,10 +17,10 @@ typedef struct MinigameAudioRecord {
     Vec *position; /* World position followed while the sound is active. */
 } MinigameAudioRecord;
 
-typedef struct MinigameAudioState {
-    MinigameAudioRange *ranges; /* Positional audio settings for the scene. */
-    OMOBJ_FUNC callback; /* Per-frame sound position update callback. */
-    MinigameAudioRecord records[64]; /* Active positional sound instances. */
-} MinigameAudioState;
+typedef struct MinigameAudioWork {
+    MinigameAudioRange *config; /* Camera-specific settings, terminated by a zero camera mask. */
+    OMOBJ_FUNC callback; /* Optional callback after per-frame sound updates. */
+    MinigameAudioRecord entries[64]; /* Tracked sounds. A handle of -1 marks a free slot. */
+} MinigameAudioWork;
 
 #endif

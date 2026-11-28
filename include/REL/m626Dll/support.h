@@ -29,17 +29,6 @@ typedef struct M626CameraWork_s {
     M626CameraEntry entries[16];
 } M626CameraWork;
 
-typedef struct M626CameraFitSphere_s {
-    Vec center;
-    f32 radius;
-} M626CameraFitSphere;
-
-typedef struct M626AudioWork_s {
-    MinigameAudioRange *config;
-    OMOBJ_FUNC callback;
-    MinigameAudioRecord entries[64];
-} M626AudioWork;
-
 extern s32 lbl_1_bss_38[80];
 extern s32 lbl_1_bss_178[80];
 extern OMOBJ *lbl_1_bss_2B8, *lbl_1_bss_2BC, *lbl_1_bss_2C0, *lbl_1_bss_2C4, *lbl_1_bss_2C8;
