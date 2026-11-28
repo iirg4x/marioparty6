@@ -162,6 +162,9 @@ SELF_UPDATE = re.compile(
     r"^\s*(?P<pre>\+\+|--)?\s*[A-Za-z_]\w*" + SUBSCRIPTS + r"(?:\s*(?:->|\.)\s*\w+" + SUBSCRIPTS + r")*?"
     r"\s*(?:->|\.)\s*(?P<field>" + OFFSET_NAME + r")\b" + SUBSCRIPTS +
     r"\s*(?:(?P<post>\+\+|--)|(?P<op>(?:<<|>>|[-+*/%&|^])=)(?P<rhs>[^;]*))?\s*;\s*$")
+SELF_ASSIGN = re.compile(
+    r"^\s*(?P<lhs>[A-Za-z_]\w*" + SUBSCRIPTS + r"(?:\s*(?:->|\.)\s*\w+" + SUBSCRIPTS + r")*?"
+    r"\s*(?:->|\.)\s*(?P<field>" + OFFSET_NAME + r")\b" + SUBSCRIPTS + r")\s*=(?!=)\s*(?P<rhs>[^;=]*);\s*$")
 
 
 def self_updated_field(line: str) -> Optional[str]:
@@ -170,10 +173,18 @@ def self_updated_field(line: str) -> Optional[str]:
     self-update counts as never read; it fails closed, so `y = f += 1`, `if (++f > n)` or `g(f++)` stay reads, and
     a component update (`f.x++`) is not a self-update."""
     match = SELF_UPDATE.match(line)
-    if not match or sum(1 for part in ("pre", "post", "op") if match.group(part)) != 1:
+    if match and sum(1 for part in ("pre", "post", "op") if match.group(part)) == 1:
+        field = match.group("field")
+        return field if len(re.findall(r"(?:->|\.)\s*" + field + r"\b", line)) == 1 else None
+    # `f = f op x;`: the right side starts with the left side's own target (the field check's SELF_UPDATE_BINARY)
+    match = SELF_ASSIGN.match(line)
+    if not match:
         return None
+    target = re.sub(r"\s+", "", match.group("lhs"))
+    right = re.sub(r"\s+", "", match.group("rhs"))
+    operator = re.match(r"(<<|>>|[-+*/%&|^])(?!=)", right[len(target):]) if right.startswith(target) else None
     field = match.group("field")
-    if len(re.findall(r"(?:->|\.)\s*" + field + r"\b", line)) != 1:
+    if not operator or len(re.findall(r"(?:->|\.)\s*" + field + r"\b", line)) != 2:
         return None
     return field
 
@@ -226,17 +237,55 @@ def unread_field_names(sources: Mapping[str, str]) -> Dict[str, List[str]]:
     return names
 
 
-def documented_for(path: str, text: str, declared_in: Sequence[str]) -> bool:
+INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*[<"]([^>"\n]+)[>"]', re.MULTILINE)
+
+
+def included_files(path: str, sources: Mapping[str, str], cache: Dict[str, frozenset]) -> frozenset:
+    """Every repository file `path` includes, directly or through other included files (a quoted name resolves
+    beside the including file first, then under include/)."""
+    if path in cache:
+        return cache[path]
+    cache[path] = frozenset()                            # an include cycle ends here
+    found, pending = set(), [path]
+    while pending:
+        current = pending.pop()
+        folder = current.rsplit("/", 1)[0] if "/" in current else ""
+        for name in INCLUDE.findall(sources.get(current, "")):
+            for candidate in (f"{folder}/{name}" if folder else name, "include/" + name):
+                if candidate in sources and candidate not in found:
+                    found.add(candidate)
+                    pending.append(candidate)
+                    break
+    cache[path] = frozenset(found)
+    return cache[path]
+
+
+_INCLUDES: List[object] = [None, {}]                   # [the sources mapping, its included_files cache]
+
+
+def _include_cache(sources: Mapping[str, str]) -> Dict[str, frozenset]:
+    """The included_files cache of this snapshot's sources (one run reads one snapshot)."""
+    if _INCLUDES[0] is not sources:
+        _INCLUDES[0], _INCLUDES[1] = sources, {}
+    return _INCLUDES[1]
+
+
+def documented_for(path: str, sources: Mapping[str, str], declared_in: Sequence[str],
+                   includes: Optional[Dict[str, frozenset]] = None) -> bool:
     """Whether a never-read declaration of the field can be the one `path` stores to: one in the same module, or a
-    shared header `path` includes directly. Without type resolution this stands in for the store's own record;
-    a declaration elsewhere of the same name does not document this store."""
+    shared header `path` includes (directly or through its other includes). Without type resolution this stands
+    in for the store's own record; a declaration elsewhere of the same name does not document this store."""
     own = module_key(path)
+    visible = None
     for declaration in declared_in:
         key = module_key(declaration)
         if key is not None and key == own:
             return True
-        if key is None and declaration.startswith("include/") and declaration[len("include/"):] in text:
-            return True
+        if key is None:
+            if visible is None:
+                visible = included_files(path, sources, includes if includes is not None else {})
+            if declaration in visible:
+                return True
     return False
 
 
@@ -255,7 +304,7 @@ def unread_field_write(line: str, unread: Mapping[str, Sequence[str]], sources: 
         field = use.group(1)
         if not (use.group(3) or field == updated) or field not in unread:
             return False
-        if not documented_for(path, sources.get(path, ""), unread[field]):
+        if not documented_for(path, sources, unread[field], _include_cache(sources)):
             return False
         if field not in readers:
             readers[field] = field_read_anywhere(sources, field)
