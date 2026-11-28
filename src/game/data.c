@@ -10,7 +10,7 @@
 #define DATA_DIR_ID_MASK 0xFFFF0000
 #define DATA_EVEN_SIZE_MASK 0x1
 
-#define PTR_OFFSET(ptr, offset) (void *)(((u8 *)(ptr)+(u32)(offset)))
+#define PTR_OFFSET(ptr, offset) ((u8 *)(ptr)+(u32)(offset))
 #define DATA_EFF_SIZE(size) (((size)+1) & ~DATA_EVEN_SIZE_MASK)
 #define DATA_BUFFER_SIZE_MASK (~3)
 
@@ -40,15 +40,6 @@ static s32 shortAccessSleep; // Yield flag for direct DVD waits; it stays zero b
                              // never sets it.
 static HUDATASTAT ATTRIBUTE_ALIGN(32) ReadDataStat[DATA_MAX_READSTAT]; // Active archive pool.
 
-// Game startup resolves the archive paths and clears the fixed pool of active archive reads.
-void fn_80007668(void)
-{
-    s32 archiveIndex = 0;
-    DATADIRSTAT *dirStat = DataDirStat;
-    HUDATASTAT *readStat;
-    while(dirStat->archivePath) {
-        if((dirStat->dvdEntryNumber = DVDConvertPathToEntrynum(dirStat->archivePath)) == -1) {
-            OSReport("data.c: Data File Error(%s)\n", dirStat->archivePath);
 /* Retail fixes the next panic's line; the earlier lines are unknown: 13 lines are left blank. */
 
 
@@ -63,6 +54,15 @@ void fn_80007668(void)
 
 
 
+// Game startup resolves the archive paths and clears the fixed pool of active archive reads.
+void fn_80007668(void)
+{
+    s32 archiveIndex = 0;
+    DATADIRSTAT *dirStat = DataDirStat;
+    HUDATASTAT *readStat;
+    while(dirStat->archivePath) {
+        if((dirStat->dvdEntryNumber = DVDConvertPathToEntrynum(dirStat->archivePath)) == -1) {
+            OSReport("data.c: Data File Error(%s)\n", dirStat->archivePath);
             OSPanic(__FILE__, __LINE__, "\n");
         }
         archiveIndex++;
@@ -237,18 +237,6 @@ HUDATASTAT *fn_80007B00(void *archivePtr, int dataNum)
     }
 }
 
-// DVD completion advances an archive read in blocks until completion or cancellation.
-void fn_80007C88(s32 dvdResult, DVDFileInfo* dvdFileInfo)
-{
-    HUDATASTAT *readStat;
-    s32 statusIndex;
-    for(statusIndex=0; statusIndex<DATA_MAX_READSTAT; statusIndex++) {
-        if (ReadDataStat[statusIndex].status == 1 &&
-            ReadDataStat[statusIndex].dvdFile.startAddr == dvdFileInfo->startAddr) {
-            break;
-        }
-    }
-    if(statusIndex >= DATA_MAX_READSTAT) {
 /* Retail fixes the next panic's line; the earlier lines are unknown: 111 lines are left blank. */
 
 
@@ -361,6 +349,18 @@ void fn_80007C88(s32 dvdResult, DVDFileInfo* dvdFileInfo)
 
 
 
+// DVD completion advances an archive read in blocks until completion or cancellation.
+void fn_80007C88(s32 dvdResult, DVDFileInfo* dvdFileInfo)
+{
+    HUDATASTAT *readStat;
+    s32 statusIndex;
+    for(statusIndex=0; statusIndex<DATA_MAX_READSTAT; statusIndex++) {
+        if (ReadDataStat[statusIndex].status == 1 &&
+            ReadDataStat[statusIndex].dvdFile.startAddr == dvdFileInfo->startAddr) {
+            break;
+        }
+    }
+    if(statusIndex >= DATA_MAX_READSTAT) {
         OSPanic(__FILE__, __LINE__, "dvd.c AsyncCallBack Error");
     }
     readStat = &ReadDataStat[statusIndex];
@@ -800,7 +800,144 @@ void fn_80009A30(void)
 
 }
 
-// Rejects archive indices at or above DataDirMax, then opens the DVD entry; open failures panic.
+/* Retail fixes the next panic's line; the earlier lines are unknown: 135 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Direct DVD access checks the archive index before opening its directory entry.
+// A failure to open a valid entry panics.
 static BOOL HuDataDVDdirDirectOpen(int dataNum, DVDFileInfo *fileInfo)
 {
 	s32 archiveId = dataNum >> 16;
@@ -811,160 +948,23 @@ static BOOL HuDataDVDdirDirectOpen(int dataNum, DVDFileInfo *fileInfo)
 	if(!DVDFastOpen(DataDirStat[archiveId].dvdEntryNumber, fileInfo)) {
 		char panicMessage[48];
 		sprintf(panicMessage, "HuDataDVDdirDirectOpen: File Open Error(%08x)", dataNum);
-/* Retail fixes the next panic's line; the earlier lines are unknown: 136 lines are left blank. */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 		OSPanic(__FILE__, __LINE__, panicMessage);
 	}
 	return TRUE;
 }
-// Submits a direct DVD range read and returns its submission result after command state 0.
-static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *buffer, s32 size, s32 offset)
-{
-	s32 result = DVDReadAsync(fileInfo, buffer, size, offset, NULL);
+
+// Reads wait for command state 0 and yield while shortAccessSleep is set.
+static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *buffer, s32 readBytes, s32 offset) {
+	s32 result = DVDReadAsync(fileInfo, buffer, readBytes, offset, NULL);
 	if(result != 1) {
 		OSPanic(__FILE__, __LINE__, "HuDataDVDdirDirectRead: File Read Error");
 	}
-	// Nonzero states, including errors, keep the wait running; shortAccessSleep controls yielding.
 	while(DVDGetCommandBlockStatus(&fileInfo->cb)) {
 		if(shortAccessSleep) {
 			HuPrcVSleep();
 		}
 	}
+
 	return result;
 }
 

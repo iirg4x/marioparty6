@@ -66,7 +66,6 @@
 /* quiz.h leaves these out (other files call them without a prototype); this file's calls take
  * them with one. */
 void MicQuizCountdownInit(void);
-void MicQuizExpectedAnswerSet(s32 expectedAnswer);
 void MicQuizPauseInit(HUPROCESS *parentProcess);
 
 u8 lbl_1_data_16F8[0x1C] = { 0x00, 0xA4, 0x00, 0x7A, 0x00, 0xA4, 0x00, 0x7B, 0x00, 0xA4, 0x00, 0x7C,

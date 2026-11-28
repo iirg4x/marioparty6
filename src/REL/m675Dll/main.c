@@ -1,5 +1,5 @@
 /* Sets up Banana Shake and handles its opening, play and result sequence. */
-#include "REL/m675Dll/module_types.h"
+#include "REL/m675Dll/functions.h"
 #include "REL/minigame_camera_work.h"
 #include "REL/minigame_positional_audio.h"
 #include "REL/minigame_fog.h"

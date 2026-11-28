@@ -215,7 +215,7 @@ struct _LANGUAGE {
     /* Locates the transition-word lexicon after its header. */
     u16 *(*transwGetpTransWordLex)(struct _TRANSWORDINFO *pTransWord);
     /* Locates the table of transition-word offsets. */
-    u16 *(*transwGetpBeginOfTransWords)(struct _TRANSWORDINFO *pTransWord);
+    u16 *(*transwGetpBeginOfTransWords)(void *pTransWord);
     /* Reads the penalty for a leading NBS event. */
     s32 (*exevGetLeading_NBS_penalty)(struct _EXTRAEVENTCTXINFO *pExevCtx);
     /* Reads the penalty for a trailing NBS event. */

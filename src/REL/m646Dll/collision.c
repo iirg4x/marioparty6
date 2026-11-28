@@ -426,7 +426,7 @@ s32 fn_1_3894(M646ActorAnchor *first, M646ModelCollider *second)
     }
     result = 1;
     if (first->contact != NULL) {
-        first->contact(first, (void *)second);
+        first->contact(first, second);
     }
     if (second->contact != NULL) {
         second->unk58 = edge;

@@ -1,6 +1,6 @@
 /* Declares shared operations for the minigame. */
-#ifndef REL_M675DLL_MODULE_TYPES_H
-#define REL_M675DLL_MODULE_TYPES_H
+#ifndef REL_M675DLL_FUNCTIONS_H
+#define REL_M675DLL_FUNCTIONS_H
 
 #include "game/object.h"
 #include "REL/minigame_ground_effect.h"

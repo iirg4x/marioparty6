@@ -28,7 +28,6 @@
 
 void fn_1_D994(void);
 
-/* Loads and configures the stage particle manager. */
 void fn_1_E208(void);
 
 const Point3d lbl_1_rodata_278 = { -300.0f, 800.0f, 0.0f };

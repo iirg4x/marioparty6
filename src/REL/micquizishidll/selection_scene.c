@@ -20,7 +20,6 @@
 /* quiz.h leaves these out (other files call them without a prototype); this file's calls take
  * them with one. */
 void MicQuizCountdownInit(void);
-void MicQuizExpectedAnswerSet(s32 expectedAnswer);
 void MicQuizPauseInit(HUPROCESS *parentProcess);
 
 u32 lbl_1_data_19A0[7] = {

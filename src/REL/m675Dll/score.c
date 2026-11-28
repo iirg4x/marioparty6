@@ -1,5 +1,5 @@
 /* Draws and updates the four player score displays. */
-#include "REL/m675Dll/module_types.h"
+#include "REL/m675Dll/functions.h"
 #include "REL/minigame_score_entry.h"
 #include "dolphin/math.h"
 #include "game/object.h"

@@ -6,7 +6,6 @@
 #include "msm_stream.h"
 #include "game/object.h"
 
-
 void fn_1_234(s16 mode, s16 frameNo);
 void fn_1_254(s16 mode, s16 frameNo);
 void fn_1_2D4(s16 mode, s16 frameNo);
@@ -39,7 +38,6 @@ typedef struct SceneModelIds {
     s32 model_ids[12];
 } SceneModelIds;
 
-
 typedef struct M644CameraIdPair_s {
     /* Camera IDs for the two team views. */
     s32 camera_ids[2];
@@ -49,7 +47,6 @@ typedef struct M644CameraIds_s {
     /* Camera IDs for the two team views. */
     s32 camera_ids[2];
 } M644CameraIds;
-
 
 s32 fn_1_367CC(s32 *player);
 

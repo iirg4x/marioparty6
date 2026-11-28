@@ -39,11 +39,6 @@ extern s32 lbl_1_data_F18;
 extern float lbl_1_bss_1BC;
 extern s8 lbl_1_bss_218, lbl_1_bss_219, lbl_1_data_2758;
 s32 fn_1_367CC(s32 *player);
-typedef struct M658CharacterSetting {
-    s16 initialMotion;
-    u8 unreadBytes[20];
-    s16 idleMotion;
-} M658CharacterSetting;
 #define M658_UNREAD_VALUE_A_BIT_PATTERN 0x44FA0000
 #define M658_UNREAD_VALUE_B_BIT_PATTERN 0xBF800000
 #define M658_UNREAD_VALUE_C_BIT_PATTERN 0xFFFFFFFF
@@ -160,7 +155,7 @@ void fn_1_404(MGPLAYER *player)
         fn_8007E818(player);
         if (player->motNo != 11) {
             fn_8005C2C8(player->charNo,
-                               ((M658CharacterSetting *)player->omObj->mtnId)->idleMotion,
+                               player->omObj->mtnId[11],
                                0.0f, 5.0f, ((1 << 30) | (1 << 0)));
             idleMode = 11;
             player->motNo = idleMode;
@@ -189,7 +184,7 @@ void fn_1_404(MGPLAYER *player)
             fn_8007EEBC(player, 0);
             if (player->motNo != 0) {
                 fn_8005C2C8(player->charNo,
-                                   ((M658CharacterSetting *)player->omObj->mtnId)->initialMotion,
+                                   player->omObj->mtnId[0],
                                    0.0f, 5.0f,
                                    ((1 << 30) | (1 << 0)));
                 initialMode = 0;
@@ -2080,7 +2075,6 @@ void fn_1_4DAC(OMOBJ *owner)
     }
 }
 
-
 /* Called in player state 13 each update to spin and move the character along its result path. */
 void fn_1_4E50(OMOBJ *object)
 {
@@ -2257,7 +2251,6 @@ void fn_1_5370(OMOBJ *obj)
 }
 
 typedef struct M658RegistryTemplate { u32 initialWords[16]; } M658RegistryTemplate;
-
 
 /* Builds configured item pools on the first object update, then installs their tick. */
 void fn_1_5430(OMOBJ *object)

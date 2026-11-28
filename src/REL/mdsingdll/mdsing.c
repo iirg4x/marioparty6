@@ -353,7 +353,6 @@ static inline s16 fn_1_3F28_inlined_inlined(s16 mode);
 static inline s16 fn_1_3F28_inlined(s16 mode);
 static inline void fn_1_64C_inlined(void);
 static inline s16 fn_1_2EF24_inlined(void);
-static inline s32 fn_1_5B48_inlined_inlined(void);
 static inline void fn_1_3474_inlined_inlined(s16 windowNo);
 static inline void fn_1_3B10_inlined_inlined(void);
 static inline void fn_1_4338_for_1AA1C(s32 messageNo);
@@ -361,7 +360,6 @@ static inline void fn_1_35EC_for_1B5EC(s16 windowNo);
 static inline void fn_1_4338_for_1B5EC(s32 messageNo);
 static inline s16 fn_1_19A20_for_1B5EC(void);
 static inline s16 fn_1_2EF24_inlined_2(void);
-static inline void fn_1_1A494_for_20624(void);
 static inline void mdsingResultPanelOpen(void);
 static inline void show_result_window(s16 winNo);
 static inline void fn_1_44E4_for_28B78(s32 messageNo);
@@ -4899,24 +4897,6 @@ s16 fn_1_19D28(void)
     return menuChoice;
 }
 
-/* Start the guide's return to the left-side menu position when its X is at least -100. */
-static inline s32 fn_1_5B48_inlined_inlined(void)
-{
-    Point3d position;
-    OMOBJ *guideObject;
-
-    guideObject = lbl_1_bss_C;
-    fn_800267CC(*guideObject->mdlId, &position);
-    if (position.x < -100.0f) {
-        return 0;
-    }
-    guideObject->work[0] = 0;
-    guideObject->objFunc = fn_1_595C;
-    fn_8002CCC0(*guideObject->mdlId, guideObject->mtnId[1], 0.0f, 0.0f,
-        ((1 << 30) | (1 << 0)));
-    return 1;
-}
-
 /* Hide a frameless dialogue immediately or play a framed window's closing animation. */
 static inline void fn_1_3474_inlined_inlined(s16 windowNo)
 {
@@ -4945,7 +4925,7 @@ s32 fn_1_1A494(void)
     Point3d position;
     fn_800267CC(*lbl_1_bss_C->mdlId, &position);
     if (position.x > -200.0f) {
-        fn_1_5B48_inlined_inlined();
+        fn_1_5EF4();
         fn_1_3B10_inlined_inlined();
         HuPrcSleep(90);
     }
@@ -5391,20 +5371,6 @@ void fn_1_1F30C(void)
     }
 }
 
-/* When the guide's X is above -200, request its return, close dialogue and wait ninety ticks,
- * even if the movement helper declines the request. */
-static inline void fn_1_1A494_for_20624(void)
-{
-    Point3d position;
-
-    fn_800267CC(lbl_1_bss_C->mdlId[0], &position);
-    if (position.x > -200.0f) {
-        fn_1_5EF4();
-        fn_1_3CF8();
-        HuPrcSleep(90);
-    }
-}
-
 /* Run the Solo setup screens in order, returning the requested destination or cancellation. */
 s16 fn_1_20624(s16 mode)
 {
@@ -5431,7 +5397,7 @@ s16 fn_1_20624(s16 mode)
         }
         fn_1_3CF8();
         HuPrcSleep(30);
-        fn_1_1A494_for_20624();
+        fn_1_1A494();
         fn_1_1F30C();
         step = 4;
         returning = 0;

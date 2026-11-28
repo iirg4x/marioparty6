@@ -205,7 +205,7 @@ u8 CreateSecondPassTreeContext(struct _ENGINE *pEngine)
     tokenCount = 0;
     speechUnitClassCount = pEngine->pLang->langGetNbrSpeechUnitClass(pEngine->pLang);
     treeWords = (struct _WORDRESULT *)pEngine->pRes->pResult;
-    treeWordCursor = (struct _WORDRESULT *)pEngine->pRes->pResult;
+    treeWordCursor = treeWords;
     treeWordCount = pEngine->NBest;
     translationDictionary = pEngine->pLang->langGetpTransWord(pEngine->pLang);
     translationTokens = pEngine->pLang->transwGetpTransWordLex(translationDictionary);

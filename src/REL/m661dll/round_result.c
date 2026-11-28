@@ -317,7 +317,7 @@ void fn_1_C5C4(void)
     MotionControl *settings;
     s16 effectIndex;
     s16 settingsIndex;
-    ModelSetupRecord *effect;
+    M661ModelSetupRecord *effect;
 
     if (lbl_1_bss_1C04[0].score < lbl_1_bss_1C04[1].score) {
         maximum = lbl_1_bss_1C04[1].score;

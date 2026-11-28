@@ -1277,7 +1277,7 @@ CameraRecordStorage lbl_1_bss_3078;
 LightInitState lbl_1_bss_303C;
 MinigameShadowCamera lbl_1_bss_2FEC;
 ParticleSettings lbl_1_bss_2FE4;
-ModelSetupRecord lbl_1_bss_1E3C[113];
+M661ModelSetupRecord lbl_1_bss_1E3C[113];
 ModelAnimationWork lbl_1_bss_1D7C[2];
 M661PlayerState lbl_1_bss_1C04[2];
 SystemInputState lbl_1_bss_196C;

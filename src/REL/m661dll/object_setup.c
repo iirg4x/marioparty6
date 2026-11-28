@@ -274,7 +274,7 @@ void fn_1_949C(void)
     f32 lengthSquared;
     f32 projectionNumerator;
     f32 alongEdge;
-    BoundaryEdge boundaryData[6];
+    M661BoundaryEdge boundaryData[6];
     f32 collisionRadius;
 
     boundaryData[0].x0 = -600.0f;
@@ -506,7 +506,7 @@ s32 fn_1_AAB4(void) {
     s32 finished = 0;
     s32 totalFrames = 0;
     f32 cameraMoveFrames;
-    ModelSetupRecord *model;
+    M661ModelSetupRecord *model;
     HuVecF spawnPositions[2] = {{-788.0f, 60.0f, -788.0f}, {788.0f, 60.0f, -788.0f}};
 
     player = &lbl_1_bss_1C04[0];

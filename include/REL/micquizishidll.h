@@ -401,37 +401,32 @@ static inline void QuizObjectWorldPosition(HU3D_MODELID modelId, char *objName, 
     position->z = matrix[2][3];
 }
 
+void MicQuizExpectedAnswerSet(s32 expectedAnswer);
+
 /* Counts the objects for the quiz answer and records the result. */
 static inline void QuizCountAnswerRecord(void)
 {
-    void MicQuizExpectedAnswerSet(s32 expectedAnswer);
-
     s32 count;
     s32 index;
     count = 0;
     lbl_1_bss_94 = lbl_1_bss_74[0];
-    switch (lbl_1_bss_98)
-    {
-    case 0 :
+    switch (lbl_1_bss_98) {
+    case 0:
         index = 0;
-        while (index < lbl_1_bss_90)
-        {
-            if (lbl_1_bss_94 == lbl_1_bss_24[index])
-            {
+        while (index < lbl_1_bss_90) {
+            if (lbl_1_bss_94 == lbl_1_bss_24[index]) {
                 count += 1;
             }
             index += 1;
         }
         break;
-    case 1 :
+    case 1:
         count = lbl_1_bss_90;
         break;
-    case 2 :
+    case 2:
         index = 0;
-        while (index < lbl_1_bss_90)
-        {
-            if (lbl_1_bss_94 != lbl_1_bss_24[index])
-            {
+        while (index < lbl_1_bss_90) {
+            if (lbl_1_bss_94 != lbl_1_bss_24[index]) {
                 count += 1;
             }
             index += 1;

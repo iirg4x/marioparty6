@@ -11,7 +11,6 @@
 /* Absolute value keeps the random aim-tolerance sample nonnegative. */
 extern int abs(int value);
 
-
 typedef struct M646TargetCandidate_s {
     M646ModelAttachment *attachment; /* Chosen target, or NULL for random free aim. */
     s16 unk4; /* The game's code never reads this field. */
@@ -62,7 +61,6 @@ M646TargetCandidate *fn_1_ABB0(M646PlayerTicket *ticket);
 M646TargetCandidate *fn_1_AE64(M646PlayerTicket *ticket);
 M646TargetCandidate *fn_1_B07C(M646PlayerTicket *ticket);
 f32 fn_1_B2BC(M646PlayerTicket *ticket);
-
 
 void fn_1_98E0(OMOBJMAN *objman);
 void fn_1_9978(OMOBJ *obj);

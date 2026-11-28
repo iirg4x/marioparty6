@@ -316,12 +316,12 @@ s32 fn_1_78C(s32 player, void *gridOutput, s32 pass, s32 groupIndex, s32 *offset
         struct M678LinkEntry *grid[6][30] = {{NULL}};
         struct M678LinkEntry *savedGrid[6][30] = {{NULL}};
         struct M678LinkEntry *rowHeads[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
-        u32 unk80C[180] = {0}; /* The game's code never reads this field. */
+        u32 words[180] = {0};
         struct { s32 words[2]; } unusedPairs[3] = {0};
         struct { s32 words[2]; } unusedOtherPairs[3] = {0};
         int rowSlots[6];
         int candidateSlots[6];
-        u32 unk1AC[408] = {0}; /* The game's code never reads this field. */
+        u32 words2[408] = {0};
     firstColumn = 0;
     lastColumn = 0;
     bestScore = -0xC350;

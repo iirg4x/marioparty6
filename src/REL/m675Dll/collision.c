@@ -1,5 +1,5 @@
 /* Runs Banana Shake's registered collision checks and contact callbacks. */
-#include "REL/m675Dll/module_types.h"
+#include "REL/m675Dll/functions.h"
 #include "REL/m675Dll/actor_state.h"
 #include "dolphin/math.h"
 #include "dolphin/mtx.h"
@@ -55,13 +55,9 @@ typedef struct M675EntryWork_s {
     M675Collision *regionEntries[10]; /* Region registrations; NULL means free. */
 } M675EntryWork;
 
-typedef struct M675CollisionObject_s M675CollisionObject;
-typedef struct M675CollisionRegion_s M675CollisionRegion;
-typedef struct M675BoundaryObject_s M675BoundaryObject;
-typedef struct M675EllipseBoundary_s M675EllipseBoundary;
 s32 fn_1_F4FC(M675Collision *first, M675Collision *second);
-s32 fn_1_F8AC(M675CollisionObject *object, M675CollisionRegion *region);
-s32 fn_1_FE84(M675BoundaryObject *state, M675EllipseBoundary *parameters);
+s32 fn_1_F8AC(M675Collision *object, M675Collision *region);
+s32 fn_1_FE84(M675Collision *state, M675Collision *parameters);
 
 /* This alternate manager callback waits three updates, runs 180 contact passes, then one per
  * update. */
@@ -166,12 +162,10 @@ void fn_1_F268(OMOBJ *obj)
                 }
                 switch (candidate->shapeType) {
                 case 10:
-                    fn_1_F8AC((M675CollisionObject *)firstEntry,
-                        (M675CollisionRegion *)secondEntry);
+                    fn_1_F8AC(firstEntry, secondEntry);
                     break;
                 case 11:
-                    fn_1_FE84((M675BoundaryObject *)firstEntry,
-                        (M675EllipseBoundary *)secondEntry);
+                    fn_1_FE84(firstEntry, secondEntry);
                     break;
                 }
             }
@@ -201,13 +195,13 @@ s32 fn_1_F4FC(M675Collision *first, M675Collision *second) {
     f32 normalX;
     f32 normalZ;
 
-    firstPosition = first->position;
-    secondPosition = second->position;
+    firstPosition = first->sphere.position;
+    secondPosition = second->sphere.position;
     x = secondPosition->x - firstPosition->x;
     y = secondPosition->y - firstPosition->y;
     z = secondPosition->z - firstPosition->z;
     distance = sqrtf((z * z) + ((x * x) + (y * y)));
-    radius = first->radius + second->radius;
+    radius = first->sphere.radius + second->sphere.radius;
 
     if (radius > distance) {
         if (distance == 0.0) {
@@ -219,49 +213,28 @@ s32 fn_1_F4FC(M675Collision *first, M675Collision *second) {
         }
 
         /* Both zero or both nonzero moves both spheres; otherwise only the nonzero one moves. */
-        if ((first->yieldOnContact != 0.0) || (second->yieldOnContact == 0.0)) {
-            first->position->x += x - normalX * radius;
-            first->position->z += z - normalZ * radius;
+        if ((first->sphere.yieldOnContact != 0.0) || (second->sphere.yieldOnContact == 0.0)) {
+            first->sphere.position->x += x - normalX * radius;
+            first->sphere.position->z += z - normalZ * radius;
         }
-        if ((second->yieldOnContact != 0.0) || (first->yieldOnContact == 0.0)) {
-            second->position->x += -x + (normalX * radius);
-            second->position->z += -z + (normalZ * radius);
+        if ((second->sphere.yieldOnContact != 0.0) || (first->sphere.yieldOnContact == 0.0)) {
+            second->sphere.position->x += -x + (normalX * radius);
+            second->sphere.position->z += -z + (normalZ * radius);
         }
-        if (first->contact != NULL) {
-            first->contact(first, second);
+        if (first->sphere.contact != NULL) {
+            first->sphere.contact(first, second);
         }
-        if (second->contact != NULL) {
-            second->contact(second, first);
+        if (second->sphere.contact != NULL) {
+            second->sphere.contact(second, first);
         }
         return 1;
     }
     return 0;
 }
 
-typedef struct M675CollisionObject_s {
-    u32 flags;
-    u8 collisionHeader[28]; /* Collision registration fields after flags. */
-    void (*contactCallback)(void *, void *); /* Receives the object and contacted region. */
-    Vec *position; /* Live world-space position adjusted by the response. */
-    Vec *velocity; /* Live velocity; a top-face contact clears its Y component. */
-    Vec positionCopy;
-    f32 radius; /* Contact radius in world units. */
-} M675CollisionObject;
-
-typedef struct M675CollisionRegion_s {
-    u8 collisionHeader[32]; /* Collision registration fields. */
-    Vec center; /* World-space center of the region's ellipses. */
-    f32 bottomOffsetY; /* Bottom-plane height relative to the center. */
-    f32 height; /* Height from the bottom plane to the top plane. */
-    f32 innerRadiusX; /* Inner ellipse's X semi-axis in world units. */
-    f32 innerRadiusZ; /* Inner ellipse's Z semi-axis in world units. */
-    f32 outerRadiusX; /* Outer ellipse's X semi-axis in world units. */
-    f32 outerRadiusZ; /* Outer ellipse's Z semi-axis in world units. */
-} M675CollisionRegion;
-
 /* The manager resolves type-10 contacts against an elliptical ring's top or side, then notifies the
  * owner. */
-s32 fn_1_F8AC(M675CollisionObject *object, M675CollisionRegion *region)
+s32 fn_1_F8AC(M675Collision *object, M675Collision *region)
 {
     Vec *position;
     Vec *center;
@@ -283,14 +256,14 @@ s32 fn_1_F8AC(M675CollisionObject *object, M675CollisionRegion *region)
     f32 contactAngle;
     f32 edgeX;
     f32 edgeZ;
-    position = object->position;
-    center = &region->center;
-    bottomY = center->y + region->bottomOffsetY;
-    topY = bottomY + region->height;
-    innerAxisScale = region->innerRadiusZ / region->innerRadiusX;
-    outerAxisScale = region->outerRadiusZ / region->outerRadiusX;
-    innerRadius = innerAxisScale * (region->innerRadiusX - object->radius);
-    outerRadius = outerAxisScale * (region->outerRadiusX + object->radius);
+    position = object->sphere.position;
+    center = &region->ring.center;
+    bottomY = center->y + region->ring.bottomOffsetY;
+    topY = bottomY + region->ring.height;
+    innerAxisScale = region->ring.innerRadiusZ / region->ring.innerRadiusX;
+    outerAxisScale = region->ring.outerRadiusZ / region->ring.outerRadiusX;
+    innerRadius = innerAxisScale * (region->ring.innerRadiusX - object->sphere.radius);
+    outerRadius = outerAxisScale * (region->ring.outerRadiusX + object->sphere.radius);
 
     if (position->y < bottomY) {
         goto noCollision;
@@ -318,16 +291,16 @@ s32 fn_1_F8AC(M675CollisionObject *object, M675CollisionRegion *region)
         (object->flags & 4) == 0) {
         position->y = topY;
         /* Contact with the top face stops the object's vertical motion. */
-        object->velocity->y = 0.0f;
+        object->sphere.velocity->y = 0.0f;
     } else {
         if (innerPenetration < outerPenetration) {
-            edgeX = region->innerRadiusX - object->radius;
-            edgeZ = region->innerRadiusZ - object->radius;
+            edgeX = region->ring.innerRadiusX - object->sphere.radius;
+            edgeZ = region->ring.innerRadiusZ - object->sphere.radius;
             contactAngle = (f32)(180.0 *
                 (atan2((f64)innerScaledX, (f64)innerDeltaZ) / 3.141592653589793));
         } else {
-            edgeX = region->outerRadiusX + object->radius;
-            edgeZ = region->outerRadiusZ + object->radius;
+            edgeX = region->ring.outerRadiusX + object->sphere.radius;
+            edgeZ = region->ring.outerRadiusZ + object->sphere.radius;
             contactAngle = (f32)(180.0 *
                 (atan2((f64)outerScaledX, (f64)outerDeltaZ) /
                     3.141592653589793));
@@ -339,30 +312,17 @@ s32 fn_1_F8AC(M675CollisionObject *object, M675CollisionRegion *region)
             ((f64)edgeZ * cos((3.141592653589793 *
                 (f64)contactAngle) / 180.0)));
     }
-    if (object->contactCallback != NULL) {
-        object->contactCallback(object, region);
+    if (object->sphere.contact != NULL) {
+        object->sphere.contact(object, region);
     }
     return 1;
 noCollision:
     return 0;
 }
 
-typedef struct M675BoundaryObject_s {
-    u8 collisionHeader[32]; /* Collision registration fields. */
-    void (*callback)(void *state, void *parameters); /* Receives the object and boundary record. */
-    Vec *position; /* Live world-space position constrained by the boundary. */
-} M675BoundaryObject;
-typedef struct M675EllipseBoundary_s {
-    u8 collisionHeader[32]; /* Collision registration fields. */
-    Vec center; /* World-space ellipse center. */
-    f32 radiusX; /* Ellipse X semi-axis in world units. */
-    f32 radiusZ; /* Ellipse Z semi-axis in world units. */
-    s32 direction; /* Nonzero confines positions inside; zero keeps them outside. */
-} M675EllipseBoundary;
-
 /* The collision manager uses type-11 regions to constrain an object's X/Z position to an
  * ellipse. */
-s32 fn_1_FE84(M675BoundaryObject *state, M675EllipseBoundary *parameters)
+s32 fn_1_FE84(M675Collision *state, M675Collision *parameters)
 {
     f32 x;
     f32 z;
@@ -370,20 +330,20 @@ s32 fn_1_FE84(M675BoundaryObject *state, M675EllipseBoundary *parameters)
     f32 angle;
     f32 radius;
 
-    radius = parameters->radiusZ / parameters->radiusX;
-    x = radius * (state->position->x - parameters->center.x);
-    z = state->position->z - parameters->center.z;
+    radius = parameters->boundary.radiusZ / parameters->boundary.radiusX;
+    x = radius * (state->sphere.position->x - parameters->boundary.center.x);
+    z = state->sphere.position->z - parameters->boundary.center.z;
     distance = sqrtf(x * x + z * z);
 
-    if ((parameters->direction != 0 && distance > parameters->radiusZ) ||
-        (parameters->direction == 0 && distance < parameters->radiusZ)) {
+    if ((parameters->boundary.direction != 0 && distance > parameters->boundary.radiusZ) ||
+        (parameters->boundary.direction == 0 && distance < parameters->boundary.radiusZ)) {
         angle = (f32)(180.0 * (atan2((f64)x, (f64)z) / 3.141592653589793));
-        state->position->x = parameters->center.x +
-            parameters->radiusX * sin((3.141592653589793 * (f64)angle) / 180.0);
-        state->position->z = parameters->center.z +
-            parameters->radiusZ * cos((3.141592653589793 * (f64)angle) / 180.0);
-        if (state->callback != NULL) {
-            state->callback(state, parameters);
+        state->sphere.position->x = parameters->boundary.center.x +
+            parameters->boundary.radiusX * sin((3.141592653589793 * (f64)angle) / 180.0);
+        state->sphere.position->z = parameters->boundary.center.z +
+            parameters->boundary.radiusZ * cos((3.141592653589793 * (f64)angle) / 180.0);
+        if (state->sphere.contact != NULL) {
+            state->sphere.contact(state, parameters);
         }
         return 1;
     }

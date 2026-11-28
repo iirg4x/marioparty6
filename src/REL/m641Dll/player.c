@@ -1312,8 +1312,6 @@ void fn_1_10550(s16 groupNo);
 
 extern void fn_1_B108(void);
 
-s32 fn_1_10844(void);
-
 /* Advances character motion transitions and applies each player's frame movement. */
 void fn_1_10D10(void);
 

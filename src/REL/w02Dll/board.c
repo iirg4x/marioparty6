@@ -359,12 +359,6 @@ typedef struct BoardEntry {
     HuVecF end;
 } BoardEntry;
 
-typedef struct BoardFlightWork {
-    u8 earlierState[4692];
-    HuVecF origin;
-    HuVecF destination;
-} BoardFlightWork;
-
 extern void (*lbl_1_data_874[5])(void);
 
 extern HuVecF lbl_1_data_BA8;
@@ -5440,13 +5434,13 @@ void fn_1_112B4(W02FlyingEffect *effect) {
     HuVecF position;
     HuVecF curvePosition;
     HuVecF spiralPosition;
-    BoardFlightWork *work;
+    PositionModel *work;
     float progress;
     float blend;
 
     work = lbl_1_bss_8;
-    origin = work->origin;
-    destination = work->destination;
+    origin = work->flightOrigin;
+    destination = work->flightDestination;
     progress = (float) ++effect->age / (float) effect->travelFrames;
     /* Follow the machine's current destination instead of keeping the endpoint saved at launch. */
     effect->end = destination;

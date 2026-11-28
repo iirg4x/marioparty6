@@ -15,6 +15,15 @@ static void HuDVDReadAsyncCallBack(s32 ignoredResult, DVDFileInfo* ignoredFileIn
     CallBackStatus = 1;
 }
 
+/* Retail fixes the next panic's line; the earlier lines are unknown: 8 lines are left blank. */
+
+
+
+
+
+
+
+
 // Allocates a file buffer, then either reads every chunk here or starts the data loader callback.
 // Called by the path-based and fast-entry read helpers below.
 static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int heapOrAllocationNumber,
@@ -46,15 +55,6 @@ static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int hea
             break;
         
         default:
-/* Retail fixes the next panic's line; the earlier lines are unknown: 8 lines are left blank. */
-
-
-
-
-
-
-
-
             OSPanic(__FILE__, __LINE__, "dvd.c: HuDvdDataReadWait Mode Error");
     }
     if(!dataBuffer) {
@@ -92,12 +92,6 @@ static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int hea
     return dataBuffer;
 }
 
-// Opens and fully reads a named file; window.c uses this for the selected language's messages.
-void *HuDvdDataRead(char *filePath)
-{
-    DVDFileInfo dvdFile;
-    void *fileData = NULL;
-    if(!DVDOpen(filePath, &dvdFile)) {
 /* Retail fixes the next panic's line; the earlier lines are unknown: 7 lines are left blank. */
 
 
@@ -106,6 +100,12 @@ void *HuDvdDataRead(char *filePath)
 
 
 
+// Opens and fully reads a named file; window.c uses this for the selected language's messages.
+void *HuDvdDataRead(char *filePath)
+{
+    DVDFileInfo dvdFile;
+    void *fileData = NULL;
+    if(!DVDOpen(filePath, &dvdFile)) {
         OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         fileData = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);
@@ -113,6 +113,19 @@ void *HuDvdDataRead(char *filePath)
     }
     return fileData;
 }
+
+/* Retail fixes the next panic's line; the earlier lines are unknown: 12 lines are left blank. */
+
+
+
+
+
+
+
+
+
+
+
 
 // Reads each null-terminated path into a parallel array; HuDataReadMultiSub uses this for
 // directories.
@@ -129,19 +142,6 @@ void **HuDvdDataReadMulti(char **filePaths)
     fileDataArray = HuMemDirectMalloc(0, pathCount*sizeof(void *));
     for(pathIndex=0; pathIndex<pathCount; pathIndex++) {
         if(!DVDOpen(filePaths[pathIndex], &dvdFile)) {
-/* Retail fixes the next panic's line; the earlier lines are unknown: 12 lines are left blank. */
-
-
-
-
-
-
-
-
-
-
-
-
             OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
             return NULL;
         } else {
@@ -152,15 +152,15 @@ void **HuDvdDataReadMulti(char **filePaths)
     return fileDataArray;
 }
 
+/* Retail fixes the next panic's line; the earlier lines are unknown: 2 lines are left blank. */
+
+
 // Reads a named file into the requested heap; objdll.c uses it to load REL modules.
 void *HuDvdDataReadDirect(char *filePath, HEAPID targetHeap)
 {
     DVDFileInfo dvdFile;
     void *fileData = NULL;
     if(!DVDOpen(filePath, &dvdFile)) {
-/* Retail fixes the next panic's line; the earlier lines are unknown: 2 lines are left blank. */
-
-
         OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         fileData = HuDvdDataReadWait(&dvdFile, 2, targetHeap, FALSE);
@@ -169,12 +169,6 @@ void *HuDvdDataReadDirect(char *filePath, HEAPID targetHeap)
     return fileData;
 }
 
-// Reads one directory-table entry into the DVD heap; data.c uses this for directory loads.
-void *HuDvdDataFastRead(s32 entryNumber)
-{
-    DVDFileInfo dvdFile;
-    void *fileData = NULL;
-    if(!DVDFastOpen(entryNumber, &dvdFile)) {
 /* Retail fixes the next panic's line; the earlier lines are unknown: 26 lines are left blank. */
 
 
@@ -202,6 +196,12 @@ void *HuDvdDataFastRead(s32 entryNumber)
 
 
 
+// Reads one directory-table entry into the DVD heap; data.c uses this for directory loads.
+void *HuDvdDataFastRead(s32 entryNumber)
+{
+    DVDFileInfo dvdFile;
+    void *fileData = NULL;
+    if(!DVDFastOpen(entryNumber, &dvdFile)) {
         OSPanic(__FILE__, __LINE__, "dvd.c: File Open Error");
     } else {
         fileData = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);

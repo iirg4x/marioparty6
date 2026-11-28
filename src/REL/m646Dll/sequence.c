@@ -49,8 +49,6 @@ s32 lbl_1_data_4[2] = {
     DATANUM(0x690000, M646_ALTERNATE_CAMERA_MOTION_FILE)
 };
 
-
-
 MGSEQ_PARAM lbl_1_data_C = {30, 0,
      fn_1_858, fn_1_878, fn_1_8A4, fn_1_908, fn_1_934, fn_1_9A0, fn_1_AB4, fn_1_AF4, fn_1_AF8};
 

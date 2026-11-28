@@ -4,7 +4,7 @@
 #include "dolphin/types.h"
 #include "math.h"
 
-/* Returns a clamped sine-eased coordinate for the guide-linked effect's movement. */
+/* Interpolates between two coordinates using a clamped sine curve. */
 static inline f32 MinigameMenuEaseOut(f32 start, f32 end, f32 elapsed, f32 duration)
 {
     if (elapsed <= 0.0f) {
@@ -17,7 +17,7 @@ static inline f32 MinigameMenuEaseOut(f32 start, f32 end, f32 elapsed, f32 durat
         sin((M_PI * (f64)((90.0f / duration) * elapsed)) / 180.0));
 }
 
-/* Raises and lowers a guide-linked effect coordinate over its flight. */
+/* Uses a half sine wave to move from start toward end and back. */
 static inline f32 MinigameMenuHalfSine(f32 start, f32 end, f32 elapsed, f32 duration)
 {
     if ((elapsed <= 0.0f) || (elapsed >= duration)) {

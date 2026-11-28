@@ -7,14 +7,14 @@
 
 /* Point light state initialized during stage setup and read by the light update. */
 typedef struct LightConfig {
-    u8 beforeLightId[4];
+    u8 unk0[4]; /* No code names this field. */
     s16 lightId;
     s16 modelId;
     s16 unk8; /* The game's code never reads this field. */
     s16 modelLightId;
     s16 type;
     Point3d position;
-    u8 unk_1C[0x0C]; /* No code names this field. */
+    u8 unk1C[0x0C]; /* No code names this field. */
     Point3d unk28; /* The game's code never reads this field. */
     Point3d direction;
     GXColor color;

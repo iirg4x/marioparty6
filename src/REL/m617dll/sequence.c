@@ -840,8 +840,6 @@ void fn_1_33C0(s16 padIndex, s16 selectedModelIndex)
          lbl_1_bss_E88[selectedModelIndex].rotation.y);
 }
 
-extern int printf(const char *format, s32 modelId, s32 lightId);
-
 /* Light setup calls this to attach a shared local-light-pool entry to a model's light list. */
 s16 fn_1_3BB8(HU3D_MODELID modelId, HU3D_LIGHTID lightId)
 {

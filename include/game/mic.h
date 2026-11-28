@@ -44,6 +44,7 @@ int HuMCSelWinChoiceGet(void);
 BOOL HuMCSelWinCheck(void);
 void HuMCSelWinContextKill(void);
 void HuMCSessionSet(s16 playerIndex);
+void HuMCSessionKill(s16 playerIndex);
 void HuMCSessionClose(void);
 s32 HuMCButtonGet(void);
 s32 HuMCButtonDownGet(void);

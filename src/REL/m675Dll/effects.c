@@ -1,5 +1,5 @@
 /* Sets up and draws the Banana Shake particle and ground effects. */
-#include "REL/m675Dll/module_types.h"
+#include "REL/m675Dll/functions.h"
 #include "dolphin/os/OSCache.h"
 #include "dolphin/PPCArch.h"
 #include "REL/m675Dll/prop_work.h"

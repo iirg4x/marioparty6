@@ -1,5 +1,5 @@
 /* Player input, movement, character motions and collision responses. */
-#include "REL/m675Dll/module_types.h"
+#include "REL/m675Dll/functions.h"
 #include "REL/minigame_ground_effect.h"
 #include "REL/m675Dll/actor_state.h"
 #include "dolphin/math.h"
@@ -17,24 +17,21 @@
 #include <string.h>
 
 typedef struct M675PlayerConfig {
-    u32 unmappedConfigWordsBeforeMovement[2]; /* Copied setup data with no established player
-                                               * use. */
+    u32 unk0[2]; /* No code names this field. */
     f32 movementScale; /* Multiplies the player's travel speed. */
-    u32 unmappedConfigWordsAfterMovementScale[6]; /* Copied setup data with no established player
-                                                   * use. */
+    u32 unkC[6]; /* No code names this field. */
     s32 defaultMotion, slowMotion; /* Motions used while stopped and moving slowly. */
     f32 slowMotionSpeed; /* Playback speed multiplier for slowMotion. */
     s32 fastMotion; /* Motion used while moving quickly. */
     f32 fastMotionSpeed; /* Playback speed multiplier for fastMotion. */
-    u32 unmappedConfigWordsBeforeMotions[5]; /* Copied setup data with no established player use. */
+    u32 unk38[5]; /* No code names this field. */
     s32 idleMotion, actionMotion, firstAlternateMotion, secondAlternateMotion; /* Input motions. */
     s32 contactMotion, winMotion, loseMotion, exitMotion; /* Contact and result motions. */
 } M675PlayerConfig;
 typedef struct M675PlayerWork {
     M675ActorState actor;
     s32 phase, phaseTimer; /* Current player phase and its frame timer. */
-    u8 unmappedPlayerGapBeforeComputerState[48]; /* Existing storage with no demonstrated player
-                                                  * use. */
+    u8 unkB0[48]; /* No code names this field. */
     s32 unkE0; /* The game's code never reads this field. */
     s32 computer; /* Whether the player uses computer-controlled input. */
     s32 difficulty; /* Computer-player difficulty setting, in the range 0 through 3. */
@@ -43,18 +40,18 @@ typedef struct M675PlayerWork {
     s32 motionActive; /* Current motion and movement state. */
     s32 unk100; /* The game's code never reads this field. */
     s32 unk104; /* The game's code never reads this field. */
-    s32 unmappedPlayerWordAfterMovement; /* Existing word with no demonstrated player use. */
+    s32 unk108; /* No code names this field. */
     /* Hit response state and initialization count. */
     s32 contactEvent, contactCooldown, contactPhase;
     s32 unk118; /* The game's code never reads this field. */
     f32 unk11C; /* The game's code never reads this field. */
-    u8 unmappedPlayerGapBeforeEffect[28]; /* Existing storage with no demonstrated player use. */
+    u8 unk120[28]; /* No code names this field. */
     MinigameGroundEffect effect; /* Position and radius registered for game effects. */
     M675PlayerConfig config; /* Movement and character-motion settings. */
     s32 playerIndex; /* Player number from the game setup. */
     s32 character; /* Character number used by character-model APIs. */
     s32 processPhase; /* Outer player-object phase advanced by fn_1_55F4. */
-    s32 unmappedPlayerWordBeforeUpdateCount; /* Existing word with no demonstrated player use. */
+    s32 unk1C0; /* No code names this field. */
     s32 unk1C4; /* The game's code never reads this field. */
     s32 unk1C8; /* The game's code never reads this field. */
 } M675PlayerWork;
@@ -376,12 +373,12 @@ void fn_1_527C(OMOBJ *object)
     callback->shapeType = 0;
     callback->owner = object;
     callback->update = fn_1_6198;
-    callback->contact = 0;
-    callback->position = &work->actor.position;
-    callback->velocity = &work->actor.velocity;
-    callback->positionCopy = *callback->position;
-    callback->radius = 50.0f;
-    callback->yieldOnContact = 0.0f;
+    callback->sphere.contact = 0;
+    callback->sphere.position = &work->actor.position;
+    callback->sphere.velocity = &work->actor.velocity;
+    callback->sphere.positionCopy = *callback->sphere.position;
+    callback->sphere.radius = 50.0f;
+    callback->sphere.yieldOnContact = 0.0f;
     fn_1_10170(callback);
     work->effect.active = 1;
     work->effect.radius = 50.0f;
@@ -403,7 +400,7 @@ void fn_1_55F4(OMOBJ *object)
     switch (work->processPhase) {
     case 0:
         if (fn_1_5740(state)) {
-            state->actor.collision.contact = fn_1_66EC;
+            state->actor.collision.sphere.contact = fn_1_66EC;
             work->processPhase++;
             state->phase = 0;
         }
@@ -687,7 +684,7 @@ void fn_1_6068(OMOBJ *object, s32 effect)
     fn_1_4424(effect, handle, &owner->actor.position, 1, 0);
 }
 
-/* Eases the active player toward its exit position during fn_1_5CB4. */
+/* Eases the active player's position and yaw toward the offsets for its current motion. */
 void fn_1_60DC(M675PlayerWork *state)
 {
     Vec position;
@@ -863,12 +860,12 @@ s32 fn_1_66EC(M675Collision *callback, M675Collision *event)
     M675PlayerWork *voiceState;
     s32 handle;
 
-    if (event->shapeType == 0 && event->handled == 0) {
+    if (event->shapeType == 0 && event->sphere.handled == 0) {
         object = callback->owner;
         work = object->data;
         state = work;
         callbackContext[0] = callback;
-        event->handled = 1;
+        event->sphere.handled = 1;
         if (event->type == 5) {
             state->contactEvent = 1;
             if (state->actor.active != 0) {

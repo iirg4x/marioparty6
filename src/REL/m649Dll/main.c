@@ -86,12 +86,6 @@ void fn_1_680(short mode, short state);
 
 void fn_1_C78(OMOBJ *object, u32 camera, s32 index);
 
-
-
-
-
-
-
 s32 fn_1_BD8(s16 mode, s16 frame);
 extern void fn_1_4ECC(Vec *start, Vec *end, float factor, Vec *result);
 
@@ -103,9 +97,7 @@ extern float lbl_1_bss_0, lbl_1_bss_4;
 
 extern s32 lbl_1_bss_64;
 
-
 extern s32 lbl_1_bss_5C;
-
 
 extern s32 lbl_1_bss_2C[4], lbl_1_bss_C[4], lbl_1_bss_4C[4];
 

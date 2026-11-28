@@ -2,7 +2,7 @@
 #define MIKEACTDLL_MICROPHONE_INIT_H
 #include "dolphin/types.h"
 #include "game/process.h"
-#include "REL/mikeactdll/mic_session.h"
+#include "game/mic.h"
 extern s32 lbl_1_bss_10;
 extern HUPROCESS *lbl_1_bss_6C;
 

@@ -1930,7 +1930,7 @@ s16 fn_1_20E50(M661PlayerState *move, s16 advance)
  * degrees. With two computer players and the target timer past 60 it stops in place
  * instead; returns 1 when the move ends. */
 s16 fn_1_20F90(M661PlayerState *state) {
-    struct ModelSetupRecord *model;
+    struct M661ModelSetupRecord *model;
     Point3d candidatePosition;
     f32 approachAngle;
     f32 leftBoundary;
@@ -2328,7 +2328,7 @@ void fn_1_23248(void)
     objectId = 0x23;
     objectIndex = 0;
     for (; objectId <= 98; objectId++, objectIndex++) {
-        ModelSetupRecord *bounds = &lbl_1_bss_1E3C[objectId];
+        M661ModelSetupRecord *bounds = &lbl_1_bss_1E3C[objectId];
         state = &lbl_1_bss_10[objectIndex];
 
         if (state->mode == 0) {

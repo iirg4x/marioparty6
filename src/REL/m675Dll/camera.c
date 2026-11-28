@@ -1,10 +1,11 @@
 /* Camera paths, lighting, shadows and positioned audio for Banana Shake. */
-#include "REL/m675Dll/module_types.h"
+#include "REL/m675Dll/functions.h"
 #include "REL/minigame_camera_work.h"
 #include "REL/minigame_positional_audio.h"
 
 #include "REL/minigame_camera_fit.h"
 #include "REL/minigame_fog.h"
+#include "REL/minigame_fog_work.h"
 #include "REL/minigame_light.h"
 #include "dolphin/math.h"
 #include "game/object.h"
@@ -54,11 +55,6 @@ typedef struct M675CameraFitSphere_s {
     Vec center; /* World-space center of an object to include in the camera view. */
     float radius; /* Bounding radius in world units. */
 } M675CameraFitSphere;
-typedef struct M675FogWork_s {
-    MinigameFogParams *parameters; /* Fog records, terminated by layer -1. */
-    OMOBJ_FUNC callback; /* Optional callback run by the fog object's update; null disables it. */
-    float factor; /* Interpolation factor from each fog record's start to its end. */
-} M675FogWork;
 typedef struct M675AudioWork_s {
     MinigameAudioRange *config; /* Pan/volume mappings, terminated by a zero camera mask. */
     s32 callbackWord; /* Optional object callback stored as a word; zero disables it. */
@@ -327,14 +323,14 @@ void fn_1_101C(int red,int green,int blue,int alpha) {
 /* Minigame setup stores the fog list and installs a render hook for each listed layer. */
 void fn_1_10A0(OMOBJMAN *manager, MinigameFogParams *parameters)
 {
-    M675FogWork *work;
+    MinigameFogWork *work;
     s32 i;
     OMOBJ *object;
     object = fn_8003AB38(manager, 26, 0, 0, -1, fn_1_11A0);
     lbl_1_bss_2D0 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M675FogWork), 0x10000000);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameFogWork), 0x10000000);
     object->data = work;
-    memset(work, 0, sizeof(M675FogWork));
+    memset(work, 0, sizeof(MinigameFogWork));
     work->parameters = parameters;
     work->factor = 1.0f;
     for (i = 0; parameters->layer != -1; i++, parameters++) {
@@ -346,18 +342,18 @@ void fn_1_10A0(OMOBJMAN *manager, MinigameFogParams *parameters)
         fn_80025918(parameters->layer, fn_1_11F8);
     }
 }
-/* The fog object's per-frame update calls its callback word when that word is nonzero. */
+/* Runs the fog callback when installed. */
 void fn_1_11A0(OMOBJ *obj)
 {
-    M675FogWork *work = lbl_1_bss_2D0->data;
-    if (work->callback != NULL) {
-        work->callback(obj);
+    MinigameFogWork *fog = lbl_1_bss_2D0->data;
+    if (fog->callback != NULL) {
+        fog->callback(obj);
     }
 }
 /* A render-layer hook applies that layer's fog range, scaled by the current fog factor. */
 void fn_1_11F8(s16 layer)
 {
-    M675FogWork *work;
+    MinigameFogWork *work;
     MinigameFogParams *parameters;
     float fov, nearPlane, farPlane;
     float end;
@@ -373,22 +369,22 @@ void fn_1_11F8(s16 layer)
     }
 }
 
-/* Fog control stores the callback word used by the fog object's update; zero disables it. */
-void fn_1_12EC(s32 callbackWord) {
-    s32 *fogState;
+/* Sets the fog object's per-frame callback. NULL disables it. */
+void fn_1_12EC(OMOBJ_FUNC callback) {
+    MinigameFogWork *fog;
 
     if (lbl_1_bss_2D0 != NULL) {
-        fogState = lbl_1_bss_2D0->data;
-        fogState[1] = callbackWord;
+        fog = lbl_1_bss_2D0->data;
+        fog->callback = callback;
     }
 }
 /* Fog control changes the factor used to interpolate each layer's fog end distance. */
 void fn_1_132C(f32 fogFactor) {
-    M675FogWork *work;
+    MinigameFogWork *fog;
 
     if (lbl_1_bss_2D0 != NULL) {
-        work = lbl_1_bss_2D0->data;
-        work->factor = fogFactor;
+        fog = lbl_1_bss_2D0->data;
+        fog->factor = fogFactor;
     }
 }
 /* Minigame setup initializes camera views and schedules their controller before view output. */

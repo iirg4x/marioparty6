@@ -27,21 +27,21 @@ extern CARDFileInfo curFileInfo;
 s32 SLSaveFlagGet(void);
 void SLWinIdSet(s16 winId);
 s32 SLSerialNoCheck(void);
-void SLSerialNoGet(void);
+s32 SLSerialNoGet(void);
 s32 SLStatSet(s32 stat);
 void SLCheckSumBoxAllSet(void);
 void SLSaveBackup(void);
 s32 SLCurBoxNoSet(s32 boxNo);
 void SLSaveDataMake(s32 initializationMode, OSTime *time);
-u16 SLCheckSumGet(s32 start, s32 len);
-void SLCurSlotNoSet(s32 slotNo);
+u16 SLCheckSumGet(u32 begin, u32 size);
+void SLCurSlotNoSet(s16 slotNo);
 void SLSaveEmptySet(s16 slot, s16 idx);
-s32 SLBoxDataOffsetGet(s16 boxNo);
+u32 SLBoxDataOffsetGet(s16 boxNo);
 s32 SLCheckSumCheck(void);
 void SLBoxBackupLoad(s16 boxNo);
 void SLCommonLoad(void);
 
-/* ==================== forward decls: functions defined in this TU ==================== */
+/* Card operations defined below. */
 s32 FileCheckCardSpace(void);
 s32 FileCardWarning(s16 winId);
 s32 FileCardErrorExec(s32 err, s16 winId);
@@ -171,7 +171,7 @@ s32 FileBoxInit(s16 sourceWindowId)
                     SLSaveEmptySet(curSlotNo, i);
                 }
                 SLCommonLoad();
-                if (strncmp((char *)&lbl_80265E30, "SAVE", 4) == 0) {
+                if (strncmp(lbl_80265E30.magic, "SAVE", 4) == 0) {
                     lbl_1_bss_D8[i].hasSave = 1;
                     OSTicksToCalendarTime(lbl_80265E30.time, &lbl_1_bss_D8[i].saveTime);
                     memcpy(lbl_1_bss_D8[i].fileName, lbl_80265E30.name, FILESEL_FILENAME_LENGTH);

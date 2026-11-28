@@ -20,7 +20,6 @@
 /* quiz.h leaves these out (other files call them without a prototype); this file's calls take
  * them with one. */
 void MicQuizCountdownInit(void);
-void MicQuizExpectedAnswerSet(s32 expectedAnswer);
 void MicQuizListenStart(void);
 void MicQuizMicContextSet(s32 questionType);
 void MicQuizQuestionReadySet(void);

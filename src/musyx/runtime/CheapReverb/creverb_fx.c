@@ -24,13 +24,11 @@ extern unsigned long ReverbSTDModify(_SND_REVSTD_WORK* rv, float coloration, flo
 
 /* Apply standard reverb to the auxiliary buffers when enabled. */
 void sndAuxCallbackReverbSTD(u8 reason, SND_AUX_INFO* info, void* user) {
-  SND_AUX_REVERBSTD* rev = user;
-
   switch (reason) {
   case SND_AUX_REASON_BUFFERUPDATE:
-    if (rev->tempDisableFX == 0) {
+    if ((u8)((SND_AUX_REVERBSTD*)user)->tempDisableFX == 0) {
       ReverbSTDCallback(info->data.bufferUpdate.left, info->data.bufferUpdate.right,
-                        info->data.bufferUpdate.surround, &rev->rv);
+                        info->data.bufferUpdate.surround, &((SND_AUX_REVERBSTD*)user)->rv);
     }
     break;
   case SND_AUX_REASON_PARAMETERUPDATE:

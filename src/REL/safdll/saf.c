@@ -1,6 +1,5 @@
 /* Sets up the motion-check overlay and renders its model, camera, and surface tests. */
 #include "math.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include/cmath"
 #include "dolphin/gx.h"
 #include "dolphin/gx/GXVert.h"
 #include "dolphin/gx/GXTexture.h"

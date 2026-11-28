@@ -88,7 +88,7 @@ void fn_1_5A7C(void)
     f32 directTurnAmount;
     f32 turnAmount;
     f32 ambient;
-    ModelSetupRecord *object;
+    M661ModelSetupRecord *object;
     MotionControl *control;
     workIndex = 0x23;
     objectIndex = 0;
@@ -338,10 +338,10 @@ void fn_1_6928(RecordOwner *owner)
 void fn_1_695C(void)
 {
     Point3d edgeNormals[2] = {{1.0f, 0.0f, 1.0f}, {-1.0f, 0.0f, 1.0f}};
-    BoundaryEdge boardBoundaries[6];
+    M661BoundaryEdge boardBoundaries[6];
     s16 modelIndex, motionIndex, otherIndex, edgeIndex, adjusted;
     M661PlayerState *boardPlayer;
-    ModelSetupRecord *piece;
+    M661ModelSetupRecord *piece;
     MotionControl *motion;
     f32 distance, scale, radius60, lengthSquared, amount, radius500, radius60Squared, radius300, radius400;
     Point3d delta, nearest, side;

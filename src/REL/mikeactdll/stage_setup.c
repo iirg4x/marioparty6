@@ -321,7 +321,6 @@ void fn_1_16718(s32 index, f32 positionX)
     fn_80026CBC(lbl_1_bss_36FC[index].linkedModelId, 0.0f);
 }
 
-/* Raises the stage particles while their effect is active. */
 void fn_1_186D0(HU3D_MODEL *model, HU3D_PARTICLE *manager, Mtx matrix);
 
 void fn_1_18C54(void);

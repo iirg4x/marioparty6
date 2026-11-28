@@ -29,7 +29,6 @@ float fn_1_4D7C(HuVecF *firstPosition, HuVecF *secondPosition);
 s32 fn_1_4A9C(s32 model, s32 dataNum);
 s32 fn_1_4FDC(Vec *start, Vec *end, f32 gravity, f32 initialY, Vec *velocity);
 
-/* Scene setup, queries, and updates. */
 int fn_1_4994(int dataNum);
 s32 fn_1_36BC(Vec *position);
 

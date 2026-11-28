@@ -52,7 +52,6 @@ typedef struct M658RegistryTemplate72 {
 
 extern const M658RegistryDescriptorView lbl_1_data_494[];
 
-
 /* Runs each frame to render registry entries and update pending or active items. */
 void fn_1_55FC(OMOBJ *object)
 {

@@ -43,17 +43,17 @@ void mbObjMotionShiftSet(int modelId, int motNo, float start, float end,
     BOOL loopF);
 void mbObjMotionTimeSet(int modelId, float time);
 void mbObjMotionSpeedSet(int modelId, float speed);
-void mbObjPosSetV(int modelId, HuVecF *pos);
+void mbObjPosSetV(MBMODELID modelId, const HuVecF *pos);
 void mbObjPosSet(int modelId, float x, float y, float z);
 void mbObjPosGet(int modelId, HuVecF *pos);
 void mbObjRotSet(int modelId, float rotX, float rotY, float rotZ);
-void mbObjScaleSet(int modelId, float x, float y, float z);
+void mbObjScaleSet(MBMODELID modelId, float x, float y, float z);
 void mbObjLayerSet(int modelId, int layer);
-void mbObjAttrSet(int modelId, u32 attr);
+void mbObjAttrSet(MBMODELID modelId, u32 attr);
 void mbObjDispSet(int modelId, BOOL dispF);
 void mbObjKill(int modelId);
-void mbObjHookSet(int modelId, char *objName, int hookMdlId);
-void mbObjHookReset(int modelId);
+void mbObjHookSet(MBMODELID modelId, char *objName, MBMODELID hookModelId);
+void mbObjHookReset(MBMODELID modelId);
 
 #define LAST5_COIN_NUM 40
 #define LAST5_COIN_SCATTER_RANGE (100.0f * 0.6f)

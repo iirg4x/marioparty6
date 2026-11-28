@@ -58,6 +58,7 @@ extern inline double sqrt(double x)
 double atan(double x);
 double copysign(double x, double y);
 double cos(double x);
+double exp(double x);
 double floor(double x);
 double frexp(double x, int *exp);
 double ldexp(double x, int exp);

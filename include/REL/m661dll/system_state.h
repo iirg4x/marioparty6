@@ -69,7 +69,6 @@ extern SystemInputState lbl_1_bss_196C;
 /* Shared state defined by the module core. */
 extern MinigameShadowCamera lbl_1_bss_2FEC;
 
-/* Shared state defined by the module core. */
 typedef struct ModelAnimationWork {
     s16 motionIds[5];
     s16 motionId;

@@ -100,30 +100,30 @@ M626CharacterMotionParam lbl_1_data_170[12] = {
 };
 
 Vec lbl_1_data_200[12] = {
-{-300.0f, 0.00000000f, 0.00000000f},
-{400.0f, 0.00000000f, 0.00000000f},
-{300.0f, 0.00000000f, 300.0f},
-{300.0f, 0.00000000f, -300.0f},
-{-450.0f, 0.00000000f, 250.0f},
-{-400.0f, 0.00000000f, -150.0f},
-{-500.0f, 0.00000000f, 450.0f},
-{-500.0f, 0.00000000f, -350.0f},
-{0.00000000f, 0.00000000f, 0.00000000f},
-{0.00000000f, 0.00000000f, 0.00000000f},
-{0.00000000f, 0.00000000f, 0.00000000f},
-{0.00000000f, 0.00000000f, 0.00000000f}
+{-300.0f, 0.0f, 0.0f},
+{400.0f, 0.0f, 0.0f},
+{300.0f, 0.0f, 300.0f},
+{300.0f, 0.0f, -300.0f},
+{-450.0f, 0.0f, 250.0f},
+{-400.0f, 0.0f, -150.0f},
+{-500.0f, 0.0f, 450.0f},
+{-500.0f, 0.0f, -350.0f},
+{0.0f, 0.0f, 0.0f},
+{0.0f, 0.0f, 0.0f},
+{0.0f, 0.0f, 0.0f},
+{0.0f, 0.0f, 0.0f}
 };
 
 f32 lbl_1_data_290[15] = {
     60.0f, 280.0f, 260.0f, 280.0f,
     90.0f, 90.0f, 90.0f, 90.0f,
     90.0f, 90.0f, 90.0f, 90.0f,
-    0.00000000f, 0.00000000f, 0.00000000f
+    0.0f, 0.0f, 0.0f
 };
 
 Vec lbl_1_data_2CC[2] = {
-{-200.0f, 0.00000000f, 0.00000000f},
-{200.0f, 0.00000000f, 0.00000000f}
+{-200.0f, 0.0f, 0.0f},
+{200.0f, 0.0f, 0.0f}
 };
 
 M626DllCharacterDimensions lbl_1_data_2E4[16] = {
@@ -151,8 +151,8 @@ M626PlayerConfig lbl_1_data_364 = {
 3, 4, 5, 6, 7, 8
 };
 
-M626CollisionParameters lbl_1_data_3C0 = { { 0.00000000f, 0.00000000f, 0.00000000f },
-                                           { 0.00000000f, 140.0f, 0.00000000f } };
+M626CollisionParameters lbl_1_data_3C0 = { { 0.0f, 0.0f, 0.0f },
+                                           { 0.0f, 140.0f, 0.0f } };
 
 OMOBJ *lbl_1_bss_304;
 OMOBJ *lbl_1_bss_2F4[4];
@@ -239,7 +239,7 @@ void fn_1_45F8(M626ObjectWork *work)
             15.000000000000000 * sin(3.1415926535897931 * angle / 180.00000000000000) +
             8.0000000000000000 *
                 (0.000030517578125000000 * (f32)((frand() & 0xFFFF) - 32768)));
-        target.y = 0.00000000f;
+        target.y = 0.0f;
         target.z = (f32)((f64)work->position.z +
             15.000000000000000 * cos(3.1415926535897931 * angle / 180.00000000000000) +
             8.0000000000000000 *
@@ -263,13 +263,13 @@ void fn_1_48C4(M626ObjectWork *work)
 
             work->tiltAngle = 90.0f;
             if (work->effectComplete == 0) {
-                local.x = local.z = 0.00000000f;
+                local.x = local.z = 0.0f;
                 local.y = (f32)(0.69999999999999996 * work->config.modelHeight);
                 PSMTXMultVec(work->matrix, &local, &world);
                 world.y += 30.0;
                 PSVECAdd(&world, &work->position, &world);
                 fn_1_DD48(50, 120.0f, &world);
-                work->collisionMode = 0.00000000f;
+                work->collisionMode = 0.0f;
                 work->effectComplete = 1;
                 if (work->flags != 0) {
                     playerWork = work;
@@ -286,7 +286,7 @@ void fn_1_48C4(M626ObjectWork *work)
         }
     } else {
         if ((work->effectRise -= 0.050000000000000003) <= 0.0000000000000000) {
-            work->effectRise = 0.00000000f;
+            work->effectRise = 0.0f;
         }
     }
 
@@ -296,7 +296,7 @@ void fn_1_48C4(M626ObjectWork *work)
 
         fn_80026A44(work->effectModel, (1 << 0));
         fn_80026808(work->effectModel, work->tiltAngle, work->effectRotation,
-                        0.00000000f);
+                        0.0f);
         fn_80026790(work->effectModel, &work->position);
         fn_800268B0(work->effectModel, xz, y, xz);
     } else {
@@ -314,7 +314,7 @@ void fn_1_4B90(M626ObjectWork *work)
     } else {
         if ((work->pulseProgress = (f32) ((f64) work->pulseProgress - 0.29999999999999999)) <=
             0.0000000000000000) {
-            work->pulseProgress = 0.00000000f;
+            work->pulseProgress = 0.0f;
         }
     }
     if (work->pulseProgress > 0.0000000000000000) {
@@ -840,7 +840,7 @@ void fn_1_61CC(OMOBJ *object, s32 index)
     model = object->mdlId[0];
     if (state->motionIndex != index && index < 12) {
         if (state->motionIndex < 0) {
-            blend = 0.00000000f;
+            blend = 0.0f;
         } else {
             blend = 60.0f * lbl_1_data_170[index].blendFraction;
         }
@@ -853,7 +853,7 @@ void fn_1_61CC(OMOBJ *object, s32 index)
                             ((1 << 30) | (1 << 11)));
         overlay = lbl_1_data_170[index].overlayIndex;
         if (overlay >= 0) {
-            fn_8005C2C8(work->identity.character, motion, 0.00000000f, blend, attr);
+            fn_8005C2C8(work->identity.character, motion, 0.0f, blend, attr);
             fn_8002CAA8(model, object->mtnId[overlay]);
             if (attr & ((1 << 30) | (1 << 0))) {
                 overlayAttr |= ((1 << 30) | (1 << 9));
@@ -864,7 +864,7 @@ void fn_1_61CC(OMOBJ *object, s32 index)
             fn_800269E8(model, overlayAttr);
         } else {
             fn_8002CAF0(model);
-            fn_8005C2C8(work->identity.character, motion, 0.00000000f, blend, attr);
+            fn_8005C2C8(work->identity.character, motion, 0.0f, blend, attr);
         }
         fn_8005C390(work->identity.character, 1.0f);
     }
@@ -1110,7 +1110,7 @@ void fn_1_6D28(M626ObjectWork *work)
         }
     }
     if (work->status != 0) {
-        work->velocity.x = work->velocity.z = 0.00000000f;
+        work->velocity.x = work->velocity.z = 0.0f;
         return;
     }
     if (work->motionPaused != 0) {
@@ -1183,7 +1183,7 @@ void fn_1_6D28(M626ObjectWork *work)
             work->requestedMotion = fromPlayer;
             work->motionSpeed = 1.0f;
         }
-        work->velocity.x = work->velocity.z = 0.00000000f;
+        work->velocity.x = work->velocity.z = 0.0f;
         if (distance > 0.05f && work->motionTimer == 0) {
             work->rotation.y = fn_1_3EAC(work->rotation.y, work->targetDistance,
                                     0.3f);
@@ -1191,7 +1191,7 @@ void fn_1_6D28(M626ObjectWork *work)
     }
 }
 
-Vec lbl_1_data_3F4 = {0.00000000f, 1.0f, 0.00000000f};
+Vec lbl_1_data_3F4 = {0.0f, 1.0f, 0.0f};
 
 /* Handles contact between opposing players, starting the hit reaction and its feedback. */
 s32 fn_1_7050(M626Entry *trigger, M626Entry *contact)
@@ -1218,7 +1218,7 @@ s32 fn_1_7050(M626Entry *trigger, M626Entry *contact)
                     state->motionState = 0;
                 }
                 direction.x = contact->direction->x;
-                direction.y = 0.00000000f;
+                direction.y = 0.0f;
                 direction.z = contact->direction->z;
                 PSVECNormalize(&direction, &direction);
                 PSVECCrossProduct(&lbl_1_data_3F4, &direction,
@@ -1269,7 +1269,7 @@ void fn_1_723C(M626ObjectWork *controller,
     controller->controlUpdate = callback;
     controller->controlState = 0;
     controller->controlTimer = 0;
-    controller->controlProgress = 0.00000000f;
+    controller->controlProgress = 0.0f;
 }
 
 /* Chooses approach speed and facing while a computer player moves toward a target. */
@@ -1345,7 +1345,7 @@ void fn_1_7648(M626ObjectWork *controller) {
     controller->controlUpdate = callback;
     controller->controlState = 0;
     controller->controlTimer = 0;
-    controller->controlProgress = 0.00000000f;
+    controller->controlProgress = 0.0f;
 }
 
 /* Chooses computer movement speed after checking for incoming snowballs and nearby players. */
@@ -1429,13 +1429,13 @@ s32 fn_1_797C(M626ObjectWork *work)
         if (fabs(difference) > 40.000000000000000) {
             return 0;
         }
-        if (difference < 0.00000000f) {
+        if (difference < 0.0f) {
             difference = distance - 90.0f;
         } else {
             difference = 90.0f + distance;
         }
         if (work->position.z < -350.00000000000000) {
-            difference = 0.00000000f;
+            difference = 0.0f;
         }
         if (work->position.z > 350.00000000000000) {
             difference = 180.0f;
@@ -1528,7 +1528,7 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
     f32 distanceToTarget;
     if ((f64)work->reverseCount > 180.00000000000000)
     {
-        target = fn_1_879C(work->key ^ 1, work, &work->position, 0.00000000f, 180.0f,
+        target = fn_1_879C(work->key ^ 1, work, &work->position, 0.0f, 180.0f,
                            3000.0f, 1);
         if (target != NULL)
         {
@@ -1620,11 +1620,11 @@ s32 fn_1_7F30(M626ObjectWork *work, f32 baseY)
 void fn_1_8570(M626ObjectWork *state) {
     state->modelAttributes = 0;
     state->controlWord = 0;
-    state->targetDistance = 0.00000000f;
-    state->movementSpeed = 0.00000000f;
+    state->targetDistance = 0.0f;
+    state->movementSpeed = 0.0f;
 }
 
-Vec lbl_1_data_460 = {0.00000000f, 1.0f, 0.00000000f};
+Vec lbl_1_data_460 = {0.0f, 1.0f, 0.0f};
 
 /* Builds the player model's rotation matrix, applies hit tilt, and updates its transform. */
 void fn_1_85A4(M626ObjectWork *state, s32 model)

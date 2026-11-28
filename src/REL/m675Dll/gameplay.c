@@ -1,5 +1,5 @@
 /* Controls the Banana Shake prop actors, their scripted movement, and attached effects. */
-#include "REL/m675Dll/module_types.h"
+#include "REL/m675Dll/functions.h"
 #include "REL/minigame_prop_motion.h"
 #include "REL/m675Dll/prop_work.h"
 #include <math.h>
@@ -25,25 +25,6 @@ static inline void DebugValue(int value)
 }
 
 
-typedef struct M675MotionObjectView_s {
-    u8 unmappedHeaderBytes[64];
-    s16 *modelIds;
-    s32 unmappedWordAfterModelIds;
-    s32 unmappedWordBetweenModelIdsAndVector;
-    s32 unmappedWordBeforeVector;
-    HuVecF unmappedVectorBeforeGap;
-    u8 unmappedBytesBetweenVectors[12];
-    HuVecF unmappedVectorAfterGap;
-    u8 unmappedBytesBeforeTail[4];
-    s32 unmappedTailStart;
-    s32 unmappedWordBeforeFloatPair;
-    f32 unmappedFloatPairStart;
-    f32 unmappedFloatPairEnd;
-    s32 unmappedWordAfterFloatPair;
-    s32 unmappedMiddleTailWord;
-    s32 unmappedWordBeforeTailEnd;
-    f32 unmappedTailEnd;
-} M675MotionObjectView;
 
 typedef void (*M675MotionEmitterUpdate)(M675EmitterRecord *record);
 
@@ -63,7 +44,7 @@ void fn_1_7944(OMOBJ *object);
 
 OMOBJ *fn_1_7998(s32 type, s32 id);
 
-BOOL fn_1_7D88(M675MotionObjectView *actor);
+BOOL fn_1_7D88(OMOBJ *actor);
 
 void fn_1_7F2C(OMOBJ *object);
 
@@ -415,13 +396,9 @@ static inline OMOBJ *M675SequenceFind(s32 type, s32 mode)
     }
     return NULL;
 }
-/* Starts a motion on the shadow object. */
-static inline void M675ShadowMotionSetPlain(OMOBJ *object, s32 index)
-{
-    M675SequenceMotionSet(object, index, 0);
-}
-/* Starts a sequence motion without its shape motion (the 0); its attributes still apply. */
-static inline void M675SequenceMotionSetPlain(OMOBJ *object, s32 index)
+
+/* Sets the motion and its attributes, leaving the shape motion unchanged. */
+static inline void M675SequenceMotionSetWithoutShape(OMOBJ *object, s32 index)
 {
     M675SequenceMotionSet(object, index, 0);
 }
@@ -709,11 +686,11 @@ void fn_1_7C64(OMOBJ *object, s32 index)
 }
 
 /* Tests whether the actor's main motion and blend have both finished. */
-BOOL fn_1_7D88(M675MotionObjectView *actor)
+BOOL fn_1_7D88(OMOBJ *actor)
 {
     s32 model_id;
 
-    model_id = actor->modelIds[0];
+    model_id = actor->mdlId[0];
     if (fn_8002D75C((HU3D_MODELID) model_id) != 0 &&
         fn_8002D3EC((HU3D_MODELID) model_id) < 0) {
         return TRUE;
@@ -1342,12 +1319,12 @@ void fn_1_9AF0(OMOBJ *object, s32 resourceId, s32 collisionType,
         callback->shapeType = 0;
         callback->owner = object;
         callback->update = 0;
-        callback->contact = 0;
-        callback->position = &records->position;
-        callback->velocity = &records->velocity;
-        callback->positionCopy = *callback->position;
-        callback->radius = 30.0f;
-        callback->yieldOnContact = 1.0f;
+        callback->sphere.contact = 0;
+        callback->sphere.position = &records->position;
+        callback->sphere.velocity = &records->velocity;
+        callback->sphere.positionCopy = *callback->sphere.position;
+        callback->sphere.radius = 30.0f;
+        callback->sphere.yieldOnContact = 1.0f;
         fn_1_10170(callback);
     }
 }
@@ -1394,12 +1371,12 @@ void fn_1_9CAC(OMOBJ *object)
         callback->shapeType = 0;
         callback->owner = object;
         callback->update = 0;
-        callback->contact = 0;
-        callback->position = &records->position;
-        callback->velocity = &records->velocity;
-        callback->positionCopy = *callback->position;
-        callback->radius = 30.0f;
-        callback->yieldOnContact = 1.0f;
+        callback->sphere.contact = 0;
+        callback->sphere.position = &records->position;
+        callback->sphere.velocity = &records->velocity;
+        callback->sphere.positionCopy = *callback->sphere.position;
+        callback->sphere.radius = 30.0f;
+        callback->sphere.yieldOnContact = 1.0f;
         fn_1_10170(callback);
     }
     object->objFunc = fn_1_A0F0;
@@ -1438,12 +1415,12 @@ void fn_1_9E18(OMOBJ *object)
         callback->shapeType = 0;
         callback->owner = object;
         callback->update = 0;
-        callback->contact = 0;
-        callback->position = &records->position;
-        callback->velocity = &records->velocity;
-        callback->positionCopy = *callback->position;
-        callback->radius = 30.0f;
-        callback->yieldOnContact = 1.0f;
+        callback->sphere.contact = 0;
+        callback->sphere.position = &records->position;
+        callback->sphere.velocity = &records->velocity;
+        callback->sphere.positionCopy = *callback->sphere.position;
+        callback->sphere.radius = 30.0f;
+        callback->sphere.yieldOnContact = 1.0f;
         fn_1_10170(callback);
     }
     object->objFunc = fn_1_A0F0;
@@ -1482,12 +1459,12 @@ void fn_1_9F84(OMOBJ *object)
         callback->shapeType = 0;
         callback->owner = object;
         callback->update = 0;
-        callback->contact = 0;
-        callback->position = &records->position;
-        callback->velocity = &records->velocity;
-        callback->positionCopy = *callback->position;
-        callback->radius = 30.0f;
-        callback->yieldOnContact = 1.0f;
+        callback->sphere.contact = 0;
+        callback->sphere.position = &records->position;
+        callback->sphere.velocity = &records->velocity;
+        callback->sphere.positionCopy = *callback->sphere.position;
+        callback->sphere.radius = 30.0f;
+        callback->sphere.yieldOnContact = 1.0f;
         fn_1_10170(callback);
     }
     object->objFunc = fn_1_A0F0;
@@ -1546,7 +1523,7 @@ void fn_1_A274(M675EmitterRecord *state)
         state->velocity.y = -19.166666f;
 
     case 2:
-        if (state->collision.handled == 0) {
+        if (state->collision.sphere.handled == 0) {
             return;
         }
         state->state++;
@@ -1588,7 +1565,7 @@ void fn_1_A448(M675EmitterRecord *state)
         state->velocity.y = -19.166666f;
 
     case 2:
-        if (state->collision.handled == 0) {
+        if (state->collision.sphere.handled == 0) {
             return;
         }
         state->state++;
@@ -1628,7 +1605,7 @@ void fn_1_A5B4(M675EmitterRecord *state)
         state->rotation.z = 90.0f;
         state->rotationDelta.z = 8.0f;
     case 2:
-        if (state->collision.handled != 0) {
+        if (state->collision.sphere.handled != 0) {
             state->state++;
             state->timer = 0.0f;
             state->enabled = 0;
@@ -1726,7 +1703,7 @@ void fn_1_AA48(M675EmitterRecord *state)
         state->velocity.y = -19.166666f;
 
     case 2:
-        if (state->collision.handled != 0) {
+        if (state->collision.sphere.handled != 0) {
             state->state++;
             state->timer = 0.0f;
             state->enabled = 0;
@@ -1781,7 +1758,7 @@ void fn_1_ACB0(M675EmitterRecord *record) {
     record->rotationDelta.y = (f32) 0.0f;
     record->rotationDelta.z = (f32) 0.0f;
     record->collision.flags = 1;
-    record->collision.handled = 0;
+    record->collision.sphere.handled = 0;
     fn_80026A44((s16) record->modelId, 1U);
 }
 
@@ -1801,7 +1778,7 @@ void fn_1_ADDC(OMOBJ *object)
     activeWork = object->data;
     active = activeWork;
     modelId = object->mdlId[0];
-    M675ShadowMotionSetPlain(object, 0);
+    M675SequenceMotionSetWithoutShape(object, 0);
     fn_80026FFC((s16)modelId);
     activeWork->displayPosition = active->state.actor.position;
     active->state.effect.active = 1;
@@ -2621,7 +2598,7 @@ void fn_1_D148(OMOBJ *object)
 
     state = work;
     if (state->state.actor.requestedMotion != -1) {
-        M675SequenceMotionSetPlain(object, state->state.actor.requestedMotion);
+        M675SequenceMotionSetWithoutShape(object, state->state.actor.requestedMotion);
         fn_8002D86C(object->mdlId[0], state->state.actor.motionSpeed);
     }
 }

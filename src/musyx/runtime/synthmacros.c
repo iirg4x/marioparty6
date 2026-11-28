@@ -409,7 +409,7 @@ static void mcmdIfRandom(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-    if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
+  if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
   }
@@ -417,7 +417,7 @@ static void mcmdIfRandom(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
 static u32 mcmdGoto(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r31
-    if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
+  if ((addr = dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
     return 0;

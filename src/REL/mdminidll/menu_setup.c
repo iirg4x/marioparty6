@@ -302,7 +302,7 @@ extern char lbl_1_data_738[];
 extern char lbl_1_data_767[];
 
 
-/* Reports the remaining audio memory and prints the allocation dump. */
+/* Reports the remaining ARAM and prints the allocation dump. */
 static inline void MenuArenaMemoryReport(void)
 {
     OSReport(lbl_1_data_6F3, 33);

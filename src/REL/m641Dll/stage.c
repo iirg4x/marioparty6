@@ -2072,8 +2072,6 @@ static inline void fn_1_9F7C(s16 playerIndex, s16 motionIndex) {
     }
 }
 
- s32 fn_1_ACE0(s16 frame);
-
 f32 lbl_1_bss_558[2];
 M641RouteState lbl_1_bss_84;
 Point3d lbl_1_bss_30[7];

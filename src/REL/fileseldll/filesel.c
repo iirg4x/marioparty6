@@ -118,7 +118,7 @@ s32 SLSaveFlagGet(void);
 void SLSaveFlagSet(s32 flag);
 void SLSaveDataMake(s32 initializationMode, OSTime *time);
 void SLSaveEmptySet(s16 slot, s16 idx);
-s32 SLBoxDataOffsetGet(s16 boxNo);
+u32 SLBoxDataOffsetGet(s16 boxNo);
 void SLCommonLoad(void);
 void SLCommonSet(void);
 

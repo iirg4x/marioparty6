@@ -383,7 +383,7 @@ static u16 *_langGetpPhenUserWordTraining(struct _LANGUAGE *pLang)
 {
     void *pTransWord = _langGetpTransWord(pLang);
 
-    return (u16 *)((char *)pTransWord + _transwGetSize(pLang, (struct _TRANSWORDINFO *)pTransWord));
+    return (u16 *)((char *)pTransWord + _transwGetSize(pLang, pTransWord));
 }
 
 /* Locates the stored dimensions of the tone conversion matrix. */
@@ -457,12 +457,13 @@ static u16 *_transwGetpTransWordLex(struct _TRANSWORDINFO *pTransWord)
 }
 
 /* Locates the table of transition-word offsets. */
-static u16 *_transwGetpBeginOfTransWords(struct _TRANSWORDINFO *pTransWord)
+static u16 *_transwGetpBeginOfTransWords(void *pTransWord)
 {
-    u16 *Ptr = (u16 *)pTransWord;
+    struct _TRANSWORDINFO *pTransWordInfo = pTransWord;
+    u16 *Ptr = pTransWord;
 
-    Ptr += pTransWord->NbrPhenInLex;
-    return Ptr + sizeof(*pTransWord) / sizeof(*Ptr);
+    Ptr += pTransWordInfo->NbrPhenInLex;
+    return Ptr + sizeof(*pTransWordInfo) / sizeof(*Ptr);
 }
 
 /* Computes the size of the packed transition-word data. */

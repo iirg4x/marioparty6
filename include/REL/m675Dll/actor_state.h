@@ -14,12 +14,27 @@ struct M675Collision {
     OMOBJ *owner; /* Object that owns this collision record. */
     void *excludedOwner; /* Other owner ignored when the collision pair is checked. */
     OMOBJ_FUNC update; /* Callback that refreshes the owner's transform. */
-    s32 (*contact)(M675Collision *, M675Collision *); /* Pair-contact callback. */
-    Vec *position, *velocity; /* World position and velocity used by collision response. */
-    Vec positionCopy; /* Position snapshot stored when the record is initialized. */
-    f32 radius; /* Collision radius. */
-    f32 yieldOnContact; /* Nonzero makes this sphere yield to a zero-valued partner. */
-    s32 handled; /* Nonzero after another callback handles this event. */
+    /* shapeType selects which data follows the registration header. */
+    union {
+        struct {
+            s32 (*contact)(M675Collision *, M675Collision *); /* Pair-contact callback. */
+            Vec *position, *velocity; /* World position and velocity used by collision response. */
+            Vec positionCopy; /* Position snapshot stored when the record is initialized. */
+            f32 radius; /* Collision radius. */
+            f32 yieldOnContact; /* Nonzero makes this sphere yield to a zero-valued partner. */
+            s32 handled; /* Nonzero after another callback handles this event. */
+        } sphere;
+        struct {
+            Vec center;
+            f32 bottomOffsetY, height;
+            f32 innerRadiusX, innerRadiusZ, outerRadiusX, outerRadiusZ;
+        } ring;
+        struct {
+            Vec center;
+            f32 radiusX, radiusZ;
+            s32 direction; /* Nonzero keeps the sphere inside the ellipse. */
+        } boundary;
+    };
 };
 
 typedef struct M675ActorState {
