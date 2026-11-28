@@ -9,7 +9,7 @@ neither builds nor references (both have been commented out in
 All 33,477 functions match retail. The configured RELs include 128 nonempty
 modules and eight empty modules.
 
-Updated 2026-11-27 19:23 UTC.
+Updated 2026-11-28 00:25 UTC.
 
 ## Progress
 
