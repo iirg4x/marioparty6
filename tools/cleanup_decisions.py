@@ -154,42 +154,108 @@ def _field_declarations(text: str) -> Dict[int, str]:
     return declarations
 
 
-def field_read_anywhere(sources: Mapping[str, str], field: str) -> bool:
-    """Snapshot adapter of harness/header_fields.py read_anywhere: the identical use pattern and predicate.
-
-    The snapshot replaces git grep's src/include lines. Like the harness, a read on ANY struct with this field
-    name blocks the decision; only a plain assignment (including array/member targets) is write-only.
-    Keep this predicate in sync with the harness; the local regression compares both implementations.
-    """
-    use = re.compile(r"(?:->|\.)\s*" + field + r"\b((?:\s*(?:\.|->)\s*\w+|\s*\[[^\]]*\])*)\s*(=(?!=))?")
-    return any(not match.group(2) for text in sources.values() if field in text
-               for line in text.splitlines() for match in use.finditer(line))
-
-
 OFFSET_NAME = r"(?:(?:field|unk(?:nown)?)_?[0-9A-Fa-f]{1,4}|value_?[0-9A-Fa-f]{2,4})"
 FIELD_USE = re.compile(r"(?:->|\.)\s*(" + OFFSET_NAME + r")\b((?:\s*(?:\.|->)\s*\w+|\s*\[[^\]]*\])*)\s*(=(?!=))?")
+SUBSCRIPTS = r"(?:\s*\[[^\]\n]*\])*"
+# A whole statement that only updates one field in place: `p->f++;`, `++p->f;`, `p->f[i] += x;`.
+SELF_UPDATE = re.compile(
+    r"^\s*(?P<pre>\+\+|--)?\s*[A-Za-z_]\w*" + SUBSCRIPTS + r"(?:\s*(?:->|\.)\s*\w+" + SUBSCRIPTS + r")*?"
+    r"\s*(?:->|\.)\s*(?P<field>" + OFFSET_NAME + r")\b" + SUBSCRIPTS +
+    r"\s*(?:(?P<post>\+\+|--)|(?P<op>(?:<<|>>|[-+*/%&|^])=)(?P<rhs>[^;]*))?\s*;\s*$")
 
 
-def unread_field_names(sources: Mapping[str, str]) -> set:
-    """Every offset name declared in some record with a never-read comment."""
-    names = set()
+def self_updated_field(line: str) -> Optional[str]:
+    """The field `line` updates in place, when the line is that one statement and nothing else reads the field
+    there, else None. The field_name_check self-update rule (17 Nov): a field whose only reads are inside its own
+    self-update counts as never read; it fails closed, so `y = f += 1`, `if (++f > n)` or `g(f++)` stay reads, and
+    a component update (`f.x++`) is not a self-update."""
+    match = SELF_UPDATE.match(line)
+    if not match or sum(1 for part in ("pre", "post", "op") if match.group(part)) != 1:
+        return None
+    field = match.group("field")
+    if len(re.findall(r"(?:->|\.)\s*" + field + r"\b", line)) != 1:
+        return None
+    return field
+
+
+def field_read_anywhere(sources: Mapping[str, str], field: str) -> bool:
+    """Snapshot adapter of harness/header_fields.py read_anywhere: the same use pattern and predicate, plus the
+    field check's self-update rule (self_updated_field).
+
+    The snapshot replaces git grep's src/include lines. Like the harness, a read on ANY struct with this field
+    name blocks the decision; only a plain assignment (including array/member targets) or a statement that only
+    updates the field in place is write-only.
+    """
+    use = re.compile(r"(?:->|\.)\s*" + field + r"\b((?:\s*(?:\.|->)\s*\w+|\s*\[[^\]]*\])*)\s*(=(?!=))?")
     for text in sources.values():
+        if field not in text:
+            continue
+        for line in text.splitlines():
+            if field not in line:
+                continue
+            reads = [match for match in use.finditer(line) if not match.group(2)]
+            if reads and self_updated_field(line) != field:
+                return True
+    return False
+
+
+def module_key(path: str) -> Optional[str]:
+    """The module a source or header belongs to (src/REL/m609dll/* and include/REL/m609dll/* or
+    include/REL/m609Dll.h are one module; src/board and include/game/board are one area), or None for a shared
+    header (include/REL/minigame_*.h, the SDK headers)."""
+    parts = path.split("/")
+    if len(parts) >= 4 and parts[0] in ("src", "include") and parts[1] == "REL":
+        return "REL/" + parts[2].lower()
+    if len(parts) == 3 and parts[:2] == ["include", "REL"]:
+        module = re.match(r"([a-z0-9]+?dll)", parts[2].lower())
+        return "REL/" + module.group(1) if module else None
+    if parts[0] == "src" and len(parts) >= 3:
+        return parts[1]
+    if parts[:2] == ["include", "game"]:
+        return "board" if len(parts) >= 4 and parts[2] == "board" else "game"
+    return None
+
+
+def unread_field_names(sources: Mapping[str, str]) -> Dict[str, List[str]]:
+    """Each offset name declared in a record with a never-read comment, with the files that declare it so."""
+    names: Dict[str, List[str]] = {}
+    for path, text in sources.items():
         if UNREAD_COMMENT.search(text):
-            names.update(_field_declarations(text).values())
+            for name in set(_field_declarations(text).values()):
+                names.setdefault(name, []).append(path)
     return names
 
 
-def unread_field_write(line: str, unread: set, sources: Mapping[str, str], readers: Dict[str, bool]) -> bool:
-    """True when every offset-named field `line` uses is a plain store to a field the unread-fields decision
-    covers: declared with a never-read comment, and never read anywhere under the same predicate as the
-    declaration (field_read_anywhere). The store has to name the field, so the decision covers it too."""
+def documented_for(path: str, text: str, declared_in: Sequence[str]) -> bool:
+    """Whether a never-read declaration of the field can be the one `path` stores to: one in the same module, or a
+    shared header `path` includes directly. Without type resolution this stands in for the store's own record;
+    a declaration elsewhere of the same name does not document this store."""
+    own = module_key(path)
+    for declaration in declared_in:
+        key = module_key(declaration)
+        if key is not None and key == own:
+            return True
+        if key is None and declaration.startswith("include/") and declaration[len("include/"):] in text:
+            return True
+    return False
+
+
+def unread_field_write(line: str, unread: Mapping[str, Sequence[str]], sources: Mapping[str, str],
+                       readers: Dict[str, bool], path: str = "") -> bool:
+    """True when every offset-named field `line` uses is a plain store, or the line's one in-place update, of a
+    field the unread-fields decision covers: declared with a never-read comment in this module or a shared header
+    this file includes, and never read anywhere under the same predicate as the declaration
+    (field_read_anywhere). The store has to name the field, so the decision covers it too."""
     code = SOURCE_PART.sub(lambda match: re.sub(r"[^\n]", " ", match.group()), line)
     uses = list(FIELD_USE.finditer(code))
     if not uses:
         return False
+    updated = self_updated_field(code)
     for use in uses:
         field = use.group(1)
-        if not use.group(3) or field not in unread:
+        if not (use.group(3) or field == updated) or field not in unread:
+            return False
+        if not documented_for(path, sources.get(path, ""), unread[field]):
             return False
         if field not in readers:
             readers[field] = field_read_anywhere(sources, field)
@@ -242,7 +308,7 @@ def classify(site: Mapping[str, object], sources: Mapping[str, str],
              lines_of: Optional[Dict[str, List[str]]] = None,
              fields_of: Optional[Dict[str, Dict[int, str]]] = None,
              readers: Optional[Dict[str, bool]] = None,
-             unread: Optional[set] = None) -> Optional[str]:
+             unread: Optional[Mapping[str, Sequence[str]]] = None) -> Optional[str]:
     """The id of the decision covering `site`, or None (open)."""
     by_rule = RULE_DECISIONS.get(str(site.get("_rule") or ""))
     if by_rule:
@@ -269,7 +335,7 @@ def classify(site: Mapping[str, object], sources: Mapping[str, str],
             if unread is None:
                 unread = unread_field_names(sources)
             in_range = 0 <= index < len(lines)
-            return "unread-fields" if in_range and unread_field_write(lines[index], unread, sources, seen) else None
+            return "unread-fields" if in_range and unread_field_write(lines[index], unread, sources, seen, path) else None
         # Numbered-name findings identify one name, even when other declarations share the line.
         named = re.match(r"([A-Za-z_]\w*):", str(site.get("detail") or ""))
         if named and named.group(1) != field:
