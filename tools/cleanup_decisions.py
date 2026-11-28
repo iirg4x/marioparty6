@@ -36,7 +36,8 @@ DECISIONS: Sequence[Mapping[str, str]] = (
         "label": "Unread fields keep their offset names",
         "date": "2026-10-09",
         "record": "decisions/20261009-user-unread-fields.json",
-        "summary": "A field no code reads keeps its offset name with an explicit never-read comment at its declaration.",
+        "summary": "A field no code reads keeps its offset name with an explicit never-read comment at its declaration; "
+                   "the stores to it name it too.",
     },
     {
         "id": "hex-stays-hex",
@@ -165,6 +166,38 @@ def field_read_anywhere(sources: Mapping[str, str], field: str) -> bool:
                for line in text.splitlines() for match in use.finditer(line))
 
 
+OFFSET_NAME = r"(?:(?:field|unk(?:nown)?)_?[0-9A-Fa-f]{1,4}|value_?[0-9A-Fa-f]{2,4})"
+FIELD_USE = re.compile(r"(?:->|\.)\s*(" + OFFSET_NAME + r")\b((?:\s*(?:\.|->)\s*\w+|\s*\[[^\]]*\])*)\s*(=(?!=))?")
+
+
+def unread_field_names(sources: Mapping[str, str]) -> set:
+    """Every offset name declared in some record with a never-read comment."""
+    names = set()
+    for text in sources.values():
+        if UNREAD_COMMENT.search(text):
+            names.update(_field_declarations(text).values())
+    return names
+
+
+def unread_field_write(line: str, unread: set, sources: Mapping[str, str], readers: Dict[str, bool]) -> bool:
+    """True when every offset-named field `line` uses is a plain store to a field the unread-fields decision
+    covers: declared with a never-read comment, and never read anywhere under the same predicate as the
+    declaration (field_read_anywhere). The store has to name the field, so the decision covers it too."""
+    code = SOURCE_PART.sub(lambda match: re.sub(r"[^\n]", " ", match.group()), line)
+    uses = list(FIELD_USE.finditer(code))
+    if not uses:
+        return False
+    for use in uses:
+        field = use.group(1)
+        if not use.group(3) or field not in unread:
+            return False
+        if field not in readers:
+            readers[field] = field_read_anywhere(sources, field)
+        if readers[field]:
+            return False
+    return True
+
+
 def _is_code(line: str) -> bool:
     return bool(line.strip()) and not COMMENT_LINE.match(line)
 
@@ -208,7 +241,8 @@ def debug_hook_call(text: str, lines: Sequence[str], index: int) -> bool:
 def classify(site: Mapping[str, object], sources: Mapping[str, str],
              lines_of: Optional[Dict[str, List[str]]] = None,
              fields_of: Optional[Dict[str, Dict[int, str]]] = None,
-             readers: Optional[Dict[str, bool]] = None) -> Optional[str]:
+             readers: Optional[Dict[str, bool]] = None,
+             unread: Optional[set] = None) -> Optional[str]:
     """The id of the decision covering `site`, or None (open)."""
     by_rule = RULE_DECISIONS.get(str(site.get("_rule") or ""))
     if by_rule:
@@ -230,13 +264,16 @@ def classify(site: Mapping[str, object], sources: Mapping[str, str],
         if path not in fields:
             fields[path] = _field_declarations(text) if UNREAD_COMMENT.search(text) else {}
         field = fields[path].get(index)
+        seen = readers if readers is not None else {}
         if field is None:
-            return None
+            if unread is None:
+                unread = unread_field_names(sources)
+            in_range = 0 <= index < len(lines)
+            return "unread-fields" if in_range and unread_field_write(lines[index], unread, sources, seen) else None
         # Numbered-name findings identify one name, even when other declarations share the line.
         named = re.match(r"([A-Za-z_]\w*):", str(site.get("detail") or ""))
         if named and named.group(1) != field:
             return None
-        seen = readers if readers is not None else {}
         if field not in seen:
             seen[field] = field_read_anywhere(sources, field)
         return None if seen[field] else "unread-fields"
@@ -250,8 +287,9 @@ def apply(sites: Iterable[dict], sources: Mapping[str, str]) -> None:
     lines_of: Dict[str, List[str]] = {}
     fields_of: Dict[str, Dict[int, str]] = {}
     readers: Dict[str, bool] = {}
+    unread = unread_field_names(sources)
     for site in sites:
-        decision = classify(site, sources, lines_of, fields_of, readers)
+        decision = classify(site, sources, lines_of, fields_of, readers, unread)
         site.pop("_rule", None)
         site["status"] = DECIDED if decision else OPEN
         if decision:
@@ -287,7 +325,8 @@ METHODOLOGY_NOTE = ("Every site has a status: decided when a recorded user decis
                     "decided site names its decision and its record, and stays listed: the status hides nothing. "
                     "Decided kinds: hex numbers (hex stays hex), sound ids no header names, ASSERT(FALSE) under a "
                     "do-nothing case or as an -O0 if-body, the debug hook for a dropped evaluation, and offset-named "
-                    "field declarations with a never-read comment and no reader under the harness fields check.")
+                    "field declarations with a never-read comment and no reader under the harness fields check, "
+                    "with the plain stores to those fields.")
 
 
 __all__ = ["DECISIONS", "RULE_DECISIONS", "apply", "classify", "summary", "METHODOLOGY_NOTE", "OPEN", "DECIDED"]
