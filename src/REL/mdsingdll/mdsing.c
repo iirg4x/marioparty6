@@ -532,81 +532,6 @@ Vec lbl_1_data_7A8[27] = {
 
 s32 lbl_1_data_8EC = -1;
 
-char lbl_1_data_8F0[] = "# ========== win callback :: %d\n";
-
-/* Nonzero permits confirmation of each of the three Solo boards. */
-s16 lbl_1_data_912[3] = { 0, 0, 0 };
-
-u32 lbl_1_data_918[4] = {
-    DATANUM(0xc70000, 0), DATANUM(0xc80000, 0), DATANUM(0xc90000, 0), DATANUM(0xe50000, 0)
-};
-
-char lbl_1_data_928[] = "\n>>>>>>>>>> mdpartydll :: READ INIT!! <<<<<<<<<<\n";
-
-char lbl_1_data_95A[] = "0x%x :: _effect\n";
-
-char lbl_1_data_96B[] = "0x%x :: _gamemes\n";
-
-char lbl_1_data_97D[] = "0x%x :: _mgconst\n";
-
-char lbl_1_data_98F[] = "0x%x :: _win\n";
-
-char lbl_1_data_99D[] = "\n";
-
-char lbl_1_data_99F[] = "%d\n";
-
-char lbl_1_data_9A3[] = "\n>>>>>>>>>> mdsingdll :: READ END!! <<<<<<<<<<\n";
-
-char lbl_1_data_9D3[] = ">>>>>>>>>> mdsingdll :: objsetup!! <<<<<<<<<<\n";
-
-char lbl_1_data_A02[] = "\n>>>>>>>>>> mdsingdll :: ovlreturn!! <<<<<<<<<<\n";
-
-char lbl_1_data_A33[] = "-----===== CAMERA TEST =====-----";
-
-char lbl_1_data_A55[] = "CENTER : %.2f, %.2f, %.2f";
-
-char lbl_1_data_A6F[] = "ROT    : %.2f, %.2f, %.2f";
-
-char lbl_1_data_A89[] = "ZOOM   : %.2f";
-
-/* Active dialogue and instruction window indices; -1 means no window is selected. */
-s16 lbl_1_data_A98[2] = { -1, -1 };
-
-/* Cached dialogue message, choice, and instruction message IDs; -1 clears a slot. */
-s32 lbl_1_data_A9C[3] = { -1, -1, -1 };
-
-char lbl_1_data_AA8[] = "gN00m1-itemhook_R";
-
-char lbl_1_data_ABA[] = "dpic00";
-
-char lbl_1_data_AC1[] = "dpic01";
-
-/* Whether each navigation sprite is active and should play its selection sound. */
-s16 lbl_1_data_AC8[6] = { 0, 0, 0, 0, 0, 0 };
-
-char lbl_1_data_AD4[] = "ys77120";
-
-char lbl_1_data_ADC[] = "ys77121";
-
-char lbl_1_data_AE4[] = "ys77060";
-
-char lbl_1_data_AEC[] = "ys77061";
-
-/* Character navigation neighbors and occupancy used to avoid duplicate choices. */
-MDSING_CHARACTER_NEIGHBORS lbl_1_data_AF4[11] = {
-    { { -1, -1, 1, 5, 4, -1, -1, -1 }, -1 },
-    { { -1, -1, 2, 6, 5, 4, 0, -1 }, -1 },
-    { { -1, -1, 3, -1, 6, 5, 1, -1 }, -1 },
-    { { -1, -1, -1, -1, -1, 6, 2, -1 }, -1 },
-    { { 0, 1, 5, 9, 8, 7, -1, -1 }, -1 },
-    { { 1, 2, 6, 10, 9, 8, 4, 0 }, -1 },
-    { { 2, 3, 10, 10, 10, 9, 5, 1 }, -1 },
-    { { -1, 4, 8, -1, -1, -1, -1, -1 }, -1 },
-    { { 4, 5, 9, -1, -1, -1, 7, -1 }, -1 },
-    { { 5, 6, 10, -1, -1, -1, 8, 4 }, -1 },
-    { { 6, -1, -1, -1, -1, -1, 9, 5 }, -1 }
-};
-
 
 
 
@@ -749,7 +674,7 @@ void fn_1_0(HUWINID winId, u32 messageNo, s16 speakerNo)
     s16 messageIndex;
 
     speakerNo -= 1;
-    OSReport(lbl_1_data_8F0, (s16) speakerNo);
+    OSReport("# ========== win callback :: %d\n", (s16) speakerNo);
     if ((u32) lbl_1_data_8EC != messageNo) {
         lbl_1_data_8EC = messageNo;
         for (messageIndex = 0; ; messageIndex++) {
@@ -768,6 +693,13 @@ void fn_1_0(HUWINID winId, u32 messageNo, s16 speakerNo)
         }
     }
 }
+
+/* Nonzero permits confirmation of each of the three Solo boards. */
+s16 lbl_1_data_912[3] = { 0, 0, 0 };
+
+u32 lbl_1_data_918[4] = {
+    DATANUM(0xc70000, 0), DATANUM(0xc80000, 0), DATANUM(0xc90000, 0), DATANUM(0xe50000, 0)
+};
 
 /* Loads saved menu flags and resets the three board entries before Solo setup. */
 void fn_1_1A4(void)
@@ -886,13 +818,13 @@ void fn_1_3A0(void)
 void fn_1_5E8(void)
 {
     lbl_1_bss_34 = 0;
-    OSReport(lbl_1_data_928);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
+    OSReport("\n>>>>>>>>>> mdpartydll :: READ INIT!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_99D);
+    OSReport("\n");
     fn_800097F4(DATANUM(0x9a0000, 0));
     fn_8000DAC0(fn_1_3A0, 256, 16384, 0, lbl_1_bss_0);
 }
@@ -932,7 +864,7 @@ void fn_1_6B4(void)
         lbl_80265728[playerNo].grpNo = lbl_80265750[playerNo].team;
     }
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        OSReport(lbl_1_data_99F, lbl_80265728[playerNo].charNo);
+        OSReport("%d\n", lbl_80265728[playerNo].charNo);
     }
     lbl_80265E30.confSingleDiff = lbl_1_bss_1340.difficulty;
     lbl_80265E30.storyMgPack = lbl_1_bss_1340.minigamePack;
@@ -978,7 +910,7 @@ void fn_1_B34(void)
     }
     lbl_1_bss_1308[1].characterNo = lbl_80265750[1].charNo;
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        OSReport(lbl_1_data_99F, lbl_80265728[playerNo].charNo);
+        OSReport("%d\n", lbl_80265728[playerNo].charNo);
     }
     lbl_1_bss_1340.boardNo = 3;
     mbSaveInit(10);
@@ -995,13 +927,13 @@ void fn_1_EA0(void)
 
     history = omOvlHisGet(0);
     omOvlHisChg(0, history->ovl, 1, lbl_1_bss_1308[1].characterNo);
-    OSReport(lbl_1_data_9A3);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
+    OSReport("\n>>>>>>>>>> mdsingdll :: READ END!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_99D);
+    OSReport("\n");
     switch (lbl_1_bss_1340.boardNo) {
         case 0:
             omOvlCallEx(114, 1, 0, 0);
@@ -1026,13 +958,13 @@ void fn_1_FEC(void)
 
     history = omOvlHisGet(0);
     omOvlHisChg(0, history->ovl, 2, 0);
-    OSReport(lbl_1_data_9A3);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
+    OSReport("\n>>>>>>>>>> mdsingdll :: READ END!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_99D);
+    OSReport("\n");
     omOvlCallEx(130, 1, 0, 0);
 }
 
@@ -1043,13 +975,13 @@ void fn_1_10D0(void)
     HuARDirFree(DATANUM(0x50000, 0));
     HuARDirFree(DATANUM(0x60000, 0));
     HuARDirFree(DATANUM(0xc0000, 0));
-    OSReport(lbl_1_data_9D3);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
+    OSReport(">>>>>>>>>> mdsingdll :: objsetup!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_99D);
+    OSReport("\n");
 }
 
 /* Releases character and shared board archives before the mode resumes its menu flow. */
@@ -1059,14 +991,60 @@ void fn_1_1180(void)
     HuARDirFree(DATANUM(0x50000, 0));
     HuARDirFree(DATANUM(0x60000, 0));
     HuARDirFree(DATANUM(0xc0000, 0));
-    OSReport(lbl_1_data_A02);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
+    OSReport("\n>>>>>>>>>> mdsingdll :: ovlreturn!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_99D);
+    OSReport("\n");
 }
+
+char lbl_1_data_A33[] = "-----===== CAMERA TEST =====-----";
+
+char lbl_1_data_A55[] = "CENTER : %.2f, %.2f, %.2f";
+
+char lbl_1_data_A6F[] = "ROT    : %.2f, %.2f, %.2f";
+
+char lbl_1_data_A89[] = "ZOOM   : %.2f";
+
+/* Active dialogue and instruction window indices; -1 means no window is selected. */
+s16 lbl_1_data_A98[2] = { -1, -1 };
+
+/* Cached dialogue message, choice, and instruction message IDs; -1 clears a slot. */
+s32 lbl_1_data_A9C[3] = { -1, -1, -1 };
+
+char lbl_1_data_AA8[] = "gN00m1-itemhook_R";
+
+char lbl_1_data_ABA[] = "dpic00";
+
+char lbl_1_data_AC1[] = "dpic01";
+
+/* Whether each navigation sprite is active and should play its selection sound. */
+s16 lbl_1_data_AC8[6] = { 0, 0, 0, 0, 0, 0 };
+
+char lbl_1_data_AD4[] = "ys77120";
+
+char lbl_1_data_ADC[] = "ys77121";
+
+char lbl_1_data_AE4[] = "ys77060";
+
+char lbl_1_data_AEC[] = "ys77061";
+
+/* Character navigation neighbors and occupancy used to avoid duplicate choices. */
+MDSING_CHARACTER_NEIGHBORS lbl_1_data_AF4[11] = {
+    { { -1, -1, 1, 5, 4, -1, -1, -1 }, -1 },
+    { { -1, -1, 2, 6, 5, 4, 0, -1 }, -1 },
+    { { -1, -1, 3, -1, 6, 5, 1, -1 }, -1 },
+    { { -1, -1, -1, -1, -1, 6, 2, -1 }, -1 },
+    { { 0, 1, 5, 9, 8, 7, -1, -1 }, -1 },
+    { { 1, 2, 6, 10, 9, 8, 4, 0 }, -1 },
+    { { 2, 3, 10, 10, 10, 9, 5, 1 }, -1 },
+    { { -1, 4, 8, -1, -1, -1, -1, -1 }, -1 },
+    { { 4, 5, 9, -1, -1, -1, 7, -1 }, -1 },
+    { { 5, 6, 10, -1, -1, -1, 8, 4 }, -1 },
+    { { 6, -1, -1, -1, -1, -1, 9, 5 }, -1 }
+};
 
 /* Evaluates one quadratic path component at normalized progress for menu movement. */
 float fn_1_1230(float start, float middle, float end, float time)
@@ -4534,13 +4512,13 @@ void fn_1_179B0(void)
         HuARDirFree(DATANUM(0x50000, 0));
         HuARDirFree(DATANUM(0x60000, 0));
         HuARDirFree(DATANUM(0xc0000, 0));
-        OSReport(lbl_1_data_A02);
-        OSReport(lbl_1_data_95A, _effect);
-        OSReport(lbl_1_data_96B, _gamemes);
-        OSReport(lbl_1_data_97D, _mgconst);
-        OSReport(lbl_1_data_98F, _win);
+        OSReport("\n>>>>>>>>>> mdsingdll :: ovlreturn!! <<<<<<<<<<\n");
+        OSReport("0x%x :: _effect\n", _effect);
+        OSReport("0x%x :: _gamemes\n", _gamemes);
+        OSReport("0x%x :: _mgconst\n", _mgconst);
+        OSReport("0x%x :: _win\n", _win);
         HuAMemDump();
-        OSReport(lbl_1_data_99D);
+        OSReport("\n");
         fn_8003A5E4(1, 1);
     }
     HuPrcEnd();
@@ -4649,13 +4627,13 @@ void ObjectSetup(void)
     HuARDirFree(DATANUM(0x50000, 0));
     HuARDirFree(DATANUM(0x60000, 0));
     HuARDirFree(DATANUM(0xc0000, 0));
-    OSReport(lbl_1_data_9D3);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
+    OSReport(">>>>>>>>>> mdsingdll :: objsetup!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_99D);
+    OSReport("\n");
 
     lbl_1_bss_30 = 0;
     lbl_1_bss_32 = 0;
@@ -4853,13 +4831,13 @@ static inline s16 fn_1_3F28_inlined(s16 mode)
 static inline void fn_1_64C_inlined(void)
 {
     lbl_1_bss_34 = FALSE;
-    OSReport(lbl_1_data_928);
-    OSReport(lbl_1_data_95A, _effect);
-    OSReport(lbl_1_data_96B, _gamemes);
-    OSReport(lbl_1_data_97D, _mgconst);
-    OSReport(lbl_1_data_98F, _win);
+    OSReport("\n>>>>>>>>>> mdpartydll :: READ INIT!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_99D);
+    OSReport("\n");
     fn_800097F4(0x9a0000);
     fn_8000DAC0(fn_1_3A0, 256, 16384, 0, lbl_1_bss_0);
 }

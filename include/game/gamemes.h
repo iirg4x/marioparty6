@@ -78,7 +78,7 @@ typedef struct GameMes_s {
     void *buf;
     HuVec2f pos;
     HuVec2f scale;
-    float unk18;
+    float unk18; /* The game's code never reads this field. */
     float angle;
     float winScale;
     float unk24;

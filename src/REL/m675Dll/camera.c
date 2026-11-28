@@ -18,10 +18,6 @@
 #include "game/wipe.h"
 #include "game/mg/timer.h"
 #include <string.h>
-typedef struct M675ObjectState {
-    void *userData; /* Controller-specific configuration. */
-    void (*callback)(OMOBJ *); /* Optional callback run after the controller's own update. */
-} M675ObjectState;
 #include "dolphin/gx.h"
 #include "game/audio.h"
 #include "game/gamemes.h"
@@ -51,15 +47,6 @@ typedef struct M675ObjectState {
 #undef lbl_1_bss_188
 #undef fn_1_45C4
 typedef void (*CameraCallback)(OMOBJ *, u32, s32);
-typedef struct M675CameraFitSphere_s {
-    Vec center; /* World-space center of an object to include in the camera view. */
-    float radius; /* Bounding radius in world units. */
-} M675CameraFitSphere;
-typedef struct M675AudioWork_s {
-    MinigameAudioRange *config; /* Pan/volume mappings, terminated by a zero camera mask. */
-    s32 callbackWord; /* Optional object callback stored as a word; zero disables it. */
-    MinigameAudioRecord entries[64]; /* Tracked positional sounds; completed sounds free their slots. */
-} M675AudioWork;
 OMOBJ *lbl_1_bss_2D8; /* Shared controller object created at minigame startup. */
 OMOBJ *lbl_1_bss_2D4; /* Lighting controller. */
 OMOBJ *lbl_1_bss_2D0; /* Fog controller. */
@@ -108,7 +95,7 @@ static inline s32 m675_local_273C(u32 cameras)
 /* Audio pan helpers map a horizontal 0 to 576 coordinate through the camera's pan range. */
 static inline s32 m675_local_34E8(u32 cameras, float x)
 {
-    M675AudioWork *work;
+    MinigameAudioWork *work;
     MinigameAudioRange *config;
     s32 pan = 64;
     if (lbl_1_bss_2C8 != NULL) {
@@ -146,7 +133,7 @@ static inline s32 m675_local_3630(u32 cameras, Vec *position)
 /* Positional sound playback calls this to scale volume by camera-space distance. */
 static inline s32 m675_local_3850(u32 cameras, Vec *position)
 {
-    M675AudioWork *audio;
+    MinigameAudioWork *audio;
     MinigameAudioRange *config;
     MinigameCameraWork *work;
     MinigameCameraEntry *camera;
@@ -714,7 +701,7 @@ BOOL fn_1_296C(u32 cameras)
     return FALSE;
 }
 /* Camera fitting returns a viewing distance and world position for a nonempty list of spheres. */
-double fn_1_29F0(CameraFitParams *fitParameters, M675CameraFitSphere *spheres,
+double fn_1_29F0(CameraFitParams *fitParameters, MinigameCameraFitSphere *spheres,
     s32 sphereCount, Vec *cameraPosition)
 {
     Mtx view;
@@ -731,7 +718,7 @@ double fn_1_29F0(CameraFitParams *fitParameters, M675CameraFitSphere *spheres,
     double distanceY;
     double tangent;
     double distance;
-    M675CameraFitSphere *sphere;
+    MinigameCameraFitSphere *sphere;
     s32 i;
 
     MTXLookAt(view, &origin, &fitParameters->up,
@@ -794,7 +781,7 @@ double fn_1_29F0(CameraFitParams *fitParameters, M675CameraFitSphere *spheres,
 /* Minigame setup creates the positional-audio controller and initializes its sound slots. */
 void fn_1_2F38(OMOBJMAN *objectManager, MinigameAudioRange *audioConfig) {
     OMOBJ *object;
-    M675AudioWork *objectState;
+    MinigameAudioWork *objectState;
 
     object = fn_8003AB38(objectManager, 30, 0, 0, -1, fn_1_2FD4);
     lbl_1_bss_2C8 = object;
@@ -806,7 +793,7 @@ void fn_1_2F38(OMOBJMAN *objectManager, MinigameAudioRange *audioConfig) {
 }
 /* The audio controller updates positional sounds, then runs its registered object callback. */
 void fn_1_2FD4(OMOBJ *obj) {
-    M675ObjectState *state = lbl_1_bss_2C8->data;
+    MinigameAudioWork *state = lbl_1_bss_2C8->data;
 
     fn_1_3094(obj);
     if (state->callback != NULL) {
@@ -816,7 +803,7 @@ void fn_1_2FD4(OMOBJ *obj) {
 /* Audio setup marks all 64 positional-sound slots as unused. */
 void fn_1_303C(OMOBJ *object)
 {
-    M675AudioWork *state = lbl_1_bss_2C8->data;
+    MinigameAudioWork *state = lbl_1_bss_2C8->data;
     MinigameAudioRecord *record = state->entries;
     int index;
 
@@ -827,7 +814,7 @@ void fn_1_303C(OMOBJ *object)
 /* The audio controller checks active sounds each frame and refreshes enabled pan and volume. */
 void fn_1_3094(OMOBJ *object)
 {
-    M675AudioWork *work;
+    MinigameAudioWork *work;
     MinigameAudioRecord *entry;
     s32 i;
     work = lbl_1_bss_2C8->data;
@@ -846,13 +833,13 @@ void fn_1_3094(OMOBJ *object)
     }
 }
 
-/* Audio control stores the callback word run after positional updates; zero disables it. */
-void fn_1_3164(s32 callbackWord) {
-    s32 *audioState;
+/* Sets the callback run after positional sound updates. NULL disables it. */
+void fn_1_3164(OMOBJ_FUNC callback) {
+    MinigameAudioWork *state;
 
     if (lbl_1_bss_2C8 != NULL) {
-        audioState = lbl_1_bss_2C8->data;
-        audioState[1] = callbackWord;
+        state = lbl_1_bss_2C8->data;
+        state->callback = callback;
     }
 }
 /* Audio control maps a horizontal coordinate to pan using camera zero's configuration. */
@@ -862,7 +849,7 @@ extern int fn_1_31A4(float horizontalPosition) {
 /* Positional-audio updates map a projected horizontal position into the configured pan range. */
 s32 fn_1_31D0(u32 cameras, float x)
 {
-    M675AudioWork *work;
+    MinigameAudioWork *work;
     MinigameAudioRange *config;
     s32 pan = 64;
     if (lbl_1_bss_2C8 != NULL) {
@@ -974,7 +961,7 @@ extern void fn_1_4424(int effect, int handle, Vec *position, int panEnabled, int
 void fn_1_4470(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    M675AudioWork *state=lbl_1_bss_2C8->data;
+    MinigameAudioWork *state=lbl_1_bss_2C8->data;
     MinigameAudioRecord *record=state->entries;
     int index;
     for(index=0;index<64;index++,record++) {

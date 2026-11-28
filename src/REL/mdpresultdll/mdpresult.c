@@ -197,7 +197,6 @@ extern MDRESULT_CAMERA_WORK lbl_1_bss_12BC;
 extern HUWINID lbl_1_bss_1304[5];
 extern HU3D_LIGHTID lbl_1_bss_130E[5];
 extern char lbl_1_data_719[];
-extern char lbl_1_data_76C[];
 extern MDRESULT_MOVE_WORK lbl_1_bss_F9C[4];
 extern MDRESULT_CHARACTER_WORK lbl_1_bss_1248[4];
 extern HuVecF lbl_1_data_0[16];
@@ -6384,71 +6383,6 @@ void fn_1_1F308(void)
     HuSprAttrSet(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
 }
 
-/* Copies individual or team star and coin history into the graph buffers, including the bonus-star
- * endpoint when enabled. */
-void fn_1_1F3D4(void)
-{
-    s16 player;
-    s16 graph;
-
-    if (lbl_1_bss_1278.values[3] == 0) {
-        for (player = 0; player < 4; player++) {
-            for (graph = 0; graph <= lbl_1_bss_1278.values[1]; graph++) {
-                lbl_1_bss_62[player][graph] =
-                    lbl_80265750[player].starGraph[graph];
-                lbl_1_bss_21A[player][graph] =
-                    lbl_80265750[player].coinGraph[graph];
-            }
-            lbl_1_bss_62[player][0] =
-                lbl_1_bss_10D4[player].values[15];
-            lbl_1_bss_21A[player][0] = 10;
-            if (lbl_1_bss_1278.values[2] == 1) {
-                lbl_1_bss_62[player][graph] =
-                    lbl_1_bss_10D4[player].star;
-            }
-        }
-    } else {
-        for (player = 0; player < 2; player++) {
-    OSReport(lbl_1_data_76C, lbl_1_bss_10CC[player * 2],
-                lbl_1_bss_10CC[(player * 2) + 1]);
-            for (graph = 0; graph <= lbl_1_bss_1278.values[1]; graph++) {
-                lbl_1_bss_62[player][graph] =
-                    lbl_80265750[lbl_1_bss_10CC[player * 2]].starGraph[graph]
-                    + lbl_80265750[lbl_1_bss_10CC[(player * 2) + 1]].starGraph[graph];
-                lbl_1_bss_21A[player][graph] =
-                    lbl_80265750[lbl_1_bss_10CC[player * 2]].coinGraph[graph]
-                    + lbl_80265750[lbl_1_bss_10CC[(player * 2) + 1]].coinGraph[graph];
-            }
-            lbl_1_bss_62[player][0] =
-                lbl_1_bss_10D4[player].values[15];
-            lbl_1_bss_21A[player][0] = 20;
-            if (lbl_1_bss_1278.values[2] == 1) {
-                lbl_1_bss_62[player][graph] =
-                    lbl_1_bss_10D4[player].star;
-            }
-        }
-    }
-}
-/* Loads the history data and shows the base of the results graph. */
-void fn_1_1F7FC(void)
-{
-    fn_1_1F3D4();
-    HuSprAttrReset(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
-}
-/* Hides the base of the results graph when the graph closes. */
-void fn_1_1F834(void)
-{
-    HuSprAttrSet(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
-}
-
-/* Stores the three coordinates of a result-scene vector. */
-void fn_1_1F868(HuVecF *vec, float x, float y, float z)
-{
-    vec->x = x;
-    vec->y = y;
-    vec->z = z;
-}
-
 HuVecF lbl_1_data_0[16] = {
     { -270.0f, 0.0f, -200.0f },
     {  -90.0f, 0.0f, -200.0f },
@@ -6570,7 +6504,70 @@ GXColor lbl_1_data_75C[4] = {
     { 38, 216, 80, 255 },
 };
 
-char lbl_1_data_76C[] = "================ %d,%d\n";
+/* Copies individual or team star and coin history into the graph buffers, including the bonus-star
+ * endpoint when enabled. */
+void fn_1_1F3D4(void)
+{
+    s16 player;
+    s16 graph;
+
+    if (lbl_1_bss_1278.values[3] == 0) {
+        for (player = 0; player < 4; player++) {
+            for (graph = 0; graph <= lbl_1_bss_1278.values[1]; graph++) {
+                lbl_1_bss_62[player][graph] =
+                    lbl_80265750[player].starGraph[graph];
+                lbl_1_bss_21A[player][graph] =
+                    lbl_80265750[player].coinGraph[graph];
+            }
+            lbl_1_bss_62[player][0] =
+                lbl_1_bss_10D4[player].values[15];
+            lbl_1_bss_21A[player][0] = 10;
+            if (lbl_1_bss_1278.values[2] == 1) {
+                lbl_1_bss_62[player][graph] =
+                    lbl_1_bss_10D4[player].star;
+            }
+        }
+    } else {
+        for (player = 0; player < 2; player++) {
+            OSReport("================ %d,%d\n", lbl_1_bss_10CC[player * 2],
+                lbl_1_bss_10CC[(player * 2) + 1]);
+            for (graph = 0; graph <= lbl_1_bss_1278.values[1]; graph++) {
+                lbl_1_bss_62[player][graph] =
+                    lbl_80265750[lbl_1_bss_10CC[player * 2]].starGraph[graph]
+                    + lbl_80265750[lbl_1_bss_10CC[(player * 2) + 1]].starGraph[graph];
+                lbl_1_bss_21A[player][graph] =
+                    lbl_80265750[lbl_1_bss_10CC[player * 2]].coinGraph[graph]
+                    + lbl_80265750[lbl_1_bss_10CC[(player * 2) + 1]].coinGraph[graph];
+            }
+            lbl_1_bss_62[player][0] =
+                lbl_1_bss_10D4[player].values[15];
+            lbl_1_bss_21A[player][0] = 20;
+            if (lbl_1_bss_1278.values[2] == 1) {
+                lbl_1_bss_62[player][graph] =
+                    lbl_1_bss_10D4[player].star;
+            }
+        }
+    }
+}
+/* Loads the history data and shows the base of the results graph. */
+void fn_1_1F7FC(void)
+{
+    fn_1_1F3D4();
+    HuSprAttrReset(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
+}
+/* Hides the base of the results graph when the graph closes. */
+void fn_1_1F834(void)
+{
+    HuSprAttrSet(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
+}
+
+/* Stores the three coordinates of a result-scene vector. */
+void fn_1_1F868(HuVecF *vec, float x, float y, float z)
+{
+    vec->x = x;
+    vec->y = y;
+    vec->z = z;
+}
 
 HU3D_LIGHTID lbl_1_bss_130E[5];
 HUWINID lbl_1_bss_1304[5];

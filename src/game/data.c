@@ -952,9 +952,9 @@ static BOOL HuDataDVDdirDirectOpen(int dataNum, DVDFileInfo *fileInfo)
 	}
 	return TRUE;
 }
-
 // Reads wait for command state 0 and yield while shortAccessSleep is set.
-static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *buffer, s32 readBytes, s32 offset) {
+static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *buffer, s32 readBytes, s32 offset)
+{
 	s32 result = DVDReadAsync(fileInfo, buffer, readBytes, offset, NULL);
 	if(result != 1) {
 		OSPanic(__FILE__, __LINE__, "HuDataDVDdirDirectRead: File Read Error");

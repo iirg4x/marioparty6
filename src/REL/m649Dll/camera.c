@@ -2,6 +2,7 @@
 #include "REL/minigame_positional_audio.h"
 #include "REL/minigame_camera_fit.h"
 #include "REL/minigame_fog.h"
+#include "REL/minigame_fog_work.h"
 #include "dolphin/math.h"
 
 #include "game/object.h"
@@ -90,27 +91,6 @@ typedef struct M649LightWork_s {
     GXColor color; /* RGBA color sent to the renderer. */
 } M649LightWork;
 
-typedef struct M649CameraFitSphere_s {
-    Vec center; /* Sphere center in world coordinates. */
-    float radius; /* Sphere radius in world units. */
-} M649CameraFitSphere;
-
-typedef struct M649AudioWorkView_s {
-    MinigameAudioRange *config; /* Zero-camera-terminated sound settings. */
-} M649AudioWorkView;
-
-typedef struct M649FogWork_s {
-    MinigameFogParams *parameters; /* Fog settings terminated by a layer value of -1. */
-    s32 callbackValue; /* Optional object-update callback address; unused by the layer hook. */
-    float factor; /* Scales the configured range from start toward end. */
-} M649FogWork;
-
-typedef struct M649AudioWork_s {
-    MinigameAudioRange *config; /* Audio settings table selected at object creation. */
-    s32 callbackValue; /* Optional callback address invoked after the sound updates. */
-    MinigameAudioRecord entries[64]; /* Active sound records; handle -1 marks a free slot. */
-} M649AudioWork;
-
 extern OMOBJ *lbl_1_bss_308;
 
 extern OMOBJ *lbl_1_bss_2F8;
@@ -192,7 +172,7 @@ static inline s32 m649_local_273C(u32 cameras)
 /* Convert screen position to sound pan when m649_local_3630 handles a sound. */
 static inline s32 m649_local_34E8(u32 cameras, float x)
 {
-    M649AudioWorkView *work;
+    MinigameAudioWork *work;
     MinigameAudioRange *config;
     s32 pan = MSM_PAN_CENTER;
     if (lbl_1_bss_2F8 != NULL) {
@@ -231,7 +211,7 @@ static inline s32 m649_local_3630(u32 cameras, Vec *position)
 /* Scale volume by camera depth when fn_1_3AE8 or fn_1_4240 plays a positioned sound. */
 static inline s32 m649_local_3850(u32 cameras, Vec *position)
 {
-    M649AudioWorkView *audio;
+    MinigameAudioWork *audio;
     MinigameAudioRange *config;
     MinigameCameraWork *work;
     MinigameCameraEntry *camera;
@@ -424,14 +404,14 @@ void fn_1_1838(int red,int green,int blue,int alpha) {
  * layer hooks apply each entry's own type and color. */
 void fn_1_18BC(OMOBJMAN *manager, MinigameFogParams *parameters)
 {
-    M649FogWork *work;
+    MinigameFogWork *work;
     s32 layerIndex;
     OMOBJ *object;
     object = fn_8003AB38(manager, 26, 0, 0, -1, fn_1_19BC);
     lbl_1_bss_300 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649FogWork), 0x10000000);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameFogWork), 0x10000000);
     object->data = work;
-    memset(work, 0, sizeof(M649FogWork));
+    memset(work, 0, sizeof(MinigameFogWork));
     work->parameters = parameters;
     work->factor = 1.0f;
     for (layerIndex = 0; parameters->layer != -1;
@@ -448,7 +428,7 @@ void fn_1_18BC(OMOBJMAN *manager, MinigameFogParams *parameters)
 /* Runs from the fog object's update callback and forwards the frame to its client callback. */
 void fn_1_19BC(OMOBJ *obj)
 {
-    MinigameLightWork *fogState = lbl_1_bss_300->data;
+    MinigameFogWork *fogState = lbl_1_bss_300->data;
     if (fogState->callback != NULL) {
         fogState->callback(obj);
     }
@@ -458,7 +438,7 @@ void fn_1_19BC(OMOBJ *obj)
 * Slots 0 through 7 run before their layer; slots 8 through 15 run after it. */
 void fn_1_1A14(s16 layer)
 {
-    M649FogWork *work;
+    MinigameFogWork *work;
     MinigameFogParams *parameters;
     float fov, nearPlane, farPlane;
     float end;
@@ -474,19 +454,19 @@ void fn_1_1A14(s16 layer)
     }
 }
 
-/* Stores the optional fog-object callback address used by fn_1_19BC. */
-void fn_1_1B08(s32 callbackValue) {
-    s32 *fogState;
+/* Stores the optional fog-object callback used by fn_1_19BC. */
+void fn_1_1B08(OMOBJ_FUNC callback) {
+    MinigameFogWork *fogState;
 
     if (lbl_1_bss_300 != NULL) {
         fogState = lbl_1_bss_300->data;
-        fogState[1] = callbackValue;
+        fogState->callback = callback;
     }
 }
 
 /* Sets the fog-range factor: layer hooks use start + factor * (end - start). */
 void fn_1_1B48(f32 factor) {
-    M649FogWork *work;
+    MinigameFogWork *work;
 
     if (lbl_1_bss_300 != NULL) {
         work = lbl_1_bss_300->data;
@@ -806,7 +786,7 @@ BOOL fn_1_2C84(u32 cameras)
 }
 
 /* Fits a camera around the supplied spheres and returns the required viewing distance. */
-double fn_1_2D08(CameraFitParams *fitParams, M649CameraFitSphere *fitSpheres, s32 sphereCount, Vec *cameraPosition)
+double fn_1_2D08(CameraFitParams *fitParams, MinigameCameraFitSphere *fitSpheres, s32 sphereCount, Vec *cameraPosition)
 {
     Mtx view;
     Mtx inverse;
@@ -822,7 +802,7 @@ double fn_1_2D08(CameraFitParams *fitParams, M649CameraFitSphere *fitSpheres, s3
     double distanceY;
     double tangent;
     double distance;
-    M649CameraFitSphere *sphere;
+    MinigameCameraFitSphere *sphere;
     s32 i;
 
     MTXLookAt(view, &origin, &fitParams->up,
@@ -885,7 +865,7 @@ double fn_1_2D08(CameraFitParams *fitParams, M649CameraFitSphere *fitSpheres, s3
 /* ObjectSetup calls this at startup to create the audio object and its sound-tracking records. */
 void fn_1_3250(HUPROCESS *objectManager, MinigameAudioRange *audioConfig) {
     OMOBJ *object;
-    M649AudioWork *objectState;
+    MinigameAudioWork *objectState;
 
     object = fn_8003AB38(objectManager, 30, 0, 0, -1, fn_1_32EC);
     lbl_1_bss_2F8 = object;
@@ -898,7 +878,7 @@ void fn_1_3250(HUPROCESS *objectManager, MinigameAudioRange *audioConfig) {
 
 /* Runs each frame for the shared audio object, updating sounds before its optional callback. */
 void fn_1_32EC(OMOBJ *obj) {
-    M620ObjectState *state = lbl_1_bss_2F8->data;
+    MinigameAudioWork *state = lbl_1_bss_2F8->data;
 
     fn_1_33AC(obj);
     if (state->callback != NULL) {
@@ -909,7 +889,7 @@ void fn_1_32EC(OMOBJ *obj) {
 /* Initializes the sound tracking table when the audio object is created. */
 void fn_1_3354(OMOBJ *object)
 {
-    M649AudioWork *state = lbl_1_bss_2F8->data;
+    MinigameAudioWork *state = lbl_1_bss_2F8->data;
     MinigameAudioRecord *record = state->entries;
     int index;
 
@@ -921,7 +901,7 @@ void fn_1_3354(OMOBJ *object)
 /* Each audio-object update refreshes PAUSEIN sounds and drops tracking for all other statuses. */
 void fn_1_33AC(OMOBJ *object)
 {
-    M649AudioWork *work;
+    MinigameAudioWork *work;
     MinigameAudioRecord *entry;
     s32 soundIndex;
     work = lbl_1_bss_2F8->data;
@@ -941,13 +921,13 @@ void fn_1_33AC(OMOBJ *object)
     }
 }
 
-/* Stores the optional audio-object callback address invoked after sound updates. */
-void fn_1_347C(s32 callbackValue) {
-    s32 *audioState;
+/* Stores the optional audio-object callback invoked after sound updates. */
+void fn_1_347C(OMOBJ_FUNC callback) {
+    MinigameAudioWork *audioState;
 
     if (lbl_1_bss_2F8 != NULL) {
         audioState = lbl_1_bss_2F8->data;
-        audioState[1] = callbackValue;
+        audioState->callback = callback;
     }
 }
 
@@ -959,7 +939,7 @@ extern int fn_1_34BC(float screenX) {
 /* Maps screen X in the 0-to-576 range to the camera's configured pan range, then clamps it. */
 s32 fn_1_34E8(u32 cameras, float x)
 {
-    M649AudioWorkView *work;
+    MinigameAudioWork *work;
     MinigameAudioRange *config;
     s32 pan = MSM_PAN_CENTER;
     if (lbl_1_bss_2F8 != NULL) {
@@ -1087,7 +1067,7 @@ extern void fn_1_473C(int effect, int handle, Vec *position, int panEnabled, int
 void fn_1_4788(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    M649AudioWork *state=lbl_1_bss_2F8->data;
+    MinigameAudioWork *state=lbl_1_bss_2F8->data;
     MinigameAudioRecord *record=state->entries;
     int index;
     for(index=0;index<64;index++,record++) {

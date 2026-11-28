@@ -44,7 +44,103 @@ typedef struct MDMinidllAudioTable {
 } MDMinidllAudioTable;
 
 extern s32 lbl_1_data_690;
-extern char lbl_1_data_694[];
+
+typedef struct MDMinidllSpriteLayoutEntry {
+    /* Sprite group and member slots populated by the menu setup loop. */
+    s16 groupIndex;
+    s16 memberIndex;
+    /* Animation-table slot and render priority offset from 6000. */
+    s16 animationIndex;
+    s16 priority;
+    /* Sprite creation parameter passed through to HuSprCreate. */
+    s16 spriteParam;
+    /* Padding that aligns the following floating-point layout values. */
+    u8 alignmentPadding[2];
+    /* Local position, scale and z rotation passed to the sprite transforms. */
+    f32 positionX;
+    f32 positionY;
+    f32 scaleX;
+    f32 scaleY;
+    f32 rotation;
+} MDMinidllSpriteLayoutEntry;
+
+s16 lbl_1_data_0[23] = {
+    601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611, 612, 613, 614, 615, 616, 618,
+    619, 620, 621, 648, 650, -1
+};
+s16 lbl_1_data_2E[11] = {625, 626, 627, 628, 629, 630, 631, 632, 633, 634, -1};
+s16 lbl_1_data_44[12] = {635, 636, 637, 638, 639, 640, 641, 643, 644, 645, 668, -1};
+s16 lbl_1_data_5C[16] = {
+    617, 624, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, -1
+};
+s16 lbl_1_data_7C[12] = {601, 604, 606, 608, 615, 621, 648, 650, 646, 649, -1};
+s32 lbl_1_data_94 = -1;
+s32 lbl_1_data_98[26] = {
+    DATANUM(0x960000, 22), DATANUM(0x960000, 4), DATANUM(0x960000, 5),
+    DATANUM(0x960000, 6), DATANUM(0x960000, 7), DATANUM(0x960000, 8),
+    DATANUM(0x960000, 9), DATANUM(0x960000, 16), DATANUM(0x960000, 17),
+    DATANUM(0x960000, 10), DATANUM(0x960000, 11), DATANUM(0x960000, 12),
+    DATANUM(0x960000, 13), DATANUM(0x960000, 14), DATANUM(0x960000, 15),
+    DATANUM(0x960000, 24), DATANUM(0x960000, 24), DATANUM(0x960000, 24),
+    DATANUM(0x960000, 24), DATANUM(0x960000, 24), DATANUM(0x960000, 24),
+    DATANUM(0x960000, 21), DATANUM(0x960000, 19), DATANUM(0x960000, 18),
+    DATANUM(0x960000, 23), DATANUM(0x960000, 93)
+};
+s16 lbl_1_data_100[9] = {2, 6, 6, 4, 2, 2, 2, 2, 1};
+MDMinidllSpriteLayoutEntry lbl_1_data_114[27] = {
+    {0, 0, 0, 10, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 0, 15, 0, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 1, 15, 0, 1, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 2, 15, 0, 5, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 3, 15, 0, 2, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 4, 15, 0, 3, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {1, 5, 15, 0, 4, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 0, 21, 0, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 1, 21, 0, 2, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 2, 21, 0, 5, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 3, 21, 0, 7, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 4, 21, 0, 4, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {2, 5, 21, 0, 6, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {3, 0, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
+    {3, 1, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
+    {3, 2, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
+    {3, 3, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
+    {4, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {4, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {5, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {5, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {6, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {6, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {7, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {7, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
+    {0, 1, 24, 0, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
+    {8, 0, 25, 0, 0, {0, 0}, 288.0f, 240.0f, 10.0f, 10.0f, 0.0f}
+};
+s32 lbl_1_data_474[21] = {
+    DATANUM(0x960000, 28), DATANUM(0x960000, 29), DATANUM(0x960000, 30),
+    DATANUM(0x960000, 31), DATANUM(0x960000, 32), DATANUM(0x960000, 33),
+    DATANUM(0x960000, 34), DATANUM(0x960000, 35), DATANUM(0x960000, 36),
+    DATANUM(0x960000, 37), DATANUM(0x960000, 38), DATANUM(0x960000, 39),
+    DATANUM(0x960000, 40), DATANUM(0x960000, 41), DATANUM(0x960000, 45),
+    DATANUM(0x960000, 42), DATANUM(0x960000, 43), DATANUM(0x960000, 44),
+    DATANUM(0x960000, 26), DATANUM(0x960000, 27), DATANUM(0x960000, 46)
+};
+Point3d lbl_1_data_4C8[38] = {
+    {0.0f, 275.0f, 0.0f}, {-200.0f, 325.0f, 0.0f}, {-120.0f, 225.0f, 0.0f},
+    {-40.0f, 325.0f, 0.0f}, {40.0f, 225.0f, 0.0f}, {120.0f, 325.0f, 0.0f},
+    {200.0f, 225.0f, 0.0f}, {-200.0f, 275.0f, 0.0f}, {-120.0f, 275.0f, 0.0f},
+    {-40.0f, 275.0f, 0.0f}, {40.0f, 275.0f, 0.0f}, {120.0f, 275.0f, 0.0f},
+    {200.0f, 275.0f, 0.0f}, {0.0f, 275.0f, -800.0f}, {-195.0f, 380.0f, 0.0f},
+    {-65.0f, 380.0f, 0.0f}, {65.0f, 380.0f, 0.0f}, {195.0f, 380.0f, 0.0f},
+    {-130.0f, 240.0f, 0.0f}, {0.0f, 240.0f, 0.0f}, {130.0f, 240.0f, 0.0f},
+    {-195.0f, 100.0f, 0.0f}, {-65.0f, 100.0f, 0.0f}, {65.0f, 100.0f, 0.0f},
+    {195.0f, 100.0f, 0.0f}, {-180.0f, 60.0f, 0.0f}, {-60.0f, 60.0f, 0.0f},
+    {60.0f, 60.0f, 0.0f}, {180.0f, 60.0f, 0.0f}, {-180.0f, 125.0f, 0.0f},
+    {-60.0f, 125.0f, 0.0f}, {60.0f, 125.0f, 0.0f}, {180.0f, 125.0f, 0.0f},
+    {-180.0f, 275.0f, 0.0f}, {-60.0f, 275.0f, 0.0f}, {60.0f, 275.0f, 0.0f},
+    {180.0f, 275.0f, 0.0f}, {0.0f, 125.0f, 0.0f}
+};
+s32 lbl_1_data_690 = -1;
 
 /* The window message callback plays its indexed sound once per new message; the empty exception
  * list leaves the panned-sound branches unused. */
@@ -59,7 +155,7 @@ void fn_1_0(HUWINID unusedWindow, u32 messageId, s16 soundIndex)
     s16 exceptionIndex;
 
     soundIndex -= 1;
-    OSReport(lbl_1_data_694, (s16) soundIndex);
+    OSReport("# ========== win callback :: %d\n", (s16) soundIndex);
     if ((u32) lbl_1_data_690 != messageId) {
         lbl_1_data_690 = messageId;
         for (exceptionIndex = 0; ; exceptionIndex++) {
@@ -79,13 +175,10 @@ void fn_1_0(HUWINID unusedWindow, u32 messageId, s16 soundIndex)
     }
 }
 
+s16 lbl_1_data_6B6[6] = {0};
+
 
 /* Minigame lists used to decide which menu modes are available. */
-extern s16 lbl_1_data_0[];
-extern s16 lbl_1_data_2E[];
-extern s16 lbl_1_data_44[];
-extern s16 lbl_1_data_5C[];
-extern s16 lbl_1_data_7C[];
 
 /* Mode availability checks the unlock records required by each menu mode. */
 s16 fn_1_1A4(s16 mode)
@@ -193,7 +286,6 @@ s16 fn_1_1A4(s16 mode)
 
 extern s16 lbl_1_bss_28;
 extern s16 lbl_1_bss_2A;
-extern s16 lbl_1_data_6B6[6];
 
 /* Menu setup snapshots bank unlocks and computes each mode's availability. */
 void fn_1_558(void)
@@ -292,32 +384,24 @@ void fn_1_81C(void)
 
 extern s16 lbl_1_bss_2C;
 extern OMOBJMAN *lbl_1_bss_4;
-extern char lbl_1_data_6C2[];
-extern char lbl_1_data_6F3[];
-extern char lbl_1_data_704[];
-extern char lbl_1_data_716[];
-extern char lbl_1_data_728[];
-extern char lbl_1_data_736[];
-extern char lbl_1_data_738[];
-extern char lbl_1_data_767[];
 
 
 /* Reports the remaining ARAM and prints the allocation dump. */
 static inline void MenuArenaMemoryReport(void)
 {
-    OSReport(lbl_1_data_6F3, 33);
-    OSReport(lbl_1_data_704, 36);
-    OSReport(lbl_1_data_716, 155);
-    OSReport(lbl_1_data_728, 242);
+    OSReport("0x%x :: _effect\n", 33);
+    OSReport("0x%x :: _gamemes\n", 36);
+    OSReport("0x%x :: _mgconst\n", 155);
+    OSReport("0x%x :: _win\n", 242);
     HuAMemDump();
-    OSReport(lbl_1_data_736);
+    OSReport("\n");
 }
 
 /* Called by fn_1_1E1AC during its transition to release mode data and start the motion loader. */
 void fn_1_A4C(void)
 {
     lbl_1_bss_2C = 0;
-    OSReport(lbl_1_data_6C2);
+    OSReport("\n>>>>>>>>>> mdminidll :: READ INIT!! <<<<<<<<<<\n");
     MenuArenaMemoryReport();
     fn_800097F4(0x960000);
     fn_8000DAC0(fn_1_81C, 256, 16384, 0, lbl_1_bss_4);
@@ -338,7 +422,7 @@ static inline void ReleaseMenuModeArchives(void)
 void fn_1_B18(void)
 {
     ReleaseMenuModeArchives();
-    OSReport(lbl_1_data_738);
+    OSReport(">>>>>>>>>> mdminidll :: objsetup!! <<<<<<<<<<\n");
     MenuArenaMemoryReport();
 }
 
@@ -348,7 +432,7 @@ void fn_1_BD0(void)
 {
     fn_800567D8(-1);
     ReleaseMenuModeArchives();
-    OSReport(lbl_1_data_767);
+    OSReport("\n>>>>>>>>>> mdminidll :: dllreturn!! <<<<<<<<<<\n");
     MenuArenaMemoryReport();
 }
 
@@ -380,11 +464,6 @@ void fn_1_C90(void)
 
 
 extern s16 lbl_1_bss_2C;
-extern char lbl_1_data_798[];
-extern char lbl_1_data_6F3[];
-extern char lbl_1_data_704[];
-extern char lbl_1_data_716[];
-extern char lbl_1_data_728[];
 
 /* During the mode handoff, waits for the motion loader to finish, logs ARAM state and queues the
 * chosen minigame-mode overlay. */
@@ -398,13 +477,13 @@ void fn_1_F10(void)
 
     historyEntry = omOvlHisGet(0);
     omOvlHisChg(0, historyEntry->ovl, 1, 0);
-    OSReport(lbl_1_data_798);
-    OSReport(lbl_1_data_6F3, 33);
-    OSReport(lbl_1_data_704, 36);
-    OSReport(lbl_1_data_716, 155);
-    OSReport(lbl_1_data_728, 242);
+    OSReport("\n>>>>>>>>>> mdminidll :: READ END!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", 33);
+    OSReport("0x%x :: _gamemes\n", 36);
+    OSReport("0x%x :: _mgconst\n", 155);
+    OSReport("0x%x :: _win\n", 242);
     HuAMemDump();
-    OSReport(lbl_1_data_736);
+    OSReport("\n");
 
     switch (lbl_1_bss_804[1]) {
     case 0:
@@ -859,29 +938,8 @@ void fn_1_33C8(void)
 extern HUWINID lbl_1_bss_858[4];
 extern s16 lbl_1_data_82C[2];
 extern s32 lbl_1_data_830[3];
-typedef struct MDMinidllSpriteLayoutEntry {
-    /* Sprite group and member slots populated by the menu setup loop. */
-    s16 groupIndex;
-    s16 memberIndex;
-    /* Animation-table slot and render priority offset from 6000. */
-    s16 animationIndex;
-    s16 priority;
-    /* Sprite creation parameter passed through to HuSprCreate. */
-    s16 spriteParam;
-    /* Padding that aligns the following floating-point layout values. */
-    u8 alignmentPadding[2];
-    /* Local position, scale and z rotation passed to the sprite transforms. */
-    f32 positionX;
-    f32 positionY;
-    f32 scaleX;
-    f32 scaleY;
-    f32 rotation;
-} MDMinidllSpriteLayoutEntry;
 
 /* Sprite resource IDs, group sizes and initial member transforms. */
-extern s32 lbl_1_data_98[];
-extern s16 lbl_1_data_100[];
-extern MDMinidllSpriteLayoutEntry lbl_1_data_114[27];
 extern s16 lbl_1_bss_71C[27];
 extern s16 lbl_1_bss_752[9];
 extern ANIMDATA *lbl_1_bss_764[26];
@@ -1213,94 +1271,6 @@ typedef struct MDMinidllSelectionView {
     s16 claimed; /* 1 for a claimed character card; -1 when it is available. */
 } MDMinidllSelectionView;
 
-s16 lbl_1_data_0[23] = {
-    601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611, 612, 613, 614, 615, 616, 618,
-    619, 620, 621, 648, 650, -1
-};
-s16 lbl_1_data_2E[11] = {625, 626, 627, 628, 629, 630, 631, 632, 633, 634, -1};
-s16 lbl_1_data_44[12] = {635, 636, 637, 638, 639, 640, 641, 643, 644, 645, 668, -1};
-s16 lbl_1_data_5C[16] = {
-    617, 624, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, -1
-};
-s16 lbl_1_data_7C[12] = {601, 604, 606, 608, 615, 621, 648, 650, 646, 649, -1};
-s32 lbl_1_data_94 = -1;
-s32 lbl_1_data_98[26] = {
-    DATANUM(0x960000, 22), DATANUM(0x960000, 4), DATANUM(0x960000, 5),
-    DATANUM(0x960000, 6), DATANUM(0x960000, 7), DATANUM(0x960000, 8),
-    DATANUM(0x960000, 9), DATANUM(0x960000, 16), DATANUM(0x960000, 17),
-    DATANUM(0x960000, 10), DATANUM(0x960000, 11), DATANUM(0x960000, 12),
-    DATANUM(0x960000, 13), DATANUM(0x960000, 14), DATANUM(0x960000, 15),
-    DATANUM(0x960000, 24), DATANUM(0x960000, 24), DATANUM(0x960000, 24),
-    DATANUM(0x960000, 24), DATANUM(0x960000, 24), DATANUM(0x960000, 24),
-    DATANUM(0x960000, 21), DATANUM(0x960000, 19), DATANUM(0x960000, 18),
-    DATANUM(0x960000, 23), DATANUM(0x960000, 93)
-};
-s16 lbl_1_data_100[9] = {2, 6, 6, 4, 2, 2, 2, 2, 1};
-MDMinidllSpriteLayoutEntry lbl_1_data_114[27] = {
-    {0, 0, 0, 10, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 0, 15, 0, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 1, 15, 0, 1, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 2, 15, 0, 5, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 3, 15, 0, 2, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 4, 15, 0, 3, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 5, 15, 0, 4, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 0, 21, 0, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 1, 21, 0, 2, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 2, 21, 0, 5, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 3, 21, 0, 7, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 4, 21, 0, 4, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 5, 21, 0, 6, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {3, 0, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
-    {3, 1, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
-    {3, 2, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
-    {3, 3, 22, 0, 0, {0, 0}, 0.0f, 0.0f, 0.8f, 0.8f, 0.0f},
-    {4, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {4, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {5, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {5, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {6, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {6, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {7, 0, 22, 9, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {7, 1, 23, 10, 0, {0, 0}, 22.0f, -24.0f, 1.0f, 1.0f, 0.0f},
-    {0, 1, 24, 0, 0, {0, 0}, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {8, 0, 25, 0, 0, {0, 0}, 288.0f, 240.0f, 10.0f, 10.0f, 0.0f}
-};
-s32 lbl_1_data_474[21] = {
-    DATANUM(0x960000, 28), DATANUM(0x960000, 29), DATANUM(0x960000, 30),
-    DATANUM(0x960000, 31), DATANUM(0x960000, 32), DATANUM(0x960000, 33),
-    DATANUM(0x960000, 34), DATANUM(0x960000, 35), DATANUM(0x960000, 36),
-    DATANUM(0x960000, 37), DATANUM(0x960000, 38), DATANUM(0x960000, 39),
-    DATANUM(0x960000, 40), DATANUM(0x960000, 41), DATANUM(0x960000, 45),
-    DATANUM(0x960000, 42), DATANUM(0x960000, 43), DATANUM(0x960000, 44),
-    DATANUM(0x960000, 26), DATANUM(0x960000, 27), DATANUM(0x960000, 46)
-};
-Point3d lbl_1_data_4C8[38] = {
-    {0.0f, 275.0f, 0.0f}, {-200.0f, 325.0f, 0.0f}, {-120.0f, 225.0f, 0.0f},
-    {-40.0f, 325.0f, 0.0f}, {40.0f, 225.0f, 0.0f}, {120.0f, 325.0f, 0.0f},
-    {200.0f, 225.0f, 0.0f}, {-200.0f, 275.0f, 0.0f}, {-120.0f, 275.0f, 0.0f},
-    {-40.0f, 275.0f, 0.0f}, {40.0f, 275.0f, 0.0f}, {120.0f, 275.0f, 0.0f},
-    {200.0f, 275.0f, 0.0f}, {0.0f, 275.0f, -800.0f}, {-195.0f, 380.0f, 0.0f},
-    {-65.0f, 380.0f, 0.0f}, {65.0f, 380.0f, 0.0f}, {195.0f, 380.0f, 0.0f},
-    {-130.0f, 240.0f, 0.0f}, {0.0f, 240.0f, 0.0f}, {130.0f, 240.0f, 0.0f},
-    {-195.0f, 100.0f, 0.0f}, {-65.0f, 100.0f, 0.0f}, {65.0f, 100.0f, 0.0f},
-    {195.0f, 100.0f, 0.0f}, {-180.0f, 60.0f, 0.0f}, {-60.0f, 60.0f, 0.0f},
-    {60.0f, 60.0f, 0.0f}, {180.0f, 60.0f, 0.0f}, {-180.0f, 125.0f, 0.0f},
-    {-60.0f, 125.0f, 0.0f}, {60.0f, 125.0f, 0.0f}, {180.0f, 125.0f, 0.0f},
-    {-180.0f, 275.0f, 0.0f}, {-60.0f, 275.0f, 0.0f}, {60.0f, 275.0f, 0.0f},
-    {180.0f, 275.0f, 0.0f}, {0.0f, 125.0f, 0.0f}
-};
-s32 lbl_1_data_690 = -1;
-char lbl_1_data_694[34] = "# ========== win callback :: %d\n";
-s16 lbl_1_data_6B6[6] = {0};
-char lbl_1_data_6C2[] = "\n>>>>>>>>>> mdminidll :: READ INIT!! <<<<<<<<<<\n";
-char lbl_1_data_6F3[] = "0x%x :: _effect\n";
-char lbl_1_data_704[] = "0x%x :: _gamemes\n";
-char lbl_1_data_716[] = "0x%x :: _mgconst\n";
-char lbl_1_data_728[] = "0x%x :: _win\n";
-char lbl_1_data_736[] = "\n";
-char lbl_1_data_738[] = ">>>>>>>>>> mdminidll :: objsetup!! <<<<<<<<<<\n";
-char lbl_1_data_767[] = "\n>>>>>>>>>> mdminidll :: dllreturn!! <<<<<<<<<<\n";
-char lbl_1_data_798[] = "\n>>>>>>>>>> mdminidll :: READ END!! <<<<<<<<<<\n";
 char lbl_1_data_7C8[] = "-----===== CAMERA TEST =====-----";
 char lbl_1_data_7EA[] = "CENTER : %.2f, %.2f, %.2f";
 char lbl_1_data_804[] = "ROT    : %.2f, %.2f, %.2f";
@@ -4262,7 +4232,7 @@ void fn_1_15E0C(void)
         while (lbl_1_bss_2C == 0);
         history = omOvlHisGet(0);
         omOvlHisChg(0, history->ovl, 1, 0);
-        OSReport(lbl_1_data_798);
+        OSReport("\n>>>>>>>>>> mdminidll :: READ END!! <<<<<<<<<<\n");
         MenuArenaMemoryReport();
         switch (lbl_1_bss_804[1])
         {
@@ -4291,7 +4261,7 @@ void fn_1_15E0C(void)
     {
         fn_800567D8(-1);
         ReleaseMenuModeArchives();
-        OSReport(lbl_1_data_767);
+        OSReport("\n>>>>>>>>>> mdminidll :: dllreturn!! <<<<<<<<<<\n");
         MenuArenaMemoryReport();
         fn_8003A5E4(1, 1);
     }
@@ -4331,7 +4301,7 @@ void ObjectSetup(void)
 {
     OSReport("\n-----===== MARIO PARTY 6 :: MINIGAME MODE =====-----\n\n");
     ReleaseMenuModeArchives();
-    OSReport(lbl_1_data_738);
+    OSReport(">>>>>>>>>> mdminidll :: objsetup!! <<<<<<<<<<\n");
     MenuArenaMemoryReport();
     MgPauseExitF = 0;
     fn_1_558();

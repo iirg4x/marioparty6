@@ -33,7 +33,7 @@ void fn_1_1E1C(u32 cameras, float x, float y, float width, float height);
 void fn_1_1E9C(f32 value);
 f32 *fn_1_1F1C();
 s32 fn_1_203C(u32 cameras);
-double fn_1_20C0(CameraFitParams *params, M626CameraFitSphere *spheres, s32 count, Vec *out);
+double fn_1_20C0(CameraFitParams *params, MinigameCameraFitSphere *spheres, s32 count, Vec *out);
 void fn_1_26A4(OMOBJ *obj);
 void fn_1_270C(OMOBJ *object);
 void fn_1_2764(OMOBJ *object);
@@ -513,7 +513,7 @@ s32 fn_1_203C(u32 cameras)
 }
 
 /* Computes a view position and distance that fit the supplied spheres in frame. */
-double fn_1_20C0(CameraFitParams *params, M626CameraFitSphere *spheres, s32 count, Vec *out)
+double fn_1_20C0(CameraFitParams *params, MinigameCameraFitSphere *spheres, s32 count, Vec *out)
 {
     Mtx view;
     Mtx inverse;
@@ -529,7 +529,7 @@ double fn_1_20C0(CameraFitParams *params, M626CameraFitSphere *spheres, s32 coun
     double distanceY;
     double tangent;
     double distance;
-    M626CameraFitSphere *sphere;
+    MinigameCameraFitSphere *sphere;
     s32 i;
 
     MTXLookAt(view, &origin, &params->up, &params->direction);
@@ -585,7 +585,7 @@ double fn_1_20C0(CameraFitParams *params, M626CameraFitSphere *spheres, s32 coun
 /* Creates positional-audio tracking when the minigame object manager starts. */
 void fn_1_2608(HUPROCESS *process, MinigameAudioRange *audioConfig) {
     OMOBJ *object;
-    M626AudioWork *audioWork;
+    MinigameAudioWork *audioWork;
 
     object = fn_8003AB38(process, 30, 0, 0, -1, fn_1_26A4);
     lbl_1_bss_2B8 = object;
@@ -598,7 +598,7 @@ void fn_1_2608(HUPROCESS *process, MinigameAudioRange *audioConfig) {
 
 /* Updates tracked sound handles each frame, then calls the registered callback. */
 void fn_1_26A4(OMOBJ *obj) {
-    M626AudioWork *state = lbl_1_bss_2B8->data;
+    MinigameAudioWork *state = lbl_1_bss_2B8->data;
 
     fn_1_2764(obj);
     if (state->callback != NULL) {
@@ -609,7 +609,7 @@ void fn_1_26A4(OMOBJ *obj) {
 /* Marks every positional-audio handle slot free when audio tracking starts. */
 void fn_1_270C(OMOBJ *object)
 {
-    M626AudioWork *state = lbl_1_bss_2B8->data;
+    MinigameAudioWork *state = lbl_1_bss_2B8->data;
     MinigameAudioRecord *record = state->entries;
     int index;
 
@@ -621,7 +621,7 @@ void fn_1_270C(OMOBJ *object)
 /* Refreshes tracked sound pan and volume from the audio object's frame update. */
 void fn_1_2764(OMOBJ *object)
 {
-    M626AudioWork *work;
+    MinigameAudioWork *work;
     MinigameAudioRecord *entry;
     s32 i;
     work = lbl_1_bss_2B8->data;
@@ -642,7 +642,7 @@ void fn_1_2764(OMOBJ *object)
 
 /* Stores the callback run by the positional-audio object each frame. */
 void fn_1_2834(OMOBJ_FUNC callback) {
-    M626AudioWork *audioWork;
+    MinigameAudioWork *audioWork;
 
     if (lbl_1_bss_2B8 != NULL) {
         audioWork = lbl_1_bss_2B8->data;
@@ -658,7 +658,7 @@ int fn_1_2874(float value) {
 /* Maps a screen-space offset to pan using the selected camera audio range. */
 s32 fn_1_28A0(u32 cameras, float x)
 {
-    M626AudioWork *work;
+    MinigameAudioWork *work;
     MinigameAudioRange *config;
     s32 pan = 64;
 
@@ -706,7 +706,7 @@ s32 fn_1_2BDC(Vec *object)
 /* Calculates positional-audio volume for a world point and selected cameras. */
 s32 fn_1_2C08(u32 cameras, Vec *position)
 {
-    M626AudioWork *audio;
+    MinigameAudioWork *audio;
     MinigameAudioRange *config;
     M626CameraWork *work;
     M626CameraEntry *camera;
@@ -822,7 +822,7 @@ void fn_1_3AF4(int effect, int handle, Vec *position, int flag, int value) {
 void fn_1_3B40(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    M626AudioWork *state=lbl_1_bss_2B8->data;
+    MinigameAudioWork *state=lbl_1_bss_2B8->data;
     MinigameAudioRecord *record=state->entries;
     int index;
     for(index=0;index<64;index++,record++) {

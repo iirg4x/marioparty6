@@ -213,7 +213,7 @@ struct _LANGUAGE {
     /* Computes the size of the packed transition-word data. */
     u32 (*transwGetSize)(struct _LANGUAGE *pLang, struct _TRANSWORDINFO *pTransWord);
     /* Locates the transition-word lexicon after its header. */
-    u16 *(*transwGetpTransWordLex)(struct _TRANSWORDINFO *pTransWord);
+    u16 *(*transwGetpTransWordLex)(void *pTransWord);
     /* Locates the table of transition-word offsets. */
     u16 *(*transwGetpBeginOfTransWords)(void *pTransWord);
     /* Reads the penalty for a leading NBS event. */

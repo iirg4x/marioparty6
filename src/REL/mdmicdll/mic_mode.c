@@ -459,49 +459,6 @@ HuVecF lbl_1_data_8BC[80] = {
     {120.0f, 175.0f, 0.0f}
 };
 s32 lbl_1_data_C7C = -1;
-char lbl_1_data_C80[34] = "# ========== win callback :: %d\n";
-s16 lbl_1_data_CA2[3] = {0};
-s16 lbl_1_data_CA8[6] = {0};
-u32 lbl_1_data_CB4[3] = {0};
-char lbl_1_data_CC0[] = "\n>>>>>>>>>> mdmicdll :: READ INIT!! <<<<<<<<<<\n";
-char lbl_1_data_CF0[] = "0x%x :: _effect\n";
-char lbl_1_data_D01[] = "0x%x :: _gamemes\n";
-char lbl_1_data_D13[] = "0x%x :: _mgconst\n";
-char lbl_1_data_D25[] = "0x%x :: _win\n";
-char lbl_1_data_D33[3] = "\n";
-s16 lbl_1_data_D36[5] = {665, 666, 667, 669, 670};
-char lbl_1_data_D40[] = "\n>>>>>>>>>> mdmicdll :: READ END!! <<<<<<<<<<\n";
-char lbl_1_data_D6F[] = ">>>>>>>>>> mdmicdll :: objsetup!! <<<<<<<<<<\n";
-char lbl_1_data_D9D[] = "\n>>>>>>>>>> mdmicdll :: dllreturn!! <<<<<<<<<<\n";
-char lbl_1_data_DCD[] = "-----===== CAMERA TEST =====-----";
-char lbl_1_data_DEF[] = "CENTER : %.2f, %.2f, %.2f";
-char lbl_1_data_E09[] = "ROT    : %.2f, %.2f, %.2f";
-char lbl_1_data_E23[15] = "ZOOM   : %.2f";
-s16 lbl_1_data_E32[3] = {-1, -1};
-s32 lbl_1_data_E38[3] = {-1, -1, -1};
-char lbl_1_data_E44[] = "gN00m1-itemhook_R";
-char lbl_1_data_E56[] = "dpic00";
-char lbl_1_data_E5D[] = "dpic01";
-s16 lbl_1_data_E64[6] = {0};
-char lbl_1_data_E70[] = "ys77120";
-char lbl_1_data_E78[] = "ys77121";
-char lbl_1_data_E80[] = "ys77060";
-char lbl_1_data_E88[] = "ys77061";
-MDMIC_CHARACTER_CHOICE lbl_1_data_E90[11] = {
-    {{-1, -1, 1, 5, 4, -1, -1, -1}, -1},
-    {{-1, -1, 2, 6, 5, 4, 0, -1}, -1},
-    {{-1, -1, 3, -1, 6, 5, 1, -1}, -1},
-    {{-1, -1, -1, -1, -1, 6, 2, -1}, -1},
-    {{0, 1, 5, 9, 8, 7, -1, -1}, -1},
-    {{1, 2, 6, 10, 9, 8, 4, 0}, -1},
-    {{2, 3, 10, 10, 10, 9, 5, 1}, -1},
-    {{-1, 4, 8, -1, -1, -1, -1, -1}, -1},
-    {{4, 5, 9, -1, -1, -1, 7, -1}, -1},
-    {{5, 6, 10, -1, -1, -1, 8, 4}, -1},
-    {{6, -1, -1, -1, -1, -1, 9, 5}, -1}
-};
-s16 lbl_1_data_F56[5] = {665, 666, 667, 669, 670};
-char lbl_1_data_F60[64] = "\n-----===== MARIO PARTY 6 :: MICROPHONE MODE =====-----\n\n";
 
 void fn_1_1FAC(
     HU3D_MODELID modelId, const HuVecF *a, const HuVecF *b, const HuVecF *c,
@@ -814,7 +771,7 @@ void fn_1_0(HUWINID winId, u32 messageNo, s16 cueNo)
     s16 messageIndex;
 
     cueNo -= 1;
-    OSReport(lbl_1_data_C80, (s16) cueNo);
+    OSReport("# ========== win callback :: %d\n", (s16) cueNo);
     if ((u32) lbl_1_data_C7C != messageNo) {
         lbl_1_data_C7C = messageNo;
         for (messageIndex = 0; ; messageIndex++) {
@@ -833,6 +790,10 @@ void fn_1_0(HUWINID winId, u32 messageNo, s16 cueNo)
         }
     }
 }
+
+s16 lbl_1_data_CA2[3] = {0};
+s16 lbl_1_data_CA8[6] = {0};
+u32 lbl_1_data_CB4[3] = {0};
 
 /* Caches saved bank options and microphone activity records for Mic Mode. */
 void fn_1_1A4(void) {
@@ -940,13 +901,13 @@ void fn_1_44C(void)
 /* fn_1_3107C calls this after confirming a selection to start motion loading. */
 void fn_1_758(void) {
     lbl_1_bss_30[0] = 0;
-    OSReport(lbl_1_data_CC0);
-    OSReport(lbl_1_data_CF0, _effect);
-    OSReport(lbl_1_data_D01, _gamemes);
-    OSReport(lbl_1_data_D13, _mgconst);
-    OSReport(lbl_1_data_D25, _win);
+    OSReport("\n>>>>>>>>>> mdmicdll :: READ INIT!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_D33);
+    OSReport("\n");
     fn_800097F4(0x950000);
     fn_8000DAC0(fn_1_44C, MDMIC_LOAD_PROCESS_PRIORITY, MDMIC_LOAD_PROCESS_STACK_SIZE, 0,
                      lbl_1_bss_0);
@@ -986,6 +947,8 @@ void fn_1_824(void)
     }
 }
 
+s16 lbl_1_data_D36[5] = {665, 666, 667, 669, 670};
+
 /* fn_1_24420 calls this after the exit wipe to hand off to the selected game or menu. */
 void fn_1_C78(void)
 {
@@ -997,13 +960,13 @@ void fn_1_C78(void)
     } while (lbl_1_bss_30[0] == 0);
     history = omOvlHisGet(0);
     omOvlHisChg(0, history->ovl, 1, lbl_1_bss_9DC.modeSelection);
-    OSReport(lbl_1_data_D40);
-    OSReport(lbl_1_data_CF0, _effect);
-    OSReport(lbl_1_data_D01, _gamemes);
-    OSReport(lbl_1_data_D13, _mgconst);
-    OSReport(lbl_1_data_D25, _win);
+    OSReport("\n>>>>>>>>>> mdmicdll :: READ END!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_D33);
+    OSReport("\n");
     if (lbl_1_bss_9DC.modeSelection == 0) {
         omOvlCallEx(102, 1, 0, 0);
     } else if (lbl_1_bss_9DC.modeSelection == 1) {
@@ -1045,13 +1008,13 @@ void fn_1_EDC(void) {
         HuARDirFree((&lbl_8022E718[characterNo][0])[2]);
         characterNo += 1;
     }
-    OSReport(lbl_1_data_D6F);
-    OSReport(lbl_1_data_CF0, _effect);
-    OSReport(lbl_1_data_D01, _gamemes);
-    OSReport(lbl_1_data_D13, _mgconst);
-    OSReport(lbl_1_data_D25, _win);
+    OSReport(">>>>>>>>>> mdmicdll :: objsetup!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_D33);
+    OSReport("\n");
 }
 
 /* Overlay exit closes character data and releases mode and motion archives. */
@@ -1067,14 +1030,43 @@ void fn_1_FC0(void) {
         HuARDirFree((&lbl_8022E718[characterNo][0])[2]);
         characterNo += 1;
     }
-    OSReport(lbl_1_data_D9D);
-    OSReport(lbl_1_data_CF0, _effect);
-    OSReport(lbl_1_data_D01, _gamemes);
-    OSReport(lbl_1_data_D13, _mgconst);
-    OSReport(lbl_1_data_D25, _win);
+    OSReport("\n>>>>>>>>>> mdmicdll :: dllreturn!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_D33);
+    OSReport("\n");
 }
+
+char lbl_1_data_DCD[] = "-----===== CAMERA TEST =====-----";
+char lbl_1_data_DEF[] = "CENTER : %.2f, %.2f, %.2f";
+char lbl_1_data_E09[] = "ROT    : %.2f, %.2f, %.2f";
+char lbl_1_data_E23[15] = "ZOOM   : %.2f";
+s16 lbl_1_data_E32[3] = {-1, -1};
+s32 lbl_1_data_E38[3] = {-1, -1, -1};
+char lbl_1_data_E44[] = "gN00m1-itemhook_R";
+char lbl_1_data_E56[] = "dpic00";
+char lbl_1_data_E5D[] = "dpic01";
+s16 lbl_1_data_E64[6] = {0};
+char lbl_1_data_E70[] = "ys77120";
+char lbl_1_data_E78[] = "ys77121";
+char lbl_1_data_E80[] = "ys77060";
+char lbl_1_data_E88[] = "ys77061";
+MDMIC_CHARACTER_CHOICE lbl_1_data_E90[11] = {
+    {{-1, -1, 1, 5, 4, -1, -1, -1}, -1},
+    {{-1, -1, 2, 6, 5, 4, 0, -1}, -1},
+    {{-1, -1, 3, -1, 6, 5, 1, -1}, -1},
+    {{-1, -1, -1, -1, -1, 6, 2, -1}, -1},
+    {{0, 1, 5, 9, 8, 7, -1, -1}, -1},
+    {{1, 2, 6, 10, 9, 8, 4, 0}, -1},
+    {{2, 3, 10, 10, 10, 9, 5, 1}, -1},
+    {{-1, 4, 8, -1, -1, -1, -1, -1}, -1},
+    {{4, 5, 9, -1, -1, -1, 7, -1}, -1},
+    {{5, 6, 10, -1, -1, -1, 8, 4}, -1},
+    {{6, -1, -1, -1, -1, -1, 9, 5}, -1}
+};
+s16 lbl_1_data_F56[5] = {665, 666, 667, 669, 670};
 
 /* Path helpers evaluate one coordinate of a quadratic curve at normalized progress. */
 float fn_1_10AC(float start, float middle, float end, float time)
@@ -6431,13 +6423,13 @@ void fn_1_24420(void)
         for (i = 0; i < 14; i++) {
             HuARDirFree(lbl_8022E718[i][2]);
         }
-        OSReport(lbl_1_data_D9D);
-        OSReport(lbl_1_data_CF0, _effect);
-        OSReport(lbl_1_data_D01, _gamemes);
-        OSReport(lbl_1_data_D13, _mgconst);
-        OSReport(lbl_1_data_D25, _win);
+        OSReport("\n>>>>>>>>>> mdmicdll :: dllreturn!! <<<<<<<<<<\n");
+        OSReport("0x%x :: _effect\n", _effect);
+        OSReport("0x%x :: _gamemes\n", _gamemes);
+        OSReport("0x%x :: _mgconst\n", _mgconst);
+        OSReport("0x%x :: _win\n", _win);
         HuAMemDump();
-        OSReport(lbl_1_data_D33);
+        OSReport("\n");
         fn_8003A5E4(1, 1);
     }
     HuPrcEnd();
@@ -6537,7 +6529,7 @@ void fn_1_24614(void)
 void ObjectSetup(void) {
     s16 characterNo;
 
-    OSReport(lbl_1_data_F60);
+    OSReport("\n-----===== MARIO PARTY 6 :: MICROPHONE MODE =====-----\n\n");
     HuARDirFree(0xa20000);
     fn_800097F4(0xa70000);
     fn_800097F4(0x260000);
@@ -6546,13 +6538,13 @@ void ObjectSetup(void) {
         HuARDirFree((&lbl_8022E718[characterNo][0])[2]);
         characterNo += 1;
     }
-    OSReport(lbl_1_data_D6F);
-    OSReport(lbl_1_data_CF0, _effect);
-    OSReport(lbl_1_data_D01, _gamemes);
-    OSReport(lbl_1_data_D13, _mgconst);
-    OSReport(lbl_1_data_D25, _win);
+    OSReport(">>>>>>>>>> mdmicdll :: objsetup!! <<<<<<<<<<\n");
+    OSReport("0x%x :: _effect\n", _effect);
+    OSReport("0x%x :: _gamemes\n", _gamemes);
+    OSReport("0x%x :: _mgconst\n", _mgconst);
+    OSReport("0x%x :: _win\n", _win);
     HuAMemDump();
-    OSReport(lbl_1_data_D33);
+    OSReport("\n");
     MgInstExitF = 0;
     MgPauseExitF = 0;
     MgExitReq = 0;

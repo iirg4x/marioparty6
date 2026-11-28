@@ -67,7 +67,7 @@ f32 *fn_1_277C();
 void fn_1_27AC(u8 red, u8 green, u8 blue);
 void fn_1_27E4(u32 cameras, void *data);
 BOOL fn_1_2D3C(u32 cameras);
-double fn_1_2DC0(CameraFitParams *fitParams, CameraFitSphere *sphereList, s32 sphereCount,
+double fn_1_2DC0(CameraFitParams *fitParams, MinigameCameraFitSphere *sphereList, s32 sphereCount,
     Vec *cameraPosition);
 void fn_1_33A4(OMOBJ *obj);
 void fn_1_340C(OMOBJ *object);
@@ -630,7 +630,7 @@ BOOL fn_1_2D3C(u32 cameras)
 #define FIT_MAX(a, b) ((a) > (b) ? (a) : (b))
 
 /* Fits a camera position so the supplied world-space spheres fit inside its view. */
-double fn_1_2DC0(CameraFitParams *fitParams, CameraFitSphere *sphereList, s32 sphereCount,
+double fn_1_2DC0(CameraFitParams *fitParams, MinigameCameraFitSphere *sphereList, s32 sphereCount,
     Vec *cameraPosition)
 {
     Mtx view;
@@ -647,7 +647,7 @@ double fn_1_2DC0(CameraFitParams *fitParams, CameraFitSphere *sphereList, s32 sp
     double distanceY;
     double tangent;
     double distance;
-    CameraFitSphere *boundingSphere;
+    MinigameCameraFitSphere *boundingSphere;
     s32 i;
 
     MTXLookAt(view, &origin, &fitParams->up,
@@ -709,19 +709,19 @@ double fn_1_2DC0(CameraFitParams *fitParams, CameraFitSphere *sphereList, s32 sp
 /* Creates the positional-audio object and initializes its active-sound records. */
 void fn_1_3308(HUPROCESS *process, MinigameAudioRange *ranges) {
     OMOBJ *object;
-    MinigameAudioState *data;
+    MinigameAudioWork *data;
     object = fn_8003AB38(process, 30, 0, 0, -1, fn_1_33A4);
     lbl_1_bss_2C8 = object;
-    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameAudioState), 0x10000000);
+    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameAudioWork), 0x10000000);
     object->data = data;
-    memset(data, 0, sizeof(MinigameAudioState));
-    data->ranges = ranges;
+    memset(data, 0, sizeof(MinigameAudioWork));
+    data->config = ranges;
     fn_1_340C(object);
 }
 
 /* The audio object updates active sounds, then calls the registered scene callback. */
 void fn_1_33A4(OMOBJ *obj) {
-    MinigameAudioState *state = lbl_1_bss_2C8->data;
+    MinigameAudioWork *state = lbl_1_bss_2C8->data;
 
     fn_1_3464(obj);
     if (state->callback != NULL) {
@@ -732,8 +732,8 @@ void fn_1_33A4(OMOBJ *obj) {
 /* Marks every positional-audio sound record as unused. */
 void fn_1_340C(OMOBJ *object)
 {
-    MinigameAudioState *state = lbl_1_bss_2C8->data;
-    MinigameAudioRecord *record = state->records;
+    MinigameAudioWork *state = lbl_1_bss_2C8->data;
+    MinigameAudioRecord *record = state->entries;
     int index;
 
     for (index = 0; index < 64; index++, record++) {
@@ -744,8 +744,8 @@ void fn_1_340C(OMOBJ *object)
 /* Runs each frame to update pan and volume for active positional sounds. */
 void fn_1_3464(OMOBJ *object)
 {
-    MinigameAudioState *state = lbl_1_bss_2C8->data;
-    MinigameAudioRecord *record = state->records;
+    MinigameAudioWork *state = lbl_1_bss_2C8->data;
+    MinigameAudioRecord *record = state->entries;
     int index;
 
     for (index = 0; index < 64; index++, record++) {
@@ -768,7 +768,7 @@ void fn_1_3464(OMOBJ *object)
 
 /* Replaces the callback run by the positional-audio object each frame. */
 void fn_1_3534(OMOBJ_FUNC callback) {
-    MinigameAudioState *work;
+    MinigameAudioWork *work;
     if (lbl_1_bss_2C8 != NULL) {
         work = lbl_1_bss_2C8->data;
         work->callback = callback;
@@ -782,13 +782,13 @@ int fn_1_3574(float value) {
 /* Map screen X on the 0..576 horizontal range to the configured audio pan limits. */
 inline s32 fn_1_35A0(s32 cameras, float x)
 {
-    MinigameAudioState *state;
+    MinigameAudioWork *state;
     MinigameAudioRange *range;
     s32 pan = 64;
 
     if (lbl_1_bss_2C8 != NULL) {
         state = lbl_1_bss_2C8->data;
-        for (range = state->ranges; range->cameraMask; range++) {
+        for (range = state->config; range->cameraMask; range++) {
             if (range->cameraMask & cameras) {
                 x *= (range->panMax - range->panMin) / 576.0f;
                 pan = range->panMin + x;
@@ -829,7 +829,7 @@ void fn_1_38DC(void *object)
 /* Calculates sound volume from camera-space depth and the configured distance ranges. */
 inline s32 fn_1_3908(u32 cameras, HuVecF *position)
 {
-    MinigameAudioState *audio;
+    MinigameAudioWork *audio;
     MinigameAudioRange *range;
     MinigameCameraWork *work;
     MinigameCameraEntry *camera;
@@ -843,7 +843,7 @@ inline s32 fn_1_3908(u32 cameras, HuVecF *position)
         audio = lbl_1_bss_2C8->data;
         work = lbl_1_bss_2CC->data;
         camera = &work->entries[cameraIndex(cameras)];
-        for (range = audio->ranges; range->cameraMask; range++) {
+        for (range = audio->config; range->cameraMask; range++) {
             if (range->cameraMask & cameras) {
                 C_MTXLookAt(matrix, &camera->position, &camera->up, &camera->target);
                 PSMTXMultVec(matrix, position, &local);
@@ -944,8 +944,8 @@ void fn_1_47F4(int effect, int handle, Vec *position, int flag, int value) {
 void fn_1_4840(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    MinigameAudioState *state=lbl_1_bss_2C8->data;
-    MinigameAudioRecord *record=state->records;
+    MinigameAudioWork *state=lbl_1_bss_2C8->data;
+    MinigameAudioRecord *record=state->entries;
     int index;
     for(index=0;index<64;index++,record++) {
         if(record->handle==-1) {
