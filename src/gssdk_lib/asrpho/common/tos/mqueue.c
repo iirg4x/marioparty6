@@ -342,18 +342,7 @@ static struct _QUEUEELEM *qAllocElem(struct _QUEUE *Q)
     unsigned long Size = Q->Size + offsetof(struct _QUEUEELEM, Data);
 
     if (Size < 0x20) {
-        unsigned int TempSize = (Size + 3) >> 2;
-        struct _FASTALLO_FREE_NODE **pTemp =
-            Q->Object.pTos->FastAllocHeap.pFreeNodes + TempSize;
-        struct _QUEUEELEM **ppElem = &pElem;
-
-        if (*pTemp != NULL) {
-            *ppElem = (void *)*pTemp;
-            *pTemp = (*pTemp)->pNext;
-        } else {
-            *ppElem = fastallo_AllocateMemoryFromChunk(
-                &Q->Object.pTos->FastAllocHeap, TempSize);
-        }
+        FASTALLO_TAKE(&Q->Object.pTos->FastAllocHeap, (Size + 3) >> 2, &pElem)
     } else {
         pElem = heap_Alloc(Q->Object.pTos->hHeap, Size);
     }

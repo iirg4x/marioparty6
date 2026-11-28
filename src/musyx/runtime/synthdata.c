@@ -547,8 +547,8 @@ MSTEP* dataGetMacro(u16 mid) {
   if (dataMacMainTab[main].num != 0) {
     base = dataMacMainTab[main].subTabIndex;
     key.id = mid;
-    if ((result = (MAC_SUBTAB*)sndBSearch(&key, &dataMacSubTabmem[base], dataMacMainTab[main].num,
-                                          8, maccmp)) != NULL) {
+    if ((result = sndBSearch(&key, &dataMacSubTabmem[base], dataMacMainTab[main].num,
+                             8, maccmp)) != NULL) {
       return result->data;
     }
   }
@@ -597,8 +597,7 @@ void* dataGetCurve(u16 cid) {
   static DATA_TAB* result;
 
   key.id = cid;
-  if ((result =
-           (DATA_TAB*)sndBSearch(&key, dataCurveTab, dataCurveNum, sizeof(DATA_TAB), curvecmp))) {
+  if ((result = sndBSearch(&key, dataCurveTab, dataCurveNum, sizeof(DATA_TAB), curvecmp))) {
     return result->data;
   }
   return NULL;
@@ -609,8 +608,7 @@ void* dataGetKeymap(u16 cid) {
   static DATA_TAB* result;
 
   key.id = cid;
-  if ((result =
-           (DATA_TAB*)sndBSearch(&key, dataKeymapTab, dataKeymapNum, sizeof(DATA_TAB), curvecmp))) {
+  if ((result = sndBSearch(&key, dataKeymapTab, dataKeymapNum, sizeof(DATA_TAB), curvecmp))) {
     return result->data;
   }
   return NULL;
@@ -623,8 +621,7 @@ void* dataGetLayer(u16 cid, u16* n) {
   static LAYER_TAB* result;
 
   key.id = cid;
-  if ((result =
-           (LAYER_TAB*)sndBSearch(&key, dataLayerTab, dataLayerNum, sizeof(LAYER_TAB), layercmp))) {
+  if ((result = sndBSearch(&key, dataLayerTab, dataLayerNum, sizeof(LAYER_TAB), layercmp))) {
     *n = result->num;
     return result->data;
   }
@@ -642,8 +639,8 @@ struct FX_TAB* dataGetFX(u16 fid) {
 
   key.id = fid;
   for (i = 0; i < dataFXGroupNum; ++i) {
-    if ((ret = (FX_TAB*)sndBSearch(&key, dataFXGroups[i].fxTab, dataFXGroups[i].fxNum,
-                                   sizeof(FX_TAB), fxcmp))) {
+    if ((ret = sndBSearch(&key, dataFXGroups[i].fxTab, dataFXGroups[i].fxNum,
+                          sizeof(FX_TAB), fxcmp))) {
       return ret;
     }
   }

@@ -8,12 +8,12 @@
 #include <string.h>
 
 /* Packs joining translations and appends the two halves of the second-pass word ID. */
-static void putTransWordInDict(u32 **ppBeginOfPron, u32 *pDictIndex, u16 **ppState,
+static void putTransWordInDict(u32 **ppBeginOfPron, u32 *pDictIndex, struct _DICTSTATE **ppState,
                                u32 WordID, u16 *pIndex, u16 *pIndexEnd, u16 *pTransWordLex)
 {
     u16 wordIndexLow = WordID;
     u32 *pBeginOfPron = *ppBeginOfPron;
-    u16 *pState = *ppState;
+    struct _DICTSTATE *pState = *ppState;
     u16 *indexCursor = pIndex;
     u16 *pPhen = pTransWordLex + *indexCursor;
     u16 *pPhenEnd;
@@ -24,11 +24,11 @@ static void putTransWordInDict(u32 **ppBeginOfPron, u32 *pDictIndex, u16 **ppSta
         pPhenEnd = pTransWordLex + *++indexCursor;
         *pDictIndex += pPhenEnd - pPhen + 2;
         while (pPhen < pPhenEnd - 1) {
-            *pState++ = (*pPhen++ * 4) | 2;
+            pState++->StateIndex = (*pPhen++ * 4) | 2;
         }
-        pState[0] = (*pPhen++ * 4) | 1;
-        pState[1] = wordIndexLow;
-        pState[2] = WordID;
+        pState[0].StateIndex = (*pPhen++ * 4) | 1;
+        pState[1].StateIndex = wordIndexLow;
+        pState[2].StateIndex = WordID;
         pState += 3;
     }
 
@@ -43,7 +43,7 @@ static void putTransWordInDict(u32 **ppBeginOfPron, u32 *pDictIndex, u16 **ppSta
 unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
 {
     int speechUnitClassCount;
-    u16 *dictionary;
+    struct _DICTSTATE *dictionary;
     struct _DYNPROG_RESULT_NODE *sentence;
     u32 firstPassOffsetBase;
     u16 *wordAttributes;
@@ -55,7 +55,7 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
     struct _DYNPROG_CTXINFO *secondPass;
     u32 *pronunciationOffsetTable;
     u32 encodedWordOffset;
-    u16 *encodedPronunciationDictionary;
+    struct _DICTSTATE *encodedPronunciationDictionary;
     u32 maxPronunciationsPerWord;
     s32 graphPronunciationCount;
     struct _NODE *graphNodes;
@@ -95,7 +95,7 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
     wordOffsets = firstPassData->pBeginOfWords;
     firstPassOffsetBase = *wordOffsets;
     wordAttributes = firstPassData->pWordProps;
-    dictionary = (u16 *)firstPassData->pStateInDict;
+    dictionary = firstPassData->pStateInDict;
     dictionaryWords = pEngine->CtxInfo.pSecondPassInfo;
     rootTransitionCount = 0;
     tokenCount = 0;
@@ -119,9 +119,10 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
     while (pSent != NULL) {
         word = pSent->pInfo;
         while (word != NULL) {
-            u16 *encodedWordEntry = dictionary + word->StateNbr;
+            struct _DICTSTATE *encodedWordEntry = dictionary + word->StateNbr;
             u32 *pronunciationBounds =
-                wordOffsets + (encodedWordEntry[1] + (encodedWordEntry[2] << 16));
+                wordOffsets + (encodedWordEntry[1].StateIndex +
+                               (encodedWordEntry[2].StateIndex << 16));
             u32 count = pronunciationBounds[1] - pronunciationBounds[0];
             if (count > maxPronunciationsPerWord) {
                 maxPronunciationsPerWord = count;
@@ -154,9 +155,9 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
             u32 link;
             while (word != NULL) {
                 struct _NODE *node = graphNodes + rootNodeIndex;
-                u16 *encodedWordEntry = dictionary + word->StateNbr;
+                struct _DICTSTATE *encodedWordEntry = dictionary + word->StateNbr;
                 searchLink = node->iVertex;
-                wordID = encodedWordEntry[1] + (encodedWordEntry[2] << 16);
+                wordID = encodedWordEntry[1].StateIndex + (encodedWordEntry[2].StateIndex << 16);
                 dictionaryIndex = wordOffsets[wordID] - firstPassOffsetBase;
                 for (;;) {
                     if (searchLink == 0xFFFF) {
@@ -221,10 +222,11 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
                     if (word == NULL) {
                         break;
                     } else {
-                        u16 *encodedWordEntry;
+                        struct _DICTSTATE *encodedWordEntry;
                         link = 0xFFFF;
                         encodedWordEntry = dictionary + word->StateNbr;
-                        wordID = encodedWordEntry[1] + (encodedWordEntry[2] << 16);
+                        wordID = encodedWordEntry[1].StateIndex +
+                                 (encodedWordEntry[2].StateIndex << 16);
                         dictionaryIndex = wordOffsets[wordID] - firstPassOffsetBase;
                     }
                 }
@@ -325,7 +327,7 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
     if (secondPass->pStateInDict == NULL) {
         goto failure;
     }
-    encodedPronunciationDictionary = (u16 *)secondPass->pStateInDict;
+    encodedPronunciationDictionary = secondPass->pStateInDict;
     pEngine->CtxInfo.pNewWordID2OldWordID =
         heap_Alloc(pEngine->hHeap, wordCount * sizeof(struct _NEWID2OLDID));
     if (pEngine->CtxInfo.pNewWordID2OldWordID == NULL) {
@@ -350,7 +352,7 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
         u32 wordAttributeFlags = wordAttributes[wordID];
         struct _SECONDPASSINFO *pInfo;
         u16 pronunciationTokenCount;
-        u16 *wordTokenEnd;
+        struct _DICTSTATE *wordTokenEnd;
         u32 dictionaryWordIndex;
         firstPassWordMapCursor->OldWordID = wordID;
         firstPassWordMapCursor->OldPronID = graphNodeCursor->OldPronID;
@@ -364,10 +366,10 @@ unsigned char CreateSecondPassContext(struct _ENGINE *pEngine)
         memcpy(wordTokenEnd, dictionary + pInfo->StateDictIndex,
                pronunciationTokenCount * sizeof(*wordTokenEnd));
         wordTokenEnd += pronunciationTokenCount;
-        wordTokenEnd[-1] |= 1;
+        wordTokenEnd[-1].StateIndex |= 1;
         dictionaryWordIndex = graphNodeIndex - 1;
-        wordTokenEnd[0] = dictionaryWordIndex;
-        wordTokenEnd[1] = dictionaryWordIndex >> 16;
+        wordTokenEnd[0].StateIndex = dictionaryWordIndex;
+        wordTokenEnd[1].StateIndex = dictionaryWordIndex >> 16;
         encodedPronunciationDictionary = wordTokenEnd + 2;
         encodedWordOffset += pronunciationTokenCount + 2;
         if (link != 0) {

@@ -558,7 +558,7 @@ void *fn_1_65E8(u8 *buffer, s32 bytes, s32 itemBytes)
 void *fn_1_6680(M658Pool *pool)
 {
     M658PoolNode *node;
-    u8 *item;
+    M658PoolNode *item;
 
     if (!pool->free) {
         return NULL;
@@ -571,8 +571,8 @@ void *fn_1_6680(M658Pool *pool)
     node->prev = NULL;
     node->next = pool->active;
     pool->active = node;
-    item = (u8 *)node;
-    item += sizeof(M658PoolNode);
+    item = node;
+    item++;
     return item;
 }
 
@@ -583,12 +583,12 @@ void fn_1_65A0(void *item);
 void fn_1_66F4(M658Pool *pool, void *item)
 {
     extern void fn_1_65A0(void *item);
-    u8 *buffer;
     M658PoolNode *node;
+    M658PoolNode *cursor;
 
-    buffer = item;
-    buffer -= sizeof(M658PoolNode);
-    node = (M658PoolNode *)buffer;
+    cursor = item;
+    cursor--;
+    node = cursor;
     fn_1_65A0(node);
     if (pool->free) {
         pool->free->prev = node;
@@ -600,29 +600,29 @@ void fn_1_66F4(M658Pool *pool, void *item)
 void *fn_1_6764(M658Pool *pool)
 {
     M658PoolNode *node;
-    u8 *data;
+    M658PoolNode *data;
 
     node = pool->active;
-    data = (u8 *)node;
+    data = node;
     if (data == NULL) {
         return NULL;
     }
-    return data + sizeof(M658PoolNode);
+    return data + 1;
 }
 /* Advances active-item iteration used by registry and gameplay update loops. */
 void *fn_1_67A0(M658Pool *pool, void *item)
 {
     M658PoolNode *node;
-    u8 *data;
+    M658PoolNode *data;
 
     data = item;
-    data -= sizeof(M658PoolNode);
-    node = (M658PoolNode *)data;
-    data = (u8 *)node->next;
+    data--;
+    node = data;
+    data = node->next;
     if (data == NULL) {
         return NULL;
     }
-    return data + sizeof(M658PoolNode);
+    return data + 1;
 }
 
 typedef struct M658TrackKey {

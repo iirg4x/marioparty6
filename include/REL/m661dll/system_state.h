@@ -2,23 +2,10 @@
 #define M661DLL_SYSTEM_STATE_H
 
 #include "REL/minigame_shadow_camera.h"
+#include "REL/minigame_pad.h"
 #include "dolphin/types.h"
 #include "game/mg/timer.h"
 #include "dolphin/mtx/GeoTypes.h"
-
-typedef struct SystemPadInput {
-    s32 unk_00; /* The game's code never reads this field. */
-    s32 unk_04; /* The game's code never reads this field. */
-    u16 unk_08; /* The game's code never reads this field. */
-    s8 unk_0A; /* The game's code never reads this field. */
-    s8 unk_0B; /* The game's code never reads this field. */
-    s8 unknown_0C; /* The game's code never reads this field. */
-    s8 unk_0D; /* The game's code never reads this field. */
-    u8 unk_0E; /* The game's code never reads this field. */
-    u8 unk_0F; /* The game's code never reads this field. */
-    u8 unk_10; /* The game's code never reads this field. */
-    u8 unk_11; /* The game's code never reads this field. */
-} SystemPadInput;
 
 typedef struct SystemInputState {
     /* fn_1_118 clears the full 0x298-byte object; sequenceState follows these bytes. */

@@ -88,10 +88,6 @@ u32 lbl_1_bss_2FC;
 u32 lbl_1_bss_2F8;
 M675PlayerWork *lbl_1_bss_2E4[5];
 s32 lbl_1_bss_2E0;
-s32 fn_1_A98(s32);
-s32 fn_1_A60(void);
-s32 fn_1_32EC(Vec *);
-void fn_1_4BB4(Vec *,Vec *,f32,Vec *);
 void fn_1_5048(void);
 void fn_1_506C(OMOBJ *manager);
 void fn_1_50BC(OMOBJ *manager);
@@ -1055,8 +1051,6 @@ void fn_1_6E78(M675PlayerWork *work)
     f32 thirdSpread;
     Vec *effect;
 
-    /* This timer ratio consumes fn_1_A60's result even though that wrapper discards
-     * the sequence timer value. */
     timerRatio = (f32)fn_1_A60() / 900.0f;
     progressLimit = (f32)((s32)((f64)(f32)settings->baseCount *
         (1.0 - (f64)timerRatio)) + 1);

@@ -91,6 +91,7 @@ s32 fn_1_1234(void);
 s32 fn_1_1244(void);
 
 /* Camera, lighting, audio, and resource support. */
+void fn_1_1664(s16 modelId, char *lightName, s32 mode);
 void fn_1_13D8(OMOBJMAN *manager);
 void fn_1_14A0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color);
 void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float farPlane,

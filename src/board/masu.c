@@ -2002,12 +2002,12 @@ int mbMasuMAttrMatchTblGet(u32 attr, u32 mask, s16 *list)
     return num;
 }
 
-int mbMasuFind_TypeListGet(s16 id, s16 type, s16 *list)
+s16 mbMasuFind_TypeListGet(s16 id, s16 type, s16 *list)
 {
     return mbMasuFind_TypeListGet2(id, type, FALSE, TRUE, list);
 }
 
-int mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF,
+s16 mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF,
     s16 *list)
 {
     MasuFind(id, MasuTypeCheck, type, 0, hookF, dispF);

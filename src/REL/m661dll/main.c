@@ -4,6 +4,7 @@
 #include "REL/m661dll/timer.h"
 #include "REL/m661dll/routes.h"
 #include "REL/minigame_shadow_camera.h"
+#include "REL/minigame_light.h"
 #include "REL/m661dll/model_setup.h"
 #include <math.h>
 #include <string.h>
@@ -159,12 +160,6 @@ void fn_1_1F4(s16 mode, s16 frameNo);
 
 void fn_1_1F8(s16 mode, s16 frameNo);
 
-typedef struct Position {
-    HuVecF position;
-    unsigned char unk_0C[12]; /* No code names this field. */
-    HuVecF offset;
-} Position;
-
 extern s32 lbl_1_data_F18;
 
 extern float lbl_1_bss_1BC;
@@ -203,16 +198,6 @@ typedef struct FourHalfwords {
     u16 third;
     u16 fourth;
 } FourHalfwords;
-
-typedef struct LightInitState {
-    HU3D_LIGHTID id;
-    HuVecF position;
-    HuVecF orientation;
-    HuVecF aim;
-    HuVecF direction;
-    float range;
-    GXColor color;
-} LightInitState;
 
 extern LightInitState lbl_1_bss_303C;
 void fn_1_1E48(void);
@@ -444,9 +429,9 @@ void fn_1_71C(void)
             lbl_1_bss_1C04[index].active != 0) {
             memset(&lbl_1_bss_1C04[index].input, 0, 20);
         } else {
-            lbl_1_bss_1C04[index].input.unk_00 = lbl_802C0010[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unk_04 = lbl_802C0008[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unk_08 = lbl_802C0000[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk00 = lbl_802C0010[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.buttonsDown = lbl_802C0008[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk08 = lbl_802C0000[lbl_1_bss_1C04[index].controllerPort];
             if (lbl_802BFFFC[lbl_1_bss_1C04[index].controllerPort] > 0) {
                 stickResult = lbl_802BFFFC[lbl_1_bss_1C04[index].controllerPort];
             } else {
@@ -457,30 +442,30 @@ void fn_1_71C(void)
                 }
                 stickResult = deadZoneValue;
             }
-            lbl_1_bss_1C04[index].input.unk_0A = stickResult;
-            lbl_1_bss_1C04[index].input.unk_0B = (s8)lbl_802BFFF8[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unknown_0C = (s8)lbl_802BFFF4[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unk_0D = (s8)lbl_802BFFF0[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unk_0E = lbl_802BFFEC[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unk_0F = lbl_802BFFE8[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unk_10 = lbl_802BFFE4[lbl_1_bss_1C04[index].controllerPort];
-            lbl_1_bss_1C04[index].input.unk_11 = lbl_802BFFE0[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.stickX = stickResult;
+            lbl_1_bss_1C04[index].input.unk0B = (s8)lbl_802BFFF8[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk0C = (s8)lbl_802BFFF4[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk0D = (s8)lbl_802BFFF0[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk0E = lbl_802BFFEC[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk0F = lbl_802BFFE8[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk10 = lbl_802BFFE4[lbl_1_bss_1C04[index].controllerPort];
+            lbl_1_bss_1C04[index].input.unk11 = lbl_802BFFE0[lbl_1_bss_1C04[index].controllerPort];
         }
     }
 
     index = 0;
     for (; index < 4; index++) {
-        lbl_1_bss_196C.pads[index].unk_00 = lbl_802C0010[index];
-        lbl_1_bss_196C.pads[index].unk_04 = lbl_802C0008[index];
-        lbl_1_bss_196C.pads[index].unk_08 = lbl_802C0000[index];
-        lbl_1_bss_196C.pads[index].unk_0A = (s8)lbl_802BFFFC[index];
-        lbl_1_bss_196C.pads[index].unk_0B = (s8)lbl_802BFFF8[index];
-        lbl_1_bss_196C.pads[index].unknown_0C = (s8)lbl_802BFFF4[index];
-        lbl_1_bss_196C.pads[index].unk_0D = (s8)lbl_802BFFF0[index];
-        lbl_1_bss_196C.pads[index].unk_0E = lbl_802BFFEC[index];
-        lbl_1_bss_196C.pads[index].unk_0F = lbl_802BFFE8[index];
-        lbl_1_bss_196C.pads[index].unk_10 = lbl_802BFFE4[index];
-        lbl_1_bss_196C.pads[index].unk_11 = lbl_802BFFE0[index];
+        lbl_1_bss_196C.pads[index].unk00 = lbl_802C0010[index];
+        lbl_1_bss_196C.pads[index].buttonsDown = lbl_802C0008[index];
+        lbl_1_bss_196C.pads[index].unk08 = lbl_802C0000[index];
+        lbl_1_bss_196C.pads[index].stickX = (s8)lbl_802BFFFC[index];
+        lbl_1_bss_196C.pads[index].unk0B = (s8)lbl_802BFFF8[index];
+        lbl_1_bss_196C.pads[index].unk0C = (s8)lbl_802BFFF4[index];
+        lbl_1_bss_196C.pads[index].unk0D = (s8)lbl_802BFFF0[index];
+        lbl_1_bss_196C.pads[index].unk0E = lbl_802BFFEC[index];
+        lbl_1_bss_196C.pads[index].unk0F = lbl_802BFFE8[index];
+        lbl_1_bss_196C.pads[index].unk10 = lbl_802BFFE4[index];
+        lbl_1_bss_196C.pads[index].unk11 = lbl_802BFFE0[index];
     }
 }
 
@@ -1305,7 +1290,6 @@ extern s32 lbl_1_bss_210;
 
 extern s16 lbl_1_bss_31C8[4];
 
-s32 fn_1_5954(void);
 
 typedef struct SetupValues {
     HuVecF positions[2];

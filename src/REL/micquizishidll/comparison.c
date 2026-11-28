@@ -417,14 +417,9 @@ void fn_1_211C4(u8 firstFlag, u8 secondFlag) {
     process->property = (void *)((firstFlag << 16) | (u16)secondFlag);
 }
 
-typedef struct MicquizNumberProcess {
-    u8 unknown_000[0x12C]; /* No code names this field. */
-    u32 selection;
-} MicquizNumberProcess;
-
 /* Shows the result: switches the counter models' animation banks and swings them. */
 void fn_1_21230(void) {
-    MicquizNumberProcess *process;
+    HUPROCESS *process;
     u32 selection;
     s16 model;
     u16 onesDigit;
@@ -442,8 +437,8 @@ void fn_1_21230(void) {
     f32 initialValue;
     s32 unitsDigit;
 
-    process = (MicquizNumberProcess *)fn_8000DD9C();
-    selection = process->selection;
+    process = fn_8000DD9C();
+    selection = (u32)process->property;
     tensDigit = (u8)(selection >> 16);
     onesDigit = (u16)selection;
     initialValue = 178.0f;

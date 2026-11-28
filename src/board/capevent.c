@@ -2738,7 +2738,7 @@ void mbev_CapPlayerMoveMinYSet(int playerNo, float minY)
 }
 
 /* Replaces the gravity step and velocity vector of an active player movement effect. */
-void mbev_CapPlayerMoveVelSet(int playerNo, float gravityStep, HuVecF *moveDir)
+void mbev_CapPlayerMoveVelSet(int playerNo, float gravityStep, HuVecF moveDir)
 {
     CAPEFFMOVEWORK *workP;
     OMOBJ *obj = ev_CapEffMoveOMObj[playerNo];
@@ -2746,7 +2746,7 @@ void mbev_CapPlayerMoveVelSet(int playerNo, float gravityStep, HuVecF *moveDir)
     if (obj != NULL) {
         workP = obj->data;
         workP->gravityStep = gravityStep;
-        workP->velocity = *moveDir;
+        workP->velocity = moveDir;
     }
 }
 

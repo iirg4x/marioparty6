@@ -21,7 +21,7 @@ void mbev_CapEffCapLoseAdd(OMOBJ *obj, int playerNo, int count, float radius);
 int mbev_CapEffCapLoseNumGet(OMOBJ *obj);
 void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF);
 void mbev_CapPlayerMoveMinYSet(int playerNo, float minY);
-void mbev_CapPlayerMoveVelSet(int playerNo, float gravityStep, HuVecF *moveDir);
+void mbev_CapPlayerMoveVelSet(int playerNo, float gravityStep, HuVecF moveDir);
 BOOL mbev_CapCullCheck(int playerNo, int masuId);
 void mbev_CapVecRotGet(HuVecF *vec, HuVecF *rot);
 void mbev_CapPlayerMotionSet(int playerNo, int time, int motNo, int nextMotNo,

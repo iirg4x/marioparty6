@@ -7,6 +7,7 @@
 #include "REL/minigame_shadow_camera.h"
 
 #include "REL/minigame_light.h"
+#include "REL/minigame_pad.h"
 #include "dolphin/types.h"
 #include "game/hu3d.h"
 #include "game/mg/colman.h"
@@ -40,20 +41,6 @@ typedef struct M617SpriteGroup {
     M617Vector2 scale; /* Horizontal and vertical scale multipliers. */
 } M617SpriteGroup;
 
-typedef struct M617PadSnapshot {
-    s32 unk00; /* The game's code never reads this field. */
-    s32 buttonsDown;
-    u16 unk08; /* The game's code never reads this field. */
-    s8 unk0A; /* The game's code never reads this field. */
-    s8 unk0B; /* The game's code never reads this field. */
-    s8 unk0C; /* The game's code never reads this field. */
-    s8 unk0D; /* The game's code never reads this field. */
-    u8 unk0E; /* The game's code never reads this field. */
-    u8 unk0F; /* The game's code never reads this field. */
-    u8 unk10; /* The game's code never reads this field. */
-    u8 unk11; /* The game's code never reads this field. */
-} M617PadSnapshot;
-
 typedef struct M617BoardSelection {
     s16 unk00; /* The game's code never reads this field. */
     s16 unk02; /* The game's code never reads this field. */
@@ -71,7 +58,7 @@ typedef struct M617State {
     s16 sequencePhase;
     s16 sequenceSelector;
     s16 sequenceFrame;
-    M617PadSnapshot padSnapshots[4];
+    SystemPadInput padSnapshots[4];
     struct MgTimer_s *timer;
     s32 timerFrames;
     u8 unk6C[2]; /* No code names this field. */
@@ -117,7 +104,7 @@ extern M617RouteGroup lbl_1_bss_38F0[24];
 
 /* Per-player input, motion, route selection and computer-player state. */
 typedef struct M617PlayerStateData {
-    M617PadSnapshot input;
+    SystemPadInput input;
     s8 playerIndex;
     s8 participantIndex;
     s8 character;

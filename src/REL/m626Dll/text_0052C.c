@@ -1,4 +1,5 @@
 /* Resolves round winners, awards the round bonus, and tracks player sides. */
+#include "REL/m626Dll/collision.h"
 #include "REL/m626Dll/setup.h"
 #include "REL/m626Dll/scenery.h"
 #include "REL/m626Dll/player.h"
@@ -8,8 +9,6 @@
 #include "game/gamework.h"
 #include "game/mg/seqman.h"
 #include "game/charman.h"
-
-void fn_1_E2F0(void);
 
 extern s16 lbl_1_bss_0[4];
 extern s16 lbl_1_bss_8[4];

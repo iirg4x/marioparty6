@@ -1,6 +1,7 @@
 /* Maintains lights, cameras, fog, positional audio, and shared model resources. */
 #include <math.h>
 #include "REL/m626Dll/support.h"
+#include "REL/minigame_light.h"
 #include "game/memory.h"
 #include "game/audio.h"
 #include "game/data.h"
@@ -77,13 +78,13 @@ void fn_1_ACC(OMOBJ *object)
 /* Creates the shared light work record during minigame setup. */
 void fn_1_AD0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 {
-    M626LightWork *work;
+    MinigameLightWork *work;
     OMOBJ *object;
     object = fn_8003AB38(manager, 24, 0, 0, -1, fn_1_BD8);
     lbl_1_bss_2C4 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M626LightWork), 0x10000000);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameLightWork), 0x10000000);
     object->data = work;
-    memset(work, 0, sizeof(M626LightWork));
+    memset(work, 0, sizeof(MinigameLightWork));
     work->position = *position;
     work->target = *target;
     work->color = *color;
@@ -95,7 +96,7 @@ void fn_1_AD0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 /* Runs the registered light callback from the light object's update. */
 void fn_1_BD8(OMOBJ *obj)
 {
-    M626LightWork *light = lbl_1_bss_2C4->data;
+    MinigameLightWork *light = lbl_1_bss_2C4->data;
     if (light->callback != NULL) {
         light->callback(obj);
     }
@@ -103,7 +104,7 @@ void fn_1_BD8(OMOBJ *obj)
 
 /* Creates the directional global light from the configured light work record. */
 void fn_1_C30(void) {
-    M626LightWork *light = lbl_1_bss_2C4->data;
+    MinigameLightWork *light = lbl_1_bss_2C4->data;
 
     light->lightId = fn_800286D0(&light->position, &light->direction, &light->color);
     Hu3DGLightInfinitytSet(light->lightId);
@@ -114,7 +115,7 @@ void fn_1_C30(void) {
 /* Imports model lights and selects lightName (or slot 0 when NULL); mode is ignored. */
 void fn_1_C94(s32 modelId, char *lightName, s32 mode) {
     HU3D_LIGHT *globalLightTable;
-    M626LightWork *lightWork;
+    MinigameLightWork *lightWork;
 
     lightWork = lbl_1_bss_2C4->data;
     globalLightTable = Hu3DGlobalLight;
@@ -133,33 +134,33 @@ void fn_1_C94(s32 modelId, char *lightName, s32 mode) {
 
 /* Sets the light update callback. */
 void fn_1_D48(OMOBJ_FUNC callback) {
-    M626LightWork *light=lbl_1_bss_2C4->data;
+    MinigameLightWork *light=lbl_1_bss_2C4->data;
     light->callback=callback;
 }
 
 /* Updates the active global light position from the scenery callback. */
 void fn_1_D70(HuVecF *position) {
-    M626LightWork *light=lbl_1_bss_2C4->data;
+    MinigameLightWork *light=lbl_1_bss_2C4->data;
     light->position=*position;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Updates the active global light direction from the scenery callback. */
 void fn_1_DD8(HuVecF *direction) {
-    M626LightWork *light=lbl_1_bss_2C4->data;
+    MinigameLightWork *light=lbl_1_bss_2C4->data;
     light->direction=*direction;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Returns the light direction. */
 HuVecF *fn_1_E40() {
-    M626LightWork *light=lbl_1_bss_2C4->data;
+    MinigameLightWork *light=lbl_1_bss_2C4->data;
     return &light->direction;
 }
 
 /* Changes the shared light color when scenery adjusts its lighting. */
 void fn_1_E68(int red,int green,int blue,int alpha) {
-    M626LightWork *light=lbl_1_bss_2C4->data;
+    MinigameLightWork *light=lbl_1_bss_2C4->data;
     light->color.r=red;
     light->color.g=green;
     light->color.b=blue;

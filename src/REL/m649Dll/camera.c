@@ -363,7 +363,7 @@ void fn_1_1600(void) {
 
 /* During prop setup, imports the model's lights, selects the named light, and shares its
  * direction. */
-void fn_1_1664(s32 modelId, char *lightName) {
+void fn_1_1664(s16 modelId, char *lightName, s32 mode) {
     HU3D_LIGHT *globalLightTable;
     M649LightWork *light;
 

@@ -49,7 +49,6 @@
 #include "game/board/audio.h"
 #include "game/board/masu.h"
 #include "game/board/player.h"
-#include "REL/micquizmyokodll/shared_types.h"
 #include "REL/micquizmyokodll/message_tables.h"
 #include "game/init.h"
 #include "REL/micquizmyokodll/response_table.h"

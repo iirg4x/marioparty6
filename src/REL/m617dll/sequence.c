@@ -1,7 +1,5 @@
 /* Light Up My Night sequence setup, player state, cameras, and effects. */
 #define HuAudFXPlayVolPan M617UnusedHuAudFXPlayVolPanPrototype
-#define fn_80060F14 M617UnusedCharModelVoicePanSetPrototype
-#define fn_80060F40 M617UnusedCharModelVoiceVolSetPrototype
 #include <string.h>
 #include <math.h>
 #include "game/main.h"
@@ -34,11 +32,7 @@
 #include "humath.h"
 #include "game/printfunc.h"
 #undef HuAudFXPlayVolPan
-#undef fn_80060F14
-#undef fn_80060F40
 
-void fn_80060F14();
-void fn_80060F40();
 void fn_1_20A4(void);
 void fn_1_51B4(void);
 
@@ -205,7 +199,7 @@ void fn_1_730(void)
                 }
                 stickResult = deadZoneValue;
             }
-            lbl_1_bss_AB0[index].input.unk0A = stickResult;
+            lbl_1_bss_AB0[index].input.stickX = stickResult;
             lbl_1_bss_AB0[index].input.unk0B =
                 (s8)lbl_802BFFF8[lbl_1_bss_AB0[index].controllerPort];
             lbl_1_bss_AB0[index].input.unk0C =
@@ -228,7 +222,7 @@ void fn_1_730(void)
         lbl_1_bss_9C8.padSnapshots[index].unk00 = lbl_802C0010[index];
         lbl_1_bss_9C8.padSnapshots[index].buttonsDown = lbl_802C0008[index];
         lbl_1_bss_9C8.padSnapshots[index].unk08 = lbl_802C0000[index];
-        lbl_1_bss_9C8.padSnapshots[index].unk0A = (s8)lbl_802BFFFC[index];
+        lbl_1_bss_9C8.padSnapshots[index].stickX = (s8)lbl_802BFFFC[index];
         lbl_1_bss_9C8.padSnapshots[index].unk0B = (s8)lbl_802BFFF8[index];
         lbl_1_bss_9C8.padSnapshots[index].unk0C = (s8)lbl_802BFFF4[index];
         lbl_1_bss_9C8.padSnapshots[index].unk0D = (s8)lbl_802BFFF0[index];
@@ -1238,8 +1232,8 @@ void fn_1_4DB0(M617PlayerStateData *work, s16 voiceMode)
     f32 delta;
     f32 horizontalFraction;
     f32 verticalFraction;
-    s32 horizontal;
-    s32 vertical;
+    s16 horizontal;
+    s16 vertical;
 
     if (voiceMode == 0 || voiceMode == 1 || voiceMode == 6) {
         if (lbl_1_bss_9C8.panPositionMaximum >= work->position.x &&
@@ -1251,7 +1245,7 @@ void fn_1_4DB0(M617PlayerStateData *work, s16 voiceMode)
                  lbl_1_bss_9C8.panPositionMinimum);
             delta = work->position.x - lbl_1_bss_9C8.panPositionMinimum;
             delta *= horizontalFraction;
-            horizontal = (s32)delta;
+            horizontal = (s16)delta;
             horizontal += lbl_1_bss_9C8.panMinimum;
         } else if (lbl_1_bss_9C8.panPositionMaximum < work->position.x) {
             horizontal = lbl_1_bss_9C8.panMaximum;
@@ -1270,7 +1264,7 @@ void fn_1_4DB0(M617PlayerStateData *work, s16 voiceMode)
                  lbl_1_bss_9C8.volumePositionMinimum);
             delta = work->position.z - lbl_1_bss_9C8.volumePositionMinimum;
             delta *= verticalFraction;
-            vertical = (s32)delta;
+            vertical = (s16)delta;
             vertical += lbl_1_bss_9C8.volumeMinimum;
         } else {
             if (lbl_1_bss_9C8.volumePositionMaximum < work->position.z) {

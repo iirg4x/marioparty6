@@ -59,12 +59,6 @@ s32 lbl_1_bss_320;
 s32 lbl_1_bss_31C;
 s32 lbl_1_bss_318;
 
-extern void fn_1_4BB4(Vec *start, Vec *end, f32 timer, Vec *position);
-
-extern s32 fn_1_32EC(Vec *position);
-
-s32 fn_1_A38(s32 resource);
-
 void fn_1_7944(OMOBJ *object);
 
 OMOBJ *fn_1_7998(s32 type, s32 id);
@@ -1519,7 +1513,7 @@ void fn_1_A0F0(OMOBJ *object)
 
                 position = record->position;
                 position.y = 200.0f;
-                fn_1_E4F8((Point3d *)&position, 10.0f, 4);
+                fn_1_E4F8(&position, 10.0f, 4);
                 fn_1_AD98(record);
                 record->state = 0;
             } else {
@@ -2346,8 +2340,6 @@ s32 fn_1_C0B8(M675PropWork *work)
     case 3:
         fn_1_6210(&work->state.actor, 2, 1.0f);
         if (--work->state.soundTimer <= 0) {
-            /* The initial pan consumes fn_1_32EC's result even though that wrapper discards its pan
-             * query's return value. */
             HuAudFXPlayVolPan(935, 72,
                 (s16)fn_1_32EC(&work->state.actor.position));
             work->state.soundTimer = 72;
@@ -2532,8 +2524,6 @@ s32 fn_1_C94C(M675PropWork *work, f32 speed)
     work->state.movementSoundDistance = (f32)(work->state.movementSoundDistance + (f32)speed);
     if (work->state.movementSoundDistance > 100.0) {
         work->state.movementSoundDistance -= 100.0;
-        /* The pan consumes fn_1_32EC's result even though that wrapper discards its pan
-         * query's return value. */
         HuAudFXPlayVolPan(933, 72,
             fn_1_32EC(&work->state.actor.position));
     }

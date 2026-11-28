@@ -12,22 +12,6 @@ typedef struct MdsingCharacterNeighbors {
     s16 selectionState;
 } MDSING_CHARACTER_NEIGHBORS;
 
-typedef struct MdsingSpriteDesc {
-    /* Destination sprite group and member indices. */
-    s16 groupNo;
-    s16 memberNo;
-    /* Index into the menu's loaded sprite animation resources. */
-    s16 animNo;
-    /* Sprite draw priority and initial animation bank. */
-    s16 priority;
-    s16 bank;
-    /* Local screen position in pixels and X/Y scale. */
-    HuVec2f pos;
-    HuVec2f scale;
-    /* Initial rotation in degrees around the screen's Z axis. */
-    f32 zRot;
-} MDSING_SPRITE_DESC;
-
 typedef struct MdsingPrizeRow {
     /* Prize flag tested for fixed awards. */
     s16 prizeFlag;

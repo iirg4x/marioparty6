@@ -117,8 +117,6 @@ void fn_1_71DC(OMOBJ *object);
 
 extern s32 lbl_1_bss_398;
 
-extern void fn_1_1664(s16 model, void *sequence, s32 mode);
-
 void fn_1_72FC(OMOBJ *object);
 
 void fn_1_76DC(OMOBJ *object);

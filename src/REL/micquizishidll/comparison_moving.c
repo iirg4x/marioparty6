@@ -635,14 +635,9 @@ void fn_1_24F40(u8 firstFlag, u8 secondFlag) {
     process->property = (void *)((firstFlag << 16) | (u16)secondFlag);
 }
 
-typedef struct QuizAnimationProcess {
-    u8 unknown_000[0x12C]; /* No code names this field. */
-    u32 animationSelection;
-} QuizAnimationProcess;
-
 /* Shows the result: switches the counter models' animation banks and swings them. */
 void fn_1_24FA4(void) {
-    QuizAnimationProcess *process;
+    HUPROCESS *process;
     u32 selection;
     s16 model;
     u16 minorSelection;
@@ -659,8 +654,8 @@ void fn_1_24FA4(void) {
     f32 transparency;
     f32 verticalStep;
 
-    process = (QuizAnimationProcess *)fn_8000DD9C();
-    selection = process->animationSelection;
+    process = fn_8000DD9C();
+    selection = (u32)process->property;
     majorSelection = (u8)(selection >> 16);
     minorSelection = (u16)selection;
     scaleX = scaleY = 0.0f;

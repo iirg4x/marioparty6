@@ -593,6 +593,19 @@ static u8 InitScoreUserWords(_DPSCOREUW *This, _INITSCOREWUSERWORDDATA *pInitDat
     return 0;
 }
 
+/* Loads the phoneme counts and pointers used for user-word scoring. */
+static inline u8 InitRecognitionLanguage(_DPSCOREUW *This, struct _LANGUAGE *pLang)
+{
+    This->NbrPhenomsInLang = pLang->langGetNbrPhenome(pLang);
+    This->NbrErgodicPhenoms = pLang->langGetNbrErgodicPhenomes(pLang);
+    This->pErgodicPhenoms = pLang->langGetpErgodicPhenomes(pLang);
+    This->singleWordGarbPhenom = pLang->langGetSingleWordGarbagePhenome(pLang);
+    if (This->ActDistQueue->pQ != NULL) {
+        This->ActDistQueue->Size = This->ActDistQueue->pQ->Size;
+    }
+    return 0;
+}
+
 /* Handles setup, scoring and teardown commands for the block. */
 static u8 ControlDpScoreUw(struct _BLOCK *_This, u8 ControlId, u32 CParam1, u32 CParam2)
 {
@@ -618,18 +631,7 @@ static u8 ControlDpScoreUw(struct _BLOCK *_This, u8 ControlId, u32 CParam1, u32 
         block->BaseBlock.Process = IdleDpScoreUwProcess;
         break;
     case 7:
-        block->NbrPhenomsInLang =
-            ((struct _LANGUAGE *) CParam1)->langGetNbrPhenome((struct _LANGUAGE *) CParam1);
-        block->NbrErgodicPhenoms =
-            ((struct _LANGUAGE *) CParam1)->langGetNbrErgodicPhenomes((struct _LANGUAGE *) CParam1);
-        block->pErgodicPhenoms =
-            ((struct _LANGUAGE *) CParam1)->langGetpErgodicPhenomes((struct _LANGUAGE *) CParam1);
-        block->singleWordGarbPhenom =
-            ((struct _LANGUAGE *) CParam1)
-                ->langGetSingleWordGarbagePhenome((struct _LANGUAGE *) CParam1);
-        if (block->ActDistQueue->pQ != NULL) {
-            block->ActDistQueue->Size = block->ActDistQueue->pQ->Size;
-        }
+        InitRecognitionLanguage(block, (struct _LANGUAGE *)CParam1);
         break;
     case 4:
         if (InitScoreUserWords(block, (_INITSCOREWUSERWORDDATA *) CParam1)) {

@@ -9,13 +9,6 @@
 
 typedef void (*M626CameraCallback)(OMOBJ *, u32, s32);
 
-typedef struct M626LightWork_s {
-    HU3D_LIGHTID lightId;
-    OMOBJ_FUNC callback;
-    Vec position, target, direction;
-    GXColor color;
-} M626LightWork;
-
 typedef struct M626CameraEntry_s {
     s32 active;
     s32 unk04; /* The game's code never reads this field. */

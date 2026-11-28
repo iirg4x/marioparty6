@@ -21,8 +21,6 @@ s16 lbl_1_bss_31C8[4];
 
 void fn_1_58DC(void);
 
-s32 fn_1_5954(void);
-
 #include "dolphin/types.h"
 
 extern s16 lbl_1_data_F6[];
@@ -82,7 +80,7 @@ void fn_1_5784(void) {
 /* Shows the score displays on entry and advances the result phase. */
 s32 fn_1_57A4(void)
 {
-    s32 result = 0;
+    s16 result = 0;
     s16 playerIndex;
 
     if (lbl_1_bss_31C8[0] == 0) {
@@ -104,7 +102,7 @@ s32 fn_1_57A4(void)
     fn_1_695C();
     fn_1_24E8();
     result = fn_1_5954();
-    return (s16)result;
+    return result;
 }
 
 void fn_1_58DC(void)

@@ -63,7 +63,7 @@ int _prolog(void);
 void _epilog(void);
 void ObjectSetup(void);
 void fn_1_244(OMOBJ *obj);
-void fn_1_680(void);
+void fn_1_680(OMOBJ *obj);
 s32 fn_1_6B8(void);
 void fn_1_8E8(void);
 void fn_1_D00(void);
@@ -125,7 +125,7 @@ void ObjectSetup(void) {
     lbl_1_bss_20[0] = fn_8003A8BC(200, 8192);
     fn_80069F1C(lbl_1_bss_20[0]);
     Hu3DCameraCreate(1);
-    micQuizModeWork = (MicquizModeWork *)MgModeWork;
+    micQuizModeWork = MgModeWorkGet();
     if (lbl_802C0248 == 0) {
         omOvlHisChg(0, DLL_micquizseldll, 1, overlayHistory->stat);
         micQuizModeWork->selectionMode = 0;
@@ -150,7 +150,7 @@ void fn_1_244(OMOBJ *obj) {
 
     if (omSysExitReq != 0) {
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 60);
-        obj->objFunc = (OMOBJ_FUNC)fn_1_680;
+        obj->objFunc = fn_1_680;
     }
     switch (obj->work[0]) {
     case 0:
@@ -238,7 +238,7 @@ void fn_1_244(OMOBJ *obj) {
 }
 
 /* Returns to the preceding overlay after the exit wipe finishes; installed by fn_1_244. */
-void fn_1_680(void) {
+void fn_1_680(OMOBJ *obj) {
     if (WipeCheck() == 0) {
         fn_8003A5E4(1, 1);
     }

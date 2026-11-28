@@ -25,13 +25,9 @@ s16 lbl_1_bss_1C[4], lbl_1_bss_14[4], lbl_1_bss_C[4], lbl_1_bss_4[4];
 s32 lbl_1_bss_0; /* Set after the opening prop sequence has finished. */
 
 void fn_1_4E4(s16, s16);
-s32 fn_1_A38(s32);
-void fn_1_95C(OMOBJ *, void *, s32);
-void fn_1_1FC8(void (*callback)(OMOBJ *, void *, s32));
-void fn_1_2F38(OMOBJMAN *, void *);
+void fn_1_95C(OMOBJ *, u32, s32);
 s32 fn_1_8BC(s16, s16);
 void fn_1_766C(void), fn_1_5048(void), fn_1_EA30(void);
-void fn_1_4BB4(Vec *, Vec *, float, Vec *);
 /* Camera and light settings used during setup. */
 OM_CAMERA_VIEW lbl_1_data_0 = {{0.0f, 500.0f, 0.0f}, {-5.0f, 0.0f, 0.0f}, 2000.0f};
 Vec lbl_1_data_1C = {0.0f, 800.0f, 0.0f};
@@ -380,7 +376,7 @@ void fn_1_8C4(OM_CAMERA_VIEW *start, OM_CAMERA_VIEW *end, OM_CAMERA_VIEW *result
 
 /* Sets the shared shadow once; each camera entry's first visit requests camera zero's
  * opening motion to stop. */
-void fn_1_95C(OMOBJ *object, void *callbackData, s32 entryIndex)
+void fn_1_95C(OMOBJ *object, u32 cameraBit, s32 entryIndex)
 {
     void *entryByteAddresses[2];
     MinigameCameraWork *work = object->data;
@@ -415,8 +411,9 @@ s32 fn_1_A50(void) {
     return lbl_1_bss_24;
 }
 
-void fn_1_A60(void) {
-    fn_80071B58();
+/* Returns the sequence timer used by the computer players. */
+s32 fn_1_A60(void) {
+    return fn_80071B58();
 }
 
 /* Result users receive the player's character ID, or -1 when that player scored nothing. */
@@ -425,16 +422,16 @@ s16 fn_1_A80(s32 playerIndex) {
 }
 
 /* Player result motions use this token lookup: 1 for a scorer and -1 for a non-scorer. */
-u32 fn_1_A98(u32 playerToken) {
+s32 fn_1_A98(u32 playerToken) {
     s32 playerIndex;
-    u32 outcome;
+    s32 outcome;
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (playerToken == (u32) lbl_1_bss_C[playerIndex]) {
             if (lbl_1_bss_14[playerIndex] >= 0) {
                 outcome = 1;
             } else {
-                outcome = (u32) -1;
+                outcome = -1;
             }
             return outcome;
         }

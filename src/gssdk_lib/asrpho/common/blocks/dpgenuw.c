@@ -618,6 +618,20 @@ static u8 InitUserWords(_DPGENUW *block, struct _INITUSERWORDDATA *pInitData)
     return 0;
 }
 
+/* Loads the phoneme counts and pointers used for user-word generation. */
+static inline u8 InitRecognitionLanguage(_DPGENUW *This, struct _LANGUAGE *pLang)
+{
+    This->NbrErgodicPhenoms = pLang->langGetNbrErgodicPhenomes(pLang);
+    This->pErgodicPhenoms = pLang->langGetpErgodicPhenomes(pLang);
+    This->OffsetPhenToStat = -This->NbrErgodicPhenoms;
+    This->NbrPhenoms = pLang->langGetNbrPhenome(pLang);
+    This->NbrPhenInUW = pLang->langGetNbrPhenUserWordTraining(pLang);
+    if (This->ActDistQueue->pQ != NULL) {
+        This->ActDistQueue->Size = This->ActDistQueue->pQ->Size;
+    }
+    return 0;
+}
+
 /* Handles initialization, generation and teardown commands for the block. */
 static u8 ControlDpGenUw(struct _BLOCK *_This, u8 ControlId, u32 CParam1, u32 CParam2)
 {
@@ -645,19 +659,7 @@ static u8 ControlDpGenUw(struct _BLOCK *_This, u8 ControlId, u32 CParam1, u32 CP
         block->BaseBlock.Process = IdleDpGenUwProcess;
         break;
     case 0x22:
-        block->NbrErgodicPhenoms =
-            ((struct _LANGUAGE *) CParam1)->langGetNbrErgodicPhenomes((struct _LANGUAGE *) CParam1);
-        block->pErgodicPhenoms =
-            ((struct _LANGUAGE *) CParam1)->langGetpErgodicPhenomes((struct _LANGUAGE *) CParam1);
-        block->OffsetPhenToStat = -block->NbrErgodicPhenoms;
-        block->NbrPhenoms = ((struct _LANGUAGE *) CParam1)
-            ->langGetNbrPhenome((struct _LANGUAGE *) CParam1);
-        block->NbrPhenInUW =
-            ((struct _LANGUAGE *) CParam1)
-                ->langGetNbrPhenUserWordTraining((struct _LANGUAGE *) CParam1);
-        if (block->ActDistQueue->pQ != NULL) {
-            block->ActDistQueue->Size = block->ActDistQueue->pQ->Size;
-        }
+        InitRecognitionLanguage(block, (struct _LANGUAGE *)CParam1);
         break;
     case 0x17:
         if (InitUserWords(block, (struct _INITUSERWORDDATA *) CParam1)) {

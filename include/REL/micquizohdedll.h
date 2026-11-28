@@ -41,7 +41,7 @@ typedef struct MicquizBss370Storage {
 
 /* The response of the last microphone choice. */
 typedef struct MicquizResponseStorage {
-    MicquizResponse *response;
+    MCResponse_s *response;
     u32 unk04; /* never read */
 } MicquizResponseStorage;
 

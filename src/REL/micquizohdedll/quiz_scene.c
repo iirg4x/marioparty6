@@ -3157,16 +3157,16 @@ s32 fn_1_2086C(s32 selectionCount) {
     HuMCSelWinContextSet(lbl_1_bss_580, 0, (u8)selectionCount);
     HuMCSelWinMaxTimeSet(30.0f);
     HuMCSelWinChoiceGet();
-    lbl_1_bss_1C.response = (MicquizResponse *)HuMCCurResponseGet();
+    lbl_1_bss_1C.response = HuMCCurResponseGet();
     HuMCSelWinContextKill();
 
-    if (lbl_1_bss_1C.response->result == 0) {
-        choice = lbl_1_bss_1C.response->recognizedWord;
-    } else if (lbl_1_bss_1C.response->result == -1) {
+    if (lbl_1_bss_1C.response->status == 0) {
+        choice = lbl_1_bss_1C.response->word;
+    } else if (lbl_1_bss_1C.response->status == -1) {
         OSReport("HUMC_RESULT_EMPTY\n");
-    } else if (lbl_1_bss_1C.response->result == -2) {
+    } else if (lbl_1_bss_1C.response->status == -2) {
         OSReport("HUMC_RESULT_ERROR\n");
-    } else if (lbl_1_bss_1C.response->result == -3) {
+    } else if (lbl_1_bss_1C.response->status == -3) {
         MicQuizMicHudStateSet(0);
         return -1;
     }

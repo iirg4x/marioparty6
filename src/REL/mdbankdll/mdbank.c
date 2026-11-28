@@ -14,6 +14,7 @@
 #include "msm_se.h"
 #include "msm_stream.h"
 #include "REL/mdbankdll.h"
+#include "REL/minigame_menu_sprite.h"
 
 typedef struct MdbankAnimSet {
     s16 model[2];
@@ -54,19 +55,6 @@ enum MdbankItemMessage {
     MDBANK_ITEM_MESSAGE_STATE_TWO_NOTICE = MESSNUM(MESS_SBANK_ITEM, 61),
     MDBANK_ITEM_MESSAGE_STATE_THREE_NOTICE = MESSNUM(MESS_SBANK_ITEM, 68),
 };
-
-typedef struct MdbankSpriteConfig {
-    s16 group;
-    s16 member;
-    s16 anim;
-    s16 priority;
-    s16 bank;
-    float x;
-    float y;
-    float scaleX;
-    float scaleY;
-    float rotation;
-} MDBANK_SPRITE_CONFIG;
 
 typedef void (*MDBANK_VOID_FUNC)(void);
 
@@ -124,7 +112,7 @@ extern u32 lbl_1_data_90C;
 extern s32 lbl_1_data_0;
 extern s32 lbl_1_data_4[12];
 extern s16 lbl_1_data_34[4];
-extern MDBANK_SPRITE_CONFIG lbl_1_data_3C[11];
+extern MinigameMenuSprite lbl_1_data_3C[11];
 extern MDBANK_ITEM lbl_1_data_22C[55];
 extern s16 lbl_1_data_964[6];
 extern s16 lbl_1_data_932[3];
@@ -186,18 +174,18 @@ extern const MDBANK_VOID_FUNC _dtors[];
 s32 lbl_1_data_0 = -1;
 s32 lbl_1_data_4[12] = { DATANUM(0x940000, 3), DATANUM(0x940000, 4), DATANUM(0x940000, 6), DATANUM(0x940000, 7), DATANUM(0x940000, 24), DATANUM(0x940000, 9), DATANUM(0x940000, 28), DATANUM(0x940000, 19), DATANUM(0x940000, 20), DATANUM(0x940000, 21), DATANUM(0x940000, 22), DATANUM(0x940000, 75) };
 s16 lbl_1_data_34[4] = { 2, 4, 4, 1 };
-MDBANK_SPRITE_CONFIG lbl_1_data_3C[11] = {
-    {0, 0, 2, 10, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {0, 1, 3, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 0, 5, 0, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 1, 5, 0, 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 2, 5, 0, 3, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {1, 3, 5, 0, 1, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 0, 4, 20, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 1, 4, 21, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 2, 4, 22, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {2, 3, 4, 23, 0, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f},
-    {3, 0, 11, 0, 0, 288.0f, 240.0f, 10.0f, 10.0f, 0.0f},
+MinigameMenuSprite lbl_1_data_3C[11] = {
+    {0, 0, 2, 10, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {0, 1, 3, 0, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {1, 0, 5, 0, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {1, 1, 5, 0, 2, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {1, 2, 5, 0, 3, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {1, 3, 5, 0, 1, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {2, 0, 4, 20, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {2, 1, 4, 21, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {2, 2, 4, 22, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {2, 3, 4, 23, 0, {0.0f, 0.0f}, {1.0f, 1.0f}, 0.0f},
+    {3, 0, 11, 0, 0, {288.0f, 240.0f}, {10.0f, 10.0f}, 0.0f},
 };
 s32 lbl_1_data_19C[36] = { DATANUM(0x940000, 28), DATANUM(0x940000, 30), DATANUM(0x940000, 29), DATANUM(0x940000, 54), DATANUM(0x940000, 31), DATANUM(0x940000, 32), DATANUM(0x940000, 33), DATANUM(0x940000, 34), DATANUM(0x940000, 35), DATANUM(0x940000, 36), DATANUM(0x940000, 41), DATANUM(0x940000, 42), DATANUM(0x940000, 43), DATANUM(0x940000, 44), DATANUM(0x940000, 45), DATANUM(0x940000, 46), DATANUM(0x940000, 47), DATANUM(0x940000, 48), DATANUM(0x940000, 49), DATANUM(0x940000, 50), DATANUM(0x940000, 51), DATANUM(0x940000, 37), DATANUM(0x940000, 38), DATANUM(0x940000, 39), DATANUM(0x940000, 40), DATANUM(0x940000, 53), DATANUM(0x940000, 52), DATANUM(0x940000, 59), DATANUM(0x940000, 60), DATANUM(0x940000, 61), DATANUM(0x940000, 62), DATANUM(0x940000, 55), DATANUM(0x940000, 63), DATANUM(0x940000, 56), DATANUM(0x940000, 57), DATANUM(0x940000, 58) };
 MDBANK_ITEM lbl_1_data_22C[55] = {
@@ -800,7 +788,7 @@ void fn_1_18E8(void)
 /* Loads the bank sprites, builds their groups and applies the sprite configuration table. */
 void fn_1_1994(void)
 {
-    MDBANK_SPRITE_CONFIG *config = lbl_1_data_3C;
+    MinigameMenuSprite *config = lbl_1_data_3C;
     s16 i;
 
     for (i = 0; i < 12; i++) {
@@ -810,12 +798,12 @@ void fn_1_1994(void)
         lbl_1_bss_194E[i] = HuSprGrpCreate(lbl_1_data_34[i]);
     }
     for (i = 0; i < 11; i++, config++) {
-        lbl_1_bss_1938[i] = HuSprCreate(lbl_1_bss_1958[config->anim], config->priority + 6000,
+        lbl_1_bss_1938[i] = HuSprCreate(lbl_1_bss_1958[config->animNo], config->priority + 6000,
             config->bank);
-        HuSprGrpMemberSet(lbl_1_bss_194E[config->group], config->member, lbl_1_bss_1938[i]);
-        HuSprPosSet(lbl_1_bss_194E[config->group], config->member, config->x, config->y);
-        HuSprScaleSet(lbl_1_bss_194E[config->group], config->member, config->scaleX, config->scaleY);
-        HuSprZRotSet(lbl_1_bss_194E[config->group], config->member, config->rotation);
+        HuSprGrpMemberSet(lbl_1_bss_194E[config->groupNo], config->memberNo, lbl_1_bss_1938[i]);
+        HuSprPosSet(lbl_1_bss_194E[config->groupNo], config->memberNo, config->pos.x, config->pos.y);
+        HuSprScaleSet(lbl_1_bss_194E[config->groupNo], config->memberNo, config->scale.x, config->scale.y);
+        HuSprZRotSet(lbl_1_bss_194E[config->groupNo], config->memberNo, config->zRot);
     }
     for (i = 0; i < 4; i++) {
         fn_1_11880(lbl_1_bss_194E[i], HUSPR_ATTR_DISPOFF);

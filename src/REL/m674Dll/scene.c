@@ -430,7 +430,7 @@ void fn_1_21A8(s32 camera, Vec *direction, Vec *target, float fov, float radius)
         up++;
     }
     fn_8002A3B0(fov, distance - radius, distance + radius, camera);
-    fn_8002A674(&position, (Vec *)up, target, camera);
+    fn_8002A674(&position, up, target, camera);
     fn_8002A8CC(480, camera);
     fn_8002A7D8(0.4f, camera);
 }

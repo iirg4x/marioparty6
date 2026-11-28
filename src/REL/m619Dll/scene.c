@@ -126,12 +126,6 @@ HUPROCESS *lbl_1_bss_8[2];
 s32 lbl_1_bss_4;
 OMOBJ *lbl_1_bss_0;
 
-typedef struct Position {
-    HuVecF position;
-    unsigned char reservedBytes[12]; /* Unread bytes between the position and offset vectors. */
-    HuVecF offset;
-} Position;
-
 s32 fn_1_367CC(s32 *player);
 
 typedef struct M619AngleTableView_s {

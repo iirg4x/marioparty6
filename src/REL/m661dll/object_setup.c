@@ -81,8 +81,6 @@ s32 fn_1_20E50(M661PlayerState *player, s16 advance);
 #include "REL/m661dll/routes.h"
 #include "REL/m661dll/score_display.h"
 
-extern void fn_1_68A8(MGACTOR *, int);
-extern void fn_1_6928(MGACTOR *, int);
 s32 fn_1_AAB4(void);
 /* Prepares the actors, props, lighting, particles, and score display before play. */
 s32 fn_1_88B8(void)

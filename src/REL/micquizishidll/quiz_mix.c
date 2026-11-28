@@ -124,7 +124,7 @@ void fn_1_32664(void);
 void fn_1_326F0(void);
 void fn_1_32724(void);
 void fn_1_3275C(void);
-extern MicquizResponse *lbl_1_bss_1C00;
+extern MCResponse_s *lbl_1_bss_1C00;
 extern s32 lbl_1_bss_1C04;
 extern s32 lbl_1_bss_1C08;
 extern s16 lbl_1_bss_1C0C[3];
@@ -863,14 +863,14 @@ s32 fn_1_3232C(void) {
     HuMCSelWinContextSet(lbl_1_bss_1C16, 0, 0);
     HuMCSelWinChoiceGet();
     HuPrcKill(childProcess);
-    lbl_1_bss_1C00 = (MicquizResponse *)HuMCCurResponseGet();
-    if (lbl_1_bss_1C00->result == 0) {
-        selectedValue = lbl_1_bss_1C00->recognizedWord;
-    } else if (lbl_1_bss_1C00->result == -1) {
+    lbl_1_bss_1C00 = HuMCCurResponseGet();
+    if (lbl_1_bss_1C00->status == 0) {
+        selectedValue = lbl_1_bss_1C00->word;
+    } else if (lbl_1_bss_1C00->status == -1) {
         return -2;
-    } else if (lbl_1_bss_1C00->result == -2) {
+    } else if (lbl_1_bss_1C00->status == -2) {
         return -2;
-    } else if (lbl_1_bss_1C00->result == -4) {
+    } else if (lbl_1_bss_1C00->status == -4) {
         return -3;
     }
     OSReport("MIC RET:%d \n", selectedValue);
@@ -1001,4 +1001,4 @@ s16 lbl_1_bss_1C12[2];
 s16 lbl_1_bss_1C0C[3];
 s32 lbl_1_bss_1C08;
 s32 lbl_1_bss_1C04;
-MicquizResponse *lbl_1_bss_1C00;
+MCResponse_s *lbl_1_bss_1C00;

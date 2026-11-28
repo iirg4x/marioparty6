@@ -8,7 +8,7 @@ MBMODELID mbObjCreate(int dataNum, const int *motFileTbl, BOOL animOffF);
 int mbObjMotionNoCreate(int modelId, int dataNum, int motNo);
 int mbObjMotionIDGet(int modelId, int motNo);
 int mbObjMotionShiftIDGet(MBMODELID modelId);
-BOOL mbObjMotionEndCheck(int modelId);
+BOOL mbObjMotionEndCheck(MBMODELID modelId);
 void mbObjMotionSet(int modelId, int motNo, u32 attr);
 void mbObjMotionShiftSet(int modelId, int motNo, float start, float end, BOOL loopF);
 void mbObjPosSetV(int modelId, HuVecF *pos);

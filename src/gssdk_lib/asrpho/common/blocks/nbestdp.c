@@ -2650,6 +2650,17 @@ static void FreeBacktraceStack(_NBESTDYNPROG *This)
     This->TopOfBacktraceStack = NULL;
 }
 
+/* Loads the language's phoneme count and garbage phonemes for N-best decoding. */
+static inline u8 InitDynprogLanguage(_NBESTDYNPROG *This, struct _LANGUAGE *pLang)
+{
+    unsigned int NbrPhenomes = pLang->langGetNbrPhenome(pLang);
+
+    This->NbrPhenomes = NbrPhenomes;
+    This->SingleWordGarbagePhenom = (u16)pLang->langGetSingleWordGarbagePhenome(pLang);
+    This->SentenceGarbagePhenom = (u16)pLang->langGetSentenceGarbagePhenome(pLang);
+    return 0;
+}
+
 /* Applies control messages that configure or reset the N-best search. */
 static unsigned char ControlNBestDynProgProcess(
     struct _BLOCK *_This, unsigned char ControlId, unsigned long CParam1, unsigned long CParam2)
@@ -2679,15 +2690,9 @@ static unsigned char ControlNBestDynProgProcess(
         break;
     case 0x27:
         break;
-    case 0x22: {
-        This->NbrPhenomes = ((struct _LANGUAGE *)CParam1)
-            ->langGetNbrPhenome((struct _LANGUAGE *)CParam1);
-        This->SingleWordGarbagePhenom = (u16)((struct _LANGUAGE *)CParam1)
-            ->langGetSingleWordGarbagePhenome((struct _LANGUAGE *)CParam1);
-        This->SentenceGarbagePhenom = (u16)((struct _LANGUAGE *)CParam1)
-            ->langGetSentenceGarbagePhenome((struct _LANGUAGE *)CParam1);
+    case 0x22:
+        InitDynprogLanguage(This, (struct _LANGUAGE *)CParam1);
         break;
-    }
     case 0x23:
         FreeDynprog(This);
         if (InitDynprogContext(This, (void *)CParam1) != 0) {

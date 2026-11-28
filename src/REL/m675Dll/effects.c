@@ -78,8 +78,6 @@ M675ParticleConfiguration lbl_1_data_858[2] = {
     {{144, 144, 208, 96}}
 };
 
-extern u8 *fn_1_A38(s32 resourceId);
-
 void fn_1_D6F4(OMOBJ *obj);
 
 void fn_1_D708(OMOBJ *object);
@@ -234,7 +232,7 @@ void fn_1_D708(OMOBJ *object)
 
     *configuration = lbl_1_data_858[0];
 
-    animation = HuSprAnimRead(fn_80008DD0((s32) fn_1_A38(M675_LARGE_PARTICLE_RESOURCE),
+    animation = HuSprAnimRead(fn_80008DD0(fn_1_A38(M675_LARGE_PARTICLE_RESOURCE),
                                                    0x10000000, 2));
 
     modelId = fn_8003216C(animation, 128);
@@ -341,7 +339,7 @@ void fn_1_D9A4(OMOBJ *object)
 
     s32 index;
 
-    animation = HuSprAnimDataRead((s32)fn_1_A38(M675_BURST_PARTICLE_RESOURCE));
+    animation = HuSprAnimDataRead(fn_1_A38(M675_BURST_PARTICLE_RESOURCE));
 
     modelId = fn_8003216C(animation, 64);
 

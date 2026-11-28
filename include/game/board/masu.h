@@ -122,8 +122,8 @@ s16 mbMasuFind_MAttrIdGet(s16 id, u32 attr);
 s16 mbMasuFind_MAttrMatchIdGet(s16 id, u32 mAttrValue, u32 mAttrMask);
 s16 mbMasuFind_MAttrMatchIdGet2(s16 id, u32 mAttrValue, u32 mAttrMask, BOOL hookF,
     BOOL dispF);
-int mbMasuFind_TypeListGet(s16 id, s16 type, s16 *list);
-int mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF,
+s16 mbMasuFind_TypeListGet(s16 id, s16 type, s16 *list);
+s16 mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF,
     s16 *list);
 int mbMasuFind_AttrNumGet(s16 id, u16 attr, u32 unused);
 int mbMasuFind_AttrMatchNumGet(s16 id, u16 attrValue, u16 attrMask, u32 unused);

@@ -54,6 +54,7 @@ BOOL SLSaveFlagGet(void);
 #include "REL/mdsingdll/score.h"
 #include "REL/mdsingdll/falling_models.h"
 #include "REL/mdsingdll/menu_data.h"
+#include "REL/minigame_menu_sprite.h"
 #define sind(x) sin((3.141592653589793 * (x)) / 180.0)
 #define cosd(x) cos((3.141592653589793 * (x)) / 180.0)
 
@@ -453,7 +454,7 @@ u32 lbl_1_data_32C[25] = {
 s16 lbl_1_data_390[10] = { 2, 3, 6, 4, 2, 2, 6, 3, 1, 0 };
 
 /* Sprite layout and world-space positions used by the selection screens. */
-MDSING_SPRITE_DESC lbl_1_data_3A4[29] = {
+MinigameMenuSprite lbl_1_data_3A4[29] = {
     { 0, 0, 0, 10, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
     { 1, 0, 9, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
     { 1, 1, 10, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
@@ -1724,7 +1725,7 @@ void fn_1_4874(HUSPR_GROUPID groupId, s32 attr)
 /* Loads menu sprite animations and creates their groups and members, initially hidden. */
 void fn_1_48F4(void)
 {
-    MDSING_SPRITE_DESC *spriteDesc;
+    MinigameMenuSprite *spriteDesc;
     s16 entryNo;
 
     for (entryNo = 0; entryNo < 25; entryNo++) {

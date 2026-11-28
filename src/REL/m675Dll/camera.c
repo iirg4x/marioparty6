@@ -5,6 +5,7 @@
 
 #include "REL/minigame_camera_fit.h"
 #include "REL/minigame_fog.h"
+#include "REL/minigame_light.h"
 #include "dolphin/math.h"
 #include "game/object.h"
 #include "game/memory.h"
@@ -16,13 +17,6 @@
 #include "game/wipe.h"
 #include "game/mg/timer.h"
 #include <string.h>
-typedef struct M675LightData {
-    HU3D_LIGHTID lightId; /* Global light slot, or -1 before a light is selected. */
-    OMOBJ_FUNC callback; /* Optional callback run by the light object's update. */
-    Vec position, target, direction; /* World position, initial look-at point and light
-                                      * direction. */
-    GXColor color; /* Light RGBA components, each from 0 to 255. */
-} M675LightData;
 typedef struct M675ObjectState {
     void *userData; /* Controller-specific configuration. */
     void (*callback)(OMOBJ *); /* Optional callback run after the controller's own update. */
@@ -62,7 +56,7 @@ typedef struct M675CameraFitSphere_s {
 } M675CameraFitSphere;
 typedef struct M675FogWork_s {
     MinigameFogParams *parameters; /* Fog records, terminated by layer -1. */
-    s32 callbackWord; /* Optional object callback stored as a word; zero disables it. */
+    OMOBJ_FUNC callback; /* Optional callback run by the fog object's update; null disables it. */
     float factor; /* Interpolation factor from each fog record's start to its end. */
 } M675FogWork;
 typedef struct M675AudioWork_s {
@@ -199,7 +193,7 @@ static inline s32 m675_local_3850(u32 cameras, Vec *position)
 /* Camera setup takes the light controller's direction for its shadow camera. */
 static inline Vec *m675_local_1810_018BC(void)
 {
-    M675LightData *work = lbl_1_bss_2D4->data;
+    MinigameLightWork *work = lbl_1_bss_2D4->data;
     return &work->direction;
 }
 
@@ -246,13 +240,13 @@ void fn_1_C80(OMOBJ *object)
 /* Light setup creates a controller that keeps the light's position, target and color. */
 void fn_1_C84(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 {
-    M675LightData *work;
+    MinigameLightWork *work;
     OMOBJ *object;
     object = fn_8003AB38(manager, 24, 0, 0, -1, fn_1_D8C);
     lbl_1_bss_2D4 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M675LightData), 0x10000000);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MinigameLightWork), 0x10000000);
     object->data = work;
-    memset(work, 0, sizeof(M675LightData));
+    memset(work, 0, sizeof(MinigameLightWork));
     work->position = *position;
     work->target = *target;
     work->color = *color;
@@ -263,14 +257,14 @@ void fn_1_C84(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 /* The light object's update callback invokes the callback registered for its controller. */
 void fn_1_D8C(OMOBJ *obj)
 {
-    M675LightData *light = lbl_1_bss_2D4->data;
+    MinigameLightWork *light = lbl_1_bss_2D4->data;
     if (light->callback != NULL) {
         light->callback(obj);
     }
 }
 /* Light setup creates a directional light and copies its direction to the shadow controller. */
 void fn_1_DE4(void) {
-    M675LightData *light = lbl_1_bss_2D4->data;
+    MinigameLightWork *light = lbl_1_bss_2D4->data;
 
     light->lightId = fn_800286D0(&light->position, &light->direction, &light->color);
     Hu3DGLightInfinitytSet(light->lightId);
@@ -281,7 +275,7 @@ void fn_1_DE4(void) {
 /* Model-light setup imports the model's lights and selects the requested named light. */
 void fn_1_E48(s16 modelId, char *lightName, s32 unusedMode) {
     HU3D_LIGHT *globalLightTable;
-    M675LightData *light;
+    MinigameLightWork *light;
 
     light = lbl_1_bss_2D4->data;
     globalLightTable = Hu3DGlobalLight;
@@ -301,29 +295,29 @@ void fn_1_E48(s16 modelId, char *lightName, s32 unusedMode) {
 }
 /* Light control registers the callback run by the light object's per-frame update. */
 void fn_1_EFC(OMOBJ_FUNC callback) {
-    M675LightData *light=lbl_1_bss_2D4->data;
+    MinigameLightWork *light=lbl_1_bss_2D4->data;
     light->callback=callback;
 }
 /* Light control moves the active light while preserving its stored direction. */
 void fn_1_F24(HuVecF *position) {
-    M675LightData *light=lbl_1_bss_2D4->data;
+    MinigameLightWork *light=lbl_1_bss_2D4->data;
     light->position=*position;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 /* Light control aims the active light; its stored direction remains as supplied. */
 void fn_1_F8C(HuVecF *direction) {
-    M675LightData *light=lbl_1_bss_2D4->data;
+    MinigameLightWork *light=lbl_1_bss_2D4->data;
     light->direction=*direction;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 /* Light control exposes the stored direction for callers that need its current value. */
 HuVecF *fn_1_FF4() {
-    M675LightData *light=lbl_1_bss_2D4->data;
+    MinigameLightWork *light=lbl_1_bss_2D4->data;
     return &light->direction;
 }
 /* Light-control code updates the stored RGBA color and applies it to the active light. */
 void fn_1_101C(int red,int green,int blue,int alpha) {
-    M675LightData *light=lbl_1_bss_2D4->data;
+    MinigameLightWork *light=lbl_1_bss_2D4->data;
     light->color.r=red;
     light->color.g=green;
     light->color.b=blue;
@@ -355,9 +349,9 @@ void fn_1_10A0(OMOBJMAN *manager, MinigameFogParams *parameters)
 /* The fog object's per-frame update calls its callback word when that word is nonzero. */
 void fn_1_11A0(OMOBJ *obj)
 {
-    M675LightData *fogStateView = lbl_1_bss_2D0->data;
-    if (fogStateView->callback != NULL) {
-        fogStateView->callback(obj);
+    M675FogWork *work = lbl_1_bss_2D0->data;
+    if (work->callback != NULL) {
+        work->callback(obj);
     }
 }
 /* A render-layer hook applies that layer's fog range, scaled by the current fog factor. */
@@ -390,11 +384,11 @@ void fn_1_12EC(s32 callbackWord) {
 }
 /* Fog control changes the factor used to interpolate each layer's fog end distance. */
 void fn_1_132C(f32 fogFactor) {
-    M675LightData *fogStateView;
+    M675FogWork *work;
 
     if (lbl_1_bss_2D0 != NULL) {
-        fogStateView = lbl_1_bss_2D0->data;
-        fogStateView->position.x = fogFactor;
+        work = lbl_1_bss_2D0->data;
+        work->factor = fogFactor;
     }
 }
 /* Minigame setup initializes camera views and schedules their controller before view output. */
@@ -545,7 +539,7 @@ void fn_1_1DD8(s32 camera, Vec *direction, Vec *target, float fov, float radius)
         up++;
     }
     fn_8002A3B0(fov, distance - radius, distance + radius, camera);
-    fn_8002A674(&position, (Vec *)up, target, camera);
+    fn_8002A674(&position, up, target, camera);
     fn_8002A8CC(480, camera);
     fn_8002A7D8(0.4f, camera);
 }
@@ -639,8 +633,8 @@ void fn_1_22AC(u32 cameras, float x, float y, float width, float height)
 /* Shadow control changes the field of view used by the camera update, in degrees. */
 extern void fn_1_232C(f32 shadowFov) {
     OMOBJ *object = lbl_1_bss_2CC;
-    M675LightData *cameraStateView = object->data;
-    cameraStateView->position.x = shadowFov;
+    MinigameCameraWork *work = object->data;
+    work->shadowFov = shadowFov;
 }
 /* Light control stores the direction used to aim the camera controller's shadow view. */
 void fn_1_235C(HuVecF *direction) {
@@ -653,8 +647,8 @@ void fn_1_235C(HuVecF *direction) {
 /* Shadow control exposes the first component of the stored shadow direction for direct edits. */
 extern f32 *fn_1_23AC() {
     OMOBJ *object = lbl_1_bss_2CC;
-    M675LightData *cameraStateView = object->data;
-    return &cameraStateView->position.y;
+    MinigameCameraWork *work = object->data;
+    return &work->shadowDirection.x;
 }
 /* Shadow setup changes the RGB tint used when the camera controller renders its shadow. */
 void fn_1_23DC(u8 red, u8 green, u8 blue)
@@ -802,16 +796,16 @@ double fn_1_29F0(CameraFitParams *fitParameters, M675CameraFitSphere *spheres,
 }
 
 /* Minigame setup creates the positional-audio controller and initializes its sound slots. */
-void fn_1_2F38(HUPROCESS *objectManager, u32 audioConfig) {
+void fn_1_2F38(OMOBJMAN *objectManager, MinigameAudioRange *audioConfig) {
     OMOBJ *object;
-    u32 *objectState;
+    M675AudioWork *objectState;
 
     object = fn_8003AB38(objectManager, 30, 0, 0, -1, fn_1_2FD4);
     lbl_1_bss_2C8 = object;
     objectState = HuMemDirectMallocNum(HEAP_HEAP, 1544, 0x10000000);
     object->data = objectState;
     memset(objectState, 0, 1544);
-    *objectState = audioConfig;
+    objectState->config = audioConfig;
     fn_1_303C(object);
 }
 /* The audio controller updates positional sounds, then runs its registered object callback. */
@@ -893,10 +887,10 @@ s32 fn_1_31D0(u32 cameras, float x)
     }
     return pan;
 }
-/* Audio control calculates camera zero's positional pan and discards the result. */
-void fn_1_32EC(void *position)
+/* Returns the positional pan for camera zero. */
+s32 fn_1_32EC(Vec *position)
 {
-    fn_1_3318(1, position);
+    return fn_1_3318(1, position);
 }
 /* Positional audio projects a world position and converts its screen x coordinate to pan. */
 s32 fn_1_3318(u32 cameras, Vec *position)
@@ -1095,7 +1089,7 @@ float fn_1_4A48(Vec *first, Vec *second)
     return sqrtf(x * x + z * z);
 }
 /* Camera transitions and actor updates interpolate a point each frame by the supplied factor. */
-void fn_1_4BB4(Point3d *start, Point3d *end, Point3d *position, f32 factor)
+void fn_1_4BB4(Vec *start, Vec *end, f32 factor, Vec *position)
 {
     position->x = start->x + (factor * (end->x - start->x));
     position->y = start->y + (factor * (end->y - start->y));

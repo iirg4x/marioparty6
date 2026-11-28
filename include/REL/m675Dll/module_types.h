@@ -4,6 +4,7 @@
 
 #include "game/object.h"
 #include "REL/minigame_ground_effect.h"
+#include "REL/minigame_positional_audio.h"
 #include "REL/m675Dll/actor_state.h"
 
 /* Camera, motion interpolation and resource operations. */
@@ -14,9 +15,16 @@ void fn_1_136C(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float
 void fn_1_1DD8(s32 camera, Vec *direction, Vec *target, float fov, float radius);
 void fn_1_2414(u32 cameras, void *data);
 void fn_1_24CC(u32 cameraMask);
+void fn_1_2F38(OMOBJMAN *objectManager, MinigameAudioRange *audioConfig);
 void fn_1_3C70(s32 effect, Vec *position);
 void fn_1_4424(int effect, int handle, Vec *position, int panEnabled, int volumeEnabled);
 int fn_1_45C4(int dataNum);
+s32 fn_1_A38(s32 resourceId);
+s32 fn_1_A98(u32 playerToken);
+void fn_1_1FC8(void (*callback)(OMOBJ *, u32, s32));
+void fn_1_4BB4(Vec *start, Vec *end, f32 factor, Vec *position);
+s32 fn_1_A60(void);
+s32 fn_1_32EC(Vec *position);
 s32 fn_1_46CC(s32 model, s32 dataNum);
 float fn_1_47DC(float start, float end, float factor);
 float fn_1_48F8(float start, float end);

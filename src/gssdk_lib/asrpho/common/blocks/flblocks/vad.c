@@ -259,15 +259,14 @@ static void FollowUpMike(VadBlockFields *This)
 }
 
 /* Reports sustained low signal-to-noise ratio, level excursions and an input timeout. */
-static u8 CheckForAbnormalConditions(struct _BLOCK *This, f32 Energy)
+static u8 CheckForAbnormalConditions(VadBlockFields *This, f32 Energy)
 {
-    VadBlockFields *vad = (VadBlockFields *) This;
     f32 SignalPeak;
     u8 agcOn;
 
-    agcOn = vad->AgcOn;
+    agcOn = This->AgcOn;
     if (agcOn != 0) {
-        if (vad->MikeCoarse != 0) {
+        if (This->MikeCoarse != 0) {
             goto checkSignalLevels;
         }
     }
@@ -275,47 +274,48 @@ static u8 CheckForAbnormalConditions(struct _BLOCK *This, f32 Energy)
         goto checkTimeout;
     }
 checkSignalLevels:
-    if (vad->SNR < 5.7564627379179 &&
-        (s32) vad->NbrOfUtterances - (s32) vad->PrevNbrOfUtterances > 3) {
-        if (_tosControl(&This->Object, 0x0C, BADSNR, vad->FrameCounter) != 0) {
+    if (This->SNR < 5.7564627379179 &&
+        (s32) This->NbrOfUtterances - (s32) This->PrevNbrOfUtterances > 3) {
+        if (_tosControl(&This->BaseBlock.Object, 0x0C, BADSNR, This->FrameCounter) != 0) {
             return 1;
         }
-        vad->PrevNbrOfUtterances = vad->NbrOfUtterances;
+        This->PrevNbrOfUtterances = This->NbrOfUtterances;
     }
 
-    if (Energy - vad->LNDB0 > 0.6907755f && vad->PrevNbrOfUtterances != vad->NbrOfUtterances) {
-        vad->PrevNbrOfUtterances = vad->NbrOfUtterances;
-        if (_tosControl(&This->Object, 0x0C, OVERLOAD, vad->FrameCounter) != 0) {
+    if (Energy - This->LNDB0 > 0.6907755f && This->PrevNbrOfUtterances != This->NbrOfUtterances) {
+        This->PrevNbrOfUtterances = This->NbrOfUtterances;
+        if (_tosControl(&This->BaseBlock.Object, 0x0C, OVERLOAD, This->FrameCounter) != 0) {
             return 1;
         }
     } else {
-        SignalPeak = vad->SignalPeakTrackerState;
-        if (vad->AgcOn != 0) {
-            SignalPeak += vad->NoiseRangeTrackerState + vad->NoiseFloorTrackerState;
+        SignalPeak = This->SignalPeakTrackerState;
+        if (This->AgcOn != 0) {
+            SignalPeak += This->NoiseRangeTrackerState + This->NoiseFloorTrackerState;
         }
-        SignalPeak -= vad->LNDB0;
+        SignalPeak -= This->LNDB0;
         if (SignalPeak < -6.9077554f &&
-            (s32) vad->NbrOfUtterances - (s32) vad->PrevNbrOfUtterances > 3) {
-            if (_tosControl(&This->Object, 0x0C, TOOQUIET, vad->FrameCounter) != 0) {
+            (s32) This->NbrOfUtterances - (s32) This->PrevNbrOfUtterances > 3) {
+            if (_tosControl(&This->BaseBlock.Object, 0x0C, TOOQUIET, This->FrameCounter) != 0) {
                 return 1;
             }
-            vad->PrevNbrOfUtterances = vad->NbrOfUtterances;
+            This->PrevNbrOfUtterances = This->NbrOfUtterances;
         }
     }
 
 checkTimeout:
-    if (vad->AgcOn != 0) {
-        if (vad->TimeOut != 0 && vad->FrameCounter > vad->TimeOut && vad->NbrOfUtterances == 0) {
-            if (_tosControl(&This->Object, 0x0C, NOSIGNAL, vad->FrameCounter) != 0) {
+    if (This->AgcOn != 0) {
+        if (This->TimeOut != 0 && This->FrameCounter > This->TimeOut &&
+            This->NbrOfUtterances == 0) {
+            if (_tosControl(&This->BaseBlock.Object, 0x0C, NOSIGNAL, This->FrameCounter) != 0) {
                 return 1;
             }
-            if (vad->GainInitialised == 0 && vad->AgcOn != 0) {
-                vad->GainInitialised = 1;
-                if (MikeCtrlExternal(vad, 0xBFFF) != 0) {
+            if (This->GainInitialised == 0 && This->AgcOn != 0) {
+                This->GainInitialised = 1;
+                if (MikeCtrlExternal(This, 0xBFFF) != 0) {
                     return 1;
                 }
             }
-            vad->FrameCounter = 0;
+            This->FrameCounter = 0;
         }
     }
     return 0;
@@ -667,7 +667,7 @@ static void ProcessVad(struct _BLOCK *_This, void *pInputs, int NbrInputs)
             return;
         }
         if (This->CheckAbnormal != 0) {
-            CheckForAbnormalConditions(&This->BaseBlock, *pEnergyIn);
+            CheckForAbnormalConditions(This, *pEnergyIn);
             return;
         }
     }

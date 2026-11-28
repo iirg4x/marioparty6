@@ -31,7 +31,6 @@ ScoreDisplayPosition lbl_1_data_860[4] = {
     {5e+02f, 416.0f, 0.0f},
 };
 
-s32 fn_1_A38(s32 dataIndex);
 void fn_1_EA34(OMOBJ *object);
 void fn_1_EA70(OMOBJ *object);
 void fn_1_EA98(OMOBJ *object);

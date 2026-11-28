@@ -33,4 +33,11 @@ void fn_1_67DC(void);
 /* Step interpolation for model motion. */
 s32 fn_1_2EA4(f32 *value, f32 step, f32 start, f32 end);
 
+/* Actor collision hooks: the narrow-phase check and the position correction. */
+struct PlayerState;
+struct RequestState;
+struct RecordOwner;
+s32 fn_1_68A8(struct PlayerState *first, struct RequestState *second);
+void fn_1_6928(struct RecordOwner *owner);
+
 #endif

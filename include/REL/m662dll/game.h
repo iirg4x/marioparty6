@@ -5,6 +5,7 @@
 #include "REL/minigame_shadow_camera.h"
 
 #include "REL/minigame_light.h"
+#include "REL/minigame_pad.h"
 #include "dolphin/types.h"
 
 extern s16 lbl_1_bss_C60;
@@ -15,24 +16,9 @@ extern s16 lbl_1_bss_C60;
 #include "game/process.h"
 #include "REL/particle_parameters.h"
 
-/* A frame of button, stick, trigger and directional-repeat input from one pad. */
-typedef struct M662PadInput {
-    s32 unk00; /* The game's code never reads this field. */
-    s32 buttonsDown;
-    u16 unk08; /* The game's code never reads this field. */
-    s8 stickX;
-    s8 unk0B; /* The game's code never reads this field. */
-    s8 unk0C; /* The game's code never reads this field. */
-    s8 unk0D; /* The game's code never reads this field. */
-    u8 unk0E; /* The game's code never reads this field. */
-    u8 unk0F; /* The game's code never reads this field. */
-    u8 unk10; /* The game's code never reads this field. */
-    u8 unk11; /* The game's code never reads this field. */
-} M662PadInput;
-
 /* One group representative, with cached input and the state used by the round updater. */
 typedef struct M662Player {
-    M662PadInput input;
+    SystemPadInput input;
     /* Configured player, local character slot, character kind and controller port. */
     s8 playerNo, characterIndex, characterNo, padNo;
     s8 unk18; /* The game's code never reads this field. */
@@ -99,7 +85,7 @@ typedef struct M662Sequence {
     /* State-machine steps, cue selection, update-frame timers and completion flag. */
     s16 sequenceState, stage, effectTimer, sceneState, endingState, cueIndex, timer, complete;
     /* Raw input snapshots for all four controller ports. */
-    M662PadInput controllers[4];
+    SystemPadInput controllers[4];
     /* Round timer object managed by the minigame timer routines. */
     MGTIMER *timerObject;
     u8 unk6C[4]; /* No code names this field. */

@@ -15,12 +15,6 @@
 
 s32 fn_1_F110(void) { return 0; }
 
-typedef struct Position {
-    HuVecF position;
-    unsigned char unmappedBytes[12];
-    HuVecF offset;
-} Position;
-
 extern s32 lbl_1_data_F18;
 extern float lbl_1_bss_1BC;
 extern s8 lbl_1_bss_218, lbl_1_bss_219, lbl_1_data_2758;
